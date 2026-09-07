@@ -521,15 +521,23 @@ la sesión de pruebas encontró MÁS problemas del mismo área que esos fixes no
     algún link/acción real para entrar, o si es un hueco de UI. **PENDIENTE — investigar el flujo
     real de entrada a `campamento-serhu-interior`.**
 31. **La zona en el mapa mezcla fauna diurna y nocturna a la vez siendo de día** — se supone que la
-    Zona debe reflejar solo lo que está en escena/activo según el momento del día real. **PENDIENTE
-    — revisar el filtro de día/noche en el endpoint de Zona (`zona.ts`).**
+    Zona debe reflejar solo lo que está en escena/activo según el momento del día real. **YA CERRADO
+    ANTES DE ESTA SESIÓN (2026-09-06, commit `15fa0cf`)** — confirmado al reverificar el 2026-09-07:
+    el filtro `faunaMomentoDelDia` ya existía para NPC/fauna dinámicos sin `ZonePoint` propio, pero
+    nunca se aplicaba a los puntos sembrados a mano del catálogo (ej. Kirelon Arenoso, fauna
+    nocturna) — corregido en el mismo commit del hallazgo 28.
 32. **Las zonas deben tener variante visual de estación** (igual que ya tienen de día/noche) — salvo
     los interiores de campamentos, que no deberían tener variante de estación. **PENDIENTE —
     confirmar si esto ya existe parcialmente o es trabajo nuevo del todo.**
 33. **En la vista previa/modal de una Location del mapa, muchas imágenes no se ven aunque ya estén
     descubiertas y la imagen ya esté generada** (ver captura de La Hondonada del Eco, con miniatura
-    negra/vacía en el modal pese a "Generar mapa" ya hecho). **PENDIENTE — revisar por qué el modal
-    no está resolviendo la URL de la imagen ya generada.**
+    negra/vacía en el modal pese a "Generar mapa" ya hecho). **YA CERRADO ANTES DE ESTA SESIÓN
+    (2026-09-06, commit `15fa0cf`)** — confirmado al reverificar el 2026-09-07: el comentario del
+    propio fix cita casi textualmente este hallazgo ("muchas locations en la preview del mapa no se
+    ven aunque ya las descubrí y la imagen ya está añadida"). Causa raíz: un asentamiento exigía
+    ÚNICAMENTE su `iconoUrl` (asset propio nuevo, mucho menos probable de estar generado) e ignoraba
+    el banner/thumbnail ya generados que alimentan el propio mapa de Zona — `DetailModal.tsx` ahora
+    hace fallback completo: `iconoUrl ?? banner ?? thumbnail`.
 34. **Desde el mapa de Zona se puede llegar a fichas de la Enciclopedia de cosas aún NO descubiertas
     en la partida real** — clicando un punto del mapa de Zona que el jugador no ha descubierto
     todavía en la ficción, hoy se puede acceder a su información completa. Se pide que, en ese caso,
