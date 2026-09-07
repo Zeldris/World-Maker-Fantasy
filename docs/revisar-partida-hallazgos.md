@@ -281,8 +281,34 @@ PENDIENTES salvo que se indique lo contrario. Organizado por fase del runbook.
 18. **Rematar a un enemigo ya CONVALECIENTE con un ataque no debería narrarse como un golpe de
     combate normal** — debería narrarse explícitamente como el remate/golpe final que acaba con su
     vida, y ese remate debe describirse a través de la habilidad concreta que se decidió usar para
-    ese golpe (no una frase genérica de "impacta de nuevo"). **PENDIENTE — revisar el bloque de
-    `narration.narration` para el desenlace MUERTO cuando el NPC ya venía CONVALECIENTE.**
+    ese golpe (no una frase genérica de "impacta de nuevo"). **CERRADO (2026-09-07)**: investigación
+    previa confirmó que el nombre/lore de la habilidad de ataque del jugador YA llega al Narrador
+    (mecanismo distinto del que se sospechaba en un principio) — cada habilidad del catálogo trae su
+    propio `promptText` con lore propio (ej. "Canalizo fuego a través de mi puño..." vs "Aprieto los
+    dientes y aguanto el golpe por pura dureza física..."), y ese texto se usa literalmente como la
+    acción del jugador (`handleCombatAttack`, frontend) — confirmado con la propia usuaria durante el
+    diseño ("¿no lo hacemos ya así?... que siga la línea del lore de la habilidad", sí, ya se hace).
+    El hueco real era solo el caso REMATE: `hitSeverityHint` (`combatExchange.ts`) devuelve string
+    VACÍO cuando la nueva condición es CONVALECIENTE/MUERTO, así que un golpe normal (no LETAL, que
+    ya tenía su propio hint de "golpe final") que remataba a un NPC ya CONVALECIENTE solo recibía el
+    texto genérico de `OUTCOME_NARRATION_HINT` por margen ("narra el golpe"), sin ninguna instrucción
+    de que ESE golpe concreto acaba con la vida del rival. Fix: bloque nuevo en `turnResolution.ts`
+    (hermano del ya existente para LETAL, mismo patrón "YA RESUELTO"), gateado por condición PREVIA
+    (`npcParaIntercambio.condicionFisica === 'CONVALECIENTE' && npcTargetNewCondicion === 'MUERTO' &&
+    !abilityEffects.includes('LETAL')`) — decisión explícita de la usuaria: bloque independiente por
+    condición previa, no ampliar el gate de LETAL existente. No repite el nombre de la habilidad (ya
+    llega por `ctx.action`), solo añade la instrucción de que es un remate. Sin guard de prosa nuevo
+    (confirmado que el patrón del proyecto para instrucciones de tono/énfasis, como el propio LETAL,
+    siempre confía en el hint del prompt sin verificación posterior — no hay precedente de guard para
+    este tipo de caso). Verificado: `tsc -b` limpio backend+frontend, test de integración nuevo
+    (mismo NPC/siembra CONVALECIENTE que el describe de reputación ya existente) verificando que el
+    hint de REMATE llega al contexto del Narrador (`worldFacts`), verificado rigurosamente
+    (revertir/confirmar fallo/restaurar). Línea base de fallos de infraestructura preexistente sin
+    cambios (3, confirmados con `git stash`/`git stash pop` — un 4º fallo puntual visto en una
+    corrida conjunta resultó ser un flake de contención de suite ya conocido, no relacionado:
+    `combateMultipleOrquestacion.integration.test.ts` pasa limpio en aislamiento con y sin el fix).
+    Pendiente reverificar en vivo con Playwright: rematar a un NPC CONVALECIENTE con un golpe normal
+    y confirmar que la narración real menciona el desenlace de muerte a través de la habilidad usada.
 
 ### FASE 3 — Vocabulario y prosa (tiradas de dados)
 

@@ -7293,6 +7293,73 @@ describe('Reputación de facción solo en la decisión final (rematar a MUERTO),
   }, 15_000);
 });
 
+// Hallazgo 18 (revisar-partida-hallazgos.md 2026-09-07): rematar a un NPC ya CONVALECIENTE con un
+// golpe normal (no una habilidad LETAL, ese caso ya tenía su propio hint) no daba al Narrador
+// ninguna instrucción de que ese golpe concreto acaba con la vida del rival — `hitSeverityHint`
+// devuelve vacío para CONVALECIENTE/MUERTO, así que sin este hint solo quedaba el texto genérico
+// de `OUTCOME_NARRATION_HINT` ("narra el golpe"). Mismo escenario/siembra que el describe de
+// arriba (CONVALECIENTE a mano, ataque tabulado dentro de combate), pero aquí se verifica el
+// CONTENIDO del hint que llega al Narrador (`worldFacts`), no el estado mecánico ya cubierto ahí.
+describe('Remate a un NPC ya CONVALECIENTE se narra explícitamente como golpe final (hallazgo 18, 2026-09-07)', () => {
+  let saveId: string;
+  let npcId: string;
+
+  beforeAll(async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.99); // golpe claro siempre
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const worldId = world.id;
+    const npc = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'orco-enfurecido-hondonada' } });
+    npcId = npc.id;
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId,
+        characterName: 'Gorhorn de prueba (remate hallazgo 18)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+        pendingCombatNpcSlugs: ['orco-enfurecido-hondonada'],
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    await prisma.npcState.create({ data: { saveId, npcId, scope: '', condicionFisica: 'CONVALECIENTE' } });
+  });
+
+  afterAll(async () => {
+    vi.restoreAllMocks();
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('un golpe normal (sin LETAL) que remata a un CONVALECIENTE hasta MUERTO incluye el hint de REMATE en el contexto del Narrador', async () => {
+    narrateAction.mockClear();
+    const app = await buildApp();
+    const action = "Descargo el golpe final sobre 'Orco enfurecido'.";
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } });
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, enCombate: true },
+    });
+    expect(narrateRes.statusCode).toBe(200);
+
+    const stateAfter = await prisma.npcState.findFirst({ where: { saveId, npcId } });
+    expect(stateAfter?.condicionFisica).toBe('MUERTO');
+
+    const narrateCallArgs = narrateAction.mock.calls.at(-1)?.[0] as { worldFacts?: string[] };
+    const hint = narrateCallArgs.worldFacts?.find((f) => f.includes('REMATE — YA RESUELTO'));
+    expect(hint).toContain('Orco enfurecido');
+    expect(hint).toContain('golpe final');
+    expect(hint).not.toContain('EFECTO DE HABILIDAD'); // no es el camino LETAL, es el gemelo nuevo
+  }, 15_000);
+});
+
 // Bug real, sesión autónoma de pruebas con Playwright (2026-09-04): Gistera Koh es `PRINCIPAL`
 // (npcScene.ts § `candidateNpcs`, cualquier PRINCIPAL es candidato en CUALQUIER ubicación del
 // mundo) — sin restricción propia, su gancho guionizado de huida se disparó dentro de Karot Veku,

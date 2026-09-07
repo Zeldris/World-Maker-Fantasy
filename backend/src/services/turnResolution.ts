@@ -1588,6 +1588,20 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
           : `EFECTO DE HABILIDAD — YA RESUELTO: el golpe letal no llega a conectar esta vez — narra el intento fallido, nunca su muerte.`;
       }
 
+      // Remate (hallazgo 18, revisar-partida-hallazgos.md 2026-09-07) — un golpe NORMAL (no LETAL,
+      // ese caso ya tiene su propio texto arriba) que remata a un NPC que YA venía CONVALECIENTE
+      // (un paso de morir) no debe narrarse como un golpe más: `hitSeverityHint`
+      // (combatExchange.ts) devuelve vacío para CONVALECIENTE/MUERTO, así que sin este hint el
+      // Narrador no tenía ninguna instrucción de que este golpe concreto acaba con la vida del
+      // rival — solo `OUTCOME_NARRATION_HINT` genérico por margen ("narra el golpe"). La habilidad
+      // concreta usada ya llega al Narrador por otra vía (`ctx.action`, el `promptText` de la
+      // habilidad elegida — confirmado que ya trae su propio lore, p.ej. fuego/físico), así que
+      // este hint solo añade la instrucción de REMATE, sin repetir el nombre de la habilidad.
+      if (npcAttackHits && npcParaIntercambio.condicionFisica === 'CONVALECIENTE' && npcTargetNewCondicion === 'MUERTO' && !abilityEffects.includes('LETAL')) {
+        const remateHint = `REMATE — YA RESUELTO: ${npcParaIntercambio.name} ya estaba al borde de la muerte (convaleciente) y este golpe acaba con su vida — narra explícitamente que es el golpe final a través de la habilidad concreta usada, nunca como un impacto más de combate normal.`;
+        exchangeNarrationBlock = exchangeNarrationBlock ? `${exchangeNarrationBlock} ${remateHint}` : remateHint;
+      }
+
       // Caza en grupo (2026-08-13, petición explícita: "que el narrador prometa nada que no se
       // realice por acción") — si este golpe deja al individuo ACTUAL convaleciente/muerto y el
       // grupo tiene más miembros, el combate sigue: se le dice al modelo explícitamente que NO
