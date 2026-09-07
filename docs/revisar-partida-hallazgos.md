@@ -361,8 +361,21 @@ PENDIENTES salvo que se indique lo contrario. Organizado por fase del runbook.
     muestra como "Veta de hierro de Los Pilares Rotos" — según la corrección de hoy mismo (ver
     sesión de lore, punto A3/#11), es hierro corriente de TODA la llanura, no exclusivo de Los
     Pilares Rotos — debería llamarse "Veta de Hierro de las Llanuras Rojas" (nombre exacto a
-    confirmar con la usuaria). **PENDIENTE — renombrar en `worldCatalog.ts` + `loreChunks.ts` +
-    `flora-fauna.md` si aplica.**
+    confirmar con la usuaria). **CERRADO (2026-09-07)**: el grueso del renombrado YA se había hecho
+    en la propia sesión de lore del mismo día (`worldCatalog.ts:8208`, `name:
+    'Veta de Hierro de las Llanuras Rojas'`, slug sin tocar —
+    `veta-hierro-pilares-rotos` — coherente con `docs/rpgtarkor/actualizaciones-pendientes-lore.md`
+    punto A3, ya CERRADO). Quedaban 2 flecos sin propagar, encontrados al reverificar: un comentario
+    cosmético desactualizado (`worldCatalog.ts:7649`) y, más importante, el `label` real de
+    `WorldPopulation` en `worldPopulation.ts:259` (usado en runtime para spawn/población, no solo
+    display) que seguía con el nombre viejo. Ambos corregidos. `loreChunks.ts` confirmado sin ningún
+    chunk sobre esta veta (0 coincidencias, coherente con otro hallazgo ya anotado del mismo
+    documento de lore: la veta sigue pendiente de indexar en el RAG del narrador, fuera de alcance
+    de este hallazgo). Slug estable, sin migración de datos de partidas necesaria — `seed-catalog.ts`
+    hace upsert por slug, no reseed destructivo. Verificado: `tsc -b` limpio backend, cambio de datos
+    declarativos puros (sin lógica ni guard que verificar), `npm run seed-catalog` corrido para
+    propagar el nombre a Postgres local (confirmado "Catálogo de mundo sembrado correctamente",
+    incluida la sección "Población del mundo").
 22. **Ítem "Leche de Múrgol"/planta "Múrgoles domados" mal categorizado** — la captura muestra "3
     Leche de Múrgol" con un icono/etiqueta de "Múrgoles domados" bajo un icono de hoja (flora), pese
     a que la leche de Múrgol es un producto animal, no flora — algo está mal en el `category`/

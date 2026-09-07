@@ -7646,7 +7646,7 @@ export const harvestYields: HarvestYieldInput[] = [
     condicion: 'Solo en Ciénaga Troncal — fuera del núcleo jugable actual',
   },
 
-  // --- Veta de hierro de Los Pilares Rotos ---
+  // --- Veta de Hierro de las Llanuras Rojas (slug sin tocar: veta-hierro-pilares-rotos) ---
 
   // Receta de refinado nueva (2026-07-29, petición explícita: "convertir una mena de mineral en
   // un lingote") — misma formación rocosa que ya da piedra, con una veta de hierro real dentro.

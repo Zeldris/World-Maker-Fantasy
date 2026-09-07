@@ -256,7 +256,7 @@ export const worldPopulations: WorldPopulationInput[] = [
   {
     targetType: 'RECURSO',
     targetSlug: 'veta-hierro-pilares-rotos',
-    label: 'Veta de hierro de Los Pilares Rotos',
+    label: 'Veta de Hierro de las Llanuras Rojas',
     poblacion: 600,
     poblacionMax: 600,
     distribucion: { 'Llanuras del Viento Rojo': 1 },
