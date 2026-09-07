@@ -398,15 +398,20 @@ PENDIENTES salvo que se indique lo contrario. Organizado por fase del runbook.
     de siempre en esta corrida — el 3º es un flake probabilístico que no siempre dispara).
 23. **"Bug de matching de texto": "la espina dorsal" enlazada como la criatura "Espina del Viento"**
     — narración real: "una sensación de alerta le recorre la [Espina del Viento] dorsal" (la frase
-    natural es "la espina dorsal"). Investigación en curso (agente interrumpido por límite de
-    sesión) apuntaba a que `worldCatalog.ts` registra `'espina'` (sola, sin "del viento") como alias
-    corto de `espina-del-viento`, y ese alias se reutiliza sin filtro de longitud/contigüidad en el
-    enlazador de texto clicable de la Enciclopedia (mismo patrón de fallo YA documentado en el punto
-    "Detectores de texto libre" de `revisar-partida.md`, hallazgo 1: alias cortos sin filtro de
-    longitud). **PENDIENTE — retomar la investigación, `worldCatalog.ts` línea ~7728, alias
-    `'espina'` de `espina-del-viento`, y revisar el enlazador de la Enciclopedia (probablemente
-    `enciclopediaIndex.ts` en frontend) para exigir coincidencia de la frase completa, no solo la
-    primera palabra.**
+    natural es "la espina dorsal"). **YA CERRADO ANTES DE ESTA SESIÓN (2026-09-06, commit
+    `e4534e1`)** — confirmado al reverificar el 2026-09-07: el alias corto `'espina'` (sin "del
+    viento") se quitó de `harvestSourceAliases['espina-del-viento']` en `worldCatalog.ts` (comentario
+    explicando el motivo junto a la entrada: "espina" es sustantivo común de la lengua, sin relación
+    con la criatura en frases normales como "espina dorsal"), quedando solo `['espina del viento',
+    'espinas del viento']`. Confirmado que este array (`harvestSourceAliases`) alimenta A LA VEZ el
+    enlazador de la Enciclopedia (vía `world.ts` → `entry.aliases` → `enciclopediaIndex.ts`) Y la
+    detección de intención de recolección/caza del jugador en texto libre (`matchHarvestSource`,
+    `harvest.ts`) — mismo dato, dos consumidores. Al revisar el mismo patrón se encontraron 4 alias
+    similares de riesgo teórico (sustantivos comunes: `musgo`, `roca`/`piedra`, `veta`/`mena`,
+    `espiga`) — decisión explícita de la usuaria: NO quitarlos de forma preventiva, a diferencia de
+    "espina" estos SÍ tienen uso legítimo real (el jugador necesita poder escribir "pico piedra"/
+    "recojo musgo" y que el motor lo reconozca) — se actuará solo si aparece un caso real de
+    colisión jugando, mismo criterio que motivó el fix original de "espina".
 
 ### FASE 5 — UX visible en pantalla
 
