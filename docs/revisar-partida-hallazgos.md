@@ -563,8 +563,19 @@ la sesión de pruebas encontró MÁS problemas del mismo área que esos fixes no
 30. **No hay forma de acceder al interior del campamento (Karot Vekhad) desde la Zona** — pese a que
     hoy mismo se documentó el interior en `areas.md`/`loreChunks.ts` (ver sesión de lore de hoy), no
     está claro cómo se entra a él desde la vista de Zona en el juego real — falta confirmar si existe
-    algún link/acción real para entrar, o si es un hueco de UI. **PENDIENTE — investigar el flujo
-    real de entrada a `campamento-serhu-interior`.**
+    algún link/acción real para entrar, o si es un hueco de UI. **CERRADO — VERIFICADO, NO ES BUG
+    (2026-09-07)**: `campamento-serhu-interior` ya es una Location real jugable (`kind: 'interior'`,
+    solo metadato descriptivo, sin filtro real en el código) con `LocationLink` real desde
+    `campamento-serhu` (instantáneo a propósito, ~1 min de ficción, "reutiliza el sistema de viaje
+    normal sin ningún mecanismo narrativo nuevo", pieza "Trabajador de Reino" 2026-08-31). El
+    mecanismo real de entrada YA funciona hoy vía el botón "Viajar" estándar del panel Mapa
+    (`TravelDestinationModal` → `GET /saves/:id/destinos-viaje`) — lista cualquier Location ya
+    visitada, o (con el mapa de Llanuras revelado) toda Location de la región, sin ningún filtro
+    por `kind` que excluya interiores. El "EDIFICIO Karot Vekhad" que sí aparece como `ZonePoint`
+    en el mapa exterior es solo informativo/posicional (abre su modal de detalle), no dispara viaje
+    — pero no hace falta, el modal "Viajar" ya cubre la entrada igual que cualquier otra Location.
+    Único requisito real: haber visitado `campamento-serhu-interior` al menos una vez o tener el
+    mapa revelado — casi seguro cumplido si el jugador ya usó "Trabajador de Reino" en esa partida.
 31. **La zona en el mapa mezcla fauna diurna y nocturna a la vez siendo de día** — se supone que la
     Zona debe reflejar solo lo que está en escena/activo según el momento del día real. **YA CERRADO
     ANTES DE ESTA SESIÓN (2026-09-06, commit `15fa0cf`)** — confirmado al reverificar el 2026-09-07:
