@@ -427,6 +427,32 @@ export function utilityTriggered(
   return opponentRol === 'ataque';
 }
 
+/// Decide qué función de resolución usar para este lado de utilidad (hallazgo 12,
+/// revisar-partida-hallazgos.md 2026-09-06) — antes: cualquier lado rol:'utilidad' bastaba para
+/// caer siempre en resolveIndependentExchange (dificultad fija propia). Ahora: una utilidad que
+/// RESPONDE a un ataque entrante (efectos reactivos: ATAQUE/ATURDIMIENTO/INTIMIDACION/CONTROL —
+/// los mismos 4 que turnResolution.ts ya trata como "roba iniciativa o contragolpea" tanto en el
+/// camino independiente como en `utilityTriggered`, cuando el rival este intercambio es
+/// rol:'ataque') se resuelve como tirada-vs-tirada directa (resolveExchange), igual que
+/// ataque/defensa — petición explícita de la usuaria: "la única forma de parar un ataque es
+/// defendiéndote o usando una habilidad de utilidad que indique que para el ataque... en esos
+/// casos se comparará solo la tirada como en ataque/defensa". Solo ANALISIS/RECUPERACION (nunca
+/// reactivos) y cualquier utilidad usada sin ataque entrante del rival siguen en el camino
+/// independiente contra dificultad propia (utilityDifficultyFor) — el ataque entra con su tirada
+/// normal Y la utilidad se juzga en paralelo, sin relación entre sí.
+export function isReactiveUtility(
+  ownRol: 'ataque' | 'defensa' | 'utilidad',
+  ownEffects: AbilityEffect[],
+  opponentRol: 'ataque' | 'defensa' | 'utilidad',
+): boolean {
+  if (ownRol !== 'utilidad') return false;
+  if (ownEffects.includes('ANALISIS')) return false;
+  return (
+    opponentRol === 'ataque' &&
+    (ownEffects.includes('ATAQUE') || ownEffects.includes('ATURDIMIENTO') || ownEffects.includes('INTIMIDACION') || ownEffects.includes('CONTROL'))
+  );
+}
+
 export function hitSeverityHint(nombreObjetivo: string, nuevaCondicion: CondicionFisica | null): string {
   if (!nuevaCondicion) return `El golpe no conecta — no hay ningún daño real que narrar en ${nombreObjetivo}.`;
   if (nuevaCondicion === 'CONVALECIENTE' || nuevaCondicion === 'MUERTO') return '';

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { effectiveAttributes, effectiveSecondaryAttributes, effectiveDefense, equippedWeaponNames, attributeBonusesFromEquipment } from './equipment.js';
+import { effectiveAttributes, effectiveSecondaryAttributes, effectiveDefense, equippedWeaponNames, attributeBonusesFromEquipment, sumAttributes } from './equipment.js';
 import type { AttributeBlock } from './dice.js';
 import { EMPTY_SECONDARY_ATTRIBUTES } from './secondaryAttributes.js';
 
@@ -154,5 +154,18 @@ describe('equippedWeaponNames', () => {
 
   it('sin ningún arma equipada, devuelve vacío', () => {
     expect(equippedWeaponNames([{ name: 'Casco de cuero', slot: 'CASCO' }])).toEqual([]);
+  });
+});
+
+// Hallazgo 12 (revisar-partida-hallazgos.md 2026-09-06) — base de utilityDifficultyFor
+// (npcScene.ts): comparar "fuerza real" de dos personajes por suma de sus 7 atributos.
+describe('sumAttributes', () => {
+  it('suma los 7 atributos', () => {
+    expect(sumAttributes(BASE)).toBe(70);
+  });
+
+  it('valores distintos por atributo se suman correctamente', () => {
+    const attrs: AttributeBlock = { fuerza: 4, destreza: 6, constitucion: 8, inteligencia: 2, voluntad: 10, carisma: 12, magia: 0 };
+    expect(sumAttributes(attrs)).toBe(42);
   });
 });

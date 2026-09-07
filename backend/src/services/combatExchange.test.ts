@@ -6,6 +6,7 @@ import {
   exchangeContextBlock,
   effectiveExchangeOutcome,
   hitSeverityHint,
+  isReactiveUtility,
   type ExchangeParticipant,
 } from './combatExchange.js';
 import type { AttributeBlock } from './dice.js';
@@ -305,5 +306,46 @@ describe('hitSeverityHint', () => {
 
   it('deja claro que no hubo ningún daño real si el golpe no conectó (nuevaCondicion null)', () => {
     expect(hitSeverityHint('Zense Ceniza', null)).toBe('El golpe no conecta — no hay ningún daño real que narrar en Zense Ceniza.');
+  });
+});
+
+// Hallazgo 12 (revisar-partida-hallazgos.md 2026-09-06) — decide si una utilidad que responde a
+// un ataque entrante pasa a tirada-vs-tirada (resolveExchange) en vez de dificultad propia
+// (resolveIndependentExchange). 13 habilidades reales de classAbilities.ts clasificadas por este
+// criterio: ANALISIS/RECUPERACION nunca reactivas; ATAQUE/ATURDIMIENTO/INTIMIDACION/CONTROL sí,
+// pero solo si el rival ataca este intercambio.
+describe('isReactiveUtility', () => {
+  it('rol distinto de utilidad nunca es reactivo, sin importar los effects', () => {
+    expect(isReactiveUtility('defensa', ['ATAQUE'], 'ataque')).toBe(false);
+    expect(isReactiveUtility('ataque', ['ATAQUE'], 'ataque')).toBe(false);
+  });
+
+  it('ANALISIS nunca es reactivo, aunque el rival ataque (Analizar rival: Instinto Guerrero, Vista de Halcón...)', () => {
+    expect(isReactiveUtility('utilidad', ['ANALISIS'], 'ataque')).toBe(false);
+  });
+
+  it('RECUPERACION nunca es reactivo (Instinto Adaptativo)', () => {
+    expect(isReactiveUtility('utilidad', ['RECUPERACION'], 'ataque')).toBe(false);
+  });
+
+  it('ATAQUE es reactivo solo si el rival ataca este intercambio (Adaptación Rápida)', () => {
+    expect(isReactiveUtility('utilidad', ['ATAQUE', 'CONVERSION'], 'ataque')).toBe(true);
+    expect(isReactiveUtility('utilidad', ['ATAQUE', 'CONVERSION'], 'defensa')).toBe(false);
+    expect(isReactiveUtility('utilidad', ['ATAQUE', 'CONVERSION'], 'utilidad')).toBe(false);
+  });
+
+  it('ATURDIMIENTO es reactivo solo si el rival ataca (Aullido Adaptativo)', () => {
+    expect(isReactiveUtility('utilidad', ['ATURDIMIENTO'], 'ataque')).toBe(true);
+    expect(isReactiveUtility('utilidad', ['ATURDIMIENTO'], 'defensa')).toBe(false);
+  });
+
+  it('INTIMIDACION es reactivo solo si el rival ataca (Camuflaje)', () => {
+    expect(isReactiveUtility('utilidad', ['INTIMIDACION', 'OCULTACION', 'AUMENTO'], 'ataque')).toBe(true);
+    expect(isReactiveUtility('utilidad', ['INTIMIDACION', 'OCULTACION', 'AUMENTO'], 'defensa')).toBe(false);
+  });
+
+  it('CONTROL es reactivo solo si el rival ataca (Opresión Mental)', () => {
+    expect(isReactiveUtility('utilidad', ['CONTROL'], 'ataque')).toBe(true);
+    expect(isReactiveUtility('utilidad', ['CONTROL'], 'utilidad')).toBe(false);
   });
 });

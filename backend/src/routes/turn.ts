@@ -15,6 +15,7 @@ import {
   detectNpcsInScene,
   calibrationLineFor,
   difficultyHintFor,
+  utilityDifficultyFor,
   detectsAttackIntent,
   detectsDialogueIntent,
   detectsHostileSearchIntent,
@@ -277,6 +278,20 @@ async function resolveClassificationForTurn(params: {
       } else {
         const npcCalibration = calibrationLineFor(npcsInScene, level);
         classification = await classifyAction({ characterSummary, action, npcCalibration });
+
+        // Hallazgo 12 (revisar-partida-hallazgos.md 2026-09-06) — fuera de combate no existe el
+        // concepto de `rol` (ClassificationResult no lo tiene), pero si llegamos aquí la acción ya
+        // NO fue tabulada como ataque/hostilidad (eso se resuelve arriba, sin pasar por
+        // classifyAction) — así que cualquier acción con un NPC objetivo claro en escena es
+        // razonablemente "dirigida a ese NPC sin ser un ataque directo", el caso que cubre este
+        // hallazgo. Mismo criterio de objetivo que `calibrationLineFor`/`tabulatedTarget` arriba.
+        // Se sobreescribe el número que decidiera el LLM (el enum [8,12,15,18,22] de
+        // classifyAction) por la escala determinista nueva basada en diferencia de atributos, no
+        // en dependencia de que el modelo interprete bien la pista de texto.
+        if (npcsInScene.length > 0) {
+          const utilityTarget = explicitTarget ?? ongoingCombatTarget ?? npcsInScene[0];
+          classification.dificultad = utilityDifficultyFor(utilityTarget.attributes, attributes).dificultad;
+        }
 
         // Roadmap 2026-07-20 (Fable, control de acciones — bug real jugando: "Explorar la zona
         // en busca de..." clasificado como banda "larga"/4320 min, 3 días, dejó a la jugadora

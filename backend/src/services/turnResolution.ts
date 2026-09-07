@@ -24,6 +24,7 @@ import {
   npcSceneBlockFor,
   npcSceneLineFor,
   difficultyHintFor,
+  utilityDifficultyFor,
   detectsAttackIntent,
   detectsHostileSearchIntent,
   detectsDialogueIntent,
@@ -47,6 +48,7 @@ import {
   independentExchangeContextBlock,
   hitSeverityHint,
   utilityTriggered,
+  isReactiveUtility,
   type PendingNpcAttack,
   type InitiativeResult,
   type CombatExchangeDisplay,
@@ -1026,7 +1028,13 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
       // pero se comprueba igual por si ese invariante cambiara algún día.
       const defensorRol = abilityRol ?? 'defensa';
       if (defensorRol === 'defensa') playerActedAsDefenderThisExchange = true;
-      const esIndependiente = pendingNpcAttack.rol === 'utilidad' || defensorRol === 'utilidad';
+      // Hallazgo 12 (revisar-partida-hallazgos.md 2026-09-06) — una utilidad del jugador que PARA
+      // el ataque entrante (ATAQUE/ATURDIMIENTO/INTIMIDACION/CONTROL, ver isReactiveUtility) deja
+      // de resolverse contra su propia dificultad fija: pasa a la tirada-vs-tirada directa de
+      // `resolveExchange` (rama `else` de abajo), igual que una defensa normal — la dificultad de
+      // utilidad no tiene sentido para "parar un golpe", eso siempre fue un contraste directo.
+      const defensorParaAtaque = defensorRol === 'utilidad' && isReactiveUtility('utilidad', abilityEffects, pendingNpcAttack.rol);
+      const esIndependiente = (pendingNpcAttack.rol === 'utilidad' || defensorRol === 'utilidad') && !defensorParaAtaque;
       if (esIndependiente) {
         const npcRacial = racialAdvantageFor(npcParaIntercambio.raza, pendingNpcAttack.rol, pendingNpcAttack.effects, input.classificationAtributo, jugadorRaza, isFirstExchangeOfCombat);
         const jugadorRacial = racialAdvantageFor(jugadorRaza, defensorRol, abilityEffects, pendingNpcAttack.attribute, npcParaIntercambio.raza, isFirstExchangeOfCombat);
@@ -1045,7 +1053,15 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
             attributes: attributesEfectivos,
             attribute: input.classificationAtributo,
             attributeBonus: input.abilityAttributeBonus,
-            difficulty: difficultyHintFor(npcParaIntercambio.level, input.currentLevel).dificultad,
+            // Hallazgo 12 — una utilidad NO reactiva del jugador (ANALISIS/RECUPERACION, las
+            // reactivas ya se desviaron a `defensorParaAtaque` arriba) usa la escala nueva por
+            // diferencia de atributos, no la de nivel — solo tiene sentido de verdad cuando
+            // `defensorRol==='utilidad'`; si se defiende con 'defensa' normal, este lado no llega
+            // aquí (cae directo a la rama `else`, más abajo).
+            difficulty:
+              defensorRol === 'utilidad'
+                ? utilityDifficultyFor(npcParaIntercambio.attributes, attributesEfectivos).dificultad
+                : difficultyHintFor(npcParaIntercambio.level, input.currentLevel).dificultad,
             condicionFisica: input.condicionFisicaJugador,
             // Bono de equipo de defensa (rediseño a check opuesto, 2026-08-21) — antes reducía la
             // propia dificultad vía `contraataqueDifficultyFor`; ahora se suma directo a la tirada
@@ -1133,9 +1149,11 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
         });
       } else {
         // Solo la pasiva PROPIA (Goirntes/Faerus) aplica en este camino — Orcos/Nabieus resisten
-        // CONTROL/INTIMIDACION, efectos que solo existen en habilidades rol:'utilidad'
-        // (`resolveIndependentExchange`, arriba); este `resolveExchange` es puramente ataque-vs-
-        // defensa, sin ningún AbilityEffect de por medio.
+        // CONTROL/INTIMIDACION cuando llegan por el camino independiente de utilidad NO reactiva
+        // (`resolveIndependentExchange`, arriba); aquí (hallazgo 12, revisar-partida-hallazgos.md
+        // 2026-09-06) SÍ puede haber una utilidad reactiva del jugador (`defensorParaAtaque`,
+        // desviada aquí desde arriba) con ATAQUE/ATURDIMIENTO/INTIMIDACION/CONTROL de por medio —
+        // el resto de este camino (una defensa normal sin efecto) sigue igual.
         const jugadorRacialAtaqueCruzado = racialAdvantageFor(jugadorRaza, defensorRol, [], pendingNpcAttack.attribute, npcParaIntercambio.raza, isFirstExchangeOfCombat);
         const exchange = resolveExchange(
           {
@@ -1183,7 +1201,17 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
           (abilityEffects.includes('CONTRA') && pendingNpcAttack.attribute !== 'magia') ||
           (abilityEffects.includes('REFRACTAR') && pendingNpcAttack.attribute === 'magia');
         const jugadorContragolpeaAplica = exchange.resultado === 'defensor_contragolpea' && jugadorPuedeContragolpear;
-        jugadorRecibeGolpe = exchange.resultado === 'golpe_pleno' || exchange.resultado === 'golpe_normal';
+        // Hallazgo 12 — utilidad reactiva SIN daño propio (ATURDIMIENTO/INTIMIDACION/CONTROL,
+        // `defensorParaAtaque` de arriba): con el mismo margen decisivo que exige un contragolpe
+        // real, interrumpe al NPC en vez de golpearlo — INTIMIDACION además cancela el golpe base
+        // entrante del todo (mismo comportamiento que ya tenía en el camino independiente).
+        const jugadorInterrumpeAplica =
+          exchange.resultado === 'defensor_contragolpea' &&
+          (abilityEffects.includes('ATURDIMIENTO') || abilityEffects.includes('INTIMIDACION') || abilityEffects.includes('CONTROL'));
+        if (jugadorInterrumpeAplica) iniciativaForzadaPorUtilidad = 'jugador';
+        jugadorRecibeGolpe =
+          !(jugadorInterrumpeAplica && abilityEffects.includes('INTIMIDACION')) &&
+          (exchange.resultado === 'golpe_pleno' || exchange.resultado === 'golpe_normal');
         // `?? []` (auditoría de código 2026-08-17): un `pendingNpcAttack` persistido de antes del
         // rediseño a `effects: AbilityEffect[]` (2026-08-15) no tiene este campo — sin el
         // fallback, `nextCondicionForAttack` revienta con `effects.includes(...)` sobre
@@ -1246,7 +1274,12 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
       // `combateActivo` sin ser nunca un ataque, ver `tomaAccionDeCombate`), o si el NPC se
       // defendió con una de utilidad, hace falta el camino independiente — nunca colar un golpe
       // real desde la tabla cruzada cuando el jugador no atacó de verdad.
-      const esIndependiente = jugadorRol !== 'ataque' || npcDefensa.rol === 'utilidad';
+      // Hallazgo 12 (revisar-partida-hallazgos.md 2026-09-06) — una utilidad del NPC que PARA el
+      // ataque del jugador (ATAQUE/ATURDIMIENTO/INTIMIDACION/CONTROL, ver isReactiveUtility) deja
+      // de resolverse contra su propia dificultad fija: pasa a la tirada-vs-tirada directa de
+      // `resolveExchange` (rama `else` de abajo), mismo criterio simétrico que CASO DEFENSA.
+      const npcParaAtaque = jugadorRol === 'ataque' && npcDefensa.rol === 'utilidad' && isReactiveUtility('utilidad', npcDefensa.effects, 'ataque');
+      const esIndependiente = (jugadorRol !== 'ataque' || npcDefensa.rol === 'utilidad') && !npcParaAtaque;
       if (esIndependiente) {
         const jugadorRacial = racialAdvantageFor(jugadorRaza, jugadorRol, abilityEffects, npcDefensa.attribute, npcParaIntercambio.raza, isFirstExchangeOfCombat);
         const npcRacial = racialAdvantageFor(npcParaIntercambio.raza, npcDefensa.rol, npcDefensa.effects, input.classificationAtributo, jugadorRaza, isFirstExchangeOfCombat);
@@ -1255,7 +1288,14 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
             attributes: attributesEfectivos,
             attribute: input.classificationAtributo,
             attributeBonus: input.abilityAttributeBonus,
-            difficulty: dificultadAtacante,
+            // Hallazgo 12 — una utilidad NO reactiva del JUGADOR (ANALISIS/RECUPERACION, p.ej.
+            // "Analizar rival" — las reactivas ya se desviaron a `npcParaAtaque` arriba) usa la
+            // escala nueva por diferencia de atributos, no la de nivel/`dificultadAtacante` —
+            // solo cuando `jugadorRol==='utilidad'`; si ataca de verdad, se queda con
+            // `dificultadAtacante` (ese caso nunca llega aquí de todas formas: `esIndependiente`
+            // exige `jugadorRol!=='ataque'` para entrar por este lado salvo cuando quien es
+            // utilidad es el NPC).
+            difficulty: jugadorRol === 'utilidad' ? utilityDifficultyFor(npcParaIntercambio.attributes, attributesEfectivos).dificultad : dificultadAtacante,
             condicionFisica: input.condicionFisicaJugador,
             rol: jugadorRol,
             rollMode: jugadorRacial.rollMode,
@@ -1265,7 +1305,12 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
             attributes: npcAttributesEfectivos,
             attribute: npcDefensa.attribute,
             attributeBonus: npcDefensa.attributeBonus ?? 0,
-            difficulty: difficultyHintFor(input.currentLevel, npcParaIntercambio.level).dificultad,
+            // Hallazgo 12 — mismo criterio simétrico para el lado NPC (ANALISIS/RECUPERACION del
+            // NPC, las reactivas ya se desviaron a `npcParaAtaque` arriba).
+            difficulty:
+              npcDefensa.rol === 'utilidad'
+                ? utilityDifficultyFor(npcParaIntercambio.attributes, attributesEfectivos).dificultad
+                : difficultyHintFor(input.currentLevel, npcParaIntercambio.level).dificultad,
             condicionFisica: npcParaIntercambio.condicionFisica,
             rol: npcDefensa.rol,
             rollMode: npcRacial.rollMode,
@@ -1361,7 +1406,9 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
         });
       } else {
         // Solo la pasiva PROPIA del NPC (Goirntes/Faerus) — mismo criterio que el `resolveExchange`
-        // del CASO DEFENSA, arriba: sin ningún AbilityEffect en este camino puro ataque-vs-defensa.
+        // del CASO DEFENSA, arriba: puede haber una utilidad reactiva del NPC (`npcParaAtaque`,
+        // hallazgo 12, desviada aquí desde arriba) con ATAQUE/ATURDIMIENTO/INTIMIDACION/CONTROL de
+        // por medio — el resto de este camino (una defensa normal sin efecto) sigue igual.
         const npcRacialAtaqueCruzado = racialAdvantageFor(npcParaIntercambio.raza, npcDefensa.rol, [], input.classificationAtributo, jugadorRaza, isFirstExchangeOfCombat);
         const exchange = resolveExchange(
           {
@@ -1400,7 +1447,18 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
           (npcDefensa.effects.includes('CONTRA') && input.classificationAtributo !== 'magia') ||
           (npcDefensa.effects.includes('REFRACTAR') && input.classificationAtributo === 'magia');
         const npcContragolpeaAplica = exchange.resultado === 'defensor_contragolpea' && npcPuedeContragolpear;
-        npcAttackHits = exchange.resultado === 'golpe_pleno' || exchange.resultado === 'golpe_normal';
+        // Hallazgo 12 — utilidad reactiva del NPC SIN daño propio (ATURDIMIENTO/INTIMIDACION/
+        // CONTROL, `npcParaAtaque` de arriba): con el mismo margen decisivo que exige un
+        // contragolpe real, interrumpe al jugador en vez de golpearlo — INTIMIDACION además
+        // cancela el golpe base entrante del jugador del todo (mismo comportamiento que ya tenía
+        // en el camino independiente).
+        const npcInterrumpeAplica =
+          exchange.resultado === 'defensor_contragolpea' &&
+          (npcDefensa.effects.includes('ATURDIMIENTO') || npcDefensa.effects.includes('INTIMIDACION') || npcDefensa.effects.includes('CONTROL'));
+        if (npcInterrumpeAplica) iniciativaForzadaPorUtilidad = 'npc';
+        npcAttackHits =
+          !(npcInterrumpeAplica && npcDefensa.effects.includes('INTIMIDACION')) &&
+          (exchange.resultado === 'golpe_pleno' || exchange.resultado === 'golpe_normal');
         npcTargetNewCondicion = npcAttackHits ? nextCondicionForAttack(abilityEffects, npcParaIntercambio.condicionFisica) : null;
         jugadorRecibeGolpe = npcContragolpeaAplica;
         // `npcDefensa.effects` completo (auditoría 2026-08-17), no `['ATAQUE']` hardcodeado —

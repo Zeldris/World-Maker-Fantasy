@@ -47,6 +47,13 @@ export function effectiveAttributes(base: AttributeBlock, equippedItems: Equippe
   return result;
 }
 
+/// Suma total de los 7 atributos (hallazgo 12, revisar-partida-hallazgos.md 2026-09-06) — usada
+/// para comparar "fuerza real" de dos personajes/NPCs de un vistazo (utilityDifficultyFor,
+/// npcScene.ts), en vez de un proxy indirecto como el nivel.
+export function sumAttributes(attrs: AttributeBlock): number {
+  return Object.values(attrs).reduce((total, value) => total + value, 0);
+}
+
 /// Solo el bonus de equipo, SIN sumar la base (2026-08-14, petición explícita: "la barra debería
 /// verse en color claro la parte de los attr base y en más oscuro lo que aumentan lo que llevas
 /// equipado") — mismo bucle que `effectiveAttributes` pero partiendo de cero, para que el

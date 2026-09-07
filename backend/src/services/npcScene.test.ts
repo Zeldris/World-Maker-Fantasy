@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { matchNpcAliases, contraataqueDifficultyFor, tabulatedAttackAttribute, detectsAttackIntent, detectsHostileSearchIntent, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsExecuteIntent, detectsInventoryReviewIntent, detectsFarewellIntent, filterFarewellFacts, scopeFor, pickAmbientEncounterCandidate, npcSceneBlockFor, buildNpcInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
+import { matchNpcAliases, contraataqueDifficultyFor, utilityDifficultyFor, tabulatedAttackAttribute, detectsAttackIntent, detectsHostileSearchIntent, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsExecuteIntent, detectsInventoryReviewIntent, detectsFarewellIntent, filterFarewellFacts, scopeFor, pickAmbientEncounterCandidate, npcSceneBlockFor, buildNpcInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
+import type { AttributeBlock } from './dice.js';
 
 const NPCS = [
   { id: 'rezagado', aliases: ['guerrero orco rezagado', 'rezagado', 'orco rezagado', 'un rezagado'] },
@@ -152,6 +153,39 @@ describe('contraataqueDifficultyFor', () => {
   it('resta la defensa sin bajar del suelo de 8', () => {
     expect(contraataqueDifficultyFor(2, 5, 0)).toBe(8);
     expect(contraataqueDifficultyFor(2, 5, 5)).toBe(8);
+  });
+});
+
+// Hallazgo 12 (revisar-partida-hallazgos.md 2026-09-06) — escala de dificultad de utilidad por
+// diferencia de SUMA de atributos (no nivel), tramos 6/12/15/18.
+describe('utilityDifficultyFor', () => {
+  const attrsTotal = (total: number): AttributeBlock => ({
+    fuerza: total,
+    destreza: 0,
+    constitucion: 0,
+    inteligencia: 0,
+    voluntad: 0,
+    carisma: 0,
+    magia: 0,
+  });
+
+  it('objetivo mucho más débil (diff <= -8) → Fácil (6)', () => {
+    expect(utilityDifficultyFor(attrsTotal(10), attrsTotal(30)).dificultad).toBe(6);
+    expect(utilityDifficultyFor(attrsTotal(22), attrsTotal(30)).dificultad).toBe(6); // límite exacto, diff=-8
+  });
+
+  it('objetivo similar (diff entre -7 y 4) → Media (12)', () => {
+    expect(utilityDifficultyFor(attrsTotal(30), attrsTotal(30)).dificultad).toBe(12); // diff=0
+    expect(utilityDifficultyFor(attrsTotal(34), attrsTotal(30)).dificultad).toBe(12); // límite exacto, diff=4
+  });
+
+  it('objetivo más fuerte (diff entre 5 y 16) → Difícil (15)', () => {
+    expect(utilityDifficultyFor(attrsTotal(40), attrsTotal(30)).dificultad).toBe(15); // diff=10
+    expect(utilityDifficultyFor(attrsTotal(46), attrsTotal(30)).dificultad).toBe(15); // límite exacto, diff=16
+  });
+
+  it('objetivo mucho más fuerte (diff > 16) → Muy difícil (18)', () => {
+    expect(utilityDifficultyFor(attrsTotal(60), attrsTotal(30)).dificultad).toBe(18);
   });
 });
 

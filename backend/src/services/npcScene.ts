@@ -2,6 +2,7 @@ import { prisma } from '../lib/prisma.js';
 import { normalizeText, fuzzyMatchCandidates, fuzzyMatchesAnyStem, findFuzzyStemMatch, matchesAliasBoundary } from './travel.js';
 import type { NpcKind, CondicionFisica, Temperamento, WeaponCategory, EquipSlot, ItemTipo, Prisma, NpcState, AbilityEffect, NpcInteractionType } from '@prisma/client';
 import type { Attribute, AttributeBlock } from './dice.js';
+import { sumAttributes } from './equipment.js';
 import type { Clase } from './classAbilities.js';
 import { npcAttributesForLevel } from './progression.js';
 import { parseActiveEffects, type ActiveEffect } from './activeEffects.js';
@@ -611,6 +612,24 @@ export function difficultyHintFor(npcLevel: number, playerLevel: number): { difi
   if (diff <= 1) return { dificultad: 15, label: 'Media (15)' };
   if (diff <= 4) return { dificultad: 18, label: 'Difícil (18)' };
   return { dificultad: 22, label: 'Muy difícil (22)' };
+}
+
+/// Escala de dificultad SOLO para habilidades de utilidad no reactivas (hallazgo 12,
+/// revisar-partida-hallazgos.md 2026-09-06) — a diferencia de difficultyHintFor (nivel, usada en
+/// ataque/defensa tabulado y como referencia de XP), esta compara la SUMA de los 7 atributos de
+/// cada lado: lo que de verdad mide "cuánto le cuesta resistir/superar la acción" a un objetivo
+/// concreto, no un proxy de nivel. Solo aplica cuando la utilidad NO responde a un ataque entrante
+/// (ver isReactiveUtility/combatExchange.ts) — Analizar y cualquier utilidad usada sin ataque
+/// entrante del rival caen aquí; Contraataque/Grito de Guerra/Instinto Salvaje respondiendo a un
+/// golpe siguen con tirada-vs-tirada directa (resolveExchange), sin dificultad de por medio.
+/// Umbrales de diferencia recalibrables jugando, igual que DECISIVE_MARGIN (combatExchange.ts) —
+/// primer valor, no verificado en partidas largas todavía.
+export function utilityDifficultyFor(objetivoAttrs: AttributeBlock, propiosAttrs: AttributeBlock): { dificultad: number; label: string } {
+  const diff = sumAttributes(objetivoAttrs) - sumAttributes(propiosAttrs);
+  if (diff <= -8) return { dificultad: 6, label: 'Fácil (6)' };
+  if (diff <= 4) return { dificultad: 12, label: 'Media (12)' };
+  if (diff <= 16) return { dificultad: 15, label: 'Difícil (15)' };
+  return { dificultad: 18, label: 'Muy difícil (18)' };
 }
 
 /// Escala DISTINTA para el contraataque del NPC en combate (turnResolution.ts, roadmap 2026-07-19

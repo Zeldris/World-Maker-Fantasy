@@ -820,6 +820,14 @@ describe('Rediseño de combate: habilidades de utilidad reactivas y consumibles 
           effects: ['ATAQUE'],
           rol: 'utilidad',
           preferredAttribute: 'voluntad',
+          // `attributeBonus: 30` (hallazgo 12, revisar-partida-hallazgos.md 2026-09-06) — antes
+          // de este hallazgo, ATAQUE reactivo siempre resolvía por resolveIndependentExchange
+          // (dificultad fija propia, sin margen entre lados); ahora que "para el ataque" pasa a
+          // tirada-vs-tirada directa (resolveExchange), necesita el mismo bonus artificial que ya
+          // usan Vórtice Menor/Opresión Mental/Golpe Runa de Cólera más abajo para garantizar el
+          // margen decisivo (`defensor_contragolpea`, ±10) sin depender de qué defensa elija
+          // `chooseNpcAbility` este turno.
+          attributeBonus: 30,
         },
       })
     ).id;
@@ -925,7 +933,15 @@ describe('Rediseño de combate: habilidades de utilidad reactivas y consumibles 
     await prisma.save.delete({ where: { id: saveId } });
   });
 
-  it('Contraataque: si el NPC ataca con daño y la tirada propia tiene éxito, devuelve el golpe además del que ya recibiste', async () => {
+  // Hallazgo 12 (revisar-partida-hallazgos.md 2026-09-06) — reescrito: antes de este hallazgo,
+  // Contraataque resolvía por resolveIndependentExchange (dificultad fija propia, sin relación
+  // con la tirada del NPC) y el golpe base del NPC SIEMPRE llegaba si su propia tirada tenía
+  // éxito, sin importar si el jugador también acertaba la suya — "recibes Y devuelves". Ahora que
+  // una utilidad que PARA un ataque pasa a tirada-vs-tirada directa (resolveExchange, como
+  // ataque/defensa), ganar el contraste de forma decisiva significa PARAR el golpe entrante Y
+  // contragolpear — no ya "los dos golpean a la vez". Coherente con el resto de resolveExchange
+  // (ninguna otra rama de ataque-vs-defensa deja pasar el golpe base cuando el defensor gana).
+  it('Contraataque: si gana el contraste de forma decisiva, para el golpe entrante Y devuelve el suyo propio', async () => {
     await prisma.npcState.deleteMany({ where: { saveId, npcId } });
     await prisma.save.update({
       where: { id: saveId },
@@ -957,11 +973,12 @@ describe('Rediseño de combate: habilidades de utilidad reactivas y consumibles 
     });
     expect(narrateRes.statusCode).toBe(200);
 
-    // El golpe base del NPC (rol 'ataque' real) sigue llegando — Contraataque nunca lo cancela,
-    // solo añade su propio golpe de vuelta.
+    // El jugador PARA el golpe base del NPC (gana el contraste de forma decisiva, attributeBonus
+    // artificial de por medio) — a diferencia del camino independiente antiguo, aquí ganar
+    // significa no recibir daño.
     const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
-    expect(save.condicionFisica).not.toBe('ILESO');
-    // Contraataque disparado: el NPC también acusa un golpe.
+    expect(save.condicionFisica).toBe('ILESO');
+    // Contraataque disparado: el NPC también acusa un golpe de vuelta.
     const npcState = await prisma.npcState.findFirst({ where: { saveId, npcId } });
     expect(npcState?.condicionFisica).not.toBe('ILESO');
   }, 15_000);
@@ -1035,6 +1052,14 @@ describe('Rediseño de combate: habilidades de utilidad reactivas y consumibles 
     // que la BD ya tenía el dato correcto.
     const { combateIniciado } = lastNdjsonLine(narrateRes.payload) as { combateIniciado: { npcs: { slug: string; analizado: boolean }[] } | null };
     expect(combateIniciado?.npcs?.find((n) => n.slug === 'orco-enfurecido-hondonada')?.analizado).toBe(true);
+
+    // Hallazgo 12 (revisar-partida-hallazgos.md 2026-09-06) — ANALISIS nunca es reactiva: sigue
+    // resolviéndose en el camino independiente, pero ahora contra utilityDifficultyFor (suma de
+    // atributos) en vez de difficultyHintFor (nivel). Orco (suma=27) muy por debajo del jugador
+    // (ATTRS, suma=65) → diff=-38 ≤ -8 → dificultad 6 (Fácil), no la vieja escala por nivel.
+    const combatExchangeDisplay = lastNdjsonLine(narrateRes.payload).combatExchangeDisplay as { atacanteEsJugador: boolean; atacante: { difficulty: number } } | null;
+    expect(combatExchangeDisplay?.atacanteEsJugador).toBe(true);
+    expect(combatExchangeDisplay?.atacante.difficulty).toBe(6);
   }, 15_000);
 
   // CONTRA (2026-08-26) — defiende con éxito Y devuelve el golpe, solo si el ataque entrante NO
@@ -1293,6 +1318,10 @@ describe('Rediseño de combate: habilidades de utilidad reactivas y consumibles 
           effects: ['ATAQUE', 'ATURDIMIENTO'],
           rol: 'utilidad',
           preferredAttribute: 'voluntad',
+          // `attributeBonus: 30` (hallazgo 12) — mismo motivo que Contraataque más arriba: ATAQUE
+          // reactivo ahora pasa por resolveExchange (tirada-vs-tirada), necesita el margen
+          // decisivo garantizado sin depender de la defensa real que elija el NPC.
+          attributeBonus: 30,
         },
       })
     ).id;
@@ -1308,7 +1337,11 @@ describe('Rediseño de combate: habilidades de utilidad reactivas y consumibles 
     });
     expect(narrateRes.statusCode).toBe(200);
 
-    // Efecto ATAQUE: el NPC también acusa un golpe de vuelta (igual que Contraataque arriba).
+    // Hallazgo 12 — mismo cambio de comportamiento que Contraataque arriba: ganar el contraste de
+    // forma decisiva para el golpe entrante del NPC (no ya "recibes Y devuelves").
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(save.condicionFisica).toBe('ILESO');
+    // Efecto ATAQUE: el NPC también acusa un golpe de vuelta.
     const npcState = await prisma.npcState.findFirst({ where: { saveId, npcId } });
     expect(npcState?.condicionFisica).not.toBe('ILESO');
     // Efecto ATURDIMIENTO, EN EL MISMO intercambio: el jugador se queda con la iniciativa

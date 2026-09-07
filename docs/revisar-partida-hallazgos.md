@@ -134,7 +134,34 @@ PENDIENTES salvo que se indique lo contrario. Organizado por fase del runbook.
 12. **Dificultades de las habilidades de utilidad deben ser Fácil (6) / Medio (12) / Difícil (18)**
     (escala nueva, más baja que la actual) — y la dificultad concreta asignada a cada uso debe variar
     según el nivel/fuerza real del NPC objetivo (ej. Analizar a un enemigo "fácil" debería tirar
-    contra Fácil, no siempre el mismo umbral fijo). **PENDIENTE — revisar la asignación real hoy.**
+    contra Fácil, no siempre el mismo umbral fijo). **CERRADO (2026-09-07)**: rediseño más amplio de
+    lo que sugería el enunciado, aclarado con la usuaria durante el diseño — lo que decide la
+    dificultad no es el nivel sino la **diferencia de SUMA de los 7 atributos** de cada lado
+    (`sumAttributes`, `equipment.ts`), con 4 tramos **6/12/15/18** (`utilityDifficultyFor`,
+    `npcScene.ts`, junto a `difficultyHintFor` que sigue igual para ataque/defensa). Además, la
+    usuaria pidió una matriz completa por combinación de roles, no solo el número: confirmado contra
+    el catálogo real (13 habilidades `rol:'utilidad'` en `classAbilities.ts`) que **ataque-vs-defensa
+    ya es tirada-vs-tirada directa** (`resolveExchange`, la dificultad ahí no decide nada) y
+    **utilidad-vs-cualquiera ya es dificultad fija propia** (`resolveIndependentExchange`) — el único
+    caso especial es **ataque-vs-utilidad**: si la utilidad lleva `ATAQUE`/`ATURDIMIENTO`/
+    `INTIMIDACION`/`CONTROL` (para/interrumpe el ataque rival — Adaptación Rápida/Aullido Adaptativo/
+    Camuflaje/Opresión Mental), pasa a tirada-vs-tirada como una defensa real (`isReactiveUtility`,
+    `combatExchange.ts`, nuevo); si lleva solo `ANALISIS`/`RECUPERACION` (7+1 habilidades, nunca para
+    el ataque), el ataque entra normal Y la utilidad se juzga en paralelo con la escala nueva. Ajuste
+    fino en la rama `resolveExchange` de `turnResolution.ts` (CASO DEFENSA/CASO ATAQUE): además del
+    gate ya existente de contragolpe (`ATAQUE`/`CONTRA`/`REFRACTAR`), ahora también sabe "interrumpir"
+    (`ATURDIMIENTO`/`INTIMIDACION`/`CONTROL`, roba iniciativa; `INTIMIDACION` además cancela el golpe
+    base entrante), con el mismo margen decisivo (±10) que ya exigía un contragolpe real. Verificado:
+    `tsc -b` limpio backend+frontend, 13 tests unitarios nuevos (`sumAttributes`/
+    `utilityDifficultyFor`/`isReactiveUtility`) verificados rigurosamente, suite de integración
+    existente ampliada con aserciones reales de dificultad (encontró y corrigió un bug real propio:
+    el lado JUGADOR de "Analizar rival" usaba la dificultad vieja por nivel, solo el lado NPC estaba
+    arreglado) y 2 tests reescritos para el nuevo comportamiento de Contraataque (ganar el contraste
+    ahora para el golpe, no "recibes Y devuelves"). Línea base de fallos de infraestructura
+    preexistente sin cambios (33, mismos 3 archivos de siempre). CONTRA/REFRACTAR/AGUANTE (siempre
+    `rol:'defensa'`, nunca `'utilidad'`) confirmados fuera de alcance — ya funcionaban bien.
+    Combate múltiple (`combateMultiple.ts`) fuera de alcance, no tocado. Pendiente reverificar en
+    vivo con Playwright.
 13. **El consumo de agua pasa a depender de un ítem "odre"** — se craftea con peletería T1; en una
     zona con agua, una acción narrativa de "recoger agua" lo convierte en "odre con agua"; beber de
     él sube el agua del personaje al 100%. Revisar también qué recursos/comida ya existentes deberían
