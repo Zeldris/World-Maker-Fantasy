@@ -504,8 +504,17 @@ la sesión de pruebas encontró MÁS problemas del mismo área que esos fixes no
 29. **En el Campamento del Clan Serhu, los puntos del mapa de Zona no están bien colocados** — la
     usuaria debería aparecer más cerca del Pozo de Cauce Viejo (de donde viene) y hay fauna colocada
     DENTRO del recinto amurallado del campamento, lo cual no tiene sentido narrativo (un campamento
-    vigilado no debería tener fauna salvaje suelta dentro). **PENDIENTE — revisar el sembrado de
-    `ZonePoint` de `campamento-serhu` en `worldCatalog.ts`.**
+    vigilado no debería tener fauna salvaje suelta dentro). **CERRADO (2026-09-07)**: reverificado
+    contra el catálogo real — el problema de fondo (fauna dentro del recinto) ya no existe: el
+    hallazgo es de ANTES de la pieza "Trabajador de Reino" (2026-08-31), que movió toda la fauna
+    (Torgash/Ulkha) al interior del campamento y dejó el mapa exterior con solo 2 `ZonePoint`
+    (Edificio Karot Vekhad + Recurso de múrgoles ya domados) — coherente con la descripción real de
+    la Location ("empalizada de estacas afiladas... vigías en las torres de la entrada"), sin nada
+    salvaje suelto hoy. La parte de "aparecer más cerca del Pozo de Cauce Viejo": confirmado que la
+    posición de entrada al llegar a CUALQUIER Location se calcula por dirección cardinal genérica
+    entre coordenadas de mundo (`turnResolution.ts`/`zonaPosicion.ts`, uno de 8 puntos fijos del
+    lienzo), el MISMO mecanismo para todo el juego — decisión explícita de la usuaria: no es un bug
+    puntual de este campamento, no se construye una entrada custom por pareja origen→destino.
 29b. **Lo marcado con puntos en el mapa de Zona no coincide con lo que ofrecen realmente Cazar/
     Recolectar/Minar** — confirmado en DOS Locations distintas (primero en La Hondonada del Eco, y
     después confirmado también en Los Pilares Rotos: "ya me sale lo mismo en esas habilidades que
