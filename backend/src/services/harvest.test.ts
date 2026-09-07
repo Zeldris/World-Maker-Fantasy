@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { matchHarvestSource, matchesVerbForMetodo, matchesAnyHarvestVerb, detectHarvestSourcesInScene } from './harvest.js';
+import { matchHarvestSource, matchesVerbForMetodo, matchesAnyHarvestVerb, detectHarvestSourcesInScene, matchesHarvestSourceHome } from './harvest.js';
 
 describe('matchHarvestSource', () => {
   it('coincide con un alias exacto', () => {
@@ -90,6 +90,28 @@ describe('matchesAnyHarvestVerb', () => {
 
   it('no dispara con una acción sin ningún verbo de recolección', () => {
     expect(matchesAnyHarvestVerb('Miro alrededor con calma')).toBe(false);
+  });
+});
+
+// Hallazgo 29b (revisar-partida-hallazgos.md 2026-09-07) — candado compartido entre cazar.ts y
+// recolectar.ts, extraído para admitir tanto Location única como varias a la vez.
+describe('matchesHarvestSourceHome', () => {
+  it('sin candado (undefined), sigue elegible en cualquier Location', () => {
+    expect(matchesHarvestSourceHome(undefined, 'hondonada-del-eco')).toBe(true);
+    expect(matchesHarvestSourceHome(undefined, null)).toBe(true);
+  });
+
+  it('candado de una sola Location: solo esa Location exacta pasa', () => {
+    expect(matchesHarvestSourceHome('manaderos', 'manaderos')).toBe(true);
+    expect(matchesHarvestSourceHome('manaderos', 'pilares-rotos')).toBe(false);
+    expect(matchesHarvestSourceHome('manaderos', null)).toBe(false);
+  });
+
+  it('candado de varias Locations a la vez: cualquiera de ellas pasa, el resto no', () => {
+    const home = ['filo-de-las-brasas', 'fumarolas-negras'];
+    expect(matchesHarvestSourceHome(home, 'filo-de-las-brasas')).toBe(true);
+    expect(matchesHarvestSourceHome(home, 'fumarolas-negras')).toBe(true);
+    expect(matchesHarvestSourceHome(home, 'hondonada-del-eco')).toBe(false);
   });
 });
 

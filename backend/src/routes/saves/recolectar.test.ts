@@ -1423,7 +1423,10 @@ describe('GET /saves/:id/recolectar/:oficio', () => {
         id: 'save1',
         worldId: 'world1',
         currentLocationId: 'loc1',
-        currentLocation: { region: 'Las Llanuras del Viento Rojo' },
+        // slug real de salvia-del-polvo (hallazgo 29b, revisar-partida-hallazgos.md 2026-09-07,
+        // harvestSourceHomeLocationSlug) — sin él, el candado nuevo excluye la fuente antes de
+        // llegar al filtro sinTirada que este test quiere probar de verdad.
+        currentLocation: { region: 'Las Llanuras del Viento Rojo', slug: 'hondonada-del-eco' },
         attributes: { fuerza: 0, destreza: 0, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
         secondaryAttributes: { suerte: 0 },
         inventoryItems: [],
@@ -1537,7 +1540,10 @@ describe('GET /saves/:id/recolectar/:oficio', () => {
         id: 'save1',
         worldId: 'world1',
         currentLocationId: 'loc1',
-        currentLocation: { region: 'Las Llanuras del Viento Rojo' },
+        // slug real de arena-iman (hallazgo 29b, revisar-partida-hallazgos.md 2026-09-07,
+        // harvestSourceHomeLocationSlug) — sin él, el candado nuevo excluye la fuente antes de
+        // llegar al filtro de clima que este test quiere probar de verdad.
+        currentLocation: { region: 'Las Llanuras del Viento Rojo', slug: 'agujas-iman' },
         attributes: { fuerza: 20, destreza: 20, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
         secondaryAttributes: { suerte: 0 },
         inventoryItems: [],

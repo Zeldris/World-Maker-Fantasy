@@ -521,9 +521,45 @@ la sesión de pruebas encontró MÁS problemas del mismo área que esos fixes no
     me salía en la Hondonada", como si el pool de recursos/fauna no cambiara de verdad entre
     Locations) — parece un problema general de desincronización entre el `ZonePoint` mostrado en el
     mapa y el pool real que consultan esas 3 habilidades, no un caso puntual de una sola zona.
-    **PENDIENTE — alto impacto, revisar cómo `cazar.ts`/`recolectar.ts`/minería obtienen su pool de
-    candidatos frente a lo que `zona.ts` sirve como `ZonePoint`, puede que compartan una fuente que
-    no distingue bien la Location actual.**
+    **CERRADO (2026-09-07)**: confirmado bug real de cobertura incompleta, no diseño deliberado —
+    `zona.ts` ya filtraba correctamente por Location exacta; `recolectar.ts` (Minar/Talar/
+    Recolectar) ya tenía un candado OPCIONAL (`harvestSourceHomeLocationSlug`, sin entrada = sigue
+    elegible en toda la región) pero cubría solo 39/77 fuentes; `cazar.ts` **nunca lo consultaba en
+    absoluto**, así que NINGUNA de las 37 fichas de fauna cazable respetaba Location alguna, ni
+    siquiera las que ya tenían `Npc.homeLocationSlug` propio (usado solo por `npcScene.ts` hasta
+    ahora). Decisión de la usuaria: ir a fondo, no dejar la mitad para otra sesión — auditoría
+    completa del catálogo (77 fuentes + 37 fichas de fauna) y decisión de lore caso por caso para
+    las que no tenían ningún ancla real, no solo conectar lo mecánico. Cambios: (1)
+    `harvestSourceHomeLocationSlug` ampliado a `Record<string, string | string[]>` para representar
+    fielmente casos multi-Location reales (misma corriente subterránea aflorando en 3 puntos —
+    Bulbo/Liquen del Cauce); (2) 11 fichas de fauna con `homeLocationSlug` ya escrito conectadas
+    mecánicamente a la tabla; (3) 7 fichas de fauna sin ningún ancla, decididas con la usuaria a
+    partir de su propio lore (Aullador Rojo→Pastos de la Deriva, Canizor→Restos de Maktor por su
+    mención directa al Clan, Corredor de Cauce→Manaderos donde parece, Gargantúa de
+    Ceniza→Osario de la Manada donde ya hay un esqueleto sembrado, Corretolvas/Múrgol trasladados
+    desde su propio `ZonePoint` ya existente); (4) 6 fuentes de flora/mineral con pista de lore
+    clara (Arena Imán→Agujas Imán, Flor de Ceniza/Raíz de Fuego→Fumarolas Negras, Salvia del
+    Polvo→Hondonada del Eco); (5) función pura compartida `matchesHarvestSourceHome` (`harvest.ts`)
+    extraída para que `cazar.ts` y `recolectar.ts` apliquen el mismo candado sin duplicar lógica.
+    Decisiones explícitas de NO anclar (mantener el filtro de región amplio, coherente con su
+    propio lore): Ruptidar ("presente en cualquier zona arenosa, no en un único punto", ya bien
+    representado por 6 `ZonePoint`), Zense Ceniza ("carroñera errante", y además fauna de prueba
+    compartida en la suite de integración real — revertido tras encontrar que romper 7 tests de
+    integración por esta única entrada no compensaba, mismo criterio de "no forzar candado sin
+    necesidad real" que Ruptidar), Cardo Brújula/Espiga Roja/Matorral de Cuerno (sin ninguna pista
+    de lore que las distinga de la llanura genérica — decisión explícita de no inventar). Verificado:
+    `tsc -b` limpio, tests nuevos en `harvest.test.ts` (función pura), `cazar.integration.test.ts` y
+    `recolectar.integration.test.ts` (candado string único, candado array multi-Location, fauna sin
+    candado sin regresión), verificado rigurosamente (revertir/confirmar fallo/restaurar). Tests
+    unitarios existentes de `cazar.test.ts`/`recolectar.test.ts` (mocks completos de Prisma)
+    ajustados: sus fixtures reutilizaban slugs reales del catálogo (`murgol`/`cruzavientos`/
+    `arena-iman`/`salvia-del-polvo`) sin Location coherente con el candado nuevo — corregido con la
+    Location real de cada uno. Confirmado que ninguna Location elegida queda fuera del núcleo
+    jugable (`nucleoJugable` por defecto `true`, ninguna de las candidatas lo desactiva). Línea base
+    de fallos de infraestructura preexistente sin cambios (3, mismos de siempre, confirmado con
+    `git stash`/`git stash pop` que el caso "Múrgol/Ruptidar" ya fallaba igual ANTES de este
+    hallazgo). Pendiente reverificar en vivo con Playwright: ir de La Hondonada del Eco a Los
+    Pilares Rotos y confirmar que el pool de Cazar/Recolectar/Minar cambia de verdad entre ambas.
 30. **No hay forma de acceder al interior del campamento (Karot Vekhad) desde la Zona** — pese a que
     hoy mismo se documentó el interior en `areas.md`/`loreChunks.ts` (ver sesión de lore de hoy), no
     está claro cómo se entra a él desde la vista de Zona en el juego real — falta confirmar si existe

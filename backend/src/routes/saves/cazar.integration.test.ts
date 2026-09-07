@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import Fastify from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
-import { cazarRoutes, dispersionCooldownActivo } from './cazar.js';
+import { cazarRoutes, dispersionCooldownActivo, candidateFaunaFor } from './cazar.js';
 
 /// Cobertura nueva (auditoría de código 2026-08-25, condición de carrera real): el guard temprano
 /// de `/cazar/confirmar` (mira `CombatEncounter` EN_CURSO) deja una ventana real entre la lectura y
@@ -311,5 +311,44 @@ describe('Cazar: cooldown de dispersión tras fallo total (2026-09-02)', () => {
     const worldState = await prisma.worldState.findUniqueOrThrow({ where: { saveId } });
     const pop = await prisma.worldPopulation.findFirstOrThrow({ where: { worldId, targetType: 'FAUNA', targetSlug: 'zense-ceniza' } });
     expect(dispersionCooldownActivo(pop.dispersadoDesdeMinutes, worldState.fictionalMinutes + 241)).toBe(false);
+  });
+});
+
+/// Cobertura de integración real (hallazgo 29b, revisar-partida-hallazgos.md 2026-09-07) —
+/// `candidateFaunaFor` nunca consultaba `harvestSourceHomeLocationSlug` (worldCatalog.ts), así que
+/// TODA la fauna cazable con población real en una región aparecía por igual en cualquier Location
+/// de esa región, sin distinguir la Location exacta — causa raíz confirmada de "ya me sale lo
+/// mismo en esas habilidades que me salía en la Hondonada" al llegar a otra Location. `murgol`
+/// (candado a una sola Location) y `zense-ceniza` (candado a 2 Locations a la vez, "carroñera
+/// errante") ya tienen población real sembrada en Las Llanuras del Viento Rojo — se llama a
+/// `candidateFaunaFor` directamente (puro, sin `Save`) contra Locations reales del catálogo.
+describe('Cazar: candidateFaunaFor respeta harvestSourceHomeLocationSlug (hallazgo 29b, 2026-09-07)', () => {
+  let worldId: string;
+
+  beforeAll(async () => {
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    worldId = world.id;
+  });
+
+  it('Murgol (candado a una sola Location) SÍ aparece en el Oasis de Chudos Rojos, NUNCA en otra Location de la misma región', async () => {
+    const enOasis = await candidateFaunaFor(worldId, 'Las Llanuras del Viento Rojo', 1, 'oasis-de-chudos-rojos', null, 0);
+    expect(enOasis.some((c) => c.slug === 'murgol')).toBe(true);
+
+    const enHondonada = await candidateFaunaFor(worldId, 'Las Llanuras del Viento Rojo', 1, 'hondonada-del-eco', null, 0);
+    expect(enHondonada.some((c) => c.slug === 'murgol')).toBe(false);
+  });
+
+  it('Zense Ceniza (sin candado a propósito, "carroñera errante" sin hogar fijo — mismo criterio que Ruptidar) sigue apareciendo en toda la región, sin regresión', async () => {
+    const enHondonada = await candidateFaunaFor(worldId, 'Las Llanuras del Viento Rojo', 1, 'hondonada-del-eco', null, 0);
+    const enFilo = await candidateFaunaFor(worldId, 'Las Llanuras del Viento Rojo', 1, 'filo-de-las-brasas', null, 0);
+    expect(enHondonada.some((c) => c.slug === 'zense-ceniza')).toBe(true);
+    expect(enFilo.some((c) => c.slug === 'zense-ceniza')).toBe(true);
+  });
+
+  it('Ruptidar (sin candado a propósito, "presente en cualquier zona arenosa") sigue apareciendo en toda la región, sin regresión', async () => {
+    const enHondonada = await candidateFaunaFor(worldId, 'Las Llanuras del Viento Rojo', 1, 'hondonada-del-eco', null, 0);
+    const enPilares = await candidateFaunaFor(worldId, 'Las Llanuras del Viento Rojo', 1, 'pilares-rotos', null, 0);
+    expect(enHondonada.some((c) => c.slug === 'ruptidar')).toBe(true);
+    expect(enPilares.some((c) => c.slug === 'ruptidar')).toBe(true);
   });
 });

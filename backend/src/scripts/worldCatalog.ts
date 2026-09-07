@@ -7989,7 +7989,13 @@ export const harvestSourcesThatAreFaunaWithoutNpc = new Set(['cornante', 'espina
 /// región". Las dos ubicaciones ya existían en el catálogo con nombre/descripción que encajan
 /// solos: `restos-de-maktor` ("último asentamiento del Clan Maktor... antes de su aniquilación") y
 /// `tumulos-del-honor` ("donde los clanes... entierran a quienes murieron con honor").
-export const harvestSourceHomeLocationSlug: Record<string, string> = {
+/// `string[]` (hallazgo 29b, revisar-partida-hallazgos.md 2026-09-07) — algunas fuentes viven de
+/// verdad en más de una Location a la vez (misma corriente subterránea entre varios afloramientos,
+/// o fauna errante entre 2 zonas concretas), y forzarlas a un único slug sería menos fiel que el
+/// propio `ZonePoint` (que ya admite varias filas para la misma entidad, ej. Ruptidar en 6
+/// Locations). `candidateFaunaFor` (cazar.ts) y `candidateSourcesFor` (recolectar.ts) comprueban
+/// pertenencia, no igualdad exacta, así que ambas formas conviven sin caso especial.
+export const harvestSourceHomeLocationSlug: Record<string, string | string[]> = {
   'restos-personales-maktor': 'restos-de-maktor',
 
   // Ampliación de lore 2026-08-21 — mismo criterio que arriba, ligado a Location concreta.
@@ -8053,6 +8059,55 @@ export const harvestSourceHomeLocationSlug: Record<string, string> = {
   // receta) — a diferencia de la fauna salvaje de arriba, esta fuente vive dentro de la
   // empalizada, no en el mapa exterior.
   'murgoles-domados-campamento': 'campamento-serhu',
+
+  // Hallazgo 29b (revisar-partida-hallazgos.md 2026-09-07, "ya me sale lo mismo en esas
+  // habilidades que me salía en la Hondonada" al llegar a Los Pilares Rotos) — auditoría completa
+  // del catálogo: `cazar.ts` nunca consultaba esta tabla en absoluto (solo `recolectar.ts` lo
+  // hacía), así que NINGUNA de las 37 fichas de fauna cazable tenía candado real de Location, pese
+  // a que 29 de ellas ya llevaban su propio `Npc.homeLocationSlug` (usado solo por `npcScene.ts`
+  // hasta ahora). Bloque mecánico — mismo dato ya escrito en la ficha del Npc, solo trasladado
+  // aquí para que `candidateFaunaFor` (cazar.ts, este mismo hallazgo) también lo respete.
+  cruzavientos: 'pilares-rotos',
+  'rondador-de-brasas': 'filo-de-las-brasas',
+  'salamandra-de-escoria': 'filo-de-las-brasas',
+  'jashil-verde': 'playa-de-ceniza-blanca',
+  'jashil-rojo': 'playa-de-ceniza-blanca',
+  toluh: 'playa-de-ceniza-blanca',
+  'negueo-turquesa': 'playa-de-ceniza-blanca',
+  'negueo-solar': 'playa-de-ceniza-blanca',
+  'bulco-de-arena': 'playa-de-ceniza-blanca',
+  'celubia-palida': 'acantilados-partidos',
+  terkash: 'acantilados-partidos',
+
+  // Bloque editorial — las 8 fichas de fauna que no tenían NINGÚN dato de ubicación (ni
+  // `homeLocationSlug` ni `ZonePoint`), decidido caso por caso con la usuaria a partir del lore ya
+  // escrito en cada bio, no inventado desde cero. `ruptidar` queda deliberadamente FUERA de este
+  // bloque: su propia bio dice "presente en cualquier zona arenosa... no solo en un único punto",
+  // ya bien representada por sus 6 `ZonePoint` reales — forzarla aquí sería menos fiel al lore que
+  // dejarla en el filtro de región amplio, coherente con su propio texto.
+  'aullador-rojo': 'pastos-de-la-deriva', // "sigue a las manadas de Corredores en migración" — mismas praderas sin asentamiento fijo donde migran los Corredores de Cauce
+  // `zense-ceniza` queda FUERA a propósito, igual que Ruptidar (2026-09-07, tras verificar la
+  // suite de integración real): es la fauna de prueba compartida en `cazar.integration.test.ts`
+  // (4 describes, docenas de aserciones) precisamente por "sin `faunaTerrainTag` propio, pasa en
+  // cualquier sitio" — coherente además con su propia bio ("carroñera errante... siempre en
+  // círculos sobre lo que muere"), no tiene un hogar fijo real, mismo criterio que Ruptidar.
+  canizor: 'restos-de-maktor', // "el Clan Maktor le debe su nombre a uno domado por su fundadora" — única Location real del clan en el catálogo
+  'corredor-de-cauce': 'manaderos', // "aquí paren las hembras de Corredor de Cauce" (descripción de la propia Location) — Pozo Cauce Viejo ya saturado con 3 fichas sin relación
+  'gargantua-de-ceniza': 'osario-de-la-manada', // esqueleto real de una Gargantúa muerta ya sembrado en esta Location — vínculo directo, no inferido
+  corretolvas: 'vergel-de-kegi', // ya tenía ZonePoint real ahí (línea ~8780) — solo trasladado, sin decisión editorial nueva
+  murgol: 'oasis-de-chudos-rojos', // ya tenía ZonePoint real ahí (línea ~8699) — "ganado que abreva", coherente con agua en superficie
+
+  // Bloque editorial — flora/mineral con pista de lore clara en su propia `description`
+  // (`harvestSourceDescriptions`), decidido con la usuaria. `cardo-brujula`/`espiga-roja` quedan
+  // deliberadamente FUERA (sin candado): ninguna pista real las distingue de la llanura genérica,
+  // y mismo criterio que `pasto-solar`/`matorral-de-cuerno`/`hojas-telda-fuente` arriba — mejor sin
+  // candado que uno inventado sin base.
+  'arena-iman': 'agujas-iman', // mismo nombre, "limaduras que las tormentas dejan a sotavento de las rocas" — el propio campo de rocas magnéticas
+  'bulbo-del-cauce': ['pozo-cauce-viejo', 'manaderos', 'oasis-de-chudos-rojos'], // "crece enterrado junto al Liquen del Cauce", misma corriente subterránea que aflora en los 3 puntos
+  'liquen-del-cauce': ['pozo-cauce-viejo', 'manaderos', 'oasis-de-chudos-rojos'], // "crece allí donde el agua corre justo bajo la superficie" — mismos 3 afloramientos
+  'flor-de-ceniza': 'fumarolas-negras', // "solo brota en suelo de ceniza volcánica" — la Location más volcánica del núcleo (grietas humeantes, vidrio volcánico)
+  'raiz-de-fuego': 'fumarolas-negras', // "crece pegada a grietas volcánicas" — mismo motivo que Flor de Ceniza
+  'salvia-del-polvo': 'hondonada-del-eco', // "crece pegada al suelo en hondonadas y rincones de sombra" — coincide con el propio nombre de la Location
 };
 
 export const harvestSourceRegion: Record<string, string> = {

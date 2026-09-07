@@ -87,6 +87,12 @@ async function buildApp() {
   return app;
 }
 
+// `slug: 'oasis-de-chudos-rojos'` (hallazgo 29b, revisar-partida-hallazgos.md 2026-09-07) — antes
+// sin `slug` (Location genérica sin candado real); con `harvestSourceHomeLocationSlug` ahora
+// también consultado por `cazar.ts`, MURGOL_POP/CRUZAVIENTOS_POP (fixtures que reutilizan los
+// slugs REALES del catálogo, no inventados) exigen la Location real que les corresponde para
+// seguir apareciendo como candidatos — Oasis de Chudos Rojos es la de Múrgol, la fauna dominante
+// en la mayoría de tests de este archivo.
 const SAVE_BASE = {
   id: 'save1',
   worldId: 'world1',
@@ -94,7 +100,7 @@ const SAVE_BASE = {
   level: 3,
   attributes: { fuerza: 10, destreza: 12, constitucion: 10, inteligencia: 8 },
   pendingCombatNpcSlugs: [] as string[],
-  currentLocation: { id: 'loc1', region: 'Las Llanuras del Viento Rojo' },
+  currentLocation: { id: 'loc1', region: 'Las Llanuras del Viento Rojo', slug: 'oasis-de-chudos-rojos' },
   worldState: { fictionalDateLabel: 'Día 1, mañana', fictionalMinutes: 480 },
 };
 
@@ -236,11 +242,13 @@ describe('GET /saves/:id/cazar', () => {
   });
 
   // Filtro por hábitat de zona (petición explícita, 2026-08-14: "con la de peleteria en caza pues
-  // dependiendo del habita de cada fauna") — Las Agujas Imán está catalogada árido/rocoso
-  // (worldCatalog.ts § locationTerrainTags): Cruzavientos (rocoso, anida en Los Pilares Rotos)
-  // encaja, Múrgol (vegetación, pasta en los Pastos de la Deriva) no.
+  // dependiendo del habita de cada fauna") — Los Pilares Rotos está catalogada árido/rocoso
+  // (worldCatalog.ts § locationTerrainTags) Y es la Location real de Cruzavientos
+  // (`harvestSourceHomeLocationSlug`, hallazgo 29b): pasa terreno Y candado. Múrgol (vegetación,
+  // candado real a Oasis de Chudos Rojos) no pasa ninguno de los dos aquí — doble motivo, mismo
+  // resultado esperado que antes del hallazgo 29b.
   it('en una zona árida/rocosa catalogada, la fauna de hábitat vegetación queda fuera aunque esté localizada', async () => {
-    findUniqueSave.mockResolvedValue({ ...SAVE_BASE, currentLocation: { id: 'loc-agujas', region: 'Las Llanuras del Viento Rojo', slug: 'agujas-iman' } });
+    findUniqueSave.mockResolvedValue({ ...SAVE_BASE, currentLocation: { id: 'loc-pilares', region: 'Las Llanuras del Viento Rojo', slug: 'pilares-rotos' } });
     loadSessionFacts.mockResolvedValue(['Gorhorn detecta señales de fauna cerca: 5 Múrgol. Gorhorn detecta señales de fauna cerca: 2 Cruzavientos.']);
     // El mock de `npc.findMany` no simula el `where: { slug: { in: [...] } }` real de Prisma — se
     // deja solo el NPC que de verdad pasaría el filtro de terreno, para que el test no dependa de
@@ -589,6 +597,10 @@ describe('GET /saves/:id/cazar — cooldown de dispersión', () => {
   });
 
   it('una especie dispersada en ESTA Location, dentro del cooldown, queda fuera de los candidatos', async () => {
+    // Location real de Cruzavientos (hallazgo 29b) — con SAVE_BASE (Oasis de Chudos Rojos, la de
+    // Múrgol) el propio candado de Location ya excluiría a Cruzavientos, sin relación con este
+    // cooldown que es lo que este test quiere probar de verdad.
+    findUniqueSave.mockResolvedValue({ ...SAVE_BASE, currentLocation: { id: 'loc1', region: 'Las Llanuras del Viento Rojo', slug: 'pilares-rotos' } });
     findManyWorldPopulation.mockReset().mockResolvedValue([
       { ...MURGOL_POP, dispersadoEnLocationId: 'loc1', dispersadoDesdeMinutes: 480 - 100 }, // hace 100 min de ficción, cooldown activo (240 min)
       CRUZAVIENTOS_POP,

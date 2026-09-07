@@ -2,7 +2,8 @@ import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { decrementPopulationOnDeath, stripRegionArticle } from '../../services/population.js';
 import { pasaFiltroTerreno } from '../../services/terrain.js';
-import { locationTerrainTags, faunaTerrainTag } from '../../scripts/worldCatalog.js';
+import { locationTerrainTags, faunaTerrainTag, harvestSourceHomeLocationSlug } from '../../scripts/worldCatalog.js';
+import { matchesHarvestSourceHome } from '../../services/harvest.js';
 import { scopeFor, pickAmbientEncounterCandidate, difficultyHintFor } from '../../services/npcScene.js';
 import { detectHarvestSourcesInScene } from '../../services/harvest.js';
 import { loadSessionFacts, appendSessionFacts } from '../../services/worldFacts.js';
@@ -132,7 +133,7 @@ function toSighted(c: HuntCandidate, playerLevel: number): SightedHuntCandidate 
   };
 }
 
-async function candidateFaunaFor(
+export async function candidateFaunaFor(
   worldId: string,
   region: string | null,
   playerLevel: number,
@@ -151,6 +152,11 @@ async function candidateFaunaFor(
     // pues dependiendo del habita de cada fauna") — mismo criterio que candidateSourcesFor
     // (recolectar.ts), ver terrain.ts.
     if (!pasaFiltroTerreno(locationSlug ? locationTerrainTags[locationSlug] : undefined, faunaTerrainTag[pop.targetSlug])) return false;
+    // Candado de Location (hallazgo 29b, revisar-partida-hallazgos.md 2026-09-07) — mismo criterio
+    // que `candidateSourcesFor` (recolectar.ts): sin entrada en `harvestSourceHomeLocationSlug`,
+    // sigue elegible en toda la región (comportamiento de siempre); con entrada, exige que la
+    // Location actual esté anclada (una sola o varias a la vez).
+    if (!matchesHarvestSourceHome(harvestSourceHomeLocationSlug[pop.targetSlug], locationSlug)) return false;
     // Cooldown de dispersión (2026-09-02) — solo bloquea si la dispersión ocurrió en ESTA MISMA
     // Location (`dispersadoEnLocationId`, no solo la misma región) y el cooldown de ficción sigue
     // activo. Sin `currentLocationId` (p.ej. sin ubicación resuelta), nunca bloquea.

@@ -38,6 +38,20 @@ export function matchesVerbForMetodo(action: string, metodo: MetodoObtencion): b
   return VERB_REGEX_BY_METODO[metodo].test(normalizeText(action));
 }
 
+/// Candado de Location de `harvestSourceHomeLocationSlug` (hallazgo 29b,
+/// revisar-partida-hallazgos.md 2026-09-07) — compartido entre `recolectar.ts` (ya lo aplicaba
+/// antes de este hallazgo) y `cazar.ts` (nunca lo aplicaba, causa raíz real del hallazgo: fauna
+/// disponible en toda su región por igual, sin distinguir Location). `undefined`/`null` en el
+/// candado = sin candado, sigue elegible en cualquier sitio de la región (mismo comportamiento que
+/// siempre, para las fuentes sin lore de ubicación suficiente para anclarlas). Admite `string`
+/// (una única Location) o `string[]` (varias a la vez, ej. una corriente subterránea que aflora en
+/// más de un punto) — comprueba pertenencia en ambos casos, nunca igualdad exacta contra un array.
+export function matchesHarvestSourceHome(home: string | string[] | undefined, currentLocationSlug: string | null): boolean {
+  if (home === undefined) return true;
+  if (currentLocationSlug === null) return false;
+  return Array.isArray(home) ? home.includes(currentLocationSlug) : home === currentLocationSlug;
+}
+
 /// Chequeo barato previo (Pieza 6d, 2026-09-03, "mundo determinista"): ¿el texto usa ALGÚN verbo
 /// de recolección, de cualquier método? Para `detectsHarvestSkillMisuseClaim`
 /// (playerActionValidation.ts), que necesita filtrar ANTES de pagar la consulta a `HarvestYield`

@@ -11,7 +11,7 @@ import { getDefaultUserId } from '../../lib/defaultUser.js';
 /// (compartida, mundo `helek-sirik`) de 'roca-pilares-rotos' — snapshot/restore exactos en
 /// beforeAll/afterAll para no dejar la partida real de la jugadora con población o cooldown
 /// alterados tras correr los tests.
-const { recolectarRoutes } = await import('./recolectar.js');
+const { recolectarRoutes, candidateSourcesFor } = await import('./recolectar.js');
 
 async function buildApp() {
   const app = Fastify();
@@ -249,4 +249,39 @@ describe('Pescador (PESCA/BUSQUEDA) contra el catálogo real sembrado', () => {
     const ceboDespues = await prisma.inventoryItem.findFirstOrThrow({ where: { saveId, catalogSlug: 'cebo-pesca' } });
     expect(ceboDespues.name).toBe(ceboAntes.name);
   }, 15_000);
+});
+
+/// Cobertura de integración real (hallazgo 29b, revisar-partida-hallazgos.md 2026-09-07) —
+/// `candidateSourcesFor` ya respetaba `harvestSourceHomeLocationSlug` antes de este hallazgo, pero
+/// solo admitía una Location única; este test confirma el soporte nuevo de varias Locations a la
+/// vez (`bulbo-del-cauce`/`liquen-del-cauce`, misma corriente subterránea que aflora en 3 puntos) y
+/// que un recurso con candado a una sola Location (`flor-de-ceniza`) sigue funcionando igual que
+/// antes. Población real ya sembrada en `worldPopulation.ts`, sin necesitar sembrar a mano.
+describe('Recolectar: candidateSourcesFor respeta harvestSourceHomeLocationSlug con varias Locations (hallazgo 29b, 2026-09-07)', () => {
+  let worldId: string;
+
+  beforeAll(async () => {
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    worldId = world.id;
+  });
+
+  it('Bulbo del Cauce (candado a 3 Locations a la vez) aparece en las 3, no en una cuarta de la misma región', async () => {
+    const enPozo = await candidateSourcesFor(worldId, 'EXTRACCION', 'Las Llanuras del Viento Rojo', null, 'pozo-cauce-viejo', 'VERANO', null, 1);
+    const enManaderos = await candidateSourcesFor(worldId, 'EXTRACCION', 'Las Llanuras del Viento Rojo', null, 'manaderos', 'VERANO', null, 1);
+    const enOasis = await candidateSourcesFor(worldId, 'EXTRACCION', 'Las Llanuras del Viento Rojo', null, 'oasis-de-chudos-rojos', 'VERANO', null, 1);
+    const enHondonada = await candidateSourcesFor(worldId, 'EXTRACCION', 'Las Llanuras del Viento Rojo', null, 'hondonada-del-eco', 'VERANO', null, 1);
+
+    expect(enPozo.candidates.some((c) => c.sourceSlug === 'bulbo-del-cauce')).toBe(true);
+    expect(enManaderos.candidates.some((c) => c.sourceSlug === 'bulbo-del-cauce')).toBe(true);
+    expect(enOasis.candidates.some((c) => c.sourceSlug === 'bulbo-del-cauce')).toBe(true);
+    expect(enHondonada.candidates.some((c) => c.sourceSlug === 'bulbo-del-cauce')).toBe(false);
+  });
+
+  it('Flor de Ceniza (candado a una sola Location) SÍ aparece en Fumarolas Negras, NUNCA en otra Location de la misma región', async () => {
+    const enFumarolas = await candidateSourcesFor(worldId, 'EXTRACCION', 'Las Llanuras del Viento Rojo', null, 'fumarolas-negras', 'VERANO', null, 1);
+    const enHondonada = await candidateSourcesFor(worldId, 'EXTRACCION', 'Las Llanuras del Viento Rojo', null, 'hondonada-del-eco', 'VERANO', null, 1);
+
+    expect(enFumarolas.candidates.some((c) => c.sourceSlug === 'flor-de-ceniza')).toBe(true);
+    expect(enHondonada.candidates.some((c) => c.sourceSlug === 'flor-de-ceniza')).toBe(false);
+  });
 });

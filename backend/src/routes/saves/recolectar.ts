@@ -8,6 +8,7 @@ import { effectiveAttributes, effectiveInventorySlotsBonus, effectiveSecondaryAt
 import { stripRegionArticle } from '../../services/population.js';
 import { pasaFiltroTerreno } from '../../services/terrain.js';
 import { locationTerrainTags, harvestSourceTerrainTag, faunaTerrainTag, sourceCategoryNameFor, harvestSourceHomeLocationSlug } from '../../scripts/worldCatalog.js';
+import { matchesHarvestSourceHome } from '../../services/harvest.js';
 import { quantityOf, baseNameOf, totalQuantity, planConsumption, type IngredientRequirement } from '../../services/ingredients.js';
 import { hasToolForOficio, OFICIOS_CON_HERRAMIENTA_REQUERIDA } from '../../services/crafting.js';
 import { closeItemQuests } from '../../services/questResolution.js';
@@ -237,7 +238,7 @@ function esFaunaMetodo(metodo: MetodoObtencion): boolean {
 /// define que aparece es tu nivel de profesión") recorta cada YIELD individual (no la fuente
 /// entera — una misma fuente puede tener yields de tier bajo Y alto a la vez) cuyo `tier` supere el
 /// nivel actual: ese yield ni siquiera cuenta como candidato, antes de que exista ninguna tirada.
-async function candidateSourcesFor(
+export async function candidateSourcesFor(
   worldId: string,
   metodo: MetodoObtencion,
   region: string | null,
@@ -292,7 +293,7 @@ async function candidateSourcesFor(
     // usa este mapa, solo lo usan fuentes SIN fila Npc, ver comentario de
     // `harvestSourceHomeLocationSlug` en worldCatalog.ts).
     const homeSlug = esFauna ? undefined : harvestSourceHomeLocationSlug[pop.targetSlug];
-    if (homeSlug && homeSlug !== locationSlug) continue;
+    if (!matchesHarvestSourceHome(homeSlug, locationSlug)) continue;
     const sourceRows = (bySlug.get(pop.targetSlug) ?? []).filter(
       (r) => pasaFiltroEstacion(r.estacionRequerida, estacionActual) && pasaFiltroClima(r.climaRequerido, climaActual) && pasaFiltroNivelOficio(r.item.tier, nivelOficio),
     );
@@ -400,7 +401,14 @@ async function pasivoCandidatesFor(worldId: string, currentLocationSlug: string 
   const rows = await prisma.harvestYield.findMany({ where: { worldId, metodoObtencion: 'PASIVO' }, include: { item: true } });
   const bySlug = new Map<string, typeof rows>();
   for (const row of rows) {
-    if (harvestSourceHomeLocationSlug[row.sourceSlug] !== currentLocationSlug) continue;
+    // A diferencia de `candidateSourcesFor` (arriba, candado OPCIONAL — sin entrada, sigue
+    // elegible en toda la región), aquí el candado es OBLIGATORIO: un objeto narrativo PASIVO sin
+    // ninguna entrada en `harvestSourceHomeLocationSlug` nunca debería aparecer (comportamiento de
+    // siempre, sin cambios) — `matchesHarvestSourceHome` no sirve tal cual (su `undefined` = "sí
+    // elegible"), así que se compara con la entrada real sin pasar por esa función.
+    const home = harvestSourceHomeLocationSlug[row.sourceSlug];
+    const matchesHome = Array.isArray(home) ? home.includes(currentLocationSlug) : home === currentLocationSlug;
+    if (!matchesHome) continue;
     if (!bySlug.has(row.sourceSlug)) bySlug.set(row.sourceSlug, []);
     bySlug.get(row.sourceSlug)!.push(row);
   }
