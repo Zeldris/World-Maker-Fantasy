@@ -635,6 +635,15 @@ export interface NarrateAndPersistResult {
   /// objetos hay de verdad) siguen viniendo del mismo `GET /saves/:id/recolectar/desollador` de
   /// siempre, este campo solo avisa de que hay algo nuevo que mirar y qué especie/cuántos.
   combatEncounterLootSummary: { npcId: string; slug: string; name: string; cantidad: number }[] | null;
+  /// Hallazgo 38 (revisar-partida-hallazgos.md 2026-09-07) — el banner del log hoy lo decide
+  /// siempre el FRONTEND por prioridad de mención en el TEXTO de la narración
+  /// (`mentionedEntityBanner.ts`), así que un turno de llegada que también menciona a un NPC
+  /// presente pierde el banner de la Location (prioridad NPC > Location, ver `TYPE_PRIORITY`).
+  /// `null` en la inmensa mayoría de turnos (no viaje, o viaje pero no primera visita al destino)
+  /// — cuando sí es la primera visita, el frontend debe forzar el banner de esta Location con
+  /// prioridad absoluta sobre cualquier mención del texto, mismo criterio que "descubrimiento"
+  /// merece más peso que cualquier otra entidad citada de pasada en la misma narración.
+  discoveredLocationSlug: string | null;
 }
 
 async function resolveInitialLocationId(
@@ -5128,6 +5137,10 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     /// campos de este objeto, no se puede releer después: no hay ninguna tabla que lo persista
     /// aparte de `Save.deathCount`, ya escrito por la propia transacción.
     deathCount: number;
+    /// Hallazgo 38 (revisar-partida-hallazgos.md 2026-09-07) — `isFirstVisitToDestination` solo
+    /// existe dentro de esta transacción (se calcula junto a `LocationVisit.createMany`), así que
+    /// el slug de destino tiene que salir de aquí igual que `deathCount` arriba.
+    discoveredLocationSlug: string | null;
   };
   // Espera de viaje precalculada (ver comentario de `notBefore` en NarrateAndPersistParams) — el
   // cómputo (narración incluida) ya terminó en este punto; si venía adelantado a propósito, aquí
@@ -6733,6 +6746,10 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       companionCreated,
       partiallyLootedSlugs,
       deathCount: finalDeathCount,
+      // Hallazgo 38 — `travel.path` ya trae los slugs del camino en orden (travel.ts), el último
+      // es siempre el destino: mismo dato que `travel.toLocationId`/`toLocationName`, sin
+      // necesitar ampliar `TravelResolution` con un campo nuevo.
+      discoveredLocationSlug: isFirstVisitToDestination && travel ? travel.path[travel.path.length - 1] : null,
     };
     },
     // `timeout`/`maxWait` explícitos (auditoría 2026-07-30: mismo bug real de partida ya
@@ -6776,6 +6793,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     companionCreated,
     partiallyLootedSlugs,
     deathCount: finalDeathCountResult,
+    discoveredLocationSlug,
   } = transactionResult;
   // La transacción hizo commit de verdad — ahora sí se dispara la generación lenta de fondo (ver
   // el comentario de `chapterDue` más arriba).
@@ -7229,5 +7247,6 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     factionsStatus: freshFactionsStatus,
     professionProgress,
     combatEncounterLootSummary: combatEncounterLootSummary.length > 0 ? combatEncounterLootSummary : null,
+    discoveredLocationSlug,
   };
 }

@@ -3,7 +3,7 @@ import { renderHook, act } from '@testing-library/react'
 import { useEntityBanner } from './useEntityBanner'
 import { buildEnciclopediaIndex, EMPTY_ENCICLOPEDIA_INDEX, type EnciclopediaIndex } from '../lib/enciclopediaIndex'
 import { resolveImageUrl } from '../lib/api'
-import type { EnciclopediaNpcInfo, EnciclopediaResponse } from '../lib/api'
+import type { EnciclopediaNpcInfo, EnciclopediaLocationInfo, EnciclopediaResponse } from '../lib/api'
 import type { AttributeBlock } from '../types'
 import type { LogEntry } from '../types'
 
@@ -64,6 +64,26 @@ const GISTERA_SLUG = 'gistera-koh'
 function indexConGistera(): EnciclopediaIndex {
   const npc = makeNpc({ slug: GISTERA_SLUG, name: 'Gistera Koh', aliases: ['Gistera'] })
   return buildEnciclopediaIndex(emptyResponse({ npcs: [npc] }))
+}
+
+// Hallazgo 38 (revisar-partida-hallazgos.md 2026-09-07) — Location descubierta.
+const HONDONADA_SLUG = 'hondonada-del-eco'
+function makeLocation(overrides: Partial<EnciclopediaLocationInfo> & Pick<EnciclopediaLocationInfo, 'slug' | 'name'>): EnciclopediaLocationInfo {
+  return {
+    aliases: [],
+    region: 'Las Llanuras del Viento Rojo',
+    kind: 'refugio',
+    description: 'Descripción de prueba.',
+    imagePrompts: { thumbnail: null, banner: null },
+    imageUrls: { thumbnail: null, banner: '/uploads/images/location/hondonada-del-eco-banner.png' },
+    discovered: true,
+    ...overrides,
+  }
+}
+function indexConGisteraYHondonada(): EnciclopediaIndex {
+  const npc = makeNpc({ slug: GISTERA_SLUG, name: 'Gistera Koh', aliases: ['Gistera'] })
+  const location = makeLocation({ slug: HONDONADA_SLUG, name: 'La Hondonada del Eco', aliases: ['la hondonada del eco'] })
+  return buildEnciclopediaIndex(emptyResponse({ npcs: [npc], locations: [location] }))
 }
 
 beforeEach(() => {
@@ -163,5 +183,40 @@ describe('useEntityBanner', () => {
       rerender({ index: indexConGistera() })
     })
     expect(result.current.buildEntityBanner('Gistera Koh te observa.')).toBeDefined()
+  })
+
+  // Hallazgo 38 (revisar-partida-hallazgos.md 2026-09-07) — `forcedTarget` fuerza el banner de la
+  // Location descubierta con prioridad absoluta, aunque el texto mencione otra entidad (Gistera,
+  // que ganaría por `TYPE_PRIORITY` en el camino normal de `pickMentionedEntityBanner`).
+  it('con forcedTarget, devuelve el banner de la Location aunque el texto mencione a un NPC con imagen', () => {
+    const { result } = renderHook(() => useEntityBanner('save-1', indexConGisteraYHondonada(), vi.fn(), vi.fn()))
+
+    const banner = result.current.buildEntityBanner('Gorhorn llega a un lugar nuevo. Gistera Koh te observa desde lejos.', undefined, {
+      entityType: 'location',
+      entitySlug: HONDONADA_SLUG,
+    })
+    expect(banner).toEqual({
+      name: 'La Hondonada del Eco',
+      icon: expect.any(String),
+      imageUrl: resolveImageUrl('/uploads/images/location/hondonada-del-eco-banner.png'),
+    })
+  })
+
+  it('con forcedTarget, persiste la referencia forzada (no la del texto) vía setLogEntryBanner', () => {
+    const { result } = renderHook(() => useEntityBanner('save-1', indexConGisteraYHondonada(), vi.fn(), vi.fn()))
+
+    result.current.buildEntityBanner('Gistera Koh te observa.', 'log-99', { entityType: 'location', entitySlug: HONDONADA_SLUG })
+    expect(mockSetLogEntryBanner).toHaveBeenCalledWith('save-1', 'log-99', 'location', HONDONADA_SLUG)
+  })
+
+  it('con forcedTarget pero sin imagen real para esa entidad, cae al camino normal (texto)', () => {
+    const { result } = renderHook(() => useEntityBanner('save-1', indexConGisteraYHondonada(), vi.fn(), vi.fn()))
+
+    const banner = result.current.buildEntityBanner('Gistera Koh te observa.', undefined, { entityType: 'location', entitySlug: 'slug-inexistente' })
+    expect(banner).toEqual({
+      name: 'Gistera Koh',
+      icon: expect.any(String),
+      imageUrl: resolveImageUrl('/uploads/images/npc/gistera-koh-banner.png'),
+    })
   })
 })

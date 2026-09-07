@@ -71,6 +71,7 @@ function baseNarrateResponse(overrides: Partial<Awaited<ReturnType<typeof reques
     factionsStatus: {},
     professionProgress: [],
     combatEncounterLootSummary: null,
+    discoveredLocationSlug: null,
     ...overrides,
   }
 }

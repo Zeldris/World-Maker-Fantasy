@@ -34,7 +34,7 @@ interface UseTurnFlowParams {
   pendingDeathResolution: boolean
   characterLog: LogEntry[]
   composerRef: RefObject<ChatComposerHandle | null>
-  buildEntityBanner: (text: string, logEntryId?: string) => MentionedEntityBanner | undefined
+  buildEntityBanner: (text: string, logEntryId?: string, forcedTarget?: { entityType: string; entitySlug: string }) => MentionedEntityBanner | undefined
   pollForResolution: (params: {
     saveId: string
     logLengthBeforeThisTurn: number
@@ -282,6 +282,7 @@ export function useTurnFlow(params: UseTurnFlowParams) {
         factionsStatus: updatedFactionsStatus,
         professionProgress: updatedProfessionProgress,
         combatEncounterLootSummary,
+        discoveredLocationSlug,
       } = await requestTurnNarrate(
         {
           saveId,
@@ -368,7 +369,13 @@ export function useTurnFlow(params: UseTurnFlowParams) {
 
       // Calculado fuera del updater (ver comentario igual en handleCombatTurnResolved) — evita que
       // la doble invocación de StrictMode en dev deduplique la entidad contra sí misma.
-      const entityBanner = buildEntityBanner(narration.narration, logEntryId)
+      // Hallazgo 38 — `discoveredLocationSlug` fuerza el banner de la Location con prioridad
+      // absoluta sobre cualquier mención del texto (ej. un NPC presente en la llegada).
+      const entityBanner = buildEntityBanner(
+        narration.narration,
+        logEntryId,
+        discoveredLocationSlug ? { entityType: 'location', entitySlug: discoveredLocationSlug } : undefined,
+      )
       setCharacterLog((prev) => {
         const next = [
           ...prev,

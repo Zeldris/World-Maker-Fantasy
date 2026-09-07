@@ -326,6 +326,13 @@ export interface NarrateResponse {
   /// datos reales (qué objetos hay) se piden con `getRecolectarLocalizado(saveId, 'desollador')`,
   /// la misma ruta de siempre.
   combatEncounterLootSummary: { npcId: string; slug: string; name: string; cantidad: number }[] | null
+  /// Hallazgo 38 (revisar-partida-hallazgos.md 2026-09-07) — slug de la Location cuando ESTE turno
+  /// es la primera visita real al destino de un viaje. `null` en la inmensa mayoría de turnos. El
+  /// banner del log hoy lo decide el frontend por prioridad de mención en el TEXTO de la narración
+  /// (`mentionedEntityBanner.ts`) — un turno de llegada que también menciona a un NPC presente
+  /// perdía el banner de la Location (prioridad NPC > Location). Con esto, `buildEntityBanner`
+  /// puede forzar el banner de la Location con prioridad absoluta cuando hay descubrimiento real.
+  discoveredLocationSlug: string | null
 }
 
 export interface TurnNarrateHandlers {

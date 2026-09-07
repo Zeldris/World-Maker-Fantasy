@@ -26,7 +26,13 @@ export interface UseEntityBannerResult {
   /// que no correspondía a nada en BD, así que no había forma de guardarle luego qué entidad se
   /// mostró. Si se pasa, y hay match, se dispara un PATCH de fondo (fire-and-forget: un fallo aquí
   /// solo significa que la imagen no sobrevive a una recarga, nada más grave).
-  buildEntityBanner: (text: string, logEntryId?: string) => MentionedEntityBanner | undefined
+  ///
+  /// `forcedTarget` (hallazgo 38, revisar-partida-hallazgos.md 2026-09-07) — cuando el backend YA
+  /// decidió determinista qué entidad debe protagonizar el banner (hoy solo el descubrimiento de
+  /// una Location, `discoveredLocationSlug`), tiene prioridad ABSOLUTA sobre cualquier mención del
+  /// texto: se salta `pickMentionedEntityBanner` del todo y resuelve directo contra el índice
+  /// (mismo mecanismo que `resolveEntityBannerFromRef`, ya usado para banners persistidos).
+  buildEntityBanner: (text: string, logEntryId?: string, forcedTarget?: { entityType: string; entitySlug: string }) => MentionedEntityBanner | undefined
 }
 
 /// Extraído de GameView.tsx (refactor de deuda técnica, 2026-08-13) — mismo comportamiento
@@ -73,12 +79,36 @@ export function useEntityBanner(
     setWorldLog((prev) => prev.map(resolve))
   }, [enciclopediaIndex, setCharacterLog, setWorldLog])
 
-  function buildEntityBanner(text: string, logEntryId?: string): MentionedEntityBanner | undefined {
+  function buildEntityBanner(
+    text: string,
+    logEntryId?: string,
+    forcedTarget?: { entityType: string; entitySlug: string },
+  ): MentionedEntityBanner | undefined {
     // Cualquier fallo aquí es puramente cosmético (una imagen de más o de menos) — nunca debe
     // impedir que la narración en sí se guarde/muestre. Aislado en try/catch tras un bug real
     // sospechado de un remount/HMR dejando `recentlyShownEntitiesRef` con una forma antigua.
     try {
       const currentTurn = ++entityBannerTurnRef.current
+      // Hallazgo 38 — `forcedTarget` se salta `pickMentionedEntityBanner` del todo: no hay
+      // "ventana de repetición" que aplicar (un descubrimiento es un evento real de este turno,
+      // no una mención de pasada que deba evitar repetirse), y gana siempre a cualquier otra
+      // entidad citada en el texto.
+      if (forcedTarget) {
+        const resolved = resolveEntityBannerFromRef(forcedTarget.entityType, forcedTarget.entitySlug, enciclopediaIndexRef.current)
+        if (resolved) {
+          const imageUrl = resolveImageUrl(resolved.imageUrl)
+          if (imageUrl) {
+            recentlyShownEntitiesRef.current.set(`${forcedTarget.entityType}:${forcedTarget.entitySlug}`, currentTurn)
+            if (logEntryId && saveId) {
+              setLogEntryBanner(saveId, logEntryId, forcedTarget.entityType, forcedTarget.entitySlug).catch(() => {})
+            }
+            return { name: resolved.name, icon: resolved.icon, imageUrl }
+          }
+        }
+        // Sin imagen real subida para la Location descubierta: cae al camino normal de abajo, por
+        // si el texto menciona alguna otra entidad con imagen — mejor un banner de otra cosa que
+        // ninguno.
+      }
       const recentlyShown = new Set(
         Array.from(recentlyShownEntitiesRef.current.entries())
           .filter(([, shownAtTurn]) => currentTurn - shownAtTurn < RECENTLY_SHOWN_TURN_WINDOW)

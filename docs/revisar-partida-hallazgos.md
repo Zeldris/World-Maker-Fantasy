@@ -688,15 +688,31 @@ la sesión de pruebas encontró MÁS problemas del mismo área que esos fixes no
 **Otras piezas de UX/diseño**:
 38. **Falta mostrar la imagen de la Location en el log cuando se produce un DESCUBRIMIENTO** (viajar
     y llegar a un sitio nuevo debería venir acompañado de la imagen de esa Location en el propio
-    mensaje del log, no solo el texto "+50 XP"). **DIAGNOSTICADO, PENDIENTE DE APLICAR** — el banner
-    del log hoy lo decide siempre el FRONTEND (`mentionedEntityBanner.ts`, por prioridad de mención
-    en el TEXTO de la narración, nunca de forma determinista), así que un turno de llegada que
-    también menciona a un NPC presente pierde el banner de la Location (prioridad NPC > Location).
-    `isFirstVisitToDestination`/hito `'descubrimiento'` ya se calculan en `turnResolution.ts:6053-
-    6093` pero no viajan al payload del turno de forma que el frontend pueda forzar el banner de la
-    Location con prioridad. Requiere decidir el contrato de `NarrateResult` (exponer
-    `toLocationSlug` del turno de viaje) antes de tocar el flujo central de narración — no aplicado
-    todavía por precaución, es una pieza más grande de lo que aparenta.
+    mensaje del log, no solo el texto "+50 XP"). **CERRADO (2026-09-07)**: diagnóstico previo
+    confirmado y aplicado, más simple de lo que parecía — `TravelResolution.path` (travel.ts) ya
+    trae los slugs del camino en orden, así que el último elemento (`path[path.length-1]`) es el
+    slug del destino, sin necesitar ampliar `TravelResolution` con un `toLocationSlug` nuevo como
+    sugería el diagnóstico original. Backend: campo nuevo `discoveredLocationSlug: string | null` en
+    `NarrateAndPersistResult` (`turnResolution.ts`) — `null` salvo que este turno sea la primera
+    visita real al destino de un viaje (`isFirstVisitToDestination`, calculado dentro de la
+    transacción principal, expuesto vía el resultado de `$transaction` igual que `deathCount`).
+    Frontend: `buildEntityBanner` (`useEntityBanner.ts`) gana un tercer parámetro opcional
+    `forcedTarget: { entityType, entitySlug }` con prioridad ABSOLUTA — se salta
+    `pickMentionedEntityBanner` (texto) del todo y resuelve directo vía `resolveEntityBannerFromRef`
+    (mismo mecanismo ya usado para banners persistidos), con fallback al camino normal si la
+    Location forzada no tiene imagen real subida. `useTurnFlow.ts` pasa `{ entityType: 'location',
+    entitySlug: discoveredLocationSlug }` cuando el campo viene relleno. Verificado: `tsc -b` limpio
+    backend+frontend, 2 tests de integración nuevos en backend (primera visita real trae el slug /
+    segunda visita al mismo destino da `null`) y 3 tests nuevos en frontend (`forcedTarget` gana a
+    una mención de NPC en el texto, persiste la referencia forzada, cae al camino normal si la
+    Location forzada no tiene imagen), verificado rigurosamente (revertir/confirmar fallo/
+    restaurar) en ambos lados. Suite completa backend (2254 tests, línea base de 3 fallos de
+    infraestructura preexistente sin cambios, confirmado estable en 3 corridas — un 4º fallo
+    puntual visto en una corrida resultó ser el mismo flake de contención de suite ya conocido de
+    `combateMultipleOrquestacion.integration.test.ts`, pasa limpio en aislamiento) y frontend (210
+    tests) en verde. Pendiente reverificar en vivo con Playwright: viajar por primera vez a una
+    Location con imagen banner subida y un NPC presente a la vez, confirmar que el banner mostrado
+    es el de la Location, no el del NPC.
 39. **Al usar una habilidad de crafteo desde el composer, el texto completo de la habilidad se pega
     en el prompt en vez de un link/chip que luego se sustituya** — se pide que, igual que otros
     chips ya clicables, insertar una habilidad de crafteo en el composer deje un link que en la

@@ -5903,6 +5903,94 @@ describe('Viaje largo interrumpido a mitad de camino (integración real, solo LL
   }, 20_000);
 });
 
+// Hallazgo 38 (revisar-partida-hallazgos.md 2026-09-07) — `discoveredLocationSlug` debe viajar en
+// el turno que resuelve la PRIMERA visita real al destino, para que el frontend pueda forzar el
+// banner de la Location con prioridad sobre cualquier mención del texto. Banda 'corta'
+// (minutosBase ≤60) a propósito: se resuelve en el mismo turno, sin CharacterTransit de por medio.
+describe('discoveredLocationSlug viaja en el turno de primera llegada real (hallazgo 38, 2026-09-07)', () => {
+  let saveId: string;
+  let worldId: string;
+  let originId: string;
+  let destId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    worldId = world.id;
+    const origin = await prisma.location.create({
+      data: { worldId, slug: 'test-descubrimiento-origen', name: 'Zona de Prueba Origen Descubrimiento', region: 'Zona de Pruebas', kind: 'hito', description: 'x', aliases: ['zona de prueba origen descubrimiento'] },
+    });
+    const dest = await prisma.location.create({
+      data: { worldId, slug: 'test-descubrimiento-destino', name: 'Zona de Prueba Destino Descubrimiento', region: 'Zona de Pruebas', kind: 'hito', description: 'x', aliases: ['zona de prueba destino descubrimiento'] },
+    });
+    originId = origin.id;
+    destId = dest.id;
+    await prisma.locationLink.create({ data: { fromId: originId, toId: destId, minutosBase: 10, terreno: 'llano' } });
+
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId,
+        characterName: 'Gorhorn de prueba (descubrimiento)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: originId,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+    await prisma.locationLink.deleteMany({ where: { fromId: originId } });
+    await prisma.location.deleteMany({ where: { id: { in: [originId, destId] } } });
+  });
+
+  it('primer viaje al destino: discoveredLocationSlug trae el slug real del destino', async () => {
+    const app = await buildApp();
+    const action = 'Viajo hacia la zona de prueba destino descubrimiento';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
+    expect(classifyRes.statusCode).toBe(200);
+    const { classification, roll, travel } = classifyRes.json();
+    expect(travel?.toLocationId).toBe(destId);
+
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, travel, enCombate: false },
+    });
+    expect(narrateRes.statusCode).toBe(200);
+    const body = lastNdjsonLine(narrateRes.payload) as unknown as { discoveredLocationSlug: string | null };
+    expect(body.discoveredLocationSlug).toBe('test-descubrimiento-destino');
+  }, 15_000);
+
+  it('segunda vez en el mismo destino (ya visitado): discoveredLocationSlug es null', async () => {
+    const app = await buildApp();
+    const backRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: 'Viajo hacia la zona de prueba origen descubrimiento', enCombate: false } });
+    const backBody = backRes.json();
+    await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action: 'Viajo hacia la zona de prueba origen descubrimiento', classification: backBody.classification, roll: backBody.roll, travel: backBody.travel, enCombate: false },
+    });
+
+    const action = 'Viajo hacia la zona de prueba destino descubrimiento';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
+    const { classification, roll, travel } = classifyRes.json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, travel, enCombate: false },
+    });
+    const body = lastNdjsonLine(narrateRes.payload) as unknown as { discoveredLocationSlug: string | null };
+    expect(body.discoveredLocationSlug).toBeNull();
+  }, 15_000);
+});
+
 // Espera de viaje precalculada (2026-08-13, petición explícita: "el prompt se lanza ya en medio
 // de la espera... dejandolo calculado... a no ser que entre un evento"). Prueba el MECANISMO
 // (startEagerTransitResolution/notBefore) directamente, sin pasar por turn.ts: el suelo real de
