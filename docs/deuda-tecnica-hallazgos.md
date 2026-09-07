@@ -410,13 +410,13 @@ cerró el hueco de que el archivo entero no tenía tests) y ha seguido creciendo
 (tameo/almacén/plantillas son piezas posteriores, Trabajador de Reino fase 1, 2026-08-31) sin que el
 guard de `endedAt` se propagara a los endpoints nuevos.
 
-**Estado**: PENDIENTE — no ambiguo en el fondo (el guard ya es el estándar bien establecido del
-resto del proyecto para "no mutar una partida ya terminada"), pero son 9 sitios distintos y alguno
-de ellos (`/capturas/:itemId/soltar`, por ejemplo) hoy ni siquiera hace la consulta de `Save`
-necesaria para poder comprobar `endedAt` sin añadir una query nueva — no se ha decidido aquí si
-conviene agruparlos en un solo fix o revisar caso por caso qué operaciones son real y
-mecánicamente relevantes tras `endedAt` (el Almacén de Reino, por ejemplo, ¿debería seguir
-operativo en una partida que ya terminó?). No se ha tocado código de producción.
+**Estado**: CERRADO (2026-09-07, commit `af44e7f`) — decisión confirmada con la usuaria: todos
+igual, mismo guard estándar sin distinguir casos (incluido el Almacén de Reino). Los 9 endpoints
+tienen ahora `rejectIfEnded`; los que no cargaban `Save` (`/capturas/:itemId/soltar`, `/almacen/
+depositar`, `/almacen/retirar`, `POST/PATCH/DELETE /plantillas`, `/companeros/:id/plantilla`,
+`/subjects/:id/plantilla`) ahora sí lo hacen. 9 tests de integración nuevos contra Postgres real
+(uno por endpoint), verificación rigurosa confirmada quitando el guard de `/almacen/depositar` y
+viendo el test fallar (404 en vez de 409 esperado) antes de restaurarlo.
 ## 2026-09-07 — setTimeout de applyTurnAwaitingDefense en useCombatFlow.ts sin cleanup — puede pisar el estado de un combate distinto
 
 **Hallazgo (auditoría de frontend, `frontend/src/hooks/useCombatFlow.ts:759-775`, no reproducido
