@@ -7945,7 +7945,13 @@ export const harvestSourceAliases: Record<string, string[]> = {
 /// jugable), así que salían mal categorizados como "Flora / material" en el icono y la etiqueta.
 /// Set aparte, no un booleano más en `harvestSourceDescriptions`, para no forzar a toda fuente
 /// flora/mineral a declarar explícitamente "no soy fauna".
-export const harvestSourcesThatAreFaunaWithoutNpc = new Set(['cornante', 'espina-del-viento', 'sombra-de-kroj']);
+///
+/// `murgoles-domados-campamento` (hallazgo 22, revisar-partida-hallazgos.md 2026-09-07) — mismo
+/// bug exacto: `sourceCategory: 'fauna'` (leche de los Múrgoles ya domados del campamento, ver su
+/// ficha de HarvestYield arriba) pero `sourceSlug` DISTINTO de 'murgol' (el Npc real) a propósito,
+/// por la invariante de metodoObtencion compartido — sin Npc con ese slug exacto, salía mal
+/// categorizado como flora en icono/carpeta de imágenes, igual que las 3 fuentes originales.
+export const harvestSourcesThatAreFaunaWithoutNpc = new Set(['cornante', 'espina-del-viento', 'sombra-de-kroj', 'murgoles-domados-campamento']);
 
 /// Zona de origen explícita por fuente (2026-07-29, colapsables de fauna/flora por zona en la
 /// Enciclopedia) — confirmado por la usuaria: la inmensa mayoría de estas pertenecen a Llanuras

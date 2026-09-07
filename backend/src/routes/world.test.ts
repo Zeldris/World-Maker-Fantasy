@@ -162,6 +162,52 @@ describe('GET /world/:slug/enciclopedia', () => {
     expect(body.npcs.find((n: { slug: string }) => n.slug === 'ruptidar')).toBeUndefined();
   });
 
+  // Bug real (hallazgo 22, revisar-partida-hallazgos.md 2026-09-07): "Leche de Múrgol" salía con
+  // icono/etiqueta de flora ("Múrgoles domados" bajo un icono de hoja) pese a ser producto animal
+  // — misma causa raíz que Cornante/Espina del Viento/Sombra de Kroj (`harvestSourcesThatAreFaunaWithoutNpc`,
+  // worldCatalog.ts): el `sourceSlug` real de esta HarvestYield es `murgoles-domados-campamento`
+  // (a propósito, DISTINTO del Npc `murgol`, por la invariante de metodoObtencion compartido —
+  // ver comentario junto a su ficha en worldCatalog.ts), así que `ctx.npcSlugs.has(sourceSlug)`
+  // siempre daba `false` sin el Set de excepción.
+  it('leche de Múrgol (sourceSlug sin Npc propio) SÍ se categoriza como fauna en faunaFlora', async () => {
+    findUniqueWorld.mockResolvedValue({ id: 'world1', slug: 'helek-sirik' });
+    findManyHarvestYield.mockResolvedValue([
+      {
+        id: 'hy-murgol-leche',
+        worldId: 'world1',
+        sourceSlug: 'murgoles-domados-campamento',
+        sourceCategory: 'fauna',
+        itemId: 'item-leche-murgol',
+        cantidad: 3,
+        condicion: null,
+        metodoObtencion: 'PASIVO',
+        sinTirada: false,
+        requiereHerramienta: false,
+        estacionRequerida: null,
+        climaRequerido: null,
+        item: {
+          id: 'item-leche-murgol',
+          worldId: 'world1',
+          slug: 'leche-murgol',
+          name: 'Leche de Múrgol',
+          aliases: ['leche de murgol'],
+          category: 'alimento',
+          tipo: 'RECURSO',
+          valorGoirnos: 1,
+          description: 'Leche del recinto de Múrgol domados del Campamento del Clan Serhu.',
+        },
+      },
+    ]);
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'GET', url: '/world/helek-sirik/enciclopedia' });
+    const body = res.json();
+
+    const murgol = body.faunaFlora.find((e: { sourceSlug: string }) => e.sourceSlug === 'murgoles-domados-campamento');
+    expect(murgol).toBeDefined();
+    expect(murgol.esFauna).toBe(true);
+  });
+
   it('cada raza con variantes regionales expone su propio sexo cruzado con región', async () => {
     findUniqueWorld.mockResolvedValue({ id: 'world1', slug: 'helek-sirik' });
     const app = await buildApp();

@@ -379,8 +379,23 @@ PENDIENTES salvo que se indique lo contrario. Organizado por fase del runbook.
 22. **Ítem "Leche de Múrgol"/planta "Múrgoles domados" mal categorizado** — la captura muestra "3
     Leche de Múrgol" con un icono/etiqueta de "Múrgoles domados" bajo un icono de hoja (flora), pese
     a que la leche de Múrgol es un producto animal, no flora — algo está mal en el `category`/
-    `role`/icono de este ítem en el catálogo. **PENDIENTE — revisar la ficha real en
-    `worldCatalog.ts`.**
+    `role`/icono de este ítem en el catálogo. **CERRADO (2026-09-07)**: el ITEM `leche-murgol` en sí
+    (`category: 'alimento'`) estaba bien — el icono de hoja venía de la vista de FUENTE/recurso
+    (Enciclopedia fauna/flora), que decide 🐾 vs 🌿 mirando `esFauna` (`world.ts`), calculado como
+    `ctx.npcSlugs.has(sourceSlug) || harvestSourcesThatAreFaunaWithoutNpc.has(sourceSlug)`. La
+    HarvestYield real de esta leche usa `sourceSlug: 'murgoles-domados-campamento'` (DISTINTO del
+    Npc `murgol` a propósito — invariante de `metodoObtencion` compartido por `sourceSlug`, el
+    Múrgol salvaje ya es CAZA y este es PASIVO, leche de ejemplares ya domados del campamento), así
+    que `ctx.npcSlugs.has(...)` siempre daba `false`. Mismo bug EXACTO ya resuelto una vez para
+    Cornante/Espina del Viento/Sombra de Kroj (Set `harvestSourcesThatAreFaunaWithoutNpc`,
+    `worldCatalog.ts`, comentario de 2026-07-22) — a `murgoles-domados-campamento` nunca se le
+    había añadido pese a ser el mismo caso (`sourceCategory: 'fauna'`, sin fila `Npc` con ese slug
+    exacto). Fix: añadido al mismo Set — corrige a la vez el icono (`faunaFloraIcon`) y la carpeta
+    de imágenes (`imageEntityTypeFor`, mismo criterio compartido). Verificado: `tsc -b` limpio, test
+    de integración nuevo (`world.test.ts`, mismo patrón que el test ya existente de Ruptidar)
+    confirmando `esFauna === true` para esta fuente, verificado rigurosamente (revertir/confirmar
+    fallo/restaurar). Línea base de fallos de infraestructura preexistente sin cambios (2 de los 3
+    de siempre en esta corrida — el 3º es un flake probabilístico que no siempre dispara).
 23. **"Bug de matching de texto": "la espina dorsal" enlazada como la criatura "Espina del Viento"**
     — narración real: "una sensación de alerta le recorre la [Espina del Viento] dorsal" (la frase
     natural es "la espina dorsal"). Investigación en curso (agente interrumpido por límite de
