@@ -191,7 +191,35 @@ PENDIENTES salvo que se indique lo contrario. Organizado por fase del runbook.
     catálogo, ya aplicado en este entorno).
 14. **La primera tirada de iniciativa de un combate debe ser "tirada del jugador vs tirada del
     enemigo"**, no una comparación contra una dificultad fija como aparentemente ocurre hoy.
-    **PENDIENTE — confirmar el cálculo real de la primera iniciativa en `turnResolution.ts`.**
+    **CERRADO (2026-09-07)**: confirmado que combate múltiple ya funcionaba así de origen
+    (`rollInitiativeMultiple`, tirada real de Destreza para cada participante, sin dificultad fija
+    — desempate ya bien resuelto: por `result` → por `destreza` cruda → orden de aparición estable,
+    sin necesidad de una tirada extra de desempate). El bug real estaba solo en el 1v1: en la
+    apertura de un combate nuevo, un ataque de apertura CON ÉXITO garantizaba la iniciativa al
+    jugador sin ninguna tirada real (caía directo a CASO ATAQUE del turno siguiente por simple
+    ausencia de `pendingNpcAttack`) — "quién empieza" se decidía solo por si el propio ataque
+    superaba `difficultyHintFor` (dificultad fija por nivel), nunca por una tirada-vs-tirada
+    Destreza real. Solo el camino de FALLO ya tiraba `rollInitiative`, y de forma puramente
+    decorativa (el NPC ya tenía la iniciativa garantizada por el fallo, el resultado no cambiaba
+    nada). Fix: añadido un `else if` gemelo al bloque de fallo (`turnResolution.ts`, junto a la
+    línea 966) que tira `rollInitiative` real también en el caso de ÉXITO — si el NPC gana, se le
+    siembra un `pendingNpcAttack` real (mismo `chooseNpcAbility` reutilizado) para que el
+    intercambio del turno siguiente entre en CASO DEFENSA pese a que el jugador fue quien "atacó"
+    primero en el texto; si el jugador gana, sin cambios (CASO ATAQUE de siempre). Alcance
+    deliberadamente acotado a la apertura (decisión explícita de la usuaria) — rondas posteriores
+    del combate se quedan igual, coherente con el propio diseño ya existente (quien gana un
+    intercambio mantiene la iniciativa hasta perderla). Verificado: `tsc -b` limpio
+    backend+frontend, 2 tests de integración nuevos (NPC gana la apertura / jugador gana la
+    apertura) verificados rigurosamente, tests de apertura ya existentes sin cambios de
+    comportamiento. Línea base de fallos de infraestructura preexistente sin cambios (3 tests,
+    ninguno relacionado con este hallazgo, confirmados fallando igual con y sin el fix).
+    **Pendiente aparte, anotado para diseño futuro (fuera de este hallazgo, decisión explícita de
+    la usuaria)**: mejorar la PRESENTACIÓN visual de la apertura de combate múltiple en fases
+    (tirada propia → resultado de todos → pantalla de elección de objetivo) — el motor de
+    emparejamiento (`resolverEnganchesRonda`, reserva/cancelación en cadena/no-vuelve-a-elegir) ya
+    existe y funciona bien server-side, recalculado cada ronda tal como la usuaria confirmó que
+    debe seguir siendo; lo que falta es solo exponerlo/mostrarlo en UI, sin tocar la lógica de
+    negocio ya construida.
 15. **Quitar el concepto "Éxito con coste"** de las tiradas — la usuaria considera que hoy no
     aporta ningún valor real (no hay ningún coste real asociado a ese grado de éxito). Ver también
     hallazgo de FASE 3 (nº 27) sobre el propio bug de esta etiqueta. **PENDIENTE — decisión de

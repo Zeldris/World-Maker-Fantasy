@@ -995,6 +995,48 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
       { attributes: attributesEfectivosAmbush, attribute: 'destreza', difficulty: 0, condicionFisica: input.condicionFisicaJugador, rol: 'utilidad' },
       { attributes: npcAttributesEfectivosAmbush, attribute: 'destreza', difficulty: 0, condicionFisica: npcParaIntercambio.condicionFisica, rol: 'utilidad' },
     );
+  } else if (!input.combateActivo && input.openingAmbush && input.rollGradoExito !== 'fallo' && npcParaIntercambio) {
+    // Hallazgo 14 (revisar-partida-hallazgos.md 2026-09-06, "la primera tirada de iniciativa de
+    // un combate debe ser tirada del jugador vs tirada del enemigo, no una comparación contra una
+    // dificultad fija") — hasta ahora, un ataque de apertura CON ÉXITO garantizaba la iniciativa
+    // al jugador sin ninguna tirada real: sin `pendingNpcAttack` sembrado, el intercambio real del
+    // turno siguiente caía directo en CASO ATAQUE (más abajo, `else` del `if
+    // (pendingNpcAttack && pendingNpcStillHere)`) por simple ausencia de ataque pendiente — "quién
+    // empieza" se decidía solo por si el propio ataque de apertura superaba `difficultyHintFor`
+    // (dificultad fija por nivel del NPC), nunca por una tirada-vs-tirada Destreza real. Mismo
+    // mecanismo que el bloque de fallo justo arriba (`rollInitiative` + `chooseNpcAbility`
+    // sembrando `nuevoPendingNpcAttack`) — si el NPC gana esta tirada, el intercambio real del
+    // turno siguiente entra en CASO DEFENSA aunque el jugador haya sido quien "atacó" primero en
+    // el texto; si el jugador gana, no se hace nada (mismo comportamiento de siempre, CASO
+    // ATAQUE). Alcance deliberadamente acotado a la apertura — rondas posteriores del combate
+    // siguen igual (quien gana un intercambio mantiene la iniciativa hasta perderla, mismo
+    // criterio ya existente).
+    const attributesEfectivosAmbush = effectiveAttributesConDuracion(attributes, input.jugadorActiveEffects);
+    const npcAttributesEfectivosAmbush = effectiveAttributesConDuracion(npcParaIntercambio.attributes, input.npcActiveEffects);
+    const initiativeCheck = rollInitiative(
+      { attributes: attributesEfectivosAmbush, attribute: 'destreza', difficulty: 0, condicionFisica: input.condicionFisicaJugador, rol: 'utilidad' },
+      { attributes: npcAttributesEfectivosAmbush, attribute: 'destreza', difficulty: 0, condicionFisica: npcParaIntercambio.condicionFisica, rol: 'utilidad' },
+    );
+    nextInitiativeRoll = initiativeCheck;
+    if (initiativeCheck.ganador === 'npc') {
+      const npcWeaponNames = npcParaIntercambio.items.filter((i) => i.category === 'arma').map((i) => i.name);
+      const npcAbilities = npcCombatAbilitiesFor(npcParaIntercambio, npcWeaponNames);
+      const npcEnergiaMaxAmbush = energiaMaxFor(npcParaIntercambio.attributes.constitucion);
+      const npcEnergiaActualAmbush = npcParaIntercambio.energia ?? npcEnergiaMaxAmbush;
+      const npcAtaque = chooseNpcAbility(npcAbilities, 'ataque', npcEnergiaActualAmbush, undefined, npcParaIntercambio.abilityUsesThisEncounter);
+      nuevoPendingNpcAttack = {
+        npcId: npcParaIntercambio.id,
+        attribute: npcAtaque.attribute,
+        attributeBonus: npcAtaque.attributeBonus ?? null,
+        effects: npcAtaque.effects,
+        rol: npcAtaque.rol,
+        abilityName: npcAtaque.name,
+        abilityDescription: npcAtaque.description,
+        energyCost: npcAtaque.energyCost,
+        energyRegen: npcAtaque.energyRegen,
+        maxUsesPerCombat: npcAtaque.maxUsesPerCombat,
+      };
+    }
   }
 
   if (input.combateActivo && npcParaIntercambio) {

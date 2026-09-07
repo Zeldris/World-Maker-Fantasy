@@ -6399,6 +6399,131 @@ describe('Emboscada real del turno de apertura: fallo siembra pendingNpcAttack (
   }, 20_000);
 });
 
+// Hallazgo 14 (revisar-partida-hallazgos.md 2026-09-06, "la primera tirada de iniciativa de un
+// combate debe ser tirada del jugador vs tirada del enemigo, no una comparación contra una
+// dificultad fija") — hasta este fix, un ataque de apertura CON ÉXITO garantizaba la iniciativa
+// al jugador sin ninguna tirada real (sin pendingNpcAttack sembrado, el intercambio siguiente
+// caía directo en CASO ATAQUE). Este test cubre justo el caso que faltaba: apertura con ÉXITO
+// donde el NPC gana la tirada de iniciativa real — el intercambio siguiente debe entrar en CASO
+// DEFENSA, no en CASO ATAQUE, pese a que el jugador fue quien "atacó" primero en el texto.
+describe('Apertura con éxito: el NPC puede ganar la iniciativa real (hallazgo 14, 2026-09-07)', () => {
+  let saveId: string;
+  let npcId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const npc = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'orco-enfurecido-hondonada' } });
+    npcId = npc.id;
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (apertura NPC gana iniciativa)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+  });
+
+  afterAll(async () => {
+    vi.restoreAllMocks();
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('turno de apertura con éxito pero el NPC gana rollInitiative → pendingNpcAttack real; el siguiente intercambio llega como defensa a ciegas', async () => {
+    // Mejor tirada posible para el ataque de apertura (roll=20) — garantiza gradoExito distinto de
+    // 'fallo' contra la dificultad fija por nivel del atajo tabulado, sea cual sea el atributo.
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    const app = await buildApp();
+
+    const openingAction = "Voy a luchar contra 'Orco enfurecido'.";
+    const classifyOpen = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: openingAction, enCombate: false } });
+    const { classification: classificationOpen, roll: rollOpen } = classifyOpen.json();
+    expect(rollOpen.gradoExito).not.toBe('fallo');
+
+    // rollInitiative (combatExchange.ts) llama rollAttributeCheck del jugador PRIMERO, del NPC
+    // DESPUÉS — roll bajo para el jugador (destreza 10, ATTRS) y roll alto para el Orco
+    // (destreza 4, worldCatalog.ts) fuerza al NPC a ganar el contraste pese a su atributo menor.
+    vi.spyOn(Math, 'random').mockReturnValueOnce(0).mockReturnValueOnce(0.99);
+    const narrateOpen = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action: openingAction, classification: classificationOpen, roll: rollOpen, enCombate: false },
+    });
+    expect(narrateOpen.statusCode).toBe(200);
+    expect(lastNdjsonLine(narrateOpen.payload).esperandoDefensaJugador).toBe(true);
+
+    const saveAfterOpening = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveAfterOpening.pendingNpcAttack).toMatchObject({ npcId });
+    // El turno de apertura no toca condición ni HP — solo decide QUIÉN actúa primero después.
+    expect(await prisma.npcState.findFirst({ where: { saveId, npcId } })).toBeNull();
+
+    const openingLogEntry = await prisma.logEntry.findFirst({ where: { saveId, channel: 'CHARACTER' }, orderBy: { createdAt: 'desc' } });
+    expect(openingLogEntry?.initiativeRoll).toMatchObject({
+      ganador: 'npc',
+      jugador: { roll: expect.any(Number), result: expect.any(Number) },
+      npc: { roll: expect.any(Number), result: expect.any(Number) },
+    });
+
+    // Turno B: ya dentro del panel, enCombate:true — el jugador se defiende a ciegas del ataque ya
+    // decidido, no ejecuta su propio golpe, pese a haber sido él quien "atacó" en el texto de apertura.
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    classifyAction.mockResolvedValueOnce({
+      requiereTirada: true,
+      atributo: 'destreza',
+      dificultad: 15,
+      razon: 'x',
+      banda: 'instantanea',
+      duracionEstimadaMinutos: 0,
+    });
+    const defenseAction = "Me cubro con el escudo frente a 'Orco enfurecido'.";
+    const classifyDefense = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: defenseAction, enCombate: true } });
+    const { classification: classificationDefense, roll: rollDefense } = classifyDefense.json();
+    const narrateDefense = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action: defenseAction, classification: classificationDefense, roll: rollDefense, enCombate: true },
+    });
+    expect(narrateDefense.statusCode).toBe(200);
+    expect((lastNdjsonLine(narrateDefense.payload).combatExchangeDisplay as { atacanteEsJugador?: boolean } | null)?.atacanteEsJugador).toBe(false);
+  }, 20_000);
+
+  it('turno de apertura con éxito y el JUGADOR gana rollInitiative → sin pendingNpcAttack, CASO ATAQUE de siempre', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    const app = await buildApp();
+
+    const openingAction = "Ataco sin dudarlo a 'Orco enfurecido'.";
+    const classifyOpen = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: openingAction, enCombate: false } });
+    const { classification: classificationOpen, roll: rollOpen } = classifyOpen.json();
+    expect(rollOpen.gradoExito).not.toBe('fallo');
+
+    // Roll alto para el jugador, roll bajo para el NPC — el jugador (destreza 10) gana con
+    // margen sobre el Orco (destreza 4) sin depender de empate.
+    vi.spyOn(Math, 'random').mockReturnValueOnce(0.99).mockReturnValueOnce(0);
+    const narrateOpen = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action: openingAction, classification: classificationOpen, roll: rollOpen, enCombate: false },
+    });
+    expect(narrateOpen.statusCode).toBe(200);
+    // Sin pendingNpcAttack sembrado — el turno de apertura no bloquea al jugador con una defensa
+    // a ciegas, sigue pudiendo atacar directamente en el siguiente turno.
+    const saveAfterOpening = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveAfterOpening.pendingNpcAttack).toBeNull();
+
+    const openingLogEntry = await prisma.logEntry.findFirst({ where: { saveId, channel: 'CHARACTER' }, orderBy: { createdAt: 'desc' } });
+    expect(openingLogEntry?.initiativeRoll).toMatchObject({ ganador: 'jugador' });
+  }, 20_000);
+});
+
 // Bug real jugando en vivo (2026-08-28/29): recargar la página mientras el enemigo tiene la
 // iniciativa ("elige a ciegas cómo defenderte") rompía la resolución del turno — el jugador veía
 // el panel de ATAQUE en vez de DEFENSA tras F5, elegía con el catálogo equivocado (atributo de
