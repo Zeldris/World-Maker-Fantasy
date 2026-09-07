@@ -206,12 +206,16 @@ Es el módulo más nuevo (2026-08-25) y el que menos red de seguridad tiene.
   con los 2 casos exactos ("con saveId, la query pide catálogo + la fundada en ESA partida" / "sin
   saveId, solo el catálogo") — existe desde el commit `ffce4c6` (2026-08-07), muy anterior a esta
   auditoría del 2026-08-25.
-- `progression.ts` captura errores de la transacción con un `catch` genérico que devuelve 500 sin
-  loggear la causa real — dificulta depurar en producción.
+- ~~`progression.ts` captura errores de la transacción con un `catch` genérico que devuelve 500 sin
+  loggear la causa real~~ FALSO POSITIVO (confirmado 2026-09-08): el `catch` de
+  `/attribute-points` (línea 80-87) ya hace `console.error` con el `err` completo antes de devolver
+  el 500 — el propio comentario del código dice explícitamente "deuda técnica cerrada, auditoría
+  2026-09-01". Esta entrada del 2026-08-25 quedó desactualizada por ese fix posterior.
 - **No se encontró código muerto real ni tipado débil sistémico** en `routes/` (cero `any`, `as
   unknown as` limitado a `Json` de Prisma, justificado).
 
-**Estado**: PENDIENTE, prioridad baja.
+**Estado**: PENDIENTE, prioridad baja — solo queda el tamaño de `recolectar.ts` sin resolver
+(candidato a dividir la próxima vez que se toque, no urgente).
 
 ## 2026-08-25 — GameView.tsx ha vuelto a crecer desde la extracción de hooks de 2026-08-21
 
