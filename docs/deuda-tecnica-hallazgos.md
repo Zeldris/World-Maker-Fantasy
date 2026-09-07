@@ -485,11 +485,14 @@ modales (el usuario no sabe que "salió" del flujo normal de la página), y cual
 navegue solo con teclado puede tabular fuera del modal hacia elementos tapados visualmente por el
 overlay pero todavía enfocables/activables.
 
-**Estado**: PENDIENTE — requiere decisión de la usuaria (alcance: ¿se aplica solo a
-`SelectionModalShell` como punto único que cubre 11 de los ~18 casos, o a cada modal suelto por
-separado? ¿foco atrapado con una librería o a mano con `onKeyDown` comprobando los bordes del
-`Tab`/`Shift+Tab`?). No es una contradicción de ningún comentario existente — es un hueco de
-accesibilidad nunca abordado, ninguna auditoría previa lo menciona.
+**Estado**: PARCIALMENTE CERRADO (2026-09-07, commit `e0c06d9`) — decisión confirmada con la
+usuaria: empezar por `SelectionModalShell` (11/18 casos), foco atrapado a mano con `onKeyDown`, sin
+librería. `role="dialog"`/`aria-modal="true"`/`aria-label`, cierre con Escape (respeta
+`cancelDisabled`) y atrapado de foco Tab/Shift+Tab ya en el cascarón compartido. 5 tests nuevos con
+verificación rigurosa (`SelectionModalShell.test.tsx`). PENDIENTE: los ~7 modales sueltos restantes
+(`KingdomFoundingModal.tsx`, `ClaseModal.tsx`, `EspecializacionModal.tsx`, `DynamicModeModal.tsx`,
+`DetailModal.tsx`, `ConfirmModal.tsx`, `MapZoomModal.tsx`) siguen sin el mismo tratamiento — queda
+para una ronda siguiente, mismo patrón ya validado aquí.
 
 ## 2026-09-07 — handleFundarReino no limpia kingdomFoundedInfo si fundarReino falla — el modal se queda "colgado" en busy tras el error
 
