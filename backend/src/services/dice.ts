@@ -13,10 +13,14 @@
 export type Attribute = 'fuerza' | 'destreza' | 'constitucion' | 'inteligencia' | 'voluntad' | 'carisma' | 'magia'
 export type AttributeBlock = Record<Attribute, number>
 
-/// Grados de éxito (docs/08-acciones-por-tiempo.md § 5, roadmap 2026-07-19 — pendiente desde el
-/// diseño original, nunca implementado): misma tirada de siempre, lectura en tres zonas en vez de
-/// binaria — no añade ninguna llamada nueva, es leer distinto el mismo número.
-export type GradoExito = 'claro' | 'con_coste' | 'fallo'
+/// Grados de éxito (docs/08-acciones-por-tiempo.md § 5, roadmap 2026-07-19 — llegó a tener un
+/// tercer grado, 'con_coste', retirado el 2026-09-07 tras el hallazgo 15/19b de
+/// revisar-partida-hallazgos.md: era puramente cosmético en combate/acciones libres — el
+/// desenlace real de un intercambio ya se decide por el margen antes de que este campo se
+/// asignara, así que "con coste" solo añadía una etiqueta que a veces contradecía el resultado
+/// real (ej. "Gana Gorhorn" + "Éxito con coste" a la vez). GradoRecurso (más abajo, recolección)
+/// SÍ tiene un tercer grado con efecto real y queda fuera de este cambio a propósito.
+export type GradoExito = 'claro' | 'fallo'
 
 export interface RollResult {
   attribute: Attribute
@@ -24,17 +28,15 @@ export interface RollResult {
   roll: number
   result: number
   difficulty: number
-  /// true para 'claro' y 'con_coste' (la acción se completa en ambos) — se mantiene por
-  /// compatibilidad con todo el código que ya solo mira éxito/fallo (XP, materialización de
-  /// loot/despiece/producción...); gradoExito es la lectura más rica, solo para narrar.
+  /// Redundante con `gradoExito !== 'fallo'` desde el 2026-09-07 (ver comentario de GradoExito)
+  /// — se mantiene por compatibilidad con todo el código que ya solo mira éxito/fallo (XP,
+  /// materialización de loot/despiece/producción...).
   success: boolean
   gradoExito: GradoExito
 }
 
 export function gradoExitoFor(result: number, difficulty: number): GradoExito {
-  if (result >= difficulty + 5) return 'claro'
-  if (result >= difficulty) return 'con_coste'
-  return 'fallo'
+  return result >= difficulty ? 'claro' : 'fallo'
 }
 
 export function rollCheck(attributes: AttributeBlock, attribute: Attribute, difficulty: number): RollResult {

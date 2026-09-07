@@ -220,10 +220,13 @@ describe('resolveIndependentExchange', () => {
     expect(result.defensor.efectoAplica).toBe(true);
   });
 
-  it('éxito con coste también cuenta como efectoAplica (solo el fallo lo bloquea)', () => {
+  // Hallazgo 15/19b (revisar-partida-hallazgos.md 2026-09-07) — "con coste" retirado del sistema
+  // (era puramente cosmético): un margen exacto de 0 (result === difficulty) ahora es 'claro'
+  // directamente, ya no un tercer grado intermedio.
+  it('éxito justo (result === difficulty) cuenta como claro y aplica efectoAplica', () => {
     mockRolls(R_FOR_ROLL_10, R_FOR_ROLL_10);
     const result = resolveIndependentExchange(atacante, defensor);
-    expect(result.atacante.gradoExito).toBe('con_coste');
+    expect(result.atacante.gradoExito).toBe('claro');
     expect(result.atacante.efectoAplica).toBe(true);
   });
 

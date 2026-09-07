@@ -1081,7 +1081,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
 // código está bien** — `condicionFisicaGrupo` del golpeado sí baja (ILESO → HERIDO), el otro
 // individuo y el `NpcState` compartido no se ven afectados. La hipótesis del falso positivo de
 // verificación queda como la explicación más probable del hallazgo original del agente.
-describe('Golpe "con_coste"/golpe_normal (no decisivo) contra un miembro de grupo SÍ baja su condicionFisicaGrupo (investigación 2026-08-29, CONFIRMADO CORRECTO)', () => {
+describe('Golpe no decisivo ("golpe_normal") contra un miembro de grupo SÍ baja su condicionFisicaGrupo (investigación 2026-08-29, CONFIRMADO CORRECTO)', () => {
   let saveId: string;
   let worldId: string;
 

@@ -222,9 +222,27 @@ PENDIENTES salvo que se indique lo contrario. Organizado por fase del runbook.
     negocio ya construida.
 15. **Quitar el concepto "Éxito con coste"** de las tiradas — la usuaria considera que hoy no
     aporta ningún valor real (no hay ningún coste real asociado a ese grado de éxito). Ver también
-    hallazgo de FASE 3 (nº 27) sobre el propio bug de esta etiqueta. **PENDIENTE — decisión de
-    diseño, simplificar a Éxito/Fallo (¿se mantiene "claro" como matiz, o se unifica del todo?
-    aclarar con la usuaria antes de tocar `dice.ts`/`combatExchange.ts`.**
+    el caso concreto del hallazgo 19b (Fase 3) sobre el propio bug de esta etiqueta. **CERRADO
+    (2026-09-07)**: confirmado que existen dos sistemas paralelos deliberadamente separados —
+    `GradoExito` (combate y acciones libres/Huir/Tameo) y `GradoRecurso` (recolección de recursos).
+    En combate, `con_coste` era puramente cosmético: el desenlace real de un intercambio
+    (`ExchangeOutcome`, decide daño/contragolpe) ya se calculaba por el margen ANTES de que
+    `gradoExito` se sobrescribiera solo para reutilizar el mismo campo visual — nunca decidía nada
+    mecánico distinto de un éxito limpio, y a veces contradecía el resultado real (el propio bug del
+    hallazgo 19b: "Gana Gorhorn" + "Éxito con coste" + 🏆 a la vez). Fuera de combate tampoco tenía
+    efecto mecánico, solo cambiaba parcialmente el texto sugerido al LLM. `GradoRecurso`
+    (recolección) SÍ tiene efecto real (mitad de cantidad recolectada) y queda intacto, sin tocar —
+    decisión explícita de la usuaria durante la sesión ("si con_coste se usa para algo hay que
+    ajustar DÓNDE aparece", no eliminarlo de raíz sin mirar). `GradoExito` pasa a ser binario
+    (`'claro' | 'fallo'`) en `dice.ts`/`combatExchange.ts`/`narrador.ts` y en los 3 componentes
+    frontend que lo pintan (`RollBadge.tsx`, `CombatExchangeBadge.tsx`, `DiceRoll.tsx` — el 🏆
+    contradictorio desaparece junto con la etiqueta, el margen real sigue visible). Verificado:
+    `tsc -b` limpio backend+frontend, tests unitarios de `dice.ts`/`combatExchange.ts` actualizados
+    y verificados rigurosamente, `GradoRecurso`/`recolectar.ts`/`recolectar.test.ts` confirmados
+    intactos (mismo número de ocurrencias que antes del cambio). Línea base de fallos de
+    infraestructura preexistente sin cambios (4 tests, confirmados fallando igual con y sin el
+    fix). Pendiente reverificar en vivo con Playwright: un combate con margen bajo (5-9) y confirmar
+    que ya solo aparece "Éxito", sin la etiqueta "con coste" contradictoria.
 
 ### FASE 2 — Coherencia narrativa
 
@@ -265,8 +283,11 @@ PENDIENTES salvo que se indique lo contrario. Organizado por fase del runbook.
 19b. **"Éxito con coste 🏆" mostrado en un resultado de éxito limpio real** (ver captura del combate
     contra el Guchapo: Gorhorn 18+5=23 vs Guchapo 17, "Gana Gorhorn", etiquetado "Éxito con coste")
     — coherente con el hallazgo 15 (Fase 1): la usuaria pide eliminar el concepto "Éxito con coste"
-    porque hoy no acarrea ningún coste real distinguible de un éxito limpio — no es un bug de cálculo
-    en este caso concreto, es la misma petición de simplificación del hallazgo 15.
+    porque hoy no acarrea ningún coste real distinguible de un éxito limpio. **CERRADO junto al
+    hallazgo 15 (2026-09-07)** — causa raíz confirmada: `gradoExito` en combate se sobrescribía por
+    el margen del intercambio (umbral `DECISIVE_MARGIN=10`), una escala distinta de "¿quién ganó?" —
+    Gorhorn ganó con margen 6 (por debajo del umbral) → `con_coste`, pese a que el resultado real ya
+    decía "Gana Gorhorn" con 🏆. Con `GradoExito` binario, este caso ahora muestra solo "Éxito".
 20. **Los textos de desglose de tiradas (`(11 −2sal + 2hab = 11/2)` etc.) fuerzan salto de línea y
     quedan mal ajustados cuando se acumulan muchos modificadores** (malus + bonus + multiplicador) —
     pide revisar la disposición visual de esos datos (quizás apilar en vez de forzar una sola línea

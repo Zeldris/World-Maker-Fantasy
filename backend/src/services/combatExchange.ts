@@ -262,7 +262,10 @@ function rollSide(self: ExchangeParticipant, opponentAttribute: Attribute, tree:
 /// `success`/`gradoExito` de `rollSide` (calculados contra la propia dificultad, todavía
 /// necesarios tal cual para `resolveIndependentExchange`) se SOBRESCRIBEN aquí con su significado
 /// nuevo — relativo al RIVAL, no a la dificultad propia — para que el frontend (`CombatExchangeBadge`)
-/// siga leyendo los mismos campos sin necesitar su propia copia de esta lógica.
+/// siga leyendo los mismos campos sin necesitar su propia copia de esta lógica. Desde el
+/// 2026-09-07 (hallazgo 15/19b) `gradoExito` es binario (claro/fallo) — el margen real (`margen`,
+/// más abajo) ya viaja expuesto para quien quiera matizar el desenlace, sin una tercera etiqueta
+/// que a veces contradecía "quién ganó".
 ///
 /// Puro y determinista salvo por los dos `Math.random()` de las tiradas — mismo criterio que
 /// `rollCheck`: nunca deja que el modelo decida el número, solo lo narra ya resuelto.
@@ -276,9 +279,9 @@ export function resolveExchange(atacante: ExchangeParticipant, defensor: Exchang
   const resultadoDefensor = rollSide(defensor, atacante.attribute, 'defensa');
   const margen = resultadoAtacante.result - resultadoDefensor.result;
   resultadoAtacante.success = margen > 0;
-  resultadoAtacante.gradoExito = margen >= DECISIVE_MARGIN ? 'claro' : margen > 0 ? 'con_coste' : 'fallo';
+  resultadoAtacante.gradoExito = margen > 0 ? 'claro' : 'fallo';
   resultadoDefensor.success = margen <= 0;
-  resultadoDefensor.gradoExito = margen <= -DECISIVE_MARGIN ? 'claro' : margen <= 0 ? 'con_coste' : 'fallo';
+  resultadoDefensor.gradoExito = margen <= 0 ? 'claro' : 'fallo';
   return {
     atacante: resultadoAtacante,
     defensor: resultadoDefensor,

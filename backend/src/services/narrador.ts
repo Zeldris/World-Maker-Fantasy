@@ -989,17 +989,14 @@ No inventes ningún hecho nuevo (ni objetos, ni lugares, ni personajes) que no e
   return narration;
 }
 
-/// Grados de éxito (docs/08-acciones-por-tiempo.md § 5, roadmap 2026-07-19): misma tirada de
-/// siempre, tres lecturas narrativas en vez de éxito/fallo binario — "con coste" completa la
-/// acción pero con un precio (tarda más, gasta un recurso, deja peor postura), distinto tanto de
-/// un éxito limpio como de un fallo.
+/// Grados de éxito (docs/08-acciones-por-tiempo.md § 5, roadmap 2026-07-19) — binario desde el
+/// 2026-09-07 (hallazgo 15/19b, revisar-partida-hallazgos.md): el tercer grado "con coste" se
+/// retiró por ser puramente cosmético (nunca decidía nada mecánico real, solo sugería texto sin
+/// garantía de aplicarse).
 function rollBlockFor(roll: RollResult): string {
   const base = `RESULTADO YA RESUELTO — no lo cambies, narra en torno a él: tirada de ${roll.attribute} = ${roll.result} (dado ${roll.roll} + atributo) vs dificultad ${roll.difficulty} → `;
   if (roll.gradoExito === 'claro') {
     return `${base}ÉXITO CLARO. La narración TIENE que aportar algo concreto y útil que antes no sabíamos (una amenaza, un objeto, un rastro, una dirección, una pista) — nunca te quedes solo en ambientación sensorial sin ningún dato jugable.`;
-  }
-  if (roll.gradoExito === 'con_coste') {
-    return `${base}ÉXITO CON COSTE. La acción SÍ se completa de verdad, pero con un precio narrativo — tarda más de lo esperado, gasta algo, deja al personaje en peor postura, o revela menos de lo que un éxito limpio habría dado. Nunca lo narres como un fallo ni como un éxito perfecto sin matices.`;
   }
   return `${base}FALLO. Puedes no revelar nada de interés, o revelar algo a medias/engañoso.`;
 }
@@ -1600,9 +1597,7 @@ export function deterministicFallbackNarration(ctx: { action: string; roll?: Rol
     ? 'La acción transcurre sin incidentes.'
     : roll.gradoExito === 'claro'
       ? 'La acción sale exactamente como se esperaba.'
-      : roll.gradoExito === 'con_coste'
-        ? 'La acción se completa, aunque no sale del todo limpia.'
-        : 'La acción no sale como se esperaba.';
+      : 'La acción no sale como se esperaba.';
   return {
     narration: `${action} ${resultado}`,
     newFacts: [],

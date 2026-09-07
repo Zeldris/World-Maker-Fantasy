@@ -16,17 +16,16 @@ export function difficultyLabelFor(difficulty: number): string {
   return 'Muy difícil'
 }
 
-// Mismos 3 colores que RollBadge.tsx (claro/con_coste/fallo) — coherencia visual entre los dos
-// tipos de tirada (acción libre vs intercambio de combate).
-const GRADE_TEXT: Record<'claro' | 'con_coste' | 'fallo', string> = {
+// Mismos 2 colores que RollBadge.tsx (claro/fallo, binario desde el 2026-09-07 — hallazgo
+// 15/19b, revisar-partida-hallazgos.md: "con coste" retirado por ser puramente cosmético) —
+// coherencia visual entre los dos tipos de tirada (acción libre vs intercambio de combate).
+const GRADE_TEXT: Record<'claro' | 'fallo', string> = {
   claro: 'text-moss-400',
-  con_coste: 'text-cost-400',
   fallo: 'text-wood-400',
 }
 
-const SIDE_LABEL: Record<'claro' | 'con_coste' | 'fallo', string> = {
+const SIDE_LABEL: Record<'claro' | 'fallo', string> = {
   claro: 'Éxito',
-  con_coste: 'Éxito con coste',
   fallo: 'Fallo',
 }
 
@@ -163,7 +162,7 @@ const WINNER_SIDE: Record<CombatExchangeOutcome, 'atacante' | 'defensor' | 'empa
 
 // Exportada (2026-08-15) — DiceRollReveal.tsx la reutiliza para colorear el dado en vivo con el
 // mismo criterio exacto que este badge usa después, en vez de duplicar la lógica.
-export function gradoOf(side: RollInfo | CombatExchangeSideInfo): 'claro' | 'con_coste' | 'fallo' {
+export function gradoOf(side: RollInfo | CombatExchangeSideInfo): 'claro' | 'fallo' {
   return side.gradoExito ?? (side.success ? 'claro' : 'fallo')
 }
 

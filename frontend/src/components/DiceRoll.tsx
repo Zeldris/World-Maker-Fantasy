@@ -13,14 +13,12 @@ import { TooltipAnchor } from './TooltipAnchor'
 /// no cambia). `GatheringDiceReveal.tsx` (recolección) mantiene su propio JSX — shape (`rolls[]`
 /// con posible ventaja, sin "vs") demasiado distinto para forzarlo aquí — pero reimporta las
 /// constantes de cadencia desde este archivo en vez de duplicarlas.
-const GRADE_COLOR: Record<'claro' | 'con_coste' | 'fallo', string> = {
+const GRADE_COLOR: Record<'claro' | 'fallo', string> = {
   claro: 'text-moss-400',
-  con_coste: 'text-cost-400',
   fallo: 'text-wood-400',
 }
-const GRADE_LAND_ANIM: Record<'claro' | 'con_coste' | 'fallo', string> = {
+const GRADE_LAND_ANIM: Record<'claro' | 'fallo', string> = {
   claro: 'animate-stamp-in',
-  con_coste: 'animate-stamp-in',
   fallo: 'animate-shake-no',
 }
 

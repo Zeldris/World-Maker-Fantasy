@@ -226,9 +226,10 @@ export interface RollInfo {
   difficulty: number
   result: number
   success: boolean
-  /// Grados de éxito (2026-07-19) — opcional porque tiradas persistidas antes de este cambio no
-  /// lo tienen; el badge cae de vuelta a solo éxito/fallo en ese caso.
-  gradoExito?: 'claro' | 'con_coste' | 'fallo'
+  /// Grados de éxito (2026-07-19, binario desde el 2026-09-07 — hallazgo 15/19b, "con coste"
+  /// retirado por ser puramente cosmético) — opcional porque tiradas persistidas antes de este
+  /// campo no lo tienen; el badge cae de vuelta a solo éxito/fallo en ese caso.
+  gradoExito?: 'claro' | 'fallo'
 }
 
 /// Un lado del intercambio de combate (revisión de partida 2026-08-08, petición explícita: "que

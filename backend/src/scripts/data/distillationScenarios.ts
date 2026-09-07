@@ -119,7 +119,7 @@ function phantomTravelNamesFor(slug: string): string[] {
 function makeRoll(attribute: Attribute, gradoExito: GradoExito): RollResult {
   const value = GORHORN_ATTRIBUTES[attribute];
   const difficulty = 12;
-  const result = gradoExito === 'claro' ? difficulty + 6 : gradoExito === 'con_coste' ? difficulty + 1 : difficulty - 4;
+  const result = gradoExito === 'claro' ? difficulty + 6 : difficulty - 4;
   const roll = Math.max(1, Math.min(20, result - Math.floor(value / 2)));
   return { attribute, value, roll, result, difficulty, success: gradoExito !== 'fallo', gradoExito };
 }
@@ -245,7 +245,7 @@ const SEEDS: ScenarioSeed[] = [
       npcSlugsInScene: [],
     },
     actionVariants: ['Examino las rocas imantadas de cerca.', 'Busco el Cardo Brújula del que había oído hablar.', 'Avanzo entre las rocas con cuidado de no perder el rumbo.'],
-    rollVariants: [null, { attribute: 'inteligencia', gradoExito: 'con_coste' }],
+    rollVariants: [null],
   },
   {
     id: 'exploracion-cruce',
@@ -267,7 +267,7 @@ const SEEDS: ScenarioSeed[] = [
       npcSlugsInScene: [],
     },
     actionVariants: ['Examino las grietas por donde escapa el calor.', 'Busco un paso seguro entre las brasas.', 'Reviso la zona con cuidado de no quemarme.'],
-    rollVariants: [null, { attribute: 'destreza', gradoExito: 'con_coste' }],
+    rollVariants: [null],
   },
   {
     id: 'exploracion-osario',
@@ -326,7 +326,7 @@ const SEEDS: ScenarioSeed[] = [
       npcSlugsInScene: [],
     },
     actionVariants: ['Examino la marisma en busca de algo útil.', 'Reviso el barro por si hay restos interesantes.', 'Avanzo con cuidado entre los chudos.'],
-    rollVariants: [null, { attribute: 'destreza', gradoExito: 'con_coste' }],
+    rollVariants: [null],
   },
   {
     id: 'exploracion-playa-ceniza',
@@ -359,7 +359,7 @@ const SEEDS: ScenarioSeed[] = [
       npcSlugsInScene: [],
     },
     actionVariants: ['Examino las bocas de túnel sin acercarme demasiado.', 'Reviso el borde de la fosa con cuidado.', 'Busco alguna señal de actividad reciente en la fosa.'],
-    rollVariants: [null, { attribute: 'inteligencia', gradoExito: 'con_coste' }],
+    rollVariants: [null],
   },
   {
     id: 'exploracion-dunas-ahogadas',
@@ -381,7 +381,7 @@ const SEEDS: ScenarioSeed[] = [
       npcSlugsInScene: [],
     },
     actionVariants: ['Examino la hondonada estéril con cautela.', 'Reviso el terreno en busca de alguna señal.', 'Avanzo con cuidado por la tierra muerta.'],
-    rollVariants: [null, { attribute: 'voluntad', gradoExito: 'con_coste' }],
+    rollVariants: [null],
   },
   {
     id: 'exploracion-laberinto-canones',
@@ -406,7 +406,7 @@ const SEEDS: ScenarioSeed[] = [
       npcSlugsInScene: ['corretolvas'],
     },
     actionVariants: ['Ataco a la corretolva con mi hacha.', 'Cargo contra la corretolva antes de que escape.', 'Golpeo a la corretolva con todas mis fuerzas.'],
-    rollVariants: [{ attribute: 'fuerza', gradoExito: 'claro' }, { attribute: 'fuerza', gradoExito: 'fallo' }, { attribute: 'fuerza', gradoExito: 'con_coste' }],
+    rollVariants: [{ attribute: 'fuerza', gradoExito: 'claro' }, { attribute: 'fuerza', gradoExito: 'fallo' }],
   },
   {
     id: 'combate-orco',
@@ -443,7 +443,7 @@ const SEEDS: ScenarioSeed[] = [
       npcSlugsInScene: ['aullador-rojo'],
     },
     actionVariants: ['Ataco al aullador rojo antes de que llame a la jauría.', 'Golpeo al aullador con mi hacha.', 'Cargo contra el aullador rojo.'],
-    rollVariants: [{ attribute: 'fuerza', gradoExito: 'claro' }, { attribute: 'fuerza', gradoExito: 'fallo' }, { attribute: 'destreza', gradoExito: 'con_coste' }],
+    rollVariants: [{ attribute: 'fuerza', gradoExito: 'claro' }, { attribute: 'fuerza', gradoExito: 'fallo' }],
   },
   {
     id: 'combate-gargantua',
@@ -455,7 +455,7 @@ const SEEDS: ScenarioSeed[] = [
       npcSlugsInScene: ['gargantua-de-ceniza'],
     },
     actionVariants: ['Ataco a la gargantúa de ceniza con mi hacha.', 'Golpeo a la gargantúa antes de que embista.', 'Me lanzo contra la gargantúa a pesar de su tamaño.'],
-    rollVariants: [{ attribute: 'fuerza', gradoExito: 'claro' }, { attribute: 'fuerza', gradoExito: 'fallo' }, { attribute: 'fuerza', gradoExito: 'con_coste' }],
+    rollVariants: [{ attribute: 'fuerza', gradoExito: 'claro' }, { attribute: 'fuerza', gradoExito: 'fallo' }],
   },
   {
     id: 'combate-rondador',
@@ -479,7 +479,7 @@ const SEEDS: ScenarioSeed[] = [
       npcSlugsInScene: ['salamandra-de-escoria'],
     },
     actionVariants: ['Ataco a la salamandra de escoria con mi hacha.', 'Golpeo a la salamandra antes de que escupa fuego.', 'Me lanzo contra la salamandra.'],
-    rollVariants: [{ attribute: 'fuerza', gradoExito: 'claro' }, { attribute: 'fuerza', gradoExito: 'fallo' }, { attribute: 'destreza', gradoExito: 'con_coste' }],
+    rollVariants: [{ attribute: 'fuerza', gradoExito: 'claro' }, { attribute: 'fuerza', gradoExito: 'fallo' }],
   },
   {
     id: 'combate-orco-rezagado',
@@ -491,7 +491,7 @@ const SEEDS: ScenarioSeed[] = [
       npcSlugsInScene: ['orco-expulsado'],
     },
     actionVariants: ['Ataco al guerrero orco expulsado con mi hacha.', 'Golpeo al expulsado antes de que reaccione.', 'Me lanzo contra el guerrero sin clan.'],
-    rollVariants: [{ attribute: 'fuerza', gradoExito: 'claro' }, { attribute: 'fuerza', gradoExito: 'fallo' }, { attribute: 'fuerza', gradoExito: 'con_coste' }],
+    rollVariants: [{ attribute: 'fuerza', gradoExito: 'claro' }, { attribute: 'fuerza', gradoExito: 'fallo' }],
   },
   {
     id: 'combate-soldado',
@@ -503,7 +503,7 @@ const SEEDS: ScenarioSeed[] = [
       npcSlugsInScene: ['soldado-concordia'],
     },
     actionVariants: ['Ataco al soldado de la Concordia con mi hacha.', 'Golpeo al soldado antes de que dé la alarma.', 'Cargo contra el soldado de patrulla.'],
-    rollVariants: [{ attribute: 'fuerza', gradoExito: 'claro' }, { attribute: 'fuerza', gradoExito: 'fallo' }, { attribute: 'fuerza', gradoExito: 'con_coste' }],
+    rollVariants: [{ attribute: 'fuerza', gradoExito: 'claro' }, { attribute: 'fuerza', gradoExito: 'fallo' }],
   },
 
   // ── diálogo con NPC con nombre ──
@@ -539,7 +539,7 @@ const SEEDS: ScenarioSeed[] = [
       npcSlugsInScene: ['ulkha-ketg'],
     },
     actionVariants: ['Le pregunto a la Terk\'ikar Ulkha: "¿Puedo quedarme aquí una noche?"', 'Le digo a Ulkha: "Busco noticias de otros clanes."', 'Le pregunto a Ulkha por la guerra.'],
-    rollVariants: [null, { attribute: 'carisma', gradoExito: 'con_coste' }],
+    rollVariants: [null],
   },
   {
     id: 'dialogo-mercader',
@@ -751,7 +751,7 @@ const SEEDS: ScenarioSeed[] = [
       npcSlugsInScene: [],
     },
     actionVariants: ['Refuerzo mi armadura con las placas óseas que llevo.', 'Intento coser las placas a mi peto de cuero.', 'Trato de mejorar mi protección con lo que tengo a mano.', 'Fabrico una hombrera de hueso improvisada.'],
-    rollVariants: [{ attribute: 'fuerza', gradoExito: 'claro' }, { attribute: 'fuerza', gradoExito: 'con_coste' }],
+    rollVariants: [{ attribute: 'fuerza', gradoExito: 'claro' }],
   },
 
   // ── descanso ──
@@ -1034,7 +1034,7 @@ const SEEDS: ScenarioSeed[] = [
       npcSlugsInScene: ['canizor'],
     },
     actionVariants: ['Ataco al canizor con mi hacha.', 'Golpeo al canizor antes de que se abalance.', 'Me lanzo contra el canizor.'],
-    rollVariants: [{ attribute: 'fuerza', gradoExito: 'claro' }, { attribute: 'fuerza', gradoExito: 'fallo' }, { attribute: 'destreza', gradoExito: 'con_coste' }],
+    rollVariants: [{ attribute: 'fuerza', gradoExito: 'claro' }, { attribute: 'fuerza', gradoExito: 'fallo' }],
   },
   {
     id: 'combate-cruzavientos',
@@ -1046,7 +1046,7 @@ const SEEDS: ScenarioSeed[] = [
       npcSlugsInScene: ['cruzavientos'],
     },
     actionVariants: ['Ataco al cruzavientos mientras planea sobre mí.', 'Golpeo al cruzavientos con mi hacha.', 'Intento derribar al cruzavientos de un golpe.'],
-    rollVariants: [{ attribute: 'destreza', gradoExito: 'claro' }, { attribute: 'destreza', gradoExito: 'fallo' }, { attribute: 'fuerza', gradoExito: 'con_coste' }],
+    rollVariants: [{ attribute: 'destreza', gradoExito: 'claro' }, { attribute: 'destreza', gradoExito: 'fallo' }],
   },
   {
     id: 'combate-corredor-cauce',

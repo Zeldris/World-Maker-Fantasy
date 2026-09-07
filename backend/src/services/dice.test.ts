@@ -38,15 +38,16 @@ describe('rollD20', () => {
   });
 });
 
+// Hallazgo 15/19b (revisar-partida-hallazgos.md 2026-09-07) — "con coste" retirado: era
+// puramente cosmético en combate (el desenlace real ya lo decide el margen en outcomeForMargin,
+// combatExchange.ts, nunca gradoExito) y a veces contradecía el resultado real del intercambio.
+// Binario desde entonces — GradoRecurso (recolección, más abajo) SÍ conserva su tercer grado,
+// con efecto mecánico real (mitad de cantidad), y queda fuera de este cambio.
 describe('gradoExitoFor', () => {
-  it('claro cuando el resultado supera la dificultad en 5 o más', () => {
+  it('claro cuando el resultado alcanza o supera la dificultad', () => {
     expect(gradoExitoFor(20, 15)).toBe('claro');
-    expect(gradoExitoFor(19, 15)).toBe('con_coste');
-  });
-
-  it('con_coste cuando el resultado iguala o supera la dificultad, pero por menos de 5', () => {
-    expect(gradoExitoFor(15, 15)).toBe('con_coste');
-    expect(gradoExitoFor(18, 15)).toBe('con_coste');
+    expect(gradoExitoFor(19, 15)).toBe('claro');
+    expect(gradoExitoFor(15, 15)).toBe('claro');
   });
 
   it('fallo cuando el resultado no llega a la dificultad', () => {
