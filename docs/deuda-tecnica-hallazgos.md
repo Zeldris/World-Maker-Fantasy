@@ -201,9 +201,11 @@ Es el módulo más nuevo (2026-08-25) y el que menos red de seguridad tiene.
 - `recolectar.ts` (844 líneas: 3 rutas + agrupado por categoría, tiradas, caché congelada, guards de
   herramienta/estación/clima) está al límite de "un archivo, una responsabilidad" — bien documentado
   y probado, no urgente, pero una cuarta variante forzaría a dividirlo.
-- `world.ts:404` — construcción del filtro de facciones por `saveId` documenta un bug ya evitado
-  (`{ saveId: saveId ?? undefined }` filtraría mal en Prisma) pero sin ningún test que fije ese
-  comportamiento (que una partida sin `saveId` no vea facciones de otras partidas).
+- ~~`world.ts:404` — construcción del filtro de facciones por `saveId`... sin ningún test~~ FALSO
+  POSITIVO (confirmado 2026-09-08): `world.test.ts` ya tiene el `describe('sección "Facciones"')`
+  con los 2 casos exactos ("con saveId, la query pide catálogo + la fundada en ESA partida" / "sin
+  saveId, solo el catálogo") — existe desde el commit `ffce4c6` (2026-08-07), muy anterior a esta
+  auditoría del 2026-08-25.
 - `progression.ts` captura errores de la transacción con un `catch` genérico que devuelve 500 sin
   loggear la causa real — dificulta depurar en producción.
 - **No se encontró código muerto real ni tipado débil sistémico** en `routes/` (cero `any`, `as
@@ -352,11 +354,13 @@ Compañeros y depositar/retirar del Almacén o reasignar plantillas, abrir Reino
 habilidad nueva en Habilidades, o pulsar el botón de Desollar — todo mecánicamente activo mientras
 el personaje está narrativamente muerto y a la espera de que se decida dónde reaparece.
 
-**Estado**: PENDIENTE — requiere decisión de la usuaria. No está claro si el diseño pretendido es
-"bloquear TODO menos el propio POST /death/resolve mientras hay una muerte pendiente" (mismo
-espíritu que `save.endedAt`, pero para un estado transitorio en vez de definitivo) o si algunas de
-estas acciones (p.ej. reorganizar el propio inventario) se consideran inocuas de dejar pasar incluso
-con una muerte sin resolver. No se ha tocado código de producción.
+**Estado**: CERRADO (2026-09-07/08, commits `b717171` + `2b90f6e`) — decisión confirmada con la
+usuaria: bloquear TODO hasta Aceptar, sin distinguir casos. Backend: `rejectIfPendingDeath`
+(`shared.ts`, hermana de `rejectIfEnded`) añadida en los 36 puntos donde ya existía `rejectIfEnded`
+en los 11 archivos listados arriba. Frontend: los 4 paneles (Inventario/Compañeros/Reino/
+Habilidades) quedan `disabled` de verdad vía `SideNav`, con cierre automático si ya estaban abiertos
+al morir, más el botón de Desollar. Tests de integración nuevos con verificación rigurosa en ambos
+commits.
 
 ## 2026-09-07 — /combat/matar/:npcSlug es el único de los 3 desenlaces desde CONVALECIENTE sin guard de save.endedAt
 
