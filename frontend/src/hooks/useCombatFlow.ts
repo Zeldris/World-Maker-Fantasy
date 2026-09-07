@@ -137,6 +137,17 @@ export function useCombatFlow(params: UseCombatFlowParams) {
   // habilidad operables durante esos ~10s. `true` desde que se programa el `setTimeout` de abajo
   // hasta que `applyTurnAwaitingDefense` corre de verdad.
   const [awaitingNextInitiative, setAwaitingNextInitiative] = useState(false)
+  // Bug real jugando en vivo (2026-09-07, "asegúrate de que vida/energía se ejecutan DESPUÉS de la
+  // tirada de combate, no antes"): mismo patrón EXACTO que `awaitingNextInitiative`/
+  // `applyTurnAwaitingDefense` de más abajo, pero para la animación del INTERCAMBIO (`DiceRollReveal`,
+  // LogPanel.tsx) — sin esto, `handleCombatTurnResolved` aplicaba condición/energía/vida del rival
+  // de golpe en cuanto respondía el backend, mientras los dados del golpe todavía podían seguir
+  // rodando en pantalla varios segundos más (la narración en streaming a veces termina de generarse
+  // ANTES de que la animación fija de `ROLL_DURATION_MS`×2 acabe). `setTimeout` fijo (no un callback
+  // `onAllLanded` del componente real, a diferencia de un primer intento descartado) — así no
+  // depende de que `DiceRollReveal` esté de verdad montado/visible en ese instante, mismo criterio
+  // de robustez que ya usa la iniciativa.
+  const [awaitingExchangeApply, setAwaitingExchangeApply] = useState(false)
   const [combatSelectedNpcSlug, setCombatSelectedNpcSlug] = useState<string | null>(null)
   const [combatSelectedAbilityId, setCombatSelectedAbilityId] = useState<string | null>(null)
   const [combatSelectedItemId, setCombatSelectedItemId] = useState<string | null>(null)
@@ -221,7 +232,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
 
   async function submitCombatAction(
     action: string,
-    opts: { savedActionId?: string; lootItemNames?: string[]; allowAfterEnded?: boolean; isItemUse?: boolean },
+    opts: { savedActionId?: string; lootItemNames?: string[]; allowAfterEnded?: boolean; isItemUse?: boolean; energyCost?: number },
   ): Promise<boolean> {
     // Bug real jugando en vivo (2026-07-31): Registrar/Decapitar/Saquear son las acciones que la
     // pantalla de combate YA terminado ofrece — sin `allowAfterEnded`, esas llamadas nunca
@@ -231,6 +242,15 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     // Bug real (2026-07-29, "no veo el cuadro rojo del narrador generando el texto" en combate):
     // combatBusy solo bloquea los botones de CombatPanel — nunca activaba `characterThinking`.
     setCharacterThinking(true)
+    // Bug real jugando en vivo (2026-09-07, "la energía que gastas se tiene que restar cuando
+    // eliges una habilidad, nada más le das a Actuar") — descuento OPTIMISTA en el instante de
+    // enviar, antes de esperar la respuesta del servidor: el coste ya es conocido de antemano (la
+    // ficha de la habilidad, no algo que dependa del resultado del intercambio). `handleCombatTurnResolved`
+    // sustituye este valor por el real del servidor en cuanto la respuesta llega, sin retraso —
+    // mismo criterio que el resto de esta función (nunca se queda "adelantado" para siempre).
+    if (opts.energyCost) {
+      setEnergia((prev) => Math.max(0, prev - opts.energyCost!))
+    }
     try {
       const classifyResult = await requestTurnClassify({ saveId, action, enCombate: true, savedActionId: opts.savedActionId })
       const { classification, roll } = classifyResult
@@ -364,11 +384,11 @@ export function useCombatFlow(params: UseCombatFlowParams) {
           combate: true,
         },
       ])
+      setDiceReveal(null)
       return false
     } finally {
       setCombatBusy(false)
       setCharacterThinking(false)
-      setDiceReveal(null)
     }
   }
 
@@ -589,7 +609,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     // Defensa a ciegas (rediseño del turno de combate, 2026-07-28): reactiva, sin objetivo propio
     // que elegir.
     if (combatAwaitingDefense) {
-      submitCombatAction(selectedAbility.promptText, { savedActionId: selectedAbility.id })
+      submitCombatAction(selectedAbility.promptText, { savedActionId: selectedAbility.id, energyCost: selectedAbility.energyCost })
       resetCombatSelection()
       return
     }
@@ -604,7 +624,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     // buitres a la vez") — cita "Buitre #2" cuando hace falta desambiguar, mismo sufijo que el
     // backend acepta al interpretar el texto (`turnResolution.ts`, `esperandoEleccionJugadora`).
     const action = selectedNpc ? `${base}, contra '${combatDisplayNameFor(selectedNpc)}'.` : selectedAbility.promptText
-    submitCombatAction(action, { savedActionId: selectedAbility.id })
+    submitCombatAction(action, { savedActionId: selectedAbility.id, energyCost: selectedAbility.energyCost })
     resetCombatSelection()
   }
 
@@ -706,61 +726,87 @@ export function useCombatFlow(params: UseCombatFlowParams) {
       setLevel(params.progression.newLevel)
       setPendingAttributePoints((prev) => prev + params.progression.attributePointsGained)
     }
-    setCondicionFisica(params.condicionFisica)
-    setPlayerActiveEffects(params.activeEffects)
     setEntorno(params.entorno)
-    setEnergia(params.energia)
-    setEnergiaMax(params.energiaMax)
-    setHambre(params.hambre)
-    setSed(params.sed)
     setFictionalDate(params.timeLabel)
     setLastInitiativeRoll(params.nextInitiativeRoll)
-    // Bug real jugando en vivo (2026-09-06): la vida/condición visible del rival (`combatNpcStates`)
-    // vivía atrapada dentro del mismo retraso que el título "de quién es el turno" (ver comentario
-    // de `applyTurnAwaitingDefense` más abajo) — pero el golpe YA se resolvió este turno, mostrarlo
-    // no tiene ninguna relación causal con cuánto tarde en rodar la animación de iniciativa
-    // siguiente. Se aplica de inmediato, igual que ya hacía `setCondicionFisica` del propio
-    // jugador un poco más arriba — antes el jugador veía su propia vida actualizada al instante
-    // pero la del rival se quedaba "vieja" varios segundos, saltando de golpe cuando la animación
-    // de iniciativa terminaba sin ninguna relación real entre ambas cosas.
-    //
-    // Bug real (auditoría 2026-07-28), sin cambios: esta función (la que resuelve CADA turno
-    // mientras el combate ya está abierto) nunca aplicaba el `combateIniciado` de la respuesta —
-    // un NPC nuevo añadido a media pelea quedaba invisible en CombatComposer.
-    if (params.combate && params.combate.npcs.length > 0) {
-      setCombateIniciado(params.combate)
-      setCombatNpcStates((prev) => {
-        // Identificador de combatientes duplicados (2026-08-27, bug real jugando: "ataqué a los
-        // dos buitres a la vez") — `combatKeyFor` (participantId cuando existe, slug si no) en vez
-        // de `slug` puro: dos combatientes del mismo Npc de catálogo ya no colapsan al mismo estado.
-        const bySlug = new Map(prev.map((n) => [combatKeyFor(n), n]))
-        for (const n of params.combate!.npcs) {
-          const real: CombatNpcDisplay = npcInSceneToCombatDisplay(n)
-          const key = combatKeyFor(n)
-          const local = bySlug.get(key)
-          if (!local) {
-            bySlug.set(key, real)
-            continue
+    // Bug real jugando en vivo (2026-09-07, "la energía que gastas se tiene que restar cuando
+    // eliges una habilidad, nada más le das a Actuar") — a diferencia de vida/condición (que SÍ
+    // reflejan el resultado de un golpe y deben esperar a que se vea, más abajo), la energía es el
+    // COSTE de haber elegido la habilidad, ya conocido de antemano — `submitCombatAction` ya la
+    // descuenta de forma optimista en el cliente en el instante de pulsar Actuar (antes de que
+    // exista siquiera esta respuesta). El valor real del servidor manda siempre en cuanto llega
+    // (nunca se queda "adelantado" indefinidamente si el cálculo real difiere del estimado), pero
+    // eso ocurre AQUÍ, no retrasado con el resto del intercambio — la energía no es algo que el
+    // jugador vea "rodar" en la animación de dados.
+    setEnergia(params.energia)
+    setEnergiaMax(params.energiaMax)
+    // Bug real jugando en vivo (2026-09-07, "asegúrate de que vida/energía se ejecutan DESPUÉS de
+    // la tirada de combate, no antes"): condición/hambre/sed del jugador y la vida/condición
+    // del rival (`combatNpcStates`) reflejan directamente el golpe que ACABA de resolverse en este
+    // intercambio — si `params.combatExchangeDisplay` existe, `DiceRollReveal` todavía puede seguir
+    // animando ese golpe en pantalla (`ROLL_DURATION_MS`×2, mismo criterio que la iniciativa un poco
+    // más abajo), así que aplicar el resultado real de inmediato podía adelantarse a lo que el
+    // jugador todavía está viendo rodar. Sin intercambio que animar (golpe gratis, invocación,
+    // Aturdimiento) no hay nada que esperar — se aplica igual que siempre, de inmediato.
+    const applyExchangeResult = () => {
+      setCondicionFisica(params.condicionFisica)
+      setPlayerActiveEffects(params.activeEffects)
+      setHambre(params.hambre)
+      setSed(params.sed)
+      // Bug real (auditoría 2026-07-28), sin cambios de fondo: esta función (la que resuelve CADA
+      // turno mientras el combate ya está abierto) nunca aplicaba el `combateIniciado` de la
+      // respuesta — un NPC nuevo añadido a media pelea quedaba invisible en CombatComposer.
+      if (params.combate && params.combate.npcs.length > 0) {
+        setCombateIniciado(params.combate)
+        setCombatNpcStates((prev) => {
+          // Identificador de combatientes duplicados (2026-08-27, bug real jugando: "ataqué a los
+          // dos buitres a la vez") — `combatKeyFor` (participantId cuando existe, slug si no) en vez
+          // de `slug` puro: dos combatientes del mismo Npc de catálogo ya no colapsan al mismo estado.
+          const bySlug = new Map(prev.map((n) => [combatKeyFor(n), n]))
+          for (const n of params.combate!.npcs) {
+            const real: CombatNpcDisplay = npcInSceneToCombatDisplay(n)
+            const key = combatKeyFor(n)
+            const local = bySlug.get(key)
+            if (!local) {
+              bySlug.set(key, real)
+              continue
+            }
+            // El backend manda: solo se sustituye el estado local si el real ha avanzado más (nunca
+            // "resucita" a alguien que el propio jugador ya vio caer más allá).
+            const avanza = CONDICION_ORDER.indexOf(real.condicion) > CONDICION_ORDER.indexOf(local.condicion)
+            if (avanza || (real.yaSaqueado && !local.yaSaqueado) || (real.analizado && !local.analizado)) {
+              bySlug.set(key, real)
+            } else if (real.lootedItemNames.length > local.lootedItemNames.length) {
+              // Saqueo parcial (2026-07-31): `lootedItemNames` solo crece, aunque `condicion`/
+              // `yaSaqueado` no hayan cambiado este turno.
+              bySlug.set(key, { ...local, lootedItemNames: n.lootedItemNames, activeEffects: real.activeEffects })
+            } else {
+              // Fase 2 de efectos de clase (2026-08-27) — a diferencia de `lootedItemNames`
+              // (solo crece), un `activeEffects` puede tanto ganar un efecto nuevo como perder uno
+              // que acaba de expirar en el MISMO turno — el backend manda siempre, sin comparar
+              // longitudes, aunque ninguna otra condición de arriba haya cambiado.
+              bySlug.set(key, { ...local, activeEffects: real.activeEffects })
+            }
           }
-          // El backend manda: solo se sustituye el estado local si el real ha avanzado más (nunca
-          // "resucita" a alguien que el propio jugador ya vio caer más allá).
-          const avanza = CONDICION_ORDER.indexOf(real.condicion) > CONDICION_ORDER.indexOf(local.condicion)
-          if (avanza || (real.yaSaqueado && !local.yaSaqueado) || (real.analizado && !local.analizado)) {
-            bySlug.set(key, real)
-          } else if (real.lootedItemNames.length > local.lootedItemNames.length) {
-            // Saqueo parcial (2026-07-31): `lootedItemNames` solo crece, aunque `condicion`/
-            // `yaSaqueado` no hayan cambiado este turno.
-            bySlug.set(key, { ...local, lootedItemNames: n.lootedItemNames, activeEffects: real.activeEffects })
-          } else {
-            // Fase 2 de efectos de clase (2026-08-27) — a diferencia de `lootedItemNames`
-            // (solo crece), un `activeEffects` puede tanto ganar un efecto nuevo como perder uno
-            // que acaba de expirar en el MISMO turno — el backend manda siempre, sin comparar
-            // longitudes, aunque ninguna otra condición de arriba haya cambiado.
-            bySlug.set(key, { ...local, activeEffects: real.activeEffects })
-          }
-        }
-        return Array.from(bySlug.values())
-      })
+          return Array.from(bySlug.values())
+        })
+      }
+    }
+    // `finDePartida` manda siempre (mismo criterio que `applyTurnAwaitingDefense` más abajo): si el
+    // combate termina de verdad este turno, no tiene sentido retrasar la condición final del
+    // jugador tras un cierre que ya lo resolvió todo.
+    if (params.combatExchangeDisplay && !params.finDePartida) {
+      setAwaitingExchangeApply(true)
+      setTimeout(() => {
+        applyExchangeResult()
+        setAwaitingExchangeApply(false)
+        // `DiceRollReveal` (LogPanel.tsx) ya terminó de animarse en este instante — deja de hacer
+        // falta seguir ocupando la tarjeta de "pensando" con él.
+        setDiceReveal(null)
+      }, 2 * ROLL_DURATION_MS)
+    } else {
+      applyExchangeResult()
+      setDiceReveal(null)
     }
     // Estado visual "de quién es el turno" (2026-09-04, bug real jugando en vivo: "el panel según
     // es turno de ataque o defensa está cambiando antes de color de lo que la tirada tarda en
@@ -840,6 +886,10 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     combatDifficulty,
     combatBusy,
     awaitingNextInitiative,
+    /// Bloquea composer/botones mientras `DiceRollReveal` del intercambio todavía anima (mismo
+    /// criterio que `awaitingNextInitiative` para la iniciativa) — sin esto, el jugador podía
+    /// mandar otro ataque antes de que el resultado del anterior terminara de mostrarse.
+    awaitingExchangeApply,
     combatEnded,
     combatPlayerJustDied,
     combatHasPendingConvalecientes,

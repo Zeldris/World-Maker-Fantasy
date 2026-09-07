@@ -3,6 +3,7 @@ import type { ChatComposerHandle } from '../components/ChatComposer'
 import { requestTurnClassify, requestTurnNarrate, getSave, type ClassifyResponse, type SaveDetail } from '../lib/api'
 import { isBusyError, isEndedGameError, isPendingDeathError, isTurnLockedError, applyInventoryDelta, questCompletedLogEntry } from '../lib/gameViewHelpers'
 import { playerActionEntry, nextId } from '../lib/simulateAI'
+import { ROLL_DURATION_MS } from '../components/DiceRoll'
 import type {
   ActiveEffect,
   BuildingInfo,
@@ -283,6 +284,7 @@ export function useTurnFlow(params: UseTurnFlowParams) {
         professionProgress: updatedProfessionProgress,
         combatEncounterLootSummary,
         discoveredLocationSlug,
+        combatExchangeDisplay,
       } = await requestTurnNarrate(
         {
           saveId,
@@ -301,14 +303,27 @@ export function useTurnFlow(params: UseTurnFlowParams) {
         },
       )
       setStreamingNarration(null)
-      setCondicionFisica(newCondicion)
-      setPlayerActiveEffects(newActiveEffects)
       setEntorno(newEntorno)
-      setEnergia(newEnergia)
-      setEnergiaMax(newEnergiaMax)
-      setHambre(newHambre)
-      setSed(newSed)
       setFictionalDate(newTimeLabel)
+      // Bug real jugando en vivo (2026-09-07, "vida/energía deben cambiar DESPUÉS de la tirada de
+      // combate, no antes") — mismo criterio que `useCombatFlow.ts § handleCombatTurnResolved`: si
+      // este turno (el que ABRE combate) trae ya un intercambio real resuelto (caso raro: una
+      // emboscada que golpea en el mismo turno que se detecta), retrasa condición/energía hasta que
+      // `DiceRollReveal` termine de animarlo, en vez de aplicarlo de inmediato mientras los dados
+      // todavía pueden seguir rodando en pantalla.
+      const applyExchangeResult = () => {
+        setCondicionFisica(newCondicion)
+        setPlayerActiveEffects(newActiveEffects)
+        setEnergia(newEnergia)
+        setEnergiaMax(newEnergiaMax)
+        setHambre(newHambre)
+        setSed(newSed)
+      }
+      if (combatExchangeDisplay && !finDePartida) {
+        setTimeout(applyExchangeResult, 2 * ROLL_DURATION_MS)
+      } else {
+        applyExchangeResult()
+      }
       // Las sugerencias del turno anterior ya no aplican a la escena nueva — se limpian aquí
       // (bajo demanda ahora, ver comentario de `suggestions` más arriba: se piden con su propio
       // botón, no llegan solas con cada narración).
@@ -478,11 +493,11 @@ export function useTurnFlow(params: UseTurnFlowParams) {
         setTimedThinkingText('Esperando confirmación del narrador...')
         await pollForResolution({ saveId, logLengthBeforeThisTurn, fictionalDate, syncFromSave, setCharacterLog })
       }
+      setDiceReveal(null)
     } finally {
       setCharacterThinking(false)
       setTimedThinkingText(null)
       setStreamingNarration(null)
-      setDiceReveal(null)
     }
   }
 

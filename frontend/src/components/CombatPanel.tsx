@@ -621,48 +621,44 @@ export function CombatPanel({
             petición explícita: "como en D&D, que el efecto de los dados suceda de verdad") — antes
             un badge de texto plano ya resuelto; ahora el mismo `DiceRollVs` que ya usa el
             intercambio de ataque/defensa, con el copy explicativo fuera del componente. */}
-        {awaitingDefense && (
-          <div
-            className={`rounded-lg border-2 px-3.5 py-2.5 text-sm font-semibold shadow-[0_0_16px_-6px_var(--color-accent-500)] ${
-              lastInitiativeRoll ? 'border-accent-500/70 bg-accent-500/15 text-accent-200' : 'border-accent-600/50 bg-accent-500/10 text-accent-200'
-            }`}
-          >
-            {lastInitiativeRoll ? (
-              <>
-                {initiativeRevealed ? 'Un enemigo actúa primero, elige a ciegas cómo defenderte.' : 'Tirando iniciativa...'}
-                <DiceRollVs
-                  // Hallazgo 27 (revisar-partida-hallazgos.md 2026-09-07) — sin `key`, React
-                  // reconcilia la MISMA instancia de `DiceRollVs` turno tras turno (misma posición
-                  // del árbol, `CombatPanel` se monta una única vez por combate): el
-                  // `useEffect(..., [])` interno de `useScrollIntoViewOnMount` (DiceRoll.tsx) solo
-                  // corre en el montaje real, así que el scroll automático a la tirada solo
-                  // funcionaba en la PRIMERA iniciativa del combate, nunca en las siguientes. Los
-                  // rolls crudos de esta tirada bastan como identidad — cambian en cada tirada real.
-                  key={`${lastInitiativeRoll.jugador.roll}-${lastInitiativeRoll.npc.roll}`}
-                  left={lastInitiativeRoll.jugador}
-                  right={lastInitiativeRoll.npc}
-                  leftLabel="Tú"
-                  rightLabel="el enemigo"
-                  leftFirst={lastInitiativeRoll.ganador === 'jugador'}
-                  showDifficulty={false}
-                  onAllLanded={() => setInitiativeRevealed(true)}
-                />
-              </>
-            ) : (
-              <>⚔️ Un enemigo actúa primero — elige a ciegas cómo defenderte.</>
-            )}
+        {awaitingDefense && !lastInitiativeRoll && (
+          <div className="rounded-lg border-2 border-accent-600/50 bg-accent-500/10 px-3.5 py-2.5 text-sm font-semibold text-accent-200 shadow-[0_0_16px_-6px_var(--color-accent-500)]">
+            ⚔️ Un enemigo actúa primero — elige a ciegas cómo defenderte.
           </div>
         )}
 
-        {!awaitingDefense && lastInitiativeRoll && (
-          <div className="rounded-lg border-2 border-danger-500/70 bg-danger-500/15 px-3.5 py-2.5 text-sm font-semibold text-danger-200 shadow-[0_0_16px_-6px_var(--color-danger-500)]">
+        {lastInitiativeRoll && (
+          <div
+            className={`rounded-lg border-2 px-3.5 py-2.5 text-sm font-semibold shadow-[0_0_16px_-6px_var(--color-accent-500)] ${
+              awaitingDefense ? 'border-accent-500/70 bg-accent-500/15 text-accent-200' : 'border-danger-500/70 bg-danger-500/15 text-danger-200'
+            }`}
+          >
+            {/* Bug real jugando en vivo (2026-09-07, "al acabar la tirada de iniciativa y cambiar
+                el color del panel, está volviendo a repetir la tirada otra vez") — hasta ahora este
+                era literalmente DOS bloques JSX distintos (`{awaitingDefense && (...)}` y
+                `{!awaitingDefense && lastInitiativeRoll && (...)}`), cada uno con su propio
+                `<DiceRollVs>`: pese a compartir la misma `key`, viven en posiciones distintas del
+                árbol, así que cambiar `awaitingDefense` desmontaba el de un bloque y montaba el del
+                otro como si fuera una tirada NUEVA — reiniciando la animación entera aunque
+                `lastInitiativeRoll` (los datos reales) no hubiera cambiado. Ahora es un ÚNICO bloque
+                real, con un solo `<DiceRollVs>` — solo el texto/color de alrededor varía con
+                `awaitingDefense`, nunca la propia tirada. */}
             {initiativeRevealed
-              ? lastInitiativeRoll.ganador === 'jugador'
-                ? 'Actúas primero.'
-                : 'El enemigo actuará primero en tu próximo turno.'
+              ? awaitingDefense
+                ? 'Un enemigo actúa primero, elige a ciegas cómo defenderte.'
+                : lastInitiativeRoll.ganador === 'jugador'
+                  ? 'Actúas primero.'
+                  : 'El enemigo actuará primero en tu próximo turno.'
               : 'Tirando iniciativa...'}
             <DiceRollVs
-              // Mismo motivo que el bloque `awaitingDefense` de arriba (hallazgo 27).
+              // Hallazgo 27 (revisar-partida-hallazgos.md 2026-09-07) — sin `key`, React reconcilia
+              // la MISMA instancia de `DiceRollVs` turno tras turno (misma posición del árbol,
+              // `CombatPanel` se monta una única vez por combate): el `useEffect(..., [])` interno de
+              // `useScrollIntoViewOnMount` (DiceRoll.tsx) solo corre en el montaje real, así que el
+              // scroll automático a la tirada solo funcionaba en la PRIMERA iniciativa del combate,
+              // nunca en las siguientes. Los rolls crudos de esta tirada bastan como identidad —
+              // cambian en cada tirada real (y ahora, con un único bloque, esta `key` es también lo
+              // único que fuerza un remount real: un cambio de `awaitingDefense` solo no lo hace).
               key={`${lastInitiativeRoll.jugador.roll}-${lastInitiativeRoll.npc.roll}`}
               left={lastInitiativeRoll.jugador}
               right={lastInitiativeRoll.npc}

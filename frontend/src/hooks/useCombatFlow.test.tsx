@@ -88,6 +88,10 @@ function useHarness(initialCombateIniciado: { npcs: NpcInSceneInfo[] } | null = 
   const [level, setLevel] = useState(1)
   const [pendingAttributePoints, setPendingAttributePoints] = useState(0)
   const [condicionFisica, setCondicionFisica] = useState<'ILESO' | 'HERIDO' | 'GRAVE' | 'CONVALECIENTE' | 'MUERTO'>('ILESO')
+  // Bug real jugando en vivo (2026-09-07, "vida/energía deben cambiar DESPUÉS de la tirada de
+  // combate") — estado real (no un vi.fn() mudo) para poder comprobar en las aserciones del test
+  // de más abajo si `energia` ya cambió o sigue con el valor de antes del turno.
+  const [energia, setEnergia] = useState(100)
   const [endedAt, setEndedAt] = useState<string | null>(null)
   const [carcassPending, setCarcassPending] = useState<boolean | null>(null)
   const [lastInitiativeRoll, setLastInitiativeRoll] = useState<InitiativeRollInfo | null>(null)
@@ -119,7 +123,7 @@ function useHarness(initialCombateIniciado: { npcs: NpcInSceneInfo[] } | null = 
     setCondicionFisica,
     setPlayerActiveEffects: vi.fn(),
     setEntorno: vi.fn(),
-    setEnergia: vi.fn(),
+    setEnergia,
     setEnergiaMax: vi.fn(),
     setHambre: vi.fn(),
     setSed: vi.fn(),
@@ -129,7 +133,7 @@ function useHarness(initialCombateIniciado: { npcs: NpcInSceneInfo[] } | null = 
     markCarcassPending: () => setCarcassPending(true),
   })
 
-  return { combat, combateIniciado, setCombateIniciado, inventory, characterLog, quests, deathCount, factionsStatus, xp, level, pendingAttributePoints, condicionFisica, endedAt, carcassPending, lastInitiativeRoll }
+  return { combat, combateIniciado, setCombateIniciado, inventory, characterLog, quests, deathCount, factionsStatus, xp, level, pendingAttributePoints, condicionFisica, energia, endedAt, carcassPending, lastInitiativeRoll }
 }
 
 beforeEach(() => {
@@ -875,5 +879,173 @@ describe('handleCombatTurnResolved — solo combatAwaitingDefense se retrasa has
     })
     expect(result.current.combat.combatOpen).toBe(false)
     expect(result.current.combateIniciado).toBeNull()
+  })
+})
+
+// Bug real jugando en vivo (2026-09-07, "asegúrate de que vida/energía se ejecutan DESPUÉS de la
+// tirada de combate, no antes"): a diferencia de `combatNpcStates`/`combatAwaitingDefense` (arriba,
+// ligados a la animación de INICIATIVA), esta familia cubre la animación del propio INTERCAMBIO
+// (`DiceRollReveal`, LogPanel.tsx, disparado por `onExchangeResolved` antes de que la respuesta
+// completa del turno llegue) — condición/energía/vida del rival deben esperar a que ese dado
+// termine de rodar, no aplicarse en cuanto responde el backend.
+describe('handleCombatTurnResolved — condición/energía/vida del rival se retrasan hasta que el intercambio termina de animar', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  const exchangeDisplay = {
+    atacanteEsJugador: true,
+    atacante: {
+      attribute: 'fuerza' as const,
+      value: 14,
+      valorEfectivo: 14,
+      multiplicador: 1,
+      malus: 0,
+      roll: 15,
+      rolls: [15],
+      rollMode: 'normal' as const,
+      attributeBonus: 0,
+      result: 22,
+      difficulty: 15,
+      success: true,
+      gradoExito: 'claro' as const,
+    },
+    defensor: {
+      attribute: 'destreza' as const,
+      value: 10,
+      valorEfectivo: 10,
+      multiplicador: 1,
+      malus: 0,
+      roll: 4,
+      rolls: [4],
+      rollMode: 'normal' as const,
+      attributeBonus: 0,
+      result: 9,
+      difficulty: 15,
+      success: false,
+      gradoExito: 'fallo' as const,
+    },
+    resultado: 'golpe_pleno' as const,
+    margen: 13,
+  }
+
+  it('con combatExchangeDisplay: condicionFisica/combatNpcStates esperan a que pasen 2×ROLL_DURATION_MS, pero energia se aplica de inmediato', async () => {
+    mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
+    mockNarrate.mockResolvedValue(
+      baseNarrateResponse({
+        condicionFisica: 'HERIDO',
+        energia: 70,
+        combatExchangeDisplay: exchangeDisplay,
+        combateIniciado: { npcs: [npc({ slug: 'ruptidar', name: 'Ruptidar', condicionFisica: 'HERIDO' })] },
+      }) as never,
+    )
+    const { result } = renderHook(() => useHarness())
+    act(() => result.current.setCombateIniciado({ npcs: [npc({ slug: 'ruptidar', name: 'Ruptidar', condicionFisica: 'ILESO' })] }))
+    act(() => result.current.combat.openCombat())
+    expect(result.current.condicionFisica).toBe('ILESO')
+    expect(result.current.energia).toBe(100)
+    expect(result.current.combat.combatNpcsDisplay[0]?.condicion).toBe('ILESO')
+
+    await act(() => result.current.combat.submitCombatAction('Ataco a mi enemigo', {}))
+
+    // El golpe ya se resolvió (el log/narración ya lo cuenta), y la energía (coste ya conocido de
+    // la habilidad, no algo que "ruede" en la animación) ya refleja el valor real del servidor de
+    // inmediato — pero el resultado mecánico del INTERCAMBIO en sí (condición propia, vida del
+    // rival) todavía NO debe haber cambiado, sigue reflejando el estado de ANTES de este turno
+    // hasta que `DiceRollReveal` termine de animar.
+    expect(result.current.condicionFisica).toBe('ILESO')
+    expect(result.current.energia).toBe(70)
+    expect(result.current.combat.combatNpcsDisplay[0]?.condicion).toBe('ILESO')
+    // Mismo criterio que `awaitingNextInitiative` — todo bloqueado mientras rueda la animación.
+    expect(result.current.combat.awaitingExchangeApply).toBe(true)
+
+    // Justo antes de que termine la animación (10s totales, 2 dados de 5s) — todavía nada.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(9999)
+    })
+    expect(result.current.condicionFisica).toBe('ILESO')
+    expect(result.current.combat.awaitingExchangeApply).toBe(true)
+
+    // Termina la animación — ahora sí se aplica, y el bloqueo se levanta a la vez.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1)
+    })
+    expect(result.current.condicionFisica).toBe('HERIDO')
+    expect(result.current.combat.combatNpcsDisplay[0]?.condicion).toBe('HERIDO')
+    expect(result.current.combat.awaitingExchangeApply).toBe(false)
+  })
+
+  // Bug real jugando en vivo (2026-09-07, "la energía que gastas se tiene que restar cuando eliges
+  // una habilidad, nada más le das a Actuar") — descuento OPTIMISTA en el cliente, antes incluso de
+  // que la respuesta del servidor llegue: el coste ya es conocido de antemano (la ficha de la
+  // habilidad), no algo que dependa del resultado del intercambio.
+  it('con energyCost: la energía baja de inmediato al enviar la acción, antes de que responda el servidor', async () => {
+    mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
+    let resolveNarrate!: (value: unknown) => void
+    mockNarrate.mockReturnValue(new Promise((resolve) => { resolveNarrate = resolve }) as never)
+    const { result } = renderHook(() => useHarness())
+    act(() => result.current.setCombateIniciado({ npcs: [npc({ slug: 'ruptidar', name: 'Ruptidar' })] }))
+    act(() => result.current.combat.openCombat())
+    expect(result.current.energia).toBe(100)
+
+    let submitPromise!: Promise<boolean>
+    act(() => {
+      submitPromise = result.current.combat.submitCombatAction('Ataco a mi enemigo', { energyCost: 15 })
+    })
+    // Todavía no ha respondido el servidor, pero la energía YA bajó en el cliente.
+    expect(result.current.energia).toBe(85)
+
+    await act(async () => {
+      resolveNarrate(baseNarrateResponse({ energia: 82, combatExchangeDisplay: null }))
+      await submitPromise
+    })
+    // El valor real del servidor (82, no 85 — el estimado del cliente era aproximado) manda en
+    // cuanto llega, sin esperar a ninguna animación.
+    expect(result.current.energia).toBe(82)
+  })
+
+  it('sin combatExchangeDisplay (golpe gratis/invocación, sin tirada de intercambio que animar): se aplica de inmediato', async () => {
+    mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
+    mockNarrate.mockResolvedValue(
+      baseNarrateResponse({
+        condicionFisica: 'HERIDO',
+        energia: 70,
+        combatExchangeDisplay: null,
+        combateIniciado: { npcs: [npc({ slug: 'ruptidar', name: 'Ruptidar', condicionFisica: 'HERIDO' })] },
+      }) as never,
+    )
+    const { result } = renderHook(() => useHarness())
+    act(() => result.current.setCombateIniciado({ npcs: [npc({ slug: 'ruptidar', name: 'Ruptidar', condicionFisica: 'ILESO' })] }))
+    act(() => result.current.combat.openCombat())
+
+    await act(() => result.current.combat.submitCombatAction('Ataco a mi enemigo', {}))
+
+    expect(result.current.condicionFisica).toBe('HERIDO')
+    expect(result.current.energia).toBe(70)
+    expect(result.current.combat.combatNpcsDisplay[0]?.condicion).toBe('HERIDO')
+    expect(result.current.combat.awaitingExchangeApply).toBe(false)
+  })
+
+  it('con finDePartida en el mismo turno que combatExchangeDisplay: se aplica de inmediato, sin retraso', async () => {
+    mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
+    mockNarrate.mockResolvedValue(
+      baseNarrateResponse({
+        condicionFisica: 'MUERTO',
+        finDePartida: true,
+        combatExchangeDisplay: exchangeDisplay,
+      }) as never,
+    )
+    const { result } = renderHook(() => useHarness())
+    act(() => result.current.setCombateIniciado({ npcs: [npc({ slug: 'ruptidar', name: 'Ruptidar' })] }))
+    act(() => result.current.combat.openCombat())
+
+    await act(() => result.current.combat.submitCombatAction('Ataco a mi enemigo', {}))
+
+    expect(result.current.condicionFisica).toBe('MUERTO')
+    expect(result.current.combat.awaitingExchangeApply).toBe(false)
   })
 })

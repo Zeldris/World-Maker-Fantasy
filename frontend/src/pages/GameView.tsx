@@ -1790,7 +1790,7 @@ export function GameView() {
               // no la animación posterior de `DiceRollVs` (2×ROLL_DURATION_MS) para la iniciativa
               // siguiente: sin esto, el jugador podía lanzar una habilidad mientras los dados
               // todavía están rodando en pantalla.
-              busy={combat.combatBusy || combat.awaitingNextInitiative}
+              busy={combat.combatBusy || combat.awaitingNextInitiative || combat.awaitingExchangeApply}
               ended={combat.combatEnded}
               playerJustDied={combat.combatPlayerJustDied}
               pendingDecisions={combat.combatHasPendingConvalecientes}
@@ -1927,7 +1927,7 @@ export function GameView() {
           freeText={combat.combatFreeText}
           onFreeTextChange={combat.setCombatFreeText}
           onSubmit={combat.handleCombatFreeSubmit}
-          busy={combat.combatBusy || combat.awaitingNextInitiative}
+          busy={combat.combatBusy || combat.awaitingNextInitiative || combat.awaitingExchangeApply}
           ended={combat.combatEnded}
           pendingDecisions={combat.combatHasPendingConvalecientes}
         />

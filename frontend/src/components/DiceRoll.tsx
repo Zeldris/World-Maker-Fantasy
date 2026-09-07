@@ -54,16 +54,27 @@ export function DiceFace({
   startDelayMs,
   showDifficulty,
   difficultyTooltip,
+  forcedGrado,
 }: {
   label: string
   side: RollInfo | CombatExchangeSideInfo
   startDelayMs: number
   difficultyTooltip?: string
   showDifficulty: boolean
+  /// Bug real jugando en vivo (2026-09-07, "las dos tiradas de combate deberían ser mi tirada vs
+  /// la suya, no contra una dificultad"): en un check OPUESTO (iniciativa, y cualquier intercambio
+  /// de combate que ya compara directo — `esCheckOpuesto`, CombatExchangeBadge.tsx), cada lado se
+  /// calcula igualmente con `difficulty: 0` de relleno (ver `rollInitiative`/`resolveExchange`,
+  /// backend), así que `gradoOf(side)` (== `side.success`) da SIEMPRE "claro" para los dos lados —
+  /// el número aterrizaba siempre en verde/éxito, ganara o no la comparación real. `forcedGrado`
+  /// (calculado por el padre, `DiceRollVs`, comparando ambos `result` directamente) sustituye a
+  /// `gradoOf` cuando se pasa — mismo criterio que ya usa `winnerSide` (CombatExchangeBadge.tsx)
+  /// para el resumen posterior, ahora también en la animación en vivo.
+  forcedGrado?: 'claro' | 'fallo'
 }) {
   const [display, setDisplay] = useState<number | null>(null)
   const [landed, setLanded] = useState(false)
-  const grado = gradoOf(side)
+  const grado = forcedGrado ?? gradoOf(side)
   const enriched = side as Partial<CombatExchangeSideInfo>
 
   useEffect(() => {
@@ -196,6 +207,26 @@ export function DiceRollSingle({ roll, label, showDifficulty = true }: { roll: R
   )
 }
 
+/// Bug real jugando en vivo (2026-09-07, ver comentario largo de `DiceFace.forcedGrado`) — en un
+/// check OPUESTO (`!showDifficulty`), quién "gana" cada lado es una comparación directa entre
+/// ambos resultados, nunca contra la `difficulty: 0` de relleno que trae cada lado por separado.
+/// Empate exacto → gana el DEFENSOR (mismo criterio ya documentado en combatExchange.ts §
+/// resolveExchange: "el golpe no logra superar la defensa") — aquí no hay atacante/defensor
+/// explícito, solo left/right, así que el empate se resuelve a favor de `right` (el lado que la
+/// convención de este componente ya trata como "el otro", ver `rightLabel ?? 'el enemigo'`).
+/// Extraída como función pura (testeable sin montar el componente).
+export function forcedGradosFor(
+  leftResult: number,
+  rightResult: number,
+  showDifficulty: boolean,
+): { leftGrado: 'claro' | 'fallo' | undefined; rightGrado: 'claro' | 'fallo' | undefined } {
+  if (showDifficulty) return { leftGrado: undefined, rightGrado: undefined }
+  return {
+    leftGrado: leftResult > rightResult ? 'claro' : 'fallo',
+    rightGrado: rightResult >= leftResult ? 'claro' : 'fallo',
+  }
+}
+
 /// Tirada opuesta ("vs") — dos lados, uno cae primero y el otro no empieza a girar hasta que el
 /// primero aterriza del todo (secuencial, no en paralelo). Usada por combate (vía `DiceRollReveal`),
 /// iniciativa, y Tameo/captura.
@@ -236,11 +267,13 @@ export function DiceRollVs({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- misma disciplina que DiceFace: arranca una sola vez por tirada, `leftDelayMs`/`rightDelayMs`/`onAllLanded` son estables durante su vida
   }, [])
 
+  const { leftGrado, rightGrado } = forcedGradosFor(left.result, right.result, showDifficulty)
+
   return (
     <div ref={ref} className="animate-entry-in mt-2 flex items-center justify-center gap-14 rounded-lg border border-dashed border-iron-700 bg-wood-950/30 px-3 py-3">
-      <DiceFace label={leftLabel ?? 'Tú'} side={left} startDelayMs={leftDelayMs} showDifficulty={showDifficulty} />
+      <DiceFace label={leftLabel ?? 'Tú'} side={left} startDelayMs={leftDelayMs} showDifficulty={showDifficulty} forcedGrado={leftGrado} />
       <span className="text-xs text-wood-600">vs</span>
-      <DiceFace label={rightLabel ?? 'el enemigo'} side={right} startDelayMs={rightDelayMs} showDifficulty={showDifficulty} />
+      <DiceFace label={rightLabel ?? 'el enemigo'} side={right} startDelayMs={rightDelayMs} showDifficulty={showDifficulty} forcedGrado={rightGrado} />
     </div>
   )
 }
