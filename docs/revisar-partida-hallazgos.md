@@ -722,8 +722,19 @@ la sesión de pruebas encontró MÁS problemas del mismo área que esos fixes no
     recursos necesarios o no** — o, alternativamente, mostrarse habilitadas/deshabilitadas (con
     sombreado) según si se puede craftear ya mismo o no. **PENDIENTE.**
 41. **"Infusión de Pétalos de Flor de Ceniza" aparece como RECOLECTABLE cuando debería ser
-    CRAFTEABLE** (una infusión no se recolecta directamente de la naturaleza, se prepara). **PENDIENTE
-    — revisar su ficha en `worldCatalog.ts`, parece un item mal clasificado.**
+    CRAFTEABLE** (una infusión no se recolecta directamente de la naturaleza, se prepara). **NO ES
+    UN BUG DE CLASIFICACIÓN — es una decisión de balance ya tomada (2026-08-13, sistema de
+    Primeros Auxilios): `flor-de-ceniza` da esta infusión "en crudo" a propósito, deliberadamente
+    MÁS FUERTE que las 3 recetas crafteadas de la profesión (curan HERIDO/GRAVE de golpe sin
+    craftear nada, según el comentario de esa sesión) — el crafteo existe solo para el escalón
+    final (HERIDO→ILESO), no para competir con la materia prima. Decisión confirmada con la usuaria
+    (2026-09-07): SÍ quiere cambiarlo a crafteable de verdad (mover `flor-de-ceniza` a dar un
+    ingrediente crudo distinto — pétalos sueltos — y añadir una receta de crafteo para la infusión),
+    pero **solo apuntado por ahora, no implementado esta sesión** — el cambio exige también revisar
+    el balance de las 3 recetas de Primeros Auxilios que hoy asumen que la infusión cruda es más
+    fuerte que cualquiera de ellas, trabajo de diseño aparte que no se aborda aquí. **PENDIENTE DE
+    IMPLEMENTAR EN OTRA SESIÓN — `worldCatalog.ts`, HarvestYield de `flor-de-ceniza` (línea ~6832)
+    + nueva CraftingRecipe + revisar balance de `vendaje-improvisado-orcos-llanuras` y hermanas.**
 42. **Las sugerencias de acción ("💡 Sugerir") se descartan del juego por ahora** — decisión
     explícita de la usuaria: "son malísimas y no aportan casi ningún valor... por ahora lo
     descartamos... dejándolo pendiente por si algún día lo mejoramos". **ACCIÓN CLARA: quitar el
