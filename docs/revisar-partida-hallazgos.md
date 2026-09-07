@@ -717,7 +717,25 @@ la sesión de pruebas encontró MÁS problemas del mismo área que esos fixes no
     en el prompt en vez de un link/chip que luego se sustituya** — se pide que, igual que otros
     chips ya clicables, insertar una habilidad de crafteo en el composer deje un link que en la
     narración final se sustituya por el texto real, en vez de pegar el texto completo de la
-    habilidad tal cual en el campo de escritura. **PENDIENTE.**
+    habilidad tal cual en el campo de escritura. **CERRADO (2026-09-07)**: mecanismo de chip
+    (`insertChip`/`ComposerChip.value`, `ChatComposer.tsx`) ya existía y era reutilizable — no hizo
+    falta diseñar nada nuevo. Causa raíz: todas las tarjetas de habilidad (combate y crafteo)
+    comparten un único `handleAttachAbility` (`GameView.tsx`), cuya rama final por defecto (sin
+    modal propio) llamaba `setText(ability.promptText)` — decisión explícita de 2026-08-30 para
+    habilidades GENERALES de combate ("sustituir, no concatenar"), aplicada sin querer también a
+    recetas de crafteo, pegando el texto completo en vez de un chip. Fix: nueva rama para
+    `ability.category === 'profesion'` (criterio ya usado en el resto del archivo para distinguir
+    crafteo) que guarda `{ chip: {...} }` en `pendingComposerTextRef` en vez de un string — mismo
+    patrón ya existente de "texto pendiente hasta que el composer se remonte" (bug de 2026-08-30,
+    la barra de habilidades desmonta `ChatComposer`), extendido para admitir también un chip
+    pendiente (`clear()` + `insertChip()` en vez de `setText()`). El valor real que lee el modelo
+    (`promptText`) sigue viajando igual (`ComposerChip.value`); solo cambia lo que se VE en el
+    composer — nombre corto + icono en vez de texto largo. Combate general (fuera de `'profesion'`)
+    sin cambios, sigue con `setText` tal como la usuaria ya había decidido. Verificado: `tsc -b`
+    limpio, suite completa de frontend en verde (210 tests, sin regresión) — sin test dedicado
+    (`GameView.tsx`/`ChatComposer.tsx` no tienen test unitario propio en todo el proyecto, se
+    prueban jugando en vivo). Pendiente reverificar en vivo con Playwright: pulsar una receta de
+    crafteo y confirmar que el composer muestra un chip corto, no el texto completo de la acción.
 40. **Las habilidades/recetas de crafteo deberían mostrar en el hover si el jugador tiene los
     recursos necesarios o no** — o, alternativamente, mostrarse habilitadas/deshabilitadas (con
     sombreado) según si se puede craftear ya mismo o no. **PENDIENTE.**

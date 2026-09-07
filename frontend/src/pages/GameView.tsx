@@ -4,6 +4,7 @@ import { useSession } from '../context/useSession'
 import { LogPanel } from '../components/LogPanel'
 import { CollapsedRail } from '../components/CollapsedRail'
 import { ChatComposer, type ChatComposerHandle } from '../components/ChatComposer'
+import type { ComposerChip } from '../types'
 // Sugerencias desactivadas (2026-09-06, ver comentario junto a `suggestions` más abajo) —
 // `SuggestionBar` deja de importarse mientras la entrada visible está oculta.
 // import { SuggestionBar } from '../components/SuggestionBar'
@@ -316,10 +317,21 @@ export function GameView() {
   // siquiera está montado — cambiar de vista es asíncrono, así que escribir en `composerRef` en la
   // MISMA función no llega a tiempo (la ref sigue `null` hasta el próximo render). Se guarda aquí
   // el texto pendiente y este efecto lo aplica en cuanto el composer se remonta de verdad.
-  const pendingComposerTextRef = useRef<string | null>(null)
+  //
+  // Hallazgo 39 (revisar-partida-hallazgos.md 2026-09-07, "el texto completo de la habilidad se
+  // pega en el prompt en vez de un link/chip") — para una receta de CRAFTEO, `{ chip: ... }` en vez
+  // de texto plano: mismo criterio de "sustituir, no concatenar" (comentario de 2026-08-30 más
+  // abajo), pero mostrando el nombre corto + icono en vez del `promptText` completo editable.
+  const pendingComposerTextRef = useRef<string | { chip: ComposerChip } | null>(null)
   useEffect(() => {
     if (skillHudView.screen === 'composer' && pendingComposerTextRef.current !== null) {
-      composerRef.current?.setText(pendingComposerTextRef.current)
+      const pending = pendingComposerTextRef.current
+      if (typeof pending === 'string') {
+        composerRef.current?.setText(pending)
+      } else {
+        composerRef.current?.clear()
+        composerRef.current?.insertChip(pending.chip)
+      }
       pendingComposerTextRef.current = null
     }
   }, [skillHudView])
@@ -1114,6 +1126,18 @@ export function GameView() {
     // efecto de `pendingComposerTextRef` de arriba lo aplica en cuanto el composer se remonta de
     // verdad (cambiar de vista es asíncrono, `composerRef.current` seguiría `null` si se llamara
     // aquí mismo en la misma función).
+    //
+    // Hallazgo 39 (2026-09-07) — receta de CRAFTEO (`category === 'profesion'`, y no cayó ya en
+    // ninguno de los modales especiales de arriba — Minar/Talar/Cazar/etc. también son
+    // `'profesion'` pero abren su propio pop-up): mismo "sustituir, no concatenar" de siempre, pero
+    // como CHIP (nombre corto + icono), no como texto plano largo pegado en el composer. El valor
+    // real que lee el modelo (`promptText`) sigue viajando igual, solo cambia lo que se VE.
+    if (ability.category === 'profesion') {
+      pendingComposerTextRef.current = { chip: { icon: ability.icon, label: ability.name, description: ability.description, value: ability.promptText } }
+      setSkillHudView({ screen: 'composer' })
+      setActivePanel(null)
+      return
+    }
     pendingComposerTextRef.current = ability.promptText
     setSkillHudView({ screen: 'composer' })
     setActivePanel(null)
