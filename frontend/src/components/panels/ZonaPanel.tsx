@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { getZona, resolveImageUrl, recogerDroppedItem, type ZonaResponse, type ZonePointInfo, type ZonaDinamicoInfo, type RegionControlInfo } from '../../lib/api'
+import { useEffect, useRef, useState } from 'react'
+import { getZona, moverEnZona, resolveImageUrl, recogerDroppedItem, type ZonaResponse, type ZonePointInfo, type ZonaDinamicoInfo, type RegionControlInfo } from '../../lib/api'
 import { ZonePointDetailModal, zonaDinamicoToDetailSource } from '../ZonePointDetailModal'
 
 interface ZonaPanelProps {
@@ -129,6 +129,11 @@ function regionControlDisplay(control: RegionControlInfo): { text: string; tone:
   }
 }
 
+/// Sistema de movimiento por cuadrícula (2026-09-08) — cada paso anima ~250ms, ritmo similar al
+/// resto de animaciones cortas del proyecto (revelado de tirada, etc.) sin sentirse lento en un
+/// trayecto de varias celdas.
+const MS_POR_PASO_MOVIMIENTO = 250
+
 export function ZonaPanel({ saveId }: ZonaPanelProps) {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<ZonaResponse | null>(null)
@@ -136,6 +141,16 @@ export function ZonaPanel({ saveId }: ZonaPanelProps) {
   // Modal de detalle (2026-09-04) — comparte un mismo modal entre ZonePoint reales (`puntos`) y
   // dinámicos (`dinamicos`, sin ZonePoint sembrado), vía `zonaDinamicoToDetailSource`.
   const [selectedPoint, setSelectedPoint] = useState<ZonePointInfo | ZonaDinamicoInfo | null>(null)
+  // Sistema de movimiento por cuadrícula (2026-09-08) — mensaje simple de colisión/aviso ("por
+  // ahora, acabaremos metiendo una animación" — placeholder consciente hasta que Franja 3 conecte
+  // esto con combate/Interactuar real). `movimientoEnCurso` deshabilita nuevos clics mientras se
+  // anima el trayecto actual, para no solapar dos llamadas al backend a la vez.
+  const [mensajeMovimiento, setMensajeMovimiento] = useState<string | null>(null)
+  const [movimientoEnCurso, setMovimientoEnCurso] = useState(false)
+  // Token de cancelación (2026-09-08) — si el jugador clica un destino NUEVO a mitad de la
+  // animación del anterior, el bucle en curso debe parar de seguir pidiendo pasos del trayecto
+  // viejo; comparar contra el token actual en cada iteración es más simple que cancelar promesas.
+  const movimientoTokenRef = useRef(0)
 
   useEffect(() => {
     setLoading(true)
@@ -150,6 +165,39 @@ export function ZonaPanel({ saveId }: ZonaPanelProps) {
   async function handleRecoger(droppedItemId: string) {
     await recogerDroppedItem(saveId, droppedItemId)
     getZona(saveId).then(setData).catch(() => {})
+  }
+
+  // Sistema de movimiento por cuadrícula (2026-09-08) — clic en el lienzo (fondo o pin) pide el
+  // destino real en píxel; el backend calcula el camino entero pero solo avanza UN PASO por
+  // llamada (mismo criterio "el motor decide, el frontend solo pide"), así que aquí se sigue
+  // llamando con el MISMO destino hasta agotar `caminoRestante` o toparse con `colision`/`aviso`.
+  async function handleMoverA(destino: { x: number; y: number }) {
+    const miToken = ++movimientoTokenRef.current
+    setMovimientoEnCurso(true)
+    setMensajeMovimiento(null)
+    try {
+      let sigue = true
+      while (sigue && movimientoTokenRef.current === miToken) {
+        const resultado = await moverEnZona(saveId, destino)
+        if (movimientoTokenRef.current !== miToken) break // cancelado por un clic nuevo mientras esperaba
+        setData((prev) => (prev ? { ...prev, jugador: resultado.jugador } : prev))
+        if (resultado.colision) {
+          setMensajeMovimiento(`Te topas con ${resultado.colision.targetName}.`)
+          sigue = false
+        } else if (resultado.aviso) {
+          setMensajeMovimiento(`Algo se mueve cerca: ${resultado.aviso.targetName}.`)
+          sigue = false
+        } else if (resultado.caminoRestante.length === 0) {
+          sigue = false
+        } else {
+          await new Promise((r) => setTimeout(r, MS_POR_PASO_MOVIMIENTO))
+        }
+      }
+    } catch {
+      if (movimientoTokenRef.current === miToken) setMensajeMovimiento('No se pudo mover — inténtalo de nuevo.')
+    } finally {
+      if (movimientoTokenRef.current === miToken) setMovimientoEnCurso(false)
+    }
   }
 
   if (loading) return <p className="text-sm italic text-wood-500">Cargando zona...</p>
@@ -168,6 +216,9 @@ export function ZonaPanel({ saveId }: ZonaPanelProps) {
             (pendiente de generación de imagen, mismo mecanismo que el resto de assets). Tono por
             estado (C.6) para que no se lea como metadata secundaria (mismo tono que un timestamp). */}
         {data.regionControl && <p className={`text-xs font-medium ${regionControlDisplay(data.regionControl).tone}`}>{regionControlDisplay(data.regionControl).text}</p>}
+        {/* Sistema de movimiento por cuadrícula (2026-09-08) — mensaje simple de colisión/aviso,
+            placeholder consciente hasta que se conecte con combate/Interactuar real (Franja 3). */}
+        {mensajeMovimiento && <p className="text-xs font-medium text-accent2-300">{mensajeMovimiento}</p>}
         {/* Lienzo de puntos (2026-08-31, bug real: el comentario de esta sección ya decía "imagen
             de fondo y pines son independientes" desde 2026-08-30, pero el código seguía
             condicionando el `<svg>` ENTERO (imagen Y pines) a `imageUrl` — sin PNG subido, los
@@ -182,10 +233,30 @@ export function ZonaPanel({ saveId }: ZonaPanelProps) {
             propio marcador del jugador). */}
         {(data.puntos.length > 0 || dinamicos.length > 0 || data.jugador) && (
           <div className="overflow-hidden rounded-lg border border-iron-700 bg-wood-950/60">
-            <svg viewBox="0 0 800 600" className="h-auto w-full">
+            {/* Sistema de movimiento por cuadrícula (2026-09-08) — clic en el LIENZO (fondo, no un
+                pin) mueve al jugador hacia ese punto; `getScreenCTM().inverse()` convierte la
+                coordenada de pantalla del clic a coordenadas reales del viewBox 800×600 (el SVG se
+                escala con CSS, `clientX/Y` por sí solos no sirven). Los pines paran la propagación
+                (`stopPropagation`) para que clicar uno siga abriendo su modal de detalle, sin
+                disparar también un movimiento hacia ese punto. */}
+            <svg
+              viewBox="0 0 800 600"
+              className={`h-auto w-full ${movimientoEnCurso ? 'cursor-wait' : 'cursor-crosshair'}`}
+              onClick={(e) => {
+                if (movimientoEnCurso) return
+                const svg = e.currentTarget
+                const punto = svg.createSVGPoint()
+                punto.x = e.clientX
+                punto.y = e.clientY
+                const ctm = svg.getScreenCTM()
+                if (!ctm) return
+                const local = punto.matrixTransform(ctm.inverse())
+                handleMoverA({ x: local.x, y: local.y })
+              }}
+            >
               {imageUrl && <image href={imageUrl} x={0} y={0} width={800} height={600} preserveAspectRatio="xMidYMid slice" />}
               {data.puntos.map((p) => (
-                <g key={p.id} onClick={() => setSelectedPoint(p)} className="cursor-pointer">
+                <g key={p.id} onClick={(e) => { e.stopPropagation(); setSelectedPoint(p) }} className="cursor-pointer">
                   <ZonePointShape tipo={p.tipo} x={p.x} y={p.y} color={COLOR_HEX[p.color]} />
                   {/* C.5 (checklist frontend 2026-08-27) — con 2 dígitos, el número centrado
                       dentro del icono podía sobresalir de formas estrechas (rombo/triángulo);
@@ -210,7 +281,7 @@ export function ZonaPanel({ saveId }: ZonaPanelProps) {
                   la posición asignada por el backend (`posicionAleatoriaEnLienzo`), reutilizando
                   `ZonePointShape` tal cual (su `tipo` ya es subconjunto válido). */}
               {dinamicos.map((d) => (
-                <g key={d.slug} onClick={() => setSelectedPoint(d)} className="cursor-pointer">
+                <g key={d.slug} onClick={(e) => { e.stopPropagation(); setSelectedPoint(d) }} className="cursor-pointer">
                   <ZonePointShape tipo={d.tipo} x={d.x} y={d.y} color={COLOR_HEX[d.color]} />
                   <title>{`${d.nombre} (${TIPO_LABEL[d.tipo]})`}</title>
                 </g>

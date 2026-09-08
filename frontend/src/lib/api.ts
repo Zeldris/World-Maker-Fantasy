@@ -1087,6 +1087,25 @@ export async function getZona(saveId: string): Promise<ZonaResponse> {
   return fetchJson(`${API_URL}/saves/${saveId}/zona`)
 }
 
+/// Sistema de movimiento por cuadrícula (2026-09-08, "estilo Mount & Blade") — un clic en el lienzo
+/// pide el destino real en píxel; el backend calcula el camino y avanza UN PASO por llamada (el
+/// motor decide el camino, nunca el jugador clica celda a celda) — así se puede animar y detener en
+/// cuanto haya `colision`/`aviso`. `caminoRestante.length > 0` = quedan pasos, seguir llamando con
+/// el MISMO `destino` original para continuar el mismo trayecto.
+export interface MoverZonaResultado {
+  jugador: { x: number; y: number }
+  caminoRestante: { x: number; y: number }[]
+  colision: { targetSlug: string; targetName: string; temperamento: string } | null
+  aviso: { targetSlug: string; targetName: string } | null
+}
+export async function moverEnZona(saveId: string, destino: { x: number; y: number }): Promise<MoverZonaResultado> {
+  return fetchJson(`${API_URL}/saves/${saveId}/zona/mover`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ destino }),
+  })
+}
+
 /// Botón "Explorar" del pop-up de caza — determinista, sin gastar turno, pero con una tirada real
 /// de qué se encuentra: puede no salir nada, igual que explorar en busca de recursos.
 /// `vacioReal` (bug real jugando en vivo, 2026-09-03) distingue "de verdad no hay fauna aquí ahora
