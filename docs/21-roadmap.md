@@ -8,6 +8,80 @@ esta fecha — se actualiza según se cierren o aparezcan puntos, mismo criterio
 
 ---
 
+## "Interactuar" como motor unificado de eventos de escena (2026-09-08, en curso)
+
+Rediseño grande a petición explícita de la usuaria: "Interactuar" (hoy un mini-diálogo cosmético
+sin consecuencia mecánica, ver `docs/rpgtarkor/mundo-determinista.md` § Pieza 4) pasa a ser el
+contenedor único de toda oferta/interrupción de escena — sustituyendo mecanismos redundantes en vez
+de acumular código paralelo con el mismo objetivo. Plan completo con contexto de diseño en
+`/home/deck/.claude/plans/spicy-questing-brook.md` (histórico de la sesión, no en el repo).
+
+**Franja 0 — Persistencia del log — CERRADO.** Bug real cerrado: la conversación de Interactuar se
+perdía por completo al cerrarse (nunca se copiaba a `LogEntry` antes de borrar
+`pendingDynamicMode`). Ahora vuelca todas las vueltas concatenadas en las 3 vías de cierre (agotar
+vueltas / `cierra:true` del LLM / "Salir"). 5 tests nuevos, verificación rigurosa.
+
+**Franja 1b — Interrupción de viaje ofrece Interactuar — CERRADO.** El aviso ámbar de texto fijo
+("El camino se corta...") ahora también arma `pendingDynamicModeOffer` con el candidato real de la
+interrupción, si su temperamento efectivo no es AGRESIVO/ENEMIGO (si lo es, sigue forzando combate
+real exactamente como antes — filtro nuevo, bug detectado y cerrado ANTES de jugarlo en vivo
+gracias al test de combate forzado ya existente). 2 describes de test de integración nuevos.
+
+**Franja 1a — "Ver qué hay en la zona" — CERRADO completo, 4 piezas**:
+- **Gate A (proximidad posicional)**: `zonePointMasCercano`/`RADIO_INTERACCION_PX`
+  (`zonaPosicion.ts`) — `Math.hypot` sobre `Save.zonaPosX/Y` vs `ZonePoint.x/y`, umbral 100px
+  calibrado contra las 76 `ZonePoint` reales del catálogo, "el más cercano gana" como desempate.
+- **Gate B (alcanzabilidad por medio)**: nuevo enum `MedioMovimiento` (`Npc.medio`, **array**, no
+  valor único — un anfibio real declara `['TERRESTRE', 'ACUATICO']`). Reglas precisas tras
+  corrección de la usuaria: AEREO nunca bloquea Cazar ("se posa para combatir"), ACUATICO puro
+  SIEMPRE bloquea Cazar (narrativo/pesca-desuello únicamente). 2 migraciones (una para convertir el
+  campo existente de escalar a array sin perder los 71 valores ya sembrados).
+- **Tipo RECURSO en Interactuar**: `DynamicModeTipo` ahora `'NPC' | 'FAUNA' | 'RECURSO'`. Nueva
+  ruta `dynamicModeRecurso.ts` — a diferencia de NPC/FAUNA (conversación de vueltas), resuelve
+  narración+tirada+recolección real de una sola llamada, reutilizando `resolverRecoleccion`
+  (extraída de `/recolectar/confirmar` sin cambiar una línea de lógica, solo movida) +
+  `gatheringRollFor`/`applyGatheringRoll` ya exportadas.
+- Backend+frontend conectados end-to-end (`LogPanel.tsx` distingue el tipo con icono/botón propio,
+  `GameView.tsx` resuelve sin abrir un segundo modal). Suite completa relacionada: 322/324 (2 flakes
+  de línea base ya documentados, ajenos a esta pieza). `tsc -b --force` limpio backend y frontend.
+
+**Franja 2 — Fusionar los 3 "pending*Offer" — CERRADO ACOTADO.** Investigado a fondo: los 3
+disparadores (`dynamicModeOffer`/`newQuestOfferInfo`/`npcInteractionOffer`) son estructuralmente
+distintos en quién decide el candidato (motor/LLM/jugador respectivamente) — forzar un servicio
+común de "decidir candidato" habría sido una abstracción artificial, decisión explícita de no
+hacerlo. Solo se extrajo la duplicación real: `clearPendingOffer` (`shared.ts`), aplicado en los 2
+puntos que eran escrituras aisladas (`npcInteraction.ts`, `quests.ts` § `/cancelar`); los otros 4
+puntos viven dentro de transacciones combinadas y correctamente no se tocaron. Hallazgo relevante a
+futuro: si se construye el sistema de misiones "secundarias" (motor determinista, ver más abajo),
+`newQuestOfferInfo` para ese caso sí encajaría en el mismo patrón que `dynamicModeOffer` — momento
+real de revisitar la fusión.
+
+**Franja 3 — Fauna agresiva con preámbulo — BLOQUEADA por una pieza nueva mayor.** Punto de
+intercepción ya localizado (`turnResolution.ts` línea ~3086, tras `npcsInScene`, sin tocar
+`shouldForceCombat`), `NarrateAndPersistParams` ya ampliada con `zonaPosX/Y` opcionales (dato
+gratis en ambos call-sites). Bloqueada porque el diseño simple ("botón Interactuar = acercarse =
+combate directo") resultó insuficiente — investigado que `zonaPosX/Y` hoy SOLO se mueve en
+acciones deterministas puntuales, nunca por texto libre, así que sin movimiento gradual sería
+todo-o-nada (la usuaria señaló el caso real: entrar de golpe en la zona de un grupo de 20
+agresivos, sin margen de cautela). Ver siguiente punto.
+
+**Idea nueva sin diseñar — Sistema de movimiento por cuadrícula en Zona/Interior.** Propuesta de la
+usuaria: dividir el lienzo 800×600 en celdas, movimiento celda a celda SIN que el jugador escriba
+coordenadas (base natural ya identificada: el lienzo ya admite clic en un punto,
+`ZonaPanel.tsx`/`ZonePointDetailModal.tsx`, footer de botones ya existente). Piezas nuevas sin
+diseñar: rango de detección probabilístico por celdas de cercanía a un `ZonePoint` agresivo (no
+solo "en la celda exacta"), fauna con ruta/patrulla propia dentro de la cuadrícula (no solo puntos
+fijos), UI de movimiento amigable (confirmado que las direcciones cardinales norte/sur/este/oeste
+YA existentes solo mueven al jugador ENTRE Locations, nunca dentro de una zona), coste en tiempo de
+ficción por celda. Decisión explícita: merece su propia sesión de diseño dedicada — no forzar
+Franja 3 con un atajo insuficiente sabiendo que se sustituirá pronto.
+
+**Franja 4 — Charlar con NPC enriquecido (lore, reclutar/interrogar tras Clemente) — aparte,
+mapeado no implementado**, decisión ya tomada explícitamente por la usuaria antes de empezar la
+implementación de esta ronda.
+
+---
+
 ## Estado a fecha 2026-09-03 (orientación rápida para retomar la sesión)
 
 Sesión larga con tres bloques de trabajo: (1) ronda de juego real con Playwright hasta acumular
