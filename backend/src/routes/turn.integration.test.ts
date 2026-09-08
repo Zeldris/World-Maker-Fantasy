@@ -7830,3 +7830,176 @@ describe('lastNarrationText excluye mensajes de sistema deterministas (bug real 
     expect(ctxReal.lastNarrationText).toBeUndefined();
   }, 15_000);
 });
+
+/// Franja 3 de "Interactuar" (2026-09-08) — gate de colisión de celda para fauna/NPC agresivo
+/// detectado por TEXTO (no interrupción de viaje, que tiene su propia excepción explícita ya
+/// probada en el describe "Viaje largo interrumpido..."). Con `Save.zonaPosX/Y` conocido, un
+/// agresivo mencionado por texto solo fuerza combate si su `ZonePoint` real está en la MISMA celda
+/// que el jugador — lejos, ni siquiera un "ataco a X" explícito lo alcanza.
+describe('Franja 3 de "Interactuar": colisión de celda para fauna agresiva detectada por texto', () => {
+  let saveId: string;
+  let worldId: string;
+  let locationId: string;
+  let agresivoNpcId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    worldId = world.id;
+
+    const location = await prisma.location.create({
+      data: {
+        worldId,
+        slug: 'test-colision-celda-agresivo',
+        name: 'Zona de Prueba Colisión',
+        region: 'Zona de Pruebas',
+        kind: 'hito',
+        description: 'x',
+        aliases: ['zona de prueba colision'],
+      },
+    });
+    locationId = location.id;
+
+    const agresivo = await prisma.npc.create({
+      data: {
+        worldId,
+        kind: 'PLANTILLA',
+        slug: 'test-colision-agresivo',
+        name: 'Bandido de Prueba',
+        aliases: ['bandido de prueba'],
+        role: 'Bandido de prueba',
+        level: 1,
+        attributes: { fuerza: 8, destreza: 8, constitucion: 8, inteligencia: 4, voluntad: 4, carisma: 2, magia: 0 },
+        bio: 'x',
+        personality: 'x',
+        homeLocationSlug: 'test-colision-celda-agresivo',
+        temperamento: 'AGRESIVO',
+      },
+    });
+    agresivoNpcId = agresivo.id;
+
+    // Sin esta fila, `recalcularZonePointsDeLocation` (llamado en CADA turno, antes del filtro de
+    // colisión) calcula población regional 0 para este slug y desactiva el `ZonePoint` recién
+    // creado por cada test (`activo: objetivo > 0` → false) antes de que el filtro de Franja 3
+    // llegue a verlo — mismo requisito que ya tienen los `ZonePoint` reales de producción.
+    await prisma.worldPopulation.create({
+      data: {
+        worldId,
+        targetType: 'FAUNA',
+        targetSlug: 'test-colision-agresivo',
+        label: 'Bandido de Prueba (test colisión)',
+        poblacion: 100,
+        poblacionMax: 200,
+        distribucion: { 'Zona de Pruebas': 1.0 },
+      },
+    });
+
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId,
+        characterName: 'Gorhorn de prueba (colisión de celda)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        portraitInitial: 'G',
+        currentLocationId: locationId,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId, fictionalMinutes: 480 } });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+    await prisma.npc.delete({ where: { id: agresivoNpcId } });
+    await prisma.worldPopulation.deleteMany({ where: { worldId, targetSlug: 'test-colision-agresivo' } });
+    await prisma.location.delete({ where: { id: locationId } });
+  });
+
+  afterEach(async () => {
+    await prisma.zonePoint.deleteMany({ where: { locationId } });
+    await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: [] } });
+  });
+
+  it('agresivo mencionado por texto CON ZonePoint en la MISMA celda que el jugador: fuerza combate', async () => {
+    await prisma.zonePoint.create({
+      data: { locationId, x: 400, y: 300, tipo: 'FAUNA', targetSlug: 'test-colision-agresivo', cantidad: 1, activo: true },
+    });
+    await prisma.save.update({ where: { id: saveId }, data: { zonaPosX: 400, zonaPosY: 300 } }); // misma celda (8,6)
+
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'destreza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    narrateAction.mockResolvedValueOnce({ narration: 'Gorhorn mira alrededor.', newFacts: [] });
+    const app = await buildApp();
+    const action = 'Miro hacia el Bandido de Prueba con cautela.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll, enCombate: false } });
+
+    const { combateIniciado } = lastNdjsonLine(narrateRes.payload) as { combateIniciado: { npcs: { slug: string }[] } | null };
+    expect(combateIniciado?.npcs.map((n) => n.slug)).toEqual(['test-colision-agresivo']);
+  }, 20_000);
+
+  it('el MISMO agresivo, pero con ZonePoint LEJOS del jugador: NO fuerza combate, ni siquiera con "ataco a"', async () => {
+    // ZonePoint a más de una celda de distancia (400,300 vs 700,300 — 6 celdas de diferencia).
+    await prisma.zonePoint.create({
+      data: { locationId, x: 700, y: 300, tipo: 'FAUNA', targetSlug: 'test-colision-agresivo', cantidad: 1, activo: true },
+    });
+    await prisma.save.update({ where: { id: saveId }, data: { zonaPosX: 400, zonaPosY: 300 } });
+
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'destreza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    narrateAction.mockResolvedValueOnce({ narration: 'Gorhorn no ve a nadie cerca.', newFacts: [] });
+    const app = await buildApp();
+    const action = 'Ataco al Bandido de Prueba.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll, enCombate: false } });
+
+    const { combateIniciado } = lastNdjsonLine(narrateRes.payload) as { combateIniciado: { npcs: { slug: string }[] } | null };
+    expect(combateIniciado).toBeNull();
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(save.pendingCombatNpcSlugs).toEqual([]);
+  }, 20_000);
+
+  it('el MISMO agresivo, SIN ZonePoint en absoluto: NO fuerza combate (nunca "encima" sin posición real)', async () => {
+    await prisma.save.update({ where: { id: saveId }, data: { zonaPosX: 400, zonaPosY: 300 } });
+
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'destreza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    narrateAction.mockResolvedValueOnce({ narration: 'Gorhorn no ve a nadie cerca.', newFacts: [] });
+    const app = await buildApp();
+    const action = 'Ataco al Bandido de Prueba.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll, enCombate: false } });
+
+    const { combateIniciado } = lastNdjsonLine(narrateRes.payload) as { combateIniciado: { npcs: { slug: string }[] } | null };
+    expect(combateIniciado).toBeNull();
+  }, 20_000);
+
+  it('sin posición conocida del jugador (zonaPosX/Y null): fallback seguro, combate directo como siempre', async () => {
+    await prisma.zonePoint.create({
+      data: { locationId, x: 700, y: 300, tipo: 'FAUNA', targetSlug: 'test-colision-agresivo', cantidad: 1, activo: true },
+    });
+    await prisma.save.update({ where: { id: saveId }, data: { zonaPosX: null, zonaPosY: null } });
+
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'destreza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    narrateAction.mockResolvedValueOnce({ narration: 'Gorhorn se enfrenta al bandido.', newFacts: [] });
+    const app = await buildApp();
+    const action = 'Ataco al Bandido de Prueba.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll, enCombate: false } });
+
+    const { combateIniciado } = lastNdjsonLine(narrateRes.payload) as { combateIniciado: { npcs: { slug: string }[] } | null };
+    expect(combateIniciado?.npcs.map((n) => n.slug)).toEqual(['test-colision-agresivo']);
+  }, 20_000);
+});

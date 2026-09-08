@@ -140,6 +140,9 @@ async function resolveClaimedTransit(transit: DueTransit, notBefore?: Date): Pro
       currentLevel: save.level,
       classification,
       roll,
+      // Franja 3 de "Interactuar" (2026-09-08) — ver comentario completo en turnResolution.ts.
+      zonaPosX: save.zonaPosX,
+      zonaPosY: save.zonaPosY,
       attributes,
       secondaryAttributes,
       defensa,

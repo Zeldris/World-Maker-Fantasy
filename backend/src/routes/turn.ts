@@ -1238,6 +1238,11 @@ export async function turnRoutes(app: FastifyInstance) {
         roll,
         attributes,
         secondaryAttributes,
+        // Franja 3 de "Interactuar" (2026-09-08) — gate de colisión de celda para fauna/NPC
+        // agresivo, ver comentario completo en turnResolution.ts. `save` ya se cargó sin `select`
+        // explícito arriba, dato gratis.
+        zonaPosX: save.zonaPosX,
+        zonaPosY: save.zonaPosY,
         defensa,
         equippedWeapons,
         equippedItems,

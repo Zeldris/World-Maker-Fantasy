@@ -111,6 +111,8 @@ import {
   moverJugadorA,
   fijarEntradaAZona,
   volverAEntrada,
+  celdaDePixel,
+  mismaCelda,
 } from './zonaPosicion.js';
 import { claimChapterIfDue, scheduleChapterSummaryGeneration, releaseChapterClaim } from './chapterSummary.js';
 import { captureLiveTeacherExample } from './liveTeacherCapture.js';
@@ -6924,6 +6926,64 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     );
   }
 
+  // Franja 3 de "Interactuar" — preámbulo de fauna agresiva por colisión de celda (2026-09-08,
+  // diseño confirmado con la usuaria: "estilo Mount & Blade", "todo agresivo, incluido el ataque
+  // explícito, exige colisión de celda real"). Solo afecta al camino 1v1 clásico
+  // (`resolveCombatSlugsAndPersist` más abajo) — el combate múltiple (`combatEncounterMode`) ya se
+  // decidió en otro punto (caza en grupo, cazar.ts) y no pasa por aquí.
+  //
+  // Un agresivo/enemigo detectado por TEXTO ya no basta por sí solo para forzar combate: hace falta
+  // además que su `ZonePoint` real esté en la MISMA celda que el jugador ahora mismo
+  // (`zonaPosX/Y`, sistema de movimiento por cuadrícula) — si está lejos, se excluye de
+  // `npcsInSceneVivos` ANTES de que `agresivoSlugsInScene`/`shouldForceCombat` lo vean, así que ni
+  // siquiera un "ataco a X" explícito lo alcanza (mismo criterio de coherencia: no puedes atacar a
+  // algo que no está físicamente donde tú estás).
+  //
+  // Dos excepciones deliberadas, ninguna un parche — casos donde "colisión de celda" no aplica por
+  // diseño, no por hueco:
+  // 1. Sin posición conocida del jugador (`params.zonaPosX/Y` null, partida previa a esa pieza) —
+  //    fallback seguro: comportamiento actual sin cambios, nunca se activa el filtro por ausencia
+  //    de dato (mismo criterio que el resto del proyecto con campos nullable de esa pieza).
+  // 2. El candidato de INTERRUPCIÓN DE VIAJE (`travelInterruptionNpcId`) — el viaje ocurre ENTRE
+  //    Locations, fuera del sistema de cuadrícula por naturaleza (la usuaria: "el viaje no implica
+  //    ninguna zona, así que sería el único punto donde no haría falta el ZonePoint") — sigue
+  //    forzando combate real exactamente como antes (ver Franja 1b), sin exigir colisión.
+  let npcsInSceneVivosParaCombate = npcsInSceneVivos;
+  if (params.zonaPosX != null && params.zonaPosY != null && regionLocationId) {
+    const celdaJugador = celdaDePixel({ x: params.zonaPosX, y: params.zonaPosY });
+    const agresivosATestear = npcsInSceneVivos.filter((n) => {
+      if (n.id === travelInterruptionNpcId) return false; // excepción 2 — nunca se filtra
+      const t = effectiveTemperamento(n.temperamento, n.faction, factionsStatus);
+      return t === 'AGRESIVO' || t === 'ENEMIGO';
+    });
+    if (agresivosATestear.length > 0) {
+      const zonePointsAgresivos = await prisma.zonePoint.findMany({
+        where: { locationId: regionLocationId, targetSlug: { in: agresivosATestear.map((n) => n.slug) }, tipo: { in: ['FAUNA', 'NPC'] }, activo: true },
+        select: { targetSlug: true, x: true, y: true },
+      });
+      const zonePointsPorSlug = new Map<string, { x: number; y: number }[]>();
+      for (const zp of zonePointsAgresivos) {
+        if (!zonePointsPorSlug.has(zp.targetSlug)) zonePointsPorSlug.set(zp.targetSlug, []);
+        zonePointsPorSlug.get(zp.targetSlug)!.push({ x: zp.x, y: zp.y });
+      }
+      // Sin ZonePoint real (mencionado solo narrativamente, o dinámico sin posición de catálogo) —
+      // decisión explícita de la usuaria: "sin ZonePoint real, nunca fuerza combate" (tratarlo como
+      // si estuviera lejos, no un fallback permisivo).
+      const agresivosSinColision = new Set(
+        agresivosATestear
+          .filter((n) => {
+            const puntos = zonePointsPorSlug.get(n.slug);
+            if (!puntos || puntos.length === 0) return true;
+            return !puntos.some((p) => mismaCelda(celdaDePixel(p), celdaJugador));
+          })
+          .map((n) => n.id),
+      );
+      if (agresivosSinColision.size > 0) {
+        npcsInSceneVivosParaCombate = npcsInSceneVivos.filter((n) => !agresivosSinColision.has(n.id));
+      }
+    }
+  }
+
   // Grupo 3 § Mundo determinista, Capa 4 (2026-08-25) — un `CombatEncounter` real es un canal de
   // combate aparte del 1v1 clásico (`resolveCombatSlugsAndPersist` de abajo, que solo sabe de
   // `NpcState`/`npcsInScene`) — se construye su propio `combateIniciado` a partir de los
@@ -6999,7 +7059,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         enCombate,
         narration,
         npcsInScene,
-        npcsInSceneVivos,
+        npcsInSceneVivos: npcsInSceneVivosParaCombate,
         factionsStatus,
         condicionFisicaJugador: params.condicionFisica,
         explicitTarget,
