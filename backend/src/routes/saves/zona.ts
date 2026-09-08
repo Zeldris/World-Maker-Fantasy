@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { zoneMapImageUrl } from '../../lib/imageAssets.js';
 import { sourceDisplayNameFor, harvestSourcesThatAreFaunaWithoutNpc } from '../../scripts/worldCatalog.js';
@@ -7,10 +8,11 @@ import { faunaMomentoDelDia } from '../../scripts/worldCatalog.js';
 import { loadSessionFacts } from '../../services/worldFacts.js';
 import { momentoDelDiaFor, estacionFor } from '../../services/worldClock.js';
 import type { EstacionSlug } from '../../services/imagePromptContext.js';
-import { zonePointColorFor, type ZonePointColor } from '../../services/zonePoints.js';
+import { zonePointColorFor, avanzarZonePointsUnPaso, type ZonePointColor } from '../../services/zonePoints.js';
 import { parseAgenda, regionControlFor, type RegionControlState } from '../../services/worldAgenda.js';
-import { REGION_OWNING_FACTIONS } from '../../services/reputation.js';
-import { posicionAleatoriaEnLienzo } from '../../services/zonaPosicion.js';
+import { REGION_OWNING_FACTIONS, effectiveTemperamento } from '../../services/reputation.js';
+import { posicionAleatoriaEnLienzo, celdaDePixel, pixelDeCelda, calcularCamino, celdaAdyacenteOMisma, mismaCelda } from '../../services/zonaPosicion.js';
+import { rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 
 /// Día/noche/estación (2026-08-27) — la vista Zona ya conoce el reloj real de la partida
 /// (`WorldState.fictionalMinutes`), así que elige sola qué variante mostrar en vez de un selector
@@ -269,5 +271,107 @@ export async function zonaRoutes(app: FastifyInstance) {
       dinamicos,
       jugador,
     };
+  });
+
+  /// Sistema de movimiento por cuadrícula (2026-09-08, "estilo Mount & Blade") — el jugador hace
+  /// clic en el lienzo (`destino` en píxel), el motor calcula el camino real (`calcularCamino`,
+  /// nunca coordenadas que el jugador teclee paso a paso) y avanza UN PASO por llamada — así el
+  /// frontend puede animar celda a celda y detenerse en cuanto haya colisión/aviso, sin resolver
+  /// todo el trayecto de golpe. El resto del mundo (ZonePoint FAUNA/NPC) avanza su propio paso a la
+  /// vez (`avanzarZonePointsUnPaso`) — cuando el jugador se mueve, el mundo se mueve.
+  app.post<{ Params: { id: string }; Body: { destino: { x: number; y: number } } }>('/saves/:id/zona/mover', async (request, reply) => {
+    const { destino } = request.body;
+    if (typeof destino?.x !== 'number' || typeof destino?.y !== 'number') {
+      return reply.status(400).send({ error: 'Falta el campo: destino {x,y}' });
+    }
+    const save = await prisma.save.findUnique({
+      where: { id: request.params.id },
+      select: {
+        id: true,
+        worldId: true,
+        endedAt: true,
+        pendingDeathResolution: true,
+        zonaPosX: true,
+        zonaPosY: true,
+        zonaCaminoPendiente: true,
+        currentLocationId: true,
+        currentLocation: { select: { id: true } },
+        worldState: { select: { factionsStatus: true } },
+      },
+    });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (rejectIfEnded(save, reply)) return;
+    if (rejectIfPendingDeath(save, reply)) return;
+    if (!save.currentLocationId) return reply.status(400).send({ error: 'Sin ubicación actual — no hay zona donde moverse.' });
+
+    const factionsStatus = (save.worldState?.factionsStatus as Record<string, number> | null) ?? {};
+    const posicionActual = save.zonaPosX != null && save.zonaPosY != null ? { x: save.zonaPosX, y: save.zonaPosY } : { x: 400, y: 300 };
+    const celdaActual = celdaDePixel(posicionActual);
+
+    // Camino ya en curso hacia el mismo destino (varias llamadas seguidas del frontend animando
+    // paso a paso) vs. un destino NUEVO (el jugador clicó en otro sitio a mitad de camino) — en
+    // ambos casos se recalcula desde la celda actual, nunca se asume que el camino persistido sigue
+    // siendo válido si el jugador cambió de idea.
+    const celdaDestino = celdaDePixel(destino);
+    const caminoPendientePrevio = (save.zonaCaminoPendiente as { x: number; y: number }[] | null) ?? null;
+    const siguePreviamenteHaciaEsteDestino =
+      caminoPendientePrevio && caminoPendientePrevio.length > 0 && mismaCelda(celdaDePixel(caminoPendientePrevio[caminoPendientePrevio.length - 1]), celdaDestino);
+    const caminoCeldas = siguePreviamenteHaciaEsteDestino ? caminoPendientePrevio!.map((p) => celdaDePixel(p)) : calcularCamino(celdaActual, celdaDestino);
+
+    if (caminoCeldas.length === 0) {
+      return { jugador: posicionActual, caminoRestante: [], colision: null, aviso: null };
+    }
+
+    const [siguienteCelda, ...restoCamino] = caminoCeldas;
+    const nuevaPosicion = pixelDeCelda(siguienteCelda);
+
+    const resultado = await prisma.$transaction(async (tx) => {
+      // El mundo también se mueve — un paso por cada paso del jugador, ANTES de comprobar colisión
+      // (mismo criterio Mount & Blade: ambos avanzan a la vez, la colisión se evalúa sobre el
+      // estado ya actualizado, no sobre la posición vieja de la fauna).
+      await avanzarZonePointsUnPaso(tx, save.currentLocationId!, Math.random);
+
+      const puntos = await tx.zonePoint.findMany({
+        where: { locationId: save.currentLocationId!, tipo: { in: ['FAUNA', 'NPC'] }, activo: true },
+      });
+      const npcs = puntos.length
+        ? await tx.npc.findMany({ where: { worldId: save.worldId, slug: { in: puntos.map((p) => p.targetSlug) } }, select: { slug: true, name: true, temperamento: true, faction: true } })
+        : [];
+      const npcBySlug = new Map(npcs.map((n) => [n.slug, n]));
+
+      // Doble umbral de colisión (diseño confirmado, 2026-09-08): MISMA celda = encuentro
+      // inevitable; celda ADYACENTE = solo aviso previo de Interactuar, con margen de reacción.
+      let colision: { targetSlug: string; targetName: string; temperamento: string } | null = null;
+      let aviso: { targetSlug: string; targetName: string } | null = null;
+      for (const punto of puntos) {
+        const celdaPunto = celdaDePixel({ x: punto.x, y: punto.y });
+        const npc = npcBySlug.get(punto.targetSlug);
+        const nombre = npc?.name ?? sourceDisplayNameFor(punto.targetSlug);
+        if (mismaCelda(siguienteCelda, celdaPunto)) {
+          const temperamento = npc ? effectiveTemperamento(npc.temperamento, npc.faction, factionsStatus) : 'CAUTELOSO';
+          colision = { targetSlug: punto.targetSlug, targetName: nombre, temperamento };
+          break; // Solo el primer encuentro exacto detiene el movimiento — no acumula varios a la vez.
+        }
+        if (!aviso && celdaAdyacenteOMisma(siguienteCelda, celdaPunto)) {
+          aviso = { targetSlug: punto.targetSlug, targetName: nombre };
+        }
+      }
+
+      // Una colisión detiene el avance AQUÍ — el jugador no llega más allá del punto de encuentro,
+      // y no queda camino pendiente (tiene que decidir qué hacer antes de seguir moviéndose).
+      const caminoRestantePixel = colision ? [] : restoCamino.map((c) => pixelDeCelda(c));
+      await tx.save.update({
+        where: { id: save.id },
+        data: {
+          zonaPosX: nuevaPosicion.x,
+          zonaPosY: nuevaPosicion.y,
+          zonaCaminoPendiente: caminoRestantePixel.length > 0 ? (caminoRestantePixel as unknown as Prisma.InputJsonValue) : Prisma.JsonNull,
+        },
+      });
+
+      return { jugador: nuevaPosicion, caminoRestante: caminoRestantePixel, colision, aviso };
+    });
+
+    return resultado;
   });
 }

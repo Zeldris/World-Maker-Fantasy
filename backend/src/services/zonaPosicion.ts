@@ -169,3 +169,148 @@ export function zonePointMasCercano<T extends { x: number; y: number }>(
   }
   return mejor;
 }
+
+/// Sistema de movimiento por cuadrícula (2026-09-08, diseño confirmado con la usuaria, referencia
+/// explícita "estilo Mount & Blade") — el lienzo 800×600 se divide en celdas de `CELL_SIZE_PX` para
+/// el movimiento del jugador y de `ZonePoint` con ruta propia; `x`/`y` en píxel siguen siendo la
+/// fuente de verdad persistida (mismo campo de siempre), la celda es solo una vista discreta sobre
+/// esas coordenadas para decidir pasos/colisión. 16×12 celdas — calibrado para que el radio de
+/// Interactuar ya existente (100px) equivalga a ~2 celdas.
+export const CELL_SIZE_PX = 50;
+export const GRID_COLS = LIENZO_ANCHO / CELL_SIZE_PX;
+export const GRID_ROWS = LIENZO_ALTO / CELL_SIZE_PX;
+
+export interface Celda {
+  col: number;
+  row: number;
+}
+
+/// Puro — píxel real → celda de la cuadrícula (clamp a los límites del lienzo, nunca fuera de rango
+/// aunque `x`/`y` esté justo en el borde o ligeramente fuera por redondeo previo).
+export function celdaDePixel(punto: { x: number; y: number }): Celda {
+  return {
+    col: Math.max(0, Math.min(GRID_COLS - 1, Math.floor(punto.x / CELL_SIZE_PX))),
+    row: Math.max(0, Math.min(GRID_ROWS - 1, Math.floor(punto.y / CELL_SIZE_PX))),
+  };
+}
+
+/// Puro — celda → píxel real del CENTRO de esa celda (nunca la esquina) — así un `ZonePoint`/
+/// jugador posicionado por celda siempre cae en un punto visualmente centrado, coherente con
+/// `x`/`y` calibrados a mano contra el PNG real de cada zona.
+export function pixelDeCelda(celda: Celda): { x: number; y: number } {
+  return { x: celda.col * CELL_SIZE_PX + CELL_SIZE_PX / 2, y: celda.row * CELL_SIZE_PX + CELL_SIZE_PX / 2 };
+}
+
+export function mismaCelda(a: Celda, b: Celda): boolean {
+  return a.col === b.col && a.row === b.row;
+}
+
+/// Puro — ¿`b` es la misma celda que `a`, o una de sus 8 vecinas? Base del doble umbral de
+/// colisión: misma celda = encuentro inevitable, adyacente = aviso previo de Interactuar.
+export function celdaAdyacenteOMisma(a: Celda, b: Celda): boolean {
+  return Math.abs(a.col - b.col) <= 1 && Math.abs(a.row - b.row) <= 1;
+}
+
+/// Puro — camino de celdas desde `origen` (EXCLUSIVE) hasta `destino` (INCLUSIVE), algoritmo de
+/// línea de Bresenham (determinista, sin diagonales "imposibles" — cada paso avanza como mucho 1
+/// celda en cada eje, nunca salta dos a la vez). Mismo criterio "el motor decide, nunca el LLM" —
+/// el jugador solo dice A DÓNDE quiere ir (clic en el lienzo), el camino real siempre lo calcula
+/// esta función, nunca coordenadas que el jugador teclee paso a paso.
+export function calcularCamino(origen: Celda, destino: Celda): Celda[] {
+  const camino: Celda[] = [];
+  let { col, row } = origen;
+  const dCol = Math.abs(destino.col - origen.col);
+  const dRow = -Math.abs(destino.row - origen.row);
+  const signoCol = origen.col < destino.col ? 1 : -1;
+  const signoRow = origen.row < destino.row ? 1 : -1;
+  let error = dCol + dRow;
+  while (col !== destino.col || row !== destino.row) {
+    const error2 = 2 * error;
+    if (error2 >= dRow) {
+      error += dRow;
+      col += signoCol;
+    }
+    if (error2 <= dCol) {
+      error += dCol;
+      row += signoRow;
+    }
+    camino.push({ col, row });
+  }
+  return camino;
+}
+
+/// Cuánto puede alejarse el fallback de paseo aleatorio de su celda de ORIGEN (`x`/`y` de catálogo
+/// del `ZonePoint`) — nunca abandona su territorio real solo por no tener ruta artesanal definida.
+const RADIO_PASEO_ALEATORIO_CELDAS = 2;
+
+/// Puro — siguiente celda de un `ZonePoint` SIN ruta artesanal definida (`ruta` null/vacía en el
+/// catálogo): un paso aleatorio de las 8 vecinas o quedarse quieto, acotado a
+/// `RADIO_PASEO_ALEATORIO_CELDAS` de su celda de origen — nunca completamente estático, pero sin
+/// exigir diseñar una ruta a mano para las ~76 fichas reales que hoy no la tienen. `random`
+/// inyectable para tests, mismo patrón que `rollGathering`/`decideOfertaModoDinamico`.
+export function siguienteCeldaPaseoAleatorio(actual: Celda, origen: Celda, random: () => number = Math.random): Celda {
+  const DELTAS: { col: number; row: number }[] = [
+    { col: 0, row: 0 },
+    { col: 1, row: 0 },
+    { col: -1, row: 0 },
+    { col: 0, row: 1 },
+    { col: 0, row: -1 },
+    { col: 1, row: 1 },
+    { col: 1, row: -1 },
+    { col: -1, row: 1 },
+    { col: -1, row: -1 },
+  ];
+  const candidatos = DELTAS.map((d) => ({ col: actual.col + d.col, row: actual.row + d.row })).filter(
+    (c) =>
+      c.col >= 0 &&
+      c.col < GRID_COLS &&
+      c.row >= 0 &&
+      c.row < GRID_ROWS &&
+      Math.abs(c.col - origen.col) <= RADIO_PASEO_ALEATORIO_CELDAS &&
+      Math.abs(c.row - origen.row) <= RADIO_PASEO_ALEATORIO_CELDAS,
+  );
+  return candidatos[Math.floor(random() * candidatos.length)] ?? actual;
+}
+
+/// Puro — siguiente celda de un `ZonePoint` CON ruta artesanal definida (`ruta`, array de celdas en
+/// píxel) — un paso por cada movimiento del jugador, en bucle (al llegar al final vuelve al primer
+/// punto). Devuelve también el nuevo `pasoRuta` para persistir.
+export function siguienteCeldaEnRuta(ruta: Celda[], pasoRuta: number): { celda: Celda; nuevoPasoRuta: number } {
+  const siguiente = (pasoRuta + 1) % ruta.length;
+  return { celda: ruta[siguiente], nuevoPasoRuta: siguiente };
+}
+
+/// Reparto de una población regional (YA topada a `CANTIDAD_MAX_POR_PUNTO`, zonePoints.ts) en
+/// grupos de tamaño variado — decisión explícita de la usuaria: "20 corredores... varios grupos de
+/// 4, varios de 2, algunos individuales... ofreciendo todos los rangos siempre dentro de lo
+/// posible", no un único tamaño típico con ruido alrededor. Capas descendentes desde
+/// `TAMANO_MAXIMO_GRUPO` (4) hasta 1, con 1-2 grupos por capa mientras quede población que
+/// repartir — da variedad real (parejas/tríos/sueltos/grupo grande, todos presentes a la vez) sin
+/// necesitar una tabla de umbrales a mano. Validado contra números reales (2026-09-08):
+/// total=20→[4,4,3,3,2,1,1,1,1]; total=12→[4,4,3,1]; total=8→[4,4]; total=5→[4,1];
+/// total=1-3→un solo grupo suelto. `random` inyectable para tests.
+const TAMANO_MAXIMO_GRUPO = 4;
+
+export function repartirEnGrupos(poblacionTotal: number, random: () => number = Math.random): number[] {
+  if (poblacionTotal <= 0) return [];
+  const grupos: number[] = [];
+  let restante = poblacionTotal;
+  let tamano = Math.min(TAMANO_MAXIMO_GRUPO, restante);
+  while (restante > 0 && tamano >= 1) {
+    const gruposEnEstaCapa = random() < 0.5 ? 1 : 2;
+    for (let i = 0; i < gruposEnEstaCapa && restante > 0; i++) {
+      const tamanoGrupo = Math.min(tamano, restante);
+      grupos.push(tamanoGrupo);
+      restante -= tamanoGrupo;
+    }
+    tamano -= 1;
+  }
+  // Agotadas las capas de TAMANO_MAXIMO_GRUPO..1, cualquier resto (posible si `random` eligió 1
+  // grupo por capa en vez de 2) se reparte en unidades sueltas — nunca se pierde población sin
+  // asignar a ningún grupo.
+  while (restante > 0) {
+    grupos.push(1);
+    restante -= 1;
+  }
+  return grupos;
+}

@@ -174,6 +174,12 @@ model Save {
   /// misma zona (cazar/recolectar/hablar) actualiza `zonaPosX/Y` pero nunca estos dos.
   zonaPosEntradaX Float?
   zonaPosEntradaY Float?
+  /// Sistema de movimiento por cuadrícula (2026-09-08) — camino pendiente hacia el destino que el
+  /// jugador pulsó en el lienzo (`services/zonaPosicion.ts § calcularCamino`), lista de celdas
+  /// `{x,y}[]` en el MISMO píxel/convención que `zonaPosX/Y`, sin incluir la celda actual. Se
+  /// consume una celda por cada movimiento (`POST /saves/:id/zona/mover`) — vacío/null = sin
+  /// movimiento en curso. Se vacía también si una colisión detiene el avance antes de llegar.
+  zonaCaminoPendiente Json?
 
   /// Condición física (docs/14-combate-y-muerte.md § 1, decisión de mecánicas 3 nunca
   /// implementada hasta ahora). La narración de combate es la vía principal para cambiarla;
@@ -490,9 +496,19 @@ model ZonePoint {
   location             Location      @relation(fields: [locationId], references: [id], onDelete: Cascade)
   /// Píxeles del lienzo de la zona (convención 800×600, misma que ya usa el mapa de mundo —
   /// `frontend/src/data/map.ts` — para que el frontend pueda reutilizar el mismo sistema de
-  /// overlay SVG). Calibrado a mano contra el PNG real de la zona, no calculado — el recalculo
-  /// determinista SÍ puede desplazar x/y dentro del mismo lienzo con el tiempo (Pieza 3).
+  /// overlay SVG). Calibrado a mano contra el PNG real de la zona — sigue siendo la POSICIÓN
+  /// ACTUAL real (Pieza 3, sistema de movimiento por cuadrícula 2026-09-08, `services/
+  /// zonaPosicion.ts`): se sobrescribe un paso cada vez que el jugador se mueve una celda (ruta
+  /// artesanal en bucle, o paseo aleatorio corto si no hay ruta definida). `origenX/Y` guarda el
+  /// dato de catálogo original SIN TOCAR, necesario para que el paseo aleatorio nunca se aleje de
+  /// su territorio real.
   x                    Float
+  /// Posición de catálogo ORIGINAL — nunca se sobrescribe (a diferencia de `x`/`y` arriba). Null =
+  /// partida/fila sembrada antes de esta pieza; el caller trata ese caso como "origen = x/y
+  /// actual" (comportamiento idéntico a antes: sin movimiento todavía, x/y sigue siendo el mismo
+  /// punto de siempre).
+  origenX              Float?
+  origenY              Float?
   y                    Float
   /// Determina la FORMA del icono en el frontend (regla fija, sin campo aparte): FAUNA=círculo,
   /// NPC=triángulo (identidad única, incluye Companion), EDIFICIO=cuadrado, RECURSO=rombo (inerte:
@@ -523,6 +539,22 @@ model ZonePoint {
   /// (mismo patrón que `condicionFisicaSinceMinutes`/`lastFedAtMinutes`, nunca un contador que
   /// decrementa). Null = nunca recalculado todavía (recién sembrado o recién creado por el motor).
   lastUpdatedAtMinutes Int?
+  /// Sistema de movimiento por cuadrícula (2026-09-08, diseño confirmado con la usuaria, referencia
+  /// explícita "estilo Mount & Blade") — secuencia de celdas `{x,y}[]` (misma convención de píxeles
+  /// que `x`/`y` arriba, redondeados al centro de cada celda de `CELL_SIZE_PX`,
+  /// `services/zonaPosicion.ts`) que este punto recorre EN BUCLE, un paso cada vez que el jugador se
+  /// mueve una celda — nunca tiempo real de pared, mismo criterio "solo avanza con el turno/acción
+  /// del jugador" que `recalcularZonePointsDeLocation`. `null`/`[]` = sin ruta artesanal definida
+  /// todavía (la inmensa mayoría del catálogo al principio) — cae al fallback determinista de paseo
+  /// aleatorio corto alrededor de `x`/`y` (nunca completamente estático, pero sin exigir diseñar las
+  /// rutas de golpe). Rutas reales se añaden progresivamente en `worldCatalog.ts`, mismo criterio
+  /// que el resto del catálogo curado a mano (bio/lore/habilidades).
+  ruta                 Json?
+  /// Índice del paso actual dentro de `ruta` (o de la posición aleatoria acumulada del fallback) —
+  /// 0 = en `x`/`y` original. Se incrementa en cada paso del jugador; al llegar al final de `ruta`
+  /// vuelve a 0 (bucle). Sin relación con `lastUpdatedAtMinutes` (ese es tiempo de ficción para
+  /// cantidad/actividad; esto es "turnos de movimiento", un concepto distinto y más frecuente).
+  pasoRuta             Int           @default(0)
   createdAt            DateTime      @default(now())
 
   @@index([locationId])

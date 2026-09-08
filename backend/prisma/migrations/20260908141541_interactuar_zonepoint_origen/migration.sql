@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "ZonePoint" ADD COLUMN     "origenX" DOUBLE PRECISION,
+ADD COLUMN     "origenY" DOUBLE PRECISION;

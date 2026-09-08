@@ -2,6 +2,7 @@ import type { Prisma, PrismaClient, ZonePointTipo } from '@prisma/client';
 import { stripRegionArticle } from './population.js';
 import { sourceDisplayNameFor } from '../scripts/worldCatalog.js';
 import { factionRepFor } from './reputation.js';
+import { celdaDePixel, pixelDeCelda, siguienteCeldaEnRuta, siguienteCeldaPaseoAleatorio, type Celda } from './zonaPosicion.js';
 
 export type ZonePointColor = 'ALIADO' | 'NEUTRO' | 'ENEMIGO' | 'SIN_FACCION';
 
@@ -111,6 +112,44 @@ export async function recalcularZonePointsDeLocation(
         where: { id: punto.id },
         data: { cantidad, activo, lastUpdatedAtMinutes: fictionalMinutesActuales },
       });
+    }),
+  );
+}
+
+/// Sistema de movimiento por cuadrícula (2026-09-08, "estilo Mount & Blade") — avanza UN PASO a
+/// todos los `ZonePoint` FAUNA/NPC de una `Location` (RECURSO/EDIFICIO nunca se mueven, son
+/// inertes/estáticos) cada vez que el jugador se mueve una celda. Con `ruta` definida (array de
+/// celdas en píxel), recorre esa ruta en bucle; sin ella, paseo aleatorio corto acotado a su
+/// `origenX/Y` real de catálogo (nunca abandona su territorio). Llamado desde
+/// `POST /saves/:id/zona/mover` — DISTINTO de `recalcularZonePointsDeLocation` (esa es cantidad/
+/// actividad por tiempo de ficción transcurrido, cada turno de narración; esto es posición, cada
+/// paso de movimiento del jugador dentro de la misma zona).
+export async function avanzarZonePointsUnPaso(tx: Prisma.TransactionClient | PrismaClient, locationId: string, random: () => number = Math.random): Promise<void> {
+  const puntos = await tx.zonePoint.findMany({
+    where: { locationId, tipo: { in: ['FAUNA', 'NPC'] }, activo: true },
+  });
+  if (puntos.length === 0) return;
+
+  await Promise.all(
+    puntos.map((punto) => {
+      const actual = celdaDePixel({ x: punto.x, y: punto.y });
+      const ruta = (punto.ruta as { x: number; y: number }[] | null) ?? null;
+
+      if (ruta && ruta.length > 0) {
+        const rutaCeldas = ruta.map((p) => celdaDePixel(p));
+        const { celda, nuevoPasoRuta } = siguienteCeldaEnRuta(rutaCeldas, punto.pasoRuta % rutaCeldas.length);
+        const pixel = pixelDeCelda(celda);
+        return tx.zonePoint.update({ where: { id: punto.id }, data: { x: pixel.x, y: pixel.y, pasoRuta: nuevoPasoRuta } });
+      }
+
+      // Sin ruta artesanal — fallback de paseo aleatorio, acotado a `origenX/Y` real de catálogo.
+      // `origenX/Y` null (fila sembrada antes de esta pieza) cae al propio `x`/`y` actual como
+      // origen — comportamiento idéntico a antes: primer paso posible ya desde su punto de siempre.
+      const origen: Celda = celdaDePixel({ x: punto.origenX ?? punto.x, y: punto.origenY ?? punto.y });
+      const siguiente = siguienteCeldaPaseoAleatorio(actual, origen, random);
+      const pixel = pixelDeCelda(siguiente);
+      if (pixel.x === punto.x && pixel.y === punto.y) return null;
+      return tx.zonePoint.update({ where: { id: punto.id }, data: { x: pixel.x, y: pixel.y } });
     }),
   );
 }
