@@ -142,6 +142,7 @@ async function main() {
         ataqueNatural: npcData.ataqueNatural,
         habilidadesRaciales: habilidadesRacialesJson,
         temperamento: npcData.temperamento,
+        medio: npcData.medio,
         comerciablePct: npcData.comerciablePct,
         reclutablePct: npcData.reclutablePct,
         domesticablePct: npcData.domesticablePct,

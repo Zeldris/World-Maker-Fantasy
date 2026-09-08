@@ -1163,6 +1163,10 @@ export interface NpcInput {
   /// Disposición al combate (schema.prisma § Temperamento) — default 'CAUTELOSO' (comportamiento
   /// actual dependiente del verbo del jugador) si no se especifica.
   temperamento?: 'AGRESIVO' | 'CAUTELOSO' | 'INOFENSIVO';
+  /// Medios de movimiento POSIBLES (schema.prisma § MedioMovimiento, gate de alcanzabilidad de
+  /// "Interactuar", 2026-09-08) — array, un anfibio real declara los dos
+  /// (`['TERRESTRE', 'ACUATICO']`). Default `['TERRESTRE']` si no se especifica.
+  medio?: ('TERRESTRE' | 'AEREO' | 'ACUATICO')[];
   /// % (0-100) de que esta especie/individuo tenga la capacidad en absoluto — no un booleano fijo,
   /// ver comentario de estos campos en schema.prisma. Default 0 si no se especifica.
   comerciablePct?: number;
@@ -1398,6 +1402,11 @@ export const fauna: NpcInput[] = [
     loadout: [],
     ataqueNatural: 'Golpe de garras rápidas y afiladas desde el aire.',
     temperamento: 'AGRESIVO',
+    // Gate de alcanzabilidad de "Interactuar" (2026-09-08) — "planeadora... se lanza en picado" no
+    // es alcanzable desde tierra sin que la narración describa una condición (posado en el nido, en
+    // tierra herido...). Hoy sin efecto observable (ya excluido de cualquier oferta pacífica por su
+    // propio AGRESIVO), pero honesto con su bio — y listo si algún día deja de ser el único caso.
+    medio: ['AEREO'],
     domesticablePct: 5,
     // Tameo (2026-08-25) — planeadora salvaje e independiente, resiste por puro instinto libre,
     // casi nunca cede.
@@ -2210,6 +2219,10 @@ export const fauna: NpcInput[] = [
     // Puramente narrativo/ambiental a propósito (2026-09-02): depredador natural del Jashil, mismo
     // patrón que Miruina/Tura Jusha en Los Manaderos — un depredador NPC no duplica el recurso de
     // su presa. Sin HarvestYield, no entra en ningún modal mecánico.
+    // Gate de alcanzabilidad de "Interactuar" (2026-09-08) — "principalmente acuática", pescando en
+    // la costa. Sin efecto observable hoy (ya sin HarvestYield/no entra en ningún modal mecánico),
+    // honesto con su bio.
+    medio: ['ACUATICO'],
     // Categoría de raza de fauna (2026-09-02) — CORVENES: "ave... pescadora", ave de presa/pesca
     // pese a no ser combatible en la práctica.
     faunaCategoria: 'CORVENES',

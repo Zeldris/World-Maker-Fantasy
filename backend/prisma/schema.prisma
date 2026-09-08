@@ -1799,6 +1799,19 @@ enum Temperamento {
   ENEMIGO // reputación pésima — fuerza combate igual que AGRESIVO; casi irrecuperable (ver reputation.ts)
 }
 
+/// "Interactuar" motor unificado de eventos de escena, gate de alcanzabilidad (2026-09-08) —
+/// coherencia narrativa pedida explícitamente por la usuaria: "un cruzavientos sobrevuela la zona
+/// buscando presa — como yo no puedo volar no debería poder 'atacar' a no ser que haga algo, o me
+/// ataque él a mí". Volumen real en el catálogo hoy: muy pocas fichas (revisión 2026-09-08 sobre
+/// las ~80 fichas de fauna existentes) — la mayoría es TERRESTRE por defecto, sin necesitar marcarse
+/// explícitamente. Valor de CATÁLOGO fijo, igual que `Temperamento` — no lo decide el motor en
+/// caliente, solo describe una capacidad física fija de la especie.
+enum MedioMovimiento {
+  TERRESTRE // por defecto — alcanzable sin ninguna condición narrativa extra
+  AEREO // en vuelo/planeo — solo alcanzable si la narración describe una condición (posado, en nido, herido en tierra...)
+  ACUATICO // en agua profunda — solo alcanzable con condición equivalente (en la orilla, varado, pescando desde tierra...)
+}
+
 /// Clase de combate (2026-08-24, Grupo 3 § Sistema de clases, diseño completo en
 /// docs/rpgtarkor/clases.md) — 9 clases, 4 exclusivas de una raza jugable concreta (Chamán=orcos,
 /// Caballero=goirntes, Segador=nabieus, Druida=faerus), el resto disponibles para cualquiera.
@@ -1984,6 +1997,17 @@ model Npc {
   /// (depende del verbo del jugador), así que sembrar sin asignar esto explícitamente no cambia
   /// nada del comportamiento existente.
   temperamento        Temperamento         @default(CAUTELOSO)
+  /// Medios de movimiento POSIBLES de la especie, ver enum `MedioMovimiento` — array, no valor
+  /// único (2026-09-08, precisión de la usuaria: un anfibio real es TERRESTRE cuando se presenta en
+  /// tierra Y ACUATICO cuando se presenta sumergido, "no puedo interactuar en agua sumergido
+  /// lógicamente" — el mismo individuo cambia de medio ALCANZABLE según la escena, no según una
+  /// propiedad fija). Este array solo declara qué medios existen para la especie en el catálogo;
+  /// EN QUÉ MEDIO está un individuo/recurso concreto EN ESE TURNO (posado vs. sumergido) es estado
+  /// dinámico de escena, no de catálogo — pieza sin diseñar todavía, ver plan de "Interactuar".
+  /// Default `[TERRESTRE]` = comportamiento actual (alcanzable sin condición), así que sembrar sin
+  /// asignar esto explícitamente no cambia nada. Solo relevante para fauna con `ZonePoint` tipo
+  /// FAUNA — el gate real vive en el disparador de "Interactuar"/Cazar (turnResolution.ts/cazar.ts).
+  medio               MedioMovimiento[]    @default([TERRESTRE])
   /// Capacidades de interacción (2026-07-29, "no siempre puedes domesticar a un animal de la misma
   /// raza... quiero que sea dinámico"): % (0-100) de que ESTA especie/individuo tenga la capacidad
   /// en absoluto, no un booleano fijo — un Aullador Rojo hambriento no siempre es domesticable.
