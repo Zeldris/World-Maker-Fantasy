@@ -214,13 +214,15 @@ const EXPULSAR_RONDAS = 2;
 /// existente, solo se nombra para dejar claro que es el mismo relleno en ambos lados.
 const CHECK_OPUESTO_DIFICULTAD_RELLENO = 15;
 
-async function datosVivosDe(
-  tx: Prisma.TransactionClient,
-  worldId: string,
-  saveId: string,
-  participant: ParticipantRef,
-  weaponNames: string[],
-): Promise<DatosCombatiente | null> {
+interface DatosVivosDeParams {
+  tx: Prisma.TransactionClient;
+  worldId: string;
+  saveId: string;
+  participant: ParticipantRef;
+  weaponNames: string[];
+}
+
+async function datosVivosDe({ tx, worldId, saveId, participant, weaponNames }: DatosVivosDeParams): Promise<DatosCombatiente | null> {
   if (participant.tipo === 'JUGADOR') {
     // La jugadora en un CombatEncounter real (2026-08-25) — a diferencia de NPC/COMPANION, en su
     // propio turno ELIGE la habilidad de ataque explícitamente (ver `resolverTurnoJugador`, no
@@ -356,18 +358,27 @@ function toNpcForCombatAbilities(npc: Npc): NpcForCombatAbilities {
 /// entrada sin objetivo (aunque otros SÍ puedan reclamarla), y el caller debe fijarlo aparte en
 /// cuanto lo sepa (`fijarEleccionRondaJugador`) antes de que NADA de la ronda pueda resolverse en
 /// firme (ver comentario largo de `esperandoEleccionJugadora` en schema.prisma).
-async function calcularEnganchesRonda(
-  tx: Prisma.TransactionClient,
-  worldId: string,
-  saveId: string,
-  encounter: { ordenIniciativa: string[]; participantes: (ParticipantRef & { bando: Bando })[] },
-  weaponNamesPorDefecto: string[],
-  jugadoraTargetId: string | null,
-): Promise<{ enganches: Map<string, string | null>; esperandoJugadora: boolean }> {
+interface CalcularEnganchesRondaParams {
+  tx: Prisma.TransactionClient;
+  worldId: string;
+  saveId: string;
+  encounter: { ordenIniciativa: string[]; participantes: (ParticipantRef & { bando: Bando })[] };
+  weaponNamesPorDefecto: string[];
+  jugadoraTargetId: string | null;
+}
+
+async function calcularEnganchesRonda({
+  tx,
+  worldId,
+  saveId,
+  encounter,
+  weaponNamesPorDefecto,
+  jugadoraTargetId,
+}: CalcularEnganchesRondaParams): Promise<{ enganches: Map<string, string | null>; esperandoJugadora: boolean }> {
   const datosPorParticipante = new Map<string, DatosCombatiente | null>();
   await Promise.all(
     encounter.participantes.map(async (p) => {
-      datosPorParticipante.set(p.id, await datosVivosDe(tx, worldId, saveId, p, weaponNamesPorDefecto));
+      datosPorParticipante.set(p.id, await datosVivosDe({ tx, worldId, saveId, participant: p, weaponNames: weaponNamesPorDefecto }));
     }),
   );
   // Bug real jugando en vivo (2026-08-29, tercera causa encadenada del mismo hallazgo que
@@ -411,14 +422,14 @@ async function calcularEnganchesRonda(
   return { enganches, esperandoJugadora };
 }
 
-async function escribirCondicionYEnergia(
-  tx: Prisma.TransactionClient,
-  saveId: string,
-  participant: ParticipantRef,
-  condicionFisica: CondicionFisica | null,
-  energia: number | null,
-  abilityNameUsada: string | null,
-  usageCounts: Record<string, number>,
+interface EscribirCondicionYEnergiaParams {
+  tx: Prisma.TransactionClient;
+  saveId: string;
+  participant: ParticipantRef;
+  condicionFisica: CondicionFisica | null;
+  energia: number | null;
+  abilityNameUsada: string | null;
+  usageCounts: Record<string, number>;
   /// Fase 3 § 3a de efectos de clase (2026-08-27) — ya decrementado/con el push de este turno
   /// (`decrementActiveEffects`+`pushActiveEffect`, calculado por el caller). `null` = no tocar
   /// (golpe gratis, camino sin `resolverIntercambioCompleto` de por medio). Reset a `[]` si
@@ -426,8 +437,19 @@ async function escribirCondicionYEnergia(
   /// criterio que `NpcState.activeEffects` en el motor 1vs1 (turnResolution.ts): este parámetro ya
   /// viene `null` en cualquier turno donde nada le pasó a este participante (ver los call-sites),
   /// así que nunca resetea "de fondo" a alguien que simplemente sigue ileso sin haber sido tocado.
-  activeEffectsNext: ActiveEffect[] | null,
-): Promise<void> {
+  activeEffectsNext: ActiveEffect[] | null;
+}
+
+async function escribirCondicionYEnergia({
+  tx,
+  saveId,
+  participant,
+  condicionFisica,
+  energia,
+  abilityNameUsada,
+  usageCounts,
+  activeEffectsNext,
+}: EscribirCondicionYEnergiaParams): Promise<void> {
   const nextUsageCounts = { ...usageCounts };
   if (abilityNameUsada) nextUsageCounts[abilityNameUsada] = (nextUsageCounts[abilityNameUsada] ?? 0) + 1;
   const activeEffectsToWrite = activeEffectsNext === null ? null : condicionFisica === 'ILESO' ? [] : activeEffectsNext;
@@ -568,7 +590,7 @@ interface EjecutarIntercambioParams extends TurnoAutonomoBaseParams {
 /// `narrateAndPersistTurn` para `appendSessionFacts`/`captureLiveTeacherExample`.
 async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): Promise<TurnoAutonomoResultado> {
   const { prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque, atacanteRol, dualWieldBonus, defensor, weaponNamesPorDefecto, narrarFn } = params;
-  const datosDefensor = await datosVivosDe(prisma, worldId, saveId, defensor, weaponNamesPorDefecto);
+  const datosDefensor = await datosVivosDe({ tx: prisma, worldId, saveId, participant: defensor, weaponNames: weaponNamesPorDefecto });
   // Bug real jugando en vivo (2026-09-07, "combate atascado para siempre"): este guard existía para
   // no seguir golpeando a alguien ya derrotado, pero CONVALECIENTE deja de ser "victoria automática"
   // desde 2026-08-26 (ver `resolverTurnoJugador`, la jugadora convaleciente SIGUE atacando, muy
@@ -580,7 +602,7 @@ async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): P
   // criterio que ya usa `calcularEnganchesRonda` (línea 373) para decidir quién sigue "vivo" en el
   // combate.
   if (!datosDefensor || (datosDefensor.condicionFisica === 'CONVALECIENTE' && defensor.tipo !== 'JUGADOR') || datosDefensor.condicionFisica === 'MUERTO') {
-    return avanzarSinAtacar(prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn);
+    return avanzarSinAtacar({ prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn });
   }
   const habilidadDefensa = chooseNpcAbility(datosDefensor.abilities, 'defensa', datosDefensor.energia, Math.random, datosDefensor.usageCounts);
 
@@ -661,7 +683,7 @@ async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): P
     const defensorBando = encounter.participantes.find((p) => p.id === defensor.id)?.bando;
     const candidatosBando = encounter.participantes.filter((p) => p.bando === defensorBando);
     const datosPorCandidato = new Map<string, DatosCombatiente | null>();
-    await Promise.all(candidatosBando.map(async (p) => datosPorCandidato.set(p.id, await datosVivosDe(prisma, worldId, saveId, p, weaponNamesPorDefecto))));
+    await Promise.all(candidatosBando.map(async (p) => datosPorCandidato.set(p.id, await datosVivosDe({ tx: prisma, worldId, saveId, participant: p, weaponNames: weaponNamesPorDefecto }))));
     const candidatosObj: ObjetivoCandidato[] = candidatosBando
       .filter((p) => datosPorCandidato.get(p.id))
       .map((p) => ({ participantId: p.id, condicionFisica: datosPorCandidato.get(p.id)!.condicionFisica }));
@@ -693,7 +715,7 @@ async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): P
     const atacanteBando = encounter.participantes.find((p) => p.id === actual.id)?.bando;
     const candidatosBando = encounter.participantes.filter((p) => p.bando === atacanteBando);
     const datosPorCandidato = new Map<string, DatosCombatiente | null>();
-    await Promise.all(candidatosBando.map(async (p) => datosPorCandidato.set(p.id, await datosVivosDe(prisma, worldId, saveId, p, weaponNamesPorDefecto))));
+    await Promise.all(candidatosBando.map(async (p) => datosPorCandidato.set(p.id, await datosVivosDe({ tx: prisma, worldId, saveId, participant: p, weaponNames: weaponNamesPorDefecto }))));
     const candidatosObj: ObjetivoCandidato[] = candidatosBando
       .filter((p) => datosPorCandidato.get(p.id))
       .map((p) => ({ participantId: p.id, condicionFisica: datosPorCandidato.get(p.id)!.condicionFisica }));
@@ -725,31 +747,31 @@ async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): P
   // Transacción corta #1 — solo escritura, sin narración dentro: condición/energía de ambos lados
   // quedan atómicas entre sí, pero la transacción se cierra antes de llamar a Ollama.
   await prisma.$transaction(async (tx) => {
-    await escribirCondicionYEnergia(
+    await escribirCondicionYEnergia({
       tx,
       saveId,
-      defensor,
-      resultado.defensorRecibeGolpe ? resultado.nuevaCondicionDefensor : null,
-      nuevaEnergiaDefensor,
-      habilidadDefensa.name,
-      datosDefensor.usageCounts,
-      defensorActiveEffectsNext,
-    );
-    await escribirCondicionYEnergia(
+      participant: defensor,
+      condicionFisica: resultado.defensorRecibeGolpe ? resultado.nuevaCondicionDefensor : null,
+      energia: nuevaEnergiaDefensor,
+      abilityNameUsada: habilidadDefensa.name,
+      usageCounts: datosDefensor.usageCounts,
+      activeEffectsNext: defensorActiveEffectsNext,
+    });
+    await escribirCondicionYEnergia({
       tx,
       saveId,
-      actual,
-      resultado.atacanteRecibeGolpe ? resultado.nuevaCondicionAtacante : null,
-      nuevaEnergiaAtacante,
-      habilidadAtaque.name,
-      datosAtacante.usageCounts,
-      atacanteActiveEffectsNext,
-    );
+      participant: actual,
+      condicionFisica: resultado.atacanteRecibeGolpe ? resultado.nuevaCondicionAtacante : null,
+      energia: nuevaEnergiaAtacante,
+      abilityNameUsada: habilidadAtaque.name,
+      usageCounts: datosAtacante.usageCounts,
+      activeEffectsNext: atacanteActiveEffectsNext,
+    });
     if (objetivoExtraParticipant && datosObjetivoExtra) {
-      await escribirCondicionYEnergia(tx, saveId, objetivoExtraParticipant, nuevaCondicionExtra, null, null, datosObjetivoExtra.usageCounts, objetivoExtraActiveEffectsNext);
+      await escribirCondicionYEnergia({ tx, saveId, participant: objetivoExtraParticipant, condicionFisica: nuevaCondicionExtra, energia: null, abilityNameUsada: null, usageCounts: datosObjetivoExtra.usageCounts, activeEffectsNext: objetivoExtraActiveEffectsNext });
     }
     if (objetivoDesviadoParticipant && datosObjetivoDesviado) {
-      await escribirCondicionYEnergia(tx, saveId, objetivoDesviadoParticipant, nuevaCondicionDesviado, null, null, datosObjetivoDesviado.usageCounts, decrementActiveEffects(datosObjetivoDesviado.activeEffects));
+      await escribirCondicionYEnergia({ tx, saveId, participant: objetivoDesviadoParticipant, condicionFisica: nuevaCondicionDesviado, energia: null, abilityNameUsada: null, usageCounts: datosObjetivoDesviado.usageCounts, activeEffectsNext: decrementActiveEffects(datosObjetivoDesviado.activeEffects) });
     }
     if (controlTargetId) await tx.combatParticipant.update({ where: { id: controlTargetId }, data: { controladoPorRondas: CONTROL_RONDAS } });
     if (ocultarSelfId) await tx.combatParticipant.update({ where: { id: ocultarSelfId }, data: { ocultoPorRondas: OCULTACION_RONDAS } });
@@ -802,7 +824,7 @@ async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): P
   });
 
   // Transacción corta #2 — relee condición fresca de todos y decide fin de combate/retargeting.
-  const avance = await prisma.$transaction((tx) => avanzarYComprobarFin(tx, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto));
+  const avance = await prisma.$transaction((tx) => avanzarYComprobarFin({ tx, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto }));
 
   const caidos: ParticipanteCaidoInfo[] = [];
   const defensorCae = resultado.defensorRecibeGolpe && (resultado.nuevaCondicionDefensor === 'CONVALECIENTE' || resultado.nuevaCondicionDefensor === 'MUERTO');
@@ -818,7 +840,7 @@ async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): P
 
   // INVOCACION real (Fase 3 § 3d, 2026-08-27) — si este intercambio cruzó de ronda, resuelve ya
   // (narrado, fuera de transacción) el golpe de cualquier tótem con turno pendiente.
-  const totems = await resolverTotemsPendientes(prisma, worldId, saveId, encounterId, avance.totemsQueAtacan, weaponNamesPorDefecto, narrarFn);
+  const totems = await resolverTotemsPendientes({ prisma, worldId, saveId, encounterId, totemIds: avance.totemsQueAtacan, weaponNamesPorDefecto, narrarFn });
   caidos.push(...totems.caidos);
 
   return {
@@ -841,11 +863,11 @@ async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): P
 /// (ver su comentario de cabecera sobre el bug de timeout de 2026-08-25).
 async function ejecutarGolpeGratisYAvanzar(params: TurnoAutonomoBaseParams & { defensor: ParticipantRef }): Promise<TurnoAutonomoResultado> {
   const { prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque, defensor, weaponNamesPorDefecto, narrarFn } = params;
-  const datosDefensor = await datosVivosDe(prisma, worldId, saveId, defensor, weaponNamesPorDefecto);
+  const datosDefensor = await datosVivosDe({ tx: prisma, worldId, saveId, participant: defensor, weaponNames: weaponNamesPorDefecto });
   // Mismo bug/fix que `ejecutarIntercambioYAvanzar` (2026-09-07, ver su comentario completo) — un
   // golpe gratis contra la jugadora convaleciente caía en el mismo guard, mismo bucle infinito.
   if (!datosDefensor || (datosDefensor.condicionFisica === 'CONVALECIENTE' && defensor.tipo !== 'JUGADOR') || datosDefensor.condicionFisica === 'MUERTO') {
-    return avanzarSinAtacar(prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn);
+    return avanzarSinAtacar({ prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn });
   }
 
   const aguanteMultiple = datosDefensor.abilities.find(
@@ -889,8 +911,8 @@ async function ejecutarGolpeGratisYAvanzar(params: TurnoAutonomoBaseParams & { d
   const rompeOcultacionId = actual.ocultoPorRondas ? actual.id : null;
 
   await prisma.$transaction(async (tx) => {
-    await escribirCondicionYEnergia(tx, saveId, defensor, nuevaCondicionDefensor, null, null, datosDefensor.usageCounts, defensorActiveEffectsNext);
-    await escribirCondicionYEnergia(tx, saveId, actual, null, nuevaEnergiaAtacante, habilidadAtaque.name, datosAtacante.usageCounts, atacanteActiveEffectsNext);
+    await escribirCondicionYEnergia({ tx, saveId, participant: defensor, condicionFisica: nuevaCondicionDefensor, energia: null, abilityNameUsada: null, usageCounts: datosDefensor.usageCounts, activeEffectsNext: defensorActiveEffectsNext });
+    await escribirCondicionYEnergia({ tx, saveId, participant: actual, condicionFisica: null, energia: nuevaEnergiaAtacante, abilityNameUsada: habilidadAtaque.name, usageCounts: datosAtacante.usageCounts, activeEffectsNext: atacanteActiveEffectsNext });
     if (rompeOcultacionId) await tx.combatParticipant.update({ where: { id: rompeOcultacionId }, data: { ocultoPorRondas: null } });
   });
 
@@ -905,14 +927,14 @@ async function ejecutarGolpeGratisYAvanzar(params: TurnoAutonomoBaseParams & { d
     defensorMuereEsteTurno: nuevaCondicionDefensor === 'MUERTO',
   });
 
-  const avance = await prisma.$transaction((tx) => avanzarYComprobarFin(tx, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto));
+  const avance = await prisma.$transaction((tx) => avanzarYComprobarFin({ tx, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto }));
 
   const caidos: ParticipanteCaidoInfo[] = [];
   if (nuevaCondicionDefensor === 'CONVALECIENTE' || nuevaCondicionDefensor === 'MUERTO') {
     caidos.push({ tipo: defensor.tipo, npcId: defensor.npcId, nuevaCondicion: nuevaCondicionDefensor });
   }
 
-  const totems = await resolverTotemsPendientes(prisma, worldId, saveId, encounterId, avance.totemsQueAtacan, weaponNamesPorDefecto, narrarFn);
+  const totems = await resolverTotemsPendientes({ prisma, worldId, saveId, encounterId, totemIds: avance.totemsQueAtacan, weaponNamesPorDefecto, narrarFn });
   caidos.push(...totems.caidos);
 
   return {
@@ -938,22 +960,32 @@ async function ejecutarGolpeGratisYAvanzar(params: TurnoAutonomoBaseParams & { d
 /// propias 2 transacciones cortas + narración fuera (mismo patrón de seguridad de todo este
 /// archivo). `null` si el tótem ya no tiene objetivo vivo al que golpear (bando contrario agotado
 /// justo antes de que le tocara) — no hay golpe que narrar en ese caso.
-async function ejecutarAtaqueTotemYAvanzar(
-  prisma: PrismaClient,
-  worldId: string,
-  saveId: string,
-  totem: ParticipantRef & { bando: Bando },
-  participantes: (ParticipantRef & { bando: Bando })[],
-  weaponNamesPorDefecto: string[],
-  narrarFn: typeof narrarTurnoCombateMultiple,
-): Promise<{ narracion: string; caido: ParticipanteCaidoInfo | null } | null> {
-  const datosTotem = await datosVivosDe(prisma, worldId, saveId, totem, weaponNamesPorDefecto);
+interface EjecutarAtaqueTotemYAvanzarParams {
+  prisma: PrismaClient;
+  worldId: string;
+  saveId: string;
+  totem: ParticipantRef & { bando: Bando };
+  participantes: (ParticipantRef & { bando: Bando })[];
+  weaponNamesPorDefecto: string[];
+  narrarFn: typeof narrarTurnoCombateMultiple;
+}
+
+async function ejecutarAtaqueTotemYAvanzar({
+  prisma,
+  worldId,
+  saveId,
+  totem,
+  participantes,
+  weaponNamesPorDefecto,
+  narrarFn,
+}: EjecutarAtaqueTotemYAvanzarParams): Promise<{ narracion: string; caido: ParticipanteCaidoInfo | null } | null> {
+  const datosTotem = await datosVivosDe({ tx: prisma, worldId, saveId, participant: totem, weaponNames: weaponNamesPorDefecto });
   if (!datosTotem) return null;
   const habilidadTotem = chooseNpcAbility(datosTotem.abilities, 'ataque', datosTotem.energia, Math.random, datosTotem.usageCounts);
 
   const candidatos = participantes.filter((p) => p.bando !== totem.bando);
   const datosPorCandidato = new Map<string, DatosCombatiente | null>();
-  await Promise.all(candidatos.map(async (p) => datosPorCandidato.set(p.id, await datosVivosDe(prisma, worldId, saveId, p, weaponNamesPorDefecto))));
+  await Promise.all(candidatos.map(async (p) => datosPorCandidato.set(p.id, await datosVivosDe({ tx: prisma, worldId, saveId, participant: p, weaponNames: weaponNamesPorDefecto }))));
   // `esJugadorReal` (2026-08-29, mismo hallazgo) — un tótem con solo la jugadora convaleciente
   // como candidato del bando contrario debe poder seguir eligiéndola.
   const candidatosObj: ObjetivoCandidato[] = candidatos
@@ -967,7 +999,7 @@ async function ejecutarAtaqueTotemYAvanzar(
   const nuevaCondicionObjetivo = nextCondicionForAttack(habilidadTotem.effects, datosObjetivo.condicionFisica);
 
   await prisma.$transaction(async (tx) => {
-    await escribirCondicionYEnergia(tx, saveId, objetivo, nuevaCondicionObjetivo, null, null, datosObjetivo.usageCounts, decrementActiveEffects(datosObjetivo.activeEffects));
+    await escribirCondicionYEnergia({ tx, saveId, participant: objetivo, condicionFisica: nuevaCondicionObjetivo, energia: null, abilityNameUsada: null, usageCounts: datosObjetivo.usageCounts, activeEffectsNext: decrementActiveEffects(datosObjetivo.activeEffects) });
   });
 
   const narracion = await narrarFn({
@@ -996,15 +1028,25 @@ async function ejecutarAtaqueTotemYAvanzar(
 /// su cuenta (`avanzarYComprobarFin` ya avanzó `turnoActual`/`ronda` antes de saber esto — un
 /// tótem puede rematar al último enemigo del bando contrario en el mismo instante en que empieza
 /// la ronda nueva).
-async function resolverTotemsPendientes(
-  prisma: PrismaClient,
-  worldId: string,
-  saveId: string,
-  encounterId: string,
-  totemIds: string[],
-  weaponNamesPorDefecto: string[],
-  narrarFn: typeof narrarTurnoCombateMultiple,
-): Promise<{ narraciones: string[]; caidos: ParticipanteCaidoInfo[]; encounterTerminado: boolean }> {
+interface ResolverTotemsPendientesParams {
+  prisma: PrismaClient;
+  worldId: string;
+  saveId: string;
+  encounterId: string;
+  totemIds: string[];
+  weaponNamesPorDefecto: string[];
+  narrarFn: typeof narrarTurnoCombateMultiple;
+}
+
+async function resolverTotemsPendientes({
+  prisma,
+  worldId,
+  saveId,
+  encounterId,
+  totemIds,
+  weaponNamesPorDefecto,
+  narrarFn,
+}: ResolverTotemsPendientesParams): Promise<{ narraciones: string[]; caidos: ParticipanteCaidoInfo[]; encounterTerminado: boolean }> {
   if (totemIds.length === 0) return { narraciones: [], caidos: [], encounterTerminado: false };
   const narraciones: string[] = [];
   const caidos: ParticipanteCaidoInfo[] = [];
@@ -1012,7 +1054,7 @@ async function resolverTotemsPendientes(
     const participantes = await prisma.combatParticipant.findMany({ where: { encounterId } });
     const totem = participantes.find((p) => p.id === totemId) as (ParticipantRef & { bando: Bando }) | undefined;
     if (!totem || (totem.invocacionVidaRestante ?? 0) <= 0) continue; // destruido entre medias por otro tótem/efecto
-    const resultado = await ejecutarAtaqueTotemYAvanzar(prisma, worldId, saveId, totem, participantes as (ParticipantRef & { bando: Bando })[], weaponNamesPorDefecto, narrarFn);
+    const resultado = await ejecutarAtaqueTotemYAvanzar({ prisma, worldId, saveId, totem, participantes: participantes as (ParticipantRef & { bando: Bando })[], weaponNamesPorDefecto, narrarFn });
     // Expira DESPUÉS de atacar (ver comentario largo en `avanzarYComprobarFin` sobre el bug real
     // de orden cazado en integración) — quien llega aquí con `invocacionRondasRestantes` ya en 0
     // (su último turno) agota su duración justo ahora, tras el golpe, nunca antes.
@@ -1024,7 +1066,7 @@ async function resolverTotemsPendientes(
     if (resultado.caido) caidos.push(resultado.caido);
   }
   const participantesFrescos = await prisma.combatParticipant.findMany({ where: { encounterId } });
-  const datosPorParticipante = await Promise.all(participantesFrescos.map(async (p) => ({ p, datos: await datosVivosDe(prisma, worldId, saveId, p, weaponNamesPorDefecto) })));
+  const datosPorParticipante = await Promise.all(participantesFrescos.map(async (p) => ({ p, datos: await datosVivosDe({ tx: prisma, worldId, saveId, participant: p, weaponNames: weaponNamesPorDefecto }) })));
   const candidatosPorBando = (bando: Bando): ObjetivoCandidato[] =>
     datosPorParticipante
       .filter(({ p }) => p.bando === bando)
@@ -1056,13 +1098,13 @@ async function invocarTotemYAvanzar(
   if (!totemNpc) {
     // Catálogo sin sembrar todavía (entorno recién creado sin `npm run seed-catalog`) — se pierde
     // el turno en vez de reventar el combate real, mismo criterio defensivo que el resto del motor.
-    return avanzarSinAtacar(prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn);
+    return avanzarSinAtacar({ prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn });
   }
   const yaHayUno = encounter.participantes.some(
     (p) => p.tipo === 'INVOCACION' && p.npcId === totemNpc.id && p.invocacionInvocadorId === actual.id && (p.invocacionVidaRestante ?? 0) > 0,
   );
   if (yaHayUno) {
-    return avanzarSinAtacar(prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn);
+    return avanzarSinAtacar({ prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn });
   }
 
   await prisma.$transaction(async (tx) => {
@@ -1090,8 +1132,8 @@ async function invocarTotemYAvanzar(
     defensorMuereEsteTurno: false,
   });
 
-  const avance = await prisma.$transaction((tx) => avanzarYComprobarFin(tx, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto));
-  const totems = await resolverTotemsPendientes(prisma, worldId, saveId, encounterId, avance.totemsQueAtacan, weaponNamesPorDefecto, narrarFn);
+  const avance = await prisma.$transaction((tx) => avanzarYComprobarFin({ tx, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto }));
+  const totems = await resolverTotemsPendientes({ prisma, worldId, saveId, encounterId, totemIds: avance.totemsQueAtacan, weaponNamesPorDefecto, narrarFn });
 
   return {
     narracion,
@@ -1124,25 +1166,34 @@ function dueloYaResueltoPorElOtro(ordenIniciativa: string[], actualId: string, d
 /// de ambas habilidades reales (Opresión Mental, Control Rúnico). Devuelve `null` si no hay ningún
 /// aliado vivo al que redirigir (combatiente solo en su bando) — el caller cae entonces al
 /// comportamiento normal (`objetivoActualId`).
-async function objetivoControladoPara(
-  prisma: PrismaClient,
-  worldId: string,
-  saveId: string,
-  actual: ParticipantRef & { bando: Bando },
-  encounter: { participantes: (ParticipantRef & { bando: Bando })[] },
-  weaponNamesPorDefecto: string[],
-): Promise<ParticipantRef | null> {
+interface ObjetivoControladoParaParams {
+  prisma: PrismaClient;
+  worldId: string;
+  saveId: string;
+  actual: ParticipantRef & { bando: Bando };
+  encounter: { participantes: (ParticipantRef & { bando: Bando })[] };
+  weaponNamesPorDefecto: string[];
+}
+
+async function objetivoControladoPara({
+  prisma,
+  worldId,
+  saveId,
+  actual,
+  encounter,
+  weaponNamesPorDefecto,
+}: ObjetivoControladoParaParams): Promise<ParticipantRef | null> {
   if (!actual.controladoPorRondas || actual.controladoPorRondas <= 0) return null;
   const aliados = encounter.participantes.filter((p) => p.bando === actual.bando && p.id !== actual.id);
   const datosPorAliado = new Map<string, DatosCombatiente | null>();
-  await Promise.all(aliados.map(async (p) => datosPorAliado.set(p.id, await datosVivosDe(prisma, worldId, saveId, p, weaponNamesPorDefecto))));
+  await Promise.all(aliados.map(async (p) => datosPorAliado.set(p.id, await datosVivosDe({ tx: prisma, worldId, saveId, participant: p, weaponNames: weaponNamesPorDefecto }))));
   // `esJugadorReal` (2026-08-29, mismo hallazgo) — la jugadora convaleciente puede ser un aliado
   // válido a redirigir con CONTROL (un enemigo forzando a otro a atacarla a ella).
   const candidatos: ObjetivoCandidato[] = aliados
     .filter((p) => datosPorAliado.get(p.id))
     .map((p) => ({ participantId: p.id, condicionFisica: datosPorAliado.get(p.id)!.condicionFisica, esJugadorReal: p.tipo === 'JUGADOR' }));
   if (objetivosValidosParaAtacar(candidatos).length === 0) return null;
-  const datosActual = await datosVivosDe(prisma, worldId, saveId, actual, weaponNamesPorDefecto);
+  const datosActual = await datosVivosDe({ tx: prisma, worldId, saveId, participant: actual, weaponNames: weaponNamesPorDefecto });
   const elegidoId = elegirObjetivo(datosActual?.attributes.inteligencia ?? 0, candidatos, Math.random);
   return elegidoId ? (aliados.find((p) => p.id === elegidoId) ?? null) : null;
 }
@@ -1161,14 +1212,23 @@ async function objetivoControladoPara(
 /// Recibe el `PrismaClient` de verdad, NO un `tx` — desde el bug de timeout de 2026-08-25 (ver
 /// comentario de `ejecutarIntercambioYAvanzar`), ningún turno autónomo vive dentro de una única
 /// transacción que abarque también la narración real.
-export async function resolverTurnoAutonomo(
-  prisma: PrismaClient,
-  worldId: string,
-  saveId: string,
-  encounterId: string,
-  weaponNamesPorDefecto: string[] = [],
-  narrarFn: typeof narrarTurnoCombateMultiple = narrarTurnoCombateMultiple,
-): Promise<TurnoAutonomoResultado | null> {
+export interface ResolverTurnoAutonomoParams {
+  prisma: PrismaClient;
+  worldId: string;
+  saveId: string;
+  encounterId: string;
+  weaponNamesPorDefecto?: string[];
+  narrarFn?: typeof narrarTurnoCombateMultiple;
+}
+
+export async function resolverTurnoAutonomo({
+  prisma,
+  worldId,
+  saveId,
+  encounterId,
+  weaponNamesPorDefecto = [],
+  narrarFn = narrarTurnoCombateMultiple,
+}: ResolverTurnoAutonomoParams): Promise<TurnoAutonomoResultado | null> {
   const encounter = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId }, include: { participantes: true } });
   if (encounter.estado === 'RESUELTO' || encounter.ordenIniciativa.length === 0) return null;
   // Objetivo individual real (2026-08-26) — ningún intercambio de la ronda puede resolverse en
@@ -1180,15 +1240,15 @@ export async function resolverTurnoAutonomo(
   const actual = encounter.participantes.find((p) => p.id === actualId);
   if (!actual || actual.tipo === 'JUGADOR') return null;
 
-  const datosAtacante = await datosVivosDe(prisma, worldId, saveId, actual, weaponNamesPorDefecto);
+  const datosAtacante = await datosVivosDe({ tx: prisma, worldId, saveId, participant: actual, weaponNames: weaponNamesPorDefecto });
   if (!datosAtacante || objetivosValidos([{ participantId: actual.id, condicionFisica: datosAtacante.condicionFisica }]).length === 0) {
-    return avanzarSinAtacar(prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn);
+    return avanzarSinAtacar({ prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn });
   }
 
   // CONTROL real (Fase 3 § 3a, 2026-08-27) — antes de mirar el enganche normal (que solo empareja
   // bandos contrarios): si está controlado, se le fuerza contra un aliado propio, resuelto siempre
   // como un intercambio contestado normal (el aliado SÍ se defiende, ver `objetivoControladoPara`).
-  const objetivoControlado = await objetivoControladoPara(prisma, worldId, saveId, actual, encounter, weaponNamesPorDefecto);
+  const objetivoControlado = await objetivoControladoPara({ prisma, worldId, saveId, actual, encounter, weaponNamesPorDefecto });
   if (objetivoControlado) {
     const habilidadControlada = chooseNpcAbility(datosAtacante.abilities, 'ataque', datosAtacante.energia, Math.random, datosAtacante.usageCounts);
     // `habilidadControlada.rol` real (no 'ataque' fijo, consolidación 2026-09-01) — casi siempre
@@ -1212,8 +1272,8 @@ export async function resolverTurnoAutonomo(
 
   const defensorId = actual.objetivoActualId;
   const defensor = defensorId ? encounter.participantes.find((p) => p.id === defensorId) : null;
-  if (!defensor) return avanzarSinAtacar(prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn);
-  if (dueloYaResueltoPorElOtro(encounter.ordenIniciativa, actual.id, defensor)) return avanzarSinAtacar(prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn);
+  if (!defensor) return avanzarSinAtacar({ prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn });
+  if (dueloYaResueltoPorElOtro(encounter.ordenIniciativa, actual.id, defensor)) return avanzarSinAtacar({ prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn });
 
   const esDuelo = defensor.objetivoActualId === actual.id;
   if (esDuelo) {
@@ -1243,15 +1303,25 @@ export interface AccionJugadorCombate {
 /// EMPEZAR la ronda, vía `fijarEleccionRondaJugador`, antes de que nada de esa ronda pueda
 /// resolverse en firme (ver comentario de `resolverTurnoAutonomo`); esta función solo consume el
 /// `objetivoActualId` ya fijo de la jugadora, exactamente igual que un NPC/COMPANION.
-export async function resolverTurnoJugador(
-  prisma: PrismaClient,
-  worldId: string,
-  saveId: string,
-  encounterId: string,
-  accion: AccionJugadorCombate,
-  weaponNamesPorDefecto: string[] = [],
-  narrarFn: typeof narrarTurnoCombateMultiple = narrarTurnoCombateMultiple,
-): Promise<TurnoAutonomoResultado | null> {
+export interface ResolverTurnoJugadorParams {
+  prisma: PrismaClient;
+  worldId: string;
+  saveId: string;
+  encounterId: string;
+  accion: AccionJugadorCombate;
+  weaponNamesPorDefecto?: string[];
+  narrarFn?: typeof narrarTurnoCombateMultiple;
+}
+
+export async function resolverTurnoJugador({
+  prisma,
+  worldId,
+  saveId,
+  encounterId,
+  accion,
+  weaponNamesPorDefecto = [],
+  narrarFn = narrarTurnoCombateMultiple,
+}: ResolverTurnoJugadorParams): Promise<TurnoAutonomoResultado | null> {
   const encounter = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId }, include: { participantes: true } });
   if (encounter.estado === 'RESUELTO' || encounter.ordenIniciativa.length === 0) return null;
   if (encounter.esperandoEleccionJugadora) return null;
@@ -1260,7 +1330,7 @@ export async function resolverTurnoJugador(
   const actual = encounter.participantes.find((p) => p.id === actualId);
   if (!actual || actual.tipo !== 'JUGADOR') return null;
 
-  const datosAtacante = await datosVivosDe(prisma, worldId, saveId, actual, weaponNamesPorDefecto);
+  const datosAtacante = await datosVivosDe({ tx: prisma, worldId, saveId, participant: actual, weaponNames: weaponNamesPorDefecto });
   // Bug real jugando en vivo (2026-08-29, primer combate múltiple real): a diferencia de
   // `resolverTurnoAutonomo` (arriba, solo NPC/aliados — CONVALECIENTE ahí SÍ los saca del combate,
   // correcto), este guard usaba el mismo criterio estricto de `objetivosValidos` para la JUGADORA
@@ -1271,14 +1341,14 @@ export async function resolverTurnoJugador(
   // atacando; la penalización real ya la aplica `resolveExchange`/`condicionMalus`
   // (`combatExchange.ts`) dentro del propio intercambio, no hace falta duplicarla aquí.
   if (!datosAtacante || datosAtacante.condicionFisica === 'MUERTO') {
-    return avanzarSinAtacar(prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn);
+    return avanzarSinAtacar({ prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn });
   }
 
   // CONTROL real (Fase 3 § 3a, 2026-08-27) — un enemigo puede controlar también a la JUGADORA (mismo
   // efecto, cualquier lado), ver comentario largo de `objetivoControladoPara`. Sin cambio de flujo
   // visible: sigue eligiendo/pulsando como siempre, el backend redirige en silencio (mismo criterio
   // que el enganche por ronda).
-  const objetivoControlado = await objetivoControladoPara(prisma, worldId, saveId, actual, encounter, weaponNamesPorDefecto);
+  const objetivoControlado = await objetivoControladoPara({ prisma, worldId, saveId, actual, encounter, weaponNamesPorDefecto });
   if (objetivoControlado) {
     return ejecutarIntercambioYAvanzar({
       prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque: accion.habilidad,
@@ -1293,8 +1363,8 @@ export async function resolverTurnoJugador(
 
   const defensorId = actual.objetivoActualId;
   const defensor = defensorId ? encounter.participantes.find((p) => p.id === defensorId) : null;
-  if (!defensor) return avanzarSinAtacar(prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn);
-  if (dueloYaResueltoPorElOtro(encounter.ordenIniciativa, actual.id, defensor)) return avanzarSinAtacar(prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn);
+  if (!defensor) return avanzarSinAtacar({ prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn });
+  if (dueloYaResueltoPorElOtro(encounter.ordenIniciativa, actual.id, defensor)) return avanzarSinAtacar({ prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn });
 
   const esDuelo = defensor.objetivoActualId === actual.id;
   if (!esDuelo) {
@@ -1341,19 +1411,29 @@ export interface ResolucionRondaCombate {
   esperandoEleccionRonda: boolean;
 }
 
-export async function resolverTurnosAutonomosHastaJugadora(
-  prisma: PrismaClient,
-  worldId: string,
-  saveId: string,
-  encounterId: string,
-  weaponNamesPorDefecto: string[] = [],
-  narrarFn: typeof narrarTurnoCombateMultiple = narrarTurnoCombateMultiple,
-  maxIteraciones: number = 30,
-): Promise<ResolucionRondaCombate> {
+export interface ResolverTurnosAutonomosHastaJugadoraParams {
+  prisma: PrismaClient;
+  worldId: string;
+  saveId: string;
+  encounterId: string;
+  weaponNamesPorDefecto?: string[];
+  narrarFn?: typeof narrarTurnoCombateMultiple;
+  maxIteraciones?: number;
+}
+
+export async function resolverTurnosAutonomosHastaJugadora({
+  prisma,
+  worldId,
+  saveId,
+  encounterId,
+  weaponNamesPorDefecto = [],
+  narrarFn = narrarTurnoCombateMultiple,
+  maxIteraciones = 30,
+}: ResolverTurnosAutonomosHastaJugadoraParams): Promise<ResolucionRondaCombate> {
   const narraciones: string[] = [];
   const caidos: ParticipanteCaidoInfo[] = [];
   for (let i = 0; i < maxIteraciones; i++) {
-    const resultado = await resolverTurnoAutonomo(prisma, worldId, saveId, encounterId, weaponNamesPorDefecto, narrarFn);
+    const resultado = await resolverTurnoAutonomo({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto, narrarFn });
     if (resultado === null) {
       const encounter = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId } });
       return {
@@ -1382,17 +1462,27 @@ export async function resolverTurnosAutonomosHastaJugadora(
 /// terminado en esos turnos, y si el turno que faltaba era justo el último de la ronda, el
 /// enganche de la ronda siguiente nunca se recalculaba (quedaba con el de la ronda vieja para
 /// siempre). Ahora reutiliza el mismo camino que un intercambio real.
-async function avanzarSinAtacar(
-  prisma: PrismaClient,
-  worldId: string,
-  saveId: string,
-  encounterId: string,
-  encounter: { turnoActual: number; ordenIniciativa: string[] },
-  weaponNamesPorDefecto: string[],
-  narrarFn: typeof narrarTurnoCombateMultiple,
-): Promise<TurnoAutonomoResultado> {
-  const avance = await prisma.$transaction((tx) => avanzarYComprobarFin(tx, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto));
-  const totems = await resolverTotemsPendientes(prisma, worldId, saveId, encounterId, avance.totemsQueAtacan, weaponNamesPorDefecto, narrarFn);
+interface AvanzarSinAtacarParams {
+  prisma: PrismaClient;
+  worldId: string;
+  saveId: string;
+  encounterId: string;
+  encounter: { turnoActual: number; ordenIniciativa: string[] };
+  weaponNamesPorDefecto: string[];
+  narrarFn: typeof narrarTurnoCombateMultiple;
+}
+
+async function avanzarSinAtacar({
+  prisma,
+  worldId,
+  saveId,
+  encounterId,
+  encounter,
+  weaponNamesPorDefecto,
+  narrarFn,
+}: AvanzarSinAtacarParams): Promise<TurnoAutonomoResultado> {
+  const avance = await prisma.$transaction((tx) => avanzarYComprobarFin({ tx, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto }));
+  const totems = await resolverTotemsPendientes({ prisma, worldId, saveId, encounterId, totemIds: avance.totemsQueAtacan, weaponNamesPorDefecto, narrarFn });
   return {
     narracion: '',
     atacanteNombre: '',
@@ -1425,14 +1515,23 @@ interface AvanceResultado {
   totemsQueAtacan: string[];
 }
 
-async function avanzarYComprobarFin(
-  tx: Prisma.TransactionClient,
-  worldId: string,
-  saveId: string,
-  encounterId: string,
-  encounter: { turnoActual: number; ordenIniciativa: string[] },
-  weaponNamesPorDefecto: string[],
-): Promise<AvanceResultado> {
+interface AvanzarYComprobarFinParams {
+  tx: Prisma.TransactionClient;
+  worldId: string;
+  saveId: string;
+  encounterId: string;
+  encounter: { turnoActual: number; ordenIniciativa: string[] };
+  weaponNamesPorDefecto: string[];
+}
+
+async function avanzarYComprobarFin({
+  tx,
+  worldId,
+  saveId,
+  encounterId,
+  encounter,
+  weaponNamesPorDefecto,
+}: AvanzarYComprobarFinParams): Promise<AvanceResultado> {
   // Bug real (2026-08-25, cazado cerrando saqueo/desuello de CombatEncounter): antes se usaba el
   // `encounter.participantes` que el CALLER ya traía cargado desde ANTES del intercambio que
   // acaba de resolverse — para un miembro de GRUPO, `datosVivosDe` lee su condición DIRECTAMENTE
@@ -1443,7 +1542,7 @@ async function avanzarYComprobarFin(
   // entero ya derrotado. Releído fresco de `CombatParticipant` en vez de confiar en el snapshot.
   const participantesFrescos = await tx.combatParticipant.findMany({ where: { encounterId } });
   const condiciones = await Promise.all(
-    participantesFrescos.map(async (p) => ({ p, datos: await datosVivosDe(tx, worldId, saveId, p, weaponNamesPorDefecto) })),
+    participantesFrescos.map(async (p) => ({ p, datos: await datosVivosDe({ tx, worldId, saveId, participant: p, weaponNames: weaponNamesPorDefecto }) })),
   );
   const candidatosPorBando = (bando: Bando): ObjetivoCandidato[] =>
     condiciones
@@ -1465,7 +1564,7 @@ async function avanzarYComprobarFin(
   }
 
   const encounterParaEnganche = { ordenIniciativa: encounter.ordenIniciativa, participantes: participantesFrescos as (ParticipantRef & { bando: Bando })[] };
-  const { enganches, esperandoJugadora } = await calcularEnganchesRonda(tx, worldId, saveId, encounterParaEnganche, weaponNamesPorDefecto, null);
+  const { enganches, esperandoJugadora } = await calcularEnganchesRonda({ tx, worldId, saveId, encounter: encounterParaEnganche, weaponNamesPorDefecto, jugadoraTargetId: null });
   await Promise.all([...enganches.entries()].map(([id, objetivo]) => tx.combatParticipant.update({ where: { id }, data: { objetivoActualId: objetivo } })));
   // CONTROL real (Fase 3 § 3a, 2026-08-27) — un turno de duración menos por cada ronda que cruza
   // (nunca dentro de la misma ronda en que se fija, mismo cuidado de orden que `ActiveEffect`).
@@ -1522,25 +1621,34 @@ async function avanzarYComprobarFin(
 /// `esperandoEleccionJugadora` en schema.prisma sobre por qué no puede esperar a que le "toque su
 /// turno" en `ordenIniciativa` si no es la primera. No-op si la ronda ya no está esperando nada de
 /// ella (defensivo — dos llamadas seguidas, o ya quedó reclamada por alguien mientras tanto).
-export async function fijarEleccionRondaJugador(
-  prisma: PrismaClient,
-  worldId: string,
-  saveId: string,
-  encounterId: string,
-  jugadoraTargetId: string,
-  weaponNamesPorDefecto: string[] = [],
-): Promise<void> {
+export interface FijarEleccionRondaJugadorParams {
+  prisma: PrismaClient;
+  worldId: string;
+  saveId: string;
+  encounterId: string;
+  jugadoraTargetId: string;
+  weaponNamesPorDefecto?: string[];
+}
+
+export async function fijarEleccionRondaJugador({
+  prisma,
+  worldId,
+  saveId,
+  encounterId,
+  jugadoraTargetId,
+  weaponNamesPorDefecto = [],
+}: FijarEleccionRondaJugadorParams): Promise<void> {
   await prisma.$transaction(async (tx) => {
     const encounter = await tx.combatEncounter.findUniqueOrThrow({ where: { id: encounterId }, include: { participantes: true } });
     if (!encounter.esperandoEleccionJugadora) return;
-    const { enganches } = await calcularEnganchesRonda(
+    const { enganches } = await calcularEnganchesRonda({
       tx,
       worldId,
       saveId,
-      { ordenIniciativa: encounter.ordenIniciativa, participantes: encounter.participantes as (ParticipantRef & { bando: Bando })[] },
+      encounter: { ordenIniciativa: encounter.ordenIniciativa, participantes: encounter.participantes as (ParticipantRef & { bando: Bando })[] },
       weaponNamesPorDefecto,
       jugadoraTargetId,
-    );
+    });
     await Promise.all([...enganches.entries()].map(([id, objetivo]) => tx.combatParticipant.update({ where: { id }, data: { objetivoActualId: objetivo } })));
     await tx.combatEncounter.update({ where: { id: encounterId }, data: { esperandoEleccionJugadora: false } });
   });
