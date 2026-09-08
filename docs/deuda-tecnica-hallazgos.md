@@ -293,13 +293,17 @@ con el enganche por ronda añadido hoy, el patrón se repite y se agrava:
   históricos explicando por qué se sustituyó. Este punto concreto es un falso positivo por
   antigüedad si vuelve a aparecer en otra auditoría.
 
-**Estado**: los parámetros posicionales de `avanzarSinAtacar`/`calcularEnganchesRonda`/
-`ejecutarGolpeGratisYAvanzar` siguen PENDIENTE, prioridad baja consciente — el archivo entero ya
-funciona y está probado a fondo (24 tests unitarios + 3 de integración nuevos solo de esta pasada,
-ver roadmap), refactorizar la firma de estas funciones a un objeto de opciones es limpieza pura,
-sin bug detrás. Buen candidato para la próxima vez que se toque este archivo por otro motivo (mismo
-criterio que el resto de esta lista: no se refactoriza en frío salvo que se decida expresamente,
-como aquí — ver ronda de cierre 2026-09-08).
+**Estado**: CERRADO (2026-09-08, commit `36e8df3`) — decisión de la usuaria: cierre total de la
+ronda de auditorías, incluyendo este refactor sin bug detrás. 12 funciones internas del archivo
+(`datosVivosDe`, `calcularEnganchesRonda`, `escribirCondicionYEnergia`, `avanzarSinAtacar`,
+`avanzarYComprobarFin`, `objetivoControladoPara`, `ejecutarAtaqueTotemYAvanzar`,
+`resolverTotemsPendientes`, y las 4 exportadas `resolverTurnoJugador`/`resolverTurnoAutonomo`/
+`resolverTurnosAutonomosHastaJugadora`/`fijarEleccionRondaJugador`) convertidas a un único objeto
+desestructurado con interfaz nombrada, incluidos los call-sites externos en `turnResolution.ts` y
+`cazar.ts`. Refactor puramente mecánico, verificado: mismos 90 tests de combate múltiple pasando,
+`tsc -b` limpio en todo el backend, verificación rigurosa adicional confirmando que invertir dos
+campos `string` del mismo tipo ahora exige un error de escritura obvio en el objeto literal, ya no
+un simple cambio de orden invisible.
 
 ## 2026-09-04 — /turn/classify sin try/catch dejaba la petición sin respuesta para siempre si Ollama se colgaba
 
