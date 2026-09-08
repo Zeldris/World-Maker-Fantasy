@@ -101,14 +101,17 @@ export function ReinoPanel({
   const ayuntamiento = buildings.find((b) => b.recipeKey === 'ayuntamiento')
 
   if (isEmpty) {
+    // Auditoría de UX (2026-09-08): a diferencia de Compañeros/Reputación (mismo componente
+    // `PanelEmptyState`), este hint solo mostraba la frase de motivación del personaje cuando
+    // existía — evocador, pero sin ninguna pista práctica de cómo llegar a tener un Reino. Se
+    // añade la pista real (construir un Ayuntamiento, docs/17-reglas-construcciones-reino.md)
+    // detrás de la motivación en vez de sustituirla, para no perder el sabor narrativo.
+    const practicalHint = 'Construye un Ayuntamiento para fundar tu reino.'
     return (
       <PanelEmptyState
         icon="🏰"
         title="Todavía no gobierna a nadie"
-        hint={
-          characterMotivation ??
-          'Ni tierra, ni súbditos, ni edificios propios — todavía. Lo que consiga a lo largo de la partida aparecerá aquí.'
-        }
+        hint={characterMotivation ? `${characterMotivation} ${practicalHint}` : practicalHint}
       />
     )
   }
