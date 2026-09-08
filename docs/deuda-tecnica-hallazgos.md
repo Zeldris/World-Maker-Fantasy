@@ -128,18 +128,21 @@ nuevo, 5 tests contra Postgres real.
 **Hallazgos de prioridad baja** (auditoría de deuda técnica, `backend/src/services/`):
 - `resolverTurnosAutonomosHastaJugadora` (`combateMultipleOrquestacion.ts:537`) no tiene test
   directo en su propio archivo de integración — solo se ejerce indirectamente vía
-  `routes/turn.integration.test.ts`. Cubierta, pero no donde se esperaría.
-- Dificultad de combate `15` como literal duplicado dos veces en la misma llamada
-  (`combateMultipleOrquestacion.ts:339-347`, atacante/defensor), sin constante nombrada en el
-  dominio de combate.
-- `ejecutarIntercambioYAvanzar` (`combateMultipleOrquestacion.ts:318`) tiene 12 parámetros
-  posicionales, varios del mismo tipo (`ParticipantRef`, `string[]`) — riesgo de orden equivocado al
-  llamar; candidato a objeto de opciones si se vuelve a tocar.
+  `routes/turn.integration.test.ts`. Cubierta, pero no donde se esperaría. Sigue PENDIENTE,
+  prioridad baja — cobertura desplazada, no hueco de riesgo real.
+- ~~Dificultad de combate `15` como literal duplicado...~~ CERRADO 2026-09-08, commit `3b5a5b0`
+  (`CHECK_OPUESTO_DIFICULTAD_RELLENO`).
+- ~~`ejecutarIntercambioYAvanzar`... 12 parámetros posicionales...~~ CERRADO 2026-09-08, commit
+  `36e8df3` — ya usaba objeto de opciones antes de esta ronda; las 12 funciones vecinas restantes
+  con el mismo problema real (`datosVivosDe`, `calcularEnganchesRonda`, `avanzarSinAtacar`, etc.)
+  se convirtieron en la misma pasada.
 - Duplicación de texto (no de lógica) del hint narrativo "golpe letal... YA RESUELTO" entre
   `turnResolution.ts:1169` y `combateMultiple.ts` — decisión consciente ya documentada por quien lo
-  escribió, no compartir cadena literal entre el motor legado y el nuevo.
+  escribió, no compartir cadena literal entre el motor legado y el nuevo. Sin acción, no es un
+  hallazgo real.
 
-**Estado**: PENDIENTE, prioridad baja.
+**Estado**: PENDIENTE, prioridad baja — solo el primer punto (cobertura desplazada de
+`resolverTurnosAutonomosHastaJugadora`) sigue sin resolver, el resto se cerró en esta ronda.
 
 ## 2026-08-25 — Guard de save.endedAt duplicado en 8+ archivos de routes/saves sin extraer a helper
 
