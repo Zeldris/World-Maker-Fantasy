@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterAll } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import Fastify from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
@@ -51,7 +51,11 @@ describe('Aprender oficio de un Maestro (2026-08-31)', () => {
     });
   });
 
-  afterAll(async () => {
+  // `beforeEach` crea una `Save` nueva en CADA test — la limpieza tiene que ser `afterEach`
+  // también, no `afterAll` (bug real: con `afterAll` solo se borraba la última de las 6 creadas
+  // por corrida, dejando 5 residuos huérfanos por ejecución — confirmado en producción: 855
+  // partidas "Gorhorn de prueba (aprender oficio)" acumuladas en 5 días).
+  afterEach(async () => {
     await prisma.professionProgress.deleteMany({ where: { saveId } });
     await prisma.npcState.deleteMany({ where: { saveId } });
     await prisma.logEntry.deleteMany({ where: { saveId } });
