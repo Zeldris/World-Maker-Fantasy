@@ -65,16 +65,31 @@ acciones deterministas puntuales, nunca por texto libre, así que sin movimiento
 todo-o-nada (la usuaria señaló el caso real: entrar de golpe en la zona de un grupo de 20
 agresivos, sin margen de cautela). Ver siguiente punto.
 
-**Idea nueva sin diseñar — Sistema de movimiento por cuadrícula en Zona/Interior.** Propuesta de la
-usuaria: dividir el lienzo 800×600 en celdas, movimiento celda a celda SIN que el jugador escriba
-coordenadas (base natural ya identificada: el lienzo ya admite clic en un punto,
-`ZonaPanel.tsx`/`ZonePointDetailModal.tsx`, footer de botones ya existente). Piezas nuevas sin
-diseñar: rango de detección probabilístico por celdas de cercanía a un `ZonePoint` agresivo (no
-solo "en la celda exacta"), fauna con ruta/patrulla propia dentro de la cuadrícula (no solo puntos
-fijos), UI de movimiento amigable (confirmado que las direcciones cardinales norte/sur/este/oeste
-YA existentes solo mueven al jugador ENTRE Locations, nunca dentro de una zona), coste en tiempo de
-ficción por celda. Decisión explícita: merece su propia sesión de diseño dedicada — no forzar
-Franja 3 con un atajo insuficiente sabiendo que se sustituirá pronto.
+**Sistema de movimiento por cuadrícula en Zona/Interior — CERRADO completo (2026-09-08, misma
+sesión).** Referencia de diseño explícita: "estilo Mount & Blade" — cada entidad en su celda,
+cuando el jugador se mueve el mundo también avanza un paso, encuentro por colisión de celda.
+Cuadrícula 16×12 (celdas de 50px) sobre el lienzo 800×600. Movimiento por clic en el lienzo (nunca
+coordenadas escritas), camino calculado por el motor (Bresenham). Doble umbral: misma celda =
+colisión real/inevitable, celda adyacente = solo aviso previo de Interactuar. Fauna/NPC con ruta
+artesanal definida (`ZonePoint.ruta`, nuevo campo) la recorren en bucle; sin ruta, fallback de
+paseo aleatorio acotado a su territorio de catálogo (`origenX/Y`, nuevo campo) — nunca
+completamente estático. Grupos de tamaño variado por especie/Location vía fórmula de reparto en
+capas descendentes (4→3→2→1), validada con los propios números que pidió la usuaria.
+
+Backend: 3 migraciones (`ZonePoint.ruta`/`pasoRuta`/`origenX/Y`, `Save.zonaCaminoPendiente`),
+núcleo puro en `zonaPosicion.ts` (50 tests, 2 bugs reales detectados/corregidos por los propios
+tests), `avanzarZonePointsUnPaso` (`zonePoints.ts`), endpoint `POST /saves/:id/zona/mover` (5 tests
+de integración real, usando un NPC AGRESIVO real como el ejemplo original de la usuaria — "cueva de
+Kirelon"). Frontend: clic real en `ZonaPanel.tsx` (conversión de coordenadas SVG vía
+`getScreenCTM`), animación paso a paso con cancelación por token, mensaje simple de colisión/aviso
+(placeholder consciente, "acabaremos metiendo una animación"). Verificado en vivo con Playwright
+contra una partida real: el marcador se desplaza visiblemente y aterriza en el centro exacto de una
+celda.
+
+**Pendiente**: conectar esto con Franja 3 (el preámbulo de fauna agresiva en sí) — falta el punto
+de intercepción real contra `shouldForceCombat`/`agresivoSlugsInScene` en `turnResolution.ts` que
+use la colisión de celda en vez del disparo textual actual. Diseño de alto nivel ya claro, sin
+escribir todavía.
 
 **Franja 4 — Charlar con NPC enriquecido (lore, reclutar/interrogar tras Clemente) — aparte,
 mapeado no implementado**, decisión ya tomada explícitamente por la usuaria antes de empezar la
