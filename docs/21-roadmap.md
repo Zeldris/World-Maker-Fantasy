@@ -56,14 +56,26 @@ futuro: si se construye el sistema de misiones "secundarias" (motor determinista
 `newQuestOfferInfo` para ese caso sí encajaría en el mismo patrón que `dynamicModeOffer` — momento
 real de revisitar la fusión.
 
-**Franja 3 — Fauna agresiva con preámbulo — BLOQUEADA por una pieza nueva mayor.** Punto de
-intercepción ya localizado (`turnResolution.ts` línea ~3086, tras `npcsInScene`, sin tocar
-`shouldForceCombat`), `NarrateAndPersistParams` ya ampliada con `zonaPosX/Y` opcionales (dato
-gratis en ambos call-sites). Bloqueada porque el diseño simple ("botón Interactuar = acercarse =
-combate directo") resultó insuficiente — investigado que `zonaPosX/Y` hoy SOLO se mueve en
-acciones deterministas puntuales, nunca por texto libre, así que sin movimiento gradual sería
-todo-o-nada (la usuaria señaló el caso real: entrar de golpe en la zona de un grupo de 20
-agresivos, sin margen de cautela). Ver siguiente punto.
+**Franja 3 — Fauna agresiva con preámbulo — CERRADA (2026-09-08).** Un agresivo/enemigo detectado
+por TEXTO ya no fuerza combate real por sí solo: se filtra de `npcsInSceneVivos` (variable derivada,
+sin tocar la original usada en 6+ sitios más) salvo que su `ZonePoint` real esté en la MISMA celda
+que el jugador (sistema de movimiento por cuadrícula, ver punto siguiente). "Todo agresivo, incluido
+el ataque explícito, exige colisión de celda real" y "sin ZonePoint real, nunca fuerza combate"
+(tratarlo como lejos, no un fallback permisivo) — decisiones explícitas de la usuaria. Dos
+excepciones: sin posición conocida del jugador (fallback seguro, sin cambios) y el candidato de
+INTERRUPCIÓN DE VIAJE (nunca se filtra — "el viaje no implica ninguna zona").
+
+Sembrados los `ZonePoint` que faltaban para no romper casos guionizados: Orco Enfurecido y Gistera
+Koh (Hondonada del Eco) + 11 Maestros de oficio del Clan Serhu — 12 puntos nuevos, 90 `ZonePoint`
+totales tras `seed-catalog`. Corrección de diseño de la usuaria en el camino: "todo debe tener
+ZonePoint... sino ¿cómo interactúas?" — no es solo requisito del gate de combate, cualquier NPC
+relevante en escena necesita posición real para ser objetivo de Interactuar. 5 NPC sin
+`homeLocationSlug` (regiones aún no sembradas) se dejaron sin ZonePoint a propósito, anotado en
+memoria. Bug real corregido en el propio test: `recalcularZonePointsDeLocation` (ya existente, cada
+turno) desactiva cualquier `ZonePoint` FAUNA/RECURSO sin `WorldPopulation` real asociada — el
+fixture de test necesitaba esa fila, igual que cualquier `ZonePoint` de producción. 4 tests de
+integración nuevos, verificación rigurosa (filtro desactivado, confirmado que 2/4 tests lo detectan,
+restaurado), suite completa sin regresión, `tsc -b --force` limpio.
 
 **Sistema de movimiento por cuadrícula en Zona/Interior — CERRADO completo (2026-09-08, misma
 sesión).** Referencia de diseño explícita: "estilo Mount & Blade" — cada entidad en su celda,
@@ -86,10 +98,8 @@ Kirelon"). Frontend: clic real en `ZonaPanel.tsx` (conversión de coordenadas SV
 contra una partida real: el marcador se desplaza visiblemente y aterriza en el centro exacto de una
 celda.
 
-**Pendiente**: conectar esto con Franja 3 (el preámbulo de fauna agresiva en sí) — falta el punto
-de intercepción real contra `shouldForceCombat`/`agresivoSlugsInScene` en `turnResolution.ts` que
-use la colisión de celda en vez del disparo textual actual. Diseño de alto nivel ya claro, sin
-escribir todavía.
+Conectado con Franja 3 (ver punto anterior) — el gate de colisión de celda para combate real ya usa
+este sistema, cerrando el último eslabón pendiente del plan "Interactuar" de esta sesión.
 
 **Franja 4 — Charlar con NPC enriquecido (lore, reclutar/interrogar tras Clemente) — aparte,
 mapeado no implementado**, decisión ya tomada explícitamente por la usuaria antes de empezar la
