@@ -138,7 +138,7 @@ describe('sistema de categorías de raza de fauna: integración real contra Post
       for (let i = 0; i < 5; i++) {
         const encounter = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId } });
         if (encounter.estado === 'RESUELTO') break;
-        await resolverTurnoAutonomo(prisma, worldId, save.id, encounterId, [], narrarFn);
+        await resolverTurnoAutonomo({ prisma, worldId, saveId: save.id, encounterId, weaponNamesPorDefecto: [], narrarFn });
       }
       const encounterFinal = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId } });
       expect(['EN_CURSO', 'RESUELTO']).toContain(encounterFinal.estado);

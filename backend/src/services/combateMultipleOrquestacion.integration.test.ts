@@ -31,9 +31,9 @@ async function resolverHastaJugadoraActua(saveId: string, worldId: string, encou
     const actualId = encounter.ordenIniciativa[encounter.turnoActual % encounter.ordenIniciativa.length];
     const actual = encounter.participantes.find((p) => p.id === actualId)!;
     if (actual.tipo === 'JUGADOR') {
-      return resolverTurnoJugador(prisma, worldId, saveId, encounterId, { habilidad }, [], dobleNarracionRapida);
+      return resolverTurnoJugador({ prisma, worldId, saveId, encounterId, accion: { habilidad }, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
     }
-    await resolverTurnoAutonomo(prisma, worldId, saveId, encounterId, [], dobleNarracionRapida);
+    await resolverTurnoAutonomo({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
   }
   throw new Error('La jugadora nunca llegó a actuar en el tope de turnos de prueba.');
 }
@@ -109,7 +109,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     // infinito falle el test en vez de colgarlo para siempre.
     let terminado = false;
     for (let i = 0; i < 60 && !terminado; i++) {
-      const resultado = await resolverTurnoAutonomo(prisma, worldId, saveId, encounterId, [], dobleNarracionRapida);
+      const resultado = await resolverTurnoAutonomo({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
       if (resultado?.encounterTerminado) terminado = true;
     }
     expect(terminado).toBe(true);
@@ -217,10 +217,10 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
         // Único enemigo posible en este 1v1 — el propio motor ya la reclama a ella
         // automáticamente al crear el encuentro (o al empezar cada ronda), nunca queda
         // `esperandoEleccionJugadora` — su objetivo ya viene fijo en `objetivoActualId`.
-        const resultado = await resolverTurnoJugador(prisma, worldId, saveId, encounterId, { habilidad: habilidadBasica }, [], dobleNarracionRapida);
+        const resultado = await resolverTurnoJugador({ prisma, worldId, saveId, encounterId, accion: { habilidad: habilidadBasica }, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
         if (resultado?.encounterTerminado) terminado = true;
       } else {
-        const resultado = await resolverTurnoAutonomo(prisma, worldId, saveId, encounterId, [], dobleNarracionRapida);
+        const resultado = await resolverTurnoAutonomo({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
         if (resultado?.encounterTerminado) terminado = true;
       }
     }
@@ -291,8 +291,8 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
       const actual = encounter.participantes.find((p) => p.id === actualId)!;
       const resultado =
         actual.tipo === 'JUGADOR'
-          ? await resolverTurnoJugador(prisma, worldId, saveId, encounterId, { habilidad: habilidadBasica }, [], dobleNarracionRapida)
-          : await resolverTurnoAutonomo(prisma, worldId, saveId, encounterId, [], dobleNarracionRapida);
+          ? await resolverTurnoJugador({ prisma, worldId, saveId, encounterId, accion: { habilidad: habilidadBasica }, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida })
+          : await resolverTurnoAutonomo({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
       if (resultado?.encounterTerminado) terminado = true;
       if (resultado?.combatExchangeDisplay) algunEnemigoRecibioGolpe = true;
     }
@@ -357,10 +357,10 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     expect((await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId } })).esperandoEleccionJugadora).toBe(true);
 
     // Ningún turno puede resolverse todavía — ni siquiera los autónomos.
-    expect(await resolverTurnoAutonomo(prisma, worldId, saveId, encounterId, [], dobleNarracionRapida)).toBeNull();
+    expect(await resolverTurnoAutonomo({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida })).toBeNull();
 
     // Fija su elección — único enemigo posible, así que el resultado es determinista: duelo mutuo.
-    await fijarEleccionRondaJugador(prisma, worldId, saveId, encounterId, enemigoP.id);
+    await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: enemigoP.id });
 
     const encounterTrasElegir = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId }, include: { participantes: true } });
     expect(encounterTrasElegir.esperandoEleccionJugadora).toBe(false);
@@ -370,7 +370,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     expect(enemigoTrasElegir.objetivoActualId).toBe(jugadoraP.id); // duelo mutuo real, no golpe gratis
 
     // Una segunda llamada, ya sin nada pendiente, no hace nada (defensivo).
-    await fijarEleccionRondaJugador(prisma, worldId, saveId, encounterId, enemigoP.id);
+    await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: enemigoP.id });
     const encounterSinCambios = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId }, include: { participantes: true } });
     expect(encounterSinCambios.participantes.find((p) => p.tipo === 'JUGADOR')!.objetivoActualId).toBe(enemigoP.id);
 
@@ -395,10 +395,10 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
       const actual = encounter.participantes.find((p) => p.id === actualId)!;
       if (actual.tipo === 'JUGADOR') {
         const habilidadBasica: HabilidadParaIntercambio = { name: 'Ataque Básico', description: '', attribute: 'fuerza', effects: [], rol: 'ataque', energyCost: 5, energyRegen: 0 };
-        const resultado = await resolverTurnoJugador(prisma, worldId, saveId, encounterId, { habilidad: habilidadBasica }, [], dobleNarracionRapida);
+        const resultado = await resolverTurnoJugador({ prisma, worldId, saveId, encounterId, accion: { habilidad: habilidadBasica }, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
         if (resultado?.encounterTerminado) terminado = true;
       } else {
-        const resultado = await resolverTurnoAutonomo(prisma, worldId, saveId, encounterId, [], dobleNarracionRapida);
+        const resultado = await resolverTurnoAutonomo({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
         if (resultado?.encounterTerminado) terminado = true;
       }
     }
@@ -530,7 +530,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
       const actualIdAntes = encounterAntes.ordenIniciativa[encounterAntes.turnoActual % encounterAntes.ordenIniciativa.length];
       const esTurnoControlado = actualIdAntes === controladoP.id;
 
-      const resultado = await resolverTurnoAutonomo(prisma, worldId, saveId, encounterId, [], dobleNarracionRapida);
+      const resultado = await resolverTurnoAutonomo({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
       expect(resultado).not.toBeNull();
 
       if (esTurnoControlado) {
@@ -592,7 +592,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     const encounterInicial = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId }, include: { participantes: true } });
     if (encounterInicial.esperandoEleccionJugadora) {
       const principalP = encounterInicial.participantes.find((p) => p.npcScope === 'itinerante-multiple-principal')!;
-      await fijarEleccionRondaJugador(prisma, worldId, saveId, encounterId, principalP.id);
+      await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: principalP.id });
     }
 
     const habilidadMultiple: HabilidadParaIntercambio = {
@@ -667,7 +667,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     for (let i = 0; i < 10 && !resultadoAtaque; i++) {
       const encounter = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId } });
       if (encounter.estado === 'RESUELTO') break;
-      const resultado = await resolverTurnoAutonomo(prisma, worldId, saveId, encounterId, [], dobleNarracionRapida);
+      const resultado = await resolverTurnoAutonomo({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
       if (resultado?.atacanteNombre === atacante.name) resultadoAtaque = resultado;
     }
     expect(resultadoAtaque).not.toBeNull();
@@ -743,7 +743,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
         if (actual.npcScope === 'itinerante-control-opresor') {
           for (const r of secuenciaPorTurno) randomSpy.mockReturnValueOnce(r);
         }
-        await resolverTurnoAutonomo(prisma, worldId, saveId, encounterId, [], dobleNarracionRapida);
+        await resolverTurnoAutonomo({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
         const rivalP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, npcScope: 'itinerante-control-rival' } });
         if ((rivalP.controladoPorRondas ?? 0) > 0) opresorControlo = true;
       }
@@ -794,7 +794,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     // golpes con él tarde o temprano (no tiene ningún otro candidato posible al que atacar), momento
     // en el que su ocultación se rompe.
     for (let i = 0; i < 6; i++) {
-      await resolverTurnoAutonomo(prisma, worldId, saveId, encounterId, [], dobleNarracionRapida);
+      await resolverTurnoAutonomo({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
     }
 
     const ocultoTrasCombate = await prisma.combatParticipant.findUniqueOrThrow({ where: { id: ocultoP.id } });
@@ -830,7 +830,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
         { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-invocacion-enemigo', destreza: 1, inteligencia: 6 },
       ]),
     );
-    await fijarEleccionRondaJugador(prisma, worldId, saveId, encounterId, (await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'NPC' } })).id);
+    await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: (await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'NPC' } })).id });
 
     const habilidad: HabilidadParaIntercambio = {
       name: 'Tótem de Guerra (prueba)',
@@ -841,7 +841,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
       energyCost: 0,
       energyRegen: 0,
     };
-    const resultado = await resolverTurnoJugador(prisma, worldId, saveId, encounterId, { habilidad }, [], dobleNarracionRapida);
+    const resultado = await resolverTurnoJugador({ prisma, worldId, saveId, encounterId, accion: { habilidad }, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
     expect(resultado).not.toBeNull();
     expect(resultado?.defensorNombre).toBe('Tótem de Guerra');
 
@@ -884,7 +884,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
 
     // 2 combatientes reales en ordenIniciativa -> 2 turnos autónomos cruzan la ronda 1 entera.
     for (let i = 0; i < 2; i++) {
-      await resolverTurnoAutonomo(prisma, worldId, saveId, encounterId, [], dobleNarracionRapida);
+      await resolverTurnoAutonomo({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
     }
 
     const victimaState = await prisma.npcState.findUnique({ where: { saveId_npcId_scope: { saveId, npcId: enemigo.id, scope: 'itinerante-invocacion-victima' } } });
@@ -920,7 +920,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
         { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-invocacion-candado', destreza: 1, inteligencia: 6 },
       ]),
     );
-    await fijarEleccionRondaJugador(prisma, worldId, saveId, encounterId, (await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'NPC' } })).id);
+    await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: (await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'NPC' } })).id });
 
     const habilidad: HabilidadParaIntercambio = {
       name: 'Tótem de Guerra (prueba candado)',
@@ -931,7 +931,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
       energyCost: 0,
       energyRegen: 0,
     };
-    await resolverTurnoJugador(prisma, worldId, saveId, encounterId, { habilidad }, [], dobleNarracionRapida);
+    await resolverTurnoJugador({ prisma, worldId, saveId, encounterId, accion: { habilidad }, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
     const primerTotem = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'INVOCACION' } });
 
     // Segundo intento de invocar en el turno siguiente de la jugadora — con el primer tótem
@@ -942,10 +942,10 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
       if (encounter.estado === 'RESUELTO') break;
       const actualId = encounter.ordenIniciativa[encounter.turnoActual % encounter.ordenIniciativa.length];
       if (actualId === (await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'JUGADOR' } })).id) {
-        await resolverTurnoJugador(prisma, worldId, saveId, encounterId, { habilidad }, [], dobleNarracionRapida);
+        await resolverTurnoJugador({ prisma, worldId, saveId, encounterId, accion: { habilidad }, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
         break;
       }
-      await resolverTurnoAutonomo(prisma, worldId, saveId, encounterId, [], dobleNarracionRapida);
+      await resolverTurnoAutonomo({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
     }
 
     const totemsVivos = await prisma.combatParticipant.findMany({ where: { encounterId, tipo: 'INVOCACION', invocacionVidaRestante: { gt: 0 } } });
@@ -976,7 +976,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
         { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-expulsar-victima', destreza: 1, inteligencia: 6 },
       ]),
     );
-    await fijarEleccionRondaJugador(prisma, worldId, saveId, encounterId, (await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'NPC' } })).id);
+    await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: (await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'NPC' } })).id });
     // Energía a 0 (mismo gotcha ya cazado en el test de AUMENTO de 3a): sin esto, el NPC puede
     // defenderse con una habilidad racial `rol:'utilidad'` propia, cayendo en el camino
     // independiente — donde `expulsarTriggered` nunca se calcula — en vez del no-independiente.
@@ -998,7 +998,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
       energyCost: 0,
       energyRegen: 0,
     };
-    await resolverTurnoJugador(prisma, worldId, saveId, encounterId, { habilidad }, [], dobleNarracionRapida);
+    await resolverTurnoJugador({ prisma, worldId, saveId, encounterId, accion: { habilidad }, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
 
     const victimaP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, npcScope: 'itinerante-expulsar-victima' } });
     expect(victimaP.expulsadoPorRondas).toBe(2);
@@ -1006,7 +1006,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     // Cruza una ronda completa (2 combatientes reales -> 2 turnos autónomos) — el decremento real
     // se comprueba SOLO tras el intercambio de la jugadora, así que el turno de la propia víctima
     // (que ya actuó arriba) no vuelve a contar: solo hace falta 1 turno autónomo más para cruzar.
-    await resolverTurnoAutonomo(prisma, worldId, saveId, encounterId, [], dobleNarracionRapida);
+    await resolverTurnoAutonomo({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
     const victimaTrasRonda = await prisma.combatParticipant.findUniqueOrThrow({ where: { id: victimaP.id } });
     expect(victimaTrasRonda.expulsadoPorRondas).toBeLessThan(2);
 
@@ -1036,7 +1036,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     const aliadoP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, npcScope: 'itinerante-expulsar-unico-jugador' } });
     let encounterTerminado = false;
     for (let i = 0; i < 3 && !encounterTerminado; i++) {
-      const resultado = await resolverTurnoAutonomo(prisma, worldId, saveId, encounterId, [], dobleNarracionRapida);
+      const resultado = await resolverTurnoAutonomo({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
       encounterTerminado = resultado?.encounterTerminado ?? false;
     }
     const encounterFinal = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId }, include: { participantes: true } });
@@ -1067,7 +1067,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
         { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-analizar-solitario', destreza: 1, inteligencia: 6 },
       ]),
     );
-    await fijarEleccionRondaJugador(prisma, worldId, saveId, encounterId, (await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'NPC' } })).id);
+    await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: (await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'NPC' } })).id });
 
     const habilidad: HabilidadParaIntercambio = {
       name: 'Analizar Rival (prueba)',
@@ -1078,7 +1078,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
       energyCost: 0,
       energyRegen: 0,
     };
-    await resolverTurnoJugador(prisma, worldId, saveId, encounterId, { habilidad }, [], dobleNarracionRapida);
+    await resolverTurnoJugador({ prisma, worldId, saveId, encounterId, accion: { habilidad }, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
 
     const npcState = await prisma.npcState.findUniqueOrThrow({
       where: { saveId_npcId_scope: { saveId, npcId: enemigo.id, scope: 'itinerante-analizar-solitario' } },
@@ -1103,7 +1103,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
       ]),
     );
     const [analizado, otro] = await prisma.combatParticipant.findMany({ where: { encounterId, npcId: enemigo.id } });
-    await fijarEleccionRondaJugador(prisma, worldId, saveId, encounterId, analizado.id);
+    await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: analizado.id });
 
     const habilidad: HabilidadParaIntercambio = {
       name: 'Analizar Rival (prueba grupo)',
@@ -1114,7 +1114,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
       energyCost: 0,
       energyRegen: 0,
     };
-    await resolverTurnoJugador(prisma, worldId, saveId, encounterId, { habilidad }, [], dobleNarracionRapida);
+    await resolverTurnoJugador({ prisma, worldId, saveId, encounterId, accion: { habilidad }, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
 
     const analizadoFresco = await prisma.combatParticipant.findUniqueOrThrow({ where: { id: analizado.id } });
     const otroFresco = await prisma.combatParticipant.findUniqueOrThrow({ where: { id: otro.id } });
@@ -1200,7 +1200,7 @@ describe('Golpe no decisivo ("golpe_normal") contra un miembro de grupo SÍ baja
     // `findMany` sin `orderBy` no garantiza orden — usar `id` explícito evita un flake real (el
     // objetivo fijado y el comprobado después podían no ser el mismo individuo entre corridas).
     const [objetivo, otro] = (await prisma.combatParticipant.findMany({ where: { encounterId, npcId: corredor.id }, orderBy: { id: 'asc' } }));
-    await fijarEleccionRondaJugador(prisma, worldId, saveId, encounterId, objetivo.id);
+    await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: objetivo.id });
 
     const habilidad: HabilidadParaIntercambio = {
       name: 'Ataque Básico (prueba golpe no decisivo)',
@@ -1211,7 +1211,7 @@ describe('Golpe no decisivo ("golpe_normal") contra un miembro de grupo SÍ baja
       energyCost: 0,
       energyRegen: 0,
     };
-    await resolverTurnoJugador(prisma, worldId, saveId, encounterId, { habilidad }, [], dobleNarracionRapida);
+    await resolverTurnoJugador({ prisma, worldId, saveId, encounterId, accion: { habilidad }, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
 
     const objetivoFresco = await prisma.combatParticipant.findUniqueOrThrow({ where: { id: objetivo.id } });
     const otroFresco = await prisma.combatParticipant.findUniqueOrThrow({ where: { id: otro.id } });

@@ -554,7 +554,7 @@ export async function cazarRoutes(app: FastifyInstance) {
       // arriba (nunca inventado por el modelo).
       let caidosAutonomos = 0;
       for (const encounterId of resultado.autonomosIds) {
-        const { caidos } = await resolverTurnosAutonomosHastaJugadora(prisma, save.worldId, save.id, encounterId, [], async () => '');
+        const { caidos } = await resolverTurnosAutonomosHastaJugadora({ prisma, worldId: save.worldId, saveId: save.id, encounterId, weaponNamesPorDefecto: [], narrarFn: async () => '' });
         caidosAutonomos += caidos.length;
       }
       if (caidosAutonomos > 0) {
