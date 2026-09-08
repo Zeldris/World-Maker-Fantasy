@@ -7448,6 +7448,78 @@ describe('Remate a un NPC ya CONVALECIENTE se narra explícitamente como golpe f
   }, 15_000);
 });
 
+// Bug real (2026-09-08, reproducido en vivo con Playwright, causa raíz confirmada leyendo
+// resolveCombatSlugsAndPersist): un golpe que remata a MUERTO en el mismo turno persistía el NPC
+// recién muerto en Save.pendingCombatNpcSlugs (necesario para que ESE turno muestre su condición
+// fresca en combateIniciado) — pero nada en un turno futuro lo volvía a filtrar. Un jugador que,
+// tras rematar, nunca manda otra acción de texto libre normal contra ese mismo NPC (p.ej. intenta
+// "Cazar" de nuevo, POST /cazar/confirmar, que solo LEE este campo para bloquear con 409/400 "ya
+// hay combate en curso" sin limpiarlo nunca) queda en un callejón sin salida: el frontend tampoco
+// muestra el aviso "Combatir" (el guard de detail.ts ya excluye correctamente al MUERTO de
+// combateIniciado), así que no hay ningún botón que lo resuelva.
+describe('pendingCombatNpcSlugs no queda sucio tras un golpe que remata en el mismo turno (bug real 2026-09-08)', () => {
+  let saveId: string;
+  let npcId: string;
+
+  beforeAll(async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.99); // golpe claro siempre
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const worldId = world.id;
+    const npc = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'orco-enfurecido-hondonada' } });
+    npcId = npc.id;
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId,
+        characterName: 'Gorhorn de prueba (pendingCombatNpcSlugs remate)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+        pendingCombatNpcSlugs: ['orco-enfurecido-hondonada'],
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    await prisma.npcState.create({ data: { saveId, npcId, scope: '', condicionFisica: 'CONVALECIENTE' } });
+  });
+
+  afterAll(async () => {
+    vi.restoreAllMocks();
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('el turno que remata queda con pendingCombatNpcSlugs vacío, no con el NPC recién muerto', async () => {
+    const app = await buildApp();
+    const action = "Descargo el golpe final sobre 'Orco enfurecido'.";
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } });
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, enCombate: true },
+    });
+    expect(narrateRes.statusCode).toBe(200);
+
+    const stateAfter = await prisma.npcState.findFirst({ where: { saveId, npcId } });
+    expect(stateAfter?.condicionFisica).toBe('MUERTO');
+
+    // El display de ESTE turno (combateIniciado en la respuesta directa) SÍ debe seguir trayendo
+    // al NPC con su condición fresca — solo lo PERSISTIDO en Save debe quedar limpio.
+    const body = lastNdjsonLine(narrateRes.payload) as unknown as {
+      combateIniciado: { npcs: { slug: string; condicionFisica: string }[] } | null;
+    };
+    expect(body.combateIniciado?.npcs.find((n) => n.slug === 'orco-enfurecido-hondonada')?.condicionFisica).toBe('MUERTO');
+
+    const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveAfter.pendingCombatNpcSlugs).toEqual([]);
+  }, 15_000);
+});
+
 // Bug real, sesión autónoma de pruebas con Playwright (2026-09-04): Gistera Koh es `PRINCIPAL`
 // (npcScene.ts § `candidateNpcs`, cualquier PRINCIPAL es candidato en CUALQUIER ubicación del
 // mundo) — sin restricción propia, su gancho guionizado de huida se disparó dentro de Karot Veku,

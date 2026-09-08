@@ -2664,6 +2664,35 @@ async function resolveCombatSlugsAndPersist(params: {
   // seguían apuntando al agresor — el jugador ya no está donde murió.
   const combatSlugs = justDied ? [] : [...new Set([...combatSlugsWithAttack, ...partiallyLootedSlugs])];
 
+  // Bug real (2026-09-08, reproducido en vivo con Playwright y confirmado con curl directo:
+  // "Ya hay un combate en curso — resuélvelo antes de salir a cazar" tras haber matado ya al
+  // objetivo): `combatSlugs` de arriba incluye A PROPÓSITO al NPC recién MUERTO este mismo turno
+  // (comentario de `combatSlugsWithAttack`, más arriba) para que `combateIniciado` — la respuesta
+  // de ESTE turno — traiga su condición fresca al popup de resultado. Pero eso mismo se
+  // persistía tal cual en `Save.pendingCombatNpcSlugs`, y nada en un turno futuro lo volvía a
+  // filtrar: el motor de combate múltiple sí tiene su propio bloque de limpieza basado en
+  // `combatEncounterTerminado` (más abajo en este archivo), pero este camino 1v1 clásico no tenía
+  // ningún equivalente. Si el jugador nunca vuelve a mandar un turno de texto libre normal contra
+  // ese mismo NPC (p.ej. porque intenta "Cazar" de nuevo, una ruta HTTP aparte que solo LEE este
+  // campo para bloquear, nunca lo limpia), el campo queda sucio para siempre — un combate
+  // "fantasma" que ningún botón de la UI puede resolver (el guard de detail.ts ya excluye
+  // correctamente al MUERTO de `combateIniciado`, así que el aviso "Combatir" tampoco reaparece).
+  // Lo que se PERSISTE excluye cualquier slug cuyo NpcState real sea MUERTO Y sin botín pendiente
+  // — un MUERTO con loot todavía por saquear (`partiallyLootedSlugs`) SIGUE necesitando quedarse,
+  // mismo criterio que el comentario de arriba (sobrevivir a un resync/recarga hasta que el
+  // saqueo termine del todo). Lo que se devuelve en `combateIniciado` de la respuesta de este
+  // turno (más abajo) sigue usando `combatSlugs` sin filtrar, para no perder el display fresco de
+  // ESTE turno. Mismo override que `combateIniciado` más abajo: `npcsInScene` se lee UNA vez al
+  // principio del turno (antes de que la transacción escriba el golpe de ESTE turno), así que el
+  // NPC recién muerto necesita `npcTargetNewCondicion` en vez de su condición ya obsoleta — el
+  // resto de NPCs (turnos anteriores) sí tiene la condición real en `npcsInScene`.
+  const combatSlugsToPersist = combatSlugs.filter((slug) => {
+    if (partiallyLootedSlugs.includes(slug)) return true;
+    const npc = npcsInScene.find((n) => n.slug === slug);
+    const condicionReal = npcAttackTarget && npcAttackHits && npcTargetNewCondicion && npc?.id === npcAttackTarget.id ? npcTargetNewCondicion : npc?.condicionFisica;
+    return condicionReal !== 'MUERTO';
+  });
+
   // Persistido (bug real, 2026-07-23, "revisar partida" — tercera vuelta sobre este mismo tema):
   // `combateIniciado` viajaba SOLO en la respuesta directa de este turno — si el turno tardaba
   // tanto que el sondeo de reconexión del cliente (GameView.tsx) tenía que recuperar la partida
@@ -2671,7 +2700,7 @@ async function resolveCombatSlugsAndPersist(params: {
   // aquí pero se perdía sin dejar rastro, porque `Save` no lo guardaba en ningún sitio. Se
   // sobrescribe cada turno (vacío si no hay combate ESTE turno) para que `GET /saves/:id` pueda
   // reconstruir el mismo aviso tras cualquier resincronización, no solo en la respuesta directa.
-  await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: combatSlugs } });
+  await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: combatSlugsToPersist } });
 
   const combateIniciado = combatSlugs.length
     ? {
@@ -4655,7 +4684,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       }));
       const targetParticipantId = resolverObjetivoPorTexto(action, candidatos, nombreByNpcId, normalizeText);
       if (targetParticipantId) {
-        await fijarEleccionRondaJugador(prisma, worldId, saveId, encounterId, targetParticipantId);
+        await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: targetParticipantId });
       }
     }
 
@@ -4664,7 +4693,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // Bug real de timeout de transacción (2026-08-25, ver comentario de cabecera en
     // combateMultipleOrquestacion.ts) — esto YA NO va envuelto en `prisma.$transaction`: la propia
     // función gestiona sus transacciones cortas internamente y llama a Ollama fuera de ellas.
-    const antes = await resolverTurnosAutonomosHastaJugadora(prisma, worldId, saveId, encounterId);
+    const antes = await resolverTurnosAutonomosHastaJugadora({ prisma, worldId, saveId, encounterId });
     narraciones.push(...antes.narraciones);
     combatEncounterCaidos.push(...antes.caidos);
     combatEncounterTerminado = antes.encounterTerminado;
@@ -4690,7 +4719,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         durationEffectTurns: playerAbilityUsageBlocked ? null : (selectedAbilityData?.durationEffectTurns ?? null),
       };
       const accion: AccionJugadorCombate = { habilidad: jugadorHabilidad, dualWieldBonus };
-      const turnoJugadora = await resolverTurnoJugador(prisma, worldId, saveId, encounterId, accion);
+      const turnoJugadora = await resolverTurnoJugador({ prisma, worldId, saveId, encounterId, accion });
       if (turnoJugadora) {
         if (turnoJugadora.narracion) narraciones.push(turnoJugadora.narracion);
         narraciones.push(...turnoJugadora.narracionesExtra);
@@ -4731,7 +4760,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       }
 
       if (!combatEncounterTerminado) {
-        const despues = await resolverTurnosAutonomosHastaJugadora(prisma, worldId, saveId, encounterId);
+        const despues = await resolverTurnosAutonomosHastaJugadora({ prisma, worldId, saveId, encounterId });
         narraciones.push(...despues.narraciones);
         combatEncounterCaidos.push(...despues.caidos);
         combatEncounterTerminado = despues.encounterTerminado;
