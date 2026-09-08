@@ -416,7 +416,7 @@ export interface LogEntry {
   /// antes la tarjeta se limpiaba ANTES de saber si la petición tuvo éxito — si fallaba, la
   /// jugadora se quedaba sin ningún rastro de la oferta ni explicación. Ahora la tarjeta sigue
   /// visible con el error inline y puede reintentar con el mismo botón.
-  dynamicModeOffer?: { tipo: 'NPC' | 'FAUNA'; targetSlug: string; targetName: string; busy?: boolean; error?: string }
+  dynamicModeOffer?: { tipo: 'NPC' | 'FAUNA' | 'RECURSO'; targetSlug: string; targetName: string; busy?: boolean; error?: string }
   /// Menú contextual de interacción con NPC (2026-09-06) — mismo criterio exacto que
   /// `dynamicModeOffer`: tarjeta con un botón por opción, `busy`/`error` para no perder la tarjeta
   /// si la petición falla.

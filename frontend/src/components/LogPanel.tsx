@@ -57,8 +57,13 @@ interface LogPanelProps {
   onAcceptQuestOffer?: (entryId: string, title: string, description: string) => void
   onDismissQuestOffer?: (entryId: string) => void
   /// "Modo dinámico" (2026-08-27, `entry.dynamicModeOffer`) — mismo criterio opcional que
-  /// `onAcceptQuestOffer`/`onDismissQuestOffer`.
+  /// `onAcceptQuestOffer`/`onDismissQuestOffer`. Solo NPC/FAUNA (conversación de vueltas, abre
+  /// DynamicModeModal) — RECURSO usa `onInteractuarModoDinamicoRecurso` abajo, resuelve sin modal.
   onInteractuarModoDinamico?: (entryId: string, tipo: 'NPC' | 'FAUNA', targetSlug: string, targetName: string) => void
+  /// RECURSO (2026-09-08, "Ver qué hay en la zona") — a diferencia de NPC/FAUNA, no abre
+  /// conversación: resuelve la recolección real de una sola llamada (tirada + inventario +
+  /// LogEntry), la tarjeta se limpia sola al terminar.
+  onInteractuarModoDinamicoRecurso?: (entryId: string, targetSlug: string) => void
   onDismissDynamicModeOffer?: (entryId: string) => void
   /// Menú contextual de interacción con NPC (2026-09-06, `entry.npcInteractionOffer`) — mismo
   /// criterio opcional que `onInteractuarModoDinamico`, un solo callback para cualquier opción
@@ -172,6 +177,7 @@ export const LogPanel = memo(function LogPanel({
   onAcceptQuestOffer,
   onDismissQuestOffer,
   onInteractuarModoDinamico,
+  onInteractuarModoDinamicoRecurso,
   onDismissDynamicModeOffer,
   onChooseNpcInteraction,
   onOpenHarvestSuggestion,
@@ -421,16 +427,29 @@ export const LogPanel = memo(function LogPanel({
               )}
               {/* "Modo dinámico" (2026-08-27, `entry.dynamicModeOffer`) — mismo patrón que la
                   tarjeta de misión: oferta opcional al final del turno, nunca lo interrumpe.
-                  "Interactuar" abre el mini-flujo (DynamicModeModal.tsx); "Ignorar" solo limpia
-                  la tarjeta. B.9/B.10 (checklist frontend 2026-08-27): `accent2` (azulado, canal
-                  "El mundo") en vez del "quest" amarillo, más segunda línea de contexto. `busy`/
-                  `error` (A.7): antes un fallo de red dejaba los botones sin explicación. */}
+                  "Interactuar" abre el mini-flujo (DynamicModeModal.tsx) para NPC/FAUNA; "Ignorar"
+                  solo limpia la tarjeta. B.9/B.10 (checklist frontend 2026-08-27): `accent2`
+                  (azulado, canal "El mundo") en vez del "quest" amarillo, más segunda línea de
+                  contexto. `busy`/`error` (A.7): antes un fallo de red dejaba los botones sin
+                  explicación.
+                  RECURSO (2026-09-08, "Ver qué hay en la zona") — estructuralmente distinto: no hay
+                  conversación, "Interactuar" resuelve la recolección real de una sola llamada
+                  (`onInteractuarModoDinamicoRecurso`, sin abrir DynamicModeModal) — mismo botón/
+                  tarjeta, callback distinto. */}
               {entry.dynamicModeOffer && (
                 <OfferCard
                   tone="accent2"
-                  icon="💬"
-                  title={`${entry.dynamicModeOffer.targetName} busca tu atención`}
-                  subtitle={entry.dynamicModeOffer.tipo === 'NPC' ? 'Puedes hablar con esta persona.' : 'Hay algo cerca con lo que puedes interactuar.'}
+                  icon={entry.dynamicModeOffer.tipo === 'RECURSO' ? '🪨' : '💬'}
+                  title={
+                    entry.dynamicModeOffer.tipo === 'RECURSO' ? `${entry.dynamicModeOffer.targetName} a la vista` : `${entry.dynamicModeOffer.targetName} busca tu atención`
+                  }
+                  subtitle={
+                    entry.dynamicModeOffer.tipo === 'NPC'
+                      ? 'Puedes hablar con esta persona.'
+                      : entry.dynamicModeOffer.tipo === 'RECURSO'
+                        ? 'Hay algo cerca que podrías recolectar.'
+                        : 'Hay algo cerca con lo que puedes interactuar.'
+                  }
                   error={entry.dynamicModeOffer.error}
                   actions={[
                     {
@@ -438,12 +457,14 @@ export const LogPanel = memo(function LogPanel({
                       tone: 'primary',
                       disabled: entry.dynamicModeOffer.busy,
                       onClick: () =>
-                        onInteractuarModoDinamico?.(
-                          entry.id,
-                          entry.dynamicModeOffer!.tipo,
-                          entry.dynamicModeOffer!.targetSlug,
-                          entry.dynamicModeOffer!.targetName,
-                        ),
+                        entry.dynamicModeOffer!.tipo === 'RECURSO'
+                          ? onInteractuarModoDinamicoRecurso?.(entry.id, entry.dynamicModeOffer!.targetSlug)
+                          : onInteractuarModoDinamico?.(
+                              entry.id,
+                              entry.dynamicModeOffer!.tipo as 'NPC' | 'FAUNA',
+                              entry.dynamicModeOffer!.targetSlug,
+                              entry.dynamicModeOffer!.targetName,
+                            ),
                     },
                     { label: 'Ignorar', tone: 'neutral', disabled: entry.dynamicModeOffer.busy, onClick: () => onDismissDynamicModeOffer?.(entry.id) },
                   ]}

@@ -82,6 +82,7 @@ import {
   aceptarMision,
   cancelarMision,
   interactuarModoDinamico,
+  interactuarModoDinamicoRecurso,
   responderModoDinamico,
   ignorarModoDinamico,
   chooseNpcInteraction,
@@ -907,6 +908,41 @@ export function GameView() {
     // solo se registra en consola para no perder el rastro por completo si el backend queda con
     // `pendingDynamicMode` huérfano.
     ignorarModoDinamico(saveId!).catch((err) => console.error('ignorarModoDinamico falló', err))
+  }
+
+  // RECURSO (2026-09-08, "Ver qué hay en la zona") — a diferencia de `handleInteractuarModoDinamico`
+  // (abre DynamicModeModal, conversación de vueltas), esto resuelve TODO de una sola llamada: tirada
+  // real + inventario + LogEntry, reutilizando exactamente el mismo patrón de actualización que
+  // `HarvestSelectionModal.onConfirm` (applyInventoryDelta + setCharacterLog + setFictionalDate) —
+  // mismo backend (`resolverRecoleccion`), solo un disparador distinto.
+  async function handleInteractuarModoDinamicoRecurso(entryId: string, targetSlug: string) {
+    setCharacterLog((prev) => prev.map((e) => (e.id === entryId && e.dynamicModeOffer ? { ...e, dynamicModeOffer: { ...e.dynamicModeOffer, busy: true } } : e)))
+    try {
+      const resultado = await interactuarModoDinamicoRecurso(saveId!, targetSlug)
+      setCharacterLog((prev) => prev.map((e) => (e.id === entryId ? { ...e, dynamicModeOffer: undefined } : e)))
+      if (resultado.items || resultado.updatedItems) {
+        setInventory((prev) => applyInventoryDelta(prev, resultado.items ?? [], [], resultado.updatedItems ?? []))
+      }
+      if (resultado.logEntry) {
+        setCharacterLog((prev) => [...prev, { ...resultado.logEntry!, channel: 'character' }])
+        setFictionalDate(resultado.logEntry.timeLabel)
+      } else {
+        // Tirada fallida — sin LogEntry real que guardar (mismo criterio que "caza limpia
+        // fallida"), pero la narración determinista del intento sigue siendo útil en pantalla.
+        setCharacterLog((prev) => [
+          ...prev,
+          { id: `recurso-fallido-${Date.now()}`, channel: 'character', text: resultado.narration, timeLabel: fictionalDate, isSystemMessage: true, createdAt: new Date().toISOString() },
+        ])
+      }
+    } catch {
+      setCharacterLog((prev) =>
+        prev.map((e) =>
+          e.id === entryId && e.dynamicModeOffer
+            ? { ...e, dynamicModeOffer: { ...e.dynamicModeOffer, busy: false, error: 'No se pudo recolectar — inténtalo de nuevo.' } }
+            : e,
+        ),
+      )
+    }
   }
 
   // Menú contextual de interacción con NPC (2026-09-06) — mismo criterio de `busy`/`error` que
@@ -1761,6 +1797,7 @@ export function GameView() {
               onAcceptQuestOffer={handleAcceptQuestOffer}
               onDismissQuestOffer={handleDismissQuestOffer}
               onInteractuarModoDinamico={handleInteractuarModoDinamico}
+              onInteractuarModoDinamicoRecurso={handleInteractuarModoDinamicoRecurso}
               onDismissDynamicModeOffer={handleDismissDynamicModeOffer}
               onChooseNpcInteraction={handleChooseNpcInteraction}
               onOpenHarvestSuggestion={handleOpenHarvestSuggestion}

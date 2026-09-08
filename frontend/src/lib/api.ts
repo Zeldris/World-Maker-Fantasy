@@ -1420,6 +1420,22 @@ export async function ignorarModoDinamico(saveId: string): Promise<{ ok: boolean
   return fetchJson(`${API_URL}/saves/${saveId}/modo-dinamico/ignorar`, { method: 'POST' })
 }
 
+/// "Interactuar" sobre RECURSO (2026-09-08, "Ver qué hay en la zona") — a diferencia de NPC/FAUNA
+/// (conversación de vueltas), resuelve la recolección real de una sola llamada: tirada + inventario
+/// + LogEntry, sin abrir DynamicModeModal. Ver dynamicModeRecurso.ts (backend).
+export interface DynamicModeRecursoResultado {
+  exito: boolean
+  narration: string
+  abilityName?: string
+  items?: InventoryItemInfo[]
+  updatedItems?: { id: string; name: string }[]
+  logEntry?: { id: string; text: string; timeLabel: string; createdAt: string; fictionalMinutes: number } | null
+}
+
+export async function interactuarModoDinamicoRecurso(saveId: string, targetSlug: string): Promise<DynamicModeRecursoResultado> {
+  return fetchJson(`${API_URL}/saves/${saveId}/modo-dinamico/recurso/${targetSlug}`, { method: 'POST' })
+}
+
 /// Menú contextual de interacción con NPC (2026-09-06) — `accion` le dice a GameView.tsx qué modal/
 /// flujo abrir a continuación, reutilizando siempre uno ya existente (ninguna mecánica nueva nace
 /// aquí, ver npcInteraction.ts en backend).
