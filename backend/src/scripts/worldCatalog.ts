@@ -8669,6 +8669,21 @@ export const zonePoints: ZonePointInput[] = [
   { locationSlug: 'hondonada-del-eco', x: 620, y: 180, tipo: 'FAUNA', targetSlug: 'kirelon-arenoso', label: 'Boca de cueva (Kirelon Arenoso)' },
   { locationSlug: 'hondonada-del-eco', x: 260, y: 340, tipo: 'FAUNA', targetSlug: 'gesgurio', label: 'Pared de arcilla (Gesgurio)' },
   { locationSlug: 'hondonada-del-eco', x: 400, y: 470, tipo: 'RECURSO', targetSlug: 'yerreo', label: 'Veta de Yerreo' },
+  // Franja 3 de "Interactuar" (2026-09-08) — el "perseguidor sin nombrar" de Gistera Koh
+  // (`orco-enfurecido-hondonada`, mecanismo de inyección determinista en escena, turnResolution.ts
+  // § PURSUER_REFERENCE_REGEX) no tenía ningún ZonePoint real hasta ahora — con el gate de
+  // colisión de celda nuevo, un agresivo sin ZonePoint nunca fuerza combate. Posición coherente con
+  // su propia bio ("duerme y merodea en la Hondonada del Eco, donde el terreno hundido le permite
+  // ver llegar a cualquiera antes de que lo vean a él") — borde superior del lienzo, punto de
+  // vigilancia elevado, distinto de la cueva del Kirelon y la pared del Gesgurio.
+  { locationSlug: 'hondonada-del-eco', x: 400, y: 130, tipo: 'NPC', targetSlug: 'orco-enfurecido-hondonada', label: 'Punto de vigilancia (Orco Enfurecido)' },
+  // Gistera Koh (2026-09-08, misma pieza) — aunque `faction: null` significa que nunca puede
+  // desplazarse a AGRESIVO/ENEMIGO (así que el gate de combate no la necesitaba), la usuaria pidió
+  // explícitamente que TODO tenga ZonePoint real: sin posición propia, tampoco tendría celda real
+  // en el sistema de cuadrícula — jamás podría colisionar/dar aviso de Interactuar, ni aparecer en
+  // el punto correcto del mapa (solo asignación dinámica aleatoria la primera vez que aparece en
+  // escena). Escondida del Orco Enfurecido — punto resguardado, lejos de su vigilancia elevada.
+  { locationSlug: 'hondonada-del-eco', x: 220, y: 500, tipo: 'NPC', targetSlug: 'gistera-koh', label: 'Refugio oculto (Gistera Koh)' },
 
   // ══════════════════════════════════════════════════════════════════════════
   // Ampliación 2026-08-31 — resto de Las Llanuras del Viento Rojo (27 Locations, todo el núcleo
@@ -8700,15 +8715,29 @@ export const zonePoints: ZonePointInput[] = [
   { locationSlug: 'campamento-serhu', x: 400, y: 460, tipo: 'RECURSO', targetSlug: 'murgoles-domados-campamento', label: 'Recinto de múrgoles domados' },
 
   // Interior de Karot Veku (2026-08-31, "Trabajador de Reino") — mismo lienzo 800×600, propio de
-  // esta Location. Torgash/Ulkha en el propio Karot Vekhad (centro); los 2 edificios de profesión
-  // de prueba (Herrería/Curtiduría) a los lados, con sus Maestros — el resto de los 11 oficios
-  // queda para una siguiente pasada una vez verificado el motor con estos 2.
+  // esta Location. Torgash/Ulkha en el propio Karot Vekhad (centro); los 3 edificios de profesión
+  // ya sembrados (Herrería/Curtiduría/Cocina) a los lados, con sus Maestros.
   { locationSlug: 'campamento-serhu-interior', x: 400, y: 300, tipo: 'EDIFICIO', targetSlug: 'karot-vekhad', label: 'Karot Vekhad — el Salón del Colmillo Ceniza' },
   { locationSlug: 'campamento-serhu-interior', x: 400, y: 220, tipo: 'NPC', targetSlug: 'torgash-ketg', label: "Torgash Ketg, Kort'ikar" },
   { locationSlug: 'campamento-serhu-interior', x: 400, y: 380, tipo: 'NPC', targetSlug: 'ulkha-ketg', label: "Ulkha Ketg, Terk'ikar" },
   { locationSlug: 'campamento-serhu-interior', x: 180, y: 300, tipo: 'EDIFICIO', targetSlug: 'herreria-serhu', label: 'Herrería del Clan Serhu' },
+  { locationSlug: 'campamento-serhu-interior', x: 160, y: 240, tipo: 'NPC', targetSlug: 'maestro-herrero-serhu', label: 'Maestro Herrero del Clan Serhu' },
   { locationSlug: 'campamento-serhu-interior', x: 620, y: 300, tipo: 'EDIFICIO', targetSlug: 'curtiduria-serhu', label: 'Curtiduría del Clan Serhu' },
+  { locationSlug: 'campamento-serhu-interior', x: 640, y: 240, tipo: 'NPC', targetSlug: 'maestra-curtidora-serhu', label: 'Maestra Curtidora del Clan Serhu' },
   { locationSlug: 'campamento-serhu-interior', x: 400, y: 460, tipo: 'EDIFICIO', targetSlug: 'cocina-serhu', label: 'Cocina común de Karot Veku' },
+  { locationSlug: 'campamento-serhu-interior', x: 340, y: 500, tipo: 'NPC', targetSlug: 'maestro-cocinero-serhu', label: 'Maestro Cocinero del Clan Serhu' },
+  // Franja 3 de "Interactuar" (2026-09-08) — el resto de Maestros de oficio sin edificio propio
+  // sembrado todavía, distribuidos por el resto del poblado (sin sistema de movimiento por
+  // cuadrícula al sembrarlo, pero con separación real >60px entre sí, mismo criterio que
+  // `DISTANCIA_MINIMA_ENTRE_PUNTOS` para que ningún par quede literalmente encima del otro).
+  { locationSlug: 'campamento-serhu-interior', x: 160, y: 380, tipo: 'NPC', targetSlug: 'maestro-alquimista-serhu', label: 'Maestro Alquimista del Clan Serhu' },
+  { locationSlug: 'campamento-serhu-interior', x: 640, y: 380, tipo: 'NPC', targetSlug: 'maestro-domador-serhu', label: 'Maestro Domador del Clan Serhu' },
+  { locationSlug: 'campamento-serhu-interior', x: 220, y: 460, tipo: 'NPC', targetSlug: 'maestro-desollador-serhu', label: 'Maestro Desollador del Clan Serhu' },
+  { locationSlug: 'campamento-serhu-interior', x: 580, y: 460, tipo: 'NPC', targetSlug: 'maestro-peletero-serhu', label: 'Maestro Peletero del Clan Serhu' },
+  { locationSlug: 'campamento-serhu-interior', x: 220, y: 160, tipo: 'NPC', targetSlug: 'maestra-primeros-auxilios-serhu', label: 'Maestra de Primeros Auxilios del Clan Serhu' },
+  { locationSlug: 'campamento-serhu-interior', x: 580, y: 160, tipo: 'NPC', targetSlug: 'maestra-herborista-serhu', label: 'Maestra Herborista del Clan Serhu' },
+  { locationSlug: 'campamento-serhu-interior', x: 300, y: 140, tipo: 'NPC', targetSlug: 'maestra-sastre-serhu', label: 'Maestra Sastre del Clan Serhu' },
+  { locationSlug: 'campamento-serhu-interior', x: 500, y: 140, tipo: 'NPC', targetSlug: 'maestro-carpintero-serhu', label: 'Maestro Carpintero del Clan Serhu' },
 
   // El Cruce de las Cenizas — Ferike tiene homeLocationSlug directo aquí. Telda Ceniza y Matorral
   // de Cuerno tienen homeLocationSlug/tag de vegetación coherentes con la propia description
@@ -8796,6 +8825,10 @@ export const zonePoints: ZonePointInput[] = [
   { locationSlug: 'playa-de-ceniza-blanca', x: 200, y: 220, tipo: 'RECURSO', targetSlug: 'junba-verde', label: 'Junba Verde' },
   { locationSlug: 'playa-de-ceniza-blanca', x: 450, y: 480, tipo: 'RECURSO', targetSlug: 'temune', label: 'Algas Temune varadas' },
   { locationSlug: 'playa-de-ceniza-blanca', x: 620, y: 220, tipo: 'RECURSO', targetSlug: 'roca-pilares-rotos', label: 'Roca de Llanura Roja' },
+  // Franja 3 de "Interactuar" (2026-09-08) — "conoce cada banco de Jashil y sabe leer cuándo el
+  // Toluh puede aparecer en la orilla profunda" (bio) — borde inferior del lienzo, hacia el agua,
+  // separado de los recursos ya sembrados.
+  { locationSlug: 'playa-de-ceniza-blanca', x: 400, y: 560, tipo: 'NPC', targetSlug: 'maestro-pescador-serhu', label: 'Maestro Pescador, junto a la orilla' },
 
   // Los Acantilados Partidos — mismo hueco real de fauna/recurso costero. Flor de Ceniza (rocoso)
   // y Liquen del Cauce (humedo) son los matches de terreno disponibles.
