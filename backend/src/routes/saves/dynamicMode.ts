@@ -4,7 +4,13 @@ import { prisma } from '../../lib/prisma.js';
 import { rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 import { characterSummaryFor } from '../../services/characterSummary.js';
 import { advanceFictionalMinutes, formatFictionalDate } from '../../services/worldClock.js';
-import { MAX_VUELTAS_MODO_DINAMICO, MINUTOS_POR_VUELTA_MODO_DINAMICO, type PendingDynamicMode, type DynamicModeTipo } from '../../services/dynamicMode.js';
+import {
+  MAX_VUELTAS_MODO_DINAMICO,
+  MINUTOS_POR_VUELTA_MODO_DINAMICO,
+  resumenModoDinamicoParaLog,
+  type PendingDynamicMode,
+  type DynamicModeTipo,
+} from '../../services/dynamicMode.js';
 import { narrarVueltaModoDinamico } from '../../services/dynamicModeNarracion.js';
 
 /// "Modo dinámico" (2026-08-27, Pieza 4 de "Dinamismo del mundo") — mini-flujo acotado ofrecido
@@ -59,6 +65,7 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
       const nuevoFictionalMinutes = advanceFictionalMinutes(fictionalMinutesActuales, MINUTOS_POR_VUELTA_MODO_DINAMICO);
       const nuevaFictionalDateLabel = formatFictionalDate(nuevoFictionalMinutes);
 
+      const historialNarracion = [turno.narration];
       const pendingDynamicMode: PendingDynamicMode | null = turno.cierra
         ? null
         : {
@@ -71,6 +78,7 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
             opciones: turno.opciones,
             targetBio: targetNpc?.bio ?? null,
             locationContext: currentLocation,
+            historialNarracion,
           };
 
       await prisma.$transaction([
@@ -88,6 +96,21 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
           where: { saveId: save.id },
           data: { fictionalMinutes: nuevoFictionalMinutes, fictionalDateLabel: nuevaFictionalDateLabel },
         }),
+        // Franja 0 (2026-09-08) — si el LLM cierra ya en la primera vuelta, se vuelca igual: nunca
+        // debe perderse una conversación sin dejar rastro en el log, ni siquiera de una vuelta.
+        ...(turno.cierra
+          ? [
+              prisma.logEntry.create({
+                data: {
+                  saveId: save.id,
+                  channel: 'CHARACTER' as const,
+                  text: resumenModoDinamicoParaLog(historialNarracion),
+                  timeLabel: nuevaFictionalDateLabel,
+                  fictionalMinutes: nuevoFictionalMinutes,
+                },
+              }),
+            ]
+          : []),
       ]);
 
       return { narration: turno.narration, opciones: turno.opciones, cierra: turno.cierra, vuelta: 1, timeLabel: nuevaFictionalDateLabel };
@@ -129,9 +152,14 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
     const nuevoFictionalMinutes = advanceFictionalMinutes(fictionalMinutesActuales, MINUTOS_POR_VUELTA_MODO_DINAMICO);
     const nuevaFictionalDateLabel = formatFictionalDate(nuevoFictionalMinutes);
 
+    // Franja 0 (2026-09-08) — partidas ya en curso antes de esta migración pueden no tener
+    // `historialNarracion` todavía (campo nuevo en un Json sin migración de esquema); se reconstruye
+    // con la última vuelta conocida en vez de perder el historial anterior por completo.
+    const historialPrevio = pending.historialNarracion ?? [pending.narration];
+    const historialNarracion = [...historialPrevio, turno.narration];
     const pendingDynamicMode: PendingDynamicMode | null = turno.cierra
       ? null
-      : { ...pending, vuelta: siguienteVuelta, narration: turno.narration, opciones: turno.opciones };
+      : { ...pending, vuelta: siguienteVuelta, narration: turno.narration, opciones: turno.opciones, historialNarracion };
 
     await prisma.$transaction([
       prisma.save.update({
@@ -142,6 +170,19 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
         where: { saveId: save.id },
         data: { fictionalMinutes: nuevoFictionalMinutes, fictionalDateLabel: nuevaFictionalDateLabel },
       }),
+      ...(turno.cierra
+        ? [
+            prisma.logEntry.create({
+              data: {
+                saveId: save.id,
+                channel: 'CHARACTER' as const,
+                text: resumenModoDinamicoParaLog(historialNarracion),
+                timeLabel: nuevaFictionalDateLabel,
+                fictionalMinutes: nuevoFictionalMinutes,
+              },
+            }),
+          ]
+        : []),
     ]);
 
     return { narration: turno.narration, opciones: turno.opciones, cierra: turno.cierra, vuelta: siguienteVuelta, timeLabel: nuevaFictionalDateLabel };
@@ -157,16 +198,44 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
   app.post<{ Params: { id: string } }>('/saves/:id/modo-dinamico/ignorar', async (request, reply) => {
     const save = await prisma.save.findUnique({
       where: { id: request.params.id },
-      select: { id: true, endedAt: true, pendingDeathResolution: true, pendingDynamicMode: true, pendingDynamicModeOffer: true },
+      select: {
+        id: true,
+        endedAt: true,
+        pendingDeathResolution: true,
+        pendingDynamicMode: true,
+        pendingDynamicModeOffer: true,
+        worldState: { select: { fictionalMinutes: true, fictionalDateLabel: true } },
+      },
     });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
     if (rejectIfEnded(save, reply)) return;
     if (rejectIfPendingDeath(save, reply)) return;
     if (save.pendingDynamicMode || save.pendingDynamicModeOffer) {
-      await prisma.save.update({
-        where: { id: save.id },
-        data: { pendingDynamicMode: Prisma.JsonNull, pendingDynamicModeOffer: Prisma.JsonNull },
-      });
+      // Franja 0 (2026-09-08) — "Salir" de una conversación YA en curso también debe dejar rastro
+      // en el log (antes se perdía igual que un cierre por `cierra: true`); "Ignorar" una oferta sin
+      // abrir (pendingDynamicMode null) no tiene nada que narrar, no crea ningún LogEntry.
+      const pending = save.pendingDynamicMode as unknown as PendingDynamicMode | null;
+      const historialNarracion = pending?.historialNarracion ?? (pending ? [pending.narration] : null);
+
+      await prisma.$transaction([
+        prisma.save.update({
+          where: { id: save.id },
+          data: { pendingDynamicMode: Prisma.JsonNull, pendingDynamicModeOffer: Prisma.JsonNull },
+        }),
+        ...(historialNarracion
+          ? [
+              prisma.logEntry.create({
+                data: {
+                  saveId: save.id,
+                  channel: 'CHARACTER' as const,
+                  text: resumenModoDinamicoParaLog(historialNarracion),
+                  timeLabel: save.worldState?.fictionalDateLabel ?? '',
+                  fictionalMinutes: save.worldState?.fictionalMinutes ?? 0,
+                },
+              }),
+            ]
+          : []),
+      ]);
     }
     return { ok: true };
   });

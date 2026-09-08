@@ -7,6 +7,9 @@ import {
   MINUTOS_AUSENCIA_TRAS_DERROTA,
   LIENZO_ANCHO,
   LIENZO_ALTO,
+  distanciaEnLienzo,
+  zonePointMasCercano,
+  RADIO_INTERACCION_PX,
 } from './zonaPosicion.js';
 
 describe('puntoDeEntradaParaDireccion', () => {
@@ -112,5 +115,59 @@ describe('minutoDeReaparicion', () => {
   it('suma 6 horas de tiempo de ficción (360 minutos) al minuto actual', () => {
     expect(minutoDeReaparicion(1000)).toBe(1360);
     expect(MINUTOS_AUSENCIA_TRAS_DERROTA).toBe(360);
+  });
+});
+
+describe('distanciaEnLienzo', () => {
+  it('distancia euclidiana simple (triángulo 3-4-5)', () => {
+    expect(distanciaEnLienzo({ x: 0, y: 0 }, { x: 3, y: 4 })).toBe(5);
+  });
+
+  it('0 para el mismo punto', () => {
+    expect(distanciaEnLienzo({ x: 100, y: 200 }, { x: 100, y: 200 })).toBe(0);
+  });
+});
+
+describe('zonePointMasCercano (gate de proximidad de "Interactuar", 2026-09-08)', () => {
+  it('null si el jugador no tiene posición conocida (partida previa a esta pieza)', () => {
+    expect(zonePointMasCercano(null, [{ x: 400, y: 300, slug: 'a' }])).toBeNull();
+  });
+
+  it('null si no hay candidatos', () => {
+    expect(zonePointMasCercano({ x: 400, y: 300 }, [])).toBeNull();
+  });
+
+  it('null si el candidato más cercano está fuera del radio (100px por defecto)', () => {
+    const candidatos = [{ x: 400, y: 300, slug: 'lejos' }];
+    // distancia real = 150px, > RADIO_INTERACCION_PX
+    expect(zonePointMasCercano({ x: 400, y: 450 }, candidatos)).toBeNull();
+  });
+
+  it('devuelve el candidato dentro del radio', () => {
+    const candidatos = [{ x: 400, y: 300, slug: 'cerca' }];
+    // distancia real = 50px, < RADIO_INTERACCION_PX
+    expect(zonePointMasCercano({ x: 400, y: 350 }, candidatos)?.slug).toBe('cerca');
+  });
+
+  it('exactamente en el borde del radio SÍ cuenta (<=, no <)', () => {
+    const candidatos = [{ x: 400, y: 300, slug: 'borde' }];
+    expect(zonePointMasCercano({ x: 400, y: 400 }, candidatos, 100)?.slug).toBe('borde');
+  });
+
+  it('"el más cercano gana" — caso real de campamento-serhu-interior (varios candidatos dentro del radio a la vez)', () => {
+    // Réplica de la distribución real más densa del catálogo: 2 puntos a solo 80px entre sí,
+    // ambos alcanzables desde la misma posición del jugador si el radio no desempatara.
+    const candidatos = [
+      { x: 400, y: 300, slug: 'punto-a' },
+      { x: 400, y: 380, slug: 'punto-b' }, // 80px de punto-a
+    ];
+    // Jugador a 30px de punto-a y 50px de punto-b — ambos dentro de RADIO_INTERACCION_PX (100),
+    // pero solo UNO debe devolverse, nunca ambos ni un empate ambiguo.
+    const resultado = zonePointMasCercano({ x: 400, y: 330 }, candidatos);
+    expect(resultado?.slug).toBe('punto-a');
+  });
+
+  it('RADIO_INTERACCION_PX es 100 — calibrado contra el catálogo real (2026-09-08)', () => {
+    expect(RADIO_INTERACCION_PX).toBe(100);
   });
 });

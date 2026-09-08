@@ -115,7 +115,7 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
     expect(saveAfter.worldState?.fictionalMinutes).toBe(484);
   });
 
-  it('responder con cierra:true limpia pendingDynamicMode', async () => {
+  it('responder con cierra:true limpia pendingDynamicMode y vuelca TODAS las vueltas concatenadas a un LogEntry nuevo (Franja 0, 2026-09-08)', async () => {
     narrarVueltaModoDinamico.mockResolvedValueOnce({
       narration: 'Gorhorn acepta ayudar a Gistera Koh.',
       opciones: ['Continuar'],
@@ -123,6 +123,7 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
     });
     const app = await buildApp();
 
+    const logCountAntes = await prisma.logEntry.count({ where: { saveId } });
     const res = await app.inject({
       method: 'POST',
       url: `/saves/${saveId}/modo-dinamico/responder`,
@@ -133,6 +134,21 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
 
     const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(saveAfter.pendingDynamicMode).toBeNull();
+
+    const logCountDespues = await prisma.logEntry.count({ where: { saveId } });
+    expect(logCountDespues).toBe(logCountAntes + 1);
+    const nuevaEntrada = await prisma.logEntry.findFirstOrThrow({ where: { saveId }, orderBy: { createdAt: 'desc' } });
+    expect(nuevaEntrada.channel).toBe('CHARACTER');
+    // Las 3 vueltas completas de esta conversación (interactuar + 2x responder de los tests
+    // anteriores), concatenadas en orden — antes de este fix, cerrar el modal no dejaba NINGÚN
+    // rastro legible en el log permanente de la partida.
+    expect(nuevaEntrada.text).toBe(
+      [
+        'Gistera Koh se acerca con cautela.',
+        'Gistera Koh insiste en su petición.',
+        'Gorhorn acepta ayudar a Gistera Koh.',
+      ].join('\n\n'),
+    );
   });
 
   it('responder sin ningún modo dinámico en curso: 409', async () => {
@@ -152,7 +168,7 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
     expect(JSON.parse(res.body)).toEqual({ ok: true });
   });
 
-  it('ignorar CON un pendingDynamicMode activo (B.5, checklist frontend 2026-08-27: vía de escape real): lo limpia', async () => {
+  it('ignorar CON un pendingDynamicMode activo (B.5, checklist frontend 2026-08-27: vía de escape real): lo limpia y vuelca la conversación truncada a un LogEntry (Franja 0, 2026-09-08)', async () => {
     narrarVueltaModoDinamico.mockResolvedValueOnce({
       narration: 'Un cornante te mira desde lejos.',
       opciones: ['Acercarte', 'Ignorarlo'],
@@ -167,11 +183,54 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
     const saveConPending = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(saveConPending.pendingDynamicMode).not.toBeNull();
 
+    const logCountAntes = await prisma.logEntry.count({ where: { saveId } });
     const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/ignorar` });
     expect(res.statusCode).toBe(200);
     expect(JSON.parse(res.body)).toEqual({ ok: true });
 
     const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(saveAfter.pendingDynamicMode).toBeNull();
+
+    const logCountDespues = await prisma.logEntry.count({ where: { saveId } });
+    expect(logCountDespues).toBe(logCountAntes + 1);
+    const nuevaEntrada = await prisma.logEntry.findFirstOrThrow({ where: { saveId }, orderBy: { createdAt: 'desc' } });
+    expect(nuevaEntrada.text).toBe('Un cornante te mira desde lejos.');
+  });
+
+  it('ignorar SIN pendingDynamicMode activo (solo rechazar oferta): no crea ningún LogEntry (nada que narrar)', async () => {
+    const app = await buildApp();
+    const logCountAntes = await prisma.logEntry.count({ where: { saveId } });
+
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/ignorar` });
+    expect(res.statusCode).toBe(200);
+
+    const logCountDespues = await prisma.logEntry.count({ where: { saveId } });
+    expect(logCountDespues).toBe(logCountAntes);
+  });
+
+  it('interactuar con cierra:true YA en la primera vuelta: vuelca esa única vuelta a un LogEntry (caso borde, Franja 0)', async () => {
+    narrarVueltaModoDinamico.mockResolvedValueOnce({
+      narration: 'El jashil huye antes de que puedas acercarte.',
+      opciones: [],
+      cierra: true,
+    });
+    const app = await buildApp();
+    const logCountAntes = await prisma.logEntry.count({ where: { saveId } });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/modo-dinamico/interactuar`,
+      payload: { tipo: 'FAUNA', targetSlug: 'jashil-verde', targetName: 'Jashil verde' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).cierra).toBe(true);
+
+    const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveAfter.pendingDynamicMode).toBeNull();
+
+    const logCountDespues = await prisma.logEntry.count({ where: { saveId } });
+    expect(logCountDespues).toBe(logCountAntes + 1);
+    const nuevaEntrada = await prisma.logEntry.findFirstOrThrow({ where: { saveId }, orderBy: { createdAt: 'desc' } });
+    expect(nuevaEntrada.text).toBe('El jashil huye antes de que puedas acercarte.');
   });
 });

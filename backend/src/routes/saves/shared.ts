@@ -55,6 +55,19 @@ export function rejectIfPendingDeath(save: { pendingDeathResolution: boolean }, 
   return false;
 }
 
+/// Limpia un campo `pending*Offer` de `Save` (deuda técnica, "Interactuar" motor unificado de
+/// eventos de escena, 2026-09-08, Franja 2) — la misma línea `prisma.save.update({..., data: {
+/// [campo]: Prisma.JsonNull } })` estaba copiada 5 veces entre `dynamicMode.ts` (×3),
+/// `quests.ts` (×2) y `npcInteraction.ts` (×1). Investigado a fondo si merecía la pena unificar
+/// también QUIÉN decide el candidato de cada oferta (`dynamicModeOffer`/`newQuestOfferInfo`/
+/// `npcInteractionOffer`) — decisión explícita: no, son estructuralmente distintos (motor decide/
+/// LLM propone+valida/verbo del jugador decide respectivamente) y forzar un servicio común ahí
+/// distorsionaría alguno de los tres sin necesidad real. Solo se extrae lo que de verdad se repite:
+/// la limpieza en sí, una vez que la ruta ya decidió que toca limpiar.
+export async function clearPendingOffer(saveId: string, campo: 'pendingDynamicModeOffer' | 'pendingDynamicMode' | 'pendingQuestOfferInfo' | 'pendingNpcInteractionOffer'): Promise<void> {
+  await prisma.save.update({ where: { id: saveId }, data: { [campo]: Prisma.JsonNull } });
+}
+
 /// Bloquea una fila con `SELECT ... FOR UPDATE` y relee las columnas pedidas dentro de la misma
 /// transacción — deuda técnica cerrada (auditoría 2026-09-01): el mismo `$queryRaw` con `FOR
 /// UPDATE` estaba copiado 7 veces entre `progression.ts`, `session.ts`, `cazar.ts` y

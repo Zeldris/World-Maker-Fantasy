@@ -6,7 +6,7 @@ import { loadSessionFacts, appendSessionFacts } from '../../services/worldFacts.
 import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
 import { grantQuestRewardItems, questRewardNarrationFor } from '../../services/questResolution.js';
 import { generateQuestResponseNarration } from '../../services/narrador.js';
-import { rejectIfEnded, rejectIfPendingDeath } from './shared.js';
+import { rejectIfEnded, rejectIfPendingDeath, clearPendingOffer } from './shared.js';
 
 /// Misión con lógica especial propia, además del anclaje genérico NPC/Location/Item (bug real
 /// 2026-08-28, "misión se salta los botones" — la creaba directamente `turnResolution.ts`, ahora
@@ -217,7 +217,7 @@ export async function questsRoutes(app: FastifyInstance) {
     if (rejectIfEnded(save, reply)) return;
     if (rejectIfPendingDeath(save, reply)) return;
     if (save.pendingQuestOfferInfo) {
-      await prisma.save.update({ where: { id: save.id }, data: { pendingQuestOfferInfo: Prisma.JsonNull } });
+      await clearPendingOffer(save.id, 'pendingQuestOfferInfo');
     }
     return { ok: true };
   });

@@ -156,7 +156,7 @@ function nextPescaCooldownState(pescaUsosSeguidos: number, pescaCooldownDesde: D
   };
 }
 
-interface SourceCandidate {
+export interface SourceCandidate {
   sourceSlug: string;
   sourceCategory: string;
   disponible: number;
@@ -423,7 +423,7 @@ async function pasivoCandidatesFor(worldId: string, currentLocationSlug: string 
 /// Save con los datos mínimos para calcular `rollGathering` (equipo puesto para bonus de
 /// atributos/secundarios + nivel del oficio concreto que se está usando) — un único shape
 /// compartido por `/explorar` y el GET de desollador en vez de repetir el cálculo dos veces.
-interface GatheringRollInputs {
+export interface GatheringRollInputs {
   attributes: AttributeBlock;
   secondaryAttributesJson: unknown;
   inventoryItems: { statBonuses: unknown }[];
@@ -437,7 +437,7 @@ interface GatheringRollInputs {
 /// tira. `oficio` es el `professionId` exacto pulsado (ej. "minero-llanuras"), no un prefijo — con
 /// la única excepción de pescador (2026-09-02, ver `professionIdForOficio`), donde la clave de
 /// ruta ('pescador-pescar'/'pescador-buscar') y el `professionId` real ('pescador') divergen.
-function gatheringRollFor(save: GatheringRollInputs, oficio: string): GatheringRollResult {
+export function gatheringRollFor(save: GatheringRollInputs, oficio: string): GatheringRollResult {
   const attributes = effectiveAttributes(save.attributes, save.inventoryItems);
   const secondaryAttributes = effectiveSecondaryAttributes(normalizeSecondaryAttributes(save.secondaryAttributesJson), save.inventoryItems);
   const nivelOficio = save.professionProgress.find((p) => p.professionId === professionIdForOficio(oficio))?.nivel ?? 1;
@@ -451,7 +451,7 @@ function gatheringRollFor(save: GatheringRollInputs, oficio: string): GatheringR
 /// la fuente entera, una misma fuente puede dar varios objetos de distinto tier) se filtra/recorta
 /// según su propio grado — una fuente que se queda sin ningún yield tras esto desaparece del todo
 /// del listado (fallo total de la tirada para ese recurso concreto).
-function applyGatheringRoll(candidates: SourceCandidate[], roll: GatheringRollResult): SourceCandidate[] {
+export function applyGatheringRoll(candidates: SourceCandidate[], roll: GatheringRollResult): SourceCandidate[] {
   return candidates
     .map((c) => ({
       ...c,
@@ -717,40 +717,62 @@ export async function recolectarRoutes(app: FastifyInstance) {
 
       const save = await prisma.save.findUnique({
         where: { id: request.params.id },
-        include: {
-          worldState: true,
-          currentLocation: true,
-          // Segunda tirada en tier alto (2026-09-02, Pieza 2) — mismos inputs que `gatheringRollFor`
-          // (equipo puesto + nivel de oficio), necesarios aquí porque la segunda tirada ocurre AL
-          // CONFIRMAR, no al explorar.
-          inventoryItems: { where: { slot: { not: null } }, select: { statBonuses: true } },
-          professionProgress: { select: { professionId: true, nivel: true } },
-        },
+        include: SAVE_INCLUDE_PARA_CONFIRMAR,
       });
       if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
       // Bug real (auditoría de bugs, 2026-08-21) — ver comentario de /recolectar/:oficio/explorar arriba.
       if (rejectIfEnded(save, reply)) return;
       if (rejectIfPendingDeath(save, reply)) return;
 
-      interface TouchedStack {
-        id: string;
-        catalogName: string;
-        description: string;
-        catalogSlug: string;
-        /// true = la fila YA existía antes de esta petición (el cliente ya la tiene en su estado
-        /// local, hay que decirle que cambió de nombre); false = fila nueva, creada en esta misma
-        /// petición (el cliente todavía no la conoce, hay que dársela entera).
-        wasPreexisting: boolean;
-        quantity: number;
-        /// Cantidad cosechada en ESTA petición (distinta de `quantity`, el total de la pila tras
-        /// sumar) — bug real jugando en vivo, 2026-08-13: el mensaje del log usaba `quantity`
-        /// (total ya acumulado) para un verbo puntual ("recolecta: Piedra (N)"), así que "(N)" se
-        /// leía como "cogiste N ahora" cuando en realidad era el total en inventario.
-        harvestedThisTurn: number;
-      }
+      return resolverRecoleccion(save, selections);
+    },
+  );
+}
 
-      const cooldownCutoff = new Date(Date.now() - RECOLECCION_COOLDOWN_MS);
-      const touched = await prisma.$transaction(async (tx) => {
+/// Include exacto que necesita `resolverRecoleccion` — extraído como constante (2026-09-08,
+/// "Interactuar" motor unificado de eventos de escena) para que el nuevo camino desde
+/// `dynamicMode.ts` cargue el `Save` con el mismo shape exacto, sin repetir el objeto a mano y
+/// arriesgarse a que diverja del que usa la ruta HTTP normal.
+const SAVE_INCLUDE_PARA_CONFIRMAR = {
+  worldState: true,
+  currentLocation: true,
+  // Segunda tirada en tier alto (2026-09-02, Pieza 2) — mismos inputs que `gatheringRollFor`
+  // (equipo puesto + nivel de oficio), necesarios aquí porque la segunda tirada ocurre AL
+  // CONFIRMAR, no al explorar.
+  inventoryItems: { where: { slot: { not: null } }, select: { statBonuses: true } },
+  professionProgress: { select: { professionId: true, nivel: true } },
+} satisfies Prisma.SaveInclude;
+
+type SaveParaConfirmar = Prisma.SaveGetPayload<{ include: typeof SAVE_INCLUDE_PARA_CONFIRMAR }>;
+
+/// Núcleo real de "confirmar recolección" (2026-08-07 en adelante, ver comentario de cabecera del
+/// archivo) — extraído de `POST /saves/:id/recolectar/confirmar` (2026-09-08, "Interactuar" motor
+/// unificado de eventos de escena) para que el nuevo disparador de Interactuar sobre un RECURSO
+/// (un candidato YA determinista, `selections` de un solo elemento) reutilice exactamente las
+/// mismas reglas ya muy afinadas — cooldown por fuente, herramienta requerida, segunda tirada en
+/// tier alto, capacidad de inventario, cierre de misiones, descubrimientos de Enciclopedia — en vez
+/// de reimplementarlas. Ni un carácter de lógica cambiado respecto a la ruta HTTP original, solo
+/// movido de sitio: la ruta ahora solo carga `save` y delega aquí.
+export async function resolverRecoleccion(save: SaveParaConfirmar, selections: { sourceSlug: string; itemSlug: string; cantidad: number }[]) {
+  interface TouchedStack {
+    id: string;
+    catalogName: string;
+    description: string;
+    catalogSlug: string;
+    /// true = la fila YA existía antes de esta petición (el cliente ya la tiene en su estado
+    /// local, hay que decirle que cambió de nombre); false = fila nueva, creada en esta misma
+    /// petición (el cliente todavía no la conoce, hay que dársela entera).
+    wasPreexisting: boolean;
+    quantity: number;
+    /// Cantidad cosechada en ESTA petición (distinta de `quantity`, el total de la pila tras
+    /// sumar) — bug real jugando en vivo, 2026-08-13: el mensaje del log usaba `quantity`
+    /// (total ya acumulado) para un verbo puntual ("recolecta: Piedra (N)"), así que "(N)" se
+    /// leía como "cogiste N ahora" cuando en realidad era el total en inventario.
+    harvestedThisTurn: number;
+  }
+
+  const cooldownCutoff = new Date(Date.now() - RECOLECCION_COOLDOWN_MS);
+  const touched = await prisma.$transaction(async (tx) => {
         // Capacidad real (Parte D) — releída DENTRO de la transacción, igual que el resto de
         // gates de este proyecto (revalidar justo antes de escribir, no confiar en un conteo de
         // antes de abrir la transacción).
@@ -1128,7 +1150,5 @@ export async function recolectarRoutes(app: FastifyInstance) {
         }
       }
 
-      return { items, updatedItems, logEntry: touched.logEntry };
-    },
-  );
+  return { items, updatedItems, logEntry: touched.logEntry };
 }

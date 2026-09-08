@@ -79,7 +79,7 @@ vi.mock('../../services/worldFacts.js', () => ({
   appendSessionFacts: (...args: unknown[]) => appendSessionFacts(...args),
 }));
 
-const { cazarRoutes, avistadosFor, rollSightings, rollGroupEngagement, groupVarianceClause, dispersionCooldownActivo } = await import('./cazar.js');
+const { cazarRoutes, avistadosFor, rollSightings, rollGroupEngagement, groupVarianceClause, dispersionCooldownActivo, candidateFaunaFor } = await import('./cazar.js');
 
 async function buildApp() {
   const app = Fastify();
@@ -110,7 +110,7 @@ const MURGOL_POP = {
   poblacion: 50,
   distribucion: { 'Llanuras del Viento Rojo': 1 },
 };
-const MURGOL_NPC = { id: 'npc-murgol', slug: 'murgol', name: 'Múrgol', level: 1, capturablePct: 80, kind: 'PLANTILLA', attributes: { destreza: 6, inteligencia: 2 } };
+const MURGOL_NPC = { id: 'npc-murgol', slug: 'murgol', name: 'Múrgol', level: 1, capturablePct: 80, kind: 'PLANTILLA', attributes: { destreza: 6, inteligencia: 2 }, medio: ['TERRESTRE'] };
 
 const CRUZAVIENTOS_POP = {
   targetType: 'FAUNA',
@@ -118,7 +118,22 @@ const CRUZAVIENTOS_POP = {
   poblacion: 20,
   distribucion: { 'Llanuras del Viento Rojo': 1 },
 };
-const CRUZAVIENTOS_NPC = { id: 'npc-cruzavientos', slug: 'cruzavientos', name: 'Cruzavientos', level: 5, capturablePct: 10, kind: 'PLANTILLA', attributes: { destreza: 14, inteligencia: 4 } };
+const CRUZAVIENTOS_NPC = { id: 'npc-cruzavientos', slug: 'cruzavientos', name: 'Cruzavientos', level: 5, capturablePct: 10, kind: 'PLANTILLA', attributes: { destreza: 14, inteligencia: 4 }, medio: ['AEREO'] };
+
+// Gate de alcanzabilidad (2026-09-08) — "puramente acuática, narrativa o para pesca/desuello, nunca
+// vía Cazar" (precisión explícita de la usuaria). Fixture propia distinta de Murgol/Cruzavientos.
+const BENUSA_POP = {
+  targetType: 'FAUNA',
+  targetSlug: 'benusa-pesquera',
+  poblacion: 15,
+  distribucion: { 'Llanuras del Viento Rojo': 1 },
+};
+const BENUSA_NPC = { id: 'npc-benusa', slug: 'benusa-pesquera', name: 'Benusa Pesquera', level: 1, capturablePct: 50, kind: 'PLANTILLA', attributes: { destreza: 7, inteligencia: 3 }, medio: ['ACUATICO'] };
+// Anfibio ficticio (2026-09-08) — cubre "TERRESTRE cuando se presenta en tierra, ACUATICO cuando se
+// presenta sumergido... no puedo interactuar en agua sumergido" — con medio incluyendo TERRESTRE,
+// SÍ debe seguir siendo candidato de Cazar (solo se excluye cuando ACUATICO es el ÚNICO medio).
+const ANFIBIO_POP = { targetType: 'FAUNA', targetSlug: 'anfibio-ficticio', poblacion: 12, distribucion: { 'Llanuras del Viento Rojo': 1 } };
+const ANFIBIO_NPC = { id: 'npc-anfibio', slug: 'anfibio-ficticio', name: 'Anfibio Ficticio', level: 2, capturablePct: 40, kind: 'PLANTILLA', attributes: { destreza: 8, inteligencia: 3 }, medio: ['TERRESTRE', 'ACUATICO'] };
 
 describe('avistadosFor', () => {
   it('una especie común (capturablePct alto) muestra más avistados que una rara', () => {
@@ -258,6 +273,62 @@ describe('GET /saves/:id/cazar', () => {
     const res = await app.inject({ method: 'GET', url: '/saves/save1/cazar' });
     const { candidates } = res.json();
     expect(candidates.map((c: { slug: string }) => c.slug)).toEqual(['cruzavientos']);
+  });
+
+  // Gate de alcanzabilidad (2026-09-08, precisión explícita de la usuaria): "actualmente todo lo
+  // que sea puramente acuático será narrativo... las puramente acuáticas son narrativas o para
+  // obtener recursos mediante pesca y desollar" — nunca vía Cazar. AEREO (Cruzavientos) SÍ sigue
+  // siendo candidato normal (test de arriba) porque "que sea aéreo no implica que siempre esté en
+  // el aire... en combate se posa en el suelo" — solo ACUATICO se excluye aquí.
+});
+
+// Gate de alcanzabilidad (2026-09-08, precisión explícita de la usuaria): "actualmente todo lo que
+// sea puramente acuático será narrativo... las puramente acuáticas son narrativas o para obtener
+// recursos mediante pesca y desollar" — nunca vía Cazar. AEREO (Cruzavientos) SÍ sigue siendo
+// candidato normal (`GET /saves/:id/cazar` § "en una zona árida/rocosa...") porque "que sea aéreo
+// no implica que siempre esté en el aire... en combate se posa en el suelo" — solo ACUATICO se
+// excluye aquí. Prueba `candidateFaunaFor` directamente (sin pasar por `sessionFacts`/
+// `detectHarvestSourcesInScene`, que Benusa Pesquera nunca dispara — "puramente narrativo/
+// ambiental a propósito... sin HarvestYield", worldCatalog.ts — no confundir esa exclusión, ajena
+// al gate que se prueba aquí, con el propio gate de `medio`).
+describe('candidateFaunaFor: gate de alcanzabilidad por medio (2026-09-08)', () => {
+  beforeEach(() => {
+    findManyWorldPopulation.mockReset();
+    findManyNpc.mockReset();
+  });
+
+  it('fauna ACUATICO nunca es candidata de Cazar, aunque tenga población real', async () => {
+    // Sin candado real de Location para benusa-pesquera en worldCatalog.ts — locationSlug null no
+    // la bloquea por ese motivo (matchesHarvestSourceHome devuelve true si `home === undefined`).
+    findManyWorldPopulation.mockResolvedValue([BENUSA_POP]);
+    findManyNpc.mockResolvedValue([BENUSA_NPC]);
+    const candidates = await candidateFaunaFor('world1', 'Las Llanuras del Viento Rojo', 3, null, null, 0);
+    expect(candidates).toEqual([]);
+  });
+
+  it('fauna AEREO SÍ sigue siendo candidata de Cazar ("se posa para combatir")', async () => {
+    // Cruzavientos SÍ tiene candado real ('pilares-rotos', worldCatalog.ts § harvestSourceHomeLocationSlug)
+    // — locationSlug tiene que coincidir para no bloquearlo por ese motivo, ajeno al gate de medio.
+    findManyWorldPopulation.mockResolvedValue([CRUZAVIENTOS_POP]);
+    findManyNpc.mockResolvedValue([CRUZAVIENTOS_NPC]);
+    const candidates = await candidateFaunaFor('world1', 'Las Llanuras del Viento Rojo', 3, 'pilares-rotos', null, 0);
+    expect(candidates.map((c) => c.slug)).toEqual(['cruzavientos']);
+  });
+
+  it('fauna TERRESTRE (sin medio explícito, default de catálogo) sigue siendo candidata normal', async () => {
+    // Múrgol SÍ tiene candado real ('oasis-de-chudos-rojos', worldCatalog.ts §
+    // harvestSourceHomeLocationSlug) — locationSlug tiene que coincidir, mismo motivo que Cruzavientos arriba.
+    findManyWorldPopulation.mockResolvedValue([MURGOL_POP]);
+    findManyNpc.mockResolvedValue([MURGOL_NPC]);
+    const candidates = await candidateFaunaFor('world1', 'Las Llanuras del Viento Rojo', 3, 'oasis-de-chudos-rojos', null, 0);
+    expect(candidates.map((c) => c.slug)).toEqual(['murgol']);
+  });
+
+  it('un anfibio real (medio incluye TERRESTRE Y ACUATICO) SÍ sigue siendo candidato de Cazar — solo se excluye si ACUATICO es el ÚNICO medio', async () => {
+    findManyWorldPopulation.mockResolvedValue([ANFIBIO_POP]);
+    findManyNpc.mockResolvedValue([ANFIBIO_NPC]);
+    const candidates = await candidateFaunaFor('world1', 'Las Llanuras del Viento Rojo', 3, null, null, 0);
+    expect(candidates.map((c) => c.slug)).toEqual(['anfibio-ficticio']);
   });
 });
 

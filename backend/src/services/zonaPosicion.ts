@@ -124,3 +124,48 @@ export async function posicionDeObjetivo(tx: TxOrClient, locationId: string, tar
   const zonePoint = await tx.zonePoint.findFirst({ where: { locationId, targetSlug, activo: true }, select: { x: true, y: true } });
   return zonePoint ? { x: zonePoint.x, y: zonePoint.y } : null;
 }
+
+/// "Interactuar" motor unificado de eventos de escena, gate de proximidad (2026-09-08) — coherencia
+/// narrativa pedida explícitamente por la usuaria: "si el interactuar habla de vetas de Yerreo en
+/// lo alto de la montaña, primero habría que subir la montaña... sin que sea algo que estás
+/// recogiendo cuando realmente no está en escena". Antes de esta pieza, NADA comparaba
+/// `Save.zonaPosX/Y` contra `ZonePoint.x/y` — se ofrecía Interactuar/Cazar/Recolectar sobre
+/// cualquier candidato de la Location entera, sin importar en qué punto exacto del lienzo estaba
+/// el jugador. Umbral calibrado contra el catálogo real (2026-09-08): de 29 Locations con
+/// `ZonePoint`, la distancia MÍNIMA entre dos puntos vecinos es 80px (un único caso,
+/// `campamento-serhu-interior`) — el resto ya sube a 128px+, mediana 244px. 100px queda por debajo
+/// de todos los casos reales salvo ese outlier, y muy por encima de `DISTANCIA_MINIMA_ENTRE_PUNTOS`
+/// (60px, criterio distinto: "no dibujar dos pines encima"). Con "el más cercano gana"
+/// (`zonePointMasCercano` más abajo) como desempate, el umbral no necesita cubrir el peor caso con
+/// margen amplio — solo decide si el jugador está lo bastante cerca de ALGUIEN.
+export const RADIO_INTERACCION_PX = 100;
+
+export function distanciaEnLienzo(a: { x: number; y: number }, b: { x: number; y: number }): number {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+/// Puro — de una lista de `ZonePoint` candidatos (ya filtrados por región/terreno/temperamento por
+/// el caller), cuál está lo bastante cerca de la posición actual del jugador para que tenga sentido
+/// ofrecer Interactuar/Cazar/Recolectar sobre él. `null` si el jugador no tiene posición conocida
+/// todavía (partida previa a esta pieza, o sin Location explorable) — en ese caso el caller decide
+/// el fallback (nunca bloquea por un dato ausente, mismo criterio que el resto del proyecto) o si
+/// ninguno está dentro de `RADIO_INTERACCION_PX`. "El más cercano gana": nunca devuelve más de un
+/// candidato empatado, aunque el jugador esté dentro del radio de varios a la vez (caso real en
+/// `campamento-serhu-interior`, 6 puntos con solo 80px entre los más próximos).
+export function zonePointMasCercano<T extends { x: number; y: number }>(
+  jugador: { x: number; y: number } | null,
+  candidatos: T[],
+  radio: number = RADIO_INTERACCION_PX,
+): T | null {
+  if (!jugador || candidatos.length === 0) return null;
+  let mejor: T | null = null;
+  let mejorDistancia = Infinity;
+  for (const candidato of candidatos) {
+    const distancia = distanciaEnLienzo(jugador, candidato);
+    if (distancia <= radio && distancia < mejorDistancia) {
+      mejor = candidato;
+      mejorDistancia = distancia;
+    }
+  }
+  return mejor;
+}

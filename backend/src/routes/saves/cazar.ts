@@ -170,16 +170,28 @@ export async function candidateFaunaFor(
   const poblacionBySlug = new Map(withRegion.map((p) => [p.targetSlug, p.poblacion]));
   const npcs = await prisma.npc.findMany({
     where: { worldId, slug: { in: withRegion.map((p) => p.targetSlug) } },
-    select: { slug: true, name: true, level: true, capturablePct: true },
+    select: { slug: true, name: true, level: true, capturablePct: true, medio: true },
   });
-  return npcs.map((npc) => ({
-    slug: npc.slug,
-    name: npc.name,
-    level: npc.level,
-    debil: npc.level <= playerLevel - NIVEL_DIFERENCIA_PRESA_DEBIL,
-    poblacion: poblacionBySlug.get(npc.slug) ?? 0,
-    capturablePct: npc.capturablePct,
-  }));
+  // Gate de alcanzabilidad (2026-09-08, precisión explícita de la usuaria): AEREO NO bloquea Cazar
+  // — "que sea aéreo no implica que siempre esté en el aire... en combate se posa en el suelo, y si
+  // es agresiva se posará para combatir". Solo PURAMENTE ACUATICO se excluye aquí, siempre:
+  // "actualmente todo lo que sea puramente acuático será narrativo, o los combates solo se podrán
+  // realizar con criaturas que además puedan ir a tierra... las puramente acuáticas son narrativas
+  // o para obtener recursos mediante pesca y desollar" — nunca vía Cazar. Un anfibio real (`medio`
+  // incluye TERRESTRE junto a ACUATICO) SÍ sigue siendo candidato — solo se excluye cuando ACUATICO
+  // es el ÚNICO medio declarado. AEREO sigue siendo candidato normal aquí; el gate de AEREO vive
+  // solo en el disparador de Interactuar (la escena/narración decide si está posado o no en ESE
+  // turno concreto), no en el motor de caza en sí.
+  return npcs
+    .filter((npc) => !(npc.medio.length === 1 && npc.medio[0] === 'ACUATICO'))
+    .map((npc) => ({
+      slug: npc.slug,
+      name: npc.name,
+      level: npc.level,
+      debil: npc.level <= playerLevel - NIVEL_DIFERENCIA_PRESA_DEBIL,
+      poblacion: poblacionBySlug.get(npc.slug) ?? 0,
+      capturablePct: npc.capturablePct,
+    }));
 }
 
 /// Tirada de "Explorar" (determinista salvo por el propio azar de qué hay cerca, igual que un

@@ -18,6 +18,7 @@ import { companerosRoutes } from './saves/companeros.js';
 import { zonaRoutes } from './saves/zona.js';
 import { questsRoutes } from './saves/quests.js';
 import { dynamicModeRoutes } from './saves/dynamicMode.js';
+import { dynamicModeRecursoRoutes } from './saves/dynamicModeRecurso.js';
 import { deathRoutes } from './saves/death.js';
 import { entregaRoutes } from './saves/entrega.js';
 import { aprenderOficioRoutes } from './saves/aprenderOficio.js';
@@ -50,6 +51,7 @@ export async function savesRoutes(app: FastifyInstance) {
   await app.register(zonaRoutes);
   await app.register(questsRoutes);
   await app.register(dynamicModeRoutes);
+  await app.register(dynamicModeRecursoRoutes);
   await app.register(deathRoutes);
   await app.register(entregaRoutes);
   await app.register(aprenderOficioRoutes);

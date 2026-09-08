@@ -157,7 +157,13 @@ describe('dynamicModeOffer en /turn/narrate', () => {
         const done = JSON.parse(narrateRes.body.trim().split('\n').pop()!);
         if (done.dynamicModeOffer) {
           algunaOferta = true;
-          expect(done.dynamicModeOffer).toEqual({ tipo: 'FAUNA', targetSlug: 'fauna-prueba-oferta-modo-dinamico-21', targetName: expect.any(String) });
+          // RECURSO ahora también es candidato elegible (2026-09-08, "Ver qué hay en la zona") —
+          // `campamento-serhu` ya tiene su propio `ZonePoint` RECURSO real de catálogo
+          // (`murgoles-domados-campamento`), así que la oferta real puede ser CUALQUIERA de los dos
+          // candidatos activos en la Location, no solo la fauna sintética de este test. El
+          // propósito del test (el mecanismo dispara alguna vez con probabilidad real) sigue
+          // cubierto con cualquiera de los dos.
+          expect(['fauna-prueba-oferta-modo-dinamico-21', 'murgoles-domados-campamento']).toContain(done.dynamicModeOffer.targetSlug);
         }
       }
       expect(algunaOferta).toBe(true);

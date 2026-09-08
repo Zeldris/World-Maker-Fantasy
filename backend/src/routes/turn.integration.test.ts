@@ -5840,6 +5840,10 @@ describe('Viaje largo interrumpido a mitad de camino (integración real, solo LL
     const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(save.currentLocationId).toBe(midId); // NO llegó al destino pedido, se quedó en la intermedia
     expect(save.pendingCombatNpcSlugs).toContain(interruptionNpcSlug);
+    // Franja 1b (2026-09-08) — un candidato AGRESIVO nunca debe ofrecer Interactuar (charla
+    // tranquila incoherente con que ya te esté atacando): el filtro de temperamento vive en
+    // turnResolution.ts, no en `pickTravelInterruption` (que no distingue temperamento al elegir).
+    expect(save.pendingDynamicModeOffer).toBeNull();
 
     // La prueba real de que el combate forzado ya no depende de que el Narrador acierte el
     // nombre: el mock del LLM (narrateAction, cabecera del archivo) devuelve SIEMPRE el mismo
@@ -5900,6 +5904,145 @@ describe('Viaje largo interrumpido a mitad de camino (integración real, solo LL
       saveAfterResume = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     }
     expect(saveAfterResume.currentLocationId).toBe(destId);
+  }, 20_000);
+});
+
+/// Franja 1b (2026-09-08, "Interactuar" motor unificado de eventos de escena) — mismo enganche que
+/// el describe anterior, pero con un candidato de interrupción PACÍFICO (CAUTELOSO): confirma que
+/// en vez del viejo aviso ámbar sin continuación, ahora se arma `pendingDynamicModeOffer` con ese
+/// candidato — y que un candidato AGRESIVO (describe anterior) sigue yendo a combate como siempre,
+/// SIN ninguna oferta de Interactuar (`pickTravelInterruption` no filtra por temperamento, así que
+/// el filtro tiene que vivir en turnResolution.ts, no en la selección del candidato).
+describe('Viaje largo interrumpido con candidato PACÍFICO: ofrece Interactuar en vez del aviso mudo de antes', () => {
+  let saveId: string;
+  let worldId: string;
+  let originId: string;
+  let midId: string;
+  let destId: string;
+  let interruptionNpcId: string;
+  let interruptionNpcSlug: string;
+  const originalTravelSegundosMaximos = env.travelSegundosMaximos;
+
+  beforeAll(async () => {
+    env.travelSegundosMaximos = 5;
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    worldId = world.id;
+
+    const origin = await prisma.location.create({
+      data: { worldId, slug: 'test-interrupcion-pacifica-origen', name: 'Zona de Prueba Pacífica Origen', region: 'Zona de Pruebas', kind: 'hito', description: 'x', aliases: ['zona de prueba pacifica origen'] },
+    });
+    const mid = await prisma.location.create({
+      data: { worldId, slug: 'test-interrupcion-pacifica-intermedia', name: 'Zona de Prueba Pacífica Intermedia', region: 'Zona de Pruebas', kind: 'hito', description: 'x', aliases: ['zona de prueba pacifica intermedia'] },
+    });
+    const dest = await prisma.location.create({
+      data: { worldId, slug: 'test-interrupcion-pacifica-destino', name: 'Zona de Prueba Pacífica Destino', region: 'Zona de Pruebas', kind: 'hito', description: 'x', aliases: ['zona de prueba pacifica destino'] },
+    });
+    originId = origin.id;
+    midId = mid.id;
+    destId = dest.id;
+
+    await prisma.locationLink.create({ data: { fromId: originId, toId: midId, minutosBase: 100, terreno: 'llano' } });
+    await prisma.locationLink.create({ data: { fromId: midId, toId: destId, minutosBase: 100, terreno: 'llano' } });
+
+    const npc = await prisma.npc.create({
+      data: {
+        worldId,
+        kind: 'PLANTILLA',
+        slug: 'test-interrupcion-pacifica-viajero',
+        name: 'Viajero de prueba',
+        aliases: ['viajero de prueba'],
+        role: 'Mercader itinerante',
+        level: 1,
+        attributes: { fuerza: 6, destreza: 6, constitucion: 6, inteligencia: 6, voluntad: 6, carisma: 6, magia: 0 },
+        bio: 'x',
+        personality: 'x',
+        homeLocationSlug: null,
+        temperamento: 'CAUTELOSO',
+      },
+    });
+    interruptionNpcId = npc.id;
+    interruptionNpcSlug = npc.slug;
+
+    pickTravelInterruptionMock.mockImplementation(
+      async (_worldId: string, travel: TravelResolution, _probability: number, attributes: AttributeBlock): Promise<TravelInterruption | null> => {
+        const segments = travel.segments.slice(0, 1);
+        const baseMinutos = segments.reduce((sum, s) => sum + s.minutosBase, 0);
+        const minutos = minutosConDestreza(baseMinutos, attributes);
+        return {
+          travel: {
+            toLocationId: travel.pathIds[1],
+            toLocationName: travel.pathNames[1],
+            pathIds: travel.pathIds.slice(0, 2),
+            path: travel.path.slice(0, 2),
+            pathNames: travel.pathNames.slice(0, 2),
+            segments,
+            baseMinutos,
+            minutos,
+            banda: bandaForMinutos(minutos),
+          },
+          npcId: interruptionNpcId,
+          npcSlug: interruptionNpcSlug,
+          npcName: 'Viajero de prueba',
+        };
+      },
+    );
+
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId,
+        characterName: 'Gorhorn de prueba (interrupción pacífica)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'Recuperar el honor de los Maktor',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: originId,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+  });
+
+  afterAll(async () => {
+    env.travelSegundosMaximos = originalTravelSegundosMaximos;
+    pickTravelInterruptionMock.mockReset();
+    await prisma.save.delete({ where: { id: saveId } });
+    await prisma.npc.delete({ where: { id: interruptionNpcId } });
+    await prisma.locationLink.deleteMany({ where: { OR: [{ fromId: originId }, { fromId: midId }] } });
+    await prisma.location.deleteMany({ where: { id: { in: [originId, midId, destId] } } });
+  });
+
+  it('al resolverse el tránsito, NO fuerza combate y arma pendingDynamicModeOffer con el candidato pacífico', async () => {
+    const classifyRes = await (await buildApp()).inject({
+      method: 'POST',
+      url: '/turn/classify',
+      payload: { saveId, action: 'Viajo hacia la zona de prueba pacífica destino', enCombate: false },
+    });
+    expect(classifyRes.statusCode).toBe(200);
+
+    await prisma.characterTransit.update({ where: { saveId }, data: { busyUntil: new Date(Date.now() - 1000) } });
+    await resolveDueTransits();
+
+    // Diferencia real frente al describe anterior (candidato AGRESIVO): sin combate que bloquee el
+    // turno, el motor retoma solo el viaje truncado de inmediato (`pendingTravelResumeDestinationId`,
+    // mismo mecanismo P3.2 que el describe anterior verifica turno a turno) — así que el estado
+    // intermedio (parado en `midId`, con la oferta ya armada) hay que leerlo ANTES de que ese
+    // segundo tránsito fire-and-forget también se resuelva, no después.
+    const deadline = Date.now() + 15_000;
+    let save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    while (save.pendingDynamicModeOffer === null && Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 100));
+      save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    }
+    // La diferencia real frente al describe anterior (candidato AGRESIVO): ningún combate forzado.
+    expect(save.pendingCombatNpcSlugs).toEqual([]);
+    expect(save.pendingDynamicModeOffer).toMatchObject({
+      tipo: 'FAUNA',
+      targetSlug: interruptionNpcSlug,
+      targetName: 'Viajero de prueba',
+    });
   }, 20_000);
 });
 

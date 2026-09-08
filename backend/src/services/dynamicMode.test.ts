@@ -2,10 +2,19 @@ import { describe, it, expect } from 'vitest';
 import { decideOfertaModoDinamico } from './dynamicMode.js';
 
 describe('decideOfertaModoDinamico', () => {
-  it('sin candidatos (NPC/FAUNA con cantidad > 0), nunca ofrece nada', () => {
+  it('sin candidatos (NPC/FAUNA/RECURSO con cantidad > 0), nunca ofrece nada', () => {
     expect(decideOfertaModoDinamico([], () => 0)).toBeNull();
-    expect(decideOfertaModoDinamico([{ tipo: 'RECURSO', targetSlug: 'x', cantidad: 5, temperamento: null }], () => 0)).toBeNull();
     expect(decideOfertaModoDinamico([{ tipo: 'EDIFICIO', targetSlug: 'x', cantidad: 1, temperamento: null }], () => 0)).toBeNull();
+  });
+
+  // RECURSO (2026-09-08, "Ver qué hay en la zona") — a diferencia del comentario histórico de
+  // dynamicMode.ts ("RECURSO/EDIFICIO quedan fuera a propósito"), ahora SÍ es candidato elegible:
+  // no hay diálogo real, pero sí tiene sentido ofrecer Interactuar sobre él (resuelto sin
+  // conversación de vueltas, ver dynamicModeRecurso.ts). EDIFICIO sigue excluido — no inicia nada
+  // por sí mismo, ni siquiera con resolución directa.
+  it('RECURSO con cantidad > 0 SÍ es candidato elegible (2026-09-08)', () => {
+    const candidato = decideOfertaModoDinamico([{ tipo: 'RECURSO', targetSlug: 'yerreo', cantidad: 5, temperamento: null }], () => 0);
+    expect(candidato).toEqual({ tipo: 'RECURSO', targetSlug: 'yerreo' });
   });
 
   it('un candidato FAUNA con cantidad 0 (inactivo) no cuenta', () => {

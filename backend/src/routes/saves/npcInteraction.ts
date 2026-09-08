@@ -1,7 +1,6 @@
 import type { FastifyInstance } from 'fastify';
-import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
-import { rejectIfEnded } from './shared.js';
+import { rejectIfEnded, clearPendingOffer } from './shared.js';
 
 /// Menú contextual de interacción con NPC (2026-09-06, "Aprender oficio" deja de depender de una
 /// habilidad suelta) — el motor ya decidió el candidato y sus opciones en el turno normal
@@ -33,7 +32,7 @@ export async function npcInteractionRoutes(app: FastifyInstance) {
         return reply.status(400).send({ error: 'Esa opción no está disponible para este NPC ahora mismo' });
       }
 
-      await prisma.save.update({ where: { id: save.id }, data: { pendingNpcInteractionOffer: Prisma.JsonNull } });
+      await clearPendingOffer(save.id, 'pendingNpcInteractionOffer');
 
       // Traducción de la opción elegida a una señal que el frontend ya sabe interpretar — cada
       // rama reutiliza un flujo YA EXISTENTE y probado (aprenderOficio.ts/companeros.ts/combate),

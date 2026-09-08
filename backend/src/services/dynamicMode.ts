@@ -6,12 +6,19 @@ import { sourceDisplayNameFor } from '../scripts/worldCatalog.js';
 /// CUÁNDO ofrecerlo y QUÉ candidato es — el LLM solo narra la vuelta ya elegida, nunca decide
 /// libremente que "toca algo" (mismo principio que el resto de "Mundo determinista").
 ///
-/// Candidatos: solo `ZonePoint` con quien tiene sentido "interactuar" — NPC con nombre propio y
-/// fauna genérica. RECURSO/EDIFICIO quedan fuera a propósito (no inician nada por sí mismos).
-/// Nunca sustituye combate: si el mini-flujo deriva en pelea, se sale de este modo y se entra al
-/// sistema de combate normal como siempre (decisión de las vueltas, no de este selector).
+/// Candidatos: `ZonePoint` con quien tiene sentido "interactuar" — NPC con nombre propio, fauna
+/// genérica, y (2026-09-08, "Ver qué hay en la zona") RECURSO real de catálogo. EDIFICIO queda
+/// fuera a propósito (no inicia nada por sí mismo). Nunca sustituye combate: si el mini-flujo
+/// deriva en pelea, se sale de este modo y se entra al sistema de combate normal como siempre
+/// (decisión de las vueltas, no de este selector).
+///
+/// RECURSO es estructuralmente distinto de NPC/FAUNA (2026-09-08) — no hay conversación de vueltas
+/// que tener con una veta de mineral: se resuelve en una sola llamada (narración breve + tirada +
+/// recolección real, reutilizando `resolverRecoleccion`/`gatheringRollFor`/`applyGatheringRoll` de
+/// recolectar.ts) — nunca pasa por `pendingDynamicMode`/`narrarVueltaModoDinamico`, tiene su propia
+/// ruta (`dynamicModeRecurso.ts`).
 
-export type DynamicModeTipo = 'NPC' | 'FAUNA';
+export type DynamicModeTipo = 'NPC' | 'FAUNA' | 'RECURSO';
 
 export interface DynamicModeCandidato {
   tipo: DynamicModeTipo;
@@ -62,8 +69,10 @@ export function decideOfertaModoDinamico(zonePoints: ZonePointCandidateRow[], ra
   // opuesto al espíritu de este modo ("mini-interacción puntual", nunca sustituye combate): ofrecer
   // "Observarlo/Ofrecerle comida/Ignorarlo" contra un depredador que ataca casi seguro es
   // incoherente con su propia ficha. AMIGABLE/INOFENSIVO/CAUTELOSO sí encajan — el resto del rango
-  // de hostilidad todavía admite una interacción pacífica real.
-  const candidatos = zonePoints.filter((p) => (p.tipo === 'NPC' || p.tipo === 'FAUNA') && p.cantidad > 0 && p.temperamento !== 'AGRESIVO');
+  // de hostilidad todavía admite una interacción pacífica real. RECURSO siempre tiene
+  // `temperamento: null` (inerte, sin catálogo Npc que lo resuelva) — nunca se descarta por este
+  // filtro, `null !== 'AGRESIVO'` ya es `true`.
+  const candidatos = zonePoints.filter((p) => (p.tipo === 'NPC' || p.tipo === 'FAUNA' || p.tipo === 'RECURSO') && p.cantidad > 0 && p.temperamento !== 'AGRESIVO');
   if (candidatos.length === 0) return null;
   if (random() >= PROBABILIDAD_OFERTA) return null;
 
@@ -71,12 +80,22 @@ export function decideOfertaModoDinamico(zonePoints: ZonePointCandidateRow[], ra
   return { tipo: elegido.tipo as DynamicModeTipo, targetSlug: elegido.targetSlug };
 }
 
-/// Nombre legible del candidato — NPC resuelve contra `Npc.name` (identidad única), FAUNA contra
-/// `sourceDisplayNameFor` (catálogo de caza) — mismo criterio ya establecido en `zonePoints.ts`.
+/// Nombre legible del candidato — NPC resuelve contra `Npc.name` (identidad única), FAUNA/RECURSO
+/// (2026-09-08) contra `sourceDisplayNameFor` (catálogo de caza/recolección, `harvestSourceDisplayName`
+/// cubre ambos por `sourceSlug` sin distinguir fauna de mineral/planta) — mismo criterio ya
+/// establecido en `zonePoints.ts`.
 export async function dynamicModeCandidateNameFor(prisma: Pick<PrismaClient, 'npc'>, candidato: DynamicModeCandidato): Promise<string> {
-  if (candidato.tipo === 'FAUNA') return sourceDisplayNameFor(candidato.targetSlug);
+  if (candidato.tipo === 'FAUNA' || candidato.tipo === 'RECURSO') return sourceDisplayNameFor(candidato.targetSlug);
   const npc = await prisma.npc.findFirst({ where: { slug: candidato.targetSlug }, select: { name: true } });
   return npc?.name ?? candidato.targetSlug;
+}
+
+/// Puro — compone el texto que se vuelca al `LogEntry` de personaje al cerrarse el modo dinámico
+/// (Franja 0, 2026-09-08). Todas las vueltas narradas, concatenadas en orden (decisión explícita
+/// de la usuaria: "todas las vueltas concatenadas" — conserva el detalle completo de la
+/// conversación, coherente con cómo se lee el resto del log).
+export function resumenModoDinamicoParaLog(historialNarracion: string[]): string {
+  return historialNarracion.join('\n\n');
 }
 
 /// Máximo de vueltas antes de forzar el cierre del modo dinámico (evita que una conversación se
@@ -104,6 +123,13 @@ export interface PendingDynamicMode {
   iniciadoAtMinutes: number;
   narration: string;
   opciones: string[];
+  /// Franja 0 (2026-09-08, "Interactuar" motor unificado de eventos de escena) — texto de CADA
+  /// vuelta ya narrada, en orden, para poder volcar la conversación completa a un `LogEntry` al
+  /// cerrarse (bug real: hasta ahora `pendingDynamicMode` solo guardaba la última vuelta, así que
+  /// al cerrar el modal no quedaba ningún rastro legible de cómo se desarrolló). `narration` de
+  /// arriba se mantiene igual (la vuelta EN CURSO, la que ve el modal) — este array es el
+  /// historial acumulado, incluye esa misma vuelta como su último elemento.
+  historialNarracion: string[];
   /// Contexto real (2026-08-27, bug real "hay que darle mucho más contenido determinista para que
   /// no invente") — resuelto UNA vez en la primera vuelta y persistido aquí para que las vueltas
   /// siguientes (`/responder`) lo reutilicen sin re-consultar Prisma cada vez. `targetBio` null si

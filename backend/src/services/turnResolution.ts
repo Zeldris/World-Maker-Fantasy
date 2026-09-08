@@ -365,6 +365,15 @@ interface NarrateAndPersistParams {
   /// presente, se escribe un LogEntry determinista aparte avisando de la interrupción (nunca se le
   /// pasa al Narrador: no tiene por qué saber a dónde iba el jugador para narrar bien la llegada).
   travelInterruptionOriginalDestinationName?: string | null;
+  /// Franja 3 (2026-09-08, "Interactuar" motor unificado de eventos de escena) — posición real del
+  /// jugador en el lienzo de Zona (`Save.zonaPosX/Y`, ambos call-sites ya la cargan sin `select`
+  /// explícito, dato gratis) — usada para decidir si un agresivo detectado por texto está lo
+  /// bastante cerca del `ZonePoint` real como para que el combate sea inevitable, o si hay margen
+  /// para un preámbulo de Interactuar (`zonePointMasCercano`, zonaPosicion.ts). `null` = partida sin
+  /// posición conocida (previa a esa pieza) — fallback seguro: combate directo, comportamiento
+  /// idéntico al de siempre, nunca se activa el preámbulo sin dato real.
+  zonaPosX?: number | null;
+  zonaPosY?: number | null;
 }
 
 export interface NewInventoryItemInfo {
@@ -534,7 +543,7 @@ export interface NarrateAndPersistResult {
   /// (`POST /saves/:id/modo-dinamico/interactuar`), para no gastar una llamada a Ollama en
   /// ofertas que nunca se aceptan. `null` en la inmensa mayoría de turnos — nunca se ofrece si
   /// este turno terminó en combate o si ya hay un modo dinámico en curso.
-  dynamicModeOffer: { tipo: 'NPC' | 'FAUNA'; targetSlug: string; targetName: string } | null;
+  dynamicModeOffer: { tipo: 'NPC' | 'FAUNA' | 'RECURSO'; targetSlug: string; targetName: string } | null;
   /// Retomar viaje truncado por un evento de interrupción (ronda de correcciones 2026-08-28, P3.2)
   /// — cuando este turno resuelve el evento sin dejar combate activo, el motor dispara solo la
   /// continuación del viaje original (nuevo `CharacterTransit`, mismo mecanismo diferido de
@@ -2975,20 +2984,48 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // sin control que esta sesión está cerrando. Mismo patrón ya probado en `cazar.ts` (caza en
   // grupo, upsert a ILESO antes de cualquier combate real).
   let npcsInSceneWithInterruption = npcsInSceneRaw;
-  if (travelInterruptionNpcId && !npcsInSceneRaw.some((n) => n.id === travelInterruptionNpcId)) {
-    const interruptionNpc: NpcWithItems | null = await prisma.npc.findUnique({
-      where: { id: travelInterruptionNpcId },
-      include: { items: { include: { item: true } } },
-    });
-    if (interruptionNpc) {
-      const interruptionLocationId = travel?.toLocationId ?? currentLocationId;
-      const interruptionScope = scopeFor(interruptionNpc.kind, interruptionLocationId);
-      const interruptionState = await prisma.npcState.upsert({
-        where: { saveId_npcId_scope: { saveId, npcId: interruptionNpc.id, scope: interruptionScope } },
-        create: { saveId, npcId: interruptionNpc.id, scope: interruptionScope, condicionFisica: 'ILESO' },
-        update: {},
+  // Franja 1b (2026-09-08, "Interactuar" motor unificado de eventos de escena) — slug/nombre del
+  // NPC/fauna de la interrupción, capturados aquí para armar la oferta de Interactuar más abajo
+  // (línea ~6475) en vez del aviso de texto fijo de antes. `pickTravelInterruption` (travelInterruption.ts)
+  // solo elige entre `homeLocationSlug: null` (fauna itinerante sin asentamiento) — nunca un NPC con
+  // nombre propio, esos siempre tienen Location de origen fija — así que `tipo: 'FAUNA'` siempre es
+  // correcto aquí, sin ambigüedad que resolver.
+  //
+  // Bug real detectado en revisión (2026-09-08, ANTES de llegar a jugarlo en vivo, gracias al test
+  // de integración ya existente "el viaje se trunca... el combate se fuerza SIN que el mock del LLM
+  // mencione al agresor"): `pickTravelInterruption` NO filtra por temperamento (a diferencia de
+  // `decideOfertaModoDinamico`, que sí excluye AGRESIVO) — un NPC agresivo de interrupción fuerza
+  // combate real vía `agresivoSlugsInScene`/`resolveCombatSlugsAndPersist` más abajo, calculado a
+  // partir de `npcsInScene` YA con la interrupción incluida. Ofrecer "Interactuar" (charla tranquila)
+  // contra alguien que en el MISMO turno ya te está atacando sería incoherente — mismo criterio que
+  // ya aplica `decideOfertaModoDinamico`, aquí replicado con `effectiveTemperamento`.
+  let interruptionCandidateForOffer: { targetSlug: string; targetName: string } | null = null;
+  if (travelInterruptionNpcId) {
+    const alreadyInScene = npcsInSceneRaw.find((n) => n.id === travelInterruptionNpcId);
+    if (alreadyInScene) {
+      const t = effectiveTemperamento(alreadyInScene.temperamento, alreadyInScene.faction, factionsStatus);
+      if (t !== 'AGRESIVO' && t !== 'ENEMIGO') {
+        interruptionCandidateForOffer = { targetSlug: alreadyInScene.slug, targetName: alreadyInScene.name };
+      }
+    } else {
+      const interruptionNpc: NpcWithItems | null = await prisma.npc.findUnique({
+        where: { id: travelInterruptionNpcId },
+        include: { items: { include: { item: true } } },
       });
-      npcsInSceneWithInterruption = [...npcsInSceneRaw, buildNpcInScene(interruptionNpc, interruptionState)];
+      if (interruptionNpc) {
+        const interruptionLocationId = travel?.toLocationId ?? currentLocationId;
+        const interruptionScope = scopeFor(interruptionNpc.kind, interruptionLocationId);
+        const interruptionState = await prisma.npcState.upsert({
+          where: { saveId_npcId_scope: { saveId, npcId: interruptionNpc.id, scope: interruptionScope } },
+          create: { saveId, npcId: interruptionNpc.id, scope: interruptionScope, condicionFisica: 'ILESO' },
+          update: {},
+        });
+        npcsInSceneWithInterruption = [...npcsInSceneRaw, buildNpcInScene(interruptionNpc, interruptionState)];
+        const t = effectiveTemperamento(interruptionNpc.temperamento, interruptionNpc.faction, factionsStatus);
+        if (t !== 'AGRESIVO' && t !== 'ENEMIGO') {
+          interruptionCandidateForOffer = { targetSlug: interruptionNpc.slug, targetName: interruptionNpc.name };
+        }
+      }
     }
   }
 
@@ -6497,6 +6534,32 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       });
     }
 
+    // Franja 1b (2026-09-08, "Interactuar" motor unificado de eventos de escena) — sustituye el
+    // "callejón sin salida" de antes (el aviso ámbar de arriba se quedaba en un texto plano, sin
+    // ninguna consecuencia): el candidato de la interrupción YA resuelto (`interruptionCandidateForOffer`,
+    // ver más arriba) se ofrece como Interactuar, mismo shape/patrón exacto que la oferta ambiental
+    // normal (línea ~7185 más abajo, `dynamicModeOffer`). Sin cooldown ni probabilidad — a
+    // diferencia de la oferta ambiental, este evento ya está determinísticamente decidido por
+    // `pickTravelInterruption`/`pickStationaryInterruption`, no tiene sentido volver a tirar dados
+    // sobre si se ofrece. Guard mínimo: no pisar una conversación ya en curso de otro origen.
+    if (interruptionCandidateForOffer) {
+      const saveDynamicStateForInterruption = await tx.save.findUnique({
+        where: { id: saveId },
+        select: { pendingDynamicMode: true },
+      });
+      if (!saveDynamicStateForInterruption?.pendingDynamicMode) {
+        const interruptionDynamicModeOffer = {
+          tipo: 'FAUNA' as const,
+          targetSlug: interruptionCandidateForOffer.targetSlug,
+          targetName: interruptionCandidateForOffer.targetName,
+        };
+        await tx.save.update({
+          where: { id: saveId },
+          data: { pendingDynamicModeOffer: interruptionDynamicModeOffer, lastDynamicModeOfferAtMinutes: nuevoFictionalMinutes },
+        });
+      }
+    }
+
     const mainLogEntry = await tx.logEntry.create({
       data: {
         saveId,
@@ -7149,8 +7212,14 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     }
   }
 
-  let dynamicModeOffer: { tipo: 'NPC' | 'FAUNA'; targetSlug: string; targetName: string } | null = null;
-  if (!combateIniciado && !newQuestOfferInfo && !(gisteraEnEscena && !gisteraSeHaMarchado) && regionLocationId) {
+  let dynamicModeOffer: { tipo: 'NPC' | 'FAUNA' | 'RECURSO'; targetSlug: string; targetName: string } | null = null;
+  // Franja 1b (2026-09-08) — si este mismo turno ya ofreció Interactuar por interrupción de viaje
+  // (más arriba, `interruptionCandidateForOffer`), no evaluar TAMBIÉN la oferta ambiental: pisaría
+  // `pendingDynamicModeOffer` recién escrito con un candidato distinto sin que el jugador llegara a
+  // ver la oferta original. El guard de `pendingDynamicMode` de abajo no basta por sí solo porque
+  // la interrupción escribe `pendingDynamicModeOffer` (oferta sin aceptar), no `pendingDynamicMode`
+  // (conversación ya en curso) — son dos campos distintos, ver dynamicMode.ts.
+  if (!combateIniciado && !newQuestOfferInfo && !(gisteraEnEscena && !gisteraSeHaMarchado) && regionLocationId && !interruptionCandidateForOffer) {
     const saveDynamicState = await prisma.save.findUnique({
       where: { id: saveId },
       select: { pendingDynamicMode: true, lastDynamicModeOfferAtMinutes: true },
@@ -7160,8 +7229,12 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       saveDynamicState?.lastDynamicModeOfferAtMinutes != null &&
       fictionalMinutesActuales - saveDynamicState.lastDynamicModeOfferAtMinutes < COOLDOWN_MODO_DINAMICO_MINUTOS;
     if (!saveDynamicState?.pendingDynamicMode && !enCooldown) {
+      // RECURSO incluido (2026-09-08, "Ver qué hay en la zona") — a diferencia de NPC/FAUNA, un
+      // candidato RECURSO nunca abre conversación de vueltas (ver comentario de `DynamicModeTipo`,
+      // dynamicMode.ts): la propia oferta ya trae el botón de acción, resuelto por su propia ruta
+      // (`dynamicModeRecurso.ts`).
       const zonePointsRaw = await prisma.zonePoint.findMany({
-        where: { locationId: regionLocationId, tipo: { in: ['NPC', 'FAUNA'] } },
+        where: { locationId: regionLocationId, tipo: { in: ['NPC', 'FAUNA', 'RECURSO'] } },
         select: { tipo: true, targetSlug: true, cantidad: true },
       });
       // Ver `ZonePointCandidateRow.temperamento` (dynamicMode.ts) — bug real, investigación
@@ -7172,8 +7245,10 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       // CAUTELOSO/INOFENSIVO. `effectiveTemperamento` (mismo cálculo que usa el resto del motor
       // para decidir si un NPC fuerza combate) por si la reputación de facción lo desplaza — en la
       // práctica casi toda la fauna no tiene `faction`, así que se queda en el valor de catálogo.
+      // RECURSO no tiene fila `Npc` que resolver — nunca entra en `npcsParaOferta`, se queda con
+      // `temperamento: null` (inerte, nunca AGRESIVO, nunca descartado por ese filtro).
       const npcsParaOferta = await prisma.npc.findMany({
-        where: { worldId, slug: { in: zonePointsRaw.map((p) => p.targetSlug) } },
+        where: { worldId, slug: { in: zonePointsRaw.filter((p) => p.tipo !== 'RECURSO').map((p) => p.targetSlug) } },
         select: { slug: true, temperamento: true, faction: true },
       });
       const temperamentoPorSlug = new Map(
