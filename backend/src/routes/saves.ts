@@ -15,6 +15,8 @@ import { recipesStatusRoutes } from './saves/recipesStatus.js';
 import { suggestionsRoutes } from './saves/suggestions.js';
 import { panelsRoutes } from './saves/panels.js';
 import { companerosRoutes } from './saves/companeros.js';
+import { combatGroupsRoutes } from './saves/combatGroups.js';
+import { descansarCampamentoRoutes } from './saves/descansarCampamento.js';
 import { zonaRoutes } from './saves/zona.js';
 import { questsRoutes } from './saves/quests.js';
 import { dynamicModeRoutes } from './saves/dynamicMode.js';
@@ -48,6 +50,8 @@ export async function savesRoutes(app: FastifyInstance) {
   await app.register(suggestionsRoutes);
   await app.register(panelsRoutes);
   await app.register(companerosRoutes);
+  await app.register(combatGroupsRoutes);
+  await app.register(descansarCampamentoRoutes);
   await app.register(zonaRoutes);
   await app.register(questsRoutes);
   await app.register(dynamicModeRoutes);

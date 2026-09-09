@@ -6,6 +6,7 @@ import { PanelSection } from '../PanelSection'
 import { CapturaModal } from '../CapturaModal'
 import { TameoModal } from '../TameoModal'
 import { CompanionEquipModal } from '../CompanionEquipModal'
+import { CombatGroupsModal } from '../CombatGroupsModal'
 import { PlantillaSelect } from './ReinoPanel'
 import { ResourceBar } from '../ResourceBar'
 import { HealthBar } from '../HealthBar'
@@ -36,6 +37,7 @@ export function CompanerosPanel({ saveId, companions, inventory, onRefreshSave, 
   const [pendientes, setPendientes] = useState<TameoPendiente[]>([])
   const [tameoAbierto, setTameoAbierto] = useState<TameoPendiente | null>(null)
   const [equipoAbierto, setEquipoAbierto] = useState<CompanionInfo | null>(null)
+  const [gruposAbierto, setGruposAbierto] = useState(false)
 
   async function refreshPendientes() {
     try {
@@ -60,6 +62,15 @@ export function CompanerosPanel({ saveId, companions, inventory, onRefreshSave, 
       >
         🪢 Capturar en la zona
       </button>
+
+      {companions.length > 0 && (
+        <button type="button"
+          onClick={() => setGruposAbierto(true)}
+          className="tactile w-full rounded-lg border border-iron-700 bg-wood-950/40 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300"
+        >
+          ⚔️ Grupos de combate
+        </button>
+      )}
 
       {pendientes.length > 0 && (
         <PanelSection title="Pendientes de tamear/persuadir">
@@ -97,6 +108,13 @@ export function CompanerosPanel({ saveId, companions, inventory, onRefreshSave, 
                 {companion.tipo === 'FAUNA' ? '🐾 ' : ''}
                 {companion.name} <span className="font-sans text-xs text-wood-500">— {companion.role}</span>
                 {companion.esSlotDomador && <span className="ml-1.5 text-2xs text-accent-400">(slot de Domador)</span>}
+              </p>
+              <p className="mt-0.5 text-2xs text-wood-500">
+                {companion.combatGroupSlotIndex === 0 ? (
+                  <span className="text-accent-400">⚔️ En combate (Grupo 1)</span>
+                ) : (
+                  `Banquillo — Grupo ${companion.combatGroupSlotIndex + 1}`
+                )}
               </p>
               <p className="mt-1 text-xs leading-relaxed text-wood-400">{companion.notes}</p>
               {/* B.14 (checklist frontend 2026-08-27) — asimetría de información frente al
@@ -182,6 +200,16 @@ export function CompanerosPanel({ saveId, companions, inventory, onRefreshSave, 
           inventory={inventory}
           onClose={() => setEquipoAbierto(null)}
           onChanged={onRefreshSave}
+        />
+      )}
+
+      {gruposAbierto && (
+        <CombatGroupsModal
+          saveId={saveId}
+          onClose={async () => {
+            setGruposAbierto(false)
+            await onRefreshSave()
+          }}
         />
       )}
     </div>

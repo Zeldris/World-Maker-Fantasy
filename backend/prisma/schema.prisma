@@ -299,6 +299,8 @@ model Save {
   /// Qué barra se ve ahora mismo en el HUD del composer — `null` = texto libre. Igual que
   /// `activeCombatAbilityNames`, esto es preferencia de UI persistida, no estado de partida.
   activeSkillBarId String?
+  /// Grupos de combate (2026-09-08) — ver modelo `CombatGroup` abajo.
+  combatGroups     CombatGroup[]
 
   /// Bug real (revisión de partida en 5 fases, 2026-08-27, cerrado 2026-08-28) — slugs de Npc que
   /// se despidieron "para siempre" con guion (hoy solo Gistera Koh, al aceptar su misión) —
@@ -649,17 +651,31 @@ model LocationVisit {
 /// construcciones quedan siempre visibles a propósito — son "cómo funciona el juego", no lore
 /// narrativo que se descubre jugando.
 model DiscoveredEntity {
-  id           String   @id @default(cuid())
+  id           String            @id @default(cuid())
   saveId       String
-  save         Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  save         Save              @relation(fields: [saveId], references: [id], onDelete: Cascade)
   /// 'npc' | 'fauna' | 'item' | 'faction' | 'historia' (2026-08-06) — mismo vocabulario que
   /// ImagePromptEntityType, pero sin los tipos siempre-visibles de arriba.
   entityType   String
   entitySlug   String
-  discoveredAt DateTime @default(now())
+  discoveredAt DateTime          @default(now())
+  /// Enciclopedia en 3 fases (2026-09-08, rediseño de Álvaro: "no descubierto, citado o
+  /// avistado") — CITADO = mencionado en narración/lore, información mínima (nombre+región);
+  /// DESCUBIERTO = visto realmente en escena (o desbloqueado por un objeto de lore específico),
+  /// ficha completa con imagen. Esta fila solo EXISTE si al menos CITADO ya ocurrió (misma
+  /// semántica que antes: "sin fila = NO_DESCUBIERTO" sigue vigente) — el campo nuevo distingue
+  /// las dos fases donde antes solo había una. Default CITADO: cualquier `createMany` viejo (sin
+  /// tocar) que siga escribiendo sin este campo se interpreta como el estado más conservador, no
+  /// como si ya se hubiera visto en escena.
+  fase         EntityDiscoveryFase @default(CITADO)
 
   @@unique([saveId, entityType, entitySlug])
   @@index([saveId])
+}
+
+enum EntityDiscoveryFase {
+  CITADO
+  DESCUBIERTO
 }
 
 /// La fuente de verdad de una partida — no es prosa, son hechos estructurados.
@@ -990,8 +1006,34 @@ model Companion {
   activeEffects      Json                @default("[]")
   combatParticipants CombatParticipant[]
 
+  /// Grupos de combate (2026-09-08, diseño explícito de la usuaria: "grupos de 4 con los
+  /// compañeros... el Grupo 1 siempre estará el PJ a la cabeza... podrás mover tus compañeros
+  /// entre los diferentes grupos, un poco como las habilidades de combate") — mismo `slotIndex`
+  /// que ya usa `SkillBar`, 0 = Grupo 1 (el que entra a combate en directo junto al jugador,
+  /// nunca vacío de PJ aunque sí pueda estarlo de compañeros). Default 0: un compañero recién
+  /// domesticado/reclutado empieza en el Grupo 1 sin que el jugador tenga que moverlo a mano.
+  combatGroupSlotIndex Int @default(0)
+
   @@index([saveId])
   @@index([plantillaEquipoId])
+  @@index([saveId, combatGroupSlotIndex])
+}
+
+/// Grupos de combate (2026-09-08) — solo METADATA (nombre) de cada grupo más allá del 0 (Grupo 1,
+/// que siempre existe implícitamente, con el PJ a la cabeza, y no necesita fila propia salvo que
+/// el jugador quiera renombrarlo). Mismo patrón que `SkillBar`: `slotIndex` + `name` renombrable.
+/// La pertenencia real de cada Companion a un grupo vive en `Companion.combatGroupSlotIndex`, no
+/// aquí — esta tabla solo decide qué grupos EXISTEN y cómo se llaman.
+model CombatGroup {
+  id        String   @id @default(cuid())
+  saveId    String
+  save      Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  slotIndex Int
+  name      String
+  createdAt DateTime @default(now())
+
+  @@unique([saveId, slotIndex])
+  @@index([saveId])
 }
 
 /// Combate múltiple (Grupo 3, 2026-08-25, diseño completo en docs/rpgtarkor/combate-multiple.md)
@@ -1694,6 +1736,17 @@ model Building {
   kind        String
   status      BuildingStatus @default(EN_CONSTRUCCION)
   description String
+  /// Posición en el lienzo de Zona (2026-09-08, hallazgo real jugando en vivo: un campamento
+  /// construido por el jugador nunca aparecía en el mapa de Zona, solo en el panel de Reino) —
+  /// mismo lienzo 800×600 y mismo criterio que `DroppedItem.x/y` (POR PARTIDA, fija desde que se
+  /// construyó). No se reutiliza `ZonePoint` para esto: ese modelo es catálogo COMPARTIDO por
+  /// `locationId` (sin `saveId`), así que una fila ahí sería visible en TODAS las partidas de ese
+  /// mundo, no solo en la que construyó el edificio — `Building` ya es por-partida, es el sitio
+  /// correcto. Null = construcción libre sin posición conocida (p.ej. `newBuilding` del modelo, sin
+  /// receta fija) o partida sembrada antes de esta pieza — el frontend simplemente no la pinta en
+  /// el lienzo, sin romper nada (mismo criterio nullable que el resto del proyecto).
+  x           Float?
+  y           Float?
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 

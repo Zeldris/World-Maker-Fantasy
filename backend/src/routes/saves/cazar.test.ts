@@ -50,10 +50,18 @@ const findManyCombatParticipant = vi.fn();
 const updateCombatParticipantReal = vi.fn();
 const updateCombatEncounterReal = vi.fn();
 const findFirstNpcReal = vi.fn();
+// Grupos de combate (2026-09-08) — cazar.ts ahora lee prisma.companion.findMany para añadir el
+// Grupo 1 al bando JUGADOR. Vacío por defecto (ningún test de este archivo ejercita compañeros
+// reales), mismo comportamiento observable que antes de este campo existir.
+const findManyCompanion = vi.fn();
 
 vi.mock('../../lib/prisma.js', () => ({
   prisma: {
-    save: { findUnique: (...args: unknown[]) => findUniqueSave(...args) },
+    // `update` top-level (fuera de $transaction) — la caza limpia sin combate limpia
+    // pendingCombatNpcSlugs justo DESPUÉS de cerrar la transacción (2026-09-08, ver comentario en
+    // cazar.ts junto a esa llamada), reutiliza `updateSave` (el mismo mock que ya usa `tx.save.update`
+    // dentro de la transacción, línea ~457 de este archivo) para no duplicar otro mock aparte.
+    save: { findUnique: (...args: unknown[]) => findUniqueSave(...args), update: (...args: unknown[]) => updateSave(...args) },
     worldPopulation: { findMany: (...args: unknown[]) => findManyWorldPopulation(...args) },
     npc: {
       findMany: (...args: unknown[]) => findManyNpc(...args),
@@ -61,6 +69,7 @@ vi.mock('../../lib/prisma.js', () => ({
       findFirst: (...args: unknown[]) => findFirstNpcReal(...args),
     },
     npcState: { upsert: (...args: unknown[]) => upsertNpcStateDirect(...args), findUnique: vi.fn().mockResolvedValue(null) },
+    companion: { findMany: (...args: unknown[]) => findManyCompanion(...args) },
     combatEncounter: {
       findFirst: (...args: unknown[]) => findFirstCombatEncounter(...args),
       findUniqueOrThrow: (...args: unknown[]) => findUniqueOrThrowCombatEncounter(...args),
@@ -380,6 +389,9 @@ describe('POST /saves/:id/cazar/confirmar', () => {
     findManyNpc.mockReset().mockResolvedValue([MURGOL_NPC, CRUZAVIENTOS_NPC]);
     findUniqueNpc.mockReset().mockResolvedValue(MURGOL_NPC);
     findFirstCombatEncounter.mockReset().mockResolvedValue(null);
+    // Grupos de combate (2026-09-08) — sin compañeros por defecto, mismo comportamiento
+    // observable que antes de que este campo existiera.
+    findManyCompanion.mockReset().mockResolvedValue([]);
     upsertNpcState.mockReset();
     upsertNpcStateDirect.mockReset();
     updateManyWorldPopulation.mockReset();

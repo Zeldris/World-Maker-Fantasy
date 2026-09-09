@@ -433,6 +433,10 @@ export async function cazarRoutes(app: FastifyInstance) {
         await tx.worldState.update({ where: { saveId: save.id }, data: { fictionalMinutes: nuevoFictionalMinutes, fictionalDateLabel: timeLabel } });
         // isSystemMessage (ver comentario completo en schema.prisma) — texto fijo determinista.
         const created = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: nuevoFictionalMinutes, isPlayerAction: false, isSystemMessage: true } });
+        // Semáforo temporal SOLO para la ventana de esta transacción (ver relectura de arriba,
+        // línea ~405) — sigue haciendo falta para que una segunda petición simultánea contra la
+        // MISMA presa se rechace en vez de duplicar LogEntry/población. Se limpia justo después de
+        // cerrar la transacción (ver más abajo) en vez de quedarse persistido.
         await tx.save.update({ where: { id: save.id }, data: { pendingCombatNpcSlugs: [npc.slug] } });
         return created;
       });
@@ -441,12 +445,23 @@ export async function cazarRoutes(app: FastifyInstance) {
         return reply.status(409).send({ error: 'Ya se está resolviendo una caza contra esta presa — espera un momento.' });
       }
 
+      // Bug real (reconfirmado 2026-09-08, ver memoria tarkor_bug_pendingcombatnpcslugs_atascado_cazar):
+      // la presa ya quedó MUERTA dentro de la transacción de arriba, sin combate real de por medio —
+      // no hay nada que "resolver" después. Dejar su slug persistido (como antes) dejaba el campo
+      // sucio para siempre, porque esta ruta nunca pasa por narrateAndPersistTurn (el único sitio
+      // que sabía limpiarlo) — bloqueaba cualquier caza futura con "ya hay un combate en curso" sin
+      // que la UI ofreciera ningún botón para resolverlo. Se limpia aquí, ya fuera de la transacción
+      // (la ventana de carrera de arriba ya se cerró en cuanto esa transacción hizo commit).
+      await prisma.save.update({ where: { id: save.id }, data: { pendingCombatNpcSlugs: [] } });
+
       const sessionFacts = await loadSessionFacts(save.id);
       await appendSessionFacts(save.id, sessionFacts, [text]);
       // Bug real (2026-08-14, mismo hallazgo que en recolectar.ts) — la caza limpia sin combate
       // tampoco pasa por `narrateAndPersistTurn`, así que la presa cazada podía quedar sin
       // desbloquear su ficha de Enciclopedia pese a estar ya nombrada en el texto determinista.
-      await recordEntityDiscoveries({ saveId: save.id, worldId: save.worldId, mentionedText: text });
+      // `npcSlugsInScene` (2026-09-08, 3 fases) — la presa fue REALMENTE cazada, no solo citada:
+      // llega directo a DESCUBIERTO, mismo criterio que el resto de presencia real confirmada.
+      await recordEntityDiscoveries({ saveId: save.id, worldId: save.worldId, mentionedText: text, npcSlugsInScene: [npc.slug] });
 
       return {
         resuelveSinCombate: true,
@@ -481,6 +496,27 @@ export async function cazarRoutes(app: FastifyInstance) {
       const jugadorAttrs = save.attributes as AttributeBlock;
       const combatientes: (CombatienteInicial & { destreza: number; inteligencia: number })[] = [
         { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: jugadorAttrs.destreza, inteligencia: jugadorAttrs.inteligencia },
+        // Grupos de combate (2026-09-08, diseño de la usuaria: "el Grupo 1 siempre estará el PJ a
+        // la cabeza... podrás mover tus compañeros entre los diferentes grupos") — SOLO el Grupo 1
+        // (combatGroupSlotIndex: 0) entra a combate en directo junto al jugador; el resto de
+        // grupos existen para organizar compañeros que se quedan fuera de este combate concreto.
+        // Un compañero MUERTO sigue en su grupo pero no aporta nada real: `datosVivosDe` ya lo
+        // trataría como sin vida si entrara, así que se filtra aquí de raíz para no gastarle un
+        // hueco del tope 4v4 a un cadáver. Atributos crudos (sin escalar por nivel) — mismo
+        // criterio simplificado que el resto de este array para NPC, el escalado real por nivel
+        // ocurre dentro de `datosVivosDe` en cada intercambio, no aquí (solo hace falta para la
+        // tirada de iniciativa inicial).
+        ...(
+          await prisma.companion.findMany({
+            where: { saveId: save.id, combatGroupSlotIndex: 0, condicionFisica: { not: 'MUERTO' } },
+            select: { id: true, attributes: true },
+          })
+        )
+          .filter((c) => c.attributes)
+          .map((c) => {
+            const attrs = c.attributes as AttributeBlock;
+            return { bando: 'JUGADOR' as const, tipo: 'COMPANION' as const, companionId: c.id, destreza: attrs.destreza, inteligencia: attrs.inteligencia };
+          }),
       ];
       for (const c of conAvistados) {
         const npc = npcsBySlug.get(c.slug);
@@ -518,7 +554,18 @@ export async function cazarRoutes(app: FastifyInstance) {
       // (`jugable: true`, mismo flujo de siempre), el resto se crea como `CombatEncounter`
       // `jugable: false` y se resuelve de una sentada nada más terminar la transacción (§ 4 del
       // doc, "combates sin ti presente... misma mecánica exacta, sin interacción en directo").
-      const [jugador, ...enemigos] = combatientes;
+      // Grupos de combate (2026-09-08): `combatientes` ya no es solo "[jugador, ...enemigos]" —
+      // el bando JUGADOR puede traer también a los compañeros del Grupo 1 (añadidos arriba, al
+      // construir el array). Se separa explícitamente por `bando` en vez de asumir "el primero es
+      // jugador, el resto es enemigo" (bug real detectado al escribir este cambio: la desestructuración
+      // vieja `[jugador, ...enemigos]` metía a los propios compañeros dentro de `enemigos` sin
+      // querer). El bando JUGADOR completo (jugador + Grupo 1) también respeta el tope de 4 — un
+      // Grupo 1 con más de 3 compañeros se recorta aquí (el jugador nunca se recorta, siempre el
+      // primero); no hay sub-partición de "jugador extra" como sí la hay para enemigos sobrantes,
+      // decisión consciente: el propio diseño de grupos (máx. 4 por grupo, pedido por la usuaria)
+      // ya evita que esto ocurra en la práctica.
+      const bandoJugadorCompleto = combatientes.filter((c) => c.bando === 'JUGADOR').slice(0, MAX_COMBATIENTES_POR_BANDO);
+      const enemigos = combatientes.filter((c) => c.bando === 'ENEMIGO');
       const fragmentosEnemigos: typeof enemigos[] = [];
       for (let i = 0; i < enemigos.length; i += MAX_COMBATIENTES_POR_BANDO) {
         fragmentosEnemigos.push(enemigos.slice(i, i + MAX_COMBATIENTES_POR_BANDO));
@@ -536,7 +583,7 @@ export async function cazarRoutes(app: FastifyInstance) {
         await lockRowForUpdate(tx, 'Save', save.id, ['id']);
         const activeEncounterFresco = await tx.combatEncounter.findFirst({ where: { saveId: save.id, estado: 'EN_CURSO', jugable: true } });
         if (activeEncounterFresco) return null;
-        await iniciarCombatEncounter(tx, save.id, [jugador, ...fragmentosParaCrear[0]]);
+        await iniciarCombatEncounter(tx, save.id, [...bandoJugadorCompleto, ...fragmentosParaCrear[0]]);
         const autonomosIds: string[] = [];
         for (const fragmento of fragmentosParaCrear.slice(1)) {
           const { encounterId } = await iniciarCombatEncounter(tx, save.id, fragmento, false);

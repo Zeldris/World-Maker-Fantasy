@@ -138,7 +138,29 @@ describe('Cazar: condición de carrera en caza limpia (presa única, auditoría 
     const poblacionDespues = (await prisma.worldPopulation.findFirstOrThrow({ where: { worldId: world.worldId, targetSlug: 'zense-ceniza' } })).poblacion;
     expect(poblacionAntes - poblacionDespues).toBe(1);
   }, 20_000);
+
+  /// Regresión (2026-09-08, reconfirmado jugando en vivo): la caza limpia mata a la presa
+  /// directamente (MUERTO, sin combate real) pero seguía persistiendo su slug en
+  /// `pendingCombatNpcSlugs` — como esta ruta nunca pasa por `narrateAndPersistTurn` (el único
+  /// sitio que sabía limpiar ese campo), quedaba sucio para siempre y bloqueaba cualquier
+  /// `/cazar/confirmar` futuro con "Ya hay un combate en curso" sin que la UI ofreciera ningún
+  /// botón para resolverlo (el NPC ya estaba MUERTO, `detail.ts` no lo mostraba como combate
+  /// pendiente). Ver memoria tarkor_bug_pendingcombatnpcslugs_atascado_cazar_2026-09-08.
+  it('la caza limpia con éxito deja pendingCombatNpcSlugs vacío (no atasca la siguiente cacería)', async () => {
+    randomSpy.mockReturnValue(0);
+    const res = await app_inject_confirmar(saveId, ['zense-ceniza']);
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.payload).resuelveSinCombate).toBe(true);
+
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(save.pendingCombatNpcSlugs).toEqual([]);
+  }, 20_000);
 });
+
+async function app_inject_confirmar(saveId: string, slugs: string[]) {
+  const app = await buildApp();
+  return app.inject({ method: 'POST', url: `/saves/${saveId}/cazar/confirmar`, payload: { slugs } });
+}
 
 /// Cobertura nueva (checklist 2026-09-01, hallazgo real jugando en vivo): `particionarEnSubCombates`/
 /// `MAX_COMBATIENTES_POR_BANDO` (combateMultiple.ts) existían desde 2026-08-28 con 6 tests
@@ -351,4 +373,67 @@ describe('Cazar: candidateFaunaFor respeta harvestSourceHomeLocationSlug (hallaz
     expect(enHondonada.some((c) => c.slug === 'ruptidar')).toBe(true);
     expect(enPilares.some((c) => c.slug === 'ruptidar')).toBe(true);
   });
+});
+
+/// Cobertura nueva (2026-09-08, diseño de grupos de combate — ver Companion.combatGroupSlotIndex
+/// en schema.prisma): hallazgo real jugando en vivo, un Companion domesticado NUNCA entraba a
+/// combate real pese a que el motor de combate múltiple ya sabía procesar `tipo: 'COMPANION'`
+/// (`datosVivosDe`) — el único caller real (`cazar.ts`) nunca lo añadía al array de combatientes.
+/// Este test confirma que un compañero del Grupo 1 (combatGroupSlotIndex: 0, default) SÍ entra al
+/// bando JUGADOR del `CombatEncounter` real, y que uno movido a otro grupo NO entra.
+describe('Cazar: grupos de combate — el Grupo 1 entra a combate junto al jugador (2026-09-08)', () => {
+  let saveId: string;
+  let companionGrupo1Id: string;
+  let companionOtroGrupoId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (grupos de combate)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    const companionAttrs = { fuerza: 6, destreza: 8, constitucion: 6, inteligencia: 4, voluntad: 6, carisma: 2, magia: 0 };
+    const grupo1 = await prisma.companion.create({
+      data: { saveId, name: 'Ceniza', role: 'mascota', notes: '', tipo: 'FAUNA', sourceSlug: 'zense-ceniza', attributes: companionAttrs, combatGroupSlotIndex: 0 },
+    });
+    companionGrupo1Id = grupo1.id;
+    const otroGrupo = await prisma.companion.create({
+      data: { saveId, name: 'Gesgurio', role: 'mascota', notes: '', tipo: 'FAUNA', sourceSlug: 'gesgurio', attributes: companionAttrs, combatGroupSlotIndex: 1 },
+    });
+    companionOtroGrupoId = otroGrupo.id;
+  });
+
+  afterAll(async () => {
+    await prisma.combatParticipant.deleteMany({ where: { encounter: { saveId } } });
+    await prisma.combatEncounter.deleteMany({ where: { saveId } });
+    await prisma.companion.deleteMany({ where: { saveId } });
+    await prisma.npcState.deleteMany({ where: { saveId } });
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('el compañero del Grupo 1 aparece como CombatParticipant en el bando JUGADOR; el de otro grupo no', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/cazar/confirmar`, payload: { slugs: ['zense-ceniza'] } });
+    expect(res.statusCode).toBe(200);
+
+    const encounter = await prisma.combatEncounter.findFirstOrThrow({ where: { saveId, estado: 'EN_CURSO' } });
+    const participantes = await prisma.combatParticipant.findMany({ where: { encounterId: encounter.id } });
+
+    const jugadorBando = participantes.filter((p) => p.bando === 'JUGADOR');
+    expect(jugadorBando.some((p) => p.tipo === 'COMPANION' && p.companionId === companionGrupo1Id)).toBe(true);
+    expect(participantes.some((p) => p.companionId === companionOtroGrupoId)).toBe(false);
+  }, 20_000);
 });
