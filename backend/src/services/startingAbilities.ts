@@ -49,6 +49,11 @@ export interface StartingAbility {
   /// Turnos que dura el efecto de arriba — junto con `durationEffectMagnitude`, ambos undefined o
   /// ambos rellenos.
   durationEffectTurns?: number;
+  /// A quién recae el efecto de arriba (2026-09-09, ver schema.prisma § SavedAction.
+  /// durationEffectTarget) — undefined/'self' = comportamiento de siempre; 'companion' = recae en
+  /// el Companion activo del bando de quien la usó, no en sí mismo (Domador — "aumenta a tu
+  /// bestia"). Solo tiene efecto en combate múltiple.
+  durationEffectTarget?: 'self' | 'companion';
 }
 
 /// Kit de habilidades "de serie" de Gorhorn — no cuentan contra el cupo por nivel

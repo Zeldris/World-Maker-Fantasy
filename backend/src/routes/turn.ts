@@ -5,7 +5,7 @@ import type { AttributeBlock, RollResult } from '../services/dice.js';
 import { computeDuration, detectsRestIntent, mentionsExplicitDuration } from '../services/timedActions.js';
 import { narrateAndPersistTurn } from '../services/turnResolution.js';
 import { recordEntityDiscoveries } from '../services/entityDiscovery.js';
-import type { PendingNpcAttack } from '../services/combatExchange.js';
+import type { PendingNpcAttack, PendingCanalizacion } from '../services/combatExchange.js';
 import { resolveTravel, bandaForMinutos, segundosRealesPorTramos, type TravelResolution } from '../services/travel.js';
 import { pickTravelInterruption } from '../services/travelInterruption.js';
 import { pickStationaryInterruption } from '../services/stationaryInterruption.js';
@@ -151,11 +151,15 @@ async function resolveClassificationForTurn(params: {
   /// falta tirada" para una esquiva clarísima — el combate se congelaba sin tirar dados mientras
   /// la narración libre igualmente inventaba un cambio de salud sin respaldo mecánico ninguno.
   pendingNpcAttack: PendingNpcAttack | null;
+  /// CANALIZAR real (2026-09-09) — mismo criterio exacto que `pendingNpcAttack` de arriba: con una
+  /// canalización en curso, cualquier respuesta del jugador es su tirada real diferida, nunca "no
+  /// hace falta tirada".
+  pendingCanalizacion: PendingCanalizacion | null;
   /// Fauna diurna/nocturna real (2026-09-02) — ver el mismo campo en `detectNpcsInScene`
   /// (npcScene.ts).
   fictionalMinutes: number;
 }): Promise<ClassificationResolution> {
-  const { saveId, action, enCombate, savedActionId, preview, worldId, currentLocationId, level, attributes, sessionFacts, characterSummary, pendingCombatNpcSlugs, pendingNpcAttack, fictionalMinutes } = params;
+  const { saveId, action, enCombate, savedActionId, preview, worldId, currentLocationId, level, attributes, sessionFacts, characterSummary, pendingCombatNpcSlugs, pendingNpcAttack, pendingCanalizacion, fictionalMinutes } = params;
 
   // Solapar classify con el tecleo (roadmap de velocidad, 2026-07-19): si un `preview:true`
   // anterior con este MISMO texto exacto ya hizo el trabajo caro, se reutiliza sin repetirlo
@@ -272,7 +276,7 @@ async function resolveClassificationForTurn(params: {
       // nivel) — un ataque explícito siempre debe tabularse igual, dentro o fuera de `enCombate`.
       const tabulatedTarget =
         npcsInScene.length > 0 &&
-        ((enCombate && (detectsAttackIntent(action) || !!selectedAbility?.effects?.length || !!pendingNpcAttack)) ||
+        ((enCombate && (detectsAttackIntent(action) || !!selectedAbility?.effects?.length || !!pendingNpcAttack || !!pendingCanalizacion)) ||
           (!enCombate && (detectsAttackIntent(action) || detectsHostileSearchIntent(action)) && !detectsVerbalAcceptanceIntent(action)))
           ? (explicitTarget ?? ongoingCombatTarget ?? npcsInScene[0])
           : null;
@@ -753,6 +757,7 @@ export async function turnRoutes(app: FastifyInstance) {
         characterSummary,
         pendingCombatNpcSlugs: (save.pendingCombatNpcSlugs as string[] | null) ?? [],
         pendingNpcAttack: save.pendingNpcAttack as unknown as PendingNpcAttack | null,
+        pendingCanalizacion: save.pendingCanalizacion as unknown as PendingCanalizacion | null,
         fictionalMinutes: save.worldState?.fictionalMinutes ?? 480,
       }));
     } catch (err) {
@@ -1289,6 +1294,7 @@ export async function turnRoutes(app: FastifyInstance) {
         // Rediseño del turno de combate (2026-07-28) — dice si ESTE turno es la defensa a ciegas
         // del jugador contra un ataque de NPC ya decidido el intercambio anterior.
         pendingNpcAttack: save.pendingNpcAttack as unknown as PendingNpcAttack | null,
+        pendingCanalizacion: save.pendingCanalizacion as unknown as PendingCanalizacion | null,
         pendingCombatNpcSlugs: (save.pendingCombatNpcSlugs as string[] | null) ?? [],
         lootItemNames,
         healItemUses,

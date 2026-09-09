@@ -417,13 +417,22 @@ export interface HabilidadParaIntercambio {
   energyRegen: number;
   maxUsesPerCombat?: number | null;
   /// Fase 3 § 3a de efectos de clase (2026-08-27, docs/21-roadmap.md) — mismos campos que
-  /// `SavedAction.durationEffectMagnitude/Turns`, solo poblados hoy para la habilidad de ATAQUE
-  /// que la JUGADORA elige explícitamente (turnResolution.ts, construcción de `jugadorHabilidad`)
-  /// — nunca para una habilidad auto-elegida como defensa/utilidad (`NpcCombatAbility` no lleva
-  /// estos campos, ver npcCombatAbilities.ts), mismo alcance exacto que Fase 2 ("CASO ATAQUE del
-  /// jugador" en el motor 1vs1, resolveCombatExchangePhase).
+  /// `SavedAction.durationEffectMagnitude/Turns`, poblados para la habilidad de ATAQUE que la
+  /// JUGADORA elige explícitamente (turnResolution.ts, construcción de `jugadorHabilidad`) Y
+  /// (2026-09-09, cierre del hueco de motor "ningún atacante autónomo podía generar AUMENTO/
+  /// DEBILIDAD" — ver cabecera de `NpcCombatAbility` en npcCombatAbilities.ts) para cualquier NPC
+  /// rival o Companion auto-elegido — `atacanteHabilidad` llega poblada en ambos casos, sin
+  /// distinguir el tipo de combatiente en esta función (ver `escribirCondicionYEnergia`,
+  /// combateMultipleOrquestacion.ts, que tampoco distingue al escribir `activeEffects`).
   durationEffectMagnitude?: number | null;
   durationEffectTurns?: number | null;
+  /// A quién recae `nuevoEfectoAtacante` (2026-09-09, `SavedAction.durationEffectTarget`) —
+  /// undefined/'self'/null = comportamiento de siempre (quien usó la habilidad); 'companion' =
+  /// el caller (combateMultipleOrquestacion.ts § `ejecutarIntercambioYAvanzar`) redirige el
+  /// efecto al Companion del bando del atacante en vez de al propio atacante. Esta función
+  /// (`resolverIntercambioCompleto`) NO lee este campo — solo lo transporta, la redirección vive
+  /// en el caller porque es el único que conoce al resto de participantes del encuentro.
+  durationEffectTarget?: 'self' | 'companion' | null;
 }
 
 export interface CombatienteParaIntercambio {

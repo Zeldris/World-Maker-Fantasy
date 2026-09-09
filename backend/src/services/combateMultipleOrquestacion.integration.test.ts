@@ -503,6 +503,86 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     await prisma.save.update({ where: { id: saveId }, data: { activeEffects: [] } });
   }, 30_000);
 
+  // Domador (2026-09-09, `SavedAction.durationEffectTarget` — "Vínculo Salvaje", nv.12, "aumenta a
+  // tu bestia") — mismo montaje que el test de AUMENTO de arriba (jugadora real, energía del NPC a
+  // 0 para forzar el camino no-independiente, efecto previo con magnitud enorme para garantizar
+  // `golpe_pleno` sin mockear dados), pero con `durationEffectTarget: 'companion'` en la habilidad
+  // y un Companion real en el bando JUGADOR — confirma que el efecto NO recae en `Save.activeEffects`
+  // (comportamiento de siempre) sino en `Companion.activeEffects` del compañero.
+  it('Domador — durationEffectTarget:"companion": AUMENTO decisivo recae en Companion.activeEffects, nunca en Save.activeEffects', async () => {
+    await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'ILESO', energia: 100, activeEffects: [] } });
+    const enemigo = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } });
+    const npcOrigenCompanion = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'corredor-de-cauce' } });
+
+    const efectoPrevio: ActiveEffect = { attribute: 'voluntad', magnitude: 100, turnsRemaining: 3, sourceAbility: 'Efecto de prueba (garantiza el margen)' };
+    await prisma.save.update({ where: { id: saveId }, data: { activeEffects: [efectoPrevio] as unknown as object } });
+    await prisma.npcState.upsert({
+      where: { saveId_npcId_scope: { saveId, npcId: enemigo.id, scope: 'itinerante-domador-companion' } },
+      create: { saveId, npcId: enemigo.id, scope: 'itinerante-domador-companion', energia: 0 },
+      update: { energia: 0, condicionFisica: 'ILESO' },
+    });
+
+    const companion = await prisma.companion.create({
+      data: {
+        saveId,
+        name: 'Bestia de prueba (Domador)',
+        role: 'mascota',
+        notes: '',
+        tipo: 'FAUNA',
+        sourceSlug: npcOrigenCompanion.slug,
+        attributes: { fuerza: 6, destreza: 6, constitucion: 6, inteligencia: 4, voluntad: 6, carisma: 2, magia: 0 },
+      },
+    });
+
+    try {
+      const { encounterId } = await prisma.$transaction((tx) =>
+        iniciarCombatEncounter(tx, saveId, [
+          { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 1000, inteligencia: 10 },
+          { bando: 'JUGADOR', tipo: 'COMPANION', companionId: companion.id, destreza: 1, inteligencia: 6 },
+          { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-domador-companion', destreza: 10, inteligencia: 6 },
+        ]),
+      );
+
+      const habilidadVinculoSalvaje: HabilidadParaIntercambio = {
+        name: 'Vínculo Salvaje (prueba)',
+        description: '',
+        attribute: 'voluntad',
+        effects: ['AUMENTO', 'RECUPERACION'],
+        rol: 'ataque',
+        energyCost: 5,
+        energyRegen: 0,
+        durationEffectMagnitude: 4,
+        durationEffectTurns: 2,
+        durationEffectTarget: 'companion',
+      };
+      // Con 2 combatientes en el bando JUGADOR (jugadora + Companion) contra 1 solo enemigo, el
+      // enganche normal empareja NPC<->Companion y deja a la jugadora sin pareja —
+      // `esperandoEleccionJugadora` (mismo caso que el test de MULTIPLE/"objetivo individual" de
+      // arriba). Se fija a mano su elección antes de resolver.
+      const encounterAntes = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId }, include: { participantes: true } });
+      if (encounterAntes.esperandoEleccionJugadora) {
+        const enemigoP = encounterAntes.participantes.find((p) => p.tipo === 'NPC')!;
+        await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: enemigoP.id });
+      }
+      const resultado = await resolverHastaJugadoraActua(saveId, worldId, encounterId, habilidadVinculoSalvaje);
+      expect(resultado).not.toBeNull();
+
+      const saveTrasIntercambio = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+      const activeEffectsJugador = parseActiveEffects(saveTrasIntercambio.activeEffects);
+      // Solo el efecto previo (decrementado 3->2) — nunca el nuevo AUMENTO, que se redirigió.
+      expect(activeEffectsJugador).toEqual([{ ...efectoPrevio, turnsRemaining: 2 }]);
+
+      const companionTrasIntercambio = await prisma.companion.findUniqueOrThrow({ where: { id: companion.id } });
+      const activeEffectsCompanion = parseActiveEffects(companionTrasIntercambio.activeEffects);
+      expect(activeEffectsCompanion).toContainEqual({ attribute: 'voluntad', magnitude: 4, turnsRemaining: 2, sourceAbility: 'Vínculo Salvaje (prueba)' });
+
+      await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
+    } finally {
+      await prisma.save.update({ where: { id: saveId }, data: { activeEffects: [] } });
+      await prisma.companion.delete({ where: { id: companion.id } });
+    }
+  }, 30_000);
+
   // CONTROL real (Fase 3 § 3a) — forzado a mano vía `controladoPorRondas` (mismo criterio que el
   // test de `esperandoEleccionJugadora` de arriba: probar el CABLEADO real contra Postgres, sin
   // depender de que una tirada real dispare la condición de disparo, ya cubierta en
@@ -759,6 +839,79 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     } finally {
       randomSpy.mockRestore();
       await prisma.npc.update({ where: { id: opresor.id }, data: { clase: opresor.clase, especializacion: opresor.especializacion, level: opresor.level } });
+    }
+  }, 30_000);
+
+  // Cierre del hueco de motor (2026-09-09, `NpcCombatAbility.durationEffectMagnitude/Turns` +
+  // `PendingNpcAttack.durationEffectMagnitude/Turns`, npcCombatAbilities.ts/combatExchange.ts) —
+  // hasta ahora `Companion.activeEffects` se LEÍA en combate múltiple pero nada lo ESCRIBÍA (ver
+  // cabecera histórica de `classAbilities.ts` § Domador, y el bloqueo "1 de 8 sembradas" que
+  // documentaba). Confirma el cableado end-to-end real: un Companion (mascota, `sourceSlug` con
+  // `clase`/`especializacion` reales) ataca con una habilidad de AUMENTO real de su clase
+  // (Estocada Calculada, GUERRERO/LANCERO nv.12 — mismo patrón "editar temporalmente Ulkha Ketg,
+  // revertir al final" que el test de CONTROL de arriba) y, si golpea de forma decisiva, el efecto
+  // se empuja de verdad sobre `Companion.activeEffects` — no solo sobre NpcState/Save como ya
+  // cubrían los tests del 1v1 clásico (turn.integration.test.ts).
+  it('Companion real: un Companion Guerrero/Lancero ataca con Estocada Calculada (AUMENTO) y empuja el efecto sobre Companion.activeEffects', async () => {
+    const npcOrigen = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'ulkha-ketg' } });
+    const rival = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } });
+    await prisma.npc.update({ where: { id: npcOrigen.id }, data: { clase: 'GUERRERO', especializacion: 'LANCERO', level: 12 } });
+    const companion = await prisma.companion.create({
+      data: {
+        saveId,
+        name: 'Ulkha domesticado (prueba)',
+        role: 'mascota',
+        notes: '',
+        tipo: 'FAUNA',
+        sourceSlug: npcOrigen.slug,
+        attributes: { fuerza: 6, destreza: 6, constitucion: 6, inteligencia: 4, voluntad: 30, carisma: 2, magia: 4 },
+      },
+    });
+
+    // Roster de ataque del Companion (npcCombatAbilitiesFor sobre GUERRERO/LANCERO nv.12): Ataque
+    // base + tronco común Guerrero (nv.1/4/6/8 según clases.md) + Estocada Calculada (nv.12) — de
+    // ellas, solo Ataque base y Estocada Calculada tienen `rol:'ataque'` afrontable, y con
+    // `random=0.9` fijo (mismo valor en las 2 tiradas de dados) el índice de selección cae en
+    // Estocada Calculada (confirmado con depuración real). `voluntad: 30` en el fixture — muy por
+    // encima de la cifra real de catálogo — solo para garantizar `golpe_pleno` (margen ≥10) sin
+    // depender de qué tirada exacta salga; el `attributeBonus: 2` real de la ficha (Estocada
+    // Calculada, classAbilities.ts) es insuficiente por sí solo con roll empatado a 19 en ambos
+    // lados, mismo criterio que `attributeBonus: 30` en los tests de ataque del jugador
+    // (turn.integration.test.ts).
+    const randomSpy = vi.spyOn(Math, 'random');
+    try {
+      const { encounterId } = await prisma.$transaction((tx) =>
+        iniciarCombatEncounter(tx, saveId, [
+          { bando: 'JUGADOR', tipo: 'COMPANION', companionId: companion.id, destreza: 1000, inteligencia: 6 },
+          { bando: 'ENEMIGO', tipo: 'NPC', npcId: rival.id, npcScope: 'itinerante-companion-aumento-rival', destreza: 1, inteligencia: 6 },
+        ]),
+      );
+
+      let companionAtaco = false;
+      for (let i = 0; i < 10 && !companionAtaco; i++) {
+        const encounter = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId }, include: { participantes: true } });
+        if (encounter.estado === 'RESUELTO') break;
+        const actualId = encounter.ordenIniciativa[encounter.turnoActual % encounter.ordenIniciativa.length];
+        const actual = encounter.participantes.find((p) => p.id === actualId)!;
+        if (actual.tipo === 'COMPANION') {
+          randomSpy.mockReturnValue(0.9);
+          const resultado = await resolverTurnoAutonomo({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
+          if (resultado?.atacanteNombre === companion.name) companionAtaco = true;
+        } else {
+          await resolverTurnoAutonomo({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
+        }
+      }
+      expect(companionAtaco).toBe(true);
+
+      const companionDespues = await prisma.companion.findUniqueOrThrow({ where: { id: companion.id } });
+      const efectos = parseActiveEffects(companionDespues.activeEffects);
+      expect(efectos.some((e) => e.sourceAbility === 'Estocada Calculada' && e.magnitude > 0)).toBe(true);
+
+      await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
+    } finally {
+      randomSpy.mockRestore();
+      await prisma.companion.delete({ where: { id: companion.id } });
+      await prisma.npc.update({ where: { id: npcOrigen.id }, data: { clase: npcOrigen.clase, especializacion: npcOrigen.especializacion, level: npcOrigen.level } });
     }
   }, 30_000);
 

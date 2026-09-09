@@ -50,6 +50,7 @@ import {
   utilityTriggered,
   isReactiveUtility,
   type PendingNpcAttack,
+  type PendingCanalizacion,
   type InitiativeResult,
   type CombatExchangeDisplay,
 } from './combatExchange.js';
@@ -323,6 +324,9 @@ interface NarrateAndPersistParams {
   /// contra un ataque de NPC ya decidido el intercambio anterior; ausente/null = el jugador tiene
   /// la iniciativa y este es su propio ataque (caso de siempre).
   pendingNpcAttack?: PendingNpcAttack | null;
+  /// CANALIZAR real (2026-09-09) — `Save.pendingCanalizacion` leído por el caller (turn.ts), mismo
+  /// criterio de origen que `pendingNpcAttack` de arriba.
+  pendingCanalizacion?: PendingCanalizacion | null;
   /// Auditoría de rendimiento 2026-07-28 ("rascar segundos"): /turn/classify ya calculó esto para
   /// la MISMA acción justo antes de llamar aquí (turn.ts) — sin esto, `detectNpcsInScene` volvía a
   /// traer TODO el roster de NPCs del mundo (con sus objetos) por segunda vez, mismo viaje de ida
@@ -748,6 +752,9 @@ export interface CombatExchangePhaseInput {
   /// abajo, junto a `nextCondicionForAttack`).
   abilityDurationEffectMagnitude: number | null;
   abilityDurationEffectTurns: number | null;
+  /// CANALIZAR real (2026-09-09, ver `PendingCanalizacion` en combatExchange.ts) — canalización
+  /// del jugador ya en curso de un turno anterior, o `null`/`undefined` si no hay ninguna.
+  pendingCanalizacion: PendingCanalizacion | null | undefined;
 }
 
 export interface CombatExchangePhaseResult {
@@ -757,6 +764,9 @@ export interface CombatExchangePhaseResult {
   jugadorRecibeGolpe: boolean;
   jugadorGolpeEfectos: AbilityEffect[];
   nuevoPendingNpcAttack: PendingNpcAttack | null;
+  /// CANALIZAR real (2026-09-09) — ver comentario largo junto a `nuevoPendingCanalizacion` (scope
+  /// de la función) y `PendingCanalizacion` (combatExchange.ts).
+  nuevoPendingCanalizacion: PendingCanalizacion | null;
   exchangeNarrationBlock: string | null;
   combatExchangeRoll: RollResult | null;
   npcAbilityUsed: { npcName: string; abilityName: string; rol: 'ataque' | 'defensa'; maxUsesPerCombat?: number | null } | null;
@@ -927,6 +937,12 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
   // Save.pendingNpcAttack (ver tx.save.update más abajo) para que el jugador lo defienda a
   // ciegas en su siguiente sumisión.
   let nuevoPendingNpcAttack: PendingNpcAttack | null = null;
+  // CANALIZAR (2026-09-09) — arranca conservando la canalización de entrada (caso normal: ningún
+  // camino de este turno la afecta, sigue viva sin más). Se pone a `null` explícitamente cuando un
+  // golpe decisivo la corta (CASO DEFENSA, más abajo), y se sustituye por una nueva cuando el
+  // jugador empieza a canalizar (CASO ATAQUE) — el CASO CANALIZACIÓN (dispara el ataque diferido)
+  // también la limpia a `null` tras resolverse, con éxito o sin él.
+  let nuevoPendingCanalizacion: PendingCanalizacion | null = input.pendingCanalizacion ?? null;
   // `contextBlocks` (el array real donde se acumula el texto para el Narrador) vive en el caller
   // — este intercambio se resuelve antes de esa declaración, así que el texto se devuelve aquí y
   // el caller lo empuja en cuanto `contextBlocks` existe.
@@ -1012,6 +1028,8 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
       energyCost: npcAtaque.energyCost,
       energyRegen: npcAtaque.energyRegen,
       maxUsesPerCombat: npcAtaque.maxUsesPerCombat,
+      durationEffectMagnitude: npcAtaque.durationEffectMagnitude ?? null,
+      durationEffectTurns: npcAtaque.durationEffectTurns ?? null,
     };
     // Bug real jugando en vivo (2026-08-28, confirmado por la usuaria): el bloque de texto
     // "Iniciativa: tú X vs Y del enemigo" no salía en la ronda de apertura de combate — solo en
@@ -1067,6 +1085,8 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
         energyCost: npcAtaque.energyCost,
         energyRegen: npcAtaque.energyRegen,
         maxUsesPerCombat: npcAtaque.maxUsesPerCombat,
+        durationEffectMagnitude: npcAtaque.durationEffectMagnitude ?? null,
+        durationEffectTurns: npcAtaque.durationEffectTurns ?? null,
       };
     }
   }
@@ -1293,6 +1313,29 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
         // fallback, `nextCondicionForAttack` revienta con `effects.includes(...)` sobre
         // `undefined` en cuanto ese golpe conecte.
         jugadorGolpeEfectos = pendingNpcAttack.effects ?? [];
+        // CANALIZAR (2026-09-09) — un golpe DECISIVO (`golpe_pleno`, no cualquier golpe) mientras
+        // el jugador tenía una canalización en curso la corta: "si te golpean se corta la
+        // canalización" (diseño confirmado por la usuaria) — se pierde el turno de canalizar por
+        // completo, sin disparar el ataque diferido nunca.
+        if (exchange.resultado === 'golpe_pleno' && input.pendingCanalizacion) {
+          nuevoPendingCanalizacion = null;
+        }
+        // AUMENTO/DEBILIDAD (2026-09-09) — mismo umbral decisivo y misma cifra que el camino
+        // simétrico del jugador atacando (línea ~1549): `golpe_pleno`, con el atributo de la
+        // tirada de ESTA habilidad (`pendingNpcAttack.attribute`, no el del jugador). AUMENTO se
+        // aplica a quien usó la habilidad (el NPC, aquí), DEBILIDAD a quien la recibió (el
+        // jugador) — cierra el hueco real documentado en `classAbilities.ts` (ningún atacante
+        // autónomo, NPC o Companion, podía generar estos efectos hasta ahora).
+        if (exchange.resultado === 'golpe_pleno' && pendingNpcAttack.durationEffectMagnitude != null && pendingNpcAttack.durationEffectTurns != null) {
+          const nuevoEfectoNpc: ActiveEffect = {
+            attribute: pendingNpcAttack.attribute,
+            magnitude: pendingNpcAttack.durationEffectMagnitude,
+            turnsRemaining: pendingNpcAttack.durationEffectTurns,
+            sourceAbility: pendingNpcAttack.abilityName,
+          };
+          if (pendingNpcAttack.effects.includes('AUMENTO')) nuevosNpcActiveEffects = pushActiveEffect(nuevosNpcActiveEffects, nuevoEfectoNpc);
+          if (pendingNpcAttack.effects.includes('DEBILIDAD')) nuevosJugadorActiveEffects = pushActiveEffect(nuevosJugadorActiveEffects, nuevoEfectoNpc);
+        }
         npcAttackHits = jugadorContragolpeaAplica;
         // `nextCondicionForAttack(abilityEffects, ...)` (auditoría 2026-08-17), no
         // `oneStepWorseThan` a secas — mismo criterio que el camino independiente: si la habilidad
@@ -1343,6 +1386,94 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
       // `npcDefensa.rol` puede ser 'utilidad' (70% de las veces que el NPC tiene alguna
       // disponible, ver chooseNpcAbility) o, más raro, 'ataque'/'defensa'.
       const jugadorRol = abilityRol ?? (input.countsAsAttack ? 'ataque' : 'defensa');
+      // CANALIZAR (2026-09-09, cierre de hueco de motor — bloqueaba capstones nv.40 de Tirador/
+      // Rúnico/Convocador/Maestro Arquero/Maestro Ballestero/Berserker, todos ATAQUE+CANALIZAR+
+      // LETAL). Diseño confirmado por la usuaria: "no da nada por sí solo, solo implica que la
+      // habilidad tarda X turnos (1 si la ficha no especifica) — si te golpean se corta; el
+      // bonus a la tirada final solo vendría de un AUMENTO explícito, ninguna ficha real lo
+      // combina hoy" + "iniciativa normal, turno normal — si pierdo la iniciativa el turno de
+      // canalizar, ahí es donde el NPC puede golpearme y cortarla". Aquí el jugador GANÓ la
+      // iniciativa de este intercambio (CASO ATAQUE) — canalizar consume su turno de ataque sin
+      // tirar ningún golpe (ni él ataca, ni el NPC contragolpea: no hay tabla cruzada que
+      // resolver), pero la iniciativa del PRÓXIMO intercambio se decide con normalidad más abajo
+      // (bloque `if (exchangeHappened)`), exactamente igual que un intercambio real — por eso
+      // `exchangeHappened=true` aquí pese a no haber tirada de daño.
+      if (input.pendingCanalizacion && input.pendingCanalizacion.npcId === npcParaIntercambio.id) {
+        // CASO CANALIZACIÓN: el jugador ganó la iniciativa de este intercambio con una
+        // canalización viva de un turno anterior (no se cortó en el CASO DEFENSA intermedio, ver
+        // arriba) — se dispara el ataque real diferido con SU tirada normal (mismo camino
+        // `resolveExchange` que un ataque directo, mismo umbral `golpe_pleno` para AUMENTO/
+        // DEBILIDAD/CONTRA/etc.), ignorando la acción que mandó el frontend este turno.
+        const canalizacion = input.pendingCanalizacion;
+        const npcRacialCanalizacion = racialAdvantageFor(npcParaIntercambio.raza, npcDefensa.rol, [], canalizacion.attribute, jugadorRaza, isFirstExchangeOfCombat);
+        const exchange = resolveExchange(
+          {
+            attributes: attributesEfectivos,
+            attribute: canalizacion.attribute,
+            attributeBonus: canalizacion.attributeBonus ?? undefined,
+            difficulty: dificultadAtacante,
+            condicionFisica: input.condicionFisicaJugador,
+            rol: 'ataque',
+          },
+          {
+            attributes: npcAttributesEfectivos,
+            attribute: npcDefensa.attribute,
+            attributeBonus: npcDefensa.attributeBonus ?? 0,
+            difficulty: difficultyHintFor(input.currentLevel, npcParaIntercambio.level).dificultad,
+            condicionFisica: npcParaIntercambio.condicionFisica,
+            rol: npcDefensa.rol,
+            rollMode: npcRacialCanalizacion.rollMode,
+            racialAdvantageReason: npcRacialCanalizacion.racialAdvantageReason,
+          },
+        );
+        const npcPuedeContragolpearCanalizacion =
+          npcDefensa.effects.includes('ATAQUE') ||
+          (npcDefensa.effects.includes('CONTRA') && canalizacion.attribute !== 'magia') ||
+          (npcDefensa.effects.includes('REFRACTAR') && canalizacion.attribute === 'magia');
+        npcAttackHits = exchange.resultado === 'golpe_pleno' || exchange.resultado === 'golpe_normal';
+        npcTargetNewCondicion = npcAttackHits ? nextCondicionForAttack(canalizacion.effects, npcParaIntercambio.condicionFisica) : null;
+        jugadorRecibeGolpe = exchange.resultado === 'defensor_contragolpea' && npcPuedeContragolpearCanalizacion;
+        jugadorGolpeEfectos = jugadorRecibeGolpe ? npcDefensa.effects : [];
+        if (!pendingNpcStillHere && canalizacion.effects.includes('LETAL')) {
+          abilityEffectHint = npcAttackHits
+            ? `EFECTO DE HABILIDAD — YA RESUELTO: la canalización se completa y el golpe letal contra ${npcParaIntercambio.name} conecta, matándolo en el acto sin importar en qué estado estuviera antes — narra el golpe final, no una herida más.`
+            : `EFECTO DE HABILIDAD — YA RESUELTO: la canalización se completa pero el golpe letal no llega a conectar esta vez — narra el intento fallido, nunca su muerte.`;
+        }
+        exchangeNarrationBlock = `${characterName} completa su canalización de "${canalizacion.abilityName}" contra ${npcParaIntercambio.name}. ${exchangeContextBlock(exchange, characterName, npcParaIntercambio.name, npcPuedeContragolpearCanalizacion)}`;
+        combatExchangeRoll = exchange.atacante;
+        npcAbilityUsed = { npcName: npcParaIntercambio.name, abilityName: npcDefensa.name, rol: 'defensa', maxUsesPerCombat: npcDefensa.maxUsesPerCombat };
+        combatExchangeDisplay = {
+          atacanteEsJugador: true,
+          atacante: exchange.atacante,
+          defensor: exchange.defensor,
+          resultado: exchange.resultado,
+          margen: exchange.margen,
+        };
+        playerAbilityUsed = { name: canalizacion.abilityName, icon: '🌀', description: 'Habilidad canalizada.', rol: 'ataque' };
+        nuevoPendingCanalizacion = null;
+        exchangeHappened = true;
+        npcNuevaEnergia = nextEnergia({
+          current: npcEnergiaActual,
+          max: npcEnergiaMax,
+          abilityEnergyCost: npcDefensa.energyCost,
+          abilityEnergyRegen: npcDefensa.energyRegen,
+          exchangeHappened: true,
+          restSucceeds: false,
+          restAttempted: false,
+          itemRestoreAmount: null,
+        });
+      } else if (jugadorRol === 'ataque' && abilityEffects.includes('CANALIZAR') && !input.pendingCanalizacion) {
+        nuevoPendingCanalizacion = {
+          abilityName: input.selectedAbility?.name ?? 'habilidad canalizada',
+          attribute: input.classificationAtributo,
+          attributeBonus: input.abilityAttributeBonus ?? null,
+          effects: abilityEffects,
+          npcId: npcParaIntercambio.id,
+        };
+        exchangeNarrationBlock = `${characterName} empieza a canalizar "${input.selectedAbility?.name ?? 'su habilidad'}" contra ${npcParaIntercambio.name} — el golpe se completará el próximo turno si nada lo interrumpe antes.`;
+        if (input.selectedAbility) playerAbilityUsed = { ...input.selectedAbility, rol: 'ataque' };
+        exchangeHappened = true;
+      } else {
       // `resolveExchange` (tabla cruzada, camino "else" de abajo) solo tiene sentido cuando el
       // jugador de verdad ataca (`jugadorRol === 'ataque'`) — asume implícitamente "atacante vs
       // defensor" y calcula el golpe SOLO de los dados, sin mirar el rol. Si el jugador no está
@@ -1581,6 +1712,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
           itemRestoreAmount: null,
         });
       }
+      }
     }
 
     if (exchangeHappened) {
@@ -1679,6 +1811,8 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
           energyCost: npcAtaque.energyCost,
           energyRegen: npcAtaque.energyRegen,
           maxUsesPerCombat: npcAtaque.maxUsesPerCombat,
+          durationEffectMagnitude: npcAtaque.durationEffectMagnitude ?? null,
+          durationEffectTurns: npcAtaque.durationEffectTurns ?? null,
         };
       }
     }
@@ -1713,6 +1847,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
     jugadorRecibeGolpe,
     jugadorGolpeEfectos,
     nuevoPendingNpcAttack,
+    nuevoPendingCanalizacion,
     exchangeNarrationBlock,
     combatExchangeRoll,
     npcAbilityUsed,
@@ -2851,6 +2986,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     earlyBuildingId,
     notBefore,
     pendingNpcAttack,
+    pendingCanalizacion,
     npcsInScene: npcsInScenePrecomputed,
     lootItemNames,
     healItemUses,
@@ -2890,6 +3026,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
             attributeBonus: true,
             durationEffectMagnitude: true,
             durationEffectTurns: true,
+            durationEffectTarget: true,
           },
         })
       : Promise.resolve<{
@@ -2905,6 +3042,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           attributeBonus: number | null;
           durationEffectMagnitude: number | null;
           durationEffectTurns: number | null;
+          durationEffectTarget: string | null;
         } | null>(null),
     // `slug` añadido (2026-09-05) — ver comentario de `gisteraEnEscena` más abajo: el gancho
     // guionizado de Gistera Koh necesita saber si la escena de ESTE turno sigue en La Hondonada
@@ -3310,7 +3448,11 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     npcsInScene.length > 0 &&
     npcParaIntercambio &&
     npcParaIntercambio.condicionFisica !== 'MUERTO' &&
-    (!!pendingNpcStillHere || tomaAccionDeCombate);
+    // CANALIZAR real (2026-09-09) — una canalización pendiente exige entrar al intercambio de
+    // combate igual que un ataque/defensa deliberados, mismo criterio que `pendingNpcStillHere`:
+    // el turno siguiente SIEMPRE debe resolver (disparar o cortar) la canalización, sin importar
+    // qué texto/habilidad mande el frontend.
+    (!!pendingNpcStillHere || tomaAccionDeCombate || !!pendingCanalizacion);
 
   // Emboscada real del turno de apertura (2026-08-22) — mismo criterio EXACTO que
   // `hostileEngagement` de narrador.ts (`ambushHint`): sin esto, la narración podía decir "el NPC
@@ -3335,6 +3477,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     jugadorRecibeGolpe,
     jugadorGolpeEfectos,
     nuevoPendingNpcAttack,
+    nuevoPendingCanalizacion,
     exchangeNarrationBlock,
     combatExchangeRoll,
     npcAbilityUsed,
@@ -3356,6 +3499,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     jugadorRaza: params.raza,
     isFirstExchangeOfCombat: !enCombate,
     pendingNpcAttack,
+    pendingCanalizacion,
     pendingNpcStillHere,
     requiereTirada: classification.requiereTirada,
     classificationAtributo: classification.atributo,
@@ -4764,6 +4908,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         // combate no debe empujar ningún AUMENTO/DEBILIDAD.
         durationEffectMagnitude: playerAbilityUsageBlocked ? null : (selectedAbilityData?.durationEffectMagnitude ?? null),
         durationEffectTurns: playerAbilityUsageBlocked ? null : (selectedAbilityData?.durationEffectTurns ?? null),
+        // Domador (2026-09-09, "aumenta a tu bestia") — mismo gate de tope de usos que arriba.
+        durationEffectTarget: playerAbilityUsageBlocked ? null : ((selectedAbilityData?.durationEffectTarget as 'self' | 'companion' | null) ?? null),
       };
       const accion: AccionJugadorCombate = { habilidad: jugadorHabilidad, dualWieldBonus };
       const turnoJugadora = await resolverTurnoJugador({ prisma, worldId, saveId, encounterId, accion });
@@ -6816,6 +6962,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         // PRÓXIMO intercambio (si la iniciativa lo favorece) o limpia el de este turno, ya
         // consumido — nunca sobrevive más de un intercambio sin resolverse.
         pendingNpcAttack: nuevoPendingNpcAttack ? (nuevoPendingNpcAttack as unknown as Prisma.InputJsonValue) : Prisma.JsonNull,
+        // CANALIZAR real (2026-09-09) — mismo criterio exacto que pendingNpcAttack arriba.
+        pendingCanalizacion: nuevoPendingCanalizacion ? (nuevoPendingCanalizacion as unknown as Prisma.InputJsonValue) : Prisma.JsonNull,
         // Fase 2 de efectos de clase (2026-08-26) — `jugadorActiveEffectsNext` ya con el push/
         // decremento de este intercambio aplicado (ver resolveCombatExchangePhase), salvo que el
         // jugador de verdad VUELVA a ILESO este turno desde un estado peor (descanso/curación

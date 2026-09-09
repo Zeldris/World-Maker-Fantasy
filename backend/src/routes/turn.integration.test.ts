@@ -780,6 +780,7 @@ describe('Rediseño de combate: habilidades de utilidad reactivas y consumibles 
   let golpeRunaColeraId: string;
   let golpeEnvenenadoId: string;
   let ataqueBasicoId: string;
+  let golpeCanalizadoId: string;
 
   beforeAll(async () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.99);
@@ -926,6 +927,20 @@ describe('Rediseño de combate: habilidades de utilidad reactivas y consumibles 
       })
     ).id;
     ataqueBasicoId = (await prisma.savedAction.create({ data: { saveId, name: 'Ataque Básico', promptText: 'Ataco con un golpe directo.', category: 'combate' } })).id;
+    golpeCanalizadoId = (
+      await prisma.savedAction.create({
+        data: {
+          saveId,
+          name: 'Golpe Devastador',
+          promptText: 'Canalizo toda mi fuerza en un golpe devastador.',
+          category: 'combate',
+          effects: ['ATAQUE', 'CANALIZAR', 'LETAL'],
+          rol: 'ataque',
+          preferredAttribute: 'fuerza',
+          attributeBonus: 30,
+        },
+      })
+    ).id;
   });
 
   afterAll(async () => {
@@ -1251,6 +1266,188 @@ describe('Rediseño de combate: habilidades de utilidad reactivas y consumibles 
     });
     const npcStateAfter = await prisma.npcState.findFirstOrThrow({ where: { saveId, npcId } });
     expect(npcStateAfter.activeEffects).toEqual([{ attribute: 'destreza', magnitude: -4, turnsRemaining: 1, sourceAbility: 'Golpe Envenenado' }]);
+  }, 20_000);
+
+  // Cierre del hueco de motor (2026-09-09, `NpcCombatAbility.durationEffectMagnitude/Turns` +
+  // `PendingNpcAttack.durationEffectMagnitude/Turns`, npcCombatAbilities.ts/combatExchange.ts) —
+  // hasta ahora ningún atacante AUTÓNOMO (NPC rival o Companion) podía generar AUMENTO/DEBILIDAD
+  // con duración, solo el jugador (tests de arriba). Mismo `pendingNpcAttack` sembrado a mano que
+  // Contraataque/Grito de Guerra, pero con los campos nuevos poblados — camino espejo: AUMENTO va
+  // al propio NPC atacante (NpcState.activeEffects), DEBILIDAD al jugador que lo recibe
+  // (Save.activeEffects). El jugador responde con Ataque Básico (sin attributeBonus) para que el
+  // margen decisivo salga a favor del NPC (attributeBonus artificial en el pendingNpcAttack).
+  it('un NPC que ataca con una habilidad de AUMENTO/DEBILIDAD y golpea de forma decisiva empuja ActiveEffect reales (NPC y jugador)', async () => {
+    await prisma.npcState.deleteMany({ where: { saveId, npcId } });
+    await prisma.save.update({
+      where: { id: saveId },
+      data: {
+        condicionFisica: 'ILESO',
+        pendingCombatNpcSlugs: [npcSlug],
+        activeEffects: [],
+        pendingNpcAttack: {
+          npcId,
+          attribute: 'fuerza',
+          effects: ['ATAQUE', 'AUMENTO', 'DEBILIDAD'],
+          rol: 'ataque',
+          abilityName: 'Golpe Runa de Cólera del Orco',
+          abilityDescription: 'Un golpe cargado de runas hostiles.',
+          energyCost: 5,
+          energyRegen: 0,
+          attributeBonus: 30,
+          durationEffectMagnitude: 5,
+          durationEffectTurns: 1,
+        },
+      },
+    });
+
+    const app = await buildApp();
+    const action = "Ataco con un golpe directo 'Orco enfurecido'.";
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true, savedActionId: ataqueBasicoId } });
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, enCombate: true, savedActionId: ataqueBasicoId },
+    });
+    expect(narrateRes.statusCode).toBe(200);
+
+    const npcState = await prisma.npcState.findFirstOrThrow({ where: { saveId, npcId } });
+    expect(npcState.activeEffects).toEqual([{ attribute: 'fuerza', magnitude: 5, turnsRemaining: 1, sourceAbility: 'Golpe Runa de Cólera del Orco' }]);
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(save.activeEffects).toEqual([{ attribute: 'fuerza', magnitude: 5, turnsRemaining: 1, sourceAbility: 'Golpe Runa de Cólera del Orco' }]);
+  }, 15_000);
+
+  // CANALIZAR real (2026-09-09, cierre de hueco de motor — bloqueaba capstones nv.40 de Tirador/
+  // Rúnico/Convocador/Maestro Arquero/Maestro Ballestero/Berserker) — diseño confirmado por la
+  // usuaria: "no da nada por sí solo... si te golpean se corta; iniciativa normal, turno normal".
+  it('CANALIZAR: empezar a canalizar no tira dados ni ataca — solo siembra Save.pendingCanalizacion', async () => {
+    await prisma.npcState.deleteMany({ where: { saveId, npcId } });
+    await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'ILESO', pendingCombatNpcSlugs: [npcSlug], pendingNpcAttack: Prisma.JsonNull, pendingCanalizacion: Prisma.JsonNull } });
+
+    const app = await buildApp();
+    const action = "Canalizo toda mi fuerza en un golpe devastador contra 'Orco enfurecido'.";
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true, savedActionId: golpeCanalizadoId } });
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, enCombate: true, savedActionId: golpeCanalizadoId },
+    });
+    expect(narrateRes.statusCode).toBe(200);
+
+    // El NPC sigue ILESO — canalizar no golpea este turno.
+    const npcState = await prisma.npcState.findFirst({ where: { saveId, npcId } });
+    expect(npcState?.condicionFisica ?? 'ILESO').toBe('ILESO');
+
+    const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveAfter.pendingCanalizacion).not.toBeNull();
+    expect((saveAfter.pendingCanalizacion as { abilityName: string }).abilityName).toBe('Golpe Devastador');
+
+    await prisma.save.update({ where: { id: saveId }, data: { pendingCanalizacion: Prisma.JsonNull } });
+  }, 15_000);
+
+  it('CANALIZAR: sin interrupción, el turno siguiente dispara el ataque real diferido (con LETAL)', async () => {
+    await prisma.npcState.deleteMany({ where: { saveId, npcId } });
+    await prisma.save.update({
+      where: { id: saveId },
+      data: {
+        condicionFisica: 'ILESO',
+        pendingCombatNpcSlugs: [npcSlug],
+        pendingNpcAttack: Prisma.JsonNull,
+        pendingCanalizacion: {
+          abilityName: 'Golpe Devastador',
+          attribute: 'fuerza',
+          attributeBonus: 30,
+          effects: ['ATAQUE', 'CANALIZAR', 'LETAL'],
+          npcId,
+        },
+      },
+    });
+
+    const app = await buildApp();
+    // Cualquier acción en combate dispara la resolución de la canalización pendiente — se ignora
+    // la habilidad que se mande este turno (mismo criterio que la defensa a ciegas de pendingNpcAttack).
+    const action = "Sigo presionando a 'Orco enfurecido'.";
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true, savedActionId: ataqueBasicoId } });
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, enCombate: true, savedActionId: ataqueBasicoId },
+    });
+    expect(narrateRes.statusCode).toBe(200);
+
+    // El golpe canalizado se disparó de verdad — con LETAL, mata directo (margen decisivo
+    // garantizado por attributeBonus:30 + Math.random fijo a 0.99 en todo este describe).
+    const npcState = await prisma.npcState.findFirstOrThrow({ where: { saveId, npcId } });
+    expect(npcState.condicionFisica).toBe('MUERTO');
+
+    const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveAfter.pendingCanalizacion).toBeNull();
+  }, 15_000);
+
+  it('CANALIZAR: un golpe decisivo del NPC mientras se canaliza la corta — el turno siguiente no dispara el ataque diferido', async () => {
+    await prisma.npcState.deleteMany({ where: { saveId, npcId } });
+    await prisma.save.update({
+      where: { id: saveId },
+      data: {
+        condicionFisica: 'ILESO',
+        pendingCombatNpcSlugs: [npcSlug],
+        pendingCanalizacion: {
+          abilityName: 'Golpe Devastador',
+          attribute: 'fuerza',
+          attributeBonus: 30,
+          effects: ['ATAQUE', 'CANALIZAR', 'LETAL'],
+          npcId,
+        },
+        // El NPC ya ganó la iniciativa de este intercambio (CASO DEFENSA) — un golpe suyo
+        // decisivo mientras el jugador canaliza debe cortarla. `attributeBonus` alto en el
+        // ataque del NPC (artificial) garantiza `golpe_pleno` sin depender de qué defensa
+        // elija el jugador con Ataque Básico (sin bonus propio).
+        pendingNpcAttack: {
+          npcId,
+          attribute: 'fuerza',
+          effects: ['ATAQUE'],
+          rol: 'ataque',
+          abilityName: 'Ataque base',
+          abilityDescription: 'Golpe improvisado.',
+          energyCost: 5,
+          energyRegen: 0,
+          attributeBonus: 30,
+        },
+      },
+    });
+
+    const app = await buildApp();
+    const action = "Aguanto el golpe entrante 'Orco enfurecido'.";
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true, savedActionId: ataqueBasicoId } });
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, enCombate: true, savedActionId: ataqueBasicoId },
+    });
+    expect(narrateRes.statusCode).toBe(200);
+
+    // El jugador recibió el golpe decisivo del NPC.
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(save.condicionFisica).not.toBe('ILESO');
+    // La canalización se cortó — nunca queda viva para el turno siguiente.
+    expect(save.pendingCanalizacion).toBeNull();
+
+    // Turno siguiente (sin pendingNpcAttack, el jugador tiene la iniciativa de nuevo): confirma
+    // que el golpe canalizado NUNCA se dispara — el Orco sigue vivo, no MUERTO por LETAL.
+    await prisma.save.update({ where: { id: saveId }, data: { pendingNpcAttack: Prisma.JsonNull, condicionFisica: 'ILESO' } });
+    const action2 = "Ataco con un golpe directo 'Orco enfurecido'.";
+    const classifyRes2 = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: action2, enCombate: true, savedActionId: ataqueBasicoId } });
+    const { classification: classification2, roll: roll2 } = classifyRes2.json();
+    await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action: action2, classification: classification2, roll: roll2, enCombate: true, savedActionId: ataqueBasicoId },
+    });
+    const npcStateAfter = await prisma.npcState.findFirstOrThrow({ where: { saveId, npcId } });
+    expect(npcStateAfter.condicionFisica).not.toBe('MUERTO');
   }, 20_000);
 
   it('consumir un objeto en combate activa el intercambio (el NPC puede actuar), pero nunca cuenta como golpe propio', async () => {

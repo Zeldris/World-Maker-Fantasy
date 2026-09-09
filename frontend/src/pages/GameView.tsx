@@ -49,6 +49,7 @@ import { HarvestSelectionModal } from '../components/HarvestSelectionModal'
 import { REINO_ABILITY_RECIPE_KEY } from '../data/reinoRecipes'
 import { PostCombatInteractionModal } from '../components/PostCombatInteractionModal'
 import { DynamicModeModal } from '../components/DynamicModeModal'
+import { ZonaMovimientoModal } from '../components/ZonaMovimientoModal'
 import { HuntSelectionModal } from '../components/HuntSelectionModal'
 import { CampSelectionModal } from '../components/CampSelectionModal'
 import { TravelDestinationModal } from '../components/TravelDestinationModal'
@@ -155,6 +156,11 @@ export function GameView() {
   const [characterAttributeBonuses, setCharacterAttributeBonuses] = useState<Partial<AttributeBlock>>({})
   const [secondaryAttributes, setSecondaryAttributes] = useState<SecondaryAttributeBlock | null>(null)
   const [characterLog, setCharacterLogRaw] = useState<LogEntry[]>([])
+  // Pieza 2 del rediseño de movimiento en Zona (2026-09-09) — abre `ZonaMovimientoModal` desde el
+  // icono de brújula flotante (ver el botón en el JSX final). Se cierra sola, sin `busy`/`error`
+  // propio (a diferencia de otros modales del árbol) porque `ZonaMovimientoModal` gestiona su
+  // propio `ZonaPanel` internamente sin depender de ningún estado de este componente.
+  const [zonaModalOpen, setZonaModalOpen] = useState(false)
   // Tirada en vivo vs histórica (2026-09-04, centralización de todas las tiradas del juego) — ids
   // de LogEntry vistas por PRIMERA vez en esta sesión — LogPanel.tsx anima con DiceRollSingle solo
   // estos ids, el resto (recarga, Diario, turnos ya vistos antes en esta misma sesión) se queda con
@@ -1799,10 +1805,27 @@ export function GameView() {
           onSelect={(id) => setActivePanel((prev) => (prev === id ? null : id))}
         />
         <div
-          className={`grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-hidden ${
+          className={`relative grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-hidden ${
             collapsedSide === 'character' ? 'lg:grid-cols-[2.75rem_1fr]' : collapsedSide === 'world' ? 'lg:grid-cols-[1fr_2.75rem]' : 'lg:grid-cols-2'
           }`}
         >
+          {/* Icono de brújula fijado en el centro entre los dos paneles (2026-09-09, petición
+              explícita de Álvaro: "en vez de que flote que esté ubicado justo ahí fijado entre los
+              divs pero sin ocupar espacio") — `absolute` centrado sobre ESTE contenedor grid (el
+              padre inmediato de los 2 paneles, no el div raíz del componente), oculto en el layout
+              de 1 columna (`lg:hidden` en el propio grid-cols-1 de móvil no aplica aquí, así que se
+              oculta explícitamente por debajo de `lg` donde los paneles ya no están lado a lado).
+              Mismas condiciones de visibilidad que antes (sin abrir ningún modal ya abierto). */}
+          {saveId && !anyModalOpen && !zonaModalOpen && (
+            <button
+              type="button"
+              onClick={() => setZonaModalOpen(true)}
+              title="Moverte por la zona"
+              className="tactile absolute bottom-1 left-1/2 z-40 hidden h-12 w-12 -translate-x-1/2 items-center justify-center rounded-full border border-accent2-600/60 bg-wood-950/90 text-xl shadow-lg backdrop-blur-sm transition-colors hover:border-accent2-400 hover:bg-wood-900 lg:flex"
+            >
+              🧭
+            </button>
+          )}
           {collapsedSide === 'character' ? (
             <CollapsedRail label="Tu personaje" icon="›" accentClass="text-accent-300" onExpand={() => setCollapsedSide(null)} />
           ) : (
@@ -2335,6 +2358,14 @@ export function GameView() {
             setPostCombatTarget(null)
             handleSubmit(`Saqueo el cuerpo de '${target.name}'.`)
           }}
+        />
+      )}
+
+      {zonaModalOpen && saveId && (
+        <ZonaMovimientoModal
+          saveId={saveId}
+          onEncuentroZona={(entry) => setCharacterLog((prev) => [...prev, entry])}
+          onClose={() => setZonaModalOpen(false)}
         />
       )}
 

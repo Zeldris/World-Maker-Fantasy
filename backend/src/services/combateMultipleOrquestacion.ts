@@ -646,9 +646,32 @@ async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): P
   const defensorActiveEffectsNext = resultado.nuevoEfectoDefensor
     ? [...decrementActiveEffects(datosDefensor.activeEffects), resultado.nuevoEfectoDefensor]
     : decrementActiveEffects(datosDefensor.activeEffects);
-  const atacanteActiveEffectsNext = resultado.nuevoEfectoAtacante
-    ? [...decrementActiveEffects(datosAtacante.activeEffects), resultado.nuevoEfectoAtacante]
-    : decrementActiveEffects(datosAtacante.activeEffects);
+
+  // Domador (2026-09-09, `SavedAction.durationEffectTarget` — "Vínculo Salvaje"/"Adiestrar"/"Grito
+  // Animal"/"Manada Furiosa": "aumenta a tu bestia", no a quien usó la habilidad) — si la habilidad
+  // lo pide, `nuevoEfectoAtacante` se redirige al Companion vivo del MISMO bando que `actual`, en
+  // vez de aplicarse sobre el propio atacante. Sin Companion en el bando (nadie domesticado en
+  // combate, o el propio Companion ya cayó), el efecto se pierde en silencio — mismo criterio que
+  // el resto de "sin candidato válido" del motor (MULTIPLE/DESVIAR arriba), nunca cae de vuelta
+  // sobre el atacante (la ficha real nunca describe ese fallback).
+  const companionTarget =
+    habilidadAtaque.durationEffectTarget === 'companion' && resultado.nuevoEfectoAtacante
+      ? (encounter.participantes.find((p) => p.bando === (encounter.participantes.find((q) => q.id === actual.id)?.bando) && p.tipo === 'COMPANION') ?? null)
+      : null;
+  let companionTargetDatos: DatosCombatiente | null = null;
+  let companionTargetActiveEffectsNext: ActiveEffect[] | null = null;
+  if (companionTarget) {
+    companionTargetDatos = await datosVivosDe({ tx: prisma, worldId, saveId, participant: companionTarget, weaponNames: weaponNamesPorDefecto });
+    if (companionTargetDatos && companionTargetDatos.condicionFisica !== 'MUERTO') {
+      companionTargetActiveEffectsNext = [...decrementActiveEffects(companionTargetDatos.activeEffects), resultado.nuevoEfectoAtacante!];
+    } else {
+      companionTargetDatos = null;
+    }
+  }
+  const atacanteActiveEffectsNext =
+    resultado.nuevoEfectoAtacante && !companionTargetDatos
+      ? [...decrementActiveEffects(datosAtacante.activeEffects), resultado.nuevoEfectoAtacante]
+      : decrementActiveEffects(datosAtacante.activeEffects);
 
   // CONTROL real (Fase 3 § 3a) — quien disparó CONTROL controla al OTRO lado, nunca a sí mismo (ver
   // comentario de `ResultadoIntercambioCompleto.atacanteControlDisparado/defensorControlDisparado`).
@@ -772,6 +795,9 @@ async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): P
     }
     if (objetivoDesviadoParticipant && datosObjetivoDesviado) {
       await escribirCondicionYEnergia({ tx, saveId, participant: objetivoDesviadoParticipant, condicionFisica: nuevaCondicionDesviado, energia: null, abilityNameUsada: null, usageCounts: datosObjetivoDesviado.usageCounts, activeEffectsNext: decrementActiveEffects(datosObjetivoDesviado.activeEffects) });
+    }
+    if (companionTarget && companionTargetDatos && companionTargetActiveEffectsNext) {
+      await escribirCondicionYEnergia({ tx, saveId, participant: companionTarget, condicionFisica: null, energia: null, abilityNameUsada: null, usageCounts: companionTargetDatos.usageCounts, activeEffectsNext: companionTargetActiveEffectsNext });
     }
     if (controlTargetId) await tx.combatParticipant.update({ where: { id: controlTargetId }, data: { controladoPorRondas: CONTROL_RONDAS } });
     if (ocultarSelfId) await tx.combatParticipant.update({ where: { id: ocultarSelfId }, data: { ocultoPorRondas: OCULTACION_RONDAS } });

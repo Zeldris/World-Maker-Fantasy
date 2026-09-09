@@ -265,7 +265,15 @@ export function MapaPanel({ worldSlug, saveId, currentLocation, destinations, in
         ))}
       </div>
 
-      {mapaTab === 'zona' && (saveId ? <ZonaPanel saveId={saveId} onEncuentroZona={onEncuentroZona} /> : <p className="text-sm italic text-wood-500">Sin partida activa.</p>)}
+      {/* Pieza 2 del rediseño de movimiento (2026-09-09) — esta vista, dentro del tab Mapa, pasa a
+          ser SOLO informativa (`soloConsulta`); el movimiento real vive en `ZonaMovimientoModal`,
+          abierto desde el icono de brújula flotante (GameView.tsx). */}
+      {mapaTab === 'zona' &&
+        (saveId ? (
+          <ZonaPanel saveId={saveId} onEncuentroZona={onEncuentroZona} soloConsulta />
+        ) : (
+          <p className="text-sm italic text-wood-500">Sin partida activa.</p>
+        ))}
 
       {mapaTab === 'mapa' && (
         <div className="flex flex-col gap-5">

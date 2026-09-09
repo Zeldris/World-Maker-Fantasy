@@ -88,9 +88,12 @@ export type { Clase, Especializacion } from '@prisma/client';
 /// Convocador nv.12 en vez de Totémico nv.12, ocupando el hueco real de "Filo Elemental" — ambos
 /// movidos a su especialización correcta.
 ///
-/// Recuento final por clase (huecos reales / 8 por especialización, tronco aparte):
-/// GUERRERO Berserker 3, Guardián 4, Lancero 6, Especialista 5 — CAZADOR Domador 1, Supervivencia
-/// 7, Tirador 6, Instintivo 7 — CHAMAN Totémico 1, Rúnico 6, Convocador 6, Opresor 4 — ARQUERO
+/// Recuento final por clase (huecos reales / 8 por especialización, tronco aparte) — actualizado
+/// 2026-09-09 tras cerrar 2 huecos de motor (AUMENTO/DEBILIDAD redirigido a Companion + CANALIZAR
+/// real, ver comentarios largos en turnResolution.ts/combateMultipleOrquestacion.ts):
+/// GUERRERO Berserker 4 (+1, Golpe Devastador), Guardián 4, Lancero 6, Especialista 5 — CAZADOR
+/// Domador 2 (+1, Vínculo Salvaje), Supervivencia 7, Tirador 7 (+1, Tensar al Límite), Instintivo 7
+/// — CHAMAN Totémico 1, Rúnico 6, Convocador 7 (+1, Furia de los Elementos), Opresor 4 — ARQUERO
 /// Maestro Arquero 1, Maestro Ballestero 1 — CABALLERO Orden 6, Valor 3, Dolor 7 — SEGADOR Parca 3,
 /// Maldito 4, Ilustrado 6, Transmutador 2 — ASESINO Maestro Asesino 7, Tóxico 3, Danzante 8,
 /// Selecto 6 — DRUIDA Cambiaformas 8, Aullador 2, Salvaje 8, Adaptado 8.
@@ -219,6 +222,26 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       preferredAttribute: 'constitucion',
       attributeBonus: 4,
       energyCost: ENERGY_COST_AVANZADA,
+    },
+  },
+  // CANALIZAR real (2026-09-09, cierre de hueco de motor — ver comentario largo de Tirador nv.24,
+  // arriba, mismo mecanismo). Capstone: un turno de canalizar (sin tirar, se corta si recibe un
+  // golpe decisivo), turno siguiente dispara el ataque real con LETAL.
+  {
+    level: 40,
+    clase: 'GUERRERO',
+    especializacion: 'BERSERKER',
+    ability: {
+      name: 'Golpe Devastador',
+      icon: '💥',
+      description: 'Canaliza toda su rabia en un único golpe final — si nada lo interrumpe, es devastador.',
+      promptText: 'Canalizo toda mi rabia en un único golpe final.',
+      category: 'combate',
+      effects: ['ATAQUE', 'CANALIZAR', 'LETAL'],
+      rol: 'ataque',
+      preferredAttribute: 'fuerza',
+      attributeBonus: 6,
+      energyCost: ENERGY_COST_EXPERTA,
     },
   },
 
@@ -601,6 +624,40 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       category: 'general',
     },
   },
+  // AUMENTO redirigido a Companion (2026-09-09, cierre de hueco de motor — ver cabecera de
+  // `HabilidadParaIntercambio.durationEffectTarget`, combateMultiple.ts): antes de este fix,
+  // `AUMENTO` del jugador solo podía recaer sobre sí mismo — nunca sobre un tercero, así que
+  // ninguna fila de Domador que beneficia "a tu bestia" (en vez de a quien usa la habilidad) podía
+  // sembrarse. Solo el tramo alto de RECUPERACION (mismo criterio de simplificación que el resto
+  // del catálogo — la energía "recuperada a la bestia" no tiene ruta de motor propia todavía, así
+  // que esta fila se queda solo con el AUMENTO real).
+  {
+    level: 16,
+    clase: 'CAZADOR',
+    especializacion: 'DOMADOR',
+    ability: {
+      name: 'Vínculo Salvaje',
+      icon: '🐺',
+      description: 'Un vínculo profundo con tu bestia — su fuerza crece un momento con la tuya.',
+      promptText: 'Refuerzo mi vínculo con mi bestia, dejando que mi voluntad fortalezca la suya.',
+      category: 'combate',
+      effects: ['ATAQUE', 'AUMENTO'],
+      rol: 'ataque',
+      preferredAttribute: 'voluntad',
+      attributeBonus: 2,
+      durationEffectMagnitude: 4,
+      durationEffectTurns: 2,
+      durationEffectTarget: 'companion',
+      energyCost: ENERGY_COST_MEDIA,
+    },
+  },
+  // Adiestrar (nv.28, "tu compañero te defiende de un ataque aumentando en +4 SU constitución")
+  // SIGUE sin sembrar (2026-09-09) — a diferencia de 16, aquí es LA BESTIA quien tira la defensa
+  // (con su propio atributo), no el jugador con un efecto redirigido: `durationEffectTarget`
+  // resuelve "a quién recae el AUMENTO/DEBILIDAD", no "quién hace la tirada". Sembrarla con el
+  // jugador tirando voluntad reinterpretaría la ficha, no la construiría — mismo bloqueo
+  // estructural que "rol dual" (Tirador 40): el motor no tiene ningún mecanismo de "otro
+  // participante interviene en tu defensa con su propio atributo". Sigue bloqueada de verdad.
 
   // --- Supervivencia (12/16/19/24/28/32/36/40 — 12/16/19/32/40 listas) ---
   //
@@ -826,6 +883,29 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       preferredAttribute: 'destreza',
       attributeBonus: 3,
       energyCost: ENERGY_COST_MEDIA,
+    },
+  },
+  // CANALIZAR real (2026-09-09, cierre de hueco de motor — ver `SavedAction.durationEffectTarget`
+  // y comentario largo de `resolveCombatExchangePhase` § CASO CANALIZACIÓN, turnResolution.ts):
+  // "tensa el arco al máximo, más potencia por pura resistencia física" — un turno de canalizar
+  // (sin tirar dados, se corta si el jugador recibe un golpe decisivo), turno siguiente dispara el
+  // ataque real con LETAL. Sin AUMENTO explícito en la ficha, así que sin bonus extra a la tirada
+  // final más allá del `attributeBonus` propio de la habilidad.
+  {
+    level: 24,
+    clase: 'CAZADOR',
+    especializacion: 'TIRADOR',
+    ability: {
+      name: 'Tensar al Límite',
+      icon: '🏹',
+      description: 'Tensa el arco al máximo, canalizando toda su fuerza — si nada lo interrumpe, el disparo es letal.',
+      promptText: 'Tenso el arco al máximo, canalizando toda mi fuerza en el disparo.',
+      category: 'combate',
+      effects: ['ATAQUE', 'CANALIZAR', 'LETAL'],
+      rol: 'ataque',
+      preferredAttribute: 'fuerza',
+      attributeBonus: 4,
+      energyCost: ENERGY_COST_AVANZADA,
     },
   },
   {
@@ -1303,6 +1383,27 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       preferredAttribute: 'destreza',
       attributeBonus: 4,
       energyCost: ENERGY_COST_AVANZADA,
+    },
+  },
+  // CANALIZAR real (2026-09-09, cierre de hueco de motor — ver comentario largo de Tirador nv.24
+  // y Berserker nv.40, mismo mecanismo). LIMITADO (2026-08-15, AbilityEffect.LIMITADA) — capstone
+  // de un solo uso real por combate, el hueco entre canalizar y disparar no cambia por eso.
+  {
+    level: 40,
+    clase: 'CHAMAN',
+    especializacion: 'CONVOCADOR',
+    ability: {
+      name: 'Furia de los Elementos',
+      icon: '🌋',
+      description: 'Canaliza los 4 elementos a la vez en un único golpe devastador final.',
+      promptText: 'Canalizo los cuatro elementos a la vez en un único golpe final.',
+      category: 'combate',
+      effects: ['ATAQUE', 'CANALIZAR', 'LETAL', 'LIMITADA'],
+      rol: 'ataque',
+      preferredAttribute: 'magia',
+      attributeBonus: 6,
+      maxUsesPerCombat: 1,
+      energyCost: ENERGY_COST_EXPERTA,
     },
   },
 
@@ -3157,6 +3258,7 @@ export function savedActionDataFromAbility(saveId: string, ability: StartingAbil
     attributeBonus: ability.attributeBonus ?? null,
     durationEffectMagnitude: ability.durationEffectMagnitude ?? null,
     durationEffectTurns: ability.durationEffectTurns ?? null,
+    durationEffectTarget: ability.durationEffectTarget ?? null,
     energyCost: ability.energyCost ?? 0,
     energyRegen: ability.energyRegen ?? 0,
     maxUsesPerCombat: ability.maxUsesPerCombat ?? null,

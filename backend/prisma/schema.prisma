@@ -322,6 +322,22 @@ model Save {
   /// sobrevive más de un turno sin resolverse.
   pendingNpcAttack Json?
 
+  /// CANALIZAR real (2026-09-09, cierre de hueco de motor — bloqueaba 5+ capstones nivel 40 de
+  /// Tirador/Rúnico/Convocador/Maestro Arquero/Maestro Ballestero/Berserker en clases.md, todas
+  /// `ATAQUE`+`CANALIZAR`+`LETAL`). Diseño confirmado por la usuaria: "CANALIZAR no da nada por sí
+  /// solo, solo implica que la habilidad tarda X turnos en completarse — si te golpean se corta la
+  /// canalización; si la ficha no especifica turnos, es 1; el bonus a la tirada final solo viene
+  /// de un AUMENTO explícito combinado en la misma ficha, nunca de CANALIZAR en sí". El turno en
+  /// que el jugador usa una habilidad con `CANALIZAR` no tira dados ni ataca — se siembra aquí
+  /// `{ savedActionId, npcSlug, turnosRestantes }` y el turno queda consumido sin más. En el turno
+  /// siguiente: si el jugador NO recibió un golpe decisivo (`golpe_pleno`) mientras canalizaba, el
+  /// ataque real se dispara automáticamente (tirada normal, con los efectos propios de la ficha,
+  /// p.ej. LETAL); si sí lo recibió, se cancela sin más — mismo criterio de "se pierde en
+  /// silencio" que el resto de efectos sin candidato válido del motor. Null = sin canalización en
+  /// curso (caso normal de siempre). Nunca sobrevive fuera de combate (se limpia si el combate
+  /// termina antes de completarse).
+  pendingCanalizacion Json?
+
   /// Tirada de Explorar/Desollar YA congelada (rediseño de recolección, 2026-08-22, petición
   /// explícita de la usuaria: "para poder ver algo siempre deberías pasar por esta tirada... al
   /// menos una vez y ya se guarda" — sin esto, reabrir el pop-up tras localizar algo enseñaba la
@@ -1560,6 +1576,13 @@ model SavedAction {
   /// Turnos que dura el efecto de arriba — junto con `durationEffectMagnitude`, ambos null o
   /// ambos rellenos.
   durationEffectTurns     Int?
+  /// A quién recae el efecto de arriba cuando la habilidad conecta de forma decisiva (2026-09-09,
+  /// Domador — "Vínculo Salvaje"/"Adiestrar"/"Grito Animal"/"Manada Furiosa" dicen "aumenta a tu
+  /// bestia", no al propio jugador) — null/'self' = comportamiento de siempre (recae en quien usó
+  /// la habilidad, jugador o NPC/Companion autónomo); 'companion' = recae en el Companion activo
+  /// del bando de quien la usó en vez de en sí mismo. Solo tiene sentido en combate múltiple (el
+  /// 1v1 clásico no tiene ningún concepto de Companion) — se ignora sin más fuera de ahí.
+  durationEffectTarget    String?
   /// Habilidad racial/de arma recalculada automáticamente (2026-07-29, sistema de habilidades por
   /// arma) — a diferencia de `isStarting` (fija de por vida), estas se BORRAN y se vuelven a crear
   /// cada vez que cambia el equipo o el nivel, para reflejar siempre el arma que llevas puesta

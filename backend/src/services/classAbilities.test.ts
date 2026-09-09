@@ -50,12 +50,12 @@ describe('classAbilityUnlocksFor', () => {
 });
 
 describe('allClassAbilityUnlocks', () => {
-  it('devuelve el roster completo (169 huecos: auditoría 2026-08-31 de Guerrero/Cazador/Chamán contra el motor real, 22 nuevas sembradas + 2 bugs de siembra corregidos)', () => {
+  it('devuelve el roster completo (173 huecos: 169 de la auditoría 2026-08-31 + Vínculo Salvaje (Domador nv.16, AUMENTO redirigido a Companion) + Tensar al Límite/Golpe Devastador/Furia de los Elementos (CANALIZAR real), todo 2026-09-09)', () => {
     const all = allClassAbilityUnlocks();
-    expect(all).toHaveLength(169);
-    expect(all.filter((u) => u.clase === 'GUERRERO')).toHaveLength(21);
-    expect(all.filter((u) => u.clase === 'CAZADOR')).toHaveLength(25);
-    expect(all.filter((u) => u.clase === 'CHAMAN')).toHaveLength(20);
+    expect(all).toHaveLength(173);
+    expect(all.filter((u) => u.clase === 'GUERRERO')).toHaveLength(22);
+    expect(all.filter((u) => u.clase === 'CAZADOR')).toHaveLength(27);
+    expect(all.filter((u) => u.clase === 'CHAMAN')).toHaveLength(21);
     expect(all.filter((u) => u.clase === 'ARQUERO')).toHaveLength(6);
     expect(all.filter((u) => u.clase === 'CABALLERO')).toHaveLength(20);
     expect(all.filter((u) => u.clase === 'SEGADOR')).toHaveLength(19);
@@ -79,29 +79,30 @@ describe('classAbilityUnlocksForClase', () => {
   // "Golpe Gemelo" vivía en Supervivencia en vez de Instintivo, "Tótem de Guerra" vivía en
   // Convocador en vez de Totémico — ambos movidos a su especialización real de clases.md.
   it('con especialización, devuelve tronco + los huecos reales de esa rama', () => {
-    // Berserker: 3 tronco + 3 propios (19/24/32, antes solo 19) = 6
-    expect(classAbilityUnlocksForClase('GUERRERO', 'BERSERKER')).toHaveLength(6);
+    // Berserker: 3 tronco + 4 propios (19/24/32/40 — 40 Golpe Devastador, CANALIZAR real 2026-09-09) = 7
+    expect(classAbilityUnlocksForClase('GUERRERO', 'BERSERKER')).toHaveLength(7);
     // Guardián: 3 tronco + 4 propios (12/24/28/40, antes 12/28) = 7
     expect(classAbilityUnlocksForClase('GUERRERO', 'GUARDIAN')).toHaveLength(7);
     // Lancero: 3 tronco + 6 propios (12/16/19/24/36/40, antes 16/24/40) = 9
     expect(classAbilityUnlocksForClase('GUERRERO', 'LANCERO')).toHaveLength(9);
     // Especialista: 3 tronco + 5 propios (12/16/19/24/32, antes 12/16/19/24) = 8
     expect(classAbilityUnlocksForClase('GUERRERO', 'ESPECIALISTA')).toHaveLength(8);
-    // Domador: 4 tronco + 1 propio (12, Compañero cazador, COMPANERO ya implementado) = 5
-    expect(classAbilityUnlocksForClase('CAZADOR', 'DOMADOR')).toHaveLength(5);
+    // Domador: 4 tronco + 2 propios (12 Compañero cazador, 16 Vínculo Salvaje — AUMENTO
+    // redirigido a Companion, 2026-09-09) = 6
+    expect(classAbilityUnlocksForClase('CAZADOR', 'DOMADOR')).toHaveLength(6);
     // Supervivencia: 4 tronco + 7 propios (12/16/19/24/28/36/40, antes 12/16/19/40) = 11
     expect(classAbilityUnlocksForClase('CAZADOR', 'SUPERVIVENCIA')).toHaveLength(11);
-    // Tirador: 4 tronco + 6 propios (12/16/19/28/32/36, antes 12/16/19/28/32) = 10
-    expect(classAbilityUnlocksForClase('CAZADOR', 'TIRADOR')).toHaveLength(10);
+    // Tirador: 4 tronco + 7 propios (12/16/19/24/28/32/36 — 24 Tensar al Límite, CANALIZAR real 2026-09-09) = 11
+    expect(classAbilityUnlocksForClase('CAZADOR', 'TIRADOR')).toHaveLength(11);
     // Instintivo: 4 tronco + 7 propios (12/16/19/24/32/36/40, antes 12/16/36/40) = 11
     expect(classAbilityUnlocksForClase('CAZADOR', 'INSTINTIVO')).toHaveLength(11);
     // Totémico: 3 tronco + 1 propio (12, Tótem de Guerra — movido aquí desde Convocador) = 4
     expect(classAbilityUnlocksForClase('CHAMAN', 'TOTEMICO')).toHaveLength(4);
     // Rúnico: 3 tronco + 6 propios (12/16/24/28/36/40, antes 24/28/40) = 9
     expect(classAbilityUnlocksForClase('CHAMAN', 'RUNICO')).toHaveLength(9);
-    // Convocador: 3 tronco + 6 propios (12/16/19/24/28/32, Tótem de Guerra salió, Filo Elemental
-    // entró de verdad en el 12) = 9
-    expect(classAbilityUnlocksForClase('CHAMAN', 'CONVOCADOR')).toHaveLength(9);
+    // Convocador: 3 tronco + 7 propios (12/16/19/24/28/32/40 — Tótem de Guerra salió, Filo
+    // Elemental entró de verdad en el 12, 40 Furia de los Elementos CANALIZAR real 2026-09-09) = 10
+    expect(classAbilityUnlocksForClase('CHAMAN', 'CONVOCADOR')).toHaveLength(10);
     // Opresor: 3 tronco + 4 propios (12/16/19/24, antes 12/16/24) = 7
     expect(classAbilityUnlocksForClase('CHAMAN', 'OPRESOR')).toHaveLength(7);
   });
@@ -152,9 +153,9 @@ describe('resumenMecanicoEspecializacion', () => {
     expect(resumen).toMatch(/Fuerza|Carisma/);
   });
 
-  it('Domador (solo "Compañero cazador", category:general, sin rol/effects/preferredAttribute) cae a la description real en vez de un mensaje vacío', () => {
+  it('Domador (2026-09-09: Vínculo Salvaje ya es una habilidad de combate real) menciona su atributo, no cae a la description de la pasiva', () => {
     const resumen = resumenMecanicoEspecializacion('CAZADOR', 'DOMADOR');
-    expect(resumen).toContain('Desbloquea un slot de mascota');
+    expect(resumen).toMatch(/Voluntad/);
   });
 });
 

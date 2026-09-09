@@ -52,6 +52,17 @@ export interface NpcCombatAbility {
   /// Tope de usos por combate (2026-08-15, AbilityEffect.LIMITADA) — undefined/null = sin tope.
   /// Solo las de clase pueden traerlo (classAbilities.ts); Ataque base/raciales/genéricas nunca.
   maxUsesPerCombat?: number | null;
+  /// AUMENTO/DEBILIDAD con duración de turnos, generados por un atacante AUTÓNOMO — NPC rival o
+  /// Companion (2026-09-09, cierre del hueco documentado en `classAbilities.ts` § cabecera:
+  /// "Companion.activeEffects se LEE en combate múltiple pero nada lo ESCRIBE todavía"). Mismos
+  /// campos que `StartingAbility.durationEffectMagnitude/Turns` — el catálogo YA los llevaba en
+  /// varias habilidades de clase (Runa de Fuerza, Golpe Runa de Cólera...), pero se descartaban al
+  /// construir este tipo, así que ningún NPC/Companion atacando podía nunca producir el efecto
+  /// sobre sí mismo o su rival, aunque el jugador sí (`HabilidadParaIntercambio` ya los tenía desde
+  /// Fase 3§3a, solo poblados para la habilidad de la jugadora). Solo las de clase los traen
+  /// (mismo alcance que `attributeBonus`/`maxUsesPerCombat`) — Ataque base/racial/genéricas nunca.
+  durationEffectMagnitude?: number | null;
+  durationEffectTurns?: number | null;
 }
 
 export interface NpcForCombatAbilities {
@@ -114,6 +125,8 @@ export function npcCombatAbilitiesFor(npc: NpcForCombatAbilities, weaponNames: s
         energyCost: ENERGY_COST_BASICA,
         energyRegen: 0,
         maxUsesPerCombat: unlock.ability.maxUsesPerCombat,
+        durationEffectMagnitude: unlock.ability.durationEffectMagnitude,
+        durationEffectTurns: unlock.ability.durationEffectTurns,
       });
     }
   }

@@ -11,6 +11,13 @@ interface ZonaPanelProps {
   /// solo la renderiza colgada de una entrada de log concreta (`entry.dynamicModeOffer`), nunca
   /// leyendo `Save.pendingDynamicModeOffer` directamente.
   onEncuentroZona?: (logEntry: LogEntry) => void
+  /// Piezas 2/3 del rediseño de movimiento en Zona (2026-09-09, decisión de Álvaro: "la sección de
+  /// Zona en Mapa solo sería para visualizar y no la utilizaríamos para movernos" — el único
+  /// movimiento real vive ahora en `ZonaMovimientoModal`, abierto desde el icono de brújula
+  /// flotante). `true` = el lienzo deja de responder a clics de movimiento (fondo inerte); los
+  /// pines siguen abriendo su modal de detalle igual, eso nunca fue "moverse". Default `false`
+  /// (movimiento activo) para no romper ningún otro caller existente sin tocarlo explícitamente.
+  soloConsulta?: boolean
 }
 
 /// Grupo 3 § Mundo determinista, Capa 1 (2026-08-25, docs/rpgtarkor/mundo-determinista.md) —
@@ -141,7 +148,7 @@ function regionControlDisplay(control: RegionControlInfo): { text: string; tone:
 /// trayecto de varias celdas.
 const MS_POR_PASO_MOVIMIENTO = 250
 
-export function ZonaPanel({ saveId, onEncuentroZona }: ZonaPanelProps) {
+export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false }: ZonaPanelProps) {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<ZonaResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -235,6 +242,13 @@ export function ZonaPanel({ saveId, onEncuentroZona }: ZonaPanelProps) {
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm font-medium text-wood-100">{data.locationName}</p>
+        {/* Pieza 2 (2026-09-09) — recuerda dónde vive el movimiento real cuando esta vista es solo
+            informativa, para no dejar al jugador buscando un clic que ya no hace nada aquí. */}
+        {soloConsulta && (
+          <p className="text-2xs italic text-wood-500">
+            Vista informativa — usa el icono 🧭 para moverte de verdad por la zona.
+          </p>
+        )}
         {/* Control regional (2026-08-27, Pieza 5) — placeholder de texto, sin logo real todavía
             (pendiente de generación de imagen, mismo mecanismo que el resto de assets). Tono por
             estado (C.6) para que no se lea como metadata secundaria (mismo tono que un timestamp). */}
@@ -261,21 +275,29 @@ export function ZonaPanel({ saveId, onEncuentroZona }: ZonaPanelProps) {
                 coordenada de pantalla del clic a coordenadas reales del viewBox 800×600 (el SVG se
                 escala con CSS, `clientX/Y` por sí solos no sirven). Los pines paran la propagación
                 (`stopPropagation`) para que clicar uno siga abriendo su modal de detalle, sin
-                disparar también un movimiento hacia ese punto. */}
+                disparar también un movimiento hacia ese punto.
+
+                Piezas 2/3 (2026-09-09) — con `soloConsulta`, el fondo deja de responder al clic del
+                todo (cursor normal, sin `onClick`): esta vista pasa a ser puramente informativa, el
+                movimiento real vive solo en `ZonaMovimientoModal`. */}
             <svg
               viewBox="0 0 800 600"
-              className={`h-auto w-full ${movimientoEnCurso ? 'cursor-wait' : 'cursor-crosshair'}`}
-              onClick={(e) => {
-                if (movimientoEnCurso) return
-                const svg = e.currentTarget
-                const punto = svg.createSVGPoint()
-                punto.x = e.clientX
-                punto.y = e.clientY
-                const ctm = svg.getScreenCTM()
-                if (!ctm) return
-                const local = punto.matrixTransform(ctm.inverse())
-                handleMoverA({ x: local.x, y: local.y })
-              }}
+              className={`h-auto w-full ${soloConsulta ? '' : movimientoEnCurso ? 'cursor-wait' : 'cursor-crosshair'}`}
+              onClick={
+                soloConsulta
+                  ? undefined
+                  : (e) => {
+                      if (movimientoEnCurso) return
+                      const svg = e.currentTarget
+                      const punto = svg.createSVGPoint()
+                      punto.x = e.clientX
+                      punto.y = e.clientY
+                      const ctm = svg.getScreenCTM()
+                      if (!ctm) return
+                      const local = punto.matrixTransform(ctm.inverse())
+                      handleMoverA({ x: local.x, y: local.y })
+                    }
+              }
             >
               {imageUrl && <image href={imageUrl} x={0} y={0} width={800} height={600} preserveAspectRatio="xMidYMid slice" />}
               {data.puntos.map((p) => (

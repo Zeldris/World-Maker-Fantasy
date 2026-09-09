@@ -42,6 +42,31 @@ export interface PendingNpcAttack {
   /// igual por completitud/simetría con el jugador). `?? 0` en la lectura, mismo criterio que
   /// `energyCost`.
   energyRegen: number;
+  /// AUMENTO/DEBILIDAD con duración (2026-09-09, mismo cierre de hueco que
+  /// `NpcCombatAbility.durationEffectMagnitude/Turns`, npcCombatAbilities.ts) — se copian de la
+  /// habilidad ya elegida al sembrar este ataque pendiente, y se consumen al resolverlo
+  /// (turnResolution.ts): AUMENTO se aplica al propio NPC atacante, DEBILIDAD al jugador que lo
+  /// recibe, mismo umbral `golpe_pleno` que ya usa el camino simétrico del jugador atacando.
+  durationEffectMagnitude?: number | null;
+  durationEffectTurns?: number | null;
+}
+
+/// CANALIZAR real (2026-09-09) — habilidad de ATAQUE del jugador que lleva `effects: [...,
+/// 'CANALIZAR']` y ganó la iniciativa de su intercambio: se persiste en `Save.pendingCanalizacion`
+/// en vez de resolverse de inmediato — el golpe real (con la tirada normal, LETAL u otros efectos
+/// propios de la ficha) se dispara automáticamente en el turno siguiente si el jugador no recibió
+/// un golpe decisivo (`golpe_pleno`) mientras tanto (turnResolution.ts § CASO DEFENSA lo cancela;
+/// § CASO CANALIZACIÓN lo dispara). Diseño confirmado por la usuaria: "CANALIZAR no da nada por sí
+/// solo... el bonus a la tirada final solo vendría de un AUMENTO explícito combinado en la misma
+/// ficha" — ninguna de las fichas reales de clases.md lo combina, así que `attributeBonus` aquí es
+/// siempre el mismo bonus fijo que ya llevaba la habilidad (Estocada Calculada, Furia de los
+/// Elementos...), no un extra por canalizar.
+export interface PendingCanalizacion {
+  abilityName: string;
+  attribute: Attribute;
+  attributeBonus?: number | null;
+  effects: AbilityEffect[];
+  npcId: string;
 }
 
 /// Rediseño del turno de combate (2026-07-28, petición explícita: "primero se tiran dados y se
