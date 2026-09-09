@@ -4,6 +4,7 @@ import { prisma } from '../../lib/prisma.js';
 import { rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 import { characterSummaryFor } from '../../services/characterSummary.js';
 import { advanceFictionalMinutes, formatFictionalDate } from '../../services/worldClock.js';
+import { loadSessionFacts, appendSessionFacts } from '../../services/worldFacts.js';
 import {
   MAX_VUELTAS_MODO_DINAMICO,
   MINUTOS_POR_VUELTA_MODO_DINAMICO,
@@ -18,6 +19,53 @@ import { narrarVueltaModoDinamico } from '../../services/dynamicModeNarracion.js
 /// 2 rutas son las ÚNICAS que avanzan/cierran la interacción — mismo espíritu que
 /// `POST /saves/:id/quests/aceptar`: el motor ya decidió el candidato en el turno normal, esto solo
 /// lo materializa, sin volver a pasar por el clasificador de intención de `/turn/narrate`.
+///
+/// Mismo título/descripción que `turnResolution.ts` usa para el gancho de texto libre — reconocido
+/// por `quests.ts` § `ORCO_ENFURECIDO_QUEST_SLUG` sin importar de qué camino vino la oferta.
+const ORCO_ENFURECIDO_QUEST_TITLE = 'Acabar con el Orco Enfurecido';
+const ORCO_ENFURECIDO_QUEST_DESCRIPTION =
+  'Gistera Koh, expulsada del Clan Serhu, pide ayuda para acabar con el guerrero que la persigue. Aceptar la pondría a salvo.';
+
+/// Bug real jugando en vivo (2026-09-09, ver memoria `tarkor_hallazgo_dialogo_gistera_sin_persistir`):
+/// "Interactuar" nunca pasa por `turnResolution.ts`, así que cerrar una conversación con un NPC no
+/// dejaba NINGÚN rastro determinista — ni `SessionFact` (el NPC quedaba "ausente de escena" para
+/// turnos de texto libre posteriores) ni, en el caso de Gistera Koh, la oferta de su misión
+/// principal (que solo se generaba desde el gancho hardcodeado de `turnResolution.ts`, incompatible
+/// con este camino). Fix en 2 partes, solo al CERRAR la conversación (`turno.cierra`) y solo para
+/// tipo 'NPC' (FAUNA/RECURSO no tienen este problema — nunca quedan "ausentes" de la misma forma,
+/// no hay ningún gancho de misión esperándolos):
+/// 1. Genérico, cualquier NPC: un SessionFact con su nombre, para que `detectNpcsInScene` lo
+///    reconozca como conocido en turnos futuros (mismo criterio que `matchNpcAliases`, ver
+///    `npcScene.ts` — basta con que el texto contenga su nombre).
+/// 2. Caso especial Gistera Koh (decisión explícita del usuario, 2026-09-09: "cambiemos los
+///    mensajes deterministas para que cuadre con interactuar... y siga siendo un encuentro dinámico,
+///    con presentación y oferta"): si la conversación con ella se cierra y todavía no existe la
+///    Quest del Orco Enfurecido, se genera `pendingQuestOfferInfo` igual que el gancho de texto
+///    libre — el jugador sigue viendo los botones Aceptar/Cancelar de siempre (quests.ts ya es
+///    100% idempotente y no le importa de qué camino vino la oferta).
+/// SessionFact fuera de la transacción a propósito (mismo criterio que `recolectar.ts` línea
+/// ~1103: `appendSessionFacts` llama a Ollama para el embedding, nunca dentro de una transacción de
+/// Prisma) — se llama DESPUÉS de que `persistirCierreNpcEnTransaccion` ya confirmó.
+async function marcarNpcConocido(saveId: string, targetName: string): Promise<void> {
+  const sessionFacts = await loadSessionFacts(saveId);
+  await appendSessionFacts(saveId, sessionFacts, [`${targetName} conversa con el personaje.`]);
+}
+
+async function persistirCierreNpcEnTransaccion(
+  tx: Prisma.TransactionClient,
+  saveId: string,
+  targetSlug: string,
+): Promise<{ pendingQuestOfferInfo: { title: string; description: string } | null }> {
+  if (targetSlug !== 'gistera-koh') return { pendingQuestOfferInfo: null };
+
+  const existingOrcoQuest = await tx.quest.findFirst({ where: { saveId, title: { contains: 'Orco Enfurecido' } } });
+  if (existingOrcoQuest) return { pendingQuestOfferInfo: null };
+
+  const pendingQuestOfferInfo = { title: ORCO_ENFURECIDO_QUEST_TITLE, description: ORCO_ENFURECIDO_QUEST_DESCRIPTION };
+  await tx.save.update({ where: { id: saveId }, data: { pendingQuestOfferInfo } });
+  return { pendingQuestOfferInfo };
+}
+
 export async function dynamicModeRoutes(app: FastifyInstance) {
   /// Primera vuelta — el jugador pulsó "Interactuar" sobre la oferta que ya vio en el `done` del
   /// turno anterior. `tipo`/`targetName` vienen del body (mismo criterio que `quests/aceptar`
@@ -81,8 +129,8 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
             historialNarracion,
           };
 
-      await prisma.$transaction([
-        prisma.save.update({
+      const pendingQuestOfferInfo = await prisma.$transaction(async (tx) => {
+        await tx.save.update({
           where: { id: save.id },
           // Bug real 2026-08-28 ("oferta de modo dinámico no sobrevive a una recarga") — al pulsar
           // "Interactuar" la oferta ya se resolvió, se limpia `pendingDynamicModeOffer` a la vez que
@@ -91,29 +139,42 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
             pendingDynamicMode: pendingDynamicMode ? (pendingDynamicMode as unknown as Prisma.InputJsonValue) : Prisma.JsonNull,
             pendingDynamicModeOffer: Prisma.JsonNull,
           },
-        }),
-        prisma.worldState.update({
+        });
+        await tx.worldState.update({
           where: { saveId: save.id },
           data: { fictionalMinutes: nuevoFictionalMinutes, fictionalDateLabel: nuevaFictionalDateLabel },
-        }),
+        });
         // Franja 0 (2026-09-08) — si el LLM cierra ya en la primera vuelta, se vuelca igual: nunca
         // debe perderse una conversación sin dejar rastro en el log, ni siquiera de una vuelta.
-        ...(turno.cierra
-          ? [
-              prisma.logEntry.create({
-                data: {
-                  saveId: save.id,
-                  channel: 'CHARACTER' as const,
-                  text: resumenModoDinamicoParaLog(historialNarracion),
-                  timeLabel: nuevaFictionalDateLabel,
-                  fictionalMinutes: nuevoFictionalMinutes,
-                },
-              }),
-            ]
-          : []),
-      ]);
+        if (turno.cierra) {
+          await tx.logEntry.create({
+            data: {
+              saveId: save.id,
+              channel: 'CHARACTER' as const,
+              text: resumenModoDinamicoParaLog(historialNarracion),
+              timeLabel: nuevaFictionalDateLabel,
+              fictionalMinutes: nuevoFictionalMinutes,
+            },
+          });
+        }
+        if (turno.cierra && tipo === 'NPC') {
+          const { pendingQuestOfferInfo } = await persistirCierreNpcEnTransaccion(tx, save.id, targetSlug);
+          return pendingQuestOfferInfo;
+        }
+        return null;
+      });
+      if (turno.cierra && tipo === 'NPC') {
+        await marcarNpcConocido(save.id, targetName);
+      }
 
-      return { narration: turno.narration, opciones: turno.opciones, cierra: turno.cierra, vuelta: 1, timeLabel: nuevaFictionalDateLabel };
+      return {
+        narration: turno.narration,
+        opciones: turno.opciones,
+        cierra: turno.cierra,
+        vuelta: 1,
+        timeLabel: nuevaFictionalDateLabel,
+        newQuestOfferInfo: pendingQuestOfferInfo,
+      };
     },
   );
 
@@ -161,31 +222,44 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
       ? null
       : { ...pending, vuelta: siguienteVuelta, narration: turno.narration, opciones: turno.opciones, historialNarracion };
 
-    await prisma.$transaction([
-      prisma.save.update({
+    const pendingQuestOfferInfo = await prisma.$transaction(async (tx) => {
+      await tx.save.update({
         where: { id: save.id },
         data: { pendingDynamicMode: pendingDynamicMode ? (pendingDynamicMode as unknown as Prisma.InputJsonValue) : Prisma.JsonNull },
-      }),
-      prisma.worldState.update({
+      });
+      await tx.worldState.update({
         where: { saveId: save.id },
         data: { fictionalMinutes: nuevoFictionalMinutes, fictionalDateLabel: nuevaFictionalDateLabel },
-      }),
-      ...(turno.cierra
-        ? [
-            prisma.logEntry.create({
-              data: {
-                saveId: save.id,
-                channel: 'CHARACTER' as const,
-                text: resumenModoDinamicoParaLog(historialNarracion),
-                timeLabel: nuevaFictionalDateLabel,
-                fictionalMinutes: nuevoFictionalMinutes,
-              },
-            }),
-          ]
-        : []),
-    ]);
+      });
+      if (turno.cierra) {
+        await tx.logEntry.create({
+          data: {
+            saveId: save.id,
+            channel: 'CHARACTER' as const,
+            text: resumenModoDinamicoParaLog(historialNarracion),
+            timeLabel: nuevaFictionalDateLabel,
+            fictionalMinutes: nuevoFictionalMinutes,
+          },
+        });
+      }
+      if (turno.cierra && pending.tipo === 'NPC') {
+        const { pendingQuestOfferInfo } = await persistirCierreNpcEnTransaccion(tx, save.id, pending.targetSlug);
+        return pendingQuestOfferInfo;
+      }
+      return null;
+    });
+    if (turno.cierra && pending.tipo === 'NPC') {
+      await marcarNpcConocido(save.id, pending.targetName);
+    }
 
-    return { narration: turno.narration, opciones: turno.opciones, cierra: turno.cierra, vuelta: siguienteVuelta, timeLabel: nuevaFictionalDateLabel };
+    return {
+      narration: turno.narration,
+      opciones: turno.opciones,
+      cierra: turno.cierra,
+      vuelta: siguienteVuelta,
+      timeLabel: nuevaFictionalDateLabel,
+      newQuestOfferInfo: pendingQuestOfferInfo,
+    };
   });
 
   /// Botón "Ignorar" (oferta sin aceptar) / "Salir" (conversación ya en curso) — dos usos del mismo
@@ -236,6 +310,14 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
             ]
           : []),
       ]);
+      // Salir a medias (nunca llegó a `cierra` real del LLM) SÍ deja al NPC "conocido" en escena
+      // (mismo fix genérico de arriba), pero NUNCA dispara la oferta de misión de Gistera — su
+      // aceptación es obligatoria en la trama (decisión explícita del usuario, 2026-09-09), así
+      // que abandonar la conversación a medias no puede contar como si ya hubiera "formulado la
+      // petición" del todo. Solo el cierre natural (`turno.cierra`, rutas de arriba) la ofrece.
+      if (pending && pending.tipo === 'NPC') {
+        await marcarNpcConocido(save.id, pending.targetName);
+      }
     }
     return { ok: true };
   });

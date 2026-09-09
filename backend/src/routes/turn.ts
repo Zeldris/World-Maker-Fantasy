@@ -260,10 +260,20 @@ async function resolveClassificationForTurn(params: {
       // ciegas — nunca "no hace falta tirada", sin importar si el texto libre suena a ataque, a
       // esquiva o a cualquier otra cosa. Mismo criterio que el resto de este bloque: determinista,
       // no depende de que la LLM lo adivine bien.
+      // Bug real jugando en vivo (2026-09-08, "tirada de iniciativa sin abrir un combate... con
+      // dificultad fija en vez de contra la mía"): el PRIMER turno que abre un combate nuevo llega
+      // con `enCombate: false` (el frontend todavía no sabía que iba a entrar en combate) — un
+      // "Ataco al X" en ese instante nunca pasaba por `detectsAttackIntent` (solo se evalúa con
+      // `enCombate: true`, rama de arriba) NI por `detectsHostileSearchIntent` (su regex cubre
+      // "buscar pelea"/"enfrentar"/"combatir"/"acabar con"..., pero nunca "atac..." en ninguna
+      // forma). Caía a `classifyAction` (LLM) y se sobreescribía con `utilityDifficultyFor`
+      // (escala de SUMA de atributos, pensada para utilidad no reactiva — Analizar y similares, ver
+      // su propio comentario), no la escala real de ataque/combate (`difficultyHintFor`, por
+      // nivel) — un ataque explícito siempre debe tabularse igual, dentro o fuera de `enCombate`.
       const tabulatedTarget =
         npcsInScene.length > 0 &&
         ((enCombate && (detectsAttackIntent(action) || !!selectedAbility?.effects?.length || !!pendingNpcAttack)) ||
-          (!enCombate && detectsHostileSearchIntent(action) && !detectsVerbalAcceptanceIntent(action)))
+          (!enCombate && (detectsAttackIntent(action) || detectsHostileSearchIntent(action)) && !detectsVerbalAcceptanceIntent(action)))
           ? (explicitTarget ?? ongoingCombatTarget ?? npcsInScene[0])
           : null;
       if (tabulatedTarget) {
@@ -1003,6 +1013,11 @@ export async function turnRoutes(app: FastifyInstance) {
                 description: buildAttempt.description,
                 status: 'EN_CONSTRUCCION',
                 tier: buildAttempt.ayuntamientoNivel ?? undefined,
+                // Posición en el lienzo de Zona (2026-09-08, ver comentario de Building.x/y en
+                // schema.prisma) — misma posición de entrada que `turnResolution.ts` ya usa para
+                // "volver" al jugador tras construir ("construir ocurre donde ya estás plantado").
+                x: save.zonaPosEntradaX,
+                y: save.zonaPosEntradaY,
               },
             })
           : null;

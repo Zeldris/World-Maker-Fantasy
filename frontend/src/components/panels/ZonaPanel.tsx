@@ -1,9 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { getZona, moverEnZona, resolveImageUrl, recogerDroppedItem, type ZonaResponse, type ZonePointInfo, type ZonaDinamicoInfo, type RegionControlInfo } from '../../lib/api'
 import { ZonePointDetailModal, zonaDinamicoToDetailSource } from '../ZonePointDetailModal'
+import type { LogEntry } from '../../types'
 
 interface ZonaPanelProps {
   saveId: string
+  /// Conexión real con Interactuar (2026-09-09) — inserta el `LogEntry` real del encuentro
+  /// (`resultado.logEntry`) en el log de personaje, mismo mecanismo que cualquier otro turno. Sin
+  /// esto la tarjeta de oferta quedaba persistida en el backend pero invisible: `LogPanel.tsx`
+  /// solo la renderiza colgada de una entrada de log concreta (`entry.dynamicModeOffer`), nunca
+  /// leyendo `Save.pendingDynamicModeOffer` directamente.
+  onEncuentroZona?: (logEntry: LogEntry) => void
 }
 
 /// Grupo 3 § Mundo determinista, Capa 1 (2026-08-25, docs/rpgtarkor/mundo-determinista.md) —
@@ -134,7 +141,7 @@ function regionControlDisplay(control: RegionControlInfo): { text: string; tone:
 /// trayecto de varias celdas.
 const MS_POR_PASO_MOVIMIENTO = 250
 
-export function ZonaPanel({ saveId }: ZonaPanelProps) {
+export function ZonaPanel({ saveId, onEncuentroZona }: ZonaPanelProps) {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<ZonaResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -183,6 +190,22 @@ export function ZonaPanel({ saveId }: ZonaPanelProps) {
         setData((prev) => (prev ? { ...prev, jugador: resultado.jugador } : prev))
         if (resultado.colision) {
           setMensajeMovimiento(`Te topas con ${resultado.colision.targetName}.`)
+          // Conexión real con Interactuar (2026-09-09) — la colisión con un NPC/fauna no agresivo
+          // ya dejó `pendingDynamicModeOffer` real en el backend, con su propio LogEntry
+          // determinista (`resultado.logEntry`, shape mínimo) — se combina con `dynamicModeOffer`
+          // (mismo campo que ya lee `LogPanel.tsx` para pintar la tarjeta) y se inserta directo en
+          // el log de personaje, sin recargar la partida entera. Un AGRESIVO no trae
+          // `dynamicModeOffer`/`logEntry` (fuerza combate por otro camino).
+          if (resultado.dynamicModeOffer && resultado.logEntry) {
+            onEncuentroZona?.({
+              id: resultado.logEntry.id,
+              channel: 'character',
+              text: resultado.logEntry.text,
+              timeLabel: resultado.logEntry.timeLabel,
+              createdAt: resultado.logEntry.createdAt,
+              dynamicModeOffer: { ...resultado.dynamicModeOffer, busy: false },
+            })
+          }
           sigue = false
         } else if (resultado.aviso) {
           setMensajeMovimiento(`Algo se mueve cerca: ${resultado.aviso.targetName}.`)

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import Fastify from 'fastify';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
 
@@ -232,5 +233,148 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
     expect(logCountDespues).toBe(logCountAntes + 1);
     const nuevaEntrada = await prisma.logEntry.findFirstOrThrow({ where: { saveId }, orderBy: { createdAt: 'desc' } });
     expect(nuevaEntrada.text).toBe('El jashil huye antes de que puedas acercarte.');
+  });
+
+  // Bug real jugando en vivo (2026-09-09, ver memoria tarkor_hallazgo_dialogo_gistera_sin_persistir):
+  // "Interactuar" nunca pasaba por turnResolution.ts, así que cerrar una conversación con un NPC no
+  // dejaba ningún SessionFact — turnos de texto libre posteriores lo trataban como ausente de escena.
+  describe('bug real 2026-09-09: cerrar Interactuar con un NPC debe dejarlo "conocido" en escena', () => {
+    // El test de la línea ~118 (ya existente, cierra una conversación con Gistera Koh) ahora
+    // también genera `pendingQuestOfferInfo` con este mismo fix — se limpia aquí para que este
+    // describe arranque desde un estado predecible, sin depender del orden de ejecución del resto
+    // del archivo.
+    beforeAll(async () => {
+      await prisma.save.update({ where: { id: saveId }, data: { pendingQuestOfferInfo: Prisma.JsonNull } });
+    });
+
+    it('NPC genérico (no Gistera): cerrar la conversación escribe un SessionFact con su nombre, sin generar ninguna oferta de misión', async () => {
+      narrarVueltaModoDinamico.mockResolvedValueOnce({
+        narration: 'Serhu Maestro Kade te saluda con la cabeza.',
+        opciones: [],
+        cierra: true,
+      });
+      const app = await buildApp();
+
+      const res = await app.inject({
+        method: 'POST',
+        url: `/saves/${saveId}/modo-dinamico/interactuar`,
+        payload: { tipo: 'NPC', targetSlug: 'maestro-kade', targetName: 'Maestro Kade' },
+      });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.cierra).toBe(true);
+      expect(body.newQuestOfferInfo).toBeFalsy();
+
+      const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+      expect(saveAfter.pendingQuestOfferInfo).toBeNull();
+
+      const fact = await prisma.sessionFact.findFirst({ where: { saveId, text: 'Maestro Kade conversa con el personaje.' } });
+      expect(fact).not.toBeNull();
+    });
+
+    it('Gistera Koh: cerrar la conversación SÍ genera pendingQuestOfferInfo ("Acabar con el Orco Enfurecido"), igual que el gancho de texto libre', async () => {
+      narrarVueltaModoDinamico.mockResolvedValueOnce({
+        narration: 'Gistera Koh, aliviada, formula su petición de ayuda.',
+        opciones: ['Aceptar', 'Rechazar'],
+        cierra: true,
+      });
+      const app = await buildApp();
+
+      const res = await app.inject({
+        method: 'POST',
+        url: `/saves/${saveId}/modo-dinamico/interactuar`,
+        payload: { tipo: 'NPC', targetSlug: 'gistera-koh', targetName: 'Gistera Koh' },
+      });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.newQuestOfferInfo).toEqual({
+        title: 'Acabar con el Orco Enfurecido',
+        description: 'Gistera Koh, expulsada del Clan Serhu, pide ayuda para acabar con el guerrero que la persigue. Aceptar la pondría a salvo.',
+      });
+
+      const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+      expect(saveAfter.pendingQuestOfferInfo).toEqual(body.newQuestOfferInfo);
+
+      const fact = await prisma.sessionFact.findFirst({ where: { saveId, text: 'Gistera Koh conversa con el personaje.' } });
+      expect(fact).not.toBeNull();
+
+      // Idempotencia real: /quests/aceptar acepta esta oferta con el título exacto — mismo criterio
+      // que el resto del proyecto (quests.ts § ORCO_ENFURECIDO_QUEST_SLUG), sin duplicar la Quest.
+      await prisma.quest.create({
+        data: { saveId, questSlug: 'orco-enfurecido-hondonada-gistera', title: body.newQuestOfferInfo.title, description: body.newQuestOfferInfo.description, status: 'ACTIVA' },
+      });
+    });
+
+    it('Gistera Koh: si la Quest del Orco Enfurecido YA existe (aceptada por otro camino), no vuelve a ofrecerla', async () => {
+      // La Quest ya se creó en el test anterior — reabrir una conversación nueva con Gistera (p.ej.
+      // el jugador vuelve a pulsar Interactuar sobre un ZonePoint suyo antes de que se retire de
+      // escena) no debe generar una segunda oferta duplicada. `pendingQuestOfferInfo` limpio a mano
+      // (en producción esto ya lo habría hecho `/quests/aceptar` al crear la Quest de verdad).
+      await prisma.save.update({ where: { id: saveId }, data: { pendingQuestOfferInfo: Prisma.JsonNull } });
+      narrarVueltaModoDinamico.mockResolvedValueOnce({
+        narration: 'Gistera Koh ya no tiene nada más que pedirte.',
+        opciones: [],
+        cierra: true,
+      });
+      const app = await buildApp();
+
+      const res = await app.inject({
+        method: 'POST',
+        url: `/saves/${saveId}/modo-dinamico/interactuar`,
+        payload: { tipo: 'NPC', targetSlug: 'gistera-koh', targetName: 'Gistera Koh' },
+      });
+      expect(res.statusCode).toBe(200);
+      expect(JSON.parse(res.body).newQuestOfferInfo).toBeFalsy();
+
+      const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+      expect(saveAfter.pendingQuestOfferInfo).toBeNull();
+
+      await prisma.quest.deleteMany({ where: { saveId } });
+    });
+
+    it('Gistera Koh: "Salir" a medias de la conversación (nunca llegó a cierra:true) deja el SessionFact pero NUNCA genera la oferta de misión (obligatoria, no puede quemarse a medias)', async () => {
+      narrarVueltaModoDinamico.mockResolvedValueOnce({
+        narration: 'Gistera Koh empieza a hablarte del tótem.',
+        opciones: ['Escuchar', 'Ignorarla'],
+        cierra: false,
+      });
+      const app = await buildApp();
+      await app.inject({
+        method: 'POST',
+        url: `/saves/${saveId}/modo-dinamico/interactuar`,
+        payload: { tipo: 'NPC', targetSlug: 'gistera-koh', targetName: 'Gistera Koh' },
+      });
+
+      const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/ignorar` });
+      expect(res.statusCode).toBe(200);
+
+      const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+      expect(saveAfter.pendingQuestOfferInfo).toBeNull();
+      expect(saveAfter.pendingDynamicMode).toBeNull();
+
+      const fact = await prisma.sessionFact.findFirst({ where: { saveId, text: 'Gistera Koh conversa con el personaje.' } });
+      expect(fact).not.toBeNull();
+    });
+
+    it('FAUNA: cerrar la conversación NUNCA escribe SessionFact ni genera oferta (el fix es solo para NPC)', async () => {
+      narrarVueltaModoDinamico.mockResolvedValueOnce({
+        narration: 'El jashil se aleja saltando entre las rocas.',
+        opciones: [],
+        cierra: true,
+      });
+      const app = await buildApp();
+      const factCountAntes = await prisma.sessionFact.count({ where: { saveId } });
+
+      const res = await app.inject({
+        method: 'POST',
+        url: `/saves/${saveId}/modo-dinamico/interactuar`,
+        payload: { tipo: 'FAUNA', targetSlug: 'jashil-verde', targetName: 'Jashil verde' },
+      });
+      expect(res.statusCode).toBe(200);
+      expect(JSON.parse(res.body).newQuestOfferInfo).toBeFalsy();
+
+      const factCountDespues = await prisma.sessionFact.count({ where: { saveId } });
+      expect(factCountDespues).toBe(factCountAntes);
+    });
   });
 });

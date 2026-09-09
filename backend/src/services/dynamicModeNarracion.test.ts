@@ -5,7 +5,7 @@ vi.mock('../lib/ollama.js', () => ({
   ollamaGenerate: (...args: unknown[]) => ollamaGenerate(...args),
 }));
 
-const { narrarVueltaModoDinamico, hasFutureTenseLeak, hasFalseFaunaCommunication } = await import('./dynamicModeNarracion.js');
+const { narrarVueltaModoDinamico, hasFutureTenseLeak, hasFalseFaunaCommunication, deterministicDynamicModeTurno } = await import('./dynamicModeNarracion.js');
 const { hasSecondPersonLeak } = await import('./narrador.js');
 
 const BASE_INPUT = {
@@ -210,6 +210,39 @@ describe('narrarVueltaModoDinamico — guard de tiempo verbal (futuro)', () => {
     });
     const result = await narrarVueltaModoDinamico(BASE_INPUT);
     expect(hasFutureTenseLeak(result.narration)).toBe(false);
+  });
+});
+
+/// Regresión (2026-09-08, encuentro real con Gistera Koh — ver memoria
+/// tarkor_hallazgo_dialogo_gistera_sin_persistir): el fallback determinista era un texto FIJO sin
+/// importar la vuelta — si Ollama fallaba 2 veces en una vuelta avanzada (justo tras el jugador
+/// elegir "Aceptar la oferta"), el fallback repetía literalmente la misma apertura genérica ya
+/// narrada en una vuelta anterior, dando la impresión de que el juego "olvidó" la aceptación.
+describe('deterministicDynamicModeTurno — sensible a respuestaJugador (2026-09-08)', () => {
+  it('sin respuestaJugador (vuelta 1, apertura) usa el texto genérico de siempre, sin cerrar antes de tiempo', () => {
+    const result = deterministicDynamicModeTurno({ ...BASE_INPUT, vuelta: 1, respuestaJugador: null });
+    expect(result.narration).toContain('se acerca, con intención de hablar');
+    expect(result.cierra).toBe(false);
+  });
+
+  it('con respuestaJugador ya presente (vuelta avanzada), NO repite el texto de apertura y cierra la interacción', () => {
+    const result = deterministicDynamicModeTurno({ ...BASE_INPUT, vuelta: 4, respuestaJugador: 'Aceptar la oferta' });
+    expect(result.narration).not.toContain('se acerca, con intención de hablar');
+    expect(result.cierra).toBe(true);
+  });
+
+  it('mismo criterio para FAUNA — no repite el texto de apertura tras una respuesta ya dada', () => {
+    const result = deterministicDynamicModeTurno({ ...BASE_INPUT_FAUNA, vuelta: 2, respuestaJugador: 'Acercarte' });
+    expect(result.narration).not.toContain('anda cerca, atento a la escena');
+    expect(result.cierra).toBe(true);
+  });
+
+  it('narrarVueltaModoDinamico: si Ollama falla 2 veces en una vuelta avanzada, el fallback no repite la apertura', async () => {
+    ollamaGenerate.mockReset();
+    ollamaGenerate.mockRejectedValueOnce(new Error('timeout')).mockRejectedValueOnce(new Error('timeout'));
+    const result = await narrarVueltaModoDinamico({ ...BASE_INPUT, vuelta: 4, respuestaJugador: 'Aceptar la oferta' });
+    expect(result.narration).not.toContain('se acerca, con intención de hablar');
+    expect(result.cierra).toBe(true);
   });
 });
 

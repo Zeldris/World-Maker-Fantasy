@@ -15,6 +15,13 @@ const findManyNpcState = vi.fn();
 const findUniqueLocation = vi.fn();
 const findManyLocation = vi.fn();
 const findManyQuest = vi.fn();
+// Bug real de línea base (2026-09-08, sin relación con el hallazgo que motivó tocar este archivo):
+// `playerActionValidation.ts` (ejecutado desde el camino real de /turn/classify) llama a
+// `prisma.quest.findFirst` (guard de "Acabar con el Orco Enfurecido" ya activa/cerrada) — este
+// mock nunca se actualizó tras añadirse esa llamada, así que CUALQUIER turno que pase por ese
+// guard revienta con "prisma.quest.findFirst is not a function", 500 en vez de 200. Confirmado que
+// ya fallaba antes de cualquier cambio de esta sesión (worktree del commit limpio anterior).
+const findFirstQuest = vi.fn();
 const logEntryCreate = vi.fn();
 const classifyAction = vi.fn();
 
@@ -30,7 +37,10 @@ vi.mock('../lib/prisma.js', () => ({
       findUnique: (...args: unknown[]) => findUniqueLocation(...args),
       findMany: (...args: unknown[]) => findManyLocation(...args),
     },
-    quest: { findMany: (...args: unknown[]) => findManyQuest(...args) },
+    quest: {
+      findMany: (...args: unknown[]) => findManyQuest(...args),
+      findFirst: (...args: unknown[]) => findFirstQuest(...args),
+    },
     logEntry: { create: (...args: unknown[]) => logEntryCreate(...args) },
   },
 }));
@@ -69,6 +79,7 @@ describe('POST /turn/classify — camino tabulado de combate (sin Ollama)', () =
     findUniqueLocation.mockReset().mockResolvedValue(null);
     findManyLocation.mockReset().mockResolvedValue([]);
     findManyQuest.mockReset().mockResolvedValue([]);
+    findFirstQuest.mockReset().mockResolvedValue(null);
     logEntryCreate.mockReset().mockResolvedValue({});
     classifyAction.mockReset();
   });
@@ -122,6 +133,68 @@ describe('POST /turn/classify — camino tabulado de combate (sin Ollama)', () =
     expect(body.classification.razon).toMatch(/tabla, sin llamada a Ollama/);
     expect(classifyAction).not.toHaveBeenCalled();
     expect(body.roll).toBeDefined();
+  });
+
+  // Regresión (2026-09-08, jugando en vivo: "tirada de iniciativa sin abrir un combate... con
+  // dificultad fija en vez de contra la mía" — captura real mostrando "Fácil (6)" en el PRIMER
+  // turno que abre un combate nuevo). Mismo escenario que el test de arriba, pero `enCombate:
+  // false` — el frontend todavía no sabe que va a entrar en combate en el turno que lo abre. Antes
+  // del fix, "Ataco al X" con `enCombate: false` no pasaba ni por `detectsAttackIntent` (solo se
+  // evalúa con `enCombate: true`) ni por `detectsHostileSearchIntent` (su regex nunca cubrió
+  // "atac..."), así que caía a `classifyAction` (LLM) y se sobreescribía con `utilityDifficultyFor`
+  // (escala de SUMA de atributos, pensada para utilidad no reactiva) en vez de la escala real de
+  // ataque por nivel (`difficultyHintFor`).
+  it('un ataque explícito fuera de combate (enCombate: false) contra un NPC ya en escena también se clasifica por tabla, sin llamar a classifyAction', async () => {
+    findUniqueSave.mockResolvedValue({
+      id: 'save1',
+      worldId: 'world1',
+      level: 20,
+      attributes: ATTRS,
+      inventoryItems: [],
+      condicionFisica: 'ILESO',
+      currentLocationId: null,
+      endedAt: null,
+      characterTransit: null,
+      worldState: { fictionalDateLabel: 'Día 1, mañana' },
+    });
+    findManyNpc.mockResolvedValue([
+      {
+        id: 'npc1',
+        aliases: ['orco enfurecido'],
+        slug: 'orco-enfurecido',
+        name: 'Orco Enfurecido',
+        kind: 'PRINCIPAL',
+        level: 2,
+        role: 'amenaza',
+        faction: null,
+        personality: 'furioso',
+        bio: 'x',
+        items: [],
+        attributes: ATTRS,
+        raza: null,
+        clase: null,
+        ataqueNatural: 'Zarpazo',
+        habilidadesRaciales: [],
+        temperamento: 'AGRESIVO',
+      },
+    ]);
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/turn/classify',
+      payload: { saveId: 'save1', action: 'Ataco al orco enfurecido con todas mis fuerzas.', enCombate: false },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.classification.requiereTirada).toBe(true);
+    expect(body.classification.banda).toBe('instantanea');
+    expect(body.classification.razon).toMatch(/tabla, sin llamada a Ollama/);
+    expect(classifyAction).not.toHaveBeenCalled();
+    // difficultyHintFor(2, 20): diff = 2-20 = -18, diff <= -2 -> "Fácil (12)" (por NIVEL) — nunca
+    // "Fácil (6)" (utilityDifficultyFor, por suma de atributos, el bug real observado).
+    expect(body.classification.dificultad).toBe(12);
   });
 
   // Bug real jugando en vivo (2026-08-07, auditoría "revisa la partida" en directo): con un NPC
@@ -252,6 +325,7 @@ describe('POST /turn/classify — interacción con un NPC ya convaleciente, fuer
     findUniqueLocation.mockReset().mockResolvedValue(null);
     findManyLocation.mockReset().mockResolvedValue([]);
     findManyQuest.mockReset().mockResolvedValue([]);
+    findFirstQuest.mockReset().mockResolvedValue(null);
     logEntryCreate.mockReset().mockResolvedValue({});
     classifyAction.mockReset();
   });
@@ -329,6 +403,7 @@ describe('POST /turn/classify — anacronismo en la acción del jugador (validad
     findUniqueLocation.mockReset().mockResolvedValue(null);
     findManyLocation.mockReset().mockResolvedValue([]);
     findManyQuest.mockReset().mockResolvedValue([]);
+    findFirstQuest.mockReset().mockResolvedValue(null);
     logEntryCreate.mockReset().mockResolvedValue({});
     classifyAction.mockReset();
   });
@@ -372,6 +447,7 @@ describe('POST /turn/classify — tipo de construcción inventado (validador de 
     findUniqueLocation.mockReset().mockResolvedValue(null);
     findManyLocation.mockReset().mockResolvedValue([]);
     findManyQuest.mockReset().mockResolvedValue([]);
+    findFirstQuest.mockReset().mockResolvedValue(null);
     logEntryCreate.mockReset().mockResolvedValue({});
     classifyAction.mockReset();
   });
@@ -415,6 +491,7 @@ describe('POST /turn/classify — flora/fauna de otra región (validador de grou
     findUniqueLocation.mockReset().mockResolvedValue(null);
     findManyLocation.mockReset().mockResolvedValue([]);
     findManyQuest.mockReset().mockResolvedValue([]);
+    findFirstQuest.mockReset().mockResolvedValue(null);
     logEntryCreate.mockReset().mockResolvedValue({});
     classifyAction.mockReset();
   });
@@ -459,6 +536,7 @@ describe('POST /turn/classify — arma que no lleva equipada (validador de groun
     findUniqueLocation.mockReset().mockResolvedValue(null);
     findManyLocation.mockReset().mockResolvedValue([]);
     findManyQuest.mockReset().mockResolvedValue([]);
+    findFirstQuest.mockReset().mockResolvedValue(null);
     logEntryCreate.mockReset().mockResolvedValue({});
     classifyAction.mockReset();
   });
@@ -595,6 +673,7 @@ describe('POST /turn/classify — NPC/fauna inventado citado entre comillas (val
     findUniqueLocation.mockReset().mockResolvedValue(null);
     findManyLocation.mockReset().mockResolvedValue([]);
     findManyQuest.mockReset().mockResolvedValue([]);
+    findFirstQuest.mockReset().mockResolvedValue(null);
     logEntryCreate.mockReset().mockResolvedValue({});
     classifyAction.mockReset();
   });
@@ -672,6 +751,7 @@ describe('POST /turn/classify — flora/mineral inventado citado entre comillas 
     findUniqueLocation.mockReset().mockResolvedValue(null);
     findManyLocation.mockReset().mockResolvedValue([]);
     findManyQuest.mockReset().mockResolvedValue([]);
+    findFirstQuest.mockReset().mockResolvedValue(null);
     logEntryCreate.mockReset().mockResolvedValue({});
     classifyAction.mockReset();
   });

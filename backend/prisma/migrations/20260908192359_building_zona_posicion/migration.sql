@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Building" ADD COLUMN     "x" DOUBLE PRECISION,
+ADD COLUMN     "y" DOUBLE PRECISION;

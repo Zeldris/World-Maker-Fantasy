@@ -273,6 +273,88 @@ export async function zonaRoutes(app: FastifyInstance) {
     };
   });
 
+  /// Detecta colisión/aviso de UNA celda contra los `ZonePoint` FAUNA/NPC activos de la Location, y
+  /// resuelve la oferta de Interactuar real si corresponde (2026-09-08) — extraído del bucle
+  /// principal de `/zona/mover` para reutilizarlo también en el caso "camino vacío" (ver comentario
+  /// de ese bloque, bug real: origen y destino ya en la misma celda nunca comprobaba nada). Única
+  /// fuente de verdad de "qué hay en esta celda" — evita que los dos caminos diverjan con el tiempo.
+  async function detectarEncuentroEnCelda(
+    tx: Prisma.TransactionClient,
+    saveId: string,
+    worldId: string,
+    locationId: string,
+    celda: { col: number; row: number },
+    factionsStatus: Record<string, number>,
+    characterName: string,
+    fictionalMinutes: number,
+    timeLabel: string,
+  ): Promise<{
+    colision: { targetSlug: string; targetName: string; temperamento: string } | null;
+    aviso: { targetSlug: string; targetName: string } | null;
+    dynamicModeOffer: { tipo: 'FAUNA' | 'NPC'; targetSlug: string; targetName: string } | null;
+    logEntry: { id: string; text: string; timeLabel: string; createdAt: string } | null;
+  }> {
+    const puntos = await tx.zonePoint.findMany({ where: { locationId, tipo: { in: ['FAUNA', 'NPC'] }, activo: true } });
+    const npcs = puntos.length
+      ? await tx.npc.findMany({ where: { worldId, slug: { in: puntos.map((p) => p.targetSlug) } }, select: { slug: true, name: true, temperamento: true, faction: true } })
+      : [];
+    const npcBySlug = new Map(npcs.map((n) => [n.slug, n]));
+
+    // Doble umbral de colisión (diseño confirmado, 2026-09-08): MISMA celda = encuentro inevitable;
+    // celda ADYACENTE = solo aviso previo, con margen de reacción, nunca dispara Interactuar.
+    let colision: { targetSlug: string; targetName: string; temperamento: string } | null = null;
+    let aviso: { targetSlug: string; targetName: string } | null = null;
+    // `tipo` real de catálogo — 'FAUNA' | 'NPC' tal cual lo trae `ZonePoint.tipo`, NUNCA derivado
+    // de "¿tiene fila Npc?" (bug real detectado por los tests: un `Npc` con ficha propia puede
+    // seguir siendo FAUNA cazable, `kind: 'PLANTILLA'` — `npcBySlug.has(slug)` daba `true` para
+    // fauna real también, mandando siempre 'NPC').
+    let colisionTipo: 'FAUNA' | 'NPC' | null = null;
+    for (const punto of puntos) {
+      const celdaPunto = celdaDePixel({ x: punto.x, y: punto.y });
+      const npc = npcBySlug.get(punto.targetSlug);
+      const nombre = npc?.name ?? sourceDisplayNameFor(punto.targetSlug);
+      if (mismaCelda(celda, celdaPunto)) {
+        const temperamento = npc ? effectiveTemperamento(npc.temperamento, npc.faction, factionsStatus) : 'CAUTELOSO';
+        colision = { targetSlug: punto.targetSlug, targetName: nombre, temperamento };
+        colisionTipo = punto.tipo === 'NPC' ? 'NPC' : 'FAUNA';
+        break; // Solo el primer encuentro exacto — no acumula varios a la vez.
+      }
+      if (!aviso && celdaAdyacenteOMisma(celda, celdaPunto)) {
+        aviso = { targetSlug: punto.targetSlug, targetName: nombre };
+      }
+    }
+
+    // Conexión real con Interactuar (2026-09-08, hallazgo de Álvaro: "aunque me ponga encima de
+    // algo... no pasa nada") — un AGRESIVO en la MISMA celda ya fuerza combate por el camino
+    // existente (Franja 3, turno de texto libre normal, sin tocar aquí); CAUTELOSO/INOFENSIVO/
+    // AMIGABLE en la misma celda dispara `pendingDynamicModeOffer` real con el candidato EXACTO
+    // (nunca por sorteo — la posición real ya es la señal determinista). Solo la MISMA celda
+    // dispara esto (decisión confirmada con Álvaro) — el aviso a distancia se queda puramente
+    // informativo para cualquier temperamento. Ninguna oferta si ya hay una en curso/pendiente.
+    let dynamicModeOffer: { tipo: 'FAUNA' | 'NPC'; targetSlug: string; targetName: string } | null = null;
+    let logEntry: { id: string; text: string; timeLabel: string; createdAt: string } | null = null;
+    if (colision && colision.temperamento !== 'AGRESIVO') {
+      const freshSave = await tx.save.findUnique({ where: { id: saveId }, select: { pendingDynamicMode: true, pendingDynamicModeOffer: true } });
+      if (!freshSave?.pendingDynamicMode && !freshSave?.pendingDynamicModeOffer) {
+        dynamicModeOffer = { tipo: colisionTipo!, targetSlug: colision.targetSlug, targetName: colision.targetName };
+        // LogEntry real determinista (2026-09-09, hallazgo real jugando en vivo: la tarjeta de
+        // oferta SIEMPRE se renderiza colgada de una LogEntry concreta — LogPanel.tsx solo lee
+        // `entry.dynamicModeOffer`, nunca `Save.pendingDynamicModeOffer` directamente). El
+        // movimiento en Zona no narra nada por sí mismo (a diferencia de un turno normal, que sí
+        // deja su propia entrada) — sin esto, la oferta quedaba persistida en BD pero invisible en
+        // el log real: el mecanismo de reconstrucción tras F5 (GameView.tsx § syncFromSave) solo
+        // sabe colgarla de "la última entrada del log", que puede no tener ninguna relación con
+        // este encuentro (o ya estar ocupada por otra oferta, bloqueando el enganche del todo).
+        const text = colisionTipo === 'NPC' ? `${characterName} se topa con ${colision.targetName}.` : `${characterName} se topa con ${colision.targetName}, que le observa con cautela.`;
+        const created = await tx.logEntry.create({
+          data: { saveId, channel: 'CHARACTER', text, timeLabel, fictionalMinutes, isPlayerAction: false, isSystemMessage: true },
+        });
+        logEntry = { id: created.id, text, timeLabel, createdAt: created.createdAt.toISOString() };
+      }
+    }
+    return { colision, aviso, dynamicModeOffer, logEntry };
+  }
+
   /// Sistema de movimiento por cuadrícula (2026-09-08, "estilo Mount & Blade") — el jugador hace
   /// clic en el lienzo (`destino` en píxel), el motor calcula el camino real (`calcularCamino`,
   /// nunca coordenadas que el jugador teclee paso a paso) y avanza UN PASO por llamada — así el
@@ -296,7 +378,8 @@ export async function zonaRoutes(app: FastifyInstance) {
         zonaCaminoPendiente: true,
         currentLocationId: true,
         currentLocation: { select: { id: true } },
-        worldState: { select: { factionsStatus: true } },
+        worldState: { select: { factionsStatus: true, fictionalMinutes: true, fictionalDateLabel: true } },
+        characterName: true,
       },
     });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
@@ -318,8 +401,31 @@ export async function zonaRoutes(app: FastifyInstance) {
       caminoPendientePrevio && caminoPendientePrevio.length > 0 && mismaCelda(celdaDePixel(caminoPendientePrevio[caminoPendientePrevio.length - 1]), celdaDestino);
     const caminoCeldas = siguePreviamenteHaciaEsteDestino ? caminoPendientePrevio!.map((p) => celdaDePixel(p)) : calcularCamino(celdaActual, celdaDestino);
 
+    // Bug real (2026-09-08, reproducido jugando en vivo: "llego a la celda adyacente de Gistera,
+    // clico su misma celda de nuevo, y no pasa nada") — `calcularCamino` devuelve `[]` en cuanto
+    // origen y destino YA son la misma celda (su propio `while` nunca se ejecuta), y este bloque
+    // devolvía `colision: null` sin más, sin comprobar NADA — aunque el jugador ya estuviera
+    // parado justo encima de un NPC/fauna real. Corregido: un camino vacío también evalúa
+    // colisión/aviso contra la celda ACTUAL antes de devolver (nunca se movió, pero puede que YA
+    // esté colisionando o avisado, y el jugador necesita esa información para poder Interactuar).
     if (caminoCeldas.length === 0) {
-      return { jugador: posicionActual, caminoRestante: [], colision: null, aviso: null };
+      return prisma.$transaction(async (tx) => {
+        const { colision, aviso, dynamicModeOffer, logEntry } = await detectarEncuentroEnCelda(
+          tx,
+          save.id,
+          save.worldId,
+          save.currentLocationId!,
+          celdaActual,
+          factionsStatus,
+          save.characterName,
+          save.worldState?.fictionalMinutes ?? 480,
+          save.worldState?.fictionalDateLabel ?? 'Día 1, mañana',
+        );
+        if (dynamicModeOffer) {
+          await tx.save.update({ where: { id: save.id }, data: { pendingDynamicModeOffer: dynamicModeOffer as unknown as Prisma.InputJsonValue } });
+        }
+        return { jugador: posicionActual, caminoRestante: [], colision, aviso, dynamicModeOffer, logEntry };
+      });
     }
 
     const [siguienteCelda, ...restoCamino] = caminoCeldas;
@@ -331,45 +437,33 @@ export async function zonaRoutes(app: FastifyInstance) {
       // estado ya actualizado, no sobre la posición vieja de la fauna).
       await avanzarZonePointsUnPaso(tx, save.currentLocationId!, Math.random);
 
-      const puntos = await tx.zonePoint.findMany({
-        where: { locationId: save.currentLocationId!, tipo: { in: ['FAUNA', 'NPC'] }, activo: true },
-      });
-      const npcs = puntos.length
-        ? await tx.npc.findMany({ where: { worldId: save.worldId, slug: { in: puntos.map((p) => p.targetSlug) } }, select: { slug: true, name: true, temperamento: true, faction: true } })
-        : [];
-      const npcBySlug = new Map(npcs.map((n) => [n.slug, n]));
-
-      // Doble umbral de colisión (diseño confirmado, 2026-09-08): MISMA celda = encuentro
-      // inevitable; celda ADYACENTE = solo aviso previo de Interactuar, con margen de reacción.
-      let colision: { targetSlug: string; targetName: string; temperamento: string } | null = null;
-      let aviso: { targetSlug: string; targetName: string } | null = null;
-      for (const punto of puntos) {
-        const celdaPunto = celdaDePixel({ x: punto.x, y: punto.y });
-        const npc = npcBySlug.get(punto.targetSlug);
-        const nombre = npc?.name ?? sourceDisplayNameFor(punto.targetSlug);
-        if (mismaCelda(siguienteCelda, celdaPunto)) {
-          const temperamento = npc ? effectiveTemperamento(npc.temperamento, npc.faction, factionsStatus) : 'CAUTELOSO';
-          colision = { targetSlug: punto.targetSlug, targetName: nombre, temperamento };
-          break; // Solo el primer encuentro exacto detiene el movimiento — no acumula varios a la vez.
-        }
-        if (!aviso && celdaAdyacenteOMisma(siguienteCelda, celdaPunto)) {
-          aviso = { targetSlug: punto.targetSlug, targetName: nombre };
-        }
-      }
+      const { colision, aviso, dynamicModeOffer, logEntry } = await detectarEncuentroEnCelda(
+        tx,
+        save.id,
+        save.worldId,
+        save.currentLocationId!,
+        siguienteCelda,
+        factionsStatus,
+        save.characterName,
+        save.worldState?.fictionalMinutes ?? 480,
+        save.worldState?.fictionalDateLabel ?? 'Día 1, mañana',
+      );
 
       // Una colisión detiene el avance AQUÍ — el jugador no llega más allá del punto de encuentro,
       // y no queda camino pendiente (tiene que decidir qué hacer antes de seguir moviéndose).
       const caminoRestantePixel = colision ? [] : restoCamino.map((c) => pixelDeCelda(c));
+
       await tx.save.update({
         where: { id: save.id },
         data: {
           zonaPosX: nuevaPosicion.x,
           zonaPosY: nuevaPosicion.y,
           zonaCaminoPendiente: caminoRestantePixel.length > 0 ? (caminoRestantePixel as unknown as Prisma.InputJsonValue) : Prisma.JsonNull,
+          ...(dynamicModeOffer ? { pendingDynamicModeOffer: dynamicModeOffer as unknown as Prisma.InputJsonValue } : {}),
         },
       });
 
-      return { jugador: nuevaPosicion, caminoRestante: caminoRestantePixel, colision, aviso };
+      return { jugador: nuevaPosicion, caminoRestante: caminoRestantePixel, colision, aviso, dynamicModeOffer, logEntry };
     });
 
     return resultado;

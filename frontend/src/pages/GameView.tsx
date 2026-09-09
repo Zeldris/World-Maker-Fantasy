@@ -893,6 +893,19 @@ export function GameView() {
       const banner = enciclopediaIndex.bySlugKey.get(`${entityType}:${targetSlug}`)
       const imageUrl = resolveImageUrl(banner?.imageUrls?.banner ?? null)
       setActiveDynamicMode({ turno, busy: false, imageUrl })
+      // Bug real 2026-09-09 (Gistera Koh huérfana del motor determinista tras Interactuar) — misma
+      // tarjeta "MISIÓN PROPUESTA" que el turno normal, colgada de la última entrada del log (mismo
+      // patrón que la reconstrucción tras F5 más arriba). El modal de Interactuar sigue abierto en
+      // ese instante (`onCerrar` es manual, no automático al cerrar la conversación) — la tarjeta ya
+      // queda lista en el log de fondo, visible en cuanto el jugador pulsa "Continuar".
+      if (turno.cierra && turno.newQuestOfferInfo) {
+        const offer = turno.newQuestOfferInfo
+        setCharacterLog((prev) => {
+          const lastIdx = prev.length - 1
+          if (lastIdx < 0) return prev
+          return prev.map((e, i) => (i === lastIdx ? { ...e, questOffer: offer } : e))
+        })
+      }
     } catch {
       setCharacterLog((prev) =>
         prev.map((e) =>
@@ -984,6 +997,15 @@ export function GameView() {
       // `imageUrl` se conserva de la vuelta anterior — el retrato no cambia dentro de la misma
       // conversación, solo se resuelve una vez al abrir (handleInteractuarModoDinamico).
       setActiveDynamicMode((prev) => ({ turno, busy: false, imageUrl: prev?.imageUrl }))
+      // Mismo fix que handleInteractuarModoDinamico — ver su comentario completo.
+      if (turno.cierra && turno.newQuestOfferInfo) {
+        const offer = turno.newQuestOfferInfo
+        setCharacterLog((prev) => {
+          const lastIdx = prev.length - 1
+          if (lastIdx < 0) return prev
+          return prev.map((e, i) => (i === lastIdx ? { ...e, questOffer: offer } : e))
+        })
+      }
     } catch {
       setActiveDynamicMode((prev) => (prev ? { ...prev, busy: false, error: 'No se pudo continuar — inténtalo de nuevo.' } : prev))
     }
@@ -1181,6 +1203,11 @@ export function GameView() {
       setActivePanel(null)
       return
     }
+    // "Aprender oficio" retirada de startingAbilities.ts (2026-09-08, ver comentario ahí) — este
+    // bloque se queda como fallback para partidas YA existentes que sembraron la habilidad antes
+    // del cambio (SavedAction persiste por partida, no se retira retroactivamente). El camino real
+    // en partidas nuevas es Interactuar con el Maestro (ABRIR_APRENDER_OFICIO, ver
+    // handleChooseNpcInteraction más abajo), que abre el mismo modal.
     if (ability.name === 'Aprender oficio') {
       setAprenderOficioModalOpen(true)
       setActivePanel(null)
@@ -2364,6 +2391,7 @@ export function GameView() {
                 setSimpleModal('travel')
                 setActivePanel(null)
               }}
+              onEncuentroZona={(entry) => setCharacterLog((prev) => [...prev, entry])}
             />
           )}
           {activePanel === 'diario' && saveId && <DiarioPanel saveId={saveId} />}

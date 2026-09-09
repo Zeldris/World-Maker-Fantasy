@@ -555,6 +555,9 @@ export interface CompanionInfo {
   /// `null` para compañeros sin capa mecánica real (de quest/narración libre), mismo criterio que
   /// `comida`/`agua`.
   condicionFisica: CondicionFisica | null
+  /// Grupos de combate (2026-09-08) — 0 = Grupo 1 (el que entra a combate en directo, junto al
+  /// jugador). Gestión real (mover/renombrar/crear) vive en CombatGroupsModal.tsx.
+  combatGroupSlotIndex: number
 }
 
 export interface AlmacenItemInfo {

@@ -170,6 +170,33 @@ describe('GET /saves/:id', () => {
     expect(res.json().pendingDynamicModeOffer).toEqual(offer);
   });
 
+  // Regresión (2026-09-08, "MISIÓN PROPUESTA: UNDEFINED" al abrir la partida sin haber jugado
+  // ningún turno) — turnResolution.ts ya exige `title?.trim()` al ESCRIBIR pendingQuestOfferInfo
+  // (fix del 2026-09-07), pero una fila corrupta que se hubiera colado antes de ese fix (o por
+  // cualquier otro camino de escritura) seguía mostrando la tarjeta rota para siempre, en cada
+  // carga, porque la LECTURA nunca repetía la validación.
+  it('con pendingQuestOfferInfo real (title no vacío) se expone tal cual', async () => {
+    const offer = { title: 'Acabar con el Orco Enfurecido', description: 'x' };
+    findUniqueSave.mockResolvedValue(baseSave({ pendingQuestOfferInfo: offer }));
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/save1' });
+    expect(res.json().pendingQuestOfferInfo).toEqual(offer);
+  });
+
+  it('con pendingQuestOfferInfo corrupto (title vacío/ausente) se filtra a null, no llega "undefined" a la tarjeta', async () => {
+    findUniqueSave.mockResolvedValue(baseSave({ pendingQuestOfferInfo: { title: '', description: 'x' } }));
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/save1' });
+    expect(res.json().pendingQuestOfferInfo).toBeNull();
+  });
+
+  it('con pendingQuestOfferInfo sin campo title en absoluto se filtra a null', async () => {
+    findUniqueSave.mockResolvedValue(baseSave({ pendingQuestOfferInfo: { description: 'x' } }));
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/save1' });
+    expect(res.json().pendingQuestOfferInfo).toBeNull();
+  });
+
   it('B.14 (checklist frontend 2026-08-27) — condicionFisica de compañero con capa mecánica real (attributes no null) se expone; sin ella, null', async () => {
     findUniqueSave.mockResolvedValue(
       baseSave({

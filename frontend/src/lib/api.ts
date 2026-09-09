@@ -819,6 +819,55 @@ export async function setActiveSkillBar(id: string, skillBarId: string | null): 
   })
 }
 
+/// Grupos de combate (2026-09-08) — el Grupo 1 (slotIndex 0) siempre existe implícitamente con el
+/// PJ a la cabeza; los demás se crean/renombran/borran igual que las barras de habilidades.
+export interface CombatGroupInfo {
+  slotIndex: number
+  name: string
+  esBase: boolean
+  companions: { id: string; name: string; tipo: 'FAUNA' | 'NPC'; sourceSlug: string | null; condicionFisica: CondicionFisica | null; combatGroupSlotIndex: number }[]
+}
+
+export async function getCombatGroups(id: string): Promise<{ groups: CombatGroupInfo[] }> {
+  return fetchJson(`${API_URL}/saves/${id}/combat-groups`)
+}
+
+export async function createCombatGroup(id: string): Promise<{ slotIndex: number; name: string }> {
+  return fetchJson(`${API_URL}/saves/${id}/combat-groups`, { method: 'POST' })
+}
+
+export async function renameCombatGroup(id: string, slotIndex: number, name: string): Promise<{ slotIndex: number; name: string }> {
+  return fetchJson(`${API_URL}/saves/${id}/combat-groups/${slotIndex}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  })
+}
+
+export async function deleteCombatGroup(id: string, slotIndex: number): Promise<void> {
+  return fetchJson(`${API_URL}/saves/${id}/combat-groups/${slotIndex}`, { method: 'DELETE' })
+}
+
+export async function moveCompanionToCombatGroup(id: string, companionId: string, combatGroupSlotIndex: number): Promise<{ id: string; combatGroupSlotIndex: number }> {
+  return fetchJson(`${API_URL}/saves/${id}/companeros/${companionId}/grupo`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ combatGroupSlotIndex }),
+  })
+}
+
+/// "Descansar en campamento" (2026-09-08) — solo disponible con un Building propio ACTIVO en la
+/// Location actual (mismo criterio que fija el punto de guardado real). GET consulta visibilidad
+/// sin mutar nada; POST ejecuta el salto a las 08:00 del día siguiente, guarda partida y cura hasta
+/// HERIDO como techo.
+export async function getDescansarCampamentoDisponible(id: string): Promise<{ disponible: boolean }> {
+  return fetchJson(`${API_URL}/saves/${id}/descansar-campamento`)
+}
+
+export async function postDescansarCampamento(id: string): Promise<{ condicionFisica: CondicionFisica; timeLabel: string; logEntry: LogEntry }> {
+  return fetchJson(`${API_URL}/saves/${id}/descansar-campamento`, { method: 'POST' })
+}
+
 export async function setItemSlot(id: string, itemId: string, slot: EquipSlot | null): Promise<void> {
   return fetchJson(`${API_URL}/saves/${id}/inventario/${itemId}`, {
     method: 'PATCH',
@@ -1097,6 +1146,16 @@ export interface MoverZonaResultado {
   caminoRestante: { x: number; y: number }[]
   colision: { targetSlug: string; targetName: string; temperamento: string } | null
   aviso: { targetSlug: string; targetName: string } | null
+  /// Conexión real con Interactuar (2026-09-08) — colisión (nunca aviso) contra un NPC/fauna NO
+  /// agresivo dispara esta oferta real (`pendingDynamicModeOffer` en el backend); `null` en
+  /// cualquier otro caso (agresivo, sin colisión, o ya había otra oferta/conversación en curso).
+  dynamicModeOffer: { tipo: 'FAUNA' | 'NPC'; targetSlug: string; targetName: string } | null
+  /// LogEntry real determinista del encuentro (2026-09-09, hallazgo real jugando en vivo: la
+  /// tarjeta de oferta SIEMPRE se renderiza colgada de una LogEntry concreta — sin esto la oferta
+  /// quedaba persistida en BD pero invisible en el log). Presente solo junto a `dynamicModeOffer`,
+  /// `null` en cualquier otro caso. Shape mínimo (no el `LogEntry` completo del frontend, que
+  /// exige `channel` — el caller construye la entrada final combinando esto con `dynamicModeOffer`).
+  logEntry: { id: string; text: string; timeLabel: string; createdAt: string } | null
 }
 export async function moverEnZona(saveId: string, destino: { x: number; y: number }): Promise<MoverZonaResultado> {
   return fetchJson(`${API_URL}/saves/${saveId}/zona/mover`, {
@@ -1417,6 +1476,11 @@ export interface DynamicModeTurno {
   cierra: boolean
   vuelta: number
   timeLabel: string
+  /// Bug real 2026-09-09 ("Interactuar" con Gistera Koh la dejaba huérfana del motor determinista,
+  /// sin generar nunca su oferta de misión) — solo llega no-nulo cuando `cierra` es true y el NPC
+  /// tiene un gancho de misión propio (hoy solo Gistera Koh/"Acabar con el Orco Enfurecido"), mismo
+  /// shape que `TurnResult.newQuestOfferInfo`.
+  newQuestOfferInfo?: { title: string; description: string } | null
 }
 
 export async function interactuarModoDinamico(saveId: string, tipo: 'NPC' | 'FAUNA', targetSlug: string, targetName: string): Promise<DynamicModeTurno> {
@@ -1552,6 +1616,14 @@ export interface EnciclopediaSexoVariante {
 // Rediseño de la vista de combate (2026-07-28) — calculada en el backend (baseAttack.ts) a partir
 // del arma equipada/loadout (si la hay) o del `ataqueNatural` de la fauna; nunca recalculada en el
 // frontend, que no tiene acceso al loadout crudo de un NPC.
+/// Enciclopedia en 3 fases (2026-09-08, rediseño de Álvaro: "no descubierto, citado o avistado")
+/// — sustituye el binario `discovered` para NPC/fauna/item/historia (Location y el grafo del mapa
+/// siguen con su propio eje aparte, gateado por `LocationVisit`/posesión del mapa, sin tocar).
+/// 'NO_DESCUBIERTO': todo con interrogaciones. 'CITADO': mencionado en narración/lore, solo
+/// nombre+región visibles, sin imagen. 'DESCUBIERTO': ficha completa, visto en escena o
+/// desbloqueado por un objeto de lore específico.
+export type DiscoveryFase = 'NO_DESCUBIERTO' | 'CITADO' | 'DESCUBIERTO'
+
 export interface EnciclopediaAtaqueBase {
   icon: string
   name: string
@@ -1574,6 +1646,9 @@ export interface EnciclopediaNpcInfo {
   /// Enciclopedia progresiva (2026-07-23) — true si ya se mencionó en narración/new_facts de
   /// esta partida; siempre true cuando la consulta no lleva `saveId` (sin partida que gatear).
   discovered: boolean
+  /// 3 fases (2026-09-08) — ver DiscoveryFase. Coexiste con `discovered` (no lo sustituye, 6+
+  /// consumidores ya lo usan tal cual): `discovered` sigue siendo `fase !== 'NO_DESCUBIERTO'`.
+  fase: DiscoveryFase
   /// Rediseño de la vista de combate (2026-07-28) — bloque de atributos crudo (nivel/fuerza/
   /// destreza/etc, mostrado como cifras reales en la ficha de enemigo, petición explícita de la
   /// usuaria). `raza`/`clase` referencian los catálogos de habilidades ya existentes
@@ -1635,6 +1710,9 @@ export interface EnciclopediaItemInfo {
   imageUrls: EnciclopediaImageUrls
   /// Enciclopedia progresiva (2026-07-23) — mencionado en narración O visto ya en el inventario.
   discovered: boolean
+  /// 3 fases (2026-09-08) — ver DiscoveryFase. Poseerlo en inventario siempre da DESCUBIERTO;
+  /// solo mencionado sin poseerlo se queda en CITADO.
+  fase: DiscoveryFase
 }
 
 export interface EnciclopediaFaunaFloraInfo {
@@ -1661,6 +1739,11 @@ export interface EnciclopediaFaunaFloraInfo {
   /// Enciclopedia progresiva (2026-07-23) — true si ya se mencionó en narración/new_facts de
   /// esta partida.
   discovered: boolean
+  /// 3 fases (2026-09-08) — ver DiscoveryFase. Fauna realmente presente en escena este turno ->
+  /// DESCUBIERTO directo; flora nunca tiene fila de "presencia en escena" por este camino, se
+  /// queda en CITADO como mucho (pendiente el disparador de "interactuar en la misma casilla" del
+  /// rediseño de movimiento en Zona).
+  fase: DiscoveryFase
   /// Rediseño de la vista de combate (2026-07-28) — solo presentes si `cazable` (hay Npc real
   /// detrás): bloque de atributos, frase de ataque natural y hasta 6 habilidades raciales
   /// propias (categorizadas). Flora/mineral sin Npc propio no tiene ninguno de los cuatro.
@@ -1868,6 +1951,10 @@ export interface EnciclopediaFaccionInfo {
   raza: string
   description: string
   discovered: boolean
+  /// 3 fases (2026-09-08) — ver DiscoveryFase. Una facción nunca tiene "presencia en escena"
+  /// propia: siempre CITADO como mucho (nunca 'DESCUBIERTO' aquí hoy), expuesto solo por
+  /// coherencia de shape con el resto de secciones.
+  fase: DiscoveryFase
   imagePrompts: EnciclopediaImagePrompts
   imageUrls: EnciclopediaImageUrls
 }
@@ -1881,6 +1968,9 @@ export interface EnciclopediaHistoriaInfo {
   year: number | null
   requiresTranslation: boolean
   discovered: boolean
+  /// 3 fases (2026-09-08) — ver DiscoveryFase. Hereda la MISMA fase del objeto físico que la
+  /// desbloqueó (tenerlo en la mano da DESCUBIERTO directo, solo mención da CITADO).
+  fase: DiscoveryFase
   /// Computado en el backend: discovered && (!requiresTranslation || traductor descubierto).
   unlocked: boolean
   /// null si !unlocked — el backend nunca manda el texto real sin desbloquear (2026-08-06,

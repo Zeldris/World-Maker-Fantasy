@@ -14,7 +14,7 @@ import { formatMinutos } from '../../lib/gameViewHelpers'
 import { ESTACION_ICON, CLIMA_ICON } from '../../lib/entorno'
 import { ZonaPanel } from './ZonaPanel'
 import { InteractiveMap } from './InteractiveMap'
-import type { BuildingInfo, CurrentLocationInfo, DestinationInfo, EntornoTemporalInfo, InventoryItemInfo, QuestInfo } from '../../types'
+import type { BuildingInfo, CurrentLocationInfo, DestinationInfo, EntornoTemporalInfo, InventoryItemInfo, LogEntry, QuestInfo } from '../../types'
 import { PanelSection } from '../PanelSection'
 import { useEnciclopediaLink } from '../../context/useEnciclopediaLink'
 import { constructionToDetailTarget, locationToDetailTarget, personajeToDetailTarget } from '../../lib/enciclopediaTargets'
@@ -54,6 +54,10 @@ interface MapaPanelProps {
   /// existía, abierto solo desde la habilidad "Viajar" en el panel de Habilidades, sin ningún
   /// enlace desde el propio Mapa que muestra esos mismos destinos.
   onViajar: () => void
+  /// Conexión real con Interactuar (2026-09-09) — pasado tal cual a `<ZonaPanel>`, ver comentario
+  /// ahí. Opcional: sin él, ZonaPanel sigue funcionando, solo sin insertar la tarjeta de oferta al
+  /// colisionar con algo no agresivo.
+  onEncuentroZona?: (logEntry: LogEntry) => void
 }
 
 // Clave de efecto especial (petición explícita, 2026-07-23; migrado 2026-08-03 de comparar por
@@ -162,7 +166,7 @@ function useProtagonistaYConstrucciones(worldSlug: string | null) {
   return { protagonistaTarget: target, constructionsByKey }
 }
 
-export function MapaPanel({ worldSlug, saveId, currentLocation, destinations, inventory, quests, buildings, entorno, onViajar }: MapaPanelProps) {
+export function MapaPanel({ worldSlug, saveId, currentLocation, destinations, inventory, quests, buildings, entorno, onViajar, onEncuentroZona }: MapaPanelProps) {
   // Sub-tabs Zona/Mapa (2026-08-27, petición explícita: "en la misma sección de Mapa el botón, al
   // darle dentro directamente se vea la zona primero y que sean dos tabs" — Zona vuelve a ser una
   // vista de pleno derecho tras la auditoría de diseño/UX que la había quitado como pestaña de
@@ -261,7 +265,7 @@ export function MapaPanel({ worldSlug, saveId, currentLocation, destinations, in
         ))}
       </div>
 
-      {mapaTab === 'zona' && (saveId ? <ZonaPanel saveId={saveId} /> : <p className="text-sm italic text-wood-500">Sin partida activa.</p>)}
+      {mapaTab === 'zona' && (saveId ? <ZonaPanel saveId={saveId} onEncuentroZona={onEncuentroZona} /> : <p className="text-sm italic text-wood-500">Sin partida activa.</p>)}
 
       {mapaTab === 'mapa' && (
         <div className="flex flex-col gap-5">

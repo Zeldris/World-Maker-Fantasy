@@ -131,8 +131,30 @@ Narra en 1-2 frases cortas qué pasa en esta vuelta, ANCLADA en los datos reales
 
 /// Frase de color sin LLM (mismo criterio que `deterministicExchangeNarration`,
 /// combateMultipleNarracion.ts) — solo si las 2 llamadas reales fallan, nunca como primera opción.
+///
+/// Bug real jugando en vivo (2026-09-08, encuentro con Gistera Koh — ver memoria
+/// tarkor_hallazgo_dialogo_gistera_sin_persistir): este texto es FIJO, idéntico sin importar la
+/// vuelta — cuando Ollama fallaba 2 veces seguidas en una vuelta AVANZADA (p.ej. justo tras el
+/// jugador elegir "Aceptar la oferta"), el fallback devolvía el mismo "se acerca, con intención de
+/// hablar" que ya se había narrado en la vuelta 2, sin reconocer en absoluto que el jugador acababa
+/// de responder algo — parecía que el juego "olvidaba" la aceptación. Ahora el fallback SÍ
+/// distingue: sin respuesta previa (vuelta 1, la apertura de siempre) usa el texto genérico de
+/// apertura; con `respuestaJugador` ya presente, cierra la interacción reconociendo la elección en
+/// vez de repetir la apertura — evita el "estancamiento" visible y, al forzar `cierra: true`, deja
+/// que el turno normal retome la iniciativa en vez de arrastrar una conversación que Ollama no
+/// pudo narrar dos veces seguidas.
 export function deterministicDynamicModeTurno(input: DynamicModeTurnoInput): DynamicModeTurnoOutput {
   const quien = input.targetName;
+  if (input.respuestaJugador) {
+    return {
+      narration:
+        input.tipo === 'NPC'
+          ? `${quien} asiente ante la respuesta y la conversación llega a su fin por ahora.`
+          : `${quien} reacciona a la presencia y se aleja, dando por terminado el encuentro.`,
+      opciones: [],
+      cierra: true,
+    };
+  }
   return {
     // 3ª persona real (bug propio encontrado 2026-09-03 al escribir el test del guard nuevo de
     // persona gramatical): "hablar contigo"/"lo que hagas" son fugas a 2ª persona en el propio

@@ -489,6 +489,22 @@ export async function computeBuildBlockedReason(params: {
   excludeBuildingId?: string;
 }): Promise<string | null> {
   const { db, saveId, worldId, buildRecipe, activeRegion, currentLocationRecord, excludeBuildingId } = params;
+  // Hueco real confirmado jugando en vivo (2026-09-08): nada impedía construir un campamento
+  // personal DENTRO de la misma Location que ya tiene infraestructura de una facción NPC sembrada
+  // de catálogo (Karot Vekhad, Herrería, Curtiduría... del Clan Serhu) — el tope de `maxPerRegion`
+  // de arriba solo cuenta `Building` del propio jugador, nunca ve esos `ZonePoint` de catálogo (que
+  // no tienen `Building` real asociado en absoluto). `Location` no tiene ningún campo de facción
+  // propio (`factionSlug` de ZonePoint está sin rellenar en la práctica) — la señal real y ya
+  // presente en el catálogo es "esta Location ya tiene algún ZonePoint tipo EDIFICIO", que es
+  // justo cómo se representan hoy los asentamientos de facción (ver worldCatalog.ts). Bloquea
+  // cualquier receta, no solo Campamento — construir DENTRO del asentamiento de otra facción nunca
+  // tiene sentido, sea cual sea el edificio.
+  const zonePointsEdificioEnLocation = await db.zonePoint.count({
+    where: { locationId: currentLocationRecord.id, tipo: 'EDIFICIO' },
+  });
+  if (zonePointsEdificioEnLocation > 0) {
+    return 'este lugar ya tiene edificios de otra facción — construye en una zona libre';
+  }
   if (buildRecipe.maxPerRegion) {
     const sameRegionCount = await db.building.count({
       where: {

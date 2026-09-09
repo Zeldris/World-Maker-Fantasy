@@ -3677,9 +3677,17 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // shouldForceCombat/tabulatedTarget, sin tocarlos: se resuelve un turno antes, en el reveal).
   const attackWithoutIdentifiedTarget = npcsInScene.length === 0 && !enCombate && !lootMode && !harvestMatch && detectsAttackIntent(action);
   if (npcsInScene.length === 0 && !enCombate && !lootMode && !harvestMatch && activeRegion && (attackWithoutIdentifiedTarget || Math.random() < 0.25)) {
+    // `orderBy` explícito (bug de testabilidad real encontrado 2026-09-09): sin él, Postgres no
+    // garantiza ningún orden estable — `pickAmbientEncounterCandidate` con `random()` mockeado a un
+    // valor fijo (tests deterministas) depende del orden de esta lista para decidir el candidato, y
+    // ese orden podía cambiar sin ningún cambio de comportamiento real (p.ej. tras un
+    // upsert/reinserción del seed). El peso ponderado real (`WorldPopulation.poblacion`) sigue
+    // siendo lo único que importa en producción con `Math.random()` real — esto solo fija el orden
+    // de iteración para que sea reproducible en pruebas.
     const itinerantCandidates = await prisma.npc.findMany({
       where: { worldId, kind: 'PLANTILLA', homeLocationSlug: null },
       select: { slug: true, name: true, role: true, temperamento: true, faction: true },
+      orderBy: { slug: 'asc' },
     });
     if (itinerantCandidates.length > 0) {
       const populationRows = await prisma.worldPopulation.findMany({
@@ -6121,6 +6129,11 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
                 description: buildRecipe.description,
                 status: 'ACTIVO',
                 tier: buildRecipe.ayuntamientoNivel ?? undefined,
+                // Posición en el lienzo de Zona (2026-09-08, ver comentario de Building.x/y en
+                // schema.prisma) — mismo criterio que `earlyBuildingId` en turn.ts: posición de
+                // entrada, coherente con `volverAEntrada` justo arriba en este mismo bloque.
+                x: params.jugadorZonaPosEntradaX ?? undefined,
+                y: params.jugadorZonaPosEntradaY ?? undefined,
               },
             });
         // Fundación de reino (2026-08-04): solo al construir el Ayuntamiento tier 1 desde cero,
@@ -7114,13 +7127,19 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // el motor ya sabe con certeza contra quién se luchó este turno, pero antes el desbloqueo
   // dependía por completo de que el LLM mencionara el nombre por casualidad en su narración — un
   // ataque narrado de forma genérica ("la bestia esquiva y retrocede gruñendo") nunca desbloqueaba
-  // nada aunque el objetivo real fuera conocido. A propósito NO se añade toda `npcsInScene` (solo
-  // el objetivo confirmado de un ataque) — mantiene la filosofía original de "descubrimiento
-  // narrativo, no automático por presencia" (ver comentario de cabecera de `recordEntityDiscoveries`).
+  // nada aunque el objetivo real fuera conocido.
+  //
+  // 3 fases (2026-09-08, rediseño explícito de Álvaro) — CAMBIA la filosofía original de arriba:
+  // ahora sí se pasa `npcsInScene` completo como señal de presencia REAL (`npcSlugsInScene`), no
+  // solo el objetivo de ataque. Una mención textual (`mentionedText`) sigue siendo lo único que
+  // decide SI algo se descubre en absoluto (como mucho CITADO); estar de verdad en `npcsInScene`
+  // este turno es lo que decide si esa detección sube a DESCUBIERTO (ficha completa con imagen) en
+  // vez de quedarse en CITADO (nombre+región nada más) — ver `recordEntityDiscoveries`.
   await recordEntityDiscoveries({
     saveId,
     worldId,
     mentionedText: [narration.narration, ...narration.newFacts, ...newQuestObjetivos, npcAttackTarget?.name ?? ''].join('\n'),
+    npcSlugsInScene: npcsInScene.map((n) => n.slug),
   });
 
   // Ver comentario de `quests` en NarrateAndPersistResult — se consulta la lista completa ya

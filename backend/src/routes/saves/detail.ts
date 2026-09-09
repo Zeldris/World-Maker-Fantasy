@@ -385,6 +385,11 @@ export async function detailRoutes(app: FastifyInstance) {
         // mecánica (`attributes: null`, de quest/narración libre) — mismo criterio que
         // `comida`/`agua`, su `condicionFisica` de catálogo (ILESO por defecto) no significa nada.
         condicionFisica: c.attributes !== null ? c.condicionFisica : null,
+        // Grupos de combate (2026-09-08) — qué grupo entra a combate en directo (solo el 0,
+        // "Grupo 1", junto al jugador). El panel de Compañeros lo usa para mostrar en qué grupo
+        // está cada uno; la gestión real (mover/renombrar/crear grupos) vive en su propio endpoint
+        // (/saves/:id/combat-groups).
+        combatGroupSlotIndex: c.combatGroupSlotIndex,
       })),
       level: save.level,
       xp: save.xp,
@@ -583,7 +588,19 @@ export async function detailRoutes(app: FastifyInstance) {
       // apertura no sobrevive a un F5") — mismo criterio exacto que `pendingDynamicModeOffer` de
       // arriba: la tarjeta "MISIÓN PROPUESTA" (botones Aceptar/Cancelar) solo vivía en el
       // `characterLog` efímero de React.
-      pendingQuestOfferInfo: save.pendingQuestOfferInfo as { title: string; description: string } | null,
+      //
+      // Bug real jugando en vivo (2026-09-08, "MISIÓN PROPUESTA: UNDEFINED" al abrir la partida,
+      // sin haber jugado ningún turno): `turnResolution.ts` ya exige `title?.trim()` al ESCRIBIR
+      // este campo (fix del 2026-09-07), pero esta lectura confiaba ciegamente en lo persistido sin
+      // repetir la validación — cualquier fila con un `title` vacío/ausente que se hubiera colado
+      // antes de ese fix (o por cualquier otro camino de escritura que no pase por ese guard) sigue
+      // mostrando la tarjeta rota para siempre, en cada carga, sin que ningún turno nuevo la genere.
+      // Filtrada aquí también, en el punto de lectura — nunca confiar solo en la validación de
+      // escritura para un campo que persiste indefinidamente hasta que el jugador lo resuelve.
+      pendingQuestOfferInfo:
+        save.pendingQuestOfferInfo && (save.pendingQuestOfferInfo as { title?: string }).title?.trim()
+          ? (save.pendingQuestOfferInfo as { title: string; description: string })
+          : null,
       // Menú contextual de interacción con NPC SIN resolver todavía (2026-09-06) — mismo criterio
       // exacto que `pendingDynamicModeOffer`/`pendingQuestOfferInfo`: reconstruido tras recargar.
       pendingNpcInteractionOffer: save.pendingNpcInteractionOffer as { npcSlug: string; npcName: string; options: string[] } | null,

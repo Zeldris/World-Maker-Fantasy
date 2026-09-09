@@ -106,7 +106,11 @@ describe('POST /saves/:id/zona/mover', () => {
 
   afterEach(async () => {
     await prisma.zonePoint.deleteMany({ where: { locationId } });
-    await prisma.save.update({ where: { id: saveId }, data: { zonaPosX: 25, zonaPosY: 25, zonaCaminoPendiente: Prisma.JsonNull } });
+    await prisma.logEntry.deleteMany({ where: { saveId } });
+    await prisma.save.update({
+      where: { id: saveId },
+      data: { zonaPosX: 25, zonaPosY: 25, zonaCaminoPendiente: Prisma.JsonNull, pendingDynamicModeOffer: Prisma.JsonNull },
+    });
   });
 
   it('sin ningún ZonePoint en la Location, avanza un paso limpio hacia el destino, sin colisión ni aviso', async () => {
@@ -152,6 +156,72 @@ describe('POST /saves/:id/zona/mover', () => {
 
     const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(saveAfter.zonaCaminoPendiente).toBeNull();
+    // Regresión (2026-09-08, hallazgo de Álvaro: "aunque me ponga encima de algo... no pasa
+    // nada") — un AGRESIVO en la misma celda NUNCA dispara la tarjeta de Interactuar (ya fuerza
+    // combate real por el camino existente, Franja 3, turno de texto libre normal).
+    expect(body.dynamicModeOffer).toBeNull();
+    expect(saveAfter.pendingDynamicModeOffer).toBeNull();
+  });
+
+  // Regresión (2026-09-08, mismo hallazgo de arriba) — a diferencia del AGRESIVO, un CAUTELOSO/
+  // INOFENSIVO en la MISMA celda debe disparar una acción real: la tarjeta de Interactuar
+  // (`pendingDynamicModeOffer`), reutilizando el mismo flujo ya existente (OfferCard →
+  // DynamicModeModal) — antes solo dejaba un mensaje de texto plano sin ninguna consecuencia.
+  it('colisión con un ZonePoint PACÍFICO (misma celda): dispara pendingDynamicModeOffer real', async () => {
+    await prisma.zonePoint.create({
+      data: { locationId, x: 75, y: 25, tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] },
+    });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/zona/mover`,
+      payload: { destino: { x: 375, y: 25 } },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.colision).toMatchObject({ targetSlug: 'test-mover-pacifico', temperamento: 'CAUTELOSO' });
+    expect(body.dynamicModeOffer).toEqual({ tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', targetName: 'Fauna Pacífica de Prueba' });
+    // Regresión (2026-09-09, hallazgo real jugando en vivo: la oferta quedaba persistida en BD
+    // pero invisible en el log, porque LogPanel.tsx solo la pinta colgada de una LogEntry
+    // concreta) — el encuentro debe dejar su propio LogEntry real determinista, no solo la oferta.
+    expect(body.logEntry).toMatchObject({ text: expect.stringContaining('Fauna Pacífica de Prueba') });
+    const logRow = await prisma.logEntry.findUnique({ where: { id: body.logEntry.id } });
+    expect(logRow).not.toBeNull();
+    expect(logRow!.saveId).toBe(saveId);
+
+    const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveAfter.pendingDynamicModeOffer).toEqual({ tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', targetName: 'Fauna Pacífica de Prueba' });
+  });
+
+  // Regresión (2026-09-08, reproducido jugando en vivo: "llego a la celda adyacente de Gistera,
+  // clico su misma celda de nuevo, y no pasa nada") — `calcularCamino(origen, destino)` devuelve
+  // `[]` en cuanto origen y destino YA son la misma celda (su `while` nunca se ejecuta). El bloque
+  // de "camino vacío" devolvía `colision: null` sin comprobar nada — el jugador podía estar parado
+  // JUSTO ENCIMA de un NPC/fauna real (llegó ahí en un paso anterior) y un clic de más nunca se lo
+  // decía. Reproduce el escenario exacto: el destino clicado resuelve a la MISMA celda donde el
+  // jugador YA está, con un ZonePoint real en esa celda.
+  it('destino clicado ya coincide con la celda ACTUAL del jugador (camino vacío) — SÍ evalúa colisión/aviso, no los ignora', async () => {
+    // ZonePoint justo en la celda de origen del jugador (0,0) — antes de este fix, ni el guard de
+    // arriba (que solo compara contra `siguienteCelda`, nunca existe si el camino está vacío) ni
+    // este otro caso comprobaban nada.
+    await prisma.zonePoint.create({
+      data: { locationId, x: 25, y: 25, tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta: [{ x: 25, y: 25 }] },
+    });
+    const app = await buildApp();
+    // Destino = misma celda que la posición inicial del jugador (25,25) — calcularCamino da [].
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/zona/mover`,
+      payload: { destino: { x: 25, y: 25 } },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.caminoRestante).toEqual([]);
+    expect(body.colision).toMatchObject({ targetSlug: 'test-mover-pacifico', temperamento: 'CAUTELOSO' });
+    expect(body.dynamicModeOffer).toEqual({ tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', targetName: 'Fauna Pacífica de Prueba' });
+
+    const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveAfter.pendingDynamicModeOffer).toEqual({ tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', targetName: 'Fauna Pacífica de Prueba' });
   });
 
   it('celda ADYACENTE (no exacta) a un ZonePoint pacífico: solo aviso, el movimiento sigue su curso', async () => {
@@ -170,6 +240,10 @@ describe('POST /saves/:id/zona/mover', () => {
     const body = JSON.parse(res.body);
     expect(body.colision).toBeNull();
     expect(body.aviso).toMatchObject({ targetSlug: 'test-mover-pacifico', targetName: 'Fauna Pacífica de Prueba' });
+    // Decisión confirmada con Álvaro (2026-09-08): el aviso a distancia NUNCA dispara Interactuar,
+    // ni para agresivos ni para pacíficos — solo informa. Interactuar solo se abre en la MISMA
+    // celda (mismo criterio que ya regía el combate real de un agresivo).
+    expect(body.dynamicModeOffer).toBeNull();
     // Sin colisión, el movimiento SÍ avanza y deja camino pendiente.
     expect(body.jugador).toEqual({ x: 75, y: 25 });
     expect(body.caminoRestante.length).toBeGreaterThan(0);
