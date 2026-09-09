@@ -157,7 +157,13 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     expect(resultado?.combatExchangeDisplay?.atacanteEsJugador).toBe(true);
     expect(resultado?.combatExchangeDisplay?.atacante.roll).toBeGreaterThan(0);
     expect(resultado?.combatExchangeDisplay?.defensor.roll).toBeGreaterThan(0);
-    expect(['golpe_pleno', 'golpe_normal', 'ataque_falla', 'parada_en_seco', 'defensor_contragolpea']).toContain(
+    // 'independiente' incluido (bug de test descubierto 2026-09-09, no del motor): el NPC defensor
+    // puede elegir una habilidad de rol 'utilidad' no reactiva vía `chooseNpcAbility` (~70% de las
+    // veces que tiene alguna disponible, ver turnResolution.ts § esIndependiente), cayendo por
+    // `resolveIndependentExchange` en vez de la tabla cruzada de `resolveExchange` — resultado
+    // legítimo del motor (`combatExchange.ts § ExchangeOutcome`), la lista original solo cubría la
+    // tabla cruzada y nunca contempló este camino, pese a que el NPC de prueba puede tomarlo al azar.
+    expect(['golpe_pleno', 'golpe_normal', 'ataque_falla', 'parada_en_seco', 'defensor_contragolpea', 'independiente']).toContain(
       resultado?.combatExchangeDisplay?.resultado,
     );
 

@@ -903,6 +903,12 @@ export interface NpcReplyContext {
 /// el modelo narre la escena ni decida nada mecánico, solo que hable en personaje. El resultado se
 /// añade tal cual a la narración final en turnResolution.ts — a la llamada principal ya NO se le
 /// pide diálogo, para no arriesgar una segunda réplica por duplicado.
+const NPC_REPLY_FORMAT = {
+  type: 'object',
+  properties: { reply: { type: 'string' } },
+  required: ['reply'],
+} as const;
+
 export async function generateNpcReply(ctx: NpcReplyContext): Promise<string> {
   const system =
     'Interpretas a UN SOLO personaje dentro de una escena de rol de mesa. Tu única tarea es escribir su respuesta HABLADA, en primera persona, a lo que el jugador le acaba de decir o preguntar — nunca la narración de la escena, ni acotaciones de gesto, ni el nombre del personaje delante. Responde solo con su réplica entre comillas, 1-2 frases, nada más.';
@@ -916,12 +922,21 @@ ${factsBlock(ctx.sessionFacts)}
 
 ${ctx.characterName} te acaba de decir: "${ctx.action}"
 
-Escribe SOLO tu réplica hablada, en primera persona y entre comillas, coherente con tu personalidad y tu trasfondo.`;
+Escribe SOLO tu réplica hablada, en primera persona y entre comillas, coherente con tu personalidad y tu trasfondo. Una única réplica — nunca dos intentos ni dos turnos de diálogo seguidos.`;
 
+  // `format` estructurado (bug real jugando en vivo, 2026-09-03: Gistera Koh autocontradiciéndose
+  // dentro de la misma respuesta — ver hasDoubleReplyLeak) — antes esta llamada pedía texto libre
+  // sin ningún schema, y el modelo podía concatenar dos "intentos" de réplica en la misma salida
+  // (dos bloques de comillas independientes, cada uno sonando a una respuesta completa distinta).
+  // Un único campo `reply: string` (mismo patrón que `dynamicModeNarracion.ts` § NARRATION_FORMAT)
+  // no elimina el riesgo del todo (el modelo aún puede escribir dos frases dentro del mismo string),
+  // pero sí quita la ambigüedad estructural de "generar más de una respuesta suelta" — combinado con
+  // el guard de abajo, doble red de seguridad.
   const { text } = await ollamaGenerate({
     model: env.ollamaModelNarrador,
     system,
     prompt,
+    format: NPC_REPLY_FORMAT,
     // 120s (subido de 60s tras un fallo real en partida, 2026-07-23): probado en aislado, la
     // misma llamada tardó ~33s — pero en un turno real esta llamada se encola DETRÁS de la
     // narración principal (30-220s) en el mismo Ollama de concurrencia 1, y cambiar de `system`
@@ -931,11 +946,22 @@ Escribe SOLO tu réplica hablada, en primera persona y entre comillas, coherente
     keepAlive: '1h',
     temperature: 0.4,
   });
-  const reply = text.trim();
+  let reply: string;
+  try {
+    const parsed = JSON.parse(text) as { reply?: unknown };
+    reply = typeof parsed.reply === 'string' ? parsed.reply.trim() : '';
+  } catch {
+    // Fallback si el `format` JSON falla en sí (Ollama no lo respeta, o el propio motor de
+    // gramática entra en un caso raro) — mismo criterio de siempre: el texto crudo tal cual, en
+    // vez de perder la réplica entera por un problema de parseo ajeno al contenido.
+    reply = text.trim();
+  }
   // Sin cascada de reintento en esta llamada (a diferencia de `narrateAction`) — si la réplica
-  // se cuela en registro de asistente, se descarta sin más (mismo criterio que el `catch` de
-  // `turnResolution.ts` al llamar a esta función: perder la réplica es preferible a mostrarla).
+  // se cuela en registro de asistente o se autocontradice, se descarta sin más (mismo criterio
+  // que el `catch` de `turnResolution.ts` al llamar a esta función: perder la réplica es
+  // preferible a mostrarla mal).
   if (hasMetaInstructionLeak(reply)) return '';
+  if (hasDoubleReplyLeak(reply)) return '';
   return reply;
 }
 
@@ -1786,6 +1812,25 @@ export function hasMetaInstructionLeak(reply: string): boolean {
   return META_INSTRUCTION_LEAK_REGEX.test(reply);
 }
 
+/// Segunda red de seguridad para `generateNpcReply` (bug real jugando en vivo, 2026-09-03: Gistera
+/// Koh, tras dar una pista real sobre el Clan Serhu con naturalidad en la misma réplica, terminaba
+/// negando conocerlo — "'...sabes dónde están escondidos los restos de Maktor.' '¿Clan Serhu? No lo
+/// sé, no he oído hablar de ellos.'" — autocontradicción dentro de la misma respuesta). Distinto de
+/// `hasMetaInstructionLeak` (patrón de contenido concreto): aquí el problema es de FORMA — el
+/// prompt pide UNA réplica de 1-2 frases entre comillas, y el modelo a veces concatena dos
+/// "intentos" de respuesta como si fueran turnos de diálogo separados, cada uno en su propio bloque
+/// de comillas. 2+ bloques de comillas (simples O dobles, el modelo no es consistente en cuál usa)
+/// que arrancan con mayúscula cada uno es la señal — una réplica real de 1-2 frases nunca necesita
+/// abrir y cerrar comillas más de una vez seguida (una cita DENTRO de la réplica sería un caso
+/// legítimo, pero no se ha visto ninguno real hasta ahora — más seguro descartar de más que dejar
+/// pasar la autocontradicción).
+const DOUBLE_QUOTE_BLOCK_REGEX = /['"“][A-ZÁÉÍÓÚÑ][^'"”]*['"”]/g;
+
+export function hasDoubleReplyLeak(reply: string): boolean {
+  const blocks = reply.match(DOUBLE_QUOTE_BLOCK_REGEX);
+  return !!blocks && blocks.length >= 2;
+}
+
 /// Anti-repetición, red de seguridad determinista (2026-07-31, bug real probando en vivo: dos
 /// turnos de combate seguidos narraron "Gorhorn descarga una poderosa hachata hacia atrás contra
 /// el orco" casi palabra por palabra, pese a que `worldFacts` ya lleva la instrucción explícita de
@@ -2203,20 +2248,42 @@ export function hasFalsePassiveHarvestClaim(narration: string, newItemName: stri
   return ITEM_OBTAINED_CLAIM_REGEX.test(narration);
 }
 
+/// Ámbito por FRASE, no por texto completo (fix 2026-09-08, ver comentario de `hasFalseCombatTargetName`
+/// y `hasWrongNpcName` más abajo) — bug real reconfirmado jugando en vivo: el criterio original
+/// ("el guard no dispara si el nombre real aparece EN ALGUNA PARTE del texto") cortocircuitaba a
+/// `false` incluso cuando la MISMA frase le daba protagonismo de combate a un NPC incorrecto, con
+/// tal de que el nombre real apareciera en OTRA frase de la misma narración. Ejemplo real: "El
+/// Kirelon Arenoso aparece ante la punta de las patas del Orco Enfurecido... el depredador nocturno
+/// se prepara para atacar al nuevo enemigo" — "Kirelon Arenoso" (nombre real) sí aparecía en el
+/// texto, así que el guard nunca llegaba a notar que "Orco Enfurecido" (NPC MUERTO de un combate
+/// anterior) estaba recibiendo un rol de combatiente activo en esa misma frase. Reutiliza el mismo
+/// splitter que `sentenceMatchesRegexAndName` (frases separadas por punto/exclamación/interrogación).
+/// Sigue siendo conservador: una frase que mencione AMBOS nombres a la vez ("X se acerca junto a Y")
+/// no dispara — solo una frase que mencione al NPC incorrecto SIN el real junto a él.
+function sentenceHasWrongNameWithoutRealName(narration: string, realName: string, wrongNames: string[]): boolean {
+  const normalizedReal = normalizeText(realName);
+  const normalizedWrong = wrongNames.map(normalizeText);
+  return narration
+    .split(SENTENCE_SPLIT_REGEX)
+    .some((sentence) => {
+      const normalizedSentence = normalizeText(sentence);
+      if (normalizedSentence.includes(normalizedReal)) return false;
+      return normalizedWrong.some((name) => normalizedSentence.includes(name));
+    });
+}
+
 /// Narración-vs-mecánica (revisión de partida real, 2026-08-14, "ataque a Múrgol narrado como si
 /// fuera contra Cruzavientos"): un intercambio de combate resuelto contra un objetivo concreto
 /// (`npcAttackTarget`) puede narrarse sin nombrarlo en absoluto, mencionando en su lugar a OTRO
 /// NPC/fauna real presente en la misma escena — el modelo "se distrae" con el elemento mencionado
 /// más recientemente en vez del objetivo real de la acción de este turno; la capa determinista
-/// (XP, `NpcState`) resuelve bien, solo la prosa nombra mal a quién. Dispara solo cuando el nombre
-/// real NO aparece en ningún sitio del texto (mencionar a otro NPC de pasada junto al real es
-/// ambientación inocua, no un error) y sí aparece el de otro NPC presente — mismo criterio
-/// conservador que el resto de esta familia, para no disparar por ambientación legítima.
+/// (XP, `NpcState`) resuelve bien, solo la prosa nombra mal a quién. Dispara por FRASE (ver
+/// `sentenceHasWrongNameWithoutRealName`): una frase que menciona a otro NPC presente SIN el nombre
+/// real junto a él es la alucinación real; una frase que menciona a ambos a la vez sigue siendo
+/// ambientación inocua.
 export function hasFalseCombatTargetName(narration: string, realTargetName?: string, otherNpcNamesInScene?: string[]): boolean {
   if (!realTargetName || !otherNpcNamesInScene || otherNpcNamesInScene.length === 0) return false;
-  const normalized = normalizeText(narration);
-  if (normalized.includes(normalizeText(realTargetName))) return false;
-  return otherNpcNamesInScene.some((name) => normalized.includes(normalizeText(name)));
+  return sentenceHasWrongNameWithoutRealName(narration, realTargetName, otherNpcNamesInScene);
 }
 
 /// Narración-vs-mecánica, categoría de vocabulario ilegítimo (bug real jugando en vivo, 2026-09-01):
@@ -2249,13 +2316,14 @@ export function hasIllegitimateMagicVocabulary(narration: string, characterClase
 /// era el rival de un combate ANTERIOR de la misma sesión, ya AUSENTE de la escena actual, así que
 /// `otherNpcNamesInScene` — que solo cubre confusión entre NPCs presentes a la vez — no lo cazaba).
 /// El modelo "arrastra" un nombre que sigue apareciendo en `sessionFacts` (contexto reciente ya
-/// mandado al prompt) en vez del rival real de este intercambio. Mismo criterio conservador: solo
-/// dispara si el nombre real NO aparece en ningún sitio del texto.
+/// mandado al prompt) en vez del rival real de este intercambio. Dispara por FRASE (fix 2026-09-08,
+/// reconfirmado jugando en vivo con "Orco Enfurecido" MUERTO recibiendo rol de combatiente activo
+/// mezclado en la misma narración que sí nombraba al rival real — ver comentario de
+/// `sentenceHasWrongNameWithoutRealName`): una frase que menciona al NPC obsoleto SIN el real junto
+/// a él es la alucinación; una frase que menciona a ambos sigue siendo ambientación inocua.
 export function hasWrongNpcName(narration: string, realTargetName?: string, possiblyStaleNpcNames?: string[]): boolean {
   if (!realTargetName || !possiblyStaleNpcNames || possiblyStaleNpcNames.length === 0) return false;
-  const normalized = normalizeText(narration);
-  if (normalized.includes(normalizeText(realTargetName))) return false;
-  return possiblyStaleNpcNames.some((name) => normalized.includes(normalizeText(name)));
+  return sentenceHasWrongNameWithoutRealName(narration, realTargetName, possiblyStaleNpcNames);
 }
 
 /// Auditoría "narrador vs. motor determinista" (2026-08-30, bug real jugando: "Exploro la zona"

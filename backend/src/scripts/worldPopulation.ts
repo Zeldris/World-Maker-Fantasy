@@ -193,8 +193,17 @@ export const worldPopulations: WorldPopulationInput[] = [
   // — más raro que la fauna común, pero no tan excepcional como la Gargantúa de Ceniza.
   {
     targetType: 'FAUNA',
-    targetSlug: 'orco-rezagado',
-    label: 'Orco rezagado',
+    // Slug corregido (2026-09-09, bug real encontrado investigando un flake de test): el `Npc` de
+    // catálogo se renombró de `orco-rezagado` a `orco-expulsado` (worldCatalog.ts, commit `145252a`,
+    // 2026-08-18) pero esta fila nunca se actualizó — `seed-catalog.ts` usa `upsert` por slug, nunca
+    // borra filas obsoletas, así que la fila VIEJA (`orco-rezagado`) seguía viva en Postgres sin
+    // ningún `Npc` real detrás, y una fila NUEVA huérfana (`Npc.slug: 'orco-expulsado'` sin
+    // `WorldPopulation`) quedaba excluida del pool ponderado de aparición ambiental — el candidato
+    // real nunca podía aparecer sin que el jugador lo nombrara antes. Fila `orco-rezagado` ya
+    // borrada a mano en Postgres (Npc + WorldPopulation, sin ninguna referencia real: 0 NpcState/
+    // Quest/Companion/ZonePoint/DiscoveredEntity apuntándola).
+    targetSlug: 'orco-expulsado',
+    label: 'Orco expulsado',
     poblacion: 10,
     poblacionMax: 50,
     distribucion: { 'Llanuras del Viento Rojo': 1 },

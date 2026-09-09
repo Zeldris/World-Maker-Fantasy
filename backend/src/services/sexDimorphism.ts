@@ -695,7 +695,7 @@ export const RAZA_VARIANTE_SEXO_VARIANTES: Record<string, SexoVariantesEntry> = 
   },
 };
 
-// Defining attribute por NPC PLANTILLA (de worldCatalog.ts): orco-rezagado → fuerza, cazador-serhu
+// Defining attribute por NPC PLANTILLA (de worldCatalog.ts): orco-expulsado → fuerza, cazador-serhu
 // → destreza, soldado/oficial-concordia → voluntad (disciplina), peregrino-de-los-tumulos →
 // voluntad (aguante del duelo), mercader-de-paso → carisma. Todos son Orcos salvo soldado/oficial
 // de la Concordia, que son Goirntes de la Meseta del Orden (ver bio en worldCatalog.ts).
@@ -730,7 +730,10 @@ export const NPC_SEXO_VARIANTES: Record<string, SexoVariantesEntry> = {
       edadMaxima: 132,
     },
   },
-  'orco-rezagado': {
+  // Clave corregida (2026-09-09, mismo bug de rename huérfano ya arreglado en worldPopulation.ts/
+  // worldCatalog.ts § harvestSourceAliases): el Npc se renombró a `orco-expulsado`, esta entrada
+  // seguía apuntando al slug viejo y nunca se aplicaba al NPC real.
+  'orco-expulsado': {
     macho: {
       rasgoFisico: 'Complexión corpulenta, colmillos algo más largos y marcados por la mala vida.',
       description: 'Sin clan y a la defensiva — la desgracia no distingue, pero es más fácil que ceda ante un farol que ante ella.',

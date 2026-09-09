@@ -11,6 +11,10 @@ const findManyItemCatalog = vi.fn();
 const findManyLocation = vi.fn();
 const findFirstBuilding = vi.fn();
 const countBuilding = vi.fn();
+// Guard nuevo de territorio ajeno (2026-09-08, ver computeBuildBlockedReason/construction.ts) —
+// count() de ZonePoint tipo EDIFICIO en la Location actual. 0 por defecto (ningún test de este
+// archivo ejercita una Location con infraestructura de otra facción sembrada).
+const countZonePoint = vi.fn();
 
 vi.mock('../../lib/prisma.js', () => ({
   prisma: {
@@ -21,6 +25,7 @@ vi.mock('../../lib/prisma.js', () => ({
       findFirst: (...args: unknown[]) => findFirstBuilding(...args),
       count: (...args: unknown[]) => countBuilding(...args),
     },
+    zonePoint: { count: (...args: unknown[]) => countZonePoint(...args) },
   },
 }));
 
@@ -42,8 +47,10 @@ describe('GET /saves/:id/recipes-status', () => {
     findManyLocation.mockReset();
     findFirstBuilding.mockReset();
     countBuilding.mockReset();
+    countZonePoint.mockReset();
     findManyItemCatalog.mockResolvedValue([{ slug: 'roca-pilares-rotos', tipo: 'RECURSO', category: 'piedra' }]);
     findManyLocation.mockResolvedValue([]);
+    countZonePoint.mockResolvedValue(0);
   });
 
   it('404 si la partida no existe', async () => {

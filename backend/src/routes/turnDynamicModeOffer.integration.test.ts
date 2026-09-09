@@ -91,6 +91,15 @@ describe('dynamicModeOffer en /turn/narrate', () => {
   });
 
   it('sin ningún ZonePoint NPC/FAUNA activo en la Location, nunca ofrece modo dinámico', async () => {
+    // Flake real encontrado 2026-09-09 (suite completa en paralelo, 1/2378): `campamento-serhu`
+    // (la Location de este describe) SÍ tiene un candidato RECURSO real de catálogo
+    // (`murgoles-domados-campamento`) — el nombre del test se refiere a la ausencia del ZonePoint
+    // FAUNA sintético que crean los tests siguientes, no a la ausencia de TODO candidato real.
+    // `PROBABILIDAD_OFERTA = 0.2` (dynamicMode.ts) hacía que este turno único, sin mockear
+    // `Math.random`, tuviera un 20% real de disparar la oferta — mock a 1 (nunca por debajo del
+    // umbral) para que este test concreto sea determinista, sin afectar a los siguientes tests del
+    // mismo describe (cada uno gestiona su propio mock/probabilidad real donde corresponde).
+    vi.spyOn(Math, 'random').mockReturnValue(1);
     const app = await buildApp();
     const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: 'Miro alrededor.', enCombate: false } });
     const { classification, roll } = classifyRes.json();
@@ -99,6 +108,7 @@ describe('dynamicModeOffer en /turn/narrate', () => {
       url: '/turn/narrate',
       payload: { saveId, action: 'Miro alrededor.', classification, roll, enCombate: false },
     });
+    vi.restoreAllMocks();
     expect(narrateRes.statusCode).toBe(200);
     const done = JSON.parse(narrateRes.body.trim().split('\n').pop()!);
     expect(done.dynamicModeOffer).toBeNull();
@@ -110,6 +120,20 @@ describe('dynamicModeOffer en /turn/narrate', () => {
     });
     try {
       const app = await buildApp();
+
+      // Causa raíz real de este flake (encontrada y confirmada 2026-09-09, ver memoria
+      // tarkor_flake_turndynamicmodeoffer_causa_real_franja3): tras aceptar la misión de Gistera, el
+      // Orco Enfurecido (PRINCIPAL, AGRESIVO, candidato en cualquier ubicación sin restricción de
+      // homeLocationSlug — mismo criterio que Gistera) entra en `npcsInScene` de este mismo
+      // `campamento-serhu` en las vueltas del bucle de abajo. Con Franja 3 (gate de colisión de
+      // celda, `turnResolution.ts` ~6956) ya cerrada, el fallback de "sin posición de zona conocida"
+      // es forzar combate directo SIEMPRE — así que sin fijar `zonaPosX/Y`, el Orco bloqueaba el
+      // bucle entero desde la segunda iteración (100% reproducible, no era un flake probabilístico).
+      // Su `ZonePoint` real de catálogo vive en `hondonada-del-eco` (worldCatalog.ts, x:400/y:130),
+      // no en esta Location — cualquier posición de zona real en `campamento-serhu` ya satisface
+      // "sin ZonePoint real EN ESTA LOCATION" (la otra excepción documentada de Franja 3), así que
+      // el Orco deja de forzar combate sin tener que simular una posición lejana artificial.
+      await prisma.save.update({ where: { id: saveId }, data: { zonaPosX: 400, zonaPosY: 300 } });
 
       // Colisión de fixtures descubierta jugando en vivo (2026-09-01): `campamento-serhu` (la
       // Location de este describe, compartida por todos sus tests) dispara el encuentro guionizado

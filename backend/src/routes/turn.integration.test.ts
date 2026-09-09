@@ -1986,6 +1986,11 @@ describe('Construcción determinista: campamento', () => {
         attributes: ATTRS,
         portraitInitial: 'G',
         currentLocationId: location.id,
+        // Posición de entrada de Zona ya conocida (2026-09-08, ver test de Building.x/y más abajo)
+        // — sin esto el Building creado quedaría con x/y null, comportamiento válido para una
+        // partida que nunca "entró" a la Zona, pero no lo que este fixture quiere ejercitar.
+        zonaPosEntradaX: 400,
+        zonaPosEntradaY: 300,
       },
     });
     saveId = save.id;
@@ -2043,6 +2048,10 @@ describe('Construcción determinista: campamento', () => {
     expect(building.locationId).toBe(locationId);
     expect(building.status).toBe('ACTIVO');
     expect(building.name).toBe('Campamento Base Orco de las Llanuras');
+    // Posición en el lienzo de Zona (2026-09-08, ver comentario de Building.x/y en schema.prisma —
+    // hallazgo real: el campamento nunca aparecía en el mapa de Zona, solo en el panel de Reino).
+    expect(building.x).not.toBeNull();
+    expect(building.y).not.toBeNull();
 
     // Los 3 materiales se consumieron EXACTOS (6/8/2, sin remanente) — no debe quedar nada.
     const inventoryAfter = await prisma.inventoryItem.findMany({ where: { saveId } });
@@ -2094,6 +2103,73 @@ describe('Construcción determinista: campamento', () => {
     const buildings = await prisma.building.findMany({ where: { saveId } });
     expect(buildings).toHaveLength(1);
     expect(buildings[0].recipeKey).toBe('campamento');
+  }, 15_000);
+});
+
+// Cobertura nueva (hallazgo real jugando en vivo, 2026-09-08): nada impedía construir un
+// campamento personal DENTRO de una Location que ya tiene infraestructura de una facción NPC
+// sembrada de catálogo (Karot Vekhad, Herrería... del Clan Serhu, todas `ZonePoint tipo: EDIFICIO`
+// sin `Building` real asociado — el viejo tope de `maxPerRegion` solo contaba `Building` del
+// propio jugador, nunca veía esos `ZonePoint`). Fix en `computeBuildBlockedReason`
+// (construction.ts): bloquea cualquier receta si la Location actual ya tiene algún `ZonePoint
+// tipo: EDIFICIO`.
+describe('Construcción rechazada: territorio ya ocupado por otra facción (hallazgo real 2026-09-08)', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    // 'campamento-serhu-interior' (Karot Vekhad) — mismo sitio real donde se reprodujo el hallazgo,
+    // ya sembrado con varios ZonePoint tipo EDIFICIO (Karot Vekhad/Herrería/Curtiduría/Cocina).
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'campamento-serhu-interior' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (territorio ajeno)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    await prisma.inventoryItem.createMany({
+      data: [
+        { saveId, name: 'Leña de matorral de cuerno (6)', description: 'x', catalogSlug: 'lena-matorral-cuerno', origin: 'partida' },
+        { saveId, name: 'Piedra (8)', description: 'x', catalogSlug: 'piedra', origin: 'partida' },
+        { saveId, name: 'Lana de múrgol (2)', description: 'x', catalogSlug: 'lana-murgol', origin: 'partida' },
+      ],
+    });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('con materiales de sobra: NO crea ningún Building dentro del asentamiento de otra facción', async () => {
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'larga', duracionEstimadaMinutos: 4320,
+    });
+    narrateAction.mockClear();
+    const app = await buildApp();
+    const action = 'Construyo un campamento base en este lugar.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } });
+    const { classification, roll } = classifyRes.json();
+    await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, enCombate: true },
+    });
+
+    // El LLM narra el intento (mismo camino que "sin materiales suficientes") — ningún Building
+    // real se crea, pese a tener todos los materiales de sobra.
+    expect(narrateAction).toHaveBeenCalledTimes(1);
+    const buildings = await prisma.building.findMany({ where: { saveId } });
+    expect(buildings).toHaveLength(0);
   }, 15_000);
 });
 
@@ -3553,6 +3629,15 @@ describe('Entregar objeto a NPC → matarlo → el objeto entregado sale en el s
     // ver entrega.ts). Se deja CONVALECIENTE justo antes de rematar (dentro del propio test), para
     // que el golpe final con tirada perfecta baste (`oneStepWorseThan` solo empeora un escalón).
     await prisma.npcState.create({ data: { saveId, npcId, scope: '', condicionFisica: 'ILESO' } });
+    // Companion real (2026-09-09, fixture desactualizado — bug de LÍNEA BASE ya documentado en
+    // memoria tarkor_flake_entrega_derrotado_saqueado_linea_base): `entrega.ts` restringe "Entregar"
+    // a solo compañeros de equipo desde 2026-09-06 (petición explícita: "sirve para entregar cosas a
+    // los inventarios de los compañeros, no a cualquiera que pase"), pero este fixture solo creaba
+    // el `NpcState` directo, sin ningún `Companion.sourceSlug` que lo materializara como compañero
+    // real — el guard `isCompanion` (entrega.ts) rechazaba la entrega con 400 desde entonces. Este
+    // Companion es puramente el candidato de la entrega; el combate/saqueo posteriores del test
+    // siguen operando sobre el `NpcState` real del Orco, sin relación mecánica con este registro.
+    await prisma.companion.create({ data: { saveId, name: 'Orco enfurecido', role: 'x', notes: '', tipo: 'NPC', sourceSlug: npcSlug } });
     await prisma.inventoryItem.create({
       data: { saveId, name: 'Amuleto de la suerte', description: 'x', origin: 'inicial' },
     });
@@ -7452,9 +7537,18 @@ describe('Ataque explícito sin objetivo identificado fuerza el reveal narrativo
     const hint = narrateCallArgs.worldFacts?.find((f) => f.includes('ACABA DE ATACAR ALGO QUE TODAVÍA NO TIENE NOMBRE'));
     expect(hint).toBeDefined();
     expect(hint).toContain('REVELACIÓN');
-    // Múrgol: itinerante real con WorldPopulation > 0 y peso en Las Llanuras del Viento Rojo
-    // (misma región de La Hondonada del Eco) — con Math.random mockeado a 0, candidato determinista.
-    expect(hint).toContain('Múrgol');
+    // Aullador Rojo: candidato determinista real con `orderBy: { slug: 'asc' }` (fix 2026-09-09,
+    // ver turnResolution.ts) + `Math.random` mockeado a 0 — `pickAmbientEncounterCandidate` con
+    // roll=0 devuelve siempre el PRIMER candidato con weight>0 de la lista, sin importar su peso
+    // real (solo importa el peso con Math.random() real de producción). Entre los itinerantes reales
+    // con WorldPopulation > 0 en Las Llanuras del Viento Rojo, "aullador-rojo" es el primero en
+    // orden alfabético de slug, sin restricción de faunaMomentoDelDia.
+    //
+    // Antes se esperaba "Múrgol" (bug de test real, corregido esta misma sesión): la query no tenía
+    // `orderBy`, así que dependía de un orden implícito de Postgres nunca garantizado — funcionó
+    // "por casualidad" hasta que una fila `Npc` huérfana (`orco-rezagado`, residuo de un rename de
+    // catálogo nunca limpiado en Postgres) alteró el orden real de la tabla y rompió la expectativa.
+    expect(hint).toContain('Aullador Rojo');
   }, 15_000);
 });
 

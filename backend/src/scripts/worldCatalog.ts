@@ -1587,6 +1587,11 @@ export const fauna: NpcInput[] = [
     loadout: [],
     ataqueNatural: 'Muerde con mandíbulas pequeñas pero constantes, buscando puntos ya heridos.',
     temperamento: 'CAUTELOSO',
+    // Hueco de datos real encontrado jugando en vivo (2026-09-08): sin `atributoResistencia`
+    // (default null), `POST /saves/:id/capturar/:npcSlug` (companeros.ts, "Objetivo no capturable")
+    // rechazaba SIEMPRE la captura pese a `capturablePct: 30` ya poblado — constitucion, mismo
+    // criterio que el resto de fauna QUITINOS/acorazada del catálogo ("caparazón resiste golpes").
+    atributoResistencia: 'constitucion',
     // Hueco de datos real encontrado jugando en vivo (2026-08-29): sin `capturablePct` (default 0
     // en el schema), `avistadosFor` (cazar.ts) siempre da 1 avistado sin importar la población real
     // — el combate múltiple (Grupo 3 § Mundo determinista, Capa 4) era matemáticamente inalcanzable
@@ -2889,7 +2894,7 @@ export const npcs: NpcInput[] = [
 
   // Misión inicial de combate — PRINCIPAL, no PLANTILLA, porque es un encuentro único ligado a
   // esta misión (una sola fila de NpcState por partida), no un arquetipo repetible como
-  // orco-rezagado. Vive en la propia Hondonada del Eco: su descripción ya avisa de que, al estar
+  // orco-expulsado. Vive en la propia Hondonada del Eco: su descripción ya avisa de que, al estar
   // hundida, "no se ve quién se acerca por arriba hasta que es tarde" — la emboscada encaja sin
   // inventar una ubicación nueva. Su loadout incluye el "Mapa de las Llanuras" que la misión da
   // como recompensa.
@@ -5047,16 +5052,33 @@ export const items: ItemCatalogInput[] = [
 
   // --- piedra ---
 
-  { 
-    slug: 'cuna-hielo-silice-sin-tallar', 
-    name: 'Cuña de hielo sílice sin tallar', 
-    aliases: ['cuña sin tallar'], 
+  {
+    slug: 'cuna-hielo-silice-sin-tallar',
+    name: 'Cuña de hielo sílice sin tallar',
+    aliases: ['cuña sin tallar'],
     category: 'piedra',
-    tipo: 'RECURSO', 
+    tipo: 'RECURSO',
     valorGoirnos: 1,
-    description: 'Bloque en bruto de hielo sílice de las minas de Cristal Helado, todavía sin tallar por manos Helsig — solo tiene sentido de verdad si se abre Cristal Helado.', 
-    dimensiones: 'Bloque en bruto de 15x10 cm.', 
-    lugarOrigen: 'Cristal Helado.' 
+    description: 'Bloque en bruto de hielo sílice de las minas de Cristal Helado, todavía sin tallar por manos Helsig — solo tiene sentido de verdad si se abre Cristal Helado.',
+    dimensiones: 'Bloque en bruto de 15x10 cm.',
+    lugarOrigen: 'Cristal Helado.'
+  },
+
+  // Receta nueva (2026-09-09, cierre del hueco de catálogo "12 fauna sin HarvestYield") — la propia
+  // bio del Imanio (worldCatalog.ts § fauna) describe su armadura como "rocas imantadas flotantes"
+  // que se van deformando con el tiempo a la forma de su cuerpo — distinto del mineral genérico
+  // `arena-iman`/`punado-arena-iman` (recurso de suelo, no de fauna): esta pieza es la propia
+  // armadura recogida al desollarlo, ya con esa deformación acumulada.
+  {
+    slug: 'roca-imanio',
+    name: 'Roca imantada de Imanio',
+    aliases: ['roca imantada', 'roca de imanio', 'rocas de imanio'],
+    category: 'piedra',
+    tipo: 'RECURSO',
+    description: 'Fragmento de roca imantada, deformado con el tiempo hasta ajustarse al cuerpo de un Imanio — conserva un tirón magnético débil que se nota al acercarla a cualquier metal.',
+    dimensiones: 'Fragmento de 8 a 15 cm, irregular.',
+    tier: 4,
+    valorGoirnos: 8,
   },
 
   {
@@ -5840,6 +5862,22 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Garras de 6 a 8 cm.',
     tier: 5,
     valorGoirnos: 15,
+  },
+
+  // Receta nueva (2026-09-09, cierre del hueco de catálogo "12 fauna sin HarvestYield" — Imanio y
+  // Nuente eran los 2 únicos slugs pendientes reales, ver worldCatalog.ts § harvestYields más
+  // abajo): garra del depredador nocturno de Las Agujas Imán, mismo patrón exacto que
+  // aullador-rojo/zense-ceniza (trofeo con `condicion: 'cuchillo'`).
+  {
+    slug: 'garra-nuente',
+    name: 'Garra de Nuente',
+    aliases: ['garra de nuente', 'garras de nuente'],
+    category: 'garra',
+    tipo: 'RECURSO',
+    description: 'Garra afilada de Nuente, curtida por la caza nocturna en Las Agujas Imán — sirve tanto de trofeo como para tallar puntas de flecha.',
+    dimensiones: 'Garra de 5 a 7 cm.',
+    tier: 6,
+    valorGoirnos: 18,
   },
 
   {
@@ -6649,13 +6687,54 @@ export const harvestYields: HarvestYieldInput[] = [
     cantidad: 3 
   },
 
-  { 
+  {
     sourceSlug: 'aullador-rojo',
     sourceCategory: 'fauna',
-    metodoObtencion: 'CAZA', 
-    itemSlug: 'colmillo-aullador', 
-    cantidad: 2, 
-    condicion: 'cuchillo' 
+    metodoObtencion: 'CAZA',
+    itemSlug: 'colmillo-aullador',
+    cantidad: 2,
+    condicion: 'cuchillo'
+  },
+
+  // --- Imanio y Nuente (2026-09-09, cierre "12 fauna sin HarvestYield") ---
+  // Las Agujas Imán, terrestres — CAZA, no PESCA/BUSQUEDA (esas dos son exclusivas de la fauna
+  // acuática/de costa de Playa de Ceniza Blanca, ya sembrada aparte). Ruptidar/Benusa Pesquera/
+  // Manesti Azul/Terinte se quedan sin receta a propósito (ambientales por diseño, ver sus bios) —
+  // solo estos 2 eran el hueco real de contenido pendiente.
+
+  {
+    sourceSlug: 'imanio',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'roca-imanio',
+    cantidad: 2,
+    condicion: 'la armadura se desprende sola al morir, sin necesitar herramienta',
+  },
+
+  {
+    sourceSlug: 'nuente',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'racion-carne',
+    cantidad: 1,
+    condicion: 'carne de depredador nocturno — mejor cocinada',
+  },
+
+  {
+    sourceSlug: 'nuente',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'hueso-ligero',
+    cantidad: 2,
+  },
+
+  {
+    sourceSlug: 'nuente',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'garra-nuente',
+    cantidad: 1,
+    condicion: 'cuchillo',
   },
 
   // --- Zense Ceniza (slug zense-ceniza) ---
@@ -7873,7 +7952,7 @@ export const harvestSourceAliases: Record<string, string[]> = {
   // Salvatura se malinterpretaría como Tura Jusha.
   'flor-salvatura': ['flor salvatura', 'flor de salvatura', 'flores de salvatura'],
 
-  // 'orco-rezagado' (bug real jugando en vivo, 2026-09-06/07, reportado por la usuaria: "al darle a
+  // 'orco-expulsado' (bug real jugando en vivo, 2026-09-06/07, reportado por la usuaria: "al darle a
   // Cazar... salía Ruptidar y Orco rezagado... y luego parpadea, se actualiza y solo queda el
   // Ruptidar"): faltaba por completo en este mapa, así que `detectHarvestSourcesInScene` (harvest.ts)
   // nunca reconocía el hecho de sesión que `POST /cazar/explorar` acababa de persistir con su
@@ -7885,7 +7964,13 @@ export const harvestSourceAliases: Record<string, string[]> = {
   // especie. Mismo patrón que 'ruptidar'/'canizor' de abajo. NOTA: hay otros ~17 slugs de
   // `WorldPopulation` FAUNA sin entrada aquí (ver worldPopulation.ts) — no auditados uno a uno en
   // esta pasada, este fix cubre solo el caso reportado y confirmado.
-  'orco-rezagado': ['orco rezagado', 'guerrero orco rezagado', 'orcos rezagados'],
+  //
+  // Slug corregido (2026-09-09, bug de catálogo real encontrado investigando un flake de test): el
+  // `Npc` se renombró de `orco-rezagado` a `orco-expulsado` (commit `145252a`, 2026-08-18) DESPUÉS
+  // de que este alias se escribiera — la clave quedó apuntando al slug viejo, así que este fix ya
+  // no aplicaba a ningún `Npc` real en Postgres desde entonces (aunque seguía "funcionando" contra
+  // la fila `WorldPopulation` huérfana del mismo slug, ya borrada — ver worldPopulation.ts).
+  'orco-expulsado': ['orco rezagado', 'guerrero orco rezagado', 'orcos rezagados', 'orco expulsado', 'guerrero orco expulsado', 'orcos expulsados'],
 
   // Fauna nueva (mismos aliases que los del Npc correspondiente, ver array `fauna` arriba).
   canizor: ['canizor', 'canizores', "makt'orik"],

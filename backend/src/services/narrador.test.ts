@@ -63,6 +63,7 @@ import {
   allAttemptsRejectedForSameReason,
   hasSecondPersonLeak,
   hasMetaInstructionLeak,
+  hasDoubleReplyLeak,
 } from './narrador.js';
 
 describe('reinoIntentDetected', () => {
@@ -581,6 +582,24 @@ describe('hasMetaInstructionLeak', () => {
     expect(hasMetaInstructionLeak('"¿Has visto algo? Dime la verdad, o te arrepentirás."')).toBe(false);
     expect(hasMetaInstructionLeak('"No tengo tiempo para explicarte más — uno de los suyos me pisa los talones."')).toBe(false);
     expect(hasMetaInstructionLeak('"¿Qué haces aquí? Este no es lugar para forasteros."')).toBe(false);
+  });
+});
+
+describe('hasDoubleReplyLeak', () => {
+  // Bug real jugando en vivo (2026-09-03, ver memoria tarkor_bug_autocontradiccion_gistera_
+  // generatenpcreply): Gistera Koh, tras dar una pista real sobre el Clan Serhu con naturalidad,
+  // terminaba negando conocerlo en un segundo bloque de comillas dentro de la MISMA réplica.
+  it('detecta el caso real del bug: dos bloques de comillas autocontradictorios en la misma réplica', () => {
+    expect(
+      hasDoubleReplyLeak(
+        `'Mis razones son mías', responde finalmente, suspirando. 'El Orco Enfurecido no me ha dado opciones. Pero si buscas averiguar más sobre el Clan Serhu... sabes dónde están escondidos los restos de Maktor.' "¿Clan Serhu? No lo sé, no he oído hablar de ellos."`,
+      ),
+    ).toBe(true);
+  });
+
+  it('no dispara con una réplica normal de un único bloque de comillas', () => {
+    expect(hasDoubleReplyLeak('"No tengo tiempo para explicarte más — uno de los suyos me pisa los talones."')).toBe(false);
+    expect(hasDoubleReplyLeak('"¿Has visto algo? Dime la verdad, o te arrepentirás."')).toBe(false);
   });
 });
 
@@ -1682,6 +1701,15 @@ describe('hasFalseCombatTargetName', () => {
   it('no dispara si la narración no nombra a NADIE (prosa genérica, sin evidencia de confusión)', () => {
     expect(hasFalseCombatTargetName('Gorhorn golpea con fuerza a su rival.', 'Múrgol', ['Cruzavientos'])).toBe(false);
   });
+
+  // Regresión (2026-09-08, reconfirmado jugando en vivo con el Kirelon Arenoso/Orco Enfurecido —
+  // ver hasWrongNpcName más abajo para el caso completo): el criterio anterior ("no dispara si el
+  // nombre real aparece EN ALGUNA PARTE del texto") cortocircuitaba a false aunque otra FRASE
+  // separada le diera protagonismo de combate al NPC incorrecto — ahora el ámbito es por frase.
+  it('SÍ dispara si el nombre real aparece en una frase pero otra frase distinta le da protagonismo al NPC incorrecto', () => {
+    const narration = 'Gorhorn golpea con fuerza al Múrgol. El Cruzavientos se prepara para atacar al nuevo enemigo.';
+    expect(hasFalseCombatTargetName(narration, 'Múrgol', ['Cruzavientos'])).toBe(true);
+  });
 });
 
 // Hallazgo real jugando en vivo (2026-08-28/29): encabezado mecánico "KIRELON ARENOSO ATACA CON
@@ -1704,6 +1732,16 @@ describe('hasWrongNpcName', () => {
     expect(hasWrongNpcName('Gorhorn golpea al enemigo.', undefined, ['Quio'])).toBe(false);
     expect(hasWrongNpcName('Gorhorn golpea al enemigo.', 'Kirelon Arenoso', [])).toBe(false);
     expect(hasWrongNpcName('Gorhorn golpea al enemigo.', 'Kirelon Arenoso', undefined)).toBe(false);
+  });
+
+  // Regresión (2026-09-08, mismo espíritu del caso real jugado en vivo — el Kirelon Arenoso abrió
+  // combate mientras la prosa mezclaba al Orco Enfurecido, un NPC MUERTO de un combate ya cerrado):
+  // el criterio anterior (ámbito de texto completo) no disparaba con tal de que el nombre real
+  // apareciera EN ALGUNA PARTE del texto, aunque otra frase SEPARADA (sin el nombre real junto a
+  // él) le diera protagonismo de combatiente activo al NPC obsoleto. Ahora el ámbito es por frase.
+  it('SÍ dispara si el nombre real y el NPC obsoleto aparecen en frases DISTINTAS (caso real 2026-09-08)', () => {
+    const narration = 'Kirelon Arenoso se acerca con cautela. El Orco Enfurecido se prepara para atacar al nuevo enemigo.';
+    expect(hasWrongNpcName(narration, 'Kirelon Arenoso', ['Orco Enfurecido'])).toBe(true);
   });
 });
 
