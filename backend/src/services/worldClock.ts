@@ -179,6 +179,15 @@ export function advanceFictionalMinutes(current: number, deltaMinutos: number): 
   return current + Math.max(0, deltaMinutos);
 }
 
+/// Habilidad "Descansar en campamento" (2026-09-08, diseño de Álvaro: "despertarte en el siguiente
+/// día a la 08:00") — SIEMPRE salta al 08:00 del día SIGUIENTE, nunca al de hoy aunque `current` ya
+/// sea antes de las 08:00 (dormir toda la noche real, no un simple "avanza hasta las 8"). Mismo
+/// `MINUTES_PER_DAY` que el resto de este archivo.
+export function nextMorning8am(current: number): number {
+  const day = Math.floor(current / MINUTES_PER_DAY);
+  return (day + 1) * MINUTES_PER_DAY + 8 * 60;
+}
+
 /// Día de ficción real (1-indexado), misma cuenta que ya usa `formatFictionalDate` para el "Día N"
 /// del texto — expuesto aparte (rework 2026-07-24, Diario agrupado por día) para no repetir la
 /// cuenta a mano ni depender de parsear el string ya formateado.

@@ -2,8 +2,18 @@ import { useEffect, useRef, useState } from 'react'
 import type { AlmacenItemInfo, BuildingInfo, CompanionInfo, EquipSlot, InventoryItemInfo, KingdomStatsInfo, PlantillaEquipoInfo, SubjectInfo, TerritoryInfo } from '../../types'
 import { PanelEmptyState } from '../PanelEmptyState'
 import { PanelSection } from '../PanelSection'
-import { depositarEnAlmacen, retirarDeAlmacen, crearPlantilla, borrarPlantilla, asignarPlantillaCompanion, asignarPlantillaSubject } from '../../lib/api'
+import {
+  depositarEnAlmacen,
+  retirarDeAlmacen,
+  crearPlantilla,
+  borrarPlantilla,
+  asignarPlantillaCompanion,
+  asignarPlantillaSubject,
+  getDescansarCampamentoDisponible,
+  postDescansarCampamento,
+} from '../../lib/api'
 import { SLOT_LABEL, SLOT_ORDER } from '../../lib/equipSlots'
+import { ConfirmModal } from '../ConfirmModal'
 
 interface ReinoPanelProps {
   saveId: string
@@ -99,6 +109,42 @@ export function ReinoPanel({
 }: ReinoPanelProps) {
   const isEmpty = territories.length === 0 && buildings.length === 0 && subjects.length === 0
   const ayuntamiento = buildings.find((b) => b.recipeKey === 'ayuntamiento')
+
+  // "Descansar en campamento" (2026-09-08, diseño de Álvaro: "una habilidad que solo aparecerá
+  // cuando tienes construido el campamento") — visibilidad condicional real, consultada al backend
+  // (mismo criterio de "Building propio ACTIVO en la Location actual" que fija el punto de
+  // guardado real), no una SavedAction fija de barra. Se revalida cada vez que `buildings` cambia
+  // (construir/perder un edificio, o simplemente moverse de Location tras recargar la partida).
+  const [descansarDisponible, setDescansarDisponible] = useState(false)
+  const [confirmandoDescanso, setConfirmandoDescanso] = useState(false)
+  const [descansando, setDescansando] = useState(false)
+  useEffect(() => {
+    let cancelado = false
+    getDescansarCampamentoDisponible(saveId)
+      .then((res) => {
+        if (!cancelado) setDescansarDisponible(res.disponible)
+      })
+      .catch(() => {
+        if (!cancelado) setDescansarDisponible(false)
+      })
+    return () => {
+      cancelado = true
+    }
+  }, [saveId, buildings])
+
+  async function handleDescansar() {
+    setDescansando(true)
+    try {
+      await postDescansarCampamento(saveId)
+      setConfirmandoDescanso(false)
+      await onRefreshSave()
+    } catch {
+      // El modal se queda abierto con el botón reactivado — el jugador puede reintentar sin
+      // perder el contexto (mismo criterio que el resto de modales de confirmación del proyecto).
+    } finally {
+      setDescansando(false)
+    }
+  }
 
   if (isEmpty) {
     // Auditoría de UX (2026-09-08): a diferencia de Compañeros/Reputación (mismo componente
@@ -201,6 +247,15 @@ export function ReinoPanel({
         </PanelSection>
       )}
 
+      {descansarDisponible && (
+        <button type="button"
+          onClick={() => setConfirmandoDescanso(true)}
+          className="tactile w-full rounded-lg border border-accent-600/60 bg-wood-950/40 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-accent-300 transition-colors hover:bg-accent-500/10"
+        >
+          🔥 Descansar en el campamento
+        </button>
+      )}
+
       {buildings.length > 0 && (
         <PanelSection title="Edificios">
           <div className="flex flex-col gap-2">
@@ -256,6 +311,18 @@ export function ReinoPanel({
         inventory={inventory}
         onRefreshSave={onRefreshSave}
       />
+
+      {confirmandoDescanso && (
+        <ConfirmModal
+          title="Descansar en el campamento"
+          message="Descansarás hasta el amanecer (08:00 del día siguiente), curándote hasta Herido. Esto GUARDA la partida — reaparecerás aquí si mueres más adelante."
+          confirmLabel="Descansar"
+          tone="accent"
+          confirming={descansando}
+          onCancel={() => setConfirmandoDescanso(false)}
+          onConfirm={handleDescansar}
+        />
+      )}
     </div>
   )
 }

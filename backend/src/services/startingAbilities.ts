@@ -177,17 +177,14 @@ const GORHORN_GENERAL_ABILITIES: StartingAbility[] = [
     promptText: 'Entrego un objeto a ',
     category: 'general',
   },
-  // Aprender oficio de un Maestro (2026-08-31, "Trabajador de Reino") — cierra el hueco real de
-  // que los oficios solo se sembraban al crear personaje. Mismo patrón que Entregar: panel de
-  // selección (AprenderOficioModal.tsx), sin tirada, mutación determinista real
-  // (POST /saves/:id/npc/:npcSlug/aprender-oficio). `promptText` nunca se usa.
-  {
-    name: 'Aprender oficio',
-    icon: '📜',
-    description: 'Pide a un Maestro presente que te enseñe su oficio — exige su confianza y un pago en Goirnos.',
-    promptText: 'Le pido a un Maestro que me enseñe su oficio.',
-    category: 'general',
-  },
+  // "Aprender oficio" RETIRADO de la barra General (2026-09-08, petición explícita de Álvaro:
+  // "aprender oficio ya no debería ser una habilidad general, ahora que ya tenemos los menús para
+  // interactuar con los NPC") — el flujo real (AprenderOficioModal.tsx, POST /saves/:id/npc/:npcSlug/
+  // aprender-oficio) ya exigía estar delante del Maestro real (`enEscena`, `NpcState` interactuable),
+  // así que un botón de barra genérico, sin depender de con quién estás hablando, era redundante con
+  // el menú de Interactuar — que YA tenía su propio camino (`ABRIR_APRENDER_OFICIO`,
+  // GameView.tsx § handleChooseNpcInteraction) desde el 2026-09-06. Ahora ese es el ÚNICO camino:
+  // Interactuar con el Maestro real ofrece la opción, en vez de un botón suelto sin NPC concreto.
 ];
 
 // Edificios sin oficio (2026-08-13, petición explícita: "hay que añadir también los edificios
