@@ -72,6 +72,7 @@ interface EnciclopediaBuildContext {
   ) => VarianteSexoOut[] | undefined;
   variantesTiempoFor: (locationSlug: string) => VarianteTiempoOut[];
   isDiscovered: (entityType: string, entitySlug: string) => boolean;
+  discoveryFaseFor: (entityType: string, entitySlug: string) => 'NO_DESCUBIERTO' | 'CITADO' | 'DESCUBIERTO';
   isLocationDiscovered: (locationId: string) => boolean;
   ataqueBaseFor: (n: { id: string; attributes: unknown; ataqueNatural: string | null }) => ReturnType<typeof baseAttackFor>;
   regionFor: (sourceSlug: string) => string | null;
@@ -123,6 +124,7 @@ function buildNpcsSection(npcsForEncyclopedia: Npc[], ctx: EnciclopediaBuildCont
     imageUrls: imageUrlsFor('npc', n.slug),
     variantesSexo: ctx.variantesSexoFor('npc', n.slug, NPC_SEXO_VARIANTES),
     discovered: ctx.isDiscovered('npc', n.slug),
+    fase: ctx.discoveryFaseFor('npc', n.slug),
     // Rediseño de la vista de combate (2026-07-28): `attributes` ya existía en el modelo, solo
     // faltaba exponerlo; `raza`/`clase` enganchan la ficha con `razas`/`classes` de más abajo.
     attributes: n.attributes as AttributeBlock,
@@ -156,6 +158,7 @@ function buildItemsSection(items: Awaited<ReturnType<typeof prisma.itemCatalog.f
     imagePrompts: ctx.imagePromptsFor('item', i.slug),
     imageUrls: imageUrlsFor('item', i.slug),
     discovered: ctx.isDiscovered('item', i.slug),
+    fase: ctx.discoveryFaseFor('item', i.slug),
   }));
 }
 
@@ -194,6 +197,7 @@ function buildFaunaFloraSection(ctx: EnciclopediaBuildContext) {
     imageUrls: imageUrlsFor(imageEntityTypeFor(sourceSlug), sourceSlug),
     variantesSexo: ctx.variantesSexoFor(imageEntityTypeFor(sourceSlug), sourceSlug, FAUNA_SEXO_VARIANTES),
     discovered: ctx.isDiscovered(imageEntityTypeFor(sourceSlug), sourceSlug),
+    fase: ctx.discoveryFaseFor(imageEntityTypeFor(sourceSlug), sourceSlug),
     // Rediseño de la vista de combate (2026-07-28): solo presentes si hay Npc real detrás
     // (`cazable`) — flora/mineral sin ficha de combate se queda con los cinco en null/vacío.
     // `level` (2026-07-29, indicador de dificultad antes de Combatir): sin esto, la fauna no
@@ -255,6 +259,11 @@ function buildFactionsSection(factionRows: Awaited<ReturnType<typeof prisma.fact
     raza: f.raza,
     description: f.description,
     discovered: ctx.isDiscovered('faction', f.slug),
+    // 3 fases (2026-09-08) — una facción nunca tiene "presencia en escena" propia, la cascada de
+    // entityDiscovery.ts siempre la deja en CITADO como mucho (ver comentario ahí) — se expone
+    // igual por coherencia de shape con el resto de secciones, el frontend no necesita lógica
+    // especial: nunca verá 'DESCUBIERTO' aquí hoy.
+    fase: ctx.discoveryFaseFor('faction', f.slug),
     imagePrompts: ctx.imagePromptsFor('faction', f.slug),
     imageUrls: imageUrlsFor('faction', f.slug),
   }));
@@ -281,6 +290,7 @@ function buildHistoriaSection(historiaRows: Awaited<ReturnType<typeof prisma.his
       year: h.year,
       requiresTranslation: h.requiresTranslation,
       discovered,
+      fase: ctx.discoveryFaseFor('historia', h.slug),
       unlocked,
       // Nunca se manda el texto real si no está desbloqueado — no solo se oculta en pantalla, no
       // viaja por la red hasta que corresponde (petición explícita: escrito en idioma de las
@@ -534,6 +544,20 @@ export async function worldRoutes(app: FastifyInstance) {
       if (entityType === 'npc' && npcs.find((n) => n.slug === entitySlug)?.nucleoJugable === false) return true;
       return !saveId || discoveredEntities.some((d) => d.entityType === entityType && d.entitySlug === entitySlug);
     };
+    // 3 fases (2026-09-08, rediseño de Álvaro: "no descubierto, citado o avistado") —
+    // 'NO_DESCUBIERTO' (sin fila, `isDiscovered` sería false) / 'CITADO' (fila real con
+    // `fase: CITADO`) / 'DESCUBIERTO' (fila real con `fase: DESCUBIERTO`, o cualquiera de los
+    // "siempre visibles" que `isDiscovered` ya trata como true sin fila real — sin catálogo, sin
+    // saveId, o el subconjunto `nucleoJugable: false`, todos merecen la ficha completa de una vez,
+    // nunca quedarse a medias en CITADO). Convive con `isDiscovered` (no se retira, 6+ secciones
+    // ya lo consumen tal cual) — este es el dato NUEVO que añade el tercer estado.
+    const discoveryFaseFor = (entityType: string, entitySlug: string): 'NO_DESCUBIERTO' | 'CITADO' | 'DESCUBIERTO' => {
+      if (entityType === 'npc' && npcs.find((n) => n.slug === entitySlug)?.nucleoJugable === false) return 'DESCUBIERTO';
+      if (!saveId) return 'DESCUBIERTO';
+      const row = discoveredEntities.find((d) => d.entityType === entityType && d.entitySlug === entitySlug);
+      if (!row) return 'NO_DESCUBIERTO';
+      return row.fase;
+    };
     const visitedLocationIds = new Set(locationVisits.map((v) => v.locationId));
     const isLocationDiscovered = (locationId: string): boolean => !saveId || visitedLocationIds.has(locationId);
 
@@ -651,6 +675,7 @@ export async function worldRoutes(app: FastifyInstance) {
       variantesSexoFor,
       variantesTiempoFor,
       isDiscovered,
+      discoveryFaseFor,
       isLocationDiscovered,
       ataqueBaseFor,
       regionFor,

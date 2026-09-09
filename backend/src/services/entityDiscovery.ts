@@ -15,8 +15,29 @@ import { harvestSourceAliases, sourceDisplayNameFor, harvestSourcesThatAreFaunaW
 ///
 /// Nombrado `entityDiscovery` (no `discovery`, ya ocupado por el "revelado progresivo" de
 /// hallazgos de búsqueda/recolección en combate — services/discovery.ts, concepto distinto).
+///
+/// Rediseño de 3 fases (2026-09-08, petición explícita de Álvaro: "no descubierto, citado o
+/// avistado... 1. no descubierto... 2. citado: lo han citado o mencionado pero no has llegado a
+/// 'verlo' en escena... 3. descubierto: toda la información visible... cuando ese elemento se vea
+/// en escena o por elementos de lore") — CAMBIA la filosofía original de este archivo (el
+/// comentario de `turnResolution.ts` decía "descubrimiento narrativo, no automático por
+/// presencia", ahora es justo al revés para la fase final): una simple mención en narración/
+/// `new_facts` (lo que este archivo ya detectaba) solo llega a CITADO — ficha mínima
+/// (nombre+región). Llegar a DESCUBIERTO (ficha completa, con imagen) exige una señal de
+/// presencia REAL, no solo textual — `presentInScene` (slugs realmente en `npcsInScene`/objeto ya
+/// en inventario, que SIEMPRE implica posesión real, nunca solo mención) decide cuál de las dos.
 export async function recordEntityDiscoveries(
-  params: { saveId: string; worldId: string; mentionedText: string },
+  params: {
+    saveId: string;
+    worldId: string;
+    mentionedText: string;
+    /// Señales de presencia REAL de este turno (2026-09-08) — slugs de NPC/fauna que de verdad
+    /// están en `npcsInScene` ahora mismo (no solo citados en prosa). Opcional: sin este dato
+    /// (callers antiguos, p.ej. `cazar.ts`/`recolectar.ts`/`turn.ts` con reveal narrativo) toda
+    /// mención cae en CITADO como mucho, nunca en DESCUBIERTO — ningún caller existente empeora,
+    /// solo el que sí pase la señal puede llegar a la fase completa.
+    npcSlugsInScene?: string[];
+  },
   // Cliente opcional de transacción (auditoría 2026-07-28, fix #9): al crear/reiniciar partida se
   // pasa el `tx` de la transacción que ya está creando el Save, para que un crash a mitad de
   // proceso no deje la partida jugable pero sin descubrimientos/primera visita en la Enciclopedia.
@@ -26,7 +47,8 @@ export async function recordEntityDiscoveries(
 ): Promise<void> {
   try {
     const normalized = normalizeText(params.mentionedText);
-    const discovered: { entityType: string; entitySlug: string }[] = [];
+    const npcSlugsInSceneSet = new Set(params.npcSlugsInScene ?? []);
+    const discovered: { entityType: string; entitySlug: string; fase: 'CITADO' | 'DESCUBIERTO' }[] = [];
 
     const [npcs, yields, items, inventoryItems, factionRows, historiaRows] = await Promise.all([
       client.npc.findMany({ where: { worldId: params.worldId } }),
@@ -55,12 +77,16 @@ export async function recordEntityDiscoveries(
       if (npc.nucleoJugable === false) continue;
       const aliases = [npc.name, ...npc.aliases];
       if (aliases.some((a) => matchesAliasBoundary(normalized, normalizeText(a)))) {
-        discovered.push({ entityType: 'npc', entitySlug: npc.slug });
+        // 3 fases (2026-09-08): presente de verdad en `npcsInScene` este turno -> DESCUBIERTO
+        // (ficha completa); solo citado en prosa/hechos -> CITADO (nombre+región nada más).
+        const fase = npcSlugsInSceneSet.has(npc.slug) ? 'DESCUBIERTO' : 'CITADO';
+        discovered.push({ entityType: 'npc', entitySlug: npc.slug, fase });
         // Cascada (2026-08-06, sección "Facciones"): descubrir un NPC de una facción también
         // descubre esa facción — igualdad exacta contra Faction.name, ver fail-fast en
-        // seed-catalog.ts.
+        // seed-catalog.ts. La facción en sí no tiene "presencia en escena" propia — hereda CITADO
+        // siempre, nunca DESCUBIERTO solo por la cascada (mismo criterio conservador que el resto).
         if (npc.faction && factionSlugByName.has(npc.faction)) {
-          discovered.push({ entityType: 'faction', entitySlug: factionSlugByName.get(npc.faction)! });
+          discovered.push({ entityType: 'faction', entitySlug: factionSlugByName.get(npc.faction)!, fase: 'CITADO' });
         }
       }
     }
@@ -79,7 +105,13 @@ export async function recordEntityDiscoveries(
       const aliases = [sourceName, ...(harvestSourceAliases[sourceSlug] ?? [])];
       if (aliases.some((a) => matchesAliasBoundary(normalized, normalizeText(a)))) {
         const entityType = npcSlugsSet.has(sourceSlug) || harvestSourcesThatAreFaunaWithoutNpc.has(sourceSlug) ? 'fauna' : 'flora';
-        discovered.push({ entityType, entitySlug: sourceSlug });
+        // 3 fases (2026-09-08) — mismo criterio que NPC: fauna realmente en escena este turno ->
+        // DESCUBIERTO; flora (nunca tiene fila real en npcsInScene, no es un "personaje" de escena)
+        // se queda en CITADO por este camino — llegar a DESCUBIERTO para flora exigiría el otro
+        // disparador pendiente de diseñar (ver tarkor_diseno_movimiento_zona_transito_real: "el
+        // hecho de interactuar ya lo descubre"), fuera del alcance de esta pieza.
+        const fase = npcSlugsInSceneSet.has(sourceSlug) ? 'DESCUBIERTO' : 'CITADO';
+        discovered.push({ entityType, entitySlug: sourceSlug, fase });
       }
     }
 
@@ -98,22 +130,54 @@ export async function recordEntityDiscoveries(
       const mentioned = itemNames.some((n) => matchesAliasBoundary(normalized, n));
       const owned = itemNames.some((n) => ownedNames.has(n));
       if (mentioned || owned) {
-        discovered.push({ entityType: 'item', entitySlug: item.slug });
+        // 3 fases (2026-09-08): un objeto que el jugador YA LLEVA es presencia real de sobra (más
+        // fuerte que "verlo en escena" — lo tiene encima) -> DESCUBIERTO directo. Solo mencionado
+        // sin poseerlo (p.ej. el arma de un NPC que aparece en su descripción) -> CITADO.
+        const fase = owned ? 'DESCUBIERTO' : 'CITADO';
+        discovered.push({ entityType: 'item', entitySlug: item.slug, fase });
         // Cascada (2026-08-06, sección "Historia"): el objeto físico desbloquea SU HistoriaEntry
         // (solo revela que existe/es legible — la barrera de traducción, si aplica, se resuelve
-        // en tiempo de lectura en /world/:slug/enciclopedia, no aquí).
+        // en tiempo de lectura en /world/:slug/enciclopedia, no aquí). Hereda la MISMA fase que el
+        // objeto que la desbloqueó — tener el libro en la mano también debería poder leer su ficha
+        // completa, solo saber que existe por mención no.
         if (historiaSlugByDocumentoItemSlug.has(item.slug)) {
-          discovered.push({ entityType: 'historia', entitySlug: historiaSlugByDocumentoItemSlug.get(item.slug)! });
+          discovered.push({ entityType: 'historia', entitySlug: historiaSlugByDocumentoItemSlug.get(item.slug)!, fase });
         }
       }
     }
 
     if (discovered.length === 0) return;
 
-    await client.discoveredEntity.createMany({
-      data: discovered.map((d) => ({ saveId: params.saveId, entityType: d.entityType, entitySlug: d.entitySlug })),
-      skipDuplicates: true,
-    });
+    // Dedupe dentro de ESTE turno (2026-09-08) — un mismo NPC puede llegar dos veces al array
+    // (p.ej. citado en `narration` Y en `newFacts`), quedándose con la fase MÁS ALTA de las dos
+    // detecciones de este turno antes de tocar la base de datos.
+    const bestFaseByKey = new Map<string, (typeof discovered)[number]>();
+    for (const d of discovered) {
+      const key = `${d.entityType}:${d.entitySlug}`;
+      const existing = bestFaseByKey.get(key);
+      if (!existing || (d.fase === 'DESCUBIERTO' && existing.fase !== 'DESCUBIERTO')) bestFaseByKey.set(key, d);
+    }
+
+    // `upsert` en vez de `createMany` (2026-09-08, 3 fases) — una fila ya DESCUBIERTO no debe
+    // poder "bajar" a CITADO si una detección de este turno solo llega a CITADO (p.ej. el jugador
+    // ya vio al NPC en persona hace turnos, ahora solo lo menciona de pasada) — `update` únicamente
+    // cuando la fase nueva es estrictamente mejor que la existente, nunca un downgrade.
+    await Promise.all(
+      [...bestFaseByKey.values()].map(async (d) => {
+        const existing = await client.discoveredEntity.findUnique({
+          where: { saveId_entityType_entitySlug: { saveId: params.saveId, entityType: d.entityType, entitySlug: d.entitySlug } },
+          select: { fase: true },
+        });
+        if (!existing) {
+          await client.discoveredEntity.create({ data: { saveId: params.saveId, entityType: d.entityType, entitySlug: d.entitySlug, fase: d.fase } });
+        } else if (existing.fase !== 'DESCUBIERTO' && d.fase === 'DESCUBIERTO') {
+          await client.discoveredEntity.update({
+            where: { saveId_entityType_entitySlug: { saveId: params.saveId, entityType: d.entityType, entitySlug: d.entitySlug } },
+            data: { fase: 'DESCUBIERTO' },
+          });
+        }
+      }),
+    );
   } catch (err) {
     console.error('[entityDiscovery] error registrando descubrimientos:', err);
   }

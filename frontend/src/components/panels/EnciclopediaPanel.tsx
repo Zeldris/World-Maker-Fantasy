@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import {
   resolveImageUrl,
+  type DiscoveryFase,
   type EnciclopediaClassInfo,
   type EnciclopediaClassUnlock,
   type EnciclopediaConstructionRecipe,
@@ -298,6 +299,7 @@ function EntryCard({
   onQuickInsert,
   imageUrl,
   locked,
+  citado,
 }: {
   icon: string
   name: string
@@ -312,6 +314,11 @@ function EntryCard({
   /// vez la AI lo mencione por primera vez en la narración") — tarjeta bloqueada tipo "???" en vez
   /// de nombre/icono real, sin abrir ficha (no hay nada real que mostrar todavía).
   locked?: boolean
+  /// 3 fases (2026-09-08, rediseño de Álvaro) — CITADO: nombre real ya visible (deja de ser
+  /// "???"), pero SIN imagen todavía (icono genérico) — la ficha, si se abre, muestra solo
+  /// nombre+región. Mutuamente excluyente con `locked` (NO_DESCUBIERTO gana si ambos llegaran
+  /// true por error de caller).
+  citado?: boolean
 }) {
   if (locked) {
     return (
@@ -320,6 +327,19 @@ function EntryCard({
           <span className="text-2xl leading-none">🔒</span>
           <span className="text-2xs leading-tight text-wood-600">???</span>
         </div>
+      </TooltipAnchor>
+    )
+  }
+  if (citado) {
+    return (
+      <TooltipAnchor text="Citado, pero todavía no lo has visto en persona — solo se conoce el nombre." className="block">
+        <button type="button"
+          onClick={onDetail}
+          className="tactile flex w-full flex-col items-center gap-1 rounded-lg border border-dashed border-iron-700 bg-wood-950/30 px-2 py-3 text-center opacity-80 transition-colors hover:border-accent2-600/40"
+        >
+          <span className="text-2xl leading-none">{icon}</span>
+          <span className="text-2xs leading-tight text-wood-300">{name}</span>
+        </button>
       </TooltipAnchor>
     )
   }
@@ -346,6 +366,17 @@ function EntryCard({
   )
 }
 
+/// 3 fases (2026-09-08) — recorta un DetailTarget `kind: 'info'` completo a la versión MÍNIMA que
+/// pide Álvaro para CITADO: "la información mínima de momento será el nombre y región, nada más"
+/// — se conserva `icon`/`name`/`meta` (donde ya vive región/facción/rol según el tipo, sin
+/// inventar un campo nuevo por entidad) y se descarta todo lo demás (bio/imagen/atributos/
+/// variantes/ingredientes...). Un target que no sea `kind: 'info'` (ability/item de inventario/
+/// slotManager) no pasa por aquí — esta pieza solo aplica a la Enciclopedia.
+function citadoDetailTarget(target: DetailTarget): DetailTarget {
+  if (target.kind !== 'info') return target
+  return { kind: 'info', icon: target.icon, name: target.name, meta: target.meta, description: '' }
+}
+
 // Cuadrícula genérica de EntryCard (auditoría 2026-07-22): las 7 categorías simples de la
 // Enciclopedia (NPCs/objetos/fauna/flora/lugares/razas/personajes) repetían la misma forma
 // exacta — vacío-o-cuadrícula, mismo `onDetail`/`onQuickInsert` construidos a partir del mismo
@@ -365,6 +396,7 @@ function EntryCardGrid<T>({
   onInsert,
   wide,
   discovered,
+  fase,
   search,
 }: {
   items: T[]
@@ -383,6 +415,10 @@ function EntryCardGrid<T>({
   /// Enciclopedia progresiva (2026-07-23) — solo lo pasan las categorías gateadas (NPCs/fauna/
   /// flora/lugares); ausente = todo visible, como hasta ahora (razas/personajes/atributos...).
   discovered?: (item: T) => boolean
+  /// 3 fases (2026-09-08) — opcional, solo lo pasan las categorías con `DiscoveryFase` real
+  /// (NPC/fauna/item/facción/historia). Ausente pero `discovered` presente = comportamiento
+  /// binario de siempre (Location, gateada por otro eje). Presente = decide entre 3 renders.
+  fase?: (item: T) => DiscoveryFase
   /// Buscador de la Enciclopedia (auditoría 2026-08-27, "no hay ninguna forma de filtrar por
   /// texto, solo navegar tab→colapsable→cuadrícula a ojo") — filtro por nombre, sin distinguir
   /// mayúsculas/acentos, aplicado uniformemente en las 13 categorías que usan esta grilla.
@@ -391,10 +427,32 @@ function EntryCardGrid<T>({
   const filtered = search ? items.filter((item) => normalizeSearchText(name(item)).includes(normalizeSearchText(search))) : items
   return (
     <div className={wide ? 'grid grid-cols-2 gap-2 sm:grid-cols-3' : 'grid grid-cols-3 gap-2 sm:grid-cols-4'}>
-      {filtered.map((item) =>
-        discovered && !discovered(item) ? (
-          <EntryCard key={keyOf(item)} icon={icon(item)} name={name(item)} tooltip={tooltip(item)} onDetail={() => {}} locked />
-        ) : (
+      {filtered.map((item) => {
+        // 3 fases (2026-09-08): `fase` manda si el caller la pasa; `discovered` sigue siendo el
+        // único gate para categorías sin `DiscoveryFase` real (Location, otro eje).
+        const itemFase = fase?.(item)
+        const isLocked = itemFase ? itemFase === 'NO_DESCUBIERTO' : discovered && !discovered(item)
+        const isCitado = itemFase === 'CITADO'
+        if (isLocked) {
+          return <EntryCard key={keyOf(item)} icon={icon(item)} name={name(item)} tooltip={tooltip(item)} onDetail={() => {}} locked />
+        }
+        if (isCitado) {
+          // CITADO (2026-09-08): ficha real se abre, pero recortada a lo mínimo (nombre+meta) —
+          // ni imagen ni bio/atributos/variantes, ver `citadoDetailTarget`. `imageUrl` de la
+          // tarjeta se omite a propósito aunque el backend ya la traiga, la fase decide qué se
+          // enseña, no el dato.
+          return (
+            <EntryCard
+              key={keyOf(item)}
+              icon={icon(item)}
+              name={name(item)}
+              tooltip={tooltip(item)}
+              onDetail={() => onDetail(citadoDetailTarget(toDetailTarget(item)))}
+              citado
+            />
+          )
+        }
+        return (
           <EntryCard
             key={keyOf(item)}
             icon={icon(item)}
@@ -404,8 +462,8 @@ function EntryCardGrid<T>({
             onDetail={() => onDetail(toDetailTarget(item), () => onInsert(toChip(item)))}
             onQuickInsert={() => onInsert(toChip(item))}
           />
-        ),
-      )}
+        )
+      })}
     </div>
   )
 }
@@ -782,6 +840,7 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
                           onDetail={onDetail}
                           onInsert={onInsert}
                           discovered={(npc) => npc.discovered}
+                          fase={(npc) => npc.fase}
                           search={search}
                         />
                       </CollapsibleGroup>
@@ -823,6 +882,7 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
                               onDetail={onDetail}
                               onInsert={onInsert}
                               discovered={(item) => item.discovered}
+                              fase={(item) => item.fase}
                               search={search}
                             />
                           </PanelSection>
@@ -860,6 +920,7 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
                         onDetail={onDetail}
                         onInsert={onInsert}
                         discovered={(entry) => entry.discovered}
+                        fase={(entry) => entry.fase}
                         search={search}
                       />
                     </CollapsibleGroup>
@@ -892,6 +953,7 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
                         onDetail={onDetail}
                         onInsert={onInsert}
                         discovered={(entry) => entry.discovered}
+                        fase={(entry) => entry.fase}
                         search={search}
                       />
                     </CollapsibleGroup>
@@ -1003,6 +1065,7 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
                           onDetail={onDetail}
                           onInsert={onInsert}
                           discovered={(f) => f.discovered}
+                          fase={(f) => f.fase}
                           search={search}
                         />
                       </CollapsibleGroup>
@@ -1058,6 +1121,7 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
                             onDetail={onDetail}
                             onInsert={onInsert}
                             discovered={(h) => h.discovered}
+                            fase={(h) => h.fase}
                             search={search}
                           />
                         </CollapsibleGroup>
@@ -1085,6 +1149,7 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
                       onDetail={onDetail}
                       onInsert={onInsert}
                       discovered={(h) => h.discovered}
+                      fase={(h) => h.fase}
                       search={search}
                     />
                   ))}

@@ -35,6 +35,7 @@ function makeNpc(overrides: Partial<EnciclopediaNpcInfo> & Pick<EnciclopediaNpcI
     imagePrompts: { thumbnail: null, banner: null },
     imageUrls: { thumbnail: null, banner: '/uploads/images/npc/gistera-koh-banner.png' },
     discovered: true,
+    fase: 'DESCUBIERTO',
     attributes: DUMMY_ATTRIBUTES,
     ataqueBase: { icon: '⚔️', name: 'Golpe', description: 'Golpe de prueba.', preferredAttribute: 'fuerza' },
     items: [],
