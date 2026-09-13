@@ -8,7 +8,8 @@ import { faunaMomentoDelDia } from '../../scripts/worldCatalog.js';
 import { loadSessionFacts } from '../../services/worldFacts.js';
 import { momentoDelDiaFor, estacionFor } from '../../services/worldClock.js';
 import type { EstacionSlug } from '../../services/imagePromptContext.js';
-import { zonePointColorFor, avanzarZonePointsUnPaso, type ZonePointColor } from '../../services/zonePoints.js';
+import { zonePointColorFor, avanzarZonePointsUnPaso, zonePointVisiblePara, questSlugsAceptadosPara, type ZonePointColor } from '../../services/zonePoints.js';
+import { NOMBRE_OCULTO_GENERICO } from '../../services/dynamicMode.js';
 import { parseAgenda, regionControlFor, type RegionControlState } from '../../services/worldAgenda.js';
 import { REGION_OWNING_FACTIONS, effectiveTemperamento } from '../../services/reputation.js';
 import { posicionAleatoriaEnLienzo, celdaDePixel, pixelDeCelda, calcularCamino, celdaAdyacenteOMisma, mismaCelda } from '../../services/zonaPosicion.js';
@@ -49,7 +50,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     const fictionalMinutes = save.worldState?.fictionalMinutes ?? 480;
     const momento = momentoDelDiaFor(fictionalMinutes);
     // Hallazgo 32 (revisar-partida-hallazgos.md 2026-09-07) — los interiores de campamento
-    // (`kind: 'interior'`, ej. Karot Vekhad) no deberían tener variante de estación: bajo techo, el
+    // (`kind: 'interior'`, ej. Ketg'lukar) no deberían tener variante de estación: bajo techo, el
     // paso de las estaciones no se nota igual que en el mapa exterior. `zoneMapImageUrl` ya admite
     // `estacion: null` con fallback en cascada (momento solo → base), así que basta con no calcularla.
     const estacion = kind === 'interior' ? null : ESTACION_A_SLUG[estacionFor(fictionalMinutes)];
@@ -65,7 +66,13 @@ export async function zonaRoutes(app: FastifyInstance) {
     // Instancia viva (2026-08-27, Pieza 3 de "Dinamismo del mundo") — solo puntos `activo` se
     // muestran; `recalcularZonePointsDeLocation` (turnResolution.ts) ya decide cantidad/actividad
     // real en cada turno, aquí solo se lee lo que ya está persistido.
-    const zonePointsActivos = zonePointsRaw.filter((p) => p.activo);
+    //
+    // Gate de aparición narrativa (2026-09-09, ver `zonePointVisiblePara`, zonePoints.ts) — el Orco
+    // Enfurecido (`ZonePoint` incondicional de catálogo) no debe pintarse en el mapa hasta que la
+    // misión de Gistera esté aceptada: "justo cuando Gistera te da la misión el Orco entra en la
+    // zona por primera vez" (Álvaro, jugando en vivo).
+    const questSlugsAceptados = await questSlugsAceptadosPara(prisma, save.id);
+    const zonePointsActivos = zonePointsRaw.filter((p) => p.activo && zonePointVisiblePara(p.targetSlug, questSlugsAceptados));
 
     // Hallazgo 34 (revisar-partida-hallazgos.md 2026-09-07) — un `ZonePoint`/dinámico revelaba su
     // nombre real y su botón de Enciclopedia sin mirar si la partida ya lo descubrió, filtrando
@@ -199,7 +206,7 @@ export async function zonaRoutes(app: FastifyInstance) {
         slug: n.slug,
         nombre: yaDescubierto ? n.name : '???',
         tipo: tipoDinamico,
-        color: zonePointColorFor(n.faction, factionsStatus),
+        color: zonePointColorFor(n.faction, factionsStatus, tipoDinamico),
         x: pos.x,
         y: pos.y,
         descubierto: yaDescubierto,
@@ -213,7 +220,10 @@ export async function zonaRoutes(app: FastifyInstance) {
     // catálogo estable (puede no tener `catalogSlug` en absoluto, si es narrativo).
     const droppedItems = await prisma.droppedItem.findMany({ where: { saveId: save.id, locationId } });
     for (const d of droppedItems) {
-      dinamicos.push({ slug: d.id, nombre: d.name, tipo: 'OBJETO', color: 'SIN_FACCION', x: d.x, y: d.y, droppedItemId: d.id, descubierto: true });
+      // INERTE (2026-09-09, mismo criterio que RECURSO en zonePointColorFor) — un objeto tirado al
+      // suelo nunca tiene facción por diseño (nunca `SIN_FACCION`, ese naranja es para
+      // NPC/FAUNA/EDIFICIO independientes que SÍ podrían tener dueño).
+      dinamicos.push({ slug: d.id, nombre: d.name, tipo: 'OBJETO', color: 'INERTE', x: d.x, y: d.y, droppedItemId: d.id, descubierto: true });
     }
 
     if (zonePoints.length === 0) {
@@ -264,7 +274,7 @@ export async function zonaRoutes(app: FastifyInstance) {
           // `label` puesto a mano (un alias custom seguiría filtrando información real).
           nombre: yaDescubierto ? nombreReal : '???',
           cantidad: p.cantidad,
-          color: zonePointColorFor(p.factionSlug, factionsStatus),
+          color: zonePointColorFor(p.factionSlug, factionsStatus, p.tipo),
           descubierto: yaDescubierto,
         };
       }),
@@ -294,11 +304,76 @@ export async function zonaRoutes(app: FastifyInstance) {
     dynamicModeOffer: { tipo: 'FAUNA' | 'NPC'; targetSlug: string; targetName: string } | null;
     logEntry: { id: string; text: string; timeLabel: string; createdAt: string } | null;
   }> {
-    const puntos = await tx.zonePoint.findMany({ where: { locationId, tipo: { in: ['FAUNA', 'NPC'] }, activo: true } });
+    const puntosCrudos = await tx.zonePoint.findMany({ where: { locationId, tipo: { in: ['FAUNA', 'NPC'] }, activo: true } });
+    // Gate de aparición narrativa (ver `zonePointVisiblePara`, zonePoints.ts) — un `ZonePoint` cuya
+    // misión de desbloqueo (p.ej. el Orco Enfurecido/Gistera) todavía no se aceptó no puede forzar
+    // colisión/aviso: narrativamente no está en la zona todavía, aunque su fila de catálogo exista.
+    const questSlugsAceptadosColision = await questSlugsAceptadosPara(tx, saveId);
+    const puntos = puntosCrudos.filter((p) => zonePointVisiblePara(p.targetSlug, questSlugsAceptadosColision));
     const npcs = puntos.length
-      ? await tx.npc.findMany({ where: { worldId, slug: { in: puntos.map((p) => p.targetSlug) } }, select: { slug: true, name: true, temperamento: true, faction: true } })
+      ? await tx.npc.findMany({ where: { worldId, slug: { in: puntos.map((p) => p.targetSlug) } }, select: { slug: true, name: true, temperamento: true, faction: true, kind: true } })
       : [];
     const npcBySlug = new Map(npcs.map((n) => [n.slug, n]));
+    // Nombre oculto genérico (2026-09-09, generalización pedida por Álvaro: "esta lógica se debe
+    // aplicar a todos los que tienen nombre propio" — hasta ahora la colisión de Zona era el único
+    // punto del motor que revelaba `Npc.name` sin mirar si la partida ya lo descubrió; `GET /zona`
+    // (§ `descubierto`, más arriba en este archivo) y la Enciclopedia ya aplican este mismo filtro
+    // desde el hallazgo 34, 2026-09-07 — solo faltaba conectarlo aquí). Mismo criterio de catálogo
+    // ya establecido en todo el proyecto: `kind === 'PRINCIPAL'` = nombre propio (Gistera Koh,
+    // Sella Marn...), cualquier otro `kind` = fauna/NPC genérico sin identidad que ocultar (su
+    // "nombre" ya es un nombre de especie/rol, nunca un spoiler).
+    const discoveredNpcs = await tx.discoveredEntity.findMany({ where: { saveId, entityType: 'npc' } });
+    const isNpcDiscovered = (targetSlug: string): boolean => discoveredNpcs.some((d) => d.entitySlug === targetSlug);
+    const nombreVisibleColision = (targetSlug: string, kind: string | undefined, nombreReal: string): string =>
+      kind === 'PRINCIPAL' && !isNpcDiscovered(targetSlug) ? NOMBRE_OCULTO_GENERICO : nombreReal;
+
+    // NPC "dinámicos" (2026-09-09, bug real jugando en vivo — Álvaro: "me he movido hasta la
+    // casilla anterior a un NPC... pero no pasa nada... me puedo seguir moviendo libremente")
+    // — hasta ahora esta función SOLO miraba `ZonePoint` de catálogo fijo, ciega a cualquier NPC
+    // presentado por la narración (`detectNpcsInScene`/sessionFacts — Gistera Koh perseguidora,
+    // interrupciones de la Capa 2/3...), que SÍ se pinta como pin en el mapa (`GET /zona` §
+    // `dinamicos`) pero nunca participaba en la colisión/aviso del movimiento. Mismo criterio
+    // exacto que `GET /zona` (líneas ~100-117 más arriba): candidatos vivos sin `ZonePoint` propio,
+    // posición real leída de `NpcState.zonaPosX/Y` — nunca se les asigna posición aquí (a
+    // diferencia de `GET /zona`, que sí la asigna perezosamente la primera vez); si un dinámico
+    // todavía no tiene posición asignada, no puede colisionar (mismo fallback seguro que el resto
+    // del sistema: sin posición conocida, nunca se fuerza nada).
+    const zonePointSlugsColision = new Set(puntos.map((p) => p.targetSlug));
+    const sessionFactsColision = await loadSessionFacts(saveId);
+    const npcsInSceneColision = await detectNpcsInScene({
+      action: '',
+      worldId,
+      sessionFacts: sessionFactsColision,
+      saveId,
+      currentLocationId: locationId,
+      fictionalMinutes,
+    });
+    const dinamicosCandidatosColision = npcsInSceneColision.filter((n) => n.condicionFisica !== 'MUERTO' && !zonePointSlugsColision.has(n.slug));
+    const dinamicosStatesColision = dinamicosCandidatosColision.length
+      ? await tx.npcState.findMany({
+          where: {
+            saveId,
+            OR: dinamicosCandidatosColision.map((n) => ({ npcId: n.id, scope: scopeFor(n.kind, locationId) })),
+          },
+        })
+      : [];
+    const dinamicosStateByIdColision = new Map(dinamicosStatesColision.map((s) => [`${s.npcId}|${s.scope}`, s]));
+    const dinamicosConPosicionColision = dinamicosCandidatosColision
+      .map((n) => {
+        const state = dinamicosStateByIdColision.get(`${n.id}|${scopeFor(n.kind, locationId)}`);
+        if (!state || state.zonaPosX == null || state.zonaPosY == null || state.zonaLocationId !== locationId) return null;
+        return {
+          targetSlug: n.slug,
+          targetName: n.name,
+          kind: n.kind,
+          temperamento: n.temperamento,
+          faction: n.faction,
+          tipo: (n.kind === 'PRINCIPAL' ? 'NPC' : 'FAUNA') as 'NPC' | 'FAUNA',
+          x: state.zonaPosX,
+          y: state.zonaPosY,
+        };
+      })
+      .filter((d): d is NonNullable<typeof d> => d !== null);
 
     // Doble umbral de colisión (diseño confirmado, 2026-09-08): MISMA celda = encuentro inevitable;
     // celda ADYACENTE = solo aviso previo, con margen de reacción, nunca dispara Interactuar.
@@ -312,7 +387,11 @@ export async function zonaRoutes(app: FastifyInstance) {
     for (const punto of puntos) {
       const celdaPunto = celdaDePixel({ x: punto.x, y: punto.y });
       const npc = npcBySlug.get(punto.targetSlug);
-      const nombre = npc?.name ?? sourceDisplayNameFor(punto.targetSlug);
+      const nombreReal = npc?.name ?? sourceDisplayNameFor(punto.targetSlug);
+      // Nombre oculto genérico (ver `nombreVisibleColision` arriba) — Gistera (su `ZonePoint` ya
+      // se oculta del todo tras aceptar, `ZONE_POINTS_OCULTOS_POR_QUEST`) queda cubierta por esta
+      // regla igual que cualquier otro NPC de nombre propio no descubierto todavía.
+      const nombre = nombreVisibleColision(punto.targetSlug, npc?.kind, nombreReal);
       if (mismaCelda(celda, celdaPunto)) {
         const temperamento = npc ? effectiveTemperamento(npc.temperamento, npc.faction, factionsStatus) : 'CAUTELOSO';
         colision = { targetSlug: punto.targetSlug, targetName: nombre, temperamento };
@@ -321,6 +400,21 @@ export async function zonaRoutes(app: FastifyInstance) {
       }
       if (!aviso && celdaAdyacenteOMisma(celda, celdaPunto)) {
         aviso = { targetSlug: punto.targetSlug, targetName: nombre };
+      }
+    }
+    if (!colision) {
+      for (const dinamico of dinamicosConPosicionColision) {
+        const celdaDinamico = celdaDePixel({ x: dinamico.x, y: dinamico.y });
+        const nombreDinamico = nombreVisibleColision(dinamico.targetSlug, dinamico.kind, dinamico.targetName);
+        if (mismaCelda(celda, celdaDinamico)) {
+          const temperamento = effectiveTemperamento(dinamico.temperamento, dinamico.faction, factionsStatus);
+          colision = { targetSlug: dinamico.targetSlug, targetName: nombreDinamico, temperamento };
+          colisionTipo = dinamico.tipo;
+          break;
+        }
+        if (!aviso && celdaAdyacenteOMisma(celda, celdaDinamico)) {
+          aviso = { targetSlug: dinamico.targetSlug, targetName: nombreDinamico };
+        }
       }
     }
 
@@ -424,7 +518,9 @@ export async function zonaRoutes(app: FastifyInstance) {
         if (dynamicModeOffer) {
           await tx.save.update({ where: { id: save.id }, data: { pendingDynamicModeOffer: dynamicModeOffer as unknown as Prisma.InputJsonValue } });
         }
-        return { jugador: posicionActual, caminoRestante: [], colision, aviso, dynamicModeOffer, logEntry };
+        // El mundo no da un paso si el jugador tampoco lo da (mismo criterio "un paso tuyo = un
+        // paso del mundo" — camino vacío significa que el destino ya es la celda actual).
+        return { jugador: posicionActual, caminoRestante: [], colision, aviso, dynamicModeOffer, logEntry, zonePointsMovidos: [] as { id: string; x: number; y: number }[] };
       });
     }
 
@@ -434,8 +530,12 @@ export async function zonaRoutes(app: FastifyInstance) {
     const resultado = await prisma.$transaction(async (tx) => {
       // El mundo también se mueve — un paso por cada paso del jugador, ANTES de comprobar colisión
       // (mismo criterio Mount & Blade: ambos avanzan a la vez, la colisión se evalúa sobre el
-      // estado ya actualizado, no sobre la posición vieja de la fauna).
-      await avanzarZonePointsUnPaso(tx, save.currentLocationId!, Math.random);
+      // estado ya actualizado, no sobre la posición vieja de la fauna). `zonePointsMovidos` viaja
+      // en la respuesta HTTP (2026-09-09, bug real: "los elementos se mueven, pero no... a la vez
+      // que muevo yo" — antes se descartaba, el frontend nunca se enteraba hasta el próximo
+      // refetch completo del panel) para que el frontend pueda animar la fauna/NPC en el mismo
+      // ritmo que su propio marcador, paso a paso.
+      const zonePointsMovidos = await avanzarZonePointsUnPaso(tx, save.currentLocationId!, save.id, Math.random);
 
       const { colision, aviso, dynamicModeOffer, logEntry } = await detectarEncuentroEnCelda(
         tx,
@@ -463,7 +563,7 @@ export async function zonaRoutes(app: FastifyInstance) {
         },
       });
 
-      return { jugador: nuevaPosicion, caminoRestante: caminoRestantePixel, colision, aviso, dynamicModeOffer, logEntry };
+      return { jugador: nuevaPosicion, caminoRestante: caminoRestantePixel, colision, aviso, dynamicModeOffer, logEntry, zonePointsMovidos };
     });
 
     return resultado;

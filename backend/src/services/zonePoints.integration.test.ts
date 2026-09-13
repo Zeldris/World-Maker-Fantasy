@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { prisma } from '../lib/prisma.js';
+import { getDefaultUserId } from '../lib/defaultUser.js';
 import { recalcularZonePointsDeLocation, zonePointsSummaryFor } from './zonePoints.js';
 
 /// Integración real (mismo criterio que recolectar.integration.test.ts — sin LLM de por medio,
@@ -12,8 +13,10 @@ describe('recalcularZonePointsDeLocation + zonePointsSummaryFor (Postgres real)'
   let worldId: string;
   let locationId: string;
   let zonePointId: string;
+  let saveId: string;
 
   beforeAll(async () => {
+    const userId = await getDefaultUserId();
     const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
     worldId = world.id;
 
@@ -53,12 +56,27 @@ describe('recalcularZonePointsDeLocation + zonePointsSummaryFor (Postgres real)'
       },
     });
     zonePointId = zonePoint.id;
+
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId,
+        characterName: 'Gorhorn de prueba (test Pieza 3)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        portraitInitial: 'G',
+      },
+    });
+    saveId = save.id;
   });
 
   afterAll(async () => {
     await prisma.zonePoint.deleteMany({ where: { locationId } });
     await prisma.worldPopulation.deleteMany({ where: { worldId, targetSlug: 'fauna-prueba-zonepoint-19' } });
     await prisma.location.delete({ where: { id: locationId } });
+    await prisma.save.delete({ where: { id: saveId } });
   });
 
   it('primera vez adopta el objetivo (población regional real recortada a CANTIDAD_MAX_POR_PUNTO=20)', async () => {
@@ -84,13 +102,13 @@ describe('recalcularZonePointsDeLocation + zonePointsSummaryFor (Postgres real)'
   });
 
   it('zonePointsSummaryFor refleja la cantidad real, agrupada con ×N', async () => {
-    const resumen = await zonePointsSummaryFor(prisma, locationId);
+    const resumen = await zonePointsSummaryFor(prisma, locationId, saveId);
     expect(resumen).toContain('×17');
   });
 
   it('punto inactivo (cantidad 0) desaparece del resumen del narrador', async () => {
     await prisma.zonePoint.update({ where: { id: zonePointId }, data: { cantidad: 0, activo: false } });
-    const resumen = await zonePointsSummaryFor(prisma, locationId);
+    const resumen = await zonePointsSummaryFor(prisma, locationId, saveId);
     expect(resumen).toBeNull();
   });
 });

@@ -18,6 +18,22 @@ interface ZonaPanelProps {
   /// pines siguen abriendo su modal de detalle igual, eso nunca fue "moverse". Default `false`
   /// (movimiento activo) para no romper ningún otro caller existente sin tocarlo explícitamente.
   soloConsulta?: boolean
+  /// Layout de 2 columnas (2026-09-09, petición explícita de Álvaro: "aprovechemos el espacio
+  /// horizontal para que se vea tanto la zona como el contenido de la zona en 2 columnas, así no
+  /// teniendo que scrollear" — "pero que solo aplique al mapa de moverse [`ZonaMovimientoModal`],
+  /// no al de información del botón [tab Mapa/`MapaPanel`], en ese ya hablaremos pero cambiaremos
+  /// la distribución pero mantendremos el formato" — MapaPanel.tsx queda pendiente de un rediseño
+  /// aparte, sin tocar aquí). `false` (apilado vertical, comportamiento de siempre) es el default
+  /// para no romper el caller de MapaPanel.tsx sin tocarlo explícitamente.
+  columnasAncho?: boolean
+  /// Bug real jugando en vivo (2026-09-09, Álvaro: "el problema es de front... que al saltar el
+  /// interactuar no se está cerrando el modal... hasta que respondas todo se bloquea") — una
+  /// colisión pacífica dispara `dynamicModeOffer` real (tarjeta de Interactuar insertada en el log
+  /// vía `onEncuentroZona`), pero el modal de movimiento seguía abierto ENCIMA, tapándola —
+  /// `ZonaMovimientoModal` pasa su propio `onClose` aquí para cerrarse solo en cuanto la oferta
+  /// llega, dejando la tarjeta visible y accionable de inmediato. `undefined` en el caller de
+  /// MapaPanel.tsx (vista informativa, nunca dispara colisión) — no rompe nada sin tocarlo.
+  onClose?: () => void
 }
 
 /// Grupo 3 § Mundo determinista, Capa 1 (2026-08-25, docs/rpgtarkor/mundo-determinista.md) —
@@ -46,20 +62,27 @@ const TIPO_LABEL: Record<ZonePointInfo['tipo'] | 'OBJETO', string> = {
 }
 
 /// Color por reputación con la facción del punto (2026-08-27, Pieza 3 de "Dinamismo del mundo") —
-/// verde=aliado, amarillo=neutro, rojo=enemigo; naranja para lo que no tiene facción asociada
-/// (fauna salvaje, recursos, seres inertes) — nunca hereda el color de nadie.
+/// verde=aliado, amarillo=neutro, rojo=enemigo; naranja para NPC/FAUNA/EDIFICIO independientes
+/// (podrían tener facción pero no la tienen ahora mismo) — nunca hereda el color de nadie.
+///
+/// INERTE, gris (2026-09-09, corrección de diseño real — Álvaro: "el color de sin facción solo se
+/// debe aplicar en npc/fauna/construcciones... sino debe utilizar [uno propio], ya que el resto de
+/// elementos no dependen de facción") — RECURSO/OBJETO nunca tienen facción por DISEÑO, distinto de
+/// "no la tiene ahora mismo" (SIN_FACCION) — mezclarlos habría sido tan confuso como reutilizar
+/// NEUTRO (que ya significa "neutral CON una facción real"), ver `zonePointColorFor` (backend).
 ///
 /// B.11 (checklist frontend 2026-08-27) — mismos tonos exactos (`emerald-500`/`red-500`) que
 /// `ReputacionPanel.tsx` usa para Amigable/Enemigo (`emerald-400`/`red-400` en texto), en vez de un
 /// verde/rojo hex sueltos sin relación — dos representaciones del mismo concepto de reputación en
 /// paneles distintos ahora comparten paleta, aunque cada una siga con su propio número de bandas
-/// (aquí 3+SIN_FACCION por punto de mapa, allí 5 por temperamento de combate — legítimamente
+/// (aquí 3+SIN_FACCION+INERTE por punto de mapa, allí 5 por temperamento de combate — legítimamente
 /// distintas, no se tocan los umbrales de ninguna).
 const COLOR_HEX: Record<ZonePointInfo['color'], string> = {
   ALIADO: '#10b981',
   NEUTRO: '#d4af37',
   ENEMIGO: '#ef4444',
   SIN_FACCION: '#f97316',
+  INERTE: '#8a8578',
 }
 
 /// 4 formas fijas por categoría (2026-08-27, diseño cerrado con la usuaria) — círculo=seres vivos
@@ -71,8 +94,21 @@ const COLOR_HEX: Record<ZonePointInfo['color'], string> = {
 /// justo el par que separa "fauna cazable" (círculo) de "recurso recolectable" (rombo). El
 /// alargado vertical (7 horizontal / 10 vertical, antes 9/9) mantiene el área similar pero rompe
 /// la silueta redondeada que lo acercaba al círculo.
+/// Movimiento fluido de fauna/NPC (2026-09-09, mismo hallazgo que `JugadorMarker` — Álvaro: "tiene
+/// que ser un movimiento lento y sutil, como desplazarse caminando", pidió explícitamente que
+/// aplique a "todo", no solo al jugador). A diferencia de `JugadorMarker` (que sí pudo pasar a un
+/// único `<g transform>` porque su silueta ya se recalculaba entera cada vez), aquí `x`/`y` viajan
+/// embebidos en varios sitios a la vez dentro del `<g>` que envuelve cada pin (la propia forma, el
+/// texto de cantidad, el badge de +10 — ver `data.puntos.map`/`dinamicos.map` más abajo), así que
+/// envolver solo ESTE componente en un `transform` no bastaría (el resto del contenido del `<g>`
+/// seguiría con sus coordenadas absolutas fijas). Más simple y de menor riesgo: `transition` de CSS
+/// directamente sobre los propios atributos de posición SVG (`cx`/`cy`/`x`/`y`/`points`) — los
+/// navegadores modernos SÍ los interpolan igual que `transform`, sin reescribir toda la geometría a
+/// coordenadas relativas. Mismos 220ms que `JugadorMarker`, por debajo de `MS_POR_PASO_MOVIMIENTO`.
+const FLUID_TRANSITION = { transition: 'cx 220ms linear, cy 220ms linear, x 220ms linear, y 220ms linear, points 220ms linear' }
+
 function ZonePointShape({ tipo, x, y, color }: { tipo: ZonePointInfo['tipo'] | 'OBJETO'; x: number; y: number; color: string }) {
-  const common = { fill: color, stroke: 'white', strokeWidth: 1.5 }
+  const common = { fill: color, stroke: 'white', strokeWidth: 1.5, style: FLUID_TRANSITION }
   switch (tipo) {
     case 'NPC':
       return <polygon points={`${x},${y - 9} ${x - 8},${y + 7} ${x + 8},${y + 7}`} {...common} />
@@ -85,7 +121,7 @@ function ZonePointShape({ tipo, x, y, color }: { tipo: ZonePointInfo['tipo'] | '
     case 'OBJETO':
       // "Tirar" objetos al suelo de la Zona (2026-09-06) — mismo rombo que RECURSO pero gris fijo,
       // para no confundir un objeto tirado por el jugador con un recurso natural sembrado.
-      return <polygon points={`${x},${y - 10} ${x + 7},${y} ${x},${y + 10} ${x - 7},${y}`} fill="#8a8a8a" stroke="white" strokeWidth={1.5} />
+      return <polygon points={`${x},${y - 10} ${x + 7},${y} ${x},${y + 10} ${x - 7},${y}`} fill="#8a8a8a" stroke="white" strokeWidth={1.5} style={FLUID_TRANSITION} />
   }
 }
 
@@ -95,16 +131,28 @@ function ZonePointShape({ tipo, x, y, color }: { tipo: ZonePointInfo['tipo'] | '
 /// usuaria) distinto de los 4 tonos de reputación. Halo blanco fino + radio algo mayor (11 vs 7-10
 /// del resto) para que nunca quede tapado si el jugador coincide con un pin normal (caso real: justo
 /// tras cazar/recolectar/combatir, el jugador aparece exactamente sobre ese ZonePoint).
+/// Movimiento fluido (2026-09-09, petición explícita de Álvaro: "ahora mismo saltan de una
+/// posición a otra muy rápido... parece más una partida de ajedrez rápida... tiene que ser un
+/// movimiento lento y sutil, como desplazarse caminando") — antes la forma se dibujaba con `x`/`y`
+/// embebidos directamente en cada punto del `polygon`, así que un `transition` de CSS no tenía
+/// ningún atributo aislado al que animar (todo el `points` cambia de golpe entre un valor y otro).
+/// Ahora la silueta se calcula relativa al origen (0,0) una sola vez, y es el propio `<g>` quien se
+/// desplaza vía `transform: translate(x, y)` — eso SÍ es un único valor animable con
+/// `transition: transform`, el navegador interpola la posición fotograma a fotograma en vez de
+/// saltar entre los dos centros de celda. Duración ligeramente por debajo de
+/// `MS_POR_PASO_MOVIMIENTO` (más abajo) para que la transición termine justo antes de que llegue
+/// el siguiente paso del bucle, sin quedarse "a medias" cuando el jugador encadena varios pasos.
+const JUGADOR_MARKER_PUNTOS = Array.from({ length: 10 }, (_, i) => {
+  const r = i % 2 === 0 ? 11 : 4.5
+  const angle = (Math.PI / 5) * i - Math.PI / 2
+  return `${r * Math.cos(angle)},${r * Math.sin(angle)}`
+}).join(' ')
+
 function JugadorMarker({ x, y }: { x: number; y: number }) {
-  const puntos = Array.from({ length: 10 }, (_, i) => {
-    const r = i % 2 === 0 ? 11 : 4.5
-    const angle = (Math.PI / 5) * i - Math.PI / 2
-    return `${x + r * Math.cos(angle)},${y + r * Math.sin(angle)}`
-  }).join(' ')
   return (
-    <g>
-      <circle cx={x} cy={y} r={14} fill="none" stroke="white" strokeWidth={1.5} opacity={0.8} />
-      <polygon points={puntos} fill="#0a0a0a" stroke="white" strokeWidth={1.5} />
+    <g style={{ transform: `translate(${x}px, ${y}px)`, transition: 'transform 220ms linear' }}>
+      <circle cx={0} cy={0} r={14} fill="none" stroke="white" strokeWidth={1.5} opacity={0.8} />
+      <polygon points={JUGADOR_MARKER_PUNTOS} fill="#0a0a0a" stroke="white" strokeWidth={1.5} />
       <title>Tú estás aquí</title>
     </g>
   )
@@ -148,7 +196,7 @@ function regionControlDisplay(control: RegionControlInfo): { text: string; tone:
 /// trayecto de varias celdas.
 const MS_POR_PASO_MOVIMIENTO = 250
 
-export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false }: ZonaPanelProps) {
+export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, columnasAncho = false, onClose }: ZonaPanelProps) {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<ZonaResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -194,7 +242,21 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false }: Zon
       while (sigue && movimientoTokenRef.current === miToken) {
         const resultado = await moverEnZona(saveId, destino)
         if (movimientoTokenRef.current !== miToken) break // cancelado por un clic nuevo mientras esperaba
-        setData((prev) => (prev ? { ...prev, jugador: resultado.jugador } : prev))
+        // Sincronización real del mundo (2026-09-09, bug real: "los elementos se mueven, pero no...
+        // a la vez que muevo yo") — el backend ya movió la fauna/NPC este mismo paso
+        // (`avanzarZonePointsUnPaso`); se fusiona aquí sobre `puntos` para que se anime en el mismo
+        // ritmo que el propio marcador del jugador, en vez de esperar a un refetch completo.
+        setData((prev) => {
+          if (!prev) return prev
+          const puntos =
+            resultado.zonePointsMovidos.length > 0
+              ? prev.puntos.map((p) => {
+                  const movido = resultado.zonePointsMovidos.find((m) => m.id === p.id)
+                  return movido ? { ...p, x: movido.x, y: movido.y } : p
+                })
+              : prev.puntos
+          return { ...prev, jugador: resultado.jugador, puntos }
+        })
         if (resultado.colision) {
           setMensajeMovimiento(`Te topas con ${resultado.colision.targetName}.`)
           // Conexión real con Interactuar (2026-09-09) — la colisión con un NPC/fauna no agresivo
@@ -212,6 +274,10 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false }: Zon
               createdAt: resultado.logEntry.createdAt,
               dynamicModeOffer: { ...resultado.dynamicModeOffer, busy: false },
             })
+            // Cierra el modal de movimiento (2026-09-09) — sin esto la tarjeta de Interactuar
+            // quedaba insertada en el log DETRÁS del propio modal, invisible/inaccesible hasta que
+            // el jugador lo cerrara a mano sin saber por qué.
+            onClose?.()
           }
           sigue = false
         } else if (resultado.aviso) {
@@ -239,24 +305,13 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false }: Zon
   const imageUrl = resolveImageUrl(data.imageUrl ?? null)
   const dinamicos = data.dinamicos ?? []
 
-  return (
-    <div className="flex flex-col gap-3">
-      <p className="text-sm font-medium text-wood-100">{data.locationName}</p>
-        {/* Pieza 2 (2026-09-09) — recuerda dónde vive el movimiento real cuando esta vista es solo
-            informativa, para no dejar al jugador buscando un clic que ya no hace nada aquí. */}
-        {soloConsulta && (
-          <p className="text-2xs italic text-wood-500">
-            Vista informativa — usa el icono 🧭 para moverte de verdad por la zona.
-          </p>
-        )}
-        {/* Control regional (2026-08-27, Pieza 5) — placeholder de texto, sin logo real todavía
-            (pendiente de generación de imagen, mismo mecanismo que el resto de assets). Tono por
-            estado (C.6) para que no se lea como metadata secundaria (mismo tono que un timestamp). */}
-        {data.regionControl && <p className={`text-xs font-medium ${regionControlDisplay(data.regionControl).tone}`}>{regionControlDisplay(data.regionControl).text}</p>}
-        {/* Sistema de movimiento por cuadrícula (2026-09-08) — mensaje simple de colisión/aviso,
-            placeholder consciente hasta que se conecte con combate/Interactuar real (Franja 3). */}
-        {mensajeMovimiento && <p className="text-xs font-medium text-accent2-300">{mensajeMovimiento}</p>}
-        {/* Lienzo de puntos (2026-08-31, bug real: el comentario de esta sección ya decía "imagen
+  // Layout de 2 columnas (2026-09-09) — solo cuando `columnasAncho` (ZonaMovimientoModal): mapa a
+  // la izquierda, todo el contenido (control regional/mensaje/leyenda/listas) a la derecha con su
+  // propio scroll, para aprovechar el ancho del modal sin tener que scrollear la página entera.
+  // `soloConsulta` (MapaPanel.tsx) sigue apilado en vertical, sin tocar su distribución.
+  const mapaColumn = (
+    <>
+      {/* Lienzo de puntos (2026-08-31, bug real: el comentario de esta sección ya decía "imagen
             de fondo y pines son independientes" desde 2026-08-30, pero el código seguía
             condicionando el `<svg>` ENTERO (imagen Y pines) a `imageUrl` — sin PNG subido, los
             `ZonePoint` reales existían en BD pero eran invisibles en el lienzo, solo se veían en
@@ -269,7 +324,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false }: Zon
             invisible en zonas sin ningún ZonePoint sembrado pero con NPC/fauna dinámico o con el
             propio marcador del jugador). */}
         {(data.puntos.length > 0 || dinamicos.length > 0 || data.jugador) && (
-          <div className="overflow-hidden rounded-lg border border-iron-700 bg-wood-950/60">
+          <div className={`flex overflow-hidden rounded-lg border border-iron-700 bg-wood-950/60 ${columnasAncho ? 'min-h-0 flex-1 items-center justify-center' : ''}`}>
             {/* Sistema de movimiento por cuadrícula (2026-09-08) — clic en el LIENZO (fondo, no un
                 pin) mueve al jugador hacia ese punto; `getScreenCTM().inverse()` convierte la
                 coordenada de pantalla del clic a coordenadas reales del viewBox 800×600 (el SVG se
@@ -279,10 +334,23 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false }: Zon
 
                 Piezas 2/3 (2026-09-09) — con `soloConsulta`, el fondo deja de responder al clic del
                 todo (cursor normal, sin `onClick`): esta vista pasa a ser puramente informativa, el
-                movimiento real vive solo en `ZonaMovimientoModal`. */}
+                movimiento real vive solo en `ZonaMovimientoModal`.
+
+                `columnasAncho` (2026-09-09, dos bugs reales seguidos: "se queda cortado" y luego
+                "sigue exactamente igual") — `w-full`+`h-full` a la vez ESTIRABA el propio viewport
+                del <svg> al tamaño exacto del contenedor rectangular (que nunca es 4:3), deformando
+                el marco antes de que `preserveAspectRatio` pudiera actuar (ese atributo solo protege
+                el CONTENIDO del viewBox, no las dimensiones CSS del <svg> en sí). El intento
+                siguiente (`aspect-ratio` + `maxHeight:100%` en el div) dependía de que TODA la
+                cadena de ancestros propagara una altura real por `flex-1`/`min-h-0`, y colapsaba a
+                un tamaño pequeño en cuanto un solo eslabón fallaba. Fix real y robusto: `max-h-full
+                max-w-full` (nunca `h-full`/`w-full` a la vez) — el navegador calcula el tamaño
+                intrínseco del <svg> a partir de su viewBox (800×600, 4:3) y lo limita por AMBOS
+                ejes sin forzar ninguno, exactamente el comportamiento de una `<img>` con
+                `object-fit: contain`. El div contenedor centra el resultado con flex. */}
             <svg
               viewBox="0 0 800 600"
-              className={`h-auto w-full ${soloConsulta ? '' : movimientoEnCurso ? 'cursor-wait' : 'cursor-crosshair'}`}
+              className={`${columnasAncho ? 'max-h-full max-w-full' : 'h-auto w-full'} ${soloConsulta ? '' : movimientoEnCurso ? 'cursor-wait' : 'cursor-crosshair'}`}
               onClick={
                 soloConsulta
                   ? undefined
@@ -335,6 +403,18 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false }: Zon
             </svg>
           </div>
         )}
+    </>
+  )
+
+  const contenidoColumn = (
+    <>
+        {/* Control regional (2026-08-27, Pieza 5) — placeholder de texto, sin logo real todavía
+            (pendiente de generación de imagen, mismo mecanismo que el resto de assets). Tono por
+            estado (C.6) para que no se lea como metadata secundaria (mismo tono que un timestamp). */}
+        {data.regionControl && <p className={`text-xs font-medium ${regionControlDisplay(data.regionControl).tone}`}>{regionControlDisplay(data.regionControl).text}</p>}
+        {/* Sistema de movimiento por cuadrícula (2026-09-08) — mensaje simple de colisión/aviso,
+            placeholder consciente hasta que se conecte con combate/Interactuar real (Franja 3). */}
+        {mensajeMovimiento && <p className="text-xs font-medium text-accent2-300">{mensajeMovimiento}</p>}
         {/* UX 2026-09-01 (hallazgo jugando en vivo): el mapa usa 4 formas (círculo=Fauna,
             triángulo=NPC, cuadrado=Edificio, rombo=Recurso) y 4 colores de reputación con la
             facción del punto, pero no explicaba el código a una jugadora nueva. `<details>` nativo
@@ -383,6 +463,10 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false }: Zon
                   <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: COLOR_HEX.SIN_FACCION }} />
                   Sin facción
                 </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: COLOR_HEX.INERTE }} />
+                  Salvaje
+                </span>
               </div>
             </div>
           </details>
@@ -424,6 +508,38 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false }: Zon
             ))}
           </div>
         )}
+    </>
+  )
+
+  return (
+    <div className={`flex flex-col gap-3 ${columnasAncho ? 'h-full min-h-0' : ''}`}>
+      <p className="text-sm font-medium text-wood-100">{data.locationName}</p>
+      {/* Pieza 2 (2026-09-09) — recuerda dónde vive el movimiento real cuando esta vista es solo
+          informativa, para no dejar al jugador buscando un clic que ya no hace nada aquí. */}
+      {soloConsulta && (
+        <p className="text-2xs italic text-wood-500">
+          Vista informativa — usa el icono 🧭 para moverte de verdad por la zona.
+        </p>
+      )}
+      {columnasAncho ? (
+        // Layout flex, no grid (2026-09-09, petición explícita de Álvaro: "reduce el tamaño de la
+        // columna de zona para que quede ajustado y amplía el % de la columna del texto ya que nos
+        // sobra espacio" — con un grid de fracciones fijas, la columna del mapa se quedaba más
+        // ANCHA de lo que el SVG (limitado por ALTURA, 4:3) de verdad ocupaba, dejando hueco vacío
+        // a los lados dentro de su propia columna en vez de cedérselo al texto). `w-fit` dimensiona
+        // la columna del mapa exactamente al ancho real del SVG ya limitado por su altura
+        // disponible (`max-h-full`, mapaColumn más abajo); `flex-1` en la columna de texto se lleva
+        // TODO el ancho restante del modal, sea cual sea.
+        <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-hidden md:grid-cols-[3fr_2fr]">
+          <div className="flex min-h-0 flex-col gap-3">{mapaColumn}</div>
+          <div className="flex flex-col gap-3 overflow-y-auto">{contenidoColumn}</div>
+        </div>
+      ) : (
+        <>
+          {mapaColumn}
+          {contenidoColumn}
+        </>
+      )}
       {selectedPoint &&
         ('id' in selectedPoint ? (
           <ZonePointDetailModal point={selectedPoint} onClose={() => setSelectedPoint(null)} />

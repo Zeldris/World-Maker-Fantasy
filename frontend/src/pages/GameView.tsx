@@ -1012,6 +1012,34 @@ export function GameView() {
           return prev.map((e, i) => (i === lastIdx ? { ...e, questOffer: offer } : e))
         })
       }
+      // Gistera Koh, aceptación real (2026-09-09, bug real jugando en vivo — Álvaro: "al acabar de
+      // interactuar me sale para aceptar la misión otra vez... como ya aceptamos esto no debería
+      // salir... solo un log al final que confirme que la misión se ha aceptado") — a diferencia de
+      // `newQuestOfferInfo` (arriba, pide una segunda confirmación por botones), `questAceptada`
+      // llega cuando la Quest YA se creó de verdad: mismo patrón que `handleAcceptQuestOffer` (el
+      // propio botón "Aceptar" de la tarjeta amarilla) — un LogEntry nuevo con `newQuest` (fondo
+      // amarillo, sin botones), nunca `questOffer` (que sí los pinta).
+      if (turno.questAceptada?.logEntry) {
+        const { quest, logEntry, questCompletedInfo } = turno.questAceptada
+        setCharacterLog((prev) => [
+          ...prev,
+          {
+            id: logEntry.id,
+            channel: 'character',
+            text: logEntry.text,
+            timeLabel: logEntry.timeLabel,
+            createdAt: logEntry.createdAt,
+            newQuest: { title: quest.title, objetivo: quest.objetivo ?? '' },
+          },
+        ])
+        if (questCompletedInfo) {
+          setCharacterLog((prev) => [...prev, questCompletedLogEntry(questCompletedInfo, logEntry.timeLabel)])
+          setXp((prev) => prev + questCompletedInfo.rewardXp)
+        }
+        getSave(saveId!)
+          .then((save) => setQuests(save.quests))
+          .catch(() => {})
+      }
     } catch {
       setActiveDynamicMode((prev) => (prev ? { ...prev, busy: false, error: 'No se pudo continuar — inténtalo de nuevo.' } : prev))
     }
@@ -1815,8 +1843,12 @@ export function GameView() {
               padre inmediato de los 2 paneles, no el div raíz del componente), oculto en el layout
               de 1 columna (`lg:hidden` en el propio grid-cols-1 de móvil no aplica aquí, así que se
               oculta explícitamente por debajo de `lg` donde los paneles ya no están lado a lado).
-              Mismas condiciones de visibilidad que antes (sin abrir ningún modal ya abierto). */}
-          {saveId && !anyModalOpen && !zonaModalOpen && (
+              Mismas condiciones de visibilidad que antes (sin abrir ningún modal ya abierto), más
+              `activePanel` (bug real 2026-09-09, captura de Álvaro: el botón, en `z-40`, se pintaba
+              POR ENCIMA del `PanelDrawer` de Mapa/Reputación/Diario/etc., que vive en `z-20` — ese
+              drawer nunca contó como "modal" para `anyModalOpen`, así que la brújula tapaba su
+              contenido en vez de quedar oculta detrás). */}
+          {saveId && !anyModalOpen && !zonaModalOpen && !activePanel && (
             <button
               type="button"
               onClick={() => setZonaModalOpen(true)}

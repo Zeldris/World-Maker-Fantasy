@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { proximaCantidadPara, type ZonePointRow } from './zonePoints.js';
+import { proximaCantidadPara, zonePointColorFor, type ZonePointRow } from './zonePoints.js';
 
 function puntoBase(overrides: Partial<ZonePointRow> = {}): ZonePointRow {
   return {
@@ -59,5 +59,27 @@ describe('proximaCantidadPara', () => {
   it('ya en el objetivo, no cambia aunque pase tiempo', () => {
     const punto = puntoBase({ lastUpdatedAtMinutes: 0, cantidad: 20 });
     expect(proximaCantidadPara(punto, 20, 24 * 60)).toEqual({ cantidad: 20, activo: true });
+  });
+});
+
+// Corrección de diseño real (2026-09-09, Álvaro: "el color de sin facción solo se debe aplicar en
+// npc/fauna/construcciones... sino debe utilizar [uno propio], ya que el resto de elementos no
+// dependen de facción") — RECURSO nunca tiene facción por DISEÑO (INERTE, gris), distinto de un
+// NPC/FAUNA/EDIFICIO que podría tenerla pero no la tiene ahora mismo (SIN_FACCION, naranja).
+describe('zonePointColorFor', () => {
+  it('sin facción, RECURSO cae en INERTE (nunca tiene facción por diseño)', () => {
+    expect(zonePointColorFor(null, {}, 'RECURSO')).toBe('INERTE');
+  });
+
+  it('sin facción, FAUNA/NPC/EDIFICIO caen en SIN_FACCION (podrían tener facción, no la tienen ahora)', () => {
+    expect(zonePointColorFor(null, {}, 'FAUNA')).toBe('SIN_FACCION');
+    expect(zonePointColorFor(null, {}, 'NPC')).toBe('SIN_FACCION');
+    expect(zonePointColorFor(null, {}, 'EDIFICIO')).toBe('SIN_FACCION');
+  });
+
+  it('con facción real, el tipo no importa — el color sigue siendo por reputación (ALIADO/NEUTRO/ENEMIGO)', () => {
+    expect(zonePointColorFor('clan-serhu', { 'clan-serhu': 3500 }, 'RECURSO')).toBe('ALIADO');
+    expect(zonePointColorFor('clan-serhu', { 'clan-serhu': 500 }, 'FAUNA')).toBe('ENEMIGO');
+    expect(zonePointColorFor('clan-serhu', { 'clan-serhu': 2500 }, 'NPC')).toBe('NEUTRO');
   });
 });

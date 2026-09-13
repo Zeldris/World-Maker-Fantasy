@@ -24,6 +24,7 @@ describe('POST /saves/:id/zona/mover', () => {
   let locationId: string;
   let agresivoNpcId: string;
   let pacificoNpcId: string;
+  let dinamicoNpcId: string;
 
   beforeAll(async () => {
     const userId = await getDefaultUserId();
@@ -79,6 +80,29 @@ describe('POST /saves/:id/zona/mover', () => {
     });
     pacificoNpcId = pacifico.id;
 
+    // NPC "dinámico" (2026-09-09, bug real jugando en vivo — Álvaro: "me he movido hasta la
+    // casilla anterior a un NPC... pero no pasa nada... me puedo seguir moviendo libremente") —
+    // sin `ZonePoint` propio, itinerante (`homeLocationSlug: null`), entra en escena vía
+    // `detectNpcsInScene`/sessionFacts (ver cada test que lo usa, siembra el sessionFact que lo
+    // menciona) con posición real en `NpcState.zonaPosX/Y` (nunca `ZonePoint.x/y`).
+    const dinamico = await prisma.npc.create({
+      data: {
+        worldId,
+        kind: 'PLANTILLA',
+        slug: 'test-mover-dinamico',
+        name: 'Merodeador Dinámico de Prueba',
+        aliases: ['merodeador dinámico de prueba', 'merodeador'],
+        role: 'Bestia de prueba (dinámica)',
+        level: 1,
+        attributes: { fuerza: 6, destreza: 6, constitucion: 6, inteligencia: 2, voluntad: 4, carisma: 2, magia: 0 },
+        bio: 'x',
+        personality: 'x',
+        homeLocationSlug: null,
+        temperamento: 'AGRESIVO',
+      },
+    });
+    dinamicoNpcId = dinamico.id;
+
     const save = await prisma.save.create({
       data: {
         userId,
@@ -100,13 +124,15 @@ describe('POST /saves/:id/zona/mover', () => {
 
   afterAll(async () => {
     await prisma.save.delete({ where: { id: saveId } });
-    await prisma.npc.deleteMany({ where: { id: { in: [agresivoNpcId, pacificoNpcId] } } });
+    await prisma.npc.deleteMany({ where: { id: { in: [agresivoNpcId, pacificoNpcId, dinamicoNpcId] } } });
     await prisma.location.delete({ where: { id: locationId } });
   });
 
   afterEach(async () => {
     await prisma.zonePoint.deleteMany({ where: { locationId } });
     await prisma.logEntry.deleteMany({ where: { saveId } });
+    await prisma.npcState.deleteMany({ where: { saveId, npcId: dinamicoNpcId } });
+    await prisma.sessionFact.deleteMany({ where: { saveId } });
     await prisma.save.update({
       where: { id: saveId },
       data: { zonaPosX: 25, zonaPosY: 25, zonaCaminoPendiente: Prisma.JsonNull, pendingDynamicModeOffer: Prisma.JsonNull },
@@ -249,19 +275,39 @@ describe('POST /saves/:id/zona/mover', () => {
     expect(body.caminoRestante.length).toBeGreaterThan(0);
   });
 
-  it('el mundo también se mueve: un ZonePoint con ruta artesanal avanza un paso a la vez que el jugador', async () => {
+  it('el mundo también se mueve: un ZonePoint con ruta artesanal avanza un paso a la vez que el jugador — y la respuesta HTTP lo confirma (2026-09-09)', async () => {
     // Ruta de 2 celdas (píxel), lejos del jugador para no interferir con colisión/aviso en este test.
     const ruta = [{ x: 725, y: 575 }, { x: 675, y: 575 }]; // celdas (14,11) y (13,11)
     const punto = await prisma.zonePoint.create({
       data: { locationId, x: 725, y: 575, tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta, pasoRuta: 0 },
     });
     const app = await buildApp();
-    await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 75, y: 25 } } });
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 75, y: 25 } } });
 
     const puntoAfter = await prisma.zonePoint.findUniqueOrThrow({ where: { id: punto.id } });
     expect(puntoAfter.x).toBe(675);
     expect(puntoAfter.y).toBe(575);
     expect(puntoAfter.pasoRuta).toBe(1);
+
+    // Bug real jugando en vivo (2026-09-09, Álvaro: "los elementos se mueven, pero no...a la vez
+    // que muevo yo") — antes `avanzarZonePointsUnPaso` corría como puro efecto secundario en BD,
+    // sin llegar nunca a la respuesta HTTP; el frontend nunca se enteraba de este paso hasta un
+    // refetch completo del panel. Ahora la propia respuesta trae la posición ya actualizada.
+    const body = JSON.parse(res.body);
+    expect(body.zonePointsMovidos).toEqual([{ id: punto.id, x: 675, y: 575 }]);
+  });
+
+  it('camino vacío (destino ya es la celda actual): el mundo NO da un paso, zonePointsMovidos llega vacío', async () => {
+    const ruta = [{ x: 725, y: 575 }, { x: 675, y: 575 }];
+    const punto = await prisma.zonePoint.create({
+      data: { locationId, x: 725, y: 575, tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta, pasoRuta: 0 },
+    });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 25, y: 25 } } });
+
+    expect(JSON.parse(res.body).zonePointsMovidos).toEqual([]);
+    const puntoAfter = await prisma.zonePoint.findUniqueOrThrow({ where: { id: punto.id } });
+    expect(puntoAfter.pasoRuta).toBe(0); // sin cambios — el jugador no avanzó, el mundo tampoco
   });
 
   it('recalcula el camino desde cero si el jugador pulsa un destino DISTINTO a mitad de un movimiento en curso', async () => {
@@ -273,5 +319,85 @@ describe('POST /saves/:id/zona/mover', () => {
     const body = JSON.parse(res.body);
     // Debe moverse hacia ABAJO (nueva dirección), no seguir el camino viejo hacia la derecha.
     expect(body.jugador.y).toBeGreaterThan(25);
+  });
+
+  // NPC "dinámico" — bug real jugando en vivo (2026-09-09, Álvaro: "me he movido hasta la casilla
+  // anterior a un NPC que no sé lo que es porque tiene ???... pero ni me salta ninguna narración...
+  // me puedo seguir moviendo libremente por el mapa sin que pase nada"). Hasta este fix,
+  // `detectarEncuentroEnCelda` solo miraba `ZonePoint` de catálogo — un NPC presentado por la
+  // narración (misión/evento/sessionFact, sin fila `ZonePoint` propia) era invisible al motor de
+  // colisión, aunque SÍ se pintara como pin real en el mapa (`GET /zona` § `dinamicos`). El fix
+  // reutiliza `detectNpcsInScene` (la MISMA función central que decide "qué hay en escena" en todo
+  // el motor) — cubre por diseño cualquier NPC/fauna dinámico futuro (misiones/eventos que añadan
+  // elementos a la zona), no un caso concreto: no hay ninguna lista cerrada de slugs, es genérico.
+  describe('NPC "dinámico" (sin ZonePoint, presentado por sessionFacts) — mismo doble umbral de colisión/aviso', () => {
+    it('colisión real: el jugador entra en la MISMA celda que un NPC dinámico — se detiene ahí, sin camino pendiente', async () => {
+      await prisma.$executeRaw`
+        INSERT INTO "SessionFact" (id, "saveId", text, embedding, "createdAt")
+        VALUES (${crypto.randomUUID()}, ${saveId}, 'Un Merodeador Dinámico de Prueba ronda cerca de la Zona de Prueba Cuadrícula.', NULL, ${new Date()})
+      `;
+      // Posición real en NpcState.zonaPosX/Y (nunca ZonePoint.x/y) — celda (1,0), coincide con el
+      // primer paso del jugador, mismo montaje que el test de colisión con ZonePoint de arriba.
+      await prisma.npcState.create({
+        data: { saveId, npcId: dinamicoNpcId, scope: locationId, zonaPosX: 75, zonaPosY: 25, zonaLocationId: locationId },
+      });
+      const app = await buildApp();
+      const res = await app.inject({
+        method: 'POST',
+        url: `/saves/${saveId}/zona/mover`,
+        payload: { destino: { x: 375, y: 25 } },
+      });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.colision).toMatchObject({ targetSlug: 'test-mover-dinamico', targetName: 'Merodeador Dinámico de Prueba', temperamento: 'AGRESIVO' });
+      expect(body.aviso).toBeNull();
+      expect(body.jugador).toEqual({ x: 75, y: 25 });
+      expect(body.caminoRestante).toEqual([]);
+
+      const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+      expect(saveAfter.zonaCaminoPendiente).toBeNull();
+    }, 15_000);
+
+    it('celda ADYACENTE (no exacta) a un NPC dinámico: solo aviso, el movimiento sigue su curso', async () => {
+      await prisma.$executeRaw`
+        INSERT INTO "SessionFact" (id, "saveId", text, embedding, "createdAt")
+        VALUES (${crypto.randomUUID()}, ${saveId}, 'Un Merodeador Dinámico de Prueba ronda cerca de la Zona de Prueba Cuadrícula.', NULL, ${new Date()})
+      `;
+      // Celda (2,0) — vecina de la celda destino del primer paso (1,0), no la misma.
+      await prisma.npcState.create({
+        data: { saveId, npcId: dinamicoNpcId, scope: locationId, zonaPosX: 125, zonaPosY: 25, zonaLocationId: locationId },
+      });
+      const app = await buildApp();
+      const res = await app.inject({
+        method: 'POST',
+        url: `/saves/${saveId}/zona/mover`,
+        payload: { destino: { x: 375, y: 25 } },
+      });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.colision).toBeNull();
+      expect(body.aviso).toMatchObject({ targetSlug: 'test-mover-dinamico', targetName: 'Merodeador Dinámico de Prueba' });
+      expect(body.jugador).toEqual({ x: 75, y: 25 });
+      expect(body.caminoRestante.length).toBeGreaterThan(0);
+    }, 15_000);
+
+    it('un NPC dinámico SIN posición asignada todavía (nunca se movió/vio en Zona) no puede colisionar ni avisar — fallback seguro', async () => {
+      await prisma.$executeRaw`
+        INSERT INTO "SessionFact" (id, "saveId", text, embedding, "createdAt")
+        VALUES (${crypto.randomUUID()}, ${saveId}, 'Un Merodeador Dinámico de Prueba ronda cerca de la Zona de Prueba Cuadrícula.', NULL, ${new Date()})
+      `;
+      // Sin NpcState — nunca se le asignó posición real en Zona (a diferencia de GET /zona, que la
+      // asigna perezosamente; el endpoint de movimiento nunca la inventa).
+      const app = await buildApp();
+      const res = await app.inject({
+        method: 'POST',
+        url: `/saves/${saveId}/zona/mover`,
+        payload: { destino: { x: 375, y: 25 } },
+      });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.colision).toBeNull();
+      expect(body.aviso).toBeNull();
+    }, 15_000);
   });
 });

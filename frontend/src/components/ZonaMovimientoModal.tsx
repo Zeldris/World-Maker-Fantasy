@@ -13,10 +13,16 @@ interface ZonaMovimientoModalProps {
 /// zona en Mapa solo sería para visualizar y no la utilizaríamos para movernos" — confirmado que
 /// es una vista informativa por un lado, "por la que sí nos podemos mover" por el otro). Este modal
 /// ES esa segunda vía — envuelve el mismo `ZonaPanel` de siempre con `soloConsulta={false}`
-/// (movimiento activo), a pantalla casi completa (`max-w-4xl`, más grande que el resto de modales
-/// de la app a propósito: Álvaro señaló que la zona "si se pone en pequeño... no se vería mucho").
-/// Se abre desde el icono de brújula flotante (GameView.tsx) — decisión explícita de Álvaro de no
-/// usar el header de "Tu personaje" ("me parece poco intuitivo").
+/// (movimiento activo), a pantalla casi completa (`max-w-[90rem]`, más grande que el resto de
+/// modales de la app a propósito: Álvaro señaló que la zona "si se pone en pequeño... no se vería
+/// mucho"; ampliado dos veces el mismo día tras el layout de 2 columnas — primero `max-w-4xl`→
+/// `max-w-6xl` ("aprovecha el ancho, que no quede tan pequeño"), luego →`max-w-[90rem]` al pasar el
+/// reparto de columnas de 80/20 a 70/30 ("para dar más margen al texto")). Se abre desde el icono
+/// de brújula flotante (GameView.tsx) — decisión explícita de Álvaro de no usar el header de "Tu
+/// personaje" ("me parece poco intuitivo"). `columnasAncho` (ZonaPanel.tsx) pone el mapa a la
+/// izquierda (70%) y el resto del contenido a la derecha (30%) con su propio scroll — petición
+/// explícita de Álvaro: "aprovechemos el espacio horizontal... así no teniendo que scrollear",
+/// aplicado SOLO aquí, no en el tab Mapa informativo.
 export function ZonaMovimientoModal({ saveId, onEncuentroZona, onClose }: ZonaMovimientoModalProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -32,7 +38,7 @@ export function ZonaMovimientoModal({ saveId, onEncuentroZona, onClose }: ZonaMo
         if (e.key === 'Escape') onClose()
       }}
     >
-      <div className="plank-panel animate-combat-enter relative flex max-h-[90vh] w-full max-w-4xl flex-col gap-3 overflow-hidden rounded-xl p-5">
+      <div className="plank-panel animate-combat-enter relative flex h-[90vh] w-full max-w-[90rem] flex-col gap-3 overflow-hidden rounded-xl p-5">
         <div className="flex shrink-0 items-center justify-between gap-2">
           <p className="font-serif text-sm tracking-wide text-accent2-300">🧭 Moverte por la zona</p>
           <button
@@ -43,8 +49,8 @@ export function ZonaMovimientoModal({ saveId, onEncuentroZona, onClose }: ZonaMo
             Cerrar
           </button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <ZonaPanel saveId={saveId} onEncuentroZona={onEncuentroZona} soloConsulta={false} />
+        <div className="min-h-0 flex-1 overflow-hidden">
+          <ZonaPanel saveId={saveId} onEncuentroZona={onEncuentroZona} soloConsulta={false} columnasAncho onClose={onClose} />
         </div>
       </div>
     </div>

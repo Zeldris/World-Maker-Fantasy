@@ -4051,7 +4051,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       regionLocation?.region ?? null,
       advanceFictionalMinutes(fictionalMinutesActuales, minutosDeEsteTurno),
     );
-    const zonePointsSummary = await zonePointsSummaryFor(prisma, regionLocationId);
+    const zonePointsSummary = await zonePointsSummaryFor(prisma, regionLocationId, saveId);
     if (zonePointsSummary) contextBlocks.push(`QUIÉN ESTÁ AQUÍ AHORA MISMO: ${zonePointsSummary}`);
   }
   // Refactor de ingredientes (2026-07-29) — crafting.ts/construction.ts ya no matchean por

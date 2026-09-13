@@ -26,6 +26,10 @@ const DISCOVERED_BY_DEFAULT = [
   { entityType: 'flora', entitySlug: 'yerreo' },
   { entityType: 'npc', entitySlug: 'gistera-koh' },
 ];
+// Gate de aparición narrativa (2026-09-09, Orco Enfurecido/Gistera Koh, ver zonePoints.ts §
+// `questSlugsAceptadosPara`) — vacío por defecto (ninguna Quest aceptada todavía): no afecta a
+// ningún test preexistente de este archivo, que no usa esos 2 slugs concretos como ZonePoint.
+const findManyQuest = vi.fn();
 
 vi.mock('../../lib/prisma.js', () => ({
   prisma: {
@@ -37,6 +41,7 @@ vi.mock('../../lib/prisma.js', () => ({
     },
     droppedItem: { findMany: (...args: unknown[]) => findManyDroppedItem(...args) },
     discoveredEntity: { findMany: (...args: unknown[]) => findManyDiscoveredEntity(...args) },
+    quest: { findMany: (...args: unknown[]) => findManyQuest(...args) },
   },
 }));
 
@@ -79,6 +84,7 @@ beforeEach(() => {
   findManyDroppedItem.mockReset().mockResolvedValue([]);
   zoneMapImageUrlMock.mockReset().mockReturnValue(null);
   findManyDiscoveredEntity.mockReset().mockResolvedValue(DISCOVERED_BY_DEFAULT);
+  findManyQuest.mockReset().mockResolvedValue([]);
 });
 
 afterEach(() => {
@@ -173,7 +179,9 @@ describe('GET /saves/:id/zona', () => {
     expect(body.imageUrl === null || body.imageUrl === '/images/zona/hondonada-del-eco-mapa.png').toBe(true);
     expect(body.puntos).toEqual([
       { id: 'zp1', x: 620, y: 180, tipo: 'FAUNA', targetSlug: 'kirelon-arenoso', nombre: 'Kirelon Arenoso', cantidad: 1, color: 'SIN_FACCION', descubierto: true },
-      { id: 'zp2', x: 400, y: 470, tipo: 'RECURSO', targetSlug: 'yerreo', nombre: expect.any(String), cantidad: 1, color: 'SIN_FACCION', descubierto: true },
+      // RECURSO nunca tiene facción por diseño (2026-09-09) — INERTE (gris), no SIN_FACCION
+      // (naranja, reservado a NPC/FAUNA/EDIFICIO independientes) — ver zonePointColorFor.
+      { id: 'zp2', x: 400, y: 470, tipo: 'RECURSO', targetSlug: 'yerreo', nombre: expect.any(String), cantidad: 1, color: 'INERTE', descubierto: true },
       { id: 'zp3', x: 100, y: 100, tipo: 'FAUNA', targetSlug: 'gesgurio', nombre: 'Etiqueta a mano', cantidad: 3, color: 'SIN_FACCION', descubierto: true }, // label manda sobre el nombre real
     ]);
     expect(body.dinamicos).toEqual([]);
@@ -202,7 +210,7 @@ describe('GET /saves/:id/zona', () => {
     const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
     const body = res.json();
     expect(body.puntos).toEqual([
-      { id: 'zp2', x: 400, y: 470, tipo: 'RECURSO', targetSlug: 'yerreo', nombre: expect.any(String), cantidad: 1, color: 'SIN_FACCION', descubierto: true },
+      { id: 'zp2', x: 400, y: 470, tipo: 'RECURSO', targetSlug: 'yerreo', nombre: expect.any(String), cantidad: 1, color: 'INERTE', descubierto: true },
     ]);
   });
 
@@ -221,7 +229,7 @@ describe('GET /saves/:id/zona', () => {
     const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
     const body = res.json();
     expect(body.dinamicos).toEqual([
-      { slug: 'drop1', nombre: 'Cuchillo de hielo sílice', tipo: 'OBJETO', color: 'SIN_FACCION', x: 250, y: 300, droppedItemId: 'drop1', descubierto: true },
+      { slug: 'drop1', nombre: 'Cuchillo de hielo sílice', tipo: 'OBJETO', color: 'INERTE', x: 250, y: 300, droppedItemId: 'drop1', descubierto: true },
     ]);
     expect(findManyDroppedItem).toHaveBeenCalledWith({ where: { saveId: 's1', locationId: 'loc1' } });
   });
@@ -418,7 +426,7 @@ describe('GET /saves/:id/zona', () => {
       findUniqueSave.mockResolvedValueOnce({
         id: 's1',
         worldId: 'w1',
-        currentLocation: { id: 'loc1', slug: 'campamento-serhu-interior', name: 'Karot Vekhad', kind: 'interior', zonePoints: [] },
+        currentLocation: { id: 'loc1', slug: 'campamento-serhu-interior', name: 'Ketg\'lukar', kind: 'interior', zonePoints: [] },
         // 1440*120 días de ficción, muy avanzado — cualquier estación menos PRIMAVERA (Día 1) para
         // que el test no dependa de coincidir por azar con el valor por defecto.
         worldState: { fictionalMinutes: 1440 * 120, factionsStatus: null, agenda: null },

@@ -17,6 +17,9 @@ const COLOR_LABEL: Record<ZonePointInfo['color'], string> = {
   NEUTRO: 'Neutro',
   ENEMIGO: 'Enemigo',
   SIN_FACCION: 'Sin facción',
+  // No aplica facción por diseño (2026-09-09) — RECURSO/OBJETO, nunca "sin facción por ahora"
+  // (SIN_FACCION) como un NPC/FAUNA/EDIFICIO independiente, ver zonePointColorFor (backend).
+  INERTE: 'Salvaje',
 }
 
 /// Punto del jugador en el mapa de Zona (2026-09-04) — este modal ahora también se abre desde un

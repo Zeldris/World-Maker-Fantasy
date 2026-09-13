@@ -9,10 +9,14 @@ import {
   MAX_VUELTAS_MODO_DINAMICO,
   MINUTOS_POR_VUELTA_MODO_DINAMICO,
   resumenModoDinamicoParaLog,
+  narrarVueltaGistera,
+  respuestaGisteraDesdeOpcion,
   type PendingDynamicMode,
   type DynamicModeTipo,
+  type RespuestaGistera,
 } from '../../services/dynamicMode.js';
 import { narrarVueltaModoDinamico } from '../../services/dynamicModeNarracion.js';
+import { aceptarQuest } from './quests.js';
 
 /// "Modo dinámico" (2026-08-27, Pieza 4 de "Dinamismo del mundo") — mini-flujo acotado ofrecido
 /// al final de un turno normal (`dynamicModeOffer`, turnResolution.ts), nunca lo interrumpe. Estas
@@ -46,24 +50,40 @@ const ORCO_ENFURECIDO_QUEST_DESCRIPTION =
 /// SessionFact fuera de la transacción a propósito (mismo criterio que `recolectar.ts` línea
 /// ~1103: `appendSessionFacts` llama a Ollama para el embedding, nunca dentro de una transacción de
 /// Prisma) — se llama DESPUÉS de que `persistirCierreNpcEnTransaccion` ya confirmó.
-async function marcarNpcConocido(saveId: string, targetName: string): Promise<void> {
+///
+/// `DiscoveredEntity` (2026-09-09, generalización del nombre oculto — Álvaro: "esta lógica se debe
+/// aplicar a todos los que tienen nombre propio") — conversar con un NPC vía Interactuar es una
+/// señal de presencia real tan válida como `npcsInScene` del turno normal (`recordEntityDiscoveries`,
+/// entityDiscovery.ts), pero ese escaneo nunca corre en este camino (Interactuar no pasa por
+/// `turnResolution.ts`). Sin esto, un NPC PRINCIPAL seguiría mostrándose oculto en el mapa/colisión
+/// para siempre aunque el jugador ya hubiera hablado con él — `upsert` porque puede ya estar CITADO
+/// (mención previa en prosa) y esto lo sube a DESCUBIERTO, o no existir fila todavía.
+async function marcarNpcConocido(saveId: string, targetSlug: string, targetName: string): Promise<void> {
   const sessionFacts = await loadSessionFacts(saveId);
-  await appendSessionFacts(saveId, sessionFacts, [`${targetName} conversa con el personaje.`]);
+  await Promise.all([
+    appendSessionFacts(saveId, sessionFacts, [`${targetName} conversa con el personaje.`]),
+    prisma.discoveredEntity.upsert({
+      where: { saveId_entityType_entitySlug: { saveId, entityType: 'npc', entitySlug: targetSlug } },
+      create: { saveId, entityType: 'npc', entitySlug: targetSlug, fase: 'DESCUBIERTO' },
+      update: { fase: 'DESCUBIERTO' },
+    }),
+  ]);
 }
 
+/// Solo se llama para el camino GENÉRICO de modo dinámico (LLM) — mismo criterio previo a
+/// 2026-09-09, ahora acotado explícitamente a "no Gistera" en el caller. Gistera ya NO ofrece
+/// (`pendingQuestOfferInfo`, exige una segunda confirmación por botones): su guion determinista
+/// SABE con certeza que el jugador aceptó, así que crea la Quest de verdad (`aceptarQuest`,
+/// quests.ts) directamente al cerrar — ver el bloque dedicado más abajo en `/responder`.
 async function persistirCierreNpcEnTransaccion(
   tx: Prisma.TransactionClient,
   saveId: string,
   targetSlug: string,
 ): Promise<{ pendingQuestOfferInfo: { title: string; description: string } | null }> {
   if (targetSlug !== 'gistera-koh') return { pendingQuestOfferInfo: null };
-
-  const existingOrcoQuest = await tx.quest.findFirst({ where: { saveId, title: { contains: 'Orco Enfurecido' } } });
-  if (existingOrcoQuest) return { pendingQuestOfferInfo: null };
-
-  const pendingQuestOfferInfo = { title: ORCO_ENFURECIDO_QUEST_TITLE, description: ORCO_ENFURECIDO_QUEST_DESCRIPTION };
-  await tx.save.update({ where: { id: saveId }, data: { pendingQuestOfferInfo } });
-  return { pendingQuestOfferInfo };
+  // Alcanzable solo si algún caller futuro reintroduce Gistera por el camino genérico — hoy nunca
+  // ocurre (interceptada en ambas rutas antes de llegar aquí), documentado por seguridad.
+  return { pendingQuestOfferInfo: null };
 }
 
 export async function dynamicModeRoutes(app: FastifyInstance) {
@@ -86,19 +106,28 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
         return reply.status(409).send({ error: 'Ya hay un modo dinámico en curso' });
       }
 
+      const esGistera = targetSlug === 'gistera-koh';
+
       // Bug real jugando en vivo (2026-08-27, "hay que darle mucho más contenido determinista
       // para que no invente" — el LLM narraba lugares/hechos que no existen, ej. una "Isla
       // Cambiante" inventada de la nada): sin esto, narrarVueltaModoDinamico solo recibía el
       // resumen del PERSONAJE, nunca datos reales de con quién/dónde ocurre la interacción.
-      const [targetNpc, currentLocation] = await Promise.all([
-        prisma.npc.findFirst({ where: { worldId: save.worldId, slug: targetSlug }, select: { bio: true } }),
-        save.currentLocationId
-          ? prisma.location.findUnique({ where: { id: save.currentLocationId }, select: { name: true, description: true } })
-          : null,
-      ]);
+      // Omitido para Gistera (2026-09-09) — su guion es 100% determinista, no necesita bio/Location
+      // porque no hay LLM al que dárselos.
+      const [targetNpc, currentLocation] = esGistera
+        ? [null, null]
+        : await Promise.all([
+            prisma.npc.findFirst({ where: { worldId: save.worldId, slug: targetSlug }, select: { bio: true } }),
+            save.currentLocationId
+              ? prisma.location.findUnique({ where: { id: save.currentLocationId }, select: { name: true, description: true } })
+              : null,
+          ]);
 
       const characterSummary = characterSummaryFor(save);
-      const turno = await narrarVueltaModoDinamico({
+      // Guion determinista de Gistera Koh (2026-09-09, ver comentario de `narrarVueltaGistera`,
+      // dynamicMode.ts — bug real: "ya no estamos usando los mensajes deterministas... y qué tiene
+      // que ver el tótem con ella") — cero llamadas a Ollama, texto fijo revisado por Álvaro.
+      const turno = esGistera ? narrarVueltaGistera(1, null) : await narrarVueltaModoDinamico({
         tipo,
         targetName,
         vuelta: 1,
@@ -113,6 +142,12 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
       const nuevoFictionalMinutes = advanceFictionalMinutes(fictionalMinutesActuales, MINUTOS_POR_VUELTA_MODO_DINAMICO);
       const nuevaFictionalDateLabel = formatFictionalDate(nuevoFictionalMinutes);
 
+      // `pendingDynamicMode.targetName` es SIEMPRE el nombre real, interno (usado por
+      // `marcarNpcConocido`/persistencia) — nunca se muestra directamente en el modal (que solo
+      // pinta `narration`/`opciones`, ver DynamicModeModal.tsx), así que no necesita ocultarse aquí.
+      // El nombre oculto (`NOMBRE_OCULTO_GENERICO`, dynamicMode.ts § servicio) solo aplica a la
+      // TARJETA de oferta previa (`pendingDynamicModeOffer`) y a la colisión de Zona — los dos
+      // sitios donde el nombre real puede llegar a la UI antes de que el NPC se presente.
       const historialNarracion = [turno.narration];
       const pendingDynamicMode: PendingDynamicMode | null = turno.cierra
         ? null
@@ -164,7 +199,7 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
         return null;
       });
       if (turno.cierra && tipo === 'NPC') {
-        await marcarNpcConocido(save.id, targetName);
+        await marcarNpcConocido(save.id, targetSlug, targetName);
       }
 
       return {
@@ -194,20 +229,27 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
       return reply.status(409).send({ error: 'No hay ningún modo dinámico en curso' });
     }
 
+    const esGistera = pending.targetSlug === 'gistera-koh';
     const characterSummary = characterSummaryFor(save);
-    const siguienteVuelta = pending.vuelta + 1;
-    const turno = await narrarVueltaModoDinamico({
-      tipo: pending.tipo,
-      targetName: pending.targetName,
-      vuelta: siguienteVuelta,
-      maxVueltas: MAX_VUELTAS_MODO_DINAMICO,
-      characterSummary,
-      respuestaJugador: respuesta,
-      // Contexto real resuelto en la primera vuelta (2026-08-27, ver comentario de
-      // PendingDynamicMode) — reutilizado tal cual, nunca re-consultado.
-      targetBio: pending.targetBio,
-      locationContext: pending.locationContext,
-    });
+    // "Preguntar más antes de decidir" recicla la presentación (misma vuelta lógica, ver
+    // `narrarVueltaGistera`) — no avanza el contador `vuelta` para que una recarga (F5) a mitad no
+    // salte a un desenlace que nunca ocurrió. El resto de respuestas SÍ avanza como siempre.
+    const respuestaGistera = esGistera ? respuestaGisteraDesdeOpcion(respuesta) : null;
+    const siguienteVuelta = esGistera && respuestaGistera === 'preguntar' ? pending.vuelta : pending.vuelta + 1;
+    const turno = esGistera
+      ? narrarVueltaGistera(siguienteVuelta, respuestaGistera)
+      : await narrarVueltaModoDinamico({
+          tipo: pending.tipo,
+          targetName: pending.targetName,
+          vuelta: siguienteVuelta,
+          maxVueltas: MAX_VUELTAS_MODO_DINAMICO,
+          characterSummary,
+          respuestaJugador: respuesta,
+          // Contexto real resuelto en la primera vuelta (2026-08-27, ver comentario de
+          // PendingDynamicMode) — reutilizado tal cual, nunca re-consultado.
+          targetBio: pending.targetBio,
+          locationContext: pending.locationContext,
+        });
 
     const fictionalMinutesActuales = save.worldState?.fictionalMinutes ?? 480;
     const nuevoFictionalMinutes = advanceFictionalMinutes(fictionalMinutesActuales, MINUTOS_POR_VUELTA_MODO_DINAMICO);
@@ -249,7 +291,22 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
       return null;
     });
     if (turno.cierra && pending.tipo === 'NPC') {
-      await marcarNpcConocido(save.id, pending.targetName);
+      await marcarNpcConocido(save.id, pending.targetSlug, pending.targetName);
+    }
+
+    // Gistera Koh, aceptación real (2026-09-09, bug real jugando en vivo — Álvaro: "al acabar de
+    // interactuar me sale para aceptar la misión otra vez... como ya aceptamos esto no debería
+    // salir... solo un log al final... que confirme que la misión se ha aceptado") — a diferencia
+    // del resto de NPC (que solo OFRECEN la misión, exigiendo una segunda confirmación por
+    // botones), Gistera ya sabe con certeza que el jugador aceptó dentro de la propia conversación:
+    // crea la Quest DIRECTAMENTE aquí (`aceptarQuest`, mismo camino que usa el botón "Aceptar" de
+    // la tarjeta amarilla, extraído a función reutilizable) — nunca devuelve `newQuestOfferInfo`,
+    // así que ningún botón adicional llega a pintarse. Fuera de la transacción de arriba a
+    // propósito (mismo motivo que la ruta HTTP de quests.ts: `aceptarQuest` narra con Ollama y
+    // gestiona su propia transacción interna).
+    let questAceptada: Awaited<ReturnType<typeof aceptarQuest>> | null = null;
+    if (turno.cierra && esGistera && respuestaGistera === 'aceptar') {
+      questAceptada = await aceptarQuest(save, ORCO_ENFURECIDO_QUEST_TITLE, ORCO_ENFURECIDO_QUEST_DESCRIPTION);
     }
 
     return {
@@ -259,6 +316,10 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
       vuelta: siguienteVuelta,
       timeLabel: nuevaFictionalDateLabel,
       newQuestOfferInfo: pendingQuestOfferInfo,
+      // Reutiliza el mismo campo que ya consume el frontend tras pulsar "Aceptar" en la tarjeta
+      // amarilla (ver AbilityForm/GameView § handleAceptarMision) — la Quest ya nace ACTIVA, así
+      // que el jugador solo ve la confirmación, nunca un botón que pedirle pulsar de nuevo.
+      questAceptada,
     };
   });
 
@@ -315,8 +376,14 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
       // aceptación es obligatoria en la trama (decisión explícita del usuario, 2026-09-09), así
       // que abandonar la conversación a medias no puede contar como si ya hubiera "formulado la
       // petición" del todo. Solo el cierre natural (`turno.cierra`, rutas de arriba) la ofrece.
-      if (pending && pending.tipo === 'NPC') {
-        await marcarNpcConocido(save.id, pending.targetName);
+      //
+      // Excepción para Gistera (2026-09-09, nombre oculto generalizado) — salir en la VUELTA 1
+      // (avistamiento, todavía sin nombre) no debe marcarla como descubierta: nunca llegó a
+      // presentarse, así que su nombre real seguiría siendo un spoiler. Desde la vuelta 2 en
+      // adelante (la presentación ya se narró) sí cuenta como conocida, igual que cualquier otro NPC.
+      const gisteraSinPresentarTodavia = pending?.targetSlug === 'gistera-koh' && pending.vuelta < 2;
+      if (pending && pending.tipo === 'NPC' && !gisteraSinPresentarTodavia) {
+        await marcarNpcConocido(save.id, pending.targetSlug, pending.targetName);
       }
     }
     return { ok: true };

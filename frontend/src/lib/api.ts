@@ -1076,9 +1076,11 @@ export interface ZonePointInfo {
   nombre: string
   /// Instancia viva (2026-08-27, Pieza 3 de "Dinamismo del mundo") — cuántos individuos reales
   /// representa este punto (agrupación por población regional real vía `WorldPopulation`), y su
-  /// color por reputación con `factionSlug` (verde/amarillo/rojo; sin facción = naranja).
+  /// color por reputación con `factionSlug` (verde/amarillo/rojo; sin facción = naranja; RECURSO,
+  /// que nunca tiene facción por diseño, = gris (`INERTE`), no naranja — 2026-09-09, ver
+  /// `zonePointColorFor`, backend).
   cantidad: number
-  color: 'ALIADO' | 'NEUTRO' | 'ENEMIGO' | 'SIN_FACCION'
+  color: 'ALIADO' | 'NEUTRO' | 'ENEMIGO' | 'SIN_FACCION' | 'INERTE'
   /// Hallazgo 34 (2026-09-07) — false si la partida todavía no lo ha descubierto en la ficción
   /// (`DiscoveredEntity`); el modal de detalle debe ocultar "Ver en la Enciclopedia" en ese caso,
   /// aunque exista ficha real. `EDIFICIO` siempre `true` (nunca tiene ficha que ocultar).
@@ -1091,10 +1093,12 @@ export interface ZonaDinamicoInfo {
   slug: string
   nombre: string
   tipo: 'NPC' | 'FAUNA' | 'OBJETO'
-  /// Color por reputación con la facción del NPC (2026-09-04) — mismo criterio y mismos 4 valores
-  /// que `ZonePointInfo.color` (`zonePointColorFor`, backend), para que la lista "Presentes ahora"
-  /// deje de usar un punto marrón fijo sin relación con el resto del mapa.
-  color: 'ALIADO' | 'NEUTRO' | 'ENEMIGO' | 'SIN_FACCION'
+  /// Color por reputación con la facción del NPC (2026-09-04) — mismo criterio y mismos valores que
+  /// `ZonePointInfo.color` (`zonePointColorFor`, backend), para que la lista "Presentes ahora" deje
+  /// de usar un punto marrón fijo sin relación con el resto del mapa. `INERTE` (2026-09-09) solo lo
+  /// usa `tipo: 'OBJETO'` (un objeto tirado nunca tiene facción por diseño) — `NPC`/`FAUNA` aquí
+  /// siguen cayendo en `SIN_FACCION` como siempre.
+  color: 'ALIADO' | 'NEUTRO' | 'ENEMIGO' | 'SIN_FACCION' | 'INERTE'
   /// Punto del jugador en el mapa de Zona (2026-09-04) — a diferencia de `ZonePointInfo` (posición
   /// curada a mano), esta se asigna de forma aleatoria/aproximada la primera vez que el NPC/fauna
   /// aparece en escena (backend, `posicionAleatoriaEnLienzo`) y persiste mientras siga presente —
@@ -1156,6 +1160,14 @@ export interface MoverZonaResultado {
   /// `null` en cualquier otro caso. Shape mínimo (no el `LogEntry` completo del frontend, que
   /// exige `channel` — el caller construye la entrada final combinando esto con `dynamicModeOffer`).
   logEntry: { id: string; text: string; timeLabel: string; createdAt: string } | null
+  /// Sincronización real del mundo con el jugador (2026-09-09, bug real jugando en vivo: "los
+  /// elementos se mueven, pero no con animación de movimiento como yo ni a la vez que muevo yo") —
+  /// posiciones YA actualizadas de los `ZonePoint` FAUNA/NPC que dieron su propio paso este mismo
+  /// turno (`avanzarZonePointsUnPaso`, backend), para que el frontend pueda animarlos en el mismo
+  /// ritmo que su propio marcador en vez de quedarse con el snapshot viejo hasta el próximo
+  /// refetch completo. `[]` cuando el jugador no avanzó (camino vacío) — el mundo no da un paso si
+  /// el jugador tampoco lo da.
+  zonePointsMovidos: { id: string; x: number; y: number }[]
 }
 export async function moverEnZona(saveId: string, destino: { x: number; y: number }): Promise<MoverZonaResultado> {
   return fetchJson(`${API_URL}/saves/${saveId}/zona/mover`, {
@@ -1481,6 +1493,18 @@ export interface DynamicModeTurno {
   /// tiene un gancho de misión propio (hoy solo Gistera Koh/"Acabar con el Orco Enfurecido"), mismo
   /// shape que `TurnResult.newQuestOfferInfo`.
   newQuestOfferInfo?: { title: string; description: string } | null
+  /// Gistera Koh, aceptación real (2026-09-09, bug real jugando en vivo — Álvaro: "al acabar de
+  /// interactuar me sale para aceptar la misión otra vez... como ya aceptamos esto no debería
+  /// salir... solo un log al final") — a diferencia de `newQuestOfferInfo` (pide una SEGUNDA
+  /// confirmación por botones), esto llega cuando la Quest YA se creó de verdad dentro del propio
+  /// guion determinista (el jugador ya aceptó eligiendo "Aceptar ayudarla" en la conversación) —
+  /// el frontend solo debe mostrar la confirmación, nunca un botón adicional que pulsar.
+  questAceptada?: {
+    quest: { id: string; questSlug: string | null; title: string; objetivo: string | null }
+    alreadyExisted: boolean
+    logEntry: { id: string; text: string; timeLabel: string; createdAt: string } | null
+    questCompletedInfo: { logEntryId: string; text: string; title: string; grantedItems: string[]; rewardXp: number } | null
+  } | null
 }
 
 export async function interactuarModoDinamico(saveId: string, tipo: 'NPC' | 'FAUNA', targetSlug: string, targetName: string): Promise<DynamicModeTurno> {

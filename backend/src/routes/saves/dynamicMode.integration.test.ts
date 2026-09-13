@@ -13,6 +13,13 @@ const narrarVueltaModoDinamico = vi.fn();
 vi.mock('../../services/dynamicModeNarracion.js', () => ({
   narrarVueltaModoDinamico: (...args: unknown[]) => narrarVueltaModoDinamico(...args),
 }));
+// `aceptarQuest` (quests.ts, ver dynamicMode.ts § Gistera Koh aceptando) llama a Ollama real para
+// la narración de aceptación — mockeada aquí, mismo criterio que `narrarVueltaModoDinamico` arriba,
+// para no depender de un servicio externo en el harness de tests.
+const generateQuestResponseNarration = vi.fn();
+vi.mock('../../services/narrador.js', () => ({
+  generateQuestResponseNarration: (...args: unknown[]) => generateQuestResponseNarration(...args),
+}));
 
 const { dynamicModeRoutes } = await import('./dynamicMode.js');
 
@@ -43,6 +50,9 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
     });
     saveId = save.id;
     await prisma.worldState.create({ data: { saveId, fictionalMinutes: 480 } });
+    // Default estable para todos los tests de este archivo (`aceptarQuest` cae al texto fijo
+    // "${characterName} acepta la misión: ${title}." si esto no está mockeado, pero mejor explícito).
+    generateQuestResponseNarration.mockResolvedValue('Gorhorn acepta ayudar a Gistera Koh.');
   });
 
   afterAll(async () => {
@@ -51,8 +61,8 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
 
   it('interactuar: narra la primera vuelta, persiste pendingDynamicMode, avanza el reloj 2 minutos', async () => {
     narrarVueltaModoDinamico.mockResolvedValueOnce({
-      narration: 'Gistera Koh se acerca con cautela.',
-      opciones: ['Escuchar lo que tiene que decir', 'Ignorarla'],
+      narration: 'Maestro Kade se acerca con cautela.',
+      opciones: ['Escuchar lo que tiene que decir', 'Ignorarlo'],
       cierra: false,
     });
     const app = await buildApp();
@@ -60,12 +70,12 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
     const res = await app.inject({
       method: 'POST',
       url: `/saves/${saveId}/modo-dinamico/interactuar`,
-      payload: { tipo: 'NPC', targetSlug: 'gistera-koh', targetName: 'Gistera Koh' },
+      payload: { tipo: 'NPC', targetSlug: 'maestro-kade', targetName: 'Maestro Kade' },
     });
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
-    expect(body.narration).toBe('Gistera Koh se acerca con cautela.');
-    expect(body.opciones).toEqual(['Escuchar lo que tiene que decir', 'Ignorarla']);
+    expect(body.narration).toBe('Maestro Kade se acerca con cautela.');
+    expect(body.opciones).toEqual(['Escuchar lo que tiene que decir', 'Ignorarlo']);
     expect(body.cierra).toBe(false);
     expect(body.vuelta).toBe(1);
 
@@ -74,11 +84,11 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
     // estado mecánico, para poder reconstruir el modal exacto tras un F5 sin volver a narrar.
     expect(saveAfter.pendingDynamicMode).toMatchObject({
       tipo: 'NPC',
-      targetSlug: 'gistera-koh',
-      targetName: 'Gistera Koh',
+      targetSlug: 'maestro-kade',
+      targetName: 'Maestro Kade',
       vuelta: 1,
-      narration: 'Gistera Koh se acerca con cautela.',
-      opciones: ['Escuchar lo que tiene que decir', 'Ignorarla'],
+      narration: 'Maestro Kade se acerca con cautela.',
+      opciones: ['Escuchar lo que tiene que decir', 'Ignorarlo'],
     });
     expect(saveAfter.worldState?.fictionalMinutes).toBe(482);
   });
@@ -88,15 +98,15 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
     const res = await app.inject({
       method: 'POST',
       url: `/saves/${saveId}/modo-dinamico/interactuar`,
-      payload: { tipo: 'NPC', targetSlug: 'gistera-koh', targetName: 'Gistera Koh' },
+      payload: { tipo: 'NPC', targetSlug: 'maestro-kade', targetName: 'Maestro Kade' },
     });
     expect(res.statusCode).toBe(409);
   });
 
   it('responder: avanza a vuelta 2, sigue sin cerrar, reloj avanza otros 2 minutos', async () => {
     narrarVueltaModoDinamico.mockResolvedValueOnce({
-      narration: 'Gistera Koh insiste en su petición.',
-      opciones: ['Aceptar ayudarla', 'Rechazar de nuevo'],
+      narration: 'Maestro Kade insiste en su petición.',
+      opciones: ['Aceptar ayudarlo', 'Rechazar de nuevo'],
       cierra: false,
     });
     const app = await buildApp();
@@ -112,13 +122,13 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
     expect(body.cierra).toBe(false);
 
     const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId }, include: { worldState: true } });
-    expect(saveAfter.pendingDynamicMode).toMatchObject({ vuelta: 2, narration: 'Gistera Koh insiste en su petición.', opciones: ['Aceptar ayudarla', 'Rechazar de nuevo'] });
+    expect(saveAfter.pendingDynamicMode).toMatchObject({ vuelta: 2, narration: 'Maestro Kade insiste en su petición.', opciones: ['Aceptar ayudarlo', 'Rechazar de nuevo'] });
     expect(saveAfter.worldState?.fictionalMinutes).toBe(484);
   });
 
   it('responder con cierra:true limpia pendingDynamicMode y vuelca TODAS las vueltas concatenadas a un LogEntry nuevo (Franja 0, 2026-09-08)', async () => {
     narrarVueltaModoDinamico.mockResolvedValueOnce({
-      narration: 'Gorhorn acepta ayudar a Gistera Koh.',
+      narration: 'Gorhorn acepta ayudar a Maestro Kade.',
       opciones: ['Continuar'],
       cierra: true,
     });
@@ -128,7 +138,7 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
     const res = await app.inject({
       method: 'POST',
       url: `/saves/${saveId}/modo-dinamico/responder`,
-      payload: { respuesta: 'Aceptar ayudarla' },
+      payload: { respuesta: 'Aceptar ayudarlo' },
     });
     expect(res.statusCode).toBe(200);
     expect(JSON.parse(res.body).cierra).toBe(true);
@@ -145,9 +155,9 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
     // rastro legible en el log permanente de la partida.
     expect(nuevaEntrada.text).toBe(
       [
-        'Gistera Koh se acerca con cautela.',
-        'Gistera Koh insiste en su petición.',
-        'Gorhorn acepta ayudar a Gistera Koh.',
+        'Maestro Kade se acerca con cautela.',
+        'Maestro Kade insiste en su petición.',
+        'Gorhorn acepta ayudar a Maestro Kade.',
       ].join('\n\n'),
     );
   });
@@ -272,37 +282,68 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
       expect(fact).not.toBeNull();
     });
 
-    it('Gistera Koh: cerrar la conversación SÍ genera pendingQuestOfferInfo ("Acabar con el Orco Enfurecido"), igual que el gancho de texto libre', async () => {
-      narrarVueltaModoDinamico.mockResolvedValueOnce({
-        narration: 'Gistera Koh, aliviada, formula su petición de ayuda.',
-        opciones: ['Aceptar', 'Rechazar'],
-        cierra: true,
-      });
+    // Guion determinista de Gistera Koh (2026-09-09, ver dynamicMode.ts § `narrarVueltaGistera` —
+    // bug real jugando en vivo: "ya no estamos usando los mensajes deterministas... y qué tiene
+    // que ver el tótem con ella") — a diferencia del resto de NPC, Gistera NUNCA pasa por
+    // `narrarVueltaModoDinamico` (LLM): el mock de ese módulo no se usa en estos 3 tests, se
+    // ejercita el guion fijo real de 3 vueltas (avistamiento → presentación → despedida).
+    // Bug real jugando en vivo (2026-09-09, tras cerrar el fix del guion determinista — Álvaro: "al
+    // acabar de interactuar me sale para aceptar la misión otra vez... como ya aceptamos esto no
+    // debería salir... solo un log al final que confirme que la misión se ha aceptado") — Gistera
+    // ya NO ofrece (`newQuestOfferInfo`, exige un segundo clic): crea la Quest DIRECTAMENTE al
+    // aceptar dentro de la conversación (`questAceptada`, ver `aceptarQuest` extraída en quests.ts).
+    it('Gistera Koh: aceptar dentro de la conversación crea la Quest DIRECTAMENTE (questAceptada), sin pedir una segunda confirmación por botones', async () => {
       const app = await buildApp();
 
-      const res = await app.inject({
+      const res1 = await app.inject({
         method: 'POST',
         url: `/saves/${saveId}/modo-dinamico/interactuar`,
         payload: { tipo: 'NPC', targetSlug: 'gistera-koh', targetName: 'Gistera Koh' },
       });
-      expect(res.statusCode).toBe(200);
-      const body = JSON.parse(res.body);
-      expect(body.newQuestOfferInfo).toEqual({
-        title: 'Acabar con el Orco Enfurecido',
-        description: 'Gistera Koh, expulsada del Clan Serhu, pide ayuda para acabar con el guerrero que la persigue. Aceptar la pondría a salvo.',
+      expect(res1.statusCode).toBe(200);
+      const body1 = JSON.parse(res1.body);
+      expect(body1.narration).toContain('orca de las llanuras');
+      expect(body1.cierra).toBe(false);
+
+      const res2 = await app.inject({
+        method: 'POST',
+        url: `/saves/${saveId}/modo-dinamico/responder`,
+        payload: { respuesta: 'Me acerco a ella' },
       });
+      const body2 = JSON.parse(res2.body);
+      expect(body2.narration).toContain('Soy Gistera Koh');
+      // Guard del bug original (2026-09-09) — el tótem se atribuye a GORHORN ("Llevas la marca de
+      // los Maktor"), nunca a Gistera ("su tótem Maktor").
+      expect(body2.narration).not.toContain('su tótem Maktor');
+      expect(body2.cierra).toBe(false);
+
+      const res3 = await app.inject({
+        method: 'POST',
+        url: `/saves/${saveId}/modo-dinamico/responder`,
+        payload: { respuesta: 'Aceptar ayudarla' },
+      });
+      expect(res3.statusCode).toBe(200);
+      const body3 = JSON.parse(res3.body);
+      expect(body3.cierra).toBe(true);
+      // Nunca ofrece — `newQuestOfferInfo` debe quedar vacío, la Quest ya nació ACTIVA de verdad.
+      expect(body3.newQuestOfferInfo).toBeFalsy();
+      expect(body3.questAceptada.quest.questSlug).toBe('orco-enfurecido-hondonada-gistera');
+      expect(body3.questAceptada.quest.title).toBe('Acabar con el Orco Enfurecido');
+      expect(body3.questAceptada.logEntry.text).toContain('Gistera Koh');
 
       const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
-      expect(saveAfter.pendingQuestOfferInfo).toEqual(body.newQuestOfferInfo);
+      expect(saveAfter.pendingQuestOfferInfo).toBeNull();
+
+      const questReal = await prisma.quest.findFirst({ where: { saveId, questSlug: 'orco-enfurecido-hondonada-gistera' } });
+      expect(questReal).not.toBeNull();
+      expect(questReal!.status).toBe('ACTIVA');
 
       const fact = await prisma.sessionFact.findFirst({ where: { saveId, text: 'Gistera Koh conversa con el personaje.' } });
       expect(fact).not.toBeNull();
-
-      // Idempotencia real: /quests/aceptar acepta esta oferta con el título exacto — mismo criterio
-      // que el resto del proyecto (quests.ts § ORCO_ENFURECIDO_QUEST_SLUG), sin duplicar la Quest.
-      await prisma.quest.create({
-        data: { saveId, questSlug: 'orco-enfurecido-hondonada-gistera', title: body.newQuestOfferInfo.title, description: body.newQuestOfferInfo.description, status: 'ACTIVA' },
-      });
+      // Generalización del nombre oculto (2026-09-09) — presentarse marca DiscoveredEntity real,
+      // coherente con "conocer a Gistera" para el resto del motor (mapa/colisión ya no la ocultan).
+      const discovered = await prisma.discoveredEntity.findFirst({ where: { saveId, entityType: 'npc', entitySlug: 'gistera-koh' } });
+      expect(discovered?.fase).toBe('DESCUBIERTO');
     });
 
     it('Gistera Koh: si la Quest del Orco Enfurecido YA existe (aceptada por otro camino), no vuelve a ofrecerla', async () => {
@@ -311,38 +352,109 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
       // escena) no debe generar una segunda oferta duplicada. `pendingQuestOfferInfo` limpio a mano
       // (en producción esto ya lo habría hecho `/quests/aceptar` al crear la Quest de verdad).
       await prisma.save.update({ where: { id: saveId }, data: { pendingQuestOfferInfo: Prisma.JsonNull } });
-      narrarVueltaModoDinamico.mockResolvedValueOnce({
-        narration: 'Gistera Koh ya no tiene nada más que pedirte.',
-        opciones: [],
-        cierra: true,
-      });
       const app = await buildApp();
 
-      const res = await app.inject({
+      await app.inject({
         method: 'POST',
         url: `/saves/${saveId}/modo-dinamico/interactuar`,
         payload: { tipo: 'NPC', targetSlug: 'gistera-koh', targetName: 'Gistera Koh' },
       });
+      await app.inject({
+        method: 'POST',
+        url: `/saves/${saveId}/modo-dinamico/responder`,
+        payload: { respuesta: 'Me acerco a ella' },
+      });
+      const res = await app.inject({
+        method: 'POST',
+        url: `/saves/${saveId}/modo-dinamico/responder`,
+        payload: { respuesta: 'Aceptar ayudarla' },
+      });
       expect(res.statusCode).toBe(200);
-      expect(JSON.parse(res.body).newQuestOfferInfo).toBeFalsy();
+      const body = JSON.parse(res.body);
+      expect(body.newQuestOfferInfo).toBeFalsy();
+      // Idempotente (`aceptarQuest`, quests.ts) — reconoce la Quest ya existente por `questSlug` y
+      // no la duplica; `logEntry: null` porque no hay nada nuevo que narrar/persistir.
+      expect(body.questAceptada.alreadyExisted).toBe(true);
+      expect(body.questAceptada.logEntry).toBeNull();
 
       const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
       expect(saveAfter.pendingQuestOfferInfo).toBeNull();
 
+      const questCount = await prisma.quest.count({ where: { saveId, questSlug: 'orco-enfurecido-hondonada-gistera' } });
+      expect(questCount).toBe(1);
+
       await prisma.quest.deleteMany({ where: { saveId } });
     });
 
-    it('Gistera Koh: "Salir" a medias de la conversación (nunca llegó a cierra:true) deja el SessionFact pero NUNCA genera la oferta de misión (obligatoria, no puede quemarse a medias)', async () => {
-      narrarVueltaModoDinamico.mockResolvedValueOnce({
-        narration: 'Gistera Koh empieza a hablarte del tótem.',
-        opciones: ['Escuchar', 'Ignorarla'],
-        cierra: false,
-      });
+    it('Gistera Koh: rechazar su ayuda cierra la conversación SIN generar ninguna oferta de misión', async () => {
       const app = await buildApp();
       await app.inject({
         method: 'POST',
         url: `/saves/${saveId}/modo-dinamico/interactuar`,
         payload: { tipo: 'NPC', targetSlug: 'gistera-koh', targetName: 'Gistera Koh' },
+      });
+      await app.inject({
+        method: 'POST',
+        url: `/saves/${saveId}/modo-dinamico/responder`,
+        payload: { respuesta: 'Me acerco a ella' },
+      });
+      const res = await app.inject({
+        method: 'POST',
+        url: `/saves/${saveId}/modo-dinamico/responder`,
+        payload: { respuesta: 'Rechazar y seguir tu camino' },
+      });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.cierra).toBe(true);
+      expect(body.newQuestOfferInfo).toBeFalsy();
+
+      const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+      expect(saveAfter.pendingQuestOfferInfo).toBeNull();
+      expect(saveAfter.pendingDynamicMode).toBeNull();
+    });
+
+    it('Gistera Koh: "Salir" a medias en la VUELTA 1 (nunca se presentó) no marca su nombre como descubierto — sigue siendo un spoiler evitado', async () => {
+      // Limpieza explícita (2026-09-09) — el test "cerrar la conversación SÍ genera
+      // pendingQuestOfferInfo" (más arriba en este mismo describe) ya deja un SessionFact/
+      // DiscoveredEntity reales de Gistera al completar su propio flujo hasta aceptar; sin esta
+      // limpieza, la aserción `toBeNull()` de este test sería un falso positivo (encontraría la
+      // fila del test anterior, no una generada — o no— por este caso concreto).
+      await prisma.sessionFact.deleteMany({ where: { saveId, text: 'Gistera Koh conversa con el personaje.' } });
+      await prisma.discoveredEntity.deleteMany({ where: { saveId, entityType: 'npc', entitySlug: 'gistera-koh' } });
+      const app = await buildApp();
+      await app.inject({
+        method: 'POST',
+        url: `/saves/${saveId}/modo-dinamico/interactuar`,
+        payload: { tipo: 'NPC', targetSlug: 'gistera-koh', targetName: 'Gistera Koh' },
+      });
+
+      const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/ignorar` });
+      expect(res.statusCode).toBe(200);
+
+      const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+      expect(saveAfter.pendingQuestOfferInfo).toBeNull();
+      expect(saveAfter.pendingDynamicMode).toBeNull();
+
+      // Salir en vuelta 1 (avistamiento sin nombre) — Gistera nunca se presentó, así que no cuenta
+      // como "conocida" todavía (ni SessionFact ni DiscoveredEntity), a diferencia del resto de
+      // NPC (que sí revelan su nombre en la propia narración de la vuelta 1).
+      const fact = await prisma.sessionFact.findFirst({ where: { saveId, text: 'Gistera Koh conversa con el personaje.' } });
+      expect(fact).toBeNull();
+      const discovered = await prisma.discoveredEntity.findFirst({ where: { saveId, entityType: 'npc', entitySlug: 'gistera-koh' } });
+      expect(discovered).toBeNull();
+    });
+
+    it('Gistera Koh: "Salir" a medias DESPUÉS de presentarse (vuelta 2) SÍ deja el SessionFact — ya no es un spoiler', async () => {
+      const app = await buildApp();
+      await app.inject({
+        method: 'POST',
+        url: `/saves/${saveId}/modo-dinamico/interactuar`,
+        payload: { tipo: 'NPC', targetSlug: 'gistera-koh', targetName: 'Gistera Koh' },
+      });
+      await app.inject({
+        method: 'POST',
+        url: `/saves/${saveId}/modo-dinamico/responder`,
+        payload: { respuesta: 'Me acerco a ella' },
       });
 
       const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/ignorar` });

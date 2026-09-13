@@ -22,19 +22,19 @@ describe('decideOfertaModoDinamico', () => {
   });
 
   it('random por encima del umbral de probabilidad, no ofrece aunque haya candidatos', () => {
-    const zonePoints = [{ tipo: 'NPC' as const, targetSlug: 'gistera-koh', cantidad: 1, temperamento: 'CAUTELOSO' as const }];
+    const zonePoints = [{ tipo: 'NPC' as const, targetSlug: 'maestro-kade', cantidad: 1, temperamento: 'CAUTELOSO' as const }];
     // decideOfertaModoDinamico consume random() una vez para el umbral — devolver 0.99 (>= 0.35) lo rechaza.
     expect(decideOfertaModoDinamico(zonePoints, () => 0.99)).toBeNull();
   });
 
   it('random por debajo del umbral, con un único candidato, lo elige', () => {
-    const zonePoints = [{ tipo: 'NPC' as const, targetSlug: 'gistera-koh', cantidad: 1, temperamento: 'CAUTELOSO' as const }];
-    expect(decideOfertaModoDinamico(zonePoints, () => 0)).toEqual({ tipo: 'NPC', targetSlug: 'gistera-koh' });
+    const zonePoints = [{ tipo: 'NPC' as const, targetSlug: 'maestro-kade', cantidad: 1, temperamento: 'CAUTELOSO' as const }];
+    expect(decideOfertaModoDinamico(zonePoints, () => 0)).toEqual({ tipo: 'NPC', targetSlug: 'maestro-kade' });
   });
 
   it('con varios candidatos, elige uno de ellos determinista según random', () => {
     const zonePoints = [
-      { tipo: 'NPC' as const, targetSlug: 'gistera-koh', cantidad: 1, temperamento: 'CAUTELOSO' as const },
+      { tipo: 'NPC' as const, targetSlug: 'maestro-kade', cantidad: 1, temperamento: 'CAUTELOSO' as const },
       { tipo: 'FAUNA' as const, targetSlug: 'murgol', cantidad: 3, temperamento: 'CAUTELOSO' as const },
     ];
     // Primera llamada a random() decide el umbral (0 pasa), segunda decide el índice.
@@ -42,6 +42,22 @@ describe('decideOfertaModoDinamico', () => {
     const secuencia = [0, 0.99];
     const random = () => secuencia[call++];
     expect(decideOfertaModoDinamico(zonePoints, random)).toEqual({ tipo: 'FAUNA', targetSlug: 'murgol' });
+  });
+
+  // Gistera Koh excluida a propósito (2026-09-09, bug real jugando en vivo — Álvaro: "ya no
+  // estamos usando los mensajes deterministas... no hay conversación") — su encuentro es un
+  // guion determinista propio (`narrarVueltaGistera`), nunca debe competir con el sorteo genérico.
+  it('Gistera Koh nunca se ofrece por el sorteo genérico, aunque sea el único candidato válido', () => {
+    const zonePoints = [{ tipo: 'NPC' as const, targetSlug: 'gistera-koh', cantidad: 1, temperamento: 'CAUTELOSO' as const }];
+    expect(decideOfertaModoDinamico(zonePoints, () => 0)).toBeNull();
+  });
+
+  it('con Gistera Koh y otro candidato válido a la vez, solo el otro puede salir elegido', () => {
+    const zonePoints = [
+      { tipo: 'NPC' as const, targetSlug: 'gistera-koh', cantidad: 1, temperamento: 'CAUTELOSO' as const },
+      { tipo: 'FAUNA' as const, targetSlug: 'murgol', cantidad: 3, temperamento: 'CAUTELOSO' as const },
+    ];
+    expect(decideOfertaModoDinamico(zonePoints, () => 0)).toEqual({ tipo: 'FAUNA', targetSlug: 'murgol' });
   });
 
   /// Bug real, investigación 2026-09-05 a raíz del hallazgo "Kirelon sobrerrepresentado": el

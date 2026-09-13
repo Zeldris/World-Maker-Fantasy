@@ -72,7 +72,19 @@ export function decideOfertaModoDinamico(zonePoints: ZonePointCandidateRow[], ra
   // de hostilidad todavía admite una interacción pacífica real. RECURSO siempre tiene
   // `temperamento: null` (inerte, sin catálogo Npc que lo resuelva) — nunca se descarta por este
   // filtro, `null !== 'AGRESIVO'` ya es `true`.
-  const candidatos = zonePoints.filter((p) => (p.tipo === 'NPC' || p.tipo === 'FAUNA' || p.tipo === 'RECURSO') && p.cantidad > 0 && p.temperamento !== 'AGRESIVO');
+  //
+  // Gistera Koh excluida a propósito (2026-09-09, bug real jugando en vivo — Álvaro: "ya no
+  // estamos usando los mensajes deterministas... no hay conversación... y qué tiene que ver el
+  // tótem con ella") — su encuentro es un guion determinista propio de apertura (3 pasos fijos,
+  // ver `narrarVueltaGistera` más abajo), nunca debe competir con prosa libre del LLM ni con el
+  // sorteo genérico de probabilidad/proximidad de cualquier otro candidato. Este filtro cubre el
+  // camino ambiental (`turnResolution.ts`, ya protegido aparte por `gisteraEnEscena` mientras
+  // sigue en escena, pero esa protección deja de aplicar tras `gisteraSeHaMarchado`) — la
+  // colisión de celda en Zona (`zona.ts` § `detectarEncuentroEnCelda`) tiene su propio guard
+  // equivalente, no pasa por esta función.
+  const candidatos = zonePoints.filter(
+    (p) => (p.tipo === 'NPC' || p.tipo === 'FAUNA' || p.tipo === 'RECURSO') && p.cantidad > 0 && p.temperamento !== 'AGRESIVO' && p.targetSlug !== 'gistera-koh',
+  );
   if (candidatos.length === 0) return null;
   if (random() >= PROBABILIDAD_OFERTA) return null;
 
@@ -88,6 +100,101 @@ export async function dynamicModeCandidateNameFor(prisma: Pick<PrismaClient, 'np
   if (candidato.tipo === 'FAUNA' || candidato.tipo === 'RECURSO') return sourceDisplayNameFor(candidato.targetSlug);
   const npc = await prisma.npc.findFirst({ where: { slug: candidato.targetSlug }, select: { name: true } });
   return npc?.name ?? candidato.targetSlug;
+}
+
+/// Guion determinista del encuentro de apertura con Gistera Koh (2026-09-09, bug real jugando en
+/// vivo — Álvaro: "ya no estamos usando los mensajes deterministas... es imposible saber que estoy
+/// aceptando... no hay conversación... y qué tiene que ver el tótem con ella") — reemplaza por
+/// completo el paso por `narrarVueltaModoDinamico` (LLM) para este NPC concreto: 3 pasos fijos,
+/// texto revisado y aprobado por Álvaro palabra por palabra, CERO riesgo de alucinación (el bug
+/// original — "su tótem Maktor" atribuido a Gistera en vez de a Gorhorn — es estructuralmente
+/// imposible aquí, no hay generación). Caso especial reconocido explícitamente por el propio
+/// Álvaro como único ("esto es un caso único de los NPC con nombre propio") — no se generaliza a
+/// un mecanismo nuevo para NPC deterministas en general, sería sobre-ingeniería para una sola
+/// instancia hoy.
+///
+/// 3 vueltas, nunca 4 (a diferencia del máximo genérico `MAX_VUELTAS_MODO_DINAMICO`): 1 avistamiento
+/// sin nombre → 2 presentación + oferta → 3 despedida (solo si aceptó; rechazar/retirarse cierran
+/// en la propia vuelta 1 o 2, sin llegar a una vuelta 3). El nombre real ("Gistera Koh") no debe
+/// mostrarse en la UI hasta la vuelta 2 — el caller (dynamicMode.ts, ruta) es responsable de asignar
+/// un `targetName` oculto en la oferta/tarjeta previa a abrir el modal.
+export type RespuestaGistera = 'acercarse' | 'observar' | 'retirarse' | 'aceptar' | 'preguntar' | 'rechazar';
+
+/// Nombre oculto genérico (2026-09-09, generalizado a petición de Álvaro: "esta lógica se debe
+/// aplicar a todos los que tienen nombre propio" — nació acotado a Gistera Koh, pero el criterio
+/// real ya existía en el proyecto desde el hallazgo 34 (2026-09-07): cualquier `Npc.kind ===
+/// 'PRINCIPAL'` (nombre propio) no descubierto todavía (`DiscoveredEntity`) se muestra oculto en
+/// vez de revelar su identidad — `GET /zona` y la Enciclopedia ya lo aplicaban así; el hueco real
+/// era que la COLISIÓN de Zona (`detectarEncuentroEnCelda`, zona.ts) nunca consultaba
+/// `DiscoveredEntity`, revelando `Npc.name` sin condición. Mismo texto usado en la tarjeta de
+/// oferta previa (`pendingDynamicModeOffer`) y en la colisión — un NPC/fauna genérico (`kind !==
+/// 'PRINCIPAL'`) nunca usa esta constante, su "nombre" ya es de especie/rol, no un spoiler.
+export const NOMBRE_OCULTO_GENERICO = 'Alguien';
+
+/// Mismo shape que `DynamicModeTurnoOutput` (dynamicModeNarracion.ts) — definido aquí en vez de
+/// importado de allí para no crear un ciclo (ese archivo ya importa `DynamicModeTipo` de este).
+export interface GisteraTurnoOutput {
+  narration: string;
+  opciones: string[];
+  cierra: boolean;
+}
+
+/// Mapeo texto exacto de la opción pulsada → respuesta tipada. Seguro porque las opciones son
+/// texto FIJO controlado por este mismo módulo (`narrarVueltaGistera`, nunca generado por LLM) —
+/// a diferencia del resto de modo dinámico, donde `opciones` es prosa libre del modelo y nunca
+/// podría mapearse así de forma fiable.
+const GISTERA_RESPUESTA_POR_OPCION: Record<string, RespuestaGistera> = {
+  'Me acerco a ella': 'acercarse',
+  'Observo con atención': 'observar',
+  'Me retiro': 'retirarse',
+  'Aceptar ayudarla': 'aceptar',
+  'Preguntar más antes de decidir': 'preguntar',
+  'Rechazar y seguir tu camino': 'rechazar',
+};
+
+export function respuestaGisteraDesdeOpcion(opcion: string): RespuestaGistera | null {
+  return GISTERA_RESPUESTA_POR_OPCION[opcion] ?? null;
+}
+
+const GISTERA_TEXTO_PRESENTACION =
+  'Con la respiración entrecortada, sin dejar de mirar hacia atrás, se presenta a toda prisa: «Soy Gistera Koh... del Clan Serhu, aunque ya no. No tengo tiempo para explicarte más — uno de los suyos me pisa los talones y quiere verme muerta. Llevas la marca de los Maktor, ¿verdad? Entonces sabes lo que es que un clan entero se vuelva contra los tuyos. ¿No quieres acabar con los Serhu? Empieza por el que me persigue — hazlo antes de que sea tarde para las dos.»';
+const GISTERA_OPCIONES_PRESENTACION = ['Aceptar ayudarla', 'Preguntar más antes de decidir', 'Rechazar y seguir tu camino'];
+
+/// Ramifica por `respuesta` (la opción que el jugador ya eligió), NUNCA solo por el número de
+/// vuelta — "preguntar" recicla la presentación (misma vuelta lógica, no avanza a la 3), y
+/// "aceptar"/"rechazar" ambos SALEN de la vuelta 2, pero a desenlaces distintos.
+export function narrarVueltaGistera(vuelta: number, respuesta: RespuestaGistera | null): GisteraTurnoOutput {
+  if (vuelta === 1) {
+    return {
+      narration:
+        'Levantando polvo entre la hondonada ves a una orca de las llanuras corriendo, con la respiración entrecortada y sin dejar de mirar hacia atrás — algo, o alguien, la persigue.',
+      opciones: ['Me acerco a ella', 'Observo con atención', 'Me retiro'],
+      cierra: false,
+    };
+  }
+  if (respuesta === 'retirarse') {
+    return { narration: 'Decides no arriesgarte y te alejas — la figura sigue su carrera, ajena a ti, hasta perderse entre las rocas.', opciones: [], cierra: true };
+  }
+  if (respuesta === 'rechazar') {
+    return {
+      narration: 'Gistera aprieta la mandíbula, decepcionada pero sin insistir. «Entiendo. Cuídate, Gorhorn.» Retrocede hacia las sombras y desaparece de la vista.',
+      opciones: [],
+      cierra: true,
+    };
+  }
+  if (respuesta === 'aceptar') {
+    return {
+      narration:
+        'Gistera esboza un gesto de alivio que apenas dura un instante. «Gracias, Gorhorn, no puedo quedarme aquí más tiempo pero si nos volvemos a ver te lo agradeceré como corresponde!» Se aleja a toda velocidad entre las rocas de la hondonada sin mirar atrás.',
+      opciones: [],
+      cierra: true,
+    };
+  }
+  // 'observar' / 'acercarse' (vuelta 1→2) Y 'preguntar' (recicla la presentación, se queda en la
+  // misma vuelta lógica) llevan las tres a este mismo texto — Gistera ya te ha visto en cuanto te
+  // acercas o te quedas mirando, no hace falta una rama de vuelta extra solo para eso; "preguntar"
+  // simplemente vuelve a presentar la oferta para que el jugador decida con calma.
+  return { narration: GISTERA_TEXTO_PRESENTACION, opciones: GISTERA_OPCIONES_PRESENTACION, cierra: false };
 }
 
 /// Puro — compone el texto que se vuelca al `LogEntry` de personaje al cerrarse el modo dinámico

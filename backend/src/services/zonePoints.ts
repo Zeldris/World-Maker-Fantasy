@@ -3,16 +3,24 @@ import { stripRegionArticle } from './population.js';
 import { sourceDisplayNameFor } from '../scripts/worldCatalog.js';
 import { factionRepFor } from './reputation.js';
 import { celdaDePixel, pixelDeCelda, siguienteCeldaEnRuta, siguienteCeldaPaseoAleatorio, type Celda } from './zonaPosicion.js';
+import { ORCO_ENFURECIDO_QUEST_SLUG } from '../routes/saves/quests.js';
 
-export type ZonePointColor = 'ALIADO' | 'NEUTRO' | 'ENEMIGO' | 'SIN_FACCION';
+export type ZonePointColor = 'ALIADO' | 'NEUTRO' | 'ENEMIGO' | 'SIN_FACCION' | 'INERTE';
 
 /// Puro — color del punto en el mapa por reputación con SU facción (`ZonePoint.factionSlug`), mismo
 /// medidor 0-5000 que `reputation.ts` (2500 = neutro). 3 bandas simplificadas de las 5 de
 /// `effectiveTemperamento` (esa función es para IA de combate, aquí solo hace falta un color).
-/// `factionSlug` null (fauna salvaje, recursos, seres inertes) siempre es `SIN_FACCION` — nunca
-/// hereda el color de nadie.
-export function zonePointColorFor(factionSlug: string | null, factionsStatus: Record<string, number>): ZonePointColor {
-  if (!factionSlug) return 'SIN_FACCION';
+/// `factionSlug` null se reparte en DOS colores distintos (2026-09-09, corrección de diseño real —
+/// hasta ahora ambos caían en `SIN_FACCION`, confundiendo dos conceptos distintos: "SIN_FACCION"
+/// (naranja) es la ausencia de facción de alguien que SÍ podría tenerla — un NPC/FAUNA/EDIFICIO
+/// independiente, sigue siendo un desenlace real de reputación; "INERTE" (gris) es que la facción
+/// simplemente NO APLICA — un RECURSO nunca tiene dueño por diseño, mezclarlo con NEUTRO (amarillo,
+/// que ya significa "neutral CON una facción real") sería igual de confuso). `tipo` decide cuál de
+/// los dos: solo RECURSO cae en INERTE, el resto de tipos del enum Prisma (FAUNA/NPC/EDIFICIO) sigue
+/// en SIN_FACCION como siempre — OBJETO (DroppedItem, fuera de este enum) se resuelve aparte en el
+/// caller (zona.ts), nunca pasa por aquí.
+export function zonePointColorFor(factionSlug: string | null, factionsStatus: Record<string, number>, tipo: ZonePointTipo): ZonePointColor {
+  if (!factionSlug) return tipo === 'RECURSO' ? 'INERTE' : 'SIN_FACCION';
   const rep = factionRepFor(factionsStatus, factionSlug);
   if (rep >= 3000) return 'ALIADO';
   if (rep < 1000) return 'ENEMIGO';
@@ -43,6 +51,56 @@ const CANTIDAD_MAX_POR_PUNTO = 20;
 const AJUSTE_MAXIMO_POR_DIA = 3;
 
 const MINUTOS_POR_DIA = 24 * 60;
+
+/// Gate de aparición narrativa (2026-09-09, bug real jugando en vivo — Álvaro: "estás pintando el
+/// orco enfurecido antes de hablar con gistera en el mapa... se debe añadir a la zona después de
+/// hablar con gistera y aceptar su misión"). El Orco Enfurecido tiene `ZonePoint` de catálogo
+/// incondicional (`activo: true` fijo, sembrado 2026-09-08 solo para que el gate de colisión de
+/// Franja 3 no rompiera ese encuentro guionizado) — sin ningún filtro, aparecía en el mapa/colisión/
+/// patrulla desde el turno 1, mucho antes del hito narrativo real ("justo cuando Gistera te da la
+/// misión el Orco entra en la zona por primera vez", confirmado por Álvaro). Primer caso del
+/// proyecto de "ZonePoint condicionado a progreso de misión" — no existe ningún precedente que
+/// reutilizar, y no se generaliza a un campo de catálogo nuevo (sería sobre-ingeniería para una
+/// única instancia hoy); en vez de eso, un filtro puntual por slug en los 3 consumidores reales de
+/// `ZonePoint.activo` (GET /zona § render, `detectarEncuentroEnCelda` § colisión, aquí abajo §
+/// patrulla), todos delegando a este único helper para no divergir entre ellos.
+const ZONE_POINTS_GATEADOS_POR_QUEST: Record<string, string> = {
+  'orco-enfurecido-hondonada': ORCO_ENFURECIDO_QUEST_SLUG,
+};
+
+/// Inverso del gate de arriba (2026-09-09, mismo hallazgo — conectando el guion determinista de
+/// Gistera a la colisión de Zona) — Gistera Koh debe DESAPARECER del mapa/colisión/patrulla en
+/// cuanto el jugador acepta su misión (`npcsRetiredForever` ya la retira de `detectNpcsInScene`
+/// para el camino de texto libre, pero su `ZonePoint` de catálogo — posición fija en el mapa — no
+/// pasaba por ningún filtro equivalente: el jugador podía seguir "chocando" con su fantasma en
+/// Zona después de que la trama ya avanzó). Mismo `questSlug` que el gate del Orco a propósito —
+/// es la misma `Quest`, un solo hito la hace aparecer a él y desaparecer a ella.
+const ZONE_POINTS_OCULTOS_POR_QUEST: Record<string, string> = {
+  'gistera-koh': ORCO_ENFURECIDO_QUEST_SLUG,
+};
+
+/// Puro sobre datos ya cargados — true si el `targetSlug` no tiene gate (inmensa mayoría de
+/// `ZonePoint`) o si la `Quest` que lo desbloquea ya existe para la partida (aceptada, con
+/// cualquier `status` — el propio hito de ACEPTAR es lo que introduce al Orco en escena, no su
+/// desenlace posterior). `questSlugsActivos` se carga una vez por caller (batch, nunca N+1).
+export function zonePointVisiblePara(targetSlug: string, questSlugsAceptados: ReadonlySet<string>): boolean {
+  const questSlugRequerido = ZONE_POINTS_GATEADOS_POR_QUEST[targetSlug];
+  if (questSlugRequerido) return questSlugsAceptados.has(questSlugRequerido);
+  const questSlugOcultador = ZONE_POINTS_OCULTOS_POR_QUEST[targetSlug];
+  if (questSlugOcultador) return !questSlugsAceptados.has(questSlugOcultador);
+  return true;
+}
+
+/// Batch — todas las `Quest.questSlug` ya aceptadas por la partida entre las que este módulo puede
+/// necesitar consultar (hoy el Orco Enfurecido y Gistera Koh, mismo `questSlug` para ambos — ver
+/// `ZONE_POINTS_GATEADOS_POR_QUEST`/`ZONE_POINTS_OCULTOS_POR_QUEST`). Una sola query por caller,
+/// nunca una por `ZonePoint`.
+export async function questSlugsAceptadosPara(tx: Prisma.TransactionClient | PrismaClient, saveId: string): Promise<Set<string>> {
+  const questSlugsRelevantes = [...new Set([...Object.values(ZONE_POINTS_GATEADOS_POR_QUEST), ...Object.values(ZONE_POINTS_OCULTOS_POR_QUEST)])];
+  if (questSlugsRelevantes.length === 0) return new Set();
+  const quests = await tx.quest.findMany({ where: { saveId, questSlug: { in: questSlugsRelevantes } }, select: { questSlug: true } });
+  return new Set(quests.map((q) => q.questSlug).filter((s): s is string => s != null));
+}
 
 export interface ZonePointRow {
   id: string;
@@ -124,14 +182,38 @@ export async function recalcularZonePointsDeLocation(
 /// `POST /saves/:id/zona/mover` — DISTINTO de `recalcularZonePointsDeLocation` (esa es cantidad/
 /// actividad por tiempo de ficción transcurrido, cada turno de narración; esto es posición, cada
 /// paso de movimiento del jugador dentro de la misma zona).
-export async function avanzarZonePointsUnPaso(tx: Prisma.TransactionClient | PrismaClient, locationId: string, random: () => number = Math.random): Promise<void> {
-  const puntos = await tx.zonePoint.findMany({
+/// Posiciones ya actualizadas (2026-09-09, bug real jugando en vivo — Álvaro: "los elementos se
+/// mueven, pero no con animación de movimiento como yo ni a la vez que muevo yo... quería que todo
+/// se moviera a la vez que yo me muevo") — antes esta función devolvía `Promise<void>`: el propio
+/// endpoint (`POST /saves/:id/zona/mover`, zona.ts) la llamaba como puro efecto secundario en BD,
+/// sin propagar nada a la respuesta HTTP. El frontend, durante la animación paso a paso del
+/// jugador, solo actualizaba SU posición (`ZonaPanel.tsx` § `handleMoverA`) — la fauna/NPC del
+/// mapa se quedaban con el snapshot del `GET /zona` inicial hasta el próximo refetch completo
+/// (reabrir el panel), aunque el servidor ya los hubiera movido un paso por cada paso del jugador.
+export interface ZonePointPasoResultado {
+  id: string;
+  x: number;
+  y: number;
+}
+
+export async function avanzarZonePointsUnPaso(
+  tx: Prisma.TransactionClient | PrismaClient,
+  locationId: string,
+  saveId: string,
+  random: () => number = Math.random,
+): Promise<ZonePointPasoResultado[]> {
+  const puntosCrudos = await tx.zonePoint.findMany({
     where: { locationId, tipo: { in: ['FAUNA', 'NPC'] }, activo: true },
   });
-  if (puntos.length === 0) return;
+  if (puntosCrudos.length === 0) return [];
+  // Gate de aparición narrativa (ver comentario junto a `zonePointVisiblePara` más arriba) — un
+  // punto gateado sin su misión aceptada todavía no "patrulla": narrativamente no está en la zona.
+  const questSlugsAceptados = await questSlugsAceptadosPara(tx, saveId);
+  const puntos = puntosCrudos.filter((p) => zonePointVisiblePara(p.targetSlug, questSlugsAceptados));
+  if (puntos.length === 0) return [];
 
-  await Promise.all(
-    puntos.map((punto) => {
+  const resultados = await Promise.all(
+    puntos.map(async (punto) => {
       const actual = celdaDePixel({ x: punto.x, y: punto.y });
       const ruta = (punto.ruta as { x: number; y: number }[] | null) ?? null;
 
@@ -139,7 +221,8 @@ export async function avanzarZonePointsUnPaso(tx: Prisma.TransactionClient | Pri
         const rutaCeldas = ruta.map((p) => celdaDePixel(p));
         const { celda, nuevoPasoRuta } = siguienteCeldaEnRuta(rutaCeldas, punto.pasoRuta % rutaCeldas.length);
         const pixel = pixelDeCelda(celda);
-        return tx.zonePoint.update({ where: { id: punto.id }, data: { x: pixel.x, y: pixel.y, pasoRuta: nuevoPasoRuta } });
+        await tx.zonePoint.update({ where: { id: punto.id }, data: { x: pixel.x, y: pixel.y, pasoRuta: nuevoPasoRuta } });
+        return { id: punto.id, x: pixel.x, y: pixel.y };
       }
 
       // Sin ruta artesanal — fallback de paseo aleatorio, acotado a `origenX/Y` real de catálogo.
@@ -149,9 +232,11 @@ export async function avanzarZonePointsUnPaso(tx: Prisma.TransactionClient | Pri
       const siguiente = siguienteCeldaPaseoAleatorio(actual, origen, random);
       const pixel = pixelDeCelda(siguiente);
       if (pixel.x === punto.x && pixel.y === punto.y) return null;
-      return tx.zonePoint.update({ where: { id: punto.id }, data: { x: pixel.x, y: pixel.y } });
+      await tx.zonePoint.update({ where: { id: punto.id }, data: { x: pixel.x, y: pixel.y } });
+      return { id: punto.id, x: pixel.x, y: pixel.y };
     }),
   );
+  return resultados.filter((r): r is ZonePointPasoResultado => r !== null);
 }
 
 /// `ZonePoint` alimenta al narrador (2026-08-27, Pieza 3 de "Dinamismo del mundo") — cierra el
@@ -160,8 +245,13 @@ export async function avanzarZonePointsUnPaso(tx: Prisma.TransactionClient | Pri
 /// `Npc.name` (mismo criterio ya establecido en `zona.ts`), FAUNA/RECURSO por
 /// `sourceDisplayNameFor` (catálogo de recolección/caza). `null` si no hay nada que contar —
 /// el caller decide si empuja el bloque de contexto o lo omite.
-export async function zonePointsSummaryFor(prisma: PrismaClient, locationId: string): Promise<string | null> {
-  const puntos = await prisma.zonePoint.findMany({ where: { locationId, activo: true } });
+export async function zonePointsSummaryFor(prisma: PrismaClient, locationId: string, saveId: string): Promise<string | null> {
+  const puntosCrudos = await prisma.zonePoint.findMany({ where: { locationId, activo: true } });
+  if (puntosCrudos.length === 0) return null;
+  // Gate de aparición narrativa — un punto sin su misión de desbloqueo aceptada tampoco debe
+  // filtrarse al contexto del narrador (el LLM no debe "saber" que está ahí antes de tiempo).
+  const questSlugsAceptados = await questSlugsAceptadosPara(prisma, saveId);
+  const puntos = puntosCrudos.filter((p) => zonePointVisiblePara(p.targetSlug, questSlugsAceptados));
   if (puntos.length === 0) return null;
 
   const npcSlugs = [...new Set(puntos.filter((p) => p.tipo === 'NPC').map((p) => p.targetSlug))];
