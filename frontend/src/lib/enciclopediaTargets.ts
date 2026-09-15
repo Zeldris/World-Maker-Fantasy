@@ -275,6 +275,19 @@ export function itemToDetailTarget(item: EnciclopediaItemInfo): EnciclopediaLink
   }
 }
 
+// Roster de habilidades de la categoría de fauna, en texto (2026-09-15, cierre de deuda técnica
+// — `faunaCategoria` ya llegaba desde 2026-09-04, sin mostrarse en ningún sitio). El modal de
+// fauna/flora es `kind: 'info'` (texto plano, sin botones clicables como la senda de Clases) —
+// se lista ordenada por nivel, mismo criterio de formato que `yieldsSummary`.
+function faunaCategoriaUnlocksLine(entry: EnciclopediaFaunaFloraInfo): string | null {
+  if (!entry.faunaCategoriaUnlocks || entry.faunaCategoriaUnlocks.length === 0) return null
+  const lista = [...entry.faunaCategoriaUnlocks]
+    .sort((a, b) => a.level - b.level)
+    .map((u) => `Nv.${u.level} ${u.ability.icon} ${u.ability.name}`)
+    .join(', ')
+  return `Habilidades de su categoría (${entry.faunaCategoria}): ${lista}.`
+}
+
 export function faunaFloraToDetailTarget(entry: EnciclopediaFaunaFloraInfo): EnciclopediaLinkTarget {
   return {
     kind: 'info',
@@ -288,6 +301,7 @@ export function faunaFloraToDetailTarget(entry: EnciclopediaFaunaFloraInfo): Enc
     extra: [
       entry.description ? `Recursos: ${yieldsSummary(entry)}` : null,
       interaccionLine(entry.interaccion),
+      faunaCategoriaUnlocksLine(entry),
       entry.aliases.length ? `También reconocido como: ${entry.aliases.join(', ')}.` : null,
     ]
       .filter((line): line is string => !!line)

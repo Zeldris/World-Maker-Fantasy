@@ -7,7 +7,7 @@ import type { Clase } from './classAbilities.js';
 import { npcAttributesForLevel } from './progression.js';
 import { parseActiveEffects, type ActiveEffect } from './activeEffects.js';
 import { effectiveTemperamento } from './reputation.js';
-import { momentoDelDiaFor, type MomentoDelDia } from './worldClock.js';
+import { momentoDelDiaFor } from './worldClock.js';
 import { faunaMomentoDelDia } from '../scripts/worldCatalog.js';
 
 /// Detección determinista de "NPC en escena" (docs/12-mundo-estructurado.md § 2.5) — sin llamada
@@ -820,20 +820,6 @@ export function detectsLootIntent(action: string): boolean {
   return !!findFuzzyStemMatch(words, LOOT_INTENT_STEMS, LOOT_FUZZY_EXCLUSIONS);
 }
 
-// "Decapitar" (petición explícita, 2026-07-30: "un botón que solo sale cuando está convaleciente
-// para matarlo") — golpe de gracia determinista contra un enemigo YA convaleciente, sin tirada (no
-// puede resistir, ver `executeTargets` en turnResolution.ts). Palabras de 5+ letras, mismo
-// criterio de tolerancia a erratas que el resto de detectores de este archivo.
-const EXECUTE_INTENT_REGEX = /remat|decapit|degoll|ejecut/;
-const EXECUTE_INTENT_STEMS = ['remat', 'decapit', 'degoll', 'ejecut'];
-
-export function detectsExecuteIntent(action: string): boolean {
-  const normalized = normalizeText(action);
-  if (EXECUTE_INTENT_REGEX.test(normalized)) return true;
-  const words = fuzzyMatchCandidates(normalized);
-  return !!findFuzzyStemMatch(words, EXECUTE_INTENT_STEMS);
-}
-
 // Revisar inventario/equipo (auditoría 2026-08-11, "pruebas por API" — ver hasFalseInventoryReview
 // en narrador.ts). Sin tolerancia a erratas a propósito: una detección de menos aquí solo pierde
 // el chequeo extra de esta acción concreta (sin coste real), mientras que sumar otra lista de
@@ -884,23 +870,6 @@ export interface AmbientEncounterCandidate {
   /// siempre uniforme entre TODA la fauna itinerante del mundo, sin mirar abundancia real ni
   /// región). Por defecto 1 — mismo comportamiento uniforme que antes si no se especifica.
   weight?: number;
-}
-
-/// Fauna diurna/nocturna real (2026-09-02) — puro, extraído del bloque "Sugerencia ambiental de
-/// encuentro" (turnResolution.ts) para poder testearlo aislado del resto de esa función de miles
-/// de líneas, mismo criterio "sin dato = sin filtrar" que `faunaMomentoDelDia` documenta en
-/// worldCatalog.ts: un candidato SIN entrada en el mapa nunca se descarta. Genérico sobre `T`
-/// (cualquier candidato con `slug`) para servir tanto a `AmbientEncounterCandidate` como a
-/// cualquier otro shape que traiga slug de fauna.
-export function filterCandidatesByMomentoDelDia<T extends { slug: string }>(
-  candidates: T[],
-  momentoActual: MomentoDelDia,
-  momentoPorSlug: Record<string, MomentoDelDia>,
-): T[] {
-  return candidates.filter((c) => {
-    const requerido = momentoPorSlug[c.slug];
-    return !requerido || requerido === momentoActual;
-  });
 }
 
 /// Puro: elige un candidato de encuentro ambiental con probabilidad proporcional a `weight`

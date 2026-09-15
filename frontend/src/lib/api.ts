@@ -1809,6 +1809,10 @@ export interface EnciclopediaFaunaFloraInfo {
   /// despliegue sincronizado de ambos lados.
   faunaCategoria: string | null
   floraCategoria: string | null
+  /// Roster de habilidades DE LA CATEGORÍA con su nivel de desbloqueo (2026-09-15, cierre de
+  /// deuda técnica — `faunaCategoria` en sí ya llegaba desde 2026-09-04, pero el roster que
+  /// desbloquea nunca se exponía). Vacío para flora/mineral y para fauna sin categoría asignada.
+  faunaCategoriaUnlocks: { level: number; ability: EnciclopediaAbilityInfo }[]
 }
 
 // Día/noche/estación (2026-08-27, docs/rpgtarkor/imagenes-prompts.md) — a diferencia de

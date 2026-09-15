@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { matchNpcAliases, contraataqueDifficultyFor, utilityDifficultyFor, tabulatedAttackAttribute, detectsAttackIntent, detectsHostileSearchIntent, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsExecuteIntent, detectsInventoryReviewIntent, detectsFarewellIntent, filterFarewellFacts, scopeFor, pickAmbientEncounterCandidate, npcSceneBlockFor, buildNpcInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
+import { matchNpcAliases, contraataqueDifficultyFor, utilityDifficultyFor, tabulatedAttackAttribute, detectsAttackIntent, detectsHostileSearchIntent, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, detectsFarewellIntent, filterFarewellFacts, scopeFor, pickAmbientEncounterCandidate, npcSceneBlockFor, buildNpcInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
 import type { AttributeBlock } from './dice.js';
 
 const NPCS = [
@@ -973,7 +973,9 @@ describe('buildNpcInScene', () => {
 });
 
 // Movido desde turnResolution.test.ts (refactor de deuda técnica 2026-08-13, junto con
-// detectsLootIntent/detectsExecuteIntent/detectsInventoryReviewIntent).
+// detectsLootIntent/detectsInventoryReviewIntent — detectsExecuteIntent, tercero de esa lista
+// original, se eliminó el 2026-09-15 como código muerto: "Decapitar"/"Matar" se rediseñó el
+// 2026-08-30 a un ataque normal, sin ningún detector de texto libre aparte).
 describe('detectsLootIntent', () => {
   it('detecta coincidencia exacta de un stem', () => {
     expect(detectsLootIntent('Registro el cuerpo del enemigo caído.')).toBe(true);
@@ -996,21 +998,6 @@ describe('detectsLootIntent', () => {
   it('no confunde "comer"/"comió" con el stem "compr" (auditoría 2026-07-29 tras el bug de "ataque": justo la palabra que usaría comer un consumible para recuperar energía)', () => {
     expect(detectsLootIntent('Quiero comer mi ración de carne ahumada para recuperar fuerzas.')).toBe(false);
     expect(detectsLootIntent('Ya comió la ración de carne ahumada antes de seguir camino.')).toBe(false);
-  });
-});
-
-// Cobertura nueva (2026-07-30, botón "Decapitar" — petición explícita: "un botón que solo sale
-// cuando está convaleciente para matarlo").
-describe('detectsExecuteIntent', () => {
-  it('detecta "remato"/"decapito"/"ejecuto"/"degüello"', () => {
-    expect(detectsExecuteIntent("Remato a 'Orco enfurecido', asestándole el golpe de gracia.")).toBe(true);
-    expect(detectsExecuteIntent("Decapito a 'Orco enfurecido' sin piedad.")).toBe(true);
-    expect(detectsExecuteIntent("Ejecuto a 'Orco enfurecido' de una vez por todas.")).toBe(true);
-  });
-
-  it('no dispara con una acción sin intención de rematar', () => {
-    expect(detectsExecuteIntent("Registro el cuerpo de 'Orco enfurecido'.")).toBe(false);
-    expect(detectsExecuteIntent('Miro con cuidado el horizonte.')).toBe(false);
   });
 });
 

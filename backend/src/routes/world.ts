@@ -11,6 +11,7 @@ import {
 } from '../scripts/worldCatalog.js';
 import { coreRegionOf } from '../services/discovery.js';
 import { allClassAbilityUnlocks, CLASE_DESCRIPTION } from '../services/classAbilities.js';
+import { faunaCategoriaAbilityUnlocksFor, type FaunaCategoria } from '../services/faunaAbilities.js';
 import { CONSTRUCTION_RECIPES } from '../services/construction.js';
 import { CRAFTING_RECIPES } from '../services/crafting.js';
 import { allProfessionAbilityUnlocks } from '../services/professionAbilities.js';
@@ -224,6 +225,24 @@ function buildFaunaFloraSection(ctx: EnciclopediaBuildContext) {
     // excluyentes según `esFauna` — nunca los dos a la vez para el mismo sourceSlug.
     faunaCategoria: ctx.npcBySlug.get(sourceSlug)?.faunaCategoria ?? null,
     floraCategoria: harvestSourceFloraCategoria[sourceSlug] ?? null,
+    // Roster de habilidades DE LA CATEGORÍA con su nivel de desbloqueo (2026-09-15, cierre de
+    // deuda técnica: `faunaCategoria` en sí ya se exponía desde 2026-09-04, pero el roster que
+    // desbloquea nunca llegaba al frontend — mismo criterio que `unlocks` en buildClassesSection,
+    // "TODOS los huecos de la categoría", no filtrado por nivel de ningún individuo concreto).
+    // Vacío para flora/mineral (sin faunaCategoria real) y para fauna sin categoría asignada
+    // todavía en el catálogo.
+    faunaCategoriaUnlocks: (() => {
+      const categoria = ctx.npcBySlug.get(sourceSlug)?.faunaCategoria as FaunaCategoria | null | undefined;
+      if (!categoria) return [];
+      return faunaCategoriaAbilityUnlocksFor(categoria).map((u) => ({
+        level: u.level,
+        ability: {
+          ...u.ability,
+          imagePrompts: ctx.imagePromptsFor('ability', slugify(u.ability.name)),
+          imageUrls: imageUrlsFor('ability', slugify(u.ability.name)),
+        },
+      }));
+    })(),
   }));
 }
 

@@ -160,6 +160,73 @@ describe('GET /world/:slug/enciclopedia', () => {
     // No debe duplicarse en la pestaña NPCs — mismo criterio ya existente para fauna CON
     // HarvestYield (comentario histórico de `npcsForEncyclopedia`).
     expect(body.npcs.find((n: { slug: string }) => n.slug === 'ruptidar')).toBeUndefined();
+
+    // Deuda técnica cerrada (2026-09-15): `faunaCategoria` ya se exponía desde 2026-09-04, pero
+    // el roster de habilidades que desbloquea esa categoría (con su nivel real) nunca llegaba al
+    // frontend — `faunaCategoriaAbilityUnlocksFor` existía sin ningún consumidor real.
+    expect(ruptidar.faunaCategoriaUnlocks.length).toBeGreaterThan(0);
+    expect(ruptidar.faunaCategoriaUnlocks[0]).toMatchObject({ level: expect.any(Number), ability: expect.objectContaining({ name: expect.any(String) }) });
+  });
+
+  it('fauna sin faunaCategoria asignada todavía en el catálogo: faunaCategoriaUnlocks vacío, sin reventar', async () => {
+    // `faunaCategoria: null` solo es alcanzable en `faunaFlora` por el camino de HarvestYield
+    // propio (el bucle de fauna-sin-yield de world.ts exige `n.faunaCategoria` truthy antes de
+    // añadirla) — mismo patrón de fixture que el test de "Leche de Múrgol" de abajo, con un NPC
+    // real detrás del sourceSlug esta vez.
+    findUniqueWorld.mockResolvedValue({ id: 'world1', slug: 'helek-sirik' });
+    findManyNpc.mockResolvedValue([
+      {
+        id: 'npc-sin-categoria',
+        slug: 'fauna-sin-categoria',
+        name: 'Fauna sin categoría',
+        kind: 'PLANTILLA',
+        role: 'x',
+        faction: null,
+        level: 1,
+        bio: 'x',
+        aliases: ['fauna sin categoria'],
+        attributes: { fuerza: 1, destreza: 1, constitucion: 1, inteligencia: 1, magia: 0, carisma: 1, voluntad: 1 },
+        raza: null,
+        clase: null,
+        ataqueNatural: 'No ataca.',
+        habilidadesRaciales: [],
+        homeLocationSlug: null,
+        faunaCategoria: null,
+        nucleoJugable: true,
+        comerciablePct: 0,
+        reclutablePct: 0,
+        domesticablePct: 0,
+        capturablePct: 0,
+        cortejablePct: 0,
+        atributoResistencia: 'destreza',
+      },
+    ]);
+    findManyHarvestYield.mockResolvedValue([
+      {
+        id: 'hy-sin-categoria',
+        worldId: 'world1',
+        sourceSlug: 'fauna-sin-categoria',
+        sourceCategory: 'fauna',
+        itemId: 'item-sin-categoria',
+        cantidad: 1,
+        condicion: null,
+        metodoObtencion: 'CAZA',
+        sinTirada: false,
+        requiereHerramienta: false,
+        estacionRequerida: null,
+        climaRequerido: null,
+        item: { id: 'item-sin-categoria', worldId: 'world1', slug: 'item-sin-categoria', name: 'Ítem de prueba', aliases: [] },
+      },
+    ]);
+    findManyDiscoveredEntity.mockResolvedValue([]);
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'GET', url: '/world/helek-sirik/enciclopedia' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    const entry = body.faunaFlora.find((e: { sourceSlug: string }) => e.sourceSlug === 'fauna-sin-categoria');
+    expect(entry).toBeDefined();
+    expect(entry.faunaCategoriaUnlocks).toEqual([]);
   });
 
   // Bug real (hallazgo 22, revisar-partida-hallazgos.md 2026-09-07): "Leche de Múrgol" salía con
