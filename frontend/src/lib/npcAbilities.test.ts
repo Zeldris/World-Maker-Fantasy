@@ -22,6 +22,7 @@ const EMPTY_ENCICLOPEDIA: EnciclopediaResponse = {
   factions: [],
   historia: [],
   combate: [],
+  reputacion: [],
 }
 
 describe('resolveCombatAbilities', () => {

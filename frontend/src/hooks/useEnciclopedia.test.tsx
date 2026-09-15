@@ -31,6 +31,7 @@ function fakeResponse(overrides: Partial<EnciclopediaResponse> = {}): Encicloped
     factions: [],
     historia: [],
     combate: [],
+    reputacion: [],
     ...overrides,
   }
 }

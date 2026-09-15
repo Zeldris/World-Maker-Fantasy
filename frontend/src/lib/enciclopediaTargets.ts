@@ -288,6 +288,13 @@ function faunaCategoriaUnlocksLine(entry: EnciclopediaFaunaFloraInfo): string | 
   return `Habilidades de su categoría (${entry.faunaCategoria}): ${lista}.`
 }
 
+// Vínculo Companion↔dueño en texto (auditoría de contenido de Enciclopedia, 2026-09-15) — mismo
+// criterio de formato que faunaCategoriaUnlocksLine: `null` para la inmensa mayoría de fauna.
+function companionOfNpcLine(entry: EnciclopediaFaunaFloraInfo): string | null {
+  if (!entry.companionOfNpc) return null
+  return `Compañero vinculado de ${entry.companionOfNpc.name}.`
+}
+
 export function faunaFloraToDetailTarget(entry: EnciclopediaFaunaFloraInfo): EnciclopediaLinkTarget {
   return {
     kind: 'info',
@@ -302,6 +309,7 @@ export function faunaFloraToDetailTarget(entry: EnciclopediaFaunaFloraInfo): Enc
       entry.description ? `Recursos: ${yieldsSummary(entry)}` : null,
       interaccionLine(entry.interaccion),
       faunaCategoriaUnlocksLine(entry),
+      companionOfNpcLine(entry),
       entry.aliases.length ? `También reconocido como: ${entry.aliases.join(', ')}.` : null,
     ]
       .filter((line): line is string => !!line)

@@ -21,6 +21,7 @@ import { loreContextFor } from '../services/imagePromptContext.js';
 import { imageUrlsFor, zoneMapImageUrl, iconoUrlFor } from '../lib/imageAssets.js';
 import { BERIG_RAZAS, BERIG_PERSONAJES } from '../services/berigLore.js';
 import { COMBAT_LORE_SECTIONS } from '../services/combatLore.js';
+import { REPUTATION_LORE_SECTIONS } from '../services/reputationLore.js';
 import { baseAttackFor } from '../services/baseAttack.js';
 import {
   FAUNA_SEXO_VARIANTES,
@@ -243,6 +244,16 @@ function buildFaunaFloraSection(ctx: EnciclopediaBuildContext) {
         },
       }));
     })(),
+    // Vínculo Companion↔dueño (auditoría de contenido de Enciclopedia, 2026-09-15): `Npc.
+    // companionOfNpcSlug` ya vinculaba a Gisoki/Gogorath con su dueño desde su siembra, pero nunca
+    // llegaba al frontend — la ficha de fauna los mostraba como fauna suelta, sin indicar que son
+    // el compañero vinculado de un NPC concreto. `null` para el resto (la inmensa mayoría).
+    companionOfNpc: (() => {
+      const companionOfSlug = ctx.npcBySlug.get(sourceSlug)?.companionOfNpcSlug ?? null;
+      if (!companionOfSlug) return null;
+      const dueno = ctx.npcBySlug.get(companionOfSlug);
+      return dueno ? { slug: companionOfSlug, name: dueno.name } : null;
+    })(),
   }));
 }
 
@@ -352,6 +363,14 @@ function buildRazasSection(ctx: EnciclopediaBuildContext) {
 // que nunca lleva gateo de descubrimiento ni depende del contexto (`ctx`) de esta petición.
 function buildCombateSection() {
   return COMBAT_LORE_SECTIONS;
+}
+
+// Sistemas del mundo (Enciclopedia § "Sistemas", auditoría de contenido 2026-09-15: temperamento,
+// reputación, territorio, captura/interacción, fases de descubrimiento) — mismo criterio que
+// Combate: documentación de reglas estática, sin gateo ni dependencia de `ctx`. Campo de respuesta
+// sigue llamándose `reputacion` (mismo criterio que reputationLore.ts) por no romper el tipo.
+function buildReputacionSection() {
+  return REPUTATION_LORE_SECTIONS;
 }
 
 function buildPersonajesSection(ctx: EnciclopediaBuildContext) {
@@ -686,7 +705,13 @@ export async function worldRoutes(app: FastifyInstance) {
     // que a una persona — pero eso hacía que la Enciclopedia listara cada animal DOS veces (en
     // "NPCs" con su ficha de personaje y en "Fauna y flora" con sus recursos). La pestaña NPCs
     // se queda solo con los que no tienen ninguna fuente de cosecha propia.
-    const npcsForEncyclopedia = npcs.filter((n) => !sourceDisplayNameBySlug.has(n.slug));
+    // Auditoría de contenido de Enciclopedia (2026-09-15) — los 3 NPC de prueba por raza
+    // (worldCatalog.ts, sección "NPC DE PRUEBA POR RAZA") son andamiaje de QA, no lore real: se
+    // veían mezclados sin distinción junto a personajes reales como Torgash Ketg o Kael Dorn. El
+    // motor de escena/combate sigue reconociéndolos con normalidad (no se tocó su `nucleoJugable`
+    // ni ningún otro campo); solo se excluyen de esta consulta de referencia.
+    const NPC_SLUGS_DE_PRUEBA_TECNICA = new Set(['goirnte-renegado', 'faerus-erratico', 'nabieus-enloquecido']);
+    const npcsForEncyclopedia = npcs.filter((n) => !sourceDisplayNameBySlug.has(n.slug) && !NPC_SLUGS_DE_PRUEBA_TECNICA.has(n.slug));
 
     const ctx: EnciclopediaBuildContext = {
       imagePromptsFor,
@@ -718,6 +743,7 @@ export async function worldRoutes(app: FastifyInstance) {
       factions: buildFactionsSection(factionRows, ctx),
       historia: buildHistoriaSection(historiaRows, ctx),
       combate: buildCombateSection(),
+      reputacion: buildReputacionSection(),
     };
   });
 

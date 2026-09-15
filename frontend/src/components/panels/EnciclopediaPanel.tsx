@@ -58,6 +58,7 @@ type EnciclopediaCategory =
   | 'historia'
   | 'crafteo'
   | 'combate'
+  | 'reputacion'
 
 interface EnciclopediaPanelProps {
   /// Datos crudos de la Enciclopedia (auditoría 2026-08-13, dedupe de doble fetch): antes este
@@ -529,6 +530,7 @@ const CATEGORY_TABS: { id: EnciclopediaCategory; label: string; icon: string }[]
   { id: 'crafteo', label: 'Crafteo', icon: '🔨' },
   { id: 'attributes', label: 'Atributos', icon: '📊' },
   { id: 'combate', label: 'Combate', icon: '⚔️' },
+  { id: 'reputacion', label: 'Sistemas', icon: '🧭' },
 ]
 
 // Enciclopedia consultable del mundo (roadmap 2026-07-21, petición explícita de la usuaria):
@@ -560,6 +562,7 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
   const factions = data?.factions ?? []
   const historia = data?.historia ?? []
   const combate = data?.combate ?? []
+  const reputacion = data?.reputacion ?? []
   // Colapsables de clase (2026-07-22, petición explícita: "que cada clase sea un colapsable que al
   // pulsarlo veas el árbol de habilidades") — Set en vez de un solo string porque no hay razón
   // para que abrir una cierre la otra, a diferencia de las pestañas de arriba (sí exclusivas).
@@ -801,8 +804,8 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
         ) : (
           <>
             {/* Buscador (auditoría 2026-08-27) — solo en categorías con cuadrícula plana de
-                EntryCardGrid; Clases/Atributos/Combate tienen su propio layout sin grilla. */}
-            {category !== 'classes' && category !== 'attributes' && category !== 'combate' && (
+                EntryCardGrid; Clases/Atributos/Combate/Reputación tienen su propio layout sin grilla. */}
+            {category !== 'classes' && category !== 'attributes' && category !== 'combate' && category !== 'reputacion' && (
               <input
                 type="text"
                 value={search}
@@ -1374,6 +1377,31 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
                 <PanelSection title="Cómo funciona el combate">
                   <div className="flex flex-col gap-2">
                     {combate.map((entry) => (
+                      <button type="button"
+                        key={entry.slug}
+                        onClick={() => onDetail({ kind: 'info', icon: entry.icon, name: entry.title, description: entry.text })}
+                        className="tactile flex items-center gap-3 rounded-lg border border-iron-800 bg-wood-950/40 px-3 py-2.5 text-left transition-colors hover:border-accent2-600/40 hover:bg-accent2-500/5"
+                      >
+                        <span className="text-xl leading-none">{entry.icon}</span>
+                        <span className="text-sm text-wood-200">{entry.title}</span>
+                      </button>
+                    ))}
+                  </div>
+                </PanelSection>
+              ))}
+
+            {/* "Sistemas" (auditoría de contenido de Enciclopedia, 2026-09-15) — mismo criterio
+                exacto que "Combate" arriba: filas simples, detalle completo en el modal genérico
+                'info' al pulsar. Cubre temperamento/reputación/territorio/captura/interacción/
+                fases de descubrimiento — el campo interno sigue llamándose `reputacion` (mismo
+                nombre que EnciclopediaResponse.reputacion) por no tocar el tipo del backend. */}
+            {category === 'reputacion' &&
+              (reputacion.length === 0 ? (
+                <PanelEmptyState icon="🧭" title="Sin reglas de sistemas catalogadas" hint="Todavía no hay ninguna documentada." />
+              ) : (
+                <PanelSection title="Cómo funcionan los sistemas del mundo">
+                  <div className="flex flex-col gap-2">
+                    {reputacion.map((entry) => (
                       <button type="button"
                         key={entry.slug}
                         onClick={() => onDetail({ kind: 'info', icon: entry.icon, name: entry.title, description: entry.text })}

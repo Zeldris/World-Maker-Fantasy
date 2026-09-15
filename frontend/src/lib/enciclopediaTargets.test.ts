@@ -19,6 +19,7 @@ const baseEntry: EnciclopediaFaunaFloraInfo = {
   faunaCategoria: 'ESCAMADOS',
   floraCategoria: null,
   faunaCategoriaUnlocks: [],
+  companionOfNpc: null,
 }
 
 // Cierre de deuda técnica (2026-09-15): `faunaCategoria` ya llegaba desde 2026-09-04, pero el
@@ -71,5 +72,23 @@ describe('faunaFloraToDetailTarget — roster de habilidades de categoría (faun
     const idxNv8 = target.extra!.indexOf('Nv.8')
     expect(idxNv1).toBeGreaterThanOrEqual(0)
     expect(idxNv8).toBeGreaterThan(idxNv1)
+  })
+})
+
+// Vínculo Companion↔dueño (auditoría de contenido de Enciclopedia, 2026-09-15): `Npc.
+// companionOfNpcSlug` ya vinculaba a Gisoki/Gogorath con su dueño, pero nunca llegaba al frontend.
+describe('faunaFloraToDetailTarget — vínculo Companion↔dueño (companionOfNpc)', () => {
+  it('con companionOfNpc null (la inmensa mayoría de fauna): no añade ninguna línea de vínculo', () => {
+    const target = faunaFloraToDetailTarget(baseEntry)
+    expect(target.extra).not.toContain('Compañero vinculado de')
+  })
+
+  it('con companionOfNpc real: añade la línea con el nombre del dueño', () => {
+    const entry: EnciclopediaFaunaFloraInfo = {
+      ...baseEntry,
+      companionOfNpc: { slug: 'ulkha-ketg', name: 'Ulkha Ketg' },
+    }
+    const target = faunaFloraToDetailTarget(entry)
+    expect(target.extra).toContain('Compañero vinculado de Ulkha Ketg.')
   })
 })

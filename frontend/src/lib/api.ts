@@ -1813,6 +1813,9 @@ export interface EnciclopediaFaunaFloraInfo {
   /// deuda técnica — `faunaCategoria` en sí ya llegaba desde 2026-09-04, pero el roster que
   /// desbloquea nunca se exponía). Vacío para flora/mineral y para fauna sin categoría asignada.
   faunaCategoriaUnlocks: { level: number; ability: EnciclopediaAbilityInfo }[]
+  /// Vínculo Companion↔dueño (auditoría de contenido de Enciclopedia, 2026-09-15) — `null` para
+  /// la inmensa mayoría de fauna (suelta, sin dueño); solo Gisoki/Gogorath lo tienen hoy.
+  companionOfNpc: { slug: string; name: string } | null
 }
 
 // Día/noche/estación (2026-08-27, docs/rpgtarkor/imagenes-prompts.md) — a diferencia de
@@ -2042,6 +2045,15 @@ export interface EnciclopediaCombateInfo {
   text: string
 }
 
+/// Enciclopedia § "Reputación" (auditoría de contenido de Enciclopedia, 2026-09-15) — mismo patrón
+/// exacto que EnciclopediaCombateInfo: contenido estático, sin gateo de descubrimiento.
+export interface EnciclopediaReputacionInfo {
+  slug: string
+  icon: string
+  title: string
+  text: string
+}
+
 export interface EnciclopediaResponse {
   npcs: EnciclopediaNpcInfo[]
   items: EnciclopediaItemInfo[]
@@ -2055,6 +2067,7 @@ export interface EnciclopediaResponse {
   factions: EnciclopediaFaccionInfo[]
   historia: EnciclopediaHistoriaInfo[]
   combate: EnciclopediaCombateInfo[]
+  reputacion: EnciclopediaReputacionInfo[]
 }
 
 /// `saveId` (2026-07-23, enciclopedia progresiva) — gatea NPCs/fauna/flora/objetos/lugares por lo

@@ -334,7 +334,7 @@ export const BERIG_PERSONAJES: PersonajeInfo[] = [
     facultades:
       'Percibe el "orden" de las cosas de forma casi física. El caos, las mentiras o una jerarquía rota le causan incomodidad tangible que canaliza en un instinto táctico agudo: detecta al instante el punto débil de una formación, plan o argumento.',
     historia:
-      'Soldado rasa de la guardia menor de Berig. Fue una de las encargadas de escoltar el sello de contención hasta la isla la noche en que la facción radical lo rompió. Vio que no hubo sabotaje de Vaelira, sino una traición interna. Denunciarlo por canales oficiales significaba morir; callarlo la destrozaba por dentro. Desertó esa misma noche.',
+      'Soldado rasa de la guardia menor de Berig. Estuvo presente, en servicio, la noche en que el sello de contención se rompió — desertó esa misma noche y no ha vuelto a vestir el uniforme desde entonces. No habla de lo que vio; cuando se lo preguntan, cambia de tema.',
     voz: 'Habla en enumeraciones y órdenes ("primero... después... y solo entonces..."), y se corrige a media frase cuando se oye a sí misma sonar "a la guardia". Miente mal: en vez de mentir, cambia de tema con brusquedad.',
   },
   {
@@ -347,7 +347,7 @@ export const BERIG_PERSONAJES: PersonajeInfo[] = [
     facultades:
       'Movimiento absolutamente insonoro; puede permanecer inmóvil sin ser detectado. Identifica mentiras e intenciones en los silencios de una conversación.',
     historia:
-      'Mensajero de bajo rango que entregaba correspondencia sellada sin hacer preguntas. Una de las cartas que entregó una semana antes de la ruptura contenía, sin saberlo él entonces, las instrucciones para el sabotaje de la facción radical. La culpa de haber sido el cómplice involuntario de la guerra lo atormenta.',
+      'Mensajero de bajo rango que entregaba correspondencia sellada sin hacer preguntas, hasta la semana de la ruptura del sello — desde entonces ya no trabaja para nadie, y algo de lo que entregó aquellos días le pesa en silencio.',
     voz: 'Voz apenas audible que obliga al interlocutor a inclinarse hacia él; usa las palabras justas y ni una más, y responde muchas preguntas con silencios.',
   },
   {

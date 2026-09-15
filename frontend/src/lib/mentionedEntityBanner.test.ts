@@ -43,6 +43,7 @@ function emptyResponse(overrides: Partial<EnciclopediaResponse> = {}): Enciclope
     factions: [],
     historia: [],
     combate: [],
+    reputacion: [],
     ...overrides,
   }
 }

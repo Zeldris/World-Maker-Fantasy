@@ -109,6 +109,15 @@ describe('GET /world/:slug/enciclopedia', () => {
       expect(typeof seccion.title).toBe('string');
       expect(typeof seccion.text).toBe('string');
     }
+    // Reputación (auditoría de contenido de Enciclopedia, 2026-09-15): mismo criterio, contenido
+    // estático (reputationLore.ts), no depende de la BD.
+    expect(body.reputacion.length).toBeGreaterThan(0);
+    for (const seccion of body.reputacion) {
+      expect(typeof seccion.slug).toBe('string');
+      expect(typeof seccion.icon).toBe('string');
+      expect(typeof seccion.title).toBe('string');
+      expect(typeof seccion.text).toBe('string');
+    }
   });
 
   // Bug real jugando en vivo (2026-09-03, "fauna interactuada no se desbloquea en la
@@ -166,6 +175,141 @@ describe('GET /world/:slug/enciclopedia', () => {
     // frontend — `faunaCategoriaAbilityUnlocksFor` existía sin ningún consumidor real.
     expect(ruptidar.faunaCategoriaUnlocks.length).toBeGreaterThan(0);
     expect(ruptidar.faunaCategoriaUnlocks[0]).toMatchObject({ level: expect.any(Number), ability: expect.objectContaining({ name: expect.any(String) }) });
+  });
+
+  // Auditoría de contenido de Enciclopedia (2026-09-15): `Npc.companionOfNpcSlug` ya vinculaba a
+  // Gogorath con su dueña Ulkha Ketg desde su siembra, pero el vínculo nunca llegaba al frontend.
+  it('companionOfNpc: Gogorath expone el vínculo con su dueña Ulkha Ketg', async () => {
+    findUniqueWorld.mockResolvedValue({ id: 'world1', slug: 'helek-sirik' });
+    findManyNpc.mockResolvedValue([
+      {
+        id: 'npc-gogorath',
+        slug: 'gogorath',
+        name: 'Gogorath',
+        kind: 'PRINCIPAL',
+        role: 'Gargantúa domada de Ulkha Ketg',
+        faction: null,
+        level: 10,
+        bio: 'Macho Gargantúa adulto, cicatriz en el ojo izquierdo.',
+        aliases: ['gogorath'],
+        attributes: { fuerza: 20, destreza: 6, constitucion: 20, inteligencia: 2, magia: 0, carisma: 2, voluntad: 10 },
+        raza: null,
+        clase: null,
+        ataqueNatural: 'Embestida',
+        habilidadesRaciales: [],
+        homeLocationSlug: null,
+        faunaCategoria: 'GARGANTUAS',
+        companionOfNpcSlug: 'ulkha-ketg',
+        nucleoJugable: true,
+        comerciablePct: 0,
+        reclutablePct: 0,
+        domesticablePct: 0,
+        capturablePct: 0,
+        cortejablePct: 0,
+        atributoResistencia: null,
+      },
+      {
+        id: 'npc-ulkha-ketg',
+        slug: 'ulkha-ketg',
+        name: 'Ulkha Ketg',
+        kind: 'PRINCIPAL',
+        role: "Terk'ikar del Clan Serhu",
+        faction: 'Clan Serhu',
+        level: 24,
+        bio: 'Orca del Clan Serhu.',
+        aliases: ['ulkha ketg'],
+        attributes: { fuerza: 16, destreza: 28, constitucion: 14, inteligencia: 20, magia: 0, carisma: 15, voluntad: 16 },
+        raza: 'orcos',
+        clase: 'CAZADOR',
+        ataqueNatural: null,
+        habilidadesRaciales: [],
+        homeLocationSlug: 'campamento-serhu',
+        faunaCategoria: null,
+        nucleoJugable: true,
+        comerciablePct: 0,
+        reclutablePct: 0,
+        domesticablePct: 0,
+        capturablePct: 0,
+        cortejablePct: 0,
+        atributoResistencia: 'voluntad',
+      },
+    ]);
+    findManyDiscoveredEntity.mockResolvedValue([{ entityType: 'npc', entitySlug: 'gogorath' }]);
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'GET', url: '/world/helek-sirik/enciclopedia' });
+    const body = res.json();
+
+    const gogorath = body.faunaFlora.find((e: { sourceSlug: string }) => e.sourceSlug === 'gogorath');
+    expect(gogorath).toBeDefined();
+    expect(gogorath.companionOfNpc).toEqual({ slug: 'ulkha-ketg', name: 'Ulkha Ketg' });
+  });
+
+  // Auditoría de contenido de Enciclopedia (2026-09-15): los 3 NPC de prueba por raza
+  // (worldCatalog.ts, "NPC DE PRUEBA POR RAZA") son andamiaje de QA, no lore real — se mezclaban
+  // sin distinción junto a personajes reales en la pestaña NPCs.
+  it('NPC de prueba técnica (goirnte-renegado) NO aparece en la pestaña NPCs de la Enciclopedia', async () => {
+    findUniqueWorld.mockResolvedValue({ id: 'world1', slug: 'helek-sirik' });
+    findManyNpc.mockResolvedValue([
+      {
+        id: 'npc-goirnte-renegado',
+        slug: 'goirnte-renegado',
+        name: 'Goirnte Renegado',
+        kind: 'PLANTILLA',
+        role: 'NPC de prueba — Goirnte hostil sin trama, para verificar mecánica de raza/clase en vivo',
+        faction: null,
+        level: 1,
+        bio: 'Un Goirnte expulsado de la Meseta del Orden por una deuda de honor que nunca reconoció.',
+        aliases: ['goirnte renegado'],
+        attributes: { fuerza: 10, destreza: 8, constitucion: 12, inteligencia: 8, magia: 2, carisma: 6, voluntad: 8 },
+        raza: 'goirntes',
+        clase: 'CABALLERO',
+        ataqueNatural: null,
+        habilidadesRaciales: [],
+        homeLocationSlug: null,
+        faunaCategoria: null,
+        nucleoJugable: false,
+        comerciablePct: 0,
+        reclutablePct: 0,
+        domesticablePct: 0,
+        capturablePct: 0,
+        cortejablePct: 0,
+        atributoResistencia: 'inteligencia',
+      },
+      {
+        id: 'npc-torgash-ketg',
+        slug: 'torgash-ketg',
+        name: 'Torgash Ketg',
+        kind: 'PRINCIPAL',
+        role: "Kort'ikar del Clan Serhu",
+        faction: 'Clan Serhu',
+        level: 20,
+        bio: 'Orco del Clan Serhu, de las Llanuras del Viento Rojo.',
+        aliases: ['Torgash Ketg'],
+        attributes: { fuerza: 26, destreza: 14, constitucion: 32, inteligencia: 12, magia: 8, carisma: 12, voluntad: 22 },
+        raza: 'orcos',
+        clase: 'GUERRERO',
+        ataqueNatural: null,
+        habilidadesRaciales: [],
+        homeLocationSlug: 'campamento-serhu',
+        faunaCategoria: null,
+        nucleoJugable: true,
+        comerciablePct: 0,
+        reclutablePct: 0,
+        domesticablePct: 0,
+        capturablePct: 0,
+        cortejablePct: 0,
+        atributoResistencia: 'voluntad',
+      },
+    ]);
+    findManyDiscoveredEntity.mockResolvedValue([]);
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'GET', url: '/world/helek-sirik/enciclopedia' });
+    const body = res.json();
+
+    expect(body.npcs.find((n: { slug: string }) => n.slug === 'goirnte-renegado')).toBeUndefined();
+    expect(body.npcs.find((n: { slug: string }) => n.slug === 'torgash-ketg')).toBeDefined();
   });
 
   it('fauna sin faunaCategoria asignada todavía en el catálogo: faunaCategoriaUnlocks vacío, sin reventar', async () => {
