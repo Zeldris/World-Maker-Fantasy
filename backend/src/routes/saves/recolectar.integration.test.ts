@@ -108,6 +108,29 @@ describe('Cooldown de recolección: cambiar de Location lo salta, quedarse quiet
     expect(popAfterSecond.poblacion).toBe(originalPopulation.poblacion - 3);
   }, 15_000);
 
+  // Hallazgo 44 (revisar-partida-hallazgos.md, 2026-09-15): `resolverRecoleccion` ganó un tercer
+  // parámetro opcional (`clearPendingDynamicModeOffer`) para que dynamicModeRecurso.ts pueda
+  // limpiar la oferta de Interactuar DENTRO de la misma transacción — este endpoint (el otro
+  // caller, `/recolectar/confirmar`) nunca debe activarlo: no toca `pendingDynamicModeOffer` en
+  // absoluto, esa oferta es responsabilidad exclusiva del flujo de Interactuar.
+  it('recolectar por el modal normal (/recolectar/confirmar) NO toca una oferta de Interactuar ya activa', async () => {
+    await prisma.save.update({
+      where: { id: saveId },
+      data: { pendingDynamicModeOffer: { tipo: 'RECURSO', targetSlug: 'yerreo', targetName: 'Yerreo' } },
+    });
+    const app = await buildApp();
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/recolectar/confirmar`,
+      payload: { selections: [{ sourceSlug: 'roca-pilares-rotos', itemSlug: 'piedra', cantidad: 3 }] },
+    });
+    expect(res.statusCode).toBe(200);
+
+    const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveAfter.pendingDynamicModeOffer).toEqual({ tipo: 'RECURSO', targetSlug: 'yerreo', targetName: 'Yerreo' });
+  }, 15_000);
+
   it('moverse a Location B deja recolectar de inmediato, aunque no hayan pasado los 30 min', async () => {
     await prisma.save.update({ where: { id: saveId }, data: { currentLocationId: locationBId } });
     const app = await buildApp();

@@ -140,4 +140,47 @@ describe('Grupos de combate (2026-09-08)', () => {
 
     await prisma.companion.deleteMany({ where: { id: { in: [...companions.map((c) => c.id), uno_mas.id] } } });
   });
+
+  // Hallazgo 46 (revisar-partida-hallazgos.md, 2026-09-15): count+update sin transacción dejaba
+  // una ventana de carrera real — dos arrastres concurrentes al mismo grupo casi lleno podían leer
+  // el mismo count antes de que ninguno escribiera, pasando los dos el guard y superando el tope.
+  it('dos compañeros distintos arrastrados AL MISMO TIEMPO al único hueco libre: solo uno entra, el otro recibe 400', async () => {
+    // Tope real del Grupo 1 (base) = 3 (MAX_COMBATIENTES_POR_BANDO - 1, el hueco restante es el
+    // PJ). Parte de lo que YA haya en el grupo (tests anteriores del mismo describe pueden dejar
+    // compañeros ahí) y rellena hasta dejar exactamente 1 hueco libre, en vez de asumir un grupo
+    // vacío al empezar.
+    const yaHabia = await prisma.companion.count({ where: { saveId, combatGroupSlotIndex: 0 } });
+    const faltanParaLlenarMenosUno = Math.max(0, 3 - 1 - yaHabia);
+    const yaEnGrupo = await Promise.all(
+      Array.from({ length: faltanParaLlenarMenosUno }, (_, i) =>
+        prisma.companion.create({
+          data: { saveId, name: `Ocupante ${i}`, role: 'mascota', notes: '', tipo: 'FAUNA', sourceSlug: 'gesgurio', attributes: COMPANION_ATTRS, combatGroupSlotIndex: 0 },
+        }),
+      ),
+    );
+    const [candidatoA, candidatoB] = await Promise.all([
+      prisma.companion.create({
+        data: { saveId, name: 'Candidato A', role: 'mascota', notes: '', tipo: 'FAUNA', sourceSlug: 'gesgurio', attributes: COMPANION_ATTRS, combatGroupSlotIndex: 5 },
+      }),
+      prisma.companion.create({
+        data: { saveId, name: 'Candidato B', role: 'mascota', notes: '', tipo: 'FAUNA', sourceSlug: 'ruptidar', attributes: COMPANION_ATTRS, combatGroupSlotIndex: 5 },
+      }),
+    ]);
+    const app = await buildApp();
+
+    const [resA, resB] = await Promise.all([
+      app.inject({ method: 'PATCH', url: `/saves/${saveId}/companeros/${candidatoA.id}/grupo`, payload: { combatGroupSlotIndex: 0 } }),
+      app.inject({ method: 'PATCH', url: `/saves/${saveId}/companeros/${candidatoB.id}/grupo`, payload: { combatGroupSlotIndex: 0 } }),
+    ]);
+    const statusCodes = [resA.statusCode, resB.statusCode].sort();
+    expect(statusCodes).toEqual([200, 400]);
+
+    // El tope real nunca se supera: el Grupo 1 se queda en exactamente 3 compañeros (el máximo),
+    // nunca 4 — aunque las dos peticiones concurrentes intentaran ocupar el mismo último hueco.
+    const enGrupoFinal = await prisma.companion.count({ where: { saveId, combatGroupSlotIndex: 0 } });
+    expect(enGrupoFinal).toBe(3);
+    expect(enGrupoFinal).toBe(yaHabia + faltanParaLlenarMenosUno + 1);
+
+    await prisma.companion.deleteMany({ where: { id: { in: [...yaEnGrupo.map((c) => c.id), candidatoA.id, candidatoB.id] } } });
+  });
 });

@@ -471,7 +471,7 @@ siguiente nivel de ASI (ascenso de atributo, `progression.ts`), y así sucesivam
 24, 28, 32, 36, 40** (8 huecos), mismo ritmo que ya usan los puntos de atributo — no un calendario
 aparte. Se aplica a las 4 especializaciones de Guerrero por igual.
 
-### Berserker — 6 de 8 listas (actualizado 2026-09-15, DEBILIDAD/AUMENTO-a-uno-mismo real cierra 12/16/36)
+### Berserker — 7 de 8 listas (corregido 2026-09-15, auditoría de lore — CANALIZAR ya tiene motor real desde el 2026-09-09, esta tabla llevaba 6 días sin actualizarse tras esa siembra; DEBILIDAD/AUMENTO-a-uno-mismo real cierra 12/16/36)
 
 Las 2 heredadas del tronco (Grito de Guerra/Grito tenebroso) se reasignan a los primeros huecos del
 ritmo, con el resto relleno alrededor:
@@ -482,17 +482,17 @@ ritmo, con el resto relleno alrededor:
 | 16 | Grito tenebroso *(reasignada, antes tronco nv.6)* | Carisma | `DEBILIDAD` + `ATURDIMIENTO` | utilidad | ✅ **lista, sembrada 2026-09-15** — mismo motor que 12 |
 | 19 | Última Resistencia | Constitucion | `AGUANTE`, solo si estás Convaleciente, aumenta + 10 la constitucion si estas convaleciente, sino solo + 2 | defensa | ✅ lista, sembrada en `classAbilities.ts` |
 | 24 | Giro Salvaje | Fuerza | `ATAQUE` + `MULTIPLE` | ataque que se realiza sobre un enemigo , si la tirada tiene una diferencia de 6 afecta a tu objetivo y otro aleatorio, si mayor de 12 a tu objetivo y 2 aleatorios | ✅ lista, sembrada (auditoría 2026-08-31 — confirmada en `classAbilities.ts`) |
-| 28 | Grito Desgarrador | Carisma | `CANALIZAR` + `ATURDIMIENTO` | utilidad si ganas la tirada aturde a todos los enemigos 1 turno | ⛔ `CANALIZAR` sigue sin ningún comportamiento real en el motor (solo enum) |
+| 28 | Grito Desgarrador | Carisma | `CANALIZAR` + `ATURDIMIENTO` | utilidad si ganas la tirada aturde a todos los enemigos 1 turno | ⛔ no sembrada todavía en `classAbilities.ts` — a diferencia de 40 (misma familia CANALIZAR), esta combina CANALIZAR con ATURDIMIENTO de ÁREA (todos los enemigos), sin precedente real de cómo debería resolverse |
 | 32 | Piel de Batalla | Constitución | `AGUANTE` + `CONTRA` | defensa, si tu tirada supea en 6 a la de cualquier enemigo que ataque, le devuelve el daño, si ganas por menos de 6 recibes el daño pero se genera un golpe mutuo | ✅ lista, sembrada (auditoría 2026-08-31 — confirmada en `classAbilities.ts`) |
 | 36 | Instinto Berserker | Fuerza | `AUMENTO` + `RECUPERACION` + `PURIFICAR` + `LIMITADA` | utilidad | ✅ **lista, sembrada 2026-09-15** — `AUMENTO` a uno mismo ya funcionaba sin `durationEffectTarget` (comentario desactualizado), `PURIFICAR` se queda fuera (sin motor) |
-| 40 | Golpe Devastador *(capstone)* | Fuerza | `CANALIZAR` + `ATAQUE` + `LETAL`| ataque | ⛔ `CANALIZAR` sigue sin ningún comportamiento real |
+| 40 | Golpe Devastador *(capstone)* | Fuerza | `CANALIZAR` + `ATAQUE` + `LETAL`| ataque | ✅ lista, sembrada — `CANALIZAR` tiene motor real desde el 2026-09-09 (1v1 y combate múltiple) |
 
-**3 de 8 huecos sembrados** (19, 24, 32 — corregido 2026-09-07, auditoría de lore: 24 y 32 ya
-estaban sembradas en `classAbilities.ts` desde la pasada del 2026-08-31, esta tabla nunca se
-actualizó tras esa siembra). 12/16 (DEBILIDAD en rol utilidad) y 28/36/40 (`CANALIZAR`/`PURIFICAR`,
-sin ningún motor) siguen bloqueadas de verdad.
+**7 de 8 huecos sembrados** (12, 16, 19, 24, 32, 36, 40 — corregido 2026-09-15, auditoría de lore:
+`CANALIZAR` ganó motor real el 2026-09-09, cerrando 40; esta tabla no se había actualizado desde
+entonces). Solo 28 (`CANALIZAR`+`ATURDIMIENTO` de área, todavía sin sembrar) sigue bloqueada de
+verdad.
 
-### Guardián — 4 de 8 listas (corregido 2026-09-07; "completo (8 huecos)" se refería a las 8 filas diseñadas, no a las sembradas)
+### Guardián — 7 de 8 listas (corregido 2026-09-15, auditoría de lore — la cabecera se había quedado en "4 de 8" mientras el propio párrafo-resumen de esta sección y las filas de la tabla ya reflejaban 7/8 desde el 2026-09-14/15; "completo (8 huecos)" se refería a las 8 filas diseñadas, no a las sembradas)
 
 "Conseguir o redirigir agro" no es solo un efecto pendiente (como `AUMENTO`), es un efecto que **no
 existe en absoluto todavía** en `AbilityEffect`. Propuesta para darlo de alta: **`PROVOCACION`** —
@@ -517,7 +517,7 @@ desde utilidad — actualizado 2026-09-14, PROVOCACION real cierra 16/19). Solo 
 Inquebrantable, `MULTIPLE` DEFENSIVO hacia aliados — un caso distinto de AUMENTO/utilidad, sin
 construir) sigue bloqueada de verdad.
 
-### Lancero — 6 de 8 listas (corregido 2026-09-07, era "2 de 8" antes de la siembra 2026-08-31)
+### Lancero — 7 de 8 listas (corregido 2026-09-15, auditoría de lore — la cabecera se había quedado en "6 de 8" mientras el propio párrafo-resumen de esta sección ya reflejaba 7/8 desde el 2026-09-14)
 
 Mayoría voluntad/destreza, con fuerza y carisma metidos para que no sea solo esos dos atributos.
 Corregidos dos typos de esta sección (`DEBLIDAD`→`DEBILIDAD`, `PROVACION`→`PROVOCACION`) y añadida
@@ -537,7 +537,7 @@ la columna Estado, que se había perdido al escribir esta tabla:
 **7 de 8 sembradas** (12, 16, 19, 24, 32, 36, 40 — actualizado 2026-09-14, PROVOCACION real cierra
 32). Solo 28 (INTIMIDACION+DEBILIDAD+CONTRA, mezcla utilidad con ataque) sigue bloqueada de verdad.
 
-### Especialista — 5 de 8 listas (corregido 2026-09-07, era "4 de 8" antes de la siembra 2026-08-31)
+### Especialista — 8 de 8 listas, completo (corregido 2026-09-15, auditoría de lore — la cabecera se había quedado en "5 de 8" mientras el propio párrafo-resumen de esta sección ya reflejaba 8/8 desde el 2026-09-15)
 
 Variedad real, no solo de atributo — también de `rol` (`ataque`/`defensa`/`utilidad`, campo que ya
 existe en el motor). Ningún hueco de Guerrero toca Magia, en ninguna especialización — ni siquiera
@@ -635,7 +635,7 @@ defensa con su propio atributo" (mismo bloqueo estructural que "rol dual", Tirad
 por `AREA` real, variante persistente — corregido 2026-09-07, auditoría de lore: 24, 28 y 36 ya
 estaban sembradas desde la pasada del 2026-08-31, esta tabla nunca se actualizó tras esa siembra).
 
-### Tirador — 6 de 8 listas (corregido 2026-09-07, era "5 de 8" antes de la siembra 2026-08-31)
+### Tirador — 7 de 8 listas (corregido 2026-09-15, auditoría de lore — CANALIZAR (24) ya tiene motor real desde el 2026-09-09, esta tabla llevaba 6 días sin actualizarse tras esa siembra)
 
 Columna Estado añadida (se había perdido al escribir esta tabla) y corregido el typo
 `CANLIZAR`→`CANALIZAR` (24):
@@ -645,18 +645,18 @@ Columna Estado añadida (se había perdido al escribir esta tabla) y corregido e
 | 12 | Disparo Certero | Destreza | `ATAQUE` | ✅ lista, sembrada |
 | 16 | Instinto de Cazador | Inteligencia | `AGUANTE` — lees la intención del rival y esquivas antes del golpe aumentando tu inteligencia en +4 | ✅ lista, sembrada |
 | 19 | Tiro Inmovilizador | Destreza | `ATAQUE` + `ATURDIMIENTO` | ✅ lista, sembrada |
-| 24 | Tensar al Límite | Fuerza | `ATAQUE` + `CANALIZAR` + `LETAL` — tensa el arco al máximo, más potencia por pura resistencia física | ⛔ `CANALIZAR` sigue sin ningún comportamiento real ("se cancela si te atacan antes de completarse" no tiene mecanismo de motor) |
+| 24 | Tensar al Límite | Fuerza | `ATAQUE` + `CANALIZAR` + `LETAL` — tensa el arco al máximo, más potencia por pura resistencia física | ✅ lista, sembrada — `CANALIZAR` tiene motor real desde el 2026-09-09 (1v1 y combate múltiple) |
 | 28 | Concentración Absoluta | Voluntad | `ATAQUE` — paciencia y foco antes de disparar, no técnica | ✅ lista, sembrada |
 | 32 | Puntería Perfecta | Destreza | `ATAQUE` — el disparo definitivo de precisión | ✅ lista, sembrada |
 | 36 | Tiro Multiple | Destreza | `ATAQUE` + `MULTIPLE` | ✅ lista, sembrada (auditoría 2026-08-31 — confirmada en `classAbilities.ts` como "Tiro Múltiple") |
 | 40 | Disparo Definitivo *(capstone)* | Destreza | `ATAQUE` + `AGUANTE` + `CONTRA` + `LIMITADO` | ⛔ combina rol ataque Y rol defensa en la MISMA habilidad ("si es en turno de ataque... si es en defensa...") — el motor asigna un único `rol` por `SavedAction`, no hay forma de que la misma ficha se comporte distinto según quién inicia el intercambio |
 
-**6 de 8 sembradas** (12/16/19/28/32/36 — corregido 2026-09-07, auditoría de lore: 36 ya estaba
-sembrada desde la pasada del 2026-08-31, esta tabla nunca se actualizó tras esa siembra). Solo 24
-(`CANALIZAR`) y 40 (rol dual ataque/defensa en una sola ficha, limitación estructural real, no solo
-un efecto sin construir) siguen bloqueadas de verdad.
+**7 de 8 sembradas** (12, 16, 19, 24, 28, 32, 36 — corregido 2026-09-15, auditoría de lore:
+`CANALIZAR` ganó motor real el 2026-09-09, cerrando 24; esta tabla no se había actualizado desde
+entonces). Solo 40 (rol dual ataque/defensa en una sola ficha, limitación estructural real, no solo
+un efecto sin construir) sigue bloqueada de verdad.
 
-### Instintivo — 6 de 8 listas (corregido 2026-09-07, era "4 de 8" antes de la siembra 2026-08-31)
+### Instintivo — 7 de 8 listas (corregido 2026-09-15, auditoría de lore — la cabecera se había quedado en "6 de 8" mientras el propio párrafo-resumen de esta sección ya reflejaba 7/8 desde el 2026-09-14)
 
 Columna Estado añadida (se había perdido al escribir esta tabla):
 
@@ -788,12 +788,12 @@ invocaciones que persistan en la escena, así que apenas toca la infraestructura
 | 28 | Puño Ígneo | Magia | `ATAQUE` + ATURDIMIENTO — golpe de fuego consecutivo | ✅ lista, sembrada | ATaca sumando +4 a la magi ay si la diferencia es de 8 o mas etonces aurde al enemigo 1 turno
 | 32 | Vórtice Menor | Destreza | `AGUANTE` + CONTRA — un torbellino te ayuda a esquivar | ✅ lista, sembrada |
 | 36 | Cuerpo Elemental | Magia | AGUANTE + ATAQUE +`AUMENTO` — te conviertes brevemente en un ser elemental | ⛔ combina rol ataque Y rol defensa en la MISMA habilidad, mismo bloqueo estructural que Disparo Definitivo (Tirador 40) — el motor asigna un único `rol` por ficha |
-| 40 | Furia de los Elementos *(capstone)* | Magia | `ATAQUE` + CANALIZAR + LETAL + LIMITADO — combina los 4 elementos en un golpe devastador final | ⛔ `CANALIZAR` sigue sin ningún comportamiento real |
+| 40 | Furia de los Elementos *(capstone)* | Magia | `ATAQUE` + CANALIZAR + LETAL + LIMITADO — combina los 4 elementos en un golpe devastador final | ✅ lista, sembrada — `CANALIZAR` tiene motor real desde el 2026-09-09 (1v1 y combate múltiple) |
 
-**6 de 8 sembradas** (12, 16, 19, 24, 28, 32 — corregido 2026-09-07, auditoría de lore: 12/16/19/24
-ya estaban sembradas desde la pasada del 2026-08-31, esta tabla las seguía marcando "sembrable YA"
-sin sembrar). Sigue siendo la especialización menos bloqueada de las 4 de Chamán. Solo 36 (rol
-dual) y 40 (`CANALIZAR`) siguen bloqueadas de verdad.
+**7 de 8 sembradas** (12, 16, 19, 24, 28, 32, 40 — corregido 2026-09-15, auditoría de lore:
+`CANALIZAR` ganó motor real el 2026-09-09, cerrando 40; esta tabla no se había actualizado desde
+entonces). Sigue siendo la especialización menos bloqueada de las 4 de Chamán. Solo 36 (rol dual)
+sigue bloqueada de verdad.
 
 ### Opresor — encaja con "subyugar/debilitar" (título "la más bloqueada de las 4" corregido 2026-09-07: con 4/8 real ya no es la más bloqueada de Chamán, Totémico con 1/8 lo es)
 

@@ -139,6 +139,27 @@ describe('POST /saves/:id/zona/mover', () => {
     });
   });
 
+  // Hallazgo 45 (revisar-partida-hallazgos.md, 2026-09-15): sin candado, dos peticiones
+  // concurrentes reales al mismo saveId podían leer la misma posición de partida y escribir cada
+  // una su propio "siguiente paso" — la segunda pisando/duplicando la primera.
+  it('dos peticiones concurrentes al mismo saveId: la segunda recibe 409, solo una avanza de verdad', async () => {
+    const app = await buildApp();
+    const [first, second] = await Promise.all([
+      app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 375, y: 25 } } }),
+      app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 375, y: 25 } } }),
+    ]);
+    const statusCodes = [first.statusCode, second.statusCode].sort();
+    expect(statusCodes).toEqual([200, 409]);
+
+    const rejected = first.statusCode === 409 ? first : second;
+    expect(JSON.parse(rejected.body).error).toMatch(/movimiento en curso/i);
+
+    // Solo UN paso real se aplicó — no dos pasos acumulados por la petición rechazada colándose de
+    // todos modos.
+    const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveAfter.zonaPosX).toBe(75);
+  });
+
   it('sin ningún ZonePoint en la Location, avanza un paso limpio hacia el destino, sin colisión ni aviso', async () => {
     const app = await buildApp();
     const res = await app.inject({

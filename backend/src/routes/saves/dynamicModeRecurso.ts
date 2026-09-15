@@ -78,9 +78,11 @@ export async function dynamicModeRecursoRoutes(app: FastifyInstance) {
     }
 
     const selections = filtrado.yields.map((y) => ({ sourceSlug: targetSlug, itemSlug: y.itemSlug, cantidad: y.cantidadMaxima }));
-    const resultado = await resolverRecoleccion(save, selections);
-
-    await prisma.save.update({ where: { id: save.id }, data: { pendingDynamicModeOffer: Prisma.JsonNull } });
+    // `true` = limpia pendingDynamicModeOffer DENTRO de la misma transacción que la recolección
+    // (hallazgo 44, revisar-partida-hallazgos.md 2026-09-15) — antes era una segunda escritura
+    // suelta después de cerrar la transacción, vulnerable a dejar la oferta colgada sobre un
+    // recurso ya recolectado si el proceso moría entre medias.
+    const resultado = await resolverRecoleccion(save, selections, true);
 
     return {
       exito: resultado.logEntry !== null,

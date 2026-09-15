@@ -5,7 +5,7 @@ import { xpForRollSuccess, xpForHitos, labelForHitos, applyXp, type ProgressionR
 import { alivioForLevel, xpForCraftSuccess, professionLevelForXp } from './professionProgress.js';
 import { tickKingdom, daysCrossed, DEFAULT_KINGDOM_STATS, territoryPopulationDelta, DIAS_PARA_CONSOLIDAR, DIAS_PARA_REBELION } from './kingdomTick.js';
 import { appendSessionFacts, selectRelevantFacts } from './worldFacts.js';
-import { closeItemQuests, completeNpcTargetQuests, grantQuestRewardItems, questRewardNarrationFor, type QuestCompletedInfo } from './questResolution.js';
+import { closeItemQuests, completeNpcTargetQuests, grantQuestRewardItems, questRewardNarrationFor, GISTERA_DESPEDIDA_NARRATION, type QuestCompletedInfo } from './questResolution.js';
 import {
   applyFactionRepDelta,
   effectiveTemperamento,
@@ -5149,7 +5149,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // frase ya no dice hacia dónde se va, solo que abandona la Hondonada del Eco. El destino real
     // (Ciénaga Troncal) se queda solo en `newFacts` — memoria interna del motor para que el guard
     // de "no vuelve a aparecer" (`gisteraSeHaMarchado`) siga funcionando, nunca mostrado al jugador.
-    narration.narration = `${narration.narration} Gistera Koh asiente, aliviada, y sin perder ni un segundo más se aleja de la Hondonada del Eco, perdiéndose pronto en el horizonte.`;
+    narration.narration = `${narration.narration} ${GISTERA_DESPEDIDA_NARRATION}`;
     narration.newFacts = [...narration.newFacts, `Gistera Koh se marchó hacia la Ciénaga Troncal en cuanto ${characterName} aceptó ayudarla — ya no está en escena, no volverá a aparecer.`];
   }
 

@@ -753,7 +753,19 @@ type SaveParaConfirmar = Prisma.SaveGetPayload<{ include: typeof SAVE_INCLUDE_PA
 /// tier alto, capacidad de inventario, cierre de misiones, descubrimientos de Enciclopedia — en vez
 /// de reimplementarlas. Ni un carácter de lógica cambiado respecto a la ruta HTTP original, solo
 /// movido de sitio: la ruta ahora solo carga `save` y delega aquí.
-export async function resolverRecoleccion(save: SaveParaConfirmar, selections: { sourceSlug: string; itemSlug: string; cantidad: number }[]) {
+export async function resolverRecoleccion(
+  save: SaveParaConfirmar,
+  selections: { sourceSlug: string; itemSlug: string; cantidad: number }[],
+  /// Hallazgo real (auditoría de bugs 2026-09-15, revisar-partida-hallazgos.md #44): "Interactuar
+  /// sobre RECURSO" (dynamicModeRecurso.ts) limpiaba `pendingDynamicModeOffer` en un SEGUNDO
+  /// `save.update` suelto, después de que esta transacción ya hubiera cerrado — un crash entre
+  /// medias dejaba el recurso ya recolectado pero la oferta de Interactuar todavía apuntando a él.
+  /// Pasar `true` aquí mueve esa limpieza DENTRO de la misma transacción atómica que el resto de
+  /// la recolección (mismo criterio que el proyecto ya aplica en `/combat/dejar-vivir`). `false`
+  /// por defecto — `/recolectar/confirmar` (el otro caller) nunca toca este campo, no debe
+  /// empezar a hacerlo.
+  clearPendingDynamicModeOffer = false,
+) {
   interface TouchedStack {
     id: string;
     catalogName: string;
@@ -1095,6 +1107,10 @@ export async function resolverRecoleccion(save: SaveParaConfirmar, selections: {
           const ultimoSourceSlug = selections[selections.length - 1].sourceSlug;
           const zonaObjetivo = await posicionDeObjetivo(tx, currentLocationIdParaZona, ultimoSourceSlug);
           if (zonaObjetivo) await moverJugadorA(tx, save.id, zonaObjetivo.x, zonaObjetivo.y);
+        }
+
+        if (clearPendingDynamicModeOffer) {
+          await tx.save.update({ where: { id: save.id }, data: { pendingDynamicModeOffer: Prisma.JsonNull } });
         }
 
         return { touched, logEntry };

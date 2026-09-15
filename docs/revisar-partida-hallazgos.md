@@ -22,6 +22,11 @@ Cada entrada: fecha, qué se detectó (cita textual si es narración), causa ra�
   iniciativa, matching de texto (Espina del Viento/dorsal), diseño de barras de habilidades,
   interacción con NPCs (Aprender oficio/Entregar/Capturar), enciclopedia/mapa de zona
   desincronizados, generación de prompts de imagen rota, vocabulario de tiradas. Todos PENDIENTES.
+- **2026-09-15** — auditoría de bugs enfocada en lo nuevo desde el 09-07 (combate múltiple con
+  compañeros, sistema "Interactuar"/movimiento en Zona): 3 hallazgos nuevos reales (44-46,
+  `pendingDynamicModeOffer` de RECURSO no atómico, sin candado en `/zona/mover`, tope de grupo de
+  combate sin transacción), 1 desajuste menor (47, `marcarNpcConocido` fuera de transacción), resto
+  confirmado sin hallazgo tras revisión dirigida.
 
 ---
 
@@ -783,5 +788,123 @@ la sesión de pruebas encontró MÁS problemas del mismo área que esos fixes no
     mismo. **CERRADO (2026-09-07)**: confirmado que ya estaba anotado en el checklist vivo
     (§ 6 "Modo dinámico", fila "Revisión de diseño de '¿Interactuar?'", `❌ sin probar a fondo,
     pendiente de mejorar`, citando ya este mismo hallazgo 43) — no hacía falta ninguna acción nueva.
+
+---
+
+## 2026-09-15 — Auditoría de bugs dirigida a lo nuevo desde el 09-07
+
+Runbook `revisar-partida.md` aplicado como criterio (condiciones de carrera en turnos concurrentes,
+desincronización narración-vs-mecánica, frontend desincronizado del shape real del backend, gates
+saltados tras refactor), pero SIN partida real en curso que auditar con `auditSave.ts` — esta ronda
+fue una revisión de código dirigida a los sistemas nuevos entre 2026-09-07 y hoy (combate múltiple
+con compañeros completo, sistema "Interactuar" rediseñado con movimiento por cuadrícula), priorizando
+los archivos tocados en los commits `4e065ed`…`837e787` sobre auditar el proyecto entero. No se
+relitiga nada de los 10 hallazgos ya cerrados hoy mismo en el commit `837e787` (confusión NPC/fauna
+en resumen de zona, diálogo repetido, colisión sin rastro en log, ZonePoint de Cazadora Serhu,
+"Salir" sin persistir, atar sin cuerdas reales, Capturar/Dejar vivir con misión activa sin avisar,
+dedup del panel Mundo, "Cazar" por texto libre abriendo combate real, resolución de NPC por
+descripción) — todos verificados de pasada como YA CERRADOS y consistentes con el código actual.
+
+### FASE 1 — Funcionalidad / integridad técnica
+
+44. **`pendingDynamicModeOffer` de un RECURSO puede quedar huérfano si el proceso falla entre la
+    recolección y la limpieza del campo** — `dynamicModeRecurso.ts` (`POST
+    /saves/:id/modo-dinamico/recurso/:targetSlug`, nuevo de la Franja "Interactuar sobre RECURSO")
+    resuelve la recolección con `resolverRecoleccion(save, selections)` (línea 81), que abre y
+    cierra su PROPIA transacción (`recolectar.ts`, `prisma.$transaction` en la línea 775) — y solo
+    DESPUÉS, en una llamada separada y no atómica con la anterior (línea 83), limpia
+    `pendingDynamicModeOffer: Prisma.JsonNull` con un segundo `prisma.save.update` suelto. Si el
+    proceso muere o lanza excepción entre esas dos escrituras (crash, OOM, reinicio del backend —
+    la misma clase de evento que ya causó el "candado sin caducidad" de `claimTurnInFlight`
+    documentado en memoria), el recurso ya se recolectó de verdad (inventario actualizado,
+    `HarvestYield` aplicado) pero `Save.pendingDynamicModeOffer` sigue apuntando al mismo
+    `targetSlug` — la tarjeta de "¿Interactuar?" volvería a ofrecerse sobre un recurso que el motor
+    ya sabe que se agotó/recolectó, exactamente la clase de estado colgado que la FASE 1 de este
+    runbook pide comprobar explícitamente ("`pendingDynamicMode`... deberían estar `null` salvo que
+    de verdad haya algo en curso"). Contraste con el resto del proyecto: `/combat/dejar-vivir`
+    (`session.ts`) y `/companeros/:id/tameo-pendientes/confirmar` SÍ envuelven guard+escritura+log en
+    una única `$transaction` con `lockRowForUpdate`, mismo patrón que aquí falta aplicar. **NUEVO,
+    PENDIENTE** — `backend/src/routes/saves/dynamicModeRecurso.ts:73-91`, fix propuesto: mover el
+    `save.update` que limpia `pendingDynamicModeOffer` DENTRO de la misma transacción que
+    `resolverRecoleccion` usa (exponer una variante de `resolverRecoleccion` que acepte un `tx`
+    externo, o envolver ambas llamadas en un `$transaction` compartido).
+45. **`POST /saves/:id/zona/mover` no tiene candado de "en curso" (`claimTurnInFlight`) pese a
+    escribir posición/log/oferta pendiente en cada llamada** — a diferencia de `/turn/narrate`
+    (protegido por `claimTurnInFlight`/`releaseTurnInFlight`, `turnLock.ts`, precisamente para esta
+    clase de problema — ver memoria "Fix cuelgues de turno indefinidos") este endpoint nuevo
+    (`51a3b77`, `d27ee2e`) se llama repetidas veces seguidas mientras el frontend anima el trayecto
+    paso a paso (`ZonaPanel.tsx`, `handleMoverA`). El frontend sí se protege a sí mismo bien
+    (`movimientoEnCurso` + `movimientoTokenRef` cancela el bucle propio ante un clic nuevo), pero
+    eso solo evita que EL MISMO cliente se solape consigo mismo — no hay ningún guard en el backend
+    que impida dos peticiones concurrentes reales (doble pestaña, una petición reintentada tras un
+    timeout de red mientras la original sigue viva en el servidor, etc.) de leer `zonaPosX/Y`/
+    `zonaCaminoPendiente` antes de que ninguna escriba, cada una calculando su propio "siguiente
+    paso" desde la misma posición de partida y pudiendo generar colisión/`pendingDynamicModeOffer`/
+    `LogEntry` duplicados o posiciones finales inconsistentes con `avanzarZonePointsUnPaso`
+    ejecutándose dos veces para el mismo paso de mundo. Severidad menor que el caso de `/turn/narrate`
+    (movimiento de Zona es una acción rápida y paso a paso, con ventana de carrera mucho más
+    pequeña, y de un solo jugador en la inmensa mayoría de los casos reales), pero es exactamente el
+    patrón que el propio proyecto ya identificó como necesario de proteger en el sistema de turnos.
+    **NUEVO, PENDIENTE** — `backend/src/routes/saves/zona.ts:495-607`, fix propuesto: mismo mecanismo
+    `createInFlightClaimSet` (`lib/inFlightClaimSet.ts`) ya usado por `turnLock.ts`/`chapterSummary.ts`,
+    aplicado por `saveId` al endpoint `/zona/mover`.
+46. **El tope de 4 combatientes por grupo de combate (`combatGroups.ts`, PATCH
+    `/companeros/:companionId/grupo`) se comprueba con un `count` y un `update` como dos operaciones
+    separadas, sin transacción ni lock** — `yaEnGrupo = await prisma.companion.count(...)` (línea
+    118) se lee, se compara contra `tope`, y solo DESPUÉS se hace `prisma.companion.update(...)`
+    (línea 124) sin envolver ambas en `$transaction`. Dos peticiones de arrastrar-y-soltar
+    concurrentes moviendo compañeros distintos al mismo grupo (p. ej. doble clic rápido, o dos
+    solicitudes disparadas casi a la vez por el modal `CombatGroupsModal.tsx`) pueden leer el mismo
+    `count` ANTES de que ninguna escriba, pasando las dos el guard `yaEnGrupo >= tope` y dejando un
+    grupo con más de `MAX_COMBATIENTES_POR_BANDO` compañeros — justo el tope que `cazar.ts` asume
+    como invariante duro al construir el bando JUGADOR real de un combate múltiple
+    (`bandoJugadorCompleto = combatientes...slice(0, MAX_COMBATIENTES_POR_BANDO)`), así que un grupo
+    sobrepoblado no rompe con un error, sino que trunca en silencio a quien quede fuera del `slice`
+    al entrar en combate — un compañero asignado de verdad a un grupo que nunca combate.
+    Severidad baja en la práctica (acción de un solo jugador en el panel de gestión, ventana de
+    carrera muy estrecha), pero es el mismo patrón de "check-then-act" que el proyecto ya sabe
+    proteger en otros sitios (`/combat/dejar-vivir` con `lockRowForUpdate`). **NUEVO, PENDIENTE** —
+    `backend/src/routes/saves/combatGroups.ts:104-127`.
+
+### FASE 2 — Coherencia narrativa
+
+47. **`marcarNpcConocido` (dynamicMode.ts, ruta "Ignorar"/"Salir") se ejecuta DESPUÉS de la
+    transacción que limpia `pendingDynamicMode`, no dentro de ella** — en `POST
+    /saves/:id/modo-dinamico/ignorar` (`dynamicMode.ts:333-406`), la `$transaction` de las líneas
+    360-378 limpia `pendingDynamicMode`/`pendingDynamicModeOffer` y crea el `LogEntry` de resumen;
+    la llamada a `marcarNpcConocido(save.id, pending.targetSlug, pending.targetName)` (línea 391,
+    que hace `appendSessionFacts` + `discoveredEntity.upsert` vía `Promise.all`) va DESPUÉS, fuera
+    de esa transacción y sin try/catch propio. Si esa llamada falla o el proceso muere justo ahí, la
+    conversación ya quedó cerrada/persistida en el log pero el NPC nunca se marca `DESCUBIERTO` — un
+    NPC con el que el jugador ya conversó (según el log) seguiría apareciendo oculto (`'???'`,
+    `NOMBRE_OCULTO_GENERICO`) en el mapa de Zona/colisión, una desincronización narración-vs-mecánica
+    real aunque de ventana muy estrecha (la llamada es solo un upsert simple, poco propensa a
+    fallar salvo caída del proceso a mitad). Menor que el hallazgo 44/45 (no hay pérdida de estado
+    de juego real, solo un desajuste de visibilidad recuperable la próxima vez que se hable con el
+    NPC), se anota igualmente por ser el mismo patrón repetido una tercera vez en el mismo archivo.
+    **NUEVO, PENDIENTE (menor)** — `backend/src/routes/saves/dynamicMode.ts:390-392`.
+
+### FASE 3 — Vocabulario y prosa
+
+Sin hallazgo nuevo — no se detectó ninguna narración fija nueva (textos deterministas de colisión/
+aviso/recolección en `zona.ts`/`dynamicModeRecurso.ts`) con contradicción interna, repetición de
+fórmula, o mezcla de punto de vista; son plantillas cortas de una sola frase, sin margen para esa
+clase de fallo. **Confirmado sin hallazgo.**
+
+### FASE 4 — Lore
+
+Sin hallazgo nuevo — los nombres reales usados en las plantillas deterministas nuevas (colisión de
+Zona, oferta de Interactuar, grupos de combate) se resuelven siempre contra `Npc.name`/
+`sourceDisplayNameFor` reales de catálogo (nunca texto libre inventado), y el gate de nombre oculto
+genérico (`NOMBRE_OCULTO_GENERICO`, hallazgo previo 2026-09-09) ya se generalizó a la colisión de
+Zona (`nombreVisibleColision`, `zona.ts`) — revisado el código y confirmado que cubre también los
+casos nuevos (dinámicos sin `ZonePoint`, no solo el catálogo fijo). **Confirmado sin hallazgo.**
+
+### FASE 5 — UX de lo que se ve en pantalla
+
+Revisado el consumo en frontend de los campos nuevos del backend (`combatGroupSlotIndex` en
+`types.ts`, `caminoRestante`/`zonePointsMovidos`/`dynamicModeOffer`/`logEntry` de la respuesta de
+`/zona/mover` en `api.ts`/`ZonaPanel.tsx`) — todos con tipos y consumo actualizados, sin ningún caso
+de frontend mostrando un shape viejo o un campo fantasma. **Confirmado sin hallazgo.**
 
 ---

@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
-import { rejectIfEnded } from './shared.js';
+import { rejectIfEnded, lockRowForUpdate } from './shared.js';
 import { COMBAT_GROUP_BASE_SLOT, nextFreeCombatGroupSlot } from '../../services/combatGroups.js';
 import { MAX_COMBATIENTES_POR_BANDO } from '../../services/combateMultiple.js';
 
@@ -115,13 +115,28 @@ export async function combatGroupsRoutes(app: FastifyInstance) {
       const companion = await prisma.companion.findFirst({ where: { id: request.params.companionId, saveId: save.id } });
       if (!companion) return reply.status(404).send({ error: 'Compañero no encontrado' });
 
-      const yaEnGrupo = await prisma.companion.count({ where: { saveId: save.id, combatGroupSlotIndex: targetSlotIndex } });
       const tope = targetSlotIndex === COMBAT_GROUP_BASE_SLOT ? MAX_COMBATIENTES_POR_BANDO - 1 : MAX_COMBATIENTES_POR_BANDO;
-      if (yaEnGrupo >= tope) {
+      // Hallazgo 46 (revisar-partida-hallazgos.md, 2026-09-15): count+update como dos operaciones
+      // separadas dejaba una ventana de carrera real — dos arrastres concurrentes podían leer el
+      // mismo count ANTES de que ninguno escribiera, pasando los dos el guard y superando el tope
+      // en silencio (el bando de combate luego trunca por `.slice()`, dejando a un compañero
+      // asignado que nunca combate). Una `$transaction` normal NO basta bajo READ COMMITTED (el
+      // nivel de aislamiento por defecto de Postgres) — dos transacciones concurrentes pueden ver
+      // igualmente el mismo count antes de que ninguna escriba. `SELECT ... FOR UPDATE` sobre
+      // `Save` (mismo patrón que `progression.ts`/`cazar.ts`/`companeros.ts`, `lockRowForUpdate`)
+      // serializa de verdad: la segunda transacción espera a que la primera confirme antes de
+      // hacer su propio count, así que ya ve el estado actualizado.
+      const updated = await prisma.$transaction(async (tx) => {
+        await lockRowForUpdate(tx, 'Save', save.id, ['id']);
+        const yaEnGrupo = await tx.companion.count({ where: { saveId: save.id, combatGroupSlotIndex: targetSlotIndex } });
+        if (yaEnGrupo >= tope) {
+          return null;
+        }
+        return tx.companion.update({ where: { id: companion.id }, data: { combatGroupSlotIndex: targetSlotIndex } });
+      });
+      if (!updated) {
         return reply.status(400).send({ error: `Ese grupo ya está lleno (máximo ${tope} compañeros)` });
       }
-
-      const updated = await prisma.companion.update({ where: { id: companion.id }, data: { combatGroupSlotIndex: targetSlotIndex } });
       return { id: updated.id, combatGroupSlotIndex: updated.combatGroupSlotIndex };
     },
   );

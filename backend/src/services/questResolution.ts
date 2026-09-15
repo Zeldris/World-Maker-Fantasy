@@ -18,6 +18,22 @@ export interface QuestCompletedInfo {
   rewardXp: number;
 }
 
+/// Despedida determinista de Gistera Koh al aceptar la misión (petición explícita de la usuaria,
+/// 2026-08-01: "en cuanto acepto la misión de Gistera que ella se marche dirección Ciénaga del
+/// Pantano y que no vuelva a aparecer" — nombre real de la región, Ciénaga Troncal, ver
+/// KNOWN_REGIONS en narrationLint.ts). Destino ocultado de la narración visible (2026-09-05): la
+/// frase no dice hacia dónde se va, solo que abandona la Hondonada del Eco.
+///
+/// Deuda técnica (2026-09-15, auditoría): este texto fijo estaba copiado literalmente en dos
+/// sitios — `turnResolution.ts` § `gisteraAceptaEsteTurno` (aceptar por texto libre) y
+/// `quests.ts` § `POST /quests/aceptar` (aceptar por el botón, camino recomendado desde
+/// 2026-08-26) — ya habían divergido en un detalle real (solo uno de los dos escribía el
+/// `newFacts` con el destino) antes de que nadie lo notara. Fuente de verdad única a partir de
+/// ahora; el `newFacts` con el destino real sigue siendo responsabilidad de cada caller (solo
+/// hace falta para el guard `gisteraSeHaMarchado`/`filterFarewellFacts`, que `quests.ts` cubre
+/// igual con `npcsRetiredForever`).
+export const GISTERA_DESPEDIDA_NARRATION = 'Gistera Koh asiente, aliviada, y sin perder ni un segundo más se aleja de la Hondonada del Eco, perdiéndose pronto en el horizonte.';
+
 /// Entrega real de los `InventoryItem` prometidos por `Quest.rewardItems` al completarse una
 /// misión (docs/19-post-combate-y-recompensas-mision.md, pieza 3). Antes ese campo era solo texto
 /// para mostrar en el panel (ver comentario en schema.prisma) — nunca creaba el objeto de verdad,

@@ -52,6 +52,15 @@ Cada entrada: fecha, zona auditada, hallazgo, y estado.
 - [Confirmado sin hallazgo: patrón try/catch de routes/saves/ es consistente (catch-all global en server.ts), no repetir el caso de /turn/classify](#2026-09-07-confirmado-sin-hallazgo-patrón-trycatch-de-routessaves-es-consistente-catch-all-global-en-serverts-no-repetir-el-caso-de-turnclassify)
 - [Confirmado sin hallazgo: POST /reino/fundar ya rechaza limpio un segundo intento sobre un reino ya fundado](#2026-09-07-confirmado-sin-hallazgo-post-reinofundar-ya-rechaza-limpio-un-segundo-intento-sobre-un-reino-ya-fundado)
 
+**2026-09-15 — auditoría de deuda técnica tras ~8 días de desarrollo intenso (combate múltiple con compañeros + Interactuar/Zona)**
+- [combateMultipleOrquestacion.ts vuelve a crecer con fuerza: 1681→2279 líneas (+36%) en esta ronda, ya el doble de cuando se cerró el hallazgo de 2026-08-26](#2026-09-15-combatemultipleorquestacionts-vuelve-a-crecer-con-fuerza-16812279-líneas-36-en-esta-ronda-ya-el-doble-de-cuando-se-cerró-el-hallazgo-de-2026-08-26)
+- [Texto de despedida determinista de Gistera Koh duplicado byte a byte entre turnResolution.ts y quests.ts, sin constante compartida](#2026-09-15-texto-de-despedida-determinista-de-gistera-koh-duplicado-byte-a-byte-entre-turnresolutionts-y-queststs-sin-constante-compartida)
+- [mismaCelda (zonaPosicion.ts) sin ningún test pese a decidir la colisión real de combate en Zona](#2026-09-15-mismacelda-zonaposicionts-sin-ningún-test-pese-a-decidir-la-colisión-real-de-combate-en-zona)
+- [Confirmado sin hallazgo: playerActionValidation.ts (10 guards nuevos de hoy) ya comparte pickRandomLine/patrón "pool de 5, 1 cómica" — no hay duplicación real que extraer](#2026-09-15-confirmado-sin-hallazgo-playeractionvalidationts-10-guards-nuevos-de-hoy-ya-comparte-pickrandomlinepatrón-pool-de-5-1-cómica--no-hay-duplicación-real-que-extraer)
+- [Confirmado sin hallazgo: datosVivosDe/escribirCondicionYEnergia son el núcleo único compartido por los flujos NPC y Companion — no hay resolución de combate múltiple duplicada entre ambos](#2026-09-15-confirmado-sin-hallazgo-datosvivosdeescribircondicionyenergia-son-el-núcleo-único-compartido-por-los-flujos-npc-y-companion--no-hay-resolución-de-combate-múltiple-duplicada-entre-ambos)
+- [Confirmado sin hallazgo: dynamicModeRecurso.ts, zonaPosicion.ts/zonePoints.ts (salvo mismaCelda) y las 4 funciones Prisma de zonaPosicion.ts están limpias/bien cubiertas](#2026-09-15-confirmado-sin-hallazgo-dynamicmoderecursots-zonaposiciontszonepointsts-salvo-mismacelda-y-las-4-funciones-prisma-de-zonaposiciontss-están-limpiasbien-cubiertas)
+- [Confirmado sin hallazgo: CombatGroupsModal.tsx (drag&drop de grupos) sin test propio, pero consistente con el patrón ya establecido del frontend (solo 4/63 componentes tienen test directo)](#2026-09-15-confirmado-sin-hallazgo-combatgroupsmodaltsx-dragdrop-de-grupos-sin-test-propio-pero-consistente-con-el-patrón-ya-establecido-del-frontend-solo-463-componentes-tienen-test-directo)
+
 ---
 
 ## 2026-08-25 — Combate múltiple arma atributos de NPC sin escalar por nivel (npcAttributesForLevel nunca se llama)
@@ -727,3 +736,186 @@ mismo 400 claro en vez de un 500 genérico. Test explícito ya existente
 hace falta tocar ni backend ni frontend.
 
 **Estado**: Sin hallazgo — idempotencia ya cerrada desde 2026-08-07/21, confirmada de nuevo hoy.
+
+## 2026-09-15 — combateMultipleOrquestacion.ts vuelve a crecer con fuerza: 1681→2279 líneas (+36%) en esta ronda, ya el doble de cuando se cerró el hallazgo de 2026-08-26
+
+**Hallazgo (auditoría de deuda técnica, ronda de seguimiento sobre los ~8 días desde 2026-09-07,
+`backend/src/services/combateMultipleOrquestacion.ts`)**: el hallazgo de 2026-08-26 ya señalaba
+este archivo creciendo por parámetros posicionales, cerrado el 2026-09-08 (commit `36e8df3`) como
+refactor puramente mecánico a objeto de opciones, sin dividir el archivo — 1655 líneas en ese
+momento. Historial de tamaño por commit desde entonces (`git show <hash>:...  | wc -l`):
+
+```
+36e8df3  1655 líneas (refactor a objeto de opciones, 2026-09-08)
+f90c91b  1681 líneas (motor AUMENTO-DEBILIDAD-CANALIZAR, 2026-09-09)
+837e787  2279 líneas (PROVOCACION/CANALIZAR combate múltiple/MARCAR/AREA/Alfa de la Manada, HOY)
+```
+
++598 líneas (+36%) en un solo commit de hoy, sumando 21 funciones en el archivo (9 exportadas o de
+apoyo estructural, 12 internas) — el archivo ya dobla su tamaño de hace 9 días. A diferencia del
+crecimiento de 2026-08-26 (mismo patrón repetido en funciones ya existentes), el de esta ronda es
+mecánicas de combate genuinamente nuevas y no relacionadas entre sí a nivel de código (PROVOCACION,
+CANALIZAR, MARCAR, 3 variantes de AREA, Alfa de la Manada) — cada una añade su propio bloque de
+lectura/escritura de campos de `CombatParticipant`, la mayoría dentro de `calcularEnganchesRonda`
+(ahora ~90 líneas solo para reunir `ocultosOExpulsados`/`provocaciones`/`marcas` antes de llamar a
+`resolverEnganchesRonda`) y `ejecutarIntercambioYAvanzar` (ahora ~570 líneas, el mayor bloque único
+del archivo).
+
+No es duplicación (cada mecánica tiene su propio comentario fechado y su propia condición, sin
+lógica repetida entre ellas) ni parámetros mal diseñados (el objeto de opciones del refactor previo
+sigue aguantando bien) — es tamaño puro: un archivo de 2279 líneas con 21 funciones que combina
+orquestación de transacciones, cálculo de enganches por ronda, y ejecución de intercambio, en el
+mismo módulo. Mismo síntoma que motivó la partición histórica de `turnResolution.ts` (2026-08-13:
+`applyLootMode`/`applyCombatExchangeToNpcState`/`applyHarvest`/etc. extraídas a sub-bloques
+autocontenidos) — aquí `datosVivosDe`/`escribirCondicionYEnergia` (el núcleo compartido por los 4
+tipos de combatiente, ver hallazgo de "sin duplicación NPC/Companion" más abajo) serían un candidato
+natural a extraer a su propio archivo (`combateMultipleDatos.ts` o similar), separado de la
+orquestación de ronda/intercambio — tienen la interfaz más limpia y menos acoplamiento cruzado de
+todo el archivo.
+
+**Estado**: PENDIENTE, prioridad baja — señalado para que la próxima auditoría lo revise de nuevo
+sin necesidad de rehacer este análisis desde cero. No se propone partir el archivo en esta ronda:
+sigue bien probado (2913 líneas de test de integración, mismo ratio test/código que el resto del
+proyecto) y sin bug conocido detrás — mismo criterio que la usuaria ya aplicó a `turnResolution.ts`/
+`useCombatFlow.ts` el 2026-09-08 ("el archivo funciona y está bien probado, no hay bug detrás").
+Extraer `datosVivosDe`/`escribirCondicionYEnergia` (núcleo de lectura/escritura por tipo de
+combatiente, ~330 líneas combinadas) a un archivo propio sería la extracción de menor riesgo si se
+decide actuar, dado que no comparten estado mutable con el resto de funciones del archivo más allá
+de los parámetros que ya reciben explícitos.
+
+## 2026-09-15 — Texto de despedida determinista de Gistera Koh duplicado byte a byte entre turnResolution.ts y quests.ts, sin constante compartida
+
+**Hallazgo (auditoría de deuda técnica, comparando el commit de hoy `837e787` — "guion determinista
+de Gistera Koh" — contra `turnResolution.ts`)**: la frase de despedida determinista de Gistera Koh
+("Gistera Koh asiente, aliviada, y sin perder ni un segundo más se aleja de la Hondonada del Eco,
+perdiéndose pronto en el horizonte.") existía ya en `turnResolution.ts:5152` (camino de texto
+libre, `gisteraAceptaEsteTurno`) y se ha vuelto a escribir literal, carácter a carácter, en
+`backend/src/routes/saves/quests.ts:121` (la función `aceptarQuest`, extraída hoy de la ruta HTTP
+para que el guion determinista de "Interactuar" con Gistera pueda aceptar la misión sin pasar por
+un segundo botón de confirmación). Ninguna de las dos copias importa de la otra ni referencia una
+constante común — es el mismo string litera-mente copiado y pegado en un archivo nuevo.
+
+El propio comentario de `quests.ts:108` reconoce el origen ("este texto de despedida YA EXISTÍA en
+turnResolution.ts... solo movido a este endpoint para el caso concreto de Gistera/Orco
+Enfurecido"), y el efecto mecánico que acompaña a la frase (`npcsRetiredForever: { push:
+'gistera-koh' }`) también está duplicado entre `turnResolution.ts:6988` y `quests.ts:173` — ahí
+mismo, `quests.ts` reconoce en su comentario que antes ese efecto faltaba en este camino y lo
+replica a mano. A diferencia del caso ya cerrado como "no es un hallazgo real" en la auditoría de
+2026-08-25 (duplicación de texto del hint narrativo interno "golpe letal... YA RESUELTO" entre
+`turnResolution.ts`/`combateMultiple.ts`, decisión consciente de no compartir cadena entre el motor
+legado y el nuevo), aquí SÍ es el mismo camino narrativo (la despedida real de Gistera, visible al
+jugador) resuelto por 2 disparadores distintos (texto libre vs. botón/guion determinista) que ahora
+divergen en un detalle: `turnResolution.ts` además añade una entrada a `narration.newFacts` con el
+destino real (Ciénaga Troncal, oculto al jugador) para que el guard "no vuelve a aparecer"
+(`gisteraSeHaMarchado`) seguirla funcionando en turnos futuros de texto libre — `quests.ts` no
+añade ningún equivalente, porque en su camino no hay `newFacts` de por medio (el guard funciona
+igual porque `npcsRetiredForever` ya la excluye por otra vía), pero si algún día uno de los dos
+textos se retoca (p. ej. para variar la frase, o corregir un matiz), es fácil olvidar el otro sitio
+— no hay ningún test que compare ambas cadenas entre sí.
+
+**Estado**: PENDIENTE, prioridad baja — funcionalmente correcto hoy (ambos caminos narran lo
+mismo y ambos marcan `npcsRetiredForever`), pero es deuda real de mantenimiento: extraer la frase a
+una constante compartida (p. ej. `GISTERA_DESPEDIDA_TEXT` en `npcScene.ts` o un módulo de textos
+deterministas de Gistera) evitaría que ambos caminos diverjan sin querer la próxima vez que se
+retoque. No se ha tocado código en esta auditoría (alcance: solo investigar).
+
+## 2026-09-15 — mismaCelda (zonaPosicion.ts) sin ningún test pese a decidir la colisión real de combate en Zona
+
+**Hallazgo (auditoría de deuda técnica, `backend/src/services/zonaPosicion.ts:204`)**: de las 18
+funciones puras exportadas de `zonaPosicion.ts` (50 tests en `zonaPosicion.test.ts`, cobertura en
+general sólida — confirmado contando referencias de cada función una a una), `mismaCelda` es la
+única sin NINGUNA referencia en ningún archivo de test de todo el repo (confirmado por grep sobre
+`**/*.test.ts`), pese a tener 3 call-sites en código de producción real y no trivial:
+
+- `backend/src/services/turnResolution.ts:7147` — decide si el jugador comparte celda con fauna/
+  NPC agresivo, el gate de colisión real que abre combate en Zona (Franja 3, ya con un bug propio
+  cerrado el 2026-09-09 en la función hermana `calcularCamino` — "camino vacío sin evaluar
+  colisión" — de la misma familia de funciones geométricas).
+- `backend/src/routes/saves/zona.ts:418` — colisión contra un `ZonePoint` al llegar a una celda.
+- `backend/src/routes/saves/zona.ts:432` — colisión contra un candidato de modo dinámico.
+- `backend/src/routes/saves/zona.ts:532` — comprueba si el camino pendiente previo ya llegaba a la
+  celda destino (el tipo exacto de caso borde — origen/destino coincidentes en una ruta ya en
+  curso — que causó el bug real de `calcularCamino` cerrado el 2026-09-09).
+
+Es una función trivial en apariencia (`a.x === b.x && a.y === b.y` esperable), pero el propio
+historial reciente del archivo (el bug de `calcularCamino` del 2026-09-09, exactamente en esta
+familia de funciones de colisión geométrica) ya demostró que "trivial" no ha sido garantía de
+ausencia de bugs aquí — y es la única de las 18 sin ningún test, mientras sus vecinas directas
+(`celdaDePixel`, `celdaAdyacenteOMisma`, `calcularCamino`) sí están cubiertas.
+
+**Estado**: PENDIENTE — hallazgo de cobertura, no de bug reproducido (no se ha visto fallar en
+vivo). Candidato de bajo riesgo/bajo esfuerzo para la próxima ronda: 2-3 casos (misma celda, celda
+distinta, comparación con coordenadas negativas/fuera de rango si aplica) bastarían dado que es una
+función pura de 3 líneas.
+
+## 2026-09-15 — Confirmado sin hallazgo: playerActionValidation.ts (10 guards nuevos de hoy) ya comparte pickRandomLine/patrón "pool de 5, 1 cómica" — no hay duplicación real que extraer
+
+**Investigado y descartado** (petición explícita de la auditoría: revisar si los nuevos guards de
+`playerActionValidation.ts` comparten algún patrón que debería extraerse a un helper): el archivo
+(619 líneas, 10 pares `detects*Claim`/`*NarrationFor` a fecha de hoy, incluidos los 2 más recientes
+—`detectsBindingWithoutRopesClaim`/`detectsUnresolvedDialogueTargetClaim`, ambos de 2026-09-15— y
+`detectsHarvestSkillMisuseClaim` de la ronda anterior) ya tiene el patrón compartido extraído desde
+su creación: `pickRandomLine<T>(lines: T[])` (línea 28) centraliza la selección aleatoria uniforme
+que usan los 10 pools de frases, y cada pool sigue la misma convención documentada ("pool de 5, 1
+cómica menos frecuente") sin ninguna copia divergente. La única "duplicación" real es estructural
+(cada guard es un par detector puro + narrador puro + pool de líneas, siempre en ese orden) pero es
+la forma esperada de esta familia de validadores, ya establecida antes de esta ronda — no hay
+lógica condicional repetida entre los 10 guards que un helper nuevo pudiera absorber (cada uno
+consulta una fuente distinta: catálogo de NPCs, `harvestSourceAliases`, `CONSTRUCTION_RECIPES`,
+inventario de cuerdas...). Tampoco hay tipado débil (cero `any`, los únicos `unknown`/casts del
+archivo no existen — no usa Prisma `Json` directamente) ni manejo de errores inconsistente (ninguna
+función async atrapa excepciones localmente, delegan en el mismo catch-all de siempre).
+
+**Estado**: Sin hallazgo — el archivo está limpio y sigue su propio patrón de forma consistente.
+
+## 2026-09-15 — Confirmado sin hallazgo: datosVivosDe/escribirCondicionYEnergia son el núcleo único compartido por los flujos NPC y Companion — no hay resolución de combate múltiple duplicada entre ambos
+
+**Investigado y descartado** (petición explícita de la auditoría: revisar si hay lógica de
+resolución de combate múltiple duplicada entre el flujo de NPC y el de Companion): leído
+`combateMultipleOrquestacion.ts` completo — `datosVivosDe` (línea 292) y `escribirCondicionYEnergia`
+(línea 544) son las DOS únicas funciones que leen/escriben el estado de un combatiente, y ambas
+despachan por `participant.tipo` (`JUGADOR`/`NPC`/`INVOCACION`/`COMPANION`) dentro de la MISMA
+función con un `if` por rama — no hay ninguna función paralela `datosVivosDeNpc`/
+`datosVivosDeCompanion` que pudiera divergir con el tiempo. Todo el resto del archivo
+(`calcularEnganchesRonda`, `ejecutarIntercambioYAvanzar`, `ejecutarGolpeGratisYAvanzar`, etc.) opera
+sobre el resultado ya normalizado de `datosVivosDe` (`DatosCombatiente`), sin volver a distinguir
+NPC de Companion salvo en las 2 funciones núcleo. Es exactamente el diseño que evitaría la
+duplicación que se temía encontrar.
+
+**Estado**: Sin hallazgo — arquitectura ya correcta, sin acción necesaria.
+
+## 2026-09-15 — Confirmado sin hallazgo: dynamicModeRecurso.ts, zonaPosicion.ts/zonePoints.ts (salvo mismaCelda) y las 4 funciones Prisma de zonaPosicion.ts están limpias/bien cubiertas
+
+**Investigado y descartado**: `backend/src/routes/saves/dynamicModeRecurso.ts` (94 líneas, 1 sola
+ruta) reutiliza `resolverRecoleccion`/`candidateSourcesFor`/`gatheringRollFor` de `recolectar.ts`
+sin ninguna lógica de recolección propia — exactamente lo que su propio comentario de cabecera
+promete ("cero lógica nueva de recolección, solo un disparador distinto"), confirmado leyendo el
+archivo completo. `zonePoints.ts` (296 líneas, 7 funciones exportadas) tiene las 7 cubiertas entre
+`zonePoints.test.ts`/`zonePoints.integration.test.ts`/`zonePointsGate.integration.test.ts` — ninguna
+sin referencia. De las 4 funciones de `zonaPosicion.ts` que tocan Prisma
+(`moverJugadorA`/`fijarEntradaAZona`/`volverAEntrada`/`posicionDeObjetivo`, sin cobertura en el
+archivo de test PURO por diseño — no pueden testearse sin BD), las 4 tienen call-sites reales en
+`cazar.ts`/`recolectar.ts`/`turnResolution.ts`/`zona.ts`, todos con su propia batería de tests de
+integración que las ejercitan indirectamente — no es un hueco real, es cobertura desplazada (mismo
+criterio ya aceptado en la auditoría de 2026-08-25 para `resolverTurnosAutonomosHastaJugadora`).
+Tipado: cero `any`, los `as unknown as Prisma.InputJsonValue`/`as unknown as <Tipo>` encontrados en
+`zona.ts`/`dynamicMode.ts`/`npcScene.ts`/`combateMultipleOrquestacion.ts` de esta ronda son todos
+el mismo patrón ya confirmado como justificado (2026-08-25): round-trip de campos `Json` de Prisma,
+ninguno nuevo fuera de ese caso.
+
+**Estado**: Sin hallazgo en estas zonas — limpias, bien probadas, siguiendo los patrones ya
+establecidos del proyecto.
+
+## 2026-09-15 — Confirmado sin hallazgo: CombatGroupsModal.tsx (drag&drop de grupos) sin test propio, pero consistente con el patrón ya establecido del frontend (solo 4/63 componentes tienen test directo)
+
+**Investigado y descartado**: `CombatGroupsModal.tsx` (181 líneas, drag&drop HTML5 nativo entre
+columnas de grupo, endpoints reales de `companeros.ts` ya cubiertos por 14 referencias en
+`companeros.integration.test.ts`) no tiene ningún `CombatGroupsModal.test.tsx` — pero solo 4 de los
+63 componentes de `frontend/src/components/` tienen test directo (confirmado por comparación
+archivo a archivo), consistente con la decisión ya documentada el 2026-08-25: la inversión de test
+del frontend se dirigió deliberadamente a `hooks/` (lógica de decisión, `useCombatFlow.test.tsx`) y
+no a componentes de interacción pura — no es un hueco nuevo ni aislado de este componente concreto,
+sino el mismo patrón ya aceptado en todo el árbol de `components/`.
+
+**Estado**: Sin hallazgo — consistente con el patrón ya establecido, no amerita tratamiento
+especial solo por ser reciente.

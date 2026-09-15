@@ -289,6 +289,45 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
 
       const fact = await prisma.sessionFact.findFirst({ where: { saveId, text: 'Maestro Kade conversa con el personaje.' } });
       expect(fact).not.toBeNull();
+      // Hallazgo 47 (revisar-partida-hallazgos.md, 2026-09-15) — la marca DESCUBIERTO ahora se
+      // escribe DENTRO de la misma transacción que cierra la conversación, no en una llamada suelta
+      // aparte.
+      const discovered = await prisma.discoveredEntity.findFirst({ where: { saveId, entityType: 'npc', entitySlug: 'maestro-kade' } });
+      expect(discovered?.fase).toBe('DESCUBIERTO');
+    });
+
+    // Hallazgo 47 (2026-09-15) — el mismo fix, pero por el camino de "Salir" (`/ignorar`), que es
+    // el que el propio hallazgo señaló como el más expuesto (ninguna otra escritura de la petición
+    // dependía de esta, así que un fallo aquí era más fácil de pasar desapercibido).
+    it('"Salir" (/ignorar) con una conversación de NPC en curso también deja al NPC DESCUBIERTO, dentro de la misma transacción', async () => {
+      // El test anterior de este describe ya deja a Maestro Kade DESCUBIERTO — se limpia para que
+      // este test verifique de verdad que /ignorar es quien lo marca, no un estado heredado.
+      await prisma.discoveredEntity.deleteMany({ where: { saveId, entityType: 'npc', entitySlug: 'maestro-kade' } });
+      narrarVueltaModoDinamico.mockResolvedValueOnce({
+        narration: 'Serhu Maestro Kade te mira, esperando.',
+        opciones: ['Preguntar por el clan'],
+        cierra: false,
+      });
+      const app = await buildApp();
+
+      const open = await app.inject({
+        method: 'POST',
+        url: `/saves/${saveId}/modo-dinamico/interactuar`,
+        payload: { tipo: 'NPC', targetSlug: 'maestro-kade', targetName: 'Maestro Kade' },
+      });
+      expect(open.statusCode).toBe(200);
+      expect(JSON.parse(open.body).cierra).toBe(false);
+
+      const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/ignorar` });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.logEntry).not.toBeNull();
+
+      const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+      expect(saveAfter.pendingDynamicMode).toBeNull();
+
+      const discovered = await prisma.discoveredEntity.findFirst({ where: { saveId, entityType: 'npc', entitySlug: 'maestro-kade' } });
+      expect(discovered?.fase).toBe('DESCUBIERTO');
     });
 
     // Guion determinista de Gistera Koh (2026-09-09, ver dynamicMode.ts § `narrarVueltaGistera` —

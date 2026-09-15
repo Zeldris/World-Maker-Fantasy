@@ -4,7 +4,7 @@ import { prisma } from '../../lib/prisma.js';
 import { normalizeText, matchDestination } from '../../services/travel.js';
 import { loadSessionFacts, appendSessionFacts } from '../../services/worldFacts.js';
 import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
-import { grantQuestRewardItems, questRewardNarrationFor } from '../../services/questResolution.js';
+import { grantQuestRewardItems, questRewardNarrationFor, GISTERA_DESPEDIDA_NARRATION } from '../../services/questResolution.js';
 import { generateQuestResponseNarration } from '../../services/narrador.js';
 import { rejectIfEnded, rejectIfPendingDeath, clearPendingOffer } from './shared.js';
 
@@ -103,23 +103,17 @@ export async function aceptarQuest(
     }).catch(() => '')) || `${save.characterName} acepta la misión: ${title}.`;
   // Bug real jugando en vivo (2026-08-30, "la narracion deberia continuar con la parte que
   // gistera acepta tu aceptacion y te dice que se va a la cienaga al campamento del clan
-  // gosh") — este texto de despedida YA EXISTÍA en turnResolution.ts (`gisteraAceptaEsteTurno`,
-  // petición explícita 2026-08-01: "en cuanto acepto la misión de Gistera que ella se marche
-  // dirección Ciénaga Troncal y que no vuelva a aparecer"), pero solo se narraba dentro de un
-  // turno normal — con el rediseño del botón (2026-08-26/30), la Quest se crea AQUÍ, sin pasar
-  // nunca por ese bloque, así que la despedida nunca llegaba a narrarse. Mismo texto fijo
-  // (determinista, nunca generado por LLM — la usuaria fijó el destino/motivo exactos), solo
-  // movido a este endpoint para el caso concreto de Gistera/Orco Enfurecido.
+  // gosh") — este texto de despedida YA EXISTÍA en turnResolution.ts (`gisteraAceptaEsteTurno`),
+  // pero solo se narraba dentro de un turno normal — con el rediseño del botón (2026-08-26/30),
+  // la Quest se crea AQUÍ, sin pasar nunca por ese bloque, así que la despedida nunca llegaba a
+  // narrarse. Mismo texto fijo compartido (`GISTERA_DESPEDIDA_NARRATION`, questResolution.ts —
+  // fuente de verdad única desde 2026-09-15, antes copiado literalmente en ambos sitios).
   // Bug real jugando en vivo (2026-08-30, "esta respuesta ha quedado rara") — la concatenación
   // directa con un simple espacio pegaba la reacción de Gorhorn a la despedida de Gistera en el
   // mismo bloque de texto corrido, sin ninguna pausa entre "habla Gorhorn" y "reacciona
   // Gistera". Salto de párrafo (línea en blanco) entre ambas, mismo criterio que el resto del
   // juego usa para separar turnos de habla distintos dentro de la misma narración.
-  // Destino ocultado de la narración visible (petición explícita de la usuaria, 2026-09-05) —
-  // mismo texto que turnResolution.ts § `gisteraAceptaEsteTurno`, ver su comentario completo.
-  const text = isOrcoEnfurecidoTitle
-    ? `${acceptanceText}\n\nGistera Koh asiente, aliviada, y sin perder ni un segundo más se aleja de la Hondonada del Eco, perdiéndose pronto en el horizonte.`
-    : acceptanceText;
+  const text = isOrcoEnfurecidoTitle ? `${acceptanceText}\n\n${GISTERA_DESPEDIDA_NARRATION}` : acceptanceText;
 
   const { quest, logEntry, questCompletedInfo } = await prisma.$transaction(async (tx) => {
     // Caso especial (ver comentario de ORCO_ENFURECIDO_QUEST_SLUG arriba): objetivo/recompensa

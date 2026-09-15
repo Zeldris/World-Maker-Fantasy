@@ -58,16 +58,27 @@ const ORCO_ENFURECIDO_QUEST_DESCRIPTION =
 /// `turnResolution.ts`). Sin esto, un NPC PRINCIPAL seguiría mostrándose oculto en el mapa/colisión
 /// para siempre aunque el jugador ya hubiera hablado con él — `upsert` porque puede ya estar CITADO
 /// (mención previa en prosa) y esto lo sube a DESCUBIERTO, o no existir fila todavía.
-async function marcarNpcConocido(saveId: string, targetSlug: string, targetName: string): Promise<void> {
+/// Hallazgo 47 (revisar-partida-hallazgos.md, 2026-09-15): antes una sola función hacía las dos
+/// escrituras (`discoveredEntity.upsert` + `appendSessionFacts`) SIEMPRE fuera de la transacción
+/// que cierra la conversación — si esa llamada fallaba o el proceso moría justo ahí, la
+/// conversación ya quedaba cerrada/persistida en el log pero el NPC nunca se marcaba DESCUBIERTO.
+/// Separada en dos piezas: `marcarNpcConocidoRapido` (solo el upsert, rápido, sin red — puede vivir
+/// DENTRO de la transacción de cierre) y `registrarNpcConocidoSessionFact` (embebido real vía
+/// `embed()`, servicio externo potencialmente lento — se queda fuera a propósito, nunca dentro de
+/// una transacción Postgres). La ventana de riesgo real que queda es mucho más estrecha: solo el
+/// sessionFact narrativo (recuperable, no bloquea nada mecánico) puede perderse, nunca la marca de
+/// "descubierto" que decide visibilidad en el mapa.
+async function marcarNpcConocidoRapido(tx: Prisma.TransactionClient, saveId: string, targetSlug: string): Promise<void> {
+  await tx.discoveredEntity.upsert({
+    where: { saveId_entityType_entitySlug: { saveId, entityType: 'npc', entitySlug: targetSlug } },
+    create: { saveId, entityType: 'npc', entitySlug: targetSlug, fase: 'DESCUBIERTO' },
+    update: { fase: 'DESCUBIERTO' },
+  });
+}
+
+async function registrarNpcConocidoSessionFact(saveId: string, targetName: string): Promise<void> {
   const sessionFacts = await loadSessionFacts(saveId);
-  await Promise.all([
-    appendSessionFacts(saveId, sessionFacts, [`${targetName} conversa con el personaje.`]),
-    prisma.discoveredEntity.upsert({
-      where: { saveId_entityType_entitySlug: { saveId, entityType: 'npc', entitySlug: targetSlug } },
-      create: { saveId, entityType: 'npc', entitySlug: targetSlug, fase: 'DESCUBIERTO' },
-      update: { fase: 'DESCUBIERTO' },
-    }),
-  ]);
+  await appendSessionFacts(saveId, sessionFacts, [`${targetName} conversa con el personaje.`]);
 }
 
 /// Solo se llama para el camino GENÉRICO de modo dinámico (LLM) — mismo criterio previo a
@@ -193,13 +204,14 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
           });
         }
         if (turno.cierra && tipo === 'NPC') {
+          await marcarNpcConocidoRapido(tx, save.id, targetSlug);
           const { pendingQuestOfferInfo } = await persistirCierreNpcEnTransaccion(tx, save.id, targetSlug);
           return pendingQuestOfferInfo;
         }
         return null;
       });
       if (turno.cierra && tipo === 'NPC') {
-        await marcarNpcConocido(save.id, targetSlug, targetName);
+        await registrarNpcConocidoSessionFact(save.id, targetName);
       }
 
       return {
@@ -285,13 +297,14 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
         });
       }
       if (turno.cierra && pending.tipo === 'NPC') {
+        await marcarNpcConocidoRapido(tx, save.id, pending.targetSlug);
         const { pendingQuestOfferInfo } = await persistirCierreNpcEnTransaccion(tx, save.id, pending.targetSlug);
         return pendingQuestOfferInfo;
       }
       return null;
     });
     if (turno.cierra && pending.tipo === 'NPC') {
-      await marcarNpcConocido(save.id, pending.targetSlug, pending.targetName);
+      await registrarNpcConocidoSessionFact(save.id, pending.targetName);
     }
 
     // Gistera Koh, aceptación real (2026-09-09, bug real jugando en vivo — Álvaro: "al acabar de
@@ -352,30 +365,6 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
       const pending = save.pendingDynamicMode as unknown as PendingDynamicMode | null;
       const historialNarracion = pending?.historialNarracion ?? (pending ? [pending.narration] : null);
 
-      // Bug real jugando en vivo (2026-09-15, hallazgo Álvaro: "cerrar el modal de Interactuar no
-      // deja rastro en el log") — el LogEntry SÍ se creaba aquí, pero esta ruta solo devolvía
-      // `{ ok: true }`: el frontend (`handleSalirDynamicMode`, GameView.tsx) nunca lo recibía para
-      // insertarlo en `characterLog`, así que la conversación desaparecía visualmente aunque
-      // estuviera bien persistida. Se captura el resultado de la creación (si hubo) para devolverlo.
-      const [, logEntryCreado] = await prisma.$transaction([
-        prisma.save.update({
-          where: { id: save.id },
-          data: { pendingDynamicMode: Prisma.JsonNull, pendingDynamicModeOffer: Prisma.JsonNull },
-        }),
-        ...(historialNarracion
-          ? [
-              prisma.logEntry.create({
-                data: {
-                  saveId: save.id,
-                  channel: 'CHARACTER' as const,
-                  text: resumenModoDinamicoParaLog(historialNarracion),
-                  timeLabel: save.worldState?.fictionalDateLabel ?? '',
-                  fictionalMinutes: save.worldState?.fictionalMinutes ?? 0,
-                },
-              }),
-            ]
-          : []),
-      ]);
       // Salir a medias (nunca llegó a `cierra` real del LLM) SÍ deja al NPC "conocido" en escena
       // (mismo fix genérico de arriba), pero NUNCA dispara la oferta de misión de Gistera — su
       // aceptación es obligatoria en la trama (decisión explícita del usuario, 2026-09-09), así
@@ -387,8 +376,37 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
       // presentarse, así que su nombre real seguiría siendo un spoiler. Desde la vuelta 2 en
       // adelante (la presentación ya se narró) sí cuenta como conocida, igual que cualquier otro NPC.
       const gisteraSinPresentarTodavia = pending?.targetSlug === 'gistera-koh' && pending.vuelta < 2;
-      if (pending && pending.tipo === 'NPC' && !gisteraSinPresentarTodavia) {
-        await marcarNpcConocido(save.id, pending.targetSlug, pending.targetName);
+      const marcaComoConocido = pending && pending.tipo === 'NPC' && !gisteraSinPresentarTodavia;
+
+      // Bug real jugando en vivo (2026-09-15, hallazgo Álvaro: "cerrar el modal de Interactuar no
+      // deja rastro en el log") — el LogEntry SÍ se creaba aquí, pero esta ruta solo devolvía
+      // `{ ok: true }`: el frontend (`handleSalirDynamicMode`, GameView.tsx) nunca lo recibía para
+      // insertarlo en `characterLog`, así que la conversación desaparecía visualmente aunque
+      // estuviera bien persistida. Se captura el resultado de la creación (si hubo) para devolverlo.
+      //
+      // Hallazgo 47 (2026-09-15) — convertida de `$transaction([...])` (batch de escrituras) a
+      // callback para poder meter `marcarNpcConocidoRapido` DENTRO, atómico con el cierre.
+      const logEntryCreado = await prisma.$transaction(async (tx) => {
+        await tx.save.update({
+          where: { id: save.id },
+          data: { pendingDynamicMode: Prisma.JsonNull, pendingDynamicModeOffer: Prisma.JsonNull },
+        });
+        if (marcaComoConocido) {
+          await marcarNpcConocidoRapido(tx, save.id, pending!.targetSlug);
+        }
+        if (!historialNarracion) return null;
+        return tx.logEntry.create({
+          data: {
+            saveId: save.id,
+            channel: 'CHARACTER' as const,
+            text: resumenModoDinamicoParaLog(historialNarracion),
+            timeLabel: save.worldState?.fictionalDateLabel ?? '',
+            fictionalMinutes: save.worldState?.fictionalMinutes ?? 0,
+          },
+        });
+      });
+      if (marcaComoConocido) {
+        await registrarNpcConocidoSessionFact(save.id, pending!.targetName);
       }
       if (logEntryCreado) {
         return {

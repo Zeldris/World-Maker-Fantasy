@@ -14,6 +14,15 @@ Cada entrada: fecha, zona auditada, hallazgo, y estado.
 
 ## Índice
 
+**2026-09-15 — auditoría de lore de los sistemas nuevos post-2026-09-07 (combate múltiple con
+compañeros, cuadrícula/Interactuar, Cazadora Serhu, MedioMovimiento)**
+- [combate-multiple.md confirmado sin discrepancias, muy bien mantenido](#combate-multiplemd--confirmado-sin-discrepancias-muy-bien-mantenido)
+- [clases.md: CANALIZAR — autocontradicción real dentro del propio documento](#clasesmd--canalizar-autocontradicción-real-dentro-del-propio-documento-staleness-no-contradicción-de-diseño)
+- [clases.md: cabeceras de sección y tabla-resumen final desincronizadas de sus propias tablas detalladas](#clasesmd--cabeceras-de-sección-y-tabla-resumen-final-desincronizadas-de-sus-propias-tablas-detalladas)
+- [Sistema de cuadrícula/colisión "Interactuar" — hueco de documentación completo](#sistema-de-cuadrículacolisión-interactuar-zonaposicionts--hueco-de-documentación-completo-no-contradicción)
+- [MedioMovimiento — solo 2 fichas marcadas, coherentes con su prosa](#mediomovimiento--solo-2-fichas-marcadas-ambas-coherentes-con-su-prosa-existente)
+- [ZonePoint "Cazadora Serhu" — hueco simple, sin contradicción](#zonepoint-cazadora-serhu--campamento-serhu-sembrado-2026-09-15--hueco-simple-sin-contradicción)
+
 **2026-09-07 — auditoría de lore post-2026-08-25 (frente paralelo de la ronda de 4 agentes)**
 - [clases.md: tabla-resumen y secciones detalladas de Guerrero/Cazador/Chamán/Arquero vuelven a desactualizarse tras la siembra de 22 habilidades del 2026-08-31](#2026-09-07-clasesmd-tabla-resumen-y-secciones-detalladas-de-guerrerocazadorchamánarquero-vuelven-a-desactualizarse-tras-la-siembra-de-22-habilidades-del-2026-08-31)
 - [Confirmado sin discrepancias — mundo determinista/agenda, Faction.description estática, banners, actualizaciones-pendientes-lore.md ya cubrió fauna/flora/vocabulario](#2026-09-07-confirmado-sin-discrepancias--mundo-determinista-agenda-factiondescription-estática-banners-actualizaciones-pendientes-loremd-ya-cubrió-faunaf-loravocabulario)
@@ -287,3 +296,133 @@ con nota explícita de cuándo se sembró de verdad. Sin tocar código — solo 
 **Estado**: NO ES BUG, sin acción necesaria — confirma que la ronda del 2026-09-05/06 sigue vigente
 y no dejó huecos nuevos en estas áreas; el único hallazgo real de esta sesión fue el de clases.md
 de arriba.
+
+---
+
+## 2026-09-15 — auditoría de lore de los sistemas nuevos post-2026-09-07 (combate múltiple con
+compañeros, cuadrícula/Interactuar, Cazadora Serhu, MedioMovimiento)
+
+**Contexto**: ~8 días de desarrollo intenso desde la última auditoría (2026-09-07) sin volver a
+lanzarla. En ese intervalo se cerraron 8 piezas de combate múltiple con compañeros (PROVOCACION,
+CANALIZAR en combate múltiple, MARCAR, AREA en 3 variantes, Maestro Arquero/Ballestero 7/8,
+`durationEffectTarget:'both'`, Alfa de la Manada, AUMENTO desde utilidad — cierre 2026-09-15) y todo
+el sistema de movimiento por cuadrícula/colisión de "Interactuar" (2026-09-08/09). Esta ronda
+verifica si esa prosa de diseño quedó al día.
+
+### combate-multiple.md — confirmado sin discrepancias, muy bien mantenido
+
+Las 8 piezas (PROVOCACION, CANALIZAR en combate múltiple, MARCAR, AREA en 3 variantes, `AUMENTO`/
+`DEBILIDAD` desde utilidad, `durationEffectTarget:'both'`, Alfa de la Manada) están descritas con
+precisión en `combate-multiple.md`, con nombres de función/columna exactos y coincidiendo con el
+código real (`combateMultipleOrquestacion.ts`, `combateMultiple.ts`, `companionSupervivencia.ts`,
+`npcCombatAbilities.ts`, `classAbilities.ts`). El documento incluso va más allá del cierre del
+2026-09-15 documentado en memoria. Maestro Arquero/Maestro Ballestero están correctamente en 7/8
+(solo el nivel 40, `CANALIZAR`+`LETAL` combinado, sigue bloqueado) — el conteo coincide con el
+código verificado por grep de `especializacion:`.
+
+**Estado**: NO ES BUG, sin acción necesaria.
+
+### clases.md — CANALIZAR: autocontradicción real dentro del propio documento (staleness, no
+contradicción de diseño)
+
+**Hallazgo**: desde el cierre del 2026-09-14/15, varias fichas de `clases.md` afirman correctamente
+que `CANALIZAR` "ya tiene motor real" (Domador 36 línea 606, Maestro Arquero/Ballestero 36 línea
+849, y el párrafo-resumen final tras la tabla de bloqueo, línea ~1224: *"`PROVOCACION`... `MARCAR`...
+y `AREA`... tienen motor real desde 2026-09-14"*). Pero **otras 4 filas del mismo documento, no
+tocadas en esa pasada, siguen afirmando literalmente que `CANALIZAR` "sigue sin ningún comportamiento
+real"**:
+- Berserker 28 (Grito Desgarrador, línea 485) y Berserker 40 (Golpe Devastador, línea 488)
+- Tirador 24 (Tensar al Límite, línea 648)
+- Convocador 40 (Furia de los Elementos, línea 791)
+
+El caso de **Tirador 24 es el más grave**: no es solo staleness de esta ronda, sino un hueco que
+lleva abierto desde antes incluso del alcance de esta auditoría. El propio comentario de cabecera de
+`classAbilities.ts` (línea 92-93) fecha el cierre de `CANALIZAR` el **2026-09-09** ("cerrar 2 huecos
+de motor... CANALIZAR real"), y el comentario específico sobre la ficha (líneas 1215-1220,
+inmediatamente encima de la definición de "Tensar al Límite", `effects: ['ATAQUE', 'CANALIZAR',
+'LETAL']`) dice explícitamente: *"CANALIZAR real (2026-09-09, cierre de hueco de motor...)"* — la
+propia ficha que `clases.md` línea 648 marca como bloqueada por `CANALIZAR` es la que el código cita
+como ejemplo de que `CANALIZAR` ya funciona, desde hace una semana.
+
+No es una contradicción de diseño que requiera decisión de canon — el propio código ya deja claro
+cuál es el estado real (`CANALIZAR` funciona desde 2026-09-09 en 1v1 y desde 2026-09-14 en combate
+múltiple); es que la pasada de actualización del 2026-09-14/15 tocó unas filas y no otras, dejando
+el documento contradiciéndose a sí mismo sobre el estado del mismo token de efecto.
+
+**Estado**: PENDIENTE de fijar en `clases.md` (no tocado por esta auditoría, solo investigación) —
+corregir las 4 filas (Berserker 28/40, Tirador 24, Convocador 40) para que dejen de decir que
+`CANALIZAR` no tiene motor, y en su lugar describan cuál es el bloqueo específico real de cada ficha
+si lo sigue habiendo (p.ej. Berserker 40 y Convocador 40 combinan `CANALIZAR`+`LETAL`, que sigue sin
+mecanismo propio según Maestro Arquero/Ballestero 40 — igual que Tirador 24 si combina los tres a la
+vez; hay que revisar ficha a ficha, no asumir que las 4 quedan desbloqueadas solo por tener motor de
+`CANALIZAR`).
+
+### clases.md — cabeceras de sección y tabla-resumen final desincronizadas de sus propias tablas
+detalladas
+
+**Hallazgo (staleness interna, mismo patrón que el 2026-08-25/09-07 pero esta vez el documento no
+coincide ni consigo mismo)**:
+- Cabecera de Berserker (línea 474) dice "6 de 8 listas", pero el propio texto bajo la tabla de esa
+  misma sección (línea 500) dice "3 de 8 huecos sembrados".
+- Cabecera de Guardián (línea 495) dice "4 de 8 listas", pero el texto bajo su tabla (línea 537) dice
+  "7 de 8 huecos sembrados".
+- La tabla-resumen final ("Las 9 clases, resumen final de bloqueo", líneas ~1213-1222) sigue
+  mostrando cifras de antes de la ola 2026-09-14/15 (Tirador 6, Maestro Arquero 1, Maestro Ballestero
+  1, Guardián 4, Especialista 5, etc.) mientras que el párrafo justo debajo de esa misma tabla (línea
+  ~1224) ya reconoce en prosa que PROVOCACION/MARCAR/AREA "tienen motor real desde 2026-09-14" —
+  dato que, de aplicarse a la tabla, cambiaría varias de esas cifras (Maestro Arquero/Ballestero
+  deberían ser 7, no 1, según su propia sección detallada verificada arriba).
+
+**Estado**: PENDIENTE de fijar en `clases.md` — no es contradicción de diseño, es que la pasada de
+actualización del 2026-09-14/15 corrigió las tablas detalladas pero no propagó los números hacia
+arriba (cabeceras de sección) ni hacia el resumen final, mismo patrón exacto ya corregido dos veces
+antes (2026-08-25, 2026-09-07). Recomendación: al cerrar una ronda de siembra de habilidades, revisar
+también cabecera de sección + tabla-resumen final en la misma pasada, no solo la tabla detallada.
+
+### Sistema de cuadrícula/colisión "Interactuar" (zonaPosicion.ts) — hueco de documentación completo,
+no contradicción
+
+**Hallazgo**: el sistema de movimiento por cuadrícula construido 2026-09-08/09 (`CELL_SIZE_PX = 50`,
+grid 16×12 sobre el lienzo 800×600 ya documentado; colisión por celda-misma/celda-adyacente;
+cálculo de camino por Bresenham en `calcularCamino`; rutas artesanales vía `ZonePoint.ruta`; paseo
+aleatorio de fallback acotado a 2 celdas cuando no hay ruta artesanal; avance de FAUNA/NPC un paso
+por cada celda que se mueve la jugadora; radio de Interactuar de 100px) **no tiene ninguna mención en
+ningún `.md` de `docs/rpgtarkor/`** — ni el tamaño de celda, ni el algoritmo de colisión, ni las
+rutas artesanales, ni el paseo aleatorio. `mundo-determinista.md` documenta el lienzo 800×600 y el
+modelo `ZonePoint` a nivel de infraestructura de imágenes/posición (Pieza 3, fechada 2026-08-27) pero
+es anterior a toda esta mecánica y no la cubre. Es un hueco íntegro de documentación técnica — el
+diseño "estilo Mount & Blade" (confirmado con la usuaria según el propio comentario de cabecera de
+`zonaPosicion.ts`) vive solo en comentarios de código y en `schema.prisma`, nunca se trasladó a
+prosa. `MedioMovimiento` (TERRESTRE/AEREO/ACUATICO) tampoco tiene ninguna mención en `docs/rpgtarkor/
+*.md`.
+
+**Estado**: HUECO documentado, sin acción de código. No hay ningún `.md` de diseño técnico/sistemas
+en `docs/rpgtarkor/` donde encajaría de forma natural (todos son prosa de lore/mundo) — queda a
+criterio de la usuaria decidir si merece una sección nueva o si este sistema se considera
+correctamente "solo código" al ser mecánica de UI/motor sin contenido narrativo propio.
+
+### MedioMovimiento — solo 2 fichas marcadas, ambas coherentes con su prosa existente
+
+**Confirmado sin discrepancias**: grep exhaustivo de `medio: ['AEREO'` / `medio: ['ACUATICO'` en
+`worldCatalog.ts` da exactamente 2 resultados, ninguno más — `cruzavientos` (AEREO,
+`worldCatalog.ts:1543`) y `benusa-pesquera` (ACUATICO, `worldCatalog.ts:2364`). Ambas bios de
+catálogo coinciden casi textualmente con sus fichas en `flora-fauna.md` (ave planeadora que anida en
+Los Pilares Rotos; ave migratoria tipo cigüeña "principalmente acuática", presa favorita el Jashil).
+Sin contradicción.
+
+### ZonePoint "Cazadora Serhu" / campamento-serhu (sembrado 2026-09-15) — hueco simple, sin
+contradicción
+
+**Confirmado, hueco no contradicción**: el `Npc` "Cazadora Serhu" (`kind: 'PLANTILLA'`, plantilla
+genérica reutilizable como "Guerrero serhu"/"Guardia serhu", no personaje único con nombre propio;
+`homeLocationSlug: 'campamento-serhu'`; `raza: 'orcos'`, `clase: 'CAZADOR'`, `especializacion:
+'INSTINTIVO'`, `temperamento: 'CAUTELOSO'`) no tenía ninguna mención previa en `docs/rpgtarkor/
+npcs.md`, `personajes.md` ni `areas.md` — ni bio, ni rol, ni ubicación que pudiera chocar. El
+ZonePoint `campamento-serhu` en sí (Karot Veku / Colmillo Ceniza, Las Llanuras del Viento Rojo) ya
+existía desde antes, no es nuevo; lo nuevo hoy es solo la ficha de Npc y su punto en el mapa de zona
+(exterior de la empalizada, coherente con "vigías" que ya describe `areas.md:160-161` para el
+campamento del Clan Serhu). Su rol de cazadora/vigía en el exterior es coherente con la prosa
+existente del Clan Serhu. Ningún otro NPC o lugar usa "Serhu" en un contexto que choque.
+
+**Estado**: HUECO simple, sin acción de código — la ficha de código es prosa de diseño nueva que aún
+no se trasladó a los `.md`, sin contradecir nada existente.

@@ -14,6 +14,37 @@ import { parseAgenda, regionControlFor, type RegionControlState } from '../../se
 import { REGION_OWNING_FACTIONS, effectiveTemperamento } from '../../services/reputation.js';
 import { posicionAleatoriaEnLienzo, celdaDePixel, pixelDeCelda, calcularCamino, celdaAdyacenteOMisma, mismaCelda } from '../../services/zonaPosicion.js';
 import { rejectIfEnded, rejectIfPendingDeath } from './shared.js';
+import { createInFlightClaimSet } from '../../lib/inFlightClaimSet.js';
+
+/// Candado de "movimiento en curso" (hallazgo 45, revisar-partida-hallazgos.md, 2026-09-15) —
+/// mismo patrón que `turnLock.ts`/`chapterSummary.ts` (`createInFlightClaimSet`), pero con
+/// caducidad mucho más corta: `/zona/mover` no llama a ningún LLM (a diferencia de `/turn/narrate`,
+/// candado de 5 min), es una escritura rápida de Postgres — 10s de margen basta de sobra para
+/// cubrir el peor caso de latencia real sin dejar la partida bloqueada mucho tiempo si algo se
+/// cuelga. El frontend ya se protege a sí mismo (`ZonaPanel.tsx`, `movimientoTokenRef`) contra que
+/// EL MISMO cliente se solape consigo mismo animando el trayecto paso a paso — este candado cubre
+/// el caso que el frontend no puede: dos peticiones concurrentes REALES (doble pestaña, reintento
+/// de red con la original todavía viva en el servidor) leyendo `zonaPosX/Y`/`zonaCaminoPendiente`
+/// antes de que ninguna escriba, cada una calculando su propio "siguiente paso" desde la misma
+/// posición de partida.
+const zonaMoverClaims = createInFlightClaimSet<string>(10_000);
+
+/// Extraído para poder derivar el tipo exacto de `save` que recibe `resolverMovimientoEnZona`
+/// (`Prisma.SaveGetPayload<{ select: typeof SAVE_SELECT_PARA_MOVER }>`) sin repetir el `select` ni
+/// caer en `any`/en el tipo genérico completo de `Save` (que no reflejaría este `select` acotado).
+const SAVE_SELECT_PARA_MOVER = {
+  id: true,
+  worldId: true,
+  endedAt: true,
+  pendingDeathResolution: true,
+  zonaPosX: true,
+  zonaPosY: true,
+  zonaCaminoPendiente: true,
+  currentLocationId: true,
+  currentLocation: { select: { id: true } },
+  worldState: { select: { factionsStatus: true, fictionalMinutes: true, fictionalDateLabel: true } },
+  characterName: true,
+} satisfies Prisma.SaveSelect;
 
 /// Día/noche/estación (2026-08-27) — la vista Zona ya conoce el reloj real de la partida
 /// (`WorldState.fictionalMinutes`), así que elige sola qué variante mostrar en vez de un selector
@@ -499,25 +530,27 @@ export async function zonaRoutes(app: FastifyInstance) {
     }
     const save = await prisma.save.findUnique({
       where: { id: request.params.id },
-      select: {
-        id: true,
-        worldId: true,
-        endedAt: true,
-        pendingDeathResolution: true,
-        zonaPosX: true,
-        zonaPosY: true,
-        zonaCaminoPendiente: true,
-        currentLocationId: true,
-        currentLocation: { select: { id: true } },
-        worldState: { select: { factionsStatus: true, fictionalMinutes: true, fictionalDateLabel: true } },
-        characterName: true,
-      },
+      select: SAVE_SELECT_PARA_MOVER,
     });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
     if (rejectIfEnded(save, reply)) return;
     if (rejectIfPendingDeath(save, reply)) return;
     if (!save.currentLocationId) return reply.status(400).send({ error: 'Sin ubicación actual — no hay zona donde moverse.' });
 
+    if (!zonaMoverClaims.claim(save.id)) {
+      return reply.status(409).send({ error: 'Ya hay un movimiento en curso para esta partida.' });
+    }
+    try {
+      return await resolverMovimientoEnZona(save, destino);
+    } finally {
+      zonaMoverClaims.release(save.id);
+    }
+  });
+
+  async function resolverMovimientoEnZona(
+    save: NonNullable<Prisma.SaveGetPayload<{ select: typeof SAVE_SELECT_PARA_MOVER }>>,
+    destino: { x: number; y: number },
+  ) {
     const factionsStatus = (save.worldState?.factionsStatus as Record<string, number> | null) ?? {};
     const posicionActual = save.zonaPosX != null && save.zonaPosY != null ? { x: save.zonaPosX, y: save.zonaPosY } : { x: 400, y: 300 };
     const celdaActual = celdaDePixel(posicionActual);
@@ -604,5 +637,5 @@ export async function zonaRoutes(app: FastifyInstance) {
     });
 
     return resultado;
-  });
+  }
 }

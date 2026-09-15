@@ -15,6 +15,7 @@ import {
   GRID_ROWS,
   celdaDePixel,
   pixelDeCelda,
+  mismaCelda,
   celdaAdyacenteOMisma,
   calcularCamino,
   siguienteCeldaPaseoAleatorio,
@@ -212,6 +213,26 @@ describe('Sistema de movimiento por cuadrícula (2026-09-08, diseño "estilo Mou
     it('celdaDePixel(pixelDeCelda(c)) es la identidad — ida y vuelta consistente', () => {
       const celda = { col: 5, row: 3 };
       expect(celdaDePixel(pixelDeCelda(celda))).toEqual(celda);
+    });
+  });
+
+  // Hallazgo de deuda técnica (2026-09-15): única de las 18 funciones puras de este archivo sin
+  // cobertura directa, pese a tener 3 call-sites reales incluido el gate de colisión de combate en
+  // Zona (`turnResolution.ts`, filtra `npcsInSceneVivosParaCombate` por `mismaCelda` real).
+  describe('mismaCelda — umbral EXACTO (distinto de celdaAdyacenteOMisma, que también acepta vecinas)', () => {
+    it('la misma celda exacta devuelve true', () => {
+      expect(mismaCelda({ col: 5, row: 5 }, { col: 5, row: 5 })).toBe(true);
+    });
+
+    it('cualquier celda vecina (incluidas las 8 adyacentes) devuelve false — a diferencia de celdaAdyacenteOMisma', () => {
+      expect(mismaCelda({ col: 5, row: 5 }, { col: 6, row: 5 })).toBe(false);
+      expect(mismaCelda({ col: 5, row: 5 }, { col: 5, row: 6 })).toBe(false);
+      expect(mismaCelda({ col: 5, row: 5 }, { col: 6, row: 6 })).toBe(false);
+    });
+
+    it('coincidir solo en col o solo en row (sin ser la misma celda) devuelve false', () => {
+      expect(mismaCelda({ col: 5, row: 5 }, { col: 5, row: 9 })).toBe(false);
+      expect(mismaCelda({ col: 5, row: 5 }, { col: 9, row: 5 })).toBe(false);
     });
   });
 
