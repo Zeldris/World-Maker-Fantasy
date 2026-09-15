@@ -18,6 +18,8 @@ import {
   COMIDA_MINUTOS_POR_TRAMO,
   UMBRAL_DESCUIDO_PCT,
   condicionPorSupervivencia,
+  maxSlotsDomadorFor,
+  alfaDeLaManadaBonusFor,
 } from './companionSupervivencia.js';
 import type { AttributeBlock } from './dice.js';
 
@@ -40,6 +42,41 @@ describe('felicidadUmbralFor', () => {
     expect(felicidadUmbralFor(true)).toBe(FELICIDAD_UMBRAL_DOMADOR);
     expect(felicidadUmbralFor(false)).toBe(FELICIDAD_UMBRAL_GENERAL);
     expect(FELICIDAD_UMBRAL_DOMADOR).toBeLessThan(FELICIDAD_UMBRAL_GENERAL);
+  });
+});
+
+// Alfa de la Manada real (2026-09-14, docs/rpgtarkor/clases.md — Domador 40, capstone)
+describe('maxSlotsDomadorFor', () => {
+  it('sin ser Domador, siempre 0 (compite por companionSlotsForRecipeKey como cualquiera)', () => {
+    expect(maxSlotsDomadorFor('GUERRERO', 'BERSERKER', 40)).toBe(0);
+    expect(maxSlotsDomadorFor(null, null, 40)).toBe(0);
+  });
+
+  it('Domador por debajo de nivel 40 tiene 1 slot garantizado', () => {
+    expect(maxSlotsDomadorFor('CAZADOR', 'DOMADOR', 1)).toBe(1);
+    expect(maxSlotsDomadorFor('CAZADOR', 'DOMADOR', 39)).toBe(1);
+  });
+
+  it('Domador con nivel 40+ (Alfa de la Manada) tiene 2 slots garantizados', () => {
+    expect(maxSlotsDomadorFor('CAZADOR', 'DOMADOR', 40)).toBe(2);
+    expect(maxSlotsDomadorFor('CAZADOR', 'DOMADOR', 60)).toBe(2);
+  });
+});
+
+describe('alfaDeLaManadaBonusFor', () => {
+  const base: AttributeBlock = { fuerza: 6, destreza: 6, constitucion: 6, inteligencia: 4, voluntad: 6, carisma: 2, magia: 0 };
+
+  it('con menos de 2 slots de Domador ocupados, sin ningún buff (ni siquiera al Alfa)', () => {
+    expect(alfaDeLaManadaBonusFor(base, 0, false)).toEqual(base);
+    expect(alfaDeLaManadaBonusFor(base, 1, true)).toEqual(base);
+  });
+
+  it('con los 2 slots cubiertos, +2 voluntad para AMBAS bestias, sin importar quién sea el Alfa', () => {
+    expect(alfaDeLaManadaBonusFor(base, 2, false)).toEqual({ ...base, voluntad: 8 });
+  });
+
+  it('con los 2 slots cubiertos, el Alfa además recibe +2 fuerza extra', () => {
+    expect(alfaDeLaManadaBonusFor(base, 2, true)).toEqual({ ...base, voluntad: 8, fuerza: 8 });
   });
 });
 

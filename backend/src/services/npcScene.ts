@@ -736,8 +736,21 @@ export function detectsAttackIntent(action: string): boolean {
 // perseguidor). Mismo criterio que combatir/pelear/luchar/enfrent arriba: el verbo solo ya es
 // señal de sobra fuerte, sin enumerar qué palabra puede seguirle — esto NUNCA abre combate por sí
 // solo (eso lo decide `shouldForceCombat` en turnResolution.ts aparte), solo evita la banda larga.
+//
+// `\bcaz[oae]\b|cazando|\bcazar\b` (hallazgo real jugando en vivo, 2026-09-15, "caza fantasma"):
+// "Intento cazar a Quio con sigilo" nunca disparaba ningún mecanismo determinista — ni
+// `ATTACK_INTENT_REGEX` (sin verbo de ataque literal) ni este regex (sin "cazar" en absoluto) —
+// así que el turno caía a narración libre, y el LLM narró una caza "consumada" (fauna herida/
+// muerta, sangre) sin que el motor moviera `NpcState.condicionFisica`/generara ningún
+// `HarvestYield` real: el narrador decidió un desenlace mecánico que el motor nunca ejecutó,
+// justo el patrón que `harvest.ts` ya documenta como diseño ("el cazar en sí lo resuelve el
+// combate — el despiece es solo lo posterior"). Con el verbo aquí, "cazar" abre combate real
+// igual que "atacar", y es el motor de combate quien decide el desenlace. Boundary de palabra
+// (`\b`) + conjugaciones cortas explícitas en vez de un stem suelto tipo `caz` — evita que
+// "Cazadora Serhu"/"cazador" (sustantivo de nombre/clase, sin intención de atacar) disparen
+// combate solo por compartir la raíz.
 const HOSTILE_SEARCH_REGEX =
-  /busca de pelea|busca de camorra|buscar pelea|buscando pelea|busca de guerra|en busca de sangre|para matar|acabar(?:e)? con|vengarse de|enfrent|combatir|combate\s+(?:contra|con)|pelear|luchar/;
+  /busca de pelea|busca de camorra|buscar pelea|buscando pelea|busca de guerra|en busca de sangre|para matar|acabar(?:e)? con|vengarse de|enfrent|combatir|combate\s+(?:contra|con)|pelear|luchar|\bcaz[oae]\b|cazando|\bcazar\b/;
 
 export function detectsHostileSearchIntent(action: string): boolean {
   const normalized = normalizeText(action);

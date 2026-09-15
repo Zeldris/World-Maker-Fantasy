@@ -52,8 +52,9 @@ export interface StartingAbility {
   /// A quién recae el efecto de arriba (2026-09-09, ver schema.prisma § SavedAction.
   /// durationEffectTarget) — undefined/'self' = comportamiento de siempre; 'companion' = recae en
   /// el Companion activo del bando de quien la usó, no en sí mismo (Domador — "aumenta a tu
-  /// bestia"). Solo tiene efecto en combate múltiple.
-  durationEffectTarget?: 'self' | 'companion';
+  /// bestia"); 'both' (2026-09-14, Domador 32, Grito Animal — "aumenta... del compañero Y a ti
+  /// mismo") = recae en AMBOS a la vez con la misma tirada. Solo tiene efecto en combate múltiple.
+  durationEffectTarget?: 'self' | 'companion' | 'both';
 }
 
 /// Kit de habilidades "de serie" de Gorhorn — no cuentan contra el cupo por nivel

@@ -496,9 +496,13 @@ export const loreChunks: LoreChunkInput[] = [
   },
   {
     type: 'REGION',
-    title: 'Dentro de Karot Veku — el Karot Vekhad',
-    text: 'Cruzada la empalizada de Karot Veku, el poblado se organiza en torno a una plaza central de tierra apisonada, con sendas marcadas por el paso constante entre sus distintos puntos — cada construcción real (forja, curtiduría, cocina común, herboristería, alquimia, corrales del Domador, desolladero) tiene su propia ubicación, sin un trazado prefijado de fondo. En el centro simbólico se alza el Karot Vekhad, el Salón del Colmillo Ceniza, donde la Terk\'ikar Ulkha Ketg y el Kort\'ikar Torgash Ketg reciben a quien cruza la entrada.',
-    tags: ['karot-vekhad', 'campamento-serhu', 'clan-serhu', 'interior', 'ulkha', 'torgash'],
+    title: 'Dentro de Karot Veku — el Ketg\'lukar',
+    // Fix real (2026-09-13, auditoría de lore Helek) — el título usa correctamente "Ketg'lukar"
+    // (Lukar = "Hogar", el recinto interior entero), pero el texto describía el edificio concreto
+    // del salón con el mismo morfema — corregido a "Ketg'sedsar" (Sedsar = "Salón"), coherente con
+    // el FactionBuilding real (ver worldCatalog.ts § factionBuildings, renombrado el mismo día).
+    text: 'Cruzada la empalizada de Karot Veku, el poblado se organiza en torno a una plaza central de tierra apisonada, con sendas marcadas por el paso constante entre sus distintos puntos — cada construcción real (forja, curtiduría, cocina común, herboristería, alquimia, corrales del Domador, desolladero) tiene su propia ubicación, sin un trazado prefijado de fondo. En el centro simbólico se alza el Ketg\'sedsar, el Salón del Colmillo Ceniza, donde la Terk\'ikar Ulkha Ketg y el Kort\'ikar Torgash Ketg reciben a quien cruza la entrada.',
+    tags: ['ketg-sedsar', 'campamento-serhu', 'clan-serhu', 'interior', 'ulkha', 'torgash'],
     sourceDoc: 'areas.md',
   },
   {

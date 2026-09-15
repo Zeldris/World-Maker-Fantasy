@@ -1051,7 +1051,13 @@ export function GameView() {
   async function handleSalirDynamicMode() {
     setActiveDynamicMode((prev) => (prev ? { ...prev, busy: true, error: undefined } : prev))
     try {
-      await ignorarModoDinamico(saveId!)
+      const { logEntry } = await ignorarModoDinamico(saveId!)
+      // Bug real jugando en vivo (2026-09-15, hallazgo Álvaro: "cerrar Interactuar no deja rastro
+      // en el log") — el backend ya creaba este LogEntry, pero antes nunca llegaba aquí para
+      // insertarlo: la conversación desaparecía visualmente aunque estuviera bien persistida.
+      if (logEntry) {
+        setCharacterLog((prev) => [...prev, { id: logEntry.id, channel: 'character', text: logEntry.text, timeLabel: logEntry.timeLabel, createdAt: logEntry.createdAt }])
+      }
       setActiveDynamicMode(null)
     } catch {
       setActiveDynamicMode((prev) => (prev ? { ...prev, busy: false, error: 'No se pudo salir — inténtalo de nuevo.' } : prev))

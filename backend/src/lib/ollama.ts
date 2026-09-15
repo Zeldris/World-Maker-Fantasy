@@ -8,7 +8,10 @@ export interface OllamaGenerateOptions {
   system?: string;
   prompt: string;
   /// JSON Schema opcional para pedir salida estructurada (Ollama `format`).
-  /// Ver docs/03-arquitectura.md § 4.2 — Qwen2.5 es más fiable con esto que Llama, pero sigue haciendo falta validar.
+  /// Actualizado 2026-09-14 (docs/04-decisiones-tecnicas.md decisión 17): la premisa de que
+  /// "Qwen2.5 es más fiable con esto que Llama" (decisión técnica 7, tomada el primer día sin
+  /// medir) NO se sostuvo al probar Llama 3.1 8B Instruct en serio bajo la misma gramática GBNF —
+  /// JSON siempre válido en ambos, sin ninguna ventaja real de Qwen aquí.
   format?: object;
   /// Si se omite, usa env.ollamaKeepAlive (por defecto 5m). Pásalo a '0' para forzar que Ollama
   /// descargue el modelo de RAM en cuanto termine esta llamada — útil cuando un turno usa dos
@@ -61,7 +64,7 @@ function buildRequestBody(options: OllamaGenerateOptions, stream: boolean) {
     keep_alive: options.keepAlive ?? env.ollamaKeepAlive,
     options: {
       use_mlock: true,
-      num_thread: 4,
+      num_thread: 8,
       ...(options.maxTokens ? { num_predict: options.maxTokens } : {}),
       ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
       ...(options.forceCpu ? { num_gpu: 0 } : {}),
@@ -90,12 +93,20 @@ export async function ollamaGenerate(options: OllamaGenerateOptions): Promise<Ol
     const timer = controller ? setTimeout(() => controller.abort(), options.timeoutMs) : undefined;
 
     try {
-      // use_mlock/num_thread (roadmap de velocidad, 2026-07-19): options.* de Ollama son
-      // pass-through directo a llama.cpp por petición, sin tocar la config del servicio.
-      // use_mlock ancla el modelo en RAM (no puede paginarse a disco a mitad de generación —
-      // la causa raíz medida del cuello de botella real en este hardware). num_thread fijo en
-      // los 4 núcleos físicos: con carga memory-bound, dejar que Ollama detecte 8 (con
-      // hyperthreading) hace que los hilos compitan por el mismo bus de RAM y empeora, no mejora.
+      // use_mlock/num_thread (roadmap de velocidad, 2026-07-19, revisado 2026-09-14): options.*
+      // de Ollama son pass-through directo a llama.cpp por petición, sin tocar la config del
+      // servicio. use_mlock ancla el modelo en RAM (no puede paginarse a disco a mitad de
+      // generación — la causa raíz medida del cuello de botella real en este hardware).
+      // num_thread subido de 4 a 8 (los 4 núcleos físicos con SMT de la Steam Deck) tras activar
+      // la iGPU (OLLAMA_IGPU_ENABLE=1, ver docs/04-decisiones-tecnicas.md § 11): la decisión
+      // original de fijarlo a 4 se tomó en CPU pura, donde 8 hilos SMT competían por el mismo bus
+      // de RAM y empeoraban. Con la mayoría de la carga ya en GPU, la CPU solo cubre el resto
+      // (offload parcial) y 8 hilos sí ayudan — medido +6% tok/s en Mistral Nemo (~8.66→~9.2
+      // tok/s), sin regresión en los modelos 100% GPU (num_thread apenas importa ahí). OJO: la
+      // premisa original SIGUE siendo cierta en CPU pura — re-medido el mismo día con
+      // `forceCpu`/`num_gpu: 0`, thread4 (~11.3 tok/s) supera a thread8 (~10.2 tok/s). Si
+      // `forceCpu` vuelve a usarse activamente (hoy nadie lo invoca), reconsiderar bajar el
+      // thread count solo para esa rama.
       const response = await fetch(`${env.ollamaBaseUrl}/api/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

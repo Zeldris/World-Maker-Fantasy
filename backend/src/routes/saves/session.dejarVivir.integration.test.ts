@@ -105,6 +105,61 @@ describe('POST /saves/:id/combat/dejar-vivir/:npcSlug', () => {
   });
 });
 
+// Aviso de misión pendiente (2026-09-15, hallazgo real jugando en vivo: "Acabar con el Orco
+// Enfurecido" seguía ACTIVA sin ningún aviso tras elegir Clemente — decisión de 2026-08-31
+// mantiene que solo la MUERTE real cierra "derrotar a X", pero nada avisaba de que el objetivo
+// seguía vivo y la misión seguía completable). Save propio para no interferir con la secuencia del
+// describe de arriba (mismos 3 tests corren sobre el MISMO saveId en orden).
+describe('POST /saves/:id/combat/dejar-vivir/:npcSlug — aviso de misión pendiente (activeQuestTitlesTargeting)', () => {
+  let saveId: string;
+  let npcId: string;
+  const npcSlug = 'orco-enfurecido-hondonada';
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const npc = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: npcSlug } });
+    npcId = npc.id;
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (aviso misión)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+        pendingCombatNpcSlugs: [npcSlug],
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    await prisma.npcState.create({ data: { saveId, npcId, scope: '', condicionFisica: 'CONVALECIENTE' } });
+    await prisma.quest.create({
+      data: { saveId, title: 'Acabar con el Orco Enfurecido', description: 'x', status: 'ACTIVA', targetNpcId: npcId },
+    });
+  });
+
+  afterAll(async () => {
+    await prisma.quest.deleteMany({ where: { saveId } });
+    await prisma.logEntry.deleteMany({ where: { saveId } });
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('Clemente sobre un NPC con misión ACTIVA de "derrotar a X" devuelve su título en misionesPendientes, sin cerrarla', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/combat/dejar-vivir/${npcSlug}` });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().misionesPendientes).toEqual(['Acabar con el Orco Enfurecido']);
+
+    const quest = await prisma.quest.findFirstOrThrow({ where: { saveId, title: 'Acabar con el Orco Enfurecido' } });
+    expect(quest.status).toBe('ACTIVA'); // Clemente NO la cierra — decisión explícita de 2026-08-31.
+  });
+});
+
 // BUG CERRADO (2026-08-29, ver comentario de `CombatParticipant.dismissedGrupo` en schema.prisma):
 // dentro de un `CombatEncounter` real (combate múltiple), la condición vive en
 // `CombatParticipant.condicionFisicaGrupo`, no en `NpcState` (fila compartida por toda la especie)

@@ -59,7 +59,7 @@ export type { Clase, Especializacion } from '@prisma/client';
 /// ATURDIMIENTO), en combate múltiple con ≥2 enemigos vivos redirige de verdad al controlado contra
 /// un aliado propio 2 rondas; OCULTACION oculta a quien la dispara (nunca al rival) 2 rondas;
 /// COMPANERO reutiliza `esSlotDomador` (companeros.ts), ya construido de antes.
-/// El resto (CANALIZAR/CURAZION/REFLEJAR/PURIFICAR/PROVOCACION/RETIRAR/MARCAR — duración por
+/// El resto (CANALIZAR/CURAZION/REFLEJAR/PURIFICAR/PROVOCACION/LIMPIAR/MARCAR — duración por
 /// turnos con mecánica propia más allá de sumar/restar un atributo, o efecto sin ningún dar de
 /// alta todavía; MULTIPLE/OCULTACION combinados con AUMENTO/AGUANTE en rol UTILIDAD — buff/duración
 /// propia sin AUMENTO en el camino de utilidad; DESVIAR combinado con DEBILIDAD sin cifra propia
@@ -166,8 +166,67 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       energyRegen: 15,
     },
   },
+  // DEBILIDAD real, camino margen decisivo (2026-09-15) — ATAQUE+DEBILIDAD ya funciona desde
+  // 2026-08-26 (ver comentario de cabecera de este archivo), solo faltaba sembrar la ficha.
+  {
+    level: 8,
+    clase: 'GUERRERO',
+    ability: {
+      name: 'Golpe de Control',
+      icon: '🔗',
+      description: 'Un golpe calculado que, si impacta, deja al rival más lento — reduce su destreza mientras dura el combate.',
+      promptText: 'Golpeo con calma, buscando dejar al rival más lento tras el impacto.',
+      category: 'combate',
+      effects: ['ATAQUE', 'DEBILIDAD'],
+      rol: 'ataque',
+      preferredAttribute: 'fuerza',
+      durationEffectMagnitude: -2,
+      durationEffectTurns: 2,
+      energyCost: ENERGY_COST_MEDIA,
+    },
+  },
 
   // --- Berserker (12/16/19/24/28/32/36/40 — 19/24/32 listas) ---
+  // DEBILIDAD real, camino independiente (2026-09-15, docs/rpgtarkor/clases.md — Segador/Asesino
+  // Tóxico) — INTIMIDACION+DEBILIDAD (Grito de Guerra) y DEBILIDAD+ATURDIMIENTO (Grito tenebroso)
+  // son ambas rol utilidad, sin MULTIPLE combinado: encajan directo con el gate ya construido
+  // (`atacanteDebilidadUtilidadDisparada`, combateMultiple.ts), sin necesitar nada nuevo.
+  {
+    level: 12,
+    clase: 'GUERRERO',
+    especializacion: 'BERSERKER',
+    ability: {
+      name: 'Grito de Guerra',
+      icon: '📯',
+      description: 'Un grito feroz que corta el aliento al rival, cancelando su golpe antes de que llegue.',
+      promptText: 'Suelto un grito feroz, buscando cortarle el aliento al rival antes de que golpee.',
+      category: 'combate',
+      effects: ['INTIMIDACION', 'DEBILIDAD'],
+      rol: 'utilidad',
+      preferredAttribute: 'carisma',
+      durationEffectMagnitude: -2,
+      durationEffectTurns: 2,
+      energyCost: ENERGY_COST_MEDIA,
+    },
+  },
+  {
+    level: 16,
+    clase: 'GUERRERO',
+    especializacion: 'BERSERKER',
+    ability: {
+      name: 'Grito tenebroso',
+      icon: '💀',
+      description: 'Un grito que hiela la sangre, dejando al rival debilitado y desorientado.',
+      promptText: 'Suelto un grito que hiela la sangre, dejando al rival debilitado y desorientado.',
+      category: 'combate',
+      effects: ['DEBILIDAD', 'ATURDIMIENTO'],
+      rol: 'utilidad',
+      preferredAttribute: 'carisma',
+      durationEffectMagnitude: -3,
+      durationEffectTurns: 2,
+      energyCost: ENERGY_COST_MEDIA,
+    },
+  },
   {
     level: 19,
     clase: 'GUERRERO',
@@ -224,6 +283,31 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       energyCost: ENERGY_COST_AVANZADA,
     },
   },
+  // AUMENTO a uno mismo, camino independiente (2026-09-15, corrección de doc — el comentario de
+  // clases.md decía "AUMENTO a uno mismo desde utilidad sigue sin motor", pero ya funciona: sin
+  // `durationEffectTarget` puesto, `atacanteTambienRecibeEfecto` (combateMultipleOrquestacion.ts)
+  // es `true` por defecto (ningún Companion target que excluya al atacante) — el propio atacante
+  // recibe el AUMENTO directo. `PURIFICAR` de la ficha original se queda sin construir (mismo
+  // criterio del resto del catálogo con efectos sin motor: se sembra sin él, documentado).
+  {
+    level: 36,
+    clase: 'GUERRERO',
+    especializacion: 'BERSERKER',
+    ability: {
+      name: 'Instinto Berserker',
+      icon: '🔥',
+      description: 'La furia despierta el instinto — su cuerpo se fortalece y recupera aliento en pleno combate.',
+      promptText: 'Dejo que mi instinto despierte con la furia, fortaleciéndome en pleno combate.',
+      category: 'combate',
+      effects: ['AUMENTO', 'RECUPERACION'],
+      rol: 'utilidad',
+      preferredAttribute: 'fuerza',
+      durationEffectMagnitude: 5,
+      durationEffectTurns: 2,
+      maxUsesPerCombat: 1,
+      energyCost: ENERGY_COST_AVANZADA,
+    },
+  },
   // CANALIZAR real (2026-09-09, cierre de hueco de motor — ver comentario largo de Tirador nv.24,
   // arriba, mismo mecanismo). Capstone: un turno de canalizar (sin tirar, se corta si recibe un
   // golpe decisivo), turno siguiente dispara el ataque real con LETAL.
@@ -267,6 +351,43 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       energyCost: ENERGY_COST_BASICA,
     },
   },
+  // PROVOCACION real (2026-09-14, docs/rpgtarkor/clases.md — Guardián 16/19). Bastión Personal
+  // (16) es la variante combinada con AGUANTE (dispara por margen decisivo cuando el defensor
+  // contragolpea con éxito, ver comentario de `combateMultiple.ts`). Desafío (19) es la variante
+  // sola, camino independiente/utilidad (mismo gate que OCULTACION).
+  {
+    level: 16,
+    clase: 'GUERRERO',
+    especializacion: 'GUARDIAN',
+    ability: {
+      name: 'Bastión Personal',
+      icon: '🧱',
+      description: 'Aguanta el golpe sin ceder terreno — y en cuanto lo hace, el rival no puede apartar la vista de él.',
+      promptText: 'Aguanto el golpe sin ceder terreno, forzando al rival a fijarse en mí.',
+      category: 'combate',
+      effects: ['AGUANTE', 'PROVOCACION'],
+      rol: 'defensa',
+      preferredAttribute: 'fuerza',
+      attributeBonus: 4,
+      energyCost: ENERGY_COST_BASICA,
+    },
+  },
+  {
+    level: 19,
+    clase: 'GUERRERO',
+    especializacion: 'GUARDIAN',
+    ability: {
+      name: 'Desafío',
+      icon: '📢',
+      description: 'Un desafío directo, cara a cara — el rival centra en él toda su atención, dejando de lado a cualquier otro objetivo.',
+      promptText: 'Desafío al rival cara a cara, buscando que centre en mí toda su atención.',
+      category: 'combate',
+      effects: ['PROVOCACION'],
+      rol: 'utilidad',
+      preferredAttribute: 'carisma',
+      energyCost: ENERGY_COST_BASICA,
+    },
+  },
   {
     level: 28,
     clase: 'GUERRERO',
@@ -301,6 +422,33 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       preferredAttribute: 'constitucion',
       durationEffectMagnitude: -5,
       durationEffectTurns: 3,
+      energyCost: ENERGY_COST_MEDIA,
+    },
+  },
+  // AUMENTO real, camino independiente (2026-09-15, docs/rpgtarkor/clases.md — Guardián 32, Valor
+  // Compartido) — "AUMENTO a ALIADOS (no a uno mismo)" es exactamente el mecanismo
+  // `durationEffectTarget:'companion'` ya construido para Domador (2026-09-09), ahora extendido al
+  // camino de utilidad (`atacanteAumentoUtilidadDisparado`, combateMultiple.ts): sin Companion
+  // propio, el efecto se pierde en silencio (mismo criterio que el resto del motor). El `MULTIPLE`
+  // combinado de la ficha original (aplicar a VARIOS aliados a la vez) se queda sin construir —
+  // simplificación consciente, mismo criterio que Manada Furiosa/Grito Animal antes de esta pasada:
+  // un único Companion, no un grupo.
+  {
+    level: 32,
+    clase: 'GUERRERO',
+    especializacion: 'GUARDIAN',
+    ability: {
+      name: 'Valor Compartido',
+      icon: '🤝',
+      description: 'Comparte su valor con un aliado cercano — su determinación crece con la tuya.',
+      promptText: 'Comparto mi valor con mi compañero, dejando que mi determinación fortalezca la suya.',
+      category: 'combate',
+      effects: ['AUMENTO'],
+      rol: 'utilidad',
+      preferredAttribute: 'carisma',
+      durationEffectMagnitude: 4,
+      durationEffectTurns: 2,
+      durationEffectTarget: 'companion',
       energyCost: ENERGY_COST_MEDIA,
     },
   },
@@ -401,6 +549,27 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       rol: 'ataque',
       preferredAttribute: 'destreza',
       attributeBonus: 2,
+      energyCost: ENERGY_COST_MEDIA,
+    },
+  },
+  // PROVOCACION real (2026-09-14, docs/rpgtarkor/clases.md — Lancero 32) — mismo camino de margen
+  // decisivo que Bastión Personal (Guardián 16): AGUANTE+PROVOCACION dispara cuando el defensor
+  // contragolpea con éxito. CONTRA se resuelve solo (mecanismo base de contragolpe, ver
+  // `defensorPuedeContragolpear` en combateMultiple.ts), no necesita ningún flag propio aquí.
+  {
+    level: 32,
+    clase: 'GUERRERO',
+    especializacion: 'LANCERO',
+    ability: {
+      name: 'Guardia de Asta',
+      icon: '🛡️',
+      description: 'Planta el asta en tierra y aguanta firme — quien se atreva a atacarle recibe una respuesta y no puede apartar la vista de él.',
+      promptText: 'Planto mi asta en tierra y aguanto firme, listo para responder a quien me ataque.',
+      category: 'combate',
+      effects: ['AGUANTE', 'PROVOCACION', 'CONTRA'],
+      rol: 'defensa',
+      preferredAttribute: 'constitucion',
+      attributeBonus: 4,
       energyCost: ENERGY_COST_MEDIA,
     },
   },
@@ -514,6 +683,26 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       energyRegen: 15,
     },
   },
+  // PROVOCACION real (2026-09-14, docs/rpgtarkor/clases.md — Especialista 28) — mismo camino de
+  // margen decisivo que Bastión Personal/Guardia de Asta: AGUANTE+PROVOCACION dispara al
+  // contragolpear con éxito.
+  {
+    level: 28,
+    clase: 'GUERRERO',
+    especializacion: 'ESPECIALISTA',
+    ability: {
+      name: 'Postura Firme',
+      icon: '🧱',
+      description: 'Se planta con firmeza absoluta — y en cuanto responde al golpe, el rival ya no puede apartar la vista de él.',
+      promptText: 'Me planto con firmeza absoluta, forzando al rival a fijarse en mí.',
+      category: 'combate',
+      effects: ['AGUANTE', 'PROVOCACION', 'CONTRA'],
+      rol: 'defensa',
+      preferredAttribute: 'constitucion',
+      attributeBonus: 4,
+      energyCost: ENERGY_COST_MEDIA,
+    },
+  },
   // AUMENTO en defensa real (2026-08-31, confirmado leyendo el motor: se aplica también cuando el
   // JUGADOR defiende con una habilidad de rol 'defensa', no solo al atacar — mismo mecanismo que
   // Golpe Runa de Cólera espejado). Tramo alto de la ficha (diferencia 6, +6 constitución).
@@ -534,6 +723,52 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       durationEffectMagnitude: 6,
       durationEffectTurns: 3,
       energyCost: ENERGY_COST_AVANZADA,
+    },
+  },
+  // AUMENTO real, camino independiente (2026-09-15, docs/rpgtarkor/clases.md — Especialista 36,
+  // Grito Improvisado) — mismo mecanismo que Valor Compartido (Guardián 32): `INTIMIDACION` sigue
+  // aplicando su cancelación normal del ataque entrante, `AUMENTO` se redirige al Companion propio
+  // vía `durationEffectTarget:'companion'`. `MULTIPLE` combinado se queda sin construir (mismo
+  // criterio de simplificación que Valor Compartido).
+  {
+    level: 36,
+    clase: 'GUERRERO',
+    especializacion: 'ESPECIALISTA',
+    ability: {
+      name: 'Grito Improvisado',
+      icon: '📣',
+      description: 'Un grito improvisado que descoloca al rival — y de paso anima a tu compañero a dar más de sí.',
+      promptText: 'Grito improvisadamente, descolocando al rival y animando a mi compañero.',
+      category: 'combate',
+      effects: ['INTIMIDACION', 'AUMENTO'],
+      rol: 'utilidad',
+      preferredAttribute: 'carisma',
+      durationEffectMagnitude: 4,
+      durationEffectTurns: 2,
+      durationEffectTarget: 'companion',
+      energyCost: ENERGY_COST_AVANZADA,
+    },
+  },
+  // CURAZION real, camino independiente (2026-09-15, Especialista 40, capstone) — mismo mecanismo
+  // que Manto de Purificación/Sed de Vida: quien la usa mejora su propia condición un escalón.
+  // RECUPERACION combinado ya funciona (energía extra), LIMITADA (1 uso por combate) vía
+  // `maxUsesPerCombat` — cierra Especialista al completo.
+  {
+    level: 40,
+    clase: 'GUERRERO',
+    especializacion: 'ESPECIALISTA',
+    ability: {
+      name: 'Segunda Oportunidad',
+      icon: '🕊️',
+      description: 'Una última reserva de voluntad que le da una segunda oportunidad en pleno combate.',
+      promptText: 'Saco una última reserva de voluntad, dándome una segunda oportunidad.',
+      category: 'combate',
+      effects: ['RECUPERACION', 'CURAZION'],
+      rol: 'utilidad',
+      preferredAttribute: 'constitucion',
+      energyRegen: 15,
+      maxUsesPerCombat: 1,
+      energyCost: ENERGY_COST_EXPERTA,
     },
   },
 
@@ -651,6 +886,29 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       energyCost: ENERGY_COST_MEDIA,
     },
   },
+  // MARCAR real (2026-09-14, combate múltiple) — "marcas un objetivo para tu presa ataque durante 3
+  // turnos": el jugador dispara y ordena a SU COMPANION que ataque preferentemente a ese rival
+  // (`marcaObjetivoRondas`/`marcaObjetivoId` en el Companion, resuelto por `resolverEnganchesRonda`
+  // vía el mapa `marcas`) — solo la parte de orden a la bestia tiene motor real; la energía
+  // recuperada al jugador (RECUPERACION) sí reutiliza el mismo camino ya construido para el resto
+  // del catálogo. Como PROVOCACION, dispara por el camino independiente (rol utilidad), nunca por
+  // margen decisivo.
+  {
+    level: 24,
+    clase: 'CAZADOR',
+    especializacion: 'DOMADOR',
+    ability: {
+      name: 'Concentración del Domador',
+      icon: '🎯',
+      description: 'Te concentras y marcas a un rival — tu bestia lo persigue como presa durante varios turnos, mientras recuperas el aliento.',
+      promptText: 'Me concentro, marco a un rival como presa para mi bestia y recupero el aliento.',
+      category: 'combate',
+      effects: ['RECUPERACION', 'MARCAR'],
+      rol: 'utilidad',
+      preferredAttribute: 'voluntad',
+      energyCost: ENERGY_COST_MEDIA,
+    },
+  },
   // Adiestrar (nv.28, "tu compañero te defiende de un ataque aumentando en +4 SU constitución")
   // SIGUE sin sembrar (2026-09-09) — a diferencia de 16, aquí es LA BESTIA quien tira la defensa
   // (con su propio atributo), no el jugador con un efecto redirigido: `durationEffectTarget`
@@ -658,6 +916,52 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
   // jugador tirando voluntad reinterpretaría la ficha, no la construiría — mismo bloqueo
   // estructural que "rol dual" (Tirador 40): el motor no tiene ningún mecanismo de "otro
   // participante interviene en tu defensa con su propio atributo". Sigue bloqueada de verdad.
+
+  // Grito Animal real (2026-09-14, docs/rpgtarkor/clases.md — Domador 32) — "aumenta +2 todos los
+  // stats durante 2 turnos del compañero Y a ti mismo" es `AUMENTO` doble simultáneo
+  // (`durationEffectTarget:'both'`, nuevo esta sesión — a diferencia de 'companion', NO excluye al
+  // atacante). El tramo de ATURDIMIENTO de la ficha real tiene 2 umbrales propios (diferencia >6 =
+  // solo al objetivo, diferencia =12 = a TODOS) que no coinciden con el margen decisivo único del
+  // motor (±10) — mismo criterio de simplificación consciente que el resto del catálogo (Giro
+  // Toxina Paralizante): solo el tramo MÁS ALTO, reutilizando `AREA` ofensivo ya construido esta
+  // misma sesión en vez de duplicar mecánica.
+  {
+    level: 32,
+    clase: 'CAZADOR',
+    especializacion: 'DOMADOR',
+    ability: {
+      name: 'Grito Animal',
+      icon: '🐾',
+      description: 'Conectas con tu compañero en un grito mutuo — ambos ganan fuerza a la vez, y el eco aturde a todo rival que lo oiga.',
+      promptText: 'Conecto con mi compañero en un grito mutuo, buscando que el eco aturda a todos mis rivales.',
+      category: 'combate',
+      effects: ['ATAQUE', 'ATURDIMIENTO', 'AREA', 'AUMENTO'],
+      rol: 'ataque',
+      preferredAttribute: 'carisma',
+      durationEffectMagnitude: 2,
+      durationEffectTurns: 2,
+      durationEffectTarget: 'both',
+      energyCost: ENERGY_COST_AVANZADA,
+    },
+  },
+  // Alfa de la Manada real (2026-09-14, docs/rpgtarkor/clases.md — Domador 40, capstone) — pasiva
+  // pura, sin turno de combate que resolver (mismo patrón que "Compañero cazador", nv.12): amplía
+  // `maxSlotsDomadorFor` de 1 a 2 (`companionSupervivencia.ts`), y el buff pasivo real
+  // (`alfaDeLaManadaBonusFor`, +2 voluntad a ambas bestias con los 2 slots cubiertos + 2 fuerza
+  // extra a quien el jugador marque como Alfa vía `POST /saves/:id/companeros/:companionId/alfa`)
+  // se recalcula en cada lectura de atributos del Companion, no aquí.
+  {
+    level: 40,
+    clase: 'CAZADOR',
+    especializacion: 'DOMADOR',
+    ability: {
+      name: 'Alfa de la Manada',
+      icon: '👑',
+      description: 'Ganas un segundo slot de mascota, y puedes elegir un Alfa entre tus dos bestias — ambas se fortalecen juntas, y el Alfa un poco más.',
+      promptText: 'Me preparo para liderar dos bestias a la vez, eligiendo cuál de ellas será mi Alfa.',
+      category: 'general',
+    },
+  },
 
   // --- Supervivencia (12/16/19/24/28/32/36/40 — 12/16/19/32/40 listas) ---
   //
@@ -786,6 +1090,29 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       effects: ['ATAQUE', 'MULTIPLE'],
       rol: 'ataque',
       preferredAttribute: 'fuerza',
+      energyCost: ENERGY_COST_AVANZADA,
+    },
+  },
+  // AREA real (2026-09-14, combate múltiple) — "todo el que le ataque se queda aturdido" durante
+  // 2 turnos, variante PERSISTENTE: sustituye el MULTIPLE del doc original (bug histórico ya
+  // documentado arriba) — coloca la trampa (activa `areaTrampaPorRondas` sobre quien la usa,
+  // camino independiente/utilidad, "si ganas la tirada") y, mientras esté viva, cualquier
+  // intercambio donde el dueño defienda refuerza el contragolpe con ATURDIMIENTO, sin importar
+  // quién ataque (`resolverIntercambioCompleto` § `defensorTieneTrampaActiva`).
+  {
+    level: 32,
+    clase: 'CAZADOR',
+    especializacion: 'SUPERVIVENCIA',
+    ability: {
+      name: 'Trampa Improvisada',
+      icon: '🪤',
+      description: 'Coloca trampas improvisadas a su alrededor — todo el que le ataque en los próximos turnos corre el riesgo de quedar aturdido.',
+      promptText: 'Coloco trampas improvisadas a mi alrededor, listas para aturdir a quien me ataque.',
+      category: 'combate',
+      effects: ['ATURDIMIENTO', 'AREA', 'LIMITADA'],
+      rol: 'utilidad',
+      preferredAttribute: 'inteligencia',
+      maxUsesPerCombat: 1,
       energyCost: ENERGY_COST_AVANZADA,
     },
   },
@@ -1028,6 +1355,28 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       attributeBonus: 6,
       durationEffectMagnitude: -4,
       durationEffectTurns: 2,
+      energyCost: ENERGY_COST_MEDIA,
+    },
+  },
+  // AREA real (2026-09-14, combate múltiple) — "te defiende de TODOS los ataques dirigidos a ti":
+  // dispara con AGUANTE+AREA en margen decisivo (contragolpea con éxito), activa
+  // `areaDefensaPorRondas` sobre quien la usa — mientras esté viva, redirige cada golpe futuro
+  // dirigido al aliado protegido hacia quien la activó (`redirigirPorAreaDefensiva`,
+  // combateMultipleOrquestacion.ts), no un disparo único.
+  {
+    level: 28,
+    clase: 'CAZADOR',
+    especializacion: 'INSTINTIVO',
+    ability: {
+      name: 'Instinto de Reserva',
+      icon: '🛡️',
+      description: 'Tu bestia se interpone entre tú y cualquier peligro — te cubre de todo lo que venga durante un par de turnos.',
+      promptText: 'Dejo que mi bestia se interponga entre yo y el peligro, cubriéndome de todo lo que venga.',
+      category: 'combate',
+      effects: ['AGUANTE', 'RECUPERACION', 'AREA'],
+      rol: 'defensa',
+      preferredAttribute: 'inteligencia',
+      attributeBonus: 4,
       energyCost: ENERGY_COST_MEDIA,
     },
   },
@@ -1482,6 +1831,43 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       energyCost: ENERGY_COST_MEDIA,
     },
   },
+  // AREA real (2026-09-14, combate múltiple) — "inmoviliza a TODOS los rivales", sustituye el
+  // MULTIPLE (un único extra) que el doc original le asignaba por error — genuinamente distinto,
+  // ver AbilityEffect.AREA en schema.prisma.
+  {
+    level: 32,
+    clase: 'CHAMAN',
+    especializacion: 'OPRESOR',
+    ability: {
+      name: 'Runa de Sujeción',
+      icon: '⛓️',
+      description: 'Traza una runa de sujeción en el aire — inmoviliza brevemente a todo rival que la sienta.',
+      promptText: 'Trazo una runa de sujeción, buscando inmovilizar a todos mis rivales a la vez.',
+      category: 'combate',
+      effects: ['ATAQUE', 'ATURDIMIENTO', 'AREA'],
+      rol: 'ataque',
+      preferredAttribute: 'voluntad',
+      energyCost: ENERGY_COST_MEDIA,
+    },
+  },
+  {
+    level: 36,
+    clase: 'CHAMAN',
+    especializacion: 'OPRESOR',
+    ability: {
+      name: 'Grieta de Voluntad',
+      icon: '💥',
+      description: 'Una grieta rúnica que quiebra la voluntad de todo rival a su alcance.',
+      promptText: 'Abro una grieta rúnica, buscando quebrar la voluntad de todos mis rivales a la vez.',
+      category: 'combate',
+      effects: ['ATAQUE', 'DEBILIDAD', 'AREA'],
+      rol: 'ataque',
+      preferredAttribute: 'magia',
+      durationEffectMagnitude: -4,
+      durationEffectTurns: 1,
+      energyCost: ENERGY_COST_MEDIA,
+    },
+  },
 
   // ══════════════════════════════════════════════════════════════════════════
   // ARQUERO — tronco común (1/4/6/8)
@@ -1556,7 +1942,31 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
     },
   },
 
-  // --- Maestro Arquero (12/16/19/24/28/32/36/40 — solo 16 lista) ---
+  // --- Maestro Arquero (12/16/19/24/28/32/36/40 — 2026-09-14: 12/19/24/28/32 sembradas por
+  // reutilizar motor ya real en otras clases (DEBILIDAD/CONTRA/AUMENTO/MULTIPLE), 36 por CANALIZAR
+  // real en combate múltiple desde esta misma sesión — solo 40 (CANALIZAR+LETAL combinado) se queda
+  // sin construir a propósito: ninguna otra ficha de clases.md combina esos 2 efectos, así que no
+  // hay precedente de cómo debería resolverse el "golpe letal diferido" frente al "golpe normal
+  // diferido" ya construido — mismo criterio de "sin cifra/mecanismo real que inventar" del resto
+  // del catálogo. 6 de 8 listas tras esta siembra, antes 1 de 8.) ---
+  {
+    level: 12,
+    clase: 'ARQUERO',
+    especializacion: 'MAESTRO_ARQUERO',
+    ability: {
+      name: 'Flecha Certera',
+      icon: '🏹',
+      description: 'Un disparo calculado que, si conecta de lleno, deja al rival con puntería mermada.',
+      promptText: 'Disparo con calma, buscando mermar la puntería de mi rival.',
+      category: 'combate',
+      effects: ['ATAQUE', 'DEBILIDAD'],
+      rol: 'ataque',
+      preferredAttribute: 'destreza',
+      durationEffectMagnitude: -4,
+      durationEffectTurns: 2,
+      energyCost: ENERGY_COST_BASICA,
+    },
+  },
   {
     level: 16,
     clase: 'ARQUERO',
@@ -1573,8 +1983,114 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       energyCost: ENERGY_COST_MEDIA,
     },
   },
+  {
+    level: 19,
+    clase: 'ARQUERO',
+    especializacion: 'MAESTRO_ARQUERO',
+    ability: {
+      name: 'Paso Calculado',
+      icon: '📐',
+      description: 'Corrige distancia y viento antes del tiro — una defensa que, si es decisiva, responde con un disparo propio.',
+      promptText: 'Corrijo distancia y viento, listo para responder si el ataque falla.',
+      category: 'combate',
+      effects: ['AGUANTE', 'CONTRA'],
+      rol: 'defensa',
+      preferredAttribute: 'inteligencia',
+      attributeBonus: 3,
+      energyCost: ENERGY_COST_MEDIA,
+    },
+  },
+  {
+    level: 24,
+    clase: 'ARQUERO',
+    especializacion: 'MAESTRO_ARQUERO',
+    ability: {
+      name: 'Postura de Tirador',
+      icon: '🧍',
+      description: 'Una postura firme que estabiliza el disparo — la base de toda puntería duradera.',
+      promptText: 'Adopto una postura firme, buscando estabilizar mi puntería.',
+      category: 'combate',
+      effects: ['ATAQUE', 'AUMENTO'],
+      rol: 'ataque',
+      preferredAttribute: 'constitucion',
+      durationEffectMagnitude: 4,
+      durationEffectTurns: 2,
+      energyCost: ENERGY_COST_MEDIA,
+    },
+  },
+  {
+    level: 28,
+    clase: 'ARQUERO',
+    especializacion: 'MAESTRO_ARQUERO',
+    ability: {
+      name: 'Disparo Perforante',
+      icon: '💪',
+      description: 'Tensa el arco al máximo — un tiro de fuerza bruta que deja al rival tambaleante.',
+      promptText: 'Tenso el arco al máximo, buscando un tiro de fuerza bruta.',
+      category: 'combate',
+      effects: ['ATAQUE', 'DEBILIDAD'],
+      rol: 'ataque',
+      preferredAttribute: 'fuerza',
+      durationEffectMagnitude: -6,
+      durationEffectTurns: 1,
+      energyCost: ENERGY_COST_AVANZADA,
+    },
+  },
+  {
+    level: 32,
+    clase: 'ARQUERO',
+    especializacion: 'MAESTRO_ARQUERO',
+    ability: {
+      name: 'Tiro Múltiple',
+      icon: '🎯',
+      description: 'Varias flechas a la vez, en abanico — si conecta de lleno, alcanza también a otro rival cercano.',
+      promptText: 'Disparo varias flechas en abanico, buscando alcanzar a más de un rival.',
+      category: 'combate',
+      effects: ['ATAQUE', 'MULTIPLE'],
+      rol: 'ataque',
+      preferredAttribute: 'destreza',
+      energyCost: ENERGY_COST_AVANZADA,
+    },
+  },
+  {
+    level: 36,
+    clase: 'ARQUERO',
+    especializacion: 'MAESTRO_ARQUERO',
+    ability: {
+      name: 'Tiro en Cadena',
+      icon: '⛓️',
+      description: 'Una concentración larga que, al soltar la cuerda, mejora la precisión varios turnos.',
+      promptText: 'Me concentro largamente, canalizando mi puntería para el disparo definitivo.',
+      category: 'combate',
+      effects: ['ATAQUE', 'CANALIZAR', 'AUMENTO'],
+      rol: 'ataque',
+      preferredAttribute: 'destreza',
+      durationEffectMagnitude: 6,
+      durationEffectTurns: 2,
+      energyCost: ENERGY_COST_AVANZADA,
+    },
+  },
 
-  // --- Maestro Ballestero (12/16/19/24/28/32/36/40 — solo 16 lista, reflavor de Maestro Arquero) ---
+  // --- Maestro Ballestero (12/16/19/24/28/32/36/40 — mismo reparto que Maestro Arquero, ver
+  // comentario de esa sección) ---
+  {
+    level: 12,
+    clase: 'ARQUERO',
+    especializacion: 'MAESTRO_BALLESTERO',
+    ability: {
+      name: 'Perno Certero',
+      icon: '🎯',
+      description: 'Un disparo calculado que, si conecta de lleno, deja al rival con puntería mermada.',
+      promptText: 'Disparo con calma, buscando mermar la puntería de mi rival.',
+      category: 'combate',
+      effects: ['ATAQUE', 'DEBILIDAD'],
+      rol: 'ataque',
+      preferredAttribute: 'destreza',
+      durationEffectMagnitude: -4,
+      durationEffectTurns: 2,
+      energyCost: ENERGY_COST_BASICA,
+    },
+  },
   {
     level: 16,
     clase: 'ARQUERO',
@@ -1589,6 +2105,93 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       rol: 'ataque',
       preferredAttribute: 'destreza',
       energyCost: ENERGY_COST_MEDIA,
+    },
+  },
+  {
+    level: 19,
+    clase: 'ARQUERO',
+    especializacion: 'MAESTRO_BALLESTERO',
+    ability: {
+      name: 'Cálculo de Viento',
+      icon: '📐',
+      description: 'Corrige distancia y viento antes del tiro — una defensa que, si es decisiva, responde con un disparo propio.',
+      promptText: 'Corrijo distancia y viento, listo para responder si el ataque falla.',
+      category: 'combate',
+      effects: ['AGUANTE', 'CONTRA'],
+      rol: 'defensa',
+      preferredAttribute: 'inteligencia',
+      attributeBonus: 3,
+      energyCost: ENERGY_COST_MEDIA,
+    },
+  },
+  {
+    level: 24,
+    clase: 'ARQUERO',
+    especializacion: 'MAESTRO_BALLESTERO',
+    ability: {
+      name: 'Postura de Tirador',
+      icon: '🧍',
+      description: 'Una postura firme que estabiliza el disparo — la base de toda puntería duradera.',
+      promptText: 'Adopto una postura firme, buscando estabilizar mi puntería.',
+      category: 'combate',
+      effects: ['ATAQUE', 'AUMENTO'],
+      rol: 'ataque',
+      preferredAttribute: 'constitucion',
+      durationEffectMagnitude: 4,
+      durationEffectTurns: 2,
+      energyCost: ENERGY_COST_MEDIA,
+    },
+  },
+  {
+    level: 28,
+    clase: 'ARQUERO',
+    especializacion: 'MAESTRO_BALLESTERO',
+    ability: {
+      name: 'Perno Perforante',
+      icon: '💪',
+      description: 'Tensa la ballesta al máximo — un tiro de fuerza bruta que deja al rival tambaleante.',
+      promptText: 'Tenso la ballesta al máximo, buscando un tiro de fuerza bruta.',
+      category: 'combate',
+      effects: ['ATAQUE', 'DEBILIDAD'],
+      rol: 'ataque',
+      preferredAttribute: 'fuerza',
+      durationEffectMagnitude: -6,
+      durationEffectTurns: 1,
+      energyCost: ENERGY_COST_AVANZADA,
+    },
+  },
+  {
+    level: 32,
+    clase: 'ARQUERO',
+    especializacion: 'MAESTRO_BALLESTERO',
+    ability: {
+      name: 'Segundo Aliento del Cazador',
+      icon: '🎯',
+      description: 'Varios pernos a la vez, en abanico — si conecta de lleno, alcanza también a otro rival cercano.',
+      promptText: 'Disparo varios pernos en abanico, buscando alcanzar a más de un rival.',
+      category: 'combate',
+      effects: ['ATAQUE', 'MULTIPLE'],
+      rol: 'ataque',
+      preferredAttribute: 'destreza',
+      energyCost: ENERGY_COST_AVANZADA,
+    },
+  },
+  {
+    level: 36,
+    clase: 'ARQUERO',
+    especializacion: 'MAESTRO_BALLESTERO',
+    ability: {
+      name: 'Recarga en Cadena',
+      icon: '⛓️',
+      description: 'Una recarga larga y concentrada que, al soltar el gatillo, mejora la precisión varios turnos.',
+      promptText: 'Me concentro largamente, canalizando mi puntería para el disparo definitivo.',
+      category: 'combate',
+      effects: ['ATAQUE', 'CANALIZAR', 'AUMENTO'],
+      rol: 'ataque',
+      preferredAttribute: 'destreza',
+      durationEffectMagnitude: 6,
+      durationEffectTurns: 2,
+      energyCost: ENERGY_COST_AVANZADA,
     },
   },
 
@@ -1756,6 +2359,51 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
   },
 
   // --- Caballero del Valor (12/16/19/24/28/32/36/40 — 19/24/36 listas) ---
+  // PROVOCACION real (2026-09-14, docs/rpgtarkor/clases.md) — Grito de Valentía (12) es la
+  // variante simple, camino independiente/utilidad (mismo gate que Desafío, Guardián 19). Grito de
+  // Coraje (28) es la variante "redirige el golpe dirigido a un aliado concreto" —
+  // `durationEffectTarget: 'companion'` distingue esta variante en el motor (ver comentario de
+  // `provocarCompanionRedirect`, combateMultipleOrquestacion.ts): en vez de forzar tu propio agro
+  // futuro, busca quién ataca a tu Companion EN TU PROPIO enganche de esta ronda y lo redirige
+  // hacia ti.
+  {
+    level: 12,
+    clase: 'CABALLERO',
+    especializacion: 'CABALLERO_DEL_VALOR',
+    ability: {
+      name: 'Grito de Valentía',
+      icon: '📢',
+      description: 'Un grito que nace del valor, no del miedo — el rival no puede evitar centrar en él toda su atención.',
+      promptText: 'Grito con todo mi valor, buscando que el rival centre en mí toda su atención.',
+      category: 'combate',
+      effects: ['PROVOCACION'],
+      rol: 'utilidad',
+      preferredAttribute: 'carisma',
+      energyCost: ENERGY_COST_BASICA,
+    },
+  },
+  // LIMPIAR real (2026-09-15, docs/rpgtarkor/clases.md — renombrado de RETIRAR, "retirar" inducía a
+  // pensar en huir del combate) — Manto de Purificación (16) y Purga de Honor (32, mismo
+  // mecanismo) limpian el DEBILIDAD de mayor magnitud negativa activo (`removeWorstDebilidad`,
+  // activeEffects.ts), camino independiente/utilidad, quien la usa se limpia a sí misma (mismo
+  // gate que AREA persistente/OCULTACION en ese camino). Sin ningún DEBILIDAD activo, se pierde en
+  // silencio, mismo criterio que el resto del motor.
+  {
+    level: 16,
+    clase: 'CABALLERO',
+    especializacion: 'CABALLERO_DEL_VALOR',
+    ability: {
+      name: 'Manto de Purificación',
+      icon: '✨',
+      description: 'Un manto de voluntad pura que limpia cualquier mal que se te haya pegado en combate.',
+      promptText: 'Dejo que mi voluntad me limpie de cualquier mal que se me haya pegado.',
+      category: 'combate',
+      effects: ['LIMPIAR'],
+      rol: 'utilidad',
+      preferredAttribute: 'voluntad',
+      energyCost: ENERGY_COST_MEDIA,
+    },
+  },
   {
     level: 19,
     clase: 'CABALLERO',
@@ -1789,6 +2437,39 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
     },
   },
   {
+    level: 28,
+    clase: 'CABALLERO',
+    especializacion: 'CABALLERO_DEL_VALOR',
+    ability: {
+      name: 'Grito de Coraje',
+      icon: '🛡️',
+      description: 'Un grito que se interpone entre el peligro y un compañero — el golpe que iba a alcanzarlo cambia de blanco.',
+      promptText: 'Grito y me interpongo, buscando que el golpe dirigido a mi compañero recaiga sobre mí.',
+      category: 'combate',
+      effects: ['PROVOCACION'],
+      rol: 'utilidad',
+      preferredAttribute: 'carisma',
+      durationEffectTarget: 'companion',
+      energyCost: ENERGY_COST_MEDIA,
+    },
+  },
+  {
+    level: 32,
+    clase: 'CABALLERO',
+    especializacion: 'CABALLERO_DEL_VALOR',
+    ability: {
+      name: 'Purga de Honor',
+      icon: '✨',
+      description: 'Purga con honor cualquier mal que le pese, negándose a dejar que lo debilite.',
+      promptText: 'Purgo con honor cualquier mal que me pese, negándome a que me debilite.',
+      category: 'combate',
+      effects: ['LIMPIAR'],
+      rol: 'utilidad',
+      preferredAttribute: 'voluntad',
+      energyCost: ENERGY_COST_AVANZADA,
+    },
+  },
+  {
     level: 36,
     clase: 'CABALLERO',
     especializacion: 'CABALLERO_DEL_VALOR',
@@ -1802,6 +2483,30 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       rol: 'ataque',
       preferredAttribute: 'fuerza',
       energyCost: ENERGY_COST_AVANZADA,
+    },
+  },
+  // Sacrificio del Valiente real (2026-09-15, capstone) — "te llevas el golpe dirigido a un
+  // aliado" es la MISMA variante que Grito de Coraje (redirección de Companion,
+  // `durationEffectTarget:'companion'`), pero disparada desde el lado DEFENSOR con margen decisivo
+  // (`AGUANTE`+`PROVOCACION`, `defensorProvocarCompanionRedirect` — combateMultipleOrquestacion.ts)
+  // en vez del lado atacante/utilidad. Nuevo caso real: hasta ahora la redirección de Companion
+  // solo se disparaba desde el atacante.
+  {
+    level: 40,
+    clase: 'CABALLERO',
+    especializacion: 'CABALLERO_DEL_VALOR',
+    ability: {
+      name: 'Sacrificio del Valiente',
+      icon: '🩸',
+      description: 'Se planta entre el peligro y un compañero — cualquier golpe dirigido a él, se lo lleva él.',
+      promptText: 'Me planto entre el peligro y mi compañero, listo para llevarme el golpe.',
+      category: 'combate',
+      effects: ['AGUANTE', 'PROVOCACION'],
+      rol: 'defensa',
+      preferredAttribute: 'constitucion',
+      attributeBonus: 4,
+      durationEffectTarget: 'companion',
+      energyCost: ENERGY_COST_EXPERTA,
     },
   },
 
@@ -1985,7 +2690,7 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
     },
   },
 
-  // --- Parca (12/16/19/24/28/32/36/40 — 12/24/36 listas) ---
+  // --- Parca (12/16/19/24/28/32/36/40 — CURAZION real 2026-09-15 cierra la especialización) ---
   {
     level: 12,
     clase: 'SEGADOR',
@@ -2000,6 +2705,44 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       rol: 'ataque',
       preferredAttribute: 'fuerza',
       energyCost: ENERGY_COST_BASICA,
+    },
+  },
+  // DEBILIDAD real, camino independiente (2026-09-15) — mismo gate que Asesino Tóxico.
+  {
+    level: 16,
+    clase: 'SEGADOR',
+    especializacion: 'PARCA',
+    ability: {
+      name: 'Toque de la Parca',
+      icon: '💀',
+      description: 'Un toque frío que roba fuerza al rival, un anticipo de lo que la Parca reserva.',
+      promptText: 'Toco al rival con un frío que le roba fuerza, un anticipo de lo que reservo.',
+      category: 'combate',
+      effects: ['DEBILIDAD'],
+      rol: 'utilidad',
+      preferredAttribute: 'voluntad',
+      durationEffectMagnitude: -3,
+      durationEffectTurns: 2,
+      energyCost: ENERGY_COST_MEDIA,
+    },
+  },
+  // CURAZION real, vampirismo (2026-09-15, `oneStepBetterThan`, death.ts) — margen decisivo,
+  // ATAQUE+CURAZION: "roba vida al golpear" se simplifica a mejorar un escalón la condición física
+  // de quien ataca, mismo criterio de simplificación que el resto del catálogo.
+  {
+    level: 19,
+    clase: 'SEGADOR',
+    especializacion: 'PARCA',
+    ability: {
+      name: 'Sed de Vida',
+      icon: '🩸',
+      description: 'Golpea robando algo de vida a cada corte, un beneficio real más allá del daño hecho.',
+      promptText: 'Golpeo dejando que la sed de vida robe fuerza del rival hacia mí.',
+      category: 'combate',
+      effects: ['ATAQUE', 'CURAZION'],
+      rol: 'ataque',
+      preferredAttribute: 'constitucion',
+      energyCost: ENERGY_COST_AVANZADA,
     },
   },
   {
@@ -2019,6 +2762,43 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
     },
   },
   {
+    level: 28,
+    clase: 'SEGADOR',
+    especializacion: 'PARCA',
+    ability: {
+      name: 'Marca de la Guadaña',
+      icon: '🌾',
+      description: 'Marca al rival con la sombra de la guadaña — su fuerza mengua mientras la sombra dura.',
+      promptText: 'Marco al rival con la sombra de mi guadaña, dejando que mengüe su fuerza.',
+      category: 'combate',
+      effects: ['DEBILIDAD'],
+      rol: 'utilidad',
+      preferredAttribute: 'inteligencia',
+      durationEffectMagnitude: -3,
+      durationEffectTurns: 2,
+      energyCost: ENERGY_COST_AVANZADA,
+    },
+  },
+  // CURAZION real, transmutación defensiva (2026-09-15) — CURAZION solo (sin ATAQUE), rol defensa:
+  // "transmuta el daño recibido" mejora un escalón la condición física TRAS recibir el golpe,
+  // mitigando parte del daño — mismo criterio de simplificación que Sed de Vida (arriba).
+  {
+    level: 32,
+    clase: 'SEGADOR',
+    especializacion: 'PARCA',
+    ability: {
+      name: 'Robo de Vitalidad',
+      icon: '🩸',
+      description: 'Transmuta el daño recibido en vitalidad propia, mitigando el golpe con su propia energía vital.',
+      promptText: 'Dejo que el daño recibido se transmute en vitalidad propia.',
+      category: 'combate',
+      effects: ['CURAZION'],
+      rol: 'defensa',
+      preferredAttribute: 'constitucion',
+      energyCost: ENERGY_COST_AVANZADA,
+    },
+  },
+  {
     level: 36,
     clase: 'SEGADOR',
     especializacion: 'PARCA',
@@ -2034,8 +2814,43 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       energyCost: ENERGY_COST_AVANZADA,
     },
   },
+  {
+    level: 40,
+    clase: 'SEGADOR',
+    especializacion: 'PARCA',
+    ability: {
+      name: 'Último Suspiro',
+      icon: '💀',
+      description: 'El golpe definitivo de la Parca — devuelve al propio portador parte de la vida que arrebata.',
+      promptText: 'Descargo el golpe definitivo, dejando que me devuelva parte de la vida que arrebato.',
+      category: 'combate',
+      effects: ['ATAQUE', 'CURAZION'],
+      rol: 'ataque',
+      preferredAttribute: 'fuerza',
+      attributeBonus: 6,
+      energyCost: ENERGY_COST_EXPERTA,
+    },
+  },
 
-  // --- Maldito (12/16/19/24/28/32/36/40 — 16/19/24/32 listas) ---
+  // --- Maldito (12/16/19/24/28/32/36/40 — 12/16/19/24/28/32/36/40 listas, DEBILIDAD real 2026-09-15 cierra 8/8) ---
+  {
+    level: 12,
+    clase: 'SEGADOR',
+    especializacion: 'MALDITO',
+    ability: {
+      name: 'Maldición Susurrada',
+      icon: '🗣️',
+      description: 'Un susurro maldito que se cuela bajo la piel del rival, debilitándolo poco a poco.',
+      promptText: 'Susurro una maldición que se cuela bajo la piel del rival.',
+      category: 'combate',
+      effects: ['DEBILIDAD'],
+      rol: 'utilidad',
+      preferredAttribute: 'voluntad',
+      durationEffectMagnitude: -2,
+      durationEffectTurns: 2,
+      energyCost: ENERGY_COST_BASICA,
+    },
+  },
   {
     level: 16,
     clase: 'SEGADOR',
@@ -2086,6 +2901,24 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
     },
   },
   {
+    level: 28,
+    clase: 'SEGADOR',
+    especializacion: 'MALDITO',
+    ability: {
+      name: 'Susurro Debilitante',
+      icon: '🗣️',
+      description: 'Un susurro que quiebra la voluntad del rival, dejándolo más vulnerable.',
+      promptText: 'Susurro palabras que quiebran la voluntad del rival.',
+      category: 'combate',
+      effects: ['DEBILIDAD'],
+      rol: 'utilidad',
+      preferredAttribute: 'carisma',
+      durationEffectMagnitude: -3,
+      durationEffectTurns: 2,
+      energyCost: ENERGY_COST_AVANZADA,
+    },
+  },
+  {
     level: 32,
     clase: 'SEGADOR',
     especializacion: 'MALDITO',
@@ -2101,8 +2934,44 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       energyCost: ENERGY_COST_AVANZADA,
     },
   },
+  {
+    level: 36,
+    clase: 'SEGADOR',
+    especializacion: 'MALDITO',
+    ability: {
+      name: 'Maldición Profunda',
+      icon: '🌑',
+      description: 'Una maldición que cala hondo, socavando la mente del rival por dentro.',
+      promptText: 'Impongo una maldición que cala hondo, socavando la mente del rival.',
+      category: 'combate',
+      effects: ['DEBILIDAD'],
+      rol: 'utilidad',
+      preferredAttribute: 'inteligencia',
+      durationEffectMagnitude: -4,
+      durationEffectTurns: 3,
+      energyCost: ENERGY_COST_EXPERTA,
+    },
+  },
+  {
+    level: 40,
+    clase: 'SEGADOR',
+    especializacion: 'MALDITO',
+    ability: {
+      name: 'Maldición Final',
+      icon: '☠️',
+      description: 'La maldición definitiva — quiebra al rival por dentro y lo deja sin margen de reacción.',
+      promptText: 'Impongo la maldición definitiva, quebrando al rival por dentro.',
+      category: 'combate',
+      effects: ['DEBILIDAD', 'ATURDIMIENTO'],
+      rol: 'utilidad',
+      preferredAttribute: 'voluntad',
+      durationEffectMagnitude: -5,
+      durationEffectTurns: 3,
+      energyCost: ENERGY_COST_EXPERTA,
+    },
+  },
 
-  // --- Ilustrado (12/16/19/24/28/32/36/40 — 12/16/19/28/32/40 listas) ---
+  // --- Ilustrado (12/16/19/24/28/32/36/40 — 12/16/19/24/28/32/36/40 listas, DEBILIDAD real 2026-09-15 cierra 8/8) ---
   {
     level: 12,
     clase: 'SEGADOR',
@@ -2152,6 +3021,24 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
     },
   },
   {
+    level: 24,
+    clase: 'SEGADOR',
+    especializacion: 'ILUSTRADO',
+    ability: {
+      name: 'Giro del Destino',
+      icon: '🔄',
+      description: 'Tuerce la suerte del rival en tu favor — lo que iba a jugar en su beneficio ahora te beneficia a ti.',
+      promptText: 'Tuerzo la suerte del rival, dejando que su fortuna juegue a mi favor.',
+      category: 'combate',
+      effects: ['DEBILIDAD'],
+      rol: 'utilidad',
+      preferredAttribute: 'carisma',
+      durationEffectMagnitude: -3,
+      durationEffectTurns: 2,
+      energyCost: ENERGY_COST_AVANZADA,
+    },
+  },
+  {
     level: 28,
     clase: 'SEGADOR',
     especializacion: 'ILUSTRADO',
@@ -2184,6 +3071,24 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
     },
   },
   {
+    level: 36,
+    clase: 'SEGADOR',
+    especializacion: 'ILUSTRADO',
+    ability: {
+      name: 'Manipulación del Azar',
+      icon: '🎲',
+      description: 'Manipula el azar mismo — lo que parecía suerte del rival se revela una trampa calculada.',
+      promptText: 'Manipulo el azar, revelando que la suerte del rival era una trampa calculada.',
+      category: 'combate',
+      effects: ['DEBILIDAD'],
+      rol: 'utilidad',
+      preferredAttribute: 'carisma',
+      durationEffectMagnitude: -4,
+      durationEffectTurns: 2,
+      energyCost: ENERGY_COST_EXPERTA,
+    },
+  },
+  {
     level: 40,
     clase: 'SEGADOR',
     especializacion: 'ILUSTRADO',
@@ -2200,7 +3105,7 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
     },
   },
 
-  // --- Transmutador (12/16/19/24/28/32/36/40 — solo 12/24 listas) ---
+  // --- Transmutador (12/16/19/24/28/32/36/40 — REFLEJAR/CURAZION real 2026-09-15) ---
   {
     level: 12,
     clase: 'SEGADOR',
@@ -2217,6 +3122,46 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       energyCost: ENERGY_COST_BASICA,
     },
   },
+  // REFLEJAR real, camino independiente (2026-09-15, `worstDebilidadOf`/`removeWorstDebilidad`,
+  // activeEffects.ts) — quien la usa quita de sí misma el DEBILIDAD de mayor magnitud negativa y lo
+  // reconstruye sobre el RIVAL de este intercambio. Sin ningún DEBILIDAD propio activo, se pierde
+  // en silencio, mismo criterio que LIMPIAR.
+  {
+    level: 16,
+    clase: 'SEGADOR',
+    especializacion: 'TRANSMUTADOR',
+    ability: {
+      name: 'Espejo Maldito',
+      icon: '🪞',
+      description: 'Un espejo que devuelve al rival el mal que a ti te aqueja, con la misma fuerza.',
+      promptText: 'Alzo un espejo maldito, devolviendo al rival el mal que me aqueja.',
+      category: 'combate',
+      effects: ['REFLEJAR'],
+      rol: 'utilidad',
+      preferredAttribute: 'voluntad',
+      energyCost: ENERGY_COST_MEDIA,
+    },
+  },
+  // CONVERSION real, transmutación propia (2026-09-15, `worstDebilidadOf`, activeEffects.ts) —
+  // convierte el DEBILIDAD propio de mayor magnitud negativa en AUMENTO (signo invertido, mismos
+  // atributo/turnos) — distinguida del CONVERSION ya existente (elige atributo del golpe, siempre
+  // con ATAQUE) por ir SOLA. Sin ningún DEBILIDAD propio activo, se pierde en silencio.
+  {
+    level: 19,
+    clase: 'SEGADOR',
+    especializacion: 'TRANSMUTADOR',
+    ability: {
+      name: 'Transmutación Menor',
+      icon: '🔄',
+      description: 'Convierte una debilidad propia en un pequeño beneficio, sin desperdiciar nada.',
+      promptText: 'Convierto mi propia debilidad en un pequeño beneficio.',
+      category: 'combate',
+      effects: ['CONVERSION'],
+      rol: 'utilidad',
+      preferredAttribute: 'inteligencia',
+      energyCost: ENERGY_COST_MEDIA,
+    },
+  },
   {
     level: 24,
     clase: 'SEGADOR',
@@ -2231,6 +3176,83 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       rol: 'ataque',
       preferredAttribute: 'fuerza',
       energyCost: ENERGY_COST_MEDIA,
+    },
+  },
+  {
+    level: 28,
+    clase: 'SEGADOR',
+    especializacion: 'TRANSMUTADOR',
+    ability: {
+      name: 'Espejo de Poder',
+      icon: '🪞',
+      description: 'Un espejo más pulido que devuelve el mal ajeno con mayor fuerza que antes.',
+      promptText: 'Alzo un espejo más pulido, devolviendo el mal con mayor fuerza.',
+      category: 'combate',
+      effects: ['REFLEJAR'],
+      rol: 'utilidad',
+      preferredAttribute: 'voluntad',
+      energyCost: ENERGY_COST_AVANZADA,
+    },
+  },
+  // CURAZION real, transmutación defensiva (2026-09-15) — CURAZION solo, rol defensa, mismo motor
+  // que Robo de Vitalidad (Parca 32): "transmuta el daño recibido en energía" se simplifica a
+  // mejorar un escalón la condición física, mismo criterio que el resto de CURAZION.
+  {
+    level: 32,
+    clase: 'SEGADOR',
+    especializacion: 'TRANSMUTADOR',
+    ability: {
+      name: 'Alquimia Vital',
+      icon: '⚗️',
+      description: 'Transmuta el daño recibido en energía pura, mitigando el golpe con pura alquimia.',
+      promptText: 'Transmuto el daño recibido en energía pura, mitigando el golpe.',
+      category: 'combate',
+      effects: ['CURAZION'],
+      rol: 'defensa',
+      preferredAttribute: 'constitucion',
+      energyCost: ENERGY_COST_AVANZADA,
+    },
+  },
+  // CONVERSION real, transmutación rival (2026-09-15, `bestAumentoOf`/`worstDebilidadOf`,
+  // activeEffects.ts) — convierte el AUMENTO del RIVAL en DEBILIDAD y su DEBILIDAD en AUMENTO ("y
+  // viceversa"), ambos con signo invertido — distinguida por combinar CONVERSION+REFLEJAR (nunca
+  // con ATAQUE). Sin ningún AUMENTO/DEBILIDAD real del rival, esa mitad se pierde en silencio.
+  {
+    level: 36,
+    clase: 'SEGADOR',
+    especializacion: 'TRANSMUTADOR',
+    ability: {
+      name: 'Transmutación Mayor',
+      icon: '🔀',
+      description: 'Convierte un buff del rival en debilidad, y una debilidad suya en beneficio — el equilibrio se invierte.',
+      promptText: 'Invierto el equilibrio: el buff del rival se vuelve debilidad, y su debilidad, beneficio.',
+      category: 'combate',
+      effects: ['CONVERSION', 'REFLEJAR'],
+      rol: 'utilidad',
+      preferredAttribute: 'inteligencia',
+      energyCost: ENERGY_COST_EXPERTA,
+    },
+  },
+  // Equilibrio Roto real (2026-09-15, capstone) — mismo mecanismo EXACTO que Transmutación Mayor
+  // (CONVERSION+REFLEJAR, invierte AUMENTO/DEBILIDAD del rival) — "invierte TODOS los efectos
+  // activos entre ambos combatientes" se simplifica al mismo alcance de Transmutación Mayor (el
+  // mejor/peor de cada tipo, no "todos" literal — mismo criterio de simplificación que el resto del
+  // catálogo, p.ej. Grieta Elemental/MULTIPLE con varios objetivos a la vez).
+  {
+    level: 40,
+    clase: 'SEGADOR',
+    especializacion: 'TRANSMUTADOR',
+    ability: {
+      name: 'Equilibrio Roto',
+      icon: '⚖️',
+      description: 'El equilibrio definitivo — invierte lo que el rival tenía a su favor y en su contra, todo a la vez.',
+      promptText: 'Rompo el equilibrio, invirtiendo lo que el rival tenía a su favor y en su contra.',
+      category: 'combate',
+      effects: ['CONVERSION', 'REFLEJAR'],
+      rol: 'utilidad',
+      preferredAttribute: 'inteligencia',
+      attributeBonus: 4,
+      energyCost: ENERGY_COST_EXPERTA,
     },
   },
 
@@ -2413,7 +3435,32 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
     },
   },
 
-  // --- Asesino Tóxico (12/16/19/24/28/32/36/40 — 16/24/32 listas) ---
+  // --- Asesino Tóxico (12/16/19/24/28/32/36/40 — DEBILIDAD real 2026-09-15 cierra la especialización) ---
+  // DEBILIDAD real (2026-09-15, docs/rpgtarkor/clases.md — "depende mucho de DEBILIDAD"): Filo
+  // Envenenado/Veneno Corrosivo/Toxina Acumulada son rol utilidad puro (camino independiente,
+  // `atacanteDebilidadUtilidadDisparada`); Veneno Paralizante combina DEBILIDAD+ATURDIMIENTO sin
+  // MULTIPLE, mismo camino (ambos disparan independientemente, sin interferir); Última Dosis es
+  // ATAQUE+DEBILIDAD, margen decisivo (motor existente desde 2026-08-26). "Se intensifica con cada
+  // golpe" de Toxina Acumulada se simplifica a magnitud/turnos fijos, mismo criterio del resto del
+  // catálogo con escalado descrito en texto.
+  {
+    level: 12,
+    clase: 'ASESINO',
+    especializacion: 'ASESINO_TOXICO',
+    ability: {
+      name: 'Filo Envenenado',
+      icon: '🗡️',
+      description: 'Una hoja fina, impregnada de un veneno que debilita antes de que el golpe cuente.',
+      promptText: 'Rozo al rival con mi hoja envenenada, dejando que el veneno haga su trabajo.',
+      category: 'combate',
+      effects: ['DEBILIDAD'],
+      rol: 'utilidad',
+      preferredAttribute: 'destreza',
+      durationEffectMagnitude: -2,
+      durationEffectTurns: 2,
+      energyCost: ENERGY_COST_BASICA,
+    },
+  },
   {
     level: 16,
     clase: 'ASESINO',
@@ -2428,6 +3475,24 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       rol: 'ataque',
       preferredAttribute: 'destreza',
       energyCost: ENERGY_COST_MEDIA,
+    },
+  },
+  {
+    level: 19,
+    clase: 'ASESINO',
+    especializacion: 'ASESINO_TOXICO',
+    ability: {
+      name: 'Veneno Paralizante',
+      icon: '🧫',
+      description: 'Un veneno que no solo debilita, sino que deja al rival paralizado un instante.',
+      promptText: 'Inoculo un veneno paralizante, dejando al rival debilitado y sin reaccionar.',
+      category: 'combate',
+      effects: ['DEBILIDAD', 'ATURDIMIENTO'],
+      rol: 'utilidad',
+      preferredAttribute: 'inteligencia',
+      durationEffectMagnitude: -3,
+      durationEffectTurns: 2,
+      energyCost: ENERGY_COST_AVANZADA,
     },
   },
   {
@@ -2447,6 +3512,24 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
     },
   },
   {
+    level: 28,
+    clase: 'ASESINO',
+    especializacion: 'ASESINO_TOXICO',
+    ability: {
+      name: 'Veneno Corrosivo',
+      icon: '🩸',
+      description: 'Un veneno que corroe la voluntad del rival tanto como su carne.',
+      promptText: 'Inoculo un veneno corrosivo, dejando que corroa la voluntad del rival.',
+      category: 'combate',
+      effects: ['DEBILIDAD'],
+      rol: 'utilidad',
+      preferredAttribute: 'voluntad',
+      durationEffectMagnitude: -3,
+      durationEffectTurns: 2,
+      energyCost: ENERGY_COST_AVANZADA,
+    },
+  },
+  {
     level: 32,
     clase: 'ASESINO',
     especializacion: 'ASESINO_TOXICO',
@@ -2460,6 +3543,43 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       rol: 'ataque',
       preferredAttribute: 'fuerza',
       energyCost: ENERGY_COST_AVANZADA,
+    },
+  },
+  {
+    level: 36,
+    clase: 'ASESINO',
+    especializacion: 'ASESINO_TOXICO',
+    ability: {
+      name: 'Toxina Acumulada',
+      icon: '🫙',
+      description: 'Cada golpe deja más veneno en el cuerpo del rival, acumulándose sin descanso.',
+      promptText: 'Dejo que el veneno se acumule en el rival, golpe tras golpe.',
+      category: 'combate',
+      effects: ['DEBILIDAD'],
+      rol: 'utilidad',
+      preferredAttribute: 'inteligencia',
+      durationEffectMagnitude: -4,
+      durationEffectTurns: 3,
+      energyCost: ENERGY_COST_EXPERTA,
+    },
+  },
+  {
+    level: 40,
+    clase: 'ASESINO',
+    especializacion: 'ASESINO_TOXICO',
+    ability: {
+      name: 'Última Dosis',
+      icon: '💉',
+      description: 'La dosis final — un golpe cargado de todo el veneno que le queda, sin reservas.',
+      promptText: 'Descargo mi última dosis, todo el veneno que me queda en un solo golpe.',
+      category: 'combate',
+      effects: ['ATAQUE', 'DEBILIDAD'],
+      rol: 'ataque',
+      preferredAttribute: 'destreza',
+      attributeBonus: 4,
+      durationEffectMagnitude: -5,
+      durationEffectTurns: 3,
+      energyCost: ENERGY_COST_EXPERTA,
     },
   },
 
@@ -2919,6 +4039,45 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       rol: 'defensa',
       preferredAttribute: 'constitucion',
       energyCost: ENERGY_COST_AVANZADA,
+    },
+  },
+  // AUMENTO a uno mismo, camino independiente (2026-09-15) — mismo caso que Instinto Berserker
+  // (Guerrero), sin `durationEffectTarget`: el propio atacante recibe el buff directo.
+  {
+    level: 32,
+    clase: 'DRUIDA',
+    especializacion: 'AULLADOR',
+    ability: {
+      name: 'Llamada Feroz',
+      icon: '🐺',
+      description: 'Una llamada feroz que despierta la fuerza de la manada dentro de sí mismo.',
+      promptText: 'Suelto una llamada feroz, despertando la fuerza de la manada dentro de mí.',
+      category: 'combate',
+      effects: ['AUMENTO'],
+      rol: 'utilidad',
+      preferredAttribute: 'voluntad',
+      durationEffectMagnitude: 4,
+      durationEffectTurns: 2,
+      energyCost: ENERGY_COST_AVANZADA,
+    },
+  },
+  // DEBILIDAD real, camino independiente (2026-09-15) — mismo gate que Segador/Asesino Tóxico.
+  {
+    level: 36,
+    clase: 'DRUIDA',
+    especializacion: 'AULLADOR',
+    ability: {
+      name: 'Aullido Ancestral',
+      icon: '🌑',
+      description: 'Un aullido ancestral que desmoraliza al rival hasta la médula.',
+      promptText: 'Suelto un aullido ancestral que desmoraliza al rival hasta la médula.',
+      category: 'combate',
+      effects: ['DEBILIDAD'],
+      rol: 'utilidad',
+      preferredAttribute: 'carisma',
+      durationEffectMagnitude: -4,
+      durationEffectTurns: 2,
+      energyCost: ENERGY_COST_EXPERTA,
     },
   },
 

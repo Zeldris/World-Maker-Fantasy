@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
 import { iniciarCombatEncounter, resolverTurnoAutonomo, resolverTurnoJugador, fijarEleccionRondaJugador } from './combateMultipleOrquestacion.js';
@@ -583,6 +584,731 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     }
   }, 30_000);
 
+  // Domador — durationEffectTarget:"both" real (2026-09-14, Grito Animal, Domador 32) — a
+  // diferencia de "companion" (excluye al atacante), "both" empuja el MISMO AUMENTO a AMBOS a la
+  // vez: jugadora Y Companion. Combinado con AREA (ofensivo, ya construido esta sesión): el golpe
+  // también aturde a TODOS los enemigos del bando contrario, no solo al defensor principal.
+  it('Domador — durationEffectTarget:"both": Grito Animal empuja el mismo AUMENTO a la jugadora Y a su Companion a la vez, y AREA aturde a todos los enemigos', async () => {
+    await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'ILESO', energia: 100, activeEffects: [] } });
+    const [enemigoA, enemigoB, npcOrigenCompanion] = await Promise.all([
+      prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } }),
+      prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'corredor-de-cauce' } }),
+      prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'corredor-de-cauce' } }),
+    ]);
+
+    const efectoPrevio: ActiveEffect = { attribute: 'carisma', magnitude: 100, turnsRemaining: 3, sourceAbility: 'Efecto de prueba (garantiza el margen)' };
+    await prisma.save.update({ where: { id: saveId }, data: { activeEffects: [efectoPrevio] as unknown as object } });
+    await Promise.all([
+      prisma.npcState.upsert({
+        where: { saveId_npcId_scope: { saveId, npcId: enemigoA.id, scope: 'itinerante-grito-animal-a' } },
+        create: { saveId, npcId: enemigoA.id, scope: 'itinerante-grito-animal-a', energia: 0 },
+        update: { energia: 0, condicionFisica: 'ILESO' },
+      }),
+      prisma.npcState.upsert({
+        where: { saveId_npcId_scope: { saveId, npcId: enemigoB.id, scope: 'itinerante-grito-animal-b' } },
+        create: { saveId, npcId: enemigoB.id, scope: 'itinerante-grito-animal-b', energia: 0 },
+        update: { energia: 0, condicionFisica: 'ILESO' },
+      }),
+    ]);
+
+    const companion = await prisma.companion.create({
+      data: {
+        saveId,
+        name: 'Bestia de prueba (Grito Animal)',
+        role: 'mascota',
+        notes: '',
+        tipo: 'FAUNA',
+        sourceSlug: npcOrigenCompanion.slug,
+        attributes: { fuerza: 6, destreza: 6, constitucion: 6, inteligencia: 4, voluntad: 6, carisma: 2, magia: 0 },
+      },
+    });
+
+    try {
+      const { encounterId } = await prisma.$transaction((tx) =>
+        iniciarCombatEncounter(tx, saveId, [
+          { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 1000, inteligencia: 10 },
+          { bando: 'JUGADOR', tipo: 'COMPANION', companionId: companion.id, destreza: 1, inteligencia: 6 },
+          { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigoA.id, npcScope: 'itinerante-grito-animal-a', destreza: 10, inteligencia: 6 },
+          { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigoB.id, npcScope: 'itinerante-grito-animal-b', destreza: 10, inteligencia: 6 },
+        ]),
+      );
+
+      // Orden de iniciativa forzado a mano — `rollInitiativeMultiple` tiene un componente de dado
+      // real, así que "destreza 1000" NO garantiza que la jugadora actúe siempre primero: si por
+      // azar un NPC resulta con más iniciativa, resuelve el duelo mutuo en SU propio turno
+      // (`dueloYaResueltoPorElOtro`), y cuando le toca a ella ya no hay nada que atacar
+      // (`avanzarSinAtacar`) — el test esperaba que fuera SIEMPRE ella quien dispara Grito Animal.
+      // Bug real de flakiness cazado corriendo el test repetidas veces (~1/6 corridas).
+      const encounterParaOrden = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId }, include: { participantes: true } });
+      const jugadoraPId = encounterParaOrden.participantes.find((p) => p.tipo === 'JUGADOR')!.id;
+      const restoOrden = encounterParaOrden.ordenIniciativa.filter((id) => id !== jugadoraPId);
+      await prisma.combatEncounter.update({ where: { id: encounterId }, data: { ordenIniciativa: [jugadoraPId, ...restoOrden] } });
+
+      // `fijarEleccionRondaJugador` es no-op si `esperandoEleccionJugadora` ya es false — con
+      // inteligencia 6 en ambos NPC (bajo el umbral táctico, elección aleatoria), el cálculo
+      // inicial de `iniciarCombatEncounter` puede haber dejado a la jugadora YA "reclamada" por
+      // uno de ellos, dejándola con un objetivo distinto de `enemigoAP` — bug real de flakiness
+      // cazado corriendo el test repetidas veces. Forzado a `true` a mano (mismo patrón ya usado
+      // en el test de MARCAR más arriba) para garantizar el target real que pide el test.
+      const encounterAntes = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId }, include: { participantes: true } });
+      const enemigoAP = encounterAntes.participantes.find((p) => p.npcScope === 'itinerante-grito-animal-a')!;
+      await prisma.combatEncounter.update({ where: { id: encounterId }, data: { esperandoEleccionJugadora: true } });
+      await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: enemigoAP.id });
+      // Bug real de flakiness cazado corriendo el test repetidas veces (mismo mecanismo ya
+      // documentado en el test de MARCAR más arriba): `enemigoB` elige con IA azarosa (inteligencia
+      // 6) — si por azar RECLAMA a la jugadora en vez de al Companion, la regla 4 de
+      // `resolverEnganchesRonda` le quita a la jugadora su propio target explícito. Se sobreescribe
+      // a mano el enganche mutuo real (jugadora<->enemigoAP) DESPUÉS del cálculo, eliminando esa
+      // ambigüedad sin depender del azar de la IA del segundo NPC.
+      await prisma.combatParticipant.update({ where: { id: jugadoraPId }, data: { objetivoActualId: enemigoAP.id } });
+      await prisma.combatParticipant.update({ where: { id: enemigoAP.id }, data: { objetivoActualId: jugadoraPId } });
+
+      const habilidadGritoAnimal: HabilidadParaIntercambio = {
+        name: 'Grito Animal (prueba)',
+        description: '',
+        attribute: 'carisma',
+        effects: ['ATAQUE', 'ATURDIMIENTO', 'AREA', 'AUMENTO'],
+        rol: 'ataque',
+        energyCost: 5,
+        energyRegen: 0,
+        durationEffectMagnitude: 2,
+        durationEffectTurns: 2,
+        durationEffectTarget: 'both',
+      };
+      // La jugadora tiene la destreza más alta del encuentro (1000) — actúa PRIMERO, sin ningún
+      // turno autónomo previo que un mock global de Math.random pudiera contaminar. Sin mockear,
+      // el margen decisivo (±10) dependía SOLO del `efectoPrevio` (carisma 100) — con roll fijo a
+      // un valor medio (0.5) se blinda del todo contra el roll del rival ganando por azar (bug de
+      // flakiness real cazado corriendo el test repetidas veces, ~1/10 corridas).
+      const randomSpy = vi.spyOn(Math, 'random');
+      randomSpy.mockReturnValue(0.5);
+      let resultado;
+      try {
+        resultado = await resolverHastaJugadoraActua(saveId, worldId, encounterId, habilidadGritoAnimal);
+      } finally {
+        randomSpy.mockRestore();
+      }
+      expect(resultado).not.toBeNull();
+
+      const saveTrasIntercambio = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+      const activeEffectsJugador = parseActiveEffects(saveTrasIntercambio.activeEffects);
+      // El efecto previo decrementado (3->2) Y el nuevo AUMENTO — 'both' NO excluye a la jugadora.
+      expect(activeEffectsJugador).toContainEqual({ attribute: 'carisma', magnitude: 2, turnsRemaining: 2, sourceAbility: 'Grito Animal (prueba)' });
+
+      const companionTrasIntercambio = await prisma.companion.findUniqueOrThrow({ where: { id: companion.id } });
+      const activeEffectsCompanion = parseActiveEffects(companionTrasIntercambio.activeEffects);
+      expect(activeEffectsCompanion).toContainEqual({ attribute: 'carisma', magnitude: 2, turnsRemaining: 2, sourceAbility: 'Grito Animal (prueba)' });
+
+      // AREA ofensivo: el segundo enemigo (fuera del enganche principal) también quedó golpeado.
+      const stateB = await prisma.npcState.findUnique({ where: { saveId_npcId_scope: { saveId, npcId: enemigoB.id, scope: 'itinerante-grito-animal-b' } } });
+      expect(stateB?.condicionFisica).not.toBe('ILESO');
+
+      await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
+    } finally {
+      await prisma.save.update({ where: { id: saveId }, data: { activeEffects: [] } });
+      await prisma.companion.delete({ where: { id: companion.id } });
+    }
+  }, 30_000);
+
+  // AUMENTO real, camino independiente (2026-09-15, docs/rpgtarkor/clases.md — Guardián 32, Valor
+  // Compartido) — a diferencia de Vínculo Salvaje/Grito Animal (rol ataque, margen decisivo), Valor
+  // Compartido es rol utilidad: dispara por `utilityTriggered` (exige que el RIVAL de este
+  // intercambio sea rol ataque), no por margen decisivo. `durationEffectTarget:'companion'`
+  // redirige el AUMENTO al Companion propio igual que siempre — el gate nuevo
+  // (`atacanteAumentoUtilidadDisparado`, combateMultiple.ts) es lo único distinto.
+  it('AUMENTO real, camino independiente: Valor Compartido redirige el AUMENTO al Companion propio desde una habilidad de rol utilidad', async () => {
+    await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'ILESO', energia: 100, activeEffects: [] } });
+    const saveOriginalValor = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    // Carisma masivo SOLO en Save.attributes — garantiza que la utilidad (Valor Compartido,
+    // atributo carisma) tenga éxito al usarla, sin mockear el dado (mismo patrón que PROVOCACION/
+    // MARCAR variante simple, ver comentarios de arriba).
+    await prisma.save.update({ where: { id: saveId }, data: { attributes: { ...(saveOriginalValor.attributes as object), carisma: 500 } } });
+
+    const [enemigo, npcOrigenCompanion] = await Promise.all([
+      prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } }),
+      prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'corredor-de-cauce' } }),
+    ]);
+    const companion = await prisma.companion.create({
+      data: {
+        saveId,
+        name: 'Compañero de prueba (Valor Compartido)',
+        role: 'aliado',
+        notes: '',
+        tipo: 'FAUNA',
+        sourceSlug: npcOrigenCompanion.slug,
+        attributes: { fuerza: 6, destreza: 6, constitucion: 6, inteligencia: 4, voluntad: 6, carisma: 2, magia: 0 },
+      },
+    });
+
+    try {
+      const { encounterId } = await prisma.$transaction((tx) =>
+        iniciarCombatEncounter(tx, saveId, [
+          { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 1000, inteligencia: 10 },
+          { bando: 'JUGADOR', tipo: 'COMPANION', companionId: companion.id, destreza: 1, inteligencia: 6 },
+          { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-valor-compartido', destreza: 10, inteligencia: 6 },
+        ]),
+      );
+      const enemigoP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'NPC' } });
+      await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: enemigoP.id });
+      // `utilityTriggered` exige que el RIVAL de este intercambio sea rol ataque — energía justa
+      // para que "Ataque base" sea la única opción de ataque real posible (mismo hallazgo de
+      // flakiness ya documentado en MARCAR/PROVOCACION de arriba).
+      await prisma.npcState.upsert({
+        where: { saveId_npcId_scope: { saveId, npcId: enemigo.id, scope: 'itinerante-valor-compartido' } },
+        create: { saveId, npcId: enemigo.id, scope: 'itinerante-valor-compartido', energia: 5 },
+        update: { energia: 5 },
+      });
+
+      const habilidadValorCompartido: HabilidadParaIntercambio = {
+        name: 'Valor Compartido (prueba)',
+        description: '',
+        attribute: 'carisma',
+        effects: ['AUMENTO'],
+        rol: 'utilidad',
+        energyCost: 0,
+        energyRegen: 0,
+        durationEffectMagnitude: 4,
+        durationEffectTurns: 2,
+        durationEffectTarget: 'companion',
+      };
+      const randomSpy = vi.spyOn(Math, 'random');
+      randomSpy.mockReturnValueOnce(0.9).mockReturnValueOnce(0.1);
+      try {
+        await resolverTurnoJugador({ prisma, worldId, saveId, encounterId, accion: { habilidad: habilidadValorCompartido }, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
+      } finally {
+        randomSpy.mockRestore();
+      }
+
+      const saveTrasIntercambio = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+      const activeEffectsJugador = parseActiveEffects(saveTrasIntercambio.activeEffects);
+      // La jugadora NUNCA recibe el efecto — 'companion' (a diferencia de 'both') lo excluye.
+      expect(activeEffectsJugador).toEqual([]);
+
+      const companionTrasIntercambio = await prisma.companion.findUniqueOrThrow({ where: { id: companion.id } });
+      const activeEffectsCompanion = parseActiveEffects(companionTrasIntercambio.activeEffects);
+      expect(activeEffectsCompanion).toContainEqual({ attribute: 'carisma', magnitude: 4, turnsRemaining: 2, sourceAbility: 'Valor Compartido (prueba)' });
+
+      await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
+    } finally {
+      await prisma.save.update({ where: { id: saveId }, data: { attributes: saveOriginalValor.attributes as object } });
+      await prisma.companion.delete({ where: { id: companion.id } });
+    }
+  }, 30_000);
+
+  it('DEBILIDAD real, camino independiente: Toque de la Parca empuja el ActiveEffect sobre el RIVAL (nunca sobre quien la usó)', async () => {
+    await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'ILESO', energia: 100, activeEffects: [] } });
+    const saveOriginalDebilidad = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    // Voluntad masiva SOLO en Save.attributes — garantiza que la utilidad (Toque de la Parca,
+    // atributo voluntad) tenga éxito al usarla, sin mockear el dado (mismo patrón que Manto de
+    // Purificación/Valor Compartido/PROVOCACION/MARCAR arriba).
+    await prisma.save.update({ where: { id: saveId }, data: { attributes: { ...(saveOriginalDebilidad.attributes as object), voluntad: 500 } } });
+
+    const enemigo = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } });
+
+    try {
+      const { encounterId } = await prisma.$transaction((tx) =>
+        iniciarCombatEncounter(tx, saveId, [
+          { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 1000, inteligencia: 10 },
+          { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-debilidad-utilidad', destreza: 10, inteligencia: 6 },
+        ]),
+      );
+      const enemigoP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'NPC' } });
+      await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: enemigoP.id });
+      await prisma.npcState.upsert({
+        where: { saveId_npcId_scope: { saveId, npcId: enemigo.id, scope: 'itinerante-debilidad-utilidad' } },
+        create: { saveId, npcId: enemigo.id, scope: 'itinerante-debilidad-utilidad', energia: 5 },
+        update: { energia: 5 },
+      });
+
+      const habilidadToqueParca: HabilidadParaIntercambio = {
+        name: 'Toque de la Parca (prueba)',
+        description: '',
+        attribute: 'voluntad',
+        effects: ['DEBILIDAD'],
+        rol: 'utilidad',
+        energyCost: 0,
+        energyRegen: 0,
+        durationEffectMagnitude: -3,
+        durationEffectTurns: 2,
+      };
+      const randomSpy = vi.spyOn(Math, 'random');
+      randomSpy.mockReturnValueOnce(0.9).mockReturnValueOnce(0.1);
+      try {
+        await resolverTurnoJugador({ prisma, worldId, saveId, encounterId, accion: { habilidad: habilidadToqueParca }, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
+      } finally {
+        randomSpy.mockRestore();
+      }
+
+      const saveTrasIntercambio = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+      const activeEffectsJugador = parseActiveEffects(saveTrasIntercambio.activeEffects);
+      // La jugadora (quien usó la habilidad) NUNCA recibe el DEBILIDAD.
+      expect(activeEffectsJugador).toEqual([]);
+
+      const npcStateTrasIntercambio = await prisma.npcState.findUniqueOrThrow({
+        where: { saveId_npcId_scope: { saveId, npcId: enemigo.id, scope: 'itinerante-debilidad-utilidad' } },
+      });
+      const activeEffectsRival = parseActiveEffects(npcStateTrasIntercambio.activeEffects);
+      expect(activeEffectsRival).toContainEqual({ attribute: 'voluntad', magnitude: -3, turnsRemaining: 2, sourceAbility: 'Toque de la Parca (prueba)' });
+
+      await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
+    } finally {
+      await prisma.save.update({ where: { id: saveId }, data: { attributes: saveOriginalDebilidad.attributes as object } });
+    }
+  }, 30_000);
+
+  it('REFLEJAR real, camino independiente: Espejo Maldito quita el DEBILIDAD propio y lo reconstruye sobre el RIVAL', async () => {
+    const debilidadLeve: ActiveEffect = { attribute: 'destreza', magnitude: -2, turnsRemaining: 2, sourceAbility: 'Malus leve' };
+    const debilidadGrave: ActiveEffect = { attribute: 'fuerza', magnitude: -6, turnsRemaining: 3, sourceAbility: 'Malus grave' };
+    await prisma.save.update({
+      where: { id: saveId },
+      data: { condicionFisica: 'ILESO', energia: 100, activeEffects: [debilidadLeve, debilidadGrave] as unknown as Prisma.InputJsonValue },
+    });
+    const saveOriginalReflejar = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    // Voluntad masiva SOLO en Save.attributes — garantiza que la utilidad (Espejo Maldito, atributo
+    // voluntad) tenga éxito al usarla, sin mockear el dado (mismo patrón que LIMPIAR arriba).
+    await prisma.save.update({ where: { id: saveId }, data: { attributes: { ...(saveOriginalReflejar.attributes as object), voluntad: 500 } } });
+
+    const enemigo = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } });
+
+    try {
+      const { encounterId } = await prisma.$transaction((tx) =>
+        iniciarCombatEncounter(tx, saveId, [
+          { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 1000, inteligencia: 10 },
+          { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-reflejar', destreza: 10, inteligencia: 6 },
+        ]),
+      );
+      const enemigoP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'NPC' } });
+      await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: enemigoP.id });
+      await prisma.npcState.upsert({
+        where: { saveId_npcId_scope: { saveId, npcId: enemigo.id, scope: 'itinerante-reflejar' } },
+        create: { saveId, npcId: enemigo.id, scope: 'itinerante-reflejar', energia: 5 },
+        update: { energia: 5 },
+      });
+
+      const habilidadReflejar: HabilidadParaIntercambio = {
+        name: 'Espejo Maldito (prueba)',
+        description: '',
+        attribute: 'voluntad',
+        effects: ['REFLEJAR'],
+        rol: 'utilidad',
+        energyCost: 0,
+        energyRegen: 0,
+      };
+      const randomSpy = vi.spyOn(Math, 'random');
+      randomSpy.mockReturnValueOnce(0.9).mockReturnValueOnce(0.1);
+      try {
+        await resolverTurnoJugador({ prisma, worldId, saveId, encounterId, accion: { habilidad: habilidadReflejar }, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
+      } finally {
+        randomSpy.mockRestore();
+      }
+
+      const saveTrasIntercambio = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+      const activeEffectsJugador = parseActiveEffects(saveTrasIntercambio.activeEffects);
+      // El DEBILIDAD grave (-6, el peor) desaparece de la jugadora; el leve (-2) sobrevive, decrementado 1 turno.
+      expect(activeEffectsJugador).not.toContainEqual(expect.objectContaining({ sourceAbility: 'Malus grave' }));
+      expect(activeEffectsJugador).toContainEqual({ ...debilidadLeve, turnsRemaining: 1 });
+
+      const npcStateTrasIntercambio = await prisma.npcState.findUniqueOrThrow({
+        where: { saveId_npcId_scope: { saveId, npcId: enemigo.id, scope: 'itinerante-reflejar' } },
+      });
+      const activeEffectsRival = parseActiveEffects(npcStateTrasIntercambio.activeEffects);
+      // El DEBILIDAD reflejado aparece SIN decrementar sobre el rival (mismo turno en que se disparó).
+      expect(activeEffectsRival).toContainEqual({ attribute: 'fuerza', magnitude: -6, turnsRemaining: 3, sourceAbility: 'Malus grave' });
+
+      await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
+    } finally {
+      await prisma.save.update({ where: { id: saveId }, data: { attributes: saveOriginalReflejar.attributes as object, activeEffects: [] } });
+    }
+  }, 30_000);
+
+  it('REFLEJAR real: sin ningún DEBILIDAD propio activo, el efecto se pierde en silencio', async () => {
+    const aumento: ActiveEffect = { attribute: 'carisma', magnitude: 4, turnsRemaining: 2, sourceAbility: 'Buff' };
+    await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'ILESO', energia: 100, activeEffects: [aumento] as unknown as Prisma.InputJsonValue } });
+    const saveOriginalReflejar = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    await prisma.save.update({ where: { id: saveId }, data: { attributes: { ...(saveOriginalReflejar.attributes as object), voluntad: 500 } } });
+
+    const enemigo = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } });
+
+    try {
+      const { encounterId } = await prisma.$transaction((tx) =>
+        iniciarCombatEncounter(tx, saveId, [
+          { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 1000, inteligencia: 10 },
+          { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-reflejar-sin-debilidad', destreza: 10, inteligencia: 6 },
+        ]),
+      );
+      const enemigoP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'NPC' } });
+      await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: enemigoP.id });
+      await prisma.npcState.upsert({
+        where: { saveId_npcId_scope: { saveId, npcId: enemigo.id, scope: 'itinerante-reflejar-sin-debilidad' } },
+        create: { saveId, npcId: enemigo.id, scope: 'itinerante-reflejar-sin-debilidad', energia: 5 },
+        update: { energia: 5 },
+      });
+
+      const habilidadReflejar: HabilidadParaIntercambio = {
+        name: 'Espejo Maldito (prueba)',
+        description: '',
+        attribute: 'voluntad',
+        effects: ['REFLEJAR'],
+        rol: 'utilidad',
+        energyCost: 0,
+        energyRegen: 0,
+      };
+      const randomSpy = vi.spyOn(Math, 'random');
+      randomSpy.mockReturnValueOnce(0.9).mockReturnValueOnce(0.1);
+      try {
+        await resolverTurnoJugador({ prisma, worldId, saveId, encounterId, accion: { habilidad: habilidadReflejar }, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
+      } finally {
+        randomSpy.mockRestore();
+      }
+
+      const saveTrasIntercambio = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+      const activeEffectsJugador = parseActiveEffects(saveTrasIntercambio.activeEffects);
+      expect(activeEffectsJugador).toEqual([{ ...aumento, turnsRemaining: 1 }]);
+
+      const npcStateTrasIntercambio = await prisma.npcState.findUniqueOrThrow({
+        where: { saveId_npcId_scope: { saveId, npcId: enemigo.id, scope: 'itinerante-reflejar-sin-debilidad' } },
+      });
+      expect(parseActiveEffects(npcStateTrasIntercambio.activeEffects)).toEqual([]);
+
+      await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
+    } finally {
+      await prisma.save.update({ where: { id: saveId }, data: { attributes: saveOriginalReflejar.attributes as object, activeEffects: [] } });
+    }
+  }, 30_000);
+
+  it('CONVERSION real, transmutación propia: Transmutación Menor convierte el DEBILIDAD propio en AUMENTO (signo invertido)', async () => {
+    const debilidad: ActiveEffect = { attribute: 'fuerza', magnitude: -4, turnsRemaining: 2, sourceAbility: 'Malus' };
+    await prisma.save.update({
+      where: { id: saveId },
+      data: { condicionFisica: 'ILESO', energia: 100, activeEffects: [debilidad] as unknown as Prisma.InputJsonValue },
+    });
+    const saveOriginalConversion = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    await prisma.save.update({ where: { id: saveId }, data: { attributes: { ...(saveOriginalConversion.attributes as object), inteligencia: 500 } } });
+
+    const enemigo = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } });
+
+    try {
+      const { encounterId } = await prisma.$transaction((tx) =>
+        iniciarCombatEncounter(tx, saveId, [
+          { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 1000, inteligencia: 10 },
+          { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-conversion-propia', destreza: 10, inteligencia: 6 },
+        ]),
+      );
+      const enemigoP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'NPC' } });
+      await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: enemigoP.id });
+      await prisma.npcState.upsert({
+        where: { saveId_npcId_scope: { saveId, npcId: enemigo.id, scope: 'itinerante-conversion-propia' } },
+        create: { saveId, npcId: enemigo.id, scope: 'itinerante-conversion-propia', energia: 5 },
+        update: { energia: 5 },
+      });
+
+      const habilidadTransmutacionMenor: HabilidadParaIntercambio = {
+        name: 'Transmutación Menor (prueba)',
+        description: '',
+        attribute: 'inteligencia',
+        effects: ['CONVERSION'],
+        rol: 'utilidad',
+        energyCost: 0,
+        energyRegen: 0,
+      };
+      const randomSpy = vi.spyOn(Math, 'random');
+      randomSpy.mockReturnValueOnce(0.9).mockReturnValueOnce(0.1);
+      try {
+        await resolverTurnoJugador({ prisma, worldId, saveId, encounterId, accion: { habilidad: habilidadTransmutacionMenor }, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
+      } finally {
+        randomSpy.mockRestore();
+      }
+
+      const saveTrasIntercambio = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+      const activeEffectsJugador = parseActiveEffects(saveTrasIntercambio.activeEffects);
+      expect(activeEffectsJugador).not.toContainEqual(expect.objectContaining({ sourceAbility: 'Malus', magnitude: -4 }));
+      expect(activeEffectsJugador).toContainEqual({ attribute: 'fuerza', magnitude: 4, turnsRemaining: 2, sourceAbility: 'Malus' });
+
+      await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
+    } finally {
+      await prisma.save.update({ where: { id: saveId }, data: { attributes: saveOriginalConversion.attributes as object, activeEffects: [] } });
+    }
+  }, 30_000);
+
+  it('CONVERSION real, transmutación rival: Transmutación Mayor convierte el AUMENTO del rival en DEBILIDAD, y su DEBILIDAD en AUMENTO', async () => {
+    await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'ILESO', energia: 100, activeEffects: [] } });
+    const saveOriginalConversion = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    await prisma.save.update({ where: { id: saveId }, data: { attributes: { ...(saveOriginalConversion.attributes as object), inteligencia: 500 } } });
+
+    const enemigo = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } });
+    const aumentoRival: ActiveEffect = { attribute: 'destreza', magnitude: 5, turnsRemaining: 3, sourceAbility: 'Buff rival' };
+    const debilidadRival: ActiveEffect = { attribute: 'voluntad', magnitude: -3, turnsRemaining: 2, sourceAbility: 'Malus rival' };
+
+    try {
+      const { encounterId } = await prisma.$transaction((tx) =>
+        iniciarCombatEncounter(tx, saveId, [
+          { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 1000, inteligencia: 10 },
+          { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-conversion-rival', destreza: 10, inteligencia: 6 },
+        ]),
+      );
+      const enemigoP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'NPC' } });
+      await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: enemigoP.id });
+      await prisma.npcState.upsert({
+        where: { saveId_npcId_scope: { saveId, npcId: enemigo.id, scope: 'itinerante-conversion-rival' } },
+        create: { saveId, npcId: enemigo.id, scope: 'itinerante-conversion-rival', energia: 5, activeEffects: [aumentoRival, debilidadRival] as unknown as Prisma.InputJsonValue },
+        update: { energia: 5, activeEffects: [aumentoRival, debilidadRival] as unknown as Prisma.InputJsonValue },
+      });
+
+      // A diferencia de Transmutación Menor (CONVERSION sola), Transmutación Mayor/Equilibrio Roto
+      // se distingue por combinar CONVERSION+REFLEJAR (ver comentario de `atacanteTransmutaRivalDisparada`,
+      // combateMultiple.ts) — dispara el camino "rival" en vez del camino "propia".
+      const habilidadTransmutacionMayor: HabilidadParaIntercambio = {
+        name: 'Transmutación Mayor (prueba)',
+        description: '',
+        attribute: 'inteligencia',
+        effects: ['CONVERSION', 'REFLEJAR'],
+        rol: 'utilidad',
+        energyCost: 0,
+        energyRegen: 0,
+      };
+      const randomSpy = vi.spyOn(Math, 'random');
+      randomSpy.mockReturnValueOnce(0.9).mockReturnValueOnce(0.1);
+      try {
+        await resolverTurnoJugador({ prisma, worldId, saveId, encounterId, accion: { habilidad: habilidadTransmutacionMayor }, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
+      } finally {
+        randomSpy.mockRestore();
+      }
+
+      const npcStateTrasIntercambio = await prisma.npcState.findUniqueOrThrow({
+        where: { saveId_npcId_scope: { saveId, npcId: enemigo.id, scope: 'itinerante-conversion-rival' } },
+      });
+      const activeEffectsRival = parseActiveEffects(npcStateTrasIntercambio.activeEffects);
+      // Mismo sourceAbility (el spread conserva el nombre original), solo la magnitud se invierte:
+      // el AUMENTO original (+5) pasa a DEBILIDAD (-5), y viceversa.
+      expect(activeEffectsRival).not.toContainEqual({ attribute: 'destreza', magnitude: 5, turnsRemaining: 3, sourceAbility: 'Buff rival' });
+      expect(activeEffectsRival).not.toContainEqual({ attribute: 'voluntad', magnitude: -3, turnsRemaining: 2, sourceAbility: 'Malus rival' });
+      expect(activeEffectsRival).toContainEqual({ attribute: 'destreza', magnitude: -5, turnsRemaining: 3, sourceAbility: 'Buff rival' });
+      expect(activeEffectsRival).toContainEqual({ attribute: 'voluntad', magnitude: 3, turnsRemaining: 2, sourceAbility: 'Malus rival' });
+
+      await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
+    } finally {
+      await prisma.save.update({ where: { id: saveId }, data: { attributes: saveOriginalConversion.attributes as object, activeEffects: [] } });
+    }
+  }, 30_000);
+
+  it('LIMPIAR real, camino independiente: Manto de Purificación quita el DEBILIDAD de mayor magnitud negativa, conserva el resto', async () => {
+    const debilidadLeve: ActiveEffect = { attribute: 'destreza', magnitude: -2, turnsRemaining: 2, sourceAbility: 'Malus leve' };
+    const debilidadGrave: ActiveEffect = { attribute: 'fuerza', magnitude: -6, turnsRemaining: 3, sourceAbility: 'Malus grave' };
+    const aumento: ActiveEffect = { attribute: 'carisma', magnitude: 4, turnsRemaining: 2, sourceAbility: 'Buff' };
+    await prisma.save.update({
+      where: { id: saveId },
+      data: { condicionFisica: 'ILESO', energia: 100, activeEffects: [debilidadLeve, debilidadGrave, aumento] as unknown as Prisma.InputJsonValue },
+    });
+    const saveOriginalLimpiar = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    // Voluntad masiva SOLO en Save.attributes — garantiza que la utilidad (Manto de Purificación,
+    // atributo voluntad) tenga éxito al usarla, sin mockear el dado (mismo patrón que Valor
+    // Compartido/PROVOCACION/MARCAR arriba).
+    await prisma.save.update({ where: { id: saveId }, data: { attributes: { ...(saveOriginalLimpiar.attributes as object), voluntad: 500 } } });
+
+    const enemigo = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } });
+
+    try {
+      const { encounterId } = await prisma.$transaction((tx) =>
+        iniciarCombatEncounter(tx, saveId, [
+          { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 1000, inteligencia: 10 },
+          { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-limpiar', destreza: 10, inteligencia: 6 },
+        ]),
+      );
+      const enemigoP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'NPC' } });
+      await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: enemigoP.id });
+      // `utilityTriggered` exige que el RIVAL de este intercambio sea rol ataque — energía justa
+      // para que "Ataque base" sea la única opción de ataque real posible (mismo hallazgo de
+      // flakiness ya documentado en MARCAR/PROVOCACION/Valor Compartido de arriba).
+      await prisma.npcState.upsert({
+        where: { saveId_npcId_scope: { saveId, npcId: enemigo.id, scope: 'itinerante-limpiar' } },
+        create: { saveId, npcId: enemigo.id, scope: 'itinerante-limpiar', energia: 5 },
+        update: { energia: 5 },
+      });
+
+      const habilidadLimpiar: HabilidadParaIntercambio = {
+        name: 'Manto de Purificación (prueba)',
+        description: '',
+        attribute: 'voluntad',
+        effects: ['LIMPIAR'],
+        rol: 'utilidad',
+        energyCost: 0,
+        energyRegen: 0,
+      };
+      const randomSpy = vi.spyOn(Math, 'random');
+      randomSpy.mockReturnValueOnce(0.9).mockReturnValueOnce(0.1);
+      try {
+        await resolverTurnoJugador({ prisma, worldId, saveId, encounterId, accion: { habilidad: habilidadLimpiar }, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
+      } finally {
+        randomSpy.mockRestore();
+      }
+
+      const saveTrasIntercambio = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+      const activeEffectsJugador = parseActiveEffects(saveTrasIntercambio.activeEffects);
+      // El DEBILIDAD grave (-6) desaparece; el leve (-2) y el AUMENTO sobreviven, decrementados 1 turno.
+      expect(activeEffectsJugador).not.toContainEqual(expect.objectContaining({ sourceAbility: 'Malus grave' }));
+      expect(activeEffectsJugador).toContainEqual({ ...debilidadLeve, turnsRemaining: 1 });
+      expect(activeEffectsJugador).toContainEqual({ ...aumento, turnsRemaining: 1 });
+
+      await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
+    } finally {
+      await prisma.save.update({ where: { id: saveId }, data: { attributes: saveOriginalLimpiar.attributes as object, activeEffects: [] } });
+    }
+  }, 30_000);
+
+  it('LIMPIAR real: sin ningún DEBILIDAD activo, el efecto se pierde en silencio (solo AUMENTO presente)', async () => {
+    const aumento: ActiveEffect = { attribute: 'carisma', magnitude: 4, turnsRemaining: 2, sourceAbility: 'Buff' };
+    await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'ILESO', energia: 100, activeEffects: [aumento] as unknown as Prisma.InputJsonValue } });
+    const saveOriginalLimpiar = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    await prisma.save.update({ where: { id: saveId }, data: { attributes: { ...(saveOriginalLimpiar.attributes as object), voluntad: 500 } } });
+
+    const enemigo = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } });
+
+    try {
+      const { encounterId } = await prisma.$transaction((tx) =>
+        iniciarCombatEncounter(tx, saveId, [
+          { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 1000, inteligencia: 10 },
+          { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-limpiar-sin-debilidad', destreza: 10, inteligencia: 6 },
+        ]),
+      );
+      const enemigoP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'NPC' } });
+      await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: enemigoP.id });
+      await prisma.npcState.upsert({
+        where: { saveId_npcId_scope: { saveId, npcId: enemigo.id, scope: 'itinerante-limpiar-sin-debilidad' } },
+        create: { saveId, npcId: enemigo.id, scope: 'itinerante-limpiar-sin-debilidad', energia: 5 },
+        update: { energia: 5 },
+      });
+
+      const habilidadLimpiar: HabilidadParaIntercambio = {
+        name: 'Manto de Purificación (prueba)',
+        description: '',
+        attribute: 'voluntad',
+        effects: ['LIMPIAR'],
+        rol: 'utilidad',
+        energyCost: 0,
+        energyRegen: 0,
+      };
+      const randomSpy = vi.spyOn(Math, 'random');
+      randomSpy.mockReturnValueOnce(0.9).mockReturnValueOnce(0.1);
+      try {
+        await resolverTurnoJugador({ prisma, worldId, saveId, encounterId, accion: { habilidad: habilidadLimpiar }, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
+      } finally {
+        randomSpy.mockRestore();
+      }
+
+      const saveTrasIntercambio = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+      const activeEffectsJugador = parseActiveEffects(saveTrasIntercambio.activeEffects);
+      expect(activeEffectsJugador).toEqual([{ ...aumento, turnsRemaining: 1 }]);
+
+      await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
+    } finally {
+      await prisma.save.update({ where: { id: saveId }, data: { attributes: saveOriginalLimpiar.attributes as object, activeEffects: [] } });
+    }
+  }, 30_000);
+
+  it('CURAZION real, vampirismo (margen decisivo): un golpe decisivo con ATAQUE+CURAZION mejora la condición física de quien atacó', async () => {
+    // La jugadora empieza HERIDO — CURAZION debe mejorarla a ILESO tras el golpe decisivo, pese a
+    // no haber recibido ningún daño ella misma en este intercambio (energía 0 del NPC lo garantiza).
+    await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'HERIDO', energia: 100, activeEffects: [] } });
+    const saveOriginalCurazion = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    // Fuerza masiva vía ActiveEffect previo (mismo mecanismo que el test de MULTIPLE arriba) —
+    // garantiza margen decisivo sin mockear el dado.
+    const efectoPrevio: ActiveEffect = { attribute: 'fuerza', magnitude: 100, turnsRemaining: 3, sourceAbility: 'Efecto de prueba (garantiza el margen)' };
+    await prisma.save.update({ where: { id: saveId }, data: { activeEffects: [efectoPrevio] as unknown as Prisma.InputJsonValue } });
+
+    const enemigo = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } });
+
+    try {
+      const { encounterId } = await prisma.$transaction((tx) =>
+        iniciarCombatEncounter(tx, saveId, [
+          { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 1000, inteligencia: 10 },
+          { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-curazion-vampirismo', destreza: 10, inteligencia: 6 },
+        ]),
+      );
+      const enemigoP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'NPC' } });
+      await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: enemigoP.id });
+      // Energía justa para forzar "Ataque base" como único candidato de defensa real del NPC.
+      await prisma.npcState.upsert({
+        where: { saveId_npcId_scope: { saveId, npcId: enemigo.id, scope: 'itinerante-curazion-vampirismo' } },
+        create: { saveId, npcId: enemigo.id, scope: 'itinerante-curazion-vampirismo', energia: 5 },
+        update: { energia: 5 },
+      });
+
+      const habilidadVampirismo: HabilidadParaIntercambio = {
+        name: 'Golpe de Prueba (CURAZION)',
+        description: '',
+        attribute: 'fuerza',
+        effects: ['ATAQUE', 'CURAZION'],
+        rol: 'ataque',
+        energyCost: 0,
+        energyRegen: 0,
+      };
+      await resolverTurnoJugador({ prisma, worldId, saveId, encounterId, accion: { habilidad: habilidadVampirismo }, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
+
+      const saveTrasIntercambio = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+      expect(saveTrasIntercambio.condicionFisica).toBe('ILESO');
+
+      await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
+    } finally {
+      await prisma.save.update({ where: { id: saveId }, data: { attributes: saveOriginalCurazion.attributes as object, activeEffects: [], condicionFisica: 'ILESO' } });
+    }
+  }, 30_000);
+
+  it('CURAZION real, transmutación defensiva: Alquimia Vital mejora la condición física AUNQUE el golpe conecte', async () => {
+    // La jugadora empieza GRAVE, DEFENDIÉNDOSE con CURAZION solo (sin AGUANTE) — el golpe del NPC
+    // conecta igualmente (empeora un escalón, GRAVE→CONVALECIENTE), pero CURAZION mitiga aplicando
+    // oneStepBetterThan SOBRE ese resultado ya empeorado — queda en GRAVE otra vez, no CONVALECIENTE.
+    await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'GRAVE', energia: 100, activeEffects: [] } });
+    const saveOriginalCurazion = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    // Única SavedAction de defensa real que tiene — `datosVivosDe` solo cae al fallback genérico
+    // (Esquivar) si su roster está vacío, así que esto garantiza que SIEMPRE se defienda con ella
+    // (mismo patrón que el test de DESVIAR de abajo).
+    await prisma.savedAction.create({
+      data: {
+        saveId,
+        name: 'Alquimia Vital (prueba)',
+        description: '',
+        icon: '🧪',
+        category: 'combate',
+        promptText: '',
+        rol: 'defensa',
+        effects: ['CURAZION'],
+        preferredAttribute: 'constitucion',
+        energyCost: 0,
+        energyRegen: 0,
+      },
+    });
+
+    const enemigo = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } });
+
+    // Iniciativa del enemigo muy por encima de la de la jugadora — garantiza que sea él quien la
+    // reclame primero en el enganche de la ronda 1 (mismo patrón que DESVIAR de abajo).
+    const { encounterId } = await prisma.$transaction((tx) =>
+      iniciarCombatEncounter(tx, saveId, [
+        { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 1, inteligencia: 10 },
+        { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-curazion-defensivo', destreza: 1000, inteligencia: 6 },
+      ]),
+    );
+
+    try {
+      let resultadoAtaque: Awaited<ReturnType<typeof resolverTurnoAutonomo>> | null = null;
+      for (let i = 0; i < 10 && !resultadoAtaque; i++) {
+        const encounter = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId } });
+        if (encounter.estado === 'RESUELTO') break;
+        const resultado = await resolverTurnoAutonomo({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
+        if (resultado?.defensorNombre && resultado.atacanteNombre !== undefined) resultadoAtaque = resultado;
+      }
+      expect(resultadoAtaque).not.toBeNull();
+
+      const saveTrasIntercambio = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+      expect(saveTrasIntercambio.condicionFisica).toBe('GRAVE');
+
+      await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
+    } finally {
+      await prisma.save.update({ where: { id: saveId }, data: { attributes: saveOriginalCurazion.attributes as object, activeEffects: [], condicionFisica: 'ILESO' } });
+      await prisma.savedAction.deleteMany({ where: { saveId, name: 'Alquimia Vital (prueba)' } });
+    }
+  }, 30_000);
+
   // CONTROL real (Fase 3 § 3a) — forzado a mano vía `controladoPorRondas` (mismo criterio que el
   // test de `esperandoEleccionJugadora` de arriba: probar el CABLEADO real contra Postgres, sin
   // depender de que una tirada real dispare la condición de disparo, ya cubierta en
@@ -915,6 +1641,75 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     }
   }, 30_000);
 
+  // Alfa de la Manada real (2026-09-14, docs/rpgtarkor/clases.md — Domador 40) — `datosVivosDe`
+  // aplica `alfaDeLaManadaBonusFor` ANTES de la tirada real cuando `Companion.esSlotDomador` y hay
+  // 2 slots de Domador ocupados en la partida. Comparación directa: MISMO escenario (mismo rival,
+  // mismo roll fijo), una vez con un solo slot ocupado (sin buff) y otra con 2 (+2 fuerza al Alfa)
+  // — el margen del intercambio debe subir exactamente 2 puntos (Ataque base usa fuerza/destreza,
+  // aquí fuerza por tenerla mayor en el fixture).
+  it('Alfa de la Manada: con los 2 slots de Domador ocupados, el Companion Alfa gana +2 de fuerza real en su tirada', async () => {
+    const rival = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } });
+    const npcOrigenCompanion = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'corredor-de-cauce' } });
+
+    async function margenDelCompanionAlfa(segundoSlotOcupado: boolean): Promise<number> {
+      const companionAlfa = await prisma.companion.create({
+        data: {
+          saveId,
+          name: 'Alfa de prueba',
+          role: 'mascota',
+          notes: '',
+          tipo: 'FAUNA',
+          sourceSlug: npcOrigenCompanion.slug,
+          attributes: { fuerza: 20, destreza: 6, constitucion: 6, inteligencia: 4, voluntad: 6, carisma: 2, magia: 0 },
+          esSlotDomador: true,
+          esAlfa: true,
+        },
+      });
+      const companionRelleno = segundoSlotOcupado
+        ? await prisma.companion.create({
+            data: { saveId, name: 'Relleno de prueba', role: 'mascota', notes: '', tipo: 'FAUNA', sourceSlug: npcOrigenCompanion.slug, attributes: { fuerza: 6, destreza: 6, constitucion: 6, inteligencia: 4, voluntad: 6, carisma: 2, magia: 0 }, esSlotDomador: true },
+          })
+        : null;
+
+      const randomSpy = vi.spyOn(Math, 'random');
+      try {
+        const { encounterId } = await prisma.$transaction((tx) =>
+          iniciarCombatEncounter(tx, saveId, [
+            { bando: 'JUGADOR', tipo: 'COMPANION', companionId: companionAlfa.id, destreza: 1000, inteligencia: 6 },
+            { bando: 'ENEMIGO', tipo: 'NPC', npcId: rival.id, npcScope: `itinerante-alfa-manada-${segundoSlotOcupado}`, destreza: 1, inteligencia: 6 },
+          ]),
+        );
+        randomSpy.mockReturnValue(0.5);
+        let margen: number | null = null;
+        for (let i = 0; i < 10 && margen === null; i++) {
+          const encounter = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId }, include: { participantes: true } });
+          if (encounter.estado === 'RESUELTO') break;
+          const resultado = await resolverTurnoAutonomo({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
+          // El Companion actúa primero (destreza 1000 vs 1) — su propio ATAQUE ("Ataque base",
+          // preferredAttribute fuerza/destreza según baseAttackFor, fuerza:20 aquí domina sobre
+          // destreza:6) es donde el buff de fuerza es observable, a diferencia de su DEFENSA
+          // (Esquivar/Defenderse, atributo distinto, el buff de fuerza no la afecta).
+          if (resultado?.combatExchangeDisplay && resultado.atacanteNombre === companionAlfa.name) margen = resultado.combatExchangeDisplay.margen;
+        }
+        if (margen === null) throw new Error('El Companion nunca llegó a atacar en el tope de turnos de prueba.');
+        await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
+        return margen;
+      } finally {
+        randomSpy.mockRestore();
+        await prisma.companion.delete({ where: { id: companionAlfa.id } });
+        if (companionRelleno) await prisma.companion.delete({ where: { id: companionRelleno.id } });
+      }
+    }
+
+    const margenSinBuff = await margenDelCompanionAlfa(false);
+    const margenConBuff = await margenDelCompanionAlfa(true);
+    // El margen se mide atacante(Companion)-defensor(rival) — más fuerza en el Companion (que
+    // ataca) sube el margen a su favor (mismo roll fijo, mismo rival, mismo multiplicador de tipo
+    // entre ambas corridas). El resultado real usa `Math.floor(valorEfectivo / 2)` — un +2 crudo de
+    // fuerza se traduce en +1 de margen (20/2=10 -> 22/2=11), no +2 directo.
+    expect(margenConBuff - margenSinBuff).toBe(1);
+  }, 30_000);
+
   // Fase 3 § 3c de efectos de clase (2026-08-27) — OCULTACION real: forzada a mano vía
   // `ocultoPorRondas` (mismo criterio que el test de CONTROL: probar el CABLEADO real, la condición
   // de disparo ya está cubierta en combateMultiple.test.ts). La exclusión de `resolverEnganchesRonda`
@@ -1207,6 +2002,621 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
   }, 30_000);
 
+  // PROVOCACION real (2026-09-14, docs/rpgtarkor/clases.md — Guardián 16/19, Lancero 32,
+  // Especialista 28, Caballero del Valor 12) — variante simple: quien la dispara provoca al RIVAL
+  // de ESTE intercambio, marcando `provocadoPorRondas`/`provocadoPorId` sobre él. Se comprueba que
+  // el enganche de la RONDA SIGUIENTE respeta la provocación (el provocado ataca forzosamente al
+  // provocador, saltándose su propia IA de Inteligencia) y que el contador se decrementa al cruzar
+  // de ronda, mismo criterio que CONTROL/OCULTACION/EXPULSAR.
+  it('PROVOCACION (variante simple): Desafío marca provocadoPorRondas/provocadoPorId sobre el rival, y la ronda siguiente lo fuerza a enganchar al provocador', async () => {
+    await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'ILESO', energia: 100, activeEffects: [] } });
+    // Carisma masivo SOLO en Save.attributes (mismo patrón que MARCAR/ANALIZAR RIVAL más abajo) —
+    // `resolveIndependentExchange` tira dados reales (`rollSide`, Math.random SIN mockear, distinto
+    // del mock acotado a `chooseNpcAbility`): sin esto, la tirada de PROVOCACION podía fallar al
+    // azar (`efectoAplica: false`), dejando el disparo intermitente — bug real de flakiness cazado
+    // corriendo la suite completa repetidas veces.
+    const saveOriginalProvocacion = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    await prisma.save.update({ where: { id: saveId }, data: { attributes: { ...(saveOriginalProvocacion.attributes as object), carisma: 500 } } });
+
+    const enemigo = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } });
+    const { encounterId } = await prisma.$transaction((tx) =>
+      iniciarCombatEncounter(tx, saveId, [
+        { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 1000, inteligencia: 10 },
+        { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-provocacion-victima', destreza: 1, inteligencia: 6 },
+      ]),
+    );
+    const enemigoP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'NPC' } });
+    await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: enemigoP.id });
+    // `utilityTriggered` exige que el RIVAL de este intercambio sea `rol: 'ataque'` para que la
+    // utilidad de Desafío dispare. Energía justa para excluir "Dentellada de jauría" (coste 10) —
+    // el roster real del `aullador-rojo` también trae "Esquivar"(5)/"Defenderse"(0), ambos
+    // `rol:'defensa'` y afordables incluso con poca energía, así que "energía a tope" no basta
+    // (roster crecido desde que se escribió este test la primera vez, bug de flakiness real cazado
+    // corriendo la suite completa repetidas veces): con energía 5, `affordable` = [Ataque base,
+    // Esquivar, Defenderse] — random() mockeado fuerza que `chooseNpcAbility('defensa', ...)` salga
+    // del pool `defensivas` (70%) y elija el índice 0 (Ataque base) del roster completo.
+    await prisma.npcState.upsert({
+      where: { saveId_npcId_scope: { saveId, npcId: enemigo.id, scope: 'itinerante-provocacion-victima' } },
+      create: { saveId, npcId: enemigo.id, scope: 'itinerante-provocacion-victima', energia: 5 },
+      update: { energia: 5 },
+    });
+
+    const habilidad: HabilidadParaIntercambio = {
+      name: 'Desafío (prueba)',
+      description: '',
+      attribute: 'carisma',
+      attributeBonus: 0,
+      effects: ['PROVOCACION'],
+      rol: 'utilidad',
+      energyCost: 0,
+      energyRegen: 0,
+    };
+    const randomSpy = vi.spyOn(Math, 'random');
+    // 1) primer random() de chooseNpcAbility('defensa', ...): >=0.7 cae fuera de `defensivas`, usa
+    //    el roster `affordable` completo. 2) segundo random(): 0.1 → índice 0 → "Ataque base".
+    randomSpy.mockReturnValueOnce(0.9).mockReturnValueOnce(0.1);
+    try {
+      await resolverTurnoJugador({ prisma, worldId, saveId, encounterId, accion: { habilidad }, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
+    } finally {
+      randomSpy.mockRestore();
+    }
+
+    const jugadoraP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'JUGADOR' } });
+    const enemigoTrasIntercambio = await prisma.combatParticipant.findUniqueOrThrow({ where: { id: enemigoP.id } });
+    expect(enemigoTrasIntercambio.provocadoPorRondas).toBe(2);
+    expect(enemigoTrasIntercambio.provocadoPorId).toBe(jugadoraP.id);
+
+    // Cruza una ronda completa — el enganche de la ronda NUEVA debe forzar al provocado a atacar al
+    // provocador, sin pasar por `elegirObjetivo`/Inteligencia normal.
+    await resolverTurnoAutonomo({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
+    const enemigoTrasRonda = await prisma.combatParticipant.findUniqueOrThrow({ where: { id: enemigoP.id } });
+    expect(enemigoTrasRonda.objetivoActualId).toBe(jugadoraP.id);
+    expect(enemigoTrasRonda.provocadoPorRondas).toBeLessThan(2);
+
+    await prisma.save.update({ where: { id: saveId }, data: { attributes: saveOriginalProvocacion.attributes as object } });
+    await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
+  }, 30_000);
+
+  // PROVOCACION real (2026-09-14) — variante "redirige el golpe dirigido a un aliado" (Grito de
+  // Coraje, Caballero del Valor 28, `durationEffectTarget: 'companion'`): sustituye YA el enganche
+  // de la ronda actual de un NPC que tuviera como objetivo al Companion del bando de quien la
+  // dispara, sin depender de forzar ningún enganche futuro (no marca `provocadoPorRondas`, a
+  // diferencia de la variante simple).
+  it('PROVOCACION (variante Companion): Grito de Coraje redirige hacia la jugadora el enganche de un NPC que apuntaba a su Companion', async () => {
+    await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'ILESO', energia: 100, activeEffects: [] } });
+
+    const [enemigo, companionOrigen] = await Promise.all([
+      prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } }),
+      prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'corredor-de-cauce' } }),
+    ]);
+    const companion = await prisma.companion.create({
+      data: {
+        saveId,
+        sourceSlug: companionOrigen.slug,
+        name: 'Compañero de prueba (PROVOCACION)',
+        role: 'aliado',
+        notes: '',
+        attributes: companionOrigen.attributes as object,
+        condicionFisica: 'ILESO',
+      },
+    });
+
+    const { encounterId } = await prisma.$transaction((tx) =>
+      iniciarCombatEncounter(tx, saveId, [
+        { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 1000, inteligencia: 10 },
+        { bando: 'JUGADOR', tipo: 'COMPANION', companionId: companion.id, destreza: 500, inteligencia: 6 },
+        { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-provocacion-companion', destreza: 1, inteligencia: 6 },
+      ]),
+    );
+    const companionP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'COMPANION' } });
+    const enemigoP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'NPC' } });
+    // Enganche forzado a mano: el NPC ya apunta al Companion ANTES de que la jugadora use Grito de
+    // Coraje (mismo criterio que el test de EXPULSAR "único enemigo vivo": se fuerza el estado de
+    // partida a mano en vez de depender de que la IA del NPC lo elija por azar).
+    await prisma.combatParticipant.update({ where: { id: enemigoP.id }, data: { objetivoActualId: companionP.id } });
+    await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: enemigoP.id });
+    await prisma.npcState.upsert({
+      where: { saveId_npcId_scope: { saveId, npcId: enemigo.id, scope: 'itinerante-provocacion-companion' } },
+      create: { saveId, npcId: enemigo.id, scope: 'itinerante-provocacion-companion', energia: 0 },
+      update: { energia: 0 },
+    });
+
+    const habilidad: HabilidadParaIntercambio = {
+      name: 'Grito de Coraje (prueba)',
+      description: '',
+      attribute: 'carisma',
+      attributeBonus: 0,
+      effects: ['PROVOCACION'],
+      rol: 'utilidad',
+      durationEffectTarget: 'companion',
+      energyCost: 0,
+      energyRegen: 0,
+    };
+    await resolverTurnoJugador({ prisma, worldId, saveId, encounterId, accion: { habilidad }, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
+
+    const jugadoraP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'JUGADOR' } });
+    const enemigoTrasIntercambio = await prisma.combatParticipant.findUniqueOrThrow({ where: { id: enemigoP.id } });
+    expect(enemigoTrasIntercambio.objetivoActualId).toBe(jugadoraP.id);
+    // Esta variante NO marca provocadoPorRondas (no fuerza ningún enganche futuro, solo redirige el
+    // de ESTA ronda ya calculada) — a diferencia de la variante simple del test de arriba.
+    expect(enemigoTrasIntercambio.provocadoPorRondas).toBeFalsy();
+
+    await prisma.companion.deleteMany({ where: { id: companion.id } });
+    await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
+  }, 30_000);
+
+  // PROVOCACION real (2026-09-15) — variante "redirige golpe de aliado" disparada desde el lado
+  // DEFENSOR con margen decisivo (Sacrificio del Valiente, Caballero del Valor 40): a diferencia
+  // de Grito de Coraje (dispara desde el atacante/utilidad), aquí la JUGADORA defiende con
+  // AGUANTE+PROVOCACION y, si contragolpea con éxito, redirige hacia sí misma el enganche de un
+  // NPC distinto que apuntaba a su Companion — mismo mecanismo, lado opuesto de quien dispara.
+  it('PROVOCACION (variante Companion, disparada desde defensa): Sacrificio del Valiente redirige hacia la jugadora el enganche de un NPC que apuntaba a su Companion', async () => {
+    await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'ILESO', energia: 100, activeEffects: [] } });
+    const saveOriginalSacrificio = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    // Constitución masiva SOLO en Save.attributes — garantiza `defensor_contragolpea` (margen
+    // decisivo a favor de la defensa) pase lo que pase, sin mockear el dado.
+    await prisma.save.update({ where: { id: saveId }, data: { attributes: { ...(saveOriginalSacrificio.attributes as object), constitucion: 500 } } });
+
+    const [enemigoAtacante, enemigoRedirigido, companionOrigen] = await Promise.all([
+      prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } }),
+      prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'corredor-de-cauce' } }),
+      prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'corredor-de-cauce' } }),
+    ]);
+    const companion = await prisma.companion.create({
+      data: {
+        saveId,
+        sourceSlug: companionOrigen.slug,
+        name: 'Compañero de prueba (Sacrificio del Valiente)',
+        role: 'aliado',
+        notes: '',
+        attributes: companionOrigen.attributes as object,
+        condicionFisica: 'ILESO',
+      },
+    });
+
+    try {
+      const { encounterId } = await prisma.$transaction((tx) =>
+        iniciarCombatEncounter(tx, saveId, [
+          { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 1000, inteligencia: 10 },
+          { bando: 'JUGADOR', tipo: 'COMPANION', companionId: companion.id, destreza: 1, inteligencia: 6 },
+          { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigoAtacante.id, npcScope: 'itinerante-sacrificio-atacante', destreza: 10, inteligencia: 6 },
+          { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigoRedirigido.id, npcScope: 'itinerante-sacrificio-redirigido', destreza: 10, inteligencia: 6 },
+        ]),
+      );
+      const companionP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'COMPANION' } });
+      const jugadoraP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'JUGADOR' } });
+      const enemigoAtacanteP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'NPC', npcId: enemigoAtacante.id } });
+      const enemigoRedirigidoP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'NPC', npcId: enemigoRedirigido.id } });
+
+      // Orden de iniciativa forzado a mano — el NPC atacante debe actuar ANTES que la jugadora para
+      // que ELLA defienda con Sacrificio del Valiente en SU turno (mismo mecanismo ya documentado
+      // en el fix del flake de Grito Animal, arriba: la iniciativa tiene un componente de dado
+      // real, no basta con la destreza cruda).
+      await prisma.combatEncounter.update({
+        where: { id: encounterId },
+        data: { ordenIniciativa: [enemigoAtacanteP.id, jugadoraP.id, companionP.id, enemigoRedirigidoP.id] },
+      });
+      // Enganche mutuo forzado a mano: el atacante ataca a la jugadora, y el redirigido ya apunta
+      // al Companion ANTES de que se dispare la redirección. `esperandoEleccionJugadora` en false
+      // (patrón ya documentado en el fix de MARCAR/Grito Animal, arriba) — sin esto,
+      // `resolverTurnoAutonomo` devuelve `null` para CUALQUIER turno mientras la ronda siga
+      // "esperando" la elección de la jugadora, aunque su `objetivoActualId` ya esté fijado a mano.
+      await prisma.combatEncounter.update({ where: { id: encounterId }, data: { esperandoEleccionJugadora: false } });
+      await prisma.combatParticipant.update({ where: { id: enemigoAtacanteP.id }, data: { objetivoActualId: jugadoraP.id } });
+      await prisma.combatParticipant.update({ where: { id: jugadoraP.id }, data: { objetivoActualId: enemigoAtacanteP.id } });
+      await prisma.combatParticipant.update({ where: { id: enemigoRedirigidoP.id }, data: { objetivoActualId: companionP.id } });
+
+      // La habilidad de defensa de la jugadora se AUTO-ELIGE desde su roster real de `SavedAction`
+      // (nunca se manda explícita en `resolverTurnoAutonomo`, a diferencia de `resolverTurnoJugador`
+      // en su propio turno) — única SavedAction de defensa real, mismo patrón que el test de
+      // DESVIAR de arriba: `datosVivosDe` solo cae al fallback genérico (Esquivar) si el roster
+      // está vacío, así que esto garantiza que la jugadora SIEMPRE se defienda con ella.
+      await prisma.savedAction.create({
+        data: {
+          saveId,
+          name: 'Sacrificio del Valiente (prueba)',
+          description: '',
+          icon: '🩸',
+          category: 'combate',
+          promptText: '',
+          rol: 'defensa',
+          effects: ['AGUANTE', 'PROVOCACION'],
+          preferredAttribute: 'constitucion',
+          attributeBonus: 4,
+          durationEffectTarget: 'companion',
+          energyCost: 0,
+          energyRegen: 0,
+        },
+      });
+      // El NPC atacante actúa primero (orden forzado) — su ataque dispara la defensa AUTO-elegida
+      // de la jugadora (Sacrificio del Valiente, único candidato real de su roster).
+      await resolverTurnoAutonomo({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
+
+      const enemigoRedirigidoTrasIntercambio = await prisma.combatParticipant.findUniqueOrThrow({ where: { id: enemigoRedirigidoP.id } });
+      expect(enemigoRedirigidoTrasIntercambio.objetivoActualId).toBe(jugadoraP.id);
+
+      await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
+    } finally {
+      await prisma.save.update({ where: { id: saveId }, data: { attributes: saveOriginalSacrificio.attributes as object } });
+      await prisma.savedAction.deleteMany({ where: { saveId, name: 'Sacrificio del Valiente (prueba)' } });
+      await prisma.companion.delete({ where: { id: companion.id } });
+    }
+  }, 30_000);
+
+  // PROVOCACION real, camino de margen decisivo puro (2026-09-15, Bastión Personal/Guardia de
+  // Asta/Postura Firme — sin `durationEffectTarget:'companion'`) — cobertura dedicada del bug real
+  // corregido de paso al sembrar Sacrificio del Valiente: `defensorProvocacionDisparada` exigía
+  // `atacanteRecibeGolpe` (requiere `ATAQUE` en la defensa), pero ninguna de estas 3 fichas reales
+  // lo lleva, así que este camino nunca había disparado en la práctica. Sin este test, la
+  // corrección de `defensorGanaPorMargen` habría quedado sin verificar contra Postgres real.
+  it('PROVOCACION (variante simple, margen decisivo): Bastión Personal provoca al atacante SIN que la defensa lleve ATAQUE', async () => {
+    await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'ILESO', energia: 100, activeEffects: [] } });
+    const saveOriginalBastion = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    // Constitución masiva SOLO en Save.attributes — garantiza `defensor_contragolpea` (margen
+    // decisivo a favor de la defensa) pase lo que pase, sin mockear el dado.
+    await prisma.save.update({ where: { id: saveId }, data: { attributes: { ...(saveOriginalBastion.attributes as object), constitucion: 500 } } });
+    await prisma.savedAction.create({
+      data: {
+        saveId,
+        name: 'Bastión Personal (prueba)',
+        description: '',
+        icon: '🧱',
+        category: 'combate',
+        promptText: '',
+        rol: 'defensa',
+        effects: ['AGUANTE', 'PROVOCACION'], // sin ATAQUE, fiel a la ficha real
+        preferredAttribute: 'constitucion',
+        attributeBonus: 4,
+        energyCost: 0,
+        energyRegen: 0,
+      },
+    });
+
+    const enemigo = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } });
+    try {
+      const { encounterId } = await prisma.$transaction((tx) =>
+        iniciarCombatEncounter(tx, saveId, [
+          { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 1000, inteligencia: 10 },
+          { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-bastion-personal', destreza: 10, inteligencia: 6 },
+        ]),
+      );
+      const jugadoraP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'JUGADOR' } });
+      const enemigoP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'NPC' } });
+      // Orden de iniciativa forzado a mano — el NPC debe atacar ANTES que la jugadora para que ELLA
+      // defienda con Bastión Personal en su turno (mismo criterio ya documentado arriba).
+      await prisma.combatEncounter.update({ where: { id: encounterId }, data: { ordenIniciativa: [enemigoP.id, jugadoraP.id], esperandoEleccionJugadora: false } });
+      await prisma.combatParticipant.update({ where: { id: enemigoP.id }, data: { objetivoActualId: jugadoraP.id } });
+      await prisma.combatParticipant.update({ where: { id: jugadoraP.id }, data: { objetivoActualId: enemigoP.id } });
+
+      await resolverTurnoAutonomo({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
+
+      const enemigoTrasIntercambio = await prisma.combatParticipant.findUniqueOrThrow({ where: { id: enemigoP.id } });
+      expect(enemigoTrasIntercambio.provocadoPorRondas).toBe(2);
+      expect(enemigoTrasIntercambio.provocadoPorId).toBe(jugadoraP.id);
+
+      await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
+    } finally {
+      await prisma.save.update({ where: { id: saveId }, data: { attributes: saveOriginalBastion.attributes as object } });
+      await prisma.savedAction.deleteMany({ where: { saveId, name: 'Bastión Personal (prueba)' } });
+    }
+  }, 30_000);
+
+  // CANALIZAR real en combate múltiple (2026-09-14, docs/rpgtarkor/clases.md — Tirador 24,
+  // Berserker 40, Convocador 40) — mismo mecanismo ya construido para el 1v1 clásico
+  // (turnResolution.ts), portado a `CombatParticipant.canalizando` porque aquí el objetivo real es
+  // quien te tenga enganchado esa ronda, no un NPC fijo. CASO EMPEZAR: consume el turno entero,
+  // sin tirar ningún dado — se comprueba que NO hay `combatExchangeDisplay` (sin tirada real) y que
+  // el enganche de la ronda sigue igual (nadie recibió ni dio ningún golpe).
+  it('CANALIZAR (combate múltiple): empezar a canalizar siembra CombatParticipant.canalizando, sin tirar dados ni resolver ningún golpe', async () => {
+    await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'ILESO', energia: 100, activeEffects: [] } });
+
+    const enemigo = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } });
+    const { encounterId } = await prisma.$transaction((tx) =>
+      iniciarCombatEncounter(tx, saveId, [
+        { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 1000, inteligencia: 10 },
+        { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-canalizar-empezar', destreza: 1, inteligencia: 6 },
+      ]),
+    );
+    const enemigoP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'NPC' } });
+    await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: enemigoP.id });
+
+    const habilidad: HabilidadParaIntercambio = {
+      name: 'Tensar al Límite (prueba)',
+      description: '',
+      attribute: 'destreza',
+      attributeBonus: 0,
+      effects: ['ATAQUE', 'CANALIZAR', 'LETAL'],
+      rol: 'ataque',
+      energyCost: 0,
+      energyRegen: 0,
+    };
+    const resultado = await resolverTurnoJugador({ prisma, worldId, saveId, encounterId, accion: { habilidad }, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
+
+    expect(resultado?.combatExchangeDisplay).toBeNull();
+    const jugadoraP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'JUGADOR' } });
+    const jugadoraTrasIntercambio = await prisma.combatParticipant.findUniqueOrThrow({ where: { id: jugadoraP.id } });
+    const canalizando = jugadoraTrasIntercambio.canalizando as { abilityName: string; effects: string[] } | null;
+    expect(canalizando?.abilityName).toBe('Tensar al Límite (prueba)');
+    expect(canalizando?.effects).toEqual(['ATAQUE', 'CANALIZAR', 'LETAL']);
+    // El NPC objetivo sigue ILESO — canalizar no resuelve ningún golpe este turno.
+    const enemigoTrasIntercambio = await prisma.combatParticipant.findUniqueOrThrow({ where: { id: enemigoP.id } });
+    expect(enemigoTrasIntercambio.condicionFisicaGrupo ?? 'ILESO').toBe('ILESO');
+
+    await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
+  }, 30_000);
+
+  // CANALIZAR real — ciclo completo: EMPEZAR (turno 1) seguido de DISPARAR (turno siguiente, sin
+  // que nada la interrumpiera) — el golpe diferido se resuelve con tirada real, LETAL incluido, y
+  // `canalizando` queda limpio tras completarse.
+  it('CANALIZAR (combate múltiple): sin interrupción, el turno siguiente dispara el golpe diferido con LETAL y limpia canalizando', async () => {
+    await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'ILESO', energia: 100, activeEffects: [], attributes: { ...((await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).attributes as object), destreza: 500 } } });
+
+    const enemigo = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } });
+    const { encounterId } = await prisma.$transaction((tx) =>
+      iniciarCombatEncounter(tx, saveId, [
+        { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 1000, inteligencia: 10 },
+        { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-canalizar-disparar', destreza: 1, inteligencia: 6 },
+      ]),
+    );
+    const enemigoP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'NPC' } });
+    await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: enemigoP.id });
+
+    const habilidad: HabilidadParaIntercambio = {
+      name: 'Tensar al Límite (prueba 2)',
+      description: '',
+      attribute: 'destreza',
+      attributeBonus: 0,
+      effects: ['ATAQUE', 'CANALIZAR', 'LETAL'],
+      rol: 'ataque',
+      energyCost: 0,
+      energyRegen: 0,
+    };
+    await resolverTurnoJugador({ prisma, worldId, saveId, encounterId, accion: { habilidad }, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
+
+    // Turno del NPC (autónomo) para cruzar al turno siguiente de la jugadora.
+    await resolverTurnoAutonomo({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
+
+    // Segunda llamada de la jugadora — dispara el golpe diferido, IGNORANDO la habilidad que se
+    // manda aquí (mismo criterio que el 1v1: la canalización manda, no lo que se pulse mientras
+    // tanto) — se manda una habilidad claramente distinta a propósito para confirmar que se ignora.
+    const otraHabilidad: HabilidadParaIntercambio = {
+      name: 'Otra habilidad cualquiera',
+      description: '',
+      attribute: 'fuerza',
+      attributeBonus: 0,
+      effects: ['ATAQUE'],
+      rol: 'ataque',
+      energyCost: 0,
+      energyRegen: 0,
+    };
+    const resultado = await resolverTurnoJugador({ prisma, worldId, saveId, encounterId, accion: { habilidad: otraHabilidad }, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
+
+    expect(resultado?.combatExchangeDisplay).not.toBeNull();
+    const jugadoraP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'JUGADOR' } });
+    const jugadoraTrasDisparo = await prisma.combatParticipant.findUniqueOrThrow({ where: { id: jugadoraP.id } });
+    expect(jugadoraTrasDisparo.canalizando).toBeNull();
+
+    await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
+  }, 30_000);
+
+  // MARCAR real (2026-09-14, docs/rpgtarkor/clases.md — Domador 24, Concentración del Domador) —
+  // mecanismo INVERSO a PROVOCACION: aquí la JUGADORA ordena a SU PROPIO Companion que ataque
+  // preferentemente a un rival concreto, saltándose su IA normal de Inteligencia
+  // (`elegirObjetivoPara`, combateMultiple.ts). Dos NPC en escena (uno marcado, otro no) para
+  // comprobar que el Companion no elige por azar/Inteligencia, sino exactamente el marcado.
+  it('MARCAR: Concentración del Domador marca marcaObjetivoRondas/marcaObjetivoId sobre el Companion propio, y la ronda siguiente lo fuerza a enganchar al objetivo marcado', async () => {
+    await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'ILESO', energia: 100, activeEffects: [] } });
+    // Voluntad masiva SOLO en Save.attributes (mismo patrón que ANALIZAR RIVAL más abajo) —
+    // `resolveIndependentExchange` tira dados reales (`rollSide`, Math.random SIN mockear, distinto
+    // del mock acotado a `chooseNpcAbility`): sin esto, la tirada de MARCAR podía fallar al azar
+    // (`efectoAplica: false`), dejando el disparo de MARCAR intermitente — bug real cazado corriendo
+    // el test 6 veces seguidas.
+    const saveOriginalMarcar = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    await prisma.save.update({ where: { id: saveId }, data: { attributes: { ...(saveOriginalMarcar.attributes as object), voluntad: 500 } } });
+
+    const [enemigoMarcado, enemigoSinMarcar, companionOrigen] = await Promise.all([
+      prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } }),
+      prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'corredor-de-cauce' } }),
+      prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'corredor-de-cauce' } }),
+    ]);
+    const companion = await prisma.companion.create({
+      data: {
+        saveId,
+        sourceSlug: companionOrigen.slug,
+        name: 'Compañero de prueba (MARCAR)',
+        role: 'aliado',
+        notes: '',
+        attributes: companionOrigen.attributes as object,
+        condicionFisica: 'ILESO',
+      },
+    });
+
+    const { encounterId } = await prisma.$transaction((tx) =>
+      iniciarCombatEncounter(tx, saveId, [
+        { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 1000, inteligencia: 10 },
+        { bando: 'JUGADOR', tipo: 'COMPANION', companionId: companion.id, destreza: 500, inteligencia: 6 },
+        { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigoMarcado.id, npcScope: 'itinerante-marcar-objetivo', destreza: 1, inteligencia: 6 },
+        { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigoSinMarcar.id, npcScope: 'itinerante-marcar-otro', destreza: 1, inteligencia: 6 },
+      ]),
+    );
+    const companionP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'COMPANION' } });
+    const enemigoMarcadoP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'NPC', npcId: enemigoMarcado.id } });
+    const enemigoSinMarcarP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'NPC', npcId: enemigoSinMarcar.id } });
+    const jugadoraP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'JUGADOR' } });
+    // Orden de iniciativa forzado a mano — el Companion SIEMPRE elige antes que cualquier NPC. Sin
+    // esto, con inteligencia 6 (bajo el umbral táctico -> elección aleatoria, `elegirObjetivo`), el
+    // NPC sin marcar podía "robarle" el reclamo al Companion (regla 3, "si ya te han elegido, no
+    // eliges tú") antes de que le tocase su turno de elegir, dejando el recálculo de enganche de la
+    // ronda siguiente intermitente — bug real de flakiness cazado corriendo el test repetidas veces.
+    // La marca decide entre los dos NPC candidatos SOLO si nadie más reclamó antes al Companion.
+    await prisma.combatEncounter.update({
+      where: { id: encounterId },
+      data: { ordenIniciativa: [jugadoraP.id, companionP.id, enemigoMarcadoP.id, enemigoSinMarcarP.id] },
+    });
+    // `fijarEleccionRondaJugador` es no-op si `esperandoEleccionJugadora` ya es false — con
+    // inteligencia 6, la elección inicial de `iniciarCombatEncounter` (orden de iniciativa
+    // ALEATORIO, antes del override de arriba) puede haber dejado a la jugadora YA "reclamada" por
+    // uno de los NPC, dejándola con un objetivo que ya no es el suyo propio. Forzado a `true` a mano
+    // para garantizar que `fijarEleccionRondaJugador` sí recalcula con el target que pide el test.
+    await prisma.combatEncounter.update({ where: { id: encounterId }, data: { esperandoEleccionJugadora: true } });
+    await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: enemigoMarcadoP.id });
+    // Bug real de flakiness cazado corriendo el test repetidas veces con trazas: `enemigoSinMarcarP`
+    // elige con IA azarosa (inteligencia 6, bajo el umbral táctico) — si por azar RECLAMA a la
+    // JUGADORA en vez de al Companion, la regla 4 de `resolverEnganchesRonda` ("un atacante con
+    // elección propia que ADEMÁS acabó reclamado por otro pierde esa elección") le quita a la
+    // jugadora su propio target explícito (`enemigoMarcadoP`) y la deja apuntando a quien la
+    // reclamó — nada que ver con MARCAR en sí, es el mismo mecanismo de "golpe gratis" ya usado en
+    // el resto del motor. Se sobreescribe a mano el enganche mutuo real (jugadora<->enemigoMarcado)
+    // DESPUÉS del cálculo de `fijarEleccionRondaJugador`, garantizando el duelo que pide el test sin
+    // depender del azar de la IA del segundo NPC.
+    await prisma.combatParticipant.update({ where: { id: jugadoraP.id }, data: { objetivoActualId: enemigoMarcadoP.id } });
+    await prisma.combatParticipant.update({ where: { id: enemigoMarcadoP.id }, data: { objetivoActualId: jugadoraP.id } });
+    // `utilityTriggered` exige que el RIVAL de este intercambio sea `rol: 'ataque'` para que MARCAR
+    // dispare. Energía justa para excluir "Dentellada de jauría" (coste 10) — el roster real del
+    // `aullador-rojo` (fauna GUELISES) también trae "Esquivar"(5)/"Defenderse"(0), ambos
+    // `rol:'defensa'` y afordables incluso con poca energía, así que NO basta con "energía a tope"
+    // ni con "solo Ataque base pagable" (bug de flakiness real cazado corriendo el test
+    // repetidas veces e inspeccionando el roster real con trazas): con energía 5, `affordable` =
+    // [Ataque base(0), Esquivar(1), Defenderse(2)] en ese orden — random() mockeado a fuerza que
+    // `chooseNpcAbility('defensa', ...)` salga del pool `defensivas` (70%) y elija el índice 0
+    // (Ataque base) del roster completo.
+    await prisma.npcState.upsert({
+      where: { saveId_npcId_scope: { saveId, npcId: enemigoMarcado.id, scope: 'itinerante-marcar-objetivo' } },
+      create: { saveId, npcId: enemigoMarcado.id, scope: 'itinerante-marcar-objetivo', energia: 5 },
+      update: { energia: 5 },
+    });
+
+    const habilidad: HabilidadParaIntercambio = {
+      name: 'Concentración del Domador (prueba)',
+      description: '',
+      attribute: 'voluntad',
+      attributeBonus: 0,
+      effects: ['RECUPERACION', 'MARCAR'],
+      rol: 'utilidad',
+      energyCost: 0,
+      energyRegen: 0,
+    };
+    const randomSpy = vi.spyOn(Math, 'random');
+    randomSpy.mockReturnValueOnce(0.9).mockReturnValueOnce(0.1);
+    try {
+      await resolverTurnoJugador({ prisma, worldId, saveId, encounterId, accion: { habilidad }, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
+    } finally {
+      randomSpy.mockRestore();
+    }
+
+    const companionTrasIntercambio = await prisma.combatParticipant.findUniqueOrThrow({ where: { id: companionP.id } });
+    expect(companionTrasIntercambio.marcaObjetivoRondas).toBe(3);
+    expect(companionTrasIntercambio.marcaObjetivoId).toBe(enemigoMarcadoP.id);
+
+    // `enemigoSinMarcarP` sale del combate justo aquí (CONVALECIENTE, excluido de `vivos` en
+    // `calcularEnganchesRonda`) — su único propósito ya se cumplió (demostrar que el Companion elige
+    // el marcado, no cualquier candidato, sembrando 2 NPC reales en escena para el intercambio de
+    // MARCAR de arriba). Sin esto, su IA azarosa (inteligencia 6) puede reclamar a la jugadora o al
+    // Companion en el recálculo de la ronda siguiente, contaminando el enganche que el resto de este
+    // test verifica — mismo mecanismo de "golpe gratis"/regla 4 ya documentado arriba, ajeno a MARCAR
+    // en sí. Bug real de flakiness cazado corriendo el test repetidas veces.
+    await prisma.npcState.upsert({
+      where: { saveId_npcId_scope: { saveId, npcId: enemigoSinMarcar.id, scope: 'itinerante-marcar-otro' } },
+      create: { saveId, npcId: enemigoSinMarcar.id, scope: 'itinerante-marcar-otro', condicionFisica: 'CONVALECIENTE' },
+      update: { condicionFisica: 'CONVALECIENTE' },
+    });
+
+    // Cruza una ronda completa — el enganche de la ronda NUEVA (recalculado solo cuando
+    // `turnoActual` vuelve a 0, `avanzarYComprobarFin`) debe forzar al Companion a atacar al
+    // objetivo marcado, sin pasar por `elegirObjetivo`/Inteligencia normal. El orden de iniciativa
+    // real (`rollInitiativeMultiple`, con componente de dado real) no es un simple "por destreza"
+    // determinista, así que se resuelven turnos autónomos en bucle hasta que `CombatEncounter.ronda`
+    // avanza, en vez de asumir un número fijo de turnos.
+    const rondaInicial = (await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId } })).ronda;
+    for (let i = 0; i < 10; i++) {
+      const encounterActual = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId } });
+      if (encounterActual.ronda > rondaInicial) break;
+      await resolverTurnoAutonomo({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
+    }
+    const companionTrasRonda = await prisma.combatParticipant.findUniqueOrThrow({ where: { id: companionP.id } });
+    expect(companionTrasRonda.objetivoActualId).toBe(enemigoMarcadoP.id);
+    expect(companionTrasRonda.marcaObjetivoRondas).toBeLessThan(3);
+
+    await prisma.save.update({ where: { id: saveId }, data: { attributes: saveOriginalMarcar.attributes as object } });
+    await prisma.companion.deleteMany({ where: { id: companion.id } });
+    await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
+  }, 30_000);
+
+  // AREA real (2026-09-14, docs/rpgtarkor/clases.md — Opresor 32/36) — variante ofensiva: mismo
+  // gate que MULTIPLE (margen decisivo, ATAQUE+AREA) pero SIN tope de cantidad, alcanza a TODOS los
+  // vivos del bando contrario al defensor, no solo un segundo objetivo. 3 NPC enemigos en escena
+  // para distinguirlo de MULTIPLE (que solo cubriría 2 de los 3).
+  it('AREA (ofensivo): un golpe decisivo con ATAQUE+AREA alcanza a TODOS los enemigos del bando, no solo uno', async () => {
+    await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'ILESO', energia: 100, activeEffects: [] } });
+    const [enemigoA, enemigoB, enemigoC] = await Promise.all([
+      prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } }),
+      prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'corredor-de-cauce' } }),
+      prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'corredor-de-cauce' } }),
+    ]);
+
+    // Mismo mecanismo que el test de MULTIPLE: +100 de fuerza garantiza margen decisivo
+    // (golpe_pleno) pase lo que pase, sin mockear el dado. Energía de los 3 NPC a 0 fuerza a
+    // `chooseNpcAbility` a defenderse solo con las habilidades de coste 0 (`rol:'defensa'`).
+    const efectoPrevio: ActiveEffect = { attribute: 'fuerza', magnitude: 100, turnsRemaining: 3, sourceAbility: 'Efecto de prueba (garantiza el margen)' };
+    await prisma.save.update({ where: { id: saveId }, data: { activeEffects: [efectoPrevio] as unknown as object } });
+    await Promise.all([
+      prisma.npcState.upsert({
+        where: { saveId_npcId_scope: { saveId, npcId: enemigoA.id, scope: 'itinerante-area-a' } },
+        create: { saveId, npcId: enemigoA.id, scope: 'itinerante-area-a', energia: 0 },
+        update: { energia: 0, condicionFisica: 'ILESO' },
+      }),
+      prisma.npcState.upsert({
+        where: { saveId_npcId_scope: { saveId, npcId: enemigoB.id, scope: 'itinerante-area-b' } },
+        create: { saveId, npcId: enemigoB.id, scope: 'itinerante-area-b', energia: 0 },
+        update: { energia: 0, condicionFisica: 'ILESO' },
+      }),
+      prisma.npcState.upsert({
+        where: { saveId_npcId_scope: { saveId, npcId: enemigoC.id, scope: 'itinerante-area-c' } },
+        create: { saveId, npcId: enemigoC.id, scope: 'itinerante-area-c', energia: 0 },
+        update: { energia: 0, condicionFisica: 'ILESO' },
+      }),
+    ]);
+
+    const { encounterId } = await prisma.$transaction((tx) =>
+      iniciarCombatEncounter(tx, saveId, [
+        { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 1000, inteligencia: 10 },
+        { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigoA.id, npcScope: 'itinerante-area-a', destreza: 10, inteligencia: 6 },
+        { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigoB.id, npcScope: 'itinerante-area-b', destreza: 10, inteligencia: 6 },
+        { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigoC.id, npcScope: 'itinerante-area-c', destreza: 10, inteligencia: 6 },
+      ]),
+    );
+
+    const encounterInicial = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId }, include: { participantes: true } });
+    if (encounterInicial.esperandoEleccionJugadora) {
+      const principalP = encounterInicial.participantes.find((p) => p.npcScope === 'itinerante-area-a')!;
+      await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: principalP.id });
+    }
+
+    const habilidadArea: HabilidadParaIntercambio = {
+      name: 'Golpe de Prueba (AREA)',
+      description: '',
+      attribute: 'fuerza',
+      effects: ['ATAQUE', 'AREA'],
+      rol: 'ataque',
+      energyCost: 5,
+      energyRegen: 0,
+    };
+    const resultado = await resolverHastaJugadoraActua(saveId, worldId, encounterId, habilidadArea);
+    expect(resultado).not.toBeNull();
+
+    const [stateA, stateB, stateC] = await Promise.all([
+      prisma.npcState.findUnique({ where: { saveId_npcId_scope: { saveId, npcId: enemigoA.id, scope: 'itinerante-area-a' } } }),
+      prisma.npcState.findUnique({ where: { saveId_npcId_scope: { saveId, npcId: enemigoB.id, scope: 'itinerante-area-b' } } }),
+      prisma.npcState.findUnique({ where: { saveId_npcId_scope: { saveId, npcId: enemigoC.id, scope: 'itinerante-area-c' } } }),
+    ]);
+    expect(stateA?.condicionFisica).not.toBe('ILESO');
+    expect(stateB?.condicionFisica).not.toBe('ILESO');
+    expect(stateC?.condicionFisica).not.toBe('ILESO');
+
+    await prisma.save.update({ where: { id: saveId }, data: { activeEffects: [] } });
+    await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
+  }, 30_000);
+
   // "Analizar Rival" real en combate múltiple (2026-08-27) — cierra el hueco que dejó Fase A/B: el
   // resultado se calculaba en `resolverIntercambioCompleto` y se descartaba, nunca llegaba a
   // `NpcState.analizado`. Solitario -> `NpcState.analizado`; miembro de grupo -> su PROPIO
@@ -1286,6 +2696,121 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
       where: { saveId_npcId_scope: { saveId, npcId: enemigo.id, scope: 'itinerante-analizar-grupo' } },
     });
     expect(npcStateCompartido?.analizado ?? false).toBe(false);
+
+    await prisma.save.update({ where: { id: saveId }, data: { attributes: saveOriginal.attributes as object } });
+    await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
+  }, 30_000);
+
+  // AREA real (2026-09-14, docs/rpgtarkor/clases.md — Instintivo 28, Instinto de Reserva) —
+  // variante defensiva: mientras `areaDefensaPorRondas > 0` sobre el Companion, el golpe dirigido a
+  // la jugadora se redirige a él (`redirigirPorAreaDefensiva`), que se defiende con SU propia
+  // tirada. `areaDefensaPorRondas` forzado a mano (en vez de disparar la activación real vía
+  // AGUANTE+AREA) para aislar exactamente la pieza nueva: la redirección de golpes futuros.
+  it('AREA (defensivo): con el efecto activo en el Companion, el golpe dirigido a la jugadora se redirige a él', async () => {
+    await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'ILESO', energia: 100, activeEffects: [] } });
+
+    const [enemigo, companionOrigen] = await Promise.all([
+      prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } }),
+      prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'corredor-de-cauce' } }),
+    ]);
+    const companion = await prisma.companion.create({
+      data: {
+        saveId,
+        sourceSlug: companionOrigen.slug,
+        name: 'Compañero de prueba (AREA defensivo)',
+        role: 'aliado',
+        notes: '',
+        attributes: companionOrigen.attributes as object,
+        condicionFisica: 'ILESO',
+      },
+    });
+
+    const { encounterId } = await prisma.$transaction((tx) =>
+      iniciarCombatEncounter(tx, saveId, [
+        { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 1000, inteligencia: 10 },
+        { bando: 'JUGADOR', tipo: 'COMPANION', companionId: companion.id, destreza: 500, inteligencia: 6 },
+        { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-area-defensivo', destreza: 1, inteligencia: 6 },
+      ]),
+    );
+    const companionP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'COMPANION' } });
+    const jugadoraP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'JUGADOR' } });
+    const enemigoP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'NPC' } });
+    await prisma.combatParticipant.update({ where: { id: companionP.id }, data: { areaDefensaPorRondas: 2 } });
+    // Enganche forzado a mano — el NPC apunta a la jugadora (el objetivo "real" antes de la
+    // redirección), mismo criterio que el resto de tests de redirección de golpe (PROVOCACION
+    // variante Companion, MARCAR).
+    await prisma.combatParticipant.update({ where: { id: enemigoP.id }, data: { objetivoActualId: jugadoraP.id } });
+    await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: enemigoP.id });
+    await prisma.combatParticipant.update({ where: { id: enemigoP.id }, data: { objetivoActualId: jugadoraP.id } });
+
+    const jugadoraCondicionAntes = (await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).condicionFisica;
+    await resolverTurnoAutonomo({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
+
+    const jugadoraTrasIntercambio = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    const companionTrasIntercambio = await prisma.combatParticipant.findUniqueOrThrow({ where: { id: companionP.id } });
+    // La jugadora NUNCA fue tocada — el golpe se resolvió íntegro contra el Companion, con SU propia
+    // tirada de defensa (puede o no haber conectado, lo relevante es que la jugadora quedó fuera).
+    expect(jugadoraTrasIntercambio.condicionFisica).toBe(jugadoraCondicionAntes);
+    expect(companionTrasIntercambio.areaDefensaPorRondas).toBe(2); // solo decrementa al cruzar de ronda, no dentro de la misma
+
+    await prisma.companion.deleteMany({ where: { id: companion.id } });
+    await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
+  }, 30_000);
+
+  // AREA real (2026-09-14, docs/rpgtarkor/clases.md — Supervivencia 32, Trampa Improvisada) —
+  // variante persistente: coloca la trampa (activa `areaTrampaPorRondas` sobre sí misma, camino
+  // independiente/utilidad) y, mientras esté viva, cualquier intercambio donde defienda refuerza el
+  // contragolpe con `iniciativaForzada` (ATURDIMIENTO), sin importar qué habilidad de defensa use
+  // ese turno concreto.
+  it('AREA (persistente): Trampa Improvisada activa areaTrampaPorRondas, y mientras esté viva refuerza el contragolpe con ATURDIMIENTO', async () => {
+    await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'ILESO', energia: 100, activeEffects: [] } });
+    const saveOriginal = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    // Inteligencia masiva SOLO en Save.attributes — garantiza que la utilidad (Trampa Improvisada,
+    // atributo inteligencia) tenga éxito al colocarla, sin mockear el dado.
+    await prisma.save.update({ where: { id: saveId }, data: { attributes: { ...(saveOriginal.attributes as object), inteligencia: 500 } } });
+
+    const enemigo = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } });
+    const { encounterId } = await prisma.$transaction((tx) =>
+      iniciarCombatEncounter(tx, saveId, [
+        { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 1000, inteligencia: 10 },
+        { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-area-trampa', destreza: 1, inteligencia: 6 },
+      ]),
+    );
+    const enemigoP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'NPC' } });
+    await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: enemigoP.id });
+    // `utilityTriggered` exige que el RIVAL de este intercambio sea `rol: 'ataque'` para que AREA
+    // dispare (mismo hallazgo ya documentado en el test de MARCAR de arriba) — energía justa para
+    // excluir "Dentellada de jauría" (coste 10) y las defensivas de coste 5+ del roster real del
+    // `aullador-rojo`, dejando solo "Ataque base" (coste 5, rol ataque) y "Defenderse" (coste 0, rol
+    // defensa) afordables; "Defenderse" cae en el pool `defensivas` (70% de probabilidad), así que
+    // se manda la energía justa para que "Ataque base" sea la ÚNICA opción de ataque real posible,
+    // sin depender del azar del 30% restante.
+    await prisma.npcState.upsert({
+      where: { saveId_npcId_scope: { saveId, npcId: enemigo.id, scope: 'itinerante-area-trampa' } },
+      create: { saveId, npcId: enemigo.id, scope: 'itinerante-area-trampa', energia: 5 },
+      update: { energia: 5 },
+    });
+
+    const habilidadTrampa: HabilidadParaIntercambio = {
+      name: 'Trampa Improvisada (prueba)',
+      description: '',
+      attribute: 'inteligencia',
+      effects: ['ATURDIMIENTO', 'AREA'],
+      rol: 'utilidad',
+      energyCost: 0,
+      energyRegen: 0,
+    };
+    const randomSpy = vi.spyOn(Math, 'random');
+    randomSpy.mockReturnValueOnce(0.9).mockReturnValueOnce(0.1);
+    try {
+      await resolverTurnoJugador({ prisma, worldId, saveId, encounterId, accion: { habilidad: habilidadTrampa }, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
+    } finally {
+      randomSpy.mockRestore();
+    }
+
+    const jugadoraP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'JUGADOR' } });
+    const jugadoraTrasColocar = await prisma.combatParticipant.findUniqueOrThrow({ where: { id: jugadoraP.id } });
+    expect(jugadoraTrasColocar.areaTrampaPorRondas).toBe(2);
 
     await prisma.save.update({ where: { id: saveId }, data: { attributes: saveOriginal.attributes as object } });
     await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });

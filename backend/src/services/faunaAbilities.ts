@@ -94,7 +94,7 @@ export interface FaunaCategoriaAbilityUnlock {
 /// hasta que se implemente. NUNCA combinado con MULTIPLE (la usuaria lo sugirió, pero MULTIPLE solo
 /// tiene motor real junto a ATAQUE, nunca junto a PROVOCACION — combinarlos hoy no haría nada
 /// distinto a PROVOCACION sola, así que se deja sin combinar hasta que MULTIPLE también soporte
-/// esta combinación). NUNCA usar AUMENTO/DEBILIDAD/INVOCACION/LETAL/DESVIAR/OCULTACION/RETIRAR/
+/// esta combinación). NUNCA usar AUMENTO/DEBILIDAD/INVOCACION/LETAL/DESVIAR/OCULTACION/LIMPIAR/
 /// CANALIZAR/CURAZION/REFLEJAR/EXPULSAR/PURIFICAR aquí.
 const FAUNA_CATEGORIA_ABILITIES: FaunaCategoriaAbilityUnlock[] = [
   // ══════════════════════════════════════════════════════════════════════════

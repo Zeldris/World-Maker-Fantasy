@@ -176,7 +176,7 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
     const app = await buildApp();
     const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/ignorar` });
     expect(res.statusCode).toBe(200);
-    expect(JSON.parse(res.body)).toEqual({ ok: true });
+    expect(JSON.parse(res.body)).toEqual({ ok: true, logEntry: null });
   });
 
   it('ignorar CON un pendingDynamicMode activo (B.5, checklist frontend 2026-08-27: vía de escape real): lo limpia y vuelca la conversación truncada a un LogEntry (Franja 0, 2026-09-08)', async () => {
@@ -197,7 +197,8 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
     const logCountAntes = await prisma.logEntry.count({ where: { saveId } });
     const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/ignorar` });
     expect(res.statusCode).toBe(200);
-    expect(JSON.parse(res.body)).toEqual({ ok: true });
+    const body = JSON.parse(res.body);
+    expect(body.ok).toBe(true);
 
     const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(saveAfter.pendingDynamicMode).toBeNull();
@@ -206,6 +207,13 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
     expect(logCountDespues).toBe(logCountAntes + 1);
     const nuevaEntrada = await prisma.logEntry.findFirstOrThrow({ where: { saveId }, orderBy: { createdAt: 'desc' } });
     expect(nuevaEntrada.text).toBe('Un cornante te mira desde lejos.');
+    // Bug real jugando en vivo (2026-09-15, hallazgo Álvaro: "cerrar Interactuar no deja rastro en
+    // el log") — antes esta ruta devolvía solo `{ ok: true }`: el LogEntry se creaba en BD pero el
+    // frontend nunca lo recibía para insertarlo, así que desaparecía visualmente. Ahora viaja en
+    // la propia respuesta, mismo criterio que `/zona/mover`.
+    expect(body.logEntry).not.toBeNull();
+    expect(body.logEntry.id).toBe(nuevaEntrada.id);
+    expect(body.logEntry.text).toBe('Un cornante te mira desde lejos.');
   });
 
   it('ignorar SIN pendingDynamicMode activo (solo rechazar oferta): no crea ningún LogEntry (nada que narrar)', async () => {
@@ -214,6 +222,7 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
 
     const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/ignorar` });
     expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).logEntry).toBeNull();
 
     const logCountDespues = await prisma.logEntry.count({ where: { saveId } });
     expect(logCountDespues).toBe(logCountAntes);

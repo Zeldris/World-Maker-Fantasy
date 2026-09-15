@@ -751,3 +751,121 @@ describe('Compañeros: guard de save.pendingDeathResolution en captura/almacén/
     expect(JSON.parse(res.body).pendingDeathResolution).toBe(true);
   });
 });
+
+/// Alfa de la Manada real (2026-09-14, docs/rpgtarkor/clases.md — Domador 40, capstone) —
+/// `maxSlotsDomadorFor` amplía el slot garantizado de 1 a 2 con nivel 40, y la ruta nueva
+/// POST /:id/companeros/:companionId/alfa marca cuál de los 2 es el Alfa (nunca más de uno a la
+/// vez). Cobertura de camino feliz + gates, mismo patrón que el resto de `describe` de este
+/// archivo (seedear estado directo, sin simular un turno completo).
+describe('Compañeros: Alfa de la Manada — segundo slot de Domador + elección de Alfa (2026-09-14)', () => {
+  let saveId: string;
+  let auladorId: string;
+  let corretolvasId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const aullador = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'aullador-rojo' } });
+    const corretolvas = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'corretolvas' } });
+    auladorId = aullador.id;
+    corretolvasId = corretolvas.id;
+
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (Alfa de la Manada)',
+        characterArchetype: 'cazador',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        portraitInitial: 'G',
+        clase: 'CAZADOR',
+        especializacion: 'DOMADOR',
+        level: 40,
+      },
+    });
+    saveId = save.id;
+
+    await prisma.npcState.create({ data: { saveId, npcId: auladorId, scope: '', condicionFisica: 'ILESO', capturado: true, capturaFelicidad: 90 } });
+    await prisma.npcState.create({ data: { saveId, npcId: corretolvasId, scope: '', condicionFisica: 'ILESO', capturado: true, capturaFelicidad: 90 } });
+  });
+
+  afterAll(async () => {
+    await prisma.companion.deleteMany({ where: { saveId } });
+    await prisma.npcState.deleteMany({ where: { saveId } });
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('con nivel 40 y Domador, confirmar 2 capturas distintas a la vez crea AMBOS Companion como slot garantizado', async () => {
+    const app = await buildApp();
+    const [resA, resB] = await Promise.all([
+      app.inject({ method: 'POST', url: `/saves/${saveId}/tameo-pendientes/aullador-rojo/confirmar`, payload: {} }),
+      app.inject({ method: 'POST', url: `/saves/${saveId}/tameo-pendientes/corretolvas/confirmar`, payload: {} }),
+    ]);
+    expect([resA.statusCode, resB.statusCode]).toEqual([200, 200]);
+
+    const companions = await prisma.companion.findMany({ where: { saveId } });
+    expect(companions).toHaveLength(2);
+    expect(companions.every((c) => c.esSlotDomador)).toBe(true);
+    expect(companions.every((c) => !c.esAlfa)).toBe(true); // nadie es Alfa hasta que se elija
+  });
+
+  let primerCompanionId: string;
+  let segundoCompanionId: string;
+
+  it('POST /:companionId/alfa marca uno como Alfa', async () => {
+    const [primero, segundo] = await prisma.companion.findMany({ where: { saveId } });
+    primerCompanionId = primero.id;
+    segundoCompanionId = segundo.id;
+
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/companeros/${primerCompanionId}/alfa` });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ ok: true, alfaCompanionId: primerCompanionId });
+
+    const companionTrasElegir = await prisma.companion.findUniqueOrThrow({ where: { id: primerCompanionId } });
+    expect(companionTrasElegir.esAlfa).toBe(true);
+  });
+
+  it('elegir un Alfa distinto desmarca al anterior — nunca más de uno a la vez', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/companeros/${segundoCompanionId}/alfa` });
+    expect(res.statusCode).toBe(200);
+
+    const [primero, segundo] = await Promise.all([
+      prisma.companion.findUniqueOrThrow({ where: { id: primerCompanionId } }),
+      prisma.companion.findUniqueOrThrow({ where: { id: segundoCompanionId } }),
+    ]);
+    expect(primero.esAlfa).toBe(false);
+    expect(segundo.esAlfa).toBe(true);
+  });
+
+  it('sin la habilidad desbloqueada (nivel < 40), la ruta de elegir Alfa devuelve 400', async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const saveSinNivel = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (Alfa, sin nivel)',
+        characterArchetype: 'cazador',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        portraitInitial: 'G',
+        clase: 'CAZADOR',
+        especializacion: 'DOMADOR',
+        level: 20,
+      },
+    });
+    try {
+      const app = await buildApp();
+      const res = await app.inject({ method: 'POST', url: `/saves/${saveSinNivel.id}/companeros/${primerCompanionId}/alfa` });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().error).toMatch(/Alfa de la Manada/i);
+    } finally {
+      await prisma.save.delete({ where: { id: saveSinNivel.id } });
+    }
+  });
+});

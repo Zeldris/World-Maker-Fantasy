@@ -352,7 +352,12 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
       const pending = save.pendingDynamicMode as unknown as PendingDynamicMode | null;
       const historialNarracion = pending?.historialNarracion ?? (pending ? [pending.narration] : null);
 
-      await prisma.$transaction([
+      // Bug real jugando en vivo (2026-09-15, hallazgo Álvaro: "cerrar el modal de Interactuar no
+      // deja rastro en el log") — el LogEntry SÍ se creaba aquí, pero esta ruta solo devolvía
+      // `{ ok: true }`: el frontend (`handleSalirDynamicMode`, GameView.tsx) nunca lo recibía para
+      // insertarlo en `characterLog`, así que la conversación desaparecía visualmente aunque
+      // estuviera bien persistida. Se captura el resultado de la creación (si hubo) para devolverlo.
+      const [, logEntryCreado] = await prisma.$transaction([
         prisma.save.update({
           where: { id: save.id },
           data: { pendingDynamicMode: Prisma.JsonNull, pendingDynamicModeOffer: Prisma.JsonNull },
@@ -385,7 +390,18 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
       if (pending && pending.tipo === 'NPC' && !gisteraSinPresentarTodavia) {
         await marcarNpcConocido(save.id, pending.targetSlug, pending.targetName);
       }
+      if (logEntryCreado) {
+        return {
+          ok: true,
+          logEntry: {
+            id: logEntryCreado.id,
+            text: logEntryCreado.text,
+            timeLabel: logEntryCreado.timeLabel,
+            createdAt: logEntryCreado.createdAt.toISOString(),
+          },
+        };
+      }
     }
-    return { ok: true };
+    return { ok: true, logEntry: null };
   });
 }

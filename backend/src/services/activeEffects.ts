@@ -40,6 +40,54 @@ export function pushActiveEffect(activeEffects: ActiveEffect[], newEffect: Activ
   return [...activeEffects, newEffect];
 }
 
+/// El DEBILIDAD (`magnitude < 0`) de mayor magnitud negativa de la lista, sin tocarla — extraída de
+/// `removeWorstDebilidad` (2026-09-15, REFLEJAR real, Segador Transmutador) para que el caller
+/// pueda leer el efecto ANTES de quitarlo (REFLEJAR lo reconstruye sobre el rival, no solo lo
+/// borra). Empate: se queda el primero encontrado (ninguna ficha real aclara el criterio). `null`
+/// sin ningún DEBILIDAD activo.
+export function worstDebilidadOf(activeEffects: ActiveEffect[]): ActiveEffect | null {
+  return activeEffects.reduce<ActiveEffect | null>((worst, e) => {
+    if (e.magnitude >= 0) return worst;
+    if (!worst || e.magnitude < worst.magnitude) return e;
+    return worst;
+  }, null);
+}
+
+/// El AUMENTO (`magnitude > 0`) de mayor magnitud POSITIVA de la lista, sin tocarla — simétrico a
+/// `worstDebilidadOf` (2026-09-15, CONVERSION real — Transmutación Mayor/Equilibrio Roto, Segador
+/// Transmutador): "convierte un buff del rival en debilidad" necesita el mejor AUMENTO del rival,
+/// igual que REFLEJAR necesita su peor DEBILIDAD. Empate: se queda el primero encontrado. `null`
+/// sin ningún AUMENTO activo.
+export function bestAumentoOf(activeEffects: ActiveEffect[]): ActiveEffect | null {
+  return activeEffects.reduce<ActiveEffect | null>((best, e) => {
+    if (e.magnitude <= 0) return best;
+    if (!best || e.magnitude > best.magnitude) return e;
+    return best;
+  }, null);
+}
+
+/// `LIMPIAR` (2026-09-15, docs/rpgtarkor/clases.md — Caballero del Valor 16/32, Manto de
+/// Purificación/Purga de Honor) — quita de la lista el DEBILIDAD (magnitude < 0) de mayor
+/// magnitud negativa, a diferencia de `decrementActiveEffects` (que toca TODOS a la vez por turno)
+/// esta es la única función del motor que elimina un `ActiveEffect` concreto. Empate: se queda el
+/// primero encontrado (ninguna ficha real aclara el criterio de desempate). Sin ningún DEBILIDAD
+/// activo, devuelve la lista sin cambios — el efecto se pierde en silencio, mismo criterio de "sin
+/// candidato válido" que usa el resto del motor.
+export function removeWorstDebilidad(activeEffects: ActiveEffect[]): ActiveEffect[] {
+  return removeActiveEffect(activeEffects, worstDebilidadOf(activeEffects));
+}
+
+/// Quita UN `ActiveEffect` concreto de la lista por referencia (2026-09-15, extraída para
+/// compartirla entre `removeWorstDebilidad` y la transmutación de AUMENTO — Transmutación Mayor/
+/// Equilibrio Roto, Segador Transmutador, necesita quitar el `bestAumentoOf` del rival del mismo
+/// modo). `null`/efecto no encontrado en la lista devuelve la lista sin cambios.
+export function removeActiveEffect(activeEffects: ActiveEffect[], effect: ActiveEffect | null): ActiveEffect[] {
+  if (!effect) return activeEffects;
+  const idx = activeEffects.indexOf(effect);
+  if (idx === -1) return activeEffects;
+  return [...activeEffects.slice(0, idx), ...activeEffects.slice(idx + 1)];
+}
+
 /// Avanza un turno: resta 1 a `turnsRemaining` de todos los efectos y descarta los que llegan a 0
 /// — se llama UNA vez por cada lado (jugador/NPC) al final de cada intercambio resuelto, mismo
 /// punto donde ya se escribe `condicionFisica`/`energia` tras el golpe.

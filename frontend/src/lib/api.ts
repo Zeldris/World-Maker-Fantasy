@@ -1085,6 +1085,13 @@ export interface ZonePointInfo {
   /// (`DiscoveredEntity`); el modal de detalle debe ocultar "Ver en la Enciclopedia" en ese caso,
   /// aunque exista ficha real. `EDIFICIO` siempre `true` (nunca tiene ficha que ocultar).
   descubierto: boolean
+  /// Compañero de fauna con nombre propio (auditoría de lore 2026-09-13, C10 — "los compañeros de
+  /// npc deben formar un mismo punto en el mapa de zona... se mueven como 1"). Presente solo en
+  /// puntos `tipo: 'NPC'` cuyo dueño tiene un `Npc.companionOfNpcSlug` apuntándole — el companion
+  /// EN SÍ nunca tiene `ZonePoint` propio (backend lo resuelve por el slug inverso). El frontend
+  /// pinta un icono de grupo distinto y abre un modal de desglose en vez del modal normal de un
+  /// solo NPC cuando este campo está presente.
+  companion?: { slug: string; nombre: string }
 }
 /// NPCs presentados de forma determinista (2026-08-26, "no aparecen en la zona y sí tienen que
 /// salir") — a diferencia de `ZonePointInfo` (catálogo fijo, con posición real curada), estos
@@ -1220,6 +1227,9 @@ export async function postCapturar(
   /// backend) y el LogEntry breve que ahora la acompaña (antes Capturar era silencioso).
   logEntry: { id: string; text: string; timeLabel: string; createdAt: string }
   factionRepChange: { faction: string; delta: number; newValue: number } | null
+  /// Títulos de misión ACTIVA que siguen apuntando a este NPC (2026-09-15) — Capturar tampoco las
+  /// cierra (deja al NPC vivo), mismo criterio que `dejarVivir`. `[]` si ninguna.
+  misionesPendientes: string[]
 }> {
   return fetchJson(`${API_URL}/saves/${saveId}/capturar/${npcSlug}`, {
     method: 'POST',
@@ -1297,6 +1307,11 @@ export async function dejarVivir(
   /// FACTION_REP_MERCY_DELTA en backend) — antes solo Matar/Clemente en combate 1v1 clásico
   /// aplicaban esto de forma indirecta (y demasiado pronto, ver el bug real que motivó esta pieza).
   factionRepChange: { faction: string; delta: number; newValue: number } | null
+  /// Títulos de misión ACTIVA que siguen apuntando a este NPC (2026-09-15, hallazgo real jugando
+  /// en vivo: "Acabar con X" seguía ACTIVA sin ningún aviso tras perdonarle la vida) — Clemente NO
+  /// las cierra (solo la MUERTE real lo hace, decisión de 2026-08-31), esto es solo para avisar al
+  /// jugador de que el objetivo sigue vivo y esas misiones siguen abiertas. `[]` si ninguna.
+  misionesPendientes: string[]
 }> {
   return fetchJson(`${API_URL}/saves/${saveId}/combat/dejar-vivir/${npcSlug}`, {
     method: 'POST',
@@ -1523,7 +1538,14 @@ export async function responderModoDinamico(saveId: string, respuesta: string): 
   })
 }
 
-export async function ignorarModoDinamico(saveId: string): Promise<{ ok: boolean }> {
+export async function ignorarModoDinamico(saveId: string): Promise<{
+  ok: boolean
+  /// Franja 0 (2026-09-15, hallazgo real jugando en vivo: "cerrar Interactuar no deja rastro en
+  /// el log") — el backend ya creaba este LogEntry al salir de una conversación en curso, pero
+  /// nunca lo devolvía; el caller lo insertaba a ciegas sin él. `null` cuando no había nada que
+  /// resumir (ignorar una oferta sin llegar a abrirla).
+  logEntry: { id: string; text: string; timeLabel: string; createdAt: string } | null
+}> {
   return fetchJson(`${API_URL}/saves/${saveId}/modo-dinamico/ignorar`, { method: 'POST' })
 }
 

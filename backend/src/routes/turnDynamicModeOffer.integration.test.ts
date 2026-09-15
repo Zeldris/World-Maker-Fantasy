@@ -183,11 +183,13 @@ describe('dynamicModeOffer en /turn/narrate', () => {
           algunaOferta = true;
           // RECURSO ahora también es candidato elegible (2026-09-08, "Ver qué hay en la zona") —
           // `campamento-serhu` ya tiene su propio `ZonePoint` RECURSO real de catálogo
-          // (`murgoles-domados-campamento`), así que la oferta real puede ser CUALQUIERA de los dos
-          // candidatos activos en la Location, no solo la fauna sintética de este test. El
-          // propósito del test (el mecanismo dispara alguna vez con probabilidad real) sigue
-          // cubierto con cualquiera de los dos.
-          expect(['fauna-prueba-oferta-modo-dinamico-21', 'murgoles-domados-campamento']).toContain(done.dynamicModeOffer.targetSlug);
+          // (`murgoles-domados-campamento`), así que la oferta real puede ser CUALQUIERA de los
+          // candidatos activos en la Location, no solo la fauna sintética de este test. `cazadora-
+          // serhu` se sumó como tercer candidato real (hallazgo 4, 2026-09-15: único NPC con
+          // homeLocationSlug en el exterior de Karot Veku sin ZonePoint todavía). El propósito del
+          // test (el mecanismo dispara alguna vez con probabilidad real) sigue cubierto con
+          // cualquiera de los tres.
+          expect(['fauna-prueba-oferta-modo-dinamico-21', 'murgoles-domados-campamento', 'cazadora-serhu']).toContain(done.dynamicModeOffer.targetSlug);
         }
       }
       expect(algunaOferta).toBe(true);

@@ -156,6 +156,10 @@ async function main() {
         // Menú contextual de interacción (2026-09-06) — mismo criterio que `nucleoJugable`:
         // explícito en el `update` para que quitar un tipo en worldCatalog.ts también se refleje.
         interactionTypes: npcData.interactionTypes ?? [],
+        // Compañero de fauna con nombre propio (auditoría de lore 2026-09-13, C10) — mismo
+        // criterio que arriba: explícito en el `update` para que quitar el vínculo en
+        // worldCatalog.ts también se refleje al resembrar.
+        companionOfNpcSlug: npcData.companionOfNpcSlug ?? null,
       },
       create: { worldId, ...npcData, nucleoJugable: npcData.nucleoJugable ?? true, habilidadesRaciales: habilidadesRacialesJson },
     });

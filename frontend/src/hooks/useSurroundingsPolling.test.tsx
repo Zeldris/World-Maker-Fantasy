@@ -107,6 +107,24 @@ describe('useSurroundingsPolling', () => {
     expect(mockRequestSurroundings).not.toHaveBeenCalled()
   })
 
+  it('hallazgo real (2026-09-15): si el backend reutiliza el mismo logEntryId (mundo sin avanzar), no duplica la fila en worldLog', async () => {
+    mockRequestSurroundings.mockResolvedValue({ description: 'La arena roja se extiende bajo sus pies.', logEntryId: 'log-repetido' })
+    const setWorldLog = vi.fn()
+    renderHook(() => useSurroundingsPolling(baseParams({ setWorldLog })))
+
+    await vi.advanceTimersByTimeAsync(TEN_MINUTES_MS)
+    await vi.advanceTimersByTimeAsync(TEN_MINUTES_MS)
+    expect(mockRequestSurroundings).toHaveBeenCalledTimes(2)
+    expect(setWorldLog).toHaveBeenCalledTimes(2)
+
+    // Ambas llamadas al updater, aplicadas en secuencia sobre un worldLog ya poblado con ese id —
+    // simula lo que React haría de verdad: la segunda no debe añadir una fila duplicada.
+    const prevConId: import('../types').LogEntry[] = [{ id: 'log-repetido', channel: 'world', text: 'x', timeLabel: 't', createdAt: 'c' }]
+    const afterFirstTick = setWorldLog.mock.calls[0][0](prevConId)
+    const afterSecondTick = setWorldLog.mock.calls[1][0](afterFirstTick)
+    expect(afterSecondTick).toHaveLength(1)
+  })
+
   it('si requestSurroundings falla, no revienta — worldThinking vuelve a false y se reintenta en el siguiente tick', async () => {
     mockRequestSurroundings.mockRejectedValueOnce(new Error('network')).mockResolvedValueOnce({ description: 'ok', logEntryId: 'l2' })
     const setWorldLog = vi.fn()

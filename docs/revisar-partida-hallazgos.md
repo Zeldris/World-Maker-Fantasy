@@ -508,7 +508,7 @@ la sesión de pruebas encontró MÁS problemas del mismo área que esos fixes no
     contra el catálogo real — el problema de fondo (fauna dentro del recinto) ya no existe: el
     hallazgo es de ANTES de la pieza "Trabajador de Reino" (2026-08-31), que movió toda la fauna
     (Torgash/Ulkha) al interior del campamento y dejó el mapa exterior con solo 2 `ZonePoint`
-    (Edificio Karot Vekhad + Recurso de múrgoles ya domados) — coherente con la descripción real de
+    (Edificio Ketg'lukar + Recurso de múrgoles ya domados) — coherente con la descripción real de
     la Location ("empalizada de estacas afiladas... vigías en las torres de la entrada"), sin nada
     salvaje suelto hoy. La parte de "aparecer más cerca del Pozo de Cauce Viejo": confirmado que la
     posición de entrada al llegar a CUALQUIER Location se calcula por dirección cardinal genérica
@@ -560,7 +560,7 @@ la sesión de pruebas encontró MÁS problemas del mismo área que esos fixes no
     `git stash`/`git stash pop` que el caso "Múrgol/Ruptidar" ya fallaba igual ANTES de este
     hallazgo). Pendiente reverificar en vivo con Playwright: ir de La Hondonada del Eco a Los
     Pilares Rotos y confirmar que el pool de Cazar/Recolectar/Minar cambia de verdad entre ambas.
-30. **No hay forma de acceder al interior del campamento (Karot Vekhad) desde la Zona** — pese a que
+30. **No hay forma de acceder al interior del campamento (Ketg'lukar) desde la Zona** — pese a que
     hoy mismo se documentó el interior en `areas.md`/`loreChunks.ts` (ver sesión de lore de hoy), no
     está claro cómo se entra a él desde la vista de Zona en el juego real — falta confirmar si existe
     algún link/acción real para entrar, o si es un hueco de UI. **CERRADO — VERIFICADO, NO ES BUG
@@ -571,7 +571,7 @@ la sesión de pruebas encontró MÁS problemas del mismo área que esos fixes no
     mecanismo real de entrada YA funciona hoy vía el botón "Viajar" estándar del panel Mapa
     (`TravelDestinationModal` → `GET /saves/:id/destinos-viaje`) — lista cualquier Location ya
     visitada, o (con el mapa de Llanuras revelado) toda Location de la región, sin ningún filtro
-    por `kind` que excluya interiores. El "EDIFICIO Karot Vekhad" que sí aparece como `ZonePoint`
+    por `kind` que excluya interiores. El "EDIFICIO Ketg'lukar" que sí aparece como `ZonePoint`
     en el mapa exterior es solo informativo/posicional (abre su modal de detalle), no dispara viaje
     — pero no hace falta, el modal "Viajar" ya cubre la entrada igual que cualquier otra Location.
     Único requisito real: haber visitado `campamento-serhu-interior` al menos una vez o tener el

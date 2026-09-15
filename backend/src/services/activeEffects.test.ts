@@ -1,5 +1,15 @@
 import { describe, it, expect } from 'vitest';
-import { effectiveAttributesConDuracion, pushActiveEffect, decrementActiveEffects, parseActiveEffects, type ActiveEffect } from './activeEffects.js';
+import {
+  effectiveAttributesConDuracion,
+  pushActiveEffect,
+  decrementActiveEffects,
+  parseActiveEffects,
+  removeWorstDebilidad,
+  worstDebilidadOf,
+  bestAumentoOf,
+  removeActiveEffect,
+  type ActiveEffect,
+} from './activeEffects.js';
 import type { AttributeBlock } from './dice.js';
 
 const BASE: AttributeBlock = { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 };
@@ -59,6 +69,106 @@ describe('decrementActiveEffects', () => {
 
   it('array vacío se queda vacío', () => {
     expect(decrementActiveEffects([])).toEqual([]);
+  });
+});
+
+describe('removeWorstDebilidad', () => {
+  it('sin ningún DEBILIDAD activo, devuelve la lista sin cambios', () => {
+    const efectos: ActiveEffect[] = [{ attribute: 'fuerza', magnitude: 6, turnsRemaining: 2, sourceAbility: 'AUMENTO A' }];
+    expect(removeWorstDebilidad(efectos)).toEqual(efectos);
+  });
+
+  it('array vacío se queda vacío', () => {
+    expect(removeWorstDebilidad([])).toEqual([]);
+  });
+
+  it('un solo DEBILIDAD se quita', () => {
+    const efectos: ActiveEffect[] = [{ attribute: 'destreza', magnitude: -4, turnsRemaining: 2, sourceAbility: 'Golpe Envenenado' }];
+    expect(removeWorstDebilidad(efectos)).toEqual([]);
+  });
+
+  it('con varios DEBILIDAD, quita el de magnitud MÁS negativa, conserva el resto', () => {
+    const leve: ActiveEffect = { attribute: 'destreza', magnitude: -2, turnsRemaining: 2, sourceAbility: 'Leve' };
+    const grave: ActiveEffect = { attribute: 'fuerza', magnitude: -6, turnsRemaining: 3, sourceAbility: 'Grave' };
+    const result = removeWorstDebilidad([leve, grave]);
+    expect(result).toEqual([leve]);
+  });
+
+  it('ignora los AUMENTO (magnitud positiva) al buscar el peor DEBILIDAD', () => {
+    const aumento: ActiveEffect = { attribute: 'fuerza', magnitude: 6, turnsRemaining: 2, sourceAbility: 'Buff' };
+    const debilidad: ActiveEffect = { attribute: 'destreza', magnitude: -3, turnsRemaining: 2, sourceAbility: 'Malus' };
+    const result = removeWorstDebilidad([aumento, debilidad]);
+    expect(result).toEqual([aumento]);
+  });
+
+  it('no muta el array original', () => {
+    const efectos: ActiveEffect[] = [{ attribute: 'destreza', magnitude: -4, turnsRemaining: 2, sourceAbility: 'A' }];
+    removeWorstDebilidad(efectos);
+    expect(efectos).toHaveLength(1);
+  });
+
+  it('en caso de empate exacto, quita el primero encontrado', () => {
+    const primero: ActiveEffect = { attribute: 'destreza', magnitude: -4, turnsRemaining: 2, sourceAbility: 'Primero' };
+    const segundo: ActiveEffect = { attribute: 'fuerza', magnitude: -4, turnsRemaining: 3, sourceAbility: 'Segundo' };
+    const result = removeWorstDebilidad([primero, segundo]);
+    expect(result).toEqual([segundo]);
+  });
+});
+
+describe('worstDebilidadOf', () => {
+  it('sin ningún DEBILIDAD activo, devuelve null', () => {
+    const efectos: ActiveEffect[] = [{ attribute: 'fuerza', magnitude: 6, turnsRemaining: 2, sourceAbility: 'AUMENTO A' }];
+    expect(worstDebilidadOf(efectos)).toBeNull();
+  });
+
+  it('array vacío devuelve null', () => {
+    expect(worstDebilidadOf([])).toBeNull();
+  });
+
+  it('con varios DEBILIDAD, devuelve el de magnitud MÁS negativa, sin tocar la lista', () => {
+    const leve: ActiveEffect = { attribute: 'destreza', magnitude: -2, turnsRemaining: 2, sourceAbility: 'Leve' };
+    const grave: ActiveEffect = { attribute: 'fuerza', magnitude: -6, turnsRemaining: 3, sourceAbility: 'Grave' };
+    const efectos = [leve, grave];
+    expect(worstDebilidadOf(efectos)).toEqual(grave);
+    expect(efectos).toHaveLength(2);
+  });
+});
+
+describe('bestAumentoOf', () => {
+  it('sin ningún AUMENTO activo, devuelve null', () => {
+    const efectos: ActiveEffect[] = [{ attribute: 'destreza', magnitude: -4, turnsRemaining: 2, sourceAbility: 'DEBILIDAD A' }];
+    expect(bestAumentoOf(efectos)).toBeNull();
+  });
+
+  it('array vacío devuelve null', () => {
+    expect(bestAumentoOf([])).toBeNull();
+  });
+
+  it('con varios AUMENTO, devuelve el de magnitud MÁS positiva, sin tocar la lista', () => {
+    const leve: ActiveEffect = { attribute: 'destreza', magnitude: 2, turnsRemaining: 2, sourceAbility: 'Leve' };
+    const fuerte: ActiveEffect = { attribute: 'fuerza', magnitude: 6, turnsRemaining: 3, sourceAbility: 'Fuerte' };
+    const efectos = [leve, fuerte];
+    expect(bestAumentoOf(efectos)).toEqual(fuerte);
+    expect(efectos).toHaveLength(2);
+  });
+});
+
+describe('removeActiveEffect', () => {
+  it('quita el efecto exacto pasado por referencia, conserva el resto', () => {
+    const a: ActiveEffect = { attribute: 'fuerza', magnitude: 6, turnsRemaining: 2, sourceAbility: 'A' };
+    const b: ActiveEffect = { attribute: 'destreza', magnitude: -4, turnsRemaining: 2, sourceAbility: 'B' };
+    expect(removeActiveEffect([a, b], a)).toEqual([b]);
+  });
+
+  it('null se queda sin cambios', () => {
+    const efectos: ActiveEffect[] = [{ attribute: 'fuerza', magnitude: 6, turnsRemaining: 2, sourceAbility: 'A' }];
+    expect(removeActiveEffect(efectos, null)).toEqual(efectos);
+  });
+
+  it('un efecto que no está en la lista (por referencia) se queda sin cambios', () => {
+    const a: ActiveEffect = { attribute: 'fuerza', magnitude: 6, turnsRemaining: 2, sourceAbility: 'A' };
+    const ajeno: ActiveEffect = { attribute: 'fuerza', magnitude: 6, turnsRemaining: 2, sourceAbility: 'A' };
+    expect(removeActiveEffect([a], ajeno)).toEqual([a]);
   });
 });
 

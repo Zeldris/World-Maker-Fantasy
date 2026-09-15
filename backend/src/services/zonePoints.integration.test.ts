@@ -101,14 +101,47 @@ describe('recalcularZonePointsDeLocation + zonePointsSummaryFor (Postgres real)'
     expect(punto.activo).toBe(true);
   });
 
-  it('zonePointsSummaryFor refleja la cantidad real, agrupada con ×N', async () => {
+  it('zonePointsSummaryFor refleja la cantidad real, agrupada con ×N, en el bloque de FAUNA (2026-09-15: resumen separado por tipo)', async () => {
     const resumen = await zonePointsSummaryFor(prisma, locationId, saveId);
-    expect(resumen).toContain('×17');
+    expect(resumen?.fauna).toContain('×17');
+    expect(resumen?.npc).toBeNull();
+    expect(resumen?.recurso).toBeNull();
+    expect(resumen?.edificio).toBeNull();
   });
 
   it('punto inactivo (cantidad 0) desaparece del resumen del narrador', async () => {
     await prisma.zonePoint.update({ where: { id: zonePointId }, data: { cantidad: 0, activo: false } });
     const resumen = await zonePointsSummaryFor(prisma, locationId, saveId);
     expect(resumen).toBeNull();
+  });
+
+  // Bug real cazado jugando en vivo (2026-09-15): un ZonePoint de FAUNA con `label` de escenario
+  // ("Colmena de Lebude") se coló en el mismo bloque de contexto que un NPC real, bajo un
+  // encabezado que decía "QUIÉN ESTÁ AQUÍ" — el modelo confundió la fauna con el apellido de una
+  // persona y narró "el pescador de Lebude", un NPC inventado. Este test confirma que NPC/FAUNA
+  // van a listas separadas del resumen, nunca mezclados en una sola cadena de texto.
+  describe('NPC y FAUNA mezclados en la misma Location van a listas separadas', () => {
+    let npcZonePointId: string;
+
+    beforeAll(async () => {
+      await prisma.zonePoint.update({ where: { id: zonePointId }, data: { cantidad: 5, activo: true } });
+      const npc = await prisma.npc.findFirstOrThrow({ where: { slug: 'gistera-koh' } });
+      const npcZonePoint = await prisma.zonePoint.create({
+        data: { locationId, x: 200, y: 200, tipo: 'NPC', targetSlug: npc.slug, cantidad: 1, activo: true },
+      });
+      npcZonePointId = npcZonePoint.id;
+    });
+
+    afterAll(async () => {
+      await prisma.zonePoint.delete({ where: { id: npcZonePointId } });
+    });
+
+    it('el NPC real aparece en `npc`, la fauna aparece en `fauna`, nunca en la misma cadena', async () => {
+      const resumen = await zonePointsSummaryFor(prisma, locationId, saveId);
+      expect(resumen?.npc).toContain('Gistera Koh');
+      expect(resumen?.fauna).toContain('fauna-prueba-zonepoint-19');
+      expect(resumen?.npc).not.toContain('fauna-prueba-zonepoint-19');
+      expect(resumen?.fauna).not.toContain('Gistera Koh');
+    });
   });
 });

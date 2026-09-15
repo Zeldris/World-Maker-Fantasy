@@ -259,6 +259,18 @@ describe('detectsHostileSearchIntent', () => {
     expect(detectsHostileSearchIntent('Prefiero no pelear ahora mismo')).toBe(false)
     expect(detectsHostileSearchIntent('Busco combatir contra el Orco Enfurecido')).toBe(true)
   });
+
+  it('hallazgo real jugando en vivo (2026-09-15, "caza fantasma"): "cazar" cuenta como intención hostil, sin verbo de ataque literal', () => {
+    expect(detectsHostileSearchIntent('Intento cazar a Quio con sigilo')).toBe(true)
+    expect(detectsHostileSearchIntent('Cazo al Kirelon Arenoso')).toBe(true)
+    expect(detectsHostileSearchIntent('Voy cazando por la zona en busca de algo')).toBe(true)
+    expect(detectsHostileSearchIntent('Decido no cazar nada hoy')).toBe(false)
+  });
+
+  it('"cazar" no dispara por el sustantivo de nombre/clase, solo por el verbo conjugado (mismo riesgo que "Cazadora Serhu")', () => {
+    expect(detectsHostileSearchIntent('Hablo con la Cazadora Serhu sobre el campamento')).toBe(false)
+    expect(detectsHostileSearchIntent('Mi clase es Cazador, prefiero el arco')).toBe(false)
+  });
 });
 
 describe('detectsVerbalAcceptanceIntent', () => {

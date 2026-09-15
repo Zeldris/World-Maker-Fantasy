@@ -2305,7 +2305,7 @@ describe('Construcción determinista: campamento', () => {
 
 // Cobertura nueva (hallazgo real jugando en vivo, 2026-09-08): nada impedía construir un
 // campamento personal DENTRO de una Location que ya tiene infraestructura de una facción NPC
-// sembrada de catálogo (Karot Vekhad, Herrería... del Clan Serhu, todas `ZonePoint tipo: EDIFICIO`
+// sembrada de catálogo (Ketg'lukar, Herrería... del Clan Serhu, todas `ZonePoint tipo: EDIFICIO`
 // sin `Building` real asociado — el viejo tope de `maxPerRegion` solo contaba `Building` del
 // propio jugador, nunca veía esos `ZonePoint`). Fix en `computeBuildBlockedReason`
 // (construction.ts): bloquea cualquier receta si la Location actual ya tiene algún `ZonePoint
@@ -2316,8 +2316,8 @@ describe('Construcción rechazada: territorio ya ocupado por otra facción (hall
   beforeAll(async () => {
     const userId = await getDefaultUserId();
     const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
-    // 'campamento-serhu-interior' (Karot Vekhad) — mismo sitio real donde se reprodujo el hallazgo,
-    // ya sembrado con varios ZonePoint tipo EDIFICIO (Karot Vekhad/Herrería/Curtiduría/Cocina).
+    // 'campamento-serhu-interior' (Ketg'lukar) — mismo sitio real donde se reprodujo el hallazgo,
+    // ya sembrado con varios ZonePoint tipo EDIFICIO (Ketg'lukar/Herrería/Curtiduría/Cocina).
     const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'campamento-serhu-interior' } });
     const save = await prisma.save.create({
       data: {
@@ -7551,6 +7551,72 @@ describe('EXPULSAR: el guard de arma no bloquea una acción que nombra "escudo" 
     // Si el guard hubiera disparado, `blocked.narration` contendría "baja la vista a sus manos" —
     // confirmamos justo lo contrario: el turno llega a narrarse con normalidad.
     expect(done.blocked).toBeUndefined();
+  }, 15_000);
+});
+
+// Hallazgo real jugando en vivo (2026-09-15): "Intento capturar al Orco Enfurecido convaleciente,
+// atándolo" se narró con éxito ("le ata las muñecas con un trozo de cuero curado") sin cuerdas
+// reales en el inventario — el botón dedicado "Capturar en la zona" (companeros.ts) sí las exige.
+// `detectsBindingWithoutRopesClaim` (playerActionValidation.ts, invocado desde turn.ts) cierra ese
+// hueco: bloquea determinista ANTES de llegar a narrar, sin gastar generación.
+describe('Atar/inmovilizar sin cuerdas: el guard determinista bloquea ANTES de narrar', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (atar sin cuerdas)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    classifyAction.mockResolvedValue({
+      requiereTirada: true, atributo: 'destreza', dificultad: 6, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    narrateAction.mockResolvedValue({ narration: 'Narración de prueba.', newFacts: [] });
+  });
+
+  afterAll(async () => {
+    await prisma.inventoryItem.deleteMany({ where: { saveId } });
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('sin cuerdas en el inventario: bloquea determinista en /turn/classify, nunca llega a narrateAction', async () => {
+    narrateAction.mockClear();
+    const app = await buildApp();
+    const action = 'Ato al Orco Enfurecido caído, atándolo con fuerza para que no escape.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
+    expect(classifyRes.statusCode).toBe(200);
+    const body = classifyRes.json();
+    expect(body.blocked).toBeDefined();
+    expect(body.blocked.narration).toMatch(/cuerda|atar|inmoviliz|ato\b/i);
+    expect(narrateAction).not.toHaveBeenCalled();
+
+    const logEntries = await prisma.logEntry.findMany({ where: { saveId }, orderBy: { createdAt: 'asc' } });
+    expect(logEntries.some((e) => e.text === action)).toBe(true);
+    expect(logEntries.some((e) => e.text === body.blocked.narration)).toBe(true);
+  }, 15_000);
+
+  it('CON cuerdas reales en el inventario: el guard no dispara, /turn/classify devuelve classification normal', async () => {
+    await prisma.inventoryItem.create({ data: { saveId, name: 'Cuerdas', description: 'x', catalogSlug: 'cuerdas' } });
+    const app = await buildApp();
+    const action = 'Ato al Orco Enfurecido caído, atándolo con fuerza para que no escape.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
+    expect(classifyRes.statusCode).toBe(200);
+    const body = classifyRes.json();
+    expect(body.blocked).toBeUndefined();
+    expect(body.classification).toBeDefined();
   }, 15_000);
 });
 

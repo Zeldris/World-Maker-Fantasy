@@ -6,6 +6,7 @@ import {
   awakensText,
   nextCondicionFisica,
   nextCondicionForAttack,
+  oneStepBetterThan,
   isValidRestLocationKind,
   healCeilingFor,
   applySequentialHeals,
@@ -245,6 +246,22 @@ describe('nextCondicionForAttack', () => {
   it('otros efectos (ATURDIMIENTO/INTIMIDACION/AGUANTE) no cambian el escalonado normal', () => {
     expect(nextCondicionForAttack(['ATURDIMIENTO'], 'ILESO')).toBe('HERIDO');
     expect(nextCondicionForAttack(['INTIMIDACION'], 'HERIDO')).toBe('GRAVE');
+  });
+});
+
+describe('oneStepBetterThan', () => {
+  it('mejora un escalón cada condición no terminal', () => {
+    expect(oneStepBetterThan('CONVALECIENTE')).toBe('GRAVE');
+    expect(oneStepBetterThan('GRAVE')).toBe('HERIDO');
+    expect(oneStepBetterThan('HERIDO')).toBe('ILESO');
+  });
+
+  it('ILESO ya no mejora más (tope)', () => {
+    expect(oneStepBetterThan('ILESO')).toBe('ILESO');
+  });
+
+  it('MUERTO nunca mejora por esta vía (estado terminal dentro del combate en curso)', () => {
+    expect(oneStepBetterThan('MUERTO')).toBe('MUERTO');
   });
 });
 

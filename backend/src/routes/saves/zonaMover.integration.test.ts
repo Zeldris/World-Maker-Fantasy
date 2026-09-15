@@ -187,6 +187,14 @@ describe('POST /saves/:id/zona/mover', () => {
     // combate real por el camino existente, Franja 3, turno de texto libre normal).
     expect(body.dynamicModeOffer).toBeNull();
     expect(saveAfter.pendingDynamicModeOffer).toBeNull();
+    // Bug real jugando en vivo (2026-09-15, hallazgo Álvaro): un AGRESIVO en la misma celda no
+    // dejaba NINGÚN rastro — el jugador cerraba el modal sin saber que debía reaccionar. Ahora
+    // siempre hay un LogEntry real avisando del encuentro inevitable (sin dynamicModeOffer, un
+    // agresivo no ofrece Interactuar).
+    expect(body.logEntry).not.toBeNull();
+    expect(body.logEntry.text).toContain('Agresor de Prueba');
+    const logEntryCreado = await prisma.logEntry.findUnique({ where: { id: body.logEntry.id } });
+    expect(logEntryCreado).not.toBeNull();
   });
 
   // Regresión (2026-09-08, mismo hallazgo de arriba) — a diferencia del AGRESIVO, un CAUTELOSO/
@@ -356,6 +364,10 @@ describe('POST /saves/:id/zona/mover', () => {
 
       const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
       expect(saveAfter.zonaCaminoPendiente).toBeNull();
+      // Bug real jugando en vivo (2026-09-15) — mismo fix que el AGRESIVO de catálogo de arriba,
+      // también cubre el NPC dinámico (sin ZonePoint propio).
+      expect(body.logEntry).not.toBeNull();
+      expect(body.logEntry.text).toContain('Merodeador Dinámico de Prueba');
     }, 15_000);
 
     it('celda ADYACENTE (no exacta) a un NPC dinámico: solo aviso, el movimiento sigue su curso', async () => {

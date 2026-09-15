@@ -74,7 +74,12 @@ export function useSurroundingsPolling(params: {
         if (cancelled) return
         const nowIso = new Date().toISOString()
         const entityBanner = buildEntityBanner(description, logEntryId)
-        setWorldLog((prev) => [...prev, { id: logEntryId, channel: 'world', text: description, timeLabel, createdAt: nowIso, entityBanner }])
+        // El backend reutiliza el mismo LogEntry.id (mundo sin avanzar desde el último sondeo, ver
+        // entorno.ts) en vez de crear uno nuevo — sin este chequeo, cada tick de 10 min añadía una
+        // fila duplicada idéntica al panel aunque el id ya estuviera presente (hallazgo real
+        // jugando en vivo, 2026-09-15: 18 repeticiones seguidas de la misma frase tras dejar la
+        // partida abierta e inactiva un rato).
+        setWorldLog((prev) => (prev.some((e) => e.id === logEntryId) ? prev : [...prev, { id: logEntryId, channel: 'world', text: description, timeLabel, createdAt: nowIso, entityBanner }]))
       } catch {
         // Ambientación fallida no bloquea la partida — se reintenta en el siguiente tick.
       } finally {

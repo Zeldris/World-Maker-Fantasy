@@ -63,6 +63,14 @@ export interface NpcCombatAbility {
   /// (mismo alcance que `attributeBonus`/`maxUsesPerCombat`) — Ataque base/racial/genéricas nunca.
   durationEffectMagnitude?: number | null;
   durationEffectTurns?: number | null;
+  /// A quién recae el efecto de arriba (2026-09-15, Caballero del Valor 40, Sacrificio del
+  /// Valiente — "te llevas el golpe dirigido a un aliado" disparado desde ROL DEFENSA, no ataque)
+  /// — mismo campo/semántica que `HabilidadParaIntercambio.durationEffectTarget`
+  /// (combateMultiple.ts), pero necesario aquí porque un Companion (o la jugadora, cuando defiende
+  /// con su `SavedAction` real, mapeada a este tipo) también puede llevar una habilidad de DEFENSA
+  /// con esta redirección — un NPC rival nunca la lleva (no tiene Companion propio), pero el tipo
+  /// es compartido por todo el roster de `chooseNpcAbility`.
+  durationEffectTarget?: 'self' | 'companion' | 'both' | null;
 }
 
 export interface NpcForCombatAbilities {
@@ -127,6 +135,7 @@ export function npcCombatAbilitiesFor(npc: NpcForCombatAbilities, weaponNames: s
         maxUsesPerCombat: unlock.ability.maxUsesPerCombat,
         durationEffectMagnitude: unlock.ability.durationEffectMagnitude,
         durationEffectTurns: unlock.ability.durationEffectTurns,
+        durationEffectTarget: unlock.ability.durationEffectTarget,
       });
     }
   }

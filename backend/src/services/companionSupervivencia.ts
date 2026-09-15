@@ -23,6 +23,32 @@ export function esDomador(clase: string | null, especializacion: string | null):
   return clase === 'CAZADOR' && especializacion === 'DOMADOR';
 }
 
+/// Alfa de la Manada real (2026-09-14, docs/rpgtarkor/clases.md — Domador 40, capstone: "te
+/// permite tener otro compañero... elegir un Alfa entre tus dos compañeros") — el slot garantizado
+/// de Domador (`Companion.esSlotDomador`) pasa de 1 a 2 con la habilidad desbloqueada. Mismo
+/// criterio de gate por nivel que el resto del catálogo (sin exigir SavedAction equipada — es
+/// pasiva, no se usa en un intercambio).
+export function maxSlotsDomadorFor(clase: string | null, especializacion: string | null, level: number): number {
+  if (!esDomador(clase, especializacion)) return 0;
+  return level >= 40 ? 2 : 1;
+}
+
+/// Alfa de la Manada real (2026-09-14) — buff PERMANENTE (no `ActiveEffect` con duración por
+/// turnos, se recalcula cada vez que se leen los atributos del Companion, mismo criterio que
+/// `npcAttributesForLevel`/equipo): "+2 a la voluntad a tus bestias" si tienes los 2 slots de
+/// Domador ocupados a la vez (aclarado por Álvaro: "equipados" se refería a que los dos SLOTS de
+/// compañero estén cubiertos, no a llevar objetos puestos — nada que ver con `InventoryItem`), más
+/// "+2 de fuerza" extra solo para quien esté marcado `esAlfa`. Puro: el caller resuelve cuántos
+/// slots de Domador hay ocupados y si ESTE Companion concreto es el Alfa.
+export function alfaDeLaManadaBonusFor(base: AttributeBlock, slotsDomadorOcupados: number, esAlfa: boolean): AttributeBlock {
+  if (slotsDomadorOcupados < 2) return base;
+  return {
+    ...base,
+    voluntad: base.voluntad + 2,
+    fuerza: base.fuerza + (esAlfa ? 2 : 0),
+  };
+}
+
 export function felicidadUmbralFor(domador: boolean): number {
   return domador ? FELICIDAD_UMBRAL_DOMADOR : FELICIDAD_UMBRAL_GENERAL;
 }

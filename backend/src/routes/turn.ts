@@ -54,6 +54,11 @@ import {
   unknownDestinationNarrationFor,
   detectsHarvestSkillMisuseClaim,
   harvestSkillMisuseNarrationFor,
+  detectsBindingWithoutRopesClaim,
+  bindingWithoutRopesNarrationFor,
+  BINDING_VERB_REGEX,
+  detectsUnresolvedDialogueTargetClaim,
+  unresolvedDialogueTargetNarrationFor,
 } from '../services/playerActionValidation.js';
 import { harvestSourceAliases } from '../scripts/worldCatalog.js';
 import { detectsPostCombatInteraction } from '../services/postCombatInteraction.js';
@@ -640,6 +645,30 @@ export async function turnRoutes(app: FastifyInstance) {
     );
     if (absentNpcClaim) {
       return resolveBlockedTurn(absentSceneNpcNarrationFor(absentNpcClaim.name), absentNpcClaim.name);
+    }
+
+    // Diálogo dirigido a "alguien" por descripción libre, sin que ningún alias real haya resuelto
+    // a nadie (hallazgo real jugando en vivo, 2026-09-15: "Hablo con la mujer orca del Clan Serhu"
+    // con Gistera Koh presente de verdad en escena, pero solo nombrada por descripción — el LLM
+    // improvisó a quién responde en vez de que el motor lo resolviera). Mismo `npcsInSceneForValidation`
+    // ya calculado arriba.
+    if (await detectsUnresolvedDialogueTargetClaim(action, npcsInSceneForValidation.map((n) => n.slug), save.worldId, saveId, save.currentLocationId)) {
+      return resolveBlockedTurn(unresolvedDialogueTargetNarrationFor());
+    }
+
+    // Atar/inmovilizar a alguien sin cuerdas reales en el inventario (hallazgo real jugando en
+    // vivo, 2026-09-15: "le ata las muñecas con un trozo de cuero curado" se narró sin tenerlas —
+    // el botón dedicado de Capturar sí las exige). Bug real cazado por los tests de esta misma
+    // pieza: el verbo "atar" a secas colisiona con crafteo real ("Ato un vendaje con mi manojo de
+    // salvia del polvo") — se exige ADEMÁS que la frase mencione a un NPC real presente en esta
+    // escena (mismo `npcsInSceneForValidation` ya calculado arriba), nunca solo el verbo suelto:
+    // craftear un objeto nunca menciona a ningún NPC, atar a alguien sí.
+    if (BINDING_VERB_REGEX.test(action) && npcsInSceneForValidation.length > 0) {
+      const tieneCuerdas = !!(await prisma.inventoryItem.findFirst({ where: { saveId, catalogSlug: 'cuerdas' }, select: { id: true } }));
+      const bindingClaim = detectsBindingWithoutRopesClaim(action, tieneCuerdas);
+      if (bindingClaim) {
+        return resolveBlockedTurn(bindingWithoutRopesNarrationFor());
+      }
     }
 
     // Fase 3 (acotada a comillas, docs/18-validacion-accion-jugador.md): NPC/fauna nombrado ENTRE

@@ -209,7 +209,7 @@ describe('handleCapturarSeleccion/handleDejarVivirSeleccion: identificador de co
       result.current.setCombateIniciado({ npcs })
       result.current.combat.openCombat({ npcs })
     })
-    mockPostCapturar.mockResolvedValueOnce({ npcSlug: 'gesgurio', tipo: 'FAUNA', inventoryItemId: 'item-1', capturaExpiraAtMinutes: null, logEntry: { id: 'log-1', text: 'x', timeLabel: 'x', createdAt: 'x' }, factionRepChange: null })
+    mockPostCapturar.mockResolvedValueOnce({ npcSlug: 'gesgurio', tipo: 'FAUNA', inventoryItemId: 'item-1', capturaExpiraAtMinutes: null, logEntry: { id: 'log-1', text: 'x', timeLabel: 'x', createdAt: 'x' }, factionRepChange: null, misionesPendientes: [] })
 
     await act(() => result.current.combat.handleCapturarSeleccion(result.current.combat.combatNpcsDisplay[0]))
 
@@ -229,7 +229,7 @@ describe('handleCapturarSeleccion/handleDejarVivirSeleccion: identificador de co
       result.current.setCombateIniciado({ npcs })
       result.current.combat.openCombat({ npcs })
     })
-    mockDejarVivir.mockResolvedValueOnce({ npcSlug: 'gesgurio', logEntry: { id: 'log-1', text: 'x', timeLabel: 'x', createdAt: 'x' }, factionRepChange: null })
+    mockDejarVivir.mockResolvedValueOnce({ npcSlug: 'gesgurio', logEntry: { id: 'log-1', text: 'x', timeLabel: 'x', createdAt: 'x' }, factionRepChange: null, misionesPendientes: [] })
 
     await act(() => result.current.combat.handleDejarVivirSeleccion(result.current.combat.combatNpcsDisplay[1]))
 
@@ -289,7 +289,7 @@ describe('Clemente/Capturar SIN openCombat previo — mismo escenario de "recarg
     )
     expect(result.current.combat.combatOpen).toBe(false) // openCombat() nunca se llamó
     expect(result.current.combat.combatHasPendingConvalecientes).toBe(true)
-    mockDejarVivir.mockResolvedValueOnce({ npcSlug: 'zense-ceniza', logEntry: { id: 'log-1', text: 'x', timeLabel: 'x', createdAt: 'x' }, factionRepChange: null })
+    mockDejarVivir.mockResolvedValueOnce({ npcSlug: 'zense-ceniza', logEntry: { id: 'log-1', text: 'x', timeLabel: 'x', createdAt: 'x' }, factionRepChange: null, misionesPendientes: [] })
 
     await act(() => result.current.combat.handleDejarVivirSeleccion(result.current.combat.combatNpcsDisplay[0]))
 
@@ -302,7 +302,7 @@ describe('Clemente/Capturar SIN openCombat previo — mismo escenario de "recarg
       useHarness({ npcs: [npc({ slug: 'zense-ceniza', name: 'Zense Ceniza', condicionFisica: 'CONVALECIENTE', participantId: 'p1' })] }),
     )
     expect(result.current.combat.combatOpen).toBe(false)
-    mockPostCapturar.mockResolvedValueOnce({ npcSlug: 'zense-ceniza', tipo: 'FAUNA', inventoryItemId: 'item-1', capturaExpiraAtMinutes: null, logEntry: { id: 'log-1', text: 'x', timeLabel: 'x', createdAt: 'x' }, factionRepChange: null })
+    mockPostCapturar.mockResolvedValueOnce({ npcSlug: 'zense-ceniza', tipo: 'FAUNA', inventoryItemId: 'item-1', capturaExpiraAtMinutes: null, logEntry: { id: 'log-1', text: 'x', timeLabel: 'x', createdAt: 'x' }, factionRepChange: null, misionesPendientes: [] })
 
     await act(() => result.current.combat.handleCapturarSeleccion(result.current.combat.combatNpcsDisplay[0]))
 
@@ -319,7 +319,7 @@ describe('Clemente/Capturar SIN openCombat previo — mismo escenario de "recarg
         ],
       }),
     )
-    mockDejarVivir.mockResolvedValueOnce({ npcSlug: 'zense-ceniza', logEntry: { id: 'log-1', text: 'x', timeLabel: 'x', createdAt: 'x' }, factionRepChange: null })
+    mockDejarVivir.mockResolvedValueOnce({ npcSlug: 'zense-ceniza', logEntry: { id: 'log-1', text: 'x', timeLabel: 'x', createdAt: 'x' }, factionRepChange: null, misionesPendientes: [] })
 
     const objetivo = result.current.combat.combatNpcsDisplay.find((n) => n.participantId === 'p1')!
     await act(() => result.current.combat.handleDejarVivirSeleccion(objetivo))

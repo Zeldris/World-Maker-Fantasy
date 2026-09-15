@@ -128,13 +128,31 @@ export async function zonaRoutes(app: FastifyInstance) {
     // query batch, para resolver a la vez: (a) asignación perezosa de posición a un dinámico nunca
     // visto antes, (b) filtro de "ausente por combate ganado" (6h de ficción o cambio de zona).
     const npcFaunaZonePointSlugs = zonePointsActivos.filter((p) => p.tipo === 'FAUNA' || p.tipo === 'NPC').map((p) => p.targetSlug);
-    const npcFaunaZonePointIds =
+    // Compañero de fauna con nombre propio (auditoría de lore 2026-09-13, C10 — "los compañeros de
+    // npc deben formar un mismo punto en el mapa de zona... se mueven como 1"): el companion NUNCA
+    // tiene ZonePoint propio (un solo punto real por dueño, sin duplicar movimiento en la
+    // cuadrícula) — se resuelve aquí mismo (batch único, no una query aparte: dos llamadas
+    // independientes a `prisma.npc.findMany` rompían el mock por `mockResolvedValueOnce` de
+    // zona.test.ts), buscando también por el slug INVERSO (`companionOfNpcSlug` apuntando a
+    // cualquiera de los dueños de este mapa) y filtrando en memoria qué filas son "dueño real de
+    // este ZonePoint" vs. "companion de alguno de ellos".
+    const npcFaunaZonePointRows =
       npcFaunaZonePointSlugs.length > 0
-        ? (await prisma.npc.findMany({ where: { worldId: save.worldId, slug: { in: npcFaunaZonePointSlugs } }, select: { id: true, slug: true, name: true, kind: true } }))
+        ? await prisma.npc.findMany({
+            where: {
+              worldId: save.worldId,
+              OR: [{ slug: { in: npcFaunaZonePointSlugs } }, { companionOfNpcSlug: { in: npcFaunaZonePointSlugs } }],
+            },
+            select: { id: true, slug: true, name: true, kind: true, companionOfNpcSlug: true },
+          })
         : [];
+    const npcFaunaZonePointIds = npcFaunaZonePointRows.filter((n) => npcFaunaZonePointSlugs.includes(n.slug));
     const npcIdBySlugZonePoint = new Map(npcFaunaZonePointIds.map((n) => [n.slug, n.id]));
     const npcNameBySlugZonePoint = new Map(npcFaunaZonePointIds.map((n) => [n.slug, n.name]));
     for (const n of npcFaunaZonePointIds) npcKindBySlug.set(n.slug, n.kind);
+    const companionsByOwnerSlug = new Map(
+      npcFaunaZonePointRows.filter((n) => n.companionOfNpcSlug).map((c) => [c.companionOfNpcSlug!, { slug: c.slug, nombre: c.name }]),
+    );
     for (const n of dinamicosCandidatos) npcKindBySlug.set(n.slug, n.kind);
     const npcStateKeys = [
       ...dinamicosCandidatos.map((n) => ({ npcId: n.id, scope: scopeFor(n.kind, locationId) })),
@@ -264,6 +282,7 @@ export async function zonaRoutes(app: FastifyInstance) {
             : p.tipo === 'EDIFICIO'
               ? p.targetSlug
               : (npcNameBySlugZonePoint.get(p.targetSlug) ?? p.targetSlug));
+        const companion = p.tipo === 'NPC' ? companionsByOwnerSlug.get(p.targetSlug) : undefined;
         return {
           id: p.id,
           x: p.x,
@@ -276,6 +295,10 @@ export async function zonaRoutes(app: FastifyInstance) {
           cantidad: p.cantidad,
           color: zonePointColorFor(p.factionSlug, factionsStatus, p.tipo),
           descubierto: yaDescubierto,
+          // Compañero de fauna con nombre propio (C10, 2026-09-13) — presente solo si este NPC es
+          // dueño de un companion; mismo criterio de `yaDescubierto` que el resto del punto (el
+          // dueño no descubierto no debe filtrar el nombre real del companion).
+          companion: companion ? { slug: companion.slug, nombre: yaDescubierto ? companion.nombre : '???' } : undefined,
         };
       }),
       dinamicos,
@@ -445,6 +468,20 @@ export async function zonaRoutes(app: FastifyInstance) {
         });
         logEntry = { id: created.id, text, timeLabel, createdAt: created.createdAt.toISOString() };
       }
+    } else if (colision && colision.temperamento === 'AGRESIVO') {
+      // Bug real jugando en vivo (2026-09-15, hallazgo Álvaro): un AGRESIVO en la MISMA celda no
+      // dejaba NINGÚN rastro aquí — el comentario de arriba asumía que "ya fuerza combate por el
+      // camino de texto libre", pero eso solo FILTRA quién puede ser objetivo de un futuro turno de
+      // texto (`npcsInSceneVivosParaCombate`, turnResolution.ts) — nunca abre nada por sí mismo. Al
+      // cerrar el modal de movimiento sin escribir nada más, la colisión desaparecía sin dejar
+      // ningún aviso: el jugador no sabía que debía reaccionar ya. Se escribe el mismo LogEntry
+      // real que el resto de colisiones, con texto que deja claro el peligro inminente — sin
+      // `dynamicModeOffer` (no aplica a un agresivo), solo el aviso determinista.
+      const text = `${characterName} se topa de frente con ${colision.targetName} — no hay escapatoria posible, toca reaccionar ya.`;
+      const created = await tx.logEntry.create({
+        data: { saveId, channel: 'CHARACTER', text, timeLabel, fictionalMinutes, isPlayerAction: false, isSystemMessage: true },
+      });
+      logEntry = { id: created.id, text, timeLabel, createdAt: created.createdAt.toISOString() };
     }
     return { colision, aviso, dynamicModeOffer, logEntry };
   }

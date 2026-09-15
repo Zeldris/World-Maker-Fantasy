@@ -50,24 +50,25 @@ describe('classAbilityUnlocksFor', () => {
 });
 
 describe('allClassAbilityUnlocks', () => {
-  it('devuelve el roster completo (173 huecos: 169 de la auditoría 2026-08-31 + Vínculo Salvaje (Domador nv.16, AUMENTO redirigido a Companion) + Tensar al Límite/Golpe Devastador/Furia de los Elementos (CANALIZAR real), todo 2026-09-09)', () => {
+  it('devuelve el roster completo (232 huecos: 229 de la ronda REFLEJAR 2026-09-15 + CONVERSION-sobre-debilidad real 2026-09-15 — `bestAumentoOf`/`worstDebilidadOf`/`removeActiveEffect` (activeEffects.ts): Transmutación Menor (Transmutador 19), Transmutación Mayor (Transmutador 36), Equilibrio Roto (Transmutador 40, capstone) — 3 fichas nuevas, cierra Transmutador 8/8 y Segador al completo)', () => {
     const all = allClassAbilityUnlocks();
-    expect(all).toHaveLength(173);
-    expect(all.filter((u) => u.clase === 'GUERRERO')).toHaveLength(22);
-    expect(all.filter((u) => u.clase === 'CAZADOR')).toHaveLength(27);
-    expect(all.filter((u) => u.clase === 'CHAMAN')).toHaveLength(21);
-    expect(all.filter((u) => u.clase === 'ARQUERO')).toHaveLength(6);
-    expect(all.filter((u) => u.clase === 'CABALLERO')).toHaveLength(20);
-    expect(all.filter((u) => u.clase === 'SEGADOR')).toHaveLength(19);
-    expect(all.filter((u) => u.clase === 'ASESINO')).toHaveLength(28);
-    expect(all.filter((u) => u.clase === 'DRUIDA')).toHaveLength(30);
+    expect(all).toHaveLength(232);
+    expect(all.filter((u) => u.clase === 'GUERRERO')).toHaveLength(33);
+    expect(all.filter((u) => u.clase === 'CAZADOR')).toHaveLength(32);
+    expect(all.filter((u) => u.clase === 'CHAMAN')).toHaveLength(23);
+    expect(all.filter((u) => u.clase === 'ARQUERO')).toHaveLength(18);
+    expect(all.filter((u) => u.clase === 'CABALLERO')).toHaveLength(25);
+    expect(all.filter((u) => u.clase === 'SEGADOR')).toHaveLength(36);
+    expect(all.filter((u) => u.clase === 'ASESINO')).toHaveLength(33);
+    expect(all.filter((u) => u.clase === 'DRUIDA')).toHaveLength(32);
     expect(all.filter((u) => u.clase === 'MAGO')).toHaveLength(0);
   });
 });
 
 describe('classAbilityUnlocksForClase', () => {
   it('sin especialización, solo devuelve el tronco común de la clase', () => {
-    expect(classAbilityUnlocksForClase('GUERRERO')).toHaveLength(3);
+    // GUERRERO sube a 4 (2026-09-15, Golpe de Control nv.8 — DEBILIDAD+ATAQUE, margen decisivo).
+    expect(classAbilityUnlocksForClase('GUERRERO')).toHaveLength(4);
     expect(classAbilityUnlocksForClase('CAZADOR')).toHaveLength(4);
     expect(classAbilityUnlocksForClase('CHAMAN')).toHaveLength(3);
   });
@@ -79,23 +80,26 @@ describe('classAbilityUnlocksForClase', () => {
   // "Golpe Gemelo" vivía en Supervivencia en vez de Instintivo, "Tótem de Guerra" vivía en
   // Convocador en vez de Totémico — ambos movidos a su especialización real de clases.md.
   it('con especialización, devuelve tronco + los huecos reales de esa rama', () => {
-    // Berserker: 3 tronco + 4 propios (19/24/32/40 — 40 Golpe Devastador, CANALIZAR real 2026-09-09) = 7
-    expect(classAbilityUnlocksForClase('GUERRERO', 'BERSERKER')).toHaveLength(7);
-    // Guardián: 3 tronco + 4 propios (12/24/28/40, antes 12/28) = 7
-    expect(classAbilityUnlocksForClase('GUERRERO', 'GUARDIAN')).toHaveLength(7);
-    // Lancero: 3 tronco + 6 propios (12/16/19/24/36/40, antes 16/24/40) = 9
-    expect(classAbilityUnlocksForClase('GUERRERO', 'LANCERO')).toHaveLength(9);
-    // Especialista: 3 tronco + 5 propios (12/16/19/24/32, antes 12/16/19/24) = 8
-    expect(classAbilityUnlocksForClase('GUERRERO', 'ESPECIALISTA')).toHaveLength(8);
+    // Berserker: 4 tronco (Golpe de Control nv.8 sube el tronco, 2026-09-15) + 7 propios (12/16
+    // Grito de Guerra/Grito tenebroso DEBILIDAD real, 19/24/32/36 Instinto Berserker AUMENTO a uno
+    // mismo, 40 Golpe Devastador) = 11
+    expect(classAbilityUnlocksForClase('GUERRERO', 'BERSERKER')).toHaveLength(11);
+    // Guardián: 4 tronco + 7 propios (12/16/19/24/28/32/40) = 11
+    expect(classAbilityUnlocksForClase('GUERRERO', 'GUARDIAN')).toHaveLength(11);
+    // Lancero: 4 tronco + 7 propios = 11
+    expect(classAbilityUnlocksForClase('GUERRERO', 'LANCERO')).toHaveLength(11);
+    // Especialista: 4 tronco + 8 propios (12/16/19/24/28/32/36/40 — 40 Segunda Oportunidad CURAZION
+    // real 2026-09-15 cierra la especialización) = 12
+    expect(classAbilityUnlocksForClase('GUERRERO', 'ESPECIALISTA')).toHaveLength(12);
     // Domador: 4 tronco + 2 propios (12 Compañero cazador, 16 Vínculo Salvaje — AUMENTO
     // redirigido a Companion, 2026-09-09) = 6
-    expect(classAbilityUnlocksForClase('CAZADOR', 'DOMADOR')).toHaveLength(6);
-    // Supervivencia: 4 tronco + 7 propios (12/16/19/24/28/36/40, antes 12/16/19/40) = 11
-    expect(classAbilityUnlocksForClase('CAZADOR', 'SUPERVIVENCIA')).toHaveLength(11);
+    expect(classAbilityUnlocksForClase('CAZADOR', 'DOMADOR')).toHaveLength(9);
+    // Supervivencia: 4 tronco + 8 propios (12/16/19/24/28/32/36/40 — 32 Trampa Improvisada, AREA real 2026-09-14) = 12
+    expect(classAbilityUnlocksForClase('CAZADOR', 'SUPERVIVENCIA')).toHaveLength(12);
     // Tirador: 4 tronco + 7 propios (12/16/19/24/28/32/36 — 24 Tensar al Límite, CANALIZAR real 2026-09-09) = 11
     expect(classAbilityUnlocksForClase('CAZADOR', 'TIRADOR')).toHaveLength(11);
-    // Instintivo: 4 tronco + 7 propios (12/16/19/24/32/36/40, antes 12/16/36/40) = 11
-    expect(classAbilityUnlocksForClase('CAZADOR', 'INSTINTIVO')).toHaveLength(11);
+    // Instintivo: 4 tronco + 8 propios (12/16/19/24/28/32/36/40 — 28 Instinto de Reserva, AREA real 2026-09-14) = 12
+    expect(classAbilityUnlocksForClase('CAZADOR', 'INSTINTIVO')).toHaveLength(12);
     // Totémico: 3 tronco + 1 propio (12, Tótem de Guerra — movido aquí desde Convocador) = 4
     expect(classAbilityUnlocksForClase('CHAMAN', 'TOTEMICO')).toHaveLength(4);
     // Rúnico: 3 tronco + 6 propios (12/16/24/28/36/40, antes 24/28/40) = 9
@@ -103,8 +107,29 @@ describe('classAbilityUnlocksForClase', () => {
     // Convocador: 3 tronco + 7 propios (12/16/19/24/28/32/40 — Tótem de Guerra salió, Filo
     // Elemental entró de verdad en el 12, 40 Furia de los Elementos CANALIZAR real 2026-09-09) = 10
     expect(classAbilityUnlocksForClase('CHAMAN', 'CONVOCADOR')).toHaveLength(10);
-    // Opresor: 3 tronco + 4 propios (12/16/19/24, antes 12/16/24) = 7
-    expect(classAbilityUnlocksForClase('CHAMAN', 'OPRESOR')).toHaveLength(7);
+    // Opresor: 3 tronco + 6 propios (12/16/19/24/32/36 — 32/36 Runa de Sujeción/Grieta de Voluntad, AREA real 2026-09-14) = 9
+    expect(classAbilityUnlocksForClase('CHAMAN', 'OPRESOR')).toHaveLength(9);
+    // Maestro Arquero: 4 tronco + 7 propios (12/16/19/24/28/32/36 — 12/19/24/28/32/36 sembradas
+    // 2026-09-14 reutilizando motor ya real, 40 CANALIZAR+LETAL combinado sigue sin construir) = 11
+    expect(classAbilityUnlocksForClase('ARQUERO', 'MAESTRO_ARQUERO')).toHaveLength(11);
+    // Maestro Ballestero: mismo reparto que Maestro Arquero (reflavor)
+    expect(classAbilityUnlocksForClase('ARQUERO', 'MAESTRO_BALLESTERO')).toHaveLength(11);
+    // Parca: 4 tronco (1/4/6/8) + 8 propios (12/16/19/24/28/32/36/40 — 19/32/40 CURAZION real
+    // 2026-09-15 cierra la especialización al completo) = 12
+    expect(classAbilityUnlocksForClase('SEGADOR', 'PARCA')).toHaveLength(12);
+    // Maldito: 4 tronco + 8 propios (12/16/19/24/28/32/36/40 — DEBILIDAD real 2026-09-15 cierra 8/8) = 12
+    expect(classAbilityUnlocksForClase('SEGADOR', 'MALDITO')).toHaveLength(12);
+    // Ilustrado: 4 tronco + 8 propios (12/16/19/24/28/32/36/40 — DEBILIDAD real 2026-09-15 cierra 8/8) = 12
+    expect(classAbilityUnlocksForClase('SEGADOR', 'ILUSTRADO')).toHaveLength(12);
+    // Transmutador: 4 tronco + 8 propios (12/16/19/24/28/32/36/40 — CONVERSION-sobre-debilidad real
+    // 2026-09-15 cierra 19/36/40, junto a REFLEJAR/CURAZION ya cerrados) = 12, especialización completa
+    expect(classAbilityUnlocksForClase('SEGADOR', 'TRANSMUTADOR')).toHaveLength(12);
+    // Asesino Tóxico: 4 tronco (Asesino) + 8 propios (12/16/19/24/28/32/36/40 — DEBILIDAD real
+    // 2026-09-15 cierra 8/8)
+    expect(classAbilityUnlocksForClase('ASESINO', 'ASESINO_TOXICO')).toHaveLength(12);
+    // Aullador: 3 tronco (Druida) + 5 propios (24/28/32/36 — 32/36 AUMENTO/DEBILIDAD real
+    // 2026-09-15, resto sigue bloqueado por INVOCACION multi-objetivo)
+    expect(classAbilityUnlocksForClase('DRUIDA', 'AULLADOR')).toHaveLength(8);
   });
 
   it('una especialización de otra clase no se cuela en el roster', () => {

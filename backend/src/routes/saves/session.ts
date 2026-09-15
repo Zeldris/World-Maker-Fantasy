@@ -9,6 +9,7 @@ import { oneStepWorseThan } from '../../services/death.js';
 import { rejectIfEnded, lockRowForUpdate } from './shared.js';
 import { FACTION_REP_MERCY_DELTA } from '../../services/reputation.js';
 import { applyFactionRepDeltaForResolution } from '../../services/turnResolution.js';
+import { activeQuestTitlesTargeting } from '../../services/questResolution.js';
 
 /// Control del estado de una partida EN CURSO (deuda técnica 2026-07-30, split de saves.ts):
 /// pausar/reanudar, cancelar una acción por tiempo, y huir antes de que un combate llegue a
@@ -425,7 +426,11 @@ export async function sessionRoutes(app: FastifyInstance) {
           // Reputación de facción (2026-09-04) — mismo criterio que el camino 1v1 clásico de más
           // abajo, ver su comentario completo.
           const factionRepChange = await applyFactionRepDeltaForResolution(tx, save.id, npc.faction, FACTION_REP_MERCY_DELTA);
-          return { logEntry: created, factionRepChange };
+          // Aviso de misión pendiente (2026-09-15) — solo lectura, no cierra nada (Clemente sigue
+          // sin completar "derrotar a X" por diseño explícito de 2026-08-31). Ver
+          // `activeQuestTitlesTargeting`.
+          const misionesPendientes = await activeQuestTitlesTargeting(tx, save.id, npc.id);
+          return { logEntry: created, factionRepChange, misionesPendientes };
         });
         if (!outcomeGrupo) {
           return reply.status(409).send({ error: 'Ya se dejó con vida a este combatiente.' });
@@ -435,6 +440,7 @@ export async function sessionRoutes(app: FastifyInstance) {
           participantId,
           logEntry: { id: outcomeGrupo.logEntry.id, text, timeLabel, createdAt: outcomeGrupo.logEntry.createdAt.toISOString() },
           factionRepChange: outcomeGrupo.factionRepChange,
+          misionesPendientes: outcomeGrupo.misionesPendientes,
         };
       }
 
@@ -468,7 +474,10 @@ export async function sessionRoutes(app: FastifyInstance) {
         // desde CONVALECIENTE (junto a Matar/Capturar), cada una con su propio coste asimétrico
         // (ver FACTION_REP_MERCY_DELTA, reputation.ts) — la más barata, sigues sin matarlo.
         const factionRepChange = await applyFactionRepDeltaForResolution(tx, save.id, npc.faction, FACTION_REP_MERCY_DELTA);
-        return { kind: 'ok' as const, logEntry: created, factionRepChange };
+        // Aviso de misión pendiente (2026-09-15) — ver comentario completo en el camino de grupo,
+        // arriba, y en `activeQuestTitlesTargeting`.
+        const misionesPendientes = await activeQuestTitlesTargeting(tx, save.id, npc.id);
+        return { kind: 'ok' as const, logEntry: created, factionRepChange, misionesPendientes };
       });
 
       if (outcome.kind === 'ya-resuelto') {
@@ -479,6 +488,7 @@ export async function sessionRoutes(app: FastifyInstance) {
         npcSlug: npc.slug,
         logEntry: { id: logEntry.id, text, timeLabel, createdAt: logEntry.createdAt.toISOString() },
         factionRepChange: outcome.factionRepChange,
+        misionesPendientes: outcome.misionesPendientes,
       };
     },
   );

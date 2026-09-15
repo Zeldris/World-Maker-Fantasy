@@ -202,6 +202,22 @@ export function oneStepWorseThan(current: CondicionFisica): CondicionFisica {
   return CONDICION_ORDER[Math.min(idx + 1, CONDICION_ORDER.length - 1)];
 }
 
+/// `CURAZION` real (2026-09-15, docs/rpgtarkor/clases.md — Segador Parca/Transmutador, Especialista
+/// 40) — un escalón MEJOR que `current` (tope en ILESO), inverso exacto de `oneStepWorseThan`.
+/// MUERTO nunca mejora por esta vía (mismo criterio que el resto del motor: la muerte es un estado
+/// terminal dentro de un combate en curso, solo el respawn la revierte). Simplificación consciente:
+/// el texto de cada ficha real varía ("roba vida al golpear", "transmuta el daño recibido en
+/// energía", "recupera energía y se cura") pero todas comparten el mismo núcleo mecánico —
+/// mejorar la condición física de quien dispara CURAZION, mismo criterio que AUMENTO/DEBILIDAD (una
+/// magnitud fija en vez de distinguir el matiz narrativo de cada fila). El aspecto de energía que
+/// algunas fichas combinan ya lo cubre `RECUPERACION`/`RECUPERACION_ENERGY_BONUS`, sin duplicar
+/// aquí — CURAZION en este motor toca solo `condicionFisica`.
+export function oneStepBetterThan(current: CondicionFisica): CondicionFisica {
+  if (current === 'MUERTO') return current;
+  const idx = CONDICION_ORDER.indexOf(current);
+  return CONDICION_ORDER[Math.max(idx - 1, 0)];
+}
+
 /// Mecánica real de habilidades de clase (checklist 2026-07-21/22, puntos 1-2, fusionada en LETAL
 /// el 2026-08-15 — sustituye a REMATE, que exigía que el objetivo ya estuviera GRAVE/CONVALECIENTE):
 /// LETAL mata de un golpe a CUALQUIER rival que reciba el golpe, sin condición previa sobre su

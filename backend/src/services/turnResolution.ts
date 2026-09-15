@@ -4051,8 +4051,16 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       regionLocation?.region ?? null,
       advanceFictionalMinutes(fictionalMinutesActuales, minutosDeEsteTurno),
     );
+    // Bloques separados por tipo (2026-09-15, bug real jugando en vivo) — antes una única lista
+    // plana bajo "QUIÉN ESTÁ AQUÍ AHORA MISMO" mezclaba NPC/fauna/recursos sin distinguirlos, y el
+    // modelo confundió una fauna ("Colmena de Lebude") con el apellido de una persona inventada
+    // ("el pescador de Lebude"). Solo NPC son personas reales con las que se puede hablar — el
+    // resto se etiqueta explícitamente como NO personas.
     const zonePointsSummary = await zonePointsSummaryFor(prisma, regionLocationId, saveId);
-    if (zonePointsSummary) contextBlocks.push(`QUIÉN ESTÁ AQUÍ AHORA MISMO: ${zonePointsSummary}`);
+    if (zonePointsSummary?.npc) contextBlocks.push(`PERSONAJES AQUÍ AHORA MISMO (son gente real, puedes hablar con ellos): ${zonePointsSummary.npc}`);
+    if (zonePointsSummary?.fauna) contextBlocks.push(`FAUNA AQUÍ AHORA MISMO (animales, NO son personas): ${zonePointsSummary.fauna}`);
+    if (zonePointsSummary?.recurso) contextBlocks.push(`RECURSOS AQUÍ AHORA MISMO (materiales, NO son personas ni animales): ${zonePointsSummary.recurso}`);
+    if (zonePointsSummary?.edificio) contextBlocks.push(`CONSTRUCCIONES AQUÍ AHORA MISMO: ${zonePointsSummary.edificio}`);
   }
   // Refactor de ingredientes (2026-07-29) — crafting.ts/construction.ts ya no matchean por
   // prefijo de nombre, matchean por tipo/categoría real del catálogo. Se resuelve una sola vez
@@ -4908,8 +4916,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         // combate no debe empujar ningún AUMENTO/DEBILIDAD.
         durationEffectMagnitude: playerAbilityUsageBlocked ? null : (selectedAbilityData?.durationEffectMagnitude ?? null),
         durationEffectTurns: playerAbilityUsageBlocked ? null : (selectedAbilityData?.durationEffectTurns ?? null),
-        // Domador (2026-09-09, "aumenta a tu bestia") — mismo gate de tope de usos que arriba.
-        durationEffectTarget: playerAbilityUsageBlocked ? null : ((selectedAbilityData?.durationEffectTarget as 'self' | 'companion' | null) ?? null),
+        // Domador (2026-09-09, "aumenta a tu bestia"; 'both' 2026-09-14, Grito Animal — "a tu
+        // bestia Y a ti mismo") — mismo gate de tope de usos que arriba.
+        durationEffectTarget: playerAbilityUsageBlocked ? null : ((selectedAbilityData?.durationEffectTarget as 'self' | 'companion' | 'both' | null) ?? null),
       };
       const accion: AccionJugadorCombate = { habilidad: jugadorHabilidad, dualWieldBonus };
       const turnoJugadora = await resolverTurnoJugador({ prisma, worldId, saveId, encounterId, accion });

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { getZona, moverEnZona, resolveImageUrl, recogerDroppedItem, type ZonaResponse, type ZonePointInfo, type ZonaDinamicoInfo, type RegionControlInfo } from '../../lib/api'
 import { ZonePointDetailModal, zonaDinamicoToDetailSource } from '../ZonePointDetailModal'
+import { ZoneGroupDetailModal } from '../ZoneGroupDetailModal'
 import type { LogEntry } from '../../types'
 
 interface ZonaPanelProps {
@@ -86,8 +87,10 @@ const COLOR_HEX: Record<ZonePointInfo['color'], string> = {
 }
 
 /// 4 formas fijas por categoría (2026-08-27, diseño cerrado con la usuaria) — círculo=seres vivos
-/// genéricos (fauna, grupos sin nombre propio), triángulo=NPC con nombre propio (incluye
-/// Companion, sin 5ª forma), cuadrado=edificio, rombo=seres inertes (RECURSO: flora/materiales).
+/// genéricos (fauna, grupos sin nombre propio), triángulo=NPC con nombre propio, cuadrado=edificio,
+/// rombo=seres inertes (RECURSO: flora/materiales). Sin 5ª forma nueva incluso con el companion de
+/// fauna con nombre propio (C10, 2026-09-13) — un anillo punteado extra alrededor del triángulo
+/// (`hasCompanion`) señala "grupo" sin romper la silueta ya reconocible de NPC.
 ///
 /// Rombo alargado verticalmente (checklist frontend 2026-08-27, A.9) — con las mismas proporciones
 /// que el círculo (semi-ejes ≈ su radio) ambas formas se confundían a tamaño de icono pequeño,
@@ -107,11 +110,20 @@ const COLOR_HEX: Record<ZonePointInfo['color'], string> = {
 /// coordenadas relativas. Mismos 220ms que `JugadorMarker`, por debajo de `MS_POR_PASO_MOVIMIENTO`.
 const FLUID_TRANSITION = { transition: 'cx 220ms linear, cy 220ms linear, x 220ms linear, y 220ms linear, points 220ms linear' }
 
-function ZonePointShape({ tipo, x, y, color }: { tipo: ZonePointInfo['tipo'] | 'OBJETO'; x: number; y: number; color: string }) {
+function ZonePointShape({ tipo, x, y, color, hasCompanion }: { tipo: ZonePointInfo['tipo'] | 'OBJETO'; x: number; y: number; color: string; hasCompanion?: boolean }) {
   const common = { fill: color, stroke: 'white', strokeWidth: 1.5, style: FLUID_TRANSITION }
   switch (tipo) {
     case 'NPC':
-      return <polygon points={`${x},${y - 9} ${x - 8},${y + 7} ${x + 8},${y + 7}`} {...common} />
+      // Compañero de fauna con nombre propio en el mismo punto (C10, 2026-09-13) — "un icono
+      // nuevo para los grupos": anillo punteado extra alrededor del triángulo normal de NPC, en
+      // vez de una 5ª forma completa (mantiene la silueta ya reconocible de "NPC con nombre
+      // propio", solo añade la señal de "aquí hay más de uno").
+      return (
+        <>
+          {hasCompanion && <circle cx={x} cy={y} r={12} fill="none" stroke={color} strokeWidth={1.2} strokeDasharray="2.5 2" opacity={0.85} style={FLUID_TRANSITION} />}
+          <polygon points={`${x},${y - 9} ${x - 8},${y + 7} ${x + 8},${y + 7}`} {...common} />
+        </>
+      )
     case 'EDIFICIO':
       return <rect x={x - 7} y={y - 7} width={14} height={14} {...common} />
     case 'RECURSO':
@@ -203,6 +215,10 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
   // Modal de detalle (2026-09-04) — comparte un mismo modal entre ZonePoint reales (`puntos`) y
   // dinámicos (`dinamicos`, sin ZonePoint sembrado), vía `zonaDinamicoToDetailSource`.
   const [selectedPoint, setSelectedPoint] = useState<ZonePointInfo | ZonaDinamicoInfo | null>(null)
+  // Compañero de fauna con nombre propio en el mismo punto que su dueño (C10, 2026-09-13) —
+  // estado de selección SEPARADO del normal: un punto con `companion` abre `ZoneGroupDetailModal`
+  // (desglose de ambas entidades) en vez del modal de un solo NPC.
+  const [selectedGroup, setSelectedGroup] = useState<ZonePointInfo | null>(null)
   // Sistema de movimiento por cuadrícula (2026-09-08) — mensaje simple de colisión/aviso ("por
   // ahora, acabaremos metiendo una animación" — placeholder consciente hasta que Franja 3 conecte
   // esto con combate/Interactuar real). `movimientoEnCurso` deshabilita nuevos clics mientras se
@@ -263,8 +279,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
           // ya dejó `pendingDynamicModeOffer` real en el backend, con su propio LogEntry
           // determinista (`resultado.logEntry`, shape mínimo) — se combina con `dynamicModeOffer`
           // (mismo campo que ya lee `LogPanel.tsx` para pintar la tarjeta) y se inserta directo en
-          // el log de personaje, sin recargar la partida entera. Un AGRESIVO no trae
-          // `dynamicModeOffer`/`logEntry` (fuerza combate por otro camino).
+          // el log de personaje, sin recargar la partida entera.
           if (resultado.dynamicModeOffer && resultado.logEntry) {
             onEncuentroZona?.({
               id: resultado.logEntry.id,
@@ -277,6 +292,20 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
             // Cierra el modal de movimiento (2026-09-09) — sin esto la tarjeta de Interactuar
             // quedaba insertada en el log DETRÁS del propio modal, invisible/inaccesible hasta que
             // el jugador lo cerrara a mano sin saber por qué.
+            onClose?.()
+          } else if (resultado.colision.temperamento === 'AGRESIVO' && resultado.logEntry) {
+            // Bug real jugando en vivo (2026-09-15): un AGRESIVO en la misma celda cerraba el modal
+            // sin dejar ningún rastro — el jugador no sabía que debía reaccionar. El backend ya deja
+            // un LogEntry propio para este caso (sin dynamicModeOffer, no aplica a un agresivo);
+            // se inserta igual que el resto y se cierra el modal para que el jugador vea el aviso y
+            // pueda escribir su acción de inmediato.
+            onEncuentroZona?.({
+              id: resultado.logEntry.id,
+              channel: 'character',
+              text: resultado.logEntry.text,
+              timeLabel: resultado.logEntry.timeLabel,
+              createdAt: resultado.logEntry.createdAt,
+            })
             onClose?.()
           }
           sigue = false
@@ -369,8 +398,8 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
             >
               {imageUrl && <image href={imageUrl} x={0} y={0} width={800} height={600} preserveAspectRatio="xMidYMid slice" />}
               {data.puntos.map((p) => (
-                <g key={p.id} onClick={(e) => { e.stopPropagation(); setSelectedPoint(p) }} className="cursor-pointer">
-                  <ZonePointShape tipo={p.tipo} x={p.x} y={p.y} color={COLOR_HEX[p.color]} />
+                <g key={p.id} onClick={(e) => { e.stopPropagation(); p.companion ? setSelectedGroup(p) : setSelectedPoint(p) }} className="cursor-pointer">
+                  <ZonePointShape tipo={p.tipo} x={p.x} y={p.y} color={COLOR_HEX[p.color]} hasCompanion={!!p.companion} />
                   {/* C.5 (checklist frontend 2026-08-27) — con 2 dígitos, el número centrado
                       dentro del icono podía sobresalir de formas estrechas (rombo/triángulo);
                       a partir de 10 se pinta como badge fuera del icono, arriba a la derecha. */}
@@ -387,7 +416,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                       </text>
                     </>
                   )}
-                  <title>{`${p.nombre}${p.cantidad > 1 ? ` ×${p.cantidad}` : ''} (${TIPO_LABEL[p.tipo]})`}</title>
+                  <title>{`${p.nombre}${p.cantidad > 1 ? ` ×${p.cantidad}` : ''} (${TIPO_LABEL[p.tipo]})${p.companion ? ` — con ${p.companion.nombre}` : ''}`}</title>
                 </g>
               ))}
               {/* NPC/fauna dinámicos (2026-09-04) — ahora también se pintan como pines reales, con
@@ -445,6 +474,15 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                   </svg>
                   Tú
                 </span>
+                {/* Compañero de fauna con nombre propio (C10, 2026-09-13) — entrada propia en la
+                    leyenda para el anillo punteado, mismo criterio del comentario de arriba
+                    ("nunca puede desincronizarse de lo que de verdad se pinta"). */}
+                <span className="flex items-center gap-1.5">
+                  <svg viewBox="0 0 24 24" width={14} height={14} aria-hidden="true">
+                    <ZonePointShape tipo="NPC" x={12} y={12} color="#8a8578" hasCompanion />
+                  </svg>
+                  NPC con compañero
+                </span>
               </div>
               <div className="flex flex-wrap gap-x-4 gap-y-1.5">
                 <span className="flex items-center gap-1.5">
@@ -476,13 +514,14 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
             {data.puntos.map((p) => (
               <button type="button"
                 key={p.id}
-                onClick={() => setSelectedPoint(p)}
+                onClick={() => (p.companion ? setSelectedGroup(p) : setSelectedPoint(p))}
                 className="tactile flex items-center gap-2 rounded-lg border border-iron-700 bg-wood-950/40 px-3 py-1.5 text-left text-xs transition-colors hover:border-accent-600/60"
               >
                 <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: COLOR_HEX[p.color] }} />
                 <span className="text-wood-100">
                   {p.nombre}
                   {p.cantidad > 1 && <span className="text-wood-500"> ×{p.cantidad}</span>}
+                  {p.companion && <span className="text-wood-500"> + {p.companion.nombre}</span>}
                 </span>
                 <span className="ml-auto text-2xs uppercase tracking-wide text-wood-500">{TIPO_LABEL[p.tipo]}</span>
               </button>
@@ -546,6 +585,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
         ) : (
           <ZonePointDetailModal point={zonaDinamicoToDetailSource(selectedPoint)} onClose={() => setSelectedPoint(null)} onRecoger={handleRecoger} />
         ))}
+      {selectedGroup && <ZoneGroupDetailModal point={selectedGroup} onClose={() => setSelectedGroup(null)} />}
     </div>
   )
 }

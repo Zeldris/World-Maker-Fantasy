@@ -159,6 +159,30 @@ export function objetivoExtraFor(excluirParticipantId: string, candidatos: Objet
   return vivos[Math.floor(random() * vivos.length)].participantId;
 }
 
+/// `AREA` real, variante ofensiva (2026-09-14, docs/rpgtarkor/clases.md — Opresor 32/36/40) —
+/// generalización de `objetivoExtraFor` a un número CUALQUIERA de objetivos extra, en vez de
+/// exactamente uno. `limite: null` = "a todos" (sin tope, cifra real de las fichas de Opresor —
+/// "inmoviliza/resta a TODOS los rivales"); `limite: N` = objetivo principal + (N-1) aleatorios sin
+/// repetir, mismo mecanismo que `objetivoExtraFor` pero con más de un extra (ninguna ficha real de
+/// `clases.md` usa hoy un límite numérico >1 para AREA — el propio MULTIPLE ya cubre el caso N=2 —
+/// pero se deja el parámetro genérico en vez de asumir "siempre todos"). Nunca prioriza por
+/// Inteligencia, mismo criterio que `objetivoExtraFor`.
+export function objetivosExtraFor(excluirParticipantId: string, candidatos: ObjetivoCandidato[], limite: number | null, random: () => number = Math.random): string[] {
+  const vivos = objetivosValidos(candidatos).filter((c) => c.participantId !== excluirParticipantId);
+  if (vivos.length === 0) return [];
+  if (limite === null || limite >= vivos.length) return vivos.map((c) => c.participantId);
+  // Barajado parcial (Fisher-Yates truncado) — mismo determinismo por `random` inyectable que el
+  // resto del motor, sin sesgar hacia el principio del array de candidatos.
+  const restantes = [...vivos];
+  const elegidos: string[] = [];
+  for (let i = 0; i < limite && restantes.length > 0; i++) {
+    const idx = Math.floor(random() * restantes.length);
+    elegidos.push(restantes[idx].participantId);
+    restantes.splice(idx, 1);
+  }
+  return elegidos;
+}
+
 /// Identificador de combatientes duplicados (2026-08-27, bug real jugando: "ataqué a los dos
 /// buitres a la vez" — no podía dirigir el golpe al segundo, dos `CombatParticipant` del mismo
 /// `npcId` comparten nombre y el matching por texto siempre resolvía al primero del array). Calcula
@@ -269,6 +293,25 @@ export function resolverEnganchesRonda(
   /// nadie más") — calculado por bando, nunca globalmente. El caller pasa la UNIÓN de ambos sets
   /// (`ocultoPorRondas`/`expulsadoPorRondas`), la exclusión en sí no distingue el motivo.
   ocultos: Set<string> = new Set(),
+  /// `PROVOCACION` real (2026-09-14, docs/rpgtarkor/clases.md — Guardián 16/19 y variantes) —
+  /// provocado → provocador. Mecanismo INVERSO a `ocultos`: en vez de excluir a alguien de ser
+  /// ELEGIDO, fuerza que un combatiente concreto ELIJA a un objetivo concreto, saltándose por
+  /// completo su `elegirObjetivoPara` normal (IA de Inteligencia, o la elección libre de la
+  /// jugadora) — mismo criterio que un jugador citando un nombre entre comillas, pero impuesto por
+  /// el motor, no por texto libre. Solo aplica si el provocado TODAVÍA no fue reclamado por otro al
+  /// llegarle su turno (regla 3 del enganche sigue mandando: "si ya te han elegido, no eliges tú")
+  /// — la provocación no puede resucitar una elección que la ronda ya le quitó.
+  provocaciones: Map<string, string> = new Map(),
+  /// `MARCAR` real (2026-09-14, docs/rpgtarkor/clases.md — Domador 24, Concentración del Domador) —
+  /// combatiente forzado (siempre un COMPANION) → objetivo marcado por su jugador. Mecanismo
+  /// INVERSO a `provocaciones` en quién decide (aquí el JUGADOR fuerza a SU COMPANION, allí el
+  /// motor fuerza al RIVAL), pero el mismo mecanismo de "salta la IA normal" en la resolución de
+  /// enganches. Si un combatiente tiene AMBOS (imposible hoy en la práctica — `provocaciones` solo
+  /// se dispara sobre quien SUFRE la provocación, `marcas` solo sobre un COMPANION propio — pero se
+  /// deja la prioridad explícita por si algún día coinciden), `provocaciones` gana: ser provocado es
+  /// una pérdida de control más fuerte que la propia orden de marcar, mismo criterio que "si ya te
+  /// han elegido, no eliges tú" de la regla 3 ya existente.
+  marcas: Map<string, string> = new Map(),
 ): Map<string, string | null> {
   const bandoDe = new Map(combatientes.map((c) => [c.participantId, c.bando]));
   // target → primer atacante que lo reclamó — first-come, nunca se sobreescribe con un reclamo
@@ -286,7 +329,17 @@ export function resolverEnganchesRonda(
     const candidatosCrudos = combatientes.filter((c) => c.bando !== bando);
     const candidatosVisibles = candidatosCrudos.filter((c) => !ocultos.has(c.participantId));
     const candidatos = (candidatosVisibles.length > 0 ? candidatosVisibles : candidatosCrudos).map((c) => c.participantId);
-    const elegido = elegirObjetivoPara(id, candidatos);
+    // Provocado con provocador todavía vivo/candidato real este turno → salta la IA normal.
+    const provocadorId = provocaciones.get(id);
+    // MARCAR: sin provocación activa, un COMPANION con marca viva y objetivo todavía candidato
+    // ataca preferentemente a ese objetivo en vez de su IA de Inteligencia normal.
+    const marcaId = marcas.get(id);
+    const elegido =
+      provocadorId && candidatos.includes(provocadorId)
+        ? provocadorId
+        : marcaId && candidatos.includes(marcaId)
+          ? marcaId
+          : elegirObjetivoPara(id, candidatos);
     if (elegido === null) continue; // sin nadie a quien atacar (bando contrario agotado)
 
     objetivoProvisional.set(id, elegido);
@@ -429,10 +482,13 @@ export interface HabilidadParaIntercambio {
   /// A quién recae `nuevoEfectoAtacante` (2026-09-09, `SavedAction.durationEffectTarget`) —
   /// undefined/'self'/null = comportamiento de siempre (quien usó la habilidad); 'companion' =
   /// el caller (combateMultipleOrquestacion.ts § `ejecutarIntercambioYAvanzar`) redirige el
-  /// efecto al Companion del bando del atacante en vez de al propio atacante. Esta función
-  /// (`resolverIntercambioCompleto`) NO lee este campo — solo lo transporta, la redirección vive
-  /// en el caller porque es el único que conoce al resto de participantes del encuentro.
-  durationEffectTarget?: 'self' | 'companion' | null;
+  /// efecto al Companion del bando del atacante en vez de al propio atacante; 'both' (2026-09-14,
+  /// Domador 32, Grito Animal: "aumenta... del compañero y a ti mismo") = el efecto se aplica a
+  /// AMBOS a la vez con la misma tirada, no excluye al atacante como sí hace 'companion'. Esta
+  /// función (`resolverIntercambioCompleto`) NO lee este campo — solo lo transporta, la
+  /// redirección/duplicación vive en el caller porque es el único que conoce al resto de
+  /// participantes del encuentro.
+  durationEffectTarget?: 'self' | 'companion' | 'both' | null;
 }
 
 export interface CombatienteParaIntercambio {
@@ -507,6 +563,79 @@ export interface ResultadoIntercambioCompleto {
   /// por separado (decisión explícita de la usuaria). El caller marca `expulsadoPorRondas` sobre EL
   /// DEFENSOR (a quien golpea Embate de Escudo), nunca sobre el atacante.
   expulsarTriggered: boolean;
+  /// `PROVOCACION` real (2026-09-14, docs/rpgtarkor/clases.md — Guardián 16/19, Lancero 32,
+  /// Especialista 28, Caballero del Valor 12) — dos caminos posibles, igual que CONTROL/OCULTACION:
+  /// (a) `PROVOCACION` sola o combinada solo con otro efecto de utilidad (Desafío/Grito de
+  /// Valentía) dispara por el camino independiente (`utilityTriggered`, mismo gate que OCULTACION);
+  /// (b) `AGUANTE`+`PROVOCACION` (Bastión Personal, Guardia de Asta, Postura Firme) dispara por
+  /// margen decisivo, mismo gate que EXPULSAR/DESVIAR. Quien la dispara provoca SIEMPRE al RIVAL de
+  /// ESTE intercambio (nunca a sí mismo) — el caller marca `provocadoPorRondas`/`provocadoPorId`
+  /// sobre ese rival. La variante "redirige el golpe dirigido a un aliado" (Caballero del Valor 28)
+  /// no vive aquí — no es un efecto de UN intercambio 1-a-1, es una sustitución del enganche de
+  /// TODA la ronda que solo el orquestador puede resolver (ver combateMultipleOrquestacion.ts).
+  atacanteProvocacionDisparada: boolean;
+  defensorProvocacionDisparada: boolean;
+  /// `MARCAR` real (2026-09-14, docs/rpgtarkor/clases.md — Domador 24, Concentración del Domador)
+  /// — camino independiente/utilidad, mismo gate que PROVOCACION/OCULTACION. A diferencia de esos
+  /// dos (que actúan sobre el RIVAL de este intercambio), MARCAR no tiene un "objetivo" claro
+  /// dentro de un intercambio 1-a-1 — el jugador marca a un tercero cualquiera (su enganche de la
+  /// ronda, ver comentario de `provocarCompanionRedirect`/mismo criterio de "objetivo = tu propio
+  /// enganche, sin MULTIPLE" que PROVOCACION) para que SU COMPANION lo ataque preferentemente. El
+  /// caller (combateMultipleOrquestacion.ts) resuelve el Companion real y marca
+  /// `marcaObjetivoRondas`/`marcaObjetivoId` sobre él, nunca aquí (esta función no conoce
+  /// Companions, solo atacante/defensor de un intercambio pairwise).
+  atacanteMarcarDisparado: boolean;
+  defensorMarcarDisparado: boolean;
+  /// `AREA` real, variante ofensiva (2026-09-14, docs/rpgtarkor/clases.md — Opresor 32/36/40) —
+  /// mismo gate que MULTIPLE/EXPULSAR (margen decisivo, camino no-independiente, el golpe base debe
+  /// haber conectado de verdad) + `ATAQUE`+`AREA` en la habilidad de ataque. El caller resuelve
+  /// TODOS los vivos del bando del defensor con `objetivosExtraFor` (sin tope, "a todos los
+  /// rivales") en vez de un único extra — a diferencia de MULTIPLE, no hay variante "solo defensa"
+  /// aquí (esa vive en `areaDefensaPorRondas`, resuelta por el orquestador en cada intercambio
+  /// normal, no como un disparo puntual de esta función).
+  areaOfensivaTriggered: boolean;
+  /// `AREA` real, variante defensiva (2026-09-14, docs/rpgtarkor/clases.md — Instintivo 28,
+  /// Instinto de Reserva: `AGUANTE`+`RECUPERACION`+`AREA`) — mismo gate que PROVOCACION defensiva
+  /// (contragolpea con éxito, camino no-independiente): la DEFENSORA de este intercambio activa
+  /// `areaDefensaPorRondas` sobre sí misma, nunca sobre el atacante. El caller resuelve la duración
+  /// real y la redirección de golpes futuros (`redirigirPorAreaDefensiva`).
+  defensorAreaDefensivaDisparada: boolean;
+  /// `AREA` real, variante persistente (2026-09-14, docs/rpgtarkor/clases.md — Supervivencia 32,
+  /// Trampa Improvisada) — camino independiente/utilidad, mismo gate que MARCAR/PROVOCACION
+  /// (utilidad). Quien la dispara coloca la trampa SOBRE SÍ MISMO (mismo lado que OCULTACION), nunca
+  /// sobre el rival — el caller marca `areaTrampaPorRondas` sobre quien la usó.
+  atacanteAreaTrampaDisparada: boolean;
+  defensorAreaTrampaDisparada: boolean;
+  /// `LIMPIAR` real (2026-09-15, docs/rpgtarkor/clases.md — Caballero del Valor 16/32, Manto de
+  /// Purificación/Purga de Honor) — camino independiente/utilidad, mismo gate que MARCAR/
+  /// PROVOCACION/AREA persistente (utilidad). Quien la dispara se limpia A SÍ MISMO (mismo lado que
+  /// OCULTACION/AREA persistente), nunca al rival — el caller aplica `removeWorstDebilidad`
+  /// (activeEffects.ts) sobre los `activeEffects` reales de quien la usó.
+  atacanteLimpiarDisparado: boolean;
+  defensorLimpiarDisparado: boolean;
+  /// `CURAZION` real (2026-09-15, docs/rpgtarkor/clases.md — Segador Parca/Transmutador,
+  /// Especialista 40) — el caller aplica `oneStepBetterThan` (death.ts) sobre la condición física
+  /// YA calculada de quien corresponda. `atacanteCurazionDisparado` cubre 2 casos (vampirismo por
+  /// margen decisivo con ATAQUE, o camino independiente/utilidad puro — Segunda Oportunidad) —
+  /// siempre sobre quien atacó/usó la utilidad. `defensorCurazionDisparado` cubre la transmutación
+  /// defensiva (recibe el golpe pero mitiga parte del daño con su propia curación).
+  atacanteCurazionDisparado: boolean;
+  defensorCurazionDisparado: boolean;
+  /// `REFLEJAR` real (2026-09-15, docs/rpgtarkor/clases.md — Segador Transmutador, Espejo Maldito/
+  /// Espejo de Poder) — el caller captura el DEBILIDAD de mayor magnitud negativa de quien dispara
+  /// (`removeWorstDebilidad`, activeEffects.ts), lo quita de su lista, y lo aplica como DEBILIDAD
+  /// nuevo sobre el RIVAL de este intercambio (el defensor). Sin ningún DEBILIDAD propio activo, se
+  /// pierde en silencio, mismo criterio que LIMPIAR.
+  atacanteReflejarDisparado: boolean;
+  /// `CONVERSION` real, transmutación de efectos activos (2026-09-15, Segador Transmutador,
+  /// Transmutación Menor/Mayor/Equilibrio Roto) — choque de nombre deliberado con el CONVERSION ya
+  /// existente (elige el atributo del golpe, siempre con `ATAQUE`); esta variante va sola o con
+  /// REFLEJAR, nunca con ATAQUE. `atacanteTransmutaPropiaDisparada` (Transmutación Menor): el
+  /// caller convierte el DEBILIDAD propio de mayor magnitud negativa en AUMENTO sobre sí misma.
+  /// `atacanteTransmutaRivalDisparada` (Transmutación Mayor/Equilibrio Roto): el caller convierte
+  /// el AUMENTO del RIVAL en DEBILIDAD y su DEBILIDAD en AUMENTO — "y viceversa".
+  atacanteTransmutaPropiaDisparada: boolean;
+  atacanteTransmutaRivalDisparada: boolean;
   /// Desglose real de dados para el frontend (2026-09-04, auditoría "buscar tiradas de dados sin
   /// representar" — hallazgo real: `resolverIntercambioCompleto` SIEMPRE tira con la misma
   /// mecánica que el 1v1 clásico (`resolveExchange`/`resolveIndependentExchange`, mismo `rollD20`),
@@ -544,6 +673,13 @@ export function resolverIntercambioCompleto(
   /// (combateMultipleOrquestacion.ts, que sí conoce qué CombatParticipant es tipo JUGADOR) quien
   /// decide esto, igual que ya hace turnResolution.ts para el 1v1.
   atacanteEsJugador: boolean = false,
+  /// AREA real, variante persistente (2026-09-14, Trampa Improvisada) — `true` si el DEFENSOR de
+  /// este intercambio tiene `areaTrampaPorRondas > 0` (el caller, que sí conoce el estado real del
+  /// `CombatParticipant`, resuelve esta condición) — refuerza el contragolpe normal con
+  /// `iniciativaForzada` a su favor cuando gana, sin necesitar que la habilidad de defensa que use
+  /// ESE turno concreto lleve `ATURDIMIENTO` explícito (mismo criterio de simplificación ya usado
+  /// para EXPULSAR/PROVOCACION: la trampa YA fue activada en otro turno, aquí solo se consume).
+  defensorTieneTrampaActiva: boolean = false,
 ): ResultadoIntercambioCompleto {
   const dificultadAtacanteAjustada = dualWieldAdjustedDifficulty(dificultadAtacante, dualWieldBonus);
   const atacanteExch: ExchangeParticipant = {
@@ -578,6 +714,23 @@ export function resolverIntercambioCompleto(
   let desviarTriggered = false;
   let atacanteOcultacionDisparada = false;
   let defensorOcultacionDisparada = false;
+  let atacanteProvocacionDisparada = false;
+  let defensorProvocacionDisparada = false;
+  let atacanteMarcarDisparado = false;
+  let defensorMarcarDisparado = false;
+  let defensorAreaDefensivaDisparada = false;
+  let atacanteAreaTrampaDisparada = false;
+  let defensorAreaTrampaDisparada = false;
+  let atacanteAumentoUtilidadDisparado = false;
+  let atacanteDebilidadUtilidadDisparada = false;
+  let atacanteLimpiarDisparado = false;
+  let defensorLimpiarDisparado = false;
+  let atacanteCurazionDisparado = false;
+  let defensorCurazionDisparado = false;
+  let atacanteReflejarDisparado = false;
+  let atacanteTransmutaPropiaDisparada = false;
+  let atacanteTransmutaRivalDisparada = false;
+  let defensorGanaPorMargen = false;
   let display: CombatExchangeDisplay;
 
   const esIndependiente = atacanteRol !== 'ataque' || defensorHabilidad.rol === 'utilidad';
@@ -608,6 +761,68 @@ export function resolverIntercambioCompleto(
         // OCULTACION real (Fase 3 § 3c, 2026-08-27) — a diferencia de CONTROL, quien la dispara se
         // oculta A SÍ MISMO (Camuflaje: "te oculta... del agro"), nunca al rival.
         if (atacanteHabilidad.effects.includes('OCULTACION')) atacanteOcultacionDisparada = true;
+        // PROVOCACION real (2026-09-14, Desafío/Grito de Valentía) — quien la dispara provoca al
+        // RIVAL de este intercambio (el defensor), nunca a sí mismo — mismo lado que CONTROL, lado
+        // contrario que OCULTACION.
+        if (atacanteHabilidad.effects.includes('PROVOCACION')) atacanteProvocacionDisparada = true;
+        // AUMENTO real, camino independiente (2026-09-15, docs/rpgtarkor/clases.md — Valor
+        // Compartido/Grito Improvisado) — a diferencia de MARCAR/PROVOCACION/OCULTACION en el
+        // mismo camino (fuerzan un ESTADO en alguien), aquí lo que dispara es la construcción de
+        // `nuevoEfectoAtacante` más abajo (mismo `ActiveEffect` de siempre) — el caller lo redirige
+        // al Companion propio vía `durationEffectTarget`, mismo mecanismo ya construido para el
+        // camino de margen decisivo (2026-09-09/2026-09-14). Solo AUMENTO desde utilidad (nunca
+        // DEBILIDAD — ninguna ficha real de `clases.md` debilita a un aliado desde utilidad).
+        if (atacanteHabilidad.effects.includes('AUMENTO')) atacanteAumentoUtilidadDisparado = true;
+        // DEBILIDAD real, camino independiente (2026-09-15, docs/rpgtarkor/clases.md — Segador
+        // Parca/Maldito, Toque de la Parca/Maldición Susurrada) — a diferencia de AUMENTO arriba
+        // (redirigido al Companion propio), DEBILIDAD desde utilidad recae sobre el RIVAL de este
+        // intercambio (el defensor), mismo lado que PROVOCACION/MARCAR en el mismo camino — nunca
+        // sobre un aliado (ninguna ficha real debilita a un aliado, ver comentario de AUMENTO).
+        if (atacanteHabilidad.effects.includes('DEBILIDAD')) atacanteDebilidadUtilidadDisparada = true;
+        // MARCAR real (2026-09-14, Concentración del Domador) — dispara sobre el RIVAL de este
+        // intercambio (el defensor), el caller resuelve el Companion real que recibe la marca.
+        if (atacanteHabilidad.effects.includes('MARCAR')) atacanteMarcarDisparado = true;
+        // AREA real, variante persistente (2026-09-14, Trampa Improvisada) — quien la dispara coloca
+        // la trampa sobre SÍ MISMO (mismo lado que OCULTACION), nunca sobre el rival.
+        if (atacanteHabilidad.effects.includes('AREA')) atacanteAreaTrampaDisparada = true;
+        // LIMPIAR real (2026-09-15, Manto de Purificación/Purga de Honor) — mismo lado que
+        // OCULTACION/AREA persistente: quien la dispara se limpia A SÍ MISMO, nunca al rival. El
+        // caller resuelve `removeWorstDebilidad` sobre los `activeEffects` reales de quien la usó.
+        if (atacanteHabilidad.effects.includes('LIMPIAR')) atacanteLimpiarDisparado = true;
+        // CURAZION real, camino independiente (2026-09-15, Segunda Oportunidad — Especialista 40,
+        // `RECUPERACION`+`CURAZION`+`LIMITADA`) — mismo lado que LIMPIAR/OCULTACION: quien la
+        // dispara mejora SU PROPIA condición física un escalón (`oneStepBetterThan`, death.ts).
+        if (atacanteHabilidad.effects.includes('CURAZION')) atacanteCurazionDisparado = true;
+        // REFLEJAR real, camino independiente (2026-09-15, Segador Transmutador — Espejo Maldito/
+        // Espejo de Poder) — a diferencia de LIMPIAR (quita el DEBILIDAD sin más), REFLEJAR lo
+        // "devuelve al rival": esta función solo marca el disparo — no conoce `activeEffects` de
+        // nadie (recibe solo los datos del intercambio) — el caller (combateMultipleOrquestacion.ts)
+        // captura el DEBILIDAD de mayor magnitud negativa de quien la usó (`removeWorstDebilidad`,
+        // activeEffects.ts), lo quita de su lista, y lo vuelve a construir como DEBILIDAD nuevo
+        // sobre el RIVAL de este intercambio (el defensor). Sin ningún DEBILIDAD propio activo, se
+        // pierde en silencio, mismo criterio que LIMPIAR.
+        // Equilibrio Roto (`CONVERSION`+`REFLEJAR` juntos) NO pasa por el REFLEJAR simple — su
+        // combinación dispara el camino "transmuta rival" más abajo, que ya cubre ambos sentidos.
+        if (atacanteHabilidad.effects.includes('REFLEJAR') && !atacanteHabilidad.effects.includes('CONVERSION')) {
+          atacanteReflejarDisparado = true;
+        }
+        // CONVERSION real, transmutación de efectos activos (2026-09-15, Segador Transmutador) —
+        // choque de nombre deliberado con el CONVERSION ya existente (elige el atributo del golpe,
+        // SIEMPRE combinado con `ATAQUE` en las 7 fichas reales que lo usan así) — aquí CONVERSION
+        // va SOLA (Transmutación Menor) o con REFLEJAR (Equilibrio Roto), nunca con ATAQUE, así que
+        // distinguir por `!effects.includes('ATAQUE')` es seguro, sin colisión real posible.
+        // Transmutación Menor: convierte el DEBILIDAD propio de mayor magnitud negativa en un
+        // AUMENTO sobre sí misma (magnitud con el signo invertido, mismos atributo/turnos) — el
+        // caller resuelve `worstDebilidadOf`+`removeWorstDebilidad` sobre `datosAtacante.activeEffects`.
+        if (atacanteHabilidad.effects.includes('CONVERSION') && !atacanteHabilidad.effects.includes('ATAQUE') && !atacanteHabilidad.effects.includes('REFLEJAR')) {
+          atacanteTransmutaPropiaDisparada = true;
+        }
+        // Transmutación Mayor / Equilibrio Roto: convierte el AUMENTO del RIVAL en DEBILIDAD, Y su
+        // DEBILIDAD en AUMENTO — "y viceversa" — el caller resuelve ambos lados sobre
+        // `datosDefensor.activeEffects` (mismo rival de este intercambio).
+        if (atacanteHabilidad.effects.includes('CONVERSION') && atacanteHabilidad.effects.includes('REFLEJAR')) {
+          atacanteTransmutaRivalDisparada = true;
+        }
       }
     }
     if (defensorHabilidad.rol === 'utilidad') {
@@ -626,6 +841,10 @@ export function resolverIntercambioCompleto(
         if (defensorHabilidad.effects.includes('RECUPERACION')) defensorRecuperacionExtra = RECUPERACION_ENERGY_BONUS;
         if (defensorHabilidad.effects.includes('CONTROL')) defensorControlDisparado = true;
         if (defensorHabilidad.effects.includes('OCULTACION')) defensorOcultacionDisparada = true;
+        if (defensorHabilidad.effects.includes('PROVOCACION')) defensorProvocacionDisparada = true;
+        if (defensorHabilidad.effects.includes('MARCAR')) defensorMarcarDisparado = true;
+        if (defensorHabilidad.effects.includes('AREA')) defensorAreaTrampaDisparada = true;
+        if (defensorHabilidad.effects.includes('LIMPIAR')) defensorLimpiarDisparado = true;
       }
     }
     exchangeBlock = independentExchangeContextBlock(independent, atacante.nombre, defensor.nombre);
@@ -633,13 +852,27 @@ export function resolverIntercambioCompleto(
   } else {
     const exchange = resolveExchange(atacanteExch, defensorExch);
     const defensorPuedeContragolpear = defensorHabilidad.effects.includes('ATAQUE');
-    const defensorContragolpeaAplica = exchange.resultado === 'defensor_contragolpea' && defensorPuedeContragolpear;
+    // `defensorGanaPorMargen` (2026-09-15) — margen decisivo A FAVOR del defensor, puro, SIN exigir
+    // `ATAQUE` (bug real cazado sembrando Sacrificio del Valiente: ninguna de las 4 fichas reales
+    // de PROVOCACION variante margen decisivo lleva ATAQUE — "ganas la defensa con margen" y
+    // "además devuelves un golpe físico" son conceptualmente independientes). `atacanteRecibeGolpe`
+    // (daño real de contragolpe) SIGUE exigiendo ATAQUE — solo el disparo de PROVOCACION deja de
+    // depender de él.
+    defensorGanaPorMargen = exchange.resultado === 'defensor_contragolpea';
+    const defensorContragolpeaAplica = defensorGanaPorMargen && defensorPuedeContragolpear;
     defensorRecibeGolpe = exchange.resultado === 'golpe_pleno' || exchange.resultado === 'golpe_normal';
     if (defensorRecibeGolpe) nuevaCondicionDefensor = nextCondicionForAttack(atacanteHabilidad.effects, defensor.condicionFisica);
     atacanteRecibeGolpe = defensorContragolpeaAplica;
     if (atacanteRecibeGolpe) nuevaCondicionAtacante = nextCondicionForAttack(defensorHabilidad.effects, atacante.condicionFisica);
     exchangeBlock = exchangeContextBlock(exchange, atacante.nombre, defensor.nombre, defensorPuedeContragolpear);
     margenDecisivo = exchange.resultado === 'golpe_pleno';
+    // AREA real, variante persistente (2026-09-14, Trampa Improvisada) — el defensor con trampa
+    // activa gana este intercambio por margen decisivo a su favor (`defensor_contragolpea`,
+    // independiente de si su habilidad de defensa de ESTE turno lleva ATAQUE/ATURDIMIENTO propio):
+    // roba la iniciativa, mismo mecanismo ya existente para cualquier ATURDIMIENTO real.
+    if (defensorTieneTrampaActiva && exchange.resultado === 'defensor_contragolpea') {
+      iniciativaForzada = 'defensor';
+    }
     // DESVIAR real (Fase 3 § 3c, 2026-08-27) — la defensora gana por margen decisivo (mismo umbral
     // que CONTRA/REFRACTAR, `defensor_contragolpea`) Y su habilidad de defensa lleva DESVIAR: el
     // golpe entrante (que de todos modos ya iba a fallar, `defensorRecibeGolpe` es `false` en este
@@ -652,10 +885,13 @@ export function resolverIntercambioCompleto(
   // AUMENTO/DEBILIDAD real (Fase 3 § 3a, 2026-08-27) — mismo gate que Fase 2 (margen decisivo,
   // ver comentario de `margenDecisivo` arriba): solo se construye el `ActiveEffect` si la propia
   // habilidad de ataque trae ambos campos de duración poblados (ver comentario de
-  // `HabilidadParaIntercambio.durationEffectMagnitude/Turns`).
+  // `HabilidadParaIntercambio.durationEffectMagnitude/Turns`). `atacanteAumentoUtilidadDisparado`
+  // (2026-09-15) amplía este gate al camino independiente para AUMENTO; `atacanteDebilidadUtilidadDisparada`
+  // (2026-09-15, Segador Parca/Maldito) hace lo mismo para DEBILIDAD — recae sobre el DEFENSOR
+  // (rival), nunca sobre quien la usó (mismo lado que PROVOCACION/MARCAR en este camino).
   let nuevoEfectoAtacante: ActiveEffect | null = null;
   let nuevoEfectoDefensor: ActiveEffect | null = null;
-  if (margenDecisivo && atacanteHabilidad.durationEffectMagnitude != null && atacanteHabilidad.durationEffectTurns != null) {
+  if ((margenDecisivo || atacanteAumentoUtilidadDisparado || atacanteDebilidadUtilidadDisparada) && atacanteHabilidad.durationEffectMagnitude != null && atacanteHabilidad.durationEffectTurns != null) {
     const efecto: ActiveEffect = {
       attribute: atacanteHabilidad.attribute,
       magnitude: atacanteHabilidad.durationEffectMagnitude,
@@ -663,14 +899,53 @@ export function resolverIntercambioCompleto(
       sourceAbility: atacanteHabilidad.name,
     };
     if (atacanteHabilidad.effects.includes('AUMENTO')) nuevoEfectoAtacante = efecto;
-    if (atacanteHabilidad.effects.includes('DEBILIDAD')) nuevoEfectoDefensor = efecto;
+    if ((margenDecisivo || atacanteDebilidadUtilidadDisparada) && atacanteHabilidad.effects.includes('DEBILIDAD')) nuevoEfectoDefensor = efecto;
   }
 
   // MULTIPLE real (Fase 3 § 3b, 2026-08-27) — mismo gate, ver comentario de la interfaz.
   const multipleTriggered = margenDecisivo && defensorRecibeGolpe && atacanteHabilidad.effects.includes('ATAQUE') && atacanteHabilidad.effects.includes('MULTIPLE');
 
+  // AREA real, variante ofensiva (2026-09-14) — mismo gate que MULTIPLE, ver comentario de la interfaz.
+  const areaOfensivaTriggered = margenDecisivo && defensorRecibeGolpe && atacanteHabilidad.effects.includes('ATAQUE') && atacanteHabilidad.effects.includes('AREA');
+
   // EXPULSAR real (Fase 3 § 3e, 2026-08-27) — mismo gate que MULTIPLE, ver comentario de la interfaz.
   const expulsarTriggered = margenDecisivo && defensorRecibeGolpe && atacanteHabilidad.effects.includes('ATAQUE') && atacanteHabilidad.effects.includes('EXPULSAR');
+
+  // PROVOCACION real, camino de margen decisivo (2026-09-14, Bastión Personal/Guardia de Asta/
+  // Postura Firme/Sacrificio del Valiente — `AGUANTE`+`PROVOCACION`) — a diferencia de EXPULSAR
+  // (lado ATACANTE, golpe que conecta), esta es una ficha de DEFENSA: quien gana la defensa por
+  // margen decisivo (`defensorGanaPorMargen`, 2026-09-15 — NO `atacanteRecibeGolpe`, que exige
+  // `ATAQUE` y ninguna de las 4 fichas reales lo lleva, bug real cazado sembrando Sacrificio del
+  // Valiente) y su habilidad de defensa trae `PROVOCACION` provoca al atacante — lo de arriba
+  // (`atacanteProvocacionDisparada`/`defensorProvocacionDisparada`) solo cubre el camino
+  // independiente (utilidad pura); esto cubre el combinado con ataque real.
+  if (!esIndependiente && defensorGanaPorMargen && defensorHabilidad.effects.includes('AGUANTE') && defensorHabilidad.effects.includes('PROVOCACION')) {
+    defensorProvocacionDisparada = true;
+  }
+
+  // AREA real, variante defensiva (2026-09-14, Instinto de Reserva — `AGUANTE`+`RECUPERACION`+
+  // `AREA`) — mismo gate que PROVOCACION defensiva: contragolpea con éxito y su habilidad de
+  // defensa trae AGUANTE+AREA. Activa `areaDefensaPorRondas` sobre quien la usó (nunca sobre el
+  // atacante) — el caller resuelve la duración real.
+  if (!esIndependiente && atacanteRecibeGolpe && defensorHabilidad.effects.includes('AGUANTE') && defensorHabilidad.effects.includes('AREA')) {
+    defensorAreaDefensivaDisparada = true;
+  }
+
+  // CURAZION real, vampirismo (2026-09-15, Segador Parca — Sed de Vida/Último Suspiro,
+  // `ATAQUE`+`CURAZION`) — mismo gate que MULTIPLE/EXPULSAR/AREA ofensiva (margen decisivo, el
+  // golpe base conecta): quien ataca "roba vida" y mejora su propia condición un escalón.
+  if (margenDecisivo && defensorRecibeGolpe && atacanteHabilidad.effects.includes('ATAQUE') && atacanteHabilidad.effects.includes('CURAZION')) {
+    atacanteCurazionDisparado = true;
+  }
+
+  // CURAZION real, transmutación defensiva (2026-09-15, Segador Transmutador — Alquimia Vital,
+  // `CURAZION` sola, sin AGUANTE explícito: "transmuta el daño recibido") — a diferencia de AREA/
+  // PROVOCACION defensivas (disparan al CONTRAGOLPEAR con éxito), esta dispara cuando el golpe SÍ
+  // conecta (`defensorRecibeGolpe`): quien recibe el golpe mitiga parte del daño con su propia
+  // curación, mejorando un escalón pese a haber sido golpeado.
+  if (!esIndependiente && defensorRecibeGolpe && defensorHabilidad.effects.includes('CURAZION')) {
+    defensorCurazionDisparado = true;
+  }
 
   if (atacanteHabilidad.effects.includes('LETAL')) {
     exchangeBlock += defensorRecibeGolpe
@@ -700,6 +975,21 @@ export function resolverIntercambioCompleto(
     atacanteOcultacionDisparada,
     defensorOcultacionDisparada,
     expulsarTriggered,
+    atacanteProvocacionDisparada,
+    defensorProvocacionDisparada,
+    atacanteMarcarDisparado,
+    defensorMarcarDisparado,
+    areaOfensivaTriggered,
+    defensorAreaDefensivaDisparada,
+    atacanteAreaTrampaDisparada,
+    defensorAreaTrampaDisparada,
+    atacanteLimpiarDisparado,
+    defensorLimpiarDisparado,
+    atacanteCurazionDisparado,
+    defensorCurazionDisparado,
+    atacanteReflejarDisparado,
+    atacanteTransmutaPropiaDisparada,
+    atacanteTransmutaRivalDisparada,
     display,
   };
 }

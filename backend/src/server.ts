@@ -12,6 +12,8 @@ import { entornoRoutes } from './routes/entorno.js';
 import { savesRoutes } from './routes/saves.js';
 import { worldRoutes } from './routes/world.js';
 import { startWorldTickWorker, stopWorldTickWorker } from './workers/worldTick.js';
+import { ollamaGenerate } from './lib/ollama.js';
+import { narratorWarmupPrompt } from './services/narrador.js';
 
 const app = Fastify({ logger: true, requestTimeout: 0 });
 
@@ -59,6 +61,30 @@ app.listen({ port: env.port, host: '0.0.0.0' }).catch((err) => {
 });
 
 startWorldTickWorker();
+
+// Warm-up del narrador (2026-09-14, petición explícita de Álvaro tras medir en vivo que el primer
+// turno tras cada arranque tarda 2-3x más que uno en caliente). Dispara una generación mínima al
+// narrador justo al arrancar, sin esperarla (`void`, nunca bloquea el arranque del servidor) ni que
+// un fallo la haga ruidosa (Ollama podría no estar arriba todavía si se arrancó a la vez) — el
+// primer turno real de la jugadora sigue funcionando igual si esto falla, solo pierde el ahorro.
+//
+// CRÍTICO — usar el prompt REAL (`narratorWarmupPrompt`), no un texto cualquiera (revisado en vivo
+// el mismo día, Álvaro señaló correctamente que "cargado en GPU" no bastaba): Ollama/llama.cpp
+// cachea el KV-cache por coincidencia EXACTA de prefijo de tokens, y el coste real que un warm-up
+// genérico no evita es `prompt_eval_duration` (~6.7s para reprocesar el prefijo fijo de ~900
+// tokens desde cero), invisible en `ollama ps`/`load_duration` — esos solo confirman que los pesos
+// están en GPU, no que el prompt esté cacheado. Medido: con el prefijo real ya calentado aquí, esa
+// misma parte baja a ~0.5s en el siguiente turno que la comparta (que es el 100% de los turnos
+// reales, ver comentario de `narratorWarmupPrompt` en narrador.ts).
+//
+// Solo el narrador, NO el cronista (probado y descartado, 2026-09-14): `keepAlive: '0'` en las
+// llamadas de clasificación (narrador.ts) es deliberado — el cronista SIEMPRE se descarga en
+// cuanto responde, nunca convive con el narrador en memoria. Precalentarlo aquí no ahorraría nada
+// real: para cuando llegue el primer turno de verdad, ya se habría descargado solo, exactamente
+// igual que si nunca se hubiera precalentado — solo gastaría tiempo/batería sin beneficio.
+void ollamaGenerate({ model: env.ollamaModelNarrador, prompt: narratorWarmupPrompt(), maxTokens: 1, timeoutMs: 60_000 })
+  .then(() => app.log.info(`Narrador (${env.ollamaModelNarrador}) precalentado en Ollama (prefijo real cacheado).`))
+  .catch((err) => app.log.warn(`Warm-up del narrador falló (no bloquea el arranque): ${err instanceof Error ? err.message : err}`));
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.on(signal, async () => {

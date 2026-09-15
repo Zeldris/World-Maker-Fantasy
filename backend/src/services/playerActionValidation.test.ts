@@ -2,14 +2,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const findManyNpc = vi.fn();
 const findManyLocation = vi.fn();
+const findUniqueLocation = vi.fn();
 const findManyHarvestYield = vi.fn();
 const findFirstQuest = vi.fn();
+const findManyQuest = vi.fn();
+const findManyNpcState = vi.fn();
 vi.mock('../lib/prisma.js', () => ({
   prisma: {
     npc: { findMany: (...args: unknown[]) => findManyNpc(...args) },
-    location: { findMany: (...args: unknown[]) => findManyLocation(...args) },
+    location: { findMany: (...args: unknown[]) => findManyLocation(...args), findUnique: (...args: unknown[]) => findUniqueLocation(...args) },
     harvestYield: { findMany: (...args: unknown[]) => findManyHarvestYield(...args) },
-    quest: { findFirst: (...args: unknown[]) => findFirstQuest(...args) },
+    quest: { findFirst: (...args: unknown[]) => findFirstQuest(...args), findMany: (...args: unknown[]) => findManyQuest(...args) },
+    npcState: { findMany: (...args: unknown[]) => findManyNpcState(...args) },
   },
 }));
 
@@ -33,6 +37,11 @@ const {
   unknownDestinationNarrationFor,
   detectsHarvestSkillMisuseClaim,
   harvestSkillMisuseNarrationFor,
+  detectsBindingWithoutRopesClaim,
+  bindingWithoutRopesNarrationFor,
+  BINDING_VERB_REGEX,
+  detectsUnresolvedDialogueTargetClaim,
+  unresolvedDialogueTargetNarrationFor,
 } = await import('./playerActionValidation.js');
 
 describe('detectsUnequippedWeaponClaim', () => {
@@ -71,6 +80,40 @@ describe('detectsUnequippedWeaponClaim', () => {
   // arma equipada legítima — desbloquea "Embate de Escudo" para quien lo lleve puesto.
   it('reconoce un escudo real equipado y no bloquea "Embate de Escudo"', () => {
     expect(detectsUnequippedWeaponClaim('Cargo con mi escudo y golpeo con él.', ['Escudo de torre goirntes'])).toBeNull();
+  });
+});
+
+// Hallazgo real jugando en vivo (2026-09-15): "Intento capturar al Orco Enfurecido convaleciente,
+// atándolo" se narró con éxito sin cuerdas en el inventario real — el botón dedicado "Capturar en
+// la zona" (companeros.ts) sí las exige y bloquea sin ellas. Mismo molde que
+// `detectsUnequippedWeaponClaim` (reclamar usar algo que no se tiene), pero contra el inventario
+// general en vez de equipo puesto.
+describe('detectsBindingWithoutRopesClaim', () => {
+  it('detecta atar sin cuerdas', () => {
+    expect(detectsBindingWithoutRopesClaim('Ato al orco convaleciente.', false)).toEqual({ matchedVerb: expect.stringMatching(/^at/i) });
+  });
+
+  it('no dispara si SÍ tiene cuerdas (el motor real lo resuelve, no este guard)', () => {
+    expect(detectsBindingWithoutRopesClaim('Ato al orco convaleciente.', true)).toBeNull();
+  });
+
+  it('detecta otros verbos de atadura/inmovilización sin cuerdas', () => {
+    expect(detectsBindingWithoutRopesClaim('Lo amarro a un poste.', false)).not.toBeNull();
+    expect(detectsBindingWithoutRopesClaim('Maniato al prisionero.', false)).not.toBeNull();
+    expect(detectsBindingWithoutRopesClaim('Lo inmovilizo en el suelo.', false)).not.toBeNull();
+    expect(detectsBindingWithoutRopesClaim('Le amordazo para que no grite.', false)).not.toBeNull();
+  });
+
+  it('no dispara sin ningún verbo de atadura, aunque falten cuerdas', () => {
+    expect(detectsBindingWithoutRopesClaim('Exploro la zona con cuidado.', false)).toBeNull();
+  });
+});
+
+describe('bindingWithoutRopesNarrationFor', () => {
+  it('siempre devuelve una frase no vacía', () => {
+    for (let i = 0; i < 20; i++) {
+      expect(bindingWithoutRopesNarrationFor().length).toBeGreaterThan(0);
+    }
   });
 });
 
@@ -146,6 +189,67 @@ describe('absentSceneNpcNarrationFor', () => {
   it('siempre devuelve una frase no vacía', () => {
     for (let i = 0; i < 20; i++) {
       expect(absentSceneNpcNarrationFor('Torgash').length).toBeGreaterThan(0);
+    }
+  });
+});
+
+// Hallazgo real jugando en vivo (2026-09-15): "Hablo con la mujer orca del Clan Serhu" con Gistera
+// Koh presente de verdad en escena (solo nombrada por descripción, nunca por alias real) dejaba el
+// turno caer a narración libre — el LLM improvisó a quién responde en vez de que el motor lo
+// resolviera. Ver comentario completo junto a la función en playerActionValidation.ts.
+describe('detectsUnresolvedDialogueTargetClaim', () => {
+  beforeEach(() => {
+    findManyNpc.mockReset().mockResolvedValue([
+      { id: 'npc1', name: 'Gistera Koh', kind: 'PRINCIPAL', homeLocationSlug: null, nucleoJugable: true },
+    ]);
+    findUniqueLocation.mockReset().mockResolvedValue({ slug: 'la-hondonada-del-eco', region: 'Llanuras del Viento Rojo' });
+    findManyQuest.mockReset().mockResolvedValue([]);
+    findManyNpcState.mockReset().mockResolvedValue([]);
+  });
+
+  it('dispara: diálogo dirigido a alguien por descripción, sin ningún NPC resuelto en escena, habiendo candidatos reales en la región', async () => {
+    const result = await detectsUnresolvedDialogueTargetClaim(
+      'Hablo con la mujer orca del Clan Serhu para saber qué la persigue.',
+      [],
+      'world1',
+      'save1',
+      'loc1',
+    );
+    expect(result).toBe(true);
+  });
+
+  it('no dispara si ya hay al menos un NPC resuelto en escena (el jugador sí nombró a alguien real, sea quien sea)', async () => {
+    const result = await detectsUnresolvedDialogueTargetClaim(
+      'Hablo con la mujer orca del Clan Serhu para saber qué la persigue.',
+      ['gistera-koh'],
+      'world1',
+      'save1',
+      'loc1',
+    );
+    expect(result).toBe(false);
+  });
+
+  it('no dispara sin verbo de diálogo dirigido (prosa libre sin dirigirse a nadie)', async () => {
+    const result = await detectsUnresolvedDialogueTargetClaim('Exploro la zona buscando comida.', [], 'world1', 'save1', 'loc1');
+    expect(result).toBe(false);
+  });
+
+  it('no dispara con verbos de movimiento/lugar ambiguos ("me acerco a", "me dirijo a") — no son diálogo dirigido a persona', async () => {
+    expect(await detectsUnresolvedDialogueTargetClaim('Me acerco a la cueva para explorarla.', [], 'world1', 'save1', 'loc1')).toBe(false);
+    expect(await detectsUnresolvedDialogueTargetClaim('Me dirijo a la aldea de pescadores.', [], 'world1', 'save1', 'loc1')).toBe(false);
+  });
+
+  it('no dispara si no hay ningún NPC candidato real en absoluto en esta región (nadie a quien pudiera referirse)', async () => {
+    findManyNpc.mockReset().mockResolvedValue([]);
+    const result = await detectsUnresolvedDialogueTargetClaim('Le pregunto a la desconocida qué hace aquí.', [], 'world1', 'save1', 'loc1');
+    expect(result).toBe(false);
+  });
+});
+
+describe('unresolvedDialogueTargetNarrationFor', () => {
+  it('siempre devuelve una frase no vacía', () => {
+    for (let i = 0; i < 20; i++) {
+      expect(unresolvedDialogueTargetNarrationFor().length).toBeGreaterThan(0);
     }
   });
 });

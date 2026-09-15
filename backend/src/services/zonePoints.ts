@@ -245,7 +245,22 @@ export async function avanzarZonePointsUnPaso(
 /// `Npc.name` (mismo criterio ya establecido en `zona.ts`), FAUNA/RECURSO por
 /// `sourceDisplayNameFor` (catálogo de recolección/caza). `null` si no hay nada que contar —
 /// el caller decide si empuja el bloque de contexto o lo omite.
-export async function zonePointsSummaryFor(prisma: PrismaClient, locationId: string, saveId: string): Promise<string | null> {
+///
+/// Bug real (2026-09-15, jugando en vivo): la versión anterior devolvía una única lista plana sin
+/// distinguir tipo (`"Colmena de Lebude, Orco Enfurecido, Veta de Yerreo"`), y el caller la
+/// inyectaba bajo el encabezado "QUIÉN ESTÁ AQUÍ AHORA MISMO" — personificando fauna/recursos. El
+/// modelo pequeño interpretó "Colmena de Lebude" (fauna, label de escenario) como el apellido de
+/// una persona y narró "el pescador de Lebude", un NPC inventado sin respaldo. Ahora se devuelve
+/// por tipo — el caller construye un bloque de contexto propio para cada uno, dejando claro que
+/// solo NPC son personas con las que se puede hablar.
+export interface ZonePointsSummaryPorTipo {
+  npc: string | null;
+  fauna: string | null;
+  recurso: string | null;
+  edificio: string | null;
+}
+
+export async function zonePointsSummaryFor(prisma: PrismaClient, locationId: string, saveId: string): Promise<ZonePointsSummaryPorTipo | null> {
   const puntosCrudos = await prisma.zonePoint.findMany({ where: { locationId, activo: true } });
   if (puntosCrudos.length === 0) return null;
   // Gate de aparición narrativa — un punto sin su misión de desbloqueo aceptada tampoco debe
@@ -258,11 +273,24 @@ export async function zonePointsSummaryFor(prisma: PrismaClient, locationId: str
   const npcRows = npcSlugs.length ? await prisma.npc.findMany({ where: { slug: { in: npcSlugs } }, select: { slug: true, name: true } }) : [];
   const npcNameBySlug = new Map(npcRows.map((n) => [n.slug, n.name]));
 
-  const entradas = puntos.map((p) => {
+  const nombreDe = (p: (typeof puntos)[number]): string => {
     // EDIFICIO no resuelve contra `Npc` — no tiene fila propia ahí (gobernado por
     // `Building`/`construction.ts`, fuera del alcance de esta pieza), solo `label` o el slug crudo.
-    const nombre = p.label ?? (p.tipo === 'NPC' ? (npcNameBySlug.get(p.targetSlug) ?? p.targetSlug) : p.tipo === 'EDIFICIO' ? p.targetSlug : sourceDisplayNameFor(p.targetSlug));
+    // Para NPC, el nombre real SIEMPRE gana sobre `label` (evita que un label de escenario tipo
+    // "Punto de vigilancia (Orco Enfurecido)" sustituya al nombre de la persona) — para el resto,
+    // `label` sigue ganando si existe, es descripción de escenario, no de identidad.
+    const nombre = p.tipo === 'NPC' ? (npcNameBySlug.get(p.targetSlug) ?? p.targetSlug) : (p.label ?? (p.tipo === 'EDIFICIO' ? p.targetSlug : sourceDisplayNameFor(p.targetSlug)));
     return p.cantidad > 1 ? `${nombre} ×${p.cantidad}` : nombre;
-  });
-  return entradas.join(', ') + '.';
+  };
+  const listaDe = (tipo: 'NPC' | 'FAUNA' | 'RECURSO' | 'EDIFICIO'): string | null => {
+    const entradas = puntos.filter((p) => p.tipo === tipo).map(nombreDe);
+    return entradas.length > 0 ? entradas.join(', ') + '.' : null;
+  };
+
+  return {
+    npc: listaDe('NPC'),
+    fauna: listaDe('FAUNA'),
+    recurso: listaDe('RECURSO'),
+    edificio: listaDe('EDIFICIO'),
+  };
 }

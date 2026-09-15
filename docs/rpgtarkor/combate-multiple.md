@@ -17,7 +17,176 @@ propio arreglo aparte (ver nota de `Companion.attributes` más abajo).
 auto-atacas al más herido, todos con objetivo válido garantizado" (`retargetBando`, § 2 original de
 más abajo) se sustituyó por un sistema de "enganche" por ronda — duelo mutuo real vs. golpe gratis
 sin oposición — cerrado con la usuaria jugando en vivo contra 2 cuervos. Sigue sin construir: XP de
-la propia tirada de combate.*
+la propia tirada de combate.
+
+**PROVOCACION real (2026-09-14) — APLICADO**: efecto inverso a OCULTACION/EXPULSAR — en vez de
+excluir a un combatiente de ser elegido como objetivo, fuerza que lo sea. 3 variantes: simple
+(fuerza tu propio agro, forzando el enganche de la RONDA SIGUIENTE), margen decisivo
+(`AGUANTE`+`PROVOCACION`, dispara al contragolpear con éxito), y redirección de Companion
+(`durationEffectTarget: 'companion'`, sustituye YA el enganche de la ronda de un NPC que apuntara a
+tu Companion). Columnas nuevas: `CombatParticipant.provocadoPorRondas`/`provocadoPorId`. Desbloquea
+Guardián 16/19, Lancero 32, Especialista 28, Caballero del Valor 12/28.
+
+**CANALIZAR real en combate múltiple (2026-09-14) — APLICADO**: mismo mecanismo ya construido para
+el 1v1 clásico (`Save.pendingCanalizacion`, turnResolution.ts), portado a
+`CombatParticipant.canalizando` (Json, sin `npcId` — el objetivo real es quien te tenga enganchado
+esa ronda). 3 casos: empezar (consume el turno sin tirar dados), disparar (golpe diferido con
+tirada real la siguiente vez que actúas, ignorando lo que se pulse ese turno, SIEMPRE con tirada
+real aunque el enganche normal de la ronda diera golpe gratis), cortar (golpe decisivo recibido
+mientras canalizas lo interrumpe). Desbloquea los capstones nv.40 de Tirador/Berserker/Convocador
+ya sembrados en `clases.md` (Tensar al Límite, Golpe Devastador, Furia de los Elementos) también en
+combate múltiple, no solo 1v1.
+
+**MARCAR real (2026-09-14) — APLICADO**: mecanismo INVERSO a PROVOCACION — el jugador ordena a SU
+PROPIO Companion que ataque preferentemente a un rival concreto, en vez de que el motor fuerce al
+rival a atacar a alguien. Columnas nuevas: `CombatParticipant.marcaObjetivoRondas`/`marcaObjetivoId`
+(viven en el COMPANION que recibe la instrucción, no en el objetivo marcado — al revés que
+`provocadoPorRondas`). `resolverEnganchesRonda` (`combateMultiple.ts`) prioriza la marca sobre la IA
+de Inteligencia normal del Companion al calcular el enganche de cada ronda nueva (misma precedencia
+que PROVOCACION, por delante de `elegirObjetivoPara`); si el objetivo marcado deja de ser candidato
+válido (muerto, fuera de escena), el Companion cae de vuelta a su IA normal ese turno. Solo dispara
+por el camino independiente (rol utilidad) — ninguna ficha real de `clases.md` combina MARCAR con
+margen decisivo. 3 rondas de duración (cifra explícita de la ficha, a diferencia de la
+simplificación de 2 rondas del resto de efectos de duración). Desbloquea Domador 24 (Concentración
+del Domador).
+
+**AREA real (2026-09-14) — APLICADO**: genuinamente distinto de MULTIPLE (`objetivoExtraFor`,
+exactamente un extra aleatorio) — 3 variantes reales, todas con UNA sola tirada, nunca tirada
+individual por rival:
+- **Ofensivo**: dispara por margen decisivo (mismo gate que MULTIPLE/EXPULSAR), alcanza a TODOS los
+  vivos del bando contrario al defensor con `objetivosExtraFor` (generalización de
+  `objetivoExtraFor` sin tope de cantidad). Desbloquea Opresor 32/36 (Runa de Sujeción, Grieta de
+  Voluntad).
+- **Defensivo**: dispara por margen decisivo (contragolpea con éxito, `AGUANTE`+`AREA`), activa
+  `CombatParticipant.areaDefensaPorRondas` sobre quien la usó. Mientras viva, `redirigirPorAreaDefensiva`
+  (`combateMultipleOrquestacion.ts`) redirige CADA golpe dirigido a un aliado propio (enganche
+  principal Y golpes gratis de otros pretendientes esa misma ronda) hacia el protector, que se
+  defiende con su propia tirada — con varios protectores activos a la vez, gana el de mayor
+  iniciativa (decisión explícita de la usuaria, evita reparto ambiguo). Desbloquea Instintivo 28
+  (Instinto de Reserva).
+- **Persistente**: dispara por camino independiente (utilidad, "si ganas la tirada"), activa
+  `CombatParticipant.areaTrampaPorRondas` sobre quien la coloca. Mientras viva, `resolverIntercambioCompleto`
+  refuerza CUALQUIER contragolpe con éxito de su dueño (`defensor_contragolpea`, mismo margen
+  decisivo de siempre) con `iniciativaForzada` a su favor — ATURDIMIENTO real, sin necesitar que la
+  habilidad de defensa de ESE turno lo lleve explícito (ATURDIMIENTO en sí sigue siendo solo
+  informativo para la narración en combate múltiple, igual que el resto del motor). Desbloquea
+  Supervivencia 32 (Trampa Improvisada).
+
+**Maestro Arquero/Ballestero real (2026-09-14) — APLICADO**: 12 fichas sembradas (12/19/24/28/32/36
+por rama) reutilizando motor ya existente de DEBILIDAD/CONTRA/AUMENTO/MULTIPLE/CANALIZAR — sin
+piezas de motor nuevas, trabajo de siembra pura. Solo el capstone 40 (CANALIZAR+LETAL combinado)
+sigue sin construir, sin precedente real en `clases.md` de cómo resolver el "golpe letal diferido".
+
+**`durationEffectTarget:'both'` real (2026-09-14, Domador 32, Grito Animal) — APLICADO**: tercer
+valor del campo (junto a `'self'`/`'companion'`, 2026-09-09) — a diferencia de `'companion'`
+(excluye al atacante, el efecto se REDIRIGE), `'both'` aplica el MISMO `ActiveEffect` a AMBOS a la
+vez: jugador Y Companion, con la misma tirada. Combinado con `AREA` ofensivo para el tramo alto de
+ATURDIMIENTO de la ficha ("si la diferencia es 12, a todos") — mismo criterio de simplificación que
+el resto del catálogo, solo el tramo más alto.
+
+**Alfa de la Manada real (2026-09-14, Domador 40, capstone) — APLICADO**: pasiva pura, sin turno de
+combate que resolver. `maxSlotsDomadorFor` (`companionSupervivencia.ts`) amplía el slot garantizado
+de Domador de 1 a 2 con nivel 40; `Companion.esAlfa` (columna nueva) marca cuál de los 2 es el Alfa,
+asignable vía `POST /saves/:id/companeros/:companionId/alfa` (exclusivo — elegir uno desmarca
+cualquier otro). El buff real (`alfaDeLaManadaBonusFor`) es PERMANENTE, no un `ActiveEffect` con
+duración por turnos: +2 voluntad a AMBAS bestias con los 2 slots cubiertos, +2 fuerza extra solo al
+Alfa — se recalcula en cada lectura de atributos del Companion (`datosVivosDe`,
+`combateMultipleOrquestacion.ts`), antes de aplicar los `ActiveEffect` temporales normales.
+
+**AUMENTO real, camino independiente (2026-09-15) — APLICADO**: hasta ahora `AUMENTO`/`DEBILIDAD`
+solo se construían cuando `margenDecisivo` (camino ataque/defensa, `resolveExchange`) — el camino
+independiente (`rol:'utilidad'`, `utilityTriggered`) nunca los tocaba, `margenDecisivo` se quedaba
+siempre `false` ahí por construcción. Nueva variable `atacanteAumentoUtilidadDisparado`
+(`combateMultiple.ts`) amplía el gate: `(margenDecisivo || atacanteAumentoUtilidadDisparado) &&
+durationEffectMagnitude/Turns poblados` — solo para AUMENTO, nunca DEBILIDAD (ninguna ficha real de
+`clases.md` debilita a un aliado desde utilidad). El objetivo del AUMENTO sigue resolviéndose igual
+que siempre (`durationEffectTarget:'companion'`, sin selección de aliado real — el motor de combate
+múltiple no tiene ningún mecanismo de "elegir un aliado cualquiera", solo el Companion propio fijo).
+Desbloquea Guardián 32 (Valor Compartido) y Especialista 36 (Grito Improvisado).
+
+**PROVOCACION variante Companion desde el lado defensor + bug real corregido (2026-09-15) —
+APLICADO**: Sacrificio del Valiente (Caballero del Valor 40, capstone) es la MISMA variante
+"redirige golpe de aliado" que Grito de Coraje, pero disparada desde el lado DEFENSOR con margen
+decisivo (`AGUANTE`+`PROVOCACION`, `rol:'defensa'`) en vez del atacante/utilidad — nuevo gate
+`defensorProvocarCompanionRedirect` simétrico a `provocarCompanionRedirect`. Al sembrarla se
+descubrió un bug real preexistente: `defensorProvocacionDisparada` (variante margen decisivo,
+Bastión Personal/Guardia de Asta/Postura Firme) exigía `atacanteRecibeGolpe`, que a su vez exige
+`ATAQUE` en la habilidad de DEFENSA — pero ninguna de las 4 fichas reales de esta variante lo lleva
+(solo describen "provocas al atacante", nunca un contragolpe físico), así que el camino de margen
+decisivo de PROVOCACION nunca había disparado en la práctica desde que se sembró (sin test que lo
+cazara). Corregido separando `defensorGanaPorMargen` (margen puro a favor del defensor,
+`exchange.resultado === 'defensor_contragolpea'`, sin exigir ATAQUE) del contragolpe de daño real
+(`atacanteRecibeGolpe`, que SÍ sigue exigiendo ATAQUE) — el disparo de PROVOCACION usa el primero.
+
+**LIMPIAR real (2026-09-15, renombrado de RETIRAR) — APLICADO**: el nombre original ("retirarse")
+inducía a pensar en huir del combate — el sistema de HUIDA real es independiente (`combatLore.ts`,
+tirada de Destreza), nunca pasó por este `AbilityEffect`. Renombrado en el propio enum de Prisma
+(migración `ALTER TYPE ... RENAME VALUE`, mismo patrón ya usado para ATENCION→PROVOCACION). Motor
+nuevo: `removeWorstDebilidad` (`activeEffects.ts`) — a diferencia de `decrementActiveEffects`
+(decrementa TODOS por turno) o el vaciado total al curar, esta es la única función del motor que
+quita un `ActiveEffect` CONCRETO: el DEBILIDAD (`magnitude < 0`) de mayor magnitud negativa entre
+los activos, dejando el resto intacto. Dispara por camino independiente (rol utilidad, mismo gate
+que MARCAR/AREA persistente/OCULTACION en ese camino) — quien la usa se limpia A SÍ MISMA, nunca al
+rival. Sin ningún DEBILIDAD activo, se pierde en silencio (mismo criterio de "sin candidato válido"
+del resto del motor). Desbloquea Caballero del Valor 16/32 (Manto de Purificación, Purga de Honor)
+— cierra la especialización completa (8/8).
+
+**DEBILIDAD desde utilidad + AUMENTO-a-uno-mismo real (2026-09-15) — APLICADO**: mismo mecanismo
+que AUMENTO-Companion (`atacanteAumentoUtilidadDisparado`), nueva variable
+`atacanteDebilidadUtilidadDisparada` amplía el gate para DEBILIDAD — pero recae sobre el RIVAL de
+este intercambio (nunca un aliado), mismo lado que PROVOCACION/MARCAR en el camino independiente.
+De paso se descubrió que AUMENTO-a-uno-mismo (sin `durationEffectTarget`) YA funcionaba desde el
+cierre de AUMENTO-Companion (`atacanteTambienRecibeEfecto` es `true` por defecto sin Companion
+target) — 2 fichas llevaban el comentario "sigue sin motor" desactualizado. 19 fichas sembradas de
+golpe: Guerrero (Golpe de Control tronco 8, Grito de Guerra/Grito tenebroso Berserker 12/16,
+Instinto Berserker 36), Asesino Tóxico completo 8/8, Segador Maldito completo 8/8, Segador
+Ilustrado completo 8/8, Segador Parca 5/8 (Toque de la Parca/Marca de la Guadaña), Druida Aullador
+4/8 (Llamada Feroz/Aullido Ancestral). Grieta Elemental (Convocador 24, DEBILIDAD+MULTIPLE sobre 2
+atributos a la vez) se dejó fuera a propósito — excede el alcance de un solo `ActiveEffect`.
+
+**CURAZION real (2026-09-15) — APLICADO**: primera pieza de esta sesión que exigió motor
+GENUINAMENTE nuevo, no solo un gate sobre infraestructura ya existente — no había ningún mecanismo
+para mejorar la condición física DENTRO de un combate (solo fuera, con objetos/descanso).
+`oneStepBetterThan` (`death.ts`) — inverso exacto de `oneStepWorseThan` ya existente, tope en ILESO
+(MUERTO nunca mejora por esta vía). Simplificación consciente: el texto de cada ficha real varía
+("roba vida al golpear", "transmuta el daño recibido en energía", "recupera energía y se cura")
+pero todas comparten el mismo núcleo mecánico — mejorar un escalón la condición física de quien
+dispara CURAZION, mismo criterio que AUMENTO/DEBILIDAD (una magnitud fija). 3 variantes de disparo:
+**vampirismo** (`ATAQUE`+`CURAZION`, margen decisivo, mismo gate que MULTIPLE/EXPULSAR/AREA
+ofensiva — Sed de Vida/Último Suspiro), **transmutación defensiva** (`CURAZION` sola, rol defensa,
+dispara cuando el golpe SÍ conecta — `defensorRecibeGolpe`, a diferencia de AREA/PROVOCACION
+defensivas que disparan al contragolpear — Robo de Vitalidad/Alquimia Vital), y **camino
+independiente/utilidad** (Segunda Oportunidad, sin ningún golpe de por medio). Desbloquea Segador
+Parca 8/8 (especialización completa), Segador Transmutador 32 (Alquimia Vital), Especialista 40
+(Segunda Oportunidad, cierra 8/8).
+
+**REFLEJAR real (2026-09-15) — APLICADO**: última pieza de la familia "efectos de duración sin
+motor" (RETIRAR/CANALIZAR/CURAZION/REFLEJAR, ver comentario histórico de `schema.prisma`) —
+`worstDebilidadOf` (`activeEffects.ts`, extraída de `removeWorstDebilidad` para poder leer el
+DEBILIDAD ANTES de quitarlo) captura el DEBILIDAD de mayor magnitud negativa de quien dispara
+REFLEJAR (camino independiente/utilidad), lo quita de su propia lista, y el orquestador lo
+reconstruye tal cual (mismo atributo/magnitud/turnos) como DEBILIDAD nuevo sobre el RIVAL de ese
+intercambio — sin decrementar ese mismo turno (llega "a plena fuerza" al rival, mismo criterio que
+`nuevoEfectoAtacante`/`nuevoEfectoDefensor`). Sin ningún DEBILIDAD propio activo, se pierde en
+silencio, mismo criterio que LIMPIAR. Desbloquea Segador Transmutador 16/28 (Espejo Maldito, Espejo
+de Poder) — sube la especialización de 3/8 a 5/8.
+
+**CONVERSION-sobre-debilidad real (2026-09-15) — APLICADO**: choque de nombre deliberado con el
+CONVERSION ya existente desde 2026-08-24 (elige el atributo del golpe, SIEMPRE combinado con
+`ATAQUE` en las 7 fichas reales que lo usan así) — esta variante nueva va SOLA (Transmutación
+Menor) o combinada con `REFLEJAR` (Transmutación Mayor/Equilibrio Roto), nunca con `ATAQUE`, así
+que distinguir por `!effects.includes('ATAQUE')` es seguro, sin colisión real posible. 2 funciones
+nuevas en `activeEffects.ts`: `bestAumentoOf` (simétrica a `worstDebilidadOf`, el AUMENTO de mayor
+magnitud positiva) y `removeActiveEffect` (quita un `ActiveEffect` concreto por referencia,
+extraída de `removeWorstDebilidad` para compartirla). 3 variantes: **transmutación propia**
+(Transmutación Menor) — el DEBILIDAD propio de mayor magnitud negativa se invierte en signo y se
+reconstruye como AUMENTO sobre sí misma; **transmutación rival** (Transmutación Mayor) — el
+AUMENTO y el DEBILIDAD del RIVAL se capturan, se quitan, y se reconstruyen con el signo invertido
+sobre el mismo rival ("y viceversa", ambos a la vez); **Equilibrio Roto** (capstone) reutiliza el
+mismo mecanismo que Transmutación Mayor — "invierte TODOS los efectos activos" se simplifica a "el
+mejor/peor de cada tipo", mismo criterio de simplificación que el resto del catálogo. Desbloquea
+Segador Transmutador 19/36/40 — cierra la especialización 8/8, y con ella Segador la clase entera
+(Parca/Maldito/Ilustrado/Transmutador, las 4 al completo).
 
 ---
 

@@ -8,8 +8,10 @@ import { companionSlotsForRecipeKey } from '../../services/construction.js';
 import { rejectIfEnded, rejectIfPendingDeath, lockRowForUpdate } from './shared.js';
 import { FACTION_REP_CAPTURE_DELTA } from '../../services/reputation.js';
 import { applyFactionRepDeltaForResolution } from '../../services/turnResolution.js';
+import { activeQuestTitlesTargeting } from '../../services/questResolution.js';
 import {
   esDomador,
+  maxSlotsDomadorFor,
   felicidadUmbralFor,
   resolverIntento,
   jaulaTamanoRequeridoFor,
@@ -192,7 +194,7 @@ export async function companerosRoutes(app: FastifyInstance) {
 
     // Se consume la cuerda y se crea la captura en tránsito en la misma transacción — mismo
     // criterio de siempre (evitar gastarla en un intento que pierde la carrera).
-    const { item, logEntry, factionRepChange } = await prisma.$transaction(async (tx) => {
+    const { item, logEntry, factionRepChange, misionesPendientes } = await prisma.$transaction(async (tx) => {
       await tx.inventoryItem.delete({ where: { id: cuerdasItem.id } });
       const createdItem = await tx.inventoryItem.create({
         data: {
@@ -215,7 +217,11 @@ export async function companerosRoutes(app: FastifyInstance) {
       // isSystemMessage (ver comentario completo en schema.prisma) — texto fijo determinista.
       const createdLog = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, isSystemMessage: true } });
       const rep = await applyFactionRepDeltaForResolution(tx, save.id, npc.faction, FACTION_REP_CAPTURE_DELTA);
-      return { item: createdItem, logEntry: createdLog, factionRepChange: rep };
+      // Aviso de misión pendiente (2026-09-15, hallazgo real jugando en vivo) — solo lectura, no
+      // cierra nada (Capturar deja al NPC vivo, "derrotar a X" solo se cierra con MUERTE real,
+      // decisión explícita de 2026-08-31). Ver `activeQuestTitlesTargeting`.
+      const misionesPendientes = await activeQuestTitlesTargeting(tx, save.id, npc.id);
+      return { item: createdItem, logEntry: createdLog, factionRepChange: rep, misionesPendientes };
     });
 
     return {
@@ -225,6 +231,7 @@ export async function companerosRoutes(app: FastifyInstance) {
       capturaExpiraAtMinutes,
       logEntry: { id: logEntry.id, text, timeLabel, createdAt: logEntry.createdAt.toISOString() },
       factionRepChange,
+      misionesPendientes,
     };
   });
 
@@ -385,7 +392,7 @@ export async function companerosRoutes(app: FastifyInstance) {
   app.post<{ Params: { id: string; npcSlug: string }; Body: { name?: string; role?: string; notes?: string } }>(
     '/saves/:id/tameo-pendientes/:npcSlug/confirmar',
     async (request, reply) => {
-      const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, worldId: true, clase: true, especializacion: true, endedAt: true, pendingDeathResolution: true } });
+      const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, worldId: true, clase: true, especializacion: true, level: true, endedAt: true, pendingDeathResolution: true } });
       if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
       if (rejectIfEnded(save, reply)) return;
       if (rejectIfPendingDeath(save, reply)) return;
@@ -413,12 +420,13 @@ export async function companerosRoutes(app: FastifyInstance) {
       const outcome = await prisma.$transaction(async (tx) => {
         await lockRowForUpdate(tx, 'Save', save.id, ['id']);
 
-        // Slot garantizado del Domador (§2) — solo para fauna con Domador real; el resto compite
-        // por `companionSlotsForRecipeKey` como cualquier compañero.
+        // Slot(s) garantizado(s) del Domador (§2) — solo para fauna con Domador real; el resto
+        // compite por `companionSlotsForRecipeKey` como cualquier compañero. Alfa de la Manada
+        // (Domador 40) amplía el tope de 1 a 2 (`maxSlotsDomadorFor`).
         let esSlotDomador = false;
         if (domador) {
-          const yaTieneSlotDomador = await tx.companion.findFirst({ where: { saveId: save.id, esSlotDomador: true } });
-          esSlotDomador = !yaTieneSlotDomador;
+          const slotsDomadorUsados = await tx.companion.count({ where: { saveId: save.id, esSlotDomador: true } });
+          esSlotDomador = slotsDomadorUsados < maxSlotsDomadorFor(save.clase, save.especializacion, save.level);
         }
         if (!esSlotDomador) {
           const [companionCount, buildings] = await Promise.all([
@@ -477,6 +485,34 @@ export async function companerosRoutes(app: FastifyInstance) {
     if (!npc) return reply.status(404).send({ error: 'Objetivo no encontrado' });
     await prisma.npcState.updateMany({ where: { saveId: save.id, npcId: npc.id, capturado: true }, data: { capturaJaulaBuildingId: null } });
     return { ok: true };
+  });
+
+  /// Alfa de la Manada real (2026-09-14, docs/rpgtarkor/clases.md — Domador 40, capstone: "te
+  /// permite... elegir un Alfa para que tenga un buff extra... entre tus dos compañeros") — marca
+  /// un `Companion` concreto como Alfa (nunca más de uno a la vez por `saveId`, invariante aplicado
+  /// aquí desmarcando cualquier otro dentro de la misma transacción). Exige la habilidad
+  /// desbloqueada (Domador + nivel 40, `maxSlotsDomadorFor`) y que el objetivo sea uno de los 2
+  /// slots garantizados del Domador — nunca un compañero cualquiera del Reino.
+  app.post<{ Params: { id: string; companionId: string } }>('/saves/:id/companeros/:companionId/alfa', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, worldId: true, clase: true, especializacion: true, level: true, endedAt: true, pendingDeathResolution: true } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (rejectIfEnded(save, reply)) return;
+    if (rejectIfPendingDeath(save, reply)) return;
+
+    if (maxSlotsDomadorFor(save.clase, save.especializacion, save.level) < 2) {
+      return reply.status(400).send({ error: 'Todavía no has desbloqueado Alfa de la Manada (Domador, nivel 40).' });
+    }
+    const companion = await prisma.companion.findFirst({ where: { id: request.params.companionId, saveId: save.id } });
+    if (!companion) return reply.status(404).send({ error: 'Compañero no encontrado' });
+    if (!companion.esSlotDomador) {
+      return reply.status(400).send({ error: 'Solo puedes elegir Alfa entre tus 2 compañeros del slot garantizado del Domador.' });
+    }
+
+    await prisma.$transaction([
+      prisma.companion.updateMany({ where: { saveId: save.id, esAlfa: true }, data: { esAlfa: false } }),
+      prisma.companion.update({ where: { id: companion.id }, data: { esAlfa: true } }),
+    ]);
+    return { ok: true, alfaCompanionId: companion.id };
   });
 
   // ═══════════════════════════════════════════════════════════════════════

@@ -1,5 +1,6 @@
-import type { Prisma, PrismaClient, CondicionFisica, Npc, Clase } from '@prisma/client';
-import type { AttributeBlock } from './dice.js';
+import type { PrismaClient, CondicionFisica, Npc, Clase, AbilityEffect } from '@prisma/client';
+import { Prisma } from '@prisma/client';
+import type { AttributeBlock, Attribute } from './dice.js';
 import type { CombatExchangeDisplay } from './combatExchange.js';
 import {
   rollInitiativeMultiple,
@@ -8,6 +9,7 @@ import {
   bandoSigueEnCombate,
   elegirObjetivo,
   objetivoExtraFor,
+  objetivosExtraFor,
   resolverEnganchesRonda,
   resolverIntercambioCompleto,
   type CombatienteIniciativa,
@@ -19,9 +21,19 @@ import { npcCombatAbilitiesFor, chooseNpcAbility, type NpcCombatAbility, type Np
 import { narrarTurnoCombateMultiple } from './combateMultipleNarracion.js';
 import type { NpcHabilidadRacialInScene } from './npcScene.js';
 import { energiaMaxFor, nextEnergia } from './energy.js';
-import { saludForCondicion, nextCondicionForAttack } from './death.js';
+import { saludForCondicion, nextCondicionForAttack, oneStepBetterThan } from './death.js';
 import { npcAttributesForLevel } from './progression.js';
-import { effectiveAttributesConDuracion, decrementActiveEffects, parseActiveEffects, type ActiveEffect } from './activeEffects.js';
+import {
+  effectiveAttributesConDuracion,
+  decrementActiveEffects,
+  parseActiveEffects,
+  removeWorstDebilidad,
+  worstDebilidadOf,
+  bestAumentoOf,
+  removeActiveEffect,
+  type ActiveEffect,
+} from './activeEffects.js';
+import { alfaDeLaManadaBonusFor } from './companionSupervivencia.js';
 
 /// Grupo 3 § Combate múltiple (2026-08-25) — orquestación con estado real (crea/avanza un
 /// `CombatEncounter`). Fase A/B: resuelve turnos autónomos de NPC/COMPANION (sin intervención de
@@ -151,6 +163,38 @@ interface ParticipantRef {
   expulsadoPorRondas: number | null;
   /// Analizar Rival real en combate múltiple (2026-08-27) — ver comentario de la columna en schema.prisma.
   analizadoGrupo: boolean | null;
+  /// PROVOCACION real (2026-09-14) — ver comentario de las 2 columnas en schema.prisma.
+  provocadoPorRondas: number | null;
+  provocadoPorId: string | null;
+  /// CANALIZAR real (2026-09-14) — ver comentario de la columna en schema.prisma. Tipo `unknown`
+  /// a propósito (fiel al `Json?` real de Prisma, `Prisma.JsonValue`) — se parsea en el punto de
+  /// uso vía `parsePendingCanalizacionMultiple`, mismo criterio que `parseActiveEffects`
+  /// (activeEffects.ts) para `Save.activeEffects`/`Companion.activeEffects`.
+  canalizando: unknown;
+  /// MARCAR real (2026-09-14) — ver comentario de las 2 columnas en schema.prisma.
+  marcaObjetivoRondas: number | null;
+  marcaObjetivoId: string | null;
+  /// AREA real (2026-09-14) — ver comentario de las 2 columnas en schema.prisma.
+  areaDefensaPorRondas: number | null;
+  areaTrampaPorRondas: number | null;
+}
+
+/// Mismo shape que `PendingCanalizacion` (combatExchange.ts) menos `npcId` — ver comentario de
+/// `CombatParticipant.canalizando` en schema.prisma.
+interface PendingCanalizacionMultiple {
+  abilityName: string;
+  attribute: Attribute;
+  attributeBonus?: number | null;
+  effects: AbilityEffect[];
+}
+
+/// Mismo criterio que `parseActiveEffects` (activeEffects.ts) — valida el shape mínimo antes de
+/// confiar en el JSON crudo de Postgres, en vez de asumirlo con un cast directo.
+function parsePendingCanalizacionMultiple(raw: unknown): PendingCanalizacionMultiple | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const c = raw as Partial<PendingCanalizacionMultiple>;
+  if (typeof c.abilityName !== 'string' || typeof c.attribute !== 'string' || !Array.isArray(c.effects)) return null;
+  return { abilityName: c.abilityName, attribute: c.attribute as Attribute, attributeBonus: c.attributeBonus ?? null, effects: c.effects as AbilityEffect[] };
 }
 
 interface DatosCombatiente {
@@ -203,6 +247,29 @@ const TOTEM_DE_GUERRA_RONDAS = 2;
 /// bando se queda sin nadie más vivo" (decisión explícita de la usuaria).
 const EXPULSAR_RONDAS = 2;
 
+/// PROVOCACION real (2026-09-14, docs/rpgtarkor/clases.md — Guardián 16/19, Lancero 32,
+/// Especialista 28, Caballero del Valor 12) — ninguna ficha real da una cifra explícita de rondas
+/// ("fuerza al rival a centrarse en ti", sin número), mismo criterio de simplificación consciente
+/// que CONTROL/OCULTACION/EXPULSAR: cifra fija de 2 rondas.
+const PROVOCACION_RONDAS = 2;
+
+/// MARCAR real (2026-09-14, docs/rpgtarkor/clases.md — Domador 24, Concentración del Domador) — a
+/// diferencia de PROVOCACION/CONTROL/OCULTACION/EXPULSAR, esta ficha SÍ da una cifra explícita
+/// ("marcas un objetivo para tu presa ataque durante 3 turnos"), así que se usa tal cual en vez de
+/// la simplificación consciente de 2 rondas del resto.
+const MARCAR_RONDAS = 3;
+
+/// AREA real, variante defensiva (2026-09-14, docs/rpgtarkor/clases.md — Instintivo 28, Instinto
+/// de Reserva) — ninguna cifra explícita de turnos en la ficha ("te defiende de todos los ataques
+/// dirigidos a ti", sin número), mismo criterio de simplificación consciente que PROVOCACION/
+/// CONTROL/OCULTACION/EXPULSAR: cifra fija de 2 rondas.
+const AREA_DEFENSA_RONDAS = 2;
+
+/// AREA real, variante persistente (2026-09-14, docs/rpgtarkor/clases.md — Supervivencia 32,
+/// Trampa Improvisada) — a diferencia de la variante defensiva, esta ficha SÍ da una cifra
+/// explícita ("trampas... que duran 2 turnos"), así que se usa tal cual.
+const AREA_TRAMPA_RONDAS = 2;
+
 /// Deuda técnica cerrada (auditoría de deuda técnica 2026-08-25, "dificultad de combate 15 como
 /// literal duplicado dos veces en la misma llamada, sin constante nombrada"). `resolverIntercambioCompleto`
 /// es un check opuesto real (ambos lados se comparan entre sí, no contra un umbral) — igual que
@@ -246,6 +313,14 @@ async function datosVivosDe({ tx, worldId, saveId, participant, weaponNames }: D
         energyCost: a.energyCost,
         energyRegen: a.energyRegen,
         maxUsesPerCombat: a.maxUsesPerCombat,
+        // Bug real cerrado 2026-09-15 (Sacrificio del Valiente, Caballero del Valor 40) — estos 3
+        // campos nunca se propagaban aquí, así que la jugadora DEFENDIÉNDOSE con una `SavedAction`
+        // real de AGUANTE+AUMENTO/DEBILIDAD/PROVOCACION+companion perdía el efecto por completo
+        // (el roster de ATAQUE sí los llevaba, `resolverTurnoJugador` los manda directo; este
+        // roster de DEFENSA/UTILIDAD auto-elegido nunca los leía).
+        durationEffectMagnitude: a.durationEffectMagnitude ?? undefined,
+        durationEffectTurns: a.durationEffectTurns ?? undefined,
+        durationEffectTarget: (a.durationEffectTarget as NpcCombatAbility['durationEffectTarget']) ?? undefined,
       }));
     return {
       nombre: save.characterName,
@@ -320,9 +395,18 @@ async function datosVivosDe({ tx, worldId, saveId, participant, weaponNames }: D
     // catálogo, que no cambia para un compañero).
     const npcOrigen = companion.sourceSlug ? await tx.npc.findFirst({ where: { worldId, slug: companion.sourceSlug } }) : null;
     const companionActiveEffects = parseActiveEffects(companion.activeEffects);
-    const companionAttributesBase = npcOrigen
+    let companionAttributesBase = npcOrigen
       ? npcAttributesForLevel(companion.attributes as unknown as AttributeBlock, npcOrigen.level, npcOrigen.clase as Clase | null)
       : (companion.attributes as unknown as AttributeBlock);
+    // Alfa de la Manada real (2026-09-14, Domador 40) — buff PERMANENTE, no `ActiveEffect` con
+    // duración: "los 2 slots de Domador cubiertos" es una propiedad de la partida (Companion.
+    // esSlotDomador), no del encuentro concreto — un compañero puede seguir en el Reino y contar
+    // igual. Se aplica ANTES de `effectiveAttributesConDuracion` (los efectos temporales siguen
+    // apilándose encima con normalidad).
+    if (companion.esSlotDomador) {
+      const slotsDomadorOcupados = await tx.companion.count({ where: { saveId, esSlotDomador: true } });
+      companionAttributesBase = alfaDeLaManadaBonusFor(companionAttributesBase, slotsDomadorOcupados, companion.esAlfa);
+    }
     return {
       nombre: companion.name,
       attributes: effectiveAttributesConDuracion(companionAttributesBase, companionActiveEffects),
@@ -417,7 +501,24 @@ async function calcularEnganchesRonda({
   const ocultosOExpulsados = new Set(
     vivos.filter((p) => (p.ocultoPorRondas != null && p.ocultoPorRondas > 0) || (p.expulsadoPorRondas != null && p.expulsadoPorRondas > 0)).map((p) => p.id),
   );
-  const enganches = resolverEnganchesRonda(encounter.ordenIniciativa, combatientes, elegirObjetivoPara, ocultosOExpulsados);
+  // PROVOCACION real (2026-09-14) — provocado → provocador, ver comentario del parámetro en
+  // `resolverEnganchesRonda`. Solo entra al mapa si el provocador SIGUE vivo esta ronda (un
+  // provocador ya muerto no puede seguir forzando el enganche — `vivos` ya filtra esto).
+  const idsVivos = new Set(vivos.map((p) => p.id));
+  const provocaciones = new Map(
+    vivos
+      .filter((p) => p.provocadoPorRondas != null && p.provocadoPorRondas > 0 && p.provocadoPorId && idsVivos.has(p.provocadoPorId))
+      .map((p) => [p.id, p.provocadoPorId!] as const),
+  );
+  // MARCAR real (2026-09-14) — Companion marcado → objetivo forzado, ver comentario del parámetro
+  // en `resolverEnganchesRonda`. Igual que `provocaciones`, solo entra al mapa si el objetivo
+  // marcado SIGUE vivo/candidato esta ronda (`vivos` ya filtra los muertos).
+  const marcas = new Map(
+    vivos
+      .filter((p) => p.marcaObjetivoRondas != null && p.marcaObjetivoRondas > 0 && p.marcaObjetivoId && idsVivos.has(p.marcaObjetivoId))
+      .map((p) => [p.id, p.marcaObjetivoId!] as const),
+  );
+  const enganches = resolverEnganchesRonda(encounter.ordenIniciativa, combatientes, elegirObjetivoPara, ocultosOExpulsados, provocaciones, marcas);
   const esperandoJugadora = jugadoraId !== null && enganches.get(jugadoraId) === null;
   return { enganches, esperandoJugadora };
 }
@@ -572,6 +673,11 @@ interface EjecutarIntercambioParams extends TurnoAutonomoBaseParams {
   atacanteRol: 'ataque' | 'defensa' | 'utilidad';
   dualWieldBonus: boolean;
   defensor: ParticipantRef;
+  /// CANALIZAR real (2026-09-14) — `true` solo cuando este intercambio viene de
+  /// `dispararCanalizacionYAvanzar` (CASO DISPARAR): añade la frase de contexto "la canalización se
+  /// completa..." al bloque que ve el Narrador, mismo texto que ya usa el 1v1 clásico
+  /// (turnResolution.ts). `undefined`/`false` en cualquier intercambio normal.
+  canalizacionCompletada?: boolean;
 }
 
 /// Núcleo compartido por `resolverTurnoAutonomo` (atacante NPC/COMPANION) y `resolverTurnoJugador`
@@ -589,7 +695,25 @@ interface EjecutarIntercambioParams extends TurnoAutonomoBaseParams {
 /// `narrarFn`, que corre fuera de cualquier transacción — mismo criterio que ya usa
 /// `narrateAndPersistTurn` para `appendSessionFacts`/`captureLiveTeacherExample`.
 async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): Promise<TurnoAutonomoResultado> {
-  const { prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque, atacanteRol, dualWieldBonus, defensor, weaponNamesPorDefecto, narrarFn } = params;
+  const { prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque, atacanteRol, dualWieldBonus, defensor, weaponNamesPorDefecto, narrarFn, canalizacionCompletada } = params;
+
+  const actualCanalizando = parsePendingCanalizacionMultiple(actual.canalizando);
+  // CANALIZAR real en combate múltiple (2026-09-14) — CASO EMPEZAR: el atacante usa una habilidad
+  // ATAQUE+CANALIZAR sin tener ya nada pendiente. Mismo criterio que el 1v1 (turnResolution.ts):
+  // consume el turno entero (ni tira daño, ni el defensor contragolpea — no hay tabla cruzada que
+  // resolver), pero SÍ avanza el turno con normalidad, mismo patrón que un intercambio real.
+  if (atacanteRol === 'ataque' && habilidadAtaque.effects.includes('CANALIZAR') && !actualCanalizando) {
+    return empezarCanalizacionYAvanzar({ prisma, worldId, saveId, encounterId, encounter, actual, habilidadAtaque, defensor, weaponNamesPorDefecto, narrarFn });
+  }
+  // CANALIZAR real — CASO DISPARAR: el atacante YA tenía una canalización viva (no se cortó en un
+  // intercambio anterior, ver comprobación en `ejecutarGolpeGratisYAvanzar`/más abajo) y ahora le
+  // toca actuar de nuevo — dispara el golpe diferido con SU tirada normal, ignorando la habilidad
+  // que el frontend mandó este turno (mismo criterio que el 1v1: la canalización manda, no lo que
+  // el jugador pulse mientras tanto).
+  if (actualCanalizando) {
+    return dispararCanalizacionYAvanzar({ prisma, worldId, saveId, encounterId, encounter, actual, canalizacion: actualCanalizando, defensor, weaponNamesPorDefecto, narrarFn });
+  }
+
   const datosDefensor = await datosVivosDe({ tx: prisma, worldId, saveId, participant: defensor, weaponNames: weaponNamesPorDefecto });
   // Bug real jugando en vivo (2026-09-07, "combate atascado para siempre"): este guard existía para
   // no seguir golpeando a alguien ya derrotado, pero CONVALECIENTE deja de ser "victoria automática"
@@ -606,6 +730,13 @@ async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): P
   }
   const habilidadDefensa = chooseNpcAbility(datosDefensor.abilities, 'defensa', datosDefensor.energia, Math.random, datosDefensor.usageCounts);
 
+  // CANALIZAR real — CASO CORTAR (2026-09-14): si el DEFENSOR de este intercambio estaba
+  // canalizando algo y recibe un golpe DECISIVO (`golpe_pleno`, no cualquier golpe — mismo umbral
+  // que el 1v1), su canalización se corta aquí. Se calcula ANTES de `resolverIntercambioCompleto`
+  // (necesita el `resultado` de esa misma llamada, ver más abajo) — la limpieza real en BD ocurre
+  // en la transacción principal junto al resto de escrituras de este intercambio.
+  const defensorEstabaCanalizando = !!defensor.canalizando;
+
   const resultado = resolverIntercambioCompleto(
     { nombre: datosAtacante.nombre, attributes: datosAtacante.attributes, condicionFisica: datosAtacante.condicionFisica },
     habilidadAtaque,
@@ -616,6 +747,7 @@ async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): P
     CHECK_OPUESTO_DIFICULTAD_RELLENO,
     dualWieldBonus,
     actual.tipo === 'JUGADOR',
+    defensor.areaTrampaPorRondas != null && defensor.areaTrampaPorRondas > 0,
   );
 
   const nuevaEnergiaAtacante = nextEnergia({
@@ -639,13 +771,60 @@ async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): P
     itemRestoreAmount: null,
   });
 
+  // LIMPIAR real (2026-09-15, Manto de Purificación/Purga de Honor) — quien la dispara quita de SU
+  // PROPIA lista el DEBILIDAD de mayor magnitud negativa, ANTES de decrementar por turno (mismo
+  // orden que el resto de esta sección: se resuelve sobre los efectos "ya activos" de este turno).
+  // REFLEJAR (2026-09-15, Espejo Maldito/Espejo de Poder) hace lo MISMO sobre la propia lista del
+  // atacante, pero además reconstruye el DEBILIDAD capturado sobre el defensor — `debilidadReflejada`
+  // se lee ANTES de quitarlo (`worstDebilidadOf`), y se aplica más abajo junto a `nuevoEfectoDefensor`.
+  const debilidadReflejada = resultado.atacanteReflejarDisparado ? worstDebilidadOf(datosAtacante.activeEffects) : null;
+  // CONVERSION real, transmutación propia (2026-09-15, Transmutación Menor) — el DEBILIDAD propio
+  // de mayor magnitud negativa se invierte en signo (magnitud positiva) y se reconstruye como
+  // AUMENTO sobre sí misma, mismos atributo/turnos. Sin ningún DEBILIDAD propio activo, se pierde
+  // en silencio, mismo criterio que LIMPIAR/REFLEJAR.
+  const debilidadPropiaATransmutar = resultado.atacanteTransmutaPropiaDisparada ? worstDebilidadOf(datosAtacante.activeEffects) : null;
+  const aumentoTransmutado: ActiveEffect | null = debilidadPropiaATransmutar
+    ? { ...debilidadPropiaATransmutar, magnitude: -debilidadPropiaATransmutar.magnitude }
+    : null;
+  // CONVERSION real, transmutación rival (2026-09-15, Transmutación Mayor/Equilibrio Roto) —
+  // "convierte un buff del rival en debilidad, y viceversa": captura el AUMENTO y el DEBILIDAD del
+  // RIVAL (el defensor de este intercambio, ANTES de tocar `datosDefensorActiveEffectsBase` más
+  // abajo) y reconstruye ambos con el signo invertido sobre el propio rival.
+  const aumentoRivalATransmutar = resultado.atacanteTransmutaRivalDisparada ? bestAumentoOf(datosDefensor.activeEffects) : null;
+  const debilidadRivalATransmutar = resultado.atacanteTransmutaRivalDisparada ? worstDebilidadOf(datosDefensor.activeEffects) : null;
+  const debilidadDesdeAumentoRival: ActiveEffect | null = aumentoRivalATransmutar
+    ? { ...aumentoRivalATransmutar, magnitude: -aumentoRivalATransmutar.magnitude }
+    : null;
+  const aumentoDesdeDebilidadRival: ActiveEffect | null = debilidadRivalATransmutar
+    ? { ...debilidadRivalATransmutar, magnitude: -debilidadRivalATransmutar.magnitude }
+    : null;
+
+  const datosDefensorActiveEffectsBase = [
+    resultado.defensorLimpiarDisparado ? removeWorstDebilidad : null,
+    aumentoRivalATransmutar ? (list: ActiveEffect[]) => removeActiveEffect(list, aumentoRivalATransmutar) : null,
+    debilidadRivalATransmutar ? (list: ActiveEffect[]) => removeActiveEffect(list, debilidadRivalATransmutar) : null,
+  ]
+    .filter((fn): fn is (list: ActiveEffect[]) => ActiveEffect[] => fn !== null)
+    .reduce((list, fn) => fn(list), datosDefensor.activeEffects);
+  const datosAtacanteActiveEffectsBase = [
+    resultado.atacanteLimpiarDisparado ? removeWorstDebilidad : null,
+    debilidadReflejada ? (list: ActiveEffect[]) => removeActiveEffect(list, debilidadReflejada) : null,
+    debilidadPropiaATransmutar ? (list: ActiveEffect[]) => removeActiveEffect(list, debilidadPropiaATransmutar) : null,
+  ]
+    .filter((fn): fn is (list: ActiveEffect[]) => ActiveEffect[] => fn !== null)
+    .reduce((list, fn) => fn(list), datosAtacante.activeEffects);
+
   // Fase 3 § 3a de efectos de clase (2026-08-27) — mismo cuidado de orden que Fase 2
   // (turnResolution.ts § resolveCombatExchangePhase): decrementar los efectos YA activos antes de
   // entrar a este intercambio y añadir el nuevo (si lo hay) SIN decrementarlo — listo para leerse a
   // plena fuerza en el próximo intercambio.
-  const defensorActiveEffectsNext = resultado.nuevoEfectoDefensor
-    ? [...decrementActiveEffects(datosDefensor.activeEffects), resultado.nuevoEfectoDefensor]
-    : decrementActiveEffects(datosDefensor.activeEffects);
+  const efectosDefensorAAplicar = [debilidadReflejada, debilidadDesdeAumentoRival, aumentoDesdeDebilidadRival, resultado.nuevoEfectoDefensor].filter(
+    (e): e is ActiveEffect => e !== null,
+  );
+  const defensorActiveEffectsNext =
+    efectosDefensorAAplicar.length > 0
+      ? [...decrementActiveEffects(datosDefensorActiveEffectsBase), ...efectosDefensorAAplicar]
+      : decrementActiveEffects(datosDefensorActiveEffectsBase);
 
   // Domador (2026-09-09, `SavedAction.durationEffectTarget` — "Vínculo Salvaje"/"Adiestrar"/"Grito
   // Animal"/"Manada Furiosa": "aumenta a tu bestia", no a quien usó la habilidad) — si la habilidad
@@ -655,7 +834,7 @@ async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): P
   // el resto de "sin candidato válido" del motor (MULTIPLE/DESVIAR arriba), nunca cae de vuelta
   // sobre el atacante (la ficha real nunca describe ese fallback).
   const companionTarget =
-    habilidadAtaque.durationEffectTarget === 'companion' && resultado.nuevoEfectoAtacante
+    (habilidadAtaque.durationEffectTarget === 'companion' || habilidadAtaque.durationEffectTarget === 'both') && resultado.nuevoEfectoAtacante
       ? (encounter.participantes.find((p) => p.bando === (encounter.participantes.find((q) => q.id === actual.id)?.bando) && p.tipo === 'COMPANION') ?? null)
       : null;
   let companionTargetDatos: DatosCombatiente | null = null;
@@ -668,10 +847,17 @@ async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): P
       companionTargetDatos = null;
     }
   }
+  // AREA real, variante "both" (2026-09-14, Domador 32, Grito Animal) — a diferencia de
+  // 'companion' (excluye al atacante, `!companionTargetDatos` abajo), 'both' aplica el efecto a
+  // AMBOS a la vez: el atacante SIGUE recibiendo su copia aunque el Companion también la reciba.
+  const atacanteTambienRecibeEfecto = habilidadAtaque.durationEffectTarget === 'both' || !companionTargetDatos;
+  const efectosAtacanteAAplicar = [atacanteTambienRecibeEfecto ? resultado.nuevoEfectoAtacante : null, aumentoTransmutado].filter(
+    (e): e is ActiveEffect => e !== null,
+  );
   const atacanteActiveEffectsNext =
-    resultado.nuevoEfectoAtacante && !companionTargetDatos
-      ? [...decrementActiveEffects(datosAtacante.activeEffects), resultado.nuevoEfectoAtacante]
-      : decrementActiveEffects(datosAtacante.activeEffects);
+    efectosAtacanteAAplicar.length > 0
+      ? [...decrementActiveEffects(datosAtacanteActiveEffectsBase), ...efectosAtacanteAAplicar]
+      : decrementActiveEffects(datosAtacanteActiveEffectsBase);
 
   // CONTROL real (Fase 3 § 3a) — quien disparó CONTROL controla al OTRO lado, nunca a sí mismo (ver
   // comentario de `ResultadoIntercambioCompleto.atacanteControlDisparado/defensorControlDisparado`).
@@ -683,6 +869,34 @@ async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): P
   // defensor de este intercambio, nunca a sí mismo) — cifra fija de rondas, ver comentario de
   // `ResultadoIntercambioCompleto.expulsarTriggered`.
   const expulsarTargetId = resultado.expulsarTriggered ? defensor.id : null;
+
+  // PROVOCACION real (2026-09-14) — dos variantes distintas de la misma ficha, distinguidas por
+  // `durationEffectTarget` (reutilizado del mecanismo Domador, ver comentario de `companionTarget`
+  // más abajo — semántica distinta aquí: no mueve un ActiveEffect, marca "esta PROVOCACION redirige
+  // el golpe de un ALIADO YA reclamado, no forza tu propio agro futuro"):
+  // - Variante simple (Bastión Personal/Desafío/Guardia de Asta/Postura Firme/Grito de Valentía,
+  //   `durationEffectTarget` vacío): quien la dispara provoca al RIVAL de ESTE intercambio (nunca a
+  //   sí mismo, mismo criterio que CONTROL) — fuerza que ese rival te ataque a TI la ronda que viene.
+  // - Variante "redirige golpe de aliado" (Grito de Coraje, Caballero del Valor 28,
+  //   `durationEffectTarget: 'companion'`): NO fuerza un enganche futuro — sustituye YA el enganche
+  //   de ESTA ronda de un NPC que tuviera como objetivo al Companion del bando de quien la dispara,
+  //   redirigiéndolo hacia quien la dispara. Resuelta aparte, ver `provocarCompanionRedirect` más
+  //   abajo — no encaja en el flujo de intercambio 1-a-1 normal (no hay "defensor" real, el NPC
+  //   redirigido puede no ser ninguno de los dos participantes de ESTE intercambio).
+  // Sacrificio del Valiente (2026-09-15, Caballero del Valor 40, capstone) — MISMA variante
+  // "redirige golpe de aliado" que Grito de Coraje, pero disparada desde el lado DEFENSOR con
+  // margen decisivo (`AGUANTE`+`PROVOCACION`, `defensorProvocacionDisparada` vía el gate de
+  // `combateMultiple.ts:829`) en vez del lado atacante/utilidad — la ficha real es "te llevas el
+  // golpe dirigido a un aliado", simétrica a Grito de Coraje en quién dispara, no en el mecanismo.
+  const defensorProvocarCompanionRedirect = habilidadDefensa.durationEffectTarget === 'companion' && resultado.defensorProvocacionDisparada;
+  const provocarTargetId =
+    habilidadAtaque.durationEffectTarget !== 'companion' && resultado.atacanteProvocacionDisparada
+      ? defensor.id
+      : resultado.defensorProvocacionDisparada && !defensorProvocarCompanionRedirect
+        ? actual.id
+        : null;
+  const provocadorId = resultado.atacanteProvocacionDisparada ? actual.id : resultado.defensorProvocacionDisparada ? defensor.id : null;
+  const provocarCompanionRedirect = (habilidadAtaque.durationEffectTarget === 'companion' && resultado.atacanteProvocacionDisparada) || defensorProvocarCompanionRedirect;
 
   // "Analizar Rival" real en combate múltiple (2026-08-27, cierra el hueco que dejó Fase A/B: se
   // calculaba y se descartaba) — el atacante analiza siempre al defensor de ESTE intercambio (mismo
@@ -722,6 +936,40 @@ async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): P
       objetivoExtraActiveEffectsNext = resultado.nuevoEfectoDefensor
         ? [...decrementActiveEffects(extraDatos.activeEffects), resultado.nuevoEfectoDefensor]
         : decrementActiveEffects(extraDatos.activeEffects);
+    }
+  }
+
+  // AREA real, variante ofensiva (2026-09-14) — mismo mecanismo que MULTIPLE pero SIN tope de
+  // cantidad: alcanza a TODOS los vivos del bando del defensor (`objetivosExtraFor` con
+  // `limite: null`), no solo uno. Golpe directo sin tirada de defensa propia, mismo criterio que
+  // MULTIPLE — el defensor principal ya recibió su golpe por el camino normal de arriba, esto solo
+  // resuelve al RESTO del bando.
+  const objetivosAreaParticipants: (ParticipantRef & { bando: Bando })[] = [];
+  const datosPorObjetivoArea = new Map<string, DatosCombatiente>();
+  const nuevaCondicionPorObjetivoArea = new Map<string, CondicionFisica>();
+  const activeEffectsNextPorObjetivoArea = new Map<string, ActiveEffect[]>();
+  if (resultado.areaOfensivaTriggered) {
+    const defensorBando = encounter.participantes.find((p) => p.id === defensor.id)?.bando;
+    const candidatosBando = encounter.participantes.filter((p) => p.bando === defensorBando);
+    const datosPorCandidato = new Map<string, DatosCombatiente | null>();
+    await Promise.all(candidatosBando.map(async (p) => datosPorCandidato.set(p.id, await datosVivosDe({ tx: prisma, worldId, saveId, participant: p, weaponNames: weaponNamesPorDefecto }))));
+    const candidatosObj: ObjetivoCandidato[] = candidatosBando
+      .filter((p) => datosPorCandidato.get(p.id))
+      .map((p) => ({ participantId: p.id, condicionFisica: datosPorCandidato.get(p.id)!.condicionFisica }));
+    const extraIds = objetivosExtraFor(defensor.id, candidatosObj, null, Math.random);
+    for (const extraId of extraIds) {
+      const extraParticipant = candidatosBando.find((p) => p.id === extraId);
+      const extraDatos = datosPorCandidato.get(extraId);
+      if (!extraParticipant || !extraDatos) continue;
+      objetivosAreaParticipants.push(extraParticipant);
+      datosPorObjetivoArea.set(extraId, extraDatos);
+      nuevaCondicionPorObjetivoArea.set(extraId, nextCondicionForAttack(habilidadAtaque.effects, extraDatos.condicionFisica));
+      activeEffectsNextPorObjetivoArea.set(
+        extraId,
+        resultado.nuevoEfectoDefensor
+          ? [...decrementActiveEffects(extraDatos.activeEffects), resultado.nuevoEfectoDefensor]
+          : decrementActiveEffects(extraDatos.activeEffects),
+      );
     }
   }
 
@@ -767,6 +1015,65 @@ async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): P
   // de `resolverEnganchesRonda`) se quedaba "oculto" para siempre pese a haber elegido combatir.
   const rompeOcultacionDefensorId = defensor.ocultoPorRondas ? defensor.id : null;
 
+  // PROVOCACION, variante "redirige golpe de aliado" (Grito de Coraje / Sacrificio del Valiente) —
+  // busca, entre TODOS los participantes del encuentro (no solo los dos de ESTE intercambio), al
+  // NPC/COMPANION del bando contrario cuyo `objetivoActualId` (el enganche YA fijado esta ronda)
+  // apunta al Companion del bando de QUIEN DISPARA — Grito de Coraje dispara desde el atacante
+  // (`actual`), Sacrificio del Valiente desde el defensor (`defensor`, `defensorProvocarCompanionRedirect`).
+  // Sin Companion propio en el bando, o sin nadie apuntándole ahora mismo, el efecto se pierde en
+  // silencio (mismo criterio que "sin candidato válido" del resto del motor, ver comentario de
+  // `companionTarget` arriba) — el ID de QUIEN DISPARA pasa a ser el nuevo objetivo
+  // (`objetivoActualId`) del NPC redirigido, redirigiendo un golpe gratis o un duelo ya en marcha.
+  const quienDisparaRedirect = defensorProvocarCompanionRedirect ? defensor : actual;
+  const bandoDeActual = encounter.participantes.find((p) => p.id === quienDisparaRedirect.id)?.bando;
+  const companionPropio = provocarCompanionRedirect ? encounter.participantes.find((p) => p.bando === bandoDeActual && p.tipo === 'COMPANION') : undefined;
+  const npcRedirigidoId =
+    provocarCompanionRedirect && companionPropio
+      ? (encounter.participantes.find((p) => p.bando !== bandoDeActual && p.objetivoActualId === companionPropio.id)?.id ?? null)
+      : null;
+
+  // MARCAR real (2026-09-14) — quien la dispara marca al RIVAL de ESTE intercambio (nunca a sí
+  // mismo, mismo criterio que PROVOCACION/CONTROL) para que SU COMPANION lo ataque preferentemente
+  // — resuelve el Companion real del bando de quien dispara (`bandoDeActual`/`bandoDeDefensor`
+  // según qué lado disparó) y marca `marcaObjetivoRondas`/`marcaObjetivoId` sobre ÉL, nunca sobre
+  // el objetivo marcado en sí (a diferencia de PROVOCACION, la columna vive en quien RECIBE la
+  // instrucción, ver comentario de la columna en schema.prisma). Sin Companion propio, el efecto se
+  // pierde en silencio (mismo criterio de "sin candidato válido" del resto del motor).
+  const marcarTargetId = resultado.atacanteMarcarDisparado ? defensor.id : resultado.defensorMarcarDisparado ? actual.id : null;
+  const bandoDeDefensor = encounter.participantes.find((p) => p.id === defensor.id)?.bando;
+  const companionParaMarcar = resultado.atacanteMarcarDisparado
+    ? (encounter.participantes.find((p) => p.bando === bandoDeActual && p.tipo === 'COMPANION') ?? companionPropio)
+    : resultado.defensorMarcarDisparado
+      ? encounter.participantes.find((p) => p.bando === bandoDeDefensor && p.tipo === 'COMPANION')
+      : undefined;
+
+  // AREA real, variante defensiva (2026-09-14) — quien contragolpea con éxito usando AGUANTE+AREA
+  // activa `areaDefensaPorRondas` SOBRE SÍ MISMO (nunca sobre el atacante), siempre del lado
+  // defensor de este intercambio (el camino de margen decisivo solo dispara desde ahí).
+  const areaDefensaSelfId = resultado.defensorAreaDefensivaDisparada ? defensor.id : null;
+
+  // AREA real, variante persistente (2026-09-14, Trampa Improvisada) — quien la dispara coloca la
+  // trampa SOBRE SÍ MISMO (mismo lado que OCULTACION), nunca sobre el rival.
+  const areaTrampaSelfId = resultado.atacanteAreaTrampaDisparada ? actual.id : resultado.defensorAreaTrampaDisparada ? defensor.id : null;
+
+  // CURAZION real (2026-09-15) — mejora un escalón la condición física de quien dispara, PARTIENDO
+  // de la condición ya calculada por el golpe de este mismo intercambio (nunca la de un turno
+  // anterior): vampirismo (`atacanteCurazionDisparado` + `atacanteRecibeGolpe` falso, el propio
+  // ataque no le hace daño a sí mismo) parte de `datosAtacante.condicionFisica` tal cual; la
+  // transmutación defensiva (`defensorCurazionDisparado`) parte de `nuevaCondicionDefensor` (el
+  // golpe SÍ conectó, y CURAZION mitiga parte de ese mismo golpe); el camino independiente/utilidad
+  // (Segunda Oportunidad) no implica ningún golpe recibido, mismo caso que el vampirismo.
+  const condicionDefensorFinal = resultado.defensorCurazionDisparado
+    ? oneStepBetterThan(resultado.defensorRecibeGolpe ? resultado.nuevaCondicionDefensor : datosDefensor.condicionFisica)
+    : resultado.defensorRecibeGolpe
+      ? resultado.nuevaCondicionDefensor
+      : null;
+  const condicionAtacanteFinal = resultado.atacanteCurazionDisparado
+    ? oneStepBetterThan(resultado.atacanteRecibeGolpe ? resultado.nuevaCondicionAtacante : datosAtacante.condicionFisica)
+    : resultado.atacanteRecibeGolpe
+      ? resultado.nuevaCondicionAtacante
+      : null;
+
   // Transacción corta #1 — solo escritura, sin narración dentro: condición/energía de ambos lados
   // quedan atómicas entre sí, pero la transacción se cierra antes de llamar a Ollama.
   await prisma.$transaction(async (tx) => {
@@ -774,7 +1081,7 @@ async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): P
       tx,
       saveId,
       participant: defensor,
-      condicionFisica: resultado.defensorRecibeGolpe ? resultado.nuevaCondicionDefensor : null,
+      condicionFisica: condicionDefensorFinal,
       energia: nuevaEnergiaDefensor,
       abilityNameUsada: habilidadDefensa.name,
       usageCounts: datosDefensor.usageCounts,
@@ -784,7 +1091,7 @@ async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): P
       tx,
       saveId,
       participant: actual,
-      condicionFisica: resultado.atacanteRecibeGolpe ? resultado.nuevaCondicionAtacante : null,
+      condicionFisica: condicionAtacanteFinal,
       energia: nuevaEnergiaAtacante,
       abilityNameUsada: habilidadAtaque.name,
       usageCounts: datosAtacante.usageCounts,
@@ -792,6 +1099,19 @@ async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): P
     });
     if (objetivoExtraParticipant && datosObjetivoExtra) {
       await escribirCondicionYEnergia({ tx, saveId, participant: objetivoExtraParticipant, condicionFisica: nuevaCondicionExtra, energia: null, abilityNameUsada: null, usageCounts: datosObjetivoExtra.usageCounts, activeEffectsNext: objetivoExtraActiveEffectsNext });
+    }
+    for (const objetivoAreaParticipant of objetivosAreaParticipants) {
+      const datosObjetivoArea = datosPorObjetivoArea.get(objetivoAreaParticipant.id)!;
+      await escribirCondicionYEnergia({
+        tx,
+        saveId,
+        participant: objetivoAreaParticipant,
+        condicionFisica: nuevaCondicionPorObjetivoArea.get(objetivoAreaParticipant.id)!,
+        energia: null,
+        abilityNameUsada: null,
+        usageCounts: datosObjetivoArea.usageCounts,
+        activeEffectsNext: activeEffectsNextPorObjetivoArea.get(objetivoAreaParticipant.id)!,
+      });
     }
     if (objetivoDesviadoParticipant && datosObjetivoDesviado) {
       await escribirCondicionYEnergia({ tx, saveId, participant: objetivoDesviadoParticipant, condicionFisica: nuevaCondicionDesviado, energia: null, abilityNameUsada: null, usageCounts: datosObjetivoDesviado.usageCounts, activeEffectsNext: decrementActiveEffects(datosObjetivoDesviado.activeEffects) });
@@ -808,6 +1128,33 @@ async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): P
       await tx.combatParticipant.update({ where: { id: rompeOcultacionDefensorId }, data: { ocultoPorRondas: null } });
     }
     if (expulsarTargetId) await tx.combatParticipant.update({ where: { id: expulsarTargetId }, data: { expulsadoPorRondas: EXPULSAR_RONDAS } });
+    if (provocarTargetId && provocadorId) {
+      await tx.combatParticipant.update({ where: { id: provocarTargetId }, data: { provocadoPorRondas: PROVOCACION_RONDAS, provocadoPorId: provocadorId } });
+    }
+    if (npcRedirigidoId) {
+      await tx.combatParticipant.update({ where: { id: npcRedirigidoId }, data: { objetivoActualId: quienDisparaRedirect.id } });
+    }
+    if (marcarTargetId && companionParaMarcar) {
+      await tx.combatParticipant.update({
+        where: { id: companionParaMarcar.id },
+        data: { marcaObjetivoRondas: MARCAR_RONDAS, marcaObjetivoId: marcarTargetId },
+      });
+    }
+    if (areaDefensaSelfId) {
+      await tx.combatParticipant.update({ where: { id: areaDefensaSelfId }, data: { areaDefensaPorRondas: AREA_DEFENSA_RONDAS } });
+    }
+    if (areaTrampaSelfId) {
+      await tx.combatParticipant.update({ where: { id: areaTrampaSelfId }, data: { areaTrampaPorRondas: AREA_TRAMPA_RONDAS } });
+    }
+    // CANALIZAR real — CASO CORTAR: el defensor de este intercambio estaba canalizando y recibió
+    // un golpe decisivo (`resultado.display.resultado === 'golpe_pleno'`) — se corta aquí. (La
+    // limpieza del ATACANTE tras disparar su propia canalización vive en
+    // `dispararCanalizacionYAvanzar`, en su propia transacción corta, antes de delegar aquí — este
+    // `actual.canalizando` siempre llega ya en `null` desde ese caller, nunca hay nada que limpiar
+    // de este lado en ese camino.)
+    if (defensorEstabaCanalizando && resultado.display.resultado === 'golpe_pleno') {
+      await tx.combatParticipant.update({ where: { id: defensor.id }, data: { canalizando: Prisma.JsonNull } });
+    }
     if (analizarTargetId) {
       if (defensor.condicionFisicaGrupo !== null) {
         await tx.combatParticipant.update({ where: { id: analizarTargetId }, data: { analizadoGrupo: true } });
@@ -824,8 +1171,15 @@ async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): P
   // Narración real (Ollama) FUERA de cualquier transacción — es la llamada lenta que reventaba el
   // timeout de 5000ms cuando vivía dentro de la transacción de arriba.
   let exchangeBlockAugmentado = resultado.exchangeBlock;
+  if (canalizacionCompletada) {
+    exchangeBlockAugmentado = ` EFECTO DE HABILIDAD — YA RESUELTO: ${datosAtacante.nombre} completa su canalización de "${habilidadAtaque.name}" contra ${datosDefensor.nombre}.${exchangeBlockAugmentado}`;
+  }
   if (objetivoExtraParticipant && datosObjetivoExtra) {
     exchangeBlockAugmentado += ` EFECTO DE HABILIDAD — YA RESUELTO: el mismo golpe también alcanza de lleno a ${datosObjetivoExtra.nombre}, sin oposición real — narra que el ataque impacta a los dos.`;
+  }
+  if (objetivosAreaParticipants.length > 0) {
+    const nombresArea = objetivosAreaParticipants.map((p) => datosPorObjetivoArea.get(p.id)!.nombre).join(', ');
+    exchangeBlockAugmentado += ` EFECTO DE HABILIDAD — YA RESUELTO: el ataque de ${datosAtacante.nombre} es de área — alcanza de lleno, sin oposición real, a TODO el bando de ${datosDefensor.nombre}: ${nombresArea}. Narra un golpe/onda que arrasa a todo el grupo a la vez, no impactos separados.`;
   }
   if (objetivoDesviadoParticipant && datosObjetivoDesviado) {
     exchangeBlockAugmentado += ` EFECTO DE HABILIDAD — YA RESUELTO: ${datosDefensor.nombre} desvía el golpe entrante, que en vez de fallar sin más alcanza de lleno a ${datosObjetivoDesviado.nombre} — narra la desviación, no un fallo simple.`;
@@ -837,6 +1191,27 @@ async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): P
   }
   if (expulsarTargetId) {
     exchangeBlockAugmentado += ` EFECTO DE HABILIDAD — YA RESUELTO: el golpe además empuja a ${datosDefensor.nombre} fuera del alcance del combate un par de turnos — narra el empujón/expulsión física, no solo el impacto.`;
+  }
+  if (provocarTargetId === defensor.id) {
+    exchangeBlockAugmentado += ` EFECTO DE HABILIDAD — YA RESUELTO: ${datosDefensor.nombre} queda provocado — su atención se centra por completo en ${datosAtacante.nombre} durante un par de turnos, narra que se ve forzado a fijarse en él/ella por encima de cualquier otro rival.`;
+  } else if (provocarTargetId === actual.id) {
+    exchangeBlockAugmentado += ` EFECTO DE HABILIDAD — YA RESUELTO: ${datosAtacante.nombre} queda provocado — su atención se centra por completo en ${datosDefensor.nombre} durante un par de turnos, narra que se ve forzado a fijarse en él/ella por encima de cualquier otro rival.`;
+  }
+  if (npcRedirigidoId) {
+    const nombreQuienSeInterpone = defensorProvocarCompanionRedirect ? datosDefensor.nombre : datosAtacante.nombre;
+    exchangeBlockAugmentado += ` EFECTO DE HABILIDAD — YA RESUELTO: ${nombreQuienSeInterpone} se interpone y redirige hacia sí mismo un golpe que iba dirigido a su compañero animal — narra que se planta entre ambos y atrae la atención del rival sobre sí.`;
+  }
+  if (marcarTargetId && companionParaMarcar) {
+    const nombreMarcado = marcarTargetId === defensor.id ? datosDefensor.nombre : datosAtacante.nombre;
+    const nombreQuienMarca = resultado.atacanteMarcarDisparado ? datosAtacante.nombre : datosDefensor.nombre;
+    exchangeBlockAugmentado += ` EFECTO DE HABILIDAD — YA RESUELTO: ${nombreQuienMarca} marca a ${nombreMarcado} como presa de su compañero animal durante los próximos turnos — narra que la bestia fija su atención en ese objetivo y lo persigue con preferencia sobre cualquier otro.`;
+  }
+  if (areaDefensaSelfId === defensor.id) {
+    exchangeBlockAugmentado += ` EFECTO DE HABILIDAD — YA RESUELTO: ${datosDefensor.nombre} activa una defensa de área — su compañero animal se interpondrá en cualquier ataque dirigido a él/ella durante un par de turnos, narra la promesa/postura protectora, no un golpe todavía.`;
+  }
+  if (areaTrampaSelfId) {
+    const nombreQuienColoca = resultado.atacanteAreaTrampaDisparada ? datosAtacante.nombre : datosDefensor.nombre;
+    exchangeBlockAugmentado += ` EFECTO DE HABILIDAD — YA RESUELTO: ${nombreQuienColoca} coloca trampas a su alrededor — cualquiera que le ataque durante los próximos turnos corre el riesgo de quedar aturdido, narra el gesto de colocarlas, sin ningún golpe todavía.`;
   }
   const narracion = await narrarFn({
     atacanteNombre: datosAtacante.nombre,
@@ -1174,6 +1549,29 @@ async function invocarTotemYAvanzar(
   };
 }
 
+/// `AREA` real, variante defensiva (2026-09-14, docs/rpgtarkor/clases.md — Instintivo 28, Instinto
+/// de Reserva: "tu bestia te defiende de TODOS los ataques dirigidos a ti") — mientras
+/// `areaDefensaPorRondas > 0` sobre un aliado del bando de `defensorOriginal`, CADA golpe dirigido a
+/// `defensorOriginal` esa ronda (enganche principal Y golpe gratis de otros pretendientes) se
+/// redirige a ese aliado en su lugar, que se defiende con SU propia tirada normal (el "aguante" real
+/// ya lo cubre `resolveExchange`, esto solo decide QUIÉN encaja el golpe). Con varios aliados
+/// propios con el efecto activo a la vez (2 Companions reales, o Companion+NPC aliado), gana
+/// SIEMPRE el de mayor iniciativa (posición más temprana en `ordenIniciativa`) — decisión explícita
+/// de Álvaro para evitar ambigüedad de reparto. Devuelve `defensorOriginal` sin cambios si nadie
+/// tiene el efecto activo (incluido el propio `defensorOriginal`, que no se protege a sí mismo).
+function redirigirPorAreaDefensiva(
+  defensorOriginal: ParticipantRef & { bando: Bando },
+  ordenIniciativa: string[],
+  participantes: (ParticipantRef & { bando: Bando })[],
+): ParticipantRef & { bando: Bando } {
+  const protectores = participantes.filter(
+    (p) => p.id !== defensorOriginal.id && p.bando === defensorOriginal.bando && p.areaDefensaPorRondas != null && p.areaDefensaPorRondas > 0,
+  );
+  if (protectores.length === 0) return defensorOriginal;
+  protectores.sort((a, b) => ordenIniciativa.indexOf(a.id) - ordenIniciativa.indexOf(b.id));
+  return protectores[0];
+}
+
 /// Objetivo individual real (2026-08-26) — ¿ya se resolvió este emparejamiento en el turno
 /// (anterior en la cola) de la otra mitad del duelo? Un duelo mutuo (`esDueloMutuo`-equivalente:
 /// ambos `objetivoActualId` se apuntan entre sí) solo se resuelve UNA vez, en el turno de quien
@@ -1297,12 +1695,23 @@ export async function resolverTurnoAutonomo({
   }
 
   const defensorId = actual.objetivoActualId;
-  const defensor = defensorId ? encounter.participantes.find((p) => p.id === defensorId) : null;
-  if (!defensor) return avanzarSinAtacar({ prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn });
-  if (dueloYaResueltoPorElOtro(encounter.ordenIniciativa, actual.id, defensor)) return avanzarSinAtacar({ prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn });
+  const defensorOriginal = defensorId ? encounter.participantes.find((p) => p.id === defensorId) : null;
+  if (!defensorOriginal) return avanzarSinAtacar({ prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn });
+  if (dueloYaResueltoPorElOtro(encounter.ordenIniciativa, actual.id, defensorOriginal)) return avanzarSinAtacar({ prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn });
 
-  const esDuelo = defensor.objetivoActualId === actual.id;
-  if (esDuelo) {
+  const esDuelo = defensorOriginal.objetivoActualId === actual.id;
+  // AREA real, variante defensiva (2026-09-14) — el golpe se redirige AQUÍ, tras decidir esDuelo/
+  // "duelo ya resuelto" con el `objetivoActualId` ORIGINAL (el enganche de la ronda no cambia), pero
+  // ANTES de resolver el intercambio en sí — el protector encaja el golpe, no cambia contra quién
+  // dispara el enganche.
+  const defensor = redirigirPorAreaDefensiva(defensorOriginal, encounter.ordenIniciativa, encounter.participantes);
+  // CANALIZAR real (2026-09-14) — una canalización viva SIEMPRE dispara su golpe diferido con
+  // tirada real contra su objetivo (mismo criterio que el 1v1: "el golpe real se dispara... con SU
+  // tirada normal"), nunca como golpe gratis sin oposición — aunque este turno no fuera duelo
+  // mutuo por el enganche normal de la ronda. `ejecutarIntercambioYAvanzar` ya sabe detectar el
+  // CASO DISPARAR con `actual.canalizando`, así que basta con forzar este camino en vez del de
+  // golpe gratis.
+  if (esDuelo || parsePendingCanalizacionMultiple(actual.canalizando)) {
     // `habilidadAtaque.rol` real, mismo motivo que el comentario de arriba (objetivoControlado).
     return ejecutarIntercambioYAvanzar({
       prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque,
@@ -1388,12 +1797,17 @@ export async function resolverTurnoJugador({
   }
 
   const defensorId = actual.objetivoActualId;
-  const defensor = defensorId ? encounter.participantes.find((p) => p.id === defensorId) : null;
-  if (!defensor) return avanzarSinAtacar({ prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn });
-  if (dueloYaResueltoPorElOtro(encounter.ordenIniciativa, actual.id, defensor)) return avanzarSinAtacar({ prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn });
+  const defensorOriginal = defensorId ? encounter.participantes.find((p) => p.id === defensorId) : null;
+  if (!defensorOriginal) return avanzarSinAtacar({ prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn });
+  if (dueloYaResueltoPorElOtro(encounter.ordenIniciativa, actual.id, defensorOriginal)) return avanzarSinAtacar({ prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn });
 
-  const esDuelo = defensor.objetivoActualId === actual.id;
-  if (!esDuelo) {
+  const esDuelo = defensorOriginal.objetivoActualId === actual.id;
+  // AREA real, variante defensiva (2026-09-14) — mismo criterio que `resolverTurnoAutonomo`: el
+  // protector con más iniciativa encaja el golpe en lugar del objetivo original.
+  const defensor = redirigirPorAreaDefensiva(defensorOriginal, encounter.ordenIniciativa, encounter.participantes);
+  // CANALIZAR real (2026-09-14) — mismo criterio que `resolverTurnoAutonomo`: una canalización
+  // viva de la jugadora siempre dispara su golpe diferido con tirada real, nunca como golpe gratis.
+  if (!esDuelo && !parsePendingCanalizacionMultiple(actual.canalizando)) {
     return ejecutarGolpeGratisYAvanzar({ prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque: accion.habilidad, defensor, weaponNamesPorDefecto, narrarFn });
   }
 
@@ -1496,6 +1910,161 @@ interface AvanzarSinAtacarParams {
   encounter: { turnoActual: number; ordenIniciativa: string[] };
   weaponNamesPorDefecto: string[];
   narrarFn: typeof narrarTurnoCombateMultiple;
+}
+
+interface EmpezarCanalizacionParams {
+  prisma: PrismaClient;
+  worldId: string;
+  saveId: string;
+  encounterId: string;
+  encounter: { turnoActual: number; ordenIniciativa: string[]; participantes: (ParticipantRef & { bando: Bando })[] };
+  actual: ParticipantRef;
+  habilidadAtaque: HabilidadParaIntercambio;
+  defensor: ParticipantRef;
+  weaponNamesPorDefecto: string[];
+  narrarFn: typeof narrarTurnoCombateMultiple;
+}
+
+/// CANALIZAR real en combate múltiple (2026-09-14) — CASO EMPEZAR, ver comentario de la llamada en
+/// `ejecutarIntercambioYAvanzar`. Siembra `CombatParticipant.canalizando` y avanza el turno con
+/// normalidad — sin resolver ninguna tirada real este turno (mismo criterio que `avanzarSinAtacar`,
+/// pero CON narración propia, a diferencia de ese: el jugador SÍ hizo algo este turno).
+async function empezarCanalizacionYAvanzar({
+  prisma,
+  worldId,
+  saveId,
+  encounterId,
+  encounter,
+  actual,
+  habilidadAtaque,
+  defensor,
+  weaponNamesPorDefecto,
+  narrarFn,
+}: EmpezarCanalizacionParams): Promise<TurnoAutonomoResultado> {
+  const [datosAtacante, datosDefensor] = await Promise.all([
+    datosVivosDe({ tx: prisma, worldId, saveId, participant: actual, weaponNames: weaponNamesPorDefecto }),
+    datosVivosDe({ tx: prisma, worldId, saveId, participant: defensor, weaponNames: weaponNamesPorDefecto }),
+  ]);
+  const nombreAtacante = datosAtacante?.nombre ?? '';
+  const nombreDefensor = datosDefensor?.nombre ?? '';
+
+  await prisma.$transaction(async (tx) => {
+    const canalizacion: PendingCanalizacionMultiple = {
+      abilityName: habilidadAtaque.name,
+      attribute: habilidadAtaque.attribute,
+      attributeBonus: habilidadAtaque.attributeBonus ?? null,
+      effects: habilidadAtaque.effects,
+    };
+    await tx.combatParticipant.update({ where: { id: actual.id }, data: { canalizando: canalizacion as unknown as Prisma.InputJsonValue } });
+  });
+
+  const exchangeBlockAugmentado = ` EFECTO DE HABILIDAD — YA RESUELTO: ${nombreAtacante} empieza a canalizar "${habilidadAtaque.name}" contra ${nombreDefensor} — el golpe se completará el próximo turno si nada lo interrumpe antes.`;
+  const narracion = await narrarFn({
+    atacanteNombre: nombreAtacante,
+    defensorNombre: nombreDefensor,
+    habilidadNombre: habilidadAtaque.name,
+    exchangeBlock: exchangeBlockAugmentado,
+    combatBothMissed: false,
+    combatRealHitLanded: false,
+    defensorQuedaConvalecienteEsteTurno: false,
+    defensorMuereEsteTurno: false,
+  });
+
+  const avance = await prisma.$transaction((tx) => avanzarYComprobarFin({ tx, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto }));
+  const totems = await resolverTotemsPendientes({ prisma, worldId, saveId, encounterId, totemIds: avance.totemsQueAtacan, weaponNamesPorDefecto, narrarFn });
+  return {
+    narracion,
+    atacanteNombre: nombreAtacante,
+    defensorNombre: nombreDefensor,
+    encounterTerminado: avance.terminado || totems.encounterTerminado,
+    caidos: totems.caidos,
+    narracionesExtra: totems.narraciones,
+    combatExchangeDisplay: null,
+  };
+}
+
+interface DispararCanalizacionParams {
+  prisma: PrismaClient;
+  worldId: string;
+  saveId: string;
+  encounterId: string;
+  encounter: { turnoActual: number; ordenIniciativa: string[]; participantes: (ParticipantRef & { bando: Bando })[] };
+  actual: ParticipantRef;
+  canalizacion: PendingCanalizacionMultiple;
+  defensor: ParticipantRef;
+  weaponNamesPorDefecto: string[];
+  narrarFn: typeof narrarTurnoCombateMultiple;
+}
+
+/// CANALIZAR real en combate múltiple (2026-09-14) — CASO DISPARAR, ver comentario de la llamada en
+/// `ejecutarIntercambioYAvanzar`. Dispara el golpe diferido con la tirada normal de la habilidad
+/// canalizada (mismo camino `resolveExchange` que un ataque directo, mismo umbral `golpe_pleno`
+/// para AUMENTO/DEBILIDAD/CONTRA/LETAL/etc. — reutiliza `resolverIntercambioCompleto` tal cual,
+/// pasando la habilidad canalizada como si fuera la elegida este turno), ignorando cualquier
+/// habilidad que el frontend mandara este turno (mismo criterio que el 1v1: la canalización manda).
+async function dispararCanalizacionYAvanzar({
+  prisma,
+  worldId,
+  saveId,
+  encounterId,
+  encounter,
+  actual,
+  canalizacion,
+  defensor,
+  weaponNamesPorDefecto,
+  narrarFn,
+}: DispararCanalizacionParams): Promise<TurnoAutonomoResultado> {
+  const datosDefensor = await datosVivosDe({ tx: prisma, worldId, saveId, participant: defensor, weaponNames: weaponNamesPorDefecto });
+  if (!datosDefensor || (datosDefensor.condicionFisica === 'CONVALECIENTE' && defensor.tipo !== 'JUGADOR') || datosDefensor.condicionFisica === 'MUERTO') {
+    // Objetivo original ya no válido (murió/huyó mientras se canalizaba) — la canalización se
+    // pierde en silencio, mismo criterio que "sin candidato válido" del resto del motor. Limpieza
+    // en su propia transacción corta, separada de `avanzarYComprobarFin`.
+    await prisma.$transaction((tx) => tx.combatParticipant.update({ where: { id: actual.id }, data: { canalizando: Prisma.JsonNull } }));
+    return avanzarSinAtacar({ prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn });
+  }
+  const datosAtacante = await datosVivosDe({ tx: prisma, worldId, saveId, participant: actual, weaponNames: weaponNamesPorDefecto });
+  if (!datosAtacante) {
+    // El propio canalizador murió/desapareció entre turnos (caso extremo, no debería llegar aquí
+    // con normalidad — `calcularEnganchesRonda` ya filtra participantes no vivos) — misma limpieza
+    // silenciosa que el objetivo inválido de arriba.
+    await prisma.$transaction((tx) => tx.combatParticipant.update({ where: { id: actual.id }, data: { canalizando: Prisma.JsonNull } }));
+    return avanzarSinAtacar({ prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn });
+  }
+  // `CANALIZAR` se retira de `effects` al reconstruir la habilidad para ESTE disparo — deja intacto
+  // el resto (LETAL/AUMENTO/DEBILIDAD/etc., que sí deben aplicar en el golpe real) pero evita que
+  // `ejecutarIntercambioYAvanzar` vuelva a entrar en el CASO EMPEZAR de forma recursiva (con
+  // `canalizando: null` ya puesto, `habilidadAtaque.effects.includes('CANALIZAR')` seguiría siendo
+  // cierto si no se quitara aquí — bucle infinito real, cazado antes de llegar a producción).
+  const habilidadCanalizada: HabilidadParaIntercambio = {
+    name: canalizacion.abilityName,
+    description: '',
+    attribute: canalizacion.attribute,
+    attributeBonus: canalizacion.attributeBonus ?? undefined,
+    effects: canalizacion.effects.filter((e) => e !== 'CANALIZAR'),
+    rol: 'ataque',
+    energyCost: 0,
+    energyRegen: 0,
+  };
+  // Limpieza en su propia transacción corta, ANTES del intercambio real — el golpe diferido ya se
+  // considera "disparado" aquí (éxito o fallo, da igual: la canalización en sí se completa siempre
+  // que llegue a esta rama, solo el RESULTADO del golpe es incierto).
+  await prisma.$transaction((tx) => tx.combatParticipant.update({ where: { id: actual.id }, data: { canalizando: Prisma.JsonNull } }));
+  return ejecutarIntercambioYAvanzar({
+    prisma,
+    worldId,
+    saveId,
+    encounterId,
+    encounter,
+    actual: { ...actual, canalizando: null },
+    datosAtacante,
+    habilidadAtaque: habilidadCanalizada,
+    atacanteRol: 'ataque',
+    dualWieldBonus: false,
+    defensor,
+    weaponNamesPorDefecto,
+    narrarFn,
+    canalizacionCompletada: true,
+  });
 }
 
 async function avanzarSinAtacar({
@@ -1632,6 +2201,35 @@ async function avanzarYComprobarFin({
     participantesFrescos
       .filter((p) => p.expulsadoPorRondas != null && p.expulsadoPorRondas > 0)
       .map((p) => tx.combatParticipant.update({ where: { id: p.id }, data: { expulsadoPorRondas: p.expulsadoPorRondas! - 1 } })),
+  );
+  // PROVOCACION real (2026-09-14) — mismo criterio de orden que CONTROL/OCULTACION/EXPULSAR: la
+  // ronda nueva ya calculó su enganche (arriba) respetando quién estaba provocado ANTES de este
+  // decremento (`calcularEnganchesRonda` lee `provocadoPorRondas` de `participantesFrescos`, que en
+  // este punto todavía no se ha tocado esta ronda).
+  await Promise.all(
+    participantesFrescos
+      .filter((p) => p.provocadoPorRondas != null && p.provocadoPorRondas > 0)
+      .map((p) => tx.combatParticipant.update({ where: { id: p.id }, data: { provocadoPorRondas: p.provocadoPorRondas! - 1 } })),
+  );
+  // MARCAR real (2026-09-14) — mismo criterio de orden que CONTROL/OCULTACION/EXPULSAR/PROVOCACION:
+  // la ronda nueva ya calculó su enganche (arriba) respetando la marca ANTES de este decremento.
+  await Promise.all(
+    participantesFrescos
+      .filter((p) => p.marcaObjetivoRondas != null && p.marcaObjetivoRondas > 0)
+      .map((p) => tx.combatParticipant.update({ where: { id: p.id }, data: { marcaObjetivoRondas: p.marcaObjetivoRondas! - 1 } })),
+  );
+  // AREA real, variantes defensiva/persistente (2026-09-14) — mismo criterio de orden que el resto:
+  // cualquier redirección/refuerzo de intercambios de esta ronda ya se resolvió con el valor previo
+  // al decremento.
+  await Promise.all(
+    participantesFrescos
+      .filter((p) => p.areaDefensaPorRondas != null && p.areaDefensaPorRondas > 0)
+      .map((p) => tx.combatParticipant.update({ where: { id: p.id }, data: { areaDefensaPorRondas: p.areaDefensaPorRondas! - 1 } })),
+  );
+  await Promise.all(
+    participantesFrescos
+      .filter((p) => p.areaTrampaPorRondas != null && p.areaTrampaPorRondas > 0)
+      .map((p) => tx.combatParticipant.update({ where: { id: p.id }, data: { areaTrampaPorRondas: p.areaTrampaPorRondas! - 1 } })),
   );
   await tx.combatEncounter.update({
     where: { id: encounterId },

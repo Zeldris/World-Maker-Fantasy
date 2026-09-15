@@ -134,7 +134,7 @@ function inferToneFromLore(lore: string): string {
   // "sagrad-" 2 — grepeado contra el catálogo real, no inventado, para no añadir buckets que nunca
   // vayan a disparar en la práctica.
   // Bug real (2026-08-31): "ceniza" también aparece en nombres propios sin relación con terreno
-  // volcánico — "Karot Vekhad, el Salón del Colmillo Ceniza" (Location, cuya propia descripción
+  // volcánico — "Ketg'lukar, el Salón del Colmillo Ceniza" (Location, cuya propia descripción
   // menciona además "el humo" de los talleres de oficio) y "tótem... Gargantúa de Ceniza tallada"
   // (Faction Clan Serhu) — ambos en Las Llanuras del Viento Rojo, sin volcán real en su lore, pero
   // el prompt les metía "volcanic haze, cracked scorched ground". "humo"/"humean" se probaron como

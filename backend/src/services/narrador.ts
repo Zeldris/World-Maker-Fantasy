@@ -1027,6 +1027,34 @@ function rollBlockFor(roll: RollResult): string {
   return `${base}FALLO. Puedes no revelar nada de interés, o revelar algo a medias/engañoso.`;
 }
 
+/// Warm-up del narrador al arrancar el servidor (2026-09-14, server.ts) — necesita un prompt REAL,
+/// no cualquier texto: Ollama/llama.cpp cachea el KV-cache por coincidencia exacta de PREFIJO de
+/// tokens (ver comentario de `fixedInstructions` más abajo, "D1, caché de prefijo"), y el prefijo
+/// real de un turno son ~900 tokens de instrucciones fijas (`GOOD_NARRATION_EXAMPLE` +
+/// `fixedInstructions`) que van SIEMPRE primero, idénticos en cada turno de cualquier partida.
+/// Medido en vivo (2026-09-14): un warm-up con un prompt corto cualquiera ("Hola") deja
+/// `prompt_eval_duration` en ~6.7s para el primer turno real (907 tokens sin cachear); repetir el
+/// MISMO prefijo real baja eso a ~0.5s — la diferencia que de verdad importa, no capturada por
+/// mirar solo `ollama ps`/`load_duration` (esos confirman que los PESOS están en GPU, no que el
+/// prompt esté cacheado). Construye un `TurnContext` mínimo (caso más común: fuera de combate,
+/// banda normal, sin Reino) y reutiliza `buildNarrationPrompt` en vez de copiar el texto a mano,
+/// mismo criterio que ya usa `generate-distillation-dataset.ts` (ver comentario de esa función,
+/// justo abajo) — así nunca se desincroniza si `fixedInstructions` cambia.
+///
+/// 2026-09-14 (mismo día, hallazgo posterior): al principio este warm-up solo beneficiaba turnos
+/// SIN NPC en escena — `combatBlock` (con el nombre real de cada NPC no-agresivo presente) vivía
+/// dentro de `fixedInstructions`, así que el prefijo cacheable variaba según qué NPC hubiera. Se
+/// movió `combatBlock` fuera de `fixedInstructions` (ver ese comentario más abajo) precisamente
+/// para que este warm-up cubra también la mayoría de turnos reales, no solo el caso de exploración
+/// en solitario.
+export function narratorWarmupPrompt(): string {
+  return buildNarrationPrompt({
+    worldFacts: [],
+    characterSummary: '',
+    action: '',
+  }).prompt;
+}
+
 /// Paso 2 del turno: narra con el resultado de la tirada ya fijado (o sin tirada si no hacía falta).
 /// Extraído de narrateAction (2026-08-07, plan "IA local propia") como función pura sin efectos
 /// secundarios ni llamadas a Ollama — el script de destilación (generate-distillation-dataset.ts)
@@ -1139,7 +1167,23 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
   // acción) va al final. Nota 2026-07-22: medido en vivo que el prefill de un prompt típico
   // (~900 tokens) tarda ~0.3s en este hardware — perder algo de caché de prefijo por variar
   // `lengthGuidance` es coste real pero insignificante frente a los 60s+ que domina el decode.
-  const fixedInstructions = `${lengthGuidance} NARRA SIEMPRE EN TERCERA PERSONA sobre el personaje del jugador, por su nombre (checklist consolidado P1.6/P1.7, 2026-08-27, bug real jugando en vivo: la narración saltaba a segunda persona a mitad de párrafo — "El orco... lanzándola hacia Gorhorn... Tu hacha... tu pecho" — mezclando registros dentro de la misma frase) — nunca "tú"/"tu"/"te" refiriéndote al personaje del jugador, aunque estas instrucciones a TI (el modelo) sí usen esa forma para hablarte. Solo el diálogo citado entre comillas de un NPC dirigiéndose al jugador puede usar la segunda persona ("¿Has visto algo?", te pregunta). NUNCA termines la narración con preguntas retóricas dirigidas al jugador (nada de "¿qué harás?", "¿te arriesgas?", "¿continúas?") ni le ofrezcas explícitamente una lista de opciones a elegir — eso lo decide el jugador con su siguiente acción libre, no el narrador proponiéndoselo. TONO DEL PERSONAJE DEL JUGADOR (auditoría 2026-08-12, "descolocación de tono" — bug real jugando en vivo: un acercamiento pacífico y explícito, manos vacías y en calma, se narró como si el personaje exigiera y desafiara): el tono/actitud que el jugador describe explícitamente en su propia acción (calma, cortesía, agresividad...) define cómo actúa y se comporta SU personaje en esta narración — nunca lo sustituyas por uno contrario. Esto no limita cómo reacciona el NPC: puede responder con su propia personalidad (hostil, huidizo, indiferente...) aunque el tono del jugador sea distinto — el tono ajeno del NPC no debe "contagiar" cómo se describe al personaje del jugador. RECORDATORIO DE MUNDO (mundo medieval-fantástico): JAMÁS menciones pólvora, armas de fuego, metal industrial, plástico, electricidad ni ningún objeto o tecnología moderna/anacrónica — ni como ambientación ni como detalle suelto. Si necesitas un olor o peligro genérico, usa algo coherente con el lugar (sudor, sangre, humo de leña, arcilla, azufre volcánico), nunca un cliché de videojuego moderno. No contradigas los hechos ya establecidos sobre el propio personaje (por ejemplo, si va solo, no le des compañeros, seguidores o un grupo propio que no existían antes) ni repitas como si fuera nuevo un lugar o hecho que ya aparece en HECHOS DEL MUNDO. Si la narración revela algo que el personaje ahora sabe o que cambia la situación, añádelo también a "newFacts" como frase corta, para que se recuerde en turnos futuros. Sí puedes improvisar libremente NPCs sin nombre o sucesos menores que no tengan peso en la trama (un viajero anónimo, un ruido, el clima) — pero si a cualquier NPC (con nombre o improvisado) le describes un arma, armadura o material, usa solo los ya establecidos en este mundo (hierro, hueso, cuero o piel curtida, madera, hielo sílice, arcilla): nunca inventes un material distinto (nada de bronce, acero, cobre, obsidiana ni ningún otro que no hayas visto ya en HECHOS DEL MUNDO). Igual con cualquier animal o criatura que aparezca (con nombre o improvisado): usa solo fauna ya establecida en este mundo (la que se te da como pista de posible encuentro, la ya vista en HECHOS DEL MUNDO, o el bestiario propio de este lugar) — nunca un animal mundano del mundo real que no exista aquí (zorro, ciervo, conejo, lobo, oso...). Solo si la acción resulta de verdad en que el personaje consigue o fabrica un objeto físico duradero (no algo que se consume o desaparece en la escena), rellena "newItem" con su nombre y descripción — en caso contrario déjalo en null; esto pasará en la minoría de turnos, no en cada uno. Igual para "newCompanion": solo si la acción resulta de verdad en ganar un aliado o compañero de verdad (nunca lo inventes de la nada ni contradigas que el personaje va solo), rellénalo con nombre/rol/notas; si no, déjalo en null.
+  //
+  // 2026-09-14 (investigación warm-up, decisión técnica 15): `combatBlock` (con `nonHostileHint`/
+  // `ambushHint`, que incluyen el NOMBRE REAL de cada NPC en escena) se sacó de aquí a propósito —
+  // vivía al final de `fixedInstructions` pese a NO ser fijo (varía según qué NPC esté presente),
+  // lo que rompía el caché de prefijo del warm-up en cuanto había cualquier NPC en escena (la
+  // mayoría de turnos reales). Ahora `fixedInstructions` es de verdad idéntico letra a letra en
+  // todos los turnos de cualquier partida, y `combatBlock` se coloca más abajo, junto a `rollBlock`
+  // y ACCIÓN DEL JUGADOR — la parte que ya variaba turno a turno de todos modos.
+  const fixedInstructions = `${lengthGuidance}
+
+PERSPECTIVA: NARRA SIEMPRE EN TERCERA PERSONA sobre el personaje del jugador, por su nombre (checklist consolidado P1.6/P1.7, 2026-08-27, bug real jugando en vivo: la narración saltaba a segunda persona a mitad de párrafo — "El orco... lanzándola hacia Gorhorn... Tu hacha... tu pecho" — mezclando registros dentro de la misma frase) — nunca "tú"/"tu"/"te" refiriéndote al personaje del jugador, aunque estas instrucciones a TI (el modelo) sí usen esa forma para hablarte. Solo el diálogo citado entre comillas de un NPC dirigiéndose al jugador puede usar la segunda persona dentro de esa cita — redacta SIEMPRE una frase nueva para esa cita, propia de TU escena real, nunca una frase genérica o previsible que pudiera repetirse turno tras turno o partida tras partida (bug real jugando en vivo, 2026-09-15: dos NPC sin relación entre sí dijeron literalmente la misma frase "¿Has visto algo?" — un NPC nuevo tiene que sonar distinto de cualquier otro, aunque comparta el mismo motivo o situación). NUNCA termines la narración con preguntas retóricas dirigidas al jugador (nada de "¿qué harás?", "¿te arriesgas?", "¿continúas?") ni le ofrezcas explícitamente una lista de opciones a elegir — eso lo decide el jugador con su siguiente acción libre, no el narrador proponiéndoselo.
+
+TONO: el tono/actitud que el jugador describe explícitamente en su propia acción (calma, cortesía, agresividad...) define cómo actúa y se comporta SU personaje en esta narración — nunca lo sustituyas por uno contrario (auditoría 2026-08-12, "descolocación de tono" — bug real jugando en vivo: un acercamiento pacífico y explícito, manos vacías y en calma, se narró como si el personaje exigiera y desafiara). Esto no limita cómo reacciona el NPC: puede responder con su propia personalidad (hostil, huidizo, indiferente...) aunque el tono del jugador sea distinto — el tono ajeno del NPC no debe "contagiar" cómo se describe al personaje del jugador.
+
+MUNDO: JAMÁS menciones pólvora, armas de fuego, metal industrial, plástico, electricidad ni ningún objeto o tecnología moderna/anacrónica — ni como ambientación ni como detalle suelto. Si necesitas un olor o peligro genérico, usa algo coherente con el lugar (sudor, sangre, humo de leña, arcilla, azufre volcánico), nunca un cliché de videojuego moderno. No contradigas los hechos ya establecidos sobre el propio personaje (por ejemplo, si va solo, no le des compañeros, seguidores o un grupo propio que no existían antes) ni repitas como si fuera nuevo un lugar o hecho que ya aparece en HECHOS DEL MUNDO. Si a cualquier NPC (con nombre o improvisado) le describes un arma, armadura o material, usa solo los ya establecidos en este mundo (hierro, hueso, cuero o piel curtida, madera, hielo sílice, arcilla): nunca inventes un material distinto (nada de bronce, acero, cobre, obsidiana ni ningún otro que no hayas visto ya en HECHOS DEL MUNDO). Igual con cualquier animal o criatura que aparezca (con nombre o improvisado): usa solo fauna ya establecida en este mundo (la que se te da como pista de posible encuentro, la ya vista en HECHOS DEL MUNDO, o el bestiario propio de este lugar) — nunca un animal mundano del mundo real que no exista aquí (zorro, ciervo, conejo, lobo, oso...). Sí puedes improvisar libremente NPCs sin nombre o sucesos menores que no tengan peso en la trama (un viajero anónimo, un ruido, el clima).
+
+CAMPOS OPCIONALES (todos poco frecuentes, la mayoría de turnos van en null): si la narración revela algo que el personaje ahora sabe o que cambia la situación, añádelo también a "newFacts" como frase corta, para que se recuerde en turnos futuros. Solo si la acción resulta de verdad en que el personaje consigue o fabrica un objeto físico duradero (no algo que se consume o desaparece en la escena), rellena "newItem" con su nombre y descripción — en caso contrario déjalo en null. Igual para "newCompanion": solo si la acción resulta de verdad en ganar un aliado o compañero de verdad (nunca lo inventes de la nada ni contradigas que el personaje va solo), rellénalo con nombre/rol/notas; si no, déjalo en null.
 
 Progresión: si este turno logra algo significativo que no sea solo superar la tirada (un descubrimiento importante, cerrar un objetivo menor, cerrar un objetivo mayor/misión larga), rellena "hito" con "descubrimiento", "objetivo_menor" u "objetivo_mayor" — en caso contrario, null. Esto es poco frecuente, no pasa en cada turno.
 
@@ -1153,8 +1197,7 @@ ${
     reinoActive
       ? '\nReino: solo si la acción resulta de verdad en que el personaje reclama un territorio, termina de construir un edificio, o gana un súbdito con nombre que sirve a su dominio (no un compañero de viaje personal, eso es "newCompanion"), rellena el campo correspondiente ("newTerritory", "newBuilding" o "newSubject") — el resto de turnos, todos en null. Muy poco frecuente.\n'
       : ''
-  }
-${combatBlock}`;
+  }`;
 
   const groundingBlock = ctx.weaklyGrounded
     ? 'No tenemos hechos específicos sobre esto — describe el entorno o el resultado de forma genérica y creíble (terreno, clima, sensaciones), sin inventar fauna, personajes con nombre, clanes ni objetos con historia propia.'
@@ -1183,6 +1226,8 @@ ${factsBlock(ctx.worldFacts)}${backgroundLoreBlock}
 ${groundingBlock}
 
 ${rollBlock}
+
+${combatBlock}
 
 ACCIÓN DEL JUGADOR:
 "${ctx.action}"

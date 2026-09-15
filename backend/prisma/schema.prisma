@@ -992,6 +992,14 @@ model Companion {
   /// true = ocupa el slot de mascota GARANTIZADO del Domador (companeros-y-supervivencia.md § 2),
   /// separado por completo de `companionSlotsForRecipeKey` — no compite contra Campamento/Choza.
   esSlotDomador        Boolean          @default(false)
+  /// Alfa de la Manada real (2026-09-14, docs/rpgtarkor/clases.md — Domador 40, capstone) — con la
+  /// habilidad desbloqueada (`save.level >= 40` y Domador), el jugador tiene 2 slots garantizados
+  /// de Domador (`esSlotDomador: true` en ambos) y puede elegir UNO de los dos como Alfa, con un
+  /// buff extra propio (+2 fuerza) por encima del buff pasivo compartido (+2 voluntad a ambas
+  /// bestias si están equipadas — ese buff compartido no depende de `esAlfa`, solo de tener 2 slots
+  /// de Domador ocupados). Como mucho un `Companion` por `saveId` puede tener `esAlfa: true` —
+  /// invariante aplicado en la ruta que lo asigna, no a nivel de base de datos.
+  esAlfa               Boolean          @default(false)
   /// Integración en el Reino (§2/§6-7) — 'guardia'/'trabajador'/'productor' (convención libre,
   /// mismo criterio que `role`), null = solo compañero personal, no integrado. Requiere Reino
   /// (con o sin slot de Domador/edificio ya resuelto aparte); el rol concreto depende de la
@@ -1200,6 +1208,62 @@ model CombatParticipant {
   /// Companion ya basta). Nunca se resetea a `false` (mismo criterio idempotente que el resto de
   /// estos campos "Grupo").
   dismissedGrupo            Boolean?
+  /// `PROVOCACION` real (2026-09-14, docs/rpgtarkor/clases.md — Guardián 16/19, Lancero 32,
+  /// Especialista 28, Caballero del Valor 12/28) — cuántas rondas le quedan a este combatiente
+  /// PROVOCADO: mientras dure, si le toca ELEGIR objetivo en `resolverEnganchesRonda` (§2 de
+  /// combate-multiple.md), no usa su IA normal — es forzado a reclamar a `provocadoPorId`. Mismo
+  /// criterio de decremento que `ocultoPorRondas`/`expulsadoPorRondas` (una vez por ronda, nunca
+  /// dentro de la misma ronda en que se fija). Null/0 = no provocado.
+  provocadoPorRondas        Int?
+  /// Quién provocó a este combatiente — otro `CombatParticipant.id`, siempre del bando CONTRARIO
+  /// (nunca tiene sentido provocarte a ti mismo hacia tu propio bando). Se lee solo cuando
+  /// `provocadoPorRondas > 0`; queda con el último valor tras expirar (no se limpia a propósito,
+  /// mismo criterio que el resto de campos "PorRondas" de este modelo — nunca se lee sin comprobar
+  /// primero el contador).
+  provocadoPorId            String?
+  /// `CANALIZAR` real en combate múltiple (2026-09-14, docs/rpgtarkor/clases.md — Tirador 24,
+  /// Berserker 40, Convocador 40, Maestro Arquero/Ballestero) — mismo mecanismo ya construido para
+  /// el 1v1 clásico (`Save.pendingCanalizacion`, turnResolution.ts), portado a `CombatParticipant`
+  /// porque aquí el "objetivo" ya no es un único NPC fijo (`PendingCanalizacion.npcId`): en combate
+  /// múltiple el objetivo real es quien te tenga enganchado esa ronda (`objetivoActualId`), así que
+  /// no hace falta guardarlo aparte. Shape real: `{ abilityName, attribute, attributeBonus,
+  /// effects }` (mismo shape que `PendingCanalizacion` menos `npcId`) — null = no canalizando.
+  /// "CANALIZAR no da nada por sí solo, solo implica que la habilidad tarda X turnos (1 si la ficha
+  /// no especifica) — si te golpean [con un golpe DECISIVO] se corta la canalización" (diseño
+  /// confirmado por Álvaro, mismo criterio que el 1v1). Se limpia a `null` tanto al completarse
+  /// (dispara el golpe diferido) como al cortarse (golpe decisivo recibido mientras canaliza).
+  canalizando               Json?
+  /// `MARCAR` real (2026-09-14, docs/rpgtarkor/clases.md — Domador 24, Concentración del Domador)
+  /// — cuántas rondas le queda a ESTE combatiente (siempre un COMPANION) forzado a elegir
+  /// `marcaObjetivoId` en vez de su IA normal de Inteligencia (`elegirObjetivo`,
+  /// combateMultiple.ts). Mecanismo inverso a `provocadoPorRondas` (ahí el motor decide a quién te
+  /// fuerzan a atacar A TI; aquí el jugador decide a quién fuerza a atacar SU COMPANION) — vive en
+  /// el propio `CombatParticipant` del Companion, no del objetivo marcado, porque es él quien
+  /// recibe la instrucción. Mismo criterio de decremento que `provocadoPorRondas` (una vez por
+  /// ronda). Null/0 = sin marca activa, el Companion sigue su IA normal.
+  marcaObjetivoRondas       Int?
+  /// A quién debe atacar preferentemente — otro `CombatParticipant.id`, siempre del bando
+  /// CONTRARIO al del Companion. Se lee solo cuando `marcaObjetivoRondas > 0`; si el objetivo
+  /// marcado muere/deja de ser candidato válido antes de expirar la marca, el Companion cae de
+  /// vuelta a su IA normal ese turno (mismo criterio de "sin candidato válido" del resto del motor
+  /// — nunca fuerza un objetivo inválido).
+  marcaObjetivoId           String?
+  /// `AREA` real, variante DEFENSIVA (2026-09-14, docs/rpgtarkor/clases.md — Instintivo 28,
+  /// Instinto de Reserva: "te defiende de TODOS los ataques dirigidos a ti") — cuántas rondas le
+  /// queda a ESTE combatiente el efecto de área activo. A diferencia de un disparo único, esto NO
+  /// se resuelve una vez al activarlo: mientras `areaDefensaPorRondas > 0`, CADA intercambio donde
+  /// este combatiente defiende tira SU PROPIA tirada de defensa con el margen decisivo normal — si
+  /// la gana, intercepta el golpe (mismo criterio que AGUANTE ya existente, pero repetido cada
+  /// intercambio en vez de una sola vez). Null/0 = sin efecto activo, defensa normal.
+  areaDefensaPorRondas      Int?
+  /// `AREA` real, variante PERSISTENTE (2026-09-14, docs/rpgtarkor/clases.md — Supervivencia 32,
+  /// Trampa Improvisada: "todo el que le ataque se queda aturdido", trampa que dura 2 turnos) —
+  /// cuántas rondas le queda a la trampa de ESTE combatiente (quien la colocó, no el objetivo).
+  /// Mientras `areaTrampaPorRondas > 0`, CUALQUIERA que ataque a este combatiente dispara su propia
+  /// tirada (margen decisivo del propio combatiente, no del agresor) — si la gana, el agresor queda
+  /// aturdido, sin importar quién sea (a diferencia de PROVOCACION/MARCAR, no fija un objetivo
+  /// concreto de antemano). Null/0 = sin trampa activa.
+  areaTrampaPorRondas       Int?
   createdAt                 DateTime              @default(now())
 
   @@index([encounterId])
@@ -1289,7 +1353,7 @@ enum AbilityEffect {
   /// arriba es el único de este lote ya implementado, ver su comentario): INVOCACION/MULTIPLE/
   /// DESVIAR/ATENCION/OCULTACION exigen combate multi-objetivo de verdad (hoy es estrictamente
   /// 1v1) — CONTROL/COMPANERO se implementaron 2026-08-26 sin esperar a esa infraestructura (ver
-  /// sus propios comentarios más abajo). RETIRAR/CANALIZAR/CURAZION/REFLEJAR/EXPULSAR exigen
+  /// sus propios comentarios más abajo). LIMPIAR/CANALIZAR/CURAZION/REFLEJAR/EXPULSAR exigen
   /// efectos con duración real (turnos que se cuentan y expiran) — no existe todavía en el motor.
   /// Nombre + comentario de diseño se quedan tal cual hasta que se aborden aparte.
   //Invocar ser o seres que duran una cantidad de turnos determinada y luego desaparecen. Apoyos en el combate, sin equipo
@@ -1306,8 +1370,15 @@ enum AbilityEffect {
   /// consecuencias — y sigue sin resolver la duración real de "temporalmente" (no hay sistema de
   /// turnos/expiración). Se deja para una pasada aparte, no a medias.
   AUMENTO
-  //Permite retirarse del combate a un punto seguro
-  RETIRAR
+  //Limpia un efecto adverso (DEBILIDAD) propio activo
+  /// Renombrado de RETIRAR a LIMPIAR (2026-09-15) — el nombre original inducía a pensar en "huir
+  /// del combate", pero nunca fue eso: limpia un efecto DEBILIDAD encima tuyo. El sistema de HUIDA
+  /// real es independiente (combatLore.ts, tirada de Destreza), no pasa por este AbilityEffect.
+  /// IMPLEMENTADO (2026-09-15, docs/rpgtarkor/clases.md — Caballero del Valor 16/32, Manto de
+  /// Purificación/Purga de Honor) — limpia el DEBILIDAD de MAYOR magnitud negativa entre los
+  /// activos (ninguna ficha real aclara el criterio si hay varios; sin ningún DEBILIDAD activo, el
+  /// efecto se pierde en silencio, mismo criterio de "sin candidato válido" del resto del motor).
+  LIMPIAR
   //Efecto de habilidad que requiere de un turno de recarga para utilizar su efecto
   CANALIZAR
   //Proporciona efectos de curacion y recupera estados
@@ -1369,6 +1440,26 @@ enum AbilityEffect {
   /// diferencia de AUMENTO/DEBILIDAD, no depende de duración por turnos: se resuelve entero
   /// dentro del mismo intercambio, igual que ATAQUE/ATURDIMIENTO — solo hacía falta darlo de alta.
   CONVERSION
+  //Efecto que marca a un objetivo para que tu compañero/presa lo ataque preferentemente durante los turnos que indique la habilidad
+  /// IMPLEMENTADO (2026-09-14, docs/rpgtarkor/clases.md § Domador — Concentración del Domador,
+  /// único efecto del documento sin dar de alta hasta esta fecha) — mecanismo inverso al de
+  /// PROVOCACION (fuerza a un RIVAL a atacarte a ti): aquí se fuerza a TU COMPANION a elegir un
+  /// objetivo concreto en vez de su IA normal de Inteligencia (`elegirObjetivo`,
+  /// combateMultiple.ts). Ver `CombatParticipant.marcadoParaId`/`marcaObjetivoId`.
+  MARCAR
+  //Efecto que alcanza a TODOS los rivales/aliados de un bando a la vez (o a cuantos indique la
+  //habilidad), distinto de MULTIPLE (siempre exactamente un objetivo extra puntual)
+  /// IMPLEMENTADO (2026-09-14, docs/rpgtarkor/clases.md — Opresor 32/36, Instintivo 28,
+  /// Supervivencia 32) — genuinamente distinto de MULTIPLE (`objetivoExtraFor`, exactamente 1 extra
+  /// aleatorio): 3 variantes reales, todas con UNA sola tirada del jugador/atacante, nunca tirada
+  /// individual por rival — (1) ofensivo: dispara con margen decisivo, alcanza a TODOS los vivos
+  /// del bando contrario al defensor (`objetivosExtraFor`, generalización de `objetivoExtraFor` sin
+  /// tope de cantidad); (2) defensivo (Instinto de Reserva): se resuelve por intercambio
+  /// individual — cada vez que alguien ataca a quien lo activó, SU propia tirada de defensa decide
+  /// si ese golpe concreto se intercepta, mientras el efecto siga vivo (columna de duración); (3)
+  /// persistente (Trampa Improvisada): columna de duración sobre quien la colocó, aplica el efecto
+  /// a cualquiera que la ataque mientras esté viva, sin importar quién sea.
+  AREA
 }
 
 /// Rol mecánico de una habilidad (rediseño de combate, 2026-08-09, petición explícita: "una
@@ -2144,6 +2235,19 @@ model Npc {
   /// filtro comprueba ahora para las excepciones. Default `true` — solo se pone `false` en
   /// PRINCIPAL de regiones todavía no jugables (worldCatalog.ts).
   nucleoJugable       Boolean              @default(true)
+  /// Compañero de fauna con nombre propio de OTRO Npc de catálogo (auditoría de lore 2026-09-13,
+  /// hallazgo C10: "Gogorath"/"Gisoki" existían solo como texto libre en el `bio` de sus dueños,
+  /// sin ficha real ni nivel ni equipo propios). Slug del Npc dueño, referencia laxa sin FK —
+  /// mismo criterio que `homeLocationSlug`/`faction` (el catálogo entero usa strings libres para
+  /// relaciones blandas, nunca fuerza una FK sobre datos de seed). Solo tiene sentido en una fila
+  /// de fauna (`faunaCategoria`/`ataqueNatural` no-null, `clase`/`raza` null) — un compañero con
+  /// nombre reutiliza exactamente el mismo shape que cualquier otra fila de fauna del catálogo
+  /// (ver `gargantua-de-ceniza`/`aullador-rojo`), solo que `kind: PRINCIPAL` (individuo con
+  /// nombre, no especie genérica) y protegido (`capturablePct`/`domesticablePct`/`reclutablePct:
+  /// 0` — ya pertenece a su dueño, el jugador no puede cazarlo/domesticarlo/reclutarlo aparte).
+  /// Null = NPC sin compañero (la inmensa mayoría). El enganche a combate múltiple vive en
+  /// `turnResolution.ts` (ver comentario junto a `resolveCombatSlugsAndPersist`).
+  companionOfNpcSlug  String?
 
   items              NpcItem[]
   npcStates          NpcState[]

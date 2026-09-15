@@ -199,6 +199,17 @@ export async function closeItemQuests(params: {
   }
 }
 
+/// Aviso (sin cerrar nada) de que un NPC tiene misión(es) activas de "derrotar a X" pendientes de
+/// él (2026-09-15, hallazgo real jugando en vivo: Clemente/Capturar dejan al NPC vivo — por diseño
+/// explícito de 2026-08-31, `completeNpcTargetQuests` solo cierra con MUERTE real — pero el panel
+/// de Misiones no dice nada más: sigue "ACTIVA" sin ninguna pista de que el objetivo real sigue
+/// vivo y rematable). Solo lectura, nunca toca `Quest.status` — el caller (Clemente/Capturar en
+/// `session.ts`/`companeros.ts`) lo añade a su respuesta para que el frontend pueda avisar.
+export async function activeQuestTitlesTargeting(tx: Prisma.TransactionClient, saveId: string, npcId: string): Promise<string[]> {
+  const quests = await tx.quest.findMany({ where: { saveId, targetNpcId: npcId, status: 'ACTIVA' }, select: { title: true } });
+  return quests.map((q) => q.title);
+}
+
 /// Cierre determinista de misión "derrotar a X" (`Quest.targetNpcId`) + recompensa real (docs/19
 /// pieza 3) — extraído para no duplicar el mismo bloque (buscar quests activas por `targetNpcId`,
 /// cerrarlas, conceder `rewardItems`/`rewardXp`, narrar) entre el ataque normal y "Decapitar", los

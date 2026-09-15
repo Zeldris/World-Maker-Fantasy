@@ -43,6 +43,33 @@ export function zonaDinamicoToDetailSource(d: ZonaDinamicoInfo): ZonePointDetail
   return { targetSlug: d.slug, nombre: d.nombre, tipo: d.tipo, color: d.color, droppedItemId: d.droppedItemId, descubierto: d.descubierto }
 }
 
+/// Cuerpo compartido de "badges + estado de descubrimiento/enciclopedia" (auditoría de lore
+/// 2026-09-13, C10 — extraído para `ZoneGroupDetailModal.tsx`, que necesita renderizar este mismo
+/// bloque dos veces, una por entidad del grupo, sin duplicar el JSX).
+export function ZonePointDetailBody({ point }: { point: ZonePointDetailSource }) {
+  const { enciclopediaIndex, onEntityDetail } = useEnciclopediaLink()
+  const target = enciclopediaIndex.bySlugKey.get(`fauna:${point.targetSlug}`) ?? enciclopediaIndex.bySlugKey.get(`npc:${point.targetSlug}`)
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap gap-1.5 text-2xs">
+        <span className="rounded-full border border-iron-700 bg-wood-950/50 px-2.5 py-1 uppercase tracking-wide text-wood-400">{TIPO_LABEL[point.tipo]}</span>
+        <span className="rounded-full border border-iron-700 bg-wood-950/50 px-2.5 py-1 uppercase tracking-wide text-wood-400">{COLOR_LABEL[point.color]}</span>
+        {!!point.cantidad && point.cantidad > 1 && <span className="rounded-full border border-iron-700 bg-wood-950/50 px-2.5 py-1 uppercase tracking-wide text-wood-400">×{point.cantidad}</span>}
+      </div>
+      {!point.descubierto ? (
+        <p className="text-xs italic text-wood-500">Todavía no lo has descubierto en la partida.</p>
+      ) : target ? (
+        <button type="button" onClick={() => onEntityDetail?.(target)} className="self-start text-xs text-accent-400 underline decoration-dotted underline-offset-2 hover:text-accent-300">
+          Ver en la Enciclopedia
+        </button>
+      ) : (
+        <p className="text-xs italic text-wood-500">Todavía sin ficha propia en la Enciclopedia.</p>
+      )}
+    </div>
+  )
+}
+
 /// Modal de detalle de un pin de Zona (2026-09-04, petición explícita jugando en vivo: "teniendo
 /// tanta zona estas montando uno sobre otros... cuesta saber solo con ese texto que hay" — el
 /// único feedback que daba un pin hasta ahora era el `<title>` nativo del SVG, un tooltip por hover

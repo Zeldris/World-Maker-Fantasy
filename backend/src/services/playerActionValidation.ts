@@ -11,7 +11,7 @@
 /// (`classifyAction`, narrador.ts) — si detecta una violación, el turno se resuelve aquí mismo con
 /// una frase determinista en la voz de Gorhorn, sin gastar ni un segundo de generación.
 import { normalizeText, detectsTravelIntent, detectsVagueMovementIntent, matchDestination } from './travel.js';
-import { matchNpcAliases, detectsAttackIntent, detectsDialogueIntent, detectsHostileSearchIntent } from './npcScene.js';
+import { matchNpcAliases, detectsAttackIntent, detectsDialogueIntent, detectsHostileSearchIntent, candidateNpcNamesNotInScene } from './npcScene.js';
 import { detectsSearchIntent } from './discovery.js';
 import { ANACHRONISM_REGEX } from './narrador.js';
 import { matchHarvestSource, matchesVerbForMetodo, matchesAnyHarvestVerb } from './harvest.js';
@@ -210,6 +210,62 @@ export function absentSceneNpcNarrationFor(nombre: string): string {
   return line(nombre);
 }
 
+/// Verbo/preposición de diálogo DIRIGIDO a una persona concreta — más estrecho a propósito que
+/// `DIALOGUE_INTENT_REGEX` (npcScene.ts), que dispara con cualquier "?"/"!"/comillas sueltas y
+/// serviría de poco aquí (demasiado amplio). También más estrecho que un primer intento con "me
+/// acerco a"/"me dirijo a"/"miro a(cia)" — esas formas son ambiguas con un LUGAR ("me acerco a la
+/// cueva", "me dirijo a la aldea"), no solo con una persona, y hubieran bloqueado turnos de
+/// movimiento normal por error. Solo verbos de habla en sí, que no tienen lectura de movimiento.
+const DIALOGUE_TARGET_REGEX = /\bhablo con\b|\bhablar con\b|\bpregunto a\b|\ble pregunto\b/i;
+
+/// Hallazgo real jugando en vivo (2026-09-15): con Gistera Koh (ya conocida, mencionada varias
+/// veces en el log) presente en escena, dirigirse a ella por DESCRIPCIÓN libre ("la mujer orca del
+/// Clan Serhu") en vez de su nombre propio no matchea ningún alias real (`matchNpcAliases` solo
+/// compara contra `npc.aliases`, curados a mano, nunca contra descripciones genéricas) — el turno
+/// caía a narración libre sin ningún guard, y el LLM improvisaba a quién responde: una vez
+/// confundiéndola con "Bulco de Arena" (un ItemCatalog de comida, sin relación), otra citando un
+/// NPC real del catálogo pero de otra escena por completo ("Sella Marn", ya protegido de aparecer
+/// como candidato de escena por `nucleoJugable === false` en `detectNpcsInScene` — el motor nunca
+/// lo resolvió como presente, pero el LLM lo conocía igual por su propio entrenamiento y lo citó).
+///
+/// Mismo patrón que el resto de esta familia: si hay al menos un NPC real CANDIDATO en esta escena/
+/// región (mismo filtro que `detectNpcsInScene` usa internamente, expuesto vía
+/// `candidateNpcNamesNotInScene` con `excludeIds` vacío — así "candidatos" incluye a TODOS los
+/// plausibles, ya autorizados o no) y el jugador claramente dirige la acción hacia "alguien"
+/// (`DIALOGUE_TARGET_REGEX`) sin que `detectNpcsInScene` haya resuelto a NADIE (`npcsInSceneSlugs`
+/// vacío pese a haber candidatos), el motor bloquea ANTES de narrar en vez de dejar que el LLM
+/// decida a quién responde. Deliberadamente NO se amplía `matchNpcAliases` con descripciones
+/// genéricas (raza/clan/rol) — historial real del proyecto (`NPC_ALIAS_FUZZY_EXCLUSIONS`,
+/// npcScene.ts) ya documenta que una palabra de clan/facción suelta ("Serhu") confunde a varios NPC
+/// del mismo clan entre sí (Torgash/Ulkha con Gistera) — más barato y seguro pedirle al jugador que
+/// use el nombre ya revelado que arriesgar ese mismo bug de nuevo con una lista curada a mano.
+export async function detectsUnresolvedDialogueTargetClaim(
+  action: string,
+  npcsInSceneSlugs: string[],
+  worldId: string,
+  saveId: string,
+  currentLocationId: string | null,
+): Promise<boolean> {
+  if (npcsInSceneSlugs.length > 0) return false;
+  if (!DIALOGUE_TARGET_REGEX.test(action)) return false;
+  const candidateNames = await candidateNpcNamesNotInScene(worldId, saveId, currentLocationId, new Set());
+  return candidateNames.length > 0;
+}
+
+/// Mismo criterio que `ABSENT_NPC_LINES` — pool de 5, sin nombre concreto (a diferencia de esa
+/// familia, aquí no hay ningún nombre real que citar: el jugador nunca llegó a nombrar a nadie).
+const UNRESOLVED_DIALOGUE_TARGET_LINES: string[] = [
+  'Gorhorn no tiene claro a quién se dirige exactamente. «¿A quién te refieres?», pregunta, esperando un nombre.',
+  'Gorhorn duda un instante — hay más de una posibilidad aquí. Necesita saber a quién se refiere con claridad.',
+  'No queda claro con quién quiere hablar Gorhorn. Se detiene, esperando que quede más claro a quién se dirige.',
+  'Gorhorn frunce el ceño. La descripción no basta para saber a quién se dirige — necesita un nombre.',
+  'Gorhorn mira alrededor, sin saber bien a quién dirigirse. «¿Quién, exactamente?», pregunta en voz alta.',
+];
+
+export function unresolvedDialogueTargetNarrationFor(): string {
+  return pickRandomLine(UNRESOLVED_DIALOGUE_TARGET_LINES);
+}
+
 export interface FabricatedNpcClaim {
   /// Nombre citado por el jugador tal cual, entre comillas.
   quotedName: string;
@@ -403,6 +459,59 @@ const DETERMINISTIC_ACTION_UNAVAILABLE_LINES: string[] = [
 
 export function deterministicActionUnavailableNarrationFor(): string {
   return pickRandomLine(DETERMINISTIC_ACTION_UNAVAILABLE_LINES);
+}
+
+/// Verbos de atadura/inmovilización (hallazgo real jugando en vivo, 2026-09-15: "Intento capturar
+/// al Orco Enfurecido convaleciente, atándolo" se narró con éxito — "le ata las muñecas con un
+/// trozo de cuero curado" — SIN que el jugador tuviera cuerdas en el inventario. El botón dedicado
+/// "Capturar en la zona" (`companeros.ts`, `POST /saves/:id/capturar/:npcSlug`) SÍ exige cuerdas
+/// reales y bloquea sin ellas — el camino de texto libre no consultaba el inventario en absoluto
+/// antes de dejar narrar la atadura). Mismo criterio que `WEAPON_WIELD_VERB_REGEX`: solo dispara
+/// con verbo de intención real en la misma frase, nunca por mención suelta ("recuerdo que até a
+/// alguien una vez" no debe bloquear).
+/// Bug real cazado por los propios tests de esta pieza (2026-09-15), dos rondas:
+/// 1. La primera versión usaba `at[oaáé]\w*` para cubrir "ato/ata/até" — coincide también con
+///    "ataco"/"atacar"/"atacó", que bloqueaba prácticamente CUALQUIER acción de combate normal sin
+///    cuerdas. Acotado a las formas reales de "atar" (nunca "atac-"): deliberadamente NO usa `\w*`
+///    suelto tras la raíz corta, para no volver a capturar ningún otro verbo que empiece igual.
+/// 2. Con el verbo ya acotado, seguía colisionando con un caso real EXISTENTE del proyecto:
+///    "Ato un vendaje con mi manojo de salvia del polvo" (crafteo real, "atar" = "confeccionar/
+///    vendar", nunca dirigido a una persona). El regex del verbo por sí solo no puede distinguir
+///    "atar un objeto" de "atar a alguien" — el caller (`turn.ts`) exige ADEMÁS que la frase
+///    mencione a un NPC real presente en la escena (`npcsInSceneForValidation.length > 0`) antes de
+///    llamar a este detector: craftear un objeto nunca menciona a ningún NPC, atar a alguien sí.
+export const BINDING_VERB_REGEX = /\b(atar\w*|atas|at[oaáé]|atad\w*|atand\w*|amarr\w*|maniat\w*|inmoviliz\w*|amordaz\w*)\b/i;
+
+export interface BindingWithoutRopesClaim {
+  /// Verbo/fragmento que disparó el chequeo — solo para depuración, no se usa en la narración
+  /// (la frase de vuelta no necesita citar el verbo exacto).
+  matchedVerb: string;
+}
+
+/// Detecta si el jugador reclama atar/inmovilizar a alguien SIN tener cuerdas reales en el
+/// inventario — mismo espíritu que `detectsUnequippedWeaponClaim` (reclamar usar algo que no se
+/// tiene), pero contra el inventario general (`InventoryItem.catalogSlug`), no contra equipo
+/// puesto. `tieneCuerdas` lo resuelve el caller con una única consulta barata (mismo criterio que
+/// `cuerdasItem` en `companeros.ts`) — este detector no toca Prisma, solo texto. El caller también
+/// exige que haya un NPC real en escena antes de llamar aquí (ver comentario de `BINDING_VERB_REGEX`
+/// sobre "atar un objeto" vs. "atar a alguien") — este detector en sí NO lo comprueba.
+export function detectsBindingWithoutRopesClaim(action: string, tieneCuerdas: boolean): BindingWithoutRopesClaim | null {
+  if (tieneCuerdas) return null;
+  const match = action.match(BINDING_VERB_REGEX);
+  return match ? { matchedVerb: match[0] } : null;
+}
+
+/// Mismo criterio que el resto del archivo — pool de 5, 1 cómica menos frecuente.
+const BINDING_WITHOUT_ROPES_LINES: string[] = [
+  'Gorhorn busca con qué atarlo, pero no lleva nada capaz de sujetar a nadie de verdad. La idea se queda en eso, una idea.',
+  'Sus manos se cierran en el aire, buscando una cuerda que no tiene. Sin nada con qué atar, no hay atadura posible.',
+  'Gorhorn palpa su equipo, pero no encuentra nada con lo que inmovilizar a nadie — necesitaría cuerdas de verdad para eso.',
+  'No lleva encima nada que sirva para atar a alguien. Gorhorn lo deja estar, por ahora.',
+  'Gorhorn se mira las manos vacías. «¿Con qué le ato, con mis propios dedos?» Resopla y abandona la idea.',
+];
+
+export function bindingWithoutRopesNarrationFor(): string {
+  return pickRandomLine(BINDING_WITHOUT_ROPES_LINES);
 }
 
 /// Dirección cardinal mencionada en el texto ("camino hacia el norte", "me dirijo al sur") — hoy no

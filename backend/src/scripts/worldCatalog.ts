@@ -56,7 +56,7 @@ export const locations: LocationInput[] = [
 
   {
     slug: 'campamento-serhu',
-    name: 'Karot Veku - Campamento del Clan Serhu',
+    name: 'Colmillo Ceniza - Karot Veku',
     region: 'Las Llanuras del Viento Rojo',
     kind: 'asentamiento',
     description:
@@ -83,12 +83,12 @@ export const locations: LocationInput[] = [
   // punto nuevo del mapa de MUNDO, vive "dentro" de las mismas coordenadas que campamento-serhu.
   {
     slug: 'campamento-serhu-interior',
-    name: 'Karot Veku — Karot Vekhad',
+    name: 'Hogar Ketg - Ketg\'lukar',
     region: 'Las Llanuras del Viento Rojo',
     kind: 'interior',
     description:
-      'Dentro de la empalizada de Karot Veku: tierra apisonada en torno a una plaza central, sendas marcadas por el paso constante entre los distintos puntos del poblado — cada construcción real (Karot Vekhad, talleres de cada oficio) tiene su propia ubicación marcada en el mapa de la zona, sin representarlas ya prefijadas en el fondo. En el centro simbólico, el Karot Vekhad — el Salón del Colmillo Ceniza —, donde la Terk\'ikar Ulkha Ketg y el Kort\'ikar Torgash Ketg reciben a quien cruza la entrada.',
-    aliases: ['karot vekhad', 'el salón del colmillo ceniza', 'dentro de karot veku', 'interior del campamento serhu'],
+      'Dentro de la empalizada de Karot Veku: tierra apisonada en torno a una plaza central, sendas marcadas por el paso constante entre los distintos puntos del poblado — cada construcción real (Ketg\'lukar, talleres de cada oficio) tiene su propia ubicación marcada en el mapa de la zona, sin representarlas ya prefijadas en el fondo. En el centro simbólico, el Ketg\'sedsar Karot Veku — el Salón Ketg del Colmillo Ceniza —, donde la Terk\'ikar Ulkha Ketg y el Kort\'ikar Torgash Ketg reciben a quien cruza la entrada.',
+    aliases: ['ketg\'lukar', 'ketg\'sedsar','ketglukar', 'ketgsedsar'],
   },
 
   {
@@ -408,13 +408,13 @@ export const locations: LocationInput[] = [
   },
 
   {
-    slug: 'vergel-de-kegi',
-    name: 'El Vergel de Kegi',
+    slug: 'yegr-kegi',
+    name: 'Vergel de la Arena - Yegr Kegi',
     region: 'Las Llanuras del Viento Rojo',
     kind: 'coto de caza',
     description:
-      'Coto de caza y comercio de los Faerus de la llanura, más allá de su poblado de Kegi — el punto donde su artesanía en pieles y su relación con los orcos se pone a prueba cara a cara.',
-    aliases: ['el vergel de kegi', 'vergel de kegi'],
+      'Coto de caza y comercio de los Faerus de la llanura, donde se encuentra su puesto avanzado Yegr Kegi — el punto donde su artesanía en pieles y su relación con los orcos se pone a prueba cara a cara.',
+    aliases: ['vergel de la arena', 'yegr kegi'],
     // Coordenada Y corregida 2026-09-06 (auditoría de lore, hallazgo A8): estaba en -175, fuera de
     // rango del resto del núcleo (~-42 a 54) — probable error de escala/tecleo. Recalculada por
     // proporción al minutosBase (300 min, frente a los 320 de Grieta Cantora) para dar ~43
@@ -422,6 +422,15 @@ export const locations: LocationInput[] = [
     // posición jugando en vivo y podrá ajustarla si no encaja del todo.
     x: -8,
     y: -60,
+  },
+  {
+    slug: 'jakut-ger-interior',
+    name: 'Trono Rojo - Jakut Ger',
+    region: 'Las Llanuras del Viento Rojo',
+    kind: 'interior',
+    description:
+      'Dentro de los muros de hueso que marcan la zona de la manada se puede encontrar un gran salón de piel y hueso, el Jakut Ger, decorado con grandes calaveras y prolongados huesos tallados en forma de garras — aquí los guerreros y sabios se reúnen para planear y mantener las relaciones de comercio con los pocos orcos que deciden probar suerte.',
+    aliases: ['jakut ger', 'trono rojo'],
   },
 
   {
@@ -497,15 +506,27 @@ export const locations: LocationInput[] = [
   // ══════════════════════════════════════════════════════════════════════════
 
   {
-    slug: 'campamento-clan-helsig',
-    name: 'Helske Tugh - Campamento del Clan Helsig',
+    slug: 'campamento-helsig',
+    name: 'Honor Helado - Helske Tugh',
     region: 'Cristal Helado',
     kind: 'asentamiento',
     description:
-      'A los pies de la ladera, la tribu orca del Clan Helsig, expertos en tallar hielo sílice, turnos de mina y caza escasa. Aquí trabajó Gorhorn tres meses de joven, y aquí sigue Hagar.',
-    aliases: ['Helske Tugh', 'Campamento del clan helsig'],
+      'A los pies de la ladera, la tribu orca del Clan Helsig (Honor Helado), expertos en tallar hielo sílice, turnos de mina y caza escasa. Aquí trabajó Gorhorn tres meses de joven, y aquí sigue Hagar.',
+    aliases: ['helske tugh', 'campamento del clan helsig', 'honor helado'],
   },
-
+  {
+    slug: 'campamento-helsig-interior',
+    name: 'Hogar Helsig - Helsig\'lukar',
+    // Fix real (2026-09-13, auditoría de lore Helek) — región corregida de "Las Llanuras del
+    // Viento Rojo" a "Cristal Helado": el Clan Helsig vive en Cristal Helado (ver
+    // `campamento-helsig`, justo arriba), probable copia-pega del bloque de
+    // `campamento-serhu-interior` sin actualizar este campo.
+    region: 'Cristal Helado',
+    kind: 'interior',
+    description:
+      'Dentro de la empalizada de Helske Tugh se encuentra el salón Helsig\'sedsar, en el centro del poblado — junto a los talleres de oficio de los suyos, cada uno con su propia ubicación en el mapa de la zona.',
+    aliases: ['helsig\'lukar', 'helsig\'sedsar', 'helsiglukar', 'helsigsedsar'],
+  },
   {
     slug: 'veta-helada',
     name: 'La Veta Helada',
@@ -613,25 +634,49 @@ export const locations: LocationInput[] = [
   // ══════════════════════════════════════════════════════════════════════════
 
   {
-    slug: 'campamento-clan-goshg',
-    name: 'Makut Silh - Campamento del Clan Goshg',
+    slug: 'campamento-goshg',
+    name: 'Piel Musgo - Silh Makut',
     region: 'Ciénaga Troncal',
     kind: 'asentamiento',
     description:
-      "El mayor de los dos poblados del Clan Goshg — empalizadas de madera oscura levantadas sobre pilotes por encima del agua, unidas por pasarelas y canoas. Aquí se reúnen las dos tribus Goshg en la estación de las crecidas. Hogar de la Terk'ikar Doshka, que gobierna la tribu, y su hermano menor, el Kort'ikar Dulgren, que lidera la guerra. Fuera del núcleo jugable actual.",
-    aliases: ['cerco de los pilotes', 'el cerco', 'pilotes', 'poblado goshg', 'makut silh'],
+      "Campamento del Clan Goshg — empalizadas de madera oscura levantadas sobre pilotes por encima del agua, unidas por pasarelas y canoas. Aquí se reúnen las dos tribus Goshg en la estación de las crecidas. Hogar de la Terk'ikar Doshka, que gobierna la tribu, y su hermano menor, el Kort'ikar Dulgren, que lidera la guerra. Fuera del núcleo jugable actual.",
+    aliases: ['silh makut', 'piel musgo', 'campamento del clan goshg'],
   },
-
   {
-    slug: 'campamento-clan-keseg-prisilke',
-    name: 'Jeyselt - Campamento del Clan Keseg Prisilke',
+    slug: 'campamento-goshg-interior',
+    name: 'Hogar Goshg - Goshg\'lukar',
+    // Fix real (2026-09-13, auditoría de lore Helek) — región corregida de "Las Llanuras del
+    // Viento Rojo" a "Ciénaga Troncal": el Clan Goshg vive en Ciénaga Troncal (ver
+    // `campamento-goshg`, justo arriba). Descripción también corregida — decía literalmente
+    // "Helske Tugh" (el campamento del Clan HELSIG), pegado sin adaptar del bloque de Helsig.
+    region: 'Ciénaga Troncal',
+    kind: 'interior',
+    description:
+      "Dentro de la empalizada de Silh Makut se encuentra el salón Goshg'sedsar, sede de la Terk'ikar Doshka y el Kort'ikar Dulgren.",
+    aliases: ['goshg\'lukar', 'goshg\'sedsar', 'goshglukar', 'goshgsedsar'],
+  },
+  {
+    slug: 'conclave-keseg-prisilke',
+    name: 'Conclave Fin Susurrado - Keseg Prisilke',
     region: 'Ciénaga Troncal',
     kind: 'asentamiento',
     description:
-      'Poblado Nabieus en la explanada más pequeña del sur de la ciénaga, del clan Keseg Prisilke — nombre en lengua común: Fin Susurrado. Cuerpos adaptados a vivir en las zonas más difíciles del pantano, distintos de sus parientes del Margen Silencioso. Sin conexión previa con Gorhorn. Fuera del núcleo jugable actual.',
-    aliases: ['jeyselt', 'fin susurrado', 'keseg prisilke', 'poblado nabieus de la cienaga'],
+      'Poblado Nabieus en la explanada más pequeña del sur de la ciénaga, del conclave Keseg Prisilke — nombre en lengua común: Fin Susurrado. Cuerpos adaptados a vivir en las zonas más difíciles del pantano, distintos de sus parientes del Margen Silencioso. Sin conexión previa con Gorhorn. Fuera del núcleo jugable actual.',
+    aliases: ['conclave fin susurrado', 'keseg prisilke'],
   },
-
+  {
+    slug: 'conclave-keseg-prisilke-interior',
+    name: 'Jeyselet',
+    region: 'Ciénaga Troncal',
+    // Fix real (2026-09-13, auditoría de lore Helek) — `kind` corregido de 'asentamiento' a
+    // 'interior' (mismo bug de copia-pega que `campamento-feg-tusha-interior` más abajo): un
+    // interior no debe duplicarse como asentamiento propio del mapa de mundo, es parte del mismo
+    // punto que su exterior (`conclave-keseg-prisilke`).
+    kind: 'interior',
+    description:
+      'Dentro de la empalizada de Keseg Prisilke se encuentra el salón Jeyselet.',
+    aliases: ['jeyselet'],
+  },
   {
     slug: 'trepaderes-humededos',
     name: 'Los Trepaderes Humededos',
@@ -646,6 +691,87 @@ export const locations: LocationInput[] = [
     // Goshg") + "Troncal" suelto). 'cienaga troncal'/'ciénaga troncal' ya cubren de sobra la mención
     // real sin ser prefijo de nada más.
     aliases: ['trepaderes humedos', 'trepaderes húmededos'],
+  },
+  {
+    slug: 'marismas-lodo-negro',
+    name: 'Marismas de Lodo negro',
+    region: 'Ciénaga Troncal',
+    kind: 'región',
+    description:
+      'Marismas que sea crean de la mezcla de resina de Bolco (Arbol oscuro de resina negra) el agua y el fango gris. En la superficie acumulan los restos mas espesos de la resina formando una capa protectora y viscosa, bajo esta una red tuneles submarinos con el agua mas puro y cristalina de Berig.',
+    aliases: ['marismas de lodo negro'],
+  },
+  {
+    slug: 'tuneles-musgosos',
+    name: 'Tuneles Musgosos',
+    region: 'Ciénaga Troncal',
+    kind: 'región',
+    description:
+      '',
+    aliases: ['tuneles musgosos'],
+  },
+  {
+    slug: 'raices-madre-fango',
+    name: 'Raices Madre Fango',
+    region: 'Ciénaga Troncal',
+    kind: 'región',
+    description:
+      '',
+    aliases: ['raices madre fango'],
+  },
+  {
+    slug: 'cumbre-bruma-negra',
+    name: 'Cumbre Bruma Negra',
+    region: 'Ciénaga Troncal',
+    kind: 'región',
+    description:
+      '',
+    aliases: ['cumbre bruma negra'],
+  },
+  {
+    slug: 'cataratas-madre-fango',
+    name: 'Cataratas Madre Fango',
+    region: 'Ciénaga Troncal',
+    kind: 'región',
+    description:
+      '',
+    aliases: ['cataratas madre fango'],
+  },
+  {
+    slug: 'costa-marea-vida',
+    name: 'Costa Marea Vida',
+    region: 'Ciénaga Troncal',
+    kind: 'región',
+    description:
+      '',
+    aliases: ['costa marea vida'],
+  },
+  {
+    slug: 'costa-corredor',
+    name: 'Costa Corredor',
+    region: 'Ciénaga Troncal',
+    kind: 'región',
+    description:
+      '',
+    aliases: ['costa corredor'],
+  },
+  {
+    slug: 'embarcadero-goshg',
+    name: 'Embarcadero Silh Makut',
+    region: 'Ciénaga Troncal',
+    kind: 'región',
+    description:
+      '',
+    aliases: ['embarcadero silh makut'],
+  },
+  {
+    slug: 'desfiladero-esmeralda',
+    name: 'Desfiladero Esmeralda',
+    region: 'Ciénaga Troncal',
+    kind: 'región',
+    description:
+      '',
+    aliases: ['desfiladero esmeralda'],
   },
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -663,8 +789,8 @@ export const locations: LocationInput[] = [
   },
 
   {
-    slug: 'hashma',
-    name: 'Hashma',
+    slug: 'campamento-feg-tusha',
+    name: 'Selviterna - Hashma',
     region: 'El Margen Silencioso',
     kind: 'asentamiento',
     description:
@@ -674,17 +800,21 @@ export const locations: LocationInput[] = [
     // patrón ya arreglado antes en este archivo para 'las agujas'/'clan serhu' (ver comentarios de
     // 'agujas-iman'/'campamento-serhu' arriba). 'selviterna'/'feg tusha' ya identifican Hashma sin
     // ambigüedad.
-    aliases: ['hashma', 'selviterna', 'feg tusha'],
+    aliases: ['hashma', 'selviterna', 'campamento feg tusha'],
   },
-
   {
-    slug: 'kegi',
-    name: 'Kegi',
+    slug: 'campamento-feg-tusha-interior',
+    name: 'Trono Madre - Jakut Tusha',
     region: 'El Margen Silencioso',
-    kind: 'asentamiento',
+    // Fix real (2026-09-13, auditoría de lore Helek) — `kind` corregido de 'asentamiento' a
+    // 'interior', mismo bug que `conclave-keseg-prisilke-interior`. Alias corregidos: este slug
+    // nació de renombrar el antiguo 'kegi' (ver worldCatalog.ts, historial), pero conservaba sus
+    // alias viejos ('kegi', 'poblado faerus de las llanuras') sin actualizar — ya no describen el
+    // nuevo nombre. Erratas de redacción también corregidas.
+    kind: 'interior',
     description:
-      'El otro poblado Faerus, más pequeño que Hashma, en la frontera occidental del Margen Silencioso con las Llanuras del Viento Rojo — habitado por los Faerus de las llanuras, que han desarrollado comercio y una frágil amistad con los clanes orcos vecinos; más "sociables" y de artesanía más desarrollada que sus parientes de la selva. Fuera del núcleo jugable actual.',
-    aliases: ['kegi', 'poblado faerus de las llanuras'],
+      'Dentro de la espesa jungla, en lo alto del árbol más robusto, se puede encontrar un gran salón de piel y hueso, el Jakut Tusha, decorado con grandes calaveras y prolongados huesos tallados en forma de garras — aquí los guerreros y sabios se reúnen para planear sus siguientes movimientos.',
+    aliases: ['jakut tusha', 'trono madre'],
   },
 
   {
@@ -748,7 +878,7 @@ export const locationTerrainTags: Record<string, TerrainTag[]> = {
   'fumarolas-negras': ['rocoso', 'volcanico'],
   'paso-de-los-huesos': ['rocoso','arido'],
   'sabana-alta-colmillar': ['vegetacion','arido'],
-  'vergel-de-kegi': ['vegetacion','humedo'],
+  'yegr-kegi': ['vegetacion','humedo'],
   'grieta-cantora': ['rocoso'],
   'campo-yermo': ['arido'],
 };
@@ -1048,7 +1178,7 @@ export const locationLinks: LocationLinkInput[] = [
   // --- Desde El Cruce de las Cenizas: frontera con El Margen Silencioso ---
   {
     fromSlug: 'cruce-de-las-cenizas',
-    toSlug: 'vergel-de-kegi',
+    toSlug: 'yegr-kegi',
     minutosBase: 300,
     terreno: 'Frontera boscosa con El Margen Silencioso',
     riesgo: 'Territorio Faerus — el trato exige respeto',
@@ -1187,6 +1317,10 @@ export interface NpcInput {
   /// Default `true` (omitido = sí, es del núcleo) — solo se pone `false` explícitamente en los
   /// PRINCIPAL de regiones todavía no jugables (Berig, El Margen Silencioso...).
   nucleoJugable?: boolean;
+  /// Compañero de fauna con nombre propio de OTRO Npc de este catálogo (auditoría de lore
+  /// 2026-09-13, hallazgo C10) — slug del dueño, referencia laxa sin FK. Ver comentario completo
+  /// en schema.prisma § Npc.companionOfNpcSlug. Omitido = sin compañero (la inmensa mayoría).
+  companionOfNpcSlug?: string;
 }
 
 /// Fauna cazable (roadmap 2026-07-19, prioridad 1: "despiece exige presa previa"): antes el
@@ -2380,9 +2514,9 @@ export const npcs: NpcInput[] = [
     genero: 'M', // Bio explícita en masculino ("Orco corpulento") — misma auditoría de género, 2026-08-08.
     role: 'Guerrero sin clan, separado de los suyos',
     articulo: 'el',
-    level: 2,
-    levelMax: 3,
-    attributes: { fuerza: 14, destreza: 9, constitucion: 11, inteligencia: 7, voluntad: 11, carisma: 7, magia: 6 },
+    level: 1,
+    levelMax: 2,
+    attributes: { fuerza: 8, destreza: 6, constitucion: 11, inteligencia: 4, voluntad: 11, carisma: 4, magia: 0 },
     bio: 'Orco corpulento de piel beige y parda, curtida como la propia estepa de las Llanuras — cualquier pintura o marca de clan que llevara se ha desdibujado bajo meses de polvo y mala vida. Guerrero sin clan visible, separado de los suyos por la guerra o la desgracia — arquetipo instanciable, no un individuo con historia propia.',
     personality: 'Desconfiado, a la defensiva, impredecible según cómo se le aborde.',
     raza: 'orcos',
@@ -2391,11 +2525,11 @@ export const npcs: NpcInput[] = [
     clase: 'GUERRERO',
     especializacion: 'ESPECIALISTA',
     temperamento: 'CAUTELOSO',
-    comerciablePct: 10,
-    reclutablePct: 15,
+    comerciablePct: 0,
+    reclutablePct: 20,
     // Persuasión (2026-08-25) — "desconfiado, a la defensiva", resiste con pura voluntad recelosa.
     atributoResistencia: 'voluntad',
-    capturablePct: 20,
+    capturablePct: 40,
     loadout: [
       { itemSlug: 'maza-orca', notas: 'Mellada' },
       { itemSlug: 'racion-carne', cantidad: 1, notas: 'Pasada' },
@@ -2412,7 +2546,7 @@ export const npcs: NpcInput[] = [
     role: 'Joven cazadora en formación del Clan Serhu',
     level: 2,
     levelMax: 6,
-    attributes: { fuerza: 8, destreza: 14, constitucion: 8, inteligencia: 6, voluntad: 7, carisma: 6, magia: 2 },
+    attributes: { fuerza: 6, destreza: 12, constitucion: 6, inteligencia: 9, voluntad: 7, carisma: 8, magia: 0 },
     bio: 'Orca joven del Clan Serhu, todavía sin el volumen ni las cicatrices de un guerrero veterano — piel beige y parda como el resto del clan, colmillos aún cortos, marca de clan tatuada y reciente en el antebrazo. Sale a cazar o vigilar los alrededores del campamento.',
     personality: 'Curioso, algo fanfarrón, todavía sin la reserva de los guerreros veteranos.',
     homeLocationSlug: 'campamento-serhu',
@@ -2450,8 +2584,8 @@ export const npcs: NpcInput[] = [
     faction: 'Clan Serhu',
     genero: 'M', // Bio explícita en masculino ("Orco del Clan Serhu") — misma auditoría de género, 2026-08-08.
     role: "Kort'ikar del Clan Serhu",
-    level: 10,
-    attributes: { fuerza: 20, destreza: 12, constitucion: 22, inteligencia: 12, voluntad: 22, carisma: 12, magia: 6 },
+    level: 20,
+    attributes: { fuerza: 26, destreza: 14, constitucion: 32, inteligencia: 12, voluntad: 22, carisma: 12, magia: 8 },
     bio: 'Orco del Clan Serhu, de las Llanuras del Viento Rojo — piel en los tonos beige y arcilla propios de los orcos del desierto, corpulento incluso para los suyos, colmillos intactos de quien ha sobrevivido más duelos que la mayoría. Pelo negro ya veteado de gris, recogido en trenzas cortas con cuentas de hueso que marcan sus años de guerra. Veterano de las escaramuzas fronterizas; ascendió a Kort\'ikar cuando su predecesor murió en el frente. Busca unificar los clanes para retirar a su pueblo de la guerra de la Concordia. Carga en silencio con el peso de la incursión Goirnte que aniquiló al Clan Maktor mientras su propio clan se quedaba mirando sin intervenir — no fue decisión suya, era joven y sin mando entonces, pero es parte de por qué quiere sacar a los suyos de esta guerra antes de que se repita.',
     personality: 'Grave, económico con las palabras, pragmático hasta rozar la herejía cultural (prefiere pactar a duelar). Detesta a la Concordia en silencio.',
     homeLocationSlug: 'campamento-serhu',
@@ -2461,12 +2595,12 @@ export const npcs: NpcInput[] = [
     clase: 'GUERRERO',
     especializacion: 'GUARDIAN',
     temperamento: 'CAUTELOSO',
-    comerciablePct: 20,
-    reclutablePct: 5,
+    comerciablePct: 0,
+    reclutablePct: 0,
     // Persuasión (2026-08-25) — "grave, pragmático... prefiere pactar a duelar", resiste con pura
     // voluntad de líder, casi nunca cede por persuasión sola (reclutablePct 5).
     atributoResistencia: 'voluntad',
-    capturablePct: 5,
+    capturablePct: 0,
     loadout: [
       { itemSlug: 'hacha-guerra-orca', notas: 'Con la marca del Clan Serhu grabada en la cabeza' },
       { itemSlug: 'lanza-hueso-gargantua' },
@@ -2478,6 +2612,216 @@ export const npcs: NpcInput[] = [
       { itemSlug: 'racion-viaje', cantidad: 3 },
       { itemSlug: 'ascuas-raiz-fuego', cantidad: 1 },
       { itemSlug: 'odre-agua' },
+    ],
+  },
+  {
+    slug: 'guerrero-serhu',
+    name: 'Guerrero serhu',
+    kind: 'PLANTILLA',
+    aliases: ['guerrero serhu'],
+    faction: 'Clan Serhu',
+    genero: 'M',
+    role: 'Guerrero del Clan Serhu que patrullan las llanuras del Viento Rojo.',
+    articulo: 'el',
+    level: 4,
+    levelMax: 10,
+    attributes: { fuerza: 12, destreza: 8, constitucion: 11, inteligencia: 5, voluntad: 11, carisma: 4, magia: 0},
+    bio: '',
+    personality: '',
+    raza: 'orcos',
+    clase: 'GUERRERO',
+    especializacion: 'BERSERKER',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 0,
+    reclutablePct: 5,
+    atributoResistencia: 'voluntad',
+    capturablePct: 10,
+    loadout: [
+    ],
+  },
+  {
+    slug: 'guerrera-serhu',
+    name: 'Guerrera serhu',
+    kind: 'PLANTILLA',
+    aliases: ['guerrera serhu'],
+    faction: 'Clan Serhu',
+    genero: 'F',
+    role: 'Guerrera del Clan Serhu que patrullan las llanuras del Viento Rojo.',
+    articulo: 'la',
+    level: 6,
+    levelMax: 12,
+    attributes: { fuerza: 14, destreza: 9, constitucion: 9, inteligencia: 8, voluntad: 11, carisma: 6, magia: 0 },
+    bio: '',
+    personality: '',
+    raza: 'orcos',
+    clase: 'GUERRERO',
+    especializacion: 'BERSERKER',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 0,
+    reclutablePct: 5,
+    atributoResistencia: 'voluntad',
+    capturablePct: 10,
+    loadout: [
+    ],
+  },
+  {
+    slug: 'guardia-serhu',
+    name: 'Guardia serhu',
+    kind: 'PLANTILLA',
+    aliases: ['guardia serhu'],
+    faction: 'Clan Serhu',
+    genero: 'M',
+    role: 'Guardia de las murallas y del campamento del Clan Serhu - Karot Veku.',
+    articulo: 'el',
+    level: 16,
+    levelMax: 18,
+    attributes: { fuerza: 16, destreza: 12, constitucion: 22, inteligencia: 6, voluntad: 17, carisma: 10, magia: 0 },
+    bio: '',
+    personality: '',
+    raza: 'orcos',
+    clase: 'GUERRERO',
+    especializacion: 'GUARDIAN',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 0,
+    reclutablePct: 0,
+    atributoResistencia: 'voluntad',
+    capturablePct: 0,
+    loadout: [
+    ],
+  },
+  {
+    slug: 'ufag-ketg',
+    name: 'Ufag Ketg',
+    kind: 'PLANTILLA',
+    aliases: ['ufag ketg'],
+    faction: 'Clan Serhu',
+    genero: 'F',
+    role: 'Mesok\'ikar del Clan Serhu, unico chamán de la tribu y guía espiritual de los suyos.',
+    articulo: 'la',
+    level: 18,
+    attributes: { fuerza: 16, destreza: 18, constitucion: 18, inteligencia: 16, voluntad: 14, carisma: 10, magia: 22 },
+    bio: '',
+    personality: '',
+    raza: 'orcos',
+    clase: 'CHAMAN',
+    especializacion: 'OPRESOR',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 0,
+    reclutablePct: 0,
+    atributoResistencia: 'voluntad',
+    capturablePct: 0,
+    loadout: [
+    ],
+  },
+  {
+    slug: 'gisot-ketg',
+    name: 'Gisot Ketg',
+    kind: 'PLANTILLA',
+    aliases: ['gisot ketg'],
+    faction: 'Clan Serhu',
+    genero: 'M',
+    role: 'Mano derecha del Kort\'ikar del Clan Serhu, encargada de la seguridad y la vigilancia de los suyos.',
+    articulo: 'el',
+    level: 18,
+    attributes: { fuerza: 24, destreza: 14, constitucion: 18, inteligencia: 6, voluntad: 20, carisma: 10, magia: 0 },
+    bio: '',
+    personality: '',
+    raza: 'orcos',
+    clase: 'GUERRERO',
+    especializacion: 'BERSERKER',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 0,
+    reclutablePct: 0,
+    atributoResistencia: 'voluntad',
+    capturablePct: 0,
+    loadout: [
+    ],
+  },
+  {
+    slug: 'jorer-susig',
+    name: 'Jorer Susig',
+    kind: 'PLANTILLA',
+    aliases: ['jorer susig'],
+    faction: 'Clan Serhu',
+    genero: 'M',
+    role: 'Uno de los guardias de las murallas que perdio a su padre en manos de Torgash Ketg y acabo sometido.',
+    articulo: 'el',
+    level: 12,
+    attributes: { fuerza: 12, destreza: 12, constitucion: 14, inteligencia: 10, voluntad: 18, carisma: 12, magia: 0 },
+    bio: 'Guerrero sometido por los Ketg, su familia son de una larga sucesion de antiguos guerrerores que en el pasad eran fieles a los Maktor.Hermano de Tirag Susig',
+    personality: '',
+    raza: 'orcos',
+    clase: 'GUERRERO',
+    especializacion: 'LANCERO',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 0,
+    reclutablePct: 20,
+    atributoResistencia: 'carisma',
+    capturablePct: 0,
+    loadout: [
+    ],
+  },
+  {
+    // `kind` corregido de PLANTILLA a PRINCIPAL (auditoría de lore 2026-09-13, C9) — Tirag Susig
+    // es un personaje con nombre propio (hermana de Jorer Susig, compañera con nombre propio
+    // Gisoki), no una plantilla genérica de "cazadora Serhu cualquiera" — mismo criterio que
+    // Ulkha Ketg/Torgash Ketg, las otras fichas de nombre propio del Clan Serhu.
+    slug: 'tirag-susig',
+    name: 'Tirag Susig',
+    kind: 'PRINCIPAL',
+    aliases: ['tirag susig'],
+    faction: 'Clan Serhu',
+    genero: 'F',
+    role: 'Cazadora y exploradora para el clan Serhu.',
+    articulo: 'la',
+    level: 12,
+    attributes: { fuerza: 12, destreza: 12, constitucion: 14, inteligencia: 10, voluntad: 18, carisma: 12, magia: 0 },
+    // Erratas corregidas (C9): "sometido" → "sometida" (concuerda con Tirag, femenino),
+    // "guerrerores"/"pasad" → "guerreros"/"pasado".
+    bio: 'Cazadora sometida por los Ketg, su familia es de una larga sucesión de antiguos guerreros que en el pasado eran fieles a los Maktor. Hermana de Jorer Susig. Acompañada siempre por su compañero Gisoki, un aullador rojo que tiene una mecha blanca de pelo en la cabeza que lo caracteriza.',
+    personality: 'Reservada y desconfiada con los desconocidos, leal sin condiciones con quien ya se ha ganado su respeto — igual que Gisoki, no suelta a nadie una vez decide protegerlo.',
+    raza: 'orcos',
+    clase: 'CAZADOR',
+    especializacion: 'DOMADOR',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 0,
+    reclutablePct: 20,
+    atributoResistencia: 'carisma',
+    capturablePct: 0,
+    loadout: [
+    ],
+  },
+  {
+    // Compañero de fauna con nombre propio (auditoría de lore 2026-09-13, hallazgo C10) — hasta
+    // ahora solo mencionado en la bio de Tirag Susig. Mismo criterio que Gogorath/Ulkha Ketg más
+    // arriba: shape de fauna normal (`aullador-rojo` como especie base) con `kind: 'PRINCIPAL'`,
+    // protegido, y `companionOfNpcSlug` vinculándolo a su dueña.
+    slug: 'gisoki',
+    name: 'Gisoki',
+    kind: 'PRINCIPAL',
+    aliases: ['gisoki'],
+    faction: 'Clan Serhu',
+    genero: 'M',
+    role: 'Aullador rojo, compañero de la cazadora Tirag Susig',
+    articulo: 'el',
+    level: 10,
+    attributes: { fuerza: 8, destreza: 15, constitucion: 9, inteligencia: 9, voluntad: 9, carisma: 6, magia: 0 },
+    bio: 'Aullador rojo con una mecha blanca de pelo en la cabeza que lo distingue del resto de su especie. Domesticado por Tirag Susig, la sigue de cerca en cada partida de caza — donde una jauría entera huiría de un orco adulto, él se queda, entrenado para dar la cara junto a ella.',
+    personality: 'Alerta y receloso con cualquiera que no sea Tirag, se pega a sus talones sin que se lo pida.',
+    homeLocationSlug: 'campamento-serhu',
+    companionOfNpcSlug: 'tirag-susig',
+    loadout: [],
+    ataqueNatural: 'Clava sus colmillos curvos y amarillentos en los puntos débiles, exagerados para su tamaño.',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 0,
+    reclutablePct: 0,
+    domesticablePct: 0,
+    capturablePct: 0,
+    faunaCategoria: 'GUELISES',
+    habilidadesRaciales: [
+      { icon: '🐺', name: 'Posicion defensiva', description: 'Adopta una posición defensiva al enfrentar a sus enemigos y a la minima oportunidad contra ataca', categoria: 'defensa', preferredAttribute: 'destreza', level: 4, effects: ['AGUANTE'] },
+      { icon: '🔄', name: 'Filos centella', description: 'Se coloca en tu punto ciego y busca tus puntos débiles para atacar rapidamente con sus pronunciados colmillos.', categoria: 'ataque', preferredAttribute: 'destreza', level: 12, effects: ['ATAQUE'] },
+      { icon: '🦴', name: 'Adiestrado para Quedarse', description: 'A diferencia de su especie, nunca huye solo — entrenado para no abandonar a Tirag pase lo que pase.', categoria: 'utilidad', preferredAttribute: 'voluntad', level: 20, effects: ['AGUANTE'] },
     ],
   },
 
@@ -2512,7 +2856,52 @@ export const npcs: NpcInput[] = [
     capturablePct: 0,
     loadout: [],
   },
-
+  {
+    slug: 'herrero-serhu',
+    name: 'Herrero Serhu',
+    kind: 'PRINCIPAL',
+    aliases: ['herrero serhu'],
+    faction: 'Clan Serhu',
+    genero: 'M',
+    role: 'Herrero del Clan Serhu',
+    level: 1,
+    attributes: { fuerza: 8, destreza: 6, constitucion: 6, inteligencia: 4, voluntad: 6, carisma: 2, magia: 0 },
+    bio: 'Orco corpulento de manos cubiertas de quemaduras viejas ya curtidas, cejas chamuscadas por décadas frente a la fragua. Aprendices del maestro herrero.',
+    personality: 'Pocas palabras, su funcion es trabajar y ayudar al maestro herrero.',
+    homeLocationSlug: 'campamento-serhu-interior',
+    raza: 'orcos',
+    clase: 'GUERRERO',
+    especializacion: 'ESPECIALISTA',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 0,
+    reclutablePct: 5,
+    atributoResistencia: 'fuerza',
+    capturablePct: 20,
+    loadout: [],
+  },
+  {
+    slug: 'herrera-serhu',
+    name: 'Herrera Serhu',
+    kind: 'PRINCIPAL',
+    aliases: ['herrera serhu'],
+    faction: 'Clan Serhu',
+    genero: 'F',
+    role: 'Herrera del Clan Serhu',
+    level: 1,
+    attributes: { fuerza: 9, destreza: 6, constitucion: 6, inteligencia: 4, voluntad: 6, carisma: 2, magia: 0 },
+    bio: 'Orca corpulenta de manos cubiertas de quemaduras viejas ya curtidas, cejas chamuscadas por décadas frente a la fragua. Aprendices del maestro herrero.',
+    personality: 'Pocas palabras, su funcion es trabajar y ayudar al maestro herrero.',
+    homeLocationSlug: 'campamento-serhu-interior',
+    raza: 'orcos',
+    clase: 'GUERRERO',
+    especializacion: 'ESPECIALISTA',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 0,
+    reclutablePct: 5,
+    atributoResistencia: 'fuerza',
+    capturablePct: 20,
+    loadout: [],
+  },
   {
     slug: 'maestra-curtidora-serhu',
     name: 'Maestra Curtidora Serhu',
@@ -2538,7 +2927,52 @@ export const npcs: NpcInput[] = [
     capturablePct: 0,
     loadout: [],
   },
-
+  {
+    slug: 'curtidora-serhu',
+    name: 'Curtidora Serhu',
+    kind: 'PRINCIPAL',
+    aliases: ['curtidora serhu'],
+    faction: 'Clan Serhu',
+    genero: 'F',
+    role: 'Curtidora del Clan Serhu',
+    level: 1,
+    attributes: { fuerza: 9, destreza: 6, constitucion: 6, inteligencia: 4, voluntad: 6, carisma: 2, magia: 0 },
+    bio: 'Orca de dedos ágiles y manchados del tinte oscuro de las pieles que trabaja, siempre con un cuchillo curvo de desollador al cinto. Aprendices de la maestra curtidora.',
+    personality: 'Pocas palabras, su funcion es trabajar y ayudar a la maestra curtidora.',
+    homeLocationSlug: 'campamento-serhu-interior',
+    raza: 'orcos',
+    clase: 'CAZADOR',
+    especializacion: 'SUPERVIVENCIA',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 30,
+    reclutablePct: 0,
+    atributoResistencia: 'destreza',
+    capturablePct: 0,
+    loadout: [],
+  },
+  {
+    slug: 'curtidor-serhu',
+    name: 'Curtidor Serhu',
+    kind: 'PRINCIPAL',
+    aliases: ['curtidor serhu'],
+    faction: 'Clan Serhu',
+    genero: 'M',
+    role: 'Curtidor del Clan Serhu',
+    level: 1,
+    attributes: { fuerza: 9, destreza: 6, constitucion: 6, inteligencia: 4, voluntad: 6, carisma: 2, magia: 0 },
+    bio: 'Orco de dedos ágiles y manchados del tinte oscuro de las pieles que trabaja, siempre con un cuchillo curvo de desollador al cinto. Aprendices de la maestra curtidora.',
+    personality: 'Pocas palabras, su funcion es trabajar y ayudar a la maestra curtidora.',
+    homeLocationSlug: 'campamento-serhu-interior',
+    raza: 'orcos',
+    clase: 'CAZADOR',
+    especializacion: 'SUPERVIVENCIA',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 30,
+    reclutablePct: 0,
+    atributoResistencia: 'destreza',
+    capturablePct: 0,
+    loadout: [],
+  },
   {
     slug: 'maestro-cocinero-serhu',
     name: 'Maestro Cocinero Serhu',
@@ -2561,6 +2995,29 @@ export const npcs: NpcInput[] = [
     comerciablePct: 30,
     reclutablePct: 0,
     atributoResistencia: 'constitucion',
+    capturablePct: 0,
+    loadout: [],
+  },
+  {
+    slug: 'cocinero-serhu',
+    name: 'Cocinero Serhu',
+    kind: 'PRINCIPAL',
+    aliases: ['cocinero serhu'],
+    faction: 'Clan Serhu',
+    genero: 'M',
+    role: 'Cocinero del Clan Serhu',
+    level: 1,
+    attributes: { fuerza: 9, destreza: 6, constitucion: 6, inteligencia: 4, voluntad: 6, carisma: 2, magia: 0 },
+    bio: '',
+    personality: 'Pocas palabras, su funcion es trabajar y ayudar al maestro cocinero.',
+    homeLocationSlug: 'campamento-serhu-interior',
+    raza: 'orcos',
+    clase: 'CAZADOR',
+    especializacion: 'SUPERVIVENCIA',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 30,
+    reclutablePct: 0,
+    atributoResistencia: 'destreza',
     capturablePct: 0,
     loadout: [],
   },
@@ -2646,6 +3103,29 @@ export const npcs: NpcInput[] = [
     capturablePct: 0,
     loadout: [],
   },
+  {
+    slug: 'ganadero-serhu',
+    name: 'Ganadero Serhu',
+    kind: 'PRINCIPAL',
+    aliases: ['ganadero serhu'],
+    faction: 'Clan Serhu',
+    genero: 'M',
+    role: 'Ganadero del Clan Serhu',
+    level: 1,
+    attributes: { fuerza: 9, destreza: 6, constitucion: 6, inteligencia: 4, voluntad: 6, carisma: 2, magia: 0 },
+    bio: '',
+    personality: 'Pocas palabras, su funcion es trabajar y ayudar al maestro domador.',
+    homeLocationSlug: 'campamento-serhu-interior',
+    raza: 'orcos',
+    clase: 'CAZADOR',
+    especializacion: 'SUPERVIVENCIA',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 30,
+    reclutablePct: 0,
+    atributoResistencia: 'destreza',
+    capturablePct: 0,
+    loadout: [],
+  },
 
   {
     slug: 'maestro-desollador-serhu',
@@ -2672,7 +3152,29 @@ export const npcs: NpcInput[] = [
     capturablePct: 0,
     loadout: [],
   },
-
+  {
+    slug: 'desolladora-serhu',
+    name: 'Desolladora Serhu',
+    kind: 'PRINCIPAL',
+    aliases: ['desolladora serhu'],
+    faction: 'Clan Serhu',
+    genero: 'F',
+    role: 'Desolladora del Clan Serhu',
+    level: 1,
+    attributes: { fuerza: 9, destreza: 6, constitucion: 6, inteligencia: 4, voluntad: 6, carisma: 2, magia: 0 },
+    bio: '',
+    personality: 'Pocas palabras, su funcion es trabajar y ayudar al maestro desollador.',
+    homeLocationSlug: 'campamento-serhu-interior',
+    raza: 'orcos',
+    clase: 'CAZADOR',
+    especializacion: 'SUPERVIVENCIA',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 30,
+    reclutablePct: 0,
+    atributoResistencia: 'destreza',
+    capturablePct: 0,
+    loadout: [],
+  },
   {
     slug: 'maestro-peletero-serhu',
     name: 'Maestro Peletero Serhu',
@@ -2688,6 +3190,29 @@ export const npcs: NpcInput[] = [
     homeLocationSlug: 'campamento-serhu-interior',
     teachesProfession: 'peletero-orcos-llanuras',
     interactionTypes: ['MAESTRO_OFICIO'],
+    raza: 'orcos',
+    clase: 'CAZADOR',
+    especializacion: 'SUPERVIVENCIA',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 30,
+    reclutablePct: 0,
+    atributoResistencia: 'destreza',
+    capturablePct: 0,
+    loadout: [],
+  },
+  {
+    slug: 'peletero-serhu',
+    name: 'Peletero Serhu',
+    kind: 'PRINCIPAL',
+    aliases: ['peletero serhu'],
+    faction: 'Clan Serhu',
+    genero: 'M',
+    role: 'Peletero del Clan Serhu',
+    level: 1,
+    attributes: { fuerza: 9, destreza: 6, constitucion: 6, inteligencia: 4, voluntad: 6, carisma: 2, magia: 0 },
+    bio: '',
+    personality: 'Pocas palabras, su funcion es trabajar y ayudar al maestro peletero.',
+    homeLocationSlug: 'campamento-serhu-interior',
     raza: 'orcos',
     clase: 'CAZADOR',
     especializacion: 'SUPERVIVENCIA',
@@ -2745,6 +3270,52 @@ export const npcs: NpcInput[] = [
     homeLocationSlug: 'playa-de-ceniza-blanca',
     teachesProfession: 'pescador',
     interactionTypes: ['MAESTRO_OFICIO'],
+    raza: 'orcos',
+    clase: 'CAZADOR',
+    especializacion: 'SUPERVIVENCIA',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 30,
+    reclutablePct: 0,
+    atributoResistencia: 'destreza',
+    capturablePct: 0,
+    loadout: [],
+  },
+  {
+    slug: 'pescador-serhu',
+    name: 'Pescador Serhu',
+    kind: 'PRINCIPAL',
+    aliases: ['pescador serhu'],
+    faction: 'Clan Serhu',
+    genero: 'M',
+    role: 'Pescador del Clan Serhu',
+    level: 1,
+    attributes: { fuerza: 9, destreza: 6, constitucion: 6, inteligencia: 4, voluntad: 6, carisma: 2, magia: 0 },
+    bio: '',
+    personality: 'Pocas palabras, su funcion es trabajar y ayudar al maestro pescador.',
+    homeLocationSlug: 'campamento-serhu-interior',
+    raza: 'orcos',
+    clase: 'CAZADOR',
+    especializacion: 'SUPERVIVENCIA',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 30,
+    reclutablePct: 0,
+    atributoResistencia: 'destreza',
+    capturablePct: 0,
+    loadout: [],
+  },
+  {
+    slug: 'pescadora-serhu',
+    name: 'Pescadora Serhu',
+    kind: 'PRINCIPAL',
+    aliases: ['pescadora serhu'],
+    faction: 'Clan Serhu',
+    genero: 'F',
+    role: 'Pescadora del Clan Serhu',
+    level: 1,
+    attributes: { fuerza: 9, destreza: 6, constitucion: 6, inteligencia: 4, voluntad: 6, carisma: 2, magia: 0 },
+    bio: '',
+    personality: 'Pocas palabras, su funcion es trabajar y ayudar al maestro pescador.',
+    homeLocationSlug: 'campamento-serhu-interior',
     raza: 'orcos',
     clase: 'CAZADOR',
     especializacion: 'SUPERVIVENCIA',
@@ -2909,51 +3480,19 @@ export const npcs: NpcInput[] = [
     kind: 'PRINCIPAL',
     aliases: ['orco enfurecido'],
     faction: 'Clan Serhu',
-    // Bug real jugando en vivo (revisión de partida 2026-08-08): "se gira hacia la orca
-    // enfurecida... pero el Orco Enfurecido ya está a menos de diez pasos" — mismo género
-    // mezclado en la misma frase que ya se arregló para Gistera Koh (ver su comentario), nunca
-    // propagado al resto del roster. Bio explícita en masculino ("él mismo", "orco").
     genero: 'M',
     role: "Uno de los guerreros que mataron a Uhuld Koh por encargo Goirnte; persigue a Gistera Koh sin que sus compañeros lo sepan",
     articulo: 'el',
-    // Rebalanceo (2026-07-29, "el Orco Enfurecido... debería ser relativamente fácil ganar... no
-    // tan complicado como es ahora" — es el primer combate real del juego): bajado de nivel 2 a
-    // nivel 1 (mismo nivel que el personaje recién creado, la banda de dificultad más favorable) y
-    // fuerza/voluntad ligeramente reducidas frente a la versión original.
-    //
-    // Segundo rebalanceo (2026-09-04, hallazgo jugando en vivo el 2026-08-28: 8 turnos de
-    // intercambio solo bajaron a ambos combatientes a Grave — el motor de combate 1v1 usa tramos
-    // puros por golpe conectado, sin daño variable, así que con stats parejas el combate se alarga
-    // de forma natural). De paso se detectó un efecto colateral no intencionado: el 2026-09-02 se
-    // recalibró `amuleto-hueso` (por motivos de lore/cosmético, nada que ver con este combate) de
-    // `{carisma:3}` a `{voluntad:1, carisma:2}`, dándole a este NPC +1 voluntad efectiva que no
-    // tenía cuando se decidió el nerf de julio. Fuerza/constitución bajadas -2 cada una (las que de
-    // verdad pesan en la tirada de este NPC — sin magia/inteligencia relevantes en combate cuerpo a
-    // cuerpo) para compensar sin tener que tocar la fórmula de tirada/daño en sí.
     level: 1,
     attributes: { fuerza: 6, destreza: 4, constitucion: 5, inteligencia: 4, voluntad: 6, carisma: 2, magia: 0 },
     bio: "Orco del Clan Serhu, calvo y de complexión corpulenta, piel beige agrietada, sin pintura de clan visible — se la arrancó él mismo, en el mismo arranque de furia que lo trajo hasta aquí. Uno de los tres guerreros pagados en secreto por los Goirntes para asegurar la muerte del artesano Uhuld Koh, cuyo plan amenazaba con exponer la represión de los suyos: fue él quien le aplastó el cráneo con la maza después de que Uhuld, ya herido, lo alcanzara con el hacha. Vio huir esa misma noche a la hija adoptiva de Uhuld y la siguió por su cuenta, sin avisar a sus compañeros — ni él mismo sabe ya si por acabar el encargo o por una obsesión que se le ha ido de las manos. A pocos kilómetros del Karot Veku estuvo a punto de caer en una trampa que ella le tendió; la humillación de haberlo estado a punto de lograr una fugitiva a la que dobla en tamaño terminó de quebrarlo. Duerme y merodea en la Hondonada del Eco, donde el terreno hundido le permite ver llegar a cualquiera antes de que lo vean a él.",
     personality: 'Errático y violento con cualquiera, obsesivo con ella — ataca al primer contacto sin intentar hablar.',
     homeLocationSlug: 'hondonada-del-eco',
     raza: 'orcos',
-    // Berserker (2026-08-24, Grupo 3 § Sistema de clases) — "errático y violento, ataca al primer
-    // contacto sin intentar hablar", obsesivo y a punto de quebrarse: la rama de rabia/miedo, no
-    // el tanque ni el generalista.
     clase: 'GUERRERO',
     especializacion: 'BERSERKER',
     temperamento: 'AGRESIVO',
     capturablePct: 0,
-    // "Mapa de las Llanuras" quitado del loadout a propósito (2026-08-13, petición explícita:
-    // "el loot del orco será todo menos el mapa, el mapa se te dará como resultado de dejar
-    // inconsciente al orco") — ya no se saquea del cadáver, se entrega solo como recompensa real
-    // de la misión "Acabar con el Orco Enfurecido" (Quest.rewardItems, ver
-    // completeNpcTargetQuests en questResolution.ts), desacoplado del saqueo.
-    //
-    // `amuleto-hueso` retirado del loadout (2026-09-04, mismo rebalanceo de arriba): quitar de
-    // stats un bonus que solo existía porque el NPC lo llevaba puesto sin quitarlo también del
-    // saqueo habría sido incoherente (petición explícita: "se supone que la maza y el amuleto se
-    // consiguen porque lo vences"). Sustituido por vendaje + ración — loot de un guerrero de
-    // campaña real, no solo trofeos, y le da al jugador algo útil justo tras el primer combate.
     loadout: [
       { itemSlug: 'maza-orca', notas: 'Astillada, con sangre seca' },
       { itemSlug: 'vendaje-improvisado-orcos-llanuras', notas: 'A medio usar, manchado' },
@@ -3057,9 +3596,9 @@ export const npcs: NpcInput[] = [
     faction: 'Clan Serhu',
     genero: 'F', // Bio explícita en femenino ("Orca del Clan Serhu") — misma auditoría de género, 2026-08-08.
     role: "Terk'ikar del Clan Serhu",
-    level: 6,
-    attributes: { fuerza: 9, destreza: 8, constitucion: 9, inteligencia: 14, voluntad: 16, carisma: 15, magia: 4 },
-    bio: 'Orca del Clan Serhu, de las Llanuras del Viento Rojo — piel beige curtida por décadas de sol y viento, cabello gris casi blanco recogido en un moño alto sujeto con agujas de hueso de gargantúa. Menuda para una orca, su autoridad no se apoya en el físico sino en la voz baja y la mirada que no parpadea. Jefa del Clan Serhu; gobierna asentamiento, pastoreo y migraciones. Decidió no acoger supervivientes Maktor tras la aniquilación — por cálculo de supervivencia, no crueldad: acogerlos habría puesto una diana sobre su clan. Un Gorhorn vivo la enfrenta a esa decisión.',
+    level: 24,
+    attributes: { fuerza: 16, destreza: 28, constitucion: 14, inteligencia: 20, voluntad: 16, carisma: 15, magia: 0 },
+    bio: 'Orca del Clan Serhu, de las Llanuras del Viento Rojo — piel beige curtida por décadas de sol y viento, cabello gris casi blanco recogido en un moño alto sujeto con agujas de hueso de gargantúa. Menuda para una orca, su autoridad no se apoya en el físico sino en la voz baja y la mirada que no parpadea. Jefa del Clan Serhu; gobierna asentamiento, pastoreo y migraciones. Decidió no acoger supervivientes Maktor tras la aniquilación — por cálculo de supervivencia, no crueldad: acogerlos habría puesto una diana sobre su clan. Un Gorhorn vivo la enfrenta a esa decisión. Como compañero tiene sometido a un macho Gargantúa adulto llamado Gogorath, que tiene una cicatriz en el ojo izquierdo y sus color de piel es mas oscuro que la de sus hermanos.',
     personality: 'Fría en el cálculo y cálida en el trato, en ese orden. Guía a las Gargantúas en las migraciones — oficio aprendido, no magia.',
     homeLocationSlug: 'campamento-serhu',
     raza: 'orcos',
@@ -3072,11 +3611,11 @@ export const npcs: NpcInput[] = [
     clase: 'CAZADOR',
     especializacion: 'DOMADOR',
     temperamento: 'CAUTELOSO',
-    comerciablePct: 25,
-    reclutablePct: 10,
+    comerciablePct: 0,
+    reclutablePct: 0,
     // Persuasión (2026-08-25) — "fría en el cálculo", resiste razonando, no con orgullo ni fuerza.
     atributoResistencia: 'inteligencia',
-    capturablePct: 10,
+    capturablePct: 0,
     loadout: [
       { itemSlug: 'cuchillo-deshuello' },
       { itemSlug: 'manojo-salvia-polvo', cantidad: 3 },
@@ -3085,6 +3624,43 @@ export const npcs: NpcInput[] = [
       { itemSlug: 'odre-agua' },
       { itemSlug: 'cataplasma-salvia-polvo', cantidad: 2 },
       { itemSlug: 'cataplasma-flor-ceniza', cantidad: 2 },
+    ],
+  },
+  {
+    // Compañero de fauna con nombre propio (auditoría de lore 2026-09-13, hallazgo C10) — hasta
+    // ahora solo mencionado en la bio de Ulkha Ketg ("un macho Gargantúa adulto llamado Gogorath").
+    // Ficha real: mismo shape que cualquier otra fila de fauna del catálogo (`gargantua-de-ceniza`
+    // como especie base), pero `kind: 'PRINCIPAL'` (individuo con nombre, no plantilla genérica) y
+    // protegido (comerciable/reclutable/domesticable/capturable a 0 — ya pertenece a Ulkha, el
+    // jugador no puede cazarlo/domesticarlo aparte). `companionOfNpcSlug` lo vincula a su dueña
+    // para el icono de grupo en el mapa de Zona (ver zona.ts) — sin ZonePoint propio, se mueve
+    // siempre junto al de Ulkha.
+    slug: 'gogorath',
+    name: 'Gogorath',
+    kind: 'PRINCIPAL',
+    aliases: ['gogorath'],
+    faction: 'Clan Serhu',
+    genero: 'M',
+    role: 'Gargantúa sometido, compañero de la Terk\'ikar Ulkha Ketg',
+    articulo: 'el',
+    level: 18,
+    attributes: { fuerza: 22, destreza: 7, constitucion: 24, inteligencia: 5, voluntad: 10, carisma: 3, magia: 0 },
+    bio: 'Macho Gargantúa adulto, de piel más oscura que la del resto de su manada, con una cicatriz vieja que le cierra el ojo izquierdo. Sometido por Ulkha Ketg hace años, la sigue allá donde va — guía y protege las migraciones del Clan Serhu bajo su mando. Dócil con Ulkha y con quien ella señale, pero conserva todo el peligro de su especie si algo la amenaza de verdad.',
+    personality: 'Tranquilo mientras Ulkha esté cerca y en calma; se planta y embiste sin dudar si a ella la atacan.',
+    homeLocationSlug: 'campamento-serhu',
+    companionOfNpcSlug: 'ulkha-ketg',
+    loadout: [],
+    ataqueNatural: 'Embiste con todo su peso, aplastando lo que se interponga en su camino.',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 0,
+    reclutablePct: 0,
+    domesticablePct: 0,
+    capturablePct: 0,
+    faunaCategoria: 'BESTIONES',
+    habilidadesRaciales: [
+      { icon: '🦴', name: 'Coraza de Placas', description: 'Las gruesas placas óseas que le cubren el lomo absorben buena parte de cualquier golpe directo.', categoria: 'defensa', preferredAttribute: 'fuerza', level: 4, effects: ['AGUANTE'] },
+      { icon: '💥', name: 'Embestida Sísmica', description: 'Carga con todo su peso y puede derribar a quien no logre apartarse a tiempo.', categoria: 'ataque', preferredAttribute: 'fuerza', level: 12, effects: ['ATAQUE', 'ATURDIMIENTO'] },
+      { icon: '👁️', name: 'Furia del Vínculo Roto', description: 'Si Ulkha resulta herida delante de él, entra en una embestida ciega e imparable.', categoria: 'ataque', preferredAttribute: 'fuerza', level: 20, effects: ['ATAQUE'] },
     ],
   },
 
@@ -3214,8 +3790,8 @@ export const npcs: NpcInput[] = [
     clase: 'GUERRERO',
     especializacion: 'ESPECIALISTA',
     temperamento: 'INOFENSIVO',
-    comerciablePct: 30,
-    reclutablePct: 60,
+    comerciablePct: 0,
+    reclutablePct: 20,
     // Persuasión (2026-08-25) — "leal, ruidoso, de risa fácil", cede fácil por carisma/afecto.
     atributoResistencia: 'carisma',
     cortejablePct: 20,
@@ -3226,6 +3802,266 @@ export const npcs: NpcInput[] = [
       { itemSlug: 'racion-viaje', cantidad: 2 },
       { itemSlug: 'piedras-chispa' },
     ],
+  },
+  {
+    slug: 'guardiana-helsig',
+    name: 'Guardiana helsig',
+    kind: 'PLANTILLA',
+    aliases: ['guardiana helsig'],
+    faction: 'Clan Helsig',
+    genero: 'F',
+    role: 'Guardiana de las murallas y del campamento del Clan Helsig - Helske Tugh',
+    articulo: 'la',
+    level: 16,
+    levelMax: 18,
+    attributes: { fuerza: 18, destreza: 12, constitucion: 24, inteligencia: 6, voluntad: 17, carisma: 10, magia: 0 },
+    bio: '',
+    personality: '',
+    raza: 'orcos',
+    clase: 'GUERRERO',
+    especializacion: 'GUARDIAN',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 0,
+    reclutablePct: 0,
+    atributoResistencia: 'voluntad',
+    capturablePct: 0,
+    loadout: [
+    ],
+  },
+  {
+    // Líderes del Clan Helsig (auditoría de lore 2026-09-13, hallazgo C7) — ya documentadas en
+    // areas.md § Clan Helsig desde 2026-08-05 ("nombres confirmados por la usuaria") pero sin
+    // ficha Npc real hasta ahora. homeLocationSlug al interior (no a Helske Tugh exterior) porque
+    // ahí es donde vive el único edificio jugable real del clan, Helsig'sedsar (ver ZonePoint,
+    // sembrado junto a los 6 Maestros de oficio en la misma auditoría).
+    slug: 'brenka',
+    name: "Brenka - Terk'ikar del Clan Helsig",
+    kind: 'PRINCIPAL',
+    aliases: ['brenka', "terk'ikar brenka", 'terk\'ikar del clan helsig'],
+    faction: 'Clan Helsig',
+    genero: 'F',
+    role: "Terk'ikar del Clan Helsig",
+    level: 20,
+    attributes: { fuerza: 14, destreza: 12, constitucion: 18, inteligencia: 16, voluntad: 20, carisma: 17, magia: 0 },
+    bio: 'Orca del Clan Helsig, de las tribus gélidas de Cristal Helado — piel de un pálido azulado curtido por décadas de viento de montaña, manos ásperas de quien también ha tallado hielo sílice antes de gobernar. Gobierna el asentamiento, el reparto de caza y el turno de minas del clan; su pareja, la Kort\'ikar Solgra, lidera la guerra mientras ella sostiene el resto. Firme en que "nadie come dos veces hasta que todos han comido una" se cumpla siempre, sin excepción de rango.',
+    personality: 'Severa con el reparto, paciente con la gente — deja que Solgra hable primero de guerra y ella cierre siempre con la última palabra sobre el clan.',
+    homeLocationSlug: 'campamento-helsig-interior',
+    raza: 'orcos',
+    clase: 'GUERRERO',
+    especializacion: 'GUARDIAN',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 0,
+    reclutablePct: 0,
+    // Persuasión (2026-08-25) — "severa con el reparto", cede solo ante razones bien calculadas.
+    atributoResistencia: 'voluntad',
+    capturablePct: 0,
+    loadout: [
+      { itemSlug: 'cuchillo-hielo-silice' },
+      { itemSlug: 'racion-viaje', cantidad: 2 },
+    ],
+  },
+  {
+    slug: 'solgra',
+    name: "Solgra - Kort'ikar del Clan Helsig",
+    kind: 'PRINCIPAL',
+    aliases: ['solgra', "kort'ikar solgra", 'kort\'ikar del clan helsig'],
+    faction: 'Clan Helsig',
+    genero: 'F',
+    role: "Kort'ikar del Clan Helsig",
+    level: 20,
+    attributes: { fuerza: 19, destreza: 16, constitucion: 19, inteligencia: 11, voluntad: 16, carisma: 12, magia: 0 },
+    bio: 'Orca del Clan Helsig, de complexión más recia que la media de su tribu, cicatrices de hielo sílice mal curadas en los antebrazos — el precio de aprender a pelear con el mismo filo que se talla en las minas. Pareja de la Terk\'ikar Brenka; lidera la guerra y la defensa del clan mientras Brenka gobierna el resto. Mantiene un perfil neutral y defensivo ante los Goirntes, evitando la confrontación abierta salvo que el clan esté en juego de verdad.',
+    personality: 'Directa hasta lo brusco en el combate, pero nunca decide sola algo que afecte al clan entero sin hablarlo antes con Brenka.',
+    homeLocationSlug: 'campamento-helsig-interior',
+    raza: 'orcos',
+    clase: 'GUERRERO',
+    especializacion: 'ESPECIALISTA',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 0,
+    reclutablePct: 0,
+    // Persuasión (2026-08-25) — "directa hasta lo brusco", resiste por pura fuerza de voluntad de
+    // guerrera, no por cálculo.
+    atributoResistencia: 'fuerza',
+    capturablePct: 0,
+    loadout: [
+      { itemSlug: 'cuchillo-hielo-silice' },
+      { itemSlug: 'racion-viaje', cantidad: 2 },
+    ],
+  },
+  {
+    slug: 'maestra-peletera-helsig',
+    name: 'Maestra Peletera Helsig',
+    kind: 'PRINCIPAL',
+    aliases: ['maestra peletera helsig'],
+    faction: 'Clan Helsig',
+    genero: 'F',
+    role: 'Maestra Peletera del Clan Helsig',
+    level: 5,
+    attributes: { fuerza: 11, destreza: 15, constitucion: 12, inteligencia: 12, voluntad: 11, carisma: 10, magia: 2 },
+    bio: 'Orca de manos ásperas por el manejo constante de pieles curtidas, siempre rodeada de cortes y retales a medio coser. Da forma a capas y forros reales de Helske Tugh a partir de lo que ya preparó la curtidora.',
+    personality: 'Práctica, orgullosa de su trabajo sin alardear de él, generosa con los aprendices de verdad.',
+    homeLocationSlug: 'campamento-helsig-interior',
+    teachesProfession: 'peletero-orcos-cristal',
+    interactionTypes: ['MAESTRO_OFICIO'],
+    raza: 'orcos',
+    clase: 'CAZADOR',
+    especializacion: 'SUPERVIVENCIA',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 30,
+    reclutablePct: 0,
+    atributoResistencia: 'destreza',
+    capturablePct: 0,
+    loadout: [],
+  },
+  {
+    slug: 'peletera-helsig',
+    name: 'Peletera Helsig',
+    kind: 'PRINCIPAL',
+    aliases: ['peletera helsig'],
+    faction: 'Clan Helsig',
+    genero: 'F',
+    role: 'Peletera del Clan Helsig',
+    level: 1,
+    attributes: { fuerza: 11, destreza: 15, constitucion: 12, inteligencia: 12, voluntad: 11, carisma: 10, magia: 2 },
+    bio: '',
+    personality: '',
+    homeLocationSlug: 'campamento-helsig-interior',
+    teachesProfession: 'peletero-orcos-cristal',
+    interactionTypes: ['MAESTRO_OFICIO'],
+    raza: 'orcos',
+    clase: 'CAZADOR',
+    especializacion: 'SUPERVIVENCIA',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 0,
+    reclutablePct: 0,
+    atributoResistencia: 'destreza',
+    capturablePct: 20,
+    loadout: [],
+  },
+  {
+    slug: 'maestra-herrera-helsig',
+    name: 'Maestra Herrera Helsig',
+    kind: 'PRINCIPAL',
+    aliases: ['maestra herrera helsig'],
+    faction: 'Clan Helsig',
+    genero: 'F',
+    role: 'Maestra Herrera del Clan Helsig',
+    level: 5,
+    attributes: { fuerza: 11, destreza: 15, constitucion: 12, inteligencia: 12, voluntad: 11, carisma: 10, magia: 2 },
+    bio: '',
+    personality: 'Práctica, orgullosa de su trabajo sin alardear de él, generosa con los aprendices de verdad.',
+    homeLocationSlug: 'campamento-helsig-interior',
+    teachesProfession: 'herrero-orcos-cristal',
+    interactionTypes: ['MAESTRO_OFICIO'],
+    raza: 'orcos',
+    clase: 'GUERRERO',
+    especializacion: 'BERSERKER',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 30,
+    reclutablePct: 0,
+    atributoResistencia: 'destreza',
+    capturablePct: 0,
+    loadout: [],
+  },
+  {
+    slug: 'maestro-cocinero-helsig',
+    name: 'Maestro Cocinero Helsig',
+    kind: 'PRINCIPAL',
+    aliases: ['maestro cocinero helsig'],
+    faction: 'Clan Helsig',
+    genero: 'M',
+    role: 'Maestro Cocinero del Clan Helsig',
+    level: 5,
+    attributes: { fuerza: 11, destreza: 15, constitucion: 12, inteligencia: 12, voluntad: 11, carisma: 10, magia: 2 },
+    bio: '',
+    personality: 'Práctico, orgulloso de su trabajo sin alardear de él, generoso con los aprendices de verdad.',
+    homeLocationSlug: 'campamento-helsig-interior',
+    teachesProfession: 'cocinero-orcos-cristal',
+    interactionTypes: ['MAESTRO_OFICIO'],
+    raza: 'orcos',
+    clase: 'GUERRERO',
+    especializacion: 'BERSERKER',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 30,
+    reclutablePct: 0,
+    atributoResistencia: 'destreza',
+    capturablePct: 0,
+    loadout: [],
+  },
+  {
+    slug: 'maestro-minero-helsig',
+    name: 'Maestro Minero Helsig',
+    kind: 'PRINCIPAL',
+    aliases: ['maestro minero helsig'],
+    faction: 'Clan Helsig',
+    genero: 'M',
+    role: 'Maestro Minero del Clan Helsig',
+    level: 5,
+    attributes: { fuerza: 11, destreza: 15, constitucion: 12, inteligencia: 12, voluntad: 11, carisma: 10, magia: 2 },
+    bio: '',
+    personality: 'Práctico, orgulloso de su trabajo sin alardear de él, generoso con los aprendices de verdad.',
+    homeLocationSlug: 'campamento-helsig-interior',
+    teachesProfession: 'minero-orcos-cristal',
+    interactionTypes: ['MAESTRO_OFICIO'],
+    raza: 'orcos',
+    clase: 'GUERRERO',
+    especializacion: 'ESPECIALISTA',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 30,
+    reclutablePct: 0,
+    atributoResistencia: 'destreza',
+    capturablePct: 0,
+    loadout: [],
+  },
+  {
+    slug: 'maestro-herborista-helsig',
+    name: 'Maestro Herborista Helsig',
+    kind: 'PRINCIPAL',
+    aliases: ['maestro herborista helsig'],
+    faction: 'Clan Helsig',
+    genero: 'M',
+    role: 'Maestro Herborista del Clan Helsig',
+    level: 5,
+    attributes: { fuerza: 11, destreza: 15, constitucion: 12, inteligencia: 12, voluntad: 11, carisma: 10, magia: 2 },
+    bio: '',
+    personality: 'Práctico, orgulloso de su trabajo sin alardear de él, generoso con los aprendices de verdad.',
+    homeLocationSlug: 'campamento-helsig-interior',
+    teachesProfession: 'herborista-orcos-cristal',
+    interactionTypes: ['MAESTRO_OFICIO'],
+    raza: 'orcos',
+    clase: 'CAZADOR',
+    especializacion: 'SUPERVIVENCIA',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 30,
+    reclutablePct: 0,
+    atributoResistencia: 'destreza',
+    capturablePct: 0,
+    loadout: [],
+  },
+  {
+    slug: 'maestra-alquimista-helsig',
+    name: 'Maestra Alquimista Helsig',
+    kind: 'PRINCIPAL',
+    aliases: ['maestra alquimista helsig'],
+    faction: 'Clan Helsig',
+    genero: 'F',
+    role: 'Maestra Alquimista del Clan Helsig',
+    level: 5,
+    attributes: { fuerza: 11, destreza: 15, constitucion: 12, inteligencia: 12, voluntad: 11, carisma: 10, magia: 2 },
+    bio: '',
+    personality: 'Práctica, orgullosa de su trabajo sin alardear de él, generosa con los aprendices de verdad.',
+    homeLocationSlug: 'campamento-helsig-interior',
+    teachesProfession: 'alquimista-orcos-cristal',
+    interactionTypes: ['MAESTRO_OFICIO'],
+    raza: 'orcos',
+    clase: 'CAZADOR',
+    especializacion: 'INSTINTIVO',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 30,
+    reclutablePct: 0,
+    atributoResistencia: 'destreza',
+    capturablePct: 0,
+    loadout: [],
   },
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -8206,7 +9042,7 @@ export const harvestSourceHomeLocationSlug: Record<string, string | string[]> = 
   canizor: 'restos-de-maktor', // "el Clan Maktor le debe su nombre a uno domado por su fundadora" — única Location real del clan en el catálogo
   'corredor-de-cauce': 'manaderos', // "aquí paren las hembras de Corredor de Cauce" (descripción de la propia Location) — Pozo Cauce Viejo ya saturado con 3 fichas sin relación
   'gargantua-de-ceniza': 'osario-de-la-manada', // esqueleto real de una Gargantúa muerta ya sembrado en esta Location — vínculo directo, no inferido
-  corretolvas: 'vergel-de-kegi', // ya tenía ZonePoint real ahí (línea ~8780) — solo trasladado, sin decisión editorial nueva
+  corretolvas: 'yegr-kegi', // ya tenía ZonePoint real ahí (línea ~8780) — solo trasladado, sin decisión editorial nueva. Slug actualizado 2026-09-13 tras el rename a Yegr Kegi.
   murgol: 'oasis-de-chudos-rojos', // ya tenía ZonePoint real ahí (línea ~8699) — "ganado que abreva", coherente con agua en superficie
 
   // Bloque editorial — flora/mineral con pista de lore clara en su propia `description`
@@ -8793,16 +9629,21 @@ export const zonePoints: ZonePointInput[] = [
   //
   // "Trabajador de Reino" (2026-08-31) — el punto EDIFICIO de la empalizada dejó de apuntar a sí
   // mismo (anti-patrón: `targetSlug` = slug de la propia Location, sin catálogo real detrás).
-  // Ahora referencia el `FactionBuilding` sede real (`karot-vekhad`, ver más abajo). Torgash/Ulkha
-  // se mudan al interior (viven en el Karot Vekhad de verdad, coherente con su lore — "reciben a
-  // quien cruza la entrada") — sus puntos NPC pasan a `campamento-serhu-interior`.
-  { locationSlug: 'campamento-serhu', x: 400, y: 300, tipo: 'EDIFICIO', targetSlug: 'karot-vekhad', label: 'Karot Vekhad — el Salón del Colmillo Ceniza' },
+  // Ahora referencia el `FactionBuilding` sede real (`ketg-sedsar`, ver más abajo — renombrado de
+  // `ketg-lukar` el 2026-09-13, ver comentario junto a su definición). Torgash/Ulkha se mudan al
+  // interior (viven en el Ketg'sedsar de verdad, coherente con su lore — "reciben a quien cruza la
+  // entrada") — sus puntos NPC pasan a `campamento-serhu-interior`.
+  { locationSlug: 'campamento-serhu', x: 400, y: 300, tipo: 'EDIFICIO', targetSlug: 'ketg-sedsar', label: 'Ketg\'sedsar — el Salón del Colmillo Ceniza' },
   { locationSlug: 'campamento-serhu', x: 400, y: 460, tipo: 'RECURSO', targetSlug: 'murgoles-domados-campamento', label: 'Recinto de múrgoles domados' },
+  // Cazadora Serhu (hallazgo 4, 2026-09-15): único NPC con homeLocationSlug en el exterior de
+  // Karot Veku sin ZonePoint — "sale a cazar o vigilar los alrededores del campamento" (bio real),
+  // coherente con estar fuera de la empalizada en vez de en el interior con los demás.
+  { locationSlug: 'campamento-serhu', x: 620, y: 200, tipo: 'NPC', targetSlug: 'cazadora-serhu', label: 'Cazadora Serhu, vigilando los alrededores' },
 
   // Interior de Karot Veku (2026-08-31, "Trabajador de Reino") — mismo lienzo 800×600, propio de
-  // esta Location. Torgash/Ulkha en el propio Karot Vekhad (centro); los 3 edificios de profesión
+  // esta Location. Torgash/Ulkha en el propio Ketg'sedsar (centro); los 3 edificios de profesión
   // ya sembrados (Herrería/Curtiduría/Cocina) a los lados, con sus Maestros.
-  { locationSlug: 'campamento-serhu-interior', x: 400, y: 300, tipo: 'EDIFICIO', targetSlug: 'karot-vekhad', label: 'Karot Vekhad — el Salón del Colmillo Ceniza' },
+  { locationSlug: 'campamento-serhu-interior', x: 400, y: 300, tipo: 'EDIFICIO', targetSlug: 'ketg-sedsar', label: 'Ketg\'sedsar — el Salón del Colmillo Ceniza' },
   { locationSlug: 'campamento-serhu-interior', x: 400, y: 220, tipo: 'NPC', targetSlug: 'torgash-ketg', label: "Torgash Ketg, Kort'ikar" },
   { locationSlug: 'campamento-serhu-interior', x: 400, y: 380, tipo: 'NPC', targetSlug: 'ulkha-ketg', label: "Ulkha Ketg, Terk'ikar" },
   { locationSlug: 'campamento-serhu-interior', x: 180, y: 300, tipo: 'EDIFICIO', targetSlug: 'herreria-serhu', label: 'Herrería del Clan Serhu' },
@@ -8823,6 +9664,39 @@ export const zonePoints: ZonePointInput[] = [
   { locationSlug: 'campamento-serhu-interior', x: 580, y: 160, tipo: 'NPC', targetSlug: 'maestra-herborista-serhu', label: 'Maestra Herborista del Clan Serhu' },
   { locationSlug: 'campamento-serhu-interior', x: 300, y: 140, tipo: 'NPC', targetSlug: 'maestra-sastre-serhu', label: 'Maestra Sastre del Clan Serhu' },
   { locationSlug: 'campamento-serhu-interior', x: 500, y: 140, tipo: 'NPC', targetSlug: 'maestro-carpintero-serhu', label: 'Maestro Carpintero del Clan Serhu' },
+  // Tirag Susig (auditoría de lore 2026-09-13, C9/C10) — sin ZonePoint hasta ahora (era
+  // `kind: 'PLANTILLA'`, corregido a PRINCIPAL). Necesita punto real para que su companion Gisoki
+  // tenga de qué punto colgar el icono de grupo (ver companionsByOwnerSlug, zona.ts).
+  { locationSlug: 'campamento-serhu-interior', x: 500, y: 460, tipo: 'NPC', targetSlug: 'tirag-susig', label: 'Tirag Susig, cazadora' },
+
+  // Interior de Helske Tugh (2026-09-13, ampliación de lore/auditoría) — mismo lienzo 800×600 y
+  // mismo patrón que Karot Veku: salón central, 6 edificios de oficio a su alrededor (todos los
+  // que ya tienen Maestro real, ver factionBuildings § Clan Helsig más abajo) con separación >60px
+  // entre pares, y la guardiana suelta junto a la entrada — mismo criterio de
+  // `DISTANCIA_MINIMA_ENTRE_PUNTOS` que el resto del archivo.
+  { locationSlug: 'campamento-helsig-interior', x: 400, y: 300, tipo: 'EDIFICIO', targetSlug: 'helsig-sedsar', label: 'Helsig\'sedsar — el Salón de Honor Helado' },
+  { locationSlug: 'campamento-helsig-interior', x: 180, y: 300, tipo: 'EDIFICIO', targetSlug: 'herreria-helsig', label: 'Herrería del Clan Helsig' },
+  { locationSlug: 'campamento-helsig-interior', x: 160, y: 240, tipo: 'NPC', targetSlug: 'maestra-herrera-helsig', label: 'Maestra Herrera del Clan Helsig' },
+  { locationSlug: 'campamento-helsig-interior', x: 620, y: 300, tipo: 'EDIFICIO', targetSlug: 'peleteria-helsig', label: 'Peletería del Clan Helsig' },
+  { locationSlug: 'campamento-helsig-interior', x: 640, y: 240, tipo: 'NPC', targetSlug: 'maestra-peletera-helsig', label: 'Maestra Peletera del Clan Helsig' },
+  { locationSlug: 'campamento-helsig-interior', x: 660, y: 300, tipo: 'NPC', targetSlug: 'peletera-helsig', label: 'Peletera del Clan Helsig' },
+  { locationSlug: 'campamento-helsig-interior', x: 400, y: 460, tipo: 'EDIFICIO', targetSlug: 'cocina-helsig', label: 'Cocina común de Helske Tugh' },
+  { locationSlug: 'campamento-helsig-interior', x: 340, y: 500, tipo: 'NPC', targetSlug: 'maestro-cocinero-helsig', label: 'Maestro Cocinero del Clan Helsig' },
+  { locationSlug: 'campamento-helsig-interior', x: 400, y: 140, tipo: 'EDIFICIO', targetSlug: 'mina-helsig', label: 'Boca de mina del Clan Helsig' },
+  { locationSlug: 'campamento-helsig-interior', x: 460, y: 100, tipo: 'NPC', targetSlug: 'maestro-minero-helsig', label: 'Maestro Minero del Clan Helsig' },
+  { locationSlug: 'campamento-helsig-interior', x: 220, y: 460, tipo: 'EDIFICIO', targetSlug: 'herboristeria-helsig', label: 'Herboristería del Clan Helsig' },
+  { locationSlug: 'campamento-helsig-interior', x: 160, y: 500, tipo: 'NPC', targetSlug: 'maestro-herborista-helsig', label: 'Maestro Herborista del Clan Helsig' },
+  { locationSlug: 'campamento-helsig-interior', x: 580, y: 460, tipo: 'EDIFICIO', targetSlug: 'alquimia-helsig', label: 'Taller de alquimia del Clan Helsig' },
+  { locationSlug: 'campamento-helsig-interior', x: 640, y: 500, tipo: 'NPC', targetSlug: 'maestra-alquimista-helsig', label: 'Maestra Alquimista del Clan Helsig' },
+  { locationSlug: 'campamento-helsig-interior', x: 100, y: 300, tipo: 'NPC', targetSlug: 'guardiana-helsig', label: 'Guardiana del Clan Helsig' },
+  // Brenka/Solgra (auditoría de lore 2026-09-13, C7) — líderes del clan, sin ZonePoint hasta
+  // ahora pese a ficha real. Junto al salón, mismo patrón que Torgash/Ulkha en Karot Veku.
+  { locationSlug: 'campamento-helsig-interior', x: 400, y: 220, tipo: 'NPC', targetSlug: 'brenka', label: "Brenka, Terk'ikar" },
+  { locationSlug: 'campamento-helsig-interior', x: 400, y: 380, tipo: 'NPC', targetSlug: 'solgra', label: "Solgra, Kort'ikar" },
+
+  // Interior de Silh Makut (2026-09-13, ampliación de lore/auditoría) — solo el salón por ahora
+  // (ver factionBuildings § Clan Goshg): ningún NPC del clan tiene `homeLocationSlug` aquí todavía.
+  { locationSlug: 'campamento-goshg-interior', x: 400, y: 300, tipo: 'EDIFICIO', targetSlug: 'goshg-sedsar', label: 'Goshg\'sedsar — el Salón de Piel Musgo' },
 
   // El Cruce de las Cenizas — Ferike tiene homeLocationSlug directo aquí. Telda Ceniza y Matorral
   // de Cuerno tienen homeLocationSlug/tag de vegetación coherentes con la propia description
@@ -8973,12 +9847,15 @@ export const zonePoints: ZonePointInput[] = [
   { locationSlug: 'sabana-alta-colmillar', x: 320, y: 440, tipo: 'RECURSO', targetSlug: 'pasto-de-sangre', label: 'Pasto de Sangre' },
   { locationSlug: 'sabana-alta-colmillar', x: 580, y: 460, tipo: 'RECURSO', targetSlug: 'trigo-escarlata', label: 'Trigo Escarlata' },
 
-  // El Vergel de Kegi — coto de caza/comercio de los Faerus; sin fauna/recurso propio anclado
-  // (fuera del alcance directo de Gorhorn). Corretolvas (vegetacion, caza menor sin ancla previa
-  // ni conflicto con el corredor migratorio de Corredor de Cauce, reservado a Manaderos/Pastos/
-  // Sabana) y Liquen del Cauce (humedo) son los matches de terreno disponibles.
-  { locationSlug: 'vergel-de-kegi', x: 340, y: 260, tipo: 'FAUNA', targetSlug: 'corretolvas', label: 'Bandada de Corretolvas' },
-  { locationSlug: 'vergel-de-kegi', x: 540, y: 420, tipo: 'RECURSO', targetSlug: 'liquen-del-cauce', label: 'Liquen del Cauce' },
+  // Yegr Kegi (El Vergel de la Arena) — coto de caza/comercio de los Faerus; sin fauna/recurso
+  // propio anclado (fuera del alcance directo de Gorhorn). Corretolvas (vegetacion, caza menor sin
+  // ancla previa ni conflicto con el corredor migratorio de Corredor de Cauce, reservado a
+  // Manaderos/Pastos/Sabana) y Liquen del Cauce (humedo) son los matches de terreno disponibles.
+  // Fix real (2026-09-13, auditoría de lore Helek) — `locationSlug` corregido de 'vergel-de-kegi'
+  // (slug viejo, renombrado a 'yegr-kegi' junto con el resto de nombres nativos) a la referencia
+  // real: quedaron huérfanos tras el rename, invisibles en el mapa de zona real.
+  { locationSlug: 'yegr-kegi', x: 340, y: 260, tipo: 'FAUNA', targetSlug: 'corretolvas', label: 'Bandada de Corretolvas' },
+  { locationSlug: 'yegr-kegi', x: 540, y: 420, tipo: 'RECURSO', targetSlug: 'liquen-del-cauce', label: 'Liquen del Cauce' },
 
   // La Grieta Cantora — hito puramente sonoro/atmosférico (el viento cantando en las grietas), sin
   // lore de fauna o recurso propio; un único match débil de terreno rocoso (Flor de Ceniza),
@@ -9012,9 +9889,16 @@ export interface FactionBuildingInput {
 }
 
 export const factionBuildings: FactionBuildingInput[] = [
+  // Fix real (2026-09-13, auditoría de lore Helek) — según `lenguas-helek.md`, `Lukar` = "Hogar"
+  // (el recinto/interior entero, ya la propia Location `campamento-serhu-interior`) y `Sedsar` =
+  // "Salón" (el edificio ceremonial puntual dentro de ese recinto). Este `FactionBuilding` es el
+  // edificio concreto — el salón, no el hogar entero —, así que el nombre correcto es
+  // `Ketg'sedsar`, no `Ketg'lukar` (que ya está en uso para la Location interior completa,
+  // duplicando el mismo morfema en dos escalas distintas). Mismo criterio aplicado a Helsig/Goshg
+  // más abajo, que sí nacieron ya con `Xsedsar` para su salón.
   {
-    slug: 'karot-vekhad',
-    name: 'Karot Vekhad — el Salón del Colmillo Ceniza',
+    slug: 'ketg-sedsar',
+    name: 'Ketg\'sedsar — el Salón del Colmillo Ceniza',
     factionSlug: 'Clan Serhu',
     locationSlug: 'campamento-serhu-interior',
     profession: null,
@@ -9051,6 +9935,98 @@ export const factionBuildings: FactionBuildingInput[] = [
     tier: 1,
     description:
       'Ollas de hierro colgadas sobre brasas siempre vivas, bajo un cobertizo abierto por los cuatro costados para que el humo escape. El Maestro Cocinero Serhu alimenta a todo el clan desde aquí.',
+  },
+
+  // Clan Helsig (2026-09-13, ampliación de lore/auditoría) — mismo patrón que Karot Veku
+  // (Trabajador de Reino, 2026-08-31): salón central + un edificio por oficio con su Maestro real.
+  // A diferencia de Serhu (solo 2-3 oficios sembrados de los 11 posibles), aquí se siembran los 6
+  // oficios que ya tienen Maestro real en el catálogo (ver worldCatalog.ts § npcs, slugs
+  // '*-helsig'), sin dejar ninguno a medias.
+  {
+    slug: 'helsig-sedsar',
+    name: 'Helsig\'sedsar — el Salón de Honor Helado',
+    factionSlug: 'Clan Helsig',
+    locationSlug: 'campamento-helsig-interior',
+    profession: null,
+    tier: 3,
+    description:
+      'La choza más grande de Helske Tugh, en el centro del poblado — lo que hace del campamento un asentamiento real del Clan Helsig, no solo un puesto minero de paso.',
+  },
+  {
+    slug: 'herreria-helsig',
+    name: 'Herrería del Clan Helsig',
+    factionSlug: 'Clan Helsig',
+    locationSlug: 'campamento-helsig-interior',
+    profession: 'herrero-orcos-cristal',
+    tier: 1,
+    description:
+      'Fragua orca tallada en la propia roca de la ladera, con el hielo sílice apilado en bloques junto al fuelle. La Maestra Herrera Helsig funde y talla aquí el hielo sílice para todo el clan.',
+  },
+  {
+    slug: 'peleteria-helsig',
+    name: 'Peletería del Clan Helsig',
+    factionSlug: 'Clan Helsig',
+    locationSlug: 'campamento-helsig-interior',
+    profession: 'peletero-orcos-cristal',
+    tier: 1,
+    description:
+      'Pieles gruesas curtidas y cosidas contra el frío de Cristal Helado, colgadas a secar bajo un cobertizo cerrado por los cuatro costados. La Maestra Peletera Helsig da forma aquí a capas y forros reales.',
+  },
+  {
+    slug: 'cocina-helsig',
+    name: 'Cocina común de Helske Tugh',
+    factionSlug: 'Clan Helsig',
+    locationSlug: 'campamento-helsig-interior',
+    profession: 'cocinero-orcos-cristal',
+    tier: 1,
+    description:
+      'Ollas de hierro sobre brasas protegidas del viento por muros bajos de piedra, bajo un cobertizo cerrado que retiene el calor. El Maestro Cocinero Helsig alimenta a todo el clan desde aquí.',
+  },
+  {
+    slug: 'mina-helsig',
+    name: 'Boca de mina del Clan Helsig',
+    factionSlug: 'Clan Helsig',
+    locationSlug: 'campamento-helsig-interior',
+    profession: 'minero-orcos-cristal',
+    tier: 1,
+    description:
+      'Entrada excavada en la ladera helada, apuntalada con vigas de madera oscura, de donde el clan extrae el hielo sílice que sostiene su economía. El Maestro Minero Helsig organiza aquí los turnos de mina.',
+  },
+  {
+    slug: 'herboristeria-helsig',
+    name: 'Herboristería del Clan Helsig',
+    factionSlug: 'Clan Helsig',
+    locationSlug: 'campamento-helsig-interior',
+    profession: 'herborista-orcos-cristal',
+    tier: 1,
+    description:
+      'Choza de secado con manojos de la escasa vegetación de Cristal Helado colgados del techo, cada uno resistente al frío a su manera. El Maestro Herborista Helsig prepara aquí lo poco que la tierra helada ofrece.',
+  },
+  {
+    slug: 'alquimia-helsig',
+    name: 'Taller de alquimia del Clan Helsig',
+    factionSlug: 'Clan Helsig',
+    locationSlug: 'campamento-helsig-interior',
+    profession: 'alquimista-orcos-cristal',
+    tier: 1,
+    description:
+      'Mesa de piedra fría cubierta de frascos y morteros, donde el hielo sílice y las pocas hierbas del clan se combinan en brebajes reales. La Maestra Alquimista Helsig trabaja aquí sus preparados.',
+  },
+
+  // Clan Goshg (2026-09-13, ampliación de lore/auditoría) — solo el salón por ahora: a diferencia
+  // de Helsig, ningún NPC del Clan Goshg tiene `homeLocationSlug` apuntando todavía al interior
+  // nuevo (Doshka/Dulgren siguen en el exterior, `campamento-goshg`) — sin Maestros reales que
+  // posicionar, sembrar edificios de oficio vacíos sería anticipar contenido sin sustento, así que
+  // se deja para cuando existan esos NPC.
+  {
+    slug: 'goshg-sedsar',
+    name: 'Goshg\'sedsar — el Salón de Piel Musgo',
+    factionSlug: 'Clan Goshg',
+    locationSlug: 'campamento-goshg-interior',
+    profession: null,
+    tier: 3,
+    description:
+      'La choza más grande de Silh Makut, levantada sobre pilotes como el resto del poblado — sede de la Terk\'ikar Doshka y el Kort\'ikar Dulgren.',
   },
 ];
 

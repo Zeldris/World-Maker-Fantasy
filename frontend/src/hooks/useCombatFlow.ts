@@ -506,7 +506,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
   // `dismissed: true` lo saca de "pendiente de resolver" para `combatEnded`.
   async function handleCapturarSeleccion(npc: CombatNpcDisplay) {
     try {
-      const { logEntry, factionRepChange } = await postCapturar(saveId!, npc.slug, npc.participantId)
+      const { logEntry, factionRepChange, misionesPendientes } = await postCapturar(saveId!, npc.slug, npc.participantId)
       // Identificador de combatientes duplicados (mismo criterio que el resto de este archivo,
       // `combatKeyFor` — bug real 2026-08-29: filtrar por `slug` a secas marcaba `dismissed` en
       // TODOS los individuos del mismo tipo a la vez con 2+ del mismo grupo).
@@ -528,9 +528,17 @@ export function useCombatFlow(params: UseCombatFlowParams) {
       })
       // Reputación de facción (2026-09-04) — Capturar ganó su propio LogEntry determinista en esta
       // pieza (antes era una mutación silenciosa), mismo patrón que Clemente justo abajo.
+      // Aviso de misión pendiente (2026-09-15, hallazgo real jugando en vivo: "Acabar con X" seguía
+      // ACTIVA sin ningún aviso tras capturarlo vivo) — se añade al mismo LogEntry en vez de crear
+      // una tarjeta aparte, mismo criterio que el resto del proyecto ("el LogEntry cuenta la
+      // historia completa de lo que pasó este turno").
+      const textoConAviso =
+        misionesPendientes.length > 0
+          ? `${logEntry.text} (${misionesPendientes.join(', ')} sigue${misionesPendientes.length > 1 ? 'n' : ''} activa${misionesPendientes.length > 1 ? 's' : ''} — el objetivo sigue vivo.)`
+          : logEntry.text
       setCharacterLog((prev) => [
         ...prev,
-        { id: logEntry.id, channel: 'character', text: logEntry.text, timeLabel: logEntry.timeLabel, createdAt: logEntry.createdAt, combate: true, factionRepChange: factionRepChange ?? undefined },
+        { id: logEntry.id, channel: 'character', text: textoConAviso, timeLabel: logEntry.timeLabel, createdAt: logEntry.createdAt, combate: true, factionRepChange: factionRepChange ?? undefined },
       ])
     } catch {
       // Best-effort (mismo criterio que el resto de acciones deterministas de combate): sin
@@ -545,7 +553,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
   // que `handleFleeAttempt`.
   async function handleDejarVivirSeleccion(npc: CombatNpcDisplay) {
     try {
-      const { logEntry, factionRepChange } = await dejarVivir(saveId!, npc.slug, npc.participantId)
+      const { logEntry, factionRepChange, misionesPendientes } = await dejarVivir(saveId!, npc.slug, npc.participantId)
       // Mismo criterio que `handleCapturarSeleccion` de arriba — `combatKeyFor`, no `slug` a secas,
       // y siembra la entrada si `combatNpcStates` todavía no la tiene (ver comentario largo arriba).
       setCombatNpcStates((prev) => {
@@ -555,9 +563,14 @@ export function useCombatFlow(params: UseCombatFlowParams) {
         }
         return [...prev, { ...npc, dismissed: true }]
       })
+      // Aviso de misión pendiente (2026-09-15) — mismo criterio que `handleCapturarSeleccion`.
+      const textoConAviso =
+        misionesPendientes.length > 0
+          ? `${logEntry.text} (${misionesPendientes.join(', ')} sigue${misionesPendientes.length > 1 ? 'n' : ''} activa${misionesPendientes.length > 1 ? 's' : ''} — el objetivo sigue vivo.)`
+          : logEntry.text
       setCharacterLog((prev) => [
         ...prev,
-        { id: logEntry.id, channel: 'character', text: logEntry.text, timeLabel: logEntry.timeLabel, createdAt: logEntry.createdAt, combate: true, factionRepChange: factionRepChange ?? undefined },
+        { id: logEntry.id, channel: 'character', text: textoConAviso, timeLabel: logEntry.timeLabel, createdAt: logEntry.createdAt, combate: true, factionRepChange: factionRepChange ?? undefined },
       ])
     } catch {
       // Best-effort — ver comentario de `handleCapturarSeleccion`.

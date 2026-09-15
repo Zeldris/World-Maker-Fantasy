@@ -3,12 +3,12 @@ import { nombrePorIdiomaFor, type NombrePorIdioma } from './loreLanguages.js';
 
 const KAROT_VEKU: NombrePorIdioma = {
   comun: 'el Salón de los Ancianos',
-  orcos: 'Karot Vekhad',
+  orcos: 'Ketg\'lukar',
 };
 
 describe('nombrePorIdiomaFor', () => {
   it('devuelve el nombre propio del idioma de la raza cuando existe', () => {
-    expect(nombrePorIdiomaFor(KAROT_VEKU, 'orcos')).toBe('Karot Vekhad');
+    expect(nombrePorIdiomaFor(KAROT_VEKU, 'orcos')).toBe('Ketg\'lukar');
   });
 
   it('cae a la lengua común si la raza no tiene nombre propio para esta entrada', () => {
