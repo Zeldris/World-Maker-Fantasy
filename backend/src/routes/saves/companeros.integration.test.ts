@@ -491,6 +491,81 @@ describe('Compañeros: cobertura de ruta — plantillas de equipo (auditoría de
 // `CombatParticipant.condicionFisicaGrupo`, no en `NpcState` (fila compartida por la especie) — el
 // camino sin `participantId` nunca la resolvía bien. Con `participantId`, Capturar ahora lee esa
 // condición real y marca `dismissedGrupo: true` en el propio `CombatParticipant` al atar con éxito.
+// Hallazgo 49 (revisar-partida-hallazgos.md, 2026-09-15): qué Jaula tiene hueco se calculaba fuera
+// de transacción, sin re-chequeo en la escritura final — dos depósitos casi simultáneos (dos
+// capturas en tránsito DISTINTAS) podían leer la misma Jaula como "con hueco" y asignarle
+// `capturaJaulaBuildingId` a las dos.
+describe('POST /saves/:id/capturas/:itemId/depositar — condición de carrera con una sola Jaula libre (hallazgo 49, 2026-09-15)', () => {
+  let saveId: string;
+  let jaulaId: string;
+  let itemAId: string;
+  let itemBId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const corretolvas = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'corretolvas' } });
+    const aullador = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'aullador-rojo' } });
+
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (depositar Jaula, carrera)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        portraitInitial: 'G',
+      },
+    });
+    saveId = save.id;
+
+    // Una sola Jaula mediana — ambas capturas (PEQUENA por defecto, ver jaulaTamanoRequeridoFor)
+    // caben en ella individualmente, pero solo puede alojar a UNA a la vez.
+    const jaula = await prisma.building.create({
+      data: { saveId, recipeKey: 'jaula-mediana', name: 'Jaula mediana', kind: 'jaula', status: 'ACTIVO', description: 'x' },
+    });
+    jaulaId = jaula.id;
+
+    const [itemA, itemB] = await Promise.all([
+      prisma.inventoryItem.create({
+        data: { saveId, name: 'Corretolvas (Capturado)', description: 'x', origin: 'Captura', capturaNpcId: corretolvas.id, capturaScope: 'itinerante-depositar-carrera-a' },
+      }),
+      prisma.inventoryItem.create({
+        data: { saveId, name: 'Aullador Rojo (Capturado)', description: 'x', origin: 'Captura', capturaNpcId: aullador.id, capturaScope: 'itinerante-depositar-carrera-b' },
+      }),
+    ]);
+    itemAId = itemA.id;
+    itemBId = itemB.id;
+    await Promise.all([
+      prisma.npcState.create({ data: { saveId, npcId: corretolvas.id, scope: 'itinerante-depositar-carrera-a', condicionFisica: 'CONVALECIENTE' } }),
+      prisma.npcState.create({ data: { saveId, npcId: aullador.id, scope: 'itinerante-depositar-carrera-b', condicionFisica: 'CONVALECIENTE' } }),
+    ]);
+  });
+
+  afterAll(async () => {
+    await prisma.npcState.deleteMany({ where: { saveId } });
+    await prisma.inventoryItem.deleteMany({ where: { saveId } });
+    await prisma.building.deleteMany({ where: { saveId } });
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('dos depósitos concurrentes contra la misma Jaula (único hueco libre): solo uno tiene éxito, el otro recibe 400', async () => {
+    const app = await buildApp();
+    const [resA, resB] = await Promise.all([
+      app.inject({ method: 'POST', url: `/saves/${saveId}/capturas/${itemAId}/depositar` }),
+      app.inject({ method: 'POST', url: `/saves/${saveId}/capturas/${itemBId}/depositar` }),
+    ]);
+    const statusCodes = [resA.statusCode, resB.statusCode].sort();
+    expect(statusCodes).toEqual([200, 400]);
+
+    // La Jaula nunca aloja a los dos a la vez.
+    const ocupantes = await prisma.npcState.count({ where: { saveId, capturaJaulaBuildingId: jaulaId } });
+    expect(ocupantes).toBe(1);
+  });
+});
+
 describe('POST /saves/:id/capturar/:npcSlug con participantId (combate múltiple real, bug real 2026-08-29)', () => {
   let saveId: string;
   let encounterId: string;
@@ -582,6 +657,30 @@ describe('POST /saves/:id/capturar/:npcSlug con participantId (combate múltiple
       payload: { participantId: objetivo.id },
     });
     expect(res.statusCode).toBe(400);
+  });
+
+  // Hallazgo 48 (revisar-partida-hallazgos.md, 2026-09-15): "solo 1 captura activa a la vez" se
+  // comprobaba fuera de la transacción final, sin re-chequeo — dos capturas casi simultáneas sobre
+  // objetivos DISTINTOS (alcanzable en combate múltiple con 2+ GRAVE/CONVALECIENTE a la vez, como
+  // este propio grupo de 2 aulladores) podían pasar las dos el guard.
+  it('dos capturas concurrentes sobre objetivos DISTINTOS del mismo grupo: solo una tiene éxito, la otra recibe 400', async () => {
+    await prisma.inventoryItem.deleteMany({ where: { saveId, capturaNpcId: { not: null } } });
+    await prisma.inventoryItem.create({ data: { saveId, name: 'Cuerdas 1', description: 'x', catalogSlug: 'cuerdas' } });
+    await prisma.inventoryItem.create({ data: { saveId, name: 'Cuerdas 2', description: 'x', catalogSlug: 'cuerdas' } });
+    await prisma.combatParticipant.update({ where: { id: objetivo.id }, data: { condicionFisicaGrupo: 'CONVALECIENTE', dismissedGrupo: null } });
+    await prisma.combatParticipant.update({ where: { id: otro.id }, data: { condicionFisicaGrupo: 'CONVALECIENTE', dismissedGrupo: null } });
+
+    const app = await buildApp();
+    const [resA, resB] = await Promise.all([
+      app.inject({ method: 'POST', url: `/saves/${saveId}/capturar/aullador-rojo`, payload: { participantId: objetivo.id } }),
+      app.inject({ method: 'POST', url: `/saves/${saveId}/capturar/aullador-rojo`, payload: { participantId: otro.id } }),
+    ]);
+    const statusCodes = [resA.statusCode, resB.statusCode].sort();
+    expect(statusCodes).toEqual([200, 400]);
+
+    // Solo UNA captura en tránsito real, nunca dos a la vez.
+    const capturasEnCurso = await prisma.inventoryItem.count({ where: { saveId, capturaNpcId: { not: null } } });
+    expect(capturasEnCurso).toBe(1);
   });
 });
 

@@ -120,25 +120,36 @@ export async function progressionRoutes(app: FastifyInstance) {
       return reply.status(409).send({ error: `Esta partida ya tiene clase asignada: ${save.clase}` });
     }
 
-    // Anti-duplicado (bug real encontrado antes de reproducir esto en la partida real de la
-    // usuaria, 2026-08-29): una partida creada ANTES de este fix pudo recibir ya alguna de estas
-    // habilidades por el camino viejo (fallback por `characterName` dentro de la propia
-    // `classAbilityUnlocksFor` — ver comentario ahí) — p. ej. Gorhorn/Cazador ya tenía "Analisis
-    // Salvaje" (nivel 1) al crear su partida, mucho antes de que existiera este endpoint. Sin este
-    // guard, fijar la clase ahora la duplicaría. Comparado por nombre (igual que el resto del
-    // motor identifica una SavedAction "de serie" — no hay otro id compartido entre el catálogo
-    // estático de habilidades y la fila ya persistida).
-    const yaTiene = new Set((await prisma.savedAction.findMany({ where: { saveId: save.id, category: 'combate' }, select: { name: true } })).map((a) => a.name));
+    // Hallazgo 52 (revisar-partida-hallazgos.md, 2026-09-15): `save.clase` se comprobaba (guard de
+    // arriba) fuera de esta transacción, y `SavedAction` no tiene ninguna constraint única que
+    // actúe de red de seguridad (a diferencia de `ProfessionProgress`/`Faction`/`SkillBar`) — dos
+    // peticiones concurrentes (doble pestaña, reintento de red) podían pasar las dos el guard y
+    // duplicar de verdad las habilidades de combate del tronco común. Mitigado en la práctica por
+    // `ClaseModal.tsx` (deshabilita su botón con `busy` durante la petición), pero se cierra igual
+    // con `lockRowForUpdate` + re-chequeo del guard con datos frescos, mismo patrón que el resto de
+    // esta ronda de auditoría.
+    const resultado = await prisma.$transaction(async (tx) => {
+      const freshSave = await lockRowForUpdate<{ clase: Clase | null }>(tx, 'Save', save.id, ['clase']);
+      if (freshSave.clase) return null;
 
-    const nuevasHabilidades = Array.from({ length: save.level }, (_, i) => i + 1)
-      .flatMap((lvl) => classAbilityUnlocksFor(save.characterName, lvl, clase))
-      .filter((ability) => !yaTiene.has(ability.name))
-      .map((ability) => savedActionDataFromAbility(save.id, ability));
+      // Anti-duplicado (bug real encontrado antes de reproducir esto en la partida real de la
+      // usuaria, 2026-08-29): una partida creada ANTES de este fix pudo recibir ya alguna de estas
+      // habilidades por el camino viejo (fallback por `characterName` dentro de la propia
+      // `classAbilityUnlocksFor` — ver comentario ahí) — p. ej. Gorhorn/Cazador ya tenía "Analisis
+      // Salvaje" (nivel 1) al crear su partida, mucho antes de que existiera este endpoint. Sin
+      // este guard, fijar la clase ahora la duplicaría. Comparado por nombre (igual que el resto
+      // del motor identifica una SavedAction "de serie" — no hay otro id compartido entre el
+      // catálogo estático de habilidades y la fila ya persistida).
+      const yaTiene = new Set((await tx.savedAction.findMany({ where: { saveId: save.id, category: 'combate' }, select: { name: true } })).map((a) => a.name));
 
-    await prisma.$transaction([
-      prisma.save.update({ where: { id: save.id }, data: { clase } }),
-      ...(nuevasHabilidades.length > 0 ? [prisma.savedAction.createMany({ data: nuevasHabilidades })] : []),
-      prisma.logEntry.create({
+      const nuevasHabilidades = Array.from({ length: save.level }, (_, i) => i + 1)
+        .flatMap((lvl) => classAbilityUnlocksFor(save.characterName, lvl, clase))
+        .filter((ability) => !yaTiene.has(ability.name))
+        .map((ability) => savedActionDataFromAbility(save.id, ability));
+
+      await tx.save.update({ where: { id: save.id }, data: { clase } });
+      if (nuevasHabilidades.length > 0) await tx.savedAction.createMany({ data: nuevasHabilidades });
+      await tx.logEntry.create({
         data: {
           saveId: save.id,
           channel: 'CHARACTER',
@@ -149,8 +160,12 @@ export async function progressionRoutes(app: FastifyInstance) {
           // recibía como "tu propia narración del turno anterior" y podía repetirlo literalmente.
           isSystemMessage: true,
         },
-      }),
-    ]);
+      });
+      return true;
+    });
+    if (!resultado) {
+      return reply.status(409).send({ error: `Esta partida ya tiene clase asignada: ${clase}` });
+    }
 
     return { clase };
   });
@@ -188,19 +203,26 @@ export async function progressionRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error: `"${especializacion}" no es una especialización real de ${save.clase} (válidas: ${validas.join(', ') || 'ninguna construida todavía'})` });
     }
 
-    // Mismo guard anti-duplicado que `/saves/:id/clase` — por si alguna habilidad de esta rama ya
-    // existiera por otro camino (ninguno conocido hoy para especialización, pero el mismo criterio
-    // defensivo del endpoint hermano se mantiene por consistencia).
-    const yaTiene = new Set((await prisma.savedAction.findMany({ where: { saveId: save.id, category: 'combate' }, select: { name: true } })).map((a) => a.name));
+    // Hallazgo 52 (revisar-partida-hallazgos.md, 2026-09-15) — mismo patrón exacto que
+    // `/saves/:id/clase`: `save.especializacion` se comprobaba fuera de la transacción, sin
+    // constraint de BD de respaldo en `SavedAction`. `lockRowForUpdate` + re-chequeo del guard con
+    // datos frescos.
+    const resultado = await prisma.$transaction(async (tx) => {
+      const freshSave = await lockRowForUpdate<{ especializacion: Especializacion | null }>(tx, 'Save', save.id, ['especializacion']);
+      if (freshSave.especializacion) return null;
 
-    const nuevasHabilidades = especializacionAbilityUnlocksFor(save.clase, especializacion, save.level)
-      .filter((ability) => !yaTiene.has(ability.name))
-      .map((ability) => savedActionDataFromAbility(save.id, ability));
+      // Mismo guard anti-duplicado que `/saves/:id/clase` — por si alguna habilidad de esta rama
+      // ya existiera por otro camino (ninguno conocido hoy para especialización, pero el mismo
+      // criterio defensivo del endpoint hermano se mantiene por consistencia).
+      const yaTiene = new Set((await tx.savedAction.findMany({ where: { saveId: save.id, category: 'combate' }, select: { name: true } })).map((a) => a.name));
 
-    await prisma.$transaction([
-      prisma.save.update({ where: { id: save.id }, data: { especializacion } }),
-      ...(nuevasHabilidades.length > 0 ? [prisma.savedAction.createMany({ data: nuevasHabilidades })] : []),
-      prisma.logEntry.create({
+      const nuevasHabilidades = especializacionAbilityUnlocksFor(save.clase!, especializacion, save.level)
+        .filter((ability) => !yaTiene.has(ability.name))
+        .map((ability) => savedActionDataFromAbility(save.id, ability));
+
+      await tx.save.update({ where: { id: save.id }, data: { especializacion } });
+      if (nuevasHabilidades.length > 0) await tx.savedAction.createMany({ data: nuevasHabilidades });
+      await tx.logEntry.create({
         data: {
           saveId: save.id,
           channel: 'CHARACTER',
@@ -208,8 +230,12 @@ export async function progressionRoutes(app: FastifyInstance) {
           timeLabel: save.worldState?.fictionalDateLabel ?? 'Día 1, mañana',
           isSystemMessage: true,
         },
-      }),
-    ]);
+      });
+      return true;
+    });
+    if (!resultado) {
+      return reply.status(409).send({ error: `Esta partida ya tiene especialización asignada: ${especializacion}` });
+    }
 
     return { especializacion };
   });

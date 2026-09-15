@@ -307,3 +307,51 @@ describe('POST /saves/:id/combat/dejar-vivir/:npcSlug con participantId (combate
     expect(conCondicionConvaleciente.length).toBeGreaterThan(0);
   }, 20_000);
 });
+
+// Hallazgo 53 (revisar-partida-hallazgos.md, 2026-09-15): `/combat/dejar-vivir` y `/combat/matar`
+// solo comprobaban `rejectIfEnded`, nunca `rejectIfPendingDeath` — una ventana real (aunque
+// estrecha) entre "el motor ya decidió MUERTO" y "pendingCombatNpcSlugs todavía sin limpiar"
+// dejaba a estas rutas operar sobre un combate que el jugador, narrativamente, ya no puede decidir
+// (está muerto/inconsciente). Mismo patrón de test que
+// `companeros.integration.test.ts § guard de save.pendingDeathResolution` — IDs inventados en la
+// URL, el guard corta antes de buscar nada real.
+describe('/combat/dejar-vivir y /combat/matar — guard de save.pendingDeathResolution (hallazgo 53, 2026-09-15)', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (dejar-vivir/matar, muerte pendiente)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        portraitInitial: 'G',
+        pendingDeathResolution: true,
+      },
+    });
+    saveId = save.id;
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('POST /combat/dejar-vivir/:npcSlug → 409', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/combat/dejar-vivir/npc-inexistente` });
+    expect(res.statusCode).toBe(409);
+    expect(JSON.parse(res.body).pendingDeathResolution).toBe(true);
+  });
+
+  it('POST /combat/matar/:npcSlug → 409', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/combat/matar/npc-inexistente` });
+    expect(res.statusCode).toBe(409);
+    expect(JSON.parse(res.body).pendingDeathResolution).toBe(true);
+  });
+});

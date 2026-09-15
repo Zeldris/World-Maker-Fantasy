@@ -1238,6 +1238,19 @@ async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): P
   if (objetivoDesviadoParticipant && nuevaCondicionDesviado && (nuevaCondicionDesviado === 'CONVALECIENTE' || nuevaCondicionDesviado === 'MUERTO')) {
     caidos.push({ tipo: objetivoDesviadoParticipant.tipo, npcId: objetivoDesviadoParticipant.npcId, nuevaCondicion: nuevaCondicionDesviado });
   }
+  // Hallazgo 50 (revisar-partida-hallazgos.md, 2026-09-15): las víctimas extra de AREA ofensiva ya
+  // se persistían bien (línea ~1103-1115) y se narraban bien, pero nunca se empujaban a `caidos` —
+  // el único array que alimenta `applyKillSideEffects` (turnResolution.ts, vía
+  // `combatEncounterCaidos`): cierre de misión "derrotar a X", cambio de reputación de facción, y
+  // `decrementPopulationOnDeath`. Un NPC derrotado SOLO como víctima de AREA nunca disparaba
+  // ninguno de los tres. Mismo criterio exacto que el bloque de `objetivoExtraParticipant`/
+  // `objetivoDesviadoParticipant` de arriba, aplicado a los N objetivos de AREA en vez de a uno.
+  for (const objetivoAreaParticipant of objetivosAreaParticipants) {
+    const nuevaCondicionArea = nuevaCondicionPorObjetivoArea.get(objetivoAreaParticipant.id);
+    if (nuevaCondicionArea && (nuevaCondicionArea === 'CONVALECIENTE' || nuevaCondicionArea === 'MUERTO')) {
+      caidos.push({ tipo: objetivoAreaParticipant.tipo, npcId: objetivoAreaParticipant.npcId, nuevaCondicion: nuevaCondicionArea });
+    }
+  }
 
   // INVOCACION real (Fase 3 § 3d, 2026-08-27) — si este intercambio cruzó de ronda, resuelve ya
   // (narrado, fuera de transacción) el golpe de cualquier tótem con turno pendiente.

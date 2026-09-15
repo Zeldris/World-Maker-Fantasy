@@ -23,6 +23,11 @@ compañeros, cuadrícula/Interactuar, Cazadora Serhu, MedioMovimiento)**
 - [MedioMovimiento — solo 2 fichas marcadas, coherentes con su prosa](#mediomovimiento--solo-2-fichas-marcadas-ambas-coherentes-con-su-prosa-existente)
 - [ZonePoint "Cazadora Serhu" — hueco simple, sin contradicción](#zonepoint-cazadora-serhu--campamento-serhu-sembrado-2026-09-15--hueco-simple-sin-contradicción)
 
+**2026-09-15 (segunda ronda) — barrido de zonas menos auditadas (items.md, razas.md, personajes.md,
+npcs.md)**
+- [personajes.md: tabla de atributos jugables y nota "no aplicada al motor todavía" desactualizadas frente al rename Arcano→Magia del 2026-09-01](#personajesmd--tabla-de-atributos-jugables-y-nota-no-aplicada-al-motor-todavía-desactualizadas-frente-al-rename-arcanomagia-del-2026-09-01)
+- [items.md, razas.md, npcs.md — confirmados sin discrepancias tras verificación puntual](#items-md-razasmd-npcsmd--confirmados-sin-discrepancias-tras-verificación-puntual)
+
 **2026-09-07 — auditoría de lore post-2026-08-25 (frente paralelo de la ronda de 4 agentes)**
 - [clases.md: tabla-resumen y secciones detalladas de Guerrero/Cazador/Chamán/Arquero vuelven a desactualizarse tras la siembra de 22 habilidades del 2026-08-31](#2026-09-07-clasesmd-tabla-resumen-y-secciones-detalladas-de-guerrerocazadorchamánarquero-vuelven-a-desactualizarse-tras-la-siembra-de-22-habilidades-del-2026-08-31)
 - [Confirmado sin discrepancias — mundo determinista/agenda, Faction.description estática, banners, actualizaciones-pendientes-lore.md ya cubrió fauna/flora/vocabulario](#2026-09-07-confirmado-sin-discrepancias--mundo-determinista-agenda-factiondescription-estática-banners-actualizaciones-pendientes-loremd-ya-cubrió-faunaf-loravocabulario)
@@ -426,3 +431,80 @@ existente del Clan Serhu. Ningún otro NPC o lugar usa "Serhu" en un contexto qu
 
 **Estado**: HUECO simple, sin acción de código — la ficha de código es prosa de diseño nueva que aún
 no se trasladó a los `.md`, sin contradecir nada existente.
+
+---
+
+## 2026-09-15 (segunda ronda) — barrido de zonas menos auditadas (items.md, razas.md,
+personajes.md, npcs.md)
+
+**Contexto**: segunda auditoría de lore lanzada el mismo día, tras la ronda de arriba (commit
+`1585371`, que ya corrigió las 3 fichas de CANALIZAR y las 6 cabeceras de `clases.md`). Sin
+desarrollo de código nuevo entre ambas rondas, así que esta pasada amplía el barrido a documentos
+con menos auditoría reciente según el propio índice de este archivo: `items.md` y `npcs.md` nunca
+habían sido objeto de una entrada propia; `razas.md`/`personajes.md` solo se habían tocado de forma
+tangencial (Serhu, Signeran, Kessa Vael).
+
+### personajes.md — tabla de atributos jugables y nota "no aplicada al motor todavía" desactualizadas
+frente al rename Arcano→Magia del 2026-09-01
+
+**Hallazgo (staleness, no contradicción de diseño — ya hay decisión de canon tomada y aplicada,
+solo falta propagarla a este documento)**: `personajes.md` § "Poderes más allá de la magia" (línea
+102) afirma literalmente: *"Pendiente de retirada (decisión 2026-08-23, ver clases.md § Atributo
+Magia)... decisión cerrada, documentada, **no aplicada al motor todavía** — esta sección se queda
+tal cual hasta entonces."* Eso ya no es cierto: el commit `8535c85` (2026-09-01, *"Renombra el
+atributo Arcano a Magia y retira los secundarios narrativos"*) aplicó la decisión al motor de
+verdad, con migración de datos reales de Postgres incluida. `docs/rpgtarkor/clases.md` (línea 157,
+§ "Atributo Magia") sí quedó correctamente actualizado ese mismo día ("decisión cerrada — **APLICADA
+al motor (2026-09-01)**"), pero `personajes.md` nunca se volvió a tocar tras esa pasada.
+
+Verificado contra el código real: `backend/src/services/dice.ts:13` define hoy
+`Attribute = 'fuerza' | 'destreza' | 'constitucion' | 'inteligencia' | 'voluntad' | 'carisma' |
+'magia'` (7 atributos primarios, confirmado también por `attributeWheel.ts:18`,
+`ATTRIBUTE_RING`) y `secondaryAttributes.ts:38` define `SECONDARY_ATTRIBUTES = ['moral',
+'resistenciaFrio', 'resistenciaCalor', 'suerte', 'honor']` — ni `arcano` ni `sigilo` existen ya en
+ningún sitio del motor. La tabla de "Atributos jugables" de `personajes.md` (líneas 121-130), en
+cambio, sigue usando el esquema viejo íntegro: 6 columnas jugables **Fuerza/Destreza/Sigilo/
+Voluntad/Carisma/Arcano** (sin `Constitución`, sin `Inteligencia` como jugable) más 9 columnas
+"narrativas" (Inteligencia, Magia, Poder de semilla, Moral, y 4 Resistencias separadas por tipo:
+física/mágica/semilla/frío/calor) que tampoco coinciden con las 5 `SECONDARY_ATTRIBUTES` reales de
+hoy. Confirmado con un ejemplo real del propio catálogo: la ficha de Hagar Kiugh
+(`worldCatalog.ts:3783`, NPC con stats jugables reales) usa exactamente el esquema moderno de 7 —
+`attributes: { fuerza, destreza, constitucion, inteligencia, voluntad, carisma, magia }` — sin
+`sigilo` ni `arcano`.
+
+No es una contradicción de diseño: la decisión de canon ya está tomada, cerrada y aplicada desde
+hace dos semanas — es que la pasada de actualización del 2026-09-01 corrigió `clases.md` pero no
+`personajes.md`, mismo patrón de staleness ya visto varias veces en `clases.md` mismo (2026-08-25,
+2026-09-07, hoy).
+
+**Estado**: PENDIENTE de fijar en `personajes.md` (no tocado por esta auditoría, solo investigación,
+respetando la instrucción de no modificar código ni decidir contenido nuevo sin más contexto) —
+corregir la nota de línea 102 a "APLICADA al motor (2026-09-01)" y reescribir la tabla de atributos
+(líneas 106-136) al esquema real de 7 jugables (`fuerza, destreza, constitucion, inteligencia,
+voluntad, carisma, magia`) + 5 narrativos/secundarios (`moral, resistenciaFrio, resistenciaCalor,
+suerte, honor`) — probablemente requiere decidir valores nuevos para `constitucion` de cada uno de
+los 8 pregenerados (hoy no tienen), tarea de diseño que excede el alcance de una auditoría de
+documentación pura.
+
+### items.md, razas.md, npcs.md — confirmados sin discrepancias tras verificación puntual
+
+**Verificado, sin hallazgos nuevos** (más allá del hallazgo de `personajes.md` de arriba):
+- `items.md`: todas las afirmaciones técnicas puntuales comprobadas contra el código coinciden
+  exactamente — `SMOKE_MEAT_RECIPE` (crafting.ts) sigue sin campo `oficio`, ninguna receta de
+  `cocinero-orco-llanuras` produce `racion-viaje` (solo existe como ítem suelto de inventario/
+  recompensa), `punado-arena-iman` y `saquito-arena-iman` existen como objetos mecánicamente
+  distintos tal como describe el doc, y `totem-maktor` (`worldCatalog.ts:7172`) sigue sin
+  `statBonuses` (cosmético puro, coincide con "se encontró y quitó un +1 voluntad... por error").
+- `razas.md`: contenido casi enteramente narrativo (cultura, tabúes, biología por clan/raza), sin
+  mecánica numérica que verificar más allá de lo ya cruzado en `personajes.md` arriba. Sin
+  discrepancias con `areas.md`/`genesis.md`/`historia.md` en la relectura.
+- `npcs.md`: la única afirmación técnica puntual del documento (Hagar Kiugh "con stats jugables ya
+  en `worldCatalog.ts` — slug `hagar-kiugh`, nivel 2... marcado `nucleoJugable: false`") se
+  confirmó exacta contra `worldCatalog.ts:3772-3786`, incluido el nivel y el flag.
+- Confirmación indirecta de la decisión ya registrada en memoria ("pre-alpha = solo Gorhorn"):
+  `backend/src/routes/saves/creation.ts` no tiene ninguna referencia a Sael/Dessa/Ithren/Amonir/
+  Yerin/Riko/Cassia — de los 8 pregenerados que describen `personajes.md`/`razas.md`, solo Gorhorn
+  es seleccionable de verdad hoy. No es un hallazgo nuevo, ya estaba decidido y documentado.
+
+**Estado**: NO ES BUG en items.md/razas.md/npcs.md, sin acción necesaria. Único hallazgo real de
+esta ronda: `personajes.md` arriba.

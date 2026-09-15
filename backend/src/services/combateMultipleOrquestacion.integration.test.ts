@@ -710,6 +710,90 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     }
   }, 30_000);
 
+  // Hallazgo 50 (revisar-partida-hallazgos.md, 2026-09-15): las víctimas extra de AREA ofensiva se
+  // persistían bien en NpcState (ya probado arriba), pero nunca se empujaban al array `caidos` que
+  // devuelve `resolverTurnoJugador` — el único array que alimenta `applyKillSideEffects`
+  // (turnResolution.ts): cierre de misión "derrotar a X", reputación de facción,
+  // `decrementPopulationOnDeath`. AREA+LETAL (determinista, sin depender de margen ni condición de
+  // partida) confirma que la víctima extra SÍ aparece en `caidos`, no solo en NpcState.
+  it('AREA + LETAL: la víctima extra (fuera del enganche principal) SÍ aparece en resultado.caidos, no solo en NpcState', async () => {
+    await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'ILESO', energia: 100, activeEffects: [] } });
+    // `areaOfensivaTriggered` exige margen decisivo real (combateMultiple.ts:909), no solo un
+    // golpe cualquiera — mismo blindaje contra el azar que el test "Grito Animal" de arriba:
+    // efecto previo (atributo real de la habilidad, fuerza) + roll fijo a un valor medio.
+    const efectoPrevioFuerza: ActiveEffect = { attribute: 'fuerza', magnitude: 100, turnsRemaining: 3, sourceAbility: 'Efecto de prueba (garantiza el margen)' };
+    await prisma.save.update({ where: { id: saveId }, data: { activeEffects: [efectoPrevioFuerza] as unknown as object } });
+    const [enemigoA, enemigoB] = await Promise.all([
+      prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } }),
+      prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'corredor-de-cauce' } }),
+    ]);
+    await Promise.all([
+      prisma.npcState.upsert({
+        where: { saveId_npcId_scope: { saveId, npcId: enemigoA.id, scope: 'itinerante-area-letal-a' } },
+        create: { saveId, npcId: enemigoA.id, scope: 'itinerante-area-letal-a', energia: 0 },
+        update: { energia: 0, condicionFisica: 'ILESO' },
+      }),
+      prisma.npcState.upsert({
+        where: { saveId_npcId_scope: { saveId, npcId: enemigoB.id, scope: 'itinerante-area-letal-b' } },
+        create: { saveId, npcId: enemigoB.id, scope: 'itinerante-area-letal-b', energia: 0 },
+        update: { energia: 0, condicionFisica: 'ILESO' },
+      }),
+    ]);
+
+    const { encounterId } = await prisma.$transaction((tx) =>
+      iniciarCombatEncounter(tx, saveId, [
+        { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 1000, inteligencia: 10 },
+        { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigoA.id, npcScope: 'itinerante-area-letal-a', destreza: 10, inteligencia: 6 },
+        { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigoB.id, npcScope: 'itinerante-area-letal-b', destreza: 10, inteligencia: 6 },
+      ]),
+    );
+
+    try {
+      // Mismo criterio que el test de arriba — orden de iniciativa forzado a mano, la jugadora
+      // actúa primero de forma garantizada.
+      const encounterParaOrden = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId }, include: { participantes: true } });
+      const jugadoraPId = encounterParaOrden.participantes.find((p) => p.tipo === 'JUGADOR')!.id;
+      const restoOrden = encounterParaOrden.ordenIniciativa.filter((id) => id !== jugadoraPId);
+      await prisma.combatEncounter.update({ where: { id: encounterId }, data: { ordenIniciativa: [jugadoraPId, ...restoOrden] } });
+
+      const enemigoAParticipant = encounterParaOrden.participantes.find((p) => p.npcScope === 'itinerante-area-letal-a')!;
+      await prisma.combatEncounter.update({ where: { id: encounterId }, data: { esperandoEleccionJugadora: true } });
+      await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: enemigoAParticipant.id });
+      await prisma.combatParticipant.update({ where: { id: jugadoraPId }, data: { objetivoActualId: enemigoAParticipant.id } });
+      await prisma.combatParticipant.update({ where: { id: enemigoAParticipant.id }, data: { objetivoActualId: jugadoraPId } });
+
+      const habilidadAreaLetal: HabilidadParaIntercambio = {
+        name: 'Golpe de Área Letal (prueba)',
+        description: '',
+        attribute: 'fuerza',
+        effects: ['ATAQUE', 'AREA', 'LETAL'],
+        rol: 'ataque',
+        energyCost: 5,
+        energyRegen: 0,
+      };
+      const randomSpy = vi.spyOn(Math, 'random');
+      randomSpy.mockReturnValue(0.5);
+      let resultado;
+      try {
+        resultado = await resolverHastaJugadoraActua(saveId, worldId, encounterId, habilidadAreaLetal);
+      } finally {
+        randomSpy.mockRestore();
+      }
+      expect(resultado).not.toBeNull();
+
+      // El enganche principal (enemigoA) puede o no morir según margen/tirada — lo único que este
+      // test necesita determinista es la víctima EXTRA de AREA (enemigoB), que con LETAL siempre
+      // muere sin importar condición de partida ni margen.
+      const stateB = await prisma.npcState.findUnique({ where: { saveId_npcId_scope: { saveId, npcId: enemigoB.id, scope: 'itinerante-area-letal-b' } } });
+      expect(stateB?.condicionFisica).toBe('MUERTO');
+
+      expect(resultado!.caidos).toContainEqual({ tipo: 'NPC', npcId: enemigoB.id, nuevaCondicion: 'MUERTO' });
+    } finally {
+      await prisma.save.update({ where: { id: saveId }, data: { activeEffects: [] } });
+      await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
+    }
+  }, 30_000);
+
   // AUMENTO real, camino independiente (2026-09-15, docs/rpgtarkor/clases.md — Guardián 32, Valor
   // Compartido) — a diferencia de Vínculo Salvaje/Grito Animal (rol ataque, margen decisivo), Valor
   // Compartido es rol utilidad: dispara por `utilityTriggered` (exige que el RIVAL de este

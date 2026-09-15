@@ -78,6 +78,10 @@ export async function companerosRoutes(app: FastifyInstance) {
     return { candidates, tieneCuerdas };
   });
 
+  /// Señal interna para abortar la transacción de captura sin que Prisma la trate como un error de
+  /// escritura real (hallazgo 48) — capturada justo después del `$transaction`, nunca se propaga.
+  class CapturaEnCursoError extends Error {}
+
   /// Atar con éxito — REDISEÑO 2026-08-28 (docs/rpgtarkor/captura-rediseno-2026-08-28.md): la
   /// captura deja de vivir in-situ en `NpcState.capturado` (eso rompía la caza en grupo — una sola
   /// fila `NpcState` no podía ser "el individuo capturado" Y "el individuo activo para seguir
@@ -194,7 +198,18 @@ export async function companerosRoutes(app: FastifyInstance) {
 
     // Se consume la cuerda y se crea la captura en tránsito en la misma transacción — mismo
     // criterio de siempre (evitar gastarla en un intento que pierde la carrera).
-    const { item, logEntry, factionRepChange, misionesPendientes } = await prisma.$transaction(async (tx) => {
+    //
+    // Hallazgo 48 (revisar-partida-hallazgos.md, 2026-09-15): "solo 1 captura activa a la vez" se
+    // comprobaba (línea ~99) fuera de esta transacción, sin volver a re-chequear aquí — dos
+    // capturas casi simultáneas sobre objetivos distintos (alcanzable en combate múltiple con 2+
+    // GRAVE/CONVALECIENTE a la vez) podían pasar las dos el guard. `lockRowForUpdate` sobre `Save`
+    // serializa: la segunda transacción ve ya la captura que dejó la primera antes de decidir.
+    const resultado = await prisma.$transaction(async (tx) => {
+      await lockRowForUpdate(tx, 'Save', save.id, ['id']);
+      const capturaEnCursoFresca = await tx.inventoryItem.findFirst({ where: { saveId: save.id, capturaNpcId: { not: null } }, select: { id: true } });
+      if (capturaEnCursoFresca) {
+        throw new CapturaEnCursoError();
+      }
       await tx.inventoryItem.delete({ where: { id: cuerdasItem.id } });
       const createdItem = await tx.inventoryItem.create({
         data: {
@@ -222,7 +237,14 @@ export async function companerosRoutes(app: FastifyInstance) {
       // decisión explícita de 2026-08-31). Ver `activeQuestTitlesTargeting`.
       const misionesPendientes = await activeQuestTitlesTargeting(tx, save.id, npc.id);
       return { item: createdItem, logEntry: createdLog, factionRepChange: rep, misionesPendientes };
+    }).catch((err) => {
+      if (err instanceof CapturaEnCursoError) return null;
+      throw err;
     });
+    if (!resultado) {
+      return reply.status(400).send({ error: 'Ya llevas una captura sin resolver — suéltala o deposítala antes de atar a otra.' });
+    }
+    const { item, logEntry, factionRepChange, misionesPendientes } = resultado;
 
     return {
       npcSlug: npc.slug,
@@ -255,35 +277,44 @@ export async function companerosRoutes(app: FastifyInstance) {
     }
 
     const tamanoRequerido = jaulaTamanoRequeridoFor(npc.slug);
-    const jaulas = await prisma.building.findMany({
-      where: { saveId: request.params.id, status: 'ACTIVO', recipeKey: { in: ['jaula-pequena', 'jaula-mediana', 'jaula-grande'] } },
-    });
-    // Deuda técnica cerrada (auditoría 2026-09-01): antes era un `findFirst` de NpcState por cada
-    // jaula dentro del bucle (patrón N+1) — una sola consulta con `IN` trae la ocupación de TODAS
-    // las jaulas de golpe, comprobada después en memoria contra un Set.
-    const jaulasOcupadas = new Set(
-      (await prisma.npcState.findMany({ where: { capturaJaulaBuildingId: { in: jaulas.map((j) => j.id) } }, select: { capturaJaulaBuildingId: true } })).map(
-        (s) => s.capturaJaulaBuildingId,
-      ),
-    );
-    const jaulaConHueco = jaulas.find((jaula) => {
-      const jaulaTamano = jaula.recipeKey === jaulaRecipeKeyFor('GRANDE') ? 'GRANDE' : jaula.recipeKey === jaulaRecipeKeyFor('MEDIANA') ? 'MEDIANA' : 'PEQUENA';
-      return jaulaAlcanzaPara(jaulaTamano, tamanoRequerido) && !jaulasOcupadas.has(jaula.id);
-    });
-    if (!jaulaConHueco) {
-      return reply.status(400).send({ error: `Necesitas una Jaula (${tamanoRequerido.toLowerCase()} o mayor) con hueco libre para depositar a esta criatura.` });
-    }
 
-    // La captura pasa de InventoryItem (en tránsito) a NpcState.capturaJaulaBuildingId (en
-    // proceso de tameo) — mismo NpcState de origen (npcId+scope), ya liberado del grupo al atar.
-    await prisma.$transaction([
-      prisma.inventoryItem.delete({ where: { id: item.id } }),
-      prisma.npcState.updateMany({
+    // Hallazgo 49 (revisar-partida-hallazgos.md, 2026-09-15): qué Jaula tiene hueco se calculaba
+    // fuera de transacción, sin re-chequeo en la escritura final (`$transaction([...])` en array,
+    // sin lock) — dos depósitos casi simultáneos podían leer la misma Jaula como "con hueco" y
+    // asignarle `capturaJaulaBuildingId` a las dos. Mismo patrón que el hallazgo 48:
+    // `lockRowForUpdate` sobre `Save` serializa, y la ocupación se relee DENTRO de la transacción.
+    const jaulaResult = await prisma.$transaction(async (tx) => {
+      await lockRowForUpdate(tx, 'Save', request.params.id, ['id']);
+      const jaulas = await tx.building.findMany({
+        where: { saveId: request.params.id, status: 'ACTIVO', recipeKey: { in: ['jaula-pequena', 'jaula-mediana', 'jaula-grande'] } },
+      });
+      // Deuda técnica cerrada (auditoría 2026-09-01): antes era un `findFirst` de NpcState por
+      // cada jaula dentro del bucle (patrón N+1) — una sola consulta con `IN` trae la ocupación de
+      // TODAS las jaulas de golpe, comprobada después en memoria contra un Set.
+      const jaulasOcupadas = new Set(
+        (await tx.npcState.findMany({ where: { capturaJaulaBuildingId: { in: jaulas.map((j) => j.id) } }, select: { capturaJaulaBuildingId: true } })).map(
+          (s) => s.capturaJaulaBuildingId,
+        ),
+      );
+      const jaulaConHueco = jaulas.find((jaula) => {
+        const jaulaTamano = jaula.recipeKey === jaulaRecipeKeyFor('GRANDE') ? 'GRANDE' : jaula.recipeKey === jaulaRecipeKeyFor('MEDIANA') ? 'MEDIANA' : 'PEQUENA';
+        return jaulaAlcanzaPara(jaulaTamano, tamanoRequerido) && !jaulasOcupadas.has(jaula.id);
+      });
+      if (!jaulaConHueco) return null;
+
+      // La captura pasa de InventoryItem (en tránsito) a NpcState.capturaJaulaBuildingId (en
+      // proceso de tameo) — mismo NpcState de origen (npcId+scope), ya liberado del grupo al atar.
+      await tx.inventoryItem.delete({ where: { id: item.id } });
+      await tx.npcState.updateMany({
         where: { saveId: request.params.id, npcId: npc.id, scope: item.capturaScope! },
         data: { capturado: true, capturaFelicidad: 0, capturaJaulaBuildingId: jaulaConHueco.id },
-      }),
-    ]);
-    return { ok: true, jaulaBuildingId: jaulaConHueco.id };
+      });
+      return jaulaConHueco;
+    });
+    if (!jaulaResult) {
+      return reply.status(400).send({ error: `Necesitas una Jaula (${tamanoRequerido.toLowerCase()} o mayor) con hueco libre para depositar a esta criatura.` });
+    }
+    return { ok: true, jaulaBuildingId: jaulaResult.id };
   });
 
   /// Soltar/liberar una captura EN EL INVENTARIO (antes de depositar) — disponible en cualquier

@@ -1,8 +1,9 @@
 import type { FastifyInstance } from 'fastify';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { scopeFor } from '../../services/npcScene.js';
 import { checkAprenderOficio, nextGoirnosTrasCobro, COSTE_GOIRNOS_APRENDER_OFICIO } from '../../services/learnProfession.js';
-import { rejectIfEnded, rejectIfPendingDeath, toFrontendLogEntry } from './shared.js';
+import { rejectIfEnded, rejectIfPendingDeath, toFrontendLogEntry, lockRowForUpdate } from './shared.js';
 import { CONDICIONES_INTERACTUABLE } from '../../services/death.js';
 
 const MOTIVO_MENSAJE: Record<string, string> = {
@@ -10,6 +11,14 @@ const MOTIVO_MENSAJE: Record<string, string> = {
   ya_aprendido: 'Ya conoces ese oficio.',
   pago_insuficiente: `No llevas los ${COSTE_GOIRNOS_APRENDER_OFICIO} Goirnos que pide a cambio.`,
 };
+
+/// Señal interna para abortar la transacción sin que Prisma la trate como un error de escritura
+/// real (hallazgo 51) — capturada justo después del `$transaction`, nunca se propaga.
+class AprenderOficioRechazadoError extends Error {
+  constructor(public readonly motivo: string) {
+    super(motivo);
+  }
+}
 
 /// "Aprender oficio de un Maestro" (2026-08-31, "Trabajador de Reino") — cierra el hueco real
 /// confirmado en `crafting.ts`/`docs/ampliar-lore-checklist.md`: hoy los oficios solo se siembran
@@ -114,18 +123,46 @@ export async function aprenderOficioRoutes(app: FastifyInstance) {
       const fictionalMinutes = save.worldState?.fictionalMinutes ?? 480;
       const text = `${save.characterName} paga ${COSTE_GOIRNOS_APRENDER_OFICIO} Goirnos y aprende el oficio de ${npc.name}.`;
 
-      const logEntry = await prisma.$transaction(async (tx) => {
-        await tx.save.update({
-          where: { id: save.id },
-          data: { goirnos: nextGoirnosTrasCobro(save.goirnos, COSTE_GOIRNOS_APRENDER_OFICIO) },
+      // Hallazgo 51 (revisar-partida-hallazgos.md, 2026-09-15) — dos frentes de carrera a la vez:
+      // (a) el guard de arriba (`check.permitido`) y `save.goirnos` se leyeron ANTES de esta
+      // transacción; sin re-chequear con datos frescos, dos peticiones concurrentes con Maestros
+      // DISTINTOS podían pasar las dos el guard viendo el mismo saldo, y las dos cobrar el coste —
+      // `nextGoirnosTrasCobro` topa en 0 (`Math.max`), así que no se ve como saldo negativo, pero
+      // el jugador solo pagó una vez de las dos reales. Se repite `checkAprenderOficio` DENTRO de
+      // la transacción, con `goirnos` fresco tras el lock — la segunda petición ve ya el saldo que
+      // dejó la primera y falla limpio con `pago_insuficiente`, en vez de cobrar sin fondos.
+      // (b) `ProfessionProgress` SÍ tiene `@@unique([saveId, professionId])` (protección real
+      // contra doble aprendizaje del MISMO oficio con el MISMO Maestro), pero el choque nunca se
+      // capturaba — 500 genérico en vez del mismo 400 claro que ya da el guard normal (mismo
+      // patrón que `reino.ts` con `Faction.slug`).
+      let logEntry;
+      try {
+        logEntry = await prisma.$transaction(async (tx) => {
+          const freshSave = await lockRowForUpdate<{ goirnos: number }>(tx, 'Save', save.id, ['goirnos']);
+          const freshCheck = checkAprenderOficio(factionsStatus, npc.faction!, !!existing, freshSave.goirnos);
+          if (!freshCheck.permitido) {
+            throw new AprenderOficioRechazadoError(freshCheck.motivo!);
+          }
+          await tx.save.update({
+            where: { id: save.id },
+            data: { goirnos: nextGoirnosTrasCobro(freshSave.goirnos, COSTE_GOIRNOS_APRENDER_OFICIO) },
+          });
+          await tx.professionProgress.create({
+            data: { saveId: save.id, professionId: npc.teachesProfession! },
+          });
+          return tx.logEntry.create({
+            data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes, isPlayerAction: true },
+          });
         });
-        await tx.professionProgress.create({
-          data: { saveId: save.id, professionId: npc.teachesProfession! },
-        });
-        return tx.logEntry.create({
-          data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes, isPlayerAction: true },
-        });
-      });
+      } catch (err) {
+        if (err instanceof AprenderOficioRechazadoError) {
+          return reply.status(400).send({ error: MOTIVO_MENSAJE[err.motivo] ?? 'No puedes aprender ese oficio ahora mismo.' });
+        }
+        if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+          return reply.status(400).send({ error: MOTIVO_MENSAJE.ya_aprendido });
+        }
+        throw err;
+      }
 
       return { professionId: npc.teachesProfession, logEntry: toFrontendLogEntry(logEntry) };
     },

@@ -6,7 +6,7 @@ import { effectiveAttributes, effectiveDefense } from '../../services/equipment.
 import { rollCheck } from '../../services/dice.js';
 import type { AttributeBlock } from '../../services/dice.js';
 import { oneStepWorseThan } from '../../services/death.js';
-import { rejectIfEnded, lockRowForUpdate } from './shared.js';
+import { rejectIfEnded, rejectIfPendingDeath, lockRowForUpdate } from './shared.js';
 import { FACTION_REP_MERCY_DELTA } from '../../services/reputation.js';
 import { applyFactionRepDeltaForResolution } from '../../services/turnResolution.js';
 import { activeQuestTitlesTargeting } from '../../services/questResolution.js';
@@ -348,9 +348,14 @@ export async function sessionRoutes(app: FastifyInstance) {
   // camino 1v1 clásico (`NpcState`) por ahora — combate múltiple (`CombatParticipant`) usa un
   // sistema de condición paralelo (`condicionFisicaGrupo`) que queda fuera de esta pieza.
   app.post<{ Params: { id: string; npcSlug: string } }>('/saves/:id/combat/matar/:npcSlug', async (request, reply) => {
-    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, worldId: true, currentLocationId: true, endedAt: true } });
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, worldId: true, currentLocationId: true, endedAt: true, pendingDeathResolution: true } });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
     if (rejectIfEnded(save, reply)) return;
+    // Hallazgo 53 (revisar-partida-hallazgos.md, 2026-09-15): `pendingCombatNpcSlugs` se limpia
+    // FUERA de la transacción que escribe la muerte del jugador (turnResolution.ts) — sin este
+    // guard, una petición concurrente podía leerlo todavía "sucio" (de antes de morir) y operar
+    // sobre un combate que el motor ya decidió cerrar porque el jugador está muerto/inconsciente.
+    if (rejectIfPendingDeath(save, reply)) return;
 
     const npc = await prisma.npc.findUnique({ where: { worldId_slug: { worldId: save.worldId, slug: request.params.npcSlug } } });
     if (!npc) return reply.status(404).send({ error: 'NPC no encontrado' });
@@ -383,6 +388,8 @@ export async function sessionRoutes(app: FastifyInstance) {
       });
       if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
       if (rejectIfEnded(save, reply)) return;
+      // Hallazgo 53 (revisar-partida-hallazgos.md, 2026-09-15) — mismo motivo que /combat/matar.
+      if (rejectIfPendingDeath(save, reply)) return;
 
       const npc = await prisma.npc.findUnique({ where: { worldId_slug: { worldId: save.worldId, slug: request.params.npcSlug } } });
       if (!npc) return reply.status(404).send({ error: 'NPC no encontrado' });

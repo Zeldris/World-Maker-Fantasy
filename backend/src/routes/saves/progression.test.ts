@@ -23,16 +23,17 @@ vi.mock('../../lib/prisma.js', () => ({
       findMany: (...args: unknown[]) => findManySavedAction(...args),
     },
     logEntry: { create: (...args: unknown[]) => createLogEntry(...args) },
-    // Dos formas reales de `$transaction` en este archivo (progression.ts): la de
-    // `attribute-points` pasa un callback (`SELECT ... FOR UPDATE` + `update`, auditoría
-    // 2026-08-06); la de `PATCH /clase` (2026-08-29) pasa un ARRAY de operaciones (mismo patrón
-    // que otras rutas deterministas del proyecto, ej. companeros.ts) — el mock distingue por el
-    // tipo del primer argumento y ejecuta cada rama de forma equivalente a Prisma real.
+    // `$transaction` en este archivo (progression.ts) siempre pasa un callback — `attribute-points`
+    // usa `SELECT ... FOR UPDATE` + `update` (auditoría 2026-08-06); `PATCH /clase`/
+    // `/especializacion` (hallazgo 52, 2026-09-15) pasaron de un array de operaciones a un
+    // callback con `lockRowForUpdate` — el mock de `tx` expone todo lo que ambos caminos usan.
     $transaction: (arg: unknown) => {
       if (typeof arg === 'function') {
         return (arg as (tx: unknown) => unknown)({
           $queryRaw: (...args: unknown[]) => queryRawSave(...args),
           save: { update: (...args: unknown[]) => updateSave(...args) },
+          savedAction: { createMany: (...args: unknown[]) => createManySavedAction(...args), findMany: (...args: unknown[]) => findManySavedAction(...args) },
+          logEntry: { create: (...args: unknown[]) => createLogEntry(...args) },
         });
       }
       return Promise.all(arg as Promise<unknown>[]);
@@ -183,6 +184,10 @@ describe('PATCH /saves/:id/clase', () => {
     createLogEntry.mockReset();
     findManySavedAction.mockReset();
     findManySavedAction.mockResolvedValue([]);
+    queryRawSave.mockReset();
+    // `lockRowForUpdate` (hallazgo 52, 2026-09-15) relee `clase` fresca dentro de la transacción —
+    // por defecto refleja "todavía sin clase", cada test la sobreescribe si necesita otro caso.
+    queryRawSave.mockResolvedValue([{ clase: null }]);
   });
 
   it('rechaza una clase que no existe en el enum', async () => {
@@ -230,6 +235,22 @@ describe('PATCH /saves/:id/clase', () => {
     expect(res.statusCode).toBe(409);
     expect(JSON.parse(res.body).error).toMatch(/ya tiene clase asignada/);
     expect(updateSave).not.toHaveBeenCalled();
+  });
+
+  // Hallazgo 52 (revisar-partida-hallazgos.md, 2026-09-15): el guard externo (arriba) lee
+  // `save.clase` de ANTES de la transacción — si otra petición fijó la clase justo entre medias
+  // (concurrencia real), el guard externo la deja pasar con `clase: null` desactualizado, pero el
+  // re-chequeo DENTRO de la transacción (con `lockRowForUpdate`, dato fresco) la detiene igual.
+  it('409 si la clase se asignó DENTRO de la ventana de carrera (guard externo pasó con dato viejo, el re-chequeo interno la detiene)', async () => {
+    findUniqueSave.mockResolvedValue({ id: 'save1', endedAt: null, clase: null, level: 3, characterName: 'Gorhorn', worldState: null });
+    queryRawSave.mockResolvedValue([{ clase: 'CAZADOR' }]);
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'PATCH', url: '/saves/save1/clase', payload: { clase: 'GUERRERO' } });
+
+    expect(res.statusCode).toBe(409);
+    expect(updateSave).not.toHaveBeenCalled();
+    expect(createManySavedAction).not.toHaveBeenCalled();
   });
 
   it('fija la clase y concede el tronco común ya alcanzado por el nivel actual, no solo nivel 1', async () => {
@@ -289,6 +310,11 @@ describe('PATCH /saves/:id/especializacion', () => {
     createLogEntry.mockReset();
     findManySavedAction.mockReset();
     findManySavedAction.mockResolvedValue([]);
+    queryRawSave.mockReset();
+    // `lockRowForUpdate` (hallazgo 52, 2026-09-15) relee `especializacion` fresca dentro de la
+    // transacción — por defecto "todavía sin especialización", cada test la sobreescribe si hace
+    // falta otro caso.
+    queryRawSave.mockResolvedValue([{ especializacion: null }]);
   });
 
   it('rechaza una especialización que no existe en el enum', async () => {
@@ -358,6 +384,21 @@ describe('PATCH /saves/:id/especializacion', () => {
     expect(res.statusCode).toBe(409);
     expect(JSON.parse(res.body).error).toMatch(/ya tiene especialización asignada/);
     expect(updateSave).not.toHaveBeenCalled();
+  });
+
+  // Hallazgo 52 (revisar-partida-hallazgos.md, 2026-09-15): mismo patrón que `/clase` — el guard
+  // externo lee `save.especializacion` de ANTES de la transacción; si otra petición la fijó justo
+  // entre medias, el re-chequeo DENTRO de la transacción (dato fresco) la detiene igual.
+  it('409 si la especialización se asignó DENTRO de la ventana de carrera (guard externo pasó con dato viejo, el re-chequeo interno la detiene)', async () => {
+    findUniqueSave.mockResolvedValue({ id: 'save1', endedAt: null, clase: 'GUERRERO', level: 12, especializacion: null, worldState: null, characterName: 'Gorhorn' });
+    queryRawSave.mockResolvedValue([{ especializacion: 'BERSERKER' }]);
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'PATCH', url: '/saves/save1/especializacion', payload: { especializacion: 'GUARDIAN' } });
+
+    expect(res.statusCode).toBe(409);
+    expect(updateSave).not.toHaveBeenCalled();
+    expect(createManySavedAction).not.toHaveBeenCalled();
   });
 
   it('400 si la especialización no pertenece a la clase real del personaje', async () => {

@@ -22,11 +22,19 @@ Cada entrada: fecha, qué se detectó (cita textual si es narración), causa ra�
   iniciativa, matching de texto (Espina del Viento/dorsal), diseño de barras de habilidades,
   interacción con NPCs (Aprender oficio/Entregar/Capturar), enciclopedia/mapa de zona
   desincronizados, generación de prompts de imagen rota, vocabulario de tiradas. Todos PENDIENTES.
-- **2026-09-15** — auditoría de bugs enfocada en lo nuevo desde el 09-07 (combate múltiple con
-  compañeros, sistema "Interactuar"/movimiento en Zona): 3 hallazgos nuevos reales (44-46,
+- **2026-09-15 (ronda 1)** — auditoría de bugs enfocada en lo nuevo desde el 09-07 (combate múltiple
+  con compañeros, sistema "Interactuar"/movimiento en Zona): 3 hallazgos nuevos reales (44-46,
   `pendingDynamicModeOffer` de RECURSO no atómico, sin candado en `/zona/mover`, tope de grupo de
   combate sin transacción), 1 desajuste menor (47, `marcarNpcConocido` fuera de transacción), resto
   confirmado sin hallazgo tras revisión dirigida.
+- **2026-09-15 (ronda 2)** — mismo día, barrido ampliado a zonas menos cubiertas (captura/tameo/
+  Almacén, quests/reino/Trabajador de Reino, death/progression, AREA de combate múltiple): 6
+  hallazgos nuevos reales (48-53) — captura en tránsito sin lock global, hueco de Jaula sin lock, AREA
+  ofensiva sin propagar víctimas a `caidos` (pierde XP/reputación/población), doble gasto de Goirnos
+  en Aprender oficio, duplicación posible de habilidades en clase/especialización, limpieza de
+  `pendingCombatNpcSlugs` fuera de la transacción de muerte. Resto (quests.ts, reino.ts fundación,
+  death.ts, inventario.ts/entrega.ts, worldTick.ts, reputation.ts, chapterSummary.ts, skillBars.ts,
+  npcInteraction.ts, descansarCampamento.ts) confirmado sin hallazgo.
 
 ---
 
@@ -906,5 +914,159 @@ Revisado el consumo en frontend de los campos nuevos del backend (`combatGroupSl
 `types.ts`, `caminoRestante`/`zonePointsMovidos`/`dynamicModeOffer`/`logEntry` de la respuesta de
 `/zona/mover` en `api.ts`/`ZonaPanel.tsx`) — todos con tipos y consumo actualizados, sin ningún caso
 de frontend mostrando un shape viejo o un campo fantasma. **Confirmado sin hallazgo.**
+
+---
+
+## 2026-09-15 — Segunda auditoría del mismo día, barrido ampliado a zonas menos cubiertas
+
+Segunda pasada del runbook `revisar-partida.md` el mismo día, tras la ronda de arriba (44-47, commit
+`1585371`). Sin desarrollo de código nuevo entre medias, así que esta vez el barrido se amplió
+deliberadamente a sistemas que las auditorías recientes (09-07 y la primera de hoy) no habían tocado
+a fondo: `quests.ts`/`reino.ts`/`aprenderOficio.ts` (Trabajador de Reino), `inventario.ts`/
+`entrega.ts`/`companeros.ts` (captura/tameo/Almacén), `death.ts`/`progression.ts` (muerte permanente,
+clase/especialización), y una relectura profunda de `combateMultipleOrquestacion.ts` (AREA ofensiva,
+sembrada apenas ayer 2026-09-14/15). Además revisión manual directa de `npcInteraction.ts`,
+`skillBars.ts`, `aprenderOficio.ts`, `descansarCampamento.ts`, `chapterSummary.ts`, `worldTick.ts`,
+`reputation.ts` y `discovery.ts` — todos confirmados sin hallazgo, código ya bien blindado con
+comentarios de auditorías previas. Se encontraron 6 hallazgos nuevos reales, ninguno duplicado de los
+47 anteriores.
+
+### FASE 1 — Funcionalidad / integridad técnica
+
+48. **`POST /saves/:id/capturar/:npcSlug` — el guard "solo 1 captura activa a la vez en toda la
+    partida" se lee fuera de cualquier lock/transacción, sin constraint de BD que lo respalde**
+    (severidad media) — `backend/src/routes/saves/companeros.ts:99-101` lee `capturaEnCurso`
+    (`prisma.inventoryItem.findFirst` sobre `capturaNpcId: { not: null }`) antes de la transacción
+    final (líneas 197-225) que crea el `InventoryItem` de la nueva captura; esa transacción nunca
+    vuelve a comprobar la invariante. No hay ninguna constraint única en el schema que actúe de red
+    de seguridad (a diferencia de `ProfessionProgress`/`Faction`/`SkillBar`, ver hallazgos 51/52 más
+    abajo). Los claims atómicos que sí existen en este mismo endpoint (`updateMany` con
+    `capturado: false`/`dismissedGrupo: null`, líneas 167/173) protegen solo "no atar dos veces AL
+    MISMO NPC", no la regla global de "una sola captura en tránsito a la vez". Alcanzable en juego
+    real sin necesitar doble pestaña: combate múltiple con 2+ objetivos GRAVE/CONVALECIENTE a la vez
+    en la misma escena es un caso ya soportado por el propio endpoint (`participantId`), así que dos
+    clics casi simultáneos sobre dos objetivos distintos del mismo panel ya bastan si el frontend no
+    serializa la petición. Contraste directo dentro del propio archivo: `/tameo-pendientes/:npcSlug/
+    confirmar` (líneas 412-421) SÍ resuelve el mismo tipo de problema con `lockRowForUpdate` sobre
+    `Save`, comentario propio citando la auditoría 2026-08-25 — el mismo patrón no se aplicó aquí.
+    **NUEVO, PENDIENTE** — fix propuesto: mover el re-chequeo de `capturaEnCurso` dentro de la
+    transacción final (o bloquear la fila `Save` con `lockRowForUpdate` antes de decidir).
+49. **`POST /saves/:id/capturas/:itemId/depositar` — comprobación de qué Jaula tiene hueco libre sin
+    lock** (severidad baja-media) — `backend/src/routes/saves/companeros.ts:257-275` calcula
+    `jaulasOcupadas` (vía `NpcState.findMany`) y decide `jaulaConHueco` en memoria, todo fuera de
+    transacción; la transacción final (líneas 279-285) escribe `capturaJaulaBuildingId` sin volver a
+    comprobar ocupación, y no hay constraint única sobre esa columna (`schema.prisma:2409`). Dos
+    depósitos casi simultáneos (dos capturas en tránsito distintas) podrían leer la misma Jaula como
+    "con hueco" y las dos asignarle `capturaJaulaBuildingId`, dejando dos criaturas en la misma Jaula
+    a la vez — la UI de tameo asume 1 animal por Jaula. **NUEVO, PENDIENTE** — mismo fix que el
+    hallazgo 48, aplicado a este endpoint.
+50. **AREA ofensiva (combate múltiple) no propaga sus víctimas extra a `caidos` — pierde XP de
+    misión/reputación de facción/población para esos NPC concretos** (severidad media) —
+    `backend/src/services/combateMultipleOrquestacion.ts`, función `ejecutarIntercambioYAvanzar`: el
+    cálculo y la escritura real en BD de los objetivos extra de AREA sí ocurren bien (líneas 942-974
+    calculan `objetivosAreaParticipants`/`nuevaCondicionPorObjetivoArea`, líneas 1103-1115 persisten
+    su `condicionFisica`/`activeEffects` dentro de la transacción), pero el array `caidos` que se
+    devuelve al caller (líneas 1230-1240) solo recorre `defensor`, `atacante`, el objetivo extra de
+    MULTIPLE y el objetivo desviado de DESVIAR — **nunca `objetivosAreaParticipants`**, a diferencia
+    de esos otros dos casos que sí tienen su bloque `if` hermano justo al lado. `caidos` es lo único
+    que alimenta `applyKillSideEffects` (`turnResolution.ts:2376`, vía `combatEncounterCaidos`):
+    cierre de misión "derrotar a X" (`completeNpcTargetQuests`, solo con `MUERTO`), cambio de
+    reputación de facción, y `decrementPopulationOnDeath`. Un NPC derrotado SOLO como víctima de AREA
+    nunca dispara ninguno de los tres ese turno. Alcanzable en juego real: AREA ofensiva está
+    sembrada y activa desde el cierre del 2026-09-14/15 en fichas reales de Rúnico ("Runa de
+    Sujeción" nivel 32, "Grieta de Voluntad" nivel 36, `docs/rpgtarkor/clases.md`), se dispara por
+    margen decisivo normal y alcanza a TODOS los vivos del bando contrario sin tope — el jugador
+    mismo usándola contra un grupo de 3-4 enemigos puede derrotar a varios de un golpe, y solo el
+    objetivo directo del intercambio cierra bien sus efectos secundarios. Acotado: el saqueo/desuello
+    al resolverse el combate entero SÍ queda bien (relee condición fresca de `NpcState`/
+    `CombatParticipant` directamente, no depende de `caidos`), y la narración ya avisa correctamente
+    "alcanza a TODO el bando" — no hay desincronización narración-vs-mecánica, es un gap de
+    contabilidad de efectos colaterales del propio motor. **NUEVO, PENDIENTE** — fix propuesto:
+    añadir un bloque análogo a los de MULTIPLE/DESVIAR que recorra `objetivosAreaParticipants` y
+    empuje cada uno a `caidos` con su condición ya calculada, justo después de la línea 1240.
+51. **`aprenderOficio.ts` — check-then-act sin lock en dos frentes a la vez: doble aprendizaje del
+    mismo oficio (mitigado por constraint) y doble gasto de Goirnos (sin mitigar)** (severidad media)
+    — `backend/src/routes/saves/aprenderOficio.ts:70-128`. (a) `existing`
+    (`ProfessionProgress.findUnique`, líneas 104-106) se lee fuera de la transacción que crea la fila
+    (línea 122); `ProfessionProgress` SÍ tiene `@@unique([saveId, professionId])`
+    (`schema.prisma:1590`), así que la segunda transacción concurrente revienta con `P2002` — pero
+    ese error **no se captura** en este archivo (a diferencia de `reino.ts:103-114`, que sí lo hace
+    para el mismo tipo de carrera sobre `Faction.slug`), así que el jugador recibe un 500 genérico en
+    vez de un 400 claro. (b) Más grave: `nextGoirnosTrasCobro(save.goirnos, COSTE_GOIRNOS_APRENDER_
+    OFICIO)` (línea 120) usa el snapshot de `save.goirnos` leído ANTES de la transacción, sin
+    `lockRowForUpdate` (el helper que el propio proyecto ya extrae para exactamente este caso, 7 usos
+    en `progression.ts`/`session.ts`/`cazar.ts`/`companeros.ts`). Con Goirnos justo al límite (p. ej.
+    10-19) y dos peticiones concurrentes para aprender oficios DISTINTOS con Maestros distintos
+    (ambos alcanzables en la misma escena/Location con varios Maestros sembrados), las dos pueden
+    pasar `check.permitido` leyendo el mismo `goirnos` stale y las dos escriben `goirnos - 10`
+    partiendo del mismo número — el jugador paga solo 10 Goirnos en vez de 20 reales, doble gasto de
+    moneda real. Alcanzable con un doble clic normal en un endpoint de uso frecuente (memoria del
+    proyecto confirma pruebas en vivo repetidas de "Aprender oficio"). **NUEVO, PENDIENTE** — fix
+    propuesto: envolver `findUnique`/`check`/`create`/`update` completo en una única `$transaction`
+    con `lockRowForUpdate(tx, 'Save', save.id, ['goirnos'])` al principio (releyendo `goirnos` fresco
+    antes de descontar), y capturar `P2002` igual que `reino.ts`.
+52. **`PATCH /saves/:id/clase` y `PATCH /saves/:id/especializacion` — mismo check-then-act sin lock,
+    sin constraint de BD que lo respalde (a diferencia de `ProfessionProgress`/`Faction`/`SkillBar`)**
+    (severidad baja, mitigado en parte por el frontend) — `backend/src/routes/saves/progression.ts:
+    108-215`. `save.clase`/`save.especializacion` se leen fuera de transacción (líneas 119/183, guard
+    de "ya asignada" → 409) y la escritura (incluido `savedAction.createMany` con las habilidades de
+    tronco común/especialización desbloqueadas) va en un array-`$transaction` sin re-chequeo interno
+    (líneas 138-153/200-212). `SavedAction` NO tiene `@@unique([saveId, name])` en el schema — así
+    que, a diferencia de los hallazgos 51/48 (donde la BD al menos evita la corrupción con un 500),
+    aquí una carrera real duplicaría de verdad habilidades de combate reales del jugador sin ningún
+    error visible. Mitigado en la práctica: `ClaseModal.tsx` deshabilita su botón con `busy` durante
+    la petición (igual patrón que `TameoModal.tsx`), así que un único cliente normal no puede
+    disparar dos veces — solo alcanzable con doble pestaña o reintento de red tras timeout, mismo
+    criterio de severidad "menor" que los hallazgos 44/45/46/47 ya cerrados hoy. **NUEVO, PENDIENTE**
+    — fix propuesto: mismo patrón, `lockRowForUpdate` sobre `Save` antes de calcular
+    `nuevasHabilidades`/re-chequear `yaTiene` dentro de la transacción.
+53. **`pendingCombatNpcSlugs` se limpia FUERA de la transacción principal que escribe la muerte del
+    jugador — ventana real de desincronización entre "el motor ya decidió MUERTO" y "el combate sigue
+    abierto para terceros"** (severidad media) — `backend/src/services/turnResolution.ts`. La
+    transacción principal del turno (abre línea 5380, cierra línea 7034) escribe atómicamente
+    `condicionFisica`, `pendingDeathResolution`, `deathCount`, `endedAt` — esa parte sí es atómica.
+    Pero la limpieza de `Save.pendingCombatNpcSlugs` (combate múltiple: líneas 7220/7222; camino
+    clásico 1v1, `resolveCombatSlugsAndPersist`: línea 2849) usa el cliente `prisma` crudo, NO el
+    `tx` de esa transacción, y corre en líneas 7168-7254 — bastante después del commit, con varias
+    consultas adicionales (`zonePoints`/`combatParticipant`/`npcState`) de por medio. Si una segunda
+    petición concurrente llega en esa ventana a `POST /saves/:id/combat/dejar-vivir/:npcSlug` o
+    `/combat/matar/:npcSlug` (ambas rutas en `session.ts` solo comprueban `rejectIfEnded`, no
+    `rejectIfPendingDeath` — confirmado con grep), puede leer `pendingCombatNpcSlugs` todavía "sucio"
+    (de antes de morir) y seguir operando sobre un combate que el motor ya decidió cerrar porque el
+    jugador está muerto — aplicando reputación de facción o marcando `dismissedGrupo`/
+    `targetedForKill` para una decisión que narrativamente ya no debería ser posible (el jugador está
+    inconsciente/muerto, no puede "decidir dejar vivir a alguien" en ese instante). No corrompe el
+    propio estado de muerte (`/turn/narrate` sí queda bien bloqueado por `rejectIfPendingDeath`).
+    Ventana estrecha (una fracción de un solo turno), pero mismo patrón de fondo que 44-46. **NUEVO,
+    PENDIENTE** — fix propuesto: mover la limpieza de `pendingCombatNpcSlugs` dentro de la transacción
+    principal (usar `tx` en vez de `prisma` crudo en ambos puntos), o añadir `rejectIfPendingDeath` a
+    `/combat/dejar-vivir` y `/combat/matar` como mitigación complementaria.
+
+### FASE 2 — Coherencia narrativa
+
+Sin hallazgo nuevo — revisado el flujo completo de muerte (`death.ts` ruta+servicio) y confirmado que
+`proposedCondicion` (si el personaje muere) se calcula de forma puramente determinista ANTES de
+cualquier texto de LLM, y el "susurro de la Entidad" (`whisperText`) es texto fijo no generado por
+IA — ningún camino donde el narrador pudiera contradecir una muerte ya decidida por el motor, o al
+revés. **Confirmado sin hallazgo.**
+
+### FASE 3 — Vocabulario y prosa
+
+No revisado a fondo esta ronda (sin cambios de plantillas narrativas fijas en las zonas auditadas —
+captura/tameo/Almacén, quests/reino, death/progression, combate múltiple — desde la primera ronda de
+hoy). **Sin cobertura nueva, no confirmado ni descartado.**
+
+### FASE 4 — Lore
+
+No revisado a fondo esta ronda — fuera del alcance de las zonas priorizadas (condiciones de carrera y
+desincronización mecánica). **Sin cobertura nueva, no confirmado ni descartado.**
+
+### FASE 5 — UX de lo que se ve en pantalla
+
+Revisado el consumo en frontend de `npc-interaction/:npcSlug/elegir` (las 5 ramas de `accion` —
+`ABRIR_APRENDER_OFICIO`/`ABRIR_RECLUTAR`/`FORZAR_COMBATE`/`MOSTRAR_OFERTA_MISION`/`CERRAR` — todas
+cableadas en `GameView.tsx:979-987`, sin ninguna sin consumir) y de los botones de
+Tameo/Clase (`busy` deshabilitando correctamente durante la petición, mitigando en parte los
+hallazgos 52/48 de carrera). **Confirmado sin hallazgo nuevo** en los componentes revisados.
 
 ---

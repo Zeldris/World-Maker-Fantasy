@@ -123,4 +123,31 @@ describe('Aprender oficio de un Maestro (2026-08-31)', () => {
     const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/npc/${otroNpc.slug}/aprender-oficio` });
     expect(res.statusCode).toBe(404);
   });
+
+  // Hallazgo 51 (revisar-partida-hallazgos.md, 2026-09-15): `save.goirnos` se leía fuera de la
+  // transacción — dos peticiones concurrentes para aprender oficios DISTINTOS (con Maestros
+  // distintos, ambos alcanzables en la misma escena) podían partir del mismo saldo y cobrar solo
+  // una vez de las dos.
+  it('dos "aprender oficio" concurrentes con Maestros DISTINTOS y Goirnos justos para uno solo: solo uno cobra de verdad', async () => {
+    // Justo para pagar UNA vez, nunca dos.
+    await prisma.save.update({ where: { id: saveId }, data: { goirnos: COSTE_GOIRNOS_APRENDER_OFICIO } });
+    const curtidora = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'maestra-curtidora-serhu' } });
+    const app = await buildApp();
+
+    const [resA, resB] = await Promise.all([
+      app.inject({ method: 'POST', url: `/saves/${saveId}/npc/${maestroSlug}/aprender-oficio` }),
+      app.inject({ method: 'POST', url: `/saves/${saveId}/npc/${curtidora.slug}/aprender-oficio` }),
+    ]);
+    const statusCodes = [resA.statusCode, resB.statusCode].sort();
+    expect(statusCodes).toEqual([200, 400]);
+
+    // Solo se descontó el coste UNA vez — nunca 0 ni negativo (doble cobro imposible aquí, pero
+    // confirma que no se coló ningún camino que reste dos veces).
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(save.goirnos).toBe(0);
+
+    // Solo UN oficio real aprendido — el que perdió la carrera no dejó ProfessionProgress a medias.
+    const progressCount = await prisma.professionProgress.count({ where: { saveId } });
+    expect(progressCount).toBe(1);
+  });
 });
