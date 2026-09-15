@@ -418,4 +418,89 @@ describe('GET /world/:slug/enciclopedia', () => {
       expect(fundada.discovered).toBe(true);
     });
   });
+
+  // Deuda técnica cerrada (2026-09-15, auditoría): `discoveryFaseFor` (rediseño de 3 fases,
+  // 2026-09-08) nunca tuvo test directo pese a tener ramas no triviales — la contraparte de
+  // ESCRITURA (entityDiscovery.test.ts, qué fase grabar) sí estaba bien cubierta, pero la
+  // LECTURA que sirve esa fase al frontend, con su propio caso especial `nucleoJugable`
+  // duplicado, no tenía cobertura directa. Usa la sección "Facciones" como vehículo (ya expone
+  // `fase` en su respuesta) por ser el fixture más simple del archivo, sin relación real con
+  // Facciones en sí — cualquier sección serviría igual, `discoveryFaseFor` es genérica.
+  describe('discoveryFaseFor (rediseño de 3 fases, 2026-09-08)', () => {
+    it('sin fila en DiscoveredEntity: NO_DESCUBIERTO', async () => {
+      findUniqueWorld.mockResolvedValue({ id: 'world1', slug: 'helek-sirik' });
+      findManyFaction.mockResolvedValue([{ slug: 'clan-serhu', name: 'Clan Serhu', raza: 'orcos', description: 'x' }]);
+      findManyDiscoveredEntity.mockResolvedValue([]);
+      const app = await buildApp();
+
+      const res = await app.inject({ method: 'GET', url: '/world/helek-sirik/enciclopedia?saveId=save1' });
+      expect(res.json().factions[0].fase).toBe('NO_DESCUBIERTO');
+    });
+
+    it('con fila fase CITADO: CITADO tal cual, no se sube sola a DESCUBIERTO', async () => {
+      findUniqueWorld.mockResolvedValue({ id: 'world1', slug: 'helek-sirik' });
+      findManyFaction.mockResolvedValue([{ slug: 'clan-serhu', name: 'Clan Serhu', raza: 'orcos', description: 'x' }]);
+      findManyDiscoveredEntity.mockResolvedValue([{ entityType: 'faction', entitySlug: 'clan-serhu', fase: 'CITADO' }]);
+      const app = await buildApp();
+
+      const res = await app.inject({ method: 'GET', url: '/world/helek-sirik/enciclopedia?saveId=save1' });
+      expect(res.json().factions[0].fase).toBe('CITADO');
+    });
+
+    it('con fila fase DESCUBIERTO: DESCUBIERTO tal cual', async () => {
+      findUniqueWorld.mockResolvedValue({ id: 'world1', slug: 'helek-sirik' });
+      findManyFaction.mockResolvedValue([{ slug: 'clan-serhu', name: 'Clan Serhu', raza: 'orcos', description: 'x' }]);
+      findManyDiscoveredEntity.mockResolvedValue([{ entityType: 'faction', entitySlug: 'clan-serhu', fase: 'DESCUBIERTO' }]);
+      const app = await buildApp();
+
+      const res = await app.inject({ method: 'GET', url: '/world/helek-sirik/enciclopedia?saveId=save1' });
+      expect(res.json().factions[0].fase).toBe('DESCUBIERTO');
+    });
+
+    it('sin saveId (fuera de partida): siempre DESCUBIERTO, aunque no haya ninguna fila', async () => {
+      findUniqueWorld.mockResolvedValue({ id: 'world1', slug: 'helek-sirik' });
+      findManyFaction.mockResolvedValue([{ slug: 'clan-serhu', name: 'Clan Serhu', raza: 'orcos', description: 'x' }]);
+      const app = await buildApp();
+
+      const res = await app.inject({ method: 'GET', url: '/world/helek-sirik/enciclopedia' });
+      expect(res.json().factions[0].fase).toBe('DESCUBIERTO');
+    });
+
+    it('NPC con nucleoJugable: false: siempre DESCUBIERTO, aunque no haya ninguna fila (caso especial duplicado con isDiscovered)', async () => {
+      findUniqueWorld.mockResolvedValue({ id: 'world1', slug: 'helek-sirik' });
+      findManyNpc.mockResolvedValue([
+        {
+          id: 'npc-fuera-nucleo',
+          slug: 'sella-marn',
+          name: 'Sella Marn',
+          kind: 'PRINCIPAL',
+          role: 'x',
+          faction: null,
+          level: 5,
+          bio: 'x',
+          aliases: ['sella marn'],
+          attributes: { fuerza: 5, destreza: 5, constitucion: 5, inteligencia: 5, magia: 0, carisma: 5, voluntad: 5 },
+          raza: 'orcos',
+          clase: null,
+          ataqueNatural: null,
+          habilidadesRaciales: [],
+          homeLocationSlug: null,
+          faunaCategoria: null,
+          nucleoJugable: false,
+          comerciablePct: 0,
+          reclutablePct: 0,
+          domesticablePct: 0,
+          capturablePct: 0,
+          cortejablePct: 0,
+          atributoResistencia: 'voluntad',
+        },
+      ]);
+      findManyDiscoveredEntity.mockResolvedValue([]);
+      const app = await buildApp();
+
+      const res = await app.inject({ method: 'GET', url: '/world/helek-sirik/enciclopedia?saveId=save1' });
+      const npc = res.json().npcs.find((n: { slug: string }) => n.slug === 'sella-marn');
+      expect(npc.fase).toBe('DESCUBIERTO');
+    });
+  });
 });

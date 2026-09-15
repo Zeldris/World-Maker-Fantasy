@@ -99,7 +99,7 @@ Dos conceptos nuevos que estaban implícitos en las facultades raciales pero sin
 - **Magia** (distinta de `Arcano`): `Arcano` es una de las 7 ramas en las que se divide la magia de Tarkor —fuerza destructiva pura, sin ningún matiz añadido— y es la única que hoy tira dados en el motor de juego, casi exclusiva de orcos y vida mutada. *(Corrección 2026-08-23: esta misma nota describía antes `Arcano` como "el poder salvaje nacido de Tarkor" a secas — impreciso, esa descripción encaja en concreto con la rama **Salvaje**, no con Arcano; ver [genesis.md § Las 7 ramas de la magia de Tarkor](genesis.md#era-0--el-génesis) y [clases.md](clases.md).)* **Magia** mide la afinidad narrativa de un personaje con las otras 6 escuelas del contrato de mundo (`elementos/oscura/purificadora/naturaleza/dominio/salvaje`). Cada raza "diseñada" hereda un sabor de magia del dominio de su Semilla creadora: Kelife/Liania → *dominio* (materia), Kalisar/Sezix → *oscura*, Jusaly/Florial → *naturaleza* (crecimiento), Ilvenar/Berd → *dominio* (información), Nabieus/Kroj → *oscura*, Goirntes/Goirme → *dominio* (orden) *(añadido 2026-08-23: faltaba de las 7 razas diseñadas)*, Faerus/Ferios → *naturaleza* (instinto) *(añadido 2026-08-23, ídem)*. Por ahora es solo color narrativo para el Narrador, no una tirada propia (ver pendiente técnico en el [índice del mundo, § 10](../07-mundo-helek-sirik.md)).
 - **Poder de Semilla**: fuerza de la conexión innata de una raza con la Semilla que la creó — es, en números, lo que ya describía en prosa cada "Facultad" racial (leer tensiones, psicometría, sigilo absoluto...). Un Poder de Semilla alto no es "más magia", es más cercanía con el dominio original de esa Semilla, para bien o para mal. Los Orcos son la excepción: no tienen una Semilla diseñadora propia (nacieron del Estallido de Tarkor, caótico por definición), así que su Poder de Semilla es más bajo y errático que el de las razas diseñadas, aunque su vínculo con la naturaleza salvaje cuenta como una expresión de ello.
 
-**Pendiente de retirada (decisión 2026-08-23, ver [clases.md § Atributo Magia](clases.md))**: los dos secundarios de arriba (`Magia` y `Poder de Semilla`) quedan redundantes en cuanto se aplique el rediseño de clases — un único atributo PRIMARIO `Magia` (hoy `arcano`) pasa a cubrir tanto Poder Magia como Poder de Semilla, con tirada real. Decisión cerrada, documentada, **no aplicada al motor todavía** — esta sección se queda tal cual hasta entonces.
+**Retirado (decisión 2026-08-23, APLICADA al motor 2026-09-01 — ver [clases.md § Atributo Magia](clases.md))**: los dos secundarios de arriba (`Magia` y `Poder de Semilla`) quedaron redundantes con el rediseño de clases — un único atributo PRIMARIO `Magia` (antes `arcano`) cubre ahora tanto Poder Magia como Poder de Semilla, con tirada real (`backend/src/services/dice.ts`). Los secundarios `magia`/`poderSemilla` se retiraron de `secondaryAttributes.ts`; las partidas guardadas ya migradas usan el nuevo nombre. **Corregido 2026-09-15 (auditoría de lore)**: esta sección seguía diciendo "no aplicada al motor todavía" — llevaba desde el 2026-09-01 sin actualizarse tras la pasada real, staleness detectada contra el código, no una contradicción de diseño.
 - **Inteligencia** y **Moral** se separan de Voluntad/Carisma a propósito: Voluntad es determinación activa (aguantar, insistir, resistir presión externa), Moral es entereza pasiva ante el horror, la pérdida o el miedo (no quebrarse por dentro); Inteligencia es agudeza mental pura (memoria, resolución de problemas), distinta de Carisma (persuasión social).
 - Las 4 **Resistencias** son capacidad de aguantar cada tipo de daño/exposición — más relevantes para partidas donde el entorno (frío de Cristal Helado, calor de las Llanuras) o los efectos mágicos/de Semilla sean un obstáculo real, no solo decorado.
 
@@ -117,6 +117,19 @@ Presupuesto de creación ~60 puntos (decisión de producto 3, [02-decisiones.md]
 > la tabla siguen siendo correctos tal cual (Sigilo=5, Inteligencia=10 para Gorhorn); solo cambió a
 > qué columna/motor pertenece cada uno. Detectado y arreglado en el código (`secondaryAttributes.ts`
 > tenía 'inteligencia' donde debía decir 'sigilo', un residuo nunca actualizado en aquella sesión).
+>
+> **DESACTUALIZADO — auditoría de lore 2026-09-15**: la tabla de abajo (y esta nota) describen el
+> esquema previo al 2026-09-01. El motor real hoy (`backend/src/services/dice.ts`/
+> `secondaryAttributes.ts`) usa **7 atributos jugables** (`fuerza/destreza/constitucion/
+> inteligencia/voluntad/carisma/magia` — sin `sigilo` ni `arcano`) y **5 secundarios**
+> (`moral/resistenciaFrio/resistenciaCalor/suerte/honor` — sin `poderSemilla` ni las 4
+> "resistencias" narrativas de la tabla). La tabla completa (columnas Sigilo/Arcano/Magia/Poder de
+> semilla/Resistencia física-mágica-semilla) queda desfasada del todo, no solo en un intercambio de
+> columnas como la corrección de 2026-08-03. Reescribirla bien exige decidir un valor de
+> `constitucion` para los 7 personajes pregenerados (Sael/Dessa/Ithren/Amonir/Yerin/Riko/Cassia,
+> ninguno lo tiene todavía en ningún sitio) — decisión de diseño, no algo que una auditoría de
+> documentación deba inventar. Verificado contra Hagar Kiugh (`worldCatalog.ts`), NPC real ya
+> sembrado con el esquema moderno de 7 atributos, como referencia de la forma correcta.
 
 | Personaje | Fuerza | Destreza | Sigilo | Voluntad | Carisma | Arcano | Inteligencia | Magia | Poder de semilla | Moral | Resistencia física | Resistencia mágica | Resistencia semilla | Resistencia al frío | Resistencia al calor | Total (jugables) |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|

@@ -477,14 +477,16 @@ hace dos semanas — es que la pasada de actualización del 2026-09-01 corrigió
 `personajes.md`, mismo patrón de staleness ya visto varias veces en `clases.md` mismo (2026-08-25,
 2026-09-07, hoy).
 
-**Estado**: PENDIENTE de fijar en `personajes.md` (no tocado por esta auditoría, solo investigación,
-respetando la instrucción de no modificar código ni decidir contenido nuevo sin más contexto) —
-corregir la nota de línea 102 a "APLICADA al motor (2026-09-01)" y reescribir la tabla de atributos
-(líneas 106-136) al esquema real de 7 jugables (`fuerza, destreza, constitucion, inteligencia,
-voluntad, carisma, magia`) + 5 narrativos/secundarios (`moral, resistenciaFrio, resistenciaCalor,
-suerte, honor`) — probablemente requiere decidir valores nuevos para `constitucion` de cada uno de
-los 8 pregenerados (hoy no tienen), tarea de diseño que excede el alcance de una auditoría de
-documentación pura.
+**Estado**: **CERRADO parcialmente (2026-09-15, por pedido explícito de Álvaro de cerrar toda la
+ronda)** — corregida la nota de línea 102 a "APLICADA al motor (2026-09-01)" y añadida una nota
+nueva marcando la tabla de atributos (líneas 106-136) como desactualizada frente al esquema real
+de 7 jugables (`fuerza, destreza, constitucion, inteligencia, voluntad, carisma, magia`) + 5
+secundarios (`moral, resistenciaFrio, resistenciaCalor, suerte, honor`), verificado contra
+Hagar Kiugh (`worldCatalog.ts`) como referencia real. La tabla en sí (los 8 personajes con sus 15
+columnas del esquema viejo) **NO se reescribió** — sigue pendiente de verdad, porque exige decidir
+un valor de `constitucion` para los 7 pregenerados (Sael/Dessa/Ithren/Amonir/Yerin/Riko/Cassia,
+ninguno lo tiene todavía en ningún sitio), decisión de diseño que una auditoría de documentación no
+debe tomar por su cuenta.
 
 ### items.md, razas.md, npcs.md — confirmados sin discrepancias tras verificación puntual
 

@@ -343,6 +343,15 @@ export async function autoEquiparDesdeAlmacen(tx: Prisma.TransactionClient, save
   const catalogBySlug = new Map(catalogRows.map((c) => [c.slug, { category: c.category }]));
   let equipados = 0;
 
+  // Deuda técnica cerrada (auditoría 2026-09-15) — patrón N+1: antes se recargaba el Almacén
+  // COMPLETO (`tx.almacenItem.findMany`) una vez por cada slot vacío de cada owner de cada
+  // plantilla, dentro de una `$transaction` (más tiempo de conexión/lock cuanto más
+  // plantillas/súbditos tenga la partida). Cargado una sola vez aquí; los objetos ya asignados a
+  // un slot anterior en esta misma pasada se descartan en memoria (`usados`, por id) para que dos
+  // slots distintos nunca reclamen el mismo objeto del Almacén sin haber vuelto a consultar BD.
+  const disponibles = await tx.almacenItem.findMany({ where: { saveId } });
+  const usados = new Set<string>();
+
   for (const plantilla of plantillas) {
     const slots = plantilla.slots as unknown as PlantillaSlots;
     const owners: { kind: 'subject' | 'companion'; id: string }[] = [
@@ -358,9 +367,9 @@ export async function autoEquiparDesdeAlmacen(tx: Prisma.TransactionClient, save
       for (const [slotKey, criterio] of Object.entries(slots)) {
         const slot = slotKey as EquipSlot;
         if (slotsOcupados.has(slot)) continue;
-        const disponibles = await tx.almacenItem.findMany({ where: { saveId } });
-        const match = disponibles.find((item) => almacenItemMatchesSlot(item, criterio, catalogBySlug));
+        const match = disponibles.find((item) => !usados.has(item.id) && almacenItemMatchesSlot(item, criterio, catalogBySlug));
         if (!match) continue;
+        usados.add(match.id);
         await tx.almacenItem.delete({ where: { id: match.id } });
         await tx.inventoryItem.create({
           data: {

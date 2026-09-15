@@ -167,3 +167,72 @@ describe('autoEquiparDesdeAlmacen', () => {
     expect(result.equipados).toBe(0);
   });
 });
+
+// Deuda técnica cerrada (auditoría 2026-09-15): antes el Almacén se releía completo (query nueva)
+// por cada slot vacío — con 2+ owners que necesitan el MISMO tipo de hueco, cada consulta veía el
+// Almacén ya sin el objeto que el owner anterior acababa de consumir (el `delete` real ya había
+// pasado). Tras cargar una sola vez y filtrar en memoria (`usados`), el comportamiento observable
+// tiene que seguir siendo idéntico: cada objeto del Almacén se asigna como mucho a un owner, nunca
+// dos veces, y con 2 objetos disponibles para 2 owners ambos deben quedar equipados.
+describe('autoEquiparDesdeAlmacen — 2 owners compitiendo por el mismo tipo de hueco (deuda técnica, 2026-09-15)', () => {
+  let saveId: string;
+  let companionAId: string;
+  let companionBId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (auto-equipo, 2 owners)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        portraitInitial: 'G',
+      },
+    });
+    saveId = save.id;
+
+    const plantilla = await prisma.plantillaEquipo.create({
+      data: { saveId, name: 'Guardia con arma (2 owners)', rol: 'guardia', slots: { ARMA_PRINCIPAL: { category: 'arma' } }, prioridad: 0 },
+    });
+    const [companionA, companionB] = await Promise.all([
+      prisma.companion.create({ data: { saveId, name: 'Súbdito A', role: 'guardia', notes: '', tipo: 'NPC', plantillaEquipoId: plantilla.id } }),
+      prisma.companion.create({ data: { saveId, name: 'Súbdito B', role: 'guardia', notes: '', tipo: 'NPC', plantillaEquipoId: plantilla.id } }),
+    ]);
+    companionAId = companionA.id;
+    companionBId = companionB.id;
+    await Promise.all([
+      prisma.almacenItem.create({ data: { saveId, name: 'Cuchillo de hielo sílice', description: 'x', catalogSlug: 'cuchillo-hielo-silice' } }),
+      prisma.almacenItem.create({ data: { saveId, name: 'Maza orca', description: 'x', catalogSlug: 'maza-orca' } }),
+    ]);
+  });
+
+  afterAll(async () => {
+    await prisma.inventoryItem.deleteMany({ where: { saveId } });
+    await prisma.almacenItem.deleteMany({ where: { saveId } });
+    await prisma.companion.deleteMany({ where: { saveId } });
+    await prisma.plantillaEquipo.deleteMany({ where: { saveId } });
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('con 2 objetos disponibles para 2 owners con el mismo hueco: ambos quedan equipados, nunca el mismo objeto dos veces', async () => {
+    const result = await prisma.$transaction((tx) => autoEquiparDesdeAlmacen(tx, saveId));
+    expect(result.equipados).toBe(2);
+
+    const [equippedA, equippedB] = await Promise.all([
+      prisma.inventoryItem.findFirst({ where: { companionId: companionAId, slot: 'ARMA_PRINCIPAL' } }),
+      prisma.inventoryItem.findFirst({ where: { companionId: companionBId, slot: 'ARMA_PRINCIPAL' } }),
+    ]);
+    expect(equippedA).not.toBeNull();
+    expect(equippedB).not.toBeNull();
+    // Nunca el mismo objeto real asignado a los dos.
+    expect(equippedA!.catalogSlug).not.toBe(equippedB!.catalogSlug);
+
+    const almacenRestante = await prisma.almacenItem.count({ where: { saveId } });
+    expect(almacenRestante).toBe(0);
+  });
+});
