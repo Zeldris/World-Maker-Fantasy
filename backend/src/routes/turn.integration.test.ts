@@ -1683,6 +1683,12 @@ describe('newQuestInfo: notificación de misión aceptada', () => {
         attributes: ATTRS,
         portraitInitial: 'G',
         currentLocationId: location.id,
+        // Reconectado al sistema de posición en Zona (auditoría de pruebas en vivo, 2026-09-16):
+        // la fase 1/2 de Gistera Koh ya no depende de contar turnos, exige que el jugador esté en
+        // la misma celda o adyacente a su ZonePoint real (worldCatalog.ts, x:220/y:500 en la
+        // Hondonada del Eco) — sin esto, `gisteraKoh` sería siempre null y el gancho no dispararía.
+        zonaPosX: 220,
+        zonaPosY: 500,
       },
     });
     saveId = save.id;
@@ -5655,6 +5661,10 @@ describe('Misión de Gistera Koh: NPC objetivo ya resuelto no deja la misión at
         attributes: ATTRS,
         portraitInitial: 'G',
         currentLocationId: location.id,
+        // Reconectado al sistema de posición en Zona (auditoría de pruebas en vivo, 2026-09-16) —
+        // ver el describe hermano 'newQuestInfo' para el mismo comentario completo.
+        zonaPosX: 220,
+        zonaPosY: 500,
       },
     });
     saveId = save.id;
@@ -8083,7 +8093,7 @@ describe('Gistera Koh solo aparece en La Hondonada del Eco mientras sigue sin pr
     }
   }, 15_000);
 
-  it('en La Hondonada del Eco (su ubicación real), el primer turno SÍ dispara el gancho', async () => {
+  it('en La Hondonada del Eco, en la celda de su ZonePoint real, dispara el gancho', async () => {
     const userId = await getDefaultUserId();
     const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
     const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
@@ -8098,6 +8108,10 @@ describe('Gistera Koh solo aparece en La Hondonada del Eco mientras sigue sin pr
         attributes: ATTRS,
         portraitInitial: 'G',
         currentLocationId: hondonada.id,
+        // Reconectado al sistema de posición en Zona (auditoría de pruebas en vivo, 2026-09-16) —
+        // ver el describe 'newQuestInfo' más arriba para el comentario completo del bug/fix.
+        zonaPosX: 220,
+        zonaPosY: 500,
       },
     });
     try {
@@ -8118,6 +8132,57 @@ describe('Gistera Koh solo aparece en La Hondonada del Eco mientras sigue sin pr
 
       const facts = await prisma.sessionFact.findMany({ where: { saveId: save.id } });
       expect(facts.some((f) => f.text.includes('sin nombre revelado todavía'))).toBe(true);
+    } finally {
+      await prisma.save.delete({ where: { id: save.id } });
+    }
+  }, 15_000);
+
+  // Auditoría de pruebas en vivo (2026-09-16): mismo bug real que motivó reconectar el hook al
+  // sistema de Zona — jugando de verdad, la primera acción del jugador no fue diálogo, la fase 1
+  // nunca se disparó, y el segundo intento de hablar quedó sin ningún guardarraíl determinista (el
+  // modelo le inventó a Gistera Koh una tribu y un aspecto físico falsos). Este test cubre el caso
+  // que faltaba: misma Location (Hondonada del Eco), pero lejos del ZonePoint real de Gistera
+  // (x:220/y:500, worldCatalog.ts) — el gancho NO debe dispararse solo por estar en la Location
+  // correcta, hace falta estar en su celda o una adyacente.
+  it('en La Hondonada del Eco, pero lejos de la celda de su ZonePoint: el gancho NO se dispara', async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (Gistera lejos en su misma Location)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+        // Lejos de (220, 500) — celda muy distinta, ni misma ni adyacente (radio de celda 50px).
+        zonaPosX: 700,
+        zonaPosY: 50,
+      },
+    });
+    try {
+      await prisma.worldState.create({ data: { saveId: save.id } });
+      classifyAction.mockResolvedValue({
+        requiereTirada: false, atributo: 'destreza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+      });
+      const app = await buildApp();
+      const action = 'Exploro la zona';
+      const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId: save.id, action, enCombate: false } });
+      const { classification, roll } = classifyRes.json();
+      const narrateRes = await app.inject({
+        method: 'POST',
+        url: '/turn/narrate',
+        payload: { saveId: save.id, action, classification, roll, enCombate: false },
+      });
+      expect(narrateRes.statusCode).toBe(200);
+
+      const facts = await prisma.sessionFact.findMany({ where: { saveId: save.id } });
+      expect(facts.some((f) => f.text.includes('sin nombre revelado todavía'))).toBe(false);
+      expect(facts.some((f) => f.text.includes('Gistera Koh'))).toBe(false);
     } finally {
       await prisma.save.delete({ where: { id: save.id } });
     }

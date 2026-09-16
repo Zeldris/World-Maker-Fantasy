@@ -114,6 +114,7 @@ import {
   volverAEntrada,
   celdaDePixel,
   mismaCelda,
+  celdaAdyacenteOMisma,
 } from './zonaPosicion.js';
 import { claimChapterIfDue, scheduleChapterSummaryGeneration, releaseChapterClaim } from './chapterSummary.js';
 import { captureLiveTeacherExample } from './liveTeacherCapture.js';
@@ -4352,22 +4353,31 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
 
   // Encuentro guionizado del primer turno (segunda vuelta de diseño, 2026-07-23: "el usuario
   // lanza su primer prompt y despues de ese prompt... le aparezca un texto tipo 'Ves una sombra a
-  // lo lejos...'") — determinista, NO depende de ningún LoreChunk de gancho: se dispara EXACTAMENTE
-  // una vez, contando las filas isPlayerAction=true ya persistidas (routes/turn.ts crea la de
-  // este turno ANTES de llamar aquí, así que la propia acción de este turno ya cuenta como 1 —
-  // por eso se compara con 1, no con 0). La misión de "cazar al Orco Enfurecido" ya NO se siembra
-  // al crear partida (ver startingQuests.ts) — nace de esta conversación vía "newQuest" normal,
-  // en cuanto Gorhorn acepte ayudar a Gistera Koh, igual que cualquier otra misión propuesta en juego.
-  const playerActionCount = await prisma.logEntry.count({ where: { saveId, channel: 'CHARACTER', isPlayerAction: true } });
-  // Bug real, sesión autónoma de pruebas con Playwright (2026-09-04): sin esta comprobación de
-  // ubicación, el PRIMER turno de la partida disparaba la fase 1 de Gistera Koh (la sombra
-  // acercándose) sin importar dónde estuviera Gorhorn — en teoría siempre coincide con La
-  // Hondonada del Eco en una partida normal (ubicación inicial de creación), pero nada lo
-  // garantizaba de verdad. Petición explícita de la usuaria: debe aparecer nada más Gorhorn se
-  // mueva por La Hondonada del Eco, no en cualquier otro sitio.
+  // lo lejos...'") — determinista, NO depende de ningún LoreChunk de gancho.
+  //
+  // Reconectado al sistema de posición en Zona (auditoría de pruebas en vivo, 2026-09-16: bug real
+  // jugando — antes se disparaba solo en el turno EXACTO donde `playerActionCount === 1`; si la
+  // primera acción del jugador no era diálogo, esa ventana se consumía igual sin haber mostrado
+  // nunca la fase 1, y el segundo intento de hablar quedaba sin ningún guardarraíl determinista:
+  // el modelo narró libremente y le inventó a Gistera Koh una tribu y un aspecto físico que no
+  // existen en su catálogo real). Mismo criterio que Franja 3 (fauna/NPC agresivo,
+  // `npcsInSceneVivosParaCombate` más abajo): se dispara cuando el jugador está en la misma celda
+  // o en una adyacente al `ZonePoint` real de Gistera Koh en la Hondonada del Eco, sin importar
+  // qué turno sea ni qué haya hecho antes — coherente con "no puedes encontrarte con algo que no
+  // está físicamente donde tú estás". `gisteraYaPresentada` (calculado más abajo con los mismos
+  // `sessionFacts`) sigue siendo la única guarda de "ya ocurrió, no se repite" — aquí solo se
+  // decide si la fase 1 debe dispararse ESTE turno.
   const gisteraKoh =
-    playerActionCount === 1 && regionLocation?.slug === 'hondonada-del-eco'
-      ? await prisma.npc.findUnique({ where: { worldId_slug: { worldId, slug: 'gistera-koh' } } })
+    regionLocation?.slug === 'hondonada-del-eco' && regionLocationId && params.zonaPosX != null && params.zonaPosY != null
+      ? await (async () => {
+          const [zp] = await prisma.zonePoint.findMany({
+            where: { locationId: regionLocationId, targetSlug: 'gistera-koh', tipo: 'NPC', activo: true },
+            select: { x: true, y: true },
+            take: 1,
+          });
+          if (!zp || !celdaAdyacenteOMisma(celdaDePixel(zp), celdaDePixel({ x: params.zonaPosX!, y: params.zonaPosY! }))) return null;
+          return prisma.npc.findUnique({ where: { worldId_slug: { worldId, slug: 'gistera-koh' } } });
+        })()
       : null;
   // Determinismo total (segunda vuelta, 2026-07-23: "revisar partida" volvió a encontrar la
   // escena sin disparar en partida real, con `criticalFactsCount` ya protegiendo el bloque de
