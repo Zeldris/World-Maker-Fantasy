@@ -8,6 +8,12 @@ const NPCS = [
   { id: 'ulkha', aliases: ['ulkha', "terk'ikar ulkha", 'jefa del clan serhu'] },
   { id: 'hagar', aliases: ['hagar'] },
   { id: 'murgol', aliases: ['murgol', 'múrgol', 'murgoles', 'múrgoles', 'rebano', 'rebaño'] },
+  // 4 casos reales de colisión encontrados auditando la partida en vivo (2026-09-16) — ver el
+  // comentario de NPC_ALIAS_FUZZY_EXCLUSIONS en npcScene.ts para el hallazgo completo.
+  { id: 'brenka', aliases: ['brenka', "terk'ikar brenka"] },
+  { id: 'solgra', aliases: ['solgra', "kort'ikar solgra"] },
+  { id: 'gistera', aliases: ['gistera koh', 'gistera'] },
+  { id: 'sella', aliases: ['sella marn', 'sella'] },
   // Alias corto sintético (auditoría 2026-08-11) — reproduce exactamente el mecanismo documentado
   // en docs/revisar-partida.md § 3 ("res" de múrgol matcheaba dentro de "presas"/"interesante").
   // Hoy ningún alias real del catálogo es tan corto (verificado, solo 'kael'/'kegi' a 4 letras),
@@ -64,8 +70,10 @@ describe('matchNpcAliases', () => {
   it('bug real encontrado auditando la partida de Gorhorn (2026-07-23): una palabra genérica compartida (nombre de clan) dentro de un alias multi-palabra no debe disparar falsos positivos', () => {
     // Otro personaje (no Torgash ni Ulkha) se presenta como "del Clan Serhu" — eso NO debe bastar
     // para detectar a Torgash/Ulkha "en escena" solo porque sus alias también mencionan "serhu"
-    // en medio de una frase más larga ("el jefe de guerra serhu", "jefa del clan serhu").
-    expect(matchNpcAliases('Gistera Koh, una orca del Clan Serhu, ha aparecido ante Gorhorn', NPCS)).toEqual([]);
+    // en medio de una frase más larga ("el jefe de guerra serhu", "jefa del clan serhu"). Gistera
+    // Koh SÍ se detecta a sí misma, correctamente, por su propio alias real (2026-09-16, fixture
+    // NPCS ampliado con el caso real de colisión "gistera"~"estera"/"costera" — ver más abajo).
+    expect(matchNpcAliases('Gistera Koh, una orca del Clan Serhu, ha aparecido ante Gorhorn', NPCS)).toEqual(['gistera']);
   });
 
   it('bug real jugando en vivo (2026-08-02): "lugar" no debe disparar a Hagar por tolerancia a erratas (Levenshtein("lugar","hagar")=2)', () => {
@@ -84,6 +92,38 @@ describe('matchNpcAliases', () => {
   it('Hagar y el Múrgol siguen detectándose por su alias real, la exclusión no los deja invisibles del todo', () => {
     expect(matchNpcAliases('Hagar se acerca sonriendo', NPCS)).toEqual(['hagar']);
     expect(matchNpcAliases('Veo un múrgol pastando', NPCS)).toEqual(['murgol']);
+  });
+
+  // Bug real jugando en vivo (auditoría de pruebas, 2026-09-16): un simple "Grito para ver si hay
+  // alguien cerca" en La Hondonada del Eco trajo a Brenka (Terk'ikar del Clan Helsig, en Cristal
+  // Helado) a escena y hasta teletransportó al jugador hacia su posición real, solo porque un
+  // SessionFact mencionaba "arena magnética" (Levenshtein("brenka","arena")=2). Brenka es
+  // `PRINCIPAL` — candidato en cualquier región del mundo, sin filtro de ubicación — así que la
+  // colisión no era un caso aislado, se disparaba desde cualquier mención de una palabra común.
+  // Barrido sistemático del resto de alias cortos del catálogo (ver comentario de
+  // NPC_ALIAS_FUZZY_EXCLUSIONS) encontró 3 colisiones reales más contra el propio corpus del juego.
+  it('bug real jugando en vivo (2026-09-16): "arena" no debe disparar a Brenka (Levenshtein("brenka","arena")=2)', () => {
+    expect(matchNpcAliases('La Hondonada del Eco es un refugio contra el viento y las tormentas de arena magnética.', NPCS)).toEqual([]);
+  });
+
+  it('mismo barrido (2026-09-16): "sombra" no debe disparar a Solgra (Levenshtein("solgra","sombra")=2) — agravado porque "sombra" es palabra muy frecuente en la propia prosa del motor', () => {
+    expect(matchNpcAliases('Una sombra se acerca a gran velocidad por la llanura.', NPCS)).toEqual([]);
+  });
+
+  it('mismo barrido (2026-09-16): "estera"/"costera" no deben disparar a Gistera Koh (Levenshtein("gistera","estera")=2, Levenshtein("gistera","costera")=2)', () => {
+    expect(matchNpcAliases('Duerme sobre una estera vieja junto a la zona costera.', NPCS)).toEqual([]);
+  });
+
+  it('mismo barrido (2026-09-16): "selva"/"semilla"/"senda"/"salta"/"huella" no deben disparar a Sella Marn — "selva" está a distancia Levenshtein 1, el peor caso del barrido', () => {
+    expect(matchNpcAliases('Cruza la selva siguiendo la senda hasta encontrar una huella.', NPCS)).toEqual([]);
+    expect(matchNpcAliases('Planta la semilla y salta el pequeño muro de piedra.', NPCS)).toEqual([]);
+  });
+
+  it('Brenka, Solgra, Gistera Koh y Sella Marn siguen detectándose por su alias real, las exclusiones no los dejan invisibles del todo', () => {
+    expect(matchNpcAliases('Brenka reparte el botín del día.', NPCS)).toEqual(['brenka']);
+    expect(matchNpcAliases('Solgra lidera la guerra del clan.', NPCS)).toEqual(['solgra']);
+    expect(matchNpcAliases('Gistera Koh se presenta con prisas.', NPCS)).toEqual(['gistera']);
+    expect(matchNpcAliases('Sella Marn compra información a ambos bandos.', NPCS)).toEqual(['sella']);
   });
 
   it('auditoría 2026-08-11 (docs/puntos-de-codigo-nuevo-contenido.md § 7): un alias corto de una sola palabra no matchea como substring de otra palabra', () => {

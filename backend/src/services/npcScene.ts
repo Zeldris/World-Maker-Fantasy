@@ -343,6 +343,28 @@ const NPC_ALIAS_FUZZY_EXCLUSIONS = new Set([
   // tuviera ningún error tipográfico real. La detección EXACTA de Torgash Ketg sigue intacta (su
   // alias real es "Torgash Ketg", con espacio — matchesAliasBoundary, no esta lista de fuzzy).
   'torgash',
+  // Barrido sistemático de alias cortos contra el corpus real del catálogo (auditoría de pruebas
+  // en vivo, 2026-09-16, confirmado jugando: un simple "Grito para ver si hay alguien cerca" en La
+  // Hondonada del Eco trajo a Brenka —Terk'ikar del Clan Helsig, en Cristal Helado— a escena y hasta
+  // teletransportó al jugador hacia su posición real, solo porque un SessionFact mencionaba "arena
+  // magnética" y "brenka" está a distancia Levenshtein 2 de "arena"). Brenka es `PRINCIPAL`
+  // (candidato en cualquier región del mundo, sin filtro de ubicación), así que la colisión no es
+  // un caso aislado: se dispara desde cualquier mención de una palabra común en cualquier partida.
+  // Script de barrido (ver historial): cada alias corto del catálogo (sin espacio, 5+ letras)
+  // comparado contra todo el texto narrativo real (bios/roles/personalities/items/razas/
+  // personajes) más un vocabulario adicional de verbos/sustantivos cotidianos de escena — 4 alias
+  // con colisión real confirmada, añadidos aquí; el resto de alias del catálogo actual no colisionó
+  // con nada.
+  'arena', // brenka (Terk'ikar del Clan Helsig)
+  'sombra', // solgra (Kort'ikar del Clan Helsig) — agravado porque "sombra" es palabra muy
+  // frecuente en la propia prosa del motor (p.ej. el hook de Gistera Koh: "una sombra se acerca").
+  'estera', // gistera (Gistera Koh)
+  'costera', // gistera (Gistera Koh)
+  'selva', // sella (Sella Marn) — distancia 1, el peor caso encontrado en el barrido.
+  'semilla', // sella (Sella Marn)
+  'senda', // sella (Sella Marn)
+  'salta', // sella (Sella Marn)
+  'huella', // sella (Sella Marn)
 ]);
 
 /// Puro: dado un texto y una lista de NPCs con sus aliases, devuelve los ids que matchean.
