@@ -152,12 +152,22 @@ export async function creationRoutes(app: FastifyInstance) {
             // (2026-09-06, "la zona no está presentando a Gorhorn"): sin esto, una partida nueva
             // nunca disparaba el único camino que fija estos campos (`turnResolution.ts`, bloque de
             // viaje) hasta el primer viaje real — un personaje que arranca y actúa sin viajar aún
-            // se quedaba sin marcador para siempre. Centro del lienzo, mismo fallback que usa
-            // `turnResolution.ts` cuando no hay dirección de llegada real que calcular.
-            zonaPosX: 400,
-            zonaPosY: 300,
-            zonaPosEntradaX: 400,
-            zonaPosEntradaY: 300,
+            // se quedaba sin marcador para siempre.
+            //
+            // Reubicado del centro exacto del lienzo (400,300) a la esquina noroeste (2026-09-17,
+            // bug real jugando en vivo — Álvaro: "reincio una partida... y ya estoy chocando con un
+            // Kirelon nada más reiniciar") — con la persecución de AGRESIVO/ENEMIGO nueva
+            // (`RADIO_PERSECUCION_CELDAS`, movementTemplates.ts), el centro (celda 8,6) queda a
+            // solo 1 celda del Orco Enfurecido (celda 9,5) — toda partida nueva empezaba ya
+            // perseguida/colisionando desde el turno 1. `initialLocationSlugFor` hoy solo apunta a
+            // "hondonada-del-eco" (único personaje inicial real, "Gorhorn"), así que este número es
+            // específico de esa zona — calibrado contra el catálogo real: la esquina noroeste
+            // (celda 1,1) queda a 8+ celdas de cualquier agresivo conocido (Orco/Kirelon), muy por
+            // encima del radio de persecución.
+            zonaPosX: 75,
+            zonaPosY: 75,
+            zonaPosEntradaX: 75,
+            zonaPosEntradaY: 75,
             dificultad: dificultad ?? 'MEDIO',
             raza: razaSlug,
             // Hambre/Sed (Grupo 3 § Compañeros y supervivencia, 2026-08-25) — sembrado al reloj

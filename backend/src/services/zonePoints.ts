@@ -1,12 +1,13 @@
 import type { Prisma, PrismaClient, ZonePointTipo } from '@prisma/client';
 import { stripRegionArticle } from './population.js';
-import { sourceDisplayNameFor } from '../scripts/worldCatalog.js';
+import { sourceDisplayNameFor, faunaMomentoDelDia } from '../scripts/worldCatalog.js';
 import { factionRepFor } from './reputation.js';
 import { celdaDePixel, pixelDeCelda, siguienteCeldaEnRuta, GRID_COLS, GRID_ROWS, type Celda } from './zonaPosicion.js';
 import { ORCO_ENFURECIDO_QUEST_SLUG } from '../routes/saves/quests.js';
 import { siguienteCeldaDeZonePoint, enRangoDePersecucion } from './movementTemplates.js';
 import type { FaunaCategoria } from './faunaAbilities.js';
 import { effectiveTemperamento } from './reputation.js';
+import type { MomentoDelDia } from './worldClock.js';
 
 export type ZonePointColor = 'ALIADO' | 'NEUTRO' | 'ENEMIGO' | 'SIN_FACCION' | 'INERTE';
 
@@ -92,6 +93,24 @@ export function zonePointVisiblePara(targetSlug: string, questSlugsAceptados: Re
   const questSlugOcultador = ZONE_POINTS_OCULTOS_POR_QUEST[targetSlug];
   if (questSlugOcultador) return !questSlugsAceptados.has(questSlugOcultador);
   return true;
+}
+
+/// Puro — ¿esta especie está activa AHORA MISMO según `faunaMomentoDelDia` (worldCatalog.ts)?
+/// `true` si no tiene ninguna entrada en ese diccionario (sin dato = sin filtrar, mismo criterio
+/// documentado en el propio comentario de cabecera de `faunaMomentoDelDia`).
+///
+/// Bug real jugando en vivo (2026-09-17, Álvaro: "está apareciendo un kirelon todo el rato que no
+/// se está representando con icono... y sin abrir combate" — el Kirelon Arenoso es nocturno
+/// [`faunaMomentoDelDia['kirelon-arenoso'] = 'noche'`], invisible de día en `GET /zona` porque ESE
+/// endpoint sí aplicaba el filtro — pero ni `detectarEncuentroEnCelda` [colisión/aviso] ni
+/// `avanzarZonePointsUnPaso` [movimiento/persecución, incluida la persecución nueva de AGRESIVO]
+/// lo conocían: el Kirelon seguía patrullando/persiguiendo y colisionando de pleno día, invisible
+/// en el mapa, repitiendo el mensaje de "toca reaccionar" sin nunca abrir combate real (el turno de
+/// texto libre nunca lo veía porque el jugador nunca lo mencionaba — no podía, no lo veía en
+/// ningún sitio). Ahora los 3 consumidores de `ZonePoint.activo` comparten el mismo criterio.
+export function zonePointActivoAhora(targetSlug: string, momento: MomentoDelDia): boolean {
+  const momentoRequerido = faunaMomentoDelDia[targetSlug];
+  return !momentoRequerido || momentoRequerido === momento;
 }
 
 /// Batch — todas las `Quest.questSlug` ya aceptadas por la partida entre las que este módulo puede
@@ -215,6 +234,11 @@ export async function avanzarZonePointsUnPaso(
   // sin jugador conocido, ningún ZonePoint persigue, se comporta exactamente como antes.
   jugador?: { x: number; y: number } | null,
   factionsStatus?: Record<string, number>,
+  // Fauna diurna/nocturna (2026-09-17, bug real: un Kirelon Arenoso nocturno seguía moviéndose y
+  // persiguiendo de pleno día, invisible en el mapa — ver comentario de `zonePointActivoAhora`).
+  // Opcional por la misma razón que `jugador`/`factionsStatus`: sin momento conocido, ningún punto
+  // se filtra por hora, se comporta exactamente como antes (comportamiento seguro por defecto).
+  momento?: MomentoDelDia,
 ): Promise<ZonePointPasoResultado[]> {
   const puntosCrudos = await tx.zonePoint.findMany({
     where: { locationId, tipo: { in: ['FAUNA', 'NPC'] }, activo: true },
@@ -223,7 +247,9 @@ export async function avanzarZonePointsUnPaso(
   // Gate de aparición narrativa (ver comentario junto a `zonePointVisiblePara` más arriba) — un
   // punto gateado sin su misión aceptada todavía no "patrulla": narrativamente no está en la zona.
   const questSlugsAceptados = await questSlugsAceptadosPara(tx, saveId);
-  const puntos = puntosCrudos.filter((p) => zonePointVisiblePara(p.targetSlug, questSlugsAceptados));
+  const puntos = puntosCrudos.filter(
+    (p) => zonePointVisiblePara(p.targetSlug, questSlugsAceptados) && (!momento || zonePointActivoAhora(p.targetSlug, momento)),
+  );
   if (puntos.length === 0) return [];
 
   // Sistema de plantillas de movimiento (2026-09-17) — Npc cargados en batch por `targetSlug`

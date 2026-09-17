@@ -4,11 +4,10 @@ import { prisma } from '../../lib/prisma.js';
 import { zoneMapImageUrl } from '../../lib/imageAssets.js';
 import { sourceDisplayNameFor, harvestSourcesThatAreFaunaWithoutNpc } from '../../scripts/worldCatalog.js';
 import { detectNpcsInScene, scopeFor } from '../../services/npcScene.js';
-import { faunaMomentoDelDia } from '../../scripts/worldCatalog.js';
 import { loadSessionFacts } from '../../services/worldFacts.js';
 import { momentoDelDiaFor, estacionFor } from '../../services/worldClock.js';
 import type { EstacionSlug } from '../../services/imagePromptContext.js';
-import { zonePointColorFor, avanzarZonePointsUnPaso, zonePointVisiblePara, questSlugsAceptadosPara, type ZonePointColor } from '../../services/zonePoints.js';
+import { zonePointColorFor, avanzarZonePointsUnPaso, zonePointVisiblePara, zonePointActivoAhora, questSlugsAceptadosPara, type ZonePointColor } from '../../services/zonePoints.js';
 import { NOMBRE_OCULTO_GENERICO } from '../../services/dynamicMode.js';
 import { parseAgenda, regionControlFor, type RegionControlState } from '../../services/worldAgenda.js';
 import { REGION_OWNING_FACTIONS, effectiveTemperamento } from '../../services/reputation.js';
@@ -280,11 +279,13 @@ export async function zonaRoutes(app: FastifyInstance) {
     // Bug real jugando en vivo (2026-09-06, "fauna diurna y nocturna mezclada siendo de día") —
     // `faunaMomentoDelDia` ya filtraba a los NPC/fauna DINÁMICOS (sin ZonePoint, ver
     // `detectNpcsInScene`), pero un `ZonePoint` de tipo FAUNA sembrado a mano en el catálogo se
-    // mostraba siempre, de día o de noche, sin pasar por este filtro.
+    // mostraba siempre, de día o de noche, sin pasar por este filtro. `zonePointActivoAhora`
+    // (zonePoints.ts) centraliza este mismo criterio para colisión/movimiento también (ver
+    // comentario ahí — bug real 2026-09-17: sin esto, un Kirelon "invisible" de día seguía
+    // persiguiendo/colisionando igualmente).
     const zonePoints = zonePointsActivos.filter((p) => {
       if (p.tipo !== 'FAUNA' && p.tipo !== 'NPC') return true;
-      const momentoRequerido = faunaMomentoDelDia[p.targetSlug];
-      if (momentoRequerido && momentoRequerido !== momento) return false;
+      if (!zonePointActivoAhora(p.targetSlug, momento)) return false;
       const npcId = npcIdBySlugZonePoint.get(p.targetSlug);
       if (!npcId) return true;
       const npc = npcFaunaZonePointIds.find((n) => n.id === npcId)!;
@@ -443,8 +444,16 @@ export async function zonaRoutes(app: FastifyInstance) {
     // Gate de aparición narrativa (ver `zonePointVisiblePara`, zonePoints.ts) — un `ZonePoint` cuya
     // misión de desbloqueo (p.ej. el Orco Enfurecido/Gistera) todavía no se aceptó no puede forzar
     // colisión/aviso: narrativamente no está en la zona todavía, aunque su fila de catálogo exista.
+    //
+    // Fauna diurna/nocturna (2026-09-17, bug real: "está apareciendo un kirelon todo el rato que no
+    // se está representando con icono... y sin abrir combate" — un Kirelon nocturno, invisible de
+    // día en `GET /zona`, seguía colisionando aquí igualmente porque esta función no conocía
+    // `faunaMomentoDelDia`. Ver `zonePointActivoAhora`, zonePoints.ts).
+    const momentoColision = momentoDelDiaFor(fictionalMinutes);
     const questSlugsAceptadosColision = await questSlugsAceptadosPara(tx, saveId);
-    const puntos = puntosCrudos.filter((p) => zonePointVisiblePara(p.targetSlug, questSlugsAceptadosColision));
+    const puntos = puntosCrudos.filter(
+      (p) => zonePointVisiblePara(p.targetSlug, questSlugsAceptadosColision) && zonePointActivoAhora(p.targetSlug, momentoColision),
+    );
     const npcs = puntos.length
       ? await tx.npc.findMany({ where: { worldId, slug: { in: puntos.map((p) => p.targetSlug) } }, select: { slug: true, name: true, temperamento: true, faction: true, kind: true } })
       : [];
@@ -635,6 +644,10 @@ export async function zonaRoutes(app: FastifyInstance) {
     const factionsStatus = (save.worldState?.factionsStatus as Record<string, number> | null) ?? {};
     const posicionActual = save.zonaPosX != null && save.zonaPosY != null ? { x: save.zonaPosX, y: save.zonaPosY } : { x: 400, y: 300 };
     const celdaActual = celdaDePixel(posicionActual);
+    // Fauna diurna/nocturna (2026-09-17) — mismo `momento` que ya calcula `GET /zona`, propagado
+    // aquí para que un Kirelon nocturno deje de moverse/perseguir/colisionar de día (ver
+    // `zonePointActivoAhora`, zonePoints.ts).
+    const momentoActual = momentoDelDiaFor(save.worldState?.fictionalMinutes ?? 480);
 
     // Camino ya en curso hacia el mismo destino (varias llamadas seguidas del frontend animando
     // paso a paso) vs. un destino NUEVO (el jugador clicó en otro sitio a mitad de camino) — en
@@ -689,7 +702,7 @@ export async function zonaRoutes(app: FastifyInstance) {
       // Persecución (2026-09-17) — `nuevaPosicion` (no `posicionActual`) porque el jugador ya dio
       // este paso antes de que el mundo se mueva (mismo criterio "Mount & Blade" del comentario de
       // arriba: ambos avanzan a la vez, evaluados sobre el estado ya actualizado).
-      const zonePointsMovidos = await avanzarZonePointsUnPaso(tx, save.currentLocationId!, save.id, Math.random, nuevaPosicion, factionsStatus);
+      const zonePointsMovidos = await avanzarZonePointsUnPaso(tx, save.currentLocationId!, save.id, Math.random, nuevaPosicion, factionsStatus, momentoActual);
 
       const { colision, aviso, dynamicModeOffer, logEntry } = await detectarEncuentroEnCelda(
         tx,

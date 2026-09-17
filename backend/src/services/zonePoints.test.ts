@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { proximaCantidadPara, zonePointColorFor, type ZonePointRow } from './zonePoints.js';
+import { proximaCantidadPara, zonePointColorFor, zonePointActivoAhora, type ZonePointRow } from './zonePoints.js';
 
 function puntoBase(overrides: Partial<ZonePointRow> = {}): ZonePointRow {
   return {
@@ -81,5 +81,22 @@ describe('zonePointColorFor', () => {
     expect(zonePointColorFor('clan-serhu', { 'clan-serhu': 3500 }, 'RECURSO')).toBe('ALIADO');
     expect(zonePointColorFor('clan-serhu', { 'clan-serhu': 500 }, 'FAUNA')).toBe('ENEMIGO');
     expect(zonePointColorFor('clan-serhu', { 'clan-serhu': 2500 }, 'NPC')).toBe('NEUTRO');
+  });
+});
+
+// Fauna diurna/nocturna (2026-09-17, bug real jugando en vivo — Álvaro: "está apareciendo un
+// kirelon todo el rato que no se está representando con icono... y sin abrir combate") — antes
+// `faunaMomentoDelDia` solo se aplicaba en `GET /zona` (render); `detectarEncuentroEnCelda`
+// (colisión) y `avanzarZonePointsUnPaso` (movimiento/persecución) lo ignoraban, así que un Kirelon
+// nocturno seguía colisionando/persiguiendo de pleno día, invisible en el mapa.
+describe('zonePointActivoAhora', () => {
+  it('un Kirelon Arenoso (nocturno) está activo de noche, no de día', () => {
+    expect(zonePointActivoAhora('kirelon-arenoso', 'noche')).toBe(true);
+    expect(zonePointActivoAhora('kirelon-arenoso', 'dia')).toBe(false);
+  });
+
+  it('una especie sin entrada en faunaMomentoDelDia nunca se filtra por hora (sin dato = sin filtrar)', () => {
+    expect(zonePointActivoAhora('especie-sin-horario-conocido', 'dia')).toBe(true);
+    expect(zonePointActivoAhora('especie-sin-horario-conocido', 'noche')).toBe(true);
   });
 });

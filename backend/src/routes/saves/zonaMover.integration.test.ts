@@ -474,6 +474,39 @@ describe('POST /saves/:id/zona/mover', () => {
     expect(puntoAfter.y).toBe(575);
   });
 
+  // Fauna diurna/nocturna (2026-09-17, bug real jugando en vivo — Álvaro: "está apareciendo un
+  // kirelon todo el rato que no se está representando con icono... y sin abrir combate") — un
+  // Kirelon nocturno (`targetSlug: 'kirelon-arenoso'`, Npc real del mundo `helek-sirik`, sin
+  // crear ninguno de prueba aparte — `faunaMomentoDelDia` es keyed por slug real de catálogo) no
+  // debe colisionar/perseguir de DÍA, aunque su ZonePoint esté activo y en la misma celda.
+  it('fauna nocturna (Kirelon Arenoso): NO colisiona ni persigue de día, aunque esté en la misma celda que el jugador', async () => {
+    await prisma.zonePoint.create({
+      data: {
+        locationId,
+        x: 75,
+        y: 25, // celda (1,0) — coincide con el primer paso del jugador
+        origenX: 75,
+        origenY: 25,
+        tipo: 'FAUNA',
+        targetSlug: 'kirelon-arenoso',
+        cantidad: 1,
+        activo: true,
+      },
+    });
+    const app = await buildApp();
+    // `WorldState.fictionalMinutes` por defecto (sembrado en `beforeAll`) es 480 = 08:00, de día.
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/zona/mover`,
+      payload: { destino: { x: 375, y: 25 } },
+    });
+    const body = JSON.parse(res.body);
+    expect(body.colision).toBeNull();
+    expect(body.aviso).toBeNull();
+    // Tampoco se mueve ni persigue — de día, no está "activo" en absoluto.
+    expect(body.zonePointsMovidos).toEqual([]);
+  });
+
   it('camino vacío (destino ya es la celda actual): el mundo NO da un paso, zonePointsMovidos llega vacío', async () => {
     const ruta = [{ x: 725, y: 575 }, { x: 675, y: 575 }];
     const punto = await prisma.zonePoint.create({
