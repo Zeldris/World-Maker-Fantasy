@@ -573,6 +573,17 @@ model ZonePoint {
   /// vuelve a 0 (bucle). Sin relación con `lastUpdatedAtMinutes` (ese es tiempo de ficción para
   /// cantidad/actividad; esto es "turnos de movimiento", un concepto distinto y más frecuente).
   pasoRuta             Int           @default(0)
+  /// Sistema de plantillas de movimiento (2026-09-17, petición explícita: "el movimiento aleatorio
+  /// actual es difícil de chocar con las cosas y todo se mueve erráticamente" — sustituye el
+  /// paseo aleatorio como único comportamiento sin ruta). Nombre de una plantilla ESPECÍFICA
+  /// definida en `services/movementTemplates.ts` (`SPECIFIC_MOVEMENT_TEMPLATES`, keyed por este
+  /// mismo string) — reutilizable entre varios `ZonePoint` a la vez (p.ej. varios guardias del
+  /// mismo campamento comparten la misma ruta en cruz, cada uno con su propio offset de fase). Si
+  /// es null, el punto usa la plantilla GENERAL inferida en tiempo real de `Npc.faunaCategoria`/
+  /// `temperamento`/`role`/`kind`/`medio` (`generalMovementTemplateFor`, mismo archivo) — nunca se
+  /// persiste la general, así que si el lore de un Npc cambia su movimiento se actualiza solo, sin
+  /// re-sembrar nada. Una plantilla específica SIEMPRE gana sobre la general si está presente.
+  plantillaEspecifica  String?
   createdAt            DateTime      @default(now())
 
   @@index([locationId])

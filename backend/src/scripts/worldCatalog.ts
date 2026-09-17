@@ -9586,6 +9586,11 @@ export interface ZonePointInput {
   tipo: 'FAUNA' | 'RECURSO' | 'NPC' | 'EDIFICIO';
   targetSlug: string;
   label?: string;
+  // Sistema de plantillas de movimiento (2026-09-17, services/movementTemplates.ts) — nombre de
+  // una plantilla ESPECÍFICA curada a mano (`SPECIFIC_MOVEMENT_TEMPLATES`), reutilizable entre
+  // varios ZonePoint a la vez. Omitido = usa la plantilla GENERAL inferida en tiempo real del lore
+  // del Npc (faunaCategoria/temperamento/role/kind/medio) — nunca queda sin ninguna asignada.
+  plantillaEspecifica?: string;
 }
 
 export const zonePoints: ZonePointInput[] = [
@@ -9738,7 +9743,10 @@ export const zonePoints: ZonePointInput[] = [
   // Paso de los Pilares Rotos — Cruzavientos tiene homeLocationSlug directo (anida en lo alto).
   // Roca, Veta de Hierro y Lucre Blanco, los 3 con homeLocationSlug directo — Location con más
   // variedad de recursos minerales/madera del núcleo, de ahí el cupo completo de 4.
-  { locationSlug: 'pilares-rotos', x: 400, y: 140, tipo: 'FAUNA', targetSlug: 'cruzavientos', label: 'Nido de Cruzavientos en lo alto' },
+  // Plantilla de movimiento específica (2026-09-17, services/movementTemplates.ts) — sobrevuela
+  // las 3 columnas reales de la imagen del mapa, coherente con la propia bio ("vuela alto y en
+  // círculos... anida en lo alto de los Pilares Rotos"), en vez del anillo genérico de ORBITA_AEREA.
+  { locationSlug: 'pilares-rotos', x: 400, y: 140, tipo: 'FAUNA', targetSlug: 'cruzavientos', label: 'Nido de Cruzavientos en lo alto', plantillaEspecifica: 'cruzavientos-pilares-rotos' },
   { locationSlug: 'pilares-rotos', x: 220, y: 320, tipo: 'RECURSO', targetSlug: 'roca-pilares-rotos', label: 'Roca erosionada' },
   { locationSlug: 'pilares-rotos', x: 560, y: 340, tipo: 'RECURSO', targetSlug: 'veta-hierro-pilares-rotos', label: 'Veta de hierro' },
   { locationSlug: 'pilares-rotos', x: 400, y: 500, tipo: 'RECURSO', targetSlug: 'lucre-blanco', label: 'Lucre Blanco en la cumbre' },

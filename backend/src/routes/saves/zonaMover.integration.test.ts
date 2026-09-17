@@ -25,6 +25,8 @@ describe('POST /saves/:id/zona/mover', () => {
   let agresivoNpcId: string;
   let pacificoNpcId: string;
   let dinamicoNpcId: string;
+  let maestroNpcId: string;
+  let guardiaNpcId: string;
 
   beforeAll(async () => {
     const userId = await getDefaultUserId();
@@ -103,6 +105,47 @@ describe('POST /saves/:id/zona/mover', () => {
     });
     dinamicoNpcId = dinamico.id;
 
+    // Sistema de plantillas de movimiento (2026-09-17) — 2 NPCs reales para probar la inferencia
+    // GENERAL de extremo a extremo (sin ruta artesanal ni plantillaEspecifica asignada): un
+    // "Maestro" (role que matchea ROLE_MAESTRO_REGEX) debe quedarse ESTATICO en su origen, un
+    // "guardia" (role que matchea ROLE_GUARDIA_REGEX) debe seguir PATRULLA_BREVE (determinista,
+    // sin random) en vez del antiguo paseo aleatorio único.
+    const maestro = await prisma.npc.create({
+      data: {
+        worldId,
+        kind: 'PLANTILLA',
+        slug: 'test-mover-maestro',
+        name: 'Maestro de Prueba',
+        aliases: ['maestro de prueba'],
+        role: 'Maestro Herrero de prueba',
+        level: 1,
+        attributes: { fuerza: 8, destreza: 6, constitucion: 8, inteligencia: 6, voluntad: 6, carisma: 4, magia: 0 },
+        bio: 'x',
+        personality: 'x',
+        homeLocationSlug: null,
+        temperamento: 'CAUTELOSO',
+      },
+    });
+    maestroNpcId = maestro.id;
+
+    const guardia = await prisma.npc.create({
+      data: {
+        worldId,
+        kind: 'PLANTILLA',
+        slug: 'test-mover-guardia',
+        name: 'Guardia de Prueba',
+        aliases: ['guardia de prueba'],
+        role: 'Guardia de las murallas de prueba',
+        level: 1,
+        attributes: { fuerza: 8, destreza: 8, constitucion: 8, inteligencia: 4, voluntad: 6, carisma: 4, magia: 0 },
+        bio: 'x',
+        personality: 'x',
+        homeLocationSlug: null,
+        temperamento: 'CAUTELOSO',
+      },
+    });
+    guardiaNpcId = guardia.id;
+
     const save = await prisma.save.create({
       data: {
         userId,
@@ -124,7 +167,7 @@ describe('POST /saves/:id/zona/mover', () => {
 
   afterAll(async () => {
     await prisma.save.delete({ where: { id: saveId } });
-    await prisma.npc.deleteMany({ where: { id: { in: [agresivoNpcId, pacificoNpcId, dinamicoNpcId] } } });
+    await prisma.npc.deleteMany({ where: { id: { in: [agresivoNpcId, pacificoNpcId, dinamicoNpcId, maestroNpcId, guardiaNpcId] } } });
     await prisma.location.delete({ where: { id: locationId } });
   });
 
@@ -324,6 +367,54 @@ describe('POST /saves/:id/zona/mover', () => {
     // refetch completo del panel. Ahora la propia respuesta trae la posición ya actualizada.
     const body = JSON.parse(res.body);
     expect(body.zonePointsMovidos).toEqual([{ id: punto.id, x: 675, y: 575 }]);
+  });
+
+  it('sistema de plantillas de movimiento (2026-09-17): un NPC "Maestro" sin ruta ni plantillaEspecifica se queda ESTATICO, nunca se mueve', async () => {
+    const punto = await prisma.zonePoint.create({
+      data: { locationId, x: 725, y: 575, origenX: 725, origenY: 575, tipo: 'NPC', targetSlug: 'test-mover-maestro', cantidad: 1, activo: true },
+    });
+    const app = await buildApp();
+    // 3 movimientos del jugador seguidos — cada uno dispara avanzarZonePointsUnPaso una vez.
+    for (const destino of [{ x: 375, y: 25 }, { x: 25, y: 375 }, { x: 375, y: 375 }]) {
+      await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino } });
+      await prisma.save.update({ where: { id: saveId }, data: { zonaCaminoPendiente: Prisma.JsonNull } });
+    }
+    const puntoAfter = await prisma.zonePoint.findUniqueOrThrow({ where: { id: punto.id } });
+    expect(puntoAfter.x).toBe(725);
+    expect(puntoAfter.y).toBe(575);
+  });
+
+  it('sistema de plantillas de movimiento (2026-09-17): un NPC "Guardia" sin ruta ni plantillaEspecifica sigue PATRULLA_BREVE (determinista, no aleatorio)', async () => {
+    // Origen lejos de cualquier borde (celda 7,5 de 16×12) para que el eje horizontal de la
+    // patrulla esté disponible (radio 2 celdas a cada lado) — el caso normal, no un caso límite de
+    // esquina donde el clamp al borde del lienzo podría dejarlo inmóvil por el propio recorte.
+    const punto = await prisma.zonePoint.create({
+      data: { locationId, x: 375, y: 275, origenX: 375, origenY: 275, tipo: 'NPC', targetSlug: 'test-mover-guardia', cantidad: 1, activo: true },
+    });
+    const app = await buildApp();
+    // El jugador parte de (25,25) — un destino distinto (no la misma celda) para que el camino no
+    // salga vacío y el mundo sí avance un paso.
+    await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 375, y: 25 } } });
+    const puntoAfter = await prisma.zonePoint.findUniqueOrThrow({ where: { id: punto.id } });
+    // PATRULLA_BREVE, primer paso: pasoRuta=0 calcula el offset del PROPIO paso 0 (=0, el origen
+    // sin moverse todavía) y avanza pasoRuta a 1 para la siguiente llamada — mismo desfase ya
+    // documentado en movementTemplates.test.ts. La celda no cambia en esta primera llamada; lo que
+    // sí confirma el sistema nuevo es que pasoRuta avanzó de verdad (antes, sin plantilla, un NPC
+    // sin ruta con `pixel.x === punto.x && pixel.y === punto.y` no llegaba a persistir ningún
+    // cambio — ver el guard `if (pixel.x === punto.x...) return null` un poco más abajo en
+    // zonePoints.ts, que ahora también exige que `nuevoPasoRuta === punto.pasoRuta` para saltarse
+    // la escritura, así que este primer paso SÍ queda persistido aunque la celda sea la misma).
+    expect(puntoAfter.x).toBe(375);
+    expect(puntoAfter.y).toBe(275);
+    expect(puntoAfter.pasoRuta).toBe(1);
+
+    // Segundo paso del jugador: ahora sí se mueve — offset=1 en el eje horizontal (col 7→8).
+    await prisma.save.update({ where: { id: saveId }, data: { zonaCaminoPendiente: Prisma.JsonNull } });
+    await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 425, y: 25 } } });
+    const puntoAfter2 = await prisma.zonePoint.findUniqueOrThrow({ where: { id: punto.id } });
+    expect(puntoAfter2.x).toBe(425);
+    expect(puntoAfter2.y).toBe(275);
+    expect(puntoAfter2.pasoRuta).toBe(2);
   });
 
   it('camino vacío (destino ya es la celda actual): el mundo NO da un paso, zonePointsMovidos llega vacío', async () => {

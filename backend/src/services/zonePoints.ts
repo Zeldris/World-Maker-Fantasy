@@ -2,8 +2,10 @@ import type { Prisma, PrismaClient, ZonePointTipo } from '@prisma/client';
 import { stripRegionArticle } from './population.js';
 import { sourceDisplayNameFor } from '../scripts/worldCatalog.js';
 import { factionRepFor } from './reputation.js';
-import { celdaDePixel, pixelDeCelda, siguienteCeldaEnRuta, siguienteCeldaPaseoAleatorio, type Celda } from './zonaPosicion.js';
+import { celdaDePixel, pixelDeCelda, siguienteCeldaEnRuta, GRID_COLS, GRID_ROWS, type Celda } from './zonaPosicion.js';
 import { ORCO_ENFURECIDO_QUEST_SLUG } from '../routes/saves/quests.js';
+import { siguienteCeldaDeZonePoint } from './movementTemplates.js';
+import type { FaunaCategoria } from './faunaAbilities.js';
 
 export type ZonePointColor = 'ALIADO' | 'NEUTRO' | 'ENEMIGO' | 'SIN_FACCION' | 'INERTE';
 
@@ -212,11 +214,29 @@ export async function avanzarZonePointsUnPaso(
   const puntos = puntosCrudos.filter((p) => zonePointVisiblePara(p.targetSlug, questSlugsAceptados));
   if (puntos.length === 0) return [];
 
+  // Sistema de plantillas de movimiento (2026-09-17) — Npc cargados en batch por `targetSlug`
+  // (nunca FK real, mismo criterio de siempre) para poder inferir la plantilla GENERAL de cada
+  // punto sin ruta artesanal ni plantilla específica asignada. `worldId` no hace falta filtrarlo
+  // aparte: `targetSlug` ya es único dentro de un mundo y esta función solo opera sobre puntos de
+  // UNA Location concreta, que ya pertenece a un único World.
+  const npcsPorSlug = new Map(
+    (
+      await tx.npc.findMany({
+        where: { slug: { in: [...new Set(puntos.map((p) => p.targetSlug))] } },
+        select: { slug: true, kind: true, role: true, temperamento: true, faunaCategoria: true, medio: true },
+      })
+    ).map((n) => [n.slug, n]),
+  );
+
   const resultados = await Promise.all(
     puntos.map(async (punto) => {
       const actual = celdaDePixel({ x: punto.x, y: punto.y });
       const ruta = (punto.ruta as { x: number; y: number }[] | null) ?? null;
 
+      // `ZonePoint.ruta` (curada directamente en la fila) sigue siendo el nivel de prioridad más
+      // alto, sin cambios — ya existía antes de las plantillas y algún punto real puede seguir
+      // usándola tal cual. `plantillaEspecifica` (nueva) es la vía preferida para rutas
+      // REUTILIZABLES entre varios ZonePoint; `ruta` suelta sigue viva para un caso puntual.
       if (ruta && ruta.length > 0) {
         const rutaCeldas = ruta.map((p) => celdaDePixel(p));
         const { celda, nuevoPasoRuta } = siguienteCeldaEnRuta(rutaCeldas, punto.pasoRuta % rutaCeldas.length);
@@ -225,14 +245,24 @@ export async function avanzarZonePointsUnPaso(
         return { id: punto.id, x: pixel.x, y: pixel.y };
       }
 
-      // Sin ruta artesanal — fallback de paseo aleatorio, acotado a `origenX/Y` real de catálogo.
-      // `origenX/Y` null (fila sembrada antes de esta pieza) cae al propio `x`/`y` actual como
-      // origen — comportamiento idéntico a antes: primer paso posible ya desde su punto de siempre.
+      // `origenX/Y` null (fila sembrada antes de la Pieza 3, 2026-09-08) cae al propio `x`/`y`
+      // actual como origen — comportamiento idéntico a antes: primer paso posible ya desde su
+      // punto de siempre.
       const origen: Celda = celdaDePixel({ x: punto.origenX ?? punto.x, y: punto.origenY ?? punto.y });
-      const siguiente = siguienteCeldaPaseoAleatorio(actual, origen, random);
+      const npc = npcsPorSlug.get(punto.targetSlug) ?? null;
+      const { celda: siguiente, nuevoPasoRuta } = siguienteCeldaDeZonePoint({
+        plantillaEspecifica: punto.plantillaEspecifica,
+        npc: npc ? { kind: npc.kind, role: npc.role, temperamento: npc.temperamento, faunaCategoria: npc.faunaCategoria as FaunaCategoria | null, medio: npc.medio } : null,
+        actual,
+        origen,
+        pasoRuta: punto.pasoRuta,
+        gridCols: GRID_COLS,
+        gridRows: GRID_ROWS,
+        random,
+      });
       const pixel = pixelDeCelda(siguiente);
-      if (pixel.x === punto.x && pixel.y === punto.y) return null;
-      await tx.zonePoint.update({ where: { id: punto.id }, data: { x: pixel.x, y: pixel.y } });
+      if (pixel.x === punto.x && pixel.y === punto.y && nuevoPasoRuta === punto.pasoRuta) return null;
+      await tx.zonePoint.update({ where: { id: punto.id }, data: { x: pixel.x, y: pixel.y, pasoRuta: nuevoPasoRuta } });
       return { id: punto.id, x: pixel.x, y: pixel.y };
     }),
   );

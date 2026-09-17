@@ -295,7 +295,7 @@ async function main() {
     const locationId = locationIdBySlug.get(point.locationSlug);
     if (!locationId) throw new Error(`ZonePoint con locationSlug desconocido: ${point.locationSlug}`);
     await prisma.zonePoint.create({
-      data: { locationId, x: point.x, y: point.y, tipo: point.tipo, targetSlug: point.targetSlug, label: point.label ?? null },
+      data: { locationId, x: point.x, y: point.y, tipo: point.tipo, targetSlug: point.targetSlug, label: point.label ?? null, plantillaEspecifica: point.plantillaEspecifica ?? null },
     });
   }
 
