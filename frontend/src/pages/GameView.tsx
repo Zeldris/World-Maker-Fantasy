@@ -887,10 +887,10 @@ export function GameView() {
   // 2026-08-27): antes se limpiaba ANTES de saber si la petición tenía éxito — un fallo de red dejaba
   // a la jugadora sin ninguna pista de qué pasó. Ahora la tarjeta sigue en pantalla con `busy`/
   // `error` mientras se resuelve, y solo desaparece si de verdad se abrió el modo dinámico.
-  async function handleInteractuarModoDinamico(entryId: string, tipo: 'NPC' | 'FAUNA', targetSlug: string, targetName: string) {
-    setCharacterLog((prev) => prev.map((e) => (e.id === entryId ? { ...e, dynamicModeOffer: { tipo, targetSlug, targetName, busy: true } } : e)))
+  async function handleInteractuarModoDinamico(entryId: string, tipo: 'NPC' | 'FAUNA', targetSlug: string, targetName: string, quienInicia?: 'jugador' | 'npc') {
+    setCharacterLog((prev) => prev.map((e) => (e.id === entryId ? { ...e, dynamicModeOffer: { tipo, targetSlug, targetName, quienInicia, busy: true } } : e)))
     try {
-      const turno = await interactuarModoDinamico(saveId!, tipo, targetSlug, targetName)
+      const turno = await interactuarModoDinamico(saveId!, tipo, targetSlug, targetName, quienInicia)
       setCharacterLog((prev) => prev.map((e) => (e.id === entryId ? { ...e, dynamicModeOffer: undefined } : e)))
       setFictionalDate(turno.timeLabel)
       // B.6 (checklist frontend 2026-08-27) — retrato real si ya está subido en la Enciclopedia,

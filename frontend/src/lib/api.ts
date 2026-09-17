@@ -1182,12 +1182,14 @@ export async function getZona(saveId: string): Promise<ZonaResponse> {
 export interface MoverZonaResultado {
   jugador: { x: number; y: number }
   caminoRestante: { x: number; y: number }[]
+  /// Umbral único (2026-09-17, antes había un "aviso" a distancia separado que solo mostraba un
+  /// mensaje sin abrir nada — eliminado por petición explícita de Álvaro: "si estás a una casilla
+  /// de un elemento" ya debe abrir Interactuar) — celda ADYACENTE o MISMA celda disparan `colision`.
   colision: { targetSlug: string; targetName: string; temperamento: string } | null
-  aviso: { targetSlug: string; targetName: string } | null
-  /// Conexión real con Interactuar (2026-09-08) — colisión (nunca aviso) contra un NPC/fauna NO
-  /// agresivo dispara esta oferta real (`pendingDynamicModeOffer` en el backend); `null` en
-  /// cualquier otro caso (agresivo, sin colisión, o ya había otra oferta/conversación en curso).
-  dynamicModeOffer: { tipo: 'FAUNA' | 'NPC'; targetSlug: string; targetName: string } | null
+  /// Conexión real con Interactuar (2026-09-08) — colisión contra un NPC/fauna NO agresivo dispara
+  /// esta oferta real (`pendingDynamicModeOffer` en el backend); `null` en cualquier otro caso
+  /// (agresivo, sin colisión, o ya había otra oferta/conversación en curso).
+  dynamicModeOffer: { tipo: 'FAUNA' | 'NPC'; targetSlug: string; targetName: string; quienInicia: 'jugador' | 'npc' } | null
   /// LogEntry real determinista del encuentro (2026-09-09, hallazgo real jugando en vivo: la
   /// tarjeta de oferta SIEMPRE se renderiza colgada de una LogEntry concreta — sin esto la oferta
   /// quedaba persistida en BD pero invisible en el log). Presente solo junto a `dynamicModeOffer`,
@@ -1549,11 +1551,21 @@ export interface DynamicModeTurno {
   } | null
 }
 
-export async function interactuarModoDinamico(saveId: string, tipo: 'NPC' | 'FAUNA', targetSlug: string, targetName: string): Promise<DynamicModeTurno> {
+export async function interactuarModoDinamico(
+  saveId: string,
+  tipo: 'NPC' | 'FAUNA',
+  targetSlug: string,
+  targetName: string,
+  /// "¿Quién ve a quién primero?" (2026-09-17) — reenvía lo que ya trajo `dynamicModeOffer` de la
+  /// colisión de Zona, mismo criterio que `tipo`/`targetSlug`/`targetName` (el backend no vuelve a
+  /// recalcularlo aquí). `undefined` en el resto de orígenes de oferta (turno normal de texto
+  /// libre, sin colisión de Zona) — el backend cae al framing de siempre sin este dato.
+  quienInicia?: 'jugador' | 'npc',
+): Promise<DynamicModeTurno> {
   return fetchJson(`${API_URL}/saves/${saveId}/modo-dinamico/interactuar`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ tipo, targetSlug, targetName }),
+    body: JSON.stringify({ tipo, targetSlug, targetName, quienInicia }),
   })
 }
 

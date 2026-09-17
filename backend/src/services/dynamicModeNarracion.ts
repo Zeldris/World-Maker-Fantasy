@@ -27,6 +27,14 @@ export interface DynamicModeTurnoInput {
   /// Nombre + descripción de la Location actual del jugador, mismo motivo que `targetBio` — sin
   /// esto tampoco hay ningún anclaje real de DÓNDE ocurre la interacción.
   locationContext?: { name: string; description: string } | null;
+  /// "¿Quién ve a quién primero?" (2026-09-17, petición explícita de Álvaro: "si lo encuentro me
+  /// describe lo que se ve... si me ve él a mí, él decide cómo interactuar conmigo") — tirada
+  /// Destreza vs Destreza (`quienIniciaEncuentro`, zonaPosicion.ts) resuelta en `detectarEncuentroEnCelda`
+  /// (zona.ts) al disparar `dynamicModeOffer`. Solo cambia el FRAMING de `apertura` en la primera
+  /// vuelta, nunca el resultado mecánico (agresivo/enemigo sigue forzando combate igual). `undefined`
+  /// en vueltas siguientes (no aplica, ya se decidió en la primera) y en el guion 100% determinista
+  /// de Gistera (`narrarVueltaGistera`, sin LLM, no pasa por este prompt).
+  quienInicia?: 'jugador' | 'npc';
 }
 
 const NARRATION_FORMAT = {
@@ -88,9 +96,14 @@ export function hasFalseFaunaCommunication(tipo: DynamicModeTipo, narration: str
 
 export function buildDynamicModeTurnoPrompt(input: DynamicModeTurnoInput): { prompt: string; format: object } {
   const quien = input.tipo === 'NPC' ? `el NPC ${input.targetName}` : `${input.targetName} (fauna presente en la zona)`;
+  // "¿Quién ve a quién primero?" (2026-09-17) — sin dato (`undefined`, vueltas siguientes o guion
+  // determinista) se mantiene el criterio de siempre: el NPC/fauna busca la interacción. Con dato,
+  // el framing se invierte cuando gana el jugador — es él quien encuentra/observa primero.
   const apertura = input.respuestaJugador
     ? `El jugador ya respondió: "${input.respuestaJugador}".`
-    : `Esta es la primera vuelta — el juego toma la iniciativa, ${quien} es quien busca la interacción, el jugador no ha dicho nada todavía.`;
+    : input.quienInicia === 'jugador'
+      ? `Esta es la primera vuelta — el jugador es quien encuentra/observa primero a ${quien}, todavía sin haber sido visto ni haber dicho o hecho nada — describe lo que el jugador percibe al toparse con la escena, no una reacción de ${quien} hacia él.`
+      : `Esta es la primera vuelta — el juego toma la iniciativa, ${quien} es quien busca la interacción, el jugador no ha dicho nada todavía.`;
   const cierreHint =
     input.vuelta >= input.maxVueltas
       ? 'Esta es la ÚLTIMA vuelta posible — "cierra" debe ser true, resuelve la interacción de forma natural aunque el jugador no haya zanjado nada.'

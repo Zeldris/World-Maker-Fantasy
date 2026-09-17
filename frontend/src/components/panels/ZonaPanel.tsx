@@ -394,9 +394,6 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
             onClose?.()
           }
           sigue = false
-        } else if (resultado.aviso) {
-          setMensajeMovimiento(`Algo se mueve cerca: ${resultado.aviso.targetName}.`)
-          sigue = false
         } else if (resultado.caminoRestante.length === 0) {
           sigue = false
         } else {

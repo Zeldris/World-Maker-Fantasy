@@ -102,10 +102,10 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
   /// turno anterior. `tipo`/`targetName` vienen del body (mismo criterio que `quests/aceptar`
   /// recibe `title`/`description`: el frontend reenvía lo que YA le devolvió el turno, sin que el
   /// backend tenga que recalcular el candidato aquí).
-  app.post<{ Params: { id: string }; Body: { tipo: DynamicModeTipo; targetSlug: string; targetName: string } }>(
+  app.post<{ Params: { id: string }; Body: { tipo: DynamicModeTipo; targetSlug: string; targetName: string; quienInicia?: 'jugador' | 'npc' } }>(
     '/saves/:id/modo-dinamico/interactuar',
     async (request, reply) => {
-      const { tipo, targetSlug, targetName } = request.body;
+      const { tipo, targetSlug, targetName, quienInicia } = request.body;
       if (!tipo || !targetSlug || !targetName?.trim()) {
         return reply.status(400).send({ error: 'Faltan campos: tipo, targetSlug, targetName' });
       }
@@ -147,6 +147,7 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
         respuestaJugador: null,
         targetBio: targetNpc?.bio ?? null,
         locationContext: currentLocation,
+        quienInicia,
       });
 
       const fictionalMinutesActuales = save.worldState?.fictionalMinutes ?? 480;

@@ -213,7 +213,6 @@ describe('POST /saves/:id/zona/mover', () => {
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
     expect(body.colision).toBeNull();
-    expect(body.aviso).toBeNull();
     // Un solo paso: de celda (0,0) a (1,0) → píxel (75, 25) centro de esa celda.
     expect(body.jugador).toEqual({ x: 75, y: 25 });
     expect(body.caminoRestante.length).toBe(6); // quedan 6 celdas más hasta destino
@@ -240,7 +239,6 @@ describe('POST /saves/:id/zona/mover', () => {
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
     expect(body.colision).toMatchObject({ targetSlug: 'test-mover-agresivo', targetName: 'Agresor de Prueba', temperamento: 'AGRESIVO' });
-    expect(body.aviso).toBeNull();
     expect(body.jugador).toEqual({ x: 75, y: 25 });
     expect(body.caminoRestante).toEqual([]);
 
@@ -278,7 +276,11 @@ describe('POST /saves/:id/zona/mover', () => {
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
     expect(body.colision).toMatchObject({ targetSlug: 'test-mover-pacifico', temperamento: 'CAUTELOSO' });
-    expect(body.dynamicModeOffer).toEqual({ tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', targetName: 'Fauna Pacífica de Prueba' });
+    // "¿Quién ve a quién primero?" (2026-09-17) — tirada real (Destreza jugador=10 por defecto del
+    // fixture vs. destreza real de `test-mover-pacifico`), no determinista aquí: se comprueba el
+    // resto del shape con `toMatchObject` y solo que `quienInicia` sea uno de los 2 valores válidos.
+    expect(body.dynamicModeOffer).toMatchObject({ tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', targetName: 'Fauna Pacífica de Prueba' });
+    expect(['jugador', 'npc']).toContain(body.dynamicModeOffer.quienInicia);
     // Regresión (2026-09-09, hallazgo real jugando en vivo: la oferta quedaba persistida en BD
     // pero invisible en el log, porque LogPanel.tsx solo la pinta colgada de una LogEntry
     // concreta) — el encuentro debe dejar su propio LogEntry real determinista, no solo la oferta.
@@ -288,7 +290,7 @@ describe('POST /saves/:id/zona/mover', () => {
     expect(logRow!.saveId).toBe(saveId);
 
     const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
-    expect(saveAfter.pendingDynamicModeOffer).toEqual({ tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', targetName: 'Fauna Pacífica de Prueba' });
+    expect(saveAfter.pendingDynamicModeOffer).toMatchObject({ tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', targetName: 'Fauna Pacífica de Prueba' });
   });
 
   // Regresión (2026-09-08, reproducido jugando en vivo: "llego a la celda adyacente de Gistera,
@@ -316,15 +318,20 @@ describe('POST /saves/:id/zona/mover', () => {
     const body = JSON.parse(res.body);
     expect(body.caminoRestante).toEqual([]);
     expect(body.colision).toMatchObject({ targetSlug: 'test-mover-pacifico', temperamento: 'CAUTELOSO' });
-    expect(body.dynamicModeOffer).toEqual({ tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', targetName: 'Fauna Pacífica de Prueba' });
+    expect(body.dynamicModeOffer).toMatchObject({ tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', targetName: 'Fauna Pacífica de Prueba' });
 
     const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
-    expect(saveAfter.pendingDynamicModeOffer).toEqual({ tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', targetName: 'Fauna Pacífica de Prueba' });
+    expect(saveAfter.pendingDynamicModeOffer).toMatchObject({ tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', targetName: 'Fauna Pacífica de Prueba' });
   });
 
-  it('celda ADYACENTE (no exacta) a un ZonePoint pacífico: solo aviso, el movimiento sigue su curso', async () => {
+  it('celda ADYACENTE (no exacta) a un ZonePoint pacífico: dispara Interactuar igual que la misma celda (2026-09-17)', async () => {
     // ZonePoint en celda (2,0) — vecina de la celda destino del primer paso (1,0), no la misma.
     // Ruta de un único punto (fijo en su sitio), mismo motivo que el test de colisión de arriba.
+    //
+    // Petición explícita de Álvaro, 2026-09-17: "revisa bien que si estas a una casilla de un
+    // elemento salte el interactuar... a mi hay veces que no me funciona y es frustrante" — antes
+    // la celda adyacente solo dejaba un "aviso" de texto plano sin abrir nada; ahora dispara
+    // exactamente el mismo árbol de decisión que la MISMA celda (colisión/Interactuar/combate).
     await prisma.zonePoint.create({
       data: { locationId, x: 125, y: 25, tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta: [{ x: 125, y: 25 }] },
     });
@@ -336,15 +343,12 @@ describe('POST /saves/:id/zona/mover', () => {
     });
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
-    expect(body.colision).toBeNull();
-    expect(body.aviso).toMatchObject({ targetSlug: 'test-mover-pacifico', targetName: 'Fauna Pacífica de Prueba' });
-    // Decisión confirmada con Álvaro (2026-09-08): el aviso a distancia NUNCA dispara Interactuar,
-    // ni para agresivos ni para pacíficos — solo informa. Interactuar solo se abre en la MISMA
-    // celda (mismo criterio que ya regía el combate real de un agresivo).
-    expect(body.dynamicModeOffer).toBeNull();
-    // Sin colisión, el movimiento SÍ avanza y deja camino pendiente.
+    expect(body.colision).toMatchObject({ targetSlug: 'test-mover-pacifico', targetName: 'Fauna Pacífica de Prueba', temperamento: 'CAUTELOSO' });
+    expect(body.dynamicModeOffer).toMatchObject({ tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', targetName: 'Fauna Pacífica de Prueba' });
+    expect(['jugador', 'npc']).toContain(body.dynamicModeOffer.quienInicia);
+    // Una colisión (ahora también la adyacente) detiene el avance — sin camino pendiente.
     expect(body.jugador).toEqual({ x: 75, y: 25 });
-    expect(body.caminoRestante.length).toBeGreaterThan(0);
+    expect(body.caminoRestante).toEqual([]);
   });
 
   it('el mundo también se mueve: un ZonePoint con ruta artesanal avanza un paso a la vez que el jugador — y la respuesta HTTP lo confirma (2026-09-09)', async () => {
@@ -502,7 +506,6 @@ describe('POST /saves/:id/zona/mover', () => {
     });
     const body = JSON.parse(res.body);
     expect(body.colision).toBeNull();
-    expect(body.aviso).toBeNull();
     // Tampoco se mueve ni persigue — de día, no está "activo" en absoluto.
     expect(body.zonePointsMovidos).toEqual([]);
   });
@@ -540,7 +543,7 @@ describe('POST /saves/:id/zona/mover', () => {
   // reutiliza `detectNpcsInScene` (la MISMA función central que decide "qué hay en escena" en todo
   // el motor) — cubre por diseño cualquier NPC/fauna dinámico futuro (misiones/eventos que añadan
   // elementos a la zona), no un caso concreto: no hay ninguna lista cerrada de slugs, es genérico.
-  describe('NPC "dinámico" (sin ZonePoint, presentado por sessionFacts) — mismo doble umbral de colisión/aviso', () => {
+  describe('NPC "dinámico" (sin ZonePoint, presentado por sessionFacts) — mismo umbral único de colisión (2026-09-17)', () => {
     it('colisión real: el jugador entra en la MISMA celda que un NPC dinámico — se detiene ahí, sin camino pendiente', async () => {
       await prisma.$executeRaw`
         INSERT INTO "SessionFact" (id, "saveId", text, embedding, "createdAt")
@@ -560,7 +563,6 @@ describe('POST /saves/:id/zona/mover', () => {
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
       expect(body.colision).toMatchObject({ targetSlug: 'test-mover-dinamico', targetName: 'Merodeador Dinámico de Prueba', temperamento: 'AGRESIVO' });
-      expect(body.aviso).toBeNull();
       expect(body.jugador).toEqual({ x: 75, y: 25 });
       expect(body.caminoRestante).toEqual([]);
 
@@ -572,7 +574,7 @@ describe('POST /saves/:id/zona/mover', () => {
       expect(body.logEntry.text).toContain('Merodeador Dinámico de Prueba');
     }, 15_000);
 
-    it('celda ADYACENTE (no exacta) a un NPC dinámico: solo aviso, el movimiento sigue su curso', async () => {
+    it('celda ADYACENTE (no exacta) a un NPC dinámico AGRESIVO: dispara colisión igual que la misma celda (2026-09-17)', async () => {
       await prisma.$executeRaw`
         INSERT INTO "SessionFact" (id, "saveId", text, embedding, "createdAt")
         VALUES (${crypto.randomUUID()}, ${saveId}, 'Un Merodeador Dinámico de Prueba ronda cerca de la Zona de Prueba Cuadrícula.', NULL, ${new Date()})
@@ -589,10 +591,9 @@ describe('POST /saves/:id/zona/mover', () => {
       });
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
-      expect(body.colision).toBeNull();
-      expect(body.aviso).toMatchObject({ targetSlug: 'test-mover-dinamico', targetName: 'Merodeador Dinámico de Prueba' });
+      expect(body.colision).toMatchObject({ targetSlug: 'test-mover-dinamico', targetName: 'Merodeador Dinámico de Prueba', temperamento: 'AGRESIVO' });
       expect(body.jugador).toEqual({ x: 75, y: 25 });
-      expect(body.caminoRestante.length).toBeGreaterThan(0);
+      expect(body.caminoRestante).toEqual([]);
     }, 15_000);
 
     it('un NPC dinámico SIN posición asignada todavía (nunca se movió/vio en Zona) no puede colisionar ni avisar — fallback seguro', async () => {
@@ -611,7 +612,6 @@ describe('POST /saves/:id/zona/mover', () => {
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
       expect(body.colision).toBeNull();
-      expect(body.aviso).toBeNull();
     }, 15_000);
   });
 });

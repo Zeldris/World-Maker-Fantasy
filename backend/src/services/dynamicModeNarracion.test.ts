@@ -5,7 +5,9 @@ vi.mock('../lib/ollama.js', () => ({
   ollamaGenerate: (...args: unknown[]) => ollamaGenerate(...args),
 }));
 
-const { narrarVueltaModoDinamico, hasFutureTenseLeak, hasFalseFaunaCommunication, deterministicDynamicModeTurno } = await import('./dynamicModeNarracion.js');
+const { narrarVueltaModoDinamico, hasFutureTenseLeak, hasFalseFaunaCommunication, deterministicDynamicModeTurno, buildDynamicModeTurnoPrompt } = await import(
+  './dynamicModeNarracion.js'
+);
 const { hasSecondPersonLeak } = await import('./narrador.js');
 
 const BASE_INPUT = {
@@ -381,5 +383,39 @@ describe('hasFalseFaunaCommunication', () => {
 
   it('no dispara con opciones/narración normales sin verbos de comunicación', () => {
     expect(hasFalseFaunaCommunication('FAUNA', 'El gesgurio se acerca con curiosidad.', ['Observarlo de lejos', 'Ofrecerle comida', 'Ignorarlo'])).toBe(false);
+  });
+});
+
+// "¿Quién ve a quién primero?" (2026-09-17, petición explícita de Álvaro: "si lo encuentro me
+// describe lo que se ve... si me ve él a mí, él decide cómo interactuar conmigo") — el framing de
+// la primera vuelta (`apertura`) se condiciona por `quienInicia`, resultado de la tirada real
+// (`quienIniciaEncuentro`, zonaPosicion.ts) — nunca cambia el resto del prompt (capacidadHint/
+// contextoReal/cierreHint siguen igual).
+describe('buildDynamicModeTurnoPrompt — framing de "¿quién ve a quién primero?"', () => {
+  it('sin quienInicia (undefined), mantiene el criterio de siempre: el NPC/fauna busca la interacción', () => {
+    const { prompt } = buildDynamicModeTurnoPrompt(BASE_INPUT);
+    expect(prompt).toContain('el juego toma la iniciativa, el NPC Gistera Koh es quien busca la interacción');
+  });
+
+  it('quienInicia: "npc" — mismo framing de siempre (el NPC/fauna busca la interacción)', () => {
+    const { prompt } = buildDynamicModeTurnoPrompt({ ...BASE_INPUT, quienInicia: 'npc' });
+    expect(prompt).toContain('el juego toma la iniciativa, el NPC Gistera Koh es quien busca la interacción');
+  });
+
+  it('quienInicia: "jugador" — framing invertido: el jugador encuentra/observa primero', () => {
+    const { prompt } = buildDynamicModeTurnoPrompt({ ...BASE_INPUT, quienInicia: 'jugador' });
+    expect(prompt).toContain('el jugador es quien encuentra/observa primero a el NPC Gistera Koh');
+    expect(prompt).not.toContain('el juego toma la iniciativa, el NPC Gistera Koh es quien busca la interacción');
+  });
+
+  it('mismo framing invertido para FAUNA', () => {
+    const { prompt } = buildDynamicModeTurnoPrompt({ ...BASE_INPUT_FAUNA, quienInicia: 'jugador' });
+    expect(prompt).toContain('el jugador es quien encuentra/observa primero a gesgurio (fauna presente en la zona)');
+  });
+
+  it('con respuestaJugador ya presente (vuelta avanzada), quienInicia no tiene ningún efecto — ya no aplica la apertura de primera vuelta', () => {
+    const { prompt } = buildDynamicModeTurnoPrompt({ ...BASE_INPUT, respuestaJugador: 'Acepto la oferta', quienInicia: 'jugador' });
+    expect(prompt).toContain('El jugador ya respondió: "Acepto la oferta".');
+    expect(prompt).not.toContain('encuentra/observa primero');
   });
 });

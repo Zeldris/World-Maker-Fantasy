@@ -21,6 +21,7 @@ import {
   siguienteCeldaPaseoAleatorio,
   siguienteCeldaEnRuta,
   repartirEnGrupos,
+  quienIniciaEncuentro,
 } from './zonaPosicion.js';
 
 describe('puntoDeEntradaParaDireccion', () => {
@@ -372,5 +373,29 @@ describe('Sistema de movimiento por cuadrícula (2026-09-08, diseño "estilo Mou
       expect(grupos).toEqual([4, 3, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
       expect(grupos.reduce((a, b) => a + b, 0)).toBe(20);
     });
+  });
+});
+
+// "¿Quién ve a quién primero?" (2026-09-17) — tirada Destreza vs Destreza que decide el FRAMING
+// narrativo de la primera vuelta de Interactuar, nunca el resultado mecánico (eso sigue siendo
+// temperamento/reputación, ver detectarEncuentroEnCelda en zona.ts).
+describe('quienIniciaEncuentro', () => {
+  it('con Destreza mucho mayor, el jugador gana casi siempre (random determinista lo confirma)', () => {
+    // d20 fijo en 10 para ambos lados vía random()=0.5 → (10+1)=11; jugador destreza=20 (+10=21),
+    // npc destreza=2 (+1=12) — el jugador gana con margen amplio.
+    expect(quienIniciaEncuentro(20, 2, () => 0.5)).toBe('jugador');
+  });
+
+  it('con Destreza mucho mayor del NPC, gana el NPC', () => {
+    expect(quienIniciaEncuentro(2, 20, () => 0.5)).toBe('npc');
+  });
+
+  it('con Destreza igual y misma tirada de dado, el empate favorece al jugador (mismo criterio que rollInitiative)', () => {
+    expect(quienIniciaEncuentro(10, 10, () => 0.5)).toBe('jugador');
+  });
+
+  it('es determinista dado el mismo generador random — mismo input, mismo resultado', () => {
+    const random = () => 0.3;
+    expect(quienIniciaEncuentro(8, 8, random)).toBe(quienIniciaEncuentro(8, 8, random));
   });
 });

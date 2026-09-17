@@ -59,7 +59,7 @@ interface LogPanelProps {
   /// "Modo dinámico" (2026-08-27, `entry.dynamicModeOffer`) — mismo criterio opcional que
   /// `onAcceptQuestOffer`/`onDismissQuestOffer`. Solo NPC/FAUNA (conversación de vueltas, abre
   /// DynamicModeModal) — RECURSO usa `onInteractuarModoDinamicoRecurso` abajo, resuelve sin modal.
-  onInteractuarModoDinamico?: (entryId: string, tipo: 'NPC' | 'FAUNA', targetSlug: string, targetName: string) => void
+  onInteractuarModoDinamico?: (entryId: string, tipo: 'NPC' | 'FAUNA', targetSlug: string, targetName: string, quienInicia?: 'jugador' | 'npc') => void
   /// RECURSO (2026-09-08, "Ver qué hay en la zona") — a diferencia de NPC/FAUNA, no abre
   /// conversación: resuelve la recolección real de una sola llamada (tirada + inventario +
   /// LogEntry), la tarjeta se limpia sola al terminar.
@@ -464,6 +464,7 @@ export const LogPanel = memo(function LogPanel({
                               entry.dynamicModeOffer!.tipo as 'NPC' | 'FAUNA',
                               entry.dynamicModeOffer!.targetSlug,
                               entry.dynamicModeOffer!.targetName,
+                              entry.dynamicModeOffer!.quienInicia,
                             ),
                     },
                     { label: 'Ignorar', tone: 'neutral', disabled: entry.dynamicModeOffer.busy, onClick: () => onDismissDynamicModeOffer?.(entry.id) },

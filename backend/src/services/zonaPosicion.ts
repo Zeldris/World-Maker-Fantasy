@@ -1,5 +1,6 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 import type { CardinalDirection } from './travel.js';
+import { rollD20 } from './dice.js';
 
 /// Punto del jugador en el mapa de Zona (2026-09-04) — mismo lienzo 800×600 que ya usa `ZonePoint`
 /// (`x`/`y` locales al SVG, no confundir con `Location.x/y` globales en km que usa
@@ -313,4 +314,20 @@ export function repartirEnGrupos(poblacionTotal: number, random: () => number = 
     restante -= 1;
   }
   return grupos;
+}
+
+/// "¿Quién ve a quién primero?" (2026-09-17, petición explícita de Álvaro: "si lo encuentro me
+/// describe lo que se ve... si me ve el a mi, el decide como interactuar conmigo... una tirada de
+/// iniciativa aquí" — jugador y NPC/fauna tiran Destreza vs Destreza, mismo dado D20 y misma fórmula
+/// `roll + floor(destreza/2)` que ya usa `rollAttributeCheck`/`rollInitiative` en combate
+/// (combatExchange.ts), pero SIN el shape completo de `ExchangeParticipant` (difficulty/
+/// condicionFisica/rollMode) — aquí no hace falta nada de eso, solo decide el FRAMING narrativo de
+/// la primera vuelta de Interactuar (quién se presenta primero), nunca el resultado mecánico
+/// (agresivo/enemigo sigue forzando combate igual, temperamento pacífico sigue abriendo Interactuar
+/// igual — ver `detectarEncuentroEnCelda`, zona.ts). Empate favorece al jugador, mismo criterio que
+/// `rollInitiative`.
+export function quienIniciaEncuentro(destrezaJugador: number, destrezaNpc: number, random: () => number = Math.random): 'jugador' | 'npc' {
+  const tiradaJugador = rollD20('normal', random).usedRoll + Math.floor(destrezaJugador / 2);
+  const tiradaNpc = rollD20('normal', random).usedRoll + Math.floor(destrezaNpc / 2);
+  return tiradaJugador >= tiradaNpc ? 'jugador' : 'npc';
 }
