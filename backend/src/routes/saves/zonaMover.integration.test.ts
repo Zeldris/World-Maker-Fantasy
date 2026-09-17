@@ -417,6 +417,63 @@ describe('POST /saves/:id/zona/mover', () => {
     expect(puntoAfter2.pasoRuta).toBe(2);
   });
 
+  // Persecución de AGRESIVO/ENEMIGO (2026-09-17, bug real jugando en vivo — Álvaro: "he chocado
+  // con el orco enfurecido y no ha saltado el combate ni el interactuar" — sin esto, un ZonePoint
+  // agresivo nunca sabía dónde estaba el jugador, solo seguía su propia ruta/plantilla). El jugador
+  // parte de (25,25), celda (0,0).
+  it('persecución (2026-09-17): un AGRESIVO con el jugador a 3 celdas o menos rompe su ruta y avanza hacia él', async () => {
+    // Ruta fija que lo alejaría del jugador (hacia la derecha, columna 10) — sin persecución, el
+    // siguiente paso de la ruta lo llevaría a (525,25), AÚN MÁS lejos del jugador. Origen (0,0)
+    // deliberadamente pegado al jugador (radio 3) para no depender de cuántas celdas exactas avanza
+    // un solo paso Chebyshev.
+    const punto = await prisma.zonePoint.create({
+      data: {
+        locationId,
+        x: 175,
+        y: 25, // celda (3,0) — exactamente en el borde del radio de persecución (Chebyshev 3)
+        origenX: 175,
+        origenY: 25,
+        tipo: 'FAUNA',
+        targetSlug: 'test-mover-agresivo',
+        cantidad: 1,
+        activo: true,
+        ruta: [{ x: 175, y: 25 }, { x: 525, y: 25 }], // sin persecución, el siguiente paso se aleja
+      },
+    });
+    const app = await buildApp();
+    // El jugador se mueve un paso hacia el sur (celda (0,0)→(0,1)) — persecución evalúa contra la
+    // posición NUEVA del jugador (mismo paso, "el mundo se mueve a la vez que tú"), no la vieja.
+    await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 25, y: 375 } } });
+    const puntoAfter = await prisma.zonePoint.findUniqueOrThrow({ where: { id: punto.id } });
+    // Persiguiendo hacia celda (0,1) desde (3,0): un paso Chebyshev = celda (2,1) = píxel (125,75)
+    // — más cerca del jugador, NO el (525,25) que dictaría su `ruta` artesanal.
+    expect(puntoAfter.x).toBe(125);
+    expect(puntoAfter.y).toBe(75);
+  });
+
+  it('persecución (2026-09-17): fuera del radio de 3 celdas, el AGRESIVO sigue su ruta normal, ignora al jugador', async () => {
+    const punto = await prisma.zonePoint.create({
+      data: {
+        locationId,
+        x: 725,
+        y: 575, // celda (14,11) — muy lejos del jugador en (0,0), fuera del radio de persecución
+        origenX: 725,
+        origenY: 575,
+        tipo: 'FAUNA',
+        targetSlug: 'test-mover-agresivo',
+        cantidad: 1,
+        activo: true,
+        ruta: [{ x: 725, y: 575 }, { x: 675, y: 575 }],
+      },
+    });
+    const app = await buildApp();
+    await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 25, y: 375 } } });
+    const puntoAfter = await prisma.zonePoint.findUniqueOrThrow({ where: { id: punto.id } });
+    // Sigue su `ruta` artesanal tal cual, sin desviarse hacia el jugador lejano.
+    expect(puntoAfter.x).toBe(675);
+    expect(puntoAfter.y).toBe(575);
+  });
+
   it('camino vacío (destino ya es la celda actual): el mundo NO da un paso, zonePointsMovidos llega vacío', async () => {
     const ruta = [{ x: 725, y: 575 }, { x: 675, y: 575 }];
     const punto = await prisma.zonePoint.create({

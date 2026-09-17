@@ -4,8 +4,9 @@ import { sourceDisplayNameFor } from '../scripts/worldCatalog.js';
 import { factionRepFor } from './reputation.js';
 import { celdaDePixel, pixelDeCelda, siguienteCeldaEnRuta, GRID_COLS, GRID_ROWS, type Celda } from './zonaPosicion.js';
 import { ORCO_ENFURECIDO_QUEST_SLUG } from '../routes/saves/quests.js';
-import { siguienteCeldaDeZonePoint } from './movementTemplates.js';
+import { siguienteCeldaDeZonePoint, enRangoDePersecucion } from './movementTemplates.js';
 import type { FaunaCategoria } from './faunaAbilities.js';
+import { effectiveTemperamento } from './reputation.js';
 
 export type ZonePointColor = 'ALIADO' | 'NEUTRO' | 'ENEMIGO' | 'SIN_FACCION' | 'INERTE';
 
@@ -184,6 +185,11 @@ export async function recalcularZonePointsDeLocation(
 /// `POST /saves/:id/zona/mover` — DISTINTO de `recalcularZonePointsDeLocation` (esa es cantidad/
 /// actividad por tiempo de ficción transcurrido, cada turno de narración; esto es posición, cada
 /// paso de movimiento del jugador dentro de la misma zona).
+///
+/// Persecución de AGRESIVO/ENEMIGO (2026-09-17) — antes de resolver ruta/plantilla normal, cada
+/// punto agresivo efectivo comprueba si el jugador está a `RADIO_PERSECUCION_CELDAS` o menos; si sí,
+/// avanza un paso hacia él en vez de su patrón habitual (ver `movementTemplates.ts` para el detalle
+/// de prioridad completo).
 /// Posiciones ya actualizadas (2026-09-09, bug real jugando en vivo — Álvaro: "los elementos se
 /// mueven, pero no con animación de movimiento como yo ni a la vez que muevo yo... quería que todo
 /// se moviera a la vez que yo me muevo") — antes esta función devolvía `Promise<void>`: el propio
@@ -203,6 +209,12 @@ export async function avanzarZonePointsUnPaso(
   locationId: string,
   saveId: string,
   random: () => number = Math.random,
+  // Persecución de AGRESIVO/ENEMIGO (2026-09-17) — posición actual del jugador y reputación de
+  // facciones, ambas ya conocidas por el caller (`zona.ts`) en el momento de la llamada. Opcionales
+  // (`undefined`) para no romper ningún otro caller/test existente que no necesite persecución —
+  // sin jugador conocido, ningún ZonePoint persigue, se comporta exactamente como antes.
+  jugador?: { x: number; y: number } | null,
+  factionsStatus?: Record<string, number>,
 ): Promise<ZonePointPasoResultado[]> {
   const puntosCrudos = await tx.zonePoint.findMany({
     where: { locationId, tipo: { in: ['FAUNA', 'NPC'] }, activo: true },
@@ -216,26 +228,56 @@ export async function avanzarZonePointsUnPaso(
 
   // Sistema de plantillas de movimiento (2026-09-17) — Npc cargados en batch por `targetSlug`
   // (nunca FK real, mismo criterio de siempre) para poder inferir la plantilla GENERAL de cada
-  // punto sin ruta artesanal ni plantilla específica asignada. `worldId` no hace falta filtrarlo
-  // aparte: `targetSlug` ya es único dentro de un mundo y esta función solo opera sobre puntos de
-  // UNA Location concreta, que ya pertenece a un único World.
+  // punto sin ruta artesanal ni plantilla específica asignada. `faction` (2026-09-17, persecución)
+  // se carga a la vez para resolver `effectiveTemperamento` sin una segunda query. `worldId` no
+  // hace falta filtrarlo aparte: `targetSlug` ya es único dentro de un mundo y esta función solo
+  // opera sobre puntos de UNA Location concreta, que ya pertenece a un único World.
   const npcsPorSlug = new Map(
     (
       await tx.npc.findMany({
         where: { slug: { in: [...new Set(puntos.map((p) => p.targetSlug))] } },
-        select: { slug: true, kind: true, role: true, temperamento: true, faunaCategoria: true, medio: true },
+        select: { slug: true, kind: true, role: true, temperamento: true, faunaCategoria: true, medio: true, faction: true },
       })
     ).map((n) => [n.slug, n]),
   );
+  const celdaJugador = jugador ? celdaDePixel(jugador) : null;
 
   const resultados = await Promise.all(
     puntos.map(async (punto) => {
       const actual = celdaDePixel({ x: punto.x, y: punto.y });
+      const npc = npcsPorSlug.get(punto.targetSlug) ?? null;
+
+      // Persecución (2026-09-17) — "cualquier enemigo en la zona" en el diseño de Álvaro; hoy el
+      // único enemigo real detectable en Zona es el propio jugador (no hay Companions rivales ni
+      // otros NPC agresivos entre sí todavía), así que el objetivo es siempre `celdaJugador` cuando
+      // aplica. Rompe INCLUSO una `ruta`/`plantillaEspecifica` curada a mano — coherente con "que
+      // se dirija hacia ti", no tiene sentido seguir patrullando con el enemigo real a 3 casillas.
+      const esAgresivoEfectivo = npc ? ['AGRESIVO', 'ENEMIGO'].includes(effectiveTemperamento(npc.temperamento, npc.faction, factionsStatus ?? {})) : false;
+      const objetivoPersecucion = esAgresivoEfectivo && celdaJugador && enRangoDePersecucion(actual, celdaJugador) ? celdaJugador : null;
+
+      if (objetivoPersecucion) {
+        const { celda: siguiente, nuevoPasoRuta } = siguienteCeldaDeZonePoint({
+          plantillaEspecifica: null,
+          npc: null,
+          actual,
+          origen: actual,
+          pasoRuta: punto.pasoRuta,
+          gridCols: GRID_COLS,
+          gridRows: GRID_ROWS,
+          objetivoPersecucion,
+          random,
+        });
+        const pixel = pixelDeCelda(siguiente);
+        if (pixel.x === punto.x && pixel.y === punto.y) return null;
+        await tx.zonePoint.update({ where: { id: punto.id }, data: { x: pixel.x, y: pixel.y, pasoRuta: nuevoPasoRuta } });
+        return { id: punto.id, x: pixel.x, y: pixel.y };
+      }
+
       const ruta = (punto.ruta as { x: number; y: number }[] | null) ?? null;
 
       // `ZonePoint.ruta` (curada directamente en la fila) sigue siendo el nivel de prioridad más
-      // alto, sin cambios — ya existía antes de las plantillas y algún punto real puede seguir
-      // usándola tal cual. `plantillaEspecifica` (nueva) es la vía preferida para rutas
+      // alto tras persecución, sin cambios — ya existía antes de las plantillas y algún punto real
+      // puede seguir usándola tal cual. `plantillaEspecifica` (nueva) es la vía preferida para rutas
       // REUTILIZABLES entre varios ZonePoint; `ruta` suelta sigue viva para un caso puntual.
       if (ruta && ruta.length > 0) {
         const rutaCeldas = ruta.map((p) => celdaDePixel(p));
@@ -249,7 +291,6 @@ export async function avanzarZonePointsUnPaso(
       // actual como origen — comportamiento idéntico a antes: primer paso posible ya desde su
       // punto de siempre.
       const origen: Celda = celdaDePixel({ x: punto.origenX ?? punto.x, y: punto.origenY ?? punto.y });
-      const npc = npcsPorSlug.get(punto.targetSlug) ?? null;
       const { celda: siguiente, nuevoPasoRuta } = siguienteCeldaDeZonePoint({
         plantillaEspecifica: punto.plantillaEspecifica,
         npc: npc ? { kind: npc.kind, role: npc.role, temperamento: npc.temperamento, faunaCategoria: npc.faunaCategoria as FaunaCategoria | null, medio: npc.medio } : null,

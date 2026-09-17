@@ -9,8 +9,13 @@ import { celdaDePixel } from './zonaPosicion.js';
 /// caminos, fauna en círculos, otra que no se mueve, otra que se desplaza por diferentes zonas...
 /// en los interiores de los campamentos no debiese haber tanto movimiento").
 ///
-/// Dos niveles, ambos resueltos en `siguienteCeldaDeZonePoint` (única función que expone este
-/// archivo al resto del motor):
+/// Tres niveles, todos resueltos en `siguienteCeldaDeZonePoint` (única función que expone este
+/// archivo al resto del motor), de mayor a menor prioridad:
+/// - PERSECUCIÓN: un AGRESIVO/ENEMIGO efectivo con un enemigo real dentro de
+///   `RADIO_PERSECUCION_CELDAS` rompe cualquier patrón normal y avanza un paso hacia él (2026-09-17,
+///   bug real: el Orco Enfurecido nunca se acercaba al jugador, solo seguía su plantilla propia —
+///   la colisión exigía que el jugador caminara literalmente sobre su celda). Fuera de rango, no
+///   aplica ningún estado — se recalcula desde cero cada paso.
 /// - GENERAL: SIEMPRE hay una asignada, inferida en tiempo real de `faunaCategoria`/`temperamento`/
 ///   `role`/`kind`/`medio` del Npc (`generalMovementTemplateFor`) — nunca se persiste, así que un
 ///   cambio de lore actualiza el movimiento solo, sin re-sembrar nada. Sustituye por completo al
@@ -131,6 +136,33 @@ function siguienteCeldaOrbitaAerea(origen: Celda, pasoRuta: number, gridCols: nu
     row: Math.max(0, Math.min(gridRows - 1, origen.row + delta.row)),
   };
   return { celda, nuevoPasoRuta: (pasoRuta + 1) % anillo.length };
+}
+
+/// Persecución de AGRESIVO/ENEMIGO (2026-09-17, bug real jugando en vivo — Álvaro chocó con el Orco
+/// Enfurecido y no saltó ni combate ni Interactuar: sin esto, un ZonePoint nunca sabe dónde está el
+/// jugador, solo sigue su propia plantilla/ruta con total independencia — la colisión exacta con un
+/// agresivo dependía de que el jugador caminara literalmente sobre su celda, poco probable con
+/// patrulla/paseo/órbita). "Que si está a 3 celdas de ti, debe dirigirse hacia ti... si sales del
+/// rango de 3 casillas te dejan de seguir" — radio fijo, sin distinción por plantilla/especie.
+export const RADIO_PERSECUCION_CELDAS = 3;
+
+function distanciaChebyshev(a: Celda, b: Celda): number {
+  return Math.max(Math.abs(a.col - b.col), Math.abs(a.row - b.row));
+}
+
+export function enRangoDePersecucion(actual: Celda, objetivo: Celda): boolean {
+  return distanciaChebyshev(actual, objetivo) <= RADIO_PERSECUCION_CELDAS;
+}
+
+/// Un paso Chebyshev hacia `objetivo` — mismo principio de Bresenham/`calcularCamino` (nunca salta
+/// más de 1 celda por eje), pero solo necesita el primer paso, no el camino completo: se recalcula
+/// en cada turno de movimiento contra la posición ACTUAL del jugador (que también se mueve), así
+/// que perseguir con solo "el siguiente paso" siempre corregido es más correcto que un camino fijo
+/// que quedaría obsoleto en cuanto el objetivo se desplace.
+function siguienteCeldaPersecucion(actual: Celda, objetivo: Celda): Celda {
+  const dCol = Math.sign(objetivo.col - actual.col);
+  const dRow = Math.sign(objetivo.row - actual.row);
+  return { col: actual.col + dCol, row: actual.row + dRow };
 }
 
 /// Resuelve la plantilla GENERAL para una celda dada. Firma unificada con las plantillas
@@ -300,8 +332,18 @@ export const SPECIFIC_MOVEMENT_TEMPLATES: Record<string, { x: number; y: number 
 };
 
 /// Único punto de entrada que el resto del motor (`zonePoints.ts`) necesita conocer — resuelve
-/// específica → general, con `ESTATICO` como piso de seguridad si la específica nombrada no existe
-/// en el catálogo (nunca revienta por un nombre mal escrito en worldCatalog.ts).
+/// persecución → específica → general, con `ESTATICO` como piso de seguridad si la específica
+/// nombrada no existe en el catálogo (nunca revienta por un nombre mal escrito en worldCatalog.ts).
+///
+/// `objetivoPersecucion` (2026-09-17) — celda del enemigo más cercano a perseguir (hoy siempre el
+/// jugador; el diseño de Álvaro habla de "cualquier enemigo en la zona", así que el caller es quien
+/// decide a quién apunta, no esta función). `null` si el ZonePoint no es AGRESIVO/ENEMIGO efectivo
+/// o si no hay ningún enemigo dentro de `RADIO_PERSECUCION_CELDAS` — el caller ya hace ambos
+/// filtros antes de llamar, para no acoplar este archivo puro a `effectiveTemperamento`/reputación.
+/// Gana sobre `ruta`/`plantillaEspecifica`/general: un agresivo persiguiendo rompe su patrulla
+/// decorativa (una patrulla no tiene sentido si el enemigo real está a 3 casillas), y en cuanto el
+/// objetivo sale de rango vuelve a su plantilla normal sin más estado que recordar (se recalcula
+/// cada paso desde cero, nunca queda "enganchado" fuera de rango).
 export function siguienteCeldaDeZonePoint(params: {
   plantillaEspecifica: string | null;
   npc: NpcMovementInferenceInput | null;
@@ -310,10 +352,15 @@ export function siguienteCeldaDeZonePoint(params: {
   pasoRuta: number;
   gridCols: number;
   gridRows: number;
+  objetivoPersecucion?: Celda | null;
   random?: () => number;
 }): { celda: Celda; nuevoPasoRuta: number } {
-  const { plantillaEspecifica, npc, actual, origen, pasoRuta, gridCols, gridRows } = params;
+  const { plantillaEspecifica, npc, actual, origen, pasoRuta, gridCols, gridRows, objetivoPersecucion } = params;
   const random = params.random ?? Math.random;
+
+  if (objetivoPersecucion && enRangoDePersecucion(actual, objetivoPersecucion)) {
+    return { celda: siguienteCeldaPersecucion(actual, objetivoPersecucion), nuevoPasoRuta: pasoRuta };
+  }
 
   if (plantillaEspecifica) {
     const ruta = SPECIFIC_MOVEMENT_TEMPLATES[plantillaEspecifica];

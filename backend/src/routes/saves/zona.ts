@@ -605,7 +605,10 @@ export async function zonaRoutes(app: FastifyInstance) {
       // que muevo yo" — antes se descartaba, el frontend nunca se enteraba hasta el próximo
       // refetch completo del panel) para que el frontend pueda animar la fauna/NPC en el mismo
       // ritmo que su propio marcador, paso a paso.
-      const zonePointsMovidos = await avanzarZonePointsUnPaso(tx, save.currentLocationId!, save.id, Math.random);
+      // Persecución (2026-09-17) — `nuevaPosicion` (no `posicionActual`) porque el jugador ya dio
+      // este paso antes de que el mundo se mueva (mismo criterio "Mount & Blade" del comentario de
+      // arriba: ambos avanzan a la vez, evaluados sobre el estado ya actualizado).
+      const zonePointsMovidos = await avanzarZonePointsUnPaso(tx, save.currentLocationId!, save.id, Math.random, nuevaPosicion, factionsStatus);
 
       const { colision, aviso, dynamicModeOffer, logEntry } = await detectarEncuentroEnCelda(
         tx,
