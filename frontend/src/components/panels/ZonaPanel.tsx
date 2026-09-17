@@ -97,35 +97,43 @@ const COLOR_HEX: Record<ZonePointInfo['color'], string> = {
 /// justo el par que separa "fauna cazable" (círculo) de "recurso recolectable" (rombo). El
 /// alargado vertical (7 horizontal / 10 vertical, antes 9/9) mantiene el área similar pero rompe
 /// la silueta redondeada que lo acercaba al círculo.
-/// Movimiento fluido de fauna/NPC (2026-09-09, mismo hallazgo que `JugadorMarker` — Álvaro: "tiene
-/// que ser un movimiento lento y sutil, como desplazarse caminando", pidió explícitamente que
-/// aplique a "todo", no solo al jugador). A diferencia de `JugadorMarker` (que sí pudo pasar a un
-/// único `<g transform>` porque su silueta ya se recalculaba entera cada vez), aquí `x`/`y` viajan
-/// embebidos en varios sitios a la vez dentro del `<g>` que envuelve cada pin (la propia forma, el
-/// texto de cantidad, el badge de +10 — ver `data.puntos.map`/`dinamicos.map` más abajo), así que
-/// envolver solo ESTE componente en un `transform` no bastaría (el resto del contenido del `<g>`
-/// seguiría con sus coordenadas absolutas fijas). Más simple y de menor riesgo: `transition` de CSS
-/// directamente sobre los propios atributos de posición SVG (`cx`/`cy`/`x`/`y`/`points`) — los
-/// navegadores modernos SÍ los interpolan igual que `transform`, sin reescribir toda la geometría a
-/// coordenadas relativas.
+/// Movimiento fluido de fauna/NPC (2026-09-09, Álvaro: "tiene que ser un movimiento lento y sutil,
+/// como desplazarse caminando", pidió explícitamente que aplique a "todo", no solo al jugador) —
+/// mismo patrón que `JugadorMarker` desde el principio: un único `<g transform>` por punto (ver
+/// `ZonePointMarker` más abajo) es quien se desplaza, nunca coordenadas absolutas sueltas en cada
+/// elemento hijo. Reddiseñado 2026-09-17 (bug real visto en vivo: "un borde circular... se está
+/// moviendo antes que el triángulo") — antes cada elemento del mismo punto (forma, anillo de
+/// companion, texto de cantidad, badge de +10) llevaba sus propias coordenadas `x`/`y` absolutas,
+/// algunos con su propia `transition` de CSS sobre `cx/cy`/`points` y el texto sin ninguna, así que
+/// durante la animación cada pieza se movía a su propio ritmo — visible como desfase real entre
+/// ellas. Ahora todo el conjunto vive dentro del mismo `<g transform>`, una sola animación por
+/// punto, todo se mueve pegado.
 ///
 /// Sistema de movimiento por cuadrícula (2026-09-08, ritmo ralentizado 2026-09-17 a petición
 /// explícita: "que la animación de movimiento sea bastante más lenta") — cada paso anima este
-/// tiempo antes de pedir el siguiente, y es EXACTAMENTE la duración de `FLUID_TRANSITION`/
-/// `JugadorMarker` (una sola fuente de verdad, no dos constantes que puedan desincronizarse) — así
-/// el desplazamiento visual dura el intervalo completo entre pasos, nunca llega y se queda quieto
-/// esperando al siguiente (petición explícita: "que se vea como se desplaza todo poco a poco, no
-/// que pegue un salto y aparezca en la celda"). Antes 250ms de intervalo con 220ms de transición
-/// (deliberadamente algo más corta, para que el deslizamiento terminara justo antes del siguiente
-/// paso) — al subir el intervalo sin tocar la transición, el marcador se deslizaba rápido y luego
-/// quedaba quieto el resto del tiempo, justo el efecto de "salto" que se pedía evitar.
+/// tiempo antes de pedir el siguiente, y es EXACTAMENTE la duración de la transición de
+/// `ZonePointMarker`/`JugadorMarker` (una sola fuente de verdad, no dos constantes que puedan
+/// desincronizarse) — así el desplazamiento visual dura el intervalo completo entre pasos, nunca
+/// llega y se queda quieto esperando al siguiente (petición explícita: "que se vea como se desplaza
+/// todo poco a poco, no que pegue un salto y aparezca en la celda"). Antes 250ms de intervalo con
+/// 220ms de transición (deliberadamente algo más corta, para que el deslizamiento terminara justo
+/// antes del siguiente paso) — al subir el intervalo sin tocar la transición, el marcador se
+/// deslizaba rápido y luego quedaba quieto el resto del tiempo, justo el efecto de "salto" que se
+/// pedía evitar.
 const MS_POR_PASO_MOVIMIENTO = 600
-const FLUID_TRANSITION = {
-  transition: `cx ${MS_POR_PASO_MOVIMIENTO}ms linear, cy ${MS_POR_PASO_MOVIMIENTO}ms linear, x ${MS_POR_PASO_MOVIMIENTO}ms linear, y ${MS_POR_PASO_MOVIMIENTO}ms linear, points ${MS_POR_PASO_MOVIMIENTO}ms linear`,
-}
 
-function ZonePointShape({ tipo, x, y, color, hasCompanion }: { tipo: ZonePointInfo['tipo'] | 'OBJETO'; x: number; y: number; color: string; hasCompanion?: boolean }) {
-  const common = { fill: color, stroke: 'white', strokeWidth: 1.5, style: FLUID_TRANSITION }
+/// Cada forma se dibuja SIEMPRE relativa al origen (0,0) — quien la envuelve (`ZonePointMarker`
+/// más abajo) es el único responsable de posicionarla en el lienzo, vía un `<g transform>` que
+/// mueve TODO el conjunto (forma + anillo de companion + texto de cantidad + badge) a la vez. Antes
+/// cada elemento (forma, texto, badge) llevaba sus propias coordenadas absolutas `x`/`y` — algunos
+/// con su propia `transition` de CSS sobre `cx/cy`/`points`, el texto sin ninguna — así que durante
+/// la animación cada pieza del mismo punto se movía a su propio ritmo, visible como un desfase real
+/// entre ellas (bug real visto en vivo, 2026-09-17: "un borde circular... se está moviendo antes
+/// que el triángulo"). Un único `transform` en el `<g>` exterior es la única animación que el
+/// navegador tiene que interpolar por punto — todo el conjunto se mueve pegado, mismo patrón que ya
+/// usaba `JugadorMarker` desde el principio.
+function ZonePointShape({ tipo, color, hasCompanion }: { tipo: ZonePointInfo['tipo'] | 'OBJETO'; color: string; hasCompanion?: boolean }) {
+  const common = { fill: color, stroke: 'white', strokeWidth: 1.5 }
   switch (tipo) {
     case 'NPC':
       // Compañero de fauna con nombre propio en el mismo punto (C10, 2026-09-13) — "un icono
@@ -134,21 +142,34 @@ function ZonePointShape({ tipo, x, y, color, hasCompanion }: { tipo: ZonePointIn
       // propio", solo añade la señal de "aquí hay más de uno").
       return (
         <>
-          {hasCompanion && <circle cx={x} cy={y} r={12} fill="none" stroke={color} strokeWidth={1.2} strokeDasharray="2.5 2" opacity={0.85} style={FLUID_TRANSITION} />}
-          <polygon points={`${x},${y - 9} ${x - 8},${y + 7} ${x + 8},${y + 7}`} {...common} />
+          {hasCompanion && <circle cx={0} cy={0} r={12} fill="none" stroke={color} strokeWidth={1.2} strokeDasharray="2.5 2" opacity={0.85} />}
+          <polygon points="0,-9 -8,7 8,7" {...common} />
         </>
       )
     case 'EDIFICIO':
-      return <rect x={x - 7} y={y - 7} width={14} height={14} {...common} />
+      return <rect x={-7} y={-7} width={14} height={14} {...common} />
     case 'RECURSO':
-      return <polygon points={`${x},${y - 10} ${x + 7},${y} ${x},${y + 10} ${x - 7},${y}`} {...common} />
+      return <polygon points="0,-10 7,0 0,10 -7,0" {...common} />
     case 'FAUNA':
-      return <circle cx={x} cy={y} r={8} {...common} />
+      return <circle cx={0} cy={0} r={8} {...common} />
     case 'OBJETO':
       // "Tirar" objetos al suelo de la Zona (2026-09-06) — mismo rombo que RECURSO pero gris fijo,
       // para no confundir un objeto tirado por el jugador con un recurso natural sembrado.
-      return <polygon points={`${x},${y - 10} ${x + 7},${y} ${x},${y + 10} ${x - 7},${y}`} fill="#8a8a8a" stroke="white" strokeWidth={1.5} style={FLUID_TRANSITION} />
+      return <polygon points="0,-10 7,0 0,10 -7,0" fill="#8a8a8a" stroke="white" strokeWidth={1.5} />
   }
+}
+
+/// Envuelve `ZonePointShape` (y, si aplica, el texto/badge de cantidad) en un único `<g transform>`
+/// — ver el comentario de `ZonePointShape` de arriba para el motivo. `children` opcional para poder
+/// insertar el texto de cantidad DENTRO del mismo grupo animado (ver `data.puntos.map` más abajo),
+/// en vez de que cada caller tenga que repetir el `<g>`/`transform` a mano.
+function ZonePointMarker({ x, y, tipo, color, hasCompanion, children }: { x: number; y: number; tipo: ZonePointInfo['tipo'] | 'OBJETO'; color: string; hasCompanion?: boolean; children?: ReactNode }) {
+  return (
+    <g style={{ transform: `translate(${x}px, ${y}px)`, transition: `transform ${MS_POR_PASO_MOVIMIENTO}ms linear` }}>
+      <ZonePointShape tipo={tipo} color={color} hasCompanion={hasCompanion} />
+      {children}
+    </g>
+  )
 }
 
 /// Punto del jugador en el mapa de Zona (2026-09-04, petición explícita jugando en vivo: "ahora
@@ -437,32 +458,35 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
               <GridOverlay />
               {data.puntos.map((p) => (
                 <g key={p.id} onClick={(e) => { e.stopPropagation(); p.companion ? setSelectedGroup(p) : setSelectedPoint(p) }} className="cursor-pointer">
-                  <ZonePointShape tipo={p.tipo} x={p.x} y={p.y} color={COLOR_HEX[p.color]} hasCompanion={!!p.companion} />
-                  {/* C.5 (checklist frontend 2026-08-27) — con 2 dígitos, el número centrado
-                      dentro del icono podía sobresalir de formas estrechas (rombo/triángulo);
-                      a partir de 10 se pinta como badge fuera del icono, arriba a la derecha. */}
-                  {p.cantidad > 1 && p.cantidad < 10 && (
-                    <text x={p.x} y={p.y + 3} textAnchor="middle" fontSize={9} fontWeight="bold" fill="white" stroke="black" strokeWidth={0.3}>
-                      {p.cantidad}
-                    </text>
-                  )}
-                  {p.cantidad >= 10 && (
-                    <>
-                      <circle cx={p.x + 9} cy={p.y - 9} r={7} fill="#1a1410" stroke="white" strokeWidth={1} />
-                      <text x={p.x + 9} y={p.y - 6} textAnchor="middle" fontSize={8} fontWeight="bold" fill="white">
+                  <ZonePointMarker x={p.x} y={p.y} tipo={p.tipo} color={COLOR_HEX[p.color]} hasCompanion={!!p.companion}>
+                    {/* C.5 (checklist frontend 2026-08-27) — con 2 dígitos, el número centrado
+                        dentro del icono podía sobresalir de formas estrechas (rombo/triángulo);
+                        a partir de 10 se pinta como badge fuera del icono, arriba a la derecha.
+                        Coordenadas relativas al origen (0,0) — mismo `<g transform>` animado que
+                        la forma, se mueven pegados en vez de saltar por separado. */}
+                    {p.cantidad > 1 && p.cantidad < 10 && (
+                      <text x={0} y={3} textAnchor="middle" fontSize={9} fontWeight="bold" fill="white" stroke="black" strokeWidth={0.3}>
                         {p.cantidad}
                       </text>
-                    </>
-                  )}
+                    )}
+                    {p.cantidad >= 10 && (
+                      <>
+                        <circle cx={9} cy={-9} r={7} fill="#1a1410" stroke="white" strokeWidth={1} />
+                        <text x={9} y={-6} textAnchor="middle" fontSize={8} fontWeight="bold" fill="white">
+                          {p.cantidad}
+                        </text>
+                      </>
+                    )}
+                  </ZonePointMarker>
                   <title>{`${p.nombre}${p.cantidad > 1 ? ` ×${p.cantidad}` : ''} (${TIPO_LABEL[p.tipo]})${p.companion ? ` — con ${p.companion.nombre}` : ''}`}</title>
                 </g>
               ))}
               {/* NPC/fauna dinámicos (2026-09-04) — ahora también se pintan como pines reales, con
                   la posición asignada por el backend (`posicionAleatoriaEnLienzo`), reutilizando
-                  `ZonePointShape` tal cual (su `tipo` ya es subconjunto válido). */}
+                  `ZonePointMarker` tal cual (su `tipo` ya es subconjunto válido). */}
               {dinamicos.map((d) => (
                 <g key={d.slug} onClick={(e) => { e.stopPropagation(); setSelectedPoint(d) }} className="cursor-pointer">
-                  <ZonePointShape tipo={d.tipo} x={d.x} y={d.y} color={COLOR_HEX[d.color]} />
+                  <ZonePointMarker x={d.x} y={d.y} tipo={d.tipo} color={COLOR_HEX[d.color]} />
                   <title>{`${d.nombre} (${TIPO_LABEL[d.tipo]})`}</title>
                 </g>
               ))}
@@ -488,7 +512,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
             — colapsable sin JS extra, cerrado por defecto para no competir visualmente con el
             mapa; mismos `COLOR_HEX`/`TIPO_LABEL` que usa el propio SVG de arriba, así que nunca
             puede desincronizarse de lo que de verdad se pinta. Formas dibujadas con el mismo
-            `ZonePointShape` de los pines reales, a tamaño de leyenda (viewBox propio 20×20), en
+            `ZonePointMarker` de los pines reales, a tamaño de leyenda (viewBox propio 20×20), en
             vez de reconstruir cada silueta a mano en CSS. */}
         {(data.puntos.length > 0 || dinamicos.length > 0 || data.jugador) && (
           <details className="group rounded-lg border border-iron-700 bg-wood-950/40 text-2xs text-wood-400">
@@ -501,7 +525,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                 {(Object.keys(TIPO_LABEL) as (ZonePointInfo['tipo'] | 'OBJETO')[]).map((tipo) => (
                   <span key={tipo} className="flex items-center gap-1.5">
                     <svg viewBox="0 0 24 24" width={14} height={14} aria-hidden="true">
-                      <ZonePointShape tipo={tipo} x={12} y={12} color="#8a8578" />
+                      <ZonePointMarker tipo={tipo} x={12} y={12} color="#8a8578" />
                     </svg>
                     {TIPO_LABEL[tipo]}
                   </span>
@@ -517,7 +541,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                     ("nunca puede desincronizarse de lo que de verdad se pinta"). */}
                 <span className="flex items-center gap-1.5">
                   <svg viewBox="0 0 24 24" width={14} height={14} aria-hidden="true">
-                    <ZonePointShape tipo="NPC" x={12} y={12} color="#8a8578" hasCompanion />
+                    <ZonePointMarker tipo="NPC" x={12} y={12} color="#8a8578" hasCompanion />
                   </svg>
                   NPC con compañero
                 </span>
