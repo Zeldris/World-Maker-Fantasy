@@ -263,6 +263,40 @@ export const SPECIFIC_MOVEMENT_TEMPLATES: Record<string, { x: number; y: number 
     { x: 580, y: 280 }, // sobre la columna derecha
     { x: 500, y: 200 },
   ],
+
+  // Guardia de la muralla en un interior de campamento circular (2026-09-17) — la imagen real de
+  // ambos interiores (uploads/images/zona/campamento-serhu-interior-mapa.png, mismo diseño
+  // arquitectónico en campamento-helsig-interior aunque sin imagen propia todavía) muestra una
+  // empalizada circular con 4 cuadrantes de edificios separados por un camino central en cruz —
+  // esta ruta recorre el perímetro interior pegado a la muralla, más realista que el ida-vuelta
+  // corto y genérico de PATRULLA_BREVE (que no "sabe" que hay una muralla circular real a la que
+  // ceñirse). Calibrada sobre el lienzo 800×600 con centro en (400,300) — mismo centro que el
+  // salón/Sedsar de ambos campamentos — y radio ~300px, coherente con el borde de la empalizada
+  // real de la imagen. Reutilizable por cualquier guardia de un interior con este mismo diseño.
+  'guardia-perimetro-interior-campamento': [
+    { x: 400, y: 60 }, // norte, junto a la puerta
+    { x: 620, y: 130 },
+    { x: 720, y: 300 }, // este
+    { x: 620, y: 470 },
+    { x: 400, y: 540 }, // sur, junto a la puerta opuesta
+    { x: 180, y: 470 },
+    { x: 80, y: 300 }, // oeste
+    { x: 180, y: 130 },
+  ],
+
+  // Cazadora Serhu "vigilando los alrededores" (2026-09-17) — la imagen real del exterior
+  // (uploads/images/zona/campamento-serhu-mapa.png) muestra el campamento circular con caminos
+  // reales serpenteando hacia un oasis (noroeste) y un corral vacío (noreste), donde está sembrado
+  // este ZonePoint (620,200). Su bio dice literalmente "sale a cazar o vigilar los alrededores del
+  // campamento" — ronda entre el punto de vigilancia y la entrada del campamento, sin alejarse del
+  // camino real que conecta ambos en la imagen, en vez de la ida-vuelta corta y genérica de
+  // TERRITORIO_CORTO (que le tocaría por no tener faunaCategoria ni matchear "guardia" en su role).
+  'cazadora-vigilancia-campamento-serhu': [
+    { x: 620, y: 200 }, // punto de vigilancia junto al corral
+    { x: 560, y: 260 },
+    { x: 500, y: 320 }, // camino hacia la entrada del campamento
+    { x: 560, y: 260 },
+  ],
 };
 
 /// Único punto de entrada que el resto del motor (`zonePoints.ts`) necesita conocer — resuelve

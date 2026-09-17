@@ -9645,7 +9645,9 @@ export const zonePoints: ZonePointInput[] = [
   // Cazadora Serhu (hallazgo 4, 2026-09-15): único NPC con homeLocationSlug en el exterior de
   // Karot Veku sin ZonePoint — "sale a cazar o vigilar los alrededores del campamento" (bio real),
   // coherente con estar fuera de la empalizada en vez de en el interior con los demás.
-  { locationSlug: 'campamento-serhu', x: 620, y: 200, tipo: 'NPC', targetSlug: 'cazadora-serhu', label: 'Cazadora Serhu, vigilando los alrededores' },
+  // Plantilla de movimiento específica (2026-09-17) — ronda entre el corral y la entrada del
+  // campamento, coherente con su propia bio ("sale a cazar o vigilar los alrededores").
+  { locationSlug: 'campamento-serhu', x: 620, y: 200, tipo: 'NPC', targetSlug: 'cazadora-serhu', label: 'Cazadora Serhu, vigilando los alrededores', plantillaEspecifica: 'cazadora-vigilancia-campamento-serhu' },
 
   // Interior de Karot Veku (2026-08-31, "Trabajador de Reino") — mismo lienzo 800×600, propio de
   // esta Location. Torgash/Ulkha en el propio Ketg'sedsar (centro); los 3 edificios de profesión
@@ -9695,7 +9697,10 @@ export const zonePoints: ZonePointInput[] = [
   { locationSlug: 'campamento-helsig-interior', x: 160, y: 500, tipo: 'NPC', targetSlug: 'maestro-herborista-helsig', label: 'Maestro Herborista del Clan Helsig' },
   { locationSlug: 'campamento-helsig-interior', x: 580, y: 460, tipo: 'EDIFICIO', targetSlug: 'alquimia-helsig', label: 'Taller de alquimia del Clan Helsig' },
   { locationSlug: 'campamento-helsig-interior', x: 640, y: 500, tipo: 'NPC', targetSlug: 'maestra-alquimista-helsig', label: 'Maestra Alquimista del Clan Helsig' },
-  { locationSlug: 'campamento-helsig-interior', x: 100, y: 300, tipo: 'NPC', targetSlug: 'guardiana-helsig', label: 'Guardiana del Clan Helsig' },
+  // Plantilla de movimiento específica (2026-09-17) — recorre el perímetro interior circular del
+  // campamento (mismo diseño que la imagen real de campamento-serhu-interior-mapa.png), en vez de
+  // la ida-vuelta corta genérica de PATRULLA_BREVE.
+  { locationSlug: 'campamento-helsig-interior', x: 100, y: 300, tipo: 'NPC', targetSlug: 'guardiana-helsig', label: 'Guardiana del Clan Helsig', plantillaEspecifica: 'guardia-perimetro-interior-campamento' },
   // Brenka/Solgra (auditoría de lore 2026-09-13, C7) — líderes del clan, sin ZonePoint hasta
   // ahora pese a ficha real. Junto al salón, mismo patrón que Torgash/Ulkha en Karot Veku.
   { locationSlug: 'campamento-helsig-interior', x: 400, y: 220, tipo: 'NPC', targetSlug: 'brenka', label: "Brenka, Terk'ikar" },

@@ -149,35 +149,53 @@ describe('siguienteCeldaPlantillaGeneral — mecánica de cada plantilla', () =>
   });
 });
 
+/// Recorre una plantilla específica por nombre desde su primera celda de la ruta y devuelve la
+/// secuencia completa de celdas visitadas — helper compartido por los 3 casos reales curados
+/// (evita repetir el mismo bucle 3 veces). La primera celda visitada es el índice 1 de la ruta (no
+/// el 0, el punto de partida) — mismo desfase que ya usa `siguienteCeldaEnRuta` (zonaPosicion.ts)
+/// para cualquier ruta artesanal: `pasoRuta` empieza en 0 apuntando A la posición de origen, así
+/// que el primer paso avanza a `(0+1) % length`.
+function recorrerPlantillaEspecifica(nombre: string, origenPixel: { x: number; y: number }, npc: NpcMovementInferenceInput): { col: number; row: number }[] {
+  const origen = celdaDePixel(origenPixel);
+  let actual = origen;
+  let pasoRuta = 0;
+  const visitadas: { col: number; row: number }[] = [];
+  const ruta = SPECIFIC_MOVEMENT_TEMPLATES[nombre];
+  for (let i = 0; i < ruta.length; i++) {
+    const resultado = siguienteCeldaDeZonePoint({ plantillaEspecifica: nombre, npc, actual, origen, pasoRuta, gridCols: GRID_COLS, gridRows: GRID_ROWS });
+    actual = resultado.celda;
+    pasoRuta = resultado.nuevoPasoRuta;
+    visitadas.push(actual);
+  }
+  return visitadas;
+}
+
+function celdasEsperadasDeRuta(nombre: string): { col: number; row: number }[] {
+  const rutaEnCeldas = SPECIFIC_MOVEMENT_TEMPLATES[nombre].map((p) => celdaDePixel(p));
+  return [...rutaEnCeldas.slice(1), rutaEnCeldas[0]];
+}
+
 describe('plantilla específica real: cruzavientos-pilares-rotos', () => {
   it('sobrevuela las 3 columnas de la imagen real, en bucle, distinto del anillo genérico ORBITA_AEREA', () => {
-    const origen = celdaDePixel({ x: 400, y: 140 }); // nido, misma posición que el ZonePoint real
-    let actual = origen;
-    let pasoRuta = 0;
-    const visitadas: { col: number; row: number }[] = [];
-    const ruta = SPECIFIC_MOVEMENT_TEMPLATES['cruzavientos-pilares-rotos'];
-    for (let i = 0; i < ruta.length; i++) {
-      const resultado = siguienteCeldaDeZonePoint({
-        plantillaEspecifica: 'cruzavientos-pilares-rotos',
-        npc: { ...npcBase, faunaCategoria: 'CORVENES', medio: ['AEREO'] }, // sería ORBITA_AEREA sin la específica
-        actual,
-        origen,
-        pasoRuta,
-        gridCols: GRID_COLS,
-        gridRows: GRID_ROWS,
-      });
-      actual = resultado.celda;
-      pasoRuta = resultado.nuevoPasoRuta;
-      visitadas.push(actual);
-    }
-    // La ruta real tiene 8 puntos, curados a mano — confirma que se sigue tal cual, no el anillo
-    // genérico de 8 vecinas alrededor de un único origen que usaría ORBITA_AEREA. La primera celda
-    // visitada es el índice 1 de `ruta` (no el 0, el nido de partida) — mismo desfase que ya usa
-    // `siguienteCeldaEnRuta` (zonaPosicion.ts) para cualquier ruta artesanal: `pasoRuta` empieza en
-    // 0 apuntando A la posición de origen, así que el primer paso avanza a `(0+1) % length`.
-    const rutaEnCeldas = ruta.map((p) => celdaDePixel(p));
-    const esperado = [...rutaEnCeldas.slice(1), rutaEnCeldas[0]];
-    expect(visitadas).toEqual(esperado);
+    // sería ORBITA_AEREA sin la específica (CORVENES + medio AEREO).
+    const visitadas = recorrerPlantillaEspecifica('cruzavientos-pilares-rotos', { x: 400, y: 140 }, { ...npcBase, faunaCategoria: 'CORVENES', medio: ['AEREO'] });
+    expect(visitadas).toEqual(celdasEsperadasDeRuta('cruzavientos-pilares-rotos'));
+  });
+});
+
+describe('plantilla específica real: guardia-perimetro-interior-campamento', () => {
+  it('recorre el perímetro circular del campamento, distinto de la ida-vuelta corta genérica PATRULLA_BREVE', () => {
+    // sería PATRULLA_BREVE sin la específica (role con "Guardiana").
+    const visitadas = recorrerPlantillaEspecifica('guardia-perimetro-interior-campamento', { x: 100, y: 300 }, { ...npcBase, role: 'Guardiana del Clan Helsig' });
+    expect(visitadas).toEqual(celdasEsperadasDeRuta('guardia-perimetro-interior-campamento'));
+  });
+});
+
+describe('plantilla específica real: cazadora-vigilancia-campamento-serhu', () => {
+  it('ronda entre el corral y la entrada del campamento, siguiendo su propia bio ("vigilar los alrededores")', () => {
+    // sería TERRITORIO_CORTO sin la específica (sin faunaCategoria, role sin "guardia"/"maestro").
+    const visitadas = recorrerPlantillaEspecifica('cazadora-vigilancia-campamento-serhu', { x: 620, y: 200 }, { ...npcBase, role: 'Joven cazadora en formación del Clan Serhu' });
+    expect(visitadas).toEqual(celdasEsperadasDeRuta('cazadora-vigilancia-campamento-serhu'));
   });
 });
 
