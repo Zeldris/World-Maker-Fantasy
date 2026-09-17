@@ -144,7 +144,8 @@ function siguienteCeldaOrbitaAerea(origen: Celda, pasoRuta: number, gridCols: nu
 /// agresivo dependía de que el jugador caminara literalmente sobre su celda, poco probable con
 /// patrulla/paseo/órbita). "Que si está a 3 celdas de ti, debe dirigirse hacia ti... si sales del
 /// rango de 3 casillas te dejan de seguir" — radio fijo, sin distinción por plantilla/especie.
-export const RADIO_PERSECUCION_CELDAS = 3;
+/// Ajustado a 2 celdas (petición explícita de Álvaro, 2026-09-17, tras el diseño inicial de 3).
+export const RADIO_PERSECUCION_CELDAS = 2;
 
 function distanciaChebyshev(a: Celda, b: Celda): number {
   return Math.max(Math.abs(a.col - b.col), Math.abs(a.row - b.row));
