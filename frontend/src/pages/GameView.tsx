@@ -99,6 +99,7 @@ import {
 import { characterWaitingFlavor, combatWaitingFlavor, worldWaitingFlavor, useRotatingFlavor } from '../lib/waitingFlavor'
 import { formatCountdown, formatFictionalDuration, applyInventoryDelta, combatKeyFor, questCompletedLogEntry } from '../lib/gameViewHelpers'
 import { ESTACION_ICON, CLIMA_ICON } from '../lib/entorno'
+import { ABILITIES_REQUIEREN_MONTURA } from '../lib/abilitiesRequierenMontura'
 import type {
   ActiveEffect,
   Attribute,
@@ -1204,6 +1205,11 @@ export function GameView() {
     // Guard de exclusión mutua (A.2) — con otro modal de acción ya abierto (p. ej. post-combate,
     // modo dinámico), no se apila uno nuevo encima; el chip normal de la habilidad sigue disponible.
     if (anyModalOpen) return
+    // "Viajar" requiere montura (2026-09-17, sin implementar todavía) — defensa en profundidad,
+    // el botón ya sale deshabilitado en HabilidadesPanel.tsx/SkillBarHud.tsx (ver
+    // ABILITIES_REQUIEREN_MONTURA), esto solo evita que un caller futuro que no pase por esos
+    // componentes (o un bug de disabled) llegue a abrir el viaje real de todos modos.
+    if (ABILITIES_REQUIEREN_MONTURA.has(ability.name)) return
     const oficio = HARVEST_ABILITY_OFICIO[ability.name]
     if (oficio) {
       setHarvestModal({ oficio, label: ability.name })

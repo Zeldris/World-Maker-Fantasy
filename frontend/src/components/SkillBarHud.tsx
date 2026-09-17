@@ -1,5 +1,6 @@
 import type { SavedActionInfo, SkillBarInfo } from '../types'
 import { TooltipAnchor } from './TooltipAnchor'
+import { ABILITIES_REQUIEREN_MONTURA, MONTURA_TOOLTIP_SUFFIX } from '../lib/abilitiesRequierenMontura'
 
 /// Vista "barra activa" del HUD (2026-09-04, v2 de la SkillBar única de 2026-08-29; rediseñado
 /// 2026-09-06, hallazgo 10: la barra ya no pertenece a ninguna categoría, puede mezclar
@@ -51,13 +52,16 @@ export function SkillBarHud({
         {abilities.length === 0 ? (
           <span className="text-xs text-wood-500">"{bar.name}" está vacía — pulsa ✎ para asignarle habilidades.</span>
         ) : (
-          abilities.map((a) => (
-            <TooltipAnchor key={a.id} text={a.name} subtext={a.description}>
-              <button type="button" onClick={() => onUse(a)} disabled={disabled} aria-label={a.name} className="skill-slot tactile">
-                <span aria-hidden="true">{a.icon}</span>
-              </button>
-            </TooltipAnchor>
-          ))
+          abilities.map((a) => {
+            const requiereMontura = ABILITIES_REQUIEREN_MONTURA.has(a.name)
+            return (
+              <TooltipAnchor key={a.id} text={a.name} subtext={requiereMontura ? `${a.description}${MONTURA_TOOLTIP_SUFFIX}` : a.description}>
+                <button type="button" onClick={() => onUse(a)} disabled={disabled || requiereMontura} aria-label={a.name} className="skill-slot tactile">
+                  <span aria-hidden="true">{a.icon}</span>
+                </button>
+              </TooltipAnchor>
+            )
+          })
         )}
       </div>
 

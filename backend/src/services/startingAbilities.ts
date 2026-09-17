@@ -86,10 +86,18 @@ const GORHORN_GENERAL_ABILITIES: StartingAbility[] = [
   },
   // Panel de selección (2026-08-17) — regiones descubiertas si no llevas mapa; todas las que
   // muestra el mapa poseído si sí lo llevas (TravelDestinationModal.tsx).
+  //
+  // Deshabilitada hasta que exista un sistema de monturas (2026-09-17, petición explícita de
+  // Álvaro) — el viaje real entre regiones ahora vive en el icono de salida de región del mapa de
+  // Zona (`ZonaSalidaModal.tsx`, zona.ts § `salidasDeRegionPara`), que no exige montura; esta
+  // entrada de la barra queda reservada para un viaje rápido/a distancia una vez haya monturas.
+  // `description` avisa de esto tal cual, el guard visual real vive en el frontend
+  // (`ABILITIES_REQUIEREN_MONTURA`, GameView.tsx/HabilidadesPanel.tsx/SkillBarHud.tsx) — no se
+  // borra la entrada ni se le añade un campo nuevo al catálogo por una única habilidad afectada.
   {
     name: 'Viajar',
     icon: '🧭',
-    description: 'Siempre que lleves un mapa en tu inventario, te listará las zonas disponibles para viajar y podras seleccionar una para iniciar tu viaje.',
+    description: 'Requiere montura (todavía sin implementar) — por ahora, usa el icono de salida en el mapa de la zona para viajar a otra región.',
     promptText: 'Me pongo en marcha hacia ',
     category: 'general',
   },

@@ -10,6 +10,7 @@ import { AbilityForm } from '../AbilityForm'
 import { CombatAbilityBelt, CombatAbilityToggleGrid } from '../CombatAbilityBelt'
 import { abilityBonusSuffix } from '../../lib/abilityBonusSuffix'
 import { PASSIVE_ABILITY_NAMES } from '../../lib/passiveAbilities'
+import { ABILITIES_REQUIEREN_MONTURA, MONTURA_TOOLTIP_SUFFIX } from '../../lib/abilitiesRequierenMontura'
 
 interface HabilidadesPanelProps {
   savedActions: SavedActionInfo[]
@@ -81,16 +82,17 @@ function AbilityGrid({
       {abilities.map((a) => {
         const status = statusFor?.(a.name)
         const passive = PASSIVE_ABILITY_NAMES.has(a.name)
+        const requiereMontura = ABILITIES_REQUIEREN_MONTURA.has(a.name)
         const baseTooltip = (statusFor ? readinessTooltip(a.description, status) : a.description) + abilityBonusSuffix(a)
         return (
           <IconCard
             key={a.id}
             icon={a.icon}
             name={a.name}
-            tooltip={passive ? `${baseTooltip}${PASSIVE_TOOLTIP_SUFFIX}` : baseTooltip}
+            tooltip={passive ? `${baseTooltip}${PASSIVE_TOOLTIP_SUFFIX}` : requiereMontura ? `${baseTooltip}${MONTURA_TOOLTIP_SUFFIX}` : baseTooltip}
             onUse={() => onUse(a)}
             onDetail={() => onDetail(a)}
-            disabled={!passive && !!(status && !status.met)}
+            disabled={requiereMontura || (!passive && !!(status && !status.met))}
             passive={passive}
             badge={passive ? <span className="absolute -left-1 -top-1 rounded-full border border-iron-700 bg-wood-950 px-1 text-[9px] text-wood-400">Pasiva</span> : undefined}
           />
