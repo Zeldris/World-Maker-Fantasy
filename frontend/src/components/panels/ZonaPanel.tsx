@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { getZona, moverEnZona, resolveImageUrl, recogerDroppedItem, type ZonaResponse, type ZonePointInfo, type ZonaDinamicoInfo, type RegionControlInfo } from '../../lib/api'
 import { ZonePointDetailModal, zonaDinamicoToDetailSource } from '../ZonePointDetailModal'
 import { ZoneGroupDetailModal } from '../ZoneGroupDetailModal'
@@ -107,8 +107,22 @@ const COLOR_HEX: Record<ZonePointInfo['color'], string> = {
 /// seguiría con sus coordenadas absolutas fijas). Más simple y de menor riesgo: `transition` de CSS
 /// directamente sobre los propios atributos de posición SVG (`cx`/`cy`/`x`/`y`/`points`) — los
 /// navegadores modernos SÍ los interpolan igual que `transform`, sin reescribir toda la geometría a
-/// coordenadas relativas. Mismos 220ms que `JugadorMarker`, por debajo de `MS_POR_PASO_MOVIMIENTO`.
-const FLUID_TRANSITION = { transition: 'cx 220ms linear, cy 220ms linear, x 220ms linear, y 220ms linear, points 220ms linear' }
+/// coordenadas relativas.
+///
+/// Sistema de movimiento por cuadrícula (2026-09-08, ritmo ralentizado 2026-09-17 a petición
+/// explícita: "que la animación de movimiento sea bastante más lenta") — cada paso anima este
+/// tiempo antes de pedir el siguiente, y es EXACTAMENTE la duración de `FLUID_TRANSITION`/
+/// `JugadorMarker` (una sola fuente de verdad, no dos constantes que puedan desincronizarse) — así
+/// el desplazamiento visual dura el intervalo completo entre pasos, nunca llega y se queda quieto
+/// esperando al siguiente (petición explícita: "que se vea como se desplaza todo poco a poco, no
+/// que pegue un salto y aparezca en la celda"). Antes 250ms de intervalo con 220ms de transición
+/// (deliberadamente algo más corta, para que el deslizamiento terminara justo antes del siguiente
+/// paso) — al subir el intervalo sin tocar la transición, el marcador se deslizaba rápido y luego
+/// quedaba quieto el resto del tiempo, justo el efecto de "salto" que se pedía evitar.
+const MS_POR_PASO_MOVIMIENTO = 600
+const FLUID_TRANSITION = {
+  transition: `cx ${MS_POR_PASO_MOVIMIENTO}ms linear, cy ${MS_POR_PASO_MOVIMIENTO}ms linear, x ${MS_POR_PASO_MOVIMIENTO}ms linear, y ${MS_POR_PASO_MOVIMIENTO}ms linear, points ${MS_POR_PASO_MOVIMIENTO}ms linear`,
+}
 
 function ZonePointShape({ tipo, x, y, color, hasCompanion }: { tipo: ZonePointInfo['tipo'] | 'OBJETO'; x: number; y: number; color: string; hasCompanion?: boolean }) {
   const common = { fill: color, stroke: 'white', strokeWidth: 1.5, style: FLUID_TRANSITION }
@@ -151,9 +165,9 @@ function ZonePointShape({ tipo, x, y, color, hasCompanion }: { tipo: ZonePointIn
 /// Ahora la silueta se calcula relativa al origen (0,0) una sola vez, y es el propio `<g>` quien se
 /// desplaza vía `transform: translate(x, y)` — eso SÍ es un único valor animable con
 /// `transition: transform`, el navegador interpola la posición fotograma a fotograma en vez de
-/// saltar entre los dos centros de celda. Duración ligeramente por debajo de
-/// `MS_POR_PASO_MOVIMIENTO` (más abajo) para que la transición termine justo antes de que llegue
-/// el siguiente paso del bucle, sin quedarse "a medias" cuando el jugador encadena varios pasos.
+/// saltar entre los dos centros de celda. Duración = `MS_POR_PASO_MOVIMIENTO` exacta (ver ese
+/// comentario más arriba) — el deslizamiento ocupa el intervalo completo entre pasos, sin quedarse
+/// quieto esperando al siguiente.
 const JUGADOR_MARKER_PUNTOS = Array.from({ length: 10 }, (_, i) => {
   const r = i % 2 === 0 ? 11 : 4.5
   const angle = (Math.PI / 5) * i - Math.PI / 2
@@ -162,10 +176,38 @@ const JUGADOR_MARKER_PUNTOS = Array.from({ length: 10 }, (_, i) => {
 
 function JugadorMarker({ x, y }: { x: number; y: number }) {
   return (
-    <g style={{ transform: `translate(${x}px, ${y}px)`, transition: 'transform 220ms linear' }}>
+    <g style={{ transform: `translate(${x}px, ${y}px)`, transition: `transform ${MS_POR_PASO_MOVIMIENTO}ms linear` }}>
       <circle cx={0} cy={0} r={14} fill="none" stroke="white" strokeWidth={1.5} opacity={0.8} />
       <polygon points={JUGADOR_MARKER_PUNTOS} fill="#0a0a0a" stroke="white" strokeWidth={1.5} />
       <title>Tú estás aquí</title>
+    </g>
+  )
+}
+
+/// Cuadrícula de referencia visual (2026-09-17, petición explícita: "una cuadrícula muy muy
+/// transparente... para que fuese más claro cómo moverse entre la zona") — mismas 16×12 celdas de
+/// 50px que ya usa el motor de movimiento real (`CELL_SIZE_PX`/`GRID_COLS`/`GRID_ROWS`,
+/// backend/src/services/zonaPosicion.ts) sobre el viewBox fijo 800×600 — puramente decorativa, el
+/// backend sigue siendo la única fuente de verdad de a qué celda cae cada clic
+/// (`getScreenCTM().inverse()` ya convierte a píxel real, esto solo ayuda a LEER esa cuadrícula a
+/// simple vista). `pointer-events: none` para no interceptar el clic de movimiento del lienzo.
+const GRID_CELL_PX = 50
+const GRID_COLS = 16
+const GRID_ROWS = 12
+
+function GridOverlay() {
+  const lineas: ReactNode[] = []
+  for (let col = 1; col < GRID_COLS; col++) {
+    const x = col * GRID_CELL_PX
+    lineas.push(<line key={`v${col}`} x1={x} y1={0} x2={x} y2={GRID_ROWS * GRID_CELL_PX} />)
+  }
+  for (let row = 1; row < GRID_ROWS; row++) {
+    const y = row * GRID_CELL_PX
+    lineas.push(<line key={`h${row}`} x1={0} y1={y} x2={GRID_COLS * GRID_CELL_PX} y2={y} />)
+  }
+  return (
+    <g stroke="white" strokeWidth={1} opacity={0.12} pointerEvents="none">
+      {lineas}
     </g>
   )
 }
@@ -202,11 +244,6 @@ function regionControlDisplay(control: RegionControlInfo): { text: string; tone:
     }
   }
 }
-
-/// Sistema de movimiento por cuadrícula (2026-09-08) — cada paso anima ~250ms, ritmo similar al
-/// resto de animaciones cortas del proyecto (revelado de tirada, etc.) sin sentirse lento en un
-/// trayecto de varias celdas.
-const MS_POR_PASO_MOVIMIENTO = 250
 
 export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, columnasAncho = false, onClose }: ZonaPanelProps) {
   const [loading, setLoading] = useState(true)
@@ -397,6 +434,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
               }
             >
               {imageUrl && <image href={imageUrl} x={0} y={0} width={800} height={600} preserveAspectRatio="xMidYMid slice" />}
+              <GridOverlay />
               {data.puntos.map((p) => (
                 <g key={p.id} onClick={(e) => { e.stopPropagation(); p.companion ? setSelectedGroup(p) : setSelectedPoint(p) }} className="cursor-pointer">
                   <ZonePointShape tipo={p.tipo} x={p.x} y={p.y} color={COLOR_HEX[p.color]} hasCompanion={!!p.companion} />
