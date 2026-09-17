@@ -1128,6 +1128,32 @@ export interface RegionControlInfo {
   duenoActual: string
   agresor?: string
 }
+/// Icono de salida de región (2026-09-17, petición explícita de Álvaro: "cada salida debe estar
+/// ubicada en su posición correcta hacia el camino que se indica en el mapa... al pulsarlo saca un
+/// modal con la imagen de la zona (si ya la habías descubierto) y una descripción (breve si no la
+/// conoces, larga si ya la descubriste)... con un botón Viajar") — una por cada `LocationLink` real
+/// que conecta con la Location actual, posicionada en el borde del lienzo según la dirección
+/// cardinal real entre ambas (backend, `salidasDeRegionPara`, zona.ts).
+export interface ZonaSalidaInfo {
+  locationId: string
+  slug: string
+  nombre: string
+  x: number
+  y: number
+  /// Locations no usan la Enciclopedia de 3 fases (`DiscoveredEntity`) — usan el sistema binario
+  /// `LocationVisit` ya existente: `true` = alguna partida... no, ESTA partida ya estuvo ahí.
+  visitada: boolean
+  /// Frase corta curada a mano (`Location.teaser`) — se muestra solo mientras `!visitada`. `null`
+  /// si esa Location todavía no tiene teaser curado en el catálogo (fallback de texto genérico en
+  /// el modal, nunca bloquea el render).
+  teaser: string | null
+  /// Descripción real de `Location.description` — solo presente (no `null`) si `visitada`, nunca
+  /// revela contenido de un sitio no explorado.
+  description: string | null
+  /// Igual que `description`: solo presente si `visitada`.
+  imageUrl: string | null
+}
+
 export interface ZonaResponse {
   disponible: boolean
   locationSlug?: string
@@ -1142,6 +1168,7 @@ export interface ZonaResponse {
   /// (viajar/cazar/recolectar/combatir/hablar/construir/huir), nunca interpretando narración
   /// libre. `null` = partida previa a esta pieza, o sin nada que asignar todavía.
   jugador: { x: number; y: number } | null
+  salidas: ZonaSalidaInfo[]
 }
 export async function getZona(saveId: string): Promise<ZonaResponse> {
   return fetchJson(`${API_URL}/saves/${saveId}/zona`)

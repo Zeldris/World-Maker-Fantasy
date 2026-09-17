@@ -26,7 +26,7 @@ async function main() {
   for (const loc of locations) {
     const row = await prisma.location.upsert({
       where: { worldId_slug: { worldId, slug: loc.slug } },
-      update: { name: loc.name, region: loc.region, kind: loc.kind, description: loc.description, aliases: loc.aliases, x: loc.x, y: loc.y },
+      update: { name: loc.name, region: loc.region, kind: loc.kind, description: loc.description, aliases: loc.aliases, x: loc.x, y: loc.y, teaser: loc.teaser ?? null },
       create: { worldId, ...loc },
     });
     locationIdBySlug.set(loc.slug, row.id);

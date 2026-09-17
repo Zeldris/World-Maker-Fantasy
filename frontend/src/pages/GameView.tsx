@@ -2404,6 +2404,13 @@ export function GameView() {
           saveId={saveId}
           onEncuentroZona={(entry) => setCharacterLog((prev) => [...prev, entry])}
           onClose={() => setZonaModalOpen(false)}
+          // Icono de salida de región (2026-09-17) — mismo patrón que `handleSimpleModalSelect`:
+          // cierra el modal de zona y manda el texto por el turno normal, como si el jugador lo
+          // hubiera escrito él mismo (el motor de viaje determinista decide el resto).
+          onViajarA={(actionText) => {
+            setZonaModalOpen(false)
+            handleSubmit(actionText)
+          }}
         />
       )}
 

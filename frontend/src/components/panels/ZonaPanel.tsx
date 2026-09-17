@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { getZona, moverEnZona, resolveImageUrl, recogerDroppedItem, type ZonaResponse, type ZonePointInfo, type ZonaDinamicoInfo, type RegionControlInfo } from '../../lib/api'
+import { getZona, moverEnZona, resolveImageUrl, recogerDroppedItem, type ZonaResponse, type ZonePointInfo, type ZonaDinamicoInfo, type RegionControlInfo, type ZonaSalidaInfo } from '../../lib/api'
 import { ZonePointDetailModal, zonaDinamicoToDetailSource } from '../ZonePointDetailModal'
 import { ZoneGroupDetailModal } from '../ZoneGroupDetailModal'
+import { ZonaSalidaModal } from '../ZonaSalidaModal'
 import type { LogEntry } from '../../types'
 
 interface ZonaPanelProps {
@@ -35,6 +36,12 @@ interface ZonaPanelProps {
   /// llega, dejando la tarjeta visible y accionable de inmediato. `undefined` en el caller de
   /// MapaPanel.tsx (vista informativa, nunca dispara colisión) — no rompe nada sin tocarlo.
   onClose?: () => void
+  /// Iconos de salida de región (2026-09-17) — el modal de salida (`ZonaSalidaModal` más abajo)
+  /// arma el mismo texto libre que ya usa `TravelDestinationModal` ("Viajo hacia X."), reutilizando
+  /// el motor de viaje determinista existente (`resolveTravel`, turnResolution.ts) sin duplicar
+  /// ninguna lógica de viaje nueva — decisión explícita de Álvaro. `undefined` en el caller de
+  /// MapaPanel.tsx (vista informativa, no ofrece viajar desde ahí) — no rompe nada sin tocarlo.
+  onViajarA?: (actionText: string) => void
 }
 
 /// Grupo 3 § Mundo determinista, Capa 1 (2026-08-25, docs/rpgtarkor/mundo-determinista.md) —
@@ -233,6 +240,23 @@ function GridOverlay() {
   )
 }
 
+/// Icono de salida de región (2026-09-17, petición explícita de Álvaro: "cada salida debe estar
+/// ubicada en su posición correcta hacia el camino que se indica en el mapa" — la posición YA la
+/// calcula el backend, `salidasDeRegionPara`, según la dirección cardinal real; aquí solo se dibuja
+/// el icono en esa posición). Forma nueva, distinta de las 4 de `ZonePointShape`
+/// (círculo/triángulo/cuadrado/rombo) para no confundirla con fauna/NPC/edificio/recurso: una
+/// flecha apuntando hacia afuera dentro de un círculo, "puerta hacia otra región". Sin `transform`
+/// animado (a diferencia de `ZonePointMarker`) — una salida nunca se mueve, es un punto fijo del
+/// propio mapa, como la cuadrícula.
+function SalidaMarker({ x, y }: { x: number; y: number }) {
+  return (
+    <g style={{ transform: `translate(${x}px, ${y}px)` }}>
+      <circle cx={0} cy={0} r={12} fill="#1a1410" stroke="#d4af37" strokeWidth={1.5} opacity={0.9} />
+      <polygon points="-4,-5 4,0 -4,5" fill="#d4af37" />
+    </g>
+  )
+}
+
 /// C.6/C.7 (checklist frontend 2026-08-27) — antes 3 comparaciones sueltas sin exhaustividad
 /// comprobada por TypeScript (un 4º estado futuro se colaría en silencio) y sin comprobar que
 /// `agresor` viniera informado en `EN_DISPUTA` (opcional en el tipo). Ahora un `switch` exhaustivo
@@ -266,7 +290,7 @@ function regionControlDisplay(control: RegionControlInfo): { text: string; tone:
   }
 }
 
-export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, columnasAncho = false, onClose }: ZonaPanelProps) {
+export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, columnasAncho = false, onClose, onViajarA }: ZonaPanelProps) {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<ZonaResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -277,6 +301,9 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
   // estado de selección SEPARADO del normal: un punto con `companion` abre `ZoneGroupDetailModal`
   // (desglose de ambas entidades) en vez del modal de un solo NPC.
   const [selectedGroup, setSelectedGroup] = useState<ZonePointInfo | null>(null)
+  // Icono de salida de región (2026-09-17) — abre `ZonaSalidaModal`, distinto del resto (nunca
+  // dispara movimiento/colisión, es puramente informativo hasta que se pulsa "Viajar").
+  const [selectedSalida, setSelectedSalida] = useState<ZonaSalidaInfo | null>(null)
   // Sistema de movimiento por cuadrícula (2026-09-08) — mensaje simple de colisión/aviso ("por
   // ahora, acabaremos metiendo una animación" — placeholder consciente hasta que Franja 3 conecte
   // esto con combate/Interactuar real). `movimientoEnCurso` deshabilita nuevos clics mientras se
@@ -491,6 +518,16 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                 </g>
               ))}
               {data.jugador && <JugadorMarker x={data.jugador.x} y={data.jugador.y} />}
+              {/* Iconos de salida de región (2026-09-17) — siempre clicables, incluso con
+                  `soloConsulta` (vista de MapaPanel): abrir el modal es puramente informativo,
+                  nunca dispara movimiento. `stopPropagation` para no disparar también un clic de
+                  movimiento hacia ese punto del lienzo. */}
+              {data.salidas.map((s) => (
+                <g key={s.locationId} onClick={(e) => { e.stopPropagation(); setSelectedSalida(s) }} className="cursor-pointer">
+                  <SalidaMarker x={s.x} y={s.y} />
+                  <title>{s.visitada ? s.nombre : 'Salida hacia un lugar desconocido'}</title>
+                </g>
+              ))}
             </svg>
           </div>
         )}
@@ -648,6 +685,16 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
           <ZonePointDetailModal point={zonaDinamicoToDetailSource(selectedPoint)} onClose={() => setSelectedPoint(null)} onRecoger={handleRecoger} />
         ))}
       {selectedGroup && <ZoneGroupDetailModal point={selectedGroup} onClose={() => setSelectedGroup(null)} />}
+      {selectedSalida && (
+        <ZonaSalidaModal
+          salida={selectedSalida}
+          onCancel={() => setSelectedSalida(null)}
+          onViajar={(actionText) => {
+            setSelectedSalida(null)
+            onViajarA?.(actionText)
+          }}
+        />
+      )}
     </div>
   )
 }

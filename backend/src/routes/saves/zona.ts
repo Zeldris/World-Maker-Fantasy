@@ -12,7 +12,8 @@ import { zonePointColorFor, avanzarZonePointsUnPaso, zonePointVisiblePara, quest
 import { NOMBRE_OCULTO_GENERICO } from '../../services/dynamicMode.js';
 import { parseAgenda, regionControlFor, type RegionControlState } from '../../services/worldAgenda.js';
 import { REGION_OWNING_FACTIONS, effectiveTemperamento } from '../../services/reputation.js';
-import { posicionAleatoriaEnLienzo, celdaDePixel, pixelDeCelda, calcularCamino, celdaAdyacenteOMisma, mismaCelda } from '../../services/zonaPosicion.js';
+import { posicionAleatoriaEnLienzo, celdaDePixel, pixelDeCelda, calcularCamino, celdaAdyacenteOMisma, mismaCelda, puntoDeEntradaParaDireccion } from '../../services/zonaPosicion.js';
+import { cardinalDirectionBetween } from '../../services/travel.js';
 import { rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 import { createInFlightClaimSet } from '../../lib/inFlightClaimSet.js';
 
@@ -53,6 +54,80 @@ const SAVE_SELECT_PARA_MOVER = {
 /// (mismo convenio que el resto de sufijos de imagen) — este mapa hace ese único ajuste.
 const ESTACION_A_SLUG: Record<string, EstacionSlug> = { PRIMAVERA: 'primavera', VERANO: 'verano', OTONO: 'otono', INVIERNO: 'invierno' };
 
+export interface ZonaSalidaInfo {
+  locationId: string;
+  slug: string;
+  nombre: string;
+  x: number;
+  y: number;
+  visitada: boolean;
+  teaser: string | null;
+  description: string | null;
+  imageUrl: string | null;
+}
+
+/// Iconos de salida de región (2026-09-17, petición explícita de Álvaro: "cada salida debe estar
+/// ubicada en su posición correcta hacia el camino que se indica en el mapa... si está al sur para
+/// ir a Pilares Rotos, pues la salida al sur") — una por cada `LocationLink` real que conecta la
+/// Location actual con otra, posicionada en el borde del lienzo según la dirección cardinal REAL
+/// entre ambas (`cardinalDirectionBetween`, mismo cálculo ya usado por la Aguja de Cardo Brújula y
+/// por `fijarEntradaAZona` al llegar a una zona nueva — no se inventa un criterio nuevo).
+/// `puntoDeEntradaParaDireccion` se usa SIN invertir (a diferencia de `direccionDeEntrada`, que sí
+/// invierte porque calcula el borde de LLEGADA a la zona destino): aquí es el borde de SALIDA de
+/// la zona actual, en la misma dirección hacia la que se viaja.
+///
+/// `null` si la Location actual o la conectada no tienen coordenadas reales (`x`/`y` opcionales de
+/// catálogo, ver `LocationInput`) — nunca inventa una dirección, mismo criterio de "falla cerrado"
+/// que el resto de usos de estas coordenadas.
+///
+/// Visitada/no visitada (2026-09-17) — Locations NO usan la Enciclopedia de 3 fases
+/// (`DiscoveredEntity`), usan el sistema binario `LocationVisit` ya existente: una fila = ya
+/// estuvo ahí. `teaser`/`description`/`imageUrl` solo se calculan de verdad si ya la visitó (el
+/// caller/frontend decide cuál mostrar); si no, se devuelven de todos modos para que el modal
+/// pueda mostrar el teaser SIN pedir una segunda llamada — pero `imageUrl` siempre `null` sin
+/// visitar (nunca revela la imagen real de un sitio no explorado).
+async function salidasDeRegionPara(
+  saveId: string,
+  worldId: string,
+  location: { id: string; x: number | null; y: number | null },
+): Promise<ZonaSalidaInfo[]> {
+  const links = await prisma.locationLink.findMany({
+    where: { OR: [{ fromId: location.id }, { toId: location.id }] },
+    select: {
+      from: { select: { id: true, slug: true, name: true, x: true, y: true, teaser: true, description: true } },
+      to: { select: { id: true, slug: true, name: true, x: true, y: true, teaser: true, description: true } },
+    },
+  });
+  if (links.length === 0 || location.x == null || location.y == null) return [];
+
+  const conectadas = links.map((l) => (l.from.id === location.id ? l.to : l.from));
+  const visitas = await prisma.locationVisit.findMany({
+    where: { saveId, locationId: { in: conectadas.map((c) => c.id) } },
+    select: { locationId: true },
+  });
+  const visitadasIds = new Set(visitas.map((v) => v.locationId));
+
+  const salidas: ZonaSalidaInfo[] = [];
+  for (const destino of conectadas) {
+    if (destino.x == null || destino.y == null) continue; // sin coordenadas, no hay dirección real que calcular
+    const direccion = cardinalDirectionBetween({ x: location.x, y: location.y }, { x: destino.x, y: destino.y });
+    const punto = puntoDeEntradaParaDireccion(direccion);
+    const visitada = visitadasIds.has(destino.id);
+    salidas.push({
+      locationId: destino.id,
+      slug: destino.slug,
+      nombre: destino.name,
+      x: punto.x,
+      y: punto.y,
+      visitada,
+      teaser: destino.teaser,
+      description: visitada ? destino.description : null,
+      imageUrl: visitada ? zoneMapImageUrl(destino.slug) : null,
+    });
+  }
+  return salidas;
+}
+
 /// Grupo 3 § Mundo determinista (docs/rpgtarkor/mundo-determinista.md, 2026-08-25) — Capa 1: zonas
 /// navegables, PROTOTIPO en una sola zona (La Hondonada del Eco). Deliberadamente ACOTADO: solo
 /// expone DÓNDE vive algo dentro de la zona actual, de forma estructurada, en vez de que el
@@ -67,7 +142,7 @@ export async function zonaRoutes(app: FastifyInstance) {
         worldId: true,
         zonaPosX: true,
         zonaPosY: true,
-        currentLocation: { select: { id: true, slug: true, name: true, region: true, kind: true, zonePoints: true } },
+        currentLocation: { select: { id: true, slug: true, name: true, region: true, kind: true, x: true, y: true, zonePoints: true } },
         worldState: { select: { fictionalMinutes: true, factionsStatus: true, agenda: true } },
       },
     });
@@ -75,7 +150,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     // Punto del jugador en el mapa de Zona (2026-09-04) — null en partidas previas a esta pieza, o
     // sin nada que asignar todavía (nunca se ha resuelto una acción determinista que lo mueva).
     const jugador = save.zonaPosX != null && save.zonaPosY != null ? { x: save.zonaPosX, y: save.zonaPosY } : null;
-    if (!save.currentLocation) return { disponible: false, puntos: [], dinamicos: [], jugador };
+    if (!save.currentLocation) return { disponible: false, puntos: [], dinamicos: [], jugador, salidas: [] };
 
     const { zonePoints: zonePointsRaw, slug: locationSlug, name: locationName, id: locationId, region, kind } = save.currentLocation;
     const fictionalMinutes = save.worldState?.fictionalMinutes ?? 480;
@@ -275,6 +350,10 @@ export async function zonaRoutes(app: FastifyInstance) {
       dinamicos.push({ slug: d.id, nombre: d.name, tipo: 'OBJETO', color: 'INERTE', x: d.x, y: d.y, droppedItemId: d.id, descubierto: true });
     }
 
+    // Iconos de salida de región (2026-09-17) — calculado una vez, lo necesitan ambos `return` de
+    // aquí en adelante (con o sin ZonePoint sembrado, una zona SIEMPRE puede tener salidas reales).
+    const salidas = await salidasDeRegionPara(save.id, save.worldId, save.currentLocation);
+
     if (zonePoints.length === 0) {
       // `disponible` mira `zonePointsActivos` (datos sembrados reales), no `zonePoints` (ya
       // filtrado por ausencia, 2026-09-04) — un ZonePoint real que está temporalmente ausente por
@@ -288,6 +367,7 @@ export async function zonaRoutes(app: FastifyInstance) {
         imageUrl: zoneMapImageUrl(locationSlug, momento, estacion),
         regionControl,
         jugador,
+        salidas,
       };
     }
 
@@ -334,6 +414,7 @@ export async function zonaRoutes(app: FastifyInstance) {
       }),
       dinamicos,
       jugador,
+      salidas,
     };
   });
 

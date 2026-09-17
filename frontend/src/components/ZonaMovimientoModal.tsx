@@ -6,6 +6,8 @@ interface ZonaMovimientoModalProps {
   saveId: string
   onEncuentroZona?: (logEntry: LogEntry) => void
   onClose: () => void
+  /// Icono de salida de región (2026-09-17) — pasado tal cual a `ZonaPanel`, ver comentario ahí.
+  onViajarA?: (actionText: string) => void
 }
 
 /// Pieza 2 del rediseño de movimiento en Zona (2026-09-09, decisión explícita de Álvaro: "la opción
@@ -23,7 +25,7 @@ interface ZonaMovimientoModalProps {
 /// izquierda (70%) y el resto del contenido a la derecha (30%) con su propio scroll — petición
 /// explícita de Álvaro: "aprovechemos el espacio horizontal... así no teniendo que scrollear",
 /// aplicado SOLO aquí, no en el tab Mapa informativo.
-export function ZonaMovimientoModal({ saveId, onEncuentroZona, onClose }: ZonaMovimientoModalProps) {
+export function ZonaMovimientoModal({ saveId, onEncuentroZona, onClose, onViajarA }: ZonaMovimientoModalProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     rootRef.current?.focus()
@@ -50,7 +52,7 @@ export function ZonaMovimientoModal({ saveId, onEncuentroZona, onClose }: ZonaMo
           </button>
         </div>
         <div className="min-h-0 flex-1 overflow-hidden">
-          <ZonaPanel saveId={saveId} onEncuentroZona={onEncuentroZona} soloConsulta={false} columnasAncho onClose={onClose} />
+          <ZonaPanel saveId={saveId} onEncuentroZona={onEncuentroZona} soloConsulta={false} columnasAncho onClose={onClose} onViajarA={onViajarA} />
         </div>
       </div>
     </div>

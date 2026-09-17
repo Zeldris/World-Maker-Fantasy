@@ -31,6 +31,11 @@ export interface LocationInput {
   /// el cálculo de dirección (falla cerrado, nunca inventa una).
   x?: number;
   y?: number;
+  /// Frase corta para el icono de salida de región en Zona (2026-09-17) — ver el comentario del
+  /// campo homónimo en schema.prisma. Solo hace falta curarla para Locations que de verdad son
+  /// destino de algún `LocationLink` real (la mayoría del catálogo no lo es todavía); el resto se
+  /// queda `undefined`/null sin problema.
+  teaser?: string;
 }
 
 export const locations: LocationInput[] = [
@@ -52,6 +57,7 @@ export const locations: LocationInput[] = [
     aliases: ['las agujas iman', 'las agujas imán'],
     x: -7,
     y: 8.3,
+    teaser: 'Se cuenta que allí la brújula deja de servir y la arena flota como si el suelo respirara',
   },
 
   {
@@ -74,6 +80,7 @@ export const locations: LocationInput[] = [
     aliases: ['campamento del clan serhu', 'karot veku', 'colmillo ceniza'],
     x: 21,
     y: -5,
+    teaser: 'Una empalizada de estacas se recorta contra el horizonte, con vigías que no pierden de vista a quien se acerca',
   },
 
   // "Interior" de un asentamiento con FactionBuilding real (2026-08-31, "Trabajador de Reino") —
@@ -89,6 +96,7 @@ export const locations: LocationInput[] = [
     description:
       'Dentro de la empalizada de Karot Veku: tierra apisonada en torno a una plaza central, sendas marcadas por el paso constante entre los distintos puntos del poblado — cada construcción real (Ketg\'lukar, talleres de cada oficio) tiene su propia ubicación marcada en el mapa de la zona, sin representarlas ya prefijadas en el fondo. En el centro simbólico, el Ketg\'sedsar Karot Veku — el Salón Ketg del Colmillo Ceniza —, donde la Terk\'ikar Ulkha Ketg y el Kort\'ikar Torgash Ketg reciben a quien cruza la entrada.',
     aliases: ['ketg\'lukar', 'ketg\'sedsar','ketglukar', 'ketgsedsar'],
+    teaser: 'Más allá de la empalizada debe abrirse la vida cotidiana del clan, aunque nadie ajeno la haya visto de cerca',
   },
 
   {
@@ -101,6 +109,7 @@ export const locations: LocationInput[] = [
     aliases: ['el cruce de las cenizas'],
     x: 0,
     y: -18,
+    teaser: 'Un cruce de caminos donde suelen verse patrullas yendo y viniendo desde la Meseta del Orden',
   },
 
   {
@@ -113,6 +122,7 @@ export const locations: LocationInput[] = [
     aliases: ['el filo de las brasas'],
     x: 16,
     y: 31,
+    teaser: 'Desde la estepa ya se adivina una cresta oscura donde el calor empieza a temblar en el aire',
   },
 
   {
@@ -128,6 +138,7 @@ export const locations: LocationInput[] = [
     aliases: ['la hondonada del eco'],
     x: 5,
     y: 7.5,
+    teaser: 'Cuentan que allí hasta el propio viento se queda atrapado y repite cada sonido una y otra vez',
   },
 
   {
@@ -140,6 +151,7 @@ export const locations: LocationInput[] = [
     aliases: ['manaderos', 'los manaderos'],
     x: 18.1,
     y: 2.8,
+    teaser: 'Charcas estacionales entre chudos rojizos, dicen que allí paren las hembras de Corredor de Cauce',
   },
 
   // --- Puntos de interés nuevos dentro del núcleo ya cartografiado (roadmap 2026-07-20,
@@ -156,6 +168,7 @@ export const locations: LocationInput[] = [
     aliases: ['el osario de la manada'],
     x: 10.95,
     y: 7.6,
+    teaser: 'Un costillar blanqueado se recorta contra el cielo, tan grande que se distingue desde muy lejos',
   },
 
   // --- Ampliación del núcleo medido (checklist 2026-07-21/22, punto 6 — "Puerta 2" de
@@ -173,6 +186,7 @@ export const locations: LocationInput[] = [
     aliases: ['los pastos de la deriva'],
     x: 30,
     y: -1,
+    teaser: 'Praderas abiertas que solo se ocupan por temporadas, cuando el pasto cercano ya no basta',
   },
 
   {
@@ -189,6 +203,7 @@ export const locations: LocationInput[] = [
     aliases: ['los pilares rotos'],
     x: 0,
     y: 0,
+    teaser: 'Tres columnas erosionadas que se ven desde casi cualquier punto de la llanura, buena referencia para orientarse',
   },
 
   {
@@ -201,6 +216,7 @@ export const locations: LocationInput[] = [
     aliases: ['el pozo de cauce viejo'],
     x: 13.5,
     y: 0,
+    teaser: 'Se dice que es de los pocos sitios de la región donde el agua nunca falta',
   },
 
   {
@@ -223,6 +239,7 @@ export const locations: LocationInput[] = [
     aliases: ['los restos de maktor', 'ruinas de maktor'],
     x: 10,
     y: 20.5,
+    teaser: 'Cimientos quemados sin senda marcada, lo poco que quedó de un clan entero aniquilado',
   },
 
   {
@@ -235,6 +252,7 @@ export const locations: LocationInput[] = [
     aliases: ['los tumulos del honor', 'los túmulos del honor'],
     x: 6.2,
     y: 5.6,
+    teaser: 'Un campo de piedra donde se dice que ningún clan alzó nunca las armas contra otro',
   },
 
   // --- Tercera ampliación del núcleo (checklist, sesión "ampliamos lore" 2026-08-05): sabana,
@@ -256,6 +274,7 @@ export const locations: LocationInput[] = [
     aliases: ['el oasis de chudos rojos', 'oasis de chudos rojos'],
     x: 24.3,
     y: 14.9,
+    teaser: 'Un punto verde de verdad en medio del polvo rojo, dicen que siempre hay agua en superficie',
   },
 
   {
@@ -268,6 +287,7 @@ export const locations: LocationInput[] = [
     aliases: ['la desembocadura callada', 'desembocadura callada'],
     x: -2,
     y: 42,
+    teaser: 'El lugar donde dicen que el agua de toda la llanura termina por fin encontrando el mar',
   },
 
   {
@@ -280,6 +300,7 @@ export const locations: LocationInput[] = [
     aliases: ['playa de ceniza blanca', 'la playa de ceniza blanca'],
     x: -20,
     y: 22,
+    teaser: 'La franja de costa de la que todos hablan como la más fácil de alcanzar sin sobresaltos',
   },
 
   {
@@ -292,6 +313,7 @@ export const locations: LocationInput[] = [
     aliases: ['los acantilados partidos', 'acantilados partidos'],
     x: -21,
     y: 44,
+    teaser: 'Un tramo de costa del que se habla con respeto: hermoso de ver, poco perdonan un mal paso',
   },
 
   {
@@ -304,6 +326,7 @@ export const locations: LocationInput[] = [
     aliases: ['las pozas de marea', 'pozas de marea'],
     x: -20,
     y: 36,
+    teaser: 'Costa baja y tranquila, fama de buen sitio para recoger lo que deja la marea al retirarse',
   },
 
   {
@@ -316,6 +339,7 @@ export const locations: LocationInput[] = [
     aliases: ['el embarcadero de ceniza', 'embarcadero de ceniza'],
     x: -21,
     y: 54,
+    teaser: 'Botes varados y redes al secar, el único punto donde se dice que el clan tocó el mar',
   },
 
   {
@@ -328,6 +352,7 @@ export const locations: LocationInput[] = [
     aliases: ['la fosa horadada', 'fosa horadada'],
     x: -16,
     y: -16,
+    teaser: 'Un sumidero perforado de bocas de túnel que corre la fama de esconder una madriguera enorme',
   },
 
   {
@@ -340,6 +365,7 @@ export const locations: LocationInput[] = [
     aliases: ['las dunas ahogadas', 'dunas ahogadas'],
     x: -24,
     y: -28,
+    teaser: 'Dunas que el viento mueve sin descanso, viajeros cuentan haber visto asomar metal viejo entre ellas',
   },
 
   {
@@ -352,6 +378,7 @@ export const locations: LocationInput[] = [
     aliases: ['el vientre del engaño', 'vientre del engaño'],
     x: -10,
     y: -40,
+    teaser: 'Los pastores hablan de una hondonada seca donde no crece nada y nace todo el mal viento',
   },
 
   {
@@ -364,6 +391,7 @@ export const locations: LocationInput[] = [
     aliases: ['el laberinto de cañones', 'laberinto de cañones'],
     x: 6,
     y: -42,
+    teaser: 'Badlands estrechas de las que se cuenta que hasta los ecos engañan y es fácil perder el rumbo',
   },
 
   {
@@ -376,6 +404,7 @@ export const locations: LocationInput[] = [
     aliases: ['las fumarolas negras', 'fumarolas negras'],
     x: 19,
     y: 42,
+    teaser: 'Más allá del Filo se dice que el propio suelo humea, más hostil que nada visto hasta ahí',
   },
 
   {
@@ -388,6 +417,7 @@ export const locations: LocationInput[] = [
     aliases: ['el paso de los huesos', 'paso de los huesos'],
     x: 41,
     y: 2,
+    teaser: 'Un cañón estrecho del que se dice que quedan restos de migraciones que nunca llegaron a buen puerto',
   },
 
   {
@@ -405,6 +435,7 @@ export const locations: LocationInput[] = [
     aliases: ['la sabana alta', 'sabana alta', 'la sabana alta colmillar', 'sabana alta colmillar'],
     x: 54,
     y: -10,
+    teaser: 'Se habla de una hierba alta que se mece en oleadas visibles mucho antes de llegar hasta ella',
   },
 
   {
@@ -422,6 +453,7 @@ export const locations: LocationInput[] = [
     // posición jugando en vivo y podrá ajustarla si no encaja del todo.
     x: -8,
     y: -60,
+    teaser: 'Un puesto Faerus donde dicen que se comercia piel y confianza a partes iguales con los orcos',
   },
   {
     slug: 'jakut-ger-interior',
@@ -449,6 +481,7 @@ export const locations: LocationInput[] = [
     // en vivo y podrá ajustarla si no encaja del todo.
     x: 6,
     y: -64,
+    teaser: 'Dicen que allí el viento no calla nunca, y que se le oye cantar mucho antes de llegar',
   },
 
   {
@@ -461,6 +494,7 @@ export const locations: LocationInput[] = [
     aliases: ['el campo yermo', 'campo yermo'],
     x: 19,
     y: 22,
+    teaser: 'Una llanura de huesos y metal viejo que nadie ha llegado a reclamar del todo',
   },
 
   // ══════════════════════════════════════════════════════════════════════════

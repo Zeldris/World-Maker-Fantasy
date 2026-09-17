@@ -472,6 +472,13 @@ model Location {
   /// Descripción de LLEGADA: lo que se inyecta al Narrador cuando el personaje llega aquí
   /// o está aquí — redactada con vocabulario de jugador (lección RAG 2026-07-18)
   description String
+  /// Frase corta para el icono de salida de región en Zona (2026-09-17, petición explícita de
+  /// Álvaro: modal con "una breve si no lo conoces y la larga si ya lo descubierto") — se muestra
+  /// SOLO mientras la Location no tiene ninguna fila en `LocationVisit` para la partida (nunca
+  /// revela `description`, que sigue siendo la única fuente para una Location ya visitada). Null
+  /// para el resto del catálogo (no toda Location es destino real de un LocationLink hoy) — el
+  /// caller cae a un texto genérico si falta, nunca revienta.
+  teaser      String?
   /// Nombres con los que un jugador se refiere de verdad al sitio ("los pilares", "el pozo") —
   /// para que el matcher DETERMINISTA de destinos resuelva sin pasar por el modelo
   aliases     String[]

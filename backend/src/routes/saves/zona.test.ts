@@ -30,6 +30,10 @@ const DISCOVERED_BY_DEFAULT = [
 // `questSlugsAceptadosPara`) — vacío por defecto (ninguna Quest aceptada todavía): no afecta a
 // ningún test preexistente de este archivo, que no usa esos 2 slugs concretos como ZonePoint.
 const findManyQuest = vi.fn();
+// Iconos de salida de región (2026-09-17) — vacío por defecto: la mayoría de tests de este archivo
+// no tocan Locations conectadas por LocationLink.
+const findManyLocationLink = vi.fn();
+const findManyLocationVisit = vi.fn();
 
 vi.mock('../../lib/prisma.js', () => ({
   prisma: {
@@ -42,6 +46,8 @@ vi.mock('../../lib/prisma.js', () => ({
     droppedItem: { findMany: (...args: unknown[]) => findManyDroppedItem(...args) },
     discoveredEntity: { findMany: (...args: unknown[]) => findManyDiscoveredEntity(...args) },
     quest: { findMany: (...args: unknown[]) => findManyQuest(...args) },
+    locationLink: { findMany: (...args: unknown[]) => findManyLocationLink(...args) },
+    locationVisit: { findMany: (...args: unknown[]) => findManyLocationVisit(...args) },
   },
 }));
 
@@ -85,6 +91,8 @@ beforeEach(() => {
   zoneMapImageUrlMock.mockReset().mockReturnValue(null);
   findManyDiscoveredEntity.mockReset().mockResolvedValue(DISCOVERED_BY_DEFAULT);
   findManyQuest.mockReset().mockResolvedValue([]);
+  findManyLocationLink.mockReset().mockResolvedValue([]);
+  findManyLocationVisit.mockReset().mockResolvedValue([]);
 });
 
 afterEach(() => {
@@ -103,7 +111,7 @@ describe('GET /saves/:id/zona', () => {
     findUniqueSave.mockResolvedValueOnce({ id: 's1', worldId: 'w1', currentLocation: null, zonaPosX: null, zonaPosY: null });
     const app = await buildApp();
     const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
-    expect(res.json()).toEqual({ disponible: false, puntos: [], dinamicos: [], jugador: null });
+    expect(res.json()).toEqual({ disponible: false, puntos: [], dinamicos: [], jugador: null, salidas: [] });
   });
 
   it('con Location pero sin ZonePoint sembrado y sin NPC dinámico: no disponible', async () => {
@@ -553,6 +561,101 @@ describe('GET /saves/:id/zona', () => {
       const body = res.json();
       expect(body.dinamicos[0].descubierto).toBe(true);
       expect(body.dinamicos[0].nombre).toBe('Cuchillo de hielo sílice');
+    });
+  });
+
+  // Iconos de salida de región (2026-09-17, petición explícita de Álvaro: "cada salida debe estar
+  // ubicada en su posición correcta hacia el camino que se indica en el mapa... si está al sur para
+  // ir a Pilares Rotos, pues la salida al sur") — una por cada LocationLink real, posicionada según
+  // la dirección cardinal real entre ambas Locations (mismo cálculo que la Aguja de Cardo Brújula).
+  describe('salidas de región', () => {
+    it('sin coordenadas x/y en la Location actual, no calcula ninguna salida (falla cerrado)', async () => {
+      findUniqueSave.mockResolvedValueOnce({
+        id: 's1', worldId: 'w1', zonaPosX: null, zonaPosY: null,
+        currentLocation: { id: 'loc1', slug: 'hondonada-del-eco', name: 'La Hondonada del Eco', zonePoints: [] },
+      });
+      loadSessionFactsMock.mockResolvedValueOnce([]);
+      detectNpcsInSceneMock.mockResolvedValueOnce([]);
+      findManyLocationLink.mockResolvedValueOnce([
+        { from: { id: 'loc1', slug: 'hondonada-del-eco', name: 'La Hondonada del Eco', x: null, y: null, teaser: null, description: 'x' }, to: { id: 'loc2', slug: 'pilares-rotos', name: 'Paso de los Pilares Rotos', x: 10, y: 10, teaser: 't', description: 'y' } },
+      ]);
+      const app = await buildApp();
+      const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
+      expect(res.json().salidas).toEqual([]);
+      // Sin coordenadas, ni siquiera hace falta consultar LocationVisit — no hay nada que resolver.
+      expect(findManyLocationVisit).not.toHaveBeenCalled();
+    });
+
+    it('con coordenadas reales, calcula la dirección cardinal real y la posición de borde correspondiente', async () => {
+      findUniqueSave.mockResolvedValueOnce({
+        id: 's1', worldId: 'w1', zonaPosX: null, zonaPosY: null,
+        currentLocation: { id: 'loc1', slug: 'hondonada-del-eco', name: 'La Hondonada del Eco', x: 0, y: 0, zonePoints: [] },
+      });
+      loadSessionFactsMock.mockResolvedValueOnce([]);
+      detectNpcsInSceneMock.mockResolvedValueOnce([]);
+      // Destino puesto al NORTE (x=este/y=norte, mismo convenio que travel.ts): +y en coordenadas
+      // reales de mundo es norte, así el icono debe caer en el borde superior del lienzo (y pequeño).
+      findManyLocationLink.mockResolvedValueOnce([
+        {
+          from: { id: 'loc1', slug: 'hondonada-del-eco', name: 'La Hondonada del Eco', x: 0, y: 0, teaser: null, description: 'x' },
+          to: { id: 'loc2', slug: 'pilares-rotos', name: 'Paso de los Pilares Rotos', x: 0, y: 10, teaser: 'Tres columnas erosionadas se recortan contra el cielo, unidas por puentes que nadie ha visto de cerca.', description: 'Descripción completa real.' },
+        },
+      ]);
+      findManyLocationVisit.mockResolvedValueOnce([]); // aún no visitada
+      const app = await buildApp();
+      const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
+      const salidas = res.json().salidas;
+      expect(salidas).toHaveLength(1);
+      expect(salidas[0].locationId).toBe('loc2');
+      expect(salidas[0].slug).toBe('pilares-rotos');
+      expect(salidas[0].visitada).toBe(false);
+      // No visitada: teaser presente, description/imageUrl null (nunca revela contenido real).
+      expect(salidas[0].teaser).toContain('columnas erosionadas');
+      expect(salidas[0].description).toBeNull();
+      expect(salidas[0].imageUrl).toBeNull();
+      // Norte real → borde superior del lienzo (y pequeño, centro horizontal).
+      expect(salidas[0].y).toBeLessThan(300);
+      expect(salidas[0].x).toBe(400);
+    });
+
+    it('una Location ya visitada expone description/imageUrl reales, no el teaser', async () => {
+      findUniqueSave.mockResolvedValueOnce({
+        id: 's1', worldId: 'w1', zonaPosX: null, zonaPosY: null,
+        currentLocation: { id: 'loc1', slug: 'hondonada-del-eco', name: 'La Hondonada del Eco', x: 0, y: 0, zonePoints: [] },
+      });
+      loadSessionFactsMock.mockResolvedValueOnce([]);
+      detectNpcsInSceneMock.mockResolvedValueOnce([]);
+      findManyLocationLink.mockResolvedValueOnce([
+        {
+          from: { id: 'loc1', slug: 'hondonada-del-eco', name: 'La Hondonada del Eco', x: 0, y: 0, teaser: null, description: 'x' },
+          to: { id: 'loc2', slug: 'pilares-rotos', name: 'Paso de los Pilares Rotos', x: 0, y: 10, teaser: 'breve', description: 'Descripción completa real.' },
+        },
+      ]);
+      findManyLocationVisit.mockResolvedValueOnce([{ locationId: 'loc2' }]);
+      const app = await buildApp();
+      const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
+      const salidas = res.json().salidas;
+      expect(salidas[0].visitada).toBe(true);
+      expect(salidas[0].description).toBe('Descripción completa real.');
+      expect(salidas[0].teaser).toBe('breve'); // se devuelve igual, el frontend decide cuál mostrar
+    });
+
+    it('una Location conectada sin coordenadas propias se excluye (falla cerrado, no inventa dirección)', async () => {
+      findUniqueSave.mockResolvedValueOnce({
+        id: 's1', worldId: 'w1', zonaPosX: null, zonaPosY: null,
+        currentLocation: { id: 'loc1', slug: 'hondonada-del-eco', name: 'La Hondonada del Eco', x: 0, y: 0, zonePoints: [] },
+      });
+      loadSessionFactsMock.mockResolvedValueOnce([]);
+      detectNpcsInSceneMock.mockResolvedValueOnce([]);
+      findManyLocationLink.mockResolvedValueOnce([
+        {
+          from: { id: 'loc1', slug: 'hondonada-del-eco', name: 'La Hondonada del Eco', x: 0, y: 0, teaser: null, description: 'x' },
+          to: { id: 'loc2', slug: 'campamento-serhu-interior', name: 'Hogar Ketg', x: null, y: null, teaser: null, description: 'y' },
+        },
+      ]);
+      const app = await buildApp();
+      const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
+      expect(res.json().salidas).toEqual([]);
     });
   });
 });
