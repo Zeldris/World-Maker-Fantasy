@@ -156,6 +156,16 @@ export function useCombatFlow(params: UseCombatFlowParams) {
   // mismos) y se cancelan explícitamente antes de programar uno nuevo y al cerrar el combate.
   const exchangeApplyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const awaitingDefenseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Bug real jugando en vivo (2026-09-20, "la vida no se actualiza al mostrar el resultado, sino
+  // según acaba la SIGUIENTE tirada de iniciativa") — el `setTimeout(2 * ROLL_DURATION_MS)` de más
+  // abajo ya estaba calibrado bien respecto a la animación (dos dados secuenciales, 10s reales),
+  // pero 10s completos sin ningún feedback de vida tras leer la narración (que sí aparece de
+  // inmediato) se percibe como que el update "llega tarde". Fix: en vez de duplicar el cálculo de
+  // tiempo con un número mágico, se usa el callback REAL `onAllLanded` que `DiceRollVs` (DiceRoll.tsx)
+  // ya dispara en el instante exacto en que el segundo dado aterriza — mismo dato, una sola fuente
+  // de verdad. La closure de cada turno se guarda en un ref porque `DiceRollReveal` vive fuera de
+  // este hook (LogPanel.tsx, montado por GameView.tsx) y solo puede invocar una función ESTABLE.
+  const applyExchangeResultRef = useRef<(() => void) | null>(null)
   const [combatSelectedNpcSlug, setCombatSelectedNpcSlug] = useState<string | null>(null)
   const [combatSelectedAbilityId, setCombatSelectedAbilityId] = useState<string | null>(null)
   const [combatSelectedItemId, setCombatSelectedItemId] = useState<string | null>(null)
@@ -816,22 +826,32 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     // `finDePartida` manda siempre (mismo criterio que `applyTurnAwaitingDefense` más abajo): si el
     // combate termina de verdad este turno, no tiene sentido retrasar la condición final del
     // jugador tras un cierre que ya lo resolvió todo.
-    // Cancela cualquier timer de un intercambio ANTERIOR todavía pendiente — sin esto, dos
+    // Cancela cualquier timer/callback de un intercambio ANTERIOR todavía pendiente — sin esto, dos
     // intercambios rápidos seguidos (o cerrar el combate en medio del retraso) dejaban vivo el
-    // timer viejo, que pisaba el estado ya actualizado por el turno nuevo cuando por fin disparaba.
+    // resuelve-luego viejo, que pisaba el estado ya actualizado por el turno nuevo cuando por fin
+    // disparaba.
     if (exchangeApplyTimerRef.current) clearTimeout(exchangeApplyTimerRef.current)
+    applyExchangeResultRef.current = null
     if (params.combatExchangeDisplay && !params.finDePartida) {
       setAwaitingExchangeApply(true)
-      exchangeApplyTimerRef.current = setTimeout(() => {
+      const resolverIntercambio = () => {
         exchangeApplyTimerRef.current = null
+        applyExchangeResultRef.current = null
         applyExchangeResult()
         setAwaitingExchangeApply(false)
         // `DiceRollReveal` (LogPanel.tsx) ya terminó de animarse en este instante — deja de hacer
         // falta seguir ocupando la tarjeta de "pensando" con él.
         setDiceReveal(null)
-      }, 2 * ROLL_DURATION_MS)
+      }
+      // Fuente primaria: el callback `onAllLanded` real (ver comentario junto a la declaración del
+      // ref, arriba), invocado por LogPanel.tsx en cuanto DiceRollVs termina de animar de verdad.
+      applyExchangeResultRef.current = resolverIntercambio
+      // Fallback de seguridad con margen extra — si por lo que sea `DiceRollReveal` nunca llega a
+      // montarse/disparar (p.ej. la tarjeta de "pensando" se cierra por otra vía primero), el
+      // intercambio no debe quedar aplicado para siempre: se resuelve solo, algo más tarde que la
+      // animación real para no adelantarse a ella en el caso normal.
+      exchangeApplyTimerRef.current = setTimeout(resolverIntercambio, 2 * ROLL_DURATION_MS + 1000)
     } else {
-      exchangeApplyTimerRef.current = null
       applyExchangeResult()
       setDiceReveal(null)
     }
@@ -905,16 +925,24 @@ export function useCombatFlow(params: UseCombatFlowParams) {
   // el aviso de combate simplemente reaparecerá en la próxima resincronización, que es exactamente
   // el comportamiento correcto en ese caso — mejor que dejar el botón "Salir" bloqueado esperando.
   function closeCombat() {
-    // Cierre real de combate — cualquier timer de intercambio/iniciativa que siga vivo de un turno
-    // ya obsoleto no debe disparar después (ver comentario junto a los refs, arriba).
+    // Cierre real de combate — cualquier timer/callback de intercambio/iniciativa que siga vivo de
+    // un turno ya obsoleto no debe disparar después (ver comentario junto a los refs, arriba).
     if (exchangeApplyTimerRef.current) clearTimeout(exchangeApplyTimerRef.current)
     if (awaitingDefenseTimerRef.current) clearTimeout(awaitingDefenseTimerRef.current)
     exchangeApplyTimerRef.current = null
+    applyExchangeResultRef.current = null
     awaitingDefenseTimerRef.current = null
     setCombatOpen(false)
     setCombateIniciado(null)
     setCombatAwaitingDefense(false)
     if (saveId) requestCerrarCombate(saveId).catch(() => {})
+  }
+
+  /// Invocado por `DiceRollReveal` (vía LogPanel.tsx → `onDiceRevealAllLanded`) en el instante
+  /// exacto en que el segundo dado del intercambio termina de aterrizar — referencia ESTABLE
+  /// (nunca cambia entre renders) porque la closure real vive en `applyExchangeResultRef`.
+  function triggerExchangeApply() {
+    applyExchangeResultRef.current?.()
   }
 
   return {
@@ -927,6 +955,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     /// criterio que `awaitingNextInitiative` para la iniciativa) — sin esto, el jugador podía
     /// mandar otro ataque antes de que el resultado del anterior terminara de mostrarse.
     awaitingExchangeApply,
+    triggerExchangeApply,
     combatEnded,
     combatPlayerJustDied,
     combatHasPendingConvalecientes,

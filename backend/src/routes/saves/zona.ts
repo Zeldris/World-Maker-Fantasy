@@ -7,7 +7,7 @@ import { detectNpcsInScene, scopeFor } from '../../services/npcScene.js';
 import { loadSessionFacts } from '../../services/worldFacts.js';
 import { momentoDelDiaFor, estacionFor } from '../../services/worldClock.js';
 import type { EstacionSlug } from '../../services/imagePromptContext.js';
-import { zonePointColorFor, avanzarZonePointsUnPaso, zonePointVisiblePara, zonePointActivoAhora, questSlugsAceptadosPara, type ZonePointColor } from '../../services/zonePoints.js';
+import { zonePointColorFor, avanzarZonePointsUnPaso, zonePointVisiblePara, zonePointActivoAhora, zonePointNpcMuertoParaSiempre, questSlugsAceptadosPara, type ZonePointColor } from '../../services/zonePoints.js';
 import { NOMBRE_OCULTO_GENERICO } from '../../services/dynamicMode.js';
 import { parseAgenda, regionControlFor, type RegionControlState } from '../../services/worldAgenda.js';
 import { REGION_OWNING_FACTIONS, effectiveTemperamento } from '../../services/reputation.js';
@@ -278,6 +278,12 @@ export async function zonaRoutes(app: FastifyInstance) {
     const estaAusente = (state: { zonaAusenteHastaMinutes: number | null; zonaLocationId: string | null } | undefined): boolean =>
       !!state && state.zonaAusenteHastaMinutes != null && state.zonaLocationId === locationId && state.zonaAusenteHastaMinutes > fictionalMinutes;
 
+    // Muerte permanente de un NPC único (`kind: 'PRINCIPAL'`) con `ZonePoint` propio — ver
+    // `zonePointNpcMuertoParaSiempre`, zonePoints.ts. A diferencia de `estaAusente` (ventana de 6h),
+    // esto nunca caduca: un Orco Enfurecido derrotado no debe volver a pintarse en el mapa jamás.
+    const estaMuertoParaSiempre = (kind: string, state: { condicionFisica: string } | undefined): boolean =>
+      zonePointNpcMuertoParaSiempre(kind, state?.condicionFisica);
+
     // Bug real jugando en vivo (2026-09-06, "fauna diurna y nocturna mezclada siendo de día") —
     // `faunaMomentoDelDia` ya filtraba a los NPC/fauna DINÁMICOS (sin ZonePoint, ver
     // `detectNpcsInScene`), pero un `ZonePoint` de tipo FAUNA sembrado a mano en el catálogo se
@@ -291,7 +297,9 @@ export async function zonaRoutes(app: FastifyInstance) {
       const npcId = npcIdBySlugZonePoint.get(p.targetSlug);
       if (!npcId) return true;
       const npc = npcFaunaZonePointIds.find((n) => n.id === npcId)!;
-      return !estaAusente(npcStateByKey.get(`${npcId}|${scopeFor(npc.kind, locationId)}`));
+      const state = npcStateByKey.get(`${npcId}|${scopeFor(npc.kind, locationId)}`);
+      if (estaMuertoParaSiempre(npc.kind, state)) return false;
+      return !estaAusente(state);
     });
 
     // Asignación perezosa de posición (2026-09-04, "punto del jugador" — regla 3 explícita de la
@@ -441,7 +449,9 @@ export async function zonaRoutes(app: FastifyInstance) {
     destrezaJugador: number,
   ): Promise<{
     colision: { targetSlug: string; targetName: string; temperamento: string } | null;
-    dynamicModeOffer: { tipo: 'FAUNA' | 'NPC' | 'RECURSO'; targetSlug: string; targetName: string; quienInicia: 'jugador' | 'npc' } | null;
+    dynamicModeOffer:
+      | { tipo: 'FAUNA' | 'NPC' | 'RECURSO'; targetSlug: string; targetName: string; quienInicia: 'jugador' | 'npc'; combateForzado?: true }
+      | null;
     logEntry: { id: string; text: string; timeLabel: string; createdAt: string } | null;
   }> {
     const puntosCrudos = await tx.zonePoint.findMany({ where: { locationId, tipo: { in: ['FAUNA', 'NPC'] }, activo: true } });
@@ -461,10 +471,24 @@ export async function zonaRoutes(app: FastifyInstance) {
     const npcs = puntos.length
       ? await tx.npc.findMany({
           where: { worldId, slug: { in: puntos.map((p) => p.targetSlug) } },
-          select: { slug: true, name: true, temperamento: true, faction: true, kind: true, attributes: true },
+          select: { id: true, slug: true, name: true, temperamento: true, faction: true, kind: true, attributes: true },
         })
       : [];
     const npcBySlug = new Map(npcs.map((n) => [n.slug, n]));
+    // Muerte permanente de un NPC único con `ZonePoint` propio (ver `zonePointNpcMuertoParaSiempre`,
+    // zonePoints.ts — bug real jugando: "al vencer al orco... no desaparecía correctamente") — mismo
+    // criterio que ya aplica `GET /zona` al pin del mapa, aplicado aquí también a la colisión real
+    // (antes esta función ni siquiera consultaba `NpcState`, así que un Orco derrotado seguía
+    // colisionando para siempre).
+    const npcStatesColision = npcs.length
+      ? await tx.npcState.findMany({ where: { saveId, OR: npcs.map((n) => ({ npcId: n.id, scope: scopeFor(n.kind, locationId) })) } })
+      : [];
+    const npcStateBySlugColision = new Map(
+      npcs.map((n) => [n.slug, npcStatesColision.find((s) => s.npcId === n.id && s.scope === scopeFor(n.kind, locationId))]),
+    );
+    const puntosVivos = puntos.filter(
+      (p) => !zonePointNpcMuertoParaSiempre(npcBySlug.get(p.targetSlug)?.kind ?? '', npcStateBySlugColision.get(p.targetSlug)?.condicionFisica),
+    );
     // Nombre oculto genérico (2026-09-09, generalización pedida por Álvaro: "esta lógica se debe
     // aplicar a todos los que tienen nombre propio" — hasta ahora la colisión de Zona era el único
     // punto del motor que revelaba `Npc.name` sin mirar si la partida ya lo descubrió; `GET /zona`
@@ -543,7 +567,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     // seguir siendo FAUNA cazable, `kind: 'PLANTILLA'` — `npcBySlug.has(slug)` daba `true` para
     // fauna real también, mandando siempre 'NPC').
     let colisionTipo: 'FAUNA' | 'NPC' | null = null;
-    for (const punto of puntos) {
+    for (const punto of puntosVivos) {
       const celdaPunto = celdaDePixel({ x: punto.x, y: punto.y });
       const npc = npcBySlug.get(punto.targetSlug);
       const nombreReal = npc?.name ?? sourceDisplayNameFor(punto.targetSlug);
@@ -574,22 +598,43 @@ export async function zonaRoutes(app: FastifyInstance) {
     }
 
     // Conexión real con Interactuar (2026-09-08, hallazgo de Álvaro: "aunque me ponga encima de
-    // algo... no pasa nada") — un AGRESIVO en la MISMA celda ya fuerza combate por el camino
-    // existente (Franja 3, turno de texto libre normal, sin tocar aquí); CAUTELOSO/INOFENSIVO/
-    // AMIGABLE en la misma celda dispara `pendingDynamicModeOffer` real con el candidato EXACTO
-    // (nunca por sorteo — la posición real ya es la señal determinista). Ninguna oferta si ya hay
-    // una en curso/pendiente.
-    let dynamicModeOffer: { tipo: 'FAUNA' | 'NPC' | 'RECURSO'; targetSlug: string; targetName: string; quienInicia: 'jugador' | 'npc' } | null = null;
+    // algo... no pasa nada") — CUALQUIER temperamento en la MISMA celda dispara
+    // `pendingDynamicModeOffer` real con el candidato EXACTO (nunca por sorteo — la posición real ya
+    // es la señal determinista). Ninguna oferta si ya hay una en curso/pendiente.
+    //
+    // AGRESIVO/ENEMIGO (2026-09-20, corrección de diseño — hallazgo real jugando en vivo, Álvaro:
+    // "todos los encuentros deben provocar el interactuar... si choco con el orco me dice que está
+    // ahí y tengo que escribir para que salte el combate, cuando debería saltar el interactuar y
+    // ahí darte la opción de combatir o de huir") — hasta ahora un AGRESIVO/ENEMIGO en la misma
+    // celda quedaba excluido a propósito de esta rama, dejando solo un LogEntry de aviso y
+    // delegando el combate real al siguiente turno de texto libre (`shouldForceCombat`,
+    // turnResolution.ts) — igual de determinista, pero rompía la promesa "todo encuentro pasa por
+    // Interactuar" y obligaba a escribir texto para que pasara algo. Ahora entra en la MISMA rama
+    // que el resto: `dynamicModeOffer.combateForzado: true` es la única diferencia — el modal
+    // (dynamicMode.ts) decide con eso si ofrece conversación normal o el árbol de combate/huida.
+    let dynamicModeOffer:
+      | { tipo: 'FAUNA' | 'NPC' | 'RECURSO'; targetSlug: string; targetName: string; quienInicia: 'jugador' | 'npc'; combateForzado?: true }
+      | null = null;
     let logEntry: { id: string; text: string; timeLabel: string; createdAt: string } | null = null;
-    if (colision && colision.temperamento !== 'AGRESIVO') {
+    if (colision) {
+      const combateForzado = colision.temperamento === 'AGRESIVO' || colision.temperamento === 'ENEMIGO';
       const freshSave = await tx.save.findUnique({ where: { id: saveId }, select: { pendingDynamicMode: true, pendingDynamicModeOffer: true } });
       if (!freshSave?.pendingDynamicMode && !freshSave?.pendingDynamicModeOffer) {
-        // "¿Quién ve a quién primero?" (2026-09-17) — Destreza jugador vs Destreza NPC, mismo
-        // patrón que `rollInitiative` de combate. Solo decide el FRAMING narrativo de la primera
-        // vuelta (ver `buildDynamicModeTurnoPrompt`, dynamicModeNarracion.ts) — el resultado
-        // mecánico (Interactuar aquí, nunca combate) ya quedó decidido arriba por temperamento.
+        // "¿Quién ve a quién primero?" (2026-09-17, efecto MECÁNICO real desde 2026-09-20 para
+        // AGRESIVO/ENEMIGO) — Destreza jugador vs Destreza NPC, mismo patrón que `rollInitiative` de
+        // combate. Para el resto de temperamentos solo decide el FRAMING narrativo de la primera
+        // vuelta (ver `buildDynamicModeTurnoPrompt`, dynamicModeNarracion.ts); para AGRESIVO/ENEMIGO
+        // decide además si el jugador puede elegir (lo vio primero) o el combate se abre
+        // directamente (el agresivo lo vio primero) — ver `narrarAperturaCombateForzado`,
+        // dynamicMode.ts, y la ruta `/modo-dinamico/interactuar`.
         const quienInicia = quienIniciaEncuentro(destrezaJugador, destrezaColision ?? 10);
-        dynamicModeOffer = { tipo: colisionTipo!, targetSlug: colision.targetSlug, targetName: colision.targetName, quienInicia };
+        dynamicModeOffer = {
+          tipo: colisionTipo!,
+          targetSlug: colision.targetSlug,
+          targetName: colision.targetName,
+          quienInicia,
+          ...(combateForzado ? { combateForzado: true as const } : {}),
+        };
         // LogEntry real determinista (2026-09-09, hallazgo real jugando en vivo: la tarjeta de
         // oferta SIEMPRE se renderiza colgada de una LogEntry concreta — LogPanel.tsx solo lee
         // `entry.dynamicModeOffer`, nunca `Save.pendingDynamicModeOffer` directamente). El
@@ -598,8 +643,11 @@ export async function zonaRoutes(app: FastifyInstance) {
         // el log real: el mecanismo de reconstrucción tras F5 (GameView.tsx § syncFromSave) solo
         // sabe colgarla de "la última entrada del log", que puede no tener ninguna relación con
         // este encuentro (o ya estar ocupada por otra oferta, bloqueando el enganche del todo).
-        const text =
-          quienInicia === 'jugador'
+        const text = combateForzado
+          ? quienInicia === 'jugador'
+            ? `${characterName} se topa de frente con ${colision.targetName} — no hay escapatoria posible, toca reaccionar ya.`
+            : `${colision.targetName} se abalanza sobre ${characterName} sin darle tiempo a reaccionar.`
+          : quienInicia === 'jugador'
             ? colisionTipo === 'NPC'
               ? `${characterName} se topa con ${colision.targetName}.`
               : `${characterName} se topa con ${colision.targetName}, que le observa con cautela.`
@@ -609,20 +657,6 @@ export async function zonaRoutes(app: FastifyInstance) {
         });
         logEntry = { id: created.id, text, timeLabel, createdAt: created.createdAt.toISOString() };
       }
-    } else if (colision && colision.temperamento === 'AGRESIVO') {
-      // Bug real jugando en vivo (2026-09-15, hallazgo Álvaro): un AGRESIVO en la MISMA celda no
-      // dejaba NINGÚN rastro aquí — el comentario de arriba asumía que "ya fuerza combate por el
-      // camino de texto libre", pero eso solo FILTRA quién puede ser objetivo de un futuro turno de
-      // texto (`npcsInSceneVivosParaCombate`, turnResolution.ts) — nunca abre nada por sí mismo. Al
-      // cerrar el modal de movimiento sin escribir nada más, la colisión desaparecía sin dejar
-      // ningún aviso: el jugador no sabía que debía reaccionar ya. Se escribe el mismo LogEntry
-      // real que el resto de colisiones, con texto que deja claro el peligro inminente — sin
-      // `dynamicModeOffer` (no aplica a un agresivo), solo el aviso determinista.
-      const text = `${characterName} se topa de frente con ${colision.targetName} — no hay escapatoria posible, toca reaccionar ya.`;
-      const created = await tx.logEntry.create({
-        data: { saveId, channel: 'CHARACTER', text, timeLabel, fictionalMinutes, isPlayerAction: false, isSystemMessage: true },
-      });
-      logEntry = { id: created.id, text, timeLabel, createdAt: created.createdAt.toISOString() };
     }
 
     // RECURSO (2026-09-20, hallazgo real jugando en vivo — Álvaro: "mira también si funciona lo de

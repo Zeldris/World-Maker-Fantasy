@@ -537,4 +537,141 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
       expect(factCountDespues).toBe(factCountAntes);
     });
   });
+
+  // Corrección de diseño (2026-09-20, hallazgo real jugando en vivo — Álvaro: "todos los
+  // encuentros deben provocar el interactuar... si choco con el orco me dice que está ahí y tengo
+  // que escribir para que salte el combate, cuando debería saltar el interactuar y ahí darte la
+  // opción de combatir o huir") — un AGRESIVO/ENEMIGO en Zona ya no deja solo un aviso de texto
+  // (esperando al turno de texto libre siguiente): abre el mismo modal de Interactuar, marcado
+  // `combateForzado`. Harness propio con un `Npc` real (necesita pasar por `detectNpcsInScene` de
+  // verdad, a diferencia del resto de tests de este archivo que usan slugs sin fila de catálogo).
+  describe('AGRESIVO/ENEMIGO — combateForzado desde Interactuar (2026-09-20)', () => {
+    let locationId: string;
+    let npcId: string;
+
+    beforeAll(async () => {
+      const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+      const location = await prisma.location.create({
+        data: {
+          worldId: world.id,
+          slug: 'test-dynamicmode-combate-forzado',
+          name: 'Zona de Prueba Combate Forzado',
+          region: 'Zona de Pruebas',
+          kind: 'hito',
+          description: 'x',
+          aliases: ['zona de prueba combate forzado'],
+        },
+      });
+      locationId = location.id;
+      const npc = await prisma.npc.create({
+        data: {
+          worldId: world.id,
+          kind: 'PLANTILLA',
+          slug: 'test-dynamicmode-agresivo',
+          name: 'Agresor de Prueba (dynamicMode)',
+          aliases: ['agresor de prueba (dynamicmode)'],
+          role: 'Bestia de prueba',
+          level: 1,
+          attributes: { fuerza: 8, destreza: 8, constitucion: 8, inteligencia: 4, voluntad: 4, carisma: 2, magia: 0 },
+          bio: 'x',
+          personality: 'x',
+          homeLocationSlug: null,
+          temperamento: 'AGRESIVO',
+        },
+      });
+      npcId = npc.id;
+      await prisma.save.update({ where: { id: saveId }, data: { currentLocationId: locationId } });
+    });
+
+    afterAll(async () => {
+      await prisma.save.update({ where: { id: saveId }, data: { currentLocationId: null } });
+      await prisma.npcState.deleteMany({ where: { saveId, npcId } });
+      await prisma.npc.delete({ where: { id: npcId } });
+      await prisma.location.delete({ where: { id: locationId } });
+    });
+
+    it('quienInicia: "npc" — abre combate DIRECTAMENTE, sin pendingDynamicMode, sin narración LLM', async () => {
+      const app = await buildApp();
+      const res = await app.inject({
+        method: 'POST',
+        url: `/saves/${saveId}/modo-dinamico/interactuar`,
+        payload: { tipo: 'FAUNA', targetSlug: 'test-dynamicmode-agresivo', targetName: 'Agresor de Prueba (dynamicMode)', quienInicia: 'npc', combateForzado: true },
+      });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.cierra).toBe(true);
+      expect(body.combate).toMatchObject({ npcs: [{ slug: 'test-dynamicmode-agresivo', condicionFisica: 'ILESO' }] });
+
+      const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+      expect(saveAfter.pendingDynamicMode).toBeNull();
+      expect(saveAfter.pendingCombatNpcSlugs).toEqual(['test-dynamicmode-agresivo']);
+    });
+
+    it('quienInicia: "jugador" — ofrece Combatir/Huir, sin narración LLM, pendingDynamicMode marcado combateForzado', async () => {
+      // El mock de narrarVueltaModoDinamico es compartido por todo el archivo y nunca se limpia
+      // entre tests — se compara el CONTEO antes/después en vez de "no se llamó nunca", para no
+      // depender de qué otros tests corrieron antes de este.
+      const llamadasAntes = narrarVueltaModoDinamico.mock.calls.length;
+      const app = await buildApp();
+      const res = await app.inject({
+        method: 'POST',
+        url: `/saves/${saveId}/modo-dinamico/interactuar`,
+        payload: { tipo: 'FAUNA', targetSlug: 'test-dynamicmode-agresivo', targetName: 'Agresor de Prueba (dynamicMode)', quienInicia: 'jugador', combateForzado: true },
+      });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.cierra).toBe(false);
+      expect(body.opciones).toEqual(['Combatir', 'Huir']);
+      expect(body.combate).toBeUndefined();
+      expect(narrarVueltaModoDinamico.mock.calls.length).toBe(llamadasAntes);
+
+      const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+      expect(saveAfter.pendingDynamicMode).toMatchObject({ combateForzado: true, targetSlug: 'test-dynamicmode-agresivo' });
+
+      // Responder "Combatir" abre combate directo, mismo shape que el caso quienInicia:'npc'.
+      const combatir = await app.inject({
+        method: 'POST',
+        url: `/saves/${saveId}/modo-dinamico/responder`,
+        payload: { respuesta: 'Combatir' },
+      });
+      expect(combatir.statusCode).toBe(200);
+      const combatirBody = JSON.parse(combatir.body);
+      expect(combatirBody.cierra).toBe(true);
+      expect(combatirBody.combate).toMatchObject({ npcs: [{ slug: 'test-dynamicmode-agresivo', condicionFisica: 'ILESO' }] });
+
+      const saveTrasCombatir = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+      expect(saveTrasCombatir.pendingDynamicMode).toBeNull();
+      expect(saveTrasCombatir.pendingCombatNpcSlugs).toEqual(['test-dynamicmode-agresivo']);
+    });
+
+    it('quienInicia: "jugador" — responder "Huir" cierra sin combate, gratis, deja LogEntry real', async () => {
+      // Limpieza de estado que el test anterior ("Combatir") deja a propósito tras abrir combate
+      // real — en el juego real se limpia al cerrar el combate (CombatPanel), pero este test no
+      // llega a jugar ese combate, solo verificar que se abrió.
+      await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: [] } });
+      const app = await buildApp();
+      await app.inject({
+        method: 'POST',
+        url: `/saves/${saveId}/modo-dinamico/interactuar`,
+        payload: { tipo: 'FAUNA', targetSlug: 'test-dynamicmode-agresivo', targetName: 'Agresor de Prueba (dynamicMode)', quienInicia: 'jugador', combateForzado: true },
+      });
+
+      const res = await app.inject({
+        method: 'POST',
+        url: `/saves/${saveId}/modo-dinamico/responder`,
+        payload: { respuesta: 'Huir' },
+      });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.cierra).toBe(true);
+      expect(body.combate).toBeUndefined();
+
+      const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+      expect(saveAfter.pendingDynamicMode).toBeNull();
+      expect(saveAfter.pendingCombatNpcSlugs).toEqual([]);
+
+      const logEntry = await prisma.logEntry.findFirst({ where: { saveId }, orderBy: { createdAt: 'desc' } });
+      expect(logEntry?.text).toContain('Agresor de Prueba (dynamicMode)');
+    });
+  });
 });

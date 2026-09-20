@@ -95,6 +95,21 @@ export function zonePointVisiblePara(targetSlug: string, questSlugsAceptados: Re
   return true;
 }
 
+/// Bug real jugando en vivo (2026-09-20, Álvaro: "al vencer al orco... no desaparecía
+/// correctamente y me bloqueaba la partida") — un NPC de catálogo único (`kind: 'PRINCIPAL'`, con
+/// nombre propio y `ZonePoint` fijo de posición, ej. el Orco Enfurecido) derrotado en combate solo
+/// quedaba "ausente" 6h (`zonaAusenteHastaMinutes`, `MINUTOS_AUSENCIA_TRAS_DERROTA` en
+/// zonaPosicion.ts) — ese campo se diseñó para fauna genérica que se dispersa y puede volver, nunca
+/// para distinguir "muerto para siempre" de "huyó, puede reaparecer". Pasadas esas 6h, tanto el pin
+/// del mapa (`GET /zona`) como la colisión real (`detectarEncuentroEnCelda`, zona.ts — que ni
+/// siquiera aplicaba la ventana de 6h) volvían a tratarlo como si siguiera vivo, dejando al jugador
+/// "chocar con su fantasma" para siempre. Solo aplica a `kind: 'PRINCIPAL'` (identidad única/nombre
+/// propio) — fauna genérica (`kind` distinto) sigue usando el ciclo normal de repoblación/ausencia
+/// temporal, nunca se retira por una muerte individual (la población regional sigue existiendo).
+export function zonePointNpcMuertoParaSiempre(kind: string, condicionFisica: string | undefined): boolean {
+  return kind === 'PRINCIPAL' && condicionFisica === 'MUERTO';
+}
+
 /// Puro — ¿esta especie está activa AHORA MISMO según `faunaMomentoDelDia` (worldCatalog.ts)?
 /// `true` si no tiene ninguna entrada en ese diccionario (sin dato = sin filtrar, mismo criterio
 /// documentado en el propio comentario de cabecera de `faunaMomentoDelDia`).

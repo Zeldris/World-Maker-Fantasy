@@ -426,6 +426,10 @@ export interface LogEntry {
     /// colisión real de Zona (`MoverZonaResultado.dynamicModeOffer`); `undefined` en el resto de
     /// orígenes (turno normal de texto libre). Ver `interactuarModoDinamico`, api.ts.
     quienInicia?: 'jugador' | 'npc'
+    /// AGRESIVO/ENEMIGO (2026-09-20) — true cuando este encuentro puede desembocar en combate real
+    /// desde el propio botón de Interactuar (ver `interactuarModoDinamico`, api.ts). `undefined`
+    /// para el resto de temperamentos, que siguen abriendo conversación normal.
+    combateForzado?: boolean
   }
   /// Menú contextual de interacción con NPC (2026-09-06) — mismo criterio exacto que
   /// `dynamicModeOffer`: tarjeta con un botón por opción, `busy`/`error` para no perder la tarjeta

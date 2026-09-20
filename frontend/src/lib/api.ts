@@ -1549,6 +1549,11 @@ export interface DynamicModeTurno {
     logEntry: { id: string; text: string; timeLabel: string; createdAt: string } | null
     questCompletedInfo: { logEntryId: string; text: string; title: string; grantedItems: string[]; rewardXp: number } | null
   } | null
+  /// AGRESIVO/ENEMIGO desde Interactuar (2026-09-20) — llega cuando el encuentro se resuelve en
+  /// combate directo (el NPC vio primero al jugador, o el jugador eligió "Combatir" tras verlo él
+  /// primero). Mismo shape que `TurnResult.combateIniciado`/`combateEnGrupo`; `cierra` siempre
+  /// viene `true` cuando esto llega — no hay más vueltas de modo dinámico que jugar.
+  combate?: { npcs: NpcInSceneInfo[] } | null
 }
 
 export async function interactuarModoDinamico(
@@ -1561,11 +1566,14 @@ export async function interactuarModoDinamico(
   /// recalcularlo aquí). `undefined` en el resto de orígenes de oferta (turno normal de texto
   /// libre, sin colisión de Zona) — el backend cae al framing de siempre sin este dato.
   quienInicia?: 'jugador' | 'npc',
+  /// AGRESIVO/ENEMIGO (2026-09-20) — reenvía `dynamicModeOffer.combateForzado` tal cual, mismo
+  /// criterio que `quienInicia`. `undefined` para el resto (nunca hay combate directo posible).
+  combateForzado?: boolean,
 ): Promise<DynamicModeTurno> {
   return fetchJson(`${API_URL}/saves/${saveId}/modo-dinamico/interactuar`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ tipo, targetSlug, targetName, quienInicia }),
+    body: JSON.stringify({ tipo, targetSlug, targetName, quienInicia, combateForzado }),
   })
 }
 

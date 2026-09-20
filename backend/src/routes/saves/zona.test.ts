@@ -423,6 +423,35 @@ describe('GET /saves/:id/zona', () => {
       expect(body.puntos).toEqual([]);
       expect(body.disponible).toBe(true);
     });
+
+    // Bug real jugando en vivo (2026-09-20, Álvaro: "al vencer al orco... no desaparecía
+    // correctamente y me bloqueaba la partida") — a diferencia de fauna genérica (test de arriba),
+    // un NPC único (`kind: 'PRINCIPAL'`) MUERTO nunca debe reaparecer en el pin del mapa, NI SIQUIERA
+    // pasada la ventana normal de 6h de "ausente por combate ganado" (`zonaAusenteHastaMinutes`
+    // ya vencido). Ver `zonePointNpcMuertoParaSiempre`, zonePoints.ts.
+    it('un ZonePoint de un NPC ÚNICO (kind: PRINCIPAL) MUERTO queda fuera de puntos, incluso con la ventana de 6h ya vencida', async () => {
+      findUniqueSave.mockResolvedValueOnce({
+        id: 's1', worldId: 'w1', zonaPosX: null, zonaPosY: null,
+        currentLocation: {
+          id: 'loc1', slug: 'hondonada-del-eco', name: 'La Hondonada del Eco',
+          zonePoints: [{ id: 'zp1', x: 400, y: 130, tipo: 'NPC', targetSlug: 'orco-enfurecido-hondonada', label: null, activo: true, cantidad: 1, factionSlug: null }],
+        },
+        worldState: { fictionalMinutes: 100000, factionsStatus: {}, agenda: [] },
+      });
+      findManyNpc.mockResolvedValueOnce([{ id: 'npc-orco', slug: 'orco-enfurecido-hondonada', name: 'Orco Enfurecido', kind: 'PRINCIPAL' }]);
+      loadSessionFactsMock.mockResolvedValueOnce([]);
+      detectNpcsInSceneMock.mockResolvedValueOnce([]);
+      // scope de un PRINCIPAL es '' (ver mock de scopeFor arriba) — zonaAusenteHastaMinutes muy por
+      // debajo del reloj actual (100000): la ventana de 6h ya venció hace tiempo.
+      findManyQuest.mockResolvedValueOnce([{ questSlug: 'orco-enfurecido-hondonada-gistera' }]);
+      findManyNpcState.mockResolvedValueOnce([
+        { npcId: 'npc-orco', scope: '', zonaPosX: null, zonaPosY: null, zonaLocationId: 'loc1', zonaAusenteHastaMinutes: 500, condicionFisica: 'MUERTO' },
+      ]);
+      const app = await buildApp();
+      const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
+      const body = res.json();
+      expect(body.puntos).toEqual([]);
+    });
   });
 
   // Hallazgo 32 (revisar-partida-hallazgos.md 2026-09-07) — los interiores de campamento

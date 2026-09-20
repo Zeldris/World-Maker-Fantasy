@@ -27,6 +27,7 @@ describe('POST /saves/:id/zona/mover', () => {
   let dinamicoNpcId: string;
   let maestroNpcId: string;
   let guardiaNpcId: string;
+  let principalNpcId: string;
 
   beforeAll(async () => {
     const userId = await getDefaultUserId();
@@ -146,6 +147,27 @@ describe('POST /saves/:id/zona/mover', () => {
     });
     guardiaNpcId = guardia.id;
 
+    // NPC único de trama (`kind: 'PRINCIPAL'`, nombre propio) con `ZonePoint` fijo — mismo perfil
+    // real que el Orco Enfurecido (bug real jugando en vivo, 2026-09-20: "al vencer al orco...
+    // no desaparecía correctamente y me bloqueaba la partida"). Ver `zonePointNpcMuertoParaSiempre`.
+    const principal = await prisma.npc.create({
+      data: {
+        worldId,
+        kind: 'PRINCIPAL',
+        slug: 'test-mover-principal',
+        name: 'Enemigo Único de Prueba',
+        aliases: ['enemigo único de prueba'],
+        role: 'Jefe de prueba',
+        level: 1,
+        attributes: { fuerza: 8, destreza: 8, constitucion: 8, inteligencia: 4, voluntad: 4, carisma: 2, magia: 0 },
+        bio: 'x',
+        personality: 'x',
+        homeLocationSlug: null,
+        temperamento: 'AGRESIVO',
+      },
+    });
+    principalNpcId = principal.id;
+
     const save = await prisma.save.create({
       data: {
         userId,
@@ -167,14 +189,14 @@ describe('POST /saves/:id/zona/mover', () => {
 
   afterAll(async () => {
     await prisma.save.delete({ where: { id: saveId } });
-    await prisma.npc.deleteMany({ where: { id: { in: [agresivoNpcId, pacificoNpcId, dinamicoNpcId, maestroNpcId, guardiaNpcId] } } });
+    await prisma.npc.deleteMany({ where: { id: { in: [agresivoNpcId, pacificoNpcId, dinamicoNpcId, maestroNpcId, guardiaNpcId, principalNpcId] } } });
     await prisma.location.delete({ where: { id: locationId } });
   });
 
   afterEach(async () => {
     await prisma.zonePoint.deleteMany({ where: { locationId } });
     await prisma.logEntry.deleteMany({ where: { saveId } });
-    await prisma.npcState.deleteMany({ where: { saveId, npcId: dinamicoNpcId } });
+    await prisma.npcState.deleteMany({ where: { saveId, npcId: { in: [dinamicoNpcId, principalNpcId] } } });
     await prisma.sessionFact.deleteMany({ where: { saveId } });
     await prisma.save.update({
       where: { id: saveId },
@@ -222,7 +244,7 @@ describe('POST /saves/:id/zona/mover', () => {
     expect(saveAfter.zonaCaminoPendiente).not.toBeNull();
   });
 
-  it('colisión real: el jugador entra en la MISMA celda que un ZonePoint AGRESIVO — el movimiento se detiene ahí, sin camino pendiente', async () => {
+  it('colisión real: el jugador entra en la MISMA celda que un ZonePoint AGRESIVO — dispara Interactuar con combateForzado (2026-09-20)', async () => {
     // ZonePoint justo en la celda (1,0) — a 1 paso del origen, coincide exactamente con el primer
     // paso. Ruta de un único punto (fijo en su sitio): sin ella, el fallback de paseo aleatorio
     // (avanzarZonePointsUnPaso) lo movería antes de comprobar colisión, haciendo el test no
@@ -244,19 +266,91 @@ describe('POST /saves/:id/zona/mover', () => {
 
     const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(saveAfter.zonaCaminoPendiente).toBeNull();
-    // Regresión (2026-09-08, hallazgo de Álvaro: "aunque me ponga encima de algo... no pasa
-    // nada") — un AGRESIVO en la misma celda NUNCA dispara la tarjeta de Interactuar (ya fuerza
-    // combate real por el camino existente, Franja 3, turno de texto libre normal).
-    expect(body.dynamicModeOffer).toBeNull();
-    expect(saveAfter.pendingDynamicModeOffer).toBeNull();
-    // Bug real jugando en vivo (2026-09-15, hallazgo Álvaro): un AGRESIVO en la misma celda no
-    // dejaba NINGÚN rastro — el jugador cerraba el modal sin saber que debía reaccionar. Ahora
-    // siempre hay un LogEntry real avisando del encuentro inevitable (sin dynamicModeOffer, un
-    // agresivo no ofrece Interactuar).
+    // Corrección de diseño (2026-09-20, hallazgo real jugando en vivo — Álvaro: "todos los
+    // encuentros deben provocar el interactuar... si choco con el orco me dice que está ahí y
+    // tengo que escribir para que salte el combate, cuando debería saltar el interactuar") — un
+    // AGRESIVO en la misma celda AHORA sí dispara la tarjeta de Interactuar, marcada
+    // `combateForzado: true` para que el modal ofrezca Combatir/Huir en vez de conversación normal.
+    expect(body.dynamicModeOffer).toMatchObject({
+      tipo: 'FAUNA',
+      targetSlug: 'test-mover-agresivo',
+      targetName: 'Agresor de Prueba',
+      combateForzado: true,
+    });
+    expect(['jugador', 'npc']).toContain(body.dynamicModeOffer.quienInicia);
+    expect(saveAfter.pendingDynamicModeOffer).toMatchObject({ combateForzado: true });
+    // Un LogEntry real avisando del encuentro inevitable sigue existiendo (mismo criterio de
+    // siempre: nunca desaparece sin dejar rastro).
     expect(body.logEntry).not.toBeNull();
     expect(body.logEntry.text).toContain('Agresor de Prueba');
     const logEntryCreado = await prisma.logEntry.findUnique({ where: { id: body.logEntry.id } });
     expect(logEntryCreado).not.toBeNull();
+  });
+
+  // Bug real jugando en vivo (2026-09-20, Álvaro: "al vencer al orco... no desaparecía
+  // correctamente y me bloqueaba la partida") — un NPC único (`kind: 'PRINCIPAL'`) con `ZonePoint`
+  // fijo, derrotado en combate (`NpcState.condicionFisica: 'MUERTO'`), no debe volver a colisionar
+  // NUNCA, ni siquiera pasada la ventana normal de "ausente por combate ganado" (6h,
+  // `zonaAusenteHastaMinutes`) que sí aplica a fauna genérica. Ver `zonePointNpcMuertoParaSiempre`.
+  describe('NPC único (kind: PRINCIPAL) derrotado — muerte permanente, nunca reaparece (2026-09-20)', () => {
+    afterEach(async () => {
+      await prisma.npcState.deleteMany({ where: { saveId, npcId: principalNpcId } });
+    });
+
+    it('vivo: colisiona normalmente como cualquier AGRESIVO', async () => {
+      await prisma.zonePoint.create({
+        data: { locationId, x: 75, y: 25, tipo: 'NPC', targetSlug: 'test-mover-principal', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] },
+      });
+      const app = await buildApp();
+      const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 375, y: 25 } } });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.colision).toMatchObject({ targetSlug: 'test-mover-principal', temperamento: 'AGRESIVO' });
+    });
+
+    it('muerto (condicionFisica: MUERTO, dentro de la ventana de 6h): ya no colisiona', async () => {
+      await prisma.zonePoint.create({
+        data: { locationId, x: 75, y: 25, tipo: 'NPC', targetSlug: 'test-mover-principal', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] },
+      });
+      await prisma.npcState.create({
+        data: {
+          saveId,
+          npcId: principalNpcId,
+          scope: '',
+          condicionFisica: 'MUERTO',
+          zonaAusenteHastaMinutes: 480 + 6 * 60,
+          zonaLocationId: locationId,
+        },
+      });
+      const app = await buildApp();
+      const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 375, y: 25 } } });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.colision).toBeNull();
+    });
+
+    it('muerto y con la ventana de 6h ya vencida: sigue sin colisionar (a diferencia de fauna genérica, nunca reaparece)', async () => {
+      await prisma.zonePoint.create({
+        data: { locationId, x: 75, y: 25, tipo: 'NPC', targetSlug: 'test-mover-principal', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] },
+      });
+      await prisma.npcState.create({
+        data: {
+          saveId,
+          npcId: principalNpcId,
+          scope: '',
+          condicionFisica: 'MUERTO',
+          // Ventana de 6h ya vencida (muy en el pasado respecto al reloj de la partida, 480 min) —
+          // sin el fix, `estaAusente` deja de aplicar y el fantasma vuelve a colisionar.
+          zonaAusenteHastaMinutes: 1,
+          zonaLocationId: locationId,
+        },
+      });
+      const app = await buildApp();
+      const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 375, y: 25 } } });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.colision).toBeNull();
+    });
   });
 
   // Regresión (2026-09-08, mismo hallazgo de arriba) — a diferencia del AGRESIVO, un CAUTELOSO/

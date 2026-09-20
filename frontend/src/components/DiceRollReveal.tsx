@@ -15,7 +15,20 @@ import { DiceRollVs, ROLL_DURATION_MS, ROLL_TICK_DELAYS_MS } from './DiceRoll'
 /// `CombatPanel.tsx`.
 export { ROLL_DURATION_MS, ROLL_TICK_DELAYS_MS }
 
-export function DiceRollReveal({ exchange, playerName, enemyName }: { exchange: CombatExchangeInfo; playerName?: string; enemyName?: string }) {
+export function DiceRollReveal({
+  exchange,
+  playerName,
+  enemyName,
+  onAllLanded,
+}: {
+  exchange: CombatExchangeInfo
+  playerName?: string
+  enemyName?: string
+  /// Reenviado tal cual a `DiceRollVs` (2026-09-20) — permite al padre (`useCombatFlow.ts`)
+  /// sincronizar la actualización de vida/condición con el aterrizaje REAL del segundo dado en vez
+  /// de un `setTimeout` fijo duplicando `2 * ROLL_DURATION_MS` a mano en otro archivo.
+  onAllLanded?: () => void
+}) {
   const jugador = exchange.atacanteEsJugador ? exchange.atacante : exchange.defensor
   const enemigo = exchange.atacanteEsJugador ? exchange.defensor : exchange.atacante
   const showDifficulty = !esCheckOpuesto(exchange)
@@ -28,6 +41,7 @@ export function DiceRollReveal({ exchange, playerName, enemyName }: { exchange: 
       rightLabel={enemyName ?? 'el enemigo'}
       leftFirst={exchange.atacanteEsJugador}
       showDifficulty={showDifficulty}
+      onAllLanded={onAllLanded}
     />
   )
 }

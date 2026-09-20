@@ -11,12 +11,15 @@ import {
   resumenModoDinamicoParaLog,
   narrarVueltaGistera,
   respuestaGisteraDesdeOpcion,
+  narrarAperturaCombateForzado,
+  COMBATE_FORZADO_OPCION_COMBATIR,
   type PendingDynamicMode,
   type DynamicModeTipo,
   type RespuestaGistera,
 } from '../../services/dynamicMode.js';
 import { narrarVueltaModoDinamico } from '../../services/dynamicModeNarracion.js';
 import { aceptarQuest } from './quests.js';
+import { detectNpcsInScene } from '../../services/npcScene.js';
 
 /// "Modo dinámico" (2026-08-27, Pieza 4 de "Dinamismo del mundo") — mini-flujo acotado ofrecido
 /// al final de un turno normal (`dynamicModeOffer`, turnResolution.ts), nunca lo interrumpe. Estas
@@ -97,15 +100,62 @@ async function persistirCierreNpcEnTransaccion(
   return { pendingQuestOfferInfo: null };
 }
 
+/// Combate directo desde Interactuar (2026-09-20, "todo debe saltar el interactuar, incluido un
+/// agresivo" — hasta ahora un AGRESIVO en Zona solo dejaba un aviso de texto, el combate real
+/// esperaba a que el jugador escribiera algo en su siguiente turno de texto libre y
+/// `shouldForceCombat` lo detectara, `turnResolution.ts`). Reutiliza `detectNpcsInScene` (mismo
+/// filtro real de presencia/momento del día/núcleo jugable que ya usa el resto del motor) en vez de
+/// reconstruir el shape de `combateIniciado` a mano — `action: targetName` garantiza el match por
+/// alias aunque no haya ningún sessionFact reciente que lo mencione (la colisión real en Zona ya es
+/// la señal determinista, no hace falta que el jugador lo haya "dicho" en texto). Escribe
+/// `Save.pendingCombatNpcSlugs` directo (mismo campo que lee `GameView.tsx`/`GET /saves/:id` para
+/// abrir CombatPanel), sin pasar por `CombatEncounter` (innecesario para un 1v1 simple, ver
+/// `cazar.ts` § caza en grupo para el patrón equivalente cuando sí hace falta).
+async function abrirCombateForzadoDesdeInteractuar(
+  save: { id: string; worldId: string; currentLocationId: string | null },
+  targetSlug: string,
+  targetName: string,
+  fictionalMinutes: number,
+) {
+  const sessionFacts = await loadSessionFacts(save.id);
+  const npcsInScene = await detectNpcsInScene({
+    action: targetName,
+    worldId: save.worldId,
+    sessionFacts,
+    saveId: save.id,
+    currentLocationId: save.currentLocationId,
+    fictionalMinutes,
+  });
+  const target = npcsInScene.find((n) => n.slug === targetSlug);
+  if (!target || target.condicionFisica === 'MUERTO') return null;
+  await prisma.save.update({ where: { id: save.id }, data: { pendingCombatNpcSlugs: [targetSlug] } });
+  return {
+    npcs: [
+      {
+        slug: target.slug,
+        name: target.name,
+        condicionFisica: target.condicionFisica,
+        saqueado: target.saqueado,
+        lootedItemNames: target.lootedItemNames,
+        analizado: target.analizado,
+        capturable: target.capturable,
+        activeEffects: target.activeEffects,
+        targetedForKill: target.targetedForKill,
+      },
+    ],
+  };
+}
+
 export async function dynamicModeRoutes(app: FastifyInstance) {
   /// Primera vuelta — el jugador pulsó "Interactuar" sobre la oferta que ya vio en el `done` del
   /// turno anterior. `tipo`/`targetName` vienen del body (mismo criterio que `quests/aceptar`
   /// recibe `title`/`description`: el frontend reenvía lo que YA le devolvió el turno, sin que el
   /// backend tenga que recalcular el candidato aquí).
-  app.post<{ Params: { id: string }; Body: { tipo: DynamicModeTipo; targetSlug: string; targetName: string; quienInicia?: 'jugador' | 'npc' } }>(
-    '/saves/:id/modo-dinamico/interactuar',
-    async (request, reply) => {
-      const { tipo, targetSlug, targetName, quienInicia } = request.body;
+  app.post<{
+    Params: { id: string };
+    Body: { tipo: DynamicModeTipo; targetSlug: string; targetName: string; quienInicia?: 'jugador' | 'npc'; combateForzado?: boolean };
+  }>('/saves/:id/modo-dinamico/interactuar', async (request, reply) => {
+      const { tipo, targetSlug, targetName, quienInicia, combateForzado } = request.body;
       if (!tipo || !targetSlug || !targetName?.trim()) {
         return reply.status(400).send({ error: 'Faltan campos: tipo, targetSlug, targetName' });
       }
@@ -115,6 +165,22 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
       if (rejectIfPendingDeath(save, reply)) return;
       if (save.pendingDynamicMode) {
         return reply.status(409).send({ error: 'Ya hay un modo dinámico en curso' });
+      }
+
+      const fictionalMinutesActuales0 = save.worldState?.fictionalMinutes ?? 480;
+
+      // AGRESIVO/ENEMIGO (2026-09-20, "todo debe provocar el interactuar, incluido un agresivo") —
+      // bifurcación ANTES de cualquier narración: si el NPC/fauna vio primero al jugador
+      // (`quienInicia: 'npc'`), no hay nada que elegir — combate directo, sin `pendingDynamicMode`
+      // de por medio. Si el jugador lo vio primero, sí hay elección real (ver más abajo, tras
+      // narrar la apertura con `narrarAperturaCombateForzado`) — la rama de "npc" se resuelve aquí
+      // mismo porque no necesita ninguna narración previa, el combate ya empieza.
+      if (combateForzado && quienInicia === 'npc') {
+        const combate = await abrirCombateForzadoDesdeInteractuar(save, targetSlug, targetName, fictionalMinutesActuales0);
+        if (!combate) {
+          return reply.status(400).send({ error: 'Ese encuentro ya no está disponible aquí.' });
+        }
+        return { narration: '', opciones: [], cierra: true, vuelta: 1, timeLabel: formatFictionalDate(fictionalMinutesActuales0), newQuestOfferInfo: null, combate };
       }
 
       const esGistera = targetSlug === 'gistera-koh';
@@ -135,20 +201,27 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
           ]);
 
       const characterSummary = characterSummaryFor(save);
-      // Guion determinista de Gistera Koh (2026-09-09, ver comentario de `narrarVueltaGistera`,
-      // dynamicMode.ts — bug real: "ya no estamos usando los mensajes deterministas... y qué tiene
-      // que ver el tótem con ella") — cero llamadas a Ollama, texto fijo revisado por Álvaro.
-      const turno = esGistera ? narrarVueltaGistera(1, null) : await narrarVueltaModoDinamico({
-        tipo,
-        targetName,
-        vuelta: 1,
-        maxVueltas: MAX_VUELTAS_MODO_DINAMICO,
-        characterSummary,
-        respuestaJugador: null,
-        targetBio: targetNpc?.bio ?? null,
-        locationContext: currentLocation,
-        quienInicia,
-      });
+      // AGRESIVO/ENEMIGO, el jugador lo vio primero (2026-09-20) — texto fijo determinista
+      // ofreciendo Combatir/Huir (ver `narrarAperturaCombateForzado`, dynamicMode.ts), nunca
+      // conversación LLM ni el guion de Gistera (ella nunca es AGRESIVO/ENEMIGO por diseño).
+      const turno = combateForzado
+        ? narrarAperturaCombateForzado(targetName)
+        : esGistera
+          ? narrarVueltaGistera(1, null)
+          : // Guion determinista de Gistera Koh (2026-09-09, ver comentario de `narrarVueltaGistera`,
+            // dynamicMode.ts — bug real: "ya no estamos usando los mensajes deterministas... y qué
+            // tiene que ver el tótem con ella") — cero llamadas a Ollama, texto fijo revisado por Álvaro.
+            await narrarVueltaModoDinamico({
+              tipo,
+              targetName,
+              vuelta: 1,
+              maxVueltas: MAX_VUELTAS_MODO_DINAMICO,
+              characterSummary,
+              respuestaJugador: null,
+              targetBio: targetNpc?.bio ?? null,
+              locationContext: currentLocation,
+              quienInicia,
+            });
 
       const fictionalMinutesActuales = save.worldState?.fictionalMinutes ?? 480;
       const nuevoFictionalMinutes = advanceFictionalMinutes(fictionalMinutesActuales, MINUTOS_POR_VUELTA_MODO_DINAMICO);
@@ -174,6 +247,7 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
             targetBio: targetNpc?.bio ?? null,
             locationContext: currentLocation,
             historialNarracion,
+            ...(combateForzado ? { combateForzado: true as const } : {}),
           };
 
       const pendingQuestOfferInfo = await prisma.$transaction(async (tx) => {
@@ -240,6 +314,32 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
     const pending = save.pendingDynamicMode as unknown as PendingDynamicMode | null;
     if (!pending) {
       return reply.status(409).send({ error: 'No hay ningún modo dinámico en curso' });
+    }
+
+    // AGRESIVO/ENEMIGO, el jugador ya eligió (2026-09-20) — "Combatir" abre combate directo
+    // (mismo mecanismo que el caso `quienInicia: 'npc'` de `/interactuar`, el jugador ataca con
+    // ventaja por haberlo visto primero); "Huir" cierra sin combate, gratis (decisión explícita de
+    // Álvaro: la tirada de "quién ve a quién" ya decidió si hay elección, huir en sí no vuelve a
+    // tirar dados). Cualquier otra respuesta se trata como huida — nunca se cuelga esperando texto
+    // que este modal no ofrece.
+    if (pending.combateForzado) {
+      await prisma.save.update({ where: { id: save.id }, data: { pendingDynamicMode: Prisma.JsonNull } });
+      if (respuesta === COMBATE_FORZADO_OPCION_COMBATIR) {
+        const fictionalMinutesActuales = save.worldState?.fictionalMinutes ?? 480;
+        const combate = await abrirCombateForzadoDesdeInteractuar(save, pending.targetSlug, pending.targetName, fictionalMinutesActuales);
+        if (!combate) {
+          return reply.status(400).send({ error: 'Ese encuentro ya no está disponible aquí.' });
+        }
+        return { narration: '', opciones: [], cierra: true, vuelta: pending.vuelta + 1, timeLabel: formatFictionalDate(fictionalMinutesActuales), newQuestOfferInfo: null, combate };
+      }
+      const nuevoFictionalMinutes = advanceFictionalMinutes(save.worldState?.fictionalMinutes ?? 480, MINUTOS_POR_VUELTA_MODO_DINAMICO);
+      const timeLabel = formatFictionalDate(nuevoFictionalMinutes);
+      const text = `${save.characterName} logra alejarse de ${pending.targetName} sin que llegue a haber combate.`;
+      await prisma.$transaction([
+        prisma.worldState.update({ where: { saveId: save.id }, data: { fictionalMinutes: nuevoFictionalMinutes, fictionalDateLabel: timeLabel } }),
+        prisma.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: nuevoFictionalMinutes, isPlayerAction: false, isSystemMessage: true } }),
+      ]);
+      return { narration: text, opciones: [], cierra: true, vuelta: pending.vuelta + 1, timeLabel, newQuestOfferInfo: null };
     }
 
     const esGistera = pending.targetSlug === 'gistera-koh';

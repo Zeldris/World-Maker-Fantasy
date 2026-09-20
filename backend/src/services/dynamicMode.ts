@@ -156,6 +156,24 @@ export function respuestaGisteraDesdeOpcion(opcion: string): RespuestaGistera | 
   return GISTERA_RESPUESTA_POR_OPCION[opcion] ?? null;
 }
 
+/// Colisión AGRESIVO/ENEMIGO en Zona, "quien ve a quién primero" con efecto MECÁNICO real
+/// (2026-09-20, petición explícita de Álvaro: "que sea por tirada... si yo lo veo primero se abre
+/// el interactuar dándome elegir combatir o huir... si me ve él, entro en combate directamente").
+/// Solo se llama cuando `quienIniciaEncuentro` (zonaPosicion.ts) resolvió 'jugador' — el otro caso
+/// ('npc') nunca pasa por aquí, el caller abre combate directo sin ofrecer nada que elegir. Texto
+/// fijo determinista, sin LLM (mismo criterio que `narrarVueltaGistera`): es un único aviso
+/// urgente, no una conversación con margen para prosa generada.
+export const COMBATE_FORZADO_OPCION_COMBATIR = 'Combatir';
+export const COMBATE_FORZADO_OPCION_HUIR = 'Huir';
+
+export function narrarAperturaCombateForzado(targetName: string): GisteraTurnoOutput {
+  return {
+    narration: `Os encontráis y os miráis — ${targetName} no parece dispuesto a dejarte pasar. Toca decidir ya: combatir o huir.`,
+    opciones: [COMBATE_FORZADO_OPCION_COMBATIR, COMBATE_FORZADO_OPCION_HUIR],
+    cierra: false,
+  };
+}
+
 const GISTERA_TEXTO_PRESENTACION =
   'Con la respiración entrecortada, sin dejar de mirar hacia atrás, se presenta a toda prisa: «Soy Gistera Koh... del Clan Serhu, aunque ya no. No tengo tiempo para explicarte más — uno de los suyos me pisa los talones y quiere verme muerta. Llevas la marca de los Maktor, ¿verdad? Entonces sabes lo que es que un clan entero se vuelva contra los tuyos. ¿No quieres acabar con los Serhu? Empieza por el que me persigue — hazlo antes de que sea tarde para las dos.»';
 const GISTERA_OPCIONES_PRESENTACION = ['Aceptar ayudarla', 'Preguntar más antes de decidir', 'Rechazar y seguir tu camino'];
@@ -244,4 +262,12 @@ export interface PendingDynamicMode {
   /// `locationContext` null si el jugador no tenía `currentLocationId` resuelto.
   targetBio: string | null;
   locationContext: { name: string; description: string } | null;
+  /// Colisión AGRESIVO/ENEMIGO en Zona (2026-09-20, "todo debe saltar el interactuar, incluido un
+  /// agresivo" — petición explícita de Álvaro tras confirmar que antes el Orco solo dejaba un aviso
+  /// de texto sin abrir nada) — true cuando este encuentro puede desembocar en combate real desde
+  /// el propio modal, sin depender de un turno de texto libre posterior. Solo se da cuando
+  /// `quienInicia: 'jugador'` (el jugador lo vio primero, así que puede elegir combatir o huir —
+  /// ver `narrarVueltaCombateForzado`); si el NPC/fauna vio primero al jugador, el combate se abre
+  /// DIRECTAMENTE sin pasar por `pendingDynamicMode` en absoluto (nunca hay elección posible).
+  combateForzado?: true;
 }

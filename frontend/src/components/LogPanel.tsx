@@ -50,6 +50,10 @@ interface LogPanelProps {
   /// de la propia tarjeta de "pensando" mientras la narración se sigue generando debajo. `null`/
   /// ausente = turno sin intercambio de combate, la tarjeta de "pensando" sigue igual que siempre.
   diceReveal?: { exchange: CombatExchangeInfo; npcName: string | null } | null
+  /// Reenviado a `DiceRollReveal` (2026-09-20) — dispara cuando el segundo dado del intercambio
+  /// termina de aterrizar de verdad, para que `useCombatFlow.ts` sincronice la vida/condición
+  /// actualizada con ese instante exacto en vez de un `setTimeout` fijo aparte.
+  onDiceRevealAllLanded?: () => void
   /// Botones Aceptar/Cancelar en una oferta de misión (2026-08-26, `entry.questOffer`) — opcional,
   /// mismo criterio que `onCollapse`/`onToggleView`: sin estos dos callbacks, LogPanel simplemente
   /// no pinta la tarjeta de oferta (aunque no debería pasar — GameView.tsx los pasa siempre en el
@@ -59,7 +63,14 @@ interface LogPanelProps {
   /// "Modo dinámico" (2026-08-27, `entry.dynamicModeOffer`) — mismo criterio opcional que
   /// `onAcceptQuestOffer`/`onDismissQuestOffer`. Solo NPC/FAUNA (conversación de vueltas, abre
   /// DynamicModeModal) — RECURSO usa `onInteractuarModoDinamicoRecurso` abajo, resuelve sin modal.
-  onInteractuarModoDinamico?: (entryId: string, tipo: 'NPC' | 'FAUNA', targetSlug: string, targetName: string, quienInicia?: 'jugador' | 'npc') => void
+  onInteractuarModoDinamico?: (
+    entryId: string,
+    tipo: 'NPC' | 'FAUNA',
+    targetSlug: string,
+    targetName: string,
+    quienInicia?: 'jugador' | 'npc',
+    combateForzado?: boolean,
+  ) => void
   /// RECURSO (2026-09-08, "Ver qué hay en la zona") — a diferencia de NPC/FAUNA, no abre
   /// conversación: resuelve la recolección real de una sola llamada (tirada + inventario +
   /// LogEntry), la tarjeta se limpia sola al terminar.
@@ -174,6 +185,7 @@ export const LogPanel = memo(function LogPanel({
   toggleViewLabel,
   characterName,
   diceReveal,
+  onDiceRevealAllLanded,
   onAcceptQuestOffer,
   onDismissQuestOffer,
   onInteractuarModoDinamico,
@@ -438,17 +450,23 @@ export const LogPanel = memo(function LogPanel({
                   tarjeta, callback distinto. */}
               {entry.dynamicModeOffer && (
                 <OfferCard
-                  tone="accent2"
-                  icon={entry.dynamicModeOffer.tipo === 'RECURSO' ? '🪨' : '💬'}
+                  tone={entry.dynamicModeOffer.combateForzado ? 'danger' : 'accent2'}
+                  icon={entry.dynamicModeOffer.combateForzado ? '⚔️' : entry.dynamicModeOffer.tipo === 'RECURSO' ? '🪨' : '💬'}
                   title={
-                    entry.dynamicModeOffer.tipo === 'RECURSO' ? `${entry.dynamicModeOffer.targetName} a la vista` : `${entry.dynamicModeOffer.targetName} busca tu atención`
+                    entry.dynamicModeOffer.combateForzado
+                      ? `${entry.dynamicModeOffer.targetName} te corta el paso`
+                      : entry.dynamicModeOffer.tipo === 'RECURSO'
+                        ? `${entry.dynamicModeOffer.targetName} a la vista`
+                        : `${entry.dynamicModeOffer.targetName} busca tu atención`
                   }
                   subtitle={
-                    entry.dynamicModeOffer.tipo === 'NPC'
-                      ? 'Puedes hablar con esta persona.'
-                      : entry.dynamicModeOffer.tipo === 'RECURSO'
-                        ? 'Hay algo cerca que podrías recolectar.'
-                        : 'Hay algo cerca con lo que puedes interactuar.'
+                    entry.dynamicModeOffer.combateForzado
+                      ? 'No parece dispuesto a dejarte pasar.'
+                      : entry.dynamicModeOffer.tipo === 'NPC'
+                        ? 'Puedes hablar con esta persona.'
+                        : entry.dynamicModeOffer.tipo === 'RECURSO'
+                          ? 'Hay algo cerca que podrías recolectar.'
+                          : 'Hay algo cerca con lo que puedes interactuar.'
                   }
                   error={entry.dynamicModeOffer.error}
                   actions={[
@@ -465,6 +483,7 @@ export const LogPanel = memo(function LogPanel({
                               entry.dynamicModeOffer!.targetSlug,
                               entry.dynamicModeOffer!.targetName,
                               entry.dynamicModeOffer!.quienInicia,
+                              entry.dynamicModeOffer!.combateForzado,
                             ),
                     },
                     { label: 'Ignorar', tone: 'neutral', disabled: entry.dynamicModeOffer.busy, onClick: () => onDismissDynamicModeOffer?.(entry.id) },
@@ -671,7 +690,12 @@ export const LogPanel = memo(function LogPanel({
               </p>
             </div>
             {diceReveal && (
-              <DiceRollReveal exchange={diceReveal.exchange} playerName={characterName} enemyName={diceReveal.npcName ?? undefined} />
+              <DiceRollReveal
+                exchange={diceReveal.exchange}
+                playerName={characterName}
+                enemyName={diceReveal.npcName ?? undefined}
+                onAllLanded={onDiceRevealAllLanded}
+              />
             )}
             {thinkingText &&
               (streaming ? (

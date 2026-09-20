@@ -887,12 +887,28 @@ export function GameView() {
   // 2026-08-27): antes se limpiaba ANTES de saber si la petición tenía éxito — un fallo de red dejaba
   // a la jugadora sin ninguna pista de qué pasó. Ahora la tarjeta sigue en pantalla con `busy`/
   // `error` mientras se resuelve, y solo desaparece si de verdad se abrió el modo dinámico.
-  async function handleInteractuarModoDinamico(entryId: string, tipo: 'NPC' | 'FAUNA', targetSlug: string, targetName: string, quienInicia?: 'jugador' | 'npc') {
-    setCharacterLog((prev) => prev.map((e) => (e.id === entryId ? { ...e, dynamicModeOffer: { tipo, targetSlug, targetName, quienInicia, busy: true } } : e)))
+  async function handleInteractuarModoDinamico(
+    entryId: string,
+    tipo: 'NPC' | 'FAUNA',
+    targetSlug: string,
+    targetName: string,
+    quienInicia?: 'jugador' | 'npc',
+    combateForzado?: boolean,
+  ) {
+    setCharacterLog((prev) => prev.map((e) => (e.id === entryId ? { ...e, dynamicModeOffer: { tipo, targetSlug, targetName, quienInicia, combateForzado, busy: true } } : e)))
     try {
-      const turno = await interactuarModoDinamico(saveId!, tipo, targetSlug, targetName, quienInicia)
+      const turno = await interactuarModoDinamico(saveId!, tipo, targetSlug, targetName, quienInicia, combateForzado)
       setCharacterLog((prev) => prev.map((e) => (e.id === entryId ? { ...e, dynamicModeOffer: undefined } : e)))
       setFictionalDate(turno.timeLabel)
+      // AGRESIVO/ENEMIGO, el NPC/fauna vio primero al jugador (2026-09-20) — el combate se abre
+      // DIRECTAMENTE, sin pasar por DynamicModeModal (nunca hubo nada que conversar). Mismo patrón
+      // que `handleHuntResolved` § caza limpia: `result.combate` explícito, `combateIniciado` aún
+      // no se ha actualizado en este mismo tick.
+      if (turno.combate) {
+        setCombateIniciado(turno.combate)
+        combat.openCombat(turno.combate)
+        return
+      }
       // B.6 (checklist frontend 2026-08-27) — retrato real si ya está subido en la Enciclopedia,
       // resuelto por slug conocido (no por texto, a diferencia de buildEntityBanner) — el modo
       // dinámico siempre sabe el `targetSlug` exacto con certeza.
@@ -1001,6 +1017,14 @@ export function GameView() {
     try {
       const turno = await responderModoDinamico(saveId!, opcion)
       setFictionalDate(turno.timeLabel)
+      // AGRESIVO/ENEMIGO, el jugador eligió "Combatir" (2026-09-20) — mismo patrón que
+      // `handleInteractuarModoDinamico`: se cierra este modal y se abre CombatPanel directo.
+      if (turno.combate) {
+        setActiveDynamicMode(null)
+        setCombateIniciado(turno.combate)
+        combat.openCombat(turno.combate)
+        return
+      }
       // `imageUrl` se conserva de la vuelta anterior — el retrato no cambia dentro de la misma
       // conversación, solo se resuelve una vez al abrir (handleInteractuarModoDinamico).
       setActiveDynamicMode((prev) => ({ turno, busy: false, imageUrl: prev?.imageUrl }))
@@ -1883,6 +1907,7 @@ export function GameView() {
               streaming={!!streamingNarration}
               combate={combat.combatOpen}
               diceReveal={diceReveal}
+              onDiceRevealAllLanded={combat.triggerExchangeApply}
               emptyHint="Aquí aparecerá lo que le ocurra a tu personaje."
               onCollapse={() => setCollapsedSide('character')}
               collapseIcon="‹"
