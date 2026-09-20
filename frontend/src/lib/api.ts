@@ -1189,7 +1189,7 @@ export interface MoverZonaResultado {
   /// Conexión real con Interactuar (2026-09-08) — colisión contra un NPC/fauna NO agresivo dispara
   /// esta oferta real (`pendingDynamicModeOffer` en el backend); `null` en cualquier otro caso
   /// (agresivo, sin colisión, o ya había otra oferta/conversación en curso).
-  dynamicModeOffer: { tipo: 'FAUNA' | 'NPC'; targetSlug: string; targetName: string; quienInicia: 'jugador' | 'npc' } | null
+  dynamicModeOffer: { tipo: 'FAUNA' | 'NPC' | 'RECURSO'; targetSlug: string; targetName: string; quienInicia: 'jugador' | 'npc' } | null
   /// LogEntry real determinista del encuentro (2026-09-09, hallazgo real jugando en vivo: la
   /// tarjeta de oferta SIEMPRE se renderiza colgada de una LogEntry concreta — sin esto la oferta
   /// quedaba persistida en BD pero invisible en el log). Presente solo junto a `dynamicModeOffer`,

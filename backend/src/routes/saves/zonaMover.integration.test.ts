@@ -351,6 +351,53 @@ describe('POST /saves/:id/zona/mover', () => {
     expect(body.caminoRestante).toEqual([]);
   });
 
+  // RECURSO (2026-09-20, hallazgo real jugando en vivo — Álvaro: "mira también si funciona lo de
+  // descubrir al acercarnos a una flora" — confirmado que NO funcionaba: `detectarEncuentroEnCelda`
+  // solo miraba FAUNA/NPC, caminar hasta un recurso nunca disparaba nada). RECURSO nunca tiene
+  // temperamento/combate/tirada de iniciativa — el jugador SIEMPRE es quien "encuentra" el recurso.
+  it('celda ADYACENTE/MISMA a un ZonePoint RECURSO: dispara dynamicModeOffer tipo RECURSO, sin colisión de combate', async () => {
+    await prisma.zonePoint.create({
+      data: { locationId, x: 75, y: 25, tipo: 'RECURSO', targetSlug: 'test-mover-recurso', cantidad: 1, activo: true },
+    });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/zona/mover`,
+      payload: { destino: { x: 375, y: 25 } },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    // RECURSO nunca puebla `colision` (ese campo es solo para FAUNA/NPC con temperamento real) —
+    // solo la oferta de Interactuar, coherente con que un recurso nunca fuerza combate ni reacción.
+    expect(body.colision).toBeNull();
+    expect(body.dynamicModeOffer).toEqual({ tipo: 'RECURSO', targetSlug: 'test-mover-recurso', targetName: 'test-mover-recurso', quienInicia: 'jugador' });
+    expect(body.logEntry).toMatchObject({ text: expect.stringContaining('test-mover-recurso') });
+    const logRow = await prisma.logEntry.findUnique({ where: { id: body.logEntry.id } });
+    expect(logRow).not.toBeNull();
+
+    const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveAfter.pendingDynamicModeOffer).toEqual({ tipo: 'RECURSO', targetSlug: 'test-mover-recurso', targetName: 'test-mover-recurso', quienInicia: 'jugador' });
+  });
+
+  it('un ZonePoint FAUNA y uno RECURSO en la misma celda: la FAUNA (ser vivo) gana, el recurso ni se evalúa', async () => {
+    await prisma.zonePoint.create({
+      data: { locationId, x: 75, y: 25, tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] },
+    });
+    await prisma.zonePoint.create({
+      data: { locationId, x: 75, y: 25, tipo: 'RECURSO', targetSlug: 'test-mover-recurso', cantidad: 1, activo: true },
+    });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/zona/mover`,
+      payload: { destino: { x: 375, y: 25 } },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.colision).toMatchObject({ targetSlug: 'test-mover-pacifico' });
+    expect(body.dynamicModeOffer).toMatchObject({ tipo: 'FAUNA', targetSlug: 'test-mover-pacifico' });
+  });
+
   it('el mundo también se mueve: un ZonePoint con ruta artesanal avanza un paso a la vez que el jugador — y la respuesta HTTP lo confirma (2026-09-09)', async () => {
     // Ruta de 2 celdas (píxel), lejos del jugador para no interferir con colisión/aviso en este test.
     const ruta = [{ x: 725, y: 575 }, { x: 675, y: 575 }]; // celdas (14,11) y (13,11)

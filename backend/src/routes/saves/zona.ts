@@ -441,7 +441,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     destrezaJugador: number,
   ): Promise<{
     colision: { targetSlug: string; targetName: string; temperamento: string } | null;
-    dynamicModeOffer: { tipo: 'FAUNA' | 'NPC'; targetSlug: string; targetName: string; quienInicia: 'jugador' | 'npc' } | null;
+    dynamicModeOffer: { tipo: 'FAUNA' | 'NPC' | 'RECURSO'; targetSlug: string; targetName: string; quienInicia: 'jugador' | 'npc' } | null;
     logEntry: { id: string; text: string; timeLabel: string; createdAt: string } | null;
   }> {
     const puntosCrudos = await tx.zonePoint.findMany({ where: { locationId, tipo: { in: ['FAUNA', 'NPC'] }, activo: true } });
@@ -579,7 +579,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     // AMIGABLE en la misma celda dispara `pendingDynamicModeOffer` real con el candidato EXACTO
     // (nunca por sorteo — la posición real ya es la señal determinista). Ninguna oferta si ya hay
     // una en curso/pendiente.
-    let dynamicModeOffer: { tipo: 'FAUNA' | 'NPC'; targetSlug: string; targetName: string; quienInicia: 'jugador' | 'npc' } | null = null;
+    let dynamicModeOffer: { tipo: 'FAUNA' | 'NPC' | 'RECURSO'; targetSlug: string; targetName: string; quienInicia: 'jugador' | 'npc' } | null = null;
     let logEntry: { id: string; text: string; timeLabel: string; createdAt: string } | null = null;
     if (colision && colision.temperamento !== 'AGRESIVO') {
       const freshSave = await tx.save.findUnique({ where: { id: saveId }, select: { pendingDynamicMode: true, pendingDynamicModeOffer: true } });
@@ -623,6 +623,35 @@ export async function zonaRoutes(app: FastifyInstance) {
         data: { saveId, channel: 'CHARACTER', text, timeLabel, fictionalMinutes, isPlayerAction: false, isSystemMessage: true },
       });
       logEntry = { id: created.id, text, timeLabel, createdAt: created.createdAt.toISOString() };
+    }
+
+    // RECURSO (2026-09-20, hallazgo real jugando en vivo — Álvaro: "mira también si funciona lo de
+    // descubrir al acercarnos a una flora" — confirmado que no funcionaba en absoluto:
+    // `detectarEncuentroEnCelda` solo miraba FAUNA/NPC, así que caminar hasta la celda exacta de un
+    // recurso nunca disparaba nada, ni descubrimiento ni recolección). Un ser vivo (FAUNA/NPC) SIEMPRE
+    // tiene prioridad sobre un recurso inerte — `!colision` — coherente con el resto del motor
+    // ("todo debe tener ZonePoint", pero un encuentro con algo vivo importa más que una veta de
+    // mineral en el mismo radio). Nunca compite con AGRESIVO/combate: si ya hubo colisión, este
+    // bloque ni se evalúa.
+    if (!colision) {
+      const recursosCrudos = await tx.zonePoint.findMany({ where: { locationId, tipo: 'RECURSO', activo: true } });
+      for (const punto of recursosCrudos) {
+        const celdaPunto = celdaDePixel({ x: punto.x, y: punto.y });
+        if (!celdaAdyacenteOMisma(celda, celdaPunto)) continue;
+        const freshSave = await tx.save.findUnique({ where: { id: saveId }, select: { pendingDynamicMode: true, pendingDynamicModeOffer: true } });
+        if (freshSave?.pendingDynamicMode || freshSave?.pendingDynamicModeOffer) break;
+        const nombre = sourceDisplayNameFor(punto.targetSlug);
+        // Sin tirada de iniciativa — un recurso nunca "busca" al jugador, siempre es él quien lo
+        // encuentra (mismo framing que ya usa `buildDynamicModeTurnoPrompt` cuando `quienInicia` no
+        // aplica, pero aquí ni siquiera hay LLM: `dynamicModeRecurso.ts` narra con texto fijo).
+        dynamicModeOffer = { tipo: 'RECURSO', targetSlug: punto.targetSlug, targetName: nombre, quienInicia: 'jugador' };
+        const text = `${characterName} encuentra ${nombre} cerca.`;
+        const created = await tx.logEntry.create({
+          data: { saveId, channel: 'CHARACTER', text, timeLabel, fictionalMinutes, isPlayerAction: false, isSystemMessage: true },
+        });
+        logEntry = { id: created.id, text, timeLabel, createdAt: created.createdAt.toISOString() };
+        break; // Solo el primer recurso — no acumula varios a la vez.
+      }
     }
     return { colision, dynamicModeOffer, logEntry };
   }
