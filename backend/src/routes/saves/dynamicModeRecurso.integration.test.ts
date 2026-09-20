@@ -94,4 +94,37 @@ describe('POST /saves/:id/modo-dinamico/recurso/:targetSlug', () => {
     // Restaurar para no afectar otros tests del mismo describe si el orden cambiara.
     await prisma.save.update({ where: { id: saveId }, data: { currentLocationId: locationId } });
   });
+
+  // Bug real encontrado jugando la batería de reinicio (2026-09-20): "candidato no disponible ahora
+  // mismo" (población regional agotada, fuera de temporada/clima...) devolvía 400 sin limpiar
+  // `pendingDynamicModeOffer` — la oferta atascada bloqueaba para siempre cualquier colisión/oferta
+  // pacífica nueva (el guard de `detectarEncuentroEnCelda`, zona.ts, nunca ofrece nada mientras
+  // exista una oferta pendiente), dejando al jugador sin forma de seguir jugando salvo reiniciar
+  // sesión.
+  it('candidato ya no disponible (población regional agotada): limpia la oferta pendiente igualmente', async () => {
+    await prisma.save.update({
+      where: { id: saveId },
+      data: { pendingDynamicModeOffer: { tipo: 'RECURSO', targetSlug: 'yerreo', targetName: 'Yerreo' } },
+    });
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const poblacionReal = await prisma.worldPopulation.findFirstOrThrow({
+      where: { worldId: world.id, targetType: 'RECURSO', targetSlug: 'yerreo' },
+    });
+    // Población a 0: `candidateSourcesFor` filtra por `poblacion: { gt: 0 }` — sin ninguna fila con
+    // población real, yerreo deja de ser candidato aunque el resto de condiciones (región/terreno/
+    // temporada/nivel) sigan cumpliéndose, mismo caso real que "se te ha adelantado" en producción.
+    await prisma.worldPopulation.update({ where: { id: poblacionReal.id }, data: { poblacion: 0 } });
+
+    try {
+      const app = await buildApp();
+      const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/recurso/yerreo` });
+      expect(res.statusCode).toBe(400);
+
+      const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+      expect(saveAfter.pendingDynamicModeOffer).toBeNull();
+    } finally {
+      // Restaurar la población real para no afectar otros tests/partidas que dependan del catálogo.
+      await prisma.worldPopulation.update({ where: { id: poblacionReal.id }, data: { poblacion: poblacionReal.poblacion } });
+    }
+  });
 });

@@ -44,9 +44,15 @@ export async function dynamicModeRecursoRoutes(app: FastifyInstance) {
     // ver dynamicMode.ts) — aquí solo hace falta saber a qué MÉTODO pertenece esa fuente concreta,
     // para resolver el `oficio` real (y así el nivel/atributo correctos) del jugador.
     const yieldRow = await prisma.harvestYield.findFirst({ where: { worldId, sourceSlug: targetSlug }, select: { metodoObtencion: true } });
-    if (!yieldRow) return reply.status(400).send({ error: 'Ese recurso ya no está disponible aquí.' });
+    if (!yieldRow) {
+      await prisma.save.update({ where: { id: save.id }, data: { pendingDynamicModeOffer: Prisma.JsonNull } });
+      return reply.status(400).send({ error: 'Ese recurso ya no está disponible aquí.' });
+    }
     const ability = harvestAbilityForMetodo(yieldRow.metodoObtencion);
-    if (!ability) return reply.status(400).send({ error: 'Ese recurso no tiene ninguna profesión asociada.' });
+    if (!ability) {
+      await prisma.save.update({ where: { id: save.id }, data: { pendingDynamicModeOffer: Prisma.JsonNull } });
+      return reply.status(400).send({ error: 'Ese recurso no tiene ninguna profesión asociada.' });
+    }
 
     // `professionId` REAL del jugador para este método, si lo tiene aprendido (mismo criterio que
     // la segunda tirada de /recolectar/confirmar, recolectar.ts línea ~884) — necesario porque
@@ -58,6 +64,7 @@ export async function dynamicModeRecursoRoutes(app: FastifyInstance) {
     const { candidates } = await candidateSourcesFor(worldId, yieldRow.metodoObtencion, region, currentLocationId, locationSlug, estacionActual, climaActual, save.professionProgress.find((p) => p.professionId === professionIdReal)?.nivel ?? 1);
     const candidato = candidates.find((c) => c.sourceSlug === targetSlug);
     if (!candidato) {
+      await prisma.save.update({ where: { id: save.id }, data: { pendingDynamicModeOffer: Prisma.JsonNull } });
       return reply.status(400).send({ error: 'Ese recurso ya no está disponible aquí — puede que se te haya adelantado, o esté fuera de temporada.' });
     }
 
