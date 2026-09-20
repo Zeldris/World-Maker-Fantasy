@@ -669,6 +669,56 @@ describe('GET /saves/:id/zona', () => {
       expect(salidas[0].teaser).toBe('breve'); // se devuelve igual, el frontend decide cuál mostrar
     });
 
+    // Umbral de proximidad (2026-09-20, petición explícita de Álvaro: "la salida de una zona debe
+    // estar representada en el mapa con un icono y al estar a una celda si pulsas el icono saca el
+    // modal para poder darle a viajar") — antes se podía "Viajar" desde cualquier punto del mapa sin
+    // comparar nunca contra `zonaPosX/Y` real. Mismo criterio EXACTO que colisión NPC/fauna/recurso
+    // (`celdaAdyacenteOMisma`): misma celda o cualquiera de las 8 vecinas de la celda de la salida.
+    describe('alcanzable (proximidad real del jugador, 2026-09-20)', () => {
+      const currentLocationConNorte = {
+        id: 'loc1', slug: 'hondonada-del-eco', name: 'La Hondonada del Eco', x: 0, y: 0, zonePoints: [],
+      };
+      const linkNorte = [
+        {
+          from: { id: 'loc1', slug: 'hondonada-del-eco', name: 'La Hondonada del Eco', x: 0, y: 0, teaser: null, description: 'x' },
+          to: { id: 'loc2', slug: 'pilares-rotos', name: 'Paso de los Pilares Rotos', x: 0, y: 10, teaser: 't', description: 'y' },
+        },
+      ];
+
+      it('jugador justo en la celda de la salida (x:400,y<300): alcanzable true', async () => {
+        findUniqueSave.mockResolvedValueOnce({ id: 's1', worldId: 'w1', zonaPosX: 400, zonaPosY: 25, currentLocation: currentLocationConNorte });
+        loadSessionFactsMock.mockResolvedValueOnce([]);
+        detectNpcsInSceneMock.mockResolvedValueOnce([]);
+        findManyLocationLink.mockResolvedValueOnce(linkNorte);
+        findManyLocationVisit.mockResolvedValueOnce([]);
+        const app = await buildApp();
+        const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
+        expect(res.json().salidas[0].alcanzable).toBe(true);
+      });
+
+      it('jugador en el otro extremo del lienzo: alcanzable false', async () => {
+        findUniqueSave.mockResolvedValueOnce({ id: 's1', worldId: 'w1', zonaPosX: 775, zonaPosY: 575, currentLocation: currentLocationConNorte });
+        loadSessionFactsMock.mockResolvedValueOnce([]);
+        detectNpcsInSceneMock.mockResolvedValueOnce([]);
+        findManyLocationLink.mockResolvedValueOnce(linkNorte);
+        findManyLocationVisit.mockResolvedValueOnce([]);
+        const app = await buildApp();
+        const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
+        expect(res.json().salidas[0].alcanzable).toBe(false);
+      });
+
+      it('sin posición de jugador conocida (zonaPosX/Y null): alcanzable true, fallback permisivo', async () => {
+        findUniqueSave.mockResolvedValueOnce({ id: 's1', worldId: 'w1', zonaPosX: null, zonaPosY: null, currentLocation: currentLocationConNorte });
+        loadSessionFactsMock.mockResolvedValueOnce([]);
+        detectNpcsInSceneMock.mockResolvedValueOnce([]);
+        findManyLocationLink.mockResolvedValueOnce(linkNorte);
+        findManyLocationVisit.mockResolvedValueOnce([]);
+        const app = await buildApp();
+        const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
+        expect(res.json().salidas[0].alcanzable).toBe(true);
+      });
+    });
+
     it('una Location conectada sin coordenadas propias se excluye (falla cerrado, no inventa dirección)', async () => {
       findUniqueSave.mockResolvedValueOnce({
         id: 's1', worldId: 'w1', zonaPosX: null, zonaPosY: null,

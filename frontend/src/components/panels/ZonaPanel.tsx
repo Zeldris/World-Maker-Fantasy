@@ -515,12 +515,24 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                 </g>
               ))}
               {data.jugador && <JugadorMarker x={data.jugador.x} y={data.jugador.y} />}
-              {/* Iconos de salida de región (2026-09-17) — siempre clicables, incluso con
-                  `soloConsulta` (vista de MapaPanel): abrir el modal es puramente informativo,
-                  nunca dispara movimiento. `stopPropagation` para no disparar también un clic de
-                  movimiento hacia ese punto del lienzo. */}
+              {/* Iconos de salida de región (2026-09-17) — siempre VISIBLES en su posición real
+                  (dirección cardinal), incluso con `soloConsulta` (vista de MapaPanel). Umbral de
+                  proximidad (2026-09-20, petición explícita de Álvaro: "al estar a una celda si
+                  pulsas el icono saca el modal para poder darle a viajar") — el modal solo se abre
+                  si `alcanzable` (misma celda o adyacente a la posición real del jugador, calculado
+                  en el backend); lejos, el clic deja un aviso corto en vez de abrir nada, mismo
+                  mecanismo ya usado para colisión/movimiento. `stopPropagation` para no disparar
+                  también un clic de movimiento hacia ese punto del lienzo. */}
               {data.salidas.map((s) => (
-                <g key={s.locationId} onClick={(e) => { e.stopPropagation(); setSelectedSalida(s) }} className="cursor-pointer">
+                <g
+                  key={s.locationId}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (s.alcanzable) setSelectedSalida(s)
+                    else setMensajeMovimiento('Tienes que acercarte más a la salida para poder viajar.')
+                  }}
+                  className={s.alcanzable ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}
+                >
                   <SalidaMarker x={s.x} y={s.y} />
                   <title>{s.visitada ? s.nombre : 'Salida hacia un lugar desconocido'}</title>
                 </g>

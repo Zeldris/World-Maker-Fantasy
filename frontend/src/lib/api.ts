@@ -1152,6 +1152,11 @@ export interface ZonaSalidaInfo {
   description: string | null
   /// Igual que `description`: solo presente si `visitada`.
   imageUrl: string | null
+  /// Umbral de proximidad (2026-09-20, petición explícita de Álvaro: "al estar a una celda si
+  /// pulsas el icono saca el modal para poder darle a viajar") — mismo criterio que la colisión con
+  /// NPC/fauna/recursos: misma celda o cualquiera de las 8 vecinas de la posición real del jugador
+  /// (`zonaPosX/Y`). `true` sin posición de jugador conocida (fallback permisivo).
+  alcanzable: boolean
 }
 
 export interface ZonaResponse {

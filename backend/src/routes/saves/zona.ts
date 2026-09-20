@@ -65,6 +65,16 @@ export interface ZonaSalidaInfo {
   teaser: string | null;
   description: string | null;
   imageUrl: string | null;
+  /// Umbral de proximidad (2026-09-20, petición explícita de Álvaro: "la salida de una zona debe
+  /// estar representada en el mapa con un icono y al estar a una celda si pulsas el icono saca el
+  /// modal para poder darle a viajar") — antes el icono se podía clicar y "Viajar" desde CUALQUIER
+  /// punto del mapa, sin comparar nunca contra la posición real del jugador (`salidas` nunca se leía
+  /// en `POST /zona/mover`, el cruce real pasaba por un sistema de texto libre totalmente
+  /// desacoplado del movimiento por cuadrícula). Mismo criterio EXACTO que la colisión con NPC/
+  /// fauna/recursos (`celdaAdyacenteOMisma`) — misma celda o cualquiera de las 8 vecinas. `true` si
+  /// no hay posición de jugador conocida todavía (fallback permisivo aquí, a diferencia del resto
+  /// del motor: una partida sin `zonaPosX/Y` no debería quedar sin poder viajar nunca).
+  alcanzable: boolean;
 }
 
 /// Iconos de salida de región (2026-09-17, petición explícita de Álvaro: "cada salida debe estar
@@ -91,6 +101,7 @@ async function salidasDeRegionPara(
   saveId: string,
   worldId: string,
   location: { id: string; x: number | null; y: number | null },
+  jugador: { x: number; y: number } | null,
 ): Promise<ZonaSalidaInfo[]> {
   const links = await prisma.locationLink.findMany({
     where: { OR: [{ fromId: location.id }, { toId: location.id }] },
@@ -108,12 +119,14 @@ async function salidasDeRegionPara(
   });
   const visitadasIds = new Set(visitas.map((v) => v.locationId));
 
+  const celdaJugador = jugador ? celdaDePixel(jugador) : null;
   const salidas: ZonaSalidaInfo[] = [];
   for (const destino of conectadas) {
     if (destino.x == null || destino.y == null) continue; // sin coordenadas, no hay dirección real que calcular
     const direccion = cardinalDirectionBetween({ x: location.x, y: location.y }, { x: destino.x, y: destino.y });
     const punto = puntoDeEntradaParaDireccion(direccion);
     const visitada = visitadasIds.has(destino.id);
+    const alcanzable = celdaJugador ? celdaAdyacenteOMisma(celdaJugador, celdaDePixel(punto)) : true;
     salidas.push({
       locationId: destino.id,
       slug: destino.slug,
@@ -124,6 +137,7 @@ async function salidasDeRegionPara(
       teaser: destino.teaser,
       description: visitada ? destino.description : null,
       imageUrl: visitada ? zoneMapImageUrl(destino.slug) : null,
+      alcanzable,
     });
   }
   return salidas;
@@ -363,7 +377,7 @@ export async function zonaRoutes(app: FastifyInstance) {
 
     // Iconos de salida de región (2026-09-17) — calculado una vez, lo necesitan ambos `return` de
     // aquí en adelante (con o sin ZonePoint sembrado, una zona SIEMPRE puede tener salidas reales).
-    const salidas = await salidasDeRegionPara(save.id, save.worldId, save.currentLocation);
+    const salidas = await salidasDeRegionPara(save.id, save.worldId, save.currentLocation, jugador);
 
     if (zonePoints.length === 0) {
       // `disponible` mira `zonePointsActivos` (datos sembrados reales), no `zonePoints` (ya
