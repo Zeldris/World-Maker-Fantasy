@@ -673,5 +673,63 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
       const logEntry = await prisma.logEntry.findFirst({ where: { saveId }, orderBy: { createdAt: 'desc' } });
       expect(logEntry?.text).toContain('Agresor de Prueba (dynamicMode)');
     });
+
+    // Bug real jugando en vivo (2026-09-20, verificación en vivo tras implementar combateForzado:
+    // "Ese encuentro ya no está disponible aquí" al pulsar Combatir) — el body de `/interactuar` y
+    // `/responder` recibe el `targetName` que ya vio el frontend, que para un NPC de nombre propio
+    // (`kind: 'PRINCIPAL'`) TODAVÍA NO descubierto (`DiscoveredEntity`) es el nombre OCULTO genérico
+    // "Alguien" (`NOMBRE_OCULTO_GENERICO`, colisión de Zona) — nunca su nombre real. Usar ese nombre
+    // oculto como `action` para el match de alias de `detectNpcsInScene` no podía coincidir nunca,
+    // así que el NPC (aunque candidato plausible por ser PRINCIPAL) no pasaba el filtro de
+    // "mencionado" y el combate directo fallaba con 400 pese a la colisión real ya confirmada.
+    describe('NPC único (kind: PRINCIPAL) todavía no descubierto — nombre oculto no debe romper el combate directo', () => {
+      let principalId: string;
+
+      beforeAll(async () => {
+        const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+        const principal = await prisma.npc.create({
+          data: {
+            worldId: world.id,
+            kind: 'PRINCIPAL',
+            slug: 'test-dynamicmode-principal-oculto',
+            name: 'Verdadero Nombre de Prueba',
+            aliases: ['verdadero nombre de prueba'],
+            role: 'Jefe de prueba',
+            level: 1,
+            attributes: { fuerza: 8, destreza: 8, constitucion: 8, inteligencia: 4, voluntad: 4, carisma: 2, magia: 0 },
+            bio: 'x',
+            personality: 'x',
+            homeLocationSlug: null,
+            temperamento: 'AGRESIVO',
+          },
+        });
+        principalId = principal.id;
+      });
+
+      afterAll(async () => {
+        await prisma.npcState.deleteMany({ where: { saveId, npcId: principalId } });
+        await prisma.discoveredEntity.deleteMany({ where: { saveId, entityType: 'npc', entitySlug: 'test-dynamicmode-principal-oculto' } });
+        await prisma.npc.delete({ where: { id: principalId } });
+      });
+
+      it('quienInicia: "npc", targetName oculto ("Alguien") — igualmente abre combate real', async () => {
+        const app = await buildApp();
+        const res = await app.inject({
+          method: 'POST',
+          url: `/saves/${saveId}/modo-dinamico/interactuar`,
+          // Mismo shape exacto que manda el frontend cuando el NPC no está descubierto todavía —
+          // ver `NOMBRE_OCULTO_GENERICO`, dynamicMode.ts § servicio.
+          payload: { tipo: 'NPC', targetSlug: 'test-dynamicmode-principal-oculto', targetName: 'Alguien', quienInicia: 'npc', combateForzado: true },
+        });
+        expect(res.statusCode).toBe(200);
+        const body = JSON.parse(res.body);
+        expect(body.cierra).toBe(true);
+        // El shape del combate SÍ lleva el nombre REAL (nunca "Alguien") — es lo que ve CombatPanel.
+        expect(body.combate).toMatchObject({ npcs: [{ slug: 'test-dynamicmode-principal-oculto', name: 'Verdadero Nombre de Prueba', condicionFisica: 'ILESO' }] });
+
+        const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+        expect(saveAfter.pendingCombatNpcSlugs).toEqual(['test-dynamicmode-principal-oculto']);
+      });
+    });
   });
 });

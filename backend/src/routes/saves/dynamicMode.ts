@@ -105,21 +105,28 @@ async function persistirCierreNpcEnTransaccion(
 /// esperaba a que el jugador escribiera algo en su siguiente turno de texto libre y
 /// `shouldForceCombat` lo detectara, `turnResolution.ts`). Reutiliza `detectNpcsInScene` (mismo
 /// filtro real de presencia/momento del día/núcleo jugable que ya usa el resto del motor) en vez de
-/// reconstruir el shape de `combateIniciado` a mano — `action: targetName` garantiza el match por
-/// alias aunque no haya ningún sessionFact reciente que lo mencione (la colisión real en Zona ya es
-/// la señal determinista, no hace falta que el jugador lo haya "dicho" en texto). Escribe
-/// `Save.pendingCombatNpcSlugs` directo (mismo campo que lee `GameView.tsx`/`GET /saves/:id` para
-/// abrir CombatPanel), sin pasar por `CombatEncounter` (innecesario para un 1v1 simple, ver
-/// `cazar.ts` § caza en grupo para el patrón equivalente cuando sí hace falta).
+/// reconstruir el shape de `combateIniciado` a mano. Escribe `Save.pendingCombatNpcSlugs` directo
+/// (mismo campo que lee `GameView.tsx`/`GET /saves/:id` para abrir CombatPanel), sin pasar por
+/// `CombatEncounter` (innecesario para un 1v1 simple, ver `cazar.ts` § caza en grupo para el patrón
+/// equivalente cuando sí hace falta).
+///
+/// Bug real jugando en vivo (2026-09-20, verificación tras implementar esto: "Ese encuentro ya no
+/// está disponible aquí" al pulsar Combatir) — `targetName` que llega del body puede ser el nombre
+/// OCULTO genérico (`NOMBRE_OCULTO_GENERICO`, "Alguien") si el NPC todavía no está `DiscoveredEntity`
+/// (ej. el Orco Enfurecido, siempre así la primera vez que se le colisiona): usarlo como `action`
+/// para el match de alias de `detectNpcsInScene` nunca podía coincidir con sus alias reales, así que
+/// el NPC — pese a ser `kind: 'PRINCIPAL'` y por tanto ya candidato plausible — nunca pasaba el
+/// filtro de "mencionado". Se resuelve el nombre REAL por `targetSlug` antes de construir `action`.
 async function abrirCombateForzadoDesdeInteractuar(
   save: { id: string; worldId: string; currentLocationId: string | null },
   targetSlug: string,
   targetName: string,
   fictionalMinutes: number,
 ) {
+  const npcCatalogo = await prisma.npc.findFirst({ where: { worldId: save.worldId, slug: targetSlug }, select: { name: true } });
   const sessionFacts = await loadSessionFacts(save.id);
   const npcsInScene = await detectNpcsInScene({
-    action: targetName,
+    action: npcCatalogo?.name ?? targetName,
     worldId: save.worldId,
     sessionFacts,
     saveId: save.id,
