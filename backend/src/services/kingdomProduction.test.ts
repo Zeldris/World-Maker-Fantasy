@@ -3,11 +3,13 @@ import {
   nivelOficioDeTrabajador,
   trabajadorPuedeProducir,
   almacenAlTope,
+  tieneIngredientesEnAlmacen,
   tickOrdenesProduccion,
   type TrabajadorReino,
   type OrdenProduccionInput,
 } from './kingdomProduction.js';
 import type { CraftingRecipe } from './crafting.js';
+import type { InventoryRowLike, CatalogLookup } from './ingredients.js';
 
 function recipe(overrides: Partial<CraftingRecipe> = {}): CraftingRecipe {
   return {
@@ -39,6 +41,21 @@ function orden(overrides: Partial<OrdenProduccionInput> = {}): OrdenProduccionIn
 
 function trabajador(overrides: Partial<TrabajadorReino> = {}): TrabajadorReino {
   return { companionId: 'comp-1', xpPorOficio: {}, ...overrides };
+}
+
+/// Atajo para los tests que no ejercitan materia prima (almacén de ingredientes vacío, sin
+/// catálogo) — la mayoría de los casos de este archivo, mismo criterio que `DEFAULT_KINGDOM_STATS`
+/// en kingdomTick.test.ts.
+function tick(
+  ordenes: OrdenProduccionInput[],
+  trabajadores: TrabajadorReino[],
+  recipesByKey: Map<string, CraftingRecipe>,
+  cantidadAlmacenPorSlug = new Map<string, number>(),
+  limitePorSlug = new Map<string, number | null>(),
+  almacenRows: InventoryRowLike[] = [],
+  catalogBySlug = new Map<string, CatalogLookup>(),
+) {
+  return tickOrdenesProduccion(ordenes, trabajadores, recipesByKey, cantidadAlmacenPorSlug, limitePorSlug, almacenRows, catalogBySlug);
 }
 
 describe('nivelOficioDeTrabajador', () => {
@@ -89,36 +106,58 @@ describe('almacenAlTope', () => {
   });
 });
 
+describe('tieneIngredientesEnAlmacen', () => {
+  const catalogBySlug = new Map<string, CatalogLookup>([['mineral-hierro', { tipo: 'MATERIAL', category: 'mineral' }]]);
+
+  it('receta sin ingredientes (recolección pura) siempre cumple', () => {
+    expect(tieneIngredientesEnAlmacen(recipe({ ingredients: [] }), [], catalogBySlug)).toBe(true);
+  });
+
+  it('receta con ingredientes y almacén vacío no cumple', () => {
+    const receta = recipe({ ingredients: [{ match: { kind: 'exact', catalogSlug: 'mineral-hierro' }, cantidad: 2, label: 'mineral de hierro' }] });
+    expect(tieneIngredientesEnAlmacen(receta, [], catalogBySlug)).toBe(false);
+  });
+
+  it('receta con ingredientes y almacén con suficiente cantidad cumple', () => {
+    const receta = recipe({ ingredients: [{ match: { kind: 'exact', catalogSlug: 'mineral-hierro' }, cantidad: 2, label: 'mineral de hierro' }] });
+    const rows: InventoryRowLike[] = [
+      { id: '1', name: 'Mineral de hierro', catalogSlug: 'mineral-hierro' },
+      { id: '2', name: 'Mineral de hierro', catalogSlug: 'mineral-hierro' },
+    ];
+    expect(tieneIngredientesEnAlmacen(receta, rows, catalogBySlug)).toBe(true);
+  });
+});
+
 describe('tickOrdenesProduccion', () => {
   const recetaSimple = recipe({ key: 'talarMadera', resultCatalogSlug: 'madera-tallada', resultCantidad: 2 });
   const recipesByKey = new Map([['talarMadera', recetaSimple]]);
 
-  it('un trabajador libre produce la orden activa', () => {
-    const resultados = tickOrdenesProduccion([orden()], [trabajador()], recipesByKey, new Map(), new Map());
+  it('un trabajador libre produce la orden activa (recolección, sin ingredientes)', () => {
+    const resultados = tick([orden()], [trabajador()], recipesByKey);
     expect(resultados).toEqual([
-      { ordenId: 'orden-1', resultado: 'PRODUCIDA', companionId: 'comp-1', resultCatalogSlug: 'madera-tallada', resultCantidad: 2 },
+      { ordenId: 'orden-1', resultado: 'PRODUCIDA', companionId: 'comp-1', resultCatalogSlug: 'madera-tallada', resultCantidad: 2, ingredientesConsumidos: [] },
     ]);
   });
 
   it('sin trabajadores asignados, la orden queda SIN_TRABAJADOR_CON_NIVEL', () => {
-    const resultados = tickOrdenesProduccion([orden()], [], recipesByKey, new Map(), new Map());
+    const resultados = tick([orden()], [], recipesByKey);
     expect(resultados).toEqual([{ ordenId: 'orden-1', resultado: 'SIN_TRABAJADOR_CON_NIVEL' }]);
   });
 
   it('recipeKey desconocida (huérfana) no rompe el tick, se reporta y se sigue', () => {
-    const resultados = tickOrdenesProduccion([orden({ recipeKey: 'noExiste' })], [trabajador()], recipesByKey, new Map(), new Map());
+    const resultados = tick([orden({ recipeKey: 'noExiste' })], [trabajador()], recipesByKey);
     expect(resultados).toEqual([{ ordenId: 'orden-1', resultado: 'RECETA_DESCONOCIDA' }]);
   });
 
   it('orden inactiva no se procesa en absoluto', () => {
-    const resultados = tickOrdenesProduccion([orden({ activa: false })], [trabajador()], recipesByKey, new Map(), new Map());
+    const resultados = tick([orden({ activa: false })], [trabajador()], recipesByKey);
     expect(resultados).toEqual([]);
   });
 
   it('almacén ya al tope del recurso: la orden se salta SIN gastar trabajador (pieza que cierra el sistema)', () => {
     const cantidadAlmacen = new Map([['madera-tallada', 50]]);
     const limites = new Map<string, number | null>([['madera-tallada', 50]]);
-    const resultados = tickOrdenesProduccion([orden()], [trabajador()], recipesByKey, cantidadAlmacen, limites);
+    const resultados = tick([orden()], [trabajador()], recipesByKey, cantidadAlmacen, limites);
     expect(resultados).toEqual([{ ordenId: 'orden-1', resultado: 'ALMACEN_LLENO' }]);
   });
 
@@ -131,10 +170,10 @@ describe('tickOrdenesProduccion', () => {
     const ordenes = [orden({ id: 'o-madera', prioridad: 0 }), orden({ id: 'o-piedra', recipeKey: 'recolectarPiedra', prioridad: 1 })];
     const cantidadAlmacen = new Map([['madera-tallada', 50]]);
     const limites = new Map<string, number | null>([['madera-tallada', 50]]);
-    const resultados = tickOrdenesProduccion(ordenes, [trabajador()], recipesByKeyDos, cantidadAlmacen, limites);
+    const resultados = tick(ordenes, [trabajador()], recipesByKeyDos, cantidadAlmacen, limites);
     expect(resultados).toEqual([
       { ordenId: 'o-madera', resultado: 'ALMACEN_LLENO' },
-      { ordenId: 'o-piedra', resultado: 'PRODUCIDA', companionId: 'comp-1', resultCatalogSlug: 'piedra-tallada', resultCantidad: 1 },
+      { ordenId: 'o-piedra', resultado: 'PRODUCIDA', companionId: 'comp-1', resultCatalogSlug: 'piedra-tallada', resultCantidad: 1, ingredientesConsumidos: [] },
     ]);
   });
 
@@ -145,9 +184,9 @@ describe('tickOrdenesProduccion', () => {
       ['recolectarPiedra', recetaB],
     ]);
     const ordenes = [orden({ id: 'o-baja', recipeKey: 'talarMadera', prioridad: 9 }), orden({ id: 'o-alta', recipeKey: 'recolectarPiedra', prioridad: 0 })];
-    const resultados = tickOrdenesProduccion(ordenes, [trabajador()], recipesByKeyDos, new Map(), new Map());
+    const resultados = tick(ordenes, [trabajador()], recipesByKeyDos);
     expect(resultados).toEqual([
-      { ordenId: 'o-alta', resultado: 'PRODUCIDA', companionId: 'comp-1', resultCatalogSlug: 'piedra-tallada', resultCantidad: 1 },
+      { ordenId: 'o-alta', resultado: 'PRODUCIDA', companionId: 'comp-1', resultCatalogSlug: 'piedra-tallada', resultCantidad: 1, ingredientesConsumidos: [] },
       { ordenId: 'o-baja', resultado: 'SIN_TRABAJADOR_CON_NIVEL' },
     ]);
   });
@@ -159,26 +198,20 @@ describe('tickOrdenesProduccion', () => {
       ['recolectarPiedra', recetaB],
     ]);
     const ordenes = [orden({ id: 'o-1', recipeKey: 'talarMadera', prioridad: 0 }), orden({ id: 'o-2', recipeKey: 'recolectarPiedra', prioridad: 1 })];
-    const resultados = tickOrdenesProduccion(ordenes, [trabajador()], recipesByKeyDos, new Map(), new Map());
+    const resultados = tick(ordenes, [trabajador()], recipesByKeyDos);
     expect(resultados[0].resultado).toBe('PRODUCIDA');
     expect(resultados[1].resultado).toBe('SIN_TRABAJADOR_CON_NIVEL');
   });
 
   it('orden única que ya alcanzó su límite se marca ORDEN_COMPLETADA sin gastar trabajador', () => {
-    const resultados = tickOrdenesProduccion(
-      [orden({ modo: 'unico', limite: 5, cantidadProducidaAcumulada: 5 })],
-      [trabajador()],
-      recipesByKey,
-      new Map(),
-      new Map(),
-    );
+    const resultados = tick([orden({ modo: 'unico', limite: 5, cantidadProducidaAcumulada: 5 })], [trabajador()], recipesByKey);
     expect(resultados).toEqual([{ ordenId: 'orden-1', resultado: 'ORDEN_COMPLETADA' }]);
   });
 
   it('trabajador sin nivel de oficio suficiente no produce, la orden queda SIN_TRABAJADOR_CON_NIVEL', () => {
     const recetaExigente = recipe({ key: 'lingoteYerreo', oficio: 'herrero-orco-llanuras', tier: 5, resultCatalogSlug: 'lingote-yerreo' });
     const recipesByKeyExigente = new Map([['lingoteYerreo', recetaExigente]]);
-    const resultados = tickOrdenesProduccion([orden({ recipeKey: 'lingoteYerreo' })], [trabajador()], recipesByKeyExigente, new Map(), new Map());
+    const resultados = tick([orden({ recipeKey: 'lingoteYerreo' })], [trabajador()], recipesByKeyExigente);
     expect(resultados).toEqual([{ ordenId: 'orden-1', resultado: 'SIN_TRABAJADOR_CON_NIVEL' }]);
   });
 
@@ -187,9 +220,55 @@ describe('tickOrdenesProduccion', () => {
     const recipesByKeyExigente = new Map([['lingoteYerreo', recetaExigente]]);
     const novato = trabajador({ companionId: 'novato' });
     const experto = trabajador({ companionId: 'experto', xpPorOficio: { 'herrero-orco-llanuras': 8000 } });
-    const resultados = tickOrdenesProduccion([orden({ recipeKey: 'lingoteYerreo' })], [novato, experto], recipesByKeyExigente, new Map(), new Map());
+    const resultados = tick([orden({ recipeKey: 'lingoteYerreo' })], [novato, experto], recipesByKeyExigente);
     expect(resultados).toEqual([
-      { ordenId: 'orden-1', resultado: 'PRODUCIDA', companionId: 'experto', resultCatalogSlug: 'lingote-yerreo', resultCantidad: 1 },
+      { ordenId: 'orden-1', resultado: 'PRODUCIDA', companionId: 'experto', resultCatalogSlug: 'lingote-yerreo', resultCantidad: 1, ingredientesConsumidos: [] },
     ]);
+  });
+
+  describe('con ingredientes reales (crafteo, no solo recolección)', () => {
+    const catalogBySlug = new Map<string, CatalogLookup>([['mineral-hierro', { tipo: 'MATERIAL', category: 'mineral' }]]);
+    const recetaLingote = recipe({
+      key: 'lingoteHierro',
+      ingredients: [{ match: { kind: 'exact', catalogSlug: 'mineral-hierro' }, cantidad: 2, label: 'mineral de hierro' }],
+      resultCatalogSlug: 'lingote-hierro',
+      resultCantidad: 1,
+    });
+    const recipesByKeyLingote = new Map([['lingoteHierro', recetaLingote]]);
+
+    it('sin materia prima en el Almacén, la orden queda SIN_MATERIA_PRIMA sin gastar trabajador', () => {
+      const resultados = tick([orden({ recipeKey: 'lingoteHierro' })], [trabajador()], recipesByKeyLingote, new Map(), new Map(), [], catalogBySlug);
+      expect(resultados).toEqual([{ ordenId: 'orden-1', resultado: 'SIN_MATERIA_PRIMA' }]);
+    });
+
+    it('con materia prima suficiente, produce y consume las filas del Almacén', () => {
+      const rows: InventoryRowLike[] = [
+        { id: '1', name: 'Mineral de hierro', catalogSlug: 'mineral-hierro' },
+        { id: '2', name: 'Mineral de hierro', catalogSlug: 'mineral-hierro' },
+      ];
+      const resultados = tick([orden({ recipeKey: 'lingoteHierro' })], [trabajador()], recipesByKeyLingote, new Map(), new Map(), rows, catalogBySlug);
+      expect(resultados).toEqual([
+        {
+          ordenId: 'orden-1',
+          resultado: 'PRODUCIDA',
+          companionId: 'comp-1',
+          resultCatalogSlug: 'lingote-hierro',
+          resultCantidad: 1,
+          ingredientesConsumidos: recetaLingote.ingredients,
+        },
+      ]);
+    });
+
+    it('dos órdenes que compiten por la misma materia prima: la segunda se queda sin ingredientes tras la primera', () => {
+      const rows: InventoryRowLike[] = [
+        { id: '1', name: 'Mineral de hierro', catalogSlug: 'mineral-hierro' },
+        { id: '2', name: 'Mineral de hierro', catalogSlug: 'mineral-hierro' },
+      ];
+      const otroTrabajador = trabajador({ companionId: 'comp-2' });
+      const ordenes = [orden({ id: 'o-1', recipeKey: 'lingoteHierro', prioridad: 0 }), orden({ id: 'o-2', recipeKey: 'lingoteHierro', prioridad: 1 })];
+      const resultados = tick(ordenes, [trabajador(), otroTrabajador], recipesByKeyLingote, new Map(), new Map(), rows, catalogBySlug);
+      expect(resultados[0].resultado).toBe('PRODUCIDA');
+      expect(resultados[1]).toEqual({ ordenId: 'o-2', resultado: 'SIN_MATERIA_PRIMA' });
+    });
   });
 });

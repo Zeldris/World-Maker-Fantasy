@@ -601,16 +601,34 @@ unitarios nuevos en verde, `tsc -b` limpio, suite completa del backend 2615/2615
 (verificado en aislamiento — la corrida en paralelo con el resto de la suite tuvo 16 fallos de
 contención/timing conocidos en `turn.integration.test.ts`, no relacionados con este cambio).
 
-**Pendiente real, no de diseño sino de la siguiente pieza de código**: enganchar
-`tickOrdenesProduccion` dentro de `turnResolution.ts` (mismo bloque `if (diasCruzados > 0)` que ya
-llama a `tickKingdom`, `turnResolution.ts:5512-5522`) — leer `Building`/`OrdenProduccion`/
-`Companion` reales de Prisma, resolver `AlmacenItem`/`AlmacenLimite` reales, aplicar el resultado
-(crear/actualizar `AlmacenItem`, subir XP de `ProfessionProgress` del trabajador que produjo,
-dejar constancia visible de `SIN_TRABAJADOR_CON_NIVEL`/`ALMACEN_LLENO` en el panel de Reino). El
-motor puro ya está listo para ese enganche; falta el caller real, el CRUD de `OrdenProduccion`
-desde el panel (asignar receta+prioridad+modo+límite a un Building) y decidir qué recetas de las
-52 sirven tal cual como recolección de Reino. Después de esto: sigue el front (qué refactorizar,
-qué crear nuevo, diseño del panel de Reino).
+**Enganche real cerrado (2026-09-21, misma sesión, continuación)**: `tickOrdenesProduccion` ya
+corre dentro de `turnResolution.ts`, en el mismo tramo `if (diasCruzados > 0)` que `tickKingdom` —
+pero como bloque HERMANO de `if (kingdomStats)`, no anidado dentro (bug real encontrado escribiendo
+el test de integración: un `Building` con trabajadores puede existir sin que el Reino tenga fila
+`KingdomStats` todavía, son entidades separadas en el schema; anidado dentro, el tick de producción
+nunca corría para una partida sin Territory fundado). Lee `Building`/`OrdenProduccion`/`Companion`/
+`ProfessionProgress.companionId`/`AlmacenItem`/`AlmacenLimite`/`ItemCatalog` reales de Prisma,
+aplica el resultado (consume ingredientes reales del Almacén con el mismo criterio FIFO simple del
+motor puro, deposita el resultado igual que el depósito manual del jugador, sube XP de oficio del
+trabajador, desactiva solas las órdenes 'unico' que completan su límite EN el mismo tick que las
+completa, no solo en el siguiente). Sin `LogEntry` de narración para los resultados que no
+producen (`SIN_TRABAJADOR_CON_NIVEL`/`SIN_MATERIA_PRIMA`/`ALMACEN_LLENO`/`RECETA_DESCONOCIDA`) —
+decisión consciente: es información de gestión del panel, no un evento de ficción.
+
+6 tests de integración nuevos contra Postgres real (`turn.integration.test.ts`, describe
+`OrdenProduccion: tick real de producción de Reino`) cubren: producción con materia prima real,
+sin materia prima, gate de nivel de oficio con tier alto (el jugador con nivel 9 del mismo oficio
+NO cuenta, confirmado en vivo), modo único desactivándose solo, tope de Almacén saltando la orden
+sin gastar trabajador, y el trabajador subiendo su propio `ProfessionProgress.companionId` sin
+tocar el del jugador. Suite completa 2627/2627 en verde (aislado — 2 fallos en la corrida en
+paralelo con el resto de la suite fueron contención/timing conocidos, reproducidos limpios
+ejecutando esos 2 archivos juntos en aislamiento).
+
+**Pendiente real, ahora sí de front**: CRUD de `OrdenProduccion` desde el panel (asignar
+receta+prioridad+modo+límite a un `Building`, asignar `Companion.buildingId`), UI para
+`AlmacenLimite`, y decidir qué recetas de las 52 sirven tal cual como recolección de Reino (ninguna
+tiene hoy `ingredients: []`). Siguiente paso: front — qué refactorizar, qué crear nuevo, diseño del
+panel de Reino.
 
 ### 4.5 Expediciones de recolección/exploración de facción
 

@@ -4,6 +4,7 @@ import { retrieveLore, formatLoreForPrompt, isWeaklyGrounded } from './retrieval
 import { xpForRollSuccess, xpForHitos, labelForHitos, applyXp, type ProgressionResult, type HitoTipo } from './progression.js';
 import { alivioForLevel, xpForCraftSuccess, professionLevelForXp } from './professionProgress.js';
 import { tickKingdom, daysCrossed, DEFAULT_KINGDOM_STATS, territoryPopulationDelta, DIAS_PARA_CONSOLIDAR, DIAS_PARA_REBELION } from './kingdomTick.js';
+import { tickOrdenesProduccion, type TrabajadorReino, type OrdenProduccionInput } from './kingdomProduction.js';
 import { assertExactlyOneOwner, ownerKeyFor } from './reinoOwner.js';
 import { recordFactionEvent } from './factionRelations.js';
 import { slugify } from '../lib/slugify.js';
@@ -5551,6 +5552,140 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
               if (nuevaPoblacion !== t.population) {
                 await tx.territory.update({ where: { id: t.id }, data: { population: nuevaPoblacion } });
               }
+            }
+          }
+        }
+      }
+
+      // Panel de Reino real (docs/rpgtarkor/mundo-vivo-x4.md § 4.4-ter, 2026-09-21) — HERMANO de
+      // `if (kingdomStats)`, no anidado dentro: un `Building` con trabajadores puede existir sin
+      // que el Reino tenga fila `KingdomStats` todavía (son entidades separadas en el schema, un
+      // campamento libre no exige haber fundado el primer Territory) — bug real encontrado
+      // escribiendo el test de integración, el tick de producción nunca corría en ese caso. Mismo
+      // día de ficción cruzado que el resto de este bloque, UN tick por Building con OrdenProduccion
+      // activa (no por día individual, a diferencia de tickKingdom: una orden ya representa "lo
+      // que se produce ese día", repetir `diasCruzados` veces exigiría re-leer Almacén entre cada
+      // pasada — se deja para cuando haga falta jugando, mismo criterio de "primera pasada
+      // ajustable" que el resto de constantes de kingdomTick.ts).
+      const buildingsConOrdenes = await tx.building.findMany({
+        where: { saveId, status: 'ACTIVO', ordenesProduccion: { some: { activa: true } } },
+        include: { ordenesProduccion: { where: { activa: true } }, trabajadores: { where: { rolReino: { not: null } } } },
+      });
+      if (buildingsConOrdenes.length > 0) {
+        const recipesByKey = new Map(CRAFTING_RECIPES.map((r) => [r.key, r]));
+        const [almacenRows, almacenLimites, professionRows] = await Promise.all([
+          tx.almacenItem.findMany({ where: { saveId } }),
+          tx.almacenLimite.findMany({ where: { saveId } }),
+          tx.professionProgress.findMany({ where: { companionId: { in: buildingsConOrdenes.flatMap((b) => b.trabajadores.map((t) => t.id)) } } }),
+        ]);
+        const catalogSlugs = [...new Set(almacenRows.map((r) => r.catalogSlug).filter((s): s is string => s !== null))];
+        const catalogRows = catalogSlugs.length > 0 ? await tx.itemCatalog.findMany({ where: { worldId, slug: { in: catalogSlugs } }, select: { slug: true, tipo: true, category: true } }) : [];
+        const catalogBySlug = new Map(catalogRows.map((c) => [c.slug, { tipo: c.tipo, category: c.category }]));
+        const limitePorSlug = new Map(almacenLimites.map((l) => [l.catalogSlug, l.limite]));
+        const cantidadAlmacenPorSlug = new Map<string, number>();
+        for (const row of almacenRows) {
+          if (!row.catalogSlug) continue;
+          cantidadAlmacenPorSlug.set(row.catalogSlug, (cantidadAlmacenPorSlug.get(row.catalogSlug) ?? 0) + 1);
+        }
+        const xpByCompanion = new Map<string, Record<string, number>>();
+        for (const p of professionRows) {
+          if (!p.companionId) continue;
+          const entry = xpByCompanion.get(p.companionId) ?? {};
+          entry[p.professionId] = p.xp;
+          xpByCompanion.set(p.companionId, entry);
+        }
+        let almacenRowsRestantes = almacenRows.map((r) => ({ id: r.id, name: r.name, catalogSlug: r.catalogSlug }));
+
+        for (const building of buildingsConOrdenes) {
+          const trabajadores: TrabajadorReino[] = building.trabajadores.map((t) => ({ companionId: t.id, xpPorOficio: xpByCompanion.get(t.id) ?? {} }));
+          const ordenesInput: OrdenProduccionInput[] = building.ordenesProduccion.map((o) => ({
+            id: o.id,
+            recipeKey: o.recipeKey,
+            modo: o.modo as 'unico' | 'reponer',
+            limite: o.limite,
+            prioridad: o.prioridad,
+            cantidadProducidaAcumulada: o.cantidadProducidaAcumulada,
+            activa: o.activa,
+          }));
+          const resultados = tickOrdenesProduccion(ordenesInput, trabajadores, recipesByKey, cantidadAlmacenPorSlug, limitePorSlug, almacenRowsRestantes, catalogBySlug);
+
+          for (const resultado of resultados) {
+            if (resultado.resultado !== 'PRODUCIDA') {
+              if (resultado.resultado === 'ORDEN_COMPLETADA') {
+                await tx.ordenProduccion.update({ where: { id: resultado.ordenId }, data: { activa: false } });
+              }
+              // SIN_TRABAJADOR_CON_NIVEL/SIN_MATERIA_PRIMA/ALMACEN_LLENO/RECETA_DESCONOCIDA: sin
+              // escritura — es información de gestión del panel de Reino (se lee en vivo desde
+              // OrdenProduccion + el estado real de Almacén/trabajadores), no un LogEntry de
+              // narración (mismo criterio que el resto de nudges deterministas de este archivo:
+              // el jugador ve el resultado en el panel, no en el diario de ficción).
+              continue;
+            }
+            const recipe = recipesByKey.get(ordenesInput.find((o) => o.id === resultado.ordenId)!.recipeKey)!;
+            // Consumir ingredientes reales de AlmacenItem — mismo criterio FIFO simple del motor
+            // puro (1 fila = 1 unidad, sin fraccionar). Se borran las primeras filas que matcheen
+            // cada ingrediente entre las que aún no se consumieron en este mismo tick.
+            for (const ing of resultado.ingredientesConsumidos) {
+              let restante = ing.cantidad;
+              const idsABorrar: string[] = [];
+              for (const row of almacenRowsRestantes) {
+                if (restante <= 0) break;
+                const matchExact = ing.match.kind === 'exact' && row.catalogSlug === ing.match.catalogSlug;
+                const matchCategory = ing.match.kind === 'category' && catalogBySlug.get(row.catalogSlug ?? '')?.category === ing.match.category;
+                if (matchExact || matchCategory) {
+                  idsABorrar.push(row.id);
+                  restante -= 1;
+                }
+              }
+              if (idsABorrar.length > 0) {
+                await tx.almacenItem.deleteMany({ where: { id: { in: idsABorrar } } });
+                almacenRowsRestantes = almacenRowsRestantes.filter((r) => !idsABorrar.includes(r.id));
+              }
+            }
+            // Depositar el resultado — mismo shape que el depósito manual del jugador
+            // (POST /saves/:id/almacen/depositar/:itemId, companeros.ts): 1 fila = 1 unidad, sin
+            // campo de cantidad, `resultCantidad` filas repetidas.
+            if (resultado.resultCatalogSlug) {
+              await tx.almacenItem.createMany({
+                data: Array.from({ length: resultado.resultCantidad }, () => ({
+                  saveId,
+                  name: recipe.resultName,
+                  description: recipe.resultDescription,
+                  catalogSlug: recipe.resultCatalogSlug ?? null,
+                  statBonuses: recipe.statBonuses ?? undefined,
+                })),
+              });
+            }
+            const ordenOriginal = ordenesInput.find((o) => o.id === resultado.ordenId)!;
+            const nuevaCantidadAcumulada = ordenOriginal.cantidadProducidaAcumulada + resultado.resultCantidad;
+            // 'unico' que YA alcanza su límite con esta misma producción se desactiva en el acto
+            // (no hace falta esperar al siguiente tick para que el motor puro devuelva
+            // ORDEN_COMPLETADA — ese caso cubre la carrera de un tick futuro que la encuentra ya
+            // completa, este cubre el propio tick que la completa).
+            const seCompletaAhora = ordenOriginal.modo === 'unico' && ordenOriginal.limite != null && nuevaCantidadAcumulada >= ordenOriginal.limite;
+            await tx.ordenProduccion.update({
+              where: { id: resultado.ordenId },
+              data: { cantidadProducidaAcumulada: { increment: resultado.resultCantidad }, ...(seCompletaAhora ? { activa: false } : {}) },
+            });
+            // XP de oficio del trabajador que produjo — mismo camino de código que el jugador
+            // (awardProfessionXp, más abajo en este archivo), solo que aquí escribe en
+            // ProfessionProgress.companionId en vez de saveId. `xpByCompanion` se actualiza en
+            // memoria tras cada producción (aunque hoy un Companion no puede trabajar en dos
+            // Buildings ni producir dos veces en el mismo tick, por diseño de `buildingId` único
+            // + "una asignación por trabajador por tick" del motor puro) para no depender de esa
+            // garantía implícita si el reparto cambia en el futuro.
+            if (recipe.oficio) {
+              const xpDelta = xpForCraftSuccess(recipe.tier);
+              const xpAnterior = xpByCompanion.get(resultado.companionId)?.[recipe.oficio] ?? 0;
+              const xpNueva = xpAnterior + xpDelta;
+              await tx.professionProgress.upsert({
+                where: { companionId_professionId: { companionId: resultado.companionId, professionId: recipe.oficio } },
+                create: { companionId: resultado.companionId, professionId: recipe.oficio, nivel: professionLevelForXp(xpNueva), xp: xpNueva },
+                update: { xp: { increment: xpDelta }, nivel: professionLevelForXp(xpNueva) },
+              });
+              const entry = xpByCompanion.get(resultado.companionId) ?? {};
+              entry[recipe.oficio] = xpNueva;
+              xpByCompanion.set(resultado.companionId, entry);
             }
           }
         }

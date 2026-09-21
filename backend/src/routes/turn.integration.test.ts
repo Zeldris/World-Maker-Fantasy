@@ -2902,6 +2902,163 @@ describe('Territory.control/population: felicidad sostenida consolida o rebela (
   }, 20_000);
 });
 
+// Panel de Reino real (docs/rpgtarkor/mundo-vivo-x4.md § 4.4-ter, 2026-09-21) — lo que se prueba
+// aquí es el ENGANCHE real dentro de turnResolution.ts (lectura/escritura Prisma real, contra
+// Postgres real), no el propio motor puro (eso ya lo cubre kingdomProduction.test.ts a fondo).
+// Mismo patrón que el describe de arriba: Building/Companion/OrdenProduccion sembrados directo por
+// Prisma, un turno pasivo con salto de 7 días de golpe.
+describe('OrdenProduccion: tick real de producción de Reino (§ 4.4-ter, 2026-09-21)', () => {
+  let saveId: string;
+  let buildingId: string;
+  let companionId: string;
+
+  async function setUp() {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba OrdenProduccion',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS_CARISMATICO,
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    const building = await prisma.building.create({
+      data: { saveId, name: 'Choza de prueba', kind: 'choza', description: 'x', status: 'ACTIVO' },
+    });
+    buildingId = building.id;
+    const companion = await prisma.companion.create({
+      data: { saveId, name: 'Trabajador de prueba', role: 'trabajador', notes: 'x', rolReino: 'trabajador', buildingId },
+    });
+    companionId = companion.id;
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'voluntad', dificultad: 15, razon: 'x', banda: 'larga', duracionEstimadaMinutos: 7 * 1440 + 60,
+    });
+  }
+
+  afterEach(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  async function doPassiveTurn(action: string) {
+    const app = await buildApp();
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
+    const { classification, roll } = classifyRes.json();
+    return app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll, enCombate: false } });
+  }
+
+  it('con materia prima en el Almacén, un trabajador sin oficio produce una receta sin oficio (smokeMeat)', async () => {
+    await setUp();
+    await prisma.almacenItem.create({ data: { saveId, name: 'Ración de carne fresca', description: 'x', catalogSlug: 'racion-carne' } });
+    await prisma.ordenProduccion.create({ data: { buildingId, recipeKey: 'smokeMeat', modo: 'reponer', prioridad: 5 } });
+    narrateAction.mockClear();
+
+    await doPassiveTurn('Espero aquí varios días, dejando pasar el tiempo tranquilamente.');
+
+    const almacen = await prisma.almacenItem.findMany({ where: { saveId } });
+    expect(almacen).toHaveLength(1);
+    expect(almacen[0].catalogSlug).toBe('racion-carne-ahumada'); // el crudo se consumió, el resultado ocupó su lugar
+
+    const orden = await prisma.ordenProduccion.findFirstOrThrow({ where: { buildingId, recipeKey: 'smokeMeat' } });
+    expect(orden.cantidadProducidaAcumulada).toBe(1);
+  }, 20_000);
+
+  it('sin materia prima en el Almacén, la orden no produce nada (Almacén se queda vacío)', async () => {
+    await setUp();
+    await prisma.ordenProduccion.create({ data: { buildingId, recipeKey: 'smokeMeat', modo: 'reponer', prioridad: 5 } });
+    narrateAction.mockClear();
+
+    await doPassiveTurn('Espero aquí varios días, dejando pasar el tiempo tranquilamente.');
+
+    expect(await prisma.almacenItem.count({ where: { saveId } })).toBe(0);
+    const orden = await prisma.ordenProduccion.findFirstOrThrow({ where: { buildingId, recipeKey: 'smokeMeat' } });
+    expect(orden.cantidadProducidaAcumulada).toBe(0);
+  }, 20_000);
+
+  it('receta con oficio de tier alto: sin ningún trabajador con nivel suficiente, no produce (decisión explícita: el jugador no cuenta)', async () => {
+    await setUp();
+    // coraceloMace es tier 3 (herrero-orco-llanuras) — tier 1 (boiledLichenWater) lo cubre
+    // cualquier trabajador de nivel 1 por defecto sin ayuda de oficio real, no sirve para probar
+    // el gate. Necesita tier > 1 para que "nivel 1 sin fila propia" falle de verdad.
+    await prisma.almacenItem.create({ data: { saveId, name: 'Cola de Coracelo', description: 'x', catalogSlug: 'cola-coracelo' } });
+    await prisma.ordenProduccion.create({ data: { buildingId, recipeKey: 'coraceloMace', modo: 'reponer', prioridad: 5 } });
+    // El JUGADOR sí tiene nivel alto de ese oficio — no debe importar, el trabajador de Reino es
+    // otro Companion sin ninguna fila de ProfessionProgress propia (nivel 1 por defecto).
+    await prisma.professionProgress.create({ data: { saveId, professionId: 'herrero-orco-llanuras', nivel: 9, xp: 8000 } });
+    narrateAction.mockClear();
+
+    await doPassiveTurn('Espero aquí varios días, dejando pasar el tiempo tranquilamente.');
+
+    expect(await prisma.almacenItem.count({ where: { saveId, catalogSlug: 'maza-coracelo' } })).toBe(0);
+    const orden = await prisma.ordenProduccion.findFirstOrThrow({ where: { buildingId, recipeKey: 'coraceloMace' } });
+    expect(orden.cantidadProducidaAcumulada).toBe(0);
+  }, 20_000);
+
+  it('orden en modo "unico" con límite alcanzado se desactiva sola tras producir', async () => {
+    await setUp();
+    await prisma.almacenItem.createMany({
+      data: [
+        { saveId, name: 'Ración de carne fresca', description: 'x', catalogSlug: 'racion-carne' },
+        { saveId, name: 'Ración de carne fresca', description: 'x', catalogSlug: 'racion-carne' },
+      ],
+    });
+    await prisma.ordenProduccion.create({ data: { buildingId, recipeKey: 'smokeMeat', modo: 'unico', limite: 1, prioridad: 5 } });
+    narrateAction.mockClear();
+
+    await doPassiveTurn('Espero aquí varios días, dejando pasar el tiempo tranquilamente.');
+
+    const orden = await prisma.ordenProduccion.findFirstOrThrow({ where: { buildingId, recipeKey: 'smokeMeat' } });
+    expect(orden.activa).toBe(false);
+    expect(orden.cantidadProducidaAcumulada).toBe(1);
+    // Solo se consumió 1 ración de carne — la segunda se quedó cruda, la orden ya estaba
+    // desactivada antes de poder gastarla.
+    expect(await prisma.almacenItem.count({ where: { saveId, catalogSlug: 'racion-carne' } })).toBe(1);
+  }, 20_000);
+
+  it('tope de AlmacenLimite alcanzado: la orden se salta y el trabajador queda libre para narración normal', async () => {
+    await setUp();
+    await prisma.almacenItem.createMany({
+      data: Array.from({ length: 5 }, () => ({ saveId, name: 'Ración de carne ahumada', description: 'x', catalogSlug: 'racion-carne-ahumada' })),
+    });
+    await prisma.almacenItem.create({ data: { saveId, name: 'Ración de carne fresca', description: 'x', catalogSlug: 'racion-carne' } });
+    await prisma.almacenLimite.create({ data: { saveId, catalogSlug: 'racion-carne-ahumada', limite: 5 } });
+    await prisma.ordenProduccion.create({ data: { buildingId, recipeKey: 'smokeMeat', modo: 'reponer', prioridad: 5 } });
+    narrateAction.mockClear();
+
+    await doPassiveTurn('Espero aquí varios días, dejando pasar el tiempo tranquilamente.');
+
+    // El crudo NUNCA se tocó (la orden se saltó antes de comprobar materia prima) — sigue habiendo
+    // exactamente 5 ahumadas (el tope) + 1 cruda sin consumir.
+    expect(await prisma.almacenItem.count({ where: { saveId, catalogSlug: 'racion-carne-ahumada' } })).toBe(5);
+    expect(await prisma.almacenItem.count({ where: { saveId, catalogSlug: 'racion-carne' } })).toBe(1);
+    const orden = await prisma.ordenProduccion.findFirstOrThrow({ where: { buildingId, recipeKey: 'smokeMeat' } });
+    expect(orden.cantidadProducidaAcumulada).toBe(0);
+  }, 20_000);
+
+  it('el trabajador que produce sube de nivel de oficio propio (ProfessionProgress.companionId), nunca el del jugador', async () => {
+    await setUp();
+    await prisma.almacenItem.create({ data: { saveId, name: 'Liquen húmedo del cauce', description: 'x', catalogSlug: 'liquen-humedo' } });
+    await prisma.ordenProduccion.create({ data: { buildingId, recipeKey: 'boiledLichenWater', modo: 'reponer', prioridad: 5 } });
+    await prisma.professionProgress.create({ data: { companionId, professionId: 'cocinero-orco-llanuras', nivel: 1, xp: 0 } });
+    narrateAction.mockClear();
+
+    await doPassiveTurn('Espero aquí varios días, dejando pasar el tiempo tranquilamente.');
+
+    const progresoTrabajador = await prisma.professionProgress.findFirstOrThrow({ where: { companionId, professionId: 'cocinero-orco-llanuras' } });
+    expect(progresoTrabajador.xp).toBeGreaterThan(0);
+    const progresoJugador = await prisma.professionProgress.findFirst({ where: { saveId, professionId: 'cocinero-orco-llanuras' } });
+    expect(progresoJugador).toBeNull(); // el jugador nunca gana XP por el trabajo de su Reino
+  }, 20_000);
+});
+
 // Cobertura nueva (auditoría de deuda técnica 2026-08-04, bug real de condición de carrera):
 // `buildBlockedReason`/`buildRecipeCheck` (turnResolution.ts) se calculaban con `prisma`, ANTES de
 // la transacción real — dos turnos de "fundo un ayuntamiento" casi simultáneos (doble clic,
