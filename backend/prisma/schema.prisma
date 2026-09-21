@@ -2474,6 +2474,10 @@ model Npc {
   /// comentario completo de `Faction.liderNpcId`. Casi siempre 0 o 1 fila (a lo sumo un puñado de
   /// líderes reales por mundo).
   faccionesLideradas Faction[]
+  /// Expediciones de facción (§ 4.5) — tope y progreso real de oficio de este Npc, ver comentario
+  /// completo de ambos modelos.
+  professionPotential NpcProfessionPotential[]
+  professionProgress  NpcProfessionProgress[]
 
   @@unique([worldId, slug])
 }
@@ -2604,6 +2608,48 @@ model HistoriaEntry {
   translatorNpcSlug   String?
 
   @@unique([worldId, slug])
+}
+
+/// Potencial de oficio por Npc (docs/rpgtarkor/mundo-vivo-x4.md § 4.5, 2026-09-21, expediciones de
+/// facción) — grounding real Bannerlord: cada compañero tiene un TOPE distinto por habilidad
+/// ("some companions start out with high stats and little room to grow; others are blank slates
+/// with lots of potential"), nunca un techo único para todos. `nivelMaximo` es el tope real que
+/// `NpcProfessionProgress.nivel` (abajo) nunca puede superar, aunque acumule XP de sobra —
+/// petición explícita de Álvaro: "un guerrero nato nunca será buen minero por mucha XP que
+/// acumule". Sembrado a mano en `worldCatalog.ts`, mismo criterio que `Npc.teachesProfession` —
+/// sin fila para un `professionId` = ese Npc no puede ejercer ese oficio en absoluto (tope 0
+/// implícito), no hace falta una fila explícita con `nivelMaximo: 0`.
+model NpcProfessionPotential {
+  id           String @id @default(cuid())
+  npcId        String
+  npc          Npc    @relation(fields: [npcId], references: [id], onDelete: Cascade)
+  professionId String
+  /// 1-9, misma escala que MAX_PROFESSION_LEVEL (professionProgress.ts).
+  nivelMaximo  Int
+
+  @@unique([npcId, professionId])
+  @@index([npcId])
+}
+
+/// Progreso de oficio REAL de un Npc de facción (docs/rpgtarkor/mundo-vivo-x4.md § 4.5,
+/// 2026-09-21) — mismo shape/fórmulas que `ProfessionProgress` (reutiliza
+/// `professionLevelForXp`/`xpForCraftSuccess` tal cual, un solo camino de código para subir de
+/// nivel de oficio en todo el proyecto), pero modelo PROPIO en vez de una tercera vía del XOR de
+/// `ProfessionProgress` — decisión explícita de Álvaro: "una cosa son companions... y otra es
+/// NPC/fauna de facción, van por separado", nunca mezclados en la misma tabla. `nivel` real
+/// siempre acotado por `NpcProfessionPotential.nivelMaximo` (aplicado en servicio al escribir, no
+/// aquí — mismo criterio que el resto de invariantes que no son CHECK de SQL).
+model NpcProfessionProgress {
+  id           String   @id @default(cuid())
+  npcId        String
+  npc          Npc      @relation(fields: [npcId], references: [id], onDelete: Cascade)
+  professionId String
+  nivel        Int      @default(1)
+  xp           Int      @default(0)
+  updatedAt    DateTime @updatedAt
+
+  @@unique([npcId, professionId])
+  @@index([npcId])
 }
 
 /// Estado de un NPC EN UNA PARTIDA CONCRETA (roadmap 2026-07-19 "roadmap 3", hallazgo de Fable):
