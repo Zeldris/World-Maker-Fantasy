@@ -1,5 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
-import { populationTargetSlugFor, decrementPopulationOnDeath, growAllPopulations, stripRegionArticle, UMBRAL_MINIMO_REPRODUCCION } from './population.js';
+import {
+  populationTargetSlugFor,
+  decrementPopulationOnDeath,
+  growAllPopulations,
+  stripRegionArticle,
+  UMBRAL_MINIMO_REPRODUCCION,
+  syncFactionPopulationToKingdomStats,
+} from './population.js';
 
 describe('stripRegionArticle', () => {
   // Bug real jugando en vivo (2026-08-07, "no aparece ningún recurso en la Hondonada"):
@@ -160,5 +167,73 @@ describe('growAllPopulations', () => {
     const result = await growAllPopulations(prisma as any);
     expect(update).not.toHaveBeenCalled();
     expect(result.updated).toBe(0);
+  });
+});
+
+describe('syncFactionPopulationToKingdomStats', () => {
+  // docs/rpgtarkor/mundo-vivo-x4.md § 4.6 (2026-09-21) — puente entre WorldPopulation (FACCION,
+  // crece con growAllPopulations) y KingdomStats de la Faction real (§ 4.2, ya generalizado).
+  it('sin filas FACCION, no hace nada', async () => {
+    const prisma = { worldPopulation: { findMany: vi.fn().mockResolvedValue([]) }, faction: { findFirst: vi.fn() }, kingdomStats: { findFirst: vi.fn(), update: vi.fn() } };
+    const result = await syncFactionPopulationToKingdomStats(prisma as any);
+    expect(result.synced).toBe(0);
+    expect(prisma.faction.findFirst).not.toHaveBeenCalled();
+  });
+
+  it('agrupa las 4 filas de una facción por su prefijo de targetSlug y actualiza su KingdomStats', async () => {
+    const findManyPop = vi.fn().mockResolvedValue([
+      { targetSlug: 'clan-serhu-poblacion', poblacion: 70 },
+      { targetSlug: 'clan-serhu-soldados', poblacion: 500 },
+      { targetSlug: 'clan-serhu-trabajadores', poblacion: 150 },
+      { targetSlug: 'clan-serhu-visitantes', poblacion: 0 },
+    ]);
+    const findFirstFaction = vi.fn().mockResolvedValue({ id: 'faction1' });
+    const findFirstKingdomStats = vi.fn().mockResolvedValue({ id: 'ks1' });
+    const update = vi.fn().mockResolvedValue({});
+    const prisma = {
+      worldPopulation: { findMany: findManyPop },
+      faction: { findFirst: findFirstFaction },
+      kingdomStats: { findFirst: findFirstKingdomStats, update },
+    };
+    const result = await syncFactionPopulationToKingdomStats(prisma as any);
+    expect(findFirstFaction).toHaveBeenCalledWith({ where: { slug: 'clan-serhu', saveId: null }, select: { id: true } });
+    expect(update).toHaveBeenCalledWith({
+      where: { id: 'ks1' },
+      data: { poblacion: 70, soldados: 500, trabajadores: 150, visitantes: 0 },
+    });
+    expect(result.synced).toBe(1);
+  });
+
+  it('facción sin Faction real de catálogo (desalineado) no bloquea el resto — se salta sin más', async () => {
+    const prisma = {
+      worldPopulation: { findMany: vi.fn().mockResolvedValue([{ targetSlug: 'clan-fantasma-poblacion', poblacion: 10 }]) },
+      faction: { findFirst: vi.fn().mockResolvedValue(null) },
+      kingdomStats: { findFirst: vi.fn(), update: vi.fn() },
+    };
+    const result = await syncFactionPopulationToKingdomStats(prisma as any);
+    expect(result.synced).toBe(0);
+    expect(prisma.kingdomStats.findFirst).not.toHaveBeenCalled();
+  });
+
+  it('facción sin KingdomStats todavía (sin reino fundado) no bloquea el resto — se salta sin más', async () => {
+    const prisma = {
+      worldPopulation: { findMany: vi.fn().mockResolvedValue([{ targetSlug: 'clan-serhu-poblacion', poblacion: 70 }]) },
+      faction: { findFirst: vi.fn().mockResolvedValue({ id: 'faction1' }) },
+      kingdomStats: { findFirst: vi.fn().mockResolvedValue(null), update: vi.fn() },
+    };
+    const result = await syncFactionPopulationToKingdomStats(prisma as any);
+    expect(result.synced).toBe(0);
+    expect(prisma.kingdomStats.update).not.toHaveBeenCalled();
+  });
+
+  it('una fila FACCION con targetSlug que no sigue el patrón conocido se ignora sin inventar nada', async () => {
+    const prisma = {
+      worldPopulation: { findMany: vi.fn().mockResolvedValue([{ targetSlug: 'algo-raro', poblacion: 5 }]) },
+      faction: { findFirst: vi.fn() },
+      kingdomStats: { findFirst: vi.fn(), update: vi.fn() },
+    };
+    const result = await syncFactionPopulationToKingdomStats(prisma as any);
+    expect(result.synced).toBe(0);
+    expect(prisma.faction.findFirst).not.toHaveBeenCalled();
   });
 });

@@ -8,7 +8,7 @@ import { normalizeSecondaryAttributes } from '../services/secondaryAttributes.js
 import { characterSummaryFor } from '../services/characterSummary.js';
 import { loadSessionFacts } from '../services/worldFacts.js';
 import { claimTurnInFlight, releaseTurnInFlight } from '../services/turnLock.js';
-import { growAllPopulations } from '../services/population.js';
+import { growAllPopulations, syncFactionPopulationToKingdomStats } from '../services/population.js';
 import { advanceWorldAgenda } from '../services/worldAgenda.js';
 import { advanceCompanionSurvival, advancePlayerSurvival } from '../services/companionSupervivencia.js';
 import type { ClassificationResult } from '../services/narrador.js';
@@ -252,6 +252,10 @@ async function tick(): Promise<void> {
   // Población dinámica (docs/16-poblacion-dinamica.md) — `WorldPopulation` es del World, no de
   // una Save concreta, así que crece en el mismo tick de fondo en vez de en el turno síncrono.
   await growAllPopulations(prisma).catch((err) => console.error('[worldTick] error creciendo población:', err));
+  // Reproducción poblacional de facciones (docs/rpgtarkor/mundo-vivo-x4.md § 4.6, 2026-09-21) —
+  // refleja el crecimiento de arriba en el KingdomStats real de cada Faction, mismo tick de fondo
+  // (nunca en el turno síncrono, mismo criterio que growAllPopulations).
+  await syncFactionPopulationToKingdomStats(prisma).catch((err) => console.error('[worldTick] error sincronizando población de facción:', err));
   // Agenda de mundo (Grupo 3, 2026-08-24, ver worldAgenda.ts) — mismo criterio que arriba: hitos
   // que avanzan con el tiempo de ficción, no con el turno síncrono.
   await advanceWorldAgenda(prisma).catch((err) => console.error('[worldTick] error avanzando agenda de mundo:', err));

@@ -310,6 +310,32 @@ async function main() {
     });
   }
 
+  // KingdomStats inicial de facción (docs/rpgtarkor/mundo-vivo-x4.md § 4.6, 2026-09-21) — sin
+  // esto, el reino generalizado en § 4.2 no tiene dónde aterrizar para NINGUNA Faction NPC (solo
+  // el jugador, al fundar el suyo). Se siembra a partir de las MISMAS filas WorldPopulation
+  // FACCION recién insertadas arriba, para no duplicar los números en dos sitios — ownerKey
+  // (mismo criterio que reinoOwner.ts) es `faction:<id>`, nunca `save:<id>` aquí.
+  console.log('  KingdomStats inicial de facción...');
+  const factionPopulationRows = worldPopulations.filter((p) => p.targetType === 'FACCION');
+  const factionSlugsWithPopulation = new Set(factionPopulationRows.map((p) => p.targetSlug.replace(/-(poblacion|soldados|trabajadores|visitantes)$/, '')));
+  for (const factionSlug of factionSlugsWithPopulation) {
+    const factionId = factionIdByName.get(factions.find((f) => f.slug === factionSlug)?.name ?? '');
+    if (!factionId) continue; // catálogo desalineado — no bloquea el resto del seed
+    const campoFor = (sufijo: string) => factionPopulationRows.find((p) => p.targetSlug === `${factionSlug}-${sufijo}`)?.poblacion ?? 0;
+    await prisma.kingdomStats.upsert({
+      where: { ownerKey: `faction:${factionId}` },
+      update: {},
+      create: {
+        factionId,
+        ownerKey: `faction:${factionId}`,
+        poblacion: campoFor('poblacion'),
+        soldados: campoFor('soldados'),
+        trabajadores: campoFor('trabajadores'),
+        visitantes: campoFor('visitantes'),
+      },
+    });
+  }
+
   console.log(`  Puntos de zona (${zonePoints.length}, Grupo 3 § Mundo determinista, prototipo)...`);
   // Borrar+recrear por Location (mismo criterio que locationLink arriba) — más simple y seguro que
   // diferenciar caso a caso qué punto sigue vivo tras editar worldCatalog.ts.

@@ -82,6 +82,157 @@ export const worldPopulations: WorldPopulationInput[] = [
     distribucion: { 'Ciénaga Troncal': 1 },
   },
 
+  // --- Facciones (docs/rpgtarkor/mundo-vivo-x4.md § 4.6, 2026-09-21) — DISTINTO de RAZA de
+  // arriba a propósito, no un duplicado: RAZA es la población NEUTRA de fondo de toda la región
+  // (el "pool" del que en el futuro pueden emerger candidatos a fundar facciones menores/nuevas,
+  // concepto X4), FACCION es la parte de esa misma raza que YA está organizada bajo un poder real
+  // concreto — un SUBCONJUNTO, nunca el total (Serhu/Helsig/Goshg no absorben a todo su clan
+  // orco regional; Concordia ni de lejos absorbe a todos los goirntes de la Meseta). Cada
+  // facción reparte en 4 categorías (mismos campos que `KingdomStats`, ya generalizado a Faction
+  // en § 4.2): `poblacion` (élite/no-combatientes), `soldados`, `trabajadores`, `visitantes`
+  // (0 en las 4 — sin mecánica de visitantes NPC todavía, no se inventa un número sin base real).
+  // Reparto por lore real de cada facción (worldCatalog.ts § factions), no una proporción plana:
+  //
+  // - Serhu: 720 de los 800 `orcos-llanuras` — "bajo control indirecto de la Concordia de
+  //   Hierro... gobierna una casta cerrada... por miedo, no por honor" — elite militarizada al
+  //   servicio de los Ketg, casta baja casi esclavizada. La más soldados, la que menos evoluciona.
+  // - Helsig: 360 de los 400 `orcos-cristal-helado` — "turnos en las minas, talla... comercian...
+  //   perfil neutral y defensivo" — mayoría trabajadora, poca milicia (solo defensa).
+  // - Goshg: 540 de los 600 `orcos-cienaga` — "viven de cazar... perfil neutral y defensivo",
+  //   dos tribus hermanadas — similar a Helsig, algo más de población general (dos tribus).
+  // - Concordia de Hierro: 1600 de los 4000 `goirntes` — "alianza militar Goirnte formada tras
+  //   El Detonante" — la más militarizada de las 4 en proporción, pero solo una fracción del
+  //   pueblo goirnte entero (deja margen real para que emerjan más facciones goirntes después,
+  //   como la propia facción moderada de Yovenne Tal, hoy sin Faction propia).
+  {
+    targetType: 'FACCION',
+    targetSlug: 'clan-serhu-poblacion',
+    label: 'Clan Serhu — población (élite Ketg y no combatientes)',
+    poblacion: 70,
+    poblacionMax: 120,
+    distribucion: { 'Las Llanuras del Viento Rojo': 1 },
+  },
+  {
+    targetType: 'FACCION',
+    targetSlug: 'clan-serhu-soldados',
+    label: 'Clan Serhu — soldados',
+    poblacion: 500,
+    poblacionMax: 650,
+    distribucion: { 'Las Llanuras del Viento Rojo': 1 },
+  },
+  {
+    targetType: 'FACCION',
+    targetSlug: 'clan-serhu-trabajadores',
+    label: 'Clan Serhu — trabajadores (casta baja)',
+    poblacion: 150,
+    poblacionMax: 220,
+    distribucion: { 'Las Llanuras del Viento Rojo': 1 },
+  },
+  {
+    targetType: 'FACCION',
+    targetSlug: 'clan-serhu-visitantes',
+    label: 'Clan Serhu — visitantes',
+    poblacion: 0,
+    poblacionMax: 20,
+    distribucion: { 'Las Llanuras del Viento Rojo': 1 },
+  },
+  {
+    targetType: 'FACCION',
+    targetSlug: 'clan-helsig-poblacion',
+    label: 'Clan Helsig — población',
+    poblacion: 50,
+    poblacionMax: 90,
+    distribucion: { 'Cristal Helado': 1 },
+  },
+  {
+    targetType: 'FACCION',
+    targetSlug: 'clan-helsig-soldados',
+    label: 'Clan Helsig — soldados (defensa)',
+    poblacion: 60,
+    poblacionMax: 100,
+    distribucion: { 'Cristal Helado': 1 },
+  },
+  {
+    targetType: 'FACCION',
+    targetSlug: 'clan-helsig-trabajadores',
+    label: 'Clan Helsig — trabajadores (mineros/artesanos)',
+    poblacion: 250,
+    poblacionMax: 350,
+    distribucion: { 'Cristal Helado': 1 },
+  },
+  {
+    targetType: 'FACCION',
+    targetSlug: 'clan-helsig-visitantes',
+    label: 'Clan Helsig — visitantes',
+    poblacion: 0,
+    poblacionMax: 20,
+    distribucion: { 'Cristal Helado': 1 },
+  },
+  {
+    targetType: 'FACCION',
+    targetSlug: 'clan-goshg-poblacion',
+    label: 'Clan Goshg — población (dos tribus)',
+    poblacion: 110,
+    poblacionMax: 170,
+    distribucion: { 'Ciénaga Troncal': 1 },
+  },
+  {
+    targetType: 'FACCION',
+    targetSlug: 'clan-goshg-soldados',
+    label: 'Clan Goshg — soldados (defensa)',
+    poblacion: 80,
+    poblacionMax: 130,
+    distribucion: { 'Ciénaga Troncal': 1 },
+  },
+  {
+    targetType: 'FACCION',
+    targetSlug: 'clan-goshg-trabajadores',
+    label: 'Clan Goshg — trabajadores (caza/tótems)',
+    poblacion: 350,
+    poblacionMax: 470,
+    distribucion: { 'Ciénaga Troncal': 1 },
+  },
+  {
+    targetType: 'FACCION',
+    targetSlug: 'clan-goshg-visitantes',
+    label: 'Clan Goshg — visitantes',
+    poblacion: 0,
+    poblacionMax: 20,
+    distribucion: { 'Ciénaga Troncal': 1 },
+  },
+  {
+    targetType: 'FACCION',
+    targetSlug: 'concordia-de-hierro-poblacion',
+    label: 'Concordia de Hierro — población',
+    poblacion: 200,
+    poblacionMax: 350,
+    distribucion: { 'La Meseta del Orden': 1 },
+  },
+  {
+    targetType: 'FACCION',
+    targetSlug: 'concordia-de-hierro-soldados',
+    label: 'Concordia de Hierro — soldados (mando de Vrask Ombra)',
+    poblacion: 900,
+    poblacionMax: 1300,
+    distribucion: { 'La Meseta del Orden': 1 },
+  },
+  {
+    targetType: 'FACCION',
+    targetSlug: 'concordia-de-hierro-trabajadores',
+    label: 'Concordia de Hierro — trabajadores',
+    poblacion: 500,
+    poblacionMax: 700,
+    distribucion: { 'La Meseta del Orden': 1 },
+  },
+  {
+    targetType: 'FACCION',
+    targetSlug: 'concordia-de-hierro-visitantes',
+    label: 'Concordia de Hierro — visitantes',
+    poblacion: 0,
+    poblacionMax: 20,
+    distribucion: { 'La Meseta del Orden': 1 },
+  },
+
   // --- Fauna (semilla propuesta, 2026-07-29: cuanto más pequeño el animal, mayor su número;
   // grandes/peligrosos/con materiales valiosos quedan controlados) — todas en Llanuras del
   // Viento Rojo salvo Cornante (Ciénaga Troncal, su propia descripción lo deja claro: "se hunden

@@ -413,14 +413,43 @@ falta decidir cómo una facción "tiene" estos inputs sintéticos:
   para combate múltiple (`CombatParticipant`/grupos, `companeros.ts`) pero aplicado a viaje/
   recolección en vez de combate.
 
-### 4.6 Reproducción poblacional — el más barato de cerrar
+### 4.6 Reproducción poblacional — CERRADO e implementado (2026-09-21, sesión posterior a § 7)
 
-`growAllPopulations()` ya corre en tiempo real, agregado, sin depender de `Save`. Lo único que
-falta es decidir qué CAMPO de una facción usa esta población — no es solo "sembrar `FACCION`
-como tipo", como decía el punto 3 original, sino decidir su semántica: ¿población militar
-(alimenta cuántos "soldados" puede poner una facción en un conflicto vía `FactionRelation`),
-población civil (alimenta `KingdomStats.poblacion` del reino de esa facción, si 4.2 se implementa),
-o ambas como campos separados de la misma fila `WorldPopulation`?
+Decisión tomada: **RAZA y FACCION son dos conceptos distintos, no un duplicado** — hallazgo real al
+diseñar esto (`orcos-llanuras`/`orcos-cristal-helado`/`orcos-cienaga`, ya sembradas como `RAZA`,
+YA se usaban de facto como "población de Serhu/Helsig/Goshg" en `worldAgenda.ts`, pero mezclaban
+dos ideas). Aclarado con Álvaro: `RAZA` es la población NEUTRA de fondo de toda la región (el
+"pool" del que en el futuro pueden emerger candidatos a fundar facciones menores o nuevas, concepto
+X4) — `FACCION` es el SUBCONJUNTO de esa misma raza que ya está organizado bajo un poder real
+concreto, nunca el total. Serhu/Helsig/Goshg no absorben a todo su clan orco regional; Concordia
+(alianza militar, no todo el pueblo goirnte) ni de lejos absorbe a todos los `goirntes` de la
+Meseta — deja margen real para que emerjan más facciones goirntes después (p. ej. la propia
+facción moderada de Yovenne Tal, hoy sin `Faction` propia).
+
+Respuesta a la pregunta abierta (militar/civil/ambas): **ninguna de las tres tal cual** — se
+reutilizan las 4 categorías que `KingdomStats` YA tiene (generalizado a `Faction` en § 4.2):
+`poblacion`/`soldados`/`trabajadores`/`visitantes`, no solo 2. 4 filas `WorldPopulation` nuevas por
+facción (`<slug>-poblacion`/`-soldados`/`-trabajadores`/`-visitantes`, `worldPopulation.ts`),
+repartidas por LORE real de cada una, no una proporción plana (petición explícita: "las
+reparticiones hazlas lógicas según el lore"):
+- **Serhu** (720 de 800 `orcos-llanuras`): elite militarizada al servicio de los Ketg, casta baja
+  casi esclavizada, "gobierna por miedo, no por honor" — la más `soldados` (500), poca `poblacion`
+  no combatiente (70), `trabajadores` intermedio (150, la casta sometida).
+- **Helsig** (360 de 400): mineros/artesanos, "perfil neutral y defensivo" — mayoría
+  `trabajadores` (250), poca milicia (`soldados`: 60, solo defensa).
+- **Goshg** (540 de 600): cazadoras de dos tribus, "perfil neutral y defensivo" — similar a Helsig
+  (`trabajadores`: 350, `soldados`: 80), algo más `poblacion` general (110, dos tribus).
+- **Concordia de Hierro** (1600 de 4000 `goirntes`): "alianza militar formada tras El Detonante" —
+  la más militarizada en proporción (`soldados`: 900), pero solo una fracción del pueblo goirnte.
+- `visitantes: 0` en las 4 (sin mecánica de visitantes NPC todavía, no se inventa un número).
+
+Código: `population.ts` § `syncFactionPopulationToKingdomStats` — puente nuevo entre
+`WorldPopulation` (crece con `growAllPopulations`, ya existía) y el `KingdomStats` real de cada
+`Faction` (§ 4.2), enganchado en el mismo tick de `worldTick.ts`. `seed-catalog.ts` siembra el
+`KingdomStats` inicial de las 4 facciones a partir de estas mismas filas (sin duplicar números en
+dos sitios). 5 tests unitarios + 1 test de integración real contra Postgres (flujo completo de dos
+pasos: crecer → sincronizar, verificado con delta relativo por la naturaleza compartida de
+`WorldPopulation`, no un valor fijo). Suite completa **2596/2596 en verde**, sin ningún flake.
 
 ---
 
@@ -700,13 +729,15 @@ frontend en esta sesión.
 
 ## 6. Estado de este documento
 
-**BACKEND COMPLETO Y CERRADO**: § 4.2, § 4.3 (motor de eventos base) y § 7.4 piezas 1-5 y 7
-(jerarquía Capital/Cuartel Avanzado con cupos, zona-interior dinámica de AMBOS, parcelas estilo
-Travian, y el evento territorial ya enganchado a producción) — todo implementado y verificado
-contra el sandbox real (schema aplicado, seed corriendo, suite completa **2590/2590 en verde**,
-sin ningún flake en la última pasada completa). Solo queda pieza 6 (prompts de imagen, a demanda
-de Álvaro). **Frontend de toda esta pieza (§ 7.4) sigue sin tocar a propósito** — mandato
-explícito de Álvaro: cerrar TODO el backend primero (ya conseguido), y solo entonces abrir una
-pasada dedicada de frontend viendo qué información es útil mostrar, dónde, qué animaciones dan
-vida a esto y qué vistas ya existentes conviene refactorizar — sin empezar ese diseño todavía. El
-resto de § 4 (4.4 comercio, 4.5 expediciones, 4.6 reproducción) sigue sin tocar, tal como estaba.
+**BACKEND COMPLETO Y CERRADO**: § 4.2, § 4.3 (motor de eventos base), § 4.6 (reproducción
+poblacional de facción) y § 7.4 piezas 1-5 y 7 (jerarquía Capital/Cuartel Avanzado con cupos,
+zona-interior dinámica de AMBOS, parcelas estilo Travian, y el evento territorial ya enganchado a
+producción) — todo implementado y verificado contra el sandbox real (schema aplicado, seed
+corriendo, suite completa **2596/2596 en verde**, sin ningún flake en la última pasada completa).
+Solo queda pieza 6 de § 7.4 (prompts de imagen, a demanda de Álvaro). **Frontend de toda la
+sesión sigue sin tocar a propósito** — mandato explícito de Álvaro: cerrar TODO el backend primero
+antes de abrir una pasada dedicada de frontend viendo qué información es útil mostrar, dónde, qué
+animaciones dan vida a esto y qué vistas ya existentes conviene refactorizar. Quedan sin tocar
+§ 4.4 (comercio/mercado regulado) y § 4.5 (expediciones de recolección/exploración de facción), y
+del § 3 original: IA de combate NPC (el hueco más grande señalado por el propio documento) y
+movimiento en Zona/profesiones/talento/energía (señales dinámicas que faltan).

@@ -21,11 +21,11 @@ const GROWTH_RATE_PER_DAY: Record<PopulationTargetType, number> = {
   // raza (crece muy despacio): una veta/matorral no se "reproduce", pero sí se repone con el
   // tiempo (vetas nuevas expuestas por erosión, rebrote de matorral) — cifra de partida, ajustable.
   RECURSO: 0.01,
-  // FLORA/FACCION (2026-08-15, valores nuevos del enum, todavía sin ninguna fila sembrada) —
-  // mismo criterio que RECURSO para flora (se repone con el tiempo, no "se reproduce") y que RAZA
-  // para facciones (población militar/civil, crece muy despacio). Cifras de partida, ajustables
-  // cuando haya datos reales que las usen.
+  // FLORA (2026-08-15) — mismo criterio que RECURSO: se repone con el tiempo, no "se reproduce".
   FLORA: 0.01,
+  // FACCION (docs/rpgtarkor/mundo-vivo-x4.md § 4.6, 2026-09-21, primeras filas reales sembradas
+  // — antes solo la tasa existía, "todavía sin ninguna fila sembrada") — mismo ritmo que RAZA
+  // (crece muy despacio, coherente con ser un subconjunto YA organizado de esa misma raza).
   FACCION: 0.003,
 };
 
@@ -142,4 +142,52 @@ export async function growAllPopulations(prisma: Pick<PrismaClient, 'worldPopula
   }
 
   return { updated };
+}
+
+/// Sincroniza `WorldPopulation` (targetType FACCION) → `KingdomStats` de cada `Faction` de
+/// catálogo (docs/rpgtarkor/mundo-vivo-x4.md § 4.6, 2026-09-21) — el "reino" de una facción ya
+/// generalizado en § 4.2 necesita reflejar el crecimiento real de `growAllPopulations` para que
+/// tenga efecto observable (antes de esto, la tasa `FACCION` existía pero no escribía en ningún
+/// sitio que el resto del motor leyera). 4 filas por facción, `targetSlug` = `<faction.slug>-
+/// poblacion`/`-soldados`/`-trabajadores`/`-visitantes` (ver worldPopulation.ts) — cada una
+/// alimenta el campo homónimo de `KingdomStats`, mismos 4 conceptos ya usados por el reino del
+/// jugador (`tickKingdomOneDay`). Llamada desde el mismo tick que `growAllPopulations`
+/// (`worldTick.ts`) — nunca desde el turno del jugador, mismo criterio que el resto de
+/// `WorldPopulation` (es del `World`, no de una `Save`).
+export async function syncFactionPopulationToKingdomStats(
+  prisma: Pick<PrismaClient, 'worldPopulation' | 'faction' | 'kingdomStats'>,
+): Promise<{ synced: number }> {
+  const rows = await prisma.worldPopulation.findMany({ where: { targetType: 'FACCION' } });
+  if (rows.length === 0) return { synced: 0 };
+
+  const byFactionSlug = new Map<string, { poblacion?: number; soldados?: number; trabajadores?: number; visitantes?: number }>();
+  const CAMPOS = ['poblacion', 'soldados', 'trabajadores', 'visitantes'] as const;
+  for (const row of rows) {
+    const campo = CAMPOS.find((c) => row.targetSlug.endsWith(`-${c}`));
+    if (!campo) continue; // fila FACCION con targetSlug que no sigue el patrón — se ignora, no inventa nada
+    const factionSlug = row.targetSlug.slice(0, -(campo.length + 1));
+    const entry = byFactionSlug.get(factionSlug) ?? {};
+    entry[campo] = row.poblacion;
+    byFactionSlug.set(factionSlug, entry);
+  }
+
+  let synced = 0;
+  for (const [factionSlug, campos] of byFactionSlug) {
+    const faction = await prisma.faction.findFirst({ where: { slug: factionSlug, saveId: null }, select: { id: true } });
+    if (!faction) continue; // catálogo desalineado (fila sembrada sin su Faction) — no bloquea el resto
+    const kingdomStats = await prisma.kingdomStats.findFirst({ where: { factionId: faction.id }, select: { id: true } });
+    if (!kingdomStats) continue; // sin KingdomStats todavía (facción sin reino fundado) — nada que sincronizar
+    await prisma.kingdomStats.update({
+      where: { id: kingdomStats.id },
+      data: {
+        poblacion: campos.poblacion,
+        soldados: campos.soldados,
+        trabajadores: campos.trabajadores,
+        visitantes: campos.visitantes,
+      },
+    });
+    synced++;
+  }
+
+  return { synced };
 }
