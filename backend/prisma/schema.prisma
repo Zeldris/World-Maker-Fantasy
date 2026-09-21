@@ -439,6 +439,7 @@ model Save {
   buildings          Building[]
   subjects           Subject[]
   almacenItems       AlmacenItem[]
+  almacenLimites     AlmacenLimite[]
   plantillasEquipo   PlantillaEquipo[]
   combatEncounters   CombatEncounter[]
   savedActions       SavedAction[]
@@ -1067,6 +1068,15 @@ model Companion {
   /// (con o sin slot de Domador/edificio ya resuelto aparte); el rol concreto depende de la
   /// especie, sin enum cerrado.
   rolReino             String?
+  /// Panel de Reino real (docs/rpgtarkor/mundo-vivo-x4.md § 4.4-ter, 2026-09-21) — en qué
+  /// `Building` trabaja este Companion, solo relevante si `rolReino` no es null. Pieza que faltaba
+  /// por completo (`rolReino` por sí solo nunca decía A QUÉ edificio pertenece el trabajador): el
+  /// tick de `OrdenProduccion` lee `Companion.findMany({ where: { buildingId } })` para saber su
+  /// plantilla real por edificio y repartir el trabajo por prioridad entre las órdenes de ESE
+  /// Building. Null = trabajador de Reino sin edificio asignado todavía (no cuenta para ningún
+  /// tick de producción, mismo criterio nullable que el resto del proyecto).
+  buildingId           String?
+  building             Building?        @relation(fields: [buildingId], references: [id], onDelete: SetNull)
   /// Plantilla de equipo asignada (§7) — solo relevante si `rolReino` no es null. Null = sin
   /// plantilla, se equipa a mano como cualquier compañero personal (`inventoryItems` abajo).
   plantillaEquipoId    String?
@@ -1100,9 +1110,14 @@ model Companion {
   /// domesticado/reclutado empieza en el Grupo 1 sin que el jugador tenga que moverlo a mano.
   combatGroupSlotIndex Int @default(0)
 
+  /// Nivel de oficio propio del trabajador de Reino (§ 4.4-ter) — ver comentario completo en
+  /// `ProfessionProgress.companionId`. Vacío para compañeros personales sin `rolReino`.
+  professionProgress   ProfessionProgress[]
+
   @@index([saveId])
   @@index([plantillaEquipoId])
   @@index([saveId, combatGroupSlotIndex])
+  @@index([buildingId])
 }
 
 /// Grupos de combate (2026-09-08) — solo METADATA (nombre) de cada grupo más allá del 0 (Grupo 1,
@@ -1640,16 +1655,30 @@ enum MetodoObtencion {
 /// professions.ts (frontend), no FK real — mismo criterio laxo que Save.profession. Sube al
 /// craftear/construir con éxito una receta que declara ese `oficio` (crafting.ts/construction.ts);
 /// su nivel alivia SOLO los requisitos de recetas de ese mismo oficio (requisitos.ts).
+///
+/// Generalizado a trabajadores de Reino (docs/rpgtarkor/mundo-vivo-x4.md § 4.4-ter, 2026-09-21) —
+/// `saveId`/`companionId` opcionales, mismo criterio laxo "exactamente uno relleno, nunca ambos,
+/// nunca ninguno" que `KingdomStats.saveId`/`factionId` (validado en servicio, nunca CHECK de SQL).
+/// Decisión explícita de Álvaro: el nivel de oficio del PERSONAJE nunca cuenta para el tick de
+/// `OrdenProduccion` ("en el reino yo no cuento, yo fabrico aparte... como en Bellwright") — el
+/// tick solo mira `ProfessionProgress` con `companionId` relleno, de los `Companion` con
+/// `rolReino`/`buildingId` asignados a ese edificio. Reutiliza tal cual
+/// `professionLevelForXp`/`xpForCraftSuccess`/`alivioForLevel` (professionProgress.ts): un solo
+/// camino de código para subir de nivel de oficio, sea del jugador o de un trabajador de Reino.
 model ProfessionProgress {
-  id           String   @id @default(cuid())
-  saveId       String
-  save         Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  id           String     @id @default(cuid())
+  saveId       String?
+  save         Save?      @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  companionId  String?
+  companion    Companion? @relation(fields: [companionId], references: [id], onDelete: Cascade)
   professionId String
-  nivel        Int      @default(1)
-  xp           Int      @default(0)
-  updatedAt    DateTime @updatedAt
+  nivel        Int        @default(1)
+  xp           Int        @default(0)
+  updatedAt    DateTime   @updatedAt
 
   @@unique([saveId, professionId])
+  @@unique([companionId, professionId])
+  @@index([companionId])
 }
 
 /// Economía de Reino (sesión de diseño 2026-07-23, kingdomTick.ts) — 1:1 con Save O con Faction, se
@@ -1971,9 +2000,73 @@ model Building {
   /// existentes antes de esta pieza).
   parcela Parcela?
 
+  /// Panel de Reino real (§ 4.4-ter) — trabajadores asignados (ver `Companion.buildingId`) y
+  /// órdenes de producción activas de este edificio (ver `OrdenProduccion`).
+  trabajadores      Companion[]
+  ordenesProduccion OrdenProduccion[]
+
   @@unique([factionId, recipeKey])
   @@index([saveId])
   @@index([factionId])
+}
+
+/// Orden de producción de un `Building` (docs/rpgtarkor/mundo-vivo-x4.md § 4.4-ter, 2026-09-21) —
+/// cubre TANTO recolección (receta sin `ingredients`, convierte solo tiempo de trabajador en
+/// materia prima) como crafteo (receta con `ingredients` reales) con el mismo modelo: verificado
+/// con `WebSearch` real contra Bellwright y X4 Foundations antes de decidir — en ambos juegos una
+/// estación de recolección es estructuralmente el mismo tipo de nodo-con-trabajador que una
+/// estación de crafteo, solo cambia si la receta tiene input o no. No hay `OrdenRecoleccion`
+/// aparte a propósito.
+///
+/// `recipeKey` es la `CraftingRecipe.key` de `crafting.ts` — la jugadora/Álvaro la asigna a mano
+/// al `Building` desde el panel de Reino, nunca la propone el modelo/narrador (mismo criterio que
+/// el resto de decisiones mecánicas del Reino: el modelo narra, el backend decide números).
+model OrdenProduccion {
+  id         String   @id @default(cuid())
+  buildingId String
+  building   Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  recipeKey  String
+  /// 'unico' produce el lote (hasta `limite`, si lo hay) y se desactiva sola. 'reponer' repite
+  /// cada tick mientras haya hueco de `limite` propio y de `AlmacenLimite` del recurso resultante.
+  modo       String   @default("reponer")
+  /// Tope de unidades a producir por ESTA orden — null = sin tope propio (en ese caso el único
+  /// tope real es el de `AlmacenLimite`, si existe para ese recurso).
+  limite     Int?
+  /// Bellwright "Job Priorities" (0-9, menor = se sirve antes) — decide qué orden se lleva un
+  /// trabajador libre cuando varias órdenes del mismo `Building` compiten por él en el mismo tick.
+  prioridad  Int      @default(5)
+  /// Para saber cuándo una orden 'unico' con `limite` ya se completó y debe desactivarse sola.
+  cantidadProducidaAcumulada Int     @default(0)
+  activa                     Boolean @default(true)
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+
+  @@unique([buildingId, recipeKey])
+  @@index([buildingId])
+}
+
+/// Tope configurable del Almacén de Reino (§ 4.4-ter) — separado de `AlmacenItem` a propósito
+/// (`AlmacenItem` es una fila POR OBJETO depositado, no un contador por recurso; forzar un tope ahí
+/// exigiría agregar por `catalogSlug` en cada lectura). La pieza que cierra el sistema de
+/// prioridades (petición explícita de Álvaro): si un recurso ya alcanzó su `limite`, el tick de
+/// `OrdenProduccion` deja de gastar tiempo de trabajador en producirlo y ese trabajador libre pasa
+/// a la siguiente orden con prioridad disponible que sí tenga hueco.
+///
+/// `saveId` simple, NO `ownerKey` de facción (a diferencia de `KingdomStats`/`Building`) — grounding
+/// real antes de escribir esto: `AlmacenItem` hoy es 100% `saveId`, nunca se generalizó a
+/// facciones NPC y nadie lo ha pedido. Si algún día hace falta, se generaliza `AlmacenItem` y
+/// `AlmacenLimite` a la vez, no antes.
+model AlmacenLimite {
+  id          String @id @default(cuid())
+  saveId      String
+  save        Save   @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  catalogSlug String
+  /// null = sin tope (infinito) — decisión explícita de Álvaro como default.
+  limite      Int?
+  updatedAt   DateTime @updatedAt
+
+  @@unique([saveId, catalogSlug])
+  @@index([saveId])
 }
 
 /// Súbdito CON NOMBRE — alguien que sigue/sirve al personaje ligado a su reino, no a su persona

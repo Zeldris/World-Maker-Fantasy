@@ -469,6 +469,149 @@ Building compiten por el mismo Companion libre, mismo problema que "Building Pri
 Bellwright?), (3) campo de tope en `AlmacenItem`/`WorldPopulation`/nuevo modelo para el límite de
 Almacén de Reino, con default infinito.
 
+### 4.4-ter Diseño cerrado de (A)+(B)+(C) fusionadas — sesión posterior (2026-09-21, misma fecha)
+
+Las 3 preguntas de arriba se decidieron con Álvaro en una sola pasada — y el orden cambió: (C)
+"prioridad de profesión 0-9" ya NO es una fase aparte, nace fusionada con (A) desde la primera
+migración (petición explícita: "prioridades de 0-9 como en Bellwright" en la propia orden de
+producción, no en un paso posterior). Grounding adicional hecho antes de fijar esto: hoy
+`Companion.rolReino` (`'trabajador'`/`'guardia'`/`'productor'`) NO está ligado a ningún `Building`
+concreto (solo dice "trabajador" en abstracto, sin `buildingId`) y `ProfessionProgress` es 1 fila
+por `(saveId, professionId)` — del PERSONAJE, nunca de un `Companion` — así que ninguna de las dos
+piezas de datos que hacen falta existe todavía. `git log` de esta misma sesión (`5da79e5`,
+`e75bdb3`, `fcce871`, `6a735c8`, `e755c6b`, `eee3022`) confirma que nada de esto se ha tocado en
+el ínterin — todo ese trabajo fue §4.2/§4.3/§4.6/§7.4 (facciones/territorio/población), terreno
+distinto.
+
+**Decisión explícita — el jugador NO cuenta como mano de obra de Reino** ("en el reino yo no
+cuento, yo fabrico aparte y no influyo sobre eso... como en Bellwright"): el crafteo personal del
+jugador (`crafting.ts`, `POST /turn/narrate`) y la producción automática de Reino son y siguen
+siendo dos motores separados sin puente — el jugador nunca es candidato a "trabajador libre" del
+reparto automático, solo los `Companion` con `rolReino` asignados a un `Building`.
+
+Modelo de datos decidido (Prisma), 4 piezas nuevas/extendidas:
+
+1. **`Companion.buildingId`** (nuevo, opcional, FK a `Building`, `onDelete: SetNull`) — en qué
+   edificio trabaja este Companion, si tiene `rolReino` asignado. Pieza que faltaba y el documento
+   original no mencionaba explícitamente: sin esto, "trabajador libre" no tiene forma de saber a
+   qué `Building` está atado ni de competir por prioridad entre varios.
+2. **`ProfessionProgress.companionId`** (nuevo, opcional, FK a `Companion`) — mismo patrón laxo
+   "exactamente uno relleno" que `KingdomStats.saveId`/`factionId` (`assertExactlyOneOwner`,
+   `reinoOwner.ts`), validado en servicio, nunca CHECK de SQL. Reutiliza tal cual
+   `professionLevelForXp`/`xpForCraftSuccess`/`alivioForLevel` (professionProgress.ts) — un solo
+   camino de código para subir de nivel de oficio, sea el del jugador o el de un trabajador de
+   Reino. `@@unique` pasa a `[saveId, professionId]` OR `[companionId, professionId]` (dos
+   `@@unique` parciales, Postgres permite múltiples NULL en columna UNIQUE — mismo truco ya usado
+   por `KingdomStats.saveId`/`factionId`).
+3. **`OrdenProduccion`** (nuevo modelo) — 1 fila por `(buildingId, recipeKey)`:
+   - `recipeKey: String` — key de `CraftingRecipe` (crafting.ts), la jugadora/Álvaro la asigna a
+     mano al `Building` desde el panel de Reino (nunca la propone el modelo/narrador).
+   - `modo: 'unico' | 'reponer'` — 'unico' produce el lote y se desactiva sola; 'reponer' repite
+     cada tick mientras haya hueco de límite y almacén.
+   - `limite: Int?` — tope de unidades a producir por esta orden, null = sin tope propio (el único
+     tope real en ese caso es el de `AlmacenLimite`, pieza 4).
+   - `prioridad: Int` (0-9, default 5) — Bellwright "Job Priorities": menor número = se sirve
+     antes al repartir trabajadores libres entre Buildings que compiten por el mismo Companion.
+   - `cantidadProducidaAcumulada: Int` (default 0) — para saber cuándo una orden 'unico' con
+     `limite` ya se completó y debe desactivarse sola.
+   - `activa: Boolean` (default true).
+   - `@@unique([buildingId, recipeKey])` — incluso en 'reponer' no tiene sentido declarar la misma
+     receta dos veces en el mismo edificio; sí puede haber varias filas con `recipeKey` distinto en
+     el mismo `Building` (un taller con varias cadenas activas a la vez), cada una con su propia
+     prioridad.
+4. **`AlmacenLimite`** (nuevo modelo) — tope configurable del Almacén de Reino, separado de
+   `AlmacenItem` a propósito (`AlmacenItem` es una fila POR OBJETO depositado, no un contador —
+   forzar un tope ahí exigiría agregar por `catalogSlug` en cada lectura, más frágil):
+   - `saveId: String` — grounding real antes de escribir esto (`schema.prisma`,
+     `companionSupervivencia.ts`): `AlmacenItem` hoy es 100% `saveId`, SIN `factionId`/`ownerKey` —
+     a diferencia de `Building`/`KingdomStats` (generalizados a facción en §4.2), el Almacén de
+     Reino nunca se generalizó a facciones NPC y nadie lo ha pedido todavía. `AlmacenLimite` sigue
+     el mismo patrón real de `AlmacenItem` (`saveId` simple), no el de `KingdomStats`/`ownerKey` —
+     generalizar a `ownerKey` aquí sería adelantar una pieza fuera de alcance (el propio §4.4-ter es
+     sobre el Reino del JUGADOR: "yo fabrico aparte... como en Bellwright"). Si algún día una
+     facción NPC necesita Almacén propio, se generaliza `AlmacenItem` y `AlmacenLimite` a la vez, no
+     antes.
+   - `catalogSlug: String` — a qué recurso del catálogo aplica el tope.
+   - `limite: Int?` — null = sin tope (infinito), decisión explícita de Álvaro como default.
+   - `@@unique([saveId, catalogSlug])`.
+
+**Flujo del tick** (nueva función pura en `kingdomTick.ts` o archivo hermano, enganchada en
+`turnResolution.ts` en el MISMO bloque `if (diasCruzados > 0)` que ya llama a `tickKingdom` —
+`turnResolution.ts:5512-5522` — misma cadencia, un día de ficción cruzado):
+
+1. Por cada `Building` ACTIVO del reino con al menos una `OrdenProduccion` activa, listar sus
+   `Companion` con `rolReino` y `buildingId` apuntando a él (el "trabajador libre" real).
+2. Ordenar las órdenes de ESE building por `prioridad` ascendente (0 primero).
+3. Para cada orden, en ese orden: comprobar (a) si el recurso resultante ya está al tope de
+   `AlmacenLimite` (si lo hay) — si está lleno, SALTAR esta orden sin gastar el trabajador, pasar a
+   la siguiente prioridad con hueco (la pieza que cierra el sistema, ya fijada en la sesión
+   anterior); (b) si algún `Companion` de la lista de trabajadores de ese Building tiene, vía su
+   `ProfessionProgress` propio (`companionId`), nivel de oficio suficiente para el `tier`/`oficio`
+   de la `CraftingRecipe` (mismo `alivioForLevel` que ya usa el crafteo del jugador). Si NINGÚN
+   trabajador asignado tiene nivel suficiente, la orden no produce y se dejar constancia visible
+   (mensaje en el panel de Reino, no un `LogEntry` de narración — es información de gestión, no un
+   evento de ficción) — nunca un fallo silencioso.
+4. Si (a) y (b) pasan: craftear (misma receta, mismo `resultCantidad`/`resultCatalogSlug` que ya
+   usa `crafting.ts` para el jugador — un solo shape de `CraftingRecipe`, dos consumidores) los
+   ingredientes desde el Almacén de Reino (no desde `InventoryItem` del jugador) hacia
+   `AlmacenItem`, incrementar `cantidadProducidaAcumulada`, y si `modo: 'unico'` y se alcanzó
+   `limite`, poner `activa: false`.
+5. Un trabajador que ya produjo en este tick para una orden no vuelve a contarse para otra orden
+   del mismo Building en el mismo tick (una asignación por trabajador por tick, igual que Bellwright
+   nunca duplica un mismo Pal en dos tareas a la vez).
+
+**De dónde sale la materia prima — verificado contra las dos referencias reales, no supuesto**
+(pregunta de Álvaro: "revisa primero x4" + "y revisa también en x4foundations", dos `WebSearch`
+reales antes de decidir):
+
+- **Bellwright real**: una estación de recolección (ej. el Foraging Hut/Lumberjack Spot) NO es un
+  sistema aparte de las estaciones de crafteo — es el MISMO tipo de edificio-con-trabajador-
+  asignado, solo que su receta no consume nada, convierte tiempo de trabajador + un nodo del mapa
+  en materia prima ("gathering stations collect raw resources... processing stations turn raw
+  resources into usable crafting components... production stations turn those components into
+  finished items" — misma cadena, mismo tipo de nodo en cada eslabón).
+  [Crafting Guide — Bellwright Wiki](https://bellwright.fandom.com/wiki/Crafting_Guide),
+  [Villager Jobs & Work Priorities](https://bellwright.xyz/wiki/bellwright-villager-jobs/).
+- **X4 Foundations real**: un módulo Solid Miner/Gas Collector es estructuralmente el mismo tipo de
+  `Module` de estación que un Refinery/Production Module — ambos con `Workforce` asignada, ambos
+  parte de la "Logical Overview" de líneas de producción de la estación; la única diferencia es que
+  el Miner no tiene inputs (extrae del sector) y el Refinery sí (consume lo que extrajo el Miner).
+  [Modules — X4 Foundations Wiki](https://x4-foundations-wiki.fandom.com/wiki/Modules),
+  [Station Modules List](https://www.ludo.guide/guide/x4-foundations/side-quests-activities/station-building-management/station-modules-list).
+
+**Decisión confirmada por las dos referencias (no solo por simplicidad de nuestro lado)**: se
+retira el recorte (A)/(B) separado del documento original — no hay dos sistemas, hay un solo
+`OrdenProduccion` que cubre tanto "recolección" (receta con `ingredients: []`, consume solo tiempo
+de trabajador + requiere estar en la `location`/`Building` correcto) como "crafteo" (receta con
+`ingredients` reales) exactamente con el mismo modelo de datos, el mismo tick, el mismo reparto por
+prioridad y el mismo gate de nivel de oficio ya diseñados arriba. Las `CraftingRecipe` de
+`crafting.ts` que hoy consumen un recurso "recolectado a mano por el jugador" (agua, madera, fibra)
+sirven de referencia de shape para las nuevas recetas de recolección de Reino — se decidirá recepta
+por receta, al implementar, cuáles de las 52 existentes se reutilizan tal cual (si no exigen nada
+que solo tenga sentido para el jugador, como una tirada de atributo) y cuáles necesitan una versión
+"de Reino" nueva sin ingredientes.
+
+**Implementado y verificado (2026-09-21, misma sesión)**: schema (`Companion.buildingId`,
+`ProfessionProgress.companionId` con XOR laxo, `OrdenProduccion`, `AlmacenLimite`), migración
+aplicada contra el sandbox real (`20260921140154_panel_reino_orden_produccion`), y el motor puro
+del tick en `kingdomProduction.ts` (`nivelOficioDeTrabajador`, `trabajadorPuedeProducir`,
+`almacenAlTope`, `tickOrdenesProduccion` — reparto por prioridad 0-9, gate de nivel de oficio por
+`Companion` sin mirar atributos del jugador, y el tope de Almacén conectado al reparto). 20 tests
+unitarios nuevos en verde, `tsc -b` limpio, suite completa del backend 2615/2615 sin regresión
+(verificado en aislamiento — la corrida en paralelo con el resto de la suite tuvo 16 fallos de
+contención/timing conocidos en `turn.integration.test.ts`, no relacionados con este cambio).
+
+**Pendiente real, no de diseño sino de la siguiente pieza de código**: enganchar
+`tickOrdenesProduccion` dentro de `turnResolution.ts` (mismo bloque `if (diasCruzados > 0)` que ya
+llama a `tickKingdom`, `turnResolution.ts:5512-5522`) — leer `Building`/`OrdenProduccion`/
+`Companion` reales de Prisma, resolver `AlmacenItem`/`AlmacenLimite` reales, aplicar el resultado
+(crear/actualizar `AlmacenItem`, subir XP de `ProfessionProgress` del trabajador que produjo,
+dejar constancia visible de `SIN_TRABAJADOR_CON_NIVEL`/`ALMACEN_LLENO` en el panel de Reino). El
+motor puro ya está listo para ese enganche; falta el caller real, el CRUD de `OrdenProduccion`
+desde el panel (asignar receta+prioridad+modo+límite a un Building) y decidir qué recetas de las
+52 sirven tal cual como recolección de Reino. Después de esto: sigue el front (qué refactorizar,
+qué crear nuevo, diseño del panel de Reino).
+
 ### 4.5 Expediciones de recolección/exploración de facción
 
 Reutilizando el mapa de 4.1: la mitad recolectora (`candidateSourcesFor`) ya es pura y reutilizable
