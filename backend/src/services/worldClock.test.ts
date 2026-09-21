@@ -182,15 +182,32 @@ describe('estacionNombreFor', () => {
   });
 });
 
-// Clima de Las Llanuras (2026-08-24, Grupo 3 § Eventos de clima puntuales, ver
-// docs/rpgtarkor/clima-tormentas.md) — eje de tiempo distinto de estacionFor, por región.
+// Clima de las 8 regiones (2026-08-24, Grupo 3 § Eventos de clima puntuales, ver
+// docs/rpgtarkor/clima-tormentas.md; ampliado de 1 a 8 regiones el 2026-09-21, § 5-bis punto 13)
+// — eje de tiempo distinto de estacionFor, por región.
 describe('climaFor', () => {
-  it('fuera de Las Llanuras del Viento Rojo, siempre null (sin diseño en otras regiones)', () => {
-    expect(climaFor(0, 'Cristal Helado')).toBeNull();
+  it('región desconocida (fuera de las 8 reales) o null, siempre null', () => {
+    expect(climaFor(0, 'Región inventada que no existe')).toBeNull();
     expect(climaFor(0, null)).toBeNull();
   });
 
-  it('ciclo de 3 días (Tormenta/Viento/Calma) para Las Llanuras', () => {
+  it('las 8 regiones reales tienen clima propio (no null)', () => {
+    const REGIONES = [
+      'Las Llanuras del Viento Rojo',
+      'Cristal Helado',
+      'Ciénaga Troncal',
+      'La Meseta del Orden',
+      'El Margen Silencioso',
+      'La Cicatriz de Cristal',
+      'El Susurro de las Raíces',
+      'La Costa del Azabache',
+    ];
+    for (const region of REGIONES) {
+      expect(climaFor(0, region)).not.toBeNull();
+    }
+  });
+
+  it('ciclo de 3 días (Tormenta/Viento/Calma) para Las Llanuras — sin cambios respecto al diseño original', () => {
     const region = 'Las Llanuras del Viento Rojo';
     expect(climaFor(1440 * 0, region)).toBe('TORMENTA_EXTREMA'); // Día 1, tormenta nº0 (0%3=0)
     expect(climaFor(1440 * 1, region)).toBe('VIENTO_FUERTE'); // Día 2
@@ -198,6 +215,32 @@ describe('climaFor', () => {
     expect(climaFor(1440 * 3, region)).toBe('TORMENTA_GRANDE'); // Día 4, tormenta nº1 (1%3≠0)
     expect(climaFor(1440 * 6, region)).toBe('TORMENTA_GRANDE'); // Día 7, tormenta nº2
     expect(climaFor(1440 * 9, region)).toBe('TORMENTA_EXTREMA'); // Día 10, tormenta nº3 (3%3=0)
+  });
+
+  it('Cristal Helado: extremas más frecuentes que Llanuras (1 de cada 2, no 3) — coherente con la adaptación física de los Helsig', () => {
+    const region = 'Cristal Helado';
+    // Muestreo día a día (no de 3 en 3, que cae siempre en la misma posición del ciclo) durante
+    // 30 días — filtra solo los días de tormenta (GRANDE/EXTREMA) y comprueba la proporción.
+    const dias = Array.from({ length: 30 }, (_, i) => climaFor(1440 * i, region));
+    const tormentas = dias.filter((d) => d === 'TORMENTA_GRANDE' || d === 'TORMENTA_EXTREMA');
+    const extremas = tormentas.filter((d) => d === 'TORMENTA_EXTREMA').length;
+    expect(extremas / tormentas.length).toBeGreaterThan(0.4); // 1 de cada 2 ≈ 50%, más que Llanuras (1/3 ≈ 33%)
+  });
+
+  it('La Cicatriz de Cristal: clima más estable de las 8 (1 de cada 6 extrema) — la formación geológica protege la región', () => {
+    const region = 'La Cicatriz de Cristal';
+    const dias = Array.from({ length: 60 }, (_, i) => climaFor(1440 * i, region));
+    const tormentas = dias.filter((d) => d === 'TORMENTA_GRANDE' || d === 'TORMENTA_EXTREMA');
+    const extremas = tormentas.filter((d) => d === 'TORMENTA_EXTREMA').length;
+    expect(extremas / tormentas.length).toBeLessThan(0.25); // 1 de cada 6 ≈ 17%, menos que Llanuras (1/3)
+  });
+
+  it('dos regiones con offset de fase distinto no siguen la misma secuencia de estados', () => {
+    // Llanuras (offset 0) y Ciénaga Troncal (offset 2) tienen la misma proporción de severidad
+    // (extremaCada: 3) pero fase distinta — la secuencia de los primeros 3 días debe diferir.
+    const secuenciaLlanuras = [0, 1, 2].map((d) => climaFor(1440 * d, 'Las Llanuras del Viento Rojo'));
+    const secuenciaCienaga = [0, 1, 2].map((d) => climaFor(1440 * d, 'Ciénaga Troncal'));
+    expect(secuenciaLlanuras).not.toEqual(secuenciaCienaga);
   });
 
   it('el año se repite: el Día 121 vuelve a dar el mismo clima que el Día 1', () => {

@@ -881,6 +881,37 @@ diseño en sí misma.
 Verificado: `tsc -b` limpio, suite completa 2630/2630 en verde (sin ningún fallo de contención esta
 vez, corrida completa en un solo intento).
 
+### 5-cuater. Punto 13 — CERRADO e IMPLEMENTADO (2026-09-21, sesión posterior): clima en las 8 regiones
+
+Bloqueaba § 4.5 (expediciones de facción). Decisión de Álvaro: "utilizar lo que hay si se puede,
+pero respetar el lore de cada zona" — mismo mecanismo determinista de `climaFor`/`EstadoClima`/
+`climaSeveridadAlMenos` reutilizado tal cual (sin ampliar el enum de 4 valores), pero cada región
+tiene su propia proporción de severidad (`extremaCada`, coherente con su geografía real de
+`areas.md`) y su propio léxico en `climaNombreFor` (nueva firma con `region` opcional) — el mismo
+`TORMENTA_GRANDE` mecánico se narra "la ventisca" en Cristal Helado, "la crecida" en Ciénaga
+Troncal, "la marea brava" en Costa del Azabache, nunca el genérico "gran tormenta" fuera de
+Llanuras. Offset de fase propio por región (para que dos regiones vecinas no compartan el mismo
+día de tormenta exacto).
+
+Proporciones decididas por lore: Cristal Helado y Costa del Azabache (1 de cada 2 extrema — el
+propio lore de adaptación física de los Helsig y el oleaje furioso de los Kalisar son la norma, no
+la excepción); Llanuras y Susurro de las Raíces (1 de cada 3, sin cambios); Ciénaga Troncal (1 de
+cada 3, el peligro real es el terreno, no el clima); Margen Silencioso (1 de cada 4, el peligro
+real es el laberinto y Kroj); Meseta del Orden (1 de cada 5, orden Goirnte impuesto hasta al
+propio territorio); Cicatriz de Cristal (1 de cada 6, la formación geológica protege la región).
+
+Verificado: `tsc -b` limpio, 44/44 tests de `worldClock.test.ts` (incluye Llanuras exactamente
+igual que antes del cambio — cero regresión en el diseño original), suite completa 2634/2634 en
+verde. `docs/rpgtarkor/clima-tormentas.md` sigue siendo la referencia de diseño original
+(Llanuras); las 7 regiones nuevas viven solo en el código, sin doc propio todavía — pendiente de
+lore si Álvaro quiere expandir cada una con el mismo detalle narrativo que Llanuras.
+
+**§ 5 y sus ampliaciones (5-bis/5-ter/5-cuater) quedan CERRADOS por completo** — los 13 puntos
+originales tienen decisión y, donde aplicaba código inmediato (1, 2, 11, 13), están implementados
+y verificados. Quedan como diseño puro, sin código todavía: 5 (aplicado dentro de 4.4/7.4 cuando se
+construyan), 6 (aplicado dentro de 4.4), 7 (motor de eventos unificado, aplicado dentro de 4.4/8/9),
+8 (IA de combate NPC), 9 (curvas dinámicas), 12 (aplicado dentro de 7.4).
+
 ---
 
 ## 7. Sesión de IMPLEMENTACIÓN (2026-09-21, misma fecha, continuación) — §4.2 y §4.3 cerrados, §4.3-bis en diseño

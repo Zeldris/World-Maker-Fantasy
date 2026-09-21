@@ -78,26 +78,68 @@ export function estacionNombreFor(estacion: Estacion, raza: string | null): stri
   return raza === 'orcos' ? ESTACION_NOMBRE_KEKTIRA[estacion] : ESTACION_GLOSA_COMUN[estacion];
 }
 
-/// Clima real de Las Llanuras del Viento Rojo (2026-08-24, Grupo 3 § Eventos de clima puntuales,
-/// diseño completo en docs/rpgtarkor/clima-tormentas.md) — eje de tiempo DISTINTO de `Estacion`,
-/// por región desde el principio (a diferencia del calendario único de estaciones): hoy solo Las
-/// Llanuras tiene números reales, cualquier otra región da `null` (nunca bloquea, mismo criterio
-/// que `pasaFiltroTerreno` sin dato). Mismo año de 120 días que `estacionFor` (`DIAS_POR_ANO`,
-/// reutilizado). Ciclo repetido de 3 días (Tormenta/Viento/Calma) da exactamente 40 días de cada
-/// uno en el año; 1 de cada 3 días de tormenta es Extrema (petición explícita de la usuaria: de
-/// 120 días, 40 de gran tormenta, 40 de vientos fuertes, solo 40 llevables — "duro vivir aquí").
-const LLANURAS_REGION = 'Las Llanuras del Viento Rojo';
+/// Clima real, por región (2026-08-24, Grupo 3 § Eventos de clima puntuales, diseño completo en
+/// docs/rpgtarkor/clima-tormentas.md; ampliado a las 8 regiones el 2026-09-21, docs/rpgtarkor/
+/// mundo-vivo-x4.md § 5-bis punto 13 — bloqueaba § 4.5) — eje de tiempo DISTINTO de `Estacion`,
+/// por región desde el principio. Mismo mecanismo determinista reutilizado en las 8 (mismo
+/// `EstadoClima`, mismo `climaSeveridadAlMenos`, sin ampliar el enum — decisión explícita de
+/// Álvaro: "utilizar lo que hay si se puede, pero respetar el lore de cada zona" — lo que cambia
+/// por región es la PROPORCIÓN de severidad dentro del ciclo, coherente con su geografía real
+/// (`areas.md`), y el nombre/glosa de cada estado, nunca el mecanismo). Mismo año de 120 días que
+/// `estacionFor` (`DIAS_POR_ANO`, reutilizado). Región desconocida (fuera de las 8, o `null`) →
+/// `null`, nunca bloquea (mismo criterio que `pasaFiltroTerreno` sin dato).
 const CICLO_CLIMA_DIAS = 3;
 
+/// Cada región tiene su propio offset de fase (para que dos regiones vecinas no compartan el
+/// mismo día de tormenta exacto, más creíble que un reloj de clima único para todo el mundo) y su
+/// propia proporción de severidad `extremaCada` (1 de cada N tormentas es Extrema — Llanuras usa 3
+/// como ya tenía, el resto se ajusta a su lore real: una región más hostil tiene extremas más
+/// frecuentes, una más protegida por su propia geografía las tiene más raras).
+const REGION_CLIMA_CONFIG: Record<string, { offsetDias: number; extremaCada: number }> = {
+  // Llanuras del Viento Rojo — sin cambios (ya real desde 2026-08-24): "duro vivir aquí", 1 de
+  // cada 3 tormentas es extrema (40/120 días).
+  'Las Llanuras del Viento Rojo': { offsetDias: 0, extremaCada: 3 },
+  // Cristal Helado — tundra de Clan Helsig (areas.md: "piel pálida azulada... más grasa para
+  // retener calor"), ventiscas de nieve constantes por diseño de raza, extremas más frecuentes
+  // que en Llanuras (2 de cada 3, no 3): el propio lore de adaptación física de los Helsig solo
+  // tiene sentido si el frío extremo es la norma, no la excepción.
+  'Cristal Helado': { offsetDias: 1, extremaCada: 2 },
+  // Ciénaga Troncal — pantano húmedo (areas.md: "terreno húmedo, en gran parte inhabitable"),
+  // tormentas de lluvia/crecida más que viento — severidad normal, sin extremas más frecuentes
+  // que Llanuras (el peligro real del lugar es el terreno, no el clima en sí).
+  'Ciénaga Troncal': { offsetDias: 2, extremaCada: 3 },
+  // La Meseta del Orden — desierto de piedra gris (areas.md), clima más estable/controlado,
+  // coherente con el orden Goirnte impuesto hasta al propio territorio — extremas raras (1 de
+  // cada 5).
+  'La Meseta del Orden': { offsetDias: 0, extremaCada: 5 },
+  // El Margen Silencioso — selva/pantanos/coníferas donde "el sonido se apaga sin eco ni rebote"
+  // (areas.md, dominio de Kroj) — clima denso y opresivo más que violento, extremas raras (1 de
+  // cada 4): el peligro real es el laberinto y Kroj, no la tormenta.
+  'El Margen Silencioso': { offsetDias: 1, extremaCada: 4 },
+  // La Cicatriz de Cristal — valle de prismas de cristal, territorio Kelife (areas.md: "los
+  // cristales refractan la luz... iluminando las noches") — región protegida por su propia
+  // formación geológica, clima el más estable de las 8 (1 de cada 6).
+  'La Cicatriz de Cristal': { offsetDias: 2, extremaCada: 6 },
+  // El Susurro de las Raíces — bosque colosal donde "la luz del sol rara vez toca el suelo"
+  // (areas.md, territorio Jusaly), microclima cerrado bajo la copa de los árboles — severidad
+  // normal, misma proporción que Llanuras.
+  'El Susurro de las Raíces': { offsetDias: 0, extremaCada: 3 },
+  // La Costa del Azabache — acantilados negros "tallados por un oleaje furioso" (areas.md,
+  // territorio Kalisar) — el oleaje violento es la norma del lugar, extremas más frecuentes que
+  // Llanuras (1 de cada 2, igual que Cristal Helado: dos regiones hostiles por naturaleza propia).
+  'La Costa del Azabache': { offsetDias: 1, extremaCada: 2 },
+};
+
 export function climaFor(totalMinutes: number, region: string | null): EstadoClima | null {
-  if (region !== LLANURAS_REGION) return null;
+  const config = region ? REGION_CLIMA_CONFIG[region] : undefined;
+  if (!config) return null;
   const dia = dayForFictionalMinutes(totalMinutes);
-  const diaDelAno = (dia - 1) % DIAS_POR_ANO;
+  const diaDelAno = (dia - 1 + config.offsetDias) % DIAS_POR_ANO;
   const posicionCiclo = diaDelAno % CICLO_CLIMA_DIAS;
   if (posicionCiclo === 1) return 'VIENTO_FUERTE';
   if (posicionCiclo === 2) return 'CLIMA_LLEVABLE';
   const numeroTormenta = Math.floor(diaDelAno / CICLO_CLIMA_DIAS);
-  return numeroTormenta % 3 === 0 ? 'TORMENTA_EXTREMA' : 'TORMENTA_GRANDE';
+  return numeroTormenta % config.extremaCada === 0 ? 'TORMENTA_EXTREMA' : 'TORMENTA_GRANDE';
 }
 
 /// Orden de severidad, de menos a más — `HarvestYield.climaRequerido` compara "al menos esta
@@ -119,7 +161,9 @@ export function climaSeveridadAlMenos(climaActual: EstadoClima | null, climaRequ
 
 /// Nombre Kektira (mismo patrón que `estacionNombreFor`) — `Rok'ithek` deriva a propósito de
 /// `Rokthar` (misma raíz, terminación distinta): es la versión intensificada de la misma
-/// tormenta, no un fenómeno narrativo aparte.
+/// tormenta, no un fenómeno narrativo aparte. Genérico para cualquier clan orco (Kektira es la
+/// lengua orca común a Maktor/Serhu/Helsig/Goshg, ver razas.md) — "tormenta" en Kektira no cambia
+/// de palabra según el terreno, a diferencia de la glosa común de abajo.
 const CLIMA_NOMBRE_KEKTIRA: Record<EstadoClima, string> = {
   CLIMA_LLEVABLE: 'Ghurmek',
   VIENTO_FUERTE: "Sek'tar",
@@ -127,15 +171,73 @@ const CLIMA_NOMBRE_KEKTIRA: Record<EstadoClima, string> = {
   TORMENTA_EXTREMA: "Rok'ithek",
 };
 
-const CLIMA_GLOSA_COMUN: Record<EstadoClima, string> = {
-  CLIMA_LLEVABLE: 'el respiro',
-  VIENTO_FUERTE: 'el viento cortante',
-  TORMENTA_GRANDE: 'la gran tormenta',
-  TORMENTA_EXTREMA: 'la ira del viento',
+/// Glosa común, específica por región (2026-09-21, § 5-bis punto 13) — mismo `EstadoClima`
+/// mecánico, pero el mismo fenómeno se nombra distinto según la geografía real de cada zona
+/// (areas.md): viento de arena en Llanuras no es lo mismo que ventisca de nieve en Cristal Helado
+/// ni que oleaje en Costa del Azabache. `'default'` cubre Llanuras (glosa original, sin cambios) y
+/// cualquier región futura sin entrada propia todavía.
+const CLIMA_GLOSA_COMUN_POR_REGION: Record<string, Record<EstadoClima, string>> = {
+  default: {
+    CLIMA_LLEVABLE: 'el respiro',
+    VIENTO_FUERTE: 'el viento cortante',
+    TORMENTA_GRANDE: 'la gran tormenta',
+    TORMENTA_EXTREMA: 'la ira del viento',
+  },
+  // Ventisca de nieve (Clan Helsig, tundra) — mismo mecanismo que Llanuras, léxico de frío.
+  'Cristal Helado': {
+    CLIMA_LLEVABLE: 'la calma helada',
+    VIENTO_FUERTE: 'el cierzo cortante',
+    TORMENTA_GRANDE: 'la ventisca',
+    TORMENTA_EXTREMA: 'la ventisca blanca',
+  },
+  // Pantano/crecida (Clan Goshg) — el agua sube, no el viento.
+  'Ciénaga Troncal': {
+    CLIMA_LLEVABLE: 'las aguas quietas',
+    VIENTO_FUERTE: 'la llovizna densa',
+    TORMENTA_GRANDE: 'la crecida',
+    TORMENTA_EXTREMA: 'la gran crecida',
+  },
+  // Desierto de piedra Goirnte — clima raro pero severo cuando llega, coherente con su orden.
+  'La Meseta del Orden': {
+    CLIMA_LLEVABLE: 'el aire quieto',
+    VIENTO_FUERTE: 'el viento de piedra',
+    TORMENTA_GRANDE: 'la tormenta de arena gris',
+    TORMENTA_EXTREMA: 'la tormenta de arena gris absoluta',
+  },
+  // El sonido se apaga (dominio de Kroj) — clima denso/opresivo, no ruidoso.
+  'El Margen Silencioso': {
+    CLIMA_LLEVABLE: 'el silencio llano',
+    VIENTO_FUERTE: 'la bruma espesa',
+    TORMENTA_GRANDE: 'la tormenta muda',
+    TORMENTA_EXTREMA: 'la tormenta muda absoluta',
+  },
+  // Prismas de cristal Kelife — clima raro, la propia formación protege la región.
+  'La Cicatriz de Cristal': {
+    CLIMA_LLEVABLE: 'el brillo quieto',
+    VIENTO_FUERTE: 'el viento entre cristales',
+    TORMENTA_GRANDE: 'la tormenta de esquirlas',
+    TORMENTA_EXTREMA: 'la lluvia de cristal',
+  },
+  // Bosque colosal Jusaly, la luz apenas toca el suelo — clima de goteo/humedad bajo la copa.
+  'El Susurro de las Raíces': {
+    CLIMA_LLEVABLE: 'la quietud del musgo',
+    VIENTO_FUERTE: 'el goteo constante',
+    TORMENTA_GRANDE: 'la tormenta bajo la copa',
+    TORMENTA_EXTREMA: 'el diluvio de raíces',
+  },
+  // Acantilados y oleaje furioso Kalisar — el mar manda, no el viento.
+  'La Costa del Azabache': {
+    CLIMA_LLEVABLE: 'la marea baja',
+    VIENTO_FUERTE: 'el oleaje fuerte',
+    TORMENTA_GRANDE: 'la marea brava',
+    TORMENTA_EXTREMA: 'la furia del acantilado',
+  },
 };
 
-export function climaNombreFor(estado: EstadoClima, raza: string | null): string {
-  return raza === 'orcos' ? CLIMA_NOMBRE_KEKTIRA[estado] : CLIMA_GLOSA_COMUN[estado];
+export function climaNombreFor(estado: EstadoClima, raza: string | null, region: string | null = null): string {
+  if (raza === 'orcos') return CLIMA_NOMBRE_KEKTIRA[estado];
+  const glosa = (region && CLIMA_GLOSA_COMUN_POR_REGION[region]) || CLIMA_GLOSA_COMUN_POR_REGION.default;
+  return glosa[estado];
 }
 
 /// Momento del día (2026-08-27, imágenes de día/noche por Location/Zona — ver
@@ -171,7 +273,7 @@ export function entornoTemporalFor(totalMinutes: number, region: string | null, 
   const climaKey = climaFor(totalMinutes, region);
   return {
     estacion: { key: estacionKey, nombre: estacionNombreFor(estacionKey, raza) },
-    clima: climaKey ? { key: climaKey, nombre: climaNombreFor(climaKey, raza) } : null,
+    clima: climaKey ? { key: climaKey, nombre: climaNombreFor(climaKey, raza, region) } : null,
   };
 }
 
