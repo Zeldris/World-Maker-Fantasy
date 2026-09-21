@@ -625,10 +625,13 @@ Diseño construido en la conversación, en orden, y estado real de cada pieza:
    vuelta también es navegable sin fila explícita). Sin campo de imagen nuevo en el schema: el
    sistema de `ImagePrompt`/`entityType: 'location'|'zona'` ya resuelve por `slug`, no hacía falta
    tocar nada del modelo. 2 tests de integración reales (`reino.integration.test.ts`).
-   - **Pendiente real, sin cerrar**: el Cuartel Avanzado NO genera su propia zona-interior
-     todavía — solo la Capital. Decidir en la próxima sesión si el Cuartel también necesita una
-     (más fiel a "cada base física real es un lugar navegable propio") o si comparte alguna otra
-     solución más barata.
+   - **Ampliado y CERRADO**: el Cuartel Avanzado TAMBIÉN genera su propia zona-interior, mismo
+     patrón pero de menor escala ("base secundaria", decisión explícita de Álvaro: "mismo patrón
+     pero menos tamaño... la capital reúne la gran mayoría de edificios y es superior a un
+     cuartel") — slug `cuartel-avanzado-interior-<building.id>`, 1 parcela `AVANZADA` central ya
+     ocupada por el propio Cuartel + 1 `BASICA` (la mitad que la Capital, cifra de partida que
+     crecerá con más variedad de edificios). Enganchado en `turnResolution.ts`, mismo bloque que
+     crea el `Building` real del Cuartel.
 4. **Mejora de Ayuntamiento NO crea Location nueva** — **CERRADO, ya era así de antes de tocar
    nada** (`turnResolution.ts`, rama `buildRecipe.upgradesRecipeKey`): misma fila de siempre (mismo
    `id`/`slug`), solo cambia `tier` — coherente con lo decidido. El "cambia el fondo/PNG según
@@ -674,27 +677,36 @@ Diseño construido en la conversación, en orden, y estado real de cada pieza:
    propio PNG con los huecos de parcela exactos ya compuestos para ese nivel — pendiente para
    cuando Álvaro lo pida.
 7. **Enganchar el evento `EXPANSION_TERRITORIAL_AGRESIVA`** (§ 7.3) a la construcción real de un
-   Cuartel Avanzado en región ajena a otra Faction — **sin cerrar, sin código todavía.** Ahora que
-   el Cuartel Avanzado (pieza 1) ya existe de verdad, esto es la pieza que falta para que
-   `recordFactionEvent` tenga por fin un caller real en producción.
+   Cuartel Avanzado en región ajena a otra Faction — **CERRADO, verificado contra Postgres real.**
+   `turnResolution.ts`, mismo bloque que crea el `Building` real del Cuartel: si `activeRegion`
+   tiene una `Faction` dueña real (`REGION_OWNING_FACTIONS`) DISTINTA de la propia facción del
+   jugador, dispara `recordFactionEvent(..., 'EXPANSION_TERRITORIAL_AGRESIVA')` — primer caller
+   real de todo el motor de eventos de § 7.3, que hasta ahora estaba escrito y testeado pero sin
+   ningún sitio que lo llamara en producción. Test de integración real
+   (`cuartelAvanzadoTerritorial.integration.test.ts`, turno completo vía `/turn/classify` +
+   `/turn/narrate`, LLM mockeado): construir en Cristal Helado (dueño real Clan Helsig) sube
+   `FactionRelation.presion` de 50 (neutro) a 65, cruzando a banda `TENSION` con un solo evento.
 
-**Backend de § 7.4 completo salvo piezas 6 (imágenes, a demanda) y 7 (evento territorial).
-Retomar en sesión nueva por, en este orden**: (a) si el Cuartel Avanzado necesita su propia
-zona-interior (pendiente de la pieza 3), (b) enganchar el evento territorial (pieza 7), (c) pasada
-dedicada de refactor de FRONTEND para representar todo lo construido en backend (icono de parcela
-en el mapa de Zona, modal de detalle con botón Construir, estado de Cuartel Avanzado/mejoras,
-etc.), (d) prompts de imagen por nivel (pieza 6, a demanda de Álvaro).
+**BACKEND DE § 7.4 COMPLETO** (piezas 1-5 y 7 cerradas, verificadas contra Postgres real, suite
+completa 2590/2590 en verde sin ningún flake). Queda solo pieza 6 (prompts de imagen, a demanda de
+Álvaro cuando quiera generar las imágenes reales) y — mandato explícito de esta sesión — **una
+pasada dedicada de FRONTEND** una vez decidido qué información es útil mostrar, dónde, qué
+animaciones dan vida a esto, y qué vistas ya existentes hay que refactorizar (icono de parcela en
+el mapa de Zona, modal de detalle con botón Construir, estado de Cuartel Avanzado/mejoras/cupos,
+panel de Reino con el nuevo modelo generalizado, etc.) — todavía sin empezar a diseñar ese
+frontend en esta sesión.
 
 ---
 
 ## 6. Estado de este documento
 
-**§ 4.2, § 4.3 (motor de eventos base) y § 7.4 piezas 1-5 (jerarquía Capital/Cuartel Avanzado con
-cupos + zona-interior dinámica de Capital + parcelas estilo Travian, backend completo) CERRADOS e
-implementados, verificados contra el sandbox real** (schema aplicado, seed corriendo, suite
-completa **2589/2589 en verde**, sin ningún flake en la última pasada completa). Backend de § 7.4
-completo salvo piezas 6 (prompts de imagen, a demanda de Álvaro) y 7 (enganchar
-`EXPANSION_TERRITORIAL_AGRESIVA` a la construcción real de un Cuartel Avanzado, sin código
-todavía). **Frontend de toda esta pieza (§ 7.4) sigue sin tocar a propósito** — decisión explícita
-de Álvaro: cerrar backend entero primero, pasada dedicada de frontend después. El resto de § 4 (4.4
-comercio, 4.5 expediciones, 4.6 reproducción) sigue sin tocar, tal como estaba.
+**BACKEND COMPLETO Y CERRADO**: § 4.2, § 4.3 (motor de eventos base) y § 7.4 piezas 1-5 y 7
+(jerarquía Capital/Cuartel Avanzado con cupos, zona-interior dinámica de AMBOS, parcelas estilo
+Travian, y el evento territorial ya enganchado a producción) — todo implementado y verificado
+contra el sandbox real (schema aplicado, seed corriendo, suite completa **2590/2590 en verde**,
+sin ningún flake en la última pasada completa). Solo queda pieza 6 (prompts de imagen, a demanda
+de Álvaro). **Frontend de toda esta pieza (§ 7.4) sigue sin tocar a propósito** — mandato
+explícito de Álvaro: cerrar TODO el backend primero (ya conseguido), y solo entonces abrir una
+pasada dedicada de frontend viendo qué información es útil mostrar, dónde, qué animaciones dan
+vida a esto y qué vistas ya existentes conviene refactorizar — sin empezar ese diseño todavía. El
+resto de § 4 (4.4 comercio, 4.5 expediciones, 4.6 reproducción) sigue sin tocar, tal como estaba.

@@ -5,6 +5,8 @@ import { xpForRollSuccess, xpForHitos, labelForHitos, applyXp, type ProgressionR
 import { alivioForLevel, xpForCraftSuccess, professionLevelForXp } from './professionProgress.js';
 import { tickKingdom, daysCrossed, DEFAULT_KINGDOM_STATS, territoryPopulationDelta, DIAS_PARA_CONSOLIDAR, DIAS_PARA_REBELION } from './kingdomTick.js';
 import { assertExactlyOneOwner, ownerKeyFor } from './reinoOwner.js';
+import { recordFactionEvent } from './factionRelations.js';
+import { slugify } from '../lib/slugify.js';
 import { appendSessionFacts, selectRelevantFacts } from './worldFacts.js';
 import { closeItemQuests, completeNpcTargetQuests, grantQuestRewardItems, questRewardNarrationFor, GISTERA_DESPEDIDA_NARRATION, type QuestCompletedInfo } from './questResolution.js';
 import {
@@ -6351,6 +6353,58 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
             suggestedName: characterName === 'Gorhorn' ? 'Maktor' : null,
             nameLocked: characterName === 'Gorhorn',
           };
+        }
+        // Conquista territorial estilo X4 (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, 2026-09-21) — al
+        // levantar un Cuartel Avanzado (siempre en región DISTINTA a la de la Capital, ya
+        // garantizado por `computeBuildBlockedReason`), pasan dos cosas nuevas:
+        // (1) su propia zona-interior navegable, mismo patrón que la Capital (reino.ts) pero de
+        //     MENOR escala ("base secundaria", decisión explícita de Álvaro) — 1 parcela AVANZADA
+        //     central ya ocupada por el propio Cuartel + 1 BÁSICA vacía alrededor (cifra de
+        //     partida, crece cuando haya más variedad de edificios que la justifique).
+        // (2) si la región ya tiene una Faction NPC dueña real (`REGION_OWNING_FACTIONS`) DISTINTA
+        //     de la propia facción del jugador, esto es EXPANSIÓN AGRESIVA real en su territorio —
+        //     dispara el evento discreto que alimenta `FactionRelation` (§ 7.3), primer caller real
+        //     de `recordFactionEvent` en producción.
+        if (buildRecipe.isCuartelAvanzado) {
+          const playerFaction = await tx.faction.findFirst({ where: { saveId }, select: { id: true, name: true } });
+          const cuartelLocationSlug = `cuartel-avanzado-interior-${created.id}`;
+          const cuartelLocation = await tx.location.create({
+            data: {
+              worldId,
+              slug: cuartelLocationSlug,
+              name: `Puesto de ${playerFaction?.name ?? characterName}`,
+              region: activeRegion ?? '',
+              kind: 'interior',
+              description: `Dentro de la palizada del cuartel avanzado: un puesto modesto, mucho más pequeño que la capital — apenas espacio para lo esencial.`,
+              aliases: playerFaction ? [slugify(playerFaction.name)] : [],
+            },
+          });
+          if (currentLocationId) {
+            await tx.locationLink.create({
+              data: { fromId: currentLocationId, toId: cuartelLocation.id, minutosBase: 0, terreno: 'La entrada del cuartel' },
+            });
+          }
+          await tx.parcela.create({
+            data: { locationId: cuartelLocation.id, x: 400, y: 300, tipo: 'AVANZADA', recipeKeyFijo: buildRecipe.key, buildingId: created.id },
+          });
+          await tx.parcela.create({
+            data: { locationId: cuartelLocation.id, x: 400, y: 150, tipo: 'BASICA' },
+          });
+
+          if (playerFaction && activeRegion) {
+            const duenoOriginalName = REGION_OWNING_FACTIONS[activeRegion]?.[0];
+            if (duenoOriginalName && duenoOriginalName !== playerFaction.name) {
+              const targetFaction = await tx.faction.findFirst({ where: { worldId, name: duenoOriginalName, saveId: null }, select: { id: true } });
+              if (targetFaction) {
+                const fact = await recordFactionEvent(tx, worldId, playerFaction.id, targetFaction.id, 'EXPANSION_TERRITORIAL_AGRESIVA');
+                if (fact) {
+                  await tx.logEntry.create({
+                    data: { saveId, channel: 'WORLD', text: fact, timeLabel, fictionalMinutes: fictionalMinutesActuales, isSystemMessage: true },
+                  });
+                }
+              }
+            }
+          }
         }
       }
       reinoXp = Math.max(reinoXp, REINO_XP.buildingActive);
