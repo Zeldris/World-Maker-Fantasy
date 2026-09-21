@@ -4,6 +4,7 @@ import { retrieveLore, formatLoreForPrompt, isWeaklyGrounded } from './retrieval
 import { xpForRollSuccess, xpForHitos, labelForHitos, applyXp, type ProgressionResult, type HitoTipo } from './progression.js';
 import { alivioForLevel, xpForCraftSuccess, professionLevelForXp } from './professionProgress.js';
 import { tickKingdom, daysCrossed, DEFAULT_KINGDOM_STATS, territoryPopulationDelta, DIAS_PARA_CONSOLIDAR, DIAS_PARA_REBELION } from './kingdomTick.js';
+import { assertExactlyOneOwner, ownerKeyFor } from './reinoOwner.js';
 import { appendSessionFacts, selectRelevantFacts } from './worldFacts.js';
 import { closeItemQuests, completeNpcTargetQuests, grantQuestRewardItems, questRewardNarrationFor, GISTERA_DESPEDIDA_NARRATION, type QuestCompletedInfo } from './questResolution.js';
 import {
@@ -5511,14 +5512,14 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // cero IA — el modelo nunca decide estos números.
     const diasCruzados = daysCrossed(fictionalMinutesActuales, nuevoFictionalMinutes);
     if (diasCruzados > 0) {
-      const kingdomStats = await tx.kingdomStats.findUnique({ where: { saveId } });
+      const kingdomStats = await tx.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId }) } });
       if (kingdomStats) {
         const { poblacion, felicidad, comida, bebida, riqueza, soldados, trabajadores, visitantes, diasFelicidadAlta, diasFelicidadBaja } = kingdomStats;
         const ticked = tickKingdom(
           { poblacion, felicidad, comida, bebida, riqueza, soldados, trabajadores, visitantes, diasFelicidadAlta, diasFelicidadBaja },
           diasCruzados,
         );
-        await tx.kingdomStats.update({ where: { saveId }, data: ticked });
+        await tx.kingdomStats.update({ where: { ownerKey: ownerKeyFor({ saveId }) }, data: ticked });
 
         // Territory.control/population (2026-08-23, Grupo 3 — docs/10-niveles-xp-reino.md § 5.4,
         // nunca implementado hasta ahora) — misma cadencia que el tick de arriba, felicidad
@@ -6198,10 +6199,11 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     async function bumpKingdomStats(delta: Partial<import('./kingdomTick.js').KingdomStatsBlock>): Promise<void> {
       const entries = Object.entries(delta).filter(([, v]) => v);
       if (entries.length === 0) return;
-      const exists = await tx.kingdomStats.findUnique({ where: { saveId }, select: { saveId: true } });
+      const ownerKey = ownerKeyFor({ saveId });
+      const exists = await tx.kingdomStats.findUnique({ where: { ownerKey }, select: { ownerKey: true } });
       if (!exists) return;
       await tx.kingdomStats.update({
-        where: { saveId },
+        where: { ownerKey },
         data: Object.fromEntries(entries.map(([k, v]) => [k, { increment: v as number }])),
       });
     }
@@ -6213,6 +6215,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // territorio, solo puede proponer que se funde uno aquí.
     if (narration.newTerritory) {
       const existingTerritories = await tx.territory.count({ where: { saveId } });
+      assertExactlyOneOwner({ saveId }, 'turnResolution.ts newTerritory');
       const territory = await tx.territory.create({
         data: {
           saveId,
@@ -6228,7 +6231,12 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       // reino" — se crea la fila de economía aquí, con los valores por defecto (todo a 0 salvo
       // felicidad neutral en 50), nunca antes.
       if (existingTerritories === 0) {
-        await tx.kingdomStats.upsert({ where: { saveId }, create: { saveId, ...DEFAULT_KINGDOM_STATS }, update: {} });
+        assertExactlyOneOwner({ saveId }, 'turnResolution.ts newTerritory kingdomStats');
+        await tx.kingdomStats.upsert({
+          where: { ownerKey: ownerKeyFor({ saveId }) },
+          create: { saveId, ownerKey: ownerKeyFor({ saveId }), ...DEFAULT_KINGDOM_STATS },
+          update: {},
+        });
       }
     }
 
@@ -6282,6 +6290,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         // construcción se resolvió por el turno síncrono de /turn/narrate (nunca pasa hoy, todas
         // las recetas son banda larga, pero se cubre el caso por si acaso) o si `turn.ts` no llegó
         // a detectarla a tiempo (mismo "mejor esfuerzo" que el resto de esta revalidación).
+        if (!earlyBuildingId) assertExactlyOneOwner({ saveId }, 'turnResolution.ts construir Building');
         const created = earlyBuildingId
           ? await tx.building.update({ where: { id: earlyBuildingId }, data: { status: 'ACTIVO' } })
           : await tx.building.create({
@@ -6310,6 +6319,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           const foundingFactionsStatus = parseFactionsStatus(worldStateForFounding?.factionsStatus);
           const outcome = resolveFoundingOutcome(activeRegion, foundingFactionsStatus);
           const existingTerritoriesForFounding = await tx.territory.count({ where: { saveId } });
+          assertExactlyOneOwner({ saveId }, 'turnResolution.ts fundar reino territory');
           const founded = await tx.territory.create({
             data: {
               saveId,
@@ -6322,7 +6332,12 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           });
           await tx.building.update({ where: { id: created.id }, data: { territoryId: founded.id } });
           if (existingTerritoriesForFounding === 0) {
-            await tx.kingdomStats.upsert({ where: { saveId }, create: { saveId, ...DEFAULT_KINGDOM_STATS }, update: {} });
+            assertExactlyOneOwner({ saveId }, 'turnResolution.ts fundar reino kingdomStats');
+            await tx.kingdomStats.upsert({
+              where: { ownerKey: ownerKeyFor({ saveId }) },
+              create: { saveId, ownerKey: ownerKeyFor({ saveId }), ...DEFAULT_KINGDOM_STATS },
+              update: {},
+            });
           }
           reinoXp = Math.max(reinoXp, REINO_XP.territory);
           // Gorhorn (2026-08-04, petición explícita): nombre de reino precargado y BLOQUEADO —
@@ -6340,6 +6355,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       }
       reinoXp = Math.max(reinoXp, REINO_XP.buildingActive);
     } else if (narration.newBuilding) {
+      assertExactlyOneOwner({ saveId }, 'turnResolution.ts newBuilding');
       await tx.building.create({
         data: {
           saveId,
@@ -7349,7 +7365,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     prisma.territory.findMany({ where: { saveId }, orderBy: { acquiredAt: 'asc' } }),
     prisma.building.findMany({ where: { saveId }, orderBy: { createdAt: 'asc' } }),
     prisma.subject.findMany({ where: { saveId }, orderBy: { createdAt: 'asc' } }),
-    prisma.kingdomStats.findUnique({ where: { saveId } }),
+    prisma.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId }) } }),
     // deathCount/factionsStatus/professionProgress (auditoría 2026-08-06, bug real): las tres se
     // mutan dentro de la transacción de este mismo turno (combate/decapitar/crafteo) pero nunca
     // viajaban de vuelta al frontend — GameView.tsx solo las actualizaba en `syncFromSave`, así que

@@ -505,9 +505,147 @@ antes de cerrar. Lista completa, sin resolver todavía:
 
 ---
 
+## 7. Sesión de IMPLEMENTACIÓN (2026-09-21, misma fecha, continuación) — §4.2 y §4.3 cerrados, §4.3-bis en diseño
+
+Retomada la misma tarde con mandato explícito de Álvaro: "lee mundo-vivo-x4 y vamos con esa
+implementación". Puntos abiertos de § 5 resueltos uno a uno según se necesitaban (no todos de
+golpe) — quedan registrados abajo en el orden real en que se cerraron.
+
+### 7.1 §4.2 generalizado — CERRADO, verificado, en producción
+
+- `Building`/`Territory`/`KingdomStats`: `saveId`/`factionId` opcionales (schema.prisma), validado
+  con `assertExactlyOneOwner`/`ownerKeyFor` (`reinoOwner.ts`) — nunca CHECK de SQL (punto abierto
+  #2: **servicio, no DB**, decisión de Álvaro).
+- `KingdomStats.ownerKey` (`save:<id>`/`faction:<id>`) sustituye `saveId @unique` como clave real
+  de `findUnique`/`update` — necesario porque Prisma exige unicidad simple en el lado que define
+  una relación 1:1, y `saveId`/`factionId` ya no pueden serlo por separado.
+- Punto abierto #3 (Save vs. World): **de `Save`**, cada partida diverge desde el turno 1 —
+  asimetría deliberada frente a `WorldPopulation` (de `World`), decisión de Álvaro contra la
+  recomendación de Claude.
+- Punto abierto #1 (`FactionBuilding`): **retirado**, migrado a `Building.factionId`
+  (`@@unique([factionId, recipeKey])` nuevo, hace el seed idempotente). Las 12 filas vigentes de
+  catálogo migradas vía SQL directo; 2 huérfanas de un rename (`karot-vekhad`, `ketg-lukar`,
+  duplicados exactos de `ketg-sedsar`) descartadas — mismo criterio que `orco-rezagado`
+  (2026-09-09): "si no da valor, no se arrastra".
+  `seed-catalog.ts` reescrito: siembra `Faction` → resuelve `factionSlug`/`locationSlug` → crea
+  `Building.factionId` (ya no hay tabla `FactionBuilding`).
+- `session.ts:100` reforzado con `saveId` explícito en el `deleteMany` (antes solo `id`+`status`).
+- 2 migraciones Prisma aplicadas contra el sandbox real; `tsc -b --force` limpio; suite completa
+  **2553/2554** (el único fallo, `session.flee.integration.test.ts`, es un test de condición de
+  carrera dependiente de timing — pasa aislado, no es regresión).
+
+### 7.2 Líder de facción — CERRADO
+
+Punto abierto #5 (Inteligencia de facción): **la de su líder de GOBIERNO** (Terk'ikar/equivalente,
+no el de guerra — decisión explícita de Álvaro, contra la recomendación de Claude de un campo
+propio desacoplado). `Faction.liderNpcId` (FK real a `Npc`, a diferencia de `Npc.faction`/
+`FactionBuilding.factionSlug` que son string libre — aquí sí hay una referencia estable real,
+ambos catálogo del mismo `World`).
+
+Hallazgo real: cada facción tiene DOS líderes de lore (gobierno + guerra) y **Clan Goshg no tenía
+ningún NPC real sembrado** (solo prosa en `Location`/`Faction.description`). Resuelto sembrando
+`doshka`/`dulgren` en `worldCatalog.ts` (mismo shape que Brenka/Solgra de Helsig, `nucleoJugable:
+false` — fuera del núcleo jugable actual, coherente con su región). Líderes reales sembrados:
+Serhu→Ulkha Ketg (Int 20), Helsig→Brenka (16), Goshg→Doshka (15), Concordia→Yovenne Tal (15).
+
+### 7.3 Motor de eventos de `FactionRelation` — CERRADO (diseño + código base), sin enganchar a eventos reales todavía
+
+Punto abierto #6 (disparo de disputas): **reemplaza** el avance automático por tiempo puro del
+`CONFLICTO_ID` original (decisión explícita de Álvaro). Forma final, cerrada tras contrastar con
+el modelo real de X4 (Claude verificó cómo funciona X4 de verdad antes de proponer números):
+**híbrido X4 + reputación estilo WoW**, no ambiente continuo:
+
+- `FactionRelation` (nuevo modelo, DIRIGIDA a propósito — `sourceFactionId`→`targetFactionId`,
+  nunca simétrica; decisión de Álvaro: "lo más completo y genérico para ampliar", against la
+  opción simétrica más simple que Claude recomendó primero).
+- `presion` 0-100 (50 = neutro) sube/baja por EVENTOS DISCRETOS con peso propio (estilo X4 real:
+  sucesos puntuales, nunca "¿comparten región ahora mismo?" evaluado en cada tick) — bandas con
+  nombre deciden `type` (0-19 ALIANZA / 20-39 TRATADO_COMERCIAL / 40-59 NEUTRAL / 60-79 TENSION /
+  80-100 GUERRA), mismo espíritu que `reputation.ts` (bandas de 1000 sobre 0-5000).
+- Decaimiento pasivo -1/semana de ficción sin eventos nuevos, hacia el neutro (nunca cruza de
+  golpe, se detiene en 50).
+- Código: `src/services/factionRelations.ts` (funciones puras: `typeForPresion`, `stageForPresion`,
+  `applyFactionEvent`, `decayPresion`, `stageFactFor` — plantilla de texto por banda, generado con
+  nombres de ambas facciones en vez de las 5 líneas fijas por conflicto del `STAGE_FACTS`
+  original) + `recordFactionEvent`/`ensureFactionRelation` (wrapper Prisma). 16 tests unitarios en
+  verde (`factionRelations.test.ts`).
+- **Pendiente real, sin cerrar**: NINGÚN caller en producción todavía dispara
+  `recordFactionEvent` — los 2 eventos definidos (`EXPANSION_TERRITORIAL_AGRESIVA`,
+  `BAJA_DE_GUERRA`) están tipados pero sin enganchar. El enganche real quedó bloqueado por la
+  pieza de conquista territorial de § 7.4 (más abajo) — decidir juntos en la próxima sesión cómo
+  se conectan.
+- `worldAgenda.ts` (el conflicto original Serhu+Concordia vs. Helsig+Goshg) **todavía no se ha
+  tocado ni retirado** — sigue funcionando en paralelo, sin migrar a `FactionRelation` todavía.
+  Migrar su única fila real a la primera fila de este sistema genérico (tal como proponía § 4.3)
+  queda pendiente.
+
+### 7.4 Conquista territorial estilo X4 — EN DISEÑO, sin cerrar, sin código todavía
+
+Al intentar enganchar el primer evento real (`EXPANSION_TERRITORIAL_AGRESIVA`), salió a la luz que
+el modelo de control regional actual (`Territory.control`/`regionControlFor`, avance por tiempo)
+no es fiel al patrón real de X4 que Álvaro quiere: en X4 el control de un sector lo decide qué
+ESTRUCTURA FÍSICA real (estación/módulos) hay allí, no un número aparte. Álvaro pidió revisar cómo
+lo hace X4 de verdad antes de seguir — hecho, y confirmado que el camino es "estructura física
+real decide el control", no un contador ambiental.
+
+Diseño construido en la conversación, en orden:
+
+1. **Jerarquía de 3 niveles de construcción de reino** (no 2 como hoy):
+   - **Capital** (Ayuntamiento, ya existe — 1 por facción/jugador, límite estricto ya real).
+   - **Cuartel Avanzado** (pieza NUEVA, "puesto avanzado" ya anticipado en el comentario de
+     `AYUNTAMIENTO_PEQUENO_RECIPE` desde 2026-08-04) — varios permitidos, 1 por región, es la
+     pieza real de "conquistar zonas" al estilo X4. Mejorable UNA VEZ a **Cuartel de Guerra**
+     (+10 cupo de edificios defensivos) o **Puesto Comercial** (+10 cupo de producción) — bifurcación
+     única, nunca ambas, mismo patrón que la especialización de clase del jugador.
+   - Edificios sueltos (choza, taller...) — como hoy, cuelgan de Capital o Cuartel según su tipo.
+2. **Cupos confirmados** (cifra de partida, ajustable jugando, mismo criterio que el resto del
+   proyecto): Ayuntamiento pequeño/mediano/grande → 1/5/10 Cuarteles Avanzados posibles (cupo
+   NUEVO, independiente del cupo de edificios normales 10/25/60 que ya existía). Cada Cuartel
+   tiene su propio cupo LOCAL de defensa/producción (no agregado de partida — cada base física
+   real tiene su propia capacidad, más fiel a X4 donde cada estación tiene sus propios módulos).
+3. **Zona-interior navegable propia** al fundar Capital o Cuartel — pieza de MOTOR nueva: hoy
+   `Location` es 100% catálogo estático sembrado a mano, nunca se crea una fila en tiempo de
+   partida. Decisión de Álvaro: sí crear `Location` dinámica al fundar (slug determinista con
+   `save.id`, mismo patrón que `Faction.slug` en `reino.ts:78`), enlazada por `LocationLink` coste
+   0 — reutiliza el 100% del sistema de Zona/ZonePoint ya existente, no un mapa nuevo.
+4. **Mejora de Ayuntamiento NO crea Location nueva** — misma fila de siempre (mismo `id`/`slug`,
+   coherente con que `Building.tier` ya se actualiza en la misma fila al mejorar), solo cambia el
+   fondo/PNG y el cupo de huecos admitidos.
+5. **Concepto de "parcela" estilo Travian/Tribal Wars** (el más reciente, pendiente de detallar
+   del todo) — el PNG de cada zona-interior ya trae sus huecos de construcción MARCADOS de
+   antemano como icono en el mapa de Zona, no espacio libre donde el jugador coloca a mano:
+   - **Parcela básica vacía**: repetible, ahí van los edificios de producción/vivienda/
+     fabricación — el jugador SÍ elige qué construir en ese hueco concreto.
+   - **Parcela avanzada**: única por posición — a diferencia de la básica, **cada posición del PNG
+     ya tiene predeterminado A PRIORI qué edificio único va exactamente ahí** (el Ayuntamiento
+     siempre en el centro, la empalizada siempre alrededor, el futuro salón de diplomacia siempre
+     en su hueco fijo...) — el jugador NO elige entre opciones en una parcela avanzada, solo
+     construye lo que esa posición concreta ya define. Reservada para edificios que dan pasivas de
+     reino/efectos concretos (hoy hay poca variedad todavía, así que de momento las Location siguen
+     como están — el frontend expondrá el icono de parcela en el mapa de Zona, clic abre modal de
+     detalle con opción "construir", ficha "Parcela básica vacía"/"Parcela avanzada vacía").
+   - Interacción: clic en el icono de parcela en el mapa de Zona → modal de detalle → opción
+     "construir" (para básica, elige receta; para avanzada, ya sabe cuál construir ahí).
+6. **Imágenes/prompts**: reparto de trabajo cerrado explícitamente con Álvaro — Claude SÍ escribe/
+   actualiza el TEXTO de los prompts (trabajo de contenido normal), Álvaro genera la imagen real y
+   la sube (ver memoria `tarkor_feedback_generacion_imagenes_es_cosa_del_usuario`). Cada nivel de
+   Ayuntamiento/Cuartel necesita su propio PNG con los huecos exactos ya compuestos para ese
+   nivel — incluye revisar/actualizar los prompts de los interiores de facción NPC ya existentes
+   (Serhu/Helsig/Goshg) para que seas coherentes con el mismo criterio de huecos marcados.
+
+**Nada de § 7.4 tiene código todavía** — se paró aquí a propósito (sesión ya larga, mandato
+explícito de Álvaro de vigilar el consumo de tokens y abrir chat nuevo en el momento oportuno).
+Retomar en sesión nueva por: (a) schema de "parcela" (¿modelo propio, o campo nuevo en
+`Building`/`Location`?), (b) generación real de la `Location` dinámica al fundar, (c) enganchar
+por fin `recordFactionEvent('EXPANSION_TERRITORIAL_AGRESIVA', ...)` a la construcción real de un
+Cuartel Avanzado en región ajena, (d) prompts de imagen por nivel.
+
+---
+
 ## 6. Estado de este documento
 
-**Sin cerrar.** Sigue siendo un documento de diseño puro — nada de esto se ha implementado ni se
-ha empezado a tocar código/schema. La autora pidió explícitamente dejarlo "bien documentado y
-claro" y resolver o al menos nombrar cualquier punto abierto (§ 5) antes de dar por cerrada esta
-fase y abrir una sesión nueva dedicada a la implementación.
+**§ 4.2 y § 4.3 (motor de eventos base) CERRADOS e implementados, verificados contra el sandbox
+real (schema aplicado, seed corriendo, 2553/2554 tests).** § 4.3-bis (conquista territorial estilo
+X4, jerarquía Capital/Cuartel/parcelas) queda en diseño avanzado pero sin código — ver § 7.4 para
+retomar exactamente donde se paró. El resto de § 4 (4.4 comercio, 4.5 expediciones, 4.6
+reproducción) sigue sin tocar, tal como estaba.

@@ -14,6 +14,7 @@ import { sessionRoutes } from './saves/session.js';
 import { progressionRoutes } from './saves/progression.js';
 import { questsRoutes } from './saves/quests.js';
 import { minutosConDestreza, bandaForMinutos } from '../services/travel.js';
+import { ownerKeyFor } from '../services/reinoOwner.js';
 import type { NarrationResult } from '../services/narrador.js';
 import { hasFalseTravelClaim, hasFalsePhantomTravel } from '../services/narrador.js';
 import type { TravelResolution } from '../services/travel.js';
@@ -2825,7 +2826,7 @@ describe('Territory.control/population: felicidad sostenida consolida o rebela (
     // Felicidad fija: `poblacion`/`soldados`/`visitantes` en 0 → `bocas` = 0 → sin déficit/superávit
     // real que la mueva sola, se queda plana durante los 7 días (aísla la racha de lo que ya
     // cubren los tests de tickKingdomOneDay).
-    await prisma.kingdomStats.create({ data: { saveId, felicidad: felicidadFija } });
+    await prisma.kingdomStats.create({ data: { saveId, ownerKey: ownerKeyFor({ saveId }), felicidad: felicidadFija } });
     classifyAction.mockResolvedValue({
       requiereTirada: false, atributo: 'voluntad', dificultad: 15, razon: 'x', banda: 'larga', duracionEstimadaMinutos: 7 * 1440 + 60,
     });

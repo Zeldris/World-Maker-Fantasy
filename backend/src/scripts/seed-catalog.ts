@@ -92,12 +92,14 @@ async function main() {
 
   console.log(`  Facciones (${factions.length})...`);
   const factionNameSet = new Set(factions.map((f) => f.name));
+  const factionIdByName = new Map<string, string>();
   for (const faction of factions) {
-    await prisma.faction.upsert({
+    const row = await prisma.faction.upsert({
       where: { worldId_slug: { worldId, slug: faction.slug } },
       update: { name: faction.name, raza: faction.raza, description: faction.description },
       create: { worldId, ...faction },
     });
+    factionIdByName.set(faction.name, row.id);
   }
   // Fail-fast (2026-08-06): cada Npc.faction no-null usado en worldCatalog.ts debe tener una
   // Faction homónima exacta — si no, el enganche de descubrimiento en cascada
@@ -110,6 +112,7 @@ async function main() {
 
   const allNpcs = [...npcs, ...fauna];
   console.log(`  NPCs (${allNpcs.length})...`);
+  const npcIdBySlug = new Map<string, string>();
   for (const npc of allNpcs) {
     const { loadout, habilidadesRaciales, ...npcData } = npc;
     // Rediseño de la vista de combate (2026-07-28): `habilidadesRaciales` se castea a mano — un
@@ -163,6 +166,7 @@ async function main() {
       },
       create: { worldId, ...npcData, nucleoJugable: npcData.nucleoJugable ?? true, habilidadesRaciales: habilidadesRacialesJson },
     });
+    npcIdBySlug.set(npc.slug, row.id);
 
     const loadoutItemIds = loadout.map((entry) => {
       const itemId = itemIdBySlug.get(entry.itemSlug);
@@ -182,6 +186,26 @@ async function main() {
         create: { npcId: row.id, itemId, cantidad: entry.cantidad ?? 1, notas: entry.notas },
       });
     }
+  }
+
+  // Faction.liderNpcId (docs/rpgtarkor/mundo-vivo-x4.md § 4.3, 2026-09-21) — el líder de GOBIERNO
+  // (Terk'ikar/equivalente, decisión explícita de la autora, no el de guerra) de cada facción con
+  // NPC real sembrado. Va DESPUÉS del bucle de NPCs (necesita `npcIdBySlug` ya poblado). Facciones
+  // sin líder real todavía (ninguna hoy) simplemente no aparecen en este mapa — se quedan `null`.
+  console.log('  Líderes de facción (Faction.liderNpcId)...');
+  const FACTION_LEADER_SLUG: Record<string, string> = {
+    'clan-serhu': 'ulkha-ketg',
+    'clan-helsig': 'brenka',
+    'clan-goshg': 'doshka',
+    'concordia-de-hierro': 'yovenne-tal',
+  };
+  for (const [factionSlug, leaderSlug] of Object.entries(FACTION_LEADER_SLUG)) {
+    const leaderNpcId = npcIdBySlug.get(leaderSlug);
+    if (!leaderNpcId) throw new Error(`Faction "${factionSlug}" referencia un líder desconocido: ${leaderSlug}`);
+    await prisma.faction.update({
+      where: { worldId_slug: { worldId, slug: factionSlug } },
+      data: { liderNpcId: leaderNpcId },
+    });
   }
 
   console.log(`  Entradas de Historia (${historiaEntries.length})...`);
@@ -299,19 +323,38 @@ async function main() {
     });
   }
 
+  // Edificios de facción (ex-FactionBuilding, retirado 2026-09-21 — ver
+  // docs/rpgtarkor/mundo-vivo-x4.md § 4.2): ahora se siembran como `Building.factionId` en vez de
+  // en su propio modelo, mismo motor que usa el jugador. `recipeKey` guarda el `slug` de catálogo
+  // (idempotencia vía `@@unique([factionId, recipeKey])`); `saveId` queda null a propósito (no es
+  // reino del jugador). `factionSlug`/`locationSlug` de worldCatalog.ts son en realidad NAME/slug
+  // libres (mismo criterio laxo que `Npc.faction`) — se resuelven aquí a id real.
   console.log(`  Edificios de facción (${factionBuildings.length}, "Trabajador de Reino")...`);
   for (const building of factionBuildings) {
-    await prisma.factionBuilding.upsert({
-      where: { worldId_slug: { worldId, slug: building.slug } },
+    const factionId = factionIdByName.get(building.factionSlug);
+    if (!factionId) throw new Error(`FactionBuilding "${building.slug}" referencia una facción desconocida: ${building.factionSlug}`);
+    const locationId = locationIdBySlug.get(building.locationSlug);
+    if (!locationId) throw new Error(`FactionBuilding "${building.slug}" referencia una Location desconocida: ${building.locationSlug}`);
+    await prisma.building.upsert({
+      where: { factionId_recipeKey: { factionId, recipeKey: building.slug } },
       update: {
         name: building.name,
-        factionSlug: building.factionSlug,
-        locationSlug: building.locationSlug,
-        profession: building.profession,
-        tier: building.tier,
+        locationId,
+        kind: building.profession ?? 'sede',
+        status: 'ACTIVO',
         description: building.description,
+        tier: building.tier,
       },
-      create: { worldId, ...building },
+      create: {
+        factionId,
+        locationId,
+        recipeKey: building.slug,
+        name: building.name,
+        kind: building.profession ?? 'sede',
+        status: 'ACTIVO',
+        description: building.description,
+        tier: building.tier,
+      },
     });
   }
 

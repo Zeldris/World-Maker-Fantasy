@@ -84,7 +84,7 @@ model World {
   worldPopulations WorldPopulation[]
   factionCatalog   Faction[]
   historiaEntries  HistoriaEntry[]
-  factionBuildings FactionBuilding[]
+  factionRelations FactionRelation[]
 }
 
 /// Una partida: mundo elegido + personaje (copia editable, no referencia viva a la plantilla) + su WorldState.
@@ -166,14 +166,14 @@ model Save {
   /// previa a esta pieza, o Location actual sin zona explorable — el frontend no pinta el
   /// marcador. Se mueve SOLO por acciones deterministas (viajar/cazar/recolectar/combatir/hablar/
   /// construir/huir), nunca por interpretación de narración libre (services/zonaPosicion.ts).
-  zonaPosX        Float?
-  zonaPosY        Float?
+  zonaPosX            Float?
+  zonaPosY            Float?
   /// Punto de ENTRADA a la Location actual (borde del lienzo por el que se llegó, ver
   /// `cardinalDirectionBetween`, travel.ts) — al que el jugador vuelve si huye de un combate.
   /// Se fija UNA vez, en el mismo turno que cambia `currentLocationId`; moverse dentro de la
   /// misma zona (cazar/recolectar/hablar) actualiza `zonaPosX/Y` pero nunca estos dos.
-  zonaPosEntradaX Float?
-  zonaPosEntradaY Float?
+  zonaPosEntradaX     Float?
+  zonaPosEntradaY     Float?
   /// Sistema de movimiento por cuadrícula (2026-09-08) — camino pendiente hacia el destino que el
   /// jugador pulsó en el lienzo (`services/zonaPosicion.ts § calcularCamino`), lista de celdas
   /// `{x,y}[]` en el MISMO píxel/convención que `zonaPosX/Y`, sin incluir la celda actual. Se
@@ -685,14 +685,14 @@ model LocationVisit {
 /// construcciones quedan siempre visibles a propósito — son "cómo funciona el juego", no lore
 /// narrativo que se descubre jugando.
 model DiscoveredEntity {
-  id           String            @id @default(cuid())
+  id           String              @id @default(cuid())
   saveId       String
-  save         Save              @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  save         Save                @relation(fields: [saveId], references: [id], onDelete: Cascade)
   /// 'npc' | 'fauna' | 'item' | 'faction' | 'historia' (2026-08-06) — mismo vocabulario que
   /// ImagePromptEntityType, pero sin los tipos siempre-visibles de arriba.
   entityType   String
   entitySlug   String
-  discoveredAt DateTime          @default(now())
+  discoveredAt DateTime            @default(now())
   /// Enciclopedia en 3 fases (2026-09-08, rediseño de Álvaro: "no descubierto, citado o
   /// avistado") — CITADO = mencionado en narración/lore, información mínima (nombre+región);
   /// DESCUBIERTO = visto realmente en escena (o desbloqueado por un objeto de lore específico),
@@ -1608,13 +1608,30 @@ model ProfessionProgress {
   @@unique([saveId, professionId])
 }
 
-/// Economía de Reino (sesión de diseño 2026-07-23, kingdomTick.ts) — 1:1 con Save, se crea al
-/// fundar el primer Territory (turnResolution.ts) — "el vacío es un estado válido"
+/// Economía de Reino (sesión de diseño 2026-07-23, kingdomTick.ts) — 1:1 con Save O con Faction, se
+/// crea al fundar el primer Territory (turnResolution.ts) — "el vacío es un estado válido"
 /// (docs/10-niveles-xp-reino.md § 5.1): sin fila, no hay reino todavía, nada que tiquear.
+///
+/// Generalizado a facciones NPC (docs/rpgtarkor/mundo-vivo-x4.md § 4.2, 2026-09-21) — "el mismo
+/// modelo representa el reino de X, sea X el jugador o una facción". `saveId`/`factionId` son
+/// ambos opcionales; la invariante real ("exactamente uno relleno, nunca ambos, nunca ninguno") se
+/// valida SOLO en servicio (`assertExactlyOneOwner`, mismo criterio laxo que `ZonePoint`/
+/// `Npc.faction`: el proyecto no usa CHECK constraints), nunca en DB.
+///
+/// `ownerKey` (`save:<saveId>` o `faction:<factionId>`, calculado en servicio al crear la fila) es
+/// la clave real que usa el código para leer/escribir la fila (`findUnique`/`update({where:
+/// {ownerKey}})`) — todo el código de `turnResolution.ts` que antes hacía `where: { saveId }` pasa
+/// a `where: { ownerKey }`. `saveId`/`factionId` mantienen su propio `@unique` individual (Postgres
+/// permite múltiples NULL en una columna UNIQUE, así que dos filas de facción con `saveId: null`
+/// conviven sin problema) solo para que Prisma pueda expresar la relación 1:1 hacia `Save`/
+/// `Faction`; `ownerKey` sigue siendo la clave operativa real.
 model KingdomStats {
   id                String   @id @default(cuid())
-  saveId            String   @unique
-  save              Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  ownerKey          String   @unique
+  saveId            String?  @unique
+  save              Save?    @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  factionId         String?  @unique
+  faction           Faction? @relation(fields: [factionId], references: [id], onDelete: Cascade)
   poblacion         Int      @default(0)
   felicidad         Int      @default(50)
   comida            Int      @default(0)
@@ -1807,11 +1824,16 @@ enum TerritoryControl {
   PERDIDO
 }
 
-/// Zona/territorio bajo control (o reclamación) del personaje (docs/10-niveles-xp-reino.md § 5.2).
+/// Zona/territorio bajo control (o reclamación) del personaje, O de una facción NPC
+/// (docs/10-niveles-xp-reino.md § 5.2; generalizado en docs/rpgtarkor/mundo-vivo-x4.md § 4.2,
+/// 2026-09-21). `saveId`/`factionId` opcionales, mismo criterio de propietario exclusivo que
+/// `Building.factionId` (comentario completo ahí) — validado solo en servicio.
 model Territory {
   id          String           @id @default(cuid())
-  saveId      String
-  save        Save             @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  saveId      String?
+  save        Save?            @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  factionId   String?
+  faction     Faction?         @relation(fields: [factionId], references: [id], onDelete: Cascade)
   name        String
   /// Nombre de región del lore (docs/rpgtarkor/areas.md) — string libre, no FK: el lore vive en .md
   region      String?
@@ -1826,6 +1848,7 @@ model Territory {
   subjects  Subject[]
 
   @@index([saveId])
+  @@index([factionId])
 }
 
 enum BuildingStatus {
@@ -1835,11 +1858,23 @@ enum BuildingStatus {
   ABANDONADO
 }
 
-/// Edificio/estructura construida o tomada por el personaje (docs/10-niveles-xp-reino.md § 5.2).
+/// Edificio/estructura construida o tomada por el personaje, O por una facción NPC
+/// (docs/10-niveles-xp-reino.md § 5.2; generalizado en docs/rpgtarkor/mundo-vivo-x4.md § 4.2,
+/// 2026-09-21 — "el mismo modelo, `factionId` opcional", en vez de tablas paralelas para
+/// facciones). `saveId`/`factionId` son ambos opcionales: exactamente uno de los dos debe estar
+/// relleno (nunca ambos, nunca ninguno) — invariante validada SOLO en servicio
+/// (`assertExactlyOneOwner`, mismo criterio laxo que `ZonePoint`/`FactionBuilding` en su día:
+/// el proyecto no usa CHECK constraints hoy, y aquí se mantiene ese estilo a propósito). Sustituye
+/// a `FactionBuilding` (retirado 2026-09-21): los edificios de facción sembrados a mano en catálogo
+/// ahora se instancian aquí con `factionId` relleno al crear/abrir cada `Save` (ver seeder en
+/// `src/scripts/seedFactionBuildings.ts` o equivalente — cada partida recibe su propia copia,
+/// coherente con que este modelo vive en `Save`, no en `World`).
 model Building {
   id          String         @id @default(cuid())
-  saveId      String
-  save        Save           @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  saveId      String?
+  save        Save?          @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  factionId   String?
+  faction     Faction?       @relation(fields: [factionId], references: [id], onDelete: Cascade)
   /// Opcional: un refugio levantado en mitad del viaje no pertenece a ningún territorio
   territoryId String?
   territory   Territory?     @relation(fields: [territoryId], references: [id], onDelete: SetNull)
@@ -1855,6 +1890,10 @@ model Building {
   /// enlazar con la ficha genérica de la Enciclopedia (misma `key` que ya usa esa ficha). El
   /// Ayuntamiento SIEMPRE guarda `'ayuntamiento'` aquí sin importar el tier — mejorarlo actualiza
   /// esta misma fila, nunca crea una nueva (docs/17-reglas-construcciones-reino.md).
+  ///
+  /// Para filas de facción (`factionId` relleno, ex-`FactionBuilding`): guarda el `slug` del
+  /// catálogo de `worldCatalog.ts` (p.ej. `'ketg-sedsar'`) — `@@unique([factionId, recipeKey])`
+  /// abajo es lo que hace el seed idempotente (`seed-catalog.ts`), mismo criterio de siempre.
   recipeKey   String?
   /// Nivel del Ayuntamiento (1=pequeño/2=mediano/3=grande) — null para el resto de construcciones,
   /// que no tienen niveles. Decide cuántos edificios de reino (choza...) puedes tener a la vez.
@@ -1882,7 +1921,9 @@ model Building {
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
+  @@unique([factionId, recipeKey])
   @@index([saveId])
+  @@index([factionId])
 }
 
 /// Súbdito CON NOMBRE — alguien que sigue/sirve al personaje ligado a su reino, no a su persona
@@ -2270,6 +2311,10 @@ model Npc {
   items              NpcItem[]
   npcStates          NpcState[]
   combatParticipants CombatParticipant[]
+  /// Motor de disputas (§ 4.3) — Faction cuyo liderazgo de gobierno recae en este Npc, ver
+  /// comentario completo de `Faction.liderNpcId`. Casi siempre 0 o 1 fila (a lo sumo un puñado de
+  /// líderes reales por mundo).
+  faccionesLideradas Faction[]
 
   @@unique([worldId, slug])
 }
@@ -2300,39 +2345,77 @@ model Faction {
   raza        String
   description String
 
+  /// Motor de facciones estilo X4 (docs/rpgtarkor/mundo-vivo-x4.md § 4.2, 2026-09-21) — mismo
+  /// modelo exacto que usa el jugador para su reino, con `factionId` relleno en vez de `saveId`.
+  /// Ver el comentario de `Building.factionId` para el criterio de propietario exclusivo.
+  territories  Territory[]
+  buildings    Building[]
+  kingdomStats KingdomStats?
+
+  /// Motor de disputas (docs/rpgtarkor/mundo-vivo-x4.md § 4.3, § 5 punto 5, 2026-09-21) — "cuanto
+  /// más alta la Inteligencia, más autónoma la entidad" aplicado a una Faction entera: se lee del
+  /// NPC que la LIDERA (gobierno, "Terk'ikar"/equivalente — no el de guerra, decisión explícita de
+  /// la autora), no de un campo propio desacoplado. FK real (a diferencia de `Npc.faction`/
+  /// `FactionBuilding.factionSlug`, string libre a propósito): tanto `Faction` como `Npc` son
+  /// catálogo del mismo `World`, así que aquí sí hay una referencia estable real a la que engancharse.
+  /// Null = facción sin líder NPC real sembrado todavía (usa un valor por defecto/neutro en el
+  /// motor de disputas hasta que se siembre uno) — nunca inventado en servicio.
+  liderNpcId String?
+  liderNpc   Npc?    @relation(fields: [liderNpcId], references: [id], onDelete: SetNull)
+
+  /// Motor de disputas (§ 4.3) — dirigidas, ver comentario completo de `FactionRelation`.
+  relationsAsSource FactionRelation[] @relation("FactionRelationSource")
+  relationsAsTarget FactionRelation[] @relation("FactionRelationTarget")
+
   @@unique([worldId, slug])
 }
 
-/// Edificio de FACCIÓN AJENA (2026-08-31, "Trabajador de Reino" — Karot Veku) — deliberadamente
-/// distinto de `Building` (que es 100% del Reino del JUGADOR: siempre `saveId`, se construye/
-/// mejora gastando materiales por turno, protegido por `KingdomStats` 1:1). Este modelo es
-/// CATÁLOGO DE MUNDO puro (`worldId`, nunca `saveId`) — existe igual en cualquier partida, el
-/// jugador nunca lo construye ni lo mejora, solo lo visita. Sembrado a mano en `worldCatalog.ts`,
-/// mismo criterio que `Npc`/`Location`. `profession: null` marca el edificio "sede" del
-/// asentamiento (equivalente al Ayuntamiento del jugador — lo que "establece que existe" como
-/// tribu/ciudad real) en vez de un edificio de oficio concreto.
-model FactionBuilding {
-  id           String  @id @default(cuid())
-  worldId      String
-  world        World   @relation(fields: [worldId], references: [id], onDelete: Cascade)
-  slug         String
-  name         String
-  /// String libre, no FK — mismo criterio que `Npc.faction` (comparación por igualdad exacta de
-  /// nombre, no de slug).
-  factionSlug  String
-  /// Location EXTERIOR donde vive (p. ej. `campamento-serhu`) — el `ZonePoint` tipo EDIFICIO que
-  /// lo representa en el mapa de Zona vive ahí, referenciando `slug` como `targetSlug`.
-  locationSlug String
-  /// `professionId` real (p. ej. `herrero-orco-llanuras`), mismo string que `ProfessionProgress`
-  /// — null = este edificio es la SEDE del asentamiento (ver comentario del modelo), no un oficio.
-  profession   String?
-  /// 1=pequeño (1 trabajador) / 2=mediano (3) / 3=grande (6) — mismo espíritu de tiers que
-  /// `ConstructionRecipe`, pero fijo de catálogo, nunca mejorable por el jugador.
-  tier         Int
-  description  String
+enum FactionRelationType {
+  NEUTRAL
+  TENSION
+  GUERRA
+  ALIANZA
+  TRATADO_COMERCIAL
+}
 
-  @@unique([worldId, slug])
-  @@index([locationSlug])
+/// Motor de disputas genérico estilo X4 (docs/rpgtarkor/mundo-vivo-x4.md § 4.3, 2026-09-21) —
+/// generaliza el único conflicto hardcodeado de `worldAgenda.ts` (Serhu+Concordia vs. Helsig+Goshg)
+/// a "cualquier par de facciones puede tener una postura real la una hacia la otra". DIRIGIDA a
+/// propósito (decisión explícita de la autora, priorizando generalidad): `sourceFactionId` tiene
+/// esta postura HACIA `targetFactionId` — no se asume que sea recíproca (A puede presionar a B sin
+/// que B haya declarado nada de vuelta todavía; una ALIANZA propuesta por A no implica que B ya la
+/// haya confirmado con su propia fila). Un vínculo "de verdad" simétrico (guerra abierta reconocida
+/// por ambos) se representa con DOS filas, una en cada sentido — nunca colapsadas en una.
+///
+/// Sustituye el avance automático por tiempo puro del `CONFLICTO_ID` original (decisión explícita,
+/// 2026-09-21): `stage` ya no sube solo con `WorldState.fictionalMinutes`, sube por condiciones de
+/// mundo reales — ver `presion`/`stage` abajo y el motor en `factionRelations.ts`.
+model FactionRelation {
+  id              String              @id @default(cuid())
+  worldId         String
+  world           World               @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  /// Solo relaciones entre facciones de CATÁLOGO (`Faction.saveId: null`) — una facción fundada
+  /// por el jugador (`Faction.saveId` relleno) no participa de este motor de fondo, mismo
+  /// criterio que "el jugador nunca es NPC" del resto del proyecto.
+  sourceFactionId String
+  sourceFaction   Faction             @relation("FactionRelationSource", fields: [sourceFactionId], references: [id], onDelete: Cascade)
+  targetFactionId String
+  targetFaction   Faction             @relation("FactionRelationTarget", fields: [targetFactionId], references: [id], onDelete: Cascade)
+  type            FactionRelationType @default(NEUTRAL)
+  /// Presión acumulada 0-100 (mismo espíritu que `FACTION_REP_MIN/MAX` de reputation.ts, pero
+  /// entre dos facciones NPC, no jugador↔facción) — lo que sube por choque territorial/reputación
+  /// cruzada y hace avanzar `stage` al cruzar umbrales, en vez de un cron ciego de 7 días.
+  presion         Int                 @default(0)
+  /// Etapa narrativa actual (mismo concepto que el viejo `AgendaEntry.stage`/`STAGE_FACTS`, pero
+  /// generado por plantilla en servicio a partir de `type`/nombres de ambas facciones, no 5 líneas
+  /// fijas escritas a mano por conflicto — ver `factionRelations.ts` § stageFactFor).
+  stage           Int                 @default(0)
+  maxStage        Int                 @default(4)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@unique([sourceFactionId, targetFactionId])
+  @@index([worldId])
 }
 
 /// Entrada de lore descubrible como objeto físico (libro/diario/nota) — sección "Historia" de la
@@ -2497,17 +2580,17 @@ model NpcState {
 /// documentos, objetos de valor narrativo). Sin bonificadores ni stats (decisión de
 /// mecánicas 6): description es contexto para el Narrador. Sembrado desde worldCatalog.ts.
 model ItemCatalog {
-  id                    String           @id @default(cuid())
-  worldId               String
-  world                 World            @relation(fields: [worldId], references: [id], onDelete: Cascade)
-  slug                  String
-  name                  String
+  id                        String           @id @default(cuid())
+  worldId                   String
+  world                     World            @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  slug                      String
+  name                      String
   /// Categoría libre ("arma", "herramienta", "ropa", "material", "consumible",
   /// "medicinal", "documento", "valor") — organiza el catálogo, no es mecánica
-  category              String
+  category                  String
   /// Categorización mecánica real (2026-07-29) — ver comentario del enum ItemTipo. `category`
   /// (arriba) sigue siendo el subtipo fino DENTRO de este tipo, no se sustituye.
-  tipo                  ItemTipo
+  tipo                      ItemTipo
   /// Oficios (prefijo sin raza/región, p.ej. "curtidor", "desollador" — mismo criterio de prefijo
   /// que `matchesOficioPrefix`, harvestAbilities.ts) para los que este objeto cuenta como
   /// herramienta requerida (2026-08-17, petición explícita: "cada profesión dependerá de tener la
@@ -2516,12 +2599,12 @@ model ItemCatalog {
   /// de verdad los oficios que de hecho tienen algún objeto dado de alta aquí — ver
   /// OFICIOS_CON_HERRAMIENTA_REQUERIDA en crafting.ts: un oficio sin ninguna herramienta
   /// registrada en todo el catálogo se queda sin gate, igual que siempre.
-  herramientaParaOficio String[]         @default([])
+  herramientaParaOficio     String[]         @default([])
   /// Solo en armas/escudos (2026-07-29, sistema de habilidades por arma) — decide qué habilidad
   /// de ataque/defensa genera este objeto al equiparlo, ver weaponAbilities.ts. Null en el resto
   /// del catálogo (herramientas, ropa, consumibles...).
-  tipoArma              WeaponCategory?
-  description           String
+  tipoArma                  WeaponCategory?
+  description               String
   /// Formas reales de referirse al objeto ("hacha", "el cuchillo"...) — mismo campo y mismo
   /// propósito que Npc.aliases/Location.aliases: sin esto, tanto la Enciclopedia progresiva
   /// (entityDiscovery.ts) como el texto clicable de narración (enciclopediaIndex.ts, frontend)
@@ -2529,41 +2612,41 @@ model ItemCatalog {
   /// "Hacha de guerra rota" (auditoría 2026-07-30, "revisar partida"). Default `[]` en vez de
   /// obligatorio: la inmensa mayoría de objetos no necesita ninguno (su nombre ya es corto y
   /// único, o no se presta a sinónimos seguros sin colisionar con otro objeto del catálogo).
-  aliases               String[]         @default([])
+  aliases                   String[]         @default([])
   /// Ranura de equipo real (2026-07-30, petición explícita: "hay que categorizarlos por las
   /// partes equipables, para que no pueda poner un casco en los pies") — solo en objetos
   /// `tipo: EQUIPABLE`, null en el resto (nunca se equipan). Familia, no ranura exacta a rajatabla:
   /// ARMA_PRINCIPAL vale también para ARMA_SECUNDARIA y viceversa (cualquier arma va en cualquier
   /// mano), ANILLO_1 vale también para ANILLO_2 (ver `equipSlotFamily`, equipment.ts) — el resto
   /// de ranuras son 1:1 exactas.
-  equipSlot             EquipSlot?
+  equipSlot                 EquipSlot?
   /// Restricción de armadura por peso (2026-08-31, ver enum `PesoArmadura` arriba) — null salvo en
   /// objetos de armadura real (las 6 ranuras `CASCO`/`ARMADURA_SUPERIOR`/`ARMADURA_INFERIOR`/
   /// `GUANTES`/`BOTAS`/`CINTURON`). Determina qué clases pueden equiparlo, mismo criterio que
   /// `tipoArma`/`weaponPoolFor` para armas — ver `pesoArmaduraPermitidoFor` (weaponAbilities.ts).
-  pesoArmadura          PesoArmadura?
+  pesoArmadura              PesoArmadura?
   /// Bonificadores mecánicos reales al equipar (2026-07-19, mismo mecanismo que InventoryItem;
   /// mapa múltiple desde 2026-08-03 — sustituye a statBonusAttribute/statBonusAmount, un solo par
   /// no dejaba a un objeto sumar, p.ej., fuerza Y defensa a la vez) — hoy sobre todo en armas
   /// (categoría "arma") y armadura; el resto del catálogo sigue siendo puramente narrativo.
   /// Partial<Record<Attribute | 'defensa', number>> (ver StatBonusMap, equipment.ts). Se copia a
   /// InventoryItem.statBonuses al materializarse por saqueo/despiece.
-  statBonuses           Json?
+  statBonuses               Json?
   /// Medidas físicas aproximadas en texto libre (2026-07-22, "para los objetos sus medidas y su
   /// lugar de origen... que eso se refleje en los prompts") — p.ej. "hoja de 45 cm, mango de 15
   /// cm". Texto libre porque la forma de medir varía demasiado entre categorías (arma, ropa,
   /// consumible...) para forzar un único campo numérico.
-  dimensiones           String?
+  dimensiones               String?
   /// Lugar/pueblo/región de origen o fabricación, cuando aporta algo al lore (p.ej. "manufactura
   /// goirnte, Meseta del Orden"). Null en objetos sin origen especial (p.ej. un cuchillo genérico).
-  lugarOrigen           String?
+  lugarOrigen               String?
   /// Nivel de rareza/dificultad (1-5, sesión de diseño 2026-07-23) — "Craftable", mismo concepto
   /// que ConstructionRecipe.tier (construction.ts). Default 1 = objeto común, sin requisito real.
-  tier                  Int              @default(1)
+  tier                      Int              @default(1)
   /// Requisitos mínimos de atributo del PJ para EQUIPAR este objeto (Partial<Record<Attribute |
   /// SecondaryAttribute, number>>, ver requisitos.ts) — comprobación de UMBRAL pura en
   /// PATCH /saves/:id/inventario/:itemId, nunca una tirada. Null = sin requisito.
-  requisitos            Json?
+  requisitos                Json?
   /// Tope real de curación al usar este objeto (2026-07-29, "si sales de un combate Incapacitado,
   /// tendrás que usar objetos específicos para volver a Herido o pasar directo a Ileso"): solo
   /// tiene sentido en objetos `category: "medicinal"` — descansar/comer SIN objeto solo llega a
@@ -2571,7 +2654,7 @@ model ItemCatalog {
   /// médico con este campo puesto rompe ese tope, incluso desde CONVALECIENTE. Null = el objeto no
   /// cura condición física (la inmensa mayoría del catálogo, incluido el resto de "medicinal" que
   /// no cura de verdad, como el contraveneno).
-  curaHasta             CondicionFisica?
+  curaHasta                 CondicionFisica?
   /// Primeros auxilios (2026-08-13, petición explícita: objetos "básicos" que solo mejoran UN
   /// escalón de condición desde donde estés, nunca de golpe hasta `curaHasta` como los objetos
   /// normales) — con esto en `true`, `curaHasta` deja de ser un tope absoluto y pasa a ser el
@@ -2579,16 +2662,16 @@ model ItemCatalog {
   /// condición actual). Ver `healCeilingFor` (death.ts) para la fórmula real. `false`/`null` =
   /// comportamiento de siempre (rompe el tope de golpe, incluso desde CONVALECIENTE) — el resto
   /// del catálogo (alquimista y superiores) sigue así a propósito.
-  curaUnPaso            Boolean          @default(false)
+  curaUnPaso                Boolean          @default(false)
   /// Cantidad de energía que restaura al usarlo (2026-07-29, sistema de fatiga) — mismo criterio
   /// que `curaHasta` pero numérico (la energía es un pool 0..max, no un enum con pasos fijos).
   /// Null = el objeto no restaura energía.
-  curaEnergia           Int?
+  curaEnergia               Int?
   /// Puntos porcentuales de Hambre que restaura al usarlo (2026-09-04, habilidad "Comer/Beber") —
   /// mismo criterio que `curaEnergia` pero sobre el pool derivado de `Save.lastAteAtMinutes` (ver
   /// `comidaPct`/`lastAtMinutesForGanancia`, companionSupervivencia.ts). Null = el objeto no sacia
   /// hambre.
-  curaHambre            Int?
+  curaHambre                Int?
   /// Puntos porcentuales de Sed que restaura al usarlo (hallazgo 13, revisar-partida-hallazgos.md
   /// 2026-09-06, "el consumo de agua pasa a depender de un ítem odre") — mismo criterio que
   /// `curaHambre` pero sobre el pool derivado de `Save.lastDrankAtMinutes` (ver
@@ -2596,7 +2679,7 @@ model ItemCatalog {
   /// sed. Sustituye al viejo botón fijo "Beber agua" (sin ítem, repone 100% en cualquier sitio,
   /// retirado con este hallazgo) — el odre de agua lleno usa 100 (repone del todo), el resto de
   /// ítems narrativos de agua usan un valor proporcional.
-  curaAgua              Int?
+  curaAgua                  Int?
   /// Slug de ItemCatalog que se inserta en el inventario al consumir ESTE ítem (hallazgo 13) —
   /// caso único hoy: el odre de agua lleno, al beberse, devuelve el odre vacío (`odre-agua`) en
   /// vez de desaparecer del todo, como cualquier otro consumible. Null = comportamiento de
@@ -2608,18 +2691,18 @@ model ItemCatalog {
   /// HarvestYield: no hay (ni tiene sentido crear) un enum cerrado de "todos los efectos
   /// especiales posibles" — cada sistema que consuma una clave nueva la define y la documenta
   /// donde vive ese sistema, no aquí. Null en el resto del catálogo (tipo != ESPECIAL).
-  effectKey             String?
+  effectKey                 String?
   /// Texto explicando el efecto en español llano, para mostrar en un sitio propio y diferenciado
   /// de `description` (inventario/detalle) — nunca en la narración del Narrador. Null si
   /// `effectKey` también lo es.
-  effectDescription     String?
+  effectDescription         String?
   /// Valor económico en Goirnos, moneda única de Berig (2026-08-31, sistema de economía) — ver
   /// comentario del campo homónimo en ItemCatalogInput (worldCatalog.ts) para la fórmula base
   /// (`valorGoirnosBaseFor`, services/economia.ts) y los ajustes de lore aplicados a mano. Default
   /// bajo (1) como red de seguridad estándar del proyecto, nunca debería usarse en la práctica: el
   /// seed siempre manda un valor explícito para las 184 filas del catálogo.
-  valorGoirnos          Int              @default(1)
-  createdAt             DateTime         @default(now())
+  valorGoirnos              Int              @default(1)
+  createdAt                 DateTime         @default(now())
 
   npcItems NpcItem[]
   yields   HarvestYield[]

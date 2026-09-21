@@ -4245,6 +4245,69 @@ export const npcs: NpcInput[] = [
     temperamento: 'AGRESIVO',
     loadout: [],
   },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // REGIÓN: CIÉNAGA TRONCAL — LÍDERES DEL CLAN GOSHG
+  // ══════════════════════════════════════════════════════════════════════════
+  // Ya documentadas en prosa desde antes (campamento-goshg-interior, factions § clan-goshg) pero
+  // sin ficha Npc real hasta ahora (docs/rpgtarkor/mundo-vivo-x4.md § 4.3, 2026-09-21 — motor de
+  // disputas de facción necesita un líder real del que leer Inteligencia, mismo criterio que
+  // Brenka/Solgra para Helsig). `nucleoJugable: false` (mismo criterio que Hagar Kiugh/Sella Marn):
+  // Ciénaga Troncal sigue "fuera del núcleo jugable actual" (ver campamento-goshg más arriba) — no
+  // deben aparecer en escena normal todavía, solo existir como dato de catálogo real.
+
+  {
+    slug: 'doshka',
+    name: 'Doshka',
+    kind: 'PRINCIPAL',
+    nucleoJugable: false,
+    aliases: ['doshka', "terk'ikar doshka", 'terk\'ikar del clan goshg'],
+    faction: 'Clan Goshg',
+    genero: 'F',
+    role: "Terk'ikar del Clan Goshg",
+    level: 20,
+    attributes: { fuerza: 13, destreza: 12, constitucion: 17, inteligencia: 15, voluntad: 18, carisma: 16, magia: 0 },
+    bio: 'Orca del Clan Goshg, de las dos tribus hermanadas de Ciénaga Troncal — gobierna Silh Makut desde el salón Goshg\'sedsar, manos curtidas de tallar tótems en la misma madera oscura que trabaja su gente. Reparte la caza de Trepadores Ocaso y Cornantes entre las dos tribus con el mismo cuidado con que casa a sus jóvenes entre sí. Su hermano menor, el Kort\'ikar Dulgren, lidera la guerra mientras ella sostiene el resto — mantiene, como los Helsig, un perfil neutral y defensivo ante los Goirntes.',
+    personality: 'Paciente y conciliadora entre las dos tribus, pero inflexible en cuanto a mantener el perfil bajo del clan ante forasteros.',
+    homeLocationSlug: 'campamento-goshg-interior',
+    raza: 'orcos',
+    clase: 'GUERRERO',
+    especializacion: 'GUARDIAN',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 0,
+    reclutablePct: 0,
+    // Persuasión (2026-08-25, mismo criterio ya aplicado a Brenka) — conciliadora pero firme, cede
+    // solo ante razones bien calculadas, nunca por presión emocional.
+    atributoResistencia: 'voluntad',
+    capturablePct: 0,
+    loadout: [],
+  },
+  {
+    slug: 'dulgren',
+    name: 'Dulgren',
+    kind: 'PRINCIPAL',
+    nucleoJugable: false,
+    aliases: ['dulgren', "kort'ikar dulgren", 'kort\'ikar del clan goshg'],
+    faction: 'Clan Goshg',
+    genero: 'M',
+    role: "Kort'ikar del Clan Goshg",
+    level: 20,
+    attributes: { fuerza: 18, destreza: 15, constitucion: 18, inteligencia: 10, voluntad: 14, carisma: 11, magia: 0 },
+    bio: 'Orco del Clan Goshg, hermano menor de la Terk\'ikar Doshka — complexión recia de quien caza Cornantes en aguas poco profundas, cicatrices de dientes y garras en los antebrazos. Lidera la guerra y la defensa de las dos tribus mientras Doshka gobierna el resto. Mantiene, como los Helsig, un perfil neutral y defensivo ante los Goirntes, evitando la confrontación abierta salvo que el clan esté en juego de verdad.',
+    personality: 'Protector hasta lo brusco, nunca decide nada que afecte al clan entero sin hablarlo antes con Doshka.',
+    homeLocationSlug: 'campamento-goshg-interior',
+    raza: 'orcos',
+    clase: 'CAZADOR',
+    especializacion: 'SUPERVIVENCIA',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 0,
+    reclutablePct: 0,
+    // Persuasión (2026-08-25, mismo criterio ya aplicado a Solgra) — resiste por pura fuerza de
+    // voluntad de guerrero, no por cálculo.
+    atributoResistencia: 'fuerza',
+    capturablePct: 0,
+    loadout: [],
+  },
 ];
 
 export interface ItemCatalogInput {
