@@ -383,19 +383,42 @@ forma):
   sistema genérico (dato, no código especial) — su texto narrativo curado a mano se conserva como
   contenido, pero el motor que lo avanza deja de ser una función dedicada a ese único caso.
 
-### 4.4 Diplomacia comercial / mercado regulado — la pieza más vacía, la que más hay que construir
+### 4.4 Diplomacia comercial / mercado regulado — DIPLOMACIA CERRADA (2026-09-21, sesión
+posterior), mercado regulado sin diseñar todavía
 
-No hay nada que generalizar aquí — es la única pieza de las 10 citadas por la autora que no tiene
-ningún gemelo real, ni siquiera parcial. Puntos a diseñar en la sesión de implementación:
+**Diplomacia del jugador — CERRADA e IMPLEMENTADA**, diseño completo en § 5-bis punto 6: acción
+puntual estilo Agente de X4 (Negociación/Sabotaje/Espionaje), nunca presencia sostenida tipo
+Bannerlord (habría exigido poblar Inteligencia en todas las facciones NPC destino, alcance
+descartado explícitamente). `Companion`/`Subject` del jugador con `rolReino:'diplomatico'` y su
+propio `ProfessionProgress.companionId` — nunca un `Npc` de facción (distinción Companion-vs-Npc).
+
+Implementado: `POST /saves/:id/reino/diplomacia` (`reino.ts`) — 3 acciones (`negociar`/`sabotear`/
+`espiar`), 2 `FactionEventType` nuevos (`NEGOCIACION_TREGUA` peso -12, `SABOTAJE_DIPLOMATICO` peso
++10, más moderados que los eventos "de mundo" 15/8) más `espiarFactionRelation` (nunca mueve
+`presion`, primera vía real por la que el jugador ve el estado de una `FactionRelation`). Gate de
+nivel nuevo (`nivelDiplomaticoRequerido`, `factionRelations.ts`): cuanto más lejos del neutro (50)
+ya está la relación, más nivel exige moverla más — mismo criterio "cuesta más romper algo ya
+asentado" que el resto del proyecto. Profesión `'diplomatico'` nueva en `professions.ts`
+(frontend), sin sufijo raza/región (no depende de recursos locales, mismo criterio que "cazador"/
+"mercader"). 5 tests de integración + 4 unitarios nuevos. Verificado: `tsc -b` limpio, suite
+completa 2643/2643 en verde (aislado).
+
+**Mercado regulado — SIN DISEÑAR todavía** (ejecución real de bienes/precio, la mitad que faltaba
+del punto 6). Puntos a decidir antes de escribir código:
 
 - ¿Precio dinámico real (oferta/demanda por región, alimentado por `WorldPopulation`/producción de
-  facción) o un rango fijo con variación pseudoaleatoria con semilla (más barato de simular, más
-  cercano al resto del proyecto que ya usa este patrón para combate)?
+  facción — ahora que `OrdenProduccion` ya existe, un mercado real tendría datos reales de
+  producción con los que calcular oferta) o un rango fijo con variación pseudoaleatoria con
+  semilla (más barato de simular, más cercano al resto del proyecto que ya usa este patrón para
+  combate)?
 - ¿El jugador puede comerciar directamente con una facción (comprar/vender en su mercado), o el
   "mercado regulado" es puramente entre facciones NPC (economía de fondo, el jugador nunca lo ve
   directamente salvo por sus efectos)?
 - Relación con `valorGoirnosBaseFor` (`economia.ts`) — ¿se reutiliza como precio BASE sobre el que
   el mercado regulado aplica su fluctuación, o el mercado tiene su propia tabla independiente?
+- ¿El "tratado comercial" de `FactionRelationType` (ya existe como banda de `presion`) es el
+  requisito de acceso al mercado regulado con esa facción (sin tratado, sin comercio posible), o
+  son conceptos independientes?
 
 ### 4.4-bis Panel de Reino real — economía interna X4 + Bellwright + control de escuadrones (2026-09-21, sesión posterior)
 

@@ -5,6 +5,7 @@ import {
   applyFactionEvent,
   decayPresion,
   stageFactFor,
+  nivelDiplomaticoRequerido,
   PRESION_NEUTRAL,
   PRESION_MIN,
   PRESION_MAX,
@@ -99,5 +100,27 @@ describe('stageFactFor', () => {
 
   it('NEUTRAL no narra nada (vuelta al estado silencioso de siempre)', () => {
     expect(stageFactFor('Clan Serhu', 'Clan Helsig', 'NEUTRAL')).toBeNull();
+  });
+});
+
+// Diplomacia del jugador (docs/rpgtarkor/mundo-vivo-x4.md § 4.4/§ 5-bis punto 6, 2026-09-21).
+describe('nivelDiplomaticoRequerido', () => {
+  it('en el neutro exacto (50), nivel 1 basta', () => {
+    expect(nivelDiplomaticoRequerido(PRESION_NEUTRAL)).toBe(1);
+  });
+
+  it('cerca del neutro (distancia < 10), sigue exigiendo solo nivel 1', () => {
+    expect(nivelDiplomaticoRequerido(55)).toBe(1);
+    expect(nivelDiplomaticoRequerido(45)).toBe(1);
+  });
+
+  it('cuanto más lejos del neutro, más nivel exige (simétrico en ambas direcciones)', () => {
+    expect(nivelDiplomaticoRequerido(70)).toBe(3); // distancia 20 → 1 + floor(20/10) = 3
+    expect(nivelDiplomaticoRequerido(30)).toBe(3); // misma distancia hacia el otro lado
+  });
+
+  it('en los extremos (0 o 100), tope en nivel 9 (misma escala que MAX_PROFESSION_LEVEL)', () => {
+    expect(nivelDiplomaticoRequerido(PRESION_MIN)).toBe(6); // distancia 50 → 1 + floor(50/10) = 6
+    expect(nivelDiplomaticoRequerido(PRESION_MAX)).toBe(6);
   });
 });

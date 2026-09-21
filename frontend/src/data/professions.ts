@@ -818,4 +818,16 @@ export const professions: Profession[] = [
       'Cocinero que prepara comidas y bebidas para los Goirntes de la Meseta del Orden. Esta profesión se centra en los recursos que ofrece la zona de la Meseta del Orden.',
     category: 'creacion',
   },
+  // Diplomacia comercial (docs/rpgtarkor/mundo-vivo-x4.md § 4.4/§ 5-bis punto 6, 2026-09-21) —
+  // igual que "cazador"/"mercader" (comentario de arriba): puramente narrativa/mecánica de reino,
+  // sin recetas de crafteo asociadas, sin sufijo raza/región (a diferencia de herrero/herborista/
+  // cocinero, no depende de recursos locales) — un trabajador de Reino con nivel en este oficio
+  // puede intentar acciones de diplomacia (negociar tregua, sabotear, espionaje) contra cualquier
+  // Faction real del mundo, mismo gate de nivel que OrdenProduccion.
+  {
+    id: 'diplomatico',
+    name: 'Diplomacia de Reino',
+    description:
+      'Negociar treguas, instigar conflictos entre facciones rivales o reunir inteligencia en su nombre. No depende de los recursos de ninguna región concreta — es la habilidad de tratar con otras facciones, no de trabajar la tierra.',
+  },
 ]

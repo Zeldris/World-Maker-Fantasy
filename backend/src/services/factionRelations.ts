@@ -53,12 +53,24 @@ export type FactionEventType =
   /// documento — motor de eventos de mundo unificado, pendiente).
   | 'BAJA_DE_GUERRA'
   /// Cruce de tratado comercial resuelto en paz — evento simétrico, distiende ambas direcciones.
-  | 'TRATADO_CUMPLIDO';
+  | 'TRATADO_CUMPLIDO'
+  /// Diplomacia del jugador (docs/rpgtarkor/mundo-vivo-x4.md § 4.4/§ 5-bis punto 6, 2026-09-21) —
+  /// acción PUNTUAL de un `Companion`/`Subject` propio con nivel de oficio `'diplomatico'`
+  /// suficiente, estilo Agente de X4 (Negociación/Interferencia): actúa CONTRA cualquier `Faction`
+  /// real ya sembrada, sin exigir nada de la facción destino (nunca `Npc`/presencia sostenida, ver
+  /// discusión completa del punto 6). 'diplomatico' es siempre `source`, la facción objetivo
+  /// siempre `target` — nunca al revés, la facción destino no "actúa" en este evento.
+  | 'NEGOCIACION_TREGUA'
+  | 'SABOTAJE_DIPLOMATICO';
 
 const FACTION_EVENT_WEIGHTS: Record<FactionEventType, number> = {
   EXPANSION_TERRITORIAL_AGRESIVA: 15,
   BAJA_DE_GUERRA: 8,
   TRATADO_CUMPLIDO: -10,
+  // Pesos más moderados que los eventos "de mundo" de arriba (15/8) — una sola acción de un
+  // trabajador no debería mover tanto como una expansión territorial real o una baja de guerra.
+  NEGOCIACION_TREGUA: -12,
+  SABOTAJE_DIPLOMATICO: 10,
 };
 
 /// Puro — aplica un evento a la `presion` actual, acotado a [PRESION_MIN, PRESION_MAX].
@@ -140,4 +152,36 @@ export async function recordFactionEvent(
     tx.faction.findUniqueOrThrow({ where: { id: targetFactionId }, select: { name: true } }),
   ]);
   return stageFactFor(source.name, target.name, nextType);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// § 4.4/§ 5-bis punto 6 — Diplomacia del jugador (acción puntual, estilo Agente de X4)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Puro — nivel de oficio 'diplomatico' mínimo exigido para intentar una acción, según lo lejos
+/// que ya esté `presionActual` del punto neutro (50): cuanto más extrema la relación (guerra
+/// abierta o alianza ya sellada), más difícil moverla más — mismo espíritu de "cuesta más romper
+/// algo ya asentado" que el resto del proyecto (alivioForLevel resta al mínimo, nunca al revés).
+/// Rango 1-9 (misma escala que `MAX_PROFESSION_LEVEL`, professionProgress.ts).
+export function nivelDiplomaticoRequerido(presionActual: number): number {
+  const distanciaAlNeutro = Math.abs(presionActual - PRESION_NEUTRAL);
+  // 0-19 de distancia → nivel 1 (relación aún manejable); cada 10 puntos más de distancia sube 1
+  // nivel de dificultad, tope en 9.
+  return Math.min(9, 1 + Math.floor(distanciaAlNeutro / 10));
+}
+
+/// Espionaje (docs/rpgtarkor/mundo-vivo-x4.md § 4.4, 2026-09-21) — a diferencia de
+/// Negociación/Sabotaje, NUNCA mueve `presion` (decisión explícita: "sin efecto en presion" —
+/// acción de solo-información, mismo criterio que "Intel" en X4). Devuelve el estado real de
+/// `FactionRelation` para que el jugador lo vea, sin alterar nada — primera vía real por la que
+/// el jugador puede consultar esta información (antes solo vivía en `worldAgenda.ts`/eventos de
+/// fondo, nunca expuesta).
+export async function espiarFactionRelation(
+  tx: TxClient,
+  worldId: string,
+  sourceFactionId: string,
+  targetFactionId: string,
+): Promise<{ presion: number; type: FactionRelationType; stage: number }> {
+  const relation = await ensureFactionRelation(tx, worldId, sourceFactionId, targetFactionId);
+  return { presion: relation.presion, type: relation.type, stage: stageForPresion(relation.presion) };
 }

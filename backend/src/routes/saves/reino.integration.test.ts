@@ -121,3 +121,144 @@ describe('POST /saves/:id/reino/fundar — Location-interior dinámica (2026-09-
     }
   });
 });
+
+// Diplomacia del jugador (docs/rpgtarkor/mundo-vivo-x4.md § 4.4/§ 5-bis punto 6, 2026-09-21) —
+// acción puntual de un Companion con rolReino:'diplomatico' contra cualquier Faction real, sin
+// exigir nada de la facción destino. Fixture propio, con Reino ya fundado (reutiliza el mismo
+// flujo real de POST /reino/fundar en lugar de sembrar Faction a mano, para probar el camino
+// completo de verdad).
+describe('POST /saves/:id/reino/diplomacia', () => {
+  let saveId: string;
+  let worldId: string;
+  let sourceFactionId: string;
+  let targetFactionSlug: string;
+  let targetFactionId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    worldId = world.id;
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId,
+        characterName: 'Gorhorn de prueba (diplomacia)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+        raza: 'orcos',
+      },
+    });
+    saveId = save.id;
+    await prisma.building.create({
+      data: { saveId, locationId: hondonada.id, recipeKey: 'ayuntamiento', name: 'x', kind: 'ayuntamiento', description: 'x', status: 'ACTIVO', tier: 1 },
+    });
+    const app = await buildApp();
+    await app.inject({ method: 'POST', url: `/saves/${saveId}/reino/fundar`, payload: { kingdomName: 'Reino de Prueba Diplomacia' } });
+    const sourceFaction = await prisma.faction.findFirstOrThrow({ where: { saveId } });
+    sourceFactionId = sourceFaction.id;
+
+    const targetFaction = await prisma.faction.findFirstOrThrow({ where: { worldId, slug: 'clan-helsig' } });
+    targetFactionSlug = targetFaction.slug;
+    targetFactionId = targetFaction.id;
+  });
+
+  afterAll(async () => {
+    await prisma.factionRelation.deleteMany({ where: { OR: [{ sourceFactionId }, { targetFactionId: sourceFactionId }] } });
+    await prisma.locationLink.deleteMany({ where: { OR: [{ from: { slug: `ayuntamiento-interior-${saveId}` } }, { to: { slug: `ayuntamiento-interior-${saveId}` } }] } });
+    await prisma.location.deleteMany({ where: { worldId, slug: `ayuntamiento-interior-${saveId}` } });
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('sin un Companion con rolReino:"diplomatico", rechaza con 400', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/reino/diplomacia`,
+      payload: { companionId: 'no-existe', targetFactionSlug, accion: 'espiar' },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('espiar nunca mueve presion, y devuelve el estado real de FactionRelation', async () => {
+    const companion = await prisma.companion.create({
+      data: { saveId, name: 'Diplomático de prueba', role: 'diplomatico', notes: '', rolReino: 'diplomatico' },
+    });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/reino/diplomacia`,
+      payload: { companionId: companion.id, targetFactionSlug, accion: 'espiar' },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.presion).toBe(50); // PRESION_NEUTRAL, primera vez que se consulta
+    expect(body.type).toBe('NEUTRAL');
+
+    const relation = await prisma.factionRelation.findUnique({
+      where: { sourceFactionId_targetFactionId: { sourceFactionId, targetFactionId } },
+    });
+    expect(relation?.presion).toBe(50); // sin cambios — espiar nunca escribe presion
+  });
+
+  it('negociar tregua sin nivel de oficio suficiente para una relación ya extrema, rechaza con 409', async () => {
+    const companion = await prisma.companion.create({
+      data: { saveId, name: 'Diplomático novato', role: 'diplomatico', notes: '', rolReino: 'diplomatico' },
+    });
+    // Fuerza la relación a un extremo (presion muy alejada del neutro) para que el gate de nivel
+    // exija más que el nivel 1 por defecto de un Companion sin ProfessionProgress.
+    await prisma.factionRelation.upsert({
+      where: { sourceFactionId_targetFactionId: { sourceFactionId, targetFactionId } },
+      update: { presion: 95 },
+      create: { worldId, sourceFactionId, targetFactionId, presion: 95, type: 'GUERRA' },
+    });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/reino/diplomacia`,
+      payload: { companionId: companion.id, targetFactionSlug, accion: 'negociar' },
+    });
+    expect(res.statusCode).toBe(409);
+  });
+
+  it('sabotear con nivel suficiente sube presion de verdad', async () => {
+    const companion = await prisma.companion.create({
+      data: { saveId, name: 'Diplomático experto', role: 'diplomatico', notes: '', rolReino: 'diplomatico' },
+    });
+    await prisma.professionProgress.create({ data: { companionId: companion.id, professionId: 'diplomatico', nivel: 9, xp: 8000 } });
+    await prisma.factionRelation.upsert({
+      where: { sourceFactionId_targetFactionId: { sourceFactionId, targetFactionId } },
+      update: { presion: 50 },
+      create: { worldId, sourceFactionId, targetFactionId, presion: 50, type: 'NEUTRAL' },
+    });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/reino/diplomacia`,
+      payload: { companionId: companion.id, targetFactionSlug, accion: 'sabotear' },
+    });
+    expect(res.statusCode).toBe(200);
+    const relation = await prisma.factionRelation.findUniqueOrThrow({
+      where: { sourceFactionId_targetFactionId: { sourceFactionId, targetFactionId } },
+    });
+    expect(relation.presion).toBe(60); // 50 + peso de SABOTAJE_DIPLOMATICO (+10)
+  });
+
+  it('rechaza diplomacia contra el propio Reino del jugador', async () => {
+    const companion = await prisma.companion.create({
+      data: { saveId, name: 'Diplomático de prueba 2', role: 'diplomatico', notes: '', rolReino: 'diplomatico' },
+    });
+    const app = await buildApp();
+    const sourceFaction = await prisma.faction.findFirstOrThrow({ where: { id: sourceFactionId } });
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/reino/diplomacia`,
+      payload: { companionId: companion.id, targetFactionSlug: sourceFaction.slug, accion: 'espiar' },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+});

@@ -3,6 +3,8 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { slugify } from '../../lib/slugify.js';
 import { rejectIfEnded, rejectIfPendingDeath } from './shared.js';
+import { professionLevelForXp, alivioForLevel } from '../../services/professionProgress.js';
+import { recordFactionEvent, espiarFactionRelation, nivelDiplomaticoRequerido, type FactionEventType } from '../../services/factionRelations.js';
 
 /// Fundación de reino (2026-08-04, docs/17-reglas-construcciones-reino.md) — el popup que se abre
 /// al terminar de construir el Ayuntamiento (tier 1) manda aquí el formulario. Decisión manual de
@@ -162,6 +164,86 @@ export async function reinoRoutes(app: FastifyInstance) {
       }
 
       return { kingdomName: finalKingdomName };
+    },
+  );
+
+  // Diplomacia (docs/rpgtarkor/mundo-vivo-x4.md § 4.4/§ 5-bis punto 6, 2026-09-21) — acción
+  // PUNTUAL de un Companion/Subject del jugador con nivel de oficio 'diplomatico' suficiente,
+  // estilo Agente de X4: nunca un Npc de facción (decisión explícita: "una cosa son companions...
+  // y otra es NPC/fauna de facción, van por separado"), nunca exige nada de la facción destino.
+  const DIPLOMACIA_ACCIONES: Record<'negociar' | 'sabotear' | 'espiar', FactionEventType | null> = {
+    negociar: 'NEGOCIACION_TREGUA',
+    sabotear: 'SABOTAJE_DIPLOMATICO',
+    espiar: null, // el espionaje nunca mueve presion — ver espiarFactionRelation
+  };
+
+  /// Señal interna para abortar por nivel insuficiente sin que Prisma la trate como un error de
+  /// escritura real (mismo patrón que `CapturaEnCursoError`, companeros.ts) — capturada justo
+  /// después del `$transaction`, nunca se propaga.
+  class NivelDiplomaticoInsuficienteError extends Error {
+    constructor(public nivel: number, public nivelExigido: number) {
+      super('Nivel de diplomacia insuficiente');
+    }
+  }
+
+  app.post<{ Params: { id: string }; Body: { companionId: string; targetFactionSlug: string; accion: 'negociar' | 'sabotear' | 'espiar' } }>(
+    '/saves/:id/reino/diplomacia',
+    async (request, reply) => {
+      const { companionId, targetFactionSlug, accion } = request.body;
+      const save = await prisma.save.findUnique({ where: { id: request.params.id } });
+      if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+      if (rejectIfEnded(save, reply)) return;
+      if (rejectIfPendingDeath(save, reply)) return;
+      if (accion !== 'espiar' && accion !== 'negociar' && accion !== 'sabotear') {
+        return reply.status(400).send({ error: `Acción desconocida: ${accion}` });
+      }
+
+      const companion = await prisma.companion.findFirst({ where: { id: companionId, saveId: save.id, rolReino: 'diplomatico' } });
+      if (!companion) return reply.status(400).send({ error: 'Ese Companion no es un diplomático de tu Reino (rolReino: "diplomatico")' });
+
+      const sourceFaction = await prisma.faction.findFirst({ where: { saveId: save.id }, select: { id: true, name: true, worldId: true } });
+      if (!sourceFaction) return reply.status(400).send({ error: 'Todavía no has fundado tu Reino' });
+
+      const targetFaction = await prisma.faction.findFirst({ where: { worldId: sourceFaction.worldId, slug: targetFactionSlug }, select: { id: true, name: true } });
+      if (!targetFaction) return reply.status(404).send({ error: `Facción desconocida: ${targetFactionSlug}` });
+      if (targetFaction.id === sourceFaction.id) return reply.status(400).send({ error: 'No puedes hacer diplomacia contra tu propio Reino' });
+
+      const progreso = await prisma.professionProgress.findUnique({
+        where: { companionId_professionId: { companionId: companion.id, professionId: 'diplomatico' } },
+        select: { xp: true },
+      });
+      const nivel = professionLevelForXp(progreso?.xp ?? 0);
+
+      const resultado = await prisma
+        .$transaction(async (tx) => {
+          if (accion === 'espiar') {
+            const info = await espiarFactionRelation(tx, sourceFaction.worldId, sourceFaction.id, targetFaction.id);
+            return { ok: true as const, accion, targetFaction: targetFaction.name, hechoDeMundo: null as string | null, ...info };
+          }
+
+          // Gate de nivel — mismo criterio que trabajadorPuedeProducir (kingdomProduction.ts):
+          // cuanto más lejos del neutro ya está la relación, más nivel exige moverla más.
+          const relacionPrevia = await espiarFactionRelation(tx, sourceFaction.worldId, sourceFaction.id, targetFaction.id);
+          const nivelExigido = nivelDiplomaticoRequerido(relacionPrevia.presion);
+          if (nivelExigido > Math.max(1, alivioForLevel(nivel) + 1)) {
+            throw new NivelDiplomaticoInsuficienteError(nivel, nivelExigido);
+          }
+
+          const event = DIPLOMACIA_ACCIONES[accion]!;
+          const hechoDeMundo = await recordFactionEvent(tx, sourceFaction.worldId, sourceFaction.id, targetFaction.id, event);
+          return { ok: true as const, accion, targetFaction: targetFaction.name, hechoDeMundo };
+        })
+        .catch((err) => {
+          if (err instanceof NivelDiplomaticoInsuficienteError) return err;
+          throw err;
+        });
+
+      if (resultado instanceof NivelDiplomaticoInsuficienteError) {
+        return reply.status(409).send({
+          error: `${companion.name} no tiene nivel de diplomacia suficiente (nivel ${resultado.nivel}, se exige al menos nivel ${resultado.nivelExigido} para mover una relación tan asentada).`,
+        });
+      }
+      return resultado;
     },
   );
 }
