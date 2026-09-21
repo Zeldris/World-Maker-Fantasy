@@ -857,6 +857,30 @@ tanto desde el disparador de 4 (turno) como desde el de 11/12 (worldTick.ts) —
 una función pura consumida por ambos; 13 fija orden de trabajo respecto a 4.5, no una decisión de
 diseño en sí misma.
 
+### 5-ter. Puntos 1, 2 y 11 — CERRADOS e IMPLEMENTADOS (2026-09-21, sesión posterior)
+
+- **Punto 1** (`FactionBuilding`): confirmado que ya no queda ningún caller real (`grep` limpio,
+  el modelo Prisma ya no existe en `schema.prisma` desde `5da79e5`, y la tabla tampoco existe en
+  Postgres real) — el punto ya estaba de facto cerrado, solo quedaban comentarios/nombres de
+  variables de datos (`factionBuildings` en `worldCatalog.ts`) como referencia histórica del
+  catálogo, que no es el modelo viejo.
+- **Punto 2** (CHECK constraint): `ProfessionProgress.saveId`/`companionId` es el ÚNICO par XOR
+  real entre los modelos nuevos de esta sesión (`OrdenProduccion`/`AlmacenLimite` no tienen XOR,
+  solo `buildingId`/`saveId` obligatorios sin alternativa) — `CHECK CONSTRAINT` real en Postgres
+  añadido vía SQL crudo en la migración (Prisma no expresa `CHECK` en el DSL declarativo),
+  verificado rechazando de verdad una fila con ambos campos nulos. Los pares XOR ya existentes
+  (`KingdomStats`/`Building`/`ZonePoint`/`Npc.faction`) se quedan en el criterio solo-servicio de
+  siempre, documentado en el propio modelo para que no se lea como inconsistencia accidental.
+- **Punto 11** (cadáver/recuperación a `worldTick.ts`): nueva `advanceCorpseAndRecoveryTimeouts`
+  (`companionSupervivencia.ts`, mismo vecindario que `advancePlayerSurvival`) — coexiste a
+  propósito con `applyCondicionTimeouts` (turnResolution.ts, dentro del turno síncrono, decisión
+  explícita de Álvaro: "la más completa y profesional"): el turno sigue aplicándolo al resolverse
+  (cero riesgo de regresión) Y el tick de fondo cubre el hueco real (el mundo sigue aunque el
+  jugador no actúe). 3 tests de integración nuevos contra Postgres real.
+
+Verificado: `tsc -b` limpio, suite completa 2630/2630 en verde (sin ningún fallo de contención esta
+vez, corrida completa en un solo intento).
+
 ---
 
 ## 7. Sesión de IMPLEMENTACIÓN (2026-09-21, misma fecha, continuación) — §4.2 y §4.3 cerrados, §4.3-bis en diseño

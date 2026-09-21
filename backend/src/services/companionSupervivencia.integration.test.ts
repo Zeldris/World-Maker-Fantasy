@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { prisma } from '../lib/prisma.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
-import { advanceCompanionSurvival, advancePlayerSurvival, autoEquiparDesdeAlmacen, FELICIDAD_DESCUIDO_PASO, AGUA_MINUTOS_POR_TRAMO } from './companionSupervivencia.js';
+import { advanceCompanionSurvival, advancePlayerSurvival, advanceCorpseAndRecoveryTimeouts, autoEquiparDesdeAlmacen, FELICIDAD_DESCUIDO_PASO, AGUA_MINUTOS_POR_TRAMO } from './companionSupervivencia.js';
 
 /// Cobertura nueva (auditoría de deuda técnica 2026-08-25): estas 3 funciones no tenían ningún
 /// test — no es lógica trivial: `advanceCompanionSurvival`/`advancePlayerSurvival` corren en
@@ -105,6 +105,71 @@ describe('advancePlayerSurvival', () => {
     expect(result.savesAfectados).toBeGreaterThanOrEqual(1);
     const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(save.condicionFisica).not.toBe('ILESO');
+  });
+});
+
+/// Cobertura nueva (docs/rpgtarkor/mundo-vivo-x4.md § 5-bis punto 11, 2026-09-21) — mismo criterio
+/// de integración real que `advancePlayerSurvival` de arriba: corre en producción cada tick de
+/// mundo real (`workers/worldTick.ts`), coexistiendo a propósito con `applyCondicionTimeouts`
+/// (turnResolution.ts, dentro del turno síncrono).
+describe('advanceCorpseAndRecoveryTimeouts', () => {
+  const RECOVERY_MIN = 6 * 60;
+  const DESPAWN_MIN = 48 * 60;
+  let saveId: string;
+  let npcId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const npc = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'orco-enfurecido-hondonada' } });
+    npcId = npc.id;
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (timeouts de fondo)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        portraitInitial: 'G',
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId, fictionalMinutes: DESPAWN_MIN + 10 } });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('recupera un CONVALECIENTE a HERIDO tras 6h de ficción, sin que el jugador actúe', async () => {
+    const state = await prisma.npcState.create({
+      data: { saveId, npcId, scope: 'timeout-convaleciente', condicionFisica: 'CONVALECIENTE', condicionFisicaSinceMinutes: 0 },
+    });
+    const result = await advanceCorpseAndRecoveryTimeouts(prisma);
+    expect(result.recovered).toBeGreaterThanOrEqual(1);
+    const after = await prisma.npcState.findUniqueOrThrow({ where: { id: state.id } });
+    expect(after.condicionFisica).toBe('HERIDO');
+  });
+
+  it('borra el NpcState de un cadáver MUERTO tras 48h de ficción, sin que el jugador actúe', async () => {
+    const state = await prisma.npcState.create({
+      data: { saveId, npcId, scope: 'timeout-muerto', condicionFisica: 'MUERTO', condicionFisicaSinceMinutes: 0 },
+    });
+    const result = await advanceCorpseAndRecoveryTimeouts(prisma);
+    expect(result.despawned).toBeGreaterThanOrEqual(1);
+    const after = await prisma.npcState.findUnique({ where: { id: state.id } });
+    expect(after).toBeNull();
+  });
+
+  it('nunca toca un NpcState que todavía no cumplió su plazo', async () => {
+    const state = await prisma.npcState.create({
+      data: { saveId, npcId, scope: 'timeout-reciente', condicionFisica: 'CONVALECIENTE', condicionFisicaSinceMinutes: DESPAWN_MIN + 5 },
+    });
+    await advanceCorpseAndRecoveryTimeouts(prisma);
+    const after = await prisma.npcState.findUniqueOrThrow({ where: { id: state.id } });
+    expect(after.condicionFisica).toBe('CONVALECIENTE');
   });
 });
 

@@ -10,7 +10,7 @@ import { loadSessionFacts } from '../services/worldFacts.js';
 import { claimTurnInFlight, releaseTurnInFlight } from '../services/turnLock.js';
 import { growAllPopulations, syncFactionPopulationToKingdomStats } from '../services/population.js';
 import { advanceWorldAgenda } from '../services/worldAgenda.js';
-import { advanceCompanionSurvival, advancePlayerSurvival } from '../services/companionSupervivencia.js';
+import { advanceCompanionSurvival, advancePlayerSurvival, advanceCorpseAndRecoveryTimeouts } from '../services/companionSupervivencia.js';
 import type { ClassificationResult } from '../services/narrador.js';
 import type { RollResult, AttributeBlock } from '../services/dice.js';
 import type { TravelResolution } from '../services/travel.js';
@@ -265,6 +265,11 @@ async function tick(): Promise<void> {
   // de fondo que población/agenda, nunca en el turno síncrono.
   await advanceCompanionSurvival(prisma).catch((err) => console.error('[worldTick] error en supervivencia de compañeros:', err));
   await advancePlayerSurvival(prisma).catch((err) => console.error('[worldTick] error en Hambre/Sed del personaje:', err));
+  // Recuperación de CONVALECIENTE / desaparición de cadáveres (docs/rpgtarkor/mundo-vivo-x4.md
+  // § 5-bis punto 11, 2026-09-21) — coexiste con applyCondicionTimeouts (turnResolution.ts, dentro
+  // del turno síncrono): el mundo sigue aunque el jugador no actúe, mismo criterio que
+  // población/agenda de arriba.
+  await advanceCorpseAndRecoveryTimeouts(prisma).catch((err) => console.error('[worldTick] error en recuperación/desaparición de NPC:', err));
 }
 
 let intervalHandle: NodeJS.Timeout | null = null;

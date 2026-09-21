@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient, CondicionFisica, EquipSlot } from '@prisma/client';
 import type { Attribute, AttributeBlock } from './dice.js';
 import { rollOpposed, type OpposedRollResult } from './dice.js';
+import { npcRecoversFromConvaleciente, npcCorpseShouldDespawn } from './death.js';
 
 /// Grupo 3 § Compañeros y supervivencia (2026-08-25, diseño completo en
 /// docs/rpgtarkor/companeros-y-supervivencia.md) — captura+tameo/persuasión de fauna/NPC,
@@ -306,6 +307,44 @@ export async function advancePlayerSurvival(prisma: PrismaClient): Promise<{ sav
     }
   }
   return { savesAfectados };
+}
+
+/// Recuperación de CONVALECIENTE (6h de ficción) / desaparición de cadáver MUERTO (48h de ficción)
+/// — § 5-bis punto 11 (docs/rpgtarkor/mundo-vivo-x4.md, 2026-09-21): mismo patrón que
+/// `advancePlayerSurvival`/`growAllPopulations` (cálculo DERIVADO de un timestamp de ficción, no
+/// acumulativo — encaja sin cambiar de semántica). Coexiste a propósito con
+/// `applyCondicionTimeouts` (turnResolution.ts, dentro del turno síncrono) — decisión explícita de
+/// Álvaro ("la más completa y profesional"): el turno sigue aplicándolo al resolverse (sin cambio,
+/// cero riesgo de regresión en los tests existentes) Y este tick de fondo cubre el hueco real (el
+/// jugador tarda en volver a actuar mientras el servidor sigue corriendo — un cadáver se
+/// descompone y un NPC se recupera aunque el jugador esté lejos, mismo criterio "el mundo sigue"
+/// que ya aplica a población). Aplicar el mismo timeout dos veces no hace nada la segunda vez (ya
+/// no hay `NpcState` en ese estado) — inofensivo por diseño, sin necesidad de guard adicional.
+export async function advanceCorpseAndRecoveryTimeouts(prisma: PrismaClient): Promise<{ recovered: number; despawned: number }> {
+  const saves = await prisma.save.findMany({
+    where: { endedAt: null },
+    select: { id: true, worldState: { select: { fictionalMinutes: true } } },
+  });
+  let recovered = 0;
+  let despawned = 0;
+  for (const s of saves) {
+    const nowMinutes = s.worldState?.fictionalMinutes;
+    if (nowMinutes == null) continue;
+    const affected = await prisma.npcState.findMany({
+      where: { saveId: s.id, condicionFisica: { in: ['CONVALECIENTE', 'MUERTO'] } },
+      select: { id: true, condicionFisica: true, condicionFisicaSinceMinutes: true },
+    });
+    for (const state of affected) {
+      if (state.condicionFisica === 'CONVALECIENTE' && npcRecoversFromConvaleciente(state.condicionFisicaSinceMinutes, nowMinutes)) {
+        await prisma.npcState.update({ where: { id: state.id }, data: { condicionFisica: 'HERIDO', condicionFisicaSinceMinutes: nowMinutes } });
+        recovered++;
+      } else if (state.condicionFisica === 'MUERTO' && npcCorpseShouldDespawn(state.condicionFisicaSinceMinutes, nowMinutes)) {
+        await prisma.npcState.delete({ where: { id: state.id } });
+        despawned++;
+      }
+    }
+  }
+  return { recovered, despawned };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

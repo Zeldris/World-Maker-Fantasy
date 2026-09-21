@@ -1658,8 +1658,14 @@ enum MetodoObtencion {
 ///
 /// Generalizado a trabajadores de Reino (docs/rpgtarkor/mundo-vivo-x4.md § 4.4-ter, 2026-09-21) —
 /// `saveId`/`companionId` opcionales, mismo criterio laxo "exactamente uno relleno, nunca ambos,
-/// nunca ninguno" que `KingdomStats.saveId`/`factionId` (validado en servicio, nunca CHECK de SQL).
-/// Decisión explícita de Álvaro: el nivel de oficio del PERSONAJE nunca cuenta para el tick de
+/// nunca ninguno" que `KingdomStats.saveId`/`factionId`, pero AQUÍ ADEMÁS reforzado con un
+/// `CHECK CONSTRAINT` real en Postgres (§ 5-bis, punto 2, 2026-09-21 — decisión explícita de
+/// Álvaro: "lo más profesional y completo" para los modelos nuevos de esta sesión, a diferencia de
+/// `KingdomStats`/`Building`/`ZonePoint`/`Npc.faction`, que se quedan en el criterio solo-servicio
+/// de siempre — dos convenciones conviviendo a propósito, documentado para que no se lea como
+/// inconsistencia accidental). El CHECK vive en la migración SQL (Prisma no expresa CHECK en el
+/// DSL declarativo), ver `prisma/migrations/*_check_constraints_xor/migration.sql`. Decisión
+/// explícita de Álvaro: el nivel de oficio del PERSONAJE nunca cuenta para el tick de
 /// `OrdenProduccion` ("en el reino yo no cuento, yo fabrico aparte... como en Bellwright") — el
 /// tick solo mira `ProfessionProgress` con `companionId` relleno, de los `Companion` con
 /// `rolReino`/`buildingId` asignados a ese edificio. Reutiliza tal cual
