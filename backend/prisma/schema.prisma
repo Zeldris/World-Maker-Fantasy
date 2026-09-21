@@ -497,6 +497,7 @@ model Location {
   buildings    Building[]
   zonePoints   ZonePoint[]
   droppedItems DroppedItem[]
+  parcelas     Parcela[]
 
   @@unique([worldId, slug])
 }
@@ -604,6 +605,49 @@ enum ZonePointTipo {
   /// representación espacial dentro del lienzo de zona (antes solo existían como fila de BD con
   /// icono en el mapa de MUNDO/macro, invisibles en el mapa de ZONA/micro).
   EDIFICIO
+}
+
+enum ParcelaTipo {
+  /// Repetible — el jugador ELIGE qué construir aquí (producción/vivienda/fabricación). Sin
+  /// `recipeKeyFijo`.
+  BASICA
+  /// Única por posición — el edificio que va aquí ya está decidido a priori por el PNG/diseño de
+  /// la zona-interior (el Ayuntamiento siempre en el centro, la empalizada siempre alrededor...),
+  /// el jugador NO elige entre opciones. `recipeKeyFijo` siempre relleno.
+  AVANZADA
+}
+
+/// Hueco de construcción marcado a priori en el PNG de una zona-interior (docs/rpgtarkor/
+/// mundo-vivo-x4.md § 7.4, 2026-09-21, "concepto estilo Travian/Tribal Wars") — a diferencia de
+/// `ZonePoint` (entidad VIVA que se mueve/agota: fauna, NPC, recurso), una `Parcela` es un hueco
+/// PASIVO que existe ANTES de que haya nada construido ahí; su ciclo de vida es "vacía →
+/// `buildingId` relleno", nunca se mueve ni se agota. Vive en la MISMA `Location`-interior dinámica
+/// que ya crea `reino.ts` al fundar (o la que en el futuro cree el Cuartel Avanzado, ver punto
+/// pendiente de § 7.4) — como esa `Location` ya es por-partida (slug con `save.id`), la `Parcela`
+/// no necesita su propio `saveId`/`factionId`: hereda el ámbito de su `locationId`.
+model Parcela {
+  id            String      @id @default(cuid())
+  locationId    String
+  location      Location    @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  /// Píxeles del lienzo de la zona-interior (misma convención 800×600 que `ZonePoint.x`/`y`) —
+  /// posición FIJA, marcada de antemano en el PNG de esa zona-interior, nunca se mueve.
+  x             Float
+  y             Float
+  tipo          ParcelaTipo
+  /// Solo relleno en `AVANZADA` — `ConstructionRecipe.key` del único edificio que puede levantarse
+  /// aquí (mismo vocabulario que `Building.recipeKey`, sin inventar un catálogo paralelo). Null en
+  /// `BASICA` (el jugador elige la receta al construir, dentro de las que aplican a este tipo de
+  /// hueco).
+  recipeKeyFijo String?
+  /// Edificio real construido en esta parcela — null = parcela vacía. Cuando se construye algo
+  /// aquí, `Building.x`/`y` (ya existente) se rellenan con `x`/`y` de arriba, así que el frontend
+  /// sigue pintando la posición desde `Building` como siempre; este campo solo enlaza "qué parcela
+  /// ocupa" para poder liberarla si el edificio se abandona/destruye.
+  buildingId    String?     @unique
+  building      Building?   @relation(fields: [buildingId], references: [id], onDelete: SetNull)
+  createdAt     DateTime    @default(now())
+
+  @@index([locationId])
 }
 
 /// "Tirar" objetos al suelo de la Zona (2026-09-06, hallazgo 8 de la sesión de pruebas: "Recoger"
@@ -1920,6 +1964,12 @@ model Building {
   y           Float?
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
+
+  /// Conquista territorial estilo X4 (docs/rpgtarkor/mundo-vivo-x4.md § 7.4) — la Parcela (hueco
+  /// de construcción marcado a priori) que este Building ocupa, si nació de una. Null = edificio
+  /// libre, no ligado a ninguna parcela (comportamiento de siempre, incluidos todos los edificios
+  /// existentes antes de esta pieza).
+  parcela Parcela?
 
   @@unique([factionId, recipeKey])
   @@index([saveId])

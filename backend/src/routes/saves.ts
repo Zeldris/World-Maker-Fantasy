@@ -12,6 +12,7 @@ import { reinoRoutes } from './saves/reino.js';
 import { recolectarRoutes } from './saves/recolectar.js';
 import { cazarRoutes } from './saves/cazar.js';
 import { recipesStatusRoutes } from './saves/recipesStatus.js';
+import { parcelasRoutes } from './saves/parcelas.js';
 import { suggestionsRoutes } from './saves/suggestions.js';
 import { panelsRoutes } from './saves/panels.js';
 import { companerosRoutes } from './saves/companeros.js';
@@ -47,6 +48,7 @@ export async function savesRoutes(app: FastifyInstance) {
   await app.register(recolectarRoutes);
   await app.register(cazarRoutes);
   await app.register(recipesStatusRoutes);
+  await app.register(parcelasRoutes);
   await app.register(suggestionsRoutes);
   await app.register(panelsRoutes);
   await app.register(companerosRoutes);

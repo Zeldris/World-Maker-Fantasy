@@ -20,6 +20,8 @@ const createManyPlantillaEquipo = vi.fn();
 // Zona-interior navegable propia del reino (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, 2026-09-21).
 const createLocation = vi.fn();
 const createLocationLink = vi.fn();
+const createParcela = vi.fn();
+const createManyParcela = vi.fn();
 
 vi.mock('../../lib/prisma.js', () => ({
   prisma: {
@@ -38,6 +40,10 @@ vi.mock('../../lib/prisma.js', () => ({
         plantillaEquipo: { createMany: (...args: unknown[]) => createManyPlantillaEquipo(...args) },
         location: { create: (...args: unknown[]) => createLocation(...args) },
         locationLink: { create: (...args: unknown[]) => createLocationLink(...args) },
+        parcela: {
+          create: (...args: unknown[]) => createParcela(...args),
+          createMany: (...args: unknown[]) => createManyParcela(...args),
+        },
       }),
   },
 }));
@@ -61,6 +67,8 @@ describe('POST /saves/:id/reino/fundar', () => {
     createManyPlantillaEquipo.mockReset().mockResolvedValue({ count: 3 });
     createLocation.mockReset().mockResolvedValue({ id: 'kingdom-location-1' });
     createLocationLink.mockReset().mockResolvedValue({});
+    createParcela.mockReset().mockResolvedValue({});
+    createManyParcela.mockReset().mockResolvedValue({ count: 3 });
   });
 
   it('404 si la partida no existe', async () => {

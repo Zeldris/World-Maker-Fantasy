@@ -97,4 +97,27 @@ describe('POST /saves/:id/reino/fundar — Location-interior dinámica (2026-09-
     expect(kingdomLocation!.slug).toBe(`ayuntamiento-interior-${saveId}`);
     expect(kingdomLocation!.slug).not.toBe('campamento-serhu-interior');
   });
+
+  it('siembra 1 Parcela AVANZADA (centro, ya ocupada por el Ayuntamiento real) + 3 BÁSICAS vacías', async () => {
+    const kingdomLocation = await prisma.location.findUniqueOrThrow({
+      where: { worldId_slug: { worldId, slug: `ayuntamiento-interior-${saveId}` } },
+    });
+    const ayuntamiento = await prisma.building.findFirstOrThrow({ where: { saveId, recipeKey: 'ayuntamiento' } });
+    const parcelas = await prisma.parcela.findMany({ where: { locationId: kingdomLocation.id }, orderBy: { tipo: 'asc' } });
+    expect(parcelas).toHaveLength(4);
+
+    const avanzada = parcelas.find((p) => p.tipo === 'AVANZADA');
+    expect(avanzada).toBeDefined();
+    expect(avanzada!.recipeKeyFijo).toBe('ayuntamiento');
+    expect(avanzada!.buildingId).toBe(ayuntamiento.id); // ocupada desde el minuto uno, nunca vacía
+    expect(avanzada!.x).toBe(400);
+    expect(avanzada!.y).toBe(300);
+
+    const basicas = parcelas.filter((p) => p.tipo === 'BASICA');
+    expect(basicas).toHaveLength(3);
+    for (const basica of basicas) {
+      expect(basica.recipeKeyFijo).toBeNull();
+      expect(basica.buildingId).toBeNull(); // vacías, el jugador construye ahí después
+    }
+  });
 });

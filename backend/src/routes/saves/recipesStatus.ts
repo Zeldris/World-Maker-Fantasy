@@ -1,15 +1,16 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
-import { checkIngredients, type IngredientStatus, type CatalogLookup } from '../../services/ingredients.js';
+import { checkIngredients, type IngredientStatus, type CatalogLookup, type InventoryRowLike } from '../../services/ingredients.js';
 import { checkRequisitos, shortfallLabel } from '../../services/requisitos.js';
 import { alivioForLevel } from '../../services/professionProgress.js';
 import { effectiveAttributes, effectiveSecondaryAttributes } from '../../services/equipment.js';
 import { normalizeSecondaryAttributes } from '../../services/secondaryAttributes.js';
 import { CRAFTING_RECIPES } from '../../services/crafting.js';
-import { CONSTRUCTION_RECIPES, computeBuildBlockedReason } from '../../services/construction.js';
+import { CONSTRUCTION_RECIPES, computeBuildBlockedReason, type ConstructionRecipe } from '../../services/construction.js';
 import type { AttributeBlock } from '../../services/dice.js';
+import type { SecondaryAttributeBlock } from '../../services/secondaryAttributes.js';
 
-interface RecipeStatus {
+export interface RecipeStatus {
   recipeKey: string;
   recipeCategory: 'crafteo' | 'construccion';
   met: boolean;
@@ -25,6 +26,49 @@ interface RecipeStatus {
   /// materiales/atributos YA se cumplen, mismo criterio que turnResolution.ts (si faltan
   /// materiales, ese sigue siendo el problema real a mostrar). null = no aplica o no bloquea.
   blockedReason: string | null;
+}
+
+/// Extraído de `recipesStatusRoutes` (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, 2026-09-21) — mismo
+/// cálculo de "¿puedo construir esto AHORA MISMO?" reutilizado por `parcelas.ts` (una Parcela
+/// solo necesita el status de SU receta candidata, no las de todo el catálogo). Nunca duplica el
+/// criterio de "qué hace falta", solo lo expone en modo consulta — igual que antes.
+export async function constructionRecipeStatusFor(params: {
+  recipe: ConstructionRecipe;
+  saveId: string;
+  worldId: string;
+  activeRegion: string | null;
+  currentLocationId: string | null;
+  inventoryRows: InventoryRowLike[];
+  catalogBySlug: Map<string, CatalogLookup>;
+  attributes: AttributeBlock;
+  secondaryAttributes: SecondaryAttributeBlock;
+  alivioFor: (oficio: string | null | undefined) => number;
+}): Promise<RecipeStatus> {
+  const { recipe, saveId, worldId, activeRegion, currentLocationId, inventoryRows, catalogBySlug, attributes, secondaryAttributes, alivioFor } = params;
+  const ingredients = checkIngredients(recipe.requirements, inventoryRows, catalogBySlug);
+  const missingRequisitos = checkRequisitos(recipe.requisitos, attributes, secondaryAttributes, alivioFor(recipe.oficio)).map(shortfallLabel);
+  const materialsOk = ingredients.every((i) => i.met) && missingRequisitos.length === 0;
+  const blockedReason =
+    materialsOk && currentLocationId
+      ? await computeBuildBlockedReason({
+          db: prisma,
+          saveId,
+          worldId,
+          buildRecipe: recipe,
+          activeRegion,
+          currentLocationRecord: { id: currentLocationId },
+        })
+      : null;
+  return {
+    recipeKey: recipe.key,
+    recipeCategory: 'construccion',
+    met: materialsOk && !blockedReason,
+    ingredients,
+    missingRequisitos,
+    locationOk: true,
+    requiredLocationName: null,
+    blockedReason,
+  };
 }
 
 /// Deshabilitar en Habilidades/Enciclopedia las recetas que ya conoces pero no puedes craftear o
@@ -88,32 +132,20 @@ export async function recipesStatusRoutes(app: FastifyInstance) {
 
     const activeRegion = save.currentLocation?.region ?? null;
     const construction: RecipeStatus[] = await Promise.all(
-      CONSTRUCTION_RECIPES.map(async (recipe) => {
-        const ingredients = checkIngredients(recipe.requirements, inventoryRows, catalogBySlug);
-        const missingRequisitos = checkRequisitos(recipe.requisitos, attributes, secondaryAttributes, alivioFor(recipe.oficio)).map(shortfallLabel);
-        const materialsOk = ingredients.every((i) => i.met) && missingRequisitos.length === 0;
-        const blockedReason =
-          materialsOk && save.currentLocation
-            ? await computeBuildBlockedReason({
-                db: prisma,
-                saveId: save.id,
-                worldId: save.worldId,
-                buildRecipe: recipe,
-                activeRegion,
-                currentLocationRecord: { id: save.currentLocation.id },
-              })
-            : null;
-        return {
-          recipeKey: recipe.key,
-          recipeCategory: 'construccion' as const,
-          met: materialsOk && !blockedReason,
-          ingredients,
-          missingRequisitos,
-          locationOk: true,
-          requiredLocationName: null,
-          blockedReason,
-        };
-      }),
+      CONSTRUCTION_RECIPES.map((recipe) =>
+        constructionRecipeStatusFor({
+          recipe,
+          saveId: save.id,
+          worldId: save.worldId,
+          activeRegion,
+          currentLocationId: save.currentLocation?.id ?? null,
+          inventoryRows,
+          catalogBySlug,
+          attributes,
+          secondaryAttributes,
+          alivioFor,
+        }),
+      ),
     );
 
     return { recipes: [...crafting, ...construction] };

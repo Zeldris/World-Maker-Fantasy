@@ -129,6 +129,24 @@ export async function reinoRoutes(app: FastifyInstance) {
               data: { fromId: ayuntamiento.locationId, toId: kingdomLocation.id, minutosBase: 0, terreno: 'La entrada del Ayuntamiento' },
             });
           }
+
+          // Parcelas (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, "concepto estilo Travian") — huecos
+          // de construcción marcados a priori en el lienzo 800×600, centro en (400,300)/CELL_SIZE_PX
+          // 50 (zonaPosicion.ts). La AVANZADA del centro ya está OCUPADA desde el minuto uno por el
+          // Ayuntamiento que se acaba de construir (fundar reino es un paso posterior, nunca
+          // simultáneo) — se enlaza a `ayuntamiento.id` real, no queda vacía. Las 3 BÁSICAS
+          // alrededor quedan vacías: primera pasada deliberadamente modesta (poca variedad de
+          // edificios todavía, se amplía sembrando más cuando haga falta).
+          await tx.parcela.create({
+            data: { locationId: kingdomLocation.id, x: 400, y: 300, tipo: 'AVANZADA', recipeKeyFijo: 'ayuntamiento', buildingId: ayuntamiento.id },
+          });
+          await tx.parcela.createMany({
+            data: [
+              { locationId: kingdomLocation.id, x: 400, y: 150, tipo: 'BASICA' },
+              { locationId: kingdomLocation.id, x: 250, y: 400, tipo: 'BASICA' },
+              { locationId: kingdomLocation.id, x: 550, y: 400, tipo: 'BASICA' },
+            ],
+          });
         });
       } catch (err) {
         // Condición de carrera (auditoría de código completa, 2026-08-07): el guard de

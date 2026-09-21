@@ -634,48 +634,67 @@ Diseño construido en la conversación, en orden, y estado real de cada pieza:
    `id`/`slug`), solo cambia `tier` — coherente con lo decidido. El "cambia el fondo/PNG según
    nivel" es responsabilidad del frontend/generador de imagen (mismo slug, prompt por nivel),
    ningún cambio de schema hace falta para esto tampoco.
-5. **Concepto de "parcela" estilo Travian/Tribal Wars — SIN CERRAR, sin código todavía.** El PNG de
-   cada zona-interior ya trae sus huecos de construcción MARCADOS de antemano como icono en el
-   mapa de Zona, no espacio libre donde el jugador coloca a mano:
-   - **Parcela básica vacía**: repetible, ahí van los edificios de producción/vivienda/
-     fabricación — el jugador SÍ elige qué construir en ese hueco concreto.
-   - **Parcela avanzada**: única por posición — a diferencia de la básica, **cada posición del PNG
-     ya tiene predeterminado A PRIORI qué edificio único va exactamente ahí** (el Ayuntamiento
-     siempre en el centro, la empalizada siempre alrededor, el futuro salón de diplomacia siempre
-     en su hueco fijo...) — el jugador NO elige entre opciones en una parcela avanzada, solo
-     construye lo que esa posición concreta ya define. Reservada para edificios que dan pasivas de
-     reino/efectos concretos (hoy hay poca variedad todavía, así que de momento las Location siguen
-     como están — el frontend expondrá el icono de parcela en el mapa de Zona, clic abre modal de
-     detalle con opción "construir", ficha "Parcela básica vacía"/"Parcela avanzada vacía").
-   - Interacción: clic en el icono de parcela en el mapa de Zona → modal de detalle → opción
-     "construir" (para básica, elige receta; para avanzada, ya sabe cuál construir ahí).
-   - **Sigue pendiente de decidir**: modelo de datos real (¿tabla `Parcela` propia con
-     `locationId`/`x`/`y`/`tipo`/`edificioFijo`, o reutilizar `ZonePoint` con un `tipo` nuevo?).
+5. **Concepto de "parcela" estilo Travian/Tribal Wars — CERRADO, backend completo y verificado
+   contra Postgres real.** Modelo `Parcela` propio (no `ZonePoint`: una parcela es un hueco PASIVO
+   que existe antes de que haya nada construido, ciclo de vida "vacía → `buildingId` relleno",
+   nunca se mueve ni se agota — mezclarlo con `ZonePoint` habría forzado campos sin sentido como
+   `ruta`/`cantidad`/`activo`). Vive en la MISMA `Location`-interior dinámica de la pieza 3 (hereda
+   su ámbito por-partida sin necesitar `saveId`/`factionId` propios):
+   - `Parcela.tipo: 'BASICA' | 'AVANZADA'`, posición fija (`x`/`y`, mismo lienzo 800×600).
+   - `BASICA`: repetible, sin `recipeKeyFijo` — el jugador elige entre las recetas candidatas que
+     apliquen (hoy solo la Choza; genérico por diseño, `candidateRecipesForBasica()` no necesita
+     tocarse cuando haya más variedad).
+   - `AVANZADA`: `recipeKeyFijo` (directo a `ConstructionRecipe.key`, sin inventar catálogo
+     paralelo) siempre relleno — el jugador NO elige, la posición ya decide qué se construye ahí.
+   - `Parcela.buildingId` (único, `onDelete: SetNull`) enlaza el `Building` real una vez construido.
+   - Al fundar el reino (`reino.ts`) se siembran 4 parcelas en la Capital: 1 `AVANZADA` en el centro
+     (400,300) YA OCUPADA por el Ayuntamiento recién construido (nunca queda vacía, fundar es
+     posterior a construir) + 3 `BASICA` vacías alrededor — primera pasada deliberadamente modesta
+     (poca variedad de edificios todavía).
+   - Flujo real cerrado con Álvaro: mover hasta 1 celda de la parcela → clic en su icono → modal
+     con descripción + botón "Construir" (habilitado/deshabilitado según condiciones, motivo
+     mostrado si no se cumplen). Construir es DIRECTO — sin `/turn/narrate`, sin LLM (mismo
+     criterio que "Descansar en campamento": ya se sabe EXACTAMENTE qué y dónde) — con un
+     `LogEntry` determinista rico en datos concretos (qué se construyó, en qué asentamiento, quién)
+     en el canal `WORLD` (mismo canal que `worldAgenda.ts` para hechos de reino, no `CHARACTER`).
+   - Backend: `GET /saves/:id/parcelas/:parcelaId` (estado + candidatas con su `blockedReason`
+     real, reutilizando `constructionRecipeStatusFor` — extraída de `recipesStatus.ts` para
+     compartir el mismo cálculo sin duplicar criterio) + `POST .../construir` (consumo real de
+     materiales, crea `Building` en la posición exacta de la parcela, enlaza `buildingId`, narra el
+     `LogEntry`). 7 tests de integración reales contra Postgres (`parcelas.integration.test.ts`),
+     sin mocks — incluida la ruta feliz completa (consumo de inventario verificado exacto).
+   - **Frontend (icono de parcela en el mapa de Zona + modal) sigue sin tocar** — decisión
+     explícita de Álvaro: cerrar TODO el backend de § 7.4 primero, y hacer una pasada dedicada de
+     refactor de frontend después para representar bien todos los cambios de backend de golpe.
 6. **Imágenes/prompts** — reparto de trabajo cerrado explícitamente con Álvaro (ver memoria
    `tarkor_feedback_generacion_imagenes_es_cosa_del_usuario`): Claude SÍ escribe/actualiza el TEXTO
    de los prompts (trabajo de contenido normal); Álvaro genera la imagen real y la sube. **Sin
-   tocar todavía** — no se ha escrito ningún prompt nuevo ni actualizado los de Serhu/Helsig/Goshg
-   en esta sesión (piezas 1-4 no lo necesitaban: el sistema de imagen ya resuelve por slug sin
-   campo nuevo de schema). Cada nivel de Ayuntamiento/Cuartel necesitará su propio PNG con los
-   huecos exactos ya compuestos para ese nivel cuando se cierre la pieza 5 (parcelas).
+   tocar todavía** — ninguna pieza de backend de § 7.4 lo necesitó (el sistema de `ImagePrompt` ya
+   resuelve por slug sin campo nuevo de schema). Cada nivel de Ayuntamiento/Cuartel necesitará su
+   propio PNG con los huecos de parcela exactos ya compuestos para ese nivel — pendiente para
+   cuando Álvaro lo pida.
 7. **Enganchar el evento `EXPANSION_TERRITORIAL_AGRESIVA`** (§ 7.3) a la construcción real de un
    Cuartel Avanzado en región ajena a otra Faction — **sin cerrar, sin código todavía.** Ahora que
    el Cuartel Avanzado (pieza 1) ya existe de verdad, esto es la pieza que falta para que
    `recordFactionEvent` tenga por fin un caller real en producción.
 
-**Retomar en sesión nueva por, en este orden**: (a) modelo de "parcela" (pieza 5), (b) si el
-Cuartel Avanzado necesita su propia zona-interior (pendiente de la pieza 3), (c) enganchar el
-evento territorial (pieza 7), (d) prompts de imagen por nivel (pieza 6, cuando (a) esté decidido).
+**Backend de § 7.4 completo salvo piezas 6 (imágenes, a demanda) y 7 (evento territorial).
+Retomar en sesión nueva por, en este orden**: (a) si el Cuartel Avanzado necesita su propia
+zona-interior (pendiente de la pieza 3), (b) enganchar el evento territorial (pieza 7), (c) pasada
+dedicada de refactor de FRONTEND para representar todo lo construido en backend (icono de parcela
+en el mapa de Zona, modal de detalle con botón Construir, estado de Cuartel Avanzado/mejoras,
+etc.), (d) prompts de imagen por nivel (pieza 6, a demanda de Álvaro).
 
 ---
 
 ## 6. Estado de este documento
 
-**§ 4.2, § 4.3 (motor de eventos base) y § 7.4 piezas 1-4 (jerarquía Capital/Cuartel Avanzado con
-cupos + zona-interior dinámica de Capital) CERRADOS e implementados, verificados contra el
-sandbox real** (schema aplicado, seed corriendo, suite completa en verde salvo 2 flakes de
-concurrencia ya conocidos y sin relación con estos cambios — confirmado reejecutando cada uno
-aislado). § 7.4 piezas 5-7 (parcelas estilo Travian, zona-interior de Cuartel, enganche del evento
-territorial) y prompts de imagen quedan en diseño avanzado pero sin código — ver § 7.4 para
-retomar exactamente en el orden señalado ahí. El resto de § 4 (4.4 comercio, 4.5 expediciones, 4.6
-reproducción) sigue sin tocar, tal como estaba.
+**§ 4.2, § 4.3 (motor de eventos base) y § 7.4 piezas 1-5 (jerarquía Capital/Cuartel Avanzado con
+cupos + zona-interior dinámica de Capital + parcelas estilo Travian, backend completo) CERRADOS e
+implementados, verificados contra el sandbox real** (schema aplicado, seed corriendo, suite
+completa **2589/2589 en verde**, sin ningún flake en la última pasada completa). Backend de § 7.4
+completo salvo piezas 6 (prompts de imagen, a demanda de Álvaro) y 7 (enganchar
+`EXPANSION_TERRITORIAL_AGRESIVA` a la construcción real de un Cuartel Avanzado, sin código
+todavía). **Frontend de toda esta pieza (§ 7.4) sigue sin tocar a propósito** — decisión explícita
+de Álvaro: cerrar backend entero primero, pasada dedicada de frontend después. El resto de § 4 (4.4
+comercio, 4.5 expediciones, 4.6 reproducción) sigue sin tocar, tal como estaba.
