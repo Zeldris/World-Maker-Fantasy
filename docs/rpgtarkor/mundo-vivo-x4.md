@@ -397,6 +397,78 @@ ningún gemelo real, ni siquiera parcial. Puntos a diseñar en la sesión de imp
 - Relación con `valorGoirnosBaseFor` (`economia.ts`) — ¿se reutiliza como precio BASE sobre el que
   el mercado regulado aplica su fluctuación, o el mercado tiene su propia tabla independiente?
 
+### 4.4-bis Panel de Reino real — economía interna X4 + Bellwright + control de escuadrones (2026-09-21, sesión posterior)
+
+Hallazgo de arranque (verificado con grounding real, no memoria): **ya existe la cadena completa
+crudo→crafteo→consumible/material** — `HarvestYield` (cosecha) → `CraftingRecipe` (52 recetas
+reales, `crafting.ts`) → `ItemCatalog` con `curaHambre`/`curaAgua` reales, y la misma cadena hacia
+`ConstructionRecipe.requirements` para materiales de construcción. Pero **ningún `Building` produce
+nada de forma recurrente** (confirmado: `AlmacenItem` dice explícitamente "sin producción
+automática todavía", solo depósito manual) — `KingdomStats.comida`/`riqueza` es un número inventado
+por `trabajadores` (`COMIDA_POR_TRABAJADOR = 2`), no la suma real de lo crafteado. Los dos motores
+(crafteo individual del jugador, economía agregada de Reino) corren en paralelo sin ningún puente.
+
+Clasificación real de las 52 `CraftingRecipe` por tipo de producto (grounding con agente,
+2026-09-21) — base para decidir qué cadenas alimentan producción de Reino automática y cuáles
+siguen siendo crafteo puntual del jugador:
+
+| Categoría | Nº | Ejemplos |
+|---|---|---|
+| COMIDA | 6 | smokeMeat, boungoRoast, jushaSmokedMeat, scarletWheatBread, sweetHoneycomb, murgolCurd |
+| BEBIDA | 3 | boiledLichenWater, recogerAgua, redSpikeInfusion |
+| MATERIAL_CONSTRUCCION | 11 | ironIngot, stoneBlock, woodBeam, boneColumn, braidedCordage, yerreoIngot... |
+| MEDICINA | 7 | antidote, firstAidBandage, basicPoultice, completePoultice, mossPoultice... |
+| EQUIPO | 17 | armas/armaduras — crafteo puntual del jugador, no candidatas a producción automática |
+| OTRO | 7 | brújula, antorchas, decorativo/trueque |
+| Huérfana (deuda técnica real) | 1 | `carvedHorn` → `resultCatalogSlug: 'cuerno-caza-tallado'`, item retirado del catálogo 2026-09-02, la receta se quedó atrás sin actualizar — **bug real a corregir cuando se toque `crafting.ts`, no relacionado con este diseño** |
+
+Referencia de diseño explícita, dos juegos distintos para dos problemas distintos dentro del MISMO
+panel único de Reino (petición explícita de Álvaro, informado con `WebSearch` real sobre Bellwright
+antes de proponer nada — fuentes:
+[Bellwright Wiki — Population](https://bellwright.fandom.com/wiki/Population),
+[Job Priorities](https://bellwright.fandom.com/wiki/Job_Priorities),
+[Crafting](https://bellwright.fandom.com/wiki/Crafting),
+[Advanced Guide](https://steamcommunity.com/sharedfiles/filedetails/?id=3380034073)):
+
+- **X4**: cómo evoluciona la economía/construcciones — la red de producción es una configuración
+  FIJA que el jugador diseña una vez (qué produce cada `Building`), no algo que cambia solo.
+- **Bellwright**: la UI de control fino DENTRO de esa red — cadenas de fabricación con modo
+  **"único" o "reponer" + límite de cantidad** (mismo concepto que Bellwright: "queue en lotes
+  controlados", nunca producción infinita ciega), el mismo concepto de límite aplicado también a
+  **recolección** y al **Almacén de Reino** (tope configurable por recurso, **por defecto
+  infinito** — decisión explícita de Álvaro), y **prioridad de profesión 0-9 por trabajador**
+  (mismo Job Priorities de Bellwright: "qué hará este trabajador a continuación", el motor reparte
+  automáticamente según disponibilidad y requisitos cumplidos, nunca asignación fija 1:1).
+- **Control de escuadrones/tropas**: panel de órdenes dinámicas tipo RTS/4X (patrullar, explorar,
+  escuadrones sobre escuadrones) — sistema aparte, más cercano a combate/movimiento en Zona que a
+  economía, mismo panel único de Reino pero pestaña distinta.
+
+**Pieza clave que cierra el sistema** (petición explícita de Álvaro, la que faltaba en la primera
+propuesta): el tope de Almacén de Reino se CONECTA con las prioridades — si un recurso ya alcanzó
+su cupo, el motor deja de gastar tiempo de trabajador en producirlo y ese trabajador libre pasa a
+la siguiente prioridad disponible que sí tenga hueco. Sin esto, un trabajador seguiría produciendo
+un recurso ya lleno indefinidamente, desperdiciando su tiempo — el propio concepto de "cupo" no
+tendría efecto real sobre el reparto de trabajo si no re-dirige a nadie.
+
+**Orden de trabajo decidido con Álvaro**: empezar por (A) cadenas de producción con
+único/reponer+límite por `Building` y (B) límite de cantidad en recolección/Almacén de Reino —
+es la base real de toda la economía (sin esto, la prioridad de profesión no tiene sobre qué
+repartir) y reutiliza directamente las 52 `CraftingRecipe` ya clasificadas arriba. Luego (C)
+prioridad de profesión 0-9 por `Companion` (necesita que (A)/(B) ya exista para tener efecto
+real — mismo riesgo ya visto con el evento territorial, que quedó "escrito sin caller" hasta que
+existió el Cuartel Avanzado). (D) control de escuadrones queda para el final, es un sistema
+aparte más cercano a combate que a economía.
+
+**Sin código todavía** — quedó en este punto de diseño (vocabulario y orden fijados, clasificación
+completa de recetas hecha) al cierre de esta sesión de análisis. Antes de escribir schema falta
+decidir en la próxima sesión: (1) modelo de datos de "orden de producción" por `Building`
+(¿tabla `OrdenProduccion` propia, con `recipeKey`/`modo: 'unico'|'reponer'`/`limite`?), (2) cómo se
+computa "trabajador libre" y "requisitos cumplidos" para la asignación automática por prioridad
+(¿nivel de `ProfessionProgress` del Companion asignado a ese Building? ¿cómo se resuelve si varios
+Building compiten por el mismo Companion libre, mismo problema que "Building Priorities" de
+Bellwright?), (3) campo de tope en `AlmacenItem`/`WorldPopulation`/nuevo modelo para el límite de
+Almacén de Reino, con default infinito.
+
 ### 4.5 Expediciones de recolección/exploración de facción
 
 Reutilizando el mapa de 4.1: la mitad recolectora (`candidateSourcesFor`) ya es pura y reutilizable

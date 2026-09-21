@@ -57,7 +57,6 @@ const salvaturaFilter = recipe('salvaturaFilter');
 const quioClarityFilter = recipe('quioClarityFilter');
 const reedMat = recipe('reedMat');
 const featherHeaddress = recipe('featherHeaddress');
-const carvedHorn = recipe('carvedHorn');
 const towrguClaws = recipe('towrguClaws');
 const jushaScalePlates = recipe('jushaScalePlates');
 const lebudeCandle = recipe('lebudeCandle');
@@ -142,7 +141,6 @@ describe('CRAFTING_RECIPES', () => {
       'quioClarityFilter',
       'reedMat',
       'featherHeaddress',
-      'carvedHorn',
       'towrguClaws',
       'jushaScalePlates',
       'lebudeCandle',
@@ -375,8 +373,7 @@ describe('detectsCraftIntent', () => {
     expect(detectsCraftIntent(reedMat, 'Trenzo un tocado')).toBe(false);
   });
 
-  it('detecta intención de tallar/montar objetos de caza (cuerno/zarpas/escamas/vela/capa)', () => {
-    expect(detectsCraftIntent(carvedHorn, 'Tallo un cuerno de caza con mi cuerno de Cuernahoja')).toBe(true);
+  it('detecta intención de tallar/montar objetos de caza (zarpas/escamas/vela/capa)', () => {
     expect(detectsCraftIntent(towrguClaws, 'Fabrico mis zarpas de Towrgu')).toBe(true);
     expect(detectsCraftIntent(jushaScalePlates, 'Coso placas de escama de Jusha')).toBe(true);
     expect(detectsCraftIntent(lebudeCandle, 'Moldeo una vela de cera')).toBe(true);
@@ -643,11 +640,6 @@ describe('canCraft — 18 recetas nuevas (2026-08-24, Grupo 3 § 27 recursos/mat
 
     const rowsTocado = [row('1', 'plumas-rojizas', 2), row('2', 'plumas-tura-jusha', 2), row('3', 'cuchillo-hielo-silice')];
     expect(canCraft(featherHeaddress, 'hondonada-del-eco', rowsTocado, catalogBySlug, attrs, secondary)).toBe(true);
-  });
-
-  it('cuerno de caza tallado: 1 cuerno de Cuernahoja, en cualquier sitio (carpintero, sin gate de herramienta)', () => {
-    expect(canCraft(carvedHorn, 'hondonada-del-eco', [row('1', 'cuerno-cuernahoja')], catalogBySlug, attrs, secondary)).toBe(true);
-    expect(canCraft(carvedHorn, 'hondonada-del-eco', [], catalogBySlug, attrs, secondary)).toBe(false);
   });
 
   it('zarpas de Towrgu: exige Destreza 14 y herramienta de curtidor, en el campamento', () => {

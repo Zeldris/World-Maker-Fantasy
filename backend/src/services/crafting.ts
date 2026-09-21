@@ -1110,23 +1110,6 @@ export const FEATHER_HEADDRESS_RECIPE: CraftingRecipe = {
     'El personaje trenza sus plumas rojizas y de Tura Jusha en un tocado ceremonial — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
 };
 
-export const CARVED_HORN_RECIPE: CraftingRecipe = {
-  key: 'carvedHorn',
-  verbRegex: /tall|vaci|labr|fabric|prepar/,
-  nounRegex: /cuerno.*tallad|tallad.*cuerno|cuerno.*caza/,
-  location: null,
-  ingredients: [{ match: { kind: 'exact', catalogSlug: 'cuerno-cuernahoja' }, cantidad: 1, label: 'cuerno de Cuernahoja' }],
-  resultName: 'Cuerno de caza tallado',
-  resultCatalogSlug: 'cuerno-caza-tallado',
-  resultDescription: 'Cuerno de Cuernahoja vaciado y tallado con motivos de caza — suena bajo y largo, se oye a kilómetros en la llanura abierta.',
-  tier: 2,
-  requisitos: { destreza: 8 },
-  oficio: 'carpintero-orcos-llanuras',
-  narrationWant:
-    'El personaje quiere tallar un cuerno de caza, pero no lleva encima ningún cuerno de Cuernahoja — narra que lo intenta o lo considera, pero no que lo talla de verdad.',
-  narrationDo: 'El personaje vacía y talla su cuerno de Cuernahoja con motivos de caza — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
-};
-
 export const TOWRGU_CLAWS_RECIPE: CraftingRecipe = {
   key: 'towrguClaws',
   verbRegex: /monta|confeccion|fabric|prepar/,
@@ -1231,7 +1214,6 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
   QUIO_CLARITY_FILTER_RECIPE,
   REED_MAT_RECIPE,
   FEATHER_HEADDRESS_RECIPE,
-  CARVED_HORN_RECIPE,
   TOWRGU_CLAWS_RECIPE,
   JUSHA_SCALE_PLATES_RECIPE,
   LEBUDE_CANDLE_RECIPE,
