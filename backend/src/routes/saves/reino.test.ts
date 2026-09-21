@@ -17,6 +17,9 @@ const updateTerritory = vi.fn();
 const createFaction = vi.fn();
 const createDiscoveredEntity = vi.fn();
 const createManyPlantillaEquipo = vi.fn();
+// Zona-interior navegable propia del reino (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, 2026-09-21).
+const createLocation = vi.fn();
+const createLocationLink = vi.fn();
 
 vi.mock('../../lib/prisma.js', () => ({
   prisma: {
@@ -33,6 +36,8 @@ vi.mock('../../lib/prisma.js', () => ({
         faction: { create: (...args: unknown[]) => createFaction(...args) },
         discoveredEntity: { create: (...args: unknown[]) => createDiscoveredEntity(...args) },
         plantillaEquipo: { createMany: (...args: unknown[]) => createManyPlantillaEquipo(...args) },
+        location: { create: (...args: unknown[]) => createLocation(...args) },
+        locationLink: { create: (...args: unknown[]) => createLocationLink(...args) },
       }),
   },
 }));
@@ -54,6 +59,8 @@ describe('POST /saves/:id/reino/fundar', () => {
     createFaction.mockReset().mockResolvedValue({ slug: 'reino-de-la-estepa-save1' });
     createDiscoveredEntity.mockReset().mockResolvedValue({});
     createManyPlantillaEquipo.mockReset().mockResolvedValue({ count: 3 });
+    createLocation.mockReset().mockResolvedValue({ id: 'kingdom-location-1' });
+    createLocationLink.mockReset().mockResolvedValue({});
   });
 
   it('404 si la partida no existe', async () => {

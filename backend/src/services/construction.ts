@@ -76,6 +76,27 @@ export interface ConstructionRecipe {
   /// Cuántos edificios de tipo reino (los que llevan `requiresAyuntamiento: true`) puedes tener
   /// ACTIVOS a la vez con este nivel de Ayuntamiento — solo lo llevan las 3 recetas de Ayuntamiento.
   reinoBuildingCapacity?: number;
+  /// Conquista territorial estilo X4 (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, 2026-09-21) — cuántos
+  /// Cuarteles Avanzados (`CUARTEL_AVANZADO_RECIPE.key`) puedes tener ACTIVOS a la vez con este
+  /// nivel de Ayuntamiento. Cupo NUEVO e INDEPENDIENTE de `reinoBuildingCapacity` (edificios
+  /// normales) — solo lo llevan las 3 recetas de Ayuntamiento. Cifra de partida (1/5/10), ajustable
+  /// jugando, mismo criterio que `reinoBuildingCapacity` (10/25/60, tampoco verificado en vivo).
+  cuartelAvanzadoCapacity?: number;
+  /// true SOLO en `CUARTEL_AVANZADO_RECIPE` — distingue "el puesto avanzado en sí" (cuenta contra
+  /// `cuartelAvanzadoCapacity` del Ayuntamiento, 1 por región) de sus edificios internos futuros
+  /// (`edificioTipo` abajo, cuentan contra el cupo LOCAL de ESE Cuartel concreto). Necesario porque
+  /// `requiresAyuntamiento` por sí solo no basta para distinguirlos: ambos lo llevan.
+  isCuartelAvanzado?: boolean;
+  /// Bono de cupo LOCAL que da una mejora de Cuartel (`CUARTEL_DE_GUERRA_RECIPE`/
+  /// `PUESTO_COMERCIAL_RECIPE`, ambas con `upgradesRecipeKey: 'cuartel-avanzado'`) — bifurcación
+  /// única, nunca ambas a la vez (mismo criterio que especialización de clase del jugador: una
+  /// vez elegida una rama, la otra deja de estar disponible para ESE Cuartel). Solo uno de los dos
+  /// campos relleno por receta.
+  cuartelUpgradeBonus?: { defensa?: number; produccion?: number };
+  /// Solo tiene sentido en un edificio que cuelga DENTRO de un Cuartel Avanzado concreto (todavía
+  /// sin ninguna receta real que lo use — "poca variedad de edificios todavía", ver § 7.4) — cuenta
+  /// contra el cupo LOCAL de defensa o producción de ESE Cuartel, no contra ningún cupo de partida.
+  edificioTipo?: 'defensa' | 'produccion';
 }
 
 /// Distancia máxima (minutos de viaje reales, mismo grafo que `shortestPath`/`buildAdjacency` de
@@ -306,6 +327,7 @@ export const AYUNTAMIENTO_PEQUENO_RECIPE: ConstructionRecipe = {
   companionSlots: 0,
   ayuntamientoNivel: 1,
   reinoBuildingCapacity: 10,
+  cuartelAvanzadoCapacity: 1,
 };
 
 export const AYUNTAMIENTO_MEDIANO_RECIPE: ConstructionRecipe = {
@@ -342,6 +364,7 @@ export const AYUNTAMIENTO_MEDIANO_RECIPE: ConstructionRecipe = {
   upgradesRecipeKey: 'ayuntamiento',
   ayuntamientoNivel: 2,
   reinoBuildingCapacity: 25,
+  cuartelAvanzadoCapacity: 5,
 };
 
 export const AYUNTAMIENTO_GRANDE_RECIPE: ConstructionRecipe = {
@@ -367,6 +390,7 @@ export const AYUNTAMIENTO_GRANDE_RECIPE: ConstructionRecipe = {
   upgradesRecipeKey: 'ayuntamiento',
   ayuntamientoNivel: 3,
   reinoBuildingCapacity: 60,
+  cuartelAvanzadoCapacity: 10,
 };
 
 // Jaula (Grupo 3 § Compañeros y supervivencia, 2026-08-25, ver
@@ -418,10 +442,81 @@ export const JAULA_GRANDE_RECIPE: ConstructionRecipe = {
   companionSlots: 0,
 };
 
+// Cuartel Avanzado (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, 2026-09-21) — "puesto avanzado" ya
+// anticipado en el comentario de AYUNTAMIENTO_PEQUENO_RECIPE desde 2026-08-04. A diferencia de la
+// Choza (`requiresAyuntamiento`, cuenta contra `reinoBuildingCapacity`), este cuenta contra su
+// PROPIO cupo nuevo (`cuartelAvanzadoCapacity` del Ayuntamiento) — `isCuartelAvanzado: true` es
+// lo que `computeBuildBlockedReason` usa para no confundir los dos cupos. 1 por región a propósito
+// (mismo criterio que Campamento: es la "base física real" de esa región, no tiene sentido 2 —
+// coherente con X4, donde una estación de expansión reclama un sector entero, no una esquina de
+// él). Igual que la Choza, requiere Ayuntamiento ya en pie (aunque sea en OTRA región — es
+// expansión DESDE la capital, no un segundo reino independiente).
+export const CUARTEL_AVANZADO_RECIPE: ConstructionRecipe = {
+  key: 'cuartel-avanzado',
+  name: 'un cuartel avanzado',
+  description:
+    'Un puesto fortificado modesto, lejos del ayuntamiento — palizada baja, un almacén techado y un fuego de guardia permanente. No gobierna nada por sí solo, pero planta bandera real en una región donde antes no había ninguna: el primer paso de cualquier expansión seria fuera del núcleo del reino.',
+  raza: 'orcos',
+  nounRegex: /cuartel.*avanzad|avanzad.*cuartel/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piedra' }, cantidad: 10, label: 'piedra' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 10, label: 'leña' },
+    { match: { kind: 'exact', catalogSlug: 'cuerda-tendon' }, cantidad: 4, label: 'cuerda de tendón' },
+  ],
+  requisitos: { fuerza: 12 },
+  oficio: 'carpintero-orcos-llanuras',
+  companionSlots: 1,
+  requiresAyuntamiento: true,
+  maxPerRegion: 1,
+  isCuartelAvanzado: true,
+};
+
+// Mejora A: Cuartel de Guerra — bifurcación única con Puesto Comercial (mismo criterio que
+// especialización de clase del jugador: una vez elegida una rama para ESTE Cuartel concreto, la
+// otra deja de ofrecerse — `computeBuildBlockedReason` lo impone comprobando que el Cuartel de
+// origen no lleve ya la mejora contraria).
+export const CUARTEL_DE_GUERRA_RECIPE: ConstructionRecipe = {
+  key: 'cuartel-de-guerra',
+  name: 'un cuartel de guerra',
+  description:
+    'El puesto avanzado se refuerza para la guerra de verdad: murallas más altas, torres de vigía en las esquinas, un arsenal real bajo llave. Ya no es un simple campamento fortificado — es un bastión pensado para resistir un asedio, no solo para anunciar presencia.',
+  raza: 'orcos',
+  nounRegex: /(?=.*cuartel)(?=.*guerra)/,
+  requirements: [
+    { match: { kind: 'exact', catalogSlug: 'lingote-de-hierro' }, cantidad: 3, label: 'lingote de hierro' },
+    { match: { kind: 'exact', catalogSlug: 'bloque-piedra-tallada' }, cantidad: 4, label: 'bloque de piedra tallada' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'mena' }, cantidad: 4, label: 'mena' },
+  ],
+  requisitos: { fuerza: 16 },
+  oficio: 'herrero-orcos-llanuras',
+  upgradesRecipeKey: 'cuartel-avanzado',
+  cuartelUpgradeBonus: { defensa: 10 },
+};
+
+// Mejora B: Puesto Comercial — la otra rama, nunca junto a Cuartel de Guerra en el mismo Cuartel.
+export const PUESTO_COMERCIAL_RECIPE: ConstructionRecipe = {
+  key: 'puesto-comercial',
+  name: 'un puesto comercial',
+  description:
+    'El puesto avanzado se vuelca en la producción: almacenes ampliados, talleres cubiertos, una explanada donde secar y curtir sin depender del clima. Ya no es solo un punto de guardia — es donde la región empieza a rendir de verdad para el reino.',
+  raza: 'orcos',
+  nounRegex: /(?=.*puesto)(?=.*comercial)/,
+  requirements: [
+    { match: { kind: 'exact', catalogSlug: 'viga-madera-tallada' }, cantidad: 4, label: 'viga de madera tallada' },
+    { match: { kind: 'exact', catalogSlug: 'cordaje-trenzado' }, cantidad: 3, label: 'cordaje trenzado' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'fibras' }, cantidad: 6, label: 'fibra' },
+  ],
+  requisitos: { carisma: 14 },
+  oficio: 'carpintero-orcos-llanuras',
+  upgradesRecipeKey: 'cuartel-avanzado',
+  cuartelUpgradeBonus: { produccion: 10 },
+};
+
 // Orden deliberado (2026-08-04): grande y mediano ANTES que pequeño — `CONSTRUCTION_RECIPES.find`
 // se queda con la primera receta cuya `nounRegex` matchea, y el texto "ayuntamiento mediano"
 // también matchea el patrón (más simple) del pequeño si ese se comprobara antes. Mismo criterio
-// aplicado a las 3 Jaulas nuevas.
+// aplicado a las 3 Jaulas nuevas, y a Cuartel de Guerra/Puesto Comercial antes que Cuartel
+// Avanzado (mismo motivo: "cuartel de guerra" también contiene "cuartel").
 export const CONSTRUCTION_RECIPES: ConstructionRecipe[] = [
   CAMPAMENTO_RECIPE,
   CHOZA_RECIPE,
@@ -429,15 +524,24 @@ export const CONSTRUCTION_RECIPES: ConstructionRecipe[] = [
   AYUNTAMIENTO_GRANDE_RECIPE,
   AYUNTAMIENTO_MEDIANO_RECIPE,
   AYUNTAMIENTO_PEQUENO_RECIPE,
+  CUARTEL_DE_GUERRA_RECIPE,
+  PUESTO_COMERCIAL_RECIPE,
+  CUARTEL_AVANZADO_RECIPE,
   JAULA_GRANDE_RECIPE,
   JAULA_MEDIANA_RECIPE,
   JAULA_PEQUENA_RECIPE,
 ];
 
-/// `key` de las recetas que dependen de tener un Ayuntamiento (choza, futuro "puesto avanzado") —
-/// para contar cuántas hay activas contra la capacidad del Ayuntamiento sin hardcodear 'choza' en
-/// turnResolution.ts.
-const REINO_BUILDING_RECIPE_KEYS: string[] = CONSTRUCTION_RECIPES.filter((r) => r.requiresAyuntamiento).map((r) => r.key);
+/// `key` de las recetas que cuentan contra `reinoBuildingCapacity` (edificios normales de reino,
+/// como la choza) — `requiresAyuntamiento` por sí solo ya NO basta desde que existe el Cuartel
+/// Avanzado (también lo lleva, pero cuenta contra su PROPIO cupo, `cuartelAvanzadoCapacity`, ver
+/// `CUARTEL_AVANZADO_RECIPE`) — de ahí el `!r.isCuartelAvanzado` explícito.
+const REINO_BUILDING_RECIPE_KEYS: string[] = CONSTRUCTION_RECIPES.filter((r) => r.requiresAyuntamiento && !r.isCuartelAvanzado).map((r) => r.key);
+
+/// Mismo criterio que `REINO_BUILDING_RECIPE_KEYS`, pero para el cupo NUEVO de Cuarteles
+/// Avanzados — solo la receta base cuenta (las 2 mejoras actualizan la MISMA fila, nunca crean
+/// una nueva, igual que las mejoras de Ayuntamiento).
+const CUARTEL_AVANZADO_RECIPE_KEYS: string[] = CONSTRUCTION_RECIPES.filter((r) => r.isCuartelAvanzado).map((r) => r.key);
 
 /// Slots de compañero que da una construcción, por su `recipeKey` guardada en `Building` — 0 para
 /// construcciones libres del modelo (`recipeKey: null`) o cualquier clave que no matchee ninguna
@@ -454,6 +558,20 @@ function reinoBuildingCapacityForTier(tier: number): number {
   );
   return recipe?.reinoBuildingCapacity ?? 0;
 }
+
+/// Mismo criterio que `reinoBuildingCapacityForTier`, para el cupo NUEVO de Cuarteles Avanzados
+/// (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, 2026-09-21) — deriva de `cuartelAvanzadoCapacity` en
+/// vez de repetir 1/5/10 sueltos.
+function cuartelAvanzadoCapacityForTier(tier: number): number {
+  const recipe = [AYUNTAMIENTO_PEQUENO_RECIPE, AYUNTAMIENTO_MEDIANO_RECIPE, AYUNTAMIENTO_GRANDE_RECIPE].find(
+    (r) => r.ayuntamientoNivel === tier,
+  );
+  return recipe?.cuartelAvanzadoCapacity ?? 0;
+}
+
+/// `key` de las 2 mejoras de Cuartel Avanzado — para comprobar la bifurcación única (nunca ambas
+/// en el mismo Cuartel, ver `computeBuildBlockedReason`).
+const CUARTEL_UPGRADE_RECIPE_KEYS: string[] = CONSTRUCTION_RECIPES.filter((r) => r.cuartelUpgradeBonus).map((r) => r.key);
 
 /// Reglas de reino (2026-08-04, docs/17-reglas-construcciones-reino.md) — cupo por región, cercanía/
 /// cupo del Ayuntamiento, mejora en el nivel justo anterior, y unicidad del Ayuntamiento. Recibe
@@ -527,23 +645,61 @@ export async function computeBuildBlockedReason(params: {
     if (!ayuntamiento?.location) {
       return 'necesita un Ayuntamiento construido antes de poder levantar esto';
     }
-    if (ayuntamiento.location.region !== activeRegion) {
-      return 'debe construirse en la misma región donde está el Ayuntamiento';
+    // Conquista territorial estilo X4 (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, 2026-09-21): el
+    // Cuartel Avanzado es justo lo contrario de la Choza — expansión DESDE la capital HACIA otra
+    // región, nunca dentro de la misma. Las 2 restricciones de abajo (misma región, distancia
+    // máxima) solo tienen sentido para edificios normales de reino, que sí dependen de estar cerca
+    // del Ayuntamiento para funcionar.
+    if (!buildRecipe.isCuartelAvanzado) {
+      if (ayuntamiento.location.region !== activeRegion) {
+        return 'debe construirse en la misma región donde está el Ayuntamiento';
+      }
+      const links = await db.locationLink.findMany({
+        where: { from: { worldId } },
+        select: { fromId: true, toId: true, minutosBase: true, terreno: true, riesgo: true },
+      });
+      const path = shortestPath(buildAdjacency(links), ayuntamiento.location.id, currentLocationRecord.id);
+      if (!path || path.totalMinutos > MAX_MINUTOS_DESDE_AYUNTAMIENTO) {
+        return 'está demasiado lejos del Ayuntamiento para depender de él';
+      }
+      const reinoCount = await db.building.count({
+        where: { saveId, recipeKey: { in: REINO_BUILDING_RECIPE_KEYS }, status: 'ACTIVO' },
+      });
+      const capacity = reinoBuildingCapacityForTier(ayuntamiento.tier ?? 1);
+      if (reinoCount >= capacity) {
+        return `el Ayuntamiento ya está en su cupo máximo de edificios de reino (${capacity})`;
+      }
+    } else {
+      // Mismo criterio "1 por región" que Campamento (`maxPerRegion`, ya comprobado arriba) más el
+      // cupo NUEVO agregado de toda la partida (cuántos Cuarteles Avanzados en total, según nivel
+      // de Ayuntamiento) — un Cuartel Avanzado en su región de origen (la del propio Ayuntamiento)
+      // no tiene sentido (sería un segundo "edificio de reino" normal ahí), así que también se
+      // bloquea, igual que la Choza.
+      if (activeRegion === ayuntamiento.location.region) {
+        return 'un Cuartel Avanzado se levanta en una región distinta a la del Ayuntamiento — para expandir dentro de la misma región ya está la Choza';
+      }
+      const cuartelCount = await db.building.count({
+        where: { saveId, recipeKey: { in: CUARTEL_AVANZADO_RECIPE_KEYS }, status: 'ACTIVO' },
+      });
+      const cuartelCapacity = ayuntamiento.tier ? cuartelAvanzadoCapacityForTier(ayuntamiento.tier) : 0;
+      if (cuartelCount >= cuartelCapacity) {
+        return `el Ayuntamiento ya está en su cupo máximo de Cuarteles Avanzados (${cuartelCapacity})`;
+      }
     }
-    const links = await db.locationLink.findMany({
-      where: { from: { worldId } },
-      select: { fromId: true, toId: true, minutosBase: true, terreno: true, riesgo: true },
-    });
-    const path = shortestPath(buildAdjacency(links), ayuntamiento.location.id, currentLocationRecord.id);
-    if (!path || path.totalMinutos > MAX_MINUTOS_DESDE_AYUNTAMIENTO) {
-      return 'está demasiado lejos del Ayuntamiento para depender de él';
-    }
-    const reinoCount = await db.building.count({
-      where: { saveId, recipeKey: { in: REINO_BUILDING_RECIPE_KEYS }, status: 'ACTIVO' },
-    });
-    const capacity = reinoBuildingCapacityForTier(ayuntamiento.tier ?? 1);
-    if (reinoCount >= capacity) {
-      return `el Ayuntamiento ya está en su cupo máximo de edificios de reino (${capacity})`;
+  }
+  if (buildRecipe.cuartelUpgradeBonus) {
+    // Bifurcación única (docs/rpgtarkor/mundo-vivo-x4.md § 7.4) — Cuartel de Guerra y Puesto
+    // Comercial comparten `upgradesRecipeKey: 'cuartel-avanzado'`, así que el bloque genérico de
+    // abajo ya exige que exista un Cuartel Avanzado ACTIVO; aquí además se impide que ESE MISMO
+    // Cuartel ya lleve la mejora contraria (nunca las dos a la vez, mismo criterio que
+    // especialización de clase del jugador).
+    const targetCuartel = await db.building.findFirst({ where: { saveId, recipeKey: 'cuartel-avanzado', status: 'ACTIVO' } });
+    if (targetCuartel) {
+      const otraMejora = CUARTEL_UPGRADE_RECIPE_KEYS.filter((k) => k !== buildRecipe.key);
+      const yaMejorado = await db.building.findFirst({ where: { saveId, recipeKey: { in: otraMejora }, status: 'ACTIVO' } });
+      if (yaMejorado) {
+        return 'ese Cuartel Avanzado ya eligió su otra especialización — no puede tener ambas';
+      }
     }
   }
   if (buildRecipe.upgradesRecipeKey) {
@@ -551,12 +707,18 @@ export async function computeBuildBlockedReason(params: {
     // fuera alcanzable de verdad, esta fila SIEMPRE era ACTIVO, así que el filtro no hacía falta —
     // ahora sí, para no dejar mejorar un Ayuntamiento que todavía se está terminando de levantar.
     const target = await db.building.findFirst({ where: { saveId, recipeKey: buildRecipe.upgradesRecipeKey, status: 'ACTIVO' } });
-    const expectedCurrentTier = (buildRecipe.ayuntamientoNivel ?? 1) - 1;
     if (!target) {
-      return 'no tiene ningún Ayuntamiento que mejorar todavía';
+      return buildRecipe.cuartelUpgradeBonus
+        ? 'no tiene ningún Cuartel Avanzado que mejorar todavía'
+        : 'no tiene ningún Ayuntamiento que mejorar todavía';
     }
-    if ((target.tier ?? 1) !== expectedCurrentTier) {
-      return 'su Ayuntamiento no está en el nivel justo anterior para esta mejora';
+    // Ayuntamiento escala por `tier` (1→2→3, exige el nivel justo anterior); el Cuartel Avanzado
+    // no tiene niveles — su única condición es "existe y está ACTIVO", ya comprobado arriba.
+    if (buildRecipe.ayuntamientoNivel) {
+      const expectedCurrentTier = buildRecipe.ayuntamientoNivel - 1;
+      if ((target.tier ?? 1) !== expectedCurrentTier) {
+        return 'su Ayuntamiento no está en el nivel justo anterior para esta mejora';
+      }
     }
   }
   // Máximo 1 Ayuntamiento por partida (de facto, "por continente" — hoy solo Berig está en juego):

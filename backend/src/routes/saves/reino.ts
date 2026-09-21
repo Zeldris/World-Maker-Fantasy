@@ -46,7 +46,7 @@ export async function reinoRoutes(app: FastifyInstance) {
       if (rejectIfEnded(save, reply)) return;
       if (rejectIfPendingDeath(save, reply)) return;
 
-      const ayuntamiento = await prisma.building.findFirst({ where: { saveId: save.id, recipeKey: 'ayuntamiento' } });
+      const ayuntamiento = await prisma.building.findFirst({ where: { saveId: save.id, recipeKey: 'ayuntamiento' }, include: { location: true } });
       if (!ayuntamiento) {
         return reply.status(400).send({ error: 'Todavía no has construido ningún Ayuntamiento' });
       }
@@ -76,6 +76,12 @@ export async function reinoRoutes(app: FastifyInstance) {
 
       const trimmedDescription = description?.trim();
       const factionSlug = `${slugify(finalKingdomName)}-${save.id}`;
+      // Zona-interior navegable propia del reino (docs/rpgtarkor/mundo-vivo-x4.md § 7.4,
+      // 2026-09-21) — mismo patrón que `factionSlug` de arriba: slug determinista con `save.id`
+      // para que nunca choque con el catálogo (Location de facción NPC) ni con otra partida del
+      // mismo mundo (`@@unique([worldId, slug])`). Primera vez que el motor crea una `Location` en
+      // TIEMPO DE PARTIDA (hasta ahora, 100% catálogo sembrado a mano) — deliberado, ver § 7.4.
+      const kingdomLocationSlug = `ayuntamiento-interior-${save.id}`;
 
       try {
         await prisma.$transaction(async (tx) => {
@@ -99,6 +105,30 @@ export async function reinoRoutes(app: FastifyInstance) {
           await tx.plantillaEquipo.createMany({
             data: PLANTILLAS_BASICAS.map((p) => ({ ...p, saveId: save.id, personalizada: false })),
           });
+
+          // Sin `x`/`y` propias a propósito (mismo criterio que `campamento-serhu-interior`): vive
+          // "dentro" de las coordenadas de la Location exterior donde está el Ayuntamiento, no es
+          // un punto nuevo del mapa de MUNDO. `region` hereda la del Ayuntamiento — coherente con
+          // que hoy solo existe una capital por reino, en la región donde se fundó.
+          const kingdomLocation = await tx.location.create({
+            data: {
+              worldId: save.worldId,
+              slug: kingdomLocationSlug,
+              name: `Hogar de ${finalKingdomName}`,
+              region: ayuntamiento.location?.region ?? '',
+              kind: 'interior',
+              description: `Dentro de la empalizada de ${finalKingdomName}: tierra apisonada en torno al Ayuntamiento — cada construcción real del reino tiene su propia posición marcada en el mapa de la zona.`,
+              aliases: [slugify(finalKingdomName)],
+            },
+          });
+          if (ayuntamiento.locationId) {
+            // Entrada/salida instantánea (mismo criterio que el resto de interiores de facción,
+            // `minutosBase: 0` — "es solo cruzar la empalizada"). Una sola fila basta:
+            // `buildAdjacency` (travel.ts) ya trata cada `LocationLink` como bidireccional.
+            await tx.locationLink.create({
+              data: { fromId: ayuntamiento.locationId, toId: kingdomLocation.id, minutosBase: 0, terreno: 'La entrada del Ayuntamiento' },
+            });
+          }
         });
       } catch (err) {
         // Condición de carrera (auditoría de código completa, 2026-08-07): el guard de

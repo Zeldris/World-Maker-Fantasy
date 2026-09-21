@@ -588,32 +588,55 @@ ESTRUCTURA FÍSICA real (estación/módulos) hay allí, no un número aparte. Á
 lo hace X4 de verdad antes de seguir — hecho, y confirmado que el camino es "estructura física
 real decide el control", no un contador ambiental.
 
-Diseño construido en la conversación, en orden:
+Diseño construido en la conversación, en orden, y estado real de cada pieza:
 
-1. **Jerarquía de 3 niveles de construcción de reino** (no 2 como hoy):
-   - **Capital** (Ayuntamiento, ya existe — 1 por facción/jugador, límite estricto ya real).
+1. **Jerarquía de 3 niveles de construcción de reino** (no 2 como hoy) — **CERRADO, código
+   escrito y verificado**:
+   - **Capital** (Ayuntamiento, ya existía — 1 por facción/jugador, límite estricto ya real).
    - **Cuartel Avanzado** (pieza NUEVA, "puesto avanzado" ya anticipado en el comentario de
-     `AYUNTAMIENTO_PEQUENO_RECIPE` desde 2026-08-04) — varios permitidos, 1 por región, es la
-     pieza real de "conquistar zonas" al estilo X4. Mejorable UNA VEZ a **Cuartel de Guerra**
-     (+10 cupo de edificios defensivos) o **Puesto Comercial** (+10 cupo de producción) — bifurcación
-     única, nunca ambas, mismo patrón que la especialización de clase del jugador.
-   - Edificios sueltos (choza, taller...) — como hoy, cuelgan de Capital o Cuartel según su tipo.
+     `AYUNTAMIENTO_PEQUENO_RECIPE` desde 2026-08-04) — `CUARTEL_AVANZADO_RECIPE` (construction.ts):
+     1 por región, en región DISTINTA a la del Ayuntamiento (justo lo contrario de la Choza — para
+     expandir DENTRO de la misma región ya está la Choza). Mejorable UNA VEZ a **Cuartel de
+     Guerra** (`CUARTEL_DE_GUERRA_RECIPE`, +10 cupo de edificios defensivos) o **Puesto Comercial**
+     (`PUESTO_COMERCIAL_RECIPE`, +10 cupo de producción) — bifurcación única, nunca ambas
+     (`computeBuildBlockedReason` lo impone comprobando que ese Cuartel concreto no lleve ya la
+     mejora contraria), mismo patrón que la especialización de clase del jugador.
+   - Edificios sueltos (choza, taller...) — como hoy, cuelgan de Capital o Cuartel según su tipo
+     (`ConstructionRecipe.edificioTipo: 'defensa' | 'produccion'`, campo ya definido en el schema
+     de recetas, sin ninguna receta real que lo use todavía — "poca variedad de edificios",
+     decisión explícita de dejarlo para cuando haga falta).
 2. **Cupos confirmados** (cifra de partida, ajustable jugando, mismo criterio que el resto del
-   proyecto): Ayuntamiento pequeño/mediano/grande → 1/5/10 Cuarteles Avanzados posibles (cupo
-   NUEVO, independiente del cupo de edificios normales 10/25/60 que ya existía). Cada Cuartel
-   tiene su propio cupo LOCAL de defensa/producción (no agregado de partida — cada base física
-   real tiene su propia capacidad, más fiel a X4 donde cada estación tiene sus propios módulos).
-3. **Zona-interior navegable propia** al fundar Capital o Cuartel — pieza de MOTOR nueva: hoy
-   `Location` es 100% catálogo estático sembrado a mano, nunca se crea una fila en tiempo de
-   partida. Decisión de Álvaro: sí crear `Location` dinámica al fundar (slug determinista con
-   `save.id`, mismo patrón que `Faction.slug` en `reino.ts:78`), enlazada por `LocationLink` coste
-   0 — reutiliza el 100% del sistema de Zona/ZonePoint ya existente, no un mapa nuevo.
-4. **Mejora de Ayuntamiento NO crea Location nueva** — misma fila de siempre (mismo `id`/`slug`,
-   coherente con que `Building.tier` ya se actualiza en la misma fila al mejorar), solo cambia el
-   fondo/PNG y el cupo de huecos admitidos.
-5. **Concepto de "parcela" estilo Travian/Tribal Wars** (el más reciente, pendiente de detallar
-   del todo) — el PNG de cada zona-interior ya trae sus huecos de construcción MARCADOS de
-   antemano como icono en el mapa de Zona, no espacio libre donde el jugador coloca a mano:
+   proyecto) — **CERRADO**: Ayuntamiento pequeño/mediano/grande → 1/5/10 Cuarteles Avanzados
+   posibles (`ConstructionRecipe.cuartelAvanzadoCapacity`, cupo NUEVO e independiente del cupo de
+   edificios normales 10/25/60 que ya existía, `reinoBuildingCapacity`). Cada Cuartel tiene su
+   propio cupo LOCAL de defensa/producción (`cuartelUpgradeBonus`, no agregado de partida — cada
+   base física real tiene su propia capacidad, más fiel a X4 donde cada estación tiene sus propios
+   módulos) — sin ningún edificio real todavía que consuma ese cupo local (mismo motivo que arriba).
+   9 tests de integración reales contra Postgres (`cuartelAvanzado.integration.test.ts`), sin mocks.
+3. **Zona-interior navegable propia** al fundar Capital — **CERRADO, verificado contra Postgres
+   real**: primera vez que el motor crea una `Location` en TIEMPO DE PARTIDA (hasta ahora, 100%
+   catálogo estático sembrado a mano). Enganchado en `POST /saves/:id/reino/fundar` (`reino.ts`,
+   después de decidir junto a Álvaro que va DESPUÉS de fundar el reino, no al construir el
+   Ayuntamiento en sí — el modal de fundación es obligatorio-o-cancelable, así que fundar es el
+   evento real y único). Slug determinista `ayuntamiento-interior-<save.id>` (mismo patrón que
+   `Faction.slug`), `region` heredada del Ayuntamiento, sin `x`/`y` propias (vive "dentro" del
+   exterior, mismo criterio que `campamento-serhu-interior`), un solo `LocationLink` coste 0 basta
+   (`buildAdjacency` ya trata cada tramo como bidireccional — confirmado con test real que la
+   vuelta también es navegable sin fila explícita). Sin campo de imagen nuevo en el schema: el
+   sistema de `ImagePrompt`/`entityType: 'location'|'zona'` ya resuelve por `slug`, no hacía falta
+   tocar nada del modelo. 2 tests de integración reales (`reino.integration.test.ts`).
+   - **Pendiente real, sin cerrar**: el Cuartel Avanzado NO genera su propia zona-interior
+     todavía — solo la Capital. Decidir en la próxima sesión si el Cuartel también necesita una
+     (más fiel a "cada base física real es un lugar navegable propio") o si comparte alguna otra
+     solución más barata.
+4. **Mejora de Ayuntamiento NO crea Location nueva** — **CERRADO, ya era así de antes de tocar
+   nada** (`turnResolution.ts`, rama `buildRecipe.upgradesRecipeKey`): misma fila de siempre (mismo
+   `id`/`slug`), solo cambia `tier` — coherente con lo decidido. El "cambia el fondo/PNG según
+   nivel" es responsabilidad del frontend/generador de imagen (mismo slug, prompt por nivel),
+   ningún cambio de schema hace falta para esto tampoco.
+5. **Concepto de "parcela" estilo Travian/Tribal Wars — SIN CERRAR, sin código todavía.** El PNG de
+   cada zona-interior ya trae sus huecos de construcción MARCADOS de antemano como icono en el
+   mapa de Zona, no espacio libre donde el jugador coloca a mano:
    - **Parcela básica vacía**: repetible, ahí van los edificios de producción/vivienda/
      fabricación — el jugador SÍ elige qué construir en ese hueco concreto.
    - **Parcela avanzada**: única por posición — a diferencia de la básica, **cada posición del PNG
@@ -626,26 +649,33 @@ Diseño construido en la conversación, en orden:
      detalle con opción "construir", ficha "Parcela básica vacía"/"Parcela avanzada vacía").
    - Interacción: clic en el icono de parcela en el mapa de Zona → modal de detalle → opción
      "construir" (para básica, elige receta; para avanzada, ya sabe cuál construir ahí).
-6. **Imágenes/prompts**: reparto de trabajo cerrado explícitamente con Álvaro — Claude SÍ escribe/
-   actualiza el TEXTO de los prompts (trabajo de contenido normal), Álvaro genera la imagen real y
-   la sube (ver memoria `tarkor_feedback_generacion_imagenes_es_cosa_del_usuario`). Cada nivel de
-   Ayuntamiento/Cuartel necesita su propio PNG con los huecos exactos ya compuestos para ese
-   nivel — incluye revisar/actualizar los prompts de los interiores de facción NPC ya existentes
-   (Serhu/Helsig/Goshg) para que seas coherentes con el mismo criterio de huecos marcados.
+   - **Sigue pendiente de decidir**: modelo de datos real (¿tabla `Parcela` propia con
+     `locationId`/`x`/`y`/`tipo`/`edificioFijo`, o reutilizar `ZonePoint` con un `tipo` nuevo?).
+6. **Imágenes/prompts** — reparto de trabajo cerrado explícitamente con Álvaro (ver memoria
+   `tarkor_feedback_generacion_imagenes_es_cosa_del_usuario`): Claude SÍ escribe/actualiza el TEXTO
+   de los prompts (trabajo de contenido normal); Álvaro genera la imagen real y la sube. **Sin
+   tocar todavía** — no se ha escrito ningún prompt nuevo ni actualizado los de Serhu/Helsig/Goshg
+   en esta sesión (piezas 1-4 no lo necesitaban: el sistema de imagen ya resuelve por slug sin
+   campo nuevo de schema). Cada nivel de Ayuntamiento/Cuartel necesitará su propio PNG con los
+   huecos exactos ya compuestos para ese nivel cuando se cierre la pieza 5 (parcelas).
+7. **Enganchar el evento `EXPANSION_TERRITORIAL_AGRESIVA`** (§ 7.3) a la construcción real de un
+   Cuartel Avanzado en región ajena a otra Faction — **sin cerrar, sin código todavía.** Ahora que
+   el Cuartel Avanzado (pieza 1) ya existe de verdad, esto es la pieza que falta para que
+   `recordFactionEvent` tenga por fin un caller real en producción.
 
-**Nada de § 7.4 tiene código todavía** — se paró aquí a propósito (sesión ya larga, mandato
-explícito de Álvaro de vigilar el consumo de tokens y abrir chat nuevo en el momento oportuno).
-Retomar en sesión nueva por: (a) schema de "parcela" (¿modelo propio, o campo nuevo en
-`Building`/`Location`?), (b) generación real de la `Location` dinámica al fundar, (c) enganchar
-por fin `recordFactionEvent('EXPANSION_TERRITORIAL_AGRESIVA', ...)` a la construcción real de un
-Cuartel Avanzado en región ajena, (d) prompts de imagen por nivel.
+**Retomar en sesión nueva por, en este orden**: (a) modelo de "parcela" (pieza 5), (b) si el
+Cuartel Avanzado necesita su propia zona-interior (pendiente de la pieza 3), (c) enganchar el
+evento territorial (pieza 7), (d) prompts de imagen por nivel (pieza 6, cuando (a) esté decidido).
 
 ---
 
 ## 6. Estado de este documento
 
-**§ 4.2 y § 4.3 (motor de eventos base) CERRADOS e implementados, verificados contra el sandbox
-real (schema aplicado, seed corriendo, 2553/2554 tests).** § 4.3-bis (conquista territorial estilo
-X4, jerarquía Capital/Cuartel/parcelas) queda en diseño avanzado pero sin código — ver § 7.4 para
-retomar exactamente donde se paró. El resto de § 4 (4.4 comercio, 4.5 expediciones, 4.6
+**§ 4.2, § 4.3 (motor de eventos base) y § 7.4 piezas 1-4 (jerarquía Capital/Cuartel Avanzado con
+cupos + zona-interior dinámica de Capital) CERRADOS e implementados, verificados contra el
+sandbox real** (schema aplicado, seed corriendo, suite completa en verde salvo 2 flakes de
+concurrencia ya conocidos y sin relación con estos cambios — confirmado reejecutando cada uno
+aislado). § 7.4 piezas 5-7 (parcelas estilo Travian, zona-interior de Cuartel, enganche del evento
+territorial) y prompts de imagen quedan en diseño avanzado pero sin código — ver § 7.4 para
+retomar exactamente en el orden señalado ahí. El resto de § 4 (4.4 comercio, 4.5 expediciones, 4.6
 reproducción) sigue sin tocar, tal como estaba.
