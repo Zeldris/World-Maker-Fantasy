@@ -1078,7 +1078,9 @@ el modelo real de X4 (Claude verificó cómo funciona X4 de verdad antes de prop
   Migrar su única fila real a la primera fila de este sistema genérico (tal como proponía § 4.3)
   queda pendiente.
 
-### 7.4 Conquista territorial estilo X4 — EN DISEÑO, sin cerrar, sin código todavía
+### 7.4 Conquista territorial estilo X4 — BACKEND CERRADO (título corregido 2026-09-21 tarde: el
+texto original decía "EN DISEÑO, sin cerrar, sin código todavía", desactualizado frente al propio
+contenido de la sección, que ya documentaba piezas 1-5 y 7 como CERRADAS — ver resumen al final)
 
 Al intentar enganchar el primer evento real (`EXPANSION_TERRITORIAL_AGRESIVA`), salió a la luz que
 el modelo de control regional actual (`Territory.control`/`regionControlFor`, avance por tiempo)
@@ -1197,17 +1199,102 @@ frontend en esta sesión.
 
 ---
 
+## 8. IA de combate NPC por tramos de Inteligencia — DISEÑO CERRADO (2026-09-21, sesión posterior),
+sin código todavía
+
+Grounding real hecho antes de diseñar (mismo criterio que el resto del documento): el motor actual
+ya tiene un umbral BINARIO (`INTELIGENCIA_TACTICA_UMBRAL = 12`, `combateMultiple.ts`) que decide
+`elegirObjetivo` (Inteligencia alta = remata al más herido; baja = aleatorio), pero **nada más**
+depende de Inteligencia — `chooseNpcAbility` (`npcCombatAbilities.ts`) elige habilidad exactamente
+igual sea el NPC listo o tonto, y NO EXISTE ningún mecanismo de retirada/huida de NPC en absoluto
+(`Huir` solo existe como acción del jugador, `/combat/flee`+dentro de combate, `session.ts`).
+
+Tres tramos confirmados (mismo principio que § 5-bis punto 5: la Inteligencia del `Npc` concreto
+decide su propio comportamiento autónomo, igual que decide la autonomía de una `Faction` entera):
+
+- **&lt;10 — solo Ataque Básico, sin coordinación**: ya es el comportamiento real de hoy para
+  cualquier Inteligencia por debajo de 12 (`elegirObjetivo` aleatorio, `chooseNpcAbility` sin
+  distinción) — **sin cambios de código**, el tramo bajo ya está cubierto tal cual.
+- **10-20 — habilidades reactivas básicas**: ya cubierto por `INTELIGENCIA_TACTICA_UMBRAL = 12`
+  (dentro de este tramo) — **sin cambios de código**, el umbral existente ya vive aquí.
+- **20+ — pieza NUEVA real, sin código todavía**: decisiones que hoy NINGÚN NPC toma:
+  - **Retirada**: un NPC con Inteligencia 20+ y condición física GRAVE/CONVALECIENTE puede intentar
+    huir del combate en vez de seguir atacando — mismo mecanismo determinista que ya usa el
+    jugador (`/combat/flee`, tirada real), aplicado por primera vez a un NPC. Requiere decidir:
+    ¿el NPC que huye desaparece de la escena (mismo criterio que el jugador huyendo) o queda
+    "fuera de combate" localmente (`CombatParticipant` marcado, sin desaparecer del mundo)?
+  - **Cambio de objetivo coordinado**: en combate múltiple, dos o más NPC de Inteligencia 20+ del
+    mismo bando podrían concentrar fuego en el mismo objetivo (el más débil, mismo criterio que
+    `elegirObjetivo` pero COMPARTIDO entre varios atacantes del turno, no cada uno decidiendo en
+    aislamiento) — requiere que `elegirObjetivo` conozca las elecciones ya hechas por otros NPC de
+    su bando en el mismo turno (hoy cada NPC decide sin ver a los demás).
+  - **Coordinación de grupo real**: candidato de diseño, sin cerrar del todo — ¿un NPC de
+    Inteligencia 20+ podría ordenar a otros NPC de su bando con Inteligencia menor (mismo concepto
+    "capitán decide, el resto obedece" del § 5-bis punto 5, aplicado a un encuentro de combate en
+    vez de a una facción entera)?
+
+**Pendiente real antes de escribir código** (a decidir en la sesión dedicada a esto): shape exacto
+de "retirada de NPC" (¿nuevo estado de `CombatParticipant`, o reutilizar algo existente?), y si el
+cambio de objetivo coordinado necesita una pasada previa por todo el bando antes de resolver cada
+ataque individual (cambio de orden de evaluación en `combateMultipleOrquestacion.ts`) o puede
+resolverse con una estructura de datos compartida sin reordenar nada.
+
+## 9. Movimiento en Zona / Profesiones-talento-nivel-energía — señales dinámicas, DISEÑO PENDIENTE
+DE GROUNDING (2026-09-21, sesión posterior)
+
+A diferencia del resto de piezas de esta sesión, esta NO se cerró — mandato explícito del propio
+documento (§ 5-bis punto 9: "sin diseño concreto todavía, pendiente de una pasada de grounding
+dedicada antes de escribir nada, no se improvisa aquí"). Grounding real hecho hoy en `worldClock.ts`
+(clima, § 5-bis punto 13) y en `worldTick.ts` (timeouts de fondo, punto 11) tocó terreno adyacente
+pero no esta pieza en sí — sigue exactamente donde estaba, sin resolver:
+
+- **Movimiento en Zona**: qué señal dinámica falta y qué variable de estado real la alimentaría —
+  el propio § 2.7 del documento (auditoría original) ya señalaba esto como "curva hoy plana" sin
+  concretar cuál. Requiere releer `zonaPosicion.ts`/`zonePoints.ts` a fondo antes de proponer nada,
+  no se hizo en esta sesión.
+- **Profesiones/talento/nivel/energía**: mismo problema — `professionProgress.ts`/`energy.ts` ya
+  tienen curvas reales (`PROFESSION_LEVEL_THRESHOLDS`, `energiaMaxFor`), pero el § 2.8 original
+  señalaba que faltan "señales dinámicas" sin especificar cuáles. Candidato sin verificar: ¿clima
+  (ya real en las 8 regiones desde hoy) debería afectar el coste de energía o la dificultad de
+  recolección? — pura especulación, no verificado contra el código real todavía.
+
+**Sin diseño, sin código** — queda exactamente como estaba, pendiente de una sesión propia con
+grounding dedicado antes de proponer nada, tal como el propio documento ya pedía.
+
+---
+
 ## 6. Estado de este documento
 
-**BACKEND COMPLETO Y CERRADO**: § 4.2, § 4.3 (motor de eventos base), § 4.6 (reproducción
-poblacional de facción) y § 7.4 piezas 1-5 y 7 (jerarquía Capital/Cuartel Avanzado con cupos,
-zona-interior dinámica de AMBOS, parcelas estilo Travian, y el evento territorial ya enganchado a
-producción) — todo implementado y verificado contra el sandbox real (schema aplicado, seed
-corriendo, suite completa **2596/2596 en verde**, sin ningún flake en la última pasada completa).
-Solo queda pieza 6 de § 7.4 (prompts de imagen, a demanda de Álvaro). **Frontend de toda la
-sesión sigue sin tocar a propósito** — mandato explícito de Álvaro: cerrar TODO el backend primero
-antes de abrir una pasada dedicada de frontend viendo qué información es útil mostrar, dónde, qué
-animaciones dan vida a esto y qué vistas ya existentes conviene refactorizar. Quedan sin tocar
-§ 4.4 (comercio/mercado regulado) y § 4.5 (expediciones de recolección/exploración de facción), y
-del § 3 original: IA de combate NPC (el hueco más grande señalado por el propio documento) y
-movimiento en Zona/profesiones/talento/energía (señales dinámicas que faltan).
+**Actualizado 2026-09-21, cierre completo de la ronda "cerrar todo el backend del documento"**
+(mandato explícito de Álvaro: "cerremos todo primero para así cuando nos pongamos con front tener
+todo para ir diseñándolo y probándolo").
+
+**BACKEND COMPLETO Y CERRADO**: § 4.2, § 4.3 (motor de eventos base), § 4.4 (diplomacia del
+jugador + mercado regulado jugador↔Faction), § 4.6 (reproducción poblacional de facción), § 5 (los
+13 puntos originales, con código donde aplicaba: FactionBuilding retirado, CHECK constraints
+reales, timeouts de cadáver/recuperación en `worldTick.ts`, clima real en las 8 regiones), y § 7.4
+piezas 1-5 y 7 (jerarquía Capital/Cuartel Avanzado con cupos, zona-interior dinámica de AMBOS,
+parcelas estilo Travian, evento territorial enganchado a producción) — todo implementado y
+verificado contra el sandbox real, suite completa **2657/2657 en verde**, sin ningún flake real en
+la última pasada completa (los pocos fallos vistos durante la sesión en corridas EN PARALELO con
+el resto de la suite grande fueron siempre contención/timing, reproducidos limpios en aislamiento).
+
+**DISEÑADO A FONDO, SIN CÓDIGO TODAVÍA** (decisión explícita: piezas grandes y nuevas del todo,
+mismo criterio en las tres — dejar el diseño completo y cerrado para implementar en sesión propia
+en vez de comprimirlas en esta misma ronda): § 4.4 comercio de volumen Reino↔Faction
+(`KingdomStats.riqueza`, la otra mitad del mercado regulado), § 4.5 completo (expediciones de
+recolección/exploración de facción con escoltas e intercepción estilo X4 — los dos modelos de
+soporte, `NpcProfessionPotential`/`NpcProfessionProgress`, SÍ están ya implementados), § 8 IA de
+combate NPC por tramos de Inteligencia (los tramos &lt;10 y 10-20 ya estaban cubiertos por el
+motor existente sin cambios; 20+ retirada/coordinación es la pieza nueva real).
+
+**SIN DISEÑAR, PENDIENTE DE GROUNDING DEDICADO**: § 9 (Movimiento en Zona / Profesiones-talento-
+nivel-energía) — la única pieza de todo el documento que no se tocó en esta ronda, tal como el
+propio § 5-bis punto 9 ya pedía explícitamente no improvisar sin una pasada de grounding propia.
+
+**Frontend de TODA la sesión sigue sin tocar a propósito** — mandato explícito de Álvaro: cerrar
+TODO el backend primero (cumplido) antes de abrir una pasada dedicada de frontend viendo qué
+información es útil mostrar, dónde, qué animaciones dan vida a esto y qué vistas ya existentes
+conviene refactorizar (panel de Reino completo — Building/OrdenProduccion/AlmacenLimite/
+diplomacia/mercado —, icono de parcela en el mapa de Zona, modal de Construir, estado de Cuartel
+Avanzado/mejoras/cupos, etc.). Siguiente paso real del proyecto: esa pasada de frontend.
