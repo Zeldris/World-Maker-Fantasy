@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { valorGoirnosBaseFor } from './economia.js';
+import { valorGoirnosBaseFor, factorPrecioPorStock, precioDinamico, STOCK_NORMAL } from './economia.js';
 import type { ItemCatalogInput } from '../scripts/worldCatalog.js';
 
 /// Item mínimo válido para los tests — solo los campos obligatorios de ItemCatalogInput,
@@ -126,5 +126,57 @@ describe('valorGoirnosBaseFor', () => {
       valorGoirnosBaseFor(item);
       expect(JSON.stringify(item)).toBe(snapshot);
     });
+  });
+});
+
+// Mercado regulado (docs/rpgtarkor/mundo-vivo-x4.md § 4.4, 2026-09-21) — precio dinámico derivado
+// de stock real, verificado con grounding X4: mucho stock = barato, poco stock = caro.
+describe('factorPrecioPorStock', () => {
+  it('en STOCK_NORMAL exacto, factor 1 (precio base tal cual)', () => {
+    expect(factorPrecioPorStock(STOCK_NORMAL)).toBe(1);
+  });
+
+  it('sin stock (0), factor máximo (más caro)', () => {
+    expect(factorPrecioPorStock(0)).toBe(2);
+  });
+
+  it('con el doble de STOCK_NORMAL o más, factor mínimo (más barato)', () => {
+    expect(factorPrecioPorStock(STOCK_NORMAL * 2)).toBe(0.5);
+    expect(factorPrecioPorStock(STOCK_NORMAL * 10)).toBe(0.5);
+  });
+
+  it('a mitad de camino entre 0 y STOCK_NORMAL, factor a mitad de camino entre 2 y 1', () => {
+    expect(factorPrecioPorStock(STOCK_NORMAL / 2)).toBeCloseTo(1.5, 5);
+  });
+
+  it('a mitad de camino entre STOCK_NORMAL y el doble, factor a mitad de camino entre 1 y 0.5', () => {
+    expect(factorPrecioPorStock(STOCK_NORMAL * 1.5)).toBeCloseTo(0.75, 5);
+  });
+
+  it('monótono decreciente: más stock nunca sube el precio', () => {
+    const muestras = [0, 2, 5, STOCK_NORMAL, 15, 20, 30];
+    const factores = muestras.map(factorPrecioPorStock);
+    for (let i = 1; i < factores.length; i++) {
+      expect(factores[i]).toBeLessThanOrEqual(factores[i - 1]);
+    }
+  });
+});
+
+describe('precioDinamico', () => {
+  it('valor base 0 (item sin precio, narrativo/especial) siempre da 0, sin importar el stock', () => {
+    expect(precioDinamico(0, 0)).toBe(0);
+    expect(precioDinamico(0, 100)).toBe(0);
+  });
+
+  it('en STOCK_NORMAL, el precio final es el valor base tal cual (redondeado)', () => {
+    expect(precioDinamico(10, STOCK_NORMAL)).toBe(10);
+  });
+
+  it('nunca da menos de 1 Goirno para un item con valor base positivo, por mucho stock que sobre', () => {
+    expect(precioDinamico(1, STOCK_NORMAL * 50)).toBeGreaterThanOrEqual(1);
+  });
+
+  it('escasez real (stock 0) encarece hasta el doble del valor base', () => {
+    expect(precioDinamico(10, 0)).toBe(20);
   });
 });

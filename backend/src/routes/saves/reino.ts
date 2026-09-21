@@ -5,6 +5,7 @@ import { slugify } from '../../lib/slugify.js';
 import { rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 import { professionLevelForXp, alivioForLevel } from '../../services/professionProgress.js';
 import { recordFactionEvent, espiarFactionRelation, nivelDiplomaticoRequerido, type FactionEventType } from '../../services/factionRelations.js';
+import { precioDinamico } from '../../services/economia.js';
 
 /// Fundación de reino (2026-08-04, docs/17-reglas-construcciones-reino.md) — el popup que se abre
 /// al terminar de construir el Ayuntamiento (tier 1) manda aquí el formulario. Decisión manual de
@@ -242,6 +243,117 @@ export async function reinoRoutes(app: FastifyInstance) {
         return reply.status(409).send({
           error: `${companion.name} no tiene nivel de diplomacia suficiente (nivel ${resultado.nivel}, se exige al menos nivel ${resultado.nivelExigido} para mover una relación tan asentada).`,
         });
+      }
+      return resultado;
+    },
+  );
+
+  // Mercado regulado — jugador↔Faction, con goirnos personales (docs/rpgtarkor/mundo-vivo-x4.md
+  // § 4.4, 2026-09-21) — requisito real de tratado comercial (decisión explícita de Álvaro: cierra
+  // el bucle diplomacia→mercado, negociar de verdad ABRE comercio, sabotear lo CIERRA). El comercio
+  // de VOLUMEN Reino↔Faction (KingdomStats.riqueza) es una pieza aparte, sin código todavía.
+  const TIPOS_CON_ACCESO_A_MERCADO = new Set<string>(['TRATADO_COMERCIAL', 'ALIANZA']);
+
+  class SinTratadoComercialError extends Error {}
+  class StockInsuficienteError extends Error {}
+
+  async function verificaTratadoComercial(tx: Prisma.TransactionClient, worldId: string, sourceFactionId: string, targetFactionId: string): Promise<void> {
+    const relation = await espiarFactionRelation(tx, worldId, sourceFactionId, targetFactionId);
+    if (!TIPOS_CON_ACCESO_A_MERCADO.has(relation.type)) throw new SinTratadoComercialError();
+  }
+
+  /// Comprar: el jugador paga `goirnos` propios por un objeto del Almacén de una Faction con
+  /// tratado comercial/alianza real — el objeto pasa de `AlmacenItem.factionId` a
+  /// `AlmacenItem.saveId` (mismo Almacén, solo cambia de dueño, ni el jugador ni la facción tienen
+  /// mochila personal separada del Almacén de Reino para este flujo). Precio dinámico sobre el
+  /// STOCK DE QUIEN VENDE (la facción).
+  app.post<{ Params: { id: string }; Body: { targetFactionSlug: string; almacenItemId: string } }>(
+    '/saves/:id/reino/mercado/comprar',
+    async (request, reply) => {
+      const { targetFactionSlug, almacenItemId } = request.body;
+      const save = await prisma.save.findUnique({ where: { id: request.params.id } });
+      if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+      if (rejectIfEnded(save, reply)) return;
+      if (rejectIfPendingDeath(save, reply)) return;
+
+      const sourceFaction = await prisma.faction.findFirst({ where: { saveId: save.id }, select: { id: true, worldId: true } });
+      if (!sourceFaction) return reply.status(400).send({ error: 'Todavía no has fundado tu Reino' });
+      const targetFaction = await prisma.faction.findFirst({ where: { worldId: sourceFaction.worldId, slug: targetFactionSlug }, select: { id: true, name: true } });
+      if (!targetFaction) return reply.status(404).send({ error: `Facción desconocida: ${targetFactionSlug}` });
+
+      const item = await prisma.almacenItem.findFirst({ where: { id: almacenItemId, factionId: targetFaction.id } });
+      if (!item) return reply.status(404).send({ error: 'Ese objeto no está en el Almacén de esa facción' });
+      if (!item.catalogSlug) return reply.status(400).send({ error: 'Objeto sin catalogSlug, no comerciable' });
+      const catalog = await prisma.itemCatalog.findFirst({ where: { worldId: sourceFaction.worldId, slug: item.catalogSlug }, select: { valorGoirnos: true } });
+      if (!catalog || catalog.valorGoirnos <= 0) return reply.status(400).send({ error: 'Objeto sin valor de mercado (no comerciable)' });
+
+      const resultado = await prisma
+        .$transaction(async (tx) => {
+          await verificaTratadoComercial(tx, sourceFaction.worldId, sourceFaction.id, targetFaction.id);
+          const stockDisponible = await tx.almacenItem.count({ where: { factionId: targetFaction.id, catalogSlug: item.catalogSlug } });
+          const precio = precioDinamico(catalog.valorGoirnos, stockDisponible);
+
+          const saveFresco = await tx.save.findUniqueOrThrow({ where: { id: save.id }, select: { goirnos: true } });
+          if (saveFresco.goirnos < precio) throw new StockInsuficienteError();
+
+          await tx.save.update({ where: { id: save.id }, data: { goirnos: { decrement: precio } } });
+          await tx.almacenItem.update({ where: { id: item.id }, data: { saveId: save.id, factionId: null } });
+          return { ok: true as const, precio, item: item.name, targetFaction: targetFaction.name };
+        })
+        .catch((err) => {
+          if (err instanceof SinTratadoComercialError || err instanceof StockInsuficienteError) return err;
+          throw err;
+        });
+
+      if (resultado instanceof SinTratadoComercialError) {
+        return reply.status(409).send({ error: `No tienes tratado comercial ni alianza con ${targetFaction.name} — no puedes comerciar con ellos.` });
+      }
+      if (resultado instanceof StockInsuficienteError) {
+        return reply.status(400).send({ error: 'No tienes suficientes Goirnos para esta compra.' });
+      }
+      return resultado;
+    },
+  );
+
+  /// Vender: el jugador entrega un objeto de SU PROPIO Almacén a una Faction con tratado, cobrando
+  /// `goirnos`. Precio dinámico sobre el stock de quien vende (el jugador, en este caso).
+  app.post<{ Params: { id: string }; Body: { targetFactionSlug: string; almacenItemId: string } }>(
+    '/saves/:id/reino/mercado/vender',
+    async (request, reply) => {
+      const { targetFactionSlug, almacenItemId } = request.body;
+      const save = await prisma.save.findUnique({ where: { id: request.params.id } });
+      if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+      if (rejectIfEnded(save, reply)) return;
+      if (rejectIfPendingDeath(save, reply)) return;
+
+      const sourceFaction = await prisma.faction.findFirst({ where: { saveId: save.id }, select: { id: true, worldId: true } });
+      if (!sourceFaction) return reply.status(400).send({ error: 'Todavía no has fundado tu Reino' });
+      const targetFaction = await prisma.faction.findFirst({ where: { worldId: sourceFaction.worldId, slug: targetFactionSlug }, select: { id: true, name: true } });
+      if (!targetFaction) return reply.status(404).send({ error: `Facción desconocida: ${targetFactionSlug}` });
+
+      const item = await prisma.almacenItem.findFirst({ where: { id: almacenItemId, saveId: save.id } });
+      if (!item) return reply.status(404).send({ error: 'Ese objeto no está en tu Almacén' });
+      if (!item.catalogSlug) return reply.status(400).send({ error: 'Objeto sin catalogSlug, no comerciable' });
+      const catalog = await prisma.itemCatalog.findFirst({ where: { worldId: sourceFaction.worldId, slug: item.catalogSlug }, select: { valorGoirnos: true } });
+      if (!catalog || catalog.valorGoirnos <= 0) return reply.status(400).send({ error: 'Objeto sin valor de mercado (no comerciable)' });
+
+      const resultado = await prisma
+        .$transaction(async (tx) => {
+          await verificaTratadoComercial(tx, sourceFaction.worldId, sourceFaction.id, targetFaction.id);
+          const stockDisponible = await tx.almacenItem.count({ where: { saveId: save.id, catalogSlug: item.catalogSlug } });
+          const precio = precioDinamico(catalog.valorGoirnos, stockDisponible);
+
+          await tx.save.update({ where: { id: save.id }, data: { goirnos: { increment: precio } } });
+          await tx.almacenItem.update({ where: { id: item.id }, data: { saveId: null, factionId: targetFaction.id } });
+          return { ok: true as const, precio, item: item.name, targetFaction: targetFaction.name };
+        })
+        .catch((err) => {
+          if (err instanceof SinTratadoComercialError) return err;
+          throw err;
+        });
+
+      if (resultado instanceof SinTratadoComercialError) {
+        return reply.status(409).send({ error: `No tienes tratado comercial ni alianza con ${targetFaction.name} — no puedes comerciar con ellos.` });
       }
       return resultado;
     },

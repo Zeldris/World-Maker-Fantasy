@@ -403,22 +403,41 @@ asentado" que el resto del proyecto. Profesión `'diplomatico'` nueva en `profes
 "mercader"). 5 tests de integración + 4 unitarios nuevos. Verificado: `tsc -b` limpio, suite
 completa 2643/2643 en verde (aislado).
 
-**Mercado regulado — SIN DISEÑAR todavía** (ejecución real de bienes/precio, la mitad que faltaba
-del punto 6). Puntos a decidir antes de escribir código:
+**Mercado regulado jugador↔Faction — CERRADO e IMPLEMENTADO** (2026-09-21, sesión posterior). Las 4
+preguntas se resolvieron con grounding real (`WebSearch` X4: "automatic pricing means that a
+station will automatically lower the ware price the more wares in stock, and vice versa" — precio
+NUNCA es un tick de oferta/demanda simulado aparte, es una fórmula derivada del STOCK ACTUAL):
 
-- ¿Precio dinámico real (oferta/demanda por región, alimentado por `WorldPopulation`/producción de
-  facción — ahora que `OrdenProduccion` ya existe, un mercado real tendría datos reales de
-  producción con los que calcular oferta) o un rango fijo con variación pseudoaleatoria con
-  semilla (más barato de simular, más cercano al resto del proyecto que ya usa este patrón para
-  combate)?
-- ¿El jugador puede comerciar directamente con una facción (comprar/vender en su mercado), o el
-  "mercado regulado" es puramente entre facciones NPC (economía de fondo, el jugador nunca lo ve
-  directamente salvo por sus efectos)?
-- Relación con `valorGoirnosBaseFor` (`economia.ts`) — ¿se reutiliza como precio BASE sobre el que
-  el mercado regulado aplica su fluctuación, o el mercado tiene su propia tabla independiente?
-- ¿El "tratado comercial" de `FactionRelationType` (ya existe como banda de `presion`) es el
-  requisito de acceso al mercado regulado con esa facción (sin tratado, sin comercio posible), o
-  son conceptos independientes?
+- **Precio dinámico**: `precioDinamico(valorGoirnos, stockDisponible)` (`economia.ts`) — factor
+  0.5x-2x sobre `ItemCatalog.valorGoirnos` (el valor FINAL ya curado a mano, no
+  `valorGoirnosBaseFor` recalculado de bruto), interpolado según el stock real de quien vende
+  (`AlmacenItem.count`). Sin tick propio, se calcula en el momento de cada compra/venta.
+- **Dos monedas separadas** (matiz real de Álvaro, más preciso que las dos opciones planteadas):
+  jugador↔Faction con `Save.goirnos` (dinero individual, ya existía, solo usado antes para
+  aprender oficio) — CERRADO. Reino↔Faction con `KingdomStats.riqueza` (comercio de volumen) queda
+  como pieza aparte, sin código todavía (ver abajo).
+- **`ItemCatalog.valorGoirnos`** (el valor final ya ajustado en `worldCatalog.ts`, no
+  `valorGoirnosBaseFor` de bruto) es el precio base real que el mercado escala.
+- **Tratado comercial como requisito real**: sin `FactionRelation.type` en `TRATADO_COMERCIAL` o
+  `ALIANZA` con esa `Faction`, no hay acceso al mercado — cierra el bucle diplomacia→mercado
+  (negociar de verdad ABRE comercio, sabotear lo CIERRA).
+
+**Pieza que faltaba, resuelta al escribir el código**: `AlmacenItem` era 100% `saveId` (nunca
+generalizado a facciones NPC, ver § 5-bis punto 2) — sin stock real de la Faction, no hay contra
+qué comprar. Generalizado a `factionId` opcional (mismo XOR + `CHECK CONSTRAINT` real que
+`ProfessionProgress`, criterio aplicado también a un modelo EXISTENTE que se toca en esta sesión,
+no solo a los recién creados) — una `Faction` con `OrdenProduccion` activa acumula stock real ahí,
+exactamente igual que el jugador.
+
+Implementado: `POST /saves/:id/reino/mercado/comprar` y `/vender` (`reino.ts`) — comprar mueve
+`Save.goirnos` y traspasa el `AlmacenItem` de `factionId` a `saveId`; vender al revés. Mismo patrón
+de error interno capturado (`SinTratadoComercialError`/`StockInsuficienteError`) que diplomacia. 4
+tests de integración + 8 unitarios de `precioDinamico`/`factorPrecioPorStock` nuevos. Verificado:
+`tsc -b` limpio, suite completa 2657/2657 en verde.
+
+**Comercio de volumen Reino↔Faction (`KingdomStats.riqueza`) — sin diseñar todavía**, pieza
+separada pendiente: ¿qué se comercia (recursos de `OrdenProduccion` agregados, no objetos
+individuales), a qué escala, y si usa el mismo `precioDinamico` o una fórmula propia de volumen.
 
 ### 4.4-bis Panel de Reino real — economía interna X4 + Bellwright + control de escuadrones (2026-09-21, sesión posterior)
 

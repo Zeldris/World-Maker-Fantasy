@@ -2105,10 +2105,19 @@ model Subject {
 /// de la mochila personal (`InventoryItem.saveId`, que sigue siendo solo del propio personaje).
 /// Solo entra por depósito manual (sin producción automática todavía) y solo sale por auto-equipo
 /// hacia un `Subject`/`Companion` con `PlantillaEquipo` asignada (ver `companionSupervivencia.ts`).
+/// Generalizado a facciones NPC (docs/rpgtarkor/mundo-vivo-x4.md § 4.4, 2026-09-21, mercado
+/// regulado) — `saveId`/`factionId` opcionales, mismo patrón XOR que `KingdomStats`/`Building`,
+/// reforzado con `CHECK CONSTRAINT` real en Postgres (mismo criterio que `ProfessionProgress`, § 5-
+/// bis punto 2: modelo TOCADO en esta sesión, no solo creado — el criterio de reforzar con CHECK
+/// se aplica también a un modelo existente que se generaliza, no solo a los recién creados). Una
+/// `Faction` NPC con `OrdenProduccion` activa acumula stock real aquí, exactamente igual que el
+/// jugador — el mercado regulado compra/vende contra ESTE stock real, nunca un número sintético.
 model AlmacenItem {
   id          String   @id @default(cuid())
-  saveId      String
-  save        Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  saveId      String?
+  save        Save?    @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  factionId   String?
+  faction     Faction? @relation(fields: [factionId], references: [id], onDelete: Cascade)
   name        String
   description String
   /// Mismo shape que InventoryItem — se copian tal cual al depositar, y se restauran tal cual al
@@ -2118,6 +2127,7 @@ model AlmacenItem {
   createdAt   DateTime @default(now())
 
   @@index([saveId])
+  @@index([factionId])
 }
 
 /// Plantilla de equipo (§7) — básica (`personalizada: false`, un puñado fijo por rol, no editable)
@@ -2500,6 +2510,9 @@ model Faction {
   territories  Territory[]
   buildings    Building[]
   kingdomStats KingdomStats?
+  /// Mercado regulado (§ 4.4, 2026-09-21) — stock real que el jugador puede comprar, si hay
+  /// tratado comercial/alianza real (ver FactionRelation).
+  almacenItems AlmacenItem[]
 
   /// Motor de disputas (docs/rpgtarkor/mundo-vivo-x4.md § 4.3, § 5 punto 5, 2026-09-21) — "cuanto
   /// más alta la Inteligencia, más autónoma la entidad" aplicado a una Faction entera: se lee del

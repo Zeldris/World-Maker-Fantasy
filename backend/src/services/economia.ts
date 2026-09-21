@@ -92,3 +92,52 @@ export function valorGoirnosBaseFor(item: ItemCatalogInput): number {
       return 0;
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// § 4.4 Mercado regulado (docs/rpgtarkor/mundo-vivo-x4.md, 2026-09-21) — precio DINÁMICO derivado
+// de stock real, sin ningún tick de oferta/demanda simulado aparte (grounding real X4:
+// "automatic pricing means that a station will automatically lower the ware price the more wares
+// in stock, and vice versa" — mucho stock = barato al vender/caro al comprar, poco stock = al
+// revés). El precio BASE que este factor escala es `ItemCatalog.valorGoirnos` (el valor FINAL ya
+// curado a mano en `worldCatalog.ts`, no `valorGoirnosBaseFor` recalculado de bruto — ese sigue
+// siendo solo el punto de partida que se ajustó contra lore/rareza real, el mercado debe cobrar
+// el precio de catálogo de verdad, curado).
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Umbral de stock "normal" — por encima de este número, más stock ya no abarata más (tope real,
+/// nunca precio 0); por debajo, escasez real empieza a encarecer. Cifra de partida, ajustable
+/// jugando como el resto de constantes del proyecto — ni tan bajo que 2 unidades ya disparen el
+/// precio al techo, ni tan alto que haga falta almacenar cientos de unidades para notar el efecto.
+export const STOCK_NORMAL = 10;
+/// Factor mínimo (mucho stock, comprando muy barato/vendiendo muy barato) y máximo (stock casi
+/// agotado, comprando muy caro/vendiendo muy caro) — banda 0.5x-2x sobre el precio base, mismo
+/// criterio de "cifra de partida ajustable" que el resto.
+const FACTOR_MIN = 0.5;
+const FACTOR_MAX = 2;
+
+/// Puro — factor multiplicativo sobre `valorGoirnosBaseFor` según `cantidadDisponible` (el stock
+/// de quien VENDE: el Almacén de una Faction cuando el jugador compra, el Almacén del jugador
+/// cuando vende). Curva simple: `STOCK_NORMAL` unidades da factor 1 (precio base tal cual), 0
+/// unidades da `FACTOR_MAX` (escasez real, caro), `STOCK_NORMAL * 2` o más da `FACTOR_MIN` (sobra,
+/// barato) — interpolación lineal entre esos 3 puntos, acotada a la banda.
+export function factorPrecioPorStock(cantidadDisponible: number): number {
+  if (cantidadDisponible <= 0) return FACTOR_MAX;
+  if (cantidadDisponible >= STOCK_NORMAL * 2) return FACTOR_MIN;
+  if (cantidadDisponible === STOCK_NORMAL) return 1;
+  if (cantidadDisponible < STOCK_NORMAL) {
+    // Interpola entre (0, FACTOR_MAX) y (STOCK_NORMAL, 1).
+    const progreso = cantidadDisponible / STOCK_NORMAL;
+    return FACTOR_MAX - progreso * (FACTOR_MAX - 1);
+  }
+  // Interpola entre (STOCK_NORMAL, 1) y (STOCK_NORMAL*2, FACTOR_MIN).
+  const progreso = (cantidadDisponible - STOCK_NORMAL) / STOCK_NORMAL;
+  return 1 - progreso * (1 - FACTOR_MIN);
+}
+
+/// Puro — precio final de UNA unidad, redondeado al Goirno entero más cercano (mínimo 1 Goirno
+/// para cualquier item con valor base > 0, nunca 0 por redondeo hacia abajo de un valor base bajo
+/// con mucho stock — un objeto con valor real sigue costando algo, por poco stock que "sobre").
+export function precioDinamico(valorBase: number, cantidadDisponible: number): number {
+  if (valorBase <= 0) return 0;
+  return Math.max(1, Math.round(valorBase * factorPrecioPorStock(cantidadDisponible)));
+}

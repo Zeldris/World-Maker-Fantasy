@@ -262,3 +262,138 @@ describe('POST /saves/:id/reino/diplomacia', () => {
     expect(res.statusCode).toBe(400);
   });
 });
+
+// Mercado regulado — jugador↔Faction (docs/rpgtarkor/mundo-vivo-x4.md § 4.4, 2026-09-21) — mismo
+// fixture real (Reino fundado, Faction del jugador, facción de catálogo real) que el describe de
+// diplomacia, reutilizado para probar el bucle completo: sin tratado no hay comercio, con tratado
+// sí, y el precio dinámico responde de verdad al stock real.
+describe('POST /saves/:id/reino/mercado/comprar y /vender', () => {
+  let saveId: string;
+  let worldId: string;
+  let sourceFactionId: string;
+  let targetFactionSlug: string;
+  let targetFactionId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    worldId = world.id;
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId,
+        characterName: 'Gorhorn de prueba (mercado)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+        raza: 'orcos',
+        goirnos: 100,
+      },
+    });
+    saveId = save.id;
+    await prisma.building.create({
+      data: { saveId, locationId: hondonada.id, recipeKey: 'ayuntamiento', name: 'x', kind: 'ayuntamiento', description: 'x', status: 'ACTIVO', tier: 1 },
+    });
+    const app = await buildApp();
+    await app.inject({ method: 'POST', url: `/saves/${saveId}/reino/fundar`, payload: { kingdomName: 'Reino de Prueba Mercado' } });
+    const sourceFaction = await prisma.faction.findFirstOrThrow({ where: { saveId } });
+    sourceFactionId = sourceFaction.id;
+
+    const targetFaction = await prisma.faction.findFirstOrThrow({ where: { worldId, slug: 'clan-helsig' } });
+    targetFactionSlug = targetFaction.slug;
+    targetFactionId = targetFaction.id;
+  });
+
+  afterAll(async () => {
+    await prisma.almacenItem.deleteMany({ where: { OR: [{ saveId }, { factionId: targetFactionId }] } });
+    await prisma.factionRelation.deleteMany({ where: { OR: [{ sourceFactionId }, { targetFactionId: sourceFactionId }] } });
+    await prisma.locationLink.deleteMany({ where: { OR: [{ from: { slug: `ayuntamiento-interior-${saveId}` } }, { to: { slug: `ayuntamiento-interior-${saveId}` } }] } });
+    await prisma.location.deleteMany({ where: { worldId, slug: `ayuntamiento-interior-${saveId}` } });
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('sin tratado comercial, comprar se rechaza con 409', async () => {
+    const item = await prisma.almacenItem.create({
+      data: { factionId: targetFactionId, name: 'Ración de carne fresca', description: 'x', catalogSlug: 'racion-carne' },
+    });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/reino/mercado/comprar`,
+      payload: { targetFactionSlug, almacenItemId: item.id },
+    });
+    expect(res.statusCode).toBe(409);
+  });
+
+  it('con tratado comercial, comprar mueve goirnos y traspasa el objeto al Almacén del jugador', async () => {
+    await prisma.factionRelation.upsert({
+      where: { sourceFactionId_targetFactionId: { sourceFactionId, targetFactionId } },
+      update: { type: 'TRATADO_COMERCIAL', presion: 30 },
+      create: { worldId, sourceFactionId, targetFactionId, type: 'TRATADO_COMERCIAL', presion: 30 },
+    });
+    const item = await prisma.almacenItem.create({
+      data: { factionId: targetFactionId, name: 'Ración de carne fresca', description: 'x', catalogSlug: 'racion-carne' },
+    });
+    const goirnosAntes = (await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).goirnos;
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/reino/mercado/comprar`,
+      payload: { targetFactionSlug, almacenItemId: item.id },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.precio).toBeGreaterThan(0);
+
+    const goirnosDespues = (await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).goirnos;
+    expect(goirnosDespues).toBe(goirnosAntes - body.precio);
+
+    const itemTraspasado = await prisma.almacenItem.findUniqueOrThrow({ where: { id: item.id } });
+    expect(itemTraspasado.saveId).toBe(saveId);
+    expect(itemTraspasado.factionId).toBeNull();
+  });
+
+  it('vender traspasa el objeto a la Faction y cobra goirnos', async () => {
+    const item = await prisma.almacenItem.create({
+      data: { saveId, name: 'Ración de carne fresca', description: 'x', catalogSlug: 'racion-carne' },
+    });
+    const goirnosAntes = (await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).goirnos;
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/reino/mercado/vender`,
+      payload: { targetFactionSlug, almacenItemId: item.id },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+
+    const goirnosDespues = (await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).goirnos;
+    expect(goirnosDespues).toBe(goirnosAntes + body.precio);
+
+    const itemTraspasado = await prisma.almacenItem.findUniqueOrThrow({ where: { id: item.id } });
+    expect(itemTraspasado.factionId).toBe(targetFactionId);
+    expect(itemTraspasado.saveId).toBeNull();
+  });
+
+  it('comprar sin goirnos suficientes se rechaza con 400, sin traspasar el objeto', async () => {
+    await prisma.save.update({ where: { id: saveId }, data: { goirnos: 0 } });
+    const item = await prisma.almacenItem.create({
+      data: { factionId: targetFactionId, name: 'Ración de carne fresca', description: 'x', catalogSlug: 'racion-carne' },
+    });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/reino/mercado/comprar`,
+      payload: { targetFactionSlug, almacenItemId: item.id },
+    });
+    expect(res.statusCode).toBe(400);
+    const itemSinTocar = await prisma.almacenItem.findUniqueOrThrow({ where: { id: item.id } });
+    expect(itemSinTocar.factionId).toBe(targetFactionId); // nunca se traspasó
+  });
+});
