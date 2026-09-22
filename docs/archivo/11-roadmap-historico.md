@@ -7,7 +7,7 @@ para que deje de leerse como "el roadmap activo" del proyecto. Se conserva sin t
 historial — no es fuente de verdad de nada a día de hoy.
 
 **Continuación (2026-08-24):** el roadmap activo a partir de aquí es
-[../21-roadmap.md](../21-roadmap.md).
+[../21-roadmap.md](../producto/21-roadmap.md).
 
 **Actualización (2026-08-13):** todo lo anotado el día anterior, implementado y verificado en una
 sola sesión ("sigue e implementa todas las fases que sacamos ayer al roadmap"): validador de
@@ -23,27 +23,27 @@ objetos de verdad — hallazgo real), y fondo amarillo para misiones completadas
 rebautizo propuesto del Orco Enfurecido a "NPC único" era un malentendido — ya es `PRINCIPAL`/scope
 global, no aporta nada al bug de resurrección (ese sigue tracked aparte en
 `revisar-partida-hallazgos.md`). Detalle completo, hallazgos con file:line y piezas de trabajo en
-[19-post-combate-y-recompensas-mision.md](19-post-combate-y-recompensas-mision.md).
+[19-post-combate-y-recompensas-mision.md](../mecanicas/19-post-combate-y-recompensas-mision.md).
 
 **Actualización (2026-08-12):** diseño cerrado (sin implementar todavía) de un validador de
 "grounding" de la acción del JUGADOR contra el catálogo real — arma que no lleva, NPC/fauna/flora/
 edificio inventado o presente-pero-ausente, anacronismo en su propio texto — el lado simétrico de
 la familia de detectores "narración-vs-mecánica" que ya protege al Narrador. Plan completo,
 hallazgos de exploración y borrador de frases en el nuevo
-[18-validacion-accion-jugador.md](18-validacion-accion-jugador.md). Restricción de diseño clave:
+[18-validacion-accion-jugador.md](../mecanicas/18-validacion-accion-jugador.md). Restricción de diseño clave:
 el mundo está solo al ~1% de lore (Las Llanuras del Viento Rojo), así que el validador lee siempre
 el catálogo en vivo, nunca una lista quemada — crece solo con el lore, nunca hay que tocarlo al
 ampliar contenido.
 
 **Actualización (2026-08-07):** el catálogo de Profesiones (único pendiente real que quedaba del
 punto de abajo, aparte del benchmark de `llama3.2` y las líneas pausadas) queda cerrado — ver
-[09-panel-personaje.md](09-panel-personaje.md) § 8 y la memoria del rediseño (recolectoras vs
+[09-panel-personaje.md](../mecanicas/09-panel-personaje.md) § 8 y la memoria del rediseño (recolectoras vs
 creadoras, capacidad de inventario real, `docs/16-poblacion-dinamica.md` § 3.5 para el pop-up de
 recolección). Misma sesión: auditoría de código completa (back+front) con 5 bugs reales
 arreglados y un candado de turno nuevo que cierra dos condiciones de carrera del motor de turnos.
 
 **Actualización (2026-08-03):** población dinámica implementada — ver
-[16-poblacion-dinamica.md](16-poblacion-dinamica.md). `WorldPopulation` (sembrado desde 2026-07-29,
+[16-poblacion-dinamica.md](../mecanicas/16-poblacion-dinamica.md). `WorldPopulation` (sembrado desde 2026-07-29,
 nunca leído hasta ahora) ya depleciona de verdad al morir un NPC (fauna o raza, incluidos los NPC
 con nombre propio) y se repuebla con el tiempo real (tasa distinta fauna/raza, umbral mínimo de
 reproducción, sin techo duro por ahora); los encuentros ambientales se ponderan por esa población
@@ -63,7 +63,7 @@ historial, no como pendiente real. El detalle vivo de bugs encontrados jugando v
 
 **Estado:** documento vivo. Nace de una auditoría de solo lectura sobre todo el proyecto (código, esquema, docs, git) tras cerrar la primera gran tanda de mecánicas (niveles/XP, Reino, acciones por tiempo, habilidades). Se actualiza según se cierren o aparezcan puntos.
 
-**Redirección importante (2026-07-18, misma sesión, después de escrito este documento):** la usuaria pidió explícitamente **no** ampliar el lore de los otros 7 personajes/Vaelira por ahora ("olvídalos, que no salgan en el juego todavía") — el § 0 de abajo queda en pausa. En su lugar se abrió una línea de trabajo mucho más grande, centrada solo en el mundo de Gorhorn: **[12-mundo-estructurado.md](12-mundo-estructurado.md)** (posición real por grafo, NPCs con stats fijos, fauna/flora → recursos, armería con loot determinista), **[13-escala-del-mundo.md](13-escala-del-mundo.md)** (dimensiones reales en km, solo referencia editorial) y **[14-combate-y-muerte.md](14-combate-y-muerte.md)** (condición física, combate por turnos en popup, revelado progresivo, sistema de muerte/descanso con la Entidad Desconocida).
+**Redirección importante (2026-07-18, misma sesión, después de escrito este documento):** la usuaria pidió explícitamente **no** ampliar el lore de los otros 7 personajes/Vaelira por ahora ("olvídalos, que no salgan en el juego todavía") — el § 0 de abajo queda en pausa. En su lugar se abrió una línea de trabajo mucho más grande, centrada solo en el mundo de Gorhorn: **[12-mundo-estructurado.md](../mecanicas/12-mundo-estructurado.md)** (posición real por grafo, NPCs con stats fijos, fauna/flora → recursos, armería con loot determinista), **[13-escala-del-mundo.md](../mecanicas/13-escala-del-mundo.md)** (dimensiones reales en km, solo referencia editorial) y **[14-combate-y-muerte.md](../mecanicas/14-combate-y-muerte.md)** (condición física, combate por turnos en popup, revelado progresivo, sistema de muerte/descanso con la Entidad Desconocida).
 
 **Actualización (2026-07-18, sesión posterior): `docs/12` implementado y verificado en vivo** — ver su § 7 para el detalle completo. `docs/13` sigue siendo solo referencia editorial (no bloquea nada de código).
 
@@ -95,7 +95,7 @@ Es coherente con que Gorhorn es el único personaje jugado hasta ahora, pero en 
 
 ## 2. Mecánicas pendientes de cerrar
 
-5. ~~**Condición física**~~ — **hecho** (2026-07-18): implementada junto con el resto de [14-combate-y-muerte.md](14-combate-y-muerte.md) (combate, muerte, descanso).
+5. ~~**Condición física**~~ — **hecho** (2026-07-18): implementada junto con el resto de [14-combate-y-muerte.md](../mecanicas/14-combate-y-muerte.md) (combate, muerte, descanso).
 6. ~~**`WorldState.agenda` nunca se resuelve**~~ — **decisión tomada (2026-07-18)**: no se construye. El panel "El mundo" (`entorno.ts`) ya cubre esa necesidad con ambientación periódica + evento probabilístico (25%), y nada ha escrito nunca en `agenda`. Construir un resolutor para una cola sin productor no aporta nada — el campo queda reservado sin uso hasta que exista contenido real de agenda que justificarlo (ver comentario ampliado en `worldTick.ts`).
 7. ~~**Misiones**~~ — **hecho** (2026-07-18): modelo `Quest` nuevo (mismo patrón que Reino — `newQuest`/`questProgress` en `narrador.ts`, materializado en `turnResolution.ts`), `MisionesPanel.tsx` en el frontend. Verificado en vivo (crear + consultar).
 8. ~~**Validar `reino_events` con Ollama de verdad**~~ — hecho: `newTerritory`/`newBuilding`/`newSubject` funcionan con fiabilidad razonable en juego real (reino "Maktor" fundado y jugado en vivo, 2026-08-07), Reino dejó de estar pausado (reglas de construcción `docs/17`, 2026-08-04; economía/recetas en tiempo real, 2026-08-13) — ver nota de reconciliación pendiente en `docs/10-niveles-xp-reino.md` § 9 punto 8.

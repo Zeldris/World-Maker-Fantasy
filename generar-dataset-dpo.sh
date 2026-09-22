@@ -1,6 +1,6 @@
 #!/bin/bash
 # Genera pares DPO sintéticos (nube vs. modelo local) para el fine-tuning de la v2 del narrador —
-# ver docs/fine-tuning-ia-local.md § "Generar pares adicionales sin jugar". Reutiliza el banco de
+# ver docs/ia/fine-tuning-ia-local.md § "Generar pares adicionales sin jugar". Reutiliza el banco de
 # ~80 escenarios de distillationScenarios.ts, pidiendo la misma narración a un proveedor cloud y al
 # modelo local real (narrateAction), y guarda ambas en LiveTeacherCapture — mismo destino que la
 # captura en vivo, así export-dpo-dataset las recoge sin distinción. Reanudable: si se corta a
@@ -27,7 +27,7 @@ if command -v podman >/dev/null 2>&1 && podman container exists tarkor-postgres 
     sleep 2
   fi
 else
-  echo "AVISO: no existe el contenedor 'tarkor-postgres' — ver docs/15-instalacion.md § 3bis para crearlo."
+  echo "AVISO: no existe el contenedor 'tarkor-postgres' — ver docs/arquitectura/15-instalacion.md § 3bis para crearlo."
 fi
 
 export NVM_DIR="$HOME/.var/app/com.visualstudio.code/config/nvm"

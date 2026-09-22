@@ -5,7 +5,7 @@
 (2026-09-03) confirmó que casi todo su contenido ya está cerrado — en particular la tanda del
 2026-08-30 (línea ~3622 de este archivo), que estaba 15 de 16 hallazgos resueltos sin que el
 documento lo reflejara hasta esa auditoría. El registro activo a partir de aquí es
-[../revisar-partida-hallazgos.md](../revisar-partida-hallazgos.md), que arranca limpio — nuevas
+[../revisar-partida-hallazgos.md](../runbooks/revisar-partida-hallazgos.md), que arranca limpio — nuevas
 entradas de sesiones de juego futuras van ahí, no aquí. Se conserva sin tocar por valor de
 historial (causas raíz ya diagnosticadas, decisiones de diseño con su contexto completo) — antes de
 reportar algo como "nuevo", sigue mereciendo la pena mirar aquí si ya se vio, pero comprobar
@@ -445,7 +445,7 @@ de aplicarlo — se deja anotado para decidir con calma, no forzado bajo esta pa
 
 **Actualización (2026-08-03)**: la parte de "no encontrar nuevos enemigos en las zonas" de la queja
 original que motivó esta entrada queda cubierta por un sistema nuevo, ver
-[16-poblacion-dinamica.md](16-poblacion-dinamica.md) — los encuentros ambientales ahora se
+[16-poblacion-dinamica.md](../mecanicas/16-poblacion-dinamica.md) — los encuentros ambientales ahora se
 ponderan por población real (`WorldPopulation`, hasta ahora dato semilla nunca leído) y se filtran
 por región, así que cazar mucho una especie en una zona la hace de verdad más rara ahí y matar
 NPCs con nombre propio también depleciona la población de su raza; una especie puede extinguirse
@@ -3021,7 +3021,7 @@ y el turno entero responde `{"type":"error","message":"Error narrando el turno"}
 pista de la causa real.
 
 Este mismo motor es el que dispara `cazar.ts` para caza en grupo (Capa 4 de
-[mundo-determinista.md](rpgtarkor/mundo-determinista.md), commit `f85d7e7`) — por eso "la caza no
+[mundo-determinista.md](../rpgtarkor/lore-mundo/mundo-determinista.md), commit `f85d7e7`) — por eso "la caza no
 funciona" es el mismo bug, no uno aparte: cualquier caza que abra un `CombatEncounter` real (grupo o
 solitario) puede reventar en cuanto la narración tarda más de 5 s, algo casi garantizado con Ollama
 local.

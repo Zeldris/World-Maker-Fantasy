@@ -5,7 +5,7 @@ sustituyó a [11-roadmap-historico.md](11-roadmap-historico.md)) y 2026-09-03. S
 grueso de su contenido ya es puro historial — todas las piezas grandes de esa etapa (Grupo 3
 completo, Fases 1-3 de clases/combate múltiple, Dinamismo del mundo, Trabajador de Reino,
 "mundo determinista, el narrador solo narra") están cerradas y verificadas. El roadmap activo a
-partir de aquí es [../21-roadmap.md](../21-roadmap.md), que arranca limpio con solo lo vigente a
+partir de aquí es [../21-roadmap.md](../producto/21-roadmap.md), que arranca limpio con solo lo vigente a
 esa fecha (la sección "Estado a fecha 2026-09-03" de más abajo, íntegra). Se conserva sin tocar por
 valor de historial — no es fuente de verdad de nada a día de hoy.
 
@@ -301,7 +301,7 @@ reciente:
   noche/estación para Location/Zona (mismo mecanismo de sufijo de slug que las variantes por sexo,
   header de pestañas de estación + toggle de día/noche en la Enciclopedia, auto-selección por reloj
   real en la vista Zona en vivo). Ver detalle completo en
-  [imagenes-prompts.md](rpgtarkor/imagenes-prompts.md).
+  [imagenes-prompts.md](../rpgtarkor/items-y-catalogo/imagenes-prompts.md).
 - **2 auditorías en paralelo (2026-08-27)**: backend sin conectar a frontend, y diseño/UX del
   frontend (ejecutada después y con los hallazgos de la primera como contexto) — ambas cerradas
   poco después, ver banner "todo, de arriba a abajo" un poco más abajo (documentos originales
@@ -317,7 +317,7 @@ reciente:
   sesión): sistema de "enganche" por ronda (duelo mutuo real vs. golpe gratis sin oposición),
   diseñado con la usuaria jugando en vivo contra 2 cuervos y enganchado de verdad al motor
   (`combateMultipleOrquestacion.ts`, migración nueva `esperandoEleccionJugadora`). Ver detalle en
-  "Fase 3" más abajo y en [combate-multiple.md](rpgtarkor/combate-multiple.md) § 2.
+  "Fase 3" más abajo y en [combate-multiple.md](../rpgtarkor/sistemas-combate/combate-multiple.md) § 2.
 - **5 puntos rápidos del checklist de la usuaria, todos CERRADOS**: sistema Matar/Capturar/Clemente
   (ya estaba hecho de una sesión previa, el checklist estaba desactualizado — corregido, y de paso
   se cerró un bug real del botón "Capturar" apareciendo aunque el NPC no fuera capturable); botones
@@ -436,7 +436,7 @@ resumen de trabajo real, agrupado por tamaño.
   grupo cazado su propia condición sin tocar el modelo de escena compartido.
   `resolverIntercambioCompleto`/`resolverTurnoJugador` (`81e810c`) dan paridad completa de mecánicas
   (utilidades/doble arma/LETAL). **Disparo real APLICADO al juego en vivo 2026-08-25** (commit
-  `f85d7e7`, Capa 4 de [mundo-determinista.md](rpgtarkor/mundo-determinista.md)): `cazar.ts` (caza en
+  `f85d7e7`, Capa 4 de [mundo-determinista.md](../rpgtarkor/lore-mundo/mundo-determinista.md)): `cazar.ts` (caza en
   grupo) y `narrateAndPersistTurn` ya crean/resuelven un `CombatEncounter` real en vez del viejo
   `combateIniciado.npcSlugs`. **Saqueo/desuello: CERRADO el mismo día** (commit `64b6911`) —
   reutiliza el saqueo/desuello clásico tal cual (materializa `NpcState.groupSize`/`groupDefeated` +
@@ -474,10 +474,10 @@ resumen de trabajo real, agrupado por tamaño.
   `hasResurrectedDeadNpc`) contra que la narración "haga aparecer" a alguien no autorizado. **Capa 4
   (disparo real) construida 2026-08-25** (commit `f85d7e7`) — cirugía completa dentro de
   `narrateAndPersistTurn`, ver detalle y huecos documentados en la entrada de Combate múltiple arriba
-  y en [mundo-determinista.md](rpgtarkor/mundo-determinista.md). Pendiente real fuera de esta pasada:
+  y en [mundo-determinista.md](../rpgtarkor/lore-mundo/mundo-determinista.md). Pendiente real fuera de esta pasada:
   generalizar la Capa 1 más allá de La Hondonada del Eco.
   **Los 5 hallazgos independientes: cerrados el mismo día** (commit `1902c29`, ver
-  [mundo-determinista.md](rpgtarkor/mundo-determinista.md) para el detalle) — Log de Mundo conectado
+  [mundo-determinista.md](../rpgtarkor/lore-mundo/mundo-determinista.md) para el detalle) — Log de Mundo conectado
   a los hechos reales de `worldAgenda.ts` (LogEntry de canal WORLD por etapa cruzada, cero coste de
   LLM); `newQuest` exige un anclaje real (NPC/Location/Item); `newItem` exige coincidir con
   `ItemCatalog` real (hereda equipSlot/tipo reales); `newCompanion` exige NPC real en escena +
@@ -535,7 +535,7 @@ resumen de trabajo real, agrupado por tamaño.
   de Semilla ya tiran todas con el mismo atributo Magia, sin dado propio por escuela. Reconciliado.
 - [x] ~~**Sistema de estaciones**~~ — cerrado 2026-08-24, APLICADO al motor. Calendario único y
   global (120 días/año, 30 por estación), diseño completo en
-  [estaciones.md](rpgtarkor/estaciones.md): `estacionFor`/`estacionNombreFor` puras (`worldClock.ts`),
+  [estaciones.md](../rpgtarkor/lore-mundo/estaciones.md): `estacionFor`/`estacionNombreFor` puras (`worldClock.ts`),
   enum `Estacion` + `HarvestYield.estacionRequerida` nuevo, filtrado antes de la tirada en
   `recolectar.ts`. Nombres Kektira (Ur'gathek/Sohkar/Vungrat/Krenoth) porque el personaje jugable
   es orco, con glosa en lengua común como fallback para otras razas. `boungo` ya exige Vungrat
@@ -543,7 +543,7 @@ resumen de trabajo real, agrupado por tamaño.
   reseed del catálogo. El Kirelon Arenoso ("largos inviernos") queda fuera — es tasa de aparición,
   no `HarvestYield.condicion`, sistema distinto sin tocar.
 - [x] ~~**Eventos de clima puntuales**~~ — cerrado 2026-08-24, APLICADO al motor. Distinto de
-  estaciones: diseño completo en [clima-tormentas.md](rpgtarkor/clima-tormentas.md). Hallazgo real
+  estaciones: diseño completo en [clima-tormentas.md](../rpgtarkor/lore-mundo/clima-tormentas.md). Hallazgo real
   al abrirlo: `arena-iman` ya tenía `WorldPopulation` sembrada, así que hoy aparecía SIEMPRE —
   la `condicion` de texto no bloqueaba nada. Se convirtió en la caracterización real del clima de
   Las Llanuras (petición explícita de la usuaria): de 120 días, 40 de gran tormenta (Rokthar), 40
@@ -936,7 +936,7 @@ resumen de trabajo real, agrupado por tamaño.
   motor en vivo, de punta a punta. Petición explícita jugando contra 2 cuervos: "no puedo elegir
   objetivo... cuando ataco debería ser yo vs mi objetivo y el otro enemigo tiene ataque gratis".
   Detalle completo (con ejemplos jugados) en
-  [combate-multiple.md](rpgtarkor/combate-multiple.md) § 2 — resumen aquí:
+  [combate-multiple.md](../rpgtarkor/sistemas-combate/combate-multiple.md) § 2 — resumen aquí:
 
   **La regla** — sistema de "enganche" por ronda, no "ataca a quien elijas":
   1. Todos (jugador, compañeros, enemigos) tiran iniciativa cada ronda.

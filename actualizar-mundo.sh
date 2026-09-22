@@ -26,7 +26,7 @@ if command -v podman >/dev/null 2>&1 && podman container exists tarkor-postgres 
     sleep 2
   fi
 else
-  echo "AVISO: no existe el contenedor 'tarkor-postgres' — ver docs/15-instalacion.md § 3bis para crearlo."
+  echo "AVISO: no existe el contenedor 'tarkor-postgres' — ver docs/arquitectura/15-instalacion.md § 3bis para crearlo."
 fi
 
 export NVM_DIR="$HOME/.var/app/com.visualstudio.code/config/nvm"

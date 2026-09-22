@@ -22,7 +22,7 @@ export LD_LIBRARY_PATH="$HOME/.local/ollama/lib/ollama:$LD_LIBRARY_PATH"
 echo "Arrancando Tarkor..."
 echo
 
-# Postgres local (migración local-first 2026-07-30, ver docs/15-instalacion.md § 3bis) — contenedor
+# Postgres local (migración local-first 2026-07-30, ver docs/arquitectura/15-instalacion.md § 3bis) — contenedor
 # podman ya creado una vez, aquí solo se arranca si estaba parado. Silencioso si ya estaba arriba.
 if command -v podman >/dev/null 2>&1 && podman container exists tarkor-postgres 2>/dev/null; then
   if podman ps --format '{{.Names}}' | grep -qx tarkor-postgres; then
@@ -32,7 +32,7 @@ if command -v podman >/dev/null 2>&1 && podman container exists tarkor-postgres 
     podman start tarkor-postgres >/dev/null
   fi
 else
-  echo "AVISO: no existe el contenedor 'tarkor-postgres' — ver docs/15-instalacion.md § 3bis para crearlo."
+  echo "AVISO: no existe el contenedor 'tarkor-postgres' — ver docs/arquitectura/15-instalacion.md § 3bis para crearlo."
 fi
 
 # Carga nvm/node en ESTE shell — para el check de Ollama de abajo y para el seed-catalog que
