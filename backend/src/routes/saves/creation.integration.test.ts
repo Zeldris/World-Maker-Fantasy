@@ -60,6 +60,116 @@ describe('POST /saves/:id/restart limpia el combate pendiente de la partida ante
   }, 15_000);
 });
 
+// Bug real jugando en vivo (2026-09-22, confirmado con Playwright + curl directo contra la partida
+// de prueba): mover al jugador por el mapa de Zona persiste `Save.zonaPosX`/`zonaPosY`, pero
+// `restartSaveTransactionBody` nunca los tocaba — reiniciar una partida dejaba TODO lo demás limpio
+// (Día 1, ILESO, inventario de serie) salvo la posición en el mapa, que se quedaba exactamente donde
+// el jugador la había dejado en la partida ANTERIOR. `creation.ts` (partida nueva) ya fijaba
+// `zonaPosX/Y` + `zonaPosEntradaX/Y` a la esquina noroeste calibrada (75,75) desde 2026-09-17 — este
+// segundo camino (reinicio) nunca replicó ese fix, mismo patrón de bug ya visto 2 veces en este
+// mismo archivo (combate pendiente / Faction de reino sobreviviendo al reinicio).
+describe('POST /saves/:id/restart también reinicia la posición del jugador en el mapa de Zona', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (restart-zona)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        portraitInitial: 'G',
+        // Simula al jugador ya movido lejos del punto de entrada, como tras varios turnos reales.
+        zonaPosX: 375,
+        zonaPosY: 125,
+        zonaPosEntradaX: 325,
+        zonaPosEntradaY: 125,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('devuelve zonaPosX/Y y zonaPosEntradaX/Y al punto de entrada de serie tras reiniciar', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/restart`, payload: {} });
+    expect(res.statusCode).toBe(200);
+
+    const restarted = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(restarted.zonaPosX).toBe(75);
+    expect(restarted.zonaPosY).toBe(75);
+    expect(restarted.zonaPosEntradaX).toBe(75);
+    expect(restarted.zonaPosEntradaY).toBe(75);
+  }, 15_000);
+});
+
+// Bug real jugando en vivo (2026-09-22, hallazgo mientras se probaba el fix de zonaPos de arriba):
+// un `CombatEncounter` EN_CURSO (combate múltiple real, motor N-way) nunca se borraba al reiniciar —
+// mismo patrón que los 2 bugs de arriba (Faction/pendingCombatNpcSlugs), un dato que este flujo
+// desconocía. `GET /saves/:id` (detail.ts) reconstruye `combateIniciado` con un `findFirst` filtrado
+// solo por `saveId` — como `/restart` reutiliza el mismo `saveId` (no crea partida nueva), un
+// combate viejo reaparecía de inmediato tras reiniciar, con la partida ya "reiniciada" (Día 1,
+// ILESO) mostrando de todos modos "⚔️ COMBATIR / HUIR" contra un rival de la partida ANTERIOR — sin
+// ninguna vía de UI para salir de ese estado (ni siquiera reiniciar otra vez lo arregla, confirmado
+// jugando: el `CombatEncounter` sobrevive a reinicios sucesivos). Las 4 ofertas "pending" de modo
+// dinámico/misión/interacción (`pendingDynamicMode`/`pendingDynamicModeOffer`/
+// `pendingQuestOfferInfo`/`pendingNpcInteractionOffer`) tenían el mismo hueco exacto.
+describe('POST /saves/:id/restart limpia un CombatEncounter y las ofertas pending de la partida anterior', () => {
+  let saveId: string;
+  let encounterId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (restart-combate)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        portraitInitial: 'G',
+        pendingDynamicModeOffer: { tipo: 'FAUNA', targetSlug: 'gesgurio', targetName: 'Gesgurio', quienInicia: 'npc' },
+        pendingDynamicMode: { targetSlug: 'gesgurio', vuelta: 1 },
+        pendingQuestOfferInfo: { title: 'Misión de prueba', description: 'x' },
+        pendingNpcInteractionOffer: { npcSlug: 'gesgurio', npcName: 'Gesgurio', options: ['Aprender oficio'] },
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    const encounter = await prisma.combatEncounter.create({ data: { saveId, jugable: true } });
+    encounterId = encounter.id;
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('borra el CombatEncounter y limpia las 4 ofertas pending tras reiniciar', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/restart`, payload: {} });
+    expect(res.statusCode).toBe(200);
+
+    expect(await prisma.combatEncounter.findUnique({ where: { id: encounterId } })).toBeNull();
+    const restarted = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(restarted.pendingDynamicModeOffer).toBeNull();
+    expect(restarted.pendingDynamicMode).toBeNull();
+    expect(restarted.pendingQuestOfferInfo).toBeNull();
+    expect(restarted.pendingNpcInteractionOffer).toBeNull();
+  }, 15_000);
+});
+
 // Bug real (auditoría de bugs, 2026-08-21): `Faction` (fundar reino, reino.ts) es `saveId`-scoped
 // pero /restart no la borraba — fundar un reino, reiniciar y volver a fundar OTRO reino con el
 // MISMO nombre exacto chocaba contra `@@unique([worldId, slug])` de la fila fantasma de la partida

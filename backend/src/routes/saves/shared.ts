@@ -217,6 +217,14 @@ export async function restartSaveTransactionBody(
   const startingQuestsData = await buildStartingQuestsData(save.worldId, save.characterName);
 
   await tx.logEntry.deleteMany({ where: { saveId: save.id } });
+  // Bug real (2026-09-22, jugando en vivo): un CombatEncounter EN_CURSO (combate múltiple) nunca se
+  // borraba al reiniciar — mismo patrón que zonaPosX/Y y pendingCombatNpcSlugs, un dato nuevo que
+  // este flujo desconocía. `GET /saves/:id` (detail.ts) reconstruye `combateIniciado` con un
+  // findFirst por `saveId` sin mirar fecha/reinicio, así que un reinicio dejaba la partida "sucia"
+  // para siempre con el combate viejo reapareciendo de inmediato, sin ninguna vía de UI para salir.
+  // `CombatParticipant` se borra en cascada (`onDelete: Cascade` en el schema), no hace falta un
+  // segundo deleteMany.
+  await tx.combatEncounter.deleteMany({ where: { saveId: save.id } });
   await tx.inventoryItem.deleteMany({ where: { saveId: save.id } });
   await tx.companion.deleteMany({ where: { saveId: save.id } });
   await tx.subject.deleteMany({ where: { saveId: save.id } });
@@ -290,10 +298,27 @@ export async function restartSaveTransactionBody(
       pausedAt: null,
       pendingCombatNpcSlugs: [],
       pendingNpcAttack: Prisma.JsonNull,
+      // Bug real (2026-09-22, mismo hallazgo que el CombatEncounter huérfano de arriba): las 4
+      // ofertas "pending" de modo dinámico/misión/interacción tampoco se limpiaban al reiniciar —
+      // una oferta abierta en el momento del reinicio (p. ej. "GESGURIO BUSCA TU ATENCIÓN") seguía
+      // reapareciendo en la partida ya reiniciada, con el `targetSlug` de la partida ANTERIOR.
+      pendingDynamicMode: Prisma.JsonNull,
+      pendingDynamicModeOffer: Prisma.JsonNull,
+      pendingQuestOfferInfo: Prisma.JsonNull,
+      pendingNpcInteractionOffer: Prisma.JsonNull,
       // Muerte permanente (2026-08-31) — un reinicio total también vuelve al tutorial no
       // superado, mismo criterio que el resto de este bloque (Día 1 sin nada acumulado).
       tutorialCompletedAt: null,
       pendingDeathResolution: false,
+      // Punto del jugador en el mapa de Zona (2026-09-22, bug real: reiniciar una partida dejaba
+      // al jugador en la última posición que tenía ANTES del reinicio, en vez de volver al punto
+      // de entrada — este bloque nunca replicó los campos que `creation.ts` sí fija al crear una
+      // partida nueva. Mismos valores/comentario que ahí: esquina noroeste calibrada para quedar
+      // fuera del radio de persecución de la fauna agresiva conocida de "hondonada-del-eco".
+      zonaPosX: 75,
+      zonaPosY: 75,
+      zonaPosEntradaX: 75,
+      zonaPosEntradaY: 75,
     },
   });
 
