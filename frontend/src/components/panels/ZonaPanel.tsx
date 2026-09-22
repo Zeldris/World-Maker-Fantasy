@@ -3,7 +3,8 @@ import { getZona, moverEnZona, resolveImageUrl, recogerDroppedItem, type ZonaRes
 import { ZonePointDetailModal, zonaDinamicoToDetailSource } from '../ZonePointDetailModal'
 import { ZoneGroupDetailModal } from '../ZoneGroupDetailModal'
 import { ZonaSalidaModal } from '../ZonaSalidaModal'
-import type { LogEntry } from '../../types'
+import { ParcelaDetailModal } from '../ParcelaDetailModal'
+import type { LogEntry, ProfessionRecipeInfo, ZonaParcelaInfo } from '../../types'
 
 interface ZonaPanelProps {
   saveId: string
@@ -42,6 +43,15 @@ interface ZonaPanelProps {
   /// ninguna lógica de viaje nueva — decisión explícita de Álvaro. `undefined` en el caller de
   /// MapaPanel.tsx (vista informativa, no ofrece viajar desde ahí) — no rompe nada sin tocarlo.
   onViajarA?: (actionText: string) => void
+  /// Icono de parcela (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, 2026-09-21) — construir es DIRECTO,
+  /// sin pasar por `onViajarA`/`/turn/narrate` (mismo criterio que "Descansar en campamento"). El
+  /// roster estático de recetas (ya cargado una vez en GameView.tsx vía `useRecipesData`) resuelve
+  /// nombre/descripción por `recipeKey`; `onRefreshSave` recarga Save/Zona tras construir con
+  /// éxito. Ambos `undefined` en el caller de MapaPanel.tsx (vista informativa) dejan el modal sin
+  /// poder construir — la parcela se sigue viendo, solo sin acción real, hasta decidir si esa vista
+  /// también debe ofrecer construir.
+  professionRecipes?: ProfessionRecipeInfo[]
+  onRefreshSave?: () => Promise<void>
 }
 
 /// Grupo 3 § Mundo determinista, Capa 1 (2026-08-25, docs/rpgtarkor/mundo-determinista.md) —
@@ -257,6 +267,25 @@ function SalidaMarker({ x, y }: { x: number; y: number }) {
   )
 }
 
+/// Icono de parcela (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, 2026-09-21) — cuadrado (mismo lenguaje
+/// que `ZonePointShape` usa para EDIFICIO, coherente con "aquí puede haber una construcción") con
+/// una cruz dentro cuando está vacía (hueco disponible) y sin ella cuando ya tiene `Building`
+/// (edificio real, el icono se lee igual que un EDIFICIO normal del mapa). Sin `transform`
+/// animado — como `SalidaMarker`, una parcela nunca se mueve, es un hueco fijo del propio PNG.
+function ParcelaMarker({ x, y, ocupada }: { x: number; y: number; ocupada: boolean }) {
+  return (
+    <g style={{ transform: `translate(${x}px, ${y}px)` }}>
+      <rect x={-9} y={-9} width={18} height={18} fill={ocupada ? '#3a2f1f' : '#1a1410'} stroke={ocupada ? '#a8a29e' : '#d4af37'} strokeWidth={1.5} opacity={0.9} />
+      {!ocupada && (
+        <>
+          <line x1={-5} y1={0} x2={5} y2={0} stroke="#d4af37" strokeWidth={2} />
+          <line x1={0} y1={-5} x2={0} y2={5} stroke="#d4af37" strokeWidth={2} />
+        </>
+      )}
+    </g>
+  )
+}
+
 /// C.6/C.7 (checklist frontend 2026-08-27) — antes 3 comparaciones sueltas sin exhaustividad
 /// comprobada por TypeScript (un 4º estado futuro se colaría en silencio) y sin comprobar que
 /// `agresor` viniera informado en `EN_DISPUTA` (opcional en el tipo). Ahora un `switch` exhaustivo
@@ -290,7 +319,7 @@ function regionControlDisplay(control: RegionControlInfo): { text: string; tone:
   }
 }
 
-export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, columnasAncho = false, onClose, onViajarA }: ZonaPanelProps) {
+export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, columnasAncho = false, onClose, onViajarA, professionRecipes, onRefreshSave }: ZonaPanelProps) {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<ZonaResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -304,6 +333,10 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
   // Icono de salida de región (2026-09-17) — abre `ZonaSalidaModal`, distinto del resto (nunca
   // dispara movimiento/colisión, es puramente informativo hasta que se pulsa "Viajar").
   const [selectedSalida, setSelectedSalida] = useState<ZonaSalidaInfo | null>(null)
+  // Icono de parcela (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, 2026-09-21) — abre
+  // `ParcelaDetailModal`, mismo criterio que `selectedSalida` (puramente informativo hasta que se
+  // pulsa "Construir", nunca dispara movimiento/colisión).
+  const [selectedParcela, setSelectedParcela] = useState<ZonaParcelaInfo | null>(null)
   // Sistema de movimiento por cuadrícula (2026-09-08) — mensaje simple de colisión/aviso ("por
   // ahora, acabaremos metiendo una animación" — placeholder consciente hasta que Franja 3 conecte
   // esto con combate/Interactuar real). `movimientoEnCurso` deshabilita nuevos clics mientras se
@@ -433,8 +466,10 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
         {/* Punto del jugador en el mapa (2026-09-04) — el `<svg>` se pinta también cuando SOLO hay
             dinámicos o SOLO el jugador (antes solo dependía de `puntos.length`, dejando el mapa
             invisible en zonas sin ningún ZonePoint sembrado pero con NPC/fauna dinámico o con el
-            propio marcador del jugador). */}
-        {(data.puntos.length > 0 || dinamicos.length > 0 || data.jugador) && (
+            propio marcador del jugador). Mismo criterio extendido a `parcelas` (§ 7.4, 2026-09-21)
+            — una zona-interior recién creada (Capital/Cuartel Avanzado) nace sin ZonePoint/
+            dinámicos, pero SÍ con Parcelas reales que pintar. */}
+        {(data.puntos.length > 0 || dinamicos.length > 0 || data.jugador || data.parcelas.length > 0) && (
           <div className={`flex overflow-hidden rounded-lg border border-iron-700 bg-wood-950/60 ${columnasAncho ? 'min-h-0 flex-1 items-center justify-center' : ''}`}>
             {/* Sistema de movimiento por cuadrícula (2026-09-08) — clic en el LIENZO (fondo, no un
                 pin) mueve al jugador hacia ese punto; `getScreenCTM().inverse()` convierte la
@@ -537,6 +572,24 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                   <title>{s.visitada ? s.nombre : 'Salida hacia un lugar desconocido'}</title>
                 </g>
               ))}
+              {/* Iconos de parcela (§ 7.4, 2026-09-21) — siempre visibles (mismo criterio que
+                  `salidas`: solo zonas-interior de Capital/Cuartel Avanzado tienen alguna, `[]` en
+                  el resto del mundo). Sin umbral de proximidad propio — a diferencia de una salida
+                  de región, construir es una decisión de gestión, no un desplazamiento; se abre el
+                  modal desde cualquier distancia dentro de la misma zona-interior. */}
+              {data.parcelas.map((p) => (
+                <g
+                  key={p.id}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setSelectedParcela(p)
+                  }}
+                  className="cursor-pointer"
+                >
+                  <ParcelaMarker x={p.x} y={p.y} ocupada={p.building !== null} />
+                  <title>{p.building ? p.building.name : 'Parcela vacía'}</title>
+                </g>
+              ))}
             </svg>
           </div>
         )}
@@ -560,7 +613,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
             puede desincronizarse de lo que de verdad se pinta. Formas dibujadas con el mismo
             `ZonePointMarker` de los pines reales, a tamaño de leyenda (viewBox propio 20×20), en
             vez de reconstruir cada silueta a mano en CSS. */}
-        {(data.puntos.length > 0 || dinamicos.length > 0 || data.jugador) && (
+        {(data.puntos.length > 0 || dinamicos.length > 0 || data.jugador || data.parcelas.length > 0) && (
           <details className="group rounded-lg border border-iron-700 bg-wood-950/40 text-2xs text-wood-400">
             <summary className="tactile flex cursor-pointer select-none items-center gap-1.5 px-3 py-1.5 font-semibold uppercase tracking-[0.1em] text-wood-500 marker:content-none">
               <span aria-hidden="true" className="transition-transform group-open:rotate-90">▸</span>
@@ -590,6 +643,21 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                     <ZonePointMarker tipo="NPC" x={12} y={12} color="#8a8578" hasCompanion />
                   </svg>
                   NPC con compañero
+                </span>
+                {/* Icono de parcela (§ 7.4, 2026-09-21) — cuadrado con cruz = hueco vacío donde
+                    construir, sólido = ya ocupado. Mismo criterio ("nunca desincronizarse de lo
+                    que de verdad se pinta") que el resto de esta leyenda. */}
+                <span className="flex items-center gap-1.5">
+                  <svg viewBox="0 0 24 24" width={14} height={14} aria-hidden="true">
+                    <ParcelaMarker x={12} y={12} ocupada={false} />
+                  </svg>
+                  Parcela vacía
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <svg viewBox="0 0 24 24" width={14} height={14} aria-hidden="true">
+                    <ParcelaMarker x={12} y={12} ocupada={true} />
+                  </svg>
+                  Parcela construida
                 </span>
               </div>
               <div className="flex flex-wrap gap-x-4 gap-y-1.5">
@@ -701,6 +769,24 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
           onViajar={(actionText) => {
             setSelectedSalida(null)
             onViajarA?.(actionText)
+          }}
+        />
+      )}
+      {selectedParcela && (
+        <ParcelaDetailModal
+          saveId={saveId}
+          parcela={selectedParcela}
+          professionRecipes={professionRecipes ?? []}
+          onCancel={() => setSelectedParcela(null)}
+          onConstruido={(logEntry) => {
+            setSelectedParcela(null)
+            // Mismo patrón que `handleRecoger` — recarga la zona para que el icono pase de "hueco
+            // vacío" a "edificio real" sin esperar a que el jugador cambie de pestaña y vuelva.
+            getZona(saveId).then(setData).catch(() => {})
+            onRefreshSave?.()
+            // logEntry ya viene resuelto por completo del backend — mismo mecanismo que el resto
+            // de encuentros de zona insertan su LogEntry real en el log de personaje.
+            onEncuentroZona?.(logEntry)
           }}
         />
       )}

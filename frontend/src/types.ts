@@ -159,6 +159,34 @@ export interface RecipeStatusInfo {
   blockedReason: string | null
 }
 
+/// Icono de parcela en el mapa de Zona (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, 2026-09-21) — una
+/// por cada `Parcela` sembrada en la Location actual (`ZonaResponse.parcelas`, backend). Solo las
+/// zonas-interior de Capital/Cuartel Avanzado tienen filas reales; el resto del mundo siempre `[]`.
+/// Shape mínimo para pintar el icono/decidir qué modal abrir — el contenido real (candidatas,
+/// `blockedReason`) se pide aparte bajo demanda, ver `ParcelaDetailInfo` abajo.
+export interface ZonaParcelaInfo {
+  id: string
+  x: number
+  y: number
+  tipo: 'BASICA' | 'AVANZADA'
+  /// Ya construido aquí — el icono/modal muestran el edificio real en vez de un hueco vacío, y
+  /// nunca ofrecen "Construir".
+  building: { id: string; name: string; status: string } | null
+}
+
+/// Detalle bajo demanda de una parcela concreta (GET /saves/:id/parcelas/:parcelaId) — se pide al
+/// abrir el modal, mismo criterio que el resto de modales de detalle del proyecto (el mapa solo
+/// pinta iconos con lo mínimo, el detalle real es una llamada aparte). `candidates` reutiliza
+/// `RecipeStatusInfo` tal cual (mismo shape que ya devuelve /recipes-status, sin inventar un tipo
+/// paralelo) — AVANZADA siempre trae 1 sola candidata (su `recipeKeyFijo`); BASICA trae todas las
+/// que apliquen, el jugador elige cuál construir.
+export interface ParcelaDetailInfo {
+  parcela: { id: string; tipo: 'BASICA' | 'AVANZADA'; x: number; y: number; locationName?: string }
+  ocupada: boolean
+  building: { id: string; name: string; status: string } | null
+  candidates: RecipeStatusInfo[]
+}
+
 /// Economía de Reino (sesión de diseño 2026-07-23) — null hasta que se funda el primer Territory.
 export interface KingdomStatsInfo {
   poblacion: number
@@ -572,6 +600,9 @@ export interface CompanionInfo {
   /// Grupos de combate (2026-09-08) — 0 = Grupo 1 (el que entra a combate en directo, junto al
   /// jugador). Gestión real (mover/renombrar/crear) vive en CombatGroupsModal.tsx.
   combatGroupSlotIndex: number
+  /// Producción de Reino estilo Bellwright (hueco D, 2026-09-21, docs/rpgtarkor/mundo-vivo-x4.md
+  /// § 4.4-ter) — a qué Building está asignado como trabajador; null = no asignado.
+  buildingId: string | null
 }
 
 export interface AlmacenItemInfo {

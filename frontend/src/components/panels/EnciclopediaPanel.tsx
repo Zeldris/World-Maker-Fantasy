@@ -399,6 +399,7 @@ function EntryCardGrid<T>({
   discovered,
   fase,
   search,
+  matchesFilter,
 }: {
   items: T[]
   keyOf: (item: T) => string
@@ -424,8 +425,14 @@ function EntryCardGrid<T>({
   /// texto, solo navegar tab→colapsable→cuadrícula a ojo") — filtro por nombre, sin distinguir
   /// mayúsculas/acentos, aplicado uniformemente en las 13 categorías que usan esta grilla.
   search?: string
+  /// Filtros por chip (2026-09-21, petición explícita: "filtros marcables... por raza, por
+  /// taxonomía... si los desmarco todos se ve todo") — predicado ya resuelto por el caller (sabe
+  /// qué campo(s) mirar y con qué Set de valores activos), aplicado DESPUÉS del buscador. Ausente =
+  /// sin filtro adicional, mismo comportamiento que antes de esta pieza.
+  matchesFilter?: (item: T) => boolean
 }) {
-  const filtered = search ? items.filter((item) => normalizeSearchText(name(item)).includes(normalizeSearchText(search))) : items
+  const bySearch = search ? items.filter((item) => normalizeSearchText(name(item)).includes(normalizeSearchText(search))) : items
+  const filtered = matchesFilter ? bySearch.filter(matchesFilter) : bySearch
   return (
     <div className={wide ? 'grid grid-cols-2 gap-2 sm:grid-cols-3' : 'grid grid-cols-3 gap-2 sm:grid-cols-4'}>
       {filtered.map((item) => {
@@ -502,7 +509,9 @@ function CollapsibleGroup({
 }
 
 // Set de claves expandidas (2026-07-29) — un solo hook reutilizado por los 4 colapsables de este
-// panel; Set en vez de un solo string porque abrir un grupo no debería cerrar otro.
+// panel; Set en vez de un solo string porque abrir un grupo no debería cerrar otro. Reutilizado tal
+// cual (2026-09-21) como estado de "valores de filtro marcados" — mismo shape exacto: Set vacío =
+// nada marcado.
 function useToggleSet(): [Set<string>, (key: string) => void] {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const toggle = (key: string) =>
@@ -513,6 +522,50 @@ function useToggleSet(): [Set<string>, (key: string) => void] {
       return next
     })
   return [expanded, toggle]
+}
+
+// Filtros marcables por chip/píldora (petición explícita de Álvaro, 2026-09-21: "filtros
+// marcables... por raza, por taxonomía... más que checkbox botones de colores que aparecen
+// marcados o desmarcados, moderno... si los desmarco todos se ve todo") — mismo vocabulario visual
+// que EnciclopediaLinkedText/ChatComposer (`rounded-full border`, acento cuando está activo).
+// Semántica fija: Set vacío = sin filtrar (se ve todo, ningún chip marcado); con 1+ marcados, OR
+// entre ellos (cualquiera de los marcados, nunca intersección — no tendría sentido aquí, cada
+// entidad solo tiene un valor por eje). Genérico sobre `value` (string) para no repetir el mismo
+// botón por cada eje de filtro (raza/facción/tipo/categoría/oficio...).
+function FilterChips({
+  label,
+  options,
+  active,
+  onToggle,
+}: {
+  label: string
+  options: { value: string; label: string; count: number }[]
+  active: Set<string>
+  onToggle: (value: string) => void
+}) {
+  if (options.length <= 1) return null
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <span className="text-2xs font-semibold uppercase tracking-[0.1em] text-wood-600">{label}:</span>
+      {options.map((opt) => {
+        const isActive = active.has(opt.value)
+        return (
+          <button type="button"
+            key={opt.value}
+            onClick={() => onToggle(opt.value)}
+            aria-pressed={isActive}
+            className={`tactile rounded-full border px-2.5 py-1 text-2xs font-medium transition-colors ${
+              isActive
+                ? 'border-accent2-500 bg-accent2-500/20 text-accent2-300'
+                : 'border-iron-700 bg-wood-950/40 text-wood-400 hover:border-iron-600 hover:text-wood-200'
+            }`}
+          >
+            {opt.label} <span className="font-mono text-[0.65rem] opacity-70">({opt.count})</span>
+          </button>
+        )
+      })}
+    </div>
+  )
 }
 
 const CATEGORY_TABS: { id: EnciclopediaCategory; label: string; icon: string }[] = [
@@ -597,6 +650,18 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
   // cronologicamente en rangos de 500 años... antes de el año 0 no hay escritos en lengua común")
   // — mismo patrón que attributesSubTab, exclusivas entre sí.
   const [historiaEra, setHistoriaEra] = useState<'comun' | 'semillas'>('comun')
+  // Filtros por chip (2026-09-21, petición explícita de Álvaro) — un eje por categoría, el que NO
+  // tiene ya un colapsable propio (NPCs ya agrupa por raza → filtro por facción; Objetos ya agrupa
+  // por tipo → filtro por categoría/subtipo; Fauna/Flora ya agrupan por zona → filtro por
+  // categoría taxonómica; Construcciones ya agrupa por raza → filtro por oficio). Facciones/
+  // Crafteo se quedan sin filtro nuevo: su único eje real ya es el colapsable existente, un
+  // segundo filtro sobre el mismo dato sería redundante. Mismo hook `useToggleSet` que ya usan los
+  // colapsables — Set vacío = sin filtrar, ver todo.
+  const [npcFaccionFilter, toggleNpcFaccion] = useToggleSet()
+  const [itemCategoryFilter, toggleItemCategory] = useToggleSet()
+  const [faunaCategoriaFilter, toggleFaunaCategoria] = useToggleSet()
+  const [floraCategoriaFilter, toggleFloraCategoria] = useToggleSet()
+  const [constructionOficioFilter, toggleConstructionOficio] = useToggleSet()
 
   // Agrupación en dos niveles (2026-07-29, categorización mecánica de objetos): tipo (amplio,
   // exterior) → categoría (subtipo fino, el groupBy de siempre, ahora anidado) — mismo patrón ya
@@ -618,6 +683,25 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
   const faunaEntries = faunaFlora.filter((e) => e.esFauna)
   const floraEntries = faunaFlora.filter((e) => !e.esFauna)
 
+  // Filtro por chip de Objetos, eje Categoría/subtipo (2026-09-21) — complementario al colapsable
+  // por `tipo` (amplio, exterior); `ITEM_CATEGORY_LABEL` ya existe para el mismo campo (usado en
+  // los títulos de PanelSection dentro de cada colapsable), reutilizado aquí para la etiqueta.
+  const itemCategoryOptions = Array.from(groupBy(items, (i) => i.category))
+    .map(([cat, list]) => ({ value: cat, label: ITEM_CATEGORY_LABEL[cat] ?? cat, count: list.length }))
+    .sort((a, b) => a.label.localeCompare(b.label))
+
+  // Filtro por chip de Fauna/Flora, eje categoría taxonómica (2026-09-21, "por taxonomía") —
+  // complementario al colapsable por zona; `faunaCategoria`/`floraCategoria` son mutuamente
+  // excluyentes según `esFauna` (ver EnciclopediaFaunaFloraInfo), así que cada lista solo mira su
+  // propio campo. Entradas sin categoría asignada quedan fuera de las opciones (mismo criterio que
+  // NPCs sin facción arriba).
+  const faunaCategoriaOptions = Array.from(groupBy(faunaEntries.filter((e) => e.faunaCategoria), (e) => e.faunaCategoria as string))
+    .map(([cat, list]) => ({ value: cat, label: cat, count: list.length }))
+    .sort((a, b) => a.label.localeCompare(b.label))
+  const floraCategoriaOptions = Array.from(groupBy(floraEntries.filter((e) => e.floraCategoria), (e) => e.floraCategoria as string))
+    .map(([cat, list]) => ({ value: cat, label: cat, count: list.length }))
+    .sort((a, b) => a.label.localeCompare(b.label))
+
   // Colapsables por raza de NPC (2026-07-29, petición explícita: "a los NPC separarlos por
   // raza") — `razaNameBySlug` resuelve el nombre real desde `razas` (ya cargado para la propia
   // pestaña de razas); NPCs sin raza asignada (facciones humanas genéricas, patrullas...) caen en
@@ -629,6 +713,14 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
     ...razas.map((r) => r.slug).filter((slug) => npcsByRaza.has(slug)),
     ...(npcsByRaza.has(SIN_RAZA) ? [SIN_RAZA] : []),
   ]
+  // Filtro por chip de NPCs, eje Facción (2026-09-21) — complementario al colapsable por raza de
+  // arriba, no redundante con él. `f.faction` es texto libre (no un slug de catálogo), así que se
+  // deriva directo de los NPCs presentes en vez de cruzar con `factions`; NPCs sin facción quedan
+  // fuera de las opciones (no tiene sentido un chip "sin facción" cuando la mayoría de fauna/NPCs
+  // sueltos no la tienen — el buscador y el resto de chips ya cubren ese caso).
+  const npcFaccionOptions = Array.from(groupBy(npcs.filter((n) => n.faction), (n) => n.faction as string))
+    .map(([faction, list]) => ({ value: faction, label: faction, count: list.length }))
+    .sort((a, b) => a.label.localeCompare(b.label))
 
   // Facciones agrupadas por raza (2026-08-06, petición explícita: "las facciones agrupadas por
   // raza") — mismo patrón exacto que NPCs-por-raza de arriba; `Faction.raza` nunca es null, así
@@ -675,6 +767,12 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
     craftingRecipes.filter((r): r is typeof craftingRecipes[number] & { oficio: string } => !!r.oficio),
     (r) => r.oficio,
   )
+  // Filtro por chip de Construcciones, eje Oficio (2026-09-21) — complementario al colapsable por
+  // raza (arriba); reutiliza `oficioNameById` recién declarado, aplicado dentro de
+  // `renderConstructionList` más abajo (no aquí, donde no aplica a ninguna cuadrícula propia).
+  const constructionOficioOptions = Array.from(groupBy(constructionRecipes.filter((r) => r.oficio), (r) => r.oficio as string))
+    .map(([oficioId, list]) => ({ value: oficioId, label: oficioNameById.get(oficioId) ?? oficioId, count: list.length }))
+    .sort((a, b) => a.label.localeCompare(b.label))
   // Estado real de materiales EN ESTA PARTIDA (2026-08-13) — atenúa la tarjeta y sustituye el
   // listado estático "Necesita: X de Y" por el conteo real "Y: tienes/necesitas" cuando hay una
   // partida activa. Sin `saveId` (Enciclopedia fuera de partida), `recipesStatus` llega vacío y
@@ -692,7 +790,14 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
   function renderRecipeList<
     R extends { key: string; name: string; oficio: string | null; tier: number | null; requirements: { cantidad: number; label: string }[]; imageUrls: EnciclopediaImageUrls },
   >(recipes: R[], statusCategory: 'crafteo' | 'construccion', icon: string, insertValue: (recipe: R) => string, toDetailTarget: (recipe: R, status?: RecipeStatusInfo) => DetailTarget) {
-    const filtered = search ? recipes.filter((r) => normalizeSearchText(r.name).includes(normalizeSearchText(search))) : recipes
+    const bySearch = search ? recipes.filter((r) => normalizeSearchText(r.name).includes(normalizeSearchText(search))) : recipes
+    // Filtro por chip de Construcciones por oficio (2026-09-21) — solo aplica en esa categoría
+    // (`renderCraftingList` reutiliza la misma función, pero Crafteo ya se agrupa por oficio, sin
+    // filtro propio); Set vacío = sin filtrar, ver todo.
+    const filtered =
+      statusCategory === 'construccion' && constructionOficioFilter.size > 0
+        ? bySearch.filter((r) => r.oficio && constructionOficioFilter.has(r.oficio))
+        : bySearch
     return (
       <div className="flex flex-col gap-2">
         {filtered.map((recipe) => {
@@ -819,15 +924,23 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
                 <PanelEmptyState icon="🧑" title="Sin NPCs catalogados" hint="Todavía no hay ninguno en este mundo." />
               ) : (
                 <div className="flex flex-col gap-3">
+                  <FilterChips label="Facción" options={npcFaccionOptions} active={npcFaccionFilter} onToggle={toggleNpcFaccion} />
                   {/* Colapsables por raza (2026-07-29, petición explícita: "a los NPC
-                      separarlos por raza"). */}
+                      separarlos por raza"). Con el filtro de facción activo (2026-09-21, "los
+                      números y las categorías no desaparecen al marcar un filtro"): el número de
+                      cabecera pasa a ser el recuento YA filtrado, y el grupo entero se oculta si
+                      no queda ningún NPC de esa raza en las facciones marcadas — mismo criterio
+                      que ya se aplicó a Construcciones. */}
                   {orderedNpcRazas.map((raza) => {
                     const razaNpcs = npcsByRaza.get(raza) ?? []
+                    const visibleCount =
+                      npcFaccionFilter.size === 0 ? razaNpcs.length : razaNpcs.filter((n) => !!n.faction && npcFaccionFilter.has(n.faction)).length
+                    if (visibleCount === 0) return null
                     return (
                       <CollapsibleGroup
                         key={raza}
                         title={raza === SIN_RAZA ? 'Sin raza asignada' : (razaNameBySlug.get(raza) ?? raza)}
-                        count={razaNpcs.length}
+                        count={visibleCount}
                         expanded={expandedNpcRazas.has(raza)}
                         onToggle={() => toggleNpcRaza(raza)}
                       >
@@ -845,6 +958,7 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
                           discovered={(npc) => npc.discovered}
                           fase={(npc) => npc.fase}
                           search={search}
+                          matchesFilter={npcFaccionFilter.size === 0 ? undefined : (npc) => !!npc.faction && npcFaccionFilter.has(npc.faction)}
                         />
                       </CollapsibleGroup>
                     )
@@ -857,21 +971,33 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
                 <PanelEmptyState icon="📦" title="Sin objetos catalogados" hint="Todavía no hay ninguno en este mundo." />
               ) : (
                 <div className="flex flex-col gap-3">
+                  <FilterChips label="Categoría" options={itemCategoryOptions} active={itemCategoryFilter} onToggle={toggleItemCategory} />
                   {/* Colapsables por tipo (2026-07-29, petición explícita: "además de la
                       clasificación actual, quiero colapsables por tipo de item") — la
                       clasificación tipo→categoría de siempre se mantiene intacta DENTRO de cada
-                      colapsable. */}
+                      colapsable. Con el filtro de categoría activo (2026-09-21, "los números y las
+                      categorías no desaparecen al marcar un filtro"): el filtro coincide 1:1 con el
+                      eje `category` de `orderedCategoriesFor`, así que se descartan directamente
+                      las sub-categorías no marcadas ANTES de renderizar — el número de cabecera del
+                      tipo sale ya correcto sumando lo que queda, y el tipo entero se oculta si no
+                      le queda ninguna categoría visible. */}
                   {orderedItemTipos.map((tipo) => {
                     const tipoItems = itemsByTipo.get(tipo) ?? []
+                    const visibleCategories =
+                      itemCategoryFilter.size === 0
+                        ? orderedCategoriesFor(tipoItems)
+                        : orderedCategoriesFor(tipoItems).filter(([cat]) => itemCategoryFilter.has(cat))
+                    const visibleCount = visibleCategories.reduce((sum, [, catItems]) => sum + catItems.length, 0)
+                    if (visibleCount === 0) return null
                     return (
                       <CollapsibleGroup
                         key={tipo}
                         title={ITEM_TIPO_LABEL[tipo as (typeof ITEM_TIPO_ORDER)[number]] ?? tipo}
-                        count={tipoItems.length}
+                        count={visibleCount}
                         expanded={expandedItemTipos.has(tipo)}
                         onToggle={() => toggleItemTipo(tipo)}
                       >
-                        {orderedCategoriesFor(tipoItems).map(([cat, catItems]) => (
+                        {visibleCategories.map(([cat, catItems]) => (
                           <PanelSection key={cat} title={ITEM_CATEGORY_LABEL[cat] ?? cat}>
                             <EntryCardGrid
                               items={catItems}
@@ -901,13 +1027,21 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
                 <PanelEmptyState icon="🐾" title="Sin fauna catalogada" hint="Todavía no hay ninguna en este mundo." />
               ) : (
                 <div className="flex flex-col gap-3">
+                  <FilterChips label="Categoría" options={faunaCategoriaOptions} active={faunaCategoriaFilter} onToggle={toggleFaunaCategoria} />
                   {/* Colapsables por zona (2026-07-29, petición explícita: "que fauna y flora
-                      tenga colapsables separándolos por zona"). */}
-                  {groupedByZona(faunaEntries).map(([zona, zonaEntries]) => (
+                      tenga colapsables separándolos por zona"). Con el filtro de categoría activo
+                      (2026-09-21): número de cabecera ya filtrado, zona oculta si se queda vacía. */}
+                  {groupedByZona(faunaEntries).map(([zona, zonaEntries]) => {
+                    const visibleCount =
+                      faunaCategoriaFilter.size === 0
+                        ? zonaEntries.length
+                        : zonaEntries.filter((e) => !!e.faunaCategoria && faunaCategoriaFilter.has(e.faunaCategoria)).length
+                    if (visibleCount === 0) return null
+                    return (
                     <CollapsibleGroup
                       key={zona}
                       title={zona === SIN_ZONA ? 'Zona desconocida' : zona}
-                      count={zonaEntries.length}
+                      count={visibleCount}
                       expanded={expandedFaunaZonas.has(zona)}
                       onToggle={() => toggleFaunaZona(zona)}
                     >
@@ -925,9 +1059,11 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
                         discovered={(entry) => entry.discovered}
                         fase={(entry) => entry.fase}
                         search={search}
+                        matchesFilter={faunaCategoriaFilter.size === 0 ? undefined : (entry) => !!entry.faunaCategoria && faunaCategoriaFilter.has(entry.faunaCategoria)}
                       />
                     </CollapsibleGroup>
-                  ))}
+                    )
+                  })}
                 </div>
               ))}
 
@@ -936,11 +1072,20 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
                 <PanelEmptyState icon="🌿" title="Sin flora catalogada" hint="Todavía no hay ninguna en este mundo." />
               ) : (
                 <div className="flex flex-col gap-3">
-                  {groupedByZona(floraEntries).map(([zona, zonaEntries]) => (
+                  <FilterChips label="Categoría" options={floraCategoriaOptions} active={floraCategoriaFilter} onToggle={toggleFloraCategoria} />
+                  {/* Con el filtro de categoría activo (2026-09-21): mismo criterio que Fauna
+                      arriba — número de cabecera ya filtrado, zona oculta si se queda vacía. */}
+                  {groupedByZona(floraEntries).map(([zona, zonaEntries]) => {
+                    const visibleCount =
+                      floraCategoriaFilter.size === 0
+                        ? zonaEntries.length
+                        : zonaEntries.filter((e) => !!e.floraCategoria && floraCategoriaFilter.has(e.floraCategoria)).length
+                    if (visibleCount === 0) return null
+                    return (
                     <CollapsibleGroup
                       key={zona}
                       title={zona === SIN_ZONA ? 'Zona desconocida' : zona}
-                      count={zonaEntries.length}
+                      count={visibleCount}
                       expanded={expandedFloraZonas.has(zona)}
                       onToggle={() => toggleFloraZona(zona)}
                     >
@@ -958,9 +1103,11 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
                         discovered={(entry) => entry.discovered}
                         fase={(entry) => entry.fase}
                         search={search}
+                        matchesFilter={floraCategoriaFilter.size === 0 ? undefined : (entry) => !!entry.floraCategoria && floraCategoriaFilter.has(entry.floraCategoria)}
                       />
                     </CollapsibleGroup>
-                  ))}
+                    )
+                  })}
                 </div>
               ))}
 
@@ -1241,7 +1388,11 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
                 <PanelEmptyState icon="🏗️" title="Sin construcciones catalogadas" hint="Todavía no hay ninguna disponible." />
               ) : (
                 <div className="flex flex-col gap-3">
-                  {commonConstructions.length > 0 && (
+                  <FilterChips label="Oficio" options={constructionOficioOptions} active={constructionOficioFilter} onToggle={toggleConstructionOficio} />
+                  {/* "Común" nunca tiene `oficio` (campamento/ayuntamiento) — con el filtro de
+                      oficio activo, nunca puede haber match, así que se oculta el grupo entero en
+                      vez de dejarlo desplegable y vacío. */}
+                  {commonConstructions.length > 0 && constructionOficioFilter.size === 0 && (
                     <CollapsibleGroup
                       title="Común"
                       count={commonConstructions.length}
@@ -1253,12 +1404,13 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
                   )}
                   {razas.map((raza) => {
                     const list = constructionsByRaza.get(raza.slug) ?? []
-                    if (list.length === 0) return null
+                    const visibleCount = constructionOficioFilter.size === 0 ? list.length : list.filter((r) => r.oficio && constructionOficioFilter.has(r.oficio)).length
+                    if (visibleCount === 0) return null
                     return (
                       <CollapsibleGroup
                         key={raza.slug}
                         title={raza.name}
-                        count={list.length}
+                        count={visibleCount}
                         expanded={expandedConstructionGroups.has(raza.slug)}
                         onToggle={() => toggleConstructionGroup(raza.slug)}
                       >

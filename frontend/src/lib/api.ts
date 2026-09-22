@@ -27,6 +27,7 @@ import type {
   HarvestSourceCandidate,
   GatheringRollInfo,
   HuntCandidate,
+  ParcelaDetailInfo,
   PostCombatInteractionInfo,
   PlantillaEquipoInfo,
   ProfessionProgressInfo,
@@ -42,6 +43,7 @@ import type {
   SessionSummaryInfo,
   SubjectInfo,
   TerritoryInfo,
+  ZonaParcelaInfo,
 } from '../types'
 
 // VITE_API_URL permite apuntar a otro backend (staging, otra máquina) sin tocar código;
@@ -1174,9 +1176,30 @@ export interface ZonaResponse {
   /// libre. `null` = partida previa a esta pieza, o sin nada que asignar todavía.
   jugador: { x: number; y: number } | null
   salidas: ZonaSalidaInfo[]
+  /// Icono de parcela (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, 2026-09-21) — solo relleno en las
+  /// zonas-interior de Capital/Cuartel Avanzado; `[]` en el resto del mundo.
+  parcelas: ZonaParcelaInfo[]
 }
 export async function getZona(saveId: string): Promise<ZonaResponse> {
   return fetchJson(`${API_URL}/saves/${saveId}/zona`)
+}
+
+/// Detalle bajo demanda de una parcela (2026-09-21) — se pide al abrir su modal, mismo criterio
+/// que el resto del panel (el mapa solo pinta iconos con lo mínimo).
+export async function getParcela(saveId: string, parcelaId: string): Promise<ParcelaDetailInfo> {
+  return fetchJson(`${API_URL}/saves/${saveId}/parcelas/${parcelaId}`)
+}
+
+/// Construir DIRECTO en una parcela (2026-09-21) — sin /turn/narrate, sin LLM (mismo criterio que
+/// "Descansar en campamento": ya se sabe exactamente qué y dónde). El backend devuelve el
+/// `Building` real creado y el `LogEntry` determinista del evento; el caller decide si refresca
+/// `getZona`/`getSave` tras la llamada.
+export async function construirEnParcela(saveId: string, parcelaId: string, recipeKey: string): Promise<{ building: BuildingInfo; logEntry: LogEntry }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/parcelas/${parcelaId}/construir`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ recipeKey }),
+  })
 }
 
 /// Sistema de movimiento por cuadrícula (2026-09-08, "estilo Mount & Blade") — un clic en el lienzo
@@ -1455,6 +1478,151 @@ export async function asignarPlantillaSubject(saveId: string, subjectId: string,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ plantillaEquipoId }),
   })
+}
+
+/// Producción de Reino estilo Bellwright (hueco D, rediseño 2026-09-21, docs/rpgtarkor/
+/// mundo-vivo-x4.md § 4.4-ter) — trabajador↔edificio, sin filtrado de receta por tipo de edificio
+/// (decisión confirmada: el motor real solo mira nivel de oficio, nunca el `Building`).
+export async function asignarCompanionABuilding(saveId: string, companionId: string, buildingId: string | null): Promise<{ ok: boolean; companion: { id: string; buildingId: string | null } }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/companeros/${companionId}/asignar-edificio`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ buildingId }),
+  })
+}
+
+export interface OrdenProduccionInfo {
+  id: string
+  buildingId: string
+  recipeKey: string
+  modo: 'unico' | 'reponer'
+  limite: number | null
+  prioridad: number
+  cantidadProducidaAcumulada: number
+  activa: boolean
+}
+
+export async function getOrdenesProduccion(saveId: string, buildingId: string): Promise<{ ordenes: OrdenProduccionInfo[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/edificios/${buildingId}/ordenes`)
+}
+
+export async function crearOrdenProduccion(
+  saveId: string,
+  buildingId: string,
+  params: { recipeKey: string; modo?: 'unico' | 'reponer'; limite?: number | null; prioridad?: number },
+): Promise<{ ok: boolean; orden: OrdenProduccionInfo }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/edificios/${buildingId}/ordenes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  })
+}
+
+export async function actualizarOrdenProduccion(
+  saveId: string,
+  ordenId: string,
+  params: { prioridad?: number; limite?: number | null; activa?: boolean },
+): Promise<{ ok: boolean; orden: OrdenProduccionInfo }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/ordenes/${ordenId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  })
+}
+
+export async function borrarOrdenProduccion(saveId: string, ordenId: string): Promise<{ ok: boolean }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/ordenes/${ordenId}`, { method: 'DELETE' })
+}
+
+export interface AlmacenLimiteInfo {
+  catalogSlug: string
+  limite: number | null
+}
+
+export async function getAlmacenLimites(saveId: string): Promise<{ limites: AlmacenLimiteInfo[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/almacen-limites`)
+}
+
+export async function setAlmacenLimite(saveId: string, catalogSlug: string, limite: number | null): Promise<{ ok: boolean; catalogSlug: string; limite: number | null }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/almacen-limites`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ catalogSlug, limite }),
+  })
+}
+
+/// Diplomacia y Mercado (Fase 3, 2026-09-21, docs/rpgtarkor/mundo-vivo-x4.md § 4.4) — las rutas de
+/// backend ya existían y funcionaban (reino.ts), pero sin ningún cliente en el frontend hasta ahora.
+export interface DiplomaciaResultado {
+  ok: true
+  accion: 'negociar' | 'sabotear' | 'espiar'
+  targetFaction: string
+  hechoDeMundo: string | null
+  /// Solo presente en `accion: 'espiar'` — nunca mueve presión, es la única vía real por la que el
+  /// jugador ve el estado de una FactionRelation.
+  presion?: number
+  type?: 'NEUTRAL' | 'TENSION' | 'GUERRA' | 'ALIANZA' | 'TRATADO_COMERCIAL'
+  stage?: number
+}
+
+export async function postDiplomacia(
+  saveId: string,
+  params: { companionId: string; targetFactionSlug: string; accion: 'negociar' | 'sabotear' | 'espiar' },
+): Promise<DiplomaciaResultado> {
+  return fetchJson(`${API_URL}/saves/${saveId}/reino/diplomacia`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  })
+}
+
+export interface MercadoItemInfo {
+  almacenItemId: string
+  name: string
+  catalogSlug: string
+  stock: number
+  precio: number
+}
+
+export async function getMercado(saveId: string, targetFactionSlug: string): Promise<{ ok: boolean; tratado: boolean; items: MercadoItemInfo[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/reino/mercado/${targetFactionSlug}`)
+}
+
+export async function postMercadoComprar(saveId: string, targetFactionSlug: string, almacenItemId: string): Promise<{ ok: boolean; precio: number; item: string; targetFaction: string }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/reino/mercado/comprar`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ targetFactionSlug, almacenItemId }),
+  })
+}
+
+export async function postMercadoVender(saveId: string, targetFactionSlug: string, almacenItemId: string): Promise<{ ok: boolean; precio: number; item: string; targetFaction: string }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/reino/mercado/vender`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ targetFactionSlug, almacenItemId }),
+  })
+}
+
+/// Relaciones entre facciones NPC (Fase 4, 2026-09-21, docs/rpgtarkor/mundo-vivo-x4.md § 4.3) —
+/// nunca la facción del jugador, solo facciones de catálogo entre sí. `worldSlug` es el `slug` de
+/// `World`, no confundir con un slug de Faction.
+export interface FactionRelationInfo {
+  sourceFactionSlug: string
+  sourceFactionName: string
+  sourceRaza: string
+  targetFactionSlug: string
+  targetFactionName: string
+  targetRaza: string
+  type: 'NEUTRAL' | 'TENSION' | 'GUERRA' | 'ALIANZA' | 'TRATADO_COMERCIAL'
+  presion: number
+  stage: number
+  maxStage: number
+}
+
+export async function getFactionRelations(worldSlug: string, saveId?: string): Promise<{ relations: FactionRelationInfo[] }> {
+  const query = saveId ? `?saveId=${saveId}` : ''
+  return fetchJson(`${API_URL}/world/${worldSlug}/faction-relations${query}`)
 }
 
 /// Confirmar selección del pop-up de caza. Con una única presa débil puede resolverse sin combate
@@ -2055,6 +2223,9 @@ export interface EnciclopediaFaccionInfo {
   name: string
   raza: string
   description: string
+  /// Líder de GOBIERNO (§ 7.2, docs/rpgtarkor/mundo-vivo-x4.md, 2026-09-21) — null = sin líder real
+  /// sembrado todavía en el catálogo (nunca inventado en servicio).
+  liderNpc: { slug: string; name: string } | null
   discovered: boolean
   /// 3 fases (2026-09-08) — ver DiscoveryFase. Una facción nunca tiene "presencia en escena"
   /// propia: siempre CITADO como mucho (nunca 'DESCUBIERTO' aquí hoy), expuesto solo por

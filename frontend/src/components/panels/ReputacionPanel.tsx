@@ -3,6 +3,7 @@ import { PanelEmptyState } from '../PanelEmptyState'
 import type { EnciclopediaFaccionInfo } from '../../lib/api'
 import { faccionToDetailTarget } from '../../lib/enciclopediaTargets'
 import { useEnciclopediaLink } from '../../context/useEnciclopediaLink'
+import { RelacionesFaccionesModal } from '../RelacionesFaccionesModal'
 
 // Gauge 0-5000 por facción (backend: reputation.ts) — mismo concepto que la barra de XP, pero
 // bipolar: 2500 es el punto neutro, sube hacia AMIGABLE o baja hacia ENEMIGO. Umbrales duplicados
@@ -111,20 +112,49 @@ interface ReputacionPanelProps {
   /// infraestructura para esto"). Solo se ofrece el enlace si la facción ya está descubierta —
   /// nunca revela una ficha de Enciclopedia todavía bloqueada desde aquí.
   factions: EnciclopediaFaccionInfo[]
+  /// Relaciones entre facciones NPC (Fase 4, 2026-09-21) — vive aquí (eje mundo/facciones), no en
+  /// Reino. `undefined` en cualquier caller que no tenga el mundo cargado todavía (no debería pasar
+  /// en la práctica) oculta el botón en vez de abrir un modal roto.
+  worldSlug?: string | null
+  saveId?: string | null
 }
 
-export function ReputacionPanel({ factionsStatus, factions }: ReputacionPanelProps) {
+export function ReputacionPanel({ factionsStatus, factions, worldSlug, saveId }: ReputacionPanelProps) {
   const entries = Object.entries(factionsStatus)
   const { onEntityDetail } = useEnciclopediaLink()
   const factionByName = new Map(factions.filter((f) => f.discovered).map((f) => [f.name, f]))
+  const [relacionesAbierto, setRelacionesAbierto] = useState(false)
+
+  // Bug real (verificación en vivo, 2026-09-21): el botón "Ver relaciones entre facciones" vivía
+  // DENTRO del `return` normal, después del guard `entries.length === 0` — pero esas relaciones
+  // son entre facciones NPC (FactionRelation, independiente de `factionsStatus`, que es solo
+  // reputación jugador↔facción). Con 0 combates/interacciones (partida recién empezada, o un
+  // jugador pacífico) el guard cortaba antes, ocultando un botón que no depende en nada de haber
+  // combatido — es perfectamente razonable querer consultar cómo se llevan Clan Serhu y Clan
+  // Helsig entre sí sin haber tocado a ninguno todavía. Se extrae fuera de ambas ramas.
+  const relacionesButton = worldSlug && (
+    <button
+      type="button"
+      onClick={() => setRelacionesAbierto(true)}
+      className="tactile self-start text-2xs text-accent-300 hover:underline"
+    >
+      Ver relaciones entre facciones
+    </button>
+  )
 
   if (entries.length === 0) {
     return (
-      <PanelEmptyState
-        icon="🤝"
-        title="Todavía sin reputación con ninguna facción"
-        hint="Cómo trates a los NPCs de cada facción — en combate o en paz — sube o baja esta barra. Una facción hostil reacciona distinto a una amigable la próxima vez que te la cruces."
-      />
+      <div className="flex flex-col gap-3">
+        <PanelEmptyState
+          icon="🤝"
+          title="Todavía sin reputación con ninguna facción"
+          hint="Cómo trates a los NPCs de cada facción — en combate o en paz — sube o baja esta barra. Una facción hostil reacciona distinto a una amigable la próxima vez que te la cruces."
+        />
+        {relacionesButton}
+        {relacionesAbierto && worldSlug && (
+          <RelacionesFaccionesModal worldSlug={worldSlug} saveId={saveId ?? null} onCancel={() => setRelacionesAbierto(false)} />
+        )}
+      </div>
     )
   }
 
@@ -133,6 +163,10 @@ export function ReputacionPanel({ factionsStatus, factions }: ReputacionPanelPro
       {entries.map(([faction, value]) => (
         <FactionRow key={faction} faction={faction} value={value} factionEntry={factionByName.get(faction)} onEntityDetail={onEntityDetail} />
       ))}
+      {relacionesButton}
+      {relacionesAbierto && worldSlug && (
+        <RelacionesFaccionesModal worldSlug={worldSlug} saveId={saveId ?? null} onCancel={() => setRelacionesAbierto(false)} />
+      )}
     </div>
   )
 }

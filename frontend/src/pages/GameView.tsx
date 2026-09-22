@@ -37,7 +37,7 @@ import { useClaseEspecializacionState } from '../hooks/useClaseEspecializacionSt
 import type { EnciclopediaLinkTarget } from '../lib/enciclopediaIndex'
 import { EnciclopediaLinkProvider } from '../context/EnciclopediaLinkContext'
 import { CompanerosPanel } from '../components/panels/CompanerosPanel'
-import { ReinoPanel } from '../components/panels/ReinoPanel'
+import { ReinoPanel, type ReinoSubTab } from '../components/panels/ReinoPanel'
 import { MisionesPanel } from '../components/panels/MisionesPanel'
 import { HabilidadesPanel } from '../components/panels/HabilidadesPanel'
 import { CombatComposer } from '../components/CombatComposer'
@@ -374,6 +374,8 @@ export function GameView() {
   // los dos colapsados a la vez (no habría nada que ver).
   const [collapsedSide, setCollapsedSide] = useState<'character' | 'world' | null>(null)
   const [personajeSubTab, setPersonajeSubTab] = useState<PersonajeSubTab>('equipo')
+  // Sub-tabs de Reino (rediseño 2026-09-21) — mismo patrón que `personajeSubTab`.
+  const [reinoSubTab, setReinoSubTab] = useState<ReinoSubTab>('vision-general')
   const [detailTarget, setDetailTarget] = useState<DetailTarget | null>(null)
   // Solo se usa para el detalle de la Enciclopedia (kind: 'info') — guarda el callback concreto
   // de "insertar este elemento" para esa entrada, ver handleEnciclopediaDetail.
@@ -2442,6 +2444,11 @@ export function GameView() {
             setZonaModalOpen(false)
             handleSubmit(actionText)
           }}
+          // Icono de parcela (§ 7.4, 2026-09-21) — roster estático ya cargado por useRecipesData
+          // (nombre/descripción por recipeKey) + refreshSave (mismo callback que ya usa ReinoPanel
+          // tras "Descansar en campamento", una acción directa sin /turn/narrate).
+          professionRecipes={professionRecipes}
+          onRefreshSave={refreshSave}
         />
       )}
 
@@ -2482,7 +2489,7 @@ export function GameView() {
             />
           )}
           {activePanel === 'reputacion' && (
-            <ReputacionPanel factionsStatus={factionsStatus} factions={enciclopediaData?.factions ?? []} />
+            <ReputacionPanel factionsStatus={factionsStatus} factions={enciclopediaData?.factions ?? []} worldSlug={worldIdSlug} saveId={saveId} />
           )}
           {activePanel === 'mapa' && (
             <MapaPanel
@@ -2535,6 +2542,11 @@ export function GameView() {
               almacenItems={almacenItems}
               plantillasEquipo={plantillasEquipo}
               onRefreshSave={refreshSave}
+              professionRecipes={professionRecipes}
+              factions={enciclopediaData?.factions ?? []}
+              goirnos={goirnos}
+              activeSubTab={reinoSubTab}
+              onSubTabChange={setReinoSubTab}
             />
           )}
           {activePanel === 'enciclopedia' && (

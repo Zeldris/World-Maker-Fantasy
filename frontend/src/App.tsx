@@ -5,6 +5,7 @@ import { CharacterSelect } from './pages/CharacterSelect'
 import { CharacterSaves } from './pages/CharacterSaves'
 import { GameView } from './pages/GameView'
 import { ComingSoon } from './pages/ComingSoon'
+import { AdminEnciclopedia } from './pages/AdminEnciclopedia'
 
 function App() {
   return (
@@ -16,6 +17,9 @@ function App() {
         <Route path="/solitario/mundo/:worldId/personaje/:characterId" element={<CharacterSaves />} />
         <Route path="/solitario/partida/:id" element={<GameView />} />
         <Route path="/multijugador" element={<ComingSoon />} />
+        {/* Solo admin (petición explícita de Álvaro, 2026-09-21) — sin enlace en ningún flujo de
+            jugador salvo el texto discreto de Home.tsx; no se lleva al instalador. */}
+        <Route path="/admin/enciclopedia" element={<AdminEnciclopedia />} />
       </Routes>
     </div>
   )

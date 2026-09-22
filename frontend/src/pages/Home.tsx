@@ -73,6 +73,13 @@ export function Home() {
           Continuar como {lastSave.characterName} — {lastSave.worldName} ({lastSave.fictionalDate})
         </button>
       )}
+
+      {/* Solo admin (petición explícita de Álvaro, 2026-09-21: "para generar los prompts de
+          imágenes de forma cómoda") — deliberadamente discreto, sin icono ni destacado, para que
+          no se lea como una opción de juego. */}
+      <button type="button" onClick={() => navigate('/admin/enciclopedia')} className="text-2xs text-wood-700 transition-colors hover:text-wood-400">
+        Admin: enciclopedia completa
+      </button>
     </div>
   )
 }
