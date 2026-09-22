@@ -963,14 +963,18 @@ describe('handleCombatTurnResolved — condición/energía/vida del rival se ret
     // Mismo criterio que `awaitingNextInitiative` — todo bloqueado mientras rueda la animación.
     expect(result.current.combat.awaitingExchangeApply).toBe(true)
 
-    // Justo antes de que termine la animación (10s totales, 2 dados de 5s) — todavía nada.
+    // Justo antes de que dispare el FALLBACK de seguridad (2604c9b, 2026-09-20: la vía real es
+    // `triggerExchangeApply()`, invocado por `DiceRollReveal` en cuanto el segundo dado aterriza de
+    // verdad — este test no lo invoca, así que ejercita el `setTimeout` de respaldo, calibrado con
+    // margen extra sobre la animación: 2×ROLL_DURATION_MS + 1000 = 11000ms, no 10000ms) — todavía
+    // nada.
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(9999)
+      await vi.advanceTimersByTimeAsync(10999)
     })
     expect(result.current.condicionFisica).toBe('ILESO')
     expect(result.current.combat.awaitingExchangeApply).toBe(true)
 
-    // Termina la animación — ahora sí se aplica, y el bloqueo se levanta a la vez.
+    // Dispara el fallback — ahora sí se aplica, y el bloqueo se levanta a la vez.
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1)
     })

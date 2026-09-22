@@ -673,22 +673,40 @@ export const LogPanel = memo(function LogPanel({
               ]}
             />
           ))}
-        {isThinking && (
+        {/* Bug real jugando en vivo (2026-09-21/22, "hasta que acaba la tirada de iniciativa no
+            se está actualizando [la vida]... y eso está mal, pasa en TODOS los turnos, no solo el
+            primero"): esta tarjeta entera (incluida `DiceRollReveal`, la animación que dispara
+            `onDiceRevealAllLanded` → aplica vida/condición real) vivía condicionada solo a
+            `isThinking` — pero `isThinking` se apaga en `finally` en cuanto la respuesta HTTP del
+            turno termina (narración ya streameada completa), que normalmente ocurre MUCHO antes
+            de que la animación de 10s de los dados del intercambio (`ROLL_DURATION_MS × 2`,
+            DiceRoll.tsx) termine de rodar. Eso desmontaba `DiceRollReveal` a mitad de su propio
+            `setTimeout` interno, matándolo antes de que `onAllLanded` disparase NUNCA por la vía
+            real — la vida solo se actualizaba por el timer de FALLBACK de useCombatFlow.ts
+            (`2×ROLL_DURATION_MS+1000` = 11s), que por coincidencia de timing cae casi a la vez que
+            la animación de iniciativa del turno siguiente (10s, arranca en paralelo en cuanto
+            llega la respuesta) — de ahí la sensación de "espera a que acabe la iniciativa" en
+            TODOS los turnos, siempre, no solo el primero. Ahora la tarjeta vive mientras
+            `isThinking` O `diceReveal` sigan activos (lo que dure más) — la animación de dados ya
+            no depende de que la narración siga "pensando". */}
+        {(isThinking || diceReveal) && (
           <div
             className={`relative overflow-hidden rounded-lg border border-dashed px-3.5 py-3 ${
               combate ? 'border-red-700/50 bg-danger-500/10' : classes.thinkingCard
             }`}
           >
-            <div className="thinking-sheen" />
-            <div className="flex items-center gap-2.5">
-              {/* Los 3 puntos parpadeantes se retiran (roadmap de animaciones 2026-07-20): la
-                  gema del header ya respira mientras se piensa — dos bucles a la vez (ella +
-                  thinking-sheen) es el tope de presupuesto en este hardware, no tres. */}
-              <span className={`h-1.5 w-1.5 rounded-full ${combate ? 'bg-red-400' : classes.thinkingDot}`} />
-              <p className={`text-2xs font-semibold uppercase tracking-[0.14em] ${combate ? 'text-red-300' : classes.thinkingLabel}`}>
-                {combate ? 'Resolviendo combate' : classes.thinkingRail}
-              </p>
-            </div>
+            {isThinking && <div className="thinking-sheen" />}
+            {isThinking && (
+              <div className="flex items-center gap-2.5">
+                {/* Los 3 puntos parpadeantes se retiran (roadmap de animaciones 2026-07-20): la
+                    gema del header ya respira mientras se piensa — dos bucles a la vez (ella +
+                    thinking-sheen) es el tope de presupuesto en este hardware, no tres. */}
+                <span className={`h-1.5 w-1.5 rounded-full ${combate ? 'bg-red-400' : classes.thinkingDot}`} />
+                <p className={`text-2xs font-semibold uppercase tracking-[0.14em] ${combate ? 'text-red-300' : classes.thinkingLabel}`}>
+                  {combate ? 'Resolviendo combate' : classes.thinkingRail}
+                </p>
+              </div>
+            )}
             {diceReveal && (
               <DiceRollReveal
                 exchange={diceReveal.exchange}
@@ -697,7 +715,8 @@ export const LogPanel = memo(function LogPanel({
                 onAllLanded={onDiceRevealAllLanded}
               />
             )}
-            {thinkingText &&
+            {isThinking &&
+              thinkingText &&
               (streaming ? (
                 <p className="mt-2 text-xs leading-relaxed text-wood-200">{thinkingText}</p>
               ) : (
