@@ -9,9 +9,12 @@ propuesta completa (no a mitad de debate, solo cuando ya hay algo cerrado que pr
 1. **Nunca edites directamente ningún archivo de `docs/rpgtarkor/`** ni ningún otro `.md` de
    lore ya existente. Esas ediciones las decide Álvaro tras revisar la propuesta, siguiendo el
    runbook de `docs/runbooks/ampliar-lore.md`.
-2. En su lugar, **añade la propuesta al final de**
-   `docs/borradores-opencode/propuestas-lore.md` (nunca sobrescribas lo que ya hay ahí — es un
-   registro cronológico, se añade al final).
+2. En su lugar, **añade la propuesta a**
+   `docs/borradores-opencode/propuestas-lore.md`, dentro de su categoría correspondiente (Facciones
+   y diplomacia / Razas y cultura / Idiomas / Construcciones y reino / Historia y cronología /
+   Fauna y flora / Personajes y NPCs / Otros). Lee el archivo completo antes de escribir y
+   reescríbelo entero (todo lo que ya había + la entrada nueva) — **nunca sobrescribas ni elimines
+   una entrada existente**.
 3. Cada entrada nueva debe llevar cabecera con: fecha de hoy, tema tratado, y estado inicial
    `SIN REVISAR`.
 4. Sé explícito en la propuesta: qué se propone exactamente, por qué (razonamiento, no solo la
