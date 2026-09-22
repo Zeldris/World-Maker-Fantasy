@@ -1,0 +1,30 @@
+# Reglas para agentes (OpenCode)
+
+## Sesiones de debate de lore
+
+Cuando la conversación sea sobre diseño/lore del mundo (facciones, razas, construcciones,
+historia, personajes, sistemas narrativos — cualquier tema de `docs/rpgtarkor/`), al llegar a una
+propuesta completa (no a mitad de debate, solo cuando ya hay algo cerrado que proponer):
+
+1. **Nunca edites directamente ningún archivo de `docs/rpgtarkor/`** ni ningún otro `.md` de
+   lore ya existente. Esas ediciones las decide Álvaro tras revisar la propuesta, siguiendo el
+   runbook de `docs/runbooks/ampliar-lore.md`.
+2. En su lugar, **añade la propuesta al final de**
+   `docs/borradores-opencode/propuestas-lore.md` (nunca sobrescribas lo que ya hay ahí — es un
+   registro cronológico, se añade al final).
+3. Cada entrada nueva debe llevar cabecera con: fecha de hoy, tema tratado, y estado inicial
+   `SIN REVISAR`.
+4. Sé explícito en la propuesta: qué se propone exactamente, por qué (razonamiento, no solo la
+   conclusión), y qué archivos de `docs/rpgtarkor/` tocaría si se aprueba — para que la revisión
+   posterior sea rápida.
+5. No toques código (`backend/src`, `frontend/src`) en ninguna sesión de lore salvo que se te
+   pida explícitamente.
+
+## Estilo del mundo (aplica a toda propuesta de lore)
+
+- Mundo fantástico con base científica — coherencia interna, sin magia como comodín sin
+  explicación. Todo debe estar conectado narrativamente con lo ya establecido.
+- Nunca uses el nombre de una especie/planta real reconocible para fauna/flora nueva, ni siquiera
+  como base de un nombre propio.
+- Antes de proponer un elemento nuevo, busca un equivalente ya existente en el catálogo como
+  plantilla de qué campos/nivel de detalle hacen falta.
