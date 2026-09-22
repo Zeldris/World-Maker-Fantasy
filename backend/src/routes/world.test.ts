@@ -531,7 +531,10 @@ describe('GET /world/:slug/enciclopedia', () => {
 
       await app.inject({ method: 'GET', url: '/world/helek-sirik/enciclopedia?saveId=save1' });
 
-      expect(findManyFaction).toHaveBeenCalledWith({ where: { worldId: 'world1', OR: [{ saveId: null }, { saveId: 'save1' }] } });
+      expect(findManyFaction).toHaveBeenCalledWith({
+        where: { worldId: 'world1', OR: [{ saveId: null }, { saveId: 'save1' }] },
+        include: { liderNpc: { select: { slug: true, name: true } } },
+      });
     });
 
     it('sin saveId, la query de Faction pide solo el catálogo (saveId null) — nunca facciones fundadas de ninguna partida', async () => {
@@ -540,7 +543,37 @@ describe('GET /world/:slug/enciclopedia', () => {
 
       await app.inject({ method: 'GET', url: '/world/helek-sirik/enciclopedia' });
 
-      expect(findManyFaction).toHaveBeenCalledWith({ where: { worldId: 'world1', OR: [{ saveId: null }] } });
+      expect(findManyFaction).toHaveBeenCalledWith({
+        where: { worldId: 'world1', OR: [{ saveId: null }] },
+        include: { liderNpc: { select: { slug: true, name: true } } },
+      });
+    });
+
+    // Líder de GOBIERNO (§ 7.2, docs/rpgtarkor/mundo-vivo-x4.md, 2026-09-21) — el campo existía en
+    // el schema (Faction.liderNpcId, FK real) desde la sesión anterior, pero nunca se serializaba
+    // al cliente. Cierra ese hueco.
+    it('serializa liderNpc (slug/name) cuando la Faction tiene un líder real sembrado', async () => {
+      findUniqueWorld.mockResolvedValue({ id: 'world1', slug: 'helek-sirik' });
+      findManyFaction.mockResolvedValue([
+        { slug: 'clan-serhu', name: 'Clan Serhu', raza: 'orcos', description: 'x', liderNpc: { slug: 'ulkha-ketg', name: 'Ulkha Ketg' } },
+      ]);
+      const app = await buildApp();
+
+      const res = await app.inject({ method: 'GET', url: '/world/helek-sirik/enciclopedia' });
+
+      expect(res.json().factions[0].liderNpc).toEqual({ slug: 'ulkha-ketg', name: 'Ulkha Ketg' });
+    });
+
+    it('liderNpc es null cuando la Faction todavía no tiene líder sembrado', async () => {
+      findUniqueWorld.mockResolvedValue({ id: 'world1', slug: 'helek-sirik' });
+      findManyFaction.mockResolvedValue([
+        { slug: 'clan-goshg', name: 'Clan Goshg', raza: 'orcos', description: 'x', liderNpc: null },
+      ]);
+      const app = await buildApp();
+
+      const res = await app.inject({ method: 'GET', url: '/world/helek-sirik/enciclopedia' });
+
+      expect(res.json().factions[0].liderNpc).toBeNull();
     });
 
     it('la facción fundada en esta partida aparece junto a las del catálogo', async () => {

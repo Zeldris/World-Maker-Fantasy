@@ -11,6 +11,7 @@ import { turnRoutes } from './routes/turn.js';
 import { entornoRoutes } from './routes/entorno.js';
 import { savesRoutes } from './routes/saves.js';
 import { worldRoutes } from './routes/world.js';
+import { factionRelationsRoutes } from './routes/factionRelations.js';
 import { startWorldTickWorker, stopWorldTickWorker } from './workers/worldTick.js';
 import { ollamaGenerate } from './lib/ollama.js';
 import { narratorWarmupPrompt } from './services/narrador.js';
@@ -54,6 +55,7 @@ await app.register(turnRoutes);
 await app.register(entornoRoutes);
 await app.register(savesRoutes);
 await app.register(worldRoutes);
+await app.register(factionRelationsRoutes);
 
 app.listen({ port: env.port, host: '0.0.0.0' }).catch((err) => {
   app.log.error(err);

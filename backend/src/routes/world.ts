@@ -282,12 +282,18 @@ function buildLocationsSection(locations: Awaited<ReturnType<typeof prisma.locat
 // de la facción descubre la facción). Imagen bajo demanda igual que raza/location (2026-08-06,
 // auditoría de la Enciclopedia: "revisa que todo tiene banner/icono") — mismo entityType 'faction'
 // que ya usa DiscoveredEntity, ver imagePromptContext.ts.
-function buildFactionsSection(factionRows: Awaited<ReturnType<typeof prisma.faction.findMany>>, ctx: EnciclopediaBuildContext) {
+function buildFactionsSection(
+  factionRows: (Awaited<ReturnType<typeof prisma.faction.findMany>>[number] & { liderNpc: { slug: string; name: string } | null })[],
+  ctx: EnciclopediaBuildContext,
+) {
   return factionRows.map((f) => ({
     slug: f.slug,
     name: f.name,
     raza: f.raza,
     description: f.description,
+    // Líder de GOBIERNO (§ 7.2, 2026-09-21) — null = sin líder real sembrado todavía (nunca
+    // inventado en servicio, mismo criterio que el resto del campo `liderNpcId` en el schema).
+    liderNpc: f.liderNpc ? { slug: f.liderNpc.slug, name: f.liderNpc.name } : null,
     discovered: ctx.isDiscovered('faction', f.slug),
     // 3 fases (2026-09-08) — una facción nunca tiene "presencia en escena" propia, la cascada de
     // entityDiscovery.ts siempre la deja en CITADO como mucho (ver comentario ahí) — se expone
@@ -547,7 +553,14 @@ export async function worldRoutes(app: FastifyInstance) {
       // `{ saveId: saveId ?? undefined }` en el OR sería un bug real — un valor `undefined` hace
       // que Prisma OMITA la condición entera (coincide con TODO), así que sin `saveId` en la query
       // colarían las facciones fundadas de cualquier partida. La rama solo se añade si hay `saveId`.
-      prisma.faction.findMany({ where: { worldId: world.id, OR: saveId ? [{ saveId: null }, { saveId }] : [{ saveId: null }] } }),
+      // `liderNpc` (§ 7.2, docs/rpgtarkor/mundo-vivo-x4.md) — hueco cerrado 2026-09-21: el campo
+      // ya existía en el schema (Faction.liderNpcId, FK real) pero nunca se serializaba al
+      // cliente. `select` mínimo (nunca el Npc completo) — el frontend solo necesita nombre/slug
+      // para mostrar "liderada por X" y enlazar a su ficha si algún día la tiene.
+      prisma.faction.findMany({
+        where: { worldId: world.id, OR: saveId ? [{ saveId: null }, { saveId }] : [{ saveId: null }] },
+        include: { liderNpc: { select: { slug: true, name: true } } },
+      }),
       prisma.historiaEntry.findMany({ where: { worldId: world.id } }),
     ]);
 

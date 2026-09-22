@@ -34,6 +34,9 @@ const findManyQuest = vi.fn();
 // no tocan Locations conectadas por LocationLink.
 const findManyLocationLink = vi.fn();
 const findManyLocationVisit = vi.fn();
+// Iconos de parcela (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, 2026-09-21) — vacío por defecto: la
+// mayoría de tests de este archivo no prueban zonas-interior con Parcela sembrada.
+const findManyParcela = vi.fn();
 
 vi.mock('../../lib/prisma.js', () => ({
   prisma: {
@@ -48,6 +51,7 @@ vi.mock('../../lib/prisma.js', () => ({
     quest: { findMany: (...args: unknown[]) => findManyQuest(...args) },
     locationLink: { findMany: (...args: unknown[]) => findManyLocationLink(...args) },
     locationVisit: { findMany: (...args: unknown[]) => findManyLocationVisit(...args) },
+    parcela: { findMany: (...args: unknown[]) => findManyParcela(...args) },
   },
 }));
 
@@ -93,6 +97,7 @@ beforeEach(() => {
   findManyQuest.mockReset().mockResolvedValue([]);
   findManyLocationLink.mockReset().mockResolvedValue([]);
   findManyLocationVisit.mockReset().mockResolvedValue([]);
+  findManyParcela.mockReset().mockResolvedValue([]);
 });
 
 afterEach(() => {
@@ -111,7 +116,7 @@ describe('GET /saves/:id/zona', () => {
     findUniqueSave.mockResolvedValueOnce({ id: 's1', worldId: 'w1', currentLocation: null, zonaPosX: null, zonaPosY: null });
     const app = await buildApp();
     const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
-    expect(res.json()).toEqual({ disponible: false, puntos: [], dinamicos: [], jugador: null, salidas: [] });
+    expect(res.json()).toEqual({ disponible: false, puntos: [], dinamicos: [], jugador: null, salidas: [], parcelas: [] });
   });
 
   it('con Location pero sin ZonePoint sembrado y sin NPC dinámico: no disponible', async () => {

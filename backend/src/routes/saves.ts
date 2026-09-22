@@ -13,6 +13,8 @@ import { recolectarRoutes } from './saves/recolectar.js';
 import { cazarRoutes } from './saves/cazar.js';
 import { recipesStatusRoutes } from './saves/recipesStatus.js';
 import { parcelasRoutes } from './saves/parcelas.js';
+import { almacenLimiteRoutes } from './saves/almacenLimite.js';
+import { ordenesProduccionRoutes } from './saves/ordenesProduccion.js';
 import { suggestionsRoutes } from './saves/suggestions.js';
 import { panelsRoutes } from './saves/panels.js';
 import { companerosRoutes } from './saves/companeros.js';
@@ -49,6 +51,8 @@ export async function savesRoutes(app: FastifyInstance) {
   await app.register(cazarRoutes);
   await app.register(recipesStatusRoutes);
   await app.register(parcelasRoutes);
+  await app.register(almacenLimiteRoutes);
+  await app.register(ordenesProduccionRoutes);
   await app.register(suggestionsRoutes);
   await app.register(panelsRoutes);
   await app.register(companerosRoutes);

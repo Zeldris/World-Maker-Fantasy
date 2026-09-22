@@ -262,6 +262,65 @@ export async function reinoRoutes(app: FastifyInstance) {
     if (!TIPOS_CON_ACCESO_A_MERCADO.has(relation.type)) throw new SinTratadoComercialError();
   }
 
+  /// Catálogo de mercado (hueco E, rediseño de frontend 2026-09-21) — sin esto, `comprar` exigía
+  /// que el cliente YA conociera el `almacenItemId` exacto de antemano, imposible de obtener por
+  /// ninguna vía. Consulta pura (GET, nunca 409): sin tratado responde `tratado:false` con
+  /// `items:[]` en vez de rechazar — es el frontend quien decide mostrar "negocia un tratado
+  /// primero" en vez de una pantalla de error. Un `almacenItemId` representativo por `catalogSlug`
+  /// (cualquiera del grupo: todos con el mismo `catalogSlug` son intercambiables al mismo precio,
+  /// igual que ya asume `stockDisponible` en comprar/vender).
+  app.get<{ Params: { id: string; targetFactionSlug: string } }>(
+    '/saves/:id/reino/mercado/:targetFactionSlug',
+    async (request, reply) => {
+      const { targetFactionSlug } = request.params;
+      const save = await prisma.save.findUnique({ where: { id: request.params.id } });
+      if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+
+      const sourceFaction = await prisma.faction.findFirst({ where: { saveId: save.id }, select: { id: true, worldId: true } });
+      if (!sourceFaction) return reply.status(400).send({ error: 'Todavía no has fundado tu Reino' });
+      const targetFaction = await prisma.faction.findFirst({ where: { worldId: sourceFaction.worldId, slug: targetFactionSlug }, select: { id: true, name: true } });
+      if (!targetFaction) return reply.status(404).send({ error: `Facción desconocida: ${targetFactionSlug}` });
+
+      const tratado = await prisma
+        .$transaction((tx) => verificaTratadoComercial(tx, sourceFaction.worldId, sourceFaction.id, targetFaction.id))
+        .then(() => true)
+        .catch((err) => {
+          if (err instanceof SinTratadoComercialError) return false;
+          throw err;
+        });
+      if (!tratado) return { ok: true, tratado: false, items: [] };
+
+      const almacenRows = await prisma.almacenItem.findMany({
+        where: { factionId: targetFaction.id, catalogSlug: { not: null } },
+        select: { id: true, name: true, catalogSlug: true },
+      });
+      const grupos = new Map<string, { almacenItemId: string; name: string; catalogSlug: string; stock: number }>();
+      for (const row of almacenRows) {
+        const slug = row.catalogSlug!;
+        const existing = grupos.get(slug);
+        if (existing) existing.stock += 1;
+        else grupos.set(slug, { almacenItemId: row.id, name: row.name, catalogSlug: slug, stock: 1 });
+      }
+      const catalogSlugs = [...grupos.keys()];
+      const catalogRows = catalogSlugs.length
+        ? await prisma.itemCatalog.findMany({ where: { worldId: sourceFaction.worldId, slug: { in: catalogSlugs } }, select: { slug: true, valorGoirnos: true } })
+        : [];
+      const valorBySlug = new Map(catalogRows.map((c) => [c.slug, c.valorGoirnos]));
+
+      const items = [...grupos.values()]
+        .filter((g) => (valorBySlug.get(g.catalogSlug) ?? 0) > 0)
+        .map((g) => ({
+          almacenItemId: g.almacenItemId,
+          name: g.name,
+          catalogSlug: g.catalogSlug,
+          stock: g.stock,
+          precio: precioDinamico(valorBySlug.get(g.catalogSlug)!, g.stock),
+        }));
+
+      return { ok: true, tratado: true, items };
+    },
+  );
+
   /// Comprar: el jugador paga `goirnos` propios por un objeto del Almacén de una Faction con
   /// tratado comercial/alianza real — el objeto pasa de `AlmacenItem.factionId` a
   /// `AlmacenItem.saveId` (mismo Almacén, solo cambia de dueño, ni el jugador ni la facción tienen

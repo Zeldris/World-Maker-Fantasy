@@ -713,6 +713,37 @@ export async function companerosRoutes(app: FastifyInstance) {
     },
   );
 
+  /// Asigna/quita un `Companion` a un `Building` real (hueco D, rediseño de Producción estilo
+  /// Bellwright, 2026-09-21, docs/rpgtarkor/mundo-vivo-x4.md § 4.4-ter) — sin esto, `tickOrdenesProduccion`
+  /// (kingdomProduction.ts) nunca tenía ningún trabajador real que asignar a ninguna orden. Guard:
+  /// el Companion debe tener `rolReino` ya asignado (decisión: "el reino no cuenta con quien no
+  /// está integrado" — mismo criterio que `PLANTILLAS_BASICAS`/`companionesReino` del frontend, un
+  /// Companion sin rol de Reino no es candidato a trabajador). `buildingId: null` desasigna.
+  app.post<{ Params: { id: string; companionId: string }; Body: { buildingId: string | null } }>(
+    '/saves/:id/companeros/:companionId/asignar-edificio',
+    async (request, reply) => {
+      const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { endedAt: true, pendingDeathResolution: true } });
+      if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+      if (rejectIfEnded(save, reply)) return;
+      if (rejectIfPendingDeath(save, reply)) return;
+
+      const companion = await prisma.companion.findFirst({ where: { id: request.params.companionId, saveId: request.params.id } });
+      if (!companion) return reply.status(404).send({ error: 'Compañero no encontrado' });
+      if (!companion.rolReino) {
+        return reply.status(400).send({ error: 'Este compañero no está integrado en el Reino — asígnale un rolReino primero' });
+      }
+
+      const { buildingId } = request.body;
+      if (buildingId) {
+        const building = await prisma.building.findFirst({ where: { id: buildingId, saveId: request.params.id } });
+        if (!building) return reply.status(404).send({ error: 'Edificio no encontrado' });
+      }
+
+      const updated = await prisma.companion.update({ where: { id: companion.id }, data: { buildingId }, select: { id: true, buildingId: true } });
+      return { ok: true, companion: updated };
+    },
+  );
+
   /// Asigna/quita una plantilla a un súbdito de Reino.
   app.post<{ Params: { id: string; subjectId: string }; Body: { plantillaEquipoId: string | null } }>(
     '/saves/:id/subjects/:subjectId/plantilla',

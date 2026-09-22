@@ -397,3 +397,88 @@ describe('POST /saves/:id/reino/mercado/comprar y /vender', () => {
     expect(itemSinTocar.factionId).toBe(targetFactionId); // nunca se traspasó
   });
 });
+
+// Catálogo de mercado (hueco E, rediseño de frontend 2026-09-21) — mismo fixture real (Reino
+// fundado, Faction del jugador, facción de catálogo real) que los describes de arriba. Sin este
+// GET, comprar exigía conocer de antemano el `almacenItemId` exacto, imposible de descubrir.
+describe('GET /saves/:id/reino/mercado/:targetFactionSlug', () => {
+  let saveId: string;
+  let worldId: string;
+  let sourceFactionId: string;
+  let targetFactionSlug: string;
+  let targetFactionId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    worldId = world.id;
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId,
+        characterName: 'Gorhorn de prueba (catálogo mercado)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+        raza: 'orcos',
+        goirnos: 100,
+      },
+    });
+    saveId = save.id;
+    await prisma.building.create({
+      data: { saveId, locationId: hondonada.id, recipeKey: 'ayuntamiento', name: 'x', kind: 'ayuntamiento', description: 'x', status: 'ACTIVO', tier: 1 },
+    });
+    const app = await buildApp();
+    await app.inject({ method: 'POST', url: `/saves/${saveId}/reino/fundar`, payload: { kingdomName: 'Reino de Prueba Catálogo' } });
+    const sourceFaction = await prisma.faction.findFirstOrThrow({ where: { saveId } });
+    sourceFactionId = sourceFaction.id;
+
+    const targetFaction = await prisma.faction.findFirstOrThrow({ where: { worldId, slug: 'clan-helsig' } });
+    targetFactionSlug = targetFaction.slug;
+    targetFactionId = targetFaction.id;
+  });
+
+  afterAll(async () => {
+    await prisma.almacenItem.deleteMany({ where: { factionId: targetFactionId, name: 'Ración de carne fresca (catálogo test)' } });
+    await prisma.factionRelation.deleteMany({ where: { OR: [{ sourceFactionId }, { targetFactionId: sourceFactionId }] } });
+    await prisma.locationLink.deleteMany({ where: { OR: [{ from: { slug: `ayuntamiento-interior-${saveId}` } }, { to: { slug: `ayuntamiento-interior-${saveId}` } }] } });
+    await prisma.location.deleteMany({ where: { worldId, slug: `ayuntamiento-interior-${saveId}` } });
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('sin tratado comercial: tratado false, items vacío (nunca 409 — es consulta, no acción)', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: `/saves/${saveId}/reino/mercado/${targetFactionSlug}` });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ ok: true, tratado: false, items: [] });
+  });
+
+  it('con tratado comercial: agrupa por catalogSlug, precio dinámico real según stock', async () => {
+    await prisma.factionRelation.upsert({
+      where: { sourceFactionId_targetFactionId: { sourceFactionId, targetFactionId } },
+      update: { type: 'TRATADO_COMERCIAL', presion: 30 },
+      create: { worldId, sourceFactionId, targetFactionId, type: 'TRATADO_COMERCIAL', presion: 30 },
+    });
+    // 2 filas del MISMO catalogSlug — deben agruparse en 1 item con stock: 2, no 2 items sueltos.
+    await prisma.almacenItem.createMany({
+      data: [
+        { factionId: targetFactionId, name: 'Ración de carne fresca (catálogo test)', description: 'x', catalogSlug: 'racion-carne' },
+        { factionId: targetFactionId, name: 'Ración de carne fresca (catálogo test)', description: 'x', catalogSlug: 'racion-carne' },
+      ],
+    });
+
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: `/saves/${saveId}/reino/mercado/${targetFactionSlug}` });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.tratado).toBe(true);
+    expect(body.items).toHaveLength(1);
+    expect(body.items[0]).toMatchObject({ catalogSlug: 'racion-carne', stock: 2 });
+    expect(body.items[0].precio).toBeGreaterThan(0);
+    expect(typeof body.items[0].almacenItemId).toBe('string');
+  });
+});

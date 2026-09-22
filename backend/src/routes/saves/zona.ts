@@ -55,6 +55,24 @@ const SAVE_SELECT_PARA_MOVER = {
 /// (mismo convenio que el resto de sufijos de imagen) — este mapa hace ese único ajuste.
 const ESTACION_A_SLUG: Record<string, EstacionSlug> = { PRIMAVERA: 'primavera', VERANO: 'verano', OTONO: 'otono', INVIERNO: 'invierno' };
 
+/// Icono de parcela en el mapa de Zona (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, 2026-09-21) — una
+/// por cada `Parcela` sembrada en la Location actual (solo zonas-interior de Capital/Cuartel
+/// Avanzado tienen alguna; el resto de zonas del mundo siempre devuelven `[]`, mismo criterio de
+/// "disponible: false si no hay nada" que el resto del panel). Shape mínimo para pintar el icono y
+/// decidir si abrir "detalle de edificio ya construido" o "detalle de hueco vacío" — el contenido
+/// real (candidatas, `blockedReason`) se pide aparte, bajo demanda, vía `GET
+/// /saves/:id/parcelas/:parcelaId` (mismo criterio que `ZonaSalidaInfo`: el mapa solo pinta iconos,
+/// el modal de detalle hace su propia llamada).
+export interface ZonaParcelaInfo {
+  id: string;
+  x: number;
+  y: number;
+  tipo: 'BASICA' | 'AVANZADA';
+  /// Ya construido aquí — el frontend pinta el icono/nombre del edificio real en vez de un hueco
+  /// vacío, y el modal de detalle no ofrece "Construir".
+  building: { id: string; name: string; status: string } | null;
+}
+
 export interface ZonaSalidaInfo {
   locationId: string;
   slug: string;
@@ -165,7 +183,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     // Punto del jugador en el mapa de Zona (2026-09-04) — null en partidas previas a esta pieza, o
     // sin nada que asignar todavía (nunca se ha resuelto una acción determinista que lo mueva).
     const jugador = save.zonaPosX != null && save.zonaPosY != null ? { x: save.zonaPosX, y: save.zonaPosY } : null;
-    if (!save.currentLocation) return { disponible: false, puntos: [], dinamicos: [], jugador, salidas: [] };
+    if (!save.currentLocation) return { disponible: false, puntos: [], dinamicos: [], jugador, salidas: [], parcelas: [] };
 
     const { zonePoints: zonePointsRaw, slug: locationSlug, name: locationName, id: locationId, region, kind } = save.currentLocation;
     const fictionalMinutes = save.worldState?.fictionalMinutes ?? 480;
@@ -379,12 +397,30 @@ export async function zonaRoutes(app: FastifyInstance) {
     // aquí en adelante (con o sin ZonePoint sembrado, una zona SIEMPRE puede tener salidas reales).
     const salidas = await salidasDeRegionPara(save.id, save.worldId, save.currentLocation, jugador);
 
+    // Iconos de parcela (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, 2026-09-21) — calculado una vez,
+    // igual que `salidas`. Solo las zonas-interior de Capital/Cuartel Avanzado tienen filas reales
+    // (`[]` en el resto del mundo); esas mismas zonas-interior nacen SIN ZonePoint sembrado, así
+    // que `disponible` de abajo también mira `parcelas.length`, no solo `dinamicos`/`zonePointsActivos`.
+    const parcelasRaw = await prisma.parcela.findMany({
+      where: { locationId },
+      include: { building: { select: { id: true, name: true, status: true } } },
+    });
+    const parcelas: ZonaParcelaInfo[] = parcelasRaw.map((p) => ({
+      id: p.id,
+      x: p.x,
+      y: p.y,
+      tipo: p.tipo,
+      building: p.building ? { id: p.building.id, name: p.building.name, status: p.building.status } : null,
+    }));
+
     if (zonePoints.length === 0) {
       // `disponible` mira `zonePointsActivos` (datos sembrados reales), no `zonePoints` (ya
       // filtrado por ausencia, 2026-09-04) — un ZonePoint real que está temporalmente ausente por
-      // combate ganado no debe leerse como "esta ubicación nunca tuvo zona explorable".
+      // combate ganado no debe leerse como "esta ubicación nunca tuvo zona explorable". `parcelas`
+      // se suma al criterio (2026-09-21): una zona-interior recién creada no tiene ZonePoint ni
+      // dinámicos todavía, pero SÍ tiene parcelas reales que mostrar.
       return {
-        disponible: dinamicos.length > 0 || zonePointsActivos.length > 0,
+        disponible: dinamicos.length > 0 || zonePointsActivos.length > 0 || parcelas.length > 0,
         puntos: [],
         dinamicos,
         locationSlug,
@@ -393,6 +429,7 @@ export async function zonaRoutes(app: FastifyInstance) {
         regionControl,
         jugador,
         salidas,
+        parcelas,
       };
     }
 
@@ -440,6 +477,7 @@ export async function zonaRoutes(app: FastifyInstance) {
       dinamicos,
       jugador,
       salidas,
+      parcelas,
     };
   });
 

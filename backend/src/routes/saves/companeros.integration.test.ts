@@ -485,6 +485,122 @@ describe('Compañeros: cobertura de ruta — plantillas de equipo (auditoría de
   });
 });
 
+// Asignar Companion a Building real (hueco D, rediseño de Producción estilo Bellwright,
+// 2026-09-21, docs/rpgtarkor/mundo-vivo-x4.md § 4.4-ter) — sin esto, ningún trabajador real podía
+// asignarse a ninguna OrdenProduccion.
+describe('POST /saves/:id/companeros/:companionId/asignar-edificio (hueco D, 2026-09-21)', () => {
+  let saveId: string;
+  let companionSinRolId: string;
+  let companionConRolId: string;
+  let buildingId: string;
+  let buildingOtraSaveId: string;
+  let otraSaveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (asignar edificio)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        portraitInitial: 'G',
+      },
+    });
+    saveId = save.id;
+    const companionSinRol = await prisma.companion.create({
+      data: { saveId, name: 'Sin rol de prueba', role: 'x', notes: '', tipo: 'NPC' },
+    });
+    companionSinRolId = companionSinRol.id;
+    const companionConRol = await prisma.companion.create({
+      data: { saveId, name: 'Trabajador de prueba', role: 'trabajador', notes: '', tipo: 'NPC', rolReino: 'trabajador' },
+    });
+    companionConRolId = companionConRol.id;
+    const building = await prisma.building.create({
+      data: { saveId, locationId: hondonada.id, recipeKey: 'choza', name: 'Choza de prueba', kind: 'choza', description: 'x', status: 'ACTIVO' },
+    });
+    buildingId = building.id;
+
+    // Building de OTRA partida — nunca debe poder asignarse desde esta saveId (guard de propiedad).
+    const otraSave = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (otra partida, asignar edificio)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        portraitInitial: 'G',
+      },
+    });
+    const buildingOtraSave = await prisma.building.create({
+      data: { saveId: otraSave.id, locationId: hondonada.id, recipeKey: 'choza', name: 'Choza ajena', kind: 'choza', description: 'x', status: 'ACTIVO' },
+    });
+    buildingOtraSaveId = buildingOtraSave.id;
+    otraSaveId = otraSave.id;
+  });
+
+  afterAll(async () => {
+    await prisma.building.deleteMany({ where: { id: { in: [buildingId, buildingOtraSaveId] } } });
+    await prisma.companion.deleteMany({ where: { saveId } });
+    await prisma.save.delete({ where: { id: saveId } });
+    await prisma.save.delete({ where: { id: otraSaveId } });
+  });
+
+  it('400 si el Companion no tiene rolReino asignado', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/companeros/${companionSinRolId}/asignar-edificio`,
+      payload: { buildingId },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toMatch(/rolReino/);
+  });
+
+  it('404 si el Building pertenece a otra partida', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/companeros/${companionConRolId}/asignar-edificio`,
+      payload: { buildingId: buildingOtraSaveId },
+    });
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('con rolReino y Building real, asigna buildingId de verdad', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/companeros/${companionConRolId}/asignar-edificio`,
+      payload: { buildingId },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().companion).toEqual({ id: companionConRolId, buildingId });
+
+    const companion = await prisma.companion.findUniqueOrThrow({ where: { id: companionConRolId } });
+    expect(companion.buildingId).toBe(buildingId);
+  });
+
+  it('buildingId: null desasigna', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/companeros/${companionConRolId}/asignar-edificio`,
+      payload: { buildingId: null },
+    });
+    expect(res.statusCode).toBe(200);
+    const companion = await prisma.companion.findUniqueOrThrow({ where: { id: companionConRolId } });
+    expect(companion.buildingId).toBeNull();
+  });
+});
+
 // BUG CERRADO (2026-08-29, ver comentario de `CombatParticipant.dismissedGrupo` en schema.prisma —
 // mismo hueco exacto que Clemente, confirmado por code review antes de este fix): dentro de un
 // `CombatEncounter` real, un miembro de grupo tiene su condición real en
