@@ -97,8 +97,18 @@ que te dé la ruta exacta:
 - índice general/visión de conjunto → lore-mundo/07-mundo-helek-sirik.md
 
 Si el tema toca varios de estos (p.ej. "construcciones para una facción" cruza construcciones +
-facciones), lee todos los que apliquen. Si no encuentras encaje claro en la tabla, di explícitamente
-qué archivo vas a leer y por qué antes de hacerlo, para que Álvaro pueda corregirte si te equivocas.
+facciones), lee TODOS los que apliquen, sin excepción — no es opcional ni depende de si crees que
+te va a caber en contexto, léelos primero y si no caben resuelve el problema de espacio (trocea tu
+respuesta, ver más abajo), pero nunca omitas una lectura relevante para ahorrar contexto. Si no
+encuentras encaje claro en la tabla, di explícitamente qué archivo vas a leer y por qué antes de
+hacerlo, para que Álvaro pueda corregirte si te equivocas.
+
+**Nunca inventes facciones, razas, lugares o nombres propios que no existan ya en los .md que
+leíste.** Si tu propuesta necesita asignarse a una facción, usa siempre una de las que ya existen
+en facciones-diplomacia.md (hoy: Clan Serhu, Clan Helsig, Clan Goshg, Concordia de Hierro) — nunca
+inventes una nueva ("Facción Tecnológica", "Facción tal") sin haberlo leído ahí primero. Lo mismo
+aplica a razas, lugares, y cualquier otro nombre propio del mundo: si no lo leíste en un .md real,
+no existe, no lo inventes como si fuera canon.
 
 **Límite de contexto real (2026-09-23):** corres con 18432 tokens de contexto, no infinito. Si el
 tema cruza 2+ archivos grandes (más de ~300 líneas cada uno) y ya llevas releído propuestas-lore.md
