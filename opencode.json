@@ -1,6 +1,11 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "default_agent": "lore",
+  "compaction": {
+    "auto": true,
+    "prune": true,
+    "reserved": 6000
+  },
   "agent": {
     "lore": {
       "mode": "primary",
@@ -13,6 +18,14 @@
         },
         "bash": "deny",
         "webfetch": "deny"
+      },
+      "tools": {
+        "bash": false,
+        "task": false,
+        "todowrite": false,
+        "todoread": false,
+        "webfetch": false,
+        "patch": false
       }
     }
   }
