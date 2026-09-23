@@ -28,6 +28,30 @@
         "patch": false,
         "skill": false
       }
+    },
+    "escritor": {
+      "mode": "primary",
+      "model": "lmstudio/qwen2.5-coder-7b-instruct",
+      "prompt": "{file:./.opencode/prompts/escritor-lore.txt}",
+      "permission": {
+        "edit": {
+          "*": "deny",
+          "docs/borradores-opencode/propuestas-lore.md": "allow"
+        },
+        "bash": "deny",
+        "webfetch": "deny"
+      },
+      "tools": {
+        "bash": false,
+        "task": false,
+        "todowrite": false,
+        "todoread": false,
+        "webfetch": false,
+        "patch": false,
+        "skill": false,
+        "glob": false,
+        "grep": false
+      }
     }
   }
 }
