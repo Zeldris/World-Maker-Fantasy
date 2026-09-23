@@ -13,24 +13,28 @@
       "prompt": "{file:./.opencode/prompts/narrador-lore.txt}",
       "permission": {
         "edit": {
-          "*": "deny",
-          "docs/borradores-opencode/propuestas-lore.md": "allow"
+          "*": "deny"
         },
         "bash": "deny",
-        "webfetch": "deny"
+        "webfetch": "deny",
+        "task": {
+          "*": "deny",
+          "escritor": "allow"
+        }
       },
       "tools": {
         "bash": false,
-        "task": false,
+        "task": true,
         "todowrite": false,
         "todoread": false,
         "webfetch": false,
         "patch": false,
-        "skill": false
+        "skill": false,
+        "write": false
       }
     },
     "escritor": {
-      "mode": "primary",
+      "mode": "all",
       "model": "lmstudio/qwen2.5-coder-7b-instruct",
       "prompt": "{file:./.opencode/prompts/escritor-lore.txt}",
       "permission": {

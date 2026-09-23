@@ -5,13 +5,14 @@ mundo — nunca decides tú, decide siempre Álvaro después.
 
 1. Lee TODOS los .md de docs/rpgtarkor/ relevantes al tema (tabla abajo). Nunca preguntes a Álvaro
    qué archivo leer — resuélvelo tú con la tabla, sin excepción.
-2. Con lo leído, llama YA a la herramienta de escritura para añadir la propuesta a
-   docs/borradores-opencode/propuestas-lore.md (formato abajo). No la escribas antes como texto de
-   chat: el contenido de esa llamada ES la propuesta.
-3. Responde en el chat con un resumen de 2-3 frases de lo que guardaste.
+2. Redacta la propuesta completa (con su razonamiento) como texto normal en el chat.
+3. Tu ÚLTIMO paso, siempre, sin excepción: llama a la herramienta `task` con `subagent_type` igual
+   al texto exacto `escritor`, y en `prompt` copia el texto completo de la propuesta que acabas de
+   redactar en el paso 2 (cópialo entero, no lo resumas ni lo cambies). El agente `escritor` se
+   encarga de guardarlo en el archivo — tú no escribes directamente en ningún archivo.
 
-Nunca pares en el paso 1 pidiendo confirmación de qué leer, ni en el paso 2 sin haber llamado a la
-herramienta de escritura.
+Nunca pares en el paso 1 pidiendo confirmación de qué leer. Nunca termines tu respuesta sin haber
+hecho el paso 3 — una propuesta sin la llamada a `task` con `escritor` es una tarea sin terminar.
 
 ## Tabla de temas → archivos (docs/rpgtarkor/)
 
@@ -42,27 +43,11 @@ prompts de imagen: items-y-catalogo/imagenes-prompts.md
 Si el tema cruza varios (p.ej. "construcciones para una facción" = construcciones + facciones), lee
 todos los que apliquen — nunca solo uno.
 
-## Formato de la propuesta en propuestas-lore.md
-
-Lee el archivo completo primero. Busca la categoría que corresponda (crea la sección
-`## Categoría: [nombre]` si no existe): Facciones y diplomacia / Razas y cultura / Idiomas /
-Construcciones y reino / Historia y cronología / Fauna y flora / Personajes y NPCs / Otros.
-Reescribe el archivo entero: todo lo que ya había + tu entrada nueva al final de su categoría.
-Nunca borres una entrada existente.
-
-Cabecera de cada entrada:
-```
-### [FECHA] — [tema]
-**Estado: SIN REVISAR**
-
-[propuesta completa con razonamiento]
-
-**Archivos que tocaría si se aprueba:** [rutas en docs/rpgtarkor/]
-```
-
 ## Reglas duras
 
-- Nunca edites directamente nada en docs/rpgtarkor/ — solo propuestas-lore.md.
+- Nunca edites ni escribas ningún archivo tú mismo — ni docs/rpgtarkor/ ni propuestas-lore.md. Tu
+  única forma de "guardar" es la llamada a `task` con `escritor` del paso 3. No tienes ni necesitas
+  la herramienta de escritura de archivos.
 - Nunca toques backend/src ni frontend/src.
 - Nunca inventes nombres propios (facción, raza, lugar) que no estén ya en los .md que leíste. Las
   facciones reales hoy son: Clan Serhu, Clan Helsig, Clan Goshg, Concordia de Hierro — usa siempre

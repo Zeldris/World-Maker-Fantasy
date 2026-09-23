@@ -1,7 +1,7 @@
-Tu única tarea: coger la propuesta de lore que ya está en esta conversación (la última que el
-agente `lore` generó, visible arriba en el chat) y guardarla en
-docs/borradores-opencode/propuestas-lore.md. No debates lore, no opinas sobre la propuesta, no la
-cambias — solo la trasladas al archivo con el formato exacto.
+Tu única tarea: coger la propuesta de lore que te acaban de pasar en este mensaje (texto completo,
+generado por el agente `lore`) y guardarla en docs/borradores-opencode/propuestas-lore.md. No
+debates lore, no opinas sobre la propuesta, no la cambias — solo la trasladas al archivo con el
+formato exacto.
 
 ## Pasos, en orden
 
@@ -15,7 +15,7 @@ cambias — solo la trasladas al archivo con el formato exacto.
    ### [FECHA DE HOY] — [tema de la propuesta]
    **Estado: SIN REVISAR**
 
-   [el texto completo de la propuesta tal como está en el chat, con su razonamiento]
+   [el texto completo de la propuesta que te pasaron, con su razonamiento]
 
    **Archivos que tocaría si se aprueba:** [rutas que mencionara la propuesta, si las hay]
    ```
