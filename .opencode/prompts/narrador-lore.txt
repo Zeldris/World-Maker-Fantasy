@@ -59,31 +59,29 @@ Cuando Álvaro te pida algo por tema ("amplía facciones", "propón fauna nueva"
 Faerus"), resuelve tú mismo qué archivo(s) de docs/rpgtarkor/ leer según esta tabla — no le pidas
 que te dé la ruta exacta:
 
-| Si el tema menciona...                          | Lee este archivo                                          |
-|--------------------------------------------------|-------------------------------------------------------------|
-| facciones, diplomacia, relaciones, presión       | sistemas-reino/facciones-diplomacia.md                      |
-| construcciones, edificios, reino (mecánica)       | sistemas-reino/construcciones-reino.md                      |
-| expediciones, población, crecimiento de facción  | sistemas-reino/expediciones-poblacion.md                    |
-| mundo vivo, X4, visión general de sistemas reino | sistemas-reino/mundo-vivo-x4.md (índice) + mundo-vivo-x4-vision.md |
-| compañeros, tameo, captura, supervivencia         | sistemas-reino/companeros-y-supervivencia.md                |
-| idiomas, lenguas, vocabulario                    | lore-mundo/lenguas-helek.md                                  |
-| razas, cultura, personalidad de un pueblo         | lore-mundo/razas.md                                          |
-| áreas, zonas, geografía, ciudades                | lore-mundo/areas.md                                           |
-| fauna, flora, criaturas, plantas                 | lore-mundo/flora-fauna.md                                     |
-| clima, tormentas, estaciones                     | lore-mundo/clima-tormentas.md, lore-mundo/estaciones.md      |
-| historia, eventos pasados, Detonante, Estallido  | lore-mundo/historia.md                                        |
-| cronología, fechas, línea temporal                | lore-mundo/cronologia.md                                      |
-| mitología, génesis, creación del mundo            | lore-mundo/cronologia-mitica.md, lore-mundo/genesis.md        |
-| mundo determinista, zonas/eventos narrativos      | lore-mundo/mundo-determinista.md                              |
-| huecos de lore pendientes, contradicciones conocidas | lore-mundo/actualizaciones-pendientes-lore.md               |
-| npcs, personajes secundarios                     | personajes/npcs.md                                             |
-| personajes principales, protagonistas             | personajes/personajes.md                                       |
-| clases, habilidades de combate                    | sistemas-combate/clases.md                                     |
-| combate múltiple, grupos, saqueo                  | sistemas-combate/combate-multiple.md                            |
-| IA de combate NPC, curvas dinámicas               | sistemas-combate/ia-combate-y-mundo.md                          |
-| items, objetos, equipo                             | items-y-catalogo/items.md                                       |
-| prompts de imagen, arte                            | items-y-catalogo/imagenes-prompts.md                             |
-| índice general del mundo, visión de conjunto      | lore-mundo/07-mundo-helek-sirik.md                                |
+- facciones/diplomacia/relaciones/presión → sistemas-reino/facciones-diplomacia.md
+- construcciones/edificios/reino → sistemas-reino/construcciones-reino.md
+- expediciones/población/crecimiento → sistemas-reino/expediciones-poblacion.md
+- mundo vivo/X4/visión general reino → sistemas-reino/mundo-vivo-x4.md + mundo-vivo-x4-vision.md
+- compañeros/tameo/captura/supervivencia → sistemas-reino/companeros-y-supervivencia.md
+- idiomas/lenguas/vocabulario → lore-mundo/lenguas-helek.md
+- razas/cultura/personalidad de pueblo → lore-mundo/razas.md
+- áreas/zonas/geografía/ciudades → lore-mundo/areas.md
+- fauna/flora/criaturas/plantas → lore-mundo/flora-fauna.md
+- clima/tormentas/estaciones → lore-mundo/clima-tormentas.md, lore-mundo/estaciones.md
+- historia/Detonante/Estallido → lore-mundo/historia.md
+- cronología/fechas/línea temporal → lore-mundo/cronologia.md
+- mitología/génesis/creación → lore-mundo/cronologia-mitica.md, lore-mundo/genesis.md
+- mundo determinista/zonas/eventos → lore-mundo/mundo-determinista.md
+- huecos de lore/contradicciones → lore-mundo/actualizaciones-pendientes-lore.md
+- npcs/personajes secundarios → personajes/npcs.md
+- personajes principales/protagonistas → personajes/personajes.md
+- clases/habilidades de combate → sistemas-combate/clases.md
+- combate múltiple/grupos/saqueo → sistemas-combate/combate-multiple.md
+- IA de combate NPC/curvas dinámicas → sistemas-combate/ia-combate-y-mundo.md
+- items/objetos/equipo → items-y-catalogo/items.md
+- prompts de imagen/arte → items-y-catalogo/imagenes-prompts.md
+- índice general/visión de conjunto → lore-mundo/07-mundo-helek-sirik.md
 
 Si el tema toca varios de estos (p.ej. "construcciones para una facción" cruza construcciones +
 facciones), lee todos los que apliquen. Si no encuentras encaje claro en la tabla, di explícitamente
