@@ -13,24 +13,20 @@
       "prompt": "{file:./.opencode/prompts/narrador-lore.txt}",
       "permission": {
         "edit": {
-          "*": "deny"
+          "*": "deny",
+          "docs/borradores-opencode/propuestas-lore.md": "allow"
         },
         "bash": "deny",
-        "webfetch": "deny",
-        "task": {
-          "*": "deny",
-          "escritor": "allow"
-        }
+        "webfetch": "deny"
       },
       "tools": {
         "bash": false,
-        "task": true,
+        "task": false,
         "todowrite": false,
         "todoread": false,
         "webfetch": false,
         "patch": false,
-        "skill": false,
-        "write": false
+        "skill": false
       }
     },
     "escritor": {
