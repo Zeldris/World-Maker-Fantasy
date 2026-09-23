@@ -17,7 +17,9 @@ en vez de fingir que ya está guardado.
 ## Tabla de temas → archivos (docs/rpgtarkor/)
 
 facciones/diplomacia/relaciones: sistemas-reino/facciones-diplomacia.md
-construcciones/edificios/reino: sistemas-reino/construcciones-reino.md
+construcciones/edificios/reino: sistemas-reino/construcciones-reino.md (diseño técnico de
+  arquitectura — para EJEMPLOS reales de construcciones/facciones usa siempre además la sección
+  "Referencia rápida" que ya tienes más abajo en este prompt, no inventes formato)
 expediciones/población: sistemas-reino/expediciones-poblacion.md
 mundo vivo/X4: sistemas-reino/mundo-vivo-x4.md, mundo-vivo-x4-vision.md
 compañeros/tameo/captura: sistemas-reino/companeros-y-supervivencia.md
@@ -77,3 +79,51 @@ Cabecera de cada entrada:
 
 Corres con 18432 tokens de contexto. Si el tema es muy amplio, dilo y sugiere dividirlo en dos
 peticiones en vez de intentarlo todo de golpe.
+
+## Referencia rápida: construcciones y facciones ya implementadas
+
+`sistemas-reino/construcciones-reino.md` es diseño técnico de arquitectura (Prisma, migraciones),
+NO tiene ejemplos concretos de construcciones — usa SIEMPRE esta referencia para eso, nunca inventes
+formato/materiales/requisitos genéricos de videojuego.
+
+### Construcciones ya implementadas (todas orcas, `backend/src/services/construction.ts`)
+
+Todavía NO hay construcciones de otras razas/facciones — solo Clan Serhu (Llanuras). Usa estas como
+plantilla de nivel de detalle y tipo de material, no las repitas.
+
+- Campamento: 6 leña + 8 piedra + 2 piel. Sin oficio. Da 1 slot de compañero, máx 1 por región.
+- Choza: 10 piel + 6 hueso largo de gargantúa + 4 cuerda de tendón. Requiere fuerza 10, oficio
+  carpintero, tier 2. Da 2 slots de compañero.
+- Ayuntamiento pequeño: 14 piedra + 6 leña + 6 hueso + 8 resina + 2 mena + 8 fibra (crudo, sin
+  oficio). Requiere carisma 10. Funda el reino, capacidad 10 edificios.
+- Ayuntamiento mediano/grande: mismos slots, pero materiales PROCESADOS (bloque de piedra tallada,
+  lingote de hierro, viga de madera tallada, columna de hueso, cordaje trenzado). Oficio
+  constructor, carisma 18/22, capacidad 25/60.
+- Cuartel Avanzado → bifurca en Cuartel de Guerra (oficio herrero, +10 defensa) o Puesto Comercial
+  (oficio general).
+
+Patrón real: los costes son SIEMPRE materiales craftables del mundo (leña, piedra, piel, hueso,
+resina, mena, fibra, lingotes, cordaje) — nunca "créditos", "puntos de construcción" ni "energía".
+Los requisitos son SIEMPRE atributos de personaje (fuerza/carisma) + oficio real + a veces tier de
+Ayuntamiento — nunca "nivel de investigación" ni mecánicas genéricas inventadas.
+
+### Mapeo región → facción dueña (`docs/mecanicas/17-reglas-construcciones-reino.md`)
+
+- Las Llanuras del Viento Rojo → Clan Serhu
+- La Meseta del Orden → Concordia de Hierro
+- Cristal Helado → Clan Helsig
+- Ciénaga Troncal → sin facción seedeada (Nabieus, territorio disperso)
+- El Margen Silencioso → sin facción seedeada
+
+### Temática real de cada facción (para inferir qué construcción encaja con cuál)
+
+- Concordia de Hierro (Goirnte, no orca): ciudades-fortaleza de piedra pulida y hierro negro,
+  simetría geométrica marcada, metalurgia/minería avanzada para el mundo, equipo de fabricación en
+  serie con aleación gris. Encaja: fortificaciones, metalurgia, burocracia/control — NUNCA
+  "tecnología" moderna (IA, nanotecnología, energía renovable) — el mundo es fantástico con base
+  científica, no ciencia-ficción.
+- Clan Serhu: orcos de las Llanuras, ya con construcciones reales arriba — patrón tribal,
+  materiales naturales (piel, hueso, madera).
+- Clan Helsig: orcos del Cristal Helado — clima extremo, sin construcciones implementadas todavía,
+  pero el entorno (hielo/frío) es la pista temática real, no misticismo genérico.
+- Clan Goshg: tercer clan orco, sin territorio de reino seedeado todavía.
