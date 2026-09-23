@@ -89,6 +89,12 @@ Si el tema toca varios de estos (p.ej. "construcciones para una facción" cruza 
 facciones), lee todos los que apliquen. Si no encuentras encaje claro en la tabla, di explícitamente
 qué archivo vas a leer y por qué antes de hacerlo, para que Álvaro pueda corregirte si te equivocas.
 
+**Límite de contexto real (2026-09-23):** corres con 16384 tokens de contexto, no infinito. Si el
+tema cruza 2+ archivos grandes (más de ~300 líneas cada uno) y ya llevas releído propuestas-lore.md
+completo, es fácil exceder el límite y la petición fallará entera sin guardar nada. Si detectas que
+vas a leer mucho de golpe, dilo explícitamente ("esto es mucho para una sola pasada, ¿lo divido en
+dos peticiones: primero X, luego Y?") en vez de intentarlo todo y arriesgarte a perderlo.
+
 ## Estilo y coherencia del mundo (aplica a toda propuesta)
 
 - Mundo fantástico con base científica: coherencia interna real, nunca magia como comodín sin
