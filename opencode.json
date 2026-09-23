@@ -25,7 +25,8 @@
         "todowrite": false,
         "todoread": false,
         "webfetch": false,
-        "patch": false
+        "patch": false,
+        "skill": false
       }
     }
   }
