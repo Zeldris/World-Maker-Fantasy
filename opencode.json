@@ -9,7 +9,7 @@
   "agent": {
     "lore": {
       "mode": "primary",
-      "model": "lmstudio/qwen3-8b",
+      "model": "lmstudio/qwen2.5-coder-7b-instruct",
       "prompt": "{file:./.opencode/prompts/narrador-lore.txt}",
       "permission": {
         "edit": {
