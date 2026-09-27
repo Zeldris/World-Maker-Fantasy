@@ -46,11 +46,55 @@ revisado contra el canon completo y el código real. Las propuestas originales q
 estas fichas se han retirado de `propuestas-lore.md`. Lo descartado, y por qué, está al final, en
 "Categoría: Otros".
 
-**Estado de aplicación (2026-09-27):** las 39 fichas ya están **aplicadas a `docs/rpgtarkor/`**
-(regiones, clanes, razas, lenguas, cronologías, historia, ítems, NPC y facciones). Queda **todo el
-código** pendiente, listado en `docs/runbooks/ampliar-lore-checklist.md` § "Tanda OpenCode
-2026-09-27". Estas fichas siguen siendo la referencia completa (campos técnicos, atributos,
-porcentajes) para esa pasada.
+**Estado de aplicación (2026-09-27):** las 39 fichas están **aplicadas a los `.md` maestros**
+(`docs/rpgtarkor/`). **Falta todo el código.** Cada ficha lleva un bloque "Seguimiento": `[x]` lo que
+ya está en docs y `[ ]` cada tarea de código, para ir marcándolas. Lo que se añadió después, en las
+pasadas de conexión (sin ficha propia), está al final, en "Añadido en las pasadas de conexión".
+
+| ID | En docs | Código pendiente |
+|---|---|---|
+| A-01 | ✅ | 5 tarea(s) |
+| A-02 | ✅ | 4 tarea(s) |
+| A-03 | ✅ | 4 tarea(s) |
+| A-04 | ✅ | 3 tarea(s) |
+| A-05 | ✅ | 3 tarea(s) |
+| A-06 | ✅ | — (solo opcional) |
+| A-07 | ✅ | — (solo opcional) |
+| A-08 | ✅ | — (solo opcional) |
+| A-09 | ✅ | 3 tarea(s) |
+| A-10 | ✅ | — (solo opcional) |
+| A-11 | ✅ | — (solo opcional) |
+| A-12 | ✅ | — (solo opcional) |
+| A-13 | ✅ | — (solo opcional) |
+| A-14 | ✅ | — (solo opcional) |
+| A-15 | ✅ | 1 tarea(s) |
+| A-16 | ✅ | 1 tarea(s) |
+| A-17 | ✅ | 1 tarea(s) |
+| A-18 | ✅ | — (solo opcional) |
+| A-19 | ✅ | — (solo opcional) |
+| A-20 | ✅ | 1 tarea(s) |
+| A-21 | ✅ | 1 tarea(s) |
+| A-22 | ✅ | 1 tarea(s) |
+| A-23 | ✅ | 1 tarea(s) |
+| A-24 | ✅ | 1 tarea(s) |
+| A-25 | ✅ | 1 tarea(s) |
+| A-26 | ✅ | 1 tarea(s) |
+| A-27 | ✅ | 1 tarea(s) |
+| A-28 | ✅ | 1 tarea(s) |
+| A-29 | ✅ | 1 tarea(s) |
+| A-30 | ✅ | 1 tarea(s) |
+| A-31 | ✅ | 1 tarea(s) |
+| A-32 | ✅ | 2 tarea(s) |
+| A-33 | ✅ | 1 tarea(s) |
+| A-34 | ✅ | 1 tarea(s) |
+| A-35 | ✅ | 1 tarea(s) |
+| A-36 | ✅ | 1 tarea(s) |
+| A-37 | ✅ | 1 tarea(s) |
+| A-38 | ✅ | 1 tarea(s) |
+| A-39 | ✅ | 1 tarea(s) |
+
+**Orden de implementación sugerido:** NPC primero (A-37, A-38, A-39 y P-04), luego facciones
+(A-01 a A-05, que necesitan esos NPC como líderes), después edificios (A-09), ítems y flora y fauna.
 
 **Criterios aplicados a toda la tanda:**
 - **Moratoria del Corredor de Cauce.** Ninguna ficha nueva usa material de Corredor. Es la presa
@@ -119,6 +163,14 @@ existentes; lo demás es contenido nuevo.
 
 ### A-01 · 2026-09-27 — Los del Obelisco: la facción moderada Goirnte
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)** *(origen: "Facciones Goirntes: Concordia de Hierro", 2026-09-24)*
+
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): historia.md § Las Alianzas · facciones-diplomacia.md § 7.2-bis · `regiones/meseta-del-orden.md`
+- [ ] **Código:** `worldCatalog.ts` → `factions`: añadir `los-del-obelisco` (texto de `description` en la ficha)
+- [ ] **Código:** `seed-catalog.ts` → `FACTION_LEADER_SLUG`: `los-del-obelisco: yovenne-tal` y `concordia-de-hierro: tarsen-vold` (depende de A-37)
+- [ ] **Código:** `reputation.ts` → `REGION_OWNING_FACTIONS['La Meseta del Orden']` = Concordia + Los del Obelisco
+- [ ] **Código:** `worldPopulation.ts`: 300 del pool `goirntes`
+- [ ] **Código:** `FactionRelation` inicial Concordia ↔ Los del Obelisco, presión 65 (TENSION)
 
 **Acción de implementación:** añadir (facción nueva) + modificar (líder de la Concordia)
 **Prioridad:** media
@@ -200,6 +252,14 @@ completas.
 ### A-02 · 2026-09-27 — Keseg Sael: los Nabieus del Margen
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)** *(origen: "Facciones Nabieus" + "El Archivo Silente")*
 
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): razas.md § Nabieus · regiones/margen-silencioso.md (Refugio + Archivo) · `lenguas-helek.md` · facciones-diplomacia.md § 7.2-bis
+- [ ] **Código:** `factions`: añadir `keseg-sael`
+- [ ] **Código:** `REGION_OWNING_FACTIONS['El Margen Silencioso']` = Keseg Sael + Feg Tusha (el Margen deja de ser `SIN_DUENO`)
+- [ ] **Código:** `worldPopulation.ts`: 1.500 del pool `nabieus`
+- [ ] **Código:** `FACTION_LEADER_SLUG`: `keseg-sael: aven-tessk` (NPC de la pasada de conexión, ver P-04)
+- [ ] **Código:** Opcional: `Location` interior del Archivo del Refugio
+
 **Acción de implementación:** añadir
 **Prioridad:** media
 **Dependencias:** ninguna (A-11 da su historia; A-07 fija el nombre en `lenguas-helek.md`)
@@ -270,6 +330,13 @@ no vuelve a entrar.
 ### A-03 · 2026-09-27 — Keseg Prisilke como facción
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)** *(origen: "Facciones Nabieus", facción 2)*
 
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): razas.md § Nabieus · regiones/cienaga-troncal.md (Jeyselt) · facciones-diplomacia.md § 7.2-bis
+- [ ] **Código:** `factions`: añadir `keseg-prisilke`
+- [ ] **Código:** `REGION_OWNING_FACTIONS['Ciénaga Troncal']` = Clan Goshg + Keseg Prisilke
+- [ ] **Código:** `worldPopulation.ts`: 500 del pool `nabieus`
+- [ ] **Código:** `FACTION_LEADER_SLUG`: `keseg-prisilke: ilka-dren` (ver P-04)
+
 **Acción de implementación:** añadir (el poblado y el interior ya existen; falta la `Faction`)
 **Prioridad:** media
 **Dependencias:** A-11 (explica su origen)
@@ -320,6 +387,12 @@ Keseg Sael los ve como "los que se olvidaron de callar", sin desprecio pero con 
 
 ### A-04 · 2026-09-27 — Feg Tusha: los Faerus de Hashma
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)** *(origen: "Facciones Faerus" + "Asentamiento del Feg Tusha en Hashma")*
+
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): razas.md § Faerus · regiones/margen-silencioso.md (Hashma) · cronologia-mitica.md (año 0) · facciones-diplomacia.md § 7.2-bis
+- [ ] **Código:** `factions`: añadir `feg-tusha`
+- [ ] **Código:** `worldPopulation.ts`: 850 del pool `faerus`
+- [ ] **Código:** `FACTION_LEADER_SLUG`: `feg-tusha: hulki` (depende de A-38)
 
 **Acción de implementación:** añadir
 **Prioridad:** media
@@ -384,6 +457,12 @@ lado a lado sin perderse, siguiendo el olor y no el sonido.
 ### A-05 · 2026-09-27 — Feg Ger: los Faerus de Kegi
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)** *(origen: "Facciones Faerus", facción 3)*
 
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): razas.md § Faerus · regiones/llanuras-del-viento-rojo.md (Kegi) · facciones-diplomacia.md § 7.2-bis
+- [ ] **Código:** `factions`: añadir `feg-ger` (sin región propia)
+- [ ] **Código:** `worldPopulation.ts`: 200 del pool `faerus`
+- [ ] **Código:** `FACTION_LEADER_SLUG`: `feg-ger: yeru` (depende de A-39)
+
 **Acción de implementación:** añadir
 **Prioridad:** media
 **Dependencias:** A-06, A-12 (origen de Kegi)
@@ -441,6 +520,10 @@ con un joven que pasó un año entre ellos (Gorhorn; ver A-39).
 ### A-06 · 2026-09-27 — El Jakut: mandar sin cargo
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)** *(origen: extraído de "Facciones Faerus", corrigiendo los títulos inventados Ger-tusha / Ger-ash)*
 
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): razas.md § Faerus (El Jakut) · lenguas-helek.md (Jakut)
+- [ ] **Código:** Nada propio. Queda cubierto por los `liderNpcId` de A-04 y A-05. Opcional: `ZonePoint` del Jakut dentro de cada interior
+
 **Acción de implementación:** añadir
 **Prioridad:** media
 **Dependencias:** ninguna
@@ -486,6 +569,10 @@ cargo.
 ### A-07 · 2026-09-27 — Vocabulario nuevo de la tanda
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)**
 
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): `lenguas-helek.md`
+- [ ] **Código:** Opcional: `loreChunks.ts` con el vocabulario nuevo + `npm run reindex-lore`
+
 **Acción de implementación:** añadir
 **Prioridad:** media (va junto con las fichas que lo usan)
 **Dependencias:** las fichas citadas en cada entrada
@@ -530,6 +617,10 @@ ya existente.
 ### A-08 · 2026-09-27 — Nombres de las tormentas: forma plena y forma contraída
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)** *(origen: incoherencia de canon detectada en la revisión, no una propuesta de OpenCode)*
 
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): `lenguas-helek.md` · `clima-tormentas.md`
+- [ ] **Código:** Nada: el código ya usa las formas contraídas
+
 **Acción de implementación:** modificar
 **Prioridad:** baja
 **Dependencias:** ninguna
@@ -569,6 +660,12 @@ añade una línea que remite a la etimología. El motor sigue mostrando lo mismo
 
 ### A-09 · 2026-09-27 — Los talleres que faltan en Karot Veku
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)** *(origen: "Construcciones de Clan Serhu")*
+
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): regiones/llanuras-del-viento-rojo.md § Karot Veku
+- [ ] **Código:** `factionBuildings` (`worldCatalog.ts`): Herboristería, Taller de Alquimia, Corrales del Domador, Desolladero y Carpintería del Clan Serhu
+- [ ] **Código:** `ZonePoint` de cada uno en `campamento-serhu-interior` y reubicar a su Maestro (Herborista, Alquimista, Domador, Desollador, Carpintero)
+- [ ] **Código:** Enriquecer la `description` de `herreria-serhu`
 
 **Acción de implementación:** añadir (edificios de facción de catálogo) + modificar (descripción de la Herrería)
 **Prioridad:** **alta**: `areas.md` ya promete estos talleres y el catálogo no los tiene.
@@ -638,6 +735,10 @@ nombres "Karot Veku - X Vek" ("Vek" no significa nada; *Veku* es colmillo).
 ### A-10 · Era mítica, sin fechar — Fundación de El Baluarte de Goirme
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)** *(origen: "Fundación del Reino de Goirme sobre la Meseta")*
 
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): `cronologia-mitica.md` · `regiones/meseta-del-orden.md`
+- [ ] **Código:** Opcional: `historiaEntries` (`era: 'semillas'`) + objeto documento
+
 **Acción de implementación:** añadir
 **Prioridad:** baja (la Meseta no es jugable todavía)
 **Dependencias:** ninguna
@@ -678,6 +779,10 @@ obelisco), no se funda en el 2.200 (los Goirntes son de la primera oleada), las 
 
 ### A-11 · Era mítica, sin fechar — La segunda huida Nabieus y la escucha con la palma
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)** *(origen: "La División del Silencio" + piezas de "El Código de la Arena" y "El Registro de las Cuatro Señas")*
+
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): `cronologia-mitica.md` · razas.md § Nabieus
+- [ ] **Código:** Opcional: `historiaEntries` + `loreChunks.ts`
 
 **Acción de implementación:** añadir
 **Prioridad:** media
@@ -726,6 +831,10 @@ sitúa las dos huidas "mucho antes del año 0" y la segunda "generaciones despu�
 
 ### A-12 · ~2.300 (provisional) — El Pacto de la Primera Pieza y la fundación de Kegi
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)** *(origen: "Ikar'huanios Veku" + "Fundación del poblado Kegi y el Tratado de Pieles")*
+
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): `cronologia.md` · clanes-orcos.md § Los Faerus y los Maktor · razas.md § Faerus
+- [ ] **Código:** Opcional: `historiaEntries` (`year: 2300`) con el documento "colmillo de Canizor con dos marcas"
 
 **Acción de implementación:** añadir
 **Prioridad:** **alta**: explica un hecho canon que hoy no tiene origen.
@@ -780,6 +889,10 @@ Jakut Ger.
 ### A-13 · ~2.855 (provisional) — La Mesa del Lazo
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)** *(origen: "La Mesa de Pacto de Krugo y la Ley del Lazo")*
 
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): `cronologia.md` · clanes-orcos.md § La Mesa del Lazo · regiones/llanuras-del-viento-rojo.md (Los Restos de Maktor)
+- [ ] **Código:** Opcional: `ZonePoint` narrativo de la Mesa en `restos-de-maktor` + `historiaEntries` (`year: 2855`)
+
 **Acción de implementación:** añadir
 **Prioridad:** media
 **Dependencias:** A-07 (`Drogh'tugh`)
@@ -829,6 +942,10 @@ tierra se retira a un montículo junto a la mesa, que crece con cada generación
 ### A-14 · ~3.600 (provisional) — El Primer Edicto del Tributo
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)** *(origen: "Sedsar'tugh del Ithal'ord")*
 
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): historia.md § El Yugo de Hierro · `cronologia.md`
+- [ ] **Código:** Opcional: `historiaEntries` (`year: 3600`) con un calco del edicto como documento
+
 **Acción de implementación:** añadir
 **Prioridad:** media (A-01 lo usa en el presente)
 **Dependencias:** ninguna
@@ -873,6 +990,10 @@ los Serhu).
 
 ### A-15 · 2026-09-27 — El Cruce de las Ausencias
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)** *(origen: fusión de "El Cruce de las Ausencias" y "La Vetea Sin Huella")*
+
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): `regiones/margen-silencioso.md`
+- [ ] **Código:** `Location` `cruce-de-las-ausencias` (región Margen, `faunaTerrainTag: humedo`) + `LocationLink` + prompt de imagen
 
 **Acción de implementación:** añadir
 **Prioridad:** baja (Margen fuera del núcleo jugable)
@@ -919,6 +1040,10 @@ compañeros con una cuerda corta: si tira, alguien se ha parado.
 ### A-16 · 2026-09-27 — Las Aguas Sordas
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)** *(origen: "El Pantano de los Susurros", rehecho)*
 
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): `regiones/margen-silencioso.md`
+- [ ] **Código:** `Location` `aguas-sordas` + `LocationLink`
+
 **Acción de implementación:** añadir
 **Prioridad:** baja
 **Dependencias:** A-29 (Morvasa)
@@ -959,6 +1084,10 @@ metálico" y la niebla matinal (el Margen no tiene niebla; la niebla es del Estr
 
 ### A-17 · 2026-09-27 — La Proa Gris
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)** *(origen: "La Mesa del Vuelo Silencioso", rehecho)*
+
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): `regiones/margen-silencioso.md`
+- [ ] **Código:** `Location` `proa-gris` (`arido`) + `LocationLink`
 
 **Acción de implementación:** añadir
 **Prioridad:** baja
@@ -1006,6 +1135,10 @@ tormentas son de las Llanuras).
 ### A-18 · 2026-09-27 — El Puesto del Corredor
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)** *(origen: "El Camino de Afilado", reconvertido)*
 
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): `regiones/meseta-del-orden.md`
+- [ ] **Código:** Opcional (Meseta fuera de núcleo): `Location` `puesto-del-corredor`
+
 **Acción de implementación:** añadir
 **Prioridad:** baja (Meseta no jugable)
 **Dependencias:** ninguna
@@ -1042,6 +1175,10 @@ Concordia (ya en catálogo) sirve de salvoconducto.
 ### A-19 · 2026-09-27 — Las Canteras del Eje
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)** *(origen: "El Oficio de Talla", reconvertido)*
 
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): `regiones/meseta-del-orden.md`
+- [ ] **Código:** Opcional (Meseta fuera de núcleo): `Location` `canteras-del-eje`
+
 **Acción de implementación:** añadir
 **Prioridad:** baja (Meseta no jugable)
 **Dependencias:** A-10
@@ -1077,6 +1214,10 @@ precisión" y los Faerus trayendo materiales.
 
 ### A-20 · 2026-09-27 — Musgo Callado
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)** *(origen: "Musgo Silencioso")*
+
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): regiones/margen-silencioso.md § Flora
+- [ ] **Código:** `ItemCatalog` `musgo-callado` + `HarvestYield` en las Location del Margen
 
 **Acción de implementación:** añadir
 **Prioridad:** media (da mecanismo físico a un rasgo central del Margen)
@@ -1116,6 +1257,10 @@ precisión" y los Faerus trayendo materiales.
 ### A-21 · 2026-09-27 — Veldria Hueca
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)** *(origen: "Veldria del Eco", invertida para que encaje con el dominio de Kroj)*
 
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): regiones/margen-silencioso.md § Flora
+- [ ] **Código:** `ItemCatalog` madera y resina de Veldria Hueca + `HarvestYield`
+
 **Acción de implementación:** añadir
 **Prioridad:** media
 **Dependencias:** A-11 (la técnica que la usa)
@@ -1151,6 +1296,10 @@ precisión" y los Faerus trayendo materiales.
 
 ### A-22 · 2026-09-27 — Flor de Víspera
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)** *(origen: "Flor Gris del Silencio")*
+
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): regiones/margen-silencioso.md § Flora
+- [ ] **Código:** `ItemCatalog` `petalos-vispera` + `HarvestYield` (comprobar si existe gate horario; si no, solo texto en `condicion`)
 
 **Acción de implementación:** añadir
 **Prioridad:** baja
@@ -1188,6 +1337,10 @@ precisión" y los Faerus trayendo materiales.
 ### A-23 · 2026-09-27 — Cántaro de Hoja
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)** *(origen: "Cántaro de Hoja")*
 
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): regiones/margen-silencioso.md § Flora
+- [ ] **Código:** `ItemCatalog` agua y tallo de Cántaro + `HarvestYield`
+
 **Acción de implementación:** añadir
 **Prioridad:** baja
 **Dependencias:** ninguna
@@ -1221,6 +1374,10 @@ precisión" y los Faerus trayendo materiales.
 ### A-24 · 2026-09-27 — Carnosa de Tocón
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)** *(origen: "Trufa de la Niebla")*
 
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): regiones/margen-silencioso.md § Flora
+- [ ] **Código:** `ItemCatalog` `carnosa-de-tocon` + `HarvestYield`; receta de cocina opcional
+
 **Acción de implementación:** añadir
 **Prioridad:** baja
 **Dependencias:** ninguna
@@ -1252,6 +1409,10 @@ precisión" y los Faerus trayendo materiales.
 ### A-25 · 2026-09-27 — Bulbo de Turbera (Ciénaga Troncal)
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)** *(origen: "Bulbo del Eco", trasladado)*
 
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): regiones/cienaga-troncal.md § Flora
+- [ ] **Código:** `ItemCatalog` `bulbo-de-turbera` + `HarvestYield`
+
 **Acción de implementación:** añadir
 **Prioridad:** baja
 **Dependencias:** ninguna
@@ -1281,6 +1442,10 @@ precisión" y los Faerus trayendo materiales.
 ### A-26 · 2026-09-27 — Velo de Charca (Ciénaga Troncal)
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)** *(origen: "Alga de la Niebla", trasladada)*
 
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): regiones/cienaga-troncal.md § Flora
+- [ ] **Código:** `ItemCatalog` `velo-de-charca` + `HarvestYield`
+
 **Acción de implementación:** añadir
 **Prioridad:** baja
 **Dependencias:** ninguna
@@ -1309,6 +1474,10 @@ precisión" y los Faerus trayendo materiales.
 
 ### A-27 · 2026-09-27 — Herrumbrera (Ciénaga Troncal)
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)** *(origen: "Corteza Luminis", rehecha sin brillo)*
+
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): regiones/cienaga-troncal.md § Flora
+- [ ] **Código:** `ItemCatalog` `corteza-herrumbre` + `HarvestYield` + receta de fundición (10 → 1 `mena-hierro-llanuras` o una mena pobre nueva)
 
 **Acción de implementación:** añadir
 **Prioridad:** media (tiene una implicación económica real)
@@ -1345,6 +1514,10 @@ precisión" y los Faerus trayendo materiales.
 
 ### A-28 · 2026-09-27 — Leshra, el ave que no suena
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)** *(origen: "Leshra")*
+
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): regiones/margen-silencioso.md § Fauna · flora-fauna.md (Umbrias) · `lenguas-helek.md`
+- [ ] **Código:** `fauna` `leshra` (UMBRIAS, habilidades raciales de la ficha) + `HarvestYield` de sus plumas
 
 **Acción de implementación:** añadir
 **Prioridad:** media (primera especie real de la familia Umbrias)
@@ -1391,6 +1564,10 @@ primera fauna de Berig atribuida a Kroj como creadora y no solo como huella.
 ### A-29 · 2026-09-27 — Morvasa, la serpiente de las Aguas Sordas
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)** *(origen: "Vesh", renombrada)*
 
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): regiones/margen-silencioso.md § Fauna
+- [ ] **Código:** `fauna` `morvasa` (ESCAMADOS, control de 1 turno) + `HarvestYield` de veneno y piel
+
 **Acción de implementación:** añadir
 **Prioridad:** baja
 **Dependencias:** A-16 (su hábitat)
@@ -1428,6 +1605,10 @@ primera fauna de Berig atribuida a Kroj como creadora y no solo como huella.
 
 ### A-30 · 2026-09-27 — Brozán
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)** *(origen: "Murela", renombrada)*
+
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): regiones/margen-silencioso.md § Fauna
+- [ ] **Código:** `fauna` `brozan` (RONDINES) + `HarvestYield`
 
 **Acción de implementación:** añadir
 **Prioridad:** baja
@@ -1467,6 +1648,10 @@ primera fauna de Berig atribuida a Kroj como creadora y no solo como huella.
 
 ### A-31 · 2026-09-27 — Hoscón, el carroñero que camina
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)** *(origen: "Ushra", completada y renombrada)*
+
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): regiones/margen-silencioso.md § Fauna
+- [ ] **Código:** `fauna` `hoscon` (CORVENES) + `HarvestYield` de plumón
 
 **Acción de implementación:** añadir
 **Prioridad:** baja
@@ -1510,6 +1695,11 @@ primera fauna de Berig atribuida a Kroj como creadora y no solo como huella.
 ### A-32 · 2026-09-27 — Colmillo de Ferike y Ashi'krul, la daga de colmillo
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)** *(origen: "Colmillo de Ferike" + "Daga de Colmillo de Faerus")*
 
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): `items.md` · regiones/llanuras-del-viento-rojo.md (Ferikes)
+- [ ] **Código:** `ItemCatalog` `colmillo-ferike` y `colmillo-ferike-hembra` + `HarvestYield` del Ferike
+- [ ] **Código:** `ItemCatalog` `ashi-krul` (en el `loadout` de Tasko, A-39)
+
 **Acción de implementación:** añadir (+ ampliar el despiece del Ferike)
 **Prioridad:** media
 **Dependencias:** A-05 (se talla en Kegi); A-39 (quien la vende)
@@ -1552,6 +1742,10 @@ envuelta en piel de Ferike.
 ### A-33 · 2026-09-27 — Desollador de sílice
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)** *(origen: "Cuchillo de Espina de Viento", reencaminado)*
 
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): `items.md` · regiones/llanuras-del-viento-rojo.md (Desolladero)
+- [ ] **Código:** `ItemCatalog` `desollador-silice` (`herramientaParaOficio`) + ponerlo a la venta con el Maestro Desollador Serhu
+
 **Acción de implementación:** añadir
 **Prioridad:** media
 **Dependencias:** A-09 (se vende en el Desolladero)
@@ -1589,6 +1783,10 @@ que reconoce abiertamente que los Serhu necesitan a otro clan para algo.
 ### A-34 · 2026-09-27 — Ungüento de Espina
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)** *(origen: "Poción de Veneno Suave", reencaminada)*
 
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): `items.md`
+- [ ] **Código:** `ItemCatalog` `unguento-espina` + receta de `alquimista-orcos-llanuras` en `crafting.ts` (comprobar el efecto de los medicinales t3)
+
 **Acción de implementación:** añadir (receta)
 **Prioridad:** media (primer uso de crafteo del veneno de Espina, que hoy solo es loot)
 **Dependencias:** ninguna
@@ -1624,6 +1822,10 @@ resina, el veneno deja de ser un peligro y se vuelve un **anestésico de campo**
 
 ### A-35 · 2026-09-27 — Manto de Cornisa
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)** *(origen: "Escapulario Ceremonial de Celubia", reencaminado)*
+
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): `items.md` · regiones/llanuras-del-viento-rojo.md (Acantilados)
+- [ ] **Código:** `ItemCatalog` `manto-cornisa` + receta de `sastre-orcos-llanuras`
 
 **Acción de implementación:** añadir (+ receta)
 **Prioridad:** baja
@@ -1662,6 +1864,10 @@ manto.
 ### A-36 · 2026-09-27 — Incisivos de Miruina
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)** *(origen: "Hueso de Miruina", reencaminado)*
 
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): `items.md` · regiones/llanuras-del-viento-rojo.md (Miruina)
+- [ ] **Código:** `ItemCatalog` `incisivos-miruina` (`herramientaParaOficio: curtidor, peletero`) + `HarvestYield` de la Miruina
+
 **Acción de implementación:** añadir (+ ampliar el despiece de la Miruina)
 **Prioridad:** baja
 **Dependencias:** ninguna
@@ -1694,6 +1900,10 @@ arranca escamas y restos de carne de una piel sin cortarla.
 
 ### A-37 · 2026-09-27 — Primer Censor Tarsen Vold
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)** *(origen: necesidad de A-01, sin propuesta de OpenCode)*
+
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): npcs.md (nº 16) · `historia.md` · `regiones/meseta-del-orden.md`
+- [ ] **Código:** `Npc` `tarsen-vold` (ficha técnica en la propuesta) + cambiar el líder de la Concordia (ver A-01)
 
 **Acción de implementación:** añadir
 **Prioridad:** media (A-01 depende de él)
@@ -1742,6 +1952,10 @@ ordena.", `loadout`: sello de la Concordia, correspondencia sellada.
 
 ### A-38 · 2026-09-27 — Cinco Faerus de Hashma
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)** *(origen: "NPCs Faerus del Margen Silencioso", 13 plantillas reducidas a 5 con ficha completa)*
+
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): npcs.md (nº 17-21) · regiones/margen-silencioso.md (Jakut Tusha)
+- [ ] **Código:** 5 `Npc` (Hulki **nivel 18**, Tira, Kiri, Lusa, Gero) con `homeLocationSlug: campamento-feg-tusha-interior` + `ZonePoint`
 
 **Acción de implementación:** añadir
 **Prioridad:** media (el interior `campamento-feg-tusha-interior` existe y está vacío)
@@ -1819,6 +2033,10 @@ hablado alguna vez con un orco.
 
 ### A-39 · 2026-09-27 — Dos Faerus de Kegi
 **Estado: APROBADA (Álvaro, 2026-09-27 — versión final redactada por Claude)** *(origen: "Vashi Ger", "Ger Sil" y "Sil Kegi" de la propuesta de NPCs, rehechos)*
+
+**Seguimiento:**
+- [x] **En docs** (2026-09-27): npcs.md (nº 22-23) · regiones/llanuras-del-viento-rojo.md (Kegi)
+- [ ] **Código:** 2 `Npc` (Yeru **nivel 18**, Tasko con `loadout` de Ashi'krul) en `jakut-ger-interior` / `yegr-kegi` + `ZonePoint`
 
 **Acción de implementación:** añadir
 **Prioridad:** media
@@ -1924,3 +2142,46 @@ el comando `REVISA` de OpenCode y para evaluar cualquier ronda futura.
 que el agente no tenía cargados `flora-fauna.md`, `items.md`, `lenguas-helek.md` ni `areas.md`.
 Tres reglas de esta tanda deberían pasar al contexto fijo de OpenCode: la moratoria del Corredor de
 Cauce, "`Silh` es Kektira y `Sil` es fuego en Feg", y la escala de valores en Goirnos por tier.
+
+## Añadido en las pasadas de conexión (2026-09-27, sin ficha propia)
+
+Contenido que Claude añadió directamente a los `.md` maestros al conectar el lore, a petición de Álvaro.
+Ya está en docs; falta el código. Detalle en cada fichero regional y en
+`docs/runbooks/ampliar-lore-checklist.md`.
+
+### P-01 — Fauna nueva
+- [x] **En docs:** Hielaga, Nievón y Escarchín (`regiones/cristal-helado.md`); Tragalodo, Borbol y Zancapilote (`regiones/cienaga-troncal.md`); Vreskal, el primer ORDENADOS (`regiones/meseta-del-orden.md`)
+- [ ] **Código:** 7 `fauna` + sus `HarvestYield` (niveles, familias y recursos en cada ficha regional)
+
+### P-02 — Fauna antigua del lore que nunca llegó al catálogo
+- [x] **En docs:** ya tienen familia y nivel: Sombras de Kroj (UMBRIAS 3-8), Hetris (ACECHANTES 4-9), Mekiosi (ACECHANTES 7-13), Vistue (GUELISES 3-7) y Cornantes (BESTIONES 3-8)
+- [ ] **Código:** 5 `fauna` + `HarvestYield`. Ojo: las formas de Cambiaformas del Druida ya nombran a Hetris, Mekiosi y Vistue
+
+### P-03 — Flora nueva
+- [x] **En docs:** Liquen Escarcha (Cristal Helado) y Bolco (Ciénaga)
+- [ ] **Código:** `ItemCatalog` `liquen-escarcha` y `resina-bolco` + `HarvestYield`
+
+### P-04 — NPC Nabieus
+- [x] **En docs:** Aven Tessk (portavoz de Keseg Sael) e Ilka Dren (Keseg Prisilke), `npcs.md` nº 24-25
+- [ ] **Código:** 2 `Npc` (`aven-tessk` nivel 16, Segador Ilustrado, en `refugio-sin-nombre`; `ilka-dren` nivel 14, Cazadora Instintiva, en `conclave-keseg-prisilke-interior`). Son los líderes de A-02 y A-03
+
+### P-05 — Lugares descritos que solo tenían nombre
+- [x] **En docs:** los 8 lugares de la Ciénaga (`tuneles-musgosos`, `raices-madre-fango`, `cumbre-bruma-negra`, `cataratas-madre-fango`, `costa-marea-vida`, `costa-corredor`, `embarcadero-goshg`, `desfiladero-esmeralda`)
+- [ ] **Código:** rellenar la `description` (y el `teaser`) de esas 8 `Location`, que hoy están vacías
+
+### P-06 — Talleres del Cerco de los Pilotes (Goshg)
+- [x] **En docs:** astillero de pilotes, resinería, ahumadero y talla de tótems (`regiones/cienaga-troncal.md`)
+- [ ] **Código:** `factionBuildings` en `campamento-goshg-interior` + `ZonePoint`
+- [ ] **Diseño pendiente:** los Maestros Goshg (ninguno existe todavía)
+
+### P-07 — Ciudades numeradas de la Meseta
+- [x] **En docs:** Vresk Hes, Vresk Tuh y Vresk Kei (`regiones/meseta-del-orden.md`, `lenguas-helek.md`)
+- [ ] **Código (opcional, Meseta fuera de núcleo):** 3 `Location` con su región
+
+### P-08 — Cronología de conexión
+- [x] **En docs:** ciudades numeradas (0-1.000), los mil años salvajes (~1.000-2.000), El Borde (~2.100-2.800), la Senda del Sílice (~3.000-3.500), la corriente radical (~3.650-3.700), El Claro de la Manada arrasado (~4.006-4.008)
+- [ ] **Código (opcional):** `historiaEntries` para las que tengan documento; `loreChunks.ts` + `npm run reindex-lore` con los hilos nuevos (Senda del Sílice, El Borde, la tala del borde, el tributo por mar)
+
+### P-09 — Geografía real
+- [x] **En docs:** tres franjas y tabla de rutas (`areas.md` § Cómo encajan en el mapa)
+- [ ] **Revisar:** la incoherencia antigua entre el mapa de Azgaar (Karot Veku a ~110 km del Cruce) y el grafo del juego (18-25 km). No se ha tocado
