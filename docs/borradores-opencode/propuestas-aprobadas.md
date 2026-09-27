@@ -1763,7 +1763,7 @@ bajo una apariencia bestial.
 
 | Nombre | Papel | Nivel | Clase / especialización | Temperamento |
 |---|---|---|---|---|
-| **Hulki** (F) | La que más a menudo está en el Jakut Tusha | 8 | DRUIDA / AULLADOR | CAUTELOSO |
+| **Hulki** (F) | La que más a menudo está en el Jakut Tusha | 18 | DRUIDA / AULLADOR | CAUTELOSO |
 | **Tira** (F) | Cazadora mayor: reparte la primera pieza | 6 | CAZADOR / INSTINTIVO | CAUTELOSO |
 | **Kiri** (M) | Vigía del dosel | 5 | DRUIDA / CAMBIAFORMAS | CAUTELOSO |
 | **Lusa** (F) | Cuida a los *Feg'nur*, los heridos que no se abandonan | 4 | DRUIDA / ADAPTADO | AMIGABLE |
@@ -1773,7 +1773,7 @@ bajo una apariencia bestial.
 cargado presas toda la vida. Se sienta en el Jakut más que nadie porque casi nadie le disputa el
 sitio: huele el miedo ajeno antes de que el otro sepa que lo tiene. Es quien decide si un forastero
 pasa del primer árbol. Es el `liderNpcId` de Feg Tusha.
-`attributes: { fuerza: 9, destreza: 11, constitucion: 9, inteligencia: 15, voluntad: 16, carisma: 8, magia: 7 }`,
+`level: 18`, `attributes: { fuerza: 12, destreza: 15, constitucion: 12, inteligencia: 20, voluntad: 22, carisma: 10, magia: 8 }` *(nivel recalibrado de 8 a 18 al contrastar con los líderes de clan reales, de nivel 20-24)*,
 `reclutablePct: 0`, `cortejablePct: 0`, `atributoResistencia: 'voluntad'`.
 *Personalidad:* paciente, seca, imposible de engañar.
 
@@ -1841,8 +1841,9 @@ hojas que susurra.
 Faerus. Una muesca en la oreja izquierda. **Conoció a Gorhorn** durante el año que pasó con la
 manada: lo recuerda como "el orco que olía a pena y no a miedo". Nunca compartió con él la primera
 pieza, y aún no sabe si fue un error. Es el `liderNpcId` de Feg Ger.
-`level: 8`, `clase: 'DRUIDA'`, `especializacion: 'SALVAJE'`,
-`attributes: { fuerza: 14, destreza: 13, constitucion: 12, inteligencia: 13, voluntad: 12, carisma: 9, magia: 4 }`,
+`level: 18`, `clase: 'DRUIDA'`, `especializacion: 'SALVAJE'`,
+`attributes: { fuerza: 19, destreza: 18, constitucion: 16, inteligencia: 17, voluntad: 16, carisma: 12, magia: 5 }`
+*(nivel recalibrado de 8 a 18 al contrastar con los líderes de clan reales, de nivel 20-24)*,
 `temperamento: 'CAUTELOSO'`, `reclutablePct: 0`, `atributoResistencia: 'voluntad'`.
 *Personalidad:* reservada y leal. Pone a prueba antes de confiar.
 *Gancho:* si Gorhorn vuelve a Kegi, Yeru puede ofrecerle la *Vash'grath*. Sería el primer orco en
