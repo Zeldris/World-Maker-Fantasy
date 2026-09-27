@@ -245,8 +245,33 @@ plaza central de tierra apisonada, con sendas marcadas por el paso constante. Ca
 su propia ubicación en el mapa de la zona. El interior completo es el **Ketg'lukar** (`Lukar` =
 Hogar). En su centro simbólico se alza el **Ketg'sedsar**, el Salón del Colmillo Ceniza (`Sedsar` =
 Salón), donde la Terk'ikar y el Kort'ikar reciben a quien cruza la entrada.
-**Estado en el catálogo:** solo existen como edificio la Herrería, la Curtiduría, la Cocina común y
-el Ketg'sedsar. Los otros cuatro talleres están descritos pero no sembrados.
+**Los talleres, uno a uno.** Cada uno se levanta con un material distinto de la región:
+- **Herrería del Clan Serhu** *(sembrada)*: horno de arcilla endurecida bajo una lona de parches y
+  un humo que nunca termina de irse. Es la herrería "mediocre y mal orientada" del clan.
+- **Curtiduría del Clan Serhu** y **Cocina común de Karot Veku** *(sembradas)*.
+- **Herboristería del Clan Serhu** *(pendiente de código · Maestra Herborista Serhu)*: estancia baja
+  de adobe con tejado de **Musgo Rojo**. De cuerdas de fibra de Enredadera cuelgan a secar manojos de
+  Salvia del Polvo y Flor de Ceniza, y hay mesas de piedra con morteros de hueso. Huele a amargo y a
+  ceniza fría. De aquí sale la cataplasma de salvia que Gorhorn lleva de serie.
+- **Taller de Alquimia del Clan Serhu** *(pendiente de código · Maestro Alquimista Serhu)*: pegado a
+  la herboristería, separado por una cortina de piel curtida. Fogón pequeño de **Matorral de
+  Cuerno**, recipientes de cuerno de Múrgol y Flor Salvatura en conserva. Es el único lugar del
+  poblado donde se trabaja a fuego lento, a contrapelo del carácter del clan, y los demás Serhu lo
+  miran con cierta desconfianza.
+- **Corrales del Domador** *(pendiente de código · Maestro Domador Serhu)*: recinto dentro de la
+  empalizada con postes de **Huesos de Gargantúa** del Osario y un abrevadero de piedra que se llena
+  a mano desde el Pozo. Aquí se aclimatan las bestias recién domadas antes de pasar al recinto de
+  Múrgol de fuera. La Terk'ikar Ulkha Ketg, que es Domadora, lo visita a diario.
+- **Desolladero del Clan Serhu** *(pendiente de código · Maestro Desollador Serhu)*: a sotavento,
+  junto a la salida trasera hacia el recinto de Múrgol. Bastidores de **cornamenta de Múrgol** para
+  tensar pieles y un canal de arcilla que saca la sangre fuera de la empalizada. Es el oficio en el
+  que los Serhu destacan de verdad. Aquí se vende el Desollador de sílice.
+- **Carpintería del Clan Serhu** *(pendiente de código · Maestro Carpintero Serhu)*: suelo de
+  arcilla, bancos con herramientas de asta y hueso, y vigas de **Telda** impregnadas de Resina Telda
+  Gris secándose en soportes de piedra. De aquí salen las estacas de la empalizada y los botes del
+  Embarcadero de Ceniza.
+
+Son edificios de facción (`Building.factionId`), no recetas que el jugador pueda construir.
 
 **Maestros de oficio.** Por cada uno de los 12 oficios orcos de las Llanuras (herrero, curtidor,
 peletero, desollador, domador, carpintero, sastre, herborista, primeros auxilios, alquimista,
@@ -270,6 +295,14 @@ desarrollada que sus parientes de la selva (ver [razas.md § Faerus](../razas.md
   salón de piel y hueso decorado con grandes calaveras y huesos largos tallados en forma de garras.
   Aquí los guerreros y sabios se reúnen para planear y mantener el comercio con los pocos orcos que
   deciden probar suerte.
+- **El Jakut como lugar**: una losa plana de piedra roja a la sombra del Vergel. Quien está sentado en
+  ella decide mientras está sentado (ver [razas.md § Faerus](../razas.md#faerus--los-furiosos)).
+
+La manada de Kegi es el **Feg Ger** ("Manada Roja"). Nació del Pacto de la Primera Pieza con los
+Maktor (ver [clanes-orcos.md](../clanes-orcos.md#los-faerus-y-los-maktor)). Comercia pieles curtidas y
+colmillo tallado por hierro, sal y Lana de Múrgol. **Yeru**, quien más a menudo está en el Jakut Ger,
+conoció a Gorhorn durante su año con la manada. **Tasko**, curtidor y tallador, lleva el comercio del
+Vergel (ver [npcs.md](../../personajes/npcs.md)).
 
 ---
 
@@ -457,6 +490,9 @@ suelo, también ritual de cortejo). Las hembras no tienen cola, pero desarrollan
 fuertes: son ellas las cazadoras y alfas de la manada. Dan Piel de Ferike y Garras Ferike (abalorios,
 tier 6-7), Melena de cola Ferike (tier 7, loot muy raro, para el objeto de mayor calidad de ese tier),
 hueso (`hueso-ligero`) y carne (`racion-carne`).
+**Colmillo de Ferike** *(pendiente de código)*: 20-35 cm, marfil con vetas pardas, duro pero
+quebradizo contra la piedra. Tier 6; el de hembra es la variante de mayor calidad. Con él tallan los
+Faerus de Kegi la daga *Ashi'krul*.
 
 ### Los Restos de Maktor
 *Zona sin recursos, a propósito · Catálogo: `restos-de-maktor`.*
@@ -467,6 +503,11 @@ Los restos oxidados son inservibles: solo queda el recuerdo de lo que pudo ser. 
 objetos: la **Tablilla quemada** (documento legible, "La caída del Clan Maktor") y el **Tótem de clan
 roto**, ingrediente de la receta que reconstruye el Tótem del Clan Maktor. Un evento futuro, sin
 fecha, desbloqueará cambios reales en esta región.
+
+Entre los escombros sigue en pie, partida en dos, **la Mesa del Lazo**: una losa de piedra roja con un
+surco en el centro, junto a un montículo de tierra más alto que un orco. Es donde todo Maktor
+pronunciaba el *Drogh'tugh* a los 10 años (ver [clanes-orcos.md § La Mesa del Lazo](../clanes-orcos.md#la-mesa-del-lazo)).
+Es un elemento narrativo, no un botín.
 
 ### El Osario de la Manada
 *Catálogo: `osario-de-la-manada`.*
@@ -573,7 +614,9 @@ direcciones para rasgar escamas de Jusha (su presa favorita) y unos ojos muy peq
 de roedor, que no soportan la luz del día: la huella de Kroj sobre otra criatura nocturna. Caza en
 manada de noche y descansa en las charcas tras comer. De día amplía sus madrigueras bajo el agua, en
 las orillas, con un túnel que sube hasta la superficie para respirar. Da Piel de Miruina
-(impermeable, tier 2-3) y `racion-carne`.
+(impermeable, tier 2-3) y `racion-carne`. Sus **Incisivos de Miruina** *(pendiente de código,
+tier 2)* sirven de rascador natural para limpiar pieles antes de curtirlas: arrancan escamas y restos
+sin cortar la piel.
 
 #### Quio
 *Nadantes · nivel 1 · INOFENSIVO · Catálogo: `quio`.*
@@ -860,6 +903,11 @@ de espuma seca que nunca cae del todo, y pico largo y curvo adaptado a partir el
 verticales. Nidifica en las cornisas más altas y es ferozmente territorial cerca del nido. Da Plumas
 de Celubia y Huevo de Celubia.
 
+**La prueba de la cornisa.** Trepar a las cornisas más altas y volver con plumas de Celubia es la
+prueba de valor **de la costa**. No es sagrada como la cacería ritual de Corredores: es cosa de
+jóvenes que quieren presumir. Quien vuelve se lo cose en un **Manto de Cornisa** (ver
+[items.md](../../items-y-catalogo/items.md)).
+
 #### Terkash
 *Quitinos · nivel 2-4 · AGRESIVO · Catálogo: `terkash`.*
 
@@ -926,13 +974,14 @@ investigadora que sus descendientes de hoy, los Nabieus, siguen llevando en la s
 ## Huecos conocidos
 
 - **Talleres de Karot Veku** descritos pero sin edificio en el catálogo: herboristería, alquimia,
-  corrales del Domador y desolladero.
+  corrales del Domador, desolladero y carpintería (ya tienen descripción y Maestro asignado).
 - El **trabajador de Reino** (`<Oficio>` Serhu PLANTILLA) no existe para ningún oficio.
-- **Kegi** no tiene ningún NPC.
+- **Kegi**: Yeru y Tasko tienen ficha en el lore, pero no en el catálogo.
 - El **Puesto Rabioso del Márgen** es solo un rótulo del mapa, sin `Location`.
 - La **Espina del Viento** no tiene ficha de combate, por diseño.
-- Hay loot **sin uso** en ninguna receta: Veneno y Caparazón de Espina del Viento, Plumas y Huevo de
-  Celubia, Caparazón de Terkash.
+- Hay loot **sin uso** en ninguna receta: Huevo de Celubia y Caparazón de Terkash. El Veneno de
+  Espina (Ungüento de Espina) y las Plumas de Celubia (Manto de Cornisa) ya tienen receta en el lore,
+  pendiente de código.
 - **Corredor de Cauce: moratoria.** No hay que añadirle materiales nuevos.
 - La mecánica de las **Agujas Imán** (pérdida de Arena Imán) y la **estacionalidad del Kirelon**
   están diseñadas pero no implementadas.

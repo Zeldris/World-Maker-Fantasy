@@ -46,6 +46,12 @@ revisado contra el canon completo y el código real. Las propuestas originales q
 estas fichas se han retirado de `propuestas-lore.md`. Lo descartado, y por qué, está al final, en
 "Categoría: Otros".
 
+**Estado de aplicación (2026-09-27):** las 39 fichas ya están **aplicadas a `docs/rpgtarkor/`**
+(regiones, clanes, razas, lenguas, cronologías, historia, ítems, NPC y facciones). Queda **todo el
+código** pendiente, listado en `docs/runbooks/ampliar-lore-checklist.md` § "Tanda OpenCode
+2026-09-27". Estas fichas siguen siendo la referencia completa (campos técnicos, atributos,
+porcentajes) para esa pasada.
+
 **Criterios aplicados a toda la tanda:**
 - **Moratoria del Corredor de Cauce.** Ninguna ficha nueva usa material de Corredor. Es la presa
   sagrada de la cacería ritual, no una materia prima, y el catálogo ya tiene cuatro objetos suyos.

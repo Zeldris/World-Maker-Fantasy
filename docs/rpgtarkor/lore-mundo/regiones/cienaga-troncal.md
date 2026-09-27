@@ -36,7 +36,11 @@ Maestros.
 ### Jeyselt (Fin Susurrado)
 *Asentamiento Nabieus · Catálogo: `conclave-keseg-prisilke` (interior: `conclave-keseg-prisilke-interior`).*
 
-Poblado del clan **Keseg Prisilke**, en la explanada más pequeña del sur de la ciénaga. Nombre en
+Poblado del clan **Keseg Prisilke**, en la explanada más pequeña del sur de la ciénaga. El clan nació
+de la segunda huida Nabieus (ver [cronologia-mitica.md](../cronologia-mitica.md#sin-fechar-generaciones-después-de-la-caída-la-segunda-huida-nabieus)).
+Vive de la caza y de la madera de los Trepadores Ocaso más que de los mensajes; la Concordia le exige
+madera, como a los Goshg, con quienes comparte la Ciénaga en una convivencia práctica (intercambian
+madera y noticias, no se casan entre sí). Nombre en
 lengua común: *Fin Susurrado*; en su lengua, *Jeyselt*. Sus habitantes tienen cuerpos adaptados a
 las zonas más difíciles del pantano, distintos de sus parientes del Margen Silencioso.
 
@@ -71,6 +75,32 @@ protege el fondo de una canoa o el pilote de una empalizada de pudrirse en el ag
 madera oscura, densa y casi inmune a la humedad, es la que los clanes orcos prefieren para tallar
 sus tótems. De ella era el gran tótem del Clan Maktor, y también el trozo que Gorhorn rescató.
 
+### Bulbo de Turbera
+*Bulvias · zonas llanas · pendiente de código.*
+
+Tubérculo elíptico de 15-30 cm, de piel parda y pulpa blanca y firme, que crece en el fango de turba
+de las zonas llanas. Es el alimento base de Keseg Prisilke y de los Goshg cuando falla la caza de
+Cornantes; se come cocido, frito o seco al humo.
+**Recurso:** Bulbo de Turbera, tier 1, alimento.
+
+### Velo de Charca
+*Marelas · charcas quietas entre los pilotes · pendiente de código.*
+
+Láminas gelatinosas y translúcidas de 5-15 cm que cubren la superficie de las charcas quietas, bajo
+los Trepadores Ocaso. Se come en sopa, y aplicada fresca sobre una quemadura **enfría y protege**: es
+la cura de campo más habitual de los Goshg, que se queman a menudo con la resina de sus antorchas.
+**Recurso:** Velo de Charca, tier 1, alimento y medicinal.
+
+### Herrumbrera
+*Vetrias · orillas de agua estancada · pendiente de código.*
+
+Arbusto de 40-70 cm de tallos gruesos con una corteza de color óxido, pesada y áspera. El fango de la
+Ciénaga arrastra hierro disuelto; sus raíces lo concentran en la corteza, que con el tiempo se vuelve
+una costra de herrumbre. Es el mismo principio que la Hierba del Hierro de la Meseta, pero con un
+mineral mucho más pobre. **No brilla.** Explica que los Goshg tengan algo de metal pese a vivir en
+una región pobre en minerales: da para puntas de lanza y clavos, no para una herrería de verdad.
+**Recurso:** Corteza Herrumbre, tier 2 (10 unidades equivalen a 1 de mena de hierro pobre al fundir).
+
 ## Fauna
 
 ### Cornantes
@@ -82,7 +112,8 @@ grupo y de paciencia: se le acorrala hacia el agua baja, donde su propio peso lo
 
 ## Huecos conocidos
 
-- Solo una especie de flora y una de fauna documentadas en toda la región.
+- Solo una especie de fauna documentada (los Cornantes, que además no están en el catálogo). La flora
+  nueva (Bulbo de Turbera, Velo de Charca, Herrumbrera) está pendiente de código.
 - Ocho lugares del catálogo sin descripción (arriba).
 - El Bolco aparece en la descripción de las Marismas sin ficha propia.
 - El interior Goshg no tiene talleres ni Maestros.

@@ -1300,3 +1300,35 @@ primera entrada real ya existe (Junco→Chudo, cerrado arriba) — sigue sin cre
 
 **Zona 17 sigue pausada** — retomar el Chudo de la Marea (elemento 2) ahora que el renombrado ya
 está cerrado, antes de seguir con más elementos nuevos de la zona.
+
+## Tanda OpenCode 2026-09-27 — 39 propuestas aprobadas, aplicadas a docs, código pendiente
+
+Fichas completas en `docs/borradores-opencode/propuestas-aprobadas.md` (A-01…A-39). Ya están en
+`docs/rpgtarkor/`; **todo lo de abajo es código pendiente**:
+
+- **Facciones** (`worldCatalog.ts` → `factions`, `seed-catalog.ts`, `reputation.ts`,
+  `worldPopulation.ts`): Los del Obelisco, Keseg Sael, Keseg Prisilke, Feg Tusha y Feg Ger. La
+  Concordia pasa a tener como líder a `tarsen-vold` (hoy `yovenne-tal`, incoherente con el lore).
+  Detalle en `facciones-diplomacia.md` § 7.2-bis.
+- **NPC** (`worldCatalog.ts`): Tarsen Vold; Hulki, Tira, Kiri, Lusa y Gero en
+  `campamento-feg-tusha-interior`; Yeru y Tasko en Kegi (`jakut-ger-interior` / `yegr-kegi`).
+  Atributos y porcentajes en A-37 a A-39.
+- **Edificios de facción Serhu** (`factionBuildings` + `ZonePoint` en `campamento-serhu-interior`):
+  Herboristería, Taller de Alquimia, Corrales del Domador, Desolladero y Carpintería, con su Maestro
+  ya sembrado (A-09). Enriquecer la descripción de la Herrería.
+- **Locations nuevas del Margen**: `cruce-de-las-ausencias`, `aguas-sordas`, `proa-gris`. Meseta
+  (opcional, fuera de núcleo): Puesto del Corredor, Canteras del Eje.
+- **Fauna** (`fauna` + `HarvestYield`): Leshra (UMBRIAS), Morvasa, Brozán, Hoscón. Tampoco están en
+  el catálogo Hetris, Mekiosi, Vistue, Sombras de Kroj ni Cornantes, que eran canon anterior.
+- **Flora** (`ItemCatalog` + `HarvestYield`): Musgo Callado, Veldria Hueca (madera y resina), Flor de
+  Víspera, Cántaro de Hoja (agua y tallo), Carnosa de Tocón, Bulbo de Turbera, Velo de Charca, Corteza
+  Herrumbre (+ receta de fundición a mena de hierro pobre).
+- **Items**: Colmillo de Ferike (+ `HarvestYield` del Ferike), Ashi'krul (loadout de Tasko),
+  Desollador de sílice (a la venta en el Desolladero), Ungüento de Espina (receta de alquimista), Manto
+  de Cornisa (receta de sastre), Incisivos de Miruina (+ `HarvestYield` de la Miruina).
+- **Enciclopedia** (opcional): `historiaEntries` para el Pacto de la Primera Pieza, la Mesa del Lazo,
+  el Primer Edicto del Tributo y la fundación de El Baluarte, cada una con su documento.
+- **RAG**: `loreChunks.ts` + `npm run reindex-lore` con lo nuevo (clanes, Jakut, Keseg Sael,
+  flora y fauna del Margen).
+- **Pendiente de dataset**: el vocabulario nuevo (Drogh'tugh, Tovh'vhurne, Keseg Sael, Leshra,
+  Ashi'krul) y los nombres de lugar nuevos.

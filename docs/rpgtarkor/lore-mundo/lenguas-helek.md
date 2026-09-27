@@ -28,11 +28,11 @@
         . `Krenoth`  - **Invierno**
         . `Ithek`  - **Viento**
         . `Rokth` - **Tormenta**
-        . `Rokth'ithek` - **la ira del viento** | **tormenta extrema**
-        . `Rokth'arho`  - **la gran tormenta**
+        . `Rokth'ithek` - **la ira del viento** | **tormenta extrema** — forma hablada contraída: **Rok'ithek**
+        . `Rokth'arho`  - **la gran tormenta** — forma hablada contraída: **Rokthar** (igual que `Ur'sedsar` contrae `Arho`+`Sedsar`)
         . `Arho`  - **Grande**
         . `Ghurmek`  - **el respiro** | **calma**
-        . `Sekt'ithek`  - **el viento cortante**
+        . `Sekt'ithek`  - **el viento cortante** — forma hablada contraída: **Sek'tar**. *Las formas contraídas son las que se usan al hablar, las que salen en el juego y en [clima-tormentas.md](clima-tormentas.md).*
         . `Sekt`  - **Corte**
         . `Hyanios` - **Ancestros**
         . `Terud` - **Momento**
@@ -54,6 +54,9 @@
         . `Ur'sedsar` - **Asamblea** (lit. "gran salón", `Arho`+`Sedsar` contraído) — la cámara abierta a todo orco libre, distinta de un `Sedsar` cualquiera (el salón físico de cada campamento)
         . `Tugh'ithek` - **Honor de sangre** — el vínculo de deuda de honor que crea un favor entre orcos (ver [razas.md § Personalidad y valores](razas.md))
         . `Veku'karot` - **El colmillo mellado con marca de ceniza** — el tótem del Clan Maktor (`Veku`=Colmillo + `Karot`=Ceniza, ya usados por separado; aquí unidos como nombre propio del emblema)
+        . `Drogh` - **Lazo** | **atadura**
+        . `Drogh'tugh` - **El Lazo del honor** — el juramento Maktor de la Mesa del Lazo (ver [clanes-orcos.md § La Mesa del Lazo](clanes-orcos.md#la-mesa-del-lazo))
+        . `Vash'grath` - **La primera pieza** — préstamo del Feg entre los Maktor, sin traducir, igual que los Goirntes usan "Concordia" sin traducirla al Kerost
         . `Ikar'hyanios` - **Jefe/a de los Ancestros** — título honorífico póstumo de quien murió con honor real (duelo, cacería ritual), no de rango social
         . `Sedsar'tugh` - **Salón de Honor** — nombre genérico del edificio ceremonial de cualquier campamento, previo a que cada clan lo renombre a su manera (`Ketg'sedsar`, `Helsig'sedsar`, `Goshg'sedsar` son variantes locales de este mismo concepto)
 
@@ -70,7 +73,7 @@
         . `Tusha` - **Madre**
         . `Yegr` - **Vergel**
         . `Kegi` - **Arena**
-        . `Jakut` - **Trono**
+        . `Jakut` - **Trono** — el sitio desde el que se decide, no un cargo: se *está* en el Jakut, no se *es* líder (ver [razas.md § Faerus](razas.md#faerus--los-furiosos))
         . `Ger` - **Rojo**
         . `Vash` - **Sangre**
         . `Grath` - **Caza** | **cazar** (mismo sonido para sustantivo y verbo — no distinguen)
@@ -81,6 +84,8 @@
         . `Krul` - **Diente** | **colmillo propio** (distinto de `Veku` orco, palabra propia Faerus)
         . `Sil` - **Fuego**
         . `Grath'sil` - **Tierra que arde** — cómo llaman los Faerus a la guerra entre continentes ("dos manadas enloquecidas peleándose mientras el bosque arde", ver [razas.md](razas.md)); no tienen palabra para "guerra" en abstracto, solo esta imagen concreta
+        . `Leshra` - **Ave de noche** — nombre del ave de la familia Umbrias del Margen
+        . `Ashi'krul` - **El colmillo que huele** — la daga Faerus tallada en colmillo de Ferike hembra
 
 - Naebius `` (los Nabieus llaman a su propia lengua simplemente **el silencio** — no tiene nombre
   fijado en ninguna lengua ajena, mismo criterio que el Refugio sin Nombre, ver [areas.md](areas.md)).
@@ -102,6 +107,9 @@
         . `Tannis'sael` - **Lo que el silencio no puede ocultar** — el don de leer mentiras en las pausas de otro (ver [personajes.md § Yerin Slaad](../personajes/personajes.md)), nunca un hechizo, una habilidad de escucha real
         . `Karo` - **Carta** | **mensaje sellado**
         . `Karo'sael` - **El que no pregunta** — código de honor de quien lleva cartas selladas sin abrirlas ni preguntar qué llevan (ver [razas.md § La guerra, vista desde aquí](razas.md))
+        . `Keseg Sael` - **El fin del callar** — nombre interno del clan del Refugio sin Nombre; no se pronuncia ante extranjeros
+        . `Tovh` - **Palma** | **mano abierta**
+        . `Tovh'vhurne` - **Escuchar con la palma** — leer vibraciones del suelo, las raíces o el agua apoyando la mano; lo que el `Tannis'sael` hace con las personas, aplicado al terreno
 
 - Goirmes `Kerost` — lengua oficializada por los Goirntes como lengua común de Berig ("seca y de
   consonantes cortadas", ver [areas.md](areas.md)); distinta de `Sirikel`, la lengua común general

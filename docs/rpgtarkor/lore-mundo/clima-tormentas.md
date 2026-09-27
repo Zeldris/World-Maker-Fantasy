@@ -35,6 +35,9 @@ Nombre Kektira (lengua propia de los clanes orcos) para el personaje jugable orc
 | Tormenta Grande | ~27 (2 de cada 3 días de tormenta) | 2 | **Rokthar** | la gran tormenta |
 | Tormenta Extrema | ~13 (1 de cada 3 días de tormenta) | 3 | **Rok'ithek** | la ira del viento |
 
+*Etimología: estos nombres son las formas habladas, contraídas, de `Sekt'ithek`, `Rokth'arho` y
+`Rokth'ithek` (ver [lenguas-helek.md](lenguas-helek.md), Kektira).*
+
 `Rok'ithek` deriva a propósito de `Rokthar` (misma raíz, terminación distinta) — es la versión
 intensificada de la misma tormenta, no un fenómeno aparte, igual que mecánicamente
 `TORMENTA_EXTREMA` es "al menos" `TORMENTA_GRANDE` (orden de severidad, no una categoría separada).

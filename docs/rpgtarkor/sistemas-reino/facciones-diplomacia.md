@@ -99,6 +99,32 @@ ningún NPC real sembrado** (solo prosa en `Location`/`Faction.description`). Re
 false` — fuera del núcleo jugable actual, coherente con su región). Líderes reales sembrados:
 Serhu→Ulkha Ketg (Int 20), Helsig→Brenka (16), Goshg→Doshka (15), Concordia→Yovenne Tal (15).
 
+### 7.2-bis Facciones nuevas aprobadas (2026-09-27) — pendientes de código
+
+Primera tanda de propuestas de lore aprobadas. Ficha completa (descripción para `FactionInput`, líder,
+población y relaciones iniciales) en `docs/borradores-opencode/propuestas-aprobadas.md` (A-01 a A-05,
+A-37 a A-39).
+
+| Facción | Raza | Región | Líder (`liderNpcId`) | Población |
+|---|---|---|---|---|
+| Los del Obelisco | goirntes | La Meseta del Orden (compartida con la Concordia) | `yovenne-tal` | 300 del pool `goirntes` |
+| Keseg Sael | nabieus | El Margen Silencioso, mitad oriental | portavoz de cónclave, sin cargo (ficha por crear) | 1.500 del pool `nabieus` |
+| Keseg Prisilke | nabieus | Ciénaga Troncal (compartida con el Clan Goshg) | por crear | 500 del pool `nabieus` |
+| Feg Tusha | faerus | El Margen Silencioso, mitad occidental | `hulki` | 850 del pool `faerus` |
+| Feg Ger | faerus | franja sur de las Llanuras, sin ser dueña | `yeru` | 200 del pool `faerus` |
+
+**Cambios de código que implica:**
+- `seed-catalog.ts` → `FACTION_LEADER_SLUG['concordia-de-hierro']` pasa de `yovenne-tal` a
+  `tarsen-vold` (NPC nuevo). Corrige la incoherencia actual con `historia.md`, donde Yovenne es la
+  oposición moderada.
+- `reputation.ts` → `REGION_OWNING_FACTIONS`: `'La Meseta del Orden': ['Concordia de Hierro', 'Los del
+  Obelisco']`, `'Ciénaga Troncal': ['Clan Goshg', 'Keseg Prisilke']`, `'El Margen Silencioso':
+  ['Keseg Sael', 'Feg Tusha']`. El Margen deja de ser `SIN_DUENO` (`mundo-vivo-x4.md` § 5-bis punto 12).
+- `FactionRelation` inicial: Concordia ↔ Los del Obelisco, presión 65 (TENSION). Las demás, según las
+  tablas de relaciones de cada ficha.
+- Los Faerus deciden desde el *Jakut*, sin cargo: su `liderNpcId` es quien más a menudo se sienta en
+  él (ver [razas.md § Faerus](../lore-mundo/razas.md#faerus--los-furiosos)).
+
 ### 7.3 Motor de eventos de `FactionRelation` — CERRADO (diseño + código base), sin enganchar a eventos reales todavía
 
 Punto abierto #6 (disparo de disputas): **reemplaza** el avance automático por tiempo puro del

@@ -167,6 +167,27 @@ transmitieron hacia Tarkurok; su Kort'ikar, **Prehk**, un guerrero de escasa int
 manipular, deja que Ketg tome también el control de los Maktor sin dejarlos crecer nunca por encima
 de los Serhu — aislados, pero con permiso para seguir viviendo en la zona más dura de la llanura.
 
+### La Mesa del Lazo
+
+Tras la traición de Ketg a Nietka, la Terk'ikar Maktor **Tregig** vio fallar a dos jefes de guerra:
+uno por ambición (Ketg) y otro por debilidad (Prehk, que dejó que Ketg se quedara también con los
+Maktor). Sin fuerza para rebelarse, hizo lo único que estaba en su mano: reunió en secreto a los
+Maktor ante una losa de piedra roja de la llanura, con un surco en el centro, y fijó un juramento, el
+***Drogh'tugh***, el Lazo del honor (~2.855, provisional). Desde entonces todo Maktor lo pronuncia
+allí al cumplir los 10 años, el mismo año de la cacería ritual:
+1. reconocer los errores de quienes le precedieron;
+2. proteger al clan incluso de su propio líder, si ese líder lo daña;
+3. aceptar que la unidad vale más que cualquier mando.
+
+Tras cada juramento se echa un puñado de tierra fresca en el surco; cuando se llena, la tierra se
+retira a un montículo junto a la mesa, que crece con cada generación. El Lazo explica el carácter
+Maktor ("los primeros en dar la cara por su gente"), la clemencia de Kadrog con Mordek (perdonar al
+vencido para que la unidad importe más que la victoria) y la revuelta del padre de Gorhorn (proteger
+al clan de quien lo daña, aunque mande). La mesa sobrevive, partida en dos, entre Los Restos de
+Maktor. **No es canon** que Gorhorn pronunciara el Lazo: cumplió 10 años el año de la aniquilación y
+pudo hacerlo, pero queda como posibilidad para una misión personal futura, y el Narrador no debe
+afirmarlo.
+
 ### La migración
 
 Así pasan 50 años, hasta que la pobreza, el hambre y la desesperación —agravadas por una guerra
@@ -239,6 +260,19 @@ Maktor reducidos a Gorhorn, ese vínculo lleva generaciones sin renovarse — lo
 Gorhorn pasó con los Faerus de las llanuras en su juventud (ver
 [personajes.md](../personajes/personajes.md)) no sea una casualidad: sin saberlo del todo, encontró en
 ellos algo parecido a lo que su propio clan ya tuvo una vez.
+
+**El Pacto de la Primera Pieza (~2.300, provisional).** Explica esa confianza. Unas generaciones
+después de Krugo y Tevya, una partida de caza Maktor y una manada Faerus de la frontera sur de las
+Llanuras abatieron el mismo Canizor a la vez. Lo esperable era pelear por la presa. La cabecilla
+Maktor, de sangre de Tevya, hizo algo que los Faerus solo habían visto entre los suyos: ofreció a la
+manada la **primera pieza**. Para un Faerus, compartir la primera pieza (*Vash'grath*) define quién es
+de la manada, y el gesto se leyó así, como parentesco y no como comercio. Que la presa fuera el
+animal que da nombre a los Maktor añadió peso al gesto en los dos pueblos. La manada levantó un
+campamento fijo para seguir tratando con ellos: es **Kegi**, origen del Feg Ger. Los Faerus
+enseñaron el curtido fino y los Maktor lo que sabían de la llanura abierta, y los Maktor adoptaron
+la palabra *Vash'grath* sin traducirla. Tras el golpe de Ketg, los Serhu no heredaron el pacto:
+nunca han compartido la primera pieza con nadie. Por eso los Faerus comercian con cualquier orco pero
+solo confían en los Maktor.
 
 ### Clan Serhu
 *Llanuras del Viento Rojo · asentamiento: Karot Veku · Catálogo: `Faction` `clan-serhu`.*

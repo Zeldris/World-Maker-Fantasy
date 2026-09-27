@@ -39,6 +39,36 @@
 
 *(Lista abierta, igual que los ganchos de aventura — se amplía con lo que surja jugando.)*
 
+## Primera tanda aprobada de OpenCode — Llanuras y Kegi (2026-09-27, pendiente de código)
+
+*Valores calibrados contra el catálogo real (un tier 6 ronda los 20 Goirnos). Ficha completa de cada
+uno en `docs/borradores-opencode/propuestas-aprobadas.md` (A-32 a A-36).*
+
+- **Colmillo de Ferike** (material, tier 6, 8 Goirnos; de hembra, 12): nuevo recurso de despiece del
+  Ferike. Marfil con vetas pardas, de 20-35 cm, duro pero quebradizo contra la piedra.
+- **Ashi'krul, "el colmillo que huele"** (daga Faerus, ARMA_SECUNDARIA, DAGA, tier 6, 30 Goirnos,
+  +4 Destreza, requiere Destreza 13): tallada en Kegi en un colmillo de Ferike hembra, con la
+  empuñadura envuelta en piel de Ferike. El Ferike solo teme a los Faerus, y la hembra es la alfa:
+  llevar su colmillo dice que su portador cazó a quien caza. **No se fabrica**: se compra a Tasko en
+  El Vergel de Kegi con la confianza del Feg Ger, o se gana en una misión Faerus.
+- **Desollador de sílice** (ARMA_SECUNDARIA, CUCHILLO, tier 3, 20 Goirnos, +2 Destreza, requiere
+  Destreza 9; herramienta de desollador, curtidor y peletero): cuchillo de desuello hecho entre dos
+  clanes. La hoja de hielo sílice en media luna la tallan los Helsig; las cachas de Caparazón de
+  Espina del Viento, que no resbalan con sangre, las pone el Desolladero Serhu. Se vende allí; no tiene
+  receta. Es la versión de oficio del cuchillo de hielo sílice de Gorhorn.
+- **Ungüento de Espina** (consumible medicinal, tier 3, 12 Goirnos; receta de alquimista: 1 Aguijón
+  con veneno de Espina del Viento + 2 Flor de Ceniza + 1 Resina Telda Gris → 2 ungüentos): el veneno
+  de Espina, diluido y ligado en resina, deja de ser un peligro y se vuelve un anestésico de campo.
+  Pasta ámbar de olor amargo que adormece la piel en segundos; mal dosificada, adormece también el
+  juicio.
+- **Manto de Cornisa** (COSMETICO_ESPALDA, sin bonificadores, tier 2, 6 Goirnos; receta de sastre:
+  4 Plumas de Celubia + 2 Lana de Múrgol): manto corto de fieltro de lana de Múrgol con plumas blancas
+  de Celubia cosidas en hilera sobre los hombros. Lo lleva quien superó la prueba de la cornisa de
+  Los Acantilados Partidos.
+- **Incisivos de Miruina** (material y herramienta de curtidor y peletero, tier 2, 3 Goirnos): nuevo
+  recurso de despiece de la Miruina. Un peine natural de dientes que arranca escamas y restos de una
+  piel sin cortarla. Es la primera herramienta del catálogo que sale directamente de un animal.
+
 ## Equipo militar de la Concordia — patrullas goirntes (auditoría 2026-07-28)
 
 *Las patrullas de la Concordia de Hierro que vigilan la frontera de las Llanuras (soldados y oficiales — ver las plantillas de NPC del catálogo técnico) llevan un equipo tan reconocible como el de los orcos, pero de fabricación opuesta: donde los orcos improvisan con hueso, cuero e hielo sílice, los Goirntes fabrican en serie con aleación gris pulida — el contraste de manufactura es deliberado.*

@@ -16,6 +16,15 @@ Termina con una fractura de sucesión entre las grandes casas Kelife — el prim
 ### El Yugo de Hierro (Berig)
 Consolidación del poder Goirntes mediante la fuerza y la ley absoluta. Los tratados desiguales impuestos a los Orcos se pagaban en mineral y en sangre: tributos de las minas y **contingentes de guerra obligatorios** que cada clan debía entregar al orden — una costumbre que Berig no olvidó, y que la Concordia de Hierro resucitaría décadas después con otro nombre (ver más abajo). Los Nabieus, perseguidos por "operar en la sombra sin autorización del orden", aprendieron en estos años a desaparecer del todo — una lección que los Goirntes acabarían lamentando.
 
+**El Primer Edicto del Tributo.** El Yugo empieza con un acto concreto: el primer tratado desigual,
+grabado como *Ord'teandu* (edicto) en el obelisco de leyes de El Baluarte de Goirme. Tributo anual
+de mineral y contingentes de guerra obligatorios que cada clan entrega "en defensa del orden". Lo
+firmó la casta de Ketg en nombre de los clanes de las Llanuras; los grupos emigrados a Cristal
+Helado y a la Ciénaga, todavía pequeños, quedaron obligados después por extensión, sin haber firmado
+nada. El texto sigue grabado y dice "en defensa del orden", no "donde el mando decida". Para un
+Goirnte, el edicto nunca se derogó: la Purga solo lo "reajustó", y ese es el argumento legal con el
+que la Concordia resucita hoy los contingentes.
+
 Termina en la **Purga Silenciosa**. Se llama así porque no hubo batalla que cantar: en el curso de una sola estación, funcionarios clave del orden amanecieron desaparecidos —obra Nabieus, aunque jamás se probó— mientras los clanes orcos, todos a la vez y sin previo aviso, dejaban de entregar tributo y contingente. El orden, incapaz de castigar a todos sin desangrarse, cedió autonomía parcial a ambos pueblos. Los archivos oficiales Goirntes no registran una revuelta: registran un "reajuste de los tratados". La cicatriz que dejó es doble. Entre los Goirntes quedó la certeza humillante de que el orden puede doblegarse sin un solo campo de batalla — el miedo del que aún hoy se alimenta su facción radical. Entre los orcos quedó una incomodidad que rara vez se dice en voz alta: la autonomía se ganó, pero no con duelo ni desafío abierto, sino con métodos de sombra que la cultura del honor no sabe dónde colocar. Los clanes cantan la Purga como victoria; casi ningún Kort'ikar presume de cómo se ganó.
 
 ### La Isla Cambiante (ambos continentes, generaciones atrás)
@@ -52,9 +61,21 @@ Nadie fuera de los círculos radicales conoce la verdad completa. La propaganda 
 
   Por dentro, la Rama Blanca son tres alianzas distintas compartiendo bandera. Las casas Kelife aportan el mando y el cristal — y sus viejas cuentas pendientes: más de una decisión "estratégica" es, en realidad, una jugada del cisma de la Edad Dorada con uniforme nuevo (ver [razas.md](razas.md)). Los Jusaly aportan lo que nadie más puede —cataplasmas y comida— y pagan el precio de ver un don sagrado convertido en recurso de guerra. Y los Kalisar, sentados por fin a la mesa, descubren que se les invita precisamente por aquello que siempre se les reprochó ser: los mismos señores que les estrechan la mano en los consejos evitan quedarse a solas con ellos. La Rama Blanca funciona — pero funciona como funcionan las familias que se necesitan y no se han perdonado.
 
-- **La Concordia de Hierro** (Berig): la facción radical Goirntes lidera oficialmente la alianza, con el resto del orden Goirntes, algunos clanes Orcos y los Nabieus integrados —de grado o por presión— bajo un mismo mando militar unificado.
+- **La Concordia de Hierro** (Berig): la facción radical Goirntes, encabezada por el **Primer Censor Tarsen Vold**, lidera oficialmente la alianza, con el resto del orden Goirntes, algunos clanes Orcos y los Nabieus integrados —de grado o por presión— bajo un mismo mando militar unificado.
 
   La Concordia no disimula lo que es: una cadena de mando. Los radicales dictan; la mayoría Goirntes obedece, porque desobedecer es desorden; y la facción moderada libra su propia guerra en los pasillos (ver la Archimagistrada Yovenne Tal en [npcs.md](../personajes/npcs.md)), exigiendo pruebas "en orden" que nadie puede presentarle todavía. Los contingentes orcos obligatorios —la vieja costumbre del Yugo de Hierro resucitada con otro nombre— se gastan donde el mando decide, y el Clan Maktor ya demostró lo que eso significa (ver [areas.md](clanes-orcos.md)); alrededor de las hogueras, la voz del Kort'ikar Torgash pidiendo retirar a los clanes de una guerra ajena gana oídos precisamente por eso. Los Nabieus llevan las cartas, guardan los secretos y callan — el Yugo de Hierro les enseñó a desaparecer, y nadie en Berig ha olvidado lo que hicieron con esa lección durante la Purga Silenciosa. La Concordia es un ejército formidable cuyo mayor enemigo, por ahora, no es Vaelira: es la lealtad de sus propias piezas.
+
+  **Los del Obelisco** (*los del Vresk'ord* en Kerost) son esa facción moderada con nombre propio: la
+  Archimagistrada Yovenne Tal y los magistrados y archiveros de los obeliscos, salidos de la casta de
+  ley. No son una rama de la Concordia: son la parte del orden que se niega a que la Concordia sea
+  todo el orden. No se rebelan, porque desobedecer es desorden; exigen que cada orden se sostenga en
+  un edicto grabado, buscan pruebas "en orden" de la traición del sello y citan de memoria el Primer
+  Edicto del Tributo contra el uso actual de los contingentes orcos. Dentro de la casta de ley hay
+  linajes, no nobleza, y el castigo más temido es que un linaje quede **degradado**, expulsado de la
+  casta por haber dejado algo inacabado. Por eso ningún moderado presenta las pruebas sin tenerlas
+  completas. Las dos cabezas del orden, Yovenne y Tarsen, salieron de la misma casta y leyeron las
+  mismas leyes: donde ella lee "el edicto obliga también al que lo grabó", él lee "el orden que no se
+  defiende no es orden".
 
 ### El Giro: Algo emerge de los muros
 Mientras la guerra escala y los muros en el norte se abren, empiezan a llegar noticias de unos seres hechos de tierra, piedra, agua, aire y fuego. Son seres con extrañas semejanzas a las razas actuales pero movidos como una colmena, sin criterio ni interpretación individual, casi una mezcla entre la mente de un zombi y una máquina. Seres con el único propósito de purgar... No está muy claro a quién o por qué, solo que es parte del "plan" de Madre.

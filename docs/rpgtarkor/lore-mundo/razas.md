@@ -106,6 +106,23 @@ Vivir entre Nabieus es aprender otra gramática: en el Margen Silencioso —dond
 **El Reino perdido (añadido 2026-08-05)**: el silencio no nació con el Yugo de Hierro — es más viejo que eso. Mucho antes del año 0, un reino Nabierus se alzó en lo que hoy son Las Llanuras del Viento Rojo, hasta que investigar demasiado le costó todo: Madre engañó a sus propias Semillas para enterrarlo bajo la arena roja sin que ellas mismas supieran lo que hacían. Los supervivientes huyeron hacia el Margen y, generaciones después, hacia Ciénaga Troncal — los antepasados directos de todos los Nabieus de hoy. Aprender a callar empezó ahí, no con los Goirntes (ver [areas.md § Antes de los orcos](clanes-orcos.md#antes-de-los-orcos--el-reino-nabierus-y-el-origen-del-nombre)).
 
 **Los del borde de la Ciénaga (añadido 2026-07-23, auditoría de lore — ya vivía en la Enciclopedia sin haber llegado nunca a esta doc)**: la mayoría vive dispersa por la mitad oriental del Margen, discreta como manda la costumbre. Generaciones criadas en el borde de la Ciénaga Troncal, lejos de ese corazón discreto, han cambiado tanto el cuerpo como el temperamento: piel marcada por manchas de un verde oscuro —una mutación real, no solo un matiz de luz— y brazos y piernas notablemente más largos que el resto de los suyos, adaptación real para cruzar a pie lagunas y aguas altas sin hundirse (exclusiva de esta rama: los del Margen Silencioso no la tienen), con una postura algo encorvada al caminar y un aspecto notablemente más salvaje que el resto de los suyos, más volcados en la caza y en trabajar la madera de los Trepadores Ocaso que en el sigilo y los mensajes que definen a la mayoría de su gente.
+**Los dos clanes con nombre.** Los Nabieus nombran a sus clanes como "el fin de algo". **Keseg Sael**,
+"el fin del callar", es el clan de la mitad oriental del Margen, en torno a El Refugio sin Nombre, el
+único sitio de Berig donde un Nabieus no tiene que guardar lo que sabe. Hacia fuera nunca dicen ese
+nombre. De él salen casi todos los mensajeros de la Concordia. Bajo el Refugio guardan un **archivo de
+tablillas de observación** (lo que un Nabieus ha visto, medido o contado con sus ojos; nunca cartas,
+porque conservarlas rompería el Karo'sael), herencia directa del Archivo Cegado del reino enterrado:
+su pueblo no dejó de investigar, aprendió dónde hacerlo. Quien alza la voz dentro no vuelve a entrar.
+**Keseg Prisilke**, "Fin Susurrado", es la rama de la Ciénaga, nacida de la segunda huida (ver
+[cronologia-mitica.md](cronologia-mitica.md#sin-fechar-generaciones-después-de-la-caída-la-segunda-huida-nabieus)).
+La Concordia apenas los usa como mensajeros: les exige madera, como a los Goshg. Keseg Sael los ve
+como "los que se olvidaron de callar", sin desprecio pero con distancia.
+
+**La escucha con la palma** (*Tovh'vhurne*). El Margen apaga el sonido del aire, pero no la
+vibración del suelo. Apoyando la mano en una raíz o en el suelo, un Nabieus lee pasos, cargas o
+bestias que se acercan; en el agua estancada, con la pierna metida, siente chapoteos a cien pasos. No
+sustituye a la gramática de los silencios, que sirve para leer a las personas: es lo mismo aplicado
+al terreno.
 - **La guerra, vista desde aquí**: integrados en la Concordia por presión, sirven como mensajeros, correos y ojos — el centro exacto de todos los secretos que no quieren tener. Cada Nabieus sabe que llevar cartas selladas sin hacer preguntas es sobrevivir; Yerin descubrió lo que cuesta cuando una de esas cartas resulta ser la guerra misma.
 
 ### Faerus — "Los furiosos"
@@ -113,6 +130,23 @@ Vivir entre Nabieus es aprender otra gramática: en el Margen Silencioso —dond
 La manada es la única institución Faerus: se caza junto, se come junto —**la primera pieza de cada caza se comparte siempre**— y se muere junto; abandonar a un herido de la manada es el tabú que no se perdona. Su piel de hojas finas susurra al moverse cuando quieren que se les oiga (en caza, no se les oye), y su olfato lee estados de ánimo: un Faerus sabe si tienes miedo antes que tú. Bajo la apariencia bestial hay una inteligencia fría y observadora — el error que los Goirntes llevan generaciones cometiendo es tratarlos como animales de presa, y el Margen Silencioso está sembrado de patrullas que lo aprendieron tarde. Fueron los últimos en asentarse en Berig y siguen en su frontera — sin escritura, y sin nada parecido a las ciudades-fortaleza Goirntes: sus dos únicos asentamientos, **Hashma** (junto a la costa, en la selva) y **Kegi** (en la frontera con las Llanuras), son poblados modestos —uno colgado sobre los árboles, el otro de artesanía más desarrollada por el trato con los orcos— construidos por y para la manada, no ciudades en el sentido Goirnte del término *(corregido 2026-07-28: antes decía "sin ciudades" a secas, contradiciendo los poblados ya descritos en [areas.md](areas.md))*.
 
 **Las manadas de la frontera norte (añadido 2026-07-23, auditoría de lore — ya vivía en la Enciclopedia sin haber llegado nunca a esta doc)**: la manada base, la más numerosa, vive en el corazón de la selva y los pantanos donde nació la especie, con un pelaje denso y tupido en tonos de corteza y musgo propio de ese clima húmedo. Las manadas que empujaron sus puestos avanzados más allá de la frontera norte, ya dentro de las Llanuras del Viento Rojo, llevan generaciones de calor y polvo rojo moldeándoles un pelaje bien distinto: mucho más corto, en tonos rojizos y verdosos con el rojo dominando con claridad.
+**Las dos manadas con poblado.** **Feg Tusha** ("Manada Madre") en Hashma, la manada base; y **Feg
+Ger** ("Manada Roja", por su pelaje) en Kegi, la de la llanura, la más sociable, la mejor curtidora y
+la única que comercia de verdad, en El Vergel de Kegi. Kegi nació del **Pacto de la Primera Pieza**
+con los Maktor (ver [clanes-orcos.md § Los Faerus y los Maktor](clanes-orcos.md#los-faerus-y-los-maktor)).
+Hay además manadas errantes sin poblado. Entre ellas no hay rivalidad, y las crías pueden cambiar de
+manada.
+
+**El Jakut: mandar sin cargo.** La manada no se gobierna y no hay palabra para quien manda, pero los
+dos interiores Faerus se llaman *Jakut*, "trono". Encaja porque lo que tiene nombre es el **sitio**,
+no el cargo: una plataforma ancha en la horquilla del árbol más viejo de Hashma y una losa plana de
+piedra roja a la sombra del Vergel de Kegi. Quien está sentado en el Jakut decide **mientras está
+sentado**; cuando se levanta, deja de decidir. Nadie "es" líder: *se está* en el Jakut. Se sienta
+quien la manada deja sentarse, casi siempre el más fuerte o el más viejo. Si dos quieren el sitio a
+la vez, se resuelve con el olfato y no a golpes: el que huele a miedo se aparta. Por eso negociar con
+una manada es negociar con quien esté en el Jakut **ese día**: un acuerdo no obliga a quien se siente
+mañana, salvo que se haya sellado compartiendo la primera pieza. Para un Faerus lo único que dura es
+el parentesco, no la palabra dada.
 - **La guerra, vista desde aquí**: no pertenecen a ninguna alianza — nadie los invitó y ellos no habrían ido. Para un Faerus, la guerra entre continentes son dos manadas enloquecidas peleándose mientras el bosque arde: la magia salvaje liberada tras la ruptura ya devastó territorios de manada (el del pregenerado Riko entre ellos), y esa es la única parte del conflicto que les concierne — la que les está matando la tierra.
 
 ### Ilvenar — "Memoria viva"

@@ -20,8 +20,9 @@ follaje absorben el sonido de forma anómala: el sonido entra y no vuelve a sali
 **No hay niebla.** La niebla es del Estrecho, entre continentes.
 
 **Quién vive aquí:**
-- **Nabieus** en la mitad oriental, con presencia dispersa hasta el borde de Ciénaga Troncal.
-- **Faerus** en la mayor parte del resto, con puestos avanzados que cruzan algo la frontera oeste
+- **Nabieus** del clan **Keseg Sael** ("el fin del callar") en la mitad oriental, con presencia
+  dispersa hasta el borde de Ciénaga Troncal.
+- **Faerus** del **Feg Tusha** ("Manada Madre") en la mayor parte del resto, con puestos avanzados que cruzan algo la frontera oeste
   hacia las Llanuras, donde viven sus parientes adaptados a la llanura.
 - La Concordia **no lo atraviesa**: lo bordea por el corredor costero occidental, camino de la
   Meseta.
@@ -41,7 +42,13 @@ Madre"). Nombre en lengua común: *Selviterna*; en Feg, *Hashma*.
 
 En lo alto del árbol más robusto de la jungla hay un gran salón de piel y hueso, decorado con
 grandes calaveras y huesos largos tallados en forma de garras. Aquí los guerreros y sabios se
-reúnen para planear sus siguientes movimientos. Hoy no tiene ningún NPC.
+reúnen para planear sus siguientes movimientos. El *Jakut* propiamente dicho es una plataforma ancha
+en la horquilla del árbol: quien se sienta en ella decide mientras está sentado (ver
+[razas.md § Faerus](../razas.md#faerus--los-furiosos)).
+**Quién vive aquí** *(fichas en [npcs.md](../../personajes/npcs.md), pendientes de código)*: **Hulki**,
+la vieja que más a menudo está en el Jakut; **Tira**, la cazadora que reparte la primera pieza;
+**Kiri**, vigía del dosel en forma de Hetris; **Lusa**, que cuida a los heridos que no se abandonan;
+y **Gero**, el joven que corre entre Hashma y Kegi.
 
 ### El Claro de la Manada
 *Pasto estacional · mitad occidental · Catálogo: `claro-de-la-manada`.*
@@ -55,7 +62,103 @@ reunión Faerus además de los dos poblados.
 
 El enclave Nabieus más estable del Margen. No tiene nombre propio en ninguna lengua ajena a ellos,
 y así lo prefieren: cuanto menos se hable de él, más dura. De aquí parten los mensajeros y correos
-que la Concordia de Hierro usa.
+que la Concordia de Hierro usa. Es el centro del clan **Keseg Sael**, "el fin del callar": el único
+sitio de Berig donde un Nabieus no tiene que guardar lo que sabe.
+**El Archivo del Refugio.** Cámaras excavadas bajo el Refugio, tapizadas de Musgo Callado, donde se
+guardan tablillas de observación (lo que un Nabieus ha visto, medido o contado con sus ojos; nunca
+cartas). Es la herencia directa del Archivo Cegado del reino enterrado. Quien alza la voz dentro no
+vuelve a entrar. Visitable solo con la confianza máxima del clan, y nadie habla dentro.
+
+### El Cruce de las Ausencias
+*Paso entre las dos mitades del Margen · centro de la región · sin nombre nativo, a propósito ·
+pendiente de código (`cruce-de-las-ausencias`).*
+
+Bosque cerrado de coníferas de madera negra de copas bajas, con el suelo hecho un entramado de raíces
+cubierto de Musgo Callado. La quietud es total: no se oye el viento, ni los pasos propios, ni la
+respiración del que va al lado. Es el paso de los cazadores Faerus hacia las Llanuras y de los
+mensajeros Nabieus hacia el sur. No hay asentamiento. Rige una norma que nadie ha pactado pero todos
+cumplen: **dentro del Cruce nadie ataca a nadie de otra raza**, porque nadie oiría pedir ayuda.
+Las manadas cuentan que aquí grupos enteros "se desvanecieron". No hay nada sobrenatural: el Mekiosi
+espera inmóvil y caza de una embestida, y donde no se oye un grito, un grupo que se separa unos pasos
+puede perder a uno tras otro sin que el resto lo note. Por eso quien cruza lo hace **atado** a sus
+compañeros con una cuerda corta: si tira, alguien se ha parado.
+**Terreno:** húmedo, vegetación. **Teaser:** "Aquí nadie oye cuando llamas."
+
+### Las Aguas Sordas
+*Franja pantanosa entre el Cruce de las Ausencias y la mitad oriental · pendiente de código (`aguas-sordas`).*
+
+Canales y charcas de agua negra, de hasta dos metros de hondo, entre raíces de coníferas, con islas de
+raíz que ceden bajo el peso de algo grande. El agua **no suena**: ni chapoteo ni goteo. La única forma
+de saber que algo se mueve es **mirar el agua**; las ondas se ven, no se oyen. Nadie vive aquí: los
+cazadores del Feg Tusha bajan en temporada seca. Aquí aprendieron los Nabieus que la vibración viaja
+mejor por el agua, antes de la segunda huida.
+**Terreno:** húmedo, vegetación. **Teaser:** "Mira el agua. No va a avisarte de otra forma."
+
+### La Proa Gris
+*Borde sur del Margen, frente a la Meseta · pendiente de código (`proa-gris`).*
+
+Un espolón de piedra gris de la Meseta que se adentra en la selva como la proa de un barco: la única
+altura del Margen. Conserva la simetría antinatural de la Meseta, pero **se deshace a medida que
+avanza**: en la base las grietas son rectas y paralelas; en la punta, ya irregulares, como si el
+trabajo de Goirme se hubiera quedado sin fuerza. Termina en cortados de treinta metros sobre el
+dosel. Keseg Sael mantiene aquí un turno de vigía (5-10 a la vez) que cuenta las columnas de la
+Concordia por el corredor costero. Es terreno de caza de las **Sombras de Kroj**, que usan sus
+precipicios, y los vigías bajan antes del anochecer sin excepción.
+**Terreno:** rocoso, árido. **Teaser:** "Desde aquí se ve la Meseta entera. Lo que oyes detrás no es tu eco."
+
+## Flora
+
+Todas pendientes de código.
+
+### Musgo Callado
+*Muscarias (Florial, con la huella de Kroj) · todo el Margen.*
+
+El musgo gris apagado, sin brillo, que cubre troncos, ramas y suelo en todo el Margen. Es una maraña
+de filamentos finísimos con bolsas de aire entre ellos: el sonido entra, rebota dentro y se disipa
+sin salir, como en un fieltro grueso a escala de bosque. Junto con el aire denso, es la mitad física
+del "follaje que absorbe el sonido". No sustituye al dominio de Kroj: es la forma en que se
+manifiesta en la flora. Cojines de 5-15 cm, gris ceniza, que parecen pelusa seca aunque estén
+empapados. Los Nabieus tapizan con él sus cámaras; los Faerus forran sus refugios de caza.
+**Recurso:** Musgo Callado, tier 1, relleno aislante.
+
+### Veldria Hueca
+*Veldrias.*
+
+Conífera de madera negra de 8-12 m con un corazón hueco y seco que recorre el tronco. Sus raíces se
+enlazan con las de sus vecinas. El aire del hueco no transmite nada, pero **la pared del tronco
+conduce la vibración** de toda la red de raíces: un Nabieus que apoya la palma en ella siente pasos a
+centenares de metros. Es la "madera que escucha": no oye el aire, oye el suelo. Corteza lisa gris con
+vetas negras; resina oscura que huele a lluvia. Los Faerus no la talan y los Nabieus solo toman ramas
+caídas: talar una deja sordo un trozo de bosque.
+**Recursos:** Madera de Veldria Hueca (tier 3, ligera) y Resina de Veldria (tier 3, pegamento que no
+cruje al secar).
+
+### Flor de Víspera
+*Salviras (con la huella de Kroj).*
+
+Planta baja de 20-40 cm, de hojas estrechas gris plata, cuyas flores gris perla **solo se abren al
+atardecer** y se cierran ante un movimiento brusco. Su aroma es un sedante suave: calma y ayuda a
+dormir, sin tocar el dolor (eso es la Flor de Ceniza). Los Faerus mastican un pétalo antes de dormir
+en territorio hostil.
+**Recurso:** Pétalos de Víspera, tier 1, ingrediente de alquimia.
+
+### Cántaro de Hoja
+*Zarcos.*
+
+Arbusto de 60-90 cm con un tallo central hueco de 4-8 cm cuyas paredes, con mucílago, retienen el
+agua de lluvia que encauzan sus hojas anchas. Las charcas del Margen son de agua estancada y negra:
+el Cántaro guarda **agua de lluvia limpia**. Es el equivalente de la Gradias de las Llanuras.
+**Recursos:** Agua de Cántaro (tier 1) y Tallo de Cántaro seco (leña y tubo simple, tier 1).
+
+### Carnosa de Tocón
+*Fongares.*
+
+Seta carnosa en forma de embudo, de 15-30 cm, gris azulada por fuera y beige por dentro, que crece
+sobre los tocones caídos de madera negra. Cruda amarga; asada o en guiso, suave a tierra. Es la comida
+del Brozán.
+**Recurso:** Carnosa de Tocón, tier 2, alimento.
+
+
 
 ## Fauna
 
@@ -100,6 +203,43 @@ fuerza bruta sino por resistencia: persiguen a una presa durante horas, turnánd
 que se rinde de puro agotamiento. Poco peligroso en solitario, mucho en manada.
 **Recursos:** Piel de Vistue (tier 3), carne (`racion-carne`).
 
+### Leshra
+*Umbrias (Kroj) · primera especie de la familia · nivel 2-5 · CAUTELOSO · AEREO · pendiente de código.*
+
+Ave nocturna de 50-70 cm de cuerpo y unos 120 cm de envergadura, de alas anchas y redondeadas. El borde
+deshilachado de sus plumas rompe el aire en remolinos diminutos que no hacen ruido. Su plumaje gris
+ceniza **atrapa la luz como la piel Nabieus**: a la vista es un hueco, no un color. Ojos muy grandes;
+no canta ni grazna. Vive en el dosel medio y bajo, caza Brozanes e insectos grandes, y solo ataca si
+alguien se acerca a su nido. *Leshra* es Feg, "ave de noche".
+**Recurso:** Plumas de Leshra (tier 2), con las que los Faerus empluman flechas que no silban.
+
+### Morvasa
+*Escamados · nivel 3-6 · CAUTELOSO · ACUATICO · Las Aguas Sordas · pendiente de código.*
+
+Serpiente de 180-220 cm, esbelta, de escamas verde pardo con vetas ceniza. No traga presas grandes:
+las paraliza con un veneno neurotóxico y las come por partes. Caza inmóvil bajo el agua; la única
+señal de que está ahí es una onda en la superficie. Come Brozanes, crías de ave y anfibios.
+**Recursos:** Veneno de Morvasa (alquimia, tier 3) y Piel de Morvasa (tier 2).
+
+### Brozán
+*Rondines · nivel 1-2 · INOFENSIVO · pendiente de código.*
+
+Roedor de 35-45 cm, redondeado, de pelaje gris verdoso con vetas negras que imitan la corteza podrida,
+con orejas pequeñas, cola corta y garras delanteras de excavar. Vive entre la hojarasca (*broza*) y
+come Carnosa de Tocón, raíces y semillas. Es la **presa base** del Margen: se lo comen la Leshra, la
+Morvasa y el Mekiosi.
+**Recursos:** `racion-carne` y Piel de Brozán (tier 1).
+
+### Hoscón
+*Corvenes · nivel 1-2 · INOFENSIVO · pendiente de código.*
+
+El carroñero del Margen. El Zense Ceniza encuentra la carroña desde el aire, pero bajo el dosel
+cerrado eso es imposible, y el Hoscón lo resuelve **caminando**: vuela poco y bajo, y recorre el
+suelo siguiendo el olor. De 60-85 cm, plumaje gris pardo, cuello pelado, pico ancho y plano para
+raspar hueso, patas fuertes y alas cortas. Siempre de espaldas a quien lo mira. Donde camina un
+Hoscón hay algo muerto cerca, y los cazadores Faerus lo siguen igual que los orcos siguen al Zense.
+**Recurso:** Plumón de Hoscón (tier 1, relleno).
+
 ### Vaeth, el Eco de la Manada
 *Espíritu, no fauna cazable.*
 
@@ -117,18 +257,21 @@ nombran. Los Ferikes viven en el borde con las Llanuras; ver
 
 ## Huecos conocidos
 
-- **Ninguna flora documentada** en toda la región, pese a ser selva, pantano y bosque.
-- Ninguna presa pequeña: solo hay depredadores (Hetris, Mekiosi, Vistue, Sombras).
-- Ningún lugar del interior entre Hashma y el Refugio (pantanos, claros, alturas).
-- Ninguna de las cuatro especies de fauna está en el catálogo técnico.
-- La mitad Nabieus no tiene clan con nombre ni NPC.
+- **Nada de la región está en el catálogo técnico** salvo los cuatro lugares Faerus y Nabieus: ni
+  la fauna (8 especies), ni la flora (5), ni los tres lugares nuevos, ni los NPC de Hashma.
+- La mitad Nabieus no tiene ningún NPC con nombre. Keseg Sael no tiene líder porque no tiene cargos;
+  hace falta un portavoz de cónclave para el motor.
+- Nada documentado en la costa occidental ni en el Puesto Rabioso del Márgen.
 
 ## Historial de cambios
 
 - 2026-07-28: Hashma/Selviterna se confirma como asentamiento real y El Claro de la Manada deja de
   ser "lo más parecido a una capital".
 - 2026-08-23: fauna del interior (Hetris, Mekiosi, Vistue, Vaeth).
-- 2026-09-27: la región pasa a tener fichero propio y se documentan los lugares del catálogo.
+- 2026-09-27: la región pasa a tener fichero propio y se documentan los lugares del catálogo. Se
+  aplica la primera tanda de propuestas aprobadas: los clanes Keseg Sael y Feg Tusha, el Archivo del
+  Refugio, El Cruce de las Ausencias, Las Aguas Sordas, La Proa Gris, 5 especies de flora, 4 de fauna
+  (entre ellas la Leshra, primera de la familia Umbrias) y los Faerus de Hashma.
 
 ---
 

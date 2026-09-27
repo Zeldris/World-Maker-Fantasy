@@ -49,6 +49,24 @@ De este proceso deliberado nacen, en dos oleadas:
 
 **Regla de canon derivada de esto (2026-08-03, cita literal de la usuaria): "cuanto más salvaje o incivilizado, más 'joven' es la raza".** Dentro de una misma oleada de creación, el orden de asentamiento sigue el grado de civilización — las razas de orden y estructura (Kelife, Goirntes) llegan antes; las más instintivas o cercanas a lo salvaje (Nabieus, y sobre todo Faerus) llegan después, ya "avanzada la era". Esta regla debería aplicarse también a cualquier raza nueva que se añada más adelante: para situarla en la cronología, preguntar primero cuán civilizada/estructurada es frente a las ya fechadas. Los Orcos, nacidos del Estallido sin ninguna Semilla que los guiara ni terreno preparado, son coherentes con esta misma lógica llevada al extremo — más jóvenes y salvajes que cualquier raza diseñada, incluidos los Faerus.
 
+## (sin fechar, primera oleada) La fundación de El Baluarte de Goirme
+
+Los primeros Goirntes leyeron la simetría de la Meseta "como una ley escrita expresamente para
+ellos", y su primer acto como pueblo fue coherente con eso: antes de levantar un muro, buscaron el
+punto donde se cruzan los ejes de la Meseta, tallaron allí un **obelisco** y grabaron en él las
+primeras leyes. La ciudad-fortaleza se construyó después, alrededor del obelisco y siguiendo sus
+ejes: por eso El Baluarte tiene hoy el obelisco de leyes más alto de todo Berig en su plaza
+central. Es el primero, no el más grande. Los Goirntes lo enseñan como lección fundacional:
+*primero la ley, después la ciudad*. La simetría es obra de Goirme durante la Formación, sobre el
+material de Liania; los Goirntes no crearon nada, la midieron.
+
+## (sin fechar) Hashma: el asentamiento que cierra la era
+
+El "fin del asentamiento Faerus" que marca el año 0 tiene lugar concreto: es el primer año que la
+manada base, el **Feg Tusha**, pasó entera en un poblado fijo, **Hashma**, colgado en la selva
+occidental del Margen junto a la costa, en vez de moverse con la caza. Con él empieza a contarse el
+tiempo en Berig, aunque ningún Faerus lo sepa ni le importe: no cuentan los años.
+
 ## (sin fechar, después del asentamiento Nabieus) La caída del Reino Nabierus de las Llanuras *(añadido 2026-08-05)*
 
 Ya asentados como pueblo (ver arriba), un grupo de Nabieus funda un reino propio en lo que hoy son Las Llanuras del Viento Rojo — el más ambicioso que su pueblo levantaría jamás, volcado por completo en la misma vocación que los define hoy: investigar, registrar, entender. Excavan profundo, construyen archivos bajo tierra, y llegan a saber algo —nunca se ha sabido exactamente qué, ni siquiera entre los propios Nabieus de hoy— que inquieta a Madre lo bastante como para actuar.
@@ -57,7 +75,21 @@ Madre no ataca de forma directa: engaña a sus propias hijas, las Semillas, que 
 
 La tierra que dejan atrás sigue un curso muerto durante siglos, un desierto sin nombre ni dueño, hasta que el Estallido (ver [cronologia.md](cronologia.md), ~año 1.000) y los mil años de magia salvaje que gestan a los primeros orcos (~año 2.000) le devuelven algo de vida —no la que tenía, sino una nueva, moldeada a lo que un orco necesita para sobrevivir en ella—. El viento, antes letal, llega muy diluido de lo que fue —todavía notable, todavía peligroso en sus tormentas de arena magnética, pero ya no una fuerza capaz de enterrar civilizaciones— y es de ese mismo viento, ya domesticado por el tiempo, del que los orcos toman el nombre con el que la conocen hoy: **Las Llanuras del Viento Rojo**.
 
-*(Ver [areas.md § Antes de los orcos](clanes-orcos.md#antes-de-los-orcos--el-reino-nabierus-y-el-origen-del-nombre) para los puntos de interés concretos de este reino enterrado, y [razas.md § Nabieus](razas.md#nabieus--los-que-silencian) para la cultura Nabieus de hoy.)*
+*(Ver [clanes-orcos.md § Antes de los orcos](clanes-orcos.md#antes-de-los-orcos--el-reino-nabierus-y-el-origen-del-nombre) para los puntos de interés concretos de este reino enterrado, y [razas.md § Nabieus](razas.md#nabieus--los-que-silencian) para la cultura Nabieus de hoy.)*
+
+## (sin fechar, generaciones después de la caída) La segunda huida Nabieus
+
+En el Margen, el dominio de Kroj apaga el sonido en el aire, pero no la vibración que viaja por el
+suelo y las raíces. Obligados a vivir donde el oído sirve de poco, los supervivientes aprendieron a
+apoyar la mano en una raíz o en el suelo para leer pasos, cargas o bestias que se acercan: la
+**escucha con la palma** (*Tovh'vhurne*). Un grupo de cazadores descubrió que en el agua estancada
+la vibración viaja todavía mejor: primero en Las Aguas Sordas del Margen y después, siguiendo la
+caza hacia el norte, en las aguas altas del sur de Ciénaga Troncal. Lo que empezó como temporadas
+de caza acabó siendo una vida. Generaciones caminando por aguas altas dieron el cuerpo de la rama de
+la Ciénaga (brazos y piernas más largos, manchas verdes, postura encorvada), y el oficio pasó del
+mensaje a la caza y la madera. Es el origen de **Keseg Prisilke**. Todo ocurre antes del año 0 y sin
+intervención de ninguna Semilla: es transmisión de vibraciones por sólidos y líquidos, más una
+adaptación física acelerada.
 
 ---
 
