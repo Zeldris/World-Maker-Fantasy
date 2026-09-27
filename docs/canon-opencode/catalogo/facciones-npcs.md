@@ -12,8 +12,8 @@ Sincronizado: 2026-09-27. (* = aprobado, sin código.)
 | Clan Serhu | orcos | Llanuras (Karot Veku) | Terk'ikar Ulkha Ketg / Kort'ikar Torgash Ketg | ~800 |
 | Clan Helsig | orcos | Cristal Helado (Helske Tugh) | Terk'ikar Brenka / Kort'ikar Solgra | ~400 |
 | Clan Goshg | orcos | Ciénaga (Silh Makut) | Terk'ikar Doshka / Kort'ikar Dulgren | ~600 |
-| Keseg Sael* | Nabieus | Margen oriental | sin cargo (portavoz de cónclave, sin ficha) | ~1.500 |
-| Keseg Prisilke* | Nabieus | sur de la Ciénaga (Jeyselt) | sin ficha | ~500 |
+| Keseg Sael* | Nabieus | Margen oriental | sin cargo: Aven Tessk*, portavoz del cónclave | ~1.500 |
+| Keseg Prisilke* | Nabieus | sur de la Ciénaga (Jeyselt) | Ilka Dren*, cazadora mayor | ~500 |
 | Feg Tusha* | Faerus | Margen occidental (Hashma) | quien suele estar en el Jakut: Hulki | ~850 |
 | Feg Ger* | Faerus | franja sur de las Llanuras (Kegi) | quien suele estar en el Jakut: Yeru | ~200 |
 | Clan Maktor | orcos | — | aniquilado; queda Gorhorn | 1 |
@@ -31,6 +31,9 @@ Sincronizado: 2026-09-27. (* = aprobado, sin código.)
 - **Faerus ↔ Maktor:** Pacto de la Primera Pieza (~2.300). La única confianza real, hoy reducida a
   Gorhorn.
 - **Faerus ↔ Nabieus:** convivencia distante sin desprecio, algo raro en Berig.
+- **Goirntes ↔ Nabieus (El Borde):** desde ~2.100-2.800, los Nabieus llevan el correo del orden a través del Margen a cambio de que ninguna columna entre en su mitad. El Yugo rompió el trato; la Purga fue la respuesta.
+- **Goirntes ↔ Faerus (tala del borde):** los Goirntes talan el borde sur del Margen; los Faerus atacan; las patrullas los cazan.
+- **Helsig ↔ Goshg (Senda del Sílice):** comercio antiguo de sílice por madera y resina, que bordea las Llanuras por el este. Los Serhu, fuera.
 - **Helsig y Goshg:** neutrales y defensivos, de bajo perfil. Comercian con los demás clanes.
 - **Goshg ↔ Keseg Prisilke:** convivencia práctica en la Ciénaga; no se casan entre sí.
 - **Guerra exterior:** Berig (Concordia) contra Vaelira (Alianza de la Rama Blanca) desde El
@@ -50,11 +53,10 @@ Sincronizado: 2026-09-27. (* = aprobado, sin código.)
 - **Faerus:** Hulki*, Tira*, Kiri*, Lusa* y Gero* (Hashma); Yeru* y Tasko* (Kegi). Riko
   (pregenerado, sin manada).
 - **Nabieus:** Yerin Slaad (pregenerado, mensajero), Sella Marn (traficante de información,
-  independiente). **Ninguno en el Margen ni en Jeyselt.**
+  independiente), Aven Tessk* (portavoz, Refugio sin Nombre), Ilka Dren* (Jeyselt).
 - **Pregenerados de Vaelira** (fuera de Berig): Sael Vhorn, Ithren Vosk, Amonir Thess, Cassia
   Von-Thair; Dessa Kaltrenn es Goirnte desertora.
 
 ## Huecos
-- No hay NPC Nabieus del Margen ni de Keseg Prisilke, ni un portavoz de cónclave.
 - No hay NPC Goshg aparte de los líderes. No hay artesanos Goirntes comunes.
 - El Clan Maktor no tiene NPC históricos con ficha (Tregig, Kadrog, el padre de Gorhorn…).

@@ -33,7 +33,7 @@ Berig es un continente geológicamente más joven, violento e imponente. Dominad
 
 **Escala real** (medida sobre el mapa real de Azgaar, `docs/map/Helek_World.map` — detalle completo en `docs/13-escala-del-mundo.md`): Berig mide en conjunto **~250 × 470 km, ~100.000–115.000 km²** — del orden de Portugal o Islandia. La comparación con Islandia es la que da el tono correcto: con una población total de apenas 8.000–10.000 almas (Goirntes + los 4 clanes orcos + Nabieus + Faerus), la densidad sale en torno a **~0,1 hab/km²**. Esto no contradice que Helek Sirik sea un mundo pequeño e íntimo — al contrario, lo explica: el continente no está dimensionado para los pocos que quedan hoy, sino para los imperios que hubo (el Yugo de Hierro, la Purga Silenciosa exigen espacio histórico). Berig es un continente **a medio vaciar**, con regiones enteras inexploradas o casi despobladas.
 
-### Las regiones, de norte a sur
+### Las regiones
 
 | Región | Dimensión | Quién la habita | Fichero |
 |---|---|---|---|
@@ -42,6 +42,35 @@ Berig es un continente geológicamente más joven, violento e imponente. Dominad
 | Ciénaga Troncal | ~160 × 178 km | Clan Goshg (El Cerco de los Pilotes), Nabieus de Keseg Prisilke (Jeyselt) | [cienaga-troncal.md](regiones/cienaga-troncal.md) |
 | El Margen Silencioso | ~215 × 103 km (cinturón, no bloque) | Nabieus (mitad oriental, El Refugio sin Nombre), Faerus (mitad occidental, Hashma) | [margen-silencioso.md](regiones/margen-silencioso.md) |
 | La Meseta del Orden | ~221 × 167 km | Goirntes (El Baluarte de Goirme) | [meseta-del-orden.md](regiones/meseta-del-orden.md) |
+
+### Cómo encajan en el mapa
+
+Berig no es una fila de regiones de norte a sur. Sobre el mapa real (Azgaar) se reparte en **tres
+franjas**:
+
+- **Norte:** Cristal Helado, de costa a costa. Más allá, desde El Detonante, la tierra nueva y el
+  muro de obsidiana.
+- **Franja central, dos regiones lado a lado:** las **Llanuras del Viento Rojo al oeste**, alargadas de
+  norte a sur hasta casi tocar la costa suroccidental, y la **Ciénaga Troncal al este**. La frontera
+  entre ambas corre de norte a sur.
+- **El Margen Silencioso** es un cinturón que cierra la franja central por el sur: linda con toda la
+  Ciénaga por su borde meridional y con el extremo sur de las Llanuras, donde se adelgaza hacia la
+  costa oeste. Por eso El Cruce de las Cenizas, Kegi y Hashma quedan cerca unos de otros, en la esquina
+  suroccidental de la franja.
+- **Sur:** la Meseta del Orden, la región más grande, que solo toca el Margen.
+
+**Distancias y rutas** (en línea recta sobre el mapa, 1 unidad ≈ 1 km; las jornadas marcadas como
+*estimado* no están medidas en el juego):
+
+| Ruta | Distancia | Jornadas | Por dónde |
+|---|---|---|---|
+| Karot Veku → Helske Tugh | ~120-170 km | 4-6 | hacia el norte por la estepa; el viaje de juventud de Gorhorn |
+| Karot Veku → El Cerco de los Pilotes | ~105 km | 4-5 *(estimado)* | hacia el este; el último tramo, por pantano |
+| El Cerco de los Pilotes → Jeyselt | ~100 km | 3-4 *(estimado)* | hacia el sur por la Ciénaga, mejor en canoa |
+| Jeyselt → El Refugio sin Nombre | ~30-50 km | 1-2 *(estimado)* | de la Ciénaga al Margen oriental |
+| Kegi → Hashma | ~30-60 km | 1-2 *(estimado)* | a través de la selva occidental del Margen |
+| El Cruce de las Cenizas → la Meseta | ~80 km | 2-3 | el corredor costero occidental, que bordea el Margen |
+| El Margen de norte a sur, a pie | ~100 km | 2-3 para un Nabieus; nadie más lo intenta | el laberinto; ver [Margen § Conexiones](regiones/margen-silencioso.md#cómo-se-conecta-con-el-resto-de-berig) |
 
 El núcleo jugable está en las Llanuras. El camino de la Concordia entre la Meseta y el Cruce de las
 Cenizas **bordea el Margen Silencioso por un corredor costero occidental** (~80 km, 2–3 jornadas), y

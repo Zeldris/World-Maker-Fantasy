@@ -56,6 +56,11 @@ y **Gero**, el joven que corre entre Hashma y Kegi.
 Un claro amplio donde las manadas Faerus que no viven en Hashma ni en Kegi se juntan para cazar y
 compartir la primera pieza. Es un lugar de encuentro, no una construcción, y el tercer punto de
 reunión Faerus además de los dos poblados.
+**Hoy está arrasado.** La magia salvaje liberada tras la ruptura del sello (El Detonante) lo devastó:
+la manada de Riko, que se reunía aquí, se rompió, y en los límites del Margen aparecieron criaturas
+mutadas que atacan a quien se acerca (ver [personajes.md § Riko](../../personajes/personajes.md)).
+Qué son exactamente esas criaturas está sin definir: son el primer candidato a las familias Mudos
+Salvaje o Rokrats Estallido fuera de las Llanuras.
 
 ### El Refugio sin Nombre
 *Refugio Nabieus · mitad oriental · Catálogo: `refugio-sin-nombre`.*
@@ -163,7 +168,7 @@ del Brozán.
 ## Fauna
 
 ### Las Sombras de Kroj
-*Fauna nocturna marcada por Kroj · todo el Margen · No está en el catálogo técnico (su pluma sí:
+*Umbrias (Kroj) · nivel 3-8 · AGRESIVO · AEREO · en grupo · pendiente de código (su pluma sí existe:
 `pluma-sombra-kroj`).*
 
 Criaturas voladoras nocturnas medianas, de plumaje gris ceniza y vuelo silencioso. Cazan en grupo.
@@ -173,7 +178,7 @@ retrasado, para atraer viajeros hacia trampas o precipicios. No tienen cuerdas v
 porque no las necesitan.
 
 ### Hetris
-*Arbóreo · dosel alto · No está en el catálogo técnico.*
+*Acechantes · nivel 4-9 · AGRESIVO (territorial) · dosel alto · pendiente de código.*
 
 Felino-simio arbóreo de 80-120 cm, de cuerpo esbelto y extremidades largas con garras curvas, cola
 prensil casi tan larga como el cuerpo y pelaje corto gris verdoso que se funde con la corteza
@@ -184,7 +189,7 @@ que por miedo.
 **Recursos:** Piel de Hetris (tier 3), Garras de Hetris (tier 4).
 
 ### Mekiosi
-*Suelo del bosque · No está en el catálogo técnico.*
+*Acechantes · nivel 7-13 · AGRESIVO · suelo del bosque · pendiente de código.*
 
 Bestia de 200-250 cm, de complexión pesada y musculosa, piel gruesa de tonos pardos y verdes que
 imita el musgo y la corteza podrida del suelo, patas cortas y robustas y una cabeza ancha con
@@ -194,7 +199,7 @@ embestida. Solitario, con territorio amplio.
 **Recursos:** Piel de Mekiosi (tier 4), Colmillos de Mekiosi (tier 5).
 
 ### Vistue
-*Corredor de manada · No está en el catálogo técnico.*
+*Guelises · nivel 3-7 · AGRESIVO en manada · pendiente de código.*
 
 Corredor de manada de 130-170 cm, de cuerpo alargado y patas largas hechas para la carrera
 sostenida, pelaje corto oscuro con una franja más clara a lo largo del lomo, hocico estrecho y
@@ -255,6 +260,24 @@ no como bestia de combate sino como presencia que fortalece a toda la manada a s
 nombran. Los Ferikes viven en el borde con las Llanuras; ver
 [El Cruce de las Cenizas](llanuras-del-viento-rojo.md#el-cruce-de-las-cenizas).*
 
+## Cómo se conecta con el resto de Berig
+
+- **Noroeste, las Llanuras**: Hashma y Kegi, a 1-2 jornadas de selva, son las dos manadas con
+  poblado. El Cruce de las Cenizas, en una muesca del Margen, es la única puerta de la Concordia. Las
+  incursiones Serhu contra los Faerus entran por aquí.
+- **Noreste, la Ciénaga**: la mitad Nabieus linda con Jeyselt. Keseg Sael y Keseg Prisilke son
+  parientes.
+- **Sur, la Meseta**: el Margen es **el muro natural del Imperio**. Una columna Goirnte no lo
+  atraviesa (se pierde, no se oye, la cazan), así que rodea por el corredor costero: 2-3 jornadas. Un
+  **mensajero Nabieus lo cruza de norte a sur en 2-3 jornadas** leyendo el suelo con la palma. Esa
+  diferencia es todo el valor de los Nabieus para la Concordia, y la razón de que los tolere.
+- **La tala del borde**: los Goirntes de la frontera norte, los que trabajan la madera, la sacan del
+  borde sur del Margen. Cada árbol talado en territorio Faerus es un motivo de ataque, y cada ataque,
+  una excusa para que las patrullas traten a los Faerus como presa. Es la versión diaria, pequeña, de
+  la guerra entre ellos.
+- **Tras El Detonante**: la magia salvaje liberada con la ruptura del sello arrasó El Claro de la
+  Manada y dejó criaturas mutadas en los límites del Margen. Las patrullas culpan a los Faerus.
+
 ## Huecos conocidos
 
 - **Nada de la región está en el catálogo técnico** salvo los cuatro lugares Faerus y Nabieus: ni
@@ -272,6 +295,7 @@ nombran. Los Ferikes viven en el borde con las Llanuras; ver
   aplica la primera tanda de propuestas aprobadas: los clanes Keseg Sael y Feg Tusha, el Archivo del
   Refugio, El Cruce de las Ausencias, Las Aguas Sordas, La Proa Gris, 5 especies de flora, 4 de fauna
   (entre ellas la Leshra, primera de la familia Umbrias) y los Faerus de Hashma.
+- 2026-09-27 (pasada de conexión): familia, nivel y temperamento de Sombras de Kroj, Hetris, Mekiosi y Vistue; El Claro de la Manada arrasado tras El Detonante (canon de Riko que faltaba aquí); sección de conexiones (el Margen como muro del Imperio, la tala del borde).
 
 ---
 

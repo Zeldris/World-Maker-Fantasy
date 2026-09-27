@@ -1332,3 +1332,27 @@ Fichas completas en `docs/borradores-opencode/propuestas-aprobadas.md` (A-01…A
   flora y fauna del Margen).
 - **Pendiente de dataset**: el vocabulario nuevo (Drogh'tugh, Tovh'vhurne, Keseg Sael, Leshra,
   Ashi'krul) y los nombres de lugar nuevos.
+
+## Pasada de conexión del lore — 2026-09-27 (Claude, a petición de Álvaro), código pendiente
+
+Aplicado a `docs/rpgtarkor/` y a `docs/canon-opencode/`. Todo lo nuevo está marcado como
+provisional o revisable en el historial de cada fichero.
+
+- **Geografía**: `areas.md` § "Cómo encajan en el mapa". Berig en tres franjas (las Llanuras al oeste
+  y la Ciénaga al este, lado a lado), con una tabla de rutas y distancias medidas sobre el mapa de
+  Azgaar. Las jornadas sin medir en el juego van marcadas como *estimado*.
+- **Hilos nuevos**: El Borde (los Nabieus como correos del orden, ~2.100-2.800), la Senda del Sílice
+  (Helsig ↔ Goshg, ~3.000-3.500), los mil años salvajes (origen de los Mudos Salvaje de las
+  Llanuras), la tala del borde (Goirntes ↔ Faerus), el tributo por mar desde la Costa Corredor, y
+  El Claro de la Manada arrasado tras El Detonante (canon de Riko que faltaba en el Margen).
+- **Código pendiente**:
+  - Fauna: Hielaga, Nievón, Tragalodo, Borbol y Zancapilote. Además, familia y nivel para Sombras de
+    Kroj (UMBRIAS 3-8), Hetris (ACECHANTES 4-9), Mekiosi (ACECHANTES 7-13), Vistue (GUELISES 3-7) y
+    Cornantes (BESTIONES 3-8), ninguno sembrado todavía.
+  - Flora: Liquen Escarcha y Bolco (resina).
+  - NPC: `aven-tessk` (líder de Keseg Sael) e `ilka-dren` (líder de Keseg Prisilke).
+  - Descripciones de las `Location` `costa-corredor` y `embarcadero-goshg`.
+- **Pendiente de revisar**: el catálogo de Azgaar sitúa el campamento Serhu en el norte de las
+  Llanuras y el Cruce de las Cenizas a ~110 km. En el juego están a 18-25 km (el Cruce se dibuja
+  aparte, solo en el mapa visual). Es una incoherencia antigua y conocida (`13-escala-del-mundo.md`
+  § 1.1); en esta pasada no se ha tocado.

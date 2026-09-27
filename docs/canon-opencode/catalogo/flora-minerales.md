@@ -43,19 +43,19 @@ Tocón (Fongares, comida t2).
 ## Ciénaga Troncal
 Trepadores Ocaso (Veldrias: resina negra y dorada, madera de tótems) · Bulbo de Turbera* (Bulvias,
 t1) · Velo de Charca* (Marelas, comida y cura de quemaduras, t1) · Herrumbrera* (Vetrias, hierro
-pobre, t2) · Bolco (se menciona, sin ficha).
+pobre, t2) · Bolco* (Veldrias, resina para calafatear t2; forma la capa de las Marismas).
 
 ## Meseta del Orden
 Hierba del Hierro (Vetrias: extrae metal de la piedra; aleaciones Goirntes).
 
 ## Cristal Helado
-Hielo Sílice (mineral; se talla, no se forja).
+Hielo Sílice (mineral; se talla, no se forja) · Liquen Escarcha* (Muscarias, comida de emergencia t1).
 
 ## Familias poco usadas (huecos de flora)
 - Granoles: solo en las Llanuras. Trenias: nada fuera de las Llanuras. Vetrias: solo 3 en todo
   Berig.
 - Roktars Florares (nacidas de la magia salvaje): **ninguna especie**. Brotes Salvajes: solo 2.
-- Cristal Helado y la Meseta no tienen casi flora.
+- La Meseta no tiene casi flora; Cristal Helado, solo una planta.
 
 ## Materiales animales que ya existen (para crafteo)
 Pieles: Corredor (MORATORIA), Gargantúa, Canizor, Rondador, Salamandra, Kirelon (escamas),

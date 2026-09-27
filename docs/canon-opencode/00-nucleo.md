@@ -9,8 +9,11 @@ Fuente: docs/rpgtarkor/ (todo). Sincronizado: 2026-09-27.
   separada por la Niebla del Estrecho, que casi nadie cruza.
 - NADA de Vaelira aparece en Berig: ni Kelife, Jusaly, Kalisar o Ilvenar, ni Hebra Dorada, ni el
   musgo bioluminiscente, ni la Costa del Azabache.
-- Berig de NORTE a SUR: Cristal Helado → Llanuras del Viento Rojo → Ciénaga Troncal → El Margen
-  Silencioso → La Meseta del Orden.
+- Berig en tres franjas. NORTE: Cristal Helado. CENTRO, lado a lado: Llanuras del Viento Rojo
+  (OESTE) y Ciénaga Troncal (ESTE). Debajo, el Margen Silencioso, un cinturón que linda con toda la
+  Ciénaga y con el extremo sur de las Llanuras (allí están el Cruce, Kegi y Hashma). SUR: la Meseta
+  del Orden, que solo toca el Margen. Al norte de Cristal Helado, desde El Detonante: la tierra nueva
+  y el muro de obsidiana (RESERVADO).
 - Razas de Berig: Goirntes (Meseta), Orcos (4 clanes), Nabieus (Margen oriental y sur de la
   Ciénaga), Faerus (Margen occidental y Kegi). NO HAY HUMANOS.
 - Población total de Berig: unas 8.000-10.000 almas. Un continente a medio vaciar.
@@ -82,7 +85,7 @@ Nada del catálogo pasa de 80 Goirnos. Un precio de cientos está MAL.
 
 ## Lista de comprobación (comando REVISA)
 1. ¿Usa material de Corredor de Cauce? 2. ¿Da por "inventado" algo que sí está en lo leído?
-3. ¿Mete algo de Vaelira en Berig? 4. ¿Respeta el orden norte-sur y la zona de cada especie?
+3. ¿Mete algo de Vaelira en Berig? 4. ¿Respeta el mapa (tres franjas; Llanuras al oeste y Ciénaga al este) y la zona de cada especie?
 5. ¿Resuelve algo reservado? 6. ¿Pone años en la era mítica, o fechas imposibles (orcos antes del
 2.000, algo después del 4.010)? 7. ¿Inventa atributos, oficios, clases, ranuras o precios fuera de
 escala, o incumple la regla de peso? 8. ¿Tono prohibido? 9. ¿Muletillas (`Silh`, "tela de hueso",

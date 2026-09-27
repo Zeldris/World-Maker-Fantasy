@@ -46,15 +46,20 @@ Fuente: backend/src/scripts/worldCatalog.ts + regiones/*.md. Sincronizado: 2026-
 ## Solo en el lore (sin código todavía)
 | Especie | Región | Familia | Nivel | Temperamento |
 |---|---|---|---|---|
-| Sombras de Kroj | Margen | sin asignar | — | — |
-| Hetris | Margen | sin asignar | — | — |
-| Mekiosi | Margen | sin asignar | — | — |
-| Vistue | Margen | sin asignar | — | — |
+| Sombras de Kroj | Margen | UMBRIAS | 3-8 | AGRESIVO |
+| Hetris | Margen | ACECHANTES | 4-9 | AGRESIVO |
+| Mekiosi | Margen | ACECHANTES | 7-13 | AGRESIVO |
+| Vistue | Margen | GUELISES | 3-7 | AGRESIVO |
 | Leshra | Margen | UMBRIAS | 2-5 | CAUTELOSO |
 | Morvasa | Margen (Aguas Sordas) | ESCAMADOS | 3-6 | CAUTELOSO |
 | Brozán | Margen | RONDINES | 1-2 | INOFENSIVO |
 | Hoscón | Margen | CORVENES | 1-2 | INOFENSIVO |
-| Cornantes | Ciénaga | sin asignar | — | — |
+| Cornantes | Ciénaga | BESTIONES | 3-8 | CAUTELOSO |
+| Tragalodo | Ciénaga | ESCAMADOS | 8-14 | AGRESIVO |
+| Borbol | Ciénaga | NADANTES | 1-2 | INOFENSIVO |
+| Zancapilote | Ciénaga | ZANCUDOS | 2-5 | CAUTELOSO |
+| Hielaga | Cristal Helado | BESTIONES | 1-4 | CAUTELOSO |
+| Nievón | Cristal Helado | ACECHANTES | 5-11 | AGRESIVO |
 | Espina del Viento | Llanuras (Fosa Horadada) | peligro ambiental, sin combate | — | — |
 | Vaeth | Margen | espíritu, no fauna | — | — |
 

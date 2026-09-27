@@ -52,15 +52,17 @@ Son huecos reales:
 - **Marismas de Lodo Negro** (`marismas-lodo-negro`): marismas que se forman de la mezcla de resina
   de Bolco (árbol oscuro de resina negra), agua y fango gris. En la superficie se acumulan los restos
   más espesos de la resina, formando una capa protectora y viscosa; debajo hay una red de túneles
-  sumergidos con el agua más pura y cristalina de Berig. *(El Bolco no tiene ficha de flora
-  todavía.)*
+  sumergidos con el agua más pura y cristalina de Berig. Ver [Bolco](#bolco).
 - Túneles Musgosos (`tuneles-musgosos`)
 - Raíces Madre Fango (`raices-madre-fango`)
 - Cumbre Bruma Negra (`cumbre-bruma-negra`)
 - Cataratas Madre Fango (`cataratas-madre-fango`)
 - Costa Marea Vida (`costa-marea-vida`)
-- Costa Corredor (`costa-corredor`)
-- Embarcadero Silh Makut (`embarcadero-goshg`)
+- **Costa Corredor** (`costa-corredor`): la costa oriental donde se entrega la madera del tributo a
+  las balsas Goirntes que bajan hacia la Meseta. Es el único punto de la Ciénaga donde se ven Goirntes
+  con regularidad.
+- **Embarcadero Silh Makut** (`embarcadero-goshg`): el muelle propio del Cerco, del que salen las
+  canoas de fondo plano hacia la Costa Corredor y hacia Jeyselt.
 - Desfiladero Esmeralda (`desfiladero-esmeralda`)
 
 ## Flora
@@ -101,21 +103,68 @@ mineral mucho más pobre. **No brilla.** Explica que los Goshg tengan algo de me
 una región pobre en minerales: da para puntas de lanza y clavos, no para una herrería de verdad.
 **Recurso:** Corteza Herrumbre, tier 2 (10 unidades equivalen a 1 de mena de hierro pobre al fundir).
 
+### Bolco
+*Veldrias · Marismas de Lodo Negro · pendiente de código.*
+
+Árbol bajo y ancho, pariente del Trepador Ocaso pero sin vetas doradas, que solo crece en las
+marismas. Su resina, negra y pesada, gotea al agua y flota: es la que forma la capa viscosa de las
+Marismas de Lodo Negro. Esa capa sella el agua de debajo del aire y del barro de arriba, así que los
+túneles sumergidos no se enturbian ni se evaporan. Por eso guardan el agua más limpia de Berig.
+**Recurso:** Resina de Bolco (t2), impermeabilizante pesado con el que los Goshg calafatean el fondo
+de las canoas.
+
 ## Fauna
 
 ### Cornantes
-*No está en el catálogo técnico.*
+*Bestiones · nivel 3-8 · CAUTELOSO · pendiente de código.*
 
 Criatura de cuatro patas, corpulenta y de gran tamaño, con cornamenta ancha y ramificada. Es la
 principal fuente de alimento de los orcos en la Ciénaga Troncal. Cazar un Cornante es trabajo de
-grupo y de paciencia: se le acorrala hacia el agua baja, donde su propio peso lo hunde.
+grupo y de paciencia: se le acorrala hacia el agua baja, donde su propio peso lo hunde. Hay que hacerlo rápido: un Cornante hundido
+atrae Tragalodos.
+
+### Tragalodo
+*Escamados · nivel 8-14 · AGRESIVO · agua baja y orillas · pendiente de código.*
+
+Reptil acorazado de 3-4 m, de placas pardas cubiertas de barro seco y ojos a ras de cabeza. Caza en el
+agua baja, justo donde los Goshg acorralan a los Cornantes, y huele la sangre desde lejos. Por eso la
+caza del Cornante es cosa de grupo y de prisa. Es el depredador grande que le faltaba a la Ciénaga.
+**Recursos:** Placas de Tragalodo (t5, armadura) y Dientes de Tragalodo (t4).
+
+### Borbol
+*Nadantes · nivel 1-2 · INOFENSIVO · ACUATICO · charcas y canales · pendiente de código.*
+
+Pez de fondo de 30-50 cm que respira aire: cada pocos minutos sube a la superficie con un golpe de
+cola. **Esa vibración es lo que leen los cazadores de Keseg Prisilke** con la pierna metida en el agua
+(la escucha con la palma, llevada al agua). Carne grasa que se ahúma bien.
+**Recurso:** Carne de Borbol (t1).
+
+### Zancapilote
+*Zancudos · nivel 2-5 · CAUTELOSO · pilotes viejos del Cerco · pendiente de código.*
+
+Ave zancuda gris de 1,5 m que anida en los pilotes abandonados del Cerco y roba pescado de las redes.
+Los Goshg la toleran porque grazna en cuanto algo grande se mueve bajo el agua: es su alarma contra el
+Tragalodo.
+**Recurso:** Plumas de Zancapilote (t1).
+
+## Cómo se conecta con el resto de Berig
+
+- **Oeste, las Llanuras** (4-5 jornadas desde Karot Veku): la **Senda del Sílice** une desde hace
+  siglos la madera y la resina Goshg con el hielo sílice Helsig y las pieles de las Llanuras. De aquí
+  salió la madera del gran tótem Maktor. Hoy los Serhu, armados por la Concordia, empiezan a asaltar a
+  los Goshg, y los Goshg responden con bajo perfil y empalizadas.
+- **Norte, Cristal Helado**: el otro extremo de la Senda. Los Helsig compran resina de Trepador (sus
+  antorchas no se apagan con la ventisca) y pagan en cuchillos.
+- **Sur, El Margen oriental**: Jeyselt está a 1-2 jornadas del Refugio sin Nombre. Keseg Prisilke y
+  Keseg Sael son parientes: se mandan noticias, no mercancías.
+- **La Meseta, por mar**: la madera del tributo no baja por el Margen (nadie saca troncos de ese
+  laberinto), sino por la costa oriental. Los Goshg y los Prisilke la llevan a la **Costa Corredor**,
+  donde la embarcan balsas Goirntes que bajan hacia el sur.
 
 ## Huecos conocidos
 
-- Solo una especie de fauna documentada (los Cornantes, que además no están en el catálogo). La flora
-  nueva (Bulbo de Turbera, Velo de Charca, Herrumbrera) está pendiente de código.
-- Ocho lugares del catálogo sin descripción (arriba).
-- El Bolco aparece en la descripción de las Marismas sin ficha propia.
+- Toda la fauna y la flora (salvo el Trepador Ocaso) está pendiente de código.
+- Seis lugares del catálogo siguen sin descripción (arriba).
 - El interior Goshg no tiene talleres ni Maestros.
 
 ## Historial de cambios
@@ -126,6 +175,7 @@ grupo y de paciencia: se le acorrala hacia el agua baja, donde su propio peso lo
 - 2026-09-27: la región pasa a tener fichero propio. Se documentan los lugares del catálogo que no
   tenían reflejo en el lore. Se unifica el nombre nativo del Cerco en **Silh Makut**, el del
   catálogo y el de la sección del interior (`areas.md` decía "Makut Silh" en un solo sitio).
+- 2026-09-27 (pasada de conexión): Tragalodo, Borbol, Zancapilote y Bolco; familia y nivel de los Cornantes; Costa Corredor y Embarcadero descritos; sección de conexiones (Senda del Sílice, tributo por mar).
 
 ---
 

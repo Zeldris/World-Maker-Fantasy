@@ -108,8 +108,8 @@ A-37 a A-39).
 | Facción | Raza | Región | Líder (`liderNpcId`) | Población |
 |---|---|---|---|---|
 | Los del Obelisco | goirntes | La Meseta del Orden (compartida con la Concordia) | `yovenne-tal` | 300 del pool `goirntes` |
-| Keseg Sael | nabieus | El Margen Silencioso, mitad oriental | portavoz de cónclave, sin cargo (ficha por crear) | 1.500 del pool `nabieus` |
-| Keseg Prisilke | nabieus | Ciénaga Troncal (compartida con el Clan Goshg) | por crear | 500 del pool `nabieus` |
+| Keseg Sael | nabieus | El Margen Silencioso, mitad oriental | `aven-tessk`, portavoz de cónclave, sin cargo | 1.500 del pool `nabieus` |
+| Keseg Prisilke | nabieus | Ciénaga Troncal (compartida con el Clan Goshg) | `ilka-dren` | 500 del pool `nabieus` |
 | Feg Tusha | faerus | El Margen Silencioso, mitad occidental | `hulki` | 850 del pool `faerus` |
 | Feg Ger | faerus | franja sur de las Llanuras, sin ser dueña | `yeru` | 200 del pool `faerus` |
 

@@ -23,8 +23,16 @@ Fuente: docs/rpgtarkor/lore-mundo/regiones/cristal-helado.md. Sincronizado: 2026
 
 ## Especies
 - **Hielo Sílice** (mineral): cuchillos de desuello y herramientas.
+- **Hielaga** (BESTIONES 1-4, CAUTELOSO): bóvido pequeño de montaña; la presa escasa por la que se raciona. Piel t2 (la más abrigada).
+- **Nievón** (ACECHANTES 5-11, AGRESIVO): felino blanco que espera enterrado en la nieve junto a los pasos. Piel y colmillos t5.
+- **Liquen Escarcha** (Muscarias): comida de las Hielagas y caldo de hambre de los Helsig.
+
+## Conexiones
+- Sur, Llanuras (4-6 jornadas): la Senda del Sílice. Los Helsig aceptan brazos de fuera en las minas. Últimamente, incursiones Serhu.
+- Sureste, Ciénaga: resina para antorchas a cambio de cuchillos.
+- Concordia: exige mineral, no guerreros.
+- NORTE: la tierra nueva y el muro de obsidiana están pegados al norte de Berig. Los Helsig son los más cercanos. Qué hay detrás: RESERVADO.
 
 ## Huecos
-- NINGUNA especie de fauna ni flora documentada. La caza escasa no tiene presas con nombre.
-- La Red Profunda Final promete fauna adaptada a la oscuridad y el frío, y no tiene ninguna.
+- Muy poca fauna y flora. Nada del Lago Cristalice ni de La Red Profunda Final (que promete fauna de la oscuridad y el frío).
 - Sin NPC Helsig además de los líderes, Hagar y los Maestros.

@@ -78,6 +78,17 @@ su mecanismo físico a cualquier fenómeno de Helek Sirik (ver
 aquí aplicado a una planta en vez de a un mineral suelto. Los Goirntes la procesan para extraer
 aleaciones metálicas ligeras y resistentes sin excavar minas profundas.
 
+## Cómo se conecta con el resto de Berig
+
+- **Norte, el Margen**: el muro natural del Imperio. Ninguna columna lo cruza; los mensajeros Nabieus
+  sí, en 2-3 jornadas, y por eso la Concordia los necesita. Los Goirntes de la frontera norte talan
+  su borde sur para la madera de sus creaciones, y ese roce con los Faerus alimenta la hostilidad.
+  Desde La Proa Gris, los Nabieus cuentan las columnas.
+- **Noroeste, el corredor costero**: de El Puesto del Corredor al Cruce de las Cenizas, 2-3 jornadas.
+  Por él suben cada mes las armas para los Serhu y bajan los contingentes.
+- **El tributo**: el mineral Helsig baja por tierra, cruzando las Llanuras hasta el Cruce; la madera
+  de la Ciénaga, por mar, desde la Costa Corredor. Todo acaba en El Baluarte, contado y grabado.
+
 ## Huecos conocidos
 
 - Ninguna fauna propia documentada.
@@ -92,6 +103,7 @@ aleaciones metálicas ligeras y resistentes sin excavar minas profundas.
 - 2026-09-27: la región pasa a tener fichero propio. Primera tanda de propuestas aprobadas: origen del
   obelisco de El Baluarte, el Primer Edicto del Tributo, Los del Obelisco, Tarsen Vold, El Puesto del
   Corredor y Las Canteras del Eje.
+- 2026-09-27 (pasada de conexión): sección de conexiones (mensajeros Nabieus, tala del borde, rutas del tributo).
 
 ---
 

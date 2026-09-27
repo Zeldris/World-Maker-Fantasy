@@ -76,6 +76,13 @@ Imán · Roca de Llanura Roja · Mena de hierro (la peor de Helek Sirik).
 - Manaderos: Verdileas → Jusha → Miruina (de noche) y Tura Jusha (crías, de día). El Quio filtra.
 - Corredor de Cauce → Aullador Rojo (rezagados). Carroña → Zense Ceniza (aire), Gesgurio (suelo).
 
+## Conexiones
+- Norte, Cristal Helado (4-6 jornadas): baja el hielo sílice por la Senda del Sílice. El tributo de mineral cruza las Llanuras hasta el Cruce.
+- Este, Ciénaga (4-5 jornadas desde Karot Veku): de allí viene la madera de los tótems. Hoy los Serhu asaltan también a los Goshg.
+- Sur, Margen: Kegi y Hashma a 1-2 jornadas. El Cruce, única puerta de la Concordia. Las incursiones Serhu contra los Faerus entran por aquí.
+- Suroeste: corredor costero (2-3 jornadas) hasta El Puesto del Corredor (Meseta). Armas mensuales para los Serhu; contingentes de vuelta.
+- Debajo: el Reino Nabierus. Los Nabieus no vuelven nunca a las Llanuras.
+
 ## Huecos
 - Loot sin uso en ninguna receta: Huevo de Celubia, Caparazón de Terkash, Cráneo de Kirelon.
 - Sin oficio de agricultura (el Trigo Escarlata espera una misión especial).

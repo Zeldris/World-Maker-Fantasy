@@ -25,6 +25,11 @@ Fuente: docs/rpgtarkor/lore-mundo/regiones/meseta-del-orden.md. Sincronizado: 20
 - **Hierba del Hierro** (Vetrias): extrae el metal disperso en la piedra. De ella salen las
   aleaciones Goirntes.
 
+## Conexiones
+- Norte: el Margen, que ninguna columna cruza. Los mensajeros Nabieus sí. La tala del borde enfrenta a los Goirntes de la frontera con los Faerus. La Proa Gris vigila.
+- Noroeste: el corredor costero hasta el Cruce de las Cenizas (Llanuras).
+- Tributo: mineral Helsig por tierra hasta el Cruce; madera de la Ciénaga por mar desde la Costa Corredor.
+
 ## Huecos
 - Ninguna fauna. Ninguna ciudad aparte de la capital tiene nombre. Sin minas ni acueductos con
   nombre.

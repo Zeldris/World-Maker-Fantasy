@@ -971,6 +971,26 @@ investigadora que sus descendientes de hoy, los Nabieus, siguen llevando en la s
 
 ---
 
+## Cómo se conecta con el resto de Berig
+
+- **Norte, Cristal Helado** (4-6 jornadas): por aquí baja el hielo sílice Helsig desde hace siglos
+  (la **Senda del Sílice**, ver [cronologia.md](../cronologia.md)), y por aquí suben pieles y comida.
+  Las caravanas del tributo de mineral para la Concordia cruzan las Llanuras hasta El Cruce de las
+  Cenizas; esa es una de las razones de que las patrullas lo vigilen. Hagar Kiugh sigue allí.
+- **Este, Ciénaga Troncal** (4-5 jornadas): la madera oscura de los tótems orcos, incluido el gran
+  tótem Maktor, viene de allí por la misma Senda. Hoy los Serhu, armados por la Concordia, empiezan a
+  asaltar también a los Goshg.
+- **Sur, El Margen Silencioso**: Kegi y Hashma son vecinas (1-2 jornadas de selva), y los Faerus de
+  las dos manadas van y vienen (Gero). El Cruce de las Cenizas es la única puerta de la Concordia, y
+  los Ferikes marcan dónde empieza de verdad la selva. Las incursiones Serhu contra los Faerus entran
+  por aquí.
+- **Suroeste, la Meseta**: el corredor costero (2-3 jornadas) acaba en El Puesto del Corredor. Por él
+  llegan cada mes las armas de la Concordia para los Serhu y se van los contingentes.
+- **Debajo**: el Reino Nabierus enterrado. Los Pilares Rotos y Las Dunas Ahogadas son sus restos, el
+  Cardo Brújula apunta a su masa metálica y El Vientre del Engaño es donde lo sepultaron. Los Nabieus
+  de hoy descienden de él, pero ninguno vuelve: para ellos las Llanuras son el sitio donde investigar
+  lo costó todo.
+
 ## Huecos conocidos
 
 - **Talleres de Karot Veku** descritos pero sin edificio en el catálogo: herboristería, alquimia,
@@ -1018,6 +1038,7 @@ investigadora que sus descendientes de hoy, los Nabieus, siguen llevando en la s
 - 2026-09-27: la región pasa a tener fichero propio (antes estaba repartida entre `areas.md` y
   `flora-fauna.md`). Se incorporan Kegi, el Vergel y el Jakut Ger, que estaban en el catálogo. Se
   añaden los metadatos de catálogo (slug, familia, nivel y temperamento) de cada especie.
+- 2026-09-27 (pasada de conexión): sección "Cómo se conecta con el resto de Berig" (Senda del Sílice, rutas del tributo, reino enterrado).
 
 ---
 

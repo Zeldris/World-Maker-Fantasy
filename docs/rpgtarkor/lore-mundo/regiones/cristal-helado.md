@@ -114,11 +114,56 @@ corriente define a Las Llanuras. Cristal resistente, usado para fabricar herrami
 especialmente cuchillos de deshuello para las duras pieles de la fauna salvaje local. Lo trabaja
 sobre todo el Clan Helsig: el filo de hielo sílice no se forja, se talla.
 
+## Fauna y flora
+
+Pendientes de código.
+
+### Hielaga
+*Bestiones · nivel 1-4 · CAUTELOSO · La Veta Helada y laderas.*
+
+Bóvido de montaña pequeño, de 70-90 cm a la cruz, con doble pelaje blanco grisáceo y pezuñas anchas
+con almohadillas de cuerno que agarran en el hielo. Raspa el Liquen Escarcha de las rocas con los
+incisivos. Vive en manadas de 6 a 12 que bajan a La Veta en invierno. Es **la presa principal de los
+Helsig y la razón de que racionen**: una manada tarda años en recuperarse si se caza de más.
+**Recursos:** `racion-carne`, Piel de Hielaga (t2, la más abrigada de Berig), Cuerno de Hielaga (t2).
+
+### Nievón
+*Acechantes · nivel 5-11 · AGRESIVO · pasos de montaña.*
+
+Felino bajo y largo, de 150-190 cm, de pelaje blanco hueco que aísla tanto que no deja escapar calor a
+la superficie. Espera enterrado bajo la nieve polvo junto a los pasos de las Hielagas, a veces días
+enteros; respira por un orificio que deja un pequeño cráter de escarcha, la única señal de que está
+ahí. Los Helsig enseñan a sus críos a mirar la nieve antes que el horizonte. Es el mismo patrón que el
+Mekiosi del Margen, en frío.
+**Recursos:** Piel de Nievón (t5), Colmillos de Nievón (t5).
+
+### Liquen Escarcha
+*Muscarias · rocas orientadas al sol.*
+
+Costra verde grisácea que crece unos milímetros al año sobre la roca que recibe sol. Es lo único que
+comen las Hielagas en invierno, y los Helsig lo hierven en caldo en los años de hambre. Arrancarlo
+entero está mal visto: se raspa la mitad y se deja la otra para que vuelva.
+**Recurso:** Liquen Escarcha, t1, alimento de emergencia.
+
+## Cómo se conecta con el resto de Berig
+
+- **Sur, las Llanuras** (4-6 jornadas): el hielo sílice baja por la **Senda del Sílice** y suben
+  pieles y comida. Los Helsig aceptan brazos de fuera en las minas (así llegó Gorhorn). Últimamente
+  llegan también incursiones Serhu.
+- **Sureste, la Ciénaga**: el otro extremo de la Senda. Resina de Trepador para las antorchas y madera
+  a cambio de cuchillos.
+- **La Concordia**: exige mineral, no guerreros. Las caravanas del tributo cruzan las Llanuras hasta el
+  Cruce de las Cenizas.
+- **Norte, más allá de la costa**: desde El Detonante, la tierra nueva y el muro de obsidiana están
+  adheridos al norte de Berig. Cristal Helado es la región más cercana, y los Helsig, sin buscarlo,
+  son quienes antes verán lo que salga de él. Qué hay detrás sigue **reservado** (ver
+  [historia.md § El Giro](../historia.md#el-giro-algo-emerge-de-los-muros)).
+
 ## Huecos conocidos
 
-- Ninguna fauna ni flora propia documentada (solo el mineral). La Red Profunda Final promete
-  "fauna adaptada a la oscuridad y el frío" sin ninguna especie.
-- La caza "tan escasa que racionar es ley" no tiene presas con nombre.
+- Ninguna especie del Lago Cristalice ni de La Red Profunda Final, que promete "fauna adaptada a la
+  oscuridad y el frío".
+- Nada del frente norte (el muro de obsidiana) documentado desde el lado Helsig.
 
 ## Historial de cambios
 
@@ -130,6 +175,7 @@ sobre todo el Clan Helsig: el filo de hielo sílice no se forja, se talla.
 - 2026-09-13: el interior Helsig'lukar pasa a ser jugable.
 - 2026-09-27: la región pasa a tener fichero propio (antes vivía repartida entre `areas.md` y
   `flora-fauna.md`).
+- 2026-09-27 (pasada de conexión): primera fauna y flora de la región (Hielaga, Nievón, Liquen Escarcha) y sección de conexiones (Senda del Sílice, frente norte del muro de obsidiana).
 
 ---
 
