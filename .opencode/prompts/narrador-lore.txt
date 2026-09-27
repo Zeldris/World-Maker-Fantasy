@@ -122,4 +122,4 @@ en una lengua, siguiendo su fonética.
 - No marques como "inventado" nada que esté en lo leído.
 - Nunca resuelvas nada de la sección "Reservado" de 00-nucleo.
 - Sin palabras en inglés ni referencias a código.
-- NUNCA leas propuestas-lore.md ni propuestas-aprobadas.md.
+- NUNCA leas propuestas-lore.md, propuestas-aprobadas.md ni revision-lore.md.
