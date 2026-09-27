@@ -57,7 +57,7 @@ Madre no ataca de forma directa: engaña a sus propias hijas, las Semillas, que 
 
 La tierra que dejan atrás sigue un curso muerto durante siglos, un desierto sin nombre ni dueño, hasta que el Estallido (ver [cronologia.md](cronologia.md), ~año 1.000) y los mil años de magia salvaje que gestan a los primeros orcos (~año 2.000) le devuelven algo de vida —no la que tenía, sino una nueva, moldeada a lo que un orco necesita para sobrevivir en ella—. El viento, antes letal, llega muy diluido de lo que fue —todavía notable, todavía peligroso en sus tormentas de arena magnética, pero ya no una fuerza capaz de enterrar civilizaciones— y es de ese mismo viento, ya domesticado por el tiempo, del que los orcos toman el nombre con el que la conocen hoy: **Las Llanuras del Viento Rojo**.
 
-*(Ver [areas.md § Antes de los orcos](areas.md#antes-de-los-orcos--el-reino-nabierus-y-el-origen-del-nombre-añadido-2026-08-05) para los puntos de interés concretos de este reino enterrado, y [razas.md § Nabieus](razas.md#nabieus--los-que-silencian) para la cultura Nabieus de hoy.)*
+*(Ver [areas.md § Antes de los orcos](clanes-orcos.md#antes-de-los-orcos--el-reino-nabierus-y-el-origen-del-nombre) para los puntos de interés concretos de este reino enterrado, y [razas.md § Nabieus](razas.md#nabieus--los-que-silencian) para la cultura Nabieus de hoy.)*
 
 ---
 

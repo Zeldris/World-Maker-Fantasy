@@ -99,7 +99,7 @@
         . `Keseg'Vhurne` - **Cónclave** — reunión discreta de representantes de los distintos clanes dispersos; no hay gobierno centralizado hoy (solo existió con el Reino Nabierus, antes del Estallido), así que esto es lo más cerca que llega su cultura de una asamblea, y solo se convoca ante algo grave
         . `Sael` - **Callar** | **silencio** (como acto, distinto de `Prisilke` que es el estado/adjetivo)
         . `Tannis` - **Mentira**
-        . `Tannis'sael` - **Lo que el silencio no puede ocultar** — el don de leer mentiras en las pausas de otro (ver [personajes.md § Yerin Slaad](personajes.md)), nunca un hechizo, una habilidad de escucha real
+        . `Tannis'sael` - **Lo que el silencio no puede ocultar** — el don de leer mentiras en las pausas de otro (ver [personajes.md § Yerin Slaad](../personajes/personajes.md)), nunca un hechizo, una habilidad de escucha real
         . `Karo` - **Carta** | **mensaje sellado**
         . `Karo'sael` - **El que no pregunta** — código de honor de quien lleva cartas selladas sin abrirlas ni preguntar qué llevan (ver [razas.md § La guerra, vista desde aquí](razas.md))
 

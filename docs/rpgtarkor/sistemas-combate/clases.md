@@ -187,7 +187,7 @@ Magia, igual que un Mago Purificador o un Mago Remodelador.
 ## Mago — Poder Magia (7 escuelas)
 
 Las 7 ramas en las que se divide la magia de Tarkor (ver
-[genesis.md § Las 7 ramas de la magia de Tarkor](genesis.md#era-0--el-génesis)) — hoy solo
+[genesis.md § Las 7 ramas de la magia de Tarkor](../lore-mundo/genesis.md#era-0--el-génesis)) — hoy solo
 `magia` existe como atributo jugable real en el motor (ver sección de arriba), las otras 6
 escuelas son diseño narrativo sin mecánica propia todavía (ver
 [07-mundo-helek-sirik.md § Contrato de mundo](../lore-mundo/07-mundo-helek-sirik.md)).
@@ -219,7 +219,7 @@ escuelas son diseño narrativo sin mecánica propia todavía (ver
 Una clase por cada una de las 13 Semillas — Tarkor queda excluida (no tiene poder de semilla
 propio, el suyo se transformó en la magia de arriba). Los 3 nombres de las Semillas Perdidas antes
 sin nombre (Nemuey/Biur/Crout) se fijaron en esta misma sesión — ver
-[genesis.md § Las 13 Semillas](genesis.md#era-0--el-génesis). Tira con el mismo atributo Magia que
+[genesis.md § Las 13 Semillas](../lore-mundo/genesis.md#era-0--el-génesis). Tira con el mismo atributo Magia que
 Poder Magia (ver § Atributo Magia arriba) — no tiene un atributo propio separado.
 
 **6 Fieles:**
@@ -1123,7 +1123,7 @@ Clase nueva del todo en el motor. Ningún hueco toca Magia.
 ### Cambiaformas — se transforma en fauna real de territorio Faerus
 
 Nombres de fauna real ya establecida (Llanuras del Viento Rojo/El Margen Silencioso, zonas Faerus),
-sin animales del mundo real — ver [flora-fauna.md § El Margen Silencioso](flora-fauna.md#fauna--el-margen-silencioso-interior-de-la-selva-añadido-2026-08-23)
+sin animales del mundo real — ver [flora-fauna.md § El Margen Silencioso](../lore-mundo/regiones/margen-silencioso.md#fauna)
 para Hetris/Mekiosi/Vistue. Los dos últimos huecos no atan a ninguna forma concreta, transformación
 parcial genérica:
 
@@ -1144,7 +1144,7 @@ parcial genérica:
 
 No usa `COMPANERO` (eso es adiestramiento, cosa de Domador) — todo pasa por `INVOCACION`, incluido
 el capstone, que invoca a **Vaeth, el Eco de la Manada** (ver
-[flora-fauna.md § El Margen Silencioso](flora-fauna.md#fauna--el-margen-silencioso-interior-de-la-selva-añadido-2026-08-23)),
+[flora-fauna.md § El Margen Silencioso](../lore-mundo/regiones/margen-silencioso.md#fauna)),
 no fauna cazable sino un espíritu ligado al propio silencio de la región:
 
 | Nivel | Habilidad | Atributo | Efecto | Estado |
