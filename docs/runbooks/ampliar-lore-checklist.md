@@ -1356,3 +1356,10 @@ provisional o revisable en el historial de cada fichero.
   Llanuras y el Cruce de las Cenizas a ~110 km. En el juego están a 18-25 km (el Cruce se dibuja
   aparte, solo en el mapa visual). Es una incoherencia antigua y conocida (`13-escala-del-mundo.md`
   § 1.1); en esta pasada no se ha tocado.
+
+- **Segunda pasada (misma fecha)**: descritos los 6 lugares de la Ciénaga que solo tenían nombre
+  (rellenar `description` en sus `Location`); talleres del Cerco de los Pilotes (astillero de pilotes,
+  resinería, ahumadero, talla de tótems; edificios y Maestros por crear); ciudades numeradas de la
+  Meseta (Vresk Hes, Vresk Tuh y Vresk Kei); fauna nueva, el Vreskal (ORDENADOS, el primero) y el
+  Escarchín (Lago Cristalice); cronología: ciudades numeradas (0-1.000) y nacimiento de la corriente
+  radical (~3.650-3.700). Todo pendiente de código.

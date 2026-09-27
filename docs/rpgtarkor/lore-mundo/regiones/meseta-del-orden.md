@@ -59,10 +59,20 @@ surcos tallados en el suelo. Trabaja aquí un linaje de unos 30 talladores. Un o
 nunca se abandona: si su talladora muere, otra lo termina con la misma herramienta.
 
 ### Las ciudades-fortaleza de la Meseta
-*Región genérica · Catálogo: `meseta-del-orden`.*
+*Región genérica · Catálogo: `meseta-del-orden` · nombres de la pasada 2026-09-27, pendientes de código.*
 
-El resto de ciudades-fortaleza, sin nombre propio todavía. Cada una tiene su obelisco de leyes
-(*Vresk'ord*) en la plaza central.
+Cada una tiene su obelisco de leyes (*Vresk'ord*) en la plaza central. Fieles a su obsesión por el
+orden, los Goirntes **numeran** sus ciudades por orden de fundación: tras El Baluarte, que lleva el
+nombre de Goirme, vienen *Vresk Hes*, *Vresk Tuh* y *Vresk Kei* ("ciudad-fortaleza dos, tres y
+cuatro"). De la quinta en adelante son ciudades menores y se nombran por su función.
+- **Vresk Hes**, la segunda: en el interior, entre los campos de Hierba del Hierro. Allí están las
+  forjas mayores del Imperio y de allí salen las aleaciones grises y las armas que cada mes suben a
+  los Serhu.
+- **Vresk Tuh**, la tercera: la ciudad de la frontera norte, junto al Margen. Es la de los Goirntes de
+  piel clara y ágiles que trabajan la madera; de aquí salen las cuadrillas de la tala del borde y las
+  patrullas que protegen a los leñadores. Es la ciudad que más odia a los Faerus y la que más los teme.
+- **Vresk Kei**, la cuarta: el puerto oriental. Recibe las balsas de madera del tributo que bajan de
+  la Costa Corredor.
 
 ## Flora
 
@@ -78,6 +88,20 @@ su mecanismo físico a cualquier fenómeno de Helek Sirik (ver
 aquí aplicado a una planta en vez de a un mineral suelto. Los Goirntes la procesan para extraer
 aleaciones metálicas ligeras y resistentes sin excavar minas profundas.
 
+## Fauna
+
+### Vreskal
+*Ordenados (Goirme) · primera especie de la familia · nivel 1-3 · INOFENSIVO · pendiente de código.*
+
+Lagarto de palmo y medio con el cuerpo cubierto de placas hexagonales idénticas, que se añaden una a
+una a medida que crece siguiendo siempre el mismo patrón (crecimiento modular, como un panal). Vive en
+las grietas rectas de la Meseta y en las juntas de las murallas de las ciudades-fortaleza. Se mueve en
+líneas rectas y gira en ángulos fijos, nunca en curva. Come insectos y la costra mineral de la Hierba
+del Hierro. Los Goirntes lo tienen por buena señal: donde hay Vreskales, dicen, la piedra está bien
+puesta. Matar uno en una muralla está mal visto. Es la firma de Goirme en la fauna, igual que la
+simetría lo es en la piedra.
+**Recurso:** Placas de Vreskal (t1), usadas como teselas decorativas.
+
 ## Cómo se conecta con el resto de Berig
 
 - **Norte, el Margen**: el muro natural del Imperio. Ninguna columna lo cruza; los mensajeros Nabieus
@@ -91,8 +115,9 @@ aleaciones metálicas ligeras y resistentes sin excavar minas profundas.
 
 ## Huecos conocidos
 
-- Ninguna fauna propia documentada.
-- Sin minas ni acueductos con nombre, ni otras ciudades-fortaleza con nombre propio.
+- Solo una especie de fauna (el Vreskal). Nada de aves ni depredadores.
+- Sin minas ni acueductos con nombre. Las ciudades menores (de la quinta en adelante) no tienen
+  nombre.
 - Yovenne Tal y Tarsen Vold tienen su sitio en El Baluarte, pero Vrask Ombra y Kael Dorn siguen sin
   lugar fijo, y El Baluarte no tiene `Location` interior.
 - Las dos facciones Goirntes (Concordia y Los del Obelisco) comparten la región; la segunda está
@@ -104,6 +129,7 @@ aleaciones metálicas ligeras y resistentes sin excavar minas profundas.
   obelisco de El Baluarte, el Primer Edicto del Tributo, Los del Obelisco, Tarsen Vold, El Puesto del
   Corredor y Las Canteras del Eje.
 - 2026-09-27 (pasada de conexión): sección de conexiones (mensajeros Nabieus, tala del borde, rutas del tributo).
+- 2026-09-27 (segunda pasada): las ciudades-fortaleza numeradas (Vresk Hes, Vresk Tuh y Vresk Kei) y el Vreskal, primera especie de la familia Ordenados.
 
 ---
 

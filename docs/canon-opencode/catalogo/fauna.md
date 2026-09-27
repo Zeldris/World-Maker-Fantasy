@@ -60,6 +60,8 @@ Fuente: backend/src/scripts/worldCatalog.ts + regiones/*.md. Sincronizado: 2026-
 | Zancapilote | Ciénaga | ZANCUDOS | 2-5 | CAUTELOSO |
 | Hielaga | Cristal Helado | BESTIONES | 1-4 | CAUTELOSO |
 | Nievón | Cristal Helado | ACECHANTES | 5-11 | AGRESIVO |
+| Escarchín | Cristal Helado (Lago Cristalice) | NADANTES | 1-2 | INOFENSIVO |
+| Vreskal | Meseta | ORDENADOS | 1-3 | INOFENSIVO |
 | Espina del Viento | Llanuras (Fosa Horadada) | peligro ambiental, sin combate | — | — |
 | Vaeth | Margen | espíritu, no fauna | — | — |
 
@@ -69,5 +71,5 @@ Fuente: backend/src/scripts/worldCatalog.ts + regiones/*.md. Sincronizado: 2026-
 - Peligro serio: 8-16 (Kirelon 8-14, Ferike 10-16). Nada documentado por encima de 16.
 - Atributos de fauna: 2-16; inteligencia y carisma bajos (2-5), magia 0 salvo las mutadas.
 - Cada especie tiene 1-3 habilidades raciales (ataque, defensa, utilidad) con nombre descriptivo.
-- Familias SIN especie todavía: ORDENADOS (Goirme) y ROKRATS_ESTALLIDO (nacidos de magia salvaje).
+- Familias con muy pocas especies: ORDENADOS (solo el Vreskal) y ROKRATS_ESTALLIDO (ninguna).
 - Recursos: piel, garras, colmillos, plumas, quitina o carne (`racion-carne` se reutiliza). Orientativo, observado en el catálogo: el tier del mejor recurso ronda la mitad del nivel máximo (Towrgu 4-12 → t4-6; Ferike 10-16 → t6-7).

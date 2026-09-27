@@ -15,14 +15,13 @@ Fuente: docs/rpgtarkor/lore-mundo/regiones/cienaga-troncal.md. Sincronizado: 202
 
 ## Lugares
 - **El Cerco de los Pilotes / Silh Makut** ("Piel Musgo"): poblado Goshg sobre pilotes, con pasarelas
-  y canoas. Interior: Goshg'sedsar, el Salón de Piel Musgo (Terk'ikar Doshka, Kort'ikar Dulgren). SIN
-  talleres ni Maestros.
+  y canoas. Interior: Goshg'sedsar, el Salón de Piel Musgo (Terk'ikar Doshka, Kort'ikar Dulgren).
+  Talleres (sin Maestro): astillero de pilotes, resinería, ahumadero, talla de tótems.
 - **Jeyselt / Fin Susurrado**: poblado de Keseg Prisilke.
 - **Marismas de Lodo Negro**: capa viscosa de resina de Bolco sobre túneles sumergidos de agua
   purísima.
 - **Costa Corredor**: donde se embarca la madera del tributo hacia la Meseta. **Embarcadero Silh Makut**: muelle del Cerco.
-- Sin describir (solo existe el nombre): Túneles Musgosos, Raíces Madre Fango, Cumbre Bruma Negra,
-  Cataratas Madre Fango, Costa Marea Vida, Desfiladero Esmeralda.
+- **Túneles Musgosos**: galerías secas bajo raíces; refugio en las crecidas. **Raíces Madre Fango**: isla de raíces del Trepador más viejo, donde están las piras y los tótems funerarios Goshg. **Cumbre Bruma Negra**: la única altura, puesto de vigía Goshg. **Cataratas Madre Fango**: salto de agua; pesca de Borbol en primavera. **Costa Marea Vida**: marisco. **Desfiladero Esmeralda**: salida al norte, paso de la Senda del Sílice.
 
 ## Especies
 - **Trepadores Ocaso** (Veldrias): árboles oscuros de resina negra con vetas doradas. Canoas,
@@ -47,5 +46,4 @@ Fuente: docs/rpgtarkor/lore-mundo/regiones/cienaga-troncal.md. Sincronizado: 202
 
 ## Huecos
 - Fauna aún escasa: faltan roedores, insectos y fauna de la costa.
-- Seis lugares sin describir (arriba).
-- NPC de Keseg Prisilke: solo Ilka Dren. Ningún taller ni Maestro Goshg.
+- NPC de Keseg Prisilke: solo Ilka Dren. Ningún Maestro Goshg (hay talleres, pero sin Maestro).

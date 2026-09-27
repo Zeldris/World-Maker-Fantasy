@@ -25,6 +25,7 @@ Fuente: docs/rpgtarkor/lore-mundo/regiones/cristal-helado.md. Sincronizado: 2026
 - **Hielo Sílice** (mineral): cuchillos de desuello y herramientas.
 - **Hielaga** (BESTIONES 1-4, CAUTELOSO): bóvido pequeño de montaña; la presa escasa por la que se raciona. Piel t2 (la más abrigada).
 - **Nievón** (ACECHANTES 5-11, AGRESIVO): felino blanco que espera enterrado en la nieve junto a los pasos. Piel y colmillos t5.
+- **Escarchín** (NADANTES 1-2, INOFENSIVO): pez casi transparente bajo el hielo del Lago Cristalice; pesca de invierno.
 - **Liquen Escarcha** (Muscarias): comida de las Hielagas y caldo de hambre de los Helsig.
 
 ## Conexiones
@@ -34,5 +35,5 @@ Fuente: docs/rpgtarkor/lore-mundo/regiones/cristal-helado.md. Sincronizado: 2026
 - NORTE: la tierra nueva y el muro de obsidiana están pegados al norte de Berig. Los Helsig son los más cercanos. Qué hay detrás: RESERVADO.
 
 ## Huecos
-- Muy poca fauna y flora. Nada del Lago Cristalice ni de La Red Profunda Final (que promete fauna de la oscuridad y el frío).
+- Muy poca fauna y flora. Nada de La Red Profunda Final (que promete fauna de la oscuridad y el frío).
 - Sin NPC Helsig además de los líderes, Hagar y los Maestros.

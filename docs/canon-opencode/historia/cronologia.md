@@ -26,6 +26,7 @@ Sincronizado: 2026-09-27.
 | Año | Suceso |
 |---|---|
 | 0 | Los Faerus terminan de asentarse (Hashma). |
+| 0-1.000 | Las ciudades numeradas: Vresk Hes, Vresk Tuh y Vresk Kei. |
 | ~1.000 | El Estallido: la magia salvaje entra en el mundo. |
 | ~1.000-2.000 | Los mil años salvajes: mutan especies de las Llanuras (Kirelon, Salamandra, Imanio, Nuente) y brota flora salvaje (Raíz de Fuego, Cardo Brújula). |
 | 2.000 | Nacen Kekta, Tevya, Megug y Kegoht, los 4 primeros orcos. Krugo se casa con Tevya y nace el linaje Maktor. |
@@ -40,6 +41,7 @@ Sincronizado: 2026-09-27.
 | ~3.600 | Primer Edicto del Tributo, grabado en el obelisco de El Baluarte: empieza el Yugo de Hierro (Ithal'ord). |
 | ~3.600-3.650 | Yugo de Hierro en Berig y Edad Dorada del Cristal en Vaelira. Los Nabieus, perseguidos, aprenden a desaparecer. |
 | ~3.650 | Purga Silenciosa: desaparecen funcionarios y los clanes dejan de pagar a la vez. Autonomía parcial. Los archivos lo llaman "reajuste de los tratados". |
+| ~3.650-3.700 | Nace la corriente radical Goirnte, del miedo que dejó la Purga. |
 | ~3.900 | Los clanes Helsig (Helsa y Bregnor) y Goshg (Gosha y Dulgar) ya son civilizaciones propias. |
 | ~3.900-3.950 | Guerra de la Isla Cambiante, la más letal de la historia. Se sella la isla (sello de contención). |
 | ~3.950-4.005 | La Paz Templada. |
@@ -51,7 +53,7 @@ Sincronizado: 2026-09-27.
 | **4.010** | **Arranca la partida.** Nada puede ocurrir después. |
 
 ## Huecos (sitio para eventos nuevos)
-- Del 0 al ~1.000: casi nada. ¿Cómo vivían Faerus, Nabieus y Goirntes antes del Estallido?
+- Del 0 al ~1.000: solo las ciudades numeradas. ¿Cómo vivían Faerus y Nabieus antes del Estallido?
 - Del ~1.000 al 2.000: ¿qué les pasó a los pueblos (no a la fauna) durante los mil años salvajes?
 - Del ~2.950 al ~3.600: solo la Senda del Sílice. ¿Cómo se consolidó el poder Goirnte hasta el Yugo?
 - Del ~3.650 al ~3.900: después de la Purga, antes de la Isla.

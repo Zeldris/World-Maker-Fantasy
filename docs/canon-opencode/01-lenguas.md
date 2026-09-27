@@ -36,6 +36,7 @@ Tovh'vhurne=escuchar vibraciones con la palma.
 ## Kerost (Goirntes, lengua oficial de Berig)
 Seca, de consonantes cortadas.
 Ord=Imperio (así llaman a la Concordia puertas adentro) · Ord'teandu=edicto · Vresk=ciudad-fortaleza
+(se numeran: Vresk Hes, Vresk Tuh, Vresk Kei)
 · Vresk'ord=obelisco de leyes · Ithal=tributo · Ithal'ord=el Yugo de Hierro · Teandu=momento ·
 Nu/Hes/Tuh/Kei=1/2/3/4 · Teandu Nu…Kei=primavera…invierno. "Concordia" NO se traduce: es préstamo
 del Sirikel, a propósito.

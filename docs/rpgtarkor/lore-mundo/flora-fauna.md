@@ -25,8 +25,8 @@ Florial tejió junto a Ferios pese a no ser su dominio natural (ver [genesis.md 
 la obra compartida"](genesis.md#florial-y-ferios-la-obra-compartida)). **Quitinos** (insectos y
 artrópodos acorazados), **Escamados** (reptiles y anfibios) y **Nadantes** (peces y fauna acuática).
 
-**Fauna — de Goirme y de Kroj**: una familia cada una. Los Ordenados no tienen todavía ninguna
-especie; los Umbrias tienen dos, ambas del Margen Silencioso: la **Leshra** y las **Sombras de Kroj**.
+**Fauna — de Goirme y de Kroj**: una familia cada una. Los Ordenados tienen la primera, el **Vreskal** de la
+Meseta; los Umbrias tienen dos, ambas del Margen Silencioso: la **Leshra** y las **Sombras de Kroj**.
 **Ordenados** (tema simetría/orden/geometría — la fauna que llevaría, si existiera, la firma de
 Goirme descrita en [genesis.md § "El dominio de Goirme"](genesis.md#el-dominio-de-goirme)) y
 **Umbrias** (tema sigilo/noche/silencio — el equivalente de familia a las criaturas ya descritas en
@@ -66,11 +66,11 @@ comentarios de código sin haber llegado nunca a un documento de lore legible.)*
 
 | Región | Fauna | Flora y minerales |
 |---|---|---|
-| [Cristal Helado](regiones/cristal-helado.md) | Hielaga, Nievón | Liquen Escarcha, Hielo Sílice |
+| [Cristal Helado](regiones/cristal-helado.md) | Hielaga, Nievón, Escarchín | Liquen Escarcha, Hielo Sílice |
 | [Las Llanuras del Viento Rojo](regiones/llanuras-del-viento-rojo.md) | [Toda la región](regiones/llanuras-del-viento-rojo.md#fauna) (Gargantúa, Corredor de Cauce, Espina del Viento, Múrgol, Aullador Rojo, Cruzavientos, Rondador de Brasas, Zense Ceniza, Canizor, Corretolvas) y [zona por zona](regiones/llanuras-del-viento-rojo.md#zonas-del-núcleo) | [Toda la región](regiones/llanuras-del-viento-rojo.md#flora-y-minerales) y zona por zona |
 | [Ciénaga Troncal](regiones/cienaga-troncal.md) | Cornantes, Tragalodo, Borbol, Zancapilote | Trepadores Ocaso, Bolco, Bulbo de Turbera, Velo de Charca, Herrumbrera |
 | [El Margen Silencioso](regiones/margen-silencioso.md) | Sombras de Kroj, Hetris, Mekiosi, Vistue, Leshra, Morvasa, Brozán, Hoscón, Vaeth (espíritu) | Musgo Callado, Veldria Hueca, Flor de Víspera, Cántaro de Hoja, Carnosa de Tocón |
-| [La Meseta del Orden](regiones/meseta-del-orden.md) | — | Hierba del Hierro |
+| [La Meseta del Orden](regiones/meseta-del-orden.md) | Vreskal | Hierba del Hierro |
 | [Vaelira](regiones/vaelira.md) | Susurradores de Cristal, Acechadores de la Bruma | Árboles de Hebra Dorada, Flor de Esquirla |
 
 ## Vaelira — El continente Kelife

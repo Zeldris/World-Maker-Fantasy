@@ -50,7 +50,9 @@ para ver su final".
 *Catálogo: `lago-cristalice`.*
 
 Lago congelado que deja ver en el fondo una veta gigante de hielo sílice, creando un reflejo del
-cielo en las noches oscuras. Rico en hielo sílice.
+cielo en las noches oscuras. Rico en hielo sílice. En invierno los Helsig abren agujeros en el hielo y
+pescan **Escarchines**: la única pesca de la región y la razón de que el lago sea tan importante como
+la mina en los años de hambre.
 
 ### El Pico Escarcha
 *Catálogo: `pico-escarcha`.*
@@ -145,6 +147,14 @@ comen las Hielagas en invierno, y los Helsig lo hierven en caldo en los años de
 entero está mal visto: se raspa la mitad y se deja la otra para que vuelva.
 **Recurso:** Liquen Escarcha, t1, alimento de emergencia.
 
+### Escarchín
+*Nadantes · nivel 1-2 · INOFENSIVO · ACUATICO · El Lago Cristalice · pendiente de código.*
+
+Pez de 20-35 cm, casi transparente, que vive bajo el hielo del lago en agua a punto de congelarse. Su
+sangre lleva sustancias que le impiden cristalizar (como ciertos peces reales de aguas polares). Se
+mueve despacio y se pesca por agujeros en el hielo con sedal de tendón.
+**Recurso:** Carne de Escarchín (t1), grasa y muy apreciada en invierno.
+
 ## Cómo se conecta con el resto de Berig
 
 - **Sur, las Llanuras** (4-6 jornadas): el hielo sílice baja por la **Senda del Sílice** y suben
@@ -161,8 +171,7 @@ entero está mal visto: se raspa la mitad y se deja la otra para que vuelva.
 
 ## Huecos conocidos
 
-- Ninguna especie del Lago Cristalice ni de La Red Profunda Final, que promete "fauna adaptada a la
-  oscuridad y el frío".
+- Ninguna especie de La Red Profunda Final, que promete "fauna adaptada a la oscuridad y el frío".
 - Nada del frente norte (el muro de obsidiana) documentado desde el lado Helsig.
 
 ## Historial de cambios
@@ -176,6 +185,7 @@ entero está mal visto: se raspa la mitad y se deja la otra para que vuelva.
 - 2026-09-27: la región pasa a tener fichero propio (antes vivía repartida entre `areas.md` y
   `flora-fauna.md`).
 - 2026-09-27 (pasada de conexión): primera fauna y flora de la región (Hielaga, Nievón, Liquen Escarcha) y sección de conexiones (Senda del Sílice, frente norte del muro de obsidiana).
+- 2026-09-27 (segunda pasada): el Escarchín y la pesca de invierno del Lago Cristalice.
 
 ---
 

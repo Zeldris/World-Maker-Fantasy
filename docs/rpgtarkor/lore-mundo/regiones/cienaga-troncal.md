@@ -30,8 +30,18 @@ Nombre nativo **Silh Makut** ("Piel Musgo"). El mayor poblado del Clan Goshg: em
 oscura sobre pilotes, unidas por pasarelas y canoas. Las dos tribus se reúnen aquí en la estación de
 las crecidas y casan a sus jóvenes entre sí. El interior completo es el **Goshg'lukar** (Hogar), y en
 su centro, sobre pilotes como el resto del poblado, se alza el **Goshg'sedsar**, el Salón de Piel
-Musgo, sede de la Terk'ikar Doshka y el Kort'ikar Dulgren. Todavía no tiene talleres de oficio ni
-Maestros.
+Musgo, sede de la Terk'ikar Doshka y el Kort'ikar Dulgren.
+**Talleres** *(pasada 2026-09-27; pendientes de código y sin Maestro asignado todavía)*. Los Goshg son
+los mejores trabajando la madera de los tres clanes, y sus talleres lo reflejan:
+- **Astillero de pilotes**: plataforma baja al nivel del agua donde se vacían canoas de fondo plano y
+  se aguzan pilotes de Trepador Ocaso. Todo lo que flota o sostiene el Cerco sale de aquí.
+- **Resinería**: cobertizo apartado del resto (la resina arde) donde se cuecen las resinas de
+  Trepador y de Bolco. Una sirve para las antorchas que arden con lluvia; la otra, para calafatear.
+  Aquí se preparan también los fardos de resina que suben por la Senda del Sílice hacia los Helsig.
+- **Ahumadero**: casetas de humo sobre pilotes donde se curan la carne de Cornante y el Borbol. En la
+  ciénaga, lo que no se ahúma se pudre en dos días.
+- **Talla de tótems**: sin techo, junto al salón. De aquí salen los tótems de madera de ciénaga que
+  los demás clanes compran o piden.
 
 ### Jeyselt (Fin Susurrado)
 *Asentamiento Nabieus · Catálogo: `conclave-keseg-prisilke` (interior: `conclave-keseg-prisilke-interior`).*
@@ -44,26 +54,37 @@ madera y noticias, no se casan entre sí). Nombre en
 lengua común: *Fin Susurrado*; en su lengua, *Jeyselt*. Sus habitantes tienen cuerpos adaptados a
 las zonas más difíciles del pantano, distintos de sus parientes del Margen Silencioso.
 
-## Lugares sin describir
+## Lugares
 
-Estas zonas existen en el catálogo técnico con nombre, pero **sin descripción** (salvo la primera).
-Son huecos reales:
 
 - **Marismas de Lodo Negro** (`marismas-lodo-negro`): marismas que se forman de la mezcla de resina
   de Bolco (árbol oscuro de resina negra), agua y fango gris. En la superficie se acumulan los restos
   más espesos de la resina, formando una capa protectora y viscosa; debajo hay una red de túneles
   sumergidos con el agua más pura y cristalina de Berig. Ver [Bolco](#bolco).
-- Túneles Musgosos (`tuneles-musgosos`)
-- Raíces Madre Fango (`raices-madre-fango`)
-- Cumbre Bruma Negra (`cumbre-bruma-negra`)
-- Cataratas Madre Fango (`cataratas-madre-fango`)
-- Costa Marea Vida (`costa-marea-vida`)
+- **Túneles Musgosos** (`tuneles-musgosos`): galerías secas bajo las raíces entrelazadas de los
+  Trepadores Ocaso más viejos, tapizadas de musgo, por donde se cruza la Ciénaga sin tocar el agua. Los
+  cazadores de Keseg Prisilke las conocen como nadie; en las crecidas, son el refugio de medio pantano.
+- **Raíces Madre Fango** (`raices-madre-fango`): el Trepador Ocaso más viejo de la Ciénaga, con unas
+  raíces tan anchas que forman una isla firme y alta. Es el único suelo seco donde los Goshg pueden
+  levantar sus piras: aquí queman a sus muertos y dejan sus tótems funerarios, colgados de las
+  raíces.
+- **Cumbre Bruma Negra** (`cumbre-bruma-negra`): la única altura de la Ciénaga, una loma de roca vieja
+  que asoma sobre el dosel. Por la mañana la envuelve la niebla de las charcas, oscurecida por el humo
+  de resina de las hogueras de los vigías Goshg, que desde aquí ven llegar a los Serhu.
+- **Cataratas Madre Fango** (`cataratas-madre-fango`): donde el agua que rodea las Raíces Madre cae
+  de golpe a un nivel más bajo del pantano, en un salto de agua marrón. Los Borboles remontan aquí en
+  primavera y es la mejor pesca de la región.
+- **Costa Marea Vida** (`costa-marea-vida`): marismas de marea en la costa oriental, al norte de la
+  Costa Corredor, donde la mezcla de agua dulce y salada da marisco en abundancia. Los Goshg la
+  recolectan en marea baja.
 - **Costa Corredor** (`costa-corredor`): la costa oriental donde se entrega la madera del tributo a
   las balsas Goirntes que bajan hacia la Meseta. Es el único punto de la Ciénaga donde se ven Goirntes
   con regularidad.
 - **Embarcadero Silh Makut** (`embarcadero-goshg`): el muelle propio del Cerco, del que salen las
   canoas de fondo plano hacia la Costa Corredor y hacia Jeyselt.
-- Desfiladero Esmeralda (`desfiladero-esmeralda`)
+- **Desfiladero Esmeralda** (`desfiladero-esmeralda`): garganta de paredes cubiertas de un musgo
+  verde intenso, en el borde norte de la Ciénaga. Es la salida hacia Cristal Helado, y por él pasa la
+  **Senda del Sílice**: el sitio donde se cruzan las caravanas Helsig y los porteadores Goshg.
 
 ## Flora
 
@@ -164,8 +185,9 @@ Tragalodo.
 ## Huecos conocidos
 
 - Toda la fauna y la flora (salvo el Trepador Ocaso) está pendiente de código.
-- Seis lugares del catálogo siguen sin descripción (arriba).
-- El interior Goshg no tiene talleres ni Maestros.
+- Los talleres del Cerco no tienen Maestro (ni edificio en el catálogo).
+- Todavía no hay descripción de ningún lugar en el código (las `Location` están vacías salvo las
+  Marismas).
 
 ## Historial de cambios
 
@@ -176,6 +198,7 @@ Tragalodo.
   tenían reflejo en el lore. Se unifica el nombre nativo del Cerco en **Silh Makut**, el del
   catálogo y el de la sección del interior (`areas.md` decía "Makut Silh" en un solo sitio).
 - 2026-09-27 (pasada de conexión): Tragalodo, Borbol, Zancapilote y Bolco; familia y nivel de los Cornantes; Costa Corredor y Embarcadero descritos; sección de conexiones (Senda del Sílice, tributo por mar).
+- 2026-09-27 (segunda pasada): descritos los seis lugares que solo tenían nombre (Túneles Musgosos, Raíces Madre Fango, Cumbre Bruma Negra, Cataratas Madre Fango, Costa Marea Vida, Desfiladero Esmeralda) y los talleres del Cerco.
 
 ---
 

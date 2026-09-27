@@ -19,9 +19,10 @@ Fuente: docs/rpgtarkor/lore-mundo/regiones/meseta-del-orden.md. Sincronizado: 20
 - **El Puesto del Corredor**: control a la entrada del corredor costero. Explanada donde se cruzan
   tres caminos; inspectores y 12 guardias. Sin sello, no se entra.
 - **Las Canteras del Eje**: de donde sale cada obelisco de Berig, siempre de la misma veta.
-- Las demás ciudades-fortaleza: sin nombre.
+- **Ciudades numeradas** por orden de fundación: Vresk Hes (forjas del interior, de donde salen las armas para los Serhu), Vresk Tuh (frontera norte; tala del borde, odia a los Faerus), Vresk Kei (puerto oriental, recibe la madera del tributo). De la quinta en adelante, nombradas por su función.
 
 ## Especies
+- **Vreskal** (ORDENADOS 1-3, INOFENSIVO): lagarto de placas hexagonales que crecen en patrón fijo; anda en rectas. Primera especie de Goirme. Buena señal para los Goirntes.
 - **Hierba del Hierro** (Vetrias): extrae el metal disperso en la piedra. De ella salen las
   aleaciones Goirntes.
 
@@ -31,6 +32,6 @@ Fuente: docs/rpgtarkor/lore-mundo/regiones/meseta-del-orden.md. Sincronizado: 20
 - Tributo: mineral Helsig por tierra hasta el Cruce; madera de la Ciénaga por mar desde la Costa Corredor.
 
 ## Huecos
-- Ninguna fauna. Ninguna ciudad aparte de la capital tiene nombre. Sin minas ni acueductos con
+- Solo un animal (el Vreskal). Las ciudades menores no tienen nombre. Sin minas ni acueductos con
   nombre.
 - Vrask Ombra y Kael Dorn no tienen lugar fijo. Ningún NPC Goirnte común (artesanos, archiveros).
