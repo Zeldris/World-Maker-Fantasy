@@ -1,8 +1,8 @@
 ═══════════════════════════════════════════════════════════════
-CHULETA DEL AGENTE DE LORE — RELACIONES
+CHULETA — RELACIÓN ENTRE FACCIONES
 ═══════════════════════════════════════════════════════════════
 
-Regla de oro: UN COMANDO POR MENSAJE.
+Un comando por mensaje. Ciclo completo en 00-como-usar.md.
 
 ───────────────────────────────────────────────────────────────
 PASO 1 — LEE
@@ -11,62 +11,54 @@ PASO 1 — LEE
 LEE: RELACIONES
 
 ───────────────────────────────────────────────────────────────
-PASO 2 — ESCRIBE
+PASO 2 — HUECOS (opcional, recomendado)
+───────────────────────────────────────────────────────────────
+
+HUECOS
+
+───────────────────────────────────────────────────────────────
+PASO 3 — ESCRIBE · variante A: relación sin definir
 ───────────────────────────────────────────────────────────────
 
 ESCRIBE
 
-Necesito [N] relaciones entre [FACCIÓN A] y [FACCIÓN B].
+Necesito la relación entre [facción A] y [facción B]. Mira en catalogo/facciones-npcs.md que no
+esté ya definida.
 
-CONTEXTO:
-- Trabaja solo con lo que ya has leído. NO leas nada nuevo.
-- Facción A: [nombre exacto]
-- Facción B: [nombre exacto]
-- Tipo de relación: [ej: 1 alianza, 1 conflicto]
-- Contexto histórico: [ej: tras una batalla reciente]
-
-CADA RELACIÓN debe incluir:
-- Tipo (alianza / enemistad / neutralidad / vasallaje / comercio / guerra)
-- Estado actual (activa / latente / en declive)
-- Causas históricas
-- Intereses comunes o conflictos
-- Cómo se manifiesta (comercio, matrimonios, incursiones, etc.)
-- Posibles evoluciones futuras
-
-NO QUIERO:
-- Contradicciones con lo ya escrito
-- Relaciones mágicas o sobrenaturales
-- Causas que no encajen con la historia leída
-- Campos que no haya pedido
-- Más de 250 palabras por relación
+En "Ficha técnica" pon exactamente estos campos:
+- Facción A y facción B (existentes) · Postura (aliado, comercio, neutral, tensión, hostil,
+  vasallaje) · Estado (activa, latente, en declive)
+- Causa histórica (de la cronología) · Cómo se nota (comercio, incursiones, matrimonios…)
+- Qué la podría cambiar
 
 ───────────────────────────────────────────────────────────────
-PASO 3 — AJUSTA
+PASO 3 — ESCRIBE · variante B: origen de una relación
 ───────────────────────────────────────────────────────────────
 
-AJUSTA: esa relacion ya existe. Crea otra distinta.
+EXPLICA: [por qué dos facciones se llevan como se llevan, p. ej. "por qué los Helsig comercian con todos los clanes"]
+
+En "Ficha técnica" pon exactamente estos campos:
+- Facción A y facción B (existentes) · Postura (aliado, comercio, neutral, tensión, hostil,
+  vasallaje) · Estado (activa, latente, en declive)
+- Causa histórica (de la cronología) · Cómo se nota (comercio, incursiones, matrimonios…)
+- Qué la podría cambiar
 
 ───────────────────────────────────────────────────────────────
-PASO 3b — AJUSTA específico
+PASO 4 — REVISA
+───────────────────────────────────────────────────────────────
+
+REVISA
+
+───────────────────────────────────────────────────────────────
+PASO 5 — AJUSTA (lo que haya salido en REVISA, o a tu gusto)
 ───────────────────────────────────────────────────────────────
 
 AJUSTA: [instrucción concreta]
+AJUSTA: eso ya existe. Elige otro hueco totalmente distinto del mismo tipo.
 
 ───────────────────────────────────────────────────────────────
-PASO 4 — CONTINÚA
+GUARDAR
 ───────────────────────────────────────────────────────────────
 
-CONTINÚA
-
-───────────────────────────────────────────────────────────────
-REGLAS DE USO
-───────────────────────────────────────────────────────────────
-
-(Las mismas 8 que en CLASES.)
-
-───────────────────────────────────────────────────────────────
-PASO EXTRA — GUARDAR LA PROPUESTA
-───────────────────────────────────────────────────────────────
-
-Categoría: "Facciones y diplomacia".
+Categoría en propuestas-lore.md: "Facciones y diplomacia".
 ═══════════════════════════════════════════════════════════════

@@ -17,7 +17,7 @@ La usuaria da indicaciones de lore (a veces un párrafo denso con varios persona
 de golpe). El trabajo, en orden:
 
 1. **Leer primero los `.md` ya existentes que toquen ese tema** (`genesis.md`, `historia.md`,
-   `areas.md`, `razas.md`, `npcs.md`, `personajes.md`, `flora-fauna.md`, `items.md`,
+   `clanes-orcos.md`, la región afectada en `lore-mundo/regiones/`, `areas.md` como índice, `razas.md`, `npcs.md`, `personajes.md`, `flora-fauna.md`, `items.md`,
    `cronologia-mitica.md`, `cronologia.md`) antes de escribir nada — el lore nuevo casi siempre
    toca algo ya establecido, y a veces ya jugado en partidas reales.
 2. **Detectar contradicciones reales contra lo ya escrito y PARAR a preguntar**, no decidir en
@@ -59,6 +59,19 @@ de golpe). El trabajo, en orden:
    momento; un cambio de fondo puede dejar ejemplos ya entrenados desalineados con el mundo actual
    sin que nada lo avise. No implica regenerar el dataset en la misma sesión — solo dejar constancia
    para cuando se decida.
+
+8. **Sincronizar la capa de OpenCode** (añadido 2026-09-27): todo lo que pase a `docs/rpgtarkor/`
+   se refleja también en `docs/canon-opencode/`. Una línea en la ficha regional afectada (y en el
+   catálogo correspondiente: fauna, flora, objetos, NPC…), se quita de "Huecos" lo que ya esté
+   cubierto y se actualiza la fecha de "Sincronizado" de la cabecera. Después, recalcular el tamaño
+   (caracteres ÷ 3,3): ninguna tabla `LEE` por encima de ~16k tokens. Ver
+   `docs/canon-opencode/README.md`.
+9. **Estructura de los `.md` de lore** (2026-09-27): cada región tiene su fichero en
+   `lore-mundo/regiones/` con geografía, lugares, fauna y flora juntos, un encabezado por entidad y
+   una línea de metadatos (*familia · nivel · temperamento · Catálogo: `slug`*). Las notas de
+   auditoría NO van en el cuerpo: van a "Historial de cambios", al final del fichero. Antes de
+   cerrar, pasar `node tools/lore-links/check.mjs` (con `flatpak-spawn --host` desde el sandbox):
+   0 enlaces rotos.
 
 ## 2. Verificación numérica — cómo, en la práctica
 

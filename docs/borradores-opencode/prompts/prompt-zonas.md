@@ -1,80 +1,83 @@
 ═══════════════════════════════════════════════════════════════
-CHULETA DEL AGENTE DE LORE — LUGARES
+CHULETA — LUGAR
 ═══════════════════════════════════════════════════════════════
 
-Regla de oro: UN COMANDO POR MENSAJE.
+Un comando por mensaje. Ciclo completo en 00-como-usar.md.
 
 ───────────────────────────────────────────────────────────────
 PASO 1 — LEE
 ───────────────────────────────────────────────────────────────
 
-LEE: LUGARES
+LEE: LUGARES [región]
 
 ───────────────────────────────────────────────────────────────
-PASO 2 — ESCRIBE
+PASO 2 — HUECOS (opcional, recomendado)
+───────────────────────────────────────────────────────────────
+
+HUECOS
+
+───────────────────────────────────────────────────────────────
+PASO 3 — ESCRIBE · variante A: zona para un hueco
 ───────────────────────────────────────────────────────────────
 
 ESCRIBE
 
-Necesito 1 lugares/zonas para Berig
+Necesito 1 lugar en [región], [posición: entre X e Y].
+Hueco: [el hueco elegido]. Terreno coherente con la región (el Margen es selva húmeda, sin niebla;
+la Meseta es piedra gris y simétrica).
 
-CONTEXTO:
-- Trabaja solo con lo que ya has leído. NO leas nada nuevo.
-- Región padre: Margen Silencioso
-- Razas/facciones que la habitan: Faerus y Nabieus
-
-CADA LUGAR debe incluir:
-- Nombre común en español (2-3 palabras)
-- Región a la que pertenece (nombre exacto)
-- Tipo (uno de): hito / asentamiento / interior / cruce / mirador / refugio / punto de agua / pasto estacional / ruinas / costa / cañón / pradera / coto de caza / paso / región
-- Localización (respecto a zonas ya existentes — qué hay al norte, sur, este, oeste)
-- Descripción física: terreno, clima, flora, fauna es importante que esta parte este muy detallada
-- Etiquetas de terreno (una o varias): arido / rocoso / humedo / vegetacion / volcanico / costero
-- Quién vive allí (razas, facciones, fauna, flora, número aproximado)
-- Historia breve del lugar
-- Frase corta (teaser) para el mapa (máximo 1 línea)
-
-NO QUIERO:
-- Zonas mágicas sin fundamento
-- Contradicciones con lo ya escrito
-- Clima que no encaje con la región padre
-- Campos que no haya pedido
-- Más de 450 palabras por lugar
+En "Ficha técnica" pon exactamente estos campos:
+- Nombre · Tipo (hito, asentamiento, cruce, mirador, refugio, punto de agua, pasto estacional,
+  ruinas, costa, cañón, coto de caza, paso) · Posición respecto a lugares que ya existen
+- Etiquetas de terreno (arido, rocoso, humedo, vegetacion, volcanico, costero)
+- Fauna y flora: SOLO especies existentes de esa región (o 1 nueva, bien marcada)
+- Quién va y para qué · Peligro, y su mecanismo · Frase de una línea para el mapa
 
 ───────────────────────────────────────────────────────────────
-PASO 3 — AJUSTA
+PASO 3 — ESCRIBE · variante B: describir un lugar que solo tiene nombre
 ───────────────────────────────────────────────────────────────
 
-AJUSTA: esa zona ya existe. Crea otra distinta.
+ESCRIBE
+
+El lugar [nombre sin descripción, p. ej. Túneles Musgosos / Cataratas Madre Fango] solo existe
+como nombre. Descríbelo sin cambiar el nombre.
+
+En "Ficha técnica" pon exactamente estos campos:
+- Nombre · Tipo (hito, asentamiento, cruce, mirador, refugio, punto de agua, pasto estacional,
+  ruinas, costa, cañón, coto de caza, paso) · Posición respecto a lugares que ya existen
+- Etiquetas de terreno (arido, rocoso, humedo, vegetacion, volcanico, costero)
+- Fauna y flora: SOLO especies existentes de esa región (o 1 nueva, bien marcada)
+- Quién va y para qué · Peligro, y su mecanismo · Frase de una línea para el mapa
 
 ───────────────────────────────────────────────────────────────
-PASO 3b — AJUSTA específico
+PASO 3 — ESCRIBE · variante C: origen de un lugar
+───────────────────────────────────────────────────────────────
+
+EXPLICA: [por qué un lugar existente es como es, p. ej. "por qué canta La Grieta Cantora"]
+
+En "Ficha técnica" pon exactamente estos campos:
+- Nombre · Tipo (hito, asentamiento, cruce, mirador, refugio, punto de agua, pasto estacional,
+  ruinas, costa, cañón, coto de caza, paso) · Posición respecto a lugares que ya existen
+- Etiquetas de terreno (arido, rocoso, humedo, vegetacion, volcanico, costero)
+- Fauna y flora: SOLO especies existentes de esa región (o 1 nueva, bien marcada)
+- Quién va y para qué · Peligro, y su mecanismo · Frase de una línea para el mapa
+
+───────────────────────────────────────────────────────────────
+PASO 4 — REVISA
+───────────────────────────────────────────────────────────────
+
+REVISA
+
+───────────────────────────────────────────────────────────────
+PASO 5 — AJUSTA (lo que haya salido en REVISA, o a tu gusto)
 ───────────────────────────────────────────────────────────────
 
 AJUSTA: [instrucción concreta]
+AJUSTA: eso ya existe. Elige otro hueco totalmente distinto del mismo tipo.
 
 ───────────────────────────────────────────────────────────────
-PASO 4 — CONTINÚA
+GUARDAR
 ───────────────────────────────────────────────────────────────
 
-CONTINÚA
-
-───────────────────────────────────────────────────────────────
-REGLAS DE USO
-───────────────────────────────────────────────────────────────
-
-1. UN COMANDO POR MENSAJE.
-2. El LEE solo lleva el comando.
-3. El ESCRIBE solo lleva "ESCRIBE" + la petición completa.
-4. El AJUSTA solo lleva "AJUSTA" + la instrucción.
-5. En cada ESCRIBE, ACOTA a UNA región.
-6. Cierra OpenCode cada 3-4 turnos (el contexto se satura a 32k).
-7. Al empezar sesión nueva, puedes ir directo al ESCRIBE si los .md no han cambiado.
-8. Si el modelo escribe antes de "LECTURA COMPLETA", PARA y repite el LEE.
-
-───────────────────────────────────────────────────────────────
-PASO EXTRA — GUARDAR LA PROPUESTA
-───────────────────────────────────────────────────────────────
-
-Categoría: "Lugares" o "Otros".
+Categoría en propuestas-lore.md: "Lugares y geografía".
 ═══════════════════════════════════════════════════════════════

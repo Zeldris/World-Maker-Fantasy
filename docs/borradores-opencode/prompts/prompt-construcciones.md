@@ -1,79 +1,69 @@
 ═══════════════════════════════════════════════════════════════
-CHULETA DEL AGENTE DE LORE — CONSTRUCCIONES
+CHULETA — EDIFICIO DE FACCIÓN
 ═══════════════════════════════════════════════════════════════
 
-Regla de oro: UN COMANDO POR MENSAJE.
+Un comando por mensaje. Ciclo completo en 00-como-usar.md.
+
+OJO: no son construcciones del jugador. El jugador solo construye lo que lista
+oficios-edificios.md ("Lo que el JUGADOR puede construir"). Lo nuevo aquí son edificios de facción.
 
 ───────────────────────────────────────────────────────────────
 PASO 1 — LEE
 ───────────────────────────────────────────────────────────────
 
-LEE: CONSTRUCCIONES
+LEE: CONSTRUCCIONES [región]
 
 ───────────────────────────────────────────────────────────────
-PASO 2 — ESCRIBE
+PASO 2 — HUECOS (opcional, recomendado)
+───────────────────────────────────────────────────────────────
+
+HUECOS
+
+───────────────────────────────────────────────────────────────
+PASO 3 — ESCRIBE · variante A: taller que falta
 ───────────────────────────────────────────────────────────────
 
 ESCRIBE
 
-Necesito construcciones para el [CLAN] en [ZONA], 1 por profesión.
+Necesito el taller de [oficio] para [asentamiento]. Mira qué talleres tiene ya y cuáles faltan en
+catalogo/oficios-edificios.md. Usa un material de construcción distinto de los que ya se usan allí.
 
-CONTEXTO:
-- Trabaja solo con lo que ya has leído. NO leas nada nuevo.
-- Facción/clan: [nombre exacto]
-- Zona/Location donde va: [nombre exacto]
-- Profesiones del clan: [lista real]
-- Materiales disponibles: [lista real]
-- Se busca tener edificios que cubran las necesidades de las diferentes profesiones leídas
-
-CADA CONSTRUCCIÓN debe incluir:
-- Nombre común en español (2-3 palabras)
-- Nombre propio en la lengua de la raza solicitada
-- Facción a la que pertenece (nombre exacto)
-- Location donde se ubica (nombre exacto)
-- Función de la construcción para la facción
-- Tipo: SEDE (la construcción principal del asentamiento, sin oficio concreto) o EDIFICIO DE OFICIO (vinculado a una profesión concreta)
-- Tier: 1 (pequeño, 1 trabajador) / 2 (mediano, 3 trabajadores) / 3 (grande, 6 trabajadores)
-- Descripción física detallada, usando los materiales reales del lore
-- Herramientas o elementos necesarios para hacerlo funcionar
-- Oficios que se benefician (usar las profesiones reales del catálogo)
-- Trabajadores que lo hacen funcionar (los que existen realmente)
-
-NO QUIERO:
-- Mecánicas inventadas
-- Materiales que no aparezcan en lo leído
-- Edificios mágicos o de control del clima
-- Campos que no haya pedido
-- Referencias a archivos de código
-- Más de 250 palabras por construcción
+En "Ficha técnica" pon exactamente estos campos:
+- Nombre (patrón "[Oficio] del Clan [X]") · Facción · Asentamiento
+- Oficio al que sirve (SOLO oficios reales) · Maestro que lo ocupa (si existe)
+- Descripción física con materiales de construcción que existen (uno distinto por edificio)
+- Qué se hace dentro
 
 ───────────────────────────────────────────────────────────────
-PASO 3 — AJUSTA
+PASO 3 — ESCRIBE · variante B: salón o sede
 ───────────────────────────────────────────────────────────────
 
-AJUSTA: esa construccion ya existe. Crea otra distinta.
+ESCRIBE
+
+Necesito describir la sede de [facción sin sede descrita] en [lugar existente].
+
+En "Ficha técnica" pon exactamente estos campos:
+- Nombre (patrón "[Oficio] del Clan [X]") · Facción · Asentamiento
+- Oficio al que sirve (SOLO oficios reales) · Maestro que lo ocupa (si existe)
+- Descripción física con materiales de construcción que existen (uno distinto por edificio)
+- Qué se hace dentro
 
 ───────────────────────────────────────────────────────────────
-PASO 3b — AJUSTA específico
+PASO 4 — REVISA
+───────────────────────────────────────────────────────────────
+
+REVISA
+
+───────────────────────────────────────────────────────────────
+PASO 5 — AJUSTA (lo que haya salido en REVISA, o a tu gusto)
 ───────────────────────────────────────────────────────────────
 
 AJUSTA: [instrucción concreta]
+AJUSTA: eso ya existe. Elige otro hueco totalmente distinto del mismo tipo.
 
 ───────────────────────────────────────────────────────────────
-PASO 4 — CONTINÚA
+GUARDAR
 ───────────────────────────────────────────────────────────────
 
-CONTINÚA
-
-───────────────────────────────────────────────────────────────
-REGLAS DE USO
-───────────────────────────────────────────────────────────────
-
-(Las mismas 8 que en CLASES.)
-
-───────────────────────────────────────────────────────────────
-PASO EXTRA — GUARDAR LA PROPUESTA
-───────────────────────────────────────────────────────────────
-
-Categoría: "Construcciones y reino".
+Categoría en propuestas-lore.md: "Construcciones y reino".
 ═══════════════════════════════════════════════════════════════

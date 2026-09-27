@@ -1,74 +1,85 @@
 ═══════════════════════════════════════════════════════════════
-CHULETA DEL AGENTE DE LORE — FLORA
+CHULETA — FLORA Y MINERALES
 ═══════════════════════════════════════════════════════════════
 
-Regla de oro: UN COMANDO POR MENSAJE.
+Un comando por mensaje. Ciclo completo en 00-como-usar.md.
 
 ───────────────────────────────────────────────────────────────
 PASO 1 — LEE
 ───────────────────────────────────────────────────────────────
 
-LEE: FLORA
+LEE: FLORA [región]
 
 ───────────────────────────────────────────────────────────────
-PASO 2 — ESCRIBE
+PASO 2 — HUECOS (opcional, recomendado)
+───────────────────────────────────────────────────────────────
+
+HUECOS
+
+───────────────────────────────────────────────────────────────
+PASO 3 — ESCRIBE · variante A: planta para un hueco
 ───────────────────────────────────────────────────────────────
 
 ESCRIBE
 
-Necesito 1 planta para el Margen Silencioso.
+Necesito 1 planta de la familia [familia] para [región], zona [zona].
+Hueco: [el hueco elegido]. Que no repita el papel de otra planta ya existente (mira
+catalogo/flora-minerales.md). Si es medicinal, di en qué se diferencia de la Salvia del Polvo y
+de la Flor de Ceniza.
 
-CONTEXTO:
-- Trabaja solo con lo que ya has leído. NO leas nada nuevo.
-- Zona concreta: el Margen Silencioso.
-
-CADA PLANTA debe incluir:
-- Nombre común en español (2-3 palabras)
-- Nombre propio en la lengua de la raza solicitada
-- Género de flora (uno de): VELDRIAS árbol / ZARCOS arbusto / HELDRAS hierba-pasto / GRANOLES cereal / TRENIAS fibra textil / MARELAS alga / BULVIAS raíz-tubérculo / MUSCARIAS liquen-musgo / SALVIRAS flor medicinal / FONGARES seta / VETRIAS flora con mineral incrustado / BROTES_SALVAJES flora mutada por magia Salvaje
-- Descripción física: tamaño, aspecto, dónde crece exactamente
-- Dimensiones concretas (cm)
-- Tipo de recurso (RECURSO / CONSUMIBLE / MATERIAL)
-- Categoría del item (hierba / planta / madera / resina / alimento / medicinal / fibras / cera, etc.)
-- Usos conocidos: medicinal / alimenticio / material / tóxico / ritual
-- Si es medicinal o consumible: cuánto cura (hasta GRAVE / HERIDO / ILESO), energía, agua, hambre
-- Tier (1-9) y valor en Goirnos
-- Relación con los habitantes
-
-NO QUIERO:
-- Especies reales conocidas
-- Mecánicas inventadas
-- Materiales que no aparezcan en lo leído
-- Campos que no haya pedido
-- Más de 200 palabras por planta
+En "Ficha técnica" pon exactamente estos campos:
+- Familia de flora (de 00-nucleo) o "mineral" · Tamaño · Dónde crece exactamente
+- Recurso(s): nombre, tier, valor en Goirnos, categoría (alimento / medicinal / material / …)
+- Uso: qué oficio lo usa (SOLO oficios de oficios-edificios.md) o si se come o bebe
+- Temporada, si solo crece en una estación (Ur'gathek, Sohkar, Vungrat, Krenoth)
 
 ───────────────────────────────────────────────────────────────
-PASO 3 — AJUSTA
+PASO 3 — ESCRIBE · variante B: material que falta a un oficio
 ───────────────────────────────────────────────────────────────
 
-AJUSTA: esa flora ya existe. Crea otra distinta de la misma zona
+ESCRIBE
+
+El oficio [oficio real] de [región] necesita un material de [tipo: fibra / resina / tinte / …].
+Propón la planta o el mineral que lo da, con su mecanismo físico en "Base física".
+
+En "Ficha técnica" pon exactamente estos campos:
+- Familia de flora (de 00-nucleo) o "mineral" · Tamaño · Dónde crece exactamente
+- Recurso(s): nombre, tier, valor en Goirnos, categoría (alimento / medicinal / material / …)
+- Uso: qué oficio lo usa (SOLO oficios de oficios-edificios.md) o si se come o bebe
+- Temporada, si solo crece en una estación (Ur'gathek, Sohkar, Vungrat, Krenoth)
 
 ───────────────────────────────────────────────────────────────
-PASO 3b — AJUSTA específico
+PASO 3 — ESCRIBE · variante C: mineral o Vetria
+───────────────────────────────────────────────────────────────
+
+ESCRIBE
+
+Necesito 1 mineral o 1 planta Vetria (que concentra mineral) para [región].
+En "Base física" explica de dónde sale el mineral (bioacumulación, vetas, sedimento).
+Nada que brille sin mecanismo.
+
+En "Ficha técnica" pon exactamente estos campos:
+- Familia de flora (de 00-nucleo) o "mineral" · Tamaño · Dónde crece exactamente
+- Recurso(s): nombre, tier, valor en Goirnos, categoría (alimento / medicinal / material / …)
+- Uso: qué oficio lo usa (SOLO oficios de oficios-edificios.md) o si se come o bebe
+- Temporada, si solo crece en una estación (Ur'gathek, Sohkar, Vungrat, Krenoth)
+
+───────────────────────────────────────────────────────────────
+PASO 4 — REVISA
+───────────────────────────────────────────────────────────────
+
+REVISA
+
+───────────────────────────────────────────────────────────────
+PASO 5 — AJUSTA (lo que haya salido en REVISA, o a tu gusto)
 ───────────────────────────────────────────────────────────────
 
 AJUSTA: [instrucción concreta]
+AJUSTA: eso ya existe. Elige otro hueco totalmente distinto del mismo tipo.
 
 ───────────────────────────────────────────────────────────────
-PASO 4 — CONTINÚA
+GUARDAR
 ───────────────────────────────────────────────────────────────
 
-CONTINÚA
-
-───────────────────────────────────────────────────────────────
-REGLAS DE USO
-───────────────────────────────────────────────────────────────
-
-(Las mismas 8 que en CLASES.)
-
-───────────────────────────────────────────────────────────────
-PASO EXTRA — GUARDAR LA PROPUESTA
-───────────────────────────────────────────────────────────────
-
-Categoría: "Fauna y flora".
+Categoría en propuestas-lore.md: "Fauna y flora".
 ═══════════════════════════════════════════════════════════════

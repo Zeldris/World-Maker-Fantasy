@@ -1,8 +1,8 @@
 ═══════════════════════════════════════════════════════════════
-CHULETA DEL AGENTE DE LORE — FACCIONES
+CHULETA — FACCIÓN
 ═══════════════════════════════════════════════════════════════
 
-Regla de oro: UN COMANDO POR MENSAJE.
+Un comando por mensaje. Ciclo completo en 00-como-usar.md.
 
 ───────────────────────────────────────────────────────────────
 PASO 1 — LEE
@@ -11,64 +11,69 @@ PASO 1 — LEE
 LEE: FACCIONES
 
 ───────────────────────────────────────────────────────────────
-PASO 2 — ESCRIBE
+PASO 2 — HUECOS (opcional, recomendado)
+───────────────────────────────────────────────────────────────
+
+HUECOS
+
+───────────────────────────────────────────────────────────────
+PASO 3 — ESCRIBE · variante A: facción que falta
 ───────────────────────────────────────────────────────────────
 
 ESCRIBE
 
-Necesito que desarrolles las 2 facciones Nabieus de la Cienaga Troncal y de el Margen Silencioso
+Necesito 1 facción para [raza] en [región]. Mira en catalogo/facciones-npcs.md cuáles existen ya:
+no dupliques ninguna.
 
-CONTEXTO:
-- Trabaja solo con lo que ya has leído. NO leas nada nuevo.
-- Zona: Cienaga Troncal y Margen Silencioso
-- Raza principal: Nabieus
-- Relatar y expandir la informacion de las 2 facciones Nabieus existentes
-
-CADA FACCIÓN debe incluir:
-- Nombre propio en la lengua de la raza
-- Tipo (clan / orden / tribu / hermandad / imperio)
-- Razas que la componen
-- Objetivos principales (3-5)
-- Jerarquía o estructura interna
-- Relación con facciones existentes (aliado / enemigo / neutral)
-- Zona de influencia (Location concretas)
-- Descripción detallada (hasta 500 palabras)
-- Base politica
-- Caracteristicas unicas (3-5)
-
-NO QUIERO:
-- Facciones mágicas sin fundamento
-- Nombres genéricos (no "Los Guerreros")
-- Relaciones inventadas que contradigan lo ya escrito
-- Campos que no haya pedido
+En "Ficha técnica" pon exactamente estos campos:
+- Nombre (en su lengua solo si se pide) · Raza · Región · Tipo (clan, manada, orden, casta…)
+- Cómo se gobierna (según 02-razas: los Faerus sin cargos, los Nabieus sin gobierno central)
+- Objetivos (3) · Líder (NPC existente, o "por crear") · Población aproximada
+- Relaciones iniciales con cada facción existente (tabla: postura + por qué)
 
 ───────────────────────────────────────────────────────────────
-PASO 3 — AJUSTA
+PASO 3 — ESCRIBE · variante B: corriente interna
 ───────────────────────────────────────────────────────────────
 
-AJUSTA: esa faccion ya existe. Crea otra distinta.
+ESCRIBE
+
+Necesito 1 corriente interna dentro de [facción existente]: quién la forma, qué quiere, por qué no
+se separa.
+
+En "Ficha técnica" pon exactamente estos campos:
+- Nombre (en su lengua solo si se pide) · Raza · Región · Tipo (clan, manada, orden, casta…)
+- Cómo se gobierna (según 02-razas: los Faerus sin cargos, los Nabieus sin gobierno central)
+- Objetivos (3) · Líder (NPC existente, o "por crear") · Población aproximada
+- Relaciones iniciales con cada facción existente (tabla: postura + por qué)
 
 ───────────────────────────────────────────────────────────────
-PASO 3b — AJUSTA específico
+PASO 3 — ESCRIBE · variante C: origen de una facción
+───────────────────────────────────────────────────────────────
+
+EXPLICA: [cómo nació una facción existente que no tiene origen contado]
+
+En "Ficha técnica" pon exactamente estos campos:
+- Nombre (en su lengua solo si se pide) · Raza · Región · Tipo (clan, manada, orden, casta…)
+- Cómo se gobierna (según 02-razas: los Faerus sin cargos, los Nabieus sin gobierno central)
+- Objetivos (3) · Líder (NPC existente, o "por crear") · Población aproximada
+- Relaciones iniciales con cada facción existente (tabla: postura + por qué)
+
+───────────────────────────────────────────────────────────────
+PASO 4 — REVISA
+───────────────────────────────────────────────────────────────
+
+REVISA
+
+───────────────────────────────────────────────────────────────
+PASO 5 — AJUSTA (lo que haya salido en REVISA, o a tu gusto)
 ───────────────────────────────────────────────────────────────
 
 AJUSTA: [instrucción concreta]
+AJUSTA: eso ya existe. Elige otro hueco totalmente distinto del mismo tipo.
 
 ───────────────────────────────────────────────────────────────
-PASO 4 — CONTINÚA
+GUARDAR
 ───────────────────────────────────────────────────────────────
 
-CONTINÚA
-
-───────────────────────────────────────────────────────────────
-REGLAS DE USO
-───────────────────────────────────────────────────────────────
-
-(Las mismas 8 que en CLASES.)
-
-───────────────────────────────────────────────────────────────
-PASO EXTRA — GUARDAR LA PROPUESTA
-───────────────────────────────────────────────────────────────
-
-Categoría: "Facciones y diplomacia".
+Categoría en propuestas-lore.md: "Facciones y diplomacia".
 ═══════════════════════════════════════════════════════════════

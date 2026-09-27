@@ -1,97 +1,67 @@
 ═══════════════════════════════════════════════════════════════
-CHULETA DEL AGENTE DE LORE — CLASES
+CHULETA — CLASES (aviso)
 ═══════════════════════════════════════════════════════════════
 
-Regla de oro: UN COMANDO POR MENSAJE. Copia solo el bloque que toca,
-no todos juntos. El prompt del sistema ya tiene las reglas internas.
+Un comando por mensaje. Ciclo completo en 00-como-usar.md.
+
+AVISO: las 9 clases y sus 30 especializaciones ya están cerradas en el motor.
+NO pidas clases ni especializaciones nuevas: no se pueden añadir sin diseño de código.
+Esta chuleta sirve solo para dar trasfondo a lo que ya existe.
 
 ───────────────────────────────────────────────────────────────
 PASO 1 — LEE
 ───────────────────────────────────────────────────────────────
 
-LEE: CLASES
+LEE: NPC [región]
 
 ───────────────────────────────────────────────────────────────
-PASO 2 — ESCRIBE (tras "LECTURA COMPLETA")
+PASO 2 — HUECOS (opcional, recomendado)
+───────────────────────────────────────────────────────────────
+
+HUECOS
+
+───────────────────────────────────────────────────────────────
+PASO 3 — ESCRIBE · variante A: especialización de un NPC
 ───────────────────────────────────────────────────────────────
 
 ESCRIBE
 
-Necesito [N] clases/profesiones para [RAZA/CLAN].
+Necesito justificar la especialización [enum] para [NPC existente]: por qué esa y no otra, según su
+historia.
 
-CONTEXTO:
-- Trabaja solo con lo que ya has leído. NO leas nada nuevo.
-- Raza: [nombre exacto]
-- Función en el mundo: [ej: recolección, combate, artesanía]
-- Clases existentes: [ej: herrero, desollador, curtidor]
-
-CADA CLASE debe incluir:
-- Nombre común en español (2-3 palabras)
-- Nombre propio en la lengua de la raza solicitada
-- Categoría: una de GUERRERO / CAZADOR / CHAMAN / MAGO / CABALLERO / SEGADOR / DRUIDA
-- Especialización (usar el valor exacto):
-  · Guerrero → ESPECIALISTA / BERSERKER / GUARDIAN / LANCERO
-  · Cazador → INSTINTIVO / SUPERVIVENCIA / DOMADOR
-  · Chamán → OPRESOR / RUNICO / TOTEMICO
-  · Mago → PODER_MAGIA / PODER_SEMILLA
-  · Caballero → CABALLERO_DEL_ORDEN / CABALLERO_DEL_VALOR / CABALLERO_DEL_DOLOR
-  · Segador → ILUSTRADO / PARCA
-  · Druida → CAMBIAFORMAS
-- Función principal (qué hace)
-- Habilidades o capacidades clave (solo las que aparezcan en el lore)
-- Equipo/herramientas típicas (items reales del catálogo)
-- Qué razas la usan preferentemente
-- Relación con otras clases
-
-NO QUIERO:
-- Clases mágicas sin fundamento en el lore
-- Mecánicas inventadas (stats, +X%)
-- Referencias a archivos de código
-- Campos que no haya pedido
-- Más de 200 palabras por clase
+En "Ficha técnica" pon exactamente estos campos:
+- Clase y especialización (enum exacto) · Qué hace en combate · Armas y armadura permitidas
+- Para qué raza encaja y por qué
 
 ───────────────────────────────────────────────────────────────
-PASO 3 — AJUSTA
+PASO 3 — ESCRIBE · variante B: descripción de una especialización sin prosa
 ───────────────────────────────────────────────────────────────
 
-AJUSTA: esa clase ya existe. Crea otra distinta.
+ESCRIBE
+
+La especialización [enum] no tiene descripción narrativa. Escribe 1 párrafo de qué es en el mundo
+(sin números ni mecánicas nuevas).
+
+En "Ficha técnica" pon exactamente estos campos:
+- Clase y especialización (enum exacto) · Qué hace en combate · Armas y armadura permitidas
+- Para qué raza encaja y por qué
 
 ───────────────────────────────────────────────────────────────
-PASO 3b — AJUSTA específico
+PASO 4 — REVISA
 ───────────────────────────────────────────────────────────────
 
-AJUSTA: [instrucción concreta sobre qué cambiar]
+REVISA
 
 ───────────────────────────────────────────────────────────────
-PASO 4 — CONTINÚA
+PASO 5 — AJUSTA (lo que haya salido en REVISA, o a tu gusto)
 ───────────────────────────────────────────────────────────────
 
-CONTINÚA
+AJUSTA: [instrucción concreta]
+AJUSTA: eso ya existe. Elige otro hueco totalmente distinto del mismo tipo.
 
 ───────────────────────────────────────────────────────────────
-REGLAS DE USO
+GUARDAR
 ───────────────────────────────────────────────────────────────
 
-1. UN COMANDO POR MENSAJE.
-2. El LEE solo lleva el comando.
-3. El ESCRIBE solo lleva "ESCRIBE" + la petición completa.
-4. El AJUSTA solo lleva "AJUSTA" + la instrucción.
-5. En cada ESCRIBE, ACOTA a UNA raza o UNA función concreta.
-6. Cierra OpenCode cada 5-6 turnos.
-7. Al empezar sesión nueva, puedes ir directo al ESCRIBE si los .md
-   no han cambiado.
-8. Si el modelo escribe antes de "LECTURA COMPLETA", PARA y repite el LEE.
-
-───────────────────────────────────────────────────────────────
-PASO EXTRA — GUARDAR LA PROPUESTA
-───────────────────────────────────────────────────────────────
-
-1. Copia del chat.
-2. Pega en `docs/borradores-opencode/propuestas-lore.md`, categoría
-   "Razas y cultura" (o la que corresponda).
-3. Cuando la apruebes, muévela a `propuestas-aprobadas.md` con los
-   campos extra.
-
-═══════════════════════════════════════════════════════════════
-FIN
+Categoría en propuestas-lore.md: "Otros".
 ═══════════════════════════════════════════════════════════════

@@ -23,6 +23,13 @@ propuesta completa (no a mitad de debate, solo cuando ya hay algo cerrado que pr
 5. No toques código (`backend/src`, `frontend/src`) en ninguna sesión de lore salvo que se te
    pida explícitamente.
 
+## Dónde está el canon (para el agente de lore)
+
+Lee SIEMPRE `docs/canon-opencode/00-nucleo.md` antes de proponer nada: reglas duras, enums reales,
+escala de valor y lista de comprobación. El resto de `docs/canon-opencode/` es el resumen del canon
+por región y por catálogo (ver su `README.md`). Los originales completos están en `docs/rpgtarkor/`,
+que manda si algo choca.
+
 ## Estilo del mundo (aplica a toda propuesta de lore)
 
 - Mundo fantástico con base científica — coherencia interna, sin magia como comodín sin
