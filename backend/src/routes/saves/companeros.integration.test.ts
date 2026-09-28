@@ -599,6 +599,49 @@ describe('POST /saves/:id/companeros/:companionId/asignar-edificio (hueco D, 202
     const companion = await prisma.companion.findUniqueOrThrow({ where: { id: companionConRolId } });
     expect(companion.buildingId).toBeNull();
   });
+
+  // Plazas de trabajador por nivel de edificio de oficio (docs/rpgtarkor/sistemas-reino/
+  // edificios-de-oficio.md § 2/§ 7, 2026-09-28) — un Taller (tier 1) admite 1 sola plaza.
+  it('un edificio de oficio nivel 1 (Taller) solo admite 1 plaza de trabajador', async () => {
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const taller = await prisma.building.create({
+      data: { saveId, locationId: hondonada.id, recipeKey: 'herreria', tier: 1, name: 'Taller de prueba', kind: 'herreria', description: 'x', status: 'ACTIVO' },
+    });
+    const segundoTrabajador = await prisma.companion.create({
+      data: { saveId, name: 'Segundo trabajador de prueba', role: 'trabajador', notes: '', tipo: 'NPC', rolReino: 'trabajador' },
+    });
+
+    const app1 = await buildApp();
+    const primero = await app1.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/companeros/${companionConRolId}/asignar-edificio`,
+      payload: { buildingId: taller.id },
+    });
+    expect(primero.statusCode).toBe(200);
+
+    const app2 = await buildApp();
+    const segundo = await app2.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/companeros/${segundoTrabajador.id}/asignar-edificio`,
+      payload: { buildingId: taller.id },
+    });
+    expect(segundo.statusCode).toBe(400);
+    expect(segundo.json().error).toMatch(/1 plaza/);
+
+    // Reasignar al MISMO trabajador ya asignado no debe contar como "uno más" (no se bloquea a sí
+    // mismo).
+    const app3 = await buildApp();
+    const reasignar = await app3.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/companeros/${companionConRolId}/asignar-edificio`,
+      payload: { buildingId: taller.id },
+    });
+    expect(reasignar.statusCode).toBe(200);
+
+    // Limpieza — deja companionConRolId libre para el resto de tests de este describe.
+    await prisma.companion.update({ where: { id: companionConRolId }, data: { buildingId: null } });
+  });
 });
 
 // BUG CERRADO (2026-08-29, ver comentario de `CombatParticipant.dismissedGrupo` en schema.prisma —

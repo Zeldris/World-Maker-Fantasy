@@ -2184,8 +2184,8 @@ Ya está en docs; falta el código. Detalle en cada fichero regional y en
 
 ### P-10 — Edificios de oficio (X4 + Bellwright + D&D)
 - [x] **En docs:** `rpgtarkor/sistemas-reino/edificios-de-oficio.md` (diseño completo: 14 edificios, 3 niveles, plazas, reglas de sitio, qué siembra cada facción)
-- [ ] **Validar con Álvaro:** producción agregada de las facciones en `KingdomStats` (§ 4 del documento)
-- [ ] **Código:** la lista del § 7 del documento (recetas, gate de nivel de edificio, plazas, Casa de curas, Cocina → comida, seed de edificios de facción, recetas de extracción)
+- [x] **Validado con Álvaro** (2026-09-28): producción agregada de las facciones en `KingdomStats` (§ 4 del documento) — confirmado el agregado simple, implementado.
+- [x] **Código** (2026-09-28): la lista del § 7 del documento completa — 14 `ConstructionRecipe` de nivel 1 + 28 mejoras (`construction.ts`), `oficioProducido`/`condicionRegion` nuevos, `computeBuildBlockedReason` con condición de región/Jaula/nivel mínimo de Ayuntamiento, gate `NIVEL_EDIFICIO_INSUFICIENTE` (`kingdomProduction.ts`), plazas de trabajador 1/2/4 (`companeros.ts`), servicio de Casa de curas, Cocina → `KingdomStats.comida` real, `tickFactionProduction` agregado (`kingdomTick.ts`), 4 `CraftingRecipe` de extracción sin ingredientes, 21 edificios de facción sembrados (Serhu completo salvo Obrador de piedra, Helsig completo salvo Casa de curas — ambos aplazados por falta de Maestro real). Verificado con `tsc -b`, seed-catalog y tests de integración contra Postgres real.
 
 ### P-09 — Geografía real
 - [x] **En docs:** tres franjas y tabla de rutas (`areas.md` § Cómo encajan en el mapa)

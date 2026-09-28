@@ -4,6 +4,7 @@ import {
   tickKingdom,
   daysCrossed,
   territoryPopulationDelta,
+  tickFactionProduction,
   DEFAULT_KINGDOM_STATS,
   FELICIDAD_ALTA_UMBRAL,
   FELICIDAD_BAJA_UMBRAL,
@@ -115,5 +116,36 @@ describe('daysCrossed', () => {
   });
   it('un viaje largo puede cruzar varios días de golpe', () => {
     expect(daysCrossed(480, 480 + 1440 * 3 + 10)).toBe(3);
+  });
+});
+
+describe('tickFactionProduction (docs/rpgtarkor/sistemas-reino/edificios-de-oficio.md § 4/§ 7, 2026-09-28)', () => {
+  it('sin edificios, no produce nada', () => {
+    expect(tickFactionProduction([])).toEqual({ comida: 0, riqueza: 0 });
+  });
+
+  it('una Cocina ACTIVA suma comida, el resto de oficios suman riqueza', () => {
+    expect(tickFactionProduction([{ recipeKey: 'cocina-serhu', status: 'ACTIVO' }])).toEqual({ comida: 3, riqueza: 0 });
+    expect(tickFactionProduction([{ recipeKey: 'herreria-serhu', status: 'ACTIVO' }])).toEqual({ comida: 0, riqueza: 2 });
+  });
+
+  it('el salón (*-sedsar) no produce nada — no es un edificio de oficio', () => {
+    expect(tickFactionProduction([{ recipeKey: 'ketg-sedsar', status: 'ACTIVO' }])).toEqual({ comida: 0, riqueza: 0 });
+  });
+
+  it('un edificio EN_CONSTRUCCION o sin recipeKey no produce', () => {
+    expect(tickFactionProduction([{ recipeKey: 'herreria-serhu', status: 'EN_CONSTRUCCION' }])).toEqual({ comida: 0, riqueza: 0 });
+    expect(tickFactionProduction([{ recipeKey: null, status: 'ACTIVO' }])).toEqual({ comida: 0, riqueza: 0 });
+  });
+
+  it('agrega varios edificios ACTIVOS a la vez', () => {
+    const buildings = [
+      { recipeKey: 'ketg-sedsar', status: 'ACTIVO' },
+      { recipeKey: 'cocina-serhu', status: 'ACTIVO' },
+      { recipeKey: 'herreria-serhu', status: 'ACTIVO' },
+      { recipeKey: 'curtiduria-serhu', status: 'ACTIVO' },
+      { recipeKey: 'herboristeria-serhu', status: 'EN_CONSTRUCCION' },
+    ];
+    expect(tickFactionProduction(buildings)).toEqual({ comida: 3, riqueza: 4 });
   });
 });

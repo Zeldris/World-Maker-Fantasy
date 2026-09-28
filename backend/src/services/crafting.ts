@@ -1232,7 +1232,84 @@ export const FERIKE_CAPE_RECIPE: CraftingRecipe = {
     'El personaje cose la melena de la cola del Ferike en una capa de prestigio — narra la escena con el peso que merece, es un objeto que casi nadie ha visto de cerca. El objeto ya se gestiona automáticamente por el backend.',
 };
 
+// Recetas de extracción de Reino (docs/rpgtarkor/sistemas-reino/edificios-de-oficio.md § 3/§ 7,
+// 2026-09-28) — `ingredients: []` (convierten solo tiempo de trabajador en materia prima, mismo
+// criterio "recolección pura" del tick de Reino, kingdomProduction.ts § 4.4-ter) y
+// `requiresUnlock: true` SIN NUNCA añadirlas a `Save.unlockedRecipeKeys` — bloquea a propósito que
+// el jugador las crafteé a mano por texto libre (`canCraft`/`detectsCraftIntent` las rechazan
+// siempre), solo son asignables desde el panel de Reino como `OrdenProduccion.recipeKey`, que no
+// pasa por ese camino (turnResolution.ts llama a `tickOrdenesProduccion` directo contra
+// `CRAFTING_RECIPES`, sin comprobar `requiresUnlock`). `verbRegex`/`nounRegex`/`narrationWant`/
+// `narrationDo` no se usan nunca en la práctica por lo de arriba, pero son obligatorios de la
+// interfaz — se rellenan con el patrón imposible de matchear + texto honesto de "esto no se hace
+// a mano" en vez de dejarlos vacíos o copiados sin sentido de otra receta.
+const NEVER_MATCH_REGEX = /(?!)/;
+export const MENA_HIERRO_EXTRACCION_RECIPE: CraftingRecipe = {
+  key: 'extraccionMenaHierroLlanuras',
+  verbRegex: NEVER_MATCH_REGEX,
+  nounRegex: NEVER_MATCH_REGEX,
+  location: null,
+  ingredients: [],
+  resultName: 'Mena de hierro de las Llanuras',
+  resultCatalogSlug: 'mena-hierro-llanuras',
+  resultDescription: 'Mena extraída de la boca de mina del reino.',
+  tier: 1,
+  oficio: 'minero-llanuras',
+  requiresUnlock: true,
+  narrationWant: 'Esta receta no se crafteé nunca a mano — solo se asigna como orden de producción de una Boca de mina desde el panel de Reino.',
+  narrationDo: 'Esta receta no se crafteé nunca a mano — solo se asigna como orden de producción de una Boca de mina desde el panel de Reino.',
+};
+export const PESCA_EXTRACCION_RECIPE: CraftingRecipe = {
+  key: 'extraccionPescaLlanuras',
+  verbRegex: NEVER_MATCH_REGEX,
+  nounRegex: NEVER_MATCH_REGEX,
+  location: null,
+  ingredients: [],
+  resultName: 'Carne de Jashil',
+  resultCatalogSlug: 'carne-jashil',
+  resultDescription: 'Pesca fresca del embarcadero del reino.',
+  tier: 1,
+  oficio: 'pescador',
+  requiresUnlock: true,
+  narrationWant: 'Esta receta no se crafteé nunca a mano — solo se asigna como orden de producción de un Embarcadero de pesca desde el panel de Reino.',
+  narrationDo: 'Esta receta no se crafteé nunca a mano — solo se asigna como orden de producción de un Embarcadero de pesca desde el panel de Reino.',
+};
+export const HIERBAS_EXTRACCION_RECIPE: CraftingRecipe = {
+  key: 'extraccionHierbasLlanuras',
+  verbRegex: NEVER_MATCH_REGEX,
+  nounRegex: NEVER_MATCH_REGEX,
+  location: null,
+  ingredients: [],
+  resultName: 'Manojo de Salvia del Polvo',
+  resultCatalogSlug: 'manojo-salvia-polvo',
+  resultDescription: 'Hierbas recogidas y secadas en la herboristería del reino.',
+  tier: 1,
+  oficio: 'herborista-orcos-llanuras',
+  requiresUnlock: true,
+  narrationWant: 'Esta receta no se crafteé nunca a mano — solo se asigna como orden de producción de una Herboristería desde el panel de Reino.',
+  narrationDo: 'Esta receta no se crafteé nunca a mano — solo se asigna como orden de producción de una Herboristería desde el panel de Reino.',
+};
+export const LECHE_MURGOL_EXTRACCION_RECIPE: CraftingRecipe = {
+  key: 'extraccionLecheMurgol',
+  verbRegex: NEVER_MATCH_REGEX,
+  nounRegex: NEVER_MATCH_REGEX,
+  location: null,
+  ingredients: [],
+  resultName: 'Leche de Múrgol',
+  resultCatalogSlug: 'leche-murgol',
+  resultDescription: 'Leche ordeñada de los Múrgoles aclimatados en los corrales del reino.',
+  tier: 1,
+  oficio: 'domador-orcos-llanuras',
+  requiresUnlock: true,
+  narrationWant: 'Esta receta no se crafteé nunca a mano — solo se asigna como orden de producción de unos Corrales desde el panel de Reino.',
+  narrationDo: 'Esta receta no se crafteé nunca a mano — solo se asigna como orden de producción de unos Corrales desde el panel de Reino.',
+};
+
 export const CRAFTING_RECIPES: CraftingRecipe[] = [
+  MENA_HIERRO_EXTRACCION_RECIPE,
+  PESCA_EXTRACCION_RECIPE,
+  HIERBAS_EXTRACCION_RECIPE,
+  LECHE_MURGOL_EXTRACCION_RECIPE,
   AXE_REPAIR_RECIPE,
   SMOKE_MEAT_RECIPE,
   GARGANTUA_ARMOR_RECIPE,

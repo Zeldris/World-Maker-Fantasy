@@ -4,7 +4,7 @@ import { scopeFor } from '../../services/npcScene.js';
 import { equipSlotFamily, effectiveAttributes, effectiveInventorySlotsBonus } from '../../services/equipment.js';
 import { inventoryCapacityFor, totalInventoryUnits } from '../../services/inventoryCapacity.js';
 import type { AttributeBlock, Attribute } from '../../services/dice.js';
-import { companionSlotsForRecipeKey } from '../../services/construction.js';
+import { companionSlotsForRecipeKey, plazasTrabajadorParaTier } from '../../services/construction.js';
 import { rejectIfEnded, rejectIfPendingDeath, lockRowForUpdate } from './shared.js';
 import { FACTION_REP_CAPTURE_DELTA } from '../../services/reputation.js';
 import { applyFactionRepDeltaForResolution } from '../../services/turnResolution.js';
@@ -737,6 +737,18 @@ export async function companerosRoutes(app: FastifyInstance) {
       if (buildingId) {
         const building = await prisma.building.findFirst({ where: { id: buildingId, saveId: request.params.id } });
         if (!building) return reply.status(404).send({ error: 'Edificio no encontrado' });
+        // Plazas de trabajador por nivel de edificio de oficio (docs/rpgtarkor/sistemas-reino/
+        // edificios-de-oficio.md § 2/§ 7, 2026-09-28) — 1/2/4 según `Building.tier`; null (la
+        // mayoría de edificios, sin nivel propio: Campamento, Choza...) nunca bloquea. Cuenta solo
+        // los trabajadores YA asignados a ESTE edificio, sin incluirse a sí mismo si ya estaba
+        // asignado aquí (reasignar al mismo Building no debe contar como "uno más").
+        const plazas = plazasTrabajadorParaTier(building.tier);
+        if (plazas != null) {
+          const ocupadas = await prisma.companion.count({ where: { buildingId, id: { not: companion.id } } });
+          if (ocupadas >= plazas) {
+            return reply.status(400).send({ error: `Este edificio ya tiene sus ${plazas} plaza(s) de trabajador ocupadas` });
+          }
+        }
       }
 
       const updated = await prisma.companion.update({ where: { id: companion.id }, data: { buildingId }, select: { id: true, buildingId: true } });

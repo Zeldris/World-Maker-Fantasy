@@ -3,8 +3,8 @@ import { narrateAction, generateNpcReply, hasFalseTravelClaim, hasFalsePhantomTr
 import { retrieveLore, formatLoreForPrompt, isWeaklyGrounded } from './retrieval.js';
 import { xpForRollSuccess, xpForHitos, labelForHitos, applyXp, type ProgressionResult, type HitoTipo } from './progression.js';
 import { alivioForLevel, xpForCraftSuccess, professionLevelForXp } from './professionProgress.js';
-import { tickKingdom, daysCrossed, DEFAULT_KINGDOM_STATS, territoryPopulationDelta, DIAS_PARA_CONSOLIDAR, DIAS_PARA_REBELION } from './kingdomTick.js';
-import { tickOrdenesProduccion, type TrabajadorReino, type OrdenProduccionInput } from './kingdomProduction.js';
+import { tickKingdom, daysCrossed, DEFAULT_KINGDOM_STATS, territoryPopulationDelta, DIAS_PARA_CONSOLIDAR, DIAS_PARA_REBELION, tickFactionProduction } from './kingdomTick.js';
+import { tickOrdenesProduccion, companionesQueCuraCasaDeCuras, type TrabajadorReino, type OrdenProduccionInput } from './kingdomProduction.js';
 import { assertExactlyOneOwner, ownerKeyFor } from './reinoOwner.js';
 import { recordFactionEvent } from './factionRelations.js';
 import { slugify } from '../lib/slugify.js';
@@ -5593,6 +5593,25 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         }
       }
 
+      // Producción de facción agregada (docs/rpgtarkor/sistemas-reino/edificios-de-oficio.md § 4/§
+      // 7, 2026-09-28, decisión de Álvaro) — HERMANO de `if (kingdomStats)` de arriba: las
+      // facciones NO dependen del reino del jugador ni de sus Territory, son economía de mundo
+      // independiente (mismo criterio que WorldPopulation, no algo que fundar). Recorre TODAS las
+      // facciones del mundo (hoy 9, cifra pequeña — sin paginar) en vez de solo las relevantes para
+      // esta partida: es agregado puro sobre `KingdomStats.factionId`, no algo que dependa de dónde
+      // esté el jugador. `diasCruzados` aplica igual que el resto del bloque (un viaje largo puede
+      // cruzar varios días de una vez).
+      const factionKingdomStatsRows = await tx.kingdomStats.findMany({ where: { factionId: { not: null } } });
+      for (const fks of factionKingdomStatsRows) {
+        const factionBuildings = await tx.building.findMany({ where: { factionId: fks.factionId }, select: { recipeKey: true, status: true } });
+        const porDia = tickFactionProduction(factionBuildings);
+        if (porDia.comida === 0 && porDia.riqueza === 0) continue;
+        await tx.kingdomStats.update({
+          where: { ownerKey: fks.ownerKey },
+          data: { comida: { increment: porDia.comida * diasCruzados }, riqueza: { increment: porDia.riqueza * diasCruzados } },
+        });
+      }
+
       // Panel de Reino real (docs/rpgtarkor/mundo-vivo-x4.md § 4.4-ter, 2026-09-21) — HERMANO de
       // `if (kingdomStats)`, no anidado dentro: un `Building` con trabajadores puede existir sin
       // que el Reino tenga fila `KingdomStats` todavía (son entidades separadas en el schema, un
@@ -5643,18 +5662,19 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
             cantidadProducidaAcumulada: o.cantidadProducidaAcumulada,
             activa: o.activa,
           }));
-          const resultados = tickOrdenesProduccion(ordenesInput, trabajadores, recipesByKey, cantidadAlmacenPorSlug, limitePorSlug, almacenRowsRestantes, catalogBySlug);
+          const resultados = tickOrdenesProduccion(ordenesInput, trabajadores, recipesByKey, cantidadAlmacenPorSlug, limitePorSlug, almacenRowsRestantes, catalogBySlug, building.tier);
 
           for (const resultado of resultados) {
             if (resultado.resultado !== 'PRODUCIDA') {
               if (resultado.resultado === 'ORDEN_COMPLETADA') {
                 await tx.ordenProduccion.update({ where: { id: resultado.ordenId }, data: { activa: false } });
               }
-              // SIN_TRABAJADOR_CON_NIVEL/SIN_MATERIA_PRIMA/ALMACEN_LLENO/RECETA_DESCONOCIDA: sin
-              // escritura — es información de gestión del panel de Reino (se lee en vivo desde
-              // OrdenProduccion + el estado real de Almacén/trabajadores), no un LogEntry de
-              // narración (mismo criterio que el resto de nudges deterministas de este archivo:
-              // el jugador ve el resultado en el panel, no en el diario de ficción).
+              // SIN_TRABAJADOR_CON_NIVEL/SIN_MATERIA_PRIMA/ALMACEN_LLENO/RECETA_DESCONOCIDA/
+              // NIVEL_EDIFICIO_INSUFICIENTE: sin escritura — es información de gestión del panel
+              // de Reino (se lee en vivo desde OrdenProduccion + el estado real de Almacén/
+              // trabajadores), no un LogEntry de narración (mismo criterio que el resto de nudges
+              // deterministas de este archivo: el jugador ve el resultado en el panel, no en el
+              // diario de ficción).
               continue;
             }
             const recipe = recipesByKey.get(ordenesInput.find((o) => o.id === resultado.ordenId)!.recipeKey)!;
@@ -5692,6 +5712,20 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
                 })),
               });
             }
+            // Cocina → KingdomStats.comida real (docs/rpgtarkor/sistemas-reino/
+            // edificios-de-oficio.md § 7, 2026-09-28) — sustituye el nudge inventado
+            // `COMIDA_POR_TRABAJADOR` (kingdomTick.ts) por producción REAL: cada unidad que sale de
+            // una receta de cocinero suma 1 de comida al Reino, igual que cualquier otro objeto
+            // depositado en Almacén pero sin ocupar una fila de AlmacenItem (la comida es un
+            // contador agregado, no un objeto con InventoryRow propio). Mismo guard de existencia
+            // de fila que `bumpKingdomStats` (más abajo en este archivo) — sin Reino fundado
+            // todavía, no hay dónde sumar.
+            if (recipe.oficio === 'cocinero-orco-llanuras') {
+              const kingdomStatsRow = await tx.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId }) }, select: { ownerKey: true } });
+              if (kingdomStatsRow) {
+                await tx.kingdomStats.update({ where: { ownerKey: ownerKeyFor({ saveId }) }, data: { comida: { increment: resultado.resultCantidad } } });
+              }
+            }
             const ordenOriginal = ordenesInput.find((o) => o.id === resultado.ordenId)!;
             const nuevaCantidadAcumulada = ordenOriginal.cantidadProducidaAcumulada + resultado.resultCantidad;
             // 'unico' que YA alcanza su límite con esta misma producción se desactiva en el acto
@@ -5724,6 +5758,26 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
               xpByCompanion.set(resultado.companionId, entry);
             }
           }
+        }
+      }
+
+      // Servicio de la Casa de curas (docs/rpgtarkor/sistemas-reino/edificios-de-oficio.md § 3/§ 7,
+      // 2026-09-28) — hermano del bloque de OrdenProduccion de arriba, no depende de él: cura a
+      // TODOS los Companion de Reino (`rolReino` no null) de ESTA partida, no solo a los que
+      // trabajan en la propia Casa de curas (el documento dice "los compañeros heridos del reino
+      // se recuperan", sin acotarlo a los asignados a ese Building concreto). Solo si hay alguna
+      // Casa de curas (o su mejora) ACTIVA — cualquier nivel sirve, el servicio no escala con tier.
+      const casaDeCurasActiva = await tx.building.findFirst({
+        where: { saveId, status: 'ACTIVO', recipeKey: { in: ['casa-de-curas', 'casa-de-curas-obrador', 'casa-de-curas-gran-obrador'] } },
+      });
+      if (casaDeCurasActiva) {
+        const companionsReino = await tx.companion.findMany({
+          where: { saveId, rolReino: { not: null } },
+          select: { id: true, rolReino: true, condicionFisica: true },
+        });
+        const curados = companionesQueCuraCasaDeCuras(companionsReino);
+        for (const c of curados) {
+          await tx.companion.update({ where: { id: c.id }, data: { condicionFisica: c.nuevaCondicion } });
         }
       }
     }

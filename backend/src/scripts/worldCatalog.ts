@@ -11496,10 +11496,13 @@ export const zonePoints: ZonePointInput[] = [
   { locationSlug: 'campamento-serhu-interior', x: 220, y: 460, tipo: 'NPC', targetSlug: 'maestro-desollador-serhu', label: 'Maestro Desollador del Clan Serhu' },
   { locationSlug: 'campamento-serhu-interior', x: 160, y: 520, tipo: 'EDIFICIO', targetSlug: 'desolladero-serhu', label: 'Desolladero del Clan Serhu' },
   { locationSlug: 'campamento-serhu-interior', x: 580, y: 460, tipo: 'NPC', targetSlug: 'maestro-peletero-serhu', label: 'Maestro Peletero del Clan Serhu' },
+  { locationSlug: 'campamento-serhu-interior', x: 640, y: 500, tipo: 'EDIFICIO', targetSlug: 'peleteria-serhu', label: 'Peletería del Clan Serhu' },
   { locationSlug: 'campamento-serhu-interior', x: 220, y: 160, tipo: 'NPC', targetSlug: 'maestra-primeros-auxilios-serhu', label: 'Maestra de Primeros Auxilios del Clan Serhu' },
+  { locationSlug: 'campamento-serhu-interior', x: 160, y: 120, tipo: 'EDIFICIO', targetSlug: 'casa-de-curas-serhu', label: 'Casa de curas del Clan Serhu' },
   { locationSlug: 'campamento-serhu-interior', x: 580, y: 160, tipo: 'NPC', targetSlug: 'maestra-herborista-serhu', label: 'Maestra Herborista del Clan Serhu' },
   { locationSlug: 'campamento-serhu-interior', x: 640, y: 120, tipo: 'EDIFICIO', targetSlug: 'herboristeria-serhu', label: 'Herboristería del Clan Serhu' },
   { locationSlug: 'campamento-serhu-interior', x: 300, y: 140, tipo: 'NPC', targetSlug: 'maestra-sastre-serhu', label: 'Maestra Sastre del Clan Serhu' },
+  { locationSlug: 'campamento-serhu-interior', x: 280, y: 75, tipo: 'EDIFICIO', targetSlug: 'sastreria-serhu', label: 'Sastrería del Clan Serhu' },
   { locationSlug: 'campamento-serhu-interior', x: 500, y: 140, tipo: 'NPC', targetSlug: 'maestro-carpintero-serhu', label: 'Maestro Carpintero del Clan Serhu' },
   { locationSlug: 'campamento-serhu-interior', x: 500, y: 80, tipo: 'EDIFICIO', targetSlug: 'carpinteria-serhu', label: 'Carpintería del Clan Serhu' },
   // Tirag Susig (auditoría de lore 2026-09-13, C9/C10) — sin ZonePoint hasta ahora (era
@@ -11632,6 +11635,10 @@ export const zonePoints: ZonePointInput[] = [
   // Toluh puede aparecer en la orilla profunda" (bio) — borde inferior del lienzo, hacia el agua,
   // separado de los recursos ya sembrados.
   { locationSlug: 'playa-de-ceniza-blanca', x: 400, y: 560, tipo: 'NPC', targetSlug: 'maestro-pescador-serhu', label: 'Maestro Pescador, junto a la orilla' },
+  // Edificio de facción (P-10, 2026-09-28) — el embarcadero real del Maestro, no la Location
+  // 'embarcadero-de-ceniza' (que ya tiene su propio ZonePoint EDIFICIO apuntándose a sí misma sin
+  // FactionBuilding real detrás, anti-patrón previo fuera de alcance de esta tanda).
+  { locationSlug: 'playa-de-ceniza-blanca', x: 480, y: 590, tipo: 'EDIFICIO', targetSlug: 'embarcadero-pesca-serhu', label: 'Embarcadero de pesca del Clan Serhu' },
 
   // Los Acantilados Partidos — mismo hueco real de fauna/recurso costero. Flor de Ceniza (rocoso)
   // y Liquen del Cauce (humedo) son los matches de terreno disponibles.
@@ -11927,6 +11934,54 @@ export const factionBuildings: FactionBuildingInput[] = [
     tier: 1,
     description:
       'Suelo de arcilla y bancos con herramientas de asta y hueso. En soportes de piedra se secan vigas de Telda, impregnadas de Resina Telda Gris. De aquí salen las estacas de la empalizada y los botes de fondo plano del Embarcadero de Ceniza.',
+  },
+
+  // Tanda OpenCode / P-10 (2026-09-28, edificios-de-oficio.md § 4) — 3 más de los que faltaban en
+  // Karot Veku (Peletería, Sastrería, Casa de curas: los 3 tienen Maestro real ya sembrado) + el
+  // Embarcadero de pesca, en Playa de Ceniza Blanca (donde vive el Maestro Pescador Serhu, no en
+  // El Embarcadero de Ceniza — esa Location ya tiene su propio ZonePoint EDIFICIO apuntándose a sí
+  // misma sin FactionBuilding real detrás, un anti-patrón previo fuera de alcance de esta tanda).
+  // Quedan aplazados a propósito: Obrador de piedra (sin Maestro Constructor Serhu sembrado
+  // todavía) y la Casa de curas de Helsig (oficio existe, pero sin Maestro real tampoco).
+  {
+    slug: 'peleteria-serhu',
+    name: 'Peletería del Clan Serhu',
+    factionSlug: 'Clan Serhu',
+    locationSlug: 'campamento-serhu-interior',
+    profession: 'peletero-orcos-llanuras',
+    tier: 1,
+    description:
+      'Mesas de corte junto a la curtiduría, donde el cuero ya curtido se cose en capas, capuchas y guantes reales para todo el clan. El Maestro Peletero Serhu da forma aquí a la ropa de abrigo de Karot Veku.',
+  },
+  {
+    slug: 'sastreria-serhu',
+    name: 'Sastrería del Clan Serhu',
+    factionSlug: 'Clan Serhu',
+    locationSlug: 'campamento-serhu-interior',
+    profession: 'sastre-orcos-llanuras',
+    tier: 1,
+    description:
+      'Mesas de corte y estanterías de fibra y fieltro, aparte de la peletería porque aquí no se trabaja piel — mochilas, prendas de fibra y algún cosmético real salen de este taller.',
+  },
+  {
+    slug: 'casa-de-curas-serhu',
+    name: 'Casa de curas del Clan Serhu',
+    factionSlug: 'Clan Serhu',
+    locationSlug: 'campamento-serhu-interior',
+    profession: 'primeros-auxilios-orcos-llanuras',
+    tier: 1,
+    description:
+      'Camastros y mesas de vendaje junto a la herboristería, donde los heridos del clan se recuperan bajo la vigilancia de la Maestra de Primeros Auxilios Serhu.',
+  },
+  {
+    slug: 'embarcadero-pesca-serhu',
+    name: 'Embarcadero de pesca del Clan Serhu',
+    factionSlug: 'Clan Serhu',
+    locationSlug: 'playa-de-ceniza-blanca',
+    profession: 'pescador',
+    tier: 1,
+    description:
+      'Un muelle sencillo en la costa de Playa de Ceniza Blanca, de donde el Maestro Pescador Serhu saca Jashil y Toluh para todo el clan cuando baja desde Karot Veku una temporada.',
   },
 
   // Clan Helsig (2026-09-13, ampliación de lore/auditoría) — mismo patrón que Karot Veku

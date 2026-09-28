@@ -2,6 +2,9 @@ import { professionLevelForXp, alivioForLevel } from './professionProgress.js';
 import type { CraftingRecipe } from './crafting.js';
 import type { InventoryRowLike, CatalogLookup, IngredientRequirement } from './ingredients.js';
 import { totalQuantity } from './ingredients.js';
+import { nivelEdificioRequeridoParaTier } from './construction.js';
+import { oneStepBetterThan } from './death.js';
+import type { CondicionFisica } from '@prisma/client';
 
 /// Panel de Reino real (docs/rpgtarkor/mundo-vivo-x4.md § 4.4-ter, 2026-09-21) — TICK puro de
 /// `OrdenProduccion`, hermano de `kingdomTick.ts` (mismo criterio: determinista, cero IA, aplicado
@@ -42,7 +45,8 @@ export type ResultadoOrden =
   | { ordenId: string; resultado: 'SIN_TRABAJADOR_CON_NIVEL' }
   | { ordenId: string; resultado: 'SIN_MATERIA_PRIMA' }
   | { ordenId: string; resultado: 'ORDEN_COMPLETADA' }
-  | { ordenId: string; resultado: 'RECETA_DESCONOCIDA' };
+  | { ordenId: string; resultado: 'RECETA_DESCONOCIDA' }
+  | { ordenId: string; resultado: 'NIVEL_EDIFICIO_INSUFICIENTE' };
 
 /// Puro: nivel de oficio real de un trabajador para `professionId` — 1 si nunca lo practicó (mismo
 /// fallback que `professionLevelForXp(0)`), nunca null/undefined.
@@ -94,6 +98,16 @@ export function tieneIngredientesEnAlmacen(recipe: CraftingRecipe, almacenRows: 
 /// proyecto que devuelven el resultado ya aplicado) para que una orden posterior en el mismo tick
 /// vea el consumo/producción de las anteriores — el caller solo necesita traducir el array de
 /// `ResultadoOrden` devuelto a escrituras reales de Prisma, no recalcular nada.
+///
+/// `buildingTier` (docs/rpgtarkor/sistemas-reino/edificios-de-oficio.md § 2/§ 7, 2026-09-28): nivel
+/// del `Building` al que pertenecen TODAS estas órdenes (un solo `Building` por llamada, ver el
+/// bucle `for (const building of buildingsConOrdenes)` en turnResolution.ts) — null para edificios
+/// sin nivel de oficio propio (todos los anteriores a esta pieza: Campamento, Choza...), que nunca
+/// gatean por nivel. `nivelEdificioRequeridoParaTier` (construction.ts) es la misma tabla D&D
+/// "tres escalones" que ya decide qué `ConstructionRecipe` puede construirse en qué Ayuntamiento,
+/// reutilizada aquí para qué `CraftingRecipe.tier` puede TRABAJARSE en qué nivel de edificio —
+/// doble llave real (§ 2): el trabajador ya se gateaba por su propio nivel de oficio
+/// (`trabajadorPuedeProducir`), esto añade el segundo gate, el del edificio en sí.
 export function tickOrdenesProduccion(
   ordenes: OrdenProduccionInput[],
   trabajadores: TrabajadorReino[],
@@ -102,6 +116,7 @@ export function tickOrdenesProduccion(
   limitePorSlug: Map<string, number | null>,
   almacenRows: InventoryRowLike[],
   catalogBySlug: Map<string, CatalogLookup>,
+  buildingTier: number | null = null,
 ): ResultadoOrden[] {
   const resultados: ResultadoOrden[] = [];
   const trabajadoresLibres = new Set(trabajadores.map((t) => t.companionId));
@@ -116,6 +131,15 @@ export function tickOrdenesProduccion(
     const recipe = recipesByKey.get(orden.recipeKey);
     if (!recipe) {
       resultados.push({ ordenId: orden.id, resultado: 'RECETA_DESCONOCIDA' });
+      continue;
+    }
+
+    // Gate de nivel de edificio (§ 2/§ 7, 2026-09-28) — un Taller (tier 1) solo admite recetas de
+    // tier 1-3, un Obrador (tier 2) hasta tier 6, un Gran obrador (tier 3) hasta tier 9. Solo
+    // aplica si el Building tiene nivel propio (`buildingTier` no null) — los edificios de reino
+    // anteriores a esta pieza (Campamento, Choza...) nunca lo tienen, así que esto no les afecta.
+    if (buildingTier != null && nivelEdificioRequeridoParaTier(recipe.tier ?? 1) > buildingTier) {
+      resultados.push({ ordenId: orden.id, resultado: 'NIVEL_EDIFICIO_INSUFICIENTE' });
       continue;
     }
 
@@ -180,4 +204,18 @@ export function tickOrdenesProduccion(
   }
 
   return resultados;
+}
+
+/// Servicio de la Casa de curas (docs/rpgtarkor/sistemas-reino/edificios-de-oficio.md § 3/§ 7,
+/// 2026-09-28) — a diferencia del resto de edificios de oficio (que producen objetos vía
+/// `OrdenProduccion`), este da un SERVICIO pasivo mientras está `ACTIVO`: cada día de ficción
+/// cruzado, cualquier `Companion` de Reino (`rolReino` no null) herido baja un estado más de
+/// gravedad, reutilizando `oneStepBetterThan` (death.ts) — el mismo mecanismo que ya cura por
+/// CURAZION en combate, no uno nuevo. MUERTO nunca mejora por aquí (mismo criterio que CURAZION:
+/// la muerte es terminal, la Casa de curas no resucita). Puro — el caller (turnResolution.ts)
+/// decide a qué `Companion.id` aplicar el resultado.
+export function companionesQueCuraCasaDeCuras(companions: { id: string; rolReino: string | null; condicionFisica: CondicionFisica }[]): { id: string; nuevaCondicion: CondicionFisica }[] {
+  return companions
+    .filter((c) => c.rolReino != null && c.condicionFisica !== 'ILESO' && c.condicionFisica !== 'MUERTO')
+    .map((c) => ({ id: c.id, nuevaCondicion: oneStepBetterThan(c.condicionFisica) }));
 }

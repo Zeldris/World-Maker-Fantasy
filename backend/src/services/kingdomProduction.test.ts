@@ -5,6 +5,7 @@ import {
   almacenAlTope,
   tieneIngredientesEnAlmacen,
   tickOrdenesProduccion,
+  companionesQueCuraCasaDeCuras,
   type TrabajadorReino,
   type OrdenProduccionInput,
 } from './kingdomProduction.js';
@@ -54,8 +55,9 @@ function tick(
   limitePorSlug = new Map<string, number | null>(),
   almacenRows: InventoryRowLike[] = [],
   catalogBySlug = new Map<string, CatalogLookup>(),
+  buildingTier: number | null = null,
 ) {
-  return tickOrdenesProduccion(ordenes, trabajadores, recipesByKey, cantidadAlmacenPorSlug, limitePorSlug, almacenRows, catalogBySlug);
+  return tickOrdenesProduccion(ordenes, trabajadores, recipesByKey, cantidadAlmacenPorSlug, limitePorSlug, almacenRows, catalogBySlug, buildingTier);
 }
 
 describe('nivelOficioDeTrabajador', () => {
@@ -270,5 +272,44 @@ describe('tickOrdenesProduccion', () => {
       expect(resultados[0].resultado).toBe('PRODUCIDA');
       expect(resultados[1]).toEqual({ ordenId: 'o-2', resultado: 'SIN_MATERIA_PRIMA' });
     });
+  });
+
+  describe('gate NIVEL_EDIFICIO_INSUFICIENTE (docs/rpgtarkor/sistemas-reino/edificios-de-oficio.md § 2/§ 7, 2026-09-28)', () => {
+    const ordenTest = orden({ recipeKey: 'testRecipe' });
+
+    it('buildingTier null (edificio sin nivel propio): nunca gatea, sin importar el tier de la receta', () => {
+      const recipesByKey = new Map([['testRecipe', recipe({ tier: 9 })]]);
+      const resultados = tick([ordenTest], [trabajador()], recipesByKey, new Map(), new Map(), [], new Map(), null);
+      expect(resultados[0].resultado).toBe('PRODUCIDA');
+    });
+
+    it('Taller (tier 1) admite una receta de tier 3, pero no una de tier 4', () => {
+      const recipesByKeyTier3 = new Map([['testRecipe', recipe({ tier: 3 })]]);
+      const recipesByKeyTier4 = new Map([['testRecipe', recipe({ tier: 4 })]]);
+      expect(tick([ordenTest], [trabajador()], recipesByKeyTier3, new Map(), new Map(), [], new Map(), 1)[0].resultado).toBe('PRODUCIDA');
+      expect(tick([ordenTest], [trabajador()], recipesByKeyTier4, new Map(), new Map(), [], new Map(), 1)[0]).toEqual({ ordenId: 'orden-1', resultado: 'NIVEL_EDIFICIO_INSUFICIENTE' });
+    });
+
+    it('Gran obrador (tier 3) admite hasta tier 9', () => {
+      const recipesByKey = new Map([['testRecipe', recipe({ tier: 9 })]]);
+      const resultados = tick([ordenTest], [trabajador()], recipesByKey, new Map(), new Map(), [], new Map(), 3);
+      expect(resultados[0].resultado).toBe('PRODUCIDA');
+    });
+  });
+});
+
+describe('companionesQueCuraCasaDeCuras (docs/rpgtarkor/sistemas-reino/edificios-de-oficio.md § 3/§ 7, 2026-09-28)', () => {
+  it('cura un escalón a los Companion de Reino heridos, ignora a los ILESO/MUERTO y a los sin rolReino', () => {
+    const resultado = companionesQueCuraCasaDeCuras([
+      { id: 'c1', rolReino: 'trabajador', condicionFisica: 'HERIDO' },
+      { id: 'c2', rolReino: 'trabajador', condicionFisica: 'ILESO' },
+      { id: 'c3', rolReino: 'trabajador', condicionFisica: 'MUERTO' },
+      { id: 'c4', rolReino: null, condicionFisica: 'GRAVE' },
+      { id: 'c5', rolReino: 'guardia', condicionFisica: 'CONVALECIENTE' },
+    ]);
+    expect(resultado).toEqual([
+      { id: 'c1', nuevaCondicion: 'ILESO' },
+      { id: 'c5', nuevaCondicion: 'GRAVE' },
+    ]);
   });
 });

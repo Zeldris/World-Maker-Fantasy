@@ -6,6 +6,7 @@ import { totalQuantity, planConsumption, type IngredientRequirement, type Catalo
 import { prisma } from '../lib/prisma.js';
 import { alivioForLevel } from './professionProgress.js';
 import { matchesOficioPrefix } from './harvestAbilities.js';
+import { locationTerrainTags } from '../scripts/worldCatalog.js';
 import type { Prisma } from '@prisma/client';
 
 export { quantityOf, baseNameOf, planConsumption } from './ingredients.js';
@@ -97,6 +98,49 @@ export interface ConstructionRecipe {
   /// sin ninguna receta real que lo use — "poca variedad de edificios todavía", ver § 7.4) — cuenta
   /// contra el cupo LOCAL de defensa o producción de ESE Cuartel, no contra ningún cupo de partida.
   edificioTipo?: 'defensa' | 'produccion';
+  /// Edificios de oficio (docs/rpgtarkor/sistemas-reino/edificios-de-oficio.md, 2026-09-28) — qué
+  /// `CraftingRecipe.oficio` (crafting.ts) puede trabajarse dentro de este `Building` una vez
+  /// `ACTIVO`. Solo lo llevan las 14 recetas de nivel 1 de edificios de oficio (sus mejoras heredan
+  /// el mismo oficio del edificio que actualizan, no hace falta repetirlo). `kingdomProduction.ts`
+  /// lo usa para el gate `NIVEL_EDIFICIO_INSUFICIENTE` — ver `oficioProducidoForRecipeKey` más abajo.
+  oficioProducido?: string;
+  /// Regla de sitio (mismo documento, § 3): 'costa' exige que la Location tenga el TerrainTag
+  /// 'costero' o 'acuatico' (locationTerrainTags, worldCatalog.ts); 'veta' exige 'rocoso' (proxy de
+  /// "tiene mena" — no existe un tag 'veta' propio, y tuguear uno nuevo para una sola condición de
+  /// sitio sería sobre-ingeniería). Solo Boca de mina y Embarcadero de pesca lo llevan. Una Location
+  /// sin tags catalogados (la mayoría del núcleo jugable hoy, incluido Karot Veku) nunca bloquea —
+  /// mismo criterio "solo penaliza si hay dato real" que `pasaFiltroTerreno` (terrain.ts).
+  condicionRegion?: 'costa' | 'veta';
+  /// Nivel de edificio de oficio que esta receta deja tras completarse (1/2/3 = Taller/Obrador/Gran
+  /// obrador) — se copia a `Building.tier`, mismo mecanismo que `ayuntamientoNivel` pero para
+  /// edificios de oficio. Solo lo llevan las 14 recetas base (nivel 1) y sus 28 mejoras.
+  edificioOficioNivel?: number;
+  /// Nivel de Ayuntamiento mínimo (`Building.tier` del Ayuntamiento ACTIVO) para poder levantar/
+  /// mejorar a este nivel de edificio de oficio (§ 2: Obrador exige Ayuntamiento mediano, Gran
+  /// obrador exige grande). El nivel de oficio `constructor` mínimo (3/6) se exige, en cambio, vía
+  /// `requisitos`/`oficio` normales igual que ya hace el propio Ayuntamiento mediano/grande (más
+  /// atributo, no un umbral de nivel de oficio nuevo — no existe ese mecanismo en el proyecto y
+  /// añadir uno solo para esto sería sobre-ingeniería).
+  ayuntamientoNivelMinimo?: number;
+}
+
+/// Nivel de edificio requerido por tier de receta de oficio (docs/rpgtarkor/sistemas-reino/
+/// edificios-de-oficio.md § 2, D&D "tres escalones"): Taller (1) admite tiers 1-3, Obrador (2)
+/// tiers 4-6, Gran obrador (3) tiers 7-9 — `Math.ceil(tier / 3)` es la misma tabla en una línea.
+/// Exportado para que `kingdomProduction.ts` no reimplique el mismo criterio.
+export function nivelEdificioRequeridoParaTier(tier: number): number {
+  return Math.ceil(Math.max(1, tier) / 3);
+}
+
+/// Plazas de trabajador por nivel de edificio de oficio (mismo documento, § 2: "Bellwright: una
+/// estación admite varios aldeanos, más plazas es la recompensa natural de mejorarla") — 1/2/4,
+/// null para edificios sin `Building.tier` propio (Campamento, Choza... nunca gatean por plazas).
+/// Exportado para que la ruta de asignar Companion a Building (companeros.ts) lo use como tope.
+export function plazasTrabajadorParaTier(tier: number | null): number | null {
+  if (tier == null) return null;
+  if (tier <= 1) return 1;
+  if (tier === 2) return 2;
+  return 4;
 }
 
 /// Distancia máxima (minutos de viaje reales, mismo grafo que `shortestPath`/`buildAdjacency` de
@@ -442,6 +486,775 @@ export const JAULA_GRANDE_RECIPE: ConstructionRecipe = {
   companionSlots: 0,
 };
 
+// Edificios de oficio (docs/rpgtarkor/sistemas-reino/edificios-de-oficio.md, 2026-09-28) — un
+// edificio por profesión orca, `edificioTipo: 'produccion'`, `requiresAyuntamiento: true` (cuentan
+// contra `reinoBuildingCapacity` igual que la Choza). 3 niveles cada uno (Taller/Obrador/Gran
+// obrador, `edificioOficioNivel` 1/2/3, mismo mecanismo UPDATE-de-tier que el Ayuntamiento). Coste
+// nivel 1 calibrado contra la Choza (~20 materiales básicos + 1 pieza propia del oficio, § 3);
+// cada mejora ronda el doble y pide un material procesado real del catálogo. Todas construcción
+// orca de las Llanuras (`raza: 'orcos'`) — las 3 variantes regionales de aspecto (Llanuras/Cristal
+// Helado/Ciénaga) quedan para cuando esas regiones sean jugables (§ 3), aquí solo la de Llanuras.
+//
+// Ingredientes: solo materiales/piezas que ya existen en el catálogo (worldCatalog.ts/
+// crafting.ts) — no se inventa ningún `catalogSlug` nuevo. La "caña de pescar" del documento sí
+// existe (CraftingRecipe 'canaPesca', crafting.ts, `resultCatalogSlug: 'cana-pesca'`).
+export const HERRERIA_RECIPE: ConstructionRecipe = {
+  key: 'herreria',
+  name: 'una herrería orca de las Llanuras',
+  description:
+    'Fragua de piedra y arcilla cocida con un yunque real, donde fundir mena en lingotes y forjar armas y armaduras de metal — el primer paso para que un reino deje de depender de comprar cada hoja fuera.',
+  raza: 'orcos',
+  nounRegex: /(?=.*herrer)(?!.*(orcos del clan|del clan serhu))/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piedra' }, cantidad: 12, label: 'piedra' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'mena' }, cantidad: 6, label: 'mena' },
+    { match: { kind: 'exact', catalogSlug: 'piedra-de-afilar' }, cantidad: 1, label: 'piedra de afilar' },
+  ],
+  requisitos: { fuerza: 10 },
+  // 'herrero-orco-llanuras' (singular "orco") — inconsistencia ya existente en el catálogo real
+  // (ver `maestro-herrero-serhu`/`herreria-serhu`, worldCatalog.ts), se respeta tal cual.
+  oficio: 'herrero-orco-llanuras',
+  oficioProducido: 'herrero-orco-llanuras',
+  edificioOficioNivel: 1,
+  companionSlots: 0,
+  requiresAyuntamiento: true,
+};
+export const HERRERIA_OBRADOR_RECIPE: ConstructionRecipe = {
+  key: 'herreria-obrador',
+  name: 'un obrador de herrería',
+  description: 'La fragua crece: un segundo yunque, un fuelle de tiro más largo y estanterías reales para las aleaciones — ya admite encargos de más peso.',
+  raza: 'orcos',
+  nounRegex: /(?=.*obrador)(?=.*herrer)/,
+  requirements: [
+    { match: { kind: 'exact', catalogSlug: 'lingote-de-hierro' }, cantidad: 2, label: 'lingote de hierro' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'mena' }, cantidad: 8, label: 'mena' },
+    { match: { kind: 'exact', catalogSlug: 'bloque-piedra-tallada' }, cantidad: 2, label: 'bloque de piedra tallada' },
+  ],
+  requisitos: { fuerza: 16 },
+  oficio: 'constructor-orcos-llanuras',
+  upgradesRecipeKey: 'herreria',
+  edificioOficioNivel: 2,
+  ayuntamientoNivelMinimo: 2,
+};
+export const HERRERIA_GRAN_OBRADOR_RECIPE: ConstructionRecipe = {
+  key: 'herreria-gran-obrador',
+  name: 'un gran obrador de herrería',
+  description: 'La forja de un reino de verdad: varios puestos de yunque a la vez y un horno capaz de fundir aleaciones que antes exigían viajar a la Meseta.',
+  raza: 'orcos',
+  nounRegex: /(?=.*gran)(?=.*obrador)(?=.*herrer)/,
+  requirements: [
+    { match: { kind: 'exact', catalogSlug: 'lingote-de-hierro' }, cantidad: 5, label: 'lingote de hierro' },
+    { match: { kind: 'exact', catalogSlug: 'bloque-piedra-tallada' }, cantidad: 4, label: 'bloque de piedra tallada' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'mena' }, cantidad: 10, label: 'mena' },
+  ],
+  requisitos: { fuerza: 22 },
+  oficio: 'constructor-orcos-llanuras',
+  upgradesRecipeKey: 'herreria-obrador',
+  edificioOficioNivel: 3,
+  ayuntamientoNivelMinimo: 3,
+};
+
+export const CURTIDURIA_RECIPE: ConstructionRecipe = {
+  key: 'curtiduria',
+  name: 'una curtiduría orca de las Llanuras',
+  description: 'Bastidores de madera alrededor de una hoguera baja que nunca se apaga del todo, donde tensar y curtir pieles crudas hasta cuero real — la base de cualquier armadura de piel pesada.',
+  raza: 'orcos',
+  nounRegex: /(?=.*curtidur)(?!.*(orcos del clan|del clan serhu))/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 10, label: 'leña' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piel' }, cantidad: 8, label: 'piel' },
+    { match: { kind: 'exact', catalogSlug: 'cuerda-tendon' }, cantidad: 3, label: 'cuerda de tendón' },
+    { match: { kind: 'exact', catalogSlug: 'cuchillo-deshuello' }, cantidad: 1, label: 'cuchillo de deshuello' },
+  ],
+  requisitos: { destreza: 8 },
+  oficio: 'curtidor-orcos-llanuras',
+  oficioProducido: 'curtidor-orcos-llanuras',
+  edificioOficioNivel: 1,
+  companionSlots: 0,
+  requiresAyuntamiento: true,
+};
+export const CURTIDURIA_OBRADOR_RECIPE: ConstructionRecipe = {
+  key: 'curtiduria-obrador',
+  name: 'un obrador de curtiduría',
+  description: 'Más bastidores y una segunda hoguera de curtido — varias pieles a la vez sin que ninguna se eche a perder por esperar turno.',
+  raza: 'orcos',
+  nounRegex: /(?=.*obrador)(?=.*curtidur)/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piel' }, cantidad: 16, label: 'piel' },
+    { match: { kind: 'exact', catalogSlug: 'viga-madera-tallada' }, cantidad: 2, label: 'viga de madera tallada' },
+    { match: { kind: 'exact', catalogSlug: 'cordaje-trenzado' }, cantidad: 2, label: 'cordaje trenzado' },
+  ],
+  requisitos: { destreza: 14 },
+  oficio: 'constructor-orcos-llanuras',
+  upgradesRecipeKey: 'curtiduria',
+  edificioOficioNivel: 2,
+  ayuntamientoNivelMinimo: 2,
+};
+export const CURTIDURIA_GRAN_OBRADOR_RECIPE: ConstructionRecipe = {
+  key: 'curtiduria-gran-obrador',
+  name: 'un gran obrador de curtiduría',
+  description: 'La curtiduría de un reino de verdad: bastidores cubiertos en fila, capaces de procesar la caza de varias partidas de caza a la vez sin que se acumule sin curtir.',
+  raza: 'orcos',
+  nounRegex: /(?=.*gran)(?=.*obrador)(?=.*curtidur)/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piel' }, cantidad: 24, label: 'piel' },
+    { match: { kind: 'exact', catalogSlug: 'viga-madera-tallada' }, cantidad: 4, label: 'viga de madera tallada' },
+    { match: { kind: 'exact', catalogSlug: 'cordaje-trenzado' }, cantidad: 4, label: 'cordaje trenzado' },
+  ],
+  requisitos: { destreza: 20 },
+  oficio: 'constructor-orcos-llanuras',
+  upgradesRecipeKey: 'curtiduria-obrador',
+  edificioOficioNivel: 3,
+  ayuntamientoNivelMinimo: 3,
+};
+
+export const PELETERIA_RECIPE: ConstructionRecipe = {
+  key: 'peleteria',
+  name: 'una peletería orca de las Llanuras',
+  description: 'Mesas de corte y agujas de hueso para dar forma a ropa y abrigo de piel real — capas, capuchas, guantes — a partir del cuero que ya sale de la curtiduría.',
+  raza: 'orcos',
+  nounRegex: /(?=.*peleter)(?!.*(orcos del clan|del clan helsig))/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piel' }, cantidad: 10, label: 'piel' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 6, label: 'leña' },
+    { match: { kind: 'exact', catalogSlug: 'kit-costura-hueso' }, cantidad: 1, label: 'kit de costura de hueso' },
+  ],
+  requisitos: { destreza: 8 },
+  oficio: 'peletero-orcos-llanuras',
+  oficioProducido: 'peletero-orcos-llanuras',
+  edificioOficioNivel: 1,
+  companionSlots: 0,
+  requiresAyuntamiento: true,
+};
+export const PELETERIA_OBRADOR_RECIPE: ConstructionRecipe = {
+  key: 'peleteria-obrador',
+  name: 'un obrador de peletería',
+  description: 'Más mesas de corte y estanterías de patrones — varias prendas a la vez, no una a una.',
+  raza: 'orcos',
+  nounRegex: /(?=.*obrador)(?=.*peleter)/,
+  requirements: [
+    { match: { kind: 'exact', catalogSlug: 'kit-costura-hueso' }, cantidad: 2, label: 'kit de costura de hueso' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'fibras' }, cantidad: 8, label: 'fibra' },
+    { match: { kind: 'exact', catalogSlug: 'viga-madera-tallada' }, cantidad: 1, label: 'viga de madera tallada' },
+  ],
+  requisitos: { destreza: 14 },
+  oficio: 'constructor-orcos-llanuras',
+  upgradesRecipeKey: 'peleteria',
+  edificioOficioNivel: 2,
+  ayuntamientoNivelMinimo: 2,
+};
+export const PELETERIA_GRAN_OBRADOR_RECIPE: ConstructionRecipe = {
+  key: 'peleteria-gran-obrador',
+  name: 'un gran obrador de peletería',
+  description: 'Un taller de sastres reales, no de aprendices — de aquí puede salir el abrigo de todo un ejército en marcha.',
+  raza: 'orcos',
+  nounRegex: /(?=.*gran)(?=.*obrador)(?=.*peleter)/,
+  requirements: [
+    { match: { kind: 'exact', catalogSlug: 'kit-costura-hueso' }, cantidad: 4, label: 'kit de costura de hueso' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'fibras' }, cantidad: 14, label: 'fibra' },
+    { match: { kind: 'exact', catalogSlug: 'viga-madera-tallada' }, cantidad: 2, label: 'viga de madera tallada' },
+  ],
+  requisitos: { destreza: 20 },
+  oficio: 'constructor-orcos-llanuras',
+  upgradesRecipeKey: 'peleteria-obrador',
+  edificioOficioNivel: 3,
+  ayuntamientoNivelMinimo: 3,
+};
+
+export const DESOLLADERO_RECIPE: ConstructionRecipe = {
+  key: 'desolladero',
+  name: 'un desolladero orco de las Llanuras',
+  description: 'Bastidores para tensar pieles y un canal que saca la sangre lejos del resto del reino — aquí se despieza de verdad lo que trae cada partida de caza: carne, piel, hueso, garra.',
+  raza: 'orcos',
+  nounRegex: /(?=.*desollader)(?!.*(orcos del clan|del clan serhu))/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 8, label: 'leña' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piedra' }, cantidad: 6, label: 'piedra' },
+    { match: { kind: 'exact', catalogSlug: 'cuchillo-hielo-silice' }, cantidad: 1, label: 'cuchillo de hielo sílice' },
+  ],
+  requisitos: { fuerza: 10 },
+  oficio: 'desollador-orcos-llanuras',
+  oficioProducido: 'desollador-orcos-llanuras',
+  edificioOficioNivel: 1,
+  companionSlots: 0,
+  requiresAyuntamiento: true,
+};
+export const DESOLLADERO_OBRADOR_RECIPE: ConstructionRecipe = {
+  key: 'desolladero-obrador',
+  name: 'un obrador de desolladero',
+  description: 'Más bastidores y un segundo canal de sangre — varias presas a la vez sin que se echen a perder esperando.',
+  raza: 'orcos',
+  nounRegex: /(?=.*obrador)(?=.*desollader)/,
+  requirements: [
+    { match: { kind: 'exact', catalogSlug: 'bloque-piedra-tallada' }, cantidad: 2, label: 'bloque de piedra tallada' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'hueso' }, cantidad: 6, label: 'hueso' },
+    { match: { kind: 'exact', catalogSlug: 'cuerda-tendon' }, cantidad: 3, label: 'cuerda de tendón' },
+  ],
+  requisitos: { fuerza: 16 },
+  oficio: 'constructor-orcos-llanuras',
+  upgradesRecipeKey: 'desolladero',
+  edificioOficioNivel: 2,
+  ayuntamientoNivelMinimo: 2,
+};
+export const DESOLLADERO_GRAN_OBRADOR_RECIPE: ConstructionRecipe = {
+  key: 'desolladero-gran-obrador',
+  name: 'un gran obrador de desolladero',
+  description: 'Una línea entera de despiece, capaz de procesar la caza de una partida grande en una sola tarde.',
+  raza: 'orcos',
+  nounRegex: /(?=.*gran)(?=.*obrador)(?=.*desollader)/,
+  requirements: [
+    { match: { kind: 'exact', catalogSlug: 'bloque-piedra-tallada' }, cantidad: 4, label: 'bloque de piedra tallada' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'hueso' }, cantidad: 10, label: 'hueso' },
+    { match: { kind: 'exact', catalogSlug: 'cuerda-tendon' }, cantidad: 6, label: 'cuerda de tendón' },
+  ],
+  requisitos: { fuerza: 22 },
+  oficio: 'constructor-orcos-llanuras',
+  upgradesRecipeKey: 'desolladero-obrador',
+  edificioOficioNivel: 3,
+  ayuntamientoNivelMinimo: 3,
+};
+
+export const CORRALES_RECIPE: ConstructionRecipe = {
+  key: 'corrales',
+  name: 'unos corrales del Domador',
+  description: 'Recinto de postes reforzados con un abrevadero de piedra, donde aclimatar a las bestias recién capturadas antes de que pasen a ser compañeros de verdad — la leche, lana y crías de los animales domados también salen de aquí.',
+  raza: 'orcos',
+  nounRegex: /(?=.*corral)(?!.*(domador$|del domador$))|corrales del domador/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 10, label: 'leña' },
+    { match: { kind: 'exact', catalogSlug: 'hueso-largo-gargantua' }, cantidad: 3, label: 'hueso largo de gargantúa' },
+    { match: { kind: 'exact', catalogSlug: 'cuerda-tendon' }, cantidad: 4, label: 'cuerda de tendón' },
+  ],
+  requisitos: { voluntad: 8 },
+  oficio: 'domador-orcos-llanuras',
+  oficioProducido: 'domador-orcos-llanuras',
+  edificioOficioNivel: 1,
+  companionSlots: 0,
+  requiresAyuntamiento: true,
+};
+export const CORRALES_OBRADOR_RECIPE: ConstructionRecipe = {
+  key: 'corrales-obrador',
+  name: 'un obrador de corrales',
+  description: 'Más recinto y un segundo abrevadero — varias bestias aclimatándose a la vez sin que se disputen el sitio.',
+  raza: 'orcos',
+  nounRegex: /(?=.*obrador)(?=.*corral)/,
+  requirements: [
+    { match: { kind: 'exact', catalogSlug: 'hueso-largo-gargantua' }, cantidad: 5, label: 'hueso largo de gargantúa' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piedra' }, cantidad: 8, label: 'piedra' },
+    { match: { kind: 'exact', catalogSlug: 'cordaje-trenzado' }, cantidad: 2, label: 'cordaje trenzado' },
+  ],
+  requisitos: { voluntad: 14 },
+  oficio: 'constructor-orcos-llanuras',
+  upgradesRecipeKey: 'corrales',
+  edificioOficioNivel: 2,
+  ayuntamientoNivelMinimo: 2,
+};
+export const CORRALES_GRAN_OBRADOR_RECIPE: ConstructionRecipe = {
+  key: 'corrales-gran-obrador',
+  name: 'un gran obrador de corrales',
+  description: 'El recinto de un reino que ya doma en serio — sitio real para varias bestias grandes a la vez, no solo las que caben en una jaula.',
+  raza: 'orcos',
+  nounRegex: /(?=.*gran)(?=.*obrador)(?=.*corral)/,
+  requirements: [
+    { match: { kind: 'exact', catalogSlug: 'hueso-largo-gargantua' }, cantidad: 8, label: 'hueso largo de gargantúa' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piedra' }, cantidad: 14, label: 'piedra' },
+    { match: { kind: 'exact', catalogSlug: 'cordaje-trenzado' }, cantidad: 4, label: 'cordaje trenzado' },
+  ],
+  requisitos: { voluntad: 20 },
+  oficio: 'constructor-orcos-llanuras',
+  upgradesRecipeKey: 'corrales-obrador',
+  edificioOficioNivel: 3,
+  ayuntamientoNivelMinimo: 3,
+};
+
+export const CARPINTERIA_RECIPE: ConstructionRecipe = {
+  key: 'carpinteria',
+  name: 'una carpintería orca de las Llanuras',
+  description: 'Bancos con herramientas de asta y hueso donde dar forma a madera en vigas talladas y cordaje real — mangos de arma y astas, la base de la mitad de las mejoras de un reino.',
+  raza: 'orcos',
+  nounRegex: /(?=.*carpinter)(?!.*(orcos del clan|del clan serhu))/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 12, label: 'leña' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'fibras' }, cantidad: 6, label: 'fibra' },
+    { match: { kind: 'exact', catalogSlug: 'hacha-de-mano-orca' }, cantidad: 1, label: 'hacha de mano orca' },
+  ],
+  requisitos: { fuerza: 10 },
+  oficio: 'carpintero-orcos-llanuras',
+  oficioProducido: 'carpintero-orcos-llanuras',
+  edificioOficioNivel: 1,
+  companionSlots: 0,
+  requiresAyuntamiento: true,
+};
+export const CARPINTERIA_OBRADOR_RECIPE: ConstructionRecipe = {
+  key: 'carpinteria-obrador',
+  name: 'un obrador de carpintería',
+  description: 'Un segundo banco y sierras más largas — varias vigas a la vez, no una detrás de otra.',
+  raza: 'orcos',
+  nounRegex: /(?=.*obrador)(?=.*carpinter)/,
+  requirements: [
+    { match: { kind: 'exact', catalogSlug: 'viga-madera-tallada' }, cantidad: 2, label: 'viga de madera tallada' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 10, label: 'leña' },
+    { match: { kind: 'exact', catalogSlug: 'cordaje-trenzado' }, cantidad: 2, label: 'cordaje trenzado' },
+  ],
+  requisitos: { fuerza: 16 },
+  oficio: 'constructor-orcos-llanuras',
+  upgradesRecipeKey: 'carpinteria',
+  edificioOficioNivel: 2,
+  ayuntamientoNivelMinimo: 2,
+};
+export const CARPINTERIA_GRAN_OBRADOR_RECIPE: ConstructionRecipe = {
+  key: 'carpinteria-gran-obrador',
+  name: 'un gran obrador de carpintería',
+  description: 'El taller de un reino que ya construye en serio — vigas y cordaje suficientes para levantar el resto de edificios de oficio sin depender de comprarlos fuera.',
+  raza: 'orcos',
+  nounRegex: /(?=.*gran)(?=.*obrador)(?=.*carpinter)/,
+  requirements: [
+    { match: { kind: 'exact', catalogSlug: 'viga-madera-tallada' }, cantidad: 4, label: 'viga de madera tallada' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 16, label: 'leña' },
+    { match: { kind: 'exact', catalogSlug: 'cordaje-trenzado' }, cantidad: 4, label: 'cordaje trenzado' },
+  ],
+  requisitos: { fuerza: 22 },
+  oficio: 'constructor-orcos-llanuras',
+  upgradesRecipeKey: 'carpinteria-obrador',
+  edificioOficioNivel: 3,
+  ayuntamientoNivelMinimo: 3,
+};
+
+export const SASTRERIA_RECIPE: ConstructionRecipe = {
+  key: 'sastreria',
+  name: 'una sastrería orca de las Llanuras',
+  description: 'Mesas de corte y estanterías de tela y fieltro real, donde coser mochilas y prendas de fibra o lana — lo que la peletería no cubre porque no es piel.',
+  raza: 'orcos',
+  nounRegex: /sastreria|sastrería/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'fibras' }, cantidad: 12, label: 'fibra' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 4, label: 'leña' },
+    { match: { kind: 'exact', catalogSlug: 'kit-costura-hueso' }, cantidad: 1, label: 'kit de costura de hueso' },
+  ],
+  requisitos: { destreza: 8 },
+  oficio: 'sastre-orcos-llanuras',
+  oficioProducido: 'sastre-orcos-llanuras',
+  edificioOficioNivel: 1,
+  companionSlots: 0,
+  requiresAyuntamiento: true,
+};
+export const SASTRERIA_OBRADOR_RECIPE: ConstructionRecipe = {
+  key: 'sastreria-obrador',
+  name: 'un obrador de sastrería',
+  description: 'Más mesas de corte y un segundo telar de fieltro — varias prendas de fibra a la vez.',
+  raza: 'orcos',
+  nounRegex: /(?=.*obrador)(?=.*sastrer)/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'fibras' }, cantidad: 18, label: 'fibra' },
+    { match: { kind: 'exact', catalogSlug: 'kit-costura-hueso' }, cantidad: 2, label: 'kit de costura de hueso' },
+    { match: { kind: 'exact', catalogSlug: 'viga-madera-tallada' }, cantidad: 1, label: 'viga de madera tallada' },
+  ],
+  requisitos: { destreza: 14 },
+  oficio: 'constructor-orcos-llanuras',
+  upgradesRecipeKey: 'sastreria',
+  edificioOficioNivel: 2,
+  ayuntamientoNivelMinimo: 2,
+};
+export const SASTRERIA_GRAN_OBRADOR_RECIPE: ConstructionRecipe = {
+  key: 'sastreria-gran-obrador',
+  name: 'un gran obrador de sastrería',
+  description: 'Un taller de fieltro y fibra a escala de reino, capaz de vestir a una guarnición entera.',
+  raza: 'orcos',
+  nounRegex: /(?=.*gran)(?=.*obrador)(?=.*sastrer)/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'fibras' }, cantidad: 26, label: 'fibra' },
+    { match: { kind: 'exact', catalogSlug: 'kit-costura-hueso' }, cantidad: 3, label: 'kit de costura de hueso' },
+    { match: { kind: 'exact', catalogSlug: 'viga-madera-tallada' }, cantidad: 2, label: 'viga de madera tallada' },
+  ],
+  requisitos: { destreza: 20 },
+  oficio: 'constructor-orcos-llanuras',
+  upgradesRecipeKey: 'sastreria-obrador',
+  edificioOficioNivel: 3,
+  ayuntamientoNivelMinimo: 3,
+};
+
+export const HERBORISTERIA_RECIPE: ConstructionRecipe = {
+  key: 'herboristeria',
+  name: 'una herboristería orca de las Llanuras',
+  description: 'Estancia baja de adobe con cuerdas para secar hierbas de la región — de aquí salen los manojos y cataplasmas básicas, y la materia prima de la alquimia.',
+  raza: 'orcos',
+  nounRegex: /(?=.*herboris)(?!.*(orcos del clan|del clan serhu|del clan helsig))/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 6, label: 'leña' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piedra' }, cantidad: 6, label: 'piedra' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'fibras' }, cantidad: 5, label: 'fibra' },
+  ],
+  requisitos: { inteligencia: 8 },
+  oficio: 'herborista-orcos-llanuras',
+  oficioProducido: 'herborista-orcos-llanuras',
+  edificioOficioNivel: 1,
+  companionSlots: 0,
+  requiresAyuntamiento: true,
+};
+export const HERBORISTERIA_OBRADOR_RECIPE: ConstructionRecipe = {
+  key: 'herboristeria-obrador',
+  name: 'un obrador de herboristería',
+  description: 'Más cuerdas de secado y un segundo mortero de piedra — varios manojos secándose a la vez.',
+  raza: 'orcos',
+  nounRegex: /(?=.*obrador)(?=.*herboris)/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'fibras' }, cantidad: 10, label: 'fibra' },
+    { match: { kind: 'exact', catalogSlug: 'bloque-piedra-tallada' }, cantidad: 1, label: 'bloque de piedra tallada' },
+    { match: { kind: 'exact', catalogSlug: 'manojo-salvia-polvo' }, cantidad: 3, label: 'manojo de salvia del polvo' },
+  ],
+  requisitos: { inteligencia: 14 },
+  oficio: 'constructor-orcos-llanuras',
+  upgradesRecipeKey: 'herboristeria',
+  edificioOficioNivel: 2,
+  ayuntamientoNivelMinimo: 2,
+};
+export const HERBORISTERIA_GRAN_OBRADOR_RECIPE: ConstructionRecipe = {
+  key: 'herboristeria-gran-obrador',
+  name: 'un gran obrador de herboristería',
+  description: 'Un herbario real, con hileras enteras de plantas secándose — la reserva de medicina de un reino que ya no depende solo de lo que trae cada partida.',
+  raza: 'orcos',
+  nounRegex: /(?=.*gran)(?=.*obrador)(?=.*herboris)/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'fibras' }, cantidad: 16, label: 'fibra' },
+    { match: { kind: 'exact', catalogSlug: 'bloque-piedra-tallada' }, cantidad: 2, label: 'bloque de piedra tallada' },
+    { match: { kind: 'exact', catalogSlug: 'manojo-salvia-polvo' }, cantidad: 6, label: 'manojo de salvia del polvo' },
+  ],
+  requisitos: { inteligencia: 20 },
+  oficio: 'constructor-orcos-llanuras',
+  upgradesRecipeKey: 'herboristeria-obrador',
+  edificioOficioNivel: 3,
+  ayuntamientoNivelMinimo: 3,
+};
+
+export const CASA_DE_CURAS_RECIPE: ConstructionRecipe = {
+  key: 'casa-de-curas',
+  name: 'una casa de curas orca de las Llanuras',
+  description: 'Camastros y mesas de vendaje donde los compañeros heridos del reino se recuperan más rápido — servicio, no solo producción: mientras esté ACTIVA, cura un estado más cada día.',
+  raza: 'orcos',
+  nounRegex: /casa de curas|casa-de-curas/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 8, label: 'leña' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piel' }, cantidad: 6, label: 'piel' },
+    { match: { kind: 'exact', catalogSlug: 'manojo-salvia-polvo' }, cantidad: 3, label: 'manojo de salvia del polvo' },
+  ],
+  requisitos: { voluntad: 8 },
+  oficio: 'primeros-auxilios-orcos-llanuras',
+  oficioProducido: 'primeros-auxilios-orcos-llanuras',
+  edificioOficioNivel: 1,
+  companionSlots: 0,
+  requiresAyuntamiento: true,
+};
+export const CASA_DE_CURAS_OBRADOR_RECIPE: ConstructionRecipe = {
+  key: 'casa-de-curas-obrador',
+  name: 'un obrador de casa de curas',
+  description: 'Más camastros y vendajes de reserva — varios compañeros heridos a la vez, no uno detrás de otro.',
+  raza: 'orcos',
+  nounRegex: /(?=.*obrador)(?=.*casa)(?=.*curas)/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piel' }, cantidad: 10, label: 'piel' },
+    { match: { kind: 'exact', catalogSlug: 'manojo-salvia-polvo' }, cantidad: 5, label: 'manojo de salvia del polvo' },
+    { match: { kind: 'exact', catalogSlug: 'viga-madera-tallada' }, cantidad: 1, label: 'viga de madera tallada' },
+  ],
+  requisitos: { voluntad: 14 },
+  oficio: 'constructor-orcos-llanuras',
+  upgradesRecipeKey: 'casa-de-curas',
+  edificioOficioNivel: 2,
+  ayuntamientoNivelMinimo: 2,
+};
+export const CASA_DE_CURAS_GRAN_OBRADOR_RECIPE: ConstructionRecipe = {
+  key: 'casa-de-curas-gran-obrador',
+  name: 'un gran obrador de casa de curas',
+  description: 'Una enfermería de reino de verdad, con camastros suficientes para toda una guarnición herida.',
+  raza: 'orcos',
+  nounRegex: /(?=.*gran)(?=.*obrador)(?=.*casa)(?=.*curas)/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piel' }, cantidad: 16, label: 'piel' },
+    { match: { kind: 'exact', catalogSlug: 'manojo-salvia-polvo' }, cantidad: 10, label: 'manojo de salvia del polvo' },
+    { match: { kind: 'exact', catalogSlug: 'viga-madera-tallada' }, cantidad: 2, label: 'viga de madera tallada' },
+  ],
+  requisitos: { voluntad: 20 },
+  oficio: 'constructor-orcos-llanuras',
+  upgradesRecipeKey: 'casa-de-curas-obrador',
+  edificioOficioNivel: 3,
+  ayuntamientoNivelMinimo: 3,
+};
+
+export const TALLER_ALQUIMIA_RECIPE: ConstructionRecipe = {
+  key: 'taller-alquimia',
+  name: 'un taller de alquimia orco de las Llanuras',
+  description: 'Un fogón de fuego lento y recipientes reales donde convertir lo que trae la herboristería en pociones, contravenenos y filtros de verdad.',
+  raza: 'orcos',
+  nounRegex: /(?=.*taller)(?=.*alquimi)(?!.*(orcos del clan|del clan serhu))/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piedra' }, cantidad: 6, label: 'piedra' },
+    { match: { kind: 'exact', catalogSlug: 'lena-matorral-cuerno' }, cantidad: 4, label: 'leña de matorral de cuerno' },
+    { match: { kind: 'exact', catalogSlug: 'glandula-ignea' }, cantidad: 1, label: 'glándula ígnea' },
+  ],
+  requisitos: { inteligencia: 10 },
+  oficio: 'alquimista-orcos-llanuras',
+  oficioProducido: 'alquimista-orcos-llanuras',
+  edificioOficioNivel: 1,
+  companionSlots: 0,
+  requiresAyuntamiento: true,
+};
+export const TALLER_ALQUIMIA_OBRADOR_RECIPE: ConstructionRecipe = {
+  key: 'taller-alquimia-obrador',
+  name: 'un obrador de alquimia',
+  description: 'Un segundo fogón y más recipientes de cuerno — varias mezclas a fuego lento a la vez.',
+  raza: 'orcos',
+  nounRegex: /(?=.*obrador)(?=.*alquimi)/,
+  requirements: [
+    { match: { kind: 'exact', catalogSlug: 'lena-matorral-cuerno' }, cantidad: 8, label: 'leña de matorral de cuerno' },
+    { match: { kind: 'exact', catalogSlug: 'glandula-ignea' }, cantidad: 2, label: 'glándula ígnea' },
+    { match: { kind: 'exact', catalogSlug: 'bloque-piedra-tallada' }, cantidad: 1, label: 'bloque de piedra tallada' },
+  ],
+  requisitos: { inteligencia: 16 },
+  oficio: 'constructor-orcos-llanuras',
+  upgradesRecipeKey: 'taller-alquimia',
+  edificioOficioNivel: 2,
+  ayuntamientoNivelMinimo: 2,
+};
+export const TALLER_ALQUIMIA_GRAN_OBRADOR_RECIPE: ConstructionRecipe = {
+  key: 'taller-alquimia-gran-obrador',
+  name: 'un gran obrador de alquimia',
+  description: 'Un laboratorio de reino, varios fuegos lentos en fila — la producción de pociones de una facción entera, no de un solo alquimista.',
+  raza: 'orcos',
+  nounRegex: /(?=.*gran)(?=.*obrador)(?=.*alquimi)/,
+  requirements: [
+    { match: { kind: 'exact', catalogSlug: 'lena-matorral-cuerno' }, cantidad: 14, label: 'leña de matorral de cuerno' },
+    { match: { kind: 'exact', catalogSlug: 'glandula-ignea' }, cantidad: 4, label: 'glándula ígnea' },
+    { match: { kind: 'exact', catalogSlug: 'bloque-piedra-tallada' }, cantidad: 2, label: 'bloque de piedra tallada' },
+  ],
+  requisitos: { inteligencia: 22 },
+  oficio: 'constructor-orcos-llanuras',
+  upgradesRecipeKey: 'taller-alquimia-obrador',
+  edificioOficioNivel: 3,
+  ayuntamientoNivelMinimo: 3,
+};
+
+export const COCINA_RECIPE: ConstructionRecipe = {
+  key: 'cocina',
+  name: 'una cocina común orca de las Llanuras',
+  description: 'Ollas de hierro sobre brasas siempre vivas bajo un cobertizo abierto — ahumados, pan y cuajada de verdad para todo el reino, no solo raciones sueltas.',
+  raza: 'orcos',
+  nounRegex: /(?=.*cocina)(?!.*(orcos del clan|del clan serhu|del clan helsig|comun de karot veku|comun de helske tugh))/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 8, label: 'leña' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piedra' }, cantidad: 6, label: 'piedra' },
+    { match: { kind: 'exact', catalogSlug: 'odre-agua' }, cantidad: 1, label: 'odre de agua' },
+  ],
+  requisitos: { constitucion: 8 },
+  // 'cocinero-orco-llanuras' (singular "orco", no "orcos") — inconsistencia ya existente en el
+  // catálogo real (ver `maestro-cocinero-serhu`/`cocina-serhu`, worldCatalog.ts), se respeta tal
+  // cual en vez de "corregirla" aquí y romper el emparejamiento con el resto del motor.
+  oficio: 'cocinero-orco-llanuras',
+  oficioProducido: 'cocinero-orco-llanuras',
+  edificioOficioNivel: 1,
+  companionSlots: 0,
+  requiresAyuntamiento: true,
+};
+export const COCINA_OBRADOR_RECIPE: ConstructionRecipe = {
+  key: 'cocina-obrador',
+  name: 'un obrador de cocina',
+  description: 'Más ollas y un segundo ahumadero — de aquí sale comida de verdad para todo un reino en crecimiento.',
+  raza: 'orcos',
+  nounRegex: /(?=.*obrador)(?=.*cocina)/,
+  requirements: [
+    { match: { kind: 'exact', catalogSlug: 'lingote-de-hierro' }, cantidad: 1, label: 'lingote de hierro' },
+    { match: { kind: 'exact', catalogSlug: 'bloque-piedra-tallada' }, cantidad: 2, label: 'bloque de piedra tallada' },
+    { match: { kind: 'exact', catalogSlug: 'odre-agua' }, cantidad: 2, label: 'odre de agua' },
+  ],
+  requisitos: { constitucion: 14 },
+  oficio: 'constructor-orcos-llanuras',
+  upgradesRecipeKey: 'cocina',
+  edificioOficioNivel: 2,
+  ayuntamientoNivelMinimo: 2,
+};
+export const COCINA_GRAN_OBRADOR_RECIPE: ConstructionRecipe = {
+  key: 'cocina-gran-obrador',
+  name: 'un gran obrador de cocina',
+  description: 'La cocina de una capital de verdad — suficiente para alimentar a soldados, trabajadores y visitantes sin que nadie pase hambre.',
+  raza: 'orcos',
+  nounRegex: /(?=.*gran)(?=.*obrador)(?=.*cocina)/,
+  requirements: [
+    { match: { kind: 'exact', catalogSlug: 'lingote-de-hierro' }, cantidad: 2, label: 'lingote de hierro' },
+    { match: { kind: 'exact', catalogSlug: 'bloque-piedra-tallada' }, cantidad: 4, label: 'bloque de piedra tallada' },
+    { match: { kind: 'exact', catalogSlug: 'odre-agua' }, cantidad: 4, label: 'odre de agua' },
+  ],
+  requisitos: { constitucion: 20 },
+  oficio: 'constructor-orcos-llanuras',
+  upgradesRecipeKey: 'cocina-obrador',
+  edificioOficioNivel: 3,
+  ayuntamientoNivelMinimo: 3,
+};
+
+export const EMBARCADERO_PESCA_RECIPE: ConstructionRecipe = {
+  key: 'embarcadero-pesca',
+  name: 'un embarcadero de pesca orco de las Llanuras',
+  description: 'Un muelle sencillo de madera con cordaje real, para faenar pesca y marisco de verdad — solo tiene sentido junto a costa o agua.',
+  raza: 'orcos',
+  nounRegex: /embarcadero(?!.*(de ceniza|silh makut))/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 10, label: 'leña' },
+    { match: { kind: 'exact', catalogSlug: 'cuerda-tendon' }, cantidad: 4, label: 'cuerda de tendón' },
+    // 'cana-pesca' SÍ existe en el catálogo real (CraftingRecipe 'canaPesca', crafting.ts) — la
+    // pieza propia del oficio que el documento pedía sin encontrarla la primera vez que se buscó.
+    { match: { kind: 'exact', catalogSlug: 'cana-pesca' }, cantidad: 1, label: 'caña de pescar' },
+  ],
+  requisitos: { destreza: 8 },
+  // 'pescador' sin sufijo regional a propósito (ver comentario junto a `maestro-pescador-serhu`,
+  // worldCatalog.ts): es universal, no un combo raza+región de professions.ts.
+  oficio: 'pescador',
+  oficioProducido: 'pescador',
+  edificioOficioNivel: 1,
+  condicionRegion: 'costa',
+  companionSlots: 0,
+  requiresAyuntamiento: true,
+};
+export const EMBARCADERO_PESCA_OBRADOR_RECIPE: ConstructionRecipe = {
+  key: 'embarcadero-pesca-obrador',
+  name: 'un obrador de embarcadero de pesca',
+  description: 'Un segundo muelle y más cordaje — varias barcas faenando a la vez.',
+  raza: 'orcos',
+  nounRegex: /(?=.*obrador)(?=.*embarcadero)/,
+  requirements: [
+    { match: { kind: 'exact', catalogSlug: 'cordaje-trenzado' }, cantidad: 2, label: 'cordaje trenzado' },
+    { match: { kind: 'exact', catalogSlug: 'viga-madera-tallada' }, cantidad: 2, label: 'viga de madera tallada' },
+  ],
+  requisitos: { destreza: 14 },
+  oficio: 'constructor-orcos-llanuras',
+  upgradesRecipeKey: 'embarcadero-pesca',
+  edificioOficioNivel: 2,
+  condicionRegion: 'costa',
+  ayuntamientoNivelMinimo: 2,
+};
+export const EMBARCADERO_PESCA_GRAN_OBRADOR_RECIPE: ConstructionRecipe = {
+  key: 'embarcadero-pesca-gran-obrador',
+  name: 'un gran obrador de embarcadero de pesca',
+  description: 'Un puerto pesquero de reino — varios muelles y barcas reales faenando la costa entera.',
+  raza: 'orcos',
+  nounRegex: /(?=.*gran)(?=.*obrador)(?=.*embarcadero)/,
+  requirements: [
+    { match: { kind: 'exact', catalogSlug: 'cordaje-trenzado' }, cantidad: 4, label: 'cordaje trenzado' },
+    { match: { kind: 'exact', catalogSlug: 'viga-madera-tallada' }, cantidad: 4, label: 'viga de madera tallada' },
+  ],
+  requisitos: { destreza: 20 },
+  oficio: 'constructor-orcos-llanuras',
+  upgradesRecipeKey: 'embarcadero-pesca-obrador',
+  edificioOficioNivel: 3,
+  condicionRegion: 'costa',
+  ayuntamientoNivelMinimo: 3,
+};
+
+export const OBRADOR_PIEDRA_RECIPE: ConstructionRecipe = {
+  key: 'obrador-piedra',
+  name: 'un taller de piedra orco de las Llanuras',
+  description: 'Bloques de piedra tallada y columnas de hueso reales — el material de las mejoras de todo el reino, no solo de este edificio.',
+  raza: 'orcos',
+  nounRegex: /(?=.*taller)(?=.*piedra)(?!.*(herrer|curtidur|peleter|desollader|corral|carpinter|sastrer|herboris|curas|alquimi|cocina|embarcadero|mina))/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piedra' }, cantidad: 14, label: 'piedra' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'hueso' }, cantidad: 4, label: 'hueso' },
+    { match: { kind: 'exact', catalogSlug: 'pico-minero' }, cantidad: 1, label: 'pico de minero' },
+  ],
+  requisitos: { fuerza: 10 },
+  oficio: 'constructor-orcos-llanuras',
+  oficioProducido: 'constructor-orcos-llanuras',
+  edificioOficioNivel: 1,
+  companionSlots: 0,
+  requiresAyuntamiento: true,
+};
+export const OBRADOR_PIEDRA_OBRADOR_RECIPE: ConstructionRecipe = {
+  key: 'obrador-piedra-obrador',
+  name: 'un obrador de piedra',
+  description: 'Más canteros y un segundo puesto de tallado — bloques y columnas a mejor ritmo.',
+  raza: 'orcos',
+  nounRegex: /(?=.*obrador)(?=.*piedra)(?!.*gran)/,
+  requirements: [
+    { match: { kind: 'exact', catalogSlug: 'bloque-piedra-tallada' }, cantidad: 3, label: 'bloque de piedra tallada' },
+    { match: { kind: 'exact', catalogSlug: 'columna-hueso' }, cantidad: 1, label: 'columna de hueso' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piedra' }, cantidad: 10, label: 'piedra' },
+  ],
+  requisitos: { fuerza: 16 },
+  oficio: 'constructor-orcos-llanuras',
+  upgradesRecipeKey: 'obrador-piedra',
+  edificioOficioNivel: 2,
+  ayuntamientoNivelMinimo: 2,
+};
+export const OBRADOR_PIEDRA_GRAN_OBRADOR_RECIPE: ConstructionRecipe = {
+  key: 'obrador-piedra-gran-obrador',
+  name: 'un gran obrador de piedra',
+  description: 'La cantera de un reino de verdad — bloques y columnas suficientes para levantar un gran Ayuntamiento sin depender de la Meseta.',
+  raza: 'orcos',
+  nounRegex: /(?=.*gran)(?=.*obrador)(?=.*piedra)/,
+  requirements: [
+    { match: { kind: 'exact', catalogSlug: 'bloque-piedra-tallada' }, cantidad: 6, label: 'bloque de piedra tallada' },
+    { match: { kind: 'exact', catalogSlug: 'columna-hueso' }, cantidad: 2, label: 'columna de hueso' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piedra' }, cantidad: 16, label: 'piedra' },
+  ],
+  requisitos: { fuerza: 22 },
+  oficio: 'constructor-orcos-llanuras',
+  upgradesRecipeKey: 'obrador-piedra-obrador',
+  edificioOficioNivel: 3,
+  ayuntamientoNivelMinimo: 3,
+};
+
+export const BOCA_MINA_RECIPE: ConstructionRecipe = {
+  key: 'boca-mina',
+  name: 'una boca de mina orca de las Llanuras',
+  description: 'Entrada excavada y apuntalada con vigas, de donde extraer mena y mineral de la región — solo tiene sentido en una zona con veta real.',
+  raza: 'orcos',
+  nounRegex: /boca de mina|boca-mina/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 10, label: 'leña' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piedra' }, cantidad: 8, label: 'piedra' },
+    { match: { kind: 'exact', catalogSlug: 'pico-minero' }, cantidad: 1, label: 'pico de minero' },
+  ],
+  requisitos: { fuerza: 10 },
+  // 'minero-llanuras' (solo región, sin raza) — mismo patrón que 'talador-llanuras', ver
+  // startingProfessions.ts: minero/talador escalan solo por región, no por raza+región.
+  oficio: 'minero-llanuras',
+  oficioProducido: 'minero-llanuras',
+  edificioOficioNivel: 1,
+  condicionRegion: 'veta',
+  companionSlots: 0,
+  requiresAyuntamiento: true,
+};
+export const BOCA_MINA_OBRADOR_RECIPE: ConstructionRecipe = {
+  key: 'boca-mina-obrador',
+  name: 'un obrador de boca de mina',
+  description: 'Galerías más profundas y más apuntaladas — mena de mejor calidad, más deprisa.',
+  raza: 'orcos',
+  nounRegex: /(?=.*obrador)(?=.*mina)/,
+  requirements: [
+    { match: { kind: 'exact', catalogSlug: 'viga-madera-tallada' }, cantidad: 2, label: 'viga de madera tallada' },
+    { match: { kind: 'exact', catalogSlug: 'bloque-piedra-tallada' }, cantidad: 2, label: 'bloque de piedra tallada' },
+  ],
+  requisitos: { fuerza: 16 },
+  oficio: 'constructor-orcos-llanuras',
+  upgradesRecipeKey: 'boca-mina',
+  edificioOficioNivel: 2,
+  condicionRegion: 'veta',
+  ayuntamientoNivelMinimo: 2,
+};
+export const BOCA_MINA_GRAN_OBRADOR_RECIPE: ConstructionRecipe = {
+  key: 'boca-mina-gran-obrador',
+  name: 'un gran obrador de boca de mina',
+  description: 'Una mina de reino de verdad, varias galerías apuntaladas a la vez — el mineral que sostiene toda la herrería y la construcción.',
+  raza: 'orcos',
+  nounRegex: /(?=.*gran)(?=.*obrador)(?=.*mina)/,
+  requirements: [
+    { match: { kind: 'exact', catalogSlug: 'viga-madera-tallada' }, cantidad: 4, label: 'viga de madera tallada' },
+    { match: { kind: 'exact', catalogSlug: 'bloque-piedra-tallada' }, cantidad: 4, label: 'bloque de piedra tallada' },
+  ],
+  requisitos: { fuerza: 22 },
+  oficio: 'constructor-orcos-llanuras',
+  upgradesRecipeKey: 'boca-mina-obrador',
+  edificioOficioNivel: 3,
+  condicionRegion: 'veta',
+  ayuntamientoNivelMinimo: 3,
+};
+
 // Cuartel Avanzado (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, 2026-09-21) — "puesto avanzado" ya
 // anticipado en el comentario de AYUNTAMIENTO_PEQUENO_RECIPE desde 2026-08-04. A diferencia de la
 // Choza (`requiresAyuntamiento`, cuenta contra `reinoBuildingCapacity`), este cuenta contra su
@@ -530,6 +1343,52 @@ export const CONSTRUCTION_RECIPES: ConstructionRecipe[] = [
   JAULA_GRANDE_RECIPE,
   JAULA_MEDIANA_RECIPE,
   JAULA_PEQUENA_RECIPE,
+  // Edificios de oficio (2026-09-28) — mismo criterio de orden que Ayuntamiento/Jaula arriba: el
+  // "gran obrador" DEBE comprobarse antes que "obrador" a secas, porque su `nounRegex` no excluye
+  // "obrador" (solo exige "gran"+"obrador"+oficio) — si "obrador" fuera primero, "un gran obrador
+  // de herrería" ya matchearía esa receta más simple antes de llegar a la correcta.
+  HERRERIA_GRAN_OBRADOR_RECIPE,
+  HERRERIA_OBRADOR_RECIPE,
+  HERRERIA_RECIPE,
+  CURTIDURIA_GRAN_OBRADOR_RECIPE,
+  CURTIDURIA_OBRADOR_RECIPE,
+  CURTIDURIA_RECIPE,
+  PELETERIA_GRAN_OBRADOR_RECIPE,
+  PELETERIA_OBRADOR_RECIPE,
+  PELETERIA_RECIPE,
+  DESOLLADERO_GRAN_OBRADOR_RECIPE,
+  DESOLLADERO_OBRADOR_RECIPE,
+  DESOLLADERO_RECIPE,
+  CORRALES_GRAN_OBRADOR_RECIPE,
+  CORRALES_OBRADOR_RECIPE,
+  CORRALES_RECIPE,
+  CARPINTERIA_GRAN_OBRADOR_RECIPE,
+  CARPINTERIA_OBRADOR_RECIPE,
+  CARPINTERIA_RECIPE,
+  SASTRERIA_GRAN_OBRADOR_RECIPE,
+  SASTRERIA_OBRADOR_RECIPE,
+  SASTRERIA_RECIPE,
+  HERBORISTERIA_GRAN_OBRADOR_RECIPE,
+  HERBORISTERIA_OBRADOR_RECIPE,
+  HERBORISTERIA_RECIPE,
+  CASA_DE_CURAS_GRAN_OBRADOR_RECIPE,
+  CASA_DE_CURAS_OBRADOR_RECIPE,
+  CASA_DE_CURAS_RECIPE,
+  TALLER_ALQUIMIA_GRAN_OBRADOR_RECIPE,
+  TALLER_ALQUIMIA_OBRADOR_RECIPE,
+  TALLER_ALQUIMIA_RECIPE,
+  COCINA_GRAN_OBRADOR_RECIPE,
+  COCINA_OBRADOR_RECIPE,
+  COCINA_RECIPE,
+  EMBARCADERO_PESCA_GRAN_OBRADOR_RECIPE,
+  EMBARCADERO_PESCA_OBRADOR_RECIPE,
+  EMBARCADERO_PESCA_RECIPE,
+  OBRADOR_PIEDRA_GRAN_OBRADOR_RECIPE,
+  OBRADOR_PIEDRA_OBRADOR_RECIPE,
+  OBRADOR_PIEDRA_RECIPE,
+  BOCA_MINA_GRAN_OBRADOR_RECIPE,
+  BOCA_MINA_OBRADOR_RECIPE,
+  BOCA_MINA_RECIPE,
 ];
 
 /// `key` de las recetas que cuentan contra `reinoBuildingCapacity` (edificios normales de reino,
@@ -623,6 +1482,25 @@ export async function computeBuildBlockedReason(params: {
   if (zonePointsEdificioEnLocation > 0) {
     return 'este lugar ya tiene edificios de otra facción — construye en una zona libre';
   }
+  // Reglas de sitio de los edificios de oficio (docs/rpgtarkor/sistemas-reino/edificios-de-oficio.md
+  // § 3, 2026-09-28) — 'costa' exige el TerrainTag 'costero'/'acuatico', 'veta' exige 'rocoso'
+  // (proxy de "tiene mena", ver comentario de `condicionRegion` en la interfaz). Una Location sin
+  // tags catalogados nunca bloquea (mismo criterio que `pasaFiltroTerreno`, terrain.ts) — hoy eso
+  // cubre todo el núcleo jugable real (Karot Veku no tiene tags), así que esto no bloquea nada
+  // todavía en la práctica, solo queda listo para cuando haya más zonas tagueadas.
+  if (buildRecipe.condicionRegion) {
+    const locationSlug = await db.location.findUnique({ where: { id: currentLocationRecord.id }, select: { slug: true } });
+    const tags = locationSlug ? locationTerrainTags[locationSlug.slug] : undefined;
+    const cumpleCondicion =
+      !tags ||
+      tags.length === 0 ||
+      (buildRecipe.condicionRegion === 'costa' ? tags.some((t) => t === 'costero' || t === 'acuatico') : tags.includes('rocoso'));
+    if (!cumpleCondicion) {
+      return buildRecipe.condicionRegion === 'costa'
+        ? 'esto solo se puede levantar en una zona de costa o agua'
+        : 'esto solo se puede levantar en una zona con veta de mena';
+    }
+  }
   if (buildRecipe.maxPerRegion) {
     const sameRegionCount = await db.building.count({
       where: {
@@ -706,19 +1584,52 @@ export async function computeBuildBlockedReason(params: {
     // `status: 'ACTIVO'` (2026-08-23, Grupo 3 § Building.status): antes de que EN_CONSTRUCCION
     // fuera alcanzable de verdad, esta fila SIEMPRE era ACTIVO, así que el filtro no hacía falta —
     // ahora sí, para no dejar mejorar un Ayuntamiento que todavía se está terminando de levantar.
+    // Edificios de oficio (2026-09-28): `upgradesRecipeKey` aquí es la `key` del edificio de nivel
+    // 1 (p.ej. 'herreria'), no una key compartida como Ayuntamiento/Cuartel — cada Building de
+    // oficio tiene su propia `recipeKey` estable, la mejora hace `UPDATE` de esa misma fila
+    // (turnResolution.ts, mismo mecanismo que ya usa Ayuntamiento).
     const target = await db.building.findFirst({ where: { saveId, recipeKey: buildRecipe.upgradesRecipeKey, status: 'ACTIVO' } });
     if (!target) {
       return buildRecipe.cuartelUpgradeBonus
         ? 'no tiene ningún Cuartel Avanzado que mejorar todavía'
-        : 'no tiene ningún Ayuntamiento que mejorar todavía';
+        : buildRecipe.edificioOficioNivel
+          ? 'no tiene ese edificio construido todavía'
+          : 'no tiene ningún Ayuntamiento que mejorar todavía';
     }
-    // Ayuntamiento escala por `tier` (1→2→3, exige el nivel justo anterior); el Cuartel Avanzado
-    // no tiene niveles — su única condición es "existe y está ACTIVO", ya comprobado arriba.
+    // Ayuntamiento y edificios de oficio escalan por `tier` (1→2→3, exigen el nivel justo
+    // anterior); el Cuartel Avanzado no tiene niveles — su única condición es "existe y está
+    // ACTIVO", ya comprobado arriba.
     if (buildRecipe.ayuntamientoNivel) {
       const expectedCurrentTier = buildRecipe.ayuntamientoNivel - 1;
       if ((target.tier ?? 1) !== expectedCurrentTier) {
         return 'su Ayuntamiento no está en el nivel justo anterior para esta mejora';
       }
+    }
+    if (buildRecipe.edificioOficioNivel) {
+      const expectedCurrentTier = buildRecipe.edificioOficioNivel - 1;
+      if ((target.tier ?? 1) !== expectedCurrentTier) {
+        return 'ese edificio no está en el nivel justo anterior para esta mejora';
+      }
+    }
+  }
+  // Nivel mínimo de Ayuntamiento para edificios de oficio de nivel 2/3 (§ 2: Obrador exige
+  // Ayuntamiento mediano, Gran obrador exige grande) — comprobación aparte de `requiresAyuntamiento`
+  // de arriba porque aquí importa el NIVEL, no solo que exista.
+  if (buildRecipe.ayuntamientoNivelMinimo) {
+    const ayuntamiento = await db.building.findFirst({ where: { saveId, recipeKey: 'ayuntamiento', status: 'ACTIVO' } });
+    if (!ayuntamiento || (ayuntamiento.tier ?? 1) < buildRecipe.ayuntamientoNivelMinimo) {
+      return `necesita un Ayuntamiento de nivel ${buildRecipe.ayuntamientoNivelMinimo} o superior`;
+    }
+  }
+  // Corrales del Domador (§ 3: "necesitan al menos una Jaula del reino, las capturas pasan de la
+  // Jaula al Corral") — sin esto, construir Corrales sin haber capturado nunca nada no tendría
+  // ninguna Jaula real de la que recibir animales.
+  if (buildRecipe.key === 'corrales' && !buildRecipe.upgradesRecipeKey) {
+    const jaulaCount = await db.building.count({
+      where: { saveId, recipeKey: { in: ['jaula-pequena', 'jaula-mediana', 'jaula-grande'] }, status: 'ACTIVO' },
+    });
+    if (jaulaCount === 0) {
+      return 'necesita al menos una Jaula construida — los Corrales reciben a los animales desde ahí';
     }
   }
   // Máximo 1 Ayuntamiento por partida (de facto, "por continente" — hoy solo Berig está en juego):

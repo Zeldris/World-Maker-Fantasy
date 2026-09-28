@@ -3108,6 +3108,75 @@ describe('OrdenProduccion: tick real de producción de Reino (§ 4.4-ter, 2026-0
     const progresoJugador = await prisma.professionProgress.findFirst({ where: { saveId, professionId: 'cocinero-orco-llanuras' } });
     expect(progresoJugador).toBeNull(); // el jugador nunca gana XP por el trabajo de su Reino
   }, 20_000);
+
+  // Gate NIVEL_EDIFICIO_INSUFICIENTE (docs/rpgtarkor/sistemas-reino/edificios-de-oficio.md § 2/§ 7,
+  // 2026-09-28) — un Building con `tier: 1` (Taller) no admite una receta de tier > 3, aunque el
+  // trabajador y la materia prima sobren.
+  it('Taller (tier 1) no admite una receta de tier alto, aunque haya trabajador y materia prima', async () => {
+    await setUp();
+    await prisma.building.update({ where: { id: buildingId }, data: { tier: 1 } });
+    await prisma.almacenItem.create({ data: { saveId, name: 'Cola de Coracelo', description: 'x', catalogSlug: 'cola-coracelo' } });
+    await prisma.ordenProduccion.create({ data: { buildingId, recipeKey: 'coraceloMace', modo: 'reponer', prioridad: 5 } }); // tier 3, sigue dentro del Taller
+    await prisma.professionProgress.create({ data: { companionId, professionId: 'herrero-orco-llanuras', nivel: 9, xp: 8000 } });
+    narrateAction.mockClear();
+
+    await doPassiveTurn('Espero aquí varios días, dejando pasar el tiempo tranquilamente.');
+
+    // tier 3 SÍ cabe en un Taller (tier 1 admite 1-3) — confirma que el gate no bloquea de más.
+    expect(await prisma.almacenItem.count({ where: { saveId, catalogSlug: 'maza-coracelo' } })).toBe(1);
+  }, 20_000);
+
+  // Servicio de la Casa de curas (§ 3/§ 7, 2026-09-28) — hermano del tick de OrdenProduccion, cura
+  // a TODOS los Companion de Reino heridos de la partida, no solo a los que trabajan en ella.
+  it('Casa de curas ACTIVA cura un escalón a un Companion de Reino herido, aunque no trabaje ahí', async () => {
+    await setUp();
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { slug: 'hondonada-del-eco' } });
+    await prisma.building.create({
+      data: { saveId, locationId: hondonada.id, recipeKey: 'casa-de-curas', tier: 1, name: 'Casa de curas de prueba', kind: 'casa-de-curas', description: 'x', status: 'ACTIVO' },
+    });
+    const heridoGuardia = await prisma.companion.create({
+      data: { saveId, name: 'Guardia herido de prueba', role: 'guardia', notes: 'x', rolReino: 'guardia', condicionFisica: 'GRAVE' },
+    });
+    narrateAction.mockClear();
+
+    await doPassiveTurn('Espero aquí varios días, dejando pasar el tiempo tranquilamente.');
+
+    const actualizado = await prisma.companion.findUniqueOrThrow({ where: { id: heridoGuardia.id } });
+    expect(actualizado.condicionFisica).toBe('HERIDO');
+  }, 20_000);
+
+  it('sin ninguna Casa de curas ACTIVA, un Companion de Reino herido no mejora solo', async () => {
+    await setUp();
+    const heridoGuardia = await prisma.companion.create({
+      data: { saveId, name: 'Guardia herido sin curas de prueba', role: 'guardia', notes: 'x', rolReino: 'guardia', condicionFisica: 'GRAVE' },
+    });
+    narrateAction.mockClear();
+
+    await doPassiveTurn('Espero aquí varios días, dejando pasar el tiempo tranquilamente.');
+
+    const actualizado = await prisma.companion.findUniqueOrThrow({ where: { id: heridoGuardia.id } });
+    expect(actualizado.condicionFisica).toBe('GRAVE');
+  }, 20_000);
+
+  // Producción de facción agregada (§ 4/§ 7, 2026-09-28, decisión de Álvaro) — independiente del
+  // Reino del jugador, recorre TODAS las facciones del mundo cada vez que se cruza un día de
+  // ficción, sin importar qué partida disparó el turno. Usa la facción real ya sembrada (Clan
+  // Serhu, con su Herrería/Curtiduría/Cocina ACTIVAS de catálogo) en vez de crear una de prueba.
+  it('la producción de facción sube KingdomStats.comida/riqueza de una facción real (Clan Serhu), sin depender del Reino del jugador', async () => {
+    await setUp();
+    const serhu = await prisma.faction.findFirstOrThrow({ where: { name: 'Clan Serhu' } });
+    const statsAntes = await prisma.kingdomStats.findUniqueOrThrow({ where: { ownerKey: `faction:${serhu.id}` } });
+    narrateAction.mockClear();
+
+    await doPassiveTurn('Espero aquí varios días, dejando pasar el tiempo tranquilamente.');
+
+    const statsDespues = await prisma.kingdomStats.findUniqueOrThrow({ where: { ownerKey: `faction:${serhu.id}` } });
+    // La Cocina Serhu suma comida, la Herrería y la Curtiduría suman riqueza (y el resto de
+    // talleres sembrados de esta misma tanda) — ambos números deben subir, sin necesidad de
+    // enumerar cada edificio uno a uno.
+    expect(statsDespues.comida).toBeGreaterThan(statsAntes.comida);
+    expect(statsDespues.riqueza).toBeGreaterThan(statsAntes.riqueza);
+  }, 20_000);
 });
 
 // Cobertura nueva (auditoría de deuda técnica 2026-08-04, bug real de condición de carrera):

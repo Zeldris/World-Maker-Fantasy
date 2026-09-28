@@ -2,8 +2,10 @@
 
 [← Volver al índice](mundo-vivo-x4.md) · [Construcciones y economía de Reino](construcciones-reino.md)
 
-**Estado:** diseño cerrado por Claude (2026-09-28), pendiente de validar con Álvaro y **sin código**.
-Todo lo que pide código está en la lista de "Implementación", al final.
+**Estado:** diseño cerrado por Claude (2026-09-28), validado con Álvaro (agregado simple de
+producción de facción, § 4) y **con código** — ver la lista de "Implementación" al final, cada
+punto ya marcado. Obrador de piedra (Serhu) y Casa de curas (Helsig) quedan sin sembrar en el
+catálogo: sus oficios existen pero no tienen Maestro real todavía.
 
 ---
 
@@ -175,40 +177,61 @@ falta y se evita inventar vocabulario.
 ## 7. Implementación (para la pasada de código)
 
 **Receta y validación**
-- [ ] `construction.ts`: 14 `ConstructionRecipe` de nivel 1 (`raza: 'orcos'`, `edificioTipo:
-  'produccion'`, `requiresAyuntamiento: true`, `oficio: 'constructor-orcos-llanuras'`) y 28 de
-  mejora (niveles 2 y 3) con `upgradesRecipeKey`. Añadir a `ConstructionRecipe`:
-  - un campo nuevo `oficioProducido` (qué oficio trabaja dentro);
-  - un campo nuevo `condicionRegion?: 'costa' | 'veta'`.
-- [ ] `computeBuildBlockedReason`: la condición de región (costa o veta), que haya al menos una
-  Jaula para los Corrales, y el nivel mínimo de Ayuntamiento y de `constructor` para las mejoras.
+- [x] `construction.ts` (2026-09-28): 14 `ConstructionRecipe` de nivel 1 (`raza: 'orcos'`,
+  `requiresAyuntamiento: true`) y 28 de mejora (niveles 2 y 3) con `upgradesRecipeKey`. Ajuste
+  sobre el diseño original: el nivel 1 lleva el `oficio` PROPIO del edificio (herrero, curtidor…),
+  no `constructor-orcos-llanuras` — cualquiera con ese oficio puede levantar su propio Taller;
+  `constructor-orcos-llanuras` sí se exige en las 28 mejoras (Obrador/Gran obrador), coherente con
+  que mejorar es una obra de construcción real. Añadidos a `ConstructionRecipe`:
+  - `oficioProducido` (qué oficio trabaja dentro);
+  - `condicionRegion?: 'costa' | 'veta'`;
+  - `edificioOficioNivel`/`ayuntamientoNivelMinimo` (paralelos a `ayuntamientoNivel`, para el
+    mismo mecanismo UPDATE-de-tier de las mejoras).
+- [x] `computeBuildBlockedReason` (2026-09-28): condición de región ('costa' = TerrainTag
+  costero/acuático, 'veta' = proxy 'rocoso' — no existe tag 'veta' propio), Jaula requerida para
+  Corrales, y nivel mínimo de Ayuntamiento (`ayuntamientoNivelMinimo`) para las mejoras. El nivel
+  de `constructor` mínimo se exige vía `requisitos`/`oficio` normales (mismo patrón que ya usa el
+  propio Ayuntamiento mediano/grande), no un mecanismo de "nivel de oficio mínimo" nuevo.
 
 **Motor de producción**
-- [ ] `kingdomProduction.ts`: gate nuevo `NIVEL_EDIFICIO_INSUFICIENTE`
-  (tier de receta > 3 × `Building.tier`). Plazas de trabajador por nivel (1/2/4) al asignar
-  `Companion.buildingId`. La receta de la orden debe ser del `oficioProducido` del edificio.
-- [ ] Casa de curas, servicio: en el tick diario, los compañeros heridos del reino con Casa de curas
-  activa bajan un estado de herida más. Reutilizar la lógica de recuperación existente, no crear
-  otra.
-- [ ] Cocina común: su producción suma a `KingdomStats.comida` (hoy `COMIDA_POR_TRABAJADOR` es un
-  número inventado).
-- [ ] Facciones: agregado diario de los edificios de facción `ACTIVO` a su `KingdomStats`
-  (pendiente de la decisión del § 4).
+- [x] `kingdomProduction.ts` (2026-09-28): gate nuevo `NIVEL_EDIFICIO_INSUFICIENTE`
+  (`nivelEdificioRequeridoParaTier`, construction.ts). Plazas de trabajador por nivel (1/2/4,
+  `plazasTrabajadorParaTier`) aplicadas en la ruta de asignar `Companion.buildingId`
+  (companeros.ts) — sin cambio en el motor puro, el tope vive en la ruta HTTP.
+- [x] Casa de curas, servicio (2026-09-28): en el tick diario, TODOS los `Companion` de Reino
+  (`rolReino` no null) heridos de la partida bajan un estado más, reutilizando `oneStepBetterThan`
+  (death.ts) — no solo los que trabajan en la propia Casa de curas.
+- [x] Cocina común (2026-09-28): su producción suma directo a `KingdomStats.comida` (turnResolution.ts,
+  junto al depósito en Almacén) — `COMIDA_POR_TRABAJADOR` (kingdomTick.ts) se queda intacto para el
+  Reino del jugador, sin tocar ese sistema aparte.
+- [x] Facciones (2026-09-28, validado con Álvaro): agregado diario de los edificios de facción
+  `ACTIVO` a su `KingdomStats` (`tickFactionProduction`, kingdomTick.ts) — recorre TODAS las
+  facciones del mundo en cada turno que cruza un día, independiente del Reino del jugador.
 
 **Catálogo y seed**
-- [ ] `worldCatalog.ts`: sembrar los edificios de facción que faltan (tabla del § 4), con
-  `ZonePoint` junto a cada Maestro. Serhu: 9 en el poblado + el embarcadero. Helsig: 1. Goshg: 1.
-- [ ] Recetas de extracción (sin ingredientes) para la Boca de mina, el Embarcadero de pesca, la
-  Herboristería y los Corrales. Hoy ninguna `CraftingRecipe` tiene `ingredients: []` (ya anotado en
-  construcciones-reino.md como pendiente).
+- [x] `worldCatalog.ts` (2026-09-28): sembrados los edificios de facción que faltaban con Maestro
+  real — Serhu: Herboristería/Alquimia/Corrales/Desolladero/Carpintería (tanda A-09) +
+  Peletería/Sastrería/Casa de curas/Embarcadero de pesca (esta tanda), con su `ZonePoint`. Helsig
+  ya estaba completo salvo Casa de curas. **Aplazados**: Obrador de piedra (Serhu) y Casa de curas
+  (Helsig) — sus oficios (`constructor-orcos-llanuras`, `primeros-auxilios-orcos-cristal`) no
+  tienen ningún Maestro sembrado todavía. Goshg (P-06) sigue aplazado del todo.
+- [x] Recetas de extracción (2026-09-28): 4 `CraftingRecipe` sin ingredientes (mena de hierro,
+  pesca, hierbas, leche de Múrgol) con `requiresUnlock: true` sin desbloquear nunca — solo
+  asignables desde el panel de Reino, nunca crafteables a mano.
 
 **Frontend, imágenes y tests**
-- [ ] Parcelas `BASICA`: `candidateRecipesForBasica()` ya es genérico; los 14 edificios aparecen
-  solos como candidatos.
-- [ ] Prompts de imagen (los escribe Claude; la imagen, Álvaro): 14 edificios × 3 niveles, con
-  variante regional.
-- [ ] Tests: receta por nivel, condición de región, gate de nivel de edificio, plazas de trabajador
-  y el servicio de la Casa de curas.
+- [x] Parcelas `BASICA`: confirmado sin cambios — `candidateRecipesForBasica()` ya es genérico, los
+  14 edificios de nivel 1 aparecen solos como candidatos (todos `requiresAyuntamiento`, sin
+  `upgradesRecipeKey`, sin `isCuartelAvanzado`).
+- [x] Prompts de imagen: confirmado sin cambios — el sistema genera el prompt bajo demanda a partir
+  de `name`/`description` de la receta (`imagePromptGenerator.ts`), igual que cualquier otra
+  `ConstructionRecipe` ya existente; no hace falta escribir nada a mano por edificio.
+- [x] Tests (2026-09-28): unitarios en `construction.test.ts`/`kingdomProduction.test.ts`/
+  `kingdomTick.test.ts` (receta por nivel, condición de región, gate de nivel de edificio, servicio
+  de Casa de curas, agregado de facción) + integración contra Postgres real en
+  `turn.integration.test.ts`/`companeros.integration.test.ts` (gate de nivel de edificio en un
+  turno real, Casa de curas curando de verdad, plazas de trabajador, producción de facción real
+  del Clan Serhu).
 
 ---
 

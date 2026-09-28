@@ -112,3 +112,37 @@ export function tickKingdom(stats: KingdomStatsBlock, dias: number): KingdomStat
 export function daysCrossed(minutosAntes: number, minutosDespues: number): number {
   return Math.floor(minutosDespues / 1440) - Math.floor(minutosAntes / 1440);
 }
+
+/// Producción de facción agregada (docs/rpgtarkor/sistemas-reino/edificios-de-oficio.md § 4/§ 7,
+/// 2026-09-28, decisión de Álvaro): el Almacén de Reino (`AlmacenItem`) es solo del jugador (§
+/// 4.4-ter) — las facciones NO tienen objetos reales, solo un número agregado por día a
+/// `KingdomStats.comida`/`riqueza`, igual que hace X4 con la economía simulada de las IA. Cada
+/// `FactionBuilding` (Building.factionId no null) `ACTIVO` suma según su clase: la(s) Cocina(s)
+/// suman comida, el resto de edificios de oficio suman riqueza — un edificio quemado deja de sumar
+/// de inmediato (consecuencia económica real de la guerra por estructuras, § 7.4 de
+/// mundo-vivo-x4.md), sin necesidad de montar un almacén de objetos por facción.
+const PRODUCCION_FACCION_POR_EDIFICIO_COCINA = 3;
+const PRODUCCION_FACCION_POR_EDIFICIO_OFICIO = 2;
+const COCINA_RECIPE_KEYS = new Set(['cocina', 'cocina-obrador', 'cocina-gran-obrador', 'cocina-serhu', 'cocina-helsig']);
+/// Resto de `Building.recipeKey` de facción que SÍ cuentan como "edificio de oficio" para este
+/// agregado — el salón (`*-sedsar`) y la boca de mina/embarcadero cuentan igual que cualquier otro
+/// taller (dan riqueza, no comida), pero el propio salón (`Ketg'sedsar`...) NO es un edificio de
+/// oficio y no produce nada — se excluye explícitamente.
+const SALON_RECIPE_KEYS = new Set(['ketg-sedsar', 'helsig-sedsar', 'goshg-sedsar']);
+
+export interface FactionBuildingForTick {
+  recipeKey: string | null;
+  status: string;
+}
+
+/// Puro: cuánto suma UN día de producción agregada de facción, a partir de sus `Building` reales.
+export function tickFactionProduction(buildings: FactionBuildingForTick[]): { comida: number; riqueza: number } {
+  let comida = 0;
+  let riqueza = 0;
+  for (const b of buildings) {
+    if (b.status !== 'ACTIVO' || !b.recipeKey || SALON_RECIPE_KEYS.has(b.recipeKey)) continue;
+    if (COCINA_RECIPE_KEYS.has(b.recipeKey)) comida += PRODUCCION_FACCION_POR_EDIFICIO_COCINA;
+    else riqueza += PRODUCCION_FACCION_POR_EDIFICIO_OFICIO;
+  }
+  return { comida, riqueza };
+}

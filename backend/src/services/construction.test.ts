@@ -11,6 +11,8 @@ import {
   detectsBuildIntent,
   planConsumption,
   quantityOf,
+  nivelEdificioRequeridoParaTier,
+  plazasTrabajadorParaTier,
   type ConstructionRecipe,
 } from './construction.js';
 import type { AttributeBlock } from './dice.js';
@@ -307,5 +309,76 @@ describe('Campos de reglas de reino en las recetas (2026-08-04)', () => {
     expect(AYUNTAMIENTO_GRANDE_RECIPE.upgradesRecipeKey).toBe('ayuntamiento');
     expect(AYUNTAMIENTO_GRANDE_RECIPE.ayuntamientoNivel).toBe(3);
     expect(AYUNTAMIENTO_GRANDE_RECIPE.reinoBuildingCapacity).toBe(60);
+  });
+});
+
+describe('Edificios de oficio (docs/rpgtarkor/sistemas-reino/edificios-de-oficio.md, 2026-09-28)', () => {
+  it('nivelEdificioRequeridoParaTier: Taller admite 1-3, Obrador 4-6, Gran obrador 7-9', () => {
+    expect(nivelEdificioRequeridoParaTier(1)).toBe(1);
+    expect(nivelEdificioRequeridoParaTier(3)).toBe(1);
+    expect(nivelEdificioRequeridoParaTier(4)).toBe(2);
+    expect(nivelEdificioRequeridoParaTier(6)).toBe(2);
+    expect(nivelEdificioRequeridoParaTier(7)).toBe(3);
+    expect(nivelEdificioRequeridoParaTier(9)).toBe(3);
+  });
+
+  it('plazasTrabajadorParaTier: 1/2/4 por nivel, null sin nivel de edificio', () => {
+    expect(plazasTrabajadorParaTier(null)).toBeNull();
+    expect(plazasTrabajadorParaTier(1)).toBe(1);
+    expect(plazasTrabajadorParaTier(2)).toBe(2);
+    expect(plazasTrabajadorParaTier(3)).toBe(4);
+  });
+
+  it('las 14 recetas base llevan oficioProducido, edificioOficioNivel 1 y requiresAyuntamiento', () => {
+    const baseKeys = [
+      'herreria', 'curtiduria', 'peleteria', 'desolladero', 'corrales', 'carpinteria', 'sastreria',
+      'herboristeria', 'casa-de-curas', 'taller-alquimia', 'cocina', 'embarcadero-pesca', 'obrador-piedra', 'boca-mina',
+    ];
+    for (const key of baseKeys) {
+      const recipe = CONSTRUCTION_RECIPES.find((r) => r.key === key);
+      expect(recipe, `receta base '${key}' no encontrada`).toBeDefined();
+      expect(recipe!.oficioProducido, `'${key}'.oficioProducido`).toBeTruthy();
+      expect(recipe!.edificioOficioNivel, `'${key}'.edificioOficioNivel`).toBe(1);
+      expect(recipe!.requiresAyuntamiento, `'${key}'.requiresAyuntamiento`).toBe(true);
+    }
+  });
+
+  it('Embarcadero de pesca y Boca de mina llevan condicionRegion en sus 3 niveles', () => {
+    for (const key of ['embarcadero-pesca', 'embarcadero-pesca-obrador', 'embarcadero-pesca-gran-obrador']) {
+      expect(CONSTRUCTION_RECIPES.find((r) => r.key === key)!.condicionRegion).toBe('costa');
+    }
+    for (const key of ['boca-mina', 'boca-mina-obrador', 'boca-mina-gran-obrador']) {
+      expect(CONSTRUCTION_RECIPES.find((r) => r.key === key)!.condicionRegion).toBe('veta');
+    }
+  });
+
+  it('las mejoras de nivel 2/3 llevan ayuntamientoNivelMinimo y edificioOficioNivel crecientes', () => {
+    const obrador = CONSTRUCTION_RECIPES.find((r) => r.key === 'herreria-obrador')!;
+    const granObrador = CONSTRUCTION_RECIPES.find((r) => r.key === 'herreria-gran-obrador')!;
+    expect(obrador.edificioOficioNivel).toBe(2);
+    expect(obrador.ayuntamientoNivelMinimo).toBe(2);
+    expect(obrador.upgradesRecipeKey).toBe('herreria');
+    expect(granObrador.edificioOficioNivel).toBe(3);
+    expect(granObrador.ayuntamientoNivelMinimo).toBe(3);
+    expect(granObrador.upgradesRecipeKey).toBe('herreria-obrador');
+  });
+
+  it('el orden en CONSTRUCTION_RECIPES pone "gran obrador" antes que "obrador" a secas, por familia', () => {
+    const keys = CONSTRUCTION_RECIPES.map((r) => r.key);
+    expect(keys.indexOf('herreria-gran-obrador')).toBeLessThan(keys.indexOf('herreria-obrador'));
+    expect(keys.indexOf('herreria-obrador')).toBeLessThan(keys.indexOf('herreria'));
+  });
+
+  it('detectsBuildIntent distingue Taller/Obrador/Gran obrador de herrería por texto', () => {
+    const herreria = CONSTRUCTION_RECIPES.find((r) => r.key === 'herreria')!;
+    const obrador = CONSTRUCTION_RECIPES.find((r) => r.key === 'herreria-obrador')!;
+    const granObrador = CONSTRUCTION_RECIPES.find((r) => r.key === 'herreria-gran-obrador')!;
+    expect(detectsBuildIntent(herreria, 'Construyo una herrería')).toBe(true);
+    expect(detectsBuildIntent(obrador, 'Mejoro a un obrador de herrería')).toBe(true);
+    expect(detectsBuildIntent(granObrador, 'Mejoro a un gran obrador de herrería')).toBe(true);
+    // El nounRegex del Taller no excluye "gran obrador de herrería" a propósito (el orden del
+    // array es lo que decide, ver test de arriba) — pero si se comprueba el Taller AISLADO,
+    // el texto de la mejora también matchea su patrón más simple.
+    expect(detectsBuildIntent(herreria, 'Mejoro a un gran obrador de herrería')).toBe(true);
   });
 });
