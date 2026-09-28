@@ -152,6 +152,8 @@ Rompen una mecánica en partida real. Referencias H-x:
 - **Rondas de OpenCode** con la capa `canon-opencode/` y las chuletas nuevas. Primera prueba de
   control pendiente: `FAUNA margen`, `ITEMS llanuras` y `EVENTOS` orco, con HUECOS → ESCRIBE →
   REVISA. **[A]**
+- 🧭 **Contradicciones de canon de la auditoría del 2026-09-28** (preguntas 11-17). Los arreglos
+  mecánicos ya están hechos (`5ea81cb`, `e089754`). **[H]**
 - Revisar la propuesta **B18** (Bolco/Bulco) en
   [propuestas-lore.md](../borradores-opencode/propuestas-lore.md). **[A]**
 - Opcionales de las fichas aprobadas: entradas de `historiaEntries` con su documento, `loreChunks` +
@@ -204,3 +206,20 @@ Resumen de todos los 🧭. Detalle técnico en la
 8. ¿Restringir D-12 (regiones disputables) a Berig? (Trimestre 2)
 9. Forma de la retirada de NPC en combate. (Trimestre 2)
 10. Comercio de volumen: qué, cuánto y con qué fórmula. (Trimestre 3)
+
+**Lore** (auditoría de coherencia del 2026-09-28):
+
+11. **El Baluarte de Goirme:** ¿es la mayor ciudad-fortaleza de la Meseta (catálogo, ficha de
+    región) o solo la primera (cronología mítica, A-10)? ¿Su obelisco es el más alto por ser el
+    primero?
+12. **Objetos que rompen la regla de peso y Carisma** (capa de melena de Ferike, peto de placas de
+    Gargantúa, lanza de hueso con Carisma, tocado de plumas…): ¿excepción histórica o reequilibrio?
+    ¿Y el Desollador de sílice, 20 Goirnos o dentro de la escala de tier 3 (23-31)?
+13. **Embarcadero de pesca:** ¿en la Playa de Ceniza Blanca (código, junto al Maestro Pescador) o en
+    El Embarcadero de Ceniza (lore)?
+14. **Kekta o Tevya:** `clanes-orcos.md` llama "la más inteligente de los cuatro" a las dos.
+15. **Jeyselt / Jeyselet:** ¿el poblado Nabieus o su salón interior? ¿"Fin Susurrado" nombra al
+    clan, al poblado o a los dos?
+16. **Costa norte de las Llanuras:** la Playa de Ceniza Blanca y El Embarcadero de Ceniza son
+    "costa norte", pero Cristal Helado ocupa el norte de costa a costa. ¿Es la costa noroeste?
+17. **Kelife = "Brillo de luna"** (`razas.md`) en un mundo sin luna. ¿Se cambia la traducción?
