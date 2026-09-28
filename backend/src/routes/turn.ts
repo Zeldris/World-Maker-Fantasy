@@ -186,7 +186,17 @@ async function resolveClassificationForTurn(params: {
   } else {
     // Se calcula ANTES del viaje (bug real, 2026-07-23, "revisar partida" — ver comentario de
     // abajo): decidir si esto es un viaje necesita saber ya si hay un NPC delante.
-    npcsInScene = await detectNpcsInScene({ action, worldId, sessionFacts, saveId, currentLocationId, fictionalMinutes });
+    npcsInScene = await detectNpcsInScene({
+      action,
+      worldId,
+      sessionFacts,
+      saveId,
+      currentLocationId,
+      fictionalMinutes,
+      // El rival del combate en curso siempre está en escena, lo nombre o no el texto (una defensa
+      // nunca lo nombra) — ver `enCombateCon` en npcScene.ts.
+      enCombateCon: enCombate ? { slugs: pendingCombatNpcSlugs, npcIds: pendingNpcAttack ? [pendingNpcAttack.npcId] : [] } : undefined,
+    });
 
     // Viaje por el grafo de ubicaciones (docs/12-mundo-estructurado.md § 1.4): el modelo nunca
     // elige la ruta — si el matcher determinista resuelve un destino conocido, la banda y la

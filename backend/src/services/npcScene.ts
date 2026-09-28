@@ -494,7 +494,18 @@ export async function detectNpcsInScene(params: {
   /// la mención directa, no solo la sugerencia ambiental de `turnResolution.ts` — más estricto que
   /// el diseño inicial planteado.
   fictionalMinutes: number;
+  /// Rival(es) del combate YA en curso (2026-09-28, bug real jugando en vivo con Playwright): el
+  /// texto de una DEFENSA ("Me planto y aguanto el golpe que venga...") nunca nombra al rival — a
+  /// diferencia de un ataque, que el frontend cierra con "contra 'X'" —, así que el orco solo
+  /// seguía "en escena" si la narración anterior lo había dejado citado en un sessionFact. Sin él,
+  /// `/turn/classify` no tabulaba la defensa (sin tirada, ataque pendiente congelado) y el turno
+  /// vaciaba `pendingCombatNpcSlugs`, dando el combate por terminado en el backend a mitad de
+  /// pelea. Quien ya está en combate con el jugador está en escena, lo nombre el texto o no.
+  enCombateCon?: { slugs?: string[]; npcIds?: string[] };
 }): Promise<NpcInScene[]> {
+  const enCombateSlugs = new Set(params.enCombateCon?.slugs ?? []);
+  const enCombateIds = new Set(params.enCombateCon?.npcIds ?? []);
+  const estaEnCombate = (npc: { id: string; slug: string }) => enCombateSlugs.has(npc.slug) || enCombateIds.has(npc.id);
   const [npcs, currentLocation, activeQuestTargets, encounteredStates, saveRow] = await Promise.all([
     prisma.npc.findMany({
       where: { worldId: params.worldId },
@@ -545,6 +556,7 @@ export async function detectNpcsInScene(params: {
   // mencionado de día no debe poder aparecer en escena.
   const momentoActual = momentoDelDiaFor(params.fictionalMinutes);
   const candidateNpcs = npcs.filter((npc) => {
+    if (estaEnCombate(npc)) return true;
     if (questTargetIds.has(npc.id)) return true;
     if (encounteredIds.has(npc.id)) return true;
     if (npc.nucleoJugable === false) return false;
@@ -563,7 +575,7 @@ export async function detectNpcsInScene(params: {
   const matchedIds = new Set(matchNpcAliases(haystack, candidateNpcs));
   // `npcsRetiredForever` gana SIEMPRE sobre un match por nombre — un sessionFact que menciona al
   // NPC para decir que se fue para siempre no debe reintroducirlo (ver comentario de cabecera).
-  const matchedNpcs = candidateNpcs.filter((npc) => matchedIds.has(npc.id) && !retiredForeverSlugs.has(npc.slug));
+  const matchedNpcs = candidateNpcs.filter((npc) => (matchedIds.has(npc.id) || estaEnCombate(npc)) && !retiredForeverSlugs.has(npc.slug));
   if (matchedNpcs.length === 0) return [];
 
   // Sin filtrar por `scope` en la consulta (varía por NPC según su `kind`, no es un único valor

@@ -1040,6 +1040,51 @@ describe('Rediseño de combate: habilidades de utilidad reactivas y consumibles 
     expect(saveAfter.pendingNpcAttack).toBeNull();
   }, 15_000);
 
+  // Bug real jugando en vivo (2026-09-28, Playwright contra el Orco Enfurecido): el texto real de
+  // una defensa ("Me planto y aguanto el golpe que venga...") NO nombra al rival — todos los tests
+  // de arriba lo añaden a mano ('Orco enfurecido'), el frontend no. Sin nombre, el orco no salía
+  // en `npcsInScene`, la defensa caía al clasificador LLM (sin tirada) y el turno vaciaba
+  // `pendingCombatNpcSlugs`: combate terminado en el backend a mitad de pelea.
+  it('una defensa que no nombra al rival sigue tabulándose contra él y el combate no se cae', async () => {
+    await prisma.npcState.deleteMany({ where: { saveId, npcId } });
+    await prisma.save.update({
+      where: { id: saveId },
+      data: {
+        condicionFisica: 'ILESO',
+        pendingCombatNpcSlugs: [npcSlug],
+        pendingNpcAttack: {
+          npcId,
+          attribute: 'fuerza',
+          effects: ['ATAQUE'],
+          rol: 'ataque',
+          abilityName: 'Ataque base',
+          abilityDescription: 'Golpe improvisado.',
+          energyCost: 5,
+          energyRegen: 0,
+        },
+      },
+    });
+    await prisma.sessionFact.deleteMany({ where: { saveId } });
+
+    const app = await buildApp();
+    const action = 'Me planto y aguanto el golpe que venga con pura resistencia física.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } });
+    expect(classifyRes.statusCode).toBe(200);
+    const { classification, roll, npcsInScene } = classifyRes.json();
+    expect(npcsInScene.map((n: { slug: string }) => n.slug)).toContain(npcSlug);
+    expect(classification.requiereTirada).toBe(true);
+
+    const narrateRes = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll, enCombate: true, npcsInScene } });
+    expect(narrateRes.statusCode).toBe(200);
+    const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    // La defensa consumió el ataque pendiente de verdad (hubo intercambio real)...
+    expect(saveAfter.pendingNpcAttack === null || (saveAfter.pendingNpcAttack as { abilityName?: string }).abilityName !== undefined).toBe(true);
+    // ...y el rival sigue enganchado al combate salvo que haya muerto en este mismo intercambio.
+    const npcState = await prisma.npcState.findFirst({ where: { saveId, npcId } });
+    if (npcState?.condicionFisica !== 'MUERTO') expect(saveAfter.pendingCombatNpcSlugs).toContain(npcSlug);
+    await prisma.save.update({ where: { id: saveId }, data: { pendingNpcAttack: Prisma.JsonNull } });
+  }, 15_000);
+
   it('Analizar rival: nunca hace daño, y marca NpcState.analizado tras usarla con éxito en tu propio turno de iniciativa', async () => {
     await prisma.npcState.deleteMany({ where: { saveId, npcId } });
     await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'ILESO', pendingCombatNpcSlugs: [], pendingNpcAttack: Prisma.JsonNull } });
