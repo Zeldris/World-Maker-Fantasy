@@ -1,5 +1,5 @@
 import { prisma } from '../lib/prisma.js';
-import { normalizeText, fuzzyMatchCandidates, fuzzyMatchesAnyStem, findFuzzyStemMatch, matchesAliasBoundary } from './travel.js';
+import { normalizeText, fuzzyMatchCandidates, fuzzyMatchesAnyStem, findFuzzyStemMatch, matchesAliasBoundary, levenshtein } from './travel.js';
 import type { NpcKind, CondicionFisica, Temperamento, WeaponCategory, EquipSlot, ItemTipo, Prisma, NpcState, AbilityEffect, NpcInteractionType } from '@prisma/client';
 import type { Attribute, AttributeBlock } from './dice.js';
 import { sumAttributes } from './equipment.js';
@@ -365,7 +365,49 @@ const NPC_ALIAS_FUZZY_EXCLUSIONS = new Set([
   'senda', // sella (Sella Marn)
   'salta', // sella (Sella Marn)
   'huella', // sella (Sella Marn)
+  // Tercer barrido (2026-09-28), ya con la regla estructural de `esErrataDeAlias` (misma inicial,
+  // ≤1 en alias cortos) — contra TODO el vocabulario del repo (docs/ + código). Lo que queda son
+  // palabras reales a 1 letra de un alias corto, o a 2 de uno largo:
+  'mercado', // mercader (Mercader de paso) — "Mercado" es además un panel real del Reino
+  'mercados',
+  'marcador',
+  'comercian', // comerciante (Mercader de paso)
+  'comerciable',
+  'sello', // sella (Sella Marn)
+  'sellos',
+  'sellar',
+  'rezagado', // renegado (Goirnte renegado) — "orco rezagado" es un itinerante real distinto
+  'rezagados',
+  'revelado',
+  'estatico', // erratico (Faerus errático)
+  'enriquecido', // enloquecido (Nabieus enloquecido)
+  'justa', // jusha (Jusha esmeralda)
+  'justas',
+  'marinas', // miruinas (Miruina)
+  'busco', // bulco (Bulco de arena) — verbo muy frecuente ("busco presas", "busco vetas")
+  'bulbo',
+  'bulbos',
+  'bulto',
+  'bultos',
+  'bolco', // bulco — Bolco es un árbol real de la Ciénaga (lore), no el caracol Bulco
 ]);
+
+/// Tolerancia a erratas acotada (2026-09-28, bug real jugando en vivo con Playwright: la habilidad de
+/// clase "Firmeza Férrea" — "Aprieto los DIENTES y aguanto el golpe..." — quedaba SIEMPRE bloqueada
+/// como "No hay ningún Nuente al que dirigirse aquí", Levenshtein("nuentes","dientes")=2). Un segundo
+/// barrido contra TODO el vocabulario del repo (docs/ + código, ~miles de palabras) encontró 38 alias
+/// con colisión contra palabras muy frecuentes — "fuente"/"muerte"/"cuenta"/"frente"/"suerte" →
+/// Nuente, "quien" → Quio, "busca"/"hueco" → Bulco, "mercado" → Mercader, "musgo" → Múrgol... — la
+/// lista de exclusiones a mano de arriba no escala. Dos reglas estructurales que conservan el caso
+/// real que motivó la tolerancia ("redazagado" por "rezagado"):
+/// - Misma primera letra: una errata real casi nunca cambia la inicial; la mayoría de colisiones
+///   con palabras comunes sí (fuente/muerte/puente/dientes → nuente).
+/// - Distancia ≤1 para alias de menos de 8 letras, ≤2 a partir de 8: en un nombre corto, 2 cambios
+///   ya son otra palabra.
+function esErrataDeAlias(alias: string, palabra: string): boolean {
+  if (alias[0] !== palabra[0]) return false;
+  return levenshtein(alias, palabra) <= (alias.length >= 8 ? 2 : 1);
+}
 
 /// Puro: dado un texto y una lista de NPCs con sus aliases, devuelve los ids que matchean.
 /// Exportado sin envolver en la consulta a Prisma para poder testearlo aparte, como travel.ts.
@@ -378,7 +420,11 @@ const NPC_ALIAS_FUZZY_EXCLUSIONS = new Set([
 /// palabras de 5+ letras (evita falsos positivos en palabras cortas y comunes).
 export function matchNpcAliases(text: string, npcs: NpcWithAliases[]): string[] {
   const normalized = normalizeText(text);
-  const haystackWords = fuzzyMatchCandidates(normalized).filter((w) => !NPC_ALIAS_FUZZY_EXCLUSIONS.has(w));
+  // Sin puntuación pegada (2026-09-28): "mercado." o "arena," se comparaban tal cual y se saltaban
+  // la lista de exclusiones, pero seguían entrando en la tolerancia a erratas.
+  const haystackWords = fuzzyMatchCandidates(normalized)
+    .map((w) => w.replace(/[^\p{L}]/gu, ''))
+    .filter((w) => w.length >= 5 && !NPC_ALIAS_FUZZY_EXCLUSIONS.has(w));
   const matched: string[] = [];
   for (const npc of npcs) {
     const hit = npc.aliases.some((alias) => {
@@ -396,7 +442,7 @@ export function matchNpcAliases(text: string, npcs: NpcWithAliases[]): string[] 
       // "rezagado" — ya cubierto también como alias suelto en el catálogo), nunca a una palabra
       // sacada de en medio de una frase más larga.
       if (normalizedAlias.includes(' ') || normalizedAlias.length < 5) return false;
-      return fuzzyMatchesAnyStem(normalizedAlias, haystackWords);
+      return haystackWords.some((w) => esErrataDeAlias(normalizedAlias, w));
     });
     if (hit) matched.push(npc.id);
   }

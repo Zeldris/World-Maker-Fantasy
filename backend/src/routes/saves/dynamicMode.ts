@@ -135,7 +135,14 @@ async function abrirCombateForzadoDesdeInteractuar(
   });
   const target = npcsInScene.find((n) => n.slug === targetSlug);
   if (!target || target.condicionFisica === 'MUERTO') return null;
-  await prisma.save.update({ where: { id: save.id }, data: { pendingCombatNpcSlugs: [targetSlug] } });
+  // La oferta "X te corta el paso" ya se resolvió abriendo el combate (2026-09-28, bug real
+  // jugando en vivo con Playwright: antes solo se escribía `pendingCombatNpcSlugs` y la oferta se
+  // quedaba en BD — tras recargar reaparecía la tarjeta aunque el combate ya hubiera empezado o
+  // terminado, y mientras siguiera pendiente ningún encuentro nuevo podía ofrecerse en la zona).
+  await prisma.save.update({
+    where: { id: save.id },
+    data: { pendingCombatNpcSlugs: [targetSlug], pendingDynamicModeOffer: Prisma.JsonNull, pendingDynamicMode: Prisma.JsonNull },
+  });
   return {
     npcs: [
       {
@@ -185,6 +192,9 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
       if (combateForzado && quienInicia === 'npc') {
         const combate = await abrirCombateForzadoDesdeInteractuar(save, targetSlug, targetName, fictionalMinutesActuales0);
         if (!combate) {
+          // El agresor ya no está (muerto, retirado...) — la oferta se descarta: sin esto el jugador
+          // quedaba atascado (no se puede ignorar ni moverse con un combate forzado pendiente).
+          await prisma.save.update({ where: { id: save.id }, data: { pendingDynamicModeOffer: Prisma.JsonNull, pendingDynamicMode: Prisma.JsonNull } });
           return reply.status(400).send({ error: 'Ese encuentro ya no está disponible aquí.' });
         }
         return { narration: '', opciones: [], cierra: true, vuelta: 1, timeLabel: formatFictionalDate(fictionalMinutesActuales0), newQuestOfferInfo: null, combate };
@@ -335,6 +345,9 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
         const fictionalMinutesActuales = save.worldState?.fictionalMinutes ?? 480;
         const combate = await abrirCombateForzadoDesdeInteractuar(save, pending.targetSlug, pending.targetName, fictionalMinutesActuales);
         if (!combate) {
+          // El agresor ya no está (muerto, retirado...) — la oferta se descarta: sin esto el jugador
+          // quedaba atascado (no se puede ignorar ni moverse con un combate forzado pendiente).
+          await prisma.save.update({ where: { id: save.id }, data: { pendingDynamicModeOffer: Prisma.JsonNull, pendingDynamicMode: Prisma.JsonNull } });
           return reply.status(400).send({ error: 'Ese encuentro ya no está disponible aquí.' });
         }
         return { narration: '', opciones: [], cierra: true, vuelta: pending.vuelta + 1, timeLabel: formatFictionalDate(fictionalMinutesActuales), newQuestOfferInfo: null, combate };

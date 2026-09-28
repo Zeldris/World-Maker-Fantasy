@@ -934,10 +934,22 @@ export function GameView() {
           return prev.map((e, i) => (i === lastIdx ? { ...e, questOffer: offer } : e))
         })
       }
-    } catch {
+    } catch (err) {
+      // 2026-09-28 (bug real jugando en vivo): antes la tarjeta se reconstruía SIN `quienInicia`/
+      // `combateForzado` — tras un fallo, un agresivo volvía a ofrecer "Ignorar" y el reintento abría
+      // una conversación normal con él. Se conservan todos los campos y se muestra el motivo real;
+      // si el encuentro ya no existe (el backend ya descartó la oferta), la tarjeta se retira.
+      const motivo = err instanceof Error && err.message ? err.message : 'No se pudo abrir — inténtalo de nuevo.'
+      const yaNoDisponible = /ya no está disponible/i.test(motivo)
       setCharacterLog((prev) =>
         prev.map((e) =>
-          e.id === entryId ? { ...e, dynamicModeOffer: { tipo, targetSlug, targetName, busy: false, error: 'No se pudo abrir — inténtalo de nuevo.' } } : e,
+          e.id === entryId
+            ? {
+                ...e,
+                dynamicModeOffer: yaNoDisponible ? undefined : { tipo, targetSlug, targetName, quienInicia, combateForzado, busy: false, error: motivo },
+                ...(yaNoDisponible ? { text: `${e.text} (${motivo})` } : {}),
+              }
+            : e,
         ),
       )
     }

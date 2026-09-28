@@ -49,7 +49,34 @@ vi.mock('../lib/prisma.js', () => ({
 
 const { detectNpcsInScene, candidateNpcNamesNotInScene } = await import('./npcScene.js');
 
+// Tercer barrido (2026-09-28) — alias reales con colisiones contra palabras muy frecuentes.
+const NPCS_BARRIDO_2026_09_28 = [
+  { id: 'nuente', aliases: ['nuente', 'nuentes'] },
+  { id: 'quio', aliases: ['quio', 'quios'] },
+  { id: 'bulco', aliases: ['bulco de arena', 'bulco'] },
+  { id: 'mercader', aliases: ['mercader de paso', 'mercader', 'comerciante'] },
+];
+
 describe('matchNpcAliases', () => {
+  // Bug real jugando en vivo (2026-09-28): la habilidad de clase "Firmeza Férrea" ("Aprieto los
+  // dientes y aguanto el golpe...") quedaba SIEMPRE bloqueada como "No hay ningún Nuente al que
+  // dirigirse aquí" — Levenshtein("nuentes","dientes")=2. Ver `esErrataDeAlias`, npcScene.ts.
+  it('palabras frecuentes a 1-2 letras de un alias corto con otra inicial no disparan a nadie (dientes/fuente/muerte/puente → Nuente, quien → Quio)', () => {
+    expect(matchNpcAliases('Aprieto los dientes y aguanto el golpe por pura dureza física, sin ceder terreno.', NPCS_BARRIDO_2026_09_28)).toEqual([]);
+    expect(matchNpcAliases('Bebo de la fuente junto al puente y pienso en la muerte.', NPCS_BARRIDO_2026_09_28)).toEqual([]);
+    expect(matchNpcAliases('Me doy cuenta de que tengo al enemigo de frente, qué suerte.', NPCS_BARRIDO_2026_09_28)).toEqual([]);
+    expect(matchNpcAliases('No sé quien anda por aquí.', NPCS_BARRIDO_2026_09_28)).toEqual([]);
+  });
+
+  it('palabras reales a 1 letra de un alias con la misma inicial están excluidas (busco/bulto → Bulco, mercado → Mercader)', () => {
+    expect(matchNpcAliases('Busco un bulto de provisiones en el mercado.', NPCS_BARRIDO_2026_09_28)).toEqual([]);
+  });
+
+  it('la tolerancia a erratas sigue funcionando con la misma inicial: "nuemte" (1 cambio) sí es Nuente', () => {
+    expect(matchNpcAliases('Veo un nuemte entre las rocas', NPCS_BARRIDO_2026_09_28)).toEqual(['nuente']);
+    expect(matchNpcAliases('Veo un nuente entre las rocas', NPCS_BARRIDO_2026_09_28)).toEqual(['nuente']);
+  });
+
   it('coincide con el alias exacto', () => {
     expect(matchNpcAliases('Ataco al orco rezagado', NPCS)).toEqual(['rezagado']);
   });
@@ -383,6 +410,10 @@ function baseNpc(overrides: Partial<Record<string, unknown>> = {}) {
 const HONDONADA = { slug: 'hondonada-del-eco', region: 'Llanuras del Viento Rojo' };
 const CIENAGA_CAMPAMENTO = { slug: 'campamento-cienaga', region: 'Ciénaga Troncal' };
 
+// 2026-09-28: salvo el primer test (el bug "presas"/"brasas" en sí), estos tests usaban ese mismo
+// falso positivo como disparador cómodo para probar el filtro por escena — con la tolerancia a
+// erratas acotada (`esErrataDeAlias`, npcScene.ts) ya no engancha en ninguna región, así que usan
+// una mención real del NPC ("acechador"), que es lo que de verdad prueban.
 describe('detectNpcsInScene — acotar el candidato por escena', () => {
   beforeEach(() => {
     findManyNpc.mockReset();
@@ -414,7 +445,7 @@ describe('detectNpcsInScene — acotar el candidato por escena', () => {
     findManyLocation.mockResolvedValue([CIENAGA_CAMPAMENTO]);
 
     const result = await detectNpcsInScene({
-      action: 'Busco presas por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-cienaga',
+      action: 'Veo un acechador por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-cienaga',
       fictionalMinutes: 480,
     });
     expect(result.map((n) => n.id)).toEqual(['lurker']);
@@ -426,7 +457,7 @@ describe('detectNpcsInScene — acotar el candidato por escena', () => {
     findManyLocation.mockResolvedValue([]);
 
     const result = await detectNpcsInScene({
-      action: 'Busco presas por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-hondonada',
+      action: 'Veo un acechador por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-hondonada',
       fictionalMinutes: 480,
     });
     expect(result.map((n) => n.id)).toEqual(['lurker']);
@@ -442,7 +473,7 @@ describe('detectNpcsInScene — acotar el candidato por escena', () => {
     findManyLocation.mockResolvedValue([]);
 
     const result = await detectNpcsInScene({
-      action: 'Busco presas por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-hondonada',
+      action: 'Veo un acechador por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-hondonada',
       fictionalMinutes: 480,
     });
     expect(result).toEqual([]);
@@ -455,7 +486,7 @@ describe('detectNpcsInScene — acotar el candidato por escena', () => {
     findManyQuest.mockResolvedValue([{ targetNpcId: 'sella' }]);
 
     const result = await detectNpcsInScene({
-      action: 'Busco presas por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-hondonada',
+      action: 'Veo un acechador por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-hondonada',
       fictionalMinutes: 480,
     });
     expect(result.map((n) => n.id)).toEqual(['sella']);
@@ -468,7 +499,7 @@ describe('detectNpcsInScene — acotar el candidato por escena', () => {
     findManyNpcState.mockResolvedValue([{ npcId: 'sella' }]);
 
     const result = await detectNpcsInScene({
-      action: 'Busco presas por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-hondonada',
+      action: 'Veo un acechador por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-hondonada',
       fictionalMinutes: 480,
     });
     expect(result.map((n) => n.id)).toEqual(['sella']);
@@ -481,7 +512,7 @@ describe('detectNpcsInScene — acotar el candidato por escena', () => {
     findManyQuest.mockResolvedValue([{ targetNpcId: 'lurker' }]);
 
     const result = await detectNpcsInScene({
-      action: 'Busco presas por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-hondonada',
+      action: 'Veo un acechador por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-hondonada',
       fictionalMinutes: 480,
     });
     expect(result.map((n) => n.id)).toEqual(['lurker']);
@@ -494,7 +525,7 @@ describe('detectNpcsInScene — acotar el candidato por escena', () => {
     findManyNpcState.mockResolvedValue([{ npcId: 'lurker' }]);
 
     const result = await detectNpcsInScene({
-      action: 'Busco presas por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-hondonada',
+      action: 'Veo un acechador por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-hondonada',
       fictionalMinutes: 480,
     });
     expect(result.map((n) => n.id)).toEqual(['lurker']);
@@ -506,7 +537,7 @@ describe('detectNpcsInScene — acotar el candidato por escena', () => {
     findManyLocation.mockResolvedValue([]);
 
     const result = await detectNpcsInScene({
-      action: 'Busco presas por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-hondonada',
+      action: 'Veo un acechador por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-hondonada',
       fictionalMinutes: 480,
     });
     expect(result.map((n) => n.id)).toEqual(['lurker']);
@@ -517,7 +548,7 @@ describe('detectNpcsInScene — acotar el candidato por escena', () => {
     findManyLocation.mockResolvedValue([CIENAGA_CAMPAMENTO]);
 
     const result = await detectNpcsInScene({
-      action: 'Busco presas por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: null,
+      action: 'Veo un acechador por la zona', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: null,
       fictionalMinutes: 480,
     });
     expect(result.map((n) => n.id)).toEqual(['lurker']);

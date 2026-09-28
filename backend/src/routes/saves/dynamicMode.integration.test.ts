@@ -606,6 +606,12 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
     });
 
     it('quienInicia: "npc" — abre combate DIRECTAMENTE, sin pendingDynamicMode, sin narración LLM', async () => {
+      // La oferta real que deja /zona/mover — debe quedar resuelta al abrir el combate (2026-09-28:
+      // antes se quedaba en BD y reaparecía tras recargar, bloqueando cualquier encuentro nuevo).
+      await prisma.save.update({
+        where: { id: saveId },
+        data: { pendingDynamicModeOffer: { tipo: 'FAUNA', targetSlug: 'test-dynamicmode-agresivo', targetName: 'Agresor de Prueba (dynamicMode)', quienInicia: 'npc', combateForzado: true } },
+      });
       const app = await buildApp();
       const res = await app.inject({
         method: 'POST',
@@ -619,6 +625,7 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
 
       const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
       expect(saveAfter.pendingDynamicMode).toBeNull();
+      expect(saveAfter.pendingDynamicModeOffer).toBeNull();
       expect(saveAfter.pendingCombatNpcSlugs).toEqual(['test-dynamicmode-agresivo']);
     });
 
