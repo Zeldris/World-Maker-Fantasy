@@ -370,10 +370,17 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
   // destino real en píxel; el backend calcula el camino entero pero solo avanza UN PASO por
   // llamada (mismo criterio "el motor decide, el frontend solo pide"), así que aquí se sigue
   // llamando con el MISMO destino hasta agotar `caminoRestante` o toparse con `colision`/`aviso`.
-  async function handleMoverA(destino: { x: number; y: number }) {
+  ///
+  /// Devuelve la zona recién recargada si el trayecto terminó sin interrupción (llegó al destino),
+  /// `null` si lo cortó un encuentro, un error o un clic nuevo. Recargar al llegar (2026-09-28, bug
+  /// real jugando en vivo con Playwright): `salidas[].alcanzable` solo se calculaba al abrir el
+  /// panel — tras caminar hasta una salida, pulsarla seguía diciendo "Tienes que acercarte más"
+  /// hasta cerrar y reabrir el modal.
+  async function handleMoverA(destino: { x: number; y: number }): Promise<ZonaResponse | null> {
     const miToken = ++movimientoTokenRef.current
     setMovimientoEnCurso(true)
     setMensajeMovimiento(null)
+    let llegado = false
     try {
       let sigue = true
       while (sigue && movimientoTokenRef.current === miToken) {
@@ -449,6 +456,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
           sigue = false
         } else if (resultado.caminoRestante.length === 0) {
           sigue = false
+          llegado = true
         } else {
           await new Promise((r) => setTimeout(r, MS_POR_PASO_MOVIMIENTO))
         }
@@ -459,6 +467,29 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
     } finally {
       if (movimientoTokenRef.current === miToken) setMovimientoEnCurso(false)
     }
+    if (!llegado || movimientoTokenRef.current !== miToken) return null
+    const fresca = await getZona(saveId).catch(() => null)
+    if (fresca && movimientoTokenRef.current === miToken) setData(fresca)
+    return fresca
+  }
+
+  // Icono de salida (2026-09-28, mejora de movimiento): lejos de ella, en vez de solo avisar
+  // "acércate más", el jugador camina hasta la salida y, si llega sin encuentros por el camino, se
+  // abre directamente el modal de viaje. En la vista informativa (`soloConsulta`) no hay
+  // movimiento, así que se mantiene el aviso.
+  async function handleClickSalida(salida: ZonaSalidaInfo) {
+    if (salida.alcanzable) {
+      setSelectedSalida(salida)
+      return
+    }
+    if (soloConsulta) {
+      setMensajeMovimiento('Tienes que acercarte más a la salida para poder viajar.')
+      return
+    }
+    if (movimientoEnCurso) return
+    const fresca = await handleMoverA({ x: salida.x, y: salida.y })
+    const salidaFresca = fresca?.salidas.find((s) => s.locationId === salida.locationId)
+    if (salidaFresca?.alcanzable) setSelectedSalida(salidaFresca)
   }
 
   if (loading) return <p className="text-sm italic text-wood-500">Cargando zona...</p>
@@ -584,10 +615,9 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                   key={s.locationId}
                   onClick={(e) => {
                     e.stopPropagation()
-                    if (s.alcanzable) setSelectedSalida(s)
-                    else setMensajeMovimiento('Tienes que acercarte más a la salida para poder viajar.')
+                    void handleClickSalida(s)
                   }}
-                  className={s.alcanzable ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}
+                  className={`${s.alcanzable ? '' : 'opacity-60'} ${s.alcanzable || !soloConsulta ? 'cursor-pointer' : 'cursor-not-allowed'}`}
                 >
                   <SalidaMarker x={s.x} y={s.y} />
                   <title>{s.visitada ? s.nombre : 'Salida hacia un lugar desconocido'}</title>
