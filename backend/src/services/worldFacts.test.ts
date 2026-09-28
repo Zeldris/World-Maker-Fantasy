@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+// Test unitario con Prisma simulado: prueba el camino de Postgres (SQL crudo, `FOR UPDATE`)
+// aunque la batería se ejecute contra SQLite, que no toca base de datos real (instalador, 2026-09-28).
+vi.mock('../lib/proveedorBd.js', () => ({ esSqlite: false }));
+
 // Rediseño 2026-07-30 (mejora de cohesión, ver SessionFact en schema.prisma): `mergeFacts`
 // (ventana rodante de los últimos 10, recorte por pura antigüedad) se sustituye por 3 funciones
 // sobre una tabla propia con embeddings — mismo patrón de mock que inventario.test.ts/turn.test.ts:

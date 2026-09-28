@@ -3,6 +3,8 @@ import '../lib/setupFetch.js';
 import { prisma } from '../lib/prisma.js';
 import { embed, toVectorLiteral } from '../lib/embeddings.js';
 import { loreChunks } from './loreChunks.js';
+import { esSqlite } from '../lib/proveedorBd.js';
+import type { Prisma } from '@prisma/client';
 
 /// Reindexa el lore de Helek Sirik para recuperación semántica (RAG). Correr cada vez que
 /// docs/rpgtarkor/*.md cambie y loreChunks.ts se actualice con los fragmentos afectados.
@@ -50,6 +52,28 @@ async function main() {
     const t0 = Date.now();
     const vector = await embed(`${chunk.title}\n${chunk.text}`);
     const id = crypto.randomUUID();
+
+    if (esSqlite) {
+      // SQLite (plantilla del instalador, 2026-09-28): embedding como texto JSON y `tags` como
+      // Json (ver lib/schemaSqlite.ts y lib/vectores.ts). API normal de Prisma para que el enum
+      // y la fecha se guarden en su formato; el cast es porque `embedding` no existe en los tipos
+      // generados desde el schema de Postgres.
+      await prisma.loreChunk.create({
+        data: {
+          id,
+          worldId,
+          type: chunk.type,
+          title: chunk.title,
+          text: chunk.text,
+          tags: chunk.tags,
+          sourceDoc: chunk.sourceDoc,
+          embedding: JSON.stringify(vector),
+        } as unknown as Prisma.LoreChunkUncheckedCreateInput,
+      });
+      done += 1;
+      console.log(`  [${done}/${loreChunks.length}] ${chunk.title} (${((Date.now() - t0) / 1000).toFixed(1)}s)`);
+      continue;
+    }
 
     await prisma.$executeRaw`
       INSERT INTO "LoreChunk" (id, "worldId", type, title, text, tags, "sourceDoc", embedding, "createdAt")

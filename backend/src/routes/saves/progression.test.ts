@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import Fastify from 'fastify';
 
+// Test unitario con Prisma simulado: prueba el camino de Postgres (SQL crudo, `FOR UPDATE`)
+// aunque la batería se ejecute contra SQLite, que no toca base de datos real (instalador, 2026-09-28).
+vi.mock('../../lib/proveedorBd.js', () => ({ esSqlite: false }));
+
 /// Cobertura nueva (auditoría de deuda técnica 2026-08-03): esta ruta tuvo un bug real (auditoría
 /// 2026-07-28, ver comentario en progression.ts) — un `attribute` inválido colaba `NaN` como clave
 /// espuria en el JSON de atributos, gastando un punto de ascenso sin dar ningún beneficio. Se

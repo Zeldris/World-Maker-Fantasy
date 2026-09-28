@@ -1,11 +1,19 @@
 name: CI
 
 # Deuda técnica (2026-07-30, auditoría técnica: "sin CI ni git hooks — oxlint pasando en local y
-# los tests de ruta nuevos no se hacen cumplir en push/PR"). Dos jobs independientes (backend con
-# Prisma, frontend sin él) — cada uno instala, tipa, lintea y testea su propio paquete. Ninguno
-# necesita una base de datos real: todos los tests mockean Prisma (`vi.mock('.../lib/prisma.js')`)
-# — `DATABASE_URL`/`DIRECT_URL` aquí son valores de relleno solo para que `env.ts` no reviente al
-# arrancar y para que `prisma generate` tenga un schema válido que leer.
+# los tests de ruta nuevos no se hacen cumplir en push/PR"). Un job por paquete y, en el backend,
+# uno por base de datos.
+#
+# 2026-09-28 (instalador de escritorio): el job de backend llevaba en rojo desde que aparecieron
+# los tests de integración (`*.integration.test.ts`), que usan una base de datos real y el CI no
+# levantaba ninguna ("Can't reach database server at localhost:5432"). Ahora:
+# - `backend` (Postgres + pgvector, el modo de desarrollo) levanta la base de datos como servicio;
+# - `backend-sqlite` corre la MISMA batería contra SQLite, el modo del juego empaquetado (ver
+#   src/lib/schemaSqlite.ts), y comprueba que schema.sqlite.prisma está al día.
+# Los dos crean el mundo con `reindex-lore` + `seed-catalog` usando un Ollama falso
+# (.github/ollama-falso.mjs) para los embeddings, y corren los ficheros de test de uno en uno
+# (`--no-file-parallelism`): varios ficheros de integración comparten las mismas filas del mundo
+# (p. ej. `WorldPopulation`) y en paralelo daban fallos intermitentes.
 on:
   push:
     branches: [main]
@@ -17,9 +25,20 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: tarkor
+          POSTGRES_PASSWORD: tarkor
+          POSTGRES_DB: tarkor_ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U tarkor" --health-interval 5s --health-timeout 5s --health-retries 10
     env:
-      DATABASE_URL: 'postgresql://user:pass@localhost:5432/tarkor_ci'
-      DIRECT_URL: 'postgresql://user:pass@localhost:5432/tarkor_ci'
+      DATABASE_URL: 'postgresql://tarkor:tarkor@localhost:5432/tarkor_ci'
+      DIRECT_URL: 'postgresql://tarkor:tarkor@localhost:5432/tarkor_ci'
+      OLLAMA_BASE_URL: 'http://127.0.0.1:11434'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -31,7 +50,38 @@ jobs:
       - run: npx prisma generate
       - run: npm run lint
       - run: npx tsc --noEmit
-      - run: npm test
+      - name: Base de datos con el mundo sembrado
+        run: |
+          node ../.github/ollama-falso.mjs 11434 &
+          echo 'CREATE EXTENSION IF NOT EXISTS vector;' | npx prisma db execute --stdin
+          npx prisma migrate deploy
+          npm run reindex-lore
+          npm run seed-catalog
+      - run: npx vitest run --no-file-parallelism
+
+  backend-sqlite:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DATABASE_URL: 'file:/tmp/tarkor-ci.sqlite'
+      OLLAMA_BASE_URL: 'http://127.0.0.1:11434'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - name: schema.sqlite.prisma al día con schema.prisma
+        run: npm run schema:sqlite && git diff --exit-code prisma/schema.sqlite.prisma
+      - name: Base de datos SQLite con el mundo sembrado (lo mismo que la plantilla del instalador)
+        run: |
+          node ../.github/ollama-falso.mjs 11434 &
+          npm run plantilla:sqlite
+      - run: npx vitest run --no-file-parallelism
 
   frontend:
     runs-on: ubuntu-latest

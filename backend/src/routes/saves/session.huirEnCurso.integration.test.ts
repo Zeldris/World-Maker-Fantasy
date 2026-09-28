@@ -3,6 +3,9 @@ import Fastify from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { sessionRoutes } from './session.js';
+// El competidor bloquea la fila con el mismo helper que producción (no con `FOR UPDATE` crudo)
+// para que el test valga también contra SQLite, donde el candado es otro (instalador, 2026-09-28).
+import { lockRowForUpdate } from './shared.js';
 
 /// Ronda de correcciones 2026-08-28 (P3.2): "Huir DENTRO de combate debe tener riesgo real" — antes
 /// se resolvía como un intercambio de ataque/defensa normal disfrazado (indistinguible de
@@ -112,7 +115,7 @@ describe('/combat/huir-en-curso', () => {
     let resolveGotLock!: () => void;
     const gotLock = new Promise<void>((resolve) => { resolveGotLock = resolve; });
     const competidor = prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT id FROM "Save" WHERE id = ${saveId} FOR UPDATE`;
+      await lockRowForUpdate(tx, 'Save', saveId, ['id']);
       resolveGotLock();
       await new Promise((resolve) => setTimeout(resolve, 80));
       await tx.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: [npcSlug, 'otro-npc-que-se-unio'] } });
@@ -139,7 +142,7 @@ describe('/combat/huir-en-curso', () => {
     let resolveGotLock!: () => void;
     const gotLock = new Promise<void>((resolve) => { resolveGotLock = resolve; });
     const competidor = prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT id FROM "Save" WHERE id = ${saveId} FOR UPDATE`;
+      await lockRowForUpdate(tx, 'Save', saveId, ['id']);
       resolveGotLock();
       await new Promise((resolve) => setTimeout(resolve, 80));
       await tx.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: [npcSlug, 'otro-npc-que-se-unio'] } });

@@ -63,12 +63,14 @@ export async function detailRoutes(app: FastifyInstance) {
     // Barras de habilidades múltiples (2026-09-04, rediseñado 2026-09-06 — hallazgo 10: 3 barras EN
     // GENERAL, sin categoría) — reconciliación en lectura, no migración de datos: partidas creadas
     // antes de este sistema (o cualquier fila borrada por error) nunca deben quedarse sin ninguna
-    // barra base. `skipDuplicates` hace esto seguro ante llamadas casi simultáneas (dos pestañas,
-    // doble recarga) sin condición de carrera real.
+    // barra base. El `upsert` sobre la clave única (saveId, slotIndex) hace esto seguro ante
+    // llamadas casi simultáneas (dos pestañas, doble recarga) sin condición de carrera real — antes
+    // era `createMany` con `skipDuplicates`, que SQLite no soporta (instalador, 2026-09-28).
     if (!hasBaseSkillBar(save.skillBars)) {
-      await prisma.skillBar.createMany({
-        data: [{ saveId: save.id, slotIndex: 0, name: 'Barra 1' }],
-        skipDuplicates: true,
+      await prisma.skillBar.upsert({
+        where: { saveId_slotIndex: { saveId: save.id, slotIndex: 0 } },
+        update: {},
+        create: { saveId: save.id, slotIndex: 0, name: 'Barra 1' },
       });
       save.skillBars = await prisma.skillBar.findMany({ where: { saveId: save.id }, orderBy: [{ slotIndex: 'asc' }] });
     }

@@ -1,6 +1,9 @@
 import { prisma } from '../lib/prisma.js';
 import { embed, toVectorLiteral } from '../lib/embeddings.js';
 import { matchNpcAliases, type NpcWithAliases } from './npcScene.js';
+import { esSqlite } from '../lib/proveedorBd.js';
+import { masCercanas } from '../lib/vectores.js';
+import type { Prisma } from '@prisma/client';
 
 /// Mejora de cohesión (2026-07-30, ver SessionFact en schema.prisma): antes `sessionFacts` era
 /// una ventana rodante de los últimos 10 hechos (mergeFacts/MAX_FACTS), recortando por pura
@@ -112,6 +115,16 @@ export async function appendSessionFacts(saveId: string, existing: string[], new
     if (seen.some((f) => factSimilarity(f, fact) >= DUPLICATE_THRESHOLD)) continue;
     seen.push(fact);
     const vector = await embed(fact);
+    if (esSqlite) {
+      // SQLite (2026-09-28): embedding como texto JSON (ver lib/vectores.ts). Con la API normal
+      // de Prisma y no con SQL crudo, para que `createdAt` se guarde en el formato de fechas que
+      // Prisma usa en SQLite. `embedding` no existe en los tipos generados desde el schema de
+      // Postgres (allí es `Unsupported`), de ahí el cast.
+      await prisma.sessionFact.create({
+        data: { saveId, text: fact, embedding: JSON.stringify(vector) } as unknown as Prisma.SessionFactUncheckedCreateInput,
+      });
+      continue;
+    }
     await prisma.$executeRaw`
       INSERT INTO "SessionFact" (id, "saveId", text, embedding, "createdAt")
       VALUES (${crypto.randomUUID()}, ${saveId}, ${fact}, ${toVectorLiteral(vector)}::vector, ${new Date()})
@@ -174,12 +187,20 @@ export async function selectRelevantFacts(action: string, saveId: string, worldI
   const recent = filteredFacts.slice(-RECENCY_GUARANTEED);
   const remainingBudget = MAX_SENT_FACTS - recent.length;
   const vector = await embed(action);
-  const rows = await prisma.$queryRaw<{ text: string }[]>`
-    SELECT text FROM "SessionFact"
-    WHERE "saveId" = ${saveId}
-    ORDER BY embedding <=> ${toVectorLiteral(vector)}::vector
-    LIMIT ${MAX_SENT_FACTS + RECENCY_GUARANTEED}
-  `;
+  const rows = esSqlite
+    ? masCercanas(
+        await prisma.$queryRaw<{ text: string; embedding: unknown }[]>`
+          SELECT text, embedding FROM "SessionFact" WHERE "saveId" = ${saveId}
+        `,
+        vector,
+        MAX_SENT_FACTS + RECENCY_GUARANTEED,
+      )
+    : await prisma.$queryRaw<{ text: string }[]>`
+        SELECT text FROM "SessionFact"
+        WHERE "saveId" = ${saveId}
+        ORDER BY embedding <=> ${toVectorLiteral(vector)}::vector
+        LIMIT ${MAX_SENT_FACTS + RECENCY_GUARANTEED}
+      `;
   // La consulta vectorial lee de la tabla completa (incluye facts ya excluidos arriba) — se
   // vuelve a filtrar contra `filteredFacts` (no `sessionFacts`) para que un fact de despedida no
   // se cuele de todos modos por esta vía.

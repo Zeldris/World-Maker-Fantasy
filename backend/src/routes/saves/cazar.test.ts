@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import Fastify from 'fastify';
 
+// Test unitario con Prisma simulado: prueba el camino de Postgres (SQL crudo, `FOR UPDATE`)
+// aunque la batería se ejecute contra SQLite, que no toca base de datos real (instalador, 2026-09-28).
+vi.mock('../../lib/proveedorBd.js', () => ({ esSqlite: false }));
+
 /// Caza (revisión de partida 2026-08-08) — cobertura nueva. El foco: (1) la caza limpia sin
 /// combate solo se ofrece con UNA presa débil de verdad (nivel ≤ jugador − 2), nunca con varias;
 /// (2) el caso "toca pelear" (varias presas, o una sola no lo bastante débil, o la tirada de caza

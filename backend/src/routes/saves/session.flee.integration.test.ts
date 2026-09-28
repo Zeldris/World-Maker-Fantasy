@@ -3,6 +3,9 @@ import Fastify from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { sessionRoutes } from './session.js';
+// El competidor bloquea la fila con el mismo helper que producción (no con `FOR UPDATE` crudo)
+// para que el test valga también contra SQLite, donde el candado es otro (instalador, 2026-09-28).
+import { lockRowForUpdate } from './shared.js';
 
 /// Cobertura nueva (auditoría de código 2026-08-25, condición de carrera real): `/combat/flee` leía
 /// `pendingCombatNpcSlugs` al principio y lo limpiaba al final sin comprobar que siguiera siendo el
@@ -70,7 +73,7 @@ describe('/combat/flee: condición de carrera con una escritura paralela de pend
     let resolveGotLock!: () => void;
     const gotLock = new Promise<void>((resolve) => { resolveGotLock = resolve; });
     const competidor = prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT id FROM "Save" WHERE id = ${saveId} FOR UPDATE`;
+      await lockRowForUpdate(tx, 'Save', saveId, ['id']);
       resolveGotLock();
       await new Promise((resolve) => setTimeout(resolve, 80));
       await tx.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: [npcSlug, 'otro-npc-que-se-unio'] } });
@@ -100,7 +103,7 @@ describe('/combat/flee: condición de carrera con una escritura paralela de pend
     let resolveGotLock!: () => void;
     const gotLock = new Promise<void>((resolve) => { resolveGotLock = resolve; });
     const competidor = prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT id FROM "Save" WHERE id = ${saveId} FOR UPDATE`;
+      await lockRowForUpdate(tx, 'Save', saveId, ['id']);
       resolveGotLock();
       await new Promise((resolve) => setTimeout(resolve, 80));
       await tx.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: [npcSlug, 'otro-npc-que-se-unio'] } });
