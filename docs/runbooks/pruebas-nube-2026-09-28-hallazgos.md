@@ -124,6 +124,18 @@ Gravedad: 🔴 bloquea/rompe · 🟠 mal comportamiento · 🟡 UX/pulido · �
 - Captura: "🪢 Capturar en la zona" pide cuerdas ✔️; con cuerdas sembradas y Gesgurio convaleciente
   (`capturable: true`) — prueba del flujo completo pendiente de terminar tras las fases del plan.
 
+### Tanda 3 — Fase 2 en vivo (Cazar desde la tarjeta, partida `cmul8w6vz00017dnjtogywkjw`)
+- Tarjeta de fauna con Interactuar / **Cazar** / Ignorar ✔️; Cazar a un ×1 no débil abre el 1v1 ✔️.
+  El 1v1 no descontaba el `ZonePoint` (el pin seguía tras matarlo) → arreglado en `caza.ts` + test.
+- **B30 🟡 Grupos de la misma especie en la misma celda** al deambular (×4 y ×1 en 625,475): un pin
+  tapa al otro.
+- **B31 🟡 Pin "???"/"Todavía no lo has descubierto"** tras toparse con la especie (el log ya la
+  nombra).
+- **B32 🔴 Matar convaleciente (1v1) no cierra el combate** (= B10 reproducido): `combat/matar/ruptidar`
+  → 200 y `targetedForKill=true`, pero sigue CONVALECIENTE, `pendingCombatNpcSlugs=["ruptidar"]`,
+  Actuar deshabilitado; al recargar vuelve a ofrecer Combatir/Huir.
+- Tras Huir, el jugador reaparece en la entrada de la zona (234,560): verificar si es lo esperado.
+
 ### Habilidades vs. mapa de zona (pregunta de Álvaro, 2026-09-28)
 
 **Hallazgo base — B25 🔴 dos sistemas paralelos que no casan.** Los botones Cazar / Minar / Talar /
