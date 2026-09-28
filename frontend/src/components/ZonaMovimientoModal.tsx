@@ -13,6 +13,9 @@ interface ZonaMovimientoModalProps {
   onRefreshSave?: () => Promise<void>
   /// Pasado tal cual a `ZonaPanel`, ver comentario ahí.
   onOfertaDescartada?: () => void
+  /// Cadáveres en el mapa (Fase 5, 2026-09-28) — ver `ZonaPanel`.
+  onSaquearCadaver?: (npcSlug: string) => void
+  onDesollarCadaver?: (npcSlug: string) => void
 }
 
 /// Pieza 2 del rediseño de movimiento en Zona (2026-09-09, decisión explícita de Álvaro: "la opción
@@ -30,7 +33,7 @@ interface ZonaMovimientoModalProps {
 /// izquierda (70%) y el resto del contenido a la derecha (30%) con su propio scroll — petición
 /// explícita de Álvaro: "aprovechemos el espacio horizontal... así no teniendo que scrollear",
 /// aplicado SOLO aquí, no en el tab Mapa informativo.
-export function ZonaMovimientoModal({ saveId, onEncuentroZona, onClose, onViajarA, professionRecipes, onRefreshSave, onOfertaDescartada }: ZonaMovimientoModalProps) {
+export function ZonaMovimientoModal({ saveId, onEncuentroZona, onClose, onViajarA, professionRecipes, onRefreshSave, onOfertaDescartada, onSaquearCadaver, onDesollarCadaver }: ZonaMovimientoModalProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     rootRef.current?.focus()
@@ -67,6 +70,8 @@ export function ZonaMovimientoModal({ saveId, onEncuentroZona, onClose, onViajar
             professionRecipes={professionRecipes}
             onRefreshSave={onRefreshSave}
             onOfertaDescartada={onOfertaDescartada}
+            onSaquearCadaver={onSaquearCadaver}
+            onDesollarCadaver={onDesollarCadaver}
           />
         </div>
       </div>

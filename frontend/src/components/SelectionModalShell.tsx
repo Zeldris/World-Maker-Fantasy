@@ -6,6 +6,8 @@ interface SelectionModalShellProps {
   /// Deshabilita el propio botón Cancelar (p. ej. mientras `confirming`) — la mayoría de modales de
   /// solo listado (Campamento/Viajar) no lo necesitan, se queda `false` por defecto.
   cancelDisabled?: boolean
+  /// Texto del botón de salida (B4, 2026-09-28) — "Cerrar" en modales puramente informativos.
+  cancelLabel?: string
   children: ReactNode
   /// Contenido del pie DESPUÉS de Cancelar, normalmente un único botón de confirmar — se omite del
   /// todo en los modales donde cada fila dispara la acción directamente (Volver al campamento,
@@ -30,7 +32,7 @@ const FOCUSABLE_SELECTOR =
 /// vivía duplicado byte-a-byte en 11 componentes distintos. El cuerpo (lista de candidatos, estados
 /// de carga/error/vacío) varía demasiado entre modales como para compartirlo también aquí — cada
 /// uno sigue escribiendo el suyo como `children`.
-export function SelectionModalShell({ title, onCancel, cancelDisabled, children, footer, disableOverlayClose = false }: SelectionModalShellProps) {
+export function SelectionModalShell({ title, onCancel, cancelDisabled, cancelLabel = 'Cancelar', children, footer, disableOverlayClose = false }: SelectionModalShellProps) {
   // Foco al abrirse (2026-08-31, "revisa bien todos los casos del foco/scroll") — cascarón
   // compartido por los 11 modales de selección (Cazar/Recolectar/Curar/Entregar/Saquear/campamento-
   // viaje/etc.), ninguno tenía nada que llevara el foco dentro del modal al abrirse. El contenedor
@@ -99,7 +101,7 @@ export function SelectionModalShell({ title, onCancel, cancelDisabled, children,
             disabled={cancelDisabled}
             className="tactile flex-1 rounded-lg border border-iron-700 bg-wood-950/50 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Cancelar
+            {cancelLabel}
           </button>
           {footer}
         </div>

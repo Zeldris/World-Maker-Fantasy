@@ -5,6 +5,8 @@ import { useAsyncModalData } from '../hooks/useAsyncModalData'
 
 interface SaquearZonaModalProps {
   saveId: string
+  /// Cadáveres en el mapa (Fase 5, 2026-09-28) — abierto desde el pin de UN cadáver: solo ese.
+  soloNpcSlug?: string
   /// A diferencia de Volver al campamento/Viajar (que solo devuelven texto para el turno normal),
   /// saquear necesita mandar `lootItemNames` aparte y `enCombate: true` — mismo criterio EXACTO que
   /// ya usa `handleSaquearSeleccion` en combate, incluso con el combate ya terminado (evita el
@@ -18,13 +20,13 @@ interface SaquearZonaModalProps {
 /// y con los objetos que no hemos saqueado en el combate") — mismo patrón de casillas que ya usa
 /// CombatPanel.tsx, aplanado aquí a un único listado (sin la UI de turnos/ataque que no aplica
 /// fuera de combate).
-export function SaquearZonaModal({ saveId, onConfirm, onCancel }: SaquearZonaModalProps) {
+export function SaquearZonaModal({ saveId, onConfirm, onCancel, soloNpcSlug }: SaquearZonaModalProps) {
   const [candidates, setCandidates] = useState<LootZoneCandidate[]>([])
   const [selected, setSelected] = useState<Set<string>>(new Set()) // `${npcSlug}::${itemName}` (o `${npcSlug}::__marcar__` para un NPC sin objetos)
   const [confirming, setConfirming] = useState(false)
   const { loading, error } = useAsyncModalData(
     () => getSaquearZona(saveId),
-    (res) => setCandidates(res.candidates),
+    (res) => setCandidates(soloNpcSlug ? res.candidates.filter((c) => c.slug === soloNpcSlug) : res.candidates),
     'No se pudo comprobar qué hay que saquear en la zona.',
     [saveId],
   )

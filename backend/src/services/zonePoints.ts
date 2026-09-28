@@ -453,6 +453,10 @@ export async function avanzarZonePointsUnPaso(
     ).map((n) => [n.slug, n]),
   );
   const celdaJugador = jugador ? celdaDePixel(jugador) : null;
+  // B30 (pruebas 2026-09-28): dos grupos de la misma especie deambulando acababan en la MISMA celda
+  // (un pin tapaba al otro). Celdas ocupadas en este paso — el tramo de cada callback hasta su
+  // primer `await` es síncrono y en orden, así que reservar aquí no tiene carreras.
+  const celdasOcupadasPaso = new Set(puntos.map((p) => claveCelda(celdaDePixel({ x: p.x, y: p.y }))));
 
   const resultados = await Promise.all(
     puntos.map(async (punto) => {
@@ -515,6 +519,12 @@ export async function avanzarZonePointsUnPaso(
       });
       const pixel = pixelDeCelda(siguiente);
       if (pixel.x === punto.x && pixel.y === punto.y && nuevoPasoRuta === punto.pasoRuta) return null;
+      const claveSiguiente = claveCelda(siguiente);
+      const claveActual = claveCelda(actual);
+      if (claveSiguiente !== claveActual) {
+        if (celdasOcupadasPaso.has(claveSiguiente)) return null; // celda ya ocupada: espera este paso
+        celdasOcupadasPaso.add(claveSiguiente);
+      }
       await tx.zonePoint.update({ where: { id: punto.id }, data: { x: pixel.x, y: pixel.y, pasoRuta: nuevoPasoRuta } });
       return { id: punto.id, x: pixel.x, y: pixel.y };
     }),

@@ -10,6 +10,9 @@ export const ABILITIES_RETIRADAS_FASE4 = new Set([
   'Recoger',
   'Pescar',
   'Buscar',
+  // Fase 5 (2026-09-28): saquear se hace desde el pin del cadáver en el mapa de la zona (y con
+  // "Saquear todo" al acabar un combate).
+  'Saquear',
 ])
 
 export function sinHabilidadesRetiradas<T extends { name: string }>(abilities: T[]): T[] {

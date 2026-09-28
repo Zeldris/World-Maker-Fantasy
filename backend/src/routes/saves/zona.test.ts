@@ -11,6 +11,7 @@ const findManyNpc = vi.fn();
 // vez. Vacío por defecto: la mayoría de tests de este archivo no tocan NPC dinámicos con estado.
 const findManyNpcState = vi.fn();
 const upsertNpcState = vi.fn();
+const updateNpcState = vi.fn();
 // "Tirar" objetos al suelo de la Zona (2026-09-06) — vacío por defecto: la mayoría de tests de este
 // archivo no tocan objetos tirados.
 const findManyDroppedItem = vi.fn();
@@ -37,6 +38,8 @@ const findManyLocationVisit = vi.fn();
 // Iconos de parcela (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, 2026-09-21) — vacío por defecto: la
 // mayoría de tests de este archivo no prueban zonas-interior con Parcela sembrada.
 const findManyParcela = vi.fn();
+// Cadáveres en el mapa (Fase 5, 2026-09-28) — sin despiece de catálogo por defecto.
+const findManyHarvestYield = vi.fn().mockResolvedValue([]);
 
 vi.mock('../../lib/prisma.js', () => ({
   prisma: {
@@ -45,6 +48,7 @@ vi.mock('../../lib/prisma.js', () => ({
     npcState: {
       findMany: (...args: unknown[]) => findManyNpcState(...args),
       upsert: (...args: unknown[]) => upsertNpcState(...args),
+      update: (...args: unknown[]) => updateNpcState(...args),
     },
     droppedItem: { findMany: (...args: unknown[]) => findManyDroppedItem(...args) },
     discoveredEntity: { findMany: (...args: unknown[]) => findManyDiscoveredEntity(...args) },
@@ -52,6 +56,7 @@ vi.mock('../../lib/prisma.js', () => ({
     locationLink: { findMany: (...args: unknown[]) => findManyLocationLink(...args) },
     locationVisit: { findMany: (...args: unknown[]) => findManyLocationVisit(...args) },
     parcela: { findMany: (...args: unknown[]) => findManyParcela(...args) },
+    harvestYield: { findMany: (...args: unknown[]) => findManyHarvestYield(...args) },
   },
 }));
 
@@ -65,6 +70,9 @@ vi.mock('../../services/npcScene.js', () => ({
   // Punto del jugador en el mapa de Zona (2026-09-04) — `zona.ts` usa `scopeFor` real (pura, sin
   // Prisma) para las claves de `NpcState`; misma implementación real, no mockeada.
   scopeFor: (kind: string, currentLocationId: string | null) => (kind === 'PRINCIPAL' ? '' : (currentLocationId ?? 'itinerante')),
+  // Cadáveres en el mapa (Fase 5, 2026-09-28) — misma implementación real (pura).
+  hasPendingLoot: (st: { groupSize: number | null; groupDefeated: number; corpsesLooted: number; saqueado: boolean } | null | undefined) =>
+    !!st && (st.groupSize ? st.corpsesLooted < st.groupDefeated : !st.saqueado),
 }));
 vi.mock('../../services/worldFacts.js', () => ({
   loadSessionFacts: (...args: unknown[]) => loadSessionFactsMock(...args),
@@ -313,6 +321,35 @@ describe('GET /saves/:id/zona', () => {
     const app = await buildApp();
     const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
     expect(res.json().dinamicos).toEqual([]);
+  });
+
+  // Cadáveres en el mapa (Fase 5, 2026-09-28) — un MUERTO con botín pendiente en esta Location se
+  // pinta como `CADAVER`; sin posición, se le asigna una celda libre junto al jugador y se guarda.
+  it('un cadáver con botín pendiente aparece como CADAVER junto al jugador, con Desollar si tiene despiece', async () => {
+    findUniqueSave.mockResolvedValueOnce({
+      id: 's1', worldId: 'w1', zonaPosX: 425, zonaPosY: 425,
+      currentLocation: { id: 'loc1', slug: 'hondonada-del-eco', name: 'La Hondonada del Eco', zonePoints: [] },
+    });
+    loadSessionFactsMock.mockResolvedValueOnce([]);
+    detectNpcsInSceneMock.mockResolvedValueOnce([]);
+    findManyNpcState.mockImplementation(async (args: { where?: { condicionFisica?: string } }) =>
+      args?.where?.condicionFisica === 'MUERTO'
+        ? [{ id: 'st1', npcId: 'n1', scope: 'loc1', condicionFisica: 'MUERTO', saqueado: false, groupSize: null, groupDefeated: 0, corpsesLooted: 0, zonaPosX: null, zonaPosY: null, zonaLocationId: null }]
+        : [],
+    );
+    findManyNpc.mockImplementation(async (args: { where?: { id?: unknown } }) =>
+      args?.where?.id ? [{ id: 'n1', slug: 'ruptidar', name: 'Ruptidar', kind: 'PLANTILLA', ataqueNatural: 'No ataca' }] : [],
+    );
+    findManyHarvestYield.mockResolvedValueOnce([{ sourceSlug: 'ruptidar' }]);
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
+    const cadaver = res.json().dinamicos.find((d: { tipo: string }) => d.tipo === 'CADAVER');
+    expect(cadaver).toMatchObject({ nombre: 'Cadáver de Ruptidar', cadaver: { npcSlug: 'ruptidar', saqueable: true, desollable: true } });
+    // Nunca en la misma celda que el jugador (425,425), pero pegado a él.
+    expect(cadaver.x === 425 && cadaver.y === 425).toBe(false);
+    expect(Math.abs(cadaver.x - 425)).toBeLessThanOrEqual(50);
+    expect(Math.abs(cadaver.y - 425)).toBeLessThanOrEqual(50);
+    expect(updateNpcState).toHaveBeenCalledWith({ where: { id: 'st1' }, data: { zonaPosX: cadaver.x, zonaPosY: cadaver.y, zonaLocationId: 'loc1' } });
   });
 
   // Punto del jugador en el mapa de Zona (2026-09-04) — el resto de esta suite.

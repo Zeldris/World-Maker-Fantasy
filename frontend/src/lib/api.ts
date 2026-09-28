@@ -1093,7 +1093,7 @@ export interface ZonePointInfo {
 export interface ZonaDinamicoInfo {
   slug: string
   nombre: string
-  tipo: 'NPC' | 'FAUNA' | 'OBJETO'
+  tipo: 'NPC' | 'FAUNA' | 'OBJETO' | 'CADAVER'
   /// Color por reputación con la facción del NPC (2026-09-04) — mismo criterio y mismos valores que
   /// `ZonePointInfo.color` (`zonePointColorFor`, backend), para que la lista "Presentes ahora" deje
   /// de usar un punto marrón fijo sin relación con el resto del mapa. `INERTE` (2026-09-09) solo lo
@@ -1110,6 +1110,8 @@ export interface ZonaDinamicoInfo {
   /// `tipo === 'OBJETO'`; id real de la fila para poder recogerla (a diferencia de NPC/fauna, un
   /// objeto tirado no tiene slug de catálogo estable).
   droppedItemId?: string
+  /// Cadáveres en el mapa (Fase 5, 2026-09-28) — solo presente cuando `tipo === 'CADAVER'`.
+  cadaver?: { npcSlug: string; nombre: string; saqueable: boolean; desollable: boolean }
   /// Hallazgo 34 (2026-09-07) — mismo criterio que `ZonePointInfo.descubierto`. `OBJETO` siempre
   /// `true` (instancia real ya visible en el suelo de esta partida, nunca un secreto de catálogo).
   descubierto: boolean

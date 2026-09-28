@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { getZona, moverEnZona, resolveImageUrl, recogerDroppedItem, type ZonaResponse, type ZonePointInfo, type ZonaDinamicoInfo, type RegionControlInfo, type ZonaSalidaInfo } from '../../lib/api'
-import { ZonePointDetailModal, zonaDinamicoToDetailSource } from '../ZonePointDetailModal'
+import { ZonePointDetailModal, zonaDinamicoToDetailSource, type ZonaPinTipo } from '../ZonePointDetailModal'
+import { anguloSalida, rumboSalida } from '../../lib/rumboSalida'
 import { ZoneGroupDetailModal } from '../ZoneGroupDetailModal'
 import { ZonaSalidaModal } from '../ZonaSalidaModal'
 import { ParcelaDetailModal } from '../ParcelaDetailModal'
@@ -55,6 +56,10 @@ interface ZonaPanelProps {
   /// Un paso real descartó una oferta pacífica sin responder (2026-09-28) — el caller retira esa
   /// tarjeta del log para que no quede un "Interactuar" que el backend ya no reconoce.
   onOfertaDescartada?: () => void
+  /// Cadáveres en el mapa (Fase 5, 2026-09-28) — abren el modal real de Saquear/Desollar (en
+  /// GameView). `undefined` en la vista informativa: el pin se ve, sin acción.
+  onSaquearCadaver?: (npcSlug: string) => void
+  onDesollarCadaver?: (npcSlug: string) => void
 }
 
 /// Grupo 3 § Mundo determinista, Capa 1 (2026-08-25, docs/rpgtarkor/mundo-determinista.md) —
@@ -72,7 +77,7 @@ interface ZonaPanelProps {
 /// pero DENTRO del mismo botón/sección Mapa de siempre, alternable con un tab "Mapa" al lado, ver
 /// MapaPanel.tsx). Al ser ahora su propia vista (no una subsección silenciosa), si no hay datos de
 /// zona para la ubicación actual SÍ explica por qué está vacía, en vez de `null` como antes.
-const TIPO_LABEL: Record<ZonePointInfo['tipo'] | 'OBJETO', string> = {
+const TIPO_LABEL: Record<ZonaPinTipo, string> = {
   FAUNA: 'Fauna',
   RECURSO: 'Recurso',
   NPC: 'NPC',
@@ -80,6 +85,7 @@ const TIPO_LABEL: Record<ZonePointInfo['tipo'] | 'OBJETO', string> = {
   // "Tirar" objetos al suelo de la Zona (2026-09-06, hallazgo 8) — único tipo exclusivo de
   // `dinamicos` (instancia por partida, nunca `ZonePoint` de catálogo).
   OBJETO: 'Objeto en el suelo',
+  CADAVER: 'Cadáver',
 }
 
 /// Color por reputación con la facción del punto (2026-08-27, Pieza 3 de "Dinamismo del mundo") —
@@ -152,7 +158,7 @@ const MS_POR_PASO_MOVIMIENTO = 600
 /// que el triángulo"). Un único `transform` en el `<g>` exterior es la única animación que el
 /// navegador tiene que interpolar por punto — todo el conjunto se mueve pegado, mismo patrón que ya
 /// usaba `JugadorMarker` desde el principio.
-function ZonePointShape({ tipo, color, hasCompanion }: { tipo: ZonePointInfo['tipo'] | 'OBJETO'; color: string; hasCompanion?: boolean }) {
+function ZonePointShape({ tipo, color, hasCompanion }: { tipo: ZonaPinTipo; color: string; hasCompanion?: boolean }) {
   const common = { fill: color, stroke: 'white', strokeWidth: 1.5 }
   switch (tipo) {
     case 'NPC':
@@ -176,6 +182,15 @@ function ZonePointShape({ tipo, color, hasCompanion }: { tipo: ZonePointInfo['ti
       // "Tirar" objetos al suelo de la Zona (2026-09-06) — mismo rombo que RECURSO pero gris fijo,
       // para no confundir un objeto tirado por el jugador con un recurso natural sembrado.
       return <polygon points="0,-10 7,0 0,10 -7,0" fill="#8a8a8a" stroke="white" strokeWidth={1.5} />
+    case 'CADAVER':
+      // Cadáveres en el mapa (Fase 5, 2026-09-28) — aspa rojo oscuro: forma nueva, nunca usada por
+      // ningún ser vivo ni recurso, para leerse de un vistazo como "aquí cayó algo".
+      return (
+        <>
+          <circle cx={0} cy={0} r={9} fill="#2a1a17" stroke="white" strokeWidth={1.2} />
+          <path d="M -5 -5 L 5 5 M 5 -5 L -5 5" stroke="#c0392b" strokeWidth={2.5} strokeLinecap="round" />
+        </>
+      )
   }
 }
 
@@ -183,7 +198,7 @@ function ZonePointShape({ tipo, color, hasCompanion }: { tipo: ZonePointInfo['ti
 /// — ver el comentario de `ZonePointShape` de arriba para el motivo. `children` opcional para poder
 /// insertar el texto de cantidad DENTRO del mismo grupo animado (ver `data.puntos.map` más abajo),
 /// en vez de que cada caller tenga que repetir el `<g>`/`transform` a mano.
-function ZonePointMarker({ x, y, tipo, color, hasCompanion, children }: { x: number; y: number; tipo: ZonePointInfo['tipo'] | 'OBJETO'; color: string; hasCompanion?: boolean; children?: ReactNode }) {
+function ZonePointMarker({ x, y, tipo, color, hasCompanion, children }: { x: number; y: number; tipo: ZonaPinTipo; color: string; hasCompanion?: boolean; children?: ReactNode }) {
   return (
     <g style={{ transform: `translate(${x}px, ${y}px)`, transition: `transform ${MS_POR_PASO_MOVIMIENTO}ms linear` }}>
       <ZonePointShape tipo={tipo} color={color} hasCompanion={hasCompanion} />
@@ -262,10 +277,11 @@ function GridOverlay() {
 /// animado (a diferencia de `ZonePointMarker`) — una salida nunca se mueve, es un punto fijo del
 /// propio mapa, como la cuadrícula.
 function SalidaMarker({ x, y }: { x: number; y: number }) {
+  // B6 (pruebas 2026-09-28): la flecha apuntaba siempre a la derecha — ahora gira hacia su rumbo real.
   return (
     <g style={{ transform: `translate(${x}px, ${y}px)` }}>
       <circle cx={0} cy={0} r={12} fill="#1a1410" stroke="#d4af37" strokeWidth={1.5} opacity={0.9} />
-      <polygon points="-4,-5 4,0 -4,5" fill="#d4af37" />
+      <polygon points="-4,-5 4,0 -4,5" fill="#d4af37" transform={`rotate(${anguloSalida({ x, y })})`} />
     </g>
   )
 }
@@ -322,7 +338,7 @@ function regionControlDisplay(control: RegionControlInfo): { text: string; tone:
   }
 }
 
-export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, columnasAncho = false, onClose, onViajarA, professionRecipes, onRefreshSave, onOfertaDescartada }: ZonaPanelProps) {
+export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, columnasAncho = false, onClose, onViajarA, professionRecipes, onRefreshSave, onOfertaDescartada, onSaquearCadaver, onDesollarCadaver }: ZonaPanelProps) {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<ZonaResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -376,6 +392,27 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
   /// real jugando en vivo con Playwright): `salidas[].alcanzable` solo se calculaba al abrir el
   /// panel — tras caminar hasta una salida, pulsarla seguía diciendo "Tienes que acercarte más"
   /// hasta cerrar y reabrir el modal.
+  // B3 (pruebas 2026-09-28) — "Ir hasta aquí" desde la ficha de un pin. Solo con movimiento real
+  // (no en la vista informativa) y si el jugador no está ya pegado al pin.
+  function irHastaPin(pin: { x: number; y: number }): (() => void) | undefined {
+    if (soloConsulta) return undefined
+    if (data?.jugador && Math.abs(data.jugador.x - pin.x) <= 50 && Math.abs(data.jugador.y - pin.y) <= 50) return undefined
+    return () => void handleMoverA({ x: pin.x, y: pin.y })
+  }
+
+  // Cadáveres en el mapa (Fase 5, 2026-09-28) — mismo patrón que las salidas lejanas
+  // (`handleClickSalida`): si el cadáver está lejos, primero camina hasta él; solo si llega sin que
+  // un encuentro corte el trayecto, cierra el mapa y abre el modal real de Saquear/Desollar.
+  async function accionSobreCadaver(pin: { x: number; y: number }, abrir: () => void) {
+    const cerca = !!data?.jugador && Math.abs(data.jugador.x - pin.x) <= 50 && Math.abs(data.jugador.y - pin.y) <= 50
+    if (!cerca && !soloConsulta) {
+      const fresca = await handleMoverA({ x: pin.x, y: pin.y })
+      if (!fresca) return
+    }
+    onClose?.()
+    abrir()
+  }
+
   async function handleMoverA(destino: { x: number; y: number }): Promise<ZonaResponse | null> {
     const miToken = ++movimientoTokenRef.current
     setMovimientoEnCurso(true)
@@ -620,7 +657,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                   className={`${s.alcanzable ? '' : 'opacity-60'} ${s.alcanzable || !soloConsulta ? 'cursor-pointer' : 'cursor-not-allowed'}`}
                 >
                   <SalidaMarker x={s.x} y={s.y} />
-                  <title>{s.visitada ? s.nombre : 'Salida hacia un lugar desconocido'}</title>
+                  <title>{s.visitada ? s.nombre : `Camino hacia el ${rumboSalida(s)}`}</title>
                 </g>
               ))}
               {/* Iconos de parcela (§ 7.4, 2026-09-21) — siempre visibles (mismo criterio que
@@ -672,7 +709,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
             </summary>
             <div className="flex flex-col gap-2 border-t border-iron-800 px-3 py-2">
               <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-                {(Object.keys(TIPO_LABEL) as (ZonePointInfo['tipo'] | 'OBJETO')[]).map((tipo) => (
+                {(Object.keys(TIPO_LABEL) as (ZonaPinTipo)[]).map((tipo) => (
                   <span key={tipo} className="flex items-center gap-1.5">
                     <svg viewBox="0 0 24 24" width={14} height={14} aria-hidden="true">
                       <ZonePointMarker tipo={tipo} x={12} y={12} color="#8a8578" />
@@ -808,9 +845,16 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
       )}
       {selectedPoint &&
         ('id' in selectedPoint ? (
-          <ZonePointDetailModal point={selectedPoint} onClose={() => setSelectedPoint(null)} />
+          <ZonePointDetailModal point={selectedPoint} onClose={() => setSelectedPoint(null)} onIrHasta={irHastaPin(selectedPoint)} />
         ) : (
-          <ZonePointDetailModal point={zonaDinamicoToDetailSource(selectedPoint)} onClose={() => setSelectedPoint(null)} onRecoger={handleRecoger} />
+          <ZonePointDetailModal
+            point={zonaDinamicoToDetailSource(selectedPoint)}
+            onClose={() => setSelectedPoint(null)}
+            onRecoger={handleRecoger}
+            onIrHasta={irHastaPin(selectedPoint)}
+            onSaquear={onSaquearCadaver ? (npcSlug) => void accionSobreCadaver(selectedPoint, () => onSaquearCadaver(npcSlug)) : undefined}
+            onDesollar={onDesollarCadaver ? (npcSlug) => void accionSobreCadaver(selectedPoint, () => onDesollarCadaver(npcSlug)) : undefined}
+          />
         ))}
       {selectedGroup && <ZoneGroupDetailModal point={selectedGroup} onClose={() => setSelectedGroup(null)} />}
       {selectedSalida && (

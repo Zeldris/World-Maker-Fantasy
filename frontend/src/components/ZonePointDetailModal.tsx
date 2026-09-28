@@ -2,7 +2,11 @@ import type { ZonePointInfo, ZonaDinamicoInfo } from '../lib/api'
 import { useEnciclopediaLink } from '../context/useEnciclopediaLink'
 import { SelectionModalShell, confirmButtonClasses } from './SelectionModalShell'
 
-const TIPO_LABEL: Record<ZonePointInfo['tipo'] | 'OBJETO', string> = {
+/// Tipos de pin del mapa de Zona — `ZonePointInfo` (catálogo) + los que solo existen como dinámicos
+/// de la partida: OBJETO (tirado al suelo) y CADAVER (Fase 5, 2026-09-28).
+export type ZonaPinTipo = ZonePointInfo['tipo'] | 'OBJETO' | 'CADAVER'
+
+const TIPO_LABEL: Record<ZonaPinTipo, string> = {
   FAUNA: 'Fauna',
   RECURSO: 'Recurso',
   NPC: 'NPC',
@@ -10,6 +14,7 @@ const TIPO_LABEL: Record<ZonePointInfo['tipo'] | 'OBJETO', string> = {
   // "Tirar" objetos al suelo de la Zona (2026-09-06, hallazgo 8) — único `tipo` que no viene de
   // `ZonePointInfo` (catálogo fijo): instancia por partida, `dinamicos` únicamente.
   OBJETO: 'Objeto en el suelo',
+  CADAVER: 'Cadáver',
 }
 
 const COLOR_LABEL: Record<ZonePointInfo['color'], string> = {
@@ -29,18 +34,20 @@ const COLOR_LABEL: Record<ZonePointInfo['color'], string> = {
 type ZonePointDetailSource = {
   targetSlug: string
   nombre: string
-  tipo: ZonePointInfo['tipo'] | 'OBJETO'
+  tipo: ZonaPinTipo
   color: ZonePointInfo['color']
   cantidad?: number
   /// "Tirar" objetos al suelo de la Zona (2026-09-06) — solo presente cuando `tipo === 'OBJETO'`.
   droppedItemId?: string
+  /// Cadáveres en el mapa (Fase 5, 2026-09-28) — solo presente cuando `tipo === 'CADAVER'`.
+  cadaver?: { npcSlug: string; nombre: string; saqueable: boolean; desollable: boolean }
   /// Hallazgo 34 (revisar-partida-hallazgos.md 2026-09-07) — false si la partida todavía no
   /// descubrió esto en la ficción; oculta "Ver en la Enciclopedia" aunque exista ficha real.
   descubierto: boolean
 }
 
 export function zonaDinamicoToDetailSource(d: ZonaDinamicoInfo): ZonePointDetailSource {
-  return { targetSlug: d.slug, nombre: d.nombre, tipo: d.tipo, color: d.color, droppedItemId: d.droppedItemId, descubierto: d.descubierto }
+  return { targetSlug: d.slug, nombre: d.nombre, tipo: d.tipo, color: d.color, droppedItemId: d.droppedItemId, cadaver: d.cadaver, descubierto: d.descubierto }
 }
 
 /// Cuerpo compartido de "badges + estado de descubrimiento/enciclopedia" (auditoría de lore
@@ -90,9 +97,19 @@ export function ZonePointDetailModal({
   point,
   onClose,
   onRecoger,
+  onIrHasta,
+  onSaquear,
+  onDesollar,
 }: {
   point: ZonePointDetailSource
   onClose: () => void
+  /// B3 (pruebas 2026-09-28): pulsar un pin abría su ficha sin forma de llegar hasta él — el
+  /// mapa de movimiento pasa aquí cómo caminar hasta el pin (ausente en la vista informativa).
+  onIrHasta?: () => void
+  /// Cadáveres en el mapa (Fase 5, 2026-09-28) — el caller camina hasta el cadáver si hace falta
+  /// y abre el modal real de Saquear/Desollar.
+  onSaquear?: (npcSlug: string) => void
+  onDesollar?: (npcSlug: string) => void
   /// "Tirar" objetos al suelo de la Zona (2026-09-06, hallazgo 8) — mismo criterio opcional que el
   /// resto de callbacks de acción de este proyecto (`onUnequip`/`onEquip` en DetailModal.tsx).
   onRecoger?: (droppedItemId: string) => Promise<void>
@@ -104,8 +121,24 @@ export function ZonePointDetailModal({
     <SelectionModalShell
       title={point.nombre}
       onCancel={onClose}
+      cancelLabel="Cerrar"
       footer={
         <>
+          {point.tipo === 'CADAVER' && point.cadaver?.saqueable && onSaquear && (
+            <button type="button" onClick={() => { onSaquear(point.cadaver!.npcSlug); onClose() }} className={confirmButtonClasses('accent')}>
+              Saquear
+            </button>
+          )}
+          {point.tipo === 'CADAVER' && point.cadaver?.desollable && onDesollar && (
+            <button type="button" onClick={() => { onDesollar(point.cadaver!.npcSlug); onClose() }} className={confirmButtonClasses('accent')}>
+              Desollar
+            </button>
+          )}
+          {point.tipo !== 'CADAVER' && onIrHasta && (
+            <button type="button" onClick={() => { onIrHasta(); onClose() }} className={confirmButtonClasses('accent')}>
+              Ir hasta aquí
+            </button>
+          )}
           {point.tipo === 'OBJETO' && point.droppedItemId && (
             <button
               type="button"

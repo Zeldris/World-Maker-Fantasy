@@ -163,6 +163,8 @@ export function GameView() {
   // propio (a diferencia de otros modales del árbol) porque `ZonaMovimientoModal` gestiona su
   // propio `ZonaPanel` internamente sin depender de ningún estado de este componente.
   const [zonaModalOpen, setZonaModalOpen] = useState(false)
+  // Cadáveres en el mapa (Fase 5, 2026-09-28) — el pin de un cadáver abre Saquear filtrado a él.
+  const [saquearSoloNpcSlug, setSaquearSoloNpcSlug] = useState<string | null>(null)
   // Tirada en vivo vs histórica (2026-09-04, centralización de todas las tiradas del juego) — ids
   // de LogEntry vistas por PRIMERA vez en esta sesión — LogPanel.tsx anima con DiceRollSingle solo
   // estos ids, el resto (recarga, Diario, turnos ya vistos antes en esta misma sesión) se queda con
@@ -2445,11 +2447,16 @@ export function GameView() {
       {saquearZonaModalOpen && saveId && (
         <SaquearZonaModal
           saveId={saveId}
+          soloNpcSlug={saquearSoloNpcSlug ?? undefined}
           onConfirm={(actionText, lootItemNames) => {
             setSaquearZonaModalOpen(false)
+            setSaquearSoloNpcSlug(null)
             combat.submitCombatAction(actionText, { lootItemNames, allowAfterEnded: true })
           }}
-          onCancel={() => setSaquearZonaModalOpen(false)}
+          onCancel={() => {
+            setSaquearZonaModalOpen(false)
+            setSaquearSoloNpcSlug(null)
+          }}
         />
       )}
 
@@ -2485,6 +2492,14 @@ export function GameView() {
           onRefreshSave={refreshSave}
           // Alejarse andando de una oferta pacífica la descarta en el backend (2026-09-28) — se
           // retira su tarjeta para no dejar un "Interactuar" huérfano en el log.
+          // Cadáveres en el mapa (Fase 5, 2026-09-28) — el pin ya caminó hasta el cadáver y cerró el
+          // mapa; aquí solo se abre el modal real (mismos que usaban el botón Saquear y el aviso de
+          // escena de Desollar).
+          onSaquearCadaver={(npcSlug) => {
+            setSaquearSoloNpcSlug(npcSlug)
+            setSaquearZonaModalOpen(true)
+          }}
+          onDesollarCadaver={() => setHarvestModal({ oficio: 'desollador', label: 'Desollar' })}
           onOfertaDescartada={() =>
             setCharacterLog((prev) => prev.map((e) => (e.dynamicModeOffer && !e.dynamicModeOffer.combateForzado ? { ...e, dynamicModeOffer: undefined } : e)))
           }

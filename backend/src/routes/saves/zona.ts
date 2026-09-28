@@ -3,9 +3,14 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { zoneMapImageUrl } from '../../lib/imageAssets.js';
 import { sourceDisplayNameFor, harvestSourcesThatAreFaunaWithoutNpc } from '../../scripts/worldCatalog.js';
-import { detectNpcsInScene, scopeFor } from '../../services/npcScene.js';
+import { detectNpcsInScene, scopeFor, hasPendingLoot } from '../../services/npcScene.js';
 import { loadSessionFacts } from '../../services/worldFacts.js';
-import { momentoDelDiaFor, estacionFor } from '../../services/worldClock.js';
+import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
+import { harvestAbilityForMetodo, matchesOficioPrefix } from '../../services/harvestAbilities.js';
+import { momentoDelDiaFor, estacionFor, advanceFictionalMinutes, formatFictionalDate } from '../../services/worldClock.js';
+
+/// B2 (2026-09-28) — minutos ficticios que cuesta cada paso real por la cuadrícula de la zona.
+const MINUTOS_POR_PASO_ZONA = 1;
 import type { EstacionSlug } from '../../services/imagePromptContext.js';
 import {
   zonePointColorFor,
@@ -20,7 +25,7 @@ import {
 import { NOMBRE_OCULTO_GENERICO } from '../../services/dynamicMode.js';
 import { parseAgenda, regionControlFor, type RegionControlState } from '../../services/worldAgenda.js';
 import { REGION_OWNING_FACTIONS, effectiveTemperamento } from '../../services/reputation.js';
-import { posicionAleatoriaEnLienzo, celdaDePixel, pixelDeCelda, calcularCamino, celdaAdyacenteOMisma, mismaCelda, posicionesDeSalidas, quienIniciaEncuentro } from '../../services/zonaPosicion.js';
+import { LIENZO_ANCHO, LIENZO_ALTO, posicionAleatoriaEnLienzo, celdaLibreEnEspiral, claveCelda, celdaDePixel, pixelDeCelda, calcularCamino, celdaAdyacenteOMisma, mismaCelda, posicionesDeSalidas, quienIniciaEncuentro } from '../../services/zonaPosicion.js';
 import { rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 import { createInFlightClaimSet } from '../../lib/inFlightClaimSet.js';
 import { iniciarCaza, type CazaTarget } from '../../services/caza.js';
@@ -381,12 +386,13 @@ export async function zonaRoutes(app: FastifyInstance) {
     const dinamicos: {
       slug: string;
       nombre: string;
-      tipo: 'NPC' | 'FAUNA' | 'OBJETO';
+      tipo: 'NPC' | 'FAUNA' | 'OBJETO' | 'CADAVER';
       color: ZonePointColor;
       x: number;
       y: number;
       droppedItemId?: string;
       descubierto: boolean;
+      cadaver?: { npcSlug: string; nombre: string; saqueable: boolean; desollable: boolean };
     }[] = [];
     for (const n of dinamicosCandidatos) {
       const scope = scopeFor(n.kind, locationId);
@@ -415,6 +421,57 @@ export async function zonaRoutes(app: FastifyInstance) {
         y: pos.y,
         descubierto: yaDescubierto,
       });
+    }
+
+    // Cadáveres en el mapa (Fase 5, 2026-09-28, `plan-mecanicas-por-zona-2026-09-28.md`) — un NPC/
+    // fauna MUERTO con botín o despiece pendiente (`hasPendingLoot`, mismo criterio que
+    // `saquear-zona` y `carcassCandidatesFor`) se pinta donde cayó. La posición vive en
+    // `NpcState.zonaPosX/Y` + `zonaLocationId` (la misma que ya usan los dinámicos vivos: un NPC
+    // dinámico muere donde estaba). Si no tiene posición en esta Location (fauna de un `ZonePoint`,
+    // caza limpia...), se asigna aquí de forma perezosa — mismo criterio que los dinámicos de arriba
+    // — en la celda libre más cercana al jugador, que es donde acaba de pelear: `GET /zona` siempre
+    // se pide al abrir el mapa, antes de poder dar ningún paso.
+    const muertos = await prisma.npcState.findMany({ where: { saveId: save.id, condicionFisica: 'MUERTO' } });
+    const muertosPendientes = (muertos ?? []).filter((st) => st.condicionFisica === 'MUERTO').filter(hasPendingLoot).filter((st) => st.zonaLocationId == null || st.zonaLocationId === locationId);
+    if (muertosPendientes.length > 0) {
+      const npcsMuertos = await prisma.npc.findMany({
+        where: { id: { in: muertosPendientes.map((st) => st.npcId) }, worldId: save.worldId },
+        select: { id: true, slug: true, name: true, kind: true, ataqueNatural: true },
+      });
+      const npcMuertoById = new Map(npcsMuertos.map((n) => [n.id, n]));
+      const desollables = new Set(
+        (
+          await prisma.harvestYield.findMany({
+            where: { worldId: save.worldId, metodoObtencion: 'CAZA', sourceSlug: { in: npcsMuertos.map((n) => n.slug) } },
+            select: { sourceSlug: true },
+          })
+        ).map((r) => r.sourceSlug),
+      );
+      const celdasOcupadas = new Set(ocupadas.map((o) => claveCelda(celdaDePixel(o))));
+      if (jugador) celdasOcupadas.add(claveCelda(celdaDePixel(jugador)));
+      for (const st of muertosPendientes) {
+        const npc = npcMuertoById.get(st.npcId);
+        if (!npc || scopeFor(npc.kind, locationId) !== st.scope) continue;
+        let pos = st.zonaPosX != null && st.zonaPosY != null && st.zonaLocationId === locationId ? { x: st.zonaPosX, y: st.zonaPosY } : null;
+        if (!pos) {
+          const origen = celdaDePixel(jugador ?? { x: LIENZO_ANCHO / 2, y: LIENZO_ALTO / 2 });
+          pos = pixelDeCelda(celdaLibreEnEspiral(origen, celdasOcupadas));
+          await prisma.npcState.update({ where: { id: st.id }, data: { zonaPosX: pos.x, zonaPosY: pos.y, zonaLocationId: locationId } });
+        }
+        celdasOcupadas.add(claveCelda(celdaDePixel(pos)));
+        ocupadas.push(pos);
+        const desollable = npc.ataqueNatural !== null && desollables.has(npc.slug);
+        dinamicos.push({
+          slug: `cadaver:${npc.slug}`,
+          nombre: `Cadáver de ${npc.name}`,
+          tipo: 'CADAVER',
+          color: 'INERTE',
+          x: pos.x,
+          y: pos.y,
+          descubierto: true,
+          cadaver: { npcSlug: npc.slug, nombre: npc.name, saqueable: true, desollable },
+        });
+      }
     }
 
     // "Tirar" objetos al suelo de la Zona (2026-09-06, hallazgo 8) — instancia POR PARTIDA
@@ -563,6 +620,10 @@ export async function zonaRoutes(app: FastifyInstance) {
         }
       | null;
     logEntry: { id: string; text: string; timeLabel: string; createdAt: string } | null;
+    /// B7 (2026-09-28): recurso visto que el jugador todavía no sabe aprovechar — solo se registra
+    /// como descubrimiento (sin oferta); el caller lo guarda como "último encuentro" para no repetir
+    /// el aviso a cada paso mientras siga cerca.
+    avistadoSinOferta?: { targetSlug: string };
   }> {
     const puntosCrudos = await tx.zonePoint.findMany({ where: { locationId, tipo: { in: ['FAUNA', 'NPC'] }, activo: true } });
     // Gate de aparición narrativa (ver `zonePointVisiblePara`, zonePoints.ts) — un `ZonePoint` cuya
@@ -798,6 +859,13 @@ export async function zonaRoutes(app: FastifyInstance) {
           data: { saveId, channel: 'CHARACTER', text, timeLabel, fictionalMinutes, isPlayerAction: false, isSystemMessage: true },
         });
         logEntry = { id: created.id, text, timeLabel, createdAt: created.createdAt.toISOString() };
+        // B31 (pruebas 2026-09-28): toparse con fauna/NPC genérico lo descubre en la partida — antes
+        // el log ya lo nombraba pero su pin seguía "???". Un PRINCIPAL no descubierto conserva el
+        // nombre oculto (se descubre por la historia, `nombreVisibleColision`).
+        const kindColision = npcBySlug.get(colision.targetSlug)?.kind ?? dinamicosConPosicionColision.find((d) => d.targetSlug === colision!.targetSlug)?.kind;
+        if (kindColision !== 'PRINCIPAL') {
+          await recordEntityDiscoveries({ saveId, worldId, mentionedText: colision.targetName, npcSlugsInScene: [colision.targetSlug] }, tx);
+        }
       }
     }
 
@@ -821,6 +889,28 @@ export async function zonaRoutes(app: FastifyInstance) {
         const freshSave = await tx.save.findUnique({ where: { id: saveId }, select: { pendingDynamicMode: true, pendingDynamicModeOffer: true } });
         if (freshSave?.pendingDynamicMode || freshSave?.pendingDynamicModeOffer) break;
         const nombre = sourceDisplayNameFor(punto.targetSlug);
+        // B7 (pruebas 2026-09-28): un recurso por encima del nivel de oficio del jugador (p.ej. el
+        // Yerreo tier 4 para un minero de nivel 1) ya no se ofrece como Interactuar imposible de
+        // completar — se registra como descubrimiento con el motivo real y se sigue andando.
+        const yieldsRecurso = await tx.harvestYield.findMany({
+          where: { worldId, sourceSlug: punto.targetSlug },
+          select: { metodoObtencion: true, item: { select: { tier: true } } },
+        });
+        const abilityRecurso = yieldsRecurso.length > 0 ? harvestAbilityForMetodo(yieldsRecurso[0].metodoObtencion) : null;
+        if (abilityRecurso) {
+          const progresos = await tx.professionProgress.findMany({ where: { saveId }, select: { professionId: true, nivel: true } });
+          const nivelOficio = progresos.find((pp) => matchesOficioPrefix(pp.professionId, abilityRecurso.oficio))?.nivel ?? 1;
+          const tierMinimo = Math.min(...yieldsRecurso.map((y) => y.item.tier ?? 1));
+          if (tierMinimo > nivelOficio) {
+            const text = `${characterName} ve ${nombre} cerca, pero todavía no sabe aprovecharlo: hace falta ${abilityRecurso.ability.name} a nivel ${tierMinimo} (tiene nivel ${nivelOficio}).`;
+            const created = await tx.logEntry.create({
+              data: { saveId, channel: 'CHARACTER', text, timeLabel, fictionalMinutes, isPlayerAction: false, isSystemMessage: true },
+            });
+            logEntry = { id: created.id, text, timeLabel, createdAt: created.createdAt.toISOString() };
+            await recordEntityDiscoveries({ saveId, worldId, mentionedText: nombre }, tx);
+            return { ultimoEncuentroSigueCerca, colision, dynamicModeOffer: null, logEntry, avistadoSinOferta: { targetSlug: punto.targetSlug } };
+          }
+        }
         // Sin tirada de iniciativa — un recurso nunca "busca" al jugador, siempre es él quien lo
         // encuentra (mismo framing que ya usa `buildDynamicModeTurnoPrompt` cuando `quienInicia` no
         // aplica, pero aquí ni siquiera hay LLM: `dynamicModeRecurso.ts` narra con texto fijo).
@@ -830,6 +920,7 @@ export async function zonaRoutes(app: FastifyInstance) {
           data: { saveId, channel: 'CHARACTER', text, timeLabel, fictionalMinutes, isPlayerAction: false, isSystemMessage: true },
         });
         logEntry = { id: created.id, text, timeLabel, createdAt: created.createdAt.toISOString() };
+        await recordEntityDiscoveries({ saveId, worldId, mentionedText: nombre }, tx);
         break; // Solo el primer recurso — no acumula varios a la vez.
       }
     }
@@ -966,7 +1057,13 @@ export async function zonaRoutes(app: FastifyInstance) {
       // arriba: ambos avanzan a la vez, evaluados sobre el estado ya actualizado).
       const zonePointsMovidos = await avanzarZonePointsUnPaso(tx, save.currentLocationId!, save.id, Math.random, nuevaPosicion, factionsStatus, momentoActual);
 
-      const { ultimoEncuentroSigueCerca, colision, dynamicModeOffer, logEntry } = await detectarEncuentroEnCelda(
+      // B2 (pruebas 2026-09-28): moverse por la zona no avanzaba el reloj — decenas de pasos y
+      // encuentros seguían en "Día 1, 08:00". Cada paso real (una celda, ~50 m) cuesta 1 minuto.
+      const minutosTrasPaso = advanceFictionalMinutes(save.worldState?.fictionalMinutes ?? 480, MINUTOS_POR_PASO_ZONA);
+      const etiquetaTrasPaso = formatFictionalDate(minutosTrasPaso);
+      await tx.worldState.updateMany({ where: { saveId: save.id }, data: { fictionalMinutes: minutosTrasPaso, fictionalDateLabel: etiquetaTrasPaso } });
+
+      const { ultimoEncuentroSigueCerca, colision, dynamicModeOffer, logEntry, avistadoSinOferta } = await detectarEncuentroEnCelda(
         tx,
         save.id,
         save.worldId,
@@ -974,8 +1071,8 @@ export async function zonaRoutes(app: FastifyInstance) {
         siguienteCelda,
         factionsStatus,
         save.characterName,
-        save.worldState?.fictionalMinutes ?? 480,
-        save.worldState?.fictionalDateLabel ?? 'Día 1, mañana',
+        minutosTrasPaso,
+        etiquetaTrasPaso,
         destrezaJugador,
         ultimoEncuentroSlug,
       );
@@ -983,7 +1080,9 @@ export async function zonaRoutes(app: FastifyInstance) {
       // deja al jugador fuera de su radio (volver a acercarse lo vuelve a ofrecer).
       const zonaUltimoEncuentro = dynamicModeOffer
         ? marcaUltimoEncuentro(dynamicModeOffer)
-        : save.zonaUltimoEncuentro && !ultimoEncuentroSigueCerca
+        : avistadoSinOferta
+          ? marcaUltimoEncuentro(avistadoSinOferta)
+          : save.zonaUltimoEncuentro && !ultimoEncuentroSigueCerca
           ? Prisma.JsonNull
           : undefined;
 
