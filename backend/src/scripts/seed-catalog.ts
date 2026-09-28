@@ -204,7 +204,19 @@ async function main() {
     'clan-serhu': 'ulkha-ketg',
     'clan-helsig': 'brenka',
     'clan-goshg': 'doshka',
-    'concordia-de-hierro': 'yovenne-tal',
+    // Tanda OpenCode 2026-09-27/28 (A-01/A-37): Yovenne Tal pasa de líder de la Concordia a líder
+    // de Los del Obelisco, la facción moderada a la que de verdad pertenece según historia.md — la
+    // Concordia pasa a liderarla el Primer Censor Tarsen Vold, de la facción radical.
+    'concordia-de-hierro': 'tarsen-vold',
+    'los-del-obelisco': 'yovenne-tal',
+    // A-02/A-04: Keseg Sael no tiene cargo de mando propio (los Nabieus no se gobiernan salvo por
+    // cónclave); Aven Tessk es su portavoz, no un líder de gobierno, pero es la única ficha real de
+    // la que el motor de disputas puede leer Inteligencia. Feg Tusha/Feg Ger: el Jakut no es un
+    // cargo (A-06) — el liderNpcId es quien más a menudo está sentado en él.
+    'keseg-sael': 'aven-tessk',
+    'keseg-prisilke': 'ilka-dren',
+    'feg-tusha': 'hulki',
+    'feg-ger': 'yeru',
   };
   for (const [factionSlug, leaderSlug] of Object.entries(FACTION_LEADER_SLUG)) {
     const leaderNpcId = npcIdBySlug.get(leaderSlug);

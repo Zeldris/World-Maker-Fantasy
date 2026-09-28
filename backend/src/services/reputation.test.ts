@@ -60,11 +60,21 @@ describe('effectiveTemperamento', () => {
 });
 
 describe('resolveFoundingOutcome', () => {
-  // Ciénaga Troncal ganó dueña (Clan Goshg) el 2026-08-15 — ya no vale como ejemplo de región sin
-  // dueño, El Margen Silencioso sigue sin ninguna.
-  it('región sin facción dueña conocida (El Margen Silencioso): sin dueño', () => {
-    expect(resolveFoundingOutcome('El Margen Silencioso', {})).toBe('SIN_DUENO');
+  // Ciénaga Troncal ganó dueña (Clan Goshg) el 2026-08-15, y El Margen Silencioso ganó dos
+  // (Keseg Sael + Feg Tusha) en la tanda OpenCode 2026-09-27/28 (A-02/A-04) — las 5 regiones reales
+  // de Berig tienen ya alguna facción dueña en REGION_OWNING_FACTIONS. El único caso "sin dueño"
+  // real que queda es una región fuera del mapa (nombre inventado o `null`).
+  it('región fuera de REGION_OWNING_FACTIONS (nombre inventado, o null): sin dueño', () => {
+    expect(resolveFoundingOutcome('Una Región Que No Existe', {})).toBe('SIN_DUENO');
     expect(resolveFoundingOutcome(null, {})).toBe('SIN_DUENO');
+  });
+
+  // El Margen Silencioso tiene DOS dueñas (Keseg Sael y Feg Tusha, A-02/A-04) — CONFLICTO si la
+  // reputación es hostil con cualquiera de las dos, no solo con la primera de la lista.
+  it('El Margen Silencioso: dos dueñas (Keseg Sael y Feg Tusha), hostil con cualquiera basta para CONFLICTO', () => {
+    expect(resolveFoundingOutcome('El Margen Silencioso', {})).toBe('CONQUISTADA');
+    expect(resolveFoundingOutcome('El Margen Silencioso', { 'Keseg Sael': 500 })).toBe('CONFLICTO');
+    expect(resolveFoundingOutcome('El Margen Silencioso', { 'Feg Tusha': 500 })).toBe('CONFLICTO');
   });
 
   // Renombrado de PACIFICA a CONQUISTADA (2026-08-15, confirmado) — mismo criterio (reputación

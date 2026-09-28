@@ -233,6 +233,81 @@ export const worldPopulations: WorldPopulationInput[] = [
     distribucion: { 'La Meseta del Orden': 1 },
   },
 
+  // --- Tanda OpenCode 2026-09-27/28 — 5 facciones nuevas (A-01 a A-05), cifras de las propias
+  // fichas de propuestas-aprobadas.md. Todas con `poblacion` simple (élite/no combatientes) salvo
+  // Los del Obelisco, que sí fija "unos 20 guardias de archivo" — se reparte como el resto de
+  // facciones (poblacion/soldados/trabajadores/visitantes), con la mayoría en `poblacion` (casta de
+  // ley, sin trabajadores propios) y los guardias como `soldados`.
+  {
+    targetType: 'FACCION',
+    targetSlug: 'los-del-obelisco-poblacion',
+    label: 'Los del Obelisco — magistrados y archiveros',
+    poblacion: 280,
+    poblacionMax: 350,
+    distribucion: { 'La Meseta del Orden': 1 },
+  },
+  {
+    targetType: 'FACCION',
+    targetSlug: 'los-del-obelisco-soldados',
+    label: 'Los del Obelisco — guardia de archivo',
+    poblacion: 20,
+    poblacionMax: 30,
+    distribucion: { 'La Meseta del Orden': 1 },
+  },
+  {
+    targetType: 'FACCION',
+    targetSlug: 'los-del-obelisco-trabajadores',
+    label: 'Los del Obelisco — trabajadores',
+    poblacion: 0,
+    poblacionMax: 20,
+    distribucion: { 'La Meseta del Orden': 1 },
+  },
+  {
+    targetType: 'FACCION',
+    targetSlug: 'los-del-obelisco-visitantes',
+    label: 'Los del Obelisco — visitantes',
+    poblacion: 0,
+    poblacionMax: 10,
+    distribucion: { 'La Meseta del Orden': 1 },
+  },
+  // Keseg Sael — 1.500 del pool `nabieus` (2.600), dispersos por el Margen; sin soldados (no
+  // tienen ejército, viven de ser mensajeros).
+  {
+    targetType: 'FACCION',
+    targetSlug: 'keseg-sael-poblacion',
+    label: 'Keseg Sael — dispersos por El Margen Silencioso',
+    poblacion: 1500,
+    poblacionMax: 1800,
+    distribucion: { 'El Margen Silencioso': 1 },
+  },
+  // Keseg Prisilke — 500 del pool `nabieus`, en Jeyselt.
+  {
+    targetType: 'FACCION',
+    targetSlug: 'keseg-prisilke-poblacion',
+    label: 'Keseg Prisilke — Jeyselt',
+    poblacion: 500,
+    poblacionMax: 650,
+    distribucion: { 'Ciénaga Troncal': 1 },
+  },
+  // Feg Tusha — 850 del pool `faerus` (1.200), la manada base de Hashma.
+  {
+    targetType: 'FACCION',
+    targetSlug: 'feg-tusha-poblacion',
+    label: 'Feg Tusha — manada base de Hashma',
+    poblacion: 850,
+    poblacionMax: 1050,
+    distribucion: { 'El Margen Silencioso': 1 },
+  },
+  // Feg Ger — 200 del pool `faerus`, la manada de Kegi.
+  {
+    targetType: 'FACCION',
+    targetSlug: 'feg-ger-poblacion',
+    label: 'Feg Ger — manada de Kegi',
+    poblacion: 200,
+    poblacionMax: 300,
+    distribucion: { 'Las Llanuras del Viento Rojo': 1 },
+  },
+
   // --- Fauna (semilla propuesta, 2026-07-29: cuanto más pequeño el animal, mayor su número;
   // grandes/peligrosos/con materiales valiosos quedan controlados) — todas en Llanuras del
   // Viento Rojo salvo Cornante (Ciénaga Troncal, su propia descripción lo deja claro: "se hunden

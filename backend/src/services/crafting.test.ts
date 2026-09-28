@@ -100,7 +100,7 @@ function row(id: string, catalogSlug: string, cantidad?: number): InventoryRowLi
 }
 
 describe('CRAFTING_RECIPES', () => {
-  it('tiene las 52 recetas esperadas, cada una con una clave única', () => {
+  it('tiene las 54 recetas esperadas, cada una con una clave única', () => {
     expect(CRAFTING_RECIPES.map((r) => r.key)).toEqual([
       'axeRepair',
       'smokeMeat',
@@ -171,6 +171,10 @@ describe('CRAFTING_RECIPES', () => {
       // real de "herramienta sin forma de conseguirla" detectado al verificar la implementación.
       'canaPesca',
       'ceboPesca',
+      // Tanda OpenCode 2026-09-27/28 (A-34/A-35) — primer crafteo real del veneno de Espina del
+      // Viento y primera receta del oficio sastre-orcos-llanuras.
+      'spinePoultice',
+      'cornisaCloak',
     ]);
   });
 });

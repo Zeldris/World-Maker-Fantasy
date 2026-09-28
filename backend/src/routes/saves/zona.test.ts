@@ -293,7 +293,26 @@ describe('GET /saves/:id/zona', () => {
     expect(body.regionControl).toEqual({ estado: 'NEUTRAL_O_DUENO_ORIGINAL', duenoActual: 'Clan Helsig' });
   });
 
+  // Tanda OpenCode 2026-09-27/28 (A-02/A-04): El Margen Silencioso deja de ser SIN_DUENO — Keseg
+  // Sael y Feg Tusha son sus dos dueñas mecánicas. Las 5 regiones reales de Berig tienen ya alguna
+  // facción dueña, así que "sin dueño de lore conocido" solo puede probarse con una región fuera
+  // del mapa real (nombre inventado, no una de las 5 regiones jugables).
   it('control regional: región sin dueño de lore conocido devuelve regionControl null', async () => {
+    findUniqueSave.mockResolvedValueOnce({
+      id: 's1',
+      worldId: 'w1',
+      currentLocation: { id: 'loc1', slug: 'restos-de-maktor', name: 'Los Restos de Maktor', region: 'Una Región Que No Existe', zonePoints: [] },
+      worldState: { fictionalMinutes: 480, factionsStatus: {}, agenda: [] },
+    });
+    loadSessionFactsMock.mockResolvedValueOnce([]);
+    detectNpcsInSceneMock.mockResolvedValueOnce([]);
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
+    const body = res.json();
+    expect(body.regionControl).toBeNull();
+  });
+
+  it('control regional: El Margen Silencioso expone su primera dueña (Keseg Sael) de las dos reales', async () => {
     findUniqueSave.mockResolvedValueOnce({
       id: 's1',
       worldId: 'w1',
@@ -305,7 +324,7 @@ describe('GET /saves/:id/zona', () => {
     const app = await buildApp();
     const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
     const body = res.json();
-    expect(body.regionControl).toBeNull();
+    expect(body.regionControl).toEqual({ estado: 'NEUTRAL_O_DUENO_ORIGINAL', duenoActual: 'Keseg Sael' });
   });
 
   it('un NPC dinámico MUERTO no aparece', async () => {

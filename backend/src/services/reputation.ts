@@ -88,12 +88,20 @@ export function effectiveTemperamento(catalogTemperamento: Temperamento, faction
 /// "sin dueño".
 export const REGION_OWNING_FACTIONS: Record<string, string[]> = {
   'Las Llanuras del Viento Rojo': ['Clan Serhu'],
-  'La Meseta del Orden': ['Concordia de Hierro'],
+  // Tanda OpenCode 2026-09-27/28 (A-01): Los del Obelisco comparte la Meseta con la Concordia —
+  // facción moderada del mismo orden Goirnte, sin ejército propio, que no compite por el territorio
+  // en el sentido de `resolveFoundingOutcome` (nunca hostil a la vez que la propia Concordia salvo
+  // que la reputación caiga con las dos por separado).
+  'La Meseta del Orden': ['Concordia de Hierro', 'Los del Obelisco'],
   'Cristal Helado': ['Clan Helsig'],
   // Corregido (2026-08-15): la clave se había escrito sin tilde ("Cienaga"), pero
   // `Location.region` real siempre lleva "Ciénaga Troncal" (worldCatalog.ts) — la fila quedaba
   // silenciosamente sin efecto (el lookup por string exacto nunca coincidía).
-  'Ciénaga Troncal': ['Clan Goshg'],
+  // Tanda OpenCode 2026-09-27/28 (A-03): Keseg Prisilke comparte la Ciénaga con el Clan Goshg.
+  'Ciénaga Troncal': ['Clan Goshg', 'Keseg Prisilke'],
+  // Tanda OpenCode 2026-09-27/28 (A-02/A-04): el Margen deja de ser SIN_DUENO — Keseg Sael (mitad
+  // oriental) y Feg Tusha (mitad occidental) son sus primeras dueñas mecánicas, por mitades.
+  'El Margen Silencioso': ['Keseg Sael', 'Feg Tusha'],
 };
 
 export type FoundingOutcome = 'SIN_DUENO' | 'CONQUISTADA' | 'CONFLICTO';

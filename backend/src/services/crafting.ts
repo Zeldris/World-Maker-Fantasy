@@ -1049,6 +1049,55 @@ export const SALVATURA_FILTER_RECIPE: CraftingRecipe = {
     'El personaje hierve juntos los pétalos de Flor Salvatura, el pasto de sangre y el pasto solar hasta reducirlos a un filtro claro — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
 };
 
+// Tanda OpenCode 2026-09-27/28 (A-34) — primer crafteo real del veneno de Espina del Viento, que
+// hasta ahora solo era loot sin uso: diluido y ligado en resina deja de ser un peligro y se vuelve
+// un anestésico de campo. Mismo criterio de tier/oficio que MOSS_POULTICE_RECIPE (curaUnPaso ya
+// está en el propio ItemCatalog de 'unguento-espina', no aquí).
+export const SPINE_POULTICE_RECIPE: CraftingRecipe = {
+  key: 'spinePoultice',
+  verbRegex: /prepar|dilu|liga|mezcl|hac|crear|creo/,
+  nounRegex: /unguento.*espina|ungüento.*espina/,
+  location: null,
+  ingredients: [
+    { match: { kind: 'exact', catalogSlug: 'veneno-espina' }, cantidad: 1, label: 'aguijón con veneno de Espina del Viento' },
+    { match: { kind: 'exact', catalogSlug: 'flor-de-ceniza' }, cantidad: 2, label: 'Flor de Ceniza' },
+    { match: { kind: 'exact', catalogSlug: 'resina-telda-gris' }, cantidad: 1, label: 'Resina Telda Gris' },
+  ],
+  resultName: 'Ungüento de Espina',
+  resultCatalogSlug: 'unguento-espina',
+  resultCantidad: 2,
+  resultDescription: 'El veneno de Espina del Viento, diluido y ligado con Flor de Ceniza y Resina Telda Gris hasta formar una pasta ámbar — deja de ser un peligro y se vuelve un anestésico de campo.',
+  tier: 3,
+  oficio: 'alquimista-orcos-llanuras',
+  narrationWant:
+    'El personaje quiere preparar un Ungüento de Espina, pero no puede hacerlo ahora mismo (hacen falta 1 aguijón con veneno de Espina del Viento, 2 Flor de Ceniza y 1 Resina Telda Gris a la vez) — narra que lo intenta o lo considera, pero no que lo prepara de verdad.',
+  narrationDo:
+    'El personaje diluye el veneno de Espina del Viento con Flor de Ceniza y Resina Telda Gris hasta formar una pasta ámbar — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+// Tanda OpenCode 2026-09-27/28 (A-35) — primera receta real del oficio sastre-orcos-llanuras
+// (hasta ahora solo enseñable, la Maestra Sastre Serhu no tenía ningún crafteo propio). Da uso a
+// las Plumas de Celubia, que no servían para nada.
+export const CORNISA_CLOAK_RECIPE: CraftingRecipe = {
+  key: 'cornisaCloak',
+  verbRegex: /cos|confeccion|fabric|prepar|hac|crear|creo/,
+  nounRegex: /manto.*cornisa|cornisa.*manto/,
+  location: null,
+  ingredients: [
+    { match: { kind: 'exact', catalogSlug: 'plumas-celubia' }, cantidad: 4, label: 'plumas de Celubia' },
+    { match: { kind: 'exact', catalogSlug: 'lana-murgol' }, cantidad: 2, label: 'lana de múrgol' },
+  ],
+  resultName: 'Manto de Cornisa',
+  resultCatalogSlug: 'manto-cornisa',
+  resultDescription: 'Plumas de Celubia cosidas en hilera sobre un fieltro de lana de múrgol — el manto que se cose quien vuelve de trepar a las cornisas más altas de Los Acantilados Partidos.',
+  tier: 2,
+  oficio: 'sastre-orcos-llanuras',
+  narrationWant:
+    'El personaje quiere coser un Manto de Cornisa, pero no puede hacerlo ahora mismo (hacen falta 4 plumas de Celubia y 2 de lana de múrgol a la vez) — narra que lo intenta o lo considera, pero no que lo termina de verdad.',
+  narrationDo:
+    'El personaje cose las plumas de Celubia en hilera sobre el fieltro de lana de múrgol — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
 export const QUIO_CLARITY_FILTER_RECIPE: CraftingRecipe = {
   key: 'quioClarityFilter',
   verbRegex: /destil|prepar|hac|crear|creo/,
@@ -1235,6 +1284,8 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
   TANNED_BACKPACK_RECIPE,
   CANA_PESCA_RECIPE,
   CEBO_PESCA_RECIPE,
+  SPINE_POULTICE_RECIPE,
+  CORNISA_CLOAK_RECIPE,
 ];
 
 export function detectsCraftIntent(recipe: CraftingRecipe, action: string): boolean {

@@ -536,6 +536,29 @@ export const locations: LocationInput[] = [
   },
 
   // ══════════════════════════════════════════════════════════════════════════
+  // TANDA OpenCode 2026-09-27/28 — 2 lugares nuevos de La Meseta del Orden (A-18, A-19)
+  // ══════════════════════════════════════════════════════════════════════════
+
+  {
+    slug: 'puesto-del-corredor',
+    name: 'El Puesto del Corredor',
+    region: 'La Meseta del Orden',
+    kind: 'puesto de control',
+    description:
+      'El puesto de control en el extremo sur del corredor costero occidental, donde el camino que bordea El Margen Silencioso entra en la Meseta del Orden. Toda columna de la Concordia que va o vuelve del Cruce de las Cenizas pasa por aquí — la otra puerta de las que siempre llegan en columna y por una sola. Una explanada de piedra gris pulida con tres caminos que se cruzan en ángulos exactos: el corredor costero, el que sube al Baluarte de Goirme y el que lleva a las forjas de la frontera norte. Un obelisco menor lleva los edictos de paso, y los inspectores anotan cada carga, cada nombre y cada hora — un registro de entrada sin su salida es un asunto inacabado, y se persigue. Una escuadra de doce y dos inspectores de la casta de ley lo guardan de forma permanente. Fuera del núcleo jugable actual.',
+    aliases: ['el puesto del corredor', 'puesto del corredor'],
+  },
+  {
+    slug: 'canteras-del-eje',
+    name: 'Las Canteras del Eje',
+    region: 'La Meseta del Orden',
+    kind: 'cantera',
+    description:
+      'La cantera y el taller de talla de donde sale cada obelisco de leyes de Berig, siempre de la misma veta que el primer obelisco del Baluarte de Goirme — un edicto grabado en otra piedra no se considera del todo válido, y ningún Goirnte sabría explicar por qué: simplemente, no está en su sitio. Galerías paralelas excavadas siguiendo los ejes de la Meseta; los bloques se cortan con herramientas de aleación de Hierba del Hierro y se pulen con arena y agua en surcos tallados en el suelo. Se trabaja en silencio y por turnos, y un obelisco a medio tallar nunca se abandona: si su talladora muere, otra lo termina con la misma herramienta. Un linaje de talladores de la casta de construcción, unos treinta activos, trabaja aquí de forma permanente. Fuera del núcleo jugable actual.',
+    aliases: ['las canteras del eje', 'canteras del eje'],
+  },
+
+  // ══════════════════════════════════════════════════════════════════════════
   // REGIÓN: CRISTAL HELADO
   // ══════════════════════════════════════════════════════════════════════════
 
@@ -741,7 +764,7 @@ export const locations: LocationInput[] = [
     region: 'Ciénaga Troncal',
     kind: 'región',
     description:
-      '',
+      'Galerías secas bajo las raíces entrelazadas de los Trepadores Ocaso más viejos, tapizadas de musgo, por donde se cruza la Ciénaga sin tocar el agua. Los cazadores de Keseg Prisilke las conocen como nadie; en las crecidas, son el refugio de medio pantano. Fuera del núcleo jugable actual.',
     aliases: ['tuneles musgosos'],
   },
   {
@@ -750,7 +773,7 @@ export const locations: LocationInput[] = [
     region: 'Ciénaga Troncal',
     kind: 'región',
     description:
-      '',
+      'El Trepador Ocaso más viejo de la Ciénaga, con unas raíces tan anchas que forman una isla firme y alta. Es el único suelo seco donde los Goshg pueden levantar sus piras: aquí queman a sus muertos y dejan sus tótems funerarios, colgados de las raíces. Fuera del núcleo jugable actual.',
     aliases: ['raices madre fango'],
   },
   {
@@ -759,7 +782,7 @@ export const locations: LocationInput[] = [
     region: 'Ciénaga Troncal',
     kind: 'región',
     description:
-      '',
+      'La única altura de la Ciénaga, una loma de roca vieja que asoma sobre el dosel. Por la mañana la envuelve la niebla de las charcas, oscurecida por el humo de resina de las hogueras de los vigías Goshg, que desde aquí ven llegar a los Serhu. Fuera del núcleo jugable actual.',
     aliases: ['cumbre bruma negra'],
   },
   {
@@ -768,7 +791,7 @@ export const locations: LocationInput[] = [
     region: 'Ciénaga Troncal',
     kind: 'región',
     description:
-      '',
+      'Donde el agua que rodea las Raíces Madre cae de golpe a un nivel más bajo del pantano, en un salto de agua marrón. Los Borboles remontan aquí en primavera y es la mejor pesca de la región. Fuera del núcleo jugable actual.',
     aliases: ['cataratas madre fango'],
   },
   {
@@ -777,7 +800,7 @@ export const locations: LocationInput[] = [
     region: 'Ciénaga Troncal',
     kind: 'región',
     description:
-      '',
+      'Marismas de marea en la costa oriental, al norte de la Costa Corredor, donde la mezcla de agua dulce y salada da marisco en abundancia. Los Goshg la recolectan en marea baja. Fuera del núcleo jugable actual.',
     aliases: ['costa marea vida'],
   },
   {
@@ -786,7 +809,7 @@ export const locations: LocationInput[] = [
     region: 'Ciénaga Troncal',
     kind: 'región',
     description:
-      '',
+      'La costa oriental donde se entrega la madera del tributo a las balsas Goirntes que bajan hacia la Meseta. Es el único punto de la Ciénaga donde se ven Goirntes con regularidad. Fuera del núcleo jugable actual.',
     aliases: ['costa corredor'],
   },
   {
@@ -795,7 +818,7 @@ export const locations: LocationInput[] = [
     region: 'Ciénaga Troncal',
     kind: 'región',
     description:
-      '',
+      'El muelle propio de El Cerco de los Pilotes, del que salen las canoas de fondo plano hacia la Costa Corredor y hacia Jeyselt. Fuera del núcleo jugable actual.',
     aliases: ['embarcadero silh makut'],
   },
   {
@@ -804,7 +827,7 @@ export const locations: LocationInput[] = [
     region: 'Ciénaga Troncal',
     kind: 'región',
     description:
-      '',
+      'Garganta de paredes cubiertas de un musgo verde intenso, en el borde norte de la Ciénaga. Es la salida hacia Cristal Helado, y por él pasa la Senda del Sílice: el sitio donde se cruzan las caravanas Helsig y los porteadores Goshg. Fuera del núcleo jugable actual.',
     aliases: ['desfiladero esmeralda'],
   },
 
@@ -873,6 +896,41 @@ export const locations: LocationInput[] = [
     description:
       'El enclave Nabieus más estable del Margen Silencioso, en la mitad oriental de la región — no tiene nombre propio en ninguna lengua ajena a ellos, y así lo prefieren: cuanto menos se hable de él, más dura. Desde aquí parten los mensajeros y correos que se infiltran en la Concordia de Hierro. Fuera del núcleo jugable actual.',
     aliases: ['refugio sin nombre', 'el refugio', 'enclave nabieus'],
+  },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // TANDA OpenCode 2026-09-27/28 — 3 lugares nuevos de El Margen Silencioso (A-15 a A-17)
+  // ══════════════════════════════════════════════════════════════════════════
+
+  {
+    slug: 'cruce-de-las-ausencias',
+    name: 'El Cruce de las Ausencias',
+    region: 'El Margen Silencioso',
+    kind: 'cruce',
+    description:
+      'El centro de El Margen Silencioso, en la línea donde la selva Faerus (oeste) da paso a la mitad oriental de los Nabieus. No es de nadie. Bosque cerrado de coníferas de madera negra de copas bajas, suelo hecho un entramado de raíces cubierto de Musgo Callado. La quietud es total: no se oye el viento, ni los pasos propios, ni la respiración del que va al lado. Es el paso de los cazadores Faerus hacia las Llanuras y de los mensajeros Nabieus hacia el sur — sin asentamiento. Rige una norma que nadie ha pactado pero todos cumplen: dentro del Cruce nadie ataca a nadie de otra raza, porque nadie oiría pedir ayuda. Las manadas cuentan que aquí grupos enteros "se desvanecieron" — no hay nada sobrenatural: el Mekiosi espera inmóvil y caza de una embestida, y donde no se oye un grito, un grupo que se separa unos pasos puede perder a uno tras otro sin que el resto lo note. Fuera del núcleo jugable actual.',
+    aliases: ['cruce de las ausencias', 'el cruce'],
+    teaser: 'Aquí nadie oye cuando llamas.',
+  },
+  {
+    slug: 'aguas-sordas',
+    name: 'Las Aguas Sordas',
+    region: 'El Margen Silencioso',
+    kind: 'pantano',
+    description:
+      'La franja pantanosa de El Margen Silencioso, entre El Cruce de las Ausencias y la mitad oriental. Canales y charcas de agua negra entre raíces de coníferas, con islas de raíz que ceden bajo el peso de algo grande. El agua no suena: ni chapoteo ni goteo. La única forma de saber que algo se mueve es mirar el agua — las ondas se ven, pero no se oyen. Nadie vive aquí: los cazadores del Feg Tusha bajan en temporada seca. Aquí aprendieron los Nabieus que la vibración viaja mejor por el agua, antes de la segunda huida hacia Ciénaga Troncal. Fuera del núcleo jugable actual.',
+    aliases: ['las aguas sordas', 'aguas sordas'],
+    teaser: 'Mira el agua. No va a avisarte de otra forma.',
+  },
+  {
+    slug: 'proa-gris',
+    name: 'La Proa Gris',
+    region: 'El Margen Silencioso',
+    kind: 'mirador',
+    description:
+      'El borde sur de El Margen Silencioso, donde la roca gris de la Meseta del Orden se adentra en la selva como la proa de un barco — la única altura del Margen. Un espolón de piedra gris con la misma simetría antinatural de la Meseta, que se deshace a medida que avanza hacia la selva: en la base, las grietas son rectas y paralelas; en la punta, ya son irregulares, como si el trabajo de Goirme se hubiera quedado sin fuerza. Termina en cortados de treinta metros sobre el dosel. Solo crece musgo en las grietas. Es el único punto del Margen desde el que se ve lejos: los Nabieus de Keseg Sael mantienen aquí un turno de vigía rotativo (5-10 a la vez) que cuenta las columnas de la Concordia por el corredor costero occidental. Es terreno de caza de las Sombras de Kroj, que usan sus precipicios, y los vigías bajan antes del anochecer sin excepción. Fuera del núcleo jugable actual.',
+    aliases: ['la proa gris', 'proa gris'],
+    teaser: 'Desde aquí se ve la Meseta entera. Lo que oyes detrás no es tu eco.',
   },
 ];
 
@@ -1326,7 +1384,11 @@ export interface NpcInput {
   habilidadesRaciales?: NpcHabilidadRacial[];
   /// Disposición al combate (schema.prisma § Temperamento) — default 'CAUTELOSO' (comportamiento
   /// actual dependiente del verbo del jugador) si no se especifica.
-  temperamento?: 'AGRESIVO' | 'CAUTELOSO' | 'INOFENSIVO';
+  /// Ampliado a los 5 valores reales de `Temperamento` (schema.prisma) — tanda OpenCode
+  /// 2026-09-27/28: Lusa, Gero y Tasko son los primeros NPC de catálogo con AMIGABLE explícito
+  /// (antes solo AGRESIVO/CAUTELOSO/INOFENSIVO se habían usado aquí; ENEMIGO nunca se fija a mano,
+  /// solo lo desplaza `effectiveTemperamento` por reputación pésima).
+  temperamento?: 'AMIGABLE' | 'AGRESIVO' | 'CAUTELOSO' | 'INOFENSIVO' | 'ENEMIGO';
   /// Medios de movimiento POSIBLES (schema.prisma § MedioMovimiento, gate de alcanzabilidad de
   /// "Interactuar", 2026-09-08) — array, un anfibio real declara los dos
   /// (`['TERRESTRE', 'ACUATICO']`). Default `['TERRESTRE']` si no se especifica.
@@ -2485,6 +2547,433 @@ export const fauna: NpcInput[] = [
       { icon: '🦞', name: 'Pinza mayor', description: 'Cierra la pinza capaz de partir roca sobre el punto que ha logrado acorralar con la menor.', categoria: 'ataque', preferredAttribute: 'fuerza', level: 4, effects: ['ATAQUE'] },
       { icon: '🪨', name: 'Caparazón de grieta', description: 'El caparazón, del mismo tono que la roca partida, absorbe el golpe casi tan bien como la propia grieta.', categoria: 'defensa', preferredAttribute: 'constitucion', level: 12, effects: ['AGUANTE'] },
       { icon: '✂️', name: 'Sujeción de la pinza menor', description: 'Sujeta con la pinza rápida mientras prepara el golpe final de la mayor, sin soltar presa.', categoria: 'utilidad', preferredAttribute: 'fuerza', level: 20, effects: ['CONTROL'] },
+    ],
+  },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // TANDA OpenCode 2026-09-27/28 — fauna nueva del Margen Silencioso (A-28 a A-31), Ciénaga
+  // Troncal, Cristal Helado y La Meseta del Orden (P-01), y fauna antigua del lore que nunca llegó
+  // al catálogo (P-02). Todas fuera del núcleo jugable actual salvo que se diga lo contrario —
+  // mismo criterio que Cornante/Sombra de Kroj: sin `homeLocationSlug` fijo (esas regiones no
+  // tienen Location sembradas todavía), con nota de región en la `condicion` de su HarvestYield.
+  // ══════════════════════════════════════════════════════════════════════════
+
+  // A-28 — Leshra: primera especie real de la familia Umbrias (Kroj).
+  {
+    slug: 'leshra',
+    name: 'Leshra',
+    kind: 'PLANTILLA',
+    nucleoJugable: false,
+    aliases: ['leshra'],
+    faction: null,
+    role: 'Ave nocturna del dosel medio y bajo de El Margen Silencioso, primera especie de la familia Umbrias',
+    articulo: 'la',
+    level: 2,
+    levelMax: 5,
+    attributes: { fuerza: 5, destreza: 13, constitucion: 5, inteligencia: 4, voluntad: 6, carisma: 2, magia: 0 },
+    bio: 'Ave nocturna de 50-70 cm de cuerpo y unos 120 cm de envergadura, con alas anchas y redondeadas. El borde de sus plumas está deshilachado y rompe el aire en remolinos diminutos que no hacen ruido. Su plumaje gris ceniza atrapa la luz como la piel Nabieus: a la vista es un hueco, no un color. Tiene los ojos muy grandes. No canta ni grazna. Vive en el dosel medio y bajo de El Margen Silencioso, y se alimenta de Brozanes e insectos grandes del sotobosque.',
+    personality: 'Solo ataca si alguien se acerca a su nido.',
+    loadout: [],
+    ataqueNatural: 'Garras en picado desde atrás, sin aviso.',
+    temperamento: 'CAUTELOSO',
+    medio: ['AEREO'],
+    faunaCategoria: 'UMBRIAS',
+    habilidadesRaciales: [
+      { icon: '🌑', name: 'Picado mudo', description: 'Cae sobre la presa desde el dosel sin que se oiga.', categoria: 'ataque', preferredAttribute: 'destreza', level: 4, effects: ['ATAQUE'] },
+      { icon: '🕳️', name: 'Hueco en la noche', description: 'Su plumaje no devuelve la luz — cuesta fijar un golpe sobre ella en la oscuridad.', categoria: 'defensa', preferredAttribute: 'destreza', level: 12, effects: ['AGUANTE'] },
+      { icon: '🍃', name: 'Vuelo sin rastro', description: 'Se aleja entre las ramas sin que se sepa hacia dónde.', categoria: 'utilidad', preferredAttribute: 'destreza', level: 20, effects: ['AGUANTE'] },
+    ],
+  },
+
+  // A-29 — Morvasa: serpiente de las charcas de Las Aguas Sordas (Margen).
+  {
+    slug: 'morvasa',
+    name: 'Morvasa',
+    kind: 'PLANTILLA',
+    nucleoJugable: false,
+    aliases: ['morvasa'],
+    faction: null,
+    role: 'Serpiente de agua de Las Aguas Sordas, El Margen Silencioso',
+    articulo: 'la',
+    level: 3,
+    levelMax: 6,
+    attributes: { fuerza: 8, destreza: 12, constitucion: 7, inteligencia: 3, voluntad: 6, carisma: 1, magia: 0 },
+    bio: 'Serpiente de 180-220 cm, esbelta, de escamas verde pardo con vetas ceniza. No traga presas grandes: las paraliza con un veneno neurotóxico y las come por partes. Caza inmóvil bajo el agua de los canales de Las Aguas Sordas; la única señal de que está ahí es una onda en la superficie. Se alimenta de Brozanes, crías de ave y anfibios.',
+    personality: 'Espera sin moverse hasta que la presa entra en el agua.',
+    loadout: [],
+    ataqueNatural: 'Mordisco desde el agua, rápido y bajo.',
+    temperamento: 'CAUTELOSO',
+    medio: ['ACUATICO'],
+    faunaCategoria: 'ESCAMADOS',
+    habilidadesRaciales: [
+      { icon: '🐍', name: 'Mordida paralizante', description: 'Inyecta un veneno neurotóxico que inmoviliza a la presa un instante.', categoria: 'ataque', preferredAttribute: 'destreza', level: 4, effects: ['ATAQUE', 'CONTROL'] },
+      { icon: '🌊', name: 'Bajo la superficie', description: 'Se sumerge y es difícil de alcanzar.', categoria: 'defensa', preferredAttribute: 'destreza', level: 12, effects: ['AGUANTE'] },
+      { icon: '⭕', name: 'Onda quieta', description: 'Espera sin moverse hasta que la presa entra en el agua.', categoria: 'utilidad', preferredAttribute: 'voluntad', level: 20, effects: ['AGUANTE'] },
+    ],
+  },
+
+  // A-30 — Brozán: la presa base del Margen (Leshra, Morvasa y Mekiosi se alimentan de él).
+  {
+    slug: 'brozan',
+    name: 'Brozán',
+    kind: 'PLANTILLA',
+    nucleoJugable: false,
+    aliases: ['brozan', 'brozán'],
+    faction: null,
+    role: 'Roedor de la hojarasca de El Margen Silencioso, la presa base de la región',
+    articulo: 'el',
+    level: 1,
+    levelMax: 2,
+    attributes: { fuerza: 3, destreza: 9, constitucion: 4, inteligencia: 3, voluntad: 4, carisma: 2, magia: 0 },
+    bio: 'Roedor de 35-45 cm, de cuerpo redondeado, con pelaje gris verdoso y vetas negras que imitan la corteza podrida. Orejas pequeñas, cola corta y garras delanteras de excavar. Vive entre raíces y tocones del suelo del Margen, y se alimenta de Carnosa de Tocón, raíces y semillas. Es la presa base de la región: se lo comen la Leshra desde el aire, la Morvasa en el agua y el Mekiosi si pasa demasiado cerca.',
+    personality: 'Huye siempre a la primera señal de peligro.',
+    loadout: [],
+    ataqueNatural: 'No ataca — huye.',
+    temperamento: 'INOFENSIVO',
+    medio: ['TERRESTRE'],
+    faunaCategoria: 'RONDINES',
+    capturablePct: 25,
+    habilidadesRaciales: [
+      { icon: '🕳️', name: 'Huida a la madriguera', description: 'Se escabulle a la primera señal de peligro, buscando la raíz o el tocón más cercano.', categoria: 'utilidad', preferredAttribute: 'destreza', level: 4, effects: ['AGUANTE'] },
+    ],
+  },
+
+  // A-31 — Hoscón: el carroñero que camina, porque el dosel cerrado del Margen no deja ver el
+  // suelo desde el aire.
+  {
+    slug: 'hoscon',
+    name: 'Hoscón',
+    kind: 'PLANTILLA',
+    nucleoJugable: false,
+    aliases: ['hoscon', 'hoscón'],
+    faction: null,
+    role: 'Carroñero terrestre de El Margen Silencioso',
+    articulo: 'el',
+    level: 1,
+    levelMax: 2,
+    attributes: { fuerza: 4, destreza: 6, constitucion: 6, inteligencia: 3, voluntad: 5, carisma: 1, magia: 0 },
+    bio: 'El Zense Ceniza encuentra la carroña desde el aire, dando círculos sobre la llanura — en el Margen eso es imposible, el dosel cerrado no deja ver el suelo. El Hoscón ha resuelto el problema caminando: vuela poco y bajo, y recorre el suelo del bosque siguiendo el olor. Ave de 60-85 cm, plumaje gris pardo apagado, cuello pelado y pico ancho y plano para raspar hueso, con patas fuertes y alas cortas. Nombre de "hosco": huraño, siempre de espaldas a quien lo mira. Donde camina un Hoscón hay algo muerto cerca, y los cazadores Faerus lo siguen igual que los orcos siguen al Zense.',
+    personality: 'Huraño, siempre de espaldas a quien lo mira.',
+    loadout: [],
+    ataqueNatural: 'No ataca — carroñero puro.',
+    temperamento: 'INOFENSIVO',
+    medio: ['TERRESTRE'],
+    faunaCategoria: 'CORVENES',
+    habilidadesRaciales: [
+      { icon: '👃', name: 'Rastro de carroña', description: 'Sigue el olor de algo muerto a través del suelo del bosque cerrado.', categoria: 'utilidad', preferredAttribute: 'inteligencia', level: 4, effects: ['ANALISIS'] },
+    ],
+  },
+
+  // P-01 — fauna nueva de Cristal Helado, Ciénaga Troncal y La Meseta del Orden.
+
+  // Hielaga: la presa escasa por la que los Helsig racionan.
+  {
+    slug: 'hielaga',
+    name: 'Hielaga',
+    kind: 'PLANTILLA',
+    nucleoJugable: false,
+    aliases: ['hielaga'],
+    faction: null,
+    role: 'Bóvido de montaña de Cristal Helado, presa principal de los Helsig',
+    articulo: 'la',
+    level: 1,
+    levelMax: 4,
+    attributes: { fuerza: 6, destreza: 8, constitucion: 9, inteligencia: 3, voluntad: 5, carisma: 2, magia: 0 },
+    bio: 'Bóvido de montaña pequeño, de 70-90 cm a la cruz, con doble pelaje blanco grisáceo y pezuñas anchas con almohadillas de cuerno que agarran en el hielo. Raspa el Liquen Escarcha de las rocas con los incisivos. Vive en manadas de 6 a 12 que bajan a La Veta Helada en invierno. Es la presa principal de los Helsig y la razón de que racionen: una manada tarda años en recuperarse si se caza de más.',
+    personality: 'Nerviosa, huye en manada al primer indicio de peligro.',
+    loadout: [],
+    ataqueNatural: 'Cornada de defensa, solo acorralada.',
+    temperamento: 'CAUTELOSO',
+    medio: ['TERRESTRE'],
+    faunaCategoria: 'BESTIONES',
+    habilidadesRaciales: [
+      { icon: '❄️', name: 'Pisada en el hielo', description: 'Sus pezuñas anchas agarran en el hielo donde cualquier otro resbalaría.', categoria: 'utilidad', preferredAttribute: 'destreza', level: 4, effects: ['AGUANTE'] },
+    ],
+  },
+
+  // Nievón: depredador que espera enterrado en la nieve junto a los pasos de las Hielagas.
+  {
+    slug: 'nievon',
+    name: 'Nievón',
+    kind: 'PLANTILLA',
+    nucleoJugable: false,
+    aliases: ['nievon', 'nievón'],
+    faction: null,
+    role: 'Felino de emboscada de Cristal Helado',
+    articulo: 'el',
+    level: 5,
+    levelMax: 11,
+    attributes: { fuerza: 14, destreza: 13, constitucion: 12, inteligencia: 4, voluntad: 8, carisma: 1, magia: 0 },
+    bio: 'Felino bajo y largo, de 150-190 cm, de pelaje blanco hueco que aísla tanto que no deja escapar calor a la superficie. Espera enterrado bajo la nieve polvo junto a los pasos de las Hielagas, a veces días enteros; respira por un orificio que deja un pequeño cráter de escarcha, la única señal de que está ahí. Los Helsig enseñan a sus críos a mirar la nieve antes que el horizonte. Es el mismo patrón que el Mekiosi del Margen, en frío.',
+    personality: 'Paciente hasta el extremo — puede esperar enterrado días enteros.',
+    loadout: [],
+    ataqueNatural: 'Embestida desde bajo la nieve, sin aviso.',
+    temperamento: 'AGRESIVO',
+    medio: ['TERRESTRE'],
+    faunaCategoria: 'ACECHANTES',
+    habilidadesRaciales: [
+      { icon: '🥶', name: 'Emboscada de nieve', description: 'Espera enterrado junto al paso hasta que la presa está encima.', categoria: 'ataque', preferredAttribute: 'fuerza', level: 4, effects: ['ATAQUE'] },
+      { icon: '⚪', name: 'Pelaje hueco', description: 'Su pelaje blanco no deja escapar calor — casi invisible contra la nieve.', categoria: 'defensa', preferredAttribute: 'constitucion', level: 12, effects: ['AGUANTE'] },
+      { icon: '🫁', name: 'Aliento contenido', description: 'Respira apenas por un orificio diminuto mientras espera enterrado.', categoria: 'utilidad', preferredAttribute: 'voluntad', level: 20, effects: ['AGUANTE'] },
+    ],
+  },
+
+  // Escarchín: la única pesca de Cristal Helado, en El Lago Cristalice.
+  {
+    slug: 'escarchin',
+    name: 'Escarchín',
+    kind: 'PLANTILLA',
+    nucleoJugable: false,
+    aliases: ['escarchin', 'escarchín'],
+    faction: null,
+    role: 'Pez de invierno de El Lago Cristalice, Cristal Helado',
+    articulo: 'el',
+    level: 1,
+    levelMax: 2,
+    attributes: { fuerza: 2, destreza: 5, constitucion: 3, inteligencia: 1, voluntad: 2, carisma: 1, magia: 0 },
+    bio: 'Pez de 20-35 cm, casi transparente, que vive bajo el hielo de El Lago Cristalice en agua a punto de congelarse. Su sangre lleva sustancias que le impiden cristalizar. Se mueve despacio y se pesca por agujeros en el hielo con sedal de tendón — la única pesca de la región, y tan importante como la mina en los años de hambre.',
+    personality: 'Lento, casi inmóvil en el agua helada.',
+    loadout: [],
+    ataqueNatural: 'No ataca.',
+    temperamento: 'INOFENSIVO',
+    medio: ['ACUATICO'],
+    faunaCategoria: 'NADANTES',
+    habilidadesRaciales: [],
+  },
+
+  // Tragalodo: el depredador grande de la Ciénaga, que acude a la sangre del Cornante acorralado.
+  {
+    slug: 'tragalodo',
+    name: 'Tragalodo',
+    kind: 'PLANTILLA',
+    nucleoJugable: false,
+    aliases: ['tragalodo'],
+    faction: null,
+    role: 'Reptil acorazado del agua baja de Ciénaga Troncal',
+    articulo: 'el',
+    level: 8,
+    levelMax: 14,
+    attributes: { fuerza: 17, destreza: 6, constitucion: 16, inteligencia: 3, voluntad: 9, carisma: 1, magia: 0 },
+    bio: 'Reptil acorazado de 3-4 m, de placas pardas cubiertas de barro seco y ojos a ras de cabeza. Caza en el agua baja, justo donde los Goshg acorralan a los Cornantes, y huele la sangre desde lejos — por eso la caza del Cornante es cosa de grupo y de prisa.',
+    personality: 'Agresivo en cuanto huele sangre en el agua.',
+    loadout: [],
+    ataqueNatural: 'Mordisco desde el agua, con toda la fuerza del cuerpo.',
+    temperamento: 'AGRESIVO',
+    medio: ['ACUATICO', 'TERRESTRE'],
+    faunaCategoria: 'ESCAMADOS',
+    habilidadesRaciales: [
+      { icon: '🦷', name: 'Mordisco de fango', description: 'Ataca desde el agua baja con todo el peso de su cuerpo acorazado.', categoria: 'ataque', preferredAttribute: 'fuerza', level: 4, effects: ['ATAQUE'] },
+      { icon: '🛡️', name: 'Placas de fango', description: 'Sus placas cubiertas de barro seco absorben el golpe.', categoria: 'defensa', preferredAttribute: 'constitucion', level: 12, effects: ['AGUANTE'] },
+      { icon: '🩸', name: 'Olfato de sangre', description: 'Acude a la sangre en el agua desde muy lejos.', categoria: 'utilidad', preferredAttribute: 'inteligencia', level: 20, effects: ['ANALISIS'] },
+    ],
+  },
+
+  // Borbol: su golpe de cola al respirar es lo que leen los cazadores de Keseg Prisilke.
+  {
+    slug: 'borbol',
+    name: 'Borbol',
+    kind: 'PLANTILLA',
+    nucleoJugable: false,
+    aliases: ['borbol'],
+    faction: null,
+    role: 'Pez de fondo de las charcas de Ciénaga Troncal',
+    articulo: 'el',
+    level: 1,
+    levelMax: 2,
+    attributes: { fuerza: 2, destreza: 4, constitucion: 3, inteligencia: 1, voluntad: 2, carisma: 1, magia: 0 },
+    bio: 'Pez de fondo de 30-50 cm que respira aire: cada pocos minutos sube a la superficie con un golpe de cola. Esa vibración es lo que leen los cazadores de Keseg Prisilke con la pierna metida en el agua — la escucha con la palma, llevada al agua. Carne grasa que se ahúma bien.',
+    personality: 'Tranquilo, sube a respirar por costumbre sin alterarse.',
+    loadout: [],
+    ataqueNatural: 'No ataca.',
+    temperamento: 'INOFENSIVO',
+    medio: ['ACUATICO'],
+    faunaCategoria: 'NADANTES',
+    habilidadesRaciales: [],
+  },
+
+  // Zancapilote: la alarma natural del Cerco de los Pilotes contra el Tragalodo.
+  {
+    slug: 'zancapilote',
+    name: 'Zancapilote',
+    kind: 'PLANTILLA',
+    nucleoJugable: false,
+    aliases: ['zancapilote'],
+    faction: null,
+    role: 'Ave zancuda de los pilotes de Ciénaga Troncal',
+    articulo: 'el',
+    level: 2,
+    levelMax: 5,
+    attributes: { fuerza: 5, destreza: 10, constitucion: 5, inteligencia: 4, voluntad: 5, carisma: 2, magia: 0 },
+    bio: 'Ave zancuda gris de 1,5 m que anida en los pilotes abandonados de El Cerco de los Pilotes y roba pescado de las redes. Los Goshg la toleran porque grazna en cuanto algo grande se mueve bajo el agua: es su alarma natural contra el Tragalodo.',
+    personality: 'Nerviosa, grazna alto ante cualquier movimiento grande en el agua.',
+    loadout: [],
+    ataqueNatural: 'Picotazo defensivo, rara vez.',
+    temperamento: 'CAUTELOSO',
+    medio: ['TERRESTRE', 'AEREO'],
+    faunaCategoria: 'ZANCUDOS',
+    habilidadesRaciales: [
+      { icon: '📯', name: 'Alarma del agua', description: 'Grazna en cuanto algo grande se mueve bajo el agua.', categoria: 'utilidad', preferredAttribute: 'voluntad', level: 4, effects: ['ANALISIS'] },
+    ],
+  },
+
+  // Vreskal: primera especie de la familia Ordenados (Goirme), en La Meseta del Orden.
+  {
+    slug: 'vreskal',
+    name: 'Vreskal',
+    kind: 'PLANTILLA',
+    nucleoJugable: false,
+    aliases: ['vreskal'],
+    faction: null,
+    role: 'Lagarto de las grietas de La Meseta del Orden, primera especie de la familia Ordenados',
+    articulo: 'el',
+    level: 1,
+    levelMax: 3,
+    attributes: { fuerza: 3, destreza: 7, constitucion: 4, inteligencia: 2, voluntad: 3, carisma: 1, magia: 0 },
+    bio: 'Lagarto de palmo y medio con el cuerpo cubierto de placas hexagonales idénticas, que se añaden una a una a medida que crece siguiendo siempre el mismo patrón. Vive en las grietas rectas de la Meseta y en las juntas de las murallas de las ciudades-fortaleza. Se mueve en líneas rectas y gira en ángulos fijos, nunca en curva. Come insectos y la costra mineral de la Hierba del Hierro. Los Goirntes lo tienen por buena señal: donde hay Vreskales, dicen, la piedra está bien puesta. Matar uno en una muralla está mal visto — es la firma de Goirme en la fauna, igual que la simetría lo es en la piedra.',
+    personality: 'Nunca se mueve en curva, solo en líneas rectas y giros de ángulo fijo.',
+    loadout: [],
+    ataqueNatural: 'No ataca.',
+    temperamento: 'INOFENSIVO',
+    medio: ['TERRESTRE'],
+    faunaCategoria: 'ORDENADOS',
+    habilidadesRaciales: [],
+  },
+
+  // P-02 — fauna antigua del lore que nunca llegó al catálogo técnico. Hetris, Mekiosi y Vistue ya
+  // se nombran en clases.md como las formas de Cambiaformas del Druida (Kiri usa Hetris) — mismo
+  // slug que su HarvestYield/homeLocationSlug de referencia.
+
+  // Sombras de Kroj: fauna nocturna en grupo de El Margen Silencioso.
+  {
+    slug: 'sombra-de-kroj',
+    name: 'Sombra de Kroj',
+    kind: 'PLANTILLA',
+    nucleoJugable: false,
+    aliases: ['sombra de kroj', 'sombras de kroj'],
+    faction: null,
+    role: 'Ave nocturna que devuelve el sonido ajeno como eco, El Margen Silencioso',
+    articulo: 'la',
+    level: 3,
+    levelMax: 8,
+    attributes: { fuerza: 6, destreza: 11, constitucion: 6, inteligencia: 4, voluntad: 5, carisma: 1, magia: 0 },
+    bio: 'Criaturas voladoras nocturnas medianas, de plumaje gris ceniza y vuelo silencioso. Cazan en grupo. No imitan voces mortales: las devuelven, acumulando el sonido de pasos y respiración ajenos en vez de dejarlo escapar, como hace todo en su territorio, y lo sueltan de vuelta distorsionado como un eco retrasado, para atraer viajeros hacia trampas o precipicios. No tienen cuerdas vocales complejas porque no las necesitan.',
+    personality: 'Caza en grupo, coordinada, aprovechando la confusión que genera.',
+    loadout: [],
+    ataqueNatural: 'Ataque en grupo tras desorientar con el eco.',
+    temperamento: 'AGRESIVO',
+    medio: ['AEREO'],
+    faunaCategoria: 'UMBRIAS',
+    habilidadesRaciales: [
+      { icon: '🔊', name: 'Eco devuelto', description: 'Devuelve el sonido de pasos y voces distorsionado, desorientando a quien lo oye.', categoria: 'ataque', preferredAttribute: 'inteligencia', level: 4, effects: ['ATAQUE', 'ATURDIMIENTO'] },
+      { icon: '🌑', name: 'Vuelo silencioso', description: 'No hace ningún ruido al volar ni al cazar.', categoria: 'defensa', preferredAttribute: 'destreza', level: 12, effects: ['AGUANTE'] },
+      { icon: '👥', name: 'Caza en grupo', description: 'Coordina el ataque con el resto de la bandada.', categoria: 'utilidad', preferredAttribute: 'voluntad', level: 20, effects: ['MULTIPLE'] },
+    ],
+  },
+
+  // Hetris: felino-simio arbóreo del dosel alto (forma de Cambiaformas de Kiri).
+  {
+    slug: 'hetris',
+    name: 'Hetris',
+    kind: 'PLANTILLA',
+    nucleoJugable: false,
+    aliases: ['hetris'],
+    faction: null,
+    role: 'Felino-simio arbóreo del dosel alto de El Margen Silencioso',
+    articulo: 'el',
+    level: 4,
+    levelMax: 9,
+    attributes: { fuerza: 10, destreza: 15, constitucion: 8, inteligencia: 4, voluntad: 6, carisma: 2, magia: 0 },
+    bio: 'Felino-simio arbóreo de 80-120 cm, cuerpo esbelto y extremidades largas con garras curvas, cola prensil casi tan larga como el cuerpo, pelaje corto gris verdoso que se funde con la corteza húmeda del Margen. Vive en el dosel alto, rara vez baja al suelo — caza acechando desde las ramas y dejándose caer sobre la presa antes de que perciba el peligro; el golpe inicial casi siempre decide la caza. Solitario y territorial, evita a los Ferikes (que sí cazan en el suelo) por instinto más que por miedo.',
+    personality: 'Solitario y territorial, rara vez baja al suelo.',
+    loadout: [],
+    ataqueNatural: 'Se deja caer desde el dosel sobre la presa.',
+    temperamento: 'AGRESIVO',
+    medio: ['TERRESTRE'],
+    faunaCategoria: 'ACECHANTES',
+    habilidadesRaciales: [
+      { icon: '🌳', name: 'Caída del dosel', description: 'Se deja caer desde las ramas altas sobre la presa antes de que perciba el peligro.', categoria: 'ataque', preferredAttribute: 'destreza', level: 4, effects: ['ATAQUE'] },
+      { icon: '🐾', name: 'Corteza viva', description: 'Su pelaje se funde con la corteza húmeda del Margen.', categoria: 'defensa', preferredAttribute: 'destreza', level: 12, effects: ['AGUANTE'] },
+      { icon: '🐒', name: 'Cola prensil', description: 'Se sujeta y desplaza por el dosel con una agilidad que ningún depredador de suelo iguala.', categoria: 'utilidad', preferredAttribute: 'destreza', level: 20, effects: ['AGUANTE'] },
+    ],
+  },
+
+  // Mekiosi: bestia inmóvil del suelo del Margen (referencia directa del Nievón, en frío).
+  {
+    slug: 'mekiosi',
+    name: 'Mekiosi',
+    kind: 'PLANTILLA',
+    nucleoJugable: false,
+    aliases: ['mekiosi'],
+    faction: null,
+    role: 'Bestia de emboscada del suelo de El Margen Silencioso',
+    articulo: 'el',
+    level: 7,
+    levelMax: 13,
+    attributes: { fuerza: 16, destreza: 5, constitucion: 15, inteligencia: 3, voluntad: 7, carisma: 1, magia: 0 },
+    bio: 'Bestia de 200-250 cm, complexión pesada y musculosa, piel gruesa de tonos pardos y verdes que imita el musgo y la corteza podrida del suelo del Margen, patas cortas y robustas, cabeza ancha con mandíbula capaz de partir hueso. Aguanta inmóvil horas, casi como una raíz cubierta de musgo, esperando a que una presa se acerque lo suficiente antes de cargar con todo su peso en una sola embestida. Solitario, territorio amplio, no necesita manada.',
+    personality: 'Aguanta inmóvil horas antes de cargar de una sola embestida.',
+    loadout: [],
+    ataqueNatural: 'Embestida con todo el peso del cuerpo, tras esperar inmóvil.',
+    temperamento: 'AGRESIVO',
+    medio: ['TERRESTRE'],
+    faunaCategoria: 'ACECHANTES',
+    habilidadesRaciales: [
+      { icon: '💥', name: 'Embestida de musgo', description: 'Carga con todo su peso tras esperar inmóvil durante horas.', categoria: 'ataque', preferredAttribute: 'fuerza', level: 4, effects: ['ATAQUE'] },
+      { icon: '🪨', name: 'Piel de corteza', description: 'Su piel imita el musgo y la corteza podrida — casi invisible inmóvil.', categoria: 'defensa', preferredAttribute: 'constitucion', level: 12, effects: ['AGUANTE'] },
+      { icon: '🦴', name: 'Mandíbula que parte hueso', description: 'Su mordisco es capaz de partir hueso de un solo golpe.', categoria: 'utilidad', preferredAttribute: 'fuerza', level: 20, effects: ['ATAQUE'] },
+    ],
+  },
+
+  // Vistue: corredor de manada del Margen que caza por agotamiento.
+  {
+    slug: 'vistue',
+    name: 'Vistue',
+    kind: 'PLANTILLA',
+    nucleoJugable: false,
+    aliases: ['vistue'],
+    faction: null,
+    role: 'Corredor de manada de El Margen Silencioso',
+    articulo: 'el',
+    level: 3,
+    levelMax: 7,
+    attributes: { fuerza: 8, destreza: 13, constitucion: 8, inteligencia: 4, voluntad: 6, carisma: 2, magia: 0 },
+    bio: 'Corredor de manada de 130-170 cm, cuerpo alargado y patas largas hechas para la carrera sostenida, pelaje corto oscuro con una franja más clara a lo largo del lomo, hocico estrecho, orejas grandes que regulan su temperatura en carreras largas. Caza en manadas de 5 a 8, no por fuerza bruta sino por resistencia — persiguen a una presa durante horas, turnándose en cabeza, hasta que esta se rinde de puro agotamiento. Poco peligroso en solitario, mucho en manada.',
+    personality: 'Poco peligroso solo, implacable en manada.',
+    loadout: [],
+    ataqueNatural: 'Mordisco tras una persecución larga, en relevos de manada.',
+    temperamento: 'AGRESIVO',
+    medio: ['TERRESTRE'],
+    faunaCategoria: 'GUELISES',
+    habilidadesRaciales: [
+      { icon: '🏃', name: 'Relevo de caza', description: 'Se turna con la manada para perseguir a la presa durante horas sin cansarse.', categoria: 'ataque', preferredAttribute: 'destreza', level: 4, effects: ['ATAQUE'] },
+      { icon: '👂', name: 'Orejas de largo aliento', description: 'Regula su temperatura en carreras largas mejor que cualquier presa.', categoria: 'utilidad', preferredAttribute: 'constitucion', level: 12, effects: ['AGUANTE'] },
+      { icon: '🐺', name: 'Caza en manada', description: 'Coordina con el resto de la manada para agotar a la presa por turnos.', categoria: 'utilidad', preferredAttribute: 'voluntad', level: 20, effects: ['MULTIPLE'] },
+    ],
+  },
+
+  // Cornante: alimento principal del Clan Goshg en Ciénaga Troncal.
+  {
+    slug: 'cornante',
+    name: 'Cornante',
+    kind: 'PLANTILLA',
+    nucleoJugable: false,
+    aliases: ['cornante', 'cornantes'],
+    faction: null,
+    role: 'Bestia de cornamenta ancha de Ciénaga Troncal, alimento principal del Clan Goshg',
+    articulo: 'el',
+    level: 3,
+    levelMax: 8,
+    attributes: { fuerza: 13, destreza: 6, constitucion: 13, inteligencia: 2, voluntad: 6, carisma: 1, magia: 0 },
+    bio: 'Criatura de cuatro patas, corpulenta y de gran tamaño, con cornamenta ancha y ramificada. Es la principal fuente de alimento de los orcos en Ciénaga Troncal. Cazar un Cornante es trabajo de grupo y de paciencia: se le acorrala hacia el agua baja, donde su propio peso lo hunde — y hay que hacerlo rápido, porque un Cornante hundido atrae Tragalodos.',
+    personality: 'Cauteloso pero pesado — su propio tamaño lo condena si lo acorralan hacia el agua.',
+    loadout: [],
+    ataqueNatural: 'Cornada al ser acorralado.',
+    temperamento: 'CAUTELOSO',
+    medio: ['TERRESTRE'],
+    faunaCategoria: 'BESTIONES',
+    habilidadesRaciales: [
+      { icon: '🦌', name: 'Cornada de acorralado', description: 'Ataca con su cornamenta ancha cuando ya no tiene salida.', categoria: 'ataque', preferredAttribute: 'fuerza', level: 4, effects: ['ATAQUE'] },
+      { icon: '🐘', name: 'Peso propio', description: 'Su propio tamaño lo hunde en el agua baja de la ciénaga.', categoria: 'defensa', preferredAttribute: 'constitucion', level: 12, effects: ['AGUANTE'] },
     ],
   },
 ];
@@ -4305,6 +4794,273 @@ export const npcs: NpcInput[] = [
     // Persuasión (2026-08-25, mismo criterio ya aplicado a Solgra) — resiste por pura fuerza de
     // voluntad de guerrero, no por cálculo.
     atributoResistencia: 'fuerza',
+    capturablePct: 0,
+    loadout: [],
+  },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // TANDA OpenCode 2026-09-27/28 — lore aprobado en docs/borradores-opencode/propuestas-aprobadas.md
+  // ══════════════════════════════════════════════════════════════════════════
+
+  // A-37 — Primer Censor Tarsen Vold: líder de la facción radical de la Concordia de Hierro,
+  // sustituye a Yovenne Tal como líder de esa Faction (ver seed-catalog.ts § FACTION_LEADER_SLUG).
+  // `nucleoJugable: false` — La Meseta del Orden no es jugable todavía, mismo criterio que Yovenne
+  // Tal/Vrask Ombra/Kael Dorn.
+  {
+    slug: 'tarsen-vold',
+    name: 'Tarsen Vold',
+    kind: 'PRINCIPAL',
+    nucleoJugable: false,
+    aliases: ['tarsen vold', 'primer censor', 'primer censor tarsen vold'],
+    faction: 'Concordia de Hierro',
+    genero: 'M',
+    articulo: 'el',
+    role: 'Primer Censor de la Concordia de Hierro, líder de la facción radical',
+    level: 7,
+    attributes: { fuerza: 9, destreza: 9, constitucion: 11, inteligencia: 16, voluntad: 15, carisma: 12, magia: 3 },
+    bio: 'Goirnte alto y enjuto, con la piel gris casi azulada por los años de archivo y la cabeza afeitada. Los ojos obsidiana no se apartan nunca de quien le habla. Viste la toga gris de la casta de ley, sin una sola insignia — presume de no necesitarlas. Es el líder de la facción radical y, por tanto, de la Concordia de Hierro: no es un general, eso es Vrask Ombra, sino un censor, de la misma casta de ley que Yovenne Tal. Esa es la tragedia política de la Meseta: las dos cabezas del orden salieron de la misma casta y leyeron las mismas leyes. Donde Yovenne lee "el edicto obliga también al que lo grabó", Tarsen lee "el orden que no se defiende no es orden". Pertenece a los círculos radicales que conocen la verdad completa del Detonante; qué sabe exactamente queda reservado. Vrask Ombra le obedece sin creerle. A Yovenne la respeta como rival legítima: nunca la ha amenazado, porque eso sería desorden. Kael Dorn es el cabo suelto que más le preocupa.',
+    personality: 'Frío, paciente, convencido. No odia a nadie: ordena. Habla en frases completas, sin prisa, y termina siempre lo que empieza. Nunca levanta la voz. No le hace falta.',
+    raza: 'goirntes',
+    clase: 'CABALLERO',
+    especializacion: 'CABALLERO_DEL_ORDEN',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 0,
+    reclutablePct: 0,
+    cortejablePct: 0,
+    atributoResistencia: 'voluntad',
+    capturablePct: 0,
+    loadout: [
+      { itemSlug: 'sello-anular-concordia' },
+      { itemSlug: 'correspondencia-concordia' },
+    ],
+  },
+
+  // A-38 — Cinco Faerus de Hashma (Feg Tusha), en el interior vacío campamento-feg-tusha-interior.
+  // `nucleoJugable: false` — El Margen Silencioso fuera del núcleo jugable. `capturablePct: 0`
+  // (raza sintiente jugable). Hulki es el `liderNpcId` de la Faction feg-tusha (A-04).
+  {
+    slug: 'hulki',
+    name: 'Hulki',
+    kind: 'PRINCIPAL',
+    nucleoJugable: false,
+    aliases: ['hulki'],
+    faction: 'Feg Tusha',
+    genero: 'F',
+    role: 'La que más a menudo está en el Jakut Tusha',
+    level: 18,
+    attributes: { fuerza: 12, destreza: 15, constitucion: 12, inteligencia: 20, voluntad: 22, carisma: 10, magia: 8 },
+    bio: 'Vieja, con el pelaje encanecido en el hocico, delgada pero con los hombros de quien ha cargado presas toda la vida. Piel de hojas finas que susurra al moverse cuando quiere que se le oiga; pelaje denso en tonos de corteza y musgo, como toda la manada de Hashma. Se sienta en el Jakut Tusha más que nadie porque casi nadie le disputa el sitio: huele el miedo ajeno antes de que el otro sepa que lo tiene. Es quien decide si un forastero pasa del primer árbol. No es un cargo — es el sitio desde el que se decide mientras se está sentada en él.',
+    personality: 'Paciente, seca, imposible de engañar.',
+    homeLocationSlug: 'campamento-feg-tusha-interior',
+    raza: 'faerus',
+    clase: 'DRUIDA',
+    especializacion: 'AULLADOR',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 0,
+    reclutablePct: 0,
+    cortejablePct: 0,
+    atributoResistencia: 'voluntad',
+    capturablePct: 0,
+    loadout: [],
+  },
+  {
+    slug: 'tira',
+    name: 'Tira',
+    kind: 'PRINCIPAL',
+    nucleoJugable: false,
+    aliases: ['tira'],
+    faction: 'Feg Tusha',
+    genero: 'F',
+    role: 'Cazadora mayor: reparte la primera pieza',
+    level: 6,
+    attributes: { fuerza: 13, destreza: 15, constitucion: 11, inteligencia: 11, voluntad: 10, carisma: 6, magia: 3 },
+    bio: 'Cicatrices de garra de Ferike en un antebrazo. Es quien corta y reparte la Vash\'grath (la primera pieza) en cada caza de la manada, y por tanto quien sabe de verdad quién es de la manada y quién no. Si un forastero come de su mano, algo ha cambiado.',
+    personality: 'Directa, justa hasta la dureza.',
+    homeLocationSlug: 'campamento-feg-tusha-interior',
+    raza: 'faerus',
+    clase: 'CAZADOR',
+    especializacion: 'INSTINTIVO',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 0,
+    reclutablePct: 10,
+    atributoResistencia: 'voluntad',
+    capturablePct: 0,
+    loadout: [],
+  },
+  {
+    slug: 'kiri',
+    name: 'Kiri',
+    kind: 'PRINCIPAL',
+    nucleoJugable: false,
+    aliases: ['kiri'],
+    faction: 'Feg Tusha',
+    genero: 'M',
+    role: 'Vigía del dosel',
+    level: 5,
+    attributes: { fuerza: 10, destreza: 16, constitucion: 9, inteligencia: 10, voluntad: 9, carisma: 4, magia: 5 },
+    bio: 'Joven, delgado y de brazos largos. Pasa las noches en el dosel en forma de Hetris — su forma de Cambiaformas es fauna real del Margen. Es el primero que ve llegar a una patrulla y el último en bajar.',
+    personality: 'Callado, nervioso en el suelo y tranquilo en las ramas.',
+    homeLocationSlug: 'campamento-feg-tusha-interior',
+    raza: 'faerus',
+    clase: 'DRUIDA',
+    especializacion: 'CAMBIAFORMAS',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 0,
+    reclutablePct: 15,
+    capturablePct: 0,
+    loadout: [],
+  },
+  {
+    slug: 'lusa',
+    name: 'Lusa',
+    kind: 'PRINCIPAL',
+    nucleoJugable: false,
+    aliases: ['lusa'],
+    faction: 'Feg Tusha',
+    genero: 'F',
+    role: 'Cuida a los Feg\'nur, los heridos que no se abandonan',
+    level: 4,
+    attributes: { fuerza: 7, destreza: 10, constitucion: 10, inteligencia: 13, voluntad: 14, carisma: 9, magia: 6 },
+    bio: 'Mayor, de movimientos lentos. Cuida en una plataforma aparte a los heridos de la manada, con Musgo Callado para que duerman y Flor de Víspera para calmarlos. Es lo más parecido a una sanadora que tienen los Faerus, aunque no enseña ningún oficio del motor: el oficio de curación Faerus está por diseñar.',
+    personality: 'Cálida con los suyos y fría con los demás, hasta que un forastero herido le cambia el juicio.',
+    homeLocationSlug: 'campamento-feg-tusha-interior',
+    raza: 'faerus',
+    clase: 'DRUIDA',
+    especializacion: 'ADAPTADO',
+    temperamento: 'AMIGABLE',
+    comerciablePct: 0,
+    reclutablePct: 0,
+    cortejablePct: 0,
+    capturablePct: 0,
+    loadout: [],
+  },
+  {
+    slug: 'gero',
+    name: 'Gero',
+    kind: 'PRINCIPAL',
+    nucleoJugable: false,
+    aliases: ['gero'],
+    faction: 'Feg Tusha',
+    genero: 'M',
+    role: 'Joven corredor entre Hashma y Kegi',
+    level: 3,
+    attributes: { fuerza: 10, destreza: 14, constitucion: 10, inteligencia: 9, voluntad: 8, carisma: 7, magia: 3 },
+    bio: 'Joven de pelaje menos denso que el resto: tiene madre de Kegi. Lleva y trae noticias entre las dos manadas. Es el Faerus más fácil de encontrar fuera del Margen y el único de Hashma que ha hablado alguna vez con un orco.',
+    personality: 'Curioso, impulsivo y hablador para ser Faerus.',
+    homeLocationSlug: 'campamento-feg-tusha-interior',
+    raza: 'faerus',
+    clase: 'CAZADOR',
+    especializacion: 'SUPERVIVENCIA',
+    temperamento: 'AMIGABLE',
+    comerciablePct: 0,
+    reclutablePct: 25,
+    cortejablePct: 10,
+    atributoResistencia: 'carisma',
+    capturablePct: 0,
+    loadout: [],
+  },
+
+  // A-39 — Dos Faerus de Kegi (Feg Ger). Yeru es el `liderNpcId` de la Faction feg-ger (A-05).
+  // Tasko lleva su Ashi'krul de serie (A-32).
+  {
+    slug: 'yeru',
+    name: 'Yeru',
+    kind: 'PRINCIPAL',
+    nucleoJugable: false,
+    aliases: ['yeru'],
+    faction: 'Feg Ger',
+    genero: 'F',
+    role: 'La que más a menudo está en el Jakut Ger',
+    level: 18,
+    attributes: { fuerza: 19, destreza: 18, constitucion: 16, inteligencia: 17, voluntad: 16, carisma: 12, magia: 5 },
+    bio: 'Pelaje corto, rojizo con matices verdes, más fino que el de Hashma — piel de hojas que susurra. Madura, fuerte y de hombros anchos para ser Faerus, con una muesca en la oreja izquierda. Conoció a Gorhorn durante el año que pasó con la manada: lo recuerda como "el orco que olía a pena y no a miedo". Nunca compartió con él la primera pieza, y aún no sabe si fue un error. Si Gorhorn vuelve a Kegi, podría ofrecerle la Vash\'grath — sería el primer orco en recibirla desde los Maktor, y renovaría el pacto antiguo. Es una misión posible, no un hecho canonizado.',
+    personality: 'Reservada y leal. Pone a prueba antes de confiar.',
+    homeLocationSlug: 'jakut-ger-interior',
+    raza: 'faerus',
+    clase: 'DRUIDA',
+    especializacion: 'SALVAJE',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 0,
+    reclutablePct: 0,
+    atributoResistencia: 'voluntad',
+    capturablePct: 0,
+    loadout: [],
+  },
+  {
+    slug: 'tasko',
+    name: 'Tasko',
+    kind: 'PRINCIPAL',
+    nucleoJugable: false,
+    aliases: ['tasko'],
+    faction: 'Feg Ger',
+    genero: 'M',
+    role: 'Curtidor y tallador de Kegi',
+    level: 5,
+    attributes: { fuerza: 11, destreza: 14, constitucion: 10, inteligencia: 12, voluntad: 9, carisma: 10, magia: 2 },
+    bio: 'Joven para su oficio, con las manos manchadas de tanino. Talla las dagas Ashi\'krul y lleva el comercio en El Vergel de Kegi. Es el único Faerus que regatea, y lo hace fatal.',
+    personality: 'Entusiasta, charlatán y nada diplomático.',
+    homeLocationSlug: 'yegr-kegi',
+    raza: 'faerus',
+    clase: 'GUERRERO',
+    especializacion: 'ESPECIALISTA',
+    temperamento: 'AMIGABLE',
+    comerciablePct: 60,
+    reclutablePct: 15,
+    atributoResistencia: 'carisma',
+    capturablePct: 0,
+    loadout: [
+      { itemSlug: 'ashi-krul' },
+      { itemSlug: 'colmillo-ferike', cantidad: 3 },
+    ],
+  },
+
+  // P-04 — NPC Nabieus: portavoces/líderes de Keseg Sael y Keseg Prisilke (A-02/A-03).
+  {
+    slug: 'aven-tessk',
+    name: 'Aven Tessk',
+    kind: 'PRINCIPAL',
+    nucleoJugable: false,
+    aliases: ['aven tessk', 'aven'],
+    faction: 'Keseg Sael',
+    genero: 'M',
+    articulo: 'el',
+    role: 'Portavoz del cónclave de Keseg Sael',
+    level: 16,
+    attributes: { fuerza: 5, destreza: 8, constitucion: 6, inteligencia: 18, voluntad: 18, carisma: 9, magia: 4 },
+    bio: 'Viejo, casi transparente a la vista, se sabe de memoria cientos de tablillas del Archivo del Refugio sin Nombre. No es líder: repite, con una voz que es poco más que aire, lo último que decidió el Keseg\'Vhurne (el cónclave), y se calla si nadie ha decidido nada. Sabe que el nombre de Yerin Slaad figura en los registros de la carta del sabotaje, y el cónclave lo protege sin decírselo: es de los suyos y lleva la culpa de todos.',
+    personality: 'Nunca termina una frase que el otro pueda terminar por él.',
+    homeLocationSlug: 'refugio-sin-nombre',
+    raza: 'nabieus',
+    clase: 'SEGADOR',
+    especializacion: 'ILUSTRADO',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 0,
+    reclutablePct: 0,
+    atributoResistencia: 'voluntad',
+    capturablePct: 0,
+    loadout: [],
+  },
+  {
+    slug: 'ilka-dren',
+    name: 'Ilka Dren',
+    kind: 'PRINCIPAL',
+    nucleoJugable: false,
+    aliases: ['ilka dren', 'ilka'],
+    faction: 'Keseg Prisilke',
+    genero: 'F',
+    role: 'Cazadora mayor de Jeyselt, trata con los Goshg',
+    level: 14,
+    attributes: { fuerza: 10, destreza: 17, constitucion: 11, inteligencia: 14, voluntad: 13, carisma: 8, magia: 2 },
+    bio: 'Brazos y piernas largos, manchas verdes hasta el cuello y la postura encorvada de la rama de la Ciénaga. Lee el agua metiendo la pierna hasta la rodilla y sabe cuántos Borboles hay en una charca antes de verlos. Negocia la madera con la Terk\'ikar Doshka de igual a igual, y le cae mejor que cualquier Nabieus del Margen.',
+    personality: 'Susurra, pero sin las pausas cargadas del Margen; dice lo que piensa.',
+    homeLocationSlug: 'conclave-keseg-prisilke-interior',
+    raza: 'nabieus',
+    clase: 'CAZADOR',
+    especializacion: 'INSTINTIVO',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 0,
+    reclutablePct: 0,
+    atributoResistencia: 'destreza',
     capturablePct: 0,
     loadout: [],
   },
@@ -7409,6 +8165,533 @@ export const items: ItemCatalogInput[] = [
     lugarOrigen: 'Los Acantilados Partidos.',
     tier: 3,
   },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // TANDA OpenCode 2026-09-27/28 — flora y minerales de El Margen Silencioso (A-20 a A-24),
+  // Ciénaga Troncal (A-25 a A-27, P-03) y Cristal Helado (P-03).
+  // ══════════════════════════════════════════════════════════════════════════
+
+  // A-20 — Musgo Callado: absorbe el sonido, El Margen Silencioso.
+  {
+    slug: 'musgo-callado',
+    name: 'Musgo Callado',
+    aliases: ['musgo callado'],
+    category: 'fibras',
+    tipo: 'RECURSO',
+    valorGoirnos: 1,
+    description: 'Musgo gris apagado, sin brillo, que cubre troncos, ramas y suelo en todo El Margen Silencioso — una maraña de filamentos finísimos con bolsas de aire entre ellos. El sonido entra, rebota dentro de los filamentos y se disipa sin salir, como en un fieltro grueso a escala de bosque. Relleno aislante para jergones y forros.',
+    dimensiones: 'Cojines de 5-15 cm de grosor.',
+    lugarOrigen: 'El Margen Silencioso.',
+    tier: 1,
+  },
+
+  // A-21 — Veldria Hueca: madera y resina que conducen la vibración del suelo.
+  {
+    slug: 'madera-veldria-hueca',
+    name: 'Madera de Veldria Hueca',
+    aliases: ['madera de veldria'],
+    category: 'madera',
+    tipo: 'RECURSO',
+    valorGoirnos: 4,
+    description: 'Madera negra y ligera de la Veldria Hueca, conífera de El Margen Silencioso cuyo tronco tiene un corazón hueco y seco. La pared del tronco conduce la vibración del suelo aunque el aire de dentro no transmita nada — los Nabieus fabrican con ella tubos de escucha enterrados.',
+    dimensiones: 'Vigas de 2-3 m.',
+    lugarOrigen: 'El Margen Silencioso.',
+    tier: 3,
+  },
+  {
+    slug: 'resina-veldria',
+    name: 'Resina de Veldria',
+    aliases: ['resina de veldria hueca'],
+    category: 'resina',
+    tipo: 'RECURSO',
+    valorGoirnos: 5,
+    description: 'Resina oscura de la Veldria Hueca, con olor a lluvia — pegamento que no cruje al secar.',
+    dimensiones: 'Bloques de 8x5 cm.',
+    lugarOrigen: 'El Margen Silencioso.',
+    tier: 3,
+  },
+
+  // A-22 — Flor de Víspera: sedante que abre al atardecer.
+  {
+    slug: 'petalos-vispera',
+    name: 'Pétalos de Víspera',
+    aliases: ['petalos de vispera', 'pétalos de víspera'],
+    category: 'medicinal',
+    tipo: 'RECURSO',
+    valorGoirnos: 1,
+    description: 'Pétalos gris perla de la Flor de Víspera, planta baja de El Margen Silencioso cuyas flores solo se abren al atardecer y se cierran ante un movimiento brusco. Su aroma es un sedante suave: calma y ayuda a dormir, sin tocar el dolor — a diferencia de la Flor de Ceniza. Ingrediente base de alquimia para infusiones de descanso.',
+    dimensiones: 'Pétalos de 2-3 cm.',
+    lugarOrigen: 'El Margen Silencioso.',
+    tier: 1,
+  },
+
+  // A-23 — Cántaro de Hoja: guarda agua de lluvia limpia.
+  {
+    slug: 'agua-cantaro',
+    name: 'Agua de Cántaro',
+    aliases: ['agua de cantaro de hoja'],
+    category: 'consumible',
+    tipo: 'CONSUMIBLE',
+    equipSlot: 'CONSUMIBLE_1',
+    valorGoirnos: 1,
+    description: 'Agua de lluvia limpia guardada en el tallo hueco del arbusto Cántaro de Hoja, de El Margen Silencioso — un respiro real en una región de charcas estancadas.',
+    dimensiones: 'Tallo de 4-8 cm de diámetro.',
+    lugarOrigen: 'El Margen Silencioso.',
+    tier: 1,
+    curaAgua: 30,
+  },
+  {
+    slug: 'tallo-cantaro',
+    name: 'Tallo de Cántaro',
+    aliases: ['tallo de cantaro de hoja'],
+    category: 'madera',
+    tipo: 'RECURSO',
+    valorGoirnos: 1,
+    description: 'Tallo hueco y seco del Cántaro de Hoja, una vez drenada el agua — leña sencilla o tubo simple.',
+    dimensiones: 'Tallos de 60-90 cm.',
+    lugarOrigen: 'El Margen Silencioso.',
+    tier: 1,
+  },
+
+  // A-24 — Carnosa de Tocón: seta de los tocones caídos, alimento del Brozán.
+  {
+    slug: 'carnosa-de-tocon',
+    name: 'Carnosa de Tocón',
+    aliases: ['carnosa de tocon'],
+    category: 'alimento',
+    tipo: 'RECURSO',
+    valorGoirnos: 2,
+    description: 'Seta carnosa en forma de embudo que crece sobre los tocones caídos de las coníferas de madera negra de El Margen Silencioso, gris azulada por fuera y beige por dentro. Cruda amarga; asada o en guiso, de sabor suave a tierra. Es la comida del Brozán.',
+    dimensiones: 'Sombreros de 15-30 cm.',
+    lugarOrigen: 'El Margen Silencioso.',
+    tier: 2,
+  },
+
+  // A-25 — Bulbo de Turbera: alimento base de Keseg Prisilke y los Goshg, Ciénaga Troncal.
+  {
+    slug: 'bulbo-de-turbera',
+    name: 'Bulbo de Turbera',
+    aliases: ['bulbo de turbera'],
+    category: 'alimento',
+    tipo: 'RECURSO',
+    valorGoirnos: 1,
+    description: 'Tubérculo elíptico de piel parda y pulpa blanca y firme, que crece en el fango de turba de las zonas llanas de Ciénaga Troncal. Alimento base de Keseg Prisilke y de los Goshg cuando falla la caza de Cornantes — cocido, frito o seco al humo.',
+    dimensiones: 'Tubérculos de 15-30 cm.',
+    lugarOrigen: 'Ciénaga Troncal.',
+    tier: 1,
+  },
+
+  // A-26 — Velo de Charca: comida y cura de quemaduras, Ciénaga Troncal.
+  {
+    slug: 'velo-de-charca',
+    name: 'Velo de Charca',
+    aliases: ['velo de charca'],
+    category: 'medicinal',
+    tipo: 'RECURSO',
+    valorGoirnos: 1,
+    description: 'Láminas gelatinosas y translúcidas que cubren la superficie de las charcas quietas de Ciénaga Troncal, entre los pilotes y bajo los Trepadores Ocaso. Comestible en sopa; aplicada fresca sobre una quemadura, enfría y protege — la cura de campo más habitual de los Goshg, que se queman a menudo con la resina de sus antorchas.',
+    dimensiones: 'Láminas de 5-15 cm.',
+    lugarOrigen: 'Ciénaga Troncal.',
+    tier: 1,
+    curaUnPaso: true,
+  },
+
+  // A-27 — Herrumbrera: hierro de pantano, Ciénaga Troncal (segunda Vetria de Berig).
+  {
+    slug: 'corteza-herrumbre',
+    name: 'Corteza Herrumbre',
+    aliases: ['corteza de herrumbrera'],
+    category: 'mena',
+    tipo: 'RECURSO',
+    valorGoirnos: 2,
+    description: 'Corteza de color óxido, pesada y áspera, de la Herrumbrera — arbusto de Ciénaga Troncal que crece en las orillas de agua estancada, donde el fango arrastra hierro disuelto. Sus raíces lo concentran en la corteza, el mismo principio que la Hierba del Hierro pero con un mineral mucho más pobre. No brilla. Da para puntas de lanza y clavos, no para una herrería de verdad — 10 unidades equivalen a 1 de mena de hierro pobre al fundir.',
+    dimensiones: 'Trozos de 10-15 cm.',
+    lugarOrigen: 'Ciénaga Troncal.',
+    tier: 2,
+  },
+
+  // P-03 — flora nueva de la pasada de conexión: Liquen Escarcha (Cristal Helado) y Bolco (Ciénaga).
+  {
+    slug: 'liquen-escarcha',
+    name: 'Liquen Escarcha',
+    aliases: ['liquen escarcha'],
+    category: 'alimento',
+    tipo: 'RECURSO',
+    valorGoirnos: 1,
+    description: 'Costra verde grisácea que crece unos milímetros al año sobre la roca orientada al sol de Cristal Helado — lo único que comen las Hielagas en invierno, y los Helsig lo hierven en caldo en los años de hambre. Arrancarlo entero está mal visto: se raspa la mitad y se deja la otra para que vuelva.',
+    dimensiones: 'Costras de 5-10 cm.',
+    lugarOrigen: 'Cristal Helado.',
+    tier: 1,
+  },
+  {
+    slug: 'resina-bolco',
+    name: 'Resina de Bolco',
+    aliases: ['resina de bolco'],
+    category: 'resina',
+    tipo: 'RECURSO',
+    valorGoirnos: 2,
+    description: 'Resina negra y pesada del Bolco, árbol bajo y ancho de las Marismas de Lodo Negro en Ciénaga Troncal, pariente del Trepador Ocaso pero sin vetas doradas. Gotea al agua y flota, formando la capa viscosa de las Marismas que conserva el agua limpia de debajo. Impermeabilizante pesado con el que los Goshg calafatean el fondo de las canoas.',
+    dimensiones: 'Bloques de 10x6 cm.',
+    lugarOrigen: 'Ciénaga Troncal.',
+    tier: 2,
+  },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // TANDA OpenCode 2026-09-27/28 — items de A-32 a A-36
+  // ══════════════════════════════════════════════════════════════════════════
+
+  // A-32 — Colmillo de Ferike (material nuevo del despiece) y Ashi'krul (arma Faerus de Kegi).
+  {
+    slug: 'colmillo-ferike',
+    name: 'Colmillo de Ferike',
+    aliases: ['colmillo de ferike'],
+    category: 'hueso',
+    tipo: 'RECURSO',
+    valorGoirnos: 8,
+    description: 'Colmillo de Ferike, de 20-35 cm, marfil con vetas pardas — duro pero quebradizo contra la piedra. El Ferike tiene los dientes tan largos que no le permiten cerrar la boca del todo.',
+    dimensiones: 'Colmillos de 20-35 cm.',
+    lugarOrigen: 'El Cruce de las Cenizas.',
+    tier: 6,
+  },
+  {
+    slug: 'colmillo-ferike-hembra',
+    name: 'Colmillo de Ferike hembra',
+    aliases: ['colmillo de ferike hembra'],
+    category: 'hueso',
+    tipo: 'RECURSO',
+    valorGoirnos: 12,
+    description: 'Colmillo de una hembra de Ferike — más fuerte y grande que el de un macho, la variante de mayor calidad, mismo criterio que el Enganche de hueso de Cuernahoja. Es el material con el que se talla la daga Ashi\'krul.',
+    dimensiones: 'Colmillos de 25-40 cm.',
+    lugarOrigen: 'El Cruce de las Cenizas.',
+    tier: 6,
+  },
+  {
+    slug: 'ashi-krul',
+    name: 'Ashi\'krul',
+    aliases: ["ashi'krul", 'ashikrul', 'el colmillo que huele'],
+    category: 'arma',
+    tipo: 'EQUIPABLE',
+    equipSlot: 'ARMA_SECUNDARIA',
+    tipoArma: 'DAGA',
+    valorGoirnos: 30,
+    description: 'Daga Faerus tallada en un colmillo de Ferike hembra, con la empuñadura envuelta en piel de Ferike. El Ferike solo teme a los Faerus, y la hembra es la cazadora y alfa de su manada — llevar su colmillo dice que su portador cazó a quien caza. Se talla en Kegi, dentro del Feg Ger; no se fabrica con ningún oficio del jugador, se compra o se gana.',
+    statBonuses: { destreza: 4 },
+    dimensiones: 'Hoja de 25 cm tallada en el propio colmillo.',
+    lugarOrigen: 'Kegi, Feg Ger.',
+    tier: 6,
+    requisitos: { destreza: 13 },
+  },
+
+  // A-33 — Desollador de sílice: hoja Helsig, montado en el Desolladero del Clan Serhu.
+  {
+    slug: 'desollador-silice',
+    name: 'Desollador de sílice',
+    aliases: ['desollador de silice'],
+    category: 'herramienta',
+    tipo: 'EQUIPABLE',
+    equipSlot: 'ARMA_SECUNDARIA',
+    tipoArma: 'CUCHILLO',
+    valorGoirnos: 20,
+    description: 'Cuchillo de desuello hecho entre dos clanes: la hoja, de hielo sílice con forma de media luna, la tallan los Helsig; las cachas, de Caparazón de Espina del Viento, las pone el Desolladero del Clan Serhu, porque la quitina no resbala con sangre en las manos. Es el único objeto de Karot Veku que reconoce abiertamente que los Serhu necesitan a otro clan para algo. Versión de oficio del cuchillo de hielo sílice de Gorhorn, más fina, útil también al peletero.',
+    statBonuses: { destreza: 2 },
+    dimensiones: 'Hoja curva de 14 cm, empuñadura de 11 cm.',
+    lugarOrigen: 'Hoja del Clan Helsig; montado en el Desolladero del Clan Serhu.',
+    tier: 3,
+    requisitos: { destreza: 9 },
+    herramientaParaOficio: ['desollador', 'curtidor', 'peletero'],
+  },
+
+  // A-34 — Ungüento de Espina: primer crafteo del veneno de Espina del Viento (antes solo loot).
+  {
+    slug: 'unguento-espina',
+    name: 'Ungüento de Espina',
+    aliases: ['unguento de espina', 'ungüento de espina del viento'],
+    category: 'medicinal',
+    tipo: 'CONSUMIBLE',
+    equipSlot: 'CONSUMIBLE_1',
+    valorGoirnos: 12,
+    description: 'Pasta ámbar de olor amargo y picante, hecha diluyendo el veneno de Espina del Viento en resina hasta que deja de ser un peligro y se vuelve un anestésico de campo. Adormece la piel en segundos — mal dosificada, adormece también el juicio.',
+    dimensiones: 'Cuenco de cuerno de 6 cm con tapa de cera.',
+    lugarOrigen: 'Karot Veku, taller de alquimia.',
+    tier: 3,
+    curaHasta: 'GRAVE',
+    curaUnPaso: true,
+  },
+
+  // A-35 — Manto de Cornisa: da uso a las Plumas de Celubia, sin bonificadores.
+  {
+    slug: 'manto-cornisa',
+    name: 'Manto de Cornisa',
+    aliases: ['manto de cornisa'],
+    category: 'cosmetico',
+    tipo: 'NARRATIVO',
+    equipSlot: 'COSMETICO_ESPALDA',
+    valorGoirnos: 6,
+    description: 'Manto corto de fieltro de lana de Múrgol, gris con restos de polvo rojo, con plumas blancas de Celubia cosidas en hilera sobre los hombros — en la punta, las plumas conservan un rastro de espuma seca que nunca termina de caerse. Lo lleva quien trepó a las cornisas más altas de Los Acantilados Partidos y volvió: la prueba de valor de la costa, cosa de jóvenes que quieren presumir, no un rito sagrado.',
+    dimensiones: 'Manto de 45x60 cm.',
+    lugarOrigen: 'Las Llanuras del Viento Rojo.',
+    tier: 2,
+  },
+
+  // A-36 — Incisivos de Miruina: primera herramienta del catálogo que sale directamente de un
+  // animal sin fabricarse.
+  {
+    slug: 'incisivos-miruina',
+    name: 'Incisivos de Miruina',
+    aliases: ['incisivos de miruina'],
+    category: 'hueso',
+    tipo: 'RECURSO',
+    valorGoirnos: 3,
+    description: 'Peine natural de dientes de Miruina, orientados en varias direcciones para rasgar escamas de Jusha en vida del animal — fuera de él, un rascador que arranca escamas y restos de carne de una piel sin cortarla.',
+    dimensiones: 'Piezas de 4-6 cm.',
+    lugarOrigen: 'Los Manaderos.',
+    tier: 2,
+    herramientaParaOficio: ['curtidor', 'peletero'],
+  },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // TANDA OpenCode 2026-09-27/28 — recursos de despiece de la fauna nueva (A-28 a A-31, P-01, P-02)
+  // ══════════════════════════════════════════════════════════════════════════
+
+  // A-28 — Leshra
+  {
+    slug: 'plumas-leshra',
+    name: 'Plumas de Leshra',
+    aliases: ['plumas de leshra'],
+    category: 'pluma',
+    tipo: 'RECURSO',
+    valorGoirnos: 3,
+    description: 'Plumas de borde deshilachado de la Leshra, que rompen el aire en remolinos diminutos sin hacer ruido — material de emplumado con el que los Faerus hacen flechas que no silban.',
+    dimensiones: 'Plumas de 15-25 cm.',
+    lugarOrigen: 'El Margen Silencioso.',
+    tier: 2,
+  },
+
+  // A-29 — Morvasa
+  {
+    slug: 'veneno-morvasa',
+    name: 'Veneno de Morvasa',
+    aliases: ['veneno de morvasa'],
+    category: 'medicinal',
+    tipo: 'RECURSO',
+    valorGoirnos: 6,
+    description: 'Veneno neurotóxico extraído con cuidado de la Morvasa — paraliza en vez de matar. Ingrediente de alquimia.',
+    dimensiones: 'Frasco de 5 cl.',
+    lugarOrigen: 'El Margen Silencioso.',
+    tier: 3,
+  },
+  {
+    slug: 'piel-morvasa',
+    name: 'Piel de Morvasa',
+    aliases: ['piel de morvasa'],
+    category: 'piel',
+    tipo: 'RECURSO',
+    valorGoirnos: 3,
+    description: 'Piel de escamas verde pardo con vetas ceniza de la Morvasa.',
+    dimensiones: 'Piezas de 40x20 cm.',
+    lugarOrigen: 'El Margen Silencioso.',
+    tier: 2,
+  },
+
+  // A-30 — Brozán
+  {
+    slug: 'piel-brozan',
+    name: 'Piel de Brozán',
+    aliases: ['piel de brozan'],
+    category: 'piel',
+    tipo: 'RECURSO',
+    valorGoirnos: 1,
+    description: 'Piel gris verdosa del Brozán, con vetas negras que imitan la corteza podrida.',
+    dimensiones: 'Piezas de 20x15 cm.',
+    lugarOrigen: 'El Margen Silencioso.',
+    tier: 1,
+  },
+
+  // A-31 — Hoscón
+  {
+    slug: 'plumon-hoscon',
+    name: 'Plumón de Hoscón',
+    aliases: ['plumon de hoscon'],
+    category: 'pluma',
+    tipo: 'RECURSO',
+    valorGoirnos: 1,
+    description: 'Plumón gris pardo apagado del Hoscón — relleno sencillo.',
+    dimensiones: 'Mechones de 5-10 cm.',
+    lugarOrigen: 'El Margen Silencioso.',
+    tier: 1,
+  },
+
+  // P-01 — Hielaga, Nievón, Escarchín, Tragalodo, Borbol, Zancapilote, Vreskal
+  {
+    slug: 'piel-hielaga',
+    name: 'Piel de Hielaga',
+    aliases: ['piel de hielaga'],
+    category: 'piel',
+    tipo: 'RECURSO',
+    valorGoirnos: 4,
+    description: 'Doble pelaje blanco grisáceo de la Hielaga — la piel más abrigada de Berig.',
+    dimensiones: 'Piezas de 50x35 cm.',
+    lugarOrigen: 'Cristal Helado.',
+    tier: 2,
+  },
+  {
+    slug: 'piel-nievon',
+    name: 'Piel de Nievón',
+    aliases: ['piel de nievon'],
+    category: 'piel',
+    tipo: 'RECURSO',
+    valorGoirnos: 8,
+    description: 'Pelaje blanco y hueco del Nievón, que no deja escapar calor — apenas visible contra la nieve.',
+    dimensiones: 'Piezas de 80x50 cm.',
+    lugarOrigen: 'Cristal Helado.',
+    tier: 5,
+  },
+  {
+    slug: 'colmillos-nievon',
+    name: 'Colmillos de Nievón',
+    aliases: ['colmillos de nievon'],
+    category: 'hueso',
+    tipo: 'RECURSO',
+    valorGoirnos: 8,
+    description: 'Colmillos del Nievón, el depredador que espera enterrado en la nieve junto a los pasos de las Hielagas.',
+    dimensiones: 'Colmillos de 10-15 cm.',
+    lugarOrigen: 'Cristal Helado.',
+    tier: 5,
+  },
+  {
+    slug: 'carne-escarchin',
+    name: 'Carne de Escarchín',
+    aliases: ['carne de escarchin'],
+    category: 'alimento',
+    tipo: 'RECURSO',
+    valorGoirnos: 2,
+    description: 'Carne grasa del Escarchín, muy apreciada en los años de hambre de Cristal Helado.',
+    dimensiones: 'Piezas de 10-20 cm.',
+    lugarOrigen: 'Cristal Helado.',
+    tier: 1,
+  },
+  {
+    slug: 'placas-tragalodo',
+    name: 'Placas de Tragalodo',
+    aliases: ['placas de tragalodo'],
+    category: 'piel',
+    tipo: 'RECURSO',
+    valorGoirnos: 6,
+    description: 'Placas pardas cubiertas de barro seco del Tragalodo — armadura pesada de la Ciénaga.',
+    dimensiones: 'Placas de 30x20 cm.',
+    lugarOrigen: 'Ciénaga Troncal.',
+    tier: 5,
+  },
+  {
+    slug: 'dientes-tragalodo',
+    name: 'Dientes de Tragalodo',
+    aliases: ['dientes de tragalodo'],
+    category: 'hueso',
+    tipo: 'RECURSO',
+    valorGoirnos: 5,
+    description: 'Dientes del Tragalodo, el depredador grande de las aguas bajas de la Ciénaga.',
+    dimensiones: 'Piezas de 6-10 cm.',
+    lugarOrigen: 'Ciénaga Troncal.',
+    tier: 4,
+  },
+  {
+    slug: 'carne-borbol',
+    name: 'Carne de Borbol',
+    aliases: ['carne de borbol'],
+    category: 'alimento',
+    tipo: 'RECURSO',
+    valorGoirnos: 1,
+    description: 'Carne grasa del Borbol, pez de fondo de las charcas de la Ciénaga — se ahúma bien.',
+    dimensiones: 'Piezas de 10-15 cm.',
+    lugarOrigen: 'Ciénaga Troncal.',
+    tier: 1,
+  },
+  {
+    slug: 'plumas-zancapilote',
+    name: 'Plumas de Zancapilote',
+    aliases: ['plumas de zancapilote'],
+    category: 'pluma',
+    tipo: 'RECURSO',
+    valorGoirnos: 1,
+    description: 'Plumas grises del Zancapilote, el ave que anida en los pilotes de la Ciénaga.',
+    dimensiones: 'Plumas de 10-15 cm.',
+    lugarOrigen: 'Ciénaga Troncal.',
+    tier: 1,
+  },
+  {
+    slug: 'placas-vreskal',
+    name: 'Placas de Vreskal',
+    aliases: ['placas de vreskal'],
+    category: 'piedra',
+    tipo: 'RECURSO',
+    valorGoirnos: 1,
+    description: 'Placas hexagonales idénticas del caparazón del Vreskal — se usan como teselas decorativas.',
+    dimensiones: 'Placas de 1-2 cm.',
+    lugarOrigen: 'La Meseta del Orden.',
+    tier: 1,
+  },
+
+  // P-02 — Sombra de Kroj, Hetris, Mekiosi, Vistue (Hetris/Mekiosi/Vistue no tenían despiece)
+  {
+    slug: 'piel-hetris',
+    name: 'Piel de Hetris',
+    aliases: ['piel de hetris'],
+    category: 'piel',
+    tipo: 'RECURSO',
+    valorGoirnos: 4,
+    description: 'Pelaje corto gris verdoso del Hetris, que se funde con la corteza húmeda del Margen.',
+    dimensiones: 'Piezas de 40x25 cm.',
+    lugarOrigen: 'El Margen Silencioso.',
+    tier: 3,
+  },
+  {
+    slug: 'garras-hetris',
+    name: 'Garras de Hetris',
+    aliases: ['garras de hetris'],
+    category: 'garra',
+    tipo: 'RECURSO',
+    valorGoirnos: 5,
+    description: 'Garras curvas del Hetris, felino-simio arbóreo del dosel alto del Margen.',
+    dimensiones: 'Garras de 3-5 cm.',
+    lugarOrigen: 'El Margen Silencioso.',
+    tier: 4,
+  },
+  {
+    slug: 'piel-mekiosi',
+    name: 'Piel de Mekiosi',
+    aliases: ['piel de mekiosi'],
+    category: 'piel',
+    tipo: 'RECURSO',
+    valorGoirnos: 5,
+    description: 'Piel gruesa del Mekiosi, de tonos pardos y verdes que imitan el musgo y la corteza podrida.',
+    dimensiones: 'Piezas de 60x40 cm.',
+    lugarOrigen: 'El Margen Silencioso.',
+    tier: 4,
+  },
+  {
+    slug: 'colmillos-mekiosi',
+    name: 'Colmillos de Mekiosi',
+    aliases: ['colmillos de mekiosi'],
+    category: 'hueso',
+    tipo: 'RECURSO',
+    valorGoirnos: 6,
+    description: 'Colmillos del Mekiosi, capaces de partir hueso de un mordisco.',
+    dimensiones: 'Colmillos de 8-12 cm.',
+    lugarOrigen: 'El Margen Silencioso.',
+    tier: 5,
+  },
+  {
+    slug: 'piel-vistue',
+    name: 'Piel de Vistue',
+    aliases: ['piel de vistue'],
+    category: 'piel',
+    tipo: 'RECURSO',
+    valorGoirnos: 3,
+    description: 'Pelaje corto oscuro del Vistue, con una franja más clara a lo largo del lomo.',
+    dimensiones: 'Piezas de 40x25 cm.',
+    lugarOrigen: 'El Margen Silencioso.',
+    tier: 3,
+  },
 ];
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -7456,7 +8739,60 @@ export const factions: FactionInput[] = [
     name: 'Concordia de Hierro',
     raza: 'goirntes',
     description:
-      'Alianza militar Goirnte formada tras El Detonante, con sede en el Baluarte de Goirme — la mayor de las ciudades-fortaleza Goirntes, muros de hierro negro pulido tallados con una simetría antinatural y el obelisco de leyes más alto de todo Berig en su plaza central. La lidera oficialmente la facción radical del orden Goirnte, convencida de que la magia salvaje es una amenaza existencial que exige mano dura — bajo su mando unificado somete a clanes orcos y a los Nabieus, de grado o por presión, y resucita con otro nombre las viejas imposiciones del Yugo de Hierro: tributo en mineral, madera y contingentes de guerra obligatorios. Su mando militar recae en el General Vrask Ombra.',
+      'Alianza militar Goirnte formada tras El Detonante, con sede en el Baluarte de Goirme — la mayor de las ciudades-fortaleza Goirntes, muros de hierro negro pulido tallados con una simetría antinatural y el obelisco de leyes más alto de todo Berig en su plaza central. La lidera oficialmente la facción radical del orden Goirnte, encabezada por el Primer Censor Tarsen Vold, convencida de que la magia salvaje es una amenaza existencial que exige mano dura — bajo su mando unificado somete a clanes orcos y a los Nabieus, de grado o por presión, y resucita con otro nombre las viejas imposiciones del Yugo de Hierro: tributo en mineral, madera y contingentes de guerra obligatorios. Su mando militar recae en el General Vrask Ombra.',
+  },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // TANDA OpenCode 2026-09-27/28 — 5 facciones nuevas (A-01 a A-05)
+  // ══════════════════════════════════════════════════════════════════════════
+
+  // A-01 — Los del Obelisco: facción moderada Goirnte, comparte La Meseta del Orden con la
+  // Concordia de Hierro (ver reputation.ts § REGION_OWNING_FACTIONS).
+  {
+    slug: 'los-del-obelisco',
+    name: 'Los del Obelisco',
+    raza: 'goirntes',
+    description:
+      'Corriente moderada del orden Goirnte, nacida de la casta de ley. Magistrados y archiveros de los obeliscos que se niegan a que la Concordia sea todo el orden: no se rebelan, porque desobedecer es desorden, pero exigen que cada orden se sostenga en un edicto grabado. Los lidera la Archimagistrada Yovenne Tal desde El Baluarte de Goirme. Buscan pruebas presentadas en orden de la traición del sello y citan de memoria el Primer Edicto del Tributo contra el uso que la Concordia hace hoy de los contingentes orcos.',
+  },
+
+  // A-02 — Keseg Sael: los Nabieus de la mitad oriental de El Margen Silencioso. Primera facción
+  // dueña mecánica del Margen (compartida con Feg Tusha, ver reputation.ts).
+  {
+    slug: 'keseg-sael',
+    name: 'Keseg Sael',
+    raza: 'nabieus',
+    description:
+      'Los Nabieus de la mitad oriental de El Margen Silencioso, dispersos en torno a El Refugio sin Nombre. Hacia fuera el clan no da su nombre, "el fin del callar", porque el Refugio es el único lugar donde un Nabieus puede dejar de guardar lo que sabe. Sirven a la Concordia como mensajeros por pura supervivencia, bajo el código del Karo\'sael, y guardan bajo el Refugio un archivo de tablillas de observación, herencia del reino que Madre enterró.',
+  },
+
+  // A-03 — Keseg Prisilke: los Nabieus del sur de Ciénaga Troncal, en Jeyselt.
+  {
+    slug: 'keseg-prisilke',
+    name: 'Keseg Prisilke',
+    raza: 'nabieus',
+    description:
+      'El clan nabieus del sur de Ciénaga Troncal, con poblado en Jeyselt ("Fin Susurrado"). Generaciones en aguas altas les dieron brazos y piernas más largos, piel con manchas verdes y una postura encorvada. Viven de la caza y de la madera de los Trepadores Ocaso más que del sigilo, y comparten la Ciénaga con el Clan Goshg en una convivencia práctica. La Concordia les exige madera, no cartas.',
+  },
+
+  // A-04 — Feg Tusha: la manada base Faerus, en Hashma. Su liderNpcId es Hulki (A-38, quien más
+  // a menudo está en el Jakut Tusha, ver A-06).
+  {
+    slug: 'feg-tusha',
+    name: 'Feg Tusha',
+    raza: 'faerus',
+    description:
+      'La manada base de los Faerus, en Hashma (Selviterna), el poblado colgado sobre los árboles en la selva occidental de El Margen Silencioso, cerca de la costa. La más numerosa y la más salvaje: pelaje denso en tonos de corteza y musgo, artesanía mínima y un olfato que manda sobre la vista. Su asentamiento marca el año 0 de Berig. No tienen cargo de mando: decide quien está sentado en el Jakut Tusha, el Trono Madre. Hostiles a la Concordia y a los Serhu, que los tratan como presa.',
+  },
+
+  // A-05 — Feg Ger: la manada Faerus de la llanura, en Kegi. Su liderNpcId es Yeru (A-39). No es
+  // dueña de ninguna región (vive en territorio Serhu sin disputarlo).
+  {
+    slug: 'feg-ger',
+    name: 'Feg Ger',
+    raza: 'faerus',
+    description:
+      'La manada Faerus de la llanura, en Kegi, en la franja sur de las Llanuras del Viento Rojo. Pelaje corto y rojizo, la artesanía de cuero más fina de su raza y la única manada que comercia de verdad, en El Vergel de Kegi. Nació de un pacto antiguo con el Clan Maktor: comercian con cualquier orco, pero solo comparten la primera pieza con quien consideran de la manada. Deciden desde el Jakut Ger, el Trono Rojo, sin cargo de mando.',
   },
 ];
 
@@ -8798,6 +10134,363 @@ export const harvestYields: HarvestYieldInput[] = [
     itemSlug: 'caparazon-terkash',
     cantidad: 1,
     condicion: 'caparazón entero, útil como material de construcción/armadura',
+  },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // TANDA OpenCode 2026-09-27/28 — HarvestYield de flora y fauna nuevas. Todo El Margen
+  // Silencioso/Ciénaga Troncal/Cristal Helado/La Meseta del Orden queda fuera del núcleo jugable
+  // actual (mismo criterio que Cornante/Sombra de Kroj: sin homeLocationSlug/harvestSourceRegion
+  // propios, con la región anotada en `condicion`).
+  // ══════════════════════════════════════════════════════════════════════════
+
+  // --- A-20: Musgo Callado ---
+  {
+    sourceSlug: 'musgo-callado',
+    sourceCategory: 'planta',
+    metodoObtencion: 'EXTRACCION',
+    itemSlug: 'musgo-callado',
+    cantidad: 3,
+    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual, sin herramienta',
+    sinTirada: true,
+  },
+
+  // --- A-21: Veldria Hueca ---
+  {
+    sourceSlug: 'veldria-hueca',
+    sourceCategory: 'planta',
+    metodoObtencion: 'TALA',
+    itemSlug: 'madera-veldria-hueca',
+    cantidad: 2,
+    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual; los Nabieus solo toman ramas caídas',
+  },
+  {
+    sourceSlug: 'resina-veldria-fuente',
+    sourceCategory: 'planta',
+    metodoObtencion: 'EXTRACCION',
+    itemSlug: 'resina-veldria',
+    cantidad: 1,
+    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual',
+  },
+
+  // --- A-22: Flor de Víspera ---
+  {
+    sourceSlug: 'flor-de-vispera',
+    sourceCategory: 'planta',
+    metodoObtencion: 'EXTRACCION',
+    itemSlug: 'petalos-vispera',
+    cantidad: 2,
+    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual; sus flores solo se abren al atardecer',
+  },
+
+  // --- A-23: Cántaro de Hoja ---
+  {
+    sourceSlug: 'cantaro-de-hoja',
+    sourceCategory: 'planta',
+    metodoObtencion: 'EXTRACCION',
+    itemSlug: 'agua-cantaro',
+    cantidad: 1,
+    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual; se regenera con la siguiente lluvia',
+    sinTirada: true,
+  },
+  {
+    sourceSlug: 'cantaro-de-hoja',
+    sourceCategory: 'planta',
+    metodoObtencion: 'EXTRACCION',
+    itemSlug: 'tallo-cantaro',
+    cantidad: 1,
+    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual, una vez drenada el agua',
+  },
+
+  // --- A-24: Carnosa de Tocón ---
+  {
+    sourceSlug: 'carnosa-de-tocon',
+    sourceCategory: 'planta',
+    metodoObtencion: 'EXTRACCION',
+    itemSlug: 'carnosa-de-tocon',
+    cantidad: 1,
+    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual, sobre tocones caídos',
+  },
+
+  // --- A-25: Bulbo de Turbera (Ciénaga Troncal) ---
+  {
+    sourceSlug: 'bulbo-de-turbera',
+    sourceCategory: 'planta',
+    metodoObtencion: 'EXTRACCION',
+    itemSlug: 'bulbo-de-turbera',
+    cantidad: 2,
+    condicion: 'Ciénaga Troncal — fuera del núcleo jugable actual',
+    sinTirada: true,
+  },
+
+  // --- A-26: Velo de Charca (Ciénaga Troncal) ---
+  {
+    sourceSlug: 'velo-de-charca',
+    sourceCategory: 'planta',
+    metodoObtencion: 'EXTRACCION',
+    itemSlug: 'velo-de-charca',
+    cantidad: 2,
+    condicion: 'Ciénaga Troncal — fuera del núcleo jugable actual, sobre charcas quietas',
+  },
+
+  // --- A-27: Herrumbrera (Ciénaga Troncal) ---
+  {
+    sourceSlug: 'herrumbrera',
+    sourceCategory: 'planta',
+    metodoObtencion: 'EXTRACCION',
+    itemSlug: 'corteza-herrumbre',
+    cantidad: 2,
+    condicion: 'Ciénaga Troncal — fuera del núcleo jugable actual, orillas de agua estancada',
+  },
+
+  // --- P-03: Liquen Escarcha (Cristal Helado) y Bolco (Ciénaga Troncal) ---
+  {
+    sourceSlug: 'liquen-escarcha',
+    sourceCategory: 'planta',
+    metodoObtencion: 'EXTRACCION',
+    itemSlug: 'liquen-escarcha',
+    cantidad: 1,
+    condicion: 'Cristal Helado — fuera del núcleo jugable actual; se raspa solo la mitad, nunca la costra entera',
+  },
+  {
+    sourceSlug: 'bolco',
+    sourceCategory: 'planta',
+    metodoObtencion: 'EXTRACCION',
+    itemSlug: 'resina-bolco',
+    cantidad: 1,
+    condicion: 'Ciénaga Troncal — fuera del núcleo jugable actual, Marismas de Lodo Negro',
+  },
+
+  // --- A-28: Leshra ---
+  {
+    sourceSlug: 'leshra',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'plumas-leshra',
+    cantidad: 1,
+    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual',
+  },
+
+  // --- A-29: Morvasa ---
+  {
+    sourceSlug: 'morvasa',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'veneno-morvasa',
+    cantidad: 1,
+    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual, extracción cuidadosa',
+  },
+  {
+    sourceSlug: 'morvasa',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'piel-morvasa',
+    cantidad: 1,
+    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual',
+  },
+
+  // --- A-30: Brozán ---
+  {
+    sourceSlug: 'brozan',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'racion-carne',
+    cantidad: 1,
+    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual',
+  },
+  {
+    sourceSlug: 'brozan',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'piel-brozan',
+    cantidad: 1,
+    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual',
+  },
+
+  // --- A-31: Hoscón ---
+  {
+    sourceSlug: 'hoscon',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'plumon-hoscon',
+    cantidad: 1,
+    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual',
+  },
+
+  // --- P-01: Hielaga, Nievón, Escarchín (Cristal Helado); Tragalodo, Borbol, Zancapilote
+  // (Ciénaga Troncal); Vreskal (La Meseta del Orden) ---
+  {
+    sourceSlug: 'hielaga',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'racion-carne',
+    cantidad: 2,
+    condicion: 'Cristal Helado — fuera del núcleo jugable actual; caza racionada, no se caza de más',
+  },
+  {
+    sourceSlug: 'hielaga',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'piel-hielaga',
+    cantidad: 1,
+    condicion: 'Cristal Helado — fuera del núcleo jugable actual',
+  },
+  {
+    sourceSlug: 'nievon',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'piel-nievon',
+    cantidad: 1,
+    condicion: 'Cristal Helado — fuera del núcleo jugable actual',
+  },
+  {
+    sourceSlug: 'nievon',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'colmillos-nievon',
+    cantidad: 1,
+    condicion: 'Cristal Helado — fuera del núcleo jugable actual',
+  },
+  {
+    sourceSlug: 'escarchin',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'PESCA',
+    itemSlug: 'carne-escarchin',
+    cantidad: 1,
+    condicion: 'Cristal Helado — fuera del núcleo jugable actual, pesca de invierno en El Lago Cristalice',
+  },
+  {
+    sourceSlug: 'tragalodo',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'placas-tragalodo',
+    cantidad: 1,
+    condicion: 'Ciénaga Troncal — fuera del núcleo jugable actual',
+  },
+  {
+    sourceSlug: 'tragalodo',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'dientes-tragalodo',
+    cantidad: 1,
+    condicion: 'Ciénaga Troncal — fuera del núcleo jugable actual',
+  },
+  {
+    sourceSlug: 'borbol',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'carne-borbol',
+    cantidad: 1,
+    condicion: 'Ciénaga Troncal — fuera del núcleo jugable actual',
+  },
+  {
+    sourceSlug: 'zancapilote',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'plumas-zancapilote',
+    cantidad: 1,
+    condicion: 'Ciénaga Troncal — fuera del núcleo jugable actual',
+  },
+  {
+    sourceSlug: 'vreskal',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'placas-vreskal',
+    cantidad: 1,
+    condicion: 'La Meseta del Orden — fuera del núcleo jugable actual; matar uno en una muralla está mal visto',
+  },
+
+  // --- P-02: Sombra de Kroj, Hetris, Mekiosi, Vistue (El Margen Silencioso) ---
+  {
+    sourceSlug: 'sombra-de-kroj',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'pluma-sombra-kroj',
+    cantidad: 1,
+    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual',
+  },
+  {
+    sourceSlug: 'hetris',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'piel-hetris',
+    cantidad: 1,
+    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual',
+  },
+  {
+    sourceSlug: 'hetris',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'garras-hetris',
+    cantidad: 1,
+    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual',
+  },
+  {
+    sourceSlug: 'mekiosi',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'piel-mekiosi',
+    cantidad: 1,
+    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual',
+  },
+  {
+    sourceSlug: 'mekiosi',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'colmillos-mekiosi',
+    cantidad: 1,
+    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual',
+  },
+  {
+    sourceSlug: 'vistue',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'piel-vistue',
+    cantidad: 1,
+    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual',
+  },
+  {
+    sourceSlug: 'vistue',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'racion-carne',
+    cantidad: 1,
+    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual',
+  },
+  {
+    sourceSlug: 'cornante',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'racion-carne',
+    cantidad: 4,
+    condicion: 'Ciénaga Troncal — fuera del núcleo jugable actual; cazado en grupo, acorralado hacia el agua baja',
+  },
+
+  // --- A-32: Colmillo de Ferike, despiece ampliado del Ferike (ya existente) ---
+  {
+    sourceSlug: 'ferike',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'colmillo-ferike',
+    cantidad: 1,
+    condicion: 'de un macho — 20-35 cm, marfil con vetas pardas',
+  },
+  {
+    sourceSlug: 'ferike',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'colmillo-ferike-hembra',
+    cantidad: 1,
+    condicion: 'solo de una hembra — variante de mayor calidad, con la que se talla la Ashi\'krul',
+  },
+
+  // --- A-36: Incisivos de Miruina, despiece ampliado de la Miruina (ya existente) ---
+  {
+    sourceSlug: 'miruina',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'incisivos-miruina',
+    cantidad: 1,
+    condicion: 'junto a la Piel de Miruina',
   },
 ];
 

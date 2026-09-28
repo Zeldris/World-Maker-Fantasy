@@ -993,7 +993,7 @@ los Serhu).
 
 **Seguimiento:**
 - [x] **En docs** (2026-09-27): `regiones/margen-silencioso.md`
-- [ ] **Código:** `Location` `cruce-de-las-ausencias` (región Margen, `faunaTerrainTag: humedo`) + `LocationLink` + prompt de imagen
+- [x] **Código** (2026-09-28): `Location` `cruce-de-las-ausencias` en `worldCatalog.ts`, sembrada. Sin `LocationLink`: ninguna región fuera de núcleo (Margen/Ciénaga/Meseta/Cristal Helado) tiene `LocationLink`s todavía — no son navegables mecánicamente, coherente con "fuera del núcleo jugable actual". Prompt de imagen pendiente.
 
 **Acción de implementación:** añadir
 **Prioridad:** baja (Margen fuera del núcleo jugable)
@@ -1042,7 +1042,7 @@ compañeros con una cuerda corta: si tira, alguien se ha parado.
 
 **Seguimiento:**
 - [x] **En docs** (2026-09-27): `regiones/margen-silencioso.md`
-- [ ] **Código:** `Location` `aguas-sordas` + `LocationLink`
+- [x] **Código** (2026-09-28): `Location` `aguas-sordas` en `worldCatalog.ts`, sembrada. Sin `LocationLink` (ver nota en A-15).
 
 **Acción de implementación:** añadir
 **Prioridad:** baja
@@ -1087,7 +1087,7 @@ metálico" y la niebla matinal (el Margen no tiene niebla; la niebla es del Estr
 
 **Seguimiento:**
 - [x] **En docs** (2026-09-27): `regiones/margen-silencioso.md`
-- [ ] **Código:** `Location` `proa-gris` (`arido`) + `LocationLink`
+- [x] **Código** (2026-09-28): `Location` `proa-gris` en `worldCatalog.ts`, sembrada. Sin `LocationLink` (ver nota en A-15).
 
 **Acción de implementación:** añadir
 **Prioridad:** baja
@@ -1137,7 +1137,7 @@ tormentas son de las Llanuras).
 
 **Seguimiento:**
 - [x] **En docs** (2026-09-27): `regiones/meseta-del-orden.md`
-- [ ] **Código:** Opcional (Meseta fuera de núcleo): `Location` `puesto-del-corredor`
+- [x] **Código** (2026-09-28): `Location` `puesto-del-corredor` en `worldCatalog.ts`, sembrada.
 
 **Acción de implementación:** añadir
 **Prioridad:** baja (Meseta no jugable)
@@ -1177,7 +1177,7 @@ Concordia (ya en catálogo) sirve de salvoconducto.
 
 **Seguimiento:**
 - [x] **En docs** (2026-09-27): `regiones/meseta-del-orden.md`
-- [ ] **Código:** Opcional (Meseta fuera de núcleo): `Location` `canteras-del-eje`
+- [x] **Código** (2026-09-28): `Location` `canteras-del-eje` en `worldCatalog.ts`, sembrada.
 
 **Acción de implementación:** añadir
 **Prioridad:** baja (Meseta no jugable)
