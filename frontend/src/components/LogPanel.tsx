@@ -220,7 +220,16 @@ export const LogPanel = memo(function LogPanel({
   // completarse). Mientras SIGUE narrando (`isThinking` true), se mantiene `'smooth'` — más
   // agradable de ver, y si un scroll manual cancela una animación intermedia no importa: el chunk
   // siguiente relanza el scroll normal.
+  // Pegado al final (2026-09-28, bug real medido con Playwright: tras recargar una partida con
+  // imágenes en el log — banners de NPC/objetos —, la vista se quedaba ~1300px por encima de la
+  // última entrada para siempre). El scroll de abajo corre cuando cambian las entradas, ANTES de
+  // que carguen las imágenes; al cargar, cada una empuja el contenido hacia abajo sin que nada
+  // vuelva a bajar. `pegadoAlFinalRef` recuerda si el jugador estaba abajo del todo (se pierde en
+  // cuanto sube a mano para leer), y `onLoadCapture` del contenedor re-baja tras cada imagen.
+  const pegadoAlFinalRef = useRef(true)
+  const ultimoScrollTopRef = useRef(0)
   useEffect(() => {
+    pegadoAlFinalRef.current = true
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: isThinking ? 'smooth' : 'auto' })
     // thinkingText en la dependencia (roadmap de velocidad, 2026-07-20): con streaming, la
     // tarjeta "pensando" crece de tamaño en vivo — sin esto, el scroll no la sigue mientras narra.
@@ -282,7 +291,21 @@ export const LogPanel = memo(function LogPanel({
           Ver historial completo en el Diario →
         </button>
       )}
-      <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+      <div
+        ref={scrollRef}
+        className="flex-1 space-y-3 overflow-y-auto px-4 py-4"
+        onScroll={(e) => {
+          // Solo un scroll HACIA ARRIBA despega (el scroll suave programático también dispara este
+          // evento a mitad de animación, bajando); volver abajo del todo vuelve a pegar.
+          const el = e.currentTarget
+          if (el.scrollHeight - el.scrollTop - el.clientHeight < 80) pegadoAlFinalRef.current = true
+          else if (el.scrollTop < ultimoScrollTopRef.current) pegadoAlFinalRef.current = false
+          ultimoScrollTopRef.current = el.scrollTop
+        }}
+        onLoadCapture={() => {
+          if (pegadoAlFinalRef.current) scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
+        }}
+      >
         {entries.length === 0 && !isThinking && (
           <p className="pt-2 text-sm text-wood-500 italic">{emptyHint}</p>
         )}
