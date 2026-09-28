@@ -596,7 +596,18 @@ export interface SaveDetail {
   /// Oferta de modo dinámico SIN aceptar todavía (bug real 2026-08-28, "no sobrevive a una
   /// recarga") — mismo criterio que `pendingDynamicMode` arriba, un escalón antes: el botón
   /// "Interactuar"/"Ignorar" en sí, reconstruido tras F5 en vez de vivir solo en `characterLog`.
-  pendingDynamicModeOffer: { tipo: 'NPC' | 'FAUNA'; targetSlug: string; targetName: string } | null
+  pendingDynamicModeOffer:
+    | {
+        tipo: 'NPC' | 'FAUNA' | 'RECURSO'
+        targetSlug: string
+        targetName: string
+        quienInicia?: 'jugador' | 'npc'
+        combateForzado?: true
+        /// Grupos de fauna reales (Fase 1, 2026-09-28) — ver `MoverZonaResultado.dynamicModeOffer`.
+        zonePointId?: string
+        cantidad?: number
+      }
+    | null
   /// Oferta de misión SIN aceptar todavía (bug real jugando en vivo, 2026-09-03, "misión de
   /// apertura no sobrevive a un F5") — mismo criterio exacto que `pendingDynamicModeOffer`: la
   /// tarjeta "MISIÓN PROPUESTA" reconstruida tras F5 en vez de vivir solo en `characterLog`.
@@ -1218,7 +1229,20 @@ export interface MoverZonaResultado {
   /// RECURSO, sin `colision`) dispara esta oferta real (`pendingDynamicModeOffer` en el backend);
   /// `null` sin encuentro o si ya había otra oferta/conversación en curso. `combateForzado` (desde
   /// 2026-09-20) marca un AGRESIVO/ENEMIGO: la oferta abre el árbol de combate/huida.
-  dynamicModeOffer: { tipo: 'FAUNA' | 'NPC' | 'RECURSO'; targetSlug: string; targetName: string; quienInicia: 'jugador' | 'npc'; combateForzado?: true } | null
+  dynamicModeOffer:
+    | {
+        tipo: 'FAUNA' | 'NPC' | 'RECURSO'
+        targetSlug: string
+        targetName: string
+        quienInicia: 'jugador' | 'npc'
+        combateForzado?: true
+        /// Grupos de fauna reales (Fase 1, 2026-09-28) — id del `ZonePoint` colisionado (ausente
+        /// para un dinámico sin `ZonePoint` propio) y cuántos individuos representa AHORA MISMO
+        /// (1 para NPC/RECURSO/dinámicos, puede ser >1 para un grupo de FAUNA real).
+        zonePointId?: string
+        cantidad?: number
+      }
+    | null
   /// LogEntry real determinista del encuentro (2026-09-09, hallazgo real jugando en vivo: la
   /// tarjeta de oferta SIEMPRE se renderiza colgada de una LogEntry concreta — sin esto la oferta
   /// quedaba persistida en BD pero invisible en el log). Presente solo junto a `dynamicModeOffer`,

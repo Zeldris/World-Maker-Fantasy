@@ -471,52 +471,63 @@ export const LogPanel = memo(function LogPanel({
                   conversación, "Interactuar" resuelve la recolección real de una sola llamada
                   (`onInteractuarModoDinamicoRecurso`, sin abrir DynamicModeModal) — mismo botón/
                   tarjeta, callback distinto. */}
-              {entry.dynamicModeOffer && (
-                <OfferCard
-                  tone={entry.dynamicModeOffer.combateForzado ? 'danger' : 'accent2'}
-                  icon={entry.dynamicModeOffer.combateForzado ? '⚔️' : entry.dynamicModeOffer.tipo === 'RECURSO' ? '🪨' : '💬'}
-                  title={
-                    entry.dynamicModeOffer.combateForzado
-                      ? `${entry.dynamicModeOffer.targetName} te corta el paso`
-                      : entry.dynamicModeOffer.tipo === 'RECURSO'
-                        ? `${entry.dynamicModeOffer.targetName} a la vista`
-                        : `${entry.dynamicModeOffer.targetName} busca tu atención`
-                  }
-                  subtitle={
-                    entry.dynamicModeOffer.combateForzado
-                      ? 'No parece dispuesto a dejarte pasar.'
-                      : entry.dynamicModeOffer.tipo === 'NPC'
-                        ? 'Puedes hablar con esta persona.'
-                        : entry.dynamicModeOffer.tipo === 'RECURSO'
-                          ? 'Hay algo cerca que podrías recolectar.'
-                          : 'Hay algo cerca con lo que puedes interactuar.'
-                  }
-                  error={entry.dynamicModeOffer.error}
-                  actions={[
-                    {
-                      label: entry.dynamicModeOffer.busy ? 'Interactuando...' : 'Interactuar',
-                      tone: 'primary',
-                      disabled: entry.dynamicModeOffer.busy,
-                      onClick: () =>
-                        entry.dynamicModeOffer!.tipo === 'RECURSO'
-                          ? onInteractuarModoDinamicoRecurso?.(entry.id, entry.dynamicModeOffer!.targetSlug)
-                          : onInteractuarModoDinamico?.(
-                              entry.id,
-                              entry.dynamicModeOffer!.tipo as 'NPC' | 'FAUNA',
-                              entry.dynamicModeOffer!.targetSlug,
-                              entry.dynamicModeOffer!.targetName,
-                              entry.dynamicModeOffer!.quienInicia,
-                              entry.dynamicModeOffer!.combateForzado,
-                            ),
-                    },
-                    // Un agresivo que te corta el paso no se ignora (2026-09-28): Interactuar lleva a
-                    // combatir o, si lo viste tú primero, a huir — nunca una salida silenciosa.
-                    ...(entry.dynamicModeOffer.combateForzado
-                      ? []
-                      : [{ label: 'Ignorar', tone: 'neutral' as const, disabled: entry.dynamicModeOffer.busy, onClick: () => onDismissDynamicModeOffer?.(entry.id) }]),
-                  ]}
-                />
-              )}
+              {entry.dynamicModeOffer &&
+                (() => {
+                  // Grupos de fauna reales (Fase 1, 2026-09-28) — "Un grupo de N {nombre}" en vez del
+                  // nombre suelto cuando el punto colisionado representa más de un individuo (nunca
+                  // aplica a NPC/RECURSO, que no se agrupan). Se calcula una vez y se reutiliza en las
+                  // 3 variantes de título de abajo.
+                  const offer = entry.dynamicModeOffer!;
+                  const nombreOferta =
+                    offer.tipo === 'FAUNA' && (offer.cantidad ?? 1) > 1 ? `Un grupo de ${offer.cantidad} ${offer.targetName}` : offer.targetName;
+                  return (
+                    <OfferCard
+                      tone={offer.combateForzado ? 'danger' : 'accent2'}
+                      icon={offer.combateForzado ? '⚔️' : offer.tipo === 'RECURSO' ? '🪨' : '💬'}
+                      title={
+                        offer.combateForzado
+                          ? `${nombreOferta} te corta el paso`
+                          : offer.tipo === 'RECURSO'
+                            ? `${nombreOferta} a la vista`
+                            : `${nombreOferta} busca tu atención`
+                      }
+                      subtitle={
+                        offer.combateForzado
+                          ? 'No parece dispuesto a dejarte pasar.'
+                          : offer.tipo === 'NPC'
+                            ? 'Puedes hablar con esta persona.'
+                            : offer.tipo === 'RECURSO'
+                              ? 'Hay algo cerca que podrías recolectar.'
+                              : 'Hay algo cerca con lo que puedes interactuar.'
+                      }
+                      error={offer.error}
+                      actions={[
+                        {
+                          label: offer.busy ? 'Interactuando...' : 'Interactuar',
+                          tone: 'primary',
+                          disabled: offer.busy,
+                          onClick: () =>
+                            offer.tipo === 'RECURSO'
+                              ? onInteractuarModoDinamicoRecurso?.(entry.id, offer.targetSlug)
+                              : onInteractuarModoDinamico?.(
+                                  entry.id,
+                                  offer.tipo as 'NPC' | 'FAUNA',
+                                  offer.targetSlug,
+                                  offer.targetName,
+                                  offer.quienInicia,
+                                  offer.combateForzado,
+                                ),
+                        },
+                        // Un agresivo que te corta el paso no se ignora (2026-09-28): Interactuar
+                        // lleva a combatir o, si lo viste tú primero, a huir — nunca una salida
+                        // silenciosa.
+                        ...(offer.combateForzado
+                          ? []
+                          : [{ label: 'Ignorar', tone: 'neutral' as const, disabled: offer.busy, onClick: () => onDismissDynamicModeOffer?.(entry.id) }]),
+                      ]}
+                    />
+                  );
+                })()}
               {/* Menú contextual de interacción con NPC (2026-09-06, "Aprender oficio" deja de
                   depender de una habilidad suelta) — mismo patrón que `dynamicModeOffer`: un botón
                   por cada opción real de `npcInteractionOffer.options` (varía según el NPC), en

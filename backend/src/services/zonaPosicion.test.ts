@@ -24,6 +24,8 @@ import {
   quienIniciaEncuentro,
   posicionesDeSalidas,
   SEPARACION_MINIMA_SALIDAS,
+  celdaLibreEnEspiral,
+  claveCelda,
 } from './zonaPosicion.js';
 
 describe('puntoDeEntradaParaDireccion', () => {
@@ -459,5 +461,57 @@ describe('posicionesDeSalidas (2026-09-28, salidas por rumbo real)', () => {
     expect(a.y).toBe(40);
     expect(b.y).toBe(40);
     expect(Math.abs(a.x - b.x)).toBeGreaterThanOrEqual(SEPARACION_MINIMA_SALIDAS - 1e-6);
+  });
+});
+
+// Grupos de fauna reales en el mapa (2026-09-28, Fase 1) — colocación determinista de las filas
+// nuevas que crea `reconciliarGrupos` (zonePoints.ts), sin pisar ningún otro `ZonePoint`.
+describe('celdaLibreEnEspiral', () => {
+  it('con el centro libre, devuelve el propio centro (offset 0,0, primero del espiral)', () => {
+    expect(celdaLibreEnEspiral({ col: 5, row: 5 }, new Set())).toEqual({ col: 5, row: 5 });
+  });
+
+  it('con el centro ocupado (caso real: ahí vive el ancla), da la primera celda vecina libre', () => {
+    const ocupadas = new Set([claveCelda({ col: 5, row: 5 })]);
+    const libre = celdaLibreEnEspiral({ col: 5, row: 5 }, ocupadas);
+    expect(libre).not.toEqual({ col: 5, row: 5 });
+    // Anillo 1 (radio 1) antes que el 2 — nunca salta directamente a radio 2 si hay hueco en 1.
+    expect(Math.max(Math.abs(libre.col - 5), Math.abs(libre.row - 5))).toBe(1);
+  });
+
+  it('nunca devuelve una celda ya ocupada mientras quede alguna libre dentro del radio 2', () => {
+    // Ocupa todo el anillo 1 (las 8 vecinas + el centro) — debe caer en el anillo 2.
+    const ocupadas = new Set(
+      [
+        { col: 5, row: 5 },
+        { col: 5, row: 4 },
+        { col: 6, row: 4 },
+        { col: 6, row: 5 },
+        { col: 6, row: 6 },
+        { col: 5, row: 6 },
+        { col: 4, row: 6 },
+        { col: 4, row: 5 },
+        { col: 4, row: 4 },
+      ].map(claveCelda),
+    );
+    const libre = celdaLibreEnEspiral({ col: 5, row: 5 }, ocupadas);
+    expect(ocupadas.has(claveCelda(libre))).toBe(false);
+    expect(Math.max(Math.abs(libre.col - 5), Math.abs(libre.row - 5))).toBe(2);
+  });
+
+  it('nunca falla: con las 25 celdas del radio 2 ocupadas, devuelve el propio origen tal cual', () => {
+    const ocupadas = new Set<string>();
+    for (let dc = -2; dc <= 2; dc++) {
+      for (let dr = -2; dr <= 2; dr++) ocupadas.add(claveCelda({ col: 5 + dc, row: 5 + dr }));
+    }
+    expect(celdaLibreEnEspiral({ col: 5, row: 5 }, ocupadas)).toEqual({ col: 5, row: 5 });
+  });
+
+  it('respeta los límites del lienzo (nunca devuelve una celda fuera de GRID_COLS/GRID_ROWS)', () => {
+    const libre = celdaLibreEnEspiral({ col: 0, row: 0 }, new Set([claveCelda({ col: 0, row: 0 })]));
+    expect(libre.col).toBeGreaterThanOrEqual(0);
+    expect(libre.row).toBeGreaterThanOrEqual(0);
+    expect(libre.col).toBeLessThan(GRID_COLS);
+    expect(libre.row).toBeLessThan(GRID_ROWS);
   });
 });

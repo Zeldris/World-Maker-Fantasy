@@ -458,6 +458,14 @@ export interface LogEntry {
     /// desde el propio botón de Interactuar (ver `interactuarModoDinamico`, api.ts). `undefined`
     /// para el resto de temperamentos, que siguen abriendo conversación normal.
     combateForzado?: boolean
+    /// Grupos de fauna reales (Fase 1, 2026-09-28) — id del `ZonePoint` colisionado, ausente para un
+    /// dinámico sin `ZonePoint` propio. Fase 2 (botón Cazar de la tarjeta) lo usa para exigir que se
+    /// caza EXACTAMENTE lo que se tiene delante, nunca por sorteo.
+    zonePointId?: string
+    /// Cuántos individuos representa este encuentro AHORA MISMO — 1 para NPC/RECURSO/dinámicos
+    /// (nunca se agrupan), puede ser >1 para un grupo de FAUNA real. Ver `LogPanel.tsx`, título de
+    /// la tarjeta "Un grupo de N {nombre}" cuando es >1.
+    cantidad?: number
   }
   /// Menú contextual de interacción con NPC (2026-09-06) — mismo criterio exacto que
   /// `dynamicModeOffer`: tarjeta con un botón por opción, `busy`/`error` para no perder la tarjeta

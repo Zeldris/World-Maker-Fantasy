@@ -164,9 +164,9 @@ describe('GET /saves/:id/zona', () => {
         slug: 'hondonada-del-eco',
         name: 'La Hondonada del Eco',
         zonePoints: [
-          { id: 'zp1', x: 620, y: 180, tipo: 'FAUNA', targetSlug: 'kirelon-arenoso', label: null, activo: true, cantidad: 1, factionSlug: null },
+          { id: 'zp1', x: 620, y: 180, tipo: 'FAUNA', targetSlug: 'kirelon-arenoso', label: null, activo: true, cantidad: 1, factionSlug: null, lastUpdatedAtMinutes: 480 },
           { id: 'zp2', x: 400, y: 470, tipo: 'RECURSO', targetSlug: 'yerreo', label: null, activo: true, cantidad: 1, factionSlug: null },
-          { id: 'zp3', x: 100, y: 100, tipo: 'FAUNA', targetSlug: 'gesgurio', label: 'Etiqueta a mano', activo: true, cantidad: 3, factionSlug: null },
+          { id: 'zp3', x: 100, y: 100, tipo: 'FAUNA', targetSlug: 'gesgurio', label: 'Etiqueta a mano', activo: true, cantidad: 3, factionSlug: null, lastUpdatedAtMinutes: 480 },
         ],
       },
       // Kirelon Arenoso es fauna nocturna (`faunaMomentoDelDia`, worldCatalog.ts) — 1320 = 22h,
@@ -209,7 +209,7 @@ describe('GET /saves/:id/zona', () => {
         slug: 'hondonada-del-eco',
         name: 'La Hondonada del Eco',
         zonePoints: [
-          { id: 'zp1', x: 620, y: 180, tipo: 'FAUNA', targetSlug: 'kirelon-arenoso', label: null, activo: true, cantidad: 1, factionSlug: null },
+          { id: 'zp1', x: 620, y: 180, tipo: 'FAUNA', targetSlug: 'kirelon-arenoso', label: null, activo: true, cantidad: 1, factionSlug: null, lastUpdatedAtMinutes: 480 },
           { id: 'zp2', x: 400, y: 470, tipo: 'RECURSO', targetSlug: 'yerreo', label: null, activo: true, cantidad: 1, factionSlug: null },
         ],
       },
@@ -255,7 +255,7 @@ describe('GET /saves/:id/zona', () => {
         id: 'loc1',
         slug: 'hondonada-del-eco',
         name: 'La Hondonada del Eco',
-        zonePoints: [{ id: 'zp1', x: 620, y: 180, tipo: 'FAUNA', targetSlug: 'kirelon-arenoso', label: null, activo: true, cantidad: 1, factionSlug: null }],
+        zonePoints: [{ id: 'zp1', x: 620, y: 180, tipo: 'FAUNA', targetSlug: 'kirelon-arenoso', label: null, activo: true, cantidad: 1, factionSlug: null, lastUpdatedAtMinutes: 480 }],
       },
     });
     findManyNpc.mockResolvedValueOnce([{ id: 'npc-kirelon', slug: 'kirelon-arenoso', name: 'Kirelon Arenoso', kind: 'PLANTILLA' }]);
@@ -414,7 +414,7 @@ describe('GET /saves/:id/zona', () => {
         id: 's1', worldId: 'w1', zonaPosX: null, zonaPosY: null,
         currentLocation: {
           id: 'loc1', slug: 'hondonada-del-eco', name: 'La Hondonada del Eco',
-          zonePoints: [{ id: 'zp1', x: 620, y: 180, tipo: 'FAUNA', targetSlug: 'kirelon-arenoso', label: null, activo: true, cantidad: 1, factionSlug: null }],
+          zonePoints: [{ id: 'zp1', x: 620, y: 180, tipo: 'FAUNA', targetSlug: 'kirelon-arenoso', label: null, activo: true, cantidad: 1, factionSlug: null, lastUpdatedAtMinutes: 480 }],
         },
         worldState: { fictionalMinutes: 1000, factionsStatus: {}, agenda: [] },
       });
@@ -510,7 +510,7 @@ describe('GET /saves/:id/zona', () => {
           id: 'loc1',
           slug: 'hondonada-del-eco',
           name: 'La Hondonada del Eco',
-          zonePoints: [{ id: 'zp1', x: 620, y: 180, tipo: 'FAUNA', targetSlug: 'kirelon-arenoso', label: null, activo: true, cantidad: 1, factionSlug: null }],
+          zonePoints: [{ id: 'zp1', x: 620, y: 180, tipo: 'FAUNA', targetSlug: 'kirelon-arenoso', label: null, activo: true, cantidad: 1, factionSlug: null, lastUpdatedAtMinutes: 480 }],
         },
         // kirelon-arenoso es fauna nocturna (faunaMomentoDelDia) — 1320 = 22h, de noche.
         worldState: { fictionalMinutes: 1320, factionsStatus: null, agenda: null },
@@ -536,7 +536,7 @@ describe('GET /saves/:id/zona', () => {
           slug: 'hondonada-del-eco',
           name: 'La Hondonada del Eco',
           zonePoints: [
-            { id: 'zp1', x: 620, y: 180, tipo: 'FAUNA', targetSlug: 'kirelon-arenoso', label: null, activo: true, cantidad: 1, factionSlug: null },
+            { id: 'zp1', x: 620, y: 180, tipo: 'FAUNA', targetSlug: 'kirelon-arenoso', label: null, activo: true, cantidad: 1, factionSlug: null, lastUpdatedAtMinutes: 480 },
             { id: 'zp2', x: 400, y: 470, tipo: 'RECURSO', targetSlug: 'yerreo', label: null, activo: true, cantidad: 1, factionSlug: null },
           ],
         },

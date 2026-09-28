@@ -79,26 +79,32 @@ describe('recalcularZonePointsDeLocation + zonePointsSummaryFor (Postgres real)'
     await prisma.save.delete({ where: { id: saveId } });
   });
 
-  it('primera vez adopta el objetivo (población regional real recortada a CANTIDAD_MAX_POR_PUNTO=20)', async () => {
+  // Grupos de fauna (2026-09-28): la especie se reparte en varios ZonePoint (grupos de 1-4) — lo
+  // que se conserva es el TOTAL de la especie en la Location, no la cantidad de una sola fila.
+  const filasDeLaEspecie = () => prisma.zonePoint.findMany({ where: { locationId, targetSlug: 'fauna-prueba-zonepoint-19' } });
+  const totalDeLaEspecie = async () => (await filasDeLaEspecie()).reduce((suma, f) => suma + f.cantidad, 0);
+
+  it('primera vez adopta el objetivo (población regional real recortada a CANTIDAD_MAX_POR_PUNTO=20), repartido en grupos de ≤4', async () => {
     await recalcularZonePointsDeLocation(prisma, worldId, locationId, 'Las Llanuras del Viento Rojo', 480);
-    const punto = await prisma.zonePoint.findUniqueOrThrow({ where: { id: zonePointId } });
-    expect(punto.cantidad).toBe(20);
-    expect(punto.activo).toBe(true);
-    expect(punto.lastUpdatedAtMinutes).toBe(480);
+    const filas = await filasDeLaEspecie();
+    expect(await totalDeLaEspecie()).toBe(20);
+    expect(filas.length).toBeGreaterThan(1);
+    for (const f of filas) expect(f.cantidad).toBeLessThanOrEqual(4);
+    const ancla = await prisma.zonePoint.findUniqueOrThrow({ where: { id: zonePointId } });
+    expect(ancla.activo).toBe(true);
+    expect(ancla.lastUpdatedAtMinutes).toBe(480);
   });
 
   it('sin tiempo transcurrido desde el último recalculo, no cambia nada', async () => {
     await recalcularZonePointsDeLocation(prisma, worldId, locationId, 'Las Llanuras del Viento Rojo', 480);
-    const punto = await prisma.zonePoint.findUniqueOrThrow({ where: { id: zonePointId } });
-    expect(punto.cantidad).toBe(20);
+    expect(await totalDeLaEspecie()).toBe(20);
   });
 
-  it('una región sin peso en la distribución hace que el punto baje hacia 0 (población regional real es 0)', async () => {
+  it('una región sin peso en la distribución hace que el total baje hacia 0 (población regional real es 0)', async () => {
     await recalcularZonePointsDeLocation(prisma, worldId, locationId, 'Cristal Helado', 480 + 24 * 60);
-    const punto = await prisma.zonePoint.findUniqueOrThrow({ where: { id: zonePointId } });
     // Objetivo 0, tope de bajada diaria (AJUSTE_MAXIMO_POR_DIA=3) desde 20 -> 17
-    expect(punto.cantidad).toBe(17);
-    expect(punto.activo).toBe(true);
+    expect(await totalDeLaEspecie()).toBe(17);
+    expect((await prisma.zonePoint.findUniqueOrThrow({ where: { id: zonePointId } })).id).toBe(zonePointId);
   });
 
   it('zonePointsSummaryFor refleja la cantidad real, agrupada con ×N, en el bloque de FAUNA (2026-09-15: resumen separado por tipo)', async () => {
@@ -110,6 +116,7 @@ describe('recalcularZonePointsDeLocation + zonePointsSummaryFor (Postgres real)'
   });
 
   it('punto inactivo (cantidad 0) desaparece del resumen del narrador', async () => {
+    await prisma.zonePoint.deleteMany({ where: { locationId, targetSlug: 'fauna-prueba-zonepoint-19', id: { not: zonePointId } } });
     await prisma.zonePoint.update({ where: { id: zonePointId }, data: { cantidad: 0, activo: false } });
     const resumen = await zonePointsSummaryFor(prisma, locationId, saveId);
     expect(resumen).toBeNull();

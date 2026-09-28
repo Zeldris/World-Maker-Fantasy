@@ -297,6 +297,62 @@ export function mismaCelda(a: Celda, b: Celda): boolean {
   return a.col === b.col && a.row === b.row;
 }
 
+/// Clave estable de una celda para usarla como entrada de un `Set`/`Map` — mismo criterio en todo
+/// este archivo de nunca comparar objetos por referencia.
+export function claveCelda(c: Celda): string {
+  return `${c.col},${c.row}`;
+}
+
+/// Orden en espiral (2026-09-28, grupos de fauna reales, Fase 1) — todas las celdas dentro de radio
+/// 2 alrededor del centro, del anillo más cercano al más lejano y, dentro de cada anillo, en
+/// sentido horario empezando por el norte — determinista siempre, nunca depende de `random` (a
+/// diferencia de `siguienteCeldaPaseoAleatorio`, pensado para movimiento, no para colocar una fila
+/// nueva). El primer elemento es el propio centro (offset 0,0): si esa celda ya está ocupada
+/// (el caso normal — ahí vive la fila ancla), el resto del anillo 1 y luego el 2 dan las
+/// alternativas más cercanas posibles.
+const OFFSETS_ESPIRAL_RADIO_2: Celda[] = [
+  { col: 0, row: 0 },
+  { col: 0, row: -1 },
+  { col: 1, row: -1 },
+  { col: 1, row: 0 },
+  { col: 1, row: 1 },
+  { col: 0, row: 1 },
+  { col: -1, row: 1 },
+  { col: -1, row: 0 },
+  { col: -1, row: -1 },
+  { col: 0, row: -2 },
+  { col: 1, row: -2 },
+  { col: 2, row: -2 },
+  { col: 2, row: -1 },
+  { col: 2, row: 0 },
+  { col: 2, row: 1 },
+  { col: 2, row: 2 },
+  { col: 1, row: 2 },
+  { col: 0, row: 2 },
+  { col: -1, row: 2 },
+  { col: -2, row: 2 },
+  { col: -2, row: 1 },
+  { col: -2, row: 0 },
+  { col: -2, row: -1 },
+  { col: -2, row: -2 },
+  { col: -1, row: -2 },
+];
+
+/// Puro — primera celda libre en espiral alrededor de `origen` (dentro del lienzo, sin pisar
+/// `ocupadas`) para colocar la fila NUEVA de un grupo de fauna repartido (`reconciliarGrupos`,
+/// zonePoints.ts) — "libre" = ninguna otra fila `ZonePoint` de la Location ya vive en esa celda.
+/// Nunca bloquea: si las 25 celdas del radio 2 están todas ocupadas (caso límite, no ocurre hoy con
+/// el volumen real de puntos por Location), devuelve el propio `origen` — mismo criterio de "nunca
+/// falla, se acepta el candidato tal cual" que `posicionAleatoriaEnLienzo`.
+export function celdaLibreEnEspiral(origen: Celda, ocupadas: ReadonlySet<string>): Celda {
+  for (const offset of OFFSETS_ESPIRAL_RADIO_2) {
+    const candidata: Celda = { col: origen.col + offset.col, row: origen.row + offset.row };
+    if (candidata.col < 0 || candidata.col >= GRID_COLS || candidata.row < 0 || candidata.row >= GRID_ROWS) continue;
+    if (!ocupadas.has(claveCelda(candidata))) return candidata;
+  }
+  return origen;
+}
+
 /// Puro — ¿`b` es la misma celda que `a`, o una de sus 8 vecinas? Base del doble umbral de
 /// colisión: misma celda = encuentro inevitable, adyacente = aviso previo de Interactuar.
 export function celdaAdyacenteOMisma(a: Celda, b: Celda): boolean {

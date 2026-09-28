@@ -7,7 +7,16 @@ import { detectNpcsInScene, scopeFor } from '../../services/npcScene.js';
 import { loadSessionFacts } from '../../services/worldFacts.js';
 import { momentoDelDiaFor, estacionFor } from '../../services/worldClock.js';
 import type { EstacionSlug } from '../../services/imagePromptContext.js';
-import { zonePointColorFor, avanzarZonePointsUnPaso, zonePointVisiblePara, zonePointActivoAhora, zonePointNpcMuertoParaSiempre, questSlugsAceptadosPara, type ZonePointColor } from '../../services/zonePoints.js';
+import {
+  zonePointColorFor,
+  avanzarZonePointsUnPaso,
+  zonePointVisiblePara,
+  zonePointActivoAhora,
+  zonePointNpcMuertoParaSiempre,
+  questSlugsAceptadosPara,
+  recalcularZonePointsDeLocation,
+  type ZonePointColor,
+} from '../../services/zonePoints.js';
 import { NOMBRE_OCULTO_GENERICO } from '../../services/dynamicMode.js';
 import { parseAgenda, regionControlFor, type RegionControlState } from '../../services/worldAgenda.js';
 import { REGION_OWNING_FACTIONS, effectiveTemperamento } from '../../services/reputation.js';
@@ -194,9 +203,19 @@ export async function zonaRoutes(app: FastifyInstance) {
     const jugador = save.zonaPosX != null && save.zonaPosY != null ? { x: save.zonaPosX, y: save.zonaPosY } : null;
     if (!save.currentLocation) return { disponible: false, puntos: [], dinamicos: [], jugador, salidas: [], parcelas: [] };
 
-    const { zonePoints: zonePointsRaw, slug: locationSlug, name: locationName, id: locationId, region, kind } = save.currentLocation;
+    let { zonePoints: zonePointsRaw, slug: locationSlug, name: locationName, id: locationId, region, kind } = save.currentLocation;
     const fictionalMinutes = save.worldState?.fictionalMinutes ?? 480;
     const momento = momentoDelDiaFor(fictionalMinutes);
+    // Primer reparto de grupos de fauna (Fase 1, 2026-09-28, `plan-mecanicas-por-zona-2026-09-28.md`)
+    // — hasta ahora `recalcularZonePointsDeLocation` solo se disparaba al resolver un turno de texto
+    // libre (`turnResolution.ts`); una partida recién creada que abre el mapa sin escribir nada
+    // vería el ×20 sin repartir hasta su primer turno. `lastUpdatedAtMinutes` null en cualquier
+    // FAUNA de esta Location es la señal de "nunca recalculado todavía" (mismo criterio que
+    // `proximaCantidadPara`).
+    if (zonePointsRaw.some((p) => p.tipo === 'FAUNA' && p.lastUpdatedAtMinutes == null)) {
+      await recalcularZonePointsDeLocation(prisma, save.worldId, locationId, region, fictionalMinutes);
+      zonePointsRaw = await prisma.zonePoint.findMany({ where: { locationId } });
+    }
     // Hallazgo 32 (revisar-partida-hallazgos.md 2026-09-07) — los interiores de campamento
     // (`kind: 'interior'`, ej. Ketg'lukar) no deberían tener variante de estación: bajo techo, el
     // paso de las estaciones no se nota igual que en el mapa exterior. `zoneMapImageUrl` ya admite
@@ -518,7 +537,21 @@ export async function zonaRoutes(app: FastifyInstance) {
     ultimoEncuentroSigueCerca: boolean;
     colision: { targetSlug: string; targetName: string; temperamento: string } | null;
     dynamicModeOffer:
-      | { tipo: 'FAUNA' | 'NPC' | 'RECURSO'; targetSlug: string; targetName: string; quienInicia: 'jugador' | 'npc'; combateForzado?: true }
+      | {
+          tipo: 'FAUNA' | 'NPC' | 'RECURSO';
+          targetSlug: string;
+          targetName: string;
+          quienInicia: 'jugador' | 'npc';
+          combateForzado?: true;
+          /// Grupos de fauna reales (Fase 1, 2026-09-28) — id del `ZonePoint` colisionado, ausente
+          /// para un dinámico sin `ZonePoint` propio (`detectNpcsInScene`/sessionFacts). Fase 2
+          /// (`POST /saves/:id/zona/cazar`) lo usa para exigir que se caza EXACTAMENTE lo que se
+          /// tiene delante, nunca por sorteo.
+          zonePointId?: string;
+          /// Cuántos individuos representa este encuentro AHORA MISMO — 1 para NPC/RECURSO/
+          /// dinámicos (nunca se agrupan), puede ser >1 para un grupo de FAUNA real.
+          cantidad?: number;
+        }
       | null;
     logEntry: { id: string; text: string; timeLabel: string; createdAt: string } | null;
   }> {
@@ -635,6 +668,10 @@ export async function zonaRoutes(app: FastifyInstance) {
     // seguir siendo FAUNA cazable, `kind: 'PLANTILLA'` — `npcBySlug.has(slug)` daba `true` para
     // fauna real también, mandando siempre 'NPC').
     let colisionTipo: 'FAUNA' | 'NPC' | null = null;
+    // Grupos de fauna reales (Fase 1, 2026-09-28) — id/cantidad del `ZonePoint` colisionado, ausentes
+    // (`undefined`/`1`) para un dinámico sin `ZonePoint` propio, ver comentario de la interfaz arriba.
+    let colisionZonePointId: string | undefined;
+    let colisionCantidad = 1;
     let ultimoEncuentroSigueCerca = false;
     for (const punto of puntosVivos) {
       const celdaPunto = celdaDePixel({ x: punto.x, y: punto.y });
@@ -654,6 +691,8 @@ export async function zonaRoutes(app: FastifyInstance) {
         colision = { targetSlug: punto.targetSlug, targetName: nombre, temperamento };
         colisionTipo = punto.tipo === 'NPC' ? 'NPC' : 'FAUNA';
         destrezaColision = (npc?.attributes as { destreza?: number } | null)?.destreza ?? 10;
+        colisionZonePointId = punto.id;
+        colisionCantidad = punto.cantidad;
         break; // Solo el primer encuentro — no acumula varios a la vez.
       }
     }
@@ -691,7 +730,15 @@ export async function zonaRoutes(app: FastifyInstance) {
     // que el resto: `dynamicModeOffer.combateForzado: true` es la única diferencia — el modal
     // (dynamicMode.ts) decide con eso si ofrece conversación normal o el árbol de combate/huida.
     let dynamicModeOffer:
-      | { tipo: 'FAUNA' | 'NPC' | 'RECURSO'; targetSlug: string; targetName: string; quienInicia: 'jugador' | 'npc'; combateForzado?: true }
+      | {
+          tipo: 'FAUNA' | 'NPC' | 'RECURSO';
+          targetSlug: string;
+          targetName: string;
+          quienInicia: 'jugador' | 'npc';
+          combateForzado?: true;
+          zonePointId?: string;
+          cantidad?: number;
+        }
       | null = null;
     let logEntry: { id: string; text: string; timeLabel: string; createdAt: string } | null = null;
     if (colision) {
@@ -712,7 +759,15 @@ export async function zonaRoutes(app: FastifyInstance) {
           targetName: colision.targetName,
           quienInicia,
           ...(combateForzado ? { combateForzado: true as const } : {}),
+          ...(colisionZonePointId ? { zonePointId: colisionZonePointId } : {}),
+          cantidad: colisionCantidad,
         };
+        // Grupos de fauna reales (Fase 1, 2026-09-28) — "un grupo de N {especie}" en vez de solo el
+        // nombre cuando el punto colisionado representa más de un individuo; concordancia sencilla
+        // (el nombre de especie ya viene en singular de catálogo, "un grupo de N" no necesita
+        // pluralizarlo). Solo aplica a FAUNA — un NPC (identidad única) nunca se agrupa.
+        const nombreEncuentro =
+          colisionTipo === 'FAUNA' && colisionCantidad > 1 ? `un grupo de ${colisionCantidad} ${colision.targetName}` : colision.targetName;
         // LogEntry real determinista (2026-09-09, hallazgo real jugando en vivo: la tarjeta de
         // oferta SIEMPRE se renderiza colgada de una LogEntry concreta — LogPanel.tsx solo lee
         // `entry.dynamicModeOffer`, nunca `Save.pendingDynamicModeOffer` directamente). El
@@ -723,13 +778,13 @@ export async function zonaRoutes(app: FastifyInstance) {
         // este encuentro (o ya estar ocupada por otra oferta, bloqueando el enganche del todo).
         const text = combateForzado
           ? quienInicia === 'jugador'
-            ? `${characterName} se topa de frente con ${colision.targetName} — no hay escapatoria posible, toca reaccionar ya.`
-            : `${colision.targetName} se abalanza sobre ${characterName} sin darle tiempo a reaccionar.`
+            ? `${characterName} se topa de frente con ${nombreEncuentro} — no hay escapatoria posible, toca reaccionar ya.`
+            : `${nombreEncuentro} se abalanza sobre ${characterName} sin darle tiempo a reaccionar.`
           : quienInicia === 'jugador'
             ? colisionTipo === 'NPC'
-              ? `${characterName} se topa con ${colision.targetName}.`
-              : `${characterName} se topa con ${colision.targetName}, que le observa con cautela.`
-            : `${colision.targetName} se acerca a ${characterName} antes de que este reaccione.`;
+              ? `${characterName} se topa con ${nombreEncuentro}.`
+              : `${characterName} se topa con ${nombreEncuentro}, que le observa con cautela.`
+            : `${nombreEncuentro} se acerca a ${characterName} antes de que este reaccione.`;
         const created = await tx.logEntry.create({
           data: { saveId, channel: 'CHARACTER', text, timeLabel, fictionalMinutes, isPlayerAction: false, isSystemMessage: true },
         });
@@ -760,7 +815,7 @@ export async function zonaRoutes(app: FastifyInstance) {
         // Sin tirada de iniciativa — un recurso nunca "busca" al jugador, siempre es él quien lo
         // encuentra (mismo framing que ya usa `buildDynamicModeTurnoPrompt` cuando `quienInicia` no
         // aplica, pero aquí ni siquiera hay LLM: `dynamicModeRecurso.ts` narra con texto fijo).
-        dynamicModeOffer = { tipo: 'RECURSO', targetSlug: punto.targetSlug, targetName: nombre, quienInicia: 'jugador' };
+        dynamicModeOffer = { tipo: 'RECURSO', targetSlug: punto.targetSlug, targetName: nombre, quienInicia: 'jugador', zonePointId: punto.id, cantidad: punto.cantidad };
         const text = `${characterName} encuentra ${nombre} cerca.`;
         const created = await tx.logEntry.create({
           data: { saveId, channel: 'CHARACTER', text, timeLabel, fictionalMinutes, isPlayerAction: false, isSystemMessage: true },

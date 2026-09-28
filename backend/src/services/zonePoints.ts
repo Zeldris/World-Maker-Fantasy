@@ -2,7 +2,17 @@ import type { Prisma, PrismaClient, ZonePointTipo } from '@prisma/client';
 import { stripRegionArticle } from './population.js';
 import { sourceDisplayNameFor, faunaMomentoDelDia } from '../scripts/worldCatalog.js';
 import { factionRepFor } from './reputation.js';
-import { celdaDePixel, pixelDeCelda, siguienteCeldaEnRuta, GRID_COLS, GRID_ROWS, type Celda } from './zonaPosicion.js';
+import {
+  celdaDePixel,
+  pixelDeCelda,
+  siguienteCeldaEnRuta,
+  celdaLibreEnEspiral,
+  claveCelda,
+  repartirEnGrupos,
+  GRID_COLS,
+  GRID_ROWS,
+  type Celda,
+} from './zonaPosicion.js';
 import { ORCO_ENFURECIDO_QUEST_SLUG } from '../routes/saves/quests.js';
 import { siguienteCeldaDeZonePoint, enRangoDePersecucion } from './movementTemplates.js';
 import type { FaunaCategoria } from './faunaAbilities.js';
@@ -168,19 +178,91 @@ export function proximaCantidadPara(punto: ZonePointRow, poblacionRegional: numb
   return { cantidad, activo: cantidad > 0 };
 }
 
+/// Grupos de fauna reales en el mapa (2026-09-28, Fase 1 de `plan-mecanicas-por-zona-2026-09-28.md`,
+/// B26) — hasta ahora cada especie era UN `ZonePoint` topado a `CANTIDAD_MAX_POR_PUNTO` (×20);
+/// `repartirEnGrupos` (zonaPosicion.ts) ya existía, testeada, pero sin ningún caller. Qué le pasa a
+/// CADA fila de una especie dado su reparto actual (`cantidadesActuales`, índice 0 SIEMPRE la fila
+/// ancla — la única con `label` propio, o si no la más antigua — nunca se borra) y el nuevo
+/// `objetivo` YA calculado por el caller (mismo ajuste gradual de `proximaCantidadPara`, aplicado al
+/// TOTAL del grupo como si fuera un único "punto virtual"). Puro, sin Prisma — el caller (§
+/// `recalcularZonePointsDeLocation`, más abajo) traduce el resultado a updates/creates/deletes
+/// reales, mismo criterio de separación que el resto de este archivo (`proximaCantidadPara`).
+export interface ReconciliacionGruposResultado {
+  /// Filas EXISTENTES cuya `cantidad` cambia — `index` referencia `cantidadesActuales`. El índice 0
+  /// (ancla) puede aparecer con `cantidad: 0`: eso NO es un borrado, el caller debe marcarla
+  /// `activo: false` en vez de borrarla.
+  actualizar: { index: number; cantidad: number }[];
+  /// Índices de `cantidadesActuales` a borrar del todo — nunca incluye el índice 0 (ancla).
+  borrar: number[];
+  /// Cantidades de las filas NUEVAS a crear, una por cada elemento (el caller decide su posición).
+  crear: number[];
+}
+
+export function reconciliarGrupos(
+  cantidadesActuales: number[],
+  objetivo: number,
+  /// `true` si ninguna fila de esta especie tenía `lastUpdatedAtMinutes` todavía (primera vez que
+  /// se reparte de verdad) — reparto completo desde cero con `repartirEnGrupos(objetivo)`, ignorando
+  /// `cantidadesActuales` (la única fila real hasta ahora es la ancla, con la cifra topada vieja
+  /// ×20 sin repartir).
+  primerReparto: boolean,
+  random: () => number = Math.random,
+): ReconciliacionGruposResultado {
+  if (primerReparto) {
+    const grupos = repartirEnGrupos(objetivo, random);
+    if (grupos.length === 0) return { actualizar: [{ index: 0, cantidad: 0 }], borrar: [], crear: [] };
+    const [cantidadAncla, ...resto] = grupos;
+    return { actualizar: [{ index: 0, cantidad: cantidadAncla }], borrar: [], crear: resto };
+  }
+
+  const totalActual = cantidadesActuales.reduce((suma, c) => suma + c, 0);
+  const diferencia = objetivo - totalActual;
+  if (diferencia > 0) return { actualizar: [], borrar: [], crear: repartirEnGrupos(diferencia, random) };
+  if (diferencia === 0) return { actualizar: [], borrar: [], crear: [] };
+
+  // Población a la baja — se resta primero de los grupos MÁS PEQUEÑOS (decisión explícita del plan:
+  // un grupo grande de 4 sobrevive más tiempo que varios sueltos de 1, más realista que recortar
+  // proporcionalmente todos a la vez). Empate por índice para que el resultado sea determinista.
+  let restante = -diferencia;
+  const orden = cantidadesActuales
+    .map((cantidad, index) => ({ cantidad, index }))
+    .sort((a, b) => a.cantidad - b.cantidad || a.index - b.index);
+  const actualizar: { index: number; cantidad: number }[] = [];
+  const borrar: number[] = [];
+  for (const { cantidad, index } of orden) {
+    if (restante <= 0) break;
+    const resta = Math.min(cantidad, restante);
+    if (resta === 0) continue;
+    restante -= resta;
+    const cantidadNueva = cantidad - resta;
+    // Un grupo que se queda a 0 se BORRA, nunca se actualiza además (2026-09-28: las dos
+    // operaciones corren en paralelo y el update fallaba con "No record was found"); el ancla
+    // (índice 0) nunca se borra, se queda a 0 e inactiva.
+    if (cantidadNueva === 0 && index !== 0) borrar.push(index);
+    else actualizar.push({ index, cantidad: cantidadNueva });
+  }
+  return { actualizar, borrar, crear: [] };
+}
+
 /// Recalcula TODOS los `ZonePoint` de tipo FAUNA/RECURSO de una `Location`, proporcional al tiempo
 /// de ficción transcurrido desde su último recalculo — llamado desde `narrateAndPersistTurn`
-/// (turnResolution.ts), en el mismo punto donde ya se resuelve cada turno real del jugador.
+/// (turnResolution.ts) y, si hace falta, desde `GET /saves/:id/zona` (zona.ts, partida nueva sin
+/// ningún turno todavía). RECURSO se ajusta punto a punto, igual que siempre; FAUNA se reconcilia
+/// por (locationId, targetSlug) — varias filas ("grupos") cuya suma es la población real, en vez de
+/// una sola fila topada a `CANTIDAD_MAX_POR_PUNTO` (Fase 1, ver `reconciliarGrupos` arriba).
 export async function recalcularZonePointsDeLocation(
   tx: Prisma.TransactionClient | PrismaClient,
   worldId: string,
   locationId: string,
   region: string | null,
   fictionalMinutesActuales: number,
+  random: () => number = Math.random,
 ): Promise<void> {
-  const puntos = await tx.zonePoint.findMany({
-    where: { locationId, tipo: { in: ['FAUNA', 'RECURSO'] } },
-  });
+  // Cargado en batch (2026-09-28) — TODOS los puntos de la Location, no solo FAUNA/RECURSO: hace
+  // falta conocer también NPC/EDIFICIO para no colocar una fila de grupo nueva encima de ellos
+  // (`ocupadas` más abajo).
+  const todosPuntos = await tx.zonePoint.findMany({ where: { locationId } });
+  const puntos = todosPuntos.filter((p) => p.tipo === 'FAUNA' || p.tipo === 'RECURSO');
   if (puntos.length === 0) return;
 
   const targetSlugs = [...new Set(puntos.map((p) => p.targetSlug))];
@@ -198,17 +280,106 @@ export async function recalcularZonePointsDeLocation(
     poblacionRegionalPorSlug.set(fila.targetSlug, Math.round(fila.poblacion * peso));
   }
 
-  await Promise.all(
-    puntos.map((punto) => {
-      const poblacionRegional = poblacionRegionalPorSlug.get(punto.targetSlug) ?? 0;
-      const { cantidad, activo } = proximaCantidadPara(punto, poblacionRegional, fictionalMinutesActuales);
-      if (cantidad === punto.cantidad && activo === punto.activo && punto.lastUpdatedAtMinutes === fictionalMinutesActuales) return null;
-      return tx.zonePoint.update({
-        where: { id: punto.id },
-        data: { cantidad, activo, lastUpdatedAtMinutes: fictionalMinutesActuales },
-      });
-    }),
-  );
+  const operaciones: Promise<unknown>[] = [];
+
+  // RECURSO — sin cambios de diseño (un punto con cantidad, ver comentario de cabecera más arriba).
+  for (const punto of puntos.filter((p) => p.tipo === 'RECURSO')) {
+    const poblacionRegional = poblacionRegionalPorSlug.get(punto.targetSlug) ?? 0;
+    const { cantidad, activo } = proximaCantidadPara(punto, poblacionRegional, fictionalMinutesActuales);
+    if (cantidad === punto.cantidad && activo === punto.activo && punto.lastUpdatedAtMinutes === fictionalMinutesActuales) continue;
+    operaciones.push(
+      tx.zonePoint.update({ where: { id: punto.id }, data: { cantidad, activo, lastUpdatedAtMinutes: fictionalMinutesActuales } }),
+    );
+  }
+
+  // FAUNA — reconciliación por grupos (Fase 1).
+  const faunaPorSlug = new Map<string, (typeof puntos)[number][]>();
+  for (const punto of puntos.filter((p) => p.tipo === 'FAUNA')) {
+    const filas = faunaPorSlug.get(punto.targetSlug) ?? [];
+    filas.push(punto);
+    faunaPorSlug.set(punto.targetSlug, filas);
+  }
+
+  // Ocupación real del lienzo (todos los puntos existentes, cualquier tipo/estado) — nunca se pisa
+  // al colocar una fila de grupo nueva; se va ampliando con cada fila que este mismo recalculo crea.
+  const ocupadas = new Set(todosPuntos.map((p) => claveCelda(celdaDePixel({ x: p.x, y: p.y }))));
+
+  for (const [targetSlug, filas] of faunaPorSlug) {
+    // Ancla — la de `label` no nulo (fila curada de catálogo); si ninguna lo tiene, la más antigua
+    // (`createdAt`), con el `id` como desempate estable si dos filas compartieran el mismo instante.
+    const ancla =
+      filas.find((f) => f.label != null) ??
+      filas.reduce((a, b) => (a.createdAt < b.createdAt || (a.createdAt.getTime() === b.createdAt.getTime() && a.id <= b.id) ? a : b));
+    const ordenadas = [ancla, ...filas.filter((f) => f.id !== ancla.id)];
+
+    const poblacionRegional = poblacionRegionalPorSlug.get(targetSlug) ?? 0;
+    const primerReparto = ancla.lastUpdatedAtMinutes == null;
+    const totalActual = ordenadas.reduce((suma, f) => suma + f.cantidad, 0);
+    // Mismo ajuste gradual que un punto individual (`proximaCantidadPara`), aplicado al grupo entero
+    // como un único "punto virtual" con la cantidad TOTAL y el reloj del ancla — el resto de filas
+    // del grupo nunca llevan reloj propio, siempre se leen agregadas contra este.
+    const puntoVirtual: ZonePointRow = { ...ancla, cantidad: totalActual };
+    const { cantidad: objetivo } = proximaCantidadPara(puntoVirtual, poblacionRegional, fictionalMinutesActuales);
+
+    if (!primerReparto && objetivo === totalActual && ancla.lastUpdatedAtMinutes === fictionalMinutesActuales) continue;
+
+    const resultado = reconciliarGrupos(
+      ordenadas.map((f) => f.cantidad),
+      objetivo,
+      primerReparto,
+      random,
+    );
+
+    const cantidadPorIndex = new Map(resultado.actualizar.map((a) => [a.index, a.cantidad]));
+    // El ancla SIEMPRE se toca — aunque su cantidad no cambie, es la única fila cuyo
+    // `lastUpdatedAtMinutes` se lee la próxima vez (`puntoVirtual` arriba); sin esto, "minutos
+    // transcurridos" se calcularía siempre desde un reloj viejo aunque el grupo ya esté al día.
+    const cantidadAncla = cantidadPorIndex.get(0) ?? ancla.cantidad;
+    operaciones.push(
+      tx.zonePoint.update({
+        where: { id: ancla.id },
+        data: { cantidad: cantidadAncla, activo: cantidadAncla > 0, lastUpdatedAtMinutes: fictionalMinutesActuales },
+      }),
+    );
+
+    for (const { index, cantidad } of resultado.actualizar) {
+      if (index === 0) continue; // ancla ya actualizada arriba
+      const fila = ordenadas[index];
+      operaciones.push(
+        tx.zonePoint.update({ where: { id: fila.id }, data: { cantidad, activo: cantidad > 0, lastUpdatedAtMinutes: fictionalMinutesActuales } }),
+      );
+    }
+    for (const index of resultado.borrar) {
+      operaciones.push(tx.zonePoint.delete({ where: { id: ordenadas[index].id } }));
+    }
+
+    const origenAncla = celdaDePixel({ x: ancla.origenX ?? ancla.x, y: ancla.origenY ?? ancla.y });
+    for (const cantidadNueva of resultado.crear) {
+      const celda = celdaLibreEnEspiral(origenAncla, ocupadas);
+      ocupadas.add(claveCelda(celda));
+      const pixel = pixelDeCelda(celda);
+      operaciones.push(
+        tx.zonePoint.create({
+          data: {
+            locationId,
+            targetSlug,
+            tipo: 'FAUNA',
+            plantillaEspecifica: ancla.plantillaEspecifica,
+            label: null,
+            x: pixel.x,
+            y: pixel.y,
+            origenX: pixel.x,
+            origenY: pixel.y,
+            cantidad: cantidadNueva,
+            activo: true,
+            lastUpdatedAtMinutes: fictionalMinutesActuales,
+          },
+        }),
+      );
+    }
+  }
+
+  await Promise.all(operaciones);
 }
 
 /// Sistema de movimiento por cuadrícula (2026-09-08, "estilo Mount & Blade") — avanza UN PASO a
@@ -394,8 +565,18 @@ export async function zonePointsSummaryFor(prisma: PrismaClient, locationId: str
     const nombre = p.tipo === 'NPC' ? (npcNameBySlug.get(p.targetSlug) ?? p.targetSlug) : (p.label ?? (p.tipo === 'EDIFICIO' ? p.targetSlug : sourceDisplayNameFor(p.targetSlug)));
     return p.cantidad > 1 ? `${nombre} ×${p.cantidad}` : nombre;
   };
+  // Grupos de fauna (2026-09-28): una especie repartida en varios `ZonePoint` (ver
+  // `reconciliarGrupos`) se resume como UNA entrada con su total — el narrador no necesita saber
+  // cómo está repartida en el lienzo, y listar "Gesgurio ×4, Gesgurio, Gesgurio ×3…" solo le
+  // confunde. El nombre sale de la fila con `label` (la ancla de catálogo) si la hay.
   const listaDe = (tipo: 'NPC' | 'FAUNA' | 'RECURSO' | 'EDIFICIO'): string | null => {
-    const entradas = puntos.filter((p) => p.tipo === tipo).map(nombreDe);
+    const porSlug = new Map<string, (typeof puntos)[number]>();
+    for (const p of puntos.filter((p) => p.tipo === tipo)) {
+      const previo = porSlug.get(p.targetSlug);
+      if (!previo) porSlug.set(p.targetSlug, { ...p });
+      else porSlug.set(p.targetSlug, { ...(previo.label != null ? previo : p), cantidad: previo.cantidad + p.cantidad });
+    }
+    const entradas = [...porSlug.values()].map(nombreDe);
     return entradas.length > 0 ? entradas.join(', ') + '.' : null;
   };
 

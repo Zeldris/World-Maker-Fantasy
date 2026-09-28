@@ -450,7 +450,7 @@ describe('POST /saves/:id/zona/mover', () => {
   // solo miraba FAUNA/NPC, caminar hasta un recurso nunca disparaba nada). RECURSO nunca tiene
   // temperamento/combate/tirada de iniciativa — el jugador SIEMPRE es quien "encuentra" el recurso.
   it('celda ADYACENTE/MISMA a un ZonePoint RECURSO: dispara dynamicModeOffer tipo RECURSO, sin colisión de combate', async () => {
-    await prisma.zonePoint.create({
+    const recurso = await prisma.zonePoint.create({
       data: { locationId, x: 75, y: 25, tipo: 'RECURSO', targetSlug: 'test-mover-recurso', cantidad: 1, activo: true },
     });
     const app = await buildApp();
@@ -464,7 +464,16 @@ describe('POST /saves/:id/zona/mover', () => {
     // RECURSO nunca puebla `colision` (ese campo es solo para FAUNA/NPC con temperamento real) —
     // solo la oferta de Interactuar, coherente con que un recurso nunca fuerza combate ni reacción.
     expect(body.colision).toBeNull();
-    expect(body.dynamicModeOffer).toEqual({ tipo: 'RECURSO', targetSlug: 'test-mover-recurso', targetName: 'test-mover-recurso', quienInicia: 'jugador' });
+    // Grupos de fauna reales (Fase 1, 2026-09-28) — `zonePointId`/`cantidad` también viajan en la
+    // oferta de RECURSO (siempre tiene `ZonePoint` real, nunca se agrupa: `cantidad` siempre 1).
+    expect(body.dynamicModeOffer).toEqual({
+      tipo: 'RECURSO',
+      targetSlug: 'test-mover-recurso',
+      targetName: 'test-mover-recurso',
+      quienInicia: 'jugador',
+      zonePointId: recurso.id,
+      cantidad: 1,
+    });
     expect(body.logEntry).toMatchObject({ text: expect.stringContaining('test-mover-recurso') });
     const logRow = await prisma.logEntry.findUnique({ where: { id: body.logEntry.id } });
     expect(logRow).not.toBeNull();
@@ -474,7 +483,14 @@ describe('POST /saves/:id/zona/mover', () => {
     expect(body.caminoRestante).toEqual([]);
 
     const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
-    expect(saveAfter.pendingDynamicModeOffer).toEqual({ tipo: 'RECURSO', targetSlug: 'test-mover-recurso', targetName: 'test-mover-recurso', quienInicia: 'jugador' });
+    expect(saveAfter.pendingDynamicModeOffer).toEqual({
+      tipo: 'RECURSO',
+      targetSlug: 'test-mover-recurso',
+      targetName: 'test-mover-recurso',
+      quienInicia: 'jugador',
+      zonePointId: recurso.id,
+      cantidad: 1,
+    });
     expect(saveAfter.zonaCaminoPendiente).toBeNull();
   });
 

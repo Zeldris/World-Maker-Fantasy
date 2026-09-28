@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { proximaCantidadPara, zonePointColorFor, zonePointActivoAhora, type ZonePointRow } from './zonePoints.js';
+import { proximaCantidadPara, zonePointColorFor, zonePointActivoAhora, reconciliarGrupos, type ZonePointRow } from './zonePoints.js';
 
 function puntoBase(overrides: Partial<ZonePointRow> = {}): ZonePointRow {
   return {
@@ -98,5 +98,70 @@ describe('zonePointActivoAhora', () => {
   it('una especie sin entrada en faunaMomentoDelDia nunca se filtra por hora (sin dato = sin filtrar)', () => {
     expect(zonePointActivoAhora('especie-sin-horario-conocido', 'dia')).toBe(true);
     expect(zonePointActivoAhora('especie-sin-horario-conocido', 'noche')).toBe(true);
+  });
+});
+
+// Grupos de fauna reales en el mapa (2026-09-28, Fase 1 de `plan-mecanicas-por-zona-2026-09-28.md`,
+// B26) — `reconciliarGrupos` es el cálculo puro que traduce "cuánta población hay ahora" en qué
+// filas de un mismo `targetSlug` cambian/se crean/se borran. El índice 0 de `cantidadesActuales`
+// es SIEMPRE la fila ancla.
+describe('reconciliarGrupos', () => {
+  it('primer reparto (ninguna fila con lastUpdatedAtMinutes): repartirEnGrupos(objetivo) completo — la primera cantidad va al ancla, el resto son filas nuevas', () => {
+    // random() >= 0.5 → 2 grupos por capa (ver repartirEnGrupos): total=20 -> [4,4,3,3,2,2,1,1]
+    const resultado = reconciliarGrupos([20], 20, true, () => 0.9);
+    expect(resultado.actualizar).toEqual([{ index: 0, cantidad: 4 }]);
+    expect(resultado.borrar).toEqual([]);
+    expect(resultado.crear).toEqual([4, 3, 3, 2, 2, 1, 1]);
+    // La suma de ancla + creadas sigue siendo el objetivo completo.
+    const total = resultado.actualizar[0].cantidad + resultado.crear.reduce((a, b) => a + b, 0);
+    expect(total).toBe(20);
+  });
+
+  it('primer reparto con objetivo 0: el ancla queda a cantidad 0 (el caller la marca activo:false), sin crear nada', () => {
+    const resultado = reconciliarGrupos([20], 0, true);
+    expect(resultado).toEqual({ actualizar: [{ index: 0, cantidad: 0 }], borrar: [], crear: [] });
+  });
+
+  it('población sube (ya repartida en grupos): añade filas nuevas con repartirEnGrupos(diferencia), nunca toca las filas existentes', () => {
+    // 3 filas ya repartidas (ancla=4, +3, +2 = total 9), sube a 12 -> diferencia 3, un único grupo suelto.
+    const resultado = reconciliarGrupos([4, 3, 2], 12, false, () => 0.1);
+    expect(resultado.actualizar).toEqual([]);
+    expect(resultado.borrar).toEqual([]);
+    expect(resultado.crear).toEqual([3]);
+  });
+
+  it('población baja: resta primero de los grupos MÁS PEQUEÑOS, borrando los que llegan a 0 (el ancla nunca se borra)', () => {
+    // Ancla=4 (índice 0), grupos de 3 y 2 (índices 1 y 2). Total 9 -> objetivo 3: hay que quitar 6.
+    // Orden de resta (más pequeño primero): índice 2 (2) -> queda 0, se borra; índice 1 (3) -> queda
+    // 0, se borra; índice 0 (4) -> quedan 4 restantes por quitar pero solo hacían falta 6-2-3=1, así
+    // que queda en 3 (ancla nunca se borra, aunque fuera el más pequeño de todos habría absorbido más).
+    const resultado = reconciliarGrupos([4, 3, 2], 3, false);
+    expect(resultado.borrar.sort()).toEqual([1, 2]);
+    // Las filas que se borran NO se actualizan además (2026-09-28: ambas operaciones corrían en
+    // paralelo y el update fallaba sobre la fila ya borrada).
+    expect(resultado.actualizar).toEqual([{ index: 0, cantidad: 3 }]);
+    expect(resultado.crear).toEqual([]);
+  });
+
+  it('población baja hasta 0 exactamente: el ancla queda a cantidad 0 pero nunca aparece en `borrar`', () => {
+    const resultado = reconciliarGrupos([4, 3, 2], 0, false);
+    expect(resultado.borrar).not.toContain(0);
+    expect(resultado.actualizar).toContainEqual({ index: 0, cantidad: 0 });
+    const totalFinal = [4, 3, 2].reduce(
+      (acc, cantidadOriginal, index) =>
+        acc + (resultado.borrar.includes(index) ? 0 : (resultado.actualizar.find((a) => a.index === index)?.cantidad ?? cantidadOriginal)),
+      0,
+    );
+    expect(totalFinal).toBe(0);
+  });
+
+  it('sin diferencia (objetivo === total actual), no cambia ni crea ni borra nada', () => {
+    expect(reconciliarGrupos([4, 3, 2], 9, false)).toEqual({ actualizar: [], borrar: [], crear: [] });
+  });
+
+  it('ningún grupo creado supera 4 (lo garantiza repartirEnGrupos, reutilizado tal cual)', () => {
+    const resultado = reconciliarGrupos([1], 20, true, () => 0.9);
+    for (const cantidad of resultado.crear) expect(cantidad).toBeLessThanOrEqual(4);
+    expect(resultado.actualizar[0].cantidad).toBeLessThanOrEqual(4);
   });
 });
