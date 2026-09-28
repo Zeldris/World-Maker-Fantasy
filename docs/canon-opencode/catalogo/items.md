@@ -10,6 +10,10 @@ Fuente: worldCatalog.ts + items.md. Sincronizado: 2026-09-28.
   Ligero+Medio · Caballero Pesado · Mago Ligero · Segador Ligero+Medio · Asesino Ligero · Druida
   Ligero+Medio (nada de metal).
 - Requisitos: atributos mínimos entre 6 y 16, que suben con el tier.
+- **Excepciones antiguas que NO se copian** (anteriores a la regla, pendientes de decisión): capa de
+  melena de Ferike (LIGERO solo con Carisma), peto de placas de Gargantúa (PESADO sin Fuerza), lanza
+  de hueso de Gargantúa (Carisma en un arma), capucha, perneras y armadura de quitina (MEDIO con
+  Constitución), tocado de plumas (casco con Carisma).
 - Valor en Goirnos: ver la escala de 00-nucleo. Nada por encima de 80.
 - Estilo: los orcos improvisan con hueso, cuero y hielo sílice; los Goirntes fabrican en serie con
   aleación gris. Los Faerus apenas fabrican (Kegi algo de cuero y colmillo); no trabajan el metal.
