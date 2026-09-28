@@ -50,6 +50,7 @@ el código manda.
 | [17](mecanicas/17-reglas-construcciones-reino.md) | Construcciones y fundación de reino |
 | [18](mecanicas/18-validacion-accion-jugador.md) | Validación de la acción del jugador |
 | [19](mecanicas/19-post-combate-y-recompensas-mision.md) | Post-combate y recompensas de misión |
+| [20](mecanicas/20-zona-cuadricula-interactuar.md) | **Zona: cuadrícula, colisión, Interactuar, caza y saqueo desde el mapa** |
 
 ### `rpgtarkor/` — el mundo de Helek Sirik (fuente de verdad del lore)
 - [lore-mundo/](rpgtarkor/lore-mundo/07-mundo-helek-sirik.md): índice del mundo, génesis, historia,

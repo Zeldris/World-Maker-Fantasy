@@ -21,7 +21,7 @@ Cada entrada: fecha, zona auditada, hallazgo, y estado.
 | Plantillas básicas no editables | ✅ Existen (`PLANTILLAS_BASICAS`, `personalizada: false`, `reino.ts`) |
 | `personajes.md` con Arcano como atributo | ✅ Corregido: Arcano es una escuela de Magia |
 | `clases.md`: CANALIZAR y tablas desincronizadas | ✅ Corregido el 09-15; cabecera revisada el 09-28 (232 habilidades) |
-| **Sistema de cuadrícula, colisión e Interactuar sin documento propio** | ❌ Abierto: solo lo cubren planes y registros |
+| Sistema de cuadrícula, colisión e Interactuar sin documento propio | ✅ [20-zona-cuadricula-interactuar.md](../mecanicas/20-zona-cuadricula-interactuar.md) |
 | `Faction.description` estática | Decidido: se queda así |
 | Muerte por inanición tapada en CONVALECIENTE | Decidido: a propósito |
 
