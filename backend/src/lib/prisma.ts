@@ -9,14 +9,24 @@ import { esSqlite } from './proveedorBd.js';
 /// `lockRowForUpdate` (routes/saves/shared.ts), que SQLite no tiene: si nunca hay dos transacciones
 /// a la vez, la fila leída dentro de una no puede cambiar hasta que termine. Una transacción abierta
 /// desde DENTRO de otra no espera a la cola (se detecta con AsyncLocalStorage): esperaría a que
-/// acabe la de fuera, que a su vez la espera a ella. En Postgres no cambia nada.
+/// acabe la de fuera, que a su vez la espera a ella. La marca de "dentro" caduca al terminar la
+/// transacción de fuera: una tarea lanzada sin `await` desde dentro (p. ej.
+/// `startEagerTransitResolution`) hereda el contexto, y sin esto se saltaría la cola cuando abra
+/// su propia transacción mucho después. En Postgres no cambia nada.
 function serializarTransacciones(cliente: PrismaClient): PrismaClient {
-  const dentro = new AsyncLocalStorage<true>();
+  const dentro = new AsyncLocalStorage<{ activa: boolean }>();
   let cola: Promise<unknown> = Promise.resolve();
   const original = cliente.$transaction.bind(cliente) as (...args: unknown[]) => Promise<unknown>;
   const serializada = (...args: unknown[]) => {
-    if (dentro.getStore()) return original(...args);
-    const turno = cola.then(() => dentro.run(true, () => original(...args)));
+    if (dentro.getStore()?.activa) return original(...args);
+    const turno = cola.then(async () => {
+      const marca = { activa: true };
+      try {
+        return await dentro.run(marca, () => original(...args));
+      } finally {
+        marca.activa = false;
+      }
+    });
     cola = turno.catch(() => undefined);
     return turno;
   };

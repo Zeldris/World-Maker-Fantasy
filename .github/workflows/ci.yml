@@ -34,7 +34,7 @@ jobs:
           POSTGRES_DB: tarkor_ci
         ports: ['5432:5432']
         options: >-
-          --health-cmd "pg_isready -U tarkor" --health-interval 5s --health-timeout 5s --health-retries 10
+          --health-cmd "pg_isready -U tarkor -d tarkor_ci" --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       DATABASE_URL: 'postgresql://tarkor:tarkor@localhost:5432/tarkor_ci'
       DIRECT_URL: 'postgresql://tarkor:tarkor@localhost:5432/tarkor_ci'
@@ -53,7 +53,7 @@ jobs:
       - name: Base de datos con el mundo sembrado
         run: |
           node ../.github/ollama-falso.mjs 11434 &
-          echo 'CREATE EXTENSION IF NOT EXISTS vector;' | npx prisma db execute --stdin
+          echo 'CREATE EXTENSION IF NOT EXISTS vector;' | npx prisma db execute --stdin --schema prisma/schema.prisma
           npx prisma migrate deploy
           npm run reindex-lore
           npm run seed-catalog
