@@ -2688,7 +2688,7 @@ describe('Ayuntamiento: fundación, desbloqueo de reino y mejora in-place', () =
       { name: 'Leña de matorral de cuerno (6)', catalogSlug: 'lena-matorral-cuerno' },
       { name: 'Hueso largo de gargantúa (6)', catalogSlug: 'hueso-largo-gargantua' },
       { name: 'Resina de trepador del ocaso (8)', catalogSlug: 'resina-trepador-ocaso' },
-      { name: 'Mena de hierro (2)', catalogSlug: 'mena-de-hierro' },
+      { name: 'Mena de Hierro de las Llanuras (2)', catalogSlug: 'mena-hierro-llanuras' },
       { name: 'Fibra de enredaderas (8)', catalogSlug: 'fibra-enredaderas-llanuras' },
     ]);
     narrateAction.mockClear();
@@ -2719,7 +2719,7 @@ describe('Ayuntamiento: fundación, desbloqueo de reino y mejora in-place', () =
       { name: 'Leña de matorral de cuerno (6)', catalogSlug: 'lena-matorral-cuerno' },
       { name: 'Hueso largo de gargantúa (6)', catalogSlug: 'hueso-largo-gargantua' },
       { name: 'Resina de trepador del ocaso (8)', catalogSlug: 'resina-trepador-ocaso' },
-      { name: 'Mena de hierro (2)', catalogSlug: 'mena-de-hierro' },
+      { name: 'Mena de Hierro de las Llanuras (2)', catalogSlug: 'mena-hierro-llanuras' },
       { name: 'Fibra de enredaderas (8)', catalogSlug: 'fibra-enredaderas-llanuras' },
     ]);
     narrateAction.mockClear();
@@ -2761,7 +2761,7 @@ describe('Ayuntamiento: fundación, desbloqueo de reino y mejora in-place', () =
       { name: 'Bloque de piedra tallada (3)', catalogSlug: 'bloque-piedra-tallada' },
       { name: 'Piedra (5)', catalogSlug: 'piedra' },
       { name: 'Lingote de hierro (1)', catalogSlug: 'lingote-de-hierro' },
-      { name: 'Mena de hierro (1)', catalogSlug: 'mena-de-hierro' },
+      { name: 'Mena de Hierro de las Llanuras (1)', catalogSlug: 'mena-hierro-llanuras' },
       { name: 'Viga de madera tallada (2)', catalogSlug: 'viga-madera-tallada' },
       { name: 'Leña de matorral de cuerno (3)', catalogSlug: 'lena-matorral-cuerno' },
       { name: 'Columna de hueso (2)', catalogSlug: 'columna-hueso' },
@@ -3104,7 +3104,7 @@ describe('Construcción: condición de carrera en turnos concurrentes (auditorí
       { name: 'Leña de matorral de cuerno (6)', catalogSlug: 'lena-matorral-cuerno' },
       { name: 'Hueso largo de gargantúa (6)', catalogSlug: 'hueso-largo-gargantua' },
       { name: 'Resina de trepador del ocaso (8)', catalogSlug: 'resina-trepador-ocaso' },
-      { name: 'Mena de hierro (2)', catalogSlug: 'mena-de-hierro' },
+      { name: 'Mena de Hierro de las Llanuras (2)', catalogSlug: 'mena-hierro-llanuras' },
       { name: 'Fibra de enredaderas (8)', catalogSlug: 'fibra-enredaderas-llanuras' },
     ]);
     narrateAction.mockClear();
