@@ -2391,7 +2391,7 @@ export async function applyFactionRepDeltaForResolution(
 /// Reutilizado también por el enganche de `CombatEncounter` más abajo: un individuo real de grupo
 /// NUNCA escribe `NpcState` (su condición vive en `CombatParticipant.condicionFisicaGrupo`, ver
 /// schema.prisma), pero SÍ necesita este mismo cierre de misión/reputación/población al caer.
-async function applyKillSideEffects(params: {
+export async function applyKillSideEffects(params: {
   tx: Prisma.TransactionClient;
   npc: { id: string; raza: string | null; slug: string; faction: string | null };
   nuevaCondicion: CondicionFisica;
@@ -2440,6 +2440,24 @@ async function applyKillSideEffects(params: {
   // CONVALECIENTE es solo derrotado, no una baja real de la especie/raza.
   if (nuevaCondicion === 'MUERTO') {
     await decrementPopulationOnDeath(tx, worldId, npc.raza, npc.slug, activeRegion);
+    // H-3 (2026-09-28): BAJA_DE_GUERRA — el jugador con Reino fundado (su propia `Faction`, el
+    // `source`) mata a un NPC de otra facción dentro de una región de esa facción. Sin Reino
+    // fundado no hay `source` y no se dispara. Cubre a la vez el golpe clásico y el combate
+    // múltiple, que comparten esta función.
+    if (npc.faction && activeRegion && REGION_OWNING_FACTIONS[activeRegion]?.includes(npc.faction)) {
+      const playerFaction = await tx.faction.findFirst({ where: { saveId }, select: { id: true, name: true } });
+      if (playerFaction && playerFaction.name !== npc.faction) {
+        const targetFaction = await tx.faction.findFirst({ where: { worldId, name: npc.faction, saveId: null }, select: { id: true } });
+        if (targetFaction) {
+          const fact = await recordFactionEvent(tx, worldId, playerFaction.id, targetFaction.id, 'BAJA_DE_GUERRA');
+          if (fact) {
+            await tx.logEntry.create({
+              data: { saveId, channel: 'WORLD', text: fact, timeLabel: nuevaFictionalDateLabel, fictionalMinutes: nuevoFictionalMinutes, isSystemMessage: true },
+            });
+          }
+        }
+      }
+    }
   }
   // Muerte permanente (2026-08-31) — fin de tutorial = primer punto de guardado implícito, ver
   // comentario de `Save.tutorialCompletedAt` (schema.prisma). `updateMany` con el guard `null`

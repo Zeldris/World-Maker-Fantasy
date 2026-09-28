@@ -1,5 +1,6 @@
-import type { BuildingInfo } from '../../../types'
+import type { BuildingInfo, RecipeStatusInfo } from '../../../types'
 import { PanelSection } from '../../PanelSection'
+import { cuartelBuildDisabledReason } from '../../../lib/cuartelBuild'
 
 const buildingStatusLabel: Record<BuildingInfo['status'], string> = {
   EN_CONSTRUCCION: 'En construcción',
@@ -30,22 +31,58 @@ const AYUNTAMIENTO_TIER_LABEL: Record<number, string> = {
   3: 'grande',
 }
 
+/// Cuartel Avanzado y sus dos mejoras (H-12, 2026-09-28) — botón directo en vez de exigir texto
+/// libre. No hay ruta de construcción propia: manda el MISMO texto que la Enciclopedia inserta
+/// ("Me pongo a construir <nombre>") por el turno normal (`onBuild` = `handleSubmit` de GameView),
+/// así que dónde se puede construir, coste y efectos colaterales (zona-interior, evento de
+/// facción) son exactamente los del texto libre. Habilitado según `recipesStatus` (mismo
+/// `met`/`blockedReason` que la Enciclopedia).
+const CUARTEL_BUILD_OPTIONS: { recipeKey: string; label: string; actionText: string; needsCuartel: boolean }[] = [
+  { recipeKey: 'cuartel-avanzado', label: 'Cuartel avanzado', actionText: 'Me pongo a construir un cuartel avanzado', needsCuartel: false },
+  { recipeKey: 'cuartel-de-guerra', label: 'Mejorar a Cuartel de guerra', actionText: 'Me pongo a construir un cuartel de guerra', needsCuartel: true },
+  { recipeKey: 'puesto-comercial', label: 'Mejorar a Puesto comercial', actionText: 'Me pongo a construir un puesto comercial', needsCuartel: true },
+]
+
 interface EdificiosParcelasSectionProps {
   buildings: BuildingInfo[]
+  recipesStatus?: RecipeStatusInfo[]
+  /// Manda el texto de construcción por el turno normal (undefined = sin botones).
+  onBuild?: (actionText: string) => void
 }
 
-/// Sub-tab "Edificios y Parcelas" del Reino (rediseño 2026-09-21) — extraído de `ReinoPanel.tsx`
-/// sin cambios funcionales.
-///
-/// TODO (§ 7.4 pieza 6 / hueco G, docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 5-Fase-5): construir un Cuartel
-/// Avanzado (y sus mejoras Cuartel de Guerra / Puesto Comercial) sigue exigiendo `/turn/narrate`
-/// (texto libre interpretado por el LLM) — no hay botón directo aquí todavía. Depende de confirmar
-/// si alguna `Parcela AVANZADA` del seed real ya tiene `recipeKeyFijo: 'cuartel-avanzado'` (sin
-/// confirmar); hasta entonces, no se promete aquí un flujo que el backend no puede cumplir.
-export function EdificiosParcelasSection({ buildings }: EdificiosParcelasSectionProps) {
-  if (buildings.length === 0) return <p className="text-xs text-wood-500">Sin edificios todavía.</p>
+/// Sub-tab "Edificios y Parcelas" del Reino (rediseño 2026-09-21) — extraído de `ReinoPanel.tsx`.
+export function EdificiosParcelasSection({ buildings, recipesStatus = [], onBuild }: EdificiosParcelasSectionProps) {
+  const hasCuartel = buildings.some((b) => b.recipeKey === 'cuartel-avanzado')
+  const buildButtons = onBuild && (
+    <PanelSection title="Construir">
+      <div className="flex flex-col gap-2">
+        {CUARTEL_BUILD_OPTIONS.map((opt) => {
+          const status = recipesStatus.find((s) => s.recipeCategory === 'construccion' && s.recipeKey === opt.recipeKey)
+          const alreadyBuilt = buildings.some((b) => b.recipeKey === opt.recipeKey)
+          const reason = cuartelBuildDisabledReason(status, hasCuartel, opt.needsCuartel, alreadyBuilt)
+          return (
+            <div key={opt.recipeKey}>
+              <button
+                type="button"
+                disabled={reason !== null}
+                title={reason ?? undefined}
+                onClick={() => onBuild(opt.actionText)}
+                className="tactile w-full rounded-lg border border-iron-700 bg-wood-950/40 px-3.5 py-2 text-left text-sm font-medium text-wood-100 transition-colors hover:border-accent2-600/40 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                🏗️ {opt.label}
+              </button>
+              {reason && <p className="mt-0.5 px-1 text-2xs text-wood-500">{reason}</p>}
+            </div>
+          )
+        })}
+      </div>
+    </PanelSection>
+  )
+  if (buildings.length === 0) return <>{buildButtons}<p className="text-xs text-wood-500">Sin edificios todavía.</p></>
 
   return (
+    <>
+    {buildButtons}
     <PanelSection title="Edificios">
       {/* Leyenda de estados (Fase 0, higiene 2026-09-21) — mismo patrón que Territorios. */}
       <details className="group mb-2 rounded-lg border border-iron-700 bg-wood-950/40 text-2xs text-wood-400">
@@ -82,5 +119,6 @@ export function EdificiosParcelasSection({ buildings }: EdificiosParcelasSection
         ))}
       </div>
     </PanelSection>
+    </>
   )
 }

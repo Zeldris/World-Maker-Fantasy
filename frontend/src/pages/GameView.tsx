@@ -1542,7 +1542,13 @@ export function GameView() {
     let cancelled = false
 
     async function createNewSave() {
-      if (!selectedWorld || !selectedCharacter) return
+      // Bug #7: recarga en mitad de la creación (mundo/personaje solo viven en memoria) — antes
+      // este `return` silencioso dejaba "Cargando partida..." para siempre; ahora se muestra la
+      // pantalla de error con botón de volver a partidas.
+      if (!selectedWorld || !selectedCharacter) {
+        if (!cancelled) setNotFound(true)
+        return
+      }
       // Intro propia por personaje pregenerado (2026-07-28, petición explícita: "había
       // actualizado algunos mensajes... pero no veo que salgan") — antes esta plantilla genérica
       // era la ÚNICA fuente posible, sin ningún hueco para una intro narrativa propia por
@@ -2602,6 +2608,8 @@ export function GameView() {
               goirnos={goirnos}
               activeSubTab={reinoSubTab}
               onSubTabChange={setReinoSubTab}
+              recipesStatus={recipesStatus}
+              onBuild={(actionText) => handleSubmit(actionText)}
             />
           )}
           {activePanel === 'enciclopedia' && (

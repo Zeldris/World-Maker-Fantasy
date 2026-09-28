@@ -1,4 +1,4 @@
-import type { AlmacenItemInfo, BuildingInfo, CompanionInfo, InventoryItemInfo, KingdomStatsInfo, PlantillaEquipoInfo, ProfessionRecipeInfo, SubjectInfo, TerritoryInfo } from '../../types'
+import type { AlmacenItemInfo, BuildingInfo, CompanionInfo, InventoryItemInfo, KingdomStatsInfo, PlantillaEquipoInfo, ProfessionRecipeInfo, RecipeStatusInfo, SubjectInfo, TerritoryInfo } from '../../types'
 import type { EnciclopediaFaccionInfo } from '../../lib/api'
 import { PanelEmptyState } from '../PanelEmptyState'
 import { VisionGeneralSection } from './reino/VisionGeneralSection'
@@ -53,6 +53,9 @@ interface ReinoPanelProps {
   /// estado vive en GameView.tsx, no aquí, igual que el resto de paneles con sub-navegación.
   activeSubTab: ReinoSubTab
   onSubTabChange: (tab: ReinoSubTab) => void
+  /// H-12 — estado de recetas de construcción + envío del texto de construir (Edificios).
+  recipesStatus?: RecipeStatusInfo[]
+  onBuild?: (actionText: string) => void
 }
 
 /// Cascarón de sub-tabs del Reino (rediseño 2026-09-21, docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md) —
@@ -80,6 +83,8 @@ export function ReinoPanel({
   goirnos,
   activeSubTab,
   onSubTabChange,
+  recipesStatus,
+  onBuild,
 }: ReinoPanelProps) {
   const isEmpty = territories.length === 0 && buildings.length === 0 && subjects.length === 0
   const ayuntamiento = buildings.some((b) => b.recipeKey === 'ayuntamiento')
@@ -131,7 +136,7 @@ export function ReinoPanel({
           onRefreshSave={onRefreshSave}
         />
       )}
-      {activeSubTab === 'edificios' && <EdificiosParcelasSection buildings={buildings} />}
+      {activeSubTab === 'edificios' && <EdificiosParcelasSection buildings={buildings} recipesStatus={recipesStatus} onBuild={onBuild} />}
       {activeSubTab === 'produccion' && (
         <ProduccionSection
           saveId={saveId}

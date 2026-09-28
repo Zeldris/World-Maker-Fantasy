@@ -2578,7 +2578,7 @@ model FactionRelation {
   /// Presión acumulada 0-100 (mismo espíritu que `FACTION_REP_MIN/MAX` de reputation.ts, pero
   /// entre dos facciones NPC, no jugador↔facción) — lo que sube por choque territorial/reputación
   /// cruzada y hace avanzar `stage` al cruzar umbrales, en vez de un cron ciego de 7 días.
-  presion         Int                 @default(0)
+  presion         Int                 @default(50)
   /// Etapa narrativa actual (mismo concepto que el viejo `AgendaEntry.stage`/`STAGE_FACTS`, pero
   /// generado por plantilla en servicio a partir de `type`/nombres de ambas facciones, no 5 líneas
   /// fijas escritas a mano por conflicto — ver `factionRelations.ts` § stageFactFor).
