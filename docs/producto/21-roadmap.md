@@ -1,6 +1,7 @@
 # Roadmap — Tarkor (octubre 2026 → septiembre 2027)
 
 **Actualizado:** 2026-09-28. Todo lo pendiente se ha comprobado contra el código ese día.
+**En curso:** [plan-roadmap-oct-2026.md](plan-roadmap-oct-2026.md) (Ahora + Trimestre 1, fases 1-9).
 **Historial:** lo cerrado antes de esta fecha está en
 [archivo/21-roadmap-2026-09-historico.md](../archivo/21-roadmap-2026-09-historico.md) y en los
 roadmaps anteriores de [archivo/](../archivo/).
@@ -42,7 +43,7 @@ Rompen una mecánica en partida real. Referencias H-x:
 | 4 | **Las facciones no tienen stock que vender** (H-2): comprar solo funciona tras venderles. 🧭 Va con el punto 3 | [H] | Abierto |
 | 5 | Verificación **en vivo** de la tanda B1-B32 (cerrada solo con tests: fases 1-5 de mecánicas por zona, combate, economía) | [A] | Pendiente de sesión de juego |
 | 6 | 🧭 **B1**: `ZonePoint` por partida en vez de global. Cambio de esquema grande; arrastra grupos, reconciliación y seed | [A] | Decisión abierta |
-| 7 | "Cargando partida…" infinito si se recarga en la creación de partida: `createNewSave` vuelve sin avisar cuando falta el mundo o el personaje en memoria (`GameView.tsx:1545`) | [H] | Abierto |
+| 7 | ~~"Cargando partida…" infinito si se recarga en la creación de partida~~ | [H] | ✅ `a700a61` |
 | 8 | **Slugs de oficio incoherentes** entre catálogo y frontend (`orco`/`orcos`, Maestros de Cristal Helado que enseñan oficios que la UI no conoce, `nabierus`) (H-10). Unificar en un fichero compartido y migrar `ProfessionProgress` | [H] | Abierto |
 
 ---
@@ -52,14 +53,14 @@ Rompen una mecánica en partida real. Referencias H-x:
 ### Reino jugable de punta a punta
 - Cuando estén el 1-4: probar el bucle completo jugando. Fundar, construir un Taller, asignar
   trabajador, producir, vender y negociar. **[P]**
-- Botón directo para el **Cuartel Avanzado** y sus mejoras; hoy solo por texto libre (H-12). **[H]**
+- ~~Botón directo para el **Cuartel Avanzado** y sus mejoras (H-12)~~ ✅ `a700a61` **[H]**
 - Sembrar las **`FactionRelation` iniciales** entre las 9 facciones (H-7). 🧭 Hacen falta los
   números; solo existe Concordia ↔ Los del Obelisco = 65. **[A]**
-- Llamar a **`decayPresion`** (H-4) y disparar **`BAJA_DE_GUERRA`** al matar a un NPC de otra
-  facción en su región (H-3). **[H]**
+- Llamar a **`decayPresion`** (H-4, fase 4 del plan) y ~~disparar **`BAJA_DE_GUERRA`** al matar a un NPC de otra
+  facción en su región (H-3)~~ ✅ `a700a61`. **[H]**
 - 🧭 ¿Filtrar las órdenes de producción por el oficio del edificio? (P-3 de la referencia técnica)
   **[H]**
-- Migración menor: `FactionRelation.presion @default(50)` (H-9). **[H]**
+- ~~Migración menor: `FactionRelation.presion @default(50)` (H-9)~~ ✅ `a700a61` **[H]**
 
 ### Mecánicas por zona (continuación del plan del 2026-09-28)
 - Pescar y Buscar necesitan puntos en el mapa; hasta entonces no hay forma de usarlos (se retiraron
