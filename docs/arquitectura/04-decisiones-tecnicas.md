@@ -1,6 +1,18 @@
 # Decisiones técnicas — Tarkor
 
-Documento vivo, igual que [02-decisiones.md](../producto/02-decisiones.md) pero para arquitectura/tecnología. Referencia: [03-arquitectura.md](03-arquitectura.md).
+Registro de decisiones técnicas, en orden. Cada entrada conserva su fecha y su razonamiento; las
+que se sustituyeron llevan una marca **SUSTITUIDA** que dice por cuál. La descripción del sistema
+tal como es hoy está en [03-arquitectura.md](03-arquitectura.md).
+
+**Vigente a 2026-09-28, en una línea por tema:**
+- Prisma + Postgres **local en podman** (1, 8 → [15-instalacion.md § 3bis](15-instalacion.md)).
+- Sin login, usuario único (2). Fastify (6).
+- Todo el motor de IA en Ollama local (4). Narrador `tarkor-narrador-llama31`, Cronista
+  `qwen2.5:1.5b-instruct` (7 → 14). `num_ctx` 8192 (9).
+- Steam Deck: `OLLAMA_IGPU_ENABLE=1`, *flash attention* y caché KV `q8_0` (11-13). Calentamiento del
+  narrador al arrancar (15).
+- Reloj de mundo en un `setInterval` dentro del backend; el mundo se pausa con él (3).
+- Una sola cola de generación y espaciado 3-10 s de las entradas secundarias (5).
 
 ---
 
@@ -28,7 +40,7 @@ Documento vivo, igual que [02-decisiones.md](../producto/02-decisiones.md) pero 
 
 **Por qué:** control total sobre cómo se actualiza `world_states`/`log_entries` (nuestro propio modelo de datos relacional), sin acoplar la lógica central del juego a una API en beta de Anthropic pensada para agentes con sandbox de herramientas, no para motores de juego con estado propio.
 
-**Impacto (revisado tres veces):** primero se planteó como cron externo gratuito en la nube (Render Cron Jobs / GitHub Actions); al pasar a Ollama 100% local (decisión 4 de este documento), ya no tiene sentido un cron en la nube porque no podría hablar con Ollama, así que pasa a ser un proceso local (`setInterval` / `node-cron` dentro del propio backend). Tras la revisión de la decisión 4 de producto ([02-decisiones.md](../producto/02-decisiones.md)), el modelo final es aún más simple de lo planteado en un primer momento: el mundo **se pausa** cuando el backend no está corriendo (no hace falta ningún mecanismo de "recuperación al arrancar" ni reconciliar huecos de tiempo real) — ver [03-arquitectura.md § 6](03-arquitectura.md#6-el-reloj-de-mundo-la-pieza-más-singular-de-este-proyecto).
+**Impacto (revisado tres veces):** primero se planteó como cron externo gratuito en la nube (Render Cron Jobs / GitHub Actions); al pasar a Ollama 100% local (decisión 4 de este documento), ya no tiene sentido un cron en la nube porque no podría hablar con Ollama, así que pasa a ser un proceso local (`setInterval` / `node-cron` dentro del propio backend). Tras la revisión de la decisión 4 de producto ([02-decisiones.md](../producto/02-decisiones.md)), el modelo final es aún más simple de lo planteado en un primer momento: el mundo **se pausa** cuando el backend no está corriendo (no hace falta ningún mecanismo de "recuperación al arrancar" ni reconciliar huecos de tiempo real) — ver [03-arquitectura.md § 5](03-arquitectura.md#5-el-reloj-de-mundo).
 
 ### 4. Motor de IA: 100% local con Ollama — **2026-07-16**
 
@@ -36,7 +48,7 @@ Documento vivo, igual que [02-decisiones.md](../producto/02-decisiones.md) pero 
 
 **Por qué:** coherente con la restricción de presupuesto cero de la decisión 1 — Ollama es 100% gratis (cómputo del propio PC), frente al pago por token de la API de Claude (que aunque barato para uso personal, no es estrictamente gratis). Se valoraron también proveedores gratuitos en la nube (Groq, Gemini API) como alternativa híbrida, pero la usuaria prefirió ir "todo local" para garantizar coste cero absoluto.
 
-**Compartir Ollama con otro proyecto sin mezclar "entrenamientos":** Ollama no aprende ni modifica modelos con el uso normal (conversaciones sin estado, como la API de Claude) — no hay riesgo de contaminación cruzada por compartir el servicio. Para mantener a Tarkor con su propia identidad (system prompt, parámetros) totalmente separada de lo que use el otro proyecto, se crea un modelo Ollama propio vía `Modelfile` (`ollama create tarkor-narrador -f Modelfile`) — un artefacto con nombre propio, aislado del resto de modelos locales aunque parta de la misma base. Detalle completo en [03-arquitectura.md § 4.3](03-arquitectura.md#43-compartir-la-instancia-de-ollama-con-otro-proyecto).
+**Compartir Ollama con otro proyecto sin mezclar "entrenamientos":** Ollama no aprende ni modifica modelos con el uso normal (conversaciones sin estado, como la API de Claude) — no hay riesgo de contaminación cruzada por compartir el servicio. Para mantener a Tarkor con su propia identidad (system prompt, parámetros) totalmente separada de lo que use el otro proyecto, se crea un modelo Ollama propio vía `Modelfile` (`ollama create tarkor-narrador -f Modelfile`) — un artefacto con nombre propio, aislado del resto de modelos locales aunque parta de la misma base. Modelos vigentes en [03-arquitectura.md § 3.3](03-arquitectura.md#33-modelos-locales-ollama).
 
 **Impacto:**
 - Se elimina el uso de la API de Claude/Anthropic del núcleo del motor de juego (secciones 4 y 8 de la arquitectura, reescritas).
@@ -53,7 +65,7 @@ Documento vivo, igual que [02-decisiones.md](../producto/02-decisiones.md) pero 
 
 **Importante — esto es distinto del tick del worker de fondo** (decisión 3 de este documento, escala de minutos, para cuando el mundo avanza sin que nadie esté jugando). Son dos mecanismos de ritmo independientes que operan en capas distintas: éste regula la sesión activa, aquél regula el avance del mundo en segundo plano.
 
-**Impacto:** ver [03-arquitectura.md § 7bis](03-arquitectura.md#7bis-ritmo-de-generación-en-sesión-activa-throttling) para el diseño completo (cola + espaciado + config). El retardo se aplica a las entradas *secundarias* de un turno (el Cronista), no a la respuesta directa del Narrador a la acción del jugador, que debe llegar sin demora artificial.
+**Impacto:** ver [03-arquitectura.md § 6](03-arquitectura.md#6-ritmo-en-sesión) para el diseño vigente. El retardo se aplica a las entradas *secundarias* de un turno (el Cronista), no a la respuesta directa del Narrador a la acción del jugador, que debe llegar sin demora artificial.
 
 ### 6. Framework de backend — **2026-07-16**
 
@@ -62,6 +74,9 @@ Documento vivo, igual que [02-decisiones.md](../producto/02-decisiones.md) pero 
 **Por qué:** más moderno y rápido que Express, con validación de esquemas integrada y muy buen soporte de TypeScript — menos boilerplate para una API estructurada como la de Tarkor. Se valoró Express (ecosistema más grande, más tutoriales) pero no compensa frente a lo que Fastify da "de serie" para este proyecto.
 
 ### 7. Modelo concreto de Ollama — **2026-07-16**, revisada **2026-07-16** (provisional, a validar con benchmark real)
+
+> **SUSTITUIDA.** El hardware y los modelos cambiaron: Steam Deck (decisiones 11-13) y narrador
+> `tarkor-narrador-llama31` (decisión 14). `llama3.2` nunca llegó a usarse.
 
 **Decisión (revisada):** `qwen2.5:7b` para el Narrador, `llama3.2:latest` (3B) para el Cronista y como fallback si el 7B va demasiado lento. **Ambos ya están descargados en la máquina de la usuaria** (comprobado con `ollama list`) — no hace falta descargar nada para empezar a probar.
 
@@ -74,6 +89,9 @@ Documento vivo, igual que [02-decisiones.md](../producto/02-decisiones.md) pero 
 **Importante — esto sigue siendo un punto de partida, no definitivo:** hace falta probar ambos modelos con el backend real y medir tokens/segundo antes de darlo por cerrado del todo.
 
 ### 8. Postgres: nube gratuita, proveedor Supabase — **2026-07-16**
+
+> **SUSTITUIDA** el 2026-07-30 por Postgres local en podman
+> ([15-instalacion.md § 3bis](15-instalacion.md)).
 
 **Decisión:** Postgres en la nube gratuita (no local), con **Supabase**.
 
@@ -88,6 +106,8 @@ Documento vivo, igual que [02-decisiones.md](../producto/02-decisiones.md) pero 
 **Por qué:** con RAM libre de sobra en la máquina (16GB, veriai y tarkor-narrador nunca cargados a la vez), hay margen para meter más contexto por prompt — hechos del mundo, historial reciente y ficha del personaje necesitan espacio. Coste medido: pasar de 4096 a 8192 solo añadió ~400MB de RAM (5.1GB → 5.5GB con el modelo cargado).
 
 ### 10. Benchmark real de `tarkor-narrador` (qwen2.5:7b) — **2026-07-17**
+
+> Medido en el portátil de 2013. Las cifras vigentes en la Steam Deck están en las decisiones 13-14.
 
 **Resultado, sustituye la estimación anterior de la decisión 7:**
 - **Primera llamada (carga en frío del modelo en RAM):** ~99.5s totales.
@@ -529,13 +549,7 @@ archivos, reproducido igual con y sin este cambio — no relacionado con el mode
 
 ## Pendientes
 
-*(Actualizado 2026-08-02 — este archivo documenta decisiones del arranque del proyecto (2026-07-16),
-muy anterior a la migración local-first a Postgres/podman (2026-07-30, ver `docs/arquitectura/15-instalacion.md`)
-y a todo el motor de turnos/combate actual. Los puntos 1 y 3 llevan meses hechos; se dejan tachados
-por historial, no como pendiente real.)*
-
-Preguntas técnicas que quedaron abiertas en [03-arquitectura.md](03-arquitectura.md) y que aún no se han cerrado:
-
-1. ~~Esquema exacto de las tablas de Postgres~~ — **hecho**, ver `backend/prisma/schema.prisma` (el datasource remoto de Supabase de la nota de arriba fue sustituido por Postgres local vía podman, ver `docs/arquitectura/15-instalacion.md`).
-2. ~~Benchmark real del Narrador (qwen2.5:7b)~~ — **hecho**, ver decisión 10. La comparación pendiente con `llama3.2:latest` (3B) para el Cronista/fallback quedó **obsoleta, no solo sin medir**: `llama3.2` nunca llegó a usarse — el Cronista/clasificador de producción es `qwen2.5:1.5b-instruct` (ver la nota de actualización 2026-08-11 en [03-arquitectura.md](03-arquitectura.md) § 1).
-3. ~~Construir el servicio de tiradas y la orquestación de turno~~ — **hecho**, `backend/src/services/dice.ts` + `backend/src/routes/turn.ts` + `backend/src/services/turnResolution.ts` (motor de combate/exploración completo, muy por encima del alcance original de este punto).
+Los pendientes técnicos viven en el [roadmap](../producto/21-roadmap.md): benchmark de latencia,
+instalador, narrador afinado y rendimiento del `worldTick` con el motor de facciones. Los tres
+pendientes originales de este documento (esquema de Postgres, benchmark del narrador y servicio de
+tiradas) están hechos.
