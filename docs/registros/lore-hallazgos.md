@@ -12,6 +12,19 @@ Cada entrada: fecha, zona auditada, hallazgo, y estado.
 
 ---
 
+## Estado verificado (2026-09-28)
+
+| Entrada | Estado |
+|---|---|
+| Banners "nada implementado" de `combate-multiple.md` y `companeros-y-supervivencia.md` | ✅ Corregidos |
+| `reclutablePct` sin usar en la persuasión | ✅ Enganchado (`companionSupervivencia.ts`) |
+| Plantillas básicas no editables | ✅ Existen (`PLANTILLAS_BASICAS`, `personalizada: false`, `reino.ts`) |
+| `personajes.md` con Arcano como atributo | ✅ Corregido: Arcano es una escuela de Magia |
+| `clases.md`: CANALIZAR y tablas desincronizadas | ✅ Corregido el 09-15; cabecera revisada el 09-28 (232 habilidades) |
+| **Sistema de cuadrícula, colisión e Interactuar sin documento propio** | ❌ Abierto: solo lo cubren planes y registros |
+| `Faction.description` estática | Decidido: se queda así |
+| Muerte por inanición tapada en CONVALECIENTE | Decidido: a propósito |
+
 ## Índice
 
 **2026-09-15 — auditoría de lore de los sistemas nuevos post-2026-09-07 (combate múltiple con
