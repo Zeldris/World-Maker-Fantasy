@@ -1,49 +1,35 @@
 # Mecánicas de juego — Tarkor
 
-**Fase:** Diseño del sistema de juego interno (post-arquitectura, pre-worldbuilding).
-**Fecha:** 2026-07-16
-**Punto de partida:** decisión de producto 3 ([02-decisiones.md](../producto/02-decisiones.md)) — atributos con efecto real y tiradas visibles — dejó pendiente "el sistema concreto de tiradas". Este documento lo cierra y además cubre cómo funciona el juego por dentro turno a turno.
-
-**Decisiones tomadas a partir de este análisis:** ver [06-decisiones-mecanicas.md](06-decisiones-mecanicas.md).
-
-**Nota (2026-08-13, auditoría de documentación):** este documento fija el diseño de ARRANQUE de las
-mecánicas (2026-07-16) y sigue siendo válido como tal, pero no cubre varios sistemas grandes
-llegados después — combate por turnos con tarjetas de habilidad y árbol de ventajas por atributo
-(`attributeWheel.ts`, [14-combate-y-muerte.md](14-combate-y-muerte.md)), energía/fatiga como
-recurso de combate, niveles/XP/Reino ([10-niveles-xp-reino.md](10-niveles-xp-reino.md)), acciones
-por tiempo ([08-acciones-por-tiempo.md](08-acciones-por-tiempo.md)), y el validador de grounding de
-la acción del jugador ([18-validacion-accion-jugador.md](18-validacion-accion-jugador.md)). Para el
-diseño vigente de cualquiera de estos, esos documentos son la fuente de verdad, no este.
+**Qué cubre:** el motor de resolución de acciones que hay debajo de todo el juego: fórmula de tirada, quién decide qué se tira, estado del personaje y flujo de un turno.
+**Estado:** vigente como base. Los sistemas llegados después tienen documento propio y mandan sobre este: combate ([14](14-combate-y-muerte.md)), niveles/XP/Reino ([10](10-niveles-xp-reino.md)), acciones por tiempo ([08](08-acciones-por-tiempo.md)), validación de la acción del jugador ([18](18-validacion-accion-jugador.md)).
+**Fuente de verdad en código:** `backend/src/services/dice.ts` (tirada), `backend/src/services/narrador.ts` (`classifyAction`/`narrateAction`), `backend/src/services/turnResolution.ts` y `backend/src/routes/turn.ts` (orquestación). Decisiones razonadas en [06-decisiones-mecanicas.md](06-decisiones-mecanicas.md).
 
 ---
 
 ## 0. Alcance — no es un RPG de combate
 
-**Corrección importante hecha durante el diseño:** Tarkor no es un RPG centrado en combate. Es un motor de resolución de acciones **genérico** — observar, recolectar, construir, comerciar, gobernar, dar órdenes, negociar, explorar, luchar... la idea es poder intentar prácticamente cualquier cosa, siempre dentro de las normas del mundo y de lo que la partida ya ha establecido. Todo pasa por el mismo mecanismo (clasificación → tirada → consecuencias), sin un subsistema especial para combate. La salud es solo una faceta más del estado del personaje, no el eje del diseño.
+Tarkor es un motor de resolución de acciones **genérico**: observar, recolectar, construir, comerciar, gobernar, negociar, explorar, luchar… Se puede intentar casi cualquier cosa dentro de las normas del mundo y de lo que la partida ya ha establecido. Todo pasa por el mismo mecanismo de base (clasificación → tirada → consecuencias).
 
-**Corrección (2026-08-13):** esto describe la intención de diseño **genérico** (sigue siendo cierto: no hay "modo combate" en el sentido de mecánica exclusiva desconectada del resto), pero desde [14-combate-y-muerte.md](14-combate-y-muerte.md) (2026-07-18, ya implementado) el combate sí vive en un **modo aparte por turnos** con su propio popup, tarjetas de habilidad, coste de energía y un sistema de ventajas por tipo de atributo (`attributeWheel.ts`) — bastante más maquinaria propia que "observar" o "recolectar". La sección 0 sigue siendo válida como principio (mismo motor de tiradas/consecuencias por debajo), pero no como descripción literal de que no existe nada específico de combate en el código de hoy.
-
----
-
-## 1. Lo que ya está fijado (no se toca aquí)
-
-- **Atributos** (ya en el frontend demo y en `PregeneratedCharacter.attributes`/`Save.attributes`): `fuerza`, `destreza`, `sigilo`, `voluntad`, `carisma`, `arcano`. Rango típico 4–18, presupuesto de creación ~60 puntos.
-  **Corrección (2026-08-13):** rediseñado el 2026-07-29 (`backend/src/services/dice.ts`) — los 7 atributos jugables hoy son `fuerza`, `destreza`, `constitucion`, `inteligencia`, `voluntad`, `carisma`, `arcano` (referencia D&D/BG3). `sigilo` bajó a **atributo secundario** (`secondaryAttributes.ts`, junto con `magia`, `poderSemilla`, `moral` y 4 resistencias) — ya no se tira, solo alimenta comprobaciones de umbral (requisitos de objetos/construcciones/oficios).
-- **El backend calcula la tirada, nunca el modelo** (decisión de arquitectura § 5): el LLM narra alrededor de un resultado ya fijado, no decide si algo tiene éxito.
-- **Qwen2.5:7b (Narrador) es fiable con salida estructurada** — esto es relevante para el punto 3 de abajo.
+El combate sí tiene maquinaria propia encima de ese mecanismo (modo aparte por turnos, iniciativa, energía, rueda de ventajas por atributo — ver [14](14-combate-y-muerte.md)), pero usa la misma fórmula de tirada y la misma regla de que el backend decide y el modelo narra.
 
 ---
 
-## 2. Fórmula de resolución de tiradas — DECIDIDO
+## 1. Principios fijos
+
+- **Atributos jugables (7):** `fuerza`, `destreza`, `constitucion`, `inteligencia`, `voluntad`, `carisma`, `magia` (tipo `Attribute` en `dice.ts`; referencia D&D/BG3, con Voluntad en lugar de Sabiduría y Magia aparte). Rango típico 4–18 al crear; el tope sube con el nivel (ver [10](10-niveles-xp-reino.md) § 4.2).
+- **Atributos secundarios** (`secondaryAttributes.ts`): `moral`, `resistenciaFrio`, `resistenciaCalor`, `suerte`, `honor`. Nunca se tiran: solo sirven como umbral de requisitos (objetos, construcciones, oficios).
+- **El backend calcula la tirada, nunca el modelo.** El LLM narra alrededor de un resultado ya fijado.
+
+---
+
+## 2. Fórmula de resolución de tiradas
 
 ```
 resultado = d20 + floor(atributo / 2)
 éxito si resultado >= dificultad
 ```
 
-Aplicable a **cualquier tipo de acción** — física, social, de construcción, de gobierno, lo que sea. El Narrador decide qué atributo y qué dificultad corresponden según el contexto concreto de la acción, no según una categoría fija de "tipo de acción".
-
-**Umbrales de dificultad (confirmados):**
+Vale para cualquier tipo de acción. El clasificador decide qué atributo y qué dificultad corresponden según el contexto, no según una categoría fija.
 
 | Dificultad | Valor | Ejemplo |
 |---|---|---|
@@ -53,64 +39,75 @@ Aplicable a **cualquier tipo de acción** — física, social, de construcción,
 | Difícil | 18 | Forzar una cerradura compleja bajo presión |
 | Muy difícil | 22 | Persuadir a un noble hostil de algo que le perjudica |
 
-**Grados de éxito: binario** (éxito/fallo, sin críticos por ahora — se puede añadir más adelante sin romper nada).
-**Corrección (2026-08-13):** ya añadido — `gradoExitoFor` (`backend/src/services/dice.ts`) lee la misma tirada en **tres tramos**: `claro` (resultado ≥ dificultad + 5), `con_coste` (resultado ≥ dificultad pero por debajo de +5, éxito con pero) y `fallo`. No es una tirada nueva ni cambia la fórmula, pero ya no es binario — está enganchado en `turnResolution.ts` y `narrador.ts` para narrar de forma distinta cada tramo.
+**Grados de éxito:** en tiradas de acción y de combate el resultado es **binario** (`GradoExito = 'claro' | 'fallo'`, `gradoExitoFor`). Hubo un tercer grado `con_coste` entre 2026-07-19 y 2026-09-07; se retiró porque en combate era solo una etiqueta que a veces contradecía el desenlace real. La **recolección** sí conserva tres tramos con efecto real (`GradoRecurso`: `claro` = cantidad completa, `con_coste` = la mitad, `fallo` = nada; `gradoForRecurso`, dificultad `10 + tier` del recurso).
+
+**Ventaja/desventaja** (`rollD20`): 2d20 quedándose con el mejor o el peor, nunca un modificador plano.
 
 ---
 
-## 3. Quién decide qué se tira — el problema central de "acción libre → mecánica"
+## 3. Quién decide qué se tira
 
-El jugador no elige de un menú ("Sigilo vs Dificultad 12") — escribe texto libre ("me escondo detrás del barril mientras pasa la guardia"). Alguien tiene que traducir eso a `(atributo, dificultad, ¿hace falta tirar?)` antes de que el backend pueda tirar el dado.
+El jugador escribe texto libre, no elige de un menú. Algo tiene que traducir ese texto a `(requiereTirada, atributo, dificultad)` antes de tirar.
 
-**Se evaluaron tres formas de resolverlo:**
+Se evaluaron tres vías (heurística de palabras clave, llamada de clasificación separada, una sola llamada con dos narraciones precalculadas). **Se usa la llamada de clasificación separada** (decisión 2 de [06](06-decisiones-mecanicas.md)): un modelo pequeño (Cronista, `qwen2.5:1.5b-instruct`) devuelve la clasificación, el backend tira, y el Narrador narra con el resultado fijado.
 
-- **A — Heurística por palabras clave** (la que usa hoy la demo del frontend): gratis e instantánea, pero frágil y no se adapta a redacción libre ni a acciones fuera de lo físico/combate.
-- **B — Llamada de clasificación separada de la narración**: el modelo devuelve `{ requiereTirada, atributo, dificultad, razon }` antes de narrar; el backend tira el dado con ese resultado, y una segunda llamada narra ya con el resultado fijo. Más preciso y sensible al contexto (funciona igual de bien para "construyo una cerca" que para "ataco al guardia"), a cambio de dos llamadas al modelo por turno.
-- **C — Una sola llamada con "plantilla condicionada"** (el modelo escribe de antemano las dos narraciones posibles, éxito y fallo, y el backend elige según la tirada): una sola llamada, pero sin validar si Qwen2.5:7b lo hace bien.
-
-**DECIDIDO: Opción B** (dos llamadas por turno). Ver [06-decisiones-mecanicas.md](06-decisiones-mecanicas.md) para el razonamiento completo.
+Antes del clasificador corren atajos deterministas que resuelven sin IA cuando pueden: viaje por el grafo ([12](12-mundo-estructurado.md) § 1.4), construcción, crafteo, descanso, saqueo, validación de la acción ([18](18-validacion-accion-jugador.md)), etc.
 
 ---
 
-## 4. Estado del personaje (salud y todo lo demás) — DECIDIDO
+## 4. Estado del personaje
 
-Dado el alcance genérico (sección 0), el estado del personaje no es solo "salud" — incluye reputación, qué posee, a quién gobierna, qué ha construido, relaciones, etc. Se decidió un modelo híbrido:
+Modelo híbrido:
 
-- **Un campo estructurado ligero para la condición física** (`ileso` → `herido` → `grave` → `convaleciente` → `muerto`), fácil de mostrar en la ficha de personaje del frontend.
-- **Todo lo demás como hechos libres** en `WorldState.facts` — sin campos fijos para reputación, posesiones, gobierno, construcciones, etc. Máxima flexibilidad para un juego de alcance tan abierto.
-
----
-
-## 5. Progresión del personaje — REVERTIDO, ver docs/10
-
-**Obsoleto (2026-07-18).** Esta sección decía "sin sistema de niveles/XP". La usuaria pidió explícitamente introducir niveles y XP con la armazón de D&D. El diseño resultante (tabla de XP, fuentes de XP genéricas, qué otorga el nivel, y el modelo de Reino que se construyó en el mismo pase) vive en [10-niveles-xp-reino.md](10-niveles-xp-reino.md) — ya implementado.
+- **Condición física estructurada** en `Save.condicionFisica` (enum `ILESO → HERIDO → GRAVE → CONVALECIENTE → MUERTO`). Reglas en [14](14-combate-y-muerte.md) § 1.
+- **Lo demás como hechos o como tablas propias.** Nació todo como hechos libres (`WorldState.facts`); con el tiempo varias cosas pasaron a tener modelo propio: inventario (`InventoryItem`), misiones (`Quest`), compañeros (`Companion`), reino (`Territory`/`Building`/`Subject`/`KingdomStats`), reputación por facción, hechos de sesión con embeddings (`SessionFact`). Lo que no tiene tabla sigue viviendo como hecho.
 
 ---
 
-## 6. Inventario y equipo — DECIDIDO, luego REABIERTO
+## 5. Progresión del personaje
 
-**Contexto narrativo, sin bonificadores fijos tabulados.** Lo que el personaje posee vive como hechos ("tiene 200 monedas", "posee una granja", "lleva una ganzúa fina"), y el Narrador lo tiene en cuenta al narrar y al fijar la dificultad de una tirada (es más fácil forzar una cerradura con ganzúa que sin ella) — pero no hay una tabla fija de "objeto X = +2 a tirada Y". Coherente con no tener números fijos para casi nada salvo los atributos y la tirada misma.
-
-**Corrección (2026-08-13):** esta decisión se reabrió a petición explícita de la usuaria (2026-07-19, ampliado 2026-08-03 a varios bonus por objeto). Hoy **sí existe una tabla real de bonificadores**: `ItemCatalog`/`InventoryItem.statBonuses` (JSON) y `backend/src/services/equipment.ts` (`effectiveAttributes`, `effectiveSecondaryAttributes`, `effectiveDefense`, `effectiveInventorySlotsBonus`) — un objeto **equipado** (no el que va en la mochila) puede sumar de verdad a varios de los 7 atributos, a `defensa` o a slots de inventario. El texto narrativo sigue existiendo en paralelo, pero ya no es la única vía.
+Sí hay niveles y XP (tabla de D&D 5e ampliada). Ver [10-niveles-xp-reino.md](10-niveles-xp-reino.md).
 
 ---
 
-## 7. Flujo de un turno, de principio a fin
+## 6. Inventario y equipo
+
+El equipo **equipado** suma bonificadores reales: `ItemCatalog.statBonuses` + `backend/src/services/equipment.ts` (`effectiveAttributes`, `effectiveSecondaryAttributes`, `effectiveDefense`, `effectiveInventorySlotsBonus`). La mochila nunca bonifica. El resto de posesiones siguen siendo contexto narrativo que el clasificador tiene en cuenta al fijar la dificultad.
+
+---
+
+## 7. Flujo de un turno
 
 ```
-1. Jugador escribe una acción en el chat (de cualquier tipo: física, social, construcción, gobierno...).
-2. Backend llama al Narrador (Ollama) — clasificación:
-   → { requiereTirada, atributo, dificultad, razon }
-3. Si requiereTirada: backend tira el dado (d20 + floor(atributo/2) vs dificultad).
-4. Backend llama al Narrador otra vez — narración:
-   → { narration, new_facts[], clock_advance_minutes, condicionFisica? }
-   (recibe el resultado de la tirada ya fijado, más el estado de mundo actual —
-   hechos, posesiones, reputación, lo que el personaje gobierna o ha construido...)
-5. Backend guarda LogEntry (channel CHARACTER) + actualiza WorldState.facts (y condiciónFisica si cambió).
-6. Con cierta probabilidad/lógica de agenda, se dispara también una llamada al Cronista
-   (mismo patrón: estado de mundo → narración + nuevos hechos) → LogEntry (channel WORLD),
-   respetando el espaciado de la decisión técnica 5 (3-10s configurable).
-7. Frontend muestra ambas entradas según van llegando.
+1. El jugador escribe una acción.
+2. POST /turn/classify
+   a. Guards de sesión (partida terminada, tránsito ocupado, muerte pendiente, candado de turno).
+   b. Validación determinista de la acción (docs/18) — puede cortar el turno aquí.
+   c. Atajos deterministas (viaje, construir, saquear, recolectar…).
+   d. Si nada lo resolvió: classifyAction (Cronista) →
+      { requiereTirada, atributo, dificultad, razon, banda, duracionEstimadaMinutos }
+   e. Si requiereTirada: el backend tira (d20 + floor(atributo/2) vs dificultad).
+   f. Banda extendida/larga → CharacterTransit (lo resuelve worldTick, docs/08).
+3. POST /turn/narrate (bandas instantánea/corta)
+   → narrateAction (Narrador) con el resultado ya fijado + estado de mundo
+   → { narration, newFacts, condicionFisica?, combateIniciado?, hito?, newItem?, … }
+4. El backend valida y materializa, guarda LogEntry (canal CHARACTER), actualiza
+   WorldState, XP, condición física, reino, misiones.
+5. Eventos del Cronista y del mundo → LogEntry (canal WORLD), con el espaciado de la
+   decisión técnica 5.
 ```
 
-**Nota de rendimiento:** el paso 2+4 son dos llamadas al modelo por turno (decisión de la sección 3) — en el hardware de la usuaria (CPU, ver arquitectura § 4) esto puede sumar bastante latencia por turno. Aceptado porque el juego es por turnos, no chat en tiempo real, y ya existe el sistema de ritmo (decisión técnica 5). A vigilar en el benchmark real pendiente.
+Dos llamadas al modelo por turno. En la Steam Deck actual un turno completo ronda un minuto (ver benchmarks en [04-decisiones-tecnicas.md](../arquitectura/04-decisiones-tecnicas.md) § 13-14).
+
+---
+
+## Historial de cambios
+
+- 2026-07-16 — Diseño inicial: fórmula, umbrales, clasificación en dos llamadas, condición física + hechos libres.
+- 2026-07-18 — Revertida la decisión "sin niveles/XP" (ver [10](10-niveles-xp-reino.md)). Combate pasa a modo propio ([14](14-combate-y-muerte.md)).
+- 2026-07-19 — Tercer grado de éxito `con_coste`; revertido el "inventario sin bonificadores" (equipo con `statBonuses`, ampliado 2026-08-03).
+- 2026-07-29 — Rediseño de atributos a 7 jugables; `sigilo` baja a secundario.
+- 2026-08-22 — Remodelado de secundarios: sale `sigilo` (pasa a tirada de Destreza), se eliminan las resistencias de combate, entran `suerte`/`honor`.
+- 2026-09-01 — `arcano` renombrado a `magia`; `magia`/`poderSemilla` dejan de ser secundarios.
+- 2026-09-07 — Retirado `con_coste` de las tiradas de acción/combate (se mantiene en recolección).
+- 2026-09-28 — Auditoría de documentación: reescrito como referencia, notas de corrección fusionadas en el texto.
