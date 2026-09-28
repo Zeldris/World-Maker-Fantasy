@@ -54,9 +54,9 @@ Gravedad: 🔴 bloquea/rompe · 🟠 mal comportamiento · 🟡 UX/pulido · �
 - **B7 🟠 Recurso de tier alto (Yerreo, tier 4) se ofrece como encuentro aunque sea imposible de
   recolectar** con el nivel actual — ahora al menos dice el motivo (A3). ¿Ofrecerlo solo como
   "descubrimiento"?
-- **B8 (en curso)** Viaje largo por texto libre ("Viajo a los Restos de Maktor"): la clasificación
-  devolvió el viaje truncado a Pilares Rotos (80 min de 280) — probable interrupción de tramo. Sin
-  terminar de observar.
+- **B8 ✅ comprobado, sin bug** Viaje largo por texto libre ("Viajo a los Restos de Maktor"): se
+  interrumpió en Pilares Rotos ("algo te sale al paso"), el evento se resolvió, retomó el camino
+  solo y llegó entrando por la salida correcta.
 
 ### Combate
 - **B9 🟠 Nombre oculto incoherente:** el encuentro dice "Alguien se abalanza…", pero la ficha de
@@ -80,12 +80,33 @@ Gravedad: 🔴 bloquea/rompe · 🟠 mal comportamiento · 🟡 UX/pulido · �
   `resolveInitialLocationId`, `huboMuerteEnEstaUbicacion` (turnResolution.ts), y 6 más en tests.
 - **B16 🟡 Horas del log no monótonas:** el resumen de la conversación con Gistera (08:06) sale antes
   que la aceptación de la misión (08:04).
-- **B17 🟠 Panel "El mundo" sin ninguna entrada nueva en 3h de ficción** (solo la de apertura) —
-  investigar si el Cronista/agenda corre (puede ser efecto del Ollama simulado).
+- **B17 ✅ falsa alarma** Panel "El mundo": sí recibe eventos del Cronista (uno a las 15:35 tras el
+  viaje largo); simplemente son espaciados.
 
 ### Lore (para Álvaro, sin tocar `docs/rpgtarkor/`)
 - **B18 🔵 "Bolco" (árbol de la Ciénaga) y "Bulco" (caracol de mar)** a una letra — confusión de
   nombres; en código queda excluido del matching (A9).
+
+### Tanda 2 — Gorhorn Cazador → Domador (partida `cmulbkcro000w7d7l6aaucqvg`, nivel forzado por SQL)
+- **B19 🔴 Las habilidades de ESPECIALIZACIÓN nunca se conceden al subir de nivel.** El bucle de
+  subida (`turnResolution.ts` ~7044) solo usa `classAbilityUnlocksFor`, que filtra
+  `!u.especializacion`. Domador (12 "Compañero cazador", 16, 24, 32, 40) solo recibe lo ya alcanzado
+  en el momento de ELEGIR la especialización (`PATCH /especializacion`). Reproducido: Domador a
+  nivel 11 → subida real a 12 en combate → sin "Compañero cazador". Afecta a todas las ramas.
+- **B20 🟡 Partida nueva con la barra de habilidades vacía** ("Barra 1 (0)"): Cazar, Descansar,
+  Viajar… solo accesibles desde el panel lateral Habilidades. Un jugador nuevo no los ve.
+- **B21 🟠 Caza fallida con dados de éxito:** "Intento cazar… pero fallo" y justo debajo la tirada
+  mostrada es 14+5=19 vs Fácil (12) = éxito — es la tirada de APERTURA del combate, no la de la
+  caza, pero no se distingue.
+- **B22 🟡 Etiquetas de dificultad distintas:** barra inferior "DIFICULTAD: TRIVIAL", tirada
+  "Fácil (12)" para el mismo rival.
+- **B23 🟠 Fauna inofensiva "ataca y conecta" en la UI sin hacer daño:** Ruptidar (`ataqueNatural`
+  "No ataca…") sale como "RUPTIDAR ATACA CON 'MORDISCO DE SANGRE FRÍA'… Gana Ruptidar — el golpe
+  conecta", pero el backend anula el daño (`npcAttackerIsInoffensive`). El jugador sigue Ileso 100.
+  La tarjeta del intercambio y el nombre de la habilidad no deberían presentarse como ataque.
+- **B24 🟡 Etiquetas del menú lateral cortadas** ("ompañeros", "nciclopedia").
+- Especialización: modal lista → detalle → confirmación → persistente tras recarga ✔️.
+- Caza: Explorar → elegir presa → caza sigilosa fallida → Combatir → Convaleciente ✔️.
 
 ---
 
