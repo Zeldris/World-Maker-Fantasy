@@ -200,7 +200,7 @@ describe('POST /saves/:id/zona/mover', () => {
     await prisma.sessionFact.deleteMany({ where: { saveId } });
     await prisma.save.update({
       where: { id: saveId },
-      data: { zonaPosX: 25, zonaPosY: 25, zonaCaminoPendiente: Prisma.JsonNull, pendingDynamicModeOffer: Prisma.JsonNull },
+      data: { zonaPosX: 25, zonaPosY: 25, zonaCaminoPendiente: Prisma.JsonNull, pendingDynamicModeOffer: Prisma.JsonNull, zonaUltimoEncuentro: Prisma.JsonNull },
     });
   });
 
@@ -476,6 +476,65 @@ describe('POST /saves/:id/zona/mover', () => {
     const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(saveAfter.pendingDynamicModeOffer).toEqual({ tipo: 'RECURSO', targetSlug: 'test-mover-recurso', targetName: 'test-mover-recurso', quienInicia: 'jugador' });
     expect(saveAfter.zonaCaminoPendiente).toBeNull();
+  });
+
+  // Bug real jugando en vivo (2026-09-28): tras Ignorar la oferta de un recurso/fauna, el primer
+  // paso para alejarse seguía dentro de su radio de 1 celda y volvía a disparar el MISMO encuentro,
+  // casilla tras casilla. Ahora el último encuentro se silencia hasta que el jugador sale del radio.
+  it('el mismo encuentro no se repite mientras el jugador sigue en su radio; salir y volver lo ofrece de nuevo', async () => {
+    // Recurso en la celda (2,1): el primer paso hacia (1,0) ya entra en su radio.
+    await prisma.zonePoint.create({
+      data: { locationId, x: 125, y: 75, tipo: 'RECURSO', targetSlug: 'test-mover-recurso', cantidad: 1, activo: true },
+    });
+    const app = await buildApp();
+    const mover = async (x: number, y: number) =>
+      JSON.parse((await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x, y } } })).body);
+
+    const primero = await mover(375, 25);
+    expect(primero.jugador).toEqual({ x: 75, y: 25 });
+    expect(primero.dynamicModeOffer).toMatchObject({ tipo: 'RECURSO', targetSlug: 'test-mover-recurso' });
+    expect((await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).zonaUltimoEncuentro).toEqual({ targetSlug: 'test-mover-recurso', locationId });
+
+    // "Ignorar" limpia la oferta pendiente (lo que hace /modo-dinamico/ignorar).
+    await prisma.save.update({ where: { id: saveId }, data: { pendingDynamicModeOffer: Prisma.JsonNull } });
+
+    // (2,0) sigue en el radio de (2,1): ni oferta nueva ni parada.
+    const segundo = await mover(375, 25);
+    expect(segundo.jugador).toEqual({ x: 125, y: 25 });
+    expect(segundo.dynamicModeOffer).toBeNull();
+    expect(segundo.caminoRestante.length).toBeGreaterThan(0);
+
+    // (3,0) sigue en el radio; (4,0) ya no — el último encuentro se olvida.
+    await mover(375, 25);
+    const fuera = await mover(375, 25);
+    expect(fuera.jugador).toEqual({ x: 225, y: 25 });
+    expect((await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).zonaUltimoEncuentro).toBeNull();
+
+    // Volver a acercarse lo ofrece otra vez.
+    const vuelta = await mover(25, 25);
+    expect(vuelta.jugador).toEqual({ x: 175, y: 25 });
+    expect(vuelta.dynamicModeOffer).toMatchObject({ tipo: 'RECURSO', targetSlug: 'test-mover-recurso' });
+  });
+
+  it('pulsar la propia casilla (camino vacío) ofrece el encuentro aunque sea el último ya ofrecido', async () => {
+    await prisma.zonePoint.create({
+      data: { locationId, x: 75, y: 25, tipo: 'RECURSO', targetSlug: 'test-mover-recurso', cantidad: 1, activo: true },
+    });
+    await prisma.save.update({ where: { id: saveId }, data: { zonaUltimoEncuentro: { targetSlug: 'test-mover-recurso', locationId } } });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 25, y: 25 } } });
+    const body = JSON.parse(res.body);
+    expect(body.dynamicModeOffer).toMatchObject({ tipo: 'RECURSO', targetSlug: 'test-mover-recurso' });
+  });
+
+  it('un último encuentro de OTRA Location no silencia nada en esta', async () => {
+    await prisma.zonePoint.create({
+      data: { locationId, x: 75, y: 25, tipo: 'RECURSO', targetSlug: 'test-mover-recurso', cantidad: 1, activo: true },
+    });
+    await prisma.save.update({ where: { id: saveId }, data: { zonaUltimoEncuentro: { targetSlug: 'test-mover-recurso', locationId: 'otra-location' } } });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 375, y: 25 } } });
+    expect(JSON.parse(res.body).dynamicModeOffer).toMatchObject({ tipo: 'RECURSO', targetSlug: 'test-mover-recurso' });
   });
 
   it('un ZonePoint FAUNA y uno RECURSO en la misma celda: la FAUNA (ser vivo) gana, el recurso ni se evalúa', async () => {

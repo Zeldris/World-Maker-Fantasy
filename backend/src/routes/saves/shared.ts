@@ -319,6 +319,10 @@ export async function restartSaveTransactionBody(
       zonaPosY: 75,
       zonaPosEntradaX: 75,
       zonaPosEntradaY: 75,
+      // Mismo hueco (2026-09-28): un trayecto a medias o el último encuentro de Zona de la partida
+      // anterior tampoco deben sobrevivir al reinicio.
+      zonaCaminoPendiente: Prisma.JsonNull,
+      zonaUltimoEncuentro: Prisma.JsonNull,
     },
   });
 

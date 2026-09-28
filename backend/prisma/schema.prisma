@@ -180,6 +180,13 @@ model Save {
   /// consume una celda por cada movimiento (`POST /saves/:id/zona/mover`) — vacío/null = sin
   /// movimiento en curso. Se vacía también si una colisión detiene el avance antes de llegar.
   zonaCaminoPendiente Json?
+  /// Último encuentro de Zona ya ofrecido (2026-09-28, bug real jugando en vivo con Playwright:
+  /// tras Ignorar/cerrar una interacción o Huir de un agresivo, el primer paso para alejarse seguía
+  /// dentro del radio de 1 celda del mismo objetivo y volvía a disparar el MISMO encuentro, casilla
+  /// tras casilla). `{ targetSlug, locationId }` — ese objetivo no vuelve a ofrecerse mientras el
+  /// jugador siga en su radio; se limpia en cuanto un paso lo deja fuera (`POST /zona/mover`).
+  /// Pulsar la propia casilla (camino vacío) lo ignora a propósito: es una petición explícita.
+  zonaUltimoEncuentro Json?
 
   /// Condición física (docs/14-combate-y-muerte.md § 1, decisión de mecánicas 3 nunca
   /// implementada hasta ahora). La narración de combate es la vía principal para cambiarla;

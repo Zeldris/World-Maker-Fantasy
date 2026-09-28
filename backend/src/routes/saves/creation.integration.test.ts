@@ -89,6 +89,9 @@ describe('POST /saves/:id/restart también reinicia la posición del jugador en 
         zonaPosY: 125,
         zonaPosEntradaX: 325,
         zonaPosEntradaY: 125,
+        // Trayecto a medias y último encuentro de Zona (2026-09-28) — tampoco deben sobrevivir.
+        zonaCaminoPendiente: [{ x: 425, y: 125 }],
+        zonaUltimoEncuentro: { targetSlug: 'gesgurio', locationId: 'x' },
       },
     });
     saveId = save.id;
@@ -109,6 +112,8 @@ describe('POST /saves/:id/restart también reinicia la posición del jugador en 
     expect(restarted.zonaPosY).toBe(75);
     expect(restarted.zonaPosEntradaX).toBe(75);
     expect(restarted.zonaPosEntradaY).toBe(75);
+    expect(restarted.zonaCaminoPendiente).toBeNull();
+    expect(restarted.zonaUltimoEncuentro).toBeNull();
   }, 15_000);
 });
 
