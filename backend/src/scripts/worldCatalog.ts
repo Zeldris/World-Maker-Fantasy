@@ -9977,6 +9977,97 @@ export const zonePoints: ZonePointInput[] = [
   // El Campo Yermo — llanura de huesos viejos y metal oxidado sin fauna/recurso propio anclado; un
   // único match de terreno árido (Ruptidar), coherente con "nadie ha reclamado nunca del todo".
   { locationSlug: 'campo-yermo', x: 400, y: 300, tipo: 'FAUNA', targetSlug: 'ruptidar', label: 'Ruptidar entre los restos oxidados' },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Ampliación 2026-09-28 — Fase 3 del plan "lo que funciona por zona se hace desde la zona"
+  // (docs/runbooks/plan-mecanicas-por-zona-2026-09-28.md): cobertura de mapa para toda fuente
+  // CAZA/TALA/MINERIA/EXTRACCION/PESCA/BUSQUEDA con presencia real en Las Llanuras del Viento
+  // Rojo (`WorldPopulation.distribucion`/`HarvestYield`) que hasta ahora no tenía NINGÚN
+  // `ZonePoint` en ninguna Location de la región — con las acciones de caza/recolección pasando a
+  // exigir colisión con un `ZonePoint` real (Fase 2/4 del mismo plan), estas 23 fuentes habrían
+  // quedado imposibles de obtener. Cada punto se colocó SOLO en una Location que pasa EXACTAMENTE
+  // el mismo filtro que ya aplica el motor (`candidateFaunaFor`/`candidateSourcesFor`:
+  // `harvestSourceHomeLocationSlug`/`Npc.homeLocationSlug` + `pasaFiltroTerreno` contra
+  // `locationTerrainTags`×`faunaTerrainTag`/`harvestSourceTerrainTag`, terrain.ts) — verificado con
+  // un script de comprobación aparte (importando esas mismas funciones/mapas), no a ojo. Ninguna
+  // especie ni dato de lore nuevo: solo dónde vive cada punto en el mapa. Coordenadas PROVISIONALES
+  // (lienzo 800×600, mismo aviso que la ampliación 2026-08-31), a ≥60px de cualquier punto ya
+  // sembrado en su Location (incluidos los de esta misma ampliación) y con margen ≥40px del borde.
+  //
+  // Pesca/Búsqueda (Playa de Ceniza Blanca, único candidato: los 6 Npc de peces/marisco tienen su
+  // propio `homeLocationSlug` fijo ahí — ver `harvestSourceHomeLocationSlug`) se siembran como
+  // `tipo: 'RECURSO'` (no FAUNA): son fuentes de `HarvestYield` PESCA/BUSQUEDA, mismo criterio ya
+  // usado por el resto de RECURSO de este archivo, nunca fauna cazable con Cazar.
+  //
+  // Excepciones — NO se pudo sembrar ningún punto real por conflicto de datos ya existente (no
+  // introducido por esta ampliación, ver `zonePointsCobertura.test.ts` para la lista formal):
+  //   - `gargantua-de-ceniza` (CAZA): `harvestSourceHomeLocationSlug` la ancla EN EXCLUSIVA a
+  //     `osario-de-la-manada` (el esqueleto real que da nombre a esa Location), pero su propio
+  //     `faunaTerrainTag` es 'vegetacion' y `locationTerrainTags['osario-de-la-manada']` es solo
+  //     ['arido'] — el filtro de terreno y el candado de Location se contradicen entre sí, así que
+  //     NINGUNA Location de la región puede pasar los dos filtros a la vez con los datos actuales.
+  //   - `junba-verde-resina-fuente` (EXTRACCION): mismo choque, ya preexistente en su hermano
+  //     `junba-verde` (TALA, ya sembrado desde 2026-08-31) — `harvestSourceHomeLocationSlug` la
+  //     ancla EN EXCLUSIVA a `playa-de-ceniza-blanca`, pero su `harvestSourceTerrainTag` es
+  //     'costero' y `locationTerrainTags['playa-de-ceniza-blanca']` es solo ['humedo','arido'], sin
+  //     'costero' — pese al comentario junto a `harvestSourceTerrainTag` que asume que ese tag
+  //     "nunca interviene en el filtro real" (ya no es cierto desde que la playa tiene
+  //     `locationTerrainTags` propio, 2026-08-23). Requiere que Álvaro decida en el runbook de lore
+  //     si añadir 'costero' a `locationTerrainTags['playa-de-ceniza-blanca']` o quitar el tag de
+  //     terreno de estas dos fuentes — fuera del alcance de esta tarea (solo posiciones de mapa).
+  //
+  // CAZA — cada especie en la única Location que pasa `harvestSourceHomeLocationSlug` (o, sin
+  // candado, sin ningún filtro real que la restrinja, ver Zense Ceniza).
+  { locationSlug: 'pastos-de-la-deriva', x: 660, y: 420, tipo: 'FAUNA', targetSlug: 'aullador-rojo', label: 'Aullador Rojo acechando entre el pasto alto' },
+  { locationSlug: 'restos-de-maktor', x: 150, y: 460, tipo: 'FAUNA', targetSlug: 'canizor', label: 'Canizor merodeando entre las ruinas' },
+  { locationSlug: 'acantilados-partidos', x: 150, y: 120, tipo: 'FAUNA', targetSlug: 'celubia-palida', label: 'Celubia Pálida en la grieta alta' },
+  { locationSlug: 'acantilados-partidos', x: 700, y: 150, tipo: 'FAUNA', targetSlug: 'terkash', label: 'Terkash posado en el acantilado' },
+  { locationSlug: 'manaderos', x: 120, y: 460, tipo: 'FAUNA', targetSlug: 'corredor-de-cauce', label: 'Corredor de Cauce pastando junto al agua' },
+  { locationSlug: 'manaderos', x: 700, y: 300, tipo: 'FAUNA', targetSlug: 'tura-jusha', label: 'Tura Jusha acechando crías desorientadas' },
+  // Zense Ceniza — deliberadamente sin `harvestSourceHomeLocationSlug` ni `faunaTerrainTag` propio
+  // (ver comentario junto a esa tabla: "carroñera errante... siempre en círculos sobre lo que
+  // muere", igual que Ruptidar), así que pasa el filtro en CUALQUIER Location de la región. Se
+  // elige El Osario de la Manada por coherencia con su propia bio, no por candado real.
+  { locationSlug: 'osario-de-la-manada', x: 150, y: 150, tipo: 'FAUNA', targetSlug: 'zense-ceniza', label: 'Zense Ceniza sobrevolando los huesos' },
+
+  // TALA/MINERIA/EXTRACCION — mismo criterio de candado de Location + terreno.
+  { locationSlug: 'sabana-alta-colmillar', x: 100, y: 340, tipo: 'RECURSO', targetSlug: 'telda-atardecer', label: 'Telda Atardecer en la ladera' },
+  // Resina junto a su propio árbol (Telda Atardecer, arriba), a 100px — mismo criterio que el resto
+  // de pares árbol/resina del archivo (p.ej. Lucre Blanco/Resina Lucre Blanco, Los Pilares Rotos).
+  { locationSlug: 'sabana-alta-colmillar', x: 100, y: 440, tipo: 'RECURSO', targetSlug: 'resina-telda-atardecer-fuente', label: 'Resina de Telda Atardecer' },
+  { locationSlug: 'sabana-alta-colmillar', x: 700, y: 340, tipo: 'RECURSO', targetSlug: 'roca-luclara', label: 'Roca Luclara entre el pasto' },
+  { locationSlug: 'pozo-cauce-viejo', x: 100, y: 340, tipo: 'RECURSO', targetSlug: 'telda-comun', label: 'Telda Común junto a la charca' },
+  // Resina junto a su propio árbol (Telda Común, arriba), a 100px.
+  { locationSlug: 'pozo-cauce-viejo', x: 100, y: 440, tipo: 'RECURSO', targetSlug: 'resina-telda-fuente', label: 'Resina de Telda Común' },
+  { locationSlug: 'filo-de-las-brasas', x: 700, y: 150, tipo: 'RECURSO', targetSlug: 'rovalnica', label: 'Veta de Rovalnica' },
+  // Resina junto a su propio árbol (Lucre Blanco, ya sembrado en la cumbre, 400,500), a 80px.
+  { locationSlug: 'pilares-rotos', x: 480, y: 500, tipo: 'RECURSO', targetSlug: 'resina-lucre-blanco-fuente', label: 'Resina de Lucre Blanco' },
+  // Espiga Roja — sin `harvestSourceHomeLocationSlug` propio a propósito (ver comentario junto a
+  // esa tabla: "ninguna pista real la distingue de la llanura genérica"), pasa el filtro en
+  // cualquier Location con tag 'vegetacion'; se elige El Cruce de las Cenizas por tener hueco real.
+  { locationSlug: 'cruce-de-las-cenizas', x: 700, y: 300, tipo: 'RECURSO', targetSlug: 'espiga-roja', label: 'Espiga Roja entre la ceniza' },
+
+  // PESCA/BUSQUEDA — único candidato real, La Playa de Ceniza Blanca (`homeLocationSlug` directo
+  // de los 6 Npc de peces/marisco). `tipo: 'RECURSO'` (fuentes de HarvestYield PESCA/BUSQUEDA, no
+  // fauna cazable con Cazar).
+  { locationSlug: 'playa-de-ceniza-blanca', x: 60, y: 60, tipo: 'RECURSO', targetSlug: 'jashil-rojo', label: 'Banco de Jashil Rojo' },
+  { locationSlug: 'playa-de-ceniza-blanca', x: 700, y: 60, tipo: 'RECURSO', targetSlug: 'jashil-verde', label: 'Banco de Jashil Verde' },
+  { locationSlug: 'playa-de-ceniza-blanca', x: 60, y: 480, tipo: 'RECURSO', targetSlug: 'negueo-solar', label: 'Negueo Solar entre las rocas' },
+  { locationSlug: 'playa-de-ceniza-blanca', x: 700, y: 480, tipo: 'RECURSO', targetSlug: 'negueo-turquesa', label: 'Negueo Turquesa entre las rocas' },
+  { locationSlug: 'playa-de-ceniza-blanca', x: 150, y: 140, tipo: 'RECURSO', targetSlug: 'toluh', label: 'Toluh en la orilla profunda' },
+  { locationSlug: 'playa-de-ceniza-blanca', x: 620, y: 140, tipo: 'RECURSO', targetSlug: 'bulco-de-arena', label: 'Bulco de Arena enterrado' },
+
+  // Hallazgo adicional (2026-09-28, mismo test de cobertura de esta ampliación, no parte de la
+  // lista original de 23): Flor de Ceniza y Salvia del Polvo ya tenían `ZonePoint` propio desde
+  // antes de esta tarea, pero NINGUNO de sus puntos existentes está en la única Location que
+  // permite `harvestSourceHomeLocationSlug` (candado exclusivo) — se añaden aquí sin tocar los
+  // puntos viejos (quedan igual, simplemente no eran válidos y siguen sin serlo; no se borra nada).
+  // Flor de Ceniza: home exclusivo 'fumarolas-negras' ("solo brota en suelo de ceniza volcánica"),
+  // que sí tiene tag 'rocoso' (locationTerrainTags) — compatible con su propio harvestSourceTerrainTag.
+  { locationSlug: 'fumarolas-negras', x: 700, y: 150, tipo: 'RECURSO', targetSlug: 'flor-de-ceniza', label: 'Flor de Ceniza junto a las grietas volcánicas' },
+  // Salvia del Polvo: home exclusivo 'hondonada-del-eco' ("crece pegada al suelo en hondonadas y
+  // rincones de sombra" — coincide con el propio nombre de la Location), que sí tiene tag 'arido'.
+  { locationSlug: 'hondonada-del-eco', x: 700, y: 400, tipo: 'RECURSO', targetSlug: 'salvia-del-polvo', label: 'Salvia del Polvo en la sombra de la hondonada' },
 ];
 
 /// Edificios de FACCIÓN AJENA (2026-08-31, "Trabajador de Reino") — catálogo de mundo puro, nunca
