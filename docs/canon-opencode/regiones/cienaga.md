@@ -16,7 +16,8 @@ Fuente: docs/rpgtarkor/lore-mundo/regiones/cienaga-troncal.md. Sincronizado: 202
 ## Lugares
 - **El Cerco de los Pilotes / Silh Makut** ("Piel Musgo"): poblado Goshg sobre pilotes, con pasarelas
   y canoas. Interior: Goshg'sedsar, el Salón de Piel Musgo (Terk'ikar Doshka, Kort'ikar Dulgren).
-  Talleres (sin Maestro): astillero de pilotes, resinería, ahumadero, talla de tótems.
+  Talleres del lore (sin Maestro ni oficio en código): astillero de pilotes, resinería, ahumadero,
+  talla de tótems. El único edificio de oficio que le toca hoy es la Casa de curas.
 - **Jeyselt / Fin Susurrado**: poblado de Keseg Prisilke.
 - **Marismas de Lodo Negro**: capa viscosa de resina de Bolco sobre túneles sumergidos de agua
   purísima.

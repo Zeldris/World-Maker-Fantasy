@@ -13,7 +13,8 @@ Fuente: docs/rpgtarkor/lore-mundo/regiones/cristal-helado.md. Sincronizado: 2026
 
 ## Lugares
 - **Helske Tugh** ("Honor Helado"): campamento minero fortificado. Interior: Helsig'lukar y
-  Helsig'sedsar. Talleres con Maestro: Herrería, Peletería, Cocina, Mina, Herboristería y Alquimia.
+  Helsig'sedsar. Talleres con Maestro: Herrería, Peletería, Cocina, Mina, Herboristería y Alquimia. Falta la Casa
+  de curas (primeros auxilios, sin Maestro).
 - **La Veta Helada**: la tundra de los yacimientos, colindante con Helske Tugh (el campamento no está
   dentro).
 - La Red Profunda Final (túneles de origen desconocido) · El Lago Cristalice · El Pico Escarcha ·

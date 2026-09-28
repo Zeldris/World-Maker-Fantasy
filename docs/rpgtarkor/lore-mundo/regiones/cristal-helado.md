@@ -28,6 +28,8 @@ Campamento minero fortificado en una zona propia, colindante con La Veta Helada.
 común: *Honor Helado*. El interior completo es el **Helsig'lukar**, y en su centro se alza el
 **Helsig'sedsar**, el Salón de Honor Helado. A su alrededor, los 6 talleres con Maestro real:
 Herrería, Peletería, Cocina, la boca de la mina del clan, Herboristería y el taller de Alquimia.
+Le falta la **Casa de curas**: el oficio de primeros auxilios existe entre los Helsig, pero ni tiene
+Maestro ni edificio (ver [edificios-de-oficio.md](../../sistemas-reino/edificios-de-oficio.md); pendiente de código).
 Aquí trabajó Gorhorn tres meses de joven, y aquí sigue Hagar Kiugh.
 
 ### La Veta Helada

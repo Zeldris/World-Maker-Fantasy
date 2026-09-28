@@ -272,6 +272,11 @@ Salón), donde la Terk'ikar y el Kort'ikar reciben a quien cruza la entrada.
   Embarcadero de Ceniza.
 
 Son edificios de facción (`Building.factionId`), no recetas que el jugador pueda construir.
+**Edificios de oficio (diseño de 2026-09-28, ver [edificios-de-oficio.md](../../sistemas-reino/edificios-de-oficio.md)).** La regla es que
+cada oficio con Maestro tiene su edificio. Además de los cinco de arriba, a Karot Veku le faltan la
+**Peletería**, la **Sastrería**, la **Casa de curas** (primeros auxilios) y el **Obrador de piedra**
+(constructor). El oficio de pescador trabaja fuera del poblado, en el **Embarcadero de pesca** de El
+Embarcadero de Ceniza. Pendientes de código.
 
 **Maestros de oficio.** Por cada uno de los 12 oficios orcos de las Llanuras (herrero, curtidor,
 peletero, desollador, domador, carpintero, sastre, herborista, primeros auxilios, alquimista,

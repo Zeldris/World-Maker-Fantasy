@@ -15,7 +15,9 @@ Fuente: docs/rpgtarkor/lore-mundo/regiones/llanuras-del-viento-rojo.md. Sincroni
 - **Karot Veku** ("Colmillo Ceniza"): el Clan Serhu, junto al Pozo de Cauce Viejo. Empalizada de
   Telda. Interior: Ketg'lukar, con el salón Ketg'sedsar (Terk'ikar Ulkha Ketg, Kort'ikar Torgash
   Ketg). Talleres: Herrería, Curtiduría y Cocina (en el catálogo); Herboristería, Alquimia, Corrales
-  del Domador, Desolladero y Carpintería (en el lore, sin código). Tiene los 12 Maestros de oficio.
+  del Domador, Desolladero y Carpintería (en el lore, sin código). Faltan además Peletería,
+  Sastrería, Casa de curas y Obrador de piedra; el Embarcadero de pesca va en El Embarcadero de
+  Ceniza. Tiene los 12 Maestros de oficio.
   Recinto de Múrgol fuera.
 - **Kegi** ("Arena"): el Feg Ger. El Vergel de Kegi (Yegr Kegi) es su coto de caza y comercio, y el
   Jakut Ger, su salón y trono. NPC: Yeru (quien suele estar en el Jakut) y Tasko (curtidor,

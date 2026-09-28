@@ -43,6 +43,11 @@ los mejores trabajando la madera de los tres clanes, y sus talleres lo reflejan:
 - **Talla de tótems**: sin techo, junto al salón. De aquí salen los tótems de madera de ciénaga que
   los demás clanes compran o piden.
 
+En el código, los Goshg solo tienen un oficio (primeros auxilios), así que el único edificio de oficio
+que les corresponde hoy es la **Casa de curas**. Para que los talleres de arriba sean edificios de
+verdad hacen falta oficios nuevos: carpintero y cocinero de la Ciénaga, y un resinero (ver
+[edificios-de-oficio.md](../../sistemas-reino/edificios-de-oficio.md) § 6).
+
 ### Jeyselt (Fin Susurrado)
 *Asentamiento Nabieus · Catálogo: `conclave-keseg-prisilke` (interior: `conclave-keseg-prisilke-interior`).*
 
