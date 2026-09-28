@@ -1307,7 +1307,7 @@ export const CUARTEL_DE_GUERRA_RECIPE: ConstructionRecipe = {
     { match: { kind: 'category', tipo: 'RECURSO', category: 'mena' }, cantidad: 4, label: 'mena' },
   ],
   requisitos: { fuerza: 16 },
-  oficio: 'herrero-orcos-llanuras',
+  oficio: 'herrero-orco-llanuras',
   upgradesRecipeKey: 'cuartel-avanzado',
   cuartelUpgradeBonus: { defensa: 10 },
 };
