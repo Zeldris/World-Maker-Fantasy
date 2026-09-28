@@ -149,3 +149,55 @@ describe('POST /saves/:id/modo-dinamico/recurso/:targetSlug', () => {
     }
   });
 });
+
+/// Fase 6 (plan Oct 2026): las fuentes de PESCA y BUSQUEDA (fauna acuática, `sourceCategory: 'fauna'`)
+/// también se resuelven desde el mapa vía Interactuar → `resolverRecoleccion`. Mismo harness real
+/// (Postgres, catálogo sembrado) en Playa de Ceniza Blanca, donde el catálogo las sitúa.
+describe('POST /saves/:id/modo-dinamico/recurso/:targetSlug — PESCA y BUSQUEDA', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'playa-de-ceniza-blanca' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (pesca)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: { fuerza: 15, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId, fictionalMinutes: 480 } });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  for (const [slug, nombre, habilidad] of [
+    ['jashil-rojo', 'Jashil Rojo', 'Pescar'],
+    ['bulco-de-arena', 'Bulco de Arena', 'Buscar'],
+  ] as const) {
+    it(`${slug}: la interacción se resuelve (200 con habilidad ${habilidad}) y limpia la oferta pendiente`, async () => {
+      await prisma.save.update({
+        where: { id: saveId },
+        data: { pendingDynamicModeOffer: { tipo: 'RECURSO', targetSlug: slug, targetName: nombre } },
+      });
+      const app = await buildApp();
+      const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/recurso/${slug}` });
+      expect(res.statusCode, res.body).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.narration.length).toBeGreaterThan(0);
+      if (body.exito) expect(body.abilityName).toBe(habilidad);
+      const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+      expect(saveAfter.pendingDynamicModeOffer).toBeNull();
+    });
+  }
+});

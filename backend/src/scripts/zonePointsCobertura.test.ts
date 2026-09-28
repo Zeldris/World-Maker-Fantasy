@@ -182,6 +182,27 @@ describe('cobertura de mapa — Las Llanuras del Viento Rojo (Fase 3)', () => {
     ].sort());
   });
 
+  /// Fase 6 (plan Oct 2026): toda Location de Las Llanuras debe tener >=1 ZonePoint, salvo las
+  /// excepciones de esta lista. Hoy solo `jakut-ger-interior` (kind 'interior'): es el salón
+  /// interior de Trono Rojo, "fuera del núcleo jugable actual" según el propio catálogo, y el
+  /// lore (docs/rpgtarkor) no fija qué NPC/fuentes hay dentro — poblarlo exigiría lore nuevo, así que
+  /// queda a la espera de una propuesta aprobada por Álvaro. Los demás interiores
+  /// (`campamento-serhu-interior`) ya tienen puntos y no necesitan excepción.
+  const LOCATION_SIN_PUNTOS_EXCEPCION = new Set(['jakut-ger-interior']);
+
+  it('toda Location de Las Llanuras tiene >=1 ZonePoint (salvo excepciones justificadas)', () => {
+    const conPuntos = new Set(zonePoints.map((p) => p.locationSlug));
+    const sinPuntos = [...llanurasLocationSlugs].filter(
+      (slug) => !conPuntos.has(slug) && !LOCATION_SIN_PUNTOS_EXCEPCION.has(slug),
+    );
+    expect(sinPuntos).toEqual([]);
+    // La excepción solo puede ser un interior real; si alguien la puebla, hay que quitarla de la lista.
+    for (const slug of LOCATION_SIN_PUNTOS_EXCEPCION) {
+      expect(locations.find((l) => l.slug === slug)?.kind).toBe('interior');
+      expect(conPuntos.has(slug)).toBe(false);
+    }
+  });
+
   it('ningún par de ZonePoint de la misma Location de Las Llanuras queda a menos de 60px', () => {
     const porLocation = new Map<string, { x: number; y: number; targetSlug: string }[]>();
     for (const p of zonePoints) {
