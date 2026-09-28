@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { AlmacenItemInfo, CompanionInfo, EquipSlot, InventoryItemInfo, PlantillaEquipoInfo, SubjectInfo } from '../../../types'
 import { PanelSection } from '../../PanelSection'
-import { depositarEnAlmacen, retirarDeAlmacen, crearPlantilla, borrarPlantilla, asignarPlantillaCompanion, asignarPlantillaSubject } from '../../../lib/api'
+import { depositarEnAlmacen, retirarDeAlmacen, crearPlantilla, borrarPlantilla, asignarPlantillaCompanion, asignarPlantillaSubject, fijarRolReinoCompanion } from '../../../lib/api'
 import { SLOT_LABEL, SLOT_ORDER } from '../../../lib/equipSlots'
 
 /// Selector compartido de plantilla — súbdito o compañero integrado en el Reino, mismo desplegable.
@@ -355,6 +355,57 @@ function PlantillasSection({
   )
 }
 
+/// Roles de Reino válidos (mismos que `ROLES_REINO` del backend, companeros.ts).
+const ROLES_REINO: { value: string; label: string }[] = [
+  { value: 'trabajador', label: 'Trabajador' },
+  { value: 'guardia', label: 'Guardia' },
+  { value: 'productor', label: 'Productor' },
+  { value: 'diplomatico', label: 'Diplomático' },
+]
+
+/// Selector de rol de Reino por compañero (H-1): sin `rolReino` un compañero no es candidato a
+/// trabajador ni a diplomático. "Sin rol" lo saca del Reino (y del edificio al que estuviera asignado).
+function RolesReinoSection({ saveId, companions, onRefreshSave }: { saveId: string; companions: CompanionInfo[]; onRefreshSave: () => Promise<void> }) {
+  const [busy, setBusy] = useState(false)
+  if (companions.length === 0) return null
+
+  async function handleChange(companionId: string, rol: string) {
+    setBusy(true)
+    try {
+      await fijarRolReinoCompanion(saveId, companionId, rol || null)
+      await onRefreshSave()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <PanelSection title="Roles en el Reino">
+      <div className="flex flex-col gap-1.5">
+        {companions.map((c) => (
+          <div key={c.id} className="flex items-center justify-between gap-2 text-xs text-wood-300">
+            <span>{c.name}</span>
+            <select
+              value={c.rolReino ?? ''}
+              disabled={busy}
+              onChange={(e) => void handleChange(c.id, e.target.value)}
+              aria-label={`Rol en el Reino de ${c.name}`}
+              className="rounded-lg border border-iron-700 bg-wood-950/60 px-2 py-1 text-2xs text-wood-300 disabled:opacity-50"
+            >
+              <option value="">Sin rol</option>
+              {ROLES_REINO.map((r) => (
+                <option key={r.value} value={r.value}>
+                  {r.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        ))}
+      </div>
+    </PanelSection>
+  )
+}
+
 interface SubditosSectionProps {
   saveId: string
   subjects: SubjectInfo[]
@@ -397,6 +448,7 @@ export function SubditosSection({ saveId, subjects, companions, inventory, almac
         </PanelSection>
       )}
 
+      <RolesReinoSection saveId={saveId} companions={companions} onRefreshSave={onRefreshSave} />
       <AlmacenSection saveId={saveId} inventory={inventory} almacenItems={almacenItems} onRefreshSave={onRefreshSave} />
       <PlantillasSection
         saveId={saveId}

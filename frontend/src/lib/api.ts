@@ -1474,6 +1474,13 @@ export async function asignarPlantillaCompanion(saveId: string, companionId: str
     body: JSON.stringify({ plantillaEquipoId, rolReino }),
   })
 }
+export async function fijarRolReinoCompanion(saveId: string, companionId: string, rolReino: string | null): Promise<{ ok: boolean }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/companeros/${companionId}/rol-reino`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ rolReino }),
+  })
+}
 export async function asignarPlantillaSubject(saveId: string, subjectId: string, plantillaEquipoId: string | null): Promise<{ ok: boolean }> {
   return fetchJson(`${API_URL}/saves/${saveId}/subjects/${subjectId}/plantilla`, {
     method: 'POST',

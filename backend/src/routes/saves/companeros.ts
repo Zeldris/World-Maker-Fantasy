@@ -36,6 +36,22 @@ import { EquipSlot } from '@prisma/client';
 /// (casco/armadura/accesorio), ajustable más adelante si hace falta variar por tamaño de verdad.
 const FAUNA_EQUIP_SLOTS: EquipSlot[] = ['CASCO', 'ARMADURA_SUPERIOR', 'ACCESORIO'];
 
+/// Valores válidos de `Companion.rolReino` (string libre en el esquema; estos son los que el
+/// código realmente consume): `trabajador`/`guardia`/`productor` (construcciones-reino.md) y
+/// `diplomatico` (reino.ts, negociación de facciones).
+export const ROLES_REINO = ['trabajador', 'guardia', 'productor', 'diplomatico'] as const;
+export function esRolReinoValido(v: unknown): v is (typeof ROLES_REINO)[number] {
+  return typeof v === 'string' && (ROLES_REINO as readonly string[]).includes(v);
+}
+/// Mapeo `PlantillaEquipo.rol` -> `rolReino`: solo los valores que coinciden literalmente
+/// (`guardia`, `trabajador`, `productor`). `diplomatico` NO sale de una plantilla (es un rol
+/// narrativo, no de equipo) y cualquier `rol` libre de una plantilla personalizada que no coincida
+/// devuelve null (no toca el rol del Companion).
+export function rolReinoDePlantilla(rolPlantilla: string): string | null {
+  const r = rolPlantilla.trim().toLowerCase();
+  return r !== 'diplomatico' && esRolReinoValido(r) ? r : null;
+}
+
 export async function companerosRoutes(app: FastifyInstance) {
   // ═══════════════════════════════════════════════════════════════════════
   // § 1 — Captura (fauna y NPC, mismo mecanismo)
@@ -694,6 +710,9 @@ export async function companerosRoutes(app: FastifyInstance) {
   });
 
   /// Asigna/quita una plantilla a un compañero integrado en el Reino (`rolReino`).
+  /// Rol resultante (H-1): `body.rolReino` explícito (validado) manda; si no viene y la plantilla
+  /// asignada tiene un `rol` que es un `rolReino` válido, se toma de ella (ver `rolReinoDePlantilla`);
+  /// si no, se conserva el que ya tenía. Un `diplomatico` nunca se pisa por la plantilla.
   app.post<{ Params: { id: string; companionId: string }; Body: { plantillaEquipoId: string | null; rolReino?: string } }>(
     '/saves/:id/companeros/:companionId/plantilla',
     async (request, reply) => {
@@ -704,12 +723,45 @@ export async function companerosRoutes(app: FastifyInstance) {
 
       const companion = await prisma.companion.findFirst({ where: { id: request.params.companionId, saveId: request.params.id } });
       if (!companion) return reply.status(404).send({ error: 'Compañero no encontrado' });
-      await prisma.companion.update({
-        where: { id: companion.id },
-        data: { plantillaEquipoId: request.body.plantillaEquipoId, rolReino: request.body.rolReino ?? companion.rolReino },
-      });
+
+      const { plantillaEquipoId, rolReino: rolBody } = request.body;
+      if (rolBody !== undefined && !esRolReinoValido(rolBody)) {
+        return reply.status(400).send({ error: `rolReino inválido. Valores válidos: ${ROLES_REINO.join(', ')}` });
+      }
+      let rolReino: string | null = rolBody ?? companion.rolReino;
+      if (rolBody === undefined && plantillaEquipoId && companion.rolReino !== 'diplomatico') {
+        const plantilla = await prisma.plantillaEquipo.findFirst({ where: { id: plantillaEquipoId, saveId: request.params.id }, select: { rol: true } });
+        if (!plantilla) return reply.status(404).send({ error: 'Plantilla no encontrada' });
+        rolReino = rolReinoDePlantilla(plantilla.rol) ?? rolReino;
+      }
+      await prisma.companion.update({ where: { id: companion.id }, data: { plantillaEquipoId, rolReino } });
       await prisma.$transaction((tx) => autoEquiparDesdeAlmacen(tx, request.params.id));
       return { ok: true };
+    },
+  );
+
+  /// Fija (o quita, con `null`) el `rolReino` de un Companion directamente (H-1). Quitar el rol
+  /// también lo desasigna de su edificio: sin `rolReino` no es trabajador de nadie.
+  app.post<{ Params: { id: string; companionId: string }; Body: { rolReino: string | null } }>(
+    '/saves/:id/companeros/:companionId/rol-reino',
+    async (request, reply) => {
+      const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { endedAt: true, pendingDeathResolution: true } });
+      if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+      if (rejectIfEnded(save, reply)) return;
+      if (rejectIfPendingDeath(save, reply)) return;
+
+      const companion = await prisma.companion.findFirst({ where: { id: request.params.companionId, saveId: request.params.id } });
+      if (!companion) return reply.status(404).send({ error: 'Compañero no encontrado' });
+      const rolReino = request.body?.rolReino ?? null;
+      if (rolReino !== null && !esRolReinoValido(rolReino)) {
+        return reply.status(400).send({ error: `rolReino inválido. Valores válidos: ${ROLES_REINO.join(', ')}` });
+      }
+      const updated = await prisma.companion.update({
+        where: { id: companion.id },
+        data: rolReino === null ? { rolReino: null, buildingId: null } : { rolReino },
+        select: { id: true, rolReino: true, buildingId: true },
+      });
+      return { ok: true, companion: updated };
     },
   );
 

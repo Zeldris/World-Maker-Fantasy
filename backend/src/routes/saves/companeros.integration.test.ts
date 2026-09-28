@@ -1127,3 +1127,87 @@ describe('Compañeros: Alfa de la Manada — segundo slot de Domador + elección
     }
   });
 });
+
+describe('rolReino de Companion: plantilla y ruta directa (H-1, 2026-09-28)', () => {
+  let saveId: string;
+  let companionId: string;
+  let diplomaticoId: string;
+  let guardiaPlantillaId: string;
+  let librePlantillaId: string;
+  let buildingId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (rolReino H-1)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        portraitInitial: 'G',
+      },
+    });
+    saveId = save.id;
+    companionId = (await prisma.companion.create({ data: { saveId, name: 'Sin rol H1', role: 'x', notes: '', tipo: 'NPC' } })).id;
+    diplomaticoId = (await prisma.companion.create({ data: { saveId, name: 'Diplomático H1', role: 'x', notes: '', tipo: 'NPC', rolReino: 'diplomatico' } })).id;
+    guardiaPlantillaId = (await prisma.plantillaEquipo.create({ data: { saveId, name: 'Guardia H1', rol: 'guardia', slots: {}, prioridad: 0 } })).id;
+    librePlantillaId = (await prisma.plantillaEquipo.create({ data: { saveId, name: 'Rol libre H1', rol: 'cronista', slots: {}, prioridad: 0 } })).id;
+    buildingId = (await prisma.building.create({
+      data: { saveId, locationId: hondonada.id, recipeKey: 'choza', name: 'Choza H1', kind: 'choza', description: 'x', status: 'ACTIVO' },
+    })).id;
+  });
+
+  afterAll(async () => {
+    await prisma.building.deleteMany({ where: { saveId } });
+    await prisma.companion.deleteMany({ where: { saveId } });
+    await prisma.plantillaEquipo.deleteMany({ where: { saveId } });
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('asignar plantilla con rol válido toma su rolReino; un rol libre no lo toca; un diplomático no se pisa', async () => {
+    const app = await buildApp();
+    const libre = await app.inject({ method: 'POST', url: `/saves/${saveId}/companeros/${companionId}/plantilla`, payload: { plantillaEquipoId: librePlantillaId } });
+    expect(libre.statusCode).toBe(200);
+    expect((await prisma.companion.findUniqueOrThrow({ where: { id: companionId } })).rolReino).toBeNull();
+
+    const guardia = await app.inject({ method: 'POST', url: `/saves/${saveId}/companeros/${companionId}/plantilla`, payload: { plantillaEquipoId: guardiaPlantillaId } });
+    expect(guardia.statusCode).toBe(200);
+    expect((await prisma.companion.findUniqueOrThrow({ where: { id: companionId } })).rolReino).toBe('guardia');
+
+    await app.inject({ method: 'POST', url: `/saves/${saveId}/companeros/${diplomaticoId}/plantilla`, payload: { plantillaEquipoId: guardiaPlantillaId } });
+    expect((await prisma.companion.findUniqueOrThrow({ where: { id: diplomaticoId } })).rolReino).toBe('diplomatico');
+
+    const invalido = await app.inject({ method: 'POST', url: `/saves/${saveId}/companeros/${companionId}/plantilla`, payload: { plantillaEquipoId: null, rolReino: 'rey' } });
+    expect(invalido.statusCode).toBe(400);
+  });
+
+  it('ruta rol-reino: valida, fija, y permite asignar edificio tras fijar el rol; quitar el rol desasigna el edificio', async () => {
+    const app = await buildApp();
+    await prisma.companion.update({ where: { id: companionId }, data: { rolReino: null } });
+    const antes = await app.inject({ method: 'POST', url: `/saves/${saveId}/companeros/${companionId}/asignar-edificio`, payload: { buildingId } });
+    expect(antes.statusCode).toBe(400);
+
+    const malo = await app.inject({ method: 'POST', url: `/saves/${saveId}/companeros/${companionId}/rol-reino`, payload: { rolReino: 'rey' } });
+    expect(malo.statusCode).toBe(400);
+    const ok = await app.inject({ method: 'POST', url: `/saves/${saveId}/companeros/${companionId}/rol-reino`, payload: { rolReino: 'trabajador' } });
+    expect(ok.statusCode).toBe(200);
+    expect(ok.json().companion.rolReino).toBe('trabajador');
+
+    const asignar = await app.inject({ method: 'POST', url: `/saves/${saveId}/companeros/${companionId}/asignar-edificio`, payload: { buildingId } });
+    expect(asignar.statusCode).toBe(200);
+
+    const quitar = await app.inject({ method: 'POST', url: `/saves/${saveId}/companeros/${companionId}/rol-reino`, payload: { rolReino: null } });
+    expect(quitar.statusCode).toBe(200);
+    const c = await prisma.companion.findUniqueOrThrow({ where: { id: companionId } });
+    expect(c.rolReino).toBeNull();
+    expect(c.buildingId).toBeNull();
+
+    const ajeno = await app.inject({ method: 'POST', url: `/saves/otra-partida/companeros/${companionId}/rol-reino`, payload: { rolReino: 'guardia' } });
+    expect(ajeno.statusCode).toBe(404);
+  });
+});
