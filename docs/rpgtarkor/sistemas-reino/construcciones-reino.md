@@ -270,6 +270,10 @@ tocar el del jugador. Suite completa 2627/2627 en verde (aislado — 2 fallos en
 paralelo con el resto de la suite fueron contención/timing conocidos, reproducidos limpios
 ejecutando esos 2 archivos juntos en aislamiento).
 
+**Edificios en los que producir (2026-09-28):** diseñados en
+[edificios-de-oficio.md](edificios-de-oficio.md) — un edificio por oficio, con niveles y plazas de
+trabajador. Hasta que se implementen, el motor de producción no tiene dónde correr.
+
 **Pendiente real, ahora sí de front**: CRUD de `OrdenProduccion` desde el panel (asignar
 receta+prioridad+modo+límite a un `Building`, asignar `Companion.buildingId`), UI para
 `AlmacenLimite`, y decidir qué recetas de las 52 sirven tal cual como recolección de Reino (ninguna

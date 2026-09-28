@@ -34,6 +34,13 @@ de mecánica y no son lore suelto.
   Jeyselt), pero sin talleres.
 - Patrón de nombre: "[Oficio] del Clan [X]". Los salones son "[Clan]'sedsar".
 
+## Edificios de oficio (diseño 2026-09-28, sin código)
+Un edificio de producción por oficio, con 3 niveles (Taller, Obrador, Gran obrador: recetas t1-3,
+t4-6 y t7-9) y 1/2/4 plazas de trabajador: Herrería, Curtiduría, Peletería, Desolladero, Corrales,
+Carpintería, Sastrería, Herboristería, Casa de curas, Taller de alquimia, Cocina común, Embarcadero de
+pesca (solo en costa), Obrador de piedra y Boca de mina (solo con veta). NO proponer edificios de
+oficio distintos de estos: si hace falta uno nuevo, primero hace falta el oficio.
+
 ## Materiales de construcción que existen
 Madera y Hojas de Telda, Musgo Rojo (tejados), Chudos Rojizos (techado), Huesos de Gargantúa
 (postes y pilares), Roca de Llanura Roja, Rovalnica, Roca Luclara (t6), Cera Lebude, resinas (Telda

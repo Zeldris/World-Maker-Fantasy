@@ -1363,3 +1363,6 @@ provisional o revisable en el historial de cada fichero.
   Meseta (Vresk Hes, Vresk Tuh y Vresk Kei); fauna nueva, el Vreskal (ORDENADOS, el primero) y el
   Escarchín (Lago Cristalice); cronología: ciudades numeradas (0-1.000) y nacimiento de la corriente
   radical (~3.650-3.700). Todo pendiente de código.
+
+- **Edificios de oficio (2026-09-28)**: diseño en `rpgtarkor/sistemas-reino/edificios-de-oficio.md`.
+  Todo el código pendiente está en su § 7.

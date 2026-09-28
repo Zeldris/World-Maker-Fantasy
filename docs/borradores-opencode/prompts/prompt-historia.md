@@ -22,14 +22,14 @@ PASO 3 — ESCRIBE · variante A: evento en un hueco de la cronología
 
 ESCRIBE
 
-Necesito 1 evento en el hueco [hueco de historia/cronologia.md, p. ej. "del ~2.950 al ~3.600"].
-Participantes: [razas o facciones]. Que no contradiga nada de la tabla.
+Necesito 1 evento en el hueco del ~2.950 al ~3.600.
+Participantes: Orcos, Nabieus, Faerus y Gorintes. Que no contradiga nada de la tabla.
 
 En "Ficha técnica" pon exactamente estos campos:
 - Título · Era (mítica, SIN año; o común, con año provisional dentro de un hueco de la cronología)
 - Tipo (batalla, tratado, fundación, catástrofe, descubrimiento, represión) · Participantes reales
 - Causas · Qué pasó · Consecuencias en el presente (4.010)
-- Documento que lo recuerda (objeto) o "sin documento" (los Faerus no escriben)
+- Documento que lo recuerda (objeto) o "sin documento" (los Faerus no escriben documentos)
 
 ───────────────────────────────────────────────────────────────
 PASO 3 — ESCRIBE · variante B: origen de un hecho canon

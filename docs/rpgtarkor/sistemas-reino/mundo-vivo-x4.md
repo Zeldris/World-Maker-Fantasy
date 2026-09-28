@@ -16,6 +16,9 @@ sin cargar las 1300 líneas del documento único original. Ver también
 - [Construcciones y economía de Reino](construcciones-reino.md) — arquitectura `Building`/
   `factionId`, panel de Reino (`OrdenProduccion`/`AlmacenLimite`), jerarquía Capital/Cuartel
   Avanzado/Parcelas.
+- [Edificios de oficio](edificios-de-oficio.md) — un edificio de producción por oficio (14),
+  3 niveles, trabajadores asignados y cadenas de producción (X4 + Bellwright + D&D), y qué le falta
+  a cada facción. Diseño de 2026-09-28, sin código.
 - [Expediciones y población de facción](expediciones-poblacion.md) — recolección/exploración con
   escoltas, reproducción poblacional de facción.
 - [IA de combate y curvas dinámicas de mundo](../sistemas-combate/ia-combate-y-mundo.md) — tramos de Inteligencia en

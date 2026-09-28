@@ -2182,6 +2182,11 @@ Ya está en docs; falta el código. Detalle en cada fichero regional y en
 - [x] **En docs:** ciudades numeradas (0-1.000), los mil años salvajes (~1.000-2.000), El Borde (~2.100-2.800), la Senda del Sílice (~3.000-3.500), la corriente radical (~3.650-3.700), El Claro de la Manada arrasado (~4.006-4.008)
 - [ ] **Código (opcional):** `historiaEntries` para las que tengan documento; `loreChunks.ts` + `npm run reindex-lore` con los hilos nuevos (Senda del Sílice, El Borde, la tala del borde, el tributo por mar)
 
+### P-10 — Edificios de oficio (X4 + Bellwright + D&D)
+- [x] **En docs:** `rpgtarkor/sistemas-reino/edificios-de-oficio.md` (diseño completo: 14 edificios, 3 niveles, plazas, reglas de sitio, qué siembra cada facción)
+- [ ] **Validar con Álvaro:** producción agregada de las facciones en `KingdomStats` (§ 4 del documento)
+- [ ] **Código:** la lista del § 7 del documento (recetas, gate de nivel de edificio, plazas, Casa de curas, Cocina → comida, seed de edificios de facción, recetas de extracción)
+
 ### P-09 — Geografía real
 - [x] **En docs:** tres franjas y tabla de rutas (`areas.md` § Cómo encajan en el mapa)
 - [ ] **Revisar:** la incoherencia antigua entre el mapa de Azgaar (Karot Veku a ~110 km del Cruce) y el grafo del juego (18-25 km). No se ha tocado
