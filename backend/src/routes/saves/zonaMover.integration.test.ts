@@ -537,6 +537,49 @@ describe('POST /saves/:id/zona/mover', () => {
     expect(JSON.parse(res.body).dynamicModeOffer).toMatchObject({ tipo: 'RECURSO', targetSlug: 'test-mover-recurso' });
   });
 
+  // Bug real jugando en vivo (2026-09-28): con "X te corta el paso" pendiente el jugador seguía
+  // caminando y el agresor le perseguía hasta su misma casilla sin consecuencia alguna.
+  it('con una oferta de combate forzado pendiente no se puede mover: 409 y la posición no cambia', async () => {
+    await prisma.save.update({
+      where: { id: saveId },
+      data: { pendingDynamicModeOffer: { tipo: 'NPC', targetSlug: 'test-mover-agresivo', targetName: 'Agresor de Prueba', quienInicia: 'npc', combateForzado: true } },
+    });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 375, y: 25 } } });
+    expect(res.statusCode).toBe(409);
+    expect(JSON.parse(res.body).error).toContain('Agresor de Prueba');
+    const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveAfter.zonaPosX).toBe(25);
+  });
+
+  it('dar un paso con una oferta pacífica pendiente la descarta (alejarse = ignorarla) y deja ofrecer encuentros nuevos', async () => {
+    await prisma.save.update({
+      where: { id: saveId },
+      data: { pendingDynamicModeOffer: { tipo: 'FAUNA', targetSlug: 'otra-fauna-lejana', targetName: 'Otra', quienInicia: 'jugador' } },
+    });
+    await prisma.zonePoint.create({
+      data: { locationId, x: 125, y: 75, tipo: 'RECURSO', targetSlug: 'test-mover-recurso', cantidad: 1, activo: true },
+    });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 375, y: 25 } } });
+    const body = JSON.parse(res.body);
+    expect(body.ofertaDescartada).toBe(true);
+    // El mismo paso ya puede toparse con algo nuevo (antes: bloqueado por la oferta vieja).
+    expect(body.dynamicModeOffer).toMatchObject({ tipo: 'RECURSO', targetSlug: 'test-mover-recurso' });
+  });
+
+  it('un AGRESIVO nunca se silencia por ser el último encuentro: sigue cortando el paso', async () => {
+    await prisma.zonePoint.create({
+      data: { locationId, x: 75, y: 25, tipo: 'NPC', targetSlug: 'test-mover-agresivo', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] },
+    });
+    await prisma.save.update({ where: { id: saveId }, data: { zonaUltimoEncuentro: { targetSlug: 'test-mover-agresivo', locationId } } });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 375, y: 25 } } });
+    const body = JSON.parse(res.body);
+    expect(body.colision).toMatchObject({ targetSlug: 'test-mover-agresivo', temperamento: 'AGRESIVO' });
+    expect(body.dynamicModeOffer).toMatchObject({ combateForzado: true });
+  });
+
   it('un ZonePoint FAUNA y uno RECURSO en la misma celda: la FAUNA (ser vivo) gana, el recurso ni se evalúa', async () => {
     await prisma.zonePoint.create({
       data: { locationId, x: 75, y: 25, tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] },

@@ -29,6 +29,12 @@ import { createInFlightClaimSet } from '../../lib/inFlightClaimSet.js';
 /// posición de partida.
 const zonaMoverClaims = createInFlightClaimSet<string>(10_000);
 
+/// AGRESIVO/ENEMIGO — el encuentro corta el paso (`combateForzado`), nunca es una oferta que se pueda
+/// dejar pasar ni silenciar por `Save.zonaUltimoEncuentro`.
+function esTemperamentoHostil(temperamento: string): boolean {
+  return temperamento === 'AGRESIVO' || temperamento === 'ENEMIGO';
+}
+
 /// Extraído para poder derivar el tipo exacto de `save` que recibe `resolverMovimientoEnZona`
 /// (`Prisma.SaveGetPayload<{ select: typeof SAVE_SELECT_PARA_MOVER }>`) sin repetir el `select` ni
 /// caer en `any`/en el tipo genérico completo de `Save` (que no reflejaría este `select` acotado).
@@ -41,6 +47,7 @@ const SAVE_SELECT_PARA_MOVER = {
   zonaPosY: true,
   zonaCaminoPendiente: true,
   zonaUltimoEncuentro: true,
+  pendingDynamicModeOffer: true,
   currentLocationId: true,
   currentLocation: { select: { id: true } },
   worldState: { select: { factionsStatus: true, fictionalMinutes: true, fictionalDateLabel: true } },
@@ -637,11 +644,12 @@ export async function zonaRoutes(app: FastifyInstance) {
       // regla igual que cualquier otro NPC de nombre propio no descubierto todavía.
       const nombre = nombreVisibleColision(punto.targetSlug, npc?.kind, nombreReal);
       if (celdaAdyacenteOMisma(celda, celdaPunto)) {
-        if (punto.targetSlug === ultimoEncuentroSlug) {
+        const temperamento = npc ? effectiveTemperamento(npc.temperamento, npc.faction, factionsStatus) : 'CAUTELOSO';
+        // Un AGRESIVO/ENEMIGO nunca se silencia: si sigue encima del jugador, vuelve a cortarle el paso.
+        if (punto.targetSlug === ultimoEncuentroSlug && !esTemperamentoHostil(temperamento)) {
           ultimoEncuentroSigueCerca = true;
           continue;
         }
-        const temperamento = npc ? effectiveTemperamento(npc.temperamento, npc.faction, factionsStatus) : 'CAUTELOSO';
         colision = { targetSlug: punto.targetSlug, targetName: nombre, temperamento };
         colisionTipo = punto.tipo === 'NPC' ? 'NPC' : 'FAUNA';
         destrezaColision = (npc?.attributes as { destreza?: number } | null)?.destreza ?? 10;
@@ -653,11 +661,11 @@ export async function zonaRoutes(app: FastifyInstance) {
         const celdaDinamico = celdaDePixel({ x: dinamico.x, y: dinamico.y });
         const nombreDinamico = nombreVisibleColision(dinamico.targetSlug, dinamico.kind, dinamico.targetName);
         if (celdaAdyacenteOMisma(celda, celdaDinamico)) {
-          if (dinamico.targetSlug === ultimoEncuentroSlug) {
+          const temperamento = effectiveTemperamento(dinamico.temperamento, dinamico.faction, factionsStatus);
+          if (dinamico.targetSlug === ultimoEncuentroSlug && !esTemperamentoHostil(temperamento)) {
             ultimoEncuentroSigueCerca = true;
             continue;
           }
-          const temperamento = effectiveTemperamento(dinamico.temperamento, dinamico.faction, factionsStatus);
           colision = { targetSlug: dinamico.targetSlug, targetName: nombreDinamico, temperamento };
           colisionTipo = dinamico.tipo;
           destrezaColision = dinamico.attributes.destreza;
@@ -686,7 +694,7 @@ export async function zonaRoutes(app: FastifyInstance) {
       | null = null;
     let logEntry: { id: string; text: string; timeLabel: string; createdAt: string } | null = null;
     if (colision) {
-      const combateForzado = colision.temperamento === 'AGRESIVO' || colision.temperamento === 'ENEMIGO';
+      const combateForzado = esTemperamentoHostil(colision.temperamento);
       const freshSave = await tx.save.findUnique({ where: { id: saveId }, select: { pendingDynamicMode: true, pendingDynamicModeOffer: true } });
       if (!freshSave?.pendingDynamicMode && !freshSave?.pendingDynamicModeOffer) {
         // "¿Quién ve a quién primero?" (2026-09-17, efecto MECÁNICO real desde 2026-09-20 para
@@ -782,6 +790,14 @@ export async function zonaRoutes(app: FastifyInstance) {
     if (rejectIfEnded(save, reply)) return;
     if (rejectIfPendingDeath(save, reply)) return;
     if (!save.currentLocationId) return reply.status(400).send({ error: 'Sin ubicación actual — no hay zona donde moverse.' });
+    // Encuentro AGRESIVO/ENEMIGO sin resolver (2026-09-28, bug real jugando en vivo: con la tarjeta
+    // "X te corta el paso" pendiente el jugador podía seguir caminando, y el agresor le perseguía
+    // hasta su misma casilla sin que pasara nada) — hay que reaccionar (Interactuar → combatir o
+    // huir) antes de volver a moverse, igual que promete el propio texto del encuentro.
+    const ofertaPendiente = save.pendingDynamicModeOffer as { combateForzado?: boolean; targetName?: string } | null;
+    if (ofertaPendiente?.combateForzado) {
+      return reply.status(409).send({ error: `${ofertaPendiente.targetName ?? 'Algo'} no te deja marcharte — tienes que reaccionar primero.` });
+    }
 
     if (!zonaMoverClaims.claim(save.id)) {
       return reply.status(409).send({ error: 'Ya hay un movimiento en curso para esta partida.' });
@@ -855,7 +871,7 @@ export async function zonaRoutes(app: FastifyInstance) {
         }
         // El mundo no da un paso si el jugador tampoco lo da (mismo criterio "un paso tuyo = un
         // paso del mundo" — camino vacío significa que el destino ya es la celda actual).
-        return { jugador: posicionActual, caminoRestante: [], colision, dynamicModeOffer, logEntry, zonePointsMovidos: [] as { id: string; x: number; y: number }[] };
+        return { jugador: posicionActual, caminoRestante: [], colision, dynamicModeOffer, logEntry, zonePointsMovidos: [] as { id: string; x: number; y: number }[], ofertaDescartada: false };
       });
     }
 
@@ -863,6 +879,16 @@ export async function zonaRoutes(app: FastifyInstance) {
     const nuevaPosicion = pixelDeCelda(siguienteCelda);
 
     const resultado = await prisma.$transaction(async (tx) => {
+      // Alejarse andando de una oferta pacífica sin responder = ignorarla (2026-09-28, bug real
+      // jugando en vivo: la tarjeta vieja seguía "pendiente" en BD y, mientras nadie pulsara su
+      // Ignorar, ningún encuentro nuevo podía ofrecerse en toda la zona — `detectarEncuentroEnCelda`
+      // nunca ofrece nada con otra oferta pendiente). Se limpia ANTES de detectar, para que este
+      // mismo paso ya pueda toparse con algo nuevo. Las de combate forzado ya se rechazaron arriba.
+      const ofertaDescartada = !!save.pendingDynamicModeOffer;
+      if (ofertaDescartada) {
+        await tx.save.update({ where: { id: save.id }, data: { pendingDynamicModeOffer: Prisma.JsonNull } });
+      }
+
       // El mundo también se mueve — un paso por cada paso del jugador, ANTES de comprobar colisión
       // (mismo criterio Mount & Blade: ambos avanzan a la vez, la colisión se evalúa sobre el
       // estado ya actualizado, no sobre la posición vieja de la fauna). `zonePointsMovidos` viaja
@@ -915,7 +941,7 @@ export async function zonaRoutes(app: FastifyInstance) {
         },
       });
 
-      return { jugador: nuevaPosicion, caminoRestante: caminoRestantePixel, colision, dynamicModeOffer, logEntry, zonePointsMovidos };
+      return { jugador: nuevaPosicion, caminoRestante: caminoRestantePixel, colision, dynamicModeOffer, logEntry, zonePointsMovidos, ofertaDescartada };
     });
 
     return resultado;

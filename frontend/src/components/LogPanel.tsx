@@ -486,7 +486,11 @@ export const LogPanel = memo(function LogPanel({
                               entry.dynamicModeOffer!.combateForzado,
                             ),
                     },
-                    { label: 'Ignorar', tone: 'neutral', disabled: entry.dynamicModeOffer.busy, onClick: () => onDismissDynamicModeOffer?.(entry.id) },
+                    // Un agresivo que te corta el paso no se ignora (2026-09-28): Interactuar lleva a
+                    // combatir o, si lo viste tú primero, a huir — nunca una salida silenciosa.
+                    ...(entry.dynamicModeOffer.combateForzado
+                      ? []
+                      : [{ label: 'Ignorar', tone: 'neutral' as const, disabled: entry.dynamicModeOffer.busy, onClick: () => onDismissDynamicModeOffer?.(entry.id) }]),
                   ]}
                 />
               )}

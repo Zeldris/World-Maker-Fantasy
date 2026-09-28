@@ -11,6 +11,8 @@ interface ZonaMovimientoModalProps {
   /// Icono de parcela (§ 7.4, 2026-09-21) — pasados tal cual a `ZonaPanel`, ver comentario ahí.
   professionRecipes?: ProfessionRecipeInfo[]
   onRefreshSave?: () => Promise<void>
+  /// Pasado tal cual a `ZonaPanel`, ver comentario ahí.
+  onOfertaDescartada?: () => void
 }
 
 /// Pieza 2 del rediseño de movimiento en Zona (2026-09-09, decisión explícita de Álvaro: "la opción
@@ -28,7 +30,7 @@ interface ZonaMovimientoModalProps {
 /// izquierda (70%) y el resto del contenido a la derecha (30%) con su propio scroll — petición
 /// explícita de Álvaro: "aprovechemos el espacio horizontal... así no teniendo que scrollear",
 /// aplicado SOLO aquí, no en el tab Mapa informativo.
-export function ZonaMovimientoModal({ saveId, onEncuentroZona, onClose, onViajarA, professionRecipes, onRefreshSave }: ZonaMovimientoModalProps) {
+export function ZonaMovimientoModal({ saveId, onEncuentroZona, onClose, onViajarA, professionRecipes, onRefreshSave, onOfertaDescartada }: ZonaMovimientoModalProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     rootRef.current?.focus()
@@ -64,6 +66,7 @@ export function ZonaMovimientoModal({ saveId, onEncuentroZona, onClose, onViajar
             onViajarA={onViajarA}
             professionRecipes={professionRecipes}
             onRefreshSave={onRefreshSave}
+            onOfertaDescartada={onOfertaDescartada}
           />
         </div>
       </div>

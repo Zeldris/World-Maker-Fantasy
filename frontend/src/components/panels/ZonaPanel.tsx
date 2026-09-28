@@ -52,6 +52,9 @@ interface ZonaPanelProps {
   /// también debe ofrecer construir.
   professionRecipes?: ProfessionRecipeInfo[]
   onRefreshSave?: () => Promise<void>
+  /// Un paso real descartó una oferta pacífica sin responder (2026-09-28) — el caller retira esa
+  /// tarjeta del log para que no quede un "Interactuar" que el backend ya no reconoce.
+  onOfertaDescartada?: () => void
 }
 
 /// Grupo 3 § Mundo determinista, Capa 1 (2026-08-25, docs/rpgtarkor/mundo-determinista.md) —
@@ -319,7 +322,7 @@ function regionControlDisplay(control: RegionControlInfo): { text: string; tone:
   }
 }
 
-export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, columnasAncho = false, onClose, onViajarA, professionRecipes, onRefreshSave }: ZonaPanelProps) {
+export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, columnasAncho = false, onClose, onViajarA, professionRecipes, onRefreshSave, onOfertaDescartada }: ZonaPanelProps) {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<ZonaResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -376,6 +379,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
       while (sigue && movimientoTokenRef.current === miToken) {
         const resultado = await moverEnZona(saveId, destino)
         if (movimientoTokenRef.current !== miToken) break // cancelado por un clic nuevo mientras esperaba
+        if (resultado.ofertaDescartada) onOfertaDescartada?.()
         // Sincronización real del mundo (2026-09-09, bug real: "los elementos se mueven, pero no...
         // a la vez que muevo yo") — el backend ya movió la fauna/NPC este mismo paso
         // (`avanzarZonePointsUnPaso`); se fusiona aquí sobre `puntos` para que se anime en el mismo
@@ -449,8 +453,9 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
           await new Promise((r) => setTimeout(r, MS_POR_PASO_MOVIMIENTO))
         }
       }
-    } catch {
-      if (movimientoTokenRef.current === miToken) setMensajeMovimiento('No se pudo mover — inténtalo de nuevo.')
+    } catch (err) {
+      // El backend explica por qué no (p.ej. un agresivo que te corta el paso, 409) — mostrarlo.
+      if (movimientoTokenRef.current === miToken) setMensajeMovimiento(err instanceof Error && err.message ? err.message : 'No se pudo mover — inténtalo de nuevo.')
     } finally {
       if (movimientoTokenRef.current === miToken) setMovimientoEnCurso(false)
     }

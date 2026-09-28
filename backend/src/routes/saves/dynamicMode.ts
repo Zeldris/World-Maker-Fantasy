@@ -466,6 +466,13 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
     if (rejectIfEnded(save, reply)) return;
     if (rejectIfPendingDeath(save, reply)) return;
+    // Un AGRESIVO/ENEMIGO que te corta el paso no se "ignora" (2026-09-28, bug real jugando en vivo:
+    // "Ignorar" en la tarjeta "X te corta el paso" era una huida gratis y silenciosa de un combate
+    // forzado) — hay que Interactuar (combatir o, si el jugador lo vio primero, huir).
+    const ofertaSinAbrir = save.pendingDynamicModeOffer as { combateForzado?: boolean; targetName?: string } | null;
+    if (!save.pendingDynamicMode && ofertaSinAbrir?.combateForzado) {
+      return reply.status(409).send({ error: `${ofertaSinAbrir.targetName ?? 'Algo'} no te deja marcharte — tienes que reaccionar.` });
+    }
     if (save.pendingDynamicMode || save.pendingDynamicModeOffer) {
       // Franja 0 (2026-09-08) — "Salir" de una conversación YA en curso también debe dejar rastro
       // en el log (antes se perdía igual que un cierre por `cierra: true`); "Ignorar" una oferta sin

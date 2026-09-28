@@ -516,6 +516,9 @@ export function GameView() {
   // combat.combatOpen de useCombatFlow) para tener un único punto de verdad de "hay algo abierto
   // encima del juego ahora mismo" antes de decidir si se abre uno nuevo.
   const anyModalOpen = anyActionModalOpen || !!detailTarget || !!kingdomFoundedInfo || combat.combatOpen
+  // Un agresivo te corta el paso (2026-09-28) — la brújula se oculta hasta reaccionar (el backend
+  // rechaza igualmente moverse con 409, esto solo evita ofrecer algo que no se puede hacer).
+  const combateForzadoPendiente = characterLog.some((e) => e.dynamicModeOffer?.combateForzado)
 
   // Pop del botón "Nivel X" solo en una subida real, nunca al cargar la partida (roadmap de
   // animaciones 2026-07-20, item 7) — mismo patrón que HealthBar: comparar contra un ref, no
@@ -1890,7 +1893,7 @@ export function GameView() {
               POR ENCIMA del `PanelDrawer` de Mapa/Reputación/Diario/etc., que vive en `z-20` — ese
               drawer nunca contó como "modal" para `anyModalOpen`, así que la brújula tapaba su
               contenido en vez de quedar oculta detrás). */}
-          {saveId && !anyModalOpen && !zonaModalOpen && !activePanel && (
+          {saveId && !anyModalOpen && !zonaModalOpen && !activePanel && !combateForzadoPendiente && (
             <button
               type="button"
               onClick={() => setZonaModalOpen(true)}
@@ -2453,6 +2456,11 @@ export function GameView() {
           // tras "Descansar en campamento", una acción directa sin /turn/narrate).
           professionRecipes={professionRecipes}
           onRefreshSave={refreshSave}
+          // Alejarse andando de una oferta pacífica la descarta en el backend (2026-09-28) — se
+          // retira su tarjeta para no dejar un "Interactuar" huérfano en el log.
+          onOfertaDescartada={() =>
+            setCharacterLog((prev) => prev.map((e) => (e.dynamicModeOffer && !e.dynamicModeOffer.combateForzado ? { ...e, dynamicModeOffer: undefined } : e)))
+          }
         />
       )}
 

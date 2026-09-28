@@ -1233,6 +1233,9 @@ export interface MoverZonaResultado {
   /// refetch completo. `[]` cuando el jugador no avanzó (camino vacío) — el mundo no da un paso si
   /// el jugador tampoco lo da.
   zonePointsMovidos: { id: string; x: number; y: number }[]
+  /// `true` si este paso descartó una oferta pacífica que seguía sin responder (2026-09-28 —
+  /// alejarse andando equivale a ignorarla); el frontend retira su tarjeta del log.
+  ofertaDescartada?: boolean
 }
 export async function moverEnZona(saveId: string, destino: { x: number; y: number }): Promise<MoverZonaResultado> {
   return fetchJson(`${API_URL}/saves/${saveId}/zona/mover`, {

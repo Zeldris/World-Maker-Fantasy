@@ -228,6 +228,21 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
     expect(logCountDespues).toBe(logCountAntes);
   });
 
+  // Bug real jugando en vivo (2026-09-28): "Ignorar" en "X te corta el paso" era una huida gratis.
+  it('ignorar una oferta de combate forzado (AGRESIVO/ENEMIGO) sin abrir: 409 y la oferta sigue pendiente', async () => {
+    const oferta = { tipo: 'NPC', targetSlug: 'orco-enfurecido-hondonada', targetName: 'Alguien', quienInicia: 'npc', combateForzado: true };
+    await prisma.save.update({ where: { id: saveId }, data: { pendingDynamicMode: Prisma.JsonNull, pendingDynamicModeOffer: oferta } });
+    try {
+      const app = await buildApp();
+      const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/ignorar` });
+      expect(res.statusCode).toBe(409);
+      const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+      expect(saveAfter.pendingDynamicModeOffer).toEqual(oferta);
+    } finally {
+      await prisma.save.update({ where: { id: saveId }, data: { pendingDynamicModeOffer: Prisma.JsonNull } });
+    }
+  });
+
   it('interactuar con cierra:true YA en la primera vuelta: vuelca esa única vuelta a un LogEntry (caso borde, Franja 0)', async () => {
     narrarVueltaModoDinamico.mockResolvedValueOnce({
       narration: 'El jashil huye antes de que puedas acercarte.',
