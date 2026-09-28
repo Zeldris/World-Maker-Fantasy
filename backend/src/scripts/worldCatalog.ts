@@ -872,7 +872,7 @@ export const locations: LocationInput[] = [
     region: 'El Margen Silencioso',
     kind: 'pasto estacional',
     description:
-      'Un claro amplio en la mitad occidental del Margen Silencioso donde las manadas Faerus que no viven en Hashma o Kegi se juntan para cazar y compartir la primera pieza — un lugar de encuentro, no una construcción. Algunas manadas mantienen pequeños puestos avanzados más allá de la frontera oeste, ya en las Llanuras del Viento Rojo. Fuera del núcleo jugable actual.',
+      'Un claro amplio en la mitad occidental del Margen Silencioso donde las manadas Faerus que no viven en Hashma o Kegi se juntan para cazar y compartir la primera pieza — un lugar de encuentro, no una construcción. Algunas manadas mantienen pequeños puestos avanzados más allá de la frontera norte, ya en las Llanuras del Viento Rojo. Fuera del núcleo jugable actual.',
     aliases: ['claro de la manada', 'el claro', 'territorio faerus'],
   },
 
@@ -914,7 +914,7 @@ export const locations: LocationInput[] = [
       // División este/oeste (2026-07-22, petición explícita): los Nabieus predominan al este,
       // con presencia hasta el borde de Ciénaga Troncal (vecina real, no una frontera cerrada);
       // los Faerus ocupan el resto — la mayor parte de la región — con puestos avanzados que
-      // cruzan algo la frontera oeste hacia las Llanuras.
+      // cruzan algo la frontera norte hacia las Llanuras.
       'Cinturón denso de selva templada, pantanos y bosques de coníferas de madera negra que separa la Meseta del Orden de las tierras salvajes del norte — un laberinto donde el sonido parece apagarse de forma antinatural. Los Nabieus predominan en la mitad oriental, con presencia dispersa hasta el borde de Ciénaga Troncal; los Faerus ocupan la mayor parte del resto de la región, con pequeños puestos avanzados que se adentran algo más allá de la frontera oeste con las Llanuras del Viento Rojo. Fuera del núcleo jugable actual.',
     aliases: ['el margen silencioso'],
   },
@@ -4232,7 +4232,8 @@ export const npcs: NpcInput[] = [
     // entrada de región más arriba). Auditoría 2026-08-14, ver comentario de `nucleoJugable`.
     nucleoJugable: false,
     aliases: ['yovenne tal', 'archimagistrada yovenne tal', 'archimagistrada tal'],
-    faction: 'Concordia de Hierro',
+    // A-01 (2026-09-28): lidera Los del Obelisco, la facción moderada, que no es rama de la Concordia.
+    faction: 'Los del Obelisco',
     genero: 'F', // Título ya en femenino ("Archimagistrada", no "Archimagistrado") — misma auditoría de género, 2026-08-08.
     role: 'Archimagistrada de la facción moderada Goirnte',
     level: 5,
@@ -8423,7 +8424,7 @@ export const items: ItemCatalogInput[] = [
     equipSlot: 'ARMA_SECUNDARIA',
     tipoArma: 'CUCHILLO',
     valorGoirnos: 20,
-    description: 'Cuchillo de desuello hecho entre dos clanes: la hoja, de hielo sílice con forma de media luna, la tallan los Helsig; las cachas, de Caparazón de Espina del Viento, las pone el Desolladero del Clan Serhu, porque la quitina no resbala con sangre en las manos. Es el único objeto de Karot Veku que reconoce abiertamente que los Serhu necesitan a otro clan para algo. Versión de oficio del cuchillo de hielo sílice de Gorhorn, más fina, útil también al peletero.',
+    description: 'Cuchillo de desuello hecho entre dos clanes: la hoja, de hielo sílice con forma de hoz corta, la tallan los Helsig; las cachas, de Caparazón de Espina del Viento, las pone el Desolladero del Clan Serhu, porque la quitina no resbala con sangre en las manos. Es el único objeto de Karot Veku que reconoce abiertamente que los Serhu necesitan a otro clan para algo. Versión de oficio del cuchillo de hielo sílice de Gorhorn, más fina, útil también al peletero.',
     statBonuses: { destreza: 2 },
     dimensiones: 'Hoja curva de 14 cm, empuñadura de 11 cm.',
     lugarOrigen: 'Hoja del Clan Helsig; montado en el Desolladero del Clan Serhu.',
@@ -11116,7 +11117,7 @@ export const harvestSourceDescriptions: Record<string, string> = {
   'salvia-del-polvo':
     'Mata baja de hojas grises apagadas y aroma amargo, crece pegada al suelo en hondonadas y rincones de sombra — machacada entre los dedos suelta un jugo oscuro que corta hemorragias.',
   'sombra-de-kroj':
-    'Criatura voladora mediana de plumaje gris ceniza y vuelo absolutamente silencioso, ojos oscuros y fijos — caza en grupo en El Margen Silencioso imitando susurros de voces humanas.',
+    'Criatura voladora mediana de plumaje gris ceniza y vuelo absolutamente silencioso, ojos oscuros y fijos — caza en grupo en El Margen Silencioso devolviendo, como un eco retrasado, los pasos y la respiración de sus presas.',
   'trepador-ocaso':
     'Árbol oscuro de corteza casi negra que rezuma una resina densa de vetas doradas al partirla — forma la mayor parte de la Ciénaga Troncal.',
   'veta-hierro-pilares-rotos':
@@ -11638,7 +11639,7 @@ export const zonePoints: ZonePointInput[] = [
   // Edificio de facción (P-10, 2026-09-28) — el embarcadero real del Maestro, no la Location
   // 'embarcadero-de-ceniza' (que ya tiene su propio ZonePoint EDIFICIO apuntándose a sí misma sin
   // FactionBuilding real detrás, anti-patrón previo fuera de alcance de esta tanda).
-  { locationSlug: 'playa-de-ceniza-blanca', x: 480, y: 590, tipo: 'EDIFICIO', targetSlug: 'embarcadero-pesca-serhu', label: 'Embarcadero de pesca del Clan Serhu' },
+  { locationSlug: 'playa-de-ceniza-blanca', x: 560, y: 540, tipo: 'EDIFICIO', targetSlug: 'embarcadero-pesca-serhu', label: 'Embarcadero de pesca del Clan Serhu' },
 
   // Los Acantilados Partidos — mismo hueco real de fauna/recurso costero. Flor de Ceniza (rocoso)
   // y Liquen del Cauce (humedo) son los matches de terreno disponibles.
