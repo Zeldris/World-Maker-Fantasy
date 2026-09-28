@@ -10,6 +10,35 @@ Cada entrada: fecha, zona auditada, hallazgo, y estado.
 
 ---
 
+## Estado verificado contra el código (2026-09-28)
+
+Las entradas de abajo conservan su texto original. Esta tabla dice cómo está cada una hoy.
+
+| Entrada | Estado |
+|---|---|
+| `npcAttributesForLevel` nunca se llama | ✅ Resuelta: 4 llamadas |
+| `ENERGY_RECOVER_*` sin uso | ✅ Resuelta: constantes retiradas (`energy.ts`) |
+| `companionCountsAgainstBuildingSlots` sin uso | ✅ Resuelta: función retirada |
+| Sin tests de supervivencia y `autoEquiparDesdeAlmacen` | ✅ Resuelta: `companionSupervivencia.test.ts` |
+| Guard de `save.endedAt` duplicado | ✅ Resuelta: helper `rejectIfEnded` (22 ficheros) |
+| `companeros.ts` sin tests de ruta | ✅ Resuelta: `companeros.integration.test.ts` |
+| `pendingDeathResolution` solo en `/turn/*` | ✅ Resuelta: `rejectIfPendingDeath` (19 ficheros) |
+| `/combat/matar` y compañeros sin guard de `endedAt` | ✅ Resuelta |
+| `shared.ts` sin tests | ✅ Resuelta |
+| `forcedGradosFor` sin tests | ✅ Resuelta |
+| `mismaCelda` sin tests | ✅ Resuelta |
+| Despedida de Gistera duplicada | ✅ Resuelta: `GISTERA_DESPEDIDA_NARRATION` compartida |
+| `handleFundarReino` no limpiaba al fallar | ✅ Resuelta |
+| **Tamaño de `GameView.tsx`** | ❌ Abierta: 2.637 líneas (2.277 el 09-07) |
+| **Tamaño de `turnResolution.ts`** | ❌ Abierta: 7.903 líneas (6.922 el 09-07) |
+| **Tamaño de `useCombatFlow.ts`** | ❌ Abierta: 986 líneas (859 el 09-07); ya tiene test |
+| **Tamaño de `combateMultipleOrquestacion.ts`** | ❌ Abierta: 2.291 líneas |
+| **Modales sin `role="dialog"`, Escape ni foco atrapado** | ⚠️ Parcial: solo 2 ficheros con `role="dialog"` |
+| `beforeunload` sin esperar la pausa | ⚪ Hueco aceptado, sin cambios |
+| Resto (menores agrupados, 4 `findUnique` en inventario, 409 de `session.ts`, error de envío en 6 modales) | Sin reverificar |
+
+Los tamaños están en el [roadmap](../producto/21-roadmap.md) (trimestre 1, deuda técnica).
+
 ## Índice
 
 **2026-08-25 — primera pasada con nombre propio a este archivo (auditoría de deuda técnica previa, 2026-08-13, no quedó registrada en ningún doc)**
