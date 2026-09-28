@@ -1,3 +1,11 @@
+// GENERADO desde backend/src/data/professions.ts con `npm run sync-professions` (backend). NO editar aquí.
+// FUENTE ÚNICA de los slugs de oficio (H-10). Convención: `<oficio>-<raza en plural>-<región>`
+// (razas: orcos/faerus/nabieus/goirntes; regiones: llanuras/cristal/cienaga/margen/meseta). Los
+// oficios recolectores sin raza (minero, talador) llevan solo `<oficio>-<región>`; `pescador` y
+// `diplomatico` son universales. NO importa nada: `npm run sync-professions` (backend) copia este
+// fichero tal cual a frontend/src/data/professions.ts y professionsSync.test.ts falla si divergen.
+// Editar SOLO este fichero.
+
 export interface Profession {
   id: string
   name: string
@@ -20,35 +28,35 @@ export interface Profession {
 // craftereando/construyendo con él (backend/src/services/professionProgress.ts).
 export const professions: Profession[] = [
   {
-    id: 'herrero-orco-llanuras',
+    id: 'herrero-orcos-llanuras',
     name: 'Herrería de los Orcos de las Llanuras del Viento Rojo',
     description:
       'Herrería de Orcos de las Llanuras del Viento Rojo. Esta profesión se centra en los recursos que ofrece la zona de Llanuras del Viento Rojo.',
     category: 'creacion',
   },
   {
-    id: 'herrero-orco-cristal',
+    id: 'herrero-orcos-cristal',
     name: 'Herrería de los Orcos de Cristal Helado',
     description:
       'Herrería de Orcos de Cristal Helado. Esta profesión se centra en los recursos que ofrece la zona de Cristal Helado.',
     category: 'creacion',
   },
   {
-    id: 'herrero-orco-cienaga',
+    id: 'herrero-orcos-cienaga',
     name: 'Herrería de los Orcos de la Ciénaga Troncal',
     description:
       'Herrería de Orcos de la Ciénaga Troncal. Esta profesión se centra en los recursos que ofrece la zona de la Ciénaga Troncal.',
     category: 'creacion',
   },
   {
-    id: 'herrero-nabierus-cienaga',
+    id: 'herrero-nabieus-cienaga',
     name: 'Herrería de Nabierus de la Ciénaga Troncal',
     description:
       'Herrería de Nabierus de la Ciénaga Troncal. Esta profesión se centra en los recursos que ofrece la zona de la Ciénaga Troncal.',
     category: 'creacion',
   },
   {
-    id: 'herrero-nabierus-margen',
+    id: 'herrero-nabieus-margen',
     name: 'Herrería de Nabierus del Margen Silencioso',
     description:
       'Herrería de Nabierus del Margen Silencioso. Esta profesión se centra en los recursos que ofrece la zona del Margen Silencioso.',
@@ -106,7 +114,7 @@ export const professions: Profession[] = [
       'Domador de los Faerus del Margen Silencioso. Esta profesión se centra en la fauna que ofrece la zona del Margen Silencioso.',
   },
   {
-    id: 'domador-nabierus-cienaga',
+    id: 'domador-nabieus-cienaga',
     name: 'Domador de los Nabierus de la Ciénaga Troncal',
     description:
       'Domador de los Nabierus de la Ciénaga Troncal. Esta profesión se centra en la fauna que ofrece la zona de la Ciénaga Troncal.',
@@ -150,14 +158,14 @@ export const professions: Profession[] = [
     category: 'recolección',
   },
   {
-    id: 'herborista-nabierus-cienaga',
+    id: 'herborista-nabieus-cienaga',
     name: 'Herborista de los Nabierus de la Ciénaga Troncal',
     description:
       'Herborista de los Nabierus de la Ciénaga Troncal. Esta profesión se centra en las plantas que ofrece la zona de la Ciénaga Troncal.',
     category: 'recolección',
   },
   {
-    id: 'herborista-nabierus-margen',
+    id: 'herborista-nabieus-margen',
     name: 'Herborista de los Nabierus del Margen Silencioso',
     description:
       'Herborista de los Nabierus del Margen Silencioso. Esta profesión se centra en las plantas que ofrece la zona del Margen Silencioso.',
@@ -206,14 +214,14 @@ export const professions: Profession[] = [
     category: 'creacion',
   },
   {
-    id: 'sastre-nabierus-cienaga',
+    id: 'sastre-nabieus-cienaga',
     name: 'Sastre de los Nabierus de la Ciénaga Troncal',
     description:
       'Crea ropa y accesorios de los Nabierus de la Ciénaga Troncal. Esta profesión se centra en los recursos que ofrece la zona de la Ciénaga Troncal.',
     category: 'creacion',
   },
   {
-    id: 'sastre-nabierus-margen',
+    id: 'sastre-nabieus-margen',
     name: 'Sastre de los Nabierus del Margen Silencioso',
     description:
       'Crea ropa y accesorios de los Nabierus del Margen Silencioso. Esta profesión se centra en los recursos que ofrece la zona del Margen Silencioso.',
@@ -248,6 +256,13 @@ export const professions: Profession[] = [
     category: 'creacion',
   },
   {
+    id: 'alquimista-orcos-cristal',
+    name: 'Alquimista de los Orcos de Cristal Helado',
+    description:
+      'Crea pociones y elixires de los Orcos de Cristal Helado. Esta profesión se centra en los ingredientes que ofrece la zona de Cristal Helado.',
+    category: 'creacion',
+  },
+  {
     id: 'alquimista-orcos-cienaga',
     name: 'Alquimista de los Orcos de la Ciénaga Troncal',
     description:
@@ -255,14 +270,14 @@ export const professions: Profession[] = [
     category: 'creacion',
   },
   {
-    id: 'alquimista-nabierus-cienaga',
+    id: 'alquimista-nabieus-cienaga',
     name: 'Alquimista de los Nabierus de la Ciénaga Troncal',
     description:
       'Crea pociones y elixires de los Nabierus de la Ciénaga Troncal. Esta profesión se centra en los ingredientes que ofrece la zona de la Ciénaga Troncal.',
     category: 'creacion',
   },
   {
-    id: 'alquimista-nabierus-margen',
+    id: 'alquimista-nabieus-margen',
     name: 'Alquimista de los Nabierus del Margen Silencioso',
     description:
       'Crea pociones y elixires de los Nabierus del Margen Silencioso. Esta profesión se centra en los ingredientes que ofrece la zona del Margen Silencioso.',
@@ -332,14 +347,14 @@ export const professions: Profession[] = [
     category: 'creacion',
   },
   {
-    id: 'carpintero-nabierus-cienaga',
+    id: 'carpintero-nabieus-cienaga',
     name: 'Carpintero de los Nabierus de la Ciénaga Troncal',
     description:
       'Crea armas, herramientas o recursos de los Nabierus de la Ciénaga Troncal. Esta profesión se centra en los recursos que ofrece la zona de la Ciénaga Troncal.',
     category: 'creacion',
   },
   {
-    id: 'carpintero-nabierus-margen',
+    id: 'carpintero-nabieus-margen',
     name: 'Carpintero de los Nabierus del Margen Silencioso',
     description:
       'Crea armas, herramientas o recursos de los Nabierus del Margen Silencioso. Esta profesión se centra en los recursos que ofrece la zona del Margen Silencioso.',
@@ -381,14 +396,14 @@ export const professions: Profession[] = [
     category: 'creacion',
   },
   {
-    id: 'curtidor-nabierus-cienaga',
+    id: 'curtidor-nabieus-cienaga',
     name: 'Curtidor de los Nabierus de la Ciénaga Troncal',
     description:
       'Cura y trabaja las pieles de la caza de los Nabierus de la Ciénaga Troncal. Esta profesión se centra en los recursos que ofrece la zona de la Ciénaga Troncal.',
     category: 'creacion',
   },
   {
-    id: 'curtidor-nabierus-margen',
+    id: 'curtidor-nabieus-margen',
     name: 'Curtidor de los Nabierus del Margen Silencioso',
     description:
       'Cura y trabaja las pieles de la caza de los Nabierus del Margen Silencioso. Esta profesión se centra en los recursos que ofrece la zona del Margen Silencioso.',
@@ -421,6 +436,14 @@ export const professions: Profession[] = [
     description:
       'Cura y trabaja las pieles de la caza de los Goirntes de la Meseta del Orden. Esta profesión se centra en los recursos que ofrece la zona de la Meseta del Orden.',
     category: 'creacion',
+  },
+  // Universal (2026-09-02, ver harvestAbilities.ts): sin sufijo raza/región. Añadida a la fuente
+  // única en H-10 porque el Maestro Pescador de la Playa de Ceniza Blanca ya la enseñaba pero la UI no la conocía.
+  {
+    id: 'pescador',
+    name: 'Pescador',
+    description: 'Pesca y busca marisco en aguas y costas. No depende de los recursos de una región concreta.',
+    category: 'recolección',
   },
   {
     id: 'minero-llanuras',
@@ -483,14 +506,14 @@ export const professions: Profession[] = [
     category: 'recolección',
   },
   {
-    id: 'desollador-nabierus-cienaga',
+    id: 'desollador-nabieus-cienaga',
     name: 'Desollador de presas de los Nabierus de la Ciénaga Troncal',
     description:
       'Desuella y prepara pieles de presas de los Nabierus de la Ciénaga Troncal.',
     category: 'recolección',
   },
   {
-    id: 'desollador-nabierus-margen',
+    id: 'desollador-nabieus-margen',
     name: 'Desollador de presas de los Nabierus del Margen Silencioso',
     description:
       'Desuella y prepara pieles de presas de los Nabierus del Margen Silencioso.',
@@ -581,14 +604,14 @@ export const professions: Profession[] = [
     category: 'creacion',
   },
   {
-    id: 'constructor-nabierus-cienaga',
+    id: 'constructor-nabieus-cienaga',
     name: 'Constructor de los Nabierus de la Ciénaga Troncal',
     description:
       'Constructor de los Nabierus de la Ciénaga Troncal. Esta profesión se centra en los recursos que ofrece la zona de la Ciénaga Troncal.',
     category: 'creacion',
   },
   {
-    id: 'constructor-nabierus-margen',
+    id: 'constructor-nabieus-margen',
     name: 'Constructor de los Nabierus del Margen Silencioso',
     description:
       'Constructor de los Nabierus del Margen Silencioso. Esta profesión se centra en los recursos que ofrece la zona del Margen Silencioso.',
@@ -651,14 +674,14 @@ export const professions: Profession[] = [
     category: 'creacion',
   },
   {
-    id: 'primeros-auxilios-nabierus-cienaga',
+    id: 'primeros-auxilios-nabieus-cienaga',
     name: 'Primeros auxilios de los Nabierus de la Ciénaga Troncal',
     description:
       'Prepara vendajes y cataplasmas básicas de primeros auxilios de los Nabierus de la Ciénaga Troncal. Esta profesión se centra en los recursos que ofrece la zona de la Ciénaga Troncal.',
     category: 'creacion',
   },
   {
-    id: 'primeros-auxilios-nabierus-margen',
+    id: 'primeros-auxilios-nabieus-margen',
     name: 'Primeros auxilios de los Nabierus del Margen Silencioso',
     description:
       'Prepara vendajes y cataplasmas básicas de primeros auxilios de los Nabierus del Margen Silencioso. Esta profesión se centra en los recursos que ofrece la zona del Margen Silencioso.',
@@ -714,14 +737,14 @@ export const professions: Profession[] = [
     category: 'creacion',
   },
   {
-    id: 'peletero-nabierus-cienaga',
+    id: 'peletero-nabieus-cienaga',
     name: 'Peletero de los Nabierus de la Ciénaga Troncal',
     description:
       'Peletero que trabaja el cuero y las pieles de los Nabierus de la Ciénaga Troncal. Esta profesión se centra en los recursos que ofrece la zona de la Ciénaga Troncal.',
     category: 'creacion',
   },
   {
-    id: 'peletero-nabierus-margen',
+    id: 'peletero-nabieus-margen',
     name: 'Peletero de los Nabierus del Margen Silencioso',
     description:
       'Peletero que trabaja el cuero y las pieles de los Nabierus del Margen Silencioso. Esta profesión se centra en los recursos que ofrece la zona del Margen Silencioso.',
@@ -756,21 +779,21 @@ export const professions: Profession[] = [
     category: 'creacion',
   },
   {
-    id: 'cocinero-orco-llanuras',
+    id: 'cocinero-orcos-llanuras',
     name: 'Cocinero de los Orcos de las Llanuras del Viento Rojo',
     description:
       'Cocinero que prepara comidas y bebidas para los Orcos de las Llanuras del Viento Rojo. Esta profesión se centra en los recursos que ofrece la zona de las Llanuras del Viento Rojo.',
     category: 'creacion',
   },
   {
-    id: 'cocinero-orco-cristal',
+    id: 'cocinero-orcos-cristal',
     name: 'Cocinero de los Orcos de las Llanuras de Cristal Helado',
     description:
       'Cocinero que prepara comidas y bebidas para los Orcos de las Llanuras de Cristal Helado. Esta profesión se centra en los recursos que ofrece la zona de las Llanuras de Cristal Helado.',
     category: 'creacion',
   },
   {
-    id: 'cocinero-orco-cienaga',
+    id: 'cocinero-orcos-cienaga',
     name: 'Cocinero de los Orcos de la Ciénaga Troncal',
     description:
       'Cocinero que prepara comidas y bebidas para los Orcos de la Ciénaga Troncal. Esta profesión se centra en los recursos que ofrece la zona de la Ciénaga Troncal.',
@@ -791,14 +814,14 @@ export const professions: Profession[] = [
     category: 'creacion',
   },
   {
-    id: 'cocinero-nabierus-cienaga',
+    id: 'cocinero-nabieus-cienaga',
     name: 'Cocinero de los Nabierus de la Ciénaga Troncal',
     description:
       'Cocinero que prepara comidas y bebidas para los Nabierus de la Ciénaga Troncal. Esta profesión se centra en los recursos que ofrece la zona de la Ciénaga Troncal.',
     category: 'creacion',
   },
   {
-    id: 'cocinero-nabierus-margen',
+    id: 'cocinero-nabieus-margen',
     name: 'Cocinero de los Nabierus del Margen Silencioso',
     description:
       'Cocinero que prepara comidas y bebidas para los Nabierus del Margen Silencioso. Esta profesión se centra en los recursos que ofrece la zona del Margen Silencioso.',

@@ -8,16 +8,17 @@
 /// abajo). Mismo patrón que startingAbilitiesFor/startingInventoryFor: se siembra al crear partida
 /// y al reiniciarla.
 ///
-/// Ids actualizados (2026-08-09, professions.ts ahora escala cada oficio por raza+región — ver su
+/// Slugs unificados (H-10, 2026-09): `<oficio>-<raza en plural>-<región>` (fuente única:
+/// backend/src/data/professions.ts; minero/talador solo llevan región). Ids (2026-08-09, professions.ts ahora escala cada oficio por raza+región — ver su
 /// comentario de cabecera): Gorhorn es un orco de las Llanuras del Viento Rojo (berigLore.ts,
 /// "Orcos de las Llanuras, Clan Maktor"), así que toma la variante orco+Llanuras de cada oficio
 /// (minero/talador siguen sin variante racial, solo regional — desollador SÍ la tiene desde que
 /// se escaló a los mismos combos raza+región que su creadora, peletero). Se copian tal cual están
-/// escritos en professions.ts, incluida su inconsistencia singular/plural real ("herrero-orco-"
+/// escritos en professions.ts, incluida su inconsistencia singular/plural real ("herrero-orcos-"
 /// vs "curtidor-orcos-"/"carpintero-orcos-"/"constructor-orcos-"/"desollador-orcos-") — no se
 /// corrige aquí para no desincronizarse de la fuente real.
 const GORHORN_STARTING_PROFESSIONS = [
-  'herrero-orco-llanuras',
+  'herrero-orcos-llanuras',
   'minero-llanuras',
   'desollador-orcos-llanuras',
   'curtidor-orcos-llanuras',
@@ -38,15 +39,13 @@ const GORHORN_STARTING_PROFESSIONS = [
 /// les da su primeros-auxilios real sin tocar ni una línea más de este archivo.
 ///
 /// Mismos 9 combos raza+región que peletero/curtidor/desollador/carpintero/constructor
-/// (professions.ts): orcos (llanuras/cristal/ciénaga), nabierus (ciénaga/margen), faerus
+/// (professions.ts): orcos (llanuras/cristal/ciénaga), nabieus (ciénaga/margen), faerus
 /// (llanuras/margen), goirntes (margen/meseta). `raza` es el slug real de razaFor (berigLore.ts:
-/// 'orcos', o null si el personaje/raza no está implementado todavía) — 'nabieus' de berigLore.ts
-/// se traduce a 'nabierus' (con erre) para que coincida con el token ya usado en professions.ts,
-/// inconsistencia de deletreo real entre ambos archivos que ya existía antes de esto (no se corrige
-/// aquí para no desincronizarse de la fuente real de professions.ts).
+/// 'orcos', o null si el personaje/raza no está implementado todavía); el token de oficio es ese
+/// mismo slug (H-10: ya no hay traducción nabieus→nabierus).
 const RAZA_PROFESSION_TOKEN: Record<string, string> = {
   orcos: 'orcos',
-  nabieus: 'nabierus',
+  nabieus: 'nabieus',
   faerus: 'faerus',
   goirntes: 'goirntes',
 };
@@ -64,8 +63,8 @@ const VALID_PRIMEROS_AUXILIOS_COMBOS = new Set([
   'orcos-llanuras',
   'orcos-cristal',
   'orcos-cienaga',
-  'nabierus-cienaga',
-  'nabierus-margen',
+  'nabieus-cienaga',
+  'nabieus-margen',
   'faerus-llanuras',
   'faerus-margen',
   'goirntes-margen',

@@ -62,12 +62,12 @@ function tick(
 
 describe('nivelOficioDeTrabajador', () => {
   it('sin XP en ese oficio, nivel 1 (mismo fallback que professionLevelForXp(0))', () => {
-    expect(nivelOficioDeTrabajador(trabajador(), 'herrero-orco-llanuras')).toBe(1);
+    expect(nivelOficioDeTrabajador(trabajador(), 'herrero-orcos-llanuras')).toBe(1);
   });
 
   it('con XP acumulada en ese oficio, sube de nivel', () => {
-    const t = trabajador({ xpPorOficio: { 'herrero-orco-llanuras': 200 } });
-    expect(nivelOficioDeTrabajador(t, 'herrero-orco-llanuras')).toBeGreaterThan(1);
+    const t = trabajador({ xpPorOficio: { 'herrero-orcos-llanuras': 200 } });
+    expect(nivelOficioDeTrabajador(t, 'herrero-orcos-llanuras')).toBeGreaterThan(1);
   });
 });
 
@@ -77,17 +77,17 @@ describe('trabajadorPuedeProducir', () => {
   });
 
   it('receta con oficio y tier 1: nivel 1 (sin alivio) ya alcanza', () => {
-    expect(trabajadorPuedeProducir(trabajador(), recipe({ oficio: 'herrero-orco-llanuras', tier: 1 }))).toBe(true);
+    expect(trabajadorPuedeProducir(trabajador(), recipe({ oficio: 'herrero-orcos-llanuras', tier: 1 }))).toBe(true);
   });
 
   it('receta de tier alto: un trabajador sin experiencia no llega', () => {
-    const recetaTier5 = recipe({ oficio: 'herrero-orco-llanuras', tier: 5 });
+    const recetaTier5 = recipe({ oficio: 'herrero-orcos-llanuras', tier: 5 });
     expect(trabajadorPuedeProducir(trabajador(), recetaTier5)).toBe(false);
   });
 
   it('receta de tier alto: un trabajador con suficiente nivel de oficio sí llega', () => {
-    const experto = trabajador({ xpPorOficio: { 'herrero-orco-llanuras': 8000 } });
-    const recetaTier5 = recipe({ oficio: 'herrero-orco-llanuras', tier: 5 });
+    const experto = trabajador({ xpPorOficio: { 'herrero-orcos-llanuras': 8000 } });
+    const recetaTier5 = recipe({ oficio: 'herrero-orcos-llanuras', tier: 5 });
     expect(trabajadorPuedeProducir(experto, recetaTier5)).toBe(true);
   });
 });
@@ -211,17 +211,17 @@ describe('tickOrdenesProduccion', () => {
   });
 
   it('trabajador sin nivel de oficio suficiente no produce, la orden queda SIN_TRABAJADOR_CON_NIVEL', () => {
-    const recetaExigente = recipe({ key: 'lingoteYerreo', oficio: 'herrero-orco-llanuras', tier: 5, resultCatalogSlug: 'lingote-yerreo' });
+    const recetaExigente = recipe({ key: 'lingoteYerreo', oficio: 'herrero-orcos-llanuras', tier: 5, resultCatalogSlug: 'lingote-yerreo' });
     const recipesByKeyExigente = new Map([['lingoteYerreo', recetaExigente]]);
     const resultados = tick([orden({ recipeKey: 'lingoteYerreo' })], [trabajador()], recipesByKeyExigente);
     expect(resultados).toEqual([{ ordenId: 'orden-1', resultado: 'SIN_TRABAJADOR_CON_NIVEL' }]);
   });
 
   it('entre dos trabajadores, el que tiene nivel de oficio suficiente es el asignado', () => {
-    const recetaExigente = recipe({ key: 'lingoteYerreo', oficio: 'herrero-orco-llanuras', tier: 5, resultCatalogSlug: 'lingote-yerreo' });
+    const recetaExigente = recipe({ key: 'lingoteYerreo', oficio: 'herrero-orcos-llanuras', tier: 5, resultCatalogSlug: 'lingote-yerreo' });
     const recipesByKeyExigente = new Map([['lingoteYerreo', recetaExigente]]);
     const novato = trabajador({ companionId: 'novato' });
-    const experto = trabajador({ companionId: 'experto', xpPorOficio: { 'herrero-orco-llanuras': 8000 } });
+    const experto = trabajador({ companionId: 'experto', xpPorOficio: { 'herrero-orcos-llanuras': 8000 } });
     const resultados = tick([orden({ recipeKey: 'lingoteYerreo' })], [novato, experto], recipesByKeyExigente);
     expect(resultados).toEqual([
       { ordenId: 'orden-1', resultado: 'PRODUCIDA', companionId: 'experto', resultCatalogSlug: 'lingote-yerreo', resultCantidad: 1, ingredientesConsumidos: [] },

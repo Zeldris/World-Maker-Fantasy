@@ -85,7 +85,7 @@ export const AXE_REPAIR_RECIPE: CraftingRecipe = {
   // (blandirla y guiar al herrero) — oficio 'herrero' porque ocurre en la fragua del campamento.
   tier: 3,
   requisitos: { fuerza: 12 },
-  oficio: 'herrero-orco-llanuras',
+  oficio: 'herrero-orcos-llanuras',
   narrationWant:
     'El personaje quiere reparar su hacha rota, pero no puede hacerlo ahora mismo (hace falta estar en el Campamento del Clan Serhu y tener sal de trueque para pagar al herrero) — narra que lo intenta o lo considera, pero no que la repara de verdad.',
   narrationDo:
@@ -125,7 +125,7 @@ export const GARGANTUA_ARMOR_RECIPE: CraftingRecipe = {
   // oficio 'herrero' que el hacha (misma fragua del campamento, no hace falta un oficio aparte).
   tier: 3,
   requisitos: { fuerza: 18 },
-  oficio: 'herrero-orco-llanuras',
+  oficio: 'herrero-orcos-llanuras',
   narrationWant:
     'El personaje quiere fabricar un peto de placas óseas de gargantúa, pero no puede hacerlo ahora mismo (hace falta estar en el Campamento del Clan Serhu y tener placas óseas de gargantúa y cuerda de tendón) — narra que lo intenta o lo considera, pero no que lo fabrica de verdad.',
   narrationDo:
@@ -164,7 +164,7 @@ export const ANTIDOTE_RECIPE: CraftingRecipe = {
 };
 
 // Ampliación de lore 2026-08-21 — primer oficio nuevo desde el rediseño de profesiones
-// (2026-08-07): cocinero-orco-llanuras. Su NPC-profesor (Maestro Cocinero Serhu, ver
+// (2026-08-07): cocinero-orcos-llanuras. Su NPC-profesor (Maestro Cocinero Serhu, ver
 // docs/rpgtarkor/lore-mundo/areas.md § Campamento del Clan Serhu) todavía no tiene forma de enseñarlo de
 // verdad (mecanismo "aprender oficio de un NPC" sin construir, ver docs/registros/ampliar-lore-checklist.md)
 // — igual que 'alquimista-orcos-llanuras', esta receta ya existe aunque el oficio en sí no esté
@@ -177,9 +177,9 @@ export const BOUNGO_ROAST_RECIPE: CraftingRecipe = {
   ingredients: [{ match: { kind: 'exact', catalogSlug: 'boungo' }, cantidad: 2, label: 'Boungo' }],
   resultName: 'Boungo asado',
   resultCatalogSlug: 'boungo-asado',
-  resultDescription: 'Boungo asado sobre brasas — sencillo, pero la primera receta real del oficio de cocinero-orco-llanuras.',
+  resultDescription: 'Boungo asado sobre brasas — sencillo, pero la primera receta real del oficio de cocinero-orcos-llanuras.',
   tier: 1,
-  oficio: 'cocinero-orco-llanuras',
+  oficio: 'cocinero-orcos-llanuras',
   narrationWant:
     'El personaje quiere asar Boungo, pero no lleva encima al menos 2 setas Boungo — narra que lo intenta o lo considera, pero no que las asa de verdad.',
   narrationDo: 'El personaje asa sus Boungo sobre brasas — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
@@ -206,7 +206,7 @@ export const BOILED_LICHEN_WATER_RECIPE: CraftingRecipe = {
   resultCatalogSlug: 'agua-hervida-liquen',
   resultDescription: 'Liquen húmedo del cauce hervido sobre fuego — más segura de beber que masticarlo en crudo.',
   tier: 1,
-  oficio: 'cocinero-orco-llanuras',
+  oficio: 'cocinero-orcos-llanuras',
   narrationWant:
     'El personaje quiere hervir agua con liquen, pero no lleva encima al menos 1 Liquen húmedo del cauce (o no tiene fuego encendido cerca) — narra que lo intenta o lo considera, pero no que la hierve de verdad.',
   narrationDo: 'El personaje hierve su Liquen húmedo del cauce sobre el fuego — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
@@ -227,7 +227,7 @@ export const CORACELO_MACE_RECIPE: CraftingRecipe = {
   // requiere fragua real, no crafteo de campo.
   tier: 3,
   requisitos: { fuerza: 9, destreza: 5, constitucion: 5 },
-  oficio: 'herrero-orco-llanuras',
+  oficio: 'herrero-orcos-llanuras',
   narrationWant:
     'El personaje quiere forjar una maza con la cola de un Coracelo, pero no puede hacerlo ahora mismo (hace falta estar en el Campamento del Clan Serhu y tener al menos una cola de Coracelo) — narra que lo intenta o lo considera, pero no que la forja de verdad.',
   narrationDo:
@@ -270,7 +270,7 @@ export const IRON_INGOT_RECIPE: CraftingRecipe = {
   resultDescription: 'Metal fundido en la fragua del campamento y colado en un molde sencillo — listo para forjar.',
   tier: 2,
   requisitos: { fuerza: 8 },
-  oficio: 'herrero-orco-llanuras',
+  oficio: 'herrero-orcos-llanuras',
   narrationWant:
     'El personaje quiere fundir mena de hierro en un lingote, pero no puede hacerlo ahora mismo (hace falta estar en el Campamento del Clan Serhu y llevar al menos 4 fragmentos de mena de hierro) — narra que lo intenta o lo considera, pero no que lo funde de verdad.',
   narrationDo:
@@ -305,7 +305,7 @@ export const MAGNETIZED_IRON_INGOT_RECIPE: CraftingRecipe = {
   resultDescription: 'Mena de hierro fundida junto a arena imán en la fragua del campamento — conserva un tirón magnético débil pero constante.',
   tier: 2,
   requisitos: { fuerza: 8 },
-  oficio: 'herrero-orco-llanuras',
+  oficio: 'herrero-orcos-llanuras',
   narrationWant:
     'El personaje quiere fundir un lingote de hierro imantado, pero no puede hacerlo ahora mismo (hace falta estar en el Campamento del Clan Serhu, llevar mena de hierro y 4 puñados de arena imán —o un saquito ya hecho— encima) — narra que lo intenta o lo considera, pero no que lo funde de verdad.',
   narrationDo:
@@ -330,7 +330,7 @@ export const COMPASS_NEEDLE_RECIPE: CraftingRecipe = {
   resultDescription: 'Aguja imantada natural montada a mano en la fragua del campamento: colgada de un hilo señala siempre el mismo rumbo, incluso en plena tormenta.',
   tier: 2,
   requisitos: { destreza: 8 },
-  oficio: 'herrero-orco-llanuras',
+  oficio: 'herrero-orcos-llanuras',
   narrationWant:
     'El personaje quiere forjar una Aguja de Cardo Brújula, pero no puede hacerlo ahora mismo (hace falta estar en el Campamento del Clan Serhu y llevar 2 Cardo Brújula y un lingote de hierro imantado encima) — narra que lo intenta o lo considera, pero no que la forja de verdad.',
   narrationDo:
@@ -777,7 +777,7 @@ export const CEBO_PESCA_RECIPE: CraftingRecipe = {
   resultDescription: 'Gusanos de arena y trozos de marisco ensartados en el anzuelo — atraen a los peces de la costa.',
   tier: 1,
   requisitos: { voluntad: 4 },
-  oficio: 'pescador-pescar',
+  oficio: 'pescador',
   narrationWant:
     'El personaje quiere preparar cebo, pero no lleva encima marisco o carne de costa con que prepararlo — narra que lo intenta o lo considera, pero no que lo prepara de verdad.',
   narrationDo:
@@ -821,7 +821,7 @@ export const HAND_AXE_RECIPE: CraftingRecipe = {
   statBonuses: { fuerza: 3 },
   tier: 2,
   requisitos: { fuerza: 8, destreza: 6 },
-  oficio: 'herrero-orco-llanuras',
+  oficio: 'herrero-orcos-llanuras',
   narrationWant:
     'El personaje quiere forjar un hacha de mano, pero no puede hacerlo ahora mismo (hace falta estar en el Campamento del Clan Serhu y llevar un lingote de hierro y leña encima) — narra que lo intenta o lo considera, pero no que la forja de verdad.',
   narrationDo:
@@ -848,7 +848,7 @@ export const YERREO_INGOT_RECIPE: CraftingRecipe = {
   resultDescription: 'Yerreo fundido en la fragua del campamento y colado en un molde sencillo — metal más denso y valioso que el hierro común.',
   tier: 4,
   requisitos: { fuerza: 10 },
-  oficio: 'herrero-orco-llanuras',
+  oficio: 'herrero-orcos-llanuras',
   narrationWant:
     'El personaje quiere fundir mena de Yerreo en un lingote, pero no puede hacerlo ahora mismo (hace falta estar en el Campamento del Clan Serhu y llevar al menos 4 mena de Yerreo) — narra que lo intenta o lo considera, pero no que lo funde de verdad.',
   narrationDo:
@@ -873,7 +873,7 @@ export const KIRELON_CLAWS_TO_INGOT_RECIPE: CraftingRecipe = {
   resultDescription: 'Yerreo fundido directo de las Garras de Kirelon Arenoso en la fragua del campamento y colado en un molde sencillo — metal más denso y valioso que el hierro común.',
   tier: 4,
   requisitos: { fuerza: 10 },
-  oficio: 'herrero-orco-llanuras',
+  oficio: 'herrero-orcos-llanuras',
   narrationWant:
     'El personaje quiere fundir Garras de Kirelon Arenoso en lingotes, pero no puede hacerlo ahora mismo (hace falta estar en el Campamento del Clan Serhu y llevar al menos 1 Garras de Kirelon Arenoso) — narra que lo intenta o lo considera, pero no que las funde de verdad.',
   narrationDo:
@@ -895,7 +895,7 @@ export const HIYERRO_ALLOY_RECIPE: CraftingRecipe = {
   resultDescription: 'La mejor aleación orca — hierro, Yerreo y arena imán fundidos juntos en la fragua del campamento hasta formar un único lingote.',
   tier: 7,
   requisitos: { fuerza: 14 },
-  oficio: 'herrero-orco-llanuras',
+  oficio: 'herrero-orcos-llanuras',
   narrationWant:
     'El personaje quiere fundir hierro, Yerreo y arena imán juntos en un lingote de Hiyerro, pero no puede hacerlo ahora mismo (hace falta estar en el Campamento del Clan Serhu y llevar 2 mena de hierro, 2 mena de Yerreo y 2 puñados de arena imán encima) — narra que lo intenta o lo considera, pero no que lo funde de verdad.',
   narrationDo:
@@ -971,7 +971,7 @@ export const SCARLET_WHEAT_BREAD_RECIPE: CraftingRecipe = {
   resultCatalogSlug: 'pan-trigo-escarlata',
   resultDescription: 'Trigo escarlata molido y horneado sobre piedra caliente — pan denso, poco habitual entre los orcos de las Llanuras.',
   tier: 1,
-  oficio: 'cocinero-orco-llanuras',
+  oficio: 'cocinero-orcos-llanuras',
   narrationWant:
     'El personaje quiere hornear pan de trigo escarlata, pero no lleva encima suficiente trigo escarlata (hacen falta al menos 3) — narra que lo intenta o lo considera, pero no que el pan queda hecho.',
   narrationDo: 'El personaje muele y hornea su trigo escarlata sobre piedra caliente — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
@@ -987,7 +987,7 @@ export const SWEET_HONEYCOMB_RECIPE: CraftingRecipe = {
   resultCatalogSlug: 'panal-endulzado',
   resultDescription: 'Panal de Lebude prensado y endulzado — dulce concentrado, poco cuerpo pero mucha energía rápida.',
   tier: 1,
-  oficio: 'cocinero-orco-llanuras',
+  oficio: 'cocinero-orcos-llanuras',
   narrationWant:
     'El personaje quiere prensar un panal endulzado, pero no lleva encima suficiente miel de Lebude (hacen falta al menos 2) — narra que lo intenta o lo considera, pero no que el panal queda terminado.',
   narrationDo: 'El personaje prensa su miel de Lebude en un panal denso y dulce — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
@@ -1003,7 +1003,7 @@ export const MURGOL_CURD_RECIPE: CraftingRecipe = {
   resultCatalogSlug: 'cuajada-murgol',
   resultDescription: 'Leche de los múrgoles domados del campamento, cuajada y prensada — de las pocas cosas que se producen dentro de la propia empalizada.',
   tier: 1,
-  oficio: 'cocinero-orco-llanuras',
+  oficio: 'cocinero-orcos-llanuras',
   narrationWant:
     'El personaje quiere cuajar leche de múrgol, pero no lleva encima suficiente leche de múrgol (hacen falta al menos 2) — narra que lo intenta o lo considera, pero no que la cuajada queda terminada.',
   narrationDo:

@@ -2223,7 +2223,7 @@ export interface EnciclopediaCraftingRecipe {
   key: string
   name: string
   description: string
-  /// Id de professions.ts ('herrero-orco-llanuras'/'alquimista-orcos-llanuras'/'carpintero-orcos-
+  /// Id de professions.ts ('herrero-orcos-llanuras'/'alquimista-orcos-llanuras'/'carpintero-orcos-
   /// llanuras'...), o null si está al alcance de cualquiera sin oficio (2026-08-06, sección
   /// "Crafteo" — mismo eje que `raza` en Construcciones, pero por oficio en vez de por raza).
   oficio: string | null

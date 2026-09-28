@@ -68,14 +68,14 @@ describe('Aprender oficio de un Maestro (2026-08-31)', () => {
     const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/npc/${maestroSlug}/aprender-oficio` });
     expect(res.statusCode).toBe(200);
     const body = res.json();
-    expect(body.professionId).toBe('herrero-orco-llanuras');
+    expect(body.professionId).toBe('herrero-orcos-llanuras');
     expect(body.logEntry.text).toContain('Maestro Herrero Serhu');
 
     const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(save.goirnos).toBe(0);
 
     const progress = await prisma.professionProgress.findUnique({
-      where: { saveId_professionId: { saveId, professionId: 'herrero-orco-llanuras' } },
+      where: { saveId_professionId: { saveId, professionId: 'herrero-orcos-llanuras' } },
     });
     expect(progress).toMatchObject({ nivel: 1, xp: 0 });
   });
@@ -89,7 +89,7 @@ describe('Aprender oficio de un Maestro (2026-08-31)', () => {
     const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(save.goirnos).toBe(COSTE_GOIRNOS_APRENDER_OFICIO);
     const progress = await prisma.professionProgress.findUnique({
-      where: { saveId_professionId: { saveId, professionId: 'herrero-orco-llanuras' } },
+      where: { saveId_professionId: { saveId, professionId: 'herrero-orcos-llanuras' } },
     });
     expect(progress).toBeNull();
   });
@@ -102,7 +102,7 @@ describe('Aprender oficio de un Maestro (2026-08-31)', () => {
   });
 
   it('rechaza si el jugador ya aprendió ese oficio', async () => {
-    await prisma.professionProgress.create({ data: { saveId, professionId: 'herrero-orco-llanuras' } });
+    await prisma.professionProgress.create({ data: { saveId, professionId: 'herrero-orcos-llanuras' } });
     const app = await buildApp();
     const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/npc/${maestroSlug}/aprender-oficio` });
     expect(res.statusCode).toBe(400);

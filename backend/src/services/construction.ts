@@ -517,10 +517,8 @@ export const HERRERIA_RECIPE: ConstructionRecipe = {
     { match: { kind: 'exact', catalogSlug: 'piedra-de-afilar' }, cantidad: 1, label: 'piedra de afilar' },
   ],
   requisitos: { fuerza: 10 },
-  // 'herrero-orco-llanuras' (singular "orco") — inconsistencia ya existente en el catálogo real
-  // (ver `maestro-herrero-serhu`/`herreria-serhu`, worldCatalog.ts), se respeta tal cual.
-  oficio: 'herrero-orco-llanuras',
-  oficioProducido: 'herrero-orco-llanuras',
+  oficio: 'herrero-orcos-llanuras',
+  oficioProducido: 'herrero-orcos-llanuras',
   edificioOficioNivel: 1,
   companionSlots: 0,
   requiresAyuntamiento: true,
@@ -1050,11 +1048,8 @@ export const COCINA_RECIPE: ConstructionRecipe = {
     { match: { kind: 'exact', catalogSlug: 'odre-agua' }, cantidad: 1, label: 'odre de agua' },
   ],
   requisitos: { constitucion: 8 },
-  // 'cocinero-orco-llanuras' (singular "orco", no "orcos") — inconsistencia ya existente en el
-  // catálogo real (ver `maestro-cocinero-serhu`/`cocina-serhu`, worldCatalog.ts), se respeta tal
-  // cual en vez de "corregirla" aquí y romper el emparejamiento con el resto del motor.
-  oficio: 'cocinero-orco-llanuras',
-  oficioProducido: 'cocinero-orco-llanuras',
+  oficio: 'cocinero-orcos-llanuras',
+  oficioProducido: 'cocinero-orcos-llanuras',
   edificioOficioNivel: 1,
   companionSlots: 0,
   requiresAyuntamiento: true,
@@ -1307,7 +1302,7 @@ export const CUARTEL_DE_GUERRA_RECIPE: ConstructionRecipe = {
     { match: { kind: 'category', tipo: 'RECURSO', category: 'mena' }, cantidad: 4, label: 'mena' },
   ],
   requisitos: { fuerza: 16 },
-  oficio: 'herrero-orco-llanuras',
+  oficio: 'herrero-orcos-llanuras',
   upgradesRecipeKey: 'cuartel-avanzado',
   cuartelUpgradeBonus: { defensa: 10 },
 };

@@ -28,7 +28,7 @@ describe('harvestAbilityUnlocksFor', () => {
   });
 
   it('un oficio creador (no recolector) no desbloquea nada aquí', () => {
-    expect(harvestAbilityUnlocksFor('herrero-orco-llanuras', 1)).toEqual([]);
+    expect(harvestAbilityUnlocksFor('herrero-orcos-llanuras', 1)).toEqual([]);
   });
 
   // Pescador (2026-09-02) — profesión universal (sin sufijo raza/región). Ya NO concede Pescar/
@@ -47,7 +47,7 @@ describe('metodoForOficio', () => {
   });
 
   it('null para un oficio creador o inexistente', () => {
-    expect(metodoForOficio('herrero-orco-llanuras')).toBeNull();
+    expect(metodoForOficio('herrero-orcos-llanuras')).toBeNull();
     expect(metodoForOficio('no-existe')).toBeNull();
   });
 
@@ -72,7 +72,7 @@ describe('attributeForOficio', () => {
   });
 
   it('null para un oficio creador o inexistente', () => {
-    expect(attributeForOficio('herrero-orco-llanuras')).toBeNull();
+    expect(attributeForOficio('herrero-orcos-llanuras')).toBeNull();
     expect(attributeForOficio('no-existe')).toBeNull();
   });
 

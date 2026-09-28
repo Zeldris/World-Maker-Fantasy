@@ -935,7 +935,7 @@ describe('GET /saves/:id/recolectar/:oficio', () => {
   it('rechaza un oficio que no es recolector (herrero es creador, no tiene "explorar")', async () => {
     const app = await buildApp();
 
-    const res = await app.inject({ method: 'GET', url: '/saves/save1/recolectar/herrero-orco-llanuras' });
+    const res = await app.inject({ method: 'GET', url: '/saves/save1/recolectar/herrero-orcos-llanuras' });
 
     expect(res.statusCode).toBe(400);
   });

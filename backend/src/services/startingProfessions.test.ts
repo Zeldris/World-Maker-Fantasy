@@ -10,8 +10,8 @@ const VALID_COMBOS: [string, string, string][] = [
   ['orcos', 'Las Llanuras del Viento Rojo', 'primeros-auxilios-orcos-llanuras'],
   ['orcos', 'Cristal Helado', 'primeros-auxilios-orcos-cristal'],
   ['orcos', 'Ciénaga Troncal', 'primeros-auxilios-orcos-cienaga'],
-  ['nabieus', 'Ciénaga Troncal', 'primeros-auxilios-nabierus-cienaga'],
-  ['nabieus', 'El Margen Silencioso', 'primeros-auxilios-nabierus-margen'],
+  ['nabieus', 'Ciénaga Troncal', 'primeros-auxilios-nabieus-cienaga'],
+  ['nabieus', 'El Margen Silencioso', 'primeros-auxilios-nabieus-margen'],
   ['faerus', 'Las Llanuras del Viento Rojo', 'primeros-auxilios-faerus-llanuras'],
   ['faerus', 'El Margen Silencioso', 'primeros-auxilios-faerus-margen'],
   ['goirntes', 'El Margen Silencioso', 'primeros-auxilios-goirntes-margen'],
@@ -49,7 +49,7 @@ describe('primerosAuxiliosProfessionFor — casos sin oficio (null)', () => {
 describe('startingProfessionsFor', () => {
   it('Gorhorn recibe su kit de superviviente del Clan Maktor más primeros auxilios', () => {
     const result = startingProfessionsFor('Gorhorn', 'orcos', 'Las Llanuras del Viento Rojo');
-    expect(result).toContain('herrero-orco-llanuras');
+    expect(result).toContain('herrero-orcos-llanuras');
     expect(result).toContain('primeros-auxilios-orcos-llanuras');
   });
 

@@ -5739,7 +5739,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
             // contador agregado, no un objeto con InventoryRow propio). Mismo guard de existencia
             // de fila que `bumpKingdomStats` (más abajo en este archivo) — sin Reino fundado
             // todavía, no hay dónde sumar.
-            if (recipe.oficio === 'cocinero-orco-llanuras') {
+            if (recipe.oficio === 'cocinero-orcos-llanuras') {
               const kingdomStatsRow = await tx.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId }) }, select: { ownerKey: true } });
               if (kingdomStatsRow) {
                 await tx.kingdomStats.update({ where: { ownerKey: ownerKeyFor({ saveId }) }, data: { comida: { increment: resultado.resultCantidad } } });

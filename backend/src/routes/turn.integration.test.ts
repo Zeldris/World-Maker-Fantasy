@@ -3036,14 +3036,14 @@ describe('OrdenProduccion: tick real de producción de Reino (§ 4.4-ter, 2026-0
 
   it('receta con oficio de tier alto: sin ningún trabajador con nivel suficiente, no produce (decisión explícita: el jugador no cuenta)', async () => {
     await setUp();
-    // coraceloMace es tier 3 (herrero-orco-llanuras) — tier 1 (boiledLichenWater) lo cubre
+    // coraceloMace es tier 3 (herrero-orcos-llanuras) — tier 1 (boiledLichenWater) lo cubre
     // cualquier trabajador de nivel 1 por defecto sin ayuda de oficio real, no sirve para probar
     // el gate. Necesita tier > 1 para que "nivel 1 sin fila propia" falle de verdad.
     await prisma.almacenItem.create({ data: { saveId, name: 'Cola de Coracelo', description: 'x', catalogSlug: 'cola-coracelo' } });
     await prisma.ordenProduccion.create({ data: { buildingId, recipeKey: 'coraceloMace', modo: 'reponer', prioridad: 5 } });
     // El JUGADOR sí tiene nivel alto de ese oficio — no debe importar, el trabajador de Reino es
     // otro Companion sin ninguna fila de ProfessionProgress propia (nivel 1 por defecto).
-    await prisma.professionProgress.create({ data: { saveId, professionId: 'herrero-orco-llanuras', nivel: 9, xp: 8000 } });
+    await prisma.professionProgress.create({ data: { saveId, professionId: 'herrero-orcos-llanuras', nivel: 9, xp: 8000 } });
     narrateAction.mockClear();
 
     await doPassiveTurn('Espero aquí varios días, dejando pasar el tiempo tranquilamente.');
@@ -3098,14 +3098,14 @@ describe('OrdenProduccion: tick real de producción de Reino (§ 4.4-ter, 2026-0
     await setUp();
     await prisma.almacenItem.create({ data: { saveId, name: 'Liquen húmedo del cauce', description: 'x', catalogSlug: 'liquen-humedo' } });
     await prisma.ordenProduccion.create({ data: { buildingId, recipeKey: 'boiledLichenWater', modo: 'reponer', prioridad: 5 } });
-    await prisma.professionProgress.create({ data: { companionId, professionId: 'cocinero-orco-llanuras', nivel: 1, xp: 0 } });
+    await prisma.professionProgress.create({ data: { companionId, professionId: 'cocinero-orcos-llanuras', nivel: 1, xp: 0 } });
     narrateAction.mockClear();
 
     await doPassiveTurn('Espero aquí varios días, dejando pasar el tiempo tranquilamente.');
 
-    const progresoTrabajador = await prisma.professionProgress.findFirstOrThrow({ where: { companionId, professionId: 'cocinero-orco-llanuras' } });
+    const progresoTrabajador = await prisma.professionProgress.findFirstOrThrow({ where: { companionId, professionId: 'cocinero-orcos-llanuras' } });
     expect(progresoTrabajador.xp).toBeGreaterThan(0);
-    const progresoJugador = await prisma.professionProgress.findFirst({ where: { saveId, professionId: 'cocinero-orco-llanuras' } });
+    const progresoJugador = await prisma.professionProgress.findFirst({ where: { saveId, professionId: 'cocinero-orcos-llanuras' } });
     expect(progresoJugador).toBeNull(); // el jugador nunca gana XP por el trabajo de su Reino
   }, 20_000);
 
@@ -3117,7 +3117,7 @@ describe('OrdenProduccion: tick real de producción de Reino (§ 4.4-ter, 2026-0
     await prisma.building.update({ where: { id: buildingId }, data: { tier: 1 } });
     await prisma.almacenItem.create({ data: { saveId, name: 'Cola de Coracelo', description: 'x', catalogSlug: 'cola-coracelo' } });
     await prisma.ordenProduccion.create({ data: { buildingId, recipeKey: 'coraceloMace', modo: 'reponer', prioridad: 5 } }); // tier 3, sigue dentro del Taller
-    await prisma.professionProgress.create({ data: { companionId, professionId: 'herrero-orco-llanuras', nivel: 9, xp: 8000 } });
+    await prisma.professionProgress.create({ data: { companionId, professionId: 'herrero-orcos-llanuras', nivel: 9, xp: 8000 } });
     narrateAction.mockClear();
 
     await doPassiveTurn('Espero aquí varios días, dejando pasar el tiempo tranquilamente.');

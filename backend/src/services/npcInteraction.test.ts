@@ -34,7 +34,7 @@ describe('opcionesDisponiblesPara', () => {
   });
 
   it('MAESTRO_OFICIO con teachesProfession: ofrece Aprender profesión', () => {
-    const npc = npcFixture({ interactionTypes: ['MAESTRO_OFICIO'], teachesProfession: 'herrero-orco-llanuras' });
+    const npc = npcFixture({ interactionTypes: ['MAESTRO_OFICIO'], teachesProfession: 'herrero-orcos-llanuras' });
     expect(opcionesDisponiblesPara(npc, { hayMisionOfertadaDeEsteNpc: false })).toEqual(['Charlar', 'Aprender profesión', 'Combatir', 'Salir']);
   });
 

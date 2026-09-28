@@ -3400,7 +3400,7 @@ export const npcs: NpcInput[] = [
     bio: 'Orco corpulento de manos cubiertas de quemaduras viejas ya curtidas, cejas chamuscadas por décadas frente a la fragua. Funde la mena que trae el resto del clan en lingotes reales — sin él, Karot Veku no tendría hachas de guerra propias, solo las heredadas.',
     personality: 'Paciente con quien de verdad quiere aprender, cortante con quien solo busca un favor rápido.',
     homeLocationSlug: 'campamento-serhu-interior',
-    teachesProfession: 'herrero-orco-llanuras',
+    teachesProfession: 'herrero-orcos-llanuras',
     interactionTypes: ['MAESTRO_OFICIO'],
     raza: 'orcos',
     clase: 'GUERRERO',
@@ -3542,7 +3542,7 @@ export const npcs: NpcInput[] = [
     bio: 'Orco de brazos gruesos y delantal siempre manchado, vigila las ollas de la cocina común de Karot Veku con la misma seriedad con la que otros vigilan la muralla. Sabe estirar una caza pobre para alimentar a todo el clan sin que nadie note la escasez.',
     personality: 'Bromista con quien colabora, seco con quien desperdicia comida.',
     homeLocationSlug: 'campamento-serhu-interior',
-    teachesProfession: 'cocinero-orco-llanuras',
+    teachesProfession: 'cocinero-orcos-llanuras',
     interactionTypes: ['MAESTRO_OFICIO'],
     raza: 'orcos',
     clase: 'GUERRERO',
@@ -4558,7 +4558,7 @@ export const npcs: NpcInput[] = [
     bio: 'Orco del Clan Helsig — polvo de mineral incrustado en los nudillos, conoce cada galería excavada en el hielo de Cristal Helado como la palma de su mano. Sabe leer dónde vale la pena picar y dónde solo hay hielo muerto.',
     personality: 'Directo hasta lo brusco, más cómodo bajo tierra que rodeado de gente.',
     homeLocationSlug: 'campamento-helsig-interior',
-    teachesProfession: 'minero-orcos-cristal',
+    teachesProfession: 'minero-cristal',
     interactionTypes: ['MAESTRO_OFICIO'],
     raza: 'orcos',
     clase: 'GUERRERO',
@@ -5444,7 +5444,7 @@ export const items: ItemCatalogInput[] = [
   },
 
   {
-    // Crafteada por herrero-orco-llanuras a partir de Cola de Coracelo (ver crafting.ts,
+    // Crafteada por herrero-orcos-llanuras a partir de Cola de Coracelo (ver crafting.ts,
     // CORACELO_MACE_RECIPE) — no es objeto de loot suelto, no aparece en ningún HarvestYield.
     slug: 'maza-coracelo',
     name: 'Maza de Coracelo',
@@ -7286,7 +7286,7 @@ export const items: ItemCatalogInput[] = [
     tipo: 'CONSUMIBLE',
     valorGoirnos: 4,
     equipSlot: 'CONSUMIBLE_1',
-    description: 'Boungo asado sobre brasas por un cocinero orco — la primera receta real del oficio de cocinero-orco-llanuras, más allá de las raciones reasignadas.',
+    description: 'Boungo asado sobre brasas por un cocinero orco — la primera receta real del oficio de cocinero-orcos-llanuras, más allá de las raciones reasignadas.',
     dimensiones: 'Ración de 150 g.',
     curaEnergia: 12,
   },
@@ -7337,7 +7337,7 @@ export const items: ItemCatalogInput[] = [
     category: 'alimento',
     tipo: 'RECURSO',
     valorGoirnos: 1,
-    description: 'Carne de Jusha Esmeralda, sabor amargo pero comestible — ingrediente de cocinero-orco-llanuras.',
+    description: 'Carne de Jusha Esmeralda, sabor amargo pero comestible — ingrediente de cocinero-orcos-llanuras.',
     dimensiones: 'Filetes de 100 g.',
   },
 
@@ -11854,7 +11854,7 @@ export const factionBuildings: FactionBuildingInput[] = [
     name: 'Herrería del Clan Serhu',
     factionSlug: 'Clan Serhu',
     locationSlug: 'campamento-serhu-interior',
-    profession: 'herrero-orco-llanuras',
+    profession: 'herrero-orcos-llanuras',
     tier: 1,
     // Descripción ampliada (tanda OpenCode 2026-09-27/28, A-09) — encaja con la herrería
     // "mediocre y mal orientada" del canon.
@@ -11876,7 +11876,7 @@ export const factionBuildings: FactionBuildingInput[] = [
     name: 'Cocina común de Karot Veku',
     factionSlug: 'Clan Serhu',
     locationSlug: 'campamento-serhu-interior',
-    profession: 'cocinero-orco-llanuras',
+    profession: 'cocinero-orcos-llanuras',
     tier: 1,
     description:
       'Ollas de hierro colgadas sobre brasas siempre vivas, bajo un cobertizo abierto por los cuatro costados para que el humo escape. El Maestro Cocinero Serhu alimenta a todo el clan desde aquí.',
@@ -12035,7 +12035,7 @@ export const factionBuildings: FactionBuildingInput[] = [
     name: 'Boca de mina del Clan Helsig',
     factionSlug: 'Clan Helsig',
     locationSlug: 'campamento-helsig-interior',
-    profession: 'minero-orcos-cristal',
+    profession: 'minero-cristal',
     tier: 1,
     description:
       'Entrada excavada en la ladera helada, apuntalada con vigas de madera oscura, de donde el clan extrae el hielo sílice que sostiene su economía. El Maestro Minero Helsig organiza aquí los turnos de mina.',

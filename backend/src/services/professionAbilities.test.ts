@@ -22,13 +22,13 @@ describe('professionAbilityUnlocksFor', () => {
     expect(result.every((a) => a.category === 'profesion')).toBe(true);
   });
 
-  it('herrero-orco-llanuras nivel 2 desbloquea solo el lingote de hierro (tier 2), no las de tier 3 todavía', () => {
-    const result = professionAbilityUnlocksFor('herrero-orco-llanuras', 2);
+  it('herrero-orcos-llanuras nivel 2 desbloquea solo el lingote de hierro (tier 2), no las de tier 3 todavía', () => {
+    const result = professionAbilityUnlocksFor('herrero-orcos-llanuras', 2);
     expect(result.map((a) => a.name)).toEqual(['Fundir lingote de hierro']);
   });
 
-  it('herrero-orco-llanuras nivel 3 desbloquea las dos recetas de tier 3 (hacha y peto)', () => {
-    const result = professionAbilityUnlocksFor('herrero-orco-llanuras', 3);
+  it('herrero-orcos-llanuras nivel 3 desbloquea las dos recetas de tier 3 (hacha y peto)', () => {
+    const result = professionAbilityUnlocksFor('herrero-orcos-llanuras', 3);
     expect(result.map((a) => a.name).sort()).toEqual(['Fabricar peto de gargantúa', 'Reparar hacha de guerra'].sort());
   });
 
@@ -38,7 +38,7 @@ describe('professionAbilityUnlocksFor', () => {
   });
 
   it('un oficio/nivel sin ninguna receta gateada no desbloquea nada', () => {
-    expect(professionAbilityUnlocksFor('herrero-orco-llanuras', 1)).toEqual([]);
+    expect(professionAbilityUnlocksFor('herrero-orcos-llanuras', 1)).toEqual([]);
     expect(professionAbilityUnlocksFor('cazador', 1)).toEqual([]);
   });
 
