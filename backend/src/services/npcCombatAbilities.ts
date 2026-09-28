@@ -1,5 +1,5 @@
 import type { Attribute, AttributeBlock } from './dice.js';
-import type { AbilityEffect, AbilityRol } from '@prisma/client';
+import type { AbilityEffect } from '@prisma/client';
 import { baseAttackFor } from './baseAttack.js';
 import { classAbilityUnlocksForClase, type Clase, type Especializacion } from './classAbilities.js';
 import type { NpcHabilidadRacialInScene } from './npcScene.js';

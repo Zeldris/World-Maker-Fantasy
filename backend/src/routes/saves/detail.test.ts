@@ -42,8 +42,16 @@ vi.mock('../../lib/prisma.js', () => ({
       createMany: (...args: unknown[]) => createManySkillBar(...args),
       findMany: (...args: unknown[]) => findManySkillBar(...args),
     },
+    // B19 (2026-09-28) — reconciliación de habilidades de especialización al cargar la partida.
+    savedAction: {
+      createMany: (...args: unknown[]) => createManySavedAction(...args),
+      findMany: (...args: unknown[]) => findManySavedAction(...args),
+    },
   },
 }));
+
+const createManySavedAction = vi.fn().mockResolvedValue({ count: 0 });
+const findManySavedAction = vi.fn().mockResolvedValue([]);
 
 const { detailRoutes } = await import('./detail.js');
 
@@ -416,6 +424,8 @@ describe('GET /saves/:id — raza/clase/especialización', () => {
     const res = await app.inject({ method: 'GET', url: '/saves/save1' });
     const body = res.json();
     expect(body.especializacion).toBe('OPRESOR');
+    // B19: Opresor a nivel 16 sin ninguna habilidad guardada → se le conceden las de su rama.
+    expect(createManySavedAction).toHaveBeenCalled();
     expect(body.pendingEspecializacionChoice).toBe(false);
     expect(body.especializacionesDisponibles).toBeUndefined();
   });

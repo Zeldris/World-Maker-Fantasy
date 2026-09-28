@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeAll, afterAll, afterEach } from 'vitest';
+import { goirnosDeBotin } from '../services/turnResolution.js';
 import Fastify from 'fastify';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
@@ -495,6 +496,8 @@ describe('Saquear zona: GET /saves/:id/saquear-zona + saqueo fuera del panel de 
       requiereTirada: false, atributo: 'destreza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
     });
     const app = await buildApp();
+    const goirnosAntes = (await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).goirnos;
+    const orco = await prisma.npc.findFirstOrThrow({ where: { slug: 'orco-enfurecido-hondonada' } });
     const action = 'Registro los cuerpos de: Orco enfurecido.';
     const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } });
     const { classification, roll } = classifyRes.json();
@@ -507,6 +510,9 @@ describe('Saquear zona: GET /saves/:id/saquear-zona + saqueo fuera del panel de 
 
     const inventoryAfter = await prisma.inventoryItem.findMany({ where: { saveId } });
     expect(inventoryAfter.map((i) => i.name)).toContain('Maza orca');
+    // B27 (2026-09-28): primer registro de un humanoide → sus Goirnos.
+    const goirnosDespues = (await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).goirnos;
+    expect(goirnosDespues).toBe(goirnosAntes + goirnosDeBotin(orco.level));
 
     // Saqueado parcial (solo Maza orca) — sigue apareciendo en el barrido, con el resto de su
     // loadout todavía disponible.

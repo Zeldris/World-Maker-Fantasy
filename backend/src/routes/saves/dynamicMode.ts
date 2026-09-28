@@ -16,7 +16,6 @@ import {
   COMBATE_FORZADO_OPCION_COMBATIR,
   type PendingDynamicMode,
   type DynamicModeTipo,
-  type RespuestaGistera,
 } from '../../services/dynamicMode.js';
 import { narrarVueltaModoDinamico } from '../../services/dynamicModeNarracion.js';
 import { aceptarQuest } from './quests.js';
@@ -510,7 +509,11 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
     // gestiona su propia transacción interna).
     let questAceptada: Awaited<ReturnType<typeof aceptarQuest>> | null = null;
     if (turno.cierra && esGistera && respuestaGistera === 'aceptar') {
-      questAceptada = await aceptarQuest(save, ORCO_ENFURECIDO_QUEST_TITLE, ORCO_ENFURECIDO_QUEST_DESCRIPTION);
+      // B16 (pruebas 2026-09-28): con el `save` cargado al principio, la aceptación salía con la hora
+      // de ANTES de esta vuelta (08:04) y el resumen de la conversación con la nueva (08:06) — horas
+      // del log no monótonas. Se relee con el reloj ya avanzado por la transacción de arriba.
+      const saveConRelojAvanzado = await prisma.save.findUniqueOrThrow({ where: { id: save.id }, include: { worldState: true } });
+      questAceptada = await aceptarQuest(saveConRelojAvanzado, ORCO_ENFURECIDO_QUEST_TITLE, ORCO_ENFURECIDO_QUEST_DESCRIPTION);
     }
 
     return {

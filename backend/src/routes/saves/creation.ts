@@ -5,7 +5,7 @@ import { energiaMaxFor } from '../../services/energy.js';
 import { startingAbilitiesFor } from '../../services/startingAbilities.js';
 import { GENERIC_COMBAT_ABILITIES } from '../../services/genericCombatAbilities.js';
 import { classAbilityUnlocksFor } from '../../services/classAbilities.js';
-import { startingInventoryFor, type StartingInventoryItem } from '../../services/startingInventory.js';
+import { startingInventoryFor } from '../../services/startingInventory.js';
 import { startingProfessionsFor } from '../../services/startingProfessions.js';
 import { professionAbilityUnlocksFor } from '../../services/professionAbilities.js';
 import { harvestAbilityUnlocksFor } from '../../services/harvestAbilities.js';
@@ -17,7 +17,7 @@ import { initialLocationSlugFor } from '../../services/travel.js';
 import { formatFictionalDate } from '../../services/worldClock.js';
 import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
 import type { AttributeBlock } from '../../services/dice.js';
-import { Prisma, type Dificultad } from '@prisma/client';
+import { type Dificultad } from '@prisma/client';
 import { buildStartingQuestsData, VALID_ATTRIBUTES, withCatalogStatBonuses, restartSaveTransactionBody } from './shared.js';
 
 /// Auditoría 2026-08-11 ("pruebas por API"): el guard de la ruta solo cubría 3 de los ~10 campos

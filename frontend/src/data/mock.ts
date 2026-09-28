@@ -28,7 +28,7 @@ export const pregeneratedCharacters: Character[] = [
   {
     id: 'char-gorhorn',
     name: 'Gorhorn',
-    archetype: 'Guerrero superviviente del clan Maktor (Orco)',
+    archetype: 'Superviviente del clan Maktor (Orco)',
     origin: 'Único superviviente de un clan orco de escasa relevancia, aniquilado como carne de cañón por el mando Goirntes en una de las primeras escaramuzas de la Concordia de Hierro.',
     motivation: 'Que la muerte de su clan signifique algo, y restaurar el nombre de los Maktor — aunque eso implique romper el juramento que lo ata a un bando que ya no respeta.',
     attributes: { fuerza: 10, destreza: 6, constitucion: 7, inteligencia: 7, voluntad: 8, carisma: 6, magia: 2 },

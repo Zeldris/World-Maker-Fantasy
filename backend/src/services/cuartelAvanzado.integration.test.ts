@@ -6,7 +6,6 @@ import {
   CUARTEL_AVANZADO_RECIPE,
   CUARTEL_DE_GUERRA_RECIPE,
   PUESTO_COMERCIAL_RECIPE,
-  AYUNTAMIENTO_PEQUENO_RECIPE,
 } from './construction.js';
 
 /// Conquista territorial estilo X4 (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, 2026-09-21) — Cuartel

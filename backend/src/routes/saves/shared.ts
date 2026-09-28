@@ -1,5 +1,5 @@
 import type { FastifyReply } from 'fastify';
-import { Prisma, type Dificultad, type Clase } from '@prisma/client';
+import { Prisma, type Clase } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { startingQuestsFor } from '../../services/startingQuests.js';
 import type { Attribute, AttributeBlock } from '../../services/dice.js';

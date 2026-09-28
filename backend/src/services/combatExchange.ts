@@ -1,7 +1,7 @@
 import type { Attribute, AttributeBlock, RollResult, RollMode } from './dice.js';
 import type { AbilityEffect, CondicionFisica } from '@prisma/client';
 import { gradoExitoFor, rollD20 } from './dice.js';
-import { effectiveAttributeValue, typeMultiplierFor, type CombatTree } from './attributeWheel.js';
+import { typeMultiplierFor, type CombatTree } from './attributeWheel.js';
 import { condicionMalus, saludBandFor } from './death.js';
 
 /// Ataque de NPC ya decidido (oculto al frontend) — se persiste en `Save.pendingNpcAttack`

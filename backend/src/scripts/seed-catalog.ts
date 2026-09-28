@@ -89,6 +89,13 @@ async function main() {
     });
     itemIdBySlug.set(item.slug, row.id);
   }
+  // B14 (pruebas 2026-09-28, origen del bug A1 "mena-de-hierro"): el upsert nunca borraba objetos
+  // retirados del catálogo, así que una BD local podía conservar filas fantasma que el resto del
+  // motor seguía encontrando. Se podan las del mundo que ya no están en `items` — sus únicas
+  // referencias por FK (`NpcItem`, `HarvestYield`) son catálogo que este mismo script resiembra
+  // (cascade); `InventoryItem` solo guarda `catalogSlug` como texto y conserva su nombre/datos.
+  const retirados = await prisma.itemCatalog.deleteMany({ where: { worldId, slug: { notIn: items.map((i) => i.slug) } } });
+  if (retirados.count > 0) console.log(`  Objetos retirados del catálogo: ${retirados.count}`);
 
   console.log(`  Facciones (${factions.length})...`);
   const factionNameSet = new Set(factions.map((f) => f.name));

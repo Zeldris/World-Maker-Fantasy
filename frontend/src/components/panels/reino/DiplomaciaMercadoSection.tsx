@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import type { CompanionInfo } from '../../../types'
+import type { AlmacenItemInfo, CompanionInfo } from '../../../types'
 import type { DiplomaciaResultado, EnciclopediaFaccionInfo, MercadoItemInfo } from '../../../lib/api'
-import { getMercado, postDiplomacia, postMercadoComprar } from '../../../lib/api'
+import { getMercado, postDiplomacia, postMercadoComprar, postMercadoVender } from '../../../lib/api'
 import { PanelEmptyState } from '../../PanelEmptyState'
 import { PanelSection } from '../../PanelSection'
 import { razaThemeStyleVars } from '../../../lib/razaTheme'
@@ -31,13 +31,15 @@ interface DiplomaciaMercadoSectionProps {
   factions: EnciclopediaFaccionInfo[]
   goirnos: number
   onRefreshSave: () => Promise<void>
+  /// B27 (pruebas 2026-09-28) — objetos del Almacén propio, para Vender en el Mercado.
+  almacenItems?: AlmacenItemInfo[]
 }
 
 /// Sub-tab "Diplomacia y Mercado" del Reino (Fase 3, 2026-09-21, docs/rpgtarkor/mundo-vivo-x4.md
 /// § 4.4) — las 3 acciones de diplomacia (Negociar/Sabotear/Espiar) y el mercado regulado ya
 /// funcionaban en backend, pero sin ningún cliente hasta ahora. Selector de facción objetivo con
 /// `razaThemeStyleVars` en el borde — primera aplicación real de la paleta por raza (§ 0.1 del plan).
-export function DiplomaciaMercadoSection({ saveId, companions, factions, goirnos, onRefreshSave }: DiplomaciaMercadoSectionProps) {
+export function DiplomaciaMercadoSection({ saveId, companions, factions, goirnos, onRefreshSave, almacenItems = [] }: DiplomaciaMercadoSectionProps) {
   const [targetSlug, setTargetSlug] = useState<string | null>(null)
   // Bug real (verificación en vivo, 2026-09-21): `factions` trae catálogo NPC + la fundada por el
   // propio jugador en esta partida (`buildFactionsSection`, backend) — y esa propia facción SIEMPRE
@@ -89,7 +91,7 @@ export function DiplomaciaMercadoSection({ saveId, companions, factions, goirnos
       {target && (
         <>
           <DiplomaciaCard saveId={saveId} target={target} diplomatico={diplomatico} onNegociarExito={() => setMercadoRefreshToken((t) => t + 1)} />
-          <MercadoCard saveId={saveId} target={target} goirnos={goirnos} onRefreshSave={onRefreshSave} refreshToken={mercadoRefreshToken} />
+          <MercadoCard saveId={saveId} target={target} goirnos={goirnos} onRefreshSave={onRefreshSave} refreshToken={mercadoRefreshToken} almacenItems={almacenItems} />
         </>
       )}
     </div>
@@ -191,27 +193,30 @@ function DiplomaciaCard({
   )
 }
 
-// TODO (Fase 3, 2026-09-21): solo "Comprar" implementado en esta pasada — `postMercadoVender` ya
-// existe en lib/api.ts, sin UI todavía. Vender exige listar los objetos propios con `catalogSlug`
-// (mismo criterio que `depositable` en AlmacenSection), sin resolver aquí para no ampliar de más
-// esta ronda sin verificarlo primero.
+// Comprar (Fase 3, 2026-09-21) + Vender (B27, pruebas 2026-09-28: era la única vía de ingresos y
+// no tenía UI) — Vender lista los objetos del Almacén propio con `catalogSlug` (el backend rechaza
+// los que no tienen valor de mercado con un mensaje propio, que se muestra tal cual).
 function MercadoCard({
   saveId,
   target,
   goirnos,
   onRefreshSave,
   refreshToken,
+  almacenItems,
 }: {
   saveId: string
   target: EnciclopediaFaccionInfo
   goirnos: number
   onRefreshSave: () => Promise<void>
+  almacenItems: AlmacenItemInfo[]
   /// Ver comentario en `DiplomaciaCard.onNegociarExito` — cambiar de valor repite el fetch aunque
   /// `target.slug` no haya cambiado (negociar con la MISMA facción ya seleccionada).
   refreshToken: number
 }) {
   const [mercado, setMercado] = useState<{ tratado: boolean; items: MercadoItemInfo[] } | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  const [errorVenta, setErrorVenta] = useState<string | null>(null)
+  const vendibles = almacenItems.filter((i) => i.catalogSlug)
 
   async function reload() {
     const res = await getMercado(saveId, target.slug)
@@ -245,6 +250,20 @@ function MercadoCard({
     }
   }
 
+  async function handleVender(almacenItemId: string) {
+    setBusy(almacenItemId)
+    setErrorVenta(null)
+    try {
+      await postMercadoVender(saveId, target.slug, almacenItemId)
+      await reload()
+      await onRefreshSave()
+    } catch (e) {
+      setErrorVenta(e instanceof Error ? e.message : 'No se pudo vender.')
+    } finally {
+      setBusy(null)
+    }
+  }
+
   return (
     <PanelSection title="Mercado">
       {mercado === null ? (
@@ -270,6 +289,29 @@ function MercadoCard({
               </button>
             </div>
           ))}
+        </div>
+      )}
+      {mercado?.tratado && (
+        <div className="mt-3 flex flex-col gap-1.5">
+          <p className="text-2xs font-semibold uppercase tracking-[0.1em] text-wood-500">Vender de tu Almacén</p>
+          {errorVenta && <p className="text-2xs text-danger-400">{errorVenta}</p>}
+          {vendibles.length === 0 ? (
+            <p className="text-xs text-wood-500">No tienes nada en el Almacén que se pueda vender.</p>
+          ) : (
+            vendibles.map((item) => (
+              <div key={item.id} className="flex items-center gap-2 rounded-lg border border-iron-700 bg-wood-950/40 px-3 py-2">
+                <span className="flex-1 truncate text-xs text-wood-200">{item.name}</span>
+                <button
+                  type="button"
+                  onClick={() => handleVender(item.id)}
+                  disabled={busy === item.id}
+                  className="tactile shrink-0 rounded border border-accent-600/60 px-2 py-1 text-2xs text-accent-300 hover:bg-accent-500/10 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {busy === item.id ? '...' : 'Vender'}
+                </button>
+              </div>
+            ))
+          )}
         </div>
       )}
     </PanelSection>

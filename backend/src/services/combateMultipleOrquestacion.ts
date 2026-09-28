@@ -12,7 +12,6 @@ import {
   objetivosExtraFor,
   resolverEnganchesRonda,
   resolverIntercambioCompleto,
-  type CombatienteIniciativa,
   type Bando,
   type ObjetivoCandidato,
   type HabilidadParaIntercambio,

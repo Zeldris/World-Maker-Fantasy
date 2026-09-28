@@ -154,7 +154,7 @@ export function ReinoPanel({
         />
       )}
       {activeSubTab === 'diplomacia-mercado' && (
-        <DiplomaciaMercadoSection saveId={saveId} companions={companions} factions={factions} goirnos={goirnos} onRefreshSave={onRefreshSave} />
+        <DiplomaciaMercadoSection saveId={saveId} companions={companions} factions={factions} goirnos={goirnos} onRefreshSave={onRefreshSave} almacenItems={almacenItems} />
       )}
     </div>
   )

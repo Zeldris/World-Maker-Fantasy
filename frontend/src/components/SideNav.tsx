@@ -31,7 +31,7 @@ export function SideNav({ tabs, active, onSelect, align, dimmed, disabledIds, di
       // Material distinto por riel (roadmap de rediseño visual, Fable 2026-07-20, Nivel 2):
       // izquierdo = Polvo del Camino ("tu equipo"), derecho = Hierro Grabado ("el mundo") — mismo
       // reparto que ya fija LogPanel (accent/accent2), reforzado ahora por textura.
-      className={`${align === 'left' ? 'dust-road' : 'iron-band corner-bracket'} flex w-14 min-h-0 shrink-0 flex-col items-center gap-1 overflow-y-auto rounded-xl py-2 sm:w-16 ${
+      className={`${align === 'left' ? 'dust-road' : 'iron-band corner-bracket'} flex w-16 min-h-0 shrink-0 flex-col items-center gap-1 overflow-y-auto rounded-xl py-2 sm:w-[4.75rem] ${
         align === 'left' ? 'order-first' : 'order-last'
       } ${dimmed ? 'invisible' : ''}`}
     >
@@ -59,7 +59,9 @@ export function SideNav({ tabs, active, onSelect, align, dimmed, disabledIds, di
               <span className={`text-base leading-none transition-[filter,opacity] ${active === tab.id ? '' : 'opacity-75 grayscale'}`}>
                 {tab.icon}
               </span>
-              <span className="leading-none">{tab.label}</span>
+              {/* B24 (pruebas 2026-09-28): "Compañeros"/"Enciclopedia" se cortaban ("ompañeros",
+                  "nciclopedia") en un riel de 64px — riel algo más ancho + tracking ajustado. */}
+              <span className="max-w-full leading-none tracking-tight">{tab.label}</span>
             </button>
           </TooltipAnchor>
         )

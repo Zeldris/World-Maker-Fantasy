@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import Fastify from 'fastify';
-import { MAX_PROFESSION_LEVEL } from '../../services/professionProgress.js';
 
 /// Cobertura nueva (auditoría de código completa, 2026-08-07) — este endpoint no tenía NINGÚN test
 /// antes. El foco es el bug real encontrado auditando `confirmar`: no validaba `selections` contra

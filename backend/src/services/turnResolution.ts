@@ -98,7 +98,6 @@ import { startEagerTransitResolution } from '../workers/worldTick.js';
 import {
   destinationsFrom,
   normalizeText,
-  initialLocationSlugFor,
   matchDestination,
   detectsTravelIntent,
   detectsVagueMovementIntent,
@@ -115,7 +114,6 @@ import {
   posicionDeObjetivo,
   minutoDeReaparicion,
   moverJugadorA,
-  fijarEntradaAZona,
   volverAEntrada,
   celdaDePixel,
   mismaCelda,
@@ -151,7 +149,7 @@ import { resolverTurnoJugador, resolverTurnosAutonomosHastaJugadora, fijarElecci
 import { invalidateCarcassRollCache } from '../routes/saves/recolectar.js';
 import { instanceNumbersByParticipantId, resolverObjetivoPorTexto, type HabilidadParaIntercambio } from './combateMultiple.js';
 import { prisma } from '../lib/prisma.js';
-import { effectiveAttributesConDuracion, pushActiveEffect, decrementActiveEffects, parseActiveEffects, type ActiveEffect } from './activeEffects.js';
+import { effectiveAttributesConDuracion, pushActiveEffect, decrementActiveEffects, type ActiveEffect } from './activeEffects.js';
 import type { RollResult, AttributeBlock, Attribute, GradoExito } from './dice.js';
 import type { SecondaryAttributeBlock } from './secondaryAttributes.js';
 import { Prisma } from '@prisma/client';
@@ -669,17 +667,6 @@ export interface NarrateAndPersistResult {
   /// prioridad absoluta sobre cualquier mención del texto, mismo criterio que "descubrimiento"
   /// merece más peso que cualquier otra entidad citada de pasada en la misma narración.
   discoveredLocationSlug: string | null;
-}
-
-async function resolveInitialLocationId(
-  tx: Prisma.TransactionClient,
-  worldId: string,
-  characterName: string,
-): Promise<string | undefined> {
-  const slug = initialLocationSlugFor(characterName);
-  if (!slug) return undefined;
-  const location = await tx.location.findUnique({ where: { worldId_slug: { worldId, slug } } });
-  return location?.id;
 }
 
 export interface CombatExchangePhaseInput {
@@ -2174,6 +2161,16 @@ async function applyLootMode(params: {
     // saltaba ESTE BLOQUE ENTERO para un NPC con loadout vacío — `npc.items.every(...)` sobre un
     // array vacío ya es `true` por definición (nada que tomar = todo tomado), así que quitar el
     // guard basta.
+    // B27 (pruebas 2026-09-28): sin Reino no había NINGUNA forma de ganar Goirnos (aprender un
+    // oficio cuesta 10). Un humanoide (sin `ataqueNatural`, a diferencia de la fauna) lleva unas
+    // monedas que se cogen la primera vez que se registra su cuerpo — decisión por defecto,
+    // revisable por Álvaro (`goirnosDeBotin`).
+    const primerRegistro = !freshState || (freshState.lootedItemNames.length === 0 && !freshState.saqueado);
+    if (primerRegistro && npc.ataqueNatural === null) {
+      const goirnos = goirnosDeBotin(npc.level);
+      await tx.save.update({ where: { id: saveId }, data: { goirnos: { increment: goirnos } } });
+      actualLootedNames.push(`${goirnos} Goirnos`);
+    }
     const nuevosTomados = [...new Set([...yaTomados, ...itemsToLoot.map((item) => item.name)])];
     const todoTomado = npc.items.every((item) => nuevosTomados.includes(item.name));
     if (!todoTomado) partiallyLootedSlugs.push(npc.slug);
@@ -2201,6 +2198,12 @@ async function applyLootMode(params: {
         : `${characterName} rebusca entre los restos, pero alguien se le ha adelantado — no queda nada que llevarse. ${pickFlavor(LOOT_FLAVOR_EMPTY)}`
       : null;
   return { actualLootedNames, newInventoryItems, createdItemNames, partiallyLootedSlugs, questRewardXp, narrationOverride };
+}
+
+/// B27 (2026-09-28) — Goirnos que lleva encima un humanoide derrotado, por nivel (nivel 1 → 4,
+/// nivel 5 → 12). Puro, para poder testearlo y ajustarlo en un único sitio.
+export function goirnosDeBotin(nivel: number): number {
+  return 2 + Math.max(1, nivel) * 2;
 }
 
 /// Aplica el resultado YA resuelto del intercambio de combate (`resolveCombatExchangePhase`) al
@@ -5811,7 +5814,6 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // (golpe normal, Matar o combate múltiple) invalida la tirada congelada de "desollador" para
     // esta ubicación si la había, aunque estuviera vacía (el bug real era justo ese caso: una tirada
     // vacía no tiene ningún `sourceSlug` que la invalidación normal de recolección pueda enganchar).
-    const huboMuerteEnEstaUbicacion = npcTargetNewCondicion === 'MUERTO' || combatEncounterCaidos.some((c) => c.nuevaCondicion === 'MUERTO');
     // Caché de Desollar, parte 1: camino 1v1 clásico / Matar (bug real, reverificación en vivo
     // 2026-08-29, ver `invalidateCarcassRollCache` en recolectar.ts). El camino de combate múltiple
     // se cubre aparte más abajo, tras `combatEncounterLootSummary` — `combatEncounterCaidos` NO basta
