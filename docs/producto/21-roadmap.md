@@ -37,7 +37,7 @@ Rompen una mecánica en partida real. Referencias H-x:
 
 | # | Qué | Origen | Estado |
 |---|---|---|---|
-| 1 | **Ningún súbdito puede recibir `rolReino`** desde la interfaz, así que la producción y la diplomacia del Reino no se pueden jugar (H-1). 🧭 ¿El rol sale de la plantilla o de un selector propio? | [H] | Abierto |
+| 1 | ~~**Ningún súbdito puede recibir `rolReino`** (H-1)~~ — decidido: plantilla + selector en Súbditos | [H] | ✅ `0e47115` |
 | 2 | **El diplomático no sube de nivel** y se bloquea tras una sola negociación (H-5). 🧭 ¿XP por acción o enseñanza de un Maestro? | [H] | Abierto |
 | 3 | **Producción de facción duplicada y sin consumo** (H-6): se ejecuta en el turno de cada partida y sin filtro de mundo. 🧭 Propuesta: moverla a `worldTick` con consumo por bocas | [H] | Abierto |
 | 4 | **Las facciones no tienen stock que vender** (H-2): comprar solo funciona tras venderles. 🧭 Va con el punto 3 | [H] | Abierto |
