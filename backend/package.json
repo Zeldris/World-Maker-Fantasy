@@ -14,6 +14,8 @@
     "test:turn": "tsx src/scripts/test-turn.ts",
     "reindex-lore": "tsx src/scripts/reindex-lore.ts",
     "seed-catalog": "tsx src/scripts/seed-catalog.ts",
+    "schema:sqlite": "tsx src/scripts/generar-schema-sqlite.ts",
+    "plantilla:sqlite": "prisma generate --schema prisma/schema.sqlite.prisma && prisma db push --schema prisma/schema.sqlite.prisma --skip-generate && tsx src/scripts/reindex-lore.ts && tsx src/scripts/seed-catalog.ts",
     "seed-image-prompts": "tsx src/scripts/seedImagePrompts.ts",
     "export-image-prompts": "tsx src/scripts/exportImagePrompts.ts",
     "audit-images": "tsx src/scripts/auditImages.ts",

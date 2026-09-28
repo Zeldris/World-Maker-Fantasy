@@ -7,6 +7,7 @@ import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
 import { grantQuestRewardItems, questRewardNarrationFor, GISTERA_DESPEDIDA_NARRATION } from '../../services/questResolution.js';
 import { generateQuestResponseNarration } from '../../services/narrador.js';
 import { rejectIfEnded, rejectIfPendingDeath, clearPendingOffer } from './shared.js';
+import { anadirNpcRetirado } from '../../lib/npcsRetirados.js';
 
 /// Misión con lógica especial propia, además del anclaje genérico NPC/Location/Item (bug real
 /// 2026-08-28, "misión se salta los botones" — la creaba directamente `turnResolution.ts`, ahora
@@ -155,18 +156,18 @@ export async function aceptarQuest(
     // Bug real encontrado verificando en vivo (2026-09-03): este endpoint narra la despedida de
     // Gistera Koh (texto fijo arriba) pero nunca replicaba el efecto mecánico equivalente de
     // `gisteraAceptaEsteTurno` en turnResolution.ts (línea ~6002) — el turno de texto libre SÍ
-    // hace `npcsRetiredForever: { push: 'gistera-koh' } }`, pero aceptar por el botón (el camino
-    // recomendado desde 2026-08-26) lo dejaba vacío. `gisteraQuestYaExiste` en turnResolution.ts
-    // ya la excluye igualmente por la existencia del Quest, así que no había síntoma visible en
+    // añade 'gistera-koh' a `npcsRetiredForever` (hoy con `anadirNpcRetirado`), pero aceptar por
+    // el botón (el camino recomendado desde 2026-08-26) lo dejaba vacío. `gisteraQuestYaExiste`
+    // en turnResolution.ts ya la excluye igualmente por la existencia del Quest, así que no había síntoma visible en
     // escena — pero `npcsRetiredForever` es el mecanismo GENERAL (`detectNpcsInScene`/
     // `filterFarewellFacts` en npcScene.ts y worldFacts.ts) que otros caminos sí consultan.
     await tx.save.update({
       where: { id: save.id },
       data: {
         pendingQuestOfferInfo: Prisma.JsonNull,
-        ...(isOrcoEnfurecido ? { npcsRetiredForever: { push: 'gistera-koh' } } : {}),
       },
     });
+    if (isOrcoEnfurecido) await anadirNpcRetirado(tx, save.id, 'gistera-koh');
 
     let questCompletedInfo: { logEntryId: string; text: string; title: string; grantedItems: string[]; rewardXp: number } | null = null;
     if (isOrcoEnfurecido && orcoYaResuelto) {

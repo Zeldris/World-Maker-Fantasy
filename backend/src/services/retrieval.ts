@@ -1,5 +1,7 @@
 import { prisma } from '../lib/prisma.js';
 import { embed, toVectorLiteral } from '../lib/embeddings.js';
+import { esSqlite } from '../lib/proveedorBd.js';
+import { leerListaJson, masCercanas } from '../lib/vectores.js';
 
 export interface RetrievedLore {
   title: string;
@@ -44,6 +46,17 @@ export async function retrieveLore(
   excludeTags: string[] = [],
 ): Promise<RetrievedLore[]> {
   const vector = embed(query);
+  if (esSqlite) {
+    // SQLite (instalador de escritorio, 2026-09-28): sin pgvector — mismas filas y misma escala
+    // de distancia, calculadas en JS (ver lib/vectores.ts). `tags` llega como texto JSON.
+    const filas = await prisma.$queryRaw<{ title: string; text: string; tags: unknown; embedding: unknown }[]>`
+      SELECT title, text, tags, embedding FROM "LoreChunk" WHERE "worldId" = ${worldId}
+    `;
+    const candidatas = filas
+      .filter((f) => !leerListaJson(f.tags).some((t) => excludeTags.includes(t)))
+      .map(({ title, text, embedding }) => ({ title, text, embedding }));
+    return masCercanas(candidatas, await vector, topK);
+  }
   const queryLiteral = toVectorLiteral(await vector);
 
   const rows = await withQueryTimeout(

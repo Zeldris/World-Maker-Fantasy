@@ -156,6 +156,8 @@ import type { RollResult, AttributeBlock, Attribute, GradoExito } from './dice.j
 import type { SecondaryAttributeBlock } from './secondaryAttributes.js';
 import { Prisma } from '@prisma/client';
 import type { CondicionFisica, Dificultad, AbilityEffect, AbilityRol, Clase } from '@prisma/client';
+import { anadirNpcRetirado } from '../lib/npcsRetirados.js';
+import { esSqlite } from '../lib/proveedorBd.js';
 
 const REINO_XP = { territory: 150, buildingActive: 100, firstSubject: 100, subject: 25, consolidado: 300 } as const;
 /// Población anónima con la que arranca todo Territory nuevo (2026-08-23, Grupo 3) — un puñado de
@@ -6289,9 +6291,17 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       // nombre existe de verdad, y en ese caso hereda su `equipSlot`/`effectKey`/`tipo` reales,
       // igual que cualquier otro objeto del juego (antes siempre salían `null`, aunque el nombre
       // coincidiera con catálogo por pura casualidad).
-      const catalogMatch = await tx.itemCatalog.findFirst({
-        where: { worldId, name: { equals: narration.newItem.name, mode: 'insensitive' } },
-      });
+      // SQLite (instalador, 2026-09-28) no tiene `mode: 'insensitive'`: misma comparación sin
+      // distinguir mayúsculas, en JS sobre el catálogo del mundo (cientos de filas, y solo cuando
+      // el Narrador propone un objeto nuevo).
+      const nombreNuevo = narration.newItem.name;
+      const catalogMatch = esSqlite
+        ? ((await tx.itemCatalog.findMany({ where: { worldId } })).find(
+            (i) => i.name.toLocaleLowerCase('es') === nombreNuevo.toLocaleLowerCase('es'),
+          ) ?? null)
+        : await tx.itemCatalog.findFirst({
+            where: { worldId, name: { equals: nombreNuevo, mode: 'insensitive' } },
+          });
       if (catalogMatch) {
         const created = await tx.inventoryItem.create({
           data: {
@@ -7222,12 +7232,13 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         // ganando un combate sin recibir ni un golpe) — hace falta la transición real desde un
         // estado peor, no solo el valor final.
         activeEffects: jugadorActiveEffectsFinal as unknown as Prisma.InputJsonValue,
-        // Bug real de sessionFacts reintroduciendo NPCs "retirados para siempre" (2026-08-27,
-        // cerrado 2026-08-28) — `gisteraAceptaEsteTurno` solo es true el turno EXACTO de la
-        // aceptación, nunca se repite; `push` es seguro porque nunca se vacía/resetea esta lista.
-        ...(gisteraAceptaEsteTurno ? { npcsRetiredForever: { push: 'gistera-koh' } } : {}),
       },
     });
+    // Bug real de sessionFacts reintroduciendo NPCs "retirados para siempre" (2026-08-27,
+    // cerrado 2026-08-28) — `gisteraAceptaEsteTurno` solo es true el turno EXACTO de la
+    // aceptación, nunca se repite. Antes era un `push` dentro del update de arriba; ahora un
+    // helper que funciona también en SQLite (2026-09-28, ver lib/npcsRetirados.ts).
+    if (gisteraAceptaEsteTurno) await anadirNpcRetirado(tx, saveId, 'gistera-koh');
 
     return {
       progression: result,

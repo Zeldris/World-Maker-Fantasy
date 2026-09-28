@@ -15,6 +15,7 @@ import { syncDynamicCombatAbilities, resolveEquippedWeaponSlots } from '../../se
 import { initialLocationSlugFor } from '../../services/travel.js';
 import { formatFictionalDate } from '../../services/worldClock.js';
 import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
+import { esSqlite } from '../../lib/proveedorBd.js';
 
 /// Único punto de verdad para los 7 atributos válidos (deuda técnica 2026-08-21: `creation.ts` §
 /// `validationErrorFor` y `progression.ts` § `/saves/:id/attribute-points` mantenían cada una su
@@ -82,6 +83,19 @@ export async function lockRowForUpdate<T extends Record<string, unknown>>(
   id: string,
   columns: string[],
 ): Promise<T> {
+  if (esSqlite) {
+    // SQLite (instalador de escritorio, 2026-09-28) no tiene `FOR UPDATE`: el candado lo da
+    // `prisma.ts`, que en SQLite ejecuta las transacciones interactivas de una en una (SQLite solo
+    // admite un escritor a la vez, así que esto no le quita paralelismo real). Aquí basta con
+    // releer las columnas — con la API normal de Prisma y no con SQL crudo, para que booleanos,
+    // fechas y `Json` lleguen con sus tipos de siempre y no como los guarda SQLite (0/1, número,
+    // texto).
+    const select = Object.fromEntries(columns.map((c) => [c, true]));
+    const delegado = (table === 'Save' ? tx.save : tx.combatParticipant) as unknown as {
+      findUnique(args: { where: { id: string }; select: Record<string, boolean> }): Promise<T | null>;
+    };
+    return (await delegado.findUnique({ where: { id }, select })) as T;
+  }
   const columnList = Prisma.raw(columns.map((c) => `"${c}"`).join(', '));
   const [row] = await tx.$queryRaw<T[]>`SELECT ${columnList} FROM ${Prisma.raw(`"${table}"`)} WHERE id = ${id} FOR UPDATE`;
   return row;
