@@ -39,8 +39,8 @@ Rompen una mecánica en partida real. Referencias H-x:
 |---|---|---|---|
 | 1 | ~~**Ningún súbdito puede recibir `rolReino`** (H-1)~~ — decidido: plantilla + selector en Súbditos | [H] | ✅ `0e47115` |
 | 2 | **El diplomático no sube de nivel** y se bloquea tras una sola negociación (H-5). 🧭 ¿XP por acción o enseñanza de un Maestro? | [H] | Abierto |
-| 3 | **Producción de facción duplicada y sin consumo** (H-6): se ejecuta en el turno de cada partida y sin filtro de mundo. 🧭 Propuesta: moverla a `worldTick` con consumo por bocas | [H] | Abierto |
-| 4 | **Las facciones no tienen stock que vender** (H-2): comprar solo funciona tras venderles. 🧭 Va con el punto 3 | [H] | Abierto |
+| 3 | ~~**Producción de facción duplicada y sin consumo** (H-6)~~ — en `worldTick` con consumo | [H] | ✅ `e42ac7f` |
+| 4 | ~~**Las facciones no tienen stock que vender** (H-2)~~ — depositan productos reales (tope 5 por objeto) | [H] | ✅ `e42ac7f` |
 | 5 | Verificación **en vivo** de la tanda B1-B32 (cerrada solo con tests: fases 1-5 de mecánicas por zona, combate, economía) | [A] | Pendiente de sesión de juego |
 | 6 | 🧭 **B1**: `ZonePoint` por partida en vez de global. Cambio de esquema grande; arrastra grupos, reconciliación y seed | [A] | Decisión abierta |
 | 7 | ~~"Cargando partida…" infinito si se recarga en la creación de partida~~ | [H] | ✅ `a700a61` |
@@ -56,7 +56,7 @@ Rompen una mecánica en partida real. Referencias H-x:
 - ~~Botón directo para el **Cuartel Avanzado** y sus mejoras (H-12)~~ ✅ `a700a61` **[H]**
 - Sembrar las **`FactionRelation` iniciales** entre las 9 facciones (H-7). 🧭 Hacen falta los
   números; solo existe Concordia ↔ Los del Obelisco = 65. **[A]**
-- Llamar a **`decayPresion`** (H-4, fase 4 del plan) y ~~disparar **`BAJA_DE_GUERRA`** al matar a un NPC de otra
+- ~~Llamar a **`decayPresion`** (H-4)~~ ✅ `e42ac7f` y ~~disparar **`BAJA_DE_GUERRA`** al matar a un NPC de otra
   facción en su región (H-3)~~ ✅ `a700a61`. **[H]**
 - 🧭 ¿Filtrar las órdenes de producción por el oficio del edificio? (P-3 de la referencia técnica)
   **[H]**
