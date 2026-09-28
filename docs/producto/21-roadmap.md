@@ -42,7 +42,7 @@ Rompen una mecánica en partida real. Referencias H-x:
 | 3 | ~~**Producción de facción duplicada y sin consumo** (H-6)~~ — en `worldTick` con consumo | [H] | ✅ `e42ac7f` |
 | 4 | ~~**Las facciones no tienen stock que vender** (H-2)~~ — depositan productos reales (tope 5 por objeto) | [H] | ✅ `e42ac7f` |
 | 5 | Verificación **en vivo** de la tanda B1-B32 (cerrada solo con tests: fases 1-5 de mecánicas por zona, combate, economía) | [A] | Pendiente de sesión de juego |
-| 6 | 🧭 **B1**: `ZonePoint` por partida en vez de global. Cambio de esquema grande; arrastra grupos, reconciliación y seed | [A] | Decisión abierta |
+| 6 | ~~**B1**: `ZonePoint` por partida en vez de global~~ — plantilla de catálogo (`saveId` null) + copia por partida | [A] | ✅ `186e3e7` |
 | 7 | ~~"Cargando partida…" infinito si se recarga en la creación de partida~~ | [H] | ✅ `a700a61` |
 | 8 | ~~**Slugs de oficio incoherentes** (H-10)~~ — fuente única `backend/src/data/professions.ts` + `npm run sync-professions` | [H] | ✅ `cd96e9e` |
 
