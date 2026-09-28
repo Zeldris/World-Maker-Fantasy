@@ -63,9 +63,8 @@ Rompen una mecánica en partida real. Referencias H-x:
 - ~~Migración menor: `FactionRelation.presion @default(50)` (H-9)~~ ✅ `a700a61` **[H]**
 
 ### Mecánicas por zona (continuación del plan del 2026-09-28)
-- Pescar y Buscar necesitan puntos en el mapa; hasta entonces no hay forma de usarlos (se retiraron
-  sus botones en la fase 4). **[H]**
-- 36 de 67 `Location` no tienen ningún `ZonePoint`. Completar al menos las de Las Llanuras. **[H]**
+- ~~Pescar y Buscar necesitan puntos en el mapa~~ ✅ `e3c8464` (6 fuentes en la Playa de Ceniza Blanca, con test) **[H]**
+- 36 de 67 `Location` no tienen ningún `ZonePoint`. ~~Completar al menos las de Las Llanuras~~ ✅ `e3c8464`: solo falta `jakut-ger-interior` (interior, necesita lore). El resto son de otras regiones. **[H]**
 - 🧭 Viaje largo desde el mapa de mundo (la habilidad Viajar exige montura, sin implementar). **[A]**
 - Tras Huir, comprobar que el jugador reaparece en la entrada de la zona. **[A]**
 
