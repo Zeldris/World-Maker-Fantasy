@@ -84,6 +84,7 @@ import {
   cancelarMision,
   interactuarModoDinamico,
   interactuarModoDinamicoRecurso,
+  cazarEnZona,
   responderModoDinamico,
   ignorarModoDinamico,
   chooseNpcInteraction,
@@ -899,10 +900,14 @@ export function GameView() {
     targetName: string,
     quienInicia?: 'jugador' | 'npc',
     combateForzado?: boolean,
+    zonePointId?: string,
+    cantidad?: number,
   ) {
-    setCharacterLog((prev) => prev.map((e) => (e.id === entryId ? { ...e, dynamicModeOffer: { tipo, targetSlug, targetName, quienInicia, combateForzado, busy: true } } : e)))
+    setCharacterLog((prev) =>
+      prev.map((e) => (e.id === entryId ? { ...e, dynamicModeOffer: { tipo, targetSlug, targetName, quienInicia, combateForzado, zonePointId, cantidad, busy: true } } : e)),
+    )
     try {
-      const turno = await interactuarModoDinamico(saveId!, tipo, targetSlug, targetName, quienInicia, combateForzado)
+      const turno = await interactuarModoDinamico(saveId!, tipo, targetSlug, targetName, quienInicia, combateForzado, zonePointId, cantidad)
       setCharacterLog((prev) => prev.map((e) => (e.id === entryId ? { ...e, dynamicModeOffer: undefined } : e)))
       setFictionalDate(turno.timeLabel)
       // AGRESIVO/ENEMIGO, el NPC/fauna vio primero al jugador (2026-09-20) — el combate se abre
@@ -912,6 +917,13 @@ export function GameView() {
       if (turno.combate) {
         setCombateIniciado(turno.combate)
         combat.openCombat(turno.combate)
+        return
+      }
+      // Agresivo en grupo (Fase 2, 2026-09-28) — combate múltiple ya creado por el backend
+      // (`iniciarCaza`), este texto se manda por el turno normal para que la narración real lo
+      // abra — mismo patrón EXACTO que `handleHuntResolved` § caza en grupo (`result.actionText`).
+      if (turno.actionText) {
+        handleSubmit(turno.actionText)
         return
       }
       // B.6 (checklist frontend 2026-08-27) — retrato real si ya está subido en la Enciclopedia,
@@ -946,7 +958,7 @@ export function GameView() {
           e.id === entryId
             ? {
                 ...e,
-                dynamicModeOffer: yaNoDisponible ? undefined : { tipo, targetSlug, targetName, quienInicia, combateForzado, busy: false, error: motivo },
+                dynamicModeOffer: yaNoDisponible ? undefined : { tipo, targetSlug, targetName, quienInicia, combateForzado, zonePointId, cantidad, busy: false, error: motivo },
                 ...(yaNoDisponible ? { text: `${e.text} (${motivo})` } : {}),
               }
             : e,
@@ -961,6 +973,27 @@ export function GameView() {
     // solo se registra en consola para no perder el rastro por completo si el backend queda con
     // `pendingDynamicMode` huérfano.
     ignorarModoDinamico(saveId!).catch((err) => console.error('ignorarModoDinamico falló', err))
+  }
+
+  // Cazar desde la tarjeta de encuentro (Fase 2, 2026-09-28,
+  // `plan-mecanicas-por-zona-2026-09-28.md`) — caza EXACTAMENTE el grupo con el que se ha
+  // colisionado (`entry.dynamicModeOffer.zonePointId`), reutilizando el MISMO tratamiento de
+  // resultado que `handleHuntResolved` (misma forma de respuesta que `confirmarCaza`): caza limpia
+  // → LogEntry + panel de combate ya resuelto con MUERTO; combate (1v1 o en grupo) → `actionText`
+  // por el turno normal. En error, se conservan TODOS los campos de la oferta y se muestra
+  // `err.message` — mismo patrón que `handleInteractuarModoDinamico`.
+  async function handleCazarEnZona(entryId: string, zonePointId: string) {
+    setCharacterLog((prev) => prev.map((e) => (e.id === entryId && e.dynamicModeOffer ? { ...e, dynamicModeOffer: { ...e.dynamicModeOffer, busy: true } } : e)))
+    try {
+      const result = await cazarEnZona(saveId!, zonePointId)
+      setCharacterLog((prev) => prev.map((e) => (e.id === entryId ? { ...e, dynamicModeOffer: undefined } : e)))
+      handleHuntResolved(result)
+    } catch (err) {
+      const motivo = err instanceof Error && err.message ? err.message : 'No se pudo cazar — inténtalo de nuevo.'
+      setCharacterLog((prev) =>
+        prev.map((e) => (e.id === entryId && e.dynamicModeOffer ? { ...e, dynamicModeOffer: { ...e.dynamicModeOffer, busy: false, error: motivo } } : e)),
+      )
+    }
   }
 
   // RECURSO (2026-09-08, "Ver qué hay en la zona") — a diferencia de `handleInteractuarModoDinamico`
@@ -1044,6 +1077,13 @@ export function GameView() {
         setActiveDynamicMode(null)
         setCombateIniciado(turno.combate)
         combat.openCombat(turno.combate)
+        return
+      }
+      // Agresivo en grupo (Fase 2, 2026-09-28) — mismo patrón que `handleInteractuarModoDinamico`:
+      // combate múltiple ya creado por el backend, se manda por el turno normal.
+      if (turno.actionText) {
+        setActiveDynamicMode(null)
+        handleSubmit(turno.actionText)
         return
       }
       // `imageUrl` se conserva de la vuelta anterior — el retrato no cambia dentro de la misma
@@ -1938,6 +1978,7 @@ export function GameView() {
               onDismissQuestOffer={handleDismissQuestOffer}
               onInteractuarModoDinamico={handleInteractuarModoDinamico}
               onInteractuarModoDinamicoRecurso={handleInteractuarModoDinamicoRecurso}
+              onCazarEnZona={handleCazarEnZona}
               onDismissDynamicModeOffer={handleDismissDynamicModeOffer}
               onChooseNpcInteraction={handleChooseNpcInteraction}
               onOpenHarvestSuggestion={handleOpenHarvestSuggestion}

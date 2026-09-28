@@ -20,6 +20,8 @@ import {
 import { narrarVueltaModoDinamico } from '../../services/dynamicModeNarracion.js';
 import { aceptarQuest } from './quests.js';
 import { detectNpcsInScene } from '../../services/npcScene.js';
+import { iniciarCaza, type CazaTarget } from '../../services/caza.js';
+import type { AttributeBlock } from '../../services/dice.js';
 
 /// "Modo dinámico" (2026-08-27, Pieza 4 de "Dinamismo del mundo") — mini-flujo acotado ofrecido
 /// al final de un turno normal (`dynamicModeOffer`, turnResolution.ts), nunca lo interrumpe. Estas
@@ -118,11 +120,47 @@ async function persistirCierreNpcEnTransaccion(
 /// el NPC — pese a ser `kind: 'PRINCIPAL'` y por tanto ya candidato plausible — nunca pasaba el
 /// filtro de "mencionado". Se resuelve el nombre REAL por `targetSlug` antes de construir `action`.
 async function abrirCombateForzadoDesdeInteractuar(
-  save: { id: string; worldId: string; currentLocationId: string | null },
+  save: { id: string; worldId: string; currentLocationId: string | null; characterName: string; level: number; attributes: Prisma.JsonValue },
   targetSlug: string,
   targetName: string,
   fictionalMinutes: number,
-) {
+  // Agresivo en grupo (Fase 2, 2026-09-28, `plan-mecanicas-por-zona-2026-09-28.md`) — id/cantidad
+  // del `ZonePoint` colisionado, presentes solo cuando la oferta forzada viene de un grupo de
+  // FAUNA real (ver `dynamicModeOffer.zonePointId`/`cantidad`, zona.ts). Con `cantidad > 1` el 1v1
+  // clásico de abajo queda descartado — "un agresivo que te corta el paso nunca se resuelve
+  // sigiloso": todo el grupo entra a combate múltiple vía `iniciarCaza`, `permitirCazaLimpia:
+  // false` a propósito (la caza limpia mataría a un único individuo sin combate, justo lo que este
+  // caso debe evitar siempre).
+  zonePointId?: string,
+  cantidad?: number,
+): Promise<{ combate: ReturnType<typeof combateNpcShape> } | { actionText: string } | null> {
+  if (zonePointId && cantidad != null && cantidad > 1) {
+    const punto = await prisma.zonePoint.findUnique({ where: { id: zonePointId } });
+    const npcCatalogoGrupo = punto ? await prisma.npc.findFirst({ where: { worldId: save.worldId, slug: punto.targetSlug } }) : null;
+    if (!punto || !punto.activo || punto.cantidad <= 0 || !npcCatalogoGrupo) return null;
+    const targets: CazaTarget[] = [{ npc: npcCatalogoGrupo, cantidadObjetivo: punto.cantidad, zonePointId: punto.id }];
+    const resultado = await iniciarCaza({
+      save: {
+        id: save.id,
+        worldId: save.worldId,
+        characterName: save.characterName,
+        level: save.level,
+        attributes: save.attributes as AttributeBlock,
+        currentLocationId: save.currentLocationId,
+        region: null,
+        fictionalMinutes,
+      },
+      targets,
+      permitirCazaLimpia: false,
+    });
+    if ('error' in resultado) return null;
+    // `permitirCazaLimpia: false` descarta la rama de caza limpia — `resultado.resuelveSinCombate`
+    // nunca debería ser `true` aquí (shape distinto, sin `analizado`/`capturable`/...), pero el
+    // tipo de `iniciarCaza` lo contempla; se cubre por seguridad con un cast explícito, nunca
+    // alcanzable en la práctica.
+    return resultado.resuelveSinCombate ? { combate: resultado.combate as unknown as ReturnType<typeof combateNpcShape> } : { actionText: resultado.actionText };
+  }
+
   const npcCatalogo = await prisma.npc.findFirst({ where: { worldId: save.worldId, slug: targetSlug }, select: { name: true } });
   const sessionFacts = await loadSessionFacts(save.id);
   const npcsInScene = await detectNpcsInScene({
@@ -143,6 +181,10 @@ async function abrirCombateForzadoDesdeInteractuar(
     where: { id: save.id },
     data: { pendingCombatNpcSlugs: [targetSlug], pendingDynamicModeOffer: Prisma.JsonNull, pendingDynamicMode: Prisma.JsonNull },
   });
+  return { combate: combateNpcShape(target) };
+}
+
+function combateNpcShape(target: { slug: string; name: string; condicionFisica: string; saqueado: boolean; lootedItemNames: string[]; analizado: boolean; capturable: boolean; activeEffects: unknown; targetedForKill: boolean }) {
   return {
     npcs: [
       {
@@ -167,9 +209,20 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
   /// backend tenga que recalcular el candidato aquí).
   app.post<{
     Params: { id: string };
-    Body: { tipo: DynamicModeTipo; targetSlug: string; targetName: string; quienInicia?: 'jugador' | 'npc'; combateForzado?: boolean };
+    Body: {
+      tipo: DynamicModeTipo;
+      targetSlug: string;
+      targetName: string;
+      quienInicia?: 'jugador' | 'npc';
+      combateForzado?: boolean;
+      // Agresivo en grupo (Fase 2, 2026-09-28) — id/cantidad del `ZonePoint` colisionado, del mismo
+      // `dynamicModeOffer` que ya trae la tarjeta (zona.ts). Ausentes para un dinámico sin
+      // `ZonePoint` propio, o para NPC/RECURSO (nunca se agrupan).
+      zonePointId?: string;
+      cantidad?: number;
+    };
   }>('/saves/:id/modo-dinamico/interactuar', async (request, reply) => {
-      const { tipo, targetSlug, targetName, quienInicia, combateForzado } = request.body;
+      const { tipo, targetSlug, targetName, quienInicia, combateForzado, zonePointId, cantidad } = request.body;
       if (!tipo || !targetSlug || !targetName?.trim()) {
         return reply.status(400).send({ error: 'Faltan campos: tipo, targetSlug, targetName' });
       }
@@ -190,14 +243,14 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
       // narrar la apertura con `narrarAperturaCombateForzado`) — la rama de "npc" se resuelve aquí
       // mismo porque no necesita ninguna narración previa, el combate ya empieza.
       if (combateForzado && quienInicia === 'npc') {
-        const combate = await abrirCombateForzadoDesdeInteractuar(save, targetSlug, targetName, fictionalMinutesActuales0);
-        if (!combate) {
+        const resultadoCombate = await abrirCombateForzadoDesdeInteractuar(save, targetSlug, targetName, fictionalMinutesActuales0, zonePointId, cantidad);
+        if (!resultadoCombate) {
           // El agresor ya no está (muerto, retirado...) — la oferta se descarta: sin esto el jugador
           // quedaba atascado (no se puede ignorar ni moverse con un combate forzado pendiente).
           await prisma.save.update({ where: { id: save.id }, data: { pendingDynamicModeOffer: Prisma.JsonNull, pendingDynamicMode: Prisma.JsonNull } });
           return reply.status(400).send({ error: 'Ese encuentro ya no está disponible aquí.' });
         }
-        return { narration: '', opciones: [], cierra: true, vuelta: 1, timeLabel: formatFictionalDate(fictionalMinutesActuales0), newQuestOfferInfo: null, combate };
+        return { narration: '', opciones: [], cierra: true, vuelta: 1, timeLabel: formatFictionalDate(fictionalMinutesActuales0), newQuestOfferInfo: null, ...resultadoCombate };
       }
 
       const esGistera = targetSlug === 'gistera-koh';
@@ -265,6 +318,11 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
             locationContext: currentLocation,
             historialNarracion,
             ...(combateForzado ? { combateForzado: true as const } : {}),
+            // Agresivo en grupo (Fase 2, 2026-09-28) — se persisten para que `/responder` (el
+            // jugador elige "Combatir" tras verlo primero) sepa que este encuentro es un grupo real
+            // y abra combate múltiple en vez del 1v1 clásico.
+            ...(zonePointId ? { zonePointId } : {}),
+            ...(cantidad != null ? { cantidad } : {}),
           };
 
       const pendingQuestOfferInfo = await prisma.$transaction(async (tx) => {
@@ -343,14 +401,21 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
       await prisma.save.update({ where: { id: save.id }, data: { pendingDynamicMode: Prisma.JsonNull } });
       if (respuesta === COMBATE_FORZADO_OPCION_COMBATIR) {
         const fictionalMinutesActuales = save.worldState?.fictionalMinutes ?? 480;
-        const combate = await abrirCombateForzadoDesdeInteractuar(save, pending.targetSlug, pending.targetName, fictionalMinutesActuales);
-        if (!combate) {
+        const resultadoCombate = await abrirCombateForzadoDesdeInteractuar(
+          save,
+          pending.targetSlug,
+          pending.targetName,
+          fictionalMinutesActuales,
+          pending.zonePointId,
+          pending.cantidad,
+        );
+        if (!resultadoCombate) {
           // El agresor ya no está (muerto, retirado...) — la oferta se descarta: sin esto el jugador
           // quedaba atascado (no se puede ignorar ni moverse con un combate forzado pendiente).
           await prisma.save.update({ where: { id: save.id }, data: { pendingDynamicModeOffer: Prisma.JsonNull, pendingDynamicMode: Prisma.JsonNull } });
           return reply.status(400).send({ error: 'Ese encuentro ya no está disponible aquí.' });
         }
-        return { narration: '', opciones: [], cierra: true, vuelta: pending.vuelta + 1, timeLabel: formatFictionalDate(fictionalMinutesActuales), newQuestOfferInfo: null, combate };
+        return { narration: '', opciones: [], cierra: true, vuelta: pending.vuelta + 1, timeLabel: formatFictionalDate(fictionalMinutesActuales), newQuestOfferInfo: null, ...resultadoCombate };
       }
       const nuevoFictionalMinutes = advanceFictionalMinutes(save.worldState?.fictionalMinutes ?? 480, MINUTOS_POR_VUELTA_MODO_DINAMICO);
       const timeLabel = formatFictionalDate(nuevoFictionalMinutes);

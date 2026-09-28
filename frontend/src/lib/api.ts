@@ -1664,18 +1664,29 @@ export async function getFactionRelations(worldSlug: string, saveId?: string): P
 /// contra cuantos quiere combatir") — cuántos individuos de CADA especie quiere comprometer al
 /// combate, solo relevante para especies con `avistados > 1`; el backend tira un dado sobre esto
 /// (puede salir algo distinto, ver `groupVarianceClause`), nunca es un número garantizado.
-export async function confirmarCaza(
-  saveId: string,
-  slugs: string[],
-  cantidades?: Record<string, number>,
-): Promise<
+export type ConfirmarCazaResultado =
   | { resuelveSinCombate: true; exito: true; combate: { npcs: NpcInSceneInfo[] }; logEntry: { id: string; text: string; timeLabel: string; createdAt: string } }
   | { resuelveSinCombate: false; exito: false | null; actionText: string }
-> {
+
+export async function confirmarCaza(saveId: string, slugs: string[], cantidades?: Record<string, number>): Promise<ConfirmarCazaResultado> {
   return fetchJson(`${API_URL}/saves/${saveId}/cazar/confirmar`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ slugs, cantidades }),
+  })
+}
+
+/// Cazar desde la tarjeta de encuentro de zona (Fase 2, 2026-09-28,
+/// `plan-mecanicas-por-zona-2026-09-28.md`) — caza EXACTAMENTE el grupo con el que se ha
+/// colisionado en el mapa (`entry.dynamicModeOffer.zonePointId`), nunca por sorteo de población
+/// regional como el viejo botón suelto "Cazar" (`confirmarCaza`, que la Fase 4 retira). Misma forma
+/// de respuesta que `confirmarCaza` — el llamador reutiliza el mismo tratamiento de resultado
+/// (`handleHuntResolved`, GameView.tsx).
+export async function cazarEnZona(saveId: string, zonePointId: string): Promise<ConfirmarCazaResultado> {
+  return fetchJson(`${API_URL}/saves/${saveId}/zona/cazar`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ zonePointId }),
   })
 }
 
@@ -1755,6 +1766,12 @@ export interface DynamicModeTurno {
   /// primero). Mismo shape que `TurnResult.combateIniciado`/`combateEnGrupo`; `cierra` siempre
   /// viene `true` cuando esto llega — no hay más vueltas de modo dinámico que jugar.
   combate?: { npcs: NpcInSceneInfo[] } | null
+  /// Agresivo en grupo (Fase 2, 2026-09-28) — llega en vez de `combate` cuando el encuentro forzado
+  /// es un grupo real de FAUNA (`cantidad > 1`, ver `iniciarCaza`/`services/caza.ts`): el backend ya
+  /// creó el `CombatEncounter` múltiple, este texto se manda por el turno normal
+  /// (`handleSubmit`, GameView.tsx) para que la narración real lo abra — mismo criterio EXACTO que
+  /// `ConfirmarCazaResultado.actionText` (caza en grupo desde el viejo botón suelto).
+  actionText?: string
 }
 
 export async function interactuarModoDinamico(
@@ -1770,11 +1787,16 @@ export async function interactuarModoDinamico(
   /// AGRESIVO/ENEMIGO (2026-09-20) — reenvía `dynamicModeOffer.combateForzado` tal cual, mismo
   /// criterio que `quienInicia`. `undefined` para el resto (nunca hay combate directo posible).
   combateForzado?: boolean,
+  /// Agresivo en grupo (Fase 2, 2026-09-28) — reenvía `dynamicModeOffer.zonePointId`/`cantidad`
+  /// tal cual (el grupo exacto con el que se ha colisionado); con `cantidad > 1` el backend abre
+  /// combate múltiple en vez del 1v1 clásico.
+  zonePointId?: string,
+  cantidad?: number,
 ): Promise<DynamicModeTurno> {
   return fetchJson(`${API_URL}/saves/${saveId}/modo-dinamico/interactuar`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ tipo, targetSlug, targetName, quienInicia, combateForzado }),
+    body: JSON.stringify({ tipo, targetSlug, targetName, quienInicia, combateForzado, zonePointId, cantidad }),
   })
 }
 

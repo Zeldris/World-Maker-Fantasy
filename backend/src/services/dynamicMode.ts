@@ -270,4 +270,12 @@ export interface PendingDynamicMode {
   /// ver `narrarVueltaCombateForzado`); si el NPC/fauna vio primero al jugador, el combate se abre
   /// DIRECTAMENTE sin pasar por `pendingDynamicMode` en absoluto (nunca hay elección posible).
   combateForzado?: true;
+  /// Agresivo en grupo (Fase 2, 2026-09-28, `plan-mecanicas-por-zona-2026-09-28.md`) — id/cantidad
+  /// del `ZonePoint` colisionado, presentes solo cuando `combateForzado` viene de un grupo de
+  /// FAUNA real (`cantidad > 1`, ver `dynamicModeOffer.zonePointId`/`cantidad`, zona.ts). Con
+  /// `cantidad > 1`, elegir "Combatir" en `/responder` abre combate múltiple con todo el grupo vía
+  /// `iniciarCaza` en vez del 1v1 clásico — "un agresivo que te corta el paso nunca se resuelve
+  /// sigiloso".
+  zonePointId?: string;
+  cantidad?: number;
 }

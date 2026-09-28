@@ -1,37 +1,25 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
-import { decrementPopulationOnDeath, stripRegionArticle } from '../../services/population.js';
+import { stripRegionArticle } from '../../services/population.js';
 import { pasaFiltroTerreno } from '../../services/terrain.js';
 import { locationTerrainTags, faunaTerrainTag, harvestSourceHomeLocationSlug } from '../../scripts/worldCatalog.js';
 import { matchesHarvestSourceHome } from '../../services/harvest.js';
-import { scopeFor, pickAmbientEncounterCandidate, difficultyHintFor } from '../../services/npcScene.js';
+import { pickAmbientEncounterCandidate, difficultyHintFor } from '../../services/npcScene.js';
 import { detectHarvestSourcesInScene } from '../../services/harvest.js';
 import { loadSessionFacts, appendSessionFacts } from '../../services/worldFacts.js';
-import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
 import type { AttributeBlock } from '../../services/dice.js';
-import { iniciarCombatEncounter, resolverTurnosAutonomosHastaJugadora, type CombatienteInicial } from '../../services/combateMultipleOrquestacion.js';
-import { MAX_COMBATIENTES_POR_BANDO } from '../../services/combateMultiple.js';
-import { rejectIfEnded, rejectIfPendingDeath, lockRowForUpdate } from './shared.js';
-import { advanceFictionalMinutes, formatFictionalDate } from '../../services/worldClock.js';
-import { posicionDeObjetivo, moverJugadorA, minutoDeReaparicion } from '../../services/zonaPosicion.js';
+import { rejectIfEnded, rejectIfPendingDeath } from './shared.js';
+import {
+  iniciarCaza,
+  dispersionCooldownActivo,
+  rollGroupEngagement,
+  groupVarianceClause,
+  type CazaTarget,
+} from '../../services/caza.js';
 
-/// Cooldown de dispersión tras caza en grupo fallida (2026-09-02, sobre el commit d6e8afc: cuando
-/// `rollGroupEngagement` devuelve 0, "el grupo se dispersa antes de comprometerse" — hoy sin
-/// ninguna consecuencia más allá de esa narración). Mismo patrón EXACTO que
-/// `RECOVERY_CONVALECIENTE_MINUTES` (death.ts, `NpcState.condicionFisicaSinceMinutes`): minutos de
-/// FICCIÓN, no reloj de pared — `WorldPopulation.dispersadoDesdeMinutes` guarda el
-/// `fictionalMinutes` del turno en que se dispersó, y se compara contra el `fictionalMinutes`
-/// actual del turno en curso. Por especie (`targetSlug`) + `Location` — el fallo de una especie no
-/// afecta al cooldown de las demás seleccionadas en la misma petición de `/confirmar`.
-const DISPERSION_COOLDOWN_MINUTES = 4 * 60;
-
-/// Puro — mismo criterio que `npcRecoversFromConvaleciente` (death.ts): `null` = nunca se dispersó
-/// (o no en ESTA Location), nunca bloquea. Con dato real, sigue bloqueado mientras no hayan pasado
-/// las 4h de ficción completas desde que se dispersó.
-export function dispersionCooldownActivo(sinceMinutes: number | null, nowMinutes: number): boolean {
-  if (sinceMinutes === null) return false;
-  return nowMinutes - sinceMinutes < DISPERSION_COOLDOWN_MINUTES;
-}
+// Reexportadas (2026-09-28, Fase 2 — servicio `caza.ts` extraído de esta ruta) para no romper a
+// quien las importaba desde aquí (`cazar.test.ts`, mismos tests de siempre, sin cambios).
+export { dispersionCooldownActivo, rollGroupEngagement, groupVarianceClause };
 
 // Checklist consolidado P3.6 (2026-08-27) — "Cazar" limpio no avanzaba el reloj de ficción, mismo
 // hueco ya cerrado en recolectar.ts (Minar/Talar) el 2026-08-14. Cifra fija (no hay cantidad
@@ -202,42 +190,8 @@ export async function candidateFaunaFor(
 const CAZA_EXPLORAR_INTENTOS = 3;
 const CAZA_EXPLORAR_CHANCE_FALLO = 0.35;
 
-/// Caza en grupo (2026-08-13, petición explícita: "el jugador primero debe marcar contra cuantos
-/// quiere combatir... con un calculo determinista puede darse que salgan menos o más de los que
-/// marcaste"). Tirada simple 1d6 sobre lo elegido — primera versión de balance, ajustable después
-/// con datos reales de partida: 1-2 uno menos (algunos se dispersan/no llegan a comprometerse),
-/// 3-4 exactamente lo elegido, 5-6 uno más (el ruido del combate atrae a otro del grupo). Topado a
-/// `avistados` por arriba (nunca más de lo que de verdad hay), pero YA NO topado a mínimo 1 por
-/// abajo (2026-09-02, decisión explícita de la usuaria: "que narre un intento fallido") — si
-/// `cantidadElegida` es 1 y el roll es malo, el resultado puede ser 0: el grupo entero se dispersa
-/// antes de comprometerse, intento de caza fallido de verdad, no solo "menos de lo esperado".
-export function rollGroupEngagement(cantidadElegida: number, avistados: number, random: () => number = Math.random): number {
-  const roll = Math.floor(random() * 6) + 1;
-  const delta = roll <= 2 ? -1 : roll >= 5 ? 1 : 0;
-  return Math.max(0, Math.min(avistados, cantidadElegida + delta));
-}
-
-/// Cláusula determinista para el texto de la acción cuando lo que de verdad se compromete al
-/// combate difiere de lo que el jugador marcó (petición explícita, 2026-08-13: "que refleje la
-/// intrusión cuando sale más o menos de lo que marcaste... si marcas 2 y solo consigues acorralar
-/// a uno" / "arrinconas a una pero otra aparece repentinamente"). Nunca deja que el Narrador
-/// decida ni invente el número — esto ya es el hecho resuelto, la prosa libre solo lo viste.
-/// `null` si `cantidadReal === cantidadElegida` (nada que aclarar). `cantidadReal === 0`
-/// (2026-09-02, "que narre un intento fallido") es un caso propio, distinto de "menos de los
-/// marcados" — el grupo entero se dispersa antes de comprometerse, no queda ni uno.
-export function groupVarianceClause(cantidadElegida: number, cantidadReal: number): string | null {
-  if (cantidadReal === cantidadElegida) return null;
-  if (cantidadReal === 0) return 'aunque al final el grupo entero se dispersa antes de que pueda acorralar a ninguno';
-  if (cantidadReal > cantidadElegida) {
-    const extra = cantidadReal - cantidadElegida;
-    return extra === 1
-      ? 'aunque al acercarme, otro más se suma de repente, sin previo aviso'
-      : `aunque al acercarme, ${extra} más se suman de repente, sin previo aviso`;
-  }
-  return cantidadReal === 1
-    ? 'aunque al final solo consigo acorralar a uno de los que había marcado'
-    : `aunque al final solo consigo acorralar a ${cantidadReal} de los que había marcado`;
-}
+// `rollGroupEngagement`/`groupVarianceClause` viven ahora en `services/caza.ts` (Fase 2,
+// 2026-09-28) — importadas y reexportadas arriba, sin cambiar su comportamiento.
 
 export function rollSightings(candidates: HuntCandidate[], random: () => number = Math.random): HuntCandidate[] {
   const found = new Map<string, HuntCandidate>();
@@ -319,6 +273,7 @@ export async function cazarRoutes(app: FastifyInstance) {
     return { candidates: sightedInfo };
   });
 
+
   app.post<{ Params: { id: string }; Body: { slugs: string[]; cantidades?: Record<string, number> } }>('/saves/:id/cazar/confirmar', async (request, reply) => {
     const { slugs, cantidades } = request.body;
     if (!Array.isArray(slugs) || slugs.length === 0) {
@@ -365,264 +320,41 @@ export async function cazarRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error: 'Esa fauna ya no está disponible aquí — puede que se te haya adelantado.' });
     }
 
-    // Caza limpia sin combate: solo con una única presa, débil de verdad frente al personaje —
-    // cualquier otro caso (varias presas, o una sola pero no lo bastante débil) exige combate real,
-    // narrado y abierto por el propio turno normal (ver comentario de cabecera).
-    if (selected.length === 1 && selected[0].debil) {
-      const npc = await prisma.npc.findUnique({ where: { worldId_slug: { worldId: save.worldId, slug: selected[0].slug } } });
-      if (!npc) return reply.status(400).send({ error: 'Esa fauna ya no está disponible aquí.' });
-
-      const destreza = (save.attributes as AttributeBlock).destreza;
-      const chance = Math.min(CHANCE_CAZA_LIMPIA_TOPE, npc.capturablePct + destreza);
-      const exito = Math.random() * 100 < chance;
-
-      if (!exito) {
-        return {
-          resuelveSinCombate: false,
-          exito: false,
-          actionText: `Intento cazar a '${npc.name}' de forma sigilosa y limpia, pero fallo — no queda más remedio que enfrentarla en combate.`,
-        };
-      }
-
-      const currentLocationId = save.currentLocation?.id ?? null;
-      const scope = scopeFor(npc.kind, currentLocationId);
-      const text = `${save.characterName} caza limpiamente a ${npc.name}, sin darle ninguna opción de reaccionar.`;
-      // P3.6 (checklist consolidado 2026-08-27) — el reloj avanza ANTES de fijar timeLabel/
-      // fictionalMinutes del log y de condicionFisicaSinceMinutes, mismo criterio que
-      // recolectar.ts (el log/estado reflejan el momento DESPUÉS de la acción, no antes).
-      const nuevoFictionalMinutes = advanceFictionalMinutes(save.worldState?.fictionalMinutes ?? 480, CAZA_LIMPIA_MINUTOS);
-      const timeLabel = formatFictionalDate(nuevoFictionalMinutes);
-
-      // Condición de carrera real (auditoría 2026-09-01): a diferencia de la caza en grupo (más
-      // abajo, ya protegida desde 2026-08-25), este camino escribía directo sin releer el estado —
-      // doble clic en "cazar" contra la misma presa única disparaba dos transacciones en paralelo,
-      // cada una decrementando población y creando su propio LogEntry, duplicando ambos. Mismo
-      // patrón exacto que el bloque de grupo: `SELECT ... FOR UPDATE` sobre `Save` + relectura de
-      // `pendingCombatNpcSlugs` dentro de la transacción antes de escribir nada — la segunda
-      // petición ve ya el resultado de la primera y aborta sin duplicar.
-      const logEntry = await prisma.$transaction(async (tx) => {
-        const freshSave = await lockRowForUpdate<{ pendingCombatNpcSlugs: string[] }>(tx, 'Save', save.id, ['pendingCombatNpcSlugs']);
-        if (freshSave.pendingCombatNpcSlugs.includes(npc.slug)) return null;
-
-        // Punto del jugador en el mapa de Zona (2026-09-04) — caza limpia mata de un solo golpe,
-        // sin combate real: mueve al jugador junto a la presa y la marca ausente igual que un
-        // golpe de muerte en combate normal (mismo campo, mismo criterio de 6h de ficción).
-        await tx.npcState.upsert({
-          where: { saveId_npcId_scope: { saveId: save.id, npcId: npc.id, scope } },
-          create: {
-            saveId: save.id,
-            npcId: npc.id,
-            scope,
-            condicionFisica: 'MUERTO',
-            condicionFisicaSinceMinutes: nuevoFictionalMinutes,
-            zonaAusenteHastaMinutes: minutoDeReaparicion(nuevoFictionalMinutes),
-            zonaLocationId: currentLocationId,
-          },
-          update: {
-            condicionFisica: 'MUERTO',
-            condicionFisicaSinceMinutes: nuevoFictionalMinutes,
-            zonaAusenteHastaMinutes: minutoDeReaparicion(nuevoFictionalMinutes),
-            zonaLocationId: currentLocationId,
-          },
-        });
-        if (currentLocationId) {
-          const zonaObjetivo = await posicionDeObjetivo(tx, currentLocationId, npc.slug);
-          if (zonaObjetivo) await moverJugadorA(tx, save.id, zonaObjetivo.x, zonaObjetivo.y);
-        }
-        await decrementPopulationOnDeath(tx, save.worldId, null, npc.slug, region);
-        await tx.worldState.update({ where: { saveId: save.id }, data: { fictionalMinutes: nuevoFictionalMinutes, fictionalDateLabel: timeLabel } });
-        // isSystemMessage (ver comentario completo en schema.prisma) — texto fijo determinista.
-        const created = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: nuevoFictionalMinutes, isPlayerAction: false, isSystemMessage: true } });
-        // Semáforo temporal SOLO para la ventana de esta transacción (ver relectura de arriba,
-        // línea ~405) — sigue haciendo falta para que una segunda petición simultánea contra la
-        // MISMA presa se rechace en vez de duplicar LogEntry/población. Se limpia justo después de
-        // cerrar la transacción (ver más abajo) en vez de quedarse persistido.
-        await tx.save.update({ where: { id: save.id }, data: { pendingCombatNpcSlugs: [npc.slug] } });
-        return created;
-      });
-
-      if (!logEntry) {
-        return reply.status(409).send({ error: 'Ya se está resolviendo una caza contra esta presa — espera un momento.' });
-      }
-
-      // Bug real (reconfirmado 2026-09-08, ver memoria tarkor_bug_pendingcombatnpcslugs_atascado_cazar):
-      // la presa ya quedó MUERTA dentro de la transacción de arriba, sin combate real de por medio —
-      // no hay nada que "resolver" después. Dejar su slug persistido (como antes) dejaba el campo
-      // sucio para siempre, porque esta ruta nunca pasa por narrateAndPersistTurn (el único sitio
-      // que sabía limpiarlo) — bloqueaba cualquier caza futura con "ya hay un combate en curso" sin
-      // que la UI ofreciera ningún botón para resolverlo. Se limpia aquí, ya fuera de la transacción
-      // (la ventana de carrera de arriba ya se cerró en cuanto esa transacción hizo commit).
-      await prisma.save.update({ where: { id: save.id }, data: { pendingCombatNpcSlugs: [] } });
-
-      const sessionFacts = await loadSessionFacts(save.id);
-      await appendSessionFacts(save.id, sessionFacts, [text]);
-      // Bug real (2026-08-14, mismo hallazgo que en recolectar.ts) — la caza limpia sin combate
-      // tampoco pasa por `narrateAndPersistTurn`, así que la presa cazada podía quedar sin
-      // desbloquear su ficha de Enciclopedia pese a estar ya nombrada en el texto determinista.
-      // `npcSlugsInScene` (2026-09-08, 3 fases) — la presa fue REALMENTE cazada, no solo citada:
-      // llega directo a DESCUBIERTO, mismo criterio que el resto de presencia real confirmada.
-      await recordEntityDiscoveries({ saveId: save.id, worldId: save.worldId, mentionedText: text, npcSlugsInScene: [npc.slug] });
-
-      return {
-        resuelveSinCombate: true,
-        exito: true,
-        combate: { npcs: [{ slug: npc.slug, name: npc.name, condicionFisica: 'MUERTO' as const, saqueado: false, lootedItemNames: [] }] },
-        logEntry: { id: logEntry.id, text, timeLabel, createdAt: logEntry.createdAt.toISOString() },
-      };
-    }
-
-    // Caza en grupo — Grupo 3 § Mundo determinista, Capa 4 (docs/rpgtarkor/mundo-determinista.md,
-    // 2026-08-25): disparo real, `iniciarCombatEncounter` en vez del viejo truco `NpcState.groupSize`
-    // (varios individuos "resucitando" en la misma fila). Solo se crea un `CombatEncounter` real si
-    // AL MENOS una especie seleccionada tiene más de un avistado — con 1 avistado en TODAS, el
-    // combate sigue exactamente igual que siempre (detección normal por texto, `resolveCombatExchangePhase`
-    // 1v1 clásico), sin tocar nada de este bloque. Si hay un grupo real, TODAS las especies
-    // seleccionadas (incluidas las de un solo individuo) entran en el mismo encuentro — nunca mezclar
-    // un `CombatEncounter` real con NPC detectados por el sistema viejo en la misma escena.
+    // Servicio reutilizable (Fase 2, 2026-09-28, `plan-mecanicas-por-zona-2026-09-28.md`) — todo lo
+    // que decidía "caza limpia o combate" vive ahora en `services/caza.ts` (también usado por
+    // `POST /saves/:id/zona/cazar` y por el agresivo en grupo de `dynamicMode.ts`), sin cambiar el
+    // comportamiento observable de esta ruta. `Npc` de catálogo completo (atributos, temperamento,
+    // `levelMax`...) resuelto en UNA sola consulta para todas las especies seleccionadas — mismo
+    // criterio que ya usaba el bloque de combate en grupo, ahora también cubre la caza limpia (que
+    // antes hacía su propio `npc.findUnique` aparte).
     const npcsBySlug = new Map((await prisma.npc.findMany({ where: { worldId: save.worldId, slug: { in: selected.map((c) => c.slug) } } })).map((n) => [n.slug, n]));
-    const currentLocationId = save.currentLocation?.id ?? null;
-    const varianceClauses: string[] = [];
-    const conAvistados = selected.map((c) => ({ ...c, avistados: avistadosFor(c.capturablePct, c.poblacion) }));
-    const hayGrupoReal = conAvistados.some((c) => c.avistados > 1);
-
-    // Cooldown de dispersión (2026-09-02) — especies cuyo `cantidadReal` acabó en 0 de verdad (tras
-    // el guard de AGRESIVO de abajo, que puede forzarlo de vuelta a 1): esa especie concreta no
-    // debe volver a aparecer como candidata de caza en esta MISMA Location durante
-    // `DISPERSION_COOLDOWN_MINUTES` de ficción. Por `targetSlug`, nunca global — el fallo de una
-    // especie no toca el cooldown de las demás seleccionadas en esta misma petición.
-    const especiesDispersadas: string[] = [];
-
-    if (hayGrupoReal) {
-      const jugadorAttrs = save.attributes as AttributeBlock;
-      const combatientes: (CombatienteInicial & { destreza: number; inteligencia: number })[] = [
-        { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: jugadorAttrs.destreza, inteligencia: jugadorAttrs.inteligencia },
-        // Grupos de combate (2026-09-08, diseño de la usuaria: "el Grupo 1 siempre estará el PJ a
-        // la cabeza... podrás mover tus compañeros entre los diferentes grupos") — SOLO el Grupo 1
-        // (combatGroupSlotIndex: 0) entra a combate en directo junto al jugador; el resto de
-        // grupos existen para organizar compañeros que se quedan fuera de este combate concreto.
-        // Un compañero MUERTO sigue en su grupo pero no aporta nada real: `datosVivosDe` ya lo
-        // trataría como sin vida si entrara, así que se filtra aquí de raíz para no gastarle un
-        // hueco del tope 4v4 a un cadáver. Atributos crudos (sin escalar por nivel) — mismo
-        // criterio simplificado que el resto de este array para NPC, el escalado real por nivel
-        // ocurre dentro de `datosVivosDe` en cada intercambio, no aquí (solo hace falta para la
-        // tirada de iniciativa inicial).
-        ...(
-          await prisma.companion.findMany({
-            where: { saveId: save.id, combatGroupSlotIndex: 0, condicionFisica: { not: 'MUERTO' } },
-            select: { id: true, attributes: true },
-          })
-        )
-          .filter((c) => c.attributes)
-          .map((c) => {
-            const attrs = c.attributes as AttributeBlock;
-            return { bando: 'JUGADOR' as const, tipo: 'COMPANION' as const, companionId: c.id, destreza: attrs.destreza, inteligencia: attrs.inteligencia };
-          }),
-      ];
-      for (const c of conAvistados) {
-        const npc = npcsBySlug.get(c.slug);
-        if (!npc) continue;
-        const npcAttrs = npc.attributes as AttributeBlock;
-        const scope = scopeFor(npc.kind, currentLocationId);
-        if (c.avistados > 1) {
-          const cantidadElegida = Math.max(1, Math.min(c.avistados, Math.round(cantidades?.[c.slug] ?? c.avistados)));
-          let cantidadReal = rollGroupEngagement(cantidadElegida, c.avistados);
-          // Fallo total solo tiene sentido narrativo si el grupo puede permitirse dispersarse sin
-          // pelear (2026-09-02, matiz explícito de la usuaria: "cazar uno agresivo... ese no
-          // debería huir a no ser que realmente seas muy superior a él") — un grupo AGRESIVO no se
-          // dispersa por las buenas: si el jugador no supera claramente el tope de nivel de la
-          // especie (`levelMax`, mismo criterio que "ya lo tiene todo aprendido"), se fuerza el
-          // mínimo de 1 de siempre, igual que antes de este cambio.
-          if (cantidadReal === 0 && npc.temperamento === 'AGRESIVO' && save.level <= (npc.levelMax ?? npc.level)) {
-            cantidadReal = 1;
-          }
-          if (cantidadReal === 0) especiesDispersadas.push(c.slug);
-          for (let i = 0; i < cantidadReal; i++) {
-            combatientes.push({ bando: 'ENEMIGO', tipo: 'NPC', npcId: npc.id, npcScope: scope, destreza: npcAttrs.destreza, inteligencia: npcAttrs.inteligencia, esGrupo: true });
-          }
-          const clause = groupVarianceClause(cantidadElegida, cantidadReal);
-          if (clause) varianceClauses.push(`Con '${c.name}', ${clause}.`);
-        } else {
-          combatientes.push({ bando: 'ENEMIGO', tipo: 'NPC', npcId: npc.id, npcScope: scope, destreza: npcAttrs.destreza, inteligencia: npcAttrs.inteligencia });
-        }
-      }
-      // Sub-partición >4v4 (docs/rpgtarkor/combate-multiple.md § 3, "Tope duro: 4 combatientes por
-      // bando"; checklist 2026-09-01: la función `particionarEnSubCombates` existía desde
-      // 2026-08-28 pero nunca se enganchó a este flujo real — un grupo de 5+ creaba un único
-      // `CombatEncounter` con TODOS dentro, sin ningún tope). El bando ENEMIGO es el único que
-      // puede superar el tope aquí (JUGADOR es siempre 1 en esta ruta) — se parte en fragmentos de
-      // `MAX_COMBATIENTES_POR_BANDO`; el jugador se enfrenta en directo solo al primer fragmento
-      // (`jugable: true`, mismo flujo de siempre), el resto se crea como `CombatEncounter`
-      // `jugable: false` y se resuelve de una sentada nada más terminar la transacción (§ 4 del
-      // doc, "combates sin ti presente... misma mecánica exacta, sin interacción en directo").
-      // Grupos de combate (2026-09-08): `combatientes` ya no es solo "[jugador, ...enemigos]" —
-      // el bando JUGADOR puede traer también a los compañeros del Grupo 1 (añadidos arriba, al
-      // construir el array). Se separa explícitamente por `bando` en vez de asumir "el primero es
-      // jugador, el resto es enemigo" (bug real detectado al escribir este cambio: la desestructuración
-      // vieja `[jugador, ...enemigos]` metía a los propios compañeros dentro de `enemigos` sin
-      // querer). El bando JUGADOR completo (jugador + Grupo 1) también respeta el tope de 4 — un
-      // Grupo 1 con más de 3 compañeros se recorta aquí (el jugador nunca se recorta, siempre el
-      // primero); no hay sub-partición de "jugador extra" como sí la hay para enemigos sobrantes,
-      // decisión consciente: el propio diseño de grupos (máx. 4 por grupo, pedido por la usuaria)
-      // ya evita que esto ocurra en la práctica.
-      const bandoJugadorCompleto = combatientes.filter((c) => c.bando === 'JUGADOR').slice(0, MAX_COMBATIENTES_POR_BANDO);
-      const enemigos = combatientes.filter((c) => c.bando === 'ENEMIGO');
-      const fragmentosEnemigos: typeof enemigos[] = [];
-      for (let i = 0; i < enemigos.length; i += MAX_COMBATIENTES_POR_BANDO) {
-        fragmentosEnemigos.push(enemigos.slice(i, i + MAX_COMBATIENTES_POR_BANDO));
-      }
-      const fragmentosParaCrear = fragmentosEnemigos.length > 0 ? fragmentosEnemigos : [[]];
-
-      // Condición de carrera real (auditoría de código 2026-08-25): el guard de arriba (líneas
-      // ~246-260) es solo una comprobación temprana — entre esa lectura y este punto hay varias
-      // consultas async (`candidateFaunaFor`, `npc.findMany`), tiempo de sobra para que un doble
-      // clic en "salgo a cazar" pase el guard dos veces y cree dos `CombatEncounter`. Se relee
-      // `activeEncounter` DENTRO de una transacción con la fila de `Save` bloqueada
-      // (`SELECT ... FOR UPDATE`, mismo patrón que `progression.ts`/`companeros.ts`) justo antes de
-      // crear el encuentro — la segunda petición ve ya el encuentro que dejó la primera.
-      const resultado = await prisma.$transaction(async (tx) => {
-        await lockRowForUpdate(tx, 'Save', save.id, ['id']);
-        const activeEncounterFresco = await tx.combatEncounter.findFirst({ where: { saveId: save.id, estado: 'EN_CURSO', jugable: true } });
-        if (activeEncounterFresco) return null;
-        await iniciarCombatEncounter(tx, save.id, [...bandoJugadorCompleto, ...fragmentosParaCrear[0]]);
-        const autonomosIds: string[] = [];
-        for (const fragmento of fragmentosParaCrear.slice(1)) {
-          const { encounterId } = await iniciarCombatEncounter(tx, save.id, fragmento, false);
-          autonomosIds.push(encounterId);
-        }
-        // Cooldown de dispersión (2026-09-02) — mismo `targetSlug`/ubicación que
-        // `candidateFaunaFor` compara, escrito en la misma transacción que crea el combate real
-        // para no dejar un estado a medias si algo falla después.
-        if (currentLocationId) {
-          for (const slug of especiesDispersadas) {
-            await tx.worldPopulation.update({
-              where: { worldId_targetType_targetSlug: { worldId: save.worldId, targetType: 'FAUNA', targetSlug: slug } },
-              data: { dispersadoEnLocationId: currentLocationId, dispersadoDesdeMinutes: fictionalMinutesActuales },
-            });
-          }
-        }
-        return { autonomosIds };
-      });
-      if (!resultado) {
-        return reply.status(400).send({ error: 'Ya hay un combate en curso — resuélvelo antes de salir a cazar.' });
-      }
-
-      // Resolución determinista de los sub-combates sin la jugadora presente, de una sentada, sin
-      // narrar cada turno individual (decisión explícita 2026-09-01: esos intercambios no se le
-      // muestran en directo, narrarlos uno a uno solo suma llamadas a Ollama sin ningún beneficio
-      // real) — un resumen corto y determinista basta, mismo criterio que `groupVarianceClause` de
-      // arriba (nunca inventado por el modelo).
-      let caidosAutonomos = 0;
-      for (const encounterId of resultado.autonomosIds) {
-        const { caidos } = await resolverTurnosAutonomosHastaJugadora({ prisma, worldId: save.worldId, saveId: save.id, encounterId, weaponNamesPorDefecto: [], narrarFn: async () => '' });
-        caidosAutonomos += caidos.length;
-      }
-      if (caidosAutonomos > 0) {
-        varianceClauses.push(`El resto de la manada, fuera del alcance directo de ${save.characterName}, se enfrenta entre sí y con el terreno — ${caidosAutonomos} caen sin que ${save.characterName} llegue a verlo.`);
-      }
+    // Solo con UNA presa seleccionada el `Npc` que falte es un 400 explícito (mismo mensaje que
+    // antes) — con varias, una especie sin fila de catálogo simplemente se descarta en silencio
+    // (comportamiento previo: el bloque de combate en grupo hacía `if (!npc) continue`).
+    if (selected.length === 1 && !npcsBySlug.get(selected[0].slug)) {
+      return reply.status(400).send({ error: 'Esa fauna ya no está disponible aquí.' });
+    }
+    const targets: CazaTarget[] = [];
+    for (const c of selected) {
+      const npc = npcsBySlug.get(c.slug);
+      if (!npc) continue;
+      targets.push({ npc, cantidadObjetivo: avistadosFor(c.capturablePct, c.poblacion), cantidadElegida: cantidades?.[c.slug] });
     }
 
-    const names = selected.map((c) => c.name);
-    const actionText = [`Salgo a cazar y ataco a ${names.map((n) => `'${n}'`).join(', ')}.`, ...varianceClauses].join(' ');
-    return { resuelveSinCombate: false, exito: null, actionText };
+    const resultado = await iniciarCaza({
+      save: {
+        id: save.id,
+        worldId: save.worldId,
+        characterName: save.characterName,
+        level: save.level,
+        attributes: save.attributes as AttributeBlock,
+        currentLocationId: save.currentLocation?.id ?? null,
+        region,
+        fictionalMinutes: fictionalMinutesActuales,
+      },
+      targets,
+    });
+    if ('error' in resultado) return reply.status(resultado.status).send({ error: resultado.error });
+    return resultado;
   });
 }

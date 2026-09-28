@@ -23,6 +23,8 @@ import { REGION_OWNING_FACTIONS, effectiveTemperamento } from '../../services/re
 import { posicionAleatoriaEnLienzo, celdaDePixel, pixelDeCelda, calcularCamino, celdaAdyacenteOMisma, mismaCelda, posicionesDeSalidas, quienIniciaEncuentro } from '../../services/zonaPosicion.js';
 import { rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 import { createInFlightClaimSet } from '../../lib/inFlightClaimSet.js';
+import { iniciarCaza, type CazaTarget } from '../../services/caza.js';
+import type { AttributeBlock } from '../../services/dice.js';
 
 /// Candado de "movimiento en curso" (hallazgo 45, revisar-partida-hallazgos.md, 2026-09-15) —
 /// mismo patrón que `turnLock.ts`/`chapterSummary.ts` (`createInFlightClaimSet`), pero con
@@ -359,7 +361,14 @@ export async function zonaRoutes(app: FastifyInstance) {
       const npc = npcFaunaZonePointIds.find((n) => n.id === npcId)!;
       const state = npcStateByKey.get(`${npcId}|${scopeFor(npc.kind, locationId)}`);
       if (estaMuertoParaSiempre(npc.kind, state)) return false;
-      return !estaAusente(state);
+      // Grupos de fauna reales (Fase 2, 2026-09-28) — bug real encontrado en pruebas: `NpcState` es
+      // UNO por especie y Location (`scopeFor`), así que abatir UN individuo de un grupo marcaba
+      // `zonaAusenteHastaMinutes` en esa única fila, y este filtro ocultaba TODOS los `ZonePoint`
+      // de esa especie (~12 grupos) durante 6h por culpa de un solo individuo caído. Con grupos
+      // reales la ausencia ya la representa el propio descuento de `cantidad` del punto (ver
+      // `iniciarCaza`/`descontarZonePointCaza`, services/caza.ts) — así que `estaAusente` solo debe
+      // seguir ocultando un NPC de identidad única (`kind === 'PRINCIPAL'`, sin grupo posible).
+      return npc.kind !== 'PRINCIPAL' || !estaAusente(state);
     });
 
     // Asignación perezosa de posición (2026-09-04, "punto del jugador" — regla 3 explícita de la
@@ -1002,4 +1011,66 @@ export async function zonaRoutes(app: FastifyInstance) {
 
     return resultado;
   }
+
+  /// Cazar desde la tarjeta de encuentro de zona (Fase 2, 2026-09-28,
+  /// `plan-mecanicas-por-zona-2026-09-28.md`) — caza EXACTAMENTE el grupo con el que se ha
+  /// colisionado en el mapa (`pendingDynamicModeOffer.zonePointId`), nunca por sorteo de población
+  /// regional como el viejo botón suelto de `cazar.ts` (que la Fase 4 retira). Misma forma de
+  /// respuesta que `POST /saves/:id/cazar/confirmar` — el frontend reutiliza el mismo tratamiento
+  /// de resultado (`handleHuntResolved`, GameView.tsx).
+  app.post<{ Params: { id: string }; Body: { zonePointId: string } }>('/saves/:id/zona/cazar', async (request, reply) => {
+    const { zonePointId } = request.body;
+    if (!zonePointId) return reply.status(400).send({ error: 'Falta el campo: zonePointId' });
+
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, include: { currentLocation: true, worldState: true } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (rejectIfEnded(save, reply)) return;
+    if (rejectIfPendingDeath(save, reply)) return;
+    // Mismas guardas de combate que `cazar/confirmar` (ver comentario completo en cazar.ts) — un
+    // combate en curso (por `pendingCombatNpcSlugs` o por un `CombatEncounter` real huérfano)
+    // bloquea salir a cazar hasta resolverlo.
+    if (Array.isArray(save.pendingCombatNpcSlugs) && save.pendingCombatNpcSlugs.length > 0) {
+      return reply.status(400).send({ error: 'Ya hay un combate en curso — resuélvelo antes de salir a cazar.' });
+    }
+    const activeEncounter = await prisma.combatEncounter.findFirst({ where: { saveId: save.id, estado: 'EN_CURSO', jugable: true } });
+    if (activeEncounter) {
+      return reply.status(400).send({ error: 'Ya hay un combate en curso — resuélvelo antes de salir a cazar.' });
+    }
+
+    // "Solo se caza lo que se tiene al lado" (petición explícita del plan) — exige que la oferta
+    // pendiente sea EXACTAMENTE este `zonePointId` y de tipo FAUNA; cualquier otra cosa (sin
+    // oferta, NPC/RECURSO, o un `zonePointId` distinto ya descartado) se rechaza con un mensaje
+    // claro, nunca caza "por sorpresa" algo con lo que no se ha colisionado de verdad.
+    const oferta = save.pendingDynamicModeOffer as { tipo?: string; zonePointId?: string } | null;
+    if (!oferta || oferta.tipo !== 'FAUNA' || oferta.zonePointId !== zonePointId) {
+      return reply.status(409).send({ error: 'Ese grupo ya no está disponible aquí — puede que se te haya adelantado.' });
+    }
+
+    const punto = await prisma.zonePoint.findUnique({ where: { id: zonePointId } });
+    const npc = punto ? await prisma.npc.findFirst({ where: { worldId: save.worldId, slug: punto.targetSlug } }) : null;
+    // La oferta ya se resuelve aquí (igual que el resto de caminos de "Interactuar",
+    // dynamicMode.ts) — se limpia siempre, tanto en éxito como en el rechazo de abajo, para que
+    // nunca reaparezca sola tras un F5.
+    await prisma.save.update({ where: { id: save.id }, data: { pendingDynamicModeOffer: Prisma.JsonNull } });
+    if (!punto || !punto.activo || punto.cantidad <= 0 || !npc) {
+      return reply.status(409).send({ error: 'Ese grupo ya no está disponible aquí — puede que se te haya adelantado.' });
+    }
+
+    const targets: CazaTarget[] = [{ npc, cantidadObjetivo: punto.cantidad, zonePointId: punto.id }];
+    const resultado = await iniciarCaza({
+      save: {
+        id: save.id,
+        worldId: save.worldId,
+        characterName: save.characterName,
+        level: save.level,
+        attributes: save.attributes as AttributeBlock,
+        currentLocationId: save.currentLocationId,
+        region: save.currentLocation?.region ?? null,
+        fictionalMinutes: save.worldState?.fictionalMinutes ?? 480,
+      },
+      targets,
+    });
+    if ('error' in resultado) return reply.status(resultado.status).send({ error: resultado.error });
+    return resultado;
+  });
 }

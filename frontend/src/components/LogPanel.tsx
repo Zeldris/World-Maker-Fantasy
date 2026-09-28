@@ -70,11 +70,19 @@ interface LogPanelProps {
     targetName: string,
     quienInicia?: 'jugador' | 'npc',
     combateForzado?: boolean,
+    // Agresivo en grupo (Fase 2, 2026-09-28) — reenvía `offer.zonePointId`/`cantidad` tal cual.
+    zonePointId?: string,
+    cantidad?: number,
   ) => void
   /// RECURSO (2026-09-08, "Ver qué hay en la zona") — a diferencia de NPC/FAUNA, no abre
   /// conversación: resuelve la recolección real de una sola llamada (tirada + inventario +
   /// LogEntry), la tarjeta se limpia sola al terminar.
   onInteractuarModoDinamicoRecurso?: (entryId: string, targetSlug: string) => void
+  /// Cazar desde la tarjeta de encuentro (Fase 2, 2026-09-28,
+  /// `plan-mecanicas-por-zona-2026-09-28.md`) — solo se ofrece para FAUNA no forzada con
+  /// `zonePointId` (un grupo real con el que se ha colisionado en el mapa); caza ESE grupo exacto,
+  /// nunca por sorteo de población regional como el viejo botón suelto "Cazar".
+  onCazarEnZona?: (entryId: string, zonePointId: string) => void
   onDismissDynamicModeOffer?: (entryId: string) => void
   /// Menú contextual de interacción con NPC (2026-09-06, `entry.npcInteractionOffer`) — mismo
   /// criterio opcional que `onInteractuarModoDinamico`, un solo callback para cualquier opción
@@ -190,6 +198,7 @@ export const LogPanel = memo(function LogPanel({
   onDismissQuestOffer,
   onInteractuarModoDinamico,
   onInteractuarModoDinamicoRecurso,
+  onCazarEnZona,
   onDismissDynamicModeOffer,
   onChooseNpcInteraction,
   onOpenHarvestSuggestion,
@@ -516,8 +525,24 @@ export const LogPanel = memo(function LogPanel({
                                   offer.targetName,
                                   offer.quienInicia,
                                   offer.combateForzado,
+                                  offer.zonePointId,
+                                  offer.cantidad,
                                 ),
                         },
+                        // Cazar desde la tarjeta (Fase 2, 2026-09-28) — solo FAUNA no forzada con un
+                        // `zonePointId` real (el grupo exacto con el que se ha colisionado); un
+                        // agresivo (`combateForzado`) nunca lo ofrece, ya tiene su propio árbol de
+                        // Combatir/Huir. Orden pedido explícitamente: Interactuar / Cazar / Ignorar.
+                        ...(offer.tipo === 'FAUNA' && offer.zonePointId && !offer.combateForzado
+                          ? [
+                              {
+                                label: offer.busy ? 'Cazando...' : 'Cazar',
+                                tone: 'primary' as const,
+                                disabled: offer.busy,
+                                onClick: () => onCazarEnZona?.(entry.id, offer.zonePointId!),
+                              },
+                            ]
+                          : []),
                         // Un agresivo que te corta el paso no se ignora (2026-09-28): Interactuar
                         // lleva a combatir o, si lo viste tú primero, a huir — nunca una salida
                         // silenciosa.
