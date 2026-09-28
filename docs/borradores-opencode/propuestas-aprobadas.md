@@ -663,9 +663,9 @@ añade una línea que remite a la etimología. El motor sigue mostrando lo mismo
 
 **Seguimiento:**
 - [x] **En docs** (2026-09-27): regiones/llanuras-del-viento-rojo.md § Karot Veku
-- [ ] **Código:** `factionBuildings` (`worldCatalog.ts`): Herboristería, Taller de Alquimia, Corrales del Domador, Desolladero y Carpintería del Clan Serhu
-- [ ] **Código:** `ZonePoint` de cada uno en `campamento-serhu-interior` y reubicar a su Maestro (Herborista, Alquimista, Domador, Desollador, Carpintero)
-- [ ] **Código:** Enriquecer la `description` de `herreria-serhu`
+- [x] **Código** (2026-09-28): `factionBuildings` (`worldCatalog.ts`): Herboristería, Taller de Alquimia, Corrales del Domador, Desolladero y Carpintería del Clan Serhu
+- [x] **Código** (2026-09-28): `ZonePoint` EDIFICIO de cada uno en `campamento-serhu-interior`, junto al ZonePoint NPC ya existente de su Maestro (Herborista, Alquimista, Domador, Desollador, Carpintero) — los Maestros ya vivían en `campamento-serhu-interior`, no hizo falta reubicarlos, solo darles su edificio.
+- [x] **Código** (2026-09-28): `herreria-serhu.description` ampliada con el horno de arcilla y la lona de parches.
 
 **Acción de implementación:** añadir (edificios de facción de catálogo) + modificar (descripción de la Herrería)
 **Prioridad:** **alta**: `areas.md` ya promete estos talleres y el catálogo no los tiene.
@@ -2151,23 +2151,23 @@ Ya está en docs; falta el código. Detalle en cada fichero regional y en
 
 ### P-01 — Fauna nueva
 - [x] **En docs:** Hielaga, Nievón y Escarchín (`regiones/cristal-helado.md`); Tragalodo, Borbol y Zancapilote (`regiones/cienaga-troncal.md`); Vreskal, el primer ORDENADOS (`regiones/meseta-del-orden.md`)
-- [ ] **Código:** 7 `fauna` + sus `HarvestYield` (niveles, familias y recursos en cada ficha regional)
+- [x] **Código** (2026-09-28): 7 `fauna` + sus `HarvestYield`, ya en `worldCatalog.ts`
 
 ### P-02 — Fauna antigua del lore que nunca llegó al catálogo
 - [x] **En docs:** ya tienen familia y nivel: Sombras de Kroj (UMBRIAS 3-8), Hetris (ACECHANTES 4-9), Mekiosi (ACECHANTES 7-13), Vistue (GUELISES 3-7) y Cornantes (BESTIONES 3-8)
-- [ ] **Código:** 5 `fauna` + `HarvestYield`. Ojo: las formas de Cambiaformas del Druida ya nombran a Hetris, Mekiosi y Vistue
+- [x] **Código** (2026-09-28): 5 `fauna` + `HarvestYield`, ya en `worldCatalog.ts`
 
 ### P-03 — Flora nueva
 - [x] **En docs:** Liquen Escarcha (Cristal Helado) y Bolco (Ciénaga)
-- [ ] **Código:** `ItemCatalog` `liquen-escarcha` y `resina-bolco` + `HarvestYield`
+- [x] **Código** (2026-09-28): `ItemCatalog` `liquen-escarcha` y `resina-bolco` + `HarvestYield`, ya en `worldCatalog.ts`
 
 ### P-04 — NPC Nabieus
 - [x] **En docs:** Aven Tessk (portavoz de Keseg Sael) e Ilka Dren (Keseg Prisilke), `npcs.md` nº 24-25
-- [ ] **Código:** 2 `Npc` (`aven-tessk` nivel 16, Segador Ilustrado, en `refugio-sin-nombre`; `ilka-dren` nivel 14, Cazadora Instintiva, en `conclave-keseg-prisilke-interior`). Son los líderes de A-02 y A-03
+- [x] **Código** (2026-09-28): 2 `Npc` (`aven-tessk`, `ilka-dren`), ya en `worldCatalog.ts`, líderes de A-02 y A-03
 
 ### P-05 — Lugares descritos que solo tenían nombre
 - [x] **En docs:** los 8 lugares de la Ciénaga (`tuneles-musgosos`, `raices-madre-fango`, `cumbre-bruma-negra`, `cataratas-madre-fango`, `costa-marea-vida`, `costa-corredor`, `embarcadero-goshg`, `desfiladero-esmeralda`)
-- [ ] **Código:** rellenar la `description` (y el `teaser`) de esas 8 `Location`, que hoy están vacías
+- [x] **Código** (2026-09-28): las 8 `description` rellenadas en `worldCatalog.ts`
 
 ### P-06 — Talleres del Cerco de los Pilotes (Goshg)
 - [x] **En docs:** astillero de pilotes, resinería, ahumadero y talla de tótems (`regiones/cienaga-troncal.md`)
@@ -2176,7 +2176,7 @@ Ya está en docs; falta el código. Detalle en cada fichero regional y en
 
 ### P-07 — Ciudades numeradas de la Meseta
 - [x] **En docs:** Vresk Hes, Vresk Tuh y Vresk Kei (`regiones/meseta-del-orden.md`, `lenguas-helek.md`)
-- [ ] **Código (opcional, Meseta fuera de núcleo):** 3 `Location` con su región
+- [x] **Código** (2026-09-28): 3 `Location` (`vresk-hes`, `vresk-tuh`, `vresk-kei`) en `worldCatalog.ts`
 
 ### P-08 — Cronología de conexión
 - [x] **En docs:** ciudades numeradas (0-1.000), los mil años salvajes (~1.000-2.000), El Borde (~2.100-2.800), la Senda del Sílice (~3.000-3.500), la corriente radical (~3.650-3.700), El Claro de la Manada arrasado (~4.006-4.008)

@@ -558,6 +558,37 @@ export const locations: LocationInput[] = [
     aliases: ['las canteras del eje', 'canteras del eje'],
   },
 
+  // Tanda OpenCode 2026-09-27/28 (P-07) — las 3 ciudades-fortaleza numeradas de la Meseta,
+  // fundadas tras El Baluarte de Goirme por orden de fundación. Código opcional (Meseta fuera de
+  // núcleo), añadido igualmente por ser de bajo coste con el mismo patrón sin coordenadas.
+  {
+    slug: 'vresk-hes',
+    name: 'Vresk Hes',
+    region: 'La Meseta del Orden',
+    kind: 'asentamiento',
+    description:
+      'La segunda ciudad-fortaleza de la Meseta del Orden, en el interior, entre los campos de Hierba del Hierro. Allí están las forjas mayores de la Concordia de Hierro, y de allí salen las aleaciones grises y las armas que cada mes suben al Clan Serhu. Como todas las ciudades Goirntes, tiene su propio obelisco de leyes (Vresk\'ord) en la plaza central. Fuera del núcleo jugable actual.',
+    aliases: ['vresk hes'],
+  },
+  {
+    slug: 'vresk-tuh',
+    name: 'Vresk Tuh',
+    region: 'La Meseta del Orden',
+    kind: 'asentamiento',
+    description:
+      'La tercera ciudad-fortaleza de la Meseta del Orden, en la frontera norte, junto a El Margen Silencioso. Es la ciudad de los Goirntes de piel clara y ágiles que trabajan la madera; de aquí salen las cuadrillas de la tala del borde y las patrullas que protegen a los leñadores. Es la ciudad que más odia a los Faerus y la que más los teme. Fuera del núcleo jugable actual.',
+    aliases: ['vresk tuh'],
+  },
+  {
+    slug: 'vresk-kei',
+    name: 'Vresk Kei',
+    region: 'La Meseta del Orden',
+    kind: 'asentamiento',
+    description:
+      'La cuarta ciudad-fortaleza de la Meseta del Orden, el puerto oriental. Recibe las balsas de madera del tributo que bajan por la Costa Corredor desde Ciénaga Troncal. Fuera del núcleo jugable actual.',
+    aliases: ['vresk kei'],
+  },
+
   // ══════════════════════════════════════════════════════════════════════════
   // REGIÓN: CRISTAL HELADO
   // ══════════════════════════════════════════════════════════════════════════
@@ -11455,14 +11486,22 @@ export const zonePoints: ZonePointInput[] = [
   // sembrado todavía, distribuidos por el resto del poblado (sin sistema de movimiento por
   // cuadrícula al sembrarlo, pero con separación real >60px entre sí, mismo criterio que
   // `DISTANCIA_MINIMA_ENTRE_PUNTOS` para que ningún par quede literalmente encima del otro).
+  // 5 de estos 8 ya tienen FactionBuilding propio desde la tanda OpenCode 2026-09-27/28 (A-09) —
+  // ver los ZonePoint EDIFICIO añadidos justo debajo de cada uno. Peletero, Primeros Auxilios y
+  // Sastre siguen sin edificio propio (fuera de alcance de A-09).
   { locationSlug: 'campamento-serhu-interior', x: 160, y: 380, tipo: 'NPC', targetSlug: 'maestro-alquimista-serhu', label: 'Maestro Alquimista del Clan Serhu' },
+  { locationSlug: 'campamento-serhu-interior', x: 100, y: 400, tipo: 'EDIFICIO', targetSlug: 'taller-alquimia-serhu', label: 'Taller de Alquimia del Clan Serhu' },
   { locationSlug: 'campamento-serhu-interior', x: 640, y: 380, tipo: 'NPC', targetSlug: 'maestro-domador-serhu', label: 'Maestro Domador del Clan Serhu' },
+  { locationSlug: 'campamento-serhu-interior', x: 700, y: 400, tipo: 'EDIFICIO', targetSlug: 'corrales-domador-serhu', label: 'Corrales del Domador' },
   { locationSlug: 'campamento-serhu-interior', x: 220, y: 460, tipo: 'NPC', targetSlug: 'maestro-desollador-serhu', label: 'Maestro Desollador del Clan Serhu' },
+  { locationSlug: 'campamento-serhu-interior', x: 160, y: 520, tipo: 'EDIFICIO', targetSlug: 'desolladero-serhu', label: 'Desolladero del Clan Serhu' },
   { locationSlug: 'campamento-serhu-interior', x: 580, y: 460, tipo: 'NPC', targetSlug: 'maestro-peletero-serhu', label: 'Maestro Peletero del Clan Serhu' },
   { locationSlug: 'campamento-serhu-interior', x: 220, y: 160, tipo: 'NPC', targetSlug: 'maestra-primeros-auxilios-serhu', label: 'Maestra de Primeros Auxilios del Clan Serhu' },
   { locationSlug: 'campamento-serhu-interior', x: 580, y: 160, tipo: 'NPC', targetSlug: 'maestra-herborista-serhu', label: 'Maestra Herborista del Clan Serhu' },
+  { locationSlug: 'campamento-serhu-interior', x: 640, y: 120, tipo: 'EDIFICIO', targetSlug: 'herboristeria-serhu', label: 'Herboristería del Clan Serhu' },
   { locationSlug: 'campamento-serhu-interior', x: 300, y: 140, tipo: 'NPC', targetSlug: 'maestra-sastre-serhu', label: 'Maestra Sastre del Clan Serhu' },
   { locationSlug: 'campamento-serhu-interior', x: 500, y: 140, tipo: 'NPC', targetSlug: 'maestro-carpintero-serhu', label: 'Maestro Carpintero del Clan Serhu' },
+  { locationSlug: 'campamento-serhu-interior', x: 500, y: 80, tipo: 'EDIFICIO', targetSlug: 'carpinteria-serhu', label: 'Carpintería del Clan Serhu' },
   // Tirag Susig (auditoría de lore 2026-09-13, C9/C10) — sin ZonePoint hasta ahora (era
   // `kind: 'PLANTILLA'`, corregido a PRINCIPAL). Necesita punto real para que su companion Gisoki
   // tenga de qué punto colgar el icono de grupo (ver companionsByOwnerSlug, zona.ts).
@@ -11809,8 +11848,10 @@ export const factionBuildings: FactionBuildingInput[] = [
     locationSlug: 'campamento-serhu-interior',
     profession: 'herrero-orco-llanuras',
     tier: 1,
+    // Descripción ampliada (tanda OpenCode 2026-09-27/28, A-09) — encaja con la herrería
+    // "mediocre y mal orientada" del canon.
     description:
-      'Fragua orca de piedra y arcilla cocida, con el yunque hundido a golpes de generaciones de aprendices. El Maestro Herrero Serhu funde mena en lingotes para todo el clan.',
+      'Fragua orca de piedra y arcilla cocida, con el yunque hundido a golpes de generaciones de aprendices, bajo un horno de arcilla endurecida cubierto por una lona de parches y un humo que nunca termina de irse del todo. El Maestro Herrero Serhu funde mena en lingotes para todo el clan.',
   },
   {
     slug: 'curtiduria-serhu',
@@ -11831,6 +11872,61 @@ export const factionBuildings: FactionBuildingInput[] = [
     tier: 1,
     description:
       'Ollas de hierro colgadas sobre brasas siempre vivas, bajo un cobertizo abierto por los cuatro costados para que el humo escape. El Maestro Cocinero Serhu alimenta a todo el clan desde aquí.',
+  },
+
+  // Tanda OpenCode 2026-09-27/28 (A-09) — los 5 talleres que `areas.md` ya prometía en el
+  // Ketg'lukar y el catálogo no tenía. Mismo patrón que Herrería/Curtiduría/Cocina de arriba:
+  // un FactionBuilding por oficio, ocupado por su Maestro ya sembrado (§ npcs, slugs
+  // 'maestr[oa]-<oficio>-serhu'), sin receta de `construction.ts` — el jugador no los construye.
+  {
+    slug: 'herboristeria-serhu',
+    name: 'Herboristería del Clan Serhu',
+    factionSlug: 'Clan Serhu',
+    locationSlug: 'campamento-serhu-interior',
+    profession: 'herborista-orcos-llanuras',
+    tier: 1,
+    description:
+      'Estancia baja de adobe con tejado de Musgo Rojo, primer uso real del Musgo Arcilla como material de construcción. De cuerdas de fibra de Enredadera cuelgan a secar manojos de Salvia del Polvo y Flor de Ceniza, sobre mesas de piedra con morteros de hueso. Huele a amargo y a ceniza fría. De aquí sale la cataplasma de salvia que Gorhorn lleva de serie.',
+  },
+  {
+    slug: 'taller-alquimia-serhu',
+    name: 'Taller de Alquimia del Clan Serhu',
+    factionSlug: 'Clan Serhu',
+    locationSlug: 'campamento-serhu-interior',
+    profession: 'alquimista-orcos-llanuras',
+    tier: 1,
+    description:
+      'Pegado a la herboristería, separado por una cortina de piel curtida. Tiene un fogón pequeño alimentado con Matorral de Cuerno (arde lento y caliente, la leña que la alquimia necesita), recipientes de cuerno de Múrgol y Flor Salvatura en conserva. Es el único lugar del poblado donde se trabaja a fuego lento y con paciencia, a contrapelo del carácter del clan — los demás Serhu lo miran con cierta desconfianza.',
+  },
+  {
+    slug: 'corrales-domador-serhu',
+    name: 'Corrales del Domador',
+    factionSlug: 'Clan Serhu',
+    locationSlug: 'campamento-serhu-interior',
+    profession: 'domador-orcos-llanuras',
+    tier: 1,
+    description:
+      'Recinto dentro de la empalizada con postes de Huesos de Gargantúa traídos del Osario de la Manada — donde el canon dice que "se toma hueso, no se profana", y el Domador es precisamente el oficio ligado a la Gargantúa. Un abrevadero de piedra se llena a mano desde el Pozo de Cauce Viejo. Aquí se aclimatan las bestias recién domadas antes de pasar al gran recinto de Múrgol de fuera; la Terk\'ikar Ulkha Ketg, que es Domadora, lo visita a diario.',
+  },
+  {
+    slug: 'desolladero-serhu',
+    name: 'Desolladero del Clan Serhu',
+    factionSlug: 'Clan Serhu',
+    locationSlug: 'campamento-serhu-interior',
+    profession: 'desollador-orcos-llanuras',
+    tier: 1,
+    description:
+      'A sotavento, junto a la salida trasera hacia el recinto de Múrgol. Bastidores de cornamenta de Múrgol para tensar pieles, y un canal de arcilla que saca la sangre fuera de la empalizada. Es el oficio en el que los Serhu destacan de verdad — aquí se venden los Desolladores de sílice.',
+  },
+  {
+    slug: 'carpinteria-serhu',
+    name: 'Carpintería del Clan Serhu',
+    factionSlug: 'Clan Serhu',
+    locationSlug: 'campamento-serhu-interior',
+    profession: 'carpintero-orcos-llanuras',
+    tier: 1,
+    description:
+      'Suelo de arcilla y bancos con herramientas de asta y hueso. En soportes de piedra se secan vigas de Telda, impregnadas de Resina Telda Gris. De aquí salen las estacas de la empalizada y los botes de fondo plano del Embarcadero de Ceniza.',
   },
 
   // Clan Helsig (2026-09-13, ampliación de lore/auditoría) — mismo patrón que Karot Veku
