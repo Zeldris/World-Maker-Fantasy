@@ -79,6 +79,27 @@ describe('POST /saves/:id/modo-dinamico/recurso/:targetSlug', () => {
     }
   });
 
+  // Bug real jugando en vivo (2026-09-28): un minero de nivel 1 frente al Yerreo (tier 4) recibía
+  // "puede que se te haya adelantado, o esté fuera de temporada" — ninguna de las dos cosas. Ahora
+  // el 400 dice el motivo real (nivel de oficio) y sigue limpiando la oferta.
+  it('nivel de oficio insuficiente para el tier del recurso: 400 con el motivo real y limpia la oferta', async () => {
+    await prisma.professionProgress.updateMany({ where: { saveId, professionId: 'minero-llanuras' }, data: { nivel: 1 } });
+    await prisma.save.update({
+      where: { id: saveId },
+      data: { pendingDynamicModeOffer: { tipo: 'RECURSO', targetSlug: 'yerreo', targetName: 'Yerreo' } },
+    });
+    try {
+      const app = await buildApp();
+      const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/recurso/yerreo` });
+      expect(res.statusCode).toBe(400);
+      expect(JSON.parse(res.body).error).toMatch(/Minar a nivel 4 \(tienes nivel 1\)/);
+      const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+      expect(saveAfter.pendingDynamicModeOffer).toBeNull();
+    } finally {
+      await prisma.professionProgress.updateMany({ where: { saveId, professionId: 'minero-llanuras' }, data: { nivel: 5 } });
+    }
+  });
+
   it('recurso inexistente en el catálogo: 400', async () => {
     const app = await buildApp();
     const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/recurso/no-existe-de-verdad` });

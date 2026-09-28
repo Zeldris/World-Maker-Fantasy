@@ -469,8 +469,13 @@ describe('POST /saves/:id/zona/mover', () => {
     const logRow = await prisma.logEntry.findUnique({ where: { id: body.logEntry.id } });
     expect(logRow).not.toBeNull();
 
+    // El encuentro con el recurso detiene el trayecto igual que una colisión con FAUNA/NPC
+    // (2026-09-28) — antes el camino seguía y el jugador pasaba de largo.
+    expect(body.caminoRestante).toEqual([]);
+
     const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(saveAfter.pendingDynamicModeOffer).toEqual({ tipo: 'RECURSO', targetSlug: 'test-mover-recurso', targetName: 'test-mover-recurso', quienInicia: 'jugador' });
+    expect(saveAfter.zonaCaminoPendiente).toBeNull();
   });
 
   it('un ZonePoint FAUNA y uno RECURSO en la misma celda: la FAUNA (ser vivo) gana, el recurso ni se evalúa', async () => {

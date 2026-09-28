@@ -427,6 +427,22 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
             onClose?.()
           }
           sigue = false
+        } else if (resultado.dynamicModeOffer && resultado.logEntry) {
+          // Encuentro con un RECURSO (2026-09-28, bug real jugando en vivo) — el backend deja la
+          // oferta y su LogEntry sin `colision` (un recurso nunca es un encuentro de combate), y
+          // esta rama no existía: el trayecto seguía y la tarjeta "X a la vista" solo aparecía
+          // tras recargar la página. Mismo tratamiento que la oferta de una colisión de arriba.
+          setMensajeMovimiento(`Encuentras ${resultado.dynamicModeOffer.targetName}.`)
+          onEncuentroZona?.({
+            id: resultado.logEntry.id,
+            channel: 'character',
+            text: resultado.logEntry.text,
+            timeLabel: resultado.logEntry.timeLabel,
+            createdAt: resultado.logEntry.createdAt,
+            dynamicModeOffer: { ...resultado.dynamicModeOffer, busy: false },
+          })
+          onClose?.()
+          sigue = false
         } else if (resultado.caminoRestante.length === 0) {
           sigue = false
         } else {

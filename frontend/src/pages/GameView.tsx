@@ -972,11 +972,15 @@ export function GameView() {
           { id: `recurso-fallido-${Date.now()}`, channel: 'character', text: resultado.narration, timeLabel: fictionalDate, isSystemMessage: true, createdAt: new Date().toISOString() },
         ])
       }
-    } catch {
+    } catch (err) {
+      // El backend explica el motivo real del rechazo (nivel de oficio insuficiente, recurso
+      // agotado...) — mostrarlo tal cual (2026-09-28: antes un genérico "inténtalo de nuevo" que
+      // invitaba a reintentar algo que nunca iba a funcionar).
+      const motivo = err instanceof Error && err.message ? err.message : 'No se pudo recolectar — inténtalo de nuevo.'
       setCharacterLog((prev) =>
         prev.map((e) =>
           e.id === entryId && e.dynamicModeOffer
-            ? { ...e, dynamicModeOffer: { ...e.dynamicModeOffer, busy: false, error: 'No se pudo recolectar — inténtalo de nuevo.' } }
+            ? { ...e, dynamicModeOffer: { ...e.dynamicModeOffer, busy: false, error: motivo } }
             : e,
         ),
       )

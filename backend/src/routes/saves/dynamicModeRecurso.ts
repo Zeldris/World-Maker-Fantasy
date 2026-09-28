@@ -61,11 +61,24 @@ export async function dynamicModeRecursoRoutes(app: FastifyInstance) {
     // aprendida, se cae al prefijo base — `gatheringRollFor` ya trata eso como nivel 1 implícito.
     const professionIdReal = save.professionProgress.find((p) => matchesOficioPrefix(p.professionId, ability.oficio))?.professionId ?? ability.oficio;
 
-    const { candidates } = await candidateSourcesFor(worldId, yieldRow.metodoObtencion, region, currentLocationId, locationSlug, estacionActual, climaActual, save.professionProgress.find((p) => p.professionId === professionIdReal)?.nivel ?? 1);
+    const nivelOficio = save.professionProgress.find((p) => p.professionId === professionIdReal)?.nivel ?? 1;
+    const metodo = yieldRow.metodoObtencion;
+    const { candidates } = await candidateSourcesFor(worldId, metodo, region, currentLocationId, locationSlug, estacionActual, climaActual, nivelOficio);
     const candidato = candidates.find((c) => c.sourceSlug === targetSlug);
     if (!candidato) {
+      // Motivo REAL del rechazo (2026-09-28, bug real jugando en vivo con Playwright: el Yerreo de
+      // La Hondonada del Eco — tier 4 — respondía siempre "puede que se te haya adelantado, o esté
+      // fuera de temporada" a un minero de nivel 1, que no era ninguna de las dos cosas; el jugador
+      // no tenía forma de saber que le faltaba nivel de oficio). Se re-evalúa sin tope de nivel: si
+      // ENTONCES sí aparece como candidato, lo único que falla es el nivel.
+      const nombre = sourceDisplayNameFor(targetSlug);
+      const sinTopeDeNivel = await candidateSourcesFor(worldId, metodo, region, currentLocationId, locationSlug, estacionActual, climaActual, Number.MAX_SAFE_INTEGER);
+      const candidatoSinTope = sinTopeDeNivel.candidates.find((c) => c.sourceSlug === targetSlug);
+      const error = candidatoSinTope
+        ? `Todavía no sabes aprovechar ${nombre}: hace falta ${ability.ability.name} a nivel ${Math.min(...candidatoSinTope.yields.map((y) => y.tier ?? 1))} (tienes nivel ${nivelOficio}).`
+        : `${nombre} no da nada aprovechable ahora mismo — puede que esté agotado, recuperándose de una recolección reciente o fuera de temporada.`;
       await prisma.save.update({ where: { id: save.id }, data: { pendingDynamicModeOffer: Prisma.JsonNull } });
-      return reply.status(400).send({ error: 'Ese recurso ya no está disponible aquí — puede que se te haya adelantado, o esté fuera de temporada.' });
+      return reply.status(400).send({ error });
     }
 
     const roll = gatheringRollFor(

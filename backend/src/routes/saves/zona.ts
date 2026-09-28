@@ -857,7 +857,11 @@ export async function zonaRoutes(app: FastifyInstance) {
 
       // Una colisión detiene el avance AQUÍ — el jugador no llega más allá del punto de encuentro,
       // y no queda camino pendiente (tiene que decidir qué hacer antes de seguir moviéndose).
-      const caminoRestantePixel = colision ? [] : restoCamino.map((c) => pixelDeCelda(c));
+      // Una oferta nueva de RECURSO (sin `colision`, ver `detectarEncuentroEnCelda`) también lo
+      // detiene (2026-09-28, bug real jugando en vivo con Playwright: el jugador pasaba de largo
+      // junto al Yerreo, la oferta quedaba persistida pero el trayecto seguía 3 celdas más y el
+      // frontend nunca llegaba a mostrar la tarjeta hasta recargar la página).
+      const caminoRestantePixel = colision || dynamicModeOffer ? [] : restoCamino.map((c) => pixelDeCelda(c));
 
       await tx.save.update({
         where: { id: save.id },

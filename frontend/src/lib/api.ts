@@ -1214,10 +1214,11 @@ export interface MoverZonaResultado {
   /// mensaje sin abrir nada — eliminado por petición explícita de Álvaro: "si estás a una casilla
   /// de un elemento" ya debe abrir Interactuar) — celda ADYACENTE o MISMA celda disparan `colision`.
   colision: { targetSlug: string; targetName: string; temperamento: string } | null
-  /// Conexión real con Interactuar (2026-09-08) — colisión contra un NPC/fauna NO agresivo dispara
-  /// esta oferta real (`pendingDynamicModeOffer` en el backend); `null` en cualquier otro caso
-  /// (agresivo, sin colisión, o ya había otra oferta/conversación en curso).
-  dynamicModeOffer: { tipo: 'FAUNA' | 'NPC' | 'RECURSO'; targetSlug: string; targetName: string; quienInicia: 'jugador' | 'npc' } | null
+  /// Conexión real con Interactuar (2026-09-08) — colisión contra un NPC/fauna (o encuentro con un
+  /// RECURSO, sin `colision`) dispara esta oferta real (`pendingDynamicModeOffer` en el backend);
+  /// `null` sin encuentro o si ya había otra oferta/conversación en curso. `combateForzado` (desde
+  /// 2026-09-20) marca un AGRESIVO/ENEMIGO: la oferta abre el árbol de combate/huida.
+  dynamicModeOffer: { tipo: 'FAUNA' | 'NPC' | 'RECURSO'; targetSlug: string; targetName: string; quienInicia: 'jugador' | 'npc'; combateForzado?: true } | null
   /// LogEntry real determinista del encuentro (2026-09-09, hallazgo real jugando en vivo: la
   /// tarjeta de oferta SIEMPRE se renderiza colgada de una LogEntry concreta — sin esto la oferta
   /// quedaba persistida en BD pero invisible en el log). Presente solo junto a `dynamicModeOffer`,
