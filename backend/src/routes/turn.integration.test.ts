@@ -3157,26 +3157,7 @@ describe('OrdenProduccion: tick real de producción de Reino (§ 4.4-ter, 2026-0
     const actualizado = await prisma.companion.findUniqueOrThrow({ where: { id: heridoGuardia.id } });
     expect(actualizado.condicionFisica).toBe('GRAVE');
   }, 20_000);
-
-  // Producción de facción agregada (§ 4/§ 7, 2026-09-28, decisión de Álvaro) — independiente del
-  // Reino del jugador, recorre TODAS las facciones del mundo cada vez que se cruza un día de
-  // ficción, sin importar qué partida disparó el turno. Usa la facción real ya sembrada (Clan
-  // Serhu, con su Herrería/Curtiduría/Cocina ACTIVAS de catálogo) en vez de crear una de prueba.
-  it('la producción de facción sube KingdomStats.comida/riqueza de una facción real (Clan Serhu), sin depender del Reino del jugador', async () => {
-    await setUp();
-    const serhu = await prisma.faction.findFirstOrThrow({ where: { name: 'Clan Serhu' } });
-    const statsAntes = await prisma.kingdomStats.findUniqueOrThrow({ where: { ownerKey: `faction:${serhu.id}` } });
-    narrateAction.mockClear();
-
-    await doPassiveTurn('Espero aquí varios días, dejando pasar el tiempo tranquilamente.');
-
-    const statsDespues = await prisma.kingdomStats.findUniqueOrThrow({ where: { ownerKey: `faction:${serhu.id}` } });
-    // La Cocina Serhu suma comida, la Herrería y la Curtiduría suman riqueza (y el resto de
-    // talleres sembrados de esta misma tanda) — ambos números deben subir, sin necesidad de
-    // enumerar cada edificio uno a uno.
-    expect(statsDespues.comida).toBeGreaterThan(statsAntes.comida);
-    expect(statsDespues.riqueza).toBeGreaterThan(statsAntes.riqueza);
-  }, 20_000);
+  // (La producción de facción ya no corre en el turno: ver factionEconomy.integration.test.ts.)
 });
 
 // Cobertura nueva (auditoría de deuda técnica 2026-08-04, bug real de condición de carrera):

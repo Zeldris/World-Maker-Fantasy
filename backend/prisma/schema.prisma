@@ -1732,6 +1732,12 @@ model KingdomStats {
   /// dispara consolidar/perder territorios — ver el bloque de `diasCruzados` en turnResolution.ts.
   diasFelicidadAlta Int      @default(0)
   diasFelicidadBaja Int      @default(0)
+  /// Solo filas de facción (Fase 4 del plan oct-2026, H-6): último día de ficción del MUNDO (floor de
+  /// minutos/1440, máximo de sus partidas) para el que `advanceFactionEconomy` (factionEconomy.ts,
+  /// llamado desde worldTick) ya produjo/consumió. Marcador de idempotencia: cada día se procesa una
+  /// sola vez aunque haya varias partidas o varios ticks. Null = aún sin línea base (el primer tick
+  /// la fija al día actual sin producir retroactivamente).
+  ultimoDiaProducido Int?
   updatedAt         DateTime @updatedAt
 }
 
@@ -2584,6 +2590,10 @@ model FactionRelation {
   /// fijas escritas a mano por conflicto — ver `factionRelations.ts` § stageFactFor).
   stage           Int                 @default(0)
   maxStage        Int                 @default(4)
+  /// Última semana de ficción del mundo (floor(día/7)) para la que `decayPresion` ya se aplicó a
+  /// esta relación (Fase 4 del plan oct-2026, H-4) — marcador de idempotencia, ver factionEconomy.ts.
+  /// Null = sin línea base todavía (el primer tick la fija sin decaer).
+  ultimaSemanaDecaida Int?
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
 

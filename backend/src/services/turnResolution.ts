@@ -3,7 +3,7 @@ import { narrateAction, generateNpcReply, hasFalseTravelClaim, hasFalsePhantomTr
 import { retrieveLore, formatLoreForPrompt, isWeaklyGrounded } from './retrieval.js';
 import { xpForRollSuccess, xpForHitos, labelForHitos, applyXp, type ProgressionResult, type HitoTipo } from './progression.js';
 import { alivioForLevel, xpForCraftSuccess, professionLevelForXp } from './professionProgress.js';
-import { tickKingdom, daysCrossed, DEFAULT_KINGDOM_STATS, territoryPopulationDelta, DIAS_PARA_CONSOLIDAR, DIAS_PARA_REBELION, tickFactionProduction } from './kingdomTick.js';
+import { tickKingdom, daysCrossed, DEFAULT_KINGDOM_STATS, territoryPopulationDelta, DIAS_PARA_CONSOLIDAR, DIAS_PARA_REBELION } from './kingdomTick.js';
 import { tickOrdenesProduccion, companionesQueCuraCasaDeCuras, type TrabajadorReino, type OrdenProduccionInput } from './kingdomProduction.js';
 import { assertExactlyOneOwner, ownerKeyFor } from './reinoOwner.js';
 import { recordFactionEvent } from './factionRelations.js';
@@ -5612,24 +5612,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         }
       }
 
-      // Producción de facción agregada (docs/rpgtarkor/sistemas-reino/edificios-de-oficio.md § 4/§
-      // 7, 2026-09-28, decisión de Álvaro) — HERMANO de `if (kingdomStats)` de arriba: las
-      // facciones NO dependen del reino del jugador ni de sus Territory, son economía de mundo
-      // independiente (mismo criterio que WorldPopulation, no algo que fundar). Recorre TODAS las
-      // facciones del mundo (hoy 9, cifra pequeña — sin paginar) en vez de solo las relevantes para
-      // esta partida: es agregado puro sobre `KingdomStats.factionId`, no algo que dependa de dónde
-      // esté el jugador. `diasCruzados` aplica igual que el resto del bloque (un viaje largo puede
-      // cruzar varios días de una vez).
-      const factionKingdomStatsRows = await tx.kingdomStats.findMany({ where: { factionId: { not: null } } });
-      for (const fks of factionKingdomStatsRows) {
-        const factionBuildings = await tx.building.findMany({ where: { factionId: fks.factionId }, select: { recipeKey: true, status: true } });
-        const porDia = tickFactionProduction(factionBuildings);
-        if (porDia.comida === 0 && porDia.riqueza === 0) continue;
-        await tx.kingdomStats.update({
-          where: { ownerKey: fks.ownerKey },
-          data: { comida: { increment: porDia.comida * diasCruzados }, riqueza: { increment: porDia.riqueza * diasCruzados } },
-        });
-      }
+      // La producción/consumo/stock de facción (H-6/H-2) y el decaimiento de presión (H-4) ya NO
+      // corren aquí (producían por partida, duplicado): viven en `advanceFactionEconomy`
+      // (factionEconomy.ts), llamado una vez por mundo desde `tick()` de workers/worldTick.ts.
 
       // Panel de Reino real (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.4-ter, 2026-09-21) — HERMANO de
       // `if (kingdomStats)`, no anidado dentro: un `Building` con trabajadores puede existir sin
