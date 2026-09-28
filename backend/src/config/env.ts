@@ -9,7 +9,7 @@ export const env = {
   databaseUrl: required('DATABASE_URL'),
 
   ollamaBaseUrl: process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434',
-  ollamaModelNarrador: process.env.OLLAMA_MODEL_NARRADOR ?? 'tarkor-narrador',
+  ollamaModelNarrador: process.env.OLLAMA_MODEL_NARRADOR ?? 'tarkor-narrador-llama31',
   ollamaModelCronista: process.env.OLLAMA_MODEL_CRONISTA ?? 'qwen2.5:1.5b-instruct',
   /// Modelo propio para "Sugerir" (petición explícita, 2026-08-21: "el 4b solo para sugerencias no
   /// puede ser una opción?") — separado a propósito de `ollamaModelNarrador`, que sigue siendo el
