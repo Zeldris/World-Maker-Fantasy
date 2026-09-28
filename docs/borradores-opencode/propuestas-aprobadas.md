@@ -1760,7 +1760,7 @@ envuelta en piel de Ferike.
 **Propuesta:**
 
 **Qué es.** Un cuchillo de desuello **hecho entre dos clanes**. La hoja, de hielo sílice con forma de
-media luna, la tallan los Helsig: el canon ya dice que el sílice sirve "especialmente para
+hoz corta, la tallan los Helsig: el canon ya dice que el sílice sirve "especialmente para
 cuchillos de deshuello". Las cachas son de **Caparazón de Espina del Viento** y las pone el
 Desolladero Serhu: la quitina no resbala con sangre en las manos. Es el único objeto del Karot Veku
 que reconoce abiertamente que los Serhu necesitan a otro clan para algo.
@@ -2113,8 +2113,8 @@ el comando `REVISA` de OpenCode y para evaluar cualquier ronda futura.
    fichero donde está.
 3. **Fugas a Vaelira**: Amonir Thess, el musgo bioluminiscente del Susurro de las Raíces, la Hebra
    Dorada, la Costa del Azabache, Ilvenar y Jusaly en Berig. La Niebla del Estrecho no se cruza.
-4. **Geografía de Berig mal orientada**: el orden de norte a sur es Cristal Helado, Llanuras,
-   Ciénaga, Margen, Meseta. Los Manaderos está en las Llanuras, no en el Margen.
+4. **Geografía de Berig mal orientada**: Berig va en tres franjas. Norte, Cristal Helado; centro, las
+   Llanuras (oeste) y la Ciénaga (este) lado a lado; debajo, el Margen; sur, la Meseta. Los Manaderos está en las Llanuras, no en el Margen.
 5. **Resolver contenido reservado**: qué encontró Tarkor, su regreso, los seres de El Giro, las
    ruinas enterradas del Reino Nabierus, el destino de las Perdidas.
 6. **Fechas imposibles**: años en la era mítica (va sin fechar), orcos antes del 2.000, Gorhorn

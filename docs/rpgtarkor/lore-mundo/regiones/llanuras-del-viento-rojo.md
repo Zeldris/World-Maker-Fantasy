@@ -2,7 +2,8 @@
 
 [← Áreas y geografía](../areas.md) · [Índice del mundo](../07-mundo-helek-sirik.md)
 
-*Región de Berig entre Cristal Helado (norte) y Ciénaga Troncal / El Margen Silencioso (sur) ·
+*Región de la franja central de Berig, al oeste: Cristal Helado al norte, Ciénaga Troncal al este y
+El Margen Silencioso al sur ·
 territorio orco, salvo una pequeña franja al sur que es Faerus · ~126 × 249 km · **la región del
 núcleo jugable**, donde empieza la partida.*
 
@@ -249,34 +250,35 @@ Salón), donde la Terk'ikar y el Kort'ikar reciben a quien cruza la entrada.
 - **Herrería del Clan Serhu** *(sembrada)*: horno de arcilla endurecida bajo una lona de parches y
   un humo que nunca termina de irse. Es la herrería "mediocre y mal orientada" del clan.
 - **Curtiduría del Clan Serhu** y **Cocina común de Karot Veku** *(sembradas)*.
-- **Herboristería del Clan Serhu** *(pendiente de código · Maestra Herborista Serhu)*: estancia baja
+- **Herboristería del Clan Serhu** *(en código · Maestra Herborista Serhu)*: estancia baja
   de adobe con tejado de **Musgo Rojo**. De cuerdas de fibra de Enredadera cuelgan a secar manojos de
   Salvia del Polvo y Flor de Ceniza, y hay mesas de piedra con morteros de hueso. Huele a amargo y a
   ceniza fría. De aquí sale la cataplasma de salvia que Gorhorn lleva de serie.
-- **Taller de Alquimia del Clan Serhu** *(pendiente de código · Maestro Alquimista Serhu)*: pegado a
+- **Taller de Alquimia del Clan Serhu** *(en código · Maestro Alquimista Serhu)*: pegado a
   la herboristería, separado por una cortina de piel curtida. Fogón pequeño de **Matorral de
   Cuerno**, recipientes de cuerno de Múrgol y Flor Salvatura en conserva. Es el único lugar del
   poblado donde se trabaja a fuego lento, a contrapelo del carácter del clan, y los demás Serhu lo
   miran con cierta desconfianza.
-- **Corrales del Domador** *(pendiente de código · Maestro Domador Serhu)*: recinto dentro de la
+- **Corrales del Domador** *(en código · Maestro Domador Serhu)*: recinto dentro de la
   empalizada con postes de **Huesos de Gargantúa** del Osario y un abrevadero de piedra que se llena
   a mano desde el Pozo. Aquí se aclimatan las bestias recién domadas antes de pasar al recinto de
   Múrgol de fuera. La Terk'ikar Ulkha Ketg, que es Domadora, lo visita a diario.
-- **Desolladero del Clan Serhu** *(pendiente de código · Maestro Desollador Serhu)*: a sotavento,
+- **Desolladero del Clan Serhu** *(en código · Maestro Desollador Serhu)*: a sotavento,
   junto a la salida trasera hacia el recinto de Múrgol. Bastidores de **cornamenta de Múrgol** para
   tensar pieles y un canal de arcilla que saca la sangre fuera de la empalizada. Es el oficio en el
   que los Serhu destacan de verdad. Aquí se vende el Desollador de sílice.
-- **Carpintería del Clan Serhu** *(pendiente de código · Maestro Carpintero Serhu)*: suelo de
+- **Carpintería del Clan Serhu** *(en código · Maestro Carpintero Serhu)*: suelo de
   arcilla, bancos con herramientas de asta y hueso, y vigas de **Telda** impregnadas de Resina Telda
   Gris secándose en soportes de piedra. De aquí salen las estacas de la empalizada y los botes del
   Embarcadero de Ceniza.
 
 Son edificios de facción (`Building.factionId`), no recetas que el jugador pueda construir.
 **Edificios de oficio (diseño de 2026-09-28, ver [edificios-de-oficio.md](../../sistemas-reino/edificios-de-oficio.md)).** La regla es que
-cada oficio con Maestro tiene su edificio. Además de los cinco de arriba, a Karot Veku le faltan la
-**Peletería**, la **Sastrería**, la **Casa de curas** (primeros auxilios) y el **Obrador de piedra**
-(constructor). El oficio de pescador trabaja fuera del poblado, en el **Embarcadero de pesca** de El
-Embarcadero de Ceniza. Pendientes de código.
+cada oficio con Maestro tiene su edificio. Además de los cinco de arriba, Karot Veku tiene en código
+la **Peletería**, la **Sastrería** y la **Casa de curas** (primeros auxilios). El oficio de pescador
+trabaja fuera del poblado, en el **Embarcadero de pesca**: el lore lo pone en El Embarcadero de
+Ceniza y el código, en la Playa de Ceniza Blanca, donde vive el Maestro Pescador (pendiente de
+decidir). Falta el **Obrador de piedra** (constructor), que espera a tener Maestro.
 
 **Maestros de oficio.** Por cada uno de los 12 oficios orcos de las Llanuras (herrero, curtidor,
 peletero, desollador, domador, carpintero, sastre, herborista, primeros auxilios, alquimista,
@@ -495,7 +497,7 @@ suelo, también ritual de cortejo). Las hembras no tienen cola, pero desarrollan
 fuertes: son ellas las cazadoras y alfas de la manada. Dan Piel de Ferike y Garras Ferike (abalorios,
 tier 6-7), Melena de cola Ferike (tier 7, loot muy raro, para el objeto de mayor calidad de ese tier),
 hueso (`hueso-ligero`) y carne (`racion-carne`).
-**Colmillo de Ferike** *(pendiente de código)*: 20-35 cm, marfil con vetas pardas, duro pero
+**Colmillo de Ferike** *(en código)*: 20-35 cm, marfil con vetas pardas, duro pero
 quebradizo contra la piedra. Tier 6; el de hembra es la variante de mayor calidad. Con él tallan los
 Faerus de Kegi la daga *Ashi'krul*.
 
@@ -619,7 +621,7 @@ direcciones para rasgar escamas de Jusha (su presa favorita) y unos ojos muy peq
 de roedor, que no soportan la luz del día: la huella de Kroj sobre otra criatura nocturna. Caza en
 manada de noche y descansa en las charcas tras comer. De día amplía sus madrigueras bajo el agua, en
 las orillas, con un túnel que sube hasta la superficie para respirar. Da Piel de Miruina
-(impermeable, tier 2-3) y `racion-carne`. Sus **Incisivos de Miruina** *(pendiente de código,
+(impermeable, tier 2-3) y `racion-carne`. Sus **Incisivos de Miruina** *(en código,
 tier 2)* sirven de rascador natural para limpiar pieles antes de curtirlas: arrancan escamas y restos
 sin cortar la piel.
 
@@ -1001,12 +1003,10 @@ investigadora que sus descendientes de hoy, los Nabieus, siguen llevando en la s
 - **Talleres de Karot Veku** descritos pero sin edificio en el catálogo: herboristería, alquimia,
   corrales del Domador, desolladero y carpintería (ya tienen descripción y Maestro asignado).
 - El **trabajador de Reino** (`<Oficio>` Serhu PLANTILLA) no existe para ningún oficio.
-- **Kegi**: Yeru y Tasko tienen ficha en el lore, pero no en el catálogo.
 - El **Puesto Rabioso del Márgen** es solo un rótulo del mapa, sin `Location`.
 - La **Espina del Viento** no tiene ficha de combate, por diseño.
 - Hay loot **sin uso** en ninguna receta: Huevo de Celubia y Caparazón de Terkash. El Veneno de
-  Espina (Ungüento de Espina) y las Plumas de Celubia (Manto de Cornisa) ya tienen receta en el lore,
-  pendiente de código.
+  Espina y las Plumas de Celubia ya lo tienen (Ungüento de Espina y Manto de Cornisa, en código).
 - **Corredor de Cauce: moratoria.** No hay que añadirle materiales nuevos.
 - La mecánica de las **Agujas Imán** (pérdida de Arena Imán) y la **estacionalidad del Kirelon**
   están diseñadas pero no implementadas.

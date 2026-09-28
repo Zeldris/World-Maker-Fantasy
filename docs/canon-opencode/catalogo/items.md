@@ -1,7 +1,7 @@
 # CATÁLOGO: objetos (calibración)
 Qué es: el equipo y los consumibles reales, con sus números, para que cualquier objeto nuevo salga
 calibrado.
-Fuente: worldCatalog.ts + items.md. Sincronizado: 2026-09-27. (* = aprobado, sin código.)
+Fuente: worldCatalog.ts + items.md. Sincronizado: 2026-09-28.
 
 ## Reglas
 - Peso de armadura → atributos: LIGERO da Magia+Inteligencia · MEDIO da Destreza+Voluntad · PESADO
@@ -29,8 +29,8 @@ Fuente: worldCatalog.ts + items.md. Sincronizado: 2026-09-27. (* = aprobado, sin
 | Lanza de hueso de gargantúa | PRINCIPAL / LANZA | 3 | 31 | Des +5, Fue +2, Car +1 | Des alta |
 | Hacha de guerra Maktor (restaurada) | PRINCIPAL / HACHA_1_MANO | 4 | 36 | Fue +4, Con +2, Des +1, Vol +1 | Fue 16 |
 | Zarpas de Towrgu | SECUNDARIA / DAGA | 5 | 31 | Des +3 | Des alta |
-| Desollador de sílice* | SECUNDARIA / CUCHILLO | 3 | 20 | Des +2 | Des 9 |
-| Ashi'krul* (daga Faerus) | SECUNDARIA / DAGA | 6 | 30 | Des +4 | Des 13 |
+| Desollador de sílice | SECUNDARIA / CUCHILLO | 3 | 20 | Des +2 | Des 9 |
+| Ashi'krul (daga Faerus) | SECUNDARIA / DAGA | 6 | 30 | Des +4 | Des 13 |
 
 ## Armaduras y ropa
 | Objeto | Ranura | Peso | Tier | Goirnos | Bonos |
@@ -50,7 +50,7 @@ Fuente: worldCatalog.ts + items.md. Sincronizado: 2026-09-27. (* = aprobado, sin
 | Peto de placas óseas de gargantúa | ARMADURA_SUPERIOR | PESADO | 3 | 29 | Con +3, Vol +2, Car +2 |
 | Capa de piel de gargantúa | ACCESORIO | — | 3 | 29 | Vol +2, Des +3, Car +2 |
 | Capa de melena de Ferike | ARMADURA_SUPERIOR | LIGERO | 7 | 60 | Car +5 (el objeto más caro) |
-| Manto de Cornisa* | COSMETICO_ESPALDA | — | 2 | 6 | ninguno |
+| Manto de Cornisa | COSMETICO_ESPALDA | — | 2 | 6 | ninguno |
 | Anillo de vértebra de corredor | ANILLO_1 | — | 2 | 14 | Car +1, Int +1 |
 
 ## Consumibles (Goirnos)
@@ -58,13 +58,13 @@ Comida: ración de carne fresca 3, carne ahumada 9, ración de viaje 6, Boungo a
 escarlata 4, cuajada de múrgol 4, panal endulzado 3, carne de Jusha ahumada 4. Bebida: agua hervida
 con liquen 18, odre lleno 6. Medicinales: manojo de salvia 7, cataplasma básica de salvia 12,
 completa de salvia y ceniza 22, de Flor de Ceniza 13, contraveneno 6, filtro de Salvatura 14 (t2),
-infusión de espiga roja 10, Ungüento de Espina* 12 (t3). Los medicinales curan por estados de
+infusión de espiga roja 10, Ungüento de Espina 12 (t3). Los medicinales curan por estados de
 herida (GRAVE → HERIDO → ILESO).
 
 ## Herramientas (habilitan oficios)
 Pico de minero, cuchillo de deshuello de hielo sílice, kit de costura de hueso, piedra de afilar,
 piedras de chispa, trampa de lazo, cuerda de tendón, caña de pescar + cebo, antorcha de resina de
-ciénaga, Incisivos de Miruina* (curtidor y peletero).
+ciénaga, Incisivos de Miruina (curtidor y peletero).
 
 ## Documentos (desbloquean entradas de la Enciclopedia)
 Correspondencia sellada de la Concordia, Croquis de rutas de patrulla, Diario de un soldado

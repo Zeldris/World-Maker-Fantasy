@@ -306,7 +306,7 @@ resto de razas de Berig, salvo los Faerus, ya rechazaban a los orcos en general;
 los Goirntes los aislaron incluso de esa poca relación que otros clanes sí lograron. Se nota en los
 números: entre la fundación del clan y hoy, los Serhu apenas crecieron un ~0,06%/año (400 → 800 en
 más de mil años) — una tasa 3 veces más lenta que la de los Goshg o los Helsig, que partieron de mucho
-menos (80 y 40) pero, lejos del yugo directo de la Concordia, sí pudieron comerciar y crecer. Ese comercio tiene nombre: la **Senda del Sílice** (~3.000-3.500, provisional), por la que bajan los cuchillos Helsig y suben la madera y la resina Goshg, bordeando por el este las Llanuras. Los Maktor maltrechos llegaron a cambiar pieles por madera de ciénaga en ella; los Serhu, dentro del cerco, nunca.
+menos (80 y 40) pero, lejos del control directo de los Goirntes, sí pudieron comerciar y crecer. Ese comercio tiene nombre: la **Senda del Sílice** (~3.000-3.500, provisional), por la que bajan los cuchillos Helsig y suben la madera y la resina Goshg, bordeando por el este las Llanuras. Los Maktor maltrechos llegaron a cambiar pieles por madera de ciénaga en ella; los Serhu, dentro del cerco, nunca.
 
 #### La casta de Ketg
 
@@ -342,7 +342,7 @@ quien la desafía, y una práctica que no se ve en ningún otro clan orco (el ca
 exilia — a quien la desafía solo le quedan dos caminos, quedarse y resignarse, o morir y desaparecer
 sin rastro. No hay asamblea real ni Kurig con poder de verdad bajo este régimen, por mucho que
 conserven el nombre — rango social y lazos de sangre están por encima de todo, un régimen autoritario
-cruel y prácticamente sin empatía, más cerca de una dictadura humana que de cualquier otro clan orco.
+cruel y prácticamente sin empatía, más cerca de una tiranía pura que de cualquier otro clan orco.
 
 ### Clan Helsig
 *Cristal Helado · asentamiento: Helske Tugh · Catálogo: `Faction` `clan-helsig`.*

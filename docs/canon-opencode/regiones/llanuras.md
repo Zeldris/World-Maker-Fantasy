@@ -3,7 +3,7 @@ Qué es: zonas, habitantes, especies y huecos de la región del núcleo jugable.
 Fuente: docs/rpgtarkor/lore-mundo/regiones/llanuras-del-viento-rojo.md. Sincronizado: 2026-09-27.
 
 ## Datos fijos
-- Posición: entre Cristal Helado (norte) y la Ciénaga y el Margen (sur). ~126 × 249 km.
+- Posición: franja central, al oeste. Cristal Helado al norte, la Ciénaga al este, el Margen al sur. ~126 × 249 km.
 - Paisaje: estepa roja y arcillosa, sabanas, volcanes al noreste, costa al norte. Tormentas de arena
   magnética (por intensidad: Ghurmek, Sek'tar, Rokthar, Rok'ithek). La arena es magnética porque
   debajo está enterrado el Reino Nabierus.

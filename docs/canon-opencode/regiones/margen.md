@@ -3,7 +3,7 @@ Qué es: zonas, habitantes, especies y huecos del Margen.
 Fuente: docs/rpgtarkor/lore-mundo/regiones/margen-silencioso.md. Sincronizado: 2026-09-27.
 
 ## Datos fijos
-- Posición: cinturón entre Ciénaga Troncal (norte) y la Meseta del Orden (sur); ~215 × 103 km. La
+- Posición: cinturón bajo la Ciénaga Troncal y el extremo sur de las Llanuras (norte), sobre la Meseta del Orden (sur); ~215 × 103 km. La
   única entrada desde el núcleo es El Cruce de las Cenizas. La Concordia NO lo atraviesa: lo bordea
   por el corredor costero occidental.
 - Paisaje: selva templada, pantanos y bosque de coníferas de madera negra. El sonido se apaga sin eco

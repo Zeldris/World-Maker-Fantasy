@@ -2,7 +2,8 @@
 
 [← Áreas y geografía](../areas.md) · [Índice del mundo](../07-mundo-helek-sirik.md)
 
-*Región central de Berig, entre las Llanuras (norte) y El Margen Silencioso (sur) · territorio
+*Región de la franja central de Berig, al este de las Llanuras: Cristal Helado al norte y El Margen
+Silencioso al sur · territorio
 neutral · ~160 × 178 km · nombre nativo de la región: **Los Trepaderes Humededos** · **fuera del
 núcleo jugable**.*
 

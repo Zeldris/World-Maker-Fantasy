@@ -2,7 +2,8 @@
 
 [← Áreas y geografía](../areas.md) · [Índice del mundo](../07-mundo-helek-sirik.md)
 
-*Cinturón entre Ciénaga Troncal (norte) y la Meseta del Orden (sur) · territorio Nabieus
+*Cinturón entre la Ciénaga Troncal y el extremo sur de las Llanuras (norte) y la Meseta del Orden
+(sur) · territorio Nabieus
 (mitad oriental) y Faerus (mitad occidental) · ~215 × 103 km, cinturón y no bloque · **fuera del
 núcleo jugable**. Su única puerta desde el núcleo es El Cruce de las Cenizas (ver
 [Llanuras](llanuras-del-viento-rojo.md#el-cruce-de-las-cenizas)).*
@@ -22,7 +23,7 @@ follaje absorben el sonido de forma anómala: el sonido entra y no vuelve a sali
 **Quién vive aquí:**
 - **Nabieus** del clan **Keseg Sael** ("el fin del callar") en la mitad oriental, con presencia
   dispersa hasta el borde de Ciénaga Troncal.
-- **Faerus** del **Feg Tusha** ("Manada Madre") en la mayor parte del resto, con puestos avanzados que cruzan algo la frontera oeste
+- **Faerus** del **Feg Tusha** ("Manada Madre") en la mayor parte del resto, con puestos avanzados que cruzan algo la frontera norte
   hacia las Llanuras, donde viven sus parientes adaptados a la llanura.
 - La Concordia **no lo atraviesa**: lo bordea por el corredor costero occidental, camino de la
   Meseta.
@@ -76,7 +77,7 @@ vuelve a entrar. Visitable solo con la confianza máxima del clan, y nadie habla
 
 ### El Cruce de las Ausencias
 *Paso entre las dos mitades del Margen · centro de la región · sin nombre nativo, a propósito ·
-pendiente de código (`cruce-de-las-ausencias`).*
+en código (`cruce-de-las-ausencias`).*
 
 Bosque cerrado de coníferas de madera negra de copas bajas, con el suelo hecho un entramado de raíces
 cubierto de Musgo Callado. La quietud es total: no se oye el viento, ni los pasos propios, ni la
@@ -90,7 +91,7 @@ compañeros con una cuerda corta: si tira, alguien se ha parado.
 **Terreno:** húmedo, vegetación. **Teaser:** "Aquí nadie oye cuando llamas."
 
 ### Las Aguas Sordas
-*Franja pantanosa entre el Cruce de las Ausencias y la mitad oriental · pendiente de código (`aguas-sordas`).*
+*Franja pantanosa entre el Cruce de las Ausencias y la mitad oriental · en código (`aguas-sordas`).*
 
 Canales y charcas de agua negra, de hasta dos metros de hondo, entre raíces de coníferas, con islas de
 raíz que ceden bajo el peso de algo grande. El agua **no suena**: ni chapoteo ni goteo. La única forma
@@ -100,7 +101,7 @@ mejor por el agua, antes de la segunda huida.
 **Terreno:** húmedo, vegetación. **Teaser:** "Mira el agua. No va a avisarte de otra forma."
 
 ### La Proa Gris
-*Borde sur del Margen, frente a la Meseta · pendiente de código (`proa-gris`).*
+*Borde sur del Margen, frente a la Meseta · en código (`proa-gris`).*
 
 Un espolón de piedra gris de la Meseta que se adentra en la selva como la proa de un barco: la única
 altura del Margen. Conserva la simetría antinatural de la Meseta, pero **se deshace a medida que
@@ -168,7 +169,7 @@ del Brozán.
 ## Fauna
 
 ### Las Sombras de Kroj
-*Umbrias (Kroj) · nivel 3-8 · AGRESIVO · AEREO · en grupo · pendiente de código (su pluma sí existe:
+*Umbrias (Kroj) · nivel 3-8 · AGRESIVO · AEREO · en grupo · en código (su pluma sí existe:
 `pluma-sombra-kroj`).*
 
 Criaturas voladoras nocturnas medianas, de plumaje gris ceniza y vuelo silencioso. Cazan en grupo.
@@ -178,7 +179,7 @@ retrasado, para atraer viajeros hacia trampas o precipicios. No tienen cuerdas v
 porque no las necesitan.
 
 ### Hetris
-*Acechantes · nivel 4-9 · AGRESIVO (territorial) · dosel alto · pendiente de código.*
+*Acechantes · nivel 4-9 · AGRESIVO (territorial) · dosel alto · en código.*
 
 Felino-simio arbóreo de 80-120 cm, de cuerpo esbelto y extremidades largas con garras curvas, cola
 prensil casi tan larga como el cuerpo y pelaje corto gris verdoso que se funde con la corteza
@@ -189,7 +190,7 @@ que por miedo.
 **Recursos:** Piel de Hetris (tier 3), Garras de Hetris (tier 4).
 
 ### Mekiosi
-*Acechantes · nivel 7-13 · AGRESIVO · suelo del bosque · pendiente de código.*
+*Acechantes · nivel 7-13 · AGRESIVO · suelo del bosque · en código.*
 
 Bestia de 200-250 cm, de complexión pesada y musculosa, piel gruesa de tonos pardos y verdes que
 imita el musgo y la corteza podrida del suelo, patas cortas y robustas y una cabeza ancha con
@@ -199,7 +200,7 @@ embestida. Solitario, con territorio amplio.
 **Recursos:** Piel de Mekiosi (tier 4), Colmillos de Mekiosi (tier 5).
 
 ### Vistue
-*Guelises · nivel 3-7 · AGRESIVO en manada · pendiente de código.*
+*Guelises · nivel 3-7 · AGRESIVO en manada · en código.*
 
 Corredor de manada de 130-170 cm, de cuerpo alargado y patas largas hechas para la carrera
 sostenida, pelaje corto oscuro con una franja más clara a lo largo del lomo, hocico estrecho y
@@ -209,7 +210,7 @@ que se rinde de puro agotamiento. Poco peligroso en solitario, mucho en manada.
 **Recursos:** Piel de Vistue (tier 3), carne (`racion-carne`).
 
 ### Leshra
-*Umbrias (Kroj) · primera especie de la familia · nivel 2-5 · CAUTELOSO · AEREO · pendiente de código.*
+*Umbrias (Kroj) · primera especie de la familia · nivel 2-5 · CAUTELOSO · AEREO · en código.*
 
 Ave nocturna de 50-70 cm de cuerpo y unos 120 cm de envergadura, de alas anchas y redondeadas. El borde
 deshilachado de sus plumas rompe el aire en remolinos diminutos que no hacen ruido. Su plumaje gris
@@ -219,7 +220,7 @@ alguien se acerca a su nido. *Leshra* es Feg, "ave de noche".
 **Recurso:** Plumas de Leshra (tier 2), con las que los Faerus empluman flechas que no silban.
 
 ### Morvasa
-*Escamados · nivel 3-6 · CAUTELOSO · ACUATICO · Las Aguas Sordas · pendiente de código.*
+*Escamados · nivel 3-6 · CAUTELOSO · ACUATICO · Las Aguas Sordas · en código.*
 
 Serpiente de 180-220 cm, esbelta, de escamas verde pardo con vetas ceniza. No traga presas grandes:
 las paraliza con un veneno neurotóxico y las come por partes. Caza inmóvil bajo el agua; la única
@@ -227,7 +228,7 @@ señal de que está ahí es una onda en la superficie. Come Brozanes, crías de 
 **Recursos:** Veneno de Morvasa (alquimia, tier 3) y Piel de Morvasa (tier 2).
 
 ### Brozán
-*Rondines · nivel 1-2 · INOFENSIVO · pendiente de código.*
+*Rondines · nivel 1-2 · INOFENSIVO · en código.*
 
 Roedor de 35-45 cm, redondeado, de pelaje gris verdoso con vetas negras que imitan la corteza podrida,
 con orejas pequeñas, cola corta y garras delanteras de excavar. Vive entre la hojarasca (*broza*) y
@@ -236,7 +237,7 @@ Morvasa y el Mekiosi.
 **Recursos:** `racion-carne` y Piel de Brozán (tier 1).
 
 ### Hoscón
-*Corvenes · nivel 1-2 · INOFENSIVO · pendiente de código.*
+*Corvenes · nivel 1-2 · INOFENSIVO · en código.*
 
 El carroñero del Margen. El Zense Ceniza encuentra la carroña desde el aire, pero bajo el dosel
 cerrado eso es imposible, y el Hoscón lo resuelve **caminando**: vuela poco y bajo, y recorre el
@@ -280,10 +281,9 @@ nombran. Los Ferikes viven en el borde con las Llanuras; ver
 
 ## Huecos conocidos
 
-- **Nada de la región está en el catálogo técnico** salvo los cuatro lugares Faerus y Nabieus: ni
-  la fauna (8 especies), ni la flora (5), ni los tres lugares nuevos, ni los NPC de Hashma.
-- La mitad Nabieus no tiene ningún NPC con nombre. Keseg Sael no tiene líder porque no tiene cargos;
-  hace falta un portavoz de cónclave para el motor.
+- La región está en el catálogo desde el 2026-09-28: fauna, flora, los tres lugares nuevos, los
+  NPC de Hashma y Aven Tessk, portavoz del cónclave de Keseg Sael (el motor lo usa como líder).
+- Sigue fuera del núcleo jugable: sin `ZonePoint` ni recorrido.
 - Nada documentado en la costa occidental ni en el Puesto Rabioso del Márgen.
 
 ## Historial de cambios

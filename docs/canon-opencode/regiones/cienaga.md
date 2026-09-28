@@ -3,7 +3,7 @@ Qué es: zonas, habitantes, especies y huecos de la Ciénaga.
 Fuente: docs/rpgtarkor/lore-mundo/regiones/cienaga-troncal.md. Sincronizado: 2026-09-27.
 
 ## Datos fijos
-- Posición: entre las Llanuras (norte) y el Margen (sur). ~160 × 178 km. Nombre nativo: Los
+- Posición: franja central, al este de las Llanuras. Cristal Helado al norte, el Margen al sur. ~160 × 178 km. Nombre nativo: Los
   Trepaderes Humededos.
 - Paisaje: pantano casi inhabitable con tres zonas llanas invadidas por Trepadores Ocaso. Rica en
   comida y madera, **pobre en minerales**.

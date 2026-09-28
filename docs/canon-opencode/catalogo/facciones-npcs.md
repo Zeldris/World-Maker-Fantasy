@@ -2,20 +2,20 @@
 Qué es: quién manda dónde, cómo se llevan y qué personajes existen ya. Para no duplicar ni
 contradecir.
 Fuente: worldCatalog.ts, historia.md, clanes-orcos.md, npcs.md, facciones-diplomacia.md.
-Sincronizado: 2026-09-27. (* = aprobado, sin código.)
+Sincronizado: 2026-09-28.
 
 ## Facciones
 | Facción | Raza | Región | Líder de gobierno / de guerra | Población |
 |---|---|---|---|---|
-| Concordia de Hierro | Goirntes (radicales) | Meseta | Primer Censor Tarsen Vold* / General Vrask Ombra | 1.600 (de 4.000 Goirntes) |
-| Los del Obelisco* | Goirntes (moderados) | Meseta | Archimagistrada Yovenne Tal | ~300 |
+| Concordia de Hierro | Goirntes (radicales) | Meseta | Primer Censor Tarsen Vold / General Vrask Ombra | 1.600 (de 4.000 Goirntes) |
+| Los del Obelisco | Goirntes (moderados) | Meseta | Archimagistrada Yovenne Tal | ~300 |
 | Clan Serhu | orcos | Llanuras (Karot Veku) | Terk'ikar Ulkha Ketg / Kort'ikar Torgash Ketg | ~800 |
 | Clan Helsig | orcos | Cristal Helado (Helske Tugh) | Terk'ikar Brenka / Kort'ikar Solgra | ~400 |
 | Clan Goshg | orcos | Ciénaga (Silh Makut) | Terk'ikar Doshka / Kort'ikar Dulgren | ~600 |
-| Keseg Sael* | Nabieus | Margen oriental | sin cargo: Aven Tessk*, portavoz del cónclave | ~1.500 |
-| Keseg Prisilke* | Nabieus | sur de la Ciénaga (Jeyselt) | Ilka Dren*, cazadora mayor | ~500 |
-| Feg Tusha* | Faerus | Margen occidental (Hashma) | quien suele estar en el Jakut: Hulki | ~850 |
-| Feg Ger* | Faerus | franja sur de las Llanuras (Kegi) | quien suele estar en el Jakut: Yeru | ~200 |
+| Keseg Sael | Nabieus | Margen oriental | sin cargo: Aven Tessk, portavoz del cónclave | ~1.500 |
+| Keseg Prisilke | Nabieus | sur de la Ciénaga (Jeyselt) | Ilka Dren, cazadora mayor | ~500 |
+| Feg Tusha | Faerus | Margen occidental (Hashma) | quien suele estar en el Jakut: Hulki | ~850 |
+| Feg Ger | Faerus | franja sur de las Llanuras (Kegi) | quien suele estar en el Jakut: Yeru | ~200 |
 | Clan Maktor | orcos | — | aniquilado; queda Gorhorn | 1 |
 
 ## Relaciones (el estado actual)
@@ -40,7 +40,7 @@ Sincronizado: 2026-09-27. (* = aprobado, sin código.)
   Detonante (~4.005-4.008).
 
 ## NPC que ya existen (no duplicar)
-- **Concordia y Meseta:** Tarsen Vold*, Vrask Ombra (general que duda en secreto), Yovenne Tal, Kael
+- **Concordia y Meseta:** Tarsen Vold, Vrask Ombra (general que duda en secreto), Yovenne Tal, Kael
   Dorn (exradical escondido, prueba viva de la traición del sello), soldado y oficial de patrulla
   (PLANTILLA).
 - **Clan Serhu (Karot Veku):** Ulkha Ketg (Domadora), Torgash Ketg, Gistera Koh (exiliada de
@@ -50,10 +50,10 @@ Sincronizado: 2026-09-27. (* = aprobado, sin código.)
   guerrero orco expulsado, un mercader de paso, un peregrino de los Túmulos.
 - **Helsig:** Brenka, Solgra, Hagar Kiugh (amigo de Gorhorn), la guardiana y 6 Maestros.
 - **Goshg:** Doshka, Dulgren. Nadie más.
-- **Faerus:** Hulki*, Tira*, Kiri*, Lusa* y Gero* (Hashma); Yeru* y Tasko* (Kegi). Riko
+- **Faerus:** Hulki, Tira, Kiri, Lusa y Gero (Hashma); Yeru y Tasko (Kegi). Riko
   (pregenerado, sin manada).
 - **Nabieus:** Yerin Slaad (pregenerado, mensajero), Sella Marn (traficante de información,
-  independiente), Aven Tessk* (portavoz, Refugio sin Nombre), Ilka Dren* (Jeyselt).
+  independiente), Aven Tessk (portavoz, Refugio sin Nombre), Ilka Dren (Jeyselt).
 - **Pregenerados de Vaelira** (fuera de Berig): Sael Vhorn, Ithren Vosk, Amonir Thess, Cassia
   Von-Thair; Dessa Kaltrenn es Goirnte desertora.
 

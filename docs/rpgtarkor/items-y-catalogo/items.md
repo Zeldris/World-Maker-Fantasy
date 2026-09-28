@@ -53,7 +53,7 @@ uno en `docs/borradores-opencode/propuestas-aprobadas.md` (A-32 a A-36).*
   El Vergel de Kegi con la confianza del Feg Ger, o se gana en una misión Faerus.
 - **Desollador de sílice** (ARMA_SECUNDARIA, CUCHILLO, tier 3, 20 Goirnos, +2 Destreza, requiere
   Destreza 9; herramienta de desollador, curtidor y peletero): cuchillo de desuello hecho entre dos
-  clanes. La hoja de hielo sílice en media luna la tallan los Helsig; las cachas de Caparazón de
+  clanes. La hoja de hielo sílice en forma de hoz corta la tallan los Helsig; las cachas de Caparazón de
   Espina del Viento, que no resbalan con sangre, las pone el Desolladero Serhu. Se vende allí; no tiene
   receta. Es la versión de oficio del cuchillo de hielo sílice de Gorhorn.
 - **Ungüento de Espina** (consumible medicinal, tier 3, 12 Goirnos; receta de alquimista: 1 Aguijón
