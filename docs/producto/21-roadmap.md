@@ -44,7 +44,7 @@ Rompen una mecánica en partida real. Referencias H-x:
 | 5 | Verificación **en vivo** de la tanda B1-B32 (cerrada solo con tests: fases 1-5 de mecánicas por zona, combate, economía) | [A] | Pendiente de sesión de juego |
 | 6 | 🧭 **B1**: `ZonePoint` por partida en vez de global. Cambio de esquema grande; arrastra grupos, reconciliación y seed | [A] | Decisión abierta |
 | 7 | ~~"Cargando partida…" infinito si se recarga en la creación de partida~~ | [H] | ✅ `a700a61` |
-| 8 | **Slugs de oficio incoherentes** entre catálogo y frontend (`orco`/`orcos`, Maestros de Cristal Helado que enseñan oficios que la UI no conoce, `nabierus`) (H-10). Unificar en un fichero compartido y migrar `ProfessionProgress` | [H] | Abierto |
+| 8 | ~~**Slugs de oficio incoherentes** (H-10)~~ — fuente única `backend/src/data/professions.ts` + `npm run sync-professions` | [H] | ✅ `cd96e9e` |
 
 ---
 
