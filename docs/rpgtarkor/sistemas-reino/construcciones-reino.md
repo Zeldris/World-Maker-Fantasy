@@ -70,7 +70,7 @@ siguen siendo crafteo puntual del jugador:
 | MEDICINA | 7 | antidote, firstAidBandage, basicPoultice, completePoultice, mossPoultice... |
 | EQUIPO | 17 | armas/armaduras — crafteo puntual del jugador, no candidatas a producción automática |
 | OTRO | 7 | brújula, antorchas, decorativo/trueque |
-| Huérfana (deuda técnica real) | 1 | `carvedHorn` → `resultCatalogSlug: 'cuerno-caza-tallado'`, item retirado del catálogo 2026-09-02, la receta se quedó atrás sin actualizar — **bug real a corregir cuando se toque `crafting.ts`, no relacionado con este diseño** |
+| Huérfana | 1 | `carvedHorn` → `cuerno-caza-tallado`, objeto retirado el 2026-09-02. **Resuelto:** la receta ya no existe en `crafting.ts` |
 
 Referencia de diseño explícita, dos juegos distintos para dos problemas distintos dentro del MISMO
 panel único de Reino (petición explícita de Álvaro, informado con `WebSearch` real sobre Bellwright
