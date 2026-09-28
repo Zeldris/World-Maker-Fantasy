@@ -6,6 +6,7 @@ import { sourceDisplayNameFor, harvestSourcesThatAreFaunaWithoutNpc } from '../.
 import { detectNpcsInScene, scopeFor, hasPendingLoot } from '../../services/npcScene.js';
 import { loadSessionFacts } from '../../services/worldFacts.js';
 import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
+import { energiaMaxFor, energiaPasivaEntre } from '../../services/energy.js';
 import { harvestAbilityForMetodo, matchesOficioPrefix } from '../../services/harvestAbilities.js';
 import { momentoDelDiaFor, estacionFor, advanceFictionalMinutes, formatFictionalDate } from '../../services/worldClock.js';
 
@@ -1062,6 +1063,13 @@ export async function zonaRoutes(app: FastifyInstance) {
       const minutosTrasPaso = advanceFictionalMinutes(save.worldState?.fictionalMinutes ?? 480, MINUTOS_POR_PASO_ZONA);
       const etiquetaTrasPaso = formatFictionalDate(minutosTrasPaso);
       await tx.worldState.updateMany({ where: { saveId: save.id }, data: { fictionalMinutes: minutosTrasPaso, fictionalDateLabel: etiquetaTrasPaso } });
+      // B11 — la regeneración pasiva de energía también corre al caminar (mismo reloj).
+      const energiaGanada = energiaPasivaEntre(save.worldState?.fictionalMinutes ?? 480, minutosTrasPaso);
+      if (energiaGanada > 0) {
+        const constitucion = (save.attributes as { constitucion?: number } | null)?.constitucion ?? 10;
+        const actual = await tx.save.findUnique({ where: { id: save.id }, select: { energia: true } });
+        if (actual) await tx.save.update({ where: { id: save.id }, data: { energia: Math.min(energiaMaxFor(constitucion), actual.energia + energiaGanada) } });
+      }
 
       const { ultimoEncuentroSigueCerca, colision, dynamicModeOffer, logEntry, avistadoSinOferta } = await detectarEncuentroEnCelda(
         tx,

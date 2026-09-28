@@ -10,6 +10,7 @@ import {
   REST_COOLDOWN_MINUTES,
   type EnergyTurnInput,
 } from './energy.js';
+import { energiaPasivaEntre } from './energy.js';
 
 const BASE: EnergyTurnInput = {
   current: 50,
@@ -105,5 +106,18 @@ describe('restCooldownActivo', () => {
 
   it('pasadas las 3h de ficción — cooldown ya no activo', () => {
     expect(restCooldownActivo(1000, 1000 + REST_COOLDOWN_MINUTES + 60)).toBe(false);
+  });
+});
+
+describe('energiaPasivaEntre (B11)', () => {
+  it('1 punto por cada múltiplo de 10 minutos cruzado, sin arrastrar restos', () => {
+    expect(energiaPasivaEntre(480, 490)).toBe(1);
+    expect(energiaPasivaEntre(485, 495)).toBe(1);
+    expect(energiaPasivaEntre(481, 489)).toBe(0);
+    expect(energiaPasivaEntre(480, 540)).toBe(6);
+  });
+  it('sin tiempo transcurrido no regenera', () => {
+    expect(energiaPasivaEntre(500, 500)).toBe(0);
+    expect(energiaPasivaEntre(500, 400)).toBe(0);
   });
 });

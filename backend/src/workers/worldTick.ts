@@ -134,6 +134,7 @@ async function resolveClaimedTransit(transit: DueTransit, notBefore?: Date): Pro
       characterSummary,
       characterName: save.characterName,
       clase: save.clase,
+      especializacion: save.especializacion,
       timeLabel,
       sessionFacts,
       currentXp: save.xp,

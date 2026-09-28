@@ -1116,8 +1116,10 @@ export async function turnRoutes(app: FastifyInstance) {
 
     // Instantánea/corta: el jugador verá el turno completo en esta misma sesión — deja ya la
     // acción del jugador en el log para que aparezca de inmediato, antes de esperar a narrar.
+    // `combate` también en la acción del jugador (B12, pruebas 2026-09-28): el contador de capítulo
+    // (chapterSummary.ts) no debe contar cada botón de un combate como una acción de historia.
     await prisma.logEntry.create({
-      data: { saveId, channel: 'CHARACTER', text: action, isPlayerAction: true, timeLabel },
+      data: { saveId, channel: 'CHARACTER', text: action, isPlayerAction: true, timeLabel, combate: !!enCombate },
     });
 
     const produccionLabel = produccionFiltrada ? `${produccionFiltrada.cantidad} de ${produccionFiltrada.itemName}` : undefined;
@@ -1287,6 +1289,7 @@ export async function turnRoutes(app: FastifyInstance) {
         characterSummary: characterSummaryWithEstado,
         characterName: save.characterName,
         clase: save.clase,
+        especializacion: save.especializacion,
         timeLabel,
         sessionFacts,
         currentXp: save.xp,

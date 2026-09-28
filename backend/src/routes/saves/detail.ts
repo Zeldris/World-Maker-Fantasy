@@ -18,7 +18,7 @@ import { parseAgenda } from '../../services/worldAgenda.js';
 import type { PendingDynamicMode } from '../../services/dynamicMode.js';
 import { resolveActiveCombatAbilityNames } from '../../services/combatAbilities.js';
 import { sanitizeSkillBarAbilityNames, hasBaseSkillBar, defaultBaseSkillBarAbilities, SKILL_BAR_CATEGORIES, type SkillBarCategory } from '../../services/skillBars.js';
-import { especializacionesConHuecosPara, resumenMecanicoEspecializacion, clasesPermitidasParaRaza, CLASE_DESCRIPTION } from '../../services/classAbilities.js';
+import { especializacionesConHuecosPara, resumenMecanicoEspecializacion, clasesPermitidasParaRaza, CLASE_DESCRIPTION, especializacionAbilityUnlocksFor, savedActionDataFromAbility } from '../../services/classAbilities.js';
 import { NIVEL_MINIMO_ESPECIALIZACION } from './progression.js';
 
 export async function detailRoutes(app: FastifyInstance) {
@@ -71,6 +71,18 @@ export async function detailRoutes(app: FastifyInstance) {
         skipDuplicates: true,
       });
       save.skillBars = await prisma.skillBar.findMany({ where: { saveId: save.id }, orderBy: [{ slotIndex: 'asc' }] });
+    }
+
+    // B19 (pruebas 2026-09-28): partidas que subieron de nivel con especialización elegida antes de
+    // que la subida concediera sus habilidades — reconciliación en lectura (mismo criterio que la
+    // barra base de arriba): se crean las que correspondan a su nivel y falten.
+    if (save.clase && save.especializacion) {
+      const tiene = new Set(save.savedActions.map((a) => a.name));
+      const faltan = especializacionAbilityUnlocksFor(save.clase, save.especializacion, save.level).filter((a) => !tiene.has(a.name));
+      if (faltan.length > 0) {
+        await prisma.savedAction.createMany({ data: faltan.map((a) => savedActionDataFromAbility(save.id, a)) });
+        save.savedActions = await prisma.savedAction.findMany({ where: { saveId: save.id }, orderBy: { createdAt: 'asc' } });
+      }
     }
 
     // Log de Reino SIN ventana de 24h (auditoría de código 2026-08-17: `save.logEntries` de arriba

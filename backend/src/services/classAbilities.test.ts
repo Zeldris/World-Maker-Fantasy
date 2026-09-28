@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { classAbilityUnlocksFor, allClassAbilityUnlocks, classAbilityUnlocksForClase, especializacionesConHuecosPara, resumenMecanicoEspecializacion, claseDeEspecializacion, clasesPermitidasParaRaza } from './classAbilities.js';
+import { abilityUnlocksAlSubirANivel, especializacionAbilityUnlocksFor, classAbilityUnlocksFor, allClassAbilityUnlocks, classAbilityUnlocksForClase, especializacionesConHuecosPara, resumenMecanicoEspecializacion, claseDeEspecializacion, clasesPermitidasParaRaza } from './classAbilities.js';
 
 // Cobertura nueva (auditoría 2026-08-03, "análisis completo backend/frontend"). Reescrita
 // 2026-08-24 (Grupo 3 § Sistema de clases, docs/rpgtarkor/clases.md): el roster pasa de listas
@@ -225,5 +225,23 @@ describe('clasesPermitidasParaRaza', () => {
     for (const raza of [null, 'orcos', 'goirntes', 'nabieus', 'faerus', 'raza-inventada']) {
       expect(clasesPermitidasParaRaza(raza)).not.toContain('MAGO');
     }
+  });
+});
+
+// B19 (pruebas en la nube 2026-09-28): Domador a nivel 11 subía a 12 sin recibir "Compañero cazador".
+describe('abilityUnlocksAlSubirANivel', () => {
+  it('concede la habilidad de especialización del nivel exacto al que se sube', () => {
+    const esperadas = especializacionAbilityUnlocksFor('CAZADOR', 'DOMADOR', 12).filter(
+      (a) => !especializacionAbilityUnlocksFor('CAZADOR', 'DOMADOR', 11).some((b) => b.name === a.name),
+    );
+    expect(esperadas.length).toBeGreaterThan(0);
+    const nombres = abilityUnlocksAlSubirANivel('Gorhorn', 12, 'CAZADOR', 'DOMADOR').map((a) => a.name);
+    for (const a of esperadas) expect(nombres).toContain(a.name);
+  });
+  it('sin especialización elegida solo da el tronco común', () => {
+    expect(abilityUnlocksAlSubirANivel('Gorhorn', 12, 'CAZADOR', null)).toEqual(classAbilityUnlocksFor('Gorhorn', 12, 'CAZADOR'));
+  });
+  it('un nivel sin desbloqueo de especialización no concede nada de ella', () => {
+    expect(abilityUnlocksAlSubirANivel('Gorhorn', 13, 'CAZADOR', 'DOMADOR')).toEqual(classAbilityUnlocksFor('Gorhorn', 13, 'CAZADOR'));
   });
 });

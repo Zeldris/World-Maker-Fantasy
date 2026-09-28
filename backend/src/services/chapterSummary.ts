@@ -46,7 +46,9 @@ export async function claimChapterIfDue(saveId: string): Promise<boolean> {
   const lastSummary = await prisma.sessionSummary.findFirst({ where: { saveId }, orderBy: { chapterNumber: 'desc' } });
   const since = lastSummary?.createdAt ?? new Date(0);
   const actionsSinceLastSummary = await prisma.logEntry.count({
-    where: { saveId, channel: 'CHARACTER', isPlayerAction: true, createdAt: { gt: since } },
+    // B12 (pruebas 2026-09-28): cada botón de combate contaba como acción y una sola pelea casi
+    // completaba un capítulo (500 XP, 5× una misión). Las acciones de combate no cuentan.
+    where: { saveId, channel: 'CHARACTER', isPlayerAction: true, combate: false, createdAt: { gt: since } },
   });
   if (!shouldCreateChapter(actionsSinceLastSummary)) {
     // Todavía no toca capítulo — libera el reclamo, el caller nunca va a llamar a

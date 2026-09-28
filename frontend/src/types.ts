@@ -303,6 +303,8 @@ export interface CombatExchangeInfo {
   /// decide el desenlace ahora. Opcional de verdad: turnos de combate persistidos ANTES de este
   /// campo no lo traen, mismo criterio que `multiplicador`/`malus` de arriba.
   margen?: number
+  /// B23 (2026-09-28) — el atacante es un NPC que no ataca: su "golpe" nunca hace daño.
+  atacanteInofensivo?: true
 }
 
 /// Tirada de iniciativa para el PRÓXIMO intercambio de combate (backend, combatExchange.ts §
@@ -382,7 +384,7 @@ export interface LogEntry {
   /// real de la habilidad de ataque/defensa que el NPC usó en el intercambio de ESTE turno, para
   /// que LogPanel lo muestre como badge estructurado en vez de depender de que la prosa del
   /// narrador la mencione.
-  npcAbilityUsed?: { npcName: string; abilityName: string; rol: 'ataque' | 'defensa' }
+  npcAbilityUsed?: { npcName: string; abilityName: string; rol: 'ataque' | 'defensa'; inofensivo?: true }
   /// Mismo hueco exacto que `npcAbilityUsed` pero para el lado del jugador (revisión de partida
   /// 2026-08-08, petición explícita: "cuando seleccione una habilidad esta se refleje en la
   /// narración con su descripción, para que así sepamos que usamos y la respuesta a ese uso").

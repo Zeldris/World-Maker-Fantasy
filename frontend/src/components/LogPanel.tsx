@@ -376,11 +376,16 @@ export const LogPanel = memo(function LogPanel({
               )}
               {entry.npcAbilityUsed && (
                 <p className="mb-1 flex items-center gap-1 text-2xs font-semibold uppercase tracking-[0.1em] text-danger-400">
-                  <span aria-hidden="true">{entry.npcAbilityUsed.rol === 'ataque' ? '🗡️' : '🛡️'}</span>
-                  <span>
-                    {entry.npcAbilityUsed.npcName} {entry.npcAbilityUsed.rol === 'ataque' ? 'ataca con' : 'se defiende con'} "
-                    {entry.npcAbilityUsed.abilityName}"
-                  </span>
+                  <span aria-hidden="true">{entry.npcAbilityUsed.rol === 'ataque' && !entry.npcAbilityUsed.inofensivo ? '🗡️' : '🛡️'}</span>
+                  {/* B23 (pruebas 2026-09-28): fauna que "No ataca" no se presenta como ataque. */}
+                  {entry.npcAbilityUsed.inofensivo ? (
+                    <span>{entry.npcAbilityUsed.npcName} se revuelve, sin atacar</span>
+                  ) : (
+                    <span>
+                      {entry.npcAbilityUsed.npcName} {entry.npcAbilityUsed.rol === 'ataque' ? 'ataca con' : 'se defiende con'} "
+                      {entry.npcAbilityUsed.abilityName}"
+                    </span>
+                  )}
                 </p>
               )}
               {/* Mismo hueco exacto que npcAbilityUsed pero para el jugador (revisión de partida

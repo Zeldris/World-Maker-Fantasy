@@ -1,3 +1,4 @@
+import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
 import type { FastifyInstance } from 'fastify';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
@@ -181,6 +182,10 @@ async function abrirCombateForzadoDesdeInteractuar(
     where: { id: save.id },
     data: { pendingCombatNpcSlugs: [targetSlug], pendingDynamicModeOffer: Prisma.JsonNull, pendingDynamicMode: Prisma.JsonNull },
   });
+  // B9 (pruebas 2026-09-28): el encuentro decía "Alguien se abalanza..." pero la ficha de combate
+  // mostraba al instante el nombre real y toda su historia. Al quedar cara a cara en combate se le
+  // identifica: queda descubierto, así mapa, Enciclopedia y ficha cuentan lo mismo desde aquí.
+  await recordEntityDiscoveries({ saveId: save.id, worldId: save.worldId, mentionedText: target.name, npcSlugsInScene: [target.slug] });
   return { combate: combateNpcShape(target) };
 }
 

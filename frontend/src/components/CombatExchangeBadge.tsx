@@ -446,8 +446,15 @@ export function CombatExchangeBadge({ exchange, playerName, enemyName }: { excha
         <SideRow label={nombreEnemigo} side={enemigo} isWinner={winnerIsEnemigo} withTopBorder showDifficulty={!esOpuesto} />
       </div>
       <p className="border-t border-iron-800 px-2.5 py-1.5 text-center font-sans text-wood-500">
-        {winnerText && <span className="font-semibold text-wood-300">{winnerText} · </span>}
-        {esOpuesto ? outcomeLabelForMargin(exchange, nombreAtacante, nombreDefensor) : outcomeLabelFor(exchange, nombreAtacante, nombreDefensor)}
+        {/* B23 (pruebas 2026-09-28): un animal que no ataca solo se revuelve — nunca "el golpe conecta". */}
+        {exchange.atacanteInofensivo ? (
+          `${nombreAtacante} no ataca de verdad: se revuelve para zafarse, sin hacer daño.`
+        ) : (
+          <>
+            {winnerText && <span className="font-semibold text-wood-300">{winnerText} · </span>}
+            {esOpuesto ? outcomeLabelForMargin(exchange, nombreAtacante, nombreDefensor) : outcomeLabelFor(exchange, nombreAtacante, nombreDefensor)}
+          </>
+        )}
       </p>
     </div>
   )

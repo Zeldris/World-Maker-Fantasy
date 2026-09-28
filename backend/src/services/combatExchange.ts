@@ -231,6 +231,9 @@ export interface CombatExchangeDisplay {
   defensor: ExchangeSideResult;
   resultado: ExchangeOutcome;
   margen: number;
+  /// B23 (2026-09-28): el atacante es un NPC que no ataca (`ataqueNatural` "No ataca…") — su
+  /// "golpe" nunca hace daño; el frontend no debe presentarlo como un ataque que conecta.
+  atacanteInofensivo?: true;
 }
 
 /// Una sola tirada de un atributo — extraído (2026-09-04, centralización de todas las tiradas del

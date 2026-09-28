@@ -2149,6 +2149,7 @@ export function GameView() {
           busy={combat.combatBusy || combat.awaitingNextInitiative || combat.awaitingExchangeApply}
           ended={combat.combatEnded}
           pendingDecisions={combat.combatHasPendingConvalecientes}
+          rematar={combat.combatNpcsDisplay.filter((n) => n.condicion === 'CONVALECIENTE' && n.targetedForKill && !n.dismissed).map((n) => n.name)}
         />
       ) : (
         <>

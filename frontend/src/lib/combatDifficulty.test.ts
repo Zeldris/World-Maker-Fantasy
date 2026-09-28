@@ -7,8 +7,8 @@ import { combatDifficultyFor } from './combatDifficulty'
 // ser el combate real, sin que nada lo detectara hasta ahora.
 describe('combatDifficultyFor', () => {
   it('límites exactos de cada tramo (mismos cortes que difficultyHintFor en el backend: -2, 1, 4)', () => {
-    expect(combatDifficultyFor(-6)).toEqual({ label: 'Trivial', colorClass: 'text-wood-500' })
-    expect(combatDifficultyFor(-5)).toEqual({ label: 'Trivial', colorClass: 'text-wood-500' })
+    expect(combatDifficultyFor(-6)).toEqual({ label: 'Fácil', colorClass: 'text-wood-500' })
+    expect(combatDifficultyFor(-5)).toEqual({ label: 'Fácil', colorClass: 'text-wood-500' })
     expect(combatDifficultyFor(-4)).toEqual({ label: 'Fácil', colorClass: 'text-emerald-400' })
     expect(combatDifficultyFor(-2)).toEqual({ label: 'Fácil', colorClass: 'text-emerald-400' })
     expect(combatDifficultyFor(-1)).toEqual({ label: 'Media', colorClass: 'text-yellow-400' })

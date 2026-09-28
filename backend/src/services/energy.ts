@@ -38,6 +38,18 @@ export const ENERGY_COST_ATAQUE_BASICO = 5;
 /// ELIMINADA por completo (decisión explícita de la usuaria) — ver death.ts § healCeilingFor, la
 /// única vía de curar condición fuera de combate pasa a ser "Curar" con objetos médicos.
 export const ENERGY_REST_RESTORE = 30;
+/// B11 (pruebas 2026-09-28): tras un combate la energía se quedaba en 1/77 y no se recuperaba ni
+/// viajando (solo Descansar, +30 cada 3h). Regeneración pasiva fuera de combate: 1 punto por cada
+/// `MINUTOS_POR_PUNTO_ENERGIA_PASIVA` minutos de ficción transcurridos (decisión por defecto,
+/// revisable por Álvaro).
+export const MINUTOS_POR_PUNTO_ENERGIA_PASIVA = 10;
+/// Puro: puntos de energía pasiva ganados al pasar de `antes` a `despues` minutos de ficción — cuenta
+/// los múltiplos de `MINUTOS_POR_PUNTO_ENERGIA_PASIVA` cruzados, así no hace falta guardar restos
+/// entre turnos (dos pasos de 5 minutos dan lo mismo que uno de 10).
+export function energiaPasivaEntre(antes: number, despues: number): number {
+  if (despues <= antes) return 0;
+  return Math.floor(despues / MINUTOS_POR_PUNTO_ENERGIA_PASIVA) - Math.floor(antes / MINUTOS_POR_PUNTO_ENERGIA_PASIVA);
+}
 
 /// Cooldown de Descansar (2026-09-06, hallazgo 11) — 3h de tiempo de FICCIÓN, mismo patrón exacto
 /// que `dispersionCooldownActivo` (cazar.ts): `null` = nunca descansó, sin cooldown que aplicar.

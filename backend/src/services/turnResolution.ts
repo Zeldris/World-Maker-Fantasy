@@ -62,7 +62,7 @@ import { npcCombatAbilitiesFor, chooseNpcAbility } from './npcCombatAbilities.js
 import { detectHarvest, type HarvestMatch } from './harvest.js';
 import { detectItemReference, detectMedicalItemUse, detectEnergyItemUse, detectsCompassUse, missingItemBlockFor } from './itemReference.js';
 import { compassNarrationText, type CompassLinkInfo } from './compassNarration.js';
-import { energiaMaxFor, nextEnergia, restCooldownActivo } from './energy.js';
+import { energiaMaxFor, energiaPasivaEntre, nextEnergia, restCooldownActivo } from './energy.js';
 import { WEAPON_ABILITY_LEVEL_AVANZADA, dualWieldAdjustedDifficulty, weaponCategoryForRealAbilityName, type EquippedWeaponSlot } from './weaponAbilities.js';
 import { syncDynamicCombatAbilities } from './dynamicAbilities.js';
 import {
@@ -88,7 +88,7 @@ import {
 } from './construction.js';
 import { shortfallLabel } from './requisitos.js';
 import { inventorySummaryFor, type CatalogLookup, type InventoryRowLike } from './ingredients.js';
-import { classAbilityUnlocksFor, savedActionDataFromAbility } from './classAbilities.js';
+import { abilityUnlocksAlSubirANivel, savedActionDataFromAbility } from './classAbilities.js';
 import { professionAbilityUnlocksFor } from './professionAbilities.js';
 import type { StartingAbility } from './startingAbilities.js';
 import { protectedFactsFor } from './protectedFacts.js';
@@ -155,7 +155,7 @@ import { effectiveAttributesConDuracion, pushActiveEffect, decrementActiveEffect
 import type { RollResult, AttributeBlock, Attribute, GradoExito } from './dice.js';
 import type { SecondaryAttributeBlock } from './secondaryAttributes.js';
 import { Prisma } from '@prisma/client';
-import type { CondicionFisica, Dificultad, AbilityEffect, AbilityRol, Clase } from '@prisma/client';
+import type { CondicionFisica, Dificultad, AbilityEffect, AbilityRol, Clase, Especializacion } from '@prisma/client';
 
 const REINO_XP = { territory: 150, buildingActive: 100, firstSubject: 100, subject: 25, consolidado: 300 } as const;
 /// Población anónima con la que arranca todo Territory nuevo (2026-08-23, Grupo 3) — un puñado de
@@ -191,6 +191,9 @@ interface NarrateAndPersistParams {
   /// Fuente real para `classAbilityUnlocksFor` (2026-08-29) — puede ser `null` en partidas que
   /// todavía no fijaron su clase (`PATCH /saves/:id/clase`, progression.ts).
   clase: Clase | null;
+  /// B19 (pruebas 2026-09-28): las habilidades de ESPECIALIZACIÓN nunca se concedían al subir de
+  /// nivel (solo al elegirla). Opcional: `undefined`/`null` = sin especialización elegida.
+  especializacion?: Especializacion | null;
   timeLabel: string;
   sessionFacts: string[];
   currentXp: number;
@@ -599,7 +602,7 @@ export interface NarrateAndPersistResult {
   /// narración libre del modelo no garantizaba mencionar qué habilidad usó el NPC — este campo
   /// da al frontend el nombre real, ya resuelto, de la habilidad de ataque/defensa que el NPC
   /// acaba de usar en el intercambio de ESTE turno. null si no hubo intercambio de combate.
-  npcAbilityUsed: { npcName: string; abilityName: string; rol: 'ataque' | 'defensa'; maxUsesPerCombat?: number | null } | null;
+  npcAbilityUsed: { npcName: string; abilityName: string; rol: 'ataque' | 'defensa'; maxUsesPerCombat?: number | null; inofensivo?: true } | null;
   /// Revisión de partida 2026-08-08, petición explícita: "que aparezca el resultado de las
   /// tiradas... qué atributo y valor sacó [el jugador] y el del enemigo y por qué perdió o ganó" —
   /// las dos tiradas reales del intercambio de ESTE turno (ver `CombatExchangeDisplay`,
@@ -775,7 +778,7 @@ export interface CombatExchangePhaseResult {
   nuevoPendingCanalizacion: PendingCanalizacion | null;
   exchangeNarrationBlock: string | null;
   combatExchangeRoll: RollResult | null;
-  npcAbilityUsed: { npcName: string; abilityName: string; rol: 'ataque' | 'defensa'; maxUsesPerCombat?: number | null } | null;
+  npcAbilityUsed: { npcName: string; abilityName: string; rol: 'ataque' | 'defensa'; maxUsesPerCombat?: number | null; inofensivo?: true } | null;
   /// Cara visible de las dos tiradas del intercambio (jugador y NPC), ver
   /// `CombatExchangeDisplay` (combatExchange.ts) — null si no hubo intercambio real este turno.
   combatExchangeDisplay: CombatExchangeDisplay | null;
@@ -969,7 +972,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
   // Nombre real de la habilidad de ataque/defensa que usó el NPC en el intercambio de este turno
   // (2026-07-29, ver NarrateAndPersistResult.npcAbilityUsed) — se rellena en cada una de las dos
   // ramas de abajo, siempre que haya intercambio.
-  let npcAbilityUsed: { npcName: string; abilityName: string; rol: 'ataque' | 'defensa'; maxUsesPerCombat?: number | null } | null = null;
+  let npcAbilityUsed: { npcName: string; abilityName: string; rol: 'ataque' | 'defensa'; maxUsesPerCombat?: number | null; inofensivo?: true } | null = null;
   // Tirada real de iniciativa que decide QUIÉN actúa en el próximo intercambio (2026-07-29, "quiero
   // que sea más claro cuando es turno de ataque... indicándome qué salió en los dados") — null
   // cuando la iniciativa se fuerza sin dados (aturdimiento/intimidación del turno anterior, ver
@@ -1844,6 +1847,11 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
   if (npcAttackerIsInoffensive) {
     jugadorRecibeGolpe = false;
     jugadorGolpeEfectos = [];
+    // B23 (pruebas 2026-09-28): el daño ya se anulaba, pero la UI seguía presentando "RUPTIDAR ATACA
+    // CON ..." y "Gana Ruptidar — el golpe conecta" con el jugador Ileso. Se marca para que el
+    // frontend lo presente como lo que es: un animal que se revuelve, sin ataque real.
+    if (npcAbilityUsed?.rol === 'ataque') npcAbilityUsed = { ...npcAbilityUsed, inofensivo: true };
+    if (combatExchangeDisplay && !combatExchangeDisplay.atacanteEsJugador) combatExchangeDisplay = { ...combatExchangeDisplay, atacanteInofensivo: true };
   }
 
   return {
@@ -7042,7 +7050,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       // creadas por la jugadora, así que no son editables ni borrables (mismo criterio que el
       // kit inicial — ver DetailModal.tsx/HabilidadesPanel.tsx).
       for (let lvl = params.currentLevel + 1; lvl <= result.newLevel; lvl++) {
-        for (const ability of classAbilityUnlocksFor(characterName, lvl, params.clase)) {
+        for (const ability of abilityUnlocksAlSubirANivel(characterName, lvl, params.clase, params.especializacion)) {
           await tx.savedAction.create({ data: savedActionDataFromAbility(saveId, ability) });
           await tx.logEntry.create({
             data: {
@@ -7105,7 +7113,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     let finDePartidaResult = false;
     // Sistema de fatiga: un respawn sobrevivible reaparece con la energía llena, mismo criterio
     // que la condición física vuelve a ILESO.
-    let finalEnergia = nuevaEnergia;
+    // B11 (pruebas 2026-09-28): regeneración pasiva fuera de combate por el tiempo transcurrido.
+    let finalEnergia = enCombate ? nuevaEnergia : Math.min(energiaMax, nuevaEnergia + energiaPasivaEntre(fictionalMinutesActuales, nuevoFictionalMinutes));
 
     // Punto de guardado (2026-08-04, docs/17-reglas-construcciones-reino.md): solo descansar en
     // una construcción PROPIA activa mueve el respawn — un refugio/asentamiento ajeno sigue

@@ -4395,6 +4395,21 @@ export function especializacionAbilityUnlocksFor(clase: Clase, especializacion: 
   return CLASS_ABILITIES.filter((u) => u.clase === clase && u.especializacion === especializacion && u.level <= level).map((u) => u.ability);
 }
 
+/// Habilidades que se ganan exactamente al llegar a `level` al subir de nivel — tronco común de la
+/// clase + (B19, pruebas 2026-09-28) las de su especialización, que antes solo se concedían al
+/// elegirla (`PATCH /especializacion`) y nunca en subidas posteriores (Domador 12/16/24/32/40).
+export function abilityUnlocksAlSubirANivel(
+  characterName: string,
+  level: number,
+  clase: Clase | null,
+  especializacion: Especializacion | null | undefined,
+): StartingAbility[] {
+  const tronco = classAbilityUnlocksFor(characterName, level, clase);
+  if (!clase || !especializacion) return tronco;
+  const deEspecializacion = CLASS_ABILITIES.filter((u) => u.clase === clase && u.especializacion === especializacion && u.level === level).map((u) => u.ability);
+  return [...tronco, ...deEspecializacion];
+}
+
 /// Deuda técnica cerrada (auditoría 2026-09-01): el mismo mapeo de 13 campos `StartingAbility` →
 /// datos de `SavedAction.create`/`createMany` estaba copiado 3 veces (`progression.ts` §
 /// `/clase` y `/especializacion`, `turnResolution.ts` § desbloqueo por subida de nivel) — todas
