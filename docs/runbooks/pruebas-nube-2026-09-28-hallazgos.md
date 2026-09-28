@@ -108,6 +108,51 @@ Gravedad: 🔴 bloquea/rompe · 🟠 mal comportamiento · 🟡 UX/pulido · �
 - Especialización: modal lista → detalle → confirmación → persistente tras recarga ✔️.
 - Caza: Explorar → elegir presa → caza sigilosa fallida → Combatir → Convaleciente ✔️.
 
+### Habilidades vs. mapa de zona (pregunta de Álvaro, 2026-09-28)
+
+**Hallazgo base — B25 🔴 dos sistemas paralelos que no casan.** Los botones Cazar / Minar / Talar /
+Recolectar hierbas / Recoger (`cazar/explorar`, `recolectar/*` → `candidateSourcesFor`) buscan por
+**población regional**, sin mirar el mapa; el encuentro de zona (`/zona/mover` → Interactuar)
+trabaja con **`ZonePoint`**. Visto jugando: Cazar en la Hondonada ofrece un Ruptidar que no está en
+el mapa y NO ofrece el Gesgurio ×20 que sí está. Además el gate de cercanía que se diseñó para esto
+(`zonePointMasCercano`/`RADIO_INTERACCION_PX`, zonaPosicion.ts) **no lo llama nadie**: desde
+cualquier punto del mapa se caza/mina cualquier fuente de la región.
+
+**B26 🔴 Grupos de fauna sin repartir** (bug del 2026-09-22 sigue abierto): `repartirEnGrupos` sin
+ningún caller; en BD 7 puntos de fauna con `cantidad` 20 (tope) y ninguna especie repartida.
+B25+B26 van juntos: con grupos reales en el mapa, "Cazar" puede salir de la tarjeta de encuentro
+contra ESE grupo (combate múltiple si son varios) — idea ya anotada en el checklist (2026-09-22).
+
+Cobertura real del mapa hoy (bloquea retirar botones sin más):
+
+| Método | Fuentes | Con punto en mapa |
+|---|---|---|
+| CAZA | 30 | 20 |
+| MINERIA | 8 | 5 |
+| TALA | 6 | 4 |
+| EXTRACCION (hierbas/recoger) | 26 | 15 |
+| PESCA | 5 | **0** |
+| BUSQUEDA | 1 | **0** |
+| PASIVO | 3 | 3 |
+
+31 de 67 Locations tienen algún `ZonePoint`; **36 no tienen nada en el mapa**.
+
+Clasificación de las habilidades generales/profesión:
+
+| Habilidad | Hoy | ¿La cubre el mapa? | Propuesta |
+|---|---|---|---|
+| Cazar | modal, población regional | Sí (fauna en mapa) — sin combate múltiple ni grupos | Mover a la tarjeta de encuentro ("Cazar") tras B26; retirar botón |
+| Minar / Talar / Recolectar hierbas / Recoger | modal, población regional | Sí (RECURSO → Interactuar ya llama a `resolverRecoleccion`) | Retirar botones cuando toda fuente tenga punto; mientras, al menos gate de cercanía |
+| Pescar / Buscar | modal | **No** (0 puntos) | Necesitan puntos en el mapa antes de retirar nada |
+| Saquear | modal de cadáveres de la zona | Parcial ("Saquear todo" al acabar combate) | Pin de cadáver/botín en el mapa |
+| Desollar | ya pasiva (aviso de escena) | — | Igual: pin de cadáver |
+| Viajar | **deshabilitada** (exige montura, sin implementar) | Salidas del mapa (solo vecinos) + texto libre (rutas largas) | Decidir: ¿viaje largo desde el mapa de mundo? |
+| Volver al campamento | modal | No | Mantener (viaje rápido) |
+| Entregar | modal (dar objetos a compañeros) | No | Mantener, o desde el pin del compañero |
+| Descansar / Curar / Comer-Beber | modales personales | No aplica | Mantener |
+| Oficios de crafteo (tallar, trenzar, vendaje, infusión) | modal | No aplica | Mantener |
+| Construir / Fundar / Ampliar ayuntamiento | reino | Parcelas solo en interiores | Revisar con Reino |
+
 ---
 
 ## C. Próximas tandas de prueba
