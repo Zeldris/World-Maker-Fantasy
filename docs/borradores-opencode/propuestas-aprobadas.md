@@ -166,11 +166,11 @@ existentes; lo demás es contenido nuevo.
 
 **Seguimiento:**
 - [x] **En docs** (2026-09-27): historia.md § Las Alianzas · facciones-diplomacia.md § 7.2-bis · `regiones/meseta-del-orden.md`
-- [ ] **Código:** `worldCatalog.ts` → `factions`: añadir `los-del-obelisco` (texto de `description` en la ficha)
-- [ ] **Código:** `seed-catalog.ts` → `FACTION_LEADER_SLUG`: `los-del-obelisco: yovenne-tal` y `concordia-de-hierro: tarsen-vold` (depende de A-37)
-- [ ] **Código:** `reputation.ts` → `REGION_OWNING_FACTIONS['La Meseta del Orden']` = Concordia + Los del Obelisco
-- [ ] **Código:** `worldPopulation.ts`: 300 del pool `goirntes`
-- [ ] **Código:** `FactionRelation` inicial Concordia ↔ Los del Obelisco, presión 65 (TENSION)
+- [x] **Código:** `worldCatalog.ts` → `factions`: añadir `los-del-obelisco` (texto de `description` en la ficha) — *hecho, verificado en código el 2026-09-28*
+- [x] **Código:** `seed-catalog.ts` → `FACTION_LEADER_SLUG`: `los-del-obelisco: yovenne-tal` y `concordia-de-hierro: tarsen-vold` (depende de A-37) — *hecho, verificado en código el 2026-09-28*
+- [x] **Código:** `reputation.ts` → `REGION_OWNING_FACTIONS['La Meseta del Orden']` = Concordia + Los del Obelisco — *hecho, verificado en código el 2026-09-28*
+- [x] **Código:** `worldPopulation.ts`: 300 del pool `goirntes` — *hecho, verificado en código el 2026-09-28*
+- [ ] **Código:** `FactionRelation` inicial Concordia ↔ Los del Obelisco, presión 65 (TENSION) — *pendiente: no se siembra ninguna `FactionRelation` inicial (referencia técnica X4, H-7)*
 
 **Acción de implementación:** añadir (facción nueva) + modificar (líder de la Concordia)
 **Prioridad:** media
@@ -254,10 +254,10 @@ completas.
 
 **Seguimiento:**
 - [x] **En docs** (2026-09-27): razas.md § Nabieus · regiones/margen-silencioso.md (Refugio + Archivo) · `lenguas-helek.md` · facciones-diplomacia.md § 7.2-bis
-- [ ] **Código:** `factions`: añadir `keseg-sael`
-- [ ] **Código:** `REGION_OWNING_FACTIONS['El Margen Silencioso']` = Keseg Sael + Feg Tusha (el Margen deja de ser `SIN_DUENO`)
-- [ ] **Código:** `worldPopulation.ts`: 1.500 del pool `nabieus`
-- [ ] **Código:** `FACTION_LEADER_SLUG`: `keseg-sael: aven-tessk` (NPC de la pasada de conexión, ver P-04)
+- [x] **Código:** `factions`: añadir `keseg-sael` — *hecho, verificado en código el 2026-09-28*
+- [x] **Código:** `REGION_OWNING_FACTIONS['El Margen Silencioso']` = Keseg Sael + Feg Tusha (el Margen deja de ser `SIN_DUENO`) — *hecho, verificado en código el 2026-09-28*
+- [x] **Código:** `worldPopulation.ts`: 1.500 del pool `nabieus` — *hecho, verificado en código el 2026-09-28*
+- [x] **Código:** `FACTION_LEADER_SLUG`: `keseg-sael: aven-tessk` (NPC de la pasada de conexión, ver P-04) — *hecho, verificado en código el 2026-09-28*
 - [ ] **Código:** Opcional: `Location` interior del Archivo del Refugio
 
 **Acción de implementación:** añadir
@@ -332,10 +332,10 @@ no vuelve a entrar.
 
 **Seguimiento:**
 - [x] **En docs** (2026-09-27): razas.md § Nabieus · regiones/cienaga-troncal.md (Jeyselt) · facciones-diplomacia.md § 7.2-bis
-- [ ] **Código:** `factions`: añadir `keseg-prisilke`
-- [ ] **Código:** `REGION_OWNING_FACTIONS['Ciénaga Troncal']` = Clan Goshg + Keseg Prisilke
-- [ ] **Código:** `worldPopulation.ts`: 500 del pool `nabieus`
-- [ ] **Código:** `FACTION_LEADER_SLUG`: `keseg-prisilke: ilka-dren` (ver P-04)
+- [x] **Código:** `factions`: añadir `keseg-prisilke` — *hecho, verificado en código el 2026-09-28*
+- [x] **Código:** `REGION_OWNING_FACTIONS['Ciénaga Troncal']` = Clan Goshg + Keseg Prisilke — *hecho, verificado en código el 2026-09-28*
+- [x] **Código:** `worldPopulation.ts`: 500 del pool `nabieus` — *hecho, verificado en código el 2026-09-28*
+- [x] **Código:** `FACTION_LEADER_SLUG`: `keseg-prisilke: ilka-dren` (ver P-04) — *hecho, verificado en código el 2026-09-28*
 
 **Acción de implementación:** añadir (el poblado y el interior ya existen; falta la `Faction`)
 **Prioridad:** media
@@ -390,9 +390,9 @@ Keseg Sael los ve como "los que se olvidaron de callar", sin desprecio pero con 
 
 **Seguimiento:**
 - [x] **En docs** (2026-09-27): razas.md § Faerus · regiones/margen-silencioso.md (Hashma) · cronologia-mitica.md (año 0) · facciones-diplomacia.md § 7.2-bis
-- [ ] **Código:** `factions`: añadir `feg-tusha`
-- [ ] **Código:** `worldPopulation.ts`: 850 del pool `faerus`
-- [ ] **Código:** `FACTION_LEADER_SLUG`: `feg-tusha: hulki` (depende de A-38)
+- [x] **Código:** `factions`: añadir `feg-tusha` — *hecho, verificado en código el 2026-09-28*
+- [x] **Código:** `worldPopulation.ts`: 850 del pool `faerus` — *hecho, verificado en código el 2026-09-28*
+- [x] **Código:** `FACTION_LEADER_SLUG`: `feg-tusha: hulki` (depende de A-38) — *hecho, verificado en código el 2026-09-28*
 
 **Acción de implementación:** añadir
 **Prioridad:** media
@@ -459,9 +459,9 @@ lado a lado sin perderse, siguiendo el olor y no el sonido.
 
 **Seguimiento:**
 - [x] **En docs** (2026-09-27): razas.md § Faerus · regiones/llanuras-del-viento-rojo.md (Kegi) · facciones-diplomacia.md § 7.2-bis
-- [ ] **Código:** `factions`: añadir `feg-ger` (sin región propia)
-- [ ] **Código:** `worldPopulation.ts`: 200 del pool `faerus`
-- [ ] **Código:** `FACTION_LEADER_SLUG`: `feg-ger: yeru` (depende de A-39)
+- [x] **Código:** `factions`: añadir `feg-ger` (sin región propia) — *hecho, verificado en código el 2026-09-28*
+- [x] **Código:** `worldPopulation.ts`: 200 del pool `faerus` — *hecho, verificado en código el 2026-09-28*
+- [x] **Código:** `FACTION_LEADER_SLUG`: `feg-ger: yeru` (depende de A-39) — *hecho, verificado en código el 2026-09-28*
 
 **Acción de implementación:** añadir
 **Prioridad:** media
@@ -1217,7 +1217,7 @@ precisión" y los Faerus trayendo materiales.
 
 **Seguimiento:**
 - [x] **En docs** (2026-09-27): regiones/margen-silencioso.md § Flora
-- [ ] **Código:** `ItemCatalog` `musgo-callado` + `HarvestYield` en las Location del Margen
+- [x] **Código:** `ItemCatalog` `musgo-callado` + `HarvestYield` en las Location del Margen — *hecho, verificado en código el 2026-09-28*
 
 **Acción de implementación:** añadir
 **Prioridad:** media (da mecanismo físico a un rasgo central del Margen)
@@ -1259,7 +1259,7 @@ precisión" y los Faerus trayendo materiales.
 
 **Seguimiento:**
 - [x] **En docs** (2026-09-27): regiones/margen-silencioso.md § Flora
-- [ ] **Código:** `ItemCatalog` madera y resina de Veldria Hueca + `HarvestYield`
+- [x] **Código:** `ItemCatalog` madera y resina de Veldria Hueca + `HarvestYield` — *hecho, verificado en código el 2026-09-28*
 
 **Acción de implementación:** añadir
 **Prioridad:** media
@@ -1299,7 +1299,7 @@ precisión" y los Faerus trayendo materiales.
 
 **Seguimiento:**
 - [x] **En docs** (2026-09-27): regiones/margen-silencioso.md § Flora
-- [ ] **Código:** `ItemCatalog` `petalos-vispera` + `HarvestYield` (comprobar si existe gate horario; si no, solo texto en `condicion`)
+- [x] **Código:** `ItemCatalog` `petalos-vispera` + `HarvestYield` (comprobar si existe gate horario; si no, solo texto en `condicion`) — *hecho, verificado en código el 2026-09-28*
 
 **Acción de implementación:** añadir
 **Prioridad:** baja
@@ -1339,7 +1339,7 @@ precisión" y los Faerus trayendo materiales.
 
 **Seguimiento:**
 - [x] **En docs** (2026-09-27): regiones/margen-silencioso.md § Flora
-- [ ] **Código:** `ItemCatalog` agua y tallo de Cántaro + `HarvestYield`
+- [x] **Código:** `ItemCatalog` agua y tallo de Cántaro + `HarvestYield` — *hecho, verificado en código el 2026-09-28*
 
 **Acción de implementación:** añadir
 **Prioridad:** baja
@@ -1376,7 +1376,7 @@ precisión" y los Faerus trayendo materiales.
 
 **Seguimiento:**
 - [x] **En docs** (2026-09-27): regiones/margen-silencioso.md § Flora
-- [ ] **Código:** `ItemCatalog` `carnosa-de-tocon` + `HarvestYield`; receta de cocina opcional
+- [x] **Código:** `ItemCatalog` `carnosa-de-tocon` + `HarvestYield`; receta de cocina opcional — *hecho, verificado en código el 2026-09-28*
 
 **Acción de implementación:** añadir
 **Prioridad:** baja
@@ -1411,7 +1411,7 @@ precisión" y los Faerus trayendo materiales.
 
 **Seguimiento:**
 - [x] **En docs** (2026-09-27): regiones/cienaga-troncal.md § Flora
-- [ ] **Código:** `ItemCatalog` `bulbo-de-turbera` + `HarvestYield`
+- [x] **Código:** `ItemCatalog` `bulbo-de-turbera` + `HarvestYield` — *hecho, verificado en código el 2026-09-28*
 
 **Acción de implementación:** añadir
 **Prioridad:** baja
@@ -1444,7 +1444,7 @@ precisión" y los Faerus trayendo materiales.
 
 **Seguimiento:**
 - [x] **En docs** (2026-09-27): regiones/cienaga-troncal.md § Flora
-- [ ] **Código:** `ItemCatalog` `velo-de-charca` + `HarvestYield`
+- [x] **Código:** `ItemCatalog` `velo-de-charca` + `HarvestYield` — *hecho, verificado en código el 2026-09-28*
 
 **Acción de implementación:** añadir
 **Prioridad:** baja
@@ -1477,7 +1477,7 @@ precisión" y los Faerus trayendo materiales.
 
 **Seguimiento:**
 - [x] **En docs** (2026-09-27): regiones/cienaga-troncal.md § Flora
-- [ ] **Código:** `ItemCatalog` `corteza-herrumbre` + `HarvestYield` + receta de fundición (10 → 1 `mena-hierro-llanuras` o una mena pobre nueva)
+- [x] **Código:** `ItemCatalog` `corteza-herrumbre` + `HarvestYield` + receta de fundición (10 → 1 `mena-hierro-llanuras` o una mena pobre nueva) — *hecho, verificado en código el 2026-09-28*
 
 **Acción de implementación:** añadir
 **Prioridad:** media (tiene una implicación económica real)
@@ -1517,7 +1517,7 @@ precisión" y los Faerus trayendo materiales.
 
 **Seguimiento:**
 - [x] **En docs** (2026-09-27): regiones/margen-silencioso.md § Fauna · flora-fauna.md (Umbrias) · `lenguas-helek.md`
-- [ ] **Código:** `fauna` `leshra` (UMBRIAS, habilidades raciales de la ficha) + `HarvestYield` de sus plumas
+- [x] **Código:** `fauna` `leshra` (UMBRIAS, habilidades raciales de la ficha) + `HarvestYield` de sus plumas — *hecho, verificado en código el 2026-09-28*
 
 **Acción de implementación:** añadir
 **Prioridad:** media (primera especie real de la familia Umbrias)
@@ -1566,7 +1566,7 @@ primera fauna de Berig atribuida a Kroj como creadora y no solo como huella.
 
 **Seguimiento:**
 - [x] **En docs** (2026-09-27): regiones/margen-silencioso.md § Fauna
-- [ ] **Código:** `fauna` `morvasa` (ESCAMADOS, control de 1 turno) + `HarvestYield` de veneno y piel
+- [x] **Código:** `fauna` `morvasa` (ESCAMADOS, control de 1 turno) + `HarvestYield` de veneno y piel — *hecho, verificado en código el 2026-09-28*
 
 **Acción de implementación:** añadir
 **Prioridad:** baja
@@ -1608,7 +1608,7 @@ primera fauna de Berig atribuida a Kroj como creadora y no solo como huella.
 
 **Seguimiento:**
 - [x] **En docs** (2026-09-27): regiones/margen-silencioso.md § Fauna
-- [ ] **Código:** `fauna` `brozan` (RONDINES) + `HarvestYield`
+- [x] **Código:** `fauna` `brozan` (RONDINES) + `HarvestYield` — *hecho, verificado en código el 2026-09-28*
 
 **Acción de implementación:** añadir
 **Prioridad:** baja
@@ -1651,7 +1651,7 @@ primera fauna de Berig atribuida a Kroj como creadora y no solo como huella.
 
 **Seguimiento:**
 - [x] **En docs** (2026-09-27): regiones/margen-silencioso.md § Fauna
-- [ ] **Código:** `fauna` `hoscon` (CORVENES) + `HarvestYield` de plumón
+- [x] **Código:** `fauna` `hoscon` (CORVENES) + `HarvestYield` de plumón — *hecho, verificado en código el 2026-09-28*
 
 **Acción de implementación:** añadir
 **Prioridad:** baja
@@ -1697,8 +1697,8 @@ primera fauna de Berig atribuida a Kroj como creadora y no solo como huella.
 
 **Seguimiento:**
 - [x] **En docs** (2026-09-27): `items.md` · regiones/llanuras-del-viento-rojo.md (Ferikes)
-- [ ] **Código:** `ItemCatalog` `colmillo-ferike` y `colmillo-ferike-hembra` + `HarvestYield` del Ferike
-- [ ] **Código:** `ItemCatalog` `ashi-krul` (en el `loadout` de Tasko, A-39)
+- [x] **Código:** `ItemCatalog` `colmillo-ferike` y `colmillo-ferike-hembra` + `HarvestYield` del Ferike — *hecho, verificado en código el 2026-09-28*
+- [x] **Código:** `ItemCatalog` `ashi-krul` (en el `loadout` de Tasko, A-39) — *hecho, verificado en código el 2026-09-28*
 
 **Acción de implementación:** añadir (+ ampliar el despiece del Ferike)
 **Prioridad:** media
@@ -1744,7 +1744,7 @@ envuelta en piel de Ferike.
 
 **Seguimiento:**
 - [x] **En docs** (2026-09-27): `items.md` · regiones/llanuras-del-viento-rojo.md (Desolladero)
-- [ ] **Código:** `ItemCatalog` `desollador-silice` (`herramientaParaOficio`) + ponerlo a la venta con el Maestro Desollador Serhu
+- [x] **Código:** `ItemCatalog` `desollador-silice` (`herramientaParaOficio`) + ponerlo a la venta con el Maestro Desollador Serhu — *objeto hecho (2026-09-28); los Maestros no venden objetos, esa parte espera a que exista la mecánica*
 
 **Acción de implementación:** añadir
 **Prioridad:** media
@@ -1785,7 +1785,7 @@ que reconoce abiertamente que los Serhu necesitan a otro clan para algo.
 
 **Seguimiento:**
 - [x] **En docs** (2026-09-27): `items.md`
-- [ ] **Código:** `ItemCatalog` `unguento-espina` + receta de `alquimista-orcos-llanuras` en `crafting.ts` (comprobar el efecto de los medicinales t3)
+- [x] **Código:** `ItemCatalog` `unguento-espina` + receta de `alquimista-orcos-llanuras` en `crafting.ts` (comprobar el efecto de los medicinales t3) — *hecho, verificado en código el 2026-09-28*
 
 **Acción de implementación:** añadir (receta)
 **Prioridad:** media (primer uso de crafteo del veneno de Espina, que hoy solo es loot)
@@ -1825,7 +1825,7 @@ resina, el veneno deja de ser un peligro y se vuelve un **anestésico de campo**
 
 **Seguimiento:**
 - [x] **En docs** (2026-09-27): `items.md` · regiones/llanuras-del-viento-rojo.md (Acantilados)
-- [ ] **Código:** `ItemCatalog` `manto-cornisa` + receta de `sastre-orcos-llanuras`
+- [x] **Código:** `ItemCatalog` `manto-cornisa` + receta de `sastre-orcos-llanuras` — *hecho, verificado en código el 2026-09-28*
 
 **Acción de implementación:** añadir (+ receta)
 **Prioridad:** baja
@@ -1866,7 +1866,7 @@ manto.
 
 **Seguimiento:**
 - [x] **En docs** (2026-09-27): `items.md` · regiones/llanuras-del-viento-rojo.md (Miruina)
-- [ ] **Código:** `ItemCatalog` `incisivos-miruina` (`herramientaParaOficio: curtidor, peletero`) + `HarvestYield` de la Miruina
+- [x] **Código:** `ItemCatalog` `incisivos-miruina` (`herramientaParaOficio: curtidor, peletero`) + `HarvestYield` de la Miruina — *hecho, verificado en código el 2026-09-28*
 
 **Acción de implementación:** añadir (+ ampliar el despiece de la Miruina)
 **Prioridad:** baja
@@ -1903,7 +1903,7 @@ arranca escamas y restos de carne de una piel sin cortarla.
 
 **Seguimiento:**
 - [x] **En docs** (2026-09-27): npcs.md (nº 16) · `historia.md` · `regiones/meseta-del-orden.md`
-- [ ] **Código:** `Npc` `tarsen-vold` (ficha técnica en la propuesta) + cambiar el líder de la Concordia (ver A-01)
+- [x] **Código:** `Npc` `tarsen-vold` (ficha técnica en la propuesta) + cambiar el líder de la Concordia (ver A-01) — *hecho, verificado en código el 2026-09-28*
 
 **Acción de implementación:** añadir
 **Prioridad:** media (A-01 depende de él)
@@ -1955,7 +1955,7 @@ ordena.", `loadout`: sello de la Concordia, correspondencia sellada.
 
 **Seguimiento:**
 - [x] **En docs** (2026-09-27): npcs.md (nº 17-21) · regiones/margen-silencioso.md (Jakut Tusha)
-- [ ] **Código:** 5 `Npc` (Hulki **nivel 18**, Tira, Kiri, Lusa, Gero) con `homeLocationSlug: campamento-feg-tusha-interior` + `ZonePoint`
+- [x] **Código:** 5 `Npc` (Hulki **nivel 18**, Tira, Kiri, Lusa, Gero) con `homeLocationSlug: campamento-feg-tusha-interior` + `ZonePoint` — *hecho, verificado en código el 2026-09-28*
 
 **Acción de implementación:** añadir
 **Prioridad:** media (el interior `campamento-feg-tusha-interior` existe y está vacío)
@@ -2036,7 +2036,7 @@ hablado alguna vez con un orco.
 
 **Seguimiento:**
 - [x] **En docs** (2026-09-27): npcs.md (nº 22-23) · regiones/llanuras-del-viento-rojo.md (Kegi)
-- [ ] **Código:** 2 `Npc` (Yeru **nivel 18**, Tasko con `loadout` de Ashi'krul) en `jakut-ger-interior` / `yegr-kegi` + `ZonePoint`
+- [x] **Código:** 2 `Npc` (Yeru **nivel 18**, Tasko con `loadout` de Ashi'krul) en `jakut-ger-interior` / `yegr-kegi` + `ZonePoint` — *hecho, verificado en código el 2026-09-28*
 
 **Acción de implementación:** añadir
 **Prioridad:** media

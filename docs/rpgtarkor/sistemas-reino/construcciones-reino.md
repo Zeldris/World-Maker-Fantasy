@@ -2,6 +2,10 @@
 
 [← Volver al índice](mundo-vivo-x4.md)
 
+**Estado (2026-09-28):** todo lo de este documento está implementado, backend y frontend (panel de
+Reino, 2026-09-22). Documento de diseño: explica el porqué. Cómo funciona hoy y qué falta, en la
+[referencia técnica](../../arquitectura/22-mundo-vivo-x4-tecnico.md).
+
 ---
 
 ### 4.2 Decisión de arquitectura tomada (2026-09-21): un solo modelo, no dos paralelos
@@ -270,15 +274,13 @@ tocar el del jugador. Suite completa 2627/2627 en verde (aislado — 2 fallos en
 paralelo con el resto de la suite fueron contención/timing conocidos, reproducidos limpios
 ejecutando esos 2 archivos juntos en aislamiento).
 
-**Edificios en los que producir (2026-09-28):** diseñados en
-[edificios-de-oficio.md](edificios-de-oficio.md) — un edificio por oficio, con niveles y plazas de
-trabajador. Hasta que se implementen, el motor de producción no tiene dónde correr.
+**Edificios en los que producir (2026-09-28):** implementados, ver
+[edificios-de-oficio.md](edificios-de-oficio.md). Las 4 recetas de extracción (sin ingredientes)
+también existen.
 
-**Pendiente real, ahora sí de front**: CRUD de `OrdenProduccion` desde el panel (asignar
-receta+prioridad+modo+límite a un `Building`, asignar `Companion.buildingId`), UI para
-`AlmacenLimite`, y decidir qué recetas de las 52 sirven tal cual como recolección de Reino (ninguna
-tiene hoy `ingredients: []`). Siguiente paso: front — qué refactorizar, qué crear nuevo, diseño del
-panel de Reino.
+**Frontend (2026-09-22):** CRUD de órdenes, asignación de trabajador y topes de almacén en la
+subpestaña Producción del panel de Reino. **Hueco:** ningún flujo de la interfaz da `rolReino` a un
+súbdito, así que no se puede asignar trabajador jugando (referencia técnica, H-1).
 
 
 ---
@@ -398,9 +400,7 @@ Diseño construido en la conversación, en orden, y estado real de cada pieza:
      materiales, crea `Building` en la posición exacta de la parcela, enlaza `buildingId`, narra el
      `LogEntry`). 7 tests de integración reales contra Postgres (`parcelas.integration.test.ts`),
      sin mocks — incluida la ruta feliz completa (consumo de inventario verificado exacto).
-   - **Frontend (icono de parcela en el mapa de Zona + modal) sigue sin tocar** — decisión
-     explícita de Álvaro: cerrar TODO el backend de § 7.4 primero, y hacer una pasada dedicada de
-     refactor de frontend después para representar bien todos los cambios de backend de golpe.
+   - **Frontend hecho (2026-09-22):** icono de parcela en el mapa de Zona y `ParcelaDetailModal`.
 6. **Imágenes/prompts** — reparto de trabajo cerrado explícitamente con Álvaro (ver memoria
    `tarkor_feedback_generacion_imagenes_es_cosa_del_usuario`): Claude SÍ escribe/actualiza el TEXTO
    de los prompts (trabajo de contenido normal); Álvaro genera la imagen real y la sube. **Sin
@@ -419,14 +419,9 @@ Diseño construido en la conversación, en orden, y estado real de cada pieza:
    `/turn/narrate`, LLM mockeado): construir en Cristal Helado (dueño real Clan Helsig) sube
    `FactionRelation.presion` de 50 (neutro) a 65, cruzando a banda `TENSION` con un solo evento.
 
-**BACKEND DE § 7.4 COMPLETO** (piezas 1-5 y 7 cerradas, verificadas contra Postgres real, suite
-completa 2590/2590 en verde sin ningún flake). Queda solo pieza 6 (prompts de imagen, a demanda de
-Álvaro cuando quiera generar las imágenes reales) y — mandato explícito de esta sesión — **una
-pasada dedicada de FRONTEND** una vez decidido qué información es útil mostrar, dónde, qué
-animaciones dan vida a esto, y qué vistas ya existentes hay que refactorizar (icono de parcela en
-el mapa de Zona, modal de detalle con botón Construir, estado de Cuartel Avanzado/mejoras/cupos,
-panel de Reino con el nuevo modelo generalizado, etc.) — todavía sin empezar a diseñar ese
-frontend en esta sesión.
+**§ 7.4 completo** (piezas 1-5 y 7), con frontend desde el 2026-09-22. Queda la pieza 6 (prompts
+de imagen por nivel, cuando Álvaro quiera generarlas) y un botón directo para el Cuartel Avanzado,
+que hoy solo se construye por texto libre.
 
 ---
 

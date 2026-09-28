@@ -142,15 +142,17 @@ tiene su edificio*.
 | **Feg Tusha, Feg Ger** (Faerus) | ninguno | — | Nada. Por lore, los Faerus apenas fabrican; Kegi sería la excepción (curtido fino, colmillo) |
 | **Keseg Sael, Keseg Prisilke** (Nabieus) | ninguno | — | Nada todavía |
 
-**Producción de facción: agregada, no objeto a objeto.** El Almacén de Reino (`AlmacenItem`) es
-solo del jugador por decisión cerrada (§ 4.4-ter). Para las facciones se propone lo que hace X4
-con la economía de las IA, que se simula por agregados:
+**Producción de facción: agregada, no objeto a objeto.** Las facciones no fabrican objetos reales
+en su Almacén (`AlmacenItem.factionId` existe, pero solo se llena cuando el jugador les vende en el
+mercado). Se hace lo que X4 con la economía de las IA, que se simula por agregados:
 - cada edificio de facción `ACTIVO`, con su nivel, suma a `KingdomStats` de la facción (ya
   generalizado a `factionId`);
 - la Cocina suma comida, y el resto suma riqueza o "producción" según su clase.
 
 Así la guerra por estructuras de § 7.4 tiene consecuencia económica real (quemar la Cocina Serhu
-les baja la comida) sin montar un almacén por facción. **Decisión pendiente de Álvaro.**
+les baja la comida) sin montar un almacén por facción. **Aprobado por Álvaro (2026-09-28).**
+Problemas conocidos: se ejecuta en el turno de cada partida, sin consumo, y las facciones no tienen
+stock que vender (referencia técnica, H-2 y H-6).
 
 ## 5. Nombres por raza y por asentamiento
 
@@ -180,7 +182,8 @@ falta y se evita inventar vocabulario.
 - [x] `construction.ts` (2026-09-28): 14 `ConstructionRecipe` de nivel 1 (`raza: 'orcos'`,
   `requiresAyuntamiento: true`) y 28 de mejora (niveles 2 y 3) con `upgradesRecipeKey`. Ajuste
   sobre el diseño original: el nivel 1 lleva el `oficio` PROPIO del edificio (herrero, curtidor…),
-  no `constructor-orcos-llanuras` — cualquiera con ese oficio puede levantar su propio Taller;
+  no `constructor-orcos-llanuras`. Ese oficio no bloquea (solo `constructor` bloquea), solo da
+  alivio de requisitos: cualquiera puede levantar un Taller;
   `constructor-orcos-llanuras` sí se exige en las 28 mejoras (Obrador/Gran obrador), coherente con
   que mejorar es una obra de construcción real. Añadidos a `ConstructionRecipe`:
   - `oficioProducido` (qué oficio trabaja dentro);

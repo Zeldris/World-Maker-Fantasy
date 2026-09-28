@@ -2,6 +2,10 @@
 
 [← Volver al índice](mundo-vivo-x4.md)
 
+**Estado (2026-09-28):** § 4.5 diseñado, sin código (ni siquiera se siembran
+`NpcProfessionPotential`/`NpcProfessionProgress`). § 4.6 implementado; desde la tanda A-01..A-05 son
+9 facciones con población, no 4. Ver la [referencia técnica](../../arquitectura/22-mundo-vivo-x4-tecnico.md).
+
 ---
 
 ### 4.5 Expediciones de recolección/exploración de facción — DISEÑO CERRADO (2026-09-21, sesión

@@ -2,6 +2,10 @@
 
 [← Volver al índice](mundo-vivo-x4.md)
 
+**Estado (2026-09-28):** relaciones, diplomacia y mercado implementados, con frontend. Sin código:
+migrar `worldAgenda`, comercio de volumen y los eventos `BAJA_DE_GUERRA`/`TRATADO_CUMPLIDO`.
+Detalle y huecos en la [referencia técnica](../../arquitectura/22-mundo-vivo-x4-tecnico.md).
+
 ---
 
 ### 4.3 Generalización de `worldAgenda.ts` — de un conflicto hardcodeado a un motor de disputas
@@ -26,8 +30,7 @@ forma):
   sistema genérico (dato, no código especial) — su texto narrativo curado a mano se conserva como
   contenido, pero el motor que lo avanza deja de ser una función dedicada a ese único caso.
 
-### 4.4 Diplomacia comercial / mercado regulado — DIPLOMACIA CERRADA (2026-09-21, sesión
-posterior), mercado regulado sin diseñar todavía
+### 4.4 Diplomacia comercial / mercado regulado — CERRADO (2026-09-21)
 
 **Diplomacia del jugador — CERRADA e IMPLEMENTADA**, diseño completo en § 5-bis punto 6: acción
 puntual estilo Agente de X4 (Negociación/Sabotaje/Espionaje), nunca presencia sostenida tipo
@@ -98,8 +101,10 @@ ningún NPC real sembrado** (solo prosa en `Location`/`Faction.description`). Re
 `doshka`/`dulgren` en `worldCatalog.ts` (mismo shape que Brenka/Solgra de Helsig, `nucleoJugable:
 false` — fuera del núcleo jugable actual, coherente con su región). Líderes reales sembrados:
 Serhu→Ulkha Ketg (Int 20), Helsig→Brenka (16), Goshg→Doshka (15), Concordia→Yovenne Tal (15).
+Desde la tanda A-01 (2026-09-28) la Concordia la lidera Tarsen Vold y Yovenne Tal pasa a Los del
+Obelisco; ver § 7.2-bis.
 
-### 7.2-bis Facciones nuevas aprobadas (2026-09-27) — pendientes de código
+### 7.2-bis Facciones nuevas aprobadas (2026-09-27) — en código desde 2026-09-28
 
 Primera tanda de propuestas de lore aprobadas. Ficha completa (descripción para `FactionInput`, líder,
 población y relaciones iniciales) en `docs/borradores-opencode/propuestas-aprobadas.md` (A-01 a A-05,
@@ -113,7 +118,7 @@ A-37 a A-39).
 | Feg Tusha | faerus | El Margen Silencioso, mitad occidental | `hulki` | 850 del pool `faerus` |
 | Feg Ger | faerus | franja sur de las Llanuras, sin ser dueña | `yeru` | 200 del pool `faerus` |
 
-**Cambios de código que implica:**
+**Cambios de código** (hechos el 2026-09-28 salvo el tercero, que sigue pendiente de números):
 - `seed-catalog.ts` → `FACTION_LEADER_SLUG['concordia-de-hierro']` pasa de `yovenne-tal` a
   `tarsen-vold` (NPC nuevo). Corrige la incoherencia actual con `historia.md`, donde Yovenne es la
   oposición moderada.
@@ -146,11 +151,11 @@ el modelo real de X4 (Claude verificó cómo funciona X4 de verdad antes de prop
   nombres de ambas facciones en vez de las 5 líneas fijas por conflicto del `STAGE_FACTS`
   original) + `recordFactionEvent`/`ensureFactionRelation` (wrapper Prisma). 16 tests unitarios en
   verde (`factionRelations.test.ts`).
-- **Pendiente real, sin cerrar**: NINGÚN caller en producción todavía dispara
-  `recordFactionEvent` — los 2 eventos definidos (`EXPANSION_TERRITORIAL_AGRESIVA`,
-  `BAJA_DE_GUERRA`) están tipados pero sin enganchar. El enganche real quedó bloqueado por la
-  pieza de conquista territorial de § 7.4 (más abajo) — decidir juntos en la próxima sesión cómo
-  se conectan.
+- **Llamadores reales:** `EXPANSION_TERRITORIAL_AGRESIVA` al construir un Cuartel Avanzado en
+  región ajena ([construcciones-reino.md § 7.4](construcciones-reino.md), pieza 7) y
+  `NEGOCIACION_TREGUA`/`SABOTAJE_DIPLOMATICO` desde la diplomacia del jugador (§ 4.4).
+  `BAJA_DE_GUERRA`, `TRATADO_CUMPLIDO` y el decaimiento semanal (`decayPresion`) siguen sin
+  llamador.
 - `worldAgenda.ts` (el conflicto original Serhu+Concordia vs. Helsig+Goshg) **todavía no se ha
   tocado ni retirado** — sigue funcionando en paralelo, sin migrar a `FactionRelation` todavía.
   Migrar su única fila real a la primera fila de este sistema genérico (tal como proponía § 4.3)

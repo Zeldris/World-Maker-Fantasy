@@ -2,6 +2,9 @@
 
 [← Volver al índice](../sistemas-reino/mundo-vivo-x4.md)
 
+**Estado (2026-09-28):** sin cambios. § 8 diseñado sin código (solo existe el umbral
+`INTELIGENCIA_TACTICA_UMBRAL = 12`); § 9 sin diseñar.
+
 ---
 
 ## 8. IA de combate NPC por tramos de Inteligencia — DISEÑO CERRADO (2026-09-21, sesión posterior),
