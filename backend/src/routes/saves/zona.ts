@@ -11,8 +11,7 @@ import { zonePointColorFor, avanzarZonePointsUnPaso, zonePointVisiblePara, zoneP
 import { NOMBRE_OCULTO_GENERICO } from '../../services/dynamicMode.js';
 import { parseAgenda, regionControlFor, type RegionControlState } from '../../services/worldAgenda.js';
 import { REGION_OWNING_FACTIONS, effectiveTemperamento } from '../../services/reputation.js';
-import { posicionAleatoriaEnLienzo, celdaDePixel, pixelDeCelda, calcularCamino, celdaAdyacenteOMisma, mismaCelda, puntoDeEntradaParaDireccion, quienIniciaEncuentro } from '../../services/zonaPosicion.js';
-import { cardinalDirectionBetween } from '../../services/travel.js';
+import { posicionAleatoriaEnLienzo, celdaDePixel, pixelDeCelda, calcularCamino, celdaAdyacenteOMisma, mismaCelda, posicionesDeSalidas, quienIniciaEncuentro } from '../../services/zonaPosicion.js';
 import { rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 import { createInFlightClaimSet } from '../../lib/inFlightClaimSet.js';
 
@@ -146,11 +145,13 @@ async function salidasDeRegionPara(
   const visitadasIds = new Set(visitas.map((v) => v.locationId));
 
   const celdaJugador = jugador ? celdaDePixel(jugador) : null;
+  // Rumbo real, no sector cardinal (2026-09-28, ver `posicionesDeSalidas`, zonaPosicion.ts): antes
+  // varios destinos del mismo octante quedaban apilados en el mismo píxel.
+  const conCoordenadas = conectadas.filter((d): d is typeof d & { x: number; y: number } => d.x != null && d.y != null);
+  const posiciones = posicionesDeSalidas({ x: location.x, y: location.y }, conCoordenadas);
   const salidas: ZonaSalidaInfo[] = [];
-  for (const destino of conectadas) {
-    if (destino.x == null || destino.y == null) continue; // sin coordenadas, no hay dirección real que calcular
-    const direccion = cardinalDirectionBetween({ x: location.x, y: location.y }, { x: destino.x, y: destino.y });
-    const punto = puntoDeEntradaParaDireccion(direccion);
+  for (const destino of conCoordenadas) {
+    const punto = posiciones.get(destino.id)!;
     const visitada = visitadasIds.has(destino.id);
     const alcanzable = celdaJugador ? celdaAdyacenteOMisma(celdaJugador, celdaDePixel(punto)) : true;
     salidas.push({

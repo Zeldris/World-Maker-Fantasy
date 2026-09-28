@@ -110,6 +110,7 @@ import {
 import { detectsRestIntent, type Produccion } from './timedActions.js';
 import {
   puntoDeEntradaParaDireccion,
+  posicionesDeSalidas,
   direccionDeEntrada,
   posicionDeObjetivo,
   minutoDeReaparicion,
@@ -2527,6 +2528,20 @@ async function applyHarvest(params: {
 /// 2026-08-13). Pura salvo el propio `prisma.save.update` final; entrada/salida acotada — todo lo
 /// que necesita ya está resuelto por el caller (narración, intercambio de combate, decapitar,
 /// saqueo parcial), no dispara ninguna otra lectura/escritura por su cuenta.
+/// Posición (lienzo 800×600) del icono de salida de la zona `locationId` que lleva a `haciaId` —
+/// mismo cálculo que `salidasDeRegionPara` (zona.ts) sobre sus vecinos reales del grafo. `null` si
+/// `haciaId` no es vecino directo o le faltan coordenadas de mundo.
+async function posicionDeSalidaHacia(locationId: string, coords: { x: number; y: number }, haciaId: string): Promise<{ x: number; y: number } | null> {
+  const links = await prisma.locationLink.findMany({
+    where: { OR: [{ fromId: locationId }, { toId: locationId }] },
+    select: { from: { select: { id: true, x: true, y: true } }, to: { select: { id: true, x: true, y: true } } },
+  });
+  const vecinos = links
+    .map((l) => (l.from.id === locationId ? l.to : l.from))
+    .filter((v): v is { id: string; x: number; y: number } => v.x != null && v.y != null);
+  return posicionesDeSalidas(coords, vecinos).get(haciaId) ?? null;
+}
+
 async function resolveCombatSlugsAndPersist(params: {
   saveId: string;
   action: string;
@@ -3679,7 +3694,17 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       const origenLoc = currentLocationId ? await prisma.location.findUnique({ where: { id: currentLocationId }, select: { x: true, y: true } }) : null;
       const origenX = origenLoc?.x;
       const origenY = origenLoc?.y;
-      if (origenX != null && origenY != null) {
+      // Entrada = la salida de la zona destino que lleva al ÚLTIMO tramo recorrido (2026-09-28, bug
+      // real jugando en vivo con Playwright): antes se usaba el sector cardinal de origen→destino
+      // del viaje ENTERO — en un viaje de varios tramos (A→B→C) el jugador podía aparecer en C por un
+      // borde sin ninguna salida hacia B, y las salidas se colocaban con otro criterio distinto
+      // (varias apiladas en el mismo píxel). Mismo cálculo exacto que los iconos de salida de
+      // `GET /zona` (`posicionesDeSalidas`), así que llegas justo sobre la salida por la que vuelves.
+      const previoId = travel.pathIds.length >= 2 ? travel.pathIds[travel.pathIds.length - 2] : null;
+      const entradaPorSalida = previoId ? await posicionDeSalidaHacia(destination.id, { x: destination.x, y: destination.y }, previoId) : null;
+      if (entradaPorSalida) {
+        zonaEntradaCoords = entradaPorSalida;
+      } else if (origenX != null && origenY != null) {
         const direccionDeViaje = cardinalDirectionBetween({ x: origenX, y: origenY }, { x: destination.x, y: destination.y });
         zonaEntradaCoords = puntoDeEntradaParaDireccion(direccionDeEntrada(direccionDeViaje));
       } else {

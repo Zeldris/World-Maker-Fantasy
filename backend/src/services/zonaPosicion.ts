@@ -47,6 +47,97 @@ export function puntoDeEntradaParaDireccion(direction: CardinalDirection): { x: 
   }
 }
 
+/// Separación mínima entre dos salidas a lo largo del borde (2026-09-28) — 2 celdas (100px): con
+/// menos, dos iconos de salida caen en celdas vecinas y el umbral de "alcanzable" (misma celda o
+/// adyacente) ya no distingue a cuál te acercas.
+export const SEPARACION_MINIMA_SALIDAS = 100;
+
+/// Posición de cada salida de una zona en el borde del lienzo según el RUMBO REAL hacia su destino
+/// (2026-09-28, bug real jugando en vivo con Playwright: en El Paso de los Pilares Rotos, La
+/// Hondonada del Eco (56°), El Osario de la Manada (35°) y Los Restos de Maktor (64°) caían los tres
+/// en el mismo sector "noreste" de `puntoDeEntradaParaDireccion` — tres iconos apilados en el mismo
+/// píxel (760,40), dos destinos inalcanzables desde el mapa). El rumbo se proyecta sobre el
+/// rectángulo interior del lienzo (margen `MARGEN_BORDE_DIAGONAL`, el que ya evita cortar el
+/// marcador en las esquinas) y, si dos salidas quedan a menos de `SEPARACION_MINIMA_SALIDAS` a lo
+/// largo del perímetro, se separan manteniendo su orden angular. Puro y determinista — la misma
+/// entrada da siempre las mismas posiciones, así que la salida hacia X en esta zona coincide con
+/// el punto por el que se ENTRA viniendo de X (ver `turnResolution.ts` § zonaEntradaCoords).
+///
+/// `origen`/`destinos[].x/y` en coordenadas de mundo (x=este, y=NORTE, travel.ts); el resultado en
+/// coordenadas de lienzo (y=SUR creciente).
+export function posicionesDeSalidas(
+  origen: { x: number; y: number },
+  destinos: { id: string; x: number; y: number }[],
+): Map<string, { x: number; y: number }> {
+  const m = MARGEN_BORDE_DIAGONAL;
+  const ancho = LIENZO_ANCHO - 2 * m;
+  const alto = LIENZO_ALTO - 2 * m;
+  const perimetro = 2 * (ancho + alto);
+  const cx = LIENZO_ANCHO / 2;
+  const cy = LIENZO_ALTO / 2;
+
+  // Perímetro recorrido en sentido horario desde la esquina superior izquierda: arriba → derecha →
+  // abajo → izquierda.
+  const aPerimetro = (x: number, y: number): number => {
+    if (y <= m + 1e-6) return x - m;
+    if (x >= LIENZO_ANCHO - m - 1e-6) return ancho + (y - m);
+    if (y >= LIENZO_ALTO - m - 1e-6) return ancho + alto + (LIENZO_ANCHO - m - x);
+    return 2 * ancho + alto + (LIENZO_ALTO - m - y);
+  };
+  const dePerimetro = (s0: number): { x: number; y: number } => {
+    const s = ((s0 % perimetro) + perimetro) % perimetro;
+    if (s <= ancho) return { x: m + s, y: m };
+    if (s <= ancho + alto) return { x: LIENZO_ANCHO - m, y: m + (s - ancho) };
+    if (s <= 2 * ancho + alto) return { x: LIENZO_ANCHO - m - (s - ancho - alto), y: LIENZO_ALTO - m };
+    return { x: m, y: LIENZO_ALTO - m - (s - 2 * ancho - alto) };
+  };
+
+  const proyectadas = destinos.map((d) => {
+    // Pantalla: y crece hacia el SUR, así que el norte del mundo (dy > 0) es -y en el lienzo.
+    const dx = d.x - origen.x;
+    const dy = -(d.y - origen.y);
+    const len = Math.hypot(dx, dy) || 1;
+    const ux = dx / len;
+    const uy = dy / len;
+    const tx = ux === 0 ? Infinity : (ux > 0 ? LIENZO_ANCHO - m - cx : m - cx) / ux;
+    const ty = uy === 0 ? Infinity : (uy > 0 ? LIENZO_ALTO - m - cy : m - cy) / uy;
+    const t = Math.min(tx, ty);
+    return { id: d.id, s: aPerimetro(cx + ux * t, cy + uy * t) };
+  });
+
+  // Separación mínima manteniendo el orden: varias pasadas empujando hacia delante y hacia atrás
+  // para no amontonar todas las correcciones en un solo lado (con pocas salidas por zona, converge
+  // enseguida).
+  proyectadas.sort((a, b) => a.s - b.s || a.id.localeCompare(b.id));
+  const separacion = Math.min(SEPARACION_MINIMA_SALIDAS, perimetro / Math.max(1, proyectadas.length));
+  for (let pasada = 0; pasada < 8; pasada++) {
+    let cambios = false;
+    for (let i = 1; i < proyectadas.length; i++) {
+      const hueco = proyectadas[i].s - proyectadas[i - 1].s;
+      if (hueco < separacion - 1e-6) {
+        const falta = separacion - hueco;
+        proyectadas[i - 1].s -= falta / 2;
+        proyectadas[i].s += falta / 2;
+        cambios = true;
+      }
+    }
+    // El perímetro es circular: la última y la primera también son vecinas.
+    if (proyectadas.length > 1) {
+      const ultima = proyectadas[proyectadas.length - 1];
+      const hueco = proyectadas[0].s + perimetro - ultima.s;
+      if (hueco < separacion - 1e-6) {
+        const falta = separacion - hueco;
+        ultima.s -= falta / 2;
+        proyectadas[0].s += falta / 2;
+        cambios = true;
+      }
+    }
+    if (!cambios) break;
+  }
+
+  return new Map(proyectadas.map((p) => [p.id, dePerimetro(p.s)]));
+}
+
 /// Dirección opuesta a la calculada por `cardinalDirectionBetween(origen, destino)` — esa función
 /// da hacia dónde VIAJA el jugador (si destino está al norte de origen, viaja "hacia el norte"),
 /// pero el jugador entra a la zona DESTINO por el lado contrario (llega desde el sur, así que

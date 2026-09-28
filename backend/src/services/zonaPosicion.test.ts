@@ -22,6 +22,8 @@ import {
   siguienteCeldaEnRuta,
   repartirEnGrupos,
   quienIniciaEncuentro,
+  posicionesDeSalidas,
+  SEPARACION_MINIMA_SALIDAS,
 } from './zonaPosicion.js';
 
 describe('puntoDeEntradaParaDireccion', () => {
@@ -397,5 +399,65 @@ describe('quienIniciaEncuentro', () => {
   it('es determinista dado el mismo generador random — mismo input, mismo resultado', () => {
     const random = () => 0.3;
     expect(quienIniciaEncuentro(8, 8, random)).toBe(quienIniciaEncuentro(8, 8, random));
+  });
+});
+
+describe('posicionesDeSalidas (2026-09-28, salidas por rumbo real)', () => {
+  // Coordenadas de mundo reales de El Paso de los Pilares Rotos y sus 6 vecinos (worldCatalog.ts).
+  const PILARES = { x: 0, y: 0 };
+  const VECINOS = [
+    { id: 'cruce-de-las-cenizas', x: 0, y: -18 },
+    { id: 'agujas-iman', x: -7, y: 8.3 },
+    { id: 'hondonada-del-eco', x: 5, y: 7.5 },
+    { id: 'osario-de-la-manada', x: 10.95, y: 7.6 },
+    { id: 'pozo-cauce-viejo', x: 13.5, y: 0 },
+    { id: 'restos-de-maktor', x: 10, y: 20.5 },
+  ];
+
+  it('bug real: las 3 salidas del noreste de Pilares Rotos ya no caen en el mismo píxel, y ninguna pareja queda a menos de la separación mínima', () => {
+    const pos = posicionesDeSalidas(PILARES, VECINOS);
+    expect(pos.size).toBe(6);
+    const puntos = [...pos.values()];
+    for (let i = 0; i < puntos.length; i++) {
+      for (let j = i + 1; j < puntos.length; j++) {
+        // Distancia en línea recta ≤ distancia por el perímetro, así que basta con que no se toquen:
+        // en celdas distintas y no adyacentes (el umbral de "alcanzable").
+        expect(celdaAdyacenteOMisma(celdaDePixel(puntos[i]), celdaDePixel(puntos[j]))).toBe(false);
+      }
+    }
+  });
+
+  it('cada salida queda en el borde del lienzo y hacia su lado real (norte arriba, sur abajo, este a la derecha)', () => {
+    const pos = posicionesDeSalidas(PILARES, VECINOS);
+    const sur = pos.get('cruce-de-las-cenizas')!;
+    const este = pos.get('pozo-cauce-viejo')!;
+    const noroeste = pos.get('agujas-iman')!;
+    expect(sur.y).toBe(LIENZO_ALTO - 40);
+    expect(este.x).toBe(LIENZO_ANCHO - 40);
+    expect(noroeste.x).toBeLessThan(LIENZO_ANCHO / 2);
+    expect(noroeste.y).toBeLessThan(LIENZO_ALTO / 2);
+  });
+
+  it('una sola salida al norte exacto cae en el centro del borde superior', () => {
+    const pos = posicionesDeSalidas({ x: 0, y: 0 }, [{ id: 'n', x: 0, y: 10 }]);
+    expect(pos.get('n')).toEqual({ x: LIENZO_ANCHO / 2, y: 40 });
+  });
+
+  it('determinista: el orden de la entrada no cambia el resultado', () => {
+    const a = posicionesDeSalidas(PILARES, VECINOS);
+    const b = posicionesDeSalidas(PILARES, [...VECINOS].reverse());
+    for (const v of VECINOS) expect(b.get(v.id)).toEqual(a.get(v.id));
+  });
+
+  it('dos destinos casi en el mismo rumbo se separan al menos SEPARACION_MINIMA_SALIDAS por el borde', () => {
+    const pos = posicionesDeSalidas({ x: 0, y: 0 }, [
+      { id: 'a', x: 1, y: 10 },
+      { id: 'b', x: 1.1, y: 10 },
+    ]);
+    const a = pos.get('a')!;
+    const b = pos.get('b')!;
+    expect(a.y).toBe(40);
+    expect(b.y).toBe(40);
+    expect(Math.abs(a.x - b.x)).toBeGreaterThanOrEqual(SEPARACION_MINIMA_SALIDAS - 1e-6);
   });
 });
