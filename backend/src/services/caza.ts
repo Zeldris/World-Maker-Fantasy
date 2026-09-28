@@ -138,7 +138,10 @@ async function intentarCazaLimpia(save: SaveParaCaza, target: CazaTarget): Promi
     return {
       resuelveSinCombate: false,
       exito: false,
-      actionText: `Intento cazar a '${npc.name}' de forma sigilosa y limpia, pero fallo — no queda más remedio que enfrentarla en combate.`,
+      // B21 (pruebas 2026-09-28): "…pero fallo" seguido de la tirada de APERTURA del combate (que
+      // puede salir en éxito) se leía como una contradicción. El sigilo se pierde porque la presa
+      // detecta al jugador; la tirada que viene después es la del ataque, no la de la caza.
+      actionText: `Me acerco a '${npc.name}' con sigilo, pero me detecta antes de tiempo — no queda más remedio que atacarla de frente.`,
     };
   }
 

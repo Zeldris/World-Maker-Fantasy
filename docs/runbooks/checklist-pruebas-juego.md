@@ -1833,3 +1833,28 @@ Saquear, conectar `repartirEnGrupos`, implementar las 2 ideas de diseño anotada
 del checklist aún sin verificar (comparación de modelos LLM, sub-combates >4v4 con fallo de servidor
 forzado, stock de Mercado/AlmacenItem de facción, Paleta por raza con 2 razas distintas, asignar
 Companion a edificio desde Producción).
+
+## Pruebas en la nube + cierre de hallazgos (2026-09-28)
+
+Sesión de Claude en un contenedor en la nube (Postgres local, Ollama simulado, Playwright): la
+calidad narrativa no se pudo probar, todo lo determinista sí. Detalle completo en
+[pruebas-nube-2026-09-28-hallazgos.md](pruebas-nube-2026-09-28-hallazgos.md) (§ A, A2 y B) y los
+planes [plan-mecanicas-por-zona-2026-09-28.md](plan-mecanicas-por-zona-2026-09-28.md) y
+[plan-cierre-hallazgos-2026-09-28.md](plan-cierre-hallazgos-2026-09-28.md). Todo en la rama
+`claude/wonderful-volta-662qt8`.
+
+**Cambio de diseño principal — lo que funciona por zona se hace desde la zona:** fauna en grupos
+reales (varios pins que suman la población), "Cazar" en la tarjeta de encuentro (combate múltiple
+contra el grupo), cobertura del mapa de Las Llanuras, fuera los botones Cazar/Minar/Talar/
+Recolectar hierbas/Recoger/Pescar/Buscar/Saquear, y cadáveres como pin con Saquear/Desollar.
+
+**Cerrados:** A1-A14 (verificados en vivo) y B2-B32 salvo B1 (verificados con tests, **sin pasada
+en vivo** — primera tarea al retomar en local). Decisiones 🔵 tomadas con valor por defecto,
+revisables: B2 (1 min/paso), B11 (+1 energía/10 min fuera de combate, Ataque Básico sin bloqueo),
+B12 (combate no cuenta para capítulo), B27 (Goirnos al saquear humanoides + Vender en el Mercado).
+
+**Abierto:** B1 (`ZonePoint` por partida), B18 (propuesta de lore Bolco/Bulco SIN REVISAR).
+
+**Aviso para quien pruebe en local:** migración nueva `20260928130000_arquetipo_sin_clase`
+(además de `20260928120000_zona_ultimo_encuentro`); la suite del backend ahora corre los tests
+con Postgres real en serie (proyecto `bd-real` de vitest) y ya no da fallos intermitentes.

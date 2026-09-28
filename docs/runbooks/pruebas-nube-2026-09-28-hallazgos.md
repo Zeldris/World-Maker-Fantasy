@@ -37,6 +37,44 @@ frontend 229/229, `tsc` limpio en ambos.
 
 ---
 
+## A2. Cerrado en la tanda de implementación (2026-09-28, `plan-cierre-hallazgos-2026-09-28.md`)
+
+Verificado con tsc + tests (suite completa del backend: 144 archivos / 2676 tests en verde con la
+nueva configuración de B13; frontend 231). **Sin verificación en vivo** (Álvaro pidió parar las
+pruebas y cerrar): conviene una pasada jugando en local. Las decisiones 🔵 se tomaron con el valor
+por defecto del plan y son revisables.
+
+| Hallazgo | Cierre | Commit |
+|---|---|---|
+| B25/B26 (Fases 1-3) | grupos reales, Cazar en la tarjeta, cobertura de Las Llanuras | 5f39880, dc4c802, 47b9a44 |
+| Fase 4 + B20 | fuera Cazar/Minar/Talar/Recolectar/Recoger/Pescar/Buscar; barra inicial rellena | a0e1e93 |
+| Fase 5 | cadáveres en el mapa con Saquear/Desollar; fuera el botón Saquear | 90121a9 |
+| B2 🔵 | cada paso de zona = 1 min de reloj | 90121a9 |
+| B3/B4 | "Ir hasta aquí" en la ficha del pin; botón "Cerrar" | 90121a9 |
+| B5/B6 | salida sin visitar = "Camino hacia el {rumbo}"; flecha girada a su rumbo | 90121a9 |
+| B7 | recurso por encima del nivel de oficio = avistamiento con motivo, sin oferta | 90121a9 |
+| B30/B31 | los puntos no se amontonan; toparse con algo lo descubre | 90121a9 |
+| B9 | abrir un combate forzado identifica al NPC | 42f785e |
+| B10/B32 | Matar solo marca: el panel indica "Remata a X: elige un ataque" | 42f785e |
+| B11 🔵 | Ataque Básico nunca bloqueado por energía; +1 energía/10 min fuera de combate | 42f785e |
+| B12 🔵 | las acciones de combate no cuentan para el capítulo | 42f785e |
+| B19 🔴 | habilidades de especialización al subir de nivel (+ reconciliación al cargar) | 42f785e |
+| B22 | tramo gris previo al combate = "Fácil", como su tirada | 42f785e |
+| B23 | fauna que "No ataca" se muestra revolviéndose, no "ataca y conecta" | 42f785e |
+| B13 | vitest: tests con Postgres real en serie, el resto en paralelo | 6508574 |
+| B14 | seed-catalog poda ItemCatalog retirados | 6508574 |
+| B15 | imports/declaraciones sin usar fuera | 6508574 |
+| B16 | aceptación de misión con el reloj ya avanzado | 6508574 |
+| B24 | riel lateral sin etiquetas cortadas | 6508574 |
+| B27 🔴🔵 | Goirnos al saquear humanoides (`goirnosDeBotin`) + UI de Vender en el Mercado | 6508574 |
+| B28 | arquetipo predefinido neutro de clase (+ migración) | 6508574 |
+| B21 | la caza sigilosa fallida ya no dice "fallo" junto a la tirada de apertura | este commit |
+| B18 🔵 | propuesta de lore en `docs/borradores-opencode/propuestas-lore.md` (SIN REVISAR) | 521a8bd |
+
+**Sigue abierto (decisión de Álvaro):** B1 — `ZonePoint` por partida en vez de global (cambio de
+esquema grande que arrastra grupos, reconciliación y seed; fuera de esta tanda a propósito).
+Pendiente de comprobar: tras Huir, el jugador reaparece en la entrada de la zona.
+
 ## B. Pendiente — apuntado, sin tocar (para el plan)
 
 Gravedad: 🔴 bloquea/rompe · 🟠 mal comportamiento · 🟡 UX/pulido · 🔵 decisión de diseño/lore
