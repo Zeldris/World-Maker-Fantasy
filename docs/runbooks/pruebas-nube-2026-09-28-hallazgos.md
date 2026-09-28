@@ -108,6 +108,22 @@ Gravedad: 🔴 bloquea/rompe · 🟠 mal comportamiento · 🟡 UX/pulido · �
 - Especialización: modal lista → detalle → confirmación → persistente tras recarga ✔️.
 - Caza: Explorar → elegir presa → caza sigilosa fallida → Combatir → Convaleciente ✔️.
 
+- **B27 🔴 Sin fuente de ingresos para un jugador normal.** Partida nueva = 0 Goirnos; la ÚNICA
+  vía de ganarlos es vender en el Mercado del Reino (`reino.ts` `mercado/vender`), que exige Reino
+  fundado + tratado y cuyo botón "Vender" no tiene UI (TODO en `DiplomaciaMercadoSection.tsx`).
+  Aprender oficio cuesta 10 Goirnos → un jugador sin reino nunca puede aprender un oficio nuevo.
+  (El "🪙 50" del checklist 2026-08-31 se sembró a mano.)
+- **B28 🟡 Cabecera de Estadísticas dice "Guerrero superviviente…"** aunque la clase elegida sea
+  Cazador — es el `characterArchetype` fijo del personaje predefinido, no se adapta a la clase.
+- **B29 🟠 Atacar por texto a fauna pacífica en escena no abre combate:** "Ataco al Gesgurio" con el
+  Gesgurio adyacente → tirada + "+5 XP" y nada más. Hoy no hay forma desde el mapa de pelear contra
+  fauna no agresiva (se resuelve con la Fase 2 del plan: "Cazar" en la tarjeta).
+- Paneles recorridos sin errores (con recarga): Personaje/Equipo/Estadísticas, reparto de puntos de
+  atributo (persistente ✔️), Inventario, Compañeros, Reino (vacío), Mapa (vista informativa),
+  Diario, Misiones, Reputación (vacía), Enciclopedia.
+- Captura: "🪢 Capturar en la zona" pide cuerdas ✔️; con cuerdas sembradas y Gesgurio convaleciente
+  (`capturable: true`) — prueba del flujo completo pendiente de terminar tras las fases del plan.
+
 ### Habilidades vs. mapa de zona (pregunta de Álvaro, 2026-09-28)
 
 **Hallazgo base — B25 🔴 dos sistemas paralelos que no casan.** Los botones Cazar / Minar / Talar /
