@@ -263,7 +263,7 @@ de cada campo dependen del animal/planta en cuestión).
   `faunaAbilities.ts` antes de inventar uno). Cada objeto lleva `icon`, `name`, `description`,
   `categoria`, `preferredAttribute`, `level`, `effects`.
 
-**Flora/recurso** (`HarvestSource` + `ItemCatalog`) — mismo nivel de detalle que fauna, misma regla
+**Flora/recurso** (`harvestYields` + `ItemCatalog`, con sus mapas `harvestSource*` en `worldCatalog.ts`) — mismo nivel de detalle que fauna, misma regla
 de "detallista, sin calcar nada real" (confirmado 2026-09-03: *"y el formato y los datos igual que
 el anterior?... vamos con flora, recursos y materiales igual, misma idea que con fauna"* — la
 descripción corta de Junba Verde/Temune de la zona 15 NO es el nivel a replicar, era antes de fijar
