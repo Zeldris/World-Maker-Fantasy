@@ -10,7 +10,6 @@ import { logRoutes } from './saves/log.js';
 import { listRoutes } from './saves/list.js';
 import { reinoRoutes } from './saves/reino.js';
 import { recolectarRoutes } from './saves/recolectar.js';
-import { cazarRoutes } from './saves/cazar.js';
 import { recipesStatusRoutes } from './saves/recipesStatus.js';
 import { parcelasRoutes } from './saves/parcelas.js';
 import { almacenLimiteRoutes } from './saves/almacenLimite.js';
@@ -47,8 +46,11 @@ export async function savesRoutes(app: FastifyInstance) {
   await app.register(logRoutes);
   await app.register(listRoutes);
   await app.register(reinoRoutes);
+  // "Cazar" (rutas /cazar/explorar, /cazar/confirmar) retirado en Fase 4 (2026-09-28,
+  // `plan-mecanicas-por-zona-2026-09-28.md`) — cazar solo se dispara ya desde la zona
+  // (`POST /saves/:id/zona/cazar`, ver `zona.ts`) o desde el agresivo en grupo de
+  // `dynamicMode.ts`, ambos sobre `services/caza.ts` directamente.
   await app.register(recolectarRoutes);
-  await app.register(cazarRoutes);
   await app.register(recipesStatusRoutes);
   await app.register(parcelasRoutes);
   await app.register(almacenLimiteRoutes);

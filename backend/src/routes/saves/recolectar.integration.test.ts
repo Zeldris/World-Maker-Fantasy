@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import Fastify from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
+import type { AttributeBlock } from '../../services/dice.js';
 
 /// Harness de integración real (mismo criterio que turn.integration.test.ts/creation.integration.
 /// test.ts — sin LLM de por medio en /recolectar, así que Postgres local basta) para el bug real
@@ -11,7 +12,8 @@ import { getDefaultUserId } from '../../lib/defaultUser.js';
 /// (compartida, mundo `helek-sirik`) de 'roca-pilares-rotos' — snapshot/restore exactos en
 /// beforeAll/afterAll para no dejar la partida real de la jugadora con población o cooldown
 /// alterados tras correr los tests.
-const { recolectarRoutes, candidateSourcesFor } = await import('./recolectar.js');
+const { recolectarRoutes, candidateSourcesFor, gatheringRollFor, applyGatheringRoll } = await import('./recolectar.js');
+const { estacionFor, climaFor } = await import('../../services/worldClock.js');
 
 async function buildApp() {
   const app = Fastify();
@@ -208,15 +210,26 @@ describe('Pescador (PESCA/BUSQUEDA) contra el catálogo real sembrado', () => {
     await prisma.save.delete({ where: { id: saveId } });
   });
 
+  // Fase 4 (2026-09-28) retira `POST /recolectar/:oficio/explorar` (sin llamador — Pescar ya no
+  // tiene botón, solo se pesca desde el mapa de la zona vía `dynamicModeRecurso.ts`) — mismo
+  // camino real que ese router: `candidateSourcesFor` + `gatheringRollFor` + `applyGatheringRoll`
+  // llamados directamente, sin pasar por ninguna ruta HTTP.
   it('Explorar con Pescar localiza peces reales de la costa (jashil/negueo/toluh), no marisco', async () => {
-    const app = await buildApp();
+    const save = await prisma.save.findUniqueOrThrow({
+      where: { id: saveId },
+      include: { inventoryItems: { where: { slot: { not: null } }, select: { statBonuses: true } }, professionProgress: { select: { professionId: true, nivel: true } } },
+    });
+    const estacionActual = estacionFor(480);
+    const climaActual = climaFor(480, 'Las Llanuras del Viento Rojo');
+    const { candidates } = await candidateSourcesFor(worldId, 'PESCA', 'Las Llanuras del Viento Rojo', playaLocationId, 'playa-de-ceniza-blanca', estacionActual, climaActual, 7);
+    const roll = gatheringRollFor(
+      { attributes: save.attributes as AttributeBlock, secondaryAttributesJson: save.secondaryAttributes, inventoryItems: save.inventoryItems, professionProgress: save.professionProgress },
+      'pescador-pescar',
+    );
+    const sources = applyGatheringRoll(candidates, roll);
 
-    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/recolectar/pescador-pescar/explorar` });
-
-    expect(res.statusCode).toBe(200);
-    const body = JSON.parse(res.body);
-    expect(body.sources.length).toBeGreaterThan(0);
-    const itemSlugs = body.sources.flatMap((s: { yields: { itemSlug: string }[] }) => s.yields.map((y) => y.itemSlug));
+    expect(sources.length).toBeGreaterThan(0);
+    const itemSlugs = sources.flatMap((s) => s.yields.map((y) => y.itemSlug));
     expect(itemSlugs.every((slug: string) => ['carne-jashil', 'carne-negueo', 'carne-toluh', 'escamas-toluh'].includes(slug))).toBe(true);
     expect(itemSlugs).not.toContain('bulco-arena-marisco');
   }, 15_000);
@@ -242,15 +255,24 @@ describe('Pescador (PESCA/BUSQUEDA) contra el catálogo real sembrado', () => {
     expect(ceboRow.name).toBe('Cebo (4)');
   }, 15_000);
 
+  // Fase 4 (2026-09-28) — ver comentario del test de Pescar arriba (mismo motivo, mismo camino
+  // directo contra `candidateSourcesFor`/`gatheringRollFor`/`applyGatheringRoll`).
   it('Explorar con Buscar localiza marisco (bulco-arena-marisco), no peces', async () => {
-    const app = await buildApp();
+    const save = await prisma.save.findUniqueOrThrow({
+      where: { id: saveId },
+      include: { inventoryItems: { where: { slot: { not: null } }, select: { statBonuses: true } }, professionProgress: { select: { professionId: true, nivel: true } } },
+    });
+    const estacionActual = estacionFor(480);
+    const climaActual = climaFor(480, 'Las Llanuras del Viento Rojo');
+    const { candidates } = await candidateSourcesFor(worldId, 'BUSQUEDA', 'Las Llanuras del Viento Rojo', playaLocationId, 'playa-de-ceniza-blanca', estacionActual, climaActual, 7);
+    const roll = gatheringRollFor(
+      { attributes: save.attributes as AttributeBlock, secondaryAttributesJson: save.secondaryAttributes, inventoryItems: save.inventoryItems, professionProgress: save.professionProgress },
+      'pescador-buscar',
+    );
+    const sources = applyGatheringRoll(candidates, roll);
 
-    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/recolectar/pescador-buscar/explorar` });
-
-    expect(res.statusCode).toBe(200);
-    const body = JSON.parse(res.body);
-    expect(body.sources.length).toBeGreaterThan(0);
-    const itemSlugs = body.sources.flatMap((s: { yields: { itemSlug: string }[] }) => s.yields.map((y) => y.itemSlug));
+    expect(sources.length).toBeGreaterThan(0);
+    const itemSlugs = sources.flatMap((s) => s.yields.map((y) => y.itemSlug));
     expect(itemSlugs).toEqual(['bulco-arena-marisco']);
   }, 15_000);
 

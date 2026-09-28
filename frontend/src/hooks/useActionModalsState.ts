@@ -24,7 +24,6 @@ export function useActionModalsState() {
   function checkCarcassPending(hasSourcesNow: boolean) {
     setCarcassPending(hasSourcesNow)
   }
-  const [huntModalOpen, setHuntModalOpen] = useState(false)
   const [simpleModal, setSimpleModal] = useState<'camp' | 'travel' | null>(null)
   const [saquearZonaModalOpen, setSaquearZonaModalOpen] = useState(false)
   const [healModalOpen, setHealModalOpen] = useState(false)
@@ -52,7 +51,6 @@ export function useActionModalsState() {
   /// viven fuera de aquí, el caller los combina antes de decidir si abre uno nuevo.
   const anyActionModalOpen = Boolean(
     harvestModal ||
-      huntModalOpen ||
       simpleModal ||
       saquearZonaModalOpen ||
       healModalOpen ||
@@ -69,8 +67,6 @@ export function useActionModalsState() {
     carcassPending,
     markCarcassPending,
     checkCarcassPending,
-    huntModalOpen,
-    setHuntModalOpen,
     simpleModal,
     setSimpleModal,
     saquearZonaModalOpen,

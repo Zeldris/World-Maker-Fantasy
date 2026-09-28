@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { HarvestSourceCandidate, InventoryItemInfo, GatheringRollInfo } from '../types'
-import { getRecolectarLocalizado, explorarRecolectar, confirmarRecoleccion } from '../lib/api'
+import { getRecolectarLocalizado, confirmarRecoleccion } from '../lib/api'
 import { SelectionModalShell, confirmButtonClasses } from './SelectionModalShell'
 import { useAsyncModalData } from '../hooks/useAsyncModalData'
 import { GatheringDiceReveal } from './GatheringDiceReveal'
@@ -54,10 +54,8 @@ export function HarvestSelectionModal({
   onCancel,
   highlightSourceSlug,
 }: HarvestSelectionModalProps) {
-  const [exploring, setExploring] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [sources, setSources] = useState<HarvestSourceCandidate[]>([])
-  const [puedeExplorar, setPuedeExplorar] = useState(false)
   // Cooldown real por fuente (bug real jugando en vivo, 2026-08-07: "puedo minar indefinidamente
   // sin moverme de la zona") — distingue "no hay nada aquí" de "lo que hay está agotado por
   // ahora", para no invitar a "Explorar" algo que ya se sabe que sigue en cooldown.
@@ -76,7 +74,6 @@ export function HarvestSelectionModal({
     () => getRecolectarLocalizado(saveId, oficio),
     (res) => {
       setSources(res.sources)
-      setPuedeExplorar(res.puedeExplorar)
       setEnCooldown(!!res.enCooldown)
       setRoll(res.roll)
       setRevealed(!res.roll)
@@ -84,23 +81,6 @@ export function HarvestSelectionModal({
     'No se pudo comprobar qué hay en la zona.',
     [saveId, oficio],
   )
-
-  async function handleExplorar() {
-    setExploring(true)
-    setError(null)
-    try {
-      const res = await explorarRecolectar(saveId, oficio)
-      setSources(res.sources)
-      setPuedeExplorar(false)
-      setEnCooldown(!!res.enCooldown)
-      setRoll(res.roll)
-      setRevealed(!res.roll)
-    } catch {
-      setError('No se pudo explorar la zona.')
-    } finally {
-      setExploring(false)
-    }
-  }
 
   const totalSeleccionado = Object.values(selections).reduce((sum, n) => sum + n, 0)
   const espacioLibre = Math.max(0, inventoryCapacity - inventoryUsed)
@@ -158,17 +138,6 @@ export function HarvestSelectionModal({
           <div className="flex flex-col items-center gap-2">
             {revealed && <p className="text-xs text-wood-400">La tirada no fue suficiente — no encuentras nada esta vez.</p>}
             <GatheringDiceReveal roll={roll} oficioLabel={oficioLabel} onLanded={() => setRevealed(true)} />
-          </div>
-        ) : puedeExplorar ? (
-          <div className="flex flex-col items-start gap-2">
-            <p className="text-xs text-wood-400">No has localizado nada todavía en esta zona.</p>
-            <button type="button"
-              onClick={handleExplorar}
-              disabled={exploring}
-              className="tactile rounded-lg border border-accent-600/60 px-3 py-1.5 text-xs text-accent-300 transition-colors hover:bg-accent-500/10 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {exploring ? 'Explorando...' : '🔍 Explorar'}
-            </button>
           </div>
         ) : (
           <p className="text-xs text-wood-500">No hay nada recolectable con este oficio en esta región ahora mismo.</p>

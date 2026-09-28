@@ -88,10 +88,10 @@ interface LogPanelProps {
   /// criterio opcional que `onInteractuarModoDinamico`, un solo callback para cualquier opción
   /// (incluida "Salir"), a diferencia de aceptar/cancelar de misión.
   onChooseNpcInteraction?: (entryId: string, npcSlug: string, opcion: string) => void
-  /// Recolección redirigida al modal real (Pieza 6d, 2026-09-03, `entry.harvestSuggestion`) —
-  /// mismo criterio opcional que `onInteractuarModoDinamico`. Sin botón "Ignorar" (a diferencia de
-  /// `dynamicModeOffer`): el mensaje ya narra el rechazo, este botón es pura comodidad.
-  onOpenHarvestSuggestion?: (oficio: string, abilityLabel: string, highlightSourceSlug: string) => void
+  /// Recolección por texto libre redirigida al mapa de la zona (Pieza 6d 2026-09-03; Fase 4
+  /// 2026-09-28, `entry.harvestSuggestion`) — abre el modal de movimiento (🧭). Sin "Ignorar": el
+  /// mensaje ya narra el rechazo, este botón es pura comodidad.
+  onOpenHarvestSuggestion?: () => void
   /// CONVALECIENTE deja de ser "victoria automática" (2026-08-26) — `combatNpcsDisplay` es el
   /// mismo estado en vivo que ya usa CombatPanel.tsx (useCombatFlow.ts). Antes solo se usaba para
   /// saber si un `entry.convalecienteOffers` concreto ya se había resuelto; desde el fix del
@@ -572,28 +572,15 @@ export const LogPanel = memo(function LogPanel({
                   }))}
                 />
               )}
-              {/* Recolección por texto libre redirigida al modal real (Pieza 6d, 2026-09-03,
-                  "mundo determinista, el narrador solo narra") — mismo patrón que `dynamicModeOffer`
-                  pero con un único botón (el mensaje ya narra el rechazo, sin nada más pendiente
-                  que decidir). Abre HarvestSelectionModal con la fuente citada ya priorizada. */}
+              {/* Recolección por texto libre redirigida al mapa (Pieza 6d 2026-09-03; Fase 4
+                  2026-09-28) — un único botón que abre el modal de movimiento de zona. */}
               {entry.harvestSuggestion && (
                 <OfferCard
                   tone="accent2"
-                  icon="⛏️"
-                  title={`Usa la habilidad ${entry.harvestSuggestion.abilityLabel}`}
-                  subtitle="Así se aplica de verdad la tirada, la herramienta y todo lo demás."
-                  actions={[
-                    {
-                      label: entry.harvestSuggestion.abilityLabel,
-                      tone: 'primary',
-                      onClick: () =>
-                        onOpenHarvestSuggestion?.(
-                          entry.harvestSuggestion!.oficio,
-                          entry.harvestSuggestion!.abilityLabel,
-                          entry.harvestSuggestion!.highlightSourceSlug,
-                        ),
-                    },
-                  ]}
+                  icon="🧭"
+                  title={`Busca ${entry.harvestSuggestion.sourceName} en el mapa de la zona`}
+                  subtitle="Acércate hasta ello en el mapa y elige Interactuar al llegar."
+                  actions={[{ label: 'Abrir mapa de la zona', tone: 'primary', onClick: () => onOpenHarvestSuggestion?.() }]}
                 />
               )}
               {/* CONVALECIENTE deja de ser "victoria automática" (2026-08-26, petición explícita)

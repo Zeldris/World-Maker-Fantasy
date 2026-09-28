@@ -4842,20 +4842,20 @@ describe('Mundo determinista (Pieza 6): crafteo/construcción/viaje/recolección
     expect(body.blocked).toBeUndefined();
   });
 
-  it('recolección de terreno por texto libre (verbo+fuente real de TALA): bloquea con mensaje determinista + harvestSuggestion (botón "Talar"), sin crear ningún InventoryItem', async () => {
+  it('recolección de terreno por texto libre (verbo+fuente real de TALA): bloquea con mensaje determinista + harvestSuggestion (botón al mapa de la zona), sin crear ningún InventoryItem', async () => {
     narrateAction.mockClear();
     const app = await buildApp();
     const action = 'Talo el matorral de cuerno para sacar leña.';
     const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
     expect(classifyRes.statusCode).toBe(200);
     const body = classifyRes.json() as {
-      blocked?: { narration: string; harvestSuggestion?: { oficio: string; abilityLabel: string; highlightSourceSlug: string } };
+      blocked?: { narration: string; harvestSuggestion?: { sourceName: string } };
     };
 
     expect(narrateAction).not.toHaveBeenCalled();
     expect(typeof body.blocked?.narration).toBe('string');
     expect(body.blocked!.narration.length).toBeGreaterThan(0);
-    expect(body.blocked!.harvestSuggestion).toEqual({ oficio: 'talador', abilityLabel: 'Talar', highlightSourceSlug: 'matorral-de-cuerno' });
+    expect(body.blocked!.harvestSuggestion).toEqual({ sourceName: expect.stringMatching(/matorral/i) });
     const items = await prisma.inventoryItem.findMany({ where: { saveId } });
     expect(items).toEqual([]);
   });

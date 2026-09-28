@@ -271,8 +271,8 @@ describe('handleSubmit — caminos que no llegan a narrar', () => {
     mockClassify.mockResolvedValueOnce(
       baseClassifyResponse({
         blocked: {
-          narration: 'Mejor usa la habilidad Talar.',
-          harvestSuggestion: { oficio: 'talador', abilityLabel: 'Talar', highlightSourceSlug: 'matorral-de-cuerno' },
+          narration: 'Busca el matorral de cuerno en el mapa de la zona.',
+          harvestSuggestion: { sourceName: 'matorral de cuerno' },
         },
       }),
     )
@@ -281,7 +281,7 @@ describe('handleSubmit — caminos que no llegan a narrar', () => {
     await act(() => result.current.turn.handleSubmit('Talo el matorral de cuerno.'))
 
     const last = result.current.characterLog.at(-1)
-    expect(last?.harvestSuggestion).toEqual({ oficio: 'talador', abilityLabel: 'Talar', highlightSourceSlug: 'matorral-de-cuerno' })
+    expect(last?.harvestSuggestion).toEqual({ sourceName: 'matorral de cuerno' })
   })
 
   it('transit: recarga la partida entera (banda extendida/larga resuelta en diferido)', async () => {

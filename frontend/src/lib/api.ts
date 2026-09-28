@@ -26,7 +26,6 @@ import type {
   NpcInSceneInfo,
   HarvestSourceCandidate,
   GatheringRollInfo,
-  HuntCandidate,
   ParcelaDetailInfo,
   PostCombatInteractionInfo,
   PlantillaEquipoInfo,
@@ -108,7 +107,7 @@ export interface ClassifyResponse {
   // `harvestSuggestion` (Pieza 6d, 2026-09-03, "mundo determinista"): presente solo cuando el
   // bloqueo fue por citar una fuente real de recolección de terreno por texto libre en vez de usar
   // la habilidad — botón real que abre HarvestSelectionModal con la fuente ya priorizada.
-  blocked?: { narration: string; harvestSuggestion?: { oficio: string; abilityLabel: string; highlightSourceSlug: string } }
+  blocked?: { narration: string; harvestSuggestion?: { sourceName: string } }
   // Interacción con un NPC/fauna ya convaleciente o muerto, fuera de combate (docs/19-post-combate-
   // y-recompensas-mision.md pieza 2) — el turno tampoco llega a /turn/narrate aquí, pero a
   // diferencia de `blocked` no es una violación: el frontend abre el panel mecánico (Saquear/
@@ -991,17 +990,6 @@ export async function getRecolectarLocalizado(
   return fetchJson(`${API_URL}/saves/${saveId}/recolectar/${oficio}`)
 }
 
-/// Botón "Explorar" del pop-up — determinista en QUÉ hay (WorldPopulation/terreno/región), pero
-/// desde el rediseño de recolección (2026-08-22) su margen sobre la dificultad de cada recurso
-/// decide si aparece y con cuánta cantidad — `roll` solo falta si no había ningún candidato real
-/// que tirar (nada que descubrir, ni con suerte).
-export async function explorarRecolectar(
-  saveId: string,
-  oficio: string,
-): Promise<{ sources: HarvestSourceCandidate[]; enCooldown?: boolean; roll?: GatheringRollInfo }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/recolectar/${oficio}/explorar`, { method: 'POST' })
-}
-
 /// Confirmar selección del pop-up de recolección (cantidades parciales, no todo-o-nada).
 export async function confirmarRecoleccion(
   saveId: string,
@@ -1027,13 +1015,6 @@ export async function confirmarRecoleccion(
 /// solo a partir del `saveId`.
 export async function requestSuggestions(saveId: string): Promise<{ suggestions: string[] }> {
   return fetchJson(`${API_URL}/saves/${saveId}/suggestions`, { method: 'POST' })
-}
-
-/// Habilidad "Cazar" (revisión de partida 2026-08-08) — fauna YA LOCALIZADA en la zona ahora
-/// mismo, para el pop-up de selección (HuntSelectionModal). `puedeExplorar` = no hay nada
-/// localizado todavía en esta visita, mismo patrón de dos pasos que recolección.
-export async function getCazarCandidatos(saveId: string): Promise<{ candidates: HuntCandidate[]; puedeExplorar: boolean }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/cazar`)
 }
 
 /// Paneles nuevos (2026-08-17, comentarios de startingAbilities.ts): "Volver al campamento",
@@ -1267,15 +1248,6 @@ export async function moverEnZona(saveId: string, destino: { x: number; y: numbe
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ destino }),
   })
-}
-
-/// Botón "Explorar" del pop-up de caza — determinista, sin gastar turno, pero con una tirada real
-/// de qué se encuentra: puede no salir nada, igual que explorar en busca de recursos.
-/// `vacioReal` (bug real jugando en vivo, 2026-09-03) distingue "de verdad no hay fauna aquí ahora
-/// mismo" (`true`) de "solo falló la tirada de avistamiento esta vez" (`false`, invita a
-/// reintentar) — antes ambos casos eran indistinguibles en la respuesta.
-export async function explorarCaza(saveId: string): Promise<{ candidates: HuntCandidate[]; vacioReal: boolean }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/cazar/explorar`, { method: 'POST' })
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1653,28 +1625,16 @@ export async function getFactionRelations(worldSlug: string, saveId?: string): P
   return fetchJson(`${API_URL}/world/${worldSlug}/faction-relations${query}`)
 }
 
-/// Confirmar selección del pop-up de caza. Con una única presa débil puede resolverse sin combate
-/// (`resuelveSinCombate: true`, ver `combate`) — en cualquier otro caso (varias presas, una sola
-/// no lo bastante débil, o la propia tirada de caza limpia falla) esta llamada NO abre combate ni
-/// toca nada de la partida: solo devuelve `actionText`, que el llamador debe mandar por el turno
-/// normal (`handleSubmit` en GameView.tsx) para que la narración real sea quien lo abra — decisión
-/// explícita de la usuaria: "cazar sí que fuerza una narración cuando eliges objetivos y esa
-/// narración inicia el combate".
-/// `cantidades` (caza en grupo, 2026-08-13, petición explícita: "el jugador primero debe marcar
-/// contra cuantos quiere combatir") — cuántos individuos de CADA especie quiere comprometer al
-/// combate, solo relevante para especies con `avistados > 1`; el backend tira un dado sobre esto
-/// (puede salir algo distinto, ver `groupVarianceClause`), nunca es un número garantizado.
+/// Resultado de la caza desde la zona (`cazarEnZona`, más abajo). Con una única presa débil puede
+/// resolverse sin combate (`resuelveSinCombate: true`, ver `combate`) — en cualquier otro caso
+/// (varias presas, una sola no lo bastante débil, o la propia tirada de caza limpia falla) esta
+/// llamada NO abre combate ni toca nada de la partida: solo devuelve `actionText`, que el llamador
+/// debe mandar por el turno normal (`handleSubmit` en GameView.tsx) para que la narración real sea
+/// quien lo abra — decisión explícita de la usuaria: "cazar sí que fuerza una narración cuando
+/// eliges objetivos y esa narración inicia el combate".
 export type ConfirmarCazaResultado =
   | { resuelveSinCombate: true; exito: true; combate: { npcs: NpcInSceneInfo[] }; logEntry: { id: string; text: string; timeLabel: string; createdAt: string } }
   | { resuelveSinCombate: false; exito: false | null; actionText: string }
-
-export async function confirmarCaza(saveId: string, slugs: string[], cantidades?: Record<string, number>): Promise<ConfirmarCazaResultado> {
-  return fetchJson(`${API_URL}/saves/${saveId}/cazar/confirmar`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ slugs, cantidades }),
-  })
-}
 
 /// Cazar desde la tarjeta de encuentro de zona (Fase 2, 2026-09-28,
 /// `plan-mecanicas-por-zona-2026-09-28.md`) — caza EXACTAMENTE el grupo con el que se ha

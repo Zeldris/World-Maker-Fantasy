@@ -9,31 +9,32 @@ import {
 } from './harvestAbilities.js';
 
 describe('harvestAbilityUnlocksFor', () => {
-  it('desbloquea Minar/Talar/Desollar a nivel 1 por prefijo de oficio, con o sin variante raza+región', () => {
-    expect(harvestAbilityUnlocksFor('minero-llanuras', 1).map((a) => a.name)).toEqual(['Minar']);
-    expect(harvestAbilityUnlocksFor('talador-cristal', 1).map((a) => a.name)).toEqual(['Talar']);
+  // Fase 4 (2026-09-28, `plan-mecanicas-por-zona-2026-09-28.md`, B25) — Minar/Talar/Recolectar
+  // hierbas/Pescar/Buscar dejan de existir como botón: aprender esos oficios ya NO concede ninguna
+  // `StartingAbility` (la acción se hace desde el mapa de zona, `dynamicModeRecurso.ts`). Solo
+  // Desollar (metodo CAZA) sigue concediéndose — aviso pasivo real en la escena.
+  it('desbloquea Desollar a nivel 1, pero YA NO Minar/Talar (Fase 4)', () => {
+    expect(harvestAbilityUnlocksFor('minero-llanuras', 1)).toEqual([]);
+    expect(harvestAbilityUnlocksFor('talador-cristal', 1)).toEqual([]);
     expect(harvestAbilityUnlocksFor('desollador-orcos-llanuras', 1).map((a) => a.name)).toEqual(['Desollar']);
   });
 
-  // Bug real jugando en vivo (2026-08-13, "no veo la habilidad de recolección para herborista"):
-  // la profesión y el catálogo ya existían, pero herborista nunca estuvo en HARVEST_ABILITIES —
-  // mismo hueco que ya se cerró antes para desollador.
-  it('desbloquea Recolectar hierbas a nivel 1 para herborista', () => {
-    expect(harvestAbilityUnlocksFor('herborista-orcos-llanuras', 1).map((a) => a.name)).toEqual(['Recolectar hierbas']);
+  it('ya NO desbloquea Recolectar hierbas para herborista (Fase 4)', () => {
+    expect(harvestAbilityUnlocksFor('herborista-orcos-llanuras', 1)).toEqual([]);
   });
 
   it('nunca desbloquea nada fuera del nivel 1 (no hay tiers superiores en recolectoras)', () => {
-    expect(harvestAbilityUnlocksFor('minero-llanuras', 2)).toEqual([]);
+    expect(harvestAbilityUnlocksFor('desollador-orcos-llanuras', 2)).toEqual([]);
   });
 
   it('un oficio creador (no recolector) no desbloquea nada aquí', () => {
     expect(harvestAbilityUnlocksFor('herrero-orco-llanuras', 1)).toEqual([]);
   });
 
-  // Pescador (2026-09-02) — profesión universal (sin sufijo raza/región): aprenderla a nivel 1
-  // concede Pescar Y Buscar A LA VEZ, las dos entradas que comparten `oficio: 'pescador'`.
-  it('desbloquea Pescar y Buscar juntas a nivel 1 para pescador', () => {
-    expect(harvestAbilityUnlocksFor('pescador', 1).map((a) => a.name)).toEqual(['Pescar', 'Buscar']);
+  // Pescador (2026-09-02) — profesión universal (sin sufijo raza/región). Ya NO concede Pescar/
+  // Buscar (Fase 4): esas dos entradas comparten `oficio: 'pescador'`, metodo PESCA/BUSQUEDA.
+  it('ya NO desbloquea Pescar/Buscar para pescador (Fase 4)', () => {
+    expect(harvestAbilityUnlocksFor('pescador', 1)).toEqual([]);
   });
 });
 

@@ -36,6 +36,18 @@ export function hasBaseSkillBar(existing: { slotIndex: number }[]): boolean {
   return existing.some((b) => b.slotIndex === 0);
 }
 
+/// B20 (pruebas en la nube 2026-09-28): una partida nueva abría con "Barra 1 (0)" y un jugador
+/// nuevo no veía ninguna acción. La barra base nace con las generales de uso diario que la partida
+/// ya tenga (en este orden); las de recolección/caza se retiraron en la Fase 4 (se hacen desde el
+/// mapa de la zona).
+export const BASE_SKILL_BAR_DEFAULTS = ['Descansar', 'Comer/Beber', 'Curar', 'Volver al campamento', 'Entregar'];
+
+/// Puro: nombres de `BASE_SKILL_BAR_DEFAULTS` que la partida tiene de verdad.
+export function defaultBaseSkillBarAbilities(savedActionNames: string[]): string[] {
+  const tiene = new Set(savedActionNames);
+  return BASE_SKILL_BAR_DEFAULTS.filter((n) => tiene.has(n));
+}
+
 /// Puro: el próximo `slotIndex` libre (0-2) para una nueva barra del save, o `null` si ya hay
 /// `SKILL_BARS_MAX` (tope alcanzado).
 export function nextFreeSkillBarSlot(existingSlotIndexes: number[]): number | null {

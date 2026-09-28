@@ -50,7 +50,6 @@ import { REINO_ABILITY_RECIPE_KEY } from '../data/reinoRecipes'
 import { PostCombatInteractionModal } from '../components/PostCombatInteractionModal'
 import { DynamicModeModal } from '../components/DynamicModeModal'
 import { ZonaMovimientoModal } from '../components/ZonaMovimientoModal'
-import { HuntSelectionModal } from '../components/HuntSelectionModal'
 import { CampSelectionModal } from '../components/CampSelectionModal'
 import { TravelDestinationModal } from '../components/TravelDestinationModal'
 import { SaquearZonaModal } from '../components/SaquearZonaModal'
@@ -101,6 +100,7 @@ import { characterWaitingFlavor, combatWaitingFlavor, worldWaitingFlavor, useRot
 import { formatCountdown, formatFictionalDuration, applyInventoryDelta, combatKeyFor, questCompletedLogEntry } from '../lib/gameViewHelpers'
 import { ESTACION_ICON, CLIMA_ICON } from '../lib/entorno'
 import { ABILITIES_REQUIEREN_MONTURA } from '../lib/abilitiesRequierenMontura'
+import { sinHabilidadesRetiradas } from '../lib/abilitiesRetiradasFase4'
 import type {
   ActiveEffect,
   Attribute,
@@ -223,8 +223,6 @@ export function GameView() {
     carcassPending,
     markCarcassPending,
     checkCarcassPending,
-    huntModalOpen,
-    setHuntModalOpen,
     simpleModal,
     setSimpleModal,
     saquearZonaModalOpen,
@@ -616,7 +614,7 @@ export function GameView() {
     setBusyUntil(save.transit?.busyUntil ?? null)
     setBusyActivity(save.transit?.activity ?? null)
     setBusyDuracionMinutos(save.transit?.duracionMinutos ?? null)
-    setSavedActions(save.savedActions)
+    setSavedActions(sinHabilidadesRetiradas(save.savedActions))
     setActiveCombatAbilityNames(save.activeCombatAbilityNames)
     setSkillBars(save.skillBars)
     // Barras de habilidades múltiples (2026-09-04) — recuerda qué barra se veía en el HUD entre
@@ -1260,14 +1258,8 @@ export function GameView() {
   // Desollar pasa a pasiva (2026-08-25, ver comentario completo junto a `carcassPending` arriba) —
   // ya no abre este pop-up desde un clic en Habilidades, así que sale de este mapa; el mismo
   // `HarvestSelectionModal` se sigue reutilizando tal cual, ahora abierto desde el aviso de escena.
-  const HARVEST_ABILITY_OFICIO: Record<string, string> = {
-    Minar: 'minero',
-    Talar: 'talador',
-    'Recolectar hierbas': 'herborista',
-    Recoger: 'recolector-general',
-  }
 
-  // Paneles nuevos (2026-08-17) — mismo patrón que HARVEST_ABILITY_OFICIO: pop-up de selección
+  // Paneles nuevos (2026-08-17) — pop-up de selección
   // real en vez del `promptText` incompleto que llevaban estas 2 habilidades desde su alta
   // original. "Saquear"/"Curar" no están aquí porque su confirmación es una forma distinta (manda
   // `lootItemNames`/`healItemUses` además del texto), ver `saquearZonaModalOpen`/`healModalOpen`.
@@ -1276,14 +1268,13 @@ export function GameView() {
     Viajar: 'travel',
   }
 
-  // Recolección por texto libre redirigida al modal real (Pieza 6d, 2026-09-03) — el botón de
-  // `entry.harvestSuggestion` en el log llama directamente aquí, sin pasar por ninguna API (el
-  // guard ya bloqueó el turno; esto solo abre el mismo modal que usa el resto de habilidades de
-  // oficio recolector, con la fuente citada por el jugador ya priorizada).
-  function handleOpenHarvestSuggestion(oficio: string, abilityLabel: string, highlightSourceSlug: string) {
+  // Recolección por texto libre redirigida al mapa (Pieza 6d 2026-09-03; Fase 4 2026-09-28: las
+  // habilidades de recolección se retiraron, todo se recolecta/caza desde la zona) — el botón de
+  // `entry.harvestSuggestion` en el log abre el modal de movimiento de zona (🧭).
+  function handleOpenHarvestSuggestion() {
     if (anyModalOpen) return
-    setHarvestModal({ oficio, label: abilityLabel, highlightSourceSlug })
     setActivePanel(null)
+    setZonaModalOpen(true)
   }
 
   function handleAttachAbility(ability: SavedActionInfo) {
@@ -1295,19 +1286,6 @@ export function GameView() {
     // ABILITIES_REQUIEREN_MONTURA), esto solo evita que un caller futuro que no pase por esos
     // componentes (o un bug de disabled) llegue a abrir el viaje real de todos modos.
     if (ABILITIES_REQUIEREN_MONTURA.has(ability.name)) return
-    const oficio = HARVEST_ABILITY_OFICIO[ability.name]
-    if (oficio) {
-      setHarvestModal({ oficio, label: ability.name })
-      setActivePanel(null)
-      return
-    }
-    // "Cazar" (revisión de partida 2026-08-08) — mismo patrón que Minar/Talar: abre un pop-up en
-    // vez de mandar `promptText` directo al composer.
-    if (ability.name === 'Cazar') {
-      setHuntModalOpen(true)
-      setActivePanel(null)
-      return
-    }
     const simpleModalKind = SIMPLE_MODAL_ABILITY[ability.name]
     if (simpleModalKind) {
       setSimpleModal(simpleModalKind)
@@ -1441,7 +1419,6 @@ export function GameView() {
         }
       | { resuelveSinCombate: false; actionText: string },
   ) {
-    setHuntModalOpen(false)
     if (result.resuelveSinCombate) {
       setCharacterLog((prev) => [...prev, { ...result.logEntry, channel: 'character' }])
       setCombateIniciado(result.combate)
@@ -2397,9 +2374,6 @@ export function GameView() {
         />
       )}
 
-      {huntModalOpen && saveId && (
-        <HuntSelectionModal saveId={saveId} onResuelto={handleHuntResolved} onCancel={() => setHuntModalOpen(false)} />
-      )}
 
       {simpleModal === 'camp' && saveId && (
         <CampSelectionModal saveId={saveId} onSelect={handleSimpleModalSelect} onCancel={closeSimpleModal} />

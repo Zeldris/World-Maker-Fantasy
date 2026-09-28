@@ -3,6 +3,7 @@ import {
   SKILL_BAR_SLOTS,
   SKILL_BARS_MAX,
   sanitizeSkillBarAbilityNames,
+  defaultBaseSkillBarAbilities,
   hasBaseSkillBar,
   nextFreeSkillBarSlot,
   type SkillBarAbilityLike,
@@ -75,5 +76,14 @@ describe('nextFreeSkillBarSlot', () => {
 
   it('no depende del orden de la lista de ocupados', () => {
     expect(nextFreeSkillBarSlot([2, 0])).toBe(1);
+  });
+});
+
+describe('defaultBaseSkillBarAbilities (B20)', () => {
+  it('rellena la barra base con las generales que la partida tiene, en orden fijo', () => {
+    expect(defaultBaseSkillBarAbilities(['Curar', 'Saquear', 'Descansar', 'Cazar'])).toEqual(['Descansar', 'Curar']);
+  });
+  it('nunca incluye habilidades retiradas en la Fase 4 ni inventa las que no existen', () => {
+    expect(defaultBaseSkillBarAbilities(['Cazar', 'Minar'])).toEqual([]);
   });
 });

@@ -122,26 +122,14 @@ const GORHORN_GENERAL_ABILITIES: StartingAbility[] = [
     promptText: 'Registro y saqueo el cuerpo que tengo delante, sea un enemigo derrotado o una presa cazada, en busca de todo lo que pueda aprovechar.',
     category: 'general',
   },
-  // Decisión (2026-08-17): se queda como habilidad general, no se convierte en profesión —
-  // cerrar el acceso a cazar tras un oficio es un cambio de balance/economía mayor que lo que
-  // pide resolver este comentario. Si en el futuro se quiere diferenciar cazadores buenos de
-  // malos, mejor un bonus de oficio sobre la tirada (mismo criterio que el resto de oficios) que
-  // restringir quién puede cazar en absoluto.
-  {
-    name: 'Cazar',
-    icon: '🏹',
-    // Bug real jugando en vivo (revisión de partida 2026-08-08: "buscar presas... eso no va, sale
-    // un pequeño raposa que desaparece sin más"): el texto libre nunca conectaba de forma fiable
-    // con la fauna real del catálogo (dependía de una sugerencia ambiental opcional al 25%, ajena
-    // a que el jugador estuviera cazando de verdad). Mismo criterio que Minar/Talar
-    // (harvestAbilities.ts): en vez de reforzar la detección de texto libre, abre un pop-up
-    // (HuntSelectionModal) con la fauna real y con población activa en la zona ahora mismo —
-    // `promptText` no se usa nunca (GameView.tsx intercepta por nombre antes de llegar al
-    // composer), se deja por consistencia con el resto de `StartingAbility`.
-    description: 'Busca fauna real de la zona para cazarla — una presa débil puede caer sin pelear, varias a la vez siempre exigen combate.',
-    promptText: 'Salgo a cazar por la zona.',
-    category: 'general',
-  },
+  // "Cazar" RETIRADA de la barra General (Fase 4, 2026-09-28,
+  // `plan-mecanicas-por-zona-2026-09-28.md`, B25 — "dos sistemas paralelos que no casan": el
+  // pop-up (HuntSelectionModal) buscaba por POBLACIÓN REGIONAL, sin mirar el mapa de zona, así
+  // que podía ofrecer fauna que no estaba en el mapa e ignorar la que sí lo estaba). Cazar solo se
+  // dispara ya desde la tarjeta de encuentro de la zona (`POST /saves/:id/zona/cazar`,
+  // `services/caza.ts`) — ver `ABILITIES_RETIRADAS_FASE4` en el frontend
+  // (`abilitiesRetiradasFase4.ts`) para partidas ya existentes que sembraron esta habilidad antes
+  // del cambio (se ocultan, nunca se borran).
   // Panel de selección (2026-08-17, mismo patrón que Cazar) — lista los curativos del inventario
   // con vista previa acumulada del resultado final antes de confirmar (HealSelectionModal.tsx);
   // bloqueado si ya estás ILESO — no deja seguir gastando objetos sin necesidad.
@@ -163,21 +151,11 @@ const GORHORN_GENERAL_ABILITIES: StartingAbility[] = [
     promptText: 'Como y bebo algo antes de seguir.',
     category: 'general',
   },
-  // "Recoger" (2026-08-25, retira el descubrimiento de texto libre — ver discovery.ts) — objetos
-  // narrativos, no recursos de oficio (criterio explícito de la usuaria: "si son recursos solo se
-  // puede recoger con profesiones, si son items entonces con este recoger"). Panel real
-  // (HarvestSelectionModal.tsx, mismo componente que Minar/Talar/Herborista), sin tirada — ver
-  // pasivoCandidatesFor (recolectar.ts). Mismo texto/icono que la entrada gemela en
-  // HARVEST_ABILITIES (harvestAbilities.ts) — esa solo existe para el enrutado de
-  // metodoForOficio/attributeForOficio, nunca concede la habilidad de verdad (no hay ningún
-  // "oficio" 'recolector-general' real que la desbloquee) — la concesión real es esta de aquí.
-  {
-    name: 'Recoger',
-    icon: '🖐️',
-    description: 'Recoge objetos que veas por la zona — sin tirada, solo si de verdad están ahí.',
-    promptText: 'Recojo lo que encuentro por la zona.',
-    category: 'general',
-  },
+  // "Recoger" RETIRADA de la barra General (Fase 4, 2026-09-28) — mismo criterio que Cazar/Minar/
+  // Talar: recoger objetos narrativos de la zona solo se hace ya desde el mapa (RECURSO PASIVO →
+  // Interactuar). La entrada gemela en HARVEST_ABILITIES (harvestAbilities.ts, oficio
+  // 'recolector-general') se queda solo para el enrutado de metodoForOficio/attributeForOficio que
+  // sigue usando `dynamicModeRecurso.ts` — nunca concedió esta habilidad de botón por sí misma.
   // Entregar un objeto a un NPC (2026-08-31, mecánica real — antes solo existía la mitigación de
   // coherencia hasFalseItemGivenAway, narrador.ts: bloqueaba que la narración PROMETIERA una
   // entrega, sin ningún camino real de cumplirla). Panel de selección (mismo patrón que Curar/

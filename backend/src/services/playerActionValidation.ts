@@ -605,11 +605,9 @@ export async function detectsHarvestSkillMisuseClaim(action: string, worldId: st
 /// esta familia, no insiste en "no existe"/"no está aquí" — la fuente SÍ existe y SÍ está bien de
 /// región, solo que esto se hace con la habilidad real, no al vuelo.
 const HARVEST_SKILL_MISUSE_LINES: ((nombre: string) => string)[] = [
-  (nombre) => `Gorhorn sabe que ${nombre} exige mano experta — mejor usar la habilidad de verdad para hacerlo bien.`,
-  (nombre) => `No es cosa de improvisar con ${nombre}. Gorhorn prefiere hacerlo como se debe, con calma y la técnica adecuada.`,
-  () => `Gorhorn se lo piensa mejor — esto se hace bien o no se hace, y ahora mismo no es el momento de ir deprisa.`,
-  (nombre) => `Con ${nombre} no hay atajos que valgan. Gorhorn necesita ponerse a ello de verdad, con la habilidad adecuada.`,
-  (nombre) => `Gorhorn se detiene. «¿${nombre} así, sin más? No, mejor lo hago bien...» Busca la forma correcta de ponerse a ello.`,
+  (nombre) => `Gorhorn sabe que ${nombre} no se consigue de palabra — hay que dar con ello en el terreno. Busca ${nombre} en el mapa de la zona.`,
+  (nombre) => `No es cosa de improvisar con ${nombre}. Gorhorn tendrá que encontrarlo de verdad: búscalo en el mapa de la zona y acércate.`,
+  (nombre) => `Gorhorn se detiene. «¿${nombre} así, sin más?» Primero hay que llegar hasta ello — búscalo en el mapa de la zona.`,
 ];
 
 export function harvestSkillMisuseNarrationFor(nombre: string): string {

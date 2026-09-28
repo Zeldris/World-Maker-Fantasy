@@ -199,9 +199,16 @@ const HARVEST_ABILITIES: HarvestAbilityUnlock[] = [
 /// que professionAbilityUnlocksFor, pero siempre nivel 1 (no hay recetas de tier superior aquí).
 /// Sigue mirando solo `oficio` (nunca `subOficio`): aprender "pescador" concede Pescar Y Buscar
 /// juntas de una vez, las dos entradas que comparten `oficio: 'pescador'`.
+/// Fase 4 (2026-09-28, `plan-mecanicas-por-zona-2026-09-28.md`, B25) — Minar/Talar/Recolectar
+/// hierbas/Pescar/Buscar dejan de existir como botón: esas acciones solo se hacen ya desde el mapa
+/// de la zona (RECURSO → Interactuar → `dynamicModeRecurso.ts`, que sigue usando
+/// `metodoForOficio`/`attributeForOficio`/`candidateSourcesFor` directamente, sin pasar por ninguna
+/// habilidad concedida). Aprender minero/talador/herborista/pescador ya NO concede ninguna
+/// `StartingAbility` — el filtro `u.metodo === 'CAZA'` deja pasar solo Desollar, la única
+/// recolectora que se mantiene como aviso pasivo real en la escena (ver comentario de cabecera).
 export function harvestAbilityUnlocksFor(oficio: string, nivel: number): StartingAbility[] {
   if (nivel !== 1) return [];
-  return HARVEST_ABILITIES.filter((u) => matchesOficioPrefix(oficio, u.oficio)).map((u) => u.ability);
+  return HARVEST_ABILITIES.filter((u) => matchesOficioPrefix(oficio, u.oficio) && u.metodo === 'CAZA').map((u) => u.ability);
 }
 
 /// Busca la entrada real para una clave de ruta (`GET/POST /saves/:id/recolectar/:oficio`) —

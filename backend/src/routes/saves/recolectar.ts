@@ -94,24 +94,14 @@ function pasaFiltroNivelOficio(tier: number | null | undefined, nivelOficio: num
 }
 
 /// Cooldown de "pescador" (2026-09-02, Pieza 1) — DISTINTO del cooldown estándar de recolección
-/// (`RECOLECCION_COOLDOWN_MS`, "1 uso, luego 30 min" por FUENTE): Pescar/Buscar admiten
-/// `PESCA_USOS_SEGUIDOS_MAX` usos SEGUIDOS antes de entrar en cooldown, contado POR JUGADOR
-/// (`Save.pescaUsosSeguidos`/`pescaCooldownDesde`, no por `WorldPopulation` — pescar/buscar no
-/// depletan ninguna población real, ver comentario de `esFaunaMetodo` más abajo). Reloj real
-/// (de pared), mismo criterio que `RECOLECCION_COOLDOWN_MS`.
-const PESCA_USOS_SEGUIDOS_MAX = 3;
-const PESCA_COOLDOWN_MS = 30 * 60_000;
-
-/// Puro: dado el estado actual de `Save.pescaUsosSeguidos`/`pescaCooldownDesde`, decide si Pescar/
-/// Buscar están disponibles ahora mismo. `pescaCooldownDesde` se fija la primera vez que
-/// `pescaUsosSeguidos` llega al tope — mientras no hayan pasado los 30 min reales desde entonces,
-/// sigue bloqueado; en cuanto pasan, el contador se considera implícitamente reseteado a 0 (nunca
-/// se escribe hasta el siguiente uso real, ver `nextPescaCooldownState`).
-function pescaDisponible(pescaUsosSeguidos: number, pescaCooldownDesde: Date | null): boolean {
-  if (pescaUsosSeguidos < PESCA_USOS_SEGUIDOS_MAX) return true;
-  if (!pescaCooldownDesde) return true;
-  return Date.now() - pescaCooldownDesde.getTime() >= PESCA_COOLDOWN_MS;
-}
+/// (`RECOLECCION_COOLDOWN_MS`, "1 uso, luego 30 min" por FUENTE): Pescar/Buscar admitían usos
+/// SEGUIDOS antes de entrar en cooldown, contado POR JUGADOR (`Save.pescaUsosSeguidos`/
+/// `pescaCooldownDesde`). Retirado en Fase 4 (2026-09-28) junto con `POST /recolectar/:oficio/
+/// explorar` — Pescar/Buscar ya no tienen botón ni ruta propia; `pasaFiltroEstacion`/
+/// `esFaunaMetodo` (más abajo) siguen vivos porque `candidateSourcesFor` los sigue usando desde
+/// `dynamicModeRecurso.ts`, pero el contador de usos seguidos (solo se escribía desde la ruta
+/// retirada) no tiene ya ningún caller — los campos `Save.pescaUsosSeguidos`/`pescaCooldownDesde`
+/// se dejan sin usar en el schema en vez de migrarlos, fuera del alcance de esta fase.
 
 /// Doble tirada en tier alto (2026-09-02, Pieza 2, cita textual de la usuaria: "1 tirada busca y
 /// si lo marcas para recolectar, por cada item especial se hace una tirada que es la que indica si
@@ -139,21 +129,6 @@ function pasaSegundaTirada(attributes: AttributeBlock, attribute: Attribute, bon
   const roll = rollGathering(attributes, attribute, bonusOficio, 0);
   const grado = gradoForRecurso(roll.result, dificultadForTier(tier));
   return { paso: grado !== 'fallo', grado };
-}
-
-/// Puro: siguiente estado de `pescaUsosSeguidos`/`pescaCooldownDesde` tras un uso real confirmado
-/// — si el cooldown anterior ya expiró (`pescaDisponible` con el estado viejo era `true` por
-/// tiempo, no solo por contador bajo), el contador arranca de cero como si fuera la primera vez.
-function nextPescaCooldownState(pescaUsosSeguidos: number, pescaCooldownDesde: Date | null): { pescaUsosSeguidos: number; pescaCooldownDesde: Date | null } {
-  const cooldownExpirado = pescaCooldownDesde !== null && Date.now() - pescaCooldownDesde.getTime() >= PESCA_COOLDOWN_MS;
-  const usosPrevios = cooldownExpirado ? 0 : pescaUsosSeguidos;
-  const nuevosUsos = usosPrevios + 1;
-  return {
-    pescaUsosSeguidos: nuevosUsos,
-    // Se fija la marca de tiempo en cuanto se ALCANZA el tope (no en cada uso) — es el instante a
-    // partir del cual empiezan a contar los 30 min reales de espera.
-    pescaCooldownDesde: nuevosUsos >= PESCA_USOS_SEGUIDOS_MAX ? new Date() : cooldownExpirado ? null : pescaCooldownDesde,
-  };
 }
 
 export interface SourceCandidate {
@@ -538,6 +513,19 @@ export async function recolectarRoutes(app: FastifyInstance) {
     if (!metodo) {
       return reply.status(400).send({ error: `"${request.params.oficio}" no es un oficio recolector` });
     }
+    // Fase 4 (2026-09-28, `plan-mecanicas-por-zona-2026-09-28.md`) — Minar/Talar/Recolectar
+    // hierbas/Pescar/Buscar/Recoger dejan de tener botón: esas acciones solo se hacen ya desde el
+    // mapa de la zona (RECURSO → Interactuar → `dynamicModeRecurso.ts`, que llama a
+    // `candidateSourcesFor`/`gatheringRollFor`/`applyGatheringRoll` DIRECTAMENTE, sin pasar por
+    // esta ruta). Solo CAZA (Desollar, aviso pasivo real en la escena, ver `HarvestSelectionModal`
+    // en el frontend) sigue teniendo un llamador real aquí.
+    // MINERIA/TALA/EXTRACCION/PESCA/BUSQUEDA (Minar/Talar/Recolectar hierbas/Pescar/Buscar) ya no
+    // tienen botón — quedan fuera de este GET, que ahora solo sirve a CAZA (Desollar, aviso pasivo
+    // real en la escena) y PASIVO ("Recoger", objetos narrativos de la Location exacta): ninguno
+    // de los dos depende de `WorldPopulation` regional ni de "Explorar", a diferencia del resto.
+    if (metodo !== 'CAZA' && metodo !== 'PASIVO') {
+      return reply.status(400).send({ error: `"${request.params.oficio}" ya no se explora aquí — busca en el mapa de la zona.` });
+    }
     const save = await prisma.save.findUnique({
       where: { id: request.params.id },
       include: {
@@ -553,31 +541,6 @@ export async function recolectarRoutes(app: FastifyInstance) {
     // que ve cualquier partida nueva.
     const estacionActual = estacionFor(save.worldState?.fictionalMinutes ?? 0);
     const climaActual = climaFor(save.worldState?.fictionalMinutes ?? 0, save.currentLocation?.region ?? null);
-    // Nivel de oficio limita qué tier es accesible (2026-09-02, Pieza 3) — mismo `professionId`
-    // real que ya usa `gatheringRollFor` para el bonus de la tirada (ver `professionIdForOficio`,
-    // necesario para pescador: 'pescador-pescar'/'pescador-buscar' comparten un único oficio real
-    // 'pescador'). Nivel 1 si el jugador todavía no tiene fila para este oficio (recién aprendido).
-    const nivelOficio = (save.professionProgress ?? []).find((p) => p.professionId === professionIdForOficio(request.params.oficio))?.nivel ?? 1;
-
-    if (metodo === 'CAZA') {
-      // Tirada congelada (rediseño de recolección, 2026-08-22) — antes se tiraba de nuevo en CADA
-      // apertura del panel (simplificación consciente original, ya descartada): dejaba "pescar" un
-      // resultado mejor cerrando y reabriendo. Ahora, si ya se tiró para este oficio en esta misma
-      // ubicación, se devuelve tal cual, sin tirar otra vez.
-      const cachedSources = cachedRollFor(save, request.params.oficio, save.currentLocationId);
-      if (cachedSources) return { sources: groupByCategory(cachedSources), puedeExplorar: false, enCooldown: false };
-
-      const sessionFacts = await loadSessionFacts(save.id);
-      const rawCandidates = await carcassCandidatesFor(save.worldId, save.id, save.currentLocationId, sessionFacts, estacionActual, climaActual, save.worldState?.fictionalMinutes ?? 0);
-      if (rawCandidates.length === 0) return { sources: [], puedeExplorar: false, enCooldown: false };
-      const roll = gatheringRollFor(
-        { attributes: save.attributes as AttributeBlock, secondaryAttributesJson: save.secondaryAttributes, inventoryItems: save.inventoryItems, professionProgress: save.professionProgress },
-        request.params.oficio,
-      );
-      const filtered = applyGatheringRoll(rawCandidates, roll);
-      await saveRollCache(save.id, save.harvestRollCache, request.params.oficio, save.currentLocationId, filtered);
-      return { sources: groupByCategory(filtered), roll, puedeExplorar: false, enCooldown: false };
-    }
 
     if (metodo === 'PASIVO') {
       // "Recoger" (2026-08-25) — sin tirada ni caché que congelar (ver `pasivoCandidatesFor`):
@@ -586,125 +549,23 @@ export async function recolectarRoutes(app: FastifyInstance) {
       return { sources: groupByCategory(candidates), puedeExplorar: false, enCooldown: false };
     }
 
-    // Tirada congelada (mismo criterio que arriba) — reemplaza por completo el viejo
-    // `detectHarvestSourcesInScene`: "ya localizado" ahora significa "ya se tiró aquí", nunca "la
-    // narración lo mencionó", así que ver algo SIEMPRE implica haber pasado por una tirada real
-    // (en /explorar) al menos una vez.
+    // Tirada congelada (rediseño de recolección, 2026-08-22) — antes se tiraba de nuevo en CADA
+    // apertura del panel (simplificación consciente original, ya descartada): dejaba "pescar" un
+    // resultado mejor cerrando y reabriendo. Ahora, si ya se tiró para este oficio en esta misma
+    // ubicación, se devuelve tal cual, sin tirar otra vez.
     const cachedSources = cachedRollFor(save, request.params.oficio, save.currentLocationId);
     if (cachedSources) return { sources: groupByCategory(cachedSources), puedeExplorar: false, enCooldown: false };
 
-    // Cooldown de pescador (2026-09-02, Pieza 1) — "3 usos, luego 30 min", por JUGADOR, distinto
-    // del cooldown por FUENTE del resto de oficios (ver `pescaDisponible`). Se comprueba ANTES de
-    // buscar candidatos: en cooldown, Pescar/Buscar no tienen nada que ofrecer aunque el mundo sí
-    // tenga peces/marisco reales en la zona.
-    if (esFaunaMetodo(metodo) && !pescaDisponible(save.pescaUsosSeguidos, save.pescaCooldownDesde)) {
-      return { sources: [], puedeExplorar: false, enCooldown: true };
-    }
-
-    const { candidates, anyOnCooldown } = await candidateSourcesFor(
-      save.worldId,
-      metodo,
-      save.currentLocation?.region ?? null,
-      save.currentLocationId,
-      save.currentLocation?.slug ?? null,
-      estacionActual,
-      climaActual,
-      nivelOficio,
-    );
-    if (candidates.length === 0) return { sources: [], puedeExplorar: false, enCooldown: anyOnCooldown };
-    return { sources: [], puedeExplorar: true, enCooldown: false };
-  });
-
-  // Determinista, sin gastar turno ni pasar por Ollama (decisión de diseño, 2026-08-07: ya existe
-  // WorldPopulation con población real por región, no hace falta narrar para saber qué hay) —
-  // registra el hallazgo como hecho de sesión para que futuras aperturas del pop-up (y el propio
-  // Narrador) ya lo den por localizado sin tener que volver a explorar.
-  app.post<{ Params: { id: string; oficio: string } }>('/saves/:id/recolectar/:oficio/explorar', async (request, reply) => {
-    const metodo = metodoForOficio(request.params.oficio);
-    if (!metodo || metodo === 'CAZA') {
-      return reply.status(400).send({ error: `"${request.params.oficio}" no es un oficio recolector con exploración` });
-    }
-    const save = await prisma.save.findUnique({
-      where: { id: request.params.id },
-      include: {
-        currentLocation: true,
-        inventoryItems: { where: { slot: { not: null } }, select: { statBonuses: true } },
-        professionProgress: { select: { professionId: true, nivel: true } },
-        worldState: { select: { fictionalMinutes: true } },
-      },
-    });
-    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
-    // Bug real (auditoría de bugs, 2026-08-21): a diferencia de /turn/classify y /combat/flee
-    // (session.ts), ninguna ruta de recolección comprobaba `save.endedAt` — con la partida ya
-    // terminada por muerte definitiva, el composer principal queda bloqueado en el frontend, pero
-    // el panel de Habilidades/Minar-Talar-Desollar sigue accesible y permitía seguir recolectando
-    // (mutando `WorldPopulation`/inventario de verdad) para un personaje que la propia partida ya
-    // da por definitivamente muerto.
-    if (rejectIfEnded(save, reply)) return;
-    if (rejectIfPendingDeath(save, reply)) return;
-
-    // Cooldown de pescador (2026-09-02, Pieza 1) — mismo criterio que el GET de arriba: "3 usos,
-    // luego 30 min" por JUGADOR, comprobado antes de gastar nada en candidatos/tirada.
-    if (esFaunaMetodo(metodo) && !pescaDisponible(save.pescaUsosSeguidos, save.pescaCooldownDesde)) {
-      return { sources: [], enCooldown: true };
-    }
-
-    // Nivel de oficio limita qué tier es accesible (2026-09-02, Pieza 3) — ver comentario del GET
-    // de arriba, mismo criterio (`professionIdForOficio` por pescador).
-    const nivelOficio = (save.professionProgress ?? []).find((p) => p.professionId === professionIdForOficio(request.params.oficio))?.nivel ?? 1;
-
-    const { candidates, anyOnCooldown } = await candidateSourcesFor(
-      save.worldId,
-      metodo,
-      save.currentLocation?.region ?? null,
-      save.currentLocationId,
-      save.currentLocation?.slug ?? null,
-      estacionFor(save.worldState?.fictionalMinutes ?? 0),
-      climaFor(save.worldState?.fictionalMinutes ?? 0, save.currentLocation?.region ?? null),
-      nivelOficio,
-    );
-    if (candidates.length === 0) return { sources: [], enCooldown: anyOnCooldown };
-
-    // Tirada visible (rediseño de recolección, 2026-08-22, petición explícita: "cuando le das a
-    // explorar") — una sola por pulsación de "Explorar", su margen decide a la vez qué recurso de
-    // los candidatos aparece y con cuánta cantidad (`applyGatheringRoll`). Un roll malo puede dejar
-    // `filteredCandidates` vacío pese a haber candidatos reales: se devuelve igualmente `roll` para
-    // que el frontend anime el dado y explique "no encontraste nada esta vez", en vez de mentir con
-    // el mensaje de "no hay nada aquí" que usa `anyOnCooldown`.
+    const sessionFacts = await loadSessionFacts(save.id);
+    const rawCandidates = await carcassCandidatesFor(save.worldId, save.id, save.currentLocationId, sessionFacts, estacionActual, climaActual, save.worldState?.fictionalMinutes ?? 0);
+    if (rawCandidates.length === 0) return { sources: [], puedeExplorar: false, enCooldown: false };
     const roll = gatheringRollFor(
       { attributes: save.attributes as AttributeBlock, secondaryAttributesJson: save.secondaryAttributes, inventoryItems: save.inventoryItems, professionProgress: save.professionProgress },
       request.params.oficio,
     );
-    const filteredCandidates = applyGatheringRoll(candidates, roll);
-    // Congela el resultado (rediseño de recolección, 2026-08-22) — incluso si salió vacío (mala
-    // suerte): reabrir el panel debe ver SIEMPRE lo mismo, nunca una oportunidad gratis de volver
-    // a tirar por un resultado mejor. Se guarda antes de nada más, para que sobreviva aunque el
-    // resto del turno (hechos de sesión) falle por cualquier motivo.
-    await saveRollCache(save.id, save.harvestRollCache, request.params.oficio, save.currentLocationId, filteredCandidates);
-
-    // Cuenta este intento como un "uso" de pescador (2026-09-02, Pieza 1) — el propio lanzamiento
-    // de caña/rastreo de marisco es lo que cansa, tenga éxito o no la tirada (mismo criterio que el
-    // resto del motor: la tirada decide QUÉ aparece, nunca SI el intento "cuenta"). Se escribe
-    // aparte de `saveRollCache` (dos updates en vez de fusionar el JSON) para no acoplar un campo
-    // de ficción específico de pescador al mecanismo genérico de caché de todos los oficios.
-    if (esFaunaMetodo(metodo)) {
-      const next = nextPescaCooldownState(save.pescaUsosSeguidos, save.pescaCooldownDesde);
-      await prisma.save.update({ where: { id: save.id }, data: { pescaUsosSeguidos: next.pescaUsosSeguidos, pescaCooldownDesde: next.pescaCooldownDesde } });
-    }
-
-    const sessionFacts = await loadSessionFacts(save.id);
-    // Una frase por categoría DISTINTA descubierta (2026-08-15, ya no por sourceSlug) — evita
-    // repetir "localiza mineral en la zona" dos veces si hay dos fuentes minerales a la vez. Solo
-    // por lo que la tirada de verdad reveló, no por todos los candidatos crudos.
-    const distinctCategories = [...new Set(filteredCandidates.map((c) => c.sourceCategory))];
-    if (distinctCategories.length > 0) {
-      await appendSessionFacts(
-        save.id,
-        sessionFacts,
-        distinctCategories.map((cat) => `${save.characterName} localiza ${sourceCategoryNameFor(cat).toLowerCase()} en la zona.`),
-      );
-    }
-    return { sources: groupByCategory(filteredCandidates), roll };
+    const filtered = applyGatheringRoll(rawCandidates, roll);
+    await saveRollCache(save.id, save.harvestRollCache, request.params.oficio, save.currentLocationId, filtered);
+    return { sources: groupByCategory(filtered), roll, puedeExplorar: false, enCooldown: false };
   });
 
   app.post<{ Params: { id: string }; Body: { selections: { sourceSlug: string; itemSlug: string; cantidad: number }[] } }>(

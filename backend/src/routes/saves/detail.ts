@@ -17,7 +17,7 @@ import { entornoTemporalFor } from '../../services/worldClock.js';
 import { parseAgenda } from '../../services/worldAgenda.js';
 import type { PendingDynamicMode } from '../../services/dynamicMode.js';
 import { resolveActiveCombatAbilityNames } from '../../services/combatAbilities.js';
-import { sanitizeSkillBarAbilityNames, hasBaseSkillBar, SKILL_BAR_CATEGORIES, type SkillBarCategory } from '../../services/skillBars.js';
+import { sanitizeSkillBarAbilityNames, hasBaseSkillBar, defaultBaseSkillBarAbilities, SKILL_BAR_CATEGORIES, type SkillBarCategory } from '../../services/skillBars.js';
 import { especializacionesConHuecosPara, resumenMecanicoEspecializacion, clasesPermitidasParaRaza, CLASE_DESCRIPTION } from '../../services/classAbilities.js';
 import { NIVEL_MINIMO_ESPECIALIZACION } from './progression.js';
 
@@ -67,7 +67,7 @@ export async function detailRoutes(app: FastifyInstance) {
     // doble recarga) sin condición de carrera real.
     if (!hasBaseSkillBar(save.skillBars)) {
       await prisma.skillBar.createMany({
-        data: [{ saveId: save.id, slotIndex: 0, name: 'Barra 1' }],
+        data: [{ saveId: save.id, slotIndex: 0, name: 'Barra 1', abilityNames: defaultBaseSkillBarAbilities(save.savedActions.map((a) => a.name)) }],
         skipDuplicates: true,
       });
       save.skillBars = await prisma.skillBar.findMany({ where: { saveId: save.id }, orderBy: [{ slotIndex: 'asc' }] });

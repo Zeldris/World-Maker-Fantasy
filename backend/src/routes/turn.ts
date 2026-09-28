@@ -589,7 +589,7 @@ export async function turnRoutes(app: FastifyInstance) {
     async function resolveBlockedTurn(
       narrationText: string,
       discoverName?: string,
-      harvestSuggestion?: { oficio: string; abilityLabel: string; highlightSourceSlug: string },
+      harvestSuggestion?: { sourceName: string },
     ) {
       await prisma.logEntry.create({
         data: { saveId, channel: 'CHARACTER', text: action, isPlayerAction: true, timeLabel: blockedTimeLabel, fictionalMinutes: blockedFictionalMinutes },
@@ -608,8 +608,8 @@ export async function turnRoutes(app: FastifyInstance) {
       if (discoverName) {
         await recordEntityDiscoveries({ saveId, worldId: blockedWorldId, mentionedText: discoverName });
       }
-      // `harvestSuggestion` (Pieza 6d, 2026-09-03): botón real en el log (frontend) que abre el
-      // modal de recolección correcto con la fuente citada priorizada — efímero a propósito, igual
+      // `harvestSuggestion` (Pieza 6d, 2026-09-03; Fase 4 2026-09-28): botón real en el log (frontend)
+      // que abre el modal de movimiento de zona (la recolección se hace desde el mapa) — efímero a propósito, igual
       // que `questOffer`/`dynamicModeOffer` (nunca se persiste en `LogEntry`, solo viaja en la
       // respuesta HTTP de este turno).
       return { blocked: { narration: narrationText, harvestSuggestion } };
@@ -721,9 +721,7 @@ export async function turnRoutes(app: FastifyInstance) {
     const harvestSkillMisuseClaim = !enCombate ? await detectsHarvestSkillMisuseClaim(action, save.worldId) : null;
     if (harvestSkillMisuseClaim) {
       return resolveBlockedTurn(harvestSkillMisuseNarrationFor(harvestSkillMisuseClaim.sourceName), undefined, {
-        oficio: harvestSkillMisuseClaim.oficio,
-        abilityLabel: harvestSkillMisuseClaim.abilityLabel,
-        highlightSourceSlug: harvestSkillMisuseClaim.sourceSlug,
+        sourceName: harvestSkillMisuseClaim.sourceName,
       });
     }
 

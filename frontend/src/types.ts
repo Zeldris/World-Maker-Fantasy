@@ -93,25 +93,6 @@ export interface HarvestSourceCandidate {
   yields: { sourceSlug: string; itemSlug: string; itemName: string; cantidadMaxima: number; disponible: number }[]
 }
 
-/// Fauna real YA LOCALIZADA en la zona (revisión de partida 2026-08-08, habilidad "Cazar") —
-/// GET/POST /saves/:id/cazar[/explorar], mismo patrón en dos pasos que HarvestSourceCandidate.
-/// `debil` = nivel de la presa ≤ nivel del jugador − 2, el único caso en el que elegir UNA sola
-/// presa ofrece una caza limpia sin combate (ver HuntSelectionModal). `avistados` es una cantidad
-/// realista para esta visita (nunca la población mundial real, que puede ser de miles) — baja sola
-/// según se caza de verdad, sin ser un contador que haya que persistir aparte.
-export interface HuntCandidate {
-  slug: string
-  name: string
-  level: number
-  debil: boolean
-  avistados: number
-  /// Dificultad real de enfrentarse a esta presa (petición explícita, 2026-08-14: fondo verde/
-  /// amarillo/rojo según dificultad + hover con el texto) — mismo `difficultyHintFor` que calibra
-  /// la tirada de ataque normal (backend/src/services/npcScene.ts), nunca recalculado en el cliente.
-  dificultad: number
-  dificultadLabel: string
-}
-
 /// Roster ESTÁTICO de recetas de oficio (rediseño de profesiones, 2026-08-07) — GET /profession-recipes,
 /// independiente de partida. Habilidades > Profesiones lo cruza con `ProfessionProgressInfo` para
 /// decidir qué tarjetas van bloqueadas.
@@ -489,13 +470,14 @@ export interface LogEntry {
   /// (2026-08-29) y en la propia `LogPanel.tsx` (2026-09-03), reaparecido aquí porque esta
   /// oferta efímera nunca llegó a transportar el dato.
   convalecienteOffers?: { npcSlug: string; combatKey: string; npcName: string; capturable: boolean }[]
-  /// Recolección por texto libre redirigida al modal real (Pieza 6d, 2026-09-03, "mundo
-  /// determinista, el narrador solo narra") — presente en la LogEntry de bloqueo cuando el
-  /// jugador citó una fuente real de recolección de terreno (MINERIA/TALA/EXTRACCION/PESCA/
-  /// BUSQUEDA) por texto libre en vez de usar la habilidad; el botón abre `HarvestSelectionModal`
-  /// con `highlightSourceSlug` ya priorizado arriba. Mismo criterio efímero que `questOffer`/
-  /// `dynamicModeOffer` — nunca sobrevive a una recarga, la propia narración ya cuenta el rechazo.
-  harvestSuggestion?: { oficio: string; abilityLabel: string; highlightSourceSlug: string }
+  /// Recolección por texto libre (Pieza 6d, 2026-09-03, "mundo determinista, el narrador solo
+  /// narra") — presente en la LogEntry de bloqueo cuando el jugador citó una fuente real de
+  /// recolección de terreno (MINERIA/TALA/EXTRACCION/PESCA/BUSQUEDA) por texto libre. Fase 4
+  /// (2026-09-28, `plan-mecanicas-por-zona-2026-09-28.md`): esas fuentes ya no tienen ninguna
+  /// habilidad/modal que abrir — el botón pasa a abrir el mapa de movimiento de zona (mismo
+  /// `ZonaMovimientoModal` que ya abre el icono 🧭 en GameView), no `HarvestSelectionModal`.
+  /// Mismo criterio efímero que `questOffer`/`dynamicModeOffer` — nunca sobrevive a una recarga.
+  harvestSuggestion?: { sourceName: string }
 }
 
 export type EquipSlot =
