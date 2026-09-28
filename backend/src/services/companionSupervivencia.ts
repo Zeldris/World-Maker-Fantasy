@@ -4,7 +4,7 @@ import { rollOpposed, type OpposedRollResult } from './dice.js';
 import { npcRecoversFromConvaleciente, npcCorpseShouldDespawn } from './death.js';
 
 /// Grupo 3 § Compañeros y supervivencia (2026-08-25, diseño completo en
-/// docs/rpgtarkor/companeros-y-supervivencia.md) — captura+tameo/persuasión de fauna/NPC,
+/// docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md) — captura+tameo/persuasión de fauna/NPC,
 /// Hambre/Sed del propio personaje, equipo de compañeros/súbditos, Almacén de Reino + plantillas.
 /// Cifras marcadas "a afinar en vivo" en el propio doc — primer valor de partida, ajustable
 /// jugando, mismo criterio que el resto de números de este proyecto.
@@ -24,7 +24,7 @@ export function esDomador(clase: string | null, especializacion: string | null):
   return clase === 'CAZADOR' && especializacion === 'DOMADOR';
 }
 
-/// Alfa de la Manada real (2026-09-14, docs/rpgtarkor/clases.md — Domador 40, capstone: "te
+/// Alfa de la Manada real (2026-09-14, docs/rpgtarkor/sistemas-combate/clases.md — Domador 40, capstone: "te
 /// permite tener otro compañero... elegir un Alfa entre tus dos compañeros") — el slot garantizado
 /// de Domador (`Companion.esSlotDomador`) pasa de 1 a 2 con la habilidad desbloqueada. Mismo
 /// criterio de gate por nivel que el resto del catálogo (sin exigir SavedAction equipada — es
@@ -130,7 +130,7 @@ export function jaulaRecipeKeyFor(tamano: JaulaTamano): string {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Rediseño de captura (2026-08-28, docs/rpgtarkor/captura-rediseno-2026-08-28.md) — la captura se
+// Rediseño de captura (2026-08-28, docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md) — la captura se
 // materializa como InventoryItem en tránsito (ver `InventoryItem.capturaNpcId`, schema.prisma) en
 // vez de vivir in-situ en NpcState. Slots que ocupa en el inventario y plazo de expiración antes de
 // depositarla en Jaula/Celda de Retención.
@@ -310,7 +310,7 @@ export async function advancePlayerSurvival(prisma: PrismaClient): Promise<{ sav
 }
 
 /// Recuperación de CONVALECIENTE (6h de ficción) / desaparición de cadáver MUERTO (48h de ficción)
-/// — § 5-bis punto 11 (docs/rpgtarkor/mundo-vivo-x4.md, 2026-09-21): mismo patrón que
+/// — § 5-bis punto 11 (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md, 2026-09-21): mismo patrón que
 /// `advancePlayerSurvival`/`growAllPopulations` (cálculo DERIVADO de un timestamp de ficción, no
 /// acumulativo — encaja sin cambiar de semántica). Coexiste a propósito con
 /// `applyCondicionTimeouts` (turnResolution.ts, dentro del turno síncrono) — decisión explícita de

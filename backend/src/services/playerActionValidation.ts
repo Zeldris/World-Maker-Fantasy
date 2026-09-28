@@ -1,6 +1,6 @@
 /// Validador de "grounding" de la acción del JUGADOR contra el estado real de la partida — lado
 /// simétrico de la familia de detectores "narración-vs-mecánica" (narrador.ts), que ya protege al
-/// Narrador de inventar NPCs/objetos/viajes. Ver docs/18-validacion-accion-jugador.md para el
+/// Narrador de inventar NPCs/objetos/viajes. Ver docs/mecanicas/18-validacion-accion-jugador.md para el
 /// diseño completo por fases; este archivo implementa las Fases 0-3 (Fase 3 acotada a nombre
 /// citado entre comillas, para no arriesgar falsos positivos sobre prosa libre). Regla de diseño
 /// fija: nunca una lista de entidades quemada en el código — solo lo que ya trae la propia
@@ -40,7 +40,7 @@ export function detectsPlayerAnachronism(action: string): boolean {
 }
 
 /// Mismo criterio que el resto — pool de 5, 1 cómica menos frecuente. Borrador de la sesión de
-/// diseño (docs/18-validacion-accion-jugador.md § "Borrador de frases").
+/// diseño (docs/mecanicas/18-validacion-accion-jugador.md § "Borrador de frases").
 const ANACHRONISM_LINES: string[] = [
   'Gorhorn frunce el ceño ante su propia idea, como si tratara de masticar algo que no existe. No hay ningún camino a lo que describe, ni en Helek Sirik ni en ningún sitio que él conozca.',
   'Gorhorn se detiene en seco. Sea lo que sea eso, no tiene nombre en ninguna lengua que hable un orco — y él ya ha viajado bastante como para saberlo.',
@@ -129,7 +129,7 @@ export interface AbsentSceneNpcClaim {
 /// Detecta si la acción del jugador interactúa con un NPC/fauna REAL de catálogo (existe de
 /// verdad en algún sitio del mundo) que no está en la lista de NPCs realmente en escena este
 /// turno (`detectNpcsInScene`, npcScene.ts) — "existe pero no está aquí" (Fase 1 de
-/// docs/18-validacion-accion-jugador.md; el caso "no existe en ningún sitio" es Fase 3, aparcado
+/// docs/mecanicas/18-validacion-accion-jugador.md; el caso "no existe en ningún sitio" es Fase 3, aparcado
 /// a propósito por la dificultad de distinguir mención/recuerdo de afirmación de presencia).
 ///
 /// Reutiliza `matchNpcAliases` (mismo motor de coincidencia — boundary + tolerancia a erratas —
@@ -279,7 +279,7 @@ const QUOTED_NAME_REGEX = /'([^']+)'/;
 /// mismo criterio que `MIN_PATTERN_LENGTH` del índice de Enciclopedia del frontend.
 const MIN_QUOTED_NAME_LENGTH = 3;
 
-/// Fase 3 de docs/18-validacion-accion-jugador.md, ACOTADA a nombre entre comillas (decisión de
+/// Fase 3 de docs/mecanicas/18-validacion-accion-jugador.md, ACOTADA a nombre entre comillas (decisión de
 /// diseño explícita, 2026-08-13, para acotar el riesgo de falso positivo que el propio documento
 /// señala como el obstáculo principal de esta fase): detecta si el jugador nombra ENTRE COMILLAS
 /// un NPC/fauna que no existe en NINGÚN sitio del catálogo del mundo — a diferencia de
@@ -336,7 +336,7 @@ export interface WrongRegionHarvestClaim {
   sourceSlug: string;
 }
 
-/// Fase 2 de docs/18-validacion-accion-jugador.md: detecta si el jugador reclama recolectar/
+/// Fase 2 de docs/mecanicas/18-validacion-accion-jugador.md: detecta si el jugador reclama recolectar/
 /// talar/minar/despiezar una fuente REAL de catálogo (`harvestSourceAliases`,
 /// worldCatalog.ts) cuya región conocida (`harvestSourceRegion`) NO coincide con la región
 /// actual — reutiliza `matchHarvestSource` (harvest.ts), el mismo matcher que ya usa el flujo
@@ -377,7 +377,7 @@ export interface FabricatedHarvestSourceClaim {
   quotedName: string;
 }
 
-/// Fase 3 de docs/18-validacion-accion-jugador.md, ACOTADA a nombre entre comillas — mismo
+/// Fase 3 de docs/mecanicas/18-validacion-accion-jugador.md, ACOTADA a nombre entre comillas — mismo
 /// criterio y misma razón que `detectsFabricatedNpcClaim`. A diferencia de
 /// `detectsWrongRegionHarvestClaim` (existe de verdad, pero en otra región), aquí la fuente citada
 /// no existe en absoluto en `harvestSourceAliases` (worldCatalog.ts). Puro, sin BD (mismo criterio
@@ -415,7 +415,7 @@ export function fabricatedHarvestSourceNarrationFor(nombre: string): string {
 /// constantemente. Solo los verbos inequívocos de "construir algo desde cero".
 const STRICT_BUILD_VERB_REGEX = /\b(constru|levant|erig)\w*\b/i;
 
-/// Fase 2 de docs/18-validacion-accion-jugador.md: detecta si el jugador reclama construir un
+/// Fase 2 de docs/mecanicas/18-validacion-accion-jugador.md: detecta si el jugador reclama construir un
 /// tipo de edificio que no coincide con ninguna receta real (`CONSTRUCTION_RECIPES`,
 /// construction.ts) — "construyo una Torre de Cristal" cuando solo existen campamento/choza/
 /// ayuntamiento. Reutiliza el `nounRegex` de cada receta real, nunca una lista propia.

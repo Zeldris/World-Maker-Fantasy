@@ -5,7 +5,7 @@ import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { reinoRoutes } from './reino.js';
 import { buildAdjacency, shortestPath } from '../../services/travel.js';
 
-/// Zona-interior navegable propia del reino (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, 2026-09-21) —
+/// Zona-interior navegable propia del reino (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) —
 /// primera vez que el motor crea una `Location` en TIEMPO DE PARTIDA (hasta ahora, 100% catálogo
 /// sembrado a mano). Test de integración real contra Postgres, sin mocks — verifica que la fila
 /// se crea de verdad, con el slug determinista correcto, y que es NAVEGABLE (LocationLink real,
@@ -122,7 +122,7 @@ describe('POST /saves/:id/reino/fundar — Location-interior dinámica (2026-09-
   });
 });
 
-// Diplomacia del jugador (docs/rpgtarkor/mundo-vivo-x4.md § 4.4/§ 5-bis punto 6, 2026-09-21) —
+// Diplomacia del jugador (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.4/§ 5-bis punto 6, 2026-09-21) —
 // acción puntual de un Companion con rolReino:'diplomatico' contra cualquier Faction real, sin
 // exigir nada de la facción destino. Fixture propio, con Reino ya fundado (reutiliza el mismo
 // flujo real de POST /reino/fundar en lugar de sembrar Faction a mano, para probar el camino
@@ -263,7 +263,7 @@ describe('POST /saves/:id/reino/diplomacia', () => {
   });
 });
 
-// Mercado regulado — jugador↔Faction (docs/rpgtarkor/mundo-vivo-x4.md § 4.4, 2026-09-21) — mismo
+// Mercado regulado — jugador↔Faction (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.4, 2026-09-21) — mismo
 // fixture real (Reino fundado, Faction del jugador, facción de catálogo real) que el describe de
 // diplomacia, reutilizado para probar el bucle completo: sin tratado no hay comercio, con tratado
 // sí, y el precio dinámico responde de verdad al stock real.

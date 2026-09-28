@@ -21,7 +21,7 @@
 ///    compartido al describir un recurso nuevo de un género ya visto antes, aunque cambie la
 ///    especie concreta.
 ///
-/// Las 13 categorías agrupan por Semilla creadora (docs/rpgtarkor/genesis.md), igual que
+/// Las 13 categorías agrupan por Semilla creadora (docs/rpgtarkor/lore-mundo/genesis.md), igual que
 /// `FaunaCategoria`:
 /// - Florial ("El que Brota", raíz/savia/estación, creadora de flora junto a Ferios): VELDRIAS
 ///   (árboles con madera+resina emparejada), ZARCOS (arbustos de leña sin resina), HELDRAS

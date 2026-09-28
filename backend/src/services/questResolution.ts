@@ -35,7 +35,7 @@ export interface QuestCompletedInfo {
 export const GISTERA_DESPEDIDA_NARRATION = 'Gistera Koh asiente, aliviada, y sin perder ni un segundo más se aleja de la Hondonada del Eco, perdiéndose pronto en el horizonte.';
 
 /// Entrega real de los `InventoryItem` prometidos por `Quest.rewardItems` al completarse una
-/// misión (docs/19-post-combate-y-recompensas-mision.md, pieza 3). Antes ese campo era solo texto
+/// misión (docs/mecanicas/19-post-combate-y-recompensas-mision.md, pieza 3). Antes ese campo era solo texto
 /// para mostrar en el panel (ver comentario en schema.prisma) — nunca creaba el objeto de verdad,
 /// la entrega dependía enteramente de que el loot normal del cadáver también lo incluyera.
 /// Deduplicado por nombre contra lo que el jugador YA tiene, para no duplicar si ya lo consiguió

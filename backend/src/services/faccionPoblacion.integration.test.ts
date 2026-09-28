@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { prisma } from '../lib/prisma.js';
 import { growAllPopulations, syncFactionPopulationToKingdomStats } from './population.js';
 
-/// Reproducción poblacional de facciones (docs/rpgtarkor/mundo-vivo-x4.md § 4.6, 2026-09-21) —
+/// Reproducción poblacional de facciones (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.6, 2026-09-21) —
 /// verifica el flujo real de dos pasos que corre en worldTick.ts: growAllPopulations incrementa
 /// las filas WorldPopulation FACCION reales (Clan Serhu), y syncFactionPopulationToKingdomStats
 /// refleja ese crecimiento en el KingdomStats real de la Faction — sin mocks, contra Postgres.

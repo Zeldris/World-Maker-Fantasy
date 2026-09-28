@@ -5,7 +5,7 @@ import type { Attribute } from './dice.js';
 /// classAbilities.ts/startingAbilities.ts — no hay tabla propia en Prisma, es lore de mundo, no
 /// de partida. Vive en el backend (y no solo en el frontend, como al principio) para que
 /// loreContextFor() pueda generarles prompts de imagen igual que a NPCs/objetos/fauna — la fuente
-/// de verdad editorial sigue siendo docs/rpgtarkor/razas.md y personajes.md.
+/// de verdad editorial sigue siendo docs/rpgtarkor/lore-mundo/razas.md y personajes.md.
 /// Las otras 4 razas (Kelife/Kalisar/Jusaly/Ilvenar) y los otros 4 personajes (Sael/Ithren/Amonir/
 /// Cassia), todos de Vaelira, quedan fuera hasta que el juego llegue allí.
 

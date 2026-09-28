@@ -4,7 +4,7 @@ import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { parcelasRoutes } from './parcelas.js';
 
-/// Concepto de "parcela" estilo Travian/Tribal Wars (docs/rpgtarkor/mundo-vivo-x4.md § 7.4,
+/// Concepto de "parcela" estilo Travian/Tribal Wars (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4,
 /// 2026-09-21) — flujo real: clic en el icono de la parcela abre modal (GET), botón "Construir"
 /// construye DIRECTO sin narración de LLM (POST). Test de integración real contra Postgres, sin
 /// mocks — mismo patrón que descansarCampamento.integration.test.ts.

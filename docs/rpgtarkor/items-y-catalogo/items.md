@@ -2,7 +2,7 @@
 
 [← Volver al índice del mundo](../lore-mundo/07-mundo-helek-sirik.md)
 
-*Armamento, loot y objetos de trasfondo por región — contexto narrativo para el Narrador. La mayoría de esto no lleva bonificadores numéricos (decisión de mecánicas 5, [06-decisiones-mecanicas.md](../../mecanicas/06-decisiones-mecanicas.md)), pero esa decisión fue revertida en parte el 2026-08-13: el equipo real (armas/armaduras con entrada de catálogo) sí puede llevar `ItemCatalog.statBonuses`, aplicado de verdad al equiparlo (`backend/src/services/equipment.ts`) — los "hechos libres" narrativos sin entrada de catálogo (dinero, propiedades, trofeos) siguen sin números. El catálogo técnico (`ItemCatalog`) que implementa esto vive en `docs/12-mundo-estructurado.md` § 4 y toma como fuente editorial lo que hay aquí.*
+*Armamento, loot y objetos de trasfondo por región — contexto narrativo para el Narrador. La mayoría de esto no lleva bonificadores numéricos (decisión de mecánicas 5, [06-decisiones-mecanicas.md](../../mecanicas/06-decisiones-mecanicas.md)), pero esa decisión fue revertida en parte el 2026-08-13: el equipo real (armas/armaduras con entrada de catálogo) sí puede llevar `ItemCatalog.statBonuses`, aplicado de verdad al equiparlo (`backend/src/services/equipment.ts`) — los "hechos libres" narrativos sin entrada de catálogo (dinero, propiedades, trofeos) siguen sin números. El catálogo técnico (`ItemCatalog`) que implementa esto vive en `docs/mecanicas/12-mundo-estructurado.md` § 4 y toma como fuente editorial lo que hay aquí.*
 
 ---
 

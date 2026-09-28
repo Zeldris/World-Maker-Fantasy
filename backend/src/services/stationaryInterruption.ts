@@ -1,7 +1,7 @@
 import { prisma } from '../lib/prisma.js';
 import { pickAmbientEncounterCandidate, type AmbientEncounterCandidate } from './npcScene.js';
 
-/// Grupo 3 § Mundo determinista, Capa 2 (docs/rpgtarkor/mundo-determinista.md, 2026-08-25) —
+/// Grupo 3 § Mundo determinista, Capa 2 (docs/rpgtarkor/lore-mundo/mundo-determinista.md, 2026-08-25) —
 /// generaliza `pickTravelInterruption` (travelInterruption.ts) a acciones largas SIN
 /// desplazamiento (descansar, construir, crafteo) — hasta ahora sin ningún mecanismo de "algo pasa
 /// mientras tanto" (comentario explícito en turn.ts: "acciones largas sin desplazamiento... no

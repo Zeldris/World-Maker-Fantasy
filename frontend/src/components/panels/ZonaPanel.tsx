@@ -44,7 +44,7 @@ interface ZonaPanelProps {
   /// ninguna lógica de viaje nueva — decisión explícita de Álvaro. `undefined` en el caller de
   /// MapaPanel.tsx (vista informativa, no ofrece viajar desde ahí) — no rompe nada sin tocarlo.
   onViajarA?: (actionText: string) => void
-  /// Icono de parcela (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, 2026-09-21) — construir es DIRECTO,
+  /// Icono de parcela (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) — construir es DIRECTO,
   /// sin pasar por `onViajarA`/`/turn/narrate` (mismo criterio que "Descansar en campamento"). El
   /// roster estático de recetas (ya cargado una vez en GameView.tsx vía `useRecipesData`) resuelve
   /// nombre/descripción por `recipeKey`; `onRefreshSave` recarga Save/Zona tras construir con
@@ -62,7 +62,7 @@ interface ZonaPanelProps {
   onDesollarCadaver?: (npcSlug: string) => void
 }
 
-/// Grupo 3 § Mundo determinista, Capa 1 (2026-08-25, docs/rpgtarkor/mundo-determinista.md) —
+/// Grupo 3 § Mundo determinista, Capa 1 (2026-08-25, docs/rpgtarkor/lore-mundo/mundo-determinista.md) —
 /// zonas navegables, PROTOTIPO en una sola zona (La Hondonada del Eco) antes de repetir en el
 /// resto. Deliberadamente simple: solo muestra DÓNDE vive algo dentro de la zona actual (posición
 /// real + nombre real de catálogo), nunca decide disponibilidad — eso es trabajo de las Capas 2-3
@@ -286,7 +286,7 @@ function SalidaMarker({ x, y }: { x: number; y: number }) {
   )
 }
 
-/// Icono de parcela (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, 2026-09-21) — cuadrado (mismo lenguaje
+/// Icono de parcela (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) — cuadrado (mismo lenguaje
 /// que `ZonePointShape` usa para EDIFICIO, coherente con "aquí puede haber una construcción") con
 /// una cruz dentro cuando está vacía (hueco disponible) y sin ella cuando ya tiene `Building`
 /// (edificio real, el icono se lee igual que un EDIFICIO normal del mapa). Sin `transform`
@@ -352,7 +352,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
   // Icono de salida de región (2026-09-17) — abre `ZonaSalidaModal`, distinto del resto (nunca
   // dispara movimiento/colisión, es puramente informativo hasta que se pulsa "Viajar").
   const [selectedSalida, setSelectedSalida] = useState<ZonaSalidaInfo | null>(null)
-  // Icono de parcela (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, 2026-09-21) — abre
+  // Icono de parcela (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) — abre
   // `ParcelaDetailModal`, mismo criterio que `selectedSalida` (puramente informativo hasta que se
   // pulsa "Construir", nunca dispara movimiento/colisión).
   const [selectedParcela, setSelectedParcela] = useState<ZonaParcelaInfo | null>(null)

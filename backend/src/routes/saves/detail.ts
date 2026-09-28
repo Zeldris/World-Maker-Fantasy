@@ -125,7 +125,7 @@ export async function detailRoutes(app: FastifyInstance) {
     // el de carga de partida (se dispara en cada apertura/recarga), así que el ahorro se nota en el
     // punto de la sesión donde más se espera antes de poder hacer nada.
     const [destinations, catalogItems, questTargetLocations, questTargetNpcs, pendingCombatNpcs, activeCombatEncounter] = await Promise.all([
-      // Posición (docs/12-mundo-estructurado.md § 1.6): destinos directos desde la ubicación
+      // Posición (docs/mecanicas/12-mundo-estructurado.md § 1.6): destinos directos desde la ubicación
       // actual, con tiempos ya ajustados a la destreza del personaje — misma lista cerrada que
       // ve el clasificador, visible también para el jugador en el mapa.
       save.currentLocation ? destinationsFrom(save.currentLocation.id, save.attributes as AttributeBlock) : Promise.resolve([]),
@@ -367,7 +367,7 @@ export async function detailRoutes(app: FastifyInstance) {
           subjectId: i.subjectId,
           // Rediseño de captura (2026-08-28) — no null = esta fila ES una captura en tránsito
           // (fauna/NPC atado, sin depositar en Jaula/Celda todavía), ver
-          // docs/rpgtarkor/captura-rediseno-2026-08-28.md. El frontend usa esto para mostrar el
+          // docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md. El frontend usa esto para mostrar el
           // botón "Depositar"/"Soltar" en vez de las acciones normales de un objeto.
           capturaNpcId: i.capturaNpcId,
           capturaExpiraAtMinutes: i.capturaExpiraAtMinutes,
@@ -402,7 +402,7 @@ export async function detailRoutes(app: FastifyInstance) {
         // está cada uno; la gestión real (mover/renombrar/crear grupos) vive en su propio endpoint
         // (/saves/:id/combat-groups).
         combatGroupSlotIndex: c.combatGroupSlotIndex,
-        // Producción de Reino estilo Bellwright (hueco D, 2026-09-21, docs/rpgtarkor/mundo-vivo-x4.md
+        // Producción de Reino estilo Bellwright (hueco D, 2026-09-21, docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md
         // § 4.4-ter) — a qué Building está asignado como trabajador; null = no asignado (aunque
         // tenga rolReino, puede seguir sin edificio hasta que el jugador lo asigne).
         buildingId: c.buildingId,

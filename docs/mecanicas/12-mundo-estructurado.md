@@ -23,12 +23,12 @@ Lo que se pierde con el grafo (posiciones libres "a mitad de camino", exploraci�
 
 ### 1.2 Modelo de datos
 
-Tres modelos nuevos + un campo en `Save`. `Location`/`LocationLink` son **catálogo de mundo** (hermanos de `LoreChunk`: se siembran desde un script y la fuente editorial sigue siendo `docs/rpgtarkor/areas.md`); `LocationVisit` es estado **por partida**.
+Tres modelos nuevos + un campo en `Save`. `Location`/`LocationLink` son **catálogo de mundo** (hermanos de `LoreChunk`: se siembran desde un script y la fuente editorial sigue siendo `docs/rpgtarkor/lore-mundo/areas.md`); `LocationVisit` es estado **por partida**.
 
 ```prisma
 /// Ubicación conocida del mundo (catálogo, no estado de partida). Se siembra desde
 /// backend/src/scripts/worldCatalog.ts (mismo patrón que loreChunks.ts + reindex-lore):
-/// la fuente de verdad editorial sigue siendo docs/rpgtarkor/areas.md.
+/// la fuente de verdad editorial sigue siendo docs/rpgtarkor/lore-mundo/areas.md.
 model Location {
   id          String   @id @default(cuid())
   worldId     String
@@ -117,7 +117,7 @@ En `Save` se añade:
 ampliado varias veces (4 POIs el 2026-07-22, 2 más el 2026-07-22bis, 16 nodos nuevos —sabana, fosa,
 costa norte, desierto Nabierus— el 2026-08-05) hasta pasar de 6 a más de 20 nodos. Las tablas de
 nodos/aristas de más abajo quedan como estaban (siguen siendo canon para estos 6), pero para el
-grafo completo ver `docs/13-escala-del-mundo.md` § 1.1, § 2.2bis y § 2.2ter (que sí se mantuvo al
+grafo completo ver `docs/mecanicas/13-escala-del-mundo.md` § 1.1, § 2.2bis y § 2.2ter (que sí se mantuvo al
 día) y `backend/src/scripts/worldCatalog.ts`.
 
 Los 5 POIs ya documentados + **un nodo nuevo necesario**: el **Campamento del Clan Serhu**. Sin él, los NPCs del § 2 no tienen dónde estar y los ganchos 2 y 6 de `personajes.md` no tienen origen físico. Es el único lugar nuevo que se canoniza aquí (habrá que añadirlo a `areas.md` y como lore chunk — ver pendientes). Se coloca cerca del Pozo de Cauce Viejo: un clan que pastorea y caza necesita el agua permanente, y explica que el Pozo sea "punto de encuentro para bien o para mal".
@@ -243,7 +243,7 @@ enum NpcKind {
 
 /// NPC del catálogo de mundo (no estado de partida — qué ha hecho un NPC en UNA partida
 /// sigue viviendo en WorldState.facts, igual que hasta ahora). Sembrado desde
-/// worldCatalog.ts; la prosa larga vive en docs/rpgtarkor/npcs.md y en lore chunks SIN números.
+/// worldCatalog.ts; la prosa larga vive en docs/rpgtarkor/personajes/npcs.md y en lore chunks SIN números.
 model Npc {
   id      String  @id @default(cuid())
   worldId String
@@ -258,7 +258,7 @@ model Npc {
   faction String?
   /// Rol corto ("Kort'ikar del Clan Serhu", "soldado de patrulla") — libre
   role    String
-  /// Nivel en la MISMA escala de docs/10-niveles-xp-reino.md. Para PRINCIPAL es fijo; para
+  /// Nivel en la MISMA escala de docs/mecanicas/10-niveles-xp-reino.md. Para PRINCIPAL es fijo; para
   /// PLANTILLA es el nivel canónico (levelMax acota el rango típico). Hoy el motor no hace
   /// tiradas opuestas: este nivel sirve para que el clasificador calibre la dificultad y el
   /// Narrador el tono (§ 2.5), no para un sistema de combate simétrico.

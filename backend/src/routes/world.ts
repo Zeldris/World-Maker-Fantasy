@@ -42,7 +42,7 @@ interface VarianteSexoOut {
   imageUrls: { thumbnail: string | null; banner: string | null };
 }
 
-/// Día/noche/estación (2026-08-27, docs/rpgtarkor/imagenes-prompts.md) — a diferencia de
+/// Día/noche/estación (2026-08-27, docs/rpgtarkor/items-y-catalogo/imagenes-prompts.md) — a diferencia de
 /// `VarianteSexoOut`, sin ningún texto curado por entidad: la luz/estación son genéricas, así que
 /// las 8 combinaciones se listan siempre igual para CUALQUIER Location, nunca desde una tabla de
 /// contenido propia (ver `imagePromptContext.ts` § MOMENTO_TEXT/ESTACION_TEXT). `mapaImagePrompt`/
@@ -219,7 +219,7 @@ function buildFaunaFloraSection(ctx: EnciclopediaBuildContext) {
       const faunaNpc = ctx.npcBySlug.get(sourceSlug);
       return faunaNpc ? interaccionFor(faunaNpc) : undefined;
     })(),
-    // Géneros de fauna/flora (2026-09-04, docs/rpgtarkor/genesis.md § Florial/Ferios/Tarkor) —
+    // Géneros de fauna/flora (2026-09-04, docs/rpgtarkor/lore-mundo/genesis.md § Florial/Ferios/Tarkor) —
     // hasta ahora `faunaCategoria` (schema.prisma) vivía solo en la BD, sin llegar nunca al
     // frontend/Enciclopedia pese a existir desde 2026-09-02 — mismo hueco que se cierra aquí para
     // ambos a la vez, junto con `floraCategoria` (worldCatalog.ts, sin tabla propia). Mutuamente
@@ -458,7 +458,7 @@ function buildCraftingRecipesSection(ctx: EnciclopediaBuildContext) {
   }));
 }
 
-/// Catálogo de ubicaciones de un mundo (docs/12-mundo-estructurado.md § "Frontend", pendiente
+/// Catálogo de ubicaciones de un mundo (docs/mecanicas/12-mundo-estructurado.md § "Frontend", pendiente
 /// desde esa sesión): antes `frontend/src/data/map.ts` duplicaba a mano nombres/descripciones de
 /// `Location` — una sola fuente de verdad ahora. Incluye `LocationLink` (con `riesgo`) para que el
 /// mapa dibuje aristas reales sin repetir esa tabla también en el frontend.
@@ -553,7 +553,7 @@ export async function worldRoutes(app: FastifyInstance) {
       // `{ saveId: saveId ?? undefined }` en el OR sería un bug real — un valor `undefined` hace
       // que Prisma OMITA la condición entera (coincide con TODO), así que sin `saveId` en la query
       // colarían las facciones fundadas de cualquier partida. La rama solo se añade si hay `saveId`.
-      // `liderNpc` (§ 7.2, docs/rpgtarkor/mundo-vivo-x4.md) — hueco cerrado 2026-09-21: el campo
+      // `liderNpc` (§ 7.2, docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md) — hueco cerrado 2026-09-21: el campo
       // ya existía en el schema (Faction.liderNpcId, FK real) pero nunca se serializaba al
       // cliente. `select` mínimo (nunca el Npc completo) — el frontend solo necesita nombre/slug
       // para mostrar "liderada por X" y enlazar a su ficha si algún día la tiene.
@@ -632,7 +632,7 @@ export async function worldRoutes(app: FastifyInstance) {
       iconoUrl: iconoUrlFor('location', locationSlug),
     });
 
-    // Día/noche/estación (2026-08-27, docs/rpgtarkor/imagenes-prompts.md) — las 8 combinaciones se
+    // Día/noche/estación (2026-08-27, docs/rpgtarkor/items-y-catalogo/imagenes-prompts.md) — las 8 combinaciones se
     // listan siempre igual para CUALQUIER Location (sin tabla de contenido curado, ver comentario
     // de `VarianteTiempoOut`); cada una es un `entitySlug` propio (`<base>-<momento>-<estacion>`,
     // mismo convenio de sufijo que `variantesSexoFor`) con su propio `ImagePrompt`/imagen subida.

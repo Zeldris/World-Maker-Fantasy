@@ -19,7 +19,7 @@
 ///   equivalente mecánico real (entorno — Cristal Helado/Llanuras — y entereza pasiva ante el
 ///   horror/pérdida, D&D no tiene un stat aparte para ninguna de las dos).
 /// - `magia`/`poderSemilla` se RETIRARON de aquí el 2026-09-01: pasaron a vivir en el atributo
-///   primario `magia` (antes `arcano`, ver dice.ts y docs/rpgtarkor/clases.md § Atributo Magia),
+///   primario `magia` (antes `arcano`, ver dice.ts y docs/rpgtarkor/sistemas-combate/clases.md § Atributo Magia),
 ///   con tirada real propia — dejan de ser color narrativo puro para ser un atributo jugable como
 ///   los otros 6. `poderSemilla` sigue sin ramificarse por Semilla creadora (Kelife/Liania,
 ///   Kalisar/Sezix, Jusaly, Ilvenar/Berd, Nabieus/Kroj...); ese diseño queda pendiente, pero ya no

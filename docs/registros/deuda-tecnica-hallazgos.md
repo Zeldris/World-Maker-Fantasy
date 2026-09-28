@@ -13,53 +13,53 @@ Cada entrada: fecha, zona auditada, hallazgo, y estado.
 ## Índice
 
 **2026-08-25 — primera pasada con nombre propio a este archivo (auditoría de deuda técnica previa, 2026-08-13, no quedó registrada en ningún doc)**
-- [Combate múltiple arma atributos de NPC sin escalar por nivel (npcAttributesForLevel nunca se llama)](#2026-08-25-combate-múltiple-arma-atributos-de-npc-sin-escalar-por-nivel-npcattributesforlevel-nunca-se-llama)
-- [ENERGY_RECOVER_* declaradas como fuente de verdad pero sin ninguna referencia real](#2026-08-25-energy_recover_-declaradas-como-fuente-de-verdad-pero-sin-ninguna-referencia-real)
-- [companionCountsAgainstBuildingSlots exportada como si dos sitios la usaran — ninguno la llama](#2026-08-25-companioncountsagainstbuildingslots-exportada-como-si-dos-sitios-la-usaran--ninguno-la-llama)
-- [Sin tests: advanceCompanionSurvival/advancePlayerSurvival/autoEquiparDesdeAlmacen](#2026-08-25-sin-tests-advancecompanionsurvivaladvanceplayersurvivalautoequipardesdealmacen)
-- [Menores agrupados — services/](#2026-08-25-menores-agrupados--services)
-- [Guard de save.endedAt duplicado en 8+ archivos de routes/saves sin extraer a helper](#2026-08-25-guard-de-saveendedat-duplicado-en-8-archivos-de-routessaves-sin-extraer-a-helper)
-- [session.ts rompe el propio patrón del guard de endedAt — falta el campo en la respuesta 409](#2026-08-25-sessionts-rompe-el-propio-patrón-del-guard-de-endedat--falta-el-campo-en-la-respuesta-409)
-- [inventario.ts hace hasta 4 findUnique de Save distintos en una sola petición](#2026-08-25-inventariots-hace-hasta-4-finduniques-de-save-distintos-en-una-sola-petición)
-- [companeros.ts (409 líneas, el módulo más nuevo) sin ningún test de ruta](#2026-08-25-companerosts-409-líneas-el-módulo-más-nuevo-sin-ningún-test-de-ruta)
-- [Menores agrupados — routes/](#2026-08-25-menores-agrupados--routes)
-- [GameView.tsx ha vuelto a crecer desde la extracción de hooks de 2026-08-21](#2026-08-25-gameviewtsx-ha-vuelto-a-crecer-desde-la-extracción-de-hooks-de-2026-08-21)
-- [useCombatFlow.ts (585 líneas, el hook con más lógica de decisión) sin ningún test — hooks/ entera sin cobertura](#2026-08-25-usecombatflowts-585-líneas-el-hook-con-más-lógica-de-decisión-sin-ningún-test--hooks-entera-sin-cobertura)
-- [Duplicación menor de manejo de error de envío en 6 modales de acción](#2026-08-25-duplicación-menor-de-manejo-de-error-de-envío-en-6-modales-de-acción)
+- [Combate múltiple arma atributos de NPC sin escalar por nivel (npcAttributesForLevel nunca se llama)](#2026-08-25--combate-múltiple-arma-atributos-de-npc-sin-escalar-por-nivel-npcattributesforlevel-nunca-se-llama)
+- [ENERGY_RECOVER_* declaradas como fuente de verdad pero sin ninguna referencia real](#2026-08-25--energy_recover_-declaradas-como-fuente-de-verdad-pero-sin-ninguna-referencia-real)
+- [companionCountsAgainstBuildingSlots exportada como si dos sitios la usaran — ninguno la llama](#2026-08-25--companioncountsagainstbuildingslots-exportada-como-si-dos-sitios-la-usaran--ninguno-la-llama)
+- [Sin tests: advanceCompanionSurvival/advancePlayerSurvival/autoEquiparDesdeAlmacen](#2026-08-25--sin-tests-advancecompanionsurvivaladvanceplayersurvivalautoequipardesdealmacen)
+- [Menores agrupados — services/](#2026-08-25--menores-agrupados--services)
+- [Guard de save.endedAt duplicado en 8+ archivos de routes/saves sin extraer a helper](#2026-08-25--guard-de-saveendedat-duplicado-en-8-archivos-de-routessaves-sin-extraer-a-helper)
+- [session.ts rompe el propio patrón del guard de endedAt — falta el campo en la respuesta 409](#2026-08-25--sessionts-rompe-el-propio-patrón-del-guard-de-endedat--falta-el-campo-en-la-respuesta-409)
+- [inventario.ts hace hasta 4 findUnique de Save distintos en una sola petición](#2026-08-25--inventariots-hace-hasta-4-findunique-de-save-distintos-en-una-sola-petición)
+- [companeros.ts (409 líneas, el módulo más nuevo) sin ningún test de ruta](#2026-08-25--companerosts-409-líneas-el-módulo-más-nuevo-sin-ningún-test-de-ruta)
+- [Menores agrupados — routes/](#2026-08-25--menores-agrupados--routes)
+- [GameView.tsx ha vuelto a crecer desde la extracción de hooks de 2026-08-21](#2026-08-25--gameviewtsx-ha-vuelto-a-crecer-desde-la-extracción-de-hooks-de-2026-08-21)
+- [useCombatFlow.ts (585 líneas, el hook con más lógica de decisión) sin ningún test — hooks/ entera sin cobertura](#2026-08-25--usecombatflowts-585-líneas-el-hook-con-más-lógica-de-decisión-sin-ningún-test--hooks-entera-sin-cobertura)
+- [Duplicación menor de manejo de error de envío en 6 modales de acción](#2026-08-25--duplicación-menor-de-manejo-de-error-de-envío-en-6-modales-de-acción)
 
 **2026-08-26**
-- [combateMultipleOrquestacion.ts creció bastante más al enganchar el objetivo individual real](#2026-08-26-combatemultipleorquestacionts-creció-bastante-más-al-enganchar-el-objetivo-individual-real)
+- [combateMultipleOrquestacion.ts creció bastante más al enganchar el objetivo individual real](#2026-08-26--combatemultipleorquestacionts-creció-bastante-más-al-enganchar-el-objetivo-individual-real)
 
 **2026-09-04**
-- [/turn/classify sin try/catch dejaba la petición sin respuesta para siempre si Ollama se colgaba](#2026-09-04-turnclassify-sin-trycatch-dejaba-la-petición-sin-respuesta-para-siempre-si-ollama-se-colgaba)
+- [/turn/classify sin try/catch dejaba la petición sin respuesta para siempre si Ollama se colgaba](#2026-09-04--turnclassify-sin-trycatch-dejaba-la-petición-sin-respuesta-para-siempre-si-ollama-se-colgaba)
 
 **2026-09-07 — auditoría backend en paralelo (bugs funcionales)**
-- [pendingDeathResolution solo bloquea /turn/*, no las 11+ rutas mutantes de companeros/recolectar/cazar/habilidades/inventario/reino](#2026-09-07-pendingdeathresolution-solo-bloquea-turn-no-las-11-rutas-mutantes-de-companerosrecolectarcazarhabilidadesinventarioreino)
-- [/combat/matar/:npcSlug es el único de los 3 desenlaces desde CONVALECIENTE sin guard de save.endedAt](#2026-09-07-combatmatarnpcslug-es-el-único-de-los-3-desenlaces-desde-convaleciente-sin-guard-de-saveendedat)
-- [companeros.ts: 9 endpoints de captura/almacén/plantillas sin guard de save.endedAt](#2026-09-07-companerosts-9-endpoints-de-capturaalmacénplantillas-sin-guard-de-saveendedat)
+- [pendingDeathResolution solo bloquea /turn/*, no las 11+ rutas mutantes de companeros/recolectar/cazar/habilidades/inventario/reino](#2026-09-07--pendingdeathresolution-solo-bloquea-turn-no-las-11-rutas-mutantes-de-companerosrecolectarcazarhabilidadesinventarioreino)
+- [/combat/matar/:npcSlug es el único de los 3 desenlaces desde CONVALECIENTE sin guard de save.endedAt](#2026-09-07--combatmatarnpcslug-es-el-único-de-los-3-desenlaces-desde-convaleciente-sin-guard-de-saveendedat)
+- [companeros.ts: 9 endpoints de captura/almacén/plantillas sin guard de save.endedAt](#2026-09-07--companerosts-9-endpoints-de-capturaalmacénplantillas-sin-guard-de-saveendedat)
 
 **2026-09-07 — auditoría de frontend (paralela a backend/deuda técnica/lore)**
-- [setTimeout de applyTurnAwaitingDefense en useCombatFlow.ts sin cleanup — puede pisar el estado de un combate distinto](#2026-09-07-settimeout-de-applyturnawaitingdefense-en-usecombatflowts-sin-cleanup--puede-pisar-el-estado-de-un-combate-distinto)
-- [Ningún modal de la app usa role="dialog"/aria-modal ni cierra con Escape ni atrapa el foco](#2026-09-07-ningún-modal-de-la-app-usa-roledialogaria-modal-ni-cierra-con-escape-ni-atrapa-el-foco)
-- [handleFundarReino no limpia kingdomFoundedInfo si fundarReino falla — el modal se queda "colgado" en busy tras el error](#2026-09-07-handlefundarreino-no-limpia-kingdomfoundedinfo-si-fundarreino-falla--el-modal-se-queda-colgado-en-busy-tras-el-error)
-- [beforeunload dispara pauseSave sin esperar respuesta — puede perder la pausa si el navegador cierra la pestaña primero (hueco, no bug)](#2026-09-07-beforeunload-dispara-pausesave-sin-esperar-respuesta--puede-perder-la-pausa-si-el-navegador-cierra-la-pestaña-primero-hueco-no-bug)
+- [setTimeout de applyTurnAwaitingDefense en useCombatFlow.ts sin cleanup — puede pisar el estado de un combate distinto](#2026-09-07--settimeout-de-applyturnawaitingdefense-en-usecombatflowts-sin-cleanup--puede-pisar-el-estado-de-un-combate-distinto)
+- [Ningún modal de la app usa role="dialog"/aria-modal ni cierra con Escape ni atrapa el foco](#2026-09-07--ningún-modal-de-la-app-usa-roledialogaria-modal-ni-cierra-con-escape-ni-atrapa-el-foco)
+- [handleFundarReino no limpia kingdomFoundedInfo si fundarReino falla — el modal se queda "colgado" en busy tras el error](#2026-09-07--handlefundarreino-no-limpia-kingdomfoundedinfo-si-fundarreino-falla--el-modal-se-queda-colgado-en-busy-tras-el-error)
+- [beforeunload dispara pauseSave sin esperar respuesta — puede perder la pausa si el navegador cierra la pestaña primero (hueco, no bug)](#2026-09-07--beforeunload-dispara-pausesave-sin-esperar-respuesta--puede-perder-la-pausa-si-el-navegador-cierra-la-pestaña-primero-hueco-no-bug)
 
 **2026-09-07 — auditoría de deuda técnica (código muerto, tests faltantes, tamaño de archivos)**
-- [shared.ts (routes/saves) sin ningún test propio pese a contener restartSaveTransactionBody, el borrado+reconstrucción completo de "volver a Día 1"](#2026-09-07-sharedts-routessaves-sin-ningún-test-propio-pese-a-contener-restartsavetransactionbody-el-borradoreconstrucción-completo-de-volver-a-día-1)
-- [forcedGradosFor (DiceRoll.tsx) — función pura recién extraída "para ser testeable", sin ningún test](#2026-09-07-forcedgradosfor-dicerolltsx--función-pura-recién-extraída-para-ser-testeable-sin-ningún-test)
-- [useCombatFlow.ts sigue creciendo: 585→859 líneas (+47%) en 12 días, un único hook sin descomponer](#2026-09-07-usecombatflowts-sigue-creciendo-585859-líneas-47-en-12-días-un-único-hook-sin-descomponer)
-- [Seguimiento de tamaño: turnResolution.ts (6922) y GameView.tsx (2277) siguen creciendo](#2026-09-07-seguimiento-de-tamaño-turnresolutionts-6922-y-gameviewtsx-2277-siguen-creciendo)
-- [Confirmado sin hallazgo: patrón try/catch de routes/saves/ es consistente (catch-all global en server.ts), no repetir el caso de /turn/classify](#2026-09-07-confirmado-sin-hallazgo-patrón-trycatch-de-routessaves-es-consistente-catch-all-global-en-serverts-no-repetir-el-caso-de-turnclassify)
-- [Confirmado sin hallazgo: POST /reino/fundar ya rechaza limpio un segundo intento sobre un reino ya fundado](#2026-09-07-confirmado-sin-hallazgo-post-reinofundar-ya-rechaza-limpio-un-segundo-intento-sobre-un-reino-ya-fundado)
+- [shared.ts (routes/saves) sin ningún test propio pese a contener restartSaveTransactionBody, el borrado+reconstrucción completo de "volver a Día 1"](#2026-09-07--sharedts-routessaves-sin-ningún-test-propio-pese-a-contener-restartsavetransactionbody-el-borradoreconstrucción-completo-de-volver-a-día-1)
+- [forcedGradosFor (DiceRoll.tsx) — función pura recién extraída "para ser testeable", sin ningún test](#2026-09-07--forcedgradosfor-dicerolltsx--función-pura-recién-extraída-para-ser-testeable-sin-ningún-test)
+- [useCombatFlow.ts sigue creciendo: 585→859 líneas (+47%) en 12 días, un único hook sin descomponer](#2026-09-07--usecombatflowts-sigue-creciendo-585859-líneas-47-en-12-días-un-único-hook-sin-descomponer)
+- [Seguimiento de tamaño: turnResolution.ts (6922) y GameView.tsx (2277) siguen creciendo](#2026-09-07--seguimiento-de-tamaño-turnresolutionts-6922-y-gameviewtsx-2277-siguen-creciendo)
+- [Confirmado sin hallazgo: patrón try/catch de routes/saves/ es consistente (catch-all global en server.ts), no repetir el caso de /turn/classify](#2026-09-07--confirmado-sin-hallazgo-patrón-trycatch-de-routessaves-es-consistente-catch-all-global-en-serverts-no-repetir-el-caso-de-turnclassify)
+- [Confirmado sin hallazgo: POST /reino/fundar ya rechaza limpio un segundo intento sobre un reino ya fundado](#2026-09-07--confirmado-sin-hallazgo-post-reinofundar-ya-rechaza-limpio-un-segundo-intento-sobre-un-reino-ya-fundado)
 
 **2026-09-15 — auditoría de deuda técnica tras ~8 días de desarrollo intenso (combate múltiple con compañeros + Interactuar/Zona)**
-- [combateMultipleOrquestacion.ts vuelve a crecer con fuerza: 1681→2279 líneas (+36%) en esta ronda, ya el doble de cuando se cerró el hallazgo de 2026-08-26](#2026-09-15-combatemultipleorquestacionts-vuelve-a-crecer-con-fuerza-16812279-líneas-36-en-esta-ronda-ya-el-doble-de-cuando-se-cerró-el-hallazgo-de-2026-08-26)
-- [Texto de despedida determinista de Gistera Koh duplicado byte a byte entre turnResolution.ts y quests.ts, sin constante compartida](#2026-09-15-texto-de-despedida-determinista-de-gistera-koh-duplicado-byte-a-byte-entre-turnresolutionts-y-queststs-sin-constante-compartida)
-- [mismaCelda (zonaPosicion.ts) sin ningún test pese a decidir la colisión real de combate en Zona](#2026-09-15-mismacelda-zonaposicionts-sin-ningún-test-pese-a-decidir-la-colisión-real-de-combate-en-zona)
-- [Confirmado sin hallazgo: playerActionValidation.ts (10 guards nuevos de hoy) ya comparte pickRandomLine/patrón "pool de 5, 1 cómica" — no hay duplicación real que extraer](#2026-09-15-confirmado-sin-hallazgo-playeractionvalidationts-10-guards-nuevos-de-hoy-ya-comparte-pickrandomlinepatrón-pool-de-5-1-cómica--no-hay-duplicación-real-que-extraer)
-- [Confirmado sin hallazgo: datosVivosDe/escribirCondicionYEnergia son el núcleo único compartido por los flujos NPC y Companion — no hay resolución de combate múltiple duplicada entre ambos](#2026-09-15-confirmado-sin-hallazgo-datosvivosdeescribircondicionyenergia-son-el-núcleo-único-compartido-por-los-flujos-npc-y-companion--no-hay-resolución-de-combate-múltiple-duplicada-entre-ambos)
-- [Confirmado sin hallazgo: dynamicModeRecurso.ts, zonaPosicion.ts/zonePoints.ts (salvo mismaCelda) y las 4 funciones Prisma de zonaPosicion.ts están limpias/bien cubiertas](#2026-09-15-confirmado-sin-hallazgo-dynamicmoderecursots-zonaposiciontszonepointsts-salvo-mismacelda-y-las-4-funciones-prisma-de-zonaposiciontss-están-limpiasbien-cubiertas)
-- [Confirmado sin hallazgo: CombatGroupsModal.tsx (drag&drop de grupos) sin test propio, pero consistente con el patrón ya establecido del frontend (solo 4/63 componentes tienen test directo)](#2026-09-15-confirmado-sin-hallazgo-combatgroupsmodaltsx-dragdrop-de-grupos-sin-test-propio-pero-consistente-con-el-patrón-ya-establecido-del-frontend-solo-463-componentes-tienen-test-directo)
+- [combateMultipleOrquestacion.ts vuelve a crecer con fuerza: 1681→2279 líneas (+36%) en esta ronda, ya el doble de cuando se cerró el hallazgo de 2026-08-26](#2026-09-15--combatemultipleorquestacionts-vuelve-a-crecer-con-fuerza-16812279-líneas-36-en-esta-ronda-ya-el-doble-de-cuando-se-cerró-el-hallazgo-de-2026-08-26)
+- [Texto de despedida determinista de Gistera Koh duplicado byte a byte entre turnResolution.ts y quests.ts, sin constante compartida](#2026-09-15--texto-de-despedida-determinista-de-gistera-koh-duplicado-byte-a-byte-entre-turnresolutionts-y-queststs-sin-constante-compartida)
+- [mismaCelda (zonaPosicion.ts) sin ningún test pese a decidir la colisión real de combate en Zona](#2026-09-15--mismacelda-zonaposicionts-sin-ningún-test-pese-a-decidir-la-colisión-real-de-combate-en-zona)
+- [Confirmado sin hallazgo: playerActionValidation.ts (10 guards nuevos de hoy) ya comparte pickRandomLine/patrón "pool de 5, 1 cómica" — no hay duplicación real que extraer](#2026-09-15--confirmado-sin-hallazgo-playeractionvalidationts-10-guards-nuevos-de-hoy-ya-comparte-pickrandomlinepatrón-pool-de-5-1-cómica--no-hay-duplicación-real-que-extraer)
+- [Confirmado sin hallazgo: datosVivosDe/escribirCondicionYEnergia son el núcleo único compartido por los flujos NPC y Companion — no hay resolución de combate múltiple duplicada entre ambos](#2026-09-15--confirmado-sin-hallazgo-datosvivosdeescribircondicionyenergia-son-el-núcleo-único-compartido-por-los-flujos-npc-y-companion--no-hay-resolución-de-combate-múltiple-duplicada-entre-ambos)
+- [Confirmado sin hallazgo: dynamicModeRecurso.ts, zonaPosicion.ts/zonePoints.ts (salvo mismaCelda) y las 4 funciones Prisma de zonaPosicion.ts están limpias/bien cubiertas](#2026-09-15--confirmado-sin-hallazgo-dynamicmoderecursots-zonaposiciontszonepointsts-salvo-mismacelda-y-las-4-funciones-prisma-de-zonaposicionts-están-limpiasbien-cubiertas)
+- [Confirmado sin hallazgo: CombatGroupsModal.tsx (drag&drop de grupos) sin test propio, pero consistente con el patrón ya establecido del frontend (solo 4/63 componentes tienen test directo)](#2026-09-15--confirmado-sin-hallazgo-combatgroupsmodaltsx-dragdrop-de-grupos-sin-test-propio-pero-consistente-con-el-patrón-ya-establecido-del-frontend-solo-463-componentes-tienen-test-directo)
 
 ---
 
@@ -289,7 +289,7 @@ comentarios históricos).
 
 ## 2026-08-26 — combateMultipleOrquestacion.ts creció bastante más al enganchar el objetivo individual real
 
-**Hallazgo (auto-observado implementando "objetivo individual", docs/21-roadmap.md § Fase 3, no una
+**Hallazgo (auto-observado implementando "objetivo individual", docs/producto/21-roadmap.md § Fase 3, no una
 auditoría dedicada)**: el ítem "menor agrupado" de arriba (2026-08-25) ya señalaba
 `ejecutarIntercambioYAvanzar` con 12 parámetros posicionales como candidato a objeto de opciones —
 con el enganche por ronda añadido hoy, el patrón se repite y se agrava:
@@ -339,7 +339,7 @@ partidas), pero esa petición concreta quedaba huérfana y sin ningún aviso al 
 (`turn.ts:641-673`), mismo patrón que ya usaba `/turn/narrate` (`request.log.error(err)` + 500
 genérico "Error clasificando el turno" al cliente, sin filtrar detalles internos). No corrige la
 causa de fondo (Ollama puede seguir colgándose alguna vez, ver
-`docs/checklist-pruebas-juego.md` § "Cuelgue de Ollama"), pero convierte un cuelgue silencioso e
+`docs/registros/checklist-pruebas-juego.md` § "Cuelgue de Ollama"), pero convierte un cuelgue silencioso e
 indefinido en un error visible e inmediato que permite reintentar. Pendiente de `tsc -b` real tras
 el próximo reinicio del backend (no se pudo compilar desde el sandbox de esta sesión, revisado a
 mano con cuidado: tipos ya importados, patrón idéntico al ya validado en `/turn/narrate`).

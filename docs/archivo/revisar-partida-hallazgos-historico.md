@@ -5,7 +5,7 @@
 (2026-09-03) confirmó que casi todo su contenido ya está cerrado — en particular la tanda del
 2026-08-30 (línea ~3622 de este archivo), que estaba 15 de 16 hallazgos resueltos sin que el
 documento lo reflejara hasta esa auditoría. El registro activo a partir de aquí es
-[../revisar-partida-hallazgos.md](../runbooks/revisar-partida-hallazgos.md), que arranca limpio — nuevas
+[../revisar-partida-hallazgos.md](../registros/revisar-partida-hallazgos.md), que arranca limpio — nuevas
 entradas de sesiones de juego futuras van ahí, no aquí. Se conserva sin tocar por valor de
 historial (causas raíz ya diagnosticadas, decisiones de diseño con su contexto completo) — antes de
 reportar algo como "nuevo", sigue mereciendo la pena mirar aquí si ya se vio, pero comprobar
@@ -21,147 +21,147 @@ Cada entrada: fecha, qué se detectó (cita textual si es narración), causa ra�
 ## Índice
 
 **2026-08-01**
-- [descansar no curaba + objeto médico narrado sin usarse](#2026-08-01-descansar-no-curaba-objeto-médico-narrado-sin-usarse)
-- [el orco ya muerto "volvió a aparecer"](#2026-08-01-el-orco-ya-muerto-volvió-a-aparecer)
-- [auditoría completa de `pendingCombatNpcSlugs` ("al reiniciar me empieza en combate")](#2026-08-01-auditoría-completa-de-pendingcombatnpcslugs-al-reiniciar-me-empieza-en-combate)
-- [arma equivocada en narración (dos rondas)](#2026-08-01-arma-equivocada-en-narración-dos-rondas)
-- [narración autocontradictoria (esquiva + sangra en la misma frase)](#2026-08-01-narración-autocontradictoria-esquiva-sangra-en-la-misma-frase)
-- [narración de combate anticipada en el turno de aceptar la misión de Gistera Koh](#2026-08-01-narración-de-combate-anticipada-en-el-turno-de-aceptar-la-misión-de-gistera-koh)
-- [Hagar aparece de la nada y responde en vez de Gistera Koh](#2026-08-01-hagar-aparece-de-la-nada-y-responde-en-vez-de-gistera-koh)
-- ["Los Restos de Maktor" enlazado al saquear (CONFIRMADO con captura)](#2026-08-01-los-restos-de-maktor-enlazado-al-saquear-confirmado-con-captura)
-- ["Clan Serhu" enlaza al Campamento aunque nadie esté ahí](#2026-08-01-clan-serhu-enlaza-al-campamento-aunque-nadie-esté-ahí)
-- [el tiempo de ficción no avanza durante el combate (por diseño, pero se siente roto)](#2026-08-01-el-tiempo-de-ficción-no-avanza-durante-el-combate-por-diseño-pero-se-siente-roto)
-- [narración de ambientación repetida sin progreso tras el combate ("bucle")](#2026-08-01-narración-de-ambientación-repetida-sin-progreso-tras-el-combate-bucle)
-- ["Las Agujas Imán" partido en dos, esta vez en el propio texto del jugador](#2026-08-01-las-agujas-imán-partido-en-dos-esta-vez-en-el-propio-texto-del-jugador)
-- ["el cuerpo del múrgol" al decapitar al Orco Enfurecido](#2026-08-01-el-cuerpo-del-múrgol-al-decapitar-al-orco-enfurecido)
+- [descansar no curaba + objeto médico narrado sin usarse](#2026-08-01--descansar-no-curaba--objeto-médico-narrado-sin-usarse)
+- [el orco ya muerto "volvió a aparecer"](#2026-08-01--el-orco-ya-muerto-volvió-a-aparecer)
+- [auditoría completa de `pendingCombatNpcSlugs` ("al reiniciar me empieza en combate")](#2026-08-01--auditoría-completa-de-pendingcombatnpcslugs-al-reiniciar-me-empieza-en-combate)
+- [arma equivocada en narración (dos rondas)](#2026-08-01--arma-equivocada-en-narración-dos-rondas)
+- [narración autocontradictoria (esquiva + sangra en la misma frase)](#2026-08-01--narración-autocontradictoria-esquiva--sangra-en-la-misma-frase)
+- [narración de combate anticipada en el turno de aceptar la misión de Gistera Koh](#2026-08-01--narración-de-combate-anticipada-en-el-turno-de-aceptar-la-misión-de-gistera-koh)
+- [Hagar aparece de la nada y responde en vez de Gistera Koh](#2026-08-01--hagar-aparece-de-la-nada-y-responde-en-vez-de-gistera-koh)
+- ["Los Restos de Maktor" enlazado al saquear (CONFIRMADO con captura)](#2026-08-01--los-restos-de-maktor-enlazado-al-saquear-confirmado-con-captura)
+- ["Clan Serhu" enlaza al Campamento aunque nadie esté ahí](#2026-08-01--clan-serhu-enlaza-al-campamento-aunque-nadie-esté-ahí)
+- [el tiempo de ficción no avanza durante el combate (por diseño, pero se siente roto)](#2026-08-01--el-tiempo-de-ficción-no-avanza-durante-el-combate-por-diseño-pero-se-siente-roto)
+- [narración de ambientación repetida sin progreso tras el combate ("bucle")](#2026-08-01--narración-de-ambientación-repetida-sin-progreso-tras-el-combate-bucle)
+- ["Las Agujas Imán" partido en dos, esta vez en el propio texto del jugador](#2026-08-01--las-agujas-imán-partido-en-dos-esta-vez-en-el-propio-texto-del-jugador)
+- ["el cuerpo del múrgol" al decapitar al Orco Enfurecido](#2026-08-01--el-cuerpo-del-múrgol-al-decapitar-al-orco-enfurecido)
 
 **2026-08-03**
-- [auditoría "revisa todos los MD" (sincronización lore↔código) + "y el resto de zonas están bien?" (posiciones del mapa)](#2026-08-03-auditoría-revisa-todos-los-md-sincronización-lorecódigo-y-el-resto-de-zonas-están-bien-posiciones-del-mapa)
-- [análisis completo backend/frontend (mejoras y huecos sin cubrir)](#2026-08-03-análisis-completo-backendfrontend-mejoras-y-huecos-sin-cubrir)
+- [auditoría "revisa todos los MD" (sincronización lore↔código) + "y el resto de zonas están bien?" (posiciones del mapa)](#2026-08-03--auditoría-revisa-todos-los-md-sincronización-lorecódigo--y-el-resto-de-zonas-están-bien-posiciones-del-mapa)
+- [análisis completo backend/frontend (mejoras y huecos sin cubrir)](#2026-08-03--análisis-completo-backendfrontend-mejoras-y-huecos-sin-cubrir)
 
 **2026-08-07**
-- ["no aparece ningún recurso" recolectando en la Hondonada del Eco](#2026-08-07-no-aparece-ningún-recurso-recolectando-en-la-hondonada-del-eco)
-- ["hielo sílice" narrado sin venir a cuento en combate (Orco Enfurecido)](#2026-08-07-hielo-sílice-narrado-sin-venir-a-cuento-en-combate-orco-enfurecido)
-- [objetos recién recolectados "sin categorizar" en el Inventario](#2026-08-07-continuación-objetos-recién-recolectados-sin-categorizar-en-el-inventario)
-- [la recolección no acumula, crea una fila nueva cada vez](#2026-08-07-continuación-la-recolección-no-acumula-crea-una-fila-nueva-cada-vez)
-- [consumir un objeto médico/de energía no lo quitaba del inventario](#2026-08-07-continuación-consumir-un-objeto-médicode-energía-no-lo-quitaba-del-inventario)
-- [el modal de "qué equipar" no mostraba ninguna estadística](#2026-08-07-continuación-el-modal-de-qué-equipar-no-mostraba-ninguna-estadística)
-- [consumibles equipados "no salen en el inventario": SIN REPRODUCIR](#2026-08-07-continuación-consumibles-equipados-no-salen-en-el-inventario-sin-reproducir)
-- [Minar/Talar sin ningún límite: recolección indefinida sin moverse](#2026-08-07-continuación-minartalar-sin-ningún-límite-recolección-indefinida-sin-moverse)
+- ["no aparece ningún recurso" recolectando en la Hondonada del Eco](#2026-08-07--no-aparece-ningún-recurso-recolectando-en-la-hondonada-del-eco)
+- ["hielo sílice" narrado sin venir a cuento en combate (Orco Enfurecido)](#2026-08-07--hielo-sílice-narrado-sin-venir-a-cuento-en-combate-orco-enfurecido)
+- [objetos recién recolectados "sin categorizar" en el Inventario](#2026-08-07-continuación--objetos-recién-recolectados-sin-categorizar-en-el-inventario)
+- [la recolección no acumula, crea una fila nueva cada vez](#2026-08-07-continuación--la-recolección-no-acumula-crea-una-fila-nueva-cada-vez)
+- [consumir un objeto médico/de energía no lo quitaba del inventario](#2026-08-07-continuación--consumir-un-objeto-médicode-energía-no-lo-quitaba-del-inventario)
+- [el modal de "qué equipar" no mostraba ninguna estadística](#2026-08-07-continuación--el-modal-de-qué-equipar-no-mostraba-ninguna-estadística)
+- [consumibles equipados "no salen en el inventario": SIN REPRODUCIR](#2026-08-07-continuación--consumibles-equipados-no-salen-en-el-inventario-sin-reproducir)
+- [Minar/Talar sin ningún límite: recolección indefinida sin moverse](#2026-08-07-continuación--minartalar-sin-ningún-límite-recolección-indefinida-sin-moverse)
 
 **2026-08-08**
-- [repetición literal de la ambientación de "mañana" (`entorno.ts`)](#2026-08-08-repetición-literal-de-la-ambientación-de-mañana-entornots)
-- [errores gramaticales sueltos del modelo en narración de combate/exploración](#2026-08-08-errores-gramaticales-sueltos-del-modelo-en-narración-de-combateexploración)
-- ["orca enfurecida"/"el Orco Enfurecido" en el mismo párrafo](#2026-08-08-continuación-orca-enfurecidael-orco-enfurecido-en-el-mismo-párrafo)
-- ["Un pequeño raposa": género de artículo + animal inventado](#2026-08-08-continuación-un-pequeño-raposa-género-de-artículo-animal-inventado)
-- ["buscar presas" no conecta nunca con un encuentro real](#2026-08-08-continuación-buscar-presas-no-conecta-nunca-con-un-encuentro-real)
-- [género inconsistente de "Orco Enfurecido" ("la orca enfurecida"/"el Orco Enfurecido" en el mismo párrafo)](#2026-08-08-continuación-género-inconsistente-de-orco-enfurecido-la-orca-enfurecidael-orco-enfurecido-en-el-mismo-párrafo)
-- ["Un pequeño raposa": animal inventado fuera del roster](#2026-08-08-continuación-un-pequeño-raposa-animal-inventado-fuera-del-roster)
-- [repetición literal de ambientación de "mañana": FIJADO](#2026-08-08-continuación-repetición-literal-de-ambientación-de-mañana-fijado)
-- [capacidad de inventario por filas, no por cantidad](#2026-08-08-continuación-partida-reiniciada-capacidad-de-inventario-por-filas-no-por-cantidad)
-- ["Cazar" narró la presa ya atrapada sin combate mecánico real](#2026-08-08-continuación-cazar-narró-la-presa-ya-atrapada-sin-combate-mecánico-real)
-- [imagen ausente en la ficha de combate (sí sale en la narración)](#2026-08-08-continuación-imagen-ausente-en-la-ficha-de-combate-sí-sale-en-la-narración)
-- [posible reaparición de la escena de Gistera Koh sin nombrarla](#2026-08-08-continuación-posible-reaparición-de-la-escena-de-gistera-koh-sin-nombrarla)
-- [capacidad de inventario: bug real confirmado, no solo percepción](#2026-08-08-continuación-capacidad-de-inventario-bug-real-confirmado-no-solo-percepción)
-- [Cazar ofrecía cualquier presa de la región, sin detección real](#2026-08-08-continuación-cazar-ofrecía-cualquier-presa-de-la-región-sin-detección-real)
-- [Hagar alucinado por SEGUNDA vez, ahora con NpcState real corrompido](#2026-08-08-continuación-hagar-alucinado-por-segunda-vez-ahora-con-npcstate-real-corrompido)
-- [fauna sin arma pierde su ataque real en combate ("el orco lanudo")](#2026-08-08-continuación-fauna-sin-arma-pierde-su-ataque-real-en-combate-el-orco-lanudo)
-- [el modelo podía autoconcederse hito "capitulo" (500 XP, el tope absoluto)](#2026-08-08-continuación-partida-reiniciada-el-modelo-podía-autoconcederse-hito-capitulo-500-xp-el-tope-absoluto)
-- [hueco de gerundios en los detectores de golpe prematuro/fantasma](#2026-08-08-continuación-hueco-de-gerundios-en-los-detectores-de-golpe-prematurofantasma)
-- ["+525 XP" seguía viéndose: pendiente de reiniciar backend, no bug nuevo](#2026-08-08-continuación-525-xp-seguía-viéndose-pendiente-de-reiniciar-backend-no-bug-nuevo)
-- [Gistera Koh reaparece sin nombrarse, tercera vez confirmada](#2026-08-08-continuación-gistera-koh-reaparece-sin-nombrarse-tercera-vez-confirmada)
+- [repetición literal de la ambientación de "mañana" (`entorno.ts`)](#2026-08-08--repetición-literal-de-la-ambientación-de-mañana-entornots)
+- [errores gramaticales sueltos del modelo en narración de combate/exploración](#2026-08-08--errores-gramaticales-sueltos-del-modelo-en-narración-de-combateexploración)
+- ["orca enfurecida"/"el Orco Enfurecido" en el mismo párrafo](#2026-08-08-continuación--orca-enfurecidael-orco-enfurecido-en-el-mismo-párrafo)
+- ["Un pequeño raposa": género de artículo + animal inventado](#2026-08-08-continuación--un-pequeño-raposa-género-de-artículo--animal-inventado)
+- ["buscar presas" no conecta nunca con un encuentro real](#2026-08-08-continuación--buscar-presas-no-conecta-nunca-con-un-encuentro-real)
+- [género inconsistente de "Orco Enfurecido" ("la orca enfurecida"/"el Orco Enfurecido" en el mismo párrafo)](#2026-08-08-continuación--género-inconsistente-de-orco-enfurecido-la-orca-enfurecidael-orco-enfurecido-en-el-mismo-párrafo)
+- ["Un pequeño raposa": animal inventado fuera del roster](#2026-08-08-continuación--un-pequeño-raposa-animal-inventado-fuera-del-roster)
+- [repetición literal de ambientación de "mañana": FIJADO](#2026-08-08-continuación--repetición-literal-de-ambientación-de-mañana-fijado)
+- [capacidad de inventario por filas, no por cantidad](#2026-08-08-continuación-partida-reiniciada--capacidad-de-inventario-por-filas-no-por-cantidad)
+- ["Cazar" narró la presa ya atrapada sin combate mecánico real](#2026-08-08-continuación--cazar-narró-la-presa-ya-atrapada-sin-combate-mecánico-real)
+- [imagen ausente en la ficha de combate (sí sale en la narración)](#2026-08-08-continuación--imagen-ausente-en-la-ficha-de-combate-sí-sale-en-la-narración)
+- [posible reaparición de la escena de Gistera Koh sin nombrarla](#2026-08-08-continuación--posible-reaparición-de-la-escena-de-gistera-koh-sin-nombrarla)
+- [capacidad de inventario: bug real confirmado, no solo percepción](#2026-08-08-continuación--capacidad-de-inventario-bug-real-confirmado-no-solo-percepción)
+- [Cazar ofrecía cualquier presa de la región, sin detección real](#2026-08-08-continuación--cazar-ofrecía-cualquier-presa-de-la-región-sin-detección-real)
+- [Hagar alucinado por SEGUNDA vez, ahora con NpcState real corrompido](#2026-08-08-continuación--hagar-alucinado-por-segunda-vez-ahora-con-npcstate-real-corrompido)
+- [fauna sin arma pierde su ataque real en combate ("el orco lanudo")](#2026-08-08-continuación--fauna-sin-arma-pierde-su-ataque-real-en-combate-el-orco-lanudo)
+- [el modelo podía autoconcederse hito "capitulo" (500 XP, el tope absoluto)](#2026-08-08-continuación-partida-reiniciada--el-modelo-podía-autoconcederse-hito-capitulo-500-xp-el-tope-absoluto)
+- [hueco de gerundios en los detectores de golpe prematuro/fantasma](#2026-08-08-continuación--hueco-de-gerundios-en-los-detectores-de-golpe-prematurofantasma)
+- ["+525 XP" seguía viéndose: pendiente de reiniciar backend, no bug nuevo](#2026-08-08-continuación--525-xp-seguía-viéndose-pendiente-de-reiniciar-backend-no-bug-nuevo)
+- [Gistera Koh reaparece sin nombrarse, tercera vez confirmada](#2026-08-08-continuación--gistera-koh-reaparece-sin-nombrarse-tercera-vez-confirmada)
 
 **2026-08-11**
-- [pruebas por API tras el rediseño de combate (fuera de combate a propósito)](#2026-08-11-pruebas-por-api-tras-el-rediseño-de-combate-fuera-de-combate-a-propósito)
-- [misiones "conseguir X" nunca se cierran si el objeto viene de Minar/Talar/Desollar/Cazar](#2026-08-11-continuación-misiones-conseguir-x-nunca-se-cierran-si-el-objeto-viene-de-minartalardesollarcazar)
-- [el objeto recién crafteado sale "sin categorizar" (regresión parcial del fix de 2026-08-07)](#2026-08-11-continuación-el-objeto-recién-crafteado-sale-sin-categorizar-regresión-parcial-del-fix-de-2026-08-07)
-- [segunda tanda: reino, capítulo, muerte definitiva, despiece (sin bugs nuevos)](#2026-08-11-continuación-segunda-tanda-reino-capítulo-muerte-definitiva-despiece-sin-bugs-nuevos)
-- [tercera tanda: sesión (pausa/cancelar/huir), habilidades generales, construcción, validación de creación](#2026-08-11-continuación-tercera-tanda-sesión-pausacancelarhuir-habilidades-generales-construcción-validación-de-creación)
-- [cuarta tanda: calidad de narración (petición explícita: "buscar mejoras... qué es necesario mejorar para que la narración sea de calidad")](#2026-08-11-continuación-cuarta-tanda-calidad-de-narración-petición-explícita-buscar-mejoras-qué-es-necesario-mejorar-para-que-la-narración-sea-de-calidad)
+- [pruebas por API tras el rediseño de combate (fuera de combate a propósito)](#2026-08-11--pruebas-por-api-tras-el-rediseño-de-combate-fuera-de-combate-a-propósito)
+- [misiones "conseguir X" nunca se cierran si el objeto viene de Minar/Talar/Desollar/Cazar](#2026-08-11-continuación--misiones-conseguir-x-nunca-se-cierran-si-el-objeto-viene-de-minartalardesollarcazar)
+- [el objeto recién crafteado sale "sin categorizar" (regresión parcial del fix de 2026-08-07)](#2026-08-11-continuación--el-objeto-recién-crafteado-sale-sin-categorizar-regresión-parcial-del-fix-de-2026-08-07)
+- [segunda tanda: reino, capítulo, muerte definitiva, despiece (sin bugs nuevos)](#2026-08-11-continuación--segunda-tanda-reino-capítulo-muerte-definitiva-despiece-sin-bugs-nuevos)
+- [tercera tanda: sesión (pausa/cancelar/huir), habilidades generales, construcción, validación de creación](#2026-08-11-continuación--tercera-tanda-sesión-pausacancelarhuir-habilidades-generales-construcción-validación-de-creación)
+- [cuarta tanda: calidad de narración (petición explícita: "buscar mejoras... qué es necesario mejorar para que la narración sea de calidad")](#2026-08-11-continuación--cuarta-tanda-calidad-de-narración-petición-explícita-buscar-mejoras-qué-es-necesario-mejorar-para-que-la-narración-sea-de-calidad)
 
 **2026-08-12**
-- [Orco Enfurecido (ya MUERTO) narrado atacando a Gorhorn durante una cacería de Múrgol, en otra ubicación](#2026-08-12-orco-enfurecido-ya-muerto-narrado-atacando-a-gorhorn-durante-una-cacería-de-múrgol-en-otra-ubicación)
+- [Orco Enfurecido (ya MUERTO) narrado atacando a Gorhorn durante una cacería de Múrgol, en otra ubicación](#2026-08-12--orco-enfurecido-ya-muerto-narrado-atacando-a-gorhorn-durante-una-cacería-de-múrgol-en-otra-ubicación)
 
 **2026-08-13**
-- [Gistera Koh nombrada explícitamente en mitad de un combate, tras marcharse para siempre](#2026-08-13-gistera-koh-nombrada-explícitamente-en-mitad-de-un-combate-tras-marcharse-para-siempre)
-- ["Misión completada" aparece en el log ANTES que la narración del turno que la resolvió](#2026-08-13-misión-completada-aparece-en-el-log-antes-que-la-narración-del-turno-que-la-resolvió)
-- [continuación: "Vendaje improvisado" usado pero nunca consumido del inventario (CONFIRMADO en BD)](#2026-08-13-continuación-vendaje-improvisado-usado-pero-nunca-consumido-del-inventario-confirmado-en-bd)
-- [continuación: arma narrada como lanzada en un ataque cuerpo a cuerpo, sin reflejo mecánico](#2026-08-13-continuación-arma-narrada-como-lanzada-en-un-ataque-cuerpo-a-cuerpo-sin-reflejo-mecánico)
-- [continuación: cambio de equipo alucinado y contradictorio ("capa... como falda" → "capa... como asiento")](#2026-08-13-continuación-cambio-de-equipo-alucinado-y-contradictorio-capa-como-falda-capa-como-asiento)
-- [continuación: palabra en inglés colada en narración española ("small clearing")](#2026-08-13-continuación-palabra-en-inglés-colada-en-narración-española-small-clearing)
-- [continuación: aportes en vivo de la usuaria, 6 puntos (habilidad no-daño, crafteo, tiempo, energía, recolección, viaje/caza)](#2026-08-13-continuación-aportes-en-vivo-de-la-usuaria-6-puntos-habilidad-no-daño-crafteo-tiempo-energía-recolección-viajecaza)
+- [Gistera Koh nombrada explícitamente en mitad de un combate, tras marcharse para siempre](#2026-08-13--gistera-koh-nombrada-explícitamente-en-mitad-de-un-combate-tras-marcharse-para-siempre)
+- ["Misión completada" aparece en el log ANTES que la narración del turno que la resolvió](#2026-08-13--misión-completada-aparece-en-el-log-antes-que-la-narración-del-turno-que-la-resolvió)
+- [continuación: "Vendaje improvisado" usado pero nunca consumido del inventario (CONFIRMADO en BD)](#2026-08-13-continuación--vendaje-improvisado-usado-pero-nunca-consumido-del-inventario-confirmado-en-bd)
+- [continuación: arma narrada como lanzada en un ataque cuerpo a cuerpo, sin reflejo mecánico](#2026-08-13-continuación--arma-narrada-como-lanzada-en-un-ataque-cuerpo-a-cuerpo-sin-reflejo-mecánico)
+- [continuación: cambio de equipo alucinado y contradictorio ("capa... como falda" → "capa... como asiento")](#2026-08-13-continuación--cambio-de-equipo-alucinado-y-contradictorio-capa-como-falda--capa-como-asiento)
+- [continuación: palabra en inglés colada en narración española ("small clearing")](#2026-08-13-continuación--palabra-en-inglés-colada-en-narración-española-small-clearing)
+- [continuación: aportes en vivo de la usuaria, 6 puntos (habilidad no-daño, crafteo, tiempo, energía, recolección, viaje/caza)](#2026-08-13-continuación--aportes-en-vivo-de-la-usuaria-6-puntos-habilidad-no-daño-crafteo-tiempo-energía-recolección-viajecaza)
 
 **2026-08-14**
-- [XP de recompensa de misión se narra pero no se aplica a `Save.xp` al completarse matando/decapitando al NPC objetivo](#2026-08-14-xp-de-recompensa-de-misión-se-narra-pero-no-se-aplica-a-savexp-al-completarse-matandodecapitando-al-npc-objetivo)
-- [continuación: ronda de 6 hallazgos en vivo tras "revisar partida" (persistencia de ability-used, descubrimientos de Enciclopedia, categoría de Herborista, narración "inconsciente", renombrado Decapitar→Matar, Sella Marn/núcleo jugable)](#2026-08-14-continuación-ronda-de-hallazgos-en-vivo-tras-revisar-partida-6-puntos)
-- [continuación: objetos narrativos "PASIVO" salían en cualquier sitio de la región, incluida la primerísima escena](#2026-08-14-continuación-objetos-narrativos-pasivo-salían-en-cualquier-sitio-de-la-región-incluida-la-primerísima-escena)
-- [continuación: objetos recolectados de verdad descubiertos en BD, pero invisibles en la Enciclopedia (frontend nunca la refrescaba)](#2026-08-14-continuación-objetos-recolectados-de-verdad-descubiertos-en-bd-pero-invisibles-en-la-enciclopedia-frontend-nunca-la-refrescaba)
-- [continuación: golpes_mutuos también dañaba con una habilidad defensiva sin `ATAQUE`](#2026-08-14-continuación-golpes_mutuos-también-dañaba-con-una-habilidad-defensiva-sin-ataque)
-- [continuación: crafteo narraba con el modelo en vez de la frase determinista](#2026-08-14-continuación-crafteo-narraba-con-el-modelo-en-vez-de-la-frase-determinista)
-- [continuación: combate "sin sentido" con Cruzavientos + reloj de mundo congelado en recolección](#2026-08-14-continuación-combate-sin-sentido-con-cruzavientos-reloj-de-mundo-congelado-en-recolección)
-- [continuación: revisión centrada en narración — ataque a Múrgol narrado como si fuera contra Cruzavientos](#2026-08-14-continuación-revisión-centrada-en-narración-ataque-a-múrgol-narrado-como-si-fuera-contra-cruzavientos)
+- [XP de recompensa de misión se narra pero no se aplica a `Save.xp` al completarse matando/decapitando al NPC objetivo](#2026-08-14--xp-de-recompensa-de-misión-se-narra-pero-no-se-aplica-a-savexp-al-completarse-matandodecapitando-al-npc-objetivo)
+- [continuación: ronda de 6 hallazgos en vivo tras "revisar partida" (persistencia de ability-used, descubrimientos de Enciclopedia, categoría de Herborista, narración "inconsciente", renombrado Decapitar→Matar, Sella Marn/núcleo jugable)](#2026-08-14-continuación--ronda-de-hallazgos-en-vivo-tras-revisar-partida-6-puntos)
+- [continuación: objetos narrativos "PASIVO" salían en cualquier sitio de la región, incluida la primerísima escena](#2026-08-14-continuación--objetos-narrativos-pasivo-salían-en-cualquier-sitio-de-la-región-incluida-la-primerísima-escena)
+- [continuación: objetos recolectados de verdad descubiertos en BD, pero invisibles en la Enciclopedia (frontend nunca la refrescaba)](#2026-08-14-continuación--objetos-recolectados-de-verdad-descubiertos-en-bd-pero-invisibles-en-la-enciclopedia-frontend-nunca-la-refrescaba)
+- [continuación: golpes_mutuos también dañaba con una habilidad defensiva sin `ATAQUE`](#2026-08-14-continuación--golpes_mutuos-también-dañaba-con-una-habilidad-defensiva-sin-ataque)
+- [continuación: crafteo narraba con el modelo en vez de la frase determinista](#2026-08-14-continuación--crafteo-narraba-con-el-modelo-en-vez-de-la-frase-determinista)
+- [continuación: combate "sin sentido" con Cruzavientos + reloj de mundo congelado en recolección](#2026-08-14-continuación--combate-sin-sentido-con-cruzavientos--reloj-de-mundo-congelado-en-recolección)
+- [continuación: revisión centrada en narración — ataque a Múrgol narrado como si fuera contra Cruzavientos](#2026-08-14-continuación--revisión-centrada-en-narración-ataque-a-múrgol-narrado-como-si-fuera-contra-cruzavientos)
 
 **2026-08-15**
-- [rediseño de balance: la rueda de debilidades solo premia, nunca penaliza](#2026-08-15-rediseño-de-balance-la-rueda-de-debilidades-solo-premia-nunca-penaliza)
+- [rediseño de balance: la rueda de debilidades solo premia, nunca penaliza](#2026-08-15--rediseño-de-balance-la-rueda-de-debilidades-solo-premia-nunca-penaliza)
 
 **2026-08-20**
-- [escena de Gistera Koh: figura sin resolver en el acantilado, diálogo mal atribuido, Orco Enfurecido con caballo/armadura inventados](#2026-08-20-escena-de-gistera-koh-figura-sin-resolver-en-el-acantilado-diálogo-mal-atribuido-orco-enfurecido-con-caballoarmadura-inventados)
+- [escena de Gistera Koh: figura sin resolver en el acantilado, diálogo mal atribuido, Orco Enfurecido con caballo/armadura inventados](#2026-08-20--escena-de-gistera-koh-figura-sin-resolver-en-el-acantilado-diálogo-mal-atribuido-orco-enfurecido-con-caballoarmadura-inventados)
 
 **2026-08-21 — auditoría de código (sin partida jugada, 5 agentes en paralelo back+front)**
-- [despiece narrado por texto libre duplicaba botín en fauna cazada en grupo](#2026-08-21-despiece-narrado-por-texto-libre-duplicaba-botín-en-fauna-cazada-en-grupo)
-- [cazar/recolectar/fundar reino seguían funcionando tras una muerte definitiva](#2026-08-21-continuación-cazarrecolectarfundar-reino-seguían-funcionando-tras-una-muerte-definitiva)
-- [reiniciar partida dejaba una `Faction` fantasma que bloqueaba refundar el reino](#2026-08-21-continuación-reiniciar-partida-dejaba-una-faction-fantasma-que-bloqueaba-refundar-el-reino)
-- [doble submit al equipar/desequipar objetos desde el modal de detalle](#2026-08-21-continuación-doble-submit-al-equiparsequipar-objetos-desde-el-modal-de-detalle)
-- [panel de combate no se abría tras resolver una caza sin combate](#2026-08-21-continuación-panel-de-combate-no-se-abría-tras-resolver-una-caza-sin-combate)
-- [renombrado PACIFICA→CONQUISTADA (reputation.ts, 2026-08-15) nunca propagado al frontend](#2026-08-21-continuación-renombrado-pacificaconquistada-reputationts-2026-08-15-nunca-propagado-al-frontend)
-- [continuación: diálogo del jugador entre comillas bloqueado como "NPC inventado"](#2026-08-20-continuación-diálogo-del-jugador-entre-comillas-bloqueado-como-npc-inventado)
-- [continuación: el "perseguidor" de Gistera Koh nunca se detecta en escena si no se le nombra "Orco enfurecido"](#2026-08-20-continuación-el-perseguidor-de-gistera-koh-nunca-se-detecta-en-escena-si-no-se-le-nombra-orco-enfurecido)
-- [continuación: sugerencia "Acepto ayudarla y busco al que me persigue" — REGLA 4 comprimida + pronombre equivocado, y un bug propio de raíz verbal](#2026-08-20-continuación-sugerencia-acepto-ayudarla-y-busco-al-que-me-persigue-regla-4-comprimida-pronombre-equivocado-y-un-bug-propio-de-raíz-verbal-descubierto-al-arreglarlo)
-- [continuación: reintento cuando la ÚNICA aceptación se descarta + segundo bug de raíz verbal en "Examina"/"Examinó"](#2026-08-20-continuación-reintento-cuando-la-única-aceptación-se-descarta-segundo-bug-de-raíz-verbal-en-examinaexaminó)
-- [continuación: rediseño a sugerencias cortas + investigación 9B/4B (modelos qwen3.5 de "razonamiento")](#2026-08-2021-continuación-rediseño-a-sugerencias-cortas-investigación-9b4b-modelos-qwen35-de-razonamiento)
+- [despiece narrado por texto libre duplicaba botín en fauna cazada en grupo](#2026-08-21--despiece-narrado-por-texto-libre-duplicaba-botín-en-fauna-cazada-en-grupo)
+- [cazar/recolectar/fundar reino seguían funcionando tras una muerte definitiva](#2026-08-21-continuación--cazarrecolectarfundar-reino-seguían-funcionando-tras-una-muerte-definitiva)
+- [reiniciar partida dejaba una `Faction` fantasma que bloqueaba refundar el reino](#2026-08-21-continuación--reiniciar-partida-dejaba-una-faction-fantasma-que-bloqueaba-refundar-el-reino)
+- [doble submit al equipar/desequipar objetos desde el modal de detalle](#2026-08-21-continuación--doble-submit-al-equipardesequipar-objetos-desde-el-modal-de-detalle)
+- [panel de combate no se abría tras resolver una caza sin combate](#2026-08-21-continuación--panel-de-combate-no-se-abría-tras-resolver-una-caza-sin-combate)
+- [renombrado PACIFICA→CONQUISTADA (reputation.ts, 2026-08-15) nunca propagado al frontend](#2026-08-21-continuación--renombrado-pacificaconquistada-reputationts-2026-08-15-nunca-propagado-al-frontend)
+- [continuación: diálogo del jugador entre comillas bloqueado como "NPC inventado"](#2026-08-20-continuación--diálogo-del-jugador-entre-comillas-bloqueado-como-npc-inventado)
+- [continuación: el "perseguidor" de Gistera Koh nunca se detecta en escena si no se le nombra "Orco enfurecido"](#2026-08-20-continuación--el-perseguidor-de-gistera-koh-nunca-se-detecta-en-escena-si-no-se-le-nombra-orco-enfurecido)
+- [continuación: sugerencia "Acepto ayudarla y busco al que me persigue" — REGLA 4 comprimida + pronombre equivocado, y un bug propio de raíz verbal](#2026-08-20-continuación--sugerencia-acepto-ayudarla-y-busco-al-que-me-persigue-regla-4-comprimida--pronombre-equivocado-y-un-bug-propio-de-raíz-verbal-descubierto-al-arreglarlo)
+- [continuación: reintento cuando la ÚNICA aceptación se descarta + segundo bug de raíz verbal en "Examina"/"Examinó"](#2026-08-20-continuación--reintento-cuando-la-única-aceptación-se-descarta--segundo-bug-de-raíz-verbal-en-examinaexaminó)
+- [continuación: rediseño a sugerencias cortas + investigación 9B/4B (modelos qwen3.5 de "razonamiento")](#2026-08-2021-continuación--rediseño-a-sugerencias-cortas--investigación-9b4b-modelos-qwen35-de-razonamiento)
 
 **2026-08-21**
-- [mensaje de iniciativa + tirada de dados perdidos al recargar tras abrir combate](#2026-08-21-mensaje-de-iniciativa-tirada-de-dados-perdidos-al-recargar-tras-abrir-combate)
+- [mensaje de iniciativa + tirada de dados perdidos al recargar tras abrir combate](#2026-08-21--mensaje-de-iniciativa--tirada-de-dados-perdidos-al-recargar-tras-abrir-combate)
 
 **2026-08-23**
-- [Quio narrado en 3 ubicaciones distintas el mismo día](#2026-08-23-quio-narrado-en-3-ubicaciones-distintas-el-mismo-día)
-- [Cruzavientos ataca repetidamente y nunca se narra quién es (reportado en vivo por la usuaria)](#2026-08-23-cruzavientos-ataca-repetidamente-y-nunca-se-narra-quién-es-reportado-en-vivo-por-la-usuaria)
-- [Ruptidar "ataca" en combate pese a ser INOFENSIVO/"No ataca"](#2026-08-23-ruptidar-ataca-en-combate-pese-a-ser-inofensivono-ataca)
-- [Ruptidar descrito como "insecto" con "alas rotas" (es un reptil sin alas)](#2026-08-23-ruptidar-descrito-como-insecto-con-alas-rotas-es-un-reptil-sin-alas)
-- [continuación: "several pasos", inglés colado en narración española (2ª vez)](#2026-08-23-continuación-several-pasos-inglés-colado-en-narración-española-2ª-vez)
-- [continuación: "reptil reptilise"/"reptil reptil reptil", errores gramaticales del modelo](#2026-08-23-continuación-reptil-reptilisereptil-reptil-reptil-errores-gramaticales-del-modelo)
-- [XP de capítulo (+500×2) verificado — NO ES BUG](#2026-08-23-xp-de-capítulo-500×2-verificado--no-es-bug)
+- [Quio narrado en 3 ubicaciones distintas el mismo día](#2026-08-23--quio-narrado-en-3-ubicaciones-distintas-el-mismo-día)
+- [Cruzavientos ataca repetidamente y nunca se narra quién es (reportado en vivo por la usuaria)](#2026-08-23--cruzavientos-ataca-repetidamente-y-nunca-se-narra-quién-es-reportado-en-vivo-por-la-usuaria)
+- [Ruptidar "ataca" en combate pese a ser INOFENSIVO/"No ataca"](#2026-08-23--ruptidar-ataca-en-combate-pese-a-ser-inofensivono-ataca)
+- [Ruptidar descrito como "insecto" con "alas rotas" (es un reptil sin alas)](#2026-08-23--ruptidar-descrito-como-insecto-con-alas-rotas-es-un-reptil-sin-alas)
+- [continuación: "several pasos", inglés colado en narración española (2ª vez)](#2026-08-23-continuación--several-pasos-inglés-colado-en-narración-española-2ª-vez)
+- [continuación: "reptil reptilise"/"reptil reptil reptil", errores gramaticales del modelo](#2026-08-23-continuación--reptil-reptilisereptil-reptil-reptil-errores-gramaticales-del-modelo)
+- [XP de capítulo (+500×2) verificado — NO ES BUG](#2026-08-23--xp-de-capítulo-5002-verificado--no-es-bug)
 
 **2026-08-25 — playtest en vivo tras cerrar Combate múltiple/saqueo-desuello/Recoger**
-- [CRÍTICO: el narrador de Combate múltiple revienta el timeout de transacción de Prisma — combate y caza en grupo rotos de verdad](#2026-08-25-crítico-el-narrador-de-combate-múltiple-revienta-el-timeout-de-transacción-de-prisma--combate-y-caza-en-grupo-rotos-de-verdad)
-- [continuación: CombatEncounter huérfanos se apilaban al reintentar cazar tras el crash — cualquier turno posterior se enrutaba a un combate roto](#2026-08-25-continuación-combatencounter-huérfanos-se-apilaban-al-reintentar-cazar-tras-el-crash--cualquier-turno-posterior-se-enrutaba-a-un-combate-roto)
-- [la caché de tirada de recolección es un único slot por partida, no por oficio — cambiar de profesión sin confirmar la invalida](#2026-08-25-la-caché-de-tirada-de-recolección-es-un-único-slot-por-partida-no-por-oficio--cambiar-de-profesión-sin-confirmar-la-invalida)
-- [Roca Luclara minable en Hondonada del Eco pese a tener `harvestSourceHomeLocationSlug` distinto — `harvestSourceHomeLocationSlug` nunca se aplica a MINERIA/TALA/EXTRACCION, solo a PASIVO](#2026-08-25-roca-luclara-minable-en-hondonada-del-eco-pese-a-tener-harvestsourcehomelocationslug-distinto--harvestsourcehomelocationslug-nunca-se-aplica-a-mineriatalaextraccion-solo-a-pasivo)
+- [CRÍTICO: el narrador de Combate múltiple revienta el timeout de transacción de Prisma — combate y caza en grupo rotos de verdad](#2026-08-25--crítico-el-narrador-de-combate-múltiple-revienta-el-timeout-de-transacción-de-prisma--combate-y-caza-en-grupo-rotos-de-verdad)
+- [continuación: CombatEncounter huérfanos se apilaban al reintentar cazar tras el crash — cualquier turno posterior se enrutaba a un combate roto](#2026-08-25-continuación--combatencounter-huérfanos-se-apilaban-al-reintentar-cazar-tras-el-crash--cualquier-turno-posterior-se-enrutaba-a-un-combate-roto)
+- [la caché de tirada de recolección es un único slot por partida, no por oficio — cambiar de profesión sin confirmar la invalida](#2026-08-25--la-caché-de-tirada-de-recolección-es-un-único-slot-por-partida-no-por-oficio--cambiar-de-profesión-sin-confirmar-la-invalida)
+- [Roca Luclara minable en Hondonada del Eco pese a tener `harvestSourceHomeLocationSlug` distinto — `harvestSourceHomeLocationSlug` nunca se aplica a MINERIA/TALA/EXTRACCION, solo a PASIVO](#2026-08-25--roca-luclara-minable-en-hondonada-del-eco-pese-a-tener-harvestsourcehomelocationslug-distinto--harvestsourcehomelocationslug-nunca-se-aplica-a-mineriatalaextraccion-solo-a-pasivo)
 
 **2026-08-25 — auditoría de código (tras fijar el timeout de Prisma), 2 agentes en paralelo por zona**
-- [Condición de carrera: confirmar tameo puede superar el tope real de compañeros o duplicar un slot de domador gratis](#2026-08-25-condición-de-carrera-confirmar-tameo-puede-superar-el-tope-real-de-compañeros-o-duplicar-un-slot-de-domador-gratis)
-- [Condición de carrera: doble clic en "salgo a cazar" puede crear dos CombatEncounter activos a la vez](#2026-08-25-condición-de-carrera-doble-clic-en-salgo-a-cazar-puede-crear-dos-combatencounter-activos-a-la-vez)
-- [Condición de carrera: huir de combate puede pisar en silencio un pendingCombatNpcSlugs que un turno real está escribiendo en paralelo](#2026-08-25-condición-de-carrera-huir-de-combate-puede-pisar-en-silencio-un-pendingcombatnpcslugs-que-un-turno-real-está-escribiendo-en-paralelo)
-- [Huecos de vocabulario en guards de honestidad narración-vs-mecánica existentes](#2026-08-25-huecos-de-vocabulario-en-guards-de-honestidad-narración-vs-mecánica-existentes)
-- [Categorías mecánicas sin ningún guard de honestidad correspondiente](#2026-08-25-categorías-mecánicas-sin-ningún-guard-de-honestidad-correspondiente)
+- [Condición de carrera: confirmar tameo puede superar el tope real de compañeros o duplicar un slot de domador gratis](#2026-08-25--condición-de-carrera-confirmar-tameo-puede-superar-el-tope-real-de-compañeros-o-duplicar-un-slot-de-domador-gratis)
+- [Condición de carrera: doble clic en "salgo a cazar" puede crear dos CombatEncounter activos a la vez](#2026-08-25--condición-de-carrera-doble-clic-en-salgo-a-cazar-puede-crear-dos-combatencounter-activos-a-la-vez)
+- [Condición de carrera: huir de combate puede pisar en silencio un pendingCombatNpcSlugs que un turno real está escribiendo en paralelo](#2026-08-25--condición-de-carrera-huir-de-combate-puede-pisar-en-silencio-un-pendingcombatnpcslugs-que-un-turno-real-está-escribiendo-en-paralelo)
+- [Huecos de vocabulario en guards de honestidad narración-vs-mecánica existentes](#2026-08-25--huecos-de-vocabulario-en-guards-de-honestidad-narración-vs-mecánica-existentes)
+- [Categorías mecánicas sin ningún guard de honestidad correspondiente](#2026-08-25--categorías-mecánicas-sin-ningún-guard-de-honestidad-correspondiente)
 
 **2026-08-27 — playtest en vivo + revisión en 5 fases separadas (funcionalidad/coherencia/vocabulario/lore/UX), primera vez con este formato**
-- [FASE 1 (funcionalidad): sin hallazgos, estado técnico sano](#2026-08-27-fase-1-funcionalidad-sin-hallazgos-estado-técnico-sano)
-- [FASE 2 (coherencia): sessionFacts reintroduce a Gistera Koh "sin nombre" tras respawn pese a un hecho protegido "no volverá a aparecer" — hueco distinto de los guards ya FIJADOS el 2026-08-13](#2026-08-27-fase-2-coherencia-sessionfacts-reintroduce-a-gistera-koh-sin-nombre-tras-respawn-pese-a-un-hecho-protegido-no-volverá-a-aparecer--hueco-distinto-de-los-guards-ya-fijados-el-2026-08-13)
-- [FASE 2 (coherencia, menor): "amuleto de hueso" cae 3 veces en el mismo combate sin memoria narrativa](#2026-08-27-fase-2-coherencia-menor-amuleto-de-hueso-cae-3-veces-en-el-mismo-combate-sin-memoria-narrativa)
-- [FASE 3 (vocabulario/prosa): contradicción interna en la misma frase ("bloquea sin daño" + "mancha roja")](#2026-08-27-fase-3-vocabularioprosa-contradicción-interna-en-la-misma-frase-bloquea-sin-daño--mancha-roja)
-- [FASE 3 (vocabulario/prosa): mezcla de 2ª/3ª persona en la misma narración](#2026-08-27-fase-3-vocabularioprosa-mezcla-de-2ª3ª-persona-en-la-misma-narración)
-- [FASE 3 (vocabulario/prosa, menor): fórmula de impacto reciclada ("mancha roja en tu pecho" ×3)](#2026-08-27-fase-3-vocabularioprosa-menor-fórmula-de-impacto-reciclada-mancha-roja-en-tu-pecho-3)
-- [FASE 4 (lore): el mismo sessionFact contaminado inventa "el río Karot Veku" (es un campamento, no un río)](#2026-08-27-fase-4-lore-el-mismo-sessionfact-contaminado-inventa-el-río-karot-veku-es-un-campamento-no-un-río)
-- [FASE 5 (UX): sin hallazgos, puntos de atributo/contador de muertes correctos](#2026-08-27-fase-5-ux-sin-hallazgos-puntos-de-atributocontador-de-muertes-correctos)
+- [FASE 1 (funcionalidad): sin hallazgos, estado técnico sano](#2026-08-27-fase-1-funcionalidad--sin-hallazgos-estado-técnico-sano)
+- [FASE 2 (coherencia): sessionFacts reintroduce a Gistera Koh "sin nombre" tras respawn pese a un hecho protegido "no volverá a aparecer" — hueco distinto de los guards ya FIJADOS el 2026-08-13](#2026-08-27-fase-2-coherencia--sessionfacts-reintroduce-a-gistera-koh-sin-nombre-tras-respawn-pese-a-un-hecho-protegido-no-volverá-a-aparecer--hueco-distinto-de-los-guards-ya-fijados-el-2026-08-13)
+- [FASE 2 (coherencia, menor): "amuleto de hueso" cae 3 veces en el mismo combate sin memoria narrativa](#2026-08-27-fase-2-coherencia-menor--amuleto-de-hueso-cae-3-veces-en-el-mismo-combate-sin-memoria-narrativa)
+- [FASE 3 (vocabulario/prosa): contradicción interna en la misma frase ("bloquea sin daño" + "mancha roja")](#2026-08-27-fase-3-vocabularioprosa--contradicción-interna-en-la-misma-frase-bloquea-sin-daño--mancha-roja)
+- [FASE 3 (vocabulario/prosa): mezcla de 2ª/3ª persona en la misma narración](#2026-08-27-fase-3-vocabularioprosa--mezcla-de-2ª3ª-persona-en-la-misma-narración)
+- [FASE 3 (vocabulario/prosa, menor): fórmula de impacto reciclada ("mancha roja en tu pecho" ×3)](#2026-08-27-fase-3-vocabularioprosa-menor--fórmula-de-impacto-reciclada-mancha-roja-en-tu-pecho-3)
+- [FASE 4 (lore): el mismo sessionFact contaminado inventa "el río Karot Veku" (es un campamento, no un río)](#2026-08-27-fase-4-lore--el-mismo-sessionfact-contaminado-inventa-el-río-karot-veku-es-un-campamento-no-un-río)
+- [FASE 5 (UX): sin hallazgos, puntos de atributo/contador de muertes correctos](#2026-08-27-fase-5-ux--sin-hallazgos-puntos-de-atributocontador-de-muertes-correctos)
 
 **2026-08-28 — cierre de la partida de pruebas de Gorhorn, análisis en 5 fases (`auditSave.ts`)**
-- [FASE 1 (funcionalidad): dar un objeto a un NPC no lo retira del inventario del jugador](#2026-08-28-fase-1-funcionalidad-dar-un-objeto-a-un-npc-no-lo-retira-del-inventario-del-jugador)
-- [FASE 2 (coherencia): Orco Enfurecido MUERTO reaparece como amenaza viva — mismo síntoma que 2026-08-01, causa DISTINTA](#2026-08-28-fase-2-coherencia-orco-enfurecido-muerto-reaparece-como-amenaza-viva-2-veces--mismo-síntoma-que-el-hallazgo-fijado-2026-08-01-pero-causa-distinta)
-- [FASE 3 (vocabulario/prosa): "lullaby", 3ª vez confirmada de la familia "palabra en inglés colada"](#2026-08-28-fase-3-vocabularioprosa-lullaby-3ª-vez-confirmada-de-la-familia-palabra-en-inglés-colada-en-narración-española)
-- [FASE 3 (vocabulario/prosa): el texto de la acción del jugador se filtra casi literal en la narración](#2026-08-28-fase-3-vocabularioprosa-el-texto-de-la-acción-del-jugador-se-filtra-casi-literal-en-la-narración-con-comillas-y-mayúsculas-de-énfasis-incluidas)
-- [FASE 4 (lore): "orcos del Clan Maktor" como amenaza externa — contradice que es el propio clan aniquilado de Gorhorn](#2026-08-28-fase-4-lore-orcos-del-clan-maktor-como-amenaza-externa--contradice-que-el-clan-maktor-es-el-propio-clan-aniquilado-de-gorhorn)
-- [hallazgos de diseño/mecánica encontrados jugando en vivo — ver checklist-pruebas-juego.md](#2026-08-28-hallazgos-de-diseñomecánica-encontrados-jugando-en-vivo-no-de-este-análisis-de-cierre-ya-registrados-en-docschecklist-pruebas-juegomd)
+- [FASE 1 (funcionalidad): dar un objeto a un NPC no lo retira del inventario del jugador](#2026-08-28-fase-1-funcionalidad--dar-un-objeto-a-un-npc-no-lo-retira-del-inventario-del-jugador)
+- [FASE 2 (coherencia): Orco Enfurecido MUERTO reaparece como amenaza viva — mismo síntoma que 2026-08-01, causa DISTINTA](#2026-08-28-fase-2-coherencia--orco-enfurecido-muerto-reaparece-como-amenaza-viva-2-veces--mismo-síntoma-que-el-hallazgo-fijado-2026-08-01-pero-causa-distinta)
+- [FASE 3 (vocabulario/prosa): "lullaby", 3ª vez confirmada de la familia "palabra en inglés colada"](#2026-08-28-fase-3-vocabularioprosa--lullaby-3ª-vez-confirmada-de-la-familia-palabra-en-inglés-colada-en-narración-española)
+- [FASE 3 (vocabulario/prosa): el texto de la acción del jugador se filtra casi literal en la narración](#2026-08-28-fase-3-vocabularioprosa--el-texto-de-la-acción-del-jugador-se-filtra-casi-literal-en-la-narración-con-comillas-y-mayúsculas-de-énfasis-incluidas)
+- [FASE 4 (lore): "orcos del Clan Maktor" como amenaza externa — contradice que es el propio clan aniquilado de Gorhorn](#2026-08-28-fase-4-lore--orcos-del-clan-maktor-como-amenaza-externa--contradice-que-el-clan-maktor-es-el-propio-clan-aniquilado-de-gorhorn)
+- [hallazgos de diseño/mecánica encontrados jugando en vivo — ver checklist-pruebas-juego.md](#2026-08-28--hallazgos-de-diseñomecánica-encontrados-jugando-en-vivo-no-de-este-análisis-de-cierre-ya-registrados-en-docsregistroschecklist-pruebas-juegomd)
 
 ---
 
@@ -288,7 +288,7 @@ letras, entra en la tolerancia a erratas de `matchNpcAliases`) está a distancia
 de la partida ("...lo que sugiere que este **lugar** ha sido escenario de conflictos recientes")
 lo contiene, y como los `sessionFacts` no caducan en esta partida (van todos en la ventana), Hagar
 queda mecánicamente "en escena" (`npcsInScene`) desde el turno 1 y DURANTE TODA LA PARTIDA. Mismo
-patrón exacto que el bug histórico "presas"~"brasas" (`docs/revisar-partida.md` § 3.7).
+patrón exacto que el bug histórico "presas"~"brasas" (`docs/runbooks/revisar-partida.md` § 3.7).
 
 Verificado end-to-end con `detectNpcsInScene` real (no simulado) contra el estado exacto de la
 partida en ese turno: devuelve `[Hagar]` — ni rastro de Gistera Koh (ella se gestiona aparte, fuera
@@ -344,7 +344,7 @@ render visual hasta ahora, solo el texto plano del log.
 **Fix propuesto (no aplicado)**: quitar `'los restos'` de los aliases de `restos-de-maktor` (se
 queda con `'restos de maktor'`/`'ruinas de maktor'`, ya inequívocos de verdad) — es exactamente el
 mismo criterio de "nunca un alias genérico sin calificador" que ya documenta
-`docs/nuevo-elemento-catalogo.md` § 1, aplicado esta vez a una ubicación en vez de a un objeto/NPC.
+`docs/runbooks/nuevo-elemento-catalogo.md` § 1, aplicado esta vez a una ubicación en vez de a un objeto/NPC.
 
 **Estado**: FIJADO (2026-08-02, "ponte con todo"). Quitado `'los restos'` de los aliases de
 `restos-de-maktor` (`worldCatalog.ts`) — se queda con `'los restos de maktor'`/`'ruinas de maktor'`.
@@ -369,7 +369,7 @@ todo el rato para describir DE QUIÉN es alguien, no DÓNDE está. El enlazador 
 frontend (`enciclopediaIndex.ts`) hace matching literal por substring/palabra, sin mirar contexto —
 mismo mecanismo exacto que causó el bug de "Los Restos de Maktor" de la entrada de arriba, y la
 misma familia (aunque por un camino distinto, sin fuzzy de por medio) que el bug histórico de
-Torgash/Ulkha via "Serhu" en `matchNpcAliases` (backend, ya documentado en `docs/revisar-partida.md`
+Torgash/Ulkha via "Serhu" en `matchNpcAliases` (backend, ya documentado en `docs/runbooks/revisar-partida.md`
 § 3) — la lección de aquel bug (alias multi-palabra con el nombre de una facción es site de colisión
 segura) no se aplicó todavía a este alias de ubicación.
 
@@ -547,7 +547,7 @@ Dos pasadas de auditoría de solo lectura pedidas explícitamente por la usuaria
 documentos de `docs/rpgtarkor/` y el mapa real de Azgaar (`docs/map/Helek_World.map`) contra el
 código actual.
 
-**Hallazgo 1 — alias nativo del Campamento Serhu nunca llegó al código**: `docs/rpgtarkor/areas.md`
+**Hallazgo 1 — alias nativo del Campamento Serhu nunca llegó al código**: `docs/rpgtarkor/lore-mundo/areas.md`
 documenta desde su redacción original que "el nombre del poblado es **Karot Veku** en lengua común
 **Colmillo Ceniza**", pero `worldCatalog.ts` (`campamento-serhu`) solo tenía `'campamento del clan
 serhu'` como alias — confirmado por `git log` que nunca existió en ningún commit. Detectado por la
@@ -573,7 +573,7 @@ Campamento Serhu ahora reproduce el ancla exacta. `tsc -b` limpio en frontend.
 
 **Hallazgo 4 — El Cruce de las Cenizas no llega a la frontera real con El Margen Silencioso**:
 motivado por la usuaria ("a mi no me cuadró porque debería estar mucho más al sur, en la frontera
-con el Margen Silencioso"). `docs/13-escala-del-mundo.md` § 2.2 (escrito 2026-07-18, antes de que
+con el Margen Silencioso"). `docs/mecanicas/13-escala-del-mundo.md` § 2.2 (escrito 2026-07-18, antes de que
 existiera el mapa real de Azgaar) asumía que el núcleo v1 era "su esquina suroccidental" dentro de
 la región completa de Llanuras. Al proyectar las coordenadas del núcleo (ya con el signo corregido)
 sobre el polígono real de Azgaar, el núcleo entero cae en la zona **norte-central** de la región,
@@ -581,7 +581,7 @@ no en la esquina suroeste — quedan **~90 km** de llanura sin detallar hasta el
 de El Margen Silencioso.
 **Estado**: FIJADO documentalmente, sin tocar el mapa de Azgaar ni las coordenadas del núcleo (ambos
 correctos en sí mismos — es la prosa de 2026-07-18 la que quedó desfasada por un mapa que no
-existía todavía cuando se escribió). `areas.md` y `docs/13-escala-del-mundo.md` actualizados: el
+existía todavía cuando se escribió). `areas.md` y `docs/mecanicas/13-escala-del-mundo.md` actualizados: el
 Cruce de las Cenizas sigue siendo el límite del núcleo JUGABLE, pero el límite FÍSICO con El Margen
 Silencioso queda más al sur, en el tramo "existe pero sin detallar" que la propia doc ya reservaba.
 
@@ -1478,7 +1478,7 @@ deja constancia para no reprobarlo sin necesidad:
   sin duplicar. `attributePointsGained: 0` en la subida a nivel 2 es correcto (`ASI_LEVELS` de
   `progression.ts` no incluye el nivel 2 — D&D solo da puntos en niveles concretos).
 - **Fin de partida por muerte definitiva** (`endedAt`): con `endedAt` puesto a mano, `/turn/classify`
-  responde 409 "Esta partida ha terminado" tal como documenta `docs/14-combate-y-muerte.md` § 4.4;
+  responde 409 "Esta partida ha terminado" tal como documenta `docs/mecanicas/14-combate-y-muerte.md` § 4.4;
   `POST /saves/:id/restart` limpia `endedAt`/`condicionFisica`/`deathCount` correctamente.
 - **Despiece (Desollar) — inconcluso, no reproducido**: creado a mano un `NpcState` de fauna
   (Buitre Cenizo) `INCAPACITADO`+`saqueado:false` en la ubicación actual, pero
@@ -1590,7 +1590,7 @@ cuando son de personajes distintos").
 sospecha inicial al leerlos):
 - Uso correcto de lore profundo: la narración de Gistera Koh mencionó "la caída del Ketg"/"la casta
   de Ketg" sin que el jugador lo mencionara antes — parecía un nombre inventado a primera vista,
-  pero es un término real y específico de `docs/rpgtarkor/areas.md`/`npcs.md` (el usurpador
+  pero es un término real y específico de `docs/rpgtarkor/lore-mundo/areas.md`/`npcs.md` (el usurpador
   histórico que fundó la casta gobernante del Clan Serhu). Buena señal: el modelo está usando lore
   de fondo real, no solo lo que está en el contexto inmediato del turno.
 - Continuidad física correcta: en el turno de combate del punto 1, describe "el metal partido
@@ -2460,7 +2460,7 @@ Gorhorn sepa."* Ni siquiera llegó a `classifyAction`/`narrateAction` (frase det
 El jugador repitió la MISMA acción sin comillas alrededor de toda la frase en el turno siguiente y
 funcionó con normalidad (Gistera responde).
 
-**Causa raíz**: `detectsFabricatedNpcClaim` (Fase 3 de `docs/18-validacion-accion-jugador.md`,
+**Causa raíz**: `detectsFabricatedNpcClaim` (Fase 3 de `docs/mecanicas/18-validacion-accion-jugador.md`,
 `playerActionValidation.ts`) extrae CUALQUIER texto entre comillas simples (`QUOTED_NAME_REGEX`) y
 lo valida contra el catálogo de NPCs — pero disparaba con tres intenciones distintas como gatillo:
 ataque, búsqueda hostil, **y diálogo**. El diseño original (`ver docs/18 § Fase 3`) pensaba en
@@ -2672,7 +2672,7 @@ default `qwen3.5:4b`) usada SOLO en `generateSuggestions` — `env.ollamaModelNa
 real de cada turno) sigue intacto, sin tocar. Verificado en vivo contra la partida real con la
 variable ya activa por defecto (sin overrides manuales): 3 llamadas seguidas, "Acepto ayudarla"/
 "Acepto ayudarte" + "Pregunto por su/tu perseguidor" correctas las 3 veces, ~24-26s por llamada
-(algo más rápido que el 7B). `docs/15-instalacion.md` actualizado con el cuarto modelo a descargar
+(algo más rápido que el 7B). `docs/arquitectura/15-instalacion.md` actualizado con el cuarto modelo a descargar
 (`ollama pull qwen3.5:4b`).
 
 ## 2026-08-21 — mensaje de iniciativa + tirada de dados perdidos al recargar tras abrir combate
@@ -3512,7 +3512,7 @@ correctamente en el header de la UI ("1/4"). Sin hallazgos.
 
 Partida real de Gorhorn (`cmta6mev00001ri7qcfqrspc1`, nivel 3, `CONVALECIENTE`, La Hondonada del
 Eco), usada toda la sesión como partida de pruebas manuales del checklist vivo (ver
-`docs/checklist-pruebas-juego.md`). Al cerrar la sesión de pruebas, análisis completo en 5 fases
+`docs/registros/checklist-pruebas-juego.md`). Al cerrar la sesión de pruebas, análisis completo en 5 fases
 sobre las 129 entradas del log vía `auditSave.ts` — varios de los bugs de mecánica ya se habían
 encontrado y corregido EN VIVO durante la propia sesión de pruebas (ver el checklist para el detalle
 técnico completo de cada fix); aquí se registran formalmente y se añaden los hallazgos de
@@ -3618,7 +3618,7 @@ del modelo al intentar nombrar a la facción enemiga real de fondo.
 hallazgos de lore inventado (el LLM rellena con un nombre que "suena" del mundo cuando no tiene
 anclaje real suficiente en el contexto de ese turno concreto).
 
-### 2026-08-28 — hallazgos de diseño/mecánica encontrados jugando en vivo (no de este análisis de cierre), ya registrados en `docs/checklist-pruebas-juego.md`
+### 2026-08-28 — hallazgos de diseño/mecánica encontrados jugando en vivo (no de este análisis de cierre), ya registrados en `docs/registros/checklist-pruebas-juego.md`
 
 Para no duplicar contenido: la sesión de pruebas de hoy encontró y (en su mayoría) corrigió varios
 bugs reales de mecánica jugando en vivo, todos con su detalle técnico completo ya en el checklist —
@@ -3862,7 +3862,7 @@ número de tramos cruzados en vez de minutos de ficción acumulados (tope bajado
 
 ### 2026-08-30 (runbook completo, 5 fases) — auditoría de la partida real de Gorhorn (`cmteuqm0k0001ri7jqoo86e7q`)
 
-Ejecutado `docs/revisar-partida.md` completo sobre la partida actual (Día 1, 17:43, nivel 3, XP
+Ejecutado `docs/runbooks/revisar-partida.md` completo sobre la partida actual (Día 1, 17:43, nivel 3, XP
 1080, CONVALECIENTE, en Los Pastos de la Deriva). **FASE 1 (funcionalidad)**: sin estado huérfano —
 `characterTransit`/`pendingNpcAttack`/`pendingDynamicMode`/`pendingDynamicModeOffer` todos `null`
 correctamente; `pendingCombatNpcSlugs: ['kirelon-arenoso']` coincide exactamente con el combate

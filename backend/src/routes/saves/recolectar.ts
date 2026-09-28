@@ -65,7 +65,7 @@ function minutosRecoleccionFor(totalUnidades: number): number {
 }
 
 /// Gate real de estación (2026-08-24, Grupo 3 § Sistema de estaciones, ver
-/// docs/rpgtarkor/estaciones.md) — `null` = disponible todo el año, igual que hoy la mayoría del
+/// docs/rpgtarkor/lore-mundo/estaciones.md) — `null` = disponible todo el año, igual que hoy la mayoría del
 /// catálogo. A diferencia de `sinTirada`/`requiereHerramienta` (que afectan a la tirada o al
 /// resultado), esto filtra ANTES de tirar, mismo punto que `pasaFiltroTerreno`: fuera de su
 /// estación, el recurso no cuenta como candidato en absoluto, no solo "sale con cantidad 0".
@@ -74,7 +74,7 @@ function pasaFiltroEstacion(estacionRequerida: Estacion | null, estacionActual: 
 }
 
 /// Gate real de clima (2026-08-24, Grupo 3 § Eventos de clima puntuales, ver
-/// docs/rpgtarkor/clima-tormentas.md) — umbral de severidad MÍNIMA, no igualdad exacta como
+/// docs/rpgtarkor/lore-mundo/clima-tormentas.md) — umbral de severidad MÍNIMA, no igualdad exacta como
 /// `pasaFiltroEstacion`. Mismo punto de filtrado que estación/terreno: ANTES de tirar.
 function pasaFiltroClima(climaRequerido: EstadoClima | null, climaActual: EstadoClima | null): boolean {
   return !climaRequerido || climaSeveridadAlMenos(climaActual, climaRequerido);

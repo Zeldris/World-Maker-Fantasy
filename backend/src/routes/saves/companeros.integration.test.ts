@@ -247,7 +247,7 @@ describe('Compañeros: cobertura de ruta — captura → tameo → confirmar (au
   });
 });
 
-/// Bug ORIGINAL que dispara todo el rediseño (2026-08-28, docs/rpgtarkor/captura-rediseno-2026-08-28.md
+/// Bug ORIGINAL que dispara todo el rediseño (2026-08-28, docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md
 /// § "Bug original que dispara este documento"): capturar a UN individuo de un grupo cazado de 2+
 /// del mismo tipo rompía la caza del resto — `NpcState` es una fila COMPARTIDA por especie+scope,
 /// capturar marcaba `capturado: true` en ella sin saber nada de `groupSize`/`groupDefeated`. Este
@@ -486,7 +486,7 @@ describe('Compañeros: cobertura de ruta — plantillas de equipo (auditoría de
 });
 
 // Asignar Companion a Building real (hueco D, rediseño de Producción estilo Bellwright,
-// 2026-09-21, docs/rpgtarkor/mundo-vivo-x4.md § 4.4-ter) — sin esto, ningún trabajador real podía
+// 2026-09-21, docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.4-ter) — sin esto, ningún trabajador real podía
 // asignarse a ninguna OrdenProduccion.
 describe('POST /saves/:id/companeros/:companionId/asignar-edificio (hueco D, 2026-09-21)', () => {
   let saveId: string;
@@ -1010,7 +1010,7 @@ describe('Compañeros: guard de save.pendingDeathResolution en captura/almacén/
   });
 });
 
-/// Alfa de la Manada real (2026-09-14, docs/rpgtarkor/clases.md — Domador 40, capstone) —
+/// Alfa de la Manada real (2026-09-14, docs/rpgtarkor/sistemas-combate/clases.md — Domador 40, capstone) —
 /// `maxSlotsDomadorFor` amplía el slot garantizado de 1 a 2 con nivel 40, y la ruta nueva
 /// POST /:id/companeros/:companionId/alfa marca cuál de los 2 es el Alfa (nunca más de uno a la
 /// vez). Cobertura de camino feliz + gates, mismo patrón que el resto de `describe` de este

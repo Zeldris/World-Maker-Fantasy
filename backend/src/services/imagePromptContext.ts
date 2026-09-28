@@ -33,7 +33,7 @@ function enumLabel(value: string): string {
     .join(' ');
 }
 
-/// Imágenes de día/noche y estación (2026-08-27, docs/rpgtarkor/imagenes-prompts.md) — mismo
+/// Imágenes de día/noche y estación (2026-08-27, docs/rpgtarkor/items-y-catalogo/imagenes-prompts.md) — mismo
 /// mecanismo de sufijo en `entitySlug` que ya usan las variantes por sexo (`stripSexoSuffix`) más
 /// abajo, pero deliberadamente SIN contenido curado por entidad: a diferencia del sexo (rasgo
 /// físico propio de cada especie), la luz/estación son genéricas — un bloque de texto reutilizable

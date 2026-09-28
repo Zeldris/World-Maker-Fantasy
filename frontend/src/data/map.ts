@@ -35,7 +35,7 @@ export interface MapNodeOption {
 /// Icono por receta de construcción (2026-08-04, "el campamento" — primera construcción anclada
 /// al mapa) — misma `key` que ConstructionRecipe.key en el backend (construction.ts). Sin entrada
 /// = construcción libre del modelo sin receta fija, no se pinta ningún icono especial para ella.
-// 'ayuntamiento' (2026-08-04, renombrado desde 'atalaya' — docs/17-reglas-construcciones-reino.md)
+// 'ayuntamiento' (2026-08-04, renombrado desde 'atalaya' — docs/mecanicas/17-reglas-construcciones-reino.md)
 // siempre guarda esta MISMA key sin importar el tier (pequeño/mediano/grande) — mejorarlo no
 // cambia de icono, solo de tamaño/capacidad.
 export const CONSTRUCTION_RECIPE_ICONS: Record<string, string> = {
@@ -44,7 +44,7 @@ export const CONSTRUCTION_RECIPE_ICONS: Record<string, string> = {
   ayuntamiento: '🏛️',
 }
 
-// Contenido tomado de docs/rpgtarkor/areas.md — condensado para la UI. Berig es el continente
+// Contenido tomado de docs/rpgtarkor/lore-mundo/areas.md — condensado para la UI. Berig es el continente
 // de Gorhorn (único personaje probado hasta ahora); Vaelira se añadirá cuando haga falta. Sin
 // equivalente en el backend (no hay modelo Region en Prisma, es lore de continente, no de
 // ubicación jugable) — se queda a mano a propósito, no es duplicación de una fuente de verdad.
@@ -72,7 +72,7 @@ export const beriRegions: MapRegion[] = [
   },
 ]
 
-// Geometría medida a mano del núcleo de Llanuras (docs/13-escala-del-mundo.md § 1.1, triangulada
+// Geometría medida a mano del núcleo de Llanuras (docs/mecanicas/13-escala-del-mundo.md § 1.1, triangulada
 // desde las aristas reales de LocationLink) — el backend (modelo Location) no guarda coordenadas
 // de mapa, así que esta tabla sigue siendo la única fuente de verdad para dibujarlo. El nombre,
 // descripción y aristas de cada nodo YA NO se duplican aquí a mano: MapaPanel los pide en tiempo
@@ -80,7 +80,7 @@ export const beriRegions: MapRegion[] = [
 // tabla por slug — así el mapa nunca puede desincronizarse del catálogo real del backend.
 // Calibración real (roadmap "atlas Azgaar", 2026-07-21/22): burg612 "Campamento del Clan Serhu"
 // en el .map real de la usuaria cae en (534.6141357421875, 185.10536193847656) — coincide con el
-// nodo campamento-serhu del núcleo medido (docs/13-escala-del-mundo.md § 1.1: x=21, y=-5 en km).
+// nodo campamento-serhu del núcleo medido (docs/mecanicas/13-escala-del-mundo.md § 1.1: x=21, y=-5 en km).
 // Con esa correspondencia + la escala 1:1 de la propia barra de escala de Azgaar (200km ≈ 202
 // unidades del lienzo), el resto del núcleo se proyecta con un simple desplazamiento. Vive aquí
 // (no en InteractiveMap.tsx) para que MapZoomModal.tsx pueda dibujar los mismos puntos sobre el
@@ -101,7 +101,7 @@ export const beriRegions: MapRegion[] = [
 const LLANURAS_OFFSET_X = 534.6141357421875 - 21
 const LLANURAS_OFFSET_Y = 185.10536193847656 - 5
 
-/// docs/13-escala-del-mundo.md § 1.1: +x = este, +y = norte. El lienzo de Azgaar tiene el norte
+/// docs/mecanicas/13-escala-del-mundo.md § 1.1: +x = este, +y = norte. El lienzo de Azgaar tiene el norte
 /// arriba (y menor) igual que cualquier mapa estándar, así que solo hay que invertir el eje Y.
 export function projectLlanurasNodes(nodes: LlanurasNode[]): Map<string, { x: number; y: number }> {
   const positions = new Map<string, { x: number; y: number }>()
@@ -114,7 +114,7 @@ export function projectLlanurasNodes(nodes: LlanurasNode[]): Map<string, { x: nu
 export const llanurasNodePositions: Record<string, { x: number; y: number }> = {
   'pilares-rotos': { x: 0, y: 0 },
   'pozo-cauce-viejo': { x: 13.5, y: 0 },
-  // `y` (y `x`) NO son la distancia triangulada de docs/13-escala-del-mundo.md § 1.1 (esa sigue
+  // `y` (y `x`) NO son la distancia triangulada de docs/mecanicas/13-escala-del-mundo.md § 1.1 (esa sigue
   // siendo (0,-18), MEDIDO contra los tiempos de viaje reales de LocationLink, y no cambia — ver
   // esa tabla para la distancia de juego real Cruce↔Pilares/Pozo). Esta posición es SOLO visual
   // (2026-08-03, misma auditoría de mapa): decisión explícita de la usuaria de dejar de atar el
@@ -136,7 +136,7 @@ export const llanurasNodePositions: Record<string, { x: number; y: number }> = {
   // estado "Las Llanuras del Viento Rojo" tiene de sobra sitio libre alrededor, así que se
   // separaron los 3 SOLO entre sí (ningún otro nodo se toca), manteniendo su disposición relativa
   // aproximada (hondonada al oeste, osario al este, túmulos entre medias, hacia Restos de Maktor,
-  // como ya describía docs/13-escala-del-mundo.md § 1.1). Es visual, igual que el Cruce de las
+  // como ya describía docs/mecanicas/13-escala-del-mundo.md § 1.1). Es visual, igual que el Cruce de las
   // Cenizas de arriba — la mecánica de viaje sigue usando los minutos reales de LocationLink, no
   // estas coordenadas.
   'hondonada-del-eco': { x: 1, y: 10 },
@@ -149,12 +149,12 @@ export const llanurasNodePositions: Record<string, { x: number; y: number }> = {
   // ancla (pozo-cauce-viejo) hasta quedar fuera de ese radio, sin tocar ningún otro nodo.
   manaderos: { x: 20.3, y: 4.2 },
   'tumulos-del-honor': { x: 9, y: 11.5 },
-  // Ampliación del núcleo (checklist 2026-07-21/22, "Puerta 2" — ver docs/13-escala-del-mundo.md
+  // Ampliación del núcleo (checklist 2026-07-21/22, "Puerta 2" — ver docs/mecanicas/13-escala-del-mundo.md
   // § 2.2 y su addendum): primeros dos nodos fuera del polígono original de 45×30 km.
   'pastos-de-la-deriva': { x: 30, y: -1 },
   'filo-de-las-brasas': { x: 16, y: 31 },
 
-  // Tercera ampliación (sesión "ampliamos lore" 2026-08-05, docs/13-escala-del-mundo.md § 2.2ter):
+  // Tercera ampliación (sesión "ampliamos lore" 2026-08-05, docs/mecanicas/13-escala-del-mundo.md § 2.2ter):
   // los deltas triangulados a ciegas (5 km/h, sinuosidad 1,1) sacaban varios nodos fuera del
   // polígono real de Azgaar — sin `rsvg-convert`/Node en este entorno para verificar contra el
   // `.map` real (como sí se hizo para el Cruce de las Cenizas en su día). Recalibrados los 16 uno
@@ -203,7 +203,7 @@ export type CristalHeladoEdge = LlanurasEdge
 // Cristal Helado (añadido 2026-08-22, petición explícita: "solo visual... no viajable de verdad
 // todavía") — a diferencia de Llanuras, esta región no tiene coordenadas km reales
 // (`LocationInput.x`/`y` en worldCatalog.ts) ni `LocationLink` triangulados: sigue siendo
-// contenido de Enciclopedia sin grafo de viaje (ver docs/rpgtarkor/areas.md § Cristal Helado).
+// contenido de Enciclopedia sin grafo de viaje (ver docs/rpgtarkor/lore-mundo/areas.md § Cristal Helado).
 // Sin un ancla real como tuvo Llanuras (campamento-serhu contra el .map de Azgaar), estas
 // coordenadas viven DIRECTAMENTE en el mismo espacio de píxeles del lienzo (800×600) — no hace
 // falta ninguna proyección tipo `projectLlanurasNodes`.

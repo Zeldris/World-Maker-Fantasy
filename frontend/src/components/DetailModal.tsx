@@ -58,7 +58,7 @@ export type DetailTarget =
       /// NPC de tipo PLANTILLA genéricos, y razas a nivel general. Nunca en flora/mineral ni en
       /// individuos únicos con nombre propio.
       variantesSexo?: EnciclopediaSexoVariante[]
-      /// Día/noche/estación (2026-08-27, docs/rpgtarkor/imagenes-prompts.md) — SOLO en
+      /// Día/noche/estación (2026-08-27, docs/rpgtarkor/items-y-catalogo/imagenes-prompts.md) — SOLO en
       /// `entityType === 'location'` (petición explícita: "que se muestre la opción que marques en
       /// vez de todos de golpe" — pestañas de estación + toggle de día/noche, nunca los 8 prompts
       /// listados seguidos).

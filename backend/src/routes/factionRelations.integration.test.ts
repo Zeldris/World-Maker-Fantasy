@@ -5,7 +5,7 @@ import { getDefaultUserId } from '../lib/defaultUser.js';
 import { factionRelationsRoutes } from './factionRelations.js';
 
 /// GET de relaciones entre facciones NPC (hueco A, rediseño de frontend 2026-09-21,
-/// docs/rpgtarkor/mundo-vivo-x4.md § 4.3). Test de integración real contra Postgres, sin mocks —
+/// docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.3). Test de integración real contra Postgres, sin mocks —
 /// mismo patrón que reino.integration.test.ts.
 async function buildApp() {
   const app = Fastify();

@@ -5,7 +5,7 @@ import { ENERGY_COST_BASICA, ENERGY_COST_MEDIA, ENERGY_COST_AVANZADA, ENERGY_COS
 export type { Clase, Especializacion } from '@prisma/client';
 
 /// Sistema de clases y especializaciones (2026-08-24, Grupo 3 § Sistema de clases, diseño
-/// completo en docs/rpgtarkor/clases.md) — reemplaza la lista plana original (2026-07-29, 4
+/// completo en docs/rpgtarkor/sistemas-combate/clases.md) — reemplaza la lista plana original (2026-07-29, 4
 /// habilidades de apoyo por clase, sin especialización) por tronco común (niveles 1-8) +
 /// especialización elegida a nivel 10 (huecos reales en 12/16/19/24/28/32/36/40, mismo ritmo que
 /// `progression.ts`). Dos de las 4 habilidades de tronco de Guerrero y una de Cazador se
@@ -79,7 +79,7 @@ export type { Clase, Especializacion } from '@prisma/client';
 /// independiente) en una sola habilidad, y `rol` es un campo único — ningún camino cubre los dos
 /// efectos a la vez sin reinterpretar la fila.
 ///
-/// Auditoría 2026-08-31 (docs/rpgtarkor/clases.md sincronizado fila a fila contra este archivo
+/// Auditoría 2026-08-31 (docs/rpgtarkor/sistemas-combate/clases.md sincronizado fila a fila contra este archivo
 /// real): 22 habilidades nuevas sembradas de golpe en Guerrero/Cazador/Chamán, sin tocar motor —
 /// el bloqueo real que quedaba en la mayoría de ellas era una asunción incorrecta ("AUMENTO/
 /// DEBILIDAD solo funcionan en ataque"), no falta de infraestructura. De paso, 2 bugs de siembra
@@ -187,7 +187,7 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
   },
 
   // --- Berserker (12/16/19/24/28/32/36/40 — 19/24/32 listas) ---
-  // DEBILIDAD real, camino independiente (2026-09-15, docs/rpgtarkor/clases.md — Segador/Asesino
+  // DEBILIDAD real, camino independiente (2026-09-15, docs/rpgtarkor/sistemas-combate/clases.md — Segador/Asesino
   // Tóxico) — INTIMIDACION+DEBILIDAD (Grito de Guerra) y DEBILIDAD+ATURDIMIENTO (Grito tenebroso)
   // son ambas rol utilidad, sin MULTIPLE combinado: encajan directo con el gate ya construido
   // (`atacanteDebilidadUtilidadDisparada`, combateMultiple.ts), sin necesitar nada nuevo.
@@ -351,7 +351,7 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       energyCost: ENERGY_COST_BASICA,
     },
   },
-  // PROVOCACION real (2026-09-14, docs/rpgtarkor/clases.md — Guardián 16/19). Bastión Personal
+  // PROVOCACION real (2026-09-14, docs/rpgtarkor/sistemas-combate/clases.md — Guardián 16/19). Bastión Personal
   // (16) es la variante combinada con AGUANTE (dispara por margen decisivo cuando el defensor
   // contragolpea con éxito, ver comentario de `combateMultiple.ts`). Desafío (19) es la variante
   // sola, camino independiente/utilidad (mismo gate que OCULTACION).
@@ -425,7 +425,7 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       energyCost: ENERGY_COST_MEDIA,
     },
   },
-  // AUMENTO real, camino independiente (2026-09-15, docs/rpgtarkor/clases.md — Guardián 32, Valor
+  // AUMENTO real, camino independiente (2026-09-15, docs/rpgtarkor/sistemas-combate/clases.md — Guardián 32, Valor
   // Compartido) — "AUMENTO a ALIADOS (no a uno mismo)" es exactamente el mecanismo
   // `durationEffectTarget:'companion'` ya construido para Domador (2026-09-09), ahora extendido al
   // camino de utilidad (`atacanteAumentoUtilidadDisparado`, combateMultiple.ts): sin Companion
@@ -552,7 +552,7 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       energyCost: ENERGY_COST_MEDIA,
     },
   },
-  // PROVOCACION real (2026-09-14, docs/rpgtarkor/clases.md — Lancero 32) — mismo camino de margen
+  // PROVOCACION real (2026-09-14, docs/rpgtarkor/sistemas-combate/clases.md — Lancero 32) — mismo camino de margen
   // decisivo que Bastión Personal (Guardián 16): AGUANTE+PROVOCACION dispara cuando el defensor
   // contragolpea con éxito. CONTRA se resuelve solo (mecanismo base de contragolpe, ver
   // `defensorPuedeContragolpear` en combateMultiple.ts), no necesita ningún flag propio aquí.
@@ -683,7 +683,7 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       energyRegen: 15,
     },
   },
-  // PROVOCACION real (2026-09-14, docs/rpgtarkor/clases.md — Especialista 28) — mismo camino de
+  // PROVOCACION real (2026-09-14, docs/rpgtarkor/sistemas-combate/clases.md — Especialista 28) — mismo camino de
   // margen decisivo que Bastión Personal/Guardia de Asta: AGUANTE+PROVOCACION dispara al
   // contragolpear con éxito.
   {
@@ -725,7 +725,7 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       energyCost: ENERGY_COST_AVANZADA,
     },
   },
-  // AUMENTO real, camino independiente (2026-09-15, docs/rpgtarkor/clases.md — Especialista 36,
+  // AUMENTO real, camino independiente (2026-09-15, docs/rpgtarkor/sistemas-combate/clases.md — Especialista 36,
   // Grito Improvisado) — mismo mecanismo que Valor Compartido (Guardián 32): `INTIMIDACION` sigue
   // aplicando su cancelación normal del ataque entrante, `AUMENTO` se redirige al Companion propio
   // vía `durationEffectTarget:'companion'`. `MULTIPLE` combinado se queda sin construir (mismo
@@ -917,7 +917,7 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
   // estructural que "rol dual" (Tirador 40): el motor no tiene ningún mecanismo de "otro
   // participante interviene en tu defensa con su propio atributo". Sigue bloqueada de verdad.
 
-  // Grito Animal real (2026-09-14, docs/rpgtarkor/clases.md — Domador 32) — "aumenta +2 todos los
+  // Grito Animal real (2026-09-14, docs/rpgtarkor/sistemas-combate/clases.md — Domador 32) — "aumenta +2 todos los
   // stats durante 2 turnos del compañero Y a ti mismo" es `AUMENTO` doble simultáneo
   // (`durationEffectTarget:'both'`, nuevo esta sesión — a diferencia de 'companion', NO excluye al
   // atacante). El tramo de ATURDIMIENTO de la ficha real tiene 2 umbrales propios (diferencia >6 =
@@ -944,7 +944,7 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       energyCost: ENERGY_COST_AVANZADA,
     },
   },
-  // Alfa de la Manada real (2026-09-14, docs/rpgtarkor/clases.md — Domador 40, capstone) — pasiva
+  // Alfa de la Manada real (2026-09-14, docs/rpgtarkor/sistemas-combate/clases.md — Domador 40, capstone) — pasiva
   // pura, sin turno de combate que resolver (mismo patrón que "Compañero cazador", nv.12): amplía
   // `maxSlotsDomadorFor` de 1 a 2 (`companionSupervivencia.ts`), y el buff pasivo real
   // (`alfaDeLaManadaBonusFor`, +2 voluntad a ambas bestias con los 2 slots cubiertos + 2 fuerza
@@ -965,7 +965,7 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
 
   // --- Supervivencia (12/16/19/24/28/32/36/40 — 12/16/19/32/40 listas) ---
   //
-  // DEBILIDAD (2026-08-26, docs/21-roadmap.md § Fase 2, clases.md nv.12 "Ataque que aumenta en +2
+  // DEBILIDAD (2026-08-26, docs/producto/21-roadmap.md § Fase 2, clases.md nv.12 "Ataque que aumenta en +2
   // la destreza, si la diferencia es de 4 resta 2 durante 2 turnos de destreza a tu objetivo, si
   // la diferencia es de 8 resta 4") — solo se aplica el golpe base (`attributeBonus`) y el tramo
   // MÁS ALTO de debilidad (mismo criterio de simplificación que CONTRA/REFRACTAR: se reutiliza el
@@ -1557,7 +1557,7 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       energyCost: ENERGY_COST_MEDIA,
     },
   },
-  // AUMENTO (2026-08-26, docs/21-roadmap.md § Fase 2, clases.md nv.28 "Ataque que aumenta tu
+  // AUMENTO (2026-08-26, docs/producto/21-roadmap.md § Fase 2, clases.md nv.28 "Ataque que aumenta tu
   // Magia en +5, si la diferencia es 10, el +5 en magia se mantiene para el siguiente turno") —
   // encaja sin ninguna reinterpretación: el propio umbral de la habilidad (diferencia de 10) YA
   // coincide con el margen decisivo del motor (±10, `golpe_pleno`), a diferencia de la mayoría de
@@ -2359,7 +2359,7 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
   },
 
   // --- Caballero del Valor (12/16/19/24/28/32/36/40 — 19/24/36 listas) ---
-  // PROVOCACION real (2026-09-14, docs/rpgtarkor/clases.md) — Grito de Valentía (12) es la
+  // PROVOCACION real (2026-09-14, docs/rpgtarkor/sistemas-combate/clases.md) — Grito de Valentía (12) es la
   // variante simple, camino independiente/utilidad (mismo gate que Desafío, Guardián 19). Grito de
   // Coraje (28) es la variante "redirige el golpe dirigido a un aliado concreto" —
   // `durationEffectTarget: 'companion'` distingue esta variante en el motor (ver comentario de
@@ -2382,7 +2382,7 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
       energyCost: ENERGY_COST_BASICA,
     },
   },
-  // LIMPIAR real (2026-09-15, docs/rpgtarkor/clases.md — renombrado de RETIRAR, "retirar" inducía a
+  // LIMPIAR real (2026-09-15, docs/rpgtarkor/sistemas-combate/clases.md — renombrado de RETIRAR, "retirar" inducía a
   // pensar en huir del combate) — Manto de Purificación (16) y Purga de Honor (32, mismo
   // mecanismo) limpian el DEBILIDAD de mayor magnitud negativa activo (`removeWorstDebilidad`,
   // activeEffects.ts), camino independiente/utilidad, quien la usa se limpia a sí misma (mismo
@@ -3436,7 +3436,7 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
   },
 
   // --- Asesino Tóxico (12/16/19/24/28/32/36/40 — DEBILIDAD real 2026-09-15 cierra la especialización) ---
-  // DEBILIDAD real (2026-09-15, docs/rpgtarkor/clases.md — "depende mucho de DEBILIDAD"): Filo
+  // DEBILIDAD real (2026-09-15, docs/rpgtarkor/sistemas-combate/clases.md — "depende mucho de DEBILIDAD"): Filo
   // Envenenado/Veneno Corrosivo/Toxina Acumulada son rol utilidad puro (camino independiente,
   // `atacanteDebilidadUtilidadDisparada`); Veneno Paralizante combina DEBILIDAD+ATURDIMIENTO sin
   // MULTIPLE, mismo camino (ambos disparan independientemente, sin interferir); Última Dosis es
@@ -4350,7 +4350,7 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
 /// en absoluto, así que ni siquiera arreglar la columna a mano bastaba para activar el sistema de
 /// clases. `characterName` se mantiene como fallback SOLO para partidas antiguas creadas antes del
 /// flujo de asignación (`clase` todavía `null` en Postgres) — hoy solo Gorhorn es jugable,
-/// `clase: 'CAZADOR'` (`docs/rpgtarkor/clases.md`, "Gorhorn deja de tener doble clase... voy a
+/// `clase: 'CAZADOR'` (`docs/rpgtarkor/sistemas-combate/clases.md`, "Gorhorn deja de tener doble clase... voy a
 /// probarlo por la rama de domador"). Domador (la ESPECIALIZACIÓN, `especializacion: 'DOMADOR'`,
 /// distinta del tronco común de Cazador — ver "Compañero cazador" más abajo, sí construida) se
 /// queda sin ningún hueco propio de especialización construido esta pasada (0/8 en sus 8 niveles
@@ -4472,7 +4472,7 @@ const EFFECT_LABEL: Partial<Record<string, string>> = {
   CONVERSION: 'ataque de Magia',
 };
 
-/// Descripción de sabor corta por clase (docs/rpgtarkor/clases.md) — movida aquí desde
+/// Descripción de sabor corta por clase (docs/rpgtarkor/sistemas-combate/clases.md) — movida aquí desde
 /// `buildClassesSection` (routes/world.ts) para reutilizarla en el generador de prompts de imagen
 /// (`imagePromptContext.ts`, roadmap de UI de especialización 2026-09-01) sin duplicarla ni crear
 /// una dependencia de rutas→servicios invertida. MAGO queda fuera a propósito (sigue siendo solo
@@ -4488,7 +4488,7 @@ export const CLASE_DESCRIPTION: Partial<Record<Clase, string>> = {
   DRUIDA: 'La clase exclusiva Faerus — se transforma en fauna real de su territorio, vínculo de manada y furia feral.',
 };
 
-/// Clase exclusiva de una raza (docs/rpgtarkor/clases.md, "clases exclusivas por raza") — slug real
+/// Clase exclusiva de una raza (docs/rpgtarkor/sistemas-combate/clases.md, "clases exclusivas por raza") — slug real
 /// de BERIG_RAZAS (berigLore.ts), no el nombre de raza en español. Solo estas 4 son exclusivas; el
 /// resto (Guerrero/Cazador/Arquero/Asesino, y Mago cuando tenga tronco real) son libres de raza.
 const CLASE_EXCLUSIVA_DE_RAZA: Partial<Record<Clase, string>> = {

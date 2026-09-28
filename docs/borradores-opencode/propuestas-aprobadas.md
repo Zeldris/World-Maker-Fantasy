@@ -2147,7 +2147,7 @@ Cauce, "`Silh` es Kektira y `Sil` es fuego en Feg", y la escala de valores en Go
 
 Contenido que Claude añadió directamente a los `.md` maestros al conectar el lore, a petición de Álvaro.
 Ya está en docs; falta el código. Detalle en cada fichero regional y en
-`docs/runbooks/ampliar-lore-checklist.md`.
+`docs/registros/ampliar-lore-checklist.md`.
 
 ### P-01 — Fauna nueva
 - [x] **En docs:** Hielaga, Nievón y Escarchín (`regiones/cristal-helado.md`); Tragalodo, Borbol y Zancapilote (`regiones/cienaga-troncal.md`); Vreskal, el primer ORDENADOS (`regiones/meseta-del-orden.md`)

@@ -57,7 +57,7 @@ No añade ninguna llamada nueva — es una lectura distinta del mismo número qu
 
 ## 6. Eventos durante la acción — reutiliza `/entorno`, no una IA nueva
 
-Igual que el generador de alrededores ya decide con su propio dado interno (`Math.random() < 0.25`) si surge un evento, una acción por tiempo puede tirar ese mismo tipo de dado backend antes de narrar: si toca evento, se le indica al **narrar** (la misma llamada que ya se iba a hacer) que incluya una interrupción — usando los ganchos de aventura ya escritos en `docs/rpgtarkor/personajes.md`. Cero llamadas nuevas a Ollama.
+Igual que el generador de alrededores ya decide con su propio dado interno (`Math.random() < 0.25`) si surge un evento, una acción por tiempo puede tirar ese mismo tipo de dado backend antes de narrar: si toca evento, se le indica al **narrar** (la misma llamada que ya se iba a hacer) que incluya una interrupción — usando los ganchos de aventura ya escritos en `docs/rpgtarkor/personajes/personajes.md`. Cero llamadas nuevas a Ollama.
 
 ## 7. Piezas existentes que esto conecta
 
@@ -66,7 +66,7 @@ Esta idea no es un sistema nuevo aislado — le da uso real a varias piezas que 
 - **`CharacterTransit`** (en `schema.prisma` desde el diseño original, nunca implementado): el mecanismo de "ocupado hasta X" para las bandas extendida/larga.
 - **Condición física** (pendiente desde `06-decisiones-mecanicas.md`): lo que mejora al descansar (banda extendida/larga).
 - **`InventoryItem`** (creado hoy, sin uso todavía): el resultado de fabricar/recolectar en una acción corta o extendida.
-- **Ganchos de aventura** (`docs/rpgtarkor/personajes.md`): la fuente de eventos que pueden interrumpir una acción larga.
+- **Ganchos de aventura** (`docs/rpgtarkor/personajes/personajes.md`): la fuente de eventos que pueden interrumpir una acción larga.
 - **Worker de reloj de mundo** (`worldTick.ts`, hoy solo actualiza `lastTickedAt`): el que resolvería los `CharacterTransit` cuya `busyUntil` ya haya pasado cuando el jugador vuelva.
 
 ## 8. Presupuesto de tiempo real (basado en los benchmarks de hoy)

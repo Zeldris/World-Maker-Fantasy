@@ -56,7 +56,7 @@ ventajas por atributo), [10-niveles-xp-reino.md](10-niveles-xp-reino.md) (nivele
 
 **Por qué (original):** coherente con el alcance genérico (decisión 0): "mejorar" puede significar cosas muy distintas según lo que el jugador haga (gobernar mejor, tener más reputación, poseer más tierras), y una barra de experiencia numérica no captura eso bien.
 
-**Reversión (2026-07-18):** la usuaria pidió explícitamente introducir niveles y progreso por XP, usando como base los valores de D&D — "tiene una base solida detrás para cualquier tipo de RPG". Esto también resuelve el conflicto abierto en `docs/09-panel-personaje.md` § 3 (Habilidades dependía de "nivel del personaje", que no existía). Diseño concreto y ya implementado en [10-niveles-xp-reino.md](10-niveles-xp-reino.md): tabla de XP de D&D 5e sin reescalar, XP por éxito en tiradas + hitos narrativos (ambos con tablas fijas del backend, el modelo nunca decide cantidades), todo el crecimiento numérico por puntos de atributo en los niveles ASI (4/8/12/16/19, tope 18/atributo, sin bonificador de competencia aparte), y huecos de Habilidades = `3 + floor(nivel/2)`.
+**Reversión (2026-07-18):** la usuaria pidió explícitamente introducir niveles y progreso por XP, usando como base los valores de D&D — "tiene una base solida detrás para cualquier tipo de RPG". Esto también resuelve el conflicto abierto en `docs/mecanicas/09-panel-personaje.md` § 3 (Habilidades dependía de "nivel del personaje", que no existía). Diseño concreto y ya implementado en [10-niveles-xp-reino.md](10-niveles-xp-reino.md): tabla de XP de D&D 5e sin reescalar, XP por éxito en tiradas + hitos narrativos (ambos con tablas fijas del backend, el modelo nunca decide cantidades), todo el crecimiento numérico por puntos de atributo en los niveles ASI (4/8/12/16/19, tope 18/atributo, sin bonificador de competencia aparte), y huecos de Habilidades = `3 + floor(nivel/2)`.
 
 **Impacto:** migración aplicada (`Save.level/xp/pendingAttributePoints`, `LogEntry.xpDelta`), servicio `backend/src/services/progression.ts`, enganchado en `POST /turn`.
 
@@ -87,7 +87,7 @@ historial. Desfase de documentación arrastrado desde la auditoría de `docs/arc
 
 1. ~~Añadir el campo de condición física~~ — **hecho**, `Save.condicionFisica` (enum `ILESO→HERIDO→GRAVE→CONVALECIENTE→MUERTO`), junto con todo el sistema de combate/muerte/descanso de [14-combate-y-muerte.md](14-combate-y-muerte.md).
 2. ~~Construir el servicio de tiradas~~ — hecho, `backend/src/services/dice.ts`.
-3. ~~Construir la orquestación de turno~~ — hecho, `backend/src/routes/turn.ts` + `backend/src/services/turnResolution.ts` (clasificar → tirar → narrar, dividido en `/turn/classify` + `/turn/narrate` desde `docs/08-acciones-por-tiempo.md`).
+3. ~~Construir la orquestación de turno~~ — hecho, `backend/src/routes/turn.ts` + `backend/src/services/turnResolution.ts` (clasificar → tirar → narrar, dividido en `/turn/classify` + `/turn/narrate` desde `docs/mecanicas/08-acciones-por-tiempo.md`).
 4. ~~Diseñar los prompts del Narrador~~ — hecho, `backend/src/services/narrador.ts` + `backend/Modelfile`.
 5. **Benchmark real** de latencia por turno con las dos llamadas al modelo (decisión 2), para confirmar que es jugable en este hardware — sigue sin medirse formalmente, perf, no bloqueante.
 6. ~~Asignar atributos numéricos~~ — **hecho**, ver [rpgtarkor/personajes.md](../rpgtarkor/personajes/personajes.md).

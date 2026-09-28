@@ -17,7 +17,7 @@ export interface DurationResult {
 
 const REST_REGEX = /descans|dormir|acampar|recuperar/;
 
-/// docs/14-combate-y-muerte.md § 4.1: mismo detector que ya usa computeDuration para calcular
+/// docs/mecanicas/14-combate-y-muerte.md § 4.1: mismo detector que ya usa computeDuration para calcular
 /// duración — se reutiliza para decidir si una acción de descanso puede fijar `lastRestLocationId`.
 export function detectsRestIntent(action: string): boolean {
   return REST_REGEX.test(action.toLowerCase());
@@ -35,7 +35,7 @@ export function mentionsExplicitDuration(action: string): boolean {
   return EXPLICIT_DURATION_REGEX.test(normalizeText(action));
 }
 
-/// Fórmulas deterministas de duración/producción (docs/08-acciones-por-tiempo.md § 4) — el
+/// Fórmulas deterministas de duración/producción (docs/mecanicas/08-acciones-por-tiempo.md § 4) — el
 /// backend calcula esto con una fórmula sobre atributos, nunca la IA (misma disciplina que el
 /// motor de dados). Empieza con las 3 acciones típicas que sugiere el propio diseño; el resto
 /// de acciones por tiempo usan la estimación del clasificador tal cual.

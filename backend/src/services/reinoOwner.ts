@@ -1,4 +1,4 @@
-/// Motor de facciones estilo X4 (docs/rpgtarkor/mundo-vivo-x4.md § 4.2, 2026-09-21) — "el mismo
+/// Motor de facciones estilo X4 (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.2, 2026-09-21) — "el mismo
 /// modelo representa el reino de X, sea X el jugador o una facción NPC". `Building`/`Territory`/
 /// `KingdomStats` tienen `saveId`/`factionId` opcionales; la invariante real ("exactamente uno
 /// relleno, nunca ambos, nunca ninguno") se valida SOLO en servicio — Prisma no expresa XOR nativo

@@ -1,7 +1,7 @@
 import { factionRepFor } from './reputation.js';
 
 /// "Aprender oficio de un Maestro" (2026-08-31, "Trabajador de Reino") — cierra el hueco real
-/// confirmado en `crafting.ts`/`docs/ampliar-lore-checklist.md`: hoy los oficios solo se siembran
+/// confirmado en `crafting.ts`/`docs/registros/ampliar-lore-checklist.md`: hoy los oficios solo se siembran
 /// al crear personaje, sin ningún mecanismo de aprenderlos en partida. Determinista, sin pasar por
 /// Ollama — mismo espíritu que `quests/aceptar` (la narración solo describe lo que este servicio
 /// ya decidió).

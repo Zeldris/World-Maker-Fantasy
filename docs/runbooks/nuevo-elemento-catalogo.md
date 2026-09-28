@@ -6,9 +6,9 @@ personaje jugable nuevo — para que desde el primer día tenga las dos cosas qu
 catálogo: (1) una descripción real de cara al Narrador, no solo a la Enciclopedia, y (2) que sea
 "linkable" (clicable/descubrible) aunque la narración no use su nombre exacto y completo.
 
-Ver también `docs/revisar-partida.md` (mismo espíritu de runbook), la memoria
+Ver también `docs/runbooks/revisar-partida.md` (mismo espíritu de runbook), la memoria
 `tarkor_auditoria_linkability_doble_descripcion_2026-07-30` (Claude Code), y
-`docs/puntos-de-codigo-nuevo-contenido.md` (mapa completo de qué ARCHIVOS tocar además de los
+`docs/runbooks/puntos-de-codigo-nuevo-contenido.md` (mapa completo de qué ARCHIVOS tocar además de los
 campos del catálogo — gotchas de compilación, colisión de alias frontend vs backend, mapa visual,
 etc.).
 
@@ -40,10 +40,10 @@ Después de editar `worldCatalog.ts`:
 
 ```
 cd backend
-npm run seed-catalog   # upsert contra el Postgres LOCAL (podman, ver docs/15-instalacion.md) — SÍ actualiza partidas ya en curso
+npm run seed-catalog   # upsert contra el Postgres LOCAL (podman, ver docs/arquitectura/15-instalacion.md) — SÍ actualiza partidas ya en curso
 ```
 
-`migrate dev` NUNCA en este proyecto (la shadow DB no tiene `vector` — ver docs/15-instalacion.md
+`migrate dev` NUNCA en este proyecto (la shadow DB no tiene `vector` — ver docs/arquitectura/15-instalacion.md
 § 4); si el cambio necesita tocar `schema.prisma`, escribir la migración a mano y aplicar con
 `npx prisma migrate deploy` + `npx prisma generate`.
 
@@ -80,7 +80,7 @@ Ya tenía buen soporte desde antes — solo recordatorio:
 
 - `aliases: string[]` es **obligatorio** (no opcional como en items) — sin él, `detectNpcsInScene`
   nunca lo encuentra en escena. Mismo cuidado con sustantivos cortos/genéricos que en items (ver
-  el propio `docs/revisar-partida.md` § 3, los bugs reales de "res"/"presas"/"brasas").
+  el propio `docs/runbooks/revisar-partida.md` § 3, los bugs reales de "res"/"presas"/"brasas").
 - `bio` llega al Narrador entero vía el bloque "PERSONAJE EN ESCENA" (npcScene.ts) — es la
   "descripción de prompt" real de un NPC, ya bien resuelta.
 - `loadout` (armas/objetos que lleva) usa `ItemCatalogInput.aliases` del punto 1 automáticamente

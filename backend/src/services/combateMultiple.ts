@@ -15,7 +15,7 @@ import { nextCondicionForAttack } from './death.js';
 import { dualWieldAdjustedDifficulty } from './weaponAbilities.js';
 import type { ActiveEffect } from './activeEffects.js';
 
-/// Grupo 3 § Combate múltiple (2026-08-25, diseño completo en docs/rpgtarkor/combate-multiple.md)
+/// Grupo 3 § Combate múltiple (2026-08-25, diseño completo en docs/rpgtarkor/sistemas-combate/combate-multiple.md)
 /// — Fase A: piezas puras (iniciativa N-way, emparejamiento/retargeting por Inteligencia,
 /// partición en sub-combates 4v4). Deliberadamente SEPARADO de `combatExchange.ts`: la tirada
 /// pairwise (`resolveExchange`/`resolveIndependentExchange`) se queda intacta y se sigue
@@ -147,7 +147,7 @@ export function elegirObjetivo(inteligenciaAtacante: number, candidatos: Objetiv
   return masHerido.participantId;
 }
 
-/// Fase 3 § 3b de efectos de clase (2026-08-27, docs/21-roadmap.md) — objetivo adicional para
+/// Fase 3 § 3b de efectos de clase (2026-08-27, docs/producto/21-roadmap.md) — objetivo adicional para
 /// `MULTIPLE` (el mismo golpe alcanza a un segundo combatiente) y `DESVIAR`/`INVOCACION` más
 /// adelante: uno aleatorio entre los vivos de `candidatos`, excluyendo al objetivo principal —
 /// nunca prioriza por Inteligencia (a diferencia de `elegirObjetivo`), las filas reales de
@@ -159,7 +159,7 @@ export function objetivoExtraFor(excluirParticipantId: string, candidatos: Objet
   return vivos[Math.floor(random() * vivos.length)].participantId;
 }
 
-/// `AREA` real, variante ofensiva (2026-09-14, docs/rpgtarkor/clases.md — Opresor 32/36/40) —
+/// `AREA` real, variante ofensiva (2026-09-14, docs/rpgtarkor/sistemas-combate/clases.md — Opresor 32/36/40) —
 /// generalización de `objetivoExtraFor` a un número CUALQUIERA de objetivos extra, en vez de
 /// exactamente uno. `limite: null` = "a todos" (sin tope, cifra real de las fichas de Opresor —
 /// "inmoviliza/resta a TODOS los rivales"); `limite: N` = objetivo principal + (N-1) aleatorios sin
@@ -293,7 +293,7 @@ export function resolverEnganchesRonda(
   /// nadie más") — calculado por bando, nunca globalmente. El caller pasa la UNIÓN de ambos sets
   /// (`ocultoPorRondas`/`expulsadoPorRondas`), la exclusión en sí no distingue el motivo.
   ocultos: Set<string> = new Set(),
-  /// `PROVOCACION` real (2026-09-14, docs/rpgtarkor/clases.md — Guardián 16/19 y variantes) —
+  /// `PROVOCACION` real (2026-09-14, docs/rpgtarkor/sistemas-combate/clases.md — Guardián 16/19 y variantes) —
   /// provocado → provocador. Mecanismo INVERSO a `ocultos`: en vez de excluir a alguien de ser
   /// ELEGIDO, fuerza que un combatiente concreto ELIJA a un objetivo concreto, saltándose por
   /// completo su `elegirObjetivoPara` normal (IA de Inteligencia, o la elección libre de la
@@ -302,7 +302,7 @@ export function resolverEnganchesRonda(
   /// llegarle su turno (regla 3 del enganche sigue mandando: "si ya te han elegido, no eliges tú")
   /// — la provocación no puede resucitar una elección que la ronda ya le quitó.
   provocaciones: Map<string, string> = new Map(),
-  /// `MARCAR` real (2026-09-14, docs/rpgtarkor/clases.md — Domador 24, Concentración del Domador) —
+  /// `MARCAR` real (2026-09-14, docs/rpgtarkor/sistemas-combate/clases.md — Domador 24, Concentración del Domador) —
   /// combatiente forzado (siempre un COMPANION) → objetivo marcado por su jugador. Mecanismo
   /// INVERSO a `provocaciones` en quién decide (aquí el JUGADOR fuerza a SU COMPANION, allí el
   /// motor fuerza al RIVAL), pero el mismo mecanismo de "salta la IA normal" en la resolución de
@@ -469,7 +469,7 @@ export interface HabilidadParaIntercambio {
   energyCost: number;
   energyRegen: number;
   maxUsesPerCombat?: number | null;
-  /// Fase 3 § 3a de efectos de clase (2026-08-27, docs/21-roadmap.md) — mismos campos que
+  /// Fase 3 § 3a de efectos de clase (2026-08-27, docs/producto/21-roadmap.md) — mismos campos que
   /// `SavedAction.durationEffectMagnitude/Turns`, poblados para la habilidad de ATAQUE que la
   /// JUGADORA elige explícitamente (turnResolution.ts, construcción de `jugadorHabilidad`) Y
   /// (2026-09-09, cierre del hueco de motor "ningún atacante autónomo podía generar AUMENTO/
@@ -517,7 +517,7 @@ export interface ResultadoIntercambioCompleto {
   defensorRecuperacionExtra: number;
   combatBothMissed: boolean;
   combatRealHitLanded: boolean;
-  /// Fase 3 § 3a de efectos de clase (2026-08-27, docs/21-roadmap.md) — margen decisivo del camino
+  /// Fase 3 § 3a de efectos de clase (2026-08-27, docs/producto/21-roadmap.md) — margen decisivo del camino
   /// NO independiente (`golpe_pleno`, `resolveExchange`), el mismo umbral que ya usan CONTRA/
   /// REFRACTAR/LETAL. Único gate real para empujar AUMENTO/DEBILIDAD (ver Fase 2, turnResolution.ts
   /// § resolveCombatExchangePhase) — siempre `false` en el camino independiente (cada lado se juzga
@@ -563,7 +563,7 @@ export interface ResultadoIntercambioCompleto {
   /// por separado (decisión explícita de la usuaria). El caller marca `expulsadoPorRondas` sobre EL
   /// DEFENSOR (a quien golpea Embate de Escudo), nunca sobre el atacante.
   expulsarTriggered: boolean;
-  /// `PROVOCACION` real (2026-09-14, docs/rpgtarkor/clases.md — Guardián 16/19, Lancero 32,
+  /// `PROVOCACION` real (2026-09-14, docs/rpgtarkor/sistemas-combate/clases.md — Guardián 16/19, Lancero 32,
   /// Especialista 28, Caballero del Valor 12) — dos caminos posibles, igual que CONTROL/OCULTACION:
   /// (a) `PROVOCACION` sola o combinada solo con otro efecto de utilidad (Desafío/Grito de
   /// Valentía) dispara por el camino independiente (`utilityTriggered`, mismo gate que OCULTACION);
@@ -575,7 +575,7 @@ export interface ResultadoIntercambioCompleto {
   /// TODA la ronda que solo el orquestador puede resolver (ver combateMultipleOrquestacion.ts).
   atacanteProvocacionDisparada: boolean;
   defensorProvocacionDisparada: boolean;
-  /// `MARCAR` real (2026-09-14, docs/rpgtarkor/clases.md — Domador 24, Concentración del Domador)
+  /// `MARCAR` real (2026-09-14, docs/rpgtarkor/sistemas-combate/clases.md — Domador 24, Concentración del Domador)
   /// — camino independiente/utilidad, mismo gate que PROVOCACION/OCULTACION. A diferencia de esos
   /// dos (que actúan sobre el RIVAL de este intercambio), MARCAR no tiene un "objetivo" claro
   /// dentro de un intercambio 1-a-1 — el jugador marca a un tercero cualquiera (su enganche de la
@@ -586,7 +586,7 @@ export interface ResultadoIntercambioCompleto {
   /// Companions, solo atacante/defensor de un intercambio pairwise).
   atacanteMarcarDisparado: boolean;
   defensorMarcarDisparado: boolean;
-  /// `AREA` real, variante ofensiva (2026-09-14, docs/rpgtarkor/clases.md — Opresor 32/36/40) —
+  /// `AREA` real, variante ofensiva (2026-09-14, docs/rpgtarkor/sistemas-combate/clases.md — Opresor 32/36/40) —
   /// mismo gate que MULTIPLE/EXPULSAR (margen decisivo, camino no-independiente, el golpe base debe
   /// haber conectado de verdad) + `ATAQUE`+`AREA` en la habilidad de ataque. El caller resuelve
   /// TODOS los vivos del bando del defensor con `objetivosExtraFor` (sin tope, "a todos los
@@ -594,26 +594,26 @@ export interface ResultadoIntercambioCompleto {
   /// aquí (esa vive en `areaDefensaPorRondas`, resuelta por el orquestador en cada intercambio
   /// normal, no como un disparo puntual de esta función).
   areaOfensivaTriggered: boolean;
-  /// `AREA` real, variante defensiva (2026-09-14, docs/rpgtarkor/clases.md — Instintivo 28,
+  /// `AREA` real, variante defensiva (2026-09-14, docs/rpgtarkor/sistemas-combate/clases.md — Instintivo 28,
   /// Instinto de Reserva: `AGUANTE`+`RECUPERACION`+`AREA`) — mismo gate que PROVOCACION defensiva
   /// (contragolpea con éxito, camino no-independiente): la DEFENSORA de este intercambio activa
   /// `areaDefensaPorRondas` sobre sí misma, nunca sobre el atacante. El caller resuelve la duración
   /// real y la redirección de golpes futuros (`redirigirPorAreaDefensiva`).
   defensorAreaDefensivaDisparada: boolean;
-  /// `AREA` real, variante persistente (2026-09-14, docs/rpgtarkor/clases.md — Supervivencia 32,
+  /// `AREA` real, variante persistente (2026-09-14, docs/rpgtarkor/sistemas-combate/clases.md — Supervivencia 32,
   /// Trampa Improvisada) — camino independiente/utilidad, mismo gate que MARCAR/PROVOCACION
   /// (utilidad). Quien la dispara coloca la trampa SOBRE SÍ MISMO (mismo lado que OCULTACION), nunca
   /// sobre el rival — el caller marca `areaTrampaPorRondas` sobre quien la usó.
   atacanteAreaTrampaDisparada: boolean;
   defensorAreaTrampaDisparada: boolean;
-  /// `LIMPIAR` real (2026-09-15, docs/rpgtarkor/clases.md — Caballero del Valor 16/32, Manto de
+  /// `LIMPIAR` real (2026-09-15, docs/rpgtarkor/sistemas-combate/clases.md — Caballero del Valor 16/32, Manto de
   /// Purificación/Purga de Honor) — camino independiente/utilidad, mismo gate que MARCAR/
   /// PROVOCACION/AREA persistente (utilidad). Quien la dispara se limpia A SÍ MISMO (mismo lado que
   /// OCULTACION/AREA persistente), nunca al rival — el caller aplica `removeWorstDebilidad`
   /// (activeEffects.ts) sobre los `activeEffects` reales de quien la usó.
   atacanteLimpiarDisparado: boolean;
   defensorLimpiarDisparado: boolean;
-  /// `CURAZION` real (2026-09-15, docs/rpgtarkor/clases.md — Segador Parca/Transmutador,
+  /// `CURAZION` real (2026-09-15, docs/rpgtarkor/sistemas-combate/clases.md — Segador Parca/Transmutador,
   /// Especialista 40) — el caller aplica `oneStepBetterThan` (death.ts) sobre la condición física
   /// YA calculada de quien corresponda. `atacanteCurazionDisparado` cubre 2 casos (vampirismo por
   /// margen decisivo con ATAQUE, o camino independiente/utilidad puro — Segunda Oportunidad) —
@@ -621,7 +621,7 @@ export interface ResultadoIntercambioCompleto {
   /// defensiva (recibe el golpe pero mitiga parte del daño con su propia curación).
   atacanteCurazionDisparado: boolean;
   defensorCurazionDisparado: boolean;
-  /// `REFLEJAR` real (2026-09-15, docs/rpgtarkor/clases.md — Segador Transmutador, Espejo Maldito/
+  /// `REFLEJAR` real (2026-09-15, docs/rpgtarkor/sistemas-combate/clases.md — Segador Transmutador, Espejo Maldito/
   /// Espejo de Poder) — el caller captura el DEBILIDAD de mayor magnitud negativa de quien dispara
   /// (`removeWorstDebilidad`, activeEffects.ts), lo quita de su lista, y lo aplica como DEBILIDAD
   /// nuevo sobre el RIVAL de este intercambio (el defensor). Sin ningún DEBILIDAD propio activo, se
@@ -765,7 +765,7 @@ export function resolverIntercambioCompleto(
         // RIVAL de este intercambio (el defensor), nunca a sí mismo — mismo lado que CONTROL, lado
         // contrario que OCULTACION.
         if (atacanteHabilidad.effects.includes('PROVOCACION')) atacanteProvocacionDisparada = true;
-        // AUMENTO real, camino independiente (2026-09-15, docs/rpgtarkor/clases.md — Valor
+        // AUMENTO real, camino independiente (2026-09-15, docs/rpgtarkor/sistemas-combate/clases.md — Valor
         // Compartido/Grito Improvisado) — a diferencia de MARCAR/PROVOCACION/OCULTACION en el
         // mismo camino (fuerzan un ESTADO en alguien), aquí lo que dispara es la construcción de
         // `nuevoEfectoAtacante` más abajo (mismo `ActiveEffect` de siempre) — el caller lo redirige
@@ -773,7 +773,7 @@ export function resolverIntercambioCompleto(
         // camino de margen decisivo (2026-09-09/2026-09-14). Solo AUMENTO desde utilidad (nunca
         // DEBILIDAD — ninguna ficha real de `clases.md` debilita a un aliado desde utilidad).
         if (atacanteHabilidad.effects.includes('AUMENTO')) atacanteAumentoUtilidadDisparado = true;
-        // DEBILIDAD real, camino independiente (2026-09-15, docs/rpgtarkor/clases.md — Segador
+        // DEBILIDAD real, camino independiente (2026-09-15, docs/rpgtarkor/sistemas-combate/clases.md — Segador
         // Parca/Maldito, Toque de la Parca/Maldición Susurrada) — a diferencia de AUMENTO arriba
         // (redirigido al Companion propio), DEBILIDAD desde utilidad recae sobre el RIVAL de este
         // intercambio (el defensor), mismo lado que PROVOCACION/MARCAR en el mismo camino — nunca

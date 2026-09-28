@@ -764,7 +764,7 @@ bloqueada que Totémico:
 | 19 | Runa Ilusoria | Inteligencia | INVOCACION + `AGUANTE` + PROVOCACION  | ⛔ INVOCACION solo construido para Tótem de Guerra (Totémico); PROVOCACION sin motor |
 | 24 | Runa de Resistencia | Voluntad | `AGUANTE` | ✅ lista, sembrada |
 | 28 | Golpe Runa de Cólera | Magia | ATAQUE + `AUMENTO`  | ✅ lista, sembrada (2026-08-26) |
-| 32 | Control Rúnico | Magia | CONTROL + `DEBILIDAD` — maldición que marca a un rival concreto | ⛔ **confirmado NO sembrable con la arquitectura actual** (docs/21-roadmap.md, 27-08): combina CONTROL (solo dispara en el camino independiente/`rol: utilidad`) con DEBILIDAD (solo dispara en el camino no-independiente/ataque-defensa) — `rol` es un campo único por habilidad, ningún camino cubre los dos efectos a la vez sin reinterpretar la fila entera |
+| 32 | Control Rúnico | Magia | CONTROL + `DEBILIDAD` — maldición que marca a un rival concreto | ⛔ **confirmado NO sembrable con la arquitectura actual** (docs/producto/21-roadmap.md, 27-08): combina CONTROL (solo dispara en el camino independiente/`rol: utilidad`) con DEBILIDAD (solo dispara en el camino no-independiente/ataque-defensa) — `rol` es un campo único por habilidad, ningún camino cubre los dos efectos a la vez sin reinterpretar la fila entera |
 | 36 | Runa de Rayo Cadena| Inteligencia | `ATAQUE` + MULTIPLE  | ✅ lista, sembrada (auditoría 2026-08-31 — confirmada en `classAbilities.ts`) |
 | 40 | Intelecto Rúnico *(capstone)* | Magia | `ATAQUE` + LIMITADA — una runa predice el ataque del rival; te anticipas con un golpe básico del tipo que tiene ventaja contra él | ✅ lista, sembrada |
 

@@ -149,7 +149,7 @@ arregle en el mismo mensaje.
 
 ## 5. Registrar el hallazgo
 
-Antes de dar por nuevo cualquier fallo, mirar `docs/revisar-partida-hallazgos.md` — puede que ya se
+Antes de dar por nuevo cualquier fallo, mirar `docs/registros/revisar-partida-hallazgos.md` — puede que ya se
 haya visto y se sepa si tiene fix determinista, está pendiente, o se decidió que no era bug. Al
 terminar la auditoría, añadir SIEMPRE una entrada nueva al final de ese archivo (fecha, síntoma
 citado, causa raíz si se conoce, y estado: FIJADO/PENDIENTE/NO ES BUG), haya o no fix ya aplicado.

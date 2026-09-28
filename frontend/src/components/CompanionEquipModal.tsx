@@ -5,7 +5,7 @@ import { isCompatibleWithSlot, SLOT_LABEL } from '../lib/equipSlots'
 import { SelectionModalShell } from './SelectionModalShell'
 import { useSubmitError } from '../hooks/useSubmitError'
 
-// Grupo 3 § Compañeros y supervivencia (2026-08-25, docs/rpgtarkor/companeros-y-supervivencia.md
+// Grupo 3 § Compañeros y supervivencia (2026-08-25, docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md
 // § 6) — "ranuras reducidas" de fauna simplificadas a un set fijo (mismo criterio consciente que
 // ya documenta companeros.ts § FAUNA_EQUIP_SLOTS en el backend: el doc pedía variar por tamaño,
 // aquí se queda un único set para todas). NPC compañero usa el set completo, igual que el jugador.

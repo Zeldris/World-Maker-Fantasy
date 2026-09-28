@@ -109,7 +109,7 @@ export async function iniciarCombatEncounter(
     participantes.map((p) => ({ participantId: p.participantId, bando: p.bando, destreza: p.destreza, condicionFisica: 'ILESO' as const })),
   );
 
-  // Objetivo individual real (2026-08-26, docs/21-roadmap.md § Fase 3) — primer cálculo de
+  // Objetivo individual real (2026-08-26, docs/producto/21-roadmap.md § Fase 3) — primer cálculo de
   // enganche (duelo/golpe gratis) de la ronda 1, sustituye el viejo `retargetBando` (que siempre
   // le daba a TODOS un objetivo válido, sin distinguir "duelo real" de "golpe gratis sin
   // oposición"). Todos frescos en ILESO (encuentro recién creado) — no hace falta releer nada de
@@ -246,25 +246,25 @@ const TOTEM_DE_GUERRA_RONDAS = 2;
 /// bando se queda sin nadie más vivo" (decisión explícita de la usuaria).
 const EXPULSAR_RONDAS = 2;
 
-/// PROVOCACION real (2026-09-14, docs/rpgtarkor/clases.md — Guardián 16/19, Lancero 32,
+/// PROVOCACION real (2026-09-14, docs/rpgtarkor/sistemas-combate/clases.md — Guardián 16/19, Lancero 32,
 /// Especialista 28, Caballero del Valor 12) — ninguna ficha real da una cifra explícita de rondas
 /// ("fuerza al rival a centrarse en ti", sin número), mismo criterio de simplificación consciente
 /// que CONTROL/OCULTACION/EXPULSAR: cifra fija de 2 rondas.
 const PROVOCACION_RONDAS = 2;
 
-/// MARCAR real (2026-09-14, docs/rpgtarkor/clases.md — Domador 24, Concentración del Domador) — a
+/// MARCAR real (2026-09-14, docs/rpgtarkor/sistemas-combate/clases.md — Domador 24, Concentración del Domador) — a
 /// diferencia de PROVOCACION/CONTROL/OCULTACION/EXPULSAR, esta ficha SÍ da una cifra explícita
 /// ("marcas un objetivo para tu presa ataque durante 3 turnos"), así que se usa tal cual en vez de
 /// la simplificación consciente de 2 rondas del resto.
 const MARCAR_RONDAS = 3;
 
-/// AREA real, variante defensiva (2026-09-14, docs/rpgtarkor/clases.md — Instintivo 28, Instinto
+/// AREA real, variante defensiva (2026-09-14, docs/rpgtarkor/sistemas-combate/clases.md — Instintivo 28, Instinto
 /// de Reserva) — ninguna cifra explícita de turnos en la ficha ("te defiende de todos los ataques
 /// dirigidos a ti", sin número), mismo criterio de simplificación consciente que PROVOCACION/
 /// CONTROL/OCULTACION/EXPULSAR: cifra fija de 2 rondas.
 const AREA_DEFENSA_RONDAS = 2;
 
-/// AREA real, variante persistente (2026-09-14, docs/rpgtarkor/clases.md — Supervivencia 32,
+/// AREA real, variante persistente (2026-09-14, docs/rpgtarkor/sistemas-combate/clases.md — Supervivencia 32,
 /// Trampa Improvisada) — a diferencia de la variante defensiva, esta ficha SÍ da una cifra
 /// explícita ("trampas... que duran 2 turnos"), así que se usa tal cual.
 const AREA_TRAMPA_RONDAS = 2;
@@ -434,7 +434,7 @@ function toNpcForCombatAbilities(npc: Npc): NpcForCombatAbilities {
   };
 }
 
-/// Objetivo individual real (2026-08-26, docs/21-roadmap.md § Fase 3, `combateMultiple.ts §2b`) —
+/// Objetivo individual real (2026-08-26, docs/producto/21-roadmap.md § Fase 3, `combateMultiple.ts §2b`) —
 /// calcula el enganche (duelo/golpe gratis) de una ronda COMPLETA leyendo condición/inteligencia
 /// reales de cada combatiente vivo. `jugadoraTargetId` es `null` mientras no se sepa a quién
 /// quiere atacar ella todavía (recién empieza la ronda) — en ese caso el resultado deja su propia
@@ -612,7 +612,7 @@ async function escribirCondicionYEnergia({
   }
 }
 
-/// Grupo 3 § Mundo determinista, Capa 4 (docs/rpgtarkor/mundo-determinista.md, 2026-08-25) —
+/// Grupo 3 § Mundo determinista, Capa 4 (docs/rpgtarkor/lore-mundo/mundo-determinista.md, 2026-08-25) —
 /// participante que este intercambio deja CONVALECIENTE/MUERTO, para que el caller
 /// (turnResolution.ts) pueda enganchar XP/cierre de misión/reputación/población (mismo criterio
 /// que ya hace `applyCombatExchangeToNpcState` para el combate 1v1) — sin esto, un `CombatEncounter`
@@ -1267,7 +1267,7 @@ async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): P
   };
 }
 
-/// Golpe gratis, sin oposición real (2026-08-26, docs/21-roadmap.md § Fase 3, "objetivo
+/// Golpe gratis, sin oposición real (2026-08-26, docs/producto/21-roadmap.md § Fase 3, "objetivo
 /// individual") — a diferencia de `ejecutarIntercambioYAvanzar`, el objetivo NO tira su propia
 /// defensa: el golpe conecta directo (`nextCondicionForAttack`), salvo que tenga una habilidad
 /// real con `AGUANTE`+`MULTIPLE` disponible (hoy no existe ninguna sembrada, ver Fase 1 del
@@ -1491,7 +1491,7 @@ async function resolverTotemsPendientes({
   return { narraciones, caidos, encounterTerminado: terminado };
 }
 
-/// INVOCACION real (Fase 3 § 3d, 2026-08-27, docs/21-roadmap.md) — invocar consume el turno
+/// INVOCACION real (Fase 3 § 3d, 2026-08-27, docs/producto/21-roadmap.md) — invocar consume el turno
 /// entero del invocador (decisión explícita de diseño: sin golpe propio ese mismo turno, ver
 /// comentario largo en `resolverTurnoJugador`/`resolverTurnoAutonomo`, punto de intercepción antes
 /// de llegar a `ejecutarIntercambioYAvanzar`/`ejecutarGolpeGratisYAvanzar`). Solo Tótem de Guerra
@@ -1561,7 +1561,7 @@ async function invocarTotemYAvanzar(
   };
 }
 
-/// `AREA` real, variante defensiva (2026-09-14, docs/rpgtarkor/clases.md — Instintivo 28, Instinto
+/// `AREA` real, variante defensiva (2026-09-14, docs/rpgtarkor/sistemas-combate/clases.md — Instintivo 28, Instinto
 /// de Reserva: "tu bestia te defiende de TODOS los ataques dirigidos a ti") — mientras
 /// `areaDefensaPorRondas > 0` sobre un aliado del bando de `defensorOriginal`, CADA golpe dirigido a
 /// `defensorOriginal` esa ronda (enganche principal Y golpe gratis de otros pretendientes) se

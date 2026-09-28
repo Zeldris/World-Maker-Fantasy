@@ -1,6 +1,6 @@
 import type { FactionRelationType, Prisma, PrismaClient } from '@prisma/client';
 
-/// Motor de disputas genérico estilo X4 (docs/rpgtarkor/mundo-vivo-x4.md § 4.3, 2026-09-21) —
+/// Motor de disputas genérico estilo X4 (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.3, 2026-09-21) —
 /// generaliza el único conflicto hardcodeado de `worldAgenda.ts` a "cualquier par de facciones
 /// puede tener una postura real". Diseño cerrado con la autora (2026-09-21): híbrido X4 +
 /// reputación estilo WoW — `presion` (0-100, 50 = neutro) sube por EVENTOS DISCRETOS con peso
@@ -54,7 +54,7 @@ export type FactionEventType =
   | 'BAJA_DE_GUERRA'
   /// Cruce de tratado comercial resuelto en paz — evento simétrico, distiende ambas direcciones.
   | 'TRATADO_CUMPLIDO'
-  /// Diplomacia del jugador (docs/rpgtarkor/mundo-vivo-x4.md § 4.4/§ 5-bis punto 6, 2026-09-21) —
+  /// Diplomacia del jugador (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.4/§ 5-bis punto 6, 2026-09-21) —
   /// acción PUNTUAL de un `Companion`/`Subject` propio con nivel de oficio `'diplomatico'`
   /// suficiente, estilo Agente de X4 (Negociación/Interferencia): actúa CONTRA cualquier `Faction`
   /// real ya sembrada, sin exigir nada de la facción destino (nunca `Npc`/presencia sostenida, ver
@@ -170,7 +170,7 @@ export function nivelDiplomaticoRequerido(presionActual: number): number {
   return Math.min(9, 1 + Math.floor(distanciaAlNeutro / 10));
 }
 
-/// Espionaje (docs/rpgtarkor/mundo-vivo-x4.md § 4.4, 2026-09-21) — a diferencia de
+/// Espionaje (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.4, 2026-09-21) — a diferencia de
 /// Negociación/Sabotaje, NUNCA mueve `presion` (decisión explícita: "sin efecto en presion" —
 /// acción de solo-información, mismo criterio que "Intel" en X4). Devuelve el estado real de
 /// `FactionRelation` para que el jugador lo vea, sin alterar nada — primera vía real por la que

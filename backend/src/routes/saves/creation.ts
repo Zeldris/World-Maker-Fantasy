@@ -69,7 +69,7 @@ interface CreateSaveBody {
   portraitInitial: string;
   introCharacterText: string;
   introWorldText: string;
-  /// docs/14-combate-y-muerte.md § 4.2 — elegida en el mismo paso que el personaje. Default
+  /// docs/mecanicas/14-combate-y-muerte.md § 4.2 — elegida en el mismo paso que el personaje. Default
   /// MEDIO si no se manda (partidas antiguas o clientes que todavía no la piden).
   dificultad?: Dificultad;
 }

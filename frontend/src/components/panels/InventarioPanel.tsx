@@ -24,7 +24,7 @@ interface InventarioPanelProps {
   onRefreshSave: () => Promise<void>
 }
 
-/// Captura en tránsito (rediseño de captura, 2026-08-28, docs/rpgtarkor/captura-rediseno-2026-08-28.md
+/// Captura en tránsito (rediseño de captura, 2026-08-28, docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md
 /// § 2) — `capturaNpcId` no null. Sección propia, separada del `ItemGrid` genérico: a diferencia de
 /// un objeto normal, "usarla" no tiene sentido (no se puede insertar como chip narrativo) — sus
 /// únicas acciones son Depositar (en Jaula, solo fauna hoy — NPC espera la Celda de Retención,

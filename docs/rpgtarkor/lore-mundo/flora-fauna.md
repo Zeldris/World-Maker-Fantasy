@@ -2,7 +2,7 @@
 
 [← Volver al índice del mundo](07-mundo-helek-sirik.md)
 
-*Cómo se organiza la vida de Helek Sirik (las 26 familias) y dónde está cada especie. **Las fichas de cada especie viven en el fichero de su región** (ver el índice de abajo), junto a la geografía de la zona donde aparece. El catálogo técnico de recolección y despiece (`HarvestYield`) está en `docs/12-mundo-estructurado.md` § 3.*
+*Cómo se organiza la vida de Helek Sirik (las 26 familias) y dónde está cada especie. **Las fichas de cada especie viven en el fichero de su región** (ver el índice de abajo), junto a la geografía de la zona donde aparece. El catálogo técnico de recolección y despiece (`HarvestYield`) está en `docs/mecanicas/12-mundo-estructurado.md` § 3.*
 
 ---
 

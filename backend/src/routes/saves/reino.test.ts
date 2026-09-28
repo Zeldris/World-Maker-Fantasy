@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import Fastify from 'fastify';
 import { Prisma } from '@prisma/client';
 
-/// Cobertura nueva (2026-08-04, docs/17-reglas-construcciones-reino.md): el popup de fundación de
+/// Cobertura nueva (2026-08-04, docs/mecanicas/17-reglas-construcciones-reino.md): el popup de fundación de
 /// reino manda aquí el formulario. Regla real a proteger: Gorhorn tiene el nombre de reino
 /// bloqueado a "Maktor" — verificado en el backend, no solo ocultando el campo en el frontend
 /// (mismo criterio que isStarting/isDynamic en habilidades.ts).
@@ -17,7 +17,7 @@ const updateTerritory = vi.fn();
 const createFaction = vi.fn();
 const createDiscoveredEntity = vi.fn();
 const createManyPlantillaEquipo = vi.fn();
-// Zona-interior navegable propia del reino (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, 2026-09-21).
+// Zona-interior navegable propia del reino (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21).
 const createLocation = vi.fn();
 const createLocationLink = vi.fn();
 const createParcela = vi.fn();

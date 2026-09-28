@@ -77,7 +77,7 @@ export interface ClassificationResult {
   duracionEstimadaMinutos: number
 }
 
-// Viaje resuelto por el grafo de ubicaciones (docs/12-mundo-estructurado.md § 1.4) — opaco para
+// Viaje resuelto por el grafo de ubicaciones (docs/mecanicas/12-mundo-estructurado.md § 1.4) — opaco para
 // el frontend, solo se reenvía tal cual de /turn/classify a /turn/narrate.
 export type TravelResolution = Record<string, unknown>
 
@@ -100,7 +100,7 @@ export interface ClassifyResponse {
   // Presente cuando la acción se resolvió como un viaje por el grafo de ubicaciones.
   travel?: TravelResolution | null
   npcsInScene?: NpcSceneSnapshot
-  // Validador de "grounding" de la acción del jugador (docs/18-validacion-accion-jugador.md) —
+  // Validador de "grounding" de la acción del jugador (docs/mecanicas/18-validacion-accion-jugador.md) —
   // presente cuando el backend rechazó la acción de raíz (p. ej. reclamar un arma que no lleva
   // encima) y ya persistió una frase determinista en el log. El turno queda resuelto aquí mismo:
   // no hace falta (ni se debe) llamar a /turn/narrate.
@@ -1055,7 +1055,7 @@ export async function getSaquearZona(saveId: string): Promise<{ candidates: Loot
   return fetchJson(`${API_URL}/saves/${saveId}/saquear-zona`)
 }
 
-/// Grupo 3 § Mundo determinista, Capa 1 (2026-08-25, docs/rpgtarkor/mundo-determinista.md) — zonas
+/// Grupo 3 § Mundo determinista, Capa 1 (2026-08-25, docs/rpgtarkor/lore-mundo/mundo-determinista.md) — zonas
 /// navegables, prototipo en una sola zona. `disponible: false` cuando la Location actual no tiene
 /// ningún ZonePoint sembrado todavía (el resto de zonas, hasta que se repita el prototipo) —
 /// el frontend debe ocultar el panel en ese caso, no mostrarlo vacío.
@@ -1170,7 +1170,7 @@ export interface ZonaResponse {
   /// libre. `null` = partida previa a esta pieza, o sin nada que asignar todavía.
   jugador: { x: number; y: number } | null
   salidas: ZonaSalidaInfo[]
-  /// Icono de parcela (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, 2026-09-21) — solo relleno en las
+  /// Icono de parcela (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) — solo relleno en las
   /// zonas-interior de Capital/Cuartel Avanzado; `[]` en el resto del mundo.
   parcelas: ZonaParcelaInfo[]
 }
@@ -1253,7 +1253,7 @@ export async function moverEnZona(saveId: string, destino: { x: number; y: numbe
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Grupo 3 § Compañeros y supervivencia (2026-08-25, docs/rpgtarkor/companeros-y-supervivencia.md)
+// Grupo 3 § Compañeros y supervivencia (2026-08-25, docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md)
 // ═══════════════════════════════════════════════════════════════════════════
 
 export interface CapturableCandidate {
@@ -1264,7 +1264,7 @@ export interface CapturableCandidate {
 export async function getCapturables(saveId: string): Promise<{ candidates: CapturableCandidate[]; tieneCuerdas: boolean }> {
   return fetchJson(`${API_URL}/saves/${saveId}/capturables`)
 }
-/// Rediseño de captura (2026-08-28, docs/rpgtarkor/captura-rediseno-2026-08-28.md) — atar ya no
+/// Rediseño de captura (2026-08-28, docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md) — atar ya no
 /// asigna una Jaula directamente: la captura se materializa como InventoryItem en tránsito
 /// (`inventoryItemId`), que el jugador deposita en una Jaula más tarde (`postDepositarCaptura`).
 /// `participantId` (2026-08-29, bug real "la tarjeta MATAR/CLEMENTE reaparece tras recargar en
@@ -1553,7 +1553,7 @@ export async function setAlmacenLimite(saveId: string, catalogSlug: string, limi
   })
 }
 
-/// Diplomacia y Mercado (Fase 3, 2026-09-21, docs/rpgtarkor/mundo-vivo-x4.md § 4.4) — las rutas de
+/// Diplomacia y Mercado (Fase 3, 2026-09-21, docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.4) — las rutas de
 /// backend ya existían y funcionaban (reino.ts), pero sin ningún cliente en el frontend hasta ahora.
 export interface DiplomaciaResultado {
   ok: true
@@ -1606,7 +1606,7 @@ export async function postMercadoVender(saveId: string, targetFactionSlug: strin
   })
 }
 
-/// Relaciones entre facciones NPC (Fase 4, 2026-09-21, docs/rpgtarkor/mundo-vivo-x4.md § 4.3) —
+/// Relaciones entre facciones NPC (Fase 4, 2026-09-21, docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.3) —
 /// nunca la facción del jugador, solo facciones de catálogo entre sí. `worldSlug` es el `slug` de
 /// `World`, no confundir con un slug de Faction.
 export interface FactionRelationInfo {
@@ -2035,7 +2035,7 @@ export interface EnciclopediaFaunaFloraInfo {
   /// Auditoría de Enciclopedia (2026-08-27) — mismo campo que EnciclopediaNpcInfo, solo presente
   /// si `cazable` (hay Npc real detrás) y alguna probabilidad está calibrada.
   interaccion?: EnciclopediaInteraccion
-  /// Géneros de fauna/flora (2026-09-04, docs/rpgtarkor/genesis.md § Florial/Ferios/Tarkor) —
+  /// Géneros de fauna/flora (2026-09-04, docs/rpgtarkor/lore-mundo/genesis.md § Florial/Ferios/Tarkor) —
   /// mutuamente excluyentes según `esFauna`, nunca los dos a la vez. String suelto (no enum
   /// cerrado en el frontend) porque el backend puede añadir géneros nuevos sin requerir un
   /// despliegue sincronizado de ambos lados.
@@ -2050,7 +2050,7 @@ export interface EnciclopediaFaunaFloraInfo {
   companionOfNpc: { slug: string; name: string } | null
 }
 
-// Día/noche/estación (2026-08-27, docs/rpgtarkor/imagenes-prompts.md) — a diferencia de
+// Día/noche/estación (2026-08-27, docs/rpgtarkor/items-y-catalogo/imagenes-prompts.md) — a diferencia de
 // EnciclopediaSexoVariante, sin texto curado: las 8 combinaciones son siempre las mismas para
 // cualquier Location, el backend solo agrega imagePrompts/imageUrls propios de cada una.
 // `mapaImagePrompt`/`mapaImageUrl` son el mapa de Zona de ESA combinación (entityType 'zona',
@@ -2235,7 +2235,7 @@ export interface EnciclopediaFaccionInfo {
   name: string
   raza: string
   description: string
-  /// Líder de GOBIERNO (§ 7.2, docs/rpgtarkor/mundo-vivo-x4.md, 2026-09-21) — null = sin líder real
+  /// Líder de GOBIERNO (§ 7.2, docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md, 2026-09-21) — null = sin líder real
   /// sembrado todavía en el catálogo (nunca inventado en servicio).
   liderNpc: { slug: string; name: string } | null
   discovered: boolean

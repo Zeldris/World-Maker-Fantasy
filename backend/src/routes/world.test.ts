@@ -549,7 +549,7 @@ describe('GET /world/:slug/enciclopedia', () => {
       });
     });
 
-    // Líder de GOBIERNO (§ 7.2, docs/rpgtarkor/mundo-vivo-x4.md, 2026-09-21) — el campo existía en
+    // Líder de GOBIERNO (§ 7.2, docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md, 2026-09-21) — el campo existía en
     // el schema (Faction.liderNpcId, FK real) desde la sesión anterior, pero nunca se serializaba
     // al cliente. Cierra ese hueco.
     it('serializa liderNpc (slug/name) cuando la Faction tiene un líder real sembrado', async () => {

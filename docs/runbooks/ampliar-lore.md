@@ -3,12 +3,12 @@
 **Qué es:** los pasos a seguir cuando la usuaria escriba **"ampliamos lore"** (o pida una sesión de
 añadir/mejorar lore en general, no un bug ni una feature de código). Objetivo: la próxima vez,
 arrancar directamente en este modo de trabajo en vez de tener que redescubrirlo. Ver también
-`docs/ampliar-lore-checklist.md` — el registro persistente de qué se ha añadido y qué falta llevar
+`docs/registros/ampliar-lore-checklist.md` — el registro persistente de qué se ha añadido y qué falta llevar
 a código, que sobrevive entre sesiones (a diferencia de la lista de tareas de una conversación).
 
 ## 0. Antes de nada
 
-Leer `docs/ampliar-lore-checklist.md` — la sección "Pendiente de código" puede tener trabajo de una
+Leer `docs/registros/ampliar-lore-checklist.md` — la sección "Pendiente de código" puede tener trabajo de una
 sesión anterior sin cerrar. Mencionarlo si hay algo ahí antes de seguir con lore nuevo.
 
 ## 1. El flujo de la sesión
@@ -30,7 +30,7 @@ de golpe). El trabajo, en orden:
    el mismo estilo/fonética que el canon ya existente, y presentarlo para aprobación antes de darlo
    por fijado.
 4. **Verificar la cronología, no solo la narrativa.** Antes de fijar un "X años después", cruzarlo
-   contra `docs/rpgtarkor/cronologia.md` (desde el año 0) o `cronologia-mitica.md` (antes del año
+   contra `docs/rpgtarkor/lore-mundo/cronologia.md` (desde el año 0) o `cronologia-mitica.md` (antes del año
    0). Comprobar en concreto:
    - **Tasas de crecimiento de población** — calcular la tasa anual implícita (`(N/N0)^(1/años)-1`)
      y compararla con lo ya sembrado en `backend/src/scripts/worldPopulation.ts` si el target ya
@@ -48,14 +48,14 @@ de golpe). El trabajo, en orden:
 5. **Actualizar todos los `.md` afectados**, no solo el que la usuaria mencionó — un cambio de
    biografía casi siempre toca personajes.md + areas.md + npcs.md a la vez si hay NPCs con bios
    cruzadas.
-6. **Registrar en `docs/ampliar-lore-checklist.md`**: qué se escribió (MD, hecho ya) y qué queda
+6. **Registrar en `docs/registros/ampliar-lore-checklist.md`**: qué se escribió (MD, hecho ya) y qué queda
    para cuando se haga la pasada de código (bios de NPCs en `worldCatalog.ts`, chunks RAG en
    `loreChunks.ts` + `npm run reindex-lore`, nuevas criaturas/objetos en el catálogo técnico, etc.)
    — la sesión de lore NO toca código salvo que la usuaria lo pida explícitamente; solo dejarlo
    anotado para la pasada posterior.
 7. **Si la sesión cambió vocabulario, tono o nombres de forma notable** (no una corrección menor),
-   anotarlo TAMBIÉN bajo "Pendiente de dataset" en `docs/ampliar-lore-checklist.md` — el narrador
-   fine-tuneado (`docs/fine-tuning-ia-local.md`) aprendió de ejemplos generados con el lore de su
+   anotarlo TAMBIÉN bajo "Pendiente de dataset" en `docs/registros/ampliar-lore-checklist.md` — el narrador
+   fine-tuneado (`docs/ia/fine-tuning-ia-local.md`) aprendió de ejemplos generados con el lore de su
    momento; un cambio de fondo puede dejar ejemplos ya entrenados desalineados con el mundo actual
    sin que nada lo avise. No implica regenerar el dataset en la misma sesión — solo dejar constancia
    para cuando se decida.
@@ -283,7 +283,7 @@ esta regla). Campos obligatorios:
   explícita para que la usuaria la confirme o corrija — nunca inventar sin proponerla en voz alta.
 
 **Equipo/loot de un NPC** (`loadout` en `worldCatalog.ts`) — fórmula general confirmada
-2026-09-04 (rebalanceo del Orco Enfurecido, `docs/21-roadmap.md`): salvo que la ficha del NPC pida
+2026-09-04 (rebalanceo del Orco Enfurecido, `docs/producto/21-roadmap.md`): salvo que la ficha del NPC pida
 explícitamente lo contrario (fauna pura, un NPC ya despojado a propósito, etc.), un `loadout` de
 NPC humanoide/con inventario real debería incluir, casi siempre:
 - **1 objeto curativo** (`category: 'medicinal'`, p.ej. `vendaje-improvisado-*` o una cataplasma —
@@ -299,13 +299,13 @@ NPC humanoide/con inventario real debería incluir, casi siempre:
 Regla de coherencia (la que motivó esta fórmula): **todo lo que aparece en `loadout` se saquea del
 cadáver** — no hay ningún mecanismo que separe "lo que el NPC lleva puesto" de "lo que suelta al
 morir" salvo la recompensa de misión explícita (`Quest.rewardItems`, ver
-`docs/19-post-combate-y-recompensas-mision.md`). Si se le quita un objeto al `loadout` por
+`docs/mecanicas/19-post-combate-y-recompensas-mision.md`). Si se le quita un objeto al `loadout` por
 cualquier motivo (rebalanceo de combate, corrección de lore), hay que decidir a la vez si ese
 objeto desaparece del todo del saqueo o se sustituye por otro coherente — nunca dejarlo a medias.
 
 ## 3. Qué NO hacer
 
-- No editar `docs/12-mundo-estructurado.md` como si el pasado se pudiera reescribir — si una
+- No editar `docs/mecanicas/12-mundo-estructurado.md` como si el pasado se pudiera reescribir — si una
   decisión registrada ahí queda obsoleta, tachar y anotar la revisión con fecha, nunca borrar el
   registro original.
 - No tocar código (`worldCatalog.ts`, `loreChunks.ts`, etc.) en la misma sesión salvo petición
@@ -315,6 +315,6 @@ objeto desaparece del todo del saqueo o se sustituye por otro coherente — nunc
 
 ---
 
-**Ver también:** [Checklist persistente](ampliar-lore-checklist.md) · [docs/rpgtarkor/](rpgtarkor/)
+**Ver también:** [Checklist persistente](../registros/ampliar-lore-checklist.md) · [Índice del mundo](../rpgtarkor/lore-mundo/07-mundo-helek-sirik.md)
 (todo el lore) · [Revisar partida](revisar-partida.md) (runbook equivalente para auditar partidas
 jugadas, no para ampliar lore)

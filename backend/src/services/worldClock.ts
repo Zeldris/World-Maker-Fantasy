@@ -9,7 +9,7 @@ import type { Estacion, EstadoClima } from '@prisma/client';
 const MINUTES_PER_DAY = 1440;
 
 /// Sistema de estaciones (2026-08-24, Grupo 3 § Sistema de estaciones, diseño completo en
-/// docs/rpgtarkor/estaciones.md) — calendario único y global (no desfasado por región: hoy solo
+/// docs/rpgtarkor/lore-mundo/estaciones.md) — calendario único y global (no desfasado por región: hoy solo
 /// Las Llanuras del Viento Rojo tiene núcleo jugable real, así que un offset por región no
 /// tendría forma de probarse en vivo). 120 días de ficción por año, 30 por estación, mismo
 /// patrón puro que `dayForFictionalMinutes`/`franjaHorariaFor` (entorno.ts): nunca se guarda en
@@ -79,7 +79,7 @@ export function estacionNombreFor(estacion: Estacion, raza: string | null): stri
 }
 
 /// Clima real, por región (2026-08-24, Grupo 3 § Eventos de clima puntuales, diseño completo en
-/// docs/rpgtarkor/clima-tormentas.md; ampliado a las 8 regiones el 2026-09-21, docs/rpgtarkor/
+/// docs/rpgtarkor/lore-mundo/clima-tormentas.md; ampliado a las 8 regiones el 2026-09-21, docs/rpgtarkor/
 /// mundo-vivo-x4.md § 5-bis punto 13 — bloqueaba § 4.5) — eje de tiempo DISTINTO de `Estacion`,
 /// por región desde el principio. Mismo mecanismo determinista reutilizado en las 8 (mismo
 /// `EstadoClima`, mismo `climaSeveridadAlMenos`, sin ampliar el enum — decisión explícita de
@@ -241,7 +241,7 @@ export function climaNombreFor(estado: EstadoClima, raza: string | null, region:
 }
 
 /// Momento del día (2026-08-27, imágenes de día/noche por Location/Zona — ver
-/// docs/rpgtarkor/imagenes-prompts.md) — eje binario, deliberadamente MÁS simple que las 6 franjas
+/// docs/rpgtarkor/items-y-catalogo/imagenes-prompts.md) — eje binario, deliberadamente MÁS simple que las 6 franjas
 /// horarias de `entorno.ts` (madrugada/mañana/mediodía/tarde/atardecer/noche, pensadas para prosa
 /// ambiental): una imagen solo puede ser de día o de noche, no hay "atardecer" intermedio que
 /// generar aparte. Corte a las 6:00/20:00 — coincide con dónde `franjaHorariaFor` empieza

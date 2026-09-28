@@ -103,7 +103,7 @@ describe('stageFactFor', () => {
   });
 });
 
-// Diplomacia del jugador (docs/rpgtarkor/mundo-vivo-x4.md § 4.4/§ 5-bis punto 6, 2026-09-21).
+// Diplomacia del jugador (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.4/§ 5-bis punto 6, 2026-09-21).
 describe('nivelDiplomaticoRequerido', () => {
   it('en el neutro exacto (50), nivel 1 basta', () => {
     expect(nivelDiplomaticoRequerido(PRESION_NEUTRAL)).toBe(1);

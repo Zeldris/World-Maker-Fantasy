@@ -6,14 +6,14 @@ dominio público ni de abrir un navegador apuntando a una URL. Esto es solo la i
 viabilidad; **no se ha tocado ningún código todavía**. Sirve de punto de partida cuando se decida
 abordarlo de verdad.
 
-No confundir con `docs/15-instalacion.md` — ese documento es la guía para instalar el **entorno de
+No confundir con `docs/arquitectura/15-instalacion.md` — ese documento es la guía para instalar el **entorno de
 desarrollo** (clonar el repo, levantar Postgres vía podman, `npm install`...). Este documento habla
 de generar un **paquete distribuible** para alguien que no va a tocar código ni terminal.
 
 ## 1. Por qué hoy no se puede simplemente "empaquetar"
 
 Tarkor hoy son tres piezas separadas que hay que arrancar a mano: backend Fastify (Node), frontend
-Vite/React servido aparte, y Postgres en un contenedor podman (`docs/15-instalacion.md` § 3bis). Un
+Vite/React servido aparte, y Postgres en un contenedor podman (`docs/arquitectura/15-instalacion.md` § 3bis). Un
 instalador de escritorio normal no puede depender de que el usuario tenga podman instalado y un
 contenedor de Postgres corriendo — todo tiene que arrancar solo, como una app.
 

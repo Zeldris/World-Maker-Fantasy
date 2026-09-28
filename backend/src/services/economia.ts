@@ -94,7 +94,7 @@ export function valorGoirnosBaseFor(item: ItemCatalogInput): number {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// § 4.4 Mercado regulado (docs/rpgtarkor/mundo-vivo-x4.md, 2026-09-21) — precio DINÁMICO derivado
+// § 4.4 Mercado regulado (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md, 2026-09-21) — precio DINÁMICO derivado
 // de stock real, sin ningún tick de oferta/demanda simulado aparte (grounding real X4:
 // "automatic pricing means that a station will automatically lower the ware price the more wares
 // in stock, and vice versa" — mucho stock = barato al vender/caro al comprar, poco stock = al

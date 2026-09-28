@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 /// Frases ambientales para llenar la espera real de generación (30s-2min en este hardware,
-/// ver docs/07-mundo-helek-sirik.md). No aceleran nada, solo hacen que la espera se sienta
+/// ver docs/rpgtarkor/lore-mundo/07-mundo-helek-sirik.md). No aceleran nada, solo hacen que la espera se sienta
 /// menos vacía — puramente decorativas, sin relación con lo que realmente vaya a pasar.
 export const characterWaitingFlavor: string[] = [
   'Gorhorn respira hondo; el aire seco de las Llanuras le raspa la garganta.',

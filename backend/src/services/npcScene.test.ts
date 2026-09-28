@@ -15,7 +15,7 @@ const NPCS = [
   { id: 'gistera', aliases: ['gistera koh', 'gistera'] },
   { id: 'sella', aliases: ['sella marn', 'sella'] },
   // Alias corto sintético (auditoría 2026-08-11) — reproduce exactamente el mecanismo documentado
-  // en docs/revisar-partida.md § 3 ("res" de múrgol matcheaba dentro de "presas"/"interesante").
+  // en docs/runbooks/revisar-partida.md § 3 ("res" de múrgol matcheaba dentro de "presas"/"interesante").
   // Hoy ningún alias real del catálogo es tan corto (verificado, solo 'kael'/'kegi' a 4 letras),
   // pero el detector debe protegerse igual contra el PATRÓN, no solo contra los casos ya vistos.
   { id: 'corto', aliases: ['res'] },
@@ -153,7 +153,7 @@ describe('matchNpcAliases', () => {
     expect(matchNpcAliases('Sella Marn compra información a ambos bandos.', NPCS)).toEqual(['sella']);
   });
 
-  it('auditoría 2026-08-11 (docs/puntos-de-codigo-nuevo-contenido.md § 7): un alias corto de una sola palabra no matchea como substring de otra palabra', () => {
+  it('auditoría 2026-08-11 (docs/runbooks/puntos-de-codigo-nuevo-contenido.md § 7): un alias corto de una sola palabra no matchea como substring de otra palabra', () => {
     expect(matchNpcAliases('Busco presas para comer esta noche', NPCS)).toEqual([]);
     expect(matchNpcAliases('Eso me parece interesante', NPCS)).toEqual([]);
     expect(matchNpcAliases('Espero una respuesta clara', NPCS)).toEqual([]);
@@ -371,7 +371,7 @@ describe('pickAmbientEncounterCandidate', () => {
     expect(pickAmbientEncounterCandidate(candidates, () => 0.99)).toEqual(candidates[1]);
   });
 
-  // docs/16-poblacion-dinamica.md (2026-08-03): ponderado por población real en vez de uniforme.
+  // docs/mecanicas/16-poblacion-dinamica.md (2026-08-03): ponderado por población real en vez de uniforme.
   it('pondera por `weight` — una especie mucho más abundante sale elegida en un rango mucho más amplio', () => {
     const candidates = [
       { slug: 'corredor-de-cauce', name: 'Corredor de Cauce', role: 'Fauna itinerante', weight: 90 },

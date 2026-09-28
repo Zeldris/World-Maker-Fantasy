@@ -2,7 +2,7 @@
 
 **Qué es:** el mapa completo de "si edito o añado un X, ¿qué archivos tengo que tocar?" para las 6
 categorías de contenido del juego (objeto, NPC/personaje, fauna, flora, habilidad, ubicación).
-Complementa a `docs/nuevo-elemento-catalogo.md` (que se centra en QUÉ CAMPOS rellenar del catálogo
+Complementa a `docs/runbooks/nuevo-elemento-catalogo.md` (que se centra en QUÉ CAMPOS rellenar del catálogo
 y por qué) — este archivo se centra en QUÉ ARCHIVOS del código, más allá del propio catálogo, hay
 que revisar o modificar. Todas las rutas son relativas a la raíz del repo.
 
@@ -46,7 +46,7 @@ deja la fila huérfana en Postgres para siempre (no existe script de limpieza).
 **Imágenes** (opcional): `backend/uploads/images/item/<slug>-thumbnail.<ext>`/`<slug>-banner.<ext>`
 — basta con que el archivo exista (`imageAssets.ts:13-21`), no hace falta fila en la DB. El texto
 del prompt de imagen sí es opcional pre-sembrar (`npm run seed-image-prompts`, paso explícitamente
-opcional en `docs/15-instalacion.md`).
+opcional en `docs/arquitectura/15-instalacion.md`).
 
 **Tests:** `itemReference.test.ts`, `equipment.test.ts`, `weaponAbilities.test.ts`.
 
@@ -139,7 +139,7 @@ una planta/mineral nuevo se toca solo:
   hace falta TAMBIÉN una fila en `worldPopulation.ts` con `targetType: 'RECURSO'` y
   `targetSlug === sourceSlug` — sin ella, `candidateSourcesFor` (`recolectar.ts`) nunca lo ofrece
   ni en "ya localizado" ni en "Explorar", aunque el `HarvestYield` exista y esté bien formado (ver
-  `docs/16-poblacion-dinamica.md` § 3.5).
+  `docs/mecanicas/16-poblacion-dinamica.md` § 3.5).
 
 Mismos matices de seed/alias/región que §3.
 
@@ -228,7 +228,7 @@ categoría.
     Troncal`, `Margen Silencioso`, `Meseta del Orden`) — filtra descubrimientos y el agrupado de
     fauna/flora "zona de origen" en la Enciclopedia (`world.ts:392`).
   - `narrationLint.ts:10` `KNOWN_REGIONS` — alimenta `lintRegionMismatch`, el detector de "la
-    narración menciona una región donde el jugador no está" (`docs/revisar-partida.md`).
+    narración menciona una región donde el jugador no está" (`docs/runbooks/revisar-partida.md`).
   Una región COMPLETAMENTE nueva (ninguna de esas 5) necesita las dos listas actualizadas, o el
   filtrado de descubrimientos/el lint de región simplemente no la reconocen — sin avisar de nada.
 - **La conectividad no es automática**: hace falta al menos una fila en `locationLinks`
@@ -290,12 +290,12 @@ en `backend/src/scripts/`).
 
 ## 8. Flujo de migración/seed — correcciones sobre la documentación anterior
 
-`docs/15-instalacion.md` (actualizado 2026-07-30) es la fuente de verdad actual y **contradice**
-en un punto material a `docs/nuevo-elemento-catalogo.md`:
+`docs/arquitectura/15-instalacion.md` (actualizado 2026-07-30) es la fuente de verdad actual y **contradice**
+en un punto material a `docs/runbooks/nuevo-elemento-catalogo.md`:
 
 - **Desactualizado en `nuevo-elemento-catalogo.md`** (líneas 40 y 91-92): sigue diciendo "upsert
   real contra Supabase" — el proyecto migró a **Postgres local vía podman** el 2026-07-30
-  (`docs/15-instalacion.md:5,43-67`) como opción por defecto; Supabase queda solo como alternativa
+  (`docs/arquitectura/15-instalacion.md:5,43-67`) como opción por defecto; Supabase queda solo como alternativa
   documentada. *(Corregido en ese archivo como parte de este mismo cambio.)*
 - **Confirmado correcto en ambos**: nunca `prisma migrate dev` (crea una shadow DB sin la
   extensión `pgvector`, falla contra `LoreChunk.embedding vector(768)` — reproducible contra la

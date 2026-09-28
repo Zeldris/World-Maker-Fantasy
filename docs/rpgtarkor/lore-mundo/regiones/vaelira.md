@@ -20,7 +20,7 @@ histórico de sostener la primera gran civilización de Helek Sirik), Vaelira se
 **~1,0–1,25 × el tamaño de Berig, ~100.000–125.000 km²**, más ancha que alta. Sus 3 regiones
 nombradas serían proporcionalmente mayores que las de Berig, del orden de 15.000–25.000 km² cada
 una, con grandes intersticios sin nombrar todavía. Cifras libres de cambiar el día que Vaelira
-entre en juego (detalle en `docs/13-escala-del-mundo.md` § 5).
+entre en juego (detalle en `docs/mecanicas/13-escala-del-mundo.md` § 5).
 
 ## Regiones
 

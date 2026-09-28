@@ -198,7 +198,7 @@ async function resolveClassificationForTurn(params: {
       enCombateCon: enCombate ? { slugs: pendingCombatNpcSlugs, npcIds: pendingNpcAttack ? [pendingNpcAttack.npcId] : [] } : undefined,
     });
 
-    // Viaje por el grafo de ubicaciones (docs/12-mundo-estructurado.md § 1.4): el modelo nunca
+    // Viaje por el grafo de ubicaciones (docs/mecanicas/12-mundo-estructurado.md § 1.4): el modelo nunca
     // elige la ruta — si el matcher determinista resuelve un destino conocido, la banda y la
     // duración las decide Dijkstra, no el clasificador, y el viaje no requiere tirada (v1).
     // No aplica dentro de combate (enCombate): un intercambio de combate nunca es un viaje.
@@ -521,7 +521,7 @@ async function resolveClassificationForTurn(params: {
   return { classification, roll, travel, npcsInScene };
 }
 
-/// Turno de juego, en dos pasos (docs/08-acciones-por-tiempo.md): `/turn/classify` es rápido
+/// Turno de juego, en dos pasos (docs/mecanicas/08-acciones-por-tiempo.md): `/turn/classify` es rápido
 /// (~25s, sin IA de narración) y `/turn/narrate` es el paso lento (30-220s). Separarlos permite
 /// que el frontend muestre un contador visual real con la duración de la acción mientras narrar
 /// corre de fondo, y que las bandas extendida/larga respondan casi al instante sin esperar nunca
@@ -545,7 +545,7 @@ export async function turnRoutes(app: FastifyInstance) {
       return reply.status(404).send({ error: 'Partida no encontrada' });
     }
 
-    // docs/14-combate-y-muerte.md § 4.4: partida cerrada por muerte definitiva — no hay más
+    // docs/mecanicas/14-combate-y-muerte.md § 4.4: partida cerrada por muerte definitiva — no hay más
     // turnos hasta que se reinicia (mismo patrón 409 que un CharacterTransit ocupado).
     if (save.endedAt) {
       return reply.status(409).send({ error: 'Esta partida ha terminado', endedAt: save.endedAt });
@@ -681,7 +681,7 @@ export async function turnRoutes(app: FastifyInstance) {
       }
     }
 
-    // Fase 3 (acotada a comillas, docs/18-validacion-accion-jugador.md): NPC/fauna nombrado ENTRE
+    // Fase 3 (acotada a comillas, docs/mecanicas/18-validacion-accion-jugador.md): NPC/fauna nombrado ENTRE
     // COMILLAS que no existe en absoluto en el catálogo del mundo — a diferencia del chequeo de
     // arriba (existe pero no está en esta escena), aquí no existe en ningún sitio.
     const fabricatedNpcClaim = await detectsFabricatedNpcClaim(action, save.worldId);

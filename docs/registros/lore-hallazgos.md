@@ -17,38 +17,38 @@ Cada entrada: fecha, zona auditada, hallazgo, y estado.
 **2026-09-15 — auditoría de lore de los sistemas nuevos post-2026-09-07 (combate múltiple con
 compañeros, cuadrícula/Interactuar, Cazadora Serhu, MedioMovimiento)**
 - [combate-multiple.md confirmado sin discrepancias, muy bien mantenido](#combate-multiplemd--confirmado-sin-discrepancias-muy-bien-mantenido)
-- [clases.md: CANALIZAR — autocontradicción real dentro del propio documento](#clasesmd--canalizar-autocontradicción-real-dentro-del-propio-documento-staleness-no-contradicción-de-diseño)
-- [clases.md: cabeceras de sección y tabla-resumen final desincronizadas de sus propias tablas detalladas](#clasesmd--cabeceras-de-sección-y-tabla-resumen-final-desincronizadas-de-sus-propias-tablas-detalladas)
-- [Sistema de cuadrícula/colisión "Interactuar" — hueco de documentación completo](#sistema-de-cuadrículacolisión-interactuar-zonaposicionts--hueco-de-documentación-completo-no-contradicción)
+- [clases.md: CANALIZAR — autocontradicción real dentro del propio documento](#clasesmd--canalizar-autocontradicción-real-dentro-del-propio-documento-staleness-no)
+- [clases.md: cabeceras de sección y tabla-resumen final desincronizadas de sus propias tablas detalladas](#clasesmd--cabeceras-de-sección-y-tabla-resumen-final-desincronizadas-de-sus-propias-tablas)
+- [Sistema de cuadrícula/colisión "Interactuar" — hueco de documentación completo](#sistema-de-cuadrículacolisión-interactuar-zonaposicionts--hueco-de-documentación-completo)
 - [MedioMovimiento — solo 2 fichas marcadas, coherentes con su prosa](#mediomovimiento--solo-2-fichas-marcadas-ambas-coherentes-con-su-prosa-existente)
-- [ZonePoint "Cazadora Serhu" — hueco simple, sin contradicción](#zonepoint-cazadora-serhu--campamento-serhu-sembrado-2026-09-15--hueco-simple-sin-contradicción)
+- [ZonePoint "Cazadora Serhu" — hueco simple, sin contradicción](#zonepoint-cazadora-serhu--campamento-serhu-sembrado-2026-09-15--hueco-simple-sin)
 
 **2026-09-15 (segunda ronda) — barrido de zonas menos auditadas (items.md, razas.md, personajes.md,
 npcs.md)**
-- [personajes.md: tabla de atributos jugables y nota "no aplicada al motor todavía" desactualizadas frente al rename Arcano→Magia del 2026-09-01](#personajesmd--tabla-de-atributos-jugables-y-nota-no-aplicada-al-motor-todavía-desactualizadas-frente-al-rename-arcanomagia-del-2026-09-01)
-- [items.md, razas.md, npcs.md — confirmados sin discrepancias tras verificación puntual](#items-md-razasmd-npcsmd--confirmados-sin-discrepancias-tras-verificación-puntual)
+- [personajes.md: tabla de atributos jugables y nota "no aplicada al motor todavía" desactualizadas frente al rename Arcano→Magia del 2026-09-01](#personajesmd--tabla-de-atributos-jugables-y-nota-no-aplicada-al-motor-todavía-desactualizadas)
+- [items.md, razas.md, npcs.md — confirmados sin discrepancias tras verificación puntual](#itemsmd-razasmd-npcsmd--confirmados-sin-discrepancias-tras-verificación-puntual)
 
 **2026-09-07 — auditoría de lore post-2026-08-25 (frente paralelo de la ronda de 4 agentes)**
-- [clases.md: tabla-resumen y secciones detalladas de Guerrero/Cazador/Chamán/Arquero vuelven a desactualizarse tras la siembra de 22 habilidades del 2026-08-31](#2026-09-07-clasesmd-tabla-resumen-y-secciones-detalladas-de-guerrerocazadorchamánarquero-vuelven-a-desactualizarse-tras-la-siembra-de-22-habilidades-del-2026-08-31)
-- [Confirmado sin discrepancias — mundo determinista/agenda, Faction.description estática, banners, actualizaciones-pendientes-lore.md ya cubrió fauna/flora/vocabulario](#2026-09-07-confirmado-sin-discrepancias--mundo-determinista-agenda-factiondescription-estática-banners-actualizaciones-pendientes-loremd-ya-cubrió-faunaf-loravocabulario)
+- [clases.md: tabla-resumen y secciones detalladas de Guerrero/Cazador/Chamán/Arquero vuelven a desactualizarse tras la siembra de 22 habilidades del 2026-08-31](#2026-09-07--clasesmd-tabla-resumen-y-secciones-detalladas-de-guerrerocazadorchamánarquero-vuelven-a-desactualizarse-tras-la-siembra-de-22-habilidades-del-2026-08-31)
+- [Confirmado sin discrepancias — mundo determinista/agenda, Faction.description estática, banners, actualizaciones-pendientes-lore.md ya cubrió fauna/flora/vocabulario](#2026-09-07--confirmado-sin-discrepancias--mundo-deterministaagenda-factiondescription-estática-banners-actualizaciones-pendientes-loremd-ya-cubrió-faunafloravocabulario)
 
 **2026-08-25 — primera auditoría de lore centrada en sistemas nuevos post-2026-08-23 (3 agentes en paralelo)**
-- [combate-multiple.md sigue con el banner "nada implementado" pese a estar construido e integrado](#2026-08-25-combate-multiplemd-sigue-con-el-banner-nada-implementado-pese-a-estar-construido-e-integrado)
-- [combate-multiple.md dice que NpcState.groupSize/groupDefeated se retiran — el código los mantiene a propósito](#2026-08-25-combate-multiplemd-dice-que-npcstategroupsizegroupdefeated-se-retiran--el-código-los-mantiene-a-propósito)
-- [Faction.description de Helsig/Goshg estática pese a que worldAgenda puede escalar el conflicto — DECIDIDO: se queda estática](#2026-08-25-factiondescription-de-helsiggoshg-estática-pese-a-que-worldagenda-puede-escalar-el-conflicto--decidido-se-queda-estática)
-- [clases.md: tabla-resumen final y 3 especializaciones desactualizadas frente al código real](#2026-08-25-clasesmd-tabla-resumen-final-y-3-especializaciones-desactualizadas-frente-al-código-real)
-- [companeros-y-supervivencia.md sigue con el banner "nada implementado" pese a estar aplicado de punta a punta](#2026-08-25-companeros-y-supervivenciamd-sigue-con-el-banner-nada-implementado-pese-a-estar-aplicado-de-punta-a-punta)
-- [companeros-y-supervivencia.md describe muerte real por inanición — el código la tapa a propósito en CONVALECIENTE](#2026-08-25-companeros-y-supervivenciamd-describe-muerte-real-por-inanición--el-código-la-tapa-a-propósito-en-convaleciente)
-- [reclutablePct nunca se usa en la tirada de persuasión pese a que el .md lo promete como dificultad base — DECIDIDO: hay que engancharlo](#2026-08-25-reclutablepct-nunca-se-usa-en-la-tirada-de-persuasión-pese-a-que-el-md-lo-promete-como-dificultad-base--decidido-hay-que-engancharlo)
-- [Plantillas de equipo "básicas, no editables" prometidas por el .md no existen — toda plantilla es personalizada hoy](#2026-08-25-plantillas-de-equipo-básicas-no-editables-prometidas-por-el-md-no-existen--toda-plantilla-es-personalizada-hoy)
-- [Menores agrupados — clima/estaciones, sin acción](#2026-08-25-menores-agrupados--climaestaciones-sin-acción)
+- [combate-multiple.md sigue con el banner "nada implementado" pese a estar construido e integrado](#2026-08-25--combate-multiplemd-sigue-con-el-banner-nada-implementado-pese-a-estar-construido-e-integrado)
+- [combate-multiple.md dice que NpcState.groupSize/groupDefeated se retiran — el código los mantiene a propósito](#2026-08-25--combate-multiplemd-dice-que-npcstategroupsizegroupdefeated-se-retiran--el-código-los-mantiene-a-propósito)
+- [Faction.description de Helsig/Goshg estática pese a que worldAgenda puede escalar el conflicto — DECIDIDO: se queda estática](#2026-08-25--factiondescription-de-helsiggoshg-estática-pese-a-que-worldagenda-puede-escalar-el-conflicto--decidido-se-queda-estática)
+- [clases.md: tabla-resumen final y 3 especializaciones desactualizadas frente al código real](#2026-08-25--clasesmd-tabla-resumen-final-y-3-especializaciones-desactualizadas-frente-al-código-real)
+- [companeros-y-supervivencia.md sigue con el banner "nada implementado" pese a estar aplicado de punta a punta](#2026-08-25--companeros-y-supervivenciamd-sigue-con-el-banner-nada-implementado-pese-a-estar-aplicado-de-punta-a-punta)
+- [companeros-y-supervivencia.md describe muerte real por inanición — el código la tapa a propósito en CONVALECIENTE](#2026-08-25--companeros-y-supervivenciamd-describe-muerte-real-por-inanición--el-código-la-tapa-a-propósito-en-convaleciente)
+- [reclutablePct nunca se usa en la tirada de persuasión pese a que el .md lo promete como dificultad base — DECIDIDO: hay que engancharlo](#2026-08-25--reclutablepct-nunca-se-usa-en-la-tirada-de-persuasión-pese-a-que-el-md-lo-promete-como-dificultad-base--decidido-hay-que-engancharlo)
+- [Plantillas de equipo "básicas, no editables" prometidas por el .md no existen — toda plantilla es personalizada hoy](#2026-08-25--plantillas-de-equipo-básicas-no-editables-prometidas-por-el-md-no-existen--toda-plantilla-es-personalizada-hoy)
+- [Menores agrupados — clima/estaciones, sin acción](#2026-08-25--menores-agrupados--climaestaciones-sin-acción)
 
 ---
 
 ## 2026-08-25 — combate-multiple.md sigue con el banner "nada implementado" pese a estar construido e integrado
 
 **Hallazgo (auditoría de lore, agente en paralelo, staleness — no requiere decisión de canon)**: el
-encabezado de `docs/rpgtarkor/combate-multiple.md` (fechado 2026-08-24) afirma literalmente "**Nada
+encabezado de `docs/rpgtarkor/sistemas-combate/combate-multiple.md` (fechado 2026-08-24) afirma literalmente "**Nada
 de esto está implementado en el motor todavía** — documentación pura". El sistema está construido e
 integrado de verdad desde el día siguiente (2026-08-25): modelos `CombatEncounter`/
 `CombatParticipant` reales, iniciativa N-way, emparejamiento por Inteligencia
@@ -216,7 +216,7 @@ clima (`climaRequerido` solo en arena-imán/esquirla, ciclo 40/40/40 confirmado 
 **Contexto**: esta auditoría (frente de lore de una ronda de 4 agentes en paralelo, backend/
 frontend/deuda técnica/lore) parte de la última entrada real de este archivo (2026-08-25). En el
 intervalo hubo una ronda de auditoría de lore muy exhaustiva el 2026-09-05/06 (ver
-`docs/rpgtarkor/actualizaciones-pendientes-lore.md`, 14/14 huecos de diseño + 9/9 + 11/12 hallazgos
+`docs/rpgtarkor/lore-mundo/actualizaciones-pendientes-lore.md`, 14/14 huecos de diseño + 9/9 + 11/12 hallazgos
 código↔doc cerrados) que cubrió a fondo mecanismos físicos, fauna/flora, geografía y vocabulario —
 pero no volvió a re-auditar el conteo de habilidades de clase, porque su foco fue otro. Este
 hallazgo llena ese hueco concreto.
@@ -292,7 +292,7 @@ con nota explícita de cuándo se sembró de verdad. Sin tocar código — solo 
   NPCs, líneas ~1264-1270) están correctamente marcadas como recomendación sin aplicar, no como
   desfase real.
 - Fichas de fauna/flora/NPC y vocabulario: la ronda de auditoría del 2026-09-05/06 (documentada en
-  `docs/rpgtarkor/actualizaciones-pendientes-lore.md`) ya cubrió esta área de forma extremadamente
+  `docs/rpgtarkor/lore-mundo/actualizaciones-pendientes-lore.md`) ya cubrió esta área de forma extremadamente
   exhaustiva — 14/14 huecos de mecanismo físico, 9/9 hallazgos "código→lore" y 11/12 "lore→código"
   cerrados, incluida una segunda auditoría de verificación (2026-09-06) que confirmó no quedaban
   huecos nuevos. No se encontró ningún caso adicional no cubierto por esa ronda al revisar
@@ -453,7 +453,7 @@ solo falta propagarla a este documento)**: `personajes.md` § "Poderes más all�
 Magia)... decisión cerrada, documentada, **no aplicada al motor todavía** — esta sección se queda
 tal cual hasta entonces."* Eso ya no es cierto: el commit `8535c85` (2026-09-01, *"Renombra el
 atributo Arcano a Magia y retira los secundarios narrativos"*) aplicó la decisión al motor de
-verdad, con migración de datos reales de Postgres incluida. `docs/rpgtarkor/clases.md` (línea 157,
+verdad, con migración de datos reales de Postgres incluida. `docs/rpgtarkor/sistemas-combate/clases.md` (línea 157,
 § "Atributo Magia") sí quedó correctamente actualizado ese mismo día ("decisión cerrada — **APLICADA
 al motor (2026-09-01)**"), pero `personajes.md` nunca se volvió a tocar tras esa pasada.
 

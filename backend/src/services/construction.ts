@@ -56,7 +56,7 @@ export interface ConstructionRecipe {
   tier?: number;
   requisitos?: Requisitos;
   oficio?: string;
-  /// Reglas de construcciones/reino (2026-08-04, docs/17-reglas-construcciones-reino.md) — cuántos
+  /// Reglas de construcciones/reino (2026-08-04, docs/mecanicas/17-reglas-construcciones-reino.md) — cuántos
   /// slots de compañero desbloquea esta construcción una vez `ACTIVO`. undefined = 0.
   companionSlots?: number;
   /// Máximo de construcciones ACTIVAS/EN_CONSTRUCCION de esta receta por región (`Location.region`
@@ -77,7 +77,7 @@ export interface ConstructionRecipe {
   /// Cuántos edificios de tipo reino (los que llevan `requiresAyuntamiento: true`) puedes tener
   /// ACTIVOS a la vez con este nivel de Ayuntamiento — solo lo llevan las 3 recetas de Ayuntamiento.
   reinoBuildingCapacity?: number;
-  /// Conquista territorial estilo X4 (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, 2026-09-21) — cuántos
+  /// Conquista territorial estilo X4 (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) — cuántos
   /// Cuarteles Avanzados (`CUARTEL_AVANZADO_RECIPE.key`) puedes tener ACTIVOS a la vez con este
   /// nivel de Ayuntamiento. Cupo NUEVO e INDEPENDIENTE de `reinoBuildingCapacity` (edificios
   /// normales) — solo lo llevan las 3 recetas de Ayuntamiento. Cifra de partida (1/5/10), ajustable
@@ -151,7 +151,7 @@ export function plazasTrabajadorParaTier(tier: number | null): number | null {
 
 /// Distancia máxima (minutos de viaje reales, mismo grafo que `shortestPath`/`buildAdjacency` de
 /// travel.ts) entre un edificio de tipo reino y el Ayuntamiento del que depende — bastante para
-/// cubrir el núcleo medido de una región (docs/13-escala-del-mundo.md § 1.1: la mayoría de tramos
+/// cubrir el núcleo medido de una región (docs/mecanicas/13-escala-del-mundo.md § 1.1: la mayoría de tramos
 /// entre nodos del núcleo de Llanuras rondan 60-150 min) sin llegar a otra región.
 const MAX_MINUTOS_DESDE_AYUNTAMIENTO = 600;
 
@@ -170,7 +170,7 @@ export interface RecipeCheck {
 /// aprendido — mismo patrón que `OFICIOS_CON_HERRAMIENTA_REQUERIDA` (crafting.ts): una lista
 /// explícita, en vez de cambiar el comportamiento por defecto de golpe para todas las recetas
 /// existentes. Gap real cerrado (2026-08-24, Grupo 3 § materiales procesados, ver
-/// docs/rpgtarkor/materiales-procesados-construccion.md): antes `ConstructionRecipe.oficio` solo
+/// docs/mecanicas/17-reglas-construcciones-reino.md): antes `ConstructionRecipe.oficio` solo
 /// daba un alivio de requisito (`alivioForLevel`), nunca bloqueaba — hoy nada impedía construir un
 /// Ayuntamiento orco sin haber aprendido `constructor-orcos-llanuras` en absoluto. El Ayuntamiento
 /// pequeño y el Campamento se quedan fuera a propósito (nivel de entrada, sin oficio exigido);
@@ -358,7 +358,7 @@ export const AYUNTAMIENTO_PEQUENO_RECIPE: ConstructionRecipe = {
   raza: 'orcos',
   nounRegex: /ayuntamiento/,
   // Rebalanceo (2026-08-24, Grupo 3 § Campamento/Ayuntamiento — ver
-  // docs/rpgtarkor/materiales-procesados-construccion.md): antes solo 15 piedra + 10 leña (2
+  // docs/mecanicas/17-reglas-construcciones-reino.md): antes solo 15 piedra + 10 leña (2
   // categorías). El pequeño se queda 100% crudo a propósito (mediano/grande SÍ pasan a materiales
   // procesados por oficio regional — ver AYUNTAMIENTO_MEDIANO_RECIPE/AYUNTAMIENTO_GRANDE_RECIPE
   // más abajo, mismo día) — cifras dadas por la usuaria.
@@ -391,7 +391,7 @@ export const AYUNTAMIENTO_MEDIANO_RECIPE: ConstructionRecipe = {
   // grande. El orden en CONSTRUCTION_RECIPES (más abajo) ya pone este antes que el pequeño.
   nounRegex: /(?=.*ayuntamiento)(?=.*median)/,
   // Materiales procesados (2026-08-24, Grupo 3 § materiales procesados — ver
-  // docs/rpgtarkor/materiales-procesados-construccion.md): antes solo 30 piedra + 25 leña crudas.
+  // docs/mecanicas/17-reglas-construcciones-reino.md): antes solo 30 piedra + 25 leña crudas.
   // Regla cerrada con la usuaria: ~75% procesado / 25% crudo por categoría procesable — la resina
   // nunca tiene versión procesada, se queda 100% crudo en cualquier nivel.
   requirements: [
@@ -444,7 +444,7 @@ export const AYUNTAMIENTO_GRANDE_RECIPE: ConstructionRecipe = {
 };
 
 // Jaula (Grupo 3 § Compañeros y supervivencia, 2026-08-25, ver
-// docs/rpgtarkor/companeros-y-supervivencia.md § 2) — "el sitio físico donde se cuida al animal
+// docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md § 2) — "el sitio físico donde se cuida al animal
 // DURANTE el proceso de tameo, no el slot final de compañero" — `companionSlots: 0` a propósito,
 // no compite con Campamento/Choza. Sin `requiresAyuntamiento`: capturar/tamear no depende de tener
 // Reino fundado, mismo criterio que el propio doc ("Reino NO es requisito"). Capacidad = 1 animal
@@ -1261,7 +1261,7 @@ export const BOCA_MINA_GRAN_OBRADOR_RECIPE: ConstructionRecipe = {
   ayuntamientoNivelMinimo: 3,
 };
 
-// Cuartel Avanzado (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, 2026-09-21) — "puesto avanzado" ya
+// Cuartel Avanzado (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) — "puesto avanzado" ya
 // anticipado en el comentario de AYUNTAMIENTO_PEQUENO_RECIPE desde 2026-08-04. A diferencia de la
 // Choza (`requiresAyuntamiento`, cuenta contra `reinoBuildingCapacity`), este cuenta contra su
 // PROPIO cupo nuevo (`cuartelAvanzadoCapacity` del Ayuntamiento) — `isCuartelAvanzado: true` es
@@ -1425,7 +1425,7 @@ function reinoBuildingCapacityForTier(tier: number): number {
 }
 
 /// Mismo criterio que `reinoBuildingCapacityForTier`, para el cupo NUEVO de Cuarteles Avanzados
-/// (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, 2026-09-21) — deriva de `cuartelAvanzadoCapacity` en
+/// (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) — deriva de `cuartelAvanzadoCapacity` en
 /// vez de repetir 1/5/10 sueltos.
 function cuartelAvanzadoCapacityForTier(tier: number): number {
   const recipe = [AYUNTAMIENTO_PEQUENO_RECIPE, AYUNTAMIENTO_MEDIANO_RECIPE, AYUNTAMIENTO_GRANDE_RECIPE].find(
@@ -1438,7 +1438,7 @@ function cuartelAvanzadoCapacityForTier(tier: number): number {
 /// en el mismo Cuartel, ver `computeBuildBlockedReason`).
 const CUARTEL_UPGRADE_RECIPE_KEYS: string[] = CONSTRUCTION_RECIPES.filter((r) => r.cuartelUpgradeBonus).map((r) => r.key);
 
-/// Reglas de reino (2026-08-04, docs/17-reglas-construcciones-reino.md) — cupo por región, cercanía/
+/// Reglas de reino (2026-08-04, docs/mecanicas/17-reglas-construcciones-reino.md) — cupo por región, cercanía/
 /// cupo del Ayuntamiento, mejora en el nivel justo anterior, y unicidad del Ayuntamiento. Recibe
 /// `db` como parámetro (en vez de cerrar sobre `prisma`) para poder llamarse dos veces con el mismo
 /// código: una vez de solo lectura ANTES de la transacción (aviso al LLM, mejor esfuerzo) y otra
@@ -1529,7 +1529,7 @@ export async function computeBuildBlockedReason(params: {
     if (!ayuntamiento?.location) {
       return 'necesita un Ayuntamiento construido antes de poder levantar esto';
     }
-    // Conquista territorial estilo X4 (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, 2026-09-21): el
+    // Conquista territorial estilo X4 (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21): el
     // Cuartel Avanzado es justo lo contrario de la Choza — expansión DESDE la capital HACIA otra
     // región, nunca dentro de la misma. Las 2 restricciones de abajo (misma región, distancia
     // máxima) solo tienen sentido para edificios normales de reino, que sí dependen de estar cerca
@@ -1572,7 +1572,7 @@ export async function computeBuildBlockedReason(params: {
     }
   }
   if (buildRecipe.cuartelUpgradeBonus) {
-    // Bifurcación única (docs/rpgtarkor/mundo-vivo-x4.md § 7.4) — Cuartel de Guerra y Puesto
+    // Bifurcación única (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4) — Cuartel de Guerra y Puesto
     // Comercial comparten `upgradesRecipeKey: 'cuartel-avanzado'`, así que el bloque genérico de
     // abajo ya exige que exista un Cuartel Avanzado ACTIVO; aquí además se impide que ESE MISMO
     // Cuartel ya lleve la mejora contraria (nunca las dos a la vez, mismo criterio que

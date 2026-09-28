@@ -240,7 +240,7 @@ describe('handleCapturarSeleccion/handleDejarVivirSeleccion: identificador de co
   })
 })
 
-// BUG CERRADO (2026-08-29, ver docs/checklist-pruebas-juego.md "recargar tras Convaleciente atasca
+// BUG CERRADO (2026-08-29, ver docs/registros/checklist-pruebas-juego.md "recargar tras Convaleciente atasca
 // el combate del todo") — antes del fix, la tarjeta Matar/Capturar/Clemente solo nacía de
 // `entry.convalecienteOffers` (ligado al `characterLog` efímero de React) y nunca sobrevivía a una
 // recarga real, aunque el bloqueo del composer (`combatHasPendingConvalecientes`) sí persistía —

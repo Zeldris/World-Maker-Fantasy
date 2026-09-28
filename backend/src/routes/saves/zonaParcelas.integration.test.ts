@@ -3,7 +3,7 @@ import Fastify from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
 
-/// Icono de parcela en el mapa de Zona (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, 2026-09-21) —
+/// Icono de parcela en el mapa de Zona (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) —
 /// `GET /saves/:id/zona` debe exponer las `Parcela` reales de la Location actual (backend real de
 /// § 7.4 ya existía, `parcelas.ts`; el enganche a `/zona` faltaba, es lo que prueba este archivo).
 /// Harness real contra Postgres (sin mocks) — mismo patrón que `zonaCompanion.integration.test.ts`.

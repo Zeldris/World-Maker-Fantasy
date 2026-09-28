@@ -129,7 +129,7 @@ describe('valorGoirnosBaseFor', () => {
   });
 });
 
-// Mercado regulado (docs/rpgtarkor/mundo-vivo-x4.md § 4.4, 2026-09-21) — precio dinámico derivado
+// Mercado regulado (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.4, 2026-09-21) — precio dinámico derivado
 // de stock real, verificado con grounding X4: mucho stock = barato, poco stock = caro.
 describe('factorPrecioPorStock', () => {
   it('en STOCK_NORMAL exacto, factor 1 (precio base tal cual)', () => {

@@ -21,7 +21,7 @@ class AprenderOficioRechazadoError extends Error {
 }
 
 /// "Aprender oficio de un Maestro" (2026-08-31, "Trabajador de Reino") — cierra el hueco real
-/// confirmado en `crafting.ts`/`docs/ampliar-lore-checklist.md`: hoy los oficios solo se siembran
+/// confirmado en `crafting.ts`/`docs/registros/ampliar-lore-checklist.md`: hoy los oficios solo se siembran
 /// al crear personaje, sin ningún mecanismo de aprenderlos en partida. Determinista, sin pasar por
 /// Ollama — mismo patrón que `quests/aceptar`/`entrega.ts` (endpoint dedicado, sin detección de
 /// texto libre: dos precondiciones a la vez — reputación Y pago — encajan mal con el matching de

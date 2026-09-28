@@ -2,7 +2,7 @@
 /// producción/consumo, cero IA, aplicadas una vez por día de ficción cruzado (ver turnResolution.ts,
 /// donde ya se actualiza `WorldState.fictionalMinutes`). Solo se aplica si ya existe una fila
 /// `KingdomStats` para la partida (se crea al fundar el primer Territory) — "el vacío es un estado
-/// válido" (docs/10-niveles-xp-reino.md § 5.1): sin reino todavía, no hay nada que tiquear.
+/// válido" (docs/mecanicas/10-niveles-xp-reino.md § 5.1): sin reino todavía, no hay nada que tiquear.
 export interface KingdomStatsBlock {
   poblacion: number;
   felicidad: number;
@@ -43,7 +43,7 @@ const CONSUMO_POR_BOCA = 1;
 const MANTENIMIENTO_POR_SOLDADO = 1;
 
 /// Bandas de felicidad que alimentan Territory.control/population (2026-08-23, Grupo 3 —
-/// docs/10-niveles-xp-reino.md § 5.4 ya reservaba 300 XP para "Territory pasa a CONSOLIDADO" y
+/// docs/mecanicas/10-niveles-xp-reino.md § 5.4 ya reservaba 300 XP para "Territory pasa a CONSOLIDADO" y
 /// preveía PERDIDO por "bajas de población", pero nunca se conectó con nada real). Todo cifra de
 /// partida, primera pasada ajustable jugando — igual criterio que el resto de constantes de este
 /// archivo.

@@ -29,7 +29,7 @@ export interface ClassificationResult {
   atributo: Attribute;
   dificultad: number;
   razon: string;
-  /// Bandas de tiempo (docs/08-acciones-por-tiempo.md § 2) — cuánto tarda la acción EN LA
+  /// Bandas de tiempo (docs/mecanicas/08-acciones-por-tiempo.md § 2) — cuánto tarda la acción EN LA
   /// FICCIÓN, no en tiempo real de espera. "instantanea" son segundos (examinar, hablar,
   /// atacar); "corta" minutos (cortar leña, buscar en una zona); "extendida" horas (descanso
   /// corto, tramo de viaje); "larga" días+ (construir un campamento, viaje regional).
@@ -49,27 +49,27 @@ export interface NarrationResult {
   /// frecuente a propósito, y nunca contradice que el personaje vaya solo salvo que la acción
   /// sea explícitamente sobre reclutar/aliarse con alguien.
   newCompanion?: { name: string; role: string; notes: string } | null;
-  /// docs/10-niveles-xp-reino.md § 3.2: el modelo solo propone el TIPO de hito narrativo, el
+  /// docs/mecanicas/10-niveles-xp-reino.md § 3.2: el modelo solo propone el TIPO de hito narrativo, el
   /// backend traduce a XP. "capitulo" no está aquí porque ese lo emite el backend, no el modelo.
   hito?: HitoTipo | null;
-  /// docs/10-niveles-xp-reino.md § 5: eventos de Reino, uno por turno como mucho, poco frecuentes
+  /// docs/mecanicas/10-niveles-xp-reino.md § 5: eventos de Reino, uno por turno como mucho, poco frecuentes
   /// a propósito — el backend valida y materializa (mismo patrón que newItem/newCompanion).
   newTerritory?: { name: string; region?: string; description: string } | null;
   newBuilding?: { name: string; kind: string; description: string; territoryName?: string } | null;
   newSubject?: { name: string; role: string; notes: string; territoryName?: string } | null;
-  /// docs/09-panel-personaje.md (pestaña Misiones): solo cuando la escena establece de verdad un
+  /// docs/mecanicas/09-panel-personaje.md (pestaña Misiones): solo cuando la escena establece de verdad un
   /// objetivo narrativo con entidad propia (no cualquier intención pasajera) — mismo patrón que
   /// newTerritory/newBuilding/newSubject, el backend valida y materializa.
   newQuest?: { title: string; description: string } | null;
   /// Cierra una misión ACTIVA ya existente (matchea por título, backend valida que exista) —
   /// "completada" o "fallida" según cómo se resuelva en la narración.
   questProgress?: { title: string; status: 'COMPLETADA' | 'FALLIDA' } | null;
-  /// docs/14-combate-y-muerte.md § 2.1: el Narrador marca esto cuando la escena deriva en un
+  /// docs/mecanicas/14-combate-y-muerte.md § 2.1: el Narrador marca esto cuando la escena deriva en un
   /// enfrentamiento real (no lo infiere el backend por regex, a diferencia de viajar/recolectar
   /// — un inicio de combate depende demasiado de contexto narrativo). `npcSlugs` viene acotado
   /// por enum a los NPCs ya detectados en escena (§ 2.5 de docs/12): el modelo nunca inventa uno.
   combateIniciado?: { npcSlugs: string[] } | null;
-  /// docs/14-combate-y-muerte.md § 1: opcional, el backend valida con nextCondicionFisica()
+  /// docs/mecanicas/14-combate-y-muerte.md § 1: opcional, el backend valida con nextCondicionFisica()
   /// antes de aplicarla — nunca confía en este valor a ciegas.
   condicionFisica?: CondicionFisica | null;
 }
@@ -91,7 +91,7 @@ interface TurnContext {
   /// reproducible en una acción de este tipo: "busca un lugar seguro para acampar", donde no
   /// tenemos ningún hecho sobre qué hace seguro un sitio concreto).
   weaklyGrounded?: boolean;
-  /// docs/14-combate-y-muerte.md § 2.3: true dentro del popup de combate — cambia el tono a
+  /// docs/mecanicas/14-combate-y-muerte.md § 2.3: true dentro del popup de combate — cambia el tono a
   /// intercambios cortos y directos, y habilita que el Narrador proponga condicionFisica/
   /// combateIniciado con más margen (ver nextCondicionFisica en services/death.ts).
   enCombate?: boolean;
@@ -191,7 +191,7 @@ interface TurnContext {
   /// narración describe de todos modos un golpe ya conectado/un enemigo ya herido huyendo, es una
   /// alucinación adelantada del combate, no una licencia narrativa — se reintenta.
   combatNotYetResolved?: boolean;
-  /// docs/19-post-combate-y-recompensas-mision.md, pieza 1 — true SOLO en el turno exacto en que
+  /// docs/mecanicas/19-post-combate-y-recompensas-mision.md, pieza 1 — true SOLO en el turno exacto en que
   /// el NPC objetivo pasa a CONVALECIENTE/MUERTO (no si ya estaba así de antes). Usado en
   /// `combatBlock` para pedir explícitamente que se narre el momento de caer inconsciente/morir,
   /// en vez de dejarlo implícito (hoy el panel de victoria puede aparecer sin que la propia
@@ -248,7 +248,7 @@ interface TurnContext {
   /// Ver `hasResurrectedDeadNpc` más abajo — nombres reales de NPCs CONVALECIENTE/MUERTO presentes
   /// este turno (ver `npcSceneBlockFor`, npcScene.ts: ya reciben la instrucción explícita "no lo
   /// narres como una amenaza activa... nunca un encuentro nuevo"). Bug documentado en el propio
-  /// runbook del proyecto (docs/revisar-partida.md § "NPCs que resucitan") — un modelo pequeño a
+  /// runbook del proyecto (docs/runbooks/revisar-partida.md § "NPCs que resucitan") — un modelo pequeño a
   /// veces la ignora igual que ignoraba el resto de instrucciones "no hagas X" de esta lista.
   possiblyResurrectedNpcNames?: string[];
   /// Ver `hasFalseNpcAppearance` más abajo (Grupo 3 § Mundo determinista, Capa 3, 2026-08-25) —
@@ -341,7 +341,7 @@ interface ClassifyContext {
   characterSummary: string;
   action: string;
   /// Línea de calibración de dificultad cuando hay un NPC con nivel conocido en escena
-  /// (docs/12-mundo-estructurado.md § 2.2) — el backend calcula la diferencia de nivel y le
+  /// (docs/mecanicas/12-mundo-estructurado.md § 2.2) — el backend calcula la diferencia de nivel y le
   /// pasa la frase ya masticada; el modelo conecta, no aritmetiza.
   npcCalibration?: string | null;
 }
@@ -387,7 +387,7 @@ async function ollamaCallWithOneRetry<T>(label: string, call: () => Promise<T>):
   }
 }
 
-/// Paso 1 del turno (decisión de mecánicas 2, docs/06-decisiones-mecanicas.md): decide si la
+/// Paso 1 del turno (decisión de mecánicas 2, docs/mecanicas/06-decisiones-mecanicas.md): decide si la
 /// acción libre del jugador necesita tirada y con qué atributo/dificultad, ANTES de narrar nada.
 /// Usa el modelo pequeño (env.ollamaModelCronista): es una tarea de clasificación estructurada,
 /// no necesita la profundidad narrativa del modelo grande — y así se libera tiempo para narrar.
@@ -1015,7 +1015,7 @@ No inventes ningún hecho nuevo (ni objetos, ni lugares, ni personajes) que no e
   return narration;
 }
 
-/// Grados de éxito (docs/08-acciones-por-tiempo.md § 5, roadmap 2026-07-19) — binario desde el
+/// Grados de éxito (docs/mecanicas/08-acciones-por-tiempo.md § 5, roadmap 2026-07-19) — binario desde el
 /// 2026-09-07 (hallazgo 15/19b, revisar-partida-hallazgos.md): el tercer grado "con coste" se
 /// retiró por ser puramente cosmético (nunca decidía nada mecánico real, solo sugería texto sin
 /// garantía de aplicarse).
@@ -1111,7 +1111,7 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
           : ' Ninguno sorprende al otro — ambos se preparan a la vez, en igualdad de condiciones, sin que el enfrentamiento en sí (quién golpea, quién sale herido) se resuelva todavía en esta narración.'
       : '';
   const combatBlock = ctx.enCombate
-    ? `ESTÁS DENTRO DE UN COMBATE (docs/14-combate-y-muerte.md § 2.3): narra en 1-2 frases, corto y directo, el intercambio de ESTE turno — nada de ambientación de relleno, es el ritmo de un choque, no una escena. Puedes proponer "condicionFisica" si el personaje sale herido de este intercambio (nunca lo cures aquí salvo que la acción sea explícitamente curarse). No te contradigas dentro de la misma frase (checklist consolidado P1.6, 2026-08-27, bug real: "bloquea eficazmente... sin daño, dejando una mancha roja en su pecho" — el propio texto se desmiente a sí mismo) — si un golpe se bloquea o esquiva sin daño, no describas ninguna herida/mancha/marca en el mismo aliento; si SÍ hay herida, no digas antes que fue "sin daño".${
+    ? `ESTÁS DENTRO DE UN COMBATE (docs/mecanicas/14-combate-y-muerte.md § 2.3): narra en 1-2 frases, corto y directo, el intercambio de ESTE turno — nada de ambientación de relleno, es el ritmo de un choque, no una escena. Puedes proponer "condicionFisica" si el personaje sale herido de este intercambio (nunca lo cures aquí salvo que la acción sea explícitamente curarse). No te contradigas dentro de la misma frase (checklist consolidado P1.6, 2026-08-27, bug real: "bloquea eficazmente... sin daño, dejando una mancha roja en su pecho" — el propio texto se desmiente a sí mismo) — si un golpe se bloquea o esquiva sin daño, no describas ninguna herida/mancha/marca en el mismo aliento; si SÍ hay herida, no digas antes que fue "sin daño".${
         ctx.npcFallsUnconsciousThisTurn
           ? ctx.npcFallsConvalecienteThisTurn
             ? // Grupo que continúa (auditoría 2026-08-22, "revisa la partida otra vez"): este mismo
@@ -1721,11 +1721,11 @@ export function stripLeakedJson(narration: string): string {
     .trimEnd();
 }
 
-/// Contrato de mundo (docs/07-mundo-helek-sirik.md § 9): medieval-fantástico, sin pólvora ni
+/// Contrato de mundo (docs/rpgtarkor/lore-mundo/07-mundo-helek-sirik.md § 9): medieval-fantástico, sin pólvora ni
 /// tecnología industrial en ningún continente. Ya reforzado en el Modelfile — esto es la red de
 /// seguridad determinista para cuando el modelo lo ignora de todos modos (visto en pruebas reales).
 /// "nave espacial"/coche/avión/robot añadidos (2026-08-13, validador de grounding del jugador,
-/// docs/18-validacion-accion-jugador.md — ejemplo real de la sesión de diseño: "me monto en mi
+/// docs/mecanicas/18-validacion-accion-jugador.md — ejemplo real de la sesión de diseño: "me monto en mi
 /// nave espacial y me voy volando") — mismo regex reutilizado por `detectsPlayerAnachronism`
 /// (playerActionValidation.ts), así que ampliarlo aquí también refuerza la salida del Narrador.
 export const ANACHRONISM_REGEX =
@@ -2336,7 +2336,7 @@ export function hasFalseCombatTargetName(narration: string, realTargetName?: str
 /// narrada DOS turnos seguidos con imaginería mágica — "las heridas... comienzan a sellarse con un
 /// fino escudo de energía arcana" y luego "notando que el escudo arcáneo se ha fortalecido alrededor
 /// de las heridas más profundas" — pese a que ninguna mecánica de este personaje involucra magia.
-/// Solo 2 de las 9 clases (docs/rpgtarkor/clases.md) tienen vertiente mágica legítima: MAGO (la
+/// Solo 2 de las 9 clases (docs/rpgtarkor/sistemas-combate/clases.md) tienen vertiente mágica legítima: MAGO (la
 /// clase mágica por diseño, aunque su tabla de habilidades siga siendo solo identidad hoy) y CHAMAN
 /// (varias habilidades reales usan `preferredAttribute: 'magia'`, ver classAbilities.ts). El resto
 /// (Guerrero/Cazador/Arquero/Caballero/Segador/Asesino/Druida) y una partida sin clase asignada
@@ -2426,7 +2426,7 @@ export function hasFalseItemUse(narration: string, possiblyFalseItemUseNames?: s
 }
 
 /// Narración-vs-mecánica, mismo patrón que `hasFalseCombatHit`/`hasFalseItemUse` (2026-08-01,
-/// bug real jugando en vivo — clase de fallo ya documentada en docs/revisar-partida.md § "NPCs que
+/// bug real jugando en vivo — clase de fallo ya documentada en docs/runbooks/revisar-partida.md § "NPCs que
 /// resucitan"): con el Orco Enfurecido MUERTO y saqueado desde hacía varios turnos, un simple
 /// "Exploro la zona" narró "una mirada al oeste revela un conjunto de huellas recientes... Gorhorn
 /// reconoce el paso de un orco — probablemente el Orco Enfurecido" — implicando que sigue vivo y
@@ -2457,7 +2457,7 @@ export function hasResurrectedDeadNpc(narration: string, possiblyResurrectedNpcN
   return sentenceMatchesRegexAndName(narration, RESURRECTION_LEAK_REGEX, normalizedNames);
 }
 
-/// Grupo 3 § Mundo determinista, Capa 3, pieza B (docs/rpgtarkor/mundo-determinista.md, 2026-08-25)
+/// Grupo 3 § Mundo determinista, Capa 3, pieza B (docs/rpgtarkor/lore-mundo/mundo-determinista.md, 2026-08-25)
 /// — mismo problema de fondo que `hasResurrectedDeadNpc`, pero para una aparición NUEVA en vez de
 /// una resurrección: el modelo puede mencionar a un NPC real del catálogo, plausible geográficamente
 /// (`candidateNpcNamesNotInScene`, npcScene.ts) pero que ningún mecanismo determinista puso en

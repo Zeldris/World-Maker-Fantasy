@@ -7,7 +7,7 @@ import { professionLevelForXp, alivioForLevel } from '../../services/professionP
 import { recordFactionEvent, espiarFactionRelation, nivelDiplomaticoRequerido, type FactionEventType } from '../../services/factionRelations.js';
 import { precioDinamico } from '../../services/economia.js';
 
-/// Fundación de reino (2026-08-04, docs/17-reglas-construcciones-reino.md) — el popup que se abre
+/// Fundación de reino (2026-08-04, docs/mecanicas/17-reglas-construcciones-reino.md) — el popup que se abre
 /// al terminar de construir el Ayuntamiento (tier 1) manda aquí el formulario. Decisión manual de
 /// la jugadora, nunca del modelo (mismo criterio narrativo-sin-mecánica que el resto de Save).
 ///
@@ -79,7 +79,7 @@ export async function reinoRoutes(app: FastifyInstance) {
 
       const trimmedDescription = description?.trim();
       const factionSlug = `${slugify(finalKingdomName)}-${save.id}`;
-      // Zona-interior navegable propia del reino (docs/rpgtarkor/mundo-vivo-x4.md § 7.4,
+      // Zona-interior navegable propia del reino (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4,
       // 2026-09-21) — mismo patrón que `factionSlug` de arriba: slug determinista con `save.id`
       // para que nunca choque con el catálogo (Location de facción NPC) ni con otra partida del
       // mismo mundo (`@@unique([worldId, slug])`). Primera vez que el motor crea una `Location` en
@@ -133,7 +133,7 @@ export async function reinoRoutes(app: FastifyInstance) {
             });
           }
 
-          // Parcelas (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, "concepto estilo Travian") — huecos
+          // Parcelas (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, "concepto estilo Travian") — huecos
           // de construcción marcados a priori en el lienzo 800×600, centro en (400,300)/CELL_SIZE_PX
           // 50 (zonaPosicion.ts). La AVANZADA del centro ya está OCUPADA desde el minuto uno por el
           // Ayuntamiento que se acaba de construir (fundar reino es un paso posterior, nunca
@@ -168,7 +168,7 @@ export async function reinoRoutes(app: FastifyInstance) {
     },
   );
 
-  // Diplomacia (docs/rpgtarkor/mundo-vivo-x4.md § 4.4/§ 5-bis punto 6, 2026-09-21) — acción
+  // Diplomacia (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.4/§ 5-bis punto 6, 2026-09-21) — acción
   // PUNTUAL de un Companion/Subject del jugador con nivel de oficio 'diplomatico' suficiente,
   // estilo Agente de X4: nunca un Npc de facción (decisión explícita: "una cosa son companions...
   // y otra es NPC/fauna de facción, van por separado"), nunca exige nada de la facción destino.
@@ -248,7 +248,7 @@ export async function reinoRoutes(app: FastifyInstance) {
     },
   );
 
-  // Mercado regulado — jugador↔Faction, con goirnos personales (docs/rpgtarkor/mundo-vivo-x4.md
+  // Mercado regulado — jugador↔Faction, con goirnos personales (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md
   // § 4.4, 2026-09-21) — requisito real de tratado comercial (decisión explícita de Álvaro: cierra
   // el bucle diplomacia→mercado, negociar de verdad ABRE comercio, sabotear lo CIERRA). El comercio
   // de VOLUMEN Reino↔Faction (KingdomStats.riqueza) es una pieza aparte, sin código todavía.

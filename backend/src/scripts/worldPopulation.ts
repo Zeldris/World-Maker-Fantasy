@@ -82,7 +82,7 @@ export const worldPopulations: WorldPopulationInput[] = [
     distribucion: { 'Ciénaga Troncal': 1 },
   },
 
-  // --- Facciones (docs/rpgtarkor/mundo-vivo-x4.md § 4.6, 2026-09-21) — DISTINTO de RAZA de
+  // --- Facciones (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.6, 2026-09-21) — DISTINTO de RAZA de
   // arriba a propósito, no un duplicado: RAZA es la población NEUTRA de fondo de toda la región
   // (el "pool" del que en el futuro pueden emerger candidatos a fundar facciones menores/nuevas,
   // concepto X4), FACCION es la parte de esa misma raza que YA está organizada bajo un poder real

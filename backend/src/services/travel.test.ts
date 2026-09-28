@@ -84,7 +84,7 @@ describe('detectsTravelIntent', () => {
   });
 });
 
-// docs/revisar-partida-hallazgos.md (2026-08-01, "bucle" de ambientación sin progreso): "avanzo"/
+// docs/registros/revisar-partida-hallazgos.md (2026-08-01, "bucle" de ambientación sin progreso): "avanzo"/
 // "continúo" sin nombrar un destino real no disparaban ni detectsTravelIntent ni matchDestination.
 describe('detectsVagueMovementIntent', () => {
   it('detecta "avanzo"/"prosigo"/"me adentro" solos, sin necesitar más contexto', () => {
@@ -129,7 +129,7 @@ const locations: LocationNode[] = [
 ];
 
 describe('matchesAliasBoundary — límite de palabra + longitud mínima (auditoría 2026-08-11)', () => {
-  it('un alias corto de una sola palabra NO matchea como substring de otra palabra (bug real "res"/"presas" de docs/revisar-partida.md § 3)', () => {
+  it('un alias corto de una sola palabra NO matchea como substring de otra palabra (bug real "res"/"presas" de docs/runbooks/revisar-partida.md § 3)', () => {
     expect(matchesAliasBoundary('busco presas para cazar esta noche', 'res')).toBe(false);
     expect(matchesAliasBoundary('eso me parece interesante', 'res')).toBe(false);
   });
@@ -161,7 +161,7 @@ describe('matchDestination', () => {
     const match = matchDestination('descanso un rato', locations);
     expect(match).toBeUndefined();
   });
-  it('bug real de docs/revisar-partida.md § 3: presentarse como "Gorhorn Maktor" no debe activar un viaje a las ruinas', () => {
+  it('bug real de docs/runbooks/revisar-partida.md § 3: presentarse como "Gorhorn Maktor" no debe activar un viaje a las ruinas', () => {
     const match = matchDestination('Soy Gorhorn Maktor, quien eres', locations);
     expect(match).toBeUndefined();
   });
@@ -234,7 +234,7 @@ describe('initialLocationSlugFor', () => {
   });
 });
 
-// docs/revisar-partida-hallazgos.md (2026-08-01, "bucle" de ambientación sin progreso): fallback de
+// docs/registros/revisar-partida-hallazgos.md (2026-08-01, "bucle" de ambientación sin progreso): fallback de
 // movimiento vago sin destino nombrado — solo se auto-resuelve con EXACTAMENTE una salida real.
 describe('resolveTravel — fallback de movimiento vago (sin destino nombrado)', () => {
   const LOC_A = { id: 'loc-a', slug: 'zona-a', name: 'Zona A', description: '', region: 'Las Llanuras del Viento Rojo', kind: 'CAMPO', aliases: [] };

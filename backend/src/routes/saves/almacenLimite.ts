@@ -3,7 +3,7 @@ import { prisma } from '../../lib/prisma.js';
 import { rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 
 /// CRUD de `AlmacenLimite` (hueco C, rediseño de Producción estilo Bellwright, 2026-09-21,
-/// docs/rpgtarkor/mundo-vivo-x4.md § 4.4-ter) — tope configurable del Almacén de Reino por
+/// docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.4-ter) — tope configurable del Almacén de Reino por
 /// `catalogSlug`, ya leído por `almacenAlTope` (kingdomProduction.ts) pero sin ninguna forma de
 /// escribirlo desde el cliente hasta ahora. `limite: null` es el propio default del schema ("sin
 /// tope"), así que no hace falta ningún DELETE — fijar `null` ya expresa "vuelve a infinito".

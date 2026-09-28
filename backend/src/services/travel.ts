@@ -2,13 +2,13 @@ import { prisma } from '../lib/prisma.js';
 import type { AttributeBlock } from './dice.js';
 import type { Banda } from './narrador.js';
 
-/// Servicio de viaje (docs/12-mundo-estructurado.md § 1) — puro y sin IA en su núcleo
+/// Servicio de viaje (docs/mecanicas/12-mundo-estructurado.md § 1) — puro y sin IA en su núcleo
 /// (normalizar/matchear/Dijkstra), candidato ideal a tests unitarios, como progression.ts.
 /// El modelo nunca elige la ruta, solo (como mucho) el destino, y siempre de una lista cerrada.
 
 const TRAVEL_INTENT_REGEX = /viaj|camin|desplaz|ruta|tramo|voy (a|hacia)|me dirijo|parto hacia|vuelvo a|regreso a|me acerco a/;
 
-/// Bug real jugando (docs/revisar-partida-hallazgos.md, 2026-08-01, "narración de ambientación
+/// Bug real jugando (docs/registros/revisar-partida-hallazgos.md, 2026-08-01, "narración de ambientación
 /// repetida sin progreso tras el combate"): "avanzo por una salida" / "Continuo por la cueva" /
 /// "Continuo hasta llegar a la siguiente localización" no disparan `TRAVEL_INTENT_REGEX` (no
 /// nombran ningún verbo de viaje "hacia algo") y tampoco nombran un destino real, así que
@@ -40,7 +40,7 @@ function escapeForRegex(value: string): string {
 }
 
 /// Comprueba si un alias YA NORMALIZADO aparece dentro de un texto YA NORMALIZADO con límite de
-/// palabra real (auditoría 2026-08-11, ver docs/puntos-de-codigo-nuevo-contenido.md § 7 — bugs
+/// palabra real (auditoría 2026-08-11, ver docs/runbooks/puntos-de-codigo-nuevo-contenido.md § 7 — bugs
 /// reales "res"/"presas"/"brasas": `normalized.includes(alias)` puro, sin ningún filtro, hacía que
 /// un alias corto matcheara como substring de cualquier palabra que lo contuviera). Dos
 /// protecciones, mismo criterio ya validado en el frontend (`enciclopediaIndex.ts`):
@@ -402,7 +402,7 @@ export async function resolveTravelToLocationId(
   return resolveTravelPath(worldId, currentLocationId, destination, attributes);
 }
 
-/// Ubicación inicial al crear una partida nueva (docs/12-mundo-estructurado.md § 1.2) — hoy
+/// Ubicación inicial al crear una partida nueva (docs/mecanicas/12-mundo-estructurado.md § 1.2) — hoy
 /// solo Gorhorn tiene mundo estructurado (alcance v1), igual que startingAbilitiesFor.
 export function initialLocationSlugFor(characterName: string): string | undefined {
   if (characterName === 'Gorhorn') return 'hondonada-del-eco';

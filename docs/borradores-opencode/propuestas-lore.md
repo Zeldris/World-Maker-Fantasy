@@ -62,7 +62,7 @@ INOFENSIVO, Playa de Ceniza Blanca) a un nombre que no empiece por "B-lco" (el n
 decide Álvaro; debe seguir la fonética de las Llanuras y no ser una especie real).
 
 Por qué: en las pruebas en la nube (hallazgo B18 de
-`docs/runbooks/pruebas-nube-2026-09-28-hallazgos.md`) el reconocimiento de nombres del motor
+`docs/registros/pruebas-nube-2026-09-28-hallazgos.md`) el reconocimiento de nombres del motor
 tolera erratas de una letra (Levenshtein ≤1 en alias cortos), así que "bolco" y "bulco" se
 confundían entre sí al escribir texto libre; hoy se esquiva con una exclusión en código
 (`NPC_ALIAS_FUZZY_EXCLUSIONS`). Para el jugador también son casi indistinguibles leídos en el log.

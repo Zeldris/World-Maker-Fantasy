@@ -35,7 +35,7 @@ const findManyQuest = vi.fn();
 // no tocan Locations conectadas por LocationLink.
 const findManyLocationLink = vi.fn();
 const findManyLocationVisit = vi.fn();
-// Iconos de parcela (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, 2026-09-21) — vacío por defecto: la
+// Iconos de parcela (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) — vacío por defecto: la
 // mayoría de tests de este archivo no prueban zonas-interior con Parcela sembrada.
 const findManyParcela = vi.fn();
 // Cadáveres en el mapa (Fase 5, 2026-09-28) — sin despiece de catálogo por defecto.

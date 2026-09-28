@@ -21,7 +21,7 @@ import {
 } from './companionSupervivencia.js';
 import type { AttributeBlock } from './dice.js';
 
-// Grupo 3 § Compañeros y supervivencia (2026-08-25, docs/rpgtarkor/companeros-y-supervivencia.md)
+// Grupo 3 § Compañeros y supervivencia (2026-08-25, docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md)
 
 describe('esDomador', () => {
   it('true solo para Cazador/Domador exacto', () => {
@@ -43,7 +43,7 @@ describe('felicidadUmbralFor', () => {
   });
 });
 
-// Alfa de la Manada real (2026-09-14, docs/rpgtarkor/clases.md — Domador 40, capstone)
+// Alfa de la Manada real (2026-09-14, docs/rpgtarkor/sistemas-combate/clases.md — Domador 40, capstone)
 describe('maxSlotsDomadorFor', () => {
   it('sin ser Domador, siempre 0 (compite por companionSlotsForRecipeKey como cualquiera)', () => {
     expect(maxSlotsDomadorFor('GUERRERO', 'BERSERKER', 40)).toBe(0);

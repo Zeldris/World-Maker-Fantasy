@@ -1,6 +1,6 @@
 import type { Prisma, PrismaClient, PopulationTargetType } from '@prisma/client';
 
-/// Población dinámica (docs/16-poblacion-dinamica.md) — hasta 2026-08-03, `WorldPopulation` era
+/// Población dinámica (docs/mecanicas/16-poblacion-dinamica.md) — hasta 2026-08-03, `WorldPopulation` era
 /// solo dato semilla (2026-07-29) sin ningún código de partida que lo leyera ni lo modificara. Esto
 /// le da uso real: morir de verdad depleciona la fila que corresponda, y una tasa de crecimiento
 /// diferenciada por tipo la repuebla con el tiempo — con un umbral mínimo bajo el cual una especie
@@ -23,7 +23,7 @@ const GROWTH_RATE_PER_DAY: Record<PopulationTargetType, number> = {
   RECURSO: 0.01,
   // FLORA (2026-08-15) — mismo criterio que RECURSO: se repone con el tiempo, no "se reproduce".
   FLORA: 0.01,
-  // FACCION (docs/rpgtarkor/mundo-vivo-x4.md § 4.6, 2026-09-21, primeras filas reales sembradas
+  // FACCION (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.6, 2026-09-21, primeras filas reales sembradas
   // — antes solo la tasa existía, "todavía sin ninguna fila sembrada") — mismo ritmo que RAZA
   // (crece muy despacio, coherente con ser un subconjunto YA organizado de esa misma raza).
   FACCION: 0.003,
@@ -145,7 +145,7 @@ export async function growAllPopulations(prisma: Pick<PrismaClient, 'worldPopula
 }
 
 /// Sincroniza `WorldPopulation` (targetType FACCION) → `KingdomStats` de cada `Faction` de
-/// catálogo (docs/rpgtarkor/mundo-vivo-x4.md § 4.6, 2026-09-21) — el "reino" de una facción ya
+/// catálogo (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.6, 2026-09-21) — el "reino" de una facción ya
 /// generalizado en § 4.2 necesita reflejar el crecimiento real de `growAllPopulations` para que
 /// tenga efecto observable (antes de esto, la tasa `FACCION` existía pero no escribía en ningún
 /// sitio que el resto del motor leyera). 4 filas por facción, `targetSlug` = `<faction.slug>-

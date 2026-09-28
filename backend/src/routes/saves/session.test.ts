@@ -80,7 +80,7 @@ describe('POST /saves/:id/transit/cancel', () => {
     const res = await app.inject({ method: 'POST', url: '/saves/save1/transit/cancel' });
 
     expect(res.statusCode).toBe(204);
-    // Reforzado con saveId explícito (docs/rpgtarkor/mundo-vivo-x4.md § 4.2, 2026-09-21) — ver
+    // Reforzado con saveId explícito (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.2, 2026-09-21) — ver
     // comentario del propio cambio en session.ts.
     expect(deleteManyBuilding).toHaveBeenCalledWith({ where: { id: 'building1', saveId: 'save1', status: 'EN_CONSTRUCCION' } });
   });

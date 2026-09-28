@@ -29,7 +29,7 @@ interface RelacionesFaccionesModalProps {
   onCancel: () => void
 }
 
-/// Mapa de relaciones entre facciones NPC (Fase 4, 2026-09-21, docs/rpgtarkor/mundo-vivo-x4.md
+/// Mapa de relaciones entre facciones NPC (Fase 4, 2026-09-21, docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md
 /// § 4.3) — colgado de ReputacionPanel.tsx vía botón "Ver relaciones entre facciones" (vive
 /// conceptualmente ahí, no en Reino: es el eje mundo/facciones, mismo criterio que ya usa
 /// Reputación). Listado de pares, no grafo — con solo 4 facciones sembradas hoy, un layout de red

@@ -4,7 +4,7 @@ import { prisma } from '../lib/prisma.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
 import type { NarrationResult } from '../services/narrador.js';
 
-/// Conquista territorial estilo X4 (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, pieza 7, 2026-09-21) —
+/// Conquista territorial estilo X4 (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, pieza 7, 2026-09-21) —
 /// primer caller real de `recordFactionEvent` en producción: construir un Cuartel Avanzado en una
 /// región con Faction dueña real (REGION_OWNING_FACTIONS) DISTINTA de la propia dispara
 /// EXPANSION_TERRITORIAL_AGRESIVA. También verifica que el Cuartel genera su propia zona-interior

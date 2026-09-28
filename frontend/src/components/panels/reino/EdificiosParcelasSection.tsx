@@ -22,7 +22,7 @@ const BUILDING_STATUS_TONE: Record<BuildingInfo['status'], string> = {
   ABANDONADO: 'border-danger-600/50 text-danger-400',
 }
 
-// Nivel del Ayuntamiento (2026-08-04, docs/17-reglas-construcciones-reino.md) — 'ayuntamiento' es
+// Nivel del Ayuntamiento (2026-08-04, docs/mecanicas/17-reglas-construcciones-reino.md) — 'ayuntamiento' es
 // la única receta con tiers; el resto de construcciones no muestra nada aquí.
 const AYUNTAMIENTO_TIER_LABEL: Record<number, string> = {
   1: 'pequeño',
@@ -37,7 +37,7 @@ interface EdificiosParcelasSectionProps {
 /// Sub-tab "Edificios y Parcelas" del Reino (rediseño 2026-09-21) — extraído de `ReinoPanel.tsx`
 /// sin cambios funcionales.
 ///
-/// TODO (§ 7.4 pieza 6 / hueco G, docs/rpgtarkor/mundo-vivo-x4.md § 5-Fase-5): construir un Cuartel
+/// TODO (§ 7.4 pieza 6 / hueco G, docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 5-Fase-5): construir un Cuartel
 /// Avanzado (y sus mejoras Cuartel de Guerra / Puesto Comercial) sigue exigiendo `/turn/narrate`
 /// (texto libre interpretado por el LLM) — no hay botón directo aquí todavía. Depende de confirmar
 /// si alguna `Parcela AVANZADA` del seed real ya tiene `recipeKeyFijo: 'cuartel-avanzado'` (sin

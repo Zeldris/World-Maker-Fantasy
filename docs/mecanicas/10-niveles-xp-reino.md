@@ -163,7 +163,7 @@ model Territory {
   saveId      String
   save        Save             @relation(fields: [saveId], references: [id], onDelete: Cascade)
   name        String           // "Vado de la Arena Roja"
-  /// Nombre de región del lore (docs/rpgtarkor/areas.md) — string libre, no FK: el lore vive en .md
+  /// Nombre de región del lore (docs/rpgtarkor/lore-mundo/areas.md) — string libre, no FK: el lore vive en .md
   region      String?
   description String
   control     TerritoryControl @default(RECLAMADO)
@@ -329,7 +329,7 @@ Coste añadido: **cero llamadas nuevas a Ollama** — `hitos` y `reino_events` v
 8. ~~Validar `reino_events` con el modelo sobre casos reales~~ — **hecho, y Reino ya no está
    pausado** (actualización 2026-08-13): la pausa citada aquí (`docs/archivo/11-roadmap-historico.md`, 2026-07-19) se
    revirtió — reino fundado y jugado en vivo (2026-08-07), reglas de construcción cerradas
-   (`docs/17-reglas-construcciones-reino.md`, 2026-08-04) y habilidades/recetas de construcción con
+   (`docs/mecanicas/17-reglas-construcciones-reino.md`, 2026-08-04) y habilidades/recetas de construcción con
    deshabilitado en tiempo real (2026-08-13). **Reconciliación de § 5 con `docs/17` —
    cerrada 2026-08-31**: § 5 reescrito para señalar explícitamente qué sigue vigente (modelos
    `Territory`/`Building`/`Subject`, tabla de XP de § 5.4) frente a lo que ya no lo es (§ 5.1 "sin

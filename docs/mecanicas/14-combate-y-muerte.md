@@ -1,7 +1,7 @@
 # Combate, muerte y descanso (diseño, 2026-07-18)
 
 **Estado:** diseño cerrado para revisión — nada de esto está implementado todavía.
-**Origen:** la usuaria pidió que las acciones de banda corta (buscar, recolectar) revelen hallazgos concretos de forma progresiva en vez de una narración única, que todo lo interactuable (objetos, NPCs) funcione como las habilidades (icono clicable que compone la acción), y que el combate viva en un modo aparte por turnos — lo que a su vez forzó la pieza que llevaba pendiente desde `docs/06-decisiones-mecanicas.md`: la condición física real. El sistema de muerte/descanso surgió de ahí, con una pieza de canon nueva de la propia usuaria (la Entidad Desconocida, ver `docs/rpgtarkor/genesis.md`).
+**Origen:** la usuaria pidió que las acciones de banda corta (buscar, recolectar) revelen hallazgos concretos de forma progresiva en vez de una narración única, que todo lo interactuable (objetos, NPCs) funcione como las habilidades (icono clicable que compone la acción), y que el combate viva en un modo aparte por turnos — lo que a su vez forzó la pieza que llevaba pendiente desde `docs/mecanicas/06-decisiones-mecanicas.md`: la condición física real. El sistema de muerte/descanso surgió de ahí, con una pieza de canon nueva de la propia usuaria (la Entidad Desconocida, ver `docs/rpgtarkor/lore-mundo/genesis.md`).
 
 **Qué NO se toca:** la fórmula de tirada, los umbrales de dificultad, el sistema de niveles/XP, el grafo de ubicaciones de `docs/12` (los puntos de descanso son un USO nuevo de `Location`, no un sistema paralelo).
 
@@ -9,7 +9,7 @@
 
 ## 1. Condición física — por fin implementada
 
-Decisión de mecánicas 3 (`docs/06-decisiones-mecanicas.md`), nunca llevada al schema. Campo estructurado en `Save`:
+Decisión de mecánicas 3 (`docs/mecanicas/06-decisiones-mecanicas.md`), nunca llevada al schema. Campo estructurado en `Save`:
 
 ```prisma
 enum CondicionFisica {
@@ -100,7 +100,7 @@ Un combate puede tener varios NPCs; cada uno lleva su propia condición física 
 hacer falta y SÍ se construyó — `NpcState`** (uno por NPC×partida, no descartado al terminar el
 combate). Persiste condición física real entre turnos y sobrevive a recargar la página; además
 recupera de `CONVALECIENTE` a `HERIDO` tras 6h de ficción y el cadáver desaparece tras 48h (ver
-`docs/19-post-combate-y-recompensas-mision.md`). Es la pieza que hace posible saquear/decapitar
+`docs/mecanicas/19-post-combate-y-recompensas-mision.md`). Es la pieza que hace posible saquear/decapitar
 más tarde sin pasar por combate (`postCombatInteraction.ts`). Queda el razonamiento original abajo
 por historial — en el momento en que se escribió, era correcto que nadie lo había pedido todavía.
 
@@ -238,7 +238,7 @@ endedAt DateTime?
 2. ~~**Selector de dificultad en la creación de partida**~~ — **hecho**: `SessionContext` guarda `selectedDificultad`, seleccionable en `CharacterSaves.tsx` (Novato/Medio/Avanzado con frase corta) justo antes de "+ Nueva partida"; se manda en `POST /saves`.
 3. ~~**Detección de descanso válido**~~ — **hecho**: `detectsRestIntent()` (movido a `timedActions.ts`, mismo regex que ya usaba `computeDuration`) + `isValidRestLocationKind()` en `death.ts`, enganchado en `turnResolution.ts` — verificado en vivo: descansar en La Hondonada del Eco (kind refugio) fija `lastRestLocationId` correctamente.
 4. ~~**Flujo de muerte determinista**~~ — **hecho**: `backend/src/services/death.ts` (`limiteMuertes`, `resolveDeathOutcome`, `whisperText`, `nextCondicionFisica`, `isValidRestLocationKind`), enganchado en `turnResolution.ts` donde `condicionFisica` pasa a `MUERTO`. Verificado con pruebas unitarias puras (los 3 niveles de dificultad, avisos de última oportunidad, fin de partida) — todas correctas.
-5. ~~**Combate**~~ — **hecho**: `combateIniciado`/`condicionFisica` en el JSON de `narrateAction` (enriquecido con nombres de NPC antes de llegar al frontend), composer propio (habilidades de categoría combate + NPCs clicables + Huir), flag `enCombate` que cambia el tono del prompt y las reglas de `nextCondicionFisica`. **Desfasado (no una errata menor, señalado aquí):** el componente original `CombatModal.tsx` fue rediseñado y renombrado a `CombatPanel.tsx` (sesión 2026-08-12); y la "simplificación v1 explícita" de abajo ya no es cierta — desde `NpcState` (§ 2.4-2.5 de este documento la descartaban a propósito) la condición física de cada NPC SÍ se persiste de verdad por partida (recupera de `CONVALECIENTE` a `HERIDO` tras 6h de ficción, el cadáver desaparece a las 48h, `docs/19-post-combate-y-recompensas-mision.md`), no un heurístico visual descartado al cerrar el combate. § 2.4/2.5 de este documento describen el diseño v1 histórico, ya superado. **Tampoco** es ya "el jugador siempre ataca primero" — desde el 2026-07-28 hay iniciativa real, defensa a ciegas y una tabla de 6 desenlaces posibles por intercambio, ver la nota "Superado" de § 2.3.
+5. ~~**Combate**~~ — **hecho**: `combateIniciado`/`condicionFisica` en el JSON de `narrateAction` (enriquecido con nombres de NPC antes de llegar al frontend), composer propio (habilidades de categoría combate + NPCs clicables + Huir), flag `enCombate` que cambia el tono del prompt y las reglas de `nextCondicionFisica`. **Desfasado (no una errata menor, señalado aquí):** el componente original `CombatModal.tsx` fue rediseñado y renombrado a `CombatPanel.tsx` (sesión 2026-08-12); y la "simplificación v1 explícita" de abajo ya no es cierta — desde `NpcState` (§ 2.4-2.5 de este documento la descartaban a propósito) la condición física de cada NPC SÍ se persiste de verdad por partida (recupera de `CONVALECIENTE` a `HERIDO` tras 6h de ficción, el cadáver desaparece a las 48h, `docs/mecanicas/19-post-combate-y-recompensas-mision.md`), no un heurístico visual descartado al cerrar el combate. § 2.4/2.5 de este documento describen el diseño v1 histórico, ya superado. **Tampoco** es ya "el jugador siempre ataca primero" — desde el 2026-07-28 hay iniciativa real, defensa a ciegas y una tabla de 6 desenlaces posibles por intercambio, ver la nota "Superado" de § 2.3.
 6. ~~**`ComposerAttachment` ampliado**~~ — **hecho**: variantes `discoveredItem`/`npc` + plantilla verbo+objetivo en `buildActionText` (`GameView.tsx`) — empareja habilidad+objetivo por índice, con fallback para hallazgos sueltos ("Recojo...") y NPCs sueltos.
 7. ~~**Revelado progresivo**~~ — **hecho**: `backend/src/services/discovery.ts` (detector de búsqueda genérica + selección de 2-4 hallazgos desde `HarvestYield`, calculado en `/turn/classify` para que el frontend arranque el contador de inmediato) + `DiscoveryReveal.tsx` (revelado con temporizador comprimido, hallazgos clicables).
 8. ~~**`CharacterSaves.tsx`**~~ — **hecho**: partidas con `endedAt` se muestran como "Partida terminada" (no navegables, pero reiniciables/borrables), badge de dificultad visible en cada partida.

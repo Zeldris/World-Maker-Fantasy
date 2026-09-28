@@ -11,7 +11,7 @@ esta fecha — se actualiza según se cierren o aparezcan puntos, mismo criterio
 ## "Interactuar" como motor unificado de eventos de escena (2026-09-08, en curso)
 
 Rediseño grande a petición explícita de la usuaria: "Interactuar" (hoy un mini-diálogo cosmético
-sin consecuencia mecánica, ver `docs/rpgtarkor/mundo-determinista.md` § Pieza 4) pasa a ser el
+sin consecuencia mecánica, ver `docs/rpgtarkor/lore-mundo/mundo-determinista.md` § Pieza 4) pasa a ser el
 contenedor único de toda oferta/interrupción de escena — sustituyendo mecanismos redundantes en vez
 de acumular código paralelo con el mismo objetivo. Plan completo con contexto de diseño en
 `/home/deck/.claude/plans/spicy-questing-brook.md` (histórico de la sesión, no en el repo).
@@ -154,7 +154,7 @@ peinaron ~200 archivos de memoria y los servicios/rutas más grandes del backend
   misión Orco Enfurecido saltándose botones (cerrada el mismo día), sub-partición de combate >4v4
   (cerrada horas después el mismo día en que se reabrió, commit `8535c85`, con test de integración
   real — quedó enterrada dentro de un commit de título ajeno "Renombra el atributo Arcano a Magia").
-  `docs/checklist-pruebas-juego.md` y `docs/archivo/revisar-partida-hallazgos-historico.md` también
+  `docs/registros/checklist-pruebas-juego.md` y `docs/archivo/revisar-partida-hallazgos-historico.md` también
   actualizados en los mismos puntos.
 
 **Verificación en vivo de la Pieza 5 + `questSlug` estructurado cerrado (2026-09-03, continuación de
@@ -193,7 +193,7 @@ lista, `questSlug` se cerró el 2026-09-03, y el balance del primer combate se c
   la maza y el amuleto se consiguen porque lo vences" — quitarlo de equipo sin quitarlo también del
   loot habría sido incoherente), sustituido por `vendaje-improvisado-orcos-llanuras` +
   `racion-carne-ahumada` (curativo + comida, coherente con "guerrero de campaña real", no solo
-  trofeos). Ver la fórmula general de loot de NPC anotada en `docs/ampliar-lore.md` § equipo/loot,
+  trofeos). Ver la fórmula general de loot de NPC anotada en `docs/runbooks/ampliar-lore.md` § equipo/loot,
   aplicada aquí por primera vez. Pendiente de reverificar en vivo el combate completo tras el
   próximo reinicio.
 - **Sub-combates fragmentados (>4v4) con fallo de servidor a mitad** — confirmado con precisión:
@@ -244,7 +244,7 @@ cerrados**:
   síncrona, orden de turno fijado, scopes únicos) — puede que ya no sea reproducible, o que el
   patrón viva en otro punto no identificado. Reproducir en vivo si vuelve a aparecer.
 - Nombre de NPC "pegado" gramaticalmente como aposición de un lugar en la narración (sin verificar
-  en esta ronda — muestra de 1 turno, `docs/checklist-pruebas-juego.md` § 1).
+  en esta ronda — muestra de 1 turno, `docs/registros/checklist-pruebas-juego.md` § 1).
 
 **Aparcado a propósito por decisión de diseño (no bugs, no urgente)** — verificado, 12/14 exactos,
 2 con matiz menor encontrado:

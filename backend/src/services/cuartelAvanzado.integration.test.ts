@@ -8,7 +8,7 @@ import {
   PUESTO_COMERCIAL_RECIPE,
 } from './construction.js';
 
-/// Conquista territorial estilo X4 (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, 2026-09-21) — Cuartel
+/// Conquista territorial estilo X4 (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) — Cuartel
 /// Avanzado: cupo NUEVO e independiente del de edificios normales, 1 por región, en región
 /// DISTINTA a la del Ayuntamiento (justo lo contrario de la Choza). Test de integración real
 /// contra Postgres, sin mocks — mismo patrón que descansarCampamento.integration.test.ts.

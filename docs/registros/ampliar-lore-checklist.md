@@ -1,7 +1,7 @@
 # Ampliar lore — checklist persistente
 
 Registro cronológico (más antiguo arriba, añadir SIEMPRE al final) de qué se ha añadido en cada
-sesión de "ampliamos lore" (ver `docs/ampliar-lore.md` para el runbook) y qué queda pendiente de
+sesión de "ampliamos lore" (ver `docs/runbooks/ampliar-lore.md` para el runbook) y qué queda pendiente de
 llevar a código. La sección "Pendiente de código" es la que importa entre sesiones — la lista de
 tareas de una conversación no sobrevive al cierre de la sesión, este archivo sí.
 
@@ -9,7 +9,7 @@ tareas de una conversación no sobrevive al cierre de la sesión, este archivo s
 
 ## En curso — repaso "zona por zona" de Las Llanuras del Viento Rojo (empezado 2026-08-21)
 
-Modo de trabajo nuevo, ver `docs/ampliar-lore.md` § 1.5-1.7. **16 zonas cubiertas hasta ahora, en
+Modo de trabajo nuevo, ver `docs/runbooks/ampliar-lore.md` § 1.5-1.7. **16 zonas cubiertas hasta ahora, en
 este orden** (ver "Sesión 2026-08-21 (duodécima pasada)", "Sesión 2026-08-22 (decimotercera
 pasada)" y "Sesión 2026-09-02/03 (decimocuarta pasada)" más abajo para el detalle completo de cada
 una): 1. La Hondonada del Eco, 2. Los Pilares Rotos, 3. El Pozo de Cauce Viejo, 4. El Cruce de las
@@ -116,7 +116,7 @@ archivos de integración con problemas de entorno preexistentes ya confirmados).
 - El Tótem de clan roto NO se pudo retirar del todo como se había decidido primero — es ingrediente
   real de `MAKTOR_CLAN_TOTEM_RECIPE` (construction.ts), una receta de Reino ya implementada. Se
   revirtió su retirada; la Tablilla quemada (documento "La caída del Clan Maktor") tampoco se quitó,
-  por el mismo motivo de no ser un trofeo suelto. Ver `docs/12-mundo-estructurado.md` § 4.3.
+  por el mismo motivo de no ser un trofeo suelto. Ver `docs/mecanicas/12-mundo-estructurado.md` § 4.3.
 - El Pañuelo de luto Serhu nunca fue de Los Restos de Maktor — es de Los Túmulos del Honor. Error
   de una nota anterior, ya corregido en `areas.md`.
 - El Osario de la Manada llevaba semanas de lore diciendo ser fuente de hueso/placa ósea "sin
@@ -223,7 +223,7 @@ antes de escribir código, mismo criterio que ya se aplicó al sistema de nivele
   entrada en `harvestSourceAliases`/`harvestSourceHomeLocationSlug`/`harvestSourceRegion`/
   `harvestSourceDisplayName` (buscar `restos-personales-maktor` — 2026-08-21 confirmó que ninguno
   de los 3 ítems se usa en ningún otro sitio, seguro borrarlos del todo). Comprobar que no queda
-  fila huérfana en `WorldPopulation` para este `targetSlug` tampoco. `docs/12-mundo-estructurado.md`
+  fila huérfana en `WorldPopulation` para este `targetSlug` tampoco. `docs/mecanicas/12-mundo-estructurado.md`
   § 4.3 ya tachada (no borrada) con la fecha de esta decisión.
 - **El Campamento del Clan Serhu (misma sesión) — el pendiente más grande de esta ronda**:
   `ItemCatalogInput` nuevo Leche de Múrgol; nuevo oficio `cocinero-orco-llanuras` en
@@ -300,7 +300,7 @@ antes de escribir código, mismo criterio que ya se aplicó al sistema de nivele
   El Observatorio Roto) — contenido futuro explícito (tras un terremoto sin fecha fijada aún), no
   deben entrar al grafo hasta que se decida cuándo ocurre ese evento. Las otras 16 zonas de la
   tercera ampliación ya están implementadas (ver sesión "séptima pasada" más abajo). Cuando se
-  añadan, cuelgan de `dunas-ahogadas` o `vientre-del-engano` (ver docs/13-escala-del-mundo.md §
+  añadan, cuelgan de `dunas-ahogadas` o `vientre-del-engano` (ver docs/mecanicas/13-escala-del-mundo.md §
   2.2ter).
 - ~~**`npm run reindex-lore` y `npm run seed-catalog` sin correr todavía**~~ — **superado** (ver
   sesiones octava a undécima más abajo): la usuaria sí corrió `seed-catalog` con backend/DB reales
@@ -319,8 +319,8 @@ antes de escribir código, mismo criterio que ya se aplicó al sistema de nivele
 
 ## Pendiente de dataset (acumulado, revisar antes de cerrar cada pasada)
 
-*(Sección nueva 2026-08-11, ver `docs/ampliar-lore.md` § 1.7.)* El narrador fine-tuneado
-(`docs/fine-tuning-ia-local.md`) aprendió de ejemplos generados con el lore de su momento — un
+*(Sección nueva 2026-08-11, ver `docs/runbooks/ampliar-lore.md` § 1.7.)* El narrador fine-tuneado
+(`docs/ia/fine-tuning-ia-local.md`) aprendió de ejemplos generados con el lore de su momento — un
 cambio de fondo en vocabulario, tono o nombres puede dejar ejemplos ya entrenados desalineados con
 el mundo actual, sin que nada lo avise solo. Cuando una sesión de "ampliamos lore" cambie algo así
 de notable, se anota aquí (qué cambió y desde qué sesión) — no implica regenerar el dataset de
@@ -776,7 +776,7 @@ terremoto (sin fecha, sin arista que triangular todavía).
   vez de la mecánica, mismo criterio ya establecido para el propio Cruce — el resto usa la misma
   coordenada que su tabla mecánica, sin ajuste visual propio (igual que Pastos de la
   Deriva/Filo de las Brasas).
-- **`docs/13-escala-del-mundo.md` § 2.2ter**: tabla de coordenadas nueva, mismo formato que §
+- **`docs/mecanicas/13-escala-del-mundo.md` § 2.2ter**: tabla de coordenadas nueva, mismo formato que §
   2.2bis, con nota explícita del desacople visual de Vergel/Grieta.
 - **Sin verificación en ejecución real** (ver "Pendiente de código" arriba) — este entorno no
   tiene Node/DB. `npm run seed-catalog`, `npm run reindex-lore`, `tsc -b` (frontend), `tsc
@@ -789,7 +789,7 @@ terremoto (sin fecha, sin arista que triangular todavía).
   (idempotente, rápido, sin Ollama de por medio). Además, `actualizar-mundo.sh` (nuevo, raíz del
   repo) corre `seed-catalog` + `reindex-lore` juntos bajo demanda, para cuando cambie
   `loreChunks.ts` de verdad — ese sí es lento (embeddings) y no conviene forzarlo en cada arranque
-  normal. `docs/15-instalacion.md` § 5 y § 7 actualizados a juego.
+  normal. `docs/arquitectura/15-instalacion.md` § 5 y § 7 actualizados a juego.
 
 ---
 
@@ -807,7 +807,7 @@ reales que compartió la usuaria, cada uno confirmado antes de pasar al siguient
   — todas decoupleadas de su distancia triangulada real, mismo criterio que ya regía El Cruce de
   las Cenizas: son solo dibujo, los tiempos de viaje reales no cambian (siguen en
   `LocationLink`/`worldCatalog.ts`, sin tocar en esta pasada).
-- **La tabla de `docs/13-escala-del-mundo.md` § 2.2ter queda desactualizada a propósito** — documenta
+- **La tabla de `docs/mecanicas/13-escala-del-mundo.md` § 2.2ter queda desactualizada a propósito** — documenta
   la triangulación mecánica original, no el ajuste visual final a mano (mismo motivo por el que la
   nota del Cruce nunca reescribió su propia fila de esa tabla).
 - **Lección para la próxima ampliación del mapa**: triangular matemáticamente da coordenadas
@@ -873,7 +873,7 @@ el padre asignado a ciegas originalmente) para encontrar la conexión geométric
   más cerca y viceversa". Todas corregidas en `worldCatalog.ts`; la más notable, El Cruce de las
   Cenizas → La Grieta Cantora pasó de 150 a 320 minutos (era la arista más larga de toda la
   ampliación — 46 km reales — pero tenía de los minutos más bajos).
-- **`docs/13-escala-del-mundo.md` § 2.2ter reescrita del todo** — ya no es la triangulación a
+- **`docs/mecanicas/13-escala-del-mundo.md` § 2.2ter reescrita del todo** — ya no es la triangulación a
   ciegas original (superseded), ahora documenta las coordenadas VISUALES reales confirmadas
   (iguales a `map.ts`, sin desacople para estas 16 zonas) y los minutos ya corregidos, con el
   historial de las 3 versiones por las que pasó esta tabla en la misma sesión.
@@ -979,10 +979,10 @@ varios `ItemCatalogInput`, `HarvestYield` nuevos, filas de `WorldPopulation`).
   Un evento futuro sin fecha desbloqueará cambios reales — hasta entonces se queda tal cual.
 - **Contradicción real detectada y resuelta con la usuaria antes de tocar nada** (mismo patrón del
   runbook): el Tótem de clan roto era el disparador documentado del gancho de aventura "Un Maktor
-  superviviente inesperado" (`docs/12-mundo-estructurado.md` § 4.3, `personajes.md` § Ganchos de
-  aventura) y ya había aparecido en una partida real jugada (`docs/revisar-partida-hallazgos.md`).
+  superviviente inesperado" (`docs/mecanicas/12-mundo-estructurado.md` § 4.3, `personajes.md` § Ganchos de
+  aventura) y ya había aparecido en una partida real jugada (`docs/registros/revisar-partida-hallazgos.md`).
   Preguntado antes de decidir — la usuaria eligió quitar los 3 sin excepción; el gancho sigue vivo
-  solo por rumor/diálogo de NPC, nunca por objeto físico. Fila de `docs/12-mundo-estructurado.md`
+  solo por rumor/diálogo de NPC, nunca por objeto físico. Fila de `docs/mecanicas/12-mundo-estructurado.md`
   tachada con fecha, no borrada (regla del propio runbook de lore).
 
 **Pendiente de código**: ver entrada nueva en la sección de arriba (esta vez es una RETIRADA).
@@ -1093,7 +1093,7 @@ encontró nada que añadir; se queda deliberadamente sin recursos propios, como 
 ## Sesión 2026-08-22 (decimotercera pasada) — el análisis de réplica entre zonas, aplicado, + La Sabana Alta
 
 Retomado el repaso "zona por zona" tras el análisis de réplica de la sesión anterior. Antes de la
-zona nueva, se aplicó el propio análisis pendiente (ver `docs/rpgtarkor/areas.md`/`flora-fauna.md`
+zona nueva, se aplicó el propio análisis pendiente (ver `docs/rpgtarkor/lore-mundo/areas.md`/`flora-fauna.md`
 para el detalle narrativo, y "Propuestas de réplica entre zonas" más arriba en este mismo archivo
 para el detalle técnico completo) — resumen: Corredor de Cauce/Ruptidar/Pasto Solar quedan anclados
 de verdad por terreno/región, y se corrige un hallazgo real no buscado (10 recursos de la pasada
@@ -1149,11 +1149,11 @@ profesión Pescador nueva, documentación reconciliada tras avanzar en código s
 
 **Contexto real de esta pasada**: las zonas 15 y 16 se llevaron a código (`worldCatalog.ts`,
 commits `6425566`/`e6573c3` para la 15, comentario "sesión categorías de raza de fauna" para la
-16) en un tramo de conversación que no pasó formalmente por `docs/ampliar-lore.md`, dejando
+16) en un tramo de conversación que no pasó formalmente por `docs/runbooks/ampliar-lore.md`, dejando
 `areas.md`/`flora-fauna.md`/`items.md`/este checklist desactualizados varios días. Reconciliado
 2026-09-03 releyendo la transcripción real de esa sesión (no solo el commit) — de paso se
 confirmó y documentó el proceso real seguido, ahora escrito en el runbook como dos variantes
-nuevas: `docs/ampliar-lore.md § 1.6` (la usuaria dicta elemento por elemento, Claude busca un
+nuevas: `docs/runbooks/ampliar-lore.md § 1.6` (la usuaria dicta elemento por elemento, Claude busca un
 objeto equivalente real como plantilla antes de proponer la ficha técnica completa, cierra
 uno a uno) y `§ 1.7` (modo inverso — Claude propone la ficha completa primero, la usuaria
 confirma o ajusta; activado por la propia usuaria al terminar la zona 15: *"sigamos, con el plan
@@ -1222,7 +1222,7 @@ por cerrado del todo.
 **Contexto**: retomando la zona 17 (La Desembocadura Callada) con el modo § 1.7 (Claude propone,
 la usuaria confirma), el primer elemento fichado (Esclipe de Marisma, anfibio ambiental sin
 combate) reveló dos huecos de la plantilla real usada hasta ahora — corregidos en el runbook antes
-de seguir (ver `docs/ampliar-lore.md § 1.8`, plantilla completa por tipo de elemento, con ejemplo
+de seguir (ver `docs/runbooks/ampliar-lore.md § 1.8`, plantilla completa por tipo de elemento, con ejemplo
 de `bio` detallada fijado como referencia de forma):
 1. **`faunaCategoria` no era opcional por defecto** — la primera versión de la regla decía "siempre
    3 `habilidadesRaciales` salvo Ruptidar"; corregido: solo lleva las 3 específicas la fauna
@@ -1293,7 +1293,7 @@ preexistentes sin relación, confirmados en aislamiento), 191/191 frontend.
 
 - Asignar `floraCategoria` a Trepador Ocaso cuando se repase Ciénaga Troncal — sigue pendiente.
 
-**Pendiente de documentación (nuevo, pedido explícito 2026-09-04)**: crear `docs/rpgtarkor/vocabulario.md`
+**Pendiente de documentación (nuevo, pedido explícito 2026-09-04)**: crear `docs/rpgtarkor/lore-mundo/lenguas-helek.md`
 — registro de traducciones a la lengua del juego (lengua común = castellano adaptado al lore para
 muchos sustantivos, con variantes por raza cuando aplique) cada vez que se "traduce" algo nuevo. La
 primera entrada real ya existe (Junco→Chudo, cerrado arriba) — sigue sin crearse el archivo en sí.

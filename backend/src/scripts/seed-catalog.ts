@@ -5,7 +5,7 @@ import { locations, locationLinks, npcs, fauna, items, harvestYields, factions, 
 import { assertValidCategory } from '../services/itemTaxonomy.js';
 import { worldPopulations } from './worldPopulation.js';
 
-/// Siembra el catálogo de mundo estructurado (docs/12-mundo-estructurado.md): ubicaciones,
+/// Siembra el catálogo de mundo estructurado (docs/mecanicas/12-mundo-estructurado.md): ubicaciones,
 /// rutas, NPCs, armería y recursos cosechables de las Llanuras del Viento Rojo. Idempotente
 /// (upsert por las claves @@unique de cada modelo) — correr de nuevo tras editar worldCatalog.ts.
 /// Uso: npm run seed-catalog
@@ -195,7 +195,7 @@ async function main() {
     }
   }
 
-  // Faction.liderNpcId (docs/rpgtarkor/mundo-vivo-x4.md § 4.3, 2026-09-21) — el líder de GOBIERNO
+  // Faction.liderNpcId (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.3, 2026-09-21) — el líder de GOBIERNO
   // (Terk'ikar/equivalente, decisión explícita de la autora, no el de guerra) de cada facción con
   // NPC real sembrado. Va DESPUÉS del bucle de NPCs (necesita `npcIdBySlug` ya poblado). Facciones
   // sin líder real todavía (ninguna hoy) simplemente no aparecen en este mapa — se quedan `null`.
@@ -329,7 +329,7 @@ async function main() {
     });
   }
 
-  // KingdomStats inicial de facción (docs/rpgtarkor/mundo-vivo-x4.md § 4.6, 2026-09-21) — sin
+  // KingdomStats inicial de facción (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.6, 2026-09-21) — sin
   // esto, el reino generalizado en § 4.2 no tiene dónde aterrizar para NINGUNA Faction NPC (solo
   // el jugador, al fundar el suyo). Se siembra a partir de las MISMAS filas WorldPopulation
   // FACCION recién insertadas arriba, para no duplicar los números en dos sitios — ownerKey
@@ -369,7 +369,7 @@ async function main() {
   }
 
   // Edificios de facción (ex-FactionBuilding, retirado 2026-09-21 — ver
-  // docs/rpgtarkor/mundo-vivo-x4.md § 4.2): ahora se siembran como `Building.factionId` en vez de
+  // docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.2): ahora se siembran como `Building.factionId` en vez de
   // en su propio modelo, mismo motor que usa el jugador. `recipeKey` guarda el `slug` de catálogo
   // (idempotencia vía `@@unique([factionId, recipeKey])`); `saveId` queda null a propósito (no es
   // reino del jugador). `factionSlug`/`locationSlug` de worldCatalog.ts son en realidad NAME/slug

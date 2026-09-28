@@ -67,19 +67,19 @@ La usuaria priorizó construirla ya en vez de esperar (contradice la recomendaci
 
 ## 7. Qué se puede construir YA (sin esperar a persistencia)
 
-1. **Estadísticas**: ampliar el `AttributeBars` existente (o un panel nuevo) para mostrar también las 9 columnas ampliadas de `docs/rpgtarkor/personajes.md`, aunque sean solo informativas por ahora.
+1. **Estadísticas**: ampliar el `AttributeBars` existente (o un panel nuevo) para mostrar también las 9 columnas ampliadas de `docs/rpgtarkor/personajes/personajes.md`, aunque sean solo informativas por ahora.
 2. **Mapa**: vista estática de las regiones de Berig/Vaelira ya documentadas, sin posición dinámica todavía.
 3. **La barra inferior en sí** y el patrón de drawer/panel — se puede montar con datos vacíos/placeholder en el resto de pestañas, listo para conectar cuando cada una tenga datos reales.
 
 ## 8. Pendientes de implementación (actualizado 2026-08-02)
 
 1. ~~Resolver el conflicto de niveles (§ 3)~~ — hecho.
-2. ~~Diseñar y migrar los modelos nuevos: `Quest`, `SavedAction`~~ — hecho. Los de "Reino" (`Territory`/`Building`/`Subject`) también existen en el schema — la pausa de Reino como línea de juego activa que citaba `docs/archivo/11-roadmap-historico.md` (2026-07-19) quedó superada: reino fundado y jugado en vivo (2026-08-07), reglas de construcción cerradas (`docs/17-reglas-construcciones-reino.md`, 2026-08-04) y economía de reino (`KingdomStats`) con habilidades/recetas de construcción en tiempo real (2026-08-13) — ver `docs/10-niveles-xp-reino.md` § 9 para el detalle y una nota pendiente de reconciliar allí.
+2. ~~Diseñar y migrar los modelos nuevos: `Quest`, `SavedAction`~~ — hecho. Los de "Reino" (`Territory`/`Building`/`Subject`) también existen en el schema — la pausa de Reino como línea de juego activa que citaba `docs/archivo/11-roadmap-historico.md` (2026-07-19) quedó superada: reino fundado y jugado en vivo (2026-08-07), reglas de construcción cerradas (`docs/mecanicas/17-reglas-construcciones-reino.md`, 2026-08-04) y economía de reino (`KingdomStats`) con habilidades/recetas de construcción en tiempo real (2026-08-13) — ver `docs/mecanicas/10-niveles-xp-reino.md` § 9 para el detalle y una nota pendiente de reconciliar allí.
 3. ~~Abordar la persistencia real de `Save`/`WorldState`/`LogEntry`~~ — hecho.
 4. ~~Construir el componente de barra inferior + drawer~~ — hecho.
 5. ~~Diseñar el catálogo inicial de Profesiones~~ — hecho (2026-08-07): recolectoras vs creadoras,
    recetas de `crafting.ts` expuestas como habilidades de oficio desbloqueables por nivel, pop-up
-   de recolección determinista respaldado por `WorldPopulation` (ver `docs/16-poblacion-dinamica.md`
+   de recolección determinista respaldado por `WorldPopulation` (ver `docs/mecanicas/16-poblacion-dinamica.md`
    § 3.5). El sub-tab propio de "Personaje > Profesiones" se quitó, redundante con Habilidades.
    Pendiente real: quién ENSEÑA un oficio nuevo (NPCs) — aplazado a propósito hasta que haya un
    caso concreto, mismo criterio que las facciones dinámicas por NPC.

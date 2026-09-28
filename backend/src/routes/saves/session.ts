@@ -97,7 +97,7 @@ export async function sessionRoutes(app: FastifyInstance) {
     // `claimedAt` de arriba ya descarta que se esté resolviendo de verdad a la vez.
     const buildingId = (save.characterTransit.zoneContext as { buildingId?: string | null } | null)?.buildingId;
     if (buildingId) {
-      // Reforzado con `saveId` explícito (docs/rpgtarkor/mundo-vivo-x4.md § 4.2, 2026-09-21,
+      // Reforzado con `saveId` explícito (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.2, 2026-09-21,
       // hallazgo de la migración de Building a saveId/factionId opcionales): antes solo filtraba
       // por `id`+status, confiando en que `buildingId` viniera de `zoneContext` de ESTA misma
       // partida — con `Building` ahora compartido de forma polimórfica con facciones NPC, más

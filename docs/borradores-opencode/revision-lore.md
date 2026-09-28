@@ -2466,7 +2466,7 @@ Hoy solo quedan fragmentos sueltos: esquinas de muros, cabezas de estatuas sin r
 **Archivos que tocaría si se aprueba:**
 - `docs/rpgtarkor/items-y-catalogo/items.md`
 - `docs/rpgtarkor/sistemas-reino/worldCatalog.ts` (si necesita entry técnica)
-- `docs/12-mundo-estructurado.md` (si se añade a HarvestYield)
+- `docs/mecanicas/12-mundo-estructurado.md` (si se añade a HarvestYield)
 
 ---
 
@@ -2507,7 +2507,7 @@ Hoy solo quedan fragmentos sueltos: esquinas de muros, cabezas de estatuas sin r
 **Archivos que tocaría si se aprueba:**
 - `docs/rpgtarkor/items-y-catalogo/items.md`
 - `docs/rpgtarkor/sistemas-reino/worldCatalog.ts`
-- `docs/12-mundo-estructurado.md` (HarvestYield)
+- `docs/mecanicas/12-mundo-estructurado.md` (HarvestYield)
 
 ---
 
@@ -2548,7 +2548,7 @@ Hoy solo quedan fragmentos sueltos: esquinas de muros, cabezas de estatuas sin r
 **Archivos que tocaría si se aprueba:**
 - `docs/rpgtarkor/items-y-catalogo/items.md`
 - `docs/rpgtarkor/sistemas-reino/worldCatalog.ts`
-- `docs/12-mundo-estructurado.md`
+- `docs/mecanicas/12-mundo-estructurado.md`
 
 ---
 
@@ -2629,7 +2629,7 @@ Hoy solo quedan fragmentos sueltos: esquinas de muros, cabezas de estatuas sin r
 **Archivos que tocaría si se aprueba:**
 - `docs/rpgtarkor/items-y-catalogo/items.md`
 - `docs/rpgtarkor/sistemas-reino/worldCatalog.ts`
-- `docs/12-mundo-estructurado.md`
+- `docs/mecanicas/12-mundo-estructurado.md`
 
 ---
 

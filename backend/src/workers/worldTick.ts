@@ -43,11 +43,11 @@ interface TransitZoneContext {
   claimedAt?: string;
 }
 
-/// Worker local del reloj de mundo (decisiones técnicas 3 y 4 en docs/04-decisiones-tecnicas.md).
+/// Worker local del reloj de mundo (decisiones técnicas 3 y 4 en docs/arquitectura/04-decisiones-tecnicas.md).
 /// Se pausa solo con el proceso del backend — no hay "recuperación al arrancar" (decisión de
 /// producto 4, revisada): el mundo retoma justo donde lo dejó la última vez que corrió.
 ///
-/// `WorldState.agenda` (revisado 2026-07-18, auditoría de docs/11-roadmap.md § 2.6; auditoría de
+/// `WorldState.agenda` (revisado 2026-07-18, auditoría de docs/archivo/11-roadmap-historico.md § 2.6; auditoría de
 /// elementos desconectados 2026-08-23 confirmó que sigue sin ningún productor real — el panel "El
 /// mundo", `services/entorno.ts`, cubre "que el mundo se sienta vivo" con algo más simple:
 /// ambientación periódica + evento probabilístico 25%, sin relación con esta cola). Petición
@@ -250,10 +250,10 @@ export async function startEagerTransitResolution(transitId: string, notBefore: 
 
 async function tick(): Promise<void> {
   await resolveDueTransits();
-  // Población dinámica (docs/16-poblacion-dinamica.md) — `WorldPopulation` es del World, no de
+  // Población dinámica (docs/mecanicas/16-poblacion-dinamica.md) — `WorldPopulation` es del World, no de
   // una Save concreta, así que crece en el mismo tick de fondo en vez de en el turno síncrono.
   await growAllPopulations(prisma).catch((err) => console.error('[worldTick] error creciendo población:', err));
-  // Reproducción poblacional de facciones (docs/rpgtarkor/mundo-vivo-x4.md § 4.6, 2026-09-21) —
+  // Reproducción poblacional de facciones (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.6, 2026-09-21) —
   // refleja el crecimiento de arriba en el KingdomStats real de cada Faction, mismo tick de fondo
   // (nunca en el turno síncrono, mismo criterio que growAllPopulations).
   await syncFactionPopulationToKingdomStats(prisma).catch((err) => console.error('[worldTick] error sincronizando población de facción:', err));
@@ -266,7 +266,7 @@ async function tick(): Promise<void> {
   // de fondo que población/agenda, nunca en el turno síncrono.
   await advanceCompanionSurvival(prisma).catch((err) => console.error('[worldTick] error en supervivencia de compañeros:', err));
   await advancePlayerSurvival(prisma).catch((err) => console.error('[worldTick] error en Hambre/Sed del personaje:', err));
-  // Recuperación de CONVALECIENTE / desaparición de cadáveres (docs/rpgtarkor/mundo-vivo-x4.md
+  // Recuperación de CONVALECIENTE / desaparición de cadáveres (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md
   // § 5-bis punto 11, 2026-09-21) — coexiste con applyCondicionTimeouts (turnResolution.ts, dentro
   // del turno síncrono): el mundo sigue aunque el jugador no actúe, mismo criterio que
   // población/agenda de arriba.

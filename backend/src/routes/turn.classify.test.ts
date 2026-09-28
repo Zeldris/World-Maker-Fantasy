@@ -438,7 +438,7 @@ describe('POST /turn/classify — anacronismo en la acción del jugador (validad
 });
 
 // Validador de "grounding" de la acción del jugador — tipo de construcción inventado (Fase 2,
-// docs/18-validacion-accion-jugador.md), también sin consultas.
+// docs/mecanicas/18-validacion-accion-jugador.md), también sin consultas.
 describe('POST /turn/classify — tipo de construcción inventado (validador de grounding)', () => {
   beforeEach(() => {
     findUniqueSave.mockReset();
@@ -482,7 +482,7 @@ describe('POST /turn/classify — tipo de construcción inventado (validador de 
 });
 
 // Validador de "grounding" de la acción del jugador — reclamar recolectar/despiezar una fuente
-// real de OTRA región (Fase 2, docs/18-validacion-accion-jugador.md).
+// real de OTRA región (Fase 2, docs/mecanicas/18-validacion-accion-jugador.md).
 describe('POST /turn/classify — flora/fauna de otra región (validador de grounding)', () => {
   beforeEach(() => {
     findUniqueSave.mockReset();
@@ -662,7 +662,7 @@ describe('POST /turn/classify — arma que no lleva equipada (validador de groun
 });
 
 // Validador de "grounding" de la acción del jugador — Fase 3 acotada a comillas
-// (docs/18-validacion-accion-jugador.md): NPC/fauna nombrado ENTRE COMILLAS que no existe en
+// (docs/mecanicas/18-validacion-accion-jugador.md): NPC/fauna nombrado ENTRE COMILLAS que no existe en
 // absoluto en el catálogo, no solo "existe pero no está en esta escena" (eso ya es la Fase 1,
 // arriba).
 describe('POST /turn/classify — NPC/fauna inventado citado entre comillas (validador de grounding, Fase 3)', () => {

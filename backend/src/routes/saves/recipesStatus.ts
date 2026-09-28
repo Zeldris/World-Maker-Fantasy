@@ -28,7 +28,7 @@ export interface RecipeStatus {
   blockedReason: string | null;
 }
 
-/// Extraído de `recipesStatusRoutes` (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, 2026-09-21) — mismo
+/// Extraído de `recipesStatusRoutes` (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) — mismo
 /// cálculo de "¿puedo construir esto AHORA MISMO?" reutilizado por `parcelas.ts` (una Parcela
 /// solo necesita el status de SU receta candidata, no las de todo el catálogo). Nunca duplica el
 /// criterio de "qué hace falta", solo lo expone en modo consulta — igual que antes.

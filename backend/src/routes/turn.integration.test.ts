@@ -1247,7 +1247,7 @@ describe('Rediseño de combate: habilidades de utilidad reactivas y consumibles 
     expect(saveAfter.pendingNpcAttack).toBeNull();
   }, 15_000);
 
-  // Fase 2 de efectos de clase (2026-08-26, docs/21-roadmap.md) — AUMENTO: el jugador ataca con la
+  // Fase 2 de efectos de clase (2026-08-26, docs/producto/21-roadmap.md) — AUMENTO: el jugador ataca con la
   // iniciativa (sin `pendingNpcAttack`, mismo patrón que "Ataque Básico" más arriba en el archivo),
   // conecta de forma decisiva y se empuja un `ActiveEffect` sobre su propio `Save.activeEffects`.
   // Un segundo turno (Ataque Básico normal) debe decrementarlo hasta expirar (turnsRemaining: 1 →
@@ -2624,7 +2624,7 @@ async function doTurn(saveId: string, action: string) {
   return app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll, enCombate: true } });
 }
 
-// Cobertura nueva (2026-08-04, docs/17-reglas-construcciones-reino.md): cupo de 1 campamento
+// Cobertura nueva (2026-08-04, docs/mecanicas/17-reglas-construcciones-reino.md): cupo de 1 campamento
 // activo por región — dos ubicaciones REALES de la misma región (Las Llanuras del Viento Rojo).
 describe('Campamento: cupo de 1 activo por región', () => {
   let saveId: string;
@@ -2835,7 +2835,7 @@ describe('Ayuntamiento: fundación, desbloqueo de reino y mejora in-place', () =
   }, 15_000);
 });
 
-// Cobertura nueva (2026-08-23, Grupo 3 § Territory.control/population — docs/10-niveles-xp-reino.md
+// Cobertura nueva (2026-08-23, Grupo 3 § Territory.control/population — docs/mecanicas/10-niveles-xp-reino.md
 // § 5.4, diseñado desde 2026-07-23 pero nunca conectado hasta ahora). Territory/KingdomStats se
 // siembran DIRECTO por Prisma (no fundando de verdad) para controlar la felicidad exacta desde el
 // primer día — lo que se prueba aquí es el enganche real dentro de turnResolution.ts, no el propio
@@ -2953,7 +2953,7 @@ describe('Territory.control/population: felicidad sostenida consolida o rebela (
   }, 20_000);
 });
 
-// Panel de Reino real (docs/rpgtarkor/mundo-vivo-x4.md § 4.4-ter, 2026-09-21) — lo que se prueba
+// Panel de Reino real (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.4-ter, 2026-09-21) — lo que se prueba
 // aquí es el ENGANCHE real dentro de turnResolution.ts (lectura/escritura Prisma real, contra
 // Postgres real), no el propio motor puro (eso ya lo cubre kingdomProduction.test.ts a fondo).
 // Mismo patrón que el describe de arriba: Building/Companion/OrdenProduccion sembrados directo por
@@ -3973,7 +3973,7 @@ describe('Un NPC INOFENSIVO ("No ataca.") nunca golpea de verdad, aunque tenga u
   }, 20_000);
 });
 
-// Recompensa determinista de misión (docs/19-post-combate-y-recompensas-mision.md, pieza 3) —
+// Recompensa determinista de misión (docs/mecanicas/19-post-combate-y-recompensas-mision.md, pieza 3) —
 // antes Quest.rewardItems era solo texto para el panel, nunca creaba el InventoryItem de verdad.
 describe('Decapitar cierra una misión "derrotar a X" con rewardItems y entrega el objeto de verdad', () => {
   let saveId: string;
@@ -4069,7 +4069,7 @@ describe('Decapitar cierra una misión "derrotar a X" con rewardItems y entrega 
 });
 
 // Ciclo completo de "dar objeto a NPC" (2026-08-31, mecánica real — cierra el bug documentado en
-// docs/revisar-partida-hallazgos.md, 2026-08-28: el cuchillo "entregado" a Gistera Koh seguía en
+// docs/registros/revisar-partida-hallazgos.md, 2026-08-28: el cuchillo "entregado" a Gistera Koh seguía en
 // el inventario y reapareció en 4 turnos posteriores). Este test cubre justo el escenario que
 // entrega.integration.test.ts NO puede probar aislado: que el objeto entregado sobrevive a la
 // MUERTE del NPC y sale de verdad en un saqueo real vía /turn/narrate, mismo pipeline
@@ -4551,7 +4551,7 @@ describe('La recompensa de misión enlaza con ItemCatalog cuando el nombre coinc
   }, 20_000);
 });
 
-// docs/19-post-combate-y-recompensas-mision.md pieza 2 (2026-08-13) — recuperación de CONVALECIENTE
+// docs/mecanicas/19-post-combate-y-recompensas-mision.md pieza 2 (2026-08-13) — recuperación de CONVALECIENTE
 // a las 6h de ficción y desaparición de un cadáver a las 48h. `applyCondicionTimeouts` se dispara
 // dentro de CUALQUIER turno resuelto (mismo punto que avanza `fictionalMinutes`), así que un turno
 // cualquiera basta para comprobarlo — no hace falta que la acción tenga nada que ver con el NPC.
@@ -6005,7 +6005,7 @@ describe('Misión de Gistera Koh: NPC objetivo ya resuelto no deja la misión at
     const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(save.xp).toBeGreaterThanOrEqual(100);
 
-    // docs/19-post-combate-y-recompensas-mision.md, pieza 3 (2026-08-13): el mapa ya no está en el
+    // docs/mecanicas/19-post-combate-y-recompensas-mision.md, pieza 3 (2026-08-13): el mapa ya no está en el
     // loadout del orco (no se saquea) — solo esta rama ("ya resuelto antes de aceptar") puede
     // concederlo, así que es la única cobertura real de que no se pierda en este camino concreto.
     const mapa = await prisma.inventoryItem.findFirst({ where: { saveId, name: 'Mapa de las Llanuras' } });
@@ -7444,7 +7444,7 @@ describe('Ataque de apertura fallido contra fauna no agresiva no abre combate (h
 // ataque en vez de defensa) y perdía el intercambio contra la Destreza real del NPC. Causa raíz:
 // `Save.pendingNpcAttack` ya persistía bien, pero `GET /saves/:id` nunca lo exponía, así que el
 // frontend no podía rehidratar `combatAwaitingDefense` tras una recarga. Ver
-// docs/checklist-pruebas-juego.md § 1 para el diagnóstico completo.
+// docs/registros/checklist-pruebas-juego.md § 1 para el diagnóstico completo.
 describe('GET /saves/:id expone esperandoDefensaJugador (fix del bug de recarga en defensa a ciegas, 2026-08-29)', () => {
   let saveId: string;
   let npcId: string;
@@ -7521,7 +7521,7 @@ describe('GET /saves/:id expone esperandoDefensaJugador (fix del bug de recarga 
 });
 
 // Combate "fantasma" tras huir/viajar (BUG REAL confirmado 2 veces en vivo, mitigado parcialmente
-// 2026-08-28, causa exacta sin aislar hasta ahora — ver docs/checklist-pruebas-juego.md).
+// 2026-08-28, causa exacta sin aislar hasta ahora — ver docs/registros/checklist-pruebas-juego.md).
 // Investigación 2026-08-29: `detectNpcsInScene` (npcScene.ts) trata a un NPC "ya establecido en
 // esta partida" (tiene `NpcState` propio) como candidato SIEMPRE, sin importar la región actual
 // (`encounteredIds.has(npc.id)` gana sobre el filtro geográfico) — comportamiento INTENCIONAL, ya

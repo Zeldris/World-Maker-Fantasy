@@ -19,7 +19,7 @@ export interface StartingInventoryItem {
 }
 
 /// Equipo inicial "de serie" de Gorhorn (2026-07-19) — hasta ahora el inventario inicial solo
-/// vivía como texto en docs/rpgtarkor/personajes.md § 5 ("Inventario inicial"), nunca como filas
+/// vivía como texto en docs/rpgtarkor/personajes/personajes.md § 5 ("Inventario inicial"), nunca como filas
 /// reales (mismo hallazgo del roadmap de Fable). Se siembra al crear partida y al reiniciarla,
 /// mismo patrón que startingAbilitiesFor. Bonificadores en armas/tótem (atributo) y armadura
 /// (slot de defensa, 2026-07-19) — Gorhorn es guerrero, nada mágico todavía (instrucción

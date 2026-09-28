@@ -1,4 +1,4 @@
-/// Catálogo de mundo estructurado (docs/12-mundo-estructurado.md) — ubicaciones, NPCs, armería
+/// Catálogo de mundo estructurado (docs/mecanicas/12-mundo-estructurado.md) — ubicaciones, NPCs, armería
 /// y recursos cosechables de las Llanuras del Viento Rojo (alcance v1: solo Gorhorn). Igual que
 /// loreChunks.ts, la fuente de verdad editorial sigue siendo docs/rpgtarkor/*.md; esto es el
 /// mismo contenido en forma de filas deterministas. Idempotente vía upsert por @@unique —
@@ -22,7 +22,7 @@ export interface LocationInput {
   /// Coordenadas cartográficas reales en km, origen Los Pilares Rotos, +x=este/+y=norte (petición
   /// explícita, 2026-08-15: la Aguja de Cardo Brújula necesita decir en qué dirección cardinal
   /// queda cada camino conocido desde aquí). Copiadas TAL CUAL de las coordenadas ya MEDIDAS/
-  /// confirmadas de `docs/13-escala-del-mundo.md` (§1.1/§2.2bis para el núcleo original, §2.2ter
+  /// confirmadas de `docs/mecanicas/13-escala-del-mundo.md` (§1.1/§2.2bis para el núcleo original, §2.2ter
   /// para la tercera ampliación) — NUNCA de `frontend/src/data/map.ts` a secas: ese archivo tiene
   /// varios nodos (hondonada-del-eco, tumulos-del-honor, osario-de-la-manada, manaderos,
   /// cruce-de-las-cenizas) con posición ajustada SOLO para que los iconos no se pisen en el mapa,
@@ -71,7 +71,7 @@ export const locations: LocationInput[] = [
     // usan todo el rato para describir la AFILIACIÓN de un personaje ("una orca marcada del Clan
     // Serhu"), no el sitio — el enlazador de texto clicable (enciclopediaIndex.ts) los enlazaba
     // igual, aunque nadie de la escena estuviera en el campamento de verdad. Mismo criterio que el
-    // bug histórico de Torgash/Ulkha vía "Serhu" en matchNpcAliases (docs/revisar-partida.md § 3).
+    // bug histórico de Torgash/Ulkha vía "Serhu" en matchNpcAliases (docs/runbooks/revisar-partida.md § 3).
     // 'karot veku'/'colmillo ceniza' añadidos (auditoría 2026-08-03, "revisa todos los MD"): nombre
     // nativo del poblado ya documentado en areas.md ("el nombre del poblado es Karot Veku en
     // lengua común Colmillo Ceniza") desde que se escribió esa doc, pero nunca había llegado al
@@ -156,7 +156,7 @@ export const locations: LocationInput[] = [
 
   // --- Puntos de interés nuevos dentro del núcleo ya cartografiado (roadmap 2026-07-20,
   // propuesta de Fable, ver memoria project_tarkor_propuesta_fauna_flora.md) — coordenadas
-  // coherentes con docs/13-escala-del-mundo.md § 1.1, minutos ya calculados por Fable con el
+  // coherentes con docs/mecanicas/13-escala-del-mundo.md § 1.1, minutos ya calculados por Fable con el
   // mismo método (5 km/h, sinuosidad 1,1) que el resto del grafo.
   {
     slug: 'osario-de-la-manada',
@@ -173,7 +173,7 @@ export const locations: LocationInput[] = [
 
   // --- Ampliación del núcleo medido (checklist 2026-07-21/22, punto 6 — "Puerta 2" de
   // project_tarkor_roadmap_mapa: el núcleo v1 era solo ~18% de la región completa de Llanuras,
-  // docs/13-escala-del-mundo.md § 2.2 ya reservaba "pastos de temporada al este" y "zona volcánica
+  // docs/mecanicas/13-escala-del-mundo.md § 2.2 ya reservaba "pastos de temporada al este" y "zona volcánica
   // del norte/noreste" sin nombrar hasta que el juego los pisara — este es ese momento. Coordenadas
   // y minutos calculados con el mismo método (5 km/h, sinuosidad 1,1) que el resto del grafo.
   {
@@ -257,7 +257,7 @@ export const locations: LocationInput[] = [
 
   // --- Tercera ampliación del núcleo (checklist, sesión "ampliamos lore" 2026-08-05): sabana,
   // fosa de Espina del Viento, costa norte y desierto Nabierus — ver areas.md § Puntos de interés
-  // y docs/13-escala-del-mundo.md § 2.2ter para la topología y coordenadas. Cada zona nueva cuelga
+  // y docs/mecanicas/13-escala-del-mundo.md § 2.2ter para la topología y coordenadas. Cada zona nueva cuelga
   // de UN único nodo del núcleo ya existente (nunca de varios), a propósito: el objetivo explícito
   // de la usuaria era que no se pudiera ir en línea recta de cualquier parte a cualquier parte —
   // para llegar a la costa hay que pasar por Los Manaderos → El Oasis → La Desembocadura; para el
@@ -423,7 +423,7 @@ export const locations: LocationInput[] = [
   {
     slug: 'sabana-alta-colmillar',
     // Nombre corregido (auditoría de lore 2026-08-21): 'Colmillar' no aparece en ningún documento
-    // de lore — areas.md, docs/13-escala-del-mundo.md § 2.2ter y docs/ampliar-lore-checklist.md
+    // de lore — areas.md, docs/mecanicas/13-escala-del-mundo.md § 2.2ter y docs/registros/ampliar-lore-checklist.md
     // coinciden en llamarla simplemente "La Sabana Alta" (incluso la propia descripción de
     // 'paso-de-los-huesos' más arriba, en este mismo archivo, ya la nombra así sin "Colmillar").
     // Slug sin tocar (referenciado por locationTerrainTags y locationLinks más abajo).
@@ -505,7 +505,7 @@ export const locations: LocationInput[] = [
   // "vamos ya a crear capitales con nombres para cada raza y zona siguiendo el lore") — mismo
   // patrón que las 4 "otras regiones" de arriba (kind sin coordenadas ni LocationLink, anclas de
   // referencia para la Enciclopedia, no destinos alcanzables todavía). Escala deliberadamente
-  // modesta fuera de la Meseta del Orden (docs/13-escala-del-mundo.md: Berig entero apenas
+  // modesta fuera de la Meseta del Orden (docs/mecanicas/13-escala-del-mundo.md: Berig entero apenas
   // 8.000-10.000 almas) — Cristal Helado y Ciénaga Troncal son campamento/poblado, no ciudad.
   // Los Faerus SÍ tienen dos poblados reales, Hashma y Kegi (decisión de la usuaria, auditoría
   // 2026-07-28, corrigiendo la vieja nota "sin ciudades, sin escritura" de razas.md) — ver más
@@ -1196,7 +1196,7 @@ export const locationLinks: LocationLinkInput[] = [
   // el polígono real). Regla de la usuaria: los minutos no tienen que ser exactamente
   // proporcionales a la distancia, pero nunca puede haber una inversión (un punto más lejano no
   // puede costar menos tiempo que uno más cercano). Tabla completa en
-  // docs/13-escala-del-mundo.md § 2.2ter, ya actualizada a juego con estos valores.
+  // docs/mecanicas/13-escala-del-mundo.md § 2.2ter, ya actualizada a juego con estos valores.
 
   // --- Desde Los Manaderos: la cadena del río hacia el mar ---
   {
@@ -1391,7 +1391,7 @@ export interface NpcInput {
   /// combatiente (mercader, peregrino...) puede no tener `clase`, y un NPC de apoyo fuera del
   /// grafo de las Llanuras puede no tener ninguno de los dos.
   raza?: string;
-  /// Clase de combate (2026-08-24, Grupo 3 § Sistema de clases, docs/rpgtarkor/clases.md) — antes
+  /// Clase de combate (2026-08-24, Grupo 3 § Sistema de clases, docs/rpgtarkor/sistemas-combate/clases.md) — antes
   /// `string` libre (dejó pasar el typo real "Cazadora" en cazadora-serhu, ya corregido). Todos
   /// los NPC humanoides de este catálogo llevan una desde esta pasada — fauna se queda sin ella,
   /// nunca la tuvo (ver comentario de arriba).
@@ -1536,7 +1536,7 @@ export const fauna: NpcInput[] = [
   },
 
   {
-    // Añadido 2026-08-03 (sesión "ampliamos lore" — ver docs/rpgtarkor/flora-fauna.md y
+    // Añadido 2026-08-03 (sesión "ampliamos lore" — ver docs/rpgtarkor/lore-mundo/flora-fauna.md y
     // areas.md § Historia profunda): en lengua orca, Makt'orik, "Guardián del aullido nocturno" —
     // de ahí el nombre del Clan Maktor, que domó uno de estos hace generaciones. Costumbre entre
     // los altos cargos del clan tener uno domado propio; de ahí el emblema (colmillo orco marcado
@@ -1827,7 +1827,7 @@ export const fauna: NpcInput[] = [
 
   // ══════════════════════════════════════════════════════════════════════════
   // Ampliación de lore 2026-08-21 — repaso "zona por zona" de Las Llanuras del Viento Rojo
-  // (docs/ampliar-lore.md § 1.5, docs/rpgtarkor/flora-fauna.md). 12 fauna nuevas, ver el .md para
+  // (docs/runbooks/ampliar-lore.md § 1.5, docs/rpgtarkor/lore-mundo/flora-fauna.md). 12 fauna nuevas, ver el .md para
   // el detalle narrativo completo de cada una.
   // ══════════════════════════════════════════════════════════════════════════
 
@@ -4656,7 +4656,7 @@ export const npcs: NpcInput[] = [
   },
 
   // ══════════════════════════════════════════════════════════════════════════
-  // INVOCACIONES DE COMBATE (Fase 3 § 3d, 2026-08-27, docs/21-roadmap.md) — ficha de catálogo
+  // INVOCACIONES DE COMBATE (Fase 3 § 3d, 2026-08-27, docs/producto/21-roadmap.md) — ficha de catálogo
   // normal (kind PLANTILLA, repetible) para que un tótem invocado sea reconocible como cualquier
   // otro NPC en la Enciclopedia — se descubre solo, por mención en la narración de combate, mismo
   // mecanismo que el resto del catálogo (entityDiscovery.ts), sin campo de "temporalidad" nuevo:
@@ -4770,7 +4770,7 @@ export const npcs: NpcInput[] = [
   // REGIÓN: CIÉNAGA TRONCAL — LÍDERES DEL CLAN GOSHG
   // ══════════════════════════════════════════════════════════════════════════
   // Ya documentadas en prosa desde antes (campamento-goshg-interior, factions § clan-goshg) pero
-  // sin ficha Npc real hasta ahora (docs/rpgtarkor/mundo-vivo-x4.md § 4.3, 2026-09-21 — motor de
+  // sin ficha Npc real hasta ahora (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.3, 2026-09-21 — motor de
   // disputas de facción necesita un líder real del que leer Inteligencia, mismo criterio que
   // Brenka/Solgra para Helsig). `nucleoJugable: false` (mismo criterio que Hagar Kiugh/Sella Marn):
   // Ciénaga Troncal sigue "fuera del núcleo jugable actual" (ver campamento-goshg más arriba) — no
@@ -5964,7 +5964,7 @@ export const items: ItemCatalogInput[] = [
   },
 
   // 5 equipables nuevos (2026-08-24, Grupo 3 § 27 recursos/materiales sin receta que los use —
-  // ver docs/21-roadmap.md) — cierran el destino real de items recolectables desde el 2026-08-23
+  // ver docs/producto/21-roadmap.md) — cierran el destino real de items recolectables desde el 2026-08-23
   // que hasta ahora no servían para nada.
   {
     slug: 'armadura-quitina-roja',
@@ -6618,7 +6618,7 @@ export const items: ItemCatalogInput[] = [
   // --- viga ---
 
   // 3 materiales procesados nuevos (2026-08-24, Grupo 3 § materiales procesados de construcción,
-  // ver docs/rpgtarkor/materiales-procesados-construccion.md) — mismo patrón que
+  // ver docs/mecanicas/17-reglas-construcciones-reino.md) — mismo patrón que
   // bloque-piedra-tallada/lingote-de-hierro arriba: crudo → material procesado por oficio
   // regional, consumido por el Ayuntamiento mediano/grande a partir de ahora.
   {
@@ -6864,7 +6864,7 @@ export const items: ItemCatalogInput[] = [
 
   // ══════════════════════════════════════════════════════════════════════════
   // Ampliación de lore 2026-08-21 — repaso "zona por zona" de Las Llanuras del Viento Rojo.
-  // Ver docs/rpgtarkor/flora-fauna.md/items.md para el detalle narrativo completo.
+  // Ver docs/rpgtarkor/lore-mundo/flora-fauna.md/items.md para el detalle narrativo completo.
   // ══════════════════════════════════════════════════════════════════════════
 
   {
@@ -7316,7 +7316,7 @@ export const items: ItemCatalogInput[] = [
   },
 
   {
-    // Renombrado 2026-09-04 (creación del vocabulario de mundo, docs/rpgtarkor/vocabulario.md) —
+    // Renombrado 2026-09-04 (creación del vocabulario de mundo, docs/rpgtarkor/lore-mundo/lenguas-helek.md) —
     // "Junco" es fauna/flora real de la Tierra, sustituido por "Chudo" en todo el catálogo: mismo
     // patrón que Telda (especie base con variantes regionales, no "árbol" genérico).
     slug: 'chudos-rojizos',
@@ -8741,7 +8741,7 @@ export interface FactionInput {
 // Las 4 facciones ya presentes como `Npc.faction` (texto libre) en el catálogo de arriba, ahora
 // formalizadas con ficha propia. El `name` de cada una debe coincidir EXACTAMENTE con el string
 // usado en `faction:` de los NPCs de esa facción (seed-catalog.ts falla pronto si no coinciden) —
-// contenido sourced de docs/rpgtarkor/areas.md § "Los clanes orcos" y las menciones de la
+// contenido sourced de docs/rpgtarkor/lore-mundo/areas.md § "Los clanes orcos" y las menciones de la
 // Concordia en historia.md/razas.md/npcs.md, sin inventar nada nuevo.
 export const factions: FactionInput[] = [
   {
@@ -8834,9 +8834,9 @@ export const factions: FactionInput[] = [
 export interface HistoriaEntryInput {
   slug: string;
   title: string;
-  /// 'comun' = después del año 0 (docs/rpgtarkor/cronologia.md), se agrupa por bloques de 500
+  /// 'comun' = después del año 0 (docs/rpgtarkor/lore-mundo/cronologia.md), se agrupa por bloques de 500
   /// años en la Enciclopedia. 'semillas' = mítico, anterior al año 0
-  /// (docs/rpgtarkor/cronologia-mitica.md), lista plana sin bloques — `year` siempre null aquí.
+  /// (docs/rpgtarkor/lore-mundo/cronologia-mitica.md), lista plana sin bloques — `year` siempre null aquí.
   era: 'comun' | 'semillas';
   year: number | null;
   text: string;
@@ -8855,7 +8855,7 @@ export interface HistoriaEntryInput {
 }
 
 // Los 5 objetos `category: 'documento'` ya existentes en el catálogo de arriba, cada uno enganchado
-// a su propia entrada de lore. Años anclados a docs/rpgtarkor/cronologia.md (hoy, año ~4.010 —
+// a su propia entrada de lore. Años anclados a docs/rpgtarkor/lore-mundo/cronologia.md (hoy, año ~4.010 —
 // "El Detonante" ~4.005-4.008 formó la Concordia de Hierro actual).
 export const historiaEntries: HistoriaEntryInput[] = [
   {
@@ -8930,12 +8930,12 @@ export interface HarvestYieldInput {
   /// `false`.
   requiereHerramienta?: boolean;
   /// Gate real de estación (2026-08-24, Grupo 3 § Sistema de estaciones, ver
-  /// docs/rpgtarkor/estaciones.md) — para yields cuya `condicion` ya describe una estación en
+  /// docs/rpgtarkor/lore-mundo/estaciones.md) — para yields cuya `condicion` ya describe una estación en
   /// texto ("crece en otoño") sin que el motor la respetara. Omitido = disponible todo el año,
   /// igual que el resto del catálogo.
   estacionRequerida?: Estacion;
   /// Gate real de clima (2026-08-24, Grupo 3 § Eventos de clima puntuales, ver
-  /// docs/rpgtarkor/clima-tormentas.md) — umbral de severidad MÍNIMA (`climaSeveridadAlMenos`,
+  /// docs/rpgtarkor/lore-mundo/clima-tormentas.md) — umbral de severidad MÍNIMA (`climaSeveridadAlMenos`,
   /// worldClock.ts), no igualdad exacta como `estacionRequerida`. Omitido = sin restricción de
   /// clima, igual que el resto del catálogo.
   climaRequerido?: EstadoClima;
@@ -10707,7 +10707,7 @@ export const harvestSourceAliases: Record<string, string[]> = {
 /// imágenes"). Antes estas 14 fuentes no tenían NINGÚN texto descriptivo en ningún sitio —
 /// HarvestYield no tiene columna description y loreContextFor() en imagePromptContext.ts no leía
 /// nada más que "flora o material recolectable" a secas. `espina-del-viento` vive aquí y no en el
-/// array `fauna` de arriba porque es peligro ambiental puro (docs/rpgtarkor/areas.md), sin ficha
+/// array `fauna` de arriba porque es peligro ambiental puro (docs/rpgtarkor/lore-mundo/areas.md), sin ficha
 /// de combate ni Npc propio — pero sigue necesitando descripción visual igual que cualquier otra.
 /// Bug real (2026-07-22): la Enciclopedia usaba "¿existe Npc con este slug?" como proxy de "¿es
 /// fauna (animal) o flora/mineral?" — funciona para las 9 fauna cazable de arriba (sí tienen
@@ -11247,7 +11247,7 @@ export const harvestSourceTerrainTag: Record<string, TerrainTag> = {
   'verdileas-acuaticas': 'humedo', // Los Manaderos
 };
 
-/// Género de flora (2026-09-04, ver docs/rpgtarkor/genesis.md § Florial/Tarkor y
+/// Género de flora (2026-09-04, ver docs/rpgtarkor/lore-mundo/genesis.md § Florial/Tarkor y
 /// floraCategoria.ts para el diseño completo) — asignación inicial de las 25 fuentes de flora ya
 /// existentes al cerrar el sistema. Las resinas comparten género con su árbol/planta de origen
 /// (misma especie, dos productos). Solo 2 casos BROTES_SALVAJES por ahora (Raíz de Fuego, Cardo
@@ -11386,7 +11386,7 @@ export const faunaMomentoDelDia: Record<string, MomentoDelDia> = {
   'tura-jusha': 'dia',
 };
 
-/// Grupo 3 § Mundo determinista (docs/rpgtarkor/mundo-determinista.md, 2026-08-25) — Capa 1: zonas
+/// Grupo 3 § Mundo determinista (docs/rpgtarkor/lore-mundo/mundo-determinista.md, 2026-08-25) — Capa 1: zonas
 /// navegables, PROTOTIPO en una sola zona (La Hondonada del Eco, `hondonada-del-eco`) antes de
 /// repetir en el resto — mismo criterio que el Mapa de Cristal Helado ("un nodo a la vez"). Los 3
 /// elementos reales ya documentados de esta zona (`harvestSourceHomeLocationSlug` arriba: yerreo/
@@ -11719,7 +11719,7 @@ export const zonePoints: ZonePointInput[] = [
 
   // ══════════════════════════════════════════════════════════════════════════
   // Ampliación 2026-09-28 — Fase 3 del plan "lo que funciona por zona se hace desde la zona"
-  // (docs/runbooks/plan-mecanicas-por-zona-2026-09-28.md): cobertura de mapa para toda fuente
+  // (docs/registros/plan-mecanicas-por-zona-2026-09-28.md): cobertura de mapa para toda fuente
   // CAZA/TALA/MINERIA/EXTRACCION/PESCA/BUSQUEDA con presencia real en Las Llanuras del Viento
   // Rojo (`WorldPopulation.distribucion`/`HarvestYield`) que hasta ahora no tenía NINGÚN
   // `ZonePoint` en ninguna Location de la región — con las acciones de caza/recolección pasando a

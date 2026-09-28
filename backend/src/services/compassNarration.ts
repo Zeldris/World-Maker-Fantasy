@@ -21,7 +21,7 @@ function joinWithY(items: string[]): string {
 /// Texto determinista de "usar la Aguja de Cardo Brújula" (2026-08-15, petición explícita) —
 /// nunca pasa por el Narrador/Ollama, se inserta directo como LogEntry (mismo patrón que
 /// `questRewardNarrationFor`): todo el contenido ya se sabe con certeza mecánica (LocationLink +
-/// coordenadas reales de docs/13-escala-del-mundo.md). Con el Mapa de las Llanuras en inventario,
+/// coordenadas reales de docs/mecanicas/13-escala-del-mundo.md). Con el Mapa de las Llanuras en inventario,
 /// nombra el destino real de cada camino conocido; sin mapa, describe el terreno de cada ruta
 /// (reutiliza `LocationLink.terreno`, ya escrito como prosa para esto) sin revelar el destino.
 export function compassNarrationText(links: CompassLinkInfo[], hasMap: boolean): string {

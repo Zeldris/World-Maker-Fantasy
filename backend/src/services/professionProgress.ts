@@ -40,7 +40,7 @@ export function xpForCraftSuccess(tier: number | undefined): number {
 
 /// Alivio de requisitos (requisitos.ts): nivel 1 = sin alivio, cada nivel siguiente resta 1 al
 /// mínimo exigido — solo dentro de recetas de ESE MISMO oficio, nunca toca la tirada general
-/// (docs/10-niveles-xp-reino.md § 4.1 ya identificó ese error para un bonificador global).
+/// (docs/mecanicas/10-niveles-xp-reino.md § 4.1 ya identificó ese error para un bonificador global).
 export function alivioForLevel(nivel: number): number {
   return Math.max(0, nivel - 1);
 }

@@ -78,8 +78,8 @@ export function effectiveTemperamento(catalogTemperamento: Temperamento, faction
   return TEMPERAMENTO_ORDER[effectiveIndex];
 }
 
-/// Fundación de reino (2026-08-04, docs/17-reglas-construcciones-reino.md) — qué facción(es) son
-/// dueñas de cada región de Berig según el lore (docs/rpgtarkor/areas.md), seedeado a mano: no
+/// Fundación de reino (2026-08-04, docs/mecanicas/17-reglas-construcciones-reino.md) — qué facción(es) son
+/// dueñas de cada región de Berig según el lore (docs/rpgtarkor/lore-mundo/areas.md), seedeado a mano: no
 /// existe ninguna tabla real de "región → facción" en la base de datos, solo `Npc.faction` (libre
 /// por NPC) — `World.factions` (catálogo suelto sin relación con esto) se quitó del schema en la
 /// auditoría de elementos desconectados 2026-08-23, nunca lo leyó nadie. Ciénaga Troncal y El

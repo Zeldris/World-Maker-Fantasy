@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { prisma } from '../lib/prisma.js';
 
 /// GET de relaciones entre facciones NPC (hueco A, rediseño de frontend 2026-09-21,
-/// docs/rpgtarkor/mundo-vivo-x4.md § 4.3) — hasta ahora no existía ninguna vía de LISTAR
+/// docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.3) — hasta ahora no existía ninguna vía de LISTAR
 /// `FactionRelation[]`, solo `espiarFactionRelation` (una relación concreta a la vez, vía
 /// diplomacia). Dominio propio (no `world.ts`, que ya es grande y esto no es exactamente
 /// Enciclopedia) — filtra a facciones de CATÁLOGO (`Faction.saveId: null`, nunca la del jugador,

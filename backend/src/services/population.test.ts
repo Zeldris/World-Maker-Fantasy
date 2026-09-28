@@ -171,7 +171,7 @@ describe('growAllPopulations', () => {
 });
 
 describe('syncFactionPopulationToKingdomStats', () => {
-  // docs/rpgtarkor/mundo-vivo-x4.md § 4.6 (2026-09-21) — puente entre WorldPopulation (FACCION,
+  // docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.6 (2026-09-21) — puente entre WorldPopulation (FACCION,
   // crece con growAllPopulations) y KingdomStats de la Faction real (§ 4.2, ya generalizado).
   it('sin filas FACCION, no hace nada', async () => {
     const prisma = { worldPopulation: { findMany: vi.fn().mockResolvedValue([]) }, faction: { findFirst: vi.fn() }, kingdomStats: { findFirst: vi.fn(), update: vi.fn() } };

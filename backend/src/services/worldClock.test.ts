@@ -71,7 +71,7 @@ describe('formatFictionalDate', () => {
 });
 
 // Sistema de estaciones (2026-08-24, Grupo 3 § Sistema de estaciones, ver
-// docs/rpgtarkor/estaciones.md) — calendario único de 120 días/año, 30 por estación. Día 1 = Ur'gathek.
+// docs/rpgtarkor/lore-mundo/estaciones.md) — calendario único de 120 días/año, 30 por estación. Día 1 = Ur'gathek.
 describe('estacionFor', () => {
   it('Día 1 empieza en Primavera', () => {
     expect(estacionFor(0)).toBe('PRIMAVERA');
@@ -183,7 +183,7 @@ describe('estacionNombreFor', () => {
 });
 
 // Clima de las 8 regiones (2026-08-24, Grupo 3 § Eventos de clima puntuales, ver
-// docs/rpgtarkor/clima-tormentas.md; ampliado de 1 a 8 regiones el 2026-09-21, § 5-bis punto 13)
+// docs/rpgtarkor/lore-mundo/clima-tormentas.md; ampliado de 1 a 8 regiones el 2026-09-21, § 5-bis punto 13)
 // — eje de tiempo distinto de estacionFor, por región.
 describe('climaFor', () => {
   it('región desconocida (fuera de las 8 reales) o null, siempre null', () => {

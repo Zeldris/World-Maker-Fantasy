@@ -12,7 +12,7 @@
 /// Sesgo hembra intencional (petición explícita, 2026-07-22): "intuyendo que para mí las hembras
 /// en general son superiores... si te fijas en el lore MADRE y todas las Semillas son de sexo
 /// hembra... quiero que al menos tengan un detalle que las haga especiales o mejores en el
-/// atributo que más las define" (ver docs/rpgtarkor/genesis.md — Madre y las 13 Semillas son
+/// atributo que más las define" (ver docs/rpgtarkor/lore-mundo/genesis.md — Madre y las 13 Semillas son
 /// explícitamente femeninas, pese a que el género no está realmente definido entre los dioses).
 /// Aplicado con matiz explícito de la propia usuaria — "no quiero que sea nada exagerado ni dar a
 /// entender que todas las hembras de todas las razas son superiores": cada hembra gana UN detalle

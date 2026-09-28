@@ -244,7 +244,7 @@ interface NarrateAndPersistParams {
   /// minutosDeEsteTurno. Solo se aplica en instantánea/corta (síncrono) o al resolver el
   /// CharacterTransit — nunca la decide el modelo.
   produccion?: Produccion;
-  /// docs/14-combate-y-muerte.md § 1, § 4.
+  /// docs/mecanicas/14-combate-y-muerte.md § 1, § 4.
   condicionFisica: CondicionFisica;
   /// Sistema de fatiga (2026-07-29) — valor ACTUAL de energía antes de este turno; el tope real
   /// se deriva de `attributes.constitucion` (energy.ts § energiaMaxFor), nunca viaja aquí.
@@ -259,7 +259,7 @@ interface NarrateAndPersistParams {
   /// criterio que `lastAteAtMinutes`/`lastDrankAtMinutes`: el caller ya tiene el `Save` cargado.
   /// Null = nunca ha descansado en esta partida, sin cooldown que aplicar.
   lastRestAtMinutes: number | null;
-  /// Fase 2 de efectos de clase (2026-08-26, docs/21-roadmap.md) — AUMENTO/DEBILIDAD activos del
+  /// Fase 2 de efectos de clase (2026-08-26, docs/producto/21-roadmap.md) — AUMENTO/DEBILIDAD activos del
   /// jugador ahora mismo (Save.activeEffects, ya parseado por el caller con `parseActiveEffects`).
   /// `[]` en partidas previas a este campo o sin ningún efecto activo.
   activeEffects: ActiveEffect[];
@@ -481,7 +481,7 @@ export interface NarrateAndPersistResult {
   /// Bug real (2026-07-29, "si muero no hace lo que fijamos que haría" en combate): cuando la
   /// muerte es sobrevivible (no dispara fin de partida), `condicionFisica` de abajo ya vuelve
   /// resuelta a ILESO (el respawn ya ocurrió en esta misma transacción, § 4.3 de
-  /// docs/14-combate-y-muerte.md) — el frontend nunca podía distinguir "moriste y reapareciste
+  /// docs/mecanicas/14-combate-y-muerte.md) — el frontend nunca podía distinguir "moriste y reapareciste
   /// este turno" de "no pasó nada", así que el combate en curso nunca se cerraba tras una muerte
   /// no definitiva (seguía el mismo combate como si el jugador no hubiera muerto). true siempre
   /// que este turno propuso MUERTO, sobreviva o no a `finDePartida`.
@@ -2072,7 +2072,7 @@ async function applyCondicionTimeouts(tx: Prisma.TransactionClient, saveId: stri
 }
 
 /// Expiración de capturas en el inventario, sin depositar en Jaula (rediseño de captura,
-/// 2026-08-28, docs/rpgtarkor/captura-rediseno-2026-08-28.md § 4) — mismo patrón EXACTO que
+/// 2026-08-28, docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md § 4) — mismo patrón EXACTO que
 /// `applyCondicionTimeouts` de arriba (barre todas las filas afectadas de esta partida, llamado una
 /// vez por turno resuelto de verdad). Si el plazo (ligado al tier de la cuerda usada al atar) ya
 /// pasó, la captura se escapa sola: el InventoryItem en tránsito se borra, sin rastro — no hay
@@ -2436,7 +2436,7 @@ async function applyKillSideEffects(params: {
   // `session.ts`), nunca aquí.
   const factionRepChange = nuevaCondicion === 'MUERTO' ? await applyFactionRepDeltaForResolution(tx, saveId, npc.faction, FACTION_REP_ATTACK_DELTA) : null;
 
-  // Población dinámica (docs/16-poblacion-dinamica.md): solo MUERTO resta población de verdad —
+  // Población dinámica (docs/mecanicas/16-poblacion-dinamica.md): solo MUERTO resta población de verdad —
   // CONVALECIENTE es solo derrotado, no una baja real de la especie/raza.
   if (nuevaCondicion === 'MUERTO') {
     await decrementPopulationOnDeath(tx, worldId, npc.raza, npc.slug, activeRegion);
@@ -3133,7 +3133,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   ]);
   const factionsStatus = parseFactionsStatus(worldStateForFactionsAndAgenda?.factionsStatus);
 
-  // Grupo 3 § Mundo determinista, Capa 4 (docs/rpgtarkor/mundo-determinista.md, 2026-08-25) —
+  // Grupo 3 § Mundo determinista, Capa 4 (docs/rpgtarkor/lore-mundo/mundo-determinista.md, 2026-08-25) —
   // disparo real: si esta partida tiene un `CombatEncounter` real EN_CURSO y jugable (Combate
   // múltiple), el turno se resuelve por ese motor en vez del 1v1 clásico de siempre — ver el
   // bloque de resolución más abajo (tras `abilityAttributeBonus`). Detectado aquí, pronto, para
@@ -3612,7 +3612,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // camino que ningún guard de honestidad narrativa cubría hasta ahora.
   const nonExchangeAttackHitLanded = !exchangeHappened && countsAsAttack && roll?.success === true;
 
-  // Narrar inconsciencia (docs/19-post-combate-y-recompensas-mision.md, pieza 1) — true SOLO en
+  // Narrar inconsciencia (docs/mecanicas/19-post-combate-y-recompensas-mision.md, pieza 1) — true SOLO en
   // el turno exacto en que el NPC pasa a CONVALECIENTE/MUERTO (no si ya estaba así de antes), para
   // pedirle al Narrador que describa ese momento concreto en vez de dejarlo implícito — hoy el
   // panel de victoria puede aparecer sin que la propia narración del golpe final lo haya narrado.
@@ -3760,7 +3760,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         : '(sin rutas conocidas desde aquí todavía)';
       contextBlocks.push(`UBICACIÓN ACTUAL: ${location.name} — ${location.description}\nDESDE AQUÍ SE PUEDE IR A: ${destinosTxt}.`);
 
-      // Bug real jugando (docs/revisar-partida-hallazgos.md, 2026-08-01, "bucle" de ambientación
+      // Bug real jugando (docs/registros/revisar-partida-hallazgos.md, 2026-08-01, "bucle" de ambientación
       // sin progreso): "avanzo"/"continúo por la cueva" sin nombrar destino, con 2+ salidas reales
       // desde aquí, no se puede resolver solo (`resolveTravel` ya solo auto-resuelve cuando hay
       // EXACTAMENTE una salida) — sin este aviso, el modelo solía narrar ambientación genérica
@@ -3846,7 +3846,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // escena, fuera de combate/saqueo/cosecha, con contexto real de ubicación — 25% de probabilidad
   // (mismo orden que el evento de ambientación de entorno.ts) y siempre opcional para el modelo.
   //
-  // Ponderado por población real + filtrado por región (docs/16-poblacion-dinamica.md,
+  // Ponderado por población real + filtrado por región (docs/mecanicas/16-poblacion-dinamica.md,
   // 2026-08-03): antes se elegía uniforme entre TODA la fauna itinerante del mundo sin mirar
   // dónde estaba el personaje ni cuánta abundancia real tenía cada especie — cazar mucho una
   // especie en una zona ahora la hace de verdad más rara de encontrar ahí, y una especie extinta
@@ -4302,7 +4302,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     .map((i) => ({ id: i.id, name: i.name, aliases: catalogBySlug.get(i.catalogSlug!)?.aliases ?? [] }));
   const compassMatch = detectsCompassUse(action, compassItemsInInventory);
   if (compassMatch && !travel && currentLocationId) {
-    // Coordenadas reales (docs/13-escala-del-mundo.md, ver comentario de LocationInput en
+    // Coordenadas reales (docs/mecanicas/13-escala-del-mundo.md, ver comentario de LocationInput en
     // worldCatalog.ts) — sin ellas aquí o en el destino, ese camino simplemente no participa
     // (falla cerrado; `compassNarrationText([])` ya da la frase de reserva si no queda ninguno).
     const compassOrigin = await prisma.location.findUnique({ where: { id: currentLocationId }, select: { x: true, y: true } });
@@ -4572,7 +4572,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   });
   contextBlocks.push(...buildBlocks);
 
-  // Slots de compañero (2026-08-04, docs/17-reglas-construcciones-reino.md): 0 de base, cada
+  // Slots de compañero (2026-08-04, docs/mecanicas/17-reglas-construcciones-reino.md): 0 de base, cada
   // construcción ACTIVA propia da los suyos (`companionSlotsForRecipeKey`). Aviso al modelo aquí
   // (best-effort, mismo criterio que el resto de contextBlocks) — el tope real y obligatorio se
   // aplica de todos modos al crear el Companion de verdad, más abajo en la transacción.
@@ -4863,7 +4863,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     onNarrationReset,
   };
 
-  // Grupo 3 § Mundo determinista, Capa 4 (docs/rpgtarkor/mundo-determinista.md, 2026-08-25) —
+  // Grupo 3 § Mundo determinista, Capa 4 (docs/rpgtarkor/lore-mundo/mundo-determinista.md, 2026-08-25) —
   // disparo real: si hay un `CombatEncounter` activo, este turno se resuelve por el motor de
   // Combate múltiple (`combateMultipleOrquestacion.ts`) en vez del 1v1 clásico. Ruta determinista
   // propia, mismo criterio que loot/build/harvest/craft de abajo: nunca llama a `narrateAction`
@@ -4893,7 +4893,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     combatEncounterId = encounterId;
     const narraciones: string[] = [];
 
-    // Objetivo individual real (2026-08-26, docs/21-roadmap.md § Fase 3) — si la RONDA actual
+    // Objetivo individual real (2026-08-26, docs/producto/21-roadmap.md § Fase 3) — si la RONDA actual
     // todavía no sabe a quién quiere atacar la jugadora, hay que decidirlo YA, antes de resolver
     // ningún turno autónomo de esa ronda (aunque su posición en `ordenIniciativa` no sea la
     // primera) — un enganche puede "alcanzar hacia atrás" y cancelar el de alguien que, en la
@@ -5462,7 +5462,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       if (finalized.count === 0) throw new TransitCancelledError();
     }
 
-    // docs/19-post-combate-y-recompensas-mision.md pieza 2 — recuperación de CONVALECIENTE a las 6h
+    // docs/mecanicas/19-post-combate-y-recompensas-mision.md pieza 2 — recuperación de CONVALECIENTE a las 6h
     // de ficción / desaparición de un cadáver a las 48h. Antes de nada más este turno, con el
     // `fictionalMinutes` ya avanzado: cualquier NPC afectado debe verse ya actualizado en el resto
     // de este mismo turno (p. ej. si vuelve a estar HERIDO, `npcsInScene` de este turno ya debería
@@ -5530,7 +5530,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     let newKingdomFounded: KingdomFoundedInfo | null = null;
     // Consolidación de territorio (2026-08-23, Grupo 3 § Territory.control) — capturado aquí,
     // antes de que exista `reinoXp` (se declara mucho más abajo), para poder sumarle sus 300 XP
-    // (docs/10-niveles-xp-reino.md § 5.4) en el mismo punto que el resto de eventos de Reino.
+    // (docs/mecanicas/10-niveles-xp-reino.md § 5.4) en el mismo punto que el resto de eventos de Reino.
     let territoryConsolidatedThisTurn = false;
     // Compañero REALMENTE creado este turno (2026-08-04, ver el tope de slots más abajo) — null
     // si no hubo ninguna propuesta o si se rechazó por falta de hueco. El frontend debe usar esto,
@@ -5561,7 +5561,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         );
         await tx.kingdomStats.update({ where: { ownerKey: ownerKeyFor({ saveId }) }, data: ticked });
 
-        // Territory.control/population (2026-08-23, Grupo 3 — docs/10-niveles-xp-reino.md § 5.4,
+        // Territory.control/population (2026-08-23, Grupo 3 — docs/mecanicas/10-niveles-xp-reino.md § 5.4,
         // nunca implementado hasta ahora) — misma cadencia que el tick de arriba, felicidad
         // sostenida decide si el reino se asienta o se rebela. Rebelión primero: si un territorio
         // se pierde ESTE mismo tick, su población cae a 0 de golpe (huida, no decadencia gradual)
@@ -5613,7 +5613,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         });
       }
 
-      // Panel de Reino real (docs/rpgtarkor/mundo-vivo-x4.md § 4.4-ter, 2026-09-21) — HERMANO de
+      // Panel de Reino real (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.4-ter, 2026-09-21) — HERMANO de
       // `if (kingdomStats)`, no anidado dentro: un `Building` con trabajadores puede existir sin
       // que el Reino tenga fila `KingdomStats` todavía (son entidades separadas en el schema, un
       // campamento libre no exige haber fundado el primer Territory) — bug real encontrado
@@ -6345,7 +6345,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     }
 
     if (narration.newItem && !lootMode && !harvestMatch) {
-      // Guard real (Grupo 3 § Mundo determinista, docs/rpgtarkor/mundo-determinista.md, 2026-08-25):
+      // Guard real (Grupo 3 § Mundo determinista, docs/rpgtarkor/lore-mundo/mundo-determinista.md, 2026-08-25):
       // hasta ahora se creaba un `InventoryItem` real por CUALQUIER `newItem` que el modelo
       // propusiera, sin `catalogSlug`, fuera del `ItemCatalog` que usa el resto del juego
       // (recolección/combate/crafteo) — un objeto de nombre libre, imposible de tipar. Ahora exige
@@ -6373,7 +6373,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       }
     }
     if (narration.newCompanion) {
-      // Guard real (Grupo 3 § Mundo determinista, docs/rpgtarkor/mundo-determinista.md, 2026-08-25):
+      // Guard real (Grupo 3 § Mundo determinista, docs/rpgtarkor/lore-mundo/mundo-determinista.md, 2026-08-25):
       // hasta ahora el único freno era el cupo de slots (abajo) — el modelo podía "ganar un
       // aliado" de la nada, sin ningún NPC real detrás ni ningún umbral de relación. Ahora exige
       // que el nombre coincida con un NPC de verdad presente en la escena Y que su temperamento
@@ -6416,7 +6416,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       }
     }
 
-    // Eventos de Reino (docs/10-niveles-xp-reino.md § 5) — necesitan enlazar por nombre de
+    // Eventos de Reino (docs/mecanicas/10-niveles-xp-reino.md § 5) — necesitan enlazar por nombre de
     // territorio y contar súbditos existentes, por eso van en la transacción interactiva.
     let reinoXp = territoryConsolidatedThisTurn ? REINO_XP.consolidado : 0;
     let territoryId: string | undefined;
@@ -6435,7 +6435,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       });
     }
 
-    // Guard real (Grupo 3 § Mundo determinista, docs/rpgtarkor/mundo-determinista.md, 2026-08-25):
+    // Guard real (Grupo 3 § Mundo determinista, docs/rpgtarkor/lore-mundo/mundo-determinista.md, 2026-08-25):
     // antes `region` salía del texto libre del modelo, que podía reclamar una región distinta de
     // donde el personaje está de pie. Ahora `region` SIEMPRE sale de `regionLocation` (la ubicación
     // real, ya resuelta de forma determinista) — el modelo nunca decide dónde se planta el
@@ -6501,7 +6501,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       await volverAEntrada(tx, saveId, { x: params.jugadorZonaPosEntradaX ?? null, y: params.jugadorZonaPosEntradaY ?? null });
       if (buildRecipe.upgradesRecipeKey) {
         // Mejora de Ayuntamiento (2026-08-04): actualiza el MISMO `Building.id`, nunca crea uno
-        // nuevo — "no se acumulan, mejoras el actual" (docs/17-reglas-construcciones-reino.md).
+        // nuevo — "no se acumulan, mejoras el actual" (docs/mecanicas/17-reglas-construcciones-reino.md).
         // El objetivo ya se verificó arriba (`buildBlockedReason`), pero se re-busca fresco dentro
         // de la transacción por si acaso, mismo criterio que `freshInventoryRows`.
         const target = await tx.building.findFirst({ where: { saveId, recipeKey: buildRecipe.upgradesRecipeKey } });
@@ -6579,7 +6579,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
             nameLocked: characterName === 'Gorhorn',
           };
         }
-        // Conquista territorial estilo X4 (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, 2026-09-21) — al
+        // Conquista territorial estilo X4 (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) — al
         // levantar un Cuartel Avanzado (siempre en región DISTINTA a la de la Capital, ya
         // garantizado por `computeBuildBlockedReason`), pasan dos cosas nuevas:
         // (1) su propia zona-interior navegable, mismo patrón que la Capital (reino.ts) pero de
@@ -6687,7 +6687,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       }
     }
 
-    // Misiones (docs/09-panel-personaje.md) — mismo patrón que Reino: el modelo propone, el
+    // Misiones (docs/mecanicas/09-panel-personaje.md) — mismo patrón que Reino: el modelo propone, el
     // backend valida y materializa. questProgress solo actúa si matchea una misión ACTIVA real.
     // `title?.trim()` (2026-09-07, "salen misiones como UNDEFINED") — el schema no obliga a que el
     // modelo rellene `title`; sin este guard, un `newQuest` con el campo vacío/ausente seguía todo
@@ -6723,7 +6723,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       const worldItems = await tx.itemCatalog.findMany({ where: { worldId } });
       const targetItemName = worldItems.find((item) => questText.includes(normalizeText(item.name)))?.name;
 
-      // Guard real (Grupo 3 § Mundo determinista, docs/rpgtarkor/mundo-determinista.md, 2026-08-25):
+      // Guard real (Grupo 3 § Mundo determinista, docs/rpgtarkor/lore-mundo/mundo-determinista.md, 2026-08-25):
       // hasta ahora se creaba una `Quest` real por CUALQUIER `newQuest` que el modelo propusiera,
       // sin ningún anclaje a nada real del mundo — título y descripción 100% libres. Exigir al
       // menos UNO de los tres anclajes ya resueltos arriba (NPC/Location/Item reales) no es una
@@ -7173,7 +7173,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // B11 (pruebas 2026-09-28): regeneración pasiva fuera de combate por el tiempo transcurrido.
     let finalEnergia = enCombate ? nuevaEnergia : Math.min(energiaMax, nuevaEnergia + energiaPasivaEntre(fictionalMinutesActuales, nuevoFictionalMinutes));
 
-    // Punto de guardado (2026-08-04, docs/17-reglas-construcciones-reino.md): solo descansar en
+    // Punto de guardado (2026-08-04, docs/mecanicas/17-reglas-construcciones-reino.md): solo descansar en
     // una construcción PROPIA activa mueve el respawn — un refugio/asentamiento ajeno sigue
     // curando igual (`restSucceeds` ya lo cubre arriba), pero ya no actualiza dónde reapareces.
     if (restSucceeds && currentLocationRecord) {
@@ -7515,7 +7515,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
             analizado: p.condicionFisicaGrupo !== null ? (p.analizadoGrupo ?? false) : (soloAnalizadoByNpcId.get(p.npcId!) ?? false),
             capturable: npcRow.atributoResistencia !== null,
             // `combateMultipleOrquestacion.ts` no lee/aplica `activeEffects` todavía (Fase 2,
-            // 2026-08-26, deferred a propósito — ver docs/21-roadmap.md § Fase 2) — `[]` real,
+            // 2026-08-26, deferred a propósito — ver docs/producto/21-roadmap.md § Fase 2) — `[]` real,
             // no un hueco de este display en concreto.
             activeEffects: [] as ActiveEffect[],
             participantId: p.id,

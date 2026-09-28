@@ -267,7 +267,7 @@ propio territorio); Cicatriz de Cristal (1 de cada 6, la formación geológica p
 
 Verificado: `tsc -b` limpio, 44/44 tests de `worldClock.test.ts` (incluye Llanuras exactamente
 igual que antes del cambio — cero regresión en el diseño original), suite completa 2634/2634 en
-verde. `docs/rpgtarkor/clima-tormentas.md` sigue siendo la referencia de diseño original
+verde. `docs/rpgtarkor/lore-mundo/clima-tormentas.md` sigue siendo la referencia de diseño original
 (Llanuras); las 7 regiones nuevas viven solo en el código, sin doc propio todavía — pendiente de
 lore si Álvaro quiere expandir cada una con el mismo detalle narrativo que Llanuras.
 

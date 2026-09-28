@@ -22,7 +22,7 @@ interface ProduccionSectionProps {
   onRefreshSave: () => Promise<void>
 }
 
-/// Sub-tab "Producción" del Reino (Fase 2, 2026-09-21, docs/rpgtarkor/mundo-vivo-x4.md § 4.4-ter) —
+/// Sub-tab "Producción" del Reino (Fase 2, 2026-09-21, docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.4-ter) —
 /// estilo Bellwright: por edificio, trabajadores asignados + órdenes de producción con prioridad
 /// 0-9 y un botón "✕" para desactivar (nunca borrar) — mismo lenguaje visual que Job Priorities de
 /// Bellwright. El motor de tick (`kingdomProduction.ts`) ya corre cada día de ficción; hasta este

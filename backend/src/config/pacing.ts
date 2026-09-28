@@ -1,4 +1,4 @@
-/// Decisión técnica 5 (docs/04-decisiones-tecnicas.md): ritmo de generación en sesión activa.
+/// Decisión técnica 5 (docs/arquitectura/04-decisiones-tecnicas.md): ritmo de generación en sesión activa.
 /// Distinto del tick del worker de fondo (config/env.ts worldTickIntervalMinutes, escala de minutos).
 export const pacing = {
   minDelayMs: Number(process.env.PACING_MIN_MS ?? 3000),

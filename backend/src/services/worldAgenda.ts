@@ -1,13 +1,13 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { appendSessionFacts, loadSessionFacts } from './worldFacts.js';
 
-/// Canal WORLD (Grupo 3 § Mundo determinista, docs/rpgtarkor/mundo-determinista.md, 2026-08-25):
+/// Canal WORLD (Grupo 3 § Mundo determinista, docs/rpgtarkor/lore-mundo/mundo-determinista.md, 2026-08-25):
 /// hasta ahora `STAGE_FACTS` solo alimentaba `sessionFacts` (contexto invisible del Narrador) — el
 /// panel "El mundo" que la jugadora sí ve (`entorno.ts`, canal `LogEntry.WORLD`) nunca se enteraba
 /// de que la agenda había avanzado, pese a depletar población real. Ya es texto determinista escrito
 /// a mano (`STAGE_FACTS`), cero coste añadido de LLM — solo hacía falta el cable.
 
-/// `WorldState.agenda` (Grupo 3, docs/21-roadmap.md) — hitos de mundo que avanzan solos con el
+/// `WorldState.agenda` (Grupo 3, docs/producto/21-roadmap.md) — hitos de mundo que avanzan solos con el
 /// tiempo de ficción si nadie interviene, más allá de la ambientación pasiva de `entorno.ts`.
 /// Diseño cerrado con la usuaria (2026-08-24): un solo hito de partida, el conflicto entre el Clan
 /// Serhu (aliado en la sombra con la Concordia de Hierro) contra los clanes Helsig y Goshg, que
@@ -88,7 +88,7 @@ const AGRESOR = 'Clan Serhu-Concordia de Hierro';
 /// explícitamente para esta excepción.
 const REGION_DEL_AGRESOR = 'Las Llanuras del Viento Rojo';
 
-/// Las 3 regiones con conflicto sembrado hoy (docs/rpgtarkor/areas.md) — su dueño ORIGINAL de
+/// Las 3 regiones con conflicto sembrado hoy (docs/rpgtarkor/lore-mundo/areas.md) — su dueño ORIGINAL de
 /// `REGION_OWNING_FACTIONS` (reputation.ts) es el defensor cuando `stage` entra en disputa.
 const REGION_DEFENSOR: Record<string, string> = {
   'Cristal Helado': 'Clan Helsig',

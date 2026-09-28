@@ -58,7 +58,7 @@ peinaron ~200 archivos de memoria y los servicios/rutas más grandes del backend
   misión Orco Enfurecido saltándose botones (cerrada el mismo día), sub-partición de combate >4v4
   (cerrada horas después el mismo día en que se reabrió, commit `8535c85`, con test de integración
   real — quedó enterrada dentro de un commit de título ajeno "Renombra el atributo Arcano a Magia").
-  `docs/checklist-pruebas-juego.md` y `docs/revisar-partida-hallazgos.md` también actualizados en
+  `docs/registros/checklist-pruebas-juego.md` y `docs/registros/revisar-partida-hallazgos.md` también actualizados en
   los mismos puntos.
 
 ### Genuinamente pendiente a día de hoy (verificado DOS veces — auditoría inicial + reverificación
@@ -70,7 +70,7 @@ ver abajo):
 - **Balance del primer combate (Orco Enfurecido/misión Gistera)** — tras 8 turnos de intercambio en
   un combate real, ni asegura victoria ni se siente "asequible" para un tutorial de facto de nivel
   1. Sin tocar desde 2026-08-28 (`git log -G` sobre el bloque del NPC solo muestra el rebalanceo
-  original de 2026-07-29 y el rename cosmético Arcano→Magia). Ver `docs/checklist-pruebas-juego.md`
+  original de 2026-07-29 y el rename cosmético Arcano→Magia). Ver `docs/registros/checklist-pruebas-juego.md`
   punto 1.5.
 - **`questSlug` estructurado en `Quest`** — `quests.ts:18 § ORCO_ENFURECIDO_QUEST_TITLE` sigue
   hardcodeado por título exacto, sin ningún campo `questSlug` en `schema.prisma` (decisión
@@ -123,7 +123,7 @@ cerrados**:
   síncrona, orden de turno fijado, scopes únicos) — puede que ya no sea reproducible, o que el
   patrón viva en otro punto no identificado. Reproducir en vivo si vuelve a aparecer.
 - Nombre de NPC "pegado" gramaticalmente como aposición de un lugar en la narración (sin verificar
-  en esta ronda — muestra de 1 turno, `docs/checklist-pruebas-juego.md` § 1).
+  en esta ronda — muestra de 1 turno, `docs/registros/checklist-pruebas-juego.md` § 1).
 
 **Aparcado a propósito por decisión de diseño (no bugs, no urgente)** — verificado, 12/14 exactos,
 2 con matiz menor encontrado:
@@ -329,8 +329,8 @@ reciente:
   necesita que se reinicie a mano para surtir efecto; el arranque/parada de backend/frontend/Postgres
   lo hace siempre la propia usuaria, nunca Claude.
 - Sesiones anteriores (2026-08-23/25) cerraron el grueso del "Grupo 3" de abajo — ver el resto del
-  documento para el detalle punto por punto, y `docs/deuda-tecnica-hallazgos.md`/
-  `docs/revisar-partida-hallazgos.md`/`docs/checklist-cierre-auditorias-2026-08-25.md` para las 3
+  documento para el detalle punto por punto, y `docs/registros/deuda-tecnica-hallazgos.md`/
+  `docs/registros/revisar-partida-hallazgos.md`/`docs/checklist-cierre-auditorias-2026-08-25.md` para las 3
   auditorías previas, ya cerradas del todo (22/22).
 
 ---
@@ -353,7 +353,7 @@ catálogo, Filtro de Quio con `HarvestYield`, texto de Osario corregido, alias M
 terreno, `loreChunks.ts`/`berigLore.ts` puestos al día (Florial/Ferios/7 escuelas/lore Chamán),
 `EnciclopediaPanel.tsx` con la descripción Arcano/Magia corregida.
 
-**Sistema de clases de combate** (`docs/rpgtarkor/clases.md`) — 9 clases/34 especializaciones
+**Sistema de clases de combate** (`docs/rpgtarkor/sistemas-combate/clases.md`) — 9 clases/34 especializaciones
 diseñadas, **fase de diseño dada por cerrada** (2026-08-24, incluye las 5 clases sin repasar a
 fondo). NPCs existentes con stats reales asignados a clase (nueva sección en `clases.md`).
 
@@ -427,7 +427,7 @@ resumen de trabajo real, agrupado por tamaño.
   + pool de armas para las 6 clases sin diseñar — ninguna de estas piezas se ha tocado, sigue
   bloqueando la mayoría de huecos de las 30 especializaciones ya construidas. Cambios futuros que
   ella haga en clases.md (edición en curso) se portarán al motor en una pasada aparte, no ahora.
-- [x] ~~**Combate múltiple**~~ (`docs/rpgtarkor/combate-multiple.md`) — iniciativa individual N-way,
+- [x] ~~**Combate múltiple**~~ (`docs/rpgtarkor/sistemas-combate/combate-multiple.md`) — iniciativa individual N-way,
   tope 4v4 con sub-combates deterministas, modo autónomo/reporte, retira el truco `groupSize`.
   Desbloquea `MULTIPLE`/`INVOCACION`/`COMPANERO`/`CONTROL`/`EXPULSAR` de arriba. Fases A-C
   construidas y commiteadas (`5e63c27`/`419d7af`/`82793ab`) — iniciativa/retargeting/partición puros,
@@ -451,7 +451,7 @@ resumen de trabajo real, agrupado por tamaño.
   documentados a propósito: XP de la propia tirada de combate, objetivo individual entre miembros
   de un mismo grupo (mecánicamente intercambiables hoy).
 - [x] ~~**Mundo determinista: zonas, eventos y narración que solo narra**~~
-  (`docs/rpgtarkor/mundo-determinista.md`, diseño 2026-08-25) — generaliza "el modelo nunca decide,
+  (`docs/rpgtarkor/lore-mundo/mundo-determinista.md`, diseño 2026-08-25) — generaliza "el modelo nunca decide,
   solo narra" (ya probado en combate) a aparición de NPC/fauna, eventos de mundo y creación de
   misiones/objetos/compañeros/territorios. 4 capas en orden de dependencia: zonas navegables con
   posición real (fundación — no hay nada reutilizable hoy, ni siquiera el Mapa de Cristal Helado,

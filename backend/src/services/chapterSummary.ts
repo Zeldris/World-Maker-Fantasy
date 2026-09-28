@@ -4,8 +4,8 @@ import { env } from '../config/env.js';
 import { randomPacingDelayMs } from '../config/pacing.js';
 import { createInFlightClaimSet } from '../lib/inFlightClaimSet.js';
 
-/// Memoria de partida por capítulos (docs/01-analisis-producto.md § "Resumen/Memoria de partida",
-/// docs/10-niveles-xp-reino.md § 3.2/§ 7): cada N acciones del jugador, el backend (no el modelo)
+/// Memoria de partida por capítulos (docs/producto/01-analisis-producto.md § "Resumen/Memoria de partida",
+/// docs/mecanicas/10-niveles-xp-reino.md § 3.2/§ 7): cada N acciones del jugador, el backend (no el modelo)
 /// decide crear un `SessionSummary` nuevo y dispara el hito `capitulo` (500 XP, determinista,
 /// nunca propuesto por el Narrador) — así el sistema de memoria por capítulos que ya existía en
 /// el schema se convierte gratis en el latido de fondo de la progresión.
@@ -103,7 +103,7 @@ async function generateAndPersistChapterSummary(saveId: string, characterName: s
     ? `\n\nCapítulo anterior (para que este conecte con él, no lo repitas): "${lastSummary.summary}"`
     : '';
 
-  // Ritmo de generación en sesión activa (decisión técnica 5, docs/04-decisiones-tecnicas.md § 5):
+  // Ritmo de generación en sesión activa (decisión técnica 5, docs/arquitectura/04-decisiones-tecnicas.md § 5):
   // esta llamada al Cronista es justo la "entrada secundaria de un turno" que ese documento
   // describe — nunca la respuesta directa del Narrador — así que se espacia con el retardo
   // aleatorio configurable en vez de disparar el mismo instante que termina de narrar. Auditoría

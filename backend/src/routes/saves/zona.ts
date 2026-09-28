@@ -79,7 +79,7 @@ const SAVE_SELECT_PARA_MOVER = {
 /// (mismo convenio que el resto de sufijos de imagen) — este mapa hace ese único ajuste.
 const ESTACION_A_SLUG: Record<string, EstacionSlug> = { PRIMAVERA: 'primavera', VERANO: 'verano', OTONO: 'otono', INVIERNO: 'invierno' };
 
-/// Icono de parcela en el mapa de Zona (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, 2026-09-21) — una
+/// Icono de parcela en el mapa de Zona (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) — una
 /// por cada `Parcela` sembrada en la Location actual (solo zonas-interior de Capital/Cuartel
 /// Avanzado tienen alguna; el resto de zonas del mundo siempre devuelven `[]`, mismo criterio de
 /// "disponible: false si no hay nada" que el resto del panel). Shape mínimo para pintar el icono y
@@ -187,7 +187,7 @@ async function salidasDeRegionPara(
   return salidas;
 }
 
-/// Grupo 3 § Mundo determinista (docs/rpgtarkor/mundo-determinista.md, 2026-08-25) — Capa 1: zonas
+/// Grupo 3 § Mundo determinista (docs/rpgtarkor/lore-mundo/mundo-determinista.md, 2026-08-25) — Capa 1: zonas
 /// navegables, PROTOTIPO en una sola zona (La Hondonada del Eco). Deliberadamente ACOTADO: solo
 /// expone DÓNDE vive algo dentro de la zona actual, de forma estructurada, en vez de que el
 /// jugador solo pueda saberlo si la prosa se lo cuenta bien — no cambia todavía cómo se resuelve
@@ -492,7 +492,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     // aquí en adelante (con o sin ZonePoint sembrado, una zona SIEMPRE puede tener salidas reales).
     const salidas = await salidasDeRegionPara(save.id, save.worldId, save.currentLocation, jugador);
 
-    // Iconos de parcela (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, 2026-09-21) — calculado una vez,
+    // Iconos de parcela (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) — calculado una vez,
     // igual que `salidas`. Solo las zonas-interior de Capital/Cuartel Avanzado tienen filas reales
     // (`[]` en el resto del mundo); esas mismas zonas-interior nacen SIN ZonePoint sembrado, así
     // que `disponible` de abajo también mira `parcelas.length`, no solo `dinamicos`/`zonePointsActivos`.

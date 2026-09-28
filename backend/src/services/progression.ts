@@ -1,4 +1,4 @@
-/// Servicio de progresión (docs/10-niveles-xp-reino.md) — reversión de la decisión de mecánicas 4.
+/// Servicio de progresión (docs/mecanicas/10-niveles-xp-reino.md) — reversión de la decisión de mecánicas 4.
 /// Todo determinista, sin IA: el modelo nunca decide cuánta XP se gana, igual que nunca decide
 /// si una tirada tiene éxito.
 import { WEAPON_ABILITY_LEVEL_AVANZADA } from './weaponAbilities.js';

@@ -10,7 +10,7 @@ import { effectiveTemperamento } from './reputation.js';
 import { momentoDelDiaFor } from './worldClock.js';
 import { faunaMomentoDelDia } from '../scripts/worldCatalog.js';
 
-/// Detección determinista de "NPC en escena" (docs/12-mundo-estructurado.md § 2.5) — sin llamada
+/// Detección determinista de "NPC en escena" (docs/mecanicas/12-mundo-estructurado.md § 2.5) — sin llamada
 /// extra a Ollama: se busca Npc.aliases (normalizados) en el texto de la acción y en los hechos
 /// de la sesión. Los números y el equipo del NPC SIEMPRE llegan por esta vía, nunca los inventa
 /// el modelo (§ 2.1).
@@ -147,7 +147,7 @@ export interface NpcInScene {
   /// comentario completo en schema.prisma § NpcState.abilityUsesThisEncounter. `{}` si todavía no
   /// existe fila o no se ha usado ninguna habilidad limitada en este encuentro.
   abilityUsesThisEncounter: Record<string, number>;
-  /// Fase 2 de efectos de clase (2026-08-26, docs/21-roadmap.md) — AUMENTO/DEBILIDAD con duración
+  /// Fase 2 de efectos de clase (2026-08-26, docs/producto/21-roadmap.md) — AUMENTO/DEBILIDAD con duración
   /// real por turnos, ver activeEffects.ts. `[]` si todavía no existe fila o no hay ningún efecto
   /// activo ahora mismo — mismo criterio lazy que `abilityUsesThisEncounter`.
   activeEffects: ActiveEffect[];
@@ -636,7 +636,7 @@ export async function detectNpcsInScene(params: {
   );
 }
 
-/// Grupo 3 § Mundo determinista, Capa 3, pieza B (docs/rpgtarkor/mundo-determinista.md, 2026-08-25)
+/// Grupo 3 § Mundo determinista, Capa 3, pieza B (docs/rpgtarkor/lore-mundo/mundo-determinista.md, 2026-08-25)
 /// — nombres de NPC "candidatos plausibles aquí" (mismo filtro geográfico que `detectNpcsInScene`
 /// usa internamente: PRINCIPAL/quest activa/ya encontrado antes/itinerante/región coincidente)
 /// pero EXCLUYENDO a quienes ya están autorizados en la escena de ESTE turno (`excludeIds`) —
@@ -946,7 +946,7 @@ export interface AmbientEncounterCandidate {
   slug: string;
   name: string;
   role: string;
-  /// Peso relativo de selección (docs/16-poblacion-dinamica.md, 2026-08-03: antes se elegía
+  /// Peso relativo de selección (docs/mecanicas/16-poblacion-dinamica.md, 2026-08-03: antes se elegía
   /// siempre uniforme entre TODA la fauna itinerante del mundo, sin mirar abundancia real ni
   /// región). Por defecto 1 — mismo comportamiento uniforme que antes si no se especifica.
   weight?: number;
@@ -954,7 +954,7 @@ export interface AmbientEncounterCandidate {
 
 /// Puro: elige un candidato de encuentro ambiental con probabilidad proporcional a `weight`
 /// (checklist 2026-07-21/22, punto 3 — "más NPCs/fauna itinerante para encuentros casuales más
-/// frecuentes"; ponderado por población real desde docs/16-poblacion-dinamica.md). Exportado sin
+/// frecuentes"; ponderado por población real desde docs/mecanicas/16-poblacion-dinamica.md). Exportado sin
 /// envolver en Math.random directamente en turnResolution.ts para poder testearlo con una función
 /// de aleatoriedad inyectada, como el resto del proyecto.
 export function pickAmbientEncounterCandidate(
@@ -996,7 +996,7 @@ function itemsLine(items: NpcItemInScene[]): string {
 // registrado hace turnos) "emergía de la oscuridad" con un rugido en cuanto su nombre volvía a
 // mencionarse, como si nunca hubiera caído. `detectNpcsInScene` ya consultaba el estado real —
 // simplemente no llegaba a usarse aquí. Mismo patrón que la clase de fallo "NPCs que resucitan"
-// ya documentada en docs/revisar-partida.md.
+// ya documentada en docs/runbooks/revisar-partida.md.
 function npcYaResuelto(npc: NpcInScene): boolean {
   return npc.condicionFisica === 'CONVALECIENTE' || npc.condicionFisica === 'MUERTO' || npc.saqueado;
 }

@@ -12,7 +12,7 @@ interface ParcelaDetailModalProps {
   professionRecipes: ProfessionRecipeInfo[]
   onCancel: () => void
   /// Construir es DIRECTO, sin /turn/narrate (mismo criterio que "Descansar en campamento", ver
-  /// docs/rpgtarkor/mundo-vivo-x4.md § 7.4) — el caller decide qué refrescar (Save/Zona) tras el
+  /// docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4) — el caller decide qué refrescar (Save/Zona) tras el
   /// éxito y cierra el modal. `logEntry` ya viene resuelto por completo del backend
   /// (`toFrontendLogEntry`), sin campos que fabricar a mano en el cliente.
   onConstruido: (logEntry: LogEntry) => void
@@ -46,7 +46,7 @@ function motivoNoDisponible(status: RecipeStatusInfo): string | null {
   return parts.length > 0 ? parts.join(' ') : null
 }
 
-/// Modal del icono de parcela en el mapa de Zona (docs/rpgtarkor/mundo-vivo-x4.md § 7.4,
+/// Modal del icono de parcela en el mapa de Zona (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4,
 /// 2026-09-21) — mismo patrón que `ZonaSalidaModal`/`ZonePointDetailModal`: el mapa solo pinta el
 /// icono con lo mínimo (`ZonaParcelaInfo`), el detalle real (candidatas + `blockedReason`) se pide
 /// aquí, bajo demanda, al abrirse. AVANZADA solo tiene 1 candidata fija (`recipeKeyFijo`, el

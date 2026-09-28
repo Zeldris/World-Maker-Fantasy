@@ -35,7 +35,7 @@ interface DiplomaciaMercadoSectionProps {
   almacenItems?: AlmacenItemInfo[]
 }
 
-/// Sub-tab "Diplomacia y Mercado" del Reino (Fase 3, 2026-09-21, docs/rpgtarkor/mundo-vivo-x4.md
+/// Sub-tab "Diplomacia y Mercado" del Reino (Fase 3, 2026-09-21, docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md
 /// § 4.4) — las 3 acciones de diplomacia (Negociar/Sabotear/Espiar) y el mercado regulado ya
 /// funcionaban en backend, pero sin ningún cliente hasta ahora. Selector de facción objetivo con
 /// `razaThemeStyleVars` en el borde — primera aplicación real de la paleta por raza (§ 0.1 del plan).

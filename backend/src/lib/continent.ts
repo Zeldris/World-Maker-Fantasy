@@ -1,4 +1,4 @@
-/// Deriva el continente de una región de `Location.region` (string libre, ver docs/rpgtarkor/areas.md).
+/// Deriva el continente de una región de `Location.region` (string libre, ver docs/rpgtarkor/lore-mundo/areas.md).
 /// Usado solo para excluir contaminación de lore del continente contrario en el panel "El mundo"
 /// (entorno.ts) — no es un campo estructurado en el schema a propósito (el lore vive en los .md).
 const VAELIRA_REGIONS = ['la cicatriz de cristal', 'el susurro de las raíces', 'la costa del azabache'];

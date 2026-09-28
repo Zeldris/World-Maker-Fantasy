@@ -22,7 +22,7 @@ async function buildAppWithDetail() {
 /// de pruebas): pulsar "Matar" solo marcaba `targetedForKill: true` en `combatNpcStates` de React
 /// — se perdía al recargar la página, la tarjeta MATAR/CLEMENTE reaparecía de cero y el composer
 /// volvía a bloquearse hasta pulsar Matar de nuevo (violando la directriz ya escrita en
-/// docs/checklist-pruebas-juego.md: cualquier oferta/decisión debe sobrevivir a F5). Fix: nuevo
+/// docs/registros/checklist-pruebas-juego.md: cualquier oferta/decisión debe sobrevivir a F5). Fix: nuevo
 /// campo `NpcState.targetedForKill`, nuevo endpoint aquí probado, y `detail.ts` lo propaga en
 /// `combateIniciado.npcs[].targetedForKill` para que el frontend lo lea ya resuelto tras recargar.
 describe('POST /saves/:id/combat/matar/:npcSlug', () => {

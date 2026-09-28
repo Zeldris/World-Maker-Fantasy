@@ -312,7 +312,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
   }, 30_000);
 
-  // Objetivo individual real (2026-08-26, docs/21-roadmap.md § Fase 3) — cablea `esperandoEleccionJugadora`/
+  // Objetivo individual real (2026-08-26, docs/producto/21-roadmap.md § Fase 3) — cablea `esperandoEleccionJugadora`/
   // `fijarEleccionRondaJugador` de punta a punta contra Postgres real: mientras la ronda está
   // esperando, NINGÚN turno se resuelve (ni el suyo ni los autónomos); en cuanto se fija su
   // elección, el encuentro queda libre para resolverse. Deliberadamente 1 vs. 1 (nada de un
@@ -414,7 +414,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     await prisma.save.update({ where: { id: saveId }, data: { activeEffects: [], condicionFisica: 'ILESO', energia: 100 } });
   }, 30_000);
 
-  // Fase 3 § 3a de efectos de clase (2026-08-27, docs/21-roadmap.md) — cierra el hueco de Fase 2:
+  // Fase 3 § 3a de efectos de clase (2026-08-27, docs/producto/21-roadmap.md) — cierra el hueco de Fase 2:
   // `combateMultipleOrquestacion.ts` no leía/aplicaba `activeEffects` en absoluto hasta ahora.
   it('activeEffects: un efecto ya activo en Save se lee (afecta el intercambio) y se decrementa tras un intercambio real', async () => {
     await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'ILESO', energia: 100 } });
@@ -794,7 +794,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     }
   }, 30_000);
 
-  // AUMENTO real, camino independiente (2026-09-15, docs/rpgtarkor/clases.md — Guardián 32, Valor
+  // AUMENTO real, camino independiente (2026-09-15, docs/rpgtarkor/sistemas-combate/clases.md — Guardián 32, Valor
   // Compartido) — a diferencia de Vínculo Salvaje/Grito Animal (rol ataque, margen decisivo), Valor
   // Compartido es rol utilidad: dispara por `utilityTriggered` (exige que el RIVAL de este
   // intercambio sea rol ataque), no por margen decisivo. `durationEffectTarget:'companion'`
@@ -1447,7 +1447,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
   }, 30_000);
 
-  // Fase 3 § 3b de efectos de clase (2026-08-27, docs/21-roadmap.md) — MULTIPLE real.
+  // Fase 3 § 3b de efectos de clase (2026-08-27, docs/producto/21-roadmap.md) — MULTIPLE real.
   it('MULTIPLE: un golpe decisivo con ATAQUE+MULTIPLE también alcanza a un segundo enemigo del mismo bando', async () => {
     await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'ILESO', energia: 100, activeEffects: [] } });
     const [enemigoPrincipal, enemigoExtra] = await Promise.all([
@@ -1517,7 +1517,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
   }, 30_000);
 
-  // Fase 3 § 3c de efectos de clase (2026-08-27, docs/21-roadmap.md) — DESVIAR real.
+  // Fase 3 § 3c de efectos de clase (2026-08-27, docs/producto/21-roadmap.md) — DESVIAR real.
   it('DESVIAR: la defensora gana por margen decisivo -> el golpe entrante se redirige a un aliado del atacante', async () => {
     await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'ILESO', energia: 100, activeEffects: [] } });
     const saveOriginal = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
@@ -1725,7 +1725,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     }
   }, 30_000);
 
-  // Alfa de la Manada real (2026-09-14, docs/rpgtarkor/clases.md — Domador 40) — `datosVivosDe`
+  // Alfa de la Manada real (2026-09-14, docs/rpgtarkor/sistemas-combate/clases.md — Domador 40) — `datosVivosDe`
   // aplica `alfaDeLaManadaBonusFor` ANTES de la tirada real cuando `Companion.esSlotDomador` y hay
   // 2 slots de Domador ocupados en la partida. Comparación directa: MISMO escenario (mismo rival,
   // mismo roll fijo), una vez con un solo slot ocupado (sin buff) y otra con 2 (+2 fuerza al Alfa)
@@ -2086,7 +2086,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
   }, 30_000);
 
-  // PROVOCACION real (2026-09-14, docs/rpgtarkor/clases.md — Guardián 16/19, Lancero 32,
+  // PROVOCACION real (2026-09-14, docs/rpgtarkor/sistemas-combate/clases.md — Guardián 16/19, Lancero 32,
   // Especialista 28, Caballero del Valor 12) — variante simple: quien la dispara provoca al RIVAL
   // de ESTE intercambio, marcando `provocadoPorRondas`/`provocadoPorId` sobre él. Se comprueba que
   // el enganche de la RONDA SIGUIENTE respeta la provocación (el provocado ataca forzosamente al
@@ -2385,7 +2385,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     }
   }, 30_000);
 
-  // CANALIZAR real en combate múltiple (2026-09-14, docs/rpgtarkor/clases.md — Tirador 24,
+  // CANALIZAR real en combate múltiple (2026-09-14, docs/rpgtarkor/sistemas-combate/clases.md — Tirador 24,
   // Berserker 40, Convocador 40) — mismo mecanismo ya construido para el 1v1 clásico
   // (turnResolution.ts), portado a `CombatParticipant.canalizando` porque aquí el objetivo real es
   // quien te tenga enganchado esa ronda, no un NPC fijo. CASO EMPEZAR: consume el turno entero,
@@ -2483,7 +2483,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
   }, 30_000);
 
-  // MARCAR real (2026-09-14, docs/rpgtarkor/clases.md — Domador 24, Concentración del Domador) —
+  // MARCAR real (2026-09-14, docs/rpgtarkor/sistemas-combate/clases.md — Domador 24, Concentración del Domador) —
   // mecanismo INVERSO a PROVOCACION: aquí la JUGADORA ordena a SU PROPIO Companion que ataque
   // preferentemente a un rival concreto, saltándose su IA normal de Inteligencia
   // (`elegirObjetivoPara`, combateMultiple.ts). Dos NPC en escena (uno marcado, otro no) para
@@ -2626,7 +2626,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
   }, 30_000);
 
-  // AREA real (2026-09-14, docs/rpgtarkor/clases.md — Opresor 32/36) — variante ofensiva: mismo
+  // AREA real (2026-09-14, docs/rpgtarkor/sistemas-combate/clases.md — Opresor 32/36) — variante ofensiva: mismo
   // gate que MULTIPLE (margen decisivo, ATAQUE+AREA) pero SIN tope de cantidad, alcanza a TODOS los
   // vivos del bando contrario al defensor, no solo un segundo objetivo. 3 NPC enemigos en escena
   // para distinguirlo de MULTIPLE (que solo cubriría 2 de los 3).
@@ -2785,7 +2785,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
   }, 30_000);
 
-  // AREA real (2026-09-14, docs/rpgtarkor/clases.md — Instintivo 28, Instinto de Reserva) —
+  // AREA real (2026-09-14, docs/rpgtarkor/sistemas-combate/clases.md — Instintivo 28, Instinto de Reserva) —
   // variante defensiva: mientras `areaDefensaPorRondas > 0` sobre el Companion, el golpe dirigido a
   // la jugadora se redirige a él (`redirigirPorAreaDefensiva`), que se defiende con SU propia
   // tirada. `areaDefensaPorRondas` forzado a mano (en vez de disparar la activación real vía
@@ -2841,7 +2841,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
   }, 30_000);
 
-  // AREA real (2026-09-14, docs/rpgtarkor/clases.md — Supervivencia 32, Trampa Improvisada) —
+  // AREA real (2026-09-14, docs/rpgtarkor/sistemas-combate/clases.md — Supervivencia 32, Trampa Improvisada) —
   // variante persistente: coloca la trampa (activa `areaTrampaPorRondas` sobre sí misma, camino
   // independiente/utilidad) y, mientras esté viva, cualquier intercambio donde defienda refuerza el
   // contragolpe con `iniciativaForzada` (ATURDIMIENTO), sin importar qué habilidad de defensa use

@@ -3,7 +3,7 @@ import { prisma } from '../../lib/prisma.js';
 import { rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 
 /// CRUD de `OrdenProduccion` (hueco B, rediseño de Producción estilo Bellwright, 2026-09-21,
-/// docs/rpgtarkor/mundo-vivo-x4.md § 4.4-ter) — el motor de tick (`kingdomProduction.ts`,
+/// docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.4-ter) — el motor de tick (`kingdomProduction.ts`,
 /// `tickOrdenesProduccion`, ya enganchado en turnResolution.ts) corre cada día de ficción, pero
 /// hasta ahora no existía NINGUNA forma de crear/editar una orden real desde el cliente. Sin
 /// filtrado de recetas por tipo de `Building` a propósito (decisión confirmada con Álvaro,

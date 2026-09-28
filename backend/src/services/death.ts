@@ -1,6 +1,6 @@
 import type { CondicionFisica, Dificultad, AbilityEffect } from '@prisma/client';
 
-/// Muerte, respawn y condición física (docs/14-combate-y-muerte.md § 1, § 4) — todo determinista,
+/// Muerte, respawn y condición física (docs/mecanicas/14-combate-y-muerte.md § 1, § 4) — todo determinista,
 /// sin IA: el modelo nunca decide si el fin de partida se dispara ni qué susurra la Entidad,
 /// igual que nunca decide si una tirada tiene éxito (mismo espíritu que progression.ts).
 
@@ -28,7 +28,7 @@ export const CONDICIONES_INTERACTUABLE: CondicionFisica[] = CONDICION_ORDER.slic
 /// usuaria: sigue pudiendo intentarlo, pero MUY penalizado — no un tope duro (eso lo pidió para
 /// otra cosa), un malus real. MUERTO se queda en 0: no llega a pelear otro turno (ver
 /// `finDePartida`/respawn en turnResolution.ts), el valor es irrelevante ahí.
-/// Recuperación/desaparición por tiempo (docs/19-post-combate-y-recompensas-mision.md pieza 2,
+/// Recuperación/desaparición por tiempo (docs/mecanicas/19-post-combate-y-recompensas-mision.md pieza 2,
 /// 2026-08-13, decisión explícita de la usuaria) — puro: dado cuándo cambió por última vez
 /// `condicionFisica` (`NpcState.condicionFisicaSinceMinutes`, en minutos de FICCIÓN, no reales) y
 /// el minuto de ficción actual, decide si toca revertir/despachar. La escritura real en DB vive en
@@ -202,7 +202,7 @@ export function oneStepWorseThan(current: CondicionFisica): CondicionFisica {
   return CONDICION_ORDER[Math.min(idx + 1, CONDICION_ORDER.length - 1)];
 }
 
-/// `CURAZION` real (2026-09-15, docs/rpgtarkor/clases.md — Segador Parca/Transmutador, Especialista
+/// `CURAZION` real (2026-09-15, docs/rpgtarkor/sistemas-combate/clases.md — Segador Parca/Transmutador, Especialista
 /// 40) — un escalón MEJOR que `current` (tope en ILESO), inverso exacto de `oneStepWorseThan`.
 /// MUERTO nunca mejora por esta vía (mismo criterio que el resto del motor: la muerte es un estado
 /// terminal dentro de un combate en curso, solo el respawn la revierte). Simplificación consciente:
@@ -286,7 +286,7 @@ export function resolveDeathOutcome(dificultad: Dificultad, deathCountBefore: nu
 }
 
 /// § 4.3 paso 5: el susurro de la Entidad Desconocida — determinista, nunca generado por el
-/// modelo grande (docs/rpgtarkor/genesis.md: la misma Entidad que le susurra dudas a Tarkor).
+/// modelo grande (docs/rpgtarkor/lore-mundo/genesis.md: la misma Entidad que le susurra dudas a Tarkor).
 ///
 /// Muerte permanente, botón Aceptar/Reintentar (2026-08-31, petición explícita) — separado de
 /// `awakensText` (antes era un único texto con la ubicación de respawn ya decidida): en el

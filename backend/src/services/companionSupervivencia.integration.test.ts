@@ -108,7 +108,7 @@ describe('advancePlayerSurvival', () => {
   });
 });
 
-/// Cobertura nueva (docs/rpgtarkor/mundo-vivo-x4.md § 5-bis punto 11, 2026-09-21) — mismo criterio
+/// Cobertura nueva (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 5-bis punto 11, 2026-09-21) — mismo criterio
 /// de integración real que `advancePlayerSurvival` de arriba: corre en producción cada tick de
 /// mundo real (`workers/worldTick.ts`), coexistiendo a propósito con `applyCondicionTimeouts`
 /// (turnResolution.ts, dentro del turno síncrono).

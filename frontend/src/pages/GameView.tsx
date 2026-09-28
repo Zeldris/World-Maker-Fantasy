@@ -125,7 +125,7 @@ import type {
   SkillBarInfo,
 } from '../types'
 
-/// Combina los adjuntos del composer con el texto libre en una única acción (docs/14-combate-y-muerte.md
+/// Combina los adjuntos del composer con el texto libre en una única acción (docs/mecanicas/14-combate-y-muerte.md
 /// § 3: "composición verbo + objetivo"). Una habilidad (verbo) emparejada con un NPC o un hallazgo
 /// (objetivo) en la misma tanda se combina como "{promptText} '{nombre del objetivo}'." — los
 /// prompts de habilidad ya están en primera persona con el enemigo implícito ("mi enemigo"), así

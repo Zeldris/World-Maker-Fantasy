@@ -1,4 +1,4 @@
-/// Decisión técnica 5 (docs/04-decisiones-tecnicas.md): todas las llamadas a Ollama pasan por
+/// Decisión técnica 5 (docs/arquitectura/04-decisiones-tecnicas.md): todas las llamadas a Ollama pasan por
 /// esta cola con concurrencia 1 — nunca dos generaciones a la vez, para no saturar el hardware local.
 ///
 /// Bug real (2026-08-31, investigado tras un cuelgue reproducido jugando): el `timeoutMs`/

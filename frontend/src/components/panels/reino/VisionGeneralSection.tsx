@@ -57,7 +57,7 @@ interface VisionGeneralSectionProps {
   onRefreshSave: () => Promise<void>
 }
 
-/// Sub-tab "Visión general" del Reino (rediseño 2026-09-21, docs/rpgtarkor/mundo-vivo-x4.md) —
+/// Sub-tab "Visión general" del Reino (rediseño 2026-09-21, docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md) —
 /// extraído de `ReinoPanel.tsx` (antes lista plana única de 677 líneas), primera sub-pestaña de 5.
 /// Contenido sin cambios funcionales: nombre de reino/aviso de fundación, Economía, Territorios (con
 /// su leyenda de estados), y "Descansar en campamento" (acción transversal, no pertenece a ningún

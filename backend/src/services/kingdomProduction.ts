@@ -6,7 +6,7 @@ import { nivelEdificioRequeridoParaTier } from './construction.js';
 import { oneStepBetterThan } from './death.js';
 import type { CondicionFisica } from '@prisma/client';
 
-/// Panel de Reino real (docs/rpgtarkor/mundo-vivo-x4.md § 4.4-ter, 2026-09-21) — TICK puro de
+/// Panel de Reino real (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.4-ter, 2026-09-21) — TICK puro de
 /// `OrdenProduccion`, hermano de `kingdomTick.ts` (mismo criterio: determinista, cero IA, aplicado
 /// una vez por día de ficción cruzado desde el MISMO bloque `if (diasCruzados > 0)` de
 /// turnResolution.ts). Cubre TANTO recolección (receta sin `ingredients`) como crafteo (receta con

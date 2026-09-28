@@ -85,7 +85,7 @@ describe('Entregar objeto a NPC (2026-08-31)', () => {
     expect(body.logEntry.text).toContain('Cuchillo de hielo sílice');
     expect(body.logEntry.text).toContain('Aullador Rojo');
 
-    // Bug real que este endpoint corrige (docs/revisar-partida-hallazgos.md, 2026-08-28): el
+    // Bug real que este endpoint corrige (docs/registros/revisar-partida-hallazgos.md, 2026-08-28): el
     // objeto reaparecía en el inventario en turnos posteriores porque nunca se retiraba de verdad.
     const remaining = await prisma.inventoryItem.findUnique({ where: { id: itemId } });
     expect(remaining).toBeNull();

@@ -41,7 +41,7 @@ export function zonePointColorFor(factionSlug: string | null, factionsStatus: Re
   return 'NEUTRO';
 }
 
-/// Dinamismo del mundo, Pieza 3 (2026-08-27, docs/21-roadmap.md) — `ZonePoint` como instancia viva:
+/// Dinamismo del mundo, Pieza 3 (2026-08-27, docs/producto/21-roadmap.md) — `ZonePoint` como instancia viva:
 /// recalcula proporcionalmente al tiempo de ficción que YA pasó desde la última vez que se tocó
 /// este punto, disparado por cada turno real del jugador (nunca tiempo real de pared, nunca
 /// pre-cómputo — decisión explícita, ver plan de sesión). Una acción corta mueve poco (fracción de

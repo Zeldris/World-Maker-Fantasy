@@ -9,7 +9,7 @@ import { effectiveAttributes, effectiveSecondaryAttributes } from '../../service
 import { normalizeSecondaryAttributes } from '../../services/secondaryAttributes.js';
 import type { AttributeBlock } from '../../services/dice.js';
 
-/// Concepto de "parcela" estilo Travian/Tribal Wars (docs/rpgtarkor/mundo-vivo-x4.md § 7.4,
+/// Concepto de "parcela" estilo Travian/Tribal Wars (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4,
 /// 2026-09-21) — hueco de construcción marcado a priori en el PNG de una zona-interior. Flujo
 /// real cerrado con Álvaro: te mueves hasta estar a 1 celda de la parcela, clic en su icono abre
 /// un modal con su descripción y un botón "Construir" (habilitado/deshabilitado según se cumplan

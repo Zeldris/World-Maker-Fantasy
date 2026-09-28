@@ -1,7 +1,7 @@
 # Roadmap — Tarkor (auditoría, 2026-07-18)
 
 **ARCHIVADO (2026-08-13, auditoría de documentación):** este documento ya es, en su gran mayoría,
-puro historial — el detalle vivo de bugs/hallazgos vive en `docs/revisar-partida-hallazgos.md`, y
+puro historial — el detalle vivo de bugs/hallazgos vive en `docs/registros/revisar-partida-hallazgos.md`, y
 el diseño vigente de cada sistema vive en su propio doc numerado (05-19). Movido a `docs/archivo/`
 para que deje de leerse como "el roadmap activo" del proyecto. Se conserva sin tocar por valor de
 historial — no es fuente de verdad de nada a día de hoy.
@@ -38,7 +38,7 @@ ampliar contenido.
 **Actualización (2026-08-07):** el catálogo de Profesiones (único pendiente real que quedaba del
 punto de abajo, aparte del benchmark de `llama3.2` y las líneas pausadas) queda cerrado — ver
 [09-panel-personaje.md](../mecanicas/09-panel-personaje.md) § 8 y la memoria del rediseño (recolectoras vs
-creadoras, capacidad de inventario real, `docs/16-poblacion-dinamica.md` § 3.5 para el pop-up de
+creadoras, capacidad de inventario real, `docs/mecanicas/16-poblacion-dinamica.md` § 3.5 para el pop-up de
 recolección). Misma sesión: auditoría de código completa (back+front) con 5 bugs reales
 arreglados y un candado de turno nuevo que cierra dos condiciones de carrera del motor de turnos.
 
@@ -54,10 +54,10 @@ mundo que también reduzcan población sin intervención directa de la jugadora 
 **Actualización (2026-08-02):** repasado archivo por archivo junto con el resto de `docs/*.md` a
 petición de la usuaria ("actualiza los .md") — de todo lo listado abajo, solo quedan genuinamente
 abiertos: el benchmark de `llama3.2` (3B, punto 12), el catálogo de Profesiones (ver
-`docs/09-panel-personaje.md` § 8), y las líneas explícitamente pausadas (Multijugador, lore de los
+`docs/mecanicas/09-panel-personaje.md` § 8), y las líneas explícitamente pausadas (Multijugador, lore de los
 otros 7 personajes, Reino). Todo lo demás de este documento ya está hecho — se deja tachado por
 historial, no como pendiente real. El detalle vivo de bugs encontrados jugando vive ahora en
-`docs/revisar-partida-hallazgos.md`, no aquí.
+`docs/registros/revisar-partida-hallazgos.md`, no aquí.
 
 **Actualización (2026-07-19): roadmap consolidado más reciente vive en memoria, no en este archivo.** Tras esta auditoría se hicieron 5 pasadas más con Fable (calibración de combate, NpcState/Salud, mecánicas de juego orientadas a "ponérselo fácil a la IA", y velocidad/latencia), fusionadas en un único orden de prioridad — ver la memoria `project-tarkor-roadmap-final` (o preguntar a Claude por "el roadmap final consolidado"). Alcance fijado ese día: **centrarse en 1h de partida jugable con exploración y combate; Reino/gobierno queda pausado.** Todo lo de abajo sigue siendo historial correcto de lo cerrado hasta el 2026-07-18.
 
@@ -67,7 +67,7 @@ historial, no como pendiente real. El detalle vivo de bugs encontrados jugando v
 
 **Actualización (2026-07-18, sesión posterior): `docs/12` implementado y verificado en vivo** — ver su § 7 para el detalle completo. `docs/13` sigue siendo solo referencia editorial (no bloquea nada de código).
 
-**Actualización (2026-07-18, misma sesión, continuación): `docs/14-combate-y-muerte.md` también implementado** — ver su § 6. Condición física, combate en popup, revelado progresivo y muerte/respawn con la Entidad Desconocida, verificados en profundidad: el flujo de muerte/respawn (game over y respawn con aviso) se verificó de verdad replicando el bloque de `turnResolution.ts` contra la DB real (sin depender de que Ollama devuelva "MUERTO"), y el flujo de combate (`enCombate`, escalado de condición física) se verificó con turnos reales — un primer intento chocó con el cuelgue intermitente ya conocido del motor de gramática de Ollama (no relacionado con estos cambios), un reintento idéntico funcionó perfectamente. Con esto, **las tres líneas de trabajo grandes abiertas la sesión anterior (`docs/12`, `docs/13`, `docs/14`) quedan cerradas**.
+**Actualización (2026-07-18, misma sesión, continuación): `docs/mecanicas/14-combate-y-muerte.md` también implementado** — ver su § 6. Condición física, combate en popup, revelado progresivo y muerte/respawn con la Entidad Desconocida, verificados en profundidad: el flujo de muerte/respawn (game over y respawn con aviso) se verificó de verdad replicando el bloque de `turnResolution.ts` contra la DB real (sin depender de que Ollama devuelva "MUERTO"), y el flujo de combate (`enCombate`, escalado de condición física) se verificó con turnos reales — un primer intento chocó con el cuelgue intermitente ya conocido del motor de gramática de Ollama (no relacionado con estos cambios), un reintento idéntico funcionó perfectamente. Con esto, **las tres líneas de trabajo grandes abiertas la sesión anterior (`docs/12`, `docs/13`, `docs/14`) quedan cerradas**.
 
 **Actualización (2026-07-18, misma sesión, continuación): secciones 2 y 3 de este roadmap también cerradas.** Agenda del mundo (decisión: no se construye, superseded por `/entorno`), Misiones (`Quest` implementado y verificado), `SessionSummary`/capítulos automáticos (implementado y verificado) y tests automatizados (51 tests con vitest) — todos hechos. Solo quedan abiertos: validar `reino_events` jugando de verdad, benchmark de `llama3.2` como Cronista, y las 12 preguntas de Multijugador (pausadas a propósito).
 
@@ -98,7 +98,7 @@ Es coherente con que Gorhorn es el único personaje jugado hasta ahora, pero en 
 5. ~~**Condición física**~~ — **hecho** (2026-07-18): implementada junto con el resto de [14-combate-y-muerte.md](../mecanicas/14-combate-y-muerte.md) (combate, muerte, descanso).
 6. ~~**`WorldState.agenda` nunca se resuelve**~~ — **decisión tomada (2026-07-18)**: no se construye. El panel "El mundo" (`entorno.ts`) ya cubre esa necesidad con ambientación periódica + evento probabilístico (25%), y nada ha escrito nunca en `agenda`. Construir un resolutor para una cola sin productor no aporta nada — el campo queda reservado sin uso hasta que exista contenido real de agenda que justificarlo (ver comentario ampliado en `worldTick.ts`).
 7. ~~**Misiones**~~ — **hecho** (2026-07-18): modelo `Quest` nuevo (mismo patrón que Reino — `newQuest`/`questProgress` en `narrador.ts`, materializado en `turnResolution.ts`), `MisionesPanel.tsx` en el frontend. Verificado en vivo (crear + consultar).
-8. ~~**Validar `reino_events` con Ollama de verdad**~~ — hecho: `newTerritory`/`newBuilding`/`newSubject` funcionan con fiabilidad razonable en juego real (reino "Maktor" fundado y jugado en vivo, 2026-08-07), Reino dejó de estar pausado (reglas de construcción `docs/17`, 2026-08-04; economía/recetas en tiempo real, 2026-08-13) — ver nota de reconciliación pendiente en `docs/10-niveles-xp-reino.md` § 9 punto 8.
+8. ~~**Validar `reino_events` con Ollama de verdad**~~ — hecho: `newTerritory`/`newBuilding`/`newSubject` funcionan con fiabilidad razonable en juego real (reino "Maktor" fundado y jugado en vivo, 2026-08-07), Reino dejó de estar pausado (reglas de construcción `docs/17`, 2026-08-04; economía/recetas en tiempo real, 2026-08-13) — ver nota de reconciliación pendiente en `docs/mecanicas/10-niveles-xp-reino.md` § 9 punto 8.
 
 ## 3. Higiene técnica, sin prisa
 
@@ -109,7 +109,7 @@ Es coherente con que Gorhorn es el único personaje jugado hasta ahora, pero en 
 
 ## 4. Pausado a propósito (no tocar todavía)
 
-- Las 12 preguntas del modo Multijugador (`docs/02-decisiones.md`, P0-P3) — explícitamente pausadas hasta que el modo en solitario esté maduro.
+- Las 12 preguntas del modo Multijugador (`docs/producto/02-decisiones.md`, P0-P3) — explícitamente pausadas hasta que el modo en solitario esté maduro.
 
 ---
 

@@ -11,7 +11,7 @@ punta el día siguiente al diseño): captura+jaula, tameo/persuasión con tirada
 abajo), Felicidad, slot garantizado del Domador, Hambre/Sed de compañero y de la propia jugadora,
 equipo de compañero, Almacén de Reino + Plantillas de equipo. Única excepción real, dejada fuera A
 PROPÓSITO: **muerte por inanición** (ver nota de § 5 más abajo — el tope real hoy es CONVALECIENTE,
-nunca MUERTO). Referencia cruzada obligada con `docs/17-reglas-construcciones-reino.md` (slots de
+nunca MUERTO). Referencia cruzada obligada con `docs/mecanicas/17-reglas-construcciones-reino.md` (slots de
 compañero por edificio) y [combate-multiple.md](../sistemas-combate/combate-multiple.md) — un compañero ya lucha de
 verdad a tu lado en combate (`Companion.attributes`, aplicado el mismo día que ese sistema).*
 
@@ -49,7 +49,7 @@ en combate de verdad, nunca un chollo gratis por sorpresa. Coherente con que sol
 son "tocables" en el resto del motor.
 
 **Ítem real: `cuerdas`, no `trampa-de-lazo`** (corregido 2026-08-26 — ver
-`docs/21-roadmap.md` § "CONVALECIENTE deja de significar victoria automática"). El diseño original
+`docs/producto/21-roadmap.md` § "CONVALECIENTE deja de significar victoria automática"). El diseño original
 de este punto (2026-08-24) reutilizaba `trampa-de-lazo` ("Trampa de lazo de tendón", equipable, no se
 gastaba nunca) — al construir de verdad el botón "Capturar" de la tarjeta Matar/Capturar/Clemente se
 sustituyó por `cuerdas` (material consumible, receta con 2 fibra para `carpintero-orcos-llanuras` y

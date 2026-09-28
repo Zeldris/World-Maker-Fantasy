@@ -55,7 +55,7 @@ interface ReinoPanelProps {
   onSubTabChange: (tab: ReinoSubTab) => void
 }
 
-/// Cascarón de sub-tabs del Reino (rediseño 2026-09-21, docs/rpgtarkor/mundo-vivo-x4.md) —
+/// Cascarón de sub-tabs del Reino (rediseño 2026-09-21, docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md) —
 /// reestructurado de una lista plana de 6+ secciones (677 líneas en un solo archivo) a 5
 /// sub-pestañas, mismo patrón exacto que `PersonajePanel.tsx`. Auditoría de friendliness
 /// (2026-09-21): el scroll único mezclaba Economía/Territorios/Edificios/Súbditos/Almacén/
@@ -88,7 +88,7 @@ export function ReinoPanel({
     // Auditoría de UX (2026-09-08): a diferencia de Compañeros/Reputación (mismo componente
     // `PanelEmptyState`), este hint solo mostraba la frase de motivación del personaje cuando
     // existía — evocador, pero sin ninguna pista práctica de cómo llegar a tener un Reino. Se
-    // añade la pista real (construir un Ayuntamiento, docs/17-reglas-construcciones-reino.md)
+    // añade la pista real (construir un Ayuntamiento, docs/mecanicas/17-reglas-construcciones-reino.md)
     // detrás de la motivación en vez de sustituirla, para no perder el sabor narrativo.
     const practicalHint = 'Construye un Ayuntamiento para fundar tu reino.'
     return (

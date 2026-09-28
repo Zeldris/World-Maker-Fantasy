@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { abilityUnlocksAlSubirANivel, especializacionAbilityUnlocksFor, classAbilityUnlocksFor, allClassAbilityUnlocks, classAbilityUnlocksForClase, especializacionesConHuecosPara, resumenMecanicoEspecializacion, claseDeEspecializacion, clasesPermitidasParaRaza } from './classAbilities.js';
 
 // Cobertura nueva (auditoría 2026-08-03, "análisis completo backend/frontend"). Reescrita
-// 2026-08-24 (Grupo 3 § Sistema de clases, docs/rpgtarkor/clases.md): el roster pasa de listas
+// 2026-08-24 (Grupo 3 § Sistema de clases, docs/rpgtarkor/sistemas-combate/clases.md): el roster pasa de listas
 // planas por clase (4 Guerrero + 3 Cazador, todo tronco) a tronco común + especializaciones reales
 // para GUERRERO/CAZADOR/CHAMAN — 33 huecos en total, los únicos "✅ lista" del doc verificados
 // efecto a efecto contra el motor real. "Compañero cazador" (antes nivel 8 de Cazador) se reasignó
@@ -73,7 +73,7 @@ describe('classAbilityUnlocksForClase', () => {
     expect(classAbilityUnlocksForClase('CHAMAN')).toHaveLength(3);
   });
 
-  // Auditoría 2026-08-31 (docs/rpgtarkor/clases.md sincronizado contra classAbilities.ts real):
+  // Auditoría 2026-08-31 (docs/rpgtarkor/sistemas-combate/clases.md sincronizado contra classAbilities.ts real):
   // varias habilidades ya bloqueadas en el documento resultaron sembrables sin tocar motor —
   // DEBILIDAD/AUMENTO/CONTRA/MULTIPLE ya funcionan en ataque Y en defensa del jugador (confirmado
   // leyendo turnResolution.ts, no solo asumido). De paso, 2 bugs de siembra reales corregidos:
@@ -173,7 +173,7 @@ describe('resumenMecanicoEspecializacion', () => {
     expect(resumenMecanicoEspecializacion('GUERRERO', 'TIRADOR')).toBe('Sin habilidades propias construidas todavía.');
   });
 
-  it('menciona el atributo real de las habilidades de Berserker (fuerza/carisma, docs/rpgtarkor/clases.md)', () => {
+  it('menciona el atributo real de las habilidades de Berserker (fuerza/carisma, docs/rpgtarkor/sistemas-combate/clases.md)', () => {
     const resumen = resumenMecanicoEspecializacion('GUERRERO', 'BERSERKER');
     expect(resumen).toMatch(/Fuerza|Carisma/);
   });

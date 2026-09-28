@@ -194,7 +194,7 @@ export function useTurnFlow(params: UseTurnFlowParams) {
       const { classification, roll, travel } = classifyResult
 
       if (classifyResult.blocked) {
-        // Validador de "grounding" de la acción del jugador (docs/18-validacion-accion-jugador.md)
+        // Validador de "grounding" de la acción del jugador (docs/mecanicas/18-validacion-accion-jugador.md)
         // — el backend ya resolvió el turno (persistió acción + respuesta determinista en el log)
         // sin pasar por /turn/narrate. `resolveBlockedTurn` (turn.ts) no toca nada más del `Save`
         // aparte de los 2 `LogEntry` ya persistidos — la propia acción del jugador ya vive en

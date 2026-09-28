@@ -530,12 +530,12 @@ archivos, reproducido igual con y sin este cambio — no relacionado con el mode
 ## Pendientes
 
 *(Actualizado 2026-08-02 — este archivo documenta decisiones del arranque del proyecto (2026-07-16),
-muy anterior a la migración local-first a Postgres/podman (2026-07-30, ver `docs/15-instalacion.md`)
+muy anterior a la migración local-first a Postgres/podman (2026-07-30, ver `docs/arquitectura/15-instalacion.md`)
 y a todo el motor de turnos/combate actual. Los puntos 1 y 3 llevan meses hechos; se dejan tachados
 por historial, no como pendiente real.)*
 
 Preguntas técnicas que quedaron abiertas en [03-arquitectura.md](03-arquitectura.md) y que aún no se han cerrado:
 
-1. ~~Esquema exacto de las tablas de Postgres~~ — **hecho**, ver `backend/prisma/schema.prisma` (el datasource remoto de Supabase de la nota de arriba fue sustituido por Postgres local vía podman, ver `docs/15-instalacion.md`).
+1. ~~Esquema exacto de las tablas de Postgres~~ — **hecho**, ver `backend/prisma/schema.prisma` (el datasource remoto de Supabase de la nota de arriba fue sustituido por Postgres local vía podman, ver `docs/arquitectura/15-instalacion.md`).
 2. ~~Benchmark real del Narrador (qwen2.5:7b)~~ — **hecho**, ver decisión 10. La comparación pendiente con `llama3.2:latest` (3B) para el Cronista/fallback quedó **obsoleta, no solo sin medir**: `llama3.2` nunca llegó a usarse — el Cronista/clasificador de producción es `qwen2.5:1.5b-instruct` (ver la nota de actualización 2026-08-11 en [03-arquitectura.md](03-arquitectura.md) § 1).
 3. ~~Construir el servicio de tiradas y la orquestación de turno~~ — **hecho**, `backend/src/services/dice.ts` + `backend/src/routes/turn.ts` + `backend/src/services/turnResolution.ts` (motor de combate/exploración completo, muy por encima del alcance original de este punto).

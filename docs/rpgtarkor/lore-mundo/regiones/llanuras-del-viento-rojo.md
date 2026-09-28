@@ -284,7 +284,7 @@ cocinero y pescador) hay un **Maestro `<Oficio>` Serhu** (PRINCIPAL, único, ens
 cumpla la reputación mínima y una misión propia todavía por definir; protegido, no capturable). Los
 12 están sembrados. Se ha diseñado también un **`<Oficio>` Serhu** trabajador (PLANTILLA, capturable
 o reclutable, que produciría ese recurso para el Reino del jugador), pero todavía no existe para
-ninguno de los 12 (ver `docs/21-roadmap.md` § Trabajador de Reino).
+ninguno de los 12 (ver `docs/producto/21-roadmap.md` § Trabajador de Reino).
 
 ### Kegi y el Vergel de la Arena
 *Asentamiento Faerus · franja sur · Catálogo: `yegr-kegi` (Vergel), `jakut-ger-interior` (interior).*
@@ -1022,7 +1022,7 @@ investigadora que sus descendientes de hoy, los Nabieus, siguen llevando en la s
 - 2026-07-22: ampliación del núcleo hacia el este (Pastos) y el noreste (Filo).
 - 2026-08-03: calibración de la posición del Cruce de las Cenizas en el mapa de Azgaar. Solo cambió
   su posición visual en `frontend/src/data/map.ts`; la distancia real para tiempos de viaje sigue
-  siendo la triangulada (ver `docs/13-escala-del-mundo.md` § 1.1).
+  siendo la triangulada (ver `docs/mecanicas/13-escala-del-mundo.md` § 1.1).
 - 2026-08-05: tercera ampliación (sabana, fosa, costa norte y desierto Nabierus).
 - 2026-08-21: repaso zona por zona (Hondonada, Pilares, Pozo, Cruce, Osario, Agujas, Manaderos,
   Pastos, Filo). Los Restos de Maktor se quedan sin recursos a propósito: se retiran el Juguete de

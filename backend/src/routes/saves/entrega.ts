@@ -8,7 +8,7 @@ import { CONDICIONES_INTERACTUABLE } from '../../services/death.js';
 /// coherencia `hasFalseItemGivenAway`, narrador.ts: bloqueaba que la narración PROMETIERA una
 /// entrega, pero ningún InventoryItem se retiraba nunca, sin ningún camino real de cumplirla).
 ///
-/// Mismo patrón que Capturar (`companeros.ts`, docs/rpgtarkor/captura-rediseno-2026-08-28.md):
+/// Mismo patrón que Capturar (`companeros.ts`, docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md):
 /// mutación 100% determinista sin narración de por medio, endpoint dedicado propio, botón en el
 /// frontend en vez de detección de texto libre (decisión explícita: dos referencias a resolver a
 /// la vez — objeto Y NPC — hacían frágil el matching por comillas simples que usa `explicitTarget`

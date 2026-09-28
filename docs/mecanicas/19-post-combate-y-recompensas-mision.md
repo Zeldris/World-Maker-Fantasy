@@ -8,7 +8,7 @@ ahora" al preguntar por el alcance de la pieza 2). **Las 5 piezas implementadas 
 ## Contexto
 
 Surgió investigando el bug de resurrección del Orco Enfurecido (ver
-`docs/revisar-partida-hallazgos.md` § "2026-08-12 — Orco Enfurecido (ya MUERTO) narrado atacando
+`docs/registros/revisar-partida-hallazgos.md` § "2026-08-12 — Orco Enfurecido (ya MUERTO) narrado atacando
 a Gorhorn..."). La usuaria propuso 5 ideas relacionadas; una es un malentendido (ver abajo), cuatro
 son piezas de trabajo reales y distintas entre sí.
 
@@ -71,7 +71,7 @@ vista tipo "Victoria" de `CombatPanel.tsx` pero SIN el texto de victoria: la fic
 Necesita, además del mecanismo de tiempo:
 - Nuevos campos en `NpcState`: marca de tiempo de ficción de cuándo quedó CONVALECIENTE (para la
   regla a) y de cuándo quedó MUERTO (para la regla b) — requiere migración de schema (SQL a mano,
-  nunca `prisma migrate dev`, ver docs/15-instalacion.md).
+  nunca `prisma migrate dev`, ver docs/arquitectura/15-instalacion.md).
 - Comprobación en cada turno/tick contra `fictionalMinutes` actual (mismo tipo de chequeo que ya
   hace `worldTick.ts` para tránsitos) — candidato natural: el mismo sitio que ya recorre NPCs en
   escena, o un paso nuevo en `worldTick.ts`.

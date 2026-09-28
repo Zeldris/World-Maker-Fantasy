@@ -1911,7 +1911,7 @@ describe('deterministicFallbackNarration', () => {
   });
 });
 
-describe('buildNarrationPrompt — narrar inconsciencia (docs/19-post-combate-y-recompensas-mision.md, pieza 1)', () => {
+describe('buildNarrationPrompt — narrar inconsciencia (docs/mecanicas/19-post-combate-y-recompensas-mision.md, pieza 1)', () => {
   const baseCtx = { worldFacts: [], characterSummary: 'Gorhorn', action: 'Ataco', enCombate: true };
 
   it('pide explícitamente narrarlo CONVALECIENTE (vivo, rematable) cuando npcFallsConvalecienteThisTurn es true', () => {

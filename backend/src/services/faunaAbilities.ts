@@ -7,7 +7,7 @@ import { ENERGY_COST_BASICA } from './energy.js';
 /// `classAbilityUnlocksForClase` (array con `level`, filtrado por nivel en `npcCombatAbilitiesFor`)
 /// pero su propio catálogo, `Npc.faunaCategoria` en vez de `Npc.clase`.
 ///
-/// Las 13 categorías agrupan por "Semilla" creadora (docs/rpgtarkor/genesis.md) — puro sabor
+/// Las 13 categorías agrupan por "Semilla" creadora (docs/rpgtarkor/lore-mundo/genesis.md) — puro sabor
 /// narrativo/organizativo, no cambia nada mecánico:
 /// - Ferios ("El que Nace", instinto/caza, creador de la mayoría de fauna salvaje de Berig):
 ///   GUELISES (depredadores de jauría), ACECHANTES (depredadores solitarios de emboscada),

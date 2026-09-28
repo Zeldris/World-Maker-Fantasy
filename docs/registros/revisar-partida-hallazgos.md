@@ -377,7 +377,7 @@ PENDIENTES salvo que se indique lo contrario. Organizado por fase del runbook.
     confirmar con la usuaria). **CERRADO (2026-09-07)**: el grueso del renombrado YA se había hecho
     en la propia sesión de lore del mismo día (`worldCatalog.ts:8208`, `name:
     'Veta de Hierro de las Llanuras Rojas'`, slug sin tocar —
-    `veta-hierro-pilares-rotos` — coherente con `docs/rpgtarkor/actualizaciones-pendientes-lore.md`
+    `veta-hierro-pilares-rotos` — coherente con `docs/rpgtarkor/lore-mundo/actualizaciones-pendientes-lore.md`
     punto A3, ya CERRADO). Quedaban 2 flecos sin propagar, encontrados al reverificar: un comentario
     cosmético desactualizado (`worldCatalog.ts:7649`) y, más importante, el `label` real de
     `WorldPopulation` en `worldPopulation.ts:259` (usado en runtime para spawn/población, no solo
@@ -610,7 +610,7 @@ la sesión de pruebas encontró MÁS problemas del mismo área que esos fixes no
     infraestructura preexistente sin cambios (3, mismos de siempre). **Pendiente aparte, fuera de
     alcance de este cambio de código**: generar/subir las imágenes reales de verano/otoño/invierno
     para las 12 Locations existentes (hoy solo tienen primavera subida, decisión ya conocida y
-    anotada en `docs/rpgtarkor/imagenes-prompts.md`) — trabajo de asset, no de lógica.
+    anotada en `docs/rpgtarkor/items-y-catalogo/imagenes-prompts.md`) — trabajo de asset, no de lógica.
 33. **En la vista previa/modal de una Location del mapa, muchas imágenes no se ven aunque ya estén
     descubiertas y la imagen ya esté generada** (ver captura de La Hondonada del Eco, con miniatura
     negra/vacía en el modal pese a "Generar mapa" ya hecho). **YA CERRADO ANTES DE ESTA SESIÓN
@@ -791,7 +791,7 @@ la sesión de pruebas encontró MÁS problemas del mismo área que esos fixes no
     hallazgo) — como el frontend ya no lo llama, el coste de LLM no se incurre. Sin tests rotos
     (ningún test frontend referenciaba el botón; el test backend del endpoint sigue en verde).
 43. **Revisar cuándo y cómo se lanza "¿Interactuar?" (el aviso de "Gesgurio busca tu atención...")**
-    — la usuaria pide anotarlo en el checklist de pruebas vivo (`docs/checklist-pruebas-juego.md`)
+    — la usuaria pide anotarlo en el checklist de pruebas vivo (`docs/registros/checklist-pruebas-juego.md`)
     como funcionalidad a probar a fondo y mejorar hasta que aporte valor real, no arreglarlo ya
     mismo. **CERRADO (2026-09-07)**: confirmado que ya estaba anotado en el checklist vivo
     (§ 6 "Modo dinámico", fila "Revisión de diseño de '¿Interactuar?'", `❌ sin probar a fondo,
@@ -974,7 +974,7 @@ comentarios de auditorías previas. Se encontraron 6 hallazgos nuevos reales, ni
     reputación de facción, y `decrementPopulationOnDeath`. Un NPC derrotado SOLO como víctima de AREA
     nunca dispara ninguno de los tres ese turno. Alcanzable en juego real: AREA ofensiva está
     sembrada y activa desde el cierre del 2026-09-14/15 en fichas reales de Rúnico ("Runa de
-    Sujeción" nivel 32, "Grieta de Voluntad" nivel 36, `docs/rpgtarkor/clases.md`), se dispara por
+    Sujeción" nivel 32, "Grieta de Voluntad" nivel 36, `docs/rpgtarkor/sistemas-combate/clases.md`), se dispara por
     margen decisivo normal y alcanza a TODOS los vivos del bando contrario sin tope — el jugador
     mismo usándola contra un grupo de 3-4 enemigos puede derrotar a varios de un golpe, y solo el
     objetivo directo del intercambio cierra bien sus efectos secundarios. Acotado: el saqueo/desuello

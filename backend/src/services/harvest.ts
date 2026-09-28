@@ -4,7 +4,7 @@ import { harvestSourceAliases, sourceDisplayNameFor } from '../scripts/worldCata
 import { scopeFor, hasPendingLoot } from './npcScene.js';
 import type { NpcKind, MetodoObtencion } from '@prisma/client';
 
-/// Despiece/recolección (docs/12-mundo-estructurado.md § 3.3): el modelo narra, nunca decide qué
+/// Despiece/recolección (docs/mecanicas/12-mundo-estructurado.md § 3.3): el modelo narra, nunca decide qué
 /// se consigue — el backend lee HarvestYield de la especie detectada y materializa InventoryItem.
 ///
 /// Verbo por método (2026-07-29, petición explícita: "para conseguir estos recursos debes cazar...

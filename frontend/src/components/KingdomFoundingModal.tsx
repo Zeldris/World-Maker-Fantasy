@@ -20,7 +20,7 @@ const OUTCOME_TONE: Record<KingdomFoundedInfo['outcome'], string> = {
   CONFLICTO: 'border-danger-600/50 bg-danger-600/10 text-danger-300',
 }
 
-/// Popup de fundación de reino (2026-08-04, docs/17-reglas-construcciones-reino.md) — se abre al
+/// Popup de fundación de reino (2026-08-04, docs/mecanicas/17-reglas-construcciones-reino.md) — se abre al
 /// terminar de construir el Ayuntamiento (tier 1). Gorhorn: nombre precargado y BLOQUEADO
 /// ("Maktor", petición explícita) — el backend también lo fuerza, esto es solo UX, no la garantía
 /// real (ver reino.ts). Cualquier otro personaje: campo en blanco, editable.

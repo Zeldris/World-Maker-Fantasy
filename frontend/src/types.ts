@@ -1,7 +1,7 @@
 /// Rediseño de atributos (2026-07-29, referencia Baldur's Gate 3/D&D — mismo motor de dados y
 /// tablas de XP que ya usa Tarkor): los 6 clásicos de D&D (Voluntad = Sabiduría, mismo nombre que
 /// ya usaba el proyecto) + Magia aparte (renombrado desde "Arcano" el 2026-09-01, ver
-/// docs/rpgtarkor/clases.md § Atributo Magia), porque en el lore de Tarkor la magia es
+/// docs/rpgtarkor/sistemas-combate/clases.md § Atributo Magia), porque en el lore de Tarkor la magia es
 /// salvaje/innata, no intelecto (a diferencia de D&D puro). Sigilo baja a SecondaryAttribute — ni
 /// en D&D es un atributo primario, ahí es una habilidad bajo Destreza.
 export type Attribute = 'fuerza' | 'destreza' | 'constitucion' | 'inteligencia' | 'voluntad' | 'carisma' | 'magia'
@@ -140,7 +140,7 @@ export interface RecipeStatusInfo {
   blockedReason: string | null
 }
 
-/// Icono de parcela en el mapa de Zona (docs/rpgtarkor/mundo-vivo-x4.md § 7.4, 2026-09-21) — una
+/// Icono de parcela en el mapa de Zona (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) — una
 /// por cada `Parcela` sembrada en la Location actual (`ZonaResponse.parcelas`, backend). Solo las
 /// zonas-interior de Capital/Cuartel Avanzado tienen filas reales; el resto del mundo siempre `[]`.
 /// Shape mínimo para pintar el icono/decidir qué modal abrir — el contenido real (candidatas,
@@ -592,7 +592,7 @@ export interface CompanionInfo {
   /// Grupos de combate (2026-09-08) — 0 = Grupo 1 (el que entra a combate en directo, junto al
   /// jugador). Gestión real (mover/renombrar/crear) vive en CombatGroupsModal.tsx.
   combatGroupSlotIndex: number
-  /// Producción de Reino estilo Bellwright (hueco D, 2026-09-21, docs/rpgtarkor/mundo-vivo-x4.md
+  /// Producción de Reino estilo Bellwright (hueco D, 2026-09-21, docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md
   /// § 4.4-ter) — a qué Building está asignado como trabajador; null = no asignado.
   buildingId: string | null
 }
@@ -773,7 +773,7 @@ export interface SavedActionInfo {
 export type CondicionFisica = 'ILESO' | 'HERIDO' | 'GRAVE' | 'CONVALECIENTE' | 'MUERTO'
 export type Dificultad = 'NOVATO' | 'MEDIO' | 'AVANZADO'
 
-/// Sistema de clases (2026-08-24, docs/rpgtarkor/clases.md) — mismo enum `Clase` que el backend
+/// Sistema de clases (2026-08-24, docs/rpgtarkor/sistemas-combate/clases.md) — mismo enum `Clase` que el backend
 /// (schema.prisma), replicado a mano (sin cliente Prisma en frontend, mismo criterio que Dificultad).
 export type Clase = 'GUERRERO' | 'CAZADOR' | 'CHAMAN' | 'ARQUERO' | 'CABALLERO' | 'MAGO' | 'SEGADOR' | 'ASESINO' | 'DRUIDA'
 

@@ -128,7 +128,7 @@ function inferToneFromLore(lore: string): string {
   if (lower.includes('antiguo') || lower.includes('anciano') || lower.includes('ruinas') || lower.includes('millenios')) {
     return 'worn by millennia, weathered and eroded, ruins of a forgotten age, time-scarred';
   }
-  // Añadidos 2026-08-27 (docs/rpgtarkor/imagenes-prompts.md, auditoría de calidad de prompts) —
+  // Añadidos 2026-08-27 (docs/rpgtarkor/items-y-catalogo/imagenes-prompts.md, auditoría de calidad de prompts) —
   // vocabulario real y frecuente en worldCatalog.ts que antes caía siempre al fallback neutro
   // (sin ningún tono inferido): "ceniza" aparece 12 veces, "volcánic-" 5, "helada" 4, "desiert-" 2,
   // "sagrad-" 2 — grepeado contra el catálogo real, no inventado, para no añadir buckets que nunca

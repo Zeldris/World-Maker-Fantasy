@@ -1,6 +1,6 @@
 import type { Attribute, AttributeBlock } from './dice.js';
 
-/// Fase 2 de efectos de clase (2026-08-26, docs/21-roadmap.md § Fase 2) — infraestructura de
+/// Fase 2 de efectos de clase (2026-08-26, docs/producto/21-roadmap.md § Fase 2) — infraestructura de
 /// duración por turnos para `AUMENTO`/`DEBILIDAD`. Deliberadamente ACOTADO a estos dos efectos:
 /// `CANALIZAR` (se cancela si te golpean antes de completarse), `REFLEJAR` (captura y devuelve un
 /// efecto negativo) y `PURIFICAR` (limpia efectos negativos) son cada uno su propia mecánica
@@ -66,7 +66,7 @@ export function bestAumentoOf(activeEffects: ActiveEffect[]): ActiveEffect | nul
   }, null);
 }
 
-/// `LIMPIAR` (2026-09-15, docs/rpgtarkor/clases.md — Caballero del Valor 16/32, Manto de
+/// `LIMPIAR` (2026-09-15, docs/rpgtarkor/sistemas-combate/clases.md — Caballero del Valor 16/32, Manto de
 /// Purificación/Purga de Honor) — quita de la lista el DEBILIDAD (magnitude < 0) de mayor
 /// magnitud negativa, a diferencia de `decrementActiveEffects` (que toca TODOS a la vez por turno)
 /// esta es la única función del motor que elimina un `ActiveEffect` concreto. Empate: se queda el

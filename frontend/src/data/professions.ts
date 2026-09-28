@@ -12,7 +12,7 @@ export interface Profession {
   category?: 'recolección' | 'creacion'
 }
 
-// Catálogo curado a partir de docs/rpgtarkor/areas.md y personajes.md — centrado en lo que
+// Catálogo curado a partir de docs/rpgtarkor/lore-mundo/areas.md y personajes.md — centrado en lo que
 // tendría sentido para un orco de las Llanuras del Viento Rojo (el continente/región de Gorhorn,
 // el único personaje probado). `id` es también el `oficio` que referencian las recetas de
 // crafting.ts/construction.ts (sesión de diseño 2026-07-23, ProfessionProgress en el backend):
@@ -818,7 +818,7 @@ export const professions: Profession[] = [
       'Cocinero que prepara comidas y bebidas para los Goirntes de la Meseta del Orden. Esta profesión se centra en los recursos que ofrece la zona de la Meseta del Orden.',
     category: 'creacion',
   },
-  // Diplomacia comercial (docs/rpgtarkor/mundo-vivo-x4.md § 4.4/§ 5-bis punto 6, 2026-09-21) —
+  // Diplomacia comercial (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.4/§ 5-bis punto 6, 2026-09-21) —
   // igual que "cazador"/"mercader" (comentario de arriba): puramente narrativa/mecánica de reino,
   // sin recetas de crafteo asociadas, sin sufijo raza/región (a diferencia de herrero/herborista/
   // cocinero, no depende de recursos locales) — un trabajador de Reino con nivel en este oficio

@@ -8,7 +8,7 @@ export interface OllamaGenerateOptions {
   system?: string;
   prompt: string;
   /// JSON Schema opcional para pedir salida estructurada (Ollama `format`).
-  /// Actualizado 2026-09-14 (docs/04-decisiones-tecnicas.md decisión 17): la premisa de que
+  /// Actualizado 2026-09-14 (docs/arquitectura/04-decisiones-tecnicas.md decisión 17): la premisa de que
   /// "Qwen2.5 es más fiable con esto que Llama" (decisión técnica 7, tomada el primer día sin
   /// medir) NO se sostuvo al probar Llama 3.1 8B Instruct en serio bajo la misma gramática GBNF —
   /// JSON siempre válido en ambos, sin ninguna ventaja real de Qwen aquí.
@@ -98,7 +98,7 @@ export async function ollamaGenerate(options: OllamaGenerateOptions): Promise<Ol
       // servicio. use_mlock ancla el modelo en RAM (no puede paginarse a disco a mitad de
       // generación — la causa raíz medida del cuello de botella real en este hardware).
       // num_thread subido de 4 a 8 (los 4 núcleos físicos con SMT de la Steam Deck) tras activar
-      // la iGPU (OLLAMA_IGPU_ENABLE=1, ver docs/04-decisiones-tecnicas.md § 11): la decisión
+      // la iGPU (OLLAMA_IGPU_ENABLE=1, ver docs/arquitectura/04-decisiones-tecnicas.md § 11): la decisión
       // original de fijarlo a 4 se tomó en CPU pura, donde 8 hilos SMT competían por el mismo bus
       // de RAM y empeoraban. Con la mayoría de la carga ya en GPU, la CPU solo cubre el resto
       // (offload parcial) y 8 hilos sí ayudan — medido +6% tok/s en Mistral Nemo (~8.66→~9.2

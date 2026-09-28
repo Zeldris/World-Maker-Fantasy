@@ -439,7 +439,7 @@ export const loreChunks: LoreChunkInput[] = [
     sourceDoc: 'personajes.md',
   },
 
-  // --- docs/12-mundo-estructurado.md: contenido nuevo (Torgash concretado, Ulkha, Hagar
+  // --- docs/mecanicas/12-mundo-estructurado.md: contenido nuevo (Torgash concretado, Ulkha, Hagar
   // ampliado, Campamento Serhu, 4 especies nuevas) — SIN números: los stats y el equipo llegan
   // siempre por Npc/NpcItem (vía determinista), nunca por RAG, para que nunca puedan desincronizarse.
   {

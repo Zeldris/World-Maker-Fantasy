@@ -165,8 +165,8 @@ export const ANTIDOTE_RECIPE: CraftingRecipe = {
 
 // Ampliación de lore 2026-08-21 — primer oficio nuevo desde el rediseño de profesiones
 // (2026-08-07): cocinero-orco-llanuras. Su NPC-profesor (Maestro Cocinero Serhu, ver
-// docs/rpgtarkor/areas.md § Campamento del Clan Serhu) todavía no tiene forma de enseñarlo de
-// verdad (mecanismo "aprender oficio de un NPC" sin construir, ver docs/ampliar-lore-checklist.md)
+// docs/rpgtarkor/lore-mundo/areas.md § Campamento del Clan Serhu) todavía no tiene forma de enseñarlo de
+// verdad (mecanismo "aprender oficio de un NPC" sin construir, ver docs/registros/ampliar-lore-checklist.md)
 // — igual que 'alquimista-orcos-llanuras', esta receta ya existe aunque el oficio en sí no esté
 // en el kit inicial de nadie todavía.
 export const BOUNGO_ROAST_RECIPE: CraftingRecipe = {
@@ -431,7 +431,7 @@ export const STONE_BLOCK_RECIPE: CraftingRecipe = {
 };
 
 // 3 recetas de refinado nuevas (2026-08-24, Grupo 3 § materiales procesados de construcción, ver
-// docs/rpgtarkor/materiales-procesados-construccion.md) — mismo patrón que STONE_BLOCK_RECIPE
+// docs/mecanicas/17-reglas-construcciones-reino.md) — mismo patrón que STONE_BLOCK_RECIPE
 // arriba (ingrediente por CATEGORÍA, no exacto: cualquier leña/hueso/fibra en bruto sirve),
 // consumidas por primera vez por el Ayuntamiento mediano/grande (construction.ts).
 
@@ -829,7 +829,7 @@ export const HAND_AXE_RECIPE: CraftingRecipe = {
 };
 
 // 18 recetas nuevas (2026-08-24, Grupo 3 § 27 recursos/materiales sin receta que los use, ver
-// docs/21-roadmap.md) — cierran el destino real de items recolectables desde el 2026-08-23 que
+// docs/producto/21-roadmap.md) — cierran el destino real de items recolectables desde el 2026-08-23 que
 // hasta ahora no servían para nada. Grounding real hecho antes de diseñar: 82 RECURSO/MATERIAL en
 // el catálogo, 27 sin ningún consumidor; de esos, `lingote-aleacion-goirntes` se queda fuera a
 // propósito (ya tiene uso real como paga/soborno de un NPC goirnte, no hay oficio goirnte en el

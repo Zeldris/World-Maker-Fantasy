@@ -13,7 +13,7 @@ interface PanelDrawerProps {
 }
 
 /// Panel deslizante genérico por encima de la partida — nunca navega a otra página, así el
-/// jugador no pierde de vista los logs/chat de fondo (docs/09-panel-personaje.md § 1).
+/// jugador no pierde de vista los logs/chat de fondo (docs/mecanicas/09-panel-personaje.md § 1).
 export function PanelDrawer({ title, subtitle, onClose, children, accent = 'accent' }: PanelDrawerProps) {
   const hairlineClass = accent === 'accent2' ? 'accent2-hairline' : 'accent-hairline'
   const closeHoverClass = accent === 'accent2' ? 'hover:border-accent2-600/60 hover:text-accent2-300' : 'hover:border-accent-600/60 hover:text-accent-300'
@@ -36,7 +36,7 @@ export function PanelDrawer({ title, subtitle, onClose, children, accent = 'acce
         onClick={onClose}
         // Bug real (2026-07-22, "el cuadro negro se sigue viendo"): `backdrop-blur` es un filtro
         // que compone por GPU — en hardware antiguo/débil (portátil de 2014, GT 730M con 1GB de
-        // VRAM, ver docs/04-decisiones-tecnicas.md) esto es una fuente conocida de artefactos de
+        // VRAM, ver docs/arquitectura/04-decisiones-tecnicas.md) esto es una fuente conocida de artefactos de
         // renderizado donde el desenfoque sale como un bloque sólido negro en vez de difuminar el
         // contenido de debajo. Era el único `backdrop-blur` de toda la app. El oscurecido
         // (`bg-iron-900/75`) por sí solo ya cumple la función de atenuar el fondo.

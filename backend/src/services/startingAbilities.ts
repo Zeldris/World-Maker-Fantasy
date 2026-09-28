@@ -39,7 +39,7 @@ export interface StartingAbility {
   /// un intercambio real (Defenderse/Esquivar, ver genericCombatAbilities.ts). 0/undefined en el
   /// resto.
   energyRegen?: number;
-  /// Fase 2 de efectos de clase (2026-08-26, docs/21-roadmap.md) — solo relevante si `effects`
+  /// Fase 2 de efectos de clase (2026-08-26, docs/producto/21-roadmap.md) — solo relevante si `effects`
   /// incluye `AUMENTO`/`DEBILIDAD`: cuánto sube/baja (con signo, positivo AUMENTO/negativo
   /// DEBILIDAD) el atributo `preferredAttribute` mientras dure el efecto (nunca un atributo
   /// distinto — simplificación consciente, ver schema.prisma § SavedAction.durationEffectMagnitude).
@@ -58,7 +58,7 @@ export interface StartingAbility {
 }
 
 /// Kit de habilidades "de serie" de Gorhorn — no cuentan contra el cupo por nivel
-/// (docs/10-niveles-xp-reino.md § 4.3), son lo que el personaje ya sabía hacer antes de
+/// (docs/mecanicas/10-niveles-xp-reino.md § 4.3), son lo que el personaje ya sabía hacer antes de
 /// empezar la partida.
 ///
 /// Rediseño de atributos/armas (2026-07-29, "vamos a quitar entonces las habilidades fijas

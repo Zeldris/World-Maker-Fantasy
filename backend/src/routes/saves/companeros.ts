@@ -25,7 +25,7 @@ import {
 import { EquipSlot } from '@prisma/client';
 
 /// Grupo 3 § Compañeros y supervivencia (2026-08-25, diseño completo en
-/// docs/rpgtarkor/companeros-y-supervivencia.md) — captura+tameo/persuasión, equipo de
+/// docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md) — captura+tameo/persuasión, equipo de
 /// compañeros/súbditos, Almacén de Reino + plantillas. Hambre/Sed del propio personaje (§5) no
 /// tiene rutas propias: se lee ya calculada en GET /saves/:id (detail.ts) y avanza sola en el
 /// worldTick de fondo (companionSupervivencia.ts § advancePlayerSurvival).
@@ -82,7 +82,7 @@ export async function companerosRoutes(app: FastifyInstance) {
   /// escritura real (hallazgo 48) — capturada justo después del `$transaction`, nunca se propaga.
   class CapturaEnCursoError extends Error {}
 
-  /// Atar con éxito — REDISEÑO 2026-08-28 (docs/rpgtarkor/captura-rediseno-2026-08-28.md): la
+  /// Atar con éxito — REDISEÑO 2026-08-28 (docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md): la
   /// captura deja de vivir in-situ en `NpcState.capturado` (eso rompía la caza en grupo — una sola
   /// fila `NpcState` no podía ser "el individuo capturado" Y "el individuo activo para seguir
   /// cazando al resto" a la vez) y se materializa como `InventoryItem` en tránsito. El `NpcState`
@@ -518,7 +518,7 @@ export async function companerosRoutes(app: FastifyInstance) {
     return { ok: true };
   });
 
-  /// Alfa de la Manada real (2026-09-14, docs/rpgtarkor/clases.md — Domador 40, capstone: "te
+  /// Alfa de la Manada real (2026-09-14, docs/rpgtarkor/sistemas-combate/clases.md — Domador 40, capstone: "te
   /// permite... elegir un Alfa para que tenga un buff extra... entre tus dos compañeros") — marca
   /// un `Companion` concreto como Alfa (nunca más de uno a la vez por `saveId`, invariante aplicado
   /// aquí desmarcando cualquier otro dentro de la misma transacción). Exige la habilidad
@@ -714,7 +714,7 @@ export async function companerosRoutes(app: FastifyInstance) {
   );
 
   /// Asigna/quita un `Companion` a un `Building` real (hueco D, rediseño de Producción estilo
-  /// Bellwright, 2026-09-21, docs/rpgtarkor/mundo-vivo-x4.md § 4.4-ter) — sin esto, `tickOrdenesProduccion`
+  /// Bellwright, 2026-09-21, docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.4-ter) — sin esto, `tickOrdenesProduccion`
   /// (kingdomProduction.ts) nunca tenía ningún trabajador real que asignar a ninguna orden. Guard:
   /// el Companion debe tener `rolReino` ya asignado (decisión: "el reino no cuenta con quien no
   /// está integrado" — mismo criterio que `PLANTILLAS_BASICAS`/`companionesReino` del frontend, un

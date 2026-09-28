@@ -34,8 +34,8 @@ Resto de variables:
 - `PACING_MIN_MS=1000`, `PACING_MAX_MS=5000` (bajados desde 3000/10000 originales — sin fecha exacta registrada, `.env.example` se quedó con los valores viejos)
 - `WORLD_TICK_INTERVAL_MINUTES=1` (bajado de 2 a 1 el 2026-08-07, junto con `TRANSIT_MAX_REAL_MINUTES` de abajo — ver comentario en `.env`)
 - `TRANSIT_MAX_REAL_MINUTES=5` (bajado de 10 a 5 el 2026-08-07, el rendimiento del motor mejoró bastante desde que se fijó el 10 original)
-- `CEREBRAS_API_KEY`, `MISTRAL_API_KEY`, `SAMBANOVA_API_KEY`, `CLOUDFLARE_API_KEY`/`CLOUDFLARE_ACCOUNT_ID`, `GEMINI_API_KEY`, `GROQ_API_KEY` — las 6 rellenas (cuenta propia de Tarkor; Gemini/Groq se sumaron a la rotación el 2026-08-07). Mismo orquestador (`lib/aiProviders/orchestrator.ts`, rotación con failover Cerebras→Mistral→SambaNova→Cloudflare→Gemini→Groq) para generar prompts de imagen de la Enciclopedia Y para `generate-distillation-dataset.ts` (ver `docs/fine-tuning-ia-local.md`) — opcional en los dos casos: sin ninguna clave, cae sola a Ollama local.
-- `LIVE_TEACHER_CAPTURE_ENABLED`/`LIVE_TEACHER_CAPTURE_SAMPLE_RATE` — captura en vivo para el pipeline DPO, ver `docs/fine-tuning-ia-local.md` § "Recolección en vivo de pares de preferencia".
+- `CEREBRAS_API_KEY`, `MISTRAL_API_KEY`, `SAMBANOVA_API_KEY`, `CLOUDFLARE_API_KEY`/`CLOUDFLARE_ACCOUNT_ID`, `GEMINI_API_KEY`, `GROQ_API_KEY` — las 6 rellenas (cuenta propia de Tarkor; Gemini/Groq se sumaron a la rotación el 2026-08-07). Mismo orquestador (`lib/aiProviders/orchestrator.ts`, rotación con failover Cerebras→Mistral→SambaNova→Cloudflare→Gemini→Groq) para generar prompts de imagen de la Enciclopedia Y para `generate-distillation-dataset.ts` (ver `docs/ia/fine-tuning-ia-local.md`) — opcional en los dos casos: sin ninguna clave, cae sola a Ollama local.
+- `LIVE_TEACHER_CAPTURE_ENABLED`/`LIVE_TEACHER_CAPTURE_SAMPLE_RATE` — captura en vivo para el pipeline DPO, ver `docs/ia/fine-tuning-ia-local.md` § "Recolección en vivo de pares de preferencia".
 
 **Alternativa (Supabase remoto):** solo si algún día hace falta jugar de verdad desde varios dispositivos a la vez con la misma partida sincronizada — ver `.env.example` para la plantilla comentada. Si se usa, habilitar la extensión a mano igual (Prisma no la gestiona vía schema, ver comentario en `schema.prisma`): `CREATE EXTENSION IF NOT EXISTS vector;`.
 
@@ -94,7 +94,7 @@ Las imágenes ya subidas (`backend/uploads/images/`) SÍ están versionadas en e
 
 ## 6. Modelos de Ollama
 
-Cuatro modelos distintos, cada uno con su rol (ver `docs/03-arquitectura.md` § 4.3):
+Cuatro modelos distintos, cada uno con su rol (ver `docs/arquitectura/03-arquitectura.md` § 4.3):
 
 | Uso | Modelo | Cómo se obtiene |
 |---|---|---|

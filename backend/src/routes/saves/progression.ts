@@ -11,7 +11,7 @@ import {
 } from '../../services/classAbilities.js';
 import { Clase, Especializacion } from '@prisma/client';
 
-/// Nivel mínimo real para elegir especialización (docs/rpgtarkor/clases.md, "cada una con 2-4
+/// Nivel mínimo real para elegir especialización (docs/rpgtarkor/sistemas-combate/clases.md, "cada una con 2-4
 /// especializaciones elegidas a nivel 10") — mismo criterio que el resto de topes de partida del
 /// proyecto (cifra citada del propio diseño, no inventada aquí).
 export const NIVEL_MINIMO_ESPECIALIZACION = 10;
@@ -29,7 +29,7 @@ export async function progressionRoutes(app: FastifyInstance) {
   app.post<{ Params: { id: string }; Body: { attribute: Attribute } }>(
     '/saves/:id/attribute-points',
     async (request, reply) => {
-      // Reparte UN punto pendiente de ascenso (ASI) en el atributo pedido (docs/10-niveles-xp-reino.md
+      // Reparte UN punto pendiente de ascenso (ASI) en el atributo pedido (docs/mecanicas/10-niveles-xp-reino.md
       // § 4.2) — se llama una vez por punto, tope duro 18, nunca gasta más de lo disponible.
       const { attribute } = request.body;
       // Bug real (auditoría 2026-07-28): `attribute` solo se validaba a nivel de TypeScript, nunca

@@ -43,7 +43,7 @@ Para las **acciones largas** (viajar, esperar varios días dentro de la ficción
 **Importante — la versión original (interpretación A: reloj 1:1 sincronizado con el tiempo real, persistente incluso sin proceso corriendo) queda reservada como posible requisito específico del modo Multijugador** (ver pregunta 6 de "Pendientes" más abajo): en una sala compartida por varios jugadores, el servidor sí tendría que correr de forma continua (hosted, no en el PC de una sola persona) mientras haya sesión activa, y ahí sí sería razonable que el mundo compartido avanzara en tiempo real de verdad para todos los participantes por igual, sin depender de que un jugador concreto esté conectado.
 
 **Impacto:**
-- Arquitectura (revisado): ya no hace falta un mecanismo de "recuperación al arrancar" ni reconciliar huecos de tiempo real — ver [03-arquitectura.md](03-arquitectura.md#6-el-reloj-de-mundo-en-tiempo-real-la-pieza-más-singular-de-este-proyecto), sección simplificada en consecuencia.
+- Arquitectura (revisado): ya no hace falta un mecanismo de "recuperación al arrancar" ni reconciliar huecos de tiempo real — ver [03-arquitectura.md](../arquitectura/03-arquitectura.md#6-el-reloj-de-mundo-la-pieza-más-singular-de-este-proyecto), sección simplificada en consecuencia.
 - El MVP en solitario sigue incluyendo la mecánica de "personaje ocupado + resolución automática a ritmo reducido" durante acciones largas — solo cambia qué pasa cuando el proceso está apagado (nada, se pausa).
 - **Pendiente de afinar en detalle más adelante** (no bloqueante ahora): el ritmo exacto de resolución automática según zona/contexto, si hay un tope máximo de duración para una acción larga, y cómo se notifica al jugador cuando algo relevante le ocurre mientras la acción se resuelve.
 

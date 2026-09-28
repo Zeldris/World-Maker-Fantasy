@@ -1,7 +1,7 @@
 # Reglas de construcciones + fundación de reino (2026-08-04)
 
 Diseño acordado en sesión de diseño 2026-08-04 (después de implementar "el campamento" — primera
-construcción anclada al mapa, ver `docs/16-poblacion-dinamica.md` para el sistema hermano de
+construcción anclada al mapa, ver `docs/mecanicas/16-poblacion-dinamica.md` para el sistema hermano de
 población). Este documento es la fuente de verdad de las reglas; el checklist al final es lo que
 se va tachando según se implementa. Si la sesión se corta a mitad, seguir desde el primer punto sin
 tachar.
@@ -54,7 +54,7 @@ tachar.
 
 ## Huecos que no existían y hay que construir desde cero
 
-- **Mapeo región → facción dueña** — hoy no existe en código, solo en `docs/rpgtarkor/areas.md`.
+- **Mapeo región → facción dueña** — hoy no existe en código, solo en `docs/rpgtarkor/lore-mundo/areas.md`.
   Se seedea a mano como constante (no viene de ninguna tabla nueva):
   - Las Llanuras del Viento Rojo → Clan Serhu
   - La Meseta del Orden → Concordia de Hierro

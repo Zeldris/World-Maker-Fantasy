@@ -11,7 +11,7 @@ import { PlantillaSelect } from './ReinoPanel'
 import { ResourceBar } from '../ResourceBar'
 import { HealthBar } from '../HealthBar'
 
-// Grupo 3 § Compañeros y supervivencia (2026-08-25, docs/rpgtarkor/companeros-y-supervivencia.md)
+// Grupo 3 § Compañeros y supervivencia (2026-08-25, docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md)
 // — `felicidad: null` = compañero de quest/narración libre (comportamiento de siempre, sin capa
 // mecánica que mostrar); con valor = venido de captura+tameo/persuasión de verdad, con Comida/Agua
 // reales derivadas del reloj de ficción.

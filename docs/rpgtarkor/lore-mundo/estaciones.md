@@ -97,7 +97,7 @@ en la ronda de `HarvestYield.condicion` cerrada el 2026-08-24.
 
 ## Fuera de alcance, detectado de paso
 
-El Kirelon Arenoso (`docs/rpgtarkor/flora-fauna.md`) sigue con su nota de "largos inviernos" sin
+El Kirelon Arenoso (`docs/rpgtarkor/lore-mundo/flora-fauna.md`) sigue con su nota de "largos inviernos" sin
 mecánica real — pero a diferencia de `boungo`, no es un `HarvestYield.condicion`: sus 4 filas
 (hueso/cráneo/piel/garras) son todas `metodoObtencion: CAZA` sin ninguna condición de estación en
 texto. Lo que describe "largos inviernos" es si el propio Kirelon APARECE en la escena (tasa de

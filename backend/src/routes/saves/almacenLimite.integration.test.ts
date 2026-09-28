@@ -5,7 +5,7 @@ import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { almacenLimiteRoutes } from './almacenLimite.js';
 
 /// CRUD de AlmacenLimite (hueco C, rediseño de Producción estilo Bellwright, 2026-09-21,
-/// docs/rpgtarkor/mundo-vivo-x4.md § 4.4-ter). Test de integración real contra Postgres, sin
+/// docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.4-ter). Test de integración real contra Postgres, sin
 /// mocks — mismo patrón que parcelas.integration.test.ts.
 async function buildApp() {
   const app = Fastify();

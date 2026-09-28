@@ -1,4 +1,4 @@
-/// Fórmula de tirada — decisión de mecánicas 1 (docs/06-decisiones-mecanicas.md).
+/// Fórmula de tirada — decisión de mecánicas 1 (docs/mecanicas/06-decisiones-mecanicas.md).
 ///
 /// Rediseño de atributos (2026-07-29, "sigue baldurs gate 3 y D&D para próximas referencias, que
 /// son juegos que coinciden más con lo que estamos creando" — el motor de Tarkor ya usa dados y
@@ -6,14 +6,14 @@
 /// no GW2/WoW): los 6 clásicos de D&D (Fuerza/Destreza/Constitución/Inteligencia/Sabiduría/
 /// Carisma), con Voluntad en vez de "Sabiduría" (mismo concepto, nombre que ya usaba el
 /// proyecto) + Magia aparte (renombrado desde "Arcano" el 2026-09-01, ver
-/// docs/rpgtarkor/clases.md § Atributo Magia) — en el lore propio de Tarkor la magia "nace del
+/// docs/rpgtarkor/sistemas-combate/clases.md § Atributo Magia) — en el lore propio de Tarkor la magia "nace del
 /// origen salvaje e incontrolado de la Semilla... nunca fue diseñada ni domesticada por nadie",
 /// no es lo mismo que Inteligencia (memoria/lógica) como en D&D puro. Sigilo baja a
 /// SecondaryAttribute (no es un atributo primario ni en D&D — ahí es una habilidad bajo Destreza).
 export type Attribute = 'fuerza' | 'destreza' | 'constitucion' | 'inteligencia' | 'voluntad' | 'carisma' | 'magia'
 export type AttributeBlock = Record<Attribute, number>
 
-/// Grados de éxito (docs/08-acciones-por-tiempo.md § 5, roadmap 2026-07-19 — llegó a tener un
+/// Grados de éxito (docs/mecanicas/08-acciones-por-tiempo.md § 5, roadmap 2026-07-19 — llegó a tener un
 /// tercer grado, 'con_coste', retirado el 2026-09-07 tras el hallazgo 15/19b de
 /// revisar-partida-hallazgos.md: era puramente cosmético en combate/acciones libres — el
 /// desenlace real de un intercambio ya se decide por el margen antes de que este campo se
@@ -152,7 +152,7 @@ export function cantidadForGrado(grado: GradoRecurso, cantidadMaxima: number): n
 }
 
 /// Tirada opuesta (Grupo 3 § Compañeros y supervivencia, 2026-08-25, ver
-/// docs/rpgtarkor/companeros-y-supervivencia.md § 2/3: "eliges un atributo tuyo, compite contra el
+/// docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md § 2/3: "eliges un atributo tuyo, compite contra el
 /// atributo propio de esa especie/NPC") — deliberadamente SEPARADA de `rollCheck`/`rollGathering`,
 /// mismo criterio que ambas: nunca tocar la fórmula de combate para esto, aunque la forma d20 +
 /// mitad de atributo sea la misma. Empate (margen 0) lo gana la resistencia, no el jugador — mismo

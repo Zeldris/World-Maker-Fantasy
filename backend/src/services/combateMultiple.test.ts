@@ -142,7 +142,7 @@ describe('objetivosValidos / elegirObjetivo', () => {
   });
 });
 
-// Fase 3 § 3b de efectos de clase (2026-08-27, docs/21-roadmap.md) — objetivo extra de MULTIPLE.
+// Fase 3 § 3b de efectos de clase (2026-08-27, docs/producto/21-roadmap.md) — objetivo extra de MULTIPLE.
 describe('objetivoExtraFor', () => {
   const candidatos: ObjetivoCandidato[] = [
     { participantId: 'a', condicionFisica: 'ILESO' },
@@ -651,7 +651,7 @@ describe('resolverIntercambioCompleto', () => {
     expect(resultado.nuevaCondicionDefensor).toBe('ILESO');
   });
 
-  // Fase 3 § 3a de efectos de clase (2026-08-27, docs/21-roadmap.md) — cierra el hueco de Fase 2
+  // Fase 3 § 3a de efectos de clase (2026-08-27, docs/producto/21-roadmap.md) — cierra el hueco de Fase 2
   // en combate múltiple (AUMENTO/DEBILIDAD) + CONTROL real.
   it('AUMENTO/DEBILIDAD: margen decisivo + habilidad con duración -> ActiveEffect listo para empujar', () => {
     mockRolls(rFor(15), rFor(1)); // margen 14 -> golpe_pleno
