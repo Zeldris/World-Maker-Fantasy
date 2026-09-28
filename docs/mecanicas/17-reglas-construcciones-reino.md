@@ -1,5 +1,9 @@
 # Reglas de construcciones + fundación de reino (2026-08-04)
 
+**Estado (comprobado 2026-09-28):** implementado; los 36 puntos del checklist final están hechos.
+Lo construido después (Cuartel Avanzado, parcelas, edificios de oficio) está en
+[22-mundo-vivo-x4-tecnico.md § 5.2](../arquitectura/22-mundo-vivo-x4-tecnico.md#52-construcción--constructionts).
+
 Diseño acordado en sesión de diseño 2026-08-04 (después de implementar "el campamento" — primera
 construcción anclada al mapa, ver `docs/mecanicas/16-poblacion-dinamica.md` para el sistema hermano de
 población). Este documento es la fuente de verdad de las reglas; el checklist al final es lo que

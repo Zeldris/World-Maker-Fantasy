@@ -1,6 +1,10 @@
 # Combate, muerte y descanso (diseño, 2026-07-18)
 
-**Estado:** diseño cerrado para revisión — nada de esto está implementado todavía.
+**Estado (comprobado 2026-09-28):** implementado (`Save.condicionFisica`, `services/death.ts`,
+combate por turnos, descanso). El combate creció después: combate múltiple en
+[combate-multiple.md](../rpgtarkor/sistemas-combate/combate-multiple.md), clases en
+[clases.md](../rpgtarkor/sistemas-combate/clases.md). Este documento es el diseño de partida; el
+código manda.
 **Origen:** la usuaria pidió que las acciones de banda corta (buscar, recolectar) revelen hallazgos concretos de forma progresiva en vez de una narración única, que todo lo interactuable (objetos, NPCs) funcione como las habilidades (icono clicable que compone la acción), y que el combate viva en un modo aparte por turnos — lo que a su vez forzó la pieza que llevaba pendiente desde `docs/mecanicas/06-decisiones-mecanicas.md`: la condición física real. El sistema de muerte/descanso surgió de ahí, con una pieza de canon nueva de la propia usuaria (la Entidad Desconocida, ver `docs/rpgtarkor/lore-mundo/genesis.md`).
 
 **Qué NO se toca:** la fórmula de tirada, los umbrales de dificultad, el sistema de niveles/XP, el grafo de ubicaciones de `docs/12` (los puntos de descanso son un USO nuevo de `Location`, no un sistema paralelo).

@@ -1,6 +1,9 @@
 # Panel de personaje — diseño de frontend (2026-07-17)
 
-**Estado:** diseño para revisión — nada implementado todavía.
+**Estado (comprobado 2026-09-28):** implementado y ampliado. Los paneles viven en
+`frontend/src/components/panels/` (Personaje, Estadísticas, Equipo, Inventario, Habilidades,
+Misiones, Diario, Compañeros, Reino, Reputación, Mapa, Zona, Enciclopedia). Este documento es el
+diseño de partida; el código manda.
 **Origen:** petición de la usuaria: barra inferior de acceso con pestañas (mapa, inventario, estadísticas, diario, misiones, compañeros, reino, habilidades, profesiones) mientras juega una partida.
 
 ---

@@ -2,7 +2,8 @@
 
 Documento vivo, igual que [02-decisiones.md](../producto/02-decisiones.md) y [04-decisiones-tecnicas.md](../arquitectura/04-decisiones-tecnicas.md) pero para el sistema de juego interno. Referencia: [05-mecanicas-juego.md](05-mecanicas-juego.md).
 
-**Nota (2026-08-13, auditoría de documentación):** mismo aviso que en 05 — este documento fija
+**Estado:** registro de decisiones de arranque (2026-07-16); el estado vigente de cada regla está
+en [05-mecanicas-juego.md](05-mecanicas-juego.md). **Nota (2026-08-13):** mismo aviso que en 05 — este documento fija
 decisiones de ARRANQUE (2026-07-16) y varias siguen vigentes tal cual, pero sistemas grandes
 llegados después tienen su propio documento como fuente de verdad:
 [14-combate-y-muerte.md](14-combate-y-muerte.md) (combate por turnos, energía/fatiga, árbol de
@@ -28,7 +29,7 @@ ventajas por atributo), [10-niveles-xp-reino.md](10-niveles-xp-reino.md) (nivele
 
 **Decisión:** `resultado = d20 + floor(atributo / 2)`, éxito si `resultado >= dificultad`. Umbrales: Trivial 8, Fácil 12, Media 15, Difícil 18, Muy difícil 22. Grados de éxito **binarios** (éxito/fallo, sin críticos por ahora).
 
-**Corrección (2026-08-13):** la fórmula y los umbrales siguen igual, pero los grados de éxito ya no son binarios — `gradoExitoFor` (`backend/src/services/dice.ts`) distingue `claro` / `con_coste` / `fallo` sobre el mismo resultado, enganchado en la narración real (`turnResolution.ts`, `narrador.ts`). No es un sistema de críticos nuevo, es leer en tres tramos la misma tirada.
+**Estado actual:** fórmula y umbrales sin cambios. Entre el 2026-07-19 y el 2026-09-07 hubo un tercer grado `con_coste`; se retiró de las tiradas de acción y de combate y hoy vuelven a ser binarias (`GradoExito = 'claro' | 'fallo'`). La recolección sí conserva tres tramos (`GradoRecurso`). Ver [05 § 2](05-mecanicas-juego.md#2-fórmula-de-resolución-de-tiradas).
 
 **Por qué:** fórmula ya prototipada en la demo de frontend (`lib/dice.ts`), se formaliza como la real. Binario en vez de con críticos para no complicar el prompting del Narrador desde el principio (2 casos a narrar, no 4) — se puede añadir después sin romper nada.
 
@@ -71,6 +72,8 @@ ventajas por atributo), [10-niveles-xp-reino.md](10-niveles-xp-reino.md) (nivele
 **Reversión (2026-08-13, decisión tomada 2026-07-19, ampliada 2026-08-03):** la usuaria pidió explícitamente reabrir esto — "mejora natural para más adelante si hace falta" dejó de ser hipotético. Hoy sí hay una tabla real: `ItemCatalog`/`InventoryItem.statBonuses` + `backend/src/services/equipment.ts`, que suma bonificadores reales a atributos/defensa/slots de inventario cuando el objeto está **equipado** (la mochila nunca bonifica). Los hechos libres narrativos ("tiene 200 monedas", "posee una granja") siguen existiendo para todo lo que no es equipo mecánico.
 
 ### 6. Magia (`arcano`) como riesgo narrativo, no como mecánica nueva — **2026-07-17**
+
+> El atributo se renombró de `arcano` a `magia` el 2026-09-01; la decisión sigue igual.
 
 **Decisión:** usar el atributo `arcano` siempre conlleva un pequeño riesgo, incluso en éxito — el Narrador puede añadir un coste o efecto secundario narrativo (algo se resiente, atrae atención, deja un rastro) aunque la tirada salga bien.
 

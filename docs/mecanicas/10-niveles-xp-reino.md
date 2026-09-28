@@ -1,6 +1,9 @@
 # Niveles, XP y Reino (diseño, 2026-07-18)
 
-**Estado:** diseño cerrado para revisión — nada de esto está implementado todavía.
+**Estado (comprobado 2026-09-28):** implementado (`backend/src/services/progression.ts`,
+`routes/saves/progression.ts`, `kingdomTick.ts`). El Reino creció mucho después; su referencia
+vigente es [22-mundo-vivo-x4-tecnico.md](../arquitectura/22-mundo-vivo-x4-tecnico.md). Este
+documento es el diseño de partida; el código manda.
 **Origen:** reversión de la decisión de mecánicas 4 ([06-decisiones-mecanicas.md](06-decisiones-mecanicas.md)) por petición explícita de la usuaria: *"si que vamos a meter niveles y progreso por XP, vamos a intentar mantener los valores de DyD ya que tiene una base solida detrás para cualquier tipo de RPG"*. Además, la pestaña Reino del panel de personaje ([09-panel-personaje.md](09-panel-personaje.md) § 5) se construye ya, no se deja bloqueada — eso también se diseña aquí.
 
 **Qué NO se toca:** la fórmula de tirada (`d20 + floor(atributo/2)`, decisión 1), los umbrales de dificultad (8/12/15/18/22), el alcance genérico (decisión 0 — nada de esto es exclusivo de combate), el inventario sin bonificadores (decisión 5) y el riesgo de `arcano` (decisión 6).
