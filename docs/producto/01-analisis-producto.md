@@ -2,7 +2,7 @@
 
 **Fase:** Análisis de producto (pre-técnica)
 **Fecha:** 2026-07-16
-**Audiencia:** Product Owner
+**Estado:** análisis fundacional, vigente como visión (comprobado 2026-09-28). El modo Online (§ 5) sigue aparcado; lo que se está haciendo y en qué orden está en el [roadmap](21-roadmap.md).
 **Estado:** Borrador para discusión
 
 ---
