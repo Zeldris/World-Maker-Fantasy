@@ -83,6 +83,7 @@ import {
   CONSTRUCTION_RECIPES,
   companionSlotsForRecipeKey,
   computeBuildBlockedReason,
+  buildingTierFor,
   type ConstructionRecipe,
   type RecipeCheck,
 } from './construction.js';
@@ -6507,7 +6508,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         if (target) {
           await tx.building.update({
             where: { id: target.id },
-            data: { name: buildRecipe.name, description: buildRecipe.description, tier: buildRecipe.ayuntamientoNivel, status: 'ACTIVO' },
+            data: { name: buildRecipe.name, description: buildRecipe.description, tier: buildingTierFor(buildRecipe) ?? undefined, status: 'ACTIVO' },
           });
         }
       } else {
@@ -6528,7 +6529,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
                 kind: buildRecipe.key,
                 description: buildRecipe.description,
                 status: 'ACTIVO',
-                tier: buildRecipe.ayuntamientoNivel ?? undefined,
+                tier: buildingTierFor(buildRecipe) ?? undefined,
                 // Posición en el lienzo de Zona (2026-09-08, ver comentario de Building.x/y en
                 // schema.prisma) — mismo criterio que `earlyBuildingId` en turn.ts: posición de
                 // entrada, coherente con `volverAEntrada` justo arriba en este mismo bloque.

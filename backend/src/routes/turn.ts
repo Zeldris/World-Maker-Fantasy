@@ -64,7 +64,7 @@ import { harvestSourceAliases } from '../scripts/worldCatalog.js';
 import { detectsPostCombatInteraction } from '../services/postCombatInteraction.js';
 import { startEagerTransitResolution } from '../workers/worldTick.js';
 import { detectDeterministicCraft, detectsCraftIntent, CRAFTING_RECIPES } from '../services/crafting.js';
-import { planDeterministicBuild, detectsBuildIntent, CONSTRUCTION_RECIPES } from '../services/construction.js';
+import { planDeterministicBuild, detectsBuildIntent, CONSTRUCTION_RECIPES, buildingTierFor } from '../services/construction.js';
 
 interface ClassifyBody {
   saveId: string;
@@ -1054,7 +1054,7 @@ export async function turnRoutes(app: FastifyInstance) {
                 kind: buildAttempt.key,
                 description: buildAttempt.description,
                 status: 'EN_CONSTRUCCION',
-                tier: buildAttempt.ayuntamientoNivel ?? undefined,
+                tier: buildingTierFor(buildAttempt) ?? undefined,
                 // Posición en el lienzo de Zona (2026-09-08, ver comentario de Building.x/y en
                 // schema.prisma) — misma posición de entrada que `turnResolution.ts` ya usa para
                 // "volver" al jugador tras construir ("construir ocurre donde ya estás plantado").

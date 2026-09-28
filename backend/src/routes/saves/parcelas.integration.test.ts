@@ -165,5 +165,24 @@ describe('Parcelas — GET estado / POST construir (2026-09-21)', () => {
       expect(res.statusCode).toBe(400);
       expect(res.json().error).toMatch(/ya tiene un edificio construido/);
     });
+
+    // Sin `tier`, el gate NIVEL_EDIFICIO_INSUFICIENTE y las plazas de trabajador no se aplicarían
+    // nunca en partida real (el Building quedaba con tier null).
+    it('un edificio de oficio construido en parcela nace con tier 1 (Taller)', async () => {
+      const segunda = await prisma.parcela.create({ data: { locationId: kingdomLocationId, x: 250, y: 150, tipo: 'BASICA' } });
+      await prisma.inventoryItem.createMany({
+        data: [
+          { saveId, name: 'Piedra (12)', description: 'x', catalogSlug: 'piedra' },
+          { saveId, name: 'Mena de hierro (6)', description: 'x', catalogSlug: 'mena-hierro-llanuras' },
+          { saveId, name: 'Piedra de afilar', description: 'x', catalogSlug: 'piedra-de-afilar' },
+        ],
+      });
+      const app = await buildApp();
+      const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/parcelas/${segunda.id}/construir`, payload: { recipeKey: 'herreria' } });
+      expect(res.statusCode).toBe(200);
+      const building = await prisma.building.findUniqueOrThrow({ where: { id: res.json().building.id } });
+      expect(building.recipeKey).toBe('herreria');
+      expect(building.tier).toBe(1);
+    });
   });
 });

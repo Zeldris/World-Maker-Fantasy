@@ -13,6 +13,7 @@ import {
   quantityOf,
   nivelEdificioRequeridoParaTier,
   plazasTrabajadorParaTier,
+  buildingTierFor,
   type ConstructionRecipe,
 } from './construction.js';
 import type { AttributeBlock } from './dice.js';
@@ -322,6 +323,12 @@ describe('Edificios de oficio (docs/rpgtarkor/sistemas-reino/edificios-de-oficio
     expect(nivelEdificioRequeridoParaTier(9)).toBe(3);
   });
 
+  it('buildingTierFor: nivel de Ayuntamiento o de edificio de oficio, null para el resto', () => {
+    expect(buildingTierFor(AYUNTAMIENTO_MEDIANO_RECIPE)).toBe(2);
+    expect(buildingTierFor(CONSTRUCTION_RECIPES.find((r) => r.key === 'herreria-gran-obrador')!)).toBe(3);
+    expect(buildingTierFor(CHOZA_RECIPE)).toBeNull();
+  });
+
   it('plazasTrabajadorParaTier: 1/2/4 por nivel, null sin nivel de edificio', () => {
     expect(plazasTrabajadorParaTier(null)).toBeNull();
     expect(plazasTrabajadorParaTier(1)).toBe(1);
@@ -360,7 +367,9 @@ describe('Edificios de oficio (docs/rpgtarkor/sistemas-reino/edificios-de-oficio
     expect(obrador.upgradesRecipeKey).toBe('herreria');
     expect(granObrador.edificioOficioNivel).toBe(3);
     expect(granObrador.ayuntamientoNivelMinimo).toBe(3);
-    expect(granObrador.upgradesRecipeKey).toBe('herreria-obrador');
+    // Mismo criterio que el Ayuntamiento: la mejora actualiza la MISMA fila, que conserva la
+    // recipeKey base, así que las dos mejoras apuntan a 'herreria'.
+    expect(granObrador.upgradesRecipeKey).toBe('herreria');
   });
 
   it('el orden en CONSTRUCTION_RECIPES pone "gran obrador" antes que "obrador" a secas, por familia', () => {

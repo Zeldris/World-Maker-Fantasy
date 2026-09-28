@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { rejectIfEnded, rejectIfPendingDeath, toFrontendLogEntry } from './shared.js';
-import { CONSTRUCTION_RECIPES, planRecipeConsumption, baseNameOf, computeBuildBlockedReason, type ConstructionRecipe } from '../../services/construction.js';
+import { CONSTRUCTION_RECIPES, planRecipeConsumption, baseNameOf, computeBuildBlockedReason, buildingTierFor, type ConstructionRecipe } from '../../services/construction.js';
 import { constructionRecipeStatusFor, type RecipeStatus } from './recipesStatus.js';
 import { checkIngredients, type CatalogLookup } from '../../services/ingredients.js';
 import { alivioForLevel } from '../../services/professionProgress.js';
@@ -181,7 +181,7 @@ export async function parcelasRoutes(app: FastifyInstance) {
             kind: buildRecipe.key,
             description: buildRecipe.description,
             status: 'ACTIVO',
-            tier: buildRecipe.ayuntamientoNivel ?? undefined,
+            tier: buildingTierFor(buildRecipe) ?? undefined,
             x: parcela.x,
             y: parcela.y,
           },

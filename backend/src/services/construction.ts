@@ -132,6 +132,12 @@ export function nivelEdificioRequeridoParaTier(tier: number): number {
   return Math.ceil(Math.max(1, tier) / 3);
 }
 
+/// Valor de `Building.tier` que deja una receta al completarse: nivel de Ayuntamiento o nivel de
+/// edificio de oficio. Único punto de verdad para los cuatro sitios que crean o mejoran un Building.
+export function buildingTierFor(recipe: ConstructionRecipe): number | null {
+  return recipe.ayuntamientoNivel ?? recipe.edificioOficioNivel ?? null;
+}
+
 /// Plazas de trabajador por nivel de edificio de oficio (mismo documento, § 2: "Bellwright: una
 /// estación admite varios aldeanos, más plazas es la recompensa natural de mejorarla") — 1/2/4,
 /// null para edificios sin `Building.tier` propio (Campamento, Choza... nunca gatean por plazas).
@@ -549,7 +555,7 @@ export const HERRERIA_GRAN_OBRADOR_RECIPE: ConstructionRecipe = {
   ],
   requisitos: { fuerza: 22 },
   oficio: 'constructor-orcos-llanuras',
-  upgradesRecipeKey: 'herreria-obrador',
+  upgradesRecipeKey: 'herreria',
   edificioOficioNivel: 3,
   ayuntamientoNivelMinimo: 3,
 };
@@ -603,7 +609,7 @@ export const CURTIDURIA_GRAN_OBRADOR_RECIPE: ConstructionRecipe = {
   ],
   requisitos: { destreza: 20 },
   oficio: 'constructor-orcos-llanuras',
-  upgradesRecipeKey: 'curtiduria-obrador',
+  upgradesRecipeKey: 'curtiduria',
   edificioOficioNivel: 3,
   ayuntamientoNivelMinimo: 3,
 };
@@ -656,7 +662,7 @@ export const PELETERIA_GRAN_OBRADOR_RECIPE: ConstructionRecipe = {
   ],
   requisitos: { destreza: 20 },
   oficio: 'constructor-orcos-llanuras',
-  upgradesRecipeKey: 'peleteria-obrador',
+  upgradesRecipeKey: 'peleteria',
   edificioOficioNivel: 3,
   ayuntamientoNivelMinimo: 3,
 };
@@ -709,7 +715,7 @@ export const DESOLLADERO_GRAN_OBRADOR_RECIPE: ConstructionRecipe = {
   ],
   requisitos: { fuerza: 22 },
   oficio: 'constructor-orcos-llanuras',
-  upgradesRecipeKey: 'desolladero-obrador',
+  upgradesRecipeKey: 'desolladero',
   edificioOficioNivel: 3,
   ayuntamientoNivelMinimo: 3,
 };
@@ -762,7 +768,7 @@ export const CORRALES_GRAN_OBRADOR_RECIPE: ConstructionRecipe = {
   ],
   requisitos: { voluntad: 20 },
   oficio: 'constructor-orcos-llanuras',
-  upgradesRecipeKey: 'corrales-obrador',
+  upgradesRecipeKey: 'corrales',
   edificioOficioNivel: 3,
   ayuntamientoNivelMinimo: 3,
 };
@@ -815,7 +821,7 @@ export const CARPINTERIA_GRAN_OBRADOR_RECIPE: ConstructionRecipe = {
   ],
   requisitos: { fuerza: 22 },
   oficio: 'constructor-orcos-llanuras',
-  upgradesRecipeKey: 'carpinteria-obrador',
+  upgradesRecipeKey: 'carpinteria',
   edificioOficioNivel: 3,
   ayuntamientoNivelMinimo: 3,
 };
@@ -868,7 +874,7 @@ export const SASTRERIA_GRAN_OBRADOR_RECIPE: ConstructionRecipe = {
   ],
   requisitos: { destreza: 20 },
   oficio: 'constructor-orcos-llanuras',
-  upgradesRecipeKey: 'sastreria-obrador',
+  upgradesRecipeKey: 'sastreria',
   edificioOficioNivel: 3,
   ayuntamientoNivelMinimo: 3,
 };
@@ -921,7 +927,7 @@ export const HERBORISTERIA_GRAN_OBRADOR_RECIPE: ConstructionRecipe = {
   ],
   requisitos: { inteligencia: 20 },
   oficio: 'constructor-orcos-llanuras',
-  upgradesRecipeKey: 'herboristeria-obrador',
+  upgradesRecipeKey: 'herboristeria',
   edificioOficioNivel: 3,
   ayuntamientoNivelMinimo: 3,
 };
@@ -974,7 +980,7 @@ export const CASA_DE_CURAS_GRAN_OBRADOR_RECIPE: ConstructionRecipe = {
   ],
   requisitos: { voluntad: 20 },
   oficio: 'constructor-orcos-llanuras',
-  upgradesRecipeKey: 'casa-de-curas-obrador',
+  upgradesRecipeKey: 'casa-de-curas',
   edificioOficioNivel: 3,
   ayuntamientoNivelMinimo: 3,
 };
@@ -1027,7 +1033,7 @@ export const TALLER_ALQUIMIA_GRAN_OBRADOR_RECIPE: ConstructionRecipe = {
   ],
   requisitos: { inteligencia: 22 },
   oficio: 'constructor-orcos-llanuras',
-  upgradesRecipeKey: 'taller-alquimia-obrador',
+  upgradesRecipeKey: 'taller-alquimia',
   edificioOficioNivel: 3,
   ayuntamientoNivelMinimo: 3,
 };
@@ -1083,7 +1089,7 @@ export const COCINA_GRAN_OBRADOR_RECIPE: ConstructionRecipe = {
   ],
   requisitos: { constitucion: 20 },
   oficio: 'constructor-orcos-llanuras',
-  upgradesRecipeKey: 'cocina-obrador',
+  upgradesRecipeKey: 'cocina',
   edificioOficioNivel: 3,
   ayuntamientoNivelMinimo: 3,
 };
@@ -1140,7 +1146,7 @@ export const EMBARCADERO_PESCA_GRAN_OBRADOR_RECIPE: ConstructionRecipe = {
   ],
   requisitos: { destreza: 20 },
   oficio: 'constructor-orcos-llanuras',
-  upgradesRecipeKey: 'embarcadero-pesca-obrador',
+  upgradesRecipeKey: 'embarcadero-pesca',
   edificioOficioNivel: 3,
   condicionRegion: 'costa',
   ayuntamientoNivelMinimo: 3,
@@ -1194,7 +1200,7 @@ export const OBRADOR_PIEDRA_GRAN_OBRADOR_RECIPE: ConstructionRecipe = {
   ],
   requisitos: { fuerza: 22 },
   oficio: 'constructor-orcos-llanuras',
-  upgradesRecipeKey: 'obrador-piedra-obrador',
+  upgradesRecipeKey: 'obrador-piedra',
   edificioOficioNivel: 3,
   ayuntamientoNivelMinimo: 3,
 };
@@ -1249,7 +1255,7 @@ export const BOCA_MINA_GRAN_OBRADOR_RECIPE: ConstructionRecipe = {
   ],
   requisitos: { fuerza: 22 },
   oficio: 'constructor-orcos-llanuras',
-  upgradesRecipeKey: 'boca-mina-obrador',
+  upgradesRecipeKey: 'boca-mina',
   edificioOficioNivel: 3,
   condicionRegion: 'veta',
   ayuntamientoNivelMinimo: 3,
