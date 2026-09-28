@@ -157,7 +157,7 @@ capa más, por el terreno descrito de la ubicación exacta donde está el person
 región tiene el mismo terreno). `Location.locationTerrainTags`, `HarvestYield.harvestSourceTerrainTag`
 y `Npc.faunaTerrainTag` (worldCatalog.ts) etiquetan cada uno con su terreno de afinidad; el match es
 categórico (un tag coincide o no, sin ponderar) y `undefined`/`null` en cualquiera de los dos lados
-significa "sin filtrar" — no bloquea nada por falta de dato. `recolectar.ts`/`cazar.ts` aplican este
+significa "sin filtrar" — no bloquea nada por falta de dato. `recolectar.ts`/`services/caza.ts` aplican este
 filtro ADEMÁS del de región/población de arriba, nunca en su lugar.
 
 ## 4. Fuera de alcance a propósito

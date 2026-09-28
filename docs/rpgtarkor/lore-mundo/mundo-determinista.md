@@ -197,7 +197,7 @@ quirúrgicas que lo que decía la versión original de este documento:
   (Capa 2). Hasta entonces solo se LEÍA (`findUnique`), nunca se creaba — si el turno no incluía
   golpe/saqueo real, la fila nunca llegaba a existir, y la única forma de que el NPC "siguiera en
   escena" turnos después era precisamente `sessionFacts` sin control. Ahora `upsert` a ILESO, mismo
-  patrón ya probado en `cazar.ts` (caza en grupo).
+  patrón ya probado en la caza en grupo (hoy `services/caza.ts`).
 - [x] **Pieza B — guard nuevo `hasFalseNpcAppearance`** (mismo patrón sentence-matching que
   `hasResurrectedDeadNpc`): detecta si la narración (prosa o `newFacts`) "hace aparecer" con
   vocabulario de presencia activa a un NPC geográficamente plausible
@@ -224,7 +224,7 @@ sin necesitar reestructurar el detector.
   (`resolverTurnoJugador`), narra con `narrarTurnoCombateMultiple` (motor ligero propio, no el
   Narrador clásico), y reconstruye `combateIniciado`/`pendingCombatNpcSlugs` desde
   `CombatParticipant` real en vez de `resolveCombatSlugsAndPersist`.
-  - `cazar.ts` (caza en grupo) ya no escribe `NpcState.groupSize` directo — llama a
+  - La caza en grupo (entonces `cazar.ts`, hoy `services/caza.ts`) ya no escribe `NpcState.groupSize` directo — llama a
     `iniciarCombatEncounter` dentro de `prisma.$transaction` solo cuando al menos una especie
     seleccionada tiene más de un avistado; si hay grupo real, TODAS las especies seleccionadas
     (incluidas las de un individuo) entran en el mismo encuentro, para no mezclar el sistema nuevo

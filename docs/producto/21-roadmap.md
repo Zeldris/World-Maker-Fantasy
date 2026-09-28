@@ -184,7 +184,7 @@ No son fallos. Se retoman cuando cambie su condición.
 | Profesión "ganadería" y `silbato-hueso-caza` | Sin diseño |
 | PNG reales de banners de clase | Sin proveedor de imagen para esa categoría |
 | Clemencia de enemigo y duelos de honor | Espera a la IA de combate NPC |
-| Sub-combates fragmentados (>4 contra 4) huérfanos si el servidor cae a mitad | Reverificar: la caza pasó de `cazar.ts` (borrado) a la tarjeta de encuentro |
+| Sub-combates fragmentados (>4 contra 4) huérfanos si el servidor cae a mitad | Reverificar: la caza pasó a `services/caza.ts`; `caza.integration.test.ts` cubre la sub-partición >4v4 pero no la caída a mitad |
 
 ---
 

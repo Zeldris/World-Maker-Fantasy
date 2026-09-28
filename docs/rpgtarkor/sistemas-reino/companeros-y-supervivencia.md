@@ -28,7 +28,7 @@ verdad a tu lado en combate (`Companion.attributes`, aplicado el mismo día que 
 - **`domesticablePct`** (fauna, `worldCatalog.ts`) — calibrado por especie, sembrado en DB, **cero
   consumidores hasta hoy**. Pensado exactamente para esto.
 - **`capturablePct`** — ¡cuidado, es OTRA cosa! Decide si una "caza limpia" mata sin combate a una
-  presa débil (`cazar.ts`). No tiene nada que ver con la captura viva de este documento — no
+  presa débil (`services/caza.ts`). No tiene nada que ver con la captura viva de este documento — no
   compartir nombre ni campo.
 - **`CondicionFisica`**: `ILESO → HERIDO → GRAVE → CONVALECIENTE → MUERTO`. `GRAVE`/`CONVALECIENTE`
   son los estados "incapacitado, no muerto" ya usados en combate (solo estos son saqueables) — la
@@ -37,7 +37,7 @@ verdad a tu lado en combate (`Companion.attributes`, aplicado el mismo día que 
   `odre-agua` — son la moneda real de Comida/Agua de todo este documento, sin inventar recurso
   nuevo.
 - **`fictionalMinutes`/`fictionalDateLabel`** (`WorldState`) — el reloj de juego ya real que se usa
-  para todo lo que depende de tiempo transcurrido (ver `cazar.ts`, `turnResolution.ts`). El ritmo de
+  para todo lo que depende de tiempo transcurrido (ver `services/caza.ts`, `turnResolution.ts`). El ritmo de
   Hambre/Sed de este documento se ancla aquí, no a turnos ni a días reales.
 
 ---

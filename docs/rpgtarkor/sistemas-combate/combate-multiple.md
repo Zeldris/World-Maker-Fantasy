@@ -7,7 +7,7 @@
 estar construido e integrado en producción desde el día siguiente al diseño). Real:
 `CombatEncounter`/`CombatParticipant` (`schema.prisma`), iniciativa N-way (`combateMultiple.ts`),
 orquestación con estado real incluida la jugadora (`combateMultipleOrquestacion.ts`), disparo real
-desde `cazar.ts` (caza en grupo) y desde un ataque directo, saqueo/desuello al resolverse, y
+desde `services/caza.ts` (caza en grupo, al toparse con el grupo en la zona: `POST /zona/cazar`) y desde un ataque directo, saqueo/desuello al resolverse, y
 narración ligera propia (`combateMultipleNarracion.ts`). Esta fue la pieza de infraestructura más
 grande de la sesión: desbloquea `MULTIPLE`/`INVOCACION`/`COMPANERO`/`CONTROL`/`EXPULSAR` en las 34
 especializaciones de `clases.md`, y es lo que permite que un compañero
