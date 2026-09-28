@@ -259,7 +259,7 @@ export async function loreContextFor(worldId: string, entityType: ImagePromptEnt
     // Día/noche/estación (2026-08-27), mismo sufijo que 'location' — el mapa de zona también
     // puede variar (nieve, oscuridad) sin perder los puntos de referencia calibrados.
     const { baseSlug, momento, estacion } = stripLocationTimeVariant(entitySlug);
-    const location = await prisma.location.findUnique({ where: { worldId_slug: { worldId, slug: baseSlug } }, include: { zonePoints: true } });
+    const location = await prisma.location.findUnique({ where: { worldId_slug: { worldId, slug: baseSlug } }, include: { zonePoints: { where: { saveId: null } } } });
     if (!location) return null;
     const puntos = location.zonePoints.length
       ? ` Elementos reales presentes en la zona (referencia, no listar como texto en la imagen): ${location.zonePoints.map((p) => p.label ?? p.targetSlug).join(', ')}.`

@@ -212,8 +212,8 @@ export async function volverAEntrada(tx: TxOrClient, saveId: string, entrada: { 
 
 /// Busca el `ZonePoint` activo de esta Location con ese `targetSlug` — devuelve su posición real o
 /// `null` si no existe (el caller decide el fallback a `NpcState.zonaPosX/Y` para un dinámico).
-export async function posicionDeObjetivo(tx: TxOrClient, locationId: string, targetSlug: string): Promise<{ x: number; y: number } | null> {
-  const zonePoint = await tx.zonePoint.findFirst({ where: { locationId, targetSlug, activo: true }, select: { x: true, y: true } });
+export async function posicionDeObjetivo(tx: TxOrClient, saveId: string, locationId: string, targetSlug: string): Promise<{ x: number; y: number } | null> {
+  const zonePoint = await tx.zonePoint.findFirst({ where: { saveId, locationId, targetSlug, activo: true }, select: { x: true, y: true } });
   return zonePoint ? { x: zonePoint.x, y: zonePoint.y } : null;
 }
 

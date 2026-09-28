@@ -225,6 +225,8 @@ export async function restartSaveTransactionBody(
   // `CombatParticipant` se borra en cascada (`onDelete: Cascade` en el schema), no hace falta un
   // segundo deleteMany.
   await tx.combatEncounter.deleteMany({ where: { saveId: save.id } });
+  // Fase 5 (B1): el estado vivo de zona (fauna movida/cazada, grupos) es de la partida — se re-clona de la plantilla.
+  await tx.zonePoint.deleteMany({ where: { saveId: save.id } });
   await tx.inventoryItem.deleteMany({ where: { saveId: save.id } });
   await tx.companion.deleteMany({ where: { saveId: save.id } });
   await tx.subject.deleteMany({ where: { saveId: save.id } });

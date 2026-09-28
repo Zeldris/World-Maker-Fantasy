@@ -966,7 +966,7 @@ export async function resolverRecoleccion(
         const currentLocationIdParaZona = save.currentLocation?.id ?? null;
         if (currentLocationIdParaZona && selections.length > 0) {
           const ultimoSourceSlug = selections[selections.length - 1].sourceSlug;
-          const zonaObjetivo = await posicionDeObjetivo(tx, currentLocationIdParaZona, ultimoSourceSlug);
+          const zonaObjetivo = await posicionDeObjetivo(tx, save.id, currentLocationIdParaZona, ultimoSourceSlug);
           if (zonaObjetivo) await moverJugadorA(tx, save.id, zonaObjetivo.x, zonaObjetivo.y);
         }
 

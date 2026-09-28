@@ -109,10 +109,10 @@ export function groupVarianceClause(cantidadElegida: number, cantidadReal: numbe
 /// sin comprometerse, `enfrentados` puede ser 0 y el punto no pierde nada). Si llega a 0: la fila
 /// ancla (`label` no nulo, la curada de catálogo) nunca se borra, se deja `activo:false`; cualquier
 /// otra fila de grupo se borra del todo (mismo criterio que `reconciliarGrupos`, zonePoints.ts).
-async function descontarZonePointCaza(tx: Prisma.TransactionClient, zonePointId: string, enfrentados: number): Promise<void> {
+async function descontarZonePointCaza(tx: Prisma.TransactionClient, saveId: string, zonePointId: string, enfrentados: number): Promise<void> {
   if (enfrentados <= 0) return;
   const punto = await tx.zonePoint.findUnique({ where: { id: zonePointId } });
-  if (!punto) return; // ya no existe (carrera rara) — nada que descontar.
+  if (!punto || punto.saveId !== saveId) return; // ya no existe (o es de otra partida) (carrera rara) — nada que descontar.
   const nuevaCantidad = Math.max(0, punto.cantidad - enfrentados);
   if (nuevaCantidad === 0) {
     if (punto.label != null) {
@@ -177,7 +177,7 @@ async function intentarCazaLimpia(save: SaveParaCaza, target: CazaTarget): Promi
       },
     });
     if (currentLocationId) {
-      const zonaObjetivo = await posicionDeObjetivo(tx, currentLocationId, npc.slug);
+      const zonaObjetivo = await posicionDeObjetivo(tx, save.id, currentLocationId, npc.slug);
       if (zonaObjetivo) await moverJugadorA(tx, save.id, zonaObjetivo.x, zonaObjetivo.y);
     }
     await decrementPopulationOnDeath(tx, save.worldId, null, npc.slug, save.region);
@@ -187,7 +187,7 @@ async function intentarCazaLimpia(save: SaveParaCaza, target: CazaTarget): Promi
     // Grupos de fauna reales (Fase 2) — la caza limpia siempre enfrenta a UN único individuo
     // (nunca al grupo entero, ver comentario de cabecera de esta función); el punto del que salió
     // pierde exactamente ese individuo.
-    if (zonePointId) await descontarZonePointCaza(tx, zonePointId, 1);
+    if (zonePointId) await descontarZonePointCaza(tx, save.id, zonePointId, 1);
     return created;
   });
 
@@ -301,7 +301,7 @@ async function intentarCazaEnGrupo(save: SaveParaCaza, targets: CazaTarget[]): P
       // Grupos de fauna reales (Fase 2) — el/los `ZonePoint` de origen pierden los individuos
       // realmente enfrentados, en la misma transacción que crea el combate.
       for (const [zonePointId, enfrentados] of enfrentadosPorZonePoint) {
-        await descontarZonePointCaza(tx, zonePointId, enfrentados);
+        await descontarZonePointCaza(tx, save.id, zonePointId, enfrentados);
       }
       return { autonomosIds };
     });
@@ -326,7 +326,7 @@ async function intentarCazaEnGrupo(save: SaveParaCaza, targets: CazaTarget[]): P
     const conPunto = targets.filter((t) => t.zonePointId);
     if (conPunto.length > 0) {
       await prisma.$transaction(async (tx) => {
-        for (const t of conPunto) await descontarZonePointCaza(tx, t.zonePointId!, 1);
+        for (const t of conPunto) await descontarZonePointCaza(tx, save.id, t.zonePointId!, 1);
       });
     }
   }

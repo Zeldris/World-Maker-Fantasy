@@ -41,9 +41,24 @@ const findManyParcela = vi.fn();
 // Cadáveres en el mapa (Fase 5, 2026-09-28) — sin despiece de catálogo por defecto.
 const findManyHarvestYield = vi.fn().mockResolvedValue([]);
 
+// Fase 5 (B1): `zona.ts` lee los `ZonePoint` de la partida con `zonePoint.findMany` — el mock los
+// sigue sacando de `currentLocation.zonePoints` del último `save` devuelto por `findUnique`.
+let ultimaPartidaMock: { currentLocation?: { zonePoints?: unknown[] } | null } | null = null;
 vi.mock('../../lib/prisma.js', () => ({
   prisma: {
-    save: { findUnique: (...args: unknown[]) => findUniqueSave(...args) },
+    // Candado de clonado de ZonePoint por partida (B1) — `pg_advisory_xact_lock`, sin efecto aquí.
+    $executeRaw: () => Promise.resolve(0),
+    save: {
+      findUnique: async (...args: unknown[]) => {
+        const r = await findUniqueSave(...args);
+        ultimaPartidaMock = r;
+        return r;
+      },
+    },
+    zonePoint: {
+      findMany: async () => ultimaPartidaMock?.currentLocation?.zonePoints ?? [],
+      createMany: async () => ({ count: 0 }),
+    },
     npc: { findMany: (...args: unknown[]) => findManyNpc(...args) },
     npcState: {
       findMany: (...args: unknown[]) => findManyNpcState(...args),

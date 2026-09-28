@@ -19,15 +19,15 @@ const { pickStationaryInterruption } = await import('./stationaryInterruption.js
 describe('pickStationaryInterruption', () => {
   it('sin ningún ZonePoint en la Location: null siempre, sin llamar a nada más', async () => {
     zonePointFindMany.mockResolvedValueOnce([]);
-    const result = await pickStationaryInterruption('world1', 'loc1', 480, 1, () => 0);
+    const result = await pickStationaryInterruption('world1', 'save1', 'loc1', 480, 1, () => 0);
     expect(result).toBeNull();
     expect(npcFindMany).not.toHaveBeenCalled();
   });
 
   it('un RECURSO nunca "interrumpe" — el filtro ya lo excluye en la query (comprobado por el where pasado)', async () => {
     zonePointFindMany.mockResolvedValueOnce([]);
-    await pickStationaryInterruption('world1', 'loc1', 480, 1, () => 0);
-    expect(zonePointFindMany).toHaveBeenCalledWith({ where: { locationId: 'loc1', tipo: { in: ['FAUNA', 'NPC'] } } });
+    await pickStationaryInterruption('world1', 'save1', 'loc1', 480, 1, () => 0);
+    expect(zonePointFindMany).toHaveBeenCalledWith({ where: { saveId: 'save1', locationId: 'loc1', tipo: { in: ['FAUNA', 'NPC'] } } });
   });
 
   it('con ZonePoint real y tirada favorable, elige un candidato ponderado por población', async () => {
@@ -40,7 +40,7 @@ describe('pickStationaryInterruption', () => {
     // random() < perChunkProbability en la primera tirada, y luego 0 para que
     // pickAmbientEncounterCandidate elija el único candidato disponible.
     const random = vi.fn().mockReturnValueOnce(0).mockReturnValueOnce(0);
-    const result = await pickStationaryInterruption('world1', 'loc1', 480, 1, random);
+    const result = await pickStationaryInterruption('world1', 'save1', 'loc1', 480, 1, random);
     expect(result).toEqual({ npcId: 'npc1', npcSlug: 'kirelon-arenoso', npcName: 'Kirelon Arenoso' });
   });
 
@@ -51,7 +51,7 @@ describe('pickStationaryInterruption', () => {
     npcFindMany.mockResolvedValueOnce([{ id: 'npc1', slug: 'kirelon-arenoso', name: 'Kirelon Arenoso', role: 'x' }]);
     worldPopulationFindMany.mockResolvedValueOnce([{ targetSlug: 'kirelon-arenoso', poblacion: 0, distribucion: {} }]);
 
-    const result = await pickStationaryInterruption('world1', 'loc1', 480, 1, () => 0);
+    const result = await pickStationaryInterruption('world1', 'save1', 'loc1', 480, 1, () => 0);
     expect(result).toBeNull();
   });
 
@@ -67,7 +67,7 @@ describe('pickStationaryInterruption', () => {
     // cuarto bloque el mock cambia a 0 para acertar) — se comprueba que SÍ llega a intentar varias
     // veces antes de rendirse, no solo una.
     const random = vi.fn().mockReturnValueOnce(0.5).mockReturnValueOnce(0.5).mockReturnValueOnce(0.5).mockReturnValueOnce(0).mockReturnValueOnce(0);
-    const result = await pickStationaryInterruption('world1', 'loc1', 480, 0.2, random);
+    const result = await pickStationaryInterruption('world1', 'save1', 'loc1', 480, 0.2, random);
     expect(result).not.toBeNull();
     expect(random).toHaveBeenCalledTimes(5); // 4 tiradas de bloque + 1 de pickAmbientEncounterCandidate
   });

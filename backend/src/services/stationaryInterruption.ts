@@ -24,13 +24,14 @@ export interface StationaryInterruption {
 
 export async function pickStationaryInterruption(
   worldId: string,
+  saveId: string,
   locationId: string,
   durationMinutos: number,
   perChunkProbability: number,
   random: () => number = Math.random,
 ): Promise<StationaryInterruption | null> {
   const zonePoints = await prisma.zonePoint.findMany({
-    where: { locationId, tipo: { in: ['FAUNA', 'NPC'] } },
+    where: { saveId, locationId, tipo: { in: ['FAUNA', 'NPC'] } },
   });
   if (zonePoints.length === 0) return null;
 

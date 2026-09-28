@@ -160,6 +160,7 @@ model Save {
   currentLocationId String?
   currentLocation   Location?       @relation("CurrentLocation", fields: [currentLocationId], references: [id])
   locationVisits    LocationVisit[]
+  zonePointsPartida ZonePoint[]
 
   /// Punto del jugador en el mapa SVG de Zona (2026-09-04, "punto del jugador") — píxeles del
   /// lienzo 800×600 de `ZonaPanel.tsx`, misma convención que `ZonePoint.x/y`. Null = partida
@@ -600,9 +601,15 @@ model ZonePoint {
   /// persiste la general, así que si el lore de un Npc cambia su movimiento se actualiza solo, sin
   /// re-sembrar nada. Una plantilla específica SIEMPRE gana sobre la general si está presente.
   plantillaEspecifica  String?
+  /// Fase 5 (plan oct-2026, B1): null = PLANTILLA de catálogo (la que siembra `seed-catalog`, nunca
+  /// se mueve ni se caza); con valor = estado VIVO de esa partida (clonado de la plantilla por
+  /// `asegurarZonePointsDePartida`). Todo el juego lee/escribe solo filas con `saveId`.
+  saveId               String?
+  save                 Save?         @relation(fields: [saveId], references: [id], onDelete: Cascade)
   createdAt            DateTime      @default(now())
 
   @@index([locationId])
+  @@index([saveId, locationId])
 }
 
 enum ZonePointTipo {
@@ -1119,7 +1126,7 @@ model Companion {
 
   /// Nivel de oficio propio del trabajador de Reino (§ 4.4-ter) — ver comentario completo en
   /// `ProfessionProgress.companionId`. Vacío para compañeros personales sin `rolReino`.
-  professionProgress   ProfessionProgress[]
+  professionProgress ProfessionProgress[]
 
   @@index([saveId])
   @@index([plantillaEquipoId])
@@ -1712,33 +1719,33 @@ model ProfessionProgress {
 /// conviven sin problema) solo para que Prisma pueda expresar la relación 1:1 hacia `Save`/
 /// `Faction`; `ownerKey` sigue siendo la clave operativa real.
 model KingdomStats {
-  id                String   @id @default(cuid())
-  ownerKey          String   @unique
-  saveId            String?  @unique
-  save              Save?    @relation(fields: [saveId], references: [id], onDelete: Cascade)
-  factionId         String?  @unique
-  faction           Faction? @relation(fields: [factionId], references: [id], onDelete: Cascade)
-  poblacion         Int      @default(0)
-  felicidad         Int      @default(50)
-  comida            Int      @default(0)
-  bebida            Int      @default(0)
-  riqueza           Int      @default(0)
-  soldados          Int      @default(0)
-  trabajadores      Int      @default(0)
-  visitantes        Int      @default(0)
+  id                 String   @id @default(cuid())
+  ownerKey           String   @unique
+  saveId             String?  @unique
+  save               Save?    @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  factionId          String?  @unique
+  faction            Faction? @relation(fields: [factionId], references: [id], onDelete: Cascade)
+  poblacion          Int      @default(0)
+  felicidad          Int      @default(50)
+  comida             Int      @default(0)
+  bebida             Int      @default(0)
+  riqueza            Int      @default(0)
+  soldados           Int      @default(0)
+  trabajadores       Int      @default(0)
+  visitantes         Int      @default(0)
   /// Rachas de días consecutivos de felicidad alta/baja (2026-08-23, Grupo 3 § Territory.control) —
   /// puro estado interno del tick, nunca se serializa al frontend. Se resetea a 0 en cuanto la
   /// felicidad sale de su banda (ver `tickKingdomOneDay`, kingdomTick.ts). Cruzar el umbral de días
   /// dispara consolidar/perder territorios — ver el bloque de `diasCruzados` en turnResolution.ts.
-  diasFelicidadAlta Int      @default(0)
-  diasFelicidadBaja Int      @default(0)
+  diasFelicidadAlta  Int      @default(0)
+  diasFelicidadBaja  Int      @default(0)
   /// Solo filas de facción (Fase 4 del plan oct-2026, H-6): último día de ficción del MUNDO (floor de
   /// minutos/1440, máximo de sus partidas) para el que `advanceFactionEconomy` (factionEconomy.ts,
   /// llamado desde worldTick) ya produjo/consumió. Marcador de idempotencia: cada día se procesa una
   /// sola vez aunque haya varias partidas o varios ticks. Null = aún sin línea base (el primer tick
   /// la fija al día actual sin producir retroactivamente).
   ultimoDiaProducido Int?
-  updatedAt         DateTime @updatedAt
+  updatedAt          DateTime @updatedAt
 }
 
 /// El cupo lo da el nivel (docs/mecanicas/10-niveles-xp-reino.md § 4.3): 3 + floor(nivel/2).
@@ -2041,22 +2048,22 @@ model Building {
 /// al `Building` desde el panel de Reino, nunca la propone el modelo/narrador (mismo criterio que
 /// el resto de decisiones mecánicas del Reino: el modelo narra, el backend decide números).
 model OrdenProduccion {
-  id         String   @id @default(cuid())
-  buildingId String
-  building   Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
-  recipeKey  String
+  id                         String   @id @default(cuid())
+  buildingId                 String
+  building                   Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  recipeKey                  String
   /// 'unico' produce el lote (hasta `limite`, si lo hay) y se desactiva sola. 'reponer' repite
   /// cada tick mientras haya hueco de `limite` propio y de `AlmacenLimite` del recurso resultante.
-  modo       String   @default("reponer")
+  modo                       String   @default("reponer")
   /// Tope de unidades a producir por ESTA orden — null = sin tope propio (en ese caso el único
   /// tope real es el de `AlmacenLimite`, si existe para ese recurso).
-  limite     Int?
+  limite                     Int?
   /// Bellwright "Job Priorities" (0-9, menor = se sirve antes) — decide qué orden se lleva un
   /// trabajador libre cuando varias órdenes del mismo `Building` compiten por él en el mismo tick.
-  prioridad  Int      @default(5)
+  prioridad                  Int      @default(5)
   /// Para saber cuándo una orden 'unico' con `limite` ya se completó y debe desactivarse sola.
-  cantidadProducidaAcumulada Int     @default(0)
-  activa                     Boolean @default(true)
+  cantidadProducidaAcumulada Int      @default(0)
+  activa                     Boolean  @default(true)
   createdAt                  DateTime @default(now())
   updatedAt                  DateTime @updatedAt
 
@@ -2076,9 +2083,9 @@ model OrdenProduccion {
 /// facciones NPC y nadie lo ha pedido. Si algún día hace falta, se generaliza `AlmacenItem` y
 /// `AlmacenLimite` a la vez, no antes.
 model AlmacenLimite {
-  id          String @id @default(cuid())
+  id          String   @id @default(cuid())
   saveId      String
-  save        Save   @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  save        Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
   catalogSlug String
   /// null = sin tope (infinito) — decisión explícita de Álvaro como default.
   limite      Int?
@@ -2480,13 +2487,13 @@ model Npc {
   /// `turnResolution.ts` (ver comentario junto a `resolveCombatSlugsAndPersist`).
   companionOfNpcSlug  String?
 
-  items              NpcItem[]
-  npcStates          NpcState[]
-  combatParticipants CombatParticipant[]
+  items               NpcItem[]
+  npcStates           NpcState[]
+  combatParticipants  CombatParticipant[]
   /// Motor de disputas (§ 4.3) — Faction cuyo liderazgo de gobierno recae en este Npc, ver
   /// comentario completo de `Faction.liderNpcId`. Casi siempre 0 o 1 fila (a lo sumo un puñado de
   /// líderes reales por mundo).
-  faccionesLideradas Faction[]
+  faccionesLideradas  Faction[]
   /// Expediciones de facción (§ 4.5) — tope y progreso real de oficio de este Npc, ver comentario
   /// completo de ambos modelos.
   professionPotential NpcProfessionPotential[]
@@ -2570,32 +2577,32 @@ enum FactionRelationType {
 /// 2026-09-21): `stage` ya no sube solo con `WorldState.fictionalMinutes`, sube por condiciones de
 /// mundo reales — ver `presion`/`stage` abajo y el motor en `factionRelations.ts`.
 model FactionRelation {
-  id              String              @id @default(cuid())
-  worldId         String
-  world           World               @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  id                  String              @id @default(cuid())
+  worldId             String
+  world               World               @relation(fields: [worldId], references: [id], onDelete: Cascade)
   /// Solo relaciones entre facciones de CATÁLOGO (`Faction.saveId: null`) — una facción fundada
   /// por el jugador (`Faction.saveId` relleno) no participa de este motor de fondo, mismo
   /// criterio que "el jugador nunca es NPC" del resto del proyecto.
-  sourceFactionId String
-  sourceFaction   Faction             @relation("FactionRelationSource", fields: [sourceFactionId], references: [id], onDelete: Cascade)
-  targetFactionId String
-  targetFaction   Faction             @relation("FactionRelationTarget", fields: [targetFactionId], references: [id], onDelete: Cascade)
-  type            FactionRelationType @default(NEUTRAL)
+  sourceFactionId     String
+  sourceFaction       Faction             @relation("FactionRelationSource", fields: [sourceFactionId], references: [id], onDelete: Cascade)
+  targetFactionId     String
+  targetFaction       Faction             @relation("FactionRelationTarget", fields: [targetFactionId], references: [id], onDelete: Cascade)
+  type                FactionRelationType @default(NEUTRAL)
   /// Presión acumulada 0-100 (mismo espíritu que `FACTION_REP_MIN/MAX` de reputation.ts, pero
   /// entre dos facciones NPC, no jugador↔facción) — lo que sube por choque territorial/reputación
   /// cruzada y hace avanzar `stage` al cruzar umbrales, en vez de un cron ciego de 7 días.
-  presion         Int                 @default(50)
+  presion             Int                 @default(50)
   /// Etapa narrativa actual (mismo concepto que el viejo `AgendaEntry.stage`/`STAGE_FACTS`, pero
   /// generado por plantilla en servicio a partir de `type`/nombres de ambas facciones, no 5 líneas
   /// fijas escritas a mano por conflicto — ver `factionRelations.ts` § stageFactFor).
-  stage           Int                 @default(0)
-  maxStage        Int                 @default(4)
+  stage               Int                 @default(0)
+  maxStage            Int                 @default(4)
   /// Última semana de ficción del mundo (floor(día/7)) para la que `decayPresion` ya se aplicó a
   /// esta relación (Fase 4 del plan oct-2026, H-4) — marcador de idempotencia, ver factionEconomy.ts.
   /// Null = sin línea base todavía (el primer tick la fija sin decaer).
   ultimaSemanaDecaida Int?
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
 
   @@unique([sourceFactionId, targetFactionId])
   @@index([worldId])

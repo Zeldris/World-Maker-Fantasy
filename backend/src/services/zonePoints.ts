@@ -1,4 +1,4 @@
-import type { Prisma, PrismaClient, ZonePointTipo } from '@prisma/client';
+import { Prisma, type PrismaClient, type ZonePointTipo } from '@prisma/client';
 import { stripRegionArticle } from './population.js';
 import { sourceDisplayNameFor, faunaMomentoDelDia } from '../scripts/worldCatalog.js';
 import { factionRepFor } from './reputation.js';
@@ -244,6 +244,54 @@ export function reconciliarGrupos(
   return { actualizar, borrar, crear: [] };
 }
 
+/// Fase 5 (plan oct-2026, B1) — `ZonePoint` por partida. Las filas con `saveId = null` son la
+/// PLANTILLA de catálogo (sembrada por `seed-catalog`, nunca se mueve ni se caza); cada partida
+/// trabaja con su propia copia. Si la partida aún no tiene filas en esta Location, clona las
+/// plantillas activas (mismos campos, `lastUpdatedAtMinutes` null para que el primer reparto de
+/// grupos corra) y las devuelve. Idempotente. Llamar antes de cualquier lectura de juego.
+export async function asegurarZonePointsDePartida(
+  tx: Prisma.TransactionClient | PrismaClient,
+  saveId: string,
+  locationId: string,
+) {
+  const existentes = await tx.zonePoint.findMany({ where: { saveId, locationId } });
+  if (existentes.length > 0) return existentes;
+  // Dos peticiones casi simultáneas de una partida sin filas (abrir el mapa + un turno) podían
+  // clonar dos veces. Candado de Postgres por (partida, Location), liberado al acabar la transacción;
+  // si el caller no está ya en una, se abre aquí.
+  if ('$transaction' in tx) return tx.$transaction((t) => clonarPlantillasConCandado(t, saveId, locationId));
+  return clonarPlantillasConCandado(tx, saveId, locationId);
+}
+
+async function clonarPlantillasConCandado(tx: Prisma.TransactionClient, saveId: string, locationId: string) {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`zonepoints|${saveId}|${locationId}`}))`;
+  const yaClonadas = await tx.zonePoint.findMany({ where: { saveId, locationId } });
+  if (yaClonadas.length > 0) return yaClonadas;
+  const plantillas = await tx.zonePoint.findMany({ where: { saveId: null, locationId, activo: true } });
+  if (plantillas.length === 0) return [];
+  await tx.zonePoint.createMany({
+    data: plantillas.map((p) => ({
+      locationId: p.locationId,
+      saveId,
+      x: p.x,
+      y: p.y,
+      origenX: p.origenX,
+      origenY: p.origenY,
+      tipo: p.tipo,
+      targetSlug: p.targetSlug,
+      label: p.label,
+      cantidad: p.cantidad,
+      activo: p.activo,
+      factionSlug: p.factionSlug,
+      lastUpdatedAtMinutes: null,
+      ruta: p.ruta === null ? Prisma.DbNull : (p.ruta as Prisma.InputJsonValue),
+      pasoRuta: 0,
+      plantillaEspecifica: p.plantillaEspecifica,
+    })),
+  });
+  return tx.zonePoint.findMany({ where: { saveId, locationId } });
+}
+
 /// Recalcula TODOS los `ZonePoint` de tipo FAUNA/RECURSO de una `Location`, proporcional al tiempo
 /// de ficción transcurrido desde su último recalculo — llamado desde `narrateAndPersistTurn`
 /// (turnResolution.ts) y, si hace falta, desde `GET /saves/:id/zona` (zona.ts, partida nueva sin
@@ -253,6 +301,7 @@ export function reconciliarGrupos(
 export async function recalcularZonePointsDeLocation(
   tx: Prisma.TransactionClient | PrismaClient,
   worldId: string,
+  saveId: string,
   locationId: string,
   region: string | null,
   fictionalMinutesActuales: number,
@@ -261,7 +310,7 @@ export async function recalcularZonePointsDeLocation(
   // Cargado en batch (2026-09-28) — TODOS los puntos de la Location, no solo FAUNA/RECURSO: hace
   // falta conocer también NPC/EDIFICIO para no colocar una fila de grupo nueva encima de ellos
   // (`ocupadas` más abajo).
-  const todosPuntos = await tx.zonePoint.findMany({ where: { locationId } });
+  const todosPuntos = await asegurarZonePointsDePartida(tx, saveId, locationId);
   const puntos = todosPuntos.filter((p) => p.tipo === 'FAUNA' || p.tipo === 'RECURSO');
   if (puntos.length === 0) return;
 
@@ -362,6 +411,7 @@ export async function recalcularZonePointsDeLocation(
         tx.zonePoint.create({
           data: {
             locationId,
+            saveId,
             targetSlug,
             tipo: 'FAUNA',
             plantillaEspecifica: ancla.plantillaEspecifica,
@@ -426,8 +476,9 @@ export async function avanzarZonePointsUnPaso(
   // se filtra por hora, se comporta exactamente como antes (comportamiento seguro por defecto).
   momento?: MomentoDelDia,
 ): Promise<ZonePointPasoResultado[]> {
+  await asegurarZonePointsDePartida(tx, saveId, locationId);
   const puntosCrudos = await tx.zonePoint.findMany({
-    where: { locationId, tipo: { in: ['FAUNA', 'NPC'] }, activo: true },
+    where: { saveId, locationId, tipo: { in: ['FAUNA', 'NPC'] }, activo: true },
   });
   if (puntosCrudos.length === 0) return [];
   // Gate de aparición narrativa (ver comentario junto a `zonePointVisiblePara` más arriba) — un
@@ -554,7 +605,8 @@ export interface ZonePointsSummaryPorTipo {
 }
 
 export async function zonePointsSummaryFor(prisma: PrismaClient, locationId: string, saveId: string): Promise<ZonePointsSummaryPorTipo | null> {
-  const puntosCrudos = await prisma.zonePoint.findMany({ where: { locationId, activo: true } });
+  await asegurarZonePointsDePartida(prisma, saveId, locationId);
+  const puntosCrudos = await prisma.zonePoint.findMany({ where: { saveId, locationId, activo: true } });
   if (puntosCrudos.length === 0) return null;
   // Gate de aparición narrativa — un punto sin su misión de desbloqueo aceptada tampoco debe
   // filtrarse al contexto del narrador (el LLM no debe "saber" que está ahí antes de tiempo).

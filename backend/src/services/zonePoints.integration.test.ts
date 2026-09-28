@@ -44,19 +44,6 @@ describe('recalcularZonePointsDeLocation + zonePointsSummaryFor (Postgres real)'
       },
     });
 
-    const zonePoint = await prisma.zonePoint.create({
-      data: {
-        locationId,
-        x: 100,
-        y: 100,
-        tipo: 'FAUNA',
-        targetSlug: 'fauna-prueba-zonepoint-19',
-        cantidad: 1,
-        activo: true,
-      },
-    });
-    zonePointId = zonePoint.id;
-
     const save = await prisma.save.create({
       data: {
         userId,
@@ -70,6 +57,19 @@ describe('recalcularZonePointsDeLocation + zonePointsSummaryFor (Postgres real)'
       },
     });
     saveId = save.id;
+
+    const zonePoint = await prisma.zonePoint.create({
+      data: {
+        locationId, saveId,
+        x: 100,
+        y: 100,
+        tipo: 'FAUNA',
+        targetSlug: 'fauna-prueba-zonepoint-19',
+        cantidad: 1,
+        activo: true,
+      },
+    });
+    zonePointId = zonePoint.id;
   });
 
   afterAll(async () => {
@@ -85,7 +85,7 @@ describe('recalcularZonePointsDeLocation + zonePointsSummaryFor (Postgres real)'
   const totalDeLaEspecie = async () => (await filasDeLaEspecie()).reduce((suma, f) => suma + f.cantidad, 0);
 
   it('primera vez adopta el objetivo (población regional real recortada a CANTIDAD_MAX_POR_PUNTO=20), repartido en grupos de ≤4', async () => {
-    await recalcularZonePointsDeLocation(prisma, worldId, locationId, 'Las Llanuras del Viento Rojo', 480);
+    await recalcularZonePointsDeLocation(prisma, worldId, saveId, locationId, 'Las Llanuras del Viento Rojo', 480);
     const filas = await filasDeLaEspecie();
     expect(await totalDeLaEspecie()).toBe(20);
     expect(filas.length).toBeGreaterThan(1);
@@ -96,12 +96,12 @@ describe('recalcularZonePointsDeLocation + zonePointsSummaryFor (Postgres real)'
   });
 
   it('sin tiempo transcurrido desde el último recalculo, no cambia nada', async () => {
-    await recalcularZonePointsDeLocation(prisma, worldId, locationId, 'Las Llanuras del Viento Rojo', 480);
+    await recalcularZonePointsDeLocation(prisma, worldId, saveId, locationId, 'Las Llanuras del Viento Rojo', 480);
     expect(await totalDeLaEspecie()).toBe(20);
   });
 
   it('una región sin peso en la distribución hace que el total baje hacia 0 (población regional real es 0)', async () => {
-    await recalcularZonePointsDeLocation(prisma, worldId, locationId, 'Cristal Helado', 480 + 24 * 60);
+    await recalcularZonePointsDeLocation(prisma, worldId, saveId, locationId, 'Cristal Helado', 480 + 24 * 60);
     // Objetivo 0, tope de bajada diaria (AJUSTE_MAXIMO_POR_DIA=3) desde 20 -> 17
     expect(await totalDeLaEspecie()).toBe(17);
     expect((await prisma.zonePoint.findUniqueOrThrow({ where: { id: zonePointId } })).id).toBe(zonePointId);
@@ -134,7 +134,7 @@ describe('recalcularZonePointsDeLocation + zonePointsSummaryFor (Postgres real)'
       await prisma.zonePoint.update({ where: { id: zonePointId }, data: { cantidad: 5, activo: true } });
       const npc = await prisma.npc.findFirstOrThrow({ where: { slug: 'gistera-koh' } });
       const npcZonePoint = await prisma.zonePoint.create({
-        data: { locationId, x: 200, y: 200, tipo: 'NPC', targetSlug: npc.slug, cantidad: 1, activo: true },
+        data: { locationId, saveId, x: 200, y: 200, tipo: 'NPC', targetSlug: npc.slug, cantidad: 1, activo: true },
       });
       npcZonePointId = npcZonePoint.id;
     });

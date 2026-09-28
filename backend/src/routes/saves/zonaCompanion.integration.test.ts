@@ -104,10 +104,10 @@ describe('GET /saves/:id/zona — compañero de fauna con nombre propio', () => 
     soloNpcId = solo.id;
 
     await prisma.zonePoint.create({
-      data: { locationId, x: 400, y: 300, tipo: 'NPC', targetSlug: 'test-companion-dueno', cantidad: 1, activo: true },
+      data: { locationId, saveId, x: 400, y: 300, tipo: 'NPC', targetSlug: 'test-companion-dueno', cantidad: 1, activo: true },
     });
     await prisma.zonePoint.create({
-      data: { locationId, x: 200, y: 300, tipo: 'NPC', targetSlug: 'test-companion-solo', cantidad: 1, activo: true },
+      data: { locationId, saveId, x: 200, y: 300, tipo: 'NPC', targetSlug: 'test-companion-solo', cantidad: 1, activo: true },
     });
 
     const save = await prisma.save.create({

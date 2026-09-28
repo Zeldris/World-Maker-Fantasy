@@ -116,7 +116,7 @@ describe('dynamicModeOffer en /turn/narrate', () => {
 
   it('con un ZonePoint FAUNA activo en la Location, alguna de varias repeticiones ofrece modo dinámico (probabilidad real, no forzada)', async () => {
     const zonePoint = await prisma.zonePoint.create({
-      data: { locationId, x: 10, y: 10, tipo: 'FAUNA', targetSlug: 'fauna-prueba-oferta-modo-dinamico-21', cantidad: 5, activo: true },
+      data: { locationId, saveId, x: 10, y: 10, tipo: 'FAUNA', targetSlug: 'fauna-prueba-oferta-modo-dinamico-21', cantidad: 5, activo: true },
     });
     try {
       const app = await buildApp();
@@ -201,7 +201,7 @@ describe('dynamicModeOffer en /turn/narrate', () => {
 
   it('con un pendingDynamicMode ya activo, nunca ofrece uno nuevo aunque haya candidatos', async () => {
     const zonePoint = await prisma.zonePoint.create({
-      data: { locationId, x: 10, y: 10, tipo: 'FAUNA', targetSlug: 'fauna-prueba-oferta-modo-dinamico-21', cantidad: 5, activo: true },
+      data: { locationId, saveId, x: 10, y: 10, tipo: 'FAUNA', targetSlug: 'fauna-prueba-oferta-modo-dinamico-21', cantidad: 5, activo: true },
     });
     await prisma.save.update({
       where: { id: saveId },
@@ -224,7 +224,7 @@ describe('dynamicModeOffer en /turn/narrate', () => {
 
   it('tras ofrecer una vez, respeta el cooldown y no vuelve a ofrecer aunque haya candidatos', async () => {
     const zonePoint = await prisma.zonePoint.create({
-      data: { locationId, x: 10, y: 10, tipo: 'FAUNA', targetSlug: 'fauna-prueba-oferta-modo-dinamico-21', cantidad: 5, activo: true },
+      data: { locationId, saveId, x: 10, y: 10, tipo: 'FAUNA', targetSlug: 'fauna-prueba-oferta-modo-dinamico-21', cantidad: 5, activo: true },
     });
     // Simula que ya se ofreció hace muy poco (5 min de ficción atrás) — dentro del cooldown de
     // 45 min (COOLDOWN_MODO_DINAMICO_MINUTOS, dynamicMode.ts).
@@ -249,7 +249,7 @@ describe('dynamicModeOffer en /turn/narrate', () => {
 
   it('si este turno ya ofrece una misión (newQuestOfferInfo), nunca ofrece modo dinámico a la vez', async () => {
     const zonePoint = await prisma.zonePoint.create({
-      data: { locationId, x: 10, y: 10, tipo: 'FAUNA', targetSlug: 'fauna-prueba-oferta-modo-dinamico-21', cantidad: 5, activo: true },
+      data: { locationId, saveId, x: 10, y: 10, tipo: 'FAUNA', targetSlug: 'fauna-prueba-oferta-modo-dinamico-21', cantidad: 5, activo: true },
     });
     // Fuerza probabilidad 1.0 real de que HABRÍA ofrecido modo dinámico si no fuera por el guard:
     // como decideOfertaModoDinamico usa Math.random() real, no se puede forzar 100% sin mockear —

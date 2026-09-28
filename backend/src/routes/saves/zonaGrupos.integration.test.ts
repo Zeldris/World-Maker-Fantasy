@@ -115,7 +115,7 @@ describe('Grupos de fauna reales (GET /zona, POST /zona/mover)', () => {
     // que sembraba el catálogo antes de esta pieza, ×1 en vez de ×20 porque el valor exacto no
     // importa: el primer reparto ignora `cantidad` y usa la población regional real).
     await prisma.zonePoint.create({
-      data: { locationId, x: 75, y: 25, tipo: 'FAUNA', targetSlug: 'test-grupos-fauna', cantidad: 1, activo: true },
+      data: { locationId, saveId, x: 75, y: 25, tipo: 'FAUNA', targetSlug: 'test-grupos-fauna', cantidad: 1, activo: true },
     });
 
     const app = await buildApp();
@@ -139,7 +139,7 @@ describe('Grupos de fauna reales (GET /zona, POST /zona/mover)', () => {
 
   it('POST /zona/mover contra un grupo devuelve dynamicModeOffer.cantidad y zonePointId del ZonePoint colisionado', async () => {
     await prisma.zonePoint.create({
-      data: { locationId, x: 75, y: 25, tipo: 'FAUNA', targetSlug: 'test-grupos-fauna', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] },
+      data: { locationId, saveId, x: 75, y: 25, tipo: 'FAUNA', targetSlug: 'test-grupos-fauna', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] },
     });
 
     const app = await buildApp();

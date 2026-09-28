@@ -250,7 +250,7 @@ describe('POST /saves/:id/zona/mover', () => {
     // (avanzarZonePointsUnPaso) lo movería antes de comprobar colisión, haciendo el test no
     // determinista — este test prueba la COLISIÓN, no el paseo aleatorio (que tiene su propio test).
     await prisma.zonePoint.create({
-      data: { locationId, x: 75, y: 25, tipo: 'FAUNA', targetSlug: 'test-mover-agresivo', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] },
+      data: { locationId, saveId, x: 75, y: 25, tipo: 'FAUNA', targetSlug: 'test-mover-agresivo', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] },
     });
     const app = await buildApp();
     const res = await app.inject({
@@ -299,7 +299,7 @@ describe('POST /saves/:id/zona/mover', () => {
 
     it('vivo: colisiona normalmente como cualquier AGRESIVO', async () => {
       await prisma.zonePoint.create({
-        data: { locationId, x: 75, y: 25, tipo: 'NPC', targetSlug: 'test-mover-principal', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] },
+        data: { locationId, saveId, x: 75, y: 25, tipo: 'NPC', targetSlug: 'test-mover-principal', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] },
       });
       const app = await buildApp();
       const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 375, y: 25 } } });
@@ -310,7 +310,7 @@ describe('POST /saves/:id/zona/mover', () => {
 
     it('muerto (condicionFisica: MUERTO, dentro de la ventana de 6h): ya no colisiona', async () => {
       await prisma.zonePoint.create({
-        data: { locationId, x: 75, y: 25, tipo: 'NPC', targetSlug: 'test-mover-principal', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] },
+        data: { locationId, saveId, x: 75, y: 25, tipo: 'NPC', targetSlug: 'test-mover-principal', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] },
       });
       await prisma.npcState.create({
         data: {
@@ -331,7 +331,7 @@ describe('POST /saves/:id/zona/mover', () => {
 
     it('muerto y con la ventana de 6h ya vencida: sigue sin colisionar (a diferencia de fauna genérica, nunca reaparece)', async () => {
       await prisma.zonePoint.create({
-        data: { locationId, x: 75, y: 25, tipo: 'NPC', targetSlug: 'test-mover-principal', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] },
+        data: { locationId, saveId, x: 75, y: 25, tipo: 'NPC', targetSlug: 'test-mover-principal', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] },
       });
       await prisma.npcState.create({
         data: {
@@ -359,7 +359,7 @@ describe('POST /saves/:id/zona/mover', () => {
   // DynamicModeModal) — antes solo dejaba un mensaje de texto plano sin ninguna consecuencia.
   it('colisión con un ZonePoint PACÍFICO (misma celda): dispara pendingDynamicModeOffer real', async () => {
     await prisma.zonePoint.create({
-      data: { locationId, x: 75, y: 25, tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] },
+      data: { locationId, saveId, x: 75, y: 25, tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] },
     });
     const app = await buildApp();
     const res = await app.inject({
@@ -399,7 +399,7 @@ describe('POST /saves/:id/zona/mover', () => {
     // arriba (que solo compara contra `siguienteCelda`, nunca existe si el camino está vacío) ni
     // este otro caso comprobaban nada.
     await prisma.zonePoint.create({
-      data: { locationId, x: 25, y: 25, tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta: [{ x: 25, y: 25 }] },
+      data: { locationId, saveId, x: 25, y: 25, tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta: [{ x: 25, y: 25 }] },
     });
     const app = await buildApp();
     // Destino = misma celda que la posición inicial del jugador (25,25) — calcularCamino da [].
@@ -427,7 +427,7 @@ describe('POST /saves/:id/zona/mover', () => {
     // la celda adyacente solo dejaba un "aviso" de texto plano sin abrir nada; ahora dispara
     // exactamente el mismo árbol de decisión que la MISMA celda (colisión/Interactuar/combate).
     await prisma.zonePoint.create({
-      data: { locationId, x: 125, y: 25, tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta: [{ x: 125, y: 25 }] },
+      data: { locationId, saveId, x: 125, y: 25, tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta: [{ x: 125, y: 25 }] },
     });
     const app = await buildApp();
     const res = await app.inject({
@@ -451,7 +451,7 @@ describe('POST /saves/:id/zona/mover', () => {
   // temperamento/combate/tirada de iniciativa — el jugador SIEMPRE es quien "encuentra" el recurso.
   it('celda ADYACENTE/MISMA a un ZonePoint RECURSO: dispara dynamicModeOffer tipo RECURSO, sin colisión de combate', async () => {
     const recurso = await prisma.zonePoint.create({
-      data: { locationId, x: 75, y: 25, tipo: 'RECURSO', targetSlug: 'test-mover-recurso', cantidad: 1, activo: true },
+      data: { locationId, saveId, x: 75, y: 25, tipo: 'RECURSO', targetSlug: 'test-mover-recurso', cantidad: 1, activo: true },
     });
     const app = await buildApp();
     const res = await app.inject({
@@ -500,7 +500,7 @@ describe('POST /saves/:id/zona/mover', () => {
   it('el mismo encuentro no se repite mientras el jugador sigue en su radio; salir y volver lo ofrece de nuevo', async () => {
     // Recurso en la celda (2,1): el primer paso hacia (1,0) ya entra en su radio.
     await prisma.zonePoint.create({
-      data: { locationId, x: 125, y: 75, tipo: 'RECURSO', targetSlug: 'test-mover-recurso', cantidad: 1, activo: true },
+      data: { locationId, saveId, x: 125, y: 75, tipo: 'RECURSO', targetSlug: 'test-mover-recurso', cantidad: 1, activo: true },
     });
     const app = await buildApp();
     const mover = async (x: number, y: number) =>
@@ -534,7 +534,7 @@ describe('POST /saves/:id/zona/mover', () => {
 
   it('pulsar la propia casilla (camino vacío) ofrece el encuentro aunque sea el último ya ofrecido', async () => {
     await prisma.zonePoint.create({
-      data: { locationId, x: 75, y: 25, tipo: 'RECURSO', targetSlug: 'test-mover-recurso', cantidad: 1, activo: true },
+      data: { locationId, saveId, x: 75, y: 25, tipo: 'RECURSO', targetSlug: 'test-mover-recurso', cantidad: 1, activo: true },
     });
     await prisma.save.update({ where: { id: saveId }, data: { zonaUltimoEncuentro: { targetSlug: 'test-mover-recurso', locationId } } });
     const app = await buildApp();
@@ -545,7 +545,7 @@ describe('POST /saves/:id/zona/mover', () => {
 
   it('un último encuentro de OTRA Location no silencia nada en esta', async () => {
     await prisma.zonePoint.create({
-      data: { locationId, x: 75, y: 25, tipo: 'RECURSO', targetSlug: 'test-mover-recurso', cantidad: 1, activo: true },
+      data: { locationId, saveId, x: 75, y: 25, tipo: 'RECURSO', targetSlug: 'test-mover-recurso', cantidad: 1, activo: true },
     });
     await prisma.save.update({ where: { id: saveId }, data: { zonaUltimoEncuentro: { targetSlug: 'test-mover-recurso', locationId: 'otra-location' } } });
     const app = await buildApp();
@@ -574,7 +574,7 @@ describe('POST /saves/:id/zona/mover', () => {
       data: { pendingDynamicModeOffer: { tipo: 'FAUNA', targetSlug: 'otra-fauna-lejana', targetName: 'Otra', quienInicia: 'jugador' } },
     });
     await prisma.zonePoint.create({
-      data: { locationId, x: 125, y: 75, tipo: 'RECURSO', targetSlug: 'test-mover-recurso', cantidad: 1, activo: true },
+      data: { locationId, saveId, x: 125, y: 75, tipo: 'RECURSO', targetSlug: 'test-mover-recurso', cantidad: 1, activo: true },
     });
     const app = await buildApp();
     const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 375, y: 25 } } });
@@ -586,7 +586,7 @@ describe('POST /saves/:id/zona/mover', () => {
 
   it('un AGRESIVO nunca se silencia por ser el último encuentro: sigue cortando el paso', async () => {
     await prisma.zonePoint.create({
-      data: { locationId, x: 75, y: 25, tipo: 'NPC', targetSlug: 'test-mover-agresivo', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] },
+      data: { locationId, saveId, x: 75, y: 25, tipo: 'NPC', targetSlug: 'test-mover-agresivo', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] },
     });
     await prisma.save.update({ where: { id: saveId }, data: { zonaUltimoEncuentro: { targetSlug: 'test-mover-agresivo', locationId } } });
     const app = await buildApp();
@@ -598,10 +598,10 @@ describe('POST /saves/:id/zona/mover', () => {
 
   it('un ZonePoint FAUNA y uno RECURSO en la misma celda: la FAUNA (ser vivo) gana, el recurso ni se evalúa', async () => {
     await prisma.zonePoint.create({
-      data: { locationId, x: 75, y: 25, tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] },
+      data: { locationId, saveId, x: 75, y: 25, tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] },
     });
     await prisma.zonePoint.create({
-      data: { locationId, x: 75, y: 25, tipo: 'RECURSO', targetSlug: 'test-mover-recurso', cantidad: 1, activo: true },
+      data: { locationId, saveId, x: 75, y: 25, tipo: 'RECURSO', targetSlug: 'test-mover-recurso', cantidad: 1, activo: true },
     });
     const app = await buildApp();
     const res = await app.inject({
@@ -619,7 +619,7 @@ describe('POST /saves/:id/zona/mover', () => {
     // Ruta de 2 celdas (píxel), lejos del jugador para no interferir con colisión/aviso en este test.
     const ruta = [{ x: 725, y: 575 }, { x: 675, y: 575 }]; // celdas (14,11) y (13,11)
     const punto = await prisma.zonePoint.create({
-      data: { locationId, x: 725, y: 575, tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta, pasoRuta: 0 },
+      data: { locationId, saveId, x: 725, y: 575, tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta, pasoRuta: 0 },
     });
     const app = await buildApp();
     const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 75, y: 25 } } });
@@ -639,7 +639,7 @@ describe('POST /saves/:id/zona/mover', () => {
 
   it('sistema de plantillas de movimiento (2026-09-17): un NPC "Maestro" sin ruta ni plantillaEspecifica se queda ESTATICO, nunca se mueve', async () => {
     const punto = await prisma.zonePoint.create({
-      data: { locationId, x: 725, y: 575, origenX: 725, origenY: 575, tipo: 'NPC', targetSlug: 'test-mover-maestro', cantidad: 1, activo: true },
+      data: { locationId, saveId, x: 725, y: 575, origenX: 725, origenY: 575, tipo: 'NPC', targetSlug: 'test-mover-maestro', cantidad: 1, activo: true },
     });
     const app = await buildApp();
     // 3 movimientos del jugador seguidos — cada uno dispara avanzarZonePointsUnPaso una vez.
@@ -657,7 +657,7 @@ describe('POST /saves/:id/zona/mover', () => {
     // patrulla esté disponible (radio 2 celdas a cada lado) — el caso normal, no un caso límite de
     // esquina donde el clamp al borde del lienzo podría dejarlo inmóvil por el propio recorte.
     const punto = await prisma.zonePoint.create({
-      data: { locationId, x: 375, y: 275, origenX: 375, origenY: 275, tipo: 'NPC', targetSlug: 'test-mover-guardia', cantidad: 1, activo: true },
+      data: { locationId, saveId, x: 375, y: 275, origenX: 375, origenY: 275, tipo: 'NPC', targetSlug: 'test-mover-guardia', cantidad: 1, activo: true },
     });
     const app = await buildApp();
     // El jugador parte de (25,25) — un destino distinto (no la misma celda) para que el camino no
@@ -696,7 +696,7 @@ describe('POST /saves/:id/zona/mover', () => {
     // un solo paso Chebyshev.
     const punto = await prisma.zonePoint.create({
       data: {
-        locationId,
+        locationId, saveId,
         x: 125,
         y: 25, // celda (2,0) — exactamente en el borde del radio de persecución (Chebyshev 2)
         origenX: 125,
@@ -722,7 +722,7 @@ describe('POST /saves/:id/zona/mover', () => {
   it('persecución (2026-09-17): fuera del radio de 2 celdas, el AGRESIVO sigue su ruta normal, ignora al jugador', async () => {
     const punto = await prisma.zonePoint.create({
       data: {
-        locationId,
+        locationId, saveId,
         x: 725,
         y: 575, // celda (14,11) — muy lejos del jugador en (0,0), fuera del radio de persecución
         origenX: 725,
@@ -750,7 +750,7 @@ describe('POST /saves/:id/zona/mover', () => {
   it('fauna nocturna (Kirelon Arenoso): NO colisiona ni persigue de día, aunque esté en la misma celda que el jugador', async () => {
     await prisma.zonePoint.create({
       data: {
-        locationId,
+        locationId, saveId,
         x: 75,
         y: 25, // celda (1,0) — coincide con el primer paso del jugador
         origenX: 75,
@@ -777,7 +777,7 @@ describe('POST /saves/:id/zona/mover', () => {
   it('camino vacío (destino ya es la celda actual): el mundo NO da un paso, zonePointsMovidos llega vacío', async () => {
     const ruta = [{ x: 725, y: 575 }, { x: 675, y: 575 }];
     const punto = await prisma.zonePoint.create({
-      data: { locationId, x: 725, y: 575, tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta, pasoRuta: 0 },
+      data: { locationId, saveId, x: 725, y: 575, tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta, pasoRuta: 0 },
     });
     const app = await buildApp();
     const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 25, y: 25 } } });

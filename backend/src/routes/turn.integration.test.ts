@@ -8606,7 +8606,7 @@ describe('Franja 3 de "Interactuar": colisión de celda para fauna agresiva dete
 
   it('agresivo mencionado por texto CON ZonePoint en la MISMA celda que el jugador: fuerza combate', async () => {
     await prisma.zonePoint.create({
-      data: { locationId, x: 400, y: 300, tipo: 'FAUNA', targetSlug: 'test-colision-agresivo', cantidad: 1, activo: true },
+      data: { locationId, saveId, x: 400, y: 300, tipo: 'FAUNA', targetSlug: 'test-colision-agresivo', cantidad: 1, activo: true },
     });
     await prisma.save.update({ where: { id: saveId }, data: { zonaPosX: 400, zonaPosY: 300 } }); // misma celda (8,6)
 
@@ -8627,7 +8627,7 @@ describe('Franja 3 de "Interactuar": colisión de celda para fauna agresiva dete
   it('el MISMO agresivo, pero con ZonePoint LEJOS del jugador: NO fuerza combate, ni siquiera con "ataco a"', async () => {
     // ZonePoint a más de una celda de distancia (400,300 vs 700,300 — 6 celdas de diferencia).
     await prisma.zonePoint.create({
-      data: { locationId, x: 700, y: 300, tipo: 'FAUNA', targetSlug: 'test-colision-agresivo', cantidad: 1, activo: true },
+      data: { locationId, saveId, x: 700, y: 300, tipo: 'FAUNA', targetSlug: 'test-colision-agresivo', cantidad: 1, activo: true },
     });
     await prisma.save.update({ where: { id: saveId }, data: { zonaPosX: 400, zonaPosY: 300 } });
 
@@ -8666,7 +8666,7 @@ describe('Franja 3 de "Interactuar": colisión de celda para fauna agresiva dete
 
   it('sin posición conocida del jugador (zonaPosX/Y null): fallback seguro, combate directo como siempre', async () => {
     await prisma.zonePoint.create({
-      data: { locationId, x: 700, y: 300, tipo: 'FAUNA', targetSlug: 'test-colision-agresivo', cantidad: 1, activo: true },
+      data: { locationId, saveId, x: 700, y: 300, tipo: 'FAUNA', targetSlug: 'test-colision-agresivo', cantidad: 1, activo: true },
     });
     await prisma.save.update({ where: { id: saveId }, data: { zonaPosX: null, zonaPosY: null } });
 

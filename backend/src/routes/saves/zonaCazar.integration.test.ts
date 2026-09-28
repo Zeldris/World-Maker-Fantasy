@@ -154,7 +154,7 @@ describe('POST /saves/:id/zona/cazar', () => {
 
   it('con una oferta pendiente de OTRO zonePointId, rechaza con 409 (solo se caza lo que se tiene al lado)', async () => {
     const punto = await prisma.zonePoint.create({
-      data: { locationId, x: 400, y: 300, tipo: 'FAUNA', targetSlug: 'test-cazar-debil', cantidad: 1, activo: true, lastUpdatedAtMinutes: 480 },
+      data: { locationId, saveId, x: 400, y: 300, tipo: 'FAUNA', targetSlug: 'test-cazar-debil', cantidad: 1, activo: true, lastUpdatedAtMinutes: 480 },
     });
     await prisma.save.update({
       where: { id: saveId },
@@ -167,7 +167,7 @@ describe('POST /saves/:id/zona/cazar', () => {
 
   it('punto de 1 presa débil, tirada de caza limpia forzada a éxito: mata sin combate y el ZonePoint se descuenta (ancla a 0 → activo:false)', async () => {
     const punto = await prisma.zonePoint.create({
-      data: { locationId, x: 400, y: 300, tipo: 'FAUNA', targetSlug: 'test-cazar-debil', cantidad: 1, activo: true, label: 'Bestia Débil de Prueba', lastUpdatedAtMinutes: 480 },
+      data: { locationId, saveId, x: 400, y: 300, tipo: 'FAUNA', targetSlug: 'test-cazar-debil', cantidad: 1, activo: true, label: 'Bestia Débil de Prueba', lastUpdatedAtMinutes: 480 },
     });
     await prisma.save.update({
       where: { id: saveId },
@@ -198,7 +198,7 @@ describe('POST /saves/:id/zona/cazar', () => {
 
   it('punto de 1 presa NO débil: 1v1 clásico (sin CombatEncounter) y el individuo enfrentado sale del ZonePoint', async () => {
     const punto = await prisma.zonePoint.create({
-      data: { locationId, x: 400, y: 300, tipo: 'FAUNA', targetSlug: 'test-cazar-fuerte', cantidad: 1, activo: true, label: 'Bestia Fuerte de Prueba', lastUpdatedAtMinutes: 480 },
+      data: { locationId, saveId, x: 400, y: 300, tipo: 'FAUNA', targetSlug: 'test-cazar-fuerte', cantidad: 1, activo: true, label: 'Bestia Fuerte de Prueba', lastUpdatedAtMinutes: 480 },
     });
     await prisma.save.update({
       where: { id: saveId },
@@ -221,7 +221,7 @@ describe('POST /saves/:id/zona/cazar', () => {
 
   it('punto de 3 presas NO débiles: abre CombatEncounter EN_CURSO con 3 enemigos NPC y el ZonePoint (fila de grupo, sin label) se borra del todo', async () => {
     const punto = await prisma.zonePoint.create({
-      data: { locationId, x: 400, y: 300, tipo: 'FAUNA', targetSlug: 'test-cazar-fuerte', cantidad: 3, activo: true, label: null, lastUpdatedAtMinutes: 480 },
+      data: { locationId, saveId, x: 400, y: 300, tipo: 'FAUNA', targetSlug: 'test-cazar-fuerte', cantidad: 3, activo: true, label: null, lastUpdatedAtMinutes: 480 },
     });
     await prisma.save.update({
       where: { id: saveId },
@@ -250,7 +250,7 @@ describe('POST /saves/:id/zona/cazar', () => {
 
   it('agresivo en grupo (cantidad>1) por Interactuar (quienInicia npc): abre combate múltiple vía iniciarCaza, nunca el 1v1 clásico', async () => {
     const punto = await prisma.zonePoint.create({
-      data: { locationId, x: 400, y: 300, tipo: 'FAUNA', targetSlug: 'test-cazar-agresivo', cantidad: 3, activo: true, label: null, lastUpdatedAtMinutes: 480 },
+      data: { locationId, saveId, x: 400, y: 300, tipo: 'FAUNA', targetSlug: 'test-cazar-agresivo', cantidad: 3, activo: true, label: null, lastUpdatedAtMinutes: 480 },
     });
     vi.spyOn(Math, 'random').mockReturnValue(0.5); // roll 4 -> delta 0 -> cantidadReal=3
 
@@ -359,10 +359,10 @@ describe('GET /saves/:id/zona sigue mostrando otros grupos de la misma especie t
 
   it('un NpcState "ausente" (6h tras derrota, `scope=Location`) NO oculta los ZonePoint FAUNA restantes de la misma especie', async () => {
     const puntoAusente = await prisma.zonePoint.create({
-      data: { locationId, x: 200, y: 200, tipo: 'FAUNA', targetSlug: 'test-cazar-ausencia', cantidad: 1, activo: true, label: 'Bestia de Prueba (ausencia)', lastUpdatedAtMinutes: 480 },
+      data: { locationId, saveId, x: 200, y: 200, tipo: 'FAUNA', targetSlug: 'test-cazar-ausencia', cantidad: 1, activo: true, label: 'Bestia de Prueba (ausencia)', lastUpdatedAtMinutes: 480 },
     });
     const otroGrupo = await prisma.zonePoint.create({
-      data: { locationId, x: 500, y: 200, tipo: 'FAUNA', targetSlug: 'test-cazar-ausencia', cantidad: 2, activo: true, lastUpdatedAtMinutes: 480 },
+      data: { locationId, saveId, x: 500, y: 200, tipo: 'FAUNA', targetSlug: 'test-cazar-ausencia', cantidad: 2, activo: true, lastUpdatedAtMinutes: 480 },
     });
     // Mismo campo que escribe una derrota real (`minutoDeReaparicion`) — NpcState es UNO por
     // especie/Location (`scopeFor`), así que esta única fila representa a TODA la especie, no solo

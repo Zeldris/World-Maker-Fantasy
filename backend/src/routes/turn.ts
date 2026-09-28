@@ -966,7 +966,7 @@ export async function turnRoutes(app: FastifyInstance) {
       // cualquier otra zona `pickStationaryInterruption` siempre devuelve null, cero efecto.
       const stationaryInterruption =
         !travel && currentLocationForSummary
-          ? await pickStationaryInterruption(save.worldId, currentLocationForSummary.id, minutos, env.stationaryInterruptionProbabilityPerChunk)
+          ? await pickStationaryInterruption(save.worldId, save.id, currentLocationForSummary.id, minutos, env.stationaryInterruptionProbabilityPerChunk)
           : null;
       const effectiveTravel = interruption ? interruption.travel : travel;
       const effectiveMinutos = interruption ? interruption.travel.minutos : minutos;

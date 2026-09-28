@@ -1478,7 +1478,7 @@ export async function computeBuildBlockedReason(params: {
   // cualquier receta, no solo Campamento — construir DENTRO del asentamiento de otra facción nunca
   // tiene sentido, sea cual sea el edificio.
   const zonePointsEdificioEnLocation = await db.zonePoint.count({
-    where: { locationId: currentLocationRecord.id, tipo: 'EDIFICIO' },
+    where: { saveId, locationId: currentLocationRecord.id, tipo: 'EDIFICIO' },
   });
   if (zonePointsEdificioEnLocation > 0) {
     return 'este lugar ya tiene edificios de otra facción — construye en una zona libre';

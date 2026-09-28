@@ -16,6 +16,7 @@ import type { EstacionSlug } from '../../services/imagePromptContext.js';
 import {
   zonePointColorFor,
   avanzarZonePointsUnPaso,
+  asegurarZonePointsDePartida,
   zonePointVisiblePara,
   zonePointActivoAhora,
   zonePointNpcMuertoParaSiempre,
@@ -201,7 +202,7 @@ export async function zonaRoutes(app: FastifyInstance) {
         worldId: true,
         zonaPosX: true,
         zonaPosY: true,
-        currentLocation: { select: { id: true, slug: true, name: true, region: true, kind: true, x: true, y: true, zonePoints: true } },
+        currentLocation: { select: { id: true, slug: true, name: true, region: true, kind: true, x: true, y: true } },
         worldState: { select: { fictionalMinutes: true, factionsStatus: true, agenda: true } },
       },
     });
@@ -211,7 +212,9 @@ export async function zonaRoutes(app: FastifyInstance) {
     const jugador = save.zonaPosX != null && save.zonaPosY != null ? { x: save.zonaPosX, y: save.zonaPosY } : null;
     if (!save.currentLocation) return { disponible: false, puntos: [], dinamicos: [], jugador, salidas: [], parcelas: [] };
 
-    let { zonePoints: zonePointsRaw, slug: locationSlug, name: locationName, id: locationId, region, kind } = save.currentLocation;
+    const { slug: locationSlug, name: locationName, id: locationId, region, kind } = save.currentLocation;
+    // Fase 5 (B1): filas VIVAS de esta partida (clonadas de la plantilla al entrar la primera vez).
+    let zonePointsRaw = await asegurarZonePointsDePartida(prisma, save.id, locationId);
     const fictionalMinutes = save.worldState?.fictionalMinutes ?? 480;
     const momento = momentoDelDiaFor(fictionalMinutes);
     // Primer reparto de grupos de fauna (Fase 1, 2026-09-28, `plan-mecanicas-por-zona-2026-09-28.md`)
@@ -221,8 +224,8 @@ export async function zonaRoutes(app: FastifyInstance) {
     // FAUNA de esta Location es la señal de "nunca recalculado todavía" (mismo criterio que
     // `proximaCantidadPara`).
     if (zonePointsRaw.some((p) => p.tipo === 'FAUNA' && p.lastUpdatedAtMinutes == null)) {
-      await recalcularZonePointsDeLocation(prisma, save.worldId, locationId, region, fictionalMinutes);
-      zonePointsRaw = await prisma.zonePoint.findMany({ where: { locationId } });
+      await recalcularZonePointsDeLocation(prisma, save.worldId, save.id, locationId, region, fictionalMinutes);
+      zonePointsRaw = await prisma.zonePoint.findMany({ where: { saveId: save.id, locationId } });
     }
     // Hallazgo 32 (revisar-partida-hallazgos.md 2026-09-07) — los interiores de campamento
     // (`kind: 'interior'`, ej. Ketg'lukar) no deberían tener variante de estación: bajo techo, el
@@ -626,7 +629,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     /// el aviso a cada paso mientras siga cerca.
     avistadoSinOferta?: { targetSlug: string };
   }> {
-    const puntosCrudos = await tx.zonePoint.findMany({ where: { locationId, tipo: { in: ['FAUNA', 'NPC'] }, activo: true } });
+    const puntosCrudos = await tx.zonePoint.findMany({ where: { saveId, locationId, tipo: { in: ['FAUNA', 'NPC'] }, activo: true } });
     // Gate de aparición narrativa (ver `zonePointVisiblePara`, zonePoints.ts) — un `ZonePoint` cuya
     // misión de desbloqueo (p.ej. el Orco Enfurecido/Gistera) todavía no se aceptó no puede forzar
     // colisión/aviso: narrativamente no está en la zona todavía, aunque su fila de catálogo exista.
@@ -879,7 +882,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     // mineral en el mismo radio). Nunca compite con AGRESIVO/combate: si ya hubo colisión, este
     // bloque ni se evalúa.
     if (!colision) {
-      const recursosCrudos = await tx.zonePoint.findMany({ where: { locationId, tipo: 'RECURSO', activo: true } });
+      const recursosCrudos = await tx.zonePoint.findMany({ where: { saveId, locationId, tipo: 'RECURSO', activo: true } });
       for (const punto of recursosCrudos) {
         const celdaPunto = celdaDePixel({ x: punto.x, y: punto.y });
         if (!celdaAdyacenteOMisma(celda, celdaPunto)) continue;
@@ -1153,7 +1156,8 @@ export async function zonaRoutes(app: FastifyInstance) {
       return reply.status(409).send({ error: 'Ese grupo ya no está disponible aquí — puede que se te haya adelantado.' });
     }
 
-    const punto = await prisma.zonePoint.findUnique({ where: { id: zonePointId } });
+    const puntoBruto = await prisma.zonePoint.findUnique({ where: { id: zonePointId } });
+    const punto = puntoBruto && puntoBruto.saveId === save.id ? puntoBruto : null;
     const npc = punto ? await prisma.npc.findFirst({ where: { worldId: save.worldId, slug: punto.targetSlug } }) : null;
     // La oferta ya se resuelve aquí (igual que el resto de caminos de "Interactuar",
     // dynamicMode.ts) — se limpia siempre, tanto en éxito como en el rechazo de abajo, para que

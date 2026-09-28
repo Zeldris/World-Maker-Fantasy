@@ -135,7 +135,8 @@ async function abrirCombateForzadoDesdeInteractuar(
   cantidad?: number,
 ): Promise<{ combate: ReturnType<typeof combateNpcShape> } | { actionText: string } | null> {
   if (zonePointId && cantidad != null && cantidad > 1) {
-    const punto = await prisma.zonePoint.findUnique({ where: { id: zonePointId } });
+    const puntoBruto = await prisma.zonePoint.findUnique({ where: { id: zonePointId } });
+    const punto = puntoBruto && puntoBruto.saveId === save.id ? puntoBruto : null;
     const npcCatalogoGrupo = punto ? await prisma.npc.findFirst({ where: { worldId: save.worldId, slug: punto.targetSlug } }) : null;
     if (!punto || !punto.activo || punto.cantidad <= 0 || !npcCatalogoGrupo) return null;
     const targets: CazaTarget[] = [{ npc: npcCatalogoGrupo, cantidadObjetivo: punto.cantidad, zonePointId: punto.id }];

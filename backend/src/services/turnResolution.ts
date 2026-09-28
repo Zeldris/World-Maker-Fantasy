@@ -2331,7 +2331,7 @@ async function applyCombatExchangeToNpcState(params: {
   // como dinámico (`NpcState.zonaPosX/Y` — asignada en la lectura de `GET /saves/:id/zona`, ver
   // zona.ts; si nunca se ha leído el mapa con este NPC en escena, todavía puede ser null, y
   // entonces no hay a dónde mover al jugador este turno).
-  const zonaObjetivo = currentLocationId ? await posicionDeObjetivo(tx, currentLocationId, npcAttackTarget.slug) : null;
+  const zonaObjetivo = currentLocationId ? await posicionDeObjetivo(tx, saveId, currentLocationId, npcAttackTarget.slug) : null;
   if (zonaObjetivo) {
     await moverJugadorA(tx, saveId, zonaObjetivo.x, zonaObjetivo.y);
   } else {
@@ -4107,6 +4107,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     await recalcularZonePointsDeLocation(
       prisma,
       worldId,
+      saveId,
       regionLocationId,
       regionLocation?.region ?? null,
       advanceFictionalMinutes(fictionalMinutesActuales, minutosDeEsteTurno),
@@ -4430,7 +4431,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     regionLocation?.slug === 'hondonada-del-eco' && regionLocationId && params.zonaPosX != null && params.zonaPosY != null
       ? await (async () => {
           const [zp] = await prisma.zonePoint.findMany({
-            where: { locationId: regionLocationId, targetSlug: 'gistera-koh', tipo: 'NPC', activo: true },
+            where: { saveId, locationId: regionLocationId, targetSlug: 'gistera-koh', tipo: 'NPC', activo: true },
             select: { x: true, y: true },
             take: 1,
           });
@@ -5016,7 +5017,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
               create: { saveId, npcId: npcCaidoReal.npcId, scope: scopeCaido, zonaAusenteHastaMinutes: minutoDeReaparicion(minutosParaAusencia), zonaLocationId: currentLocationId },
               update: { zonaAusenteHastaMinutes: minutoDeReaparicion(minutosParaAusencia), zonaLocationId: currentLocationId },
             });
-            const zonaObjetivoMultiple = await posicionDeObjetivo(prisma, currentLocationId, npcCaido.slug);
+            const zonaObjetivoMultiple = await posicionDeObjetivo(prisma, saveId, currentLocationId, npcCaido.slug);
             if (zonaObjetivoMultiple) await moverJugadorA(prisma, saveId, zonaObjetivoMultiple.x, zonaObjetivoMultiple.y);
           }
         }
@@ -7232,7 +7233,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // ya fija dónde aparece al llegar; hablar y viajar no ocurren en el mismo turno en la práctica,
     // pero por si acaso el viaje manda).
     if (dialogueTarget && !zonaEntradaCoords && currentLocationId) {
-      const zonaObjetivoDialogo = await posicionDeObjetivo(tx, currentLocationId, dialogueTarget.slug);
+      const zonaObjetivoDialogo = await posicionDeObjetivo(tx, saveId, currentLocationId, dialogueTarget.slug);
       if (zonaObjetivoDialogo) {
         await moverJugadorA(tx, saveId, zonaObjetivoDialogo.x, zonaObjetivoDialogo.y);
       } else {
@@ -7437,7 +7438,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     });
     if (agresivosATestear.length > 0) {
       const zonePointsAgresivos = await prisma.zonePoint.findMany({
-        where: { locationId: regionLocationId, targetSlug: { in: agresivosATestear.map((n) => n.slug) }, tipo: { in: ['FAUNA', 'NPC'] }, activo: true },
+        where: { saveId, locationId: regionLocationId, targetSlug: { in: agresivosATestear.map((n) => n.slug) }, tipo: { in: ['FAUNA', 'NPC'] }, activo: true },
         select: { targetSlug: true, x: true, y: true },
       });
       const zonePointsPorSlug = new Map<string, { x: number; y: number }[]>();
@@ -7779,7 +7780,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       // dynamicMode.ts): la propia oferta ya trae el botón de acción, resuelto por su propia ruta
       // (`dynamicModeRecurso.ts`).
       const zonePointsRaw = await prisma.zonePoint.findMany({
-        where: { locationId: regionLocationId, tipo: { in: ['NPC', 'FAUNA', 'RECURSO'] } },
+        where: { saveId, locationId: regionLocationId, tipo: { in: ['NPC', 'FAUNA', 'RECURSO'] } },
         select: { tipo: true, targetSlug: true, cantidad: true },
       });
       // Ver `ZonePointCandidateRow.temperamento` (dynamicMode.ts) — bug real, investigación

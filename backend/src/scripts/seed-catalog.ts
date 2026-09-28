@@ -359,12 +359,13 @@ async function main() {
   // Borrar+recrear por Location (mismo criterio que locationLink arriba) — más simple y seguro que
   // diferenciar caso a caso qué punto sigue vivo tras editar worldCatalog.ts.
   const zonePointLocationIds = [...new Set(zonePoints.map((p) => p.locationSlug))].map((slug) => locationIdBySlug.get(slug)!);
-  await prisma.zonePoint.deleteMany({ where: { locationId: { in: zonePointLocationIds } } });
+  // Fase 5 (B1): SOLO plantillas (saveId null) — nunca las filas vivas de partida.
+  await prisma.zonePoint.deleteMany({ where: { saveId: null, locationId: { in: zonePointLocationIds } } });
   for (const point of zonePoints) {
     const locationId = locationIdBySlug.get(point.locationSlug);
     if (!locationId) throw new Error(`ZonePoint con locationSlug desconocido: ${point.locationSlug}`);
     await prisma.zonePoint.create({
-      data: { locationId, x: point.x, y: point.y, tipo: point.tipo, targetSlug: point.targetSlug, label: point.label ?? null, plantillaEspecifica: point.plantillaEspecifica ?? null },
+      data: { locationId, saveId: null, x: point.x, y: point.y, tipo: point.tipo, targetSlug: point.targetSlug, label: point.label ?? null, plantillaEspecifica: point.plantillaEspecifica ?? null },
     });
   }
 

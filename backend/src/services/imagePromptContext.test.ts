@@ -275,7 +275,7 @@ describe('loreContextFor — location/faction/historia', () => {
     const result = await loreContextFor('w1', 'zona', 'hondonada-del-eco-noche-verano');
     expect(findUniqueLocation).toHaveBeenLastCalledWith({
       where: { worldId_slug: { worldId: 'w1', slug: 'hondonada-del-eco' } },
-      include: { zonePoints: true },
+      include: { zonePoints: { where: { saveId: null } } },
     });
     expect(result?.loreContext).toContain('Elementos reales presentes en la zona');
     expect(result?.loreContext).toContain('Pozo viejo');
