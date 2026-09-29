@@ -32,6 +32,8 @@ import { useCombatFlow } from '../hooks/useCombatFlow'
 import { useZonaAcciones } from '../hooks/useZonaAcciones'
 import { useInventarioAcciones } from '../hooks/useInventarioAcciones'
 import { useModoDinamico } from '../hooks/useModoDinamico'
+import { useHabilidadesAcciones } from '../hooks/useHabilidadesAcciones'
+import { useMisionesAcciones } from '../hooks/useMisionesAcciones'
 import { useTransitPolling } from '../hooks/useTransitPolling'
 import { useKingdomState } from '../hooks/useKingdomState'
 import { useActionModalsState } from '../hooks/useActionModalsState'
@@ -73,17 +75,7 @@ import {
   pauseSave,
   resumeSave,
   spendAttributePoint,
-  createSavedAction,
-  deleteSavedAction,
-  updateSavedAction,
-  setActiveCombatAbilities,
-  createSkillBar,
-  updateSkillBar,
-  deleteSkillBar,
-  setActiveSkillBar,
   fundarReino,
-  aceptarMision,
-  cancelarMision,
   type ConfirmarCazaResultado,
   // Sugerencias desactivadas (2026-09-06, ver comentario junto a `setSuggestions` más abajo).
   // requestSuggestions,
@@ -93,9 +85,8 @@ import {
   type SaveDetail,
 } from '../lib/api'
 import { characterWaitingFlavor, combatWaitingFlavor, worldWaitingFlavor, useRotatingFlavor } from '../lib/waitingFlavor'
-import { formatCountdown, formatFictionalDuration, applyInventoryDelta, combatKeyFor, questCompletedLogEntry } from '../lib/gameViewHelpers'
+import { formatCountdown, formatFictionalDuration, applyInventoryDelta, combatKeyFor } from '../lib/gameViewHelpers'
 import { ESTACION_ICON, CLIMA_ICON } from '../lib/entorno'
-import { ABILITIES_REQUIEREN_MONTURA } from '../lib/abilitiesRequierenMontura'
 import { sinHabilidadesRetiradas } from '../lib/abilitiesRetiradasFase4'
 import type {
   ActiveEffect,
@@ -115,7 +106,6 @@ import type {
   NpcInSceneInfo,
   ProfessionProgressInfo,
   QuestInfo,
-  SavedActionCategory,
   SavedActionInfo,
   SecondaryAttributeBlock,
   SkillBarInfo,
@@ -769,114 +759,41 @@ export function GameView() {
     })
   }
 
-  async function handleCreateHabilidad(params: {
-    name: string
-    promptText: string
-    icon: string
-    description: string
-    category: SavedActionCategory
-  }) {
-    if (!saveId) return
-    const created = await createSavedAction(saveId, params)
-    setSavedActions((prev) => [...prev, created])
-  }
+  // Habilidades/barras de habilidades (Fase 12) — ver hooks/useHabilidadesAcciones.ts.
+  const {
+    handleCreateHabilidad,
+    handleSetActiveCombatAbilityNames,
+    handleDeleteHabilidad,
+    handleUpdateHabilidad,
+    handleAttachAbility,
+    handleSelectSkillBar,
+    handleBackToComposer,
+    handleCreateSkillBar,
+    handleSaveSkillBarEdit,
+    handleDeleteSkillBar,
+  } = useHabilidadesAcciones({
+    saveId,
+    anyModalOpen,
+    skillHudView,
+    editingSkillBar,
+    pendingComposerTextRef,
+    setSavedActions,
+    setActiveCombatAbilityNames,
+    setDetailTarget,
+    setSkillBars,
+    setSkillHudView,
+    setEditingSkillBar,
+    setActivePanel,
+    setSimpleModal,
+    setSaquearZonaModalOpen,
+    setHealModalOpen,
+    setHungerThirstModalOpen,
+    setEntregaModalOpen,
+    setAprenderOficioModalOpen,
+  })
 
-  // "Cinturón de combate" (2026-08-28) — optimista (el panel ya refleja el cambio al instante,
-  // mismo criterio que handleDeleteHabilidad), con la respuesta REAL del backend (ya saneada) como
-  // fuente de verdad al final, por si el cliente proponía algo que el backend descartó.
-  async function handleSetActiveCombatAbilityNames(names: string[]) {
-    if (!saveId) return
-    setActiveCombatAbilityNames(names)
-    const res = await setActiveCombatAbilities(saveId, names)
-    setActiveCombatAbilityNames(res.activeCombatAbilityNames)
-  }
-
-  async function handleDeleteHabilidad(habilidadId: string) {
-    if (!saveId) return
-    setSavedActions((prev) => prev.filter((a) => a.id !== habilidadId))
-    try {
-      await deleteSavedAction(saveId, habilidadId)
-    } catch {
-      // Si falla, se resincroniza en la próxima carga de la partida.
-    }
-  }
-
-  async function handleUpdateHabilidad(habilidadId: string, params: { name: string; promptText: string; icon: string; description: string }) {
-    if (!saveId) return
-    const updated = await updateSavedAction(saveId, habilidadId, params)
-    setSavedActions((prev) => prev.map((a) => (a.id === habilidadId ? updated : a)))
-    // Bug real (auditoría 2026-07-28): DetailModal vuelve a modo vista con el `target` que se le
-    // pasó al abrirse, no con `savedActions` — sin esto, la ficha mostraba nombre/descripción
-    // previos al cambio hasta cerrarla y reabrirla, aunque la lista de abajo ya estuviera al día.
-    setDetailTarget((prev) => (prev?.kind === 'ability' && prev.ability.id === habilidadId ? { kind: 'ability', ability: updated } : prev))
-  }
-
-  // Botones Aceptar/Cancelar en una oferta de misión (2026-08-26) — `entryId` identifica la
-  // LogEntry concreta cuya tarjeta hay que limpiar (evita que quede pegada tras responder, y
-  // evita que un doble clic la reenvíe: la propia limpieza de `questOffer` deshabilita los
-  // botones antes de que la petición vuelva).
-  async function handleAcceptQuestOffer(entryId: string, title: string, description: string) {
-    // Bug real jugando en vivo (2026-08-30, "el cuadro del log de gistera deberia seguir siendo
-    // amarillo...no azul") — limpiar `questOffer` sin más quitaba los botones PERO también todo
-    // rastro amarillo de esta entrada (LogPanel.tsx la trataba como narración normal en cuanto
-    // dejaba de tener botones). `questOfferResolved: true` mantiene el fondo amarillo para siempre
-    // — sigue siendo, de hecho, la presentación de una oferta de misión, ya resuelta.
-    setCharacterLog((prev) => prev.map((e) => (e.id === entryId ? { ...e, questOffer: undefined, questOfferResolved: true } : e)))
-    // Bug real jugando en vivo (2026-08-30, "al añadir la respuesta no se bloquean el prompt y el
-    // boton actuar") — esta acción ahora pasa por `generateQuestResponseNarration` (Ollama, no
-    // instantánea), pero a diferencia de cualquier turno normal nunca marcaba `characterThinking`:
-    // el composer/Actuar seguían habilitados mientras la petición seguía en curso, dejando que la
-    // jugadora mandara un turno nuevo por encima de la respuesta todavía pendiente.
-    setCharacterThinking(true)
-    try {
-      const { quest, logEntry, questCompletedInfo } = await aceptarMision(saveId!, title, description)
-      if (logEntry) {
-        setCharacterLog((prev) => [
-          ...prev,
-          {
-            id: logEntry.id,
-            channel: 'character',
-            text: logEntry.text,
-            timeLabel: logEntry.timeLabel,
-            createdAt: logEntry.createdAt,
-            // Bug real jugando en vivo (2026-08-30, "el cuadro del log de gistera deberia seguir
-            // siendo amarillo...no azul") — sin `newQuest`, LogPanel.tsx pintaba esta entrada con
-            // el fondo azul normal en vez del amarillo de "nueva misión" (mismo criterio que
-            // cualquier otra aceptación vía el camino de texto libre, que sí lo lleva).
-            newQuest: { title: quest.title, objetivo: quest.objetivo ?? description },
-          },
-        ])
-      }
-      // Bug real (2026-09-04, auditoría "representar siempre XP/profesión/reputación"): el
-      // backend ya concedía +100 XP real y devolvía este campo cuando la misión nace ya
-      // COMPLETADA (NPC objetivo ya derrotado antes de aceptar) — se descartaba en silencio, sin
-      // chip 🏆 ni actualización del XP visible hasta la próxima recarga. Mismo LogEntry aparte
-      // que ya usa el camino de combate (questCompletedLogEntry, useCombatFlow.ts/useTurnFlow.ts).
-      if (questCompletedInfo) {
-        setCharacterLog((prev) => [...prev, questCompletedLogEntry(questCompletedInfo, logEntry?.timeLabel ?? '')])
-        setXp((prev) => prev + questCompletedInfo.rewardXp)
-      }
-      getSave(saveId!)
-        .then((save) => setQuests(save.quests))
-        .catch(() => {})
-    } catch {
-      // Best-effort (mismo criterio que el resto de acciones deterministas de este archivo): si
-      // la petición falla, la tarjeta ya se limpió — la jugadora puede volver a intentarlo escrito
-      // a mano si de verdad hace falta, no hay ningún estado a medias que arreglar.
-    } finally {
-      setCharacterThinking(false)
-    }
-  }
-
-  function handleDismissQuestOffer(entryId: string) {
-    setCharacterLog((prev) => prev.map((e) => (e.id === entryId ? { ...e, questOffer: undefined } : e)))
-    // Bug real jugando en vivo (2026-09-03, "misión de apertura no sobrevive a un F5") — la oferta
-    // ahora se persiste en el backend al proponerse (`pendingQuestOfferInfo`); sin esta llamada,
-    // recargar tras Cancelar hacía reaparecer la tarjeta ya descartada. Best-effort (mismo criterio
-    // que el resto de acciones deterministas de este archivo): la tarjeta ya se limpió en pantalla,
-    // un fallo de red aquí no bloquea nada más.
-    if (saveId) cancelarMision(saveId).catch(() => {})
-  }
+  // Aceptar/descartar oferta de misión (Fase 12) — ver hooks/useMisionesAcciones.ts.
+  const { handleAcceptQuestOffer, handleDismissQuestOffer } = useMisionesAcciones({ saveId, setCharacterLog, setCharacterThinking, setXp, setQuests })
 
   // Puente entre la tarjeta Matar/Capturar/Clemente del log (LogPanel.tsx § convalecienteOffers,
   // 2026-08-26) y los handlers ya construidos en useCombatFlow.ts — la tarjeta pasa `combatKeyFor`
@@ -987,17 +904,6 @@ export function GameView() {
   // vez de abrir el mismo pop-up de selección que el resto de recolectoras.
   // Desollar pasa a pasiva (2026-08-25, ver comentario completo junto a `carcassPending` arriba) —
   // ya no abre este pop-up desde un clic en Habilidades, así que sale de este mapa; el mismo
-  // `HarvestSelectionModal` se sigue reutilizando tal cual, ahora abierto desde el aviso de escena.
-
-  // Paneles nuevos (2026-08-17) — pop-up de selección
-  // real en vez del `promptText` incompleto que llevaban estas 2 habilidades desde su alta
-  // original. "Saquear"/"Curar" no están aquí porque su confirmación es una forma distinta (manda
-  // `lootItemNames`/`healItemUses` además del texto), ver `saquearZonaModalOpen`/`healModalOpen`.
-  const SIMPLE_MODAL_ABILITY: Record<string, 'camp' | 'travel'> = {
-    'Volver al campamento': 'camp',
-    Viajar: 'travel',
-  }
-
   // Recolección por texto libre redirigida al mapa (Pieza 6d 2026-09-03; Fase 4 2026-09-28: las
   // habilidades de recolección se retiraron, todo se recolecta/caza desde la zona) — el botón de
   // `entry.harvestSuggestion` en el log abre el modal de movimiento de zona (🧭).
@@ -1005,121 +911,6 @@ export function GameView() {
     if (anyModalOpen) return
     setActivePanel(null)
     setZonaModalOpen(true)
-  }
-
-  function handleAttachAbility(ability: SavedActionInfo) {
-    // Guard de exclusión mutua (A.2) — con otro modal de acción ya abierto (p. ej. post-combate,
-    // modo dinámico), no se apila uno nuevo encima; el chip normal de la habilidad sigue disponible.
-    if (anyModalOpen) return
-    // "Viajar" requiere montura (2026-09-17, sin implementar todavía) — defensa en profundidad,
-    // el botón ya sale deshabilitado en HabilidadesPanel.tsx/SkillBarHud.tsx (ver
-    // ABILITIES_REQUIEREN_MONTURA), esto solo evita que un caller futuro que no pase por esos
-    // componentes (o un bug de disabled) llegue a abrir el viaje real de todos modos.
-    if (ABILITIES_REQUIEREN_MONTURA.has(ability.name)) return
-    const simpleModalKind = SIMPLE_MODAL_ABILITY[ability.name]
-    if (simpleModalKind) {
-      setSimpleModal(simpleModalKind)
-      setActivePanel(null)
-      return
-    }
-    if (ability.name === 'Saquear') {
-      setSaquearZonaModalOpen(true)
-      setActivePanel(null)
-      return
-    }
-    if (ability.name === 'Curar') {
-      setHealModalOpen(true)
-      setActivePanel(null)
-      return
-    }
-    if (ability.name === 'Comer/Beber') {
-      setHungerThirstModalOpen(true)
-      setActivePanel(null)
-      return
-    }
-    if (ability.name === 'Entregar') {
-      setEntregaModalOpen(true)
-      setActivePanel(null)
-      return
-    }
-    // "Aprender oficio" retirada de startingAbilities.ts (2026-09-08, ver comentario ahí) — este
-    // bloque se queda como fallback para partidas YA existentes que sembraron la habilidad antes
-    // del cambio (SavedAction persiste por partida, no se retira retroactivamente). El camino real
-    // en partidas nuevas es Interactuar con el Maestro (ABRIR_APRENDER_OFICIO, ver
-    // handleChooseNpcInteraction más abajo), que abre el mismo modal.
-    if (ability.name === 'Aprender oficio') {
-      setAprenderOficioModalOpen(true)
-      setActivePanel(null)
-      return
-    }
-    // Bug real (2026-08-30, reportado jugando): las habilidades generales sin modal propio (barra
-    // de habilidades, SkillBar.tsx) usaban `insertChip`, que CONCATENA al texto ya escrito en el
-    // composer — igual que citar un NPC/objeto/lugar. La usuaria pidió lo contrario para este caso
-    // concreto: pulsar una habilidad general debe SUSTITUIR cualquier texto ya escrito, no
-    // añadirse a él (los chips de citar entidades, en cambio, siguen concatenando como siempre —
-    // `setText` limpia el composer entero antes de escribir, a diferencia de `insertChip`).
-    //
-    // Segundo bug real, encontrado verificando el fix de arriba con Playwright (2026-08-30): con
-    // la barra de habilidades desplegada, `ChatComposer` NI SIQUIERA está montado (se sustituye
-    // entero por `SkillBarHud`, ver el JSX de más abajo) — `composerRef.current` era `null` en ese
-    // momento, así que `setText` no hacía NADA en silencio. Coincide exactamente con lo reportado
-    // ("al darle a una no hace nada"). Fix: guardar el texto pendiente y volver a texto libre — el
-    // efecto de `pendingComposerTextRef` de arriba lo aplica en cuanto el composer se remonta de
-    // verdad (cambiar de vista es asíncrono, `composerRef.current` seguiría `null` si se llamara
-    // aquí mismo en la misma función).
-    //
-    // Hallazgo 39 (2026-09-07) — receta de CRAFTEO (`category === 'profesion'`, y no cayó ya en
-    // ninguno de los modales especiales de arriba — Minar/Talar/Cazar/etc. también son
-    // `'profesion'` pero abren su propio pop-up): mismo "sustituir, no concatenar" de siempre, pero
-    // como CHIP (nombre corto + icono), no como texto plano largo pegado en el composer. El valor
-    // real que lee el modelo (`promptText`) sigue viajando igual, solo cambia lo que se VE.
-    if (ability.category === 'profesion') {
-      pendingComposerTextRef.current = { chip: { icon: ability.icon, label: ability.name, description: ability.description, value: ability.promptText } }
-      setSkillHudView({ screen: 'composer' })
-      setActivePanel(null)
-      return
-    }
-    pendingComposerTextRef.current = ability.promptText
-    setSkillHudView({ screen: 'composer' })
-    setActivePanel(null)
-  }
-
-  // Barras de habilidades múltiples (2026-09-04) — handlers del menú/editor, ver SkillBarMenu.tsx/
-  // SkillBarEditor.tsx. `saveId` siempre existe aquí (los botones que disparan esto solo aparecen
-  // con la partida ya cargada).
-  function handleSelectSkillBar(bar: SkillBarInfo) {
-    setSkillHudView({ screen: 'barra-activa', skillBarId: bar.id })
-    if (saveId) void setActiveSkillBar(saveId, bar.id)
-  }
-
-  function handleBackToComposer() {
-    setSkillHudView({ screen: 'composer' })
-    if (saveId) void setActiveSkillBar(saveId, null)
-  }
-
-  async function handleCreateSkillBar() {
-    if (!saveId) return
-    const bar = await createSkillBar(saveId)
-    setSkillBars((prev) => [...prev, bar])
-  }
-
-  async function handleSaveSkillBarEdit(params: { name?: string; abilityNames?: string[] }) {
-    if (!saveId || !editingSkillBar) return
-    const updated = await updateSkillBar(saveId, editingSkillBar.id, params)
-    setSkillBars((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
-    setEditingSkillBar(null)
-  }
-
-  // Borrar una barra 2ª/3ª (2026-09-06, hallazgo 10) — nunca la base (`slotIndex: 0`), mismo guard
-  // ya aplicado por el backend y por SkillBarMenu.tsx (que ni siquiera ofrece el botón para ella).
-  // Si la barra borrada era la que se estaba viendo en el HUD, vuelve al listado de barras.
-  async function handleDeleteSkillBar(bar: SkillBarInfo) {
-    if (!saveId) return
-    await deleteSkillBar(saveId, bar.id)
-    setSkillBars((prev) => prev.filter((b) => b.id !== bar.id))
-    if (skillHudView.screen === 'barra-activa' && skillHudView.skillBarId === bar.id) {
-      setSkillHudView({ screen: 'menu-barras' })
-    }
   }
 
   // Cierre + envío compartidos por los 3 modales de `simpleModal` (auditoría de deuda técnica
