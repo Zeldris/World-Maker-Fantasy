@@ -381,6 +381,28 @@ describe('POST /saves/:id/reino/mercado/comprar y /vender', () => {
     expect(itemTraspasado.saveId).toBeNull();
   });
 
+  it('vender un montón cobra por la cantidad real (F9-5)', async () => {
+    const unidad = await prisma.almacenItem.create({
+      data: { saveId, name: 'Ración de carne fresca', description: 'x', catalogSlug: 'racion-carne' },
+    });
+    const app = await buildApp();
+    const r1 = await app.inject({ method: 'POST', url: `/saves/${saveId}/reino/mercado/vender`, payload: { targetFactionSlug, almacenItemId: unidad.id } });
+    expect(r1.statusCode).toBe(200);
+    const precioUnidad = r1.json().precio as number;
+    expect(r1.json().cantidad).toBe(1);
+
+    const monton = await prisma.almacenItem.create({
+      data: { saveId, name: 'Ración de carne fresca (3)', description: 'x', catalogSlug: 'racion-carne' },
+    });
+    const goirnosAntes = (await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).goirnos;
+    const r2 = await app.inject({ method: 'POST', url: `/saves/${saveId}/reino/mercado/vender`, payload: { targetFactionSlug, almacenItemId: monton.id } });
+    expect(r2.statusCode).toBe(200);
+    expect(r2.json().cantidad).toBe(3);
+    expect(r2.json().precio).toBeGreaterThanOrEqual(precioUnidad * 3 - 3);
+    const goirnosDespues = (await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).goirnos;
+    expect(goirnosDespues).toBe(goirnosAntes + r2.json().precio);
+  });
+
   it('comprar sin goirnos suficientes se rechaza con 400, sin traspasar el objeto', async () => {
     await prisma.save.update({ where: { id: saveId }, data: { goirnos: 0 } });
     const item = await prisma.almacenItem.create({

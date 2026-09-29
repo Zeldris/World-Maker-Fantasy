@@ -6,6 +6,7 @@ import { rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 import { professionLevelForXp, alivioForLevel } from '../../services/professionProgress.js';
 import { recordFactionEvent, espiarFactionRelation, nivelDiplomaticoRequerido, type FactionEventType } from '../../services/factionRelations.js';
 import { precioDinamico } from '../../services/economia.js';
+import { quantityOf } from '../../services/ingredients.js';
 
 /// Fundación de reino (2026-08-04, docs/mecanicas/17-reglas-construcciones-reino.md) — el popup que se abre
 /// al terminar de construir el Ayuntamiento (tier 1) manda aquí el formulario. Decisión manual de
@@ -314,7 +315,8 @@ export async function reinoRoutes(app: FastifyInstance) {
           name: g.name,
           catalogSlug: g.catalogSlug,
           stock: g.stock,
-          precio: precioDinamico(valorBySlug.get(g.catalogSlug)!, g.stock),
+          // Precio del montón entero que se va a traspasar (F9-5): comprar cobra `precio × cantidad`.
+          precio: precioDinamico(valorBySlug.get(g.catalogSlug)!, g.stock) * quantityOf(g.name),
         }));
 
       return { ok: true, tratado: true, items };
@@ -350,14 +352,16 @@ export async function reinoRoutes(app: FastifyInstance) {
         .$transaction(async (tx) => {
           await verificaTratadoComercial(tx, sourceFaction.worldId, sourceFaction.id, targetFaction.id);
           const stockDisponible = await tx.almacenItem.count({ where: { factionId: targetFaction.id, catalogSlug: item.catalogSlug } });
-          const precio = precioDinamico(catalog.valorGoirnos, stockDisponible);
+          // Un montón ("Trozo de quitina roja (3)") se traspasa entero: se cobra por su cantidad real.
+          const cantidad = quantityOf(item.name);
+          const precio = precioDinamico(catalog.valorGoirnos, stockDisponible) * cantidad;
 
           const saveFresco = await tx.save.findUniqueOrThrow({ where: { id: save.id }, select: { goirnos: true } });
           if (saveFresco.goirnos < precio) throw new StockInsuficienteError();
 
           await tx.save.update({ where: { id: save.id }, data: { goirnos: { decrement: precio } } });
           await tx.almacenItem.update({ where: { id: item.id }, data: { saveId: save.id, factionId: null } });
-          return { ok: true as const, precio, item: item.name, targetFaction: targetFaction.name };
+          return { ok: true as const, precio, cantidad, item: item.name, targetFaction: targetFaction.name };
         })
         .catch((err) => {
           if (err instanceof SinTratadoComercialError || err instanceof StockInsuficienteError) return err;
@@ -400,11 +404,13 @@ export async function reinoRoutes(app: FastifyInstance) {
         .$transaction(async (tx) => {
           await verificaTratadoComercial(tx, sourceFaction.worldId, sourceFaction.id, targetFaction.id);
           const stockDisponible = await tx.almacenItem.count({ where: { saveId: save.id, catalogSlug: item.catalogSlug } });
-          const precio = precioDinamico(catalog.valorGoirnos, stockDisponible);
+          // Un montón ("Trozo de quitina roja (3)") se traspasa entero: se cobra por su cantidad real.
+          const cantidad = quantityOf(item.name);
+          const precio = precioDinamico(catalog.valorGoirnos, stockDisponible) * cantidad;
 
           await tx.save.update({ where: { id: save.id }, data: { goirnos: { increment: precio } } });
           await tx.almacenItem.update({ where: { id: item.id }, data: { saveId: null, factionId: targetFaction.id } });
-          return { ok: true as const, precio, item: item.name, targetFaction: targetFaction.name };
+          return { ok: true as const, precio, cantidad, item: item.name, targetFaction: targetFaction.name };
         })
         .catch((err) => {
           if (err instanceof SinTratadoComercialError) return err;

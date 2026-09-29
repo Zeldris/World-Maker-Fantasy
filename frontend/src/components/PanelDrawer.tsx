@@ -42,7 +42,7 @@ export function PanelDrawer({ title, subtitle, onClose, children, accent = 'acce
         // (`bg-iron-900/75`) por sí solo ya cumple la función de atenuar el fondo.
         className="animate-overlay-in absolute inset-0 bg-iron-900/75"
       />
-      <div className="plank-panel animate-drawer-up relative z-10 mx-auto flex max-h-[85vh] w-full max-w-4xl flex-col rounded-t-2xl border-b-0 shadow-[0_-16px_48px_-16px_rgba(0,0,0,0.85)]">
+      <div className="plank-panel animate-drawer-up relative z-10 mx-auto flex min-h-0 max-h-[min(85vh,100%)] w-full max-w-4xl flex-col rounded-t-2xl border-b-0 shadow-[0_-16px_48px_-16px_rgba(0,0,0,0.85)]">
         <span className="rivet rivet-tl" />
         <span className="rivet rivet-tr" />
         <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-iron-700" />
