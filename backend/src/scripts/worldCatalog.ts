@@ -5473,7 +5473,8 @@ export const items: ItemCatalogInput[] = [
     tipo: 'EQUIPABLE',
     equipSlot: 'ARMA_PRINCIPAL',
     description: 'Asta larga rematada en una punta de hueso de gargantúa pulido hasta sacarle filo, blanco amarillento veteado — usada en cacerías rituales y duelos de honor.',
-    statBonuses: { destreza: 5, fuerza: 2, carisma: 1 },
+    // Rebalanceo (decisión de Álvaro, 2026-09-29): sin Carisma en armas (antes Des 5, Fue 2, Car 1).
+    statBonuses: { destreza: 5, fuerza: 2 },
     dimensiones: 'Asta de 190 cm, punta de hueso de 25 cm.',
     lugarOrigen: 'Llanuras del Viento Rojo, cacería ritual orca.',
     // Sesión de diseño 2026-07-23: arma de duelo/cacería ritual (tier 2) — exige algo más de
@@ -5968,7 +5969,9 @@ export const items: ItemCatalogInput[] = [
     // Peso de armadura (2026-08-31) — "armadura pesada" en la propia descripción, constitución
     // dominante, requisito de fuerza 14. Tramo Pesado sin duda.
     pesoArmadura: 'PESADO',
-    statBonuses: { constitucion: 3, voluntad: 2, carisma: 2 },
+    // Rebalanceo (decisión de Álvaro, 2026-09-29): PESADO = Fuerza+Constitución, sin Carisma
+    // (antes Con 3, Vol 2, Car 2). Total +7, tope del tier 3.
+    statBonuses: { fuerza: 3, constitucion: 4 },
     dimensiones: 'Cubre el torso completo.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
     // Mismo requisito que la receta de crafteo homónima (crafting.ts, gargantuaArmor) — equiparla
@@ -6035,7 +6038,9 @@ export const items: ItemCatalogInput[] = [
     // Peso de armadura (2026-08-31) — "ligera" en la propia descripción, sin requisito de fuerza
     // (solo destreza), coherente con Medio pese a la constitución pura (quitina, no metal macizo).
     pesoArmadura: 'MEDIO',
-    statBonuses: { constitucion: 4 },
+    // Rebalanceo (decisión de Álvaro, 2026-09-29): MEDIO = Destreza+Voluntad, no Constitución
+    // (antes Con 4) — misma cantidad, cambia el atributo.
+    statBonuses: { voluntad: 4 },
     dimensiones: 'Cubre el torso completo.',
     lugarOrigen: 'La Hondonada del Eco, Llanuras del Viento Rojo.',
     tier: 3,
@@ -6082,11 +6087,10 @@ export const items: ItemCatalogInput[] = [
     aliases: ['tocado', 'penacho de plumas'],
     category: 'ropa',
     tipo: 'EQUIPABLE',
-    equipSlot: 'CASCO',
+    // Rebalanceo (decisión de Álvaro, 2026-09-29): pasa de CASCO/LIGERO a COSMETICO_CABEZA — lleva
+    // Carisma, que solo va en ACCESORIO/ANILLO/COSMETICO. Los cosméticos no llevan pesoArmadura.
+    equipSlot: 'COSMETICO_CABEZA',
     description: 'Plumas rojizas de Corretolvas y plumas de Tura Jusha trenzadas en un tocado ceremonial — más presencia que protección.',
-    // Peso de armadura (2026-08-31) — "más presencia que protección", sin peso real, tramo
-    // Ligero (mismo criterio que capa-melena-ferike/cinturon-de-trofeos: piezas de prestigio).
-    pesoArmadura: 'LIGERO',
     statBonuses: { carisma: 2 },
     dimensiones: 'Tocado de 40 cm de alto.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
@@ -6100,10 +6104,11 @@ export const items: ItemCatalogInput[] = [
     aliases: ['capa de ferike'],
     category: 'ropa',
     tipo: 'EQUIPABLE',
-    equipSlot: 'ARMADURA_SUPERIOR',
+    // Rebalanceo (decisión de Álvaro, 2026-09-29): pasa de ARMADURA_SUPERIOR/LIGERO a
+    // COSMETICO_ESPALDA — es una capa de prestigio con Carisma, y Carisma solo va en
+    // ACCESORIO/ANILLO/COSMETICO. Los cosméticos no llevan pesoArmadura.
+    equipSlot: 'COSMETICO_ESPALDA',
     description: 'Capa cosida con la melena de la cola de un Ferike macho — objeto de prestigio real, casi nadie ha visto una de cerca.',
-    // Peso de armadura (2026-08-31) — objeto de prestigio, sin protección real, tramo Ligero.
-    pesoArmadura: 'LIGERO',
     statBonuses: { carisma: 5 },
     dimensiones: 'Capa hasta media pierna.',
     lugarOrigen: 'El Cruce de las Cenizas, Llanuras del Viento Rojo.',
@@ -8480,9 +8485,10 @@ export const items: ItemCatalogInput[] = [
     tipo: 'EQUIPABLE',
     equipSlot: 'ARMA_SECUNDARIA',
     tipoArma: 'CUCHILLO',
-    valorGoirnos: 20,
+    // Rebalanceo (decisión de Álvaro, 2026-09-29): valor 20 -> 25, dentro del rango de tier 3 (23-31).
+    valorGoirnos: 25,
     description: 'Cuchillo de desuello hecho entre dos clanes: la hoja, de hielo sílice con forma de hoz corta, la tallan los Helsig; las cachas, de Caparazón de Espina del Viento, las pone el Desolladero del Clan Serhu, porque la quitina no resbala con sangre en las manos. Es el único objeto de Karot Veku que reconoce abiertamente que los Serhu necesitan a otro clan para algo. Versión de oficio del cuchillo de hielo sílice de Gorhorn, más fina, útil también al peletero.',
-    statBonuses: { destreza: 2 },
+    statBonuses: { destreza: 4 }, // tier 3: bonos totales +4 a +7 (decisión de Álvaro, 2026-09-29; antes Des +2)
     dimensiones: 'Hoja curva de 14 cm, empuñadura de 11 cm.',
     lugarOrigen: 'Hoja del Clan Helsig; montado en el Desolladero del Clan Serhu.',
     tier: 3,

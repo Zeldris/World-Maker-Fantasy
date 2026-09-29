@@ -120,7 +120,9 @@ export const GARGANTUA_ARMOR_RECIPE: CraftingRecipe = {
   resultName: 'Peto de placas óseas de gargantúa',
   resultCatalogSlug: 'peto-placas-gargantua',
   resultDescription: 'Armadura pesada montada a mano en el campamento del clan, con placas óseas y tendón de gargantúa.',
-  statBonuses: { constitucion: 6 },
+  // Rebalanceo (decisión de Álvaro, 2026-09-29): mismo bonus que el catálogo (peto-placas-gargantua),
+  // PESADO = Fuerza+Constitución, total +7 (antes Con 6 en la receta, desalineado del catálogo).
+  statBonuses: { fuerza: 3, constitucion: 4 },
   // Sesión de diseño 2026-07-23: montar armadura pesada de placas óseas exige fuerza — mismo
   // oficio 'herrero' que el hacha (misma fragua del campamento, no hace falta un oficio aparte).
   tier: 3,
@@ -933,7 +935,8 @@ export const QUITINA_ARMOR_RECIPE: CraftingRecipe = {
   resultName: 'Armadura de quitina roja',
   resultCatalogSlug: 'armadura-quitina-roja',
   resultDescription: 'Placas de quitina roja cosidas sobre un refuerzo de caparazón de Espina del Viento y quitina de Escorante — ligera, pero resiste bien el corte.',
-  statBonuses: { constitucion: 4 },
+  // Rebalanceo (decisión de Álvaro, 2026-09-29): MEDIO = Destreza+Voluntad (antes Con 4).
+  statBonuses: { voluntad: 4 },
   tier: 3,
   requisitos: { destreza: 10 },
   oficio: 'curtidor-orcos-llanuras',
