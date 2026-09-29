@@ -1,6 +1,7 @@
 import { memo, useEffect, useRef, useState } from 'react'
-import type { CombatExchangeInfo, CondicionFisica, LogEntry } from '../types'
+import { isExtendedLogRoll, type CombatExchangeInfo, type CondicionFisica, type LogEntry } from '../types'
 import { RollBadge } from './RollBadge'
+import { ExtendedRollBadge } from './ExtendedRollBadge'
 import { DiceRollSingle } from './DiceRoll'
 import { CombatExchangeBadge } from './CombatExchangeBadge'
 import { DiceRollReveal } from './DiceRollReveal'
@@ -424,7 +425,10 @@ export const LogPanel = memo(function LogPanel({
                   compatibilidad con otros sitios que solo lo leen a él (turnResolution.ts,
                   `combatExchangeRoll ?? roll`) — cuando hay `combatExchange`, ese mismo número ya
                   se muestra ahí (fila "Tú"), con más contexto (el lado del enemigo, quién gana). */}
-              {entry.roll && !entry.combatExchange && (
+              {/* Fase 10 (2026-09-29) — tiradas con `kind` (recolección, encuentro, caza, grupo): antes
+                  descartadas en el backend; mismo criterio en vivo/histórico que la tirada normal. */}
+              {isExtendedLogRoll(entry.roll) && <ExtendedRollBadge roll={entry.roll} characterName={characterName} live={liveEntryIds?.has(entry.id)} />}
+              {entry.roll && !isExtendedLogRoll(entry.roll) && !entry.combatExchange && (
                 <>
                   {/* Legend "Tirada de iniciativa" (2026-09-04, petición explícita jugando en
                       vivo: poder distinguir esta tirada del resto) — `entry.initiativeRoll`

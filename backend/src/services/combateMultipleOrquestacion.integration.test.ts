@@ -86,9 +86,9 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
   it('crea el encuentro con iniciativa real y resuelve turnos autónomos hasta terminar', async () => {
     // Dos "bandos aliados" (tipo NPC en los dos lados, nunca JUGADOR en esta pasada) — dos
     // Aulladores Rojos (fuerza 8, destreza 10 en el catálogo) contra dos Corredores de Cauce.
-    const { encounterId } = await prisma.$transaction((tx) =>
+    const { encounterId, iniciativa } = await prisma.$transaction((tx) =>
       iniciarCombatEncounter(tx, saveId, [
-        { bando: 'JUGADOR', tipo: 'NPC', npcId: npcAId, npcScope: 'itinerante', destreza: 10, inteligencia: 6 },
+        { bando: 'JUGADOR', tipo: 'NPC', npcId: npcAId, npcScope: 'itinerante', destreza: 10, inteligencia: 6, nombre: 'Aullador' },
         { bando: 'JUGADOR', tipo: 'NPC', npcId: npcBId, npcScope: 'itinerante-2', destreza: 10, inteligencia: 6 },
         { bando: 'ENEMIGO', tipo: 'NPC', npcId: npcCId, npcScope: 'itinerante', destreza: 12, inteligencia: 4 },
         { bando: 'ENEMIGO', tipo: 'NPC', npcId: npcDId, npcScope: 'itinerante-2', destreza: 12, inteligencia: 4 },
@@ -99,6 +99,15 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     expect(encounterInicial.participantes).toHaveLength(4);
     expect(encounterInicial.ordenIniciativa).toHaveLength(4);
     expect(new Set(encounterInicial.ordenIniciativa)).toEqual(new Set(encounterInicial.participantes.map((p) => p.id)));
+    // Fase 10 (2026-09-29) — la iniciativa de cada participante se devuelve (antes solo se guardaba el
+    // orden): mismo orden que `ordenIniciativa`, con dado, total y nombre (repetidos numerados).
+    expect(iniciativa.map((e) => e.participantId)).toEqual(encounterInicial.ordenIniciativa);
+    for (const e of iniciativa) {
+      expect(e.attribute).toBe('destreza');
+      expect(e.result).toBe(e.roll + Math.floor(e.value / 2));
+    }
+    expect(iniciativa.map((e) => e.result)).toEqual([...iniciativa.map((e) => e.result)].sort((a, b) => b - a));
+    expect(iniciativa.filter((e) => e.nombre.startsWith('Aullador'))).toHaveLength(1);
     // Cada participante ya tiene un objetivo del bando contrario asignado desde el arranque (§2).
     for (const p of encounterInicial.participantes) {
       const objetivo = encounterInicial.participantes.find((o) => o.id === p.objetivoActualId);

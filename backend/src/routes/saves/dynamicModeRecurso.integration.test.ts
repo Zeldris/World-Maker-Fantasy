@@ -62,6 +62,12 @@ describe('POST /saves/:id/modo-dinamico/recurso/:targetSlug', () => {
     const body = JSON.parse(res.body);
     expect(typeof body.narration).toBe('string');
     expect(body.narration.length).toBeGreaterThan(0);
+    // Fase 10 (2026-09-29, "todas las tiradas visibles") — la tirada de Explorar viaja en la respuesta
+    // (misma forma que GET /recolectar/:oficio), también cuando el intento falla.
+    expect(body.roll).toMatchObject({ attribute: expect.any(String), value: expect.any(Number), advantage: expect.any(Boolean) });
+    expect(Array.isArray(body.roll.rolls)).toBe(true);
+    expect(body.roll.rolls).toContain(body.roll.usedRoll);
+    expect(body.roll.result).toBe(body.roll.usedRoll + Math.floor(body.roll.value / 2) + body.roll.bonusOficio);
 
     const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(saveAfter.pendingDynamicModeOffer).toBeNull();
@@ -74,6 +80,9 @@ describe('POST /saves/:id/modo-dinamico/recurso/:targetSlug', () => {
       expect(body.abilityName).toBe('Minar');
       const nuevaEntrada = await prisma.logEntry.findFirstOrThrow({ where: { saveId }, orderBy: { createdAt: 'desc' } });
       expect(nuevaEntrada.text).toContain('Gorhorn de prueba (recurso)');
+      // La tirada persiste en `LogEntry.roll` (sobrevive a una recarga).
+      expect(body.logEntry.roll).toMatchObject({ kind: 'recoleccion', tirada: body.roll });
+      expect(nuevaEntrada.roll).toMatchObject({ kind: 'recoleccion', tirada: body.roll });
     } else {
       expect(logCountDespues).toBe(logCountAntes);
     }

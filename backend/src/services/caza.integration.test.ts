@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import { prisma } from '../lib/prisma.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
-import { iniciarCaza, dispersionCooldownActivo, rollGroupEngagement, groupVarianceClause, type CazaTarget } from './caza.js';
+import { iniciarCaza, dispersionCooldownActivo, rollGroupEngagement, rollGroupEngagementDetail, groupVarianceClause, type CazaTarget } from './caza.js';
 import type { AttributeBlock } from './dice.js';
 
 /// Fase 4 (2026-09-28, `plan-mecanicas-por-zona-2026-09-28.md`) — `cazar.ts` (rutas
@@ -39,6 +39,16 @@ describe('rollGroupEngagement', () => {
 
   it('nunca supera los avistados reales aunque el roll sume', () => {
     expect(rollGroupEngagement(5, 5, () => 0.99)).toBe(5);
+  });
+});
+
+// Fase 10 (2026-09-29) — la tirada del grupo se expone (dado, delta, resultado topado).
+describe('rollGroupEngagementDetail', () => {
+  it('devuelve el d6 real, el delta y la cantidad tirada (misma que rollGroupEngagement)', () => {
+    expect(rollGroupEngagementDetail(3, 10, () => 0)).toEqual({ roll: 1, delta: -1, cantidadTirada: 2 });
+    expect(rollGroupEngagementDetail(3, 10, () => 0.4)).toEqual({ roll: 3, delta: 0, cantidadTirada: 3 });
+    expect(rollGroupEngagementDetail(3, 10, () => 0.99)).toEqual({ roll: 6, delta: 1, cantidadTirada: 4 });
+    expect(rollGroupEngagementDetail(5, 5, () => 0.99).cantidadTirada).toBe(rollGroupEngagement(5, 5, () => 0.99));
   });
 });
 

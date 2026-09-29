@@ -22,6 +22,7 @@ import {
   siguienteCeldaEnRuta,
   repartirEnGrupos,
   quienIniciaEncuentro,
+  tirarQuienIniciaEncuentro,
   posicionesDeSalidas,
   SEPARACION_MINIMA_SALIDAS,
   celdaLibreEnEspiral,
@@ -401,6 +402,22 @@ describe('quienIniciaEncuentro', () => {
   it('es determinista dado el mismo generador random — mismo input, mismo resultado', () => {
     const random = () => 0.3;
     expect(quienIniciaEncuentro(8, 8, random)).toBe(quienIniciaEncuentro(8, 8, random));
+  });
+});
+
+// Fase 10 (2026-09-29) — las dos tiradas ya no se descartan.
+describe('tirarQuienIniciaEncuentro', () => {
+  it('devuelve las dos tiradas (dado, bono = destreza/2, total) y coincide con quienIniciaEncuentro', () => {
+    const r = tirarQuienIniciaEncuentro(20, 2, () => 0.5); // d20 = 11 en ambos lados
+    expect(r.jugador).toEqual({ attribute: 'destreza', value: 20, roll: 11, bono: 10, result: 21 });
+    expect(r.npc).toEqual({ attribute: 'destreza', value: 2, roll: 11, bono: 1, result: 12 });
+    expect(r.quienInicia).toBe('jugador');
+    expect(quienIniciaEncuentro(20, 2, () => 0.5)).toBe(r.quienInicia);
+  });
+
+  it('el empate de totales lo gana el jugador; un total mayor del NPC lo gana el NPC', () => {
+    expect(tirarQuienIniciaEncuentro(10, 10, () => 0.5).quienInicia).toBe('jugador');
+    expect(tirarQuienIniciaEncuentro(2, 20, () => 0.5).quienInicia).toBe('npc');
   });
 });
 

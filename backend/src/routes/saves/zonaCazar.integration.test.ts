@@ -182,6 +182,13 @@ describe('POST /saves/:id/zona/cazar', () => {
     expect(body.resuelveSinCombate).toBe(true);
     expect(body.exito).toBe(true);
     expect(body.combate.npcs).toEqual([{ slug: 'test-cazar-debil', name: 'Bestia Débil de Prueba', condicionFisica: 'MUERTO', saqueado: false, lootedItemNames: [] }]);
+    // Fase 10 (2026-09-29) — la caza sigilosa es una tirada visible (d100 vs probabilidad real) y
+    // queda en `LogEntry.roll`.
+    expect(body.cazaLimpia).toMatchObject({ kind: 'caza-sigilo', roll: 1, exito: true, npcName: 'Bestia Débil de Prueba' });
+    expect(body.cazaLimpia.chance).toBeGreaterThan(0);
+    expect(body.logEntry.roll).toEqual(body.cazaLimpia);
+    const logGuardado = await prisma.logEntry.findUniqueOrThrow({ where: { id: body.logEntry.id } });
+    expect(logGuardado.roll).toMatchObject({ kind: 'caza-sigilo', roll: 1, exito: true });
 
     const npcState = await prisma.npcState.findFirst({ where: { saveId, npcId: debilNpcId } });
     expect(npcState?.condicionFisica).toBe('MUERTO');
@@ -194,6 +201,26 @@ describe('POST /saves/:id/zona/cazar', () => {
     // La oferta ya se resolvió — no debe reaparecer tras un F5.
     const saveTrasCaza = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(saveTrasCaza.pendingDynamicModeOffer).toBeNull();
+  });
+
+  it('caza sigilosa fallida (d100 por encima de la probabilidad): devuelve la tirada y el texto de ataque de frente, sin matar', async () => {
+    const punto = await prisma.zonePoint.create({
+      data: { locationId, saveId, x: 400, y: 300, tipo: 'FAUNA', targetSlug: 'test-cazar-debil', cantidad: 1, activo: true, label: 'Bestia Débil de Prueba', lastUpdatedAtMinutes: 480 },
+    });
+    await prisma.save.update({
+      where: { id: saveId },
+      data: { pendingDynamicModeOffer: { tipo: 'FAUNA', targetSlug: 'test-cazar-debil', targetName: 'Bestia Débil de Prueba', zonePointId: punto.id, cantidad: 1 } },
+    });
+    vi.spyOn(Math, 'random').mockReturnValue(0.999); // r = 99.9 -> por encima del tope de 90%
+
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/cazar`, payload: { zonePointId: punto.id } });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.resuelveSinCombate).toBe(false);
+    expect(body.exito).toBe(false);
+    expect(body.cazaLimpia).toMatchObject({ kind: 'caza-sigilo', roll: 100, exito: false });
+    expect(body.cazaLimpia.roll).toBeGreaterThan(body.cazaLimpia.chance);
   });
 
   it('punto de 1 presa NO débil: 1v1 clásico (sin CombatEncounter) y el individuo enfrentado sale del ZonePoint', async () => {
@@ -237,6 +264,20 @@ describe('POST /saves/:id/zona/cazar', () => {
     const body = JSON.parse(res.body);
     expect(body.resuelveSinCombate).toBe(false);
     expect(body.actionText).toContain("'Bestia Fuerte de Prueba'");
+    // Fase 10 (2026-09-29) — cuántos entran (d6) + iniciativa de cada combatiente, visibles y persistidas.
+    expect(body.tiradasGrupo).toEqual([
+      { slug: 'test-cazar-fuerte', name: 'Bestia Fuerte de Prueba', roll: 4, delta: 0, cantidadElegida: 3, avistados: 3, cantidadTirada: 3, cantidadReal: 3 },
+    ]);
+    expect(body.logEntry.roll.kind).toBe('combate-grupo');
+    expect(body.logEntry.roll.engagement).toEqual(body.tiradasGrupo);
+    expect(body.logEntry.roll.iniciativa).toHaveLength(4); // jugador + 3 enemigos
+    expect(body.logEntry.roll.iniciativa.map((p: { nombre: string }) => p.nombre)).toEqual(
+      expect.arrayContaining(['Bestia Fuerte de Prueba 1', 'Bestia Fuerte de Prueba 2', 'Bestia Fuerte de Prueba 3']),
+    );
+    const resultados = body.logEntry.roll.iniciativa.map((p: { result: number }) => p.result);
+    expect(resultados).toEqual([...resultados].sort((a: number, b: number) => b - a)); // ya en orden de actuación
+    const logGrupo = await prisma.logEntry.findUniqueOrThrow({ where: { id: body.logEntry.id } });
+    expect((logGrupo.roll as { kind: string }).kind).toBe('combate-grupo');
 
     const encounter = await prisma.combatEncounter.findFirstOrThrow({ where: { saveId, estado: 'EN_CURSO', jugable: true } });
     const participantes = await prisma.combatParticipant.findMany({ where: { encounterId: encounter.id } });

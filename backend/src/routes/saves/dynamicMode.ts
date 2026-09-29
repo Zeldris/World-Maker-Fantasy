@@ -20,7 +20,7 @@ import {
 import { narrarVueltaModoDinamico } from '../../services/dynamicModeNarracion.js';
 import { aceptarQuest } from './quests.js';
 import { detectNpcsInScene } from '../../services/npcScene.js';
-import { iniciarCaza, type CazaTarget } from '../../services/caza.js';
+import { iniciarCaza, type CazaTarget, type TiradaGrupoInfo, type CombateGrupoLogRoll } from '../../services/caza.js';
 import type { AttributeBlock } from '../../services/dice.js';
 
 /// "Modo dinámico" (2026-08-27, Pieza 4 de "Dinamismo del mundo") — mini-flujo acotado ofrecido
@@ -133,7 +133,7 @@ async function abrirCombateForzadoDesdeInteractuar(
   // caso debe evitar siempre).
   zonePointId?: string,
   cantidad?: number,
-): Promise<{ combate: ReturnType<typeof combateNpcShape> } | { actionText: string } | null> {
+): Promise<{ combate: ReturnType<typeof combateNpcShape> } | { actionText: string; tiradasGrupo?: TiradaGrupoInfo[]; combateGrupoLogEntry?: { id: string; text: string; timeLabel: string; createdAt: string; roll: CombateGrupoLogRoll } } | null> {
   if (zonePointId && cantidad != null && cantidad > 1) {
     const puntoBruto = await prisma.zonePoint.findUnique({ where: { id: zonePointId } });
     const punto = puntoBruto && puntoBruto.saveId === save.id ? puntoBruto : null;
@@ -159,7 +159,7 @@ async function abrirCombateForzadoDesdeInteractuar(
     // nunca debería ser `true` aquí (shape distinto, sin `analizado`/`capturable`/...), pero el
     // tipo de `iniciarCaza` lo contempla; se cubre por seguridad con un cast explícito, nunca
     // alcanzable en la práctica.
-    return resultado.resuelveSinCombate ? { combate: resultado.combate as unknown as ReturnType<typeof combateNpcShape> } : { actionText: resultado.actionText };
+    return resultado.resuelveSinCombate ? { combate: resultado.combate as unknown as ReturnType<typeof combateNpcShape> } : { actionText: resultado.actionText, ...(resultado.tiradasGrupo ? { tiradasGrupo: resultado.tiradasGrupo } : {}), ...(resultado.logEntry ? { combateGrupoLogEntry: resultado.logEntry } : {}) };
   }
 
   const npcCatalogo = await prisma.npc.findFirst({ where: { worldId: save.worldId, slug: targetSlug }, select: { name: true } });

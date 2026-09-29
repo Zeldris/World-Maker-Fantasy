@@ -69,6 +69,23 @@ export interface CombatienteInicial {
   /// y el tope de usos por combate NO se trackean por individuo de grupo (siempre "fresca" cada
   /// encuentro) — la fauna salvaje cazada en manada no usa rotaciones de habilidad complejas hoy.
   esGrupo?: boolean;
+  /// Nombre a mostrar en la tirada de iniciativa visible (Fase 10, 2026-09-29) — solo presentación.
+  nombre?: string;
+}
+
+/// Una tirada de iniciativa del combate múltiple, lista para mostrar (Fase 10, 2026-09-29): antes
+/// solo se guardaba el ORDEN (`ordenIniciativa`) y las tiradas se descartaban. Se devuelve por
+/// participante, ya en orden de actuación (mayor `result` primero).
+export interface IniciativaParticipanteInfo {
+  participantId: string;
+  nombre: string;
+  bando: Bando;
+  attribute: 'destreza';
+  value: number;
+  roll: number;
+  result: number;
+  /// Un elemento normalmente; dos si hubo ventaja/desventaja (pasivas raciales).
+  rolls: number[];
 }
 
 /// Crea el `CombatEncounter` + sus `CombatParticipant`, tira iniciativa para todos (§1) y fija el
@@ -80,7 +97,7 @@ export async function iniciarCombatEncounter(
   saveId: string,
   combatientes: (CombatienteInicial & { destreza: number; inteligencia: number })[],
   jugable: boolean = true,
-): Promise<{ encounterId: string }> {
+): Promise<{ encounterId: string; iniciativa: IniciativaParticipanteInfo[] }> {
   const encounter = await tx.combatEncounter.create({ data: { saveId, jugable } });
   // `Promise.all` preserva el orden del array de entrada — `creados[i]` corresponde siempre a
   // `combatientes[i]`, así se puede emparejar destreza/inteligencia (datos crudos que el caller
@@ -135,7 +152,26 @@ export async function iniciarCombatEncounter(
   );
 
   await tx.combatEncounter.update({ where: { id: encounter.id }, data: { ordenIniciativa: ordenIds, esperandoEleccionJugadora: esperandoJugadora } });
-  return { encounterId: encounter.id };
+
+  // Nombres visibles: los individuos repetidos de un mismo grupo se numeran ("Bestia 1", "Bestia 2").
+  const nombresBase = creados.map((_, i) => combatientes[i].nombre ?? (combatientes[i].tipo === 'JUGADOR' ? 'Tú' : 'Enemigo'));
+  const iniciativa: IniciativaParticipanteInfo[] = orden.map((e) => {
+    const idx = creados.findIndex((c) => c.id === e.participantId);
+    const base = nombresBase[idx];
+    const repetidos = nombresBase.filter((n) => n === base).length;
+    const ordinal = nombresBase.slice(0, idx + 1).filter((n) => n === base).length;
+    return {
+      participantId: e.participantId,
+      nombre: repetidos > 1 ? `${base} ${ordinal}` : base,
+      bando: e.bando,
+      attribute: 'destreza',
+      value: e.value,
+      roll: e.roll,
+      result: e.result,
+      rolls: e.rolls,
+    };
+  });
+  return { encounterId: encounter.id, iniciativa };
 }
 
 /// Shape mínima de `CombatParticipant` que necesitan `datosVivosDe`/`escribirCondicionYEnergia` —

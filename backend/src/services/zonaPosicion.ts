@@ -473,8 +473,42 @@ export function repartirEnGrupos(poblacionTotal: number, random: () => number = 
 /// (agresivo/enemigo sigue forzando combate igual, temperamento pacífico sigue abriendo Interactuar
 /// igual — ver `detectarEncuentroEnCelda`, zona.ts). Empate favorece al jugador, mismo criterio que
 /// `rollInitiative`.
+export interface IniciativaEncuentroLado {
+  attribute: 'destreza';
+  value: number;
+  roll: number;
+  bono: number;
+  result: number;
+}
+
+/// Fase 10 (2026-09-29, "todas las tiradas visibles") — las dos tiradas de `quienIniciaEncuentro`
+/// dejan de descartarse: se devuelven para pintarlas como tirada opuesta en la tarjeta de encuentro.
+export interface IniciativaEncuentroResultado {
+  quienInicia: 'jugador' | 'npc';
+  jugador: IniciativaEncuentroLado;
+  npc: IniciativaEncuentroLado;
+}
+
+/// Forma persistida en `LogEntry.roll` para el encuentro (discriminada por `kind`).
+export interface IniciativaEncuentroLogRoll {
+  kind: 'iniciativa-encuentro';
+  quienInicia: 'jugador' | 'npc';
+  jugador: IniciativaEncuentroLado;
+  npc: IniciativaEncuentroLado;
+  npcName: string;
+}
+
+export function tirarQuienIniciaEncuentro(destrezaJugador: number, destrezaNpc: number, random: () => number = Math.random): IniciativaEncuentroResultado {
+  const lado = (destreza: number): IniciativaEncuentroLado => {
+    const roll = rollD20('normal', random).usedRoll;
+    const bono = Math.floor(destreza / 2);
+    return { attribute: 'destreza', value: destreza, roll, bono, result: roll + bono };
+  };
+  const jugador = lado(destrezaJugador);
+  const npc = lado(destrezaNpc);
+  return { quienInicia: jugador.result >= npc.result ? 'jugador' : 'npc', jugador, npc };
+}
+
 export function quienIniciaEncuentro(destrezaJugador: number, destrezaNpc: number, random: () => number = Math.random): 'jugador' | 'npc' {
-  const tiradaJugador = rollD20('normal', random).usedRoll + Math.floor(destrezaJugador / 2);
-  const tiradaNpc = rollD20('normal', random).usedRoll + Math.floor(destrezaNpc / 2);
-  return tiradaJugador >= tiradaNpc ? 'jugador' : 'npc';
+  return tirarQuienIniciaEncuentro(destrezaJugador, destrezaNpc, random).quienInicia;
 }

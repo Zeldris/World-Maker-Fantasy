@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { EstacionKey } from '../../types'
+import { isExtendedLogRoll, type EstacionKey } from '../../types'
 import { getDiario, type DiarioEntry, type DiarioItem, type DiarioResponse } from '../../lib/api'
 import { ESTACION_ICON } from '../../lib/entorno'
 import { RollBadge } from '../RollBadge'
+import { ExtendedRollBadge } from '../ExtendedRollBadge'
 import { PanelEmptyState } from '../PanelEmptyState'
 import { EnciclopediaLinkedText } from '../EnciclopediaLinkedText'
 import { useEnciclopediaLink } from '../../context/useEnciclopediaLink'
@@ -230,7 +231,7 @@ export function DiarioPanel({ saveId }: DiarioPanelProps) {
                       onQuickInsert={(t) => onEntityQuickInsert?.(t)}
                     />
                   </p>
-                  {item.roll && <RollBadge roll={item.roll} />}
+                  {item.roll && (isExtendedLogRoll(item.roll) ? <ExtendedRollBadge roll={item.roll} /> : <RollBadge roll={item.roll} />)}
                 </div>
               ),
             )}

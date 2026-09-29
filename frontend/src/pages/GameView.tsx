@@ -47,6 +47,7 @@ import { HealthBar } from '../components/HealthBar'
 import { EnergyBar } from '../components/EnergyBar'
 import { KingdomFoundingModal } from '../components/KingdomFoundingModal'
 import { HarvestSelectionModal } from '../components/HarvestSelectionModal'
+import { ROLL_DURATION_MS } from '../components/DiceRoll'
 import { REINO_ABILITY_RECIPE_KEY } from '../data/reinoRecipes'
 import { PostCombatInteractionModal } from '../components/PostCombatInteractionModal'
 import { DynamicModeModal } from '../components/DynamicModeModal'
@@ -114,6 +115,7 @@ import type {
   Dificultad,
   EquipSlot,
   InitiativeRollInfo,
+  RecoleccionLogRoll,
   InventoryItemInfo,
   LogEntry,
   NpcInSceneInfo,
@@ -917,6 +919,8 @@ export function GameView() {
       // (`iniciarCaza`), este texto se manda por el turno normal para que la narración real lo
       // abra — mismo patrón EXACTO que `handleHuntResolved` § caza en grupo (`result.actionText`).
       if (turno.actionText) {
+        // Fase 10 (2026-09-29) — tiradas de cuántos entran + iniciativa del combate múltiple.
+        if (turno.combateGrupoLogEntry) setCharacterLog((prev) => [...prev, { ...turno.combateGrupoLogEntry!, channel: 'character' }])
         handleSubmit(turno.actionText)
         return
       }
@@ -976,21 +980,55 @@ export function GameView() {
   // mismo backend (`resolverRecoleccion`), solo un disparador distinto.
   async function handleInteractuarModoDinamicoRecurso(entryId: string, targetSlug: string) {
     setCharacterLog((prev) => prev.map((e) => (e.id === entryId && e.dynamicModeOffer ? { ...e, dynamicModeOffer: { ...e.dynamicModeOffer, busy: true } } : e)))
+    const targetName = characterLog.find((e) => e.id === entryId)?.dynamicModeOffer?.targetName ?? 'el recurso'
     try {
       const resultado = await interactuarModoDinamicoRecurso(saveId!, targetSlug)
       setCharacterLog((prev) => prev.map((e) => (e.id === entryId ? { ...e, dynamicModeOffer: undefined } : e)))
+      // Fase 10 (2026-09-29, "todas las tiradas visibles") — el dado de Explorar se anima ANTES de
+      // mostrar lo obtenido (misma regla que `HarvestSelectionModal`: sin esto el resultado
+      // spoilearía el dado). Entrada local con `GatheringDiceReveal` (vía `ExtendedRollBadge` en vivo);
+      // el resultado real se aplica cuando el dado aterriza. Al recargar, la tirada vive en
+      // `logEntry.roll` (persistida) — en vivo se quita `tirada` del resultado para no pintar el
+      // mismo dado dos veces.
+      if (resultado.roll) {
+        setCharacterLog((prev) => [
+          ...prev,
+          {
+            id: `recurso-tirada-${Date.now()}`,
+            channel: 'character',
+            text: `${characterName ?? 'Tu personaje'} lo intenta con ${targetName}…`,
+            timeLabel: fictionalDate,
+            isSystemMessage: true,
+            createdAt: new Date().toISOString(),
+            roll: { kind: 'recoleccion', tirada: resultado.roll },
+          },
+        ])
+        await new Promise((resolve) => setTimeout(resolve, ROLL_DURATION_MS + 500))
+      }
       if (resultado.items || resultado.updatedItems) {
         setInventory((prev) => applyInventoryDelta(prev, resultado.items ?? [], [], resultado.updatedItems ?? []))
       }
       if (resultado.logEntry) {
-        setCharacterLog((prev) => [...prev, { ...resultado.logEntry!, channel: 'character' }])
+        const { roll: persistida, ...resto } = resultado.logEntry
+        const rollVivo: RecoleccionLogRoll | undefined =
+          persistida && resultado.roll ? (persistida.segundas?.length ? { kind: 'recoleccion', segundas: persistida.segundas } : undefined) : persistida
+        setCharacterLog((prev) => [...prev, { ...resto, channel: 'character', ...(rollVivo ? { roll: rollVivo } : {}) }])
         setFictionalDate(resultado.logEntry.timeLabel)
       } else {
         // Tirada fallida — sin LogEntry real que guardar (mismo criterio que "caza limpia
         // fallida"), pero la narración determinista del intento sigue siendo útil en pantalla.
+        // Con `segundasTiradas` (todas fallaron) se muestran igualmente sus dados.
         setCharacterLog((prev) => [
           ...prev,
-          { id: `recurso-fallido-${Date.now()}`, channel: 'character', text: resultado.narration, timeLabel: fictionalDate, isSystemMessage: true, createdAt: new Date().toISOString() },
+          {
+            id: `recurso-fallido-${Date.now()}`,
+            channel: 'character',
+            text: resultado.narration,
+            timeLabel: fictionalDate,
+            isSystemMessage: true,
+            createdAt: new Date().toISOString(),
+            ...(resultado.segundasTiradas?.length ? { roll: { kind: 'recoleccion' as const, segundas: resultado.segundasTiradas } } : {}),
+          },
         ])
       }
     } catch (err) {
@@ -1056,6 +1094,7 @@ export function GameView() {
       // combate múltiple ya creado por el backend, se manda por el turno normal.
       if (turno.actionText) {
         setActiveDynamicMode(null)
+        if (turno.combateGrupoLogEntry) setCharacterLog((prev) => [...prev, { ...turno.combateGrupoLogEntry!, channel: 'character' }])
         handleSubmit(turno.actionText)
         return
       }

@@ -56,13 +56,13 @@ vi.mock('../../lib/prisma.js', () => ({
     // lista que los tests siguen dando a `detectNpcsInScene` (el cadáver "en escena").
     npcState: {
       findMany: async () =>
-        ((await detectNpcsInScene()) as { slug: string; condicionFisica: string; saqueado?: boolean; groupSize?: number | null; groupDefeated?: number; corpsesLooted?: number }[])
+        (((await detectNpcsInScene()) ?? []) as { slug: string; condicionFisica: string; saqueado?: boolean; groupSize?: number | null; groupDefeated?: number; corpsesLooted?: number }[])
           .map((n) => ({ id: `st-${n.slug}`, npcId: `n-${n.slug}`, scope: scopeFor('PLANTILLA', 'loc1'), condicionFisica: n.condicionFisica, saqueado: n.saqueado ?? false, groupSize: n.groupSize ?? null, groupDefeated: n.groupDefeated ?? 0, corpsesLooted: n.corpsesLooted ?? 0, zonaLocationId: null }))
           .filter((st) => st.condicionFisica === 'MUERTO' || st.groupDefeated > 0),
     },
     npc: {
       findMany: async () =>
-        ((await detectNpcsInScene()) as { slug: string; ataqueNatural: string | null }[]).map((n) => ({ id: `n-${n.slug}`, slug: n.slug, kind: 'PLANTILLA', ataqueNatural: n.ataqueNatural })),
+        (((await detectNpcsInScene()) ?? []) as { slug: string; ataqueNatural: string | null }[]).map((n) => ({ id: `n-${n.slug}`, slug: n.slug, kind: 'PLANTILLA', ataqueNatural: n.ataqueNatural })),
     },
     worldPopulation: { findMany: (...args: unknown[]) => findManyWorldPopulation(...args) },
     $transaction: (...args: unknown[]) => transaction(...args),

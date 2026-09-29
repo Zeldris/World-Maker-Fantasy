@@ -382,6 +382,19 @@ describe('POST /saves/:id/zona/mover', () => {
     const logRow = await prisma.logEntry.findUnique({ where: { id: body.logEntry.id } });
     expect(logRow).not.toBeNull();
     expect(logRow!.saveId).toBe(saveId);
+    // Fase 10 (2026-09-29) — "¿quién ve a quién primero?": las dos tiradas viajan en la entrada
+    // del encuentro y se guardan en `LogEntry.roll` (tirada opuesta Destreza vs Destreza).
+    expect(body.logEntry.roll).toMatchObject({
+      kind: 'iniciativa-encuentro',
+      quienInicia: body.dynamicModeOffer.quienInicia,
+      jugador: { attribute: 'destreza', value: 10 },
+      npcName: 'Fauna Pacífica de Prueba',
+    });
+    const { jugador, npc } = body.logEntry.roll;
+    expect(jugador.result).toBe(jugador.roll + jugador.bono);
+    expect(npc.result).toBe(npc.roll + npc.bono);
+    expect(body.logEntry.roll.quienInicia).toBe(jugador.result >= npc.result ? 'jugador' : 'npc');
+    expect((logRow!.roll as { kind: string }).kind).toBe('iniciativa-encuentro');
 
     const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(saveAfter.pendingDynamicModeOffer).toMatchObject({ tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', targetName: 'Fauna Pacífica de Prueba' });

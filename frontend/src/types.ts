@@ -226,6 +226,93 @@ export interface Character {
 
 export type LogChannel = 'character' | 'world' | 'kingdom'
 
+// Fase 10 (2026-09-29, "todas las tiradas visibles") — tiradas que antes se descartaban en el
+// backend y que ahora viajan en la respuesta y se guardan en `LogEntry.roll`, discriminadas por
+// `kind` (un `RollInfo` de combate/huida/turno normal NO trae `kind`).
+
+/// Segunda tirada de tier alto por objeto afectado (backend recolectar.ts § SegundaTiradaInfo).
+export interface SegundaTiradaInfo {
+  sourceSlug: string
+  itemSlug: string
+  itemName: string
+  roll: GatheringRollInfo
+  dificultad: number
+  grado: 'fallo' | 'con_coste' | 'claro'
+  paso: boolean
+}
+
+/// Recolección: tirada de Explorar (solo desde el mapa) + segundas tiradas de tier alto.
+export interface RecoleccionLogRoll {
+  kind: 'recoleccion'
+  tirada?: GatheringRollInfo
+  segundas?: SegundaTiradaInfo[]
+}
+
+export interface IniciativaEncuentroLado {
+  attribute: 'destreza'
+  value: number
+  roll: number
+  bono: number
+  result: number
+}
+
+/// "¿Quién ve a quién primero?" — Destreza vs Destreza al toparse con un encuentro en Zona.
+export interface IniciativaEncuentroLogRoll {
+  kind: 'iniciativa-encuentro'
+  quienInicia: 'jugador' | 'npc'
+  jugador: IniciativaEncuentroLado
+  npc: IniciativaEncuentroLado
+  npcName: string
+}
+
+/// Caza sigilosa: d100 contra la probabilidad real (éxito si `roll <= chance`).
+export interface CazaSigiloRoll {
+  kind: 'caza-sigilo'
+  chance: number
+  roll: number
+  exito: boolean
+  npcName: string
+}
+
+/// "Cuántos del grupo entran al combate" (d6) por especie.
+export interface TiradaGrupoInfo {
+  slug: string
+  name: string
+  roll: number
+  delta: -1 | 0 | 1
+  cantidadElegida: number
+  avistados: number
+  cantidadTirada: number
+  cantidadReal: number
+}
+
+/// Iniciativa de un participante del combate múltiple, ya en orden de actuación.
+export interface IniciativaParticipanteInfo {
+  participantId: string
+  nombre: string
+  bando: 'JUGADOR' | 'ENEMIGO'
+  attribute: 'destreza'
+  value: number
+  roll: number
+  result: number
+  rolls: number[]
+}
+
+export interface CombateGrupoLogRoll {
+  kind: 'combate-grupo'
+  engagement: TiradaGrupoInfo[]
+  iniciativa: IniciativaParticipanteInfo[]
+}
+
+export type ExtendedLogRoll = RecoleccionLogRoll | IniciativaEncuentroLogRoll | CazaSigiloRoll | CombateGrupoLogRoll
+
+/// `LogEntry.roll` = tirada de combate/turno (`RollInfo`) o una de las tiradas de arriba.
+export type LogEntryRoll = RollInfo | ExtendedLogRoll
+
+export function isExtendedLogRoll(roll: LogEntryRoll | undefined | null): roll is ExtendedLogRoll {
+  return !!roll && 'kind' in roll
+}
+
 export interface RollInfo {
   attribute: Attribute
   value: number
@@ -338,7 +425,7 @@ export interface LogEntry {
   channel: LogChannel
   text: string
   timeLabel: string
-  roll?: RollInfo
+  roll?: LogEntryRoll
   isPlayerAction?: boolean
   createdAt: string
   xpDelta?: number

@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import type { HarvestSourceCandidate, InventoryItemInfo, GatheringRollInfo } from '../types'
+import type { HarvestSourceCandidate, InventoryItemInfo, GatheringRollInfo, RecoleccionLogRoll, SegundaTiradaInfo } from '../types'
+import { SegundasTiradasBadge } from './ExtendedRollBadge'
 import { getRecolectarLocalizado, confirmarRecoleccion } from '../lib/api'
 import { SelectionModalShell, confirmButtonClasses } from './SelectionModalShell'
 import { useAsyncModalData } from '../hooks/useAsyncModalData'
@@ -11,7 +12,7 @@ interface HarvestSelectionModalProps {
   oficioLabel: string
   inventoryUsed: number
   inventoryCapacity: number
-  onConfirm: (created: InventoryItemInfo[], updated: { id: string; name: string }[], logEntry: { id: string; text: string; timeLabel: string; createdAt: string } | null) => void
+  onConfirm: (created: InventoryItemInfo[], updated: { id: string; name: string }[], logEntry: { id: string; text: string; timeLabel: string; createdAt: string; roll?: RecoleccionLogRoll } | null) => void
   onCancel: () => void
   /// Recolección por texto libre redirigida al modal real (Pieza 6d, 2026-09-03) — el jugador
   /// citó esta fuente concreta ("Mino Yerreo") antes de que el guard determinista lo mandara aquí;
@@ -70,6 +71,9 @@ export function HarvestSelectionModal({
   // sin pasar por "Explorar"), `false` mientras haya uno en curso.
   const [revealed, setRevealed] = useState(true)
   const [selections, setSelections] = useState<Record<SelectionKey, number>>({})
+  // Fase 10 (2026-09-29) — segundas tiradas de tier alto cuando NINGUNA selección se materializó
+  // (no hay LogEntry en la que mostrarlas): se enseñan aquí en vez de cerrar el modal sin explicación.
+  const [segundasFallidas, setSegundasFallidas] = useState<SegundaTiradaInfo[] | null>(null)
   const { loading, error, setError } = useAsyncModalData(
     () => getRecolectarLocalizado(saveId, oficio),
     (res) => {
@@ -102,6 +106,12 @@ export function HarvestSelectionModal({
     setError(null)
     try {
       const [res] = await Promise.all([confirmarRecoleccion(saveId, selectionList), new Promise((resolve) => setTimeout(resolve, MIN_CONFIRM_DISPLAY_MS))])
+      if (!res.logEntry && res.segundasTiradas && res.segundasTiradas.length > 0) {
+        setSegundasFallidas(res.segundasTiradas)
+        setSelections({})
+        setConfirming(false)
+        return
+      }
       onConfirm(res.items, res.updatedItems, res.logEntry)
     } catch {
       setError('No se pudo recolectar — puede que otra acción se haya adelantado.')
@@ -123,6 +133,12 @@ export function HarvestSelectionModal({
         )
       }
     >
+      {segundasFallidas && (
+        <div className="mb-3">
+          <p className="text-xs text-wood-400">La segunda tirada no fue suficiente — no consigues recolectar nada de esa selección.</p>
+          <SegundasTiradasBadge segundas={segundasFallidas} />
+        </div>
+      )}
       {loading ? (
         <p className="text-xs text-wood-500">Buscando qué hay en la zona...</p>
       ) : error && sources.length === 0 ? (

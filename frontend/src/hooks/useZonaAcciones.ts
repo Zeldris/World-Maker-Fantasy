@@ -1,6 +1,6 @@
 import { useState, type Dispatch, type SetStateAction } from 'react'
 import { cazarEnZona } from '../lib/api'
-import type { LogEntry, NpcInSceneInfo } from '../types'
+import type { CazaSigiloRoll, CombateGrupoLogRoll, LogEntry, NpcInSceneInfo } from '../types'
 
 // Bloque zona/caza/cadáveres extraído de GameView.tsx (Fase 7 del plan, refactor puro, mismo patrón
 // que useCombatFlow.ts): GameView sigue siendo dueño del log, del combate y de `handleSubmit`
@@ -41,9 +41,14 @@ export function useZonaAcciones({ saveId, setCharacterLog, setCombateIniciado, o
       | {
           resuelveSinCombate: true
           combate: { npcs: NpcInSceneInfo[] }
-          logEntry: { id: string; text: string; timeLabel: string; createdAt: string }
+          logEntry: { id: string; text: string; timeLabel: string; createdAt: string; roll?: CazaSigiloRoll }
         }
-      | { resuelveSinCombate: false; actionText: string },
+      | {
+          resuelveSinCombate: false
+          actionText: string
+          cazaLimpia?: CazaSigiloRoll
+          logEntry?: { id: string; text: string; timeLabel: string; createdAt: string; roll: CombateGrupoLogRoll }
+        },
   ) {
     if (result.resuelveSinCombate) {
       setCharacterLog((prev) => [...prev, { ...result.logEntry, channel: 'character' }])
@@ -53,6 +58,27 @@ export function useZonaAcciones({ saveId, setCharacterLog, setCombateIniciado, o
       // de combate vacío.
       openCombat(result.combate)
       return
+    }
+    // Fase 10 (2026-09-29, "todas las tiradas visibles") — antes de mandar el texto por el turno
+    // normal se muestran las tiradas que ya ocurrieron: cuántos del grupo entran + iniciativa
+    // (LogEntry de sistema persistida por el backend) o el d100 de la caza sigilosa fallida (no deja
+    // LogEntry propia, así que se inserta una entrada local para que el dado se vea).
+    if (result.logEntry) {
+      setCharacterLog((prev) => [...prev, { ...result.logEntry!, channel: 'character' }])
+    } else if (result.cazaLimpia) {
+      const { cazaLimpia } = result
+      setCharacterLog((prev) => [
+        ...prev,
+        {
+          id: `caza-sigilo-${Date.now()}`,
+          channel: 'character',
+          text: `${cazaLimpia.npcName} detecta el intento de caza sigilosa.`,
+          timeLabel: prev[prev.length - 1]?.timeLabel ?? '',
+          isSystemMessage: true,
+          createdAt: new Date().toISOString(),
+          roll: cazaLimpia,
+        },
+      ])
     }
     handleSubmit(result.actionText)
   }

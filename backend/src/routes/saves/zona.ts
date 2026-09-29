@@ -27,7 +27,7 @@ import {
 import { NOMBRE_OCULTO_GENERICO } from '../../services/dynamicMode.js';
 import { parseAgenda, regionControlFor, type RegionControlState } from '../../services/worldAgenda.js';
 import { REGION_OWNING_FACTIONS, effectiveTemperamento } from '../../services/reputation.js';
-import { LIENZO_ANCHO, LIENZO_ALTO, posicionAleatoriaEnLienzo, celdaLibreEnEspiral, claveCelda, celdaDePixel, pixelDeCelda, calcularCamino, celdaAdyacenteOMisma, mismaCelda, posicionesDeSalidas, quienIniciaEncuentro } from '../../services/zonaPosicion.js';
+import { LIENZO_ANCHO, LIENZO_ALTO, posicionAleatoriaEnLienzo, celdaLibreEnEspiral, claveCelda, celdaDePixel, pixelDeCelda, calcularCamino, celdaAdyacenteOMisma, mismaCelda, posicionesDeSalidas, tirarQuienIniciaEncuentro, type IniciativaEncuentroLogRoll } from '../../services/zonaPosicion.js';
 import { rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 import { createInFlightClaimSet } from '../../lib/inFlightClaimSet.js';
 import { iniciarCaza, type CazaTarget } from '../../services/caza.js';
@@ -627,7 +627,7 @@ export async function zonaRoutes(app: FastifyInstance) {
           cantidad?: number;
         }
       | null;
-    logEntry: { id: string; text: string; timeLabel: string; createdAt: string } | null;
+    logEntry: { id: string; text: string; timeLabel: string; createdAt: string; roll?: IniciativaEncuentroLogRoll } | null;
     /// B7 (2026-09-28): recurso visto que el jugador todavía no sabe aprovechar — solo se registra
     /// como descubrimiento (sin oferta); el caller lo guarda como "último encuentro" para no repetir
     /// el aviso a cada paso mientras siga cerca.
@@ -818,7 +818,7 @@ export async function zonaRoutes(app: FastifyInstance) {
           cantidad?: number;
         }
       | null = null;
-    let logEntry: { id: string; text: string; timeLabel: string; createdAt: string } | null = null;
+    let logEntry: { id: string; text: string; timeLabel: string; createdAt: string; roll?: IniciativaEncuentroLogRoll } | null = null;
     if (colision) {
       const combateForzado = esTemperamentoHostil(colision.temperamento);
       const freshSave = await tx.save.findUnique({ where: { id: saveId }, select: { pendingDynamicMode: true, pendingDynamicModeOffer: true } });
@@ -830,7 +830,8 @@ export async function zonaRoutes(app: FastifyInstance) {
         // decide además si el jugador puede elegir (lo vio primero) o el combate se abre
         // directamente (el agresivo lo vio primero) — ver `narrarAperturaCombateForzado`,
         // dynamicMode.ts, y la ruta `/modo-dinamico/interactuar`.
-        const quienInicia = quienIniciaEncuentro(destrezaJugador, destrezaColision ?? 10);
+        const iniciativa = tirarQuienIniciaEncuentro(destrezaJugador, destrezaColision ?? 10);
+        const quienInicia = iniciativa.quienInicia;
         dynamicModeOffer = {
           tipo: colisionTipo!,
           targetSlug: colision.targetSlug,
@@ -863,10 +864,13 @@ export async function zonaRoutes(app: FastifyInstance) {
               ? `${characterName} se topa con ${nombreEncuentro}.`
               : `${characterName} se topa con ${nombreEncuentro}, que le observa con cautela.`
             : `${nombreEncuentro} se acerca a ${characterName} antes de que este reaccione.`;
+        // Fase 10 (2026-09-29) — la tirada opuesta Destreza vs Destreza se guarda en `LogEntry.roll`
+        // (discriminada por `kind`) para que la tarjeta la muestre también tras una recarga.
+        const logRoll: IniciativaEncuentroLogRoll = { kind: 'iniciativa-encuentro', quienInicia, jugador: iniciativa.jugador, npc: iniciativa.npc, npcName: colision.targetName };
         const created = await tx.logEntry.create({
-          data: { saveId, channel: 'CHARACTER', text, timeLabel, fictionalMinutes, isPlayerAction: false, isSystemMessage: true },
+          data: { saveId, channel: 'CHARACTER', text, timeLabel, fictionalMinutes, isPlayerAction: false, isSystemMessage: true, roll: logRoll as unknown as Prisma.InputJsonValue },
         });
-        logEntry = { id: created.id, text, timeLabel, createdAt: created.createdAt.toISOString() };
+        logEntry = { id: created.id, text, timeLabel, createdAt: created.createdAt.toISOString(), roll: logRoll };
         // B31 (pruebas 2026-09-28): toparse con fauna/NPC genérico lo descubre en la partida — antes
         // el log ya lo nombraba pero su pin seguía "???". Un PRINCIPAL no descubierto conserva el
         // nombre oculto (se descubre por la historia, `nombreVisibleColision`).

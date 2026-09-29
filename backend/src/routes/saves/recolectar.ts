@@ -125,10 +125,34 @@ const SEGUNDA_TIRADA_TIER_MINIMO = 6;
 /// pedirlo la usuaria): Suerte ya dio ventaja en la PRIMERA tirada (la de Explorar, la que decide
 /// si el candidato tier alto aparece siquiera) — dársela otra vez aquí doblaría su peso para el
 /// mismo intento de recolección. Revisar si en la práctica se echa en falta.
-function pasaSegundaTirada(attributes: AttributeBlock, attribute: Attribute, bonusOficio: number, tier: number | null | undefined): { paso: boolean; grado: GradoRecurso } {
+function pasaSegundaTirada(attributes: AttributeBlock, attribute: Attribute, bonusOficio: number, tier: number | null | undefined): { paso: boolean; grado: GradoRecurso; roll: GatheringRollResult; dificultad: number } {
   const roll = rollGathering(attributes, attribute, bonusOficio, 0);
-  const grado = gradoForRecurso(roll.result, dificultadForTier(tier));
-  return { paso: grado !== 'fallo', grado };
+  const dificultad = dificultadForTier(tier);
+  const grado = gradoForRecurso(roll.result, dificultad);
+  return { paso: grado !== 'fallo', grado, roll, dificultad };
+}
+
+/// Fase 10 (2026-09-29, "todas las tiradas visibles") — la segunda tirada de tier alto ya no se
+/// descarta: se devuelve por objeto afectado (`segundasTiradas` de `resolverRecoleccion`) y se
+/// guarda en `LogEntry.roll` junto a la tirada de Explorar (si la hubo), para que sobreviva a una
+/// recarga. Misma forma que `GatheringRollResult` + qué objeto, la dificultad contra la que se tiró
+/// y el grado resultante.
+export interface SegundaTiradaInfo {
+  sourceSlug: string;
+  itemSlug: string;
+  itemName: string;
+  roll: GatheringRollResult;
+  dificultad: number;
+  grado: GradoRecurso;
+  paso: boolean;
+}
+
+/// Forma persistida en `LogEntry.roll` para una recolección (discriminada por `kind` — las tiradas
+/// de combate/huida guardan un `RollInfo` plano sin `kind`).
+export interface RecoleccionLogRoll {
+  kind: 'recoleccion';
+  tirada?: GatheringRollResult;
+  segundas?: SegundaTiradaInfo[];
 }
 
 export interface SourceCandidate {
@@ -637,6 +661,9 @@ export async function resolverRecoleccion(
   /// por defecto — `/recolectar/confirmar` (el otro caller) nunca toca este campo, no debe
   /// empezar a hacerlo.
   clearPendingDynamicModeOffer = false,
+  /// Tirada de Explorar ya hecha por el caller (recolectar desde el mapa) — solo para guardarla en
+  /// `LogEntry.roll`; nunca cambia el resultado de la recolección.
+  primeraTirada?: GatheringRollResult,
 ) {
   interface TouchedStack {
     id: string;
@@ -717,6 +744,7 @@ export async function resolverRecoleccion(
         // misma petición vienen todas de la misma "tirada de caña" ya consumida en /explorar) —
         // aplicado la primera vez que aparece una selección PESCA, ver bucle principal.
         let ceboConsumido = false;
+        const segundasTiradas: SegundaTiradaInfo[] = [];
 
         // Acumula en la pila ya existente en vez de crear siempre una fila nueva (bug real jugando
         // en vivo, 2026-08-07: "Piedra (3)" + "Piedra (3)" sueltas en vez de "Piedra (6)") — mismo
@@ -767,7 +795,8 @@ export async function resolverRecoleccion(
               // archivo (`matchesOficioPrefix`), nunca una comparación exacta contra este string.
               const nivelOficio = (save.professionProgress ?? []).find((p) => matchesOficioPrefix(p.professionId, segunda.oficio))?.nivel ?? 1;
               const effectiveAttrs = effectiveAttributes(save.attributes as AttributeBlock, save.inventoryItems);
-              const { paso, grado } = pasaSegundaTirada(effectiveAttrs, segunda.attribute, alivioForLevel(nivelOficio), yieldRow.item.tier);
+              const { paso, grado, roll: segundaRoll, dificultad } = pasaSegundaTirada(effectiveAttrs, segunda.attribute, alivioForLevel(nivelOficio), yieldRow.item.tier);
+              segundasTiradas.push({ sourceSlug: sel.sourceSlug, itemSlug: sel.itemSlug, itemName: yieldRow.item.name, roll: segundaRoll, dificultad, grado, paso });
               if (!paso) continue;
               cantidad = cantidadForGrado(grado, cantidad);
               if (cantidad <= 0) continue;
@@ -932,7 +961,7 @@ export async function resolverRecoleccion(
         // turnos: nunca inventar prosa por IA para algo que ya se sabe con certeza mecánica. Solo
         // si de verdad se consiguió algo (no todas las peticiones tienen éxito: capacidad llena,
         // cooldown, población agotada a mitad de bucle).
-        let logEntry: { id: string; text: string; timeLabel: string; createdAt: string; fictionalMinutes: number } | null = null;
+        let logEntry: { id: string; text: string; timeLabel: string; createdAt: string; fictionalMinutes: number; roll?: RecoleccionLogRoll } | null = null;
         let nuevoFictionalMinutes = save.worldState?.fictionalMinutes ?? 480;
         let nuevaFictionalDateLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
         if (touched.size > 0) {
@@ -950,10 +979,23 @@ export async function resolverRecoleccion(
             data: { fictionalMinutes: nuevoFictionalMinutes, fictionalDateLabel: nuevaFictionalDateLabel },
           });
           // isSystemMessage (ver comentario completo en schema.prisma) — texto fijo determinista.
+          const logRoll: RecoleccionLogRoll | undefined =
+            primeraTirada || segundasTiradas.length > 0
+              ? { kind: 'recoleccion', ...(primeraTirada ? { tirada: primeraTirada } : {}), ...(segundasTiradas.length > 0 ? { segundas: segundasTiradas } : {}) }
+              : undefined;
           const created = await tx.logEntry.create({
-            data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel: nuevaFictionalDateLabel, fictionalMinutes: nuevoFictionalMinutes, isPlayerAction: false, isSystemMessage: true },
+            data: {
+              saveId: save.id,
+              channel: 'CHARACTER',
+              text,
+              timeLabel: nuevaFictionalDateLabel,
+              fictionalMinutes: nuevoFictionalMinutes,
+              isPlayerAction: false,
+              isSystemMessage: true,
+              ...(logRoll ? { roll: logRoll as unknown as Prisma.InputJsonValue } : {}),
+            },
           });
-          logEntry = { id: created.id, text, timeLabel: nuevaFictionalDateLabel, createdAt: created.createdAt.toISOString(), fictionalMinutes: nuevoFictionalMinutes };
+          logEntry = { id: created.id, text, timeLabel: nuevaFictionalDateLabel, createdAt: created.createdAt.toISOString(), fictionalMinutes: nuevoFictionalMinutes, ...(logRoll ? { roll: logRoll } : {}) };
         }
 
         // Cierre de misión "conseguir Z" (bug real, auditoría 2026-08-11 "pruebas por API"): este
@@ -985,7 +1027,7 @@ export async function resolverRecoleccion(
           await tx.save.update({ where: { id: save.id }, data: { pendingDynamicModeOffer: Prisma.JsonNull } });
         }
 
-        return { touched, logEntry };
+        return { touched, logEntry, segundasTiradas };
       });
 
       // Hecho de sesión (fuera de la transacción, igual que `appendSessionFacts` en /explorar —
@@ -1038,5 +1080,5 @@ export async function resolverRecoleccion(
         }
       }
 
-  return { items, updatedItems, logEntry: touched.logEntry };
+  return { items, updatedItems, logEntry: touched.logEntry, segundasTiradas: touched.segundasTiradas };
 }

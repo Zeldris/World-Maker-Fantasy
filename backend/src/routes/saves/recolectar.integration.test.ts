@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import Fastify from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
@@ -253,6 +253,34 @@ describe('Pescador (PESCA/BUSQUEDA) contra el catálogo real sembrado', () => {
 
     const ceboRow = await prisma.inventoryItem.findFirstOrThrow({ where: { saveId, catalogSlug: 'cebo-pesca' } });
     expect(ceboRow.name).toBe('Cebo (4)');
+  }, 15_000);
+
+  // Fase 10 (2026-09-29, "todas las tiradas visibles") — la segunda tirada de tier alto (>= 6) ya no se
+  // descarta: se devuelve por objeto afectado y queda en `LogEntry.roll`. Toluh es tier 7 (inteligencia
+  // 20 -> +10, dificultad 17); `Math.random` fijado alto (d20 = 20) para que no dependa del azar.
+  it('confirmar un objeto tier 7 devuelve su segunda tirada (segundasTiradas) y la guarda en LogEntry.roll', async () => {
+    const app = await buildApp();
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    let res;
+    try {
+      res = await app.inject({
+        method: 'POST',
+        url: `/saves/${saveId}/recolectar/confirmar`,
+        payload: { selections: [{ sourceSlug: 'toluh', itemSlug: 'carne-toluh', cantidad: 1 }] },
+      });
+    } finally {
+      randomSpy.mockRestore();
+    }
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.segundasTiradas).toHaveLength(1);
+    const segunda = body.segundasTiradas[0];
+    expect(segunda).toMatchObject({ sourceSlug: 'toluh', itemSlug: 'carne-toluh', dificultad: 17, paso: true, grado: 'claro' });
+    expect(segunda.roll).toMatchObject({ attribute: 'inteligencia', usedRoll: 20, advantage: false });
+    expect(segunda.roll.result).toBe(20 + 10 + segunda.roll.bonusOficio);
+    expect(body.logEntry.roll).toEqual({ kind: 'recoleccion', segundas: body.segundasTiradas });
+    const guardada = await prisma.logEntry.findUniqueOrThrow({ where: { id: body.logEntry.id } });
+    expect(guardada.roll).toEqual({ kind: 'recoleccion', segundas: body.segundasTiradas });
   }, 15_000);
 
   // Fase 4 (2026-09-28) — ver comentario del test de Pescar arriba (mismo motivo, mismo camino

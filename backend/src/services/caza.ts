@@ -7,7 +7,7 @@ import { decrementPopulationOnDeath } from './population.js';
 import { advanceFictionalMinutes, formatFictionalDate } from './worldClock.js';
 import { loadSessionFacts, appendSessionFacts } from './worldFacts.js';
 import { recordEntityDiscoveries } from './entityDiscovery.js';
-import { iniciarCombatEncounter, resolverTurnosAutonomosHastaJugadora, type CombatienteInicial } from './combateMultipleOrquestacion.js';
+import { iniciarCombatEncounter, resolverTurnosAutonomosHastaJugadora, type CombatienteInicial, type IniciativaParticipanteInfo } from './combateMultipleOrquestacion.js';
 import { MAX_COMBATIENTES_POR_BANDO } from './combateMultiple.js';
 import { lockRowForUpdate } from '../routes/saves/shared.js';
 
@@ -52,14 +52,62 @@ export interface SaveParaCaza {
   fictionalMinutes: number;
 }
 
+/// Fase 10 (2026-09-29, "todas las tiradas visibles") — la caza sigilosa (`intentarCazaLimpia`) era
+/// `Math.random() * 100 < chance` sin ningún dato visible. Ahora se expone como un d100 contra la
+/// probabilidad real (`chance`, sin cambiarla): `roll` = `floor(r)+1` con `r` el mismo número
+/// aleatorio de siempre, así que `roll <= chance` coincide con `r < chance` (chance entera).
+export interface TiradaCazaLimpia {
+  kind: 'caza-sigilo';
+  /// Probabilidad real de éxito, en % (tope 90).
+  chance: number;
+  /// d100, 1-100. Éxito si `roll <= chance`.
+  roll: number;
+  exito: boolean;
+  npcName: string;
+}
+
+/// Tirada de "cuántos del grupo entran al combate" (`rollGroupEngagement`) por especie.
+export interface TiradaGrupoInfo {
+  slug: string;
+  name: string;
+  /// d6 real (1-6): 1-2 = uno menos, 3-4 = lo elegido, 5-6 = uno más.
+  roll: number;
+  delta: -1 | 0 | 1;
+  cantidadElegida: number;
+  /// Individuos reales del grupo (tope).
+  avistados: number;
+  /// Resultado de la tirada tras topar por 0..avistados.
+  cantidadTirada: number;
+  /// Lo que entra de verdad al combate (un AGRESIVO nunca se dispersa del todo: 0 pasa a 1).
+  cantidadReal: number;
+}
+
+/// Forma persistida en `LogEntry.roll` cuando arranca un combate múltiple.
+export interface CombateGrupoLogRoll {
+  kind: 'combate-grupo';
+  engagement: TiradaGrupoInfo[];
+  iniciativa: IniciativaParticipanteInfo[];
+}
+
 export type IniciarCazaResultado =
   | {
       resuelveSinCombate: true;
       exito: true;
       combate: { npcs: [{ slug: string; name: string; condicionFisica: 'MUERTO'; saqueado: false; lootedItemNames: [] }] };
-      logEntry: { id: string; text: string; timeLabel: string; createdAt: string };
+      logEntry: { id: string; text: string; timeLabel: string; createdAt: string; roll: TiradaCazaLimpia };
+      cazaLimpia: TiradaCazaLimpia;
     }
-  | { resuelveSinCombate: false; exito: false | null; actionText: string }
+  | {
+      resuelveSinCombate: false;
+      exito: false | null;
+      actionText: string;
+      /// Solo cuando la caza sigilosa se intentó y falló.
+      cazaLimpia?: TiradaCazaLimpia;
+      /// Solo en combate múltiple: una tirada por especie con grupo real.
+      tiradasGrupo?: TiradaGrupoInfo[];
+      /// Solo en combate múltiple: LogEntry de sistema con las tiradas (engagement + iniciativa).
+      logEntry?: { id: string; text: string; timeLabel: string; createdAt: string; roll: CombateGrupoLogRoll };
+    }
   | { error: string; status: number };
 
 /// Umbral de "presa débil" — mismo criterio que la banda "Fácil" de `difficultyHintFor`
@@ -82,10 +130,14 @@ export function dispersionCooldownActivo(sinceMinutes: number | null, nowMinutes
 
 /// Tirada simple 1d6 — 1-2 uno menos, 3-4 exactamente lo elegido, 5-6 uno más. Ver comentario
 /// completo original en `cazar.ts` (petición explícita de la usuaria, 2026-08-13/2026-09-02).
-export function rollGroupEngagement(cantidadElegida: number, avistados: number, random: () => number = Math.random): number {
+export function rollGroupEngagementDetail(cantidadElegida: number, avistados: number, random: () => number = Math.random): { roll: number; delta: -1 | 0 | 1; cantidadTirada: number } {
   const roll = Math.floor(random() * 6) + 1;
   const delta = roll <= 2 ? -1 : roll >= 5 ? 1 : 0;
-  return Math.max(0, Math.min(avistados, cantidadElegida + delta));
+  return { roll, delta, cantidadTirada: Math.max(0, Math.min(avistados, cantidadElegida + delta)) };
+}
+
+export function rollGroupEngagement(cantidadElegida: number, avistados: number, random: () => number = Math.random): number {
+  return rollGroupEngagementDetail(cantidadElegida, avistados, random).cantidadTirada;
 }
 
 /// Cláusula determinista para el texto de acción cuando lo que se compromete al combate difiere de
@@ -132,12 +184,15 @@ async function descontarZonePointCaza(tx: Prisma.TransactionClient, saveId: stri
 async function intentarCazaLimpia(save: SaveParaCaza, target: CazaTarget): Promise<IniciarCazaResultado> {
   const { npc, zonePointId } = target;
   const chance = Math.min(CHANCE_CAZA_LIMPIA_TOPE, npc.capturablePct + save.attributes.destreza);
-  const exito = Math.random() * 100 < chance;
+  const r = Math.random() * 100;
+  const exito = r < chance;
+  const cazaLimpia: TiradaCazaLimpia = { kind: 'caza-sigilo', chance, roll: Math.min(100, Math.floor(r) + 1), exito, npcName: npc.name };
 
   if (!exito) {
     return {
       resuelveSinCombate: false,
       exito: false,
+      cazaLimpia,
       // B21 (pruebas 2026-09-28): "…pero fallo" seguido de la tirada de APERTURA del combate (que
       // puede salir en éxito) se leía como una contradicción. El sigilo se pierde porque la presa
       // detecta al jugador; la tirada que viene después es la del ataque, no la de la caza.
@@ -182,7 +237,7 @@ async function intentarCazaLimpia(save: SaveParaCaza, target: CazaTarget): Promi
     }
     await decrementPopulationOnDeath(tx, save.worldId, null, npc.slug, save.region);
     await tx.worldState.update({ where: { saveId: save.id }, data: { fictionalMinutes: nuevoFictionalMinutes, fictionalDateLabel: timeLabel } });
-    const created = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: nuevoFictionalMinutes, isPlayerAction: false, isSystemMessage: true } });
+    const created = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: nuevoFictionalMinutes, isPlayerAction: false, isSystemMessage: true, roll: cazaLimpia as unknown as Prisma.InputJsonValue } });
     await tx.save.update({ where: { id: save.id }, data: { pendingCombatNpcSlugs: [npc.slug] } });
     // Grupos de fauna reales (Fase 2) — la caza limpia siempre enfrenta a UN único individuo
     // (nunca al grupo entero, ver comentario de cabecera de esta función); el punto del que salió
@@ -208,7 +263,8 @@ async function intentarCazaLimpia(save: SaveParaCaza, target: CazaTarget): Promi
     resuelveSinCombate: true,
     exito: true,
     combate: { npcs: [{ slug: npc.slug, name: npc.name, condicionFisica: 'MUERTO' as const, saqueado: false, lootedItemNames: [] }] },
-    logEntry: { id: logEntry.id, text, timeLabel, createdAt: logEntry.createdAt.toISOString() },
+    logEntry: { id: logEntry.id, text, timeLabel, createdAt: logEntry.createdAt.toISOString(), roll: cazaLimpia },
+    cazaLimpia,
   };
 }
 
@@ -222,21 +278,23 @@ async function intentarCazaEnGrupo(save: SaveParaCaza, targets: CazaTarget[]): P
   const varianceClauses: string[] = [];
   const hayGrupoReal = targets.some((t) => t.cantidadObjetivo > 1);
   const especiesDispersadas: string[] = [];
+  const tiradasGrupo: TiradaGrupoInfo[] = [];
+  let logEntryGrupo: { id: string; text: string; timeLabel: string; createdAt: string; roll: CombateGrupoLogRoll } | undefined;
 
   if (hayGrupoReal) {
     const jugadorAttrs = save.attributes;
     const combatientes: (CombatienteInicial & { destreza: number; inteligencia: number })[] = [
-      { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: jugadorAttrs.destreza, inteligencia: jugadorAttrs.inteligencia },
+      { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: jugadorAttrs.destreza, inteligencia: jugadorAttrs.inteligencia, nombre: save.characterName },
       ...(
         await prisma.companion.findMany({
           where: { saveId: save.id, combatGroupSlotIndex: 0, condicionFisica: { not: 'MUERTO' } },
-          select: { id: true, attributes: true },
+          select: { id: true, name: true, attributes: true },
         })
       )
         .filter((c) => c.attributes)
         .map((c) => {
           const attrs = c.attributes as AttributeBlock;
-          return { bando: 'JUGADOR' as const, tipo: 'COMPANION' as const, companionId: c.id, destreza: attrs.destreza, inteligencia: attrs.inteligencia };
+          return { bando: 'JUGADOR' as const, tipo: 'COMPANION' as const, companionId: c.id, destreza: attrs.destreza, inteligencia: attrs.inteligencia, nombre: c.name };
         }),
     ];
     // Grupos de fauna reales (Fase 2) — cuántos individuos ENFRENTADOS de verdad descuenta cada
@@ -250,21 +308,32 @@ async function intentarCazaEnGrupo(save: SaveParaCaza, targets: CazaTarget[]): P
       const scope = scopeFor(npc.kind, currentLocationId);
       if (target.cantidadObjetivo > 1) {
         const cantidadElegida = Math.max(1, Math.min(target.cantidadObjetivo, Math.round(target.cantidadElegida ?? target.cantidadObjetivo)));
-        let cantidadReal = rollGroupEngagement(cantidadElegida, target.cantidadObjetivo);
+        const engagement = rollGroupEngagementDetail(cantidadElegida, target.cantidadObjetivo);
+        let cantidadReal = engagement.cantidadTirada;
         // Un grupo AGRESIVO no se dispersa por las buenas — ver comentario completo original en
         // `cazar.ts` (matiz explícito de la usuaria, 2026-09-02).
         if (cantidadReal === 0 && npc.temperamento === 'AGRESIVO' && save.level <= (npc.levelMax ?? npc.level)) {
           cantidadReal = 1;
         }
+        tiradasGrupo.push({
+          slug: npc.slug,
+          name: npc.name,
+          roll: engagement.roll,
+          delta: engagement.delta,
+          cantidadElegida,
+          avistados: target.cantidadObjetivo,
+          cantidadTirada: engagement.cantidadTirada,
+          cantidadReal,
+        });
         if (cantidadReal === 0) especiesDispersadas.push(npc.slug);
         for (let i = 0; i < cantidadReal; i++) {
-          combatientes.push({ bando: 'ENEMIGO', tipo: 'NPC', npcId: npc.id, npcScope: scope, destreza: npcAttrs.destreza, inteligencia: npcAttrs.inteligencia, esGrupo: true });
+          combatientes.push({ bando: 'ENEMIGO', tipo: 'NPC', npcId: npc.id, npcScope: scope, destreza: npcAttrs.destreza, inteligencia: npcAttrs.inteligencia, esGrupo: true, nombre: npc.name });
         }
         if (zonePointId) enfrentadosPorZonePoint.set(zonePointId, (enfrentadosPorZonePoint.get(zonePointId) ?? 0) + cantidadReal);
         const clause = groupVarianceClause(cantidadElegida, cantidadReal);
         if (clause) varianceClauses.push(`Con '${npc.name}', ${clause}.`);
       } else {
-        combatientes.push({ bando: 'ENEMIGO', tipo: 'NPC', npcId: npc.id, npcScope: scope, destreza: npcAttrs.destreza, inteligencia: npcAttrs.inteligencia });
+        combatientes.push({ bando: 'ENEMIGO', tipo: 'NPC', npcId: npc.id, npcScope: scope, destreza: npcAttrs.destreza, inteligencia: npcAttrs.inteligencia, nombre: npc.name });
         if (zonePointId) enfrentadosPorZonePoint.set(zonePointId, (enfrentadosPorZonePoint.get(zonePointId) ?? 0) + 1);
       }
     }
@@ -284,7 +353,16 @@ async function intentarCazaEnGrupo(save: SaveParaCaza, targets: CazaTarget[]): P
       await lockRowForUpdate(tx, 'Save', save.id, ['id']);
       const activeEncounterFresco = await tx.combatEncounter.findFirst({ where: { saveId: save.id, estado: 'EN_CURSO', jugable: true } });
       if (activeEncounterFresco) return null;
-      await iniciarCombatEncounter(tx, save.id, [...bandoJugadorCompleto, ...fragmentosParaCrear[0]]);
+      const { iniciativa: iniciativaJugable } = await iniciarCombatEncounter(tx, save.id, [...bandoJugadorCompleto, ...fragmentosParaCrear[0]]);
+      // Fase 10 (2026-09-29) — la iniciativa de cada combatiente y la tirada de cuántos entran ya no
+      // se descartan: un LogEntry de sistema las guarda (sobrevive a una recarga) y se devuelven.
+      const timeLabelGrupo = formatFictionalDate(save.fictionalMinutes);
+      const logRoll: CombateGrupoLogRoll = { kind: 'combate-grupo', engagement: tiradasGrupo, iniciativa: iniciativaJugable };
+      const textoGrupo = `Comienza el combate: cada combatiente tira iniciativa.`;
+      const createdGrupo = await tx.logEntry.create({
+        data: { saveId: save.id, channel: 'CHARACTER', text: textoGrupo, timeLabel: timeLabelGrupo, fictionalMinutes: save.fictionalMinutes, isPlayerAction: false, isSystemMessage: true, roll: logRoll as unknown as Prisma.InputJsonValue },
+      });
+      logEntryGrupo = { id: createdGrupo.id, text: textoGrupo, timeLabel: timeLabelGrupo, createdAt: createdGrupo.createdAt.toISOString(), roll: logRoll };
       const autonomosIds: string[] = [];
       for (const fragmento of fragmentosParaCrear.slice(1)) {
         const { encounterId } = await iniciarCombatEncounter(tx, save.id, fragmento, false);
@@ -333,7 +411,7 @@ async function intentarCazaEnGrupo(save: SaveParaCaza, targets: CazaTarget[]): P
 
   const names = targets.map((t) => t.npc.name);
   const actionText = [`Salgo a cazar y ataco a ${names.map((n) => `'${n}'`).join(', ')}.`, ...varianceClauses].join(' ');
-  return { resuelveSinCombate: false, exito: null, actionText };
+  return { resuelveSinCombate: false, exito: null, actionText, ...(tiradasGrupo.length > 0 ? { tiradasGrupo } : {}), ...(logEntryGrupo ? { logEntry: logEntryGrupo } : {}) };
 }
 
 /// Punto de entrada único del servicio — decide entre caza limpia y caza en grupo/combate, mismas

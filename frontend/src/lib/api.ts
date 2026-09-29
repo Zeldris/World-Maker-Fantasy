@@ -23,7 +23,14 @@ import type {
   KingdomFoundedInfo,
   KingdomStatsInfo,
   LogEntry,
+  LogEntryRoll,
   NpcInSceneInfo,
+  SegundaTiradaInfo,
+  TiradaGrupoInfo,
+  CazaSigiloRoll,
+  CombateGrupoLogRoll,
+  IniciativaEncuentroLogRoll,
+  RecoleccionLogRoll,
   HarvestSourceCandidate,
   GatheringRollInfo,
   ParcelaDetailInfo,
@@ -927,7 +934,7 @@ export interface DiarioEntry extends DiarioCalendario {
   channel: LogEntry['channel']
   text: string
   timeLabel: string
-  roll?: RollInfo
+  roll?: LogEntryRoll
   isPlayerAction?: boolean
   xpDelta?: number
   /// Desglose de `xpDelta` (UX 2026-09-01) — ver el mismo campo en `LogEntry` (types.ts).
@@ -1000,7 +1007,10 @@ export async function confirmarRecoleccion(
   /// Registro escrito determinista de lo recolectado (petición explícita, 2026-08-07: "un texto
   /// de narración que no dependa de la AI") — null si la petición no consiguió nada de verdad
   /// (capacidad llena, cooldown, población agotada a mitad de camino).
-  logEntry: { id: string; text: string; timeLabel: string; createdAt: string } | null
+  logEntry: { id: string; text: string; timeLabel: string; createdAt: string; roll?: RecoleccionLogRoll } | null
+  /// Fase 10 (2026-09-29) — segunda tirada de tier alto por objeto afectado (también dentro de
+  /// `logEntry.roll.segundas`); llega aunque `logEntry` sea null (todas las segundas fallaron).
+  segundasTiradas?: SegundaTiradaInfo[]
 }> {
   return fetchJson(`${API_URL}/saves/${saveId}/recolectar/confirmar`, {
     method: 'POST',
@@ -1231,7 +1241,7 @@ export interface MoverZonaResultado {
   /// quedaba persistida en BD pero invisible en el log). Presente solo junto a `dynamicModeOffer`,
   /// `null` en cualquier otro caso. Shape mínimo (no el `LogEntry` completo del frontend, que
   /// exige `channel` — el caller construye la entrada final combinando esto con `dynamicModeOffer`).
-  logEntry: { id: string; text: string; timeLabel: string; createdAt: string } | null
+  logEntry: { id: string; text: string; timeLabel: string; createdAt: string; roll?: IniciativaEncuentroLogRoll } | null
   /// Sincronización real del mundo con el jugador (2026-09-09, bug real jugando en vivo: "los
   /// elementos se mueven, pero no con animación de movimiento como yo ni a la vez que muevo yo") —
   /// posiciones YA actualizadas de los `ZonePoint` FAUNA/NPC que dieron su propio paso este mismo
@@ -1642,8 +1652,18 @@ export async function getFactionRelations(worldSlug: string, saveId?: string): P
 /// quien lo abra — decisión explícita de la usuaria: "cazar sí que fuerza una narración cuando
 /// eliges objetivos y esa narración inicia el combate".
 export type ConfirmarCazaResultado =
-  | { resuelveSinCombate: true; exito: true; combate: { npcs: NpcInSceneInfo[] }; logEntry: { id: string; text: string; timeLabel: string; createdAt: string } }
-  | { resuelveSinCombate: false; exito: false | null; actionText: string }
+  | { resuelveSinCombate: true; exito: true; combate: { npcs: NpcInSceneInfo[] }; logEntry: { id: string; text: string; timeLabel: string; createdAt: string; roll?: CazaSigiloRoll }; cazaLimpia?: CazaSigiloRoll }
+  | {
+      resuelveSinCombate: false
+      exito: false | null
+      actionText: string
+      /// Fase 10 (2026-09-29) — caza sigilosa fallida (d100 contra la probabilidad real).
+      cazaLimpia?: CazaSigiloRoll
+      /// Cuántos del grupo entran al combate (d6 por especie) + LogEntry de sistema con esas tiradas
+      /// y la iniciativa de cada combatiente (combate múltiple).
+      tiradasGrupo?: TiradaGrupoInfo[]
+      logEntry?: { id: string; text: string; timeLabel: string; createdAt: string; roll: CombateGrupoLogRoll }
+    }
 
 /// Cazar desde la tarjeta de encuentro de zona (Fase 2, 2026-09-28,
 /// `plan-mecanicas-por-zona-2026-09-28.md`) — caza EXACTAMENTE el grupo con el que se ha
@@ -1741,6 +1761,10 @@ export interface DynamicModeTurno {
   /// (`handleSubmit`, GameView.tsx) para que la narración real lo abra — mismo criterio EXACTO que
   /// `ConfirmarCazaResultado.actionText` (caza en grupo desde el viejo botón suelto).
   actionText?: string
+  /// Fase 10 (2026-09-29) — con `actionText` de grupo: tiradas de cuántos entran + LogEntry de
+  /// sistema (`combateGrupoLogEntry`) con esas tiradas y la iniciativa del combate múltiple.
+  tiradasGrupo?: TiradaGrupoInfo[]
+  combateGrupoLogEntry?: { id: string; text: string; timeLabel: string; createdAt: string; roll: CombateGrupoLogRoll }
 }
 
 export async function interactuarModoDinamico(
@@ -1795,9 +1819,12 @@ export interface DynamicModeRecursoResultado {
   exito: boolean
   narration: string
   abilityName?: string
+  /// Fase 10 (2026-09-29) — tirada de Explorar (también en el fallo) y segundas tiradas de tier alto.
+  roll?: GatheringRollInfo
+  segundasTiradas?: SegundaTiradaInfo[]
   items?: InventoryItemInfo[]
   updatedItems?: { id: string; name: string }[]
-  logEntry?: { id: string; text: string; timeLabel: string; createdAt: string; fictionalMinutes: number } | null
+  logEntry?: { id: string; text: string; timeLabel: string; createdAt: string; fictionalMinutes: number; roll?: RecoleccionLogRoll } | null
 }
 
 export async function interactuarModoDinamicoRecurso(saveId: string, targetSlug: string): Promise<DynamicModeRecursoResultado> {

@@ -453,6 +453,8 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
               text: resultado.logEntry.text,
               timeLabel: resultado.logEntry.timeLabel,
               createdAt: resultado.logEntry.createdAt,
+              // Fase 10 (2026-09-29) — la tirada opuesta "¿quién ve a quién primero?" viaja en la entrada.
+              roll: resultado.logEntry.roll,
               dynamicModeOffer: { ...resultado.dynamicModeOffer, busy: false },
             })
             // Cierra el modal de movimiento (2026-09-09) — sin esto la tarjeta de Interactuar
@@ -487,6 +489,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
             text: resultado.logEntry.text,
             timeLabel: resultado.logEntry.timeLabel,
             createdAt: resultado.logEntry.createdAt,
+            roll: resultado.logEntry.roll,
             dynamicModeOffer: { ...resultado.dynamicModeOffer, busy: false },
           })
           onClose?.()

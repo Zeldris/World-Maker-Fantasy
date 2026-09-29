@@ -94,6 +94,9 @@ export async function dynamicModeRecursoRoutes(app: FastifyInstance) {
       return {
         exito: false,
         narration: `${save.characterName} lo intenta con ${sourceDisplayNameFor(targetSlug)}, pero no consigue nada aprovechable esta vez.`,
+        // Fase 10 (2026-09-29) — la tirada de Explorar también se ve en el fallo (dado visible).
+        roll,
+        abilityName: ability.ability.name,
       };
     }
 
@@ -102,12 +105,16 @@ export async function dynamicModeRecursoRoutes(app: FastifyInstance) {
     // (hallazgo 44, revisar-partida-hallazgos.md 2026-09-15) — antes era una segunda escritura
     // suelta después de cerrar la transacción, vulnerable a dejar la oferta colgada sobre un
     // recurso ya recolectado si el proceso moría entre medias.
-    const resultado = await resolverRecoleccion(save, selections, true);
+    const resultado = await resolverRecoleccion(save, selections, true, roll);
 
     return {
       exito: resultado.logEntry !== null,
       narration: resultado.logEntry?.text ?? `${save.characterName} no consigue nada aprovechable de ${sourceDisplayNameFor(targetSlug)} esta vez.`,
       abilityName: ability.ability.name,
+      // Fase 10 (2026-09-29, "todas las tiradas visibles") — tirada de Explorar + segundas tiradas
+      // de tier alto (una por objeto afectado); ambas también quedan en `logEntry.roll`.
+      roll,
+      segundasTiradas: resultado.segundasTiradas,
       items: resultado.items,
       updatedItems: resultado.updatedItems,
       logEntry: resultado.logEntry,
