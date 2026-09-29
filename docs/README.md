@@ -95,7 +95,9 @@ Se escriben durante las sesiones y se van cerrando. No son documentación de ref
   [ampliar-lore-checklist.md](registros/ampliar-lore-checklist.md).
 
 ### `archivo/` — historia
-Roadmaps y registros antiguos, cerrados. Solo para arqueología.
+Roadmaps y registros antiguos, cerrados. Solo para arqueología. Incluye
+`deuda-tecnica-hallazgos-historico.md` y `checklist-pruebas-juego-historico-2026-09-04.md` (entradas
+cerradas movidas de `registros/` el 2026-09-29, sin editar).
 
 ### `ia/`
 - [fine-tuning-ia-local.md](ia/fine-tuning-ia-local.md): guía para entrenar un narrador local propio.

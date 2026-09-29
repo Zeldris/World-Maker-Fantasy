@@ -29,6 +29,7 @@ import { useReconnectionPolling } from '../hooks/useReconnectionPolling'
 import { useSurroundingsPolling } from '../hooks/useSurroundingsPolling'
 import { useRecipesData } from '../hooks/useRecipesData'
 import { useCombatFlow } from '../hooks/useCombatFlow'
+import { useZonaAcciones } from '../hooks/useZonaAcciones'
 import { useTransitPolling } from '../hooks/useTransitPolling'
 import { useKingdomState } from '../hooks/useKingdomState'
 import { useActionModalsState } from '../hooks/useActionModalsState'
@@ -83,7 +84,6 @@ import {
   cancelarMision,
   interactuarModoDinamico,
   interactuarModoDinamicoRecurso,
-  cazarEnZona,
   responderModoDinamico,
   ignorarModoDinamico,
   chooseNpcInteraction,
@@ -158,13 +158,6 @@ export function GameView() {
   const [characterAttributeBonuses, setCharacterAttributeBonuses] = useState<Partial<AttributeBlock>>({})
   const [secondaryAttributes, setSecondaryAttributes] = useState<SecondaryAttributeBlock | null>(null)
   const [characterLog, setCharacterLogRaw] = useState<LogEntry[]>([])
-  // Pieza 2 del rediseño de movimiento en Zona (2026-09-09) — abre `ZonaMovimientoModal` desde el
-  // icono de brújula flotante (ver el botón en el JSX final). Se cierra sola, sin `busy`/`error`
-  // propio (a diferencia de otros modales del árbol) porque `ZonaMovimientoModal` gestiona su
-  // propio `ZonaPanel` internamente sin depender de ningún estado de este componente.
-  const [zonaModalOpen, setZonaModalOpen] = useState(false)
-  // Cadáveres en el mapa (Fase 5, 2026-09-28) — el pin de un cadáver abre Saquear filtrado a él.
-  const [saquearSoloNpcSlug, setSaquearSoloNpcSlug] = useState<string | null>(null)
   // Tirada en vivo vs histórica (2026-09-04, centralización de todas las tiradas del juego) — ids
   // de LogEntry vistas por PRIMERA vez en esta sesión — LogPanel.tsx anima con DiceRollSingle solo
   // estos ids, el resto (recarga, Diario, turnos ya vistos antes en esta misma sesión) se queda con
@@ -421,6 +414,7 @@ export function GameView() {
   const [hambre, setHambre] = useState(100)
   const [sed, setSed] = useState(100)
   const [endedAt, setEndedAt] = useState<string | null>(null)
+
   // Muerte permanente, botón Aceptar/Reintentar (2026-08-31) — mismo patrón que `endedAt`.
   const [pendingDeathResolution, setPendingDeathResolution] = useState(false)
   const [resolvingDeath, setResolvingDeath] = useState(false)
@@ -975,27 +969,6 @@ export function GameView() {
     ignorarModoDinamico(saveId!).catch((err) => console.error('ignorarModoDinamico falló', err))
   }
 
-  // Cazar desde la tarjeta de encuentro (Fase 2, 2026-09-28,
-  // `plan-mecanicas-por-zona-2026-09-28.md`) — caza EXACTAMENTE el grupo con el que se ha
-  // colisionado (`entry.dynamicModeOffer.zonePointId`), reutilizando el MISMO tratamiento de
-  // resultado que `handleHuntResolved` (misma forma de respuesta que `confirmarCaza`): caza limpia
-  // → LogEntry + panel de combate ya resuelto con MUERTO; combate (1v1 o en grupo) → `actionText`
-  // por el turno normal. En error, se conservan TODOS los campos de la oferta y se muestra
-  // `err.message` — mismo patrón que `handleInteractuarModoDinamico`.
-  async function handleCazarEnZona(entryId: string, zonePointId: string) {
-    setCharacterLog((prev) => prev.map((e) => (e.id === entryId && e.dynamicModeOffer ? { ...e, dynamicModeOffer: { ...e.dynamicModeOffer, busy: true } } : e)))
-    try {
-      const result = await cazarEnZona(saveId!, zonePointId)
-      setCharacterLog((prev) => prev.map((e) => (e.id === entryId ? { ...e, dynamicModeOffer: undefined } : e)))
-      handleHuntResolved(result)
-    } catch (err) {
-      const motivo = err instanceof Error && err.message ? err.message : 'No se pudo cazar — inténtalo de nuevo.'
-      setCharacterLog((prev) =>
-        prev.map((e) => (e.id === entryId && e.dynamicModeOffer ? { ...e, dynamicModeOffer: { ...e.dynamicModeOffer, busy: false, error: motivo } } : e)),
-      )
-    }
-  }
-
   // RECURSO (2026-09-08, "Ver qué hay en la zona") — a diferencia de `handleInteractuarModoDinamico`
   // (abre DynamicModeModal, conversación de vueltas), esto resuelve TODO de una sola llamada: tirada
   // real + inventario + LogEntry, reutilizando exactamente el mismo patrón de actualización que
@@ -1405,34 +1378,6 @@ export function GameView() {
     setSimpleModal(null)
   }
 
-  // Resolución del pop-up de caza (revisión de partida 2026-08-08): una única presa débil puede
-  // resolverse sin combate (tirada determinista ya hecha en el backend) — se abre directamente el
-  // panel de combate ya resuelto (solo queda saquear), sin pasar por `openCombat()`'s banner "⚔️
-  // Combatir" porque no hay nada que pelear. Cualquier otro caso NO ha tocado la partida todavía:
-  // se manda `actionText` por el turno normal (`handleSubmit`), exactamente como si el jugador lo
-  // hubiera escrito él mismo — la narración real es quien decide cómo empieza el encuentro y quien
-  // abre el combate (decisión explícita de la usuaria, no una apertura silenciosa desde aquí).
-  function handleHuntResolved(
-    result:
-      | {
-          resuelveSinCombate: true
-          combate: { npcs: NpcInSceneInfo[] }
-          logEntry: { id: string; text: string; timeLabel: string; createdAt: string }
-        }
-      | { resuelveSinCombate: false; actionText: string },
-  ) {
-    if (result.resuelveSinCombate) {
-      setCharacterLog((prev) => [...prev, { ...result.logEntry, channel: 'character' }])
-      setCombateIniciado(result.combate)
-      // `result.combate` explícito (ver comentario de `openCombat`) — `combateIniciado` todavía no
-      // se ha actualizado en este mismo tick, así que confiar en el estado aquí abriría un panel
-      // de combate vacío.
-      combat.openCombat(result.combate)
-      return
-    }
-    handleSubmit(result.actionText)
-  }
-
   function handleAttachItem(item: InventoryItemInfo) {
     composerRef.current?.insertChip({ icon: '🎒', label: item.name, description: item.description })
     setActivePanel(null)
@@ -1725,6 +1670,11 @@ export function GameView() {
     setBusyActivity,
     setBusyDuracionMinutos,
   })
+
+  // Zona/caza/cadáveres (Fase 7) — ver hooks/useZonaAcciones.ts. Va aquí (tras useTurnFlow) porque
+  // necesita `handleSubmit`; los usos anteriores en GameView son solo dentro de callbacks/JSX.
+  const { zonaModalOpen, setZonaModalOpen, saquearSoloNpcSlug, setSaquearSoloNpcSlug, handleCazarEnZona } =
+    useZonaAcciones({ saveId, setCharacterLog, setCombateIniciado, openCombat: combat.openCombat, handleSubmit })
 
   // Muerte permanente, botón Aceptar/Reintentar (2026-08-31) — se llama al pulsar el botón que se
   // muestra mientras `pendingDeathResolution` es true. El backend ya decidió (respawn real o
