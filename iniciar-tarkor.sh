@@ -37,7 +37,10 @@ fi
 
 # Carga nvm/node en ESTE shell — para el check de Ollama de abajo y para el seed-catalog que
 # sigue (cada ventana nueva de backend/frontend se monta la suya propia, ver NVM_INIT).
-NVM_INIT='export NVM_DIR="$HOME/.var/app/com.visualstudio.code/config/nvm"; [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && nvm use 22 >/dev/null 2>&1;'
+# Sin cargar nvm.sh (2026-09-29, bug real: con `prefix=` en ~/.npmrc, `. nvm.sh` devuelve error y
+# `set -e` cortaba el script en seco tras el aviso de nvm). Se pone en el PATH el node 22 más
+# reciente que nvm tenga instalado; no hace falta nada más de nvm.
+NVM_INIT='NODE_BIN="$(ls -d "$HOME/.var/app/com.visualstudio.code/config/nvm/versions/node"/v22*/bin 2>/dev/null | sort -V | tail -1)"; [ -n "$NODE_BIN" ] && export PATH="$NODE_BIN:$PATH";'
 eval "$NVM_INIT"
 
 # Seed del catálogo (2026-08-05, bug real: se cambió worldCatalog.ts en varias sesiones de lore y
