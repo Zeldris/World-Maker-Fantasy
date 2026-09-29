@@ -237,6 +237,14 @@ No cambiar probabilidades ni reglas: solo exponer y mostrar lo que ya se tira.
 - **`turnResolution.ts`** (~7.700 líneas): siguiente corte natural sin cambiar comportamiento (p. ej.
   el bloque de combate múltiple `if (activeCombatEncounter)` o el de saqueo) a un servicio propio.
 - Refactor puro: los tests existentes pasan sin tocarlos salvo imports.
+- **F9-5 (arreglo, no refactor)**: `POST …/reino/mercado/vender` (`routes/saves/reino.ts`) cobra el
+  precio de UNA unidad por `AlmacenItem` aunque el objeto sea un montón ("Trozo de quitina roja
+  (3)"). Cobrar por la cantidad real (helpers de `services/ingredients.ts`: `quantityOf`) con el
+  mismo `precioDinamico`, y revisar si `comprar` y el depósito desde la mochila tratan los montones
+  igual. Test de integración.
+- **F9-6 (arreglo)**: el modal del Reino (`components/panels/ReinoPanel.tsx` o su contenedor) queda
+  pegado abajo y corta el contenido de Diplomacia/Mercado en 1600×1000; que respete la altura de la
+  ventana (alto máximo + desplazamiento interno visible), igual que el resto de modales del proyecto.
 
 ## Fuera de este plan (🧭 pendientes de Álvaro)
 
