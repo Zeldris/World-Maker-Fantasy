@@ -1,11 +1,13 @@
 name: CI
 
-# Deuda técnica (2026-07-30, auditoría técnica: "sin CI ni git hooks — oxlint pasando en local y
-# los tests de ruta nuevos no se hacen cumplir en push/PR"). Dos jobs independientes (backend con
-# Prisma, frontend sin él) — cada uno instala, tipa, lintea y testea su propio paquete. Ninguno
-# necesita una base de datos real: todos los tests mockean Prisma (`vi.mock('.../lib/prisma.js')`)
-# — `DATABASE_URL`/`DIRECT_URL` aquí son valores de relleno solo para que `env.ts` no reviente al
-# arrancar y para que `prisma generate` tenga un schema válido que leer.
+# Deuda técnica (2026-07-30, auditoría técnica: "sin CI ni git hooks"). Dos jobs independientes
+# (backend con Prisma, frontend sin él); cada uno instala, tipa, lintea y testea su propio paquete.
+#
+# Hito 0.1, fase A (2026-09-29): el backend tiene además tests de integración con Postgres REAL
+# (proyecto `bd-real` de Vitest, `*.integration.test.ts`), y la CI llevaba en rojo desde entonces
+# ("Can't reach database server at localhost:5432"). Ahora el job levanta Postgres 16 con pgvector,
+# aplica las migraciones, siembra el catálogo del mundo y arranca el Ollama simulado del repo
+# (`tools/ci/mock-ollama.mjs`), igual que el entorno de pruebas local.
 on:
   push:
     branches: [main]
@@ -17,9 +19,24 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: tarkor
+          POSTGRES_PASSWORD: tarkor
+          POSTGRES_DB: tarkor
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tarkor"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
     env:
-      DATABASE_URL: 'postgresql://user:pass@localhost:5432/tarkor_ci'
-      DIRECT_URL: 'postgresql://user:pass@localhost:5432/tarkor_ci'
+      DATABASE_URL: 'postgresql://tarkor:tarkor@localhost:5432/tarkor'
+      DIRECT_URL: 'postgresql://tarkor:tarkor@localhost:5432/tarkor'
+      OLLAMA_BASE_URL: 'http://localhost:11434'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -31,6 +48,15 @@ jobs:
       - run: npx prisma generate
       - run: npm run lint
       - run: npx tsc --noEmit
+      - name: Extensión pgvector
+        run: PGPASSWORD=tarkor psql -h localhost -U tarkor -d tarkor -c 'CREATE EXTENSION IF NOT EXISTS vector'
+      - run: npx prisma migrate deploy
+      - run: npm run seed-catalog
+      - name: Ollama simulado
+        run: |
+          nohup node ../tools/ci/mock-ollama.mjs > /tmp/mock-ollama.out 2>&1 &
+          for i in $(seq 1 20); do curl -s -o /dev/null localhost:11434 && exit 0; sleep 1; done
+          echo "El Ollama simulado no arrancó" && cat /tmp/mock-ollama.out && exit 1
       - run: npm test
 
   frontend:
