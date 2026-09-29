@@ -54,8 +54,8 @@ Rompen una mecánica en partida real. Referencias H-x:
 ### Reino jugable de punta a punta
 - ~~Probar el bucle del Reino jugando~~ ✔️ 2026-09-29 (fundar, rol, negociar, producción de facción,
   vender y comprar); falta el Taller con trabajador. **[P]**
-- **F9-5**: vender un montón del Almacén cobra solo una unidad. **[H]**
-- **F9-6**: el modal del Reino corta el contenido en pantallas normales. **[H]**
+- ~~**F9-5**: vender un montón del Almacén cobra solo una unidad~~ ✅ `fe72966` **[H]**
+- ~~**F9-6**: el modal del Reino corta el contenido~~ ✅ `fe72966` **[H]**
 - 🧭 **F9-7**: un Reino recién fundado no tiene súbditos; la población del territorio no da
   trabajadores y solo quedan los compañeros capturados. ¿Debería dar súbditos asignables? **[H]**
 - ~~Botón directo para el **Cuartel Avanzado** y sus mejoras (H-12)~~ ✅ `a700a61` **[H]**
@@ -85,8 +85,8 @@ Rompen una mecánica en partida real. Referencias H-x:
   Clemente. Mapeado, sin implementar. **[A]**
 
 ### Deuda técnica que frena
-- ~~**Partir `turnResolution.ts`**: primer corte, días cruzados a `services/dailyTick.ts`~~ ✅ `7d470f9` (7.694 líneas; siguen más cortes posibles) **[P]**
-- **Partir `GameView.tsx`**: ~~zona/caza/cadáveres a `useZonaAcciones`~~ ✅ `7d470f9` (2.595 líneas); quedan equipar, tirar, modo dinámico y muerte. **[P]**
+- ~~**Partir `turnResolution.ts`**~~: días cruzados a `dailyTick.ts` (`7d470f9`) y saqueo/muerte/despiece a `turnLootKill.ts` (`fe72966`), 7.125 líneas. Queda el bloque de combate múltiple, muy entrelazado. **[P]**
+- ~~**Partir `GameView.tsx`**~~: `useZonaAcciones` (`7d470f9`), `useInventarioAcciones` y `useModoDinamico` (`fe72966`), 2.323 líneas. Quedan `handleAttachAbility` y misiones. **[P]**
 - Repasar [deuda-tecnica-hallazgos.md](../registros/deuda-tecnica-hallazgos.md): varias entradas ya
   están resueltas en código (guards de `endedAt` en compañeros, `npcAttributesForLevel`) y el
   registro no lo refleja. **[H]**
