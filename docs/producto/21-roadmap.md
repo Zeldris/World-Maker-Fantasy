@@ -69,8 +69,8 @@ Rompen una mecánica en partida real. Referencias H-x:
 - Tras Huir, comprobar que el jugador reaparece en la entrada de la zona. **[A]**
 
 ### Alcance pre-alpha
-- Aplicar la decisión del 2026-09-01: **solo Gorhorn es jugable**. Dessa, Yerin y Riko pasan a NPC;
-  hoy no existen en el catálogo. **[A]**
+- ~~Aplicar la decisión del 2026-09-01: **solo Gorhorn es jugable**~~ ✅ `378c393`. Dessa, Yerin y Riko como NPC:
+  🧭 propuesta de lore SIN REVISAR (falta dónde están, papel, nivel y facción). **[A]**
 - "Charlar con NPC" enriquecido (Franja 4 del plan Interactuar): lore, reclutar e interrogar tras
   Clemente. Mapeado, sin implementar. **[A]**
 
