@@ -199,8 +199,23 @@ Abiertos:
 - **F9-3 🟡** La entrada "TU ACCIÓN" de la caza sale con la hora vieja (08:00 tras llegar a las 08:03).
 - **F9-4 🟡** Tiradas de F10 que solo se ven en vivo (no persisten): fallo de recolección desde el
   mapa y fallo de la caza sigilosa (esos caminos no crean `LogEntry`).
-- Pendiente de verificar en vivo: Goirnos al saquear un humanoide (B27), Reino de punta a punta
-  (rol, producción, comprar a facción con stock, vender).
+- **Reino en vivo (2026-09-29, preparado por SQL: materiales, Carisma 10, un compañero de prueba,
+  Serhu descubierto y +1 día de reloj)** ✔️: construir ayuntamiento (consume materiales, +150 XP),
+  formulario "Fundación de reino" (Maktor fijo), selector "Roles en el Reino" (H-1), Negociar con
+  el diplomático → tratado comercial, producción de facción en `worldTick` tras cruzar un día (Serhu
+  8 objetos en stock, comida/riqueza movidas), Vender desde el Almacén (+Goirnos) y Comprar a Serhu
+  (−Goirnos, objeto al Almacén del Reino).
+- **F9-5 🟠 Vender un montón vende todo el montón por el precio de una unidad:** "Trozo de quitina
+  roja (3)" depositado en el Almacén se vendió entero por 2 Goirnos (`mercado/vender` cobra
+  `precioDinamico` de UNA unidad por `AlmacenItem`, sin mirar la cantidad del nombre).
+- **F9-6 🟡 El modal del Reino queda pegado abajo** y corta el contenido de Diplomacia/Mercado en
+  una pantalla de 1600×1000; hay que desplazarse dentro sin que se vea que hay más.
+- **F9-7 🧭 Un Reino recién fundado no tiene súbditos:** la población del territorio (15) no se
+  convierte en `Subject` ni hay forma de conseguir trabajadores salvo capturar/domar compañeros, así
+  que el Taller con trabajador y la diplomacia exigen antes toda la cadena de captura. ¿Es lo
+  buscado o la población debería dar súbditos asignables?
+- Pendiente de verificar en vivo: Goirnos al saquear un humanoide (B27; cubierto por test de
+  integración), Taller con trabajador produciendo (depende de F9-7), reaparición tras Huir.
 
 ### Habilidades vs. mapa de zona (pregunta de Álvaro, 2026-09-28)
 

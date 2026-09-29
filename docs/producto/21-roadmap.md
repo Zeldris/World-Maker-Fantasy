@@ -52,8 +52,12 @@ Rompen una mecánica en partida real. Referencias H-x:
 ## Trimestre 1 (octubre-diciembre de 2026): pre-alpha en Las Llanuras
 
 ### Reino jugable de punta a punta
-- Cuando estén el 1-4: probar el bucle completo jugando. Fundar, construir un Taller, asignar
-  trabajador, producir, vender y negociar. **[P]**
+- ~~Probar el bucle del Reino jugando~~ ✔️ 2026-09-29 (fundar, rol, negociar, producción de facción,
+  vender y comprar); falta el Taller con trabajador. **[P]**
+- **F9-5**: vender un montón del Almacén cobra solo una unidad. **[H]**
+- **F9-6**: el modal del Reino corta el contenido en pantallas normales. **[H]**
+- 🧭 **F9-7**: un Reino recién fundado no tiene súbditos; la población del territorio no da
+  trabajadores y solo quedan los compañeros capturados. ¿Debería dar súbditos asignables? **[H]**
 - ~~Botón directo para el **Cuartel Avanzado** y sus mejoras (H-12)~~ ✅ `a700a61` **[H]**
 - Sembrar las **`FactionRelation` iniciales** entre las 9 facciones (H-7). 🧭 Hacen falta los
   números; solo existe Concordia ↔ Los del Obelisco = 65. **[A]**
