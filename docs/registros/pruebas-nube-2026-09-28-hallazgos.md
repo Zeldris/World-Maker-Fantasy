@@ -174,6 +174,34 @@ Gravedad: 🔴 bloquea/rompe · 🟠 mal comportamiento · 🟡 UX/pulido · �
   Actuar deshabilitado; al recargar vuelve a ofrecer Combatir/Huir.
 - Tras Huir, el jugador reaparece en la entrada de la zona (234,560): verificar si es lo esperado.
 
+### Tanda 4 — Fase 9 del plan de octubre, verificación en vivo (2026-09-29, partida `cmum9rzrc00017dzrzydd0aza`)
+
+Verificado en vivo ✔️: solo Gorhorn en la selección y arquetipo neutro (F8, B28); barra inicial
+"Barra 1 (5)" y sin habilidades retiradas (F4, B20); `ZonePoint` clonados por partida y grupos de
+Gesgurio (14 grupos, suma 20) (F5/B1); "Ir hasta aquí" y "Cerrar" en la ficha (B3/B4); reloj +1 min
+por paso (B2); tarjeta con Cazar y grupo de 3 (F2); descubrimiento al toparse (B31); 1v1 con Matar +
+remate; pin de cadáver junto al jugador (F5); Desollar desde el pin y el pin desaparece; recurso de
+tier alto como avistamiento (B7); tirada "¿quién ve a quién primero?" animada en la tarjeta (F10);
+etiquetas laterales completas (B24).
+
+Arreglado en la sesión (`741a719`): Desollar dependía de que el LLM nombrara al cadáver (pin
+"desollable" + modal "no hay nada"); pin ofrecía Saquear en fauna sin objetos; caídos de grupo sin
+pin; "Combatir/Huir" colgados tras resolver una muerte.
+
+Abiertos:
+- **F9-1 🔴🧭 Cazar un grupo mata a un nivel 1 en un solo turno.** 3 Gesgurio (Destreza 9 > 6 de
+  Gorhorn) actúan antes y después de su acción: ~6 golpes por turno, un escalón cada uno (Ileso →
+  Muerto). Con Cazar en cualquier tarjeta de grupo le pasará a todo jugador nuevo. Opciones:
+  primera acción para quien inicia la caza, tope de atacantes por ronda, o aviso de riesgo en la
+  tarjeta. Decide Álvaro.
+- **F9-2 🟡** La hora de la cabecera no se actualiza al caminar por la zona (log 08:28, cabecera
+  08:25) hasta el siguiente turno.
+- **F9-3 🟡** La entrada "TU ACCIÓN" de la caza sale con la hora vieja (08:00 tras llegar a las 08:03).
+- **F9-4 🟡** Tiradas de F10 que solo se ven en vivo (no persisten): fallo de recolección desde el
+  mapa y fallo de la caza sigilosa (esos caminos no crean `LogEntry`).
+- Pendiente de verificar en vivo: Goirnos al saquear un humanoide (B27), Reino de punta a punta
+  (rol, producción, comprar a facción con stock, vender).
+
 ### Habilidades vs. mapa de zona (pregunta de Álvaro, 2026-09-28)
 
 **Hallazgo base — B25 🔴 dos sistemas paralelos que no casan.** Los botones Cazar / Minar / Talar /

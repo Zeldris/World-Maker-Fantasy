@@ -1,7 +1,7 @@
 # Roadmap — Tarkor (octubre 2026 → septiembre 2027)
 
 **Actualizado:** 2026-09-28. Todo lo pendiente se ha comprobado contra el código ese día.
-**En curso:** [plan-roadmap-oct-2026.md](plan-roadmap-oct-2026.md) (Ahora + Trimestre 1, fases 1-9).
+**En curso:** [plan-roadmap-oct-2026.md](plan-roadmap-oct-2026.md) (Ahora + Trimestre 1): fases 1-8 y 10 (tiradas visibles, `c088f1d`) hechas; fase 9 (verificación en vivo) en curso.
 **Historial:** lo cerrado antes de esta fecha está en
 [archivo/21-roadmap-2026-09-historico.md](../archivo/21-roadmap-2026-09-historico.md) y en los
 roadmaps anteriores de [archivo/](../archivo/).
@@ -41,7 +41,7 @@ Rompen una mecánica en partida real. Referencias H-x:
 | 2 | **El diplomático no sube de nivel** y se bloquea tras una sola negociación (H-5). 🧭 ¿XP por acción o enseñanza de un Maestro? | [H] | Abierto |
 | 3 | ~~**Producción de facción duplicada y sin consumo** (H-6)~~ — en `worldTick` con consumo | [H] | ✅ `e42ac7f` |
 | 4 | ~~**Las facciones no tienen stock que vender** (H-2)~~ — depositan productos reales (tope 5 por objeto) | [H] | ✅ `e42ac7f` |
-| 5 | Verificación **en vivo** de la tanda B1-B32 (cerrada solo con tests: fases 1-5 de mecánicas por zona, combate, economía) | [A] | Pendiente de sesión de juego |
+| 5 | Verificación **en vivo** de la tanda B1-B32 | [A] | En curso (2026-09-29): zona, caza, cadáveres, tiradas ✔️; faltan Goirnos de humanoide y Reino. Hallazgos F9-1..4 en `registros/pruebas-nube-2026-09-28-hallazgos.md` |
 | 6 | ~~**B1**: `ZonePoint` por partida en vez de global~~ — plantilla de catálogo (`saveId` null) + copia por partida | [A] | ✅ `186e3e7` |
 | 7 | ~~"Cargando partida…" infinito si se recarga en la creación de partida~~ | [H] | ✅ `a700a61` |
 | 8 | ~~**Slugs de oficio incoherentes** (H-10)~~ — fuente única `backend/src/data/professions.ts` + `npm run sync-professions` | [H] | ✅ `cd96e9e` |
