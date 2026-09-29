@@ -44,7 +44,8 @@ por última vez.
 | `0.4` | **Berig abierto: Cristal Helado** | Viajar entre regiones y jugar una segunda región completa | Pendiente |
 | `0.5` | **Ciénaga Troncal** | Tercera región jugable con sus oficios y Maestros | Pendiente |
 | `0.6` | **Margen Silencioso y Meseta del Orden** | Berig entero jugable | Pendiente |
-| `0.7` | **Beta de Berig** | Instalador, rendimiento en la Steam Deck, narrador local afinado; paso a `-beta` | Pendiente |
+| `0.7` | **Personaje propio** | Crear un personaje desde cero, sin ser Gorhorn, con cualquier raza de Berig | Pendiente |
+| `0.8` | **Beta de Berig** | Instalador, rendimiento en la Steam Deck, narrador local afinado; paso a `-beta` | Pendiente |
 | `1.0` | **Vaelira** | Segundo continente (DLC) | Lejano |
 
 ---
@@ -142,7 +143,25 @@ en CI, y la latencia está medida. Se etiqueta `v0.1.0-alpha`.
 - Opcionales de las fichas aprobadas: interior del Archivo del Refugio, `ZonePoint` del Jakut. **[A]**
 - **Control de escuadrones** (patrullar, explorar), si el mundo vivo lo pide. **[A]**
 
-## `0.7` — Beta de Berig
+## `0.7` — Personaje propio
+
+Decisión de Álvaro (2026-09-29): antes de Vaelira hay que poder jugar con un personaje creado
+desde cero, no solo con Gorhorn. Va después de tener Berig entero porque cada raza necesita su
+región jugable como punto de inicio. El backend ya conserva una vía de "partida custom" de antes
+de restringir el juego a Gorhorn (`routes/saves/creation.ts`); se parte de ahí.
+- **Creación completa:** nombre, raza de Berig (Goirntes, orcos con su variante de clan y región,
+  Nabieus, Faerus), clase respetando sus restricciones de raza, reparto de atributos, origen y
+  motivación. **[A]**
+- **Punto de inicio por raza y región**, con su introducción narrativa propia y su kit inicial
+  (equipo, habilidades de clase y raciales, oficio de partida si procede). **[A]**
+- **Reputación inicial** con las facciones según el origen elegido (un Faerus de Kegi no empieza
+  igual con el Clan Serhu que un orco Serhu). **[A]**
+- Enciclopedia y narrador sin suposiciones de "eres Gorhorn": revisar textos, prompts y fragmentos
+  del RAG que den por hecho su historia. **[P]**
+- 🧭 Puntos de atributo y límites, orígenes permitidos por raza, y si Gorhorn se queda como
+  personaje de inicio rápido. **[A]**
+
+## `0.8` — Beta de Berig
 
 - **Instalador** (investigación en [20-instalador-distribuible.md](../arquitectura/20-instalador-distribuible.md)). **[A]**
 - **Narrador local afinado** (guía en [fine-tuning-ia-local.md](../ia/fine-tuning-ia-local.md)):
@@ -151,7 +170,8 @@ en CI, y la latencia está medida. Se etiqueta `v0.1.0-alpha`.
   oficios, talento y energía antes de diseñar nada. **[A]**
 - Rendimiento aceptable en la Steam Deck con Berig entero. **[A]**
 
-**Hecho cuando:** Berig se juega entero; se etiqueta `v0.7.0-beta`. Berig estable = quitar la etapa.
+**Hecho cuando:** Berig se juega entero, con Gorhorn o con un personaje propio; se etiqueta
+`v0.8.0-beta`. Berig estable = quitar la etapa.
 
 ## `1.0` — Vaelira (DLC)
 
@@ -215,3 +235,5 @@ No son fallos. Se retoman cuando cambie su condición.
 4. **Viaje largo** (bloquea `0.4`): ¿a pie, o monturas primero?
 5. **Números de la economía de supervivencia y fórmula del comercio de volumen** (bloquean `0.2`).
 6. **Edad adulta y esperanza de vida** de Goirntes, Nabieus y Faerus (bloquea `0.3`).
+7. **Personaje propio** (bloquea `0.7`): puntos de atributo, orígenes permitidos por raza y si
+   Gorhorn se queda como inicio rápido.
