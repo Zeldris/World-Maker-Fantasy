@@ -45,6 +45,7 @@ Rompen una mecánica en partida real. Referencias H-x:
 | 6 | ~~**B1**: `ZonePoint` por partida en vez de global~~ — plantilla de catálogo (`saveId` null) + copia por partida | [A] | ✅ `186e3e7` |
 | 7 | ~~"Cargando partida…" infinito si se recarga en la creación de partida~~ | [H] | ✅ `a700a61` |
 | 8 | ~~**Slugs de oficio incoherentes** (H-10)~~ — fuente única `backend/src/data/professions.ts` + `npm run sync-professions` | [H] | ✅ `cd96e9e` |
+| 9 | **Cazar un grupo mata a un nivel 1 en un solo turno** (F9-1): 3 Gesgurio más rápidos dan ~6 golpes antes de que el jugador vuelva a actuar. 🧭 ¿Primera acción para quien inicia la caza, tope de atacantes por ronda o aviso de riesgo en la tarjeta? | [H] | Abierto |
 
 ---
 
@@ -67,6 +68,14 @@ Rompen una mecánica en partida real. Referencias H-x:
 - 36 de 67 `Location` no tienen ningún `ZonePoint`. ~~Completar al menos las de Las Llanuras~~ ✅ `e3c8464`: solo falta `jakut-ger-interior` (interior, necesita lore). El resto son de otras regiones. **[H]**
 - 🧭 Viaje largo desde el mapa de mundo (la habilidad Viajar exige montura, sin implementar). **[A]**
 - Tras Huir, comprobar que el jugador reaparece en la entrada de la zona. **[A]**
+- La hora de la cabecera no avanza al caminar por la zona hasta el siguiente turno (F9-2), y la
+  entrada "TU ACCIÓN" de la caza sale con la hora vieja (F9-3). **[H]**
+- Dos tiradas visibles que no quedan en el log: fallo de recolección desde el mapa y fallo de la caza
+  sigilosa (F9-4; esos caminos no crean `LogEntry`). **[H]**
+- **B29**: atacar por texto libre a fauna pacífica en escena ("Ataco al Gesgurio", adyacente) no abre
+  combate; hoy solo se puede con Cazar en la tarjeta. **[H]**
+- Efecto de B1: un re-seed del catálogo no llega a las partidas que ya clonaron esa zona
+  (`asegurarZonePointsDePartida`). Decidir si hace falta una resincronización. **[P]**
 
 ### Alcance pre-alpha
 - ~~Aplicar la decisión del 2026-09-01: **solo Gorhorn es jugable**~~ ✅ `378c393`. Dessa, Yerin y Riko como NPC:
@@ -151,10 +160,15 @@ Rompen una mecánica en partida real. Referencias H-x:
 - **Rondas de OpenCode** con la capa `canon-opencode/` y las chuletas nuevas. Primera prueba de
   control pendiente: `FAUNA margen`, `ITEMS llanuras` y `EVENTOS` orco, con HUECOS → ESCRIBE →
   REVISA. **[A]**
-- 🧭 **Contradicciones de canon de la auditoría del 2026-09-28** (preguntas 11-17). Los arreglos
+- 🧭 **Contradicciones de canon de la auditoría del 2026-09-28** (preguntas 18-24). Los arreglos
   mecánicos ya están hechos (`5ea81cb`, `e089754`). **[H]**
 - Revisar la propuesta **B18** (Bolco/Bulco) en
   [propuestas-lore.md](../borradores-opencode/propuestas-lore.md). **[A]**
+- Revisar la propuesta de **Dessa, Yerin y Riko como NPC** (misma lista de propuestas). **[A]**
+- 🧭 **Terreno contra hogar** en 6 fuentes del catálogo (`gargantua-de-ceniza`, `junba-verde` y su
+  resina, `temune`, `ferike`, `telda-ceniza`): su terreno no casa con la Location donde viven, así que
+  no tienen `ZonePoint` (excepciones de `zonePointsCobertura.test.ts`). **[H]**
+- `jakut-ger-interior`: única Location de Las Llanuras sin `ZonePoint`; poblarla necesita lore. **[H]**
 - Opcionales de las fichas aprobadas: entradas de `historiaEntries` con su documento, `loreChunks` +
   `reindex-lore`, interior del Archivo del Refugio, `ZonePoint` del Jakut. **[A]**
 - Revisar la incoherencia de distancias: Karot Veku queda a ~110 km del Cruce en el mapa de Azgaar
@@ -194,31 +208,45 @@ No son fallos. Se retoman cuando cambie su condición.
 Resumen de todos los 🧭. Detalle técnico en la
 [referencia X4 § 12](../arquitectura/22-mundo-vivo-x4-tecnico.md#12-preguntas-abiertas-para-álvaro).
 
-1. ¿Cómo recibe un súbdito su `rolReino`? (Ahora, 1)
+1. ~~¿Cómo recibe un súbdito su `rolReino`?~~ Respondida: plantilla + selector (Ahora, 1)
 2. ¿Cómo sube de nivel el diplomático? (Ahora, 2)
-3. ¿Pasamos la economía de facción a `worldTick` con consumo, y cómo consiguen stock que vender?
+3. ~~¿Pasamos la economía de facción a `worldTick` con consumo, y cómo consiguen stock que vender?~~ Respondida: sí, con stock real
    (Ahora, 3-4)
-4. ¿`ZonePoint` por partida (B1)? (Ahora, 6)
+4. ~~¿`ZonePoint` por partida (B1)?~~ Respondida: sí (Ahora, 6)
 5. Presiones iniciales entre las 9 facciones. (Trimestre 1)
 6. ¿Filtrar órdenes por el oficio del edificio? (Trimestre 1)
 7. ¿Viaje largo desde el mapa de mundo? (Trimestre 1)
 8. ¿Restringir D-12 (regiones disputables) a Berig? (Trimestre 2)
 9. Forma de la retirada de NPC en combate. (Trimestre 2)
 10. Comercio de volumen: qué, cuánto y con qué fórmula. (Trimestre 3)
+11. Cazar un grupo a nivel 1 (F9-1): ¿primera acción para quien inicia, tope de atacantes por ronda o
+    aviso en la tarjeta? (Ahora, 9)
+
+**Valores por defecto tomados en la tanda del 2026-09-28/29** (implementados; revisar si convencen):
+
+12. Reloj: 1 minuto por paso en la zona (B2).
+13. Energía: +1 cada 10 min de ficción fuera de combate; Ataque Básico nunca bloqueado por energía
+    (B11).
+14. Capítulo: las acciones de combate no cuentan para el hito de 500 XP (B12).
+15. Goirnos al saquear un humanoide: 2 + 2 × nivel (`goirnosDeBotin`, B27).
+16. Economía de facción: tope de 5 unidades en stock por objeto y facción, recuperar como mucho 30
+    días de golpe, y bebida dada por cubierta (las facciones no la producen) (`factionEconomy.ts`).
+17. Nombres de dos oficios nuevos en la lista única: "Alquimista de los Orcos de Cristal Helado" y
+    "Pescador" (`backend/src/data/professions.ts`).
 
 **Lore** (auditoría de coherencia del 2026-09-28):
 
-11. **El Baluarte de Goirme:** ¿es la mayor ciudad-fortaleza de la Meseta (catálogo, ficha de
+18. **El Baluarte de Goirme:** ¿es la mayor ciudad-fortaleza de la Meseta (catálogo, ficha de
     región) o solo la primera (cronología mítica, A-10)? ¿Su obelisco es el más alto por ser el
     primero?
-12. **Objetos que rompen la regla de peso y Carisma** (capa de melena de Ferike, peto de placas de
+19. **Objetos que rompen la regla de peso y Carisma** (capa de melena de Ferike, peto de placas de
     Gargantúa, lanza de hueso con Carisma, tocado de plumas…): ¿excepción histórica o reequilibrio?
     ¿Y el Desollador de sílice, 20 Goirnos o dentro de la escala de tier 3 (23-31)?
-13. **Embarcadero de pesca:** ¿en la Playa de Ceniza Blanca (código, junto al Maestro Pescador) o en
+20. **Embarcadero de pesca:** ¿en la Playa de Ceniza Blanca (código, junto al Maestro Pescador) o en
     El Embarcadero de Ceniza (lore)?
-14. **Kekta o Tevya:** `clanes-orcos.md` llama "la más inteligente de los cuatro" a las dos.
-15. **Jeyselt / Jeyselet:** ¿el poblado Nabieus o su salón interior? ¿"Fin Susurrado" nombra al
+21. **Kekta o Tevya:** `clanes-orcos.md` llama "la más inteligente de los cuatro" a las dos.
+22. **Jeyselt / Jeyselet:** ¿el poblado Nabieus o su salón interior? ¿"Fin Susurrado" nombra al
     clan, al poblado o a los dos?
-16. **Costa norte de las Llanuras:** la Playa de Ceniza Blanca y El Embarcadero de Ceniza son
+23. **Costa norte de las Llanuras:** la Playa de Ceniza Blanca y El Embarcadero de Ceniza son
     "costa norte", pero Cristal Helado ocupa el norte de costa a costa. ¿Es la costa noroeste?
-17. **Kelife = "Brillo de luna"** (`razas.md`) en un mundo sin luna. ¿Se cambia la traducción?
+24. **Kelife = "Brillo de luna"** (`razas.md`) en un mundo sin luna. ¿Se cambia la traducción?
