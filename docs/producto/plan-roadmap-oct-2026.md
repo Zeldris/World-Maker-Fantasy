@@ -204,6 +204,40 @@ Tiradas hoy ocultas (inventario de Opus, verificado con grep):
 Tests: cada ruta afectada devuelve la tirada con su forma; tests de componente donde haya uno cerca.
 No cambiar probabilidades ni reglas: solo exponer y mostrar lo que ya se tira.
 
+## Fase 11 — Hallazgos de la verificación en vivo (F9-2, F9-3, F9-4, B29)
+
+1. **F9-2 — hora de la cabecera al caminar:** `POST /saves/:id/zona/mover` ya avanza el reloj (B2,
+   `MINUTOS_POR_PASO_ZONA`) pero la respuesta no lo dice y el frontend sigue mostrando la hora vieja
+   hasta el siguiente turno. Devolver `fictionalDateLabel` (y `fictionalMinutes` si hace falta) en la
+   respuesta y actualizar el estado de hora del frontend (el mismo que pinta la cabecera, ver cómo lo
+   actualiza un turno normal en `useTurnFlow`/`GameView`) en cada paso (`ZonaPanel` → callback).
+2. **F9-3 — "TU ACCIÓN" con la hora vieja:** la entrada optimista de la acción (`useTurnFlow`,
+   `handleSubmit`) usa el estado de hora; tras 1 debería salir bien. Comprobar el camino de caza
+   (`useZonaAcciones.handleCazarEnZona` → `handleSubmit`) y añadir test.
+3. **F9-4 — tiradas que no persisten:** el fallo de recolección desde el mapa
+   (`routes/saves/dynamicModeRecurso.ts`) y el fallo de la caza sigilosa (`services/caza.ts §
+   intentarCazaLimpia`) no crean `LogEntry`, así que su dado solo se ve en vivo. Crear un `LogEntry` de
+   sistema con el texto que ya se narra y la tirada en `LogEntry.roll` (mismos `kind` de la fase 10),
+   y que el frontend use esa entrada en vez de la local (sin duplicar el dado).
+4. **B29 — atacar por texto a fauna pacífica:** "Ataco al Gesgurio" con el Gesgurio adyacente da una
+   tirada y nada más (hallazgo B29 del registro de pruebas). Diseño: si la acción de texto libre tiene
+   intención de ataque (`detectsAttackIntent`) y nombra a una fauna con `ZonePoint` de ESTA partida en
+   la celda del jugador o adyacente (mismo criterio que la colisión, `celdaAdyacenteOMisma`), se
+   resuelve igual que "Cazar" en la tarjeta (`services/caza.ts § iniciarCaza` con ese punto), en vez
+   del narrador libre. Localizar dónde se decide hoy (`shouldForceCombat`, `turn.ts`/
+   `turnResolution.ts`) y engancharlo ahí; si la fauna nombrada no está cerca, comportamiento actual.
+   Tests de integración de ambos casos.
+
+## Fase 12 — Deuda técnica, segundo corte
+
+- **`GameView.tsx`** (~2.600 líneas): extraer a hooks los bloques que quedaron (equipar/desequipar,
+  tirar/recoger, modo dinámico/Interactuar, muerte/reinicio), siguiendo `hooks/useZonaAcciones.ts` y
+  `hooks/useCombatFlow.ts`. Si un bloque exige pasar demasiados parámetros, agruparlos en un objeto
+  de contexto en vez de forzarlo, o dejarlo y justificarlo.
+- **`turnResolution.ts`** (~7.700 líneas): siguiente corte natural sin cambiar comportamiento (p. ej.
+  el bloque de combate múltiple `if (activeCombatEncounter)` o el de saqueo) a un servicio propio.
+- Refactor puro: los tests existentes pasan sin tocarlos salvo imports.
+
 ## Fuera de este plan (🧭 pendientes de Álvaro)
 
 - **H-5 diplomático**: cómo gana nivel (y si "diplomatico" pasa a ser una profesión aprendible). Hoy
