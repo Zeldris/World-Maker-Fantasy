@@ -273,8 +273,11 @@ uno en uno.
   región atravesada: GUERRA 50 %, TENSION 20 %, el resto 0 %. Hoy casi todas las relaciones son
   NEUTRAL (faltan las presiones iniciales, H-7 🧭), así que en la práctica apenas habrá intercepciones
   hasta que se siembren.
-- Derrota: la expedición pasa a INTERCEPTADA y pierde la carga. **Nadie muere**: los `Npc` son de
-  mundo (no de partida) y matarlos en un tick afectaría a todas las partidas; queda como pregunta.
+- Derrota: la expedición pasa a INTERCEPTADA y pierde la carga. Bajas (decisión de Álvaro,
+  2026-09-29, `0251969`): quien cae tiene un 3 % de morir, y la muerte es de mundo
+  (`Npc.muertoEnMundo`), permanente en todas las partidas. Nunca van líderes, NPC de misión o de
+  trama ni compañeros reclutados; los Maestros no van de guardia ni de atacante.
+- Potencial: todos empiezan en nivel 1 sin XP (decisión del 2026-09-29, `0349467`).
 
 ### 13-A — Semillas de potencial y progreso (H-8)
 - `worldCatalog.ts`: mapa `npcProfessionPotentials` (slug de NPC → `{ professionId, nivelMaximo,

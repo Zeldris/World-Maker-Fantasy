@@ -38,14 +38,14 @@ Rompen una mecánica en partida real. Referencias H-x:
 | # | Qué | Origen | Estado |
 |---|---|---|---|
 | 1 | ~~**Ningún súbdito puede recibir `rolReino`** (H-1)~~ — decidido: plantilla + selector en Súbditos | [H] | ✅ `0e47115` |
-| 2 | **El diplomático no sube de nivel** y se bloquea tras una sola negociación (H-5). Decidido (2026-09-29): lo enseña un Maestro y luego sube por negociación | [H] | Abierto (falta el Maestro de diplomacia en el lore) |
+| 2 | **El diplomático no sube de nivel** (H-5). Decidido: lo enseña un Maestro y sube negociando | [H] | Mitad hecha: ~~XP por negociación~~ ✅ `4404387`; falta el Maestro de diplomacia (lore) |
 | 3 | ~~**Producción de facción duplicada y sin consumo** (H-6)~~ — en `worldTick` con consumo | [H] | ✅ `e42ac7f` |
 | 4 | ~~**Las facciones no tienen stock que vender** (H-2)~~ — depositan productos reales (tope 5 por objeto) | [H] | ✅ `e42ac7f` |
 | 5 | Verificación **en vivo** de la tanda B1-B32 | [A] | En curso (2026-09-29): zona, caza, cadáveres, tiradas ✔️; faltan Goirnos de humanoide y Reino. Hallazgos F9-1..4 en `registros/pruebas-nube-2026-09-28-hallazgos.md` |
 | 6 | ~~**B1**: `ZonePoint` por partida en vez de global~~ — plantilla de catálogo (`saveId` null) + copia por partida | [A] | ✅ `186e3e7` |
 | 7 | ~~"Cargando partida…" infinito si se recarga en la creación de partida~~ | [H] | ✅ `a700a61` |
 | 8 | ~~**Slugs de oficio incoherentes** (H-10)~~ — fuente única `backend/src/data/professions.ts` + `npm run sync-professions` | [H] | ✅ `cd96e9e` |
-| 9 | **Cazar un grupo mata a un nivel 1 en un solo turno** (F9-1). Decidido (2026-09-29): solo un aviso de riesgo en la tarjeta de caza | [H] | Abierto |
+| 9 | ~~**Cazar un grupo mata a un nivel 1 en un solo turno** (F9-1)~~ — aviso de riesgo (bajo/alto/mortal) en la tarjeta de caza | [H] | ✅ `4404387` |
 
 ---
 
@@ -60,12 +60,12 @@ Rompen una mecánica en partida real. Referencias H-x:
   población y reproducción al estilo Medieval Dynasty** (llegan, forman familia, tienen hijos que
   crecen y trabajan). Pieza de diseño grande: propuesta en `propuestas-lore.md`. **[A]**
 - ~~Botón directo para el **Cuartel Avanzado** y sus mejoras (H-12)~~ ✅ `a700a61` **[H]**
-- Sembrar las **`FactionRelation` iniciales** entre las 9 facciones (H-7). Decidido (2026-09-29):
-  sacarlas de las tablas "Relaciones iniciales" de A-01..A-05 (`propuestas-aprobadas.md`) y del
-  conflicto Serhu+Concordia contra Helsig+Goshg de `worldAgenda.ts`. **[A]**
+- ~~Sembrar las **`FactionRelation` iniciales** entre las 9 facciones (H-7)~~ ✅ `0349467`: 18
+  relaciones de las tablas de A-01..A-05 y del conflicto de `worldAgenda.ts`
+  (`factionRelationsIniciales` en `worldCatalog.ts`). **[A]**
 - ~~Llamar a **`decayPresion`** (H-4)~~ ✅ `e42ac7f` y ~~disparar **`BAJA_DE_GUERRA`** al matar a un NPC de otra
   facción en su región (H-3)~~ ✅ `a700a61`. **[H]**
-- Filtrar las órdenes de producción por el oficio del edificio (P-3). Decidido (2026-09-29): sí. **[H]**
+- ~~Filtrar las órdenes de producción por el oficio del edificio (P-3)~~ ✅ `4404387` **[H]**
 - ~~Migración menor: `FactionRelation.presion @default(50)` (H-9)~~ ✅ `a700a61` **[H]**
 
 ### Mecánicas por zona (continuación del plan del 2026-09-28)
@@ -103,8 +103,8 @@ Rompen una mecánica en partida real. Referencias H-x:
   misiones; función pura llamada desde el turno y desde `worldTick`. **[A]**
 - **Migrar `worldAgenda.ts`** (conflicto fijo Serhu+Concordia contra Helsig+Goshg) a filas de
   `FactionRelation`. **[A]**
-- D-12 abre a disputa las regiones sin dueño, pero 3 son de Vaelira (P-4). Decidido (2026-09-29):
-  restringirlo a Berig. **[H]**
+- ~~D-12 restringido a Berig~~ ✅ `4404387` (`esRegionDisputable`; hoy ninguna región de Berig está
+  sin dueño, así que el conjunto está vacío hasta que el motor de facciones libere alguna). **[H]**
 
 ### Expediciones de facción (diseño cerrado)
 - ~~Modelos `Expedicion` y `ExpedicionMember`, riesgo de intercepción por `FactionRelation`, combate
@@ -171,13 +171,12 @@ Rompen una mecánica en partida real. Referencias H-x:
 - **Rondas de OpenCode** con la capa `canon-opencode/` y las chuletas nuevas. Primera prueba de
   control pendiente: `FAUNA margen`, `ITEMS llanuras` y `EVENTOS` orco, con HUECOS → ESCRIBE →
   REVISA. **[A]**
-- **Contradicciones de canon de la auditoría del 2026-09-28**: decididas por Álvaro el 2026-09-29
-  (ver "Respuestas del 2026-09-29" abajo); falta aplicarlas a `rpgtarkor/` con el runbook. **[A]**
-- **B18**: decidido renombrar el árbol **Bolco → Holdo** (el caracol Bulco se queda). **[A]**
+- ~~**Contradicciones de canon de la auditoría del 2026-09-28**~~ ✅ aplicadas a `rpgtarkor/` y
+  `canon-opencode/` (`5115735`) y al código (`69aa566`). Falta `npm run reindex-lore` en local. **[A]**
+- ~~**B18**: renombrar el árbol **Bolco → Holdo**~~ ✅ `4404387`, `5115735` **[A]**
 - Dessa, Yerin y Riko como NPC: **aparcado** hasta que Álvaro escriba su lore. **[A]**
-- 🧭 **Terreno contra hogar** en 6 fuentes del catálogo (`gargantua-de-ceniza`, `junba-verde` y su
-  resina, `temune`, `ferike`, `telda-ceniza`): su terreno no casa con la Location donde viven, así que
-  no tienen `ZonePoint` (excepciones de `zonePointsCobertura.test.ts`). **[H]**
+- ~~**Terreno contra hogar** en 6 fuentes del catálogo~~ ✅ `8c01830`: terreno de la ficha corregido
+  al del lugar donde viven; ya tienen punto en el mapa. **[H]**
 - `jakut-ger-interior`: única Location de Las Llanuras sin `ZonePoint`. Es el interior (ciudadela) del Jakut Ger de los Feg Ger, Faerus de las Llanuras; poblarlo necesita lore de qué hay dentro. **[H]**
 - Opcionales de las fichas aprobadas: entradas de `historiaEntries` con su documento, `loreChunks` +
   `reindex-lore`, interior del Archivo del Refugio, `ZonePoint` del Jakut. **[A]**

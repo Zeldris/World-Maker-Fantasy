@@ -68,7 +68,13 @@ Modelo de datos propuesto (sin código todavía):
   alimenta `OrdenProduccion`/mercado regulado, cerrando el círculo completo de la economía de
   facción construida hoy.
 
-**Sin código todavía** — pieza grande, nueva del todo (primer combate-en-tránsito de facción del
+**Implementado (2026-09-29, Fase 13 del plan):** potencial y progreso de oficio de 30 NPC (empiezan
+en nivel 1), ciclo de expedición en `worldTick` (`services/factionExpeditions.ts`, días de ficción),
+recolección con la misma tirada que el jugador, botín al Almacén de la facción, intercepción con
+`resolveExchange` por rondas y bajas del 3 % para quien cae, con muerte de mundo
+(`Npc.muertoEnMundo`). Los valores por defecto están en las preguntas del roadmap.
+
+~~**Sin código todavía**~~ — pieza grande, nueva del todo (primer combate-en-tránsito de facción del
 proyecto), diseño completo dejado aquí para implementar en la siguiente sesión dedicada. No bloquea
 el resto de piezas cerradas hoy.
 
