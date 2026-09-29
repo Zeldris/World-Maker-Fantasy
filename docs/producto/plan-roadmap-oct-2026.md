@@ -246,6 +246,75 @@ No cambiar probabilidades ni reglas: solo exponer y mostrar lo que ya se tira.
   pegado abajo y corta el contenido de Diplomacia/Mercado en 1600×1000; que respete la altura de la
   ventana (alto máximo + desplazamiento interno visible), igual que el resto de modales del proyecto.
 
+## Fase 13 — Expediciones de facción, primer corte (Trimestre 2; H-8)
+
+Diseño cerrado en `docs/rpgtarkor/sistemas-reino/expediciones-poblacion.md` § 4.5 (fuente de verdad;
+este plan solo concreta lo que allí queda "a decidir en implementación"). Solo facciones de catálogo
+(`Faction.saveId = null`); el Reino del jugador no manda expediciones en este corte. Tres agentes, de
+uno en uno.
+
+**Valores por defecto** (no los fija el diseño; van a la lista de preguntas del roadmap para que
+Álvaro los revise, igual que las preguntas 12-17):
+- Potencial (H-8): cada Maestro/Maestra (`teachesProfession`) → `nivelMaximo` 9 en su oficio, progreso
+  inicial nivel 7. Cada trabajador cuyo `role` nombra un oficio ("Pescador del Clan Serhu",
+  "Desolladora…", "Minero de hielo sílice…") → `nivelMaximo` 6, progreso nivel 3. Guerreros, guardias,
+  líderes y fauna: sin potencial. Nunca se inventa un oficio que el `role` no diga.
+- Tiempo: en **días de ficción del mundo** (`worldFictionDay`, el mismo reloj que la economía de
+  facción), no en `DateTime` como `CharacterTransit`: el mundo avanza cuando avanzan las partidas, y
+  una expedición en tiempo real correría con el juego en pausa. Duración 2 días (ida y recolección el
+  primero, vuelta el segundo).
+- Lanzamiento (hasta que exista la IA de facción del Trimestre 2): una facción sin expedición activa
+  lanza una por día si tiene al menos un NPC con potencial en un oficio de recolección
+  (`metodoForOficio` no nulo). Recolectores: hasta 2 NPC con potencial en ese oficio. Guardias: hasta
+  2 NPC de la facción cuyo `role` diga guerrero/guardia/patrulla. Destino: una `Location` de una región
+  de la facción (`REGION_OWNING_FACTIONS`) o sin dueño con fuentes para ese oficio; elección
+  determinista por día.
+- Intercepción: una sola tirada, al llegar al destino. Riesgo según la relación con el dueño de la
+  región atravesada: GUERRA 50 %, TENSION 20 %, el resto 0 %. Hoy casi todas las relaciones son
+  NEUTRAL (faltan las presiones iniciales, H-7 🧭), así que en la práctica apenas habrá intercepciones
+  hasta que se siembren.
+- Derrota: la expedición pasa a INTERCEPTADA y pierde la carga. **Nadie muere**: los `Npc` son de
+  mundo (no de partida) y matarlos en un tick afectaría a todas las partidas; queda como pregunta.
+
+### 13-A — Semillas de potencial y progreso (H-8)
+- `worldCatalog.ts`: mapa `npcProfessionPotentials` (slug de NPC → `{ professionId, nivelMaximo,
+  nivelInicial }[]`) escrito a mano con el criterio de arriba, con `professionId` reales de
+  `data/professions.ts` (la variante raza-región que corresponda al NPC).
+- `seed-catalog.ts`: siembra `NpcProfessionPotential` y `NpcProfessionProgress` (upsert idempotente;
+  un re-seed no pisa el progreso ya ganado, solo crea lo que falta y sube `nivelMaximo`).
+- Helper puro en `services/npcProfession.ts`: `nivelEfectivo(progress, potential)` acotado por
+  `nivelMaximo`, y `aplicarXpNpc` reutilizando `professionLevelForXp` sin pasar del tope.
+- Tests: todo NPC con `teachesProfession` tiene potencial 9 en ese oficio; ningún `professionId`
+  sembrado es inválido; el tope se respeta.
+
+### 13-B — Modelo y ciclo de expedición en `worldTick`
+- Migración: `enum ExpedicionStatus` (EN_TRANSITO, RECOLECTANDO, RETORNANDO, COMPLETADA, INTERCEPTADA),
+  `Expedicion` (`worldId`, `factionId`, `destinoLocationId`, `professionId`, `status`, `diaSalida`,
+  `diaRegreso`, `botin Json?`), `ExpedicionMember` (`expedicionId`, `npcId`, `rol` texto libre
+  'recolector' | 'guardia'). Sin `@@unique` por facción.
+- `services/factionExpeditions.ts`: funciones puras (elegir miembros, destino y riesgo; resolver la
+  recolección de cada recolector con `gatheringRollFor`/`applyGatheringRoll` sobre
+  `candidateSourcesFor` de la `Location` destino, con los atributos del `Npc` y su nivel efectivo de
+  oficio) y `advanceFactionExpeditions(prisma)`, llamada desde `worldTick` justo después de
+  `advanceFactionEconomy`, con reclamo atómico por día (mismo patrón que `ultimoDiaProducido`) y el
+  mismo catch-up acotado (`MAX_DIAS_CATCHUP_FACCION`).
+- Al completar: botín al `AlmacenItem.factionId` respetando `cabeEnStock`; XP de oficio a cada
+  recolector que sacó algo (sin pasar de su tope).
+- Tests unitarios de las funciones puras e integración con Postgres real (lanzar, completar, stock,
+  idempotencia del tick).
+
+### 13-C — Intercepción con el motor de combate
+- Si la tirada de riesgo salta: un `Npc` real de la facción hostil de esa región contra los guardias,
+  usando `resolveExchange` (`combatExchange.ts`) por rondas hasta que un bando quede fuera de combate
+  (tope de rondas), sin crear `CombatEncounter` ni tocar partidas. Sin guardias → se pierde la carga
+  directamente.
+- Registrar el resultado en `Expedicion.botin`/status y, si ganan los atacantes, sumar presión con
+  el mismo helper que `BAJA_DE_GUERRA`.
+- Tests: sin guardias se pierde; con guardias fuertes llega; la relación NEUTRAL nunca intercepta.
+
+Visibilidad para el jugador (mapa de mundo, noticias en el log) queda fuera de este corte: primero
+el motor, luego cómo se cuenta.
+
 ## Fuera de este plan (🧭 pendientes de Álvaro)
 
 - **H-5 diplomático**: cómo gana nivel (y si "diplomatico" pasa a ser una profesión aprendible). Hoy
