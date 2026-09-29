@@ -75,7 +75,7 @@ para que la partida en Las Llanuras sea sólida.
 
 ### Robustez
 - ~~**Versión visible y grabada en cada partida**~~ ✅ `bf473bc` **[A]**
-- **Partidas que sobreviven a una actualización:** copias de objetos con estadísticas antiguas
+- ~~**Partidas que sobreviven a una actualización:**~~ ✅ `0bc4867` (`sync-item-catalog`). copias de objetos con estadísticas antiguas
   (reequilibrio del 2026-09-29), ofertas persistidas sin campos nuevos, migraciones al arrancar. **[P]**
 - **Test intermitente de combate múltiple** (registro de deuda, 2026-09-29): causa raíz. **[H]**
 - **Integración continua en verde**: la CI de GitHub lleva en rojo desde que existen los tests con

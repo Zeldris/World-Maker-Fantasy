@@ -31,7 +31,7 @@ test necesita base de datos".
 
 - ~~Versión `A.P.C-etapa+commit` en el juego y en `/version`, y
   `versionCreada`/`versionUltimaPartida` en cada partida~~ ✅ `bf473bc`.
-- **Resincronizar objetos de catálogo en partidas existentes**: script idempotente (enganchado en
+- ✅ `0bc4867` **Resincronizar objetos de catálogo en partidas existentes**: script idempotente (enganchado en
   `actualizar-mundo.sh` e `iniciar-tarkor.sh`, tras el seed) que pone al día `statBonuses` de
   `InventoryItem` y `AlmacenItem` con `catalogSlug`, y desequipa al inventario lo que ya no cabe en
   su ranura (capa de melena de Ferike, tocado de plumas y cinturón de trofeos, que pasaron a
