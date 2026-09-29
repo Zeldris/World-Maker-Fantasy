@@ -62,6 +62,7 @@ import {
 } from '../services/playerActionValidation.js';
 import { harvestSourceAliases } from '../scripts/worldCatalog.js';
 import { detectsPostCombatInteraction } from '../services/postCombatInteraction.js';
+import { iniciarCaza, faunaCercanaNombrada, esActionTextDeCaza } from '../services/caza.js';
 import { startEagerTransitResolution } from '../workers/worldTick.js';
 import { detectDeterministicCraft, detectsCraftIntent, CRAFTING_RECIPES } from '../services/crafting.js';
 import { planDeterministicBuild, detectsBuildIntent, CONSTRUCTION_RECIPES, buildingTierFor } from '../services/construction.js';
@@ -745,6 +746,48 @@ export async function turnRoutes(app: FastifyInstance) {
       const postCombatTarget = detectsPostCombatInteraction(action, npcsInSceneForValidation);
       if (postCombatTarget) {
         return { postCombatInteraction: postCombatTarget };
+      }
+    }
+
+    // B29 (2026-09-29): "Ataco al Gesgurio" con la fauna nombrada en la celda del jugador o una
+    // adyacente se resuelve igual que "Cazar" en la tarjeta (`iniciarCaza`, con ese `ZonePoint`) en
+    // vez de dejarlo al narrador libre (tirada y nada más). Si la fauna nombrada no está cerca, o el
+    // texto no es un ataque, el turno sigue como siempre. Solo fuera de combate y sin previsualizar
+    // (tiene efectos: persiste la acción y puede matar). El texto que devuelve la propia caza
+    // (`actionText`) no se vuelve a interceptar.
+    const sinCombateEnCurso = !enCombate && !((save.pendingCombatNpcSlugs as string[] | null) ?? []).length;
+    if (!preview && sinCombateEnCurso && save.zonaPosX != null && save.zonaPosY != null && npcsInSceneForValidation.length > 0 && detectsAttackIntent(action) && !esActionTextDeCaza(action)) {
+      const cercana = await faunaCercanaNombrada({
+        saveId,
+        worldId: save.worldId,
+        locationId: save.currentLocationId,
+        zonaPosX: save.zonaPosX,
+        zonaPosY: save.zonaPosY,
+        slugsNombrados: npcsInSceneForValidation.map((n) => n.slug),
+      });
+      // Un combate real (CombatEncounter) huérfano en curso bloquea salir a cazar, igual que en `zona/cazar`.
+      const encuentroActivo = cercana ? await prisma.combatEncounter.findFirst({ where: { saveId, estado: 'EN_CURSO', jugable: true }, select: { id: true } }) : null;
+      if (cercana && !encuentroActivo) {
+        const accionCreada = await prisma.logEntry.create({
+          data: { saveId, channel: 'CHARACTER', text: action, isPlayerAction: true, timeLabel: blockedTimeLabel, fictionalMinutes: blockedFictionalMinutes },
+        });
+        const cazaPorTexto = await iniciarCaza({
+          save: {
+            id: save.id,
+            worldId: save.worldId,
+            characterName: save.characterName,
+            level: save.level,
+            attributes: save.attributes as AttributeBlock,
+            currentLocationId: save.currentLocationId,
+            region: currentLocationForSummary?.region ?? null,
+            fictionalMinutes: blockedFictionalMinutes,
+          },
+          targets: [{ npc: cercana.npc, cantidadObjetivo: cercana.punto.cantidad, zonePointId: cercana.punto.id }],
+        });
+        if (!('error' in cazaPorTexto)) return { cazaPorTexto };
+        // La caza no pudo arrancar (p.ej. ya se está resolviendo): se deshace la acción persistida
+        // y el turno sigue por el camino normal.
+        await prisma.logEntry.delete({ where: { id: accionCreada.id } });
       }
     }
 

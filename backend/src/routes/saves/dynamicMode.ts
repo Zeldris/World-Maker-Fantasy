@@ -20,7 +20,7 @@ import {
 import { narrarVueltaModoDinamico } from '../../services/dynamicModeNarracion.js';
 import { aceptarQuest } from './quests.js';
 import { detectNpcsInScene } from '../../services/npcScene.js';
-import { iniciarCaza, type CazaTarget, type TiradaGrupoInfo, type CombateGrupoLogRoll } from '../../services/caza.js';
+import { iniciarCaza, type CazaTarget, type TiradaGrupoInfo, type CombateGrupoLogRoll, type TiradaCazaLimpia } from '../../services/caza.js';
 import type { AttributeBlock } from '../../services/dice.js';
 
 /// "Modo dinámico" (2026-08-27, Pieza 4 de "Dinamismo del mundo") — mini-flujo acotado ofrecido
@@ -133,7 +133,7 @@ async function abrirCombateForzadoDesdeInteractuar(
   // caso debe evitar siempre).
   zonePointId?: string,
   cantidad?: number,
-): Promise<{ combate: ReturnType<typeof combateNpcShape> } | { actionText: string; tiradasGrupo?: TiradaGrupoInfo[]; combateGrupoLogEntry?: { id: string; text: string; timeLabel: string; createdAt: string; roll: CombateGrupoLogRoll } } | null> {
+): Promise<{ combate: ReturnType<typeof combateNpcShape> } | { actionText: string; tiradasGrupo?: TiradaGrupoInfo[]; combateGrupoLogEntry?: { id: string; text: string; timeLabel: string; createdAt: string; roll: CombateGrupoLogRoll | TiradaCazaLimpia } } | null> {
   if (zonePointId && cantidad != null && cantidad > 1) {
     const puntoBruto = await prisma.zonePoint.findUnique({ where: { id: zonePointId } });
     const punto = puntoBruto && puntoBruto.saveId === save.id ? puntoBruto : null;

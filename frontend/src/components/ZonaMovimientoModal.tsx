@@ -13,6 +13,8 @@ interface ZonaMovimientoModalProps {
   onRefreshSave?: () => Promise<void>
   /// Pasado tal cual a `ZonaPanel`, ver comentario ahí.
   onOfertaDescartada?: () => void
+  /// F9-2 — nueva hora de la cabecera tras cada paso, ver `ZonaPanel`.
+  onHoraActualizada?: (fictionalDateLabel: string) => void
   /// Cadáveres en el mapa (Fase 5, 2026-09-28) — ver `ZonaPanel`.
   onSaquearCadaver?: (npcSlug: string) => void
   onDesollarCadaver?: (npcSlug: string) => void
@@ -33,7 +35,7 @@ interface ZonaMovimientoModalProps {
 /// izquierda (70%) y el resto del contenido a la derecha (30%) con su propio scroll — petición
 /// explícita de Álvaro: "aprovechemos el espacio horizontal... así no teniendo que scrollear",
 /// aplicado SOLO aquí, no en el tab Mapa informativo.
-export function ZonaMovimientoModal({ saveId, onEncuentroZona, onClose, onViajarA, professionRecipes, onRefreshSave, onOfertaDescartada, onSaquearCadaver, onDesollarCadaver }: ZonaMovimientoModalProps) {
+export function ZonaMovimientoModal({ saveId, onEncuentroZona, onClose, onViajarA, professionRecipes, onRefreshSave, onOfertaDescartada, onHoraActualizada, onSaquearCadaver, onDesollarCadaver }: ZonaMovimientoModalProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     rootRef.current?.focus()
@@ -70,6 +72,7 @@ export function ZonaMovimientoModal({ saveId, onEncuentroZona, onClose, onViajar
             professionRecipes={professionRecipes}
             onRefreshSave={onRefreshSave}
             onOfertaDescartada={onOfertaDescartada}
+            onHoraActualizada={onHoraActualizada}
             onSaquearCadaver={onSaquearCadaver}
             onDesollarCadaver={onDesollarCadaver}
           />

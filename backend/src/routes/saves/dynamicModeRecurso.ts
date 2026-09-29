@@ -3,8 +3,8 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 import { harvestAbilityForMetodo, matchesOficioPrefix } from '../../services/harvestAbilities.js';
-import { estacionFor, climaFor } from '../../services/worldClock.js';
-import { candidateSourcesFor, gatheringRollFor, applyGatheringRoll, resolverRecoleccion } from './recolectar.js';
+import { estacionFor, climaFor, formatFictionalDate } from '../../services/worldClock.js';
+import { candidateSourcesFor, gatheringRollFor, applyGatheringRoll, resolverRecoleccion, type RecoleccionLogRoll } from './recolectar.js';
 import { sourceDisplayNameFor } from '../../scripts/worldCatalog.js';
 import type { AttributeBlock } from '../../services/dice.js';
 
@@ -81,6 +81,22 @@ export async function dynamicModeRecursoRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error });
     }
 
+
+    // F9-4 (2026-09-29): un fallo (tirada de Explorar fallida, o segundas tiradas de tier alto todas
+    // falladas) antes no dejaba LogEntry y su dado solo se veía en vivo. Ahora queda como entrada de
+    // sistema con la(s) tirada(s) en `roll` (mismo `kind: 'recoleccion'`). No avanza el reloj.
+    // `limpiarOferta`: solo cuando `resolverRecoleccion` no llegó a limpiarla ya.
+    async function registrarFallo(text: string, logRoll: RecoleccionLogRoll, limpiarOferta: boolean) {
+      const timeLabel = formatFictionalDate(fictionalMinutes);
+      const creada = await prisma.$transaction(async (tx) => {
+        if (limpiarOferta) await tx.save.update({ where: { id: save!.id }, data: { pendingDynamicModeOffer: Prisma.JsonNull } });
+        return tx.logEntry.create({
+          data: { saveId: save!.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes, isPlayerAction: false, isSystemMessage: true, roll: logRoll as unknown as Prisma.InputJsonValue },
+        });
+      });
+      return { id: creada.id, text, timeLabel, createdAt: creada.createdAt.toISOString(), fictionalMinutes, roll: logRoll };
+    }
+
     const roll = gatheringRollFor(
       { attributes: save.attributes as AttributeBlock, secondaryAttributesJson: save.secondaryAttributes, inventoryItems: save.inventoryItems, professionProgress: save.professionProgress },
       professionIdReal,
@@ -90,10 +106,12 @@ export async function dynamicModeRecursoRoutes(app: FastifyInstance) {
       // Tirada fallida — narración determinista de intento sin éxito, sin tocar Prisma más allá de
       // limpiar la oferta (mismo criterio que "caza limpia fallida" en cazar.ts: un intento real
       // puede no dar nada, no es un error).
-      await prisma.save.update({ where: { id: save.id }, data: { pendingDynamicModeOffer: Prisma.JsonNull } });
+      const narracionFallo = `${save.characterName} lo intenta con ${sourceDisplayNameFor(targetSlug)}, pero no consigue nada aprovechable esta vez.`;
+      const logEntryFallo = await registrarFallo(narracionFallo, { kind: 'recoleccion', tirada: roll }, true);
       return {
         exito: false,
-        narration: `${save.characterName} lo intenta con ${sourceDisplayNameFor(targetSlug)}, pero no consigue nada aprovechable esta vez.`,
+        narration: narracionFallo,
+        logEntry: logEntryFallo,
         // Fase 10 (2026-09-29) — la tirada de Explorar también se ve en el fallo (dado visible).
         roll,
         abilityName: ability.ability.name,
@@ -107,9 +125,14 @@ export async function dynamicModeRecursoRoutes(app: FastifyInstance) {
     // recurso ya recolectado si el proceso moría entre medias.
     const resultado = await resolverRecoleccion(save, selections, true, roll);
 
+    const narracionSinLog = `${save.characterName} no consigue nada aprovechable de ${sourceDisplayNameFor(targetSlug)} esta vez.`;
+    const logEntryFinal =
+      resultado.logEntry ??
+      (await registrarFallo(narracionSinLog, { kind: 'recoleccion', tirada: roll, ...(resultado.segundasTiradas.length > 0 ? { segundas: resultado.segundasTiradas } : {}) }, false));
+
     return {
       exito: resultado.logEntry !== null,
-      narration: resultado.logEntry?.text ?? `${save.characterName} no consigue nada aprovechable de ${sourceDisplayNameFor(targetSlug)} esta vez.`,
+      narration: logEntryFinal.text,
       abilityName: ability.ability.name,
       // Fase 10 (2026-09-29, "todas las tiradas visibles") — tirada de Explorar + segundas tiradas
       // de tier alto (una por objeto afectado); ambas también quedan en `logEntry.roll`.
@@ -117,7 +140,7 @@ export async function dynamicModeRecursoRoutes(app: FastifyInstance) {
       segundasTiradas: resultado.segundasTiradas,
       items: resultado.items,
       updatedItems: resultado.updatedItems,
-      logEntry: resultado.logEntry,
+      logEntry: logEntryFinal,
     };
   });
 }

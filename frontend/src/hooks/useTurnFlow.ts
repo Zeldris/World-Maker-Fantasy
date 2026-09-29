@@ -1,6 +1,6 @@
-import type { Dispatch, RefObject, SetStateAction } from 'react'
+import { useRef, type Dispatch, type RefObject, type SetStateAction } from 'react'
 import type { ChatComposerHandle } from '../components/ChatComposer'
-import { requestTurnClassify, requestTurnNarrate, getSave, type ClassifyResponse, type SaveDetail } from '../lib/api'
+import { requestTurnClassify, requestTurnNarrate, getSave, type ClassifyResponse, type ConfirmarCazaResultado, type SaveDetail } from '../lib/api'
 import { isBusyError, isEndedGameError, isPendingDeathError, isTurnLockedError, applyInventoryDelta, questCompletedLogEntry } from '../lib/gameViewHelpers'
 import { playerActionEntry, nextId } from '../lib/simulateAI'
 import { ROLL_DURATION_MS } from '../components/DiceRoll'
@@ -65,6 +65,9 @@ interface UseTurnFlowParams {
   /// patrón exacto que el fix ya aplicado para `esperandoDefensaJugador` más abajo.
   setLastInitiativeRoll: Dispatch<SetStateAction<InitiativeRollInfo | null>>
   setFictionalDate: Dispatch<SetStateAction<string>>
+  /// B29 — resultado de la caza arrancada por un ataque de texto libre a fauna adyacente; el dueño
+  /// (GameView) lo trata con `handleHuntResolved`, igual que la caza desde la tarjeta.
+  onCazaPorTexto?: (resultado: ConfirmarCazaResultado) => void
   setSuggestions: Dispatch<SetStateAction<string[]>>
   setQuests: Dispatch<SetStateAction<QuestInfo[]>>
   setTerritories: Dispatch<SetStateAction<TerritoryInfo[]>>
@@ -134,6 +137,7 @@ export function useTurnFlow(params: UseTurnFlowParams) {
     setSed,
     setLastInitiativeRoll,
     setFictionalDate,
+    onCazaPorTexto,
     setSuggestions,
     setQuests,
     setTerritories,
@@ -160,6 +164,12 @@ export function useTurnFlow(params: UseTurnFlowParams) {
     setBusyDuracionMinutos,
   } = params
 
+  // F9-3 (2026-09-29) — la hora de "TU ACCIÓN" se lee del valor MÁS reciente, no del capturado por el
+  // cierre de `handleSubmit`: `handleCazarEnZona` espera a la API y llama a un `handleSubmit` de un
+  // render anterior (tras caminar/cazar la cabecera ya avanzó y la entrada salía con la hora vieja).
+  const fictionalDateRef = useRef(fictionalDate)
+  fictionalDateRef.current = fictionalDate
+
   async function handleSubmit(
     action: string,
     // Panel "Curar" con varios objetos/usos a la vez (petición explícita, 2026-08-18) — reenviado
@@ -179,7 +189,7 @@ export function useTurnFlow(params: UseTurnFlowParams) {
     // poder distinguir "se cortó pero terminó bien" de "de verdad no llegó a nada".
     const logLengthBeforeThisTurn = characterLog.length
 
-    setCharacterLog((prev) => [...prev, playerActionEntry(action, fictionalDate)])
+    setCharacterLog((prev) => [...prev, playerActionEntry(action, fictionalDateRef.current)])
     setCharacterThinking(true)
     setTimedThinkingText(null)
     setStreamingNarration(null)
@@ -237,6 +247,14 @@ export function useTurnFlow(params: UseTurnFlowParams) {
         setCharacterThinking(false)
         setCharacterLog((prev) => prev.slice(0, logLengthBeforeThisTurn))
         setPostCombatTarget(classifyResult.postCombatInteraction)
+        return
+      }
+
+      if (classifyResult.cazaPorTexto) {
+        // B29 — el backend ya persistió la acción y decidió (caza limpia resuelta, o `actionText` que
+        // hay que mandar por el turno normal): se queda el "TÚ: ..." optimista (sí existe en BD).
+        setCharacterThinking(false)
+        onCazaPorTexto?.(classifyResult.cazaPorTexto)
         return
       }
 

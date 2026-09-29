@@ -91,7 +91,7 @@ function baseClassifyResponse(overrides: Partial<Awaited<ReturnType<typeof reque
   }
 }
 
-function useHarness() {
+function useHarness(fictionalDate = 'Día 1, mañana', onCazaPorTexto?: (r: unknown) => void) {
   const [characterLog, setCharacterLog] = useState<LogEntry[]>([])
   const [condicionFisica, setCondicionFisica] = useState<CondicionFisica>('ILESO')
   const [endedAt, setEndedAt] = useState<string | null>(null)
@@ -105,7 +105,7 @@ function useHarness() {
 
   const turn = useTurnFlow({
     saveId: 'save-1',
-    fictionalDate: 'Día 1, mañana',
+    fictionalDate,
     characterName: 'Gorhorn',
     busyUntil,
     endedAt,
@@ -132,6 +132,7 @@ function useHarness() {
     setSed: vi.fn(),
     setLastInitiativeRoll,
     setFictionalDate: vi.fn(),
+    onCazaPorTexto: onCazaPorTexto as never,
     setSuggestions: vi.fn(),
     setQuests: vi.fn(),
     setTerritories: vi.fn(),
@@ -246,6 +247,36 @@ describe('handleSubmit — turno normal exitoso', () => {
     expect(result.current.level).toBe(2)
     expect(result.current.pendingAttributePoints).toBe(1)
     expect(result.current.characterLog.some((e) => e.isLevelUp)).toBe(true)
+  })
+})
+
+describe('handleSubmit — hora de "TU ACCIÓN" (F9-3)', () => {
+  it('usa la hora más reciente aunque handleSubmit sea el de un render anterior (camino de caza)', async () => {
+    mockClassify.mockResolvedValueOnce(baseClassifyResponse())
+    mockNarrate.mockResolvedValueOnce(baseNarrateResponse())
+    let fecha = 'Día 1, 08:00'
+    const { result, rerender } = renderHook(() => useHarness(fecha))
+    const handleSubmitViejo = result.current.turn.handleSubmit
+    fecha = 'Día 1, 08:12'
+    rerender()
+    await act(() => handleSubmitViejo('Cazo al Gesgurio.'))
+    const accion = result.current.characterLog.find((e) => e.text === 'Cazo al Gesgurio.')
+    expect(accion?.timeLabel).toBe('Día 1, 08:12')
+  })
+})
+
+describe('handleSubmit — B29 atacar por texto a fauna adyacente', () => {
+  it('cazaPorTexto: entrega el resultado a onCazaPorTexto, conserva la acción optimista y nunca llama a requestTurnNarrate', async () => {
+    const cazaPorTexto = { resuelveSinCombate: false as const, exito: null, actionText: "Salgo a cazar y ataco a 'Gesgurio'." }
+    mockClassify.mockResolvedValueOnce(baseClassifyResponse({ cazaPorTexto }))
+    const onCaza = vi.fn()
+    const { result } = renderHook(() => useHarness('Día 1, mañana', onCaza))
+
+    await act(() => result.current.turn.handleSubmit('Ataco al Gesgurio.'))
+
+    expect(onCaza).toHaveBeenCalledWith(cazaPorTexto)
+    expect(mockNarrate).not.toHaveBeenCalled()
+    expect(result.current.characterLog.some((e) => e.text === 'Ataco al Gesgurio.')).toBe(true)
   })
 })
 

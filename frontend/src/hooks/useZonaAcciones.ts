@@ -47,7 +47,7 @@ export function useZonaAcciones({ saveId, setCharacterLog, setCombateIniciado, o
           resuelveSinCombate: false
           actionText: string
           cazaLimpia?: CazaSigiloRoll
-          logEntry?: { id: string; text: string; timeLabel: string; createdAt: string; roll: CombateGrupoLogRoll }
+          logEntry?: { id: string; text: string; timeLabel: string; createdAt: string; roll: CombateGrupoLogRoll | CazaSigiloRoll }
         },
   ) {
     if (result.resuelveSinCombate) {
@@ -62,7 +62,7 @@ export function useZonaAcciones({ saveId, setCharacterLog, setCombateIniciado, o
     // Fase 10 (2026-09-29, "todas las tiradas visibles") — antes de mandar el texto por el turno
     // normal se muestran las tiradas que ya ocurrieron: cuántos del grupo entran + iniciativa
     // (LogEntry de sistema persistida por el backend) o el d100 de la caza sigilosa fallida (no deja
-    // LogEntry propia, así que se inserta una entrada local para que el dado se vea).
+    // LogEntry propia; desde F9-4 el backend sí la persiste y viaja en `logEntry`, la local es solo respaldo).
     if (result.logEntry) {
       setCharacterLog((prev) => [...prev, { ...result.logEntry!, channel: 'character' }])
     } else if (result.cazaLimpia) {

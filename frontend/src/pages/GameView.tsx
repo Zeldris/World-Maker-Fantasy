@@ -84,6 +84,7 @@ import {
   aceptarMision,
   cancelarMision,
   interactuarModoDinamico,
+  type ConfirmarCazaResultado,
   interactuarModoDinamicoRecurso,
   responderModoDinamico,
   ignorarModoDinamico,
@@ -1655,7 +1656,9 @@ export function GameView() {
   // de todo el "estado de save" (también lo escribe syncFromSave), el hook lo recibe como
   // parámetros. `combat.setCombatAwaitingDefense` se pasa suelto en vez del objeto `combat`
   // entero, para no acoplar el hook a la forma completa de useCombatFlow.
+  const cazaPorTextoRef = useRef<(r: ConfirmarCazaResultado) => void>(() => {})
   const { handleSubmit } = useTurnFlow({
+    onCazaPorTexto: (r) => cazaPorTextoRef.current(r),
     saveId,
     fictionalDate,
     characterName,
@@ -1712,8 +1715,9 @@ export function GameView() {
 
   // Zona/caza/cadáveres (Fase 7) — ver hooks/useZonaAcciones.ts. Va aquí (tras useTurnFlow) porque
   // necesita `handleSubmit`; los usos anteriores en GameView son solo dentro de callbacks/JSX.
-  const { zonaModalOpen, setZonaModalOpen, saquearSoloNpcSlug, setSaquearSoloNpcSlug, handleCazarEnZona } =
+  const { zonaModalOpen, setZonaModalOpen, saquearSoloNpcSlug, setSaquearSoloNpcSlug, handleCazarEnZona, handleHuntResolved } =
     useZonaAcciones({ saveId, setCharacterLog, setCombateIniciado, openCombat: combat.openCombat, handleSubmit })
+  cazaPorTextoRef.current = handleHuntResolved
 
   // Muerte permanente, botón Aceptar/Reintentar (2026-08-31) — se llama al pulsar el botón que se
   // muestra mientras `pendingDeathResolution` es true. El backend ya decidió (respawn real o
@@ -2500,6 +2504,7 @@ export function GameView() {
             setSaquearZonaModalOpen(true)
           }}
           onDesollarCadaver={() => setHarvestModal({ oficio: 'desollador', label: 'Desollar' })}
+          onHoraActualizada={setFictionalDate}
           onOfertaDescartada={() =>
             setCharacterLog((prev) => prev.map((e) => (e.dynamicModeOffer && !e.dynamicModeOffer.combateForzado ? { ...e, dynamicModeOffer: undefined } : e)))
           }

@@ -221,6 +221,11 @@ describe('POST /saves/:id/zona/cazar', () => {
     expect(body.exito).toBe(false);
     expect(body.cazaLimpia).toMatchObject({ kind: 'caza-sigilo', roll: 100, exito: false });
     expect(body.cazaLimpia.roll).toBeGreaterThan(body.cazaLimpia.chance);
+    // F9-4: el fallo también queda como LogEntry de sistema con la tirada (sobrevive a una recarga).
+    expect(body.logEntry.roll).toEqual(body.cazaLimpia);
+    const logFallo = await prisma.logEntry.findUniqueOrThrow({ where: { id: body.logEntry.id } });
+    expect(logFallo.isSystemMessage).toBe(true);
+    expect(logFallo.roll).toMatchObject({ kind: 'caza-sigilo', roll: 100, exito: false });
   });
 
   it('punto de 1 presa NO débil: 1v1 clásico (sin CombatEncounter) y el individuo enfrentado sale del ZonePoint', async () => {

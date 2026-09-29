@@ -2,7 +2,7 @@ import type { Npc, Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import type { AttributeBlock } from './dice.js';
 import { scopeFor } from './npcScene.js';
-import { posicionDeObjetivo, moverJugadorA, minutoDeReaparicion } from './zonaPosicion.js';
+import { posicionDeObjetivo, moverJugadorA, minutoDeReaparicion, celdaAdyacenteOMisma, celdaDePixel } from './zonaPosicion.js';
 import { decrementPopulationOnDeath } from './population.js';
 import { advanceFictionalMinutes, formatFictionalDate } from './worldClock.js';
 import { loadSessionFacts, appendSessionFacts } from './worldFacts.js';
@@ -106,7 +106,8 @@ export type IniciarCazaResultado =
       /// Solo en combate múltiple: una tirada por especie con grupo real.
       tiradasGrupo?: TiradaGrupoInfo[];
       /// Solo en combate múltiple: LogEntry de sistema con las tiradas (engagement + iniciativa).
-      logEntry?: { id: string; text: string; timeLabel: string; createdAt: string; roll: CombateGrupoLogRoll };
+      /// F9-4: también en la caza sigilosa fallida (LogEntry de sistema con el d100, `roll.kind` = 'caza-sigilo').
+      logEntry?: { id: string; text: string; timeLabel: string; createdAt: string; roll: CombateGrupoLogRoll | TiradaCazaLimpia };
     }
   | { error: string; status: number };
 
@@ -189,10 +190,18 @@ async function intentarCazaLimpia(save: SaveParaCaza, target: CazaTarget): Promi
   const cazaLimpia: TiradaCazaLimpia = { kind: 'caza-sigilo', chance, roll: Math.min(100, Math.floor(r) + 1), exito, npcName: npc.name };
 
   if (!exito) {
+    // F9-4 (2026-09-29): el fallo antes no dejaba LogEntry y su dado solo se veía en vivo. Ahora se
+    // persiste como entrada de sistema con la tirada (sobrevive a una recarga).
+    const textoFallo = `${npc.name} detecta el intento de caza sigilosa.`;
+    const timeLabelFallo = formatFictionalDate(save.fictionalMinutes);
+    const creada = await prisma.logEntry.create({
+      data: { saveId: save.id, channel: 'CHARACTER', text: textoFallo, timeLabel: timeLabelFallo, fictionalMinutes: save.fictionalMinutes, isPlayerAction: false, isSystemMessage: true, roll: cazaLimpia as unknown as Prisma.InputJsonValue },
+    });
     return {
       resuelveSinCombate: false,
       exito: false,
       cazaLimpia,
+      logEntry: { id: creada.id, text: textoFallo, timeLabel: timeLabelFallo, createdAt: creada.createdAt.toISOString(), roll: cazaLimpia },
       // B21 (pruebas 2026-09-28): "…pero fallo" seguido de la tirada de APERTURA del combate (que
       // puede salir en éxito) se leía como una contradicción. El sigilo se pierde porque la presa
       // detecta al jugador; la tirada que viene después es la del ataque, no la de la caza.
@@ -426,4 +435,44 @@ export async function iniciarCaza(params: { save: SaveParaCaza; targets: CazaTar
     return intentarCazaLimpia(save, targets[0]);
   }
   return intentarCazaEnGrupo(save, targets);
+}
+
+/// B29 (2026-09-29, pruebas 2026-09-28): "Ataco al Gesgurio" con el Gesgurio adyacente daba una
+/// tirada y nada más. Textos que ESTE mismo servicio devuelve como `actionText` para mandarlos por
+/// el turno normal — `/turn/classify` no debe volver a interceptarlos como "atacar por texto"
+/// (bucle infinito: el texto cita a la fauna con verbo de ataque).
+export function esActionTextDeCaza(action: string): boolean {
+  return action.startsWith('Salgo a cazar y ataco a ') || (action.startsWith("Me acerco a '") && action.includes('con sigilo, pero me detecta antes de tiempo'));
+}
+
+/// B29 — de las fauna NOMBRADAS en el texto libre (`slugsNombrados`), la primera con un `ZonePoint`
+/// FAUNA activo de ESTA partida en la celda del jugador o adyacente (mismo criterio que la colisión,
+/// `celdaAdyacenteOMisma`) y con individuos vivos. `null` si ninguna está cerca (comportamiento de
+/// siempre: turno normal). Devuelve el `Npc` de catálogo y el punto, listos para `iniciarCaza`.
+export async function faunaCercanaNombrada(params: {
+  saveId: string;
+  worldId: string;
+  locationId: string | null;
+  zonaPosX: number | null;
+  zonaPosY: number | null;
+  slugsNombrados: string[];
+}): Promise<{ npc: Npc; punto: { id: string; cantidad: number } } | null> {
+  const { saveId, worldId, locationId, zonaPosX, zonaPosY, slugsNombrados } = params;
+  if (!locationId || zonaPosX == null || zonaPosY == null || slugsNombrados.length === 0) return null;
+  const celdaJugador = celdaDePixel({ x: zonaPosX, y: zonaPosY });
+  const puntos = await prisma.zonePoint.findMany({
+    where: { saveId, locationId, tipo: 'FAUNA', activo: true, cantidad: { gt: 0 }, targetSlug: { in: slugsNombrados } },
+    select: { id: true, x: true, y: true, cantidad: true, targetSlug: true },
+  });
+  for (const punto of puntos) {
+    if (!celdaAdyacenteOMisma(celdaDePixel(punto), celdaJugador)) continue;
+    const npc = await prisma.npc.findUnique({ where: { worldId_slug: { worldId, slug: punto.targetSlug } } });
+    if (!npc) continue;
+    // Ya derrotada/convaleciente en esta partida: eso es "matar/saquear" (interacción post-combate),
+    // no una caza nueva.
+    const estado = await prisma.npcState.findFirst({ where: { saveId, npcId: npc.id, condicionFisica: { in: ['MUERTO', 'CONVALECIENTE'] } }, select: { id: true } });
+    if (estado) continue;
+    return { npc, punto: { id: punto.id, cantidad: punto.cantidad } };
+  }
+  return null;
 }

@@ -120,6 +120,10 @@ export interface ClassifyResponse {
   // diferencia de `blocked` no es una violación: el frontend abre el panel mecánico (Saquear/
   // Decapitar/Salir) en vez de mostrar ningún texto.
   postCombatInteraction?: PostCombatInteractionInfo
+  // B29 (2026-09-29) — "Ataco al X" con la fauna nombrada en la celda del jugador o adyacente: el
+  // backend ya persistió la acción y arrancó la caza (`iniciarCaza`, igual que "Cazar" en la tarjeta).
+  // Mismo tratamiento de resultado que `cazarEnZona` (`handleHuntResolved`); tampoco llega a /turn/narrate.
+  cazaPorTexto?: ConfirmarCazaResultado
 }
 
 export interface BusyError {
@@ -1253,6 +1257,9 @@ export interface MoverZonaResultado {
   /// `true` si este paso descartó una oferta pacífica que seguía sin responder (2026-09-28 —
   /// alejarse andando equivale a ignorarla); el frontend retira su tarjeta del log.
   ofertaDescartada?: boolean
+  /// F9-2 (2026-09-29) — reloj tras el paso (1 min/paso); ausente si el camino estaba vacío.
+  fictionalMinutes?: number
+  fictionalDateLabel?: string
 }
 export async function moverEnZona(saveId: string, destino: { x: number; y: number }): Promise<MoverZonaResultado> {
   return fetchJson(`${API_URL}/saves/${saveId}/zona/mover`, {
@@ -1662,7 +1669,8 @@ export type ConfirmarCazaResultado =
       /// Cuántos del grupo entran al combate (d6 por especie) + LogEntry de sistema con esas tiradas
       /// y la iniciativa de cada combatiente (combate múltiple).
       tiradasGrupo?: TiradaGrupoInfo[]
-      logEntry?: { id: string; text: string; timeLabel: string; createdAt: string; roll: CombateGrupoLogRoll }
+      /// (F9-4: también la caza sigilosa fallida, con `roll.kind` = 'caza-sigilo'.)
+      logEntry?: { id: string; text: string; timeLabel: string; createdAt: string; roll: CombateGrupoLogRoll | CazaSigiloRoll }
     }
 
 /// Cazar desde la tarjeta de encuentro de zona (Fase 2, 2026-09-28,

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import Fastify from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
@@ -84,7 +84,36 @@ describe('POST /saves/:id/modo-dinamico/recurso/:targetSlug', () => {
       expect(body.logEntry.roll).toMatchObject({ kind: 'recoleccion', tirada: body.roll });
       expect(nuevaEntrada.roll).toMatchObject({ kind: 'recoleccion', tirada: body.roll });
     } else {
-      expect(logCountDespues).toBe(logCountAntes);
+      // F9-4: el fallo también persiste su tirada como LogEntry de sistema (antes solo se veía en vivo).
+      expect(logCountDespues).toBe(logCountAntes + 1);
+      const entradaFallo = await prisma.logEntry.findFirstOrThrow({ where: { saveId }, orderBy: { createdAt: 'desc' } });
+      expect(entradaFallo.isSystemMessage).toBe(true);
+      expect(entradaFallo.text).toBe(body.narration);
+      expect(entradaFallo.roll).toMatchObject({ kind: 'recoleccion', tirada: body.roll });
+      expect(body.logEntry.id).toBe(entradaFallo.id);
+    }
+  });
+
+  // F9-4 (2026-09-29): el fallo (dado bajo) también deja LogEntry de sistema con la tirada.
+  it('tirada fallida: persiste un LogEntry de sistema con la tirada (kind recoleccion) y limpia la oferta', async () => {
+    await prisma.save.update({ where: { id: saveId }, data: { pendingDynamicModeOffer: { tipo: 'RECURSO', targetSlug: 'yerreo', targetName: 'Yerreo' } } });
+    const antes = await prisma.logEntry.count({ where: { saveId } });
+    const spy = vi.spyOn(Math, 'random').mockReturnValue(0); // todos los dados al mínimo
+    try {
+      const app = await buildApp();
+      const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/recurso/yerreo` });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.exito).toBe(false);
+      expect(await prisma.logEntry.count({ where: { saveId } })).toBe(antes + 1);
+      const entrada = await prisma.logEntry.findFirstOrThrow({ where: { saveId }, orderBy: { createdAt: 'desc' } });
+      expect(entrada.isSystemMessage).toBe(true);
+      expect(entrada.text).toBe(body.narration);
+      expect(entrada.roll).toMatchObject({ kind: 'recoleccion', tirada: body.roll });
+      expect(body.logEntry.id).toBe(entrada.id);
+      expect((await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).pendingDynamicModeOffer).toBeNull();
+    } finally {
+      spy.mockRestore();
     }
   });
 

@@ -242,6 +242,13 @@ describe('POST /saves/:id/zona/mover', () => {
     const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(saveAfter.zonaPosX).toBe(75);
     expect(saveAfter.zonaCaminoPendiente).not.toBeNull();
+
+    // F9-2: la respuesta trae la hora tras el paso (el reloj avanza 1 min por paso, B2) — la misma
+    // que quedó en BD — para que el frontend actualice la cabecera sin esperar al siguiente turno.
+    const ws = await prisma.worldState.findUniqueOrThrow({ where: { saveId } });
+    expect(body.fictionalMinutes).toBe(ws.fictionalMinutes);
+    expect(body.fictionalDateLabel).toBe(ws.fictionalDateLabel);
+    expect(body.fictionalMinutes).toBeGreaterThan(480);
   });
 
   it('colisión real: el jugador entra en la MISMA celda que un ZonePoint AGRESIVO — dispara Interactuar con combateForzado (2026-09-20)', async () => {

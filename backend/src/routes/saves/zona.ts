@@ -1124,7 +1124,7 @@ export async function zonaRoutes(app: FastifyInstance) {
         },
       });
 
-      return { jugador: nuevaPosicion, caminoRestante: caminoRestantePixel, colision, dynamicModeOffer, logEntry, zonePointsMovidos, ofertaDescartada };
+      return { jugador: nuevaPosicion, caminoRestante: caminoRestantePixel, colision, dynamicModeOffer, logEntry, zonePointsMovidos, ofertaDescartada, fictionalMinutes: minutosTrasPaso, fictionalDateLabel: etiquetaTrasPaso };
     });
 
     return resultado;
