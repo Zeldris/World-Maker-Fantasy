@@ -7907,6 +7907,30 @@ export const items: ItemCatalogInput[] = [
     lugarOrigen: 'Clan Maktor.' 
   },
 
+  // Documentos de la tanda de historia A-12 y A-14 (2026-09-29): los dos únicos cuya propuesta
+  // aprobada nombra el objeto físico (A-10, A-11 y A-13 no lo nombran, así que no tienen entrada).
+  {
+    slug: 'colmillo-canizor-dos-marcas',
+    name: 'Colmillo de Canizor con dos marcas',
+    aliases: ['colmillo de canizor con dos marcas', 'colmillo con dos marcas'],
+    category: 'documento',
+    tipo: 'NARRATIVO',
+    valorGoirnos: 5,
+    description: 'Colmillo de un Canizor con dos marcas: un zarpazo Maktor y una muesca Faerus. Los Faerus no escriben, y esto es lo más parecido que tienen a un acta del Pacto de la Primera Pieza; se guarda en el Jakut Ger.',
+    lugarOrigen: 'Kegi, Feg Ger.',
+  },
+
+  {
+    slug: 'calco-edicto-tributo',
+    name: 'Calco del Primer Edicto del Tributo',
+    aliases: ['calco del edicto', 'calco del primer edicto'],
+    category: 'documento',
+    tipo: 'NARRATIVO',
+    valorGoirnos: 3,
+    description: 'Calco del Ord\'teandu grabado en el obelisco de leyes de El Baluarte de Goirme: el primer tratado desigual impuesto a los clanes orcos, con su tributo anual de mineral y sus contingentes de guerra entregados "en defensa del orden". El texto no dice "donde el mando decida".',
+    lugarOrigen: 'Meseta del Orden.',
+  },
+
   // --- valor ---
 
   {
@@ -8954,7 +8978,7 @@ export interface HistoriaEntryInput {
   translatorNpcSlug?: string;
 }
 
-// Los 5 objetos `category: 'documento'` ya existentes en el catálogo de arriba, cada uno enganchado
+// Los 7 objetos `category: 'documento'` del catálogo de arriba (5 previos + 2 de la tanda A-12/A-14), cada uno enganchado
 // a su propia entrada de lore. Años anclados a docs/rpgtarkor/lore-mundo/cronologia.md (hoy, año ~4.010 —
 // "El Detonante" ~4.005-4.008 formó la Concordia de Hierro actual).
 export const historiaEntries: HistoriaEntryInput[] = [
@@ -8997,6 +9021,22 @@ export const historiaEntries: HistoriaEntryInput[] = [
     year: 4000,
     text: 'Un fragmento de tablilla de arcilla cocida, ennegrecido por el fuego que arrasó el asentamiento del Clan Maktor. Lo poco que se distingue basta para reconstruir lo esencial: más de mil años después de un primer golpe que ya había dejado al clan maltrecho, una revuelta contra el yugo Serhu terminó en una incursión Goirnte orquestada para desprestigiar a los propios Serhu — que no intervinieron. El clan fue aniquilado casi por completo aquel día. Solo se tiene noticia de un superviviente, un niño de diez años que logró escapar.',
     documentoItemSlug: 'tablilla-quemada-maktor',
+  },
+  {
+    slug: 'pacto-de-la-primera-pieza',
+    title: 'El Pacto de la Primera Pieza',
+    era: 'comun',
+    year: 2300,
+    text: 'Un colmillo de Canizor con dos marcas, un zarpazo Maktor y una muesca Faerus, guardado en el Jakut Ger. Los Faerus no escriben; esto es lo más parecido que tienen a un acta. Una partida de caza Maktor y una manada Faerus de la frontera sur de las Llanuras abatieron a la vez el mismo Canizor, y la cabecilla Maktor, de sangre de Tevya, ofreció a la manada la primera pieza (Vash\'grath). Para un Faerus eso define quién es de la manada: el gesto se leyó como parentesco y no como comercio. La manada levantó un campamento fijo para seguir tratando con los Maktor, Kegi, origen del Feg Ger. Los Serhu no heredaron el pacto: por eso los Faerus comercian con cualquier orco pero solo confían en los Maktor. Fecha provisional.',
+    documentoItemSlug: 'colmillo-canizor-dos-marcas',
+  },
+  {
+    slug: 'primer-edicto-del-tributo',
+    title: 'El Primer Edicto del Tributo',
+    era: 'comun',
+    year: 3600,
+    text: 'Un calco del Ord\'teandu (edicto) grabado en el obelisco de leyes de El Baluarte de Goirme, con el que empieza el Yugo de Hierro: tributo anual de mineral y contingentes de guerra obligatorios que cada clan entrega "en defensa del orden". Lo firmó la casta de Ketg en nombre de los clanes de las Llanuras; los grupos emigrados a Cristal Helado y a la Ciénaga quedaron obligados después por extensión, sin haber firmado nada. El texto sigue grabado y no dice "donde el mando decida": Los del Obelisco lo citan de memoria contra el uso actual de los contingentes orcos. Para un Goirnte el edicto nunca se derogó, solo se "reajustó". Fecha provisional.',
+    documentoItemSlug: 'calco-edicto-tributo',
   },
 ];
 
