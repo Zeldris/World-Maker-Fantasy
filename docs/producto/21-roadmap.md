@@ -75,9 +75,8 @@ Rompen una mecánica en partida real. Referencias H-x:
   Clemente. Mapeado, sin implementar. **[A]**
 
 ### Deuda técnica que frena
-- **Partir `turnResolution.ts`** (7.903 líneas). Primer corte natural: el bloque de días cruzados
-  (Reino, producción, facciones) a un `services/dailyTick.ts`. **[P]**
-- **Partir `GameView.tsx`** (2.637 líneas): seguir extrayendo hooks. **[P]**
+- ~~**Partir `turnResolution.ts`**: primer corte, días cruzados a `services/dailyTick.ts`~~ ✅ `7d470f9` (7.694 líneas; siguen más cortes posibles) **[P]**
+- **Partir `GameView.tsx`**: ~~zona/caza/cadáveres a `useZonaAcciones`~~ ✅ `7d470f9` (2.595 líneas); quedan equipar, tirar, modo dinámico y muerte. **[P]**
 - Repasar [deuda-tecnica-hallazgos.md](../registros/deuda-tecnica-hallazgos.md): varias entradas ya
   están resueltas en código (guards de `endedAt` en compañeros, `npcAttributesForLevel`) y el
   registro no lo refleja. **[H]**
