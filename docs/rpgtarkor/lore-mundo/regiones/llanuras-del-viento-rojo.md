@@ -27,7 +27,7 @@ Las tormentas y su intensidad: [clima-tormentas.md](../clima-tormentas.md).
 Detalle de los clanes: [clanes-orcos.md](../clanes-orcos.md).
 
 **El núcleo jugable** empezó siendo la esquina suroccidental de la región. Se amplió hacia el este
-(pastos de temporada) y el norte/noreste (zona volcánica) y después hacia la sabana, la costa norte y
+(pastos de temporada) y el norte/noreste (zona volcánica) y después hacia la sabana, el tramo norte de la costa y
 el desierto Nabierus.
 
 ---
@@ -276,9 +276,8 @@ Son edificios de facción (`Building.factionId`), no recetas que el jugador pued
 **Edificios de oficio (diseño de 2026-09-28, ver [edificios-de-oficio.md](../../sistemas-reino/edificios-de-oficio.md)).** La regla es que
 cada oficio con Maestro tiene su edificio. Además de los cinco de arriba, Karot Veku tiene en código
 la **Peletería**, la **Sastrería** y la **Casa de curas** (primeros auxilios). El oficio de pescador
-trabaja fuera del poblado, en el **Embarcadero de pesca**: el lore lo pone en El Embarcadero de
-Ceniza y el código, en la Playa de Ceniza Blanca, donde vive el Maestro Pescador (pendiente de
-decidir). Falta el **Obrador de piedra** (constructor), que espera a tener Maestro.
+trabaja fuera del poblado, en el **Embarcadero de pesca**, en la Playa de Ceniza Blanca, donde
+vive el Maestro Pescador (decisión de Álvaro, 2026-09-29: la Playa es un puesto avanzado Serhu). Falta el **Obrador de piedra** (constructor), que espera a tener Maestro.
 
 **Maestros de oficio.** Por cada uno de los 12 oficios orcos de las Llanuras (herrero, curtidor,
 peletero, desollador, domador, carpintero, sastre, herborista, primeros auxilios, alquimista,
@@ -839,7 +838,8 @@ la región son ecos de esta.
 ### Playa de Ceniza Blanca
 *Zona pacífica, sin fauna combatible · Catálogo: `playa-de-ceniza-blanca`.*
 
-Franja de arena clara entre dos brazos bajos de roca, la zona costera más accesible y menos hostil de
+Franja de arena clara entre dos brazos bajos de roca, en el tramo norte de la costa, y puesto avanzado
+del Clan Serhu, con su **Embarcadero de pesca**. Es la zona costera más accesible y menos hostil de
 la región: el único punto de la costa donde el mar se alcanza y se usa sin escalar ni cruzar marisma.
 Todos sus animales son inofensivos o cautelosos y se obtienen con la profesión de **Pescador** (Pescar,
 con caña y cebo, atributo fuerza, para peces; Buscar, sin herramienta, atributo voluntad, para
@@ -940,7 +940,7 @@ de la costa.
 ### El Embarcadero de Ceniza
 *Puesto del Clan Serhu · Catálogo: `embarcadero-de-ceniza`.*
 
-Puesto avanzado del Clan Serhu en la costa norte: botes de fondo plano varados sobre travesaños de
+Puesto avanzado del Clan Serhu en el tramo norte de la costa de las Llanuras: botes de fondo plano varados sobre travesaños de
 madera y redes tendidas a secar. Es el primer contacto real del clan con el mar, más allá del
 pastoreo y la caza que conocen desde siempre. Pesca y transporte de corta distancia a lo largo de la
 costa; ningún Serhu se aventura mar adentro.
@@ -1013,6 +1013,7 @@ investigadora que sus descendientes de hoy, los Nabieus, siguen llevando en la s
 
 ## Historial de cambios
 
+- 2026-09-29 (decisiones de Álvaro): la Playa de Ceniza Blanca y El Embarcadero de Ceniza están en el tramo norte de la costa de las Llanuras (no en una "costa norte" de la región, que es de Cristal Helado); el Embarcadero de pesca está en la Playa, puesto avanzado Serhu.
 - 2026-07-17 / 07-18: fauna de peligro (Gargantúas, Corredores, Espina) y los primeros puntos de
   interés (la Hondonada sale de una partida de prueba real). Liderazgo Serhu.
 - 2026-07-18: fauna y flora de sustento (Corretolvas, Salvia, Espiga Roja, Matorral de Cuerno).

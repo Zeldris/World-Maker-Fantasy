@@ -1,6 +1,6 @@
 # REGIÓN: Ciénaga Troncal
 Qué es: zonas, habitantes, especies y huecos de la Ciénaga.
-Fuente: docs/rpgtarkor/lore-mundo/regiones/cienaga-troncal.md. Sincronizado: 2026-09-27.
+Fuente: docs/rpgtarkor/lore-mundo/regiones/cienaga-troncal.md. Sincronizado: 2026-09-29.
 
 ## Datos fijos
 - Posición: franja central, al este de las Llanuras. Cristal Helado al norte, el Margen al sur. ~160 × 178 km. Nombre nativo: Los
@@ -19,7 +19,7 @@ Fuente: docs/rpgtarkor/lore-mundo/regiones/cienaga-troncal.md. Sincronizado: 202
   Talleres del lore (sin Maestro ni oficio en código): astillero de pilotes, resinería, ahumadero,
   talla de tótems. El único edificio de oficio que le toca hoy es la Casa de curas.
 - **Jeyselt / Fin Susurrado**: poblado de Keseg Prisilke.
-- **Marismas de Lodo Negro**: capa viscosa de resina de Bolco sobre túneles sumergidos de agua
+- **Marismas de Lodo Negro**: capa viscosa de resina de Holdo sobre túneles sumergidos de agua
   purísima.
 - **Costa Corredor**: donde se embarca la madera del tributo hacia la Meseta. **Embarcadero Silh Makut**: muelle del Cerco.
 - **Túneles Musgosos**: galerías secas bajo raíces; refugio en las crecidas. **Raíces Madre Fango**: isla de raíces del Trepador más viejo, donde están las piras y los tótems funerarios Goshg. **Cumbre Bruma Negra**: la única altura, puesto de vigía Goshg. **Cataratas Madre Fango**: salto de agua; pesca de Borbol en primavera. **Costa Marea Vida**: marisco. **Desfiladero Esmeralda**: salida al norte, paso de la Senda del Sílice.
@@ -33,7 +33,7 @@ Fuente: docs/rpgtarkor/lore-mundo/regiones/cienaga-troncal.md. Sincronizado: 202
 - **Borbol** (NADANTES 1-2, INOFENSIVO): pez que sube a respirar; su golpe de cola es lo que leen los
   cazadores Prisilke.
 - **Zancapilote** (ZANCUDOS 2-5, CAUTELOSO): ave de los pilotes; alarma natural contra el Tragalodo.
-- **Bolco** (Veldrias): árbol de las Marismas; su resina forma la capa que conserva el agua limpia.
+- **Holdo** (Veldrias): árbol de las Marismas; su resina forma la capa que conserva el agua limpia.
   Resina t2 para calafatear.
 - **Bulbo de Turbera** (Bulvias, t1): comida base.
 - **Velo de Charca** (Marelas, t1): comida y cura de quemaduras.

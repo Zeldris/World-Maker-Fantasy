@@ -30,7 +30,7 @@ madera para mejorar sus creaciones de hierro (ver [razas.md § Goirntes](../raza
 La mayor de las ciudades-fortaleza Goirntes y sede de la Concordia de Hierro, con muros de hierro
 negro pulido tallados con la misma simetría antinatural que el resto de la Meseta y el obelisco de
 leyes más alto de todo Berig en su plaza central. Lleva el nombre de la Semilla que dio forma a su
-pueblo. Ese obelisco es el primero: los Goirntes lo tallaron antes de levantar la ciudad, que se
+pueblo. Ese obelisco es el primero, y por eso el más alto: los Goirntes lo tallaron antes de levantar la ciudad, que se
 construyó después alrededor de él, siguiendo sus ejes (ver
 [cronologia-mitica.md](../cronologia-mitica.md#sin-fechar-primera-oleada-la-fundación-de-el-baluarte-de-goirme)).
 En él sigue grabado el **Primer Edicto del Tributo**, con el que empezó el Yugo de Hierro.
@@ -125,6 +125,7 @@ simetría lo es en la piedra.
 
 ## Historial de cambios
 
+- 2026-09-29 (decisión de Álvaro): El Baluarte de Goirme es la mayor ciudad-fortaleza y su obelisco el más alto por ser el primero (se corrige "el primero, no el más grande" de `cronologia-mitica.md`).
 - 2026-09-27: la región pasa a tener fichero propio. Primera tanda de propuestas aprobadas: origen del
   obelisco de El Baluarte, el Primer Edicto del Tributo, Los del Obelisco, Tarsen Vold, El Puesto del
   Corredor y Las Canteras del Eje.

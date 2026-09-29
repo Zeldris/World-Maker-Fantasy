@@ -7,6 +7,28 @@ tareas de una conversación no sobrevive al cierre de la sesión, este archivo s
 
 ---
 
+## Sesión 2026-09-29 — decisiones de Álvaro sobre la auditoría de coherencia
+
+Escrito en MD (hecho): Baluarte de Goirme la mayor y con el obelisco más alto por ser el primero
+(`cronologia-mitica.md`, `meseta-del-orden.md`, `canon-opencode/regiones/meseta.md`); Tevya la más
+inteligente de los cuatro (`clanes-orcos.md`); Kelife = "Brillo de aurora" (`razas.md`, `genesis.md`,
+`areas.md`); tramo norte de la costa de las Llanuras y Embarcadero de pesca en la Playa de Ceniza
+Blanca, puesto Serhu (`llanuras-del-viento-rojo.md`, `canon-opencode/regiones/llanuras.md`); Bolco →
+Holdo (`cienaga-troncal.md`, `flora-fauna.md`, `canon-opencode`); grafía Jeyselt (C8 cerrada).
+
+Pendiente de código:
+- [x] Holdo en el catálogo (`resina-holdo`, `4404387`).
+- [ ] "brillo de aurora": `loreChunks.ts` (texto del cinturón) + `npm run reindex-lore`, y la excepción
+  de `hasFalseMoonReference` en `narrador.ts` (hoy permite "brillo de luna") con sus tests.
+- [ ] Location `Jeyselet` → `Jeyselt` en `worldCatalog.ts` (nombre, descripción, alias; conservar el
+  alias viejo).
+- [ ] Reequilibrio de los objetos que rompen la regla de peso y Carisma (capa de melena de Ferike, peto
+  de placas de Gargantúa, lanza de hueso con Carisma, tocado de plumas) y el Desollador de sílice en
+  la escala de tier 3 (23-31 Goirnos).
+
+Pendiente de dataset: cambio de vocabulario "brillo de luna" → "brillo de aurora" (el narrador
+entrenado puede seguir usando el nombre viejo).
+
 ## En curso — repaso "zona por zona" de Las Llanuras del Viento Rojo (empezado 2026-08-21)
 
 Modo de trabajo nuevo, ver `docs/runbooks/ampliar-lore.md` § 1.5-1.7. **16 zonas cubiertas hasta ahora, en

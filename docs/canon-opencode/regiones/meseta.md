@@ -1,6 +1,6 @@
 # REGIÓN: La Meseta del Orden
 Qué es: zonas, habitantes y huecos de la Meseta (fuera del núcleo jugable).
-Fuente: docs/rpgtarkor/lore-mundo/regiones/meseta-del-orden.md. Sincronizado: 2026-09-27.
+Fuente: docs/rpgtarkor/lore-mundo/regiones/meseta-del-orden.md. Sincronizado: 2026-09-29.
 
 ## Datos fijos
 - Posición: la región más al SUR de Berig. ~221 × 167 km.
@@ -13,7 +13,7 @@ Fuente: docs/rpgtarkor/lore-mundo/regiones/meseta-del-orden.md. Sincronizado: 20
 - Etiquetas: arido, rocoso.
 
 ## Lugares
-- **El Baluarte de Goirme**: capital, sede de la Concordia. En la plaza, el primer y más alto
+- **El Baluarte de Goirme**: capital y la mayor ciudad-fortaleza, sede de la Concordia. En la plaza, el primer y más alto
   obelisco de Berig, tallado ANTES que la ciudad, con el Primer Edicto del Tributo grabado. Viven
   aquí Tarsen Vold y Yovenne Tal.
 - **El Puesto del Corredor**: control a la entrada del corredor costero. Explanada donde se cruzan

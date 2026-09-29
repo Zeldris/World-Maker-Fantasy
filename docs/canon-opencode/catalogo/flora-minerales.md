@@ -1,7 +1,7 @@
 # CATÁLOGO: flora y minerales
 Qué es: todas las plantas y minerales que existen, con familia, sitio y recurso, para no duplicar y
 para saber qué materiales se pueden usar.
-Fuente: regiones/*.md + worldCatalog.ts. Sincronizado: 2026-09-27. (t = tier; * = solo en el lore,
+Fuente: regiones/*.md + worldCatalog.ts. Sincronizado: 2026-09-29. (t = tier; * = solo en el lore,
 sin código.)
 
 ## Llanuras del Viento Rojo
@@ -43,7 +43,7 @@ Tocón (Fongares, comida t2).
 ## Ciénaga Troncal
 Trepadores Ocaso (Veldrias: resina negra y dorada, madera de tótems) · Bulbo de Turbera* (Bulvias,
 t1) · Velo de Charca* (Marelas, comida y cura de quemaduras, t1) · Herrumbrera* (Vetrias, hierro
-pobre, t2) · Bolco* (Veldrias, resina para calafatear t2; forma la capa de las Marismas).
+pobre, t2) · Holdo* (Veldrias, resina para calafatear t2; forma la capa de las Marismas).
 
 ## Meseta del Orden
 Hierba del Hierro (Vetrias: extrae metal de la piedra; aleaciones Goirntes).

@@ -56,7 +56,9 @@ ellos", y su primer acto como pueblo fue coherente con eso: antes de levantar un
 punto donde se cruzan los ejes de la Meseta, tallaron allí un **obelisco** y grabaron en él las
 primeras leyes. La ciudad-fortaleza se construyó después, alrededor del obelisco y siguiendo sus
 ejes: por eso El Baluarte tiene hoy el obelisco de leyes más alto de todo Berig en su plaza
-central. Es el primero, no el más grande. Los Goirntes lo enseñan como lección fundacional:
+central, y es el más alto precisamente por ser el primero: ninguna ciudad posterior levantó el suyo
+por encima del fundacional. La ciudad que creció a su alrededor es también la mayor de las
+ciudades-fortaleza. Los Goirntes lo enseñan como lección fundacional:
 *primero la ley, después la ciudad*. La simetría es obra de Goirme durante la Formación, sobre el
 material de Liania; los Goirntes no crearon nada, la midieron.
 

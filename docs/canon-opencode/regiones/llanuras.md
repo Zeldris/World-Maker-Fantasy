@@ -1,6 +1,6 @@
 # REGIÓN: Las Llanuras del Viento Rojo
 Qué es: zonas, habitantes, especies y huecos de la región del núcleo jugable.
-Fuente: docs/rpgtarkor/lore-mundo/regiones/llanuras-del-viento-rojo.md. Sincronizado: 2026-09-27.
+Fuente: docs/rpgtarkor/lore-mundo/regiones/llanuras-del-viento-rojo.md. Sincronizado: 2026-09-29.
 
 ## Datos fijos
 - Posición: franja central, al oeste. Cristal Helado al norte, la Ciénaga al este, el Margen al sur. ~126 × 249 km.
@@ -22,7 +22,7 @@ Fuente: docs/rpgtarkor/lore-mundo/regiones/llanuras-del-viento-rojo.md. Sincroni
 - **Kegi** ("Arena"): el Feg Ger. El Vergel de Kegi (Yegr Kegi) es su coto de caza y comercio, y el
   Jakut Ger, su salón y trono. NPC: Yeru (quien suele estar en el Jakut) y Tasko (curtidor,
   comercia).
-- **El Embarcadero de Ceniza**: puesto Serhu en la costa norte, con botes de fondo plano. Nadie se
+- **El Embarcadero de Ceniza**: puesto Serhu en el tramo norte de la costa, con botes de fondo plano. Nadie se
   aventura mar adentro.
 
 ## Zonas (posición · terreno · qué hay)

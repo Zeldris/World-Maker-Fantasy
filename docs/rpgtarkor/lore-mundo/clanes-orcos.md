@@ -113,7 +113,7 @@ otros que antes eran un solo ser. Solo Tarkor conoce la verdad, y no la ha dicho
 ### Los cuatro primeros
 
 - **Kekta**: la mayor y más fuerte de las dos hembras, piel beige casi rojiza, de grandes
-  dimensiones. La más inteligente de los cuatro; exploró el continente en busca de conocimiento y
+  dimensiones. Exploró el continente en busca de conocimiento y
   trajo prosperidad a los suyos bajo su mando.
 - **Tevya**: la segunda hembra — quizás la más débil físicamente de las cuatro, pero sin duda la más
   inteligente, con una capacidad social y un carisma muy por encima del resto.
@@ -399,6 +399,7 @@ siempre: gastar vidas Serhu antes que Goirntes.
 
 ## Historial de cambios
 
+- 2026-09-29 (decisión de Álvaro): la más inteligente de los cuatro primeros es **Tevya**; se quita esa frase de la ficha de Kekta.
 - 2026-07-18: liderazgo Serhu (Ulkha y Torgash).
 - 2026-08-03: historia profunda (sustituye la versión en la que el padre de Gorhorn moría al nacer
   él, en un duelo contra el Kort'ikar Serhu); El cerco social; Los Faerus y los Maktor.

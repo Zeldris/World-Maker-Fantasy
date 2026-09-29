@@ -37,7 +37,7 @@ los mejores trabajando la madera de los tres clanes, y sus talleres lo reflejan:
 - **Astillero de pilotes**: plataforma baja al nivel del agua donde se vacían canoas de fondo plano y
   se aguzan pilotes de Trepador Ocaso. Todo lo que flota o sostiene el Cerco sale de aquí.
 - **Resinería**: cobertizo apartado del resto (la resina arde) donde se cuecen las resinas de
-  Trepador y de Bolco. Una sirve para las antorchas que arden con lluvia; la otra, para calafatear.
+  Trepador y de Holdo. Una sirve para las antorchas que arden con lluvia; la otra, para calafatear.
   Aquí se preparan también los fardos de resina que suben por la Senda del Sílice hacia los Helsig.
 - **Ahumadero**: casetas de humo sobre pilotes donde se curan la carne de Cornante y el Borbol. En la
   ciénaga, lo que no se ahúma se pudre en dos días.
@@ -64,9 +64,9 @@ las zonas más difíciles del pantano, distintos de sus parientes del Margen Sil
 
 
 - **Marismas de Lodo Negro** (`marismas-lodo-negro`): marismas que se forman de la mezcla de resina
-  de Bolco (árbol oscuro de resina negra), agua y fango gris. En la superficie se acumulan los restos
+  de Holdo (árbol oscuro de resina negra), agua y fango gris. En la superficie se acumulan los restos
   más espesos de la resina, formando una capa protectora y viscosa; debajo hay una red de túneles
-  sumergidos con el agua más pura y cristalina de Berig. Ver [Bolco](#bolco).
+  sumergidos con el agua más pura y cristalina de Berig. Ver [Holdo](#holdo).
 - **Túneles Musgosos** (`tuneles-musgosos`): galerías secas bajo las raíces entrelazadas de los
   Trepadores Ocaso más viejos, tapizadas de musgo, por donde se cruza la Ciénaga sin tocar el agua. Los
   cazadores de Keseg Prisilke las conocen como nadie; en las crecidas, son el refugio de medio pantano.
@@ -130,14 +130,14 @@ mineral mucho más pobre. **No brilla.** Explica que los Goshg tengan algo de me
 una región pobre en minerales: da para puntas de lanza y clavos, no para una herrería de verdad.
 **Recurso:** Corteza Herrumbre, tier 2 (10 unidades equivalen a 1 de mena de hierro pobre al fundir).
 
-### Bolco
+### Holdo
 *Veldrias · Marismas de Lodo Negro · pendiente de código.*
 
 Árbol bajo y ancho, pariente del Trepador Ocaso pero sin vetas doradas, que solo crece en las
 marismas. Su resina, negra y pesada, gotea al agua y flota: es la que forma la capa viscosa de las
 Marismas de Lodo Negro. Esa capa sella el agua de debajo del aire y del barro de arriba, así que los
 túneles sumergidos no se enturbian ni se evaporan. Por eso guardan el agua más limpia de Berig.
-**Recurso:** Resina de Bolco (t2), impermeabilizante pesado con el que los Goshg calafatean el fondo
+**Recurso:** Resina de Holdo (t2), impermeabilizante pesado con el que los Goshg calafatean el fondo
 de las canoas.
 
 ## Fauna
@@ -197,6 +197,7 @@ Tragalodo.
 
 ## Historial de cambios
 
+- 2026-09-29 (decisión de Álvaro): el árbol Bolco pasa a llamarse **Holdo** (evita la confusión con el caracol Bulco de las Llanuras).
 - 2026-08-05: liderazgo Goshg (Doshka y Dulgren).
 - 2026-08-21: los nombres nativos (Los Trepaderes Humededos, Silh Makut) pasan del catálogo al lore.
 - 2026-09-13: el interior Goshg'lukar pasa a ser jugable (solo el salón).
