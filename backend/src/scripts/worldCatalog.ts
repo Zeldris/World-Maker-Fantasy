@@ -5101,8 +5101,8 @@ export const npcs: NpcInput[] = [
 /// Potencial de oficio de los NPC de facción (docs/producto/plan-roadmap-oct-2026.md § 13-A, H-8),
 /// sembrado en `NpcProfessionPotential`/`NpcProfessionProgress` por seed-catalog.ts. Escrito a mano,
 /// mismo criterio que `teachesProfession`. Valores por defecto del plan (pendientes de revisión de
-/// Álvaro): Maestro/a (`teachesProfession`) → tope 9, progreso inicial 7; trabajador cuyo `role`
-/// NOMBRA un oficio → tope 6, inicial 3. Guerreros, guardias, líderes, chamanes, cazadores y fauna:
+/// Álvaro): Maestro/a (`teachesProfession`) → tope 9; trabajador cuyo `role`
+/// NOMBRA un oficio → tope 6. Todos empiezan en nivel 1 sin XP (decisión de Álvaro, 2026-09-29). Guerreros, guardias, líderes, chamanes, cazadores y fauna:
 /// sin entrada. Nunca se inventa un oficio que el `role` no diga; un oficio sin `professionId` en
 /// data/professions.ts se omite (hoy: "Ganadero" de ganadero-serhu, "tallador" de Tasko no es el
 /// oficio `talador`, que es tala).
@@ -5112,8 +5112,8 @@ export interface NpcProfessionPotentialInput {
   nivelInicial: number;
 }
 
-const MAESTRO = { nivelMaximo: 9, nivelInicial: 7 } as const;
-const TRABAJADOR = { nivelMaximo: 6, nivelInicial: 3 } as const;
+const MAESTRO = { nivelMaximo: 9, nivelInicial: 1 } as const;
+const TRABAJADOR = { nivelMaximo: 6, nivelInicial: 1 } as const;
 
 export const npcProfessionPotentials: Record<string, NpcProfessionPotentialInput[]> = {
   // --- Clan Serhu (orcos, Llanuras): Maestros ---
@@ -8882,6 +8882,42 @@ export const factions: FactionInput[] = [
     description:
       'La manada Faerus de la llanura, en Kegi, en la franja sur de las Llanuras del Viento Rojo. Pelaje corto y rojizo, la artesanía de cuero más fina de su raza y la única manada que comercia de verdad, en El Vergel de Kegi. Nació de un pacto antiguo con el Clan Maktor: comercian con cualquier orco, pero solo comparten la primera pieza con quien consideran de la manada. Deciden desde el Jakut Ger, el Trono Rojo, sin cargo de mando.',
   },
+];
+
+/// Relaciones iniciales entre facciones (H-7, decisión de Álvaro 2026-09-29: "sacarlas de las
+/// propuestas aprobadas"). Fuente: tablas "Relaciones iniciales" de A-01..A-05
+/// (docs/borradores-opencode/propuestas-aprobadas.md) y el conflicto Serhu+Concordia contra
+/// Helsig+Goshg de `worldAgenda.ts`. `presion` en la escala de `factionRelations.ts` (0-19 ALIANZA,
+/// 20-39 TRATADO_COMERCIAL, 40-59 NEUTRAL, 60-79 TENSION, 80-100 GUERRA). Las parejas que el lore
+/// deja en "neutral" o "sin contacto" no llevan fila (sin fila = NEUTRAL). Una fila por pareja; el
+/// motor lee las dos direcciones.
+export interface FactionRelationInput {
+  source: string;
+  target: string;
+  presion: number;
+  /// Postura del lore y de dónde sale, para revisar rápido.
+  motivo: string;
+}
+
+export const factionRelationsIniciales: FactionRelationInput[] = [
+  { source: 'Concordia de Hierro', target: 'Los del Obelisco', presion: 65, motivo: 'A-01: tensión alta, sin ruptura' },
+  { source: 'Los del Obelisco', target: 'Keseg Sael', presion: 55, motivo: 'A-01/A-02: desconfianza útil / cautela' },
+  { source: 'Los del Obelisco', target: 'Clan Serhu', presion: 58, motivo: 'A-01: frialdad, los ven como brazo de los radicales' },
+  { source: 'Concordia de Hierro', target: 'Keseg Sael', presion: 62, motivo: 'A-02: sumisión sin lealtad (el Yugo, la Purga)' },
+  { source: 'Keseg Sael', target: 'Feg Tusha', presion: 45, motivo: 'A-02/A-04: convivencia distante, comparten el Margen' },
+  { source: 'Keseg Sael', target: 'Keseg Prisilke', presion: 30, motivo: 'A-02/A-03: parentesco' },
+  { source: 'Keseg Prisilke', target: 'Clan Goshg', presion: 35, motivo: 'A-03: convivencia práctica, intercambian madera' },
+  { source: 'Concordia de Hierro', target: 'Keseg Prisilke', presion: 62, motivo: 'A-03: tributo resignado' },
+  { source: 'Concordia de Hierro', target: 'Feg Tusha', presion: 85, motivo: 'A-04: hostil, las patrullas los tratan como presa' },
+  { source: 'Clan Serhu', target: 'Feg Tusha', presion: 85, motivo: 'A-04: hostil, incursiones de la casta de Ketg' },
+  { source: 'Feg Tusha', target: 'Feg Ger', presion: 25, motivo: 'A-04/A-05: misma raza, sin rivalidad' },
+  { source: 'Clan Serhu', target: 'Feg Ger', presion: 38, motivo: 'A-05: comercio frío, vecinos inevitables' },
+  { source: 'Concordia de Hierro', target: 'Feg Ger', presion: 80, motivo: 'A-05: hostil, como con Feg Tusha pero con menos patrullas' },
+  { source: 'Clan Serhu', target: 'Concordia de Hierro', presion: 25, motivo: 'worldAgenda: Serhu aliado en la sombra de la Concordia' },
+  { source: 'Clan Serhu', target: 'Clan Helsig', presion: 70, motivo: 'worldAgenda: incursiones Serhu contra Helsig' },
+  { source: 'Clan Serhu', target: 'Clan Goshg', presion: 70, motivo: 'worldAgenda: incursiones Serhu contra Goshg' },
+  { source: 'Concordia de Hierro', target: 'Clan Helsig', presion: 65, motivo: 'worldAgenda: la Concordia empuja a Serhu contra Helsig' },
+  { source: 'Concordia de Hierro', target: 'Clan Goshg', presion: 65, motivo: 'worldAgenda: la Concordia empuja a Serhu contra Goshg' },
 ];
 
 // ══════════════════════════════════════════════════════════════════════════

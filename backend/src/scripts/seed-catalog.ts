@@ -1,8 +1,9 @@
 import 'dotenv/config';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
-import { locations, locationLinks, npcs, fauna, items, harvestYields, factions, historiaEntries, zonePoints, factionBuildings, npcProfessionPotentials } from './worldCatalog.js';
+import { locations, locationLinks, npcs, fauna, items, harvestYields, factions, historiaEntries, zonePoints, factionBuildings, npcProfessionPotentials, factionRelationsIniciales } from './worldCatalog.js';
 import { xpForProfessionLevel } from '../services/professionProgress.js';
+import { typeForPresion, stageForPresion } from '../services/factionRelations.js';
 import { assertValidCategory } from '../services/itemTaxonomy.js';
 import { worldPopulations } from './worldPopulation.js';
 
@@ -116,6 +117,23 @@ async function main() {
     if (npc.faction && !factionNameSet.has(npc.faction)) {
       throw new Error(`NPC "${npc.slug}" tiene faction "${npc.faction}" sin ninguna Faction homónima en el catálogo de facciones.`);
     }
+  }
+
+  // Relaciones iniciales (H-7) — solo crea las que faltan: un re-seed nunca pisa la presión que el
+  // mundo ya movió jugando (eventos, decaimiento). Si existe la fila en la dirección contraria, se
+  // respeta esa.
+  console.log(`  Relaciones iniciales entre facciones (${factionRelationsIniciales.length})...`);
+  for (const rel of factionRelationsIniciales) {
+    const sourceFactionId = factionIdByName.get(rel.source);
+    const targetFactionId = factionIdByName.get(rel.target);
+    if (!sourceFactionId || !targetFactionId) throw new Error(`Relación inicial ${rel.source} → ${rel.target} con una facción que no existe.`);
+    const existente = await prisma.factionRelation.findFirst({
+      where: { OR: [{ sourceFactionId, targetFactionId }, { sourceFactionId: targetFactionId, targetFactionId: sourceFactionId }] },
+    });
+    if (existente) continue;
+    await prisma.factionRelation.create({
+      data: { worldId, sourceFactionId, targetFactionId, presion: rel.presion, type: typeForPresion(rel.presion), stage: stageForPresion(rel.presion) },
+    });
   }
 
   const allNpcs = [...npcs, ...fauna];

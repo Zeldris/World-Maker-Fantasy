@@ -793,10 +793,9 @@ export function CombatPanel({
                           // Sistema de fatiga (2026-07-29, "aparecerá deshabilitada y solo podrás
                           // usar ataques normales o consumibles") — sin energía suficiente, el
                           // botón se deshabilita en vez de dejar elegirla.
-                          // B11 (pruebas 2026-09-28): con <5 de energía ni Ataque Básico se podía usar y en un combate
-                          // forzado solo quedaba defenderse — la acción base (isGeneric) nunca se bloquea por energía
-                          // (el backend ya deja la energía en 0 como mínimo).
-                          const sinEnergia = !a.isGeneric && a.energyCost > energia
+                          // Ataque Básico incluido (decisión de Álvaro, 2026-09-29, revierte la excepción de B11):
+                          // cuesta energía y sin ella se bloquea como cualquier otra; queda defenderse o un consumible.
+                          const sinEnergia = a.energyCost > energia
                           const isSelected = selectedAbilityId === a.id
                           // Tarjeta entera clickable (2026-08-12, petición explícita: "asegúrate de
                           // que el cuadro completo sea clickable") — antes solo la fila superior
