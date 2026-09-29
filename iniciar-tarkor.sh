@@ -50,6 +50,12 @@ eval "$NVM_INIT"
 # medio) — mejor pagar ese segundo de más siempre que arriesgarse a jugar con el catálogo
 # desincronizado otra vez. No aborta el arranque si falla (por si Postgres tarda en estar listo);
 # solo avisa.
+# Migraciones pendientes (2026-09-29): tras un pull con migraciones nuevas, el backend arrancaba con
+# la BD desfasada. `migrate deploy` solo aplica las que falten; nunca reescribe las aplicadas.
+echo "Aplicando migraciones pendientes (prisma migrate deploy)..."
+(cd "$DIR/backend" && npx prisma migrate deploy) || echo "AVISO: prisma migrate deploy falló — revisa que Postgres esté arriba."
+echo
+
 echo "Sincronizando catálogo del mundo (seed-catalog)..."
 (cd "$DIR/backend" && npm run seed-catalog) || echo "AVISO: seed-catalog falló — el mapa/catálogo puede no estar al día. Revisa que Postgres esté arriba y corre 'npm run seed-catalog' a mano en backend/."
 echo
