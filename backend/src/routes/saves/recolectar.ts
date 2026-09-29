@@ -246,8 +246,11 @@ export async function candidateSourcesFor(
   estacionActual: Estacion,
   climaActual: EstadoClima | null,
   nivelOficio: number,
+  /// Cliente inyectable (Fase 13-B, expediciones de facción): la función es solo lectura y no
+  /// depende de ninguna partida, así que `factionExpeditions.ts` la reutiliza con su propio `db`/`tx`.
+  db: Pick<typeof prisma, 'harvestYield' | 'worldPopulation'> = prisma,
 ): Promise<{ candidates: SourceCandidate[]; anyOnCooldown: boolean }> {
-  const rows = await prisma.harvestYield.findMany({ where: { worldId, metodoObtencion: metodo }, include: { item: true } });
+  const rows = await db.harvestYield.findMany({ where: { worldId, metodoObtencion: metodo }, include: { item: true } });
   if (rows.length === 0) return { candidates: [], anyOnCooldown: false };
   const bySlug = new Map<string, typeof rows>();
   for (const row of rows) {
@@ -255,7 +258,7 @@ export async function candidateSourcesFor(
     bySlug.get(row.sourceSlug)!.push(row);
   }
   const esFauna = esFaunaMetodo(metodo);
-  const populations = await prisma.worldPopulation.findMany({
+  const populations = await db.worldPopulation.findMany({
     where: { worldId, targetType: esFauna ? 'FAUNA' : 'RECURSO', targetSlug: { in: [...bySlug.keys()] }, poblacion: { gt: 0 } },
   });
   const cooldownCutoff = Date.now() - RECOLECCION_COOLDOWN_MS;
@@ -448,14 +451,14 @@ export interface GatheringRollInputs {
 /// tira. `oficio` es el `professionId` exacto pulsado (ej. "minero-llanuras"), no un prefijo — con
 /// la única excepción de pescador (2026-09-02, ver `professionIdForOficio`), donde la clave de
 /// ruta ('pescador-pescar'/'pescador-buscar') y el `professionId` real ('pescador') divergen.
-export function gatheringRollFor(save: GatheringRollInputs, oficio: string): GatheringRollResult {
+export function gatheringRollFor(save: GatheringRollInputs, oficio: string, random: () => number = Math.random): GatheringRollResult {
   const attributes = effectiveAttributes(save.attributes, save.inventoryItems);
   const secondaryAttributes = effectiveSecondaryAttributes(normalizeSecondaryAttributes(save.secondaryAttributesJson), save.inventoryItems);
   const nivelOficio = save.professionProgress.find((p) => p.professionId === professionIdForOficio(oficio))?.nivel ?? 1;
   // Ya validado más arriba (metodoForOficio no fue null): attributeForOficio busca el mismo
   // prefijo y siempre encuentra pareja.
   const attribute = attributeForOficio(oficio)!;
-  return rollGathering(attributes, attribute, alivioForLevel(nivelOficio), secondaryAttributes.suerte);
+  return rollGathering(attributes, attribute, alivioForLevel(nivelOficio), secondaryAttributes.suerte, random);
 }
 
 /// Aplica el resultado de `gatheringRollFor` a una lista de candidatos: cada yield individual (no

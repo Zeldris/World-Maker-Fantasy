@@ -63,6 +63,7 @@ model User {
 
 /// Plantilla de mundo del catálogo (distinta de la instancia jugada — ver WorldState).
 model World {
+  expediciones Expedicion[]
   id        String    @id @default(cuid())
   slug      String    @unique
   name      String
@@ -466,6 +467,7 @@ model Save {
 /// backend/src/scripts/worldCatalog.ts (mismo patrón que loreChunks.ts + reindex-lore):
 /// la fuente de verdad editorial sigue siendo docs/rpgtarkor/lore-mundo/areas.md.
 model Location {
+  expediciones Expedicion[]
   id          String   @id @default(cuid())
   worldId     String
   world       World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
@@ -1745,6 +1747,12 @@ model KingdomStats {
   /// sola vez aunque haya varias partidas o varios ticks. Null = aún sin línea base (el primer tick
   /// la fija al día actual sin producir retroactivamente).
   ultimoDiaProducido Int?
+  /// Solo filas de facción (Fase 13-B del plan oct-2026): último día de ficción del MUNDO para el que
+  /// `advanceFactionExpeditions` (factionExpeditions.ts) ya avanzó/lanzó expediciones de esta facción.
+  /// Mismo patrón que `ultimoDiaProducido` (reclamo atómico, catch-up acotado); marcador propio para
+  /// que economía y expediciones no se pisen el reclamo del día. Null = sin línea base (el primer
+  /// tick la fija al día actual sin lanzar nada retroactivamente).
+  ultimoDiaExpedicion Int?
   updatedAt          DateTime @updatedAt
 }
 
@@ -2312,6 +2320,7 @@ enum Especializacion {
 /// sigue viviendo en WorldState.facts, igual que hasta ahora). Sembrado desde
 /// worldCatalog.ts; la prosa larga vive en docs/rpgtarkor/personajes/npcs.md y en lore chunks SIN números.
 model Npc {
+  expedicionMembers ExpedicionMember[]
   id                  String               @id @default(cuid())
   worldId             String
   world               World                @relation(fields: [worldId], references: [id], onDelete: Cascade)
@@ -2518,6 +2527,7 @@ model Npc {
 /// sigue siendo `[worldId, slug]` sin cambios: el `slug` de una facción fundada incluye el
 /// `save.id`, así que nunca choca ni con el catálogo ni con la de otra partida.
 model Faction {
+  expediciones Expedicion[]
   id          String  @id @default(cuid())
   worldId     String
   world       World   @relation(fields: [worldId], references: [id], onDelete: Cascade)
@@ -3223,4 +3233,58 @@ model LiveTeacherCapture {
 
   @@index([saveId])
   @@index([cloudValid, exportedAt])
+}
+
+/// Estado de una expedición de facción (Fase 13-B; docs/rpgtarkor/sistemas-reino/expediciones-poblacion.md
+/// § 4.5). RECOLECTANDO se reserva para cuando la recolección deje de ser instantánea: hoy la llegada
+/// (tirada de riesgo + recolección) y el paso a RETORNANDO ocurren en el mismo día de ficción.
+enum ExpedicionStatus {
+  EN_TRANSITO
+  RECOLECTANDO
+  RETORNANDO
+  COMPLETADA
+  INTERCEPTADA
+}
+
+/// Expedición de recolección de una facción de catálogo, medida en DÍAS DE FICCIÓN del mundo
+/// (`worldFictionDay`), no en `DateTime`. Sin `@@unique` por facción: el límite de "una activa" lo
+/// aplica el servicio al lanzar. Nadie muere si se intercepta (los `Npc` son de mundo).
+model Expedicion {
+  id                String            @id @default(cuid())
+  worldId           String
+  world             World             @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  factionId         String
+  faction           Faction           @relation(fields: [factionId], references: [id], onDelete: Cascade)
+  destinoLocationId String
+  destino           Location          @relation(fields: [destinoLocationId], references: [id], onDelete: Cascade)
+  /// `professionId` real del recolector (p. ej. 'pescador', 'minero-cristal', 'herborista-orcos-llanuras').
+  professionId      String
+  status            ExpedicionStatus  @default(EN_TRANSITO)
+  diaSalida         Int
+  diaRegreso        Int
+  /// Riesgo de intercepción (0-100) calculado al lanzar y la tirada (0-100) hecha al llegar.
+  riesgo            Int               @default(0)
+  tiradaRiesgo      Float?
+  /// Carga recogida al llegar: { items: [{ npcId, professionId, catalogSlug, name, cantidad, tier }] }.
+  /// Null hasta la llegada o si se interceptó (la carga se pierde). Se deposita al COMPLETAR.
+  botin             Json?
+  members           ExpedicionMember[]
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([factionId, status])
+  @@index([worldId, status])
+}
+
+model ExpedicionMember {
+  id           String     @id @default(cuid())
+  expedicionId String
+  expedicion   Expedicion @relation(fields: [expedicionId], references: [id], onDelete: Cascade)
+  npcId        String
+  npc          Npc        @relation(fields: [npcId], references: [id], onDelete: Cascade)
+  /// Texto libre: 'recolector' | 'guardia' (mismo criterio que `Companion.rolReino`).
+  rol          String
+
+  @@index([expedicionId])
+  @@index([npcId])
 }

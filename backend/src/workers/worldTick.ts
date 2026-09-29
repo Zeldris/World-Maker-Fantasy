@@ -10,6 +10,7 @@ import { loadSessionFacts } from '../services/worldFacts.js';
 import { claimTurnInFlight, releaseTurnInFlight } from '../services/turnLock.js';
 import { growAllPopulations, syncFactionPopulationToKingdomStats } from '../services/population.js';
 import { advanceFactionEconomy } from '../services/factionEconomy.js';
+import { advanceFactionExpeditions } from '../services/factionExpeditions.js';
 import { advanceWorldAgenda } from '../services/worldAgenda.js';
 import { advanceCompanionSurvival, advancePlayerSurvival, advanceCorpseAndRecoveryTimeouts } from '../services/companionSupervivencia.js';
 import type { ClassificationResult } from '../services/narrador.js';
@@ -261,6 +262,9 @@ async function tick(): Promise<void> {
   // Economía de facción (Fase 4 plan oct-2026, H-6/H-2/H-4): producción + consumo + stock real +
   // decaimiento de presión, una vez por mundo y día/semana de ficción (idempotente por marcador).
   await advanceFactionEconomy(prisma).catch((err) => console.error('[worldTick] error en economía de facción:', err));
+  // Expediciones de facción (Fase 13-B plan oct-2026): avanzan y se lanzan una vez por mundo y día de
+  // ficción (idempotente por `KingdomStats.ultimoDiaExpedicion`).
+  await advanceFactionExpeditions(prisma).catch((err) => console.error('[worldTick] error en expediciones de facción:', err));
   // Agenda de mundo (Grupo 3, 2026-08-24, ver worldAgenda.ts) — mismo criterio que arriba: hitos
   // que avanzan con el tiempo de ficción, no con el turno síncrono.
   await advanceWorldAgenda(prisma).catch((err) => console.error('[worldTick] error avanzando agenda de mundo:', err));
