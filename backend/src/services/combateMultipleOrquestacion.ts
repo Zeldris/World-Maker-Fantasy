@@ -455,7 +455,7 @@ async function datosVivosDe({ tx, worldId, saveId, participant, weaponNames }: D
   return null;
 }
 
-function toNpcForCombatAbilities(npc: Npc): NpcForCombatAbilities {
+export function toNpcForCombatAbilities(npc: Npc): NpcForCombatAbilities {
   return {
     level: npc.level,
     attributes: npc.attributes as unknown as AttributeBlock,

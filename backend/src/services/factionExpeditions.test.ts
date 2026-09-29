@@ -3,6 +3,7 @@ import {
   DURACION_EXPEDICION_DIAS, MAX_GUARDIAS, MAX_RECOLECTORES, MAX_UNIDADES_POR_RECOLECTOR,
   elegirBotinDeRecolector, elegirGuardias, elegirRecolectores, esRolGuardia, metodoExpedicionFor,
   oficioRutaFor, oficiosDeRecoleccionOrdenados, ordenarDestinos, regionesElegibles, resolverInterceptacion,
+  MAX_RONDAS_INTERCEPTACION, elegirAtacante, faccionHostilDeRegion, simularCombateInterceptacion, type CombatienteInterceptacion,
   riesgoIntercepcion, riesgoPorRelacion, seIntercepta, xpRecolector,
 } from './factionExpeditions.js';
 import type { SourceCandidate } from '../routes/saves/recolectar.js';
@@ -84,8 +85,58 @@ describe('riesgo de intercepción', () => {
     expect(seIntercepta(50, 0.5)).toBe(false);
     expect(seIntercepta(0, 0)).toBe(false);
   });
-  it('gancho 13-C: hoy la carga se pierde', async () => {
-    expect((await resolverInterceptacion({ expedicionId: 'x', factionId: 'f', destinoRegion: 'r', guardiaNpcIds: ['g'], recolectorNpcIds: [] })).carga).toBe('perdida');
+});
+
+describe('intercepción con combate (Fase 13-C)', () => {
+  const bloque = (v: number) => ({ fuerza: v, destreza: v, constitucion: v, inteligencia: v, voluntad: v, carisma: v, magia: v });
+  const comb = (id: string, v: number): CombatienteInterceptacion => ({ id, slug: id, nombre: id, attributes: bloque(v), attribute: 'fuerza', attributeBonus: 0 });
+  /// Todos los d20 dan 11: el desenlace solo depende de los atributos.
+  const fijo = () => 0.5;
+
+  it('sin guardias la carga se pierde (sin tocar la BD)', async () => {
+    const r = await resolverInterceptacion({} as never, { expedicionId: 'x', worldId: 'w', factionId: 'f', factionName: 'A', faccionHostilNombre: 'B', guardiaNpcIds: [], recolectorNpcIds: [] }, fijo);
+    expect(r.carga).toBe('perdida');
+    expect(r.resumen).toMatchObject({ ganador: 'sin-combate', motivo: 'sin-guardias', presionAplicada: false });
+  });
+  it('sin facción hostil identificable la carga se pierde', async () => {
+    const r = await resolverInterceptacion({} as never, { expedicionId: 'x', worldId: 'w', factionId: 'f', factionName: 'A', faccionHostilNombre: null, guardiaNpcIds: ['g'], recolectorNpcIds: [] }, fijo);
+    expect(r).toMatchObject({ carga: 'perdida', resumen: { motivo: 'sin-atacante' } });
+  });
+  it('guardias fuertes contra un atacante débil resisten', () => {
+    const r = simularCombateInterceptacion(comb('atacante', 4), [comb('g1', 18), comb('g2', 18)], fijo);
+    expect(r).toMatchObject({ ganador: 'defensores', tope: false });
+    expect(r.rondas).toBeLessThanOrEqual(MAX_RONDAS_INTERCEPTACION);
+  });
+  it('un guardia débil contra un atacante fuerte pierde', () => {
+    const r = simularCombateInterceptacion(comb('atacante', 18), [comb('g1', 4)], fijo);
+    expect(r).toMatchObject({ ganador: 'atacante', tope: false });
+    expect(r.rondas).toBe(3); // tres escalones de condición: HERIDO, GRAVE, CONVALECIENTE
+  });
+  it('tope de rondas: si nadie cae los defensores resisten', () => {
+    // Atributos iguales y d20 iguales: empate exacto = el golpe no conecta, para los dos lados.
+    const r = simularCombateInterceptacion(comb('atacante', 10), [comb('g1', 10)], fijo);
+    expect(r).toEqual({ ganador: 'defensores', rondas: MAX_RONDAS_INTERCEPTACION, tope: true });
+  });
+  it('sin guardias en el simulador gana el atacante sin rondas', () => {
+    expect(simularCombateInterceptacion(comb('a', 10), [], fijo)).toEqual({ ganador: 'atacante', rondas: 0, tope: false });
+  });
+  it('determinista con el mismo random', () => {
+    const secuencia = () => { let i = 0; const v = [0.13, 0.77, 0.42, 0.91, 0.05, 0.63, 0.28, 0.5]; return () => v[i++ % v.length]!; };
+    const a = simularCombateInterceptacion(comb('a', 12), [comb('g1', 11), comb('g2', 9)], secuencia());
+    const b = simularCombateInterceptacion(comb('a', 12), [comb('g1', 11), comb('g2', 9)], secuencia());
+    expect(a).toEqual(b);
+  });
+  it('faccionHostilDeRegion: la de mayor riesgo entre los otros dueños; null si todas neutrales', () => {
+    const rel = new Map<string, 'GUERRA' | 'TENSION' | 'NEUTRAL'>([['Los del Obelisco', 'GUERRA']]);
+    expect(faccionHostilDeRegion('La Meseta del Orden', 'Concordia de Hierro', rel)).toBe('Los del Obelisco');
+    expect(faccionHostilDeRegion('La Meseta del Orden', 'Concordia de Hierro', new Map([['Los del Obelisco', 'NEUTRAL' as const]]))).toBeNull();
+    expect(faccionHostilDeRegion('Las Llanuras del Viento Rojo', 'Clan Serhu', rel)).toBeNull();
+  });
+  it('elegirAtacante: prefiere rol guardia y mayor nivel, luego slug; cae a cualquier humanoide; ignora fauna', () => {
+    const n = (slug: string, role: string, level: number, faunaCategoria: string | null = null) => ({ slug, role, level, faunaCategoria });
+    expect(elegirAtacante([n('b-cocinero', 'cocinero', 9), n('z-guardia', 'Guardia del clan', 2), n('a-guerrero', 'Guerrero', 2), n('lobo', 'guardia lobo', 9, 'depredador')])?.slug).toBe('a-guerrero');
+    expect(elegirAtacante([n('b', 'cocinero', 1), n('a', 'herrero', 3)])?.slug).toBe('a');
+    expect(elegirAtacante([n('lobo', 'bestia', 3, 'depredador')])).toBeNull();
   });
 });
 

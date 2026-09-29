@@ -271,9 +271,9 @@ export function rollAttributeCheck(self: ExchangeParticipant, multiplicador: num
 /// que antes vivía duplicado inline dentro de `resolveExchange`, para que `resolveIndependentExchange`
 /// pueda reusar exactamente la misma mecánica (malus por condición, multiplicador de tipo,
 /// d20+bono, grado de éxito) sin decidir todavía cómo se cruza contra el rival.
-function rollSide(self: ExchangeParticipant, opponentAttribute: Attribute, tree: CombatTree): ExchangeSideResult {
+function rollSide(self: ExchangeParticipant, opponentAttribute: Attribute, tree: CombatTree, random: () => number = Math.random): ExchangeSideResult {
   const multiplicador = typeMultiplierFor(self.attribute, opponentAttribute, tree);
-  return rollAttributeCheck(self, multiplicador);
+  return rollAttributeCheck(self, multiplicador, random);
 }
 
 /// Resuelve un intercambio completo de ataque vs. defensa — dos tiradas independientes (nunca
@@ -302,9 +302,13 @@ function rollSide(self: ExchangeParticipant, opponentAttribute: Attribute, tree:
 /// (turnResolution.ts) decide ANTES de llamar si algún lado es `rol:'utilidad'`, en cuyo caso usa
 /// `resolveIndependentExchange` en su lugar; esta función no lee `ExchangeParticipant.rol` en
 /// absoluto, sigue funcionando exactamente igual que antes del rediseño.
-export function resolveExchange(atacante: ExchangeParticipant, defensor: ExchangeParticipant): ExchangeResult {
-  const resultadoAtacante = rollSide(atacante, defensor.attribute, 'ataque');
-  const resultadoDefensor = rollSide(defensor, atacante.attribute, 'defensa');
+///
+/// `random` (Fase 13-C, expediciones de facción) es opcional y por defecto `Math.random`: los
+/// callers de partida no lo pasan y no cambian; la intercepción de expediciones lo inyecta para que
+/// el combate sea determinista en los tests.
+export function resolveExchange(atacante: ExchangeParticipant, defensor: ExchangeParticipant, random: () => number = Math.random): ExchangeResult {
+  const resultadoAtacante = rollSide(atacante, defensor.attribute, 'ataque', random);
+  const resultadoDefensor = rollSide(defensor, atacante.attribute, 'defensa', random);
   const margen = resultadoAtacante.result - resultadoDefensor.result;
   resultadoAtacante.success = margen > 0;
   resultadoAtacante.gradoExito = margen > 0 ? 'claro' : 'fallo';

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { prisma } from '../lib/prisma.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
 import { advanceFactionExpeditions } from './factionExpeditions.js';
+import { REGION_OWNING_FACTIONS } from './reputation.js';
 
 /// Fase 13-B contra Postgres real: lanzar, llegar, completar, stock, XP e idempotencia del tick. Usa la
 /// facción sembrada Clan Serhu (con NPC de pescador/herborista con potencial) en el mundo helek-sirik y
@@ -106,5 +107,144 @@ describe('advanceFactionExpeditions — integración (Fase 13-B)', () => {
     expect(interceptada.botin).toBeNull();
     // Nada entra al Almacén por la interceptada.
     expect(await prisma.almacenItem.count({ where: { factionId: serhuId } })).toBe(stockAntes);
+  }, 60_000);
+});
+
+/// Fase 13-C contra Postgres real: intercepción con combate. Como en el catálogo actual ninguna
+/// facción con expediciones comparte región, el test añade TEMPORALMENTE a Feg Ger como segundo
+/// dueño de las Llanuras (`REGION_OWNING_FACTIONS` es un objeto mutable) y siembra una relación de
+/// GUERRA Serhu→Feg Ger; fija los atributos/nivel de los NPC de ambas para que el combate sea
+/// decisivo, y lo restaura todo al terminar (atributos, relaciones, marcadores, Almacén, XP).
+describe('advanceFactionExpeditions — intercepción con combate (Fase 13-C)', () => {
+  const REGION = 'Las Llanuras del Viento Rojo';
+  const bloque = (v: number) => ({ fuerza: v, destreza: v, constitucion: v, inteligencia: v, voluntad: v, carisma: v, magia: v });
+  /// La primera tirada (riesgo) dispara la intercepción; el resto (d20 de combate y de recolección) son 20.
+  const tiradaBajaLuegoAlta = () => { let n = 0; return () => (n++ === 0 ? 0.1 : 0.99); };
+  let worldId: string;
+  let saveId: string;
+  let serhuId: string;
+  let fegGerId: string;
+  let duenosOriginales: string[];
+  let statsSnapshot: { id: string; ultimoDiaExpedicion: number | null }[] = [];
+  let progresoSnapshot: Awaited<ReturnType<typeof prisma.npcProfessionProgress.findMany>> = [];
+  let npcSnapshot: { id: string; attributes: unknown; level: number }[] = [];
+  let relacionesPrevias: Awaited<ReturnType<typeof prisma.factionRelation.findMany>> = [];
+  let almacenPreviosIds: string[] = [];
+  let expedicionesPreviasIds: string[] = [];
+  let dia = 310_001;
+
+  const irAlDia = (d: number) => prisma.worldState.update({ where: { saveId }, data: { fictionalMinutes: d * 1440 + 30 } });
+  const ponerNpcs = async (serhu: number, hostil: number) => {
+    await prisma.npc.updateMany({ where: { worldId, faction: 'Clan Serhu' }, data: { attributes: bloque(serhu), level: 1 } });
+    await prisma.npc.updateMany({ where: { worldId, faction: 'Feg Ger' }, data: { attributes: bloque(hostil), level: 1 } });
+  };
+  const presion = async () => (await prisma.factionRelation.findUniqueOrThrow({ where: { sourceFactionId_targetFactionId: { sourceFactionId: serhuId, targetFactionId: fegGerId } } })).presion;
+  const propias = () => prisma.expedicion.findMany({ where: { factionId: serhuId, id: { notIn: expedicionesPreviasIds } }, include: { members: true }, orderBy: { diaSalida: 'asc' } });
+
+  /// Prepara un día limpio: sin expediciones propias del test, relación en GUERRA (presión 85) y todas las
+  /// facciones con línea base en `dia - 1`. Lanza la expedición de Serhu y comprueba su riesgo (50 %).
+  const lanzar = async () => {
+    dia += 10;
+    await prisma.expedicion.deleteMany({ where: { worldId, id: { notIn: expedicionesPreviasIds } } });
+    await prisma.factionRelation.update({ where: { sourceFactionId_targetFactionId: { sourceFactionId: serhuId, targetFactionId: fegGerId } }, data: { presion: 85, type: 'GUERRA' } });
+    await prisma.kingdomStats.updateMany({ where: { faction: { worldId } }, data: { ultimoDiaExpedicion: dia - 1 } });
+    await irAlDia(dia);
+    await advanceFactionExpeditions(prisma, () => 0.99);
+    const exp = (await propias())[0]!;
+    expect(exp).toMatchObject({ status: 'EN_TRANSITO', riesgo: 50 });
+    expect(exp.members.filter((m) => m.rol === 'guardia').length).toBeGreaterThanOrEqual(1);
+    return exp;
+  };
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    worldId = (await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } })).id;
+    const save = await prisma.save.create({
+      data: {
+        userId, worldId, characterName: 'Intercepción de expediciones', characterArchetype: 'guerrero', characterOrigin: 'x', characterMotivation: 'x',
+        attributes: bloque(10), portraitInitial: 'I',
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId, fictionalMinutes: dia * 1440 + 30 } });
+    serhuId = (await prisma.faction.findFirstOrThrow({ where: { worldId, slug: 'clan-serhu', saveId: null } })).id;
+    fegGerId = (await prisma.faction.findFirstOrThrow({ where: { worldId, slug: 'feg-ger', saveId: null } })).id;
+    statsSnapshot = await prisma.kingdomStats.findMany({ where: { faction: { worldId } }, select: { id: true, ultimoDiaExpedicion: true } });
+    progresoSnapshot = await prisma.npcProfessionProgress.findMany({ where: { npc: { worldId } } });
+    npcSnapshot = await prisma.npc.findMany({ where: { worldId, faction: { in: ['Clan Serhu', 'Feg Ger'] } }, select: { id: true, attributes: true, level: true } });
+    relacionesPrevias = await prisma.factionRelation.findMany({ where: { worldId } });
+    almacenPreviosIds = (await prisma.almacenItem.findMany({ where: { faction: { worldId } }, select: { id: true } })).map((a) => a.id);
+    expedicionesPreviasIds = (await prisma.expedicion.findMany({ where: { worldId }, select: { id: true } })).map((e) => e.id);
+    duenosOriginales = REGION_OWNING_FACTIONS[REGION]!;
+    REGION_OWNING_FACTIONS[REGION] = ['Clan Serhu', 'Feg Ger'];
+    await prisma.factionRelation.upsert({
+      where: { sourceFactionId_targetFactionId: { sourceFactionId: serhuId, targetFactionId: fegGerId } },
+      update: {}, create: { worldId, sourceFactionId: serhuId, targetFactionId: fegGerId, presion: 85, type: 'GUERRA' },
+    });
+  });
+
+  afterAll(async () => {
+    REGION_OWNING_FACTIONS[REGION] = duenosOriginales;
+    await prisma.expedicion.deleteMany({ where: { worldId, id: { notIn: expedicionesPreviasIds } } });
+    await prisma.almacenItem.deleteMany({ where: { faction: { worldId }, id: { notIn: almacenPreviosIds } } });
+    for (const p of progresoSnapshot) await prisma.npcProfessionProgress.update({ where: { id: p.id }, data: { nivel: p.nivel, xp: p.xp } });
+    for (const n of npcSnapshot) await prisma.npc.update({ where: { id: n.id }, data: { attributes: n.attributes as object, level: n.level } });
+    for (const s of statsSnapshot) await prisma.kingdomStats.update({ where: { id: s.id }, data: { ultimoDiaExpedicion: s.ultimoDiaExpedicion } });
+    // Relaciones: las que ya existían vuelven a su valor; las que creó el test se borran.
+    await prisma.factionRelation.deleteMany({ where: { worldId, id: { notIn: relacionesPrevias.map((r) => r.id) } } });
+    for (const r of relacionesPrevias) await prisma.factionRelation.update({ where: { id: r.id }, data: { presion: r.presion, type: r.type, stage: r.stage } });
+    await prisma.save.deleteMany({ where: { id: saveId } });
+  });
+
+  it('guardias que ganan: la expedición sigue, completa con stock y la presión no cambia', async () => {
+    await ponerNpcs(18, 4);
+    const exp = await lanzar();
+    await irAlDia(dia + 1);
+    const r = await advanceFactionExpeditions(prisma, tiradaBajaLuegoAlta());
+    expect(r.interceptadas).toBe(0);
+    const llegada = (await propias())[0]!;
+    expect(llegada.status).toBe('RETORNANDO');
+    expect(llegada.interceptacion).toMatchObject({ faccionHostil: 'Feg Ger', ganador: 'defensores', presionAplicada: false });
+    expect((llegada.interceptacion as { atacanteSlug: string }).atacanteSlug).toBeTruthy();
+    expect(await presion()).toBe(85);
+
+    await irAlDia(dia + 2);
+    await advanceFactionExpeditions(prisma, () => 0.99);
+    const fin = await prisma.expedicion.findUniqueOrThrow({ where: { id: exp.id } });
+    expect(fin.status).toBe('COMPLETADA');
+    const items = (fin.botin as { items: { catalogSlug: string }[] }).items;
+    expect(items.length).toBeGreaterThan(0);
+    const almacen = await prisma.almacenItem.findMany({ where: { factionId: serhuId, id: { notIn: almacenPreviosIds } } });
+    for (const it of items) expect(almacen.some((a) => a.catalogSlug === it.catalogSlug)).toBe(true);
+    expect(fin.interceptacion).toMatchObject({ ganador: 'defensores' });
+  }, 60_000);
+
+  it('guardias que pierden: INTERCEPTADA, carga perdida y presión +8 en la relación', async () => {
+    await ponerNpcs(4, 18);
+    const exp = await lanzar();
+    const stockAntes = await prisma.almacenItem.count({ where: { factionId: serhuId } });
+    await irAlDia(dia + 1);
+    const r = await advanceFactionExpeditions(prisma, tiradaBajaLuegoAlta());
+    expect(r.interceptadas).toBe(1);
+    const fin = await prisma.expedicion.findUniqueOrThrow({ where: { id: exp.id } });
+    expect(fin.status).toBe('INTERCEPTADA');
+    expect(fin.botin).toBeNull();
+    expect(fin.interceptacion).toMatchObject({ faccionHostil: 'Feg Ger', ganador: 'atacante', presionAplicada: true });
+    expect(await presion()).toBe(93); // BAJA_DE_GUERRA pesa +8
+    expect(await prisma.almacenItem.count({ where: { factionId: serhuId } })).toBe(stockAntes);
+  }, 60_000);
+
+  it('una relación NEUTRAL nunca intercepta: riesgo 0 al lanzar y tirada 0 no dispara', async () => {
+    await prisma.factionRelation.update({ where: { sourceFactionId_targetFactionId: { sourceFactionId: serhuId, targetFactionId: fegGerId } }, data: { presion: 50, type: 'NEUTRAL' } });
+    await prisma.expedicion.deleteMany({ where: { worldId, id: { notIn: expedicionesPreviasIds } } });
+    dia += 10;
+    await prisma.kingdomStats.updateMany({ where: { faction: { worldId } }, data: { ultimoDiaExpedicion: dia - 1 } });
+    await irAlDia(dia);
+    await advanceFactionExpeditions(prisma, () => 0.99);
+    expect((await propias())[0]).toMatchObject({ status: 'EN_TRANSITO', riesgo: 0 });
+    await irAlDia(dia + 1);
+    const r = await advanceFactionExpeditions(prisma, () => 0);
+    expect(r.interceptadas).toBe(0);
+    expect((await propias())[0]!.interceptacion).toBeNull();
   }, 60_000);
 });

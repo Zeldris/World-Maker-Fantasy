@@ -3268,6 +3268,10 @@ model Expedicion {
   /// Carga recogida al llegar: { items: [{ npcId, professionId, catalogSlug, name, cantidad, tier }] }.
   /// Null hasta la llegada o si se interceptó (la carga se pierde). Se deposita al COMPLETAR.
   botin             Json?
+  /// Resumen del combate de intercepción (Fase 13-C) si la tirada de riesgo saltó: facción hostil,
+  /// slug del atacante, guardias, rondas, ganador ('atacante' | 'defensores' | 'sin-combate'), motivo
+  /// ('sin-guardias' | 'sin-atacante' | 'tope') y si se aplicó presión. Null si no hubo intercepción.
+  interceptacion    Json?
   members           ExpedicionMember[]
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt

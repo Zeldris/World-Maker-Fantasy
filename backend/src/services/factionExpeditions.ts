@@ -1,4 +1,4 @@
-import type { Prisma, PrismaClient, FactionRelationType } from '@prisma/client';
+import type { Prisma, PrismaClient, FactionRelationType, CondicionFisica, Npc } from '@prisma/client';
 import type { MetodoObtencion } from '@prisma/client';
 import { cabeEnStock, pendingFactionDays, worldFictionDay } from './factionEconomy.js';
 import { REGION_OWNING_FACTIONS } from './reputation.js';
@@ -7,7 +7,14 @@ import { xpForCraftSuccess } from './professionProgress.js';
 import { attributeForOficio, metodoForOficio, professionIdForOficio } from './harvestAbilities.js';
 import { estacionFor, climaFor } from './worldClock.js';
 import { applyGatheringRoll, candidateSourcesFor, gatheringRollFor, type SourceCandidate } from '../routes/saves/recolectar.js';
-import type { AttributeBlock } from './dice.js';
+import type { Attribute, AttributeBlock } from './dice.js';
+import { resolveExchange, type ExchangeParticipant } from './combatExchange.js';
+import { toNpcForCombatAbilities } from './combateMultipleOrquestacion.js';
+import { npcCombatAbilitiesFor } from './npcCombatAbilities.js';
+import { npcAttributesForLevel } from './progression.js';
+import { oneStepWorseThan } from './death.js';
+import { recordFactionEvent } from './factionRelations.js';
+import type { Clase } from './classAbilities.js';
 
 /// Expediciones de facción (Fase 13-B del plan oct-2026; diseño en
 /// docs/rpgtarkor/sistemas-reino/expediciones-poblacion.md § 4.5). Corren en `worldTick`
@@ -18,8 +25,9 @@ import type { AttributeBlock } from './dice.js';
 /// D+1, tirada de riesgo y recolección (RECOLECTANDO → RETORNANDO en el mismo paso: la recolección es
 /// instantánea) → el día D+2 (`diaRegreso`) COMPLETADA y el botín entra en el Almacén de la facción.
 /// Si salta la intercepción la expedición pasa a INTERCEPTADA y pierde la carga; nadie muere (los
-/// `Npc` son de mundo, no de partida). El combate de la intercepción es la Fase 13-C: el gancho es
-/// `resolverInterceptacion`.
+/// `Npc` son de mundo, no de partida). Fase 13-C: al saltar la intercepción, `resolverInterceptacion`
+/// enfrenta a un `Npc` real de la facción hostil con los guardias (`resolveExchange`, por rondas); si
+/// los guardias aguantan la expedición sigue su curso, si caen se pierde la carga y sube la presión.
 
 // ─────────────────────────── Constantes (valores por defecto revisables) ───────────────────────────
 
@@ -146,21 +154,177 @@ export function xpRecolector(items: { tier: number }[]): number {
   return xpForCraftSuccess(Math.max(...items.map((i) => i.tier)));
 }
 
-// ─────────────────────────── Gancho de intercepción (Fase 13-C) ───────────────────────────
+// ─────────────────────────── Intercepción con combate (Fase 13-C) ───────────────────────────
+
+/// Tope de rondas del combate de intercepción. Un atacante contra 2 guardias necesita como mucho 6
+/// golpes (3 escalones de condición cada uno) para dejarlos fuera; 12 da margen a los fallos. Si se
+/// agota, los guardias cuentan como que resisten (la caravana sigue).
+export const MAX_RONDAS_INTERCEPTACION = 12;
+/// Relleno de `ExchangeParticipant.difficulty`: el intercambio es un check opuesto y este valor no
+/// decide nada (mismo criterio y mismo valor que `CHECK_OPUESTO_DIFICULTAD_RELLENO` del combate múltiple).
+const DIFICULTAD_RELLENO = 15;
+/// Evento de `FactionRelation` que suma presión cuando los atacantes ganan: el mismo que dispara el
+/// jugador al matar a un NPC de otra facción (`turnLootKill.ts`), peso +8 en `factionRelations.ts`.
+export const EVENTO_PRESION_INTERCEPTACION = 'BAJA_DE_GUERRA' as const;
+
+/// Un combatiente de la intercepción: atributos ya escalados a su nivel y el atributo/bonus de su
+/// ataque básico (la primera habilidad de `npcCombatAbilitiesFor`, el "Ataque base").
+export interface CombatienteInterceptacion {
+  id: string;
+  slug: string;
+  nombre: string;
+  attributes: AttributeBlock;
+  attribute: Attribute;
+  attributeBonus: number;
+}
+
+/// `Npc` → combatiente, con las mismas piezas que el combate múltiple (`datosVivosDe`):
+/// `npcAttributesForLevel` para los atributos y `npcCombatAbilitiesFor` para el ataque base.
+export function combatienteDeNpc(npc: Npc): CombatienteInterceptacion {
+  const ataque = npcCombatAbilitiesFor(toNpcForCombatAbilities(npc), [])[0]!;
+  return {
+    id: npc.id, slug: npc.slug, nombre: npc.name,
+    attributes: npcAttributesForLevel(npc.attributes as unknown as AttributeBlock, npc.level, npc.clase as Clase | null),
+    attribute: ataque.attribute,
+    attributeBonus: ataque.attributeBonus ?? 0,
+  };
+}
+
+function participanteDe(c: CombatienteInterceptacion, condicionFisica: CondicionFisica): ExchangeParticipant {
+  return { attributes: c.attributes, attribute: c.attribute, attributeBonus: c.attributeBonus, difficulty: DIFICULTAD_RELLENO, condicionFisica, rol: 'ataque' };
+}
+
+/// Fuera de combate = CONVALECIENTE o MUERTO (mismo criterio que `objetivosValidos`).
+function fueraDeCombate(c: CondicionFisica): boolean {
+  return c === 'CONVALECIENTE' || c === 'MUERTO';
+}
+
+export interface ResultadoCombateInterceptacion {
+  /// 'atacante' si deja fuera a todos los guardias; 'defensores' si el atacante cae o se agota el tope.
+  ganador: 'atacante' | 'defensores';
+  rondas: number;
+  /// true si se agotó `MAX_RONDAS_INTERCEPTACION` sin que cayera nadie del todo (los defensores resisten).
+  tope: boolean;
+}
+
+/// Puro y determinista dado `random`: el combate de intercepción. Cada ronda: (1) el atacante ataca al
+/// primer guardia en pie; (2) cada guardia en pie contraataca al atacante. En cada intercambio
+/// (`resolveExchange`) un golpe que llega (`golpe_normal`/`golpe_pleno`) empeora un escalón la condición
+/// del defensor y un contragolpe (`defensor_contragolpea`) empeora la del atacante — la misma "vida" por
+/// escalones (`oneStepWorseThan`) que el resto del combate. Solo vive en memoria: no toca BD.
+export function simularCombateInterceptacion(atacante: CombatienteInterceptacion, guardias: CombatienteInterceptacion[], random: () => number): ResultadoCombateInterceptacion {
+  if (guardias.length === 0) return { ganador: 'atacante', rondas: 0, tope: false };
+  let condAtacante: CondicionFisica = 'ILESO';
+  const condGuardias: CondicionFisica[] = guardias.map(() => 'ILESO');
+
+  for (let ronda = 1; ronda <= MAX_RONDAS_INTERCEPTACION; ronda++) {
+    // 1) El atacante golpea al primer guardia en pie.
+    const objetivo = condGuardias.findIndex((c) => !fueraDeCombate(c));
+    const ataque = resolveExchange(participanteDe(atacante, condAtacante), participanteDe(guardias[objetivo]!, condGuardias[objetivo]!), random);
+    if (ataque.resultado === 'golpe_normal' || ataque.resultado === 'golpe_pleno') condGuardias[objetivo] = oneStepWorseThan(condGuardias[objetivo]!);
+    else if (ataque.resultado === 'defensor_contragolpea') condAtacante = oneStepWorseThan(condAtacante);
+    if (fueraDeCombate(condAtacante)) return { ganador: 'defensores', rondas: ronda, tope: false };
+    if (condGuardias.every(fueraDeCombate)) return { ganador: 'atacante', rondas: ronda, tope: false };
+
+    // 2) Cada guardia en pie contraataca al atacante.
+    for (let g = 0; g < guardias.length; g++) {
+      if (fueraDeCombate(condGuardias[g]!)) continue;
+      const res = resolveExchange(participanteDe(guardias[g]!, condGuardias[g]!), participanteDe(atacante, condAtacante), random);
+      if (res.resultado === 'golpe_normal' || res.resultado === 'golpe_pleno') condAtacante = oneStepWorseThan(condAtacante);
+      else if (res.resultado === 'defensor_contragolpea') condGuardias[g] = oneStepWorseThan(condGuardias[g]!);
+      if (fueraDeCombate(condAtacante)) return { ganador: 'defensores', rondas: ronda, tope: false };
+    }
+    if (condGuardias.every(fueraDeCombate)) return { ganador: 'atacante', rondas: ronda, tope: false };
+  }
+  return { ganador: 'defensores', rondas: MAX_RONDAS_INTERCEPTACION, tope: true };
+}
+
+/// Facción hostil que dispara el riesgo: entre los OTROS dueños de la región, la de mayor riesgo según
+/// su relación con la expedición (empate: orden alfabético). Null si ninguna tiene riesgo > 0.
+export function faccionHostilDeRegion(region: string, factionName: string, relacionesPorFaccion: Map<string, FactionRelationType>): string | null {
+  const duenos = (REGION_OWNING_FACTIONS[region] ?? []).filter((d) => d !== factionName).sort();
+  let mejor: string | null = null;
+  let riesgoMejor = 0;
+  for (const d of duenos) {
+    const r = riesgoPorRelacion(relacionesPorFaccion.get(d));
+    if (r > riesgoMejor) { mejor = d; riesgoMejor = r; }
+  }
+  return mejor;
+}
+
+/// Atacante determinista entre los NPC de la facción hostil: primero los de `role` guerrero/guardia/
+/// patrulla, si no cualquier humanoide (sin `faunaCategoria`); dentro de cada grupo, mayor nivel y
+/// después slug. Null si no hay ninguno.
+export function elegirAtacante<T extends { slug: string; role: string; level: number; faunaCategoria: string | null }>(npcs: T[]): T | null {
+  const orden = (a: T, b: T) => b.level - a.level || a.slug.localeCompare(b.slug);
+  const humanoides = npcs.filter((n) => !n.faunaCategoria);
+  const guardias = humanoides.filter((n) => esRolGuardia(n.role)).sort(orden);
+  return guardias[0] ?? humanoides.sort(orden)[0] ?? null;
+}
 
 export interface ContextoInterceptacion {
   expedicionId: string;
+  worldId: string;
   factionId: string;
-  destinoRegion: string;
+  factionName: string;
+  /// Facción hostil dueña de la región del destino que disparó el riesgo (null si no se pudo determinar).
+  faccionHostilNombre: string | null;
   guardiaNpcIds: string[];
   recolectorNpcIds: string[];
 }
 
-/// GANCHO 13-C: se llama cuando la tirada de riesgo salta. En este corte no hay combate: la carga se
-/// pierde siempre. La Fase 13-C lo sustituirá por el enfrentamiento guardias vs. un `Npc` de la facción
-/// hostil (`resolveExchange`) y devolverá 'salva' si los guardias ganan.
-export async function resolverInterceptacion(_ctx: ContextoInterceptacion): Promise<{ carga: 'perdida' | 'salva' }> {
-  return { carga: 'perdida' };
+/// Resumen del combate que se guarda en `Expedicion.interceptacion`.
+export interface ResumenInterceptacion {
+  faccionHostil: string | null;
+  atacanteSlug: string | null;
+  guardias: string[];
+  rondas: number;
+  ganador: 'atacante' | 'defensores' | 'sin-combate';
+  /// Motivo si no hubo combate: 'sin-guardias' | 'sin-atacante'; o 'tope' si se agotaron las rondas.
+  motivo?: 'sin-guardias' | 'sin-atacante' | 'tope';
+  presionAplicada: boolean;
+}
+
+/// GANCHO 13-C: se llama cuando la tirada de riesgo salta. Sin guardias (o sin atacante posible) la
+/// carga se pierde directamente. Si no, un `Npc` real de la facción hostil combate contra los guardias
+/// (`simularCombateInterceptacion`); 'salva' si los guardias resisten. Si ganan los atacantes suma
+/// presión a la `FactionRelation` entre las dos facciones con el mismo evento que `BAJA_DE_GUERRA`.
+/// No crea `CombatEncounter`/`NpcState` ni toca partidas: nadie muere, los `Npc` son de mundo.
+export async function resolverInterceptacion(tx: TxDb, ctx: ContextoInterceptacion, random: () => number): Promise<{ carga: 'perdida' | 'salva'; resumen: ResumenInterceptacion }> {
+  const base = { faccionHostil: ctx.faccionHostilNombre, atacanteSlug: null, guardias: [] as string[], rondas: 0 };
+  const perdidaSinCombate = (motivo: 'sin-guardias' | 'sin-atacante', guardias: string[] = []) =>
+    ({ carga: 'perdida' as const, resumen: { ...base, guardias, ganador: 'sin-combate' as const, motivo, presionAplicada: false } });
+
+  if (ctx.guardiaNpcIds.length === 0) return perdidaSinCombate('sin-guardias');
+  if (!ctx.faccionHostilNombre) return perdidaSinCombate('sin-atacante');
+  const [candidatos, guardiasNpc] = await Promise.all([
+    tx.npc.findMany({ where: { worldId: ctx.worldId, faction: ctx.faccionHostilNombre } }),
+    tx.npc.findMany({ where: { id: { in: ctx.guardiaNpcIds } }, orderBy: { id: 'asc' } }),
+  ]);
+  const atacanteNpc = elegirAtacante(candidatos);
+  if (!atacanteNpc) return perdidaSinCombate('sin-atacante');
+  if (guardiasNpc.length === 0) return perdidaSinCombate('sin-guardias');
+
+  const combate = simularCombateInterceptacion(combatienteDeNpc(atacanteNpc), guardiasNpc.map(combatienteDeNpc), random);
+  const resumen: ResumenInterceptacion = {
+    faccionHostil: ctx.faccionHostilNombre, atacanteSlug: atacanteNpc.slug, guardias: guardiasNpc.map((g) => g.slug),
+    rondas: combate.rondas, ganador: combate.ganador, ...(combate.tope ? { motivo: 'tope' as const } : {}), presionAplicada: false,
+  };
+  if (combate.ganador === 'defensores') return { carga: 'salva', resumen };
+
+  // Ganan los atacantes: presión sobre la relación existente entre las dos facciones (en su
+  // dirección real, para no crear una fila espejo NEUTRAL); sin fila previa, la del atacante hacia la nuestra.
+  const hostil = await tx.faction.findFirst({ where: { worldId: ctx.worldId, name: ctx.faccionHostilNombre, saveId: null }, select: { id: true } });
+  if (hostil) {
+    const existentes = await tx.factionRelation.findMany({
+      where: { worldId: ctx.worldId, OR: [{ sourceFactionId: hostil.id, targetFactionId: ctx.factionId }, { sourceFactionId: ctx.factionId, targetFactionId: hostil.id }] },
+      select: { sourceFactionId: true, targetFactionId: true, type: true },
+    });
+    const rel = [...existentes].sort((a, b) => riesgoPorRelacion(b.type) - riesgoPorRelacion(a.type))[0] ?? { sourceFactionId: hostil.id, targetFactionId: ctx.factionId };
+    await recordFactionEvent(tx, ctx.worldId, rel.sourceFactionId, rel.targetFactionId, EVENTO_PRESION_INTERCEPTACION);
+    resumen.presionAplicada = true;
+  }
+  return { carga: 'perdida', resumen };
 }
 
 // ─────────────────────────── Ciclo en worldTick ───────────────────────────
@@ -292,7 +456,8 @@ async function lanzarExpedicion(tx: TxDb, worldId: string, faction: { id: string
 }
 
 /// Llegada al destino (día `diaSalida + 1`): tirada de riesgo única. Si salta, `resolverInterceptacion`
-/// (gancho 13-C) decide; hoy la carga se pierde (INTERCEPTADA). Si no, cada recolector tira su
+/// (combate 13-C) decide: si los guardias caen, INTERCEPTADA y carga perdida; si resisten, sigue como
+/// si no hubiera saltado (con el resumen del combate en `interceptacion`). Cada recolector tira su
 /// recolección con los atributos del `Npc` y su nivel efectivo, y la expedición pasa a RETORNANDO con
 /// el botín guardado (se deposita al completar). No reduce la población del mundo ni pone cooldown a
 /// la fuente: son NPC de facción, no una partida. Devuelve true si fue interceptada.
@@ -303,14 +468,23 @@ async function llegarAlDestino(
 ): Promise<boolean> {
   const destino = await tx.location.findUniqueOrThrow({ where: { id: exp.destinoLocationId }, select: { slug: true, region: true } });
   const tirada = random();
+  let interceptacion: Prisma.InputJsonValue | undefined;
   if (seIntercepta(exp.riesgo, tirada)) {
-    const res = await resolverInterceptacion({
-      expedicionId: exp.id, factionId: faction.id, destinoRegion: destino.region,
+    const relaciones = await tx.factionRelation.findMany({ where: { worldId, OR: [{ sourceFactionId: faction.id }, { targetFactionId: faction.id }] }, include: { sourceFaction: { select: { name: true } }, targetFaction: { select: { name: true } } } });
+    const porFaccion = new Map<string, FactionRelationType>();
+    for (const r of relaciones) {
+      const otra = r.sourceFactionId === faction.id ? r.targetFaction.name : r.sourceFaction.name;
+      if (riesgoPorRelacion(r.type) >= riesgoPorRelacion(porFaccion.get(otra))) porFaccion.set(otra, r.type);
+    }
+    const res = await resolverInterceptacion(tx, {
+      expedicionId: exp.id, worldId, factionId: faction.id, factionName: faction.name,
+      faccionHostilNombre: faccionHostilDeRegion(destino.region, faction.name, porFaccion),
       guardiaNpcIds: exp.members.filter((m) => m.rol === 'guardia').map((m) => m.npcId),
       recolectorNpcIds: exp.members.filter((m) => m.rol === 'recolector').map((m) => m.npcId),
-    });
+    }, random);
+    interceptacion = res.resumen as unknown as Prisma.InputJsonValue;
     if (res.carga === 'perdida') {
-      await tx.expedicion.update({ where: { id: exp.id }, data: { status: 'INTERCEPTADA', tiradaRiesgo: tirada * 100, botin: undefined } });
+      await tx.expedicion.update({ where: { id: exp.id }, data: { status: 'INTERCEPTADA', tiradaRiesgo: tirada * 100, botin: undefined, interceptacion } });
       return true;
     }
   }
@@ -338,7 +512,7 @@ async function llegarAlDestino(
   }
   await tx.expedicion.update({
     where: { id: exp.id },
-    data: { status: 'RETORNANDO', tiradaRiesgo: tirada * 100, botin: { items } as unknown as Prisma.InputJsonValue },
+    data: { status: 'RETORNANDO', tiradaRiesgo: tirada * 100, botin: { items } as unknown as Prisma.InputJsonValue, interceptacion },
   });
   return false;
 }
