@@ -5766,7 +5766,7 @@ export const items: ItemCatalogInput[] = [
     // Peso de armadura (2026-08-31) — "equipamiento estándar de patrulla" Goirnte, coherente con
     // el resto del uniforme (Medio, no Pesado de Caballero).
     pesoArmadura: 'MEDIO',
-    statBonuses: { destreza: 1, constitucion: 2 },
+    statBonuses: { destreza: 1, voluntad: 2 }, // MEDIO da Destreza+Voluntad (decisión de Álvaro, 2026-09-29: antes con Constitución)
     dimensiones: 'Caña hasta media pantorrilla.',
     lugarOrigen: 'Concordia de Hierro, Meseta del Orden.',
     requisitos: { fuerza: 8, destreza: 8, constitucion: 6 },
@@ -5814,12 +5814,12 @@ export const items: ItemCatalogInput[] = [
     aliases: ['cinturón de trofeos'],
     category: 'ropa',
     tipo: 'EQUIPABLE',
-    equipSlot: 'CINTURON',
+    // Decisión de Álvaro (2026-09-29): el Carisma solo va en accesorios y cosméticos, así que la
+    // pieza de trofeos (prestigio, no defensa) pasa a COSMETICO_CINTURA, sin peso, con Car +2
+    // (mismo total que antes; mismo criterio que tocado-plumas y capa-melena-ferike).
+    equipSlot: 'COSMETICO_CINTURA',
     description: 'Colmillos y garras cosidos al cuero — entre orcos, respeto a la vista.',
-    // Peso de armadura (2026-08-31) — pieza decorativa de trofeos, sin protección real, tramo
-    // Ligero (mismo criterio que tocado-plumas/capa-melena-ferike: prestigio, no defensa).
-    pesoArmadura: 'LIGERO',
-    statBonuses: { carisma: 1, voluntad: 1 },
+    statBonuses: { carisma: 2 },
     dimensiones: 'Cinturón de 90 a 110 cm.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
     tier: 2,
@@ -5862,7 +5862,7 @@ export const items: ItemCatalogInput[] = [
     lugarOrigen: 'Llanuras del Viento Rojo.' ,
     // Peso de armadura (2026-08-31) — destreza dominante, "abrigo, no defensa" (piel sin metal).
     pesoArmadura: 'MEDIO',
-    statBonuses: {constitucion: 1, destreza: 2 },
+    statBonuses: { voluntad: 1, destreza: 2 }, // MEDIO da Destreza+Voluntad (decisión de Álvaro, 2026-09-29: antes con Constitución)
     tier: 2,
     valorGoirnos: 16,
     requisitos: { fuerza: 8, destreza: 8, constitucion: 6 },
@@ -6074,7 +6074,7 @@ export const items: ItemCatalogInput[] = [
     // Peso de armadura (2026-08-31) — "armadura ligera" en su propia descripción, destreza+
     // constitución empatadas, tramo Medio (explorador ágil).
     pesoArmadura: 'MEDIO',
-    statBonuses: { destreza: 2, constitucion: 2 },
+    statBonuses: { destreza: 2, voluntad: 2 }, // MEDIO da Destreza+Voluntad (decisión de Álvaro, 2026-09-29: antes con Constitución)
     dimensiones: 'Cubre el torso completo.',
     lugarOrigen: 'Los Manaderos, Llanuras del Viento Rojo.',
     tier: 2,

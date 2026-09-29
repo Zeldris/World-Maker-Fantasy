@@ -1190,7 +1190,7 @@ export const JUSHA_SCALE_PLATES_RECIPE: CraftingRecipe = {
   resultName: 'Placas de escama de Jusha',
   resultCatalogSlug: 'placas-escama-jusha',
   resultDescription: 'Escamas de Jusha Esmeralda cosidas en hilera sobre cuero fino — armadura ligera, se mueve con quien la lleva.',
-  statBonuses: { destreza: 2, constitucion: 2 },
+  statBonuses: { destreza: 2, voluntad: 2 },
   tier: 2,
   requisitos: { destreza: 8 },
   oficio: 'curtidor-orcos-llanuras',

@@ -219,11 +219,6 @@ Resumen de los 🧭 que quedan. Detalle técnico en la
 
 1. **Maestro de diplomacia** (H-5): ¿quién lo enseña y dónde?
 2. Dessa, Yerin y Riko: aparcado hasta su lore.
-3. **Más objetos que rompen la regla de peso y Carisma** (no estaban en la lista de la auditoría, así
-   que no se han tocado): botas de marcha goirntes, placas de escama de Jusha y faldar de piel de
-   gargantúa (MEDIO con Constitución) y cinturón de trofeos de hueso (CINTURON con Carisma). ¿Se
-   reequilibran con el mismo criterio?
-
 ## Respuestas del 2026-09-29
 
 - F9-1 caza en grupo: solo aviso de riesgo en la tarjeta.
@@ -247,6 +242,7 @@ Resumen de los 🧭 que quedan. Detalle técnico en la
   puesto avanzado de los Serhu; la más inteligente de los cuatro es Tevya; el nombre es Jeyselt;
   Kelife = "Brillo de aurora"; hay que crear el oficio de ganadero; el árbol Bolco pasa a Holdo;
   Dessa, Yerin y Riko aparcados.
+- Otros cuatro objetos fuera de regla (botas de marcha goirntes, placas de Jusha, faldar de gargantúa, cinturón de trofeos): reequilibrados con el mismo criterio.
 - Goirnos de humanoide 2 + 2 × nivel: ok. Nombres de oficios nuevos: ok.
 - Terreno contra hogar (6 fuentes): se corrige el terreno de la ficha para que case con el lugar
   donde viven (el lugar sale del lore).

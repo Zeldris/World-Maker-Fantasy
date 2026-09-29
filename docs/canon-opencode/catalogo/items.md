@@ -43,11 +43,11 @@ Fuente: worldCatalog.ts + items.md. Sincronizado: 2026-09-29.
 | Pantalones de piel | ARMADURA_INFERIOR | MEDIO | 1 | 9 | Des +2 |
 | Perneras de cuero goirntes | ARMADURA_INFERIOR | MEDIO | 1 | 9 | Des +1, Vol +1 |
 | Botas de estepa | BOTAS | MEDIO | — | 11 | Vol +1, Des +2 |
-| Botas de marcha goirntes | BOTAS | MEDIO | 2 | 16 | Des +1, Con +2 |
+| Botas de marcha goirntes | BOTAS | MEDIO | 2 | 16 | Des +1, Vol +2 |
 | Cota de aleación ligera goirntes | ARMADURA_SUPERIOR | MEDIO | 2 | 14 | defensa +2 |
-| Placas de escama de Jusha | ARMADURA_SUPERIOR | MEDIO | 2 | 18 | Des +2, Con +2 |
-| Faldar de piel de gargantúa | ARMADURA_INFERIOR | MEDIO | 2 | 16 | Con +1, Des +2 |
-| Cinturón de trofeos de hueso | CINTURON | LIGERO | 2 | 14 | Car +1, Vol +1 |
+| Placas de escama de Jusha | ARMADURA_SUPERIOR | MEDIO | 2 | 18 | Des +2, Vol +2 |
+| Faldar de piel de gargantúa | ARMADURA_INFERIOR | MEDIO | 2 | 16 | Vol +1, Des +2 |
+| Cinturón de trofeos de hueso | COSMETICO_CINTURA | — | 2 | 14 | Car +2 |
 | Armadura de quitina roja | ARMADURA_SUPERIOR | MEDIO | 3 | 23 | Vol +4 |
 | Yelmo de patrulla goirntes | CASCO | PESADO | 3 | 23 | Con +4 |
 | Peto de placas óseas de gargantúa | ARMADURA_SUPERIOR | PESADO | 3 | 29 | Fue +3, Con +4 |
