@@ -759,7 +759,8 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     }
     setEntorno(params.entorno)
     setFictionalDate(params.timeLabel)
-    setLastInitiativeRoll(params.nextInitiativeRoll)
+    // La iniciativa del turno SIGUIENTE ya no se fija aquí: ver `arrancarSiguienteIniciativa` más
+    // abajo — arranca cuando el intercambio de este turno ya se aplicó.
     // Bug real jugando en vivo (2026-09-07, "la energía que gastas se tiene que restar cuando
     // eliges una habilidad, nada más le das a Actuar") — a diferencia de vida/condición (que SÍ
     // reflejan el resultado de un golpe y deben esperar a que se vea, más abajo), la energía es el
@@ -832,6 +833,37 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     // disparaba.
     if (exchangeApplyTimerRef.current) clearTimeout(exchangeApplyTimerRef.current)
     applyExchangeResultRef.current = null
+    // Estado visual "de quién es el turno" (2026-09-04, bug real jugando en vivo: "el panel según
+    // es turno de ataque o defensa está cambiando antes de color de lo que la tirada tarda en
+    // ejecutarse... debería aparecer cuando acaba la tirada, no antes") — con una tirada de
+    // iniciativa real que mostrar, este campo espera a que termine de rodar; sin tirada
+    // (`nextInitiativeRoll` null, p.ej. Aturdimiento) se aplica de inmediato.
+    const applyTurnAwaitingDefense = () => {
+      awaitingDefenseTimerRef.current = null
+      setCombatAwaitingDefense(params.esperandoDefensaJugador)
+      setAwaitingNextInitiative(false)
+    }
+    // Mismo motivo que `exchangeApplyTimerRef` — cancela el timer de un turno ANTERIOR todavía
+    // pendiente antes de programar el de este turno.
+    if (awaitingDefenseTimerRef.current) clearTimeout(awaitingDefenseTimerRef.current)
+    // Bug real jugando en vivo (2026-09-29, tercera vez: "la vida no se actualiza cuando termina la
+    // tirada de combate, lo hace al final de la tirada de iniciativa") — la causa de fondo era que
+    // las DOS animaciones arrancaban a la vez al llegar la respuesta: los dados del intercambio
+    // (LogPanel) y los de la iniciativa del turno siguiente (CombatPanel), ambas de
+    // `2 × ROLL_DURATION_MS`. La vida sí se aplicaba al acabar la del intercambio, pero como la de
+    // iniciativa acababa casi en el mismo instante, se veía como si esperase a la iniciativa. Ahora
+    // van en secuencia: dados del golpe → vida/condición aplicadas → tirada de iniciativa.
+    const arrancarSiguienteIniciativa = () => {
+      setLastInitiativeRoll(params.nextInitiativeRoll)
+      if (params.nextInitiativeRoll && !params.finDePartida) {
+        awaitingDefenseTimerRef.current = setTimeout(applyTurnAwaitingDefense, 2 * ROLL_DURATION_MS)
+      } else {
+        applyTurnAwaitingDefense()
+      }
+    }
+    // Bloquea composer/botones desde ya si hay iniciativa por delante, aunque todavía no haya
+    // empezado a rodar (primero va el intercambio).
+    if (params.nextInitiativeRoll && !params.finDePartida) setAwaitingNextInitiative(true)
     if (params.combatExchangeDisplay && !params.finDePartida) {
       setAwaitingExchangeApply(true)
       const resolverIntercambio = () => {
@@ -842,6 +874,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
         // `DiceRollReveal` (LogPanel.tsx) ya terminó de animarse en este instante — deja de hacer
         // falta seguir ocupando la tarjeta de "pensando" con él.
         setDiceReveal(null)
+        arrancarSiguienteIniciativa()
       }
       // Fuente primaria: el callback `onAllLanded` real (ver comentario junto a la declaración del
       // ref, arriba), invocado por LogPanel.tsx en cuanto DiceRollVs termina de animar de verdad.
@@ -854,31 +887,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     } else {
       applyExchangeResult()
       setDiceReveal(null)
-    }
-    // Estado visual "de quién es el turno" (2026-09-04, bug real jugando en vivo: "el panel según
-    // es turno de ataque o defensa está cambiando antes de color de lo que la tirada tarda en
-    // ejecutarse... debería aparecer cuando acaba la tirada, no antes") — título/color del panel
-    // (`combatAwaitingDefense`) saltaba de inmediato con la respuesta ya resuelta del backend,
-    // mientras `DiceRollVs` seguía animando la iniciativa varios segundos más (`ROLL_DURATION_MS`
-    // × 2, dos dados secuenciales). Con una tirada de iniciativa real que mostrar, este único
-    // campo se retrasa hasta que termine de rodar — sin tirada (`nextInitiativeRoll` null, p.ej.
-    // Aturdimiento fuerza el turno sin tirada) se aplica igual que siempre, de inmediato.
-    const applyTurnAwaitingDefense = () => {
-      awaitingDefenseTimerRef.current = null
-      setCombatAwaitingDefense(params.esperandoDefensaJugador)
-      setAwaitingNextInitiative(false)
-    }
-    // Mismo motivo que `exchangeApplyTimerRef` arriba — cancela el timer de un turno ANTERIOR
-    // todavía pendiente antes de programar (o aplicar de inmediato) el de este turno.
-    if (awaitingDefenseTimerRef.current) clearTimeout(awaitingDefenseTimerRef.current)
-    // `finDePartida` manda siempre: si el combate termina de verdad este mismo turno, no tiene
-    // sentido retrasar nada (y un `setTimeout` tardío podría reabrir visualmente un combate ya
-    // cerrado, pisando el `setCombatOpen(false)`/`setCombateIniciado(null)` de abajo).
-    if (params.nextInitiativeRoll && !params.finDePartida) {
-      setAwaitingNextInitiative(true)
-      awaitingDefenseTimerRef.current = setTimeout(applyTurnAwaitingDefense, 2 * ROLL_DURATION_MS)
-    } else {
-      applyTurnAwaitingDefense()
+      arrancarSiguienteIniciativa()
     }
     if (params.finDePartida) {
       setEndedAt(new Date().toISOString())

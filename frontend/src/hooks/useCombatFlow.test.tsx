@@ -387,6 +387,31 @@ describe('submitCombatAction — camino feliz', () => {
     })
   })
 
+  it('bug real (2026-09-29): la iniciativa siguiente no arranca hasta que se aplica el golpe; vida primero, luego iniciativa', async () => {
+    mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
+    const iniciativa = { jugador: { roll: 12 }, npc: { roll: 7 }, ganador: 'jugador' } as unknown as InitiativeRollInfo
+    mockNarrate.mockResolvedValue(
+      baseNarrateResponse({
+        condicionFisica: 'HERIDO',
+        combatExchangeDisplay: { atacanteEsJugador: false } as never,
+        nextInitiativeRoll: iniciativa,
+      }) as never,
+    )
+    const { result } = renderHook(() => useHarness())
+    await act(() => result.current.combat.submitCombatAction('Ataco a mi enemigo', {}))
+
+    // Los dados del golpe todavía ruedan: ni vida ni iniciativa nueva.
+    expect(result.current.condicionFisica).toBe('ILESO')
+    expect(result.current.lastInitiativeRoll).toBeNull()
+    expect(result.current.combat.awaitingNextInitiative).toBe(true)
+
+    // Aterriza el segundo dado del golpe (LogPanel → onAllLanded): vida aplicada y, solo entonces,
+    // arranca la tirada de iniciativa.
+    act(() => result.current.combat.triggerExchangeApply())
+    expect(result.current.condicionFisica).toBe('HERIDO')
+    expect(result.current.lastInitiativeRoll).toBe(iniciativa)
+  })
+
   it('en subida de nivel, suma pendingAttributePoints y actualiza level', async () => {
     mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
     mockNarrate.mockResolvedValue(
