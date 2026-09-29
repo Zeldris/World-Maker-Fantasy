@@ -63,10 +63,8 @@ felicidad) en vez de un sistema paralelo, y cumple "cada muerte cuenta": nadie a
 
 Lo que el lore NO fija y hay que decidir:
 - Edad adulta y esperanza de vida de Goirntes, Nabieus y Faerus (solo están las de los orcos).
-- **Escala de tiempo**: la partida avanza minutos de ficción por acción; una cría tarda 10 años en
-  ser adulta. Medieval Dynasty comprime el año a unas horas de juego. ¿Se comprime (p. ej. una
-  "estación de crecimiento" por cada X días de ficción) o se deja real, y el sistema es sobre todo
-  para partidas muy largas?
+- ~~Escala de tiempo~~ **Decidido por Álvaro (2026-09-29): sin comprimir**, a tiempo real de
+  juego. Una cría tarda lo que diga su raza en años de ficción (10 para un orco).
 - Si un súbdito de otra raza puede vivir en el Reino (hoy los compañeros capturados sí).
 
 Archivos que tocaría si se aprueba: `docs/rpgtarkor/sistemas-reino/expediciones-poblacion.md`

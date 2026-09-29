@@ -218,16 +218,8 @@ No son fallos. Se retoman cuando cambie su condición.
 Resumen de los 🧭 que quedan. Detalle técnico en la
 [referencia X4 § 12](../arquitectura/22-mundo-vivo-x4-tecnico.md#12-preguntas-abiertas-para-álvaro).
 
-1. **Goirnos al saquear un humanoide** (`goirnosDeBotin`, B27): hoy 2 + 2 × nivel (un nivel 3 lleva
-   8 Goirnos). ¿Vale esa cantidad o prefieres otra? (Reformulada: la primera vez no se entendió.)
-2. **Terreno contra hogar** en 6 fuentes (`gargantua-de-ceniza`, `junba-verde` y su resina, `temune`,
-   `ferike`, `telda-ceniza`): el catálogo dice que viven en un lugar cuyo terreno no casa con el que
-   dice su ficha. ¿Se corrige el terreno de la ficha o el lugar donde viven? (Reformulada.)
-3. **Costa de la Playa de Ceniza Blanca**: el lore la sitúa en la "costa norte" de las Llanuras,
-   pero al norte de las Llanuras está Cristal Helado, así que las Llanuras no tocan el mar por el
-   norte. ¿En qué costa está? (Reformulada.)
-4. **Maestro de diplomacia** (H-5): ¿quién lo enseña y dónde?
-5. Dessa, Yerin y Riko: aparcado hasta su lore.
+1. **Maestro de diplomacia** (H-5): ¿quién lo enseña y dónde?
+2. Dessa, Yerin y Riko: aparcado hasta su lore.
 
 ## Respuestas del 2026-09-29
 
@@ -252,3 +244,10 @@ Resumen de los 🧭 que quedan. Detalle técnico en la
   puesto avanzado de los Serhu; la más inteligente de los cuatro es Tevya; el nombre es Jeyselt;
   Kelife = "Brillo de aurora"; hay que crear el oficio de ganadero; el árbol Bolco pasa a Holdo;
   Dessa, Yerin y Riko aparcados.
+- Goirnos de humanoide 2 + 2 × nivel: ok. Nombres de oficios nuevos: ok.
+- Terreno contra hogar (6 fuentes): se corrige el terreno de la ficha para que case con el lugar
+  donde viven (el lugar sale del lore).
+- Playa de Ceniza Blanca: está en el tramo norte de la costa de las Llanuras (su costa oeste), no
+  en una "costa norte" de la región; corregir la redacción.
+- **Reproducción sin comprimir**: las crías crecen a tiempo real de juego (un orco tarda 10 años de
+  ficción en ser adulto).
