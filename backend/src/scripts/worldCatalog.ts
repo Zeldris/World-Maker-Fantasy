@@ -754,7 +754,8 @@ export const locations: LocationInput[] = [
   },
   {
     slug: 'conclave-keseg-prisilke-interior',
-    name: 'Jeyselet',
+    // Grafía fijada por Álvaro (2026-09-29): Jeyselt, igual que el poblado; "jeyselet" queda como alias.
+    name: 'Jeyselt',
     region: 'Ciénaga Troncal',
     // Fix real (2026-09-13, auditoría de lore Helek) — `kind` corregido de 'asentamiento' a
     // 'interior' (mismo bug de copia-pega que `campamento-feg-tusha-interior` más abajo): un
@@ -762,8 +763,8 @@ export const locations: LocationInput[] = [
     // punto que su exterior (`conclave-keseg-prisilke`).
     kind: 'interior',
     description:
-      'Dentro de la empalizada de Keseg Prisilke se encuentra el salón Jeyselet.',
-    aliases: ['jeyselet'],
+      'Dentro de la empalizada de Keseg Prisilke se encuentra el salón de Jeyselt.',
+    aliases: ['jeyselt', 'jeyselet'],
   },
   {
     slug: 'trepaderes-humededos',

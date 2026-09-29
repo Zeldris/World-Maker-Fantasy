@@ -1288,14 +1288,9 @@ describe('hasFalseMoonReference', () => {
     expect(hasFalseMoonReference('La luz lunar se refleja en el agua quieta.')).toBe(true);
   });
 
-  it('no dispara con la expresión canónica "brillo de luna" (el nombre popular del cinturón de micro-cristales real, origen del nombre Kelife)', () => {
-    expect(hasFalseMoonReference('Su piel refleja el brillo de luna del cinturón de cristal.')).toBe(false);
-    expect(hasFalseMoonReference('Los Kelife son conocidos por su brillo de luna.')).toBe(false);
-  });
-
-  it('sigue detectando una mención suelta de "luna" aunque la misma narración también use la expresión canónica en otra frase', () => {
-    const narration = 'El brillo de luna baña su piel cristalina, pero al alzar la vista ve la luna llena sobre el horizonte.';
-    expect(hasFalseMoonReference(narration)).toBe(true);
+  it('"brillo de luna" ya no es expresión canónica (2026-09-29, ahora "brillo de aurora"): se detecta como luna', () => {
+    expect(hasFalseMoonReference('Los Kelife son conocidos por su brillo de luna.')).toBe(true);
+    expect(hasFalseMoonReference('Su piel refleja el brillo de aurora del cinturón de cristal.')).toBe(false);
   });
 
   it('no dispara con narración normal sin ninguna mención de luna', () => {

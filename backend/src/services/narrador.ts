@@ -1527,7 +1527,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
         },
         {
           check: () => hasFalseMoonReference(parsed.narration),
-          reason: 'mencionar la luna — Helek Sirik no tiene luna convencional, en ningún momento del día (excepto la expresión fija "brillo de luna", el cinturón de micro-cristales real)',
+          reason: 'mencionar la luna — Helek Sirik no tiene luna convencional, en ningún momento del día (el cinturón de micro-cristales se llama "brillo de aurora")',
         },
         {
           check: () => hasMortalSpeakingNohade(parsed.narration),
@@ -2626,16 +2626,13 @@ export function hasWrongCelestialReference(narration: string, momentoDelDia?: 'd
 /// luna convencional (`genesis.md` § "El cielo sin luna") — lo que hay de noche es un cinturón
 /// difuso de micro-cristales que refleja un brillo perlado, nunca un disco de luna. A diferencia de
 /// `hasWrongCelestialReference` (que compara contra el momento del día), esta regla es absoluta:
-/// "luna"/"lunar" nunca son correctos, en ningún turno, de día o de noche. Única excepción: la
-/// expresión fija "brillo de luna" (el nombre POPULAR y legítimo del fenómeno real, origen del
-/// nombre de los Kelife — `razas.md`/`genesis.md`) — se excluye de la comprobación antes de buscar
-/// el resto de menciones sueltas de luna/lunar.
+/// "luna"/"lunar" nunca son correctos, en ningún turno, de día o de noche. Sin excepciones desde el
+/// 2026-09-29: el nombre popular del cinturón (y origen del nombre Kelife) pasó de "brillo de luna"
+/// a "brillo de aurora" por decisión de Álvaro, así que ya no hace falta dejar pasar esa expresión.
 const MOON_REFERENCE_REGEX = /\b(luna|lunar)\b/i;
-const CANONICAL_MOONLIGHT_PHRASE_REGEX = /brillo\s+de\s+luna/gi;
 
 export function hasFalseMoonReference(narration: string): boolean {
-  const withoutCanonicalPhrase = narration.replace(CANONICAL_MOONLIGHT_PHRASE_REGEX, '');
-  return MOON_REFERENCE_REGEX.test(normalizeText(withoutCanonicalPhrase));
+  return MOON_REFERENCE_REGEX.test(normalizeText(narration));
 }
 
 /// Narración-vs-lore, familia nueva "vs. lore del corpus" (auditoría de coherencia código↔lore,
