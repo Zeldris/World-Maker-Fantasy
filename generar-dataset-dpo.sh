@@ -30,8 +30,9 @@ else
   echo "AVISO: no existe el contenedor 'tarkor-postgres' — ver docs/arquitectura/15-instalacion.md § 3bis para crearlo."
 fi
 
-export NVM_DIR="$HOME/.var/app/com.visualstudio.code/config/nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && nvm use 22 >/dev/null 2>&1
+# Sin cargar nvm.sh: con `prefix=` en ~/.npmrc devuelve error y `set -e` cortaría el script.
+NODE_BIN="$(ls -d "$HOME/.var/app/com.visualstudio.code/config/nvm/versions/node"/v22*/bin 2>/dev/null | sort -V | tail -1)"
+[ -n "$NODE_BIN" ] && export PATH="$NODE_BIN:$PATH"
 
 # Hace falta Ollama arriba — la mitad "local" de cada par sale de narrateAction, una llamada real
 # al modelo narrador de producción (tarkor-narrador por defecto, OLLAMA_MODEL_NARRADOR en .env).
