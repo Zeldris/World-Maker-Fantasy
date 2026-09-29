@@ -160,6 +160,10 @@ de restringir el juego a Gorhorn (`routes/saves/creation.ts`); se parte de ahí.
   del RAG que den por hecho su historia. **[P]**
 - 🧭 Puntos de atributo y límites, orígenes permitidos por raza, y si Gorhorn se queda como
   personaje de inicio rápido. **[A]**
+- 🧭 **Trasfondo del personaje** (idea de Álvaro, 2026-09-29, se diseña al llegar a este hito): dos
+  vías. (a) El juego genera el trasfondo automáticamente a partir de raza, origen y clase. (b) El
+  jugador da sus datos y la IA local (o un motor aparte) redacta un trasfondo mínimo coherente con
+  el canon. **[A]**
 
 ## `0.8` — Beta de Berig
 
