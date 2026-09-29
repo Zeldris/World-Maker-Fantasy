@@ -1686,6 +1686,10 @@ export function GameView() {
     setResolvingDeath(true)
     try {
       await resolveDeath(saveId)
+      // Fase 9 (verificación en vivo 2026-09-29): tras morir en combate, el respawn/reinicio dejaba
+      // colgados en React los botones "Combatir / Huir" del combate anterior hasta recargar —
+      // `syncFromSave` no toca el estado de combate. La muerte siempre cierra el combate.
+      combat.closeCombat()
       const save = await getSave(saveId)
       syncFromSave(save)
     } catch (err) {

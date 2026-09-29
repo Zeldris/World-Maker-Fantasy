@@ -51,6 +51,19 @@ vi.mock('../../lib/prisma.js', () => ({
   prisma: {
     save: { findUnique: (...args: unknown[]) => findUniqueSave(...args), update: (...args: unknown[]) => updateSave(...args) },
     harvestYield: { findMany: (...args: unknown[]) => findManyHarvestYield(...args) },
+    // Desollar (Fase 9, 2026-09-29): `carcassCandidatesFor` ya no usa `detectNpcsInScene` sino
+    // `NpcState` + `Npc` directamente. Para no reescribir cada caso, ambos se derivan de la misma
+    // lista que los tests siguen dando a `detectNpcsInScene` (el cadáver "en escena").
+    npcState: {
+      findMany: async () =>
+        ((await detectNpcsInScene()) as { slug: string; condicionFisica: string; saqueado?: boolean; groupSize?: number | null; groupDefeated?: number; corpsesLooted?: number }[])
+          .map((n) => ({ id: `st-${n.slug}`, npcId: `n-${n.slug}`, scope: scopeFor('PLANTILLA', 'loc1'), condicionFisica: n.condicionFisica, saqueado: n.saqueado ?? false, groupSize: n.groupSize ?? null, groupDefeated: n.groupDefeated ?? 0, corpsesLooted: n.corpsesLooted ?? 0, zonaLocationId: null }))
+          .filter((st) => st.condicionFisica === 'MUERTO' || st.groupDefeated > 0),
+    },
+    npc: {
+      findMany: async () =>
+        ((await detectNpcsInScene()) as { slug: string; ataqueNatural: string | null }[]).map((n) => ({ id: `n-${n.slug}`, slug: n.slug, kind: 'PLANTILLA', ataqueNatural: n.ataqueNatural })),
+    },
     worldPopulation: { findMany: (...args: unknown[]) => findManyWorldPopulation(...args) },
     $transaction: (...args: unknown[]) => transaction(...args),
   },

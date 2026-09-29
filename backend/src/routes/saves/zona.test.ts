@@ -366,8 +366,8 @@ describe('GET /saves/:id/zona', () => {
     });
     loadSessionFactsMock.mockResolvedValueOnce([]);
     detectNpcsInSceneMock.mockResolvedValueOnce([]);
-    findManyNpcState.mockImplementation(async (args: { where?: { condicionFisica?: string } }) =>
-      args?.where?.condicionFisica === 'MUERTO'
+    findManyNpcState.mockImplementation(async (args: { where?: { OR?: unknown[] } }) =>
+      args?.where?.OR
         ? [{ id: 'st1', npcId: 'n1', scope: 'loc1', condicionFisica: 'MUERTO', saqueado: false, groupSize: null, groupDefeated: 0, corpsesLooted: 0, zonaPosX: null, zonaPosY: null, zonaLocationId: null }]
         : [],
     );
@@ -378,7 +378,8 @@ describe('GET /saves/:id/zona', () => {
     const app = await buildApp();
     const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
     const cadaver = res.json().dinamicos.find((d: { tipo: string }) => d.tipo === 'CADAVER');
-    expect(cadaver).toMatchObject({ nombre: 'Cadáver de Ruptidar', cadaver: { npcSlug: 'ruptidar', saqueable: true, desollable: true } });
+    // Fauna sin objetos de catálogo: solo se desuella, Saquear no tendría nada (Fase 9).
+    expect(cadaver).toMatchObject({ nombre: 'Cadáver de Ruptidar', cadaver: { npcSlug: 'ruptidar', saqueable: false, desollable: true } });
     // Nunca en la misma celda que el jugador (425,425), pero pegado a él.
     expect(cadaver.x === 425 && cadaver.y === 425).toBe(false);
     expect(Math.abs(cadaver.x - 425)).toBeLessThanOrEqual(50);

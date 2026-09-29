@@ -435,12 +435,14 @@ export async function zonaRoutes(app: FastifyInstance) {
     // caza limpia...), se asigna aquí de forma perezosa — mismo criterio que los dinámicos de arriba
     // — en la celda libre más cercana al jugador, que es donde acaba de pelear: `GET /zona` siempre
     // se pide al abrir el mapa, antes de poder dar ningún paso.
-    const muertos = await prisma.npcState.findMany({ where: { saveId: save.id, condicionFisica: 'MUERTO' } });
-    const muertosPendientes = (muertos ?? []).filter((st) => st.condicionFisica === 'MUERTO').filter(hasPendingLoot).filter((st) => st.zonaLocationId == null || st.zonaLocationId === locationId);
+    // Fase 9 (2026-09-29): también los caídos de un grupo (`groupDefeated`), cuyo `condicionFisica`
+    // refleja al siguiente individuo vivo — mismo criterio que Desollar (`carcassCandidatesFor`).
+    const muertos = await prisma.npcState.findMany({ where: { saveId: save.id, OR: [{ condicionFisica: 'MUERTO' }, { groupDefeated: { gt: 0 } }] } });
+    const muertosPendientes = (muertos ?? []).filter((st) => st.condicionFisica === 'MUERTO' || st.groupDefeated > 0).filter(hasPendingLoot).filter((st) => st.zonaLocationId == null || st.zonaLocationId === locationId);
     if (muertosPendientes.length > 0) {
       const npcsMuertos = await prisma.npc.findMany({
         where: { id: { in: muertosPendientes.map((st) => st.npcId) }, worldId: save.worldId },
-        select: { id: true, slug: true, name: true, kind: true, ataqueNatural: true },
+        select: { id: true, slug: true, name: true, kind: true, ataqueNatural: true, _count: { select: { items: true } } },
       });
       const npcMuertoById = new Map(npcsMuertos.map((n) => [n.id, n]));
       const desollables = new Set(
@@ -473,7 +475,9 @@ export async function zonaRoutes(app: FastifyInstance) {
           x: pos.x,
           y: pos.y,
           descubierto: true,
-          cadaver: { npcSlug: npc.slug, nombre: npc.name, saqueable: true, desollable },
+          // Saquear solo si hay algo: un humanoide (lleva Goirnos, B27) o un NPC con objetos de catálogo;
+          // la fauna sin objetos solo se desuella.
+          cadaver: { npcSlug: npc.slug, nombre: npc.name, saqueable: npc.ataqueNatural === null || (npc._count?.items ?? 0) > 0, desollable },
         });
       }
     }

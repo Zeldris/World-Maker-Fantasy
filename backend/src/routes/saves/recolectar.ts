@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { metodoForOficio, attributeForOficio, attributeSecundarioForMetodo, professionIdForOficio, matchesOficioPrefix } from '../../services/harvestAbilities.js';
-import { detectNpcsInScene, scopeFor, hasPendingLoot } from '../../services/npcScene.js';
+import { scopeFor, hasPendingLoot } from '../../services/npcScene.js';
 import { loadSessionFacts, appendSessionFacts } from '../../services/worldFacts.js';
 import { inventoryCapacityFor, totalInventoryUnits } from '../../services/inventoryCapacity.js';
 import { effectiveAttributes, effectiveInventorySlotsBonus, effectiveSecondaryAttributes } from '../../services/equipment.js';
@@ -314,15 +314,27 @@ async function carcassCandidatesFor(
   worldId: string,
   saveId: string,
   currentLocationId: string | null,
-  sessionFacts: string[],
   estacionActual: Estacion,
   climaActual: EstadoClima | null,
-  fictionalMinutes: number,
 ): Promise<SourceCandidate[]> {
-  const npcsInScene = await detectNpcsInScene({ action: '', worldId, sessionFacts, saveId, currentLocationId, fictionalMinutes });
-  const carcasses = npcsInScene.filter(
-    (n) => n.ataqueNatural !== null && hasPendingLoot(n) && (n.condicionFisica === 'MUERTO' || !!n.groupDefeated),
-  );
+  // Fase 9 (verificación en vivo 2026-09-29): antes se partía de `detectNpcsInScene`, que solo ve
+  // a un NPC si su nombre sale en la acción o en los hechos de sesión — el cadáver recién abatido
+  // podía no estar "en escena" según lo que hubiera narrado el LLM, y Desollar decía "no hay nada"
+  // aunque el pin del mapa sí lo mostrara. Ahora el mismo criterio determinista que el pin de
+  // cadáver (`GET /zona`): `NpcState` MUERTO o con caídos de grupo, botín pendiente, de ESTA
+  // Location (scope + `zonaLocationId`).
+  const estados = await prisma.npcState.findMany({
+    where: { saveId, OR: [{ condicionFisica: 'MUERTO' }, { groupDefeated: { gt: 0 } }] },
+  });
+  const pendientes = estados.filter(hasPendingLoot).filter((st) => st.zonaLocationId == null || st.zonaLocationId === currentLocationId);
+  const npcsMuertos = pendientes.length
+    ? await prisma.npc.findMany({ where: { worldId, id: { in: pendientes.map((st) => st.npcId) } }, select: { id: true, slug: true, kind: true, ataqueNatural: true } })
+    : [];
+  const npcById = new Map(npcsMuertos.map((n) => [n.id, n]));
+  const carcasses = pendientes
+    .map((st) => ({ st, npc: npcById.get(st.npcId) }))
+    .filter((c): c is { st: (typeof pendientes)[number]; npc: (typeof npcsMuertos)[number] } => !!c.npc && c.npc.ataqueNatural !== null && scopeFor(c.npc.kind, currentLocationId) === c.st.scope)
+    .map((c) => c.npc);
   if (carcasses.length === 0) return [];
 
   const rows = await prisma.harvestYield.findMany({
@@ -556,8 +568,7 @@ export async function recolectarRoutes(app: FastifyInstance) {
     const cachedSources = cachedRollFor(save, request.params.oficio, save.currentLocationId);
     if (cachedSources) return { sources: groupByCategory(cachedSources), puedeExplorar: false, enCooldown: false };
 
-    const sessionFacts = await loadSessionFacts(save.id);
-    const rawCandidates = await carcassCandidatesFor(save.worldId, save.id, save.currentLocationId, sessionFacts, estacionActual, climaActual, save.worldState?.fictionalMinutes ?? 0);
+    const rawCandidates = await carcassCandidatesFor(save.worldId, save.id, save.currentLocationId, estacionActual, climaActual);
     if (rawCandidates.length === 0) return { sources: [], puedeExplorar: false, enCooldown: false };
     const roll = gatheringRollFor(
       { attributes: save.attributes as AttributeBlock, secondaryAttributesJson: save.secondaryAttributes, inventoryItems: save.inventoryItems, professionProgress: save.professionProgress },
