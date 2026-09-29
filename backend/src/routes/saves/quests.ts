@@ -74,7 +74,7 @@ export async function aceptarQuest(
 
   const questText = normalizeText(`${title} ${description}`);
   const [worldNpcs, worldLocations, worldItems] = await Promise.all([
-    prisma.npc.findMany({ where: { worldId: save.worldId } }),
+    prisma.npc.findMany({ where: { worldId: save.worldId, muertoEnMundo: false } }),
     prisma.location.findMany({ where: { worldId: save.worldId } }),
     prisma.itemCatalog.findMany({ where: { worldId: save.worldId } }),
   ]);

@@ -24,10 +24,13 @@ import type { Clase } from './classAbilities.js';
 /// Ciclo (todo en días de ficción): lanzar el día D (EN_TRANSITO, `diaSalida` D) → al llegar, el día
 /// D+1, tirada de riesgo y recolección (RECOLECTANDO → RETORNANDO en el mismo paso: la recolección es
 /// instantánea) → el día D+2 (`diaRegreso`) COMPLETADA y el botín entra en el Almacén de la facción.
-/// Si salta la intercepción la expedición pasa a INTERCEPTADA y pierde la carga; nadie muere (los
-/// `Npc` son de mundo, no de partida). Fase 13-C: al saltar la intercepción, `resolverInterceptacion`
+/// Si salta la intercepción la expedición pasa a INTERCEPTADA y pierde la carga. Fase 13-C: al saltar la intercepción, `resolverInterceptacion`
 /// enfrenta a un `Npc` real de la facción hostil con los guardias (`resolveExchange`, por rondas); si
 /// los guardias aguantan la expedición sigue su curso, si caen se pierde la carga y sube la presión.
+/// Muertes (decisión de Álvaro, 2026-09-29): cada participante que cae fuera de combate tira una
+/// probabilidad muy baja de morir (`PROBABILIDAD_MUERTE_EN_INTERCEPCION`); la muerte es de MUNDO
+/// (`Npc.muertoEnMundo`), no de partida — ver `npcElegibleParaExpedicion` para lo que un tick nunca
+/// puede tocar (líderes, NPC de misión/quests, Maestros como guardia/atacante).
 
 // ─────────────────────────── Constantes (valores por defecto revisables) ───────────────────────────
 
@@ -63,6 +66,86 @@ export function oficioRutaFor(professionId: string): string {
 /// ¿El `role` del NPC dice guerrero/guardia/patrulla?
 export function esRolGuardia(role: string): boolean {
   return /guerrer|guardia|patrull/i.test(role);
+}
+
+// ─────────────────────────── Elegibilidad (salvaguardas de un tick en segundo plano) ───────────────────────────
+
+export type RolExpedicion = 'recolector' | 'guardia' | 'atacante';
+
+/// NPC de trama referenciados por slug en lógica fija (la misión de Gistera Koh y el Orco Enfurecido,
+/// `quests.ts`/`turnResolution.ts`): el motor los busca por slug, no por `Quest.targetNpcId`.
+export const SLUGS_NPC_DE_TRAMA: readonly string[] = ['gistera-koh', 'orco-enfurecido-hondonada'];
+
+/// Lo que un tick nunca puede tocar, cargado una vez por mundo (`cargarProtegidos`).
+export interface NpcsProtegidos {
+  /// Ids de líderes de facción (`Faction.liderNpcId`) y de objetivos de misión (`Quest.targetNpcId`).
+  ids: ReadonlySet<string>;
+  /// Slugs de trama fija y de compañeros de alguna partida (`Companion.sourceSlug`).
+  slugs: ReadonlySet<string>;
+}
+
+export interface NpcParaElegibilidad {
+  id: string;
+  slug: string;
+  interactionTypes: readonly string[];
+  teachesProfession: string | null;
+  muertoEnMundo: boolean;
+}
+
+/// Puro: única regla de quién puede entrar en una expedición o ser atacante de una intercepción.
+/// Nunca: muertos de mundo, líderes de facción, NPC con `NPC_MISION`, NPC referenciados por misiones
+/// (ids o slugs de trama) ni compañeros de alguna partida. Además los Maestros (`teachesProfession`)
+/// no pueden ser `guardia` ni `atacante` (sí `recolector`): un combate del tick podría matarlos.
+export function npcElegibleParaExpedicion(npc: NpcParaElegibilidad, rol: RolExpedicion, protegidos: NpcsProtegidos): boolean {
+  if (npc.muertoEnMundo) return false;
+  if (protegidos.ids.has(npc.id) || protegidos.slugs.has(npc.slug)) return false;
+  if (npc.interactionTypes.includes('NPC_MISION')) return false;
+  if (npc.teachesProfession && rol !== 'recolector') return false;
+  return true;
+}
+
+/// Carga los protegidos del mundo: líderes de facción, objetivos de cualquier misión (de cualquier
+/// partida y estado), slugs de trama y compañeros reclutados.
+export async function cargarProtegidos(tx: TxDb, worldId: string): Promise<NpcsProtegidos> {
+  const [lideres, misiones, companeros] = await Promise.all([
+    tx.faction.findMany({ where: { worldId, liderNpcId: { not: null } }, select: { liderNpcId: true } }),
+    tx.quest.findMany({ where: { save: { worldId }, targetNpcId: { not: null } }, select: { targetNpcId: true } }),
+    tx.companion.findMany({ where: { save: { worldId }, sourceSlug: { not: null } }, select: { sourceSlug: true } }),
+  ]);
+  return {
+    ids: new Set([...lideres.map((f) => f.liderNpcId!), ...misiones.map((q) => q.targetNpcId!)]),
+    slugs: new Set([...SLUGS_NPC_DE_TRAMA, ...companeros.map((c) => c.sourceSlug!)]),
+  };
+}
+
+// ─────────────────────────── Muerte en la intercepción ───────────────────────────
+
+/// Probabilidad (0..1) de que un participante que cae fuera de combate (CONVALECIENTE o peor) en una
+/// intercepción muera de verdad. Muy baja a propósito (decisión de Álvaro, 2026-09-29: "es un mundo
+/// donde cada muerte cuenta"); aplica igual a guardias y atacante. Inyectable en `resolverInterceptacion`.
+export const PROBABILIDAD_MUERTE_EN_INTERCEPCION = 0.03;
+
+/// Puro: ¿muere quien ha caído? La tirada (0..1, de `random()`) cae por debajo de la probabilidad.
+export function muereTrasCaer(probabilidad: number, tirada: number): boolean {
+  return tirada < probabilidad;
+}
+
+export interface MuerteInterceptacion { npcId: string; slug: string; rol: 'atacante' | 'guardia' }
+
+/// Puro y determinista dado `random`: una tirada por cada participante fuera de combate, en orden fijo
+/// (atacante y luego guardias en el orden dado). Quien sigue en pie no tira (no consume `random`).
+export function tirarMuertes(
+  atacante: { id: string; slug: string; condicion: CondicionFisica },
+  guardias: { id: string; slug: string; condicion: CondicionFisica }[],
+  probabilidad: number,
+  random: () => number,
+): MuerteInterceptacion[] {
+  const muertes: MuerteInterceptacion[] = [];
+  if (fueraDeCombate(atacante.condicion) && muereTrasCaer(probabilidad, random())) muertes.push({ npcId: atacante.id, slug: atacante.slug, rol: 'atacante' });
+  for (const g of guardias) {
+    if (fueraDeCombate(g.condicion) && muereTrasCaer(probabilidad, random())) muertes.push({ npcId: g.id, slug: g.slug, rol: 'guardia' });
+  }
+  return muertes;
 }
 
 /// Hash entero estable de una cadena (elecciones deterministas por día y facción).
@@ -205,6 +288,9 @@ export interface ResultadoCombateInterceptacion {
   rondas: number;
   /// true si se agotó `MAX_RONDAS_INTERCEPTACION` sin que cayera nadie del todo (los defensores resisten).
   tope: boolean;
+  /// Condición final de cada bando (los que llegan a CONVALECIENTE tiran la probabilidad de muerte).
+  condicionAtacante: CondicionFisica;
+  condicionGuardias: CondicionFisica[];
 }
 
 /// Puro y determinista dado `random`: el combate de intercepción. Cada ronda: (1) el atacante ataca al
@@ -213,7 +299,7 @@ export interface ResultadoCombateInterceptacion {
 /// del defensor y un contragolpe (`defensor_contragolpea`) empeora la del atacante — la misma "vida" por
 /// escalones (`oneStepWorseThan`) que el resto del combate. Solo vive en memoria: no toca BD.
 export function simularCombateInterceptacion(atacante: CombatienteInterceptacion, guardias: CombatienteInterceptacion[], random: () => number): ResultadoCombateInterceptacion {
-  if (guardias.length === 0) return { ganador: 'atacante', rondas: 0, tope: false };
+  if (guardias.length === 0) return { ganador: 'atacante', rondas: 0, tope: false, condicionAtacante: 'ILESO', condicionGuardias: [] };
   let condAtacante: CondicionFisica = 'ILESO';
   const condGuardias: CondicionFisica[] = guardias.map(() => 'ILESO');
 
@@ -223,8 +309,8 @@ export function simularCombateInterceptacion(atacante: CombatienteInterceptacion
     const ataque = resolveExchange(participanteDe(atacante, condAtacante), participanteDe(guardias[objetivo]!, condGuardias[objetivo]!), random);
     if (ataque.resultado === 'golpe_normal' || ataque.resultado === 'golpe_pleno') condGuardias[objetivo] = oneStepWorseThan(condGuardias[objetivo]!);
     else if (ataque.resultado === 'defensor_contragolpea') condAtacante = oneStepWorseThan(condAtacante);
-    if (fueraDeCombate(condAtacante)) return { ganador: 'defensores', rondas: ronda, tope: false };
-    if (condGuardias.every(fueraDeCombate)) return { ganador: 'atacante', rondas: ronda, tope: false };
+    if (fueraDeCombate(condAtacante)) return { ganador: 'defensores', rondas: ronda, tope: false, condicionAtacante: condAtacante, condicionGuardias: condGuardias };
+    if (condGuardias.every(fueraDeCombate)) return { ganador: 'atacante', rondas: ronda, tope: false, condicionAtacante: condAtacante, condicionGuardias: condGuardias };
 
     // 2) Cada guardia en pie contraataca al atacante.
     for (let g = 0; g < guardias.length; g++) {
@@ -232,11 +318,11 @@ export function simularCombateInterceptacion(atacante: CombatienteInterceptacion
       const res = resolveExchange(participanteDe(guardias[g]!, condGuardias[g]!), participanteDe(atacante, condAtacante), random);
       if (res.resultado === 'golpe_normal' || res.resultado === 'golpe_pleno') condAtacante = oneStepWorseThan(condAtacante);
       else if (res.resultado === 'defensor_contragolpea') condGuardias[g] = oneStepWorseThan(condGuardias[g]!);
-      if (fueraDeCombate(condAtacante)) return { ganador: 'defensores', rondas: ronda, tope: false };
+      if (fueraDeCombate(condAtacante)) return { ganador: 'defensores', rondas: ronda, tope: false, condicionAtacante: condAtacante, condicionGuardias: condGuardias };
     }
-    if (condGuardias.every(fueraDeCombate)) return { ganador: 'atacante', rondas: ronda, tope: false };
+    if (condGuardias.every(fueraDeCombate)) return { ganador: 'atacante', rondas: ronda, tope: false, condicionAtacante: condAtacante, condicionGuardias: condGuardias };
   }
-  return { ganador: 'defensores', rondas: MAX_RONDAS_INTERCEPTACION, tope: true };
+  return { ganador: 'defensores', rondas: MAX_RONDAS_INTERCEPTACION, tope: true, condicionAtacante: condAtacante, condicionGuardias: condGuardias };
 }
 
 /// Facción hostil que dispara el riesgo: entre los OTROS dueños de la región, la de mayor riesgo según
@@ -271,6 +357,8 @@ export interface ContextoInterceptacion {
   faccionHostilNombre: string | null;
   guardiaNpcIds: string[];
   recolectorNpcIds: string[];
+  /// Probabilidad de morir al caer (por defecto `PROBABILIDAD_MUERTE_EN_INTERCEPCION`); inyectable en tests.
+  probabilidadMuerte?: number;
 }
 
 /// Resumen del combate que se guarda en `Expedicion.interceptacion`.
@@ -283,32 +371,45 @@ export interface ResumenInterceptacion {
   /// Motivo si no hubo combate: 'sin-guardias' | 'sin-atacante'; o 'tope' si se agotaron las rondas.
   motivo?: 'sin-guardias' | 'sin-atacante' | 'tope';
   presionAplicada: boolean;
+  /// Participantes que murieron de verdad (`Npc.muertoEnMundo`); vacío si nadie cayó o nadie tuvo mala suerte.
+  muertes: { slug: string; rol: 'atacante' | 'guardia' }[];
 }
 
 /// GANCHO 13-C: se llama cuando la tirada de riesgo salta. Sin guardias (o sin atacante posible) la
 /// carga se pierde directamente. Si no, un `Npc` real de la facción hostil combate contra los guardias
 /// (`simularCombateInterceptacion`); 'salva' si los guardias resisten. Si ganan los atacantes suma
 /// presión a la `FactionRelation` entre las dos facciones con el mismo evento que `BAJA_DE_GUERRA`.
-/// No crea `CombatEncounter`/`NpcState` ni toca partidas: nadie muere, los `Npc` son de mundo.
+/// No crea `CombatEncounter`/`NpcState` ni toca partidas. Cada participante que cae fuera de combate tira
+/// la probabilidad de morir (`tirarMuertes`): la muerte es de mundo (`Npc.muertoEnMundo`), se anota en
+/// `resumen.muertes`. Atacante y guardias solo salen de `npcElegibleParaExpedicion` (sin líderes,
+/// misiones, Maestros ni muertos), así que un tick no puede romper la trama.
 export async function resolverInterceptacion(tx: TxDb, ctx: ContextoInterceptacion, random: () => number): Promise<{ carga: 'perdida' | 'salva'; resumen: ResumenInterceptacion }> {
-  const base = { faccionHostil: ctx.faccionHostilNombre, atacanteSlug: null, guardias: [] as string[], rondas: 0 };
+  const base = { faccionHostil: ctx.faccionHostilNombre, atacanteSlug: null, guardias: [] as string[], rondas: 0, muertes: [] as ResumenInterceptacion['muertes'] };
   const perdidaSinCombate = (motivo: 'sin-guardias' | 'sin-atacante', guardias: string[] = []) =>
     ({ carga: 'perdida' as const, resumen: { ...base, guardias, ganador: 'sin-combate' as const, motivo, presionAplicada: false } });
 
   if (ctx.guardiaNpcIds.length === 0) return perdidaSinCombate('sin-guardias');
   if (!ctx.faccionHostilNombre) return perdidaSinCombate('sin-atacante');
-  const [candidatos, guardiasNpc] = await Promise.all([
-    tx.npc.findMany({ where: { worldId: ctx.worldId, faction: ctx.faccionHostilNombre } }),
-    tx.npc.findMany({ where: { id: { in: ctx.guardiaNpcIds } }, orderBy: { id: 'asc' } }),
+  const [candidatos, guardiasNpc, protegidos] = await Promise.all([
+    tx.npc.findMany({ where: { worldId: ctx.worldId, faction: ctx.faccionHostilNombre, muertoEnMundo: false } }),
+    tx.npc.findMany({ where: { id: { in: ctx.guardiaNpcIds }, muertoEnMundo: false }, orderBy: { id: 'asc' } }),
+    cargarProtegidos(tx, ctx.worldId),
   ]);
-  const atacanteNpc = elegirAtacante(candidatos);
+  const atacanteNpc = elegirAtacante(candidatos.filter((n) => npcElegibleParaExpedicion(n, 'atacante', protegidos)));
   if (!atacanteNpc) return perdidaSinCombate('sin-atacante');
   if (guardiasNpc.length === 0) return perdidaSinCombate('sin-guardias');
 
   const combate = simularCombateInterceptacion(combatienteDeNpc(atacanteNpc), guardiasNpc.map(combatienteDeNpc), random);
+  const muertes = tirarMuertes(
+    { id: atacanteNpc.id, slug: atacanteNpc.slug, condicion: combate.condicionAtacante },
+    guardiasNpc.map((g, i) => ({ id: g.id, slug: g.slug, condicion: combate.condicionGuardias[i]! })),
+    ctx.probabilidadMuerte ?? PROBABILIDAD_MUERTE_EN_INTERCEPCION, random,
+  );
+  if (muertes.length > 0) await tx.npc.updateMany({ where: { id: { in: muertes.map((m) => m.npcId) } }, data: { muertoEnMundo: true } });
   const resumen: ResumenInterceptacion = {
     faccionHostil: ctx.faccionHostilNombre, atacanteSlug: atacanteNpc.slug, guardias: guardiasNpc.map((g) => g.slug),
     rondas: combate.rondas, ganador: combate.ganador, ...(combate.tope ? { motivo: 'tope' as const } : {}), presionAplicada: false,
+    muertes: muertes.map((m) => ({ slug: m.slug, rol: m.rol })),
   };
   if (combate.ganador === 'defensores') return { carga: 'salva', resumen };
 
@@ -339,13 +440,18 @@ type TxDb = Prisma.TransactionClient;
 
 const ACTIVAS = ['EN_TRANSITO', 'RECOLECTANDO', 'RETORNANDO'] as const;
 
-export interface ResultadoExpediciones { diasProcesados: number; lanzadas: number; completadas: number; interceptadas: number; depositados: number }
+export interface ResultadoExpediciones { diasProcesados: number; lanzadas: number; completadas: number; interceptadas: number; depositados: number; muertes: number }
+
+export interface OpcionesExpediciones {
+  /// Sustituye a `PROBABILIDAD_MUERTE_EN_INTERCEPCION` (tests).
+  probabilidadMuerte?: number;
+}
 
 /// Recorre las facciones de catálogo y, por mundo y una sola vez por día de ficción, avanza sus
 /// expediciones y lanza una nueva si no tienen ninguna activa. Marcador: `KingdomStats.ultimoDiaExpedicion`.
 /// `random` es inyectable (tirada de riesgo, tiradas de recolección y elección de botín).
-export async function advanceFactionExpeditions(prisma: Db, random: () => number = Math.random): Promise<ResultadoExpediciones> {
-  const result: ResultadoExpediciones = { diasProcesados: 0, lanzadas: 0, completadas: 0, interceptadas: 0, depositados: 0 };
+export async function advanceFactionExpeditions(prisma: Db, random: () => number = Math.random, opciones: OpcionesExpediciones = {}): Promise<ResultadoExpediciones> {
+  const result: ResultadoExpediciones = { diasProcesados: 0, lanzadas: 0, completadas: 0, interceptadas: 0, depositados: 0, muertes: 0 };
 
   const estados = await prisma.worldState.findMany({ select: { fictionalMinutes: true, save: { select: { worldId: true } } } });
   const minutosPorMundo = new Map<string, number[]>();
@@ -376,7 +482,7 @@ export async function advanceFactionExpeditions(prisma: Db, random: () => number
         if (claim.count === 0 || pendientes === 0) return; // otro tick ya lo hizo, o solo se fija la línea base
         for (let i = 1; i <= pendientes; i++) {
           const dia = diaActual - pendientes + i;
-          await avanzarDiaFaccion(tx, worldId, faction, dia, random, result);
+          await avanzarDiaFaccion(tx, worldId, faction, dia, random, result, opciones);
         }
         result.diasProcesados += pendientes;
       }, { timeout: 60_000, maxWait: 10_000 });
@@ -385,15 +491,16 @@ export async function advanceFactionExpeditions(prisma: Db, random: () => number
   return result;
 }
 
-async function avanzarDiaFaccion(tx: TxDb, worldId: string, faction: { id: string; name: string }, dia: number, random: () => number, result: ResultadoExpediciones): Promise<void> {
+async function avanzarDiaFaccion(tx: TxDb, worldId: string, faction: { id: string; name: string }, dia: number, random: () => number, result: ResultadoExpediciones, opciones: OpcionesExpediciones): Promise<void> {
   const activas = await tx.expedicion.findMany({ where: { factionId: faction.id, status: { in: [...ACTIVAS] } }, include: { members: true }, orderBy: { diaSalida: 'asc' } });
   for (const exp of activas) {
     if (exp.status === 'RETORNANDO' && dia >= exp.diaRegreso) {
       result.depositados += await completarExpedicion(tx, exp);
       result.completadas++;
     } else if (exp.status !== 'RETORNANDO' && dia >= exp.diaSalida + 1) {
-      const interceptada = await llegarAlDestino(tx, worldId, faction, exp, dia, random);
+      const { interceptada, muertes } = await llegarAlDestino(tx, worldId, faction, exp, dia, random, opciones);
       if (interceptada) result.interceptadas++;
+      result.muertes += muertes;
     }
   }
   const sigueActiva = await tx.expedicion.count({ where: { factionId: faction.id, status: { in: [...ACTIVAS] } } });
@@ -404,7 +511,11 @@ async function avanzarDiaFaccion(tx: TxDb, worldId: string, faction: { id: strin
 /// potencial, destino = `Location` de sus regiones (o sin dueño) que tenga fuentes para ese oficio.
 /// Devuelve false si no hay recolectores o ningún destino viable.
 async function lanzarExpedicion(tx: TxDb, worldId: string, faction: { id: string; name: string }, dia: number): Promise<boolean> {
-  const npcs = await tx.npc.findMany({ where: { worldId, faction: faction.name }, select: { id: true, role: true } });
+  const [todos, protegidos] = await Promise.all([
+    tx.npc.findMany({ where: { worldId, faction: faction.name, muertoEnMundo: false }, select: { id: true, slug: true, role: true, interactionTypes: true, teachesProfession: true, muertoEnMundo: true } }),
+    cargarProtegidos(tx, worldId),
+  ]);
+  const npcs = todos.filter((n) => npcElegibleParaExpedicion(n, 'recolector', protegidos));
   if (npcs.length === 0) return false;
   const npcIds = npcs.map((n) => n.id);
   const [potenciales, progresos] = await Promise.all([
@@ -440,7 +551,7 @@ async function lanzarExpedicion(tx: TxDb, worldId: string, faction: { id: string
         // Si hay relación en ambas direcciones, manda la de mayor riesgo.
         if (riesgoPorRelacion(r.type) >= riesgoPorRelacion(porFaccion.get(otra))) porFaccion.set(otra, r.type);
       }
-      const guardias = elegirGuardias(npcs, recolectores.map((r) => r.npcId));
+      const guardias = elegirGuardias(todos.filter((n) => npcElegibleParaExpedicion(n, 'guardia', protegidos)), recolectores.map((r) => r.npcId));
       await tx.expedicion.create({
         data: {
           worldId, factionId: faction.id, destinoLocationId: destino.id, professionId,
@@ -460,15 +571,16 @@ async function lanzarExpedicion(tx: TxDb, worldId: string, faction: { id: string
 /// si no hubiera saltado (con el resumen del combate en `interceptacion`). Cada recolector tira su
 /// recolección con los atributos del `Npc` y su nivel efectivo, y la expedición pasa a RETORNANDO con
 /// el botín guardado (se deposita al completar). No reduce la población del mundo ni pone cooldown a
-/// la fuente: son NPC de facción, no una partida. Devuelve true si fue interceptada.
+/// la fuente: son NPC de facción, no una partida. Devuelve si fue interceptada y cuántos murieron en el combate.
 async function llegarAlDestino(
   tx: TxDb, worldId: string, faction: { id: string; name: string },
   exp: { id: string; destinoLocationId: string; professionId: string; riesgo: number; members: { npcId: string; rol: string }[] },
-  dia: number, random: () => number,
-): Promise<boolean> {
+  dia: number, random: () => number, opciones: OpcionesExpediciones,
+): Promise<{ interceptada: boolean; muertes: number }> {
   const destino = await tx.location.findUniqueOrThrow({ where: { id: exp.destinoLocationId }, select: { slug: true, region: true } });
   const tirada = random();
   let interceptacion: Prisma.InputJsonValue | undefined;
+  let muertes = 0;
   if (seIntercepta(exp.riesgo, tirada)) {
     const relaciones = await tx.factionRelation.findMany({ where: { worldId, OR: [{ sourceFactionId: faction.id }, { targetFactionId: faction.id }] }, include: { sourceFaction: { select: { name: true } }, targetFaction: { select: { name: true } } } });
     const porFaccion = new Map<string, FactionRelationType>();
@@ -481,11 +593,13 @@ async function llegarAlDestino(
       faccionHostilNombre: faccionHostilDeRegion(destino.region, faction.name, porFaccion),
       guardiaNpcIds: exp.members.filter((m) => m.rol === 'guardia').map((m) => m.npcId),
       recolectorNpcIds: exp.members.filter((m) => m.rol === 'recolector').map((m) => m.npcId),
+      probabilidadMuerte: opciones.probabilidadMuerte,
     }, random);
+    muertes = res.resumen.muertes.length;
     interceptacion = res.resumen as unknown as Prisma.InputJsonValue;
     if (res.carga === 'perdida') {
       await tx.expedicion.update({ where: { id: exp.id }, data: { status: 'INTERCEPTADA', tiradaRiesgo: tirada * 100, botin: undefined, interceptacion } });
-      return true;
+      return { interceptada: true, muertes };
     }
   }
 
@@ -493,7 +607,7 @@ async function llegarAlDestino(
   const ruta = oficioRutaFor(exp.professionId);
   const recolectorIds = exp.members.filter((m) => m.rol === 'recolector').map((m) => m.npcId);
   const [npcs, potenciales, progresos] = await Promise.all([
-    tx.npc.findMany({ where: { id: { in: recolectorIds } }, select: { id: true, attributes: true } }),
+    tx.npc.findMany({ where: { id: { in: recolectorIds }, muertoEnMundo: false }, select: { id: true, attributes: true } }),
     tx.npcProfessionPotential.findMany({ where: { npcId: { in: recolectorIds }, professionId: exp.professionId } }),
     tx.npcProfessionProgress.findMany({ where: { npcId: { in: recolectorIds }, professionId: exp.professionId } }),
   ]);
@@ -514,7 +628,7 @@ async function llegarAlDestino(
     where: { id: exp.id },
     data: { status: 'RETORNANDO', tiradaRiesgo: tirada * 100, botin: { items } as unknown as Prisma.InputJsonValue, interceptacion },
   });
-  return false;
+  return { interceptada: false, muertes };
 }
 
 /// Regreso (día `diaRegreso`): el botín entra en `AlmacenItem.factionId` (una fila por unidad, respetando

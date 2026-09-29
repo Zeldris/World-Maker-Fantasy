@@ -64,7 +64,7 @@ export async function pickTravelInterruption(
   if (travel.pathIds.length < 3) return null;
 
   const itinerantNpcs = await prisma.npc.findMany({
-    where: { worldId, kind: 'PLANTILLA', homeLocationSlug: null },
+    where: { worldId, kind: 'PLANTILLA', homeLocationSlug: null, muertoEnMundo: false },
     select: { id: true, slug: true, name: true, role: true },
   });
   if (itinerantNpcs.length === 0) return null;

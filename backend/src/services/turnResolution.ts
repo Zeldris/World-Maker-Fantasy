@@ -3320,7 +3320,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // siendo lo único que importa en producción con `Math.random()` real — esto solo fija el orden
     // de iteración para que sea reproducible en pruebas.
     const itinerantCandidates = await prisma.npc.findMany({
-      where: { worldId, kind: 'PLANTILLA', homeLocationSlug: null },
+      where: { worldId, kind: 'PLANTILLA', homeLocationSlug: null, muertoEnMundo: false },
       select: { slug: true, name: true, role: true, temperamento: true, faction: true },
       orderBy: { slug: 'asc' },
     });
@@ -5928,7 +5928,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       // Mismo criterio que ya usan targetLocationId/targetItemName más abajo (buscan en TODO el
       // mundo, no solo en escena) — se extiende aquí por consistencia.
       if (!targetNpcId) {
-        const worldNpcs = await tx.npc.findMany({ where: { worldId } });
+        const worldNpcs = await tx.npc.findMany({ where: { worldId, muertoEnMundo: false } });
         targetNpcId = worldNpcs.find((npc) => questText.includes(normalizeText(npc.name)))?.id;
       }
 

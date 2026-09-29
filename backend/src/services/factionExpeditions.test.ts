@@ -5,6 +5,7 @@ import {
   oficioRutaFor, oficiosDeRecoleccionOrdenados, ordenarDestinos, regionesElegibles, resolverInterceptacion,
   MAX_RONDAS_INTERCEPTACION, elegirAtacante, faccionHostilDeRegion, simularCombateInterceptacion, type CombatienteInterceptacion,
   riesgoIntercepcion, riesgoPorRelacion, seIntercepta, xpRecolector,
+  PROBABILIDAD_MUERTE_EN_INTERCEPCION, muereTrasCaer, tirarMuertes, npcElegibleParaExpedicion, SLUGS_NPC_DE_TRAMA, type NpcParaElegibilidad, type NpcsProtegidos,
 } from './factionExpeditions.js';
 import type { SourceCandidate } from '../routes/saves/recolectar.js';
 
@@ -115,10 +116,15 @@ describe('intercepción con combate (Fase 13-C)', () => {
   it('tope de rondas: si nadie cae los defensores resisten', () => {
     // Atributos iguales y d20 iguales: empate exacto = el golpe no conecta, para los dos lados.
     const r = simularCombateInterceptacion(comb('atacante', 10), [comb('g1', 10)], fijo);
-    expect(r).toEqual({ ganador: 'defensores', rondas: MAX_RONDAS_INTERCEPTACION, tope: true });
+    expect(r).toEqual({ ganador: 'defensores', rondas: MAX_RONDAS_INTERCEPTACION, tope: true, condicionAtacante: 'ILESO', condicionGuardias: ['ILESO'] });
+  });
+  it('el combate expone la condición final de cada bando', () => {
+    const r = simularCombateInterceptacion(comb('atacante', 18), [comb('g1', 4)], fijo);
+    expect(r.condicionGuardias).toEqual(['CONVALECIENTE']);
+    expect(r.condicionAtacante).toBe('ILESO');
   });
   it('sin guardias en el simulador gana el atacante sin rondas', () => {
-    expect(simularCombateInterceptacion(comb('a', 10), [], fijo)).toEqual({ ganador: 'atacante', rondas: 0, tope: false });
+    expect(simularCombateInterceptacion(comb('a', 10), [], fijo)).toEqual({ ganador: 'atacante', rondas: 0, tope: false, condicionAtacante: 'ILESO', condicionGuardias: [] });
   });
   it('determinista con el mismo random', () => {
     const secuencia = () => { let i = 0; const v = [0.13, 0.77, 0.42, 0.91, 0.05, 0.63, 0.28, 0.5]; return () => v[i++ % v.length]!; };
@@ -158,5 +164,75 @@ describe('botín y XP', () => {
   });
   it('duración por defecto 2 días', () => {
     expect(DURACION_EXPEDICION_DIAS).toBe(2);
+  });
+});
+
+describe('muerte en la intercepción', () => {
+  it('probabilidad por defecto muy baja (3 %)', () => {
+    expect(PROBABILIDAD_MUERTE_EN_INTERCEPCION).toBe(0.03);
+  });
+  it('muereTrasCaer: solo si la tirada cae por debajo de la probabilidad', () => {
+    expect(muereTrasCaer(0.03, 0.02)).toBe(true);
+    expect(muereTrasCaer(0.03, 0.03)).toBe(false);
+    expect(muereTrasCaer(0.03, 0.99)).toBe(false);
+    expect(muereTrasCaer(0, 0)).toBe(false);
+    expect(muereTrasCaer(1, 0.999)).toBe(true);
+  });
+  const at = (condicion: 'ILESO' | 'HERIDO' | 'GRAVE' | 'CONVALECIENTE' | 'MUERTO') => ({ id: 'a', slug: 'atacante', condicion });
+  const gu = (id: string, condicion: 'ILESO' | 'HERIDO' | 'GRAVE' | 'CONVALECIENTE' | 'MUERTO') => ({ id, slug: `slug-${id}`, condicion });
+  it('solo tiran los que caen (CONVALECIENTE o peor); con probabilidad 1 mueren todos ellos', () => {
+    const muertes = tirarMuertes(at('GRAVE'), [gu('g1', 'CONVALECIENTE'), gu('g2', 'HERIDO')], 1, () => 0.5);
+    expect(muertes).toEqual([{ npcId: 'g1', slug: 'slug-g1', rol: 'guardia' }]);
+    expect(tirarMuertes(at('CONVALECIENTE'), [gu('g1', 'CONVALECIENTE')], 1, () => 0.5).map((m) => m.rol)).toEqual(['atacante', 'guardia']);
+  });
+  it('con probabilidad 0 nadie muere y quien sigue en pie no consume random', () => {
+    let llamadas = 0;
+    const random = () => { llamadas++; return 0; };
+    expect(tirarMuertes(at('CONVALECIENTE'), [gu('g1', 'CONVALECIENTE')], 0, random)).toEqual([]);
+    expect(llamadas).toBe(2);
+    llamadas = 0;
+    tirarMuertes(at('ILESO'), [gu('g1', 'HERIDO')], 1, random);
+    expect(llamadas).toBe(0);
+  });
+  it('determinista: mismo random, mismas muertes, en orden atacante y guardias', () => {
+    const secuencia = () => { let i = 0; const v = [0.01, 0.9, 0.02]; return () => v[i++ % v.length]!; };
+    const caidos = () => tirarMuertes(at('CONVALECIENTE'), [gu('g1', 'CONVALECIENTE'), gu('g2', 'CONVALECIENTE')], 0.03, secuencia());
+    expect(caidos()).toEqual(caidos());
+    expect(caidos().map((m) => m.npcId)).toEqual(['a', 'g2']);
+  });
+});
+
+describe('npcElegibleParaExpedicion', () => {
+  const npc = (o: Partial<NpcParaElegibilidad> = {}): NpcParaElegibilidad => ({ id: 'n1', slug: 'n-uno', interactionTypes: [], teachesProfession: null, muertoEnMundo: false, ...o });
+  const ninguno: NpcsProtegidos = { ids: new Set(), slugs: new Set() };
+  const roles = ['recolector', 'guardia', 'atacante'] as const;
+  it('un NPC corriente vale para cualquier rol', () => {
+    for (const rol of roles) expect(npcElegibleParaExpedicion(npc(), rol, ninguno)).toBe(true);
+  });
+  it('nunca un muerto de mundo', () => {
+    for (const rol of roles) expect(npcElegibleParaExpedicion(npc({ muertoEnMundo: true }), rol, ninguno)).toBe(false);
+  });
+  it('nunca un líder de facción ni un objetivo de misión (por id)', () => {
+    for (const rol of roles) expect(npcElegibleParaExpedicion(npc(), rol, { ids: new Set(['n1']), slugs: new Set() })).toBe(false);
+  });
+  it('nunca NPC de trama fija ni compañeros (por slug); Gistera Koh está en la lista', () => {
+    expect(SLUGS_NPC_DE_TRAMA).toContain('gistera-koh');
+    for (const rol of roles) {
+      expect(npcElegibleParaExpedicion(npc({ slug: 'gistera-koh' }), rol, { ids: new Set(), slugs: new Set(SLUGS_NPC_DE_TRAMA) })).toBe(false);
+      expect(npcElegibleParaExpedicion(npc(), rol, { ids: new Set(), slugs: new Set(['n-uno']) })).toBe(false);
+    }
+  });
+  it('nunca un NPC con NPC_MISION; NPC_LORE y MAESTRO_OFICIO solos no bloquean', () => {
+    for (const rol of roles) expect(npcElegibleParaExpedicion(npc({ interactionTypes: ['NPC_LORE', 'NPC_MISION'] }), rol, ninguno)).toBe(false);
+    expect(npcElegibleParaExpedicion(npc({ interactionTypes: ['NPC_LORE'] }), 'guardia', ninguno)).toBe(true);
+  });
+  it('un Maestro puede recolectar pero no ser guardia ni atacante', () => {
+    const maestro = npc({ teachesProfession: 'pescador', interactionTypes: ['MAESTRO_OFICIO'] });
+    expect(npcElegibleParaExpedicion(maestro, 'recolector', ninguno)).toBe(true);
+    expect(npcElegibleParaExpedicion(maestro, 'guardia', ninguno)).toBe(false);
+    expect(npcElegibleParaExpedicion(maestro, 'atacante', ninguno)).toBe(false);
+  });
+  it('es determinista (pura): mismas entradas, mismo resultado', () => {
+    expect(npcElegibleParaExpedicion(npc(), 'guardia', ninguno)).toBe(npcElegibleParaExpedicion(npc(), 'guardia', ninguno));
   });
 });

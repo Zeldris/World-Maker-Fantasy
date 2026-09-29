@@ -1,8 +1,10 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { prisma } from '../lib/prisma.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
 import { advanceFactionExpeditions } from './factionExpeditions.js';
 import { REGION_OWNING_FACTIONS } from './reputation.js';
+import { detectNpcsInScene } from './npcScene.js';
 
 /// Fase 13-B contra Postgres real: lanzar, llegar, completar, stock, XP e idempotencia del tick. Usa la
 /// facción sembrada Clan Serhu (con NPC de pescador/herborista con potencial) en el mundo helek-sirik y
@@ -127,7 +129,8 @@ describe('advanceFactionExpeditions — intercepción con combate (Fase 13-C)', 
   let duenosOriginales: string[];
   let statsSnapshot: { id: string; ultimoDiaExpedicion: number | null }[] = [];
   let progresoSnapshot: Awaited<ReturnType<typeof prisma.npcProfessionProgress.findMany>> = [];
-  let npcSnapshot: { id: string; attributes: unknown; level: number }[] = [];
+  let npcSnapshot: { id: string; attributes: unknown; level: number; muertoEnMundo: boolean }[] = [];
+  let saveTardioId: string | null = null;
   let relacionesPrevias: Awaited<ReturnType<typeof prisma.factionRelation.findMany>> = [];
   let almacenPreviosIds: string[] = [];
   let expedicionesPreviasIds: string[] = [];
@@ -171,7 +174,7 @@ describe('advanceFactionExpeditions — intercepción con combate (Fase 13-C)', 
     fegGerId = (await prisma.faction.findFirstOrThrow({ where: { worldId, slug: 'feg-ger', saveId: null } })).id;
     statsSnapshot = await prisma.kingdomStats.findMany({ where: { faction: { worldId } }, select: { id: true, ultimoDiaExpedicion: true } });
     progresoSnapshot = await prisma.npcProfessionProgress.findMany({ where: { npc: { worldId } } });
-    npcSnapshot = await prisma.npc.findMany({ where: { worldId, faction: { in: ['Clan Serhu', 'Feg Ger'] } }, select: { id: true, attributes: true, level: true } });
+    npcSnapshot = await prisma.npc.findMany({ where: { worldId, faction: { in: ['Clan Serhu', 'Feg Ger'] } }, select: { id: true, attributes: true, level: true, muertoEnMundo: true } });
     relacionesPrevias = await prisma.factionRelation.findMany({ where: { worldId } });
     almacenPreviosIds = (await prisma.almacenItem.findMany({ where: { faction: { worldId } }, select: { id: true } })).map((a) => a.id);
     expedicionesPreviasIds = (await prisma.expedicion.findMany({ where: { worldId }, select: { id: true } })).map((e) => e.id);
@@ -188,12 +191,12 @@ describe('advanceFactionExpeditions — intercepción con combate (Fase 13-C)', 
     await prisma.expedicion.deleteMany({ where: { worldId, id: { notIn: expedicionesPreviasIds } } });
     await prisma.almacenItem.deleteMany({ where: { faction: { worldId }, id: { notIn: almacenPreviosIds } } });
     for (const p of progresoSnapshot) await prisma.npcProfessionProgress.update({ where: { id: p.id }, data: { nivel: p.nivel, xp: p.xp } });
-    for (const n of npcSnapshot) await prisma.npc.update({ where: { id: n.id }, data: { attributes: n.attributes as object, level: n.level } });
+    for (const n of npcSnapshot) await prisma.npc.update({ where: { id: n.id }, data: { attributes: n.attributes as object, level: n.level, muertoEnMundo: n.muertoEnMundo } });
     for (const s of statsSnapshot) await prisma.kingdomStats.update({ where: { id: s.id }, data: { ultimoDiaExpedicion: s.ultimoDiaExpedicion } });
     // Relaciones: las que ya existían vuelven a su valor; las que creó el test se borran.
     await prisma.factionRelation.deleteMany({ where: { worldId, id: { notIn: relacionesPrevias.map((r) => r.id) } } });
     for (const r of relacionesPrevias) await prisma.factionRelation.update({ where: { id: r.id }, data: { presion: r.presion, type: r.type, stage: r.stage } });
-    await prisma.save.deleteMany({ where: { id: saveId } });
+    await prisma.save.deleteMany({ where: { id: { in: [saveId, ...(saveTardioId ? [saveTardioId] : [])] } } });
   });
 
   it('guardias que ganan: la expedición sigue, completa con stock y la presión no cambia', async () => {
@@ -232,6 +235,59 @@ describe('advanceFactionExpeditions — intercepción con combate (Fase 13-C)', 
     expect(fin.interceptacion).toMatchObject({ faccionHostil: 'Feg Ger', ganador: 'atacante', presionAplicada: true });
     expect(await presion()).toBe(93); // BAJA_DE_GUERRA pesa +8
     expect(await prisma.almacenItem.count({ where: { factionId: serhuId } })).toBe(stockAntes);
+  }, 60_000);
+
+  it('muerte en la intercepción: el guardia caído muere en TODAS las partidas (también las creadas después), un re-seed no lo resucita y no vuelve a salir de expedición', async () => {
+    await ponerNpcs(4, 18);
+    const exp = await lanzar();
+    const guardiaIds = exp.members.filter((m) => m.rol === 'guardia').map((m) => m.npcId);
+    const guardias = await prisma.npc.findMany({ where: { id: { in: guardiaIds } } });
+    expect(guardias.every((g) => !g.muertoEnMundo)).toBe(true);
+    const escena = async (sid: string, nombre: string) =>
+      (await detectNpcsInScene({ action: `Hablo con ${nombre}`, worldId, sessionFacts: [], saveId: sid, currentLocationId: null, fictionalMinutes: 480 })).map((n) => n.slug);
+    // Control: en vida, la partida existente lo detecta en escena por su nombre.
+    const objetivo = guardias[0]!;
+    expect(await escena(saveId, objetivo.name)).toContain(objetivo.slug);
+
+    // Intercepción perdida con probabilidad de muerte 1: caen (CONVALECIENTE) y mueren todos los guardias.
+    await irAlDia(dia + 1);
+    const r = await advanceFactionExpeditions(prisma, tiradaBajaLuegoAlta(), { probabilidadMuerte: 1 });
+    expect(r.interceptadas).toBe(1);
+    expect(r.muertes).toBeGreaterThanOrEqual(guardias.length);
+    const fin = await prisma.expedicion.findUniqueOrThrow({ where: { id: exp.id } });
+    const muertes = (fin.interceptacion as { muertes: { slug: string; rol: string }[] }).muertes;
+    for (const g of guardias) expect(muertes).toContainEqual({ slug: g.slug, rol: 'guardia' });
+    const muertosBd = await prisma.npc.findMany({ where: { id: { in: guardiaIds } }, select: { muertoEnMundo: true } });
+    expect(muertosBd.every((n) => n.muertoEnMundo)).toBe(true);
+
+    // Partida existente: ya no aparece en escena aunque se le nombre.
+    expect(await escena(saveId, objetivo.name)).not.toContain(objetivo.slug);
+    // Partida creada DESPUÉS de la muerte: tampoco (la muerte es del Npc de mundo, no de un NpcState perezoso).
+    const tardia = await prisma.save.create({
+      data: {
+        userId: await getDefaultUserId(), worldId, characterName: 'Partida tardía', characterArchetype: 'guerrero', characterOrigin: 'x', characterMotivation: 'x',
+        attributes: bloque(10), portraitInitial: 'T',
+      },
+    });
+    saveTardioId = tardia.id;
+    await prisma.worldState.create({ data: { saveId: tardia.id, fictionalMinutes: 480 } });
+    expect(await escena(tardia.id, objetivo.name)).not.toContain(objetivo.slug);
+
+    // Un upsert como el de `seed-catalog` (el `update` no incluye `muertoEnMundo`) no lo resucita.
+    await prisma.npc.upsert({
+      where: { worldId_slug: { worldId, slug: objetivo.slug } },
+      update: { name: objetivo.name, role: objetivo.role, level: objetivo.level, bio: objetivo.bio },
+      create: { ...objetivo, id: undefined, attributes: objetivo.attributes as object, habilidadesRaciales: objetivo.habilidadesRaciales as object },
+    });
+    expect((await prisma.npc.findUniqueOrThrow({ where: { id: objetivo.id } })).muertoEnMundo).toBe(true);
+    expect(readFileSync(new URL('../scripts/seed-catalog.ts', import.meta.url), 'utf8')).not.toContain('muertoEnMundo');
+
+    // Los muertos no vuelven a unirse a una expedición (ni como guardia ni como recolector).
+    await prisma.expedicion.deleteMany({ where: { worldId, id: { notIn: expedicionesPreviasIds } } });
+    await prisma.kingdomStats.updateMany({ where: { faction: { worldId } }, data: { ultimoDiaExpedicion: dia + 9 } });
+    await irAlDia(dia + 10);
+    await advanceFactionExpeditions(prisma, () => 0.99);
+    for (const e of await propias()) for (const m of e.members) expect(guardiaIds).not.toContain(m.npcId);
   }, 60_000);
 
   it('una relación NEUTRAL nunca intercepta: riesgo 0 al lanzar y tirada 0 no dispara', async () => {

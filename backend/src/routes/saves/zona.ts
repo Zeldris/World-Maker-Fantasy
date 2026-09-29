@@ -324,7 +324,7 @@ export async function zonaRoutes(app: FastifyInstance) {
               worldId: save.worldId,
               OR: [{ slug: { in: npcFaunaZonePointSlugs } }, { companionOfNpcSlug: { in: npcFaunaZonePointSlugs } }],
             },
-            select: { id: true, slug: true, name: true, kind: true, companionOfNpcSlug: true },
+            select: { id: true, slug: true, name: true, kind: true, companionOfNpcSlug: true, muertoEnMundo: true },
           })
         : [];
     const npcFaunaZonePointIds = npcFaunaZonePointRows.filter((n) => npcFaunaZonePointSlugs.includes(n.slug));
@@ -373,6 +373,8 @@ export async function zonaRoutes(app: FastifyInstance) {
       const npc = npcFaunaZonePointIds.find((n) => n.id === npcId)!;
       const state = npcStateByKey.get(`${npcId}|${scopeFor(npc.kind, locationId)}`);
       if (estaMuertoParaSiempre(npc.kind, state)) return false;
+      // Muerto de mundo (intercepción de expedición de facción): nunca se pinta, sea del `kind` que sea.
+      if (npc.muertoEnMundo) return false;
       // Grupos de fauna reales (Fase 2, 2026-09-28) — bug real encontrado en pruebas: `NpcState` es
       // UNO por especie y Location (`scopeFor`), así que abatir UN individuo de un grupo marcaba
       // `zonaAusenteHastaMinutes` en esa única fila, y este filtro ocultaba TODOS los `ZonePoint`
@@ -658,7 +660,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     const npcs = puntos.length
       ? await tx.npc.findMany({
           where: { worldId, slug: { in: puntos.map((p) => p.targetSlug) } },
-          select: { id: true, slug: true, name: true, temperamento: true, faction: true, kind: true, attributes: true, level: true },
+          select: { id: true, slug: true, name: true, temperamento: true, faction: true, kind: true, attributes: true, level: true, muertoEnMundo: true },
         })
       : [];
     const npcBySlug = new Map(npcs.map((n) => [n.slug, n]));
@@ -674,7 +676,7 @@ export async function zonaRoutes(app: FastifyInstance) {
       npcs.map((n) => [n.slug, npcStatesColision.find((s) => s.npcId === n.id && s.scope === scopeFor(n.kind, locationId))]),
     );
     const puntosVivos = puntos.filter(
-      (p) => !zonePointNpcMuertoParaSiempre(npcBySlug.get(p.targetSlug)?.kind ?? '', npcStateBySlugColision.get(p.targetSlug)?.condicionFisica),
+      (p) => !npcBySlug.get(p.targetSlug)?.muertoEnMundo && !zonePointNpcMuertoParaSiempre(npcBySlug.get(p.targetSlug)?.kind ?? '', npcStateBySlugColision.get(p.targetSlug)?.condicionFisica),
     );
     // Nombre oculto genérico (2026-09-09, generalización pedida por Álvaro: "esta lógica se debe
     // aplicar a todos los que tienen nombre propio" — hasta ahora la colisión de Zona era el único

@@ -2325,6 +2325,16 @@ model Npc {
   worldId             String
   world               World                @relation(fields: [worldId], references: [id], onDelete: Cascade)
   kind                NpcKind
+  /// Muerte a nivel de MUNDO (2026-09-29, decisión de Álvaro: las intercepciones de expediciones de
+  /// facción pueden matar, "con muy poca probabilidad — es un mundo donde cada muerte cuenta"). Un
+  /// `Npc` es de mundo (compartido por todas sus partidas, presentes y futuras), y la muerte por
+  /// partida vive en `NpcState.condicionFisica` — pero esa fila es perezosa (solo existe si el jugador
+  /// tocó al NPC) y un cadáver MUERTO se borra a las 48h de ficción (`applyCondicionTimeouts`), así que
+  /// no sirve para una muerte definitiva. Este flag sí: `true` = muerto en todas las partidas, también
+  /// en las que se creen después, y fuera de escena/zona/expediciones. Solo lo escribe el tick de
+  /// `factionExpeditions.ts`; `seed-catalog` NO lo toca en el `update` del upsert, así que un re-seed
+  /// nunca lo resucita. Se pone a mano a `false` para revivir a alguien (herramienta de mantenimiento).
+  muertoEnMundo       Boolean              @default(false)
   slug                String
   name                String
   /// Formas reales de referirse a él/ella ("torgash", "el jefe de guerra serhu", "la terk'ikar")

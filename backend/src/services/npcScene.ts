@@ -553,7 +553,8 @@ export async function detectNpcsInScene(params: {
   const estaEnCombate = (npc: { id: string; slug: string }) => enCombateSlugs.has(npc.slug) || enCombateIds.has(npc.id);
   const [npcs, currentLocation, activeQuestTargets, encounteredStates, saveRow] = await Promise.all([
     prisma.npc.findMany({
-      where: { worldId: params.worldId },
+      // `muertoEnMundo` (muerte de expedición de facción, en todas las partidas): nunca en escena.
+      where: { worldId: params.worldId, muertoEnMundo: false },
       include: { items: { include: { item: true } } },
     }),
     params.currentLocationId
@@ -651,7 +652,7 @@ export async function candidateNpcNamesNotInScene(
 ): Promise<string[]> {
   const [npcs, currentLocation, activeQuestTargets, encounteredStates] = await Promise.all([
     prisma.npc.findMany({
-      where: { worldId },
+      where: { worldId, muertoEnMundo: false },
       select: { id: true, name: true, kind: true, homeLocationSlug: true, nucleoJugable: true },
     }),
     currentLocationId ? prisma.location.findUnique({ where: { id: currentLocationId }, select: { slug: true, region: true } }) : Promise.resolve(null),
