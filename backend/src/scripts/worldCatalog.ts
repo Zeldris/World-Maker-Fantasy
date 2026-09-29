@@ -5801,7 +5801,7 @@ export const items: ItemCatalogInput[] = [
     // Peso de armadura (2026-08-31) — pieza ligera de cuero, sin metal, coherente con explorador
     // ágil (Medio).
     pesoArmadura: 'MEDIO',
-    statBonuses: {constitucion: 1, voluntad: 1 },
+    statBonuses: { destreza: 1, voluntad: 1 }, // MEDIO da Destreza+Voluntad (decisión de Álvaro, 2026-09-29: antes con Constitución)
     tier: 1,
     valorGoirnos: 9,
     requisitos: { fuerza: 8, destreza: 8, constitucion: 6 },
@@ -5949,7 +5949,7 @@ export const items: ItemCatalogInput[] = [
     equipSlot: 'ARMADURA_INFERIOR',
     description: 'Perneras de cuero reforzado gris — completa el uniforme de patrulla junto a la cota ligera.',
     pesoArmadura: 'MEDIO',
-    statBonuses: { destreza: 1, constitucion: 1 },
+    statBonuses: { destreza: 1, voluntad: 1 }, // MEDIO da Destreza+Voluntad (decisión de Álvaro, 2026-09-29: antes con Constitución)
     dimensiones: 'Cubren de la cadera al tobillo.',
     lugarOrigen: 'Meseta del Orden.',
     tier: 1,

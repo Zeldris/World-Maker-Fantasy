@@ -219,6 +219,10 @@ Resumen de los 🧭 que quedan. Detalle técnico en la
 
 1. **Maestro de diplomacia** (H-5): ¿quién lo enseña y dónde?
 2. Dessa, Yerin y Riko: aparcado hasta su lore.
+3. **Más objetos que rompen la regla de peso y Carisma** (no estaban en la lista de la auditoría, así
+   que no se han tocado): botas de marcha goirntes, placas de escama de Jusha y faldar de piel de
+   gargantúa (MEDIO con Constitución) y cinturón de trofeos de hueso (CINTURON con Carisma). ¿Se
+   reequilibran con el mismo criterio?
 
 ## Respuestas del 2026-09-29
 

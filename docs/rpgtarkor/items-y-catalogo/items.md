@@ -51,7 +51,7 @@ uno en `docs/borradores-opencode/propuestas-aprobadas.md` (A-32 a A-36).*
   empuñadura envuelta en piel de Ferike. El Ferike solo teme a los Faerus, y la hembra es la alfa:
   llevar su colmillo dice que su portador cazó a quien caza. **No se fabrica**: se compra a Tasko en
   El Vergel de Kegi con la confianza del Feg Ger, o se gana en una misión Faerus.
-- **Desollador de sílice** (ARMA_SECUNDARIA, CUCHILLO, tier 3, 20 Goirnos, +2 Destreza, requiere
+- **Desollador de sílice** (ARMA_SECUNDARIA, CUCHILLO, tier 3, 25 Goirnos, +4 Destreza, requiere
   Destreza 9; herramienta de desollador, curtidor y peletero): cuchillo de desuello hecho entre dos
   clanes. La hoja de hielo sílice en forma de hoz corta la tallan los Helsig; las cachas de Caparazón de
   Espina del Viento, que no resbalan con sangre, las pone el Desolladero Serhu. Se vende allí; no tiene

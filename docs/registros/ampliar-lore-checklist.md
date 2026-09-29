@@ -18,11 +18,11 @@ Holdo (`cienaga-troncal.md`, `flora-fauna.md`, `canon-opencode`); grafía Jeysel
 
 Pendiente de código:
 - [x] Holdo en el catálogo (`resina-holdo`, `4404387`).
-- [ ] "brillo de aurora": `loreChunks.ts` (texto del cinturón) + `npm run reindex-lore`, y la excepción
+- [x] (`69aa566`, falta reindex en local) "brillo de aurora": `loreChunks.ts` (texto del cinturón) + `npm run reindex-lore`, y la excepción
   de `hasFalseMoonReference` en `narrador.ts` (hoy permite "brillo de luna") con sus tests.
-- [ ] Location `Jeyselet` → `Jeyselt` en `worldCatalog.ts` (nombre, descripción, alias; conservar el
+- [x] (`69aa566`) Location `Jeyselet` → `Jeyselt` en `worldCatalog.ts` (nombre, descripción, alias; conservar el
   alias viejo).
-- [ ] Reequilibrio de los objetos que rompen la regla de peso y Carisma (capa de melena de Ferike, peto
+- [x] (`17d38c7` y siguiente) Reequilibrio de los objetos que rompen la regla de peso y Carisma (capa de melena de Ferike, peto
   de placas de Gargantúa, lanza de hueso con Carisma, tocado de plumas) y el Desollador de sílice en
   la escala de tier 3 (23-31 Goirnos).
 
