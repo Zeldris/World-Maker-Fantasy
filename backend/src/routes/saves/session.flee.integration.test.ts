@@ -122,7 +122,7 @@ describe('/combat/flee: condición de carrera con una escritura paralela de pend
 
   it('sin ninguna carrera, un roll de huida exitoso sigue limpiando pendingCombatNpcSlugs con normalidad', async () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.99);
-    await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: [npcSlug] } });
+    await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: [npcSlug], zonaPosX: 40, zonaPosY: 60, zonaPosEntradaX: 12, zonaPosEntradaY: 88 } });
     const app = await buildApp();
 
     const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/combat/flee` });
@@ -131,5 +131,7 @@ describe('/combat/flee: condición de carrera con una escritura paralela de pend
     expect(res.json()).toMatchObject({ escaped: true });
     const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(saveAfter.pendingCombatNpcSlugs).toEqual([]);
+    // Tras huir reaparece en la entrada de la zona.
+    expect({ x: saveAfter.zonaPosX, y: saveAfter.zonaPosY }).toEqual({ x: 12, y: 88 });
   });
 });

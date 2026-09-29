@@ -425,9 +425,12 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
       const nuevoFictionalMinutes = advanceFictionalMinutes(save.worldState?.fictionalMinutes ?? 480, MINUTOS_POR_VUELTA_MODO_DINAMICO);
       const timeLabel = formatFictionalDate(nuevoFictionalMinutes);
       const text = `${save.characterName} logra alejarse de ${pending.targetName} sin que llegue a haber combate.`;
+      // Huir vuelve a la ENTRADA de la zona, igual que las dos huidas de session.ts (antes el
+      // jugador se quedaba pegado al agresor y el siguiente paso volvía a toparse con él).
       await prisma.$transaction([
         prisma.worldState.update({ where: { saveId: save.id }, data: { fictionalMinutes: nuevoFictionalMinutes, fictionalDateLabel: timeLabel } }),
         prisma.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: nuevoFictionalMinutes, isPlayerAction: false, isSystemMessage: true } }),
+        prisma.save.update({ where: { id: save.id }, data: { zonaPosX: save.zonaPosEntradaX ?? undefined, zonaPosY: save.zonaPosEntradaY ?? undefined } }),
       ]);
       return { narration: text, opciones: [], cierra: true, vuelta: pending.vuelta + 1, timeLabel, newQuestOfferInfo: null };
     }

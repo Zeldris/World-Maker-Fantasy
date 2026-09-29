@@ -670,7 +670,7 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
       // Limpieza de estado que el test anterior ("Combatir") deja a propósito tras abrir combate
       // real — en el juego real se limpia al cerrar el combate (CombatPanel), pero este test no
       // llega a jugar ese combate, solo verificar que se abrió.
-      await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: [] } });
+      await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: [], zonaPosX: 40, zonaPosY: 60, zonaPosEntradaX: 12, zonaPosEntradaY: 88 } });
       const app = await buildApp();
       await app.inject({
         method: 'POST',
@@ -691,6 +691,8 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
       const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
       expect(saveAfter.pendingDynamicMode).toBeNull();
       expect(saveAfter.pendingCombatNpcSlugs).toEqual([]);
+      // Reaparece en la entrada de la zona, no junto al agresor.
+      expect({ x: saveAfter.zonaPosX, y: saveAfter.zonaPosY }).toEqual({ x: 12, y: 88 });
 
       const logEntry = await prisma.logEntry.findFirst({ where: { saveId }, orderBy: { createdAt: 'desc' } });
       expect(logEntry?.text).toContain('Agresor de Prueba (dynamicMode)');
