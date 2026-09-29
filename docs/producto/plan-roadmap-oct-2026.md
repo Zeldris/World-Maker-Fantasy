@@ -172,6 +172,38 @@ Goirnos al saquear, Vender), comprobar la reaparición tras Huir, y el Reino de 
 Taller, asignar trabajador con rol, producir, comprar a una facción con stock propio, vender).
 Hallazgos al registro de pruebas; los bloqueantes se arreglan en el momento.
 
+## Fase 10 — Todas las tiradas visibles (decisión de Álvaro, 2026-09-29)
+
+"Todas las tiradas deben verse: dan efecto y una explicación visual al jugador." Principio: **toda
+tirada que decide un resultado para el jugador devuelve sus datos en la respuesta HTTP y el frontend
+la anima con los componentes que ya existen** (`DiceRollReveal`, `DiceRollSingle`,
+`GatheringDiceReveal`, `RollBadge`, `CombatExchangeBadge`; ver cuál encaja mejor en cada caso). Si el
+evento deja `LogEntry`, la tirada se guarda en `LogEntry.roll` (o el campo equivalente ya existente)
+para que sobreviva a una recarga, mismo criterio que la huida (`routes/saves/session.ts`).
+
+Tiradas hoy ocultas (inventario de Opus, verificado con grep):
+1. **Recolectar desde el mapa** — `routes/saves/dynamicModeRecurso.ts`: `gatheringRollFor` +
+   `applyGatheringRoll` se calculan y solo vuelve la narración. Devolver el `roll` (misma forma que
+   `GET /recolectar/:oficio` para Desollar) y animarlo con `GatheringDiceReveal` antes de mostrar lo
+   obtenido (y en el fallo: "no consigue nada" con el dado visible).
+2. **Segunda tirada de tier alto** — `recolectar.ts § pasaSegundaTirada` (tier ≥ 6): se descarta el
+   `roll`. Devolverlo por objeto afectado (tanto en `POST /recolectar/confirmar` como en la
+   recolección desde el mapa) y mostrarlo.
+3. **"¿Quién ve a quién primero?"** — `zonaPosicion.ts § quienIniciaEncuentro` (d20 + Destreza/2 por
+   lado): devolver ambas tiradas en la oferta del encuentro (`dynamicModeOffer`, `zona.ts`) y
+   pintarlas en la tarjeta de encuentro (LogPanel) como tirada opuesta.
+4. **Cuántos del grupo entran al combate** — `caza.ts § rollGroupEngagement`: devolver la tirada
+   (valor, delta, elegidos vs. reales) por especie y mostrarla junto al texto de varianza.
+5. **Caza sigilosa** — `caza.ts § intentarCazaLimpia` (`Math.random() * 100 < chance`): convertirla
+   en una tirada visible (d100 contra la probabilidad, o mejor el patrón de dados del proyecto si
+   encaja sin cambiar la probabilidad real) y mostrarla en el resultado de la caza.
+6. **Iniciativa del combate múltiple** — `combateMultiple.ts` (`rollAttributeCheck` por
+   participante): comprobar si llega al frontend como en el 1v1 (`InitiativeRollInfo`); si no, que
+   llegue.
+
+Tests: cada ruta afectada devuelve la tirada con su forma; tests de componente donde haya uno cerca.
+No cambiar probabilidades ni reglas: solo exponer y mostrar lo que ya se tira.
+
 ## Fuera de este plan (🧭 pendientes de Álvaro)
 
 - **H-5 diplomático**: cómo gana nivel (y si "diplomatico" pasa a ser una profesión aprendible). Hoy
