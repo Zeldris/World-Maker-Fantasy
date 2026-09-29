@@ -26,6 +26,13 @@ export function professionLevelForXp(xp: number): number {
   return Math.min(level, MAX_PROFESSION_LEVEL);
 }
 
+/// XP mínima para estar en `nivel` (inverso de `professionLevelForXp`) — la usa el seed de progreso
+/// inicial de NPC (13-A) para que `xp` sea coherente con `nivel`. Acotado a 1..MAX_PROFESSION_LEVEL.
+export function xpForProfessionLevel(nivel: number): number {
+  const i = Math.min(Math.max(Math.trunc(nivel), 1), MAX_PROFESSION_LEVEL) - 1;
+  return PROFESSION_LEVEL_THRESHOLDS[i];
+}
+
 /// XP de oficio por tier de la receta craftada/construida — escala propia, distinta de
 /// XP_BY_DIFFICULTY (progression.ts): un crafteo no es una tirada de d20, es un éxito determinista
 /// ya filtrado por `canCraft`/`checkRecipe`, así que hasta el tier 1 da algo por el mero acierto.

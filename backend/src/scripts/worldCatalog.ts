@@ -5098,6 +5098,62 @@ export const npcs: NpcInput[] = [
   },
 ];
 
+/// Potencial de oficio de los NPC de facción (docs/producto/plan-roadmap-oct-2026.md § 13-A, H-8),
+/// sembrado en `NpcProfessionPotential`/`NpcProfessionProgress` por seed-catalog.ts. Escrito a mano,
+/// mismo criterio que `teachesProfession`. Valores por defecto del plan (pendientes de revisión de
+/// Álvaro): Maestro/a (`teachesProfession`) → tope 9, progreso inicial 7; trabajador cuyo `role`
+/// NOMBRA un oficio → tope 6, inicial 3. Guerreros, guardias, líderes, chamanes, cazadores y fauna:
+/// sin entrada. Nunca se inventa un oficio que el `role` no diga; un oficio sin `professionId` en
+/// data/professions.ts se omite (hoy: "Ganadero" de ganadero-serhu, "tallador" de Tasko no es el
+/// oficio `talador`, que es tala).
+export interface NpcProfessionPotentialInput {
+  professionId: string;
+  nivelMaximo: number;
+  nivelInicial: number;
+}
+
+const MAESTRO = { nivelMaximo: 9, nivelInicial: 7 } as const;
+const TRABAJADOR = { nivelMaximo: 6, nivelInicial: 3 } as const;
+
+export const npcProfessionPotentials: Record<string, NpcProfessionPotentialInput[]> = {
+  // --- Clan Serhu (orcos, Llanuras): Maestros ---
+  'maestro-herrero-serhu': [{ professionId: 'herrero-orcos-llanuras', ...MAESTRO }],
+  'maestra-curtidora-serhu': [{ professionId: 'curtidor-orcos-llanuras', ...MAESTRO }],
+  'maestro-cocinero-serhu': [{ professionId: 'cocinero-orcos-llanuras', ...MAESTRO }],
+  'maestra-herborista-serhu': [{ professionId: 'herborista-orcos-llanuras', ...MAESTRO }],
+  'maestro-alquimista-serhu': [{ professionId: 'alquimista-orcos-llanuras', ...MAESTRO }],
+  'maestro-domador-serhu': [{ professionId: 'domador-orcos-llanuras', ...MAESTRO }],
+  'maestro-desollador-serhu': [{ professionId: 'desollador-orcos-llanuras', ...MAESTRO }],
+  'maestro-peletero-serhu': [{ professionId: 'peletero-orcos-llanuras', ...MAESTRO }],
+  'maestra-primeros-auxilios-serhu': [{ professionId: 'primeros-auxilios-orcos-llanuras', ...MAESTRO }],
+  'maestro-pescador-serhu': [{ professionId: 'pescador', ...MAESTRO }],
+  'maestro-carpintero-serhu': [{ professionId: 'carpintero-orcos-llanuras', ...MAESTRO }],
+  'maestra-sastre-serhu': [{ professionId: 'sastre-orcos-llanuras', ...MAESTRO }],
+  // --- Clan Serhu: trabajadores cuyo `role` nombra el oficio ---
+  'herrero-serhu': [{ professionId: 'herrero-orcos-llanuras', ...TRABAJADOR }],
+  'herrera-serhu': [{ professionId: 'herrero-orcos-llanuras', ...TRABAJADOR }],
+  'curtidora-serhu': [{ professionId: 'curtidor-orcos-llanuras', ...TRABAJADOR }],
+  'curtidor-serhu': [{ professionId: 'curtidor-orcos-llanuras', ...TRABAJADOR }],
+  'cocinero-serhu': [{ professionId: 'cocinero-orcos-llanuras', ...TRABAJADOR }],
+  'desolladora-serhu': [{ professionId: 'desollador-orcos-llanuras', ...TRABAJADOR }],
+  'peletero-serhu': [{ professionId: 'peletero-orcos-llanuras', ...TRABAJADOR }],
+  'pescador-serhu': [{ professionId: 'pescador', ...TRABAJADOR }],
+  'pescadora-serhu': [{ professionId: 'pescador', ...TRABAJADOR }],
+  // --- Clan Helsig (orcos, Cristal): Maestros (peletera-helsig también enseña `peletero-orcos-cristal`) ---
+  'maestra-peletera-helsig': [{ professionId: 'peletero-orcos-cristal', ...MAESTRO }],
+  'peletera-helsig': [{ professionId: 'peletero-orcos-cristal', ...MAESTRO }],
+  'maestra-herrera-helsig': [{ professionId: 'herrero-orcos-cristal', ...MAESTRO }],
+  'maestro-cocinero-helsig': [{ professionId: 'cocinero-orcos-cristal', ...MAESTRO }],
+  'maestro-minero-helsig': [{ professionId: 'minero-cristal', ...MAESTRO }],
+  'maestro-herborista-helsig': [{ professionId: 'herborista-orcos-cristal', ...MAESTRO }],
+  'maestra-alquimista-helsig': [{ professionId: 'alquimista-orcos-cristal', ...MAESTRO }],
+  // --- Clan Helsig: "Minero de hielo sílice" ---
+  'hagar-kiugh': [{ professionId: 'minero-cristal', ...TRABAJADOR }],
+  // --- Feg Ger (faerus, Llanuras — Yegr Kegi): "Curtidor y tallador de Kegi" ---
+  tasko: [{ professionId: 'curtidor-faerus-llanuras', ...TRABAJADOR }],
+};
+
+
 export interface ItemCatalogInput {
   slug: string;
   name: string;

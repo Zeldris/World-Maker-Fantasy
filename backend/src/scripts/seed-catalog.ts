@@ -1,7 +1,8 @@
 import 'dotenv/config';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
-import { locations, locationLinks, npcs, fauna, items, harvestYields, factions, historiaEntries, zonePoints, factionBuildings } from './worldCatalog.js';
+import { locations, locationLinks, npcs, fauna, items, harvestYields, factions, historiaEntries, zonePoints, factionBuildings, npcProfessionPotentials } from './worldCatalog.js';
+import { xpForProfessionLevel } from '../services/professionProgress.js';
 import { assertValidCategory } from '../services/itemTaxonomy.js';
 import { worldPopulations } from './worldPopulation.js';
 
@@ -191,6 +192,30 @@ async function main() {
         where: { npcId_itemId: { npcId: row.id, itemId } },
         update: { cantidad: entry.cantidad ?? 1, notas: entry.notas },
         create: { npcId: row.id, itemId, cantidad: entry.cantidad ?? 1, notas: entry.notas },
+      });
+    }
+  }
+
+  // Potencial y progreso de oficio de los NPC de facción (plan Fase 13-A, H-8) — va DESPUÉS del
+  // bucle de NPCs (necesita `npcIdBySlug`). Idempotente y sin pisar progreso ganado: el potencial
+  // se crea si falta y solo SUBE `nivelMaximo` (nunca lo baja); el progreso se crea a
+  // `nivelInicial` (con la XP mínima de ese nivel) si falta y un re-seed jamás toca una fila
+  // existente (`update: {}`), así el XP ganado jugando/simulando sobrevive.
+  console.log(`  Potencial y progreso de oficio de NPC (${Object.keys(npcProfessionPotentials).length} NPC)...`);
+  for (const [npcSlug, potentials] of Object.entries(npcProfessionPotentials)) {
+    const npcId = npcIdBySlug.get(npcSlug);
+    if (!npcId) throw new Error(`npcProfessionPotentials: NPC desconocido "${npcSlug}".`);
+    for (const p of potentials) {
+      const existing = await prisma.npcProfessionPotential.findUnique({ where: { npcId_professionId: { npcId, professionId: p.professionId } } });
+      if (!existing) {
+        await prisma.npcProfessionPotential.create({ data: { npcId, professionId: p.professionId, nivelMaximo: p.nivelMaximo } });
+      } else if (existing.nivelMaximo < p.nivelMaximo) {
+        await prisma.npcProfessionPotential.update({ where: { id: existing.id }, data: { nivelMaximo: p.nivelMaximo } });
+      }
+      await prisma.npcProfessionProgress.upsert({
+        where: { npcId_professionId: { npcId, professionId: p.professionId } },
+        update: {},
+        create: { npcId, professionId: p.professionId, nivel: p.nivelInicial, xp: xpForProfessionLevel(p.nivelInicial) },
       });
     }
   }
