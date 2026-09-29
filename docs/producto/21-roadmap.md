@@ -94,6 +94,9 @@ en CI, y la latencia está medida. Se etiqueta `v0.1.0-alpha`.
 - **Economía de supervivencia de facción**: almacén con tope por edificios, agua obligatoria,
   comida y producción activa, sueldos en Goirnos, cascada de declive hasta la extinción.
   Propuesta en `propuestas-lore.md`, 🧭 números por decidir. **[A]**
+  Dato de partida (2026-09-29): con la regla actual, el Clan Serhu (500 soldados, 150 trabajadores)
+  pierde riqueza cada día hasta quedarse en 0 para siempre; el equilibrio de sueldos y rendimiento
+  tiene que salir de este hito. **[H]**
 - **IA de decisión de facción** según la Inteligencia de su líder (`liderNpcId`): construir,
   expandirse, pactar, declarar la guerra, lanzar expediciones. Las carencias de supervivencia son
   sus disparadores. **[A]**
