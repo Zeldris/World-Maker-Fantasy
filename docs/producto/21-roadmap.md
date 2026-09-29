@@ -38,14 +38,14 @@ Rompen una mecánica en partida real. Referencias H-x:
 | # | Qué | Origen | Estado |
 |---|---|---|---|
 | 1 | ~~**Ningún súbdito puede recibir `rolReino`** (H-1)~~ — decidido: plantilla + selector en Súbditos | [H] | ✅ `0e47115` |
-| 2 | **El diplomático no sube de nivel** y se bloquea tras una sola negociación (H-5). 🧭 ¿XP por acción o enseñanza de un Maestro? | [H] | Abierto |
+| 2 | **El diplomático no sube de nivel** y se bloquea tras una sola negociación (H-5). Decidido (2026-09-29): lo enseña un Maestro y luego sube por negociación | [H] | Abierto (falta el Maestro de diplomacia en el lore) |
 | 3 | ~~**Producción de facción duplicada y sin consumo** (H-6)~~ — en `worldTick` con consumo | [H] | ✅ `e42ac7f` |
 | 4 | ~~**Las facciones no tienen stock que vender** (H-2)~~ — depositan productos reales (tope 5 por objeto) | [H] | ✅ `e42ac7f` |
 | 5 | Verificación **en vivo** de la tanda B1-B32 | [A] | En curso (2026-09-29): zona, caza, cadáveres, tiradas ✔️; faltan Goirnos de humanoide y Reino. Hallazgos F9-1..4 en `registros/pruebas-nube-2026-09-28-hallazgos.md` |
 | 6 | ~~**B1**: `ZonePoint` por partida en vez de global~~ — plantilla de catálogo (`saveId` null) + copia por partida | [A] | ✅ `186e3e7` |
 | 7 | ~~"Cargando partida…" infinito si se recarga en la creación de partida~~ | [H] | ✅ `a700a61` |
 | 8 | ~~**Slugs de oficio incoherentes** (H-10)~~ — fuente única `backend/src/data/professions.ts` + `npm run sync-professions` | [H] | ✅ `cd96e9e` |
-| 9 | **Cazar un grupo mata a un nivel 1 en un solo turno** (F9-1): 3 Gesgurio más rápidos dan ~6 golpes antes de que el jugador vuelva a actuar. 🧭 ¿Primera acción para quien inicia la caza, tope de atacantes por ronda o aviso de riesgo en la tarjeta? | [H] | Abierto |
+| 9 | **Cazar un grupo mata a un nivel 1 en un solo turno** (F9-1). Decidido (2026-09-29): solo un aviso de riesgo en la tarjeta de caza | [H] | Abierto |
 
 ---
 
@@ -56,21 +56,22 @@ Rompen una mecánica en partida real. Referencias H-x:
   vender y comprar); falta el Taller con trabajador. **[P]**
 - ~~**F9-5**: vender un montón del Almacén cobra solo una unidad~~ ✅ `fe72966` **[H]**
 - ~~**F9-6**: el modal del Reino corta el contenido~~ ✅ `fe72966` **[H]**
-- 🧭 **F9-7**: un Reino recién fundado no tiene súbditos; la población del territorio no da
-  trabajadores y solo quedan los compañeros capturados. ¿Debería dar súbditos asignables? **[H]**
+- **F9-7**: un Reino recién fundado no tiene súbditos. Decidido (2026-09-29): **sistema de
+  población y reproducción al estilo Medieval Dynasty** (llegan, forman familia, tienen hijos que
+  crecen y trabajan). Pieza de diseño grande: propuesta en `propuestas-lore.md`. **[A]**
 - ~~Botón directo para el **Cuartel Avanzado** y sus mejoras (H-12)~~ ✅ `a700a61` **[H]**
-- Sembrar las **`FactionRelation` iniciales** entre las 9 facciones (H-7). 🧭 Hacen falta los
-  números; solo existe Concordia ↔ Los del Obelisco = 65. **[A]**
+- Sembrar las **`FactionRelation` iniciales** entre las 9 facciones (H-7). Decidido (2026-09-29):
+  sacarlas de las tablas "Relaciones iniciales" de A-01..A-05 (`propuestas-aprobadas.md`) y del
+  conflicto Serhu+Concordia contra Helsig+Goshg de `worldAgenda.ts`. **[A]**
 - ~~Llamar a **`decayPresion`** (H-4)~~ ✅ `e42ac7f` y ~~disparar **`BAJA_DE_GUERRA`** al matar a un NPC de otra
   facción en su región (H-3)~~ ✅ `a700a61`. **[H]**
-- 🧭 ¿Filtrar las órdenes de producción por el oficio del edificio? (P-3 de la referencia técnica)
-  **[H]**
+- Filtrar las órdenes de producción por el oficio del edificio (P-3). Decidido (2026-09-29): sí. **[H]**
 - ~~Migración menor: `FactionRelation.presion @default(50)` (H-9)~~ ✅ `a700a61` **[H]**
 
 ### Mecánicas por zona (continuación del plan del 2026-09-28)
 - ~~Pescar y Buscar necesitan puntos en el mapa~~ ✅ `e3c8464` (6 fuentes en la Playa de Ceniza Blanca, con test) **[H]**
 - 36 de 67 `Location` no tienen ningún `ZonePoint`. ~~Completar al menos las de Las Llanuras~~ ✅ `e3c8464`: solo falta `jakut-ger-interior` (interior, necesita lore). El resto son de otras regiones. **[H]**
-- 🧭 Viaje largo desde el mapa de mundo (la habilidad Viajar exige montura, sin implementar). **[A]**
+- Viaje largo desde el mapa de mundo (la habilidad Viajar exige montura). **Aparcado** (2026-09-29). **[A]**
 - ~~Tras Huir, comprobar que el jugador reaparece en la entrada de la zona~~ ✅ `3a60fcd` (las huidas de combate ya lo hacían; la de la tarjeta de encuentro no, arreglada y cubierta por test) **[A]**
 - ~~La hora de la cabecera no avanza al caminar (F9-2) y "TU ACCIÓN" sale con la hora vieja (F9-3)~~ ✅ `8b8a0b2` **[H]**
 - ~~Dos tiradas visibles que no quedan en el log (F9-4)~~ ✅ `8b8a0b2` **[H]**
@@ -102,8 +103,8 @@ Rompen una mecánica en partida real. Referencias H-x:
   misiones; función pura llamada desde el turno y desde `worldTick`. **[A]**
 - **Migrar `worldAgenda.ts`** (conflicto fijo Serhu+Concordia contra Helsig+Goshg) a filas de
   `FactionRelation`. **[A]**
-- 🧭 D-12 abre a disputa las regiones sin dueño, pero 3 son de Vaelira, que está fuera de juego
-  (P-4). Propuesta: restringirlo a Berig. **[H]**
+- D-12 abre a disputa las regiones sin dueño, pero 3 son de Vaelira (P-4). Decidido (2026-09-29):
+  restringirlo a Berig. **[H]**
 
 ### Expediciones de facción (diseño cerrado)
 - ~~Modelos `Expedicion` y `ExpedicionMember`, riesgo de intercepción por `FactionRelation`, combate
@@ -118,8 +119,8 @@ Rompen una mecánica en partida real. Referencias H-x:
   momento de revisitar la fusión de los tres `pending*Offer`). **[A]**
 
 ### IA de combate NPC, tramo Inteligencia 20+ (diseño cerrado)
-- Retirada, concentrar ataques en el mismo objetivo y órdenes de un capitán. 🧭 Falta decidir la
-  forma de "retirada de NPC" (¿estado nuevo de `CombatParticipant`?). **[A]**
+- Retirada, concentrar ataques en el mismo objetivo y órdenes de un capitán. Retirada decidida
+  (2026-09-29): huida inmediata con tirada. **[A]**
 
 ---
 
@@ -135,8 +136,14 @@ Rompen una mecánica en partida real. Referencias H-x:
 - Edificios de facción Goshg en `campamento-goshg-interior` (aplazado de la A-09). **[H]**
 
 ### Economía
-- 🧭 **Comercio de volumen Reino↔facción** con `KingdomStats.riqueza`: qué se comercia, a qué
-  escala y con qué fórmula. Sin diseñar. **[A]**
+- **Comercio de volumen Reino↔facción**. Decidido (2026-09-29): todo el catálogo, según el origen
+  del objeto y el oficio de los NPC (los oficios van por raza y región). Falta la fórmula. **[A]**
+- **Economía de supervivencia de facción** (2026-09-29): el tope del Almacén depende de los
+  edificios; hay que llevar reservas de agua, producción activa y comida. Esto y los Goirnos son la
+  base que activa el dinamismo de la facción: sin ellos no actúa y acaba muriendo. Propuesta de
+  diseño en `propuestas-lore.md`. **[A]**
+- **Ganadería** (2026-09-29): oficio de ganadero y edificios por especie de fauna que generan
+  recursos (estilo Bellwright; p. ej. los Murgol). Propuesta de diseño en `propuestas-lore.md`. **[A]**
 - Estaciones de recolección sin oficio (Leñera, Cantera, Fibrería), si hacen falta para alimentar
   las cadenas. **[P]**
 - Edificios de defensa (empalizada, torre de vigía, foso) para los Cuarteles de Guerra. **[P]**
@@ -164,15 +171,14 @@ Rompen una mecánica en partida real. Referencias H-x:
 - **Rondas de OpenCode** con la capa `canon-opencode/` y las chuletas nuevas. Primera prueba de
   control pendiente: `FAUNA margen`, `ITEMS llanuras` y `EVENTOS` orco, con HUECOS → ESCRIBE →
   REVISA. **[A]**
-- 🧭 **Contradicciones de canon de la auditoría del 2026-09-28** (preguntas 18-24). Los arreglos
-  mecánicos ya están hechos (`5ea81cb`, `e089754`). **[H]**
-- Revisar la propuesta **B18** (Bolco/Bulco) en
-  [propuestas-lore.md](../borradores-opencode/propuestas-lore.md). **[A]**
-- Revisar la propuesta de **Dessa, Yerin y Riko como NPC** (misma lista de propuestas). **[A]**
+- **Contradicciones de canon de la auditoría del 2026-09-28**: decididas por Álvaro el 2026-09-29
+  (ver "Respuestas del 2026-09-29" abajo); falta aplicarlas a `rpgtarkor/` con el runbook. **[A]**
+- **B18**: decidido renombrar el árbol **Bolco → Holdo** (el caracol Bulco se queda). **[A]**
+- Dessa, Yerin y Riko como NPC: **aparcado** hasta que Álvaro escriba su lore. **[A]**
 - 🧭 **Terreno contra hogar** en 6 fuentes del catálogo (`gargantua-de-ceniza`, `junba-verde` y su
   resina, `temune`, `ferike`, `telda-ceniza`): su terreno no casa con la Location donde viven, así que
   no tienen `ZonePoint` (excepciones de `zonePointsCobertura.test.ts`). **[H]**
-- `jakut-ger-interior`: única Location de Las Llanuras sin `ZonePoint`; poblarla necesita lore. **[H]**
+- `jakut-ger-interior`: única Location de Las Llanuras sin `ZonePoint`. Es el interior (ciudadela) del Jakut Ger de los Feg Ger, Faerus de las Llanuras; poblarlo necesita lore de qué hay dentro. **[H]**
 - Opcionales de las fichas aprobadas: entradas de `historiaEntries` con su documento, `loreChunks` +
   `reindex-lore`, interior del Archivo del Refugio, `ZonePoint` del Jakut. **[A]**
 - Revisar la incoherencia de distancias: Karot Veku queda a ~110 km del Cruce en el mapa de Azgaar
@@ -209,64 +215,40 @@ No son fallos. Se retoman cuando cambie su condición.
 
 ## Preguntas abiertas para Álvaro
 
-Resumen de todos los 🧭. Detalle técnico en la
+Resumen de los 🧭 que quedan. Detalle técnico en la
 [referencia X4 § 12](../arquitectura/22-mundo-vivo-x4-tecnico.md#12-preguntas-abiertas-para-álvaro).
 
-1. ~~¿Cómo recibe un súbdito su `rolReino`?~~ Respondida: plantilla + selector (Ahora, 1)
-2. ¿Cómo sube de nivel el diplomático? (Ahora, 2)
-3. ~~¿Pasamos la economía de facción a `worldTick` con consumo, y cómo consiguen stock que vender?~~ Respondida: sí, con stock real
-   (Ahora, 3-4)
-4. ~~¿`ZonePoint` por partida (B1)?~~ Respondida: sí (Ahora, 6)
-5. Presiones iniciales entre las 9 facciones. (Trimestre 1)
-6. ¿Filtrar órdenes por el oficio del edificio? (Trimestre 1)
-7. ¿Viaje largo desde el mapa de mundo? (Trimestre 1)
-8. ¿Restringir D-12 (regiones disputables) a Berig? (Trimestre 2)
-9. Forma de la retirada de NPC en combate. (Trimestre 2)
-10. Comercio de volumen: qué, cuánto y con qué fórmula. (Trimestre 3)
-11. Cazar un grupo a nivel 1 (F9-1): ¿primera acción para quien inicia, tope de atacantes por ronda o
-    aviso en la tarjeta? (Ahora, 9)
+1. **Goirnos al saquear un humanoide** (`goirnosDeBotin`, B27): hoy 2 + 2 × nivel (un nivel 3 lleva
+   8 Goirnos). ¿Vale esa cantidad o prefieres otra? (Reformulada: la primera vez no se entendió.)
+2. **Terreno contra hogar** en 6 fuentes (`gargantua-de-ceniza`, `junba-verde` y su resina, `temune`,
+   `ferike`, `telda-ceniza`): el catálogo dice que viven en un lugar cuyo terreno no casa con el que
+   dice su ficha. ¿Se corrige el terreno de la ficha o el lugar donde viven? (Reformulada.)
+3. **Costa de la Playa de Ceniza Blanca**: el lore la sitúa en la "costa norte" de las Llanuras,
+   pero al norte de las Llanuras está Cristal Helado, así que las Llanuras no tocan el mar por el
+   norte. ¿En qué costa está? (Reformulada.)
+4. **Maestro de diplomacia** (H-5): ¿quién lo enseña y dónde?
+5. Dessa, Yerin y Riko: aparcado hasta su lore.
 
-**Valores por defecto tomados en la tanda del 2026-09-28/29** (implementados; revisar si convencen):
+## Respuestas del 2026-09-29
 
-12. Reloj: 1 minuto por paso en la zona (B2).
-13. Energía: +1 cada 10 min de ficción fuera de combate; Ataque Básico nunca bloqueado por energía
-    (B11).
-14. Capítulo: las acciones de combate no cuentan para el hito de 500 XP (B12).
-15. Goirnos al saquear un humanoide: 2 + 2 × nivel (`goirnosDeBotin`, B27).
-16. Economía de facción: tope de 5 unidades en stock por objeto y facción, recuperar como mucho 30
-    días de golpe, y bebida dada por cubierta (las facciones no la producen) (`factionEconomy.ts`).
-17. Nombres de dos oficios nuevos en la lista única: "Alquimista de los Orcos de Cristal Helado" y
-    "Pescador" (`backend/src/data/professions.ts`).
-
-**Lore** (auditoría de coherencia del 2026-09-28):
-
-18. **El Baluarte de Goirme:** ¿es la mayor ciudad-fortaleza de la Meseta (catálogo, ficha de
-    región) o solo la primera (cronología mítica, A-10)? ¿Su obelisco es el más alto por ser el
-    primero?
-19. **Objetos que rompen la regla de peso y Carisma** (capa de melena de Ferike, peto de placas de
-    Gargantúa, lanza de hueso con Carisma, tocado de plumas…): ¿excepción histórica o reequilibrio?
-    ¿Y el Desollador de sílice, 20 Goirnos o dentro de la escala de tier 3 (23-31)?
-20. **Embarcadero de pesca:** ¿en la Playa de Ceniza Blanca (código, junto al Maestro Pescador) o en
-    El Embarcadero de Ceniza (lore)?
-21. **Kekta o Tevya:** `clanes-orcos.md` llama "la más inteligente de los cuatro" a las dos.
-22. **Jeyselt / Jeyselet:** ¿el poblado Nabieus o su salón interior? ¿"Fin Susurrado" nombra al
-    clan, al poblado o a los dos?
-23. **Costa norte de las Llanuras:** la Playa de Ceniza Blanca y El Embarcadero de Ceniza son
-    "costa norte", pero Cristal Helado ocupa el norte de costa a costa. ¿Es la costa noroeste?
-24. **Kelife = "Brillo de luna"** (`razas.md`) en un mundo sin luna. ¿Se cambia la traducción?
-
-**Expediciones de facción** (valores por defecto de la Fase 13; funcionan así hasta que se decida):
-
-25. Potencial de oficio de los NPC: los Maestros llegan a nivel 9 y empiezan en 7; los trabajadores
-    cuyo cargo nombra un oficio llegan a 6 y empiezan en 3. Sin oficio: el Ganadero del Clan Serhu
-    (no existe "ganadero") y el "tallador" de Tasko (Feg Ger), que solo cuenta como curtidor.
-26. Ritmo: como mucho una expedición activa por facción, lanzada a diario hasta que exista la IA
-    de facción; 2 días (ida y recolección, vuelta); hasta 2 recolectores y 2 guardias; cada
-    recolector trae como mucho 3 unidades. Los desolladores no van (necesitan un cadáver delante).
-27. Riesgo de intercepción: 50 % si hay GUERRA con otro dueño de la región destino, 20 % si hay
-    TENSION, 0 % en el resto. Serhu y Helsig recolectan en regiones que solo son suyas, así que hoy
-    nunca los interceptan; y sin las presiones iniciales (H-7) casi nadie está en guerra.
-28. Combate de intercepción: un NPC de la facción hostil contra los guardias, tope de 12 rondas
-    (si nadie cae, aguantan los defensores). Si pierden, se pierde la carga y la facción atacante
-    suma BAJA_DE_GUERRA (+8 de presión). **Nadie muere**: los NPC son del mundo, no de cada partida,
-    y matarlos en segundo plano los quitaría de todas las partidas. ¿Debería haber heridos o bajas?
+- F9-1 caza en grupo: solo aviso de riesgo en la tarjeta.
+- F9-7 súbditos: sistema de población y reproducción al estilo Medieval Dynasty.
+- H-7 relaciones iniciales: de las tablas de A-01..A-05 y del conflicto de `worldAgenda.ts`.
+- H-5 diplomático: lo enseña un Maestro y sube por negociación.
+- Órdenes de producción: filtradas por el oficio del edificio.
+- Viaje largo: aparcado. D-12: solo Berig. Retirada de NPC: huida inmediata con tirada.
+- Comercio de volumen: todo el catálogo según origen del objeto y oficio del NPC (por raza y región).
+- Reloj de 1 min por paso: ok. Capítulo sin acciones de combate: ok.
+- **Energía**: el Ataque Básico cuesta energía y se bloquea sin ella, como antes de B11 (se retira
+  la excepción). La regeneración pasiva se queda.
+- **Economía de facción**: el tope del Almacén depende de los edificios; agua, comida y producción
+  activa obligatorias; sin ellas la facción se apaga y muere.
+- Nombres de oficios nuevos: la duda era solo de nombre visible; se quedan.
+- **Potencial de NPC**: los topes gustan; todos empiezan en nivel 1 sin XP.
+- Expediciones (ritmo, riesgo, combate): ok. **Bajas**: sí, con probabilidad muy baja; cada muerte cuenta.
+- Lore: el Baluarte de Goirme es la mayor ciudad-fortaleza y su obelisco el más alto por ser el
+  primero; los objetos que rompen la regla de peso y Carisma se reequilibran (y el Desollador de
+  sílice entra en la escala de tier 3); el embarcadero de pesca está en la Playa de Ceniza Blanca,
+  puesto avanzado de los Serhu; la más inteligente de los cuatro es Tevya; el nombre es Jeyselt;
+  Kelife = "Brillo de aurora"; hay que crear el oficio de ganadero; el árbol Bolco pasa a Holdo;
+  Dessa, Yerin y Riko aparcados.
