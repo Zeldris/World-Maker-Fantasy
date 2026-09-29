@@ -29,8 +29,8 @@ test necesita base de datos".
 
 ## Fase B — Versión visible y partidas que sobreviven a una actualización
 
-- (En curso el 2026-09-29) versión `A.P.C-etapa+commit` en el juego y en `/version`, y
-  `versionCreada`/`versionUltimaPartida` en cada partida.
+- ~~Versión `A.P.C-etapa+commit` en el juego y en `/version`, y
+  `versionCreada`/`versionUltimaPartida` en cada partida~~ ✅ `bf473bc`.
 - **Resincronizar objetos de catálogo en partidas existentes**: script idempotente (enganchado en
   `actualizar-mundo.sh` e `iniciar-tarkor.sh`, tras el seed) que pone al día `statBonuses` de
   `InventoryItem` y `AlmacenItem` con `catalogSlug`, y desequipa al inventario lo que ya no cabe en

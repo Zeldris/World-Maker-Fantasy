@@ -74,7 +74,7 @@ para que la partida en Las Llanuras sea sólida.
 - **Maestro de diplomacia** (H-5, mitad hecha: ya sube por negociación). 🧭 Quién enseña y dónde. **[A]**
 
 ### Robustez
-- **Versión visible y grabada en cada partida** (en curso, 2026-09-29). **[A]**
+- ~~**Versión visible y grabada en cada partida**~~ ✅ `bf473bc` **[A]**
 - **Partidas que sobreviven a una actualización:** copias de objetos con estadísticas antiguas
   (reequilibrio del 2026-09-29), ofertas persistidas sin campos nuevos, migraciones al arrancar. **[P]**
 - **Test intermitente de combate múltiple** (registro de deuda, 2026-09-29): causa raíz. **[H]**
