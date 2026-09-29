@@ -33,7 +33,7 @@ están en `../archivo/deuda-tecnica-hallazgos-historico.md`.
 | `/turn/classify` sin `try/catch` | ✅ Resuelta: `catch` en el handler (`turn.ts`) |
 | `setTimeout` de `applyTurnAwaitingDefense` sin cleanup | ✅ Resuelta: `clearTimeout` sobre `awaitingDefenseTimerRef` (`useCombatFlow.ts`) |
 | `useCombatFlow.ts` sin tests | ✅ Resuelta: `useCombatFlow.test.tsx` |
-| **Tamaño de `GameView.tsx`** | ⚠️ Bajando: 2.323 líneas (2.645 antes de la Fase 7; la 7 extrajo `useZonaAcciones` y la 12 `useInventarioAcciones` y `useModoDinamico`) |
+| **Tamaño de `GameView.tsx`** | ⚠️ Bajando: 2.114 líneas (2.645 antes de la Fase 7; la 7 extrajo `useZonaAcciones` y la 12 `useInventarioAcciones`, `useModoDinamico`, `useHabilidadesAcciones` y `useMisionesAcciones`) |
 | **Tamaño de `turnResolution.ts`** | ⚠️ Bajando: 7.125 líneas (7.907 antes de la Fase 7; la 7 extrajo `dailyTick.ts` y la 12 `turnLootKill.ts`) |
 | **Tamaño de `useCombatFlow.ts`** | ❌ Abierta: 986 líneas (859 el 09-07); ya tiene test |
 | **Tamaño de `combateMultipleOrquestacion.ts`** | ❌ Abierta: 2.327 líneas |

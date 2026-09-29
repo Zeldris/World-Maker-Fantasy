@@ -87,7 +87,7 @@ Rompen una mecánica en partida real. Referencias H-x:
 
 ### Deuda técnica que frena
 - ~~**Partir `turnResolution.ts`**~~: días cruzados a `dailyTick.ts` (`7d470f9`) y saqueo/muerte/despiece a `turnLootKill.ts` (`fe72966`), 7.125 líneas. Queda el bloque de combate múltiple, muy entrelazado. **[P]**
-- ~~**Partir `GameView.tsx`**~~: `useZonaAcciones` (`7d470f9`), `useInventarioAcciones` y `useModoDinamico` (`fe72966`), 2.323 líneas. Quedan `handleAttachAbility` y misiones. **[P]**
+- ~~**Partir `GameView.tsx`**~~: `useZonaAcciones` (`7d470f9`), `useInventarioAcciones` y `useModoDinamico` (`fe72966`), `useHabilidadesAcciones` y `useMisionesAcciones` (`4d3245d`), 2.114 líneas. **[P]**
 - ~~Repasar [deuda-tecnica-hallazgos.md](../registros/deuda-tecnica-hallazgos.md)~~ ✅ la tabla
   "Estado verificado" ya refleja lo resuelto; tamaños al día tras la Fase 12. **[H]**
 
