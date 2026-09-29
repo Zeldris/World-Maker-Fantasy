@@ -33,10 +33,10 @@ están en `../archivo/deuda-tecnica-hallazgos-historico.md`.
 | `/turn/classify` sin `try/catch` | ✅ Resuelta: `catch` en el handler (`turn.ts`) |
 | `setTimeout` de `applyTurnAwaitingDefense` sin cleanup | ✅ Resuelta: `clearTimeout` sobre `awaitingDefenseTimerRef` (`useCombatFlow.ts`) |
 | `useCombatFlow.ts` sin tests | ✅ Resuelta: `useCombatFlow.test.tsx` |
-| **Tamaño de `GameView.tsx`** | ❌ Abierta: 2.595 líneas (2.277 el 09-07; 2.645 antes de la Fase 7, que extrajo `hooks/useZonaAcciones.ts`) |
-| **Tamaño de `turnResolution.ts`** | ❌ Abierta: 7.695 líneas (6.922 el 09-07; 7.907 antes de la Fase 7, que extrajo el tick diario a `services/dailyTick.ts`) |
+| **Tamaño de `GameView.tsx`** | ⚠️ Bajando: 2.323 líneas (2.645 antes de la Fase 7; la 7 extrajo `useZonaAcciones` y la 12 `useInventarioAcciones` y `useModoDinamico`) |
+| **Tamaño de `turnResolution.ts`** | ⚠️ Bajando: 7.125 líneas (7.907 antes de la Fase 7; la 7 extrajo `dailyTick.ts` y la 12 `turnLootKill.ts`) |
 | **Tamaño de `useCombatFlow.ts`** | ❌ Abierta: 986 líneas (859 el 09-07); ya tiene test |
-| **Tamaño de `combateMultipleOrquestacion.ts`** | ❌ Abierta: 2.291 líneas |
+| **Tamaño de `combateMultipleOrquestacion.ts`** | ❌ Abierta: 2.327 líneas |
 | **Modales sin `role="dialog"`, Escape ni foco atrapado** | ⚠️ Parcial: solo 2 ficheros con `role="dialog"` |
 | `beforeunload` sin esperar la pausa | ⚪ Hueco aceptado, sin cambios |
 | Resto (menores agrupados, 4 `findUnique` en inventario, 409 de `session.ts`, error de envío en 6 modales) | Sin reverificar |
