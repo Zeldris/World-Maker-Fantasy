@@ -87,19 +87,8 @@ const FAUNA_MODELADA_COMO_RECURSO_PESCA_EXCEPCION = new Set([
 /// el de la fuente?) que le corresponde a Álvaro, ver docs/runbooks/ampliar-lore.md — NO se relaja
 /// el test para estos 5 casos, se documentan aquí y se reportan en el resumen de la tarea.
 const CONFLICTO_TERRENO_VS_HOME_EXCEPCION: Record<string, string> = {
-  // home exclusivo: osario-de-la-manada (['arido']) · faunaTerrainTag: 'vegetacion'.
-  'gargantua-de-ceniza': "home exclusivo 'osario-de-la-manada' (locationTerrainTags ['arido']) vs. faunaTerrainTag 'vegetacion' — nunca compatible con los datos actuales",
-  // home exclusivo: playa-de-ceniza-blanca (['humedo','arido']) · harvestSourceTerrainTag: 'costero'.
-  'junba-verde-resina-fuente': "home exclusivo 'playa-de-ceniza-blanca' (locationTerrainTags ['humedo','arido']) vs. harvestSourceTerrainTag 'costero' — mismo choque ya preexistente en su hermano 'junba-verde' (TALA)",
-  // mismo choque que junba-verde-resina-fuente, su propia fuente TALA hermana (ya tenía ZonePoint
-  // real desde 2026-08-31, en playa-de-ceniza-blanca — igual de incompatible con el candado).
-  'junba-verde': "home exclusivo 'playa-de-ceniza-blanca' (locationTerrainTags ['humedo','arido']) vs. harvestSourceTerrainTag 'costero'",
-  // mismo choque, mismo home exclusivo y mismo tag 'costero' (harvestSourceTerrainTag) que junba-verde.
-  temune: "home exclusivo 'playa-de-ceniza-blanca' (locationTerrainTags ['humedo','arido']) vs. harvestSourceTerrainTag 'costero'",
-  // home exclusivo: cruce-de-las-cenizas (['arido','vegetacion']) · faunaTerrainTag: 'humedo'.
-  ferike: "home exclusivo 'cruce-de-las-cenizas' (locationTerrainTags ['arido','vegetacion']) vs. faunaTerrainTag 'humedo' — ya tenía ZonePoint real (2026-08-31) en esa misma Location, igual de incompatible",
-  // home exclusivo: cruce-de-las-cenizas (['arido','vegetacion']) · harvestSourceTerrainTag: 'humedo'.
-  'telda-ceniza': "home exclusivo 'cruce-de-las-cenizas' (locationTerrainTags ['arido','vegetacion']) vs. harvestSourceTerrainTag 'humedo' — ya tenía ZonePoint real (2026-08-31) en esa misma Location, igual de incompatible",
+  // Vacía desde el 2026-09-29: Álvaro decidió corregir el terreno de las 6 fichas para que case con
+  // el lugar donde viven (worldCatalog.ts).
 };
 
 function pasaFiltroFauna(locationSlug: string, targetSlug: string): boolean {
@@ -171,15 +160,8 @@ describe('cobertura de mapa — Las Llanuras del Viento Rojo (Fase 3)', () => {
     expect(sinCobertura).toEqual([]);
   });
 
-  it('documenta las excepciones (no relajadas en silencio) — 5 fuentes de conflicto de datos preexistente', () => {
-    expect(Object.keys(CONFLICTO_TERRENO_VS_HOME_EXCEPCION).sort()).toEqual([
-      'ferike',
-      'gargantua-de-ceniza',
-      'junba-verde',
-      'junba-verde-resina-fuente',
-      'telda-ceniza',
-      'temune',
-    ].sort());
+  it('ya no quedan conflictos de terreno contra hogar (resueltos el 2026-09-29)', () => {
+    expect(Object.keys(CONFLICTO_TERRENO_VS_HOME_EXCEPCION)).toEqual([]);
   });
 
   /// Fase 6 (plan Oct 2026): toda Location de Las Llanuras debe tener >=1 ZonePoint, salvo las

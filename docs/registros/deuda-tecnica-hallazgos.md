@@ -38,6 +38,7 @@ están en `../archivo/deuda-tecnica-hallazgos-historico.md`.
 | **Tamaño de `useCombatFlow.ts`** | ❌ Abierta: 986 líneas (859 el 09-07); ya tiene test |
 | **Tamaño de `combateMultipleOrquestacion.ts`** | ❌ Abierta: 2.327 líneas |
 | **Modales sin `role="dialog"`, Escape ni foco atrapado** | ⚠️ Parcial: solo 2 ficheros con `role="dialog"` |
+| **Test intermitente en `combateMultipleOrquestacion.integration.test.ts`** (2026-09-29) | ❌ Abierta: 2 fallos sueltos en ~10 ejecuciones de la suite completa ("crea el encuentro con iniciativa real" con el backend arrancado; "ANALIZAR RIVAL contra un miembro de grupo" con el backend parado). El fichero solo pasa 14 de 14 veces suelto y el proyecto `bd-real` solo, 3 de 3. Además: el backend arrancado (`up.sh`) corre `worldTick` contra la misma BD que los tests; pararlo con `stop-be.sh` antes de la suite. Sin causa raíz todavía |
 | `beforeunload` sin esperar la pausa | ⚪ Hueco aceptado, sin cambios |
 | Resto (menores agrupados, 4 `findUnique` en inventario, 409 de `session.ts`, error de envío en 6 modales) | Sin reverificar |
 

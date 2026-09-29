@@ -11310,14 +11310,14 @@ export const harvestSourceTerrainTag: Record<string, TerrainTag> = {
   // homeLocationSlug ya candado exacto a Playa de Ceniza Blanca — 'costero' es solo informativo,
   // Location.terrainTags de la playa no lo incluye (['humedo','arido']), así que este tag nunca
   // interviene en el filtro real (ver comentario de pasaFiltroTerreno, terrain.ts).
-  'junba-verde': 'costero',
-  'junba-verde-resina-fuente': 'costero',
-  temune: 'costero',
+  'junba-verde': 'humedo', // decisión de Álvaro, 2026-09-29: el terreno casa con el lugar donde vive
+  'junba-verde-resina-fuente': 'humedo', // decisión de Álvaro, 2026-09-29: el terreno casa con el lugar donde vive
+  temune: 'humedo', // decisión de Álvaro, 2026-09-29: el terreno casa con el lugar donde vive
   'telda-comun': 'humedo', // El Pozo de Cauce Viejo
   // Telda Ceniza es la misma especie que Telda Común con corteza distinta (El Cruce de las
   // Cenizas) — comparte resina/hojas con ella, mismo tag por coherencia (Cruce de las Cenizas no
   // tiene locationTerrainTags propio todavía, así que hoy no filtra de todos modos).
-  'telda-ceniza': 'humedo',
+  'telda-ceniza': 'vegetacion', // decisión de Álvaro, 2026-09-29: el terreno casa con el lugar donde vive
   'resina-telda-fuente': 'humedo',
   'flor-salvatura': 'vegetacion', // Los Pastos de la Deriva
   // La Sabana Alta (zona 14, añadido 2026-08-22).
@@ -11421,7 +11421,7 @@ export const faunaTerrainTag: Record<string, TerrainTag> = {
   // ninguna zona de pasto amplio; mismo tag y mismas 3 Locations que Corredor de Cauce/Aullador
   // Rojo (Los Manaderos → Los Pastos de la Deriva → La Sabana Alta), coherente con flora-fauna.md
   // ("las Terk'ikar logran que transporten comunidades enteras en migraciones estacionales").
-  'gargantua-de-ceniza': 'vegetacion',
+  'gargantua-de-ceniza': 'arido', // decisión de Álvaro, 2026-09-29: el terreno casa con el lugar donde vive
   murgol: 'vegetacion',
   'salamandra-de-escoria': 'rocoso', // homeLocationSlug: filo-de-las-brasas
   // Añadido 2026-08-22 (análisis de réplica): sin tag aparecía en TODA la región (playas
@@ -11440,7 +11440,7 @@ export const faunaTerrainTag: Record<string, TerrainTag> = {
   // resumen de la tarea: 'canizor' (fiera solitaria e itinerante, sin homeLocationSlug fijo).
   gesgurio: 'rocoso', // La Hondonada del Eco, mismo tag que yerreo
   'kirelon-arenoso': 'rocoso', // La Hondonada del Eco
-  ferike: 'humedo', // El Cruce de las Cenizas, mismo tag que telda-ceniza (sin locationTerrainTags
+  ferike: 'arido', // decisión de Álvaro, 2026-09-29 (antes 'humedo'): El Cruce de las Cenizas (sin locationTerrainTags
   // propio todavía, ver comentario de harvestSourceTerrainTag — mismo criterio de "coherencia" ya
   // aplicado ahí)
   guchapo: 'humedo', // El Pozo de Cauce Viejo, mismo tag que telda-comun/musgo-arcilla
@@ -11722,6 +11722,7 @@ export const zonePoints: ZonePointInput[] = [
   { locationSlug: 'playa-de-ceniza-blanca', x: 300, y: 300, tipo: 'RECURSO', targetSlug: 'bulbo-del-cauce', label: 'Bulbo del Cauce' },
   { locationSlug: 'playa-de-ceniza-blanca', x: 540, y: 380, tipo: 'RECURSO', targetSlug: 'salvia-del-polvo', label: 'Salvia del Polvo' },
   { locationSlug: 'playa-de-ceniza-blanca', x: 200, y: 220, tipo: 'RECURSO', targetSlug: 'junba-verde', label: 'Junba Verde' },
+  { locationSlug: 'playa-de-ceniza-blanca', x: 180, y: 320, tipo: 'RECURSO', targetSlug: 'junba-verde-resina-fuente', label: 'Resina de Junba' },
   { locationSlug: 'playa-de-ceniza-blanca', x: 450, y: 480, tipo: 'RECURSO', targetSlug: 'temune', label: 'Algas Temune varadas' },
   { locationSlug: 'playa-de-ceniza-blanca', x: 620, y: 220, tipo: 'RECURSO', targetSlug: 'roca-pilares-rotos', label: 'Roca de Llanura Roja' },
   // Franja 3 de "Interactuar" (2026-09-08) — "conoce cada banco de Jashil y sabe leer cuándo el
@@ -11861,6 +11862,7 @@ export const zonePoints: ZonePointInput[] = [
   // muere", igual que Ruptidar), así que pasa el filtro en CUALQUIER Location de la región. Se
   // elige El Osario de la Manada por coherencia con su propia bio, no por candado real.
   { locationSlug: 'osario-de-la-manada', x: 150, y: 150, tipo: 'FAUNA', targetSlug: 'zense-ceniza', label: 'Zense Ceniza sobrevolando los huesos' },
+  { locationSlug: 'osario-de-la-manada', x: 640, y: 220, tipo: 'FAUNA', targetSlug: 'gargantua-de-ceniza', label: 'Gargantúa de Ceniza junto a los huesos' },
 
   // TALA/MINERIA/EXTRACCION — mismo criterio de candado de Location + terreno.
   { locationSlug: 'sabana-alta-colmillar', x: 100, y: 340, tipo: 'RECURSO', targetSlug: 'telda-atardecer', label: 'Telda Atardecer en la ladera' },
