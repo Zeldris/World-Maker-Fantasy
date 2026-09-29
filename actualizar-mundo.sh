@@ -46,6 +46,13 @@ else
   sleep 3
 fi
 
+# Tras un pull con cambios de esquema (2026-09-29): sin esto el seed fallaba con "Unknown argument
+# `saveId`" — la BD o el cliente de Prisma seguían en la versión anterior. `migrate deploy` solo
+# aplica las migraciones que falten y `generate` rehace el cliente a partir de schema.prisma.
+echo
+echo "0/2 — migraciones pendientes y cliente de Prisma..."
+(cd "$DIR/backend" && npx prisma migrate deploy && npx prisma generate)
+
 echo
 echo "1/2 — seed-catalog (ubicaciones, NPCs, items, aristas)..."
 (cd "$DIR/backend" && npm run seed-catalog)

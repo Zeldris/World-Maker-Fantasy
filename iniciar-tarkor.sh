@@ -54,6 +54,9 @@ eval "$NVM_INIT"
 # la BD desfasada. `migrate deploy` solo aplica las que falten; nunca reescribe las aplicadas.
 echo "Aplicando migraciones pendientes (prisma migrate deploy)..."
 (cd "$DIR/backend" && npx prisma migrate deploy) || echo "AVISO: prisma migrate deploy falló — revisa que Postgres esté arriba."
+# El cliente de Prisma también hay que regenerarlo tras un pull con cambios de esquema: si no, el
+# seed y el backend fallan con "Unknown argument" aunque la BD ya esté migrada.
+(cd "$DIR/backend" && npx prisma generate >/dev/null) || echo "AVISO: prisma generate falló — corre 'npx prisma generate' a mano en backend/."
 echo
 
 echo "Sincronizando catálogo del mundo (seed-catalog)..."
