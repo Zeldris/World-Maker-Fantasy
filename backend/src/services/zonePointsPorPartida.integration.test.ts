@@ -86,6 +86,27 @@ describe('ZonePoint por partida (Postgres real)', () => {
     expect(filasB[0].id).not.toBe(filasA[0].id);
   });
 
+  it('un re-seed que añade puntos a una Location ya clonada llega a la partida sin tocar lo suyo (resincronización aditiva)', async () => {
+    const saveR = await nuevaPartida('Partida R (resincronización)');
+    const [antes] = await asegurarZonePointsDePartida(prisma, saveR, locationId);
+    await prisma.zonePoint.update({ where: { id: antes.id }, data: { cantidad: 7, x: 125 } });
+    const nuevas = await Promise.all([
+      prisma.zonePoint.create({ data: { locationId, saveId: null, x: 50, y: 50, tipo: 'RECURSO', targetSlug: 'test-resync-recurso', label: 'Fuente nueva', cantidad: 3, activo: true } }),
+      prisma.zonePoint.create({ data: { locationId, saveId: null, x: 90, y: 90, tipo: 'FAUNA', targetSlug: 'test-resync-fauna', label: 'Bestia nueva', cantidad: 2, activo: true } }),
+    ]);
+    try {
+      const filas = await asegurarZonePointsDePartida(prisma, saveR, locationId);
+      expect(filas.map((f) => f.targetSlug).sort()).toEqual(['test-por-partida-fauna', 'test-resync-fauna', 'test-resync-recurso']);
+      const propia = filas.find((f) => f.id === antes.id)!;
+      expect({ cantidad: propia.cantidad, x: propia.x }).toEqual({ cantidad: 7, x: 125 });
+      await asegurarZonePointsDePartida(prisma, saveR, locationId);
+      expect(await prisma.zonePoint.count({ where: { saveId: saveR, locationId } })).toBe(3);
+    } finally {
+      await prisma.save.delete({ where: { id: saveR } });
+      await prisma.zonePoint.deleteMany({ where: { id: { in: nuevas.map((n) => n.id) } } });
+    }
+  });
+
   it('mover en la partida A no cambia la B ni la plantilla', async () => {
     const random = () => 0.5;
     for (let i = 0; i < 2; i++) await avanzarZonePointsUnPaso(prisma, locationId, saveA, random);

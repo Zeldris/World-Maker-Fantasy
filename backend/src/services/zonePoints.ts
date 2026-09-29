@@ -249,28 +249,51 @@ export function reconciliarGrupos(
 /// trabaja con su propia copia. Si la partida aún no tiene filas en esta Location, clona las
 /// plantillas activas (mismos campos, `lastUpdatedAtMinutes` null para que el primer reparto de
 /// grupos corra) y las devuelve. Idempotente. Llamar antes de cualquier lectura de juego.
+///
+/// Resincronización aditiva (2026-09-29): si un re-seed del catálogo añade puntos a una Location
+/// que la partida ya clonó (p. ej. las fuentes de pesca de la Playa), se clonan solo los que
+/// faltan — ver `plantillasQueFaltan`. Nunca borra ni pisa las filas propias de la partida.
 export async function asegurarZonePointsDePartida(
   tx: Prisma.TransactionClient | PrismaClient,
   saveId: string,
   locationId: string,
 ) {
-  const existentes = await tx.zonePoint.findMany({ where: { saveId, locationId } });
-  if (existentes.length > 0) return existentes;
-  // Dos peticiones casi simultáneas de una partida sin filas (abrir el mapa + un turno) podían
-  // clonar dos veces. Candado de Postgres por (partida, Location), liberado al acabar la transacción;
-  // si el caller no está ya en una, se abre aquí.
+  const [existentes, plantillas] = await Promise.all([
+    tx.zonePoint.findMany({ where: { saveId, locationId } }),
+    tx.zonePoint.findMany({ where: { saveId: null, locationId, activo: true } }),
+  ]);
+  if (plantillasQueFaltan(existentes, plantillas).length === 0) return existentes;
+  // Dos peticiones casi simultáneas (abrir el mapa + un turno) podían clonar dos veces. Candado de
+  // Postgres por (partida, Location), liberado al acabar la transacción; si el caller no está ya en
+  // una, se abre aquí.
   if ('$transaction' in tx) return tx.$transaction((t) => clonarPlantillasConCandado(t, saveId, locationId));
   return clonarPlantillasConCandado(tx, saveId, locationId);
 }
 
+type PuntoComparable = { tipo: string; targetSlug: string | null; x: number; y: number };
+
+/// Plantillas de catálogo que la partida todavía no tiene. FAUNA y NPC se mueven (y los grupos de
+/// FAUNA se parten y se borran, pero el ancla de cada especie nunca se borra — ver
+/// `reconciliarGrupos`), así que se comparan por `targetSlug`: una especie o NPC sin ninguna fila en
+/// la partida es nuevo del catálogo. RECURSO y EDIFICIO nunca se mueven ni se borran de una
+/// partida, así que se comparan por (tipo, targetSlug, x, y). Partida sin filas → todas.
+export function plantillasQueFaltan<P extends PuntoComparable>(existentes: PuntoComparable[], plantillas: P[]): P[] {
+  const clave = (p: PuntoComparable) =>
+    p.tipo === 'FAUNA' || p.tipo === 'NPC' ? `${p.tipo}|${p.targetSlug}` : `${p.tipo}|${p.targetSlug}|${p.x}|${p.y}`;
+  const tiene = new Set(existentes.map(clave));
+  return plantillas.filter((p) => !tiene.has(clave(p)));
+}
+
 async function clonarPlantillasConCandado(tx: Prisma.TransactionClient, saveId: string, locationId: string) {
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`zonepoints|${saveId}|${locationId}`}))`;
-  const yaClonadas = await tx.zonePoint.findMany({ where: { saveId, locationId } });
-  if (yaClonadas.length > 0) return yaClonadas;
-  const plantillas = await tx.zonePoint.findMany({ where: { saveId: null, locationId, activo: true } });
-  if (plantillas.length === 0) return [];
+  const [yaClonadas, plantillas] = await Promise.all([
+    tx.zonePoint.findMany({ where: { saveId, locationId } }),
+    tx.zonePoint.findMany({ where: { saveId: null, locationId, activo: true } }),
+  ]);
+  const faltan = plantillasQueFaltan(yaClonadas, plantillas);
+  if (faltan.length === 0) return yaClonadas;
   await tx.zonePoint.createMany({
-    data: plantillas.map((p) => ({
+    data: faltan.map((p) => ({
       locationId: p.locationId,
       saveId,
       x: p.x,

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { proximaCantidadPara, zonePointColorFor, zonePointActivoAhora, reconciliarGrupos, type ZonePointRow } from './zonePoints.js';
+import { proximaCantidadPara, zonePointColorFor, zonePointActivoAhora, reconciliarGrupos, plantillasQueFaltan, type ZonePointRow } from './zonePoints.js';
 
 function puntoBase(overrides: Partial<ZonePointRow> = {}): ZonePointRow {
   return {
@@ -163,5 +163,25 @@ describe('reconciliarGrupos', () => {
     const resultado = reconciliarGrupos([1], 20, true, () => 0.9);
     for (const cantidad of resultado.crear) expect(cantidad).toBeLessThanOrEqual(4);
     expect(resultado.actualizar[0].cantidad).toBeLessThanOrEqual(4);
+  });
+});
+
+describe('plantillasQueFaltan (resincronización aditiva de ZonePoint por partida)', () => {
+  const p = (tipo: string, targetSlug: string, x = 0, y = 0) => ({ tipo, targetSlug, x, y });
+
+  it('partida sin filas → todas las plantillas', () => {
+    const plantillas = [p('RECURSO', 'a', 1, 1), p('FAUNA', 'b')];
+    expect(plantillasQueFaltan([], plantillas)).toEqual(plantillas);
+  });
+
+  it('FAUNA y NPC se comparan por slug: moverse o partirse en grupos no las duplica', () => {
+    const existentes = [p('FAUNA', 'lobo', 300, 300), p('FAUNA', 'lobo', 40, 40), p('NPC', 'kael', 99, 99)];
+    expect(plantillasQueFaltan(existentes, [p('FAUNA', 'lobo', 10, 10), p('NPC', 'kael', 10, 10)])).toEqual([]);
+  });
+
+  it('RECURSO y EDIFICIO se comparan por posición: un punto nuevo del mismo slug sí falta', () => {
+    const existentes = [p('RECURSO', 'flor', 10, 10), p('EDIFICIO', 'forja', 5, 5)];
+    const nueva = p('RECURSO', 'flor', 20, 20);
+    expect(plantillasQueFaltan(existentes, [p('RECURSO', 'flor', 10, 10), nueva, p('EDIFICIO', 'forja', 5, 5)])).toEqual([nueva]);
   });
 });
