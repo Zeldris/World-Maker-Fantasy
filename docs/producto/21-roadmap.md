@@ -106,9 +106,12 @@ Rompen una mecánica en partida real. Referencias H-x:
   (P-4). Propuesta: restringirlo a Berig. **[H]**
 
 ### Expediciones de facción (diseño cerrado)
-- Modelos `Expedicion` y `ExpedicionMember`, riesgo de intercepción por `FactionRelation`, combate
-  en `worldTick` con el motor existente, botín al Almacén de la facción. **[A]**
-- Sembrar `NpcProfessionPotential` para los NPC que trabajan (H-8). **[H]**
+- ~~Modelos `Expedicion` y `ExpedicionMember`, riesgo de intercepción por `FactionRelation`, combate
+  en `worldTick` con el motor existente, botín al Almacén de la facción~~ ✅ `8c293d8`, `cbbc0b8`
+  (primer corte, Fase 13 del plan; valores por defecto en las preguntas 25-28). **[A]**
+- ~~Sembrar `NpcProfessionPotential` para los NPC que trabajan (H-8)~~ ✅ `5140580` (30 NPC). **[H]**
+- Que el jugador vea las expediciones (mapa de mundo, noticias en el log): fuera del primer corte.
+  **[P]**
 
 ### Misiones secundarias por motor
 - Misiones generadas por eventos de mundo en vez de por el LLM (encaja con el motor de eventos;
@@ -251,3 +254,19 @@ Resumen de todos los 🧭. Detalle técnico en la
 23. **Costa norte de las Llanuras:** la Playa de Ceniza Blanca y El Embarcadero de Ceniza son
     "costa norte", pero Cristal Helado ocupa el norte de costa a costa. ¿Es la costa noroeste?
 24. **Kelife = "Brillo de luna"** (`razas.md`) en un mundo sin luna. ¿Se cambia la traducción?
+
+**Expediciones de facción** (valores por defecto de la Fase 13; funcionan así hasta que se decida):
+
+25. Potencial de oficio de los NPC: los Maestros llegan a nivel 9 y empiezan en 7; los trabajadores
+    cuyo cargo nombra un oficio llegan a 6 y empiezan en 3. Sin oficio: el Ganadero del Clan Serhu
+    (no existe "ganadero") y el "tallador" de Tasko (Feg Ger), que solo cuenta como curtidor.
+26. Ritmo: como mucho una expedición activa por facción, lanzada a diario hasta que exista la IA
+    de facción; 2 días (ida y recolección, vuelta); hasta 2 recolectores y 2 guardias; cada
+    recolector trae como mucho 3 unidades. Los desolladores no van (necesitan un cadáver delante).
+27. Riesgo de intercepción: 50 % si hay GUERRA con otro dueño de la región destino, 20 % si hay
+    TENSION, 0 % en el resto. Serhu y Helsig recolectan en regiones que solo son suyas, así que hoy
+    nunca los interceptan; y sin las presiones iniciales (H-7) casi nadie está en guerra.
+28. Combate de intercepción: un NPC de la facción hostil contra los guardias, tope de 12 rondas
+    (si nadie cae, aguantan los defensores). Si pierden, se pierde la carga y la facción atacante
+    suma BAJA_DE_GUERRA (+8 de presión). **Nadie muere**: los NPC son del mundo, no de cada partida,
+    y matarlos en segundo plano los quitaría de todas las partidas. ¿Debería haber heridos o bajas?
