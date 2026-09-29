@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, cleanup } from '@testing-library/react'
+import { render, cleanup, fireEvent } from '@testing-library/react'
 import { LogPanel } from './LogPanel'
 import type { LogEntry } from '../types'
 
@@ -120,5 +120,60 @@ describe('LogPanel — aviso de riesgo en la tarjeta Cazar', () => {
     cleanup()
     const sin = entryConOferta({})
     expect(render(<LogPanel {...baseProps} entries={[sin]} isThinking={false} />).queryByRole('alert')).toBeNull()
+  })
+})
+
+// Modal de detalle de RECURSO (2026-09-29, petición de Álvaro) — "Interactuar" en la tarjeta de un
+// recurso ya no recolecta directo: avisa al padre para abrir el modal de detalle (estado en
+// useModoDinamico.ts). NPC/FAUNA siguen por su callback de siempre.
+describe('LogPanel — "Interactuar" en una oferta RECURSO', () => {
+  const baseProps = {
+    title: 'Tu personaje',
+    subtitle: 'x',
+    accent: 'accent' as const,
+    emptyHint: 'vacío',
+  }
+  function entradaConOferta(tipo: 'RECURSO' | 'NPC'): LogEntry {
+    return {
+      id: 'e1',
+      channel: 'character',
+      text: 'Encuentras algo cerca.',
+      timeLabel: 'Día 1',
+      createdAt: new Date().toISOString(),
+      dynamicModeOffer: { tipo, targetSlug: 'lucre-blanco', targetName: 'Lucre Blanco', metodo: tipo === 'RECURSO' ? 'TALA' : undefined },
+    }
+  }
+
+  it('abre el detalle (onVerRecursoDetalle con slug/nombre/metodo) y NO cae en ningún otro callback de interacción', () => {
+    const onVerRecursoDetalle = vi.fn()
+    const onInteractuarModoDinamico = vi.fn()
+    const { getByText } = render(
+      <LogPanel {...baseProps} entries={[entradaConOferta('RECURSO')]} onVerRecursoDetalle={onVerRecursoDetalle} onInteractuarModoDinamico={onInteractuarModoDinamico} />,
+    )
+    fireEvent.click(getByText('Interactuar'))
+    expect(onVerRecursoDetalle).toHaveBeenCalledWith('e1', 'lucre-blanco', 'Lucre Blanco', 'TALA')
+    expect(onInteractuarModoDinamico).not.toHaveBeenCalled()
+  })
+
+  it('"Ignorar" sigue llamando a onDismissDynamicModeOffer sin abrir el detalle', () => {
+    const onVerRecursoDetalle = vi.fn()
+    const onDismissDynamicModeOffer = vi.fn()
+    const { getByText } = render(
+      <LogPanel {...baseProps} entries={[entradaConOferta('RECURSO')]} onVerRecursoDetalle={onVerRecursoDetalle} onDismissDynamicModeOffer={onDismissDynamicModeOffer} />,
+    )
+    fireEvent.click(getByText('Ignorar'))
+    expect(onDismissDynamicModeOffer).toHaveBeenCalledWith('e1')
+    expect(onVerRecursoDetalle).not.toHaveBeenCalled()
+  })
+
+  it('una oferta NPC sigue usando onInteractuarModoDinamico, no el detalle de recurso', () => {
+    const onVerRecursoDetalle = vi.fn()
+    const onInteractuarModoDinamico = vi.fn()
+    const { getByText } = render(
+      <LogPanel {...baseProps} entries={[entradaConOferta('NPC')]} onVerRecursoDetalle={onVerRecursoDetalle} onInteractuarModoDinamico={onInteractuarModoDinamico} />,
+    )
+    fireEvent.click(getByText('Interactuar'))
+    expect(onInteractuarModoDinamico).toHaveBeenCalledTimes(1)
+    expect(onVerRecursoDetalle).not.toHaveBeenCalled()
   })
 })

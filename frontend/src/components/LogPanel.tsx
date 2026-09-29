@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef, useState } from 'react'
-import { isExtendedLogRoll, type CombatExchangeInfo, type CondicionFisica, type LogEntry } from '../types'
+import { isExtendedLogRoll, type CombatExchangeInfo, type CondicionFisica, type LogEntry, type MetodoObtencion } from '../types'
 import { RollBadge } from './RollBadge'
 import { ExtendedRollBadge } from './ExtendedRollBadge'
 import { DiceRollSingle } from './DiceRoll'
@@ -63,7 +63,7 @@ interface LogPanelProps {
   onDismissQuestOffer?: (entryId: string) => void
   /// "Modo dinámico" (2026-08-27, `entry.dynamicModeOffer`) — mismo criterio opcional que
   /// `onAcceptQuestOffer`/`onDismissQuestOffer`. Solo NPC/FAUNA (conversación de vueltas, abre
-  /// DynamicModeModal) — RECURSO usa `onInteractuarModoDinamicoRecurso` abajo, resuelve sin modal.
+  /// DynamicModeModal) — RECURSO usa `onVerRecursoDetalle` abajo (modal de detalle propio).
   onInteractuarModoDinamico?: (
     entryId: string,
     tipo: 'NPC' | 'FAUNA',
@@ -76,9 +76,10 @@ interface LogPanelProps {
     cantidad?: number,
   ) => void
   /// RECURSO (2026-09-08, "Ver qué hay en la zona") — a diferencia de NPC/FAUNA, no abre
-  /// conversación: resuelve la recolección real de una sola llamada (tirada + inventario +
-  /// LogEntry), la tarjeta se limpia sola al terminar.
-  onInteractuarModoDinamicoRecurso?: (entryId: string, targetSlug: string) => void
+  /// conversación. Desde 2026-09-29 "Interactuar" abre el modal de detalle del elemento
+  /// (RecursoDetalleModal, estado en useModoDinamico.ts), cuyo botón (Talar/Minar/Recolectar...) es
+  /// quien dispara la recolección real de una sola llamada (tirada + inventario + LogEntry).
+  onVerRecursoDetalle?: (entryId: string, targetSlug: string, targetName: string, metodo?: MetodoObtencion | null) => void
   /// Cazar desde la tarjeta de encuentro (Fase 2, 2026-09-28,
   /// `plan-mecanicas-por-zona-2026-09-28.md`) — solo se ofrece para FAUNA no forzada con
   /// `zonePointId` (un grupo real con el que se ha colisionado en el mapa); caza ESE grupo exacto,
@@ -198,7 +199,7 @@ export const LogPanel = memo(function LogPanel({
   onAcceptQuestOffer,
   onDismissQuestOffer,
   onInteractuarModoDinamico,
-  onInteractuarModoDinamicoRecurso,
+  onVerRecursoDetalle,
   onCazarEnZona,
   onDismissDynamicModeOffer,
   onChooseNpcInteraction,
@@ -487,7 +488,7 @@ export const LogPanel = memo(function LogPanel({
                   explicación.
                   RECURSO (2026-09-08, "Ver qué hay en la zona") — estructuralmente distinto: no hay
                   conversación, "Interactuar" resuelve la recolección real de una sola llamada
-                  (`onInteractuarModoDinamicoRecurso`, sin abrir DynamicModeModal) — mismo botón/
+                  (`onVerRecursoDetalle` abre RecursoDetalleModal, no DynamicModeModal) — mismo botón/
                   tarjeta, callback distinto. */}
               {entry.dynamicModeOffer &&
                 (() => {
@@ -534,7 +535,7 @@ export const LogPanel = memo(function LogPanel({
                           disabled: offer.busy,
                           onClick: () =>
                             offer.tipo === 'RECURSO'
-                              ? onInteractuarModoDinamicoRecurso?.(entry.id, offer.targetSlug)
+                              ? onVerRecursoDetalle?.(entry.id, offer.targetSlug, offer.targetName, offer.metodo)
                               : onInteractuarModoDinamico?.(
                                   entry.id,
                                   offer.tipo as 'NPC' | 'FAUNA',

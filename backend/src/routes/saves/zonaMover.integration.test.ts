@@ -493,6 +493,8 @@ describe('POST /saves/:id/zona/mover', () => {
       quienInicia: 'jugador',
       zonePointId: recurso.id,
       cantidad: 1,
+      // Sin ningún HarvestYield real para este slug de prueba — método desconocido, no ausente.
+      metodo: null,
     });
     expect(body.logEntry).toMatchObject({ text: expect.stringContaining('test-mover-recurso') });
     const logRow = await prisma.logEntry.findUnique({ where: { id: body.logEntry.id } });
@@ -510,8 +512,25 @@ describe('POST /saves/:id/zona/mover', () => {
       quienInicia: 'jugador',
       zonePointId: recurso.id,
       cantidad: 1,
+      // Sin ningún HarvestYield real para este slug de prueba — método desconocido, no ausente.
+      metodo: null,
     });
     expect(saveAfter.zonaCaminoPendiente).toBeNull();
+  });
+
+  // Modal de detalle de RECURSO (2026-09-29, petición de Álvaro: "un botón con texto según la
+  // profesión: Recolectar, Talar, Minar...") — la oferta trae el `metodoObtencion` real de la fuente.
+  it('la oferta RECURSO incluye el metodo de obtención real de la fuente (HarvestYield)', async () => {
+    const recurso = await prisma.zonePoint.create({
+      data: { locationId, saveId, x: 75, y: 25, tipo: 'RECURSO', targetSlug: 'telda-comun', cantidad: 1, activo: true },
+    });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 375, y: 25 } } });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.dynamicModeOffer).toMatchObject({ tipo: 'RECURSO', targetSlug: 'telda-comun', zonePointId: recurso.id, metodo: 'TALA' });
+    const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveAfter.pendingDynamicModeOffer).toMatchObject({ metodo: 'TALA' });
   });
 
   // Bug real jugando en vivo (2026-09-28): tras Ignorar la oferta de un recurso/fauna, el primer

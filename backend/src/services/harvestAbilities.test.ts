@@ -6,6 +6,7 @@ import {
   attributeSecundarioForOficio,
   attributeSecundarioForMetodo,
   professionIdForOficio,
+  metodoPrincipalDeFuente,
 } from './harvestAbilities.js';
 
 describe('harvestAbilityUnlocksFor', () => {
@@ -125,5 +126,23 @@ describe('professionIdForOficio', () => {
   it('pescador-pescar y pescador-buscar resuelven ambos al mismo professionId real "pescador"', () => {
     expect(professionIdForOficio('pescador-pescar')).toBe('pescador');
     expect(professionIdForOficio('pescador-buscar')).toBe('pescador');
+  });
+});
+
+// Modal de detalle de RECURSO (2026-09-29) — método "principal" de una fuente, determinista.
+describe('metodoPrincipalDeFuente', () => {
+  it('sin yields -> null', () => {
+    expect(metodoPrincipalDeFuente([])).toBeNull();
+  });
+
+  it('un único método (el caso real del catálogo) se devuelve tal cual', () => {
+    expect(metodoPrincipalDeFuente(['TALA', 'TALA'])).toBe('TALA');
+    expect(metodoPrincipalDeFuente(['PASIVO'])).toBe('PASIVO');
+  });
+
+  it('prefiere el no PASIVO y no depende del orden de entrada', () => {
+    expect(metodoPrincipalDeFuente(['PASIVO', 'MINERIA'])).toBe('MINERIA');
+    expect(metodoPrincipalDeFuente(['MINERIA', 'PASIVO'])).toBe('MINERIA');
+    expect(metodoPrincipalDeFuente(['TALA', 'MINERIA'])).toBe(metodoPrincipalDeFuente(['MINERIA', 'TALA']));
   });
 });

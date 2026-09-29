@@ -1,4 +1,5 @@
 import type {
+  MetodoObtencion,
   RiesgoCazaInfo,
   AbilityEffect,
   ActiveEffect,
@@ -619,6 +620,8 @@ export interface SaveDetail {
         cantidad?: number
         /// Aviso de riesgo de Cazar (F9-1, 2026-09-29) — ver `RiesgoCazaInfo`, types.ts.
         riesgoCaza?: RiesgoCazaInfo
+        /// Método de la fuente (RECURSO, 2026-09-29) — ver `dynamicModeOffer.metodo`, types.ts.
+        metodo?: MetodoObtencion | null
       }
     | null
   /// Oferta de misión SIN aceptar todavía (bug real jugando en vivo, 2026-09-03, "misión de
@@ -1243,6 +1246,8 @@ export interface MoverZonaResultado {
         cantidad?: number
         /// Aviso de riesgo de Cazar (F9-1, 2026-09-29) — ver `RiesgoCazaInfo`, types.ts.
         riesgoCaza?: RiesgoCazaInfo
+        /// Método de la fuente (RECURSO, 2026-09-29) — ver `dynamicModeOffer.metodo`, types.ts.
+        metodo?: MetodoObtencion | null
       }
     | null
   /// LogEntry real determinista del encuentro (2026-09-09, hallazgo real jugando en vivo: la

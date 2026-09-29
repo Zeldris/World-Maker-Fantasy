@@ -546,6 +546,9 @@ export interface LogEntry {
     /// Aviso de riesgo de la tarjeta "Cazar" (F9-1, decisión de Álvaro, 2026-09-29) — solo FAUNA no
     /// forzada con `zonePointId`. Solo avisa, no cambia ninguna regla de caza.
     riesgoCaza?: RiesgoCazaInfo
+    /// Método de obtención de la fuente (solo RECURSO, 2026-09-29) — decide el verbo del botón del
+    /// modal de detalle (`etiquetaAccionRecurso`). Ausente en ofertas antiguas persistidas.
+    metodo?: MetodoObtencion | null
   }
   /// Menú contextual de interacción con NPC (2026-09-06) — mismo criterio exacto que
   /// `dynamicModeOffer`: tarjeta con un botón por opción, `busy`/`error` para no perder la tarjeta
@@ -1033,3 +1036,6 @@ export interface ProgressionResult {
   xpHito?: number
   xpHitoLabel?: string | null
 }
+
+/// Espejo de `enum MetodoObtencion` (backend, schema.prisma) — qué verbo exige una fuente de recolección.
+export type MetodoObtencion = 'PASIVO' | 'CAZA' | 'TALA' | 'MINERIA' | 'EXTRACCION' | 'PESCA' | 'BUSQUEDA'

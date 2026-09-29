@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { Prisma } from '@prisma/client';
+import { Prisma, type MetodoObtencion } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { zoneMapImageUrl } from '../../lib/imageAssets.js';
 import { sourceDisplayNameFor, harvestSourcesThatAreFaunaWithoutNpc } from '../../scripts/worldCatalog.js';
@@ -7,7 +7,7 @@ import { detectNpcsInScene, scopeFor, hasPendingLoot } from '../../services/npcS
 import { loadSessionFacts } from '../../services/worldFacts.js';
 import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
 import { energiaMaxFor, energiaPasivaEntre } from '../../services/energy.js';
-import { harvestAbilityForMetodo, matchesOficioPrefix } from '../../services/harvestAbilities.js';
+import { harvestAbilityForMetodo, matchesOficioPrefix, metodoPrincipalDeFuente } from '../../services/harvestAbilities.js';
 import { momentoDelDiaFor, estacionFor, advanceFictionalMinutes, formatFictionalDate } from '../../services/worldClock.js';
 
 /// B2 (2026-09-28) — minutos ficticios que cuesta cada paso real por la cuadrícula de la zona.
@@ -635,6 +635,10 @@ export async function zonaRoutes(app: FastifyInstance) {
           /// Aviso de riesgo de la tarjeta "Cazar" (F9-1, decisión de Álvaro, 2026-09-29) — solo FAUNA
           /// no forzada con `ZonePoint`; ver `riesgoDeCaza` (cazaRiesgo.ts). Solo avisa, no cambia reglas.
           riesgoCaza?: RiesgoCazaInfo;
+          /// Método de obtención de la fuente (RECURSO, 2026-09-29) — el frontend lo usa para el verbo del
+          /// botón del modal de detalle ("Talar"/"Minar"/…). Ausente en ofertas antiguas persistidas y en
+          /// NPC/FAUNA; `null` si la fuente no tiene ningún yield (ver `metodoPrincipalDeFuente`).
+          metodo?: MetodoObtencion | null;
         }
       | null;
     logEntry: { id: string; text: string; timeLabel: string; createdAt: string; roll?: IniciativaEncuentroLogRoll } | null;
@@ -829,6 +833,10 @@ export async function zonaRoutes(app: FastifyInstance) {
           zonePointId?: string;
           cantidad?: number;
           riesgoCaza?: RiesgoCazaInfo;
+          /// Método de obtención de la fuente (RECURSO, 2026-09-29) — el frontend lo usa para el verbo del
+          /// botón del modal de detalle ("Talar"/"Minar"/…). Ausente en ofertas antiguas persistidas y en
+          /// NPC/FAUNA; `null` si la fuente no tiene ningún yield (ver `metodoPrincipalDeFuente`).
+          metodo?: MetodoObtencion | null;
         }
       | null = null;
     let logEntry: { id: string; text: string; timeLabel: string; createdAt: string; roll?: IniciativaEncuentroLogRoll } | null = null;
@@ -953,7 +961,7 @@ export async function zonaRoutes(app: FastifyInstance) {
         // Sin tirada de iniciativa — un recurso nunca "busca" al jugador, siempre es él quien lo
         // encuentra (mismo framing que ya usa `buildDynamicModeTurnoPrompt` cuando `quienInicia` no
         // aplica, pero aquí ni siquiera hay LLM: `dynamicModeRecurso.ts` narra con texto fijo).
-        dynamicModeOffer = { tipo: 'RECURSO', targetSlug: punto.targetSlug, targetName: nombre, quienInicia: 'jugador', zonePointId: punto.id, cantidad: punto.cantidad };
+        dynamicModeOffer = { tipo: 'RECURSO', targetSlug: punto.targetSlug, targetName: nombre, quienInicia: 'jugador', zonePointId: punto.id, cantidad: punto.cantidad, metodo: metodoPrincipalDeFuente(yieldsRecurso.map((y) => y.metodoObtencion)) };
         const text = `${characterName} encuentra ${nombre} cerca.`;
         const created = await tx.logEntry.create({
           data: { saveId, channel: 'CHARACTER', text, timeLabel, fictionalMinutes, isPlayerAction: false, isSystemMessage: true },

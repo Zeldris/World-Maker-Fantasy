@@ -54,6 +54,7 @@ import { HarvestSelectionModal } from '../components/HarvestSelectionModal'
 import { REINO_ABILITY_RECIPE_KEY } from '../data/reinoRecipes'
 import { PostCombatInteractionModal } from '../components/PostCombatInteractionModal'
 import { DynamicModeModal } from '../components/DynamicModeModal'
+import { RecursoDetalleModal } from '../components/RecursoDetalleModal'
 import { ZonaMovimientoModal } from '../components/ZonaMovimientoModal'
 import { CampSelectionModal } from '../components/CampSelectionModal'
 import { TravelDestinationModal } from '../components/TravelDestinationModal'
@@ -1167,7 +1168,10 @@ export function GameView() {
   const {
     handleInteractuarModoDinamico,
     handleDismissDynamicModeOffer,
-    handleInteractuarModoDinamicoRecurso,
+    recursoDetalle,
+    handleVerRecursoDetalle,
+    handleCerrarRecursoDetalle,
+    handleAccionRecursoDetalle,
     handleChooseNpcInteraction,
     handleElegirDynamicMode,
     handleSalirDynamicMode,
@@ -1188,6 +1192,7 @@ export function GameView() {
     setActivePanel,
     openCombat: combat.openCombat,
     handleSubmit,
+    refetchEnciclopedia,
   })
 
   // Muerte permanente, botón Aceptar/Reintentar (2026-08-31) — se llama al pulsar el botón que se
@@ -1430,7 +1435,7 @@ export function GameView() {
               onAcceptQuestOffer={handleAcceptQuestOffer}
               onDismissQuestOffer={handleDismissQuestOffer}
               onInteractuarModoDinamico={handleInteractuarModoDinamico}
-              onInteractuarModoDinamicoRecurso={handleInteractuarModoDinamicoRecurso}
+              onVerRecursoDetalle={handleVerRecursoDetalle}
               onCazarEnZona={handleCazarEnZona}
               onDismissDynamicModeOffer={handleDismissDynamicModeOffer}
               onChooseNpcInteraction={handleChooseNpcInteraction}
@@ -1979,6 +1984,16 @@ export function GameView() {
           onOfertaDescartada={() =>
             setCharacterLog((prev) => prev.map((e) => (e.dynamicModeOffer && !e.dynamicModeOffer.combateForzado ? { ...e, dynamicModeOffer: undefined } : e)))
           }
+        />
+      )}
+
+      {recursoDetalle && (
+        <RecursoDetalleModal
+          nombre={recursoDetalle.targetName}
+          metodo={recursoDetalle.metodo}
+          entry={enciclopediaData?.faunaFlora.find((f) => f.sourceSlug === recursoDetalle.targetSlug)}
+          onAccion={handleAccionRecursoDetalle}
+          onCerrar={handleCerrarRecursoDetalle}
         />
       )}
 

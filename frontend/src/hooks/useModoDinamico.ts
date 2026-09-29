@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction } from 'react'
+import { useState, type Dispatch, type SetStateAction } from 'react'
 import { ROLL_DURATION_MS } from '../components/DiceRoll'
 import {
   chooseNpcInteraction,
@@ -12,7 +12,7 @@ import {
 import { applyInventoryDelta, questCompletedLogEntry } from '../lib/gameViewHelpers'
 import type { PanelId } from '../components/NavTabs'
 import type { EnciclopediaIndex } from '../lib/enciclopediaIndex'
-import type { InventoryItemInfo, LogEntry, NpcInSceneInfo, QuestInfo, RecoleccionLogRoll } from '../types'
+import type { InventoryItemInfo, LogEntry, MetodoObtencion, NpcInSceneInfo, QuestInfo, RecoleccionLogRoll } from '../types'
 import type { useActionModalsState } from './useActionModalsState'
 
 // Bloque "modo dinámico"/Interactuar/menú de NPC extraído de GameView.tsx (Fase 12 del plan,
@@ -35,6 +35,17 @@ interface UseModoDinamicoParams {
   setActivePanel: Dispatch<SetStateAction<PanelId | null>>
   openCombat: (npcs: { npcs: NpcInSceneInfo[] }) => void
   handleSubmit: (actionText: string) => void | Promise<void>
+  /// Refresca la Enciclopedia al abrir el detalle de un RECURSO (el descubrimiento ya lo registró el
+  /// backend al encontrarlo, pero la copia local puede ir por detrás).
+  refetchEnciclopedia?: () => void
+}
+
+/// Recurso cuyo modal de detalle está abierto (2026-09-29) — ver `RecursoDetalleModal.tsx`.
+export interface RecursoDetalleState {
+  entryId: string
+  targetSlug: string
+  targetName: string
+  metodo: MetodoObtencion | null
 }
 
 export function useModoDinamico({
@@ -54,7 +65,25 @@ export function useModoDinamico({
   setActivePanel,
   openCombat,
   handleSubmit,
+  refetchEnciclopedia,
 }: UseModoDinamicoParams) {
+  // Modal de detalle de RECURSO (2026-09-29) — "Interactuar" en la tarjeta ya no recolecta directo:
+  // abre este modal, y solo su botón principal llama a `handleInteractuarModoDinamicoRecurso`.
+  const [recursoDetalle, setRecursoDetalle] = useState<RecursoDetalleState | null>(null)
+  function handleVerRecursoDetalle(entryId: string, targetSlug: string, targetName: string, metodo?: MetodoObtencion | null) {
+    setRecursoDetalle({ entryId, targetSlug, targetName, metodo: metodo ?? null })
+    refetchEnciclopedia?.()
+  }
+  function handleCerrarRecursoDetalle() {
+    setRecursoDetalle(null)
+  }
+  function handleAccionRecursoDetalle() {
+    if (!recursoDetalle) return
+    const { entryId, targetSlug } = recursoDetalle
+    setRecursoDetalle(null)
+    void handleInteractuarModoDinamicoRecurso(entryId, targetSlug)
+  }
+
   // "Modo dinámico" (2026-08-27) — mismo criterio efímero que questOffer: la tarjeta se limpia solo
   // tras un Interactuar/Ignorar QUE FUNCIONÓ, nunca sobrevive a una recarga. A.7 (checklist frontend
   // 2026-08-27): antes se limpiaba ANTES de saber si la petición tenía éxito — un fallo de red dejaba
@@ -337,6 +366,10 @@ export function useModoDinamico({
     handleInteractuarModoDinamico,
     handleDismissDynamicModeOffer,
     handleInteractuarModoDinamicoRecurso,
+    recursoDetalle,
+    handleVerRecursoDetalle,
+    handleCerrarRecursoDetalle,
+    handleAccionRecursoDetalle,
     handleChooseNpcInteraction,
     handleElegirDynamicMode,
     handleSalirDynamicMode,

@@ -268,6 +268,17 @@ export function harvestAbilityForMetodo(metodo: MetodoObtencion): HarvestAbility
   return HARVEST_ABILITIES.find((u) => u.metodo === metodo) ?? null;
 }
 
+/// Método "principal" de una fuente a partir de los `metodoObtencion` de sus yields (2026-09-29,
+/// modal de detalle de RECURSO). El catálogo garantiza un único método por `sourceSlug`
+/// (seed-catalog.ts), pero por si algún día no fuera así: gana el primero NO pasivo por orden
+/// alfabético del enum (determinista, independiente del orden de la consulta); si todos son PASIVO,
+/// PASIVO; sin yields, `null`.
+export function metodoPrincipalDeFuente(metodos: MetodoObtencion[]): MetodoObtencion | null {
+  if (metodos.length === 0) return null;
+  const noPasivos = metodos.filter((m) => m !== 'PASIVO').sort();
+  return noPasivos[0] ?? 'PASIVO';
+}
+
 /// Segundo atributo + `oficio` real (para el nivel) de un `MetodoObtencion` — usado por
 /// `/recolectar/confirmar` para la segunda tirada de un candidato tier≥6 sin depender de ningún
 /// `oficio` de ruta. `null` si este método no declara segundo atributo (PASIVO, o cualquier oficio
