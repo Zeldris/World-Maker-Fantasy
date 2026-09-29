@@ -26,6 +26,9 @@ import { buildStartingQuestsData, VALID_ATTRIBUTES, withCatalogStatBonuses, rest
 /// Prisma recibiendo `undefined`). Sin corrupción de datos (todo vive en una única transacción que
 /// revierte limpia), pero el mensaje de error era inútil para cualquier cliente que no replique
 /// exactamente el formulario de creación actual.
+const PLAYABLE_PREGENERATED_ID = 'char-gorhorn';
+const NON_PLAYABLE_CHARACTER_NAMES = new Set(['dessa kaltrenn', 'yerin slaad', 'riko']);
+
 function validationErrorFor(body: CreateSaveBody): string | null {
   const requiredStringFields: (keyof CreateSaveBody)[] = [
     'worldSlug',
@@ -39,6 +42,16 @@ function validationErrorFor(body: CreateSaveBody): string | null {
   ];
   const missing = requiredStringFields.filter((field) => !body[field]);
   if (missing.length > 0) return `Faltan campos: ${missing.join(', ')}`;
+
+  // Fase 8 (alcance pre-alpha, decisión 2026-09-01): de los personajes pregenerados solo Gorhorn es
+  // jugable; Dessa Kaltrenn, Yerin Slaad y Riko pasan a NPC. Los personajes propios (sin
+  // `pregeneratedCharacterId`) siguen permitidos.
+  if (body.pregeneratedCharacterId && body.pregeneratedCharacterId !== PLAYABLE_PREGENERATED_ID) {
+    return `Personaje no jugable en esta versión: "${body.pregeneratedCharacterId}". Solo Gorhorn está disponible.`;
+  }
+  if (NON_PLAYABLE_CHARACTER_NAMES.has(body.characterName.trim().toLowerCase())) {
+    return `"${body.characterName}" ya no es un personaje jugable (ahora es un NPC). Solo Gorhorn está disponible.`;
+  }
 
   if (!body.attributes || typeof body.attributes !== 'object') return 'Falta el campo: attributes';
   const attributeKeys = Object.keys(body.attributes);

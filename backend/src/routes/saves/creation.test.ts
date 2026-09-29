@@ -84,6 +84,22 @@ describe('POST /saves', () => {
     },
   );
 
+  it('400 si el personaje pregenerado no es Gorhorn (Fase 8)', async () => {
+    const app = await buildApp();
+    const payload = { ...FULL_PAYLOAD, pregeneratedCharacterId: 'char-dessa', characterName: 'Dessa Kaltrenn' };
+    const res = await app.inject({ method: 'POST', url: '/saves', payload });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toContain('Solo Gorhorn');
+    expect(findUniqueWorld).not.toHaveBeenCalled();
+  });
+
+  it.each(['Dessa Kaltrenn', 'Yerin Slaad', 'Riko'])('400 si el nombre es el NPC "%s" aunque no mande id', async (name) => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: '/saves', payload: { ...FULL_PAYLOAD, characterName: name } });
+    expect(res.statusCode).toBe(400);
+    expect(findUniqueWorld).not.toHaveBeenCalled();
+  });
+
   it('400 si attributes no trae las 7 claves reales', async () => {
     const app = await buildApp();
     const payload = { ...FULL_PAYLOAD, attributes: { fuerza: 10, destreza: 10 } };

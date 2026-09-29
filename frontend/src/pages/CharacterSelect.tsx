@@ -29,6 +29,7 @@ const POINT_BUDGET = 68
 // pudieron arrancar una partida real: son bocetos para cuando existan más personajes jugables,
 // no un catálogo ya terminado. Ocultos aquí en vez de borrados de mock.ts, para no perder ese
 // contenido cuando se retome.
+// Fase 8 (2026-09-29): Dessa Kaltrenn, Yerin Slaad y Riko ya no están en mock.ts (pasan a NPC).
 const PLAYABLE_CHARACTER_IDS = new Set(['char-gorhorn'])
 
 export function CharacterSelect() {
