@@ -1,4 +1,4 @@
-/// Nivel de oficio de los NPC de facción (docs/producto/plan-roadmap-oct-2026.md § 13-A, H-8).
+/// Nivel de oficio de los NPC de facción (docs/archivo/plan-roadmap-oct-2026-alpha0.md § 13-A, H-8).
 /// Helpers PUROS sobre `NpcProfessionProgress`/`NpcProfessionPotential`: el tope de
 /// `nivelMaximo` no es un CHECK de SQL, se aplica aquí al leer/escribir (mismo criterio que el
 /// resto de invariantes del schema). Reutiliza `professionLevelForXp` — un solo camino de código

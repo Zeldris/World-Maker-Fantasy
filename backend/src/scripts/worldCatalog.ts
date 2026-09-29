@@ -5099,7 +5099,7 @@ export const npcs: NpcInput[] = [
   },
 ];
 
-/// Potencial de oficio de los NPC de facción (docs/producto/plan-roadmap-oct-2026.md § 13-A, H-8),
+/// Potencial de oficio de los NPC de facción (docs/archivo/plan-roadmap-oct-2026-alpha0.md § 13-A, H-8),
 /// sembrado en `NpcProfessionPotential`/`NpcProfessionProgress` por seed-catalog.ts. Escrito a mano,
 /// mismo criterio que `teachesProfession`. Valores por defecto del plan (pendientes de revisión de
 /// Álvaro): Maestro/a (`teachesProfession`) → tope 9; trabajador cuyo `role`
