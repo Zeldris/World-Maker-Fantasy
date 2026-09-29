@@ -674,6 +674,10 @@ export interface SaveSummary {
   fictionalDate: string
   lastPlayedAt: string
   dificultad: Dificultad
+  /// Versión del juego (`A.P.C-etapa+commit`) con la que se creó / se jugó por última vez —
+  /// null en partidas anteriores al versionado.
+  versionCreada: string | null
+  versionUltimaPartida: string | null
   endedAt: string | null
 }
 
@@ -1875,6 +1879,13 @@ export async function chooseNpcInteraction(saveId: string, npcSlug: string, opci
 
 export async function deleteSave(id: string): Promise<void> {
   return fetchJson(`${API_URL}/saves/${id}`, { method: 'DELETE' })
+}
+
+/// Versión del backend (`GET /version`) — se compara con la del build del frontend para que un
+/// desajuste sea visible.
+export async function getServerVersion(): Promise<string> {
+  const { version } = await fetchJson<{ version: string }>(`${API_URL}/version`)
+  return version
 }
 
 export async function listSaves(): Promise<SaveSummary[]> {

@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
+import { APP_VERSION } from '../../lib/version.js';
 import { energiaMaxFor } from '../../services/energy.js';
 import { startingAbilitiesFor } from '../../services/startingAbilities.js';
 import { GENERIC_COMBAT_ABILITIES } from '../../services/genericCombatAbilities.js';
@@ -149,6 +150,10 @@ export async function creationRoutes(app: FastifyInstance) {
             userId,
             worldId: world.id,
             pregeneratedCharacterId,
+            // Versionado (2026-09-29): con qué versión nació la partida; al crearla también es la
+            // última con la que se ha jugado.
+            versionCreada: APP_VERSION,
+            versionUltimaPartida: APP_VERSION,
             characterName,
             characterArchetype,
             characterOrigin,

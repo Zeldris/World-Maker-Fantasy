@@ -40,6 +40,8 @@ export async function listRoutes(app: FastifyInstance) {
       fictionalDate: save.worldState?.fictionalDateLabel ?? 'Día 1, mañana',
       lastPlayedAt: save.lastPlayedAt,
       dificultad: save.dificultad,
+      versionCreada: save.versionCreada,
+      versionUltimaPartida: save.versionUltimaPartida,
       endedAt: save.endedAt?.toISOString() ?? null,
     }));
   });

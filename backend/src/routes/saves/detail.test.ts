@@ -30,7 +30,7 @@ const findManySkillBar = vi.fn();
 vi.mock('../../lib/prisma.js', () => ({
   prisma: {
     worldState: { findUnique: (...args: unknown[]) => findUniqueWorldState(...args) },
-    save: { findUnique: (...args: unknown[]) => findUniqueSave(...args) },
+    save: { findUnique: (...args: unknown[]) => findUniqueSave(...args), update: async () => ({}) },
     itemCatalog: { findMany: (...args: unknown[]) => findManyItemCatalog(...args) },
     location: { findMany: (...args: unknown[]) => findManyLocation(...args) },
     npc: { findMany: (...args: unknown[]) => findManyNpc(...args) },

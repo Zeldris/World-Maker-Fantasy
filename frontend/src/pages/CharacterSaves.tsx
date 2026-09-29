@@ -269,6 +269,12 @@ export function CharacterSaves() {
                     </p>
                   )}
                 </div>
+                {save.versionCreada && (
+                  <p className="mt-1 text-2xs text-wood-600">
+                    creada en v{save.versionCreada}
+                    {save.versionUltimaPartida && save.versionUltimaPartida !== save.versionCreada && <> · jugada por última vez en v{save.versionUltimaPartida}</>}
+                  </p>
+                )}
               </div>
               <div className="flex shrink-0 items-center gap-3">
                 <span className="text-xs text-wood-500">{relativeTime(save.lastPlayedAt)}</span>

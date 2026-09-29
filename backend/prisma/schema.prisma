@@ -101,6 +101,12 @@ model Save {
   /// desconectados, 2026-08-23: cero filas sembradas, cero consumidores). Se escribe al crear la
   /// partida, nunca se vuelve a leer.
   pregeneratedCharacterId String?
+  /// Versionado (2026-09-29, docs/producto/21-roadmap.md § Versionado): versión del juego
+  /// (`A.P.C-etapa+commit`, lib/version.ts) con la que se CREÓ la partida y con la que se cargó
+  /// por última vez — para diagnosticar partidas antiguas tras actualizar. Null en partidas
+  /// anteriores a este campo.
+  versionCreada           String?
+  versionUltimaPartida    String?
 
   characterName       String
   /// Nombre editable de la partida (2026-09-06, "poder nombrar las partidas con nombres custom

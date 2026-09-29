@@ -6,6 +6,7 @@ import { destinationsFrom } from '../../services/travel.js';
 import { type Requisitos } from '../../services/requisitos.js';
 import { scopeFor } from '../../services/npcScene.js';
 import { effectiveAttributes, effectiveSecondaryAttributes, attributeBonusesFromEquipment, type StatBonusMap } from '../../services/equipment.js';
+import { APP_VERSION } from '../../lib/version.js';
 import { imageUrlsFor, iconoUrlFor } from '../../lib/imageAssets.js';
 import type { AttributeBlock } from '../../services/dice.js';
 import { normalizeSecondaryAttributes } from '../../services/secondaryAttributes.js';
@@ -58,6 +59,13 @@ export async function detailRoutes(app: FastifyInstance) {
 
     if (!save) {
       return reply.status(404).send({ error: 'Partida no encontrada' });
+    }
+
+    // Versionado (2026-09-29): cargar la partida para jugarla es el punto central de "última
+    // versión con la que se jugó" (todo turno viene después de esta carga) — se escribe solo si
+    // cambió, así una recarga normal no añade ninguna escritura.
+    if (save.versionUltimaPartida !== APP_VERSION) {
+      await prisma.save.update({ where: { id: save.id }, data: { versionUltimaPartida: APP_VERSION } });
     }
 
     // Barras de habilidades múltiples (2026-09-04, rediseñado 2026-09-06 — hallazgo 10: 3 barras EN

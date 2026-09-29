@@ -1,8 +1,12 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../lib/prisma.js';
 import { env } from '../config/env.js';
+import { APP_VERSION } from '../lib/version.js';
 
 export async function healthRoutes(app: FastifyInstance) {
+  // Versionado (2026-09-29): la versión se calcula una sola vez al arrancar (lib/version.ts).
+  app.get('/version', async () => ({ version: APP_VERSION }));
+
   app.get('/health', async () => {
     let database: 'ok' | 'error' = 'ok';
     try {
@@ -19,6 +23,6 @@ export async function healthRoutes(app: FastifyInstance) {
       ollama = 'error';
     }
 
-    return { status: 'ok', database, ollama };
+    return { status: 'ok', database, ollama, version: APP_VERSION };
   });
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PanelRivets } from '../components/Rivet'
+import { VersionTag } from '../components/VersionTag'
 import { listSaves, type SaveSummary } from '../lib/api'
 
 export function Home() {
@@ -80,6 +81,8 @@ export function Home() {
       <button type="button" onClick={() => navigate('/admin/enciclopedia')} className="text-2xs text-wood-700 transition-colors hover:text-wood-400">
         Admin: enciclopedia completa
       </button>
+
+      <VersionTag />
     </div>
   )
 }
