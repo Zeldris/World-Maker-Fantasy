@@ -68,12 +68,9 @@ Rompen una mecánica en partida real. Referencias H-x:
 - 36 de 67 `Location` no tienen ningún `ZonePoint`. ~~Completar al menos las de Las Llanuras~~ ✅ `e3c8464`: solo falta `jakut-ger-interior` (interior, necesita lore). El resto son de otras regiones. **[H]**
 - 🧭 Viaje largo desde el mapa de mundo (la habilidad Viajar exige montura, sin implementar). **[A]**
 - Tras Huir, comprobar que el jugador reaparece en la entrada de la zona. **[A]**
-- La hora de la cabecera no avanza al caminar por la zona hasta el siguiente turno (F9-2), y la
-  entrada "TU ACCIÓN" de la caza sale con la hora vieja (F9-3). **[H]**
-- Dos tiradas visibles que no quedan en el log: fallo de recolección desde el mapa y fallo de la caza
-  sigilosa (F9-4; esos caminos no crean `LogEntry`). **[H]**
-- **B29**: atacar por texto libre a fauna pacífica en escena ("Ataco al Gesgurio", adyacente) no abre
-  combate; hoy solo se puede con Cazar en la tarjeta. **[H]**
+- ~~La hora de la cabecera no avanza al caminar (F9-2) y "TU ACCIÓN" sale con la hora vieja (F9-3)~~ ✅ `8b8a0b2` **[H]**
+- ~~Dos tiradas visibles que no quedan en el log (F9-4)~~ ✅ `8b8a0b2` **[H]**
+- ~~**B29**: atacar por texto libre a fauna adyacente no abría combate~~ ✅ `8b8a0b2` (se resuelve como Cazar) **[H]**
 - Efecto de B1: un re-seed del catálogo no llega a las partidas que ya clonaron esa zona
   (`asegurarZonePointsDePartida`). Decidir si hace falta una resincronización. **[P]**
 
