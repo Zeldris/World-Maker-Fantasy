@@ -71,7 +71,7 @@ Rompen una mecánica en partida real. Referencias H-x:
 - ~~Pescar y Buscar necesitan puntos en el mapa~~ ✅ `e3c8464` (6 fuentes en la Playa de Ceniza Blanca, con test) **[H]**
 - 36 de 67 `Location` no tienen ningún `ZonePoint`. ~~Completar al menos las de Las Llanuras~~ ✅ `e3c8464`: solo falta `jakut-ger-interior` (interior, necesita lore). El resto son de otras regiones. **[H]**
 - 🧭 Viaje largo desde el mapa de mundo (la habilidad Viajar exige montura, sin implementar). **[A]**
-- Tras Huir, comprobar que el jugador reaparece en la entrada de la zona. **[A]**
+- ~~Tras Huir, comprobar que el jugador reaparece en la entrada de la zona~~ ✅ `3a60fcd` (las huidas de combate ya lo hacían; la de la tarjeta de encuentro no, arreglada y cubierta por test) **[A]**
 - ~~La hora de la cabecera no avanza al caminar (F9-2) y "TU ACCIÓN" sale con la hora vieja (F9-3)~~ ✅ `8b8a0b2` **[H]**
 - ~~Dos tiradas visibles que no quedan en el log (F9-4)~~ ✅ `8b8a0b2` **[H]**
 - ~~**B29**: atacar por texto libre a fauna adyacente no abría combate~~ ✅ `8b8a0b2` (se resuelve como Cazar) **[H]**
