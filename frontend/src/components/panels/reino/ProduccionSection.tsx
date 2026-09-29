@@ -4,6 +4,7 @@ import {
   type OrdenProduccionInfo,
   type AlmacenLimiteInfo,
   getOrdenesProduccion,
+  getRecetasProduccionEdificio,
   crearOrdenProduccion,
   actualizarOrdenProduccion,
   asignarCompanionABuilding,
@@ -80,6 +81,9 @@ function BuildingProduccionCard({
   const [ordenes, setOrdenes] = useState<OrdenProduccionInfo[] | null>(null)
   const [nuevaOrdenAbierta, setNuevaOrdenAbierta] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
+  // Recetas del oficio del edificio (P-3, decisión de Álvaro, 2026-09-29): null = sin filtro
+  // (edificio sin oficio, o aún sin cargar/error).
+  const [recetasPermitidas, setRecetasPermitidas] = useState<string[] | null>(null)
 
   const trabajadores = companionesReino.filter((c) => c.buildingId === building.id)
 
@@ -96,6 +100,13 @@ function BuildingProduccionCard({
       })
       .catch(() => {
         if (!cancelado) setOrdenes([])
+      })
+    getRecetasProduccionEdificio(saveId, building.id)
+      .then((res) => {
+        if (!cancelado) setRecetasPermitidas(res.oficio ? res.recipeKeys : null)
+      })
+      .catch(() => {
+        if (!cancelado) setRecetasPermitidas(null)
       })
     return () => {
       cancelado = true
@@ -213,7 +224,7 @@ function BuildingProduccionCard({
 
       {nuevaOrdenAbierta && (
         <NuevaOrdenModal
-          professionRecipes={professionRecipes.filter((r) => r.recipeCategory === 'crafteo')}
+          professionRecipes={professionRecipes.filter((r) => r.recipeCategory === 'crafteo' && (!recetasPermitidas || recetasPermitidas.includes(r.recipeKey)))}
           onCancel={() => setNuevaOrdenAbierta(false)}
           onCrear={async (params) => {
             await crearOrdenProduccion(saveId, building.id, params)

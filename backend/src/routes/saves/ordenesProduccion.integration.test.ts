@@ -17,6 +17,7 @@ describe('CRUD de OrdenProduccion (2026-09-21)', () => {
   let saveId: string;
   let buildingId: string;
   let buildingOtraSaveId: string;
+  let herreriaId: string;
   let otraSaveId: string;
 
   beforeAll(async () => {
@@ -58,11 +59,15 @@ describe('CRUD de OrdenProduccion (2026-09-21)', () => {
       data: { saveId: otraSaveId, locationId: hondonada.id, recipeKey: 'choza', name: 'Choza ajena', kind: 'choza', description: 'x', status: 'ACTIVO' },
     });
     buildingOtraSaveId = buildingOtraSave.id;
+    const herreria = await prisma.building.create({
+      data: { saveId, locationId: hondonada.id, recipeKey: 'herreria', name: 'Herrería de prueba', kind: 'herreria', description: 'x', status: 'ACTIVO', tier: 1 },
+    });
+    herreriaId = herreria.id;
   });
 
   afterAll(async () => {
-    await prisma.ordenProduccion.deleteMany({ where: { buildingId: { in: [buildingId, buildingOtraSaveId] } } });
-    await prisma.building.deleteMany({ where: { id: { in: [buildingId, buildingOtraSaveId] } } });
+    await prisma.ordenProduccion.deleteMany({ where: { buildingId: { in: [buildingId, buildingOtraSaveId, herreriaId] } } });
+    await prisma.building.deleteMany({ where: { id: { in: [buildingId, buildingOtraSaveId, herreriaId] } } });
     await prisma.save.delete({ where: { id: saveId } });
     await prisma.save.delete({ where: { id: otraSaveId } });
   });
@@ -170,5 +175,36 @@ describe('CRUD de OrdenProduccion (2026-09-21)', () => {
     const deleted = await app.inject({ method: 'DELETE', url: `/saves/${saveId}/ordenes/${ordenId}` });
     expect(deleted.statusCode).toBe(200);
     expect(await prisma.ordenProduccion.findUnique({ where: { id: ordenId } })).toBeNull();
+  });
+
+  // P-3 (decisión de Álvaro, 2026-09-29): un edificio de oficio solo ofrece y acepta recetas de su oficio.
+  it('herrería: el listado de recetas solo trae recetas de herrero y el POST acepta una de herrero', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: `/saves/${saveId}/edificios/${herreriaId}/recetas-produccion` });
+    expect(res.statusCode).toBe(200);
+    const { oficio, recipeKeys } = res.json() as { oficio: string; recipeKeys: string[] };
+    expect(oficio).toBe('herrero-orcos-llanuras');
+    expect(recipeKeys).toContain('axeRepair');
+    expect(recipeKeys).not.toContain('smokeMeat');
+    expect(recipeKeys).not.toContain('firstAidBandage');
+
+    const ok = await app.inject({ method: 'POST', url: `/saves/${saveId}/edificios/${herreriaId}/ordenes`, payload: { recipeKey: 'axeRepair' } });
+    expect(ok.statusCode).toBe(200);
+  });
+
+  it('herrería: rechaza con 400 una receta de otro oficio o inexistente', async () => {
+    const app = await buildApp();
+    for (const recipeKey of ['antidote', 'smokeMeat', 'noExiste']) {
+      const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/edificios/${herreriaId}/ordenes`, payload: { recipeKey } });
+      expect(res.statusCode, recipeKey).toBe(400);
+    }
+    expect(await prisma.ordenProduccion.count({ where: { buildingId: herreriaId, recipeKey: 'antidote' } })).toBe(0);
+  });
+
+  it('un edificio sin oficio (Choza) sigue ofreciendo todas las recetas', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: `/saves/${saveId}/edificios/${buildingId}/recetas-produccion` });
+    expect(res.json().oficio).toBeNull();
+    expect(res.json().recipeKeys).toEqual(expect.arrayContaining(['axeRepair', 'smokeMeat']));
   });
 });

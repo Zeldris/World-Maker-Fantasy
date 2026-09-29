@@ -93,6 +93,13 @@ export interface HarvestSourceCandidate {
   yields: { sourceSlug: string; itemSlug: string; itemName: string; cantidadMaxima: number; disponible: number }[]
 }
 
+/// Riesgo de cazar el grupo de una tarjeta de encuentro (F9-1) — calculado por el backend
+/// (`riesgoDeCaza`, cazaRiesgo.ts); `motivo` viene vacío si es 'bajo'.
+export interface RiesgoCazaInfo {
+  riesgo: 'bajo' | 'alto' | 'mortal'
+  motivo: string
+}
+
 /// Roster ESTÁTICO de recetas de oficio (rediseño de profesiones, 2026-08-07) — GET /profession-recipes,
 /// independiente de partida. Habilidades > Profesiones lo cruza con `ProfessionProgressInfo` para
 /// decidir qué tarjetas van bloqueadas.
@@ -536,6 +543,9 @@ export interface LogEntry {
     /// (nunca se agrupan), puede ser >1 para un grupo de FAUNA real. Ver `LogPanel.tsx`, título de
     /// la tarjeta "Un grupo de N {nombre}" cuando es >1.
     cantidad?: number
+    /// Aviso de riesgo de la tarjeta "Cazar" (F9-1, decisión de Álvaro, 2026-09-29) — solo FAUNA no
+    /// forzada con `zonePointId`. Solo avisa, no cambia ninguna regla de caza.
+    riesgoCaza?: RiesgoCazaInfo
   }
   /// Menú contextual de interacción con NPC (2026-09-06) — mismo criterio exacto que
   /// `dynamicModeOffer`: tarjeta con un botón por opción, `busy`/`error` para no perder la tarjeta

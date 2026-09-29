@@ -6,10 +6,12 @@ import {
   tieneIngredientesEnAlmacen,
   tickOrdenesProduccion,
   companionesQueCuraCasaDeCuras,
+  recetaEncajaConOficioDeEdificio,
   type TrabajadorReino,
   type OrdenProduccionInput,
 } from './kingdomProduction.js';
-import type { CraftingRecipe } from './crafting.js';
+import { CRAFTING_RECIPES, type CraftingRecipe } from './crafting.js';
+import { oficioProducidoForRecipeKey } from './construction.js';
 import type { InventoryRowLike, CatalogLookup } from './ingredients.js';
 
 function recipe(overrides: Partial<CraftingRecipe> = {}): CraftingRecipe {
@@ -311,5 +313,29 @@ describe('companionesQueCuraCasaDeCuras (docs/rpgtarkor/sistemas-reino/edificios
       { id: 'c1', nuevaCondicion: 'ILESO' },
       { id: 'c5', nuevaCondicion: 'GRAVE' },
     ]);
+  });
+});
+
+describe('filtro de recetas por oficio del edificio (P-3, decisión de Álvaro, 2026-09-29)', () => {
+  it('oficioProducidoForRecipeKey: herrería y sus mejoras → herrero; Choza y null → null', () => {
+    expect(oficioProducidoForRecipeKey('herreria')).toBe('herrero-orcos-llanuras');
+    expect(oficioProducidoForRecipeKey('herreria-obrador')).toBe('herrero-orcos-llanuras');
+    expect(oficioProducidoForRecipeKey('choza')).toBeNull();
+    expect(oficioProducidoForRecipeKey(null)).toBeNull();
+  });
+
+  it('una herrería solo admite recetas de herrero (y ninguna de otro oficio ni sin oficio)', () => {
+    const oficio = oficioProducidoForRecipeKey('herreria');
+    const admitidas = CRAFTING_RECIPES.filter((r) => recetaEncajaConOficioDeEdificio(r, oficio));
+    expect(admitidas.length).toBeGreaterThan(0);
+    expect(admitidas.every((r) => r.oficio?.startsWith('herrero'))).toBe(true);
+    const cocina = CRAFTING_RECIPES.find((r) => r.oficio === 'cocinero-orcos-llanuras')!;
+    expect(recetaEncajaConOficioDeEdificio(cocina, oficio)).toBe(false);
+    const sinOficio = CRAFTING_RECIPES.find((r) => !r.oficio)!;
+    expect(recetaEncajaConOficioDeEdificio(sinOficio, oficio)).toBe(false);
+  });
+
+  it('un edificio sin oficio no filtra', () => {
+    expect(CRAFTING_RECIPES.every((r) => recetaEncajaConOficioDeEdificio(r, null))).toBe(true);
   });
 });

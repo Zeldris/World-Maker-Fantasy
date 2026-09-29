@@ -12,6 +12,9 @@ interface OfferCardProps {
   /// Segunda línea opcional (contexto/descripción antes de decidir) — `questOffer` la usaba con
   /// `description`, `dynamicModeOffer` con la frase de "puedes hablar con..." (B.10).
   subtitle?: string
+  /// Aviso de riesgo (F9-1, decisión de Álvaro, 2026-09-29) — línea de color entre el subtítulo y las
+  /// acciones: ámbar para 'alto', rojo para 'mortal'. Solo informa, nunca bloquea las acciones.
+  warning?: { nivel: 'alto' | 'mortal'; text: string }
   /// Error visible tras un intento fallido (A.7) — nunca sustituye las acciones, se muestra debajo.
   error?: string
   actions: OfferCardAction[]
@@ -43,7 +46,7 @@ const ACTION_TONE: Record<OfferCardAction['tone'], string> = {
 /// con borde/fondo por color semántico, título con emoji, fila de 2-3 botones) casi byte a byte,
 /// tres veces. Un cuarto tipo de oferta no necesitaría reinventar el markup, solo pasar `tone`/
 /// `actions` nuevos.
-export function OfferCard({ tone, icon, title, subtitle, error, actions, resolvedText }: OfferCardProps) {
+export function OfferCard({ tone, icon, title, subtitle, warning, error, actions, resolvedText }: OfferCardProps) {
   return (
     <div className={`mt-2 rounded-lg border px-2.5 py-2 ${CARD_TONE[tone]}`}>
       <p className={`flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-[0.1em] ${TITLE_TONE[tone]}`}>
@@ -51,6 +54,12 @@ export function OfferCard({ tone, icon, title, subtitle, error, actions, resolve
         <span>{title}</span>
       </p>
       {subtitle && <p className="mt-1 text-2xs text-wood-300">{subtitle}</p>}
+      {warning && (
+        <p role="alert" data-riesgo={warning.nivel} className={`mt-1 text-2xs font-semibold ${warning.nivel === 'mortal' ? 'text-red-400' : 'text-amber-400'}`}>
+          <span aria-hidden="true">⚠️ </span>
+          {warning.text}
+        </p>
+      )}
       {error && <p className="mt-1 text-2xs text-red-400">{error}</p>}
       {resolvedText ? (
         <p className="mt-1 text-2xs text-wood-400">{resolvedText}</p>

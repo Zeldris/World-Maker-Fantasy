@@ -786,7 +786,7 @@ export const locations: LocationInput[] = [
     region: 'Ciénaga Troncal',
     kind: 'región',
     description:
-      'Marismas que sea crean de la mezcla de resina de Bolco (Arbol oscuro de resina negra) el agua y el fango gris. En la superficie acumulan los restos mas espesos de la resina formando una capa protectora y viscosa, bajo esta una red tuneles submarinos con el agua mas puro y cristalina de Berig.',
+      'Marismas que sea crean de la mezcla de resina de Holdo (Arbol oscuro de resina negra) el agua y el fango gris. En la superficie acumulan los restos mas espesos de la resina formando una capa protectora y viscosa, bajo esta una red tuneles submarinos con el agua mas puro y cristalina de Berig.',
     aliases: ['marismas de lodo negro'],
   },
   {
@@ -8398,7 +8398,7 @@ export const items: ItemCatalogInput[] = [
     tier: 2,
   },
 
-  // P-03 — flora nueva de la pasada de conexión: Liquen Escarcha (Cristal Helado) y Bolco (Ciénaga).
+  // P-03 — flora nueva de la pasada de conexión: Liquen Escarcha (Cristal Helado) y Holdo (Ciénaga).
   {
     slug: 'liquen-escarcha',
     name: 'Liquen Escarcha',
@@ -8412,13 +8412,13 @@ export const items: ItemCatalogInput[] = [
     tier: 1,
   },
   {
-    slug: 'resina-bolco',
-    name: 'Resina de Bolco',
-    aliases: ['resina de bolco'],
+    slug: 'resina-holdo',
+    name: 'Resina de Holdo',
+    aliases: ['resina de holdo'],
     category: 'resina',
     tipo: 'RECURSO',
     valorGoirnos: 2,
-    description: 'Resina negra y pesada del Bolco, árbol bajo y ancho de las Marismas de Lodo Negro en Ciénaga Troncal, pariente del Trepador Ocaso pero sin vetas doradas. Gotea al agua y flota, formando la capa viscosa de las Marismas que conserva el agua limpia de debajo. Impermeabilizante pesado con el que los Goshg calafatean el fondo de las canoas.',
+    description: 'Resina negra y pesada del Holdo, árbol bajo y ancho de las Marismas de Lodo Negro en Ciénaga Troncal, pariente del Trepador Ocaso pero sin vetas doradas. Gotea al agua y flota, formando la capa viscosa de las Marismas que conserva el agua limpia de debajo. Impermeabilizante pesado con el que los Goshg calafatean el fondo de las canoas.',
     dimensiones: 'Bloques de 10x6 cm.',
     lugarOrigen: 'Ciénaga Troncal.',
     tier: 2,
@@ -10366,7 +10366,7 @@ export const harvestYields: HarvestYieldInput[] = [
     condicion: 'Ciénaga Troncal — fuera del núcleo jugable actual, orillas de agua estancada',
   },
 
-  // --- P-03: Liquen Escarcha (Cristal Helado) y Bolco (Ciénaga Troncal) ---
+  // --- P-03: Liquen Escarcha (Cristal Helado) y Holdo (Ciénaga Troncal) ---
   {
     sourceSlug: 'liquen-escarcha',
     sourceCategory: 'planta',
@@ -10376,10 +10376,10 @@ export const harvestYields: HarvestYieldInput[] = [
     condicion: 'Cristal Helado — fuera del núcleo jugable actual; se raspa solo la mitad, nunca la costra entera',
   },
   {
-    sourceSlug: 'bolco',
+    sourceSlug: 'holdo',
     sourceCategory: 'planta',
     metodoObtencion: 'EXTRACCION',
-    itemSlug: 'resina-bolco',
+    itemSlug: 'resina-holdo',
     cantidad: 1,
     condicion: 'Ciénaga Troncal — fuera del núcleo jugable actual, Marismas de Lodo Negro',
   },

@@ -1,4 +1,5 @@
 import type { FactionRelationType, Prisma, PrismaClient } from '@prisma/client';
+import { xpForCraftSuccess } from './professionProgress.js';
 
 /// Motor de disputas genérico estilo X4 (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.3, 2026-09-21) —
 /// generaliza el único conflicto hardcodeado de `worldAgenda.ts` a "cualquier par de facciones
@@ -168,6 +169,19 @@ export function nivelDiplomaticoRequerido(presionActual: number): number {
   // 0-19 de distancia → nivel 1 (relación aún manejable); cada 10 puntos más de distancia sube 1
   // nivel de dificultad, tope en 9.
   return Math.min(9, 1 + Math.floor(distanciaAlNeutro / 10));
+}
+
+/// Puro — XP de oficio 'diplomatico' que gana el diplomático por CADA negociación conseguida
+/// (H-5, parcial; decisión de Álvaro, 2026-09-29: un Maestro enseña diplomacia y luego se sube de
+/// nivel negociando — el Maestro aún no existe en el lore, solo se implementa el "sube negociando").
+/// La negociación es determinista (no hay tirada: o supera el gate de nivel o no se intenta), así
+/// que no hay XP de fallo. Se paga por la dificultad ya superada (`nivelExigido`, ver
+/// `nivelDiplomaticoRequerido`) con la tabla de tiers de `xpForCraftSuccess`, DOS tiers por encima:
+/// con -12 de presión por tregua, la siguiente negociación contra la misma facción exige 1 nivel
+/// más, y con esta curva (50/100/200/350...) cada tregua deja al diplomático justo en el nivel que
+/// pide la siguiente, hasta rozar la alianza (presión ~0, nivel 6).
+export function xpPorNegociacion(nivelExigido: number): number {
+  return xpForCraftSuccess(Math.min(9, Math.max(1, nivelExigido) + 2));
 }
 
 /// Espionaje (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.4, 2026-09-21) — a diferencia de

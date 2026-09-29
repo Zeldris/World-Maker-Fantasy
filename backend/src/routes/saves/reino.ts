@@ -4,7 +4,7 @@ import { prisma } from '../../lib/prisma.js';
 import { slugify } from '../../lib/slugify.js';
 import { rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 import { professionLevelForXp, alivioForLevel } from '../../services/professionProgress.js';
-import { recordFactionEvent, espiarFactionRelation, nivelDiplomaticoRequerido, type FactionEventType } from '../../services/factionRelations.js';
+import { recordFactionEvent, espiarFactionRelation, nivelDiplomaticoRequerido, xpPorNegociacion, type FactionEventType } from '../../services/factionRelations.js';
 import { precioDinamico } from '../../services/economia.js';
 import { quantityOf } from '../../services/ingredients.js';
 
@@ -233,7 +233,24 @@ export async function reinoRoutes(app: FastifyInstance) {
 
           const event = DIPLOMACIA_ACCIONES[accion]!;
           const hechoDeMundo = await recordFactionEvent(tx, sourceFaction.worldId, sourceFaction.id, targetFaction.id, event);
-          return { ok: true as const, accion, targetFaction: targetFaction.name, hechoDeMundo };
+
+          // H-5 parcial (decisión de Álvaro, 2026-09-29): cada negociación conseguida da XP de
+          // oficio 'diplomatico' al diplomático — así el gate de nivel deja de bloquear tras la
+          // primera tregua. Solo 'negociar' (el "sube negociando"); sabotear/espiar no dan XP.
+          // Mismo upsert que dailyTick.ts para el XP de oficio de un Companion.
+          let xpGanada = 0;
+          let nivelDiplomatico = nivel;
+          if (accion === 'negociar') {
+            xpGanada = xpPorNegociacion(nivelExigido);
+            const xpNueva = (progreso?.xp ?? 0) + xpGanada;
+            nivelDiplomatico = professionLevelForXp(xpNueva);
+            await tx.professionProgress.upsert({
+              where: { companionId_professionId: { companionId: companion.id, professionId: 'diplomatico' } },
+              create: { companionId: companion.id, professionId: 'diplomatico', nivel: nivelDiplomatico, xp: xpNueva },
+              update: { xp: { increment: xpGanada }, nivel: nivelDiplomatico },
+            });
+          }
+          return { ok: true as const, accion, targetFaction: targetFaction.name, hechoDeMundo, xpGanada, nivelDiplomatico };
         })
         .catch((err) => {
           if (err instanceof NivelDiplomaticoInsuficienteError) return err;

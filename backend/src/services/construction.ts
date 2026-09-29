@@ -1410,6 +1410,19 @@ export function companionSlotsForRecipeKey(recipeKey: string | null): number {
   return CONSTRUCTION_RECIPES.find((r) => r.key === recipeKey)?.companionSlots ?? 0;
 }
 
+/// Oficio que se trabaja dentro de un `Building`, por su `recipeKey` guardada — null si el edificio
+/// no es de oficio (Choza, Campamento, construcciones libres...). Las mejoras (Obrador/Gran obrador)
+/// no cambian la `recipeKey` del edificio (actualizan la misma fila), así que basta con la receta
+/// base; por si acaso, una mejora resuelve a la base vía `upgradesRecipeKey`.
+export function oficioProducidoForRecipeKey(recipeKey: string | null): string | null {
+  if (!recipeKey) return null;
+  const receta = CONSTRUCTION_RECIPES.find((r) => r.key === recipeKey);
+  if (!receta) return null;
+  if (receta.oficioProducido) return receta.oficioProducido;
+  const base = receta.upgradesRecipeKey ? CONSTRUCTION_RECIPES.find((r) => r.key === receta.upgradesRecipeKey) : undefined;
+  return base?.oficioProducido ?? null;
+}
+
 /// Capacidad de edificios de reino según el nivel actual del Ayuntamiento (`Building.tier`) —
 /// deriva de las 3 recetas en vez de repetir los números 10/25/60 sueltos en turnResolution.ts.
 function reinoBuildingCapacityForTier(tier: number): number {

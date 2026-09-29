@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { FACTION_REP_MAX, FACTION_REP_MIN, applyFactionRepDelta, effectiveTemperamento, factionRepFor, resolveFoundingOutcome } from './reputation.js';
+import { FACTION_REP_MAX, FACTION_REP_MIN, applyFactionRepDelta, effectiveTemperamento, factionRepFor, resolveFoundingOutcome, esRegionDisputable, regionesDisputables, REGION_OWNING_FACTIONS } from './reputation.js';
+import { continentForRegion } from '../lib/continent.js';
+import { locations } from '../scripts/worldCatalog.js';
 
 describe('factionRepFor', () => {
   it('devuelve el default neutro (2500) si la facción no tiene fila todavía', () => {
@@ -95,5 +97,35 @@ describe('resolveFoundingOutcome', () => {
 
   it('región desconocida (typo/región nueva sin seedear): tratada como sin dueño, no revienta', () => {
     expect(resolveFoundingOutcome('Región inventada', {})).toBe('SIN_DUENO');
+  });
+});
+
+describe('D-12 restringida a Berig (P-4, decisión de Álvaro, 2026-09-29)', () => {
+  it('las regiones sin dueño de Vaelira nunca son disputables', () => {
+    for (const r of ['La Cicatriz de Cristal', 'El Susurro de las Raíces', 'La Costa del Azabache']) {
+      expect(esRegionDisputable(r), r).toBe(false);
+    }
+  });
+
+  it('una región sin dueño de Berig sí lo es; con dueño, no; null o desconocida, no', () => {
+    // Ninguna región real de Berig queda hoy sin dueño (A-02/A-04): se simula quitándosela a una.
+    const dueños = REGION_OWNING_FACTIONS['El Margen Silencioso'];
+    delete REGION_OWNING_FACTIONS['El Margen Silencioso'];
+    try {
+      expect(esRegionDisputable('El Margen Silencioso')).toBe(true);
+    } finally {
+      REGION_OWNING_FACTIONS['El Margen Silencioso'] = dueños;
+    }
+    expect(esRegionDisputable('El Margen Silencioso')).toBe(false);
+    expect(esRegionDisputable('La Meseta del Orden')).toBe(false);
+    expect(esRegionDisputable(null)).toBe(false);
+    expect(esRegionDisputable('Región inventada')).toBe(false);
+  });
+
+  it('sobre las regiones reales del catálogo, todas las disputables son de Berig', () => {
+    const regiones = [...new Set(locations.map((l) => l.region).filter((r): r is string => !!r))];
+    const disputables = regionesDisputables(regiones);
+    for (const r of disputables) expect(continentForRegion(r)).toBe('berig');
+    expect(disputables.some((r) => /cicatriz|susurro|azabache/i.test(r))).toBe(false);
   });
 });

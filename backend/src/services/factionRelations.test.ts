@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { professionLevelForXp } from './professionProgress.js';
 import {
   typeForPresion,
   stageForPresion,
@@ -6,6 +7,7 @@ import {
   decayPresion,
   stageFactFor,
   nivelDiplomaticoRequerido,
+  xpPorNegociacion,
   PRESION_NEUTRAL,
   PRESION_MIN,
   PRESION_MAX,
@@ -122,5 +124,24 @@ describe('nivelDiplomaticoRequerido', () => {
   it('en los extremos (0 o 100), tope en nivel 9 (misma escala que MAX_PROFESSION_LEVEL)', () => {
     expect(nivelDiplomaticoRequerido(PRESION_MIN)).toBe(6); // distancia 50 → 1 + floor(50/10) = 6
     expect(nivelDiplomaticoRequerido(PRESION_MAX)).toBe(6);
+  });
+});
+
+describe('xpPorNegociacion (H-5 parcial, decisión de Álvaro, 2026-09-29)', () => {
+  it('crece con la dificultad superada y se acota al tier 9', () => {
+    expect(xpPorNegociacion(1)).toBe(50);
+    expect(xpPorNegociacion(2)).toBe(100);
+    expect(xpPorNegociacion(9)).toBe(1100);
+  });
+
+  it('cada tregua (-12 de presión) deja al diplomático en el nivel que exige la siguiente', () => {
+    let xp = 0;
+    let presion = PRESION_NEUTRAL;
+    for (let i = 0; i < 4; i++) {
+      const exigido = nivelDiplomaticoRequerido(presion);
+      expect(professionLevelForXp(xp), `antes de la tregua ${i + 1}`).toBeGreaterThanOrEqual(exigido);
+      xp += xpPorNegociacion(exigido);
+      presion = applyFactionEvent(presion, 'NEGOCIACION_TREGUA');
+    }
   });
 });

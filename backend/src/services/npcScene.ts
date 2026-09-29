@@ -389,7 +389,6 @@ const NPC_ALIAS_FUZZY_EXCLUSIONS = new Set([
   'bulbos',
   'bulto',
   'bultos',
-  'bolco', // bulco — Bolco es un árbol real de la Ciénaga (lore), no el caracol Bulco
 ]);
 
 /// Tolerancia a erratas acotada (2026-09-28, bug real jugando en vivo con Playwright: la habilidad de

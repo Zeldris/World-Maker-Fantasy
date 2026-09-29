@@ -1,4 +1,5 @@
 import type {
+  RiesgoCazaInfo,
   AbilityEffect,
   ActiveEffect,
   AlmacenItemInfo,
@@ -616,6 +617,8 @@ export interface SaveDetail {
         /// Grupos de fauna reales (Fase 1, 2026-09-28) — ver `MoverZonaResultado.dynamicModeOffer`.
         zonePointId?: string
         cantidad?: number
+        /// Aviso de riesgo de Cazar (F9-1, 2026-09-29) — ver `RiesgoCazaInfo`, types.ts.
+        riesgoCaza?: RiesgoCazaInfo
       }
     | null
   /// Oferta de misión SIN aceptar todavía (bug real jugando en vivo, 2026-09-03, "misión de
@@ -1238,6 +1241,8 @@ export interface MoverZonaResultado {
         /// (1 para NPC/RECURSO/dinámicos, puede ser >1 para un grupo de FAUNA real).
         zonePointId?: string
         cantidad?: number
+        /// Aviso de riesgo de Cazar (F9-1, 2026-09-29) — ver `RiesgoCazaInfo`, types.ts.
+        riesgoCaza?: RiesgoCazaInfo
       }
     | null
   /// LogEntry real determinista del encuentro (2026-09-09, hallazgo real jugando en vivo: la
@@ -1530,6 +1535,12 @@ export interface OrdenProduccionInfo {
 
 export async function getOrdenesProduccion(saveId: string, buildingId: string): Promise<{ ordenes: OrdenProduccionInfo[] }> {
   return fetchJson(`${API_URL}/saves/${saveId}/edificios/${buildingId}/ordenes`)
+}
+
+/// Recetas que un edificio puede producir según su oficio (P-3, decisión de Álvaro, 2026-09-29).
+/// `oficio` null = edificio sin oficio, sin filtro.
+export async function getRecetasProduccionEdificio(saveId: string, buildingId: string): Promise<{ oficio: string | null; recipeKeys: string[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/edificios/${buildingId}/recetas-produccion`)
 }
 
 export async function crearOrdenProduccion(

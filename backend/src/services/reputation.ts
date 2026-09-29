@@ -1,4 +1,5 @@
 import type { Temperamento } from '@prisma/client';
+import { continentForRegion } from '../lib/continent.js';
 
 /// Reputación de facción (2026-07-29, "la reputación que tengas con cada raza o reino influirá
 /// en los valores de combate"): sustituye al viejo `WorldState.factionsStatus` sin límite (±1,
@@ -103,6 +104,22 @@ export const REGION_OWNING_FACTIONS: Record<string, string[]> = {
   // oriental) y Feg Tusha (mitad occidental) son sus primeras dueñas mecánicas, por mitades.
   'El Margen Silencioso': ['Keseg Sael', 'Feg Tusha'],
 };
+
+/// D-12 restringida a Berig (P-4, decisión de Álvaro, 2026-09-29): una región sin dueño solo se abre a
+/// la disputa de las facciones NPC si es del continente Berig. Las 3 regiones sin dueño de Vaelira
+/// (Cicatriz de Cristal, Susurro de las Raíces, Costa del Azabache) están fuera de juego y nada cruza
+/// la Niebla, así que una facción orca nunca "se expande" allí. Región desconocida o null: no
+/// disputable (no se puede afirmar que sea de Berig). Puro; lo consumirá el motor de facciones NPC (H-6).
+export function esRegionDisputable(region: string | null): boolean {
+  if (!region) return false;
+  if (continentForRegion(region) !== 'berig') return false;
+  return (REGION_OWNING_FACTIONS[region] ?? []).length === 0;
+}
+
+/// Filtra una lista de regiones a las que D-12 abre a disputa (ver `esRegionDisputable`).
+export function regionesDisputables(regiones: string[]): string[] {
+  return regiones.filter((r) => esRegionDisputable(r));
+}
 
 export type FoundingOutcome = 'SIN_DUENO' | 'CONQUISTADA' | 'CONFLICTO';
 

@@ -518,6 +518,14 @@ export const LogPanel = memo(function LogPanel({
                               ? 'Hay algo cerca que podrías recolectar.'
                               : 'Hay algo cerca con lo que puedes interactuar.'
                       }
+                      warning={
+                        offer.riesgoCaza && offer.riesgoCaza.riesgo !== 'bajo' && offer.tipo === 'FAUNA' && !offer.combateForzado
+                          ? {
+                              nivel: offer.riesgoCaza.riesgo,
+                              text: `${offer.riesgoCaza.riesgo === 'mortal' ? 'Cazar esto puede matarte en un solo turno.' : 'Cazar esto es peligroso.'} ${offer.riesgoCaza.motivo}`.trim(),
+                            }
+                          : undefined
+                      }
                       error={offer.error}
                       actions={[
                         {

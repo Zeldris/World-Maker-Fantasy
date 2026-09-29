@@ -31,6 +31,7 @@ import { LIENZO_ANCHO, LIENZO_ALTO, posicionAleatoriaEnLienzo, celdaLibreEnEspir
 import { rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 import { createInFlightClaimSet } from '../../lib/inFlightClaimSet.js';
 import { iniciarCaza, type CazaTarget } from '../../services/caza.js';
+import { riesgoDeCaza, type RiesgoCazaInfo } from '../../services/cazaRiesgo.js';
 import type { AttributeBlock } from '../../services/dice.js';
 
 /// Candado de "movimiento en curso" (hallazgo 45, revisar-partida-hallazgos.md, 2026-09-15) —
@@ -71,6 +72,8 @@ const SAVE_SELECT_PARA_MOVER = {
   characterName: true,
   // "¿Quién ve a quién primero?" (2026-09-17) — Destreza del jugador para `quienIniciaEncuentro`.
   attributes: true,
+  // F9-1 (decisión de Álvaro, 2026-09-29): nivel del jugador para el aviso de riesgo de la tarjeta Cazar.
+  level: true,
 } satisfies Prisma.SaveSelect;
 
 /// Día/noche/estación (2026-08-27) — la vista Zona ya conoce el reloj real de la partida
@@ -605,6 +608,8 @@ export async function zonaRoutes(app: FastifyInstance) {
     // objetivo se salta mientras siga en el radio de la celda; `null` = no saltar nada (el caller
     // pasa `null` también cuando el jugador pulsa su propia casilla: petición explícita).
     ultimoEncuentroSlug: string | null,
+    // Nivel del jugador (`Save.level`) — solo para `riesgoCaza` de la oferta FAUNA (F9-1).
+    nivelJugador: number,
   ): Promise<{
     /// `true` si el objetivo de `ultimoEncuentroSlug` sigue en el radio de `celda` — el caller solo
     /// limpia `Save.zonaUltimoEncuentro` cuando esto es `false` (el jugador ya salió de su radio).
@@ -625,6 +630,9 @@ export async function zonaRoutes(app: FastifyInstance) {
           /// Cuántos individuos representa este encuentro AHORA MISMO — 1 para NPC/RECURSO/
           /// dinámicos (nunca se agrupan), puede ser >1 para un grupo de FAUNA real.
           cantidad?: number;
+          /// Aviso de riesgo de la tarjeta "Cazar" (F9-1, decisión de Álvaro, 2026-09-29) — solo FAUNA
+          /// no forzada con `ZonePoint`; ver `riesgoDeCaza` (cazaRiesgo.ts). Solo avisa, no cambia reglas.
+          riesgoCaza?: RiesgoCazaInfo;
         }
       | null;
     logEntry: { id: string; text: string; timeLabel: string; createdAt: string; roll?: IniciativaEncuentroLogRoll } | null;
@@ -650,7 +658,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     const npcs = puntos.length
       ? await tx.npc.findMany({
           where: { worldId, slug: { in: puntos.map((p) => p.targetSlug) } },
-          select: { id: true, slug: true, name: true, temperamento: true, faction: true, kind: true, attributes: true },
+          select: { id: true, slug: true, name: true, temperamento: true, faction: true, kind: true, attributes: true, level: true },
         })
       : [];
     const npcBySlug = new Map(npcs.map((n) => [n.slug, n]));
@@ -741,6 +749,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     // "¿Quién ve a quién primero?" (2026-09-17) — Destreza del NPC/fauna del encuentro, guardada
     // junto a `colision` para la tirada de `quienIniciaEncuentro` más abajo.
     let destrezaColision: number | null = null;
+    let nivelNpcColision = 1;
     // `tipo` real de catálogo — 'FAUNA' | 'NPC' tal cual lo trae `ZonePoint.tipo`, NUNCA derivado
     // de "¿tiene fila Npc?" (bug real detectado por los tests: un `Npc` con ficha propia puede
     // seguir siendo FAUNA cazable, `kind: 'PLANTILLA'` — `npcBySlug.has(slug)` daba `true` para
@@ -769,6 +778,7 @@ export async function zonaRoutes(app: FastifyInstance) {
         colision = { targetSlug: punto.targetSlug, targetName: nombre, temperamento };
         colisionTipo = punto.tipo === 'NPC' ? 'NPC' : 'FAUNA';
         destrezaColision = (npc?.attributes as { destreza?: number } | null)?.destreza ?? 10;
+        nivelNpcColision = npc?.level ?? 1;
         colisionZonePointId = punto.id;
         colisionCantidad = punto.cantidad;
         break; // Solo el primer encuentro — no acumula varios a la vez.
@@ -816,6 +826,7 @@ export async function zonaRoutes(app: FastifyInstance) {
           combateForzado?: true;
           zonePointId?: string;
           cantidad?: number;
+          riesgoCaza?: RiesgoCazaInfo;
         }
       | null = null;
     let logEntry: { id: string; text: string; timeLabel: string; createdAt: string; roll?: IniciativaEncuentroLogRoll } | null = null;
@@ -840,6 +851,20 @@ export async function zonaRoutes(app: FastifyInstance) {
           ...(combateForzado ? { combateForzado: true as const } : {}),
           ...(colisionZonePointId ? { zonePointId: colisionZonePointId } : {}),
           cantidad: colisionCantidad,
+          // Aviso de riesgo (F9-1, decisión de Álvaro, 2026-09-29): solo donde la tarjeta ofrece
+          // "Cazar" (FAUNA, no forzada, con ZonePoint) y solo como dato — no cambia ninguna regla.
+          ...(colisionTipo === 'FAUNA' && !combateForzado && colisionZonePointId
+            ? {
+                riesgoCaza: riesgoDeCaza({
+                  nivelJugador,
+                  destrezaJugador,
+                  nombreGrupo: colision.targetName,
+                  nivelNpc: nivelNpcColision,
+                  destrezaNpc: destrezaColision ?? 10,
+                  cantidad: colisionCantidad,
+                }),
+              }
+            : {}),
         };
         // Grupos de fauna reales (Fase 1, 2026-09-28) — "un grupo de N {especie}" en vez de solo el
         // nombre cuando el punto colisionado representa más de un individuo; concordancia sencilla
@@ -1030,6 +1055,7 @@ export async function zonaRoutes(app: FastifyInstance) {
           // Pulsar la propia casilla es una petición explícita de interactuar con lo que hay al
           // lado — nunca se silencia por el último encuentro.
           null,
+          save.level,
         );
         if (dynamicModeOffer) {
           await tx.save.update({
@@ -1094,6 +1120,7 @@ export async function zonaRoutes(app: FastifyInstance) {
         etiquetaTrasPaso,
         destrezaJugador,
         ultimoEncuentroSlug,
+        save.level,
       );
       // Un encuentro nuevo pasa a ser el "último"; si no, se olvida el anterior en cuanto este paso
       // deja al jugador fuera de su radio (volver a acercarse lo vuelve a ofrecer).

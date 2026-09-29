@@ -83,3 +83,42 @@ describe('LogPanel — legend "Tirada de iniciativa"', () => {
     expect(queryByText('Tirada de iniciativa')).toBeNull()
   })
 })
+
+// F9-1 (decisión de Álvaro, 2026-09-29) — la tarjeta "Cazar" avisa cuando la caza es peligrosa.
+describe('LogPanel — aviso de riesgo en la tarjeta Cazar', () => {
+  const baseProps = { title: 'Tu personaje', subtitle: 'x', accent: 'accent' as const, emptyHint: 'vacío' }
+  function entryConOferta(extra: Partial<NonNullable<LogEntry['dynamicModeOffer']>>): LogEntry {
+    return {
+      id: '1',
+      channel: 'character',
+      text: 'x',
+      timeLabel: 'Día 1',
+      createdAt: new Date().toISOString(),
+      dynamicModeOffer: { tipo: 'FAUNA', targetSlug: 'gesgurio', targetName: 'Gesgurio', zonePointId: 'zp1', cantidad: 3, ...extra },
+    }
+  }
+
+  it('riesgo mortal: línea roja con el motivo, y el botón Cazar sigue disponible', () => {
+    const e = entryConOferta({ riesgoCaza: { riesgo: 'mortal', motivo: 'Un grupo de 3 Gesgurio (nivel 2) frente a tu nivel 1.' } })
+    const { getByRole, getByText } = render(<LogPanel {...baseProps} entries={[e]} isThinking={false} />)
+    const aviso = getByRole('alert')
+    expect(aviso.getAttribute('data-riesgo')).toBe('mortal')
+    expect(aviso.textContent).toContain('matarte en un solo turno')
+    expect(aviso.textContent).toContain('3 Gesgurio')
+    expect(getByText('Cazar')).toBeTruthy()
+  })
+
+  it('riesgo alto: línea de advertencia', () => {
+    const e = entryConOferta({ riesgoCaza: { riesgo: 'alto', motivo: 'Es un grupo.' } })
+    const { getByRole } = render(<LogPanel {...baseProps} entries={[e]} isThinking={false} />)
+    expect(getByRole('alert').getAttribute('data-riesgo')).toBe('alto')
+  })
+
+  it('riesgo bajo o sin dato: sin aviso', () => {
+    const bajo = entryConOferta({ riesgoCaza: { riesgo: 'bajo', motivo: '' } })
+    expect(render(<LogPanel {...baseProps} entries={[bajo]} isThinking={false} />).queryByRole('alert')).toBeNull()
+    cleanup()
+    const sin = entryConOferta({})
+    expect(render(<LogPanel {...baseProps} entries={[sin]} isThinking={false} />).queryByRole('alert')).toBeNull()
+  })
+})

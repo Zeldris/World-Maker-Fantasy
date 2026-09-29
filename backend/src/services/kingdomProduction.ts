@@ -48,6 +48,19 @@ export type ResultadoOrden =
   | { ordenId: string; resultado: 'RECETA_DESCONOCIDA' }
   | { ordenId: string; resultado: 'NIVEL_EDIFICIO_INSUFICIENTE' };
 
+/// Puro: ¿esta receta es del oficio del edificio? Mismo criterio de familia que
+/// `productRecipesForOficio` (factionEconomy.ts): el oficio exacto o cualquiera de su familia
+/// (`herrero-*`), pero SIN excluir las recetas de extracción — una Boca de mina o un Embarcadero
+/// producen justo eso. Un edificio sin oficio (`oficioEdificio` null: Choza, Campamento, libres)
+/// no filtra nada, como antes.
+/// Filtro de producción por oficio del edificio (decisión de Álvaro, 2026-09-29, P-3): una herrería
+/// solo ofrece recetas de herrero.
+export function recetaEncajaConOficioDeEdificio(recipe: CraftingRecipe, oficioEdificio: string | null): boolean {
+  if (!oficioEdificio) return true;
+  if (!recipe.oficio) return false;
+  return recipe.oficio.split('-')[0] === oficioEdificio.split('-')[0];
+}
+
 /// Puro: nivel de oficio real de un trabajador para `professionId` — 1 si nunca lo practicó (mismo
 /// fallback que `professionLevelForXp(0)`), nunca null/undefined.
 export function nivelOficioDeTrabajador(trabajador: TrabajadorReino, professionId: string): number {

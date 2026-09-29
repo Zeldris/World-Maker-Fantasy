@@ -71,7 +71,7 @@ export function useModoDinamico({
     cantidad?: number,
   ) {
     setCharacterLog((prev) =>
-      prev.map((e) => (e.id === entryId ? { ...e, dynamicModeOffer: { tipo, targetSlug, targetName, quienInicia, combateForzado, zonePointId, cantidad, busy: true } } : e)),
+      prev.map((e) => (e.id === entryId ? { ...e, dynamicModeOffer: { tipo, targetSlug, targetName, quienInicia, combateForzado, zonePointId, cantidad, riesgoCaza: e.dynamicModeOffer?.riesgoCaza, busy: true } } : e)),
     )
     try {
       const turno = await interactuarModoDinamico(saveId!, tipo, targetSlug, targetName, quienInicia, combateForzado, zonePointId, cantidad)
@@ -127,7 +127,7 @@ export function useModoDinamico({
           e.id === entryId
             ? {
                 ...e,
-                dynamicModeOffer: yaNoDisponible ? undefined : { tipo, targetSlug, targetName, quienInicia, combateForzado, zonePointId, cantidad, busy: false, error: motivo },
+                dynamicModeOffer: yaNoDisponible ? undefined : { tipo, targetSlug, targetName, quienInicia, combateForzado, zonePointId, cantidad, riesgoCaza: e.dynamicModeOffer?.riesgoCaza, busy: false, error: motivo },
                 ...(yaNoDisponible ? { text: `${e.text} (${motivo})` } : {}),
               }
             : e,

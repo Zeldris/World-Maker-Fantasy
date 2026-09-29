@@ -248,6 +248,56 @@ describe('POST /saves/:id/reino/diplomacia', () => {
     expect(relation.presion).toBe(60); // 50 + peso de SABOTAJE_DIPLOMATICO (+10)
   });
 
+  // H-5 parcial (decisión de Álvaro, 2026-09-29): el diplomático sube de nivel negociando.
+  it('varias negociaciones seguidas contra la misma facción suben el nivel de diplomacia y el gate no bloquea', async () => {
+    const companion = await prisma.companion.create({
+      data: { saveId, name: 'Diplomático aprendiz', role: 'diplomatico', notes: '', rolReino: 'diplomatico' },
+    });
+    await prisma.factionRelation.upsert({
+      where: { sourceFactionId_targetFactionId: { sourceFactionId, targetFactionId } },
+      update: { presion: 50 },
+      create: { worldId, sourceFactionId, targetFactionId, presion: 50, type: 'NEUTRAL' },
+    });
+    const app = await buildApp();
+    const niveles: number[] = [];
+    for (let i = 0; i < 4; i++) {
+      const res = await app.inject({
+        method: 'POST',
+        url: `/saves/${saveId}/reino/diplomacia`,
+        payload: { companionId: companion.id, targetFactionSlug, accion: 'negociar' },
+      });
+      expect(res.statusCode, `negociación ${i + 1}`).toBe(200);
+      expect(res.json().xpGanada).toBeGreaterThan(0);
+      niveles.push(res.json().nivelDiplomatico);
+    }
+    expect(niveles).toEqual([2, 3, 4, 5]);
+    const progreso = await prisma.professionProgress.findUniqueOrThrow({
+      where: { companionId_professionId: { companionId: companion.id, professionId: 'diplomatico' } },
+    });
+    expect(progreso.nivel).toBe(5);
+    expect(progreso.xp).toBe(50 + 100 + 200 + 350);
+  });
+
+  it('sabotear y espiar no dan XP de diplomacia', async () => {
+    const companion = await prisma.companion.create({
+      data: { saveId, name: 'Diplomático sin práctica', role: 'diplomatico', notes: '', rolReino: 'diplomatico' },
+    });
+    await prisma.factionRelation.update({
+      where: { sourceFactionId_targetFactionId: { sourceFactionId, targetFactionId } },
+      data: { presion: 50 },
+    });
+    const app = await buildApp();
+    for (const accion of ['espiar', 'sabotear']) {
+      const res = await app.inject({
+        method: 'POST',
+        url: `/saves/${saveId}/reino/diplomacia`,
+        payload: { companionId: companion.id, targetFactionSlug, accion },
+      });
+      expect(res.statusCode).toBe(200);
+    }
+    expect(await prisma.professionProgress.count({ where: { companionId: companion.id, professionId: 'diplomatico' } })).toBe(0);
+  });
+
   it('rechaza diplomacia contra el propio Reino del jugador', async () => {
     const companion = await prisma.companion.create({
       data: { saveId, name: 'Diplomático de prueba 2', role: 'diplomatico', notes: '', rolReino: 'diplomatico' },
