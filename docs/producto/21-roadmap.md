@@ -1,6 +1,7 @@
 # Roadmap — Tarkor (octubre 2026 → septiembre 2027)
 
-**Actualizado:** 2026-09-28. Todo lo pendiente se ha comprobado contra el código ese día.
+**Actualizado:** 2026-09-29. Todo lo pendiente se ha comprobado contra el código ese día.
+**Versión actual:** Alpha 0 · `v0.0.0` (etiqueta en `44f8ba3`, 2026-09-29). Ver § Versionado.
 **En curso:** [plan-roadmap-oct-2026.md](plan-roadmap-oct-2026.md) (Ahora + Trimestre 1): fases 1-8 y 10 (tiradas visibles, `c088f1d`) hechas; fase 9 (verificación en vivo) en curso.
 **Historial:** lo cerrado antes de esta fecha está en
 [archivo/21-roadmap-2026-09-historico.md](../archivo/21-roadmap-2026-09-historico.md) y en los
@@ -12,6 +13,25 @@ roadmaps anteriores de [archivo/](../archivo/).
 - **🧭 = decide Álvaro antes de empezar.** Nada marcado así se implementa sin su respuesta.
 - Origen: **[A]** pedido o decidido por Álvaro · **[H]** hallazgo verificado en código · **[P]**
   propuesta de Claude.
+
+---
+
+## Versionado (desde el 2026-09-29, decisión de Álvaro)
+
+Formato `A.P.C` en fase alpha:
+- **A — versión de juego:** sube en 1 con cada continente nuevo, a modo de DLC. Berig es la `0`
+  mientras esté en alpha; Vaelira será la `1`.
+- **P — proyecto de desarrollo:** sube en 1 al cerrar cada hito (proyecto) del roadmap.
+- **C — commits:** número de commits desde la etiqueta del hito, calculado solo con
+  `git describe --tags` (nunca a mano). Ejemplo: 37 commits después de `v0.1.0` → `0.1.37`.
+
+Cada hito cerrado se etiqueta en git (`v0.1.0`, `v0.2.0`…).
+
+| Versión | Hito | Estado |
+|---|---|---|
+| `0.0.x` | **Alpha 0**: todo lo hecho hasta el 2026-09-29 (Ahora, Trimestre 1, expediciones y relaciones de facción). Mucho implementado y con tests, poco verificado jugando | Etiquetada `v0.0.0` |
+| `0.1.x` | **Llanuras estable**: congelar funcionalidades; pasada de juego completa con Gorhorn y arreglos; súbditos del Reino (F9-7, versión mínima); mundo vivo visible para el jugador; `worldAgenda` migrado a relaciones; robustez (test intermitente, partidas que sobreviven a actualizaciones, scripts de arranque); latencia medida en la Steam Deck | Siguiente |
+| `0.2.x` en adelante | **Berig jugable**: viaje largo entre regiones; Cristal Helado, Ciénaga, Margen y Meseta jugables; economía de supervivencia e IA de decisión de facción; instalador y narrador local afinado. Se parte en varios hitos al planificarlo | Pendiente |
 
 ---
 
