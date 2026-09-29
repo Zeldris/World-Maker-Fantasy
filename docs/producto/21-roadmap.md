@@ -75,8 +75,9 @@ Rompen una mecánica en partida real. Referencias H-x:
 - ~~La hora de la cabecera no avanza al caminar (F9-2) y "TU ACCIÓN" sale con la hora vieja (F9-3)~~ ✅ `8b8a0b2` **[H]**
 - ~~Dos tiradas visibles que no quedan en el log (F9-4)~~ ✅ `8b8a0b2` **[H]**
 - ~~**B29**: atacar por texto libre a fauna adyacente no abría combate~~ ✅ `8b8a0b2` (se resuelve como Cazar) **[H]**
-- Efecto de B1: un re-seed del catálogo no llega a las partidas que ya clonaron esa zona
-  (`asegurarZonePointsDePartida`). Decidir si hace falta una resincronización. **[P]**
+- ~~Efecto de B1: un re-seed del catálogo no llega a las partidas que ya clonaron esa zona~~ ✅ `00b3607`:
+  resincronización aditiva (solo añade lo que falta; un punto retirado del catálogo sigue en las
+  partidas que ya lo tenían). **[P]**
 
 ### Alcance pre-alpha
 - ~~Aplicar la decisión del 2026-09-01: **solo Gorhorn es jugable**~~ ✅ `378c393`. Dessa, Yerin y Riko como NPC:
