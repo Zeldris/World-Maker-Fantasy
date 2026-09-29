@@ -51,12 +51,15 @@ jobs:
       - name: Extensión pgvector
         run: PGPASSWORD=tarkor psql -h localhost -U tarkor -d tarkor -c 'CREATE EXTENSION IF NOT EXISTS vector'
       - run: npx prisma migrate deploy
-      - run: npm run seed-catalog
+      # Antes que reindex-lore: los embeddings del RAG se piden a Ollama.
       - name: Ollama simulado
         run: |
           nohup node ../tools/ci/mock-ollama.mjs > /tmp/mock-ollama.out 2>&1 &
           for i in $(seq 1 20); do curl -s -o /dev/null localhost:11434 && exit 0; sleep 1; done
           echo "El Ollama simulado no arrancó" && cat /tmp/mock-ollama.out && exit 1
+      # reindex-lore crea el mundo "helek-sirik" que seed-catalog necesita.
+      - run: npm run reindex-lore
+      - run: npm run seed-catalog
       - run: npm test
 
   frontend:

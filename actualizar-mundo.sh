@@ -57,6 +57,12 @@ echo
 echo "1/2 — seed-catalog (ubicaciones, NPCs, items, aristas)..."
 (cd "$DIR/backend" && npm run seed-catalog)
 
+# Partidas existentes: pone al día statBonuses de sus copias de objetos y desequipa lo que ya no
+# cabe en su ranura (idempotente, ver backend/src/services/itemCatalogSync.ts).
+echo
+echo "1b/2 — sync-item-catalog (objetos de partidas existentes al día con el catálogo)..."
+(cd "$DIR/backend" && npm run sync-item-catalog)
+
 echo
 echo "2/2 — reindex-lore (fragmentos RAG del Narrador — puede tardar según cuántos hayan cambiado)..."
 (cd "$DIR/backend" && npm run reindex-lore)

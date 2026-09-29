@@ -63,6 +63,11 @@ echo "Sincronizando catálogo del mundo (seed-catalog)..."
 (cd "$DIR/backend" && npm run seed-catalog) || echo "AVISO: seed-catalog falló — el mapa/catálogo puede no estar al día. Revisa que Postgres esté arriba y corre 'npm run seed-catalog' a mano en backend/."
 echo
 
+# Objetos de partidas existentes al día con el catálogo (idempotente, rápido). Solo avisa si falla.
+echo "Sincronizando objetos de las partidas con el catálogo (sync-item-catalog)..."
+(cd "$DIR/backend" && npm run sync-item-catalog) || echo "AVISO: sync-item-catalog falló — objetos de partidas antiguas pueden tener stats desfasados. Corre 'npm run sync-item-catalog' a mano en backend/."
+echo
+
 TERMINAL=""
 for candidate in konsole xterm gnome-terminal xfce4-terminal; do
   if command -v "$candidate" >/dev/null 2>&1; then

@@ -14,6 +14,7 @@
     "test:turn": "tsx src/scripts/test-turn.ts",
     "reindex-lore": "tsx src/scripts/reindex-lore.ts",
     "seed-catalog": "tsx src/scripts/seed-catalog.ts",
+    "sync-item-catalog": "tsx src/scripts/sync-item-catalog.ts",
     "seed-image-prompts": "tsx src/scripts/seedImagePrompts.ts",
     "export-image-prompts": "tsx src/scripts/exportImagePrompts.ts",
     "audit-images": "tsx src/scripts/auditImages.ts",
