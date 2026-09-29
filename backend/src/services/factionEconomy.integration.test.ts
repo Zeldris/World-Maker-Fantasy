@@ -38,6 +38,10 @@ describe('advanceFactionEconomy — integración (Fase 4)', () => {
 
     // Línea base: Serhu tenía producido hasta DIA-1 → exactamente 1 día pendiente.
     await prisma.kingdomStats.updateMany({ where: { faction: { worldId } }, data: { ultimoDiaProducido: DIA - 1 } });
+    // Riqueza de partida conocida (CI, 2026-09-29): en una BD recién sembrada Serhu empieza con 0 y,
+    // como sus 500 soldados cuestan más de lo que rinden sus 150 trabajadores, el día la dejaba en
+    // 0 (Math.max) y la aserción "la riqueza cambia" solo pasaba con riqueza acumulada de antes.
+    await prisma.kingdomStats.update({ where: { ownerKey: `faction:${serhuId}` }, data: { riqueza: 10_000 } });
     // Relación Serhu→otra facción con presión 80 y 2 semanas pendientes.
     const otra = await prisma.faction.findFirstOrThrow({ where: { worldId, saveId: null, id: { not: serhuId } } });
     const existente = await prisma.factionRelation.findUnique({ where: { sourceFactionId_targetFactionId: { sourceFactionId: serhuId, targetFactionId: otra.id } } });
