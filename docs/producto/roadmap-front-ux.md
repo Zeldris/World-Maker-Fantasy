@@ -232,9 +232,11 @@ stateDiagram-v2
   principal; *Nueva partida* abre un **asistente en una sola pantalla**: mundo, personaje,
   dificultad y nombre de la partida, con resumen y un botón *Empezar*. Los pasos con una sola
   opción vienen ya elegidos y plegados, sin desaparecer. Resuelve H13 y H14. **M**
-- **UX-16 · El asistente sobrevive a recargar** — su estado va en la URL o en `sessionStorage`; un
+- ~~**UX-16 · El asistente sobrevive a recargar** — su estado va en la URL o en `sessionStorage`; un
   fallo al crear dice "No se pudo crear la partida" con *Reintentar*. Resuelve H16. **S**
-  **arreglo**
+  **arreglo**~~ ✅ 2026-10-01: `SessionProvider` guarda mundo, personaje y dificultad en
+  `sessionStorage`; `GameView` distingue "No se pudo crear la partida" (con *Reintentar*) de "Se ha
+  perdido la elección" en vez del genérico "No se encuentra esta partida".
 - **UX-17 · "Crear desde cero"** oculto o marcado "Próximamente" hasta el hito `0.7`, si se
   confirma que no está listo. 🧭 Resuelve H15. **S**
 - **UX-18 · Epílogo de fin de partida** — pantalla de cierre con el último texto, un resumen (días,

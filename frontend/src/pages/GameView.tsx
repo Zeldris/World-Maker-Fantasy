@@ -386,6 +386,10 @@ export function GameView() {
   // de banners persistidos al cargar la Enciclopedia).
   const { buildEntityBanner } = useEntityBanner(saveId, enciclopediaIndex, setCharacterLog, setWorldLog)
   const [notFound, setNotFound] = useState(false)
+  // UX-16 (hito 0.1, H16) — por qué no se pudo crear la partida nueva: sin la selección del
+  // asistente (no debería pasar ya, ver SessionContext) o un fallo real de `createSave`.
+  const [creacionError, setCreacionError] = useState<'sin-seleccion' | 'fallo' | null>(null)
+  const [reintentosCreacion, setReintentosCreacion] = useState(0)
   const [condicionFisica, setCondicionFisica] = useState<CondicionFisica>('ILESO')
   // Fase 2 de efectos de clase (2026-08-27, indicador de combate) — mismo patrón que
   // condicionFisica: se sincroniza al cargar la partida y se actualiza con cada respuesta de turno.
@@ -987,7 +991,7 @@ export function GameView() {
       // este `return` silencioso dejaba "Cargando partida..." para siempre; ahora se muestra la
       // pantalla de error con botón de volver a partidas.
       if (!selectedWorld || !selectedCharacter) {
-        if (!cancelled) setNotFound(true)
+        if (!cancelled) setCreacionError('sin-seleccion')
         return
       }
       // Intro propia por personaje pregenerado (2026-07-28, petición explícita: "había
@@ -1019,7 +1023,9 @@ export function GameView() {
         const { id: newId } = await creatingSaveRef.current
         if (!cancelled) navigate(`/solitario/partida/${newId}`, { replace: true })
       } catch {
-        if (!cancelled) setNotFound(true)
+        // Sin limpiar la promesa, *Reintentar* volvería a esperar la misma ya rechazada.
+        creatingSaveRef.current = null
+        if (!cancelled) setCreacionError('fallo')
       }
     }
 
@@ -1062,6 +1068,7 @@ export function GameView() {
     }
 
     if (id === 'nueva') {
+      setCreacionError(null)
       createNewSave()
     } else if (id) {
       loadExistingSave(id)
@@ -1070,12 +1077,13 @@ export function GameView() {
     return () => {
       cancelled = true
     }
-    // Deliberadamente solo `id`: este efecto debe correr una única vez por navegación de ruta
+    // Deliberadamente solo `id` (y `reintentosCreacion`, que solo cambia al pulsar *Reintentar* de
+    // UX-16): este efecto debe correr una única vez por navegación de ruta
     // (crear o cargar), nunca de nuevo porque `selectedWorld`/`selectedCharacter`/
     // `selectedDificultad` (SessionContext) cambien de referencia por otra razón — eso repetiría
     // `createNewSave`/`loadExistingSave` sin que el jugador haya navegado a ningún sitio nuevo.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id])
+  }, [id, reintentosCreacion])
 
   // Pausar/reanudar la partida de verdad al salir (roadmap 2026-07-20: "quiero que la partida se
   // pause si salgo de ella"). `resume` al entrar/recuperar `saveId`; `pause` tanto al desmontar
@@ -1257,6 +1265,35 @@ export function GameView() {
   // `busyUntil`/`busyActivity`/`busyDuracionMinutos` los siguen escribiendo `syncFromSave`
   // (arriba) y `handleSubmit` (abajo, en el catch de `isBusyError`), fuera del hook.
   const { cancelingTransit, nowTick, handleCancelTransit } = useTransitPolling({ saveId, busyUntil, syncFromSave })
+
+  if (id === 'nueva' && creacionError) {
+    return (
+      <div role="alert" className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
+        <p className="text-wood-200">
+          {creacionError === 'fallo' ? 'No se pudo crear la partida.' : 'Se ha perdido la elección de mundo y personaje.'}
+        </p>
+        <p className="max-w-md text-xs text-wood-500">
+          {creacionError === 'fallo'
+            ? 'El servidor no respondió como esperábamos. Tu elección sigue guardada: puedes volver a intentarlo.'
+            : 'Vuelve a elegir el mundo y el personaje para empezar.'}
+        </p>
+        <div className="flex gap-4">
+          {creacionError === 'fallo' && (
+            <button
+              type="button"
+              onClick={() => setReintentosCreacion((n) => n + 1)}
+              className="tactile rounded-lg border border-accent-600 bg-accent-500/20 px-3.5 py-1.5 text-sm font-semibold text-accent-300 hover:bg-accent-500/35"
+            >
+              Reintentar
+            </button>
+          )}
+          <button type="button" onClick={() => navigate('/solitario')} className="text-sm text-accent-400 hover:text-accent-300">
+            ← Volver al menú
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   if (notFound || (!saveId && id !== 'nueva')) {
     return (
