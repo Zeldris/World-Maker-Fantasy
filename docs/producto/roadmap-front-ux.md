@@ -218,8 +218,12 @@ stateDiagram-v2
   muerte, encuentro agresivo) cierran el cajón con animación; los **importantes** (narración nueva,
   oferta, misión) muestran una notificación y una marca en el registro; los **menores** no
   interrumpen. Resuelve H10. **S**
-- **UX-13 · `anyModalOpen` completo**, o mejor, sustituido por el gestor de capas: el composer
-  pierde el foco y se deshabilita con cualquier capa ≥ 1 abierta. Resuelve H11. **S** **arreglo**
+- ~~**UX-13 · `anyModalOpen` completo**, o mejor, sustituido por el gestor de capas: el composer
+  pierde el foco y se deshabilita con cualquier capa ≥ 1 abierta. Resuelve H11. **S** **arreglo**~~
+  ✅ 2026-10-01: el composer cuenta también el mapa de zona, Confirmar salida, Clase,
+  Especialización, el editor de barras y el detalle de recurso, y `ChatComposer` suelta el foco al
+  deshabilitarse. El cajón de paneles queda fuera (la Enciclopedia inserta chips en el composer);
+  lo decidirá el gestor de capas de `UX-9`.
 - **UX-14 · Encuentros sin cortes** — con el mapa fuera del modal (`roadmap-front-zona.md`, ZON-1),
   el encuentro aparece sobre la ficha y en el registro sin cerrar nada. Resuelve H12.
 

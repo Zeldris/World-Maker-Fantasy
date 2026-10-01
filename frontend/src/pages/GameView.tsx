@@ -1676,7 +1676,15 @@ export function GameView() {
             // por debajo de esos modales pese a estar tapado visualmente. Mismo cálculo reutilizado
             // para el toggle y la SkillBar (2026-08-29) — ninguno de los dos debe quedar activo
             // cuando el composer normal tampoco lo estaría.
-            const composerDisabled = characterThinking || !!busyUntil || (!!combateIniciado && !combat.combatOpen) || anyModalOpen
+            // UX-13 (hito 0.1, H11) — `anyModalOpen` es el guard de exclusión entre modales de acción;
+            // para el composer cuentan además el resto de capas que se abren encima del juego. El cajón
+            // de paneles (`activePanel`) queda fuera a propósito: la Enciclopedia inserta chips en el
+            // composer con el cajón abierto.
+            const claseVisible = !!pendingClaseChoice && !pendingDeathResolution && !endedAt && !!worldIdSlug
+            const especializacionVisible = !!pendingEspecializacionChoice && !pendingDeathResolution && !endedAt && !!clase && !!worldIdSlug
+            const capaEncimaAbierta =
+              anyModalOpen || zonaModalOpen || confirmingExit || !!editingSkillBar || !!recursoDetalle || claseVisible || especializacionVisible
+            const composerDisabled = characterThinking || !!busyUntil || (!!combateIniciado && !combat.combatOpen) || capaEncimaAbierta
             // Toggle a la IZQUIERDA de la propia fila del composer/barra, no encima en su propia
             // línea (2026-08-29, feedback en vivo, segunda vuelta: "no bajaste el botón... a la
             // izquierda donde te dije") — mismo slot visual que la barra, `leftSlot` de
@@ -1750,7 +1758,7 @@ export function GameView() {
                           ? 'Ocupado con algo que lleva tiempo — vuelve cuando termine.'
                           : combateIniciado && !combat.combatOpen
                             ? 'En combate — usa el panel de combate para actuar.'
-                            : anyModalOpen
+                            : capaEncimaAbierta
                               ? 'Resuelve lo que tienes abierto antes de escribir una nueva acción.'
                               : undefined
                     }
