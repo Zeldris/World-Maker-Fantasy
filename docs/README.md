@@ -11,6 +11,7 @@ si no sabes dónde buscar, empieza por la tabla de "Qué quiero hacer".
 | Mejoras de diseño, animación y configuración del front | [producto/roadmap-front.md](producto/roadmap-front.md) |
 | Mejoras del panel de Reino (información y gestión) | [producto/roadmap-front-reino.md](producto/roadmap-front-reino.md) |
 | Mejoras del mapa de zona (movimiento, iconos, animaciones) | [producto/roadmap-front-zona.md](producto/roadmap-front-zona.md) |
+| Experiencia de usuario: orden de vistas, flujos y bloqueos | [producto/roadmap-front-ux.md](producto/roadmap-front-ux.md) |
 | Entender la arquitectura técnica | [arquitectura/03-arquitectura.md](arquitectura/03-arquitectura.md) y [04-decisiones-tecnicas.md](arquitectura/04-decisiones-tecnicas.md) |
 | Saber cómo funciona el mundo vivo (Reino, facciones, mercado, producción) | [arquitectura/22-mundo-vivo-x4-tecnico.md](arquitectura/22-mundo-vivo-x4-tecnico.md) |
 | Instalar el proyecto | [arquitectura/15-instalacion.md](arquitectura/15-instalacion.md) |
@@ -30,6 +31,7 @@ si no sabes dónde buscar, empieza por la tabla de "Qué quiero hacer".
 - [roadmap-front.md](producto/roadmap-front.md): roadmap de front (menú de configuración, animaciones, atmósfera, sonido).
 - [roadmap-front-reino.md](producto/roadmap-front-reino.md): roadmap de front del panel de Reino.
 - [roadmap-front-zona.md](producto/roadmap-front-zona.md): roadmap de front del mapa de zona.
+- [roadmap-front-ux.md](producto/roadmap-front-ux.md): roadmap de experiencia de usuario (flujos, orden y bloqueos).
 
 ### `arquitectura/` — cómo está construido
 - [03-arquitectura.md](arquitectura/03-arquitectura.md): piezas, flujo de un turno, reloj de mundo.

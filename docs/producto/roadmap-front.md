@@ -7,6 +7,9 @@ de flujo — más capturas reales de inicio, mundo y personaje.
 congelación del hito `0.1`: los bloques marcados **«arreglo»** son correcciones que encajan en
 `0.1`; el resto entra en los hitos que decida Álvaro.
 
+**Documentos hermanos:** [Reino](roadmap-front-reino.md) · [Mapa de zona](roadmap-front-zona.md) ·
+[Experiencia de usuario: flujos, orden y bloqueos](roadmap-front-ux.md).
+
 **Cómo se usa** (mismo convenio que el roadmap principal):
 - Al cerrar un punto se tacha aquí con su commit.
 - **🧭 = decide Álvaro antes de empezar.**
