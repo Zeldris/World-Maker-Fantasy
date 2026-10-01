@@ -12,6 +12,7 @@ si no sabes dónde buscar, empieza por la tabla de "Qué quiero hacer".
 | Mejoras del panel de Reino (información y gestión) | [producto/roadmap-front-reino.md](producto/roadmap-front-reino.md) |
 | Mejoras del mapa de zona (movimiento, iconos, animaciones) | [producto/roadmap-front-zona.md](producto/roadmap-front-zona.md) |
 | Experiencia de usuario: orden de vistas, flujos y bloqueos | [producto/roadmap-front-ux.md](producto/roadmap-front-ux.md) |
+| Historia viva de cada partida: sucesos, consecuencias y lore generado | [producto/roadmap-cronista.md](producto/roadmap-cronista.md) |
 | Entender la arquitectura técnica | [arquitectura/03-arquitectura.md](arquitectura/03-arquitectura.md) y [04-decisiones-tecnicas.md](arquitectura/04-decisiones-tecnicas.md) |
 | Saber cómo funciona el mundo vivo (Reino, facciones, mercado, producción) | [arquitectura/22-mundo-vivo-x4-tecnico.md](arquitectura/22-mundo-vivo-x4-tecnico.md) |
 | Instalar el proyecto | [arquitectura/15-instalacion.md](arquitectura/15-instalacion.md) |
@@ -32,6 +33,7 @@ si no sabes dónde buscar, empieza por la tabla de "Qué quiero hacer".
 - [roadmap-front-reino.md](producto/roadmap-front-reino.md): roadmap de front del panel de Reino.
 - [roadmap-front-zona.md](producto/roadmap-front-zona.md): roadmap de front del mapa de zona.
 - [roadmap-front-ux.md](producto/roadmap-front-ux.md): roadmap de experiencia de usuario (flujos, orden y bloqueos).
+- [roadmap-cronista.md](producto/roadmap-cronista.md): el Cronista — Libro de Sucesos, consecuencias, mundo por partida y lore generado.
 
 ### `arquitectura/` — cómo está construido
 - [03-arquitectura.md](arquitectura/03-arquitectura.md): piezas, flujo de un turno, reloj de mundo.
