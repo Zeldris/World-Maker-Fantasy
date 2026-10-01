@@ -373,7 +373,8 @@ Todos heredan MOD-1…MOD-6; aquí solo lo específico de cada uno.
   conoce; la hora de llegada estimada en fecha ficticia. **M**
 - **MOD-16 · Volver al campamento** (`CampSelectionModal`) — se fusiona visualmente con Viajar
   (misma fila, con el tiempo de viaje que hoy no enseña). **S**
-- **MOD-17 · Moverte por la zona** (`ZonaMovimientoModal`, 90 vh) — leyenda de formas/colores
+- **MOD-17 · Moverte por la zona** (`ZonaMovimientoModal`, 90 vh) — ver
+  [roadmap-front-zona.md](roadmap-front-zona.md), que propone sacarlo del modal; resumen: leyenda de formas/colores
   plegable, zoom y desplazamiento con rueda/arrastre, ruta prevista dibujada antes de confirmar,
   atajo `Z`. **M**
 - **MOD-18 · Salida de zona** (`ZonaSalidaModal`) — la imagen de la salida a ancho completo con
@@ -471,7 +472,8 @@ Contenedor común: `PanelDrawer` (cajón inferior, `max-w-4xl`, 85 vh).
     la paleta por raza; mercado con precios y tendencia. **M**
 
 ### El mundo
-- **PAN-8 · Mapa** (Zona + Mapa) — ver ATM-7 (niebla, ruta animada, zoom suave); leyenda unificada
+- **PAN-8 · Mapa** (Zona + Mapa) — **el mapa de zona tiene análisis propio en
+  [roadmap-front-zona.md](roadmap-front-zona.md)**; ver ATM-7 (niebla, ruta animada, zoom suave); leyenda unificada
   entre Zona y Berig; botón "centrar en mí". **M**
 - **PAN-9 · Diario** — búsqueda en el texto, filtros por canal (personaje/mundo/reino), saltar a
   una fecha ficticia, capítulos por día con separador (NAR-3) y exportar la partida como relato
