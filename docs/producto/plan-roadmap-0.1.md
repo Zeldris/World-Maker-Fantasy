@@ -27,6 +27,9 @@ test necesita base de datos".
   antes de `npm test`.
 - Confirmar que la suite completa pasa en CI y dejar el comentario al día.
 
+✅ **Hecha** (2026-09-29, `ci.yml`): Postgres 16 + pgvector, migraciones, Ollama simulado,
+`reindex-lore` y `seed-catalog`. Desde entonces lo único rojo era el test intermitente de la Fase C.
+
 ## Fase B — Versión visible y partidas que sobreviven a una actualización
 
 - ~~Versión `A.P.C-etapa+commit` en el juego y en `/version`, y
@@ -43,6 +46,14 @@ test necesita base de datos".
 `combateMultipleOrquestacion.integration.test.ts` falla de vez en cuando solo en la suite completa
 (registro de deuda, 2026-09-29). Buscar la causa raíz (estado compartido entre ficheros, orden de
 `findMany` sin `orderBy`, dados sin fijar…) y arreglarla. Nunca saltar ni desactivar el test.
+
+✅ **Hecha** (2026-10-01). Causa raíz: fallo del test, no del motor. En "ANALIZAR RIVAL: contra un
+miembro de grupo…", `iniciarCombatEncounter` ya calcula los enganches de la ronda 1: el primer
+miembro del grupo en iniciativa reclama a la jugadora y, por la regla 3 del enganche, ella queda en
+duelo con él (`fijarEleccionRondaJugador` no cambia nada). El test daba por hecho que analizaba la
+primera fila de un `findMany` sin `orderBy`, y solo coincidía cuando la tirada de iniciativa ponía
+esa fila delante (falló ~1 de cada 12 en local). Ahora toma como analizado al rival con el que la
+jugadora está realmente en duelo: 25/25 en bucle y suite completa 162/162 con Postgres real.
 
 ## Fase D — El mundo vivo, visible
 

@@ -11,19 +11,18 @@ cada commit.**
 | | |
 |---|---|
 | **Actualizado** | 2026-10-01 |
-| **Rama de trabajo** | `main` (no hay ninguna rama con trabajo a medias). La próxima tarea abre su propia rama y la apunta aquí |
+| **Rama de trabajo** | `claude/frontend-improvements-roadmap-0mpckt` (Fase A/C del 0.1; pendiente de merge a `main` cuando la usuaria lo confirme) |
 | **Último commit en `main`** | `423c8a5` — roadmap de roadmaps y revisión cruzada de front y UX (+ el commit de esta bitácora) |
 | **Hito** | `0.1` Llanuras estable — [plan](../producto/plan-roadmap-0.1.md) · [mapa de roadmaps](../producto/21-roadmap.md#qué-entra-en-cada-hito) |
-| **Tarea en curso** | Ninguna |
-| **Tests** | Sin cambios de código desde el último estado conocido; comprobar antes de empezar (comandos abajo). La CI de GitHub sigue en rojo (Fase A del 0.1) |
+| **Tarea en curso** | Ninguna. Fase C cerrada; siguiente: arreglos de interfaz del 0.1 |
+| **Tests** | Backend en local con Postgres real: `tsc` 0, `oxlint` 0 (solo avisos previos), `vitest` 162/162 archivos, 2851 tests. La CI debería quedar en verde con este commit (comprobar el run) |
 
 ## Siguientes pasos (en orden)
 
 Del [plan del 0.1](../producto/plan-roadmap-0.1.md) y del [mapa de roadmaps](../producto/21-roadmap.md#qué-entra-en-cada-hito):
 
-1. **Fase A — CI en verde:** Postgres 16 con pgvector en el job de backend de
-   `.github/workflows/ci.yml`, `prisma migrate deploy` y `seed-catalog` antes de `npm test`.
-2. **Fase C — test intermitente** de `combateMultipleOrquestacion.integration.test.ts`: causa raíz.
+1. ~~**Fase A — CI en verde**~~ ✅ (ya estaba en `ci.yml`; solo faltaba la Fase C).
+2. ~~**Fase C — test intermitente**~~ ✅ 2026-10-01 (ver plan del 0.1).
 3. **Arreglos de interfaz del 0.1** (sin decisiones pendientes):
    - `UX-3`, `UX-4`, `UX-13`, `UX-16`, `UX-24` ([roadmap-front-ux.md](../producto/roadmap-front-ux.md))
    - `DAD-1`…`DAD-6`, `CFG-33`, `BAS-1` ([roadmap-front.md](../producto/roadmap-front.md))
@@ -53,6 +52,10 @@ o no bloquean el 0.1.
 cd backend && npx tsc -p tsconfig.json --noEmit && npx vitest run && npx oxlint
 # Frontend
 cd frontend && npx tsc -b && npx vitest run && npx oxlint
+# Postgres desde cero en un contenedor nuevo (como la CI): apt install postgresql-16-pgvector,
+#   pg_ctlcluster 16 main start, usuario/BD tarkor:tarkor, CREATE EXTENSION vector; después en backend/:
+#   export DATABASE_URL=postgresql://tarkor:tarkor@localhost:5432/tarkor DIRECT_URL=$DATABASE_URL OLLAMA_BASE_URL=http://localhost:11434
+#   npx prisma migrate deploy && (node ../tools/ci/mock-ollama.mjs &) && npm run reindex-lore && npm run seed-catalog
 # Postgres de desarrollo (si está caído): bash /home/user/devenv/up.sh y después bash /home/user/stop-be.sh
 # (ver reglas comunes en docs/producto/plan-roadmap-0.1.md)
 ```
@@ -61,4 +64,6 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 - **2026-10-01** — Seis roadmaps coordinados en `main` (`423c8a5`): front, UX, mapa de zona, Reino,
   Cronista, y `21-roadmap.md` convertido en roadmap de roadmaps. Solo documentación.
+- **2026-10-01** — Fase C del 0.1: test intermitente "ANALIZAR RIVAL: contra un miembro de grupo"
+  arreglado (el test suponía un orden de `findMany`; ahora usa el rival en duelo real). Fase A cerrada.
 - **2026-10-01** — Reglas de trabajo por relevos (`CLAUDE.md`) y esta bitácora.
