@@ -215,8 +215,10 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
 
 ## 3. Base técnica del diseño (`BAS`)
 
-- **BAS-1 · Fuentes empaquetadas** **[H]** **S** — `woff2` en `frontend/src/assets/fonts`,
-  `@font-face` + `font-display: swap`, fuera el `@import` de Google. Requisito para Tauri sin red.
+- ~~**BAS-1 · Fuentes empaquetadas** **[H]** **S** — `woff2` en `frontend/src/assets/fonts`,
+  `@font-face` + `font-display: swap`, fuera el `@import` de Google. Requisito para Tauri sin red.~~
+  ✅ 2026-10-01: Cinzel e Inter variables (latin + latin-ext, OFL) en `src/assets/fonts/fonts.css`;
+  Inter, que antes no se cargaba, ya se ve de verdad. Comprobado sin red en Chromium.
   🧭 Fuente de cuerpo: Inter (ya declarada) o una serif de lectura para la narración (*EB Garamond*,
   *Crimson Pro*, *Spectral*) manteniendo Inter en la interfaz.
 - **BAS-2 · Iconos SVG propios** **[H]** **M** — `Icon.tsx` + sprite propio (el `public/icons.svg`
