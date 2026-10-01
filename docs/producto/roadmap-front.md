@@ -1,11 +1,11 @@
 # Roadmap de front — Tarkor
 
-**Creado:** 2026-10-01, a partir de un análisis completo de `frontend/src` (páginas, componentes,
-`index.css`, hooks) y capturas reales de las pantallas de inicio, mundo y personaje.
-**Relación con el roadmap principal:** este documento es complementario a
-[21-roadmap.md](21-roadmap.md). No rompe la congelación del hito `0.1`: lo que aquí se marca como
-"Fase 1" son arreglos y mejoras de base que no añaden mecánicas de juego; el resto se cuela en los
-hitos que digan Álvaro.
+**Creado:** 2026-10-01. **Revisión 2 (mismo día):** pasada completa archivo por archivo de
+`frontend/src` — las 7 páginas, los 30 modales, los paneles del cajón y las 5 secciones de Reino, `index.css`, los hooks
+de flujo — más capturas reales de inicio, mundo y personaje.
+**Relación con el roadmap principal:** complementario a [21-roadmap.md](21-roadmap.md). No rompe la
+congelación del hito `0.1`: los bloques marcados **«arreglo»** son correcciones que encajan en
+`0.1`; el resto entra en los hitos que decida Álvaro.
 
 **Cómo se usa** (mismo convenio que el roadmap principal):
 - Al cerrar un punto se tacha aquí con su commit.
@@ -13,357 +13,658 @@ hitos que digan Álvaro.
 - Origen: **[A]** pedido o decidido por Álvaro · **[H]** hallazgo verificado en código ·
   **[P]** propuesta de Claude.
 - Esfuerzo orientativo: **S** (horas) · **M** (1-2 días) · **L** (varios días).
+- Cada punto lleva un identificador (`CFG-3`, `DAD-7`, `MOD-12`…) para poder citarlo en commits y
+  en los registros.
+
+## Índice
+
+0. [Restricciones](#0-restricciones-que-manda-todo-lo-de-abajo)
+1. [Diagnóstico general](#1-diagnóstico-general)
+2. [Menú de Configuración](#2-menú-de-configuración-cfg--prioridad-máxima-a) — `CFG`
+3. [Base técnica del diseño](#3-base-técnica-del-diseño-bas) — `BAS`
+4. [Sistema de tiradas de dados](#4-sistema-de-tiradas-de-dados-dad) — `DAD`
+5. [Sistema de modales](#5-sistema-de-modales-mod) — `MOD`
+6. [Revisión modal por modal](#6-revisión-modal-por-modal) — `MOD-xx`
+7. [Revisión panel por panel](#7-revisión-panel-por-panel-pan) — `PAN`
+8. [HUD y dinamismo de partida](#8-hud-y-dinamismo-de-partida-hud) — `HUD`
+9. [Narración y registros](#9-narración-y-registros-nar) — `NAR`
+10. [Combate](#10-combate-cmb) — `CMB`
+11. [Atmósfera y opciones gráficas](#11-atmósfera-y-opciones-gráficas-atm) — `ATM`
+12. [Pantallas fuera de la partida](#12-pantallas-fuera-de-la-partida-pre) — `PRE`
+13. [Sonido](#13-sonido-son) — `SON`
+14. [Calidad: cómo se verifica todo esto](#14-calidad-cómo-se-verifica-todo-esto-qa) — `QA`
+15. [Orden recomendado](#15-orden-recomendado)
+16. [Decisiones pendientes](#16-decisiones-pendientes-)
 
 ---
 
-## Restricciones que manda todo lo de abajo
-
-Estas reglas salen del propio código y de `docs/arquitectura/04-decisiones-tecnicas.md`; toda
-propuesta de este roadmap las respeta:
+## 0. Restricciones que manda todo lo de abajo
 
 1. **No hay versión móvil.** Objetivo: escritorio (≥1280 px) y **Steam Deck (1280×800)** como
    pantalla mínima de referencia. Nada de este documento persigue layouts de teléfono. **[A]**
-2. **GPU modesta.** El historial de bugs ya prohibió `backdrop-blur` (artefactos en la GT 730M,
-   ver `PanelDrawer.tsx`), y la iGPU de la Steam Deck va ocupada por el narrador local (Ollama).
-   Por tanto: animaciones solo de `transform`/`opacity`, nada de filtros en bucle, nada de WebGL
+2. **GPU modesta.** El historial de bugs ya prohibió `backdrop-blur` (artefactos en la GT 730M, ver
+   `PanelDrawer.tsx`), y la iGPU de la Steam Deck va ocupada por el narrador local (Ollama). Por
+   tanto: animaciones solo de `transform`/`opacity`, nada de filtros en bucle, nada de WebGL
    permanente, todo efecto ambiental desactivable. **[H]**
-3. **Distribución futura con Tauri** (`docs/arquitectura/20-instalador-distribuible.md`): el
-   juego acabará en una ventana nativa y **sin conexión garantizada a internet**. Todo recurso
-   (fuentes, sonidos, texturas) tiene que ir empaquetado, nunca desde un CDN. **[H]**
+3. **Distribución futura con Tauri** (`docs/arquitectura/20-instalador-distribuible.md`): ventana
+   nativa y **sin conexión garantizada**. Todo recurso (fuentes, iconos, sonidos, texturas) va
+   empaquetado, nunca desde un CDN. **[H]**
 4. **Identidad visual ya fijada**: madera (`wood`), hierro (`iron`), cristal del mundo
-   (`accent`/`accent2`), estados fijos (`moss`/`danger`/`cost`/`quest`) y color por atributo. Las
-   mejoras amplían ese lenguaje, no lo sustituyen.
-5. **`prefers-reduced-motion` ya está respetado** en `index.css`; todo lo nuevo debe entrar en esa
-   misma lista (y en el ajuste propio de la Fase 1).
+   (`accent`/`accent2`), estados fijos (`moss`/`danger`/`cost`/`quest`), color por atributo y paleta
+   por raza (`razaTheme.ts`). Se amplía ese lenguaje, no se sustituye.
+5. **`prefers-reduced-motion` ya se respeta** en `index.css`; todo lo nuevo entra en esa lista y en
+   el ajuste propio de animaciones (`CFG-14`).
+6. **Las esperas del narrador son largas** (decenas de segundos en local). El front debe convertir
+   esa espera en algo que se mira, nunca en un bloqueo silencioso.
 
 ---
 
-## Diagnóstico: lo que hay hoy
+## 1. Diagnóstico general
 
-### Lo que funciona bien (y hay que conservar)
-- Un sistema de tokens sólido en `@theme` (`index.css`): escalas de madera/hierro, acentos
-  tematizables por mundo (`applyWorldTheme`), paleta por raza (`razaTheme.ts`), color por atributo.
-- Texturas 100 % CSS con identidad propia (`.plank-panel`, `.iron-band`, `.dust-road`,
-  `.crystal-sky`, remaches, `corner-bracket`) — baratas y coherentes con el lore.
-- Un catálogo de microanimaciones con intención (sello, sacudida, pop, campanada del hairline,
-  latido de herida grave) y su bloque de `prefers-reduced-motion`.
-- Tiradas de dados "en vivo" (`DiceRoll.tsx`) y entrada de combate con golpe seco.
-- `SelectionModalShell` ya hace foco, Escape y atrapado de Tab para 11 modales.
+### 1.1 Lo que funciona bien (y hay que conservar)
+- Sistema de tokens sólido en `@theme`: escalas madera/hierro, acentos tematizables por mundo
+  (`applyWorldTheme`), paleta por raza, un color por atributo.
+- Texturas 100 % CSS con identidad (`.plank-panel`, `.iron-band`, `.dust-road`, `.crystal-sky`,
+  remaches, `corner-bracket`), baratas y coherentes con el lore.
+- Catálogo de microanimaciones con intención (sello, sacudida, pop, campanada del hairline, latido
+  de herida grave) y su bloque de `prefers-reduced-motion`.
+- `SelectionModalShell`: foco, Escape y atrapado de Tab, con tests, ya usado por 22 modales.
+- La tirada "en vivo" existe y está centralizada en `DiceRoll.tsx` para combate, iniciativa,
+  turno normal, Huir y Tameo.
+- El movimiento por la zona ya interpola posiciones (`transition: transform` en `ZonaPanel.tsx`).
 
-### Hallazgos verificados **[H]**
+### 1.2 Hallazgos verificados **[H]**
 
 | # | Hallazgo | Dónde |
 |---|---|---|
-| H1 | **No existe ningún menú de configuración ni preferencias guardadas** (cero usos de `localStorage`). El jugador no puede cambiar nada: ni tamaño de texto, ni velocidad de dados, ni animaciones. | toda la app |
-| H2 | **Las fuentes no son fiables.** Cinzel se pide a Google Fonts por `@import` (falla sin red → en la captura sale una serif genérica) e **Inter nunca se carga** (no hay `@font-face` ni import): el texto base es la fuente del sistema. Con Tauri y sin red, el juego perdería su tipografía. | `index.css:3-7` |
-| H3 | **Las tiradas duran ~10 s** en un "vs" (`ROLL_DURATION_MS = 5000`, secuencial) sin opción de acelerar ni saltar. Bonito la primera vez, pesado a la décima. | `DiceRoll.tsx` |
-| H4 | **Cero estilos `focus-visible`** en toda la app: con teclado o mando (Steam Deck) no se ve qué está seleccionado. | 0 resultados de `focus-visible` |
-| H5 | **Los modales se cierran de golpe**: todas las animaciones son de entrada; no hay ninguna de salida (cajón, modales, tooltips, combate). | `PanelDrawer`, `SelectionModalShell`, `DetailModal`… |
-| H6 | **Solo 3 componentes declaran `role="dialog"`**; los otros ~7 modales con `fixed inset-0` (Detalle, Zona, Clase, Especialización, Fundar reino, Modo dinámico, Zoom de mapa) no tienen Escape/foco unificados. | `grep "fixed inset-0"` |
-| H7 | **91 colores de Tailwind sueltos** (`red-700`, `amber-…`) y **81 valores arbitrarios** (`shadow-[…]`, `text-[…]`) conviven con los tokens. Los mismos botones se reescriben a mano en GameView (Combatir, Huir, Cancelar acción…) en vez de usar `Button`. | `grep` en `*.tsx` |
-| H8 | **Clases CSS muertas**: `animate-edge-flash-amber` y `animate-stamp-in-equip` no las usa nadie. | `index.css` |
-| H9 | **Iconografía 100 % emoji** (⚔️ 🛡️ 🧭 🎲 💀 🔪…). Depende de la fuente de emoji del sistema: en SteamOS/Linux cambia de aspecto o desaparece (ya hubo un caso real: el ❌ en vez de ⚔️, comentado en `GameView.tsx`). | `NavTabs.ts`, GameView, paneles |
-| H10 | **Imágenes sin carga perezosa ni placeholder**: 13 `<img>` sin `loading="lazy"`, sin `decoding="async"`, sin fundido al cargar; aparecen "a saltos". | LogPanel, CombatPanel, Enciclopedia… |
-| H11 | **Pantallas previas a la partida planas**: Mundo y Personaje son tarjetas sobre madera sin imagen, sin retrato del personaje (una "G" en un círculo) y con un botón "Continuar" deshabilitado casi invisible. | `CharacterSelect`, `WorldSelect`, `CharacterCard` |
-| H12 | **Textos de bajo contraste**: el enlace de admin (`wood-700`) y la versión casi no se leen sobre el fondo. | `Home.tsx`, `VersionTag` |
-| H13 | **`GameView.tsx` tiene 2.129 líneas** con el layout, el HUD de cabecera y todos los modales; cualquier mejora visual del HUD obliga a tocar ese archivo gigante. | `pages/GameView.tsx` |
-| H14 | **Sin sonido de ningún tipo.** Para un juego de rol con tiradas, combate y un narrador, es la mayor ausencia "de juego" que tiene el front. | toda la app |
-| H15 | **Sin división de código**: todo se carga de golpe (Enciclopedia de 1.574 líneas, mapa, admin) aunque el jugador no los abra. | `App.tsx` |
+| H1 | **No existe menú de configuración ni preferencias guardadas** (cero usos de `localStorage`). | toda la app |
+| H2 | **Fuentes no fiables**: Cinzel por `@import` de Google Fonts (sin red cae a una serif genérica, visto en las capturas) e **Inter nunca se carga**. | `index.css:3-7` |
+| H3 | **Una tirada "vs" dura ~10 s** (`ROLL_DURATION_MS = 5000`, secuencial), sin acelerar ni saltar. | `DiceRoll.tsx` |
+| H4 | **Cero estilos `focus-visible`**: con teclado o mando no se ve qué está seleccionado. | toda la app |
+| H5 | **Ninguna animación de salida**: modales, cajón, tooltips y combate desaparecen de golpe. | todos los overlays |
+| H6 | **Modales con cascarón propio sin Escape/foco/rol**: `DetailModal`, `DynamicModeModal`, `KingdomFoundingModal`, `ClaseModal`, `EspecializacionModal`, `MapZoomModal`; y **el cajón `PanelDrawer` tampoco cierra con Escape**. | ver lista |
+| H7 | **91 colores de Tailwind sueltos** (`red-400`, `emerald-300`, `amber-400`…) y **81 valores arbitrarios** junto a los tokens; los mensajes de éxito usan `emerald-300` en unos modales y `moss` en otros. | `*.tsx` |
+| H8 | **Clases CSS muertas**: `animate-edge-flash-amber`, `animate-stamp-in-equip`. | `index.css` |
+| H9 | **Iconografía 100 % emoji**, que cambia según el SO (ya hubo un ❌ en lugar de ⚔️, comentado en `GameView.tsx`). El 🎲 (un d6) representa también los d20 y d100. | `NavTabs.ts`, paneles, tiradas |
+| H10 | **Imágenes sin `loading="lazy"`, sin `decoding="async"` y sin fundido**: aparecen a saltos. | 13 `<img>` |
+| H11 | **Pantallas previas planas**: tarjetas sin imagen, el personaje es una "G" en un círculo, "Continuar" deshabilitado casi invisible. | `CharacterSelect`, `WorldSelect` |
+| H12 | **Textos de bajo contraste** (`wood-600/700` sobre madera): enlace de admin, versión, dificultad de las tiradas ("necesitas X" en `wood-600`). | `Home`, `DiceRoll` |
+| H13 | **`GameView.tsx` tiene 2.129 líneas** con layout, HUD y todos los modales. | `pages/GameView.tsx` |
+| H14 | **Sin sonido** de ningún tipo. | toda la app |
+| H15 | **Sin división de código**: Enciclopedia (1.574 líneas), mapa y admin se cargan siempre. | `App.tsx` |
+| H16 | **Sin atajos de teclado globales**: la barra de habilidades no responde a 1-9, los paneles no tienen tecla, solo hay un listener de teclado global (el visor de imágenes). | toda la app |
+| H17 | **Herramientas de admin visibles al jugador**: `ImagePromptSlot` ("Prompt (inglés)", "Generar") aparece en Clase, Especialización y fichas de la Enciclopedia dentro de la partida. | `ImagePromptDisplay.tsx` + 9 usos |
+| H18 | **Tameo: la segunda tirada no se vuelve a animar** — `DiceRollVs` se renderiza sin `key`, así que React reutiliza la instancia y su `useEffect(..., [])` no se repite (mismo patrón que el hallazgo 27 ya corregido en `CombatPanel`). Pendiente de confirmar jugando. **arreglo** | `TameoModal.tsx` |
+| H19 | **Tameo: el veredicto llega antes que el dado** — "¡Gana confianza!"/"No cede esta vez" y el fondo verde/rojo se pintan en cuanto llega la respuesta, mientras el dado aún gira (en Recolección y en la iniciativa de combate ya se corrigió esto mismo con `onLanded`/`initiativeRevealed`). **arreglo** | `TameoModal.tsx` |
+| H20 | **La tirada en vivo no enseña el total**: muestra dado, `+bono`, el desglose entre paréntesis y "necesitas X", pero nunca "= 19 vs 15 → Éxito" — hay que sumar de cabeza. El estático (`RollBadge`) sí lo enseña. | `DiceFace` en `DiceRoll.tsx` |
+| H21 | **Cinco representaciones distintas de una tirada**: `DiceFace` (en vivo), `GatheringDiceReveal` (JSX propio con ventaja), `RollBadge` (estático), `ExtendedRollBadge` (d100 de sigilo, d6 de grupo, iniciativa de grupo en lista) y `CombatExchangeBadge` (combate estático). Cada una con su propio aspecto. | componentes de tiradas |
+| H22 | **El fallo no tiene color propio** en las tiradas (`wood-400`, gris), y no existe tratamiento de crítico (20 natural) ni pifia (1 natural). | `DiceRoll.tsx`, `RollBadge.tsx` |
+| H23 | **Etiquetas genéricas y truncadas** en los dados: "Tú" / "el enemigo" / "Resistencia", con `max-w-[6rem] truncate`. | `DiceRoll.tsx`, `CombatPanel.tsx`, `TameoModal.tsx` |
+| H24 | **Cada tirada hace `scrollIntoView` suave** incondicional: si el jugador está leyendo más arriba, se le arrastra. | `useScrollIntoViewOnMount` |
+| H25 | **Ningún resultado se anuncia a lectores de pantalla** (sin `aria-live` en tiradas, toasts ni narración nueva). | `DiceRoll.tsx`, `LogPanel.tsx` |
+| H26 | **El selector de cantidad −/+ está copiado 5 veces** (Recolección, Curar, Comer ×2, Producción) sin "máximo", sin mantener pulsado y sin teclear el número. | modales de selección |
+| H27 | **Los modales de lista son texto puro**: ningún objeto, NPC o recurso muestra su miniatura aunque la Enciclopedia la tenga. | Entregar, Capturar, Saquear, Viajar… |
+| H28 | **Los estados de carga son solo una frase** ("Buscando…", "Cargando…", "Consultando…"), sin esqueletos; el contenido llega de golpe y el modal cambia de altura. | todos los modales asíncronos |
+| H29 | **Inventario sin buscar, filtrar ni ordenar**, y los objetos son emoji por categoría. | `InventarioPanel.tsx` |
+| H30 | **Momentos grandes tratados como formularios**: fundar reino, elegir clase (irreversible) y especialización usan el mismo modal estrecho `max-w-md` que "Cancelar acción". | `KingdomFoundingModal`, `ClaseModal`, `EspecializacionModal` |
+| H31 | **El composer no recuerda acciones anteriores** (no hay ↑ para recuperar la última). | `ChatComposer.tsx` |
+| H32 | **La pantalla de error** (`ErrorBoundary`) no ofrece volver al inicio ni copiar el error para reportarlo. | `ErrorBoundary.tsx` |
 
 ---
 
-## Fase 1 — Menú de Configuración (prioridad máxima) **[A]**
+## 2. Menú de Configuración (`CFG`) — prioridad máxima **[A]**
 
 > Petición de Álvaro (2026-10-01): "un botón de configuración como en todos los juegos, desde el
 > cual el jugador podrá ajustar resolución y otro tipo de cosas".
 
-### 1.1 Acceso
-- **Botón ⚙️ fijo** en la esquina de la cabecera de hierro de la partida (`GameView`, junto a la
-  fecha) y en la pantalla de inicio (`Home`, esquina superior derecha). **S**
-- **Atajo de teclado `Esc`** (cuando no haya ningún modal abierto) y botón *Start/Menú* del mando:
-  abre el menú, igual que en cualquier juego. **S**
-- Dentro de partida el menú hace de **menú de pausa**: *Reanudar · Configuración · Guardar y salir
-  a tus partidas · Salir al inicio* (sustituye/absorbe el actual "← Salir a tus partidas"). **M**
+### 2.1 Acceso y estructura
+- **CFG-1 · Botón ⚙️ fijo** en la cabecera de hierro de la partida (junto a la fecha) y en la esquina
+  superior derecha de `Home`. **S**
+- **CFG-2 · `Esc` abre el menú** cuando no hay ningún modal/cajón abierto (si lo hay, `Esc` lo cierra
+  primero, como en cualquier juego); botón *Menú/Start* del mando igual. **S**
+- **CFG-3 · Menú de pausa** dentro de la partida: *Reanudar · Configuración · Guardar y salir a tus
+  partidas · Salir al inicio*. Absorbe el actual "← Salir a tus partidas" de la cabecera. **M**
+- **CFG-4 · Panel de configuración** a pantalla casi completa, pestañas laterales (lenguaje de
+  `SideNav`), `plank-panel` + `iron-band`. Pie: **Restablecer · Cancelar · Aplicar**, previsualización
+  en vivo, aviso si se cierra con cambios sin aplicar. **M**
+- **CFG-5 · Persistencia**: `localStorage` con clave versionada (`tarkor.settings.v1`) y migración
+  entre versiones; con Tauri, fichero de configuración del sistema. **S**
+- **CFG-6 · `SettingsContext`** que aplica los ajustes como variables CSS y atributos en `<html>`
+  (`data-motion`, `data-contrast`, `data-texture`, `--ui-scale`, `--narration-size`…), para que los
+  componentes no lean ajustes uno a uno. **M**
 
-### 1.2 Estructura del panel
-Modal grande a pantalla casi completa, con pestañas laterales (mismo lenguaje que `SideNav`),
-`plank-panel` + `iron-band` en la barra de pestañas. Botones al pie: **Restablecer valores por
-defecto · Cancelar · Aplicar**. Los cambios se previsualizan en vivo y se guardan en
-`localStorage` (clave `tarkor.settings.v1`, con versión para migraciones). **M**
+### 2.2 Pestaña Pantalla
+| Id | Ajuste | Opciones | Notas |
+|---|---|---|---|
+| CFG-7 | **Resolución** | 1280×720, 1280×800, 1366×768, 1600×900, 1920×1080, 2560×1440, nativa | Real con Tauri (`setSize`). En navegador, deshabilitado con aviso "disponible en la versión instalada". 🧭 |
+| CFG-8 | **Modo de ventana** | Ventana · Sin bordes · Pantalla completa | Navegador: `requestFullscreen()`; Tauri: `setFullscreen`/`setDecorations`. Atajo `F11`. |
+| CFG-9 | **Escala de la interfaz** | 80 %–150 % | `font-size` raíz; clave en Steam Deck y monitores 4K. |
+| CFG-10 | **Ancho máximo del juego** | 1600 px (actual) · 1920 px · sin límite | Hoy `max-w-[1600px]` fijo en `App.tsx`. |
+| CFG-11 | **Calidad visual** | Alta · Media · Baja | Agrupa texturas, partículas y sombras; "Baja" pensada para Steam Deck en batería. |
+| CFG-12 | **Brillo / gamma de la interfaz** | deslizador | Las texturas de madera son muy oscuras en pantallas con poco brillo. |
 
-Implementación propuesta: `SettingsContext` (como `SessionContext`) que expone los ajustes y los
-aplica como variables CSS y atributos en `<html>` (`data-motion`, `data-contrast`,
-`--ui-scale`…), de forma que el resto de componentes no tenga que leerlos uno a uno.
+### 2.3 Pestaña Interfaz y texto
+- **CFG-13 · Tamaño y tipografía de la narración** (independiente de la escala general): tamaño
+  pequeño · normal · grande · muy grande; fuente serif de lectura · sans · *Atkinson Hyperlegible*
+  (empaquetada); interlineado normal/amplio. **S**
+- **CFG-15 · Revelado del texto del narrador**: tal como llega del streaming (actual) o suavizado con
+  efecto máquina de escribir (rápido/normal). **S**
+- **CFG-16 · Tooltips**: siempre · con retardo · nunca. **S**
+- **CFG-17 · Disposición**: registro de personaje a izquierda/derecha; recordar qué lado estaba
+  colapsado (hoy `collapsedSide` se pierde al recargar); recordar la última subpestaña de cada panel. **S**
+- **CFG-18 · Notificaciones** (ver `HUD-6`): posición, duración y qué tipos mostrar. **S**
+- **CFG-19 · Formato de fecha ficticia** en cabecera: corto / largo. **S**
 
-### 1.3 Pestaña **Pantalla**
-| Ajuste | Opciones | Notas |
+### 2.4 Pestaña Gráficos y animaciones
+- **CFG-14 · Animaciones**: Completas · Reducidas · Ninguna. Por defecto sigue a
+  `prefers-reduced-motion`, pero se puede forzar. Implementación: `[data-motion]` reutilizando la
+  lista de clases que ya existe en `index.css`. **S**
+- **CFG-20 · Tiradas de dados** (detalle en §4): velocidad *Dramática* (actual) · *Normal* · *Rápida* ·
+  *Instantánea*; dónde se muestran (*en el registro* · *en primer plano* · *solo las importantes en
+  primer plano*); saltar con clic/`Espacio`. **S** (resuelve H3)
+- **CFG-21 · Efectos ambientales** (§11): sí/no. **S**
+- **CFG-22 · Sacudidas de pantalla y destellos**: sí/no (también accesibilidad). **S**
+- **CFG-23 · Texturas**: Detalladas · Lisas (versión plana de `.plank-panel`/`.iron-band`). **S**
+- **CFG-24 · Imágenes en la narración** (banners de enciclopedia): sí/no. **S**
+
+### 2.5 Pestaña Sonido (cuando exista §13)
+- **CFG-25** · Volumen General · Música · Efectos · Ambiente · Interfaz · Voz/narrador (futuro), y
+  *silenciar al perder el foco de la ventana*. **S**
+
+### 2.6 Pestaña Controles
+- **CFG-26 · Atajos de teclado reasignables**: `I` Inventario, `M` Mapa, `P` Personaje, `H`
+  Habilidades, `J` Diario, `K` Reino, `L` Enciclopedia, `1-9` barra de habilidades, `Z` moverse por
+  la zona, `Enter` enviar, `↑` recuperar última acción, `Esc` menú. Hoy no hay ninguno (H16). **M**
+- **CFG-27 · Mando / Steam Deck**: foco visible grande, esquema de botones, repetición al mantener
+  la cruceta. Depende de `BAS-3`. **M**
+
+### 2.7 Pestaña Accesibilidad
+- **CFG-28 · Alto contraste**: sube un paso los textos `wood-400/500/600` y engrosa bordes. **S**
+- **CFG-29 · Modo daltónico**: éxito/fallo y los 7 colores de atributo con forma/icono además de
+  color; paletas Deuteranopía/Protanopía/Tritanopía. **M**
+- **CFG-30 · Subrayar enlaces a la enciclopedia** en el texto (hoy solo color). **S**
+- **CFG-31 · Lector de pantalla**: anunciar tiradas, notificaciones y narración nueva (`aria-live`, H25). **S**
+
+### 2.8 Pestaña Partida
+- **CFG-32 · Confirmar acciones irreversibles** (matar convaleciente, cancelar acción, soltar
+  captura, salir): sí/no. **S**
+- **CFG-33 · Modo desarrollador**: muestra versión completa, id de partida, tiempos del narrador y
+  las herramientas de prompts de imagen; **apagado por defecto**, de modo que `ImagePromptSlot`
+  deja de verse en partida (H17). **S**
+
+---
+
+## 3. Base técnica del diseño (`BAS`)
+
+- **BAS-1 · Fuentes empaquetadas** **[H]** **S** — `woff2` en `frontend/src/assets/fonts`,
+  `@font-face` + `font-display: swap`, fuera el `@import` de Google. Requisito para Tauri sin red.
+  🧭 Fuente de cuerpo: Inter (ya declarada) o una serif de lectura para la narración (*EB Garamond*,
+  *Crimson Pro*, *Spectral*) manteniendo Inter en la interfaz.
+- **BAS-2 · Iconos SVG propios** **[H]** **M** — `Icon.tsx` + sprite propio (el `public/icons.svg`
+  actual es el sobrante de la plantilla de Vite, iconos de redes sociales). Navegación, HUD, combate,
+  dados y estados; los emoji se quedan solo dentro del texto narrado. Permite animar iconos y
+  distinguir d20/d6/d100. 🧭 Dibujados a mano o partir de un set libre (Game-icons.net, CC BY 3.0).
+- **BAS-3 · Foco visible y navegación** **[H]** **M** — `:focus-visible` global (anillo de cristal
+  `accent-400` + glow suave); navegación con flechas/cruceta en rejillas (inventario, equipo, barra de
+  habilidades, mapa).
+- **BAS-4 · Limpieza de tokens** **[H]** **M** — colores sueltos a tokens (`danger-700..950` como
+  estructurales, `success` = `moss` en vez de `emerald`); sombras repetidas como utilidades con nombre
+  (`shadow-plank`, `glow-accent`, `inset-well`); `Button` con variantes `alert`, `compact`, `icon`;
+  borrar clases muertas (H8).
+- **BAS-5 · Partir `GameView.tsx`** **[H]** **L** — `GameHeader`, `GameFooter`, `GameModals`,
+  `GameLayout`. Sin cambio visual; desbloquea HUD y Configuración.
+- **BAS-6 · Carga** **[H]** **S** — `React.lazy` para Enciclopedia, `MapZoomModal`, `InteractiveMap`,
+  admin y secciones de Reino; `loading="lazy"`, `decoding="async"` y fundido en todas las `<img>`.
+- **BAS-7 · Animaciones de salida y de cambio de layout** **[P]** **M** 🧭
+  - **A (recomendada):** hook propio `usePresence(open, ms)` + *View Transitions API* con degradado a
+    corte seco donde el webview no la soporte. Cero dependencias.
+  - **B:** `motion` (Framer Motion, ~30 KB gz) con `AnimatePresence`/`layout`.
+- **BAS-8 · Librería de componentes base** **[P]** **M** — `QuantityStepper`, `EntityRow` (miniatura
+  + nombre + subtítulo + acción), `Skeleton`, `ErrorBanner`, `SuccessState`, `Tabs` con indicador
+  deslizante, `ProgressBar` (con barra fantasma), `Chip`. Hoy cada uno vive copiado en varios sitios.
+- **BAS-9 · Catálogo visual** **[P]** **M** — una ruta `/admin/ui` (como `/admin/enciclopedia`) que
+  pinta todos los componentes y estados (vacío, cargando, error, deshabilitado) para revisar el
+  diseño sin jugar. Sustituye a Storybook sin añadir dependencias.
+
+---
+
+## 4. Sistema de tiradas de dados (`DAD`)
+
+La tirada es el momento "de juego de rol" por excelencia y hoy es lo que más se repite en una
+partida (cada turno, cada intercambio, cada recolección). Merece un sistema propio.
+
+### 4.1 Problemas actuales (resumen de H3, H18-H25)
+1. Cinco aspectos distintos para la misma idea (H21).
+2. Dura ~5 s por dado, ~10 s en un "vs", sin saltar (H3).
+3. Solo cambia un número; el 🎲 queda quieto y es un d6 aunque se tire un d20 o un d100 (H9).
+4. No se ve el total ni la comparación final (H20); la dificultad está en gris casi ilegible (H12).
+5. El fallo es gris; no hay críticos ni pifias (H22).
+6. Tameo: no reanima la segunda tirada y desvela el veredicto antes de tiempo (H18, H19).
+7. Nombres genéricos y cortados (H23); arrastra el scroll (H24); no se anuncia (H25).
+8. Técnicamente: ~60 `setTimeout` por dado con `Math.random()` (puede mostrar el número final antes
+   de aterrizar) y `GatheringDiceReveal` duplica la lógica en vez de reutilizarla.
+
+### 4.2 Arreglos inmediatos **arreglo**
+- **DAD-1** · `key` por tirada en `TameoModal` (H18). **S**
+- **DAD-2** · Veredicto de Tameo diferido a `onAllLanded` (H19), como ya hacen Recolección e
+  iniciativa. **S**
+- **DAD-3** · Mostrar siempre `dado + bono = total vs dificultad → Éxito/Fallo` al aterrizar (H20). **S**
+- **DAD-4** · Nombres reales en los dos lados (personaje y rival) en vez de "Tú/el enemigo", y
+  quitar el truncado a 6rem. **S**
+- **DAD-5** · `scrollIntoView` solo si la tirada está fuera de la vista y el jugador no ha hecho
+  scroll manual en los últimos segundos. **S**
+- **DAD-6** · Color propio de fallo (`danger-400`) y subir el contraste de "necesitas X". **S**
+
+### 4.3 Nuevo componente único: `DiceTray` (bandeja de tiradas) **[P]** **L**
+Un solo componente para todas las tiradas, con dos modos (**en vivo** y **histórico compacto**) y
+cuatro fases:
+
+1. **Lanzamiento** — dado SVG con su forma real (d20 icosaedro, d6 cubo, d100 = dos d10) que entra
+   rodando con rebote y gira con `transform` (sin física ni WebGL). Las caras que se ven al girar
+   nunca coinciden con el número final.
+2. **Aterrizaje** — el número final con `stamp-in`; crítico y pifia con efecto propio (`DAD-9`).
+3. **Modificadores** — chips que entran uno a uno junto al dado, cada uno con el color de su
+   atributo: `+5 Fuerza`, `−2 salud`, `+3 habilidad`, `×1,5 ventaja de tipo`. Sustituye al paréntesis
+   `(15 −3sal +4hab = 16 ×1.5 ≈24/2)` actual, que es correcto pero difícil de leer.
+4. **Veredicto** — el total cuenta hacia arriba y se compara con una **regla horizontal** (1-40) con
+   la marca de dificultad y la aguja del resultado; banda final **ÉXITO / FALLO / CRÍTICO / PIFIA**
+   con margen ("por 4"). En "vs", las dos agujas en la misma regla, cada una con el retrato o
+   iniciales de su lado.
+
+Variantes que cubre (todas las que hoy existen):
+| Tirada | Hoy | Con `DiceTray` |
 |---|---|---|
-| **Resolución** | Lista de resoluciones (1280×720, 1280×800, 1366×768, 1600×900, 1920×1080, 2560×1440, nativa) | Real con Tauri (`appWindow.setSize`). En navegador se muestra deshabilitado con aviso "disponible en la versión instalada". 🧭 confirmar que se espera a Tauri. |
-| **Modo de ventana** | Ventana · Ventana sin bordes · Pantalla completa | Navegador: `requestFullscreen()`; Tauri: `setFullscreen`/`setDecorations`. Atajo `F11`. |
-| **Escala de la interfaz** | 80 % – 150 % (pasos de 10) | `font-size` raíz + `--ui-scale`; clave para leer en la Steam Deck o en un 4K. |
-| **Ancho máximo del juego** | 1600 px (actual) · 1920 px · Sin límite | Hoy `max-w-[1600px]` fijo en `App.tsx`: en monitores anchos deja bandas vacías. |
-| **Límite de FPS de animaciones / Calidad visual** | Alta · Media · Baja | Ver 1.5; "Baja" pensada para Steam Deck en batería. |
+| Turno normal / Huir | `DiceRollSingle` + `RollBadge` | modo simple contra dificultad |
+| Combate (ataque/defensa) | `DiceRollReveal` + `CombatExchangeBadge` | modo "vs" con multiplicador de tipo |
+| Iniciativa (combate y encuentro) | `DiceRollVs` + `IniciativaEncuentroBadge` | modo "vs" sin dificultad, texto "Lo ves primero / Te ve primero" |
+| Iniciativa de grupo | lista `CombateGrupoBadge` | **orden de turnos** en fila de retratos con su número |
+| Recolección con ventaja | `GatheringDiceReveal` | dos dados, el descartado se apaga y se aparta |
+| Segundas tiradas por recurso | `SegundasTiradasBadge` | mini-reglas por recurso, en cascada |
+| Sigilo de caza (d100) | badge con `≤ chance%` | dos d10 + **barra de probabilidad** con la zona de éxito marcada |
+| Entrada de grupo (d6) | badge "uno más/menos" | d6 con la consecuencia como chip |
+| Tameo | `DiceRollVs` + caja verde/roja | modo "vs" con la barra de Felicidad avanzando al final |
 
-### 1.4 Pestaña **Interfaz y texto**
-- **Tamaño del texto de narración** (independiente de la escala general): pequeño · normal ·
-  grande · muy grande. Los logs son lo que más se lee. **S**
-- **Tipografía de narración**: Serif (Cinzel/serif de lectura) · Sans · Dislexia-friendly
-  (p. ej. Atkinson Hyperlegible, empaquetada). **S**
-- **Interlineado** normal / amplio. **S**
-- **Revelado del texto del narrador**: tal como llega del streaming (actual) o suavizado con
-  efecto máquina de escribir (rápido · normal). **S**
-- **Mostrar tooltips**: siempre · con retardo · nunca. **S**
-- **Disposición de los registros**: Personaje a la izquierda / a la derecha; recordar qué lado
-  estaba colapsado entre sesiones (hoy `collapsedSide` se pierde al recargar). **S**
-- **Hora y fecha ficticia en cabecera**: formato corto / largo. **S**
+### 4.4 Presentación y ritmo
+- **DAD-7 · Dónde se ve** (`CFG-20`): *en el registro* (actual), *en primer plano* (un modal ligero,
+  centrado, fondo atenuado, que se cierra solo al terminar o con clic) o *solo las importantes en
+  primer plano* (iniciativa, combate, Tameo, críticos). **M**
+- **DAD-8 · Velocidad**: Dramática ~5 s/dado (actual) · Normal ~1,8 s · Rápida ~0,7 s · Instantánea.
+  Los dos dados de un "vs" pueden caer **solapados** (el segundo empieza al 60 % del primero) en vez
+  de estrictamente seguidos. **Clic/`Espacio`/`Enter` salta** a la fase final. **S**
+- **DAD-9 · Críticos y pifias**: 20 natural → destello dorado, borde de cristal y partículas cortas;
+  1 natural → grieta en la cara y sacudida seca. Solo efecto visual, la mecánica no cambia. **S**
+- **DAD-10 · Tensión mientras el narrador escribe**: en combate el resultado ya llega antes que la
+  narración (`onExchangeResolved`); aprovecharlo para que la bandeja se quede visible con el
+  veredicto mientras aparece el texto debajo, en vez de desaparecer. **S**
+- **DAD-11 · Accesibilidad**: `aria-live="polite"` con la frase completa ("Tirada de Fuerza: 14 más
+  5, 19 contra 15. Éxito."); con animaciones reducidas, aparece directamente la fase final. **S**
+- **DAD-12 · Implementación**: una sola animación con `requestAnimationFrame` (o CSS) por dado en
+  lugar de decenas de `setTimeout`; secuencia de caras pregenerada sin el número final;
+  `GatheringDiceReveal` y `DiceRollVs` pasan a ser configuraciones de `DiceTray`. **M**
 
-### 1.5 Pestaña **Gráficos y animaciones**
-- **Animaciones**: Completas · Reducidas · Ninguna (por defecto sigue a `prefers-reduced-motion`
-  del sistema, pero el jugador puede forzarlo). Se implementa con `[data-motion="reduced"]`
-  reutilizando la lista de clases que ya existe en `index.css`. **S**
-- **Velocidad de las tiradas de dados**: Dramática (actual, ~5 s por dado) · Normal (~2 s) ·
-  Rápida (~0,8 s) · Instantánea. Además, **clic o `Espacio` para saltar** la tirada en curso. **S**
-  (resuelve H3)
-- **Efectos ambientales** (los de la Fase 4: partículas, clima, cielo animado): Sí / No. **S**
-- **Sacudida de pantalla y destellos** en golpes: Sí / No (también accesibilidad). **S**
-- **Texturas de madera/hierro**: Detalladas · Lisas (versión plana de `.plank-panel` y
-  `.iron-band` para quien quiera menos ruido visual o más legibilidad). **S**
-- **Mostrar imágenes de la enciclopedia en la narración** (banners): Sí / No. **S**
-
-### 1.6 Pestaña **Sonido** (se activa cuando exista la Fase 5)
-- Volumen general · Música · Efectos · Ambiente · Interfaz (5 deslizadores) y **Silenciar al
-  perder el foco de la ventana**. **S** (una vez exista el gestor de audio)
-
-### 1.7 Pestaña **Controles**
-- Lista de **atajos de teclado** con posibilidad de reasignarlos: abrir cada panel (I =
-  Inventario, M = Mapa, P = Personaje, H = Habilidades, J = Diario, K = Reino…), 1-9 para la barra
-  de habilidades, `Enter` para enviar, `Esc` para el menú. Hoy no existe ningún atajo global. **M**
-- **Navegación con mando** (Steam Deck): activar/desactivar foco visible grande, esquema de
-  botones. Depende de 2.3. **M**
-
-### 1.8 Pestaña **Accesibilidad**
-- **Alto contraste** (sube un paso los textos `wood-400/500` y engrosa bordes). **S**
-- **Modo daltónico**: alternativa a rojo/verde de éxito/fallo y a los 7 colores de atributo
-  (añadir forma/icono además de color, y paletas Deuteranopía/Protanopía/Tritanopía). **M**
-- **Subrayar los enlaces a la enciclopedia** dentro del texto (hoy solo color). **S**
-
-### 1.9 Pestaña **Partida**
-- **Confirmar acciones irreversibles** (matar convaleciente, cancelar acción, salir): Sí / No. **S**
-- **Autopausa** al abrir el menú (si en el futuro hay tiempo real). 🧭 **S**
-- Mostrar **información de depuración** (versión completa, id de partida, tiempos del narrador)
-  para reportar fallos; hoy la versión vive escondida abajo en Home. **S**
+### 4.5 Extras **[P]** 🧭
+- **DAD-13 · Probabilidad antes de actuar**: "≈65 % de éxito" junto a cada habilidad de combate y a
+  cada atributo de Tameo, calculado en cliente (d20 + bono contra la dificultad conocida). 🧭 Decisión
+  de diseño de juego: puede quitar tensión; podría ser un ajuste de dificultad *Novato*. **S**
+- **DAD-14 · Historial de tiradas**: pestaña en el Diario con las últimas tiradas, filtros por tipo y
+  una curiosidad estadística ("tu media de d20: 11,2"). **M**
+- **DAD-15 · Dados personalizables**: material del dado (hueso, hierro, cristal azul de Helek Sirik)
+  como opción cosmética en Configuración. 🧭 **S**
 
 ---
 
-## Fase 2 — Base técnica del diseño (sin cambios visibles grandes)
+## 5. Sistema de modales (`MOD`)
 
-### 2.1 Fuentes empaquetadas **[H]** **S**
-Descargar Cinzel (y la fuente de cuerpo elegida) como `woff2` en `frontend/src/assets/fonts`,
-declararlas con `@font-face` + `font-display: swap`, y quitar el `@import` de Google Fonts.
-Resuelve H2 y es requisito para Tauri sin red. 🧭 Decidir la fuente de cuerpo: **Inter** (la ya
-declarada) o una serif de lectura con más carácter para la narración (p. ej. *EB Garamond*,
-*Crimson Pro*, *Spectral*) manteniendo Inter para la UI.
+Hoy hay dos familias: 22 modales sobre `SelectionModalShell` y 8 overlays con cascarón propio (H6).
+Todos tienen el mismo ancho (`max-w-md`), la misma entrada (`combat-enter`) y ninguna salida.
 
-### 2.2 Sistema de iconos propio **[H]** **M**
-Sustituir los emoji de navegación, HUD y combate por **iconos SVG en línea** (un `Icon.tsx` con
-un sprite propio; el `public/icons.svg` actual es el sobrante de la plantilla de Vite —iconos de redes sociales— y se puede sustituir), con trazo y relleno tomados de
-los tokens. Los emoji se pueden quedar en la narración. Resuelve H9 (aspecto distinto según SO) y
-permite animar los iconos (rellenado de la gema, giro de la brújula…). 🧭 Dibujarlos a mano o
-partir de un set libre (Game-icons.net, CC BY 3.0).
-
-### 2.3 Foco visible y navegación por teclado/mando **[H]** **M**
-- Estilo global `:focus-visible` (anillo de cristal `accent-400` + glow suave) en botones,
-  pestañas, slots y filas. Resuelve H4.
-- Hook `useModal()` común (Escape, foco inicial, atrapado de Tab, devolver el foco al cerrar) y
-  migrar los ~7 modales que no usan `SelectionModalShell`. Resuelve H6.
-- Navegación espacial con flechas/cruceta en la rejilla de inventario, barra de habilidades y
-  mapa.
-
-### 2.4 Limpieza de tokens **[H]** **M**
-- Pasar los `red-*`/`amber-*` sueltos a `danger-*`/`cost-*` (o crear `danger-700..950` como
-  tokens estructurales y documentarlos).
-- Convertir los `shadow-[…]` repetidos en utilidades con nombre (`shadow-plank`, `glow-accent`,
-  `inset-well`) dentro de `@theme`/`@utility`.
-- Reutilizar `Button` (añadiendo variantes `alert` y `compact`) en los botones reescritos a mano
-  de `GameView` y modales.
-- Borrar las clases muertas (H8) o darles uso.
-
-### 2.5 Partir `GameView.tsx` **[H]** **L**
-Extraer `GameHeader` (HUD), `GameFooter` (composer/combate/muerte/ocupado), `GameModals` (todos los
-modales condicionados) y `GameLayout`. Sin cambio visual; prepara el terreno para el HUD nuevo de
-la Fase 3 y la Configuración. Resuelve H13.
-
-### 2.6 Rendimiento de carga **[H]** **S**
-- `React.lazy` + `Suspense` para `EnciclopediaPanel`, `MapZoomModal`, `InteractiveMap`, `AdminEnciclopedia` y
-  los paneles de Reino. Resuelve H15.
-- `loading="lazy"`, `decoding="async"` y fundido de entrada al cargar en todas las `<img>`;
-  placeholder con el degradado de madera y la gema mientras llega. Resuelve H10.
-
-### 2.7 Librería de transiciones **[P]** **M** 🧭
-Para animaciones de **salida** y de **cambio de layout** (H5) hay dos caminos:
-- **A (recomendada):** un hook propio `usePresence(open, ms)` que mantiene el componente montado
-  durante la animación de salida, más la *View Transitions API* (`document.startViewTransition`)
-  para cambios de panel. Cero dependencias, el webview de Tauri en Linux (WebKitGTK) la soporta
-  parcialmente: degradar a corte seco si no existe.
-- **B:** añadir `motion` (Framer Motion, ~30 KB gz) con `AnimatePresence` y `layout`. Más
-  potente y rápido de escribir, pero es la primera dependencia de animación del proyecto.
+- **MOD-1 · `ModalShell` único** **M** — evolución de `SelectionModalShell` que absorbe los 8
+  overlays propios:
+  - **Tamaños**: `sm` (confirmar), `md` (selección, actual), `lg` (fichas de la enciclopedia,
+    Tameo), `xl` (Moverte por la zona, editor de barras), `ceremonia` (pantalla casi completa,
+    ver MOD-4).
+  - **Cabecera** con icono o retrato opcional, título, subtítulo y botón ✕; **pie fijo** (los
+    botones no se van con el scroll del contenido).
+  - Escape, foco inicial, atrapado de Tab, **devolver el foco** al elemento que lo abrió, `role`,
+    `aria-labelledby`.
+  - **Animación de salida** (BAS-7) y **apilado** (z-index gestionado; hoy hay `z-50`, `z-[60]` y
+    `z-40` repartidos a mano).
+- **MOD-2 · Estados comunes** **S** — `Skeleton` mientras carga (con la altura final aproximada, para
+  que el modal no salte, H28), `ErrorBanner` con botón *Reintentar*, `SuccessState` con icono y
+  sello animado (hoy cada modal escribe su frase en `emerald-300`).
+- **MOD-3 · Teclado en modales** **S** — `Enter` confirma, números `1-9` eligen opción en listas
+  cortas (Modo dinámico, Viajar, Clase), flechas recorren la lista.
+- **MOD-4 · Modales de ceremonia** **M** — variante para decisiones grandes o irreversibles (fundar
+  reino, clase, especialización, muerte, subida de nivel): ancho grande, ilustración, título en
+  Cinzel grande, línea de cristal que se extiende (`line-extend`), botón de confirmar que hay que
+  **mantener pulsado** 1 s en lo irreversible en vez del doble clic "Aceptar → Confirmar".
+- **MOD-5 · `QuantityStepper` compartido** **S** — sustituye las 5 copias (H26): botón *Máx.*,
+  mantener pulsado para repetir, rueda del ratón, número editable y vista previa del efecto.
+- **MOD-6 · `EntityRow` con miniatura** **S** — cada objeto, NPC, criatura o recurso de un modal
+  enseña su miniatura de la enciclopedia o el icono SVG de su categoría (H27).
 
 ---
 
-## Fase 3 — Dinamismo e interfaz de partida
+## 6. Revisión modal por modal
 
-### 3.1 Animaciones de salida en todo **[P]** **S** (tras 2.7)
-Cajón que baja con el mismo freno con el que sube; modales que se encogen y funden; tooltips que se
-desvanecen; combate que se "envaina" al terminar (inverso de `combat-enter`).
+Todos heredan MOD-1…MOD-6; aquí solo lo específico de cada uno.
 
-### 3.2 Barras de estado vivas en la cabecera **[P]** **M**
-- **Barra "fantasma"** en salud/energía/hambre/sed: al perder, el tramo perdido queda en blanco/rojo
-  medio segundo y luego se vacía (como en los juegos de lucha) — solo `transform: scaleX`.
-- **Números que cuentan** (contador animado) al cambiar energía, XP, oro, reputación.
-- **Iconos de umbral**: hambre y sed laten suavemente al entrar en zona crítica (reutiliza
-  `pulse-slow`).
-- **Texto flotante** "+15 XP", "−1 energía", "+3 Hierro" que sube y se desvanece desde el
-  elemento que cambia. Componente `FloatingText` genérico. **M**
+### Recursos y supervivencia
+- **MOD-10 · Recolectar/Desollar** (`HarvestSelectionModal`) — la tirada pasa a `DiceTray`; los
+  recursos encontrados aparecen como **cartas** que se dan la vuelta en cascada (ya hay escalonado de
+  150 ms); botón *Coger todo lo que quepa*; barra de capacidad de inventario que se llena en vivo con
+  la selección (hoy es una línea de texto); el aviso de "segunda tirada no suficiente" con la tirada
+  visible, no solo el texto. **M**
+- **MOD-11 · Curar** (`HealSelectionModal`) — la vista previa "Herido → Ileso" pasa a la propia
+  barra de salud con el tramo que se recuperaría en verde translúcido; botón *Lo justo para quedar
+  ileso* que elige la combinación mínima. **S**
+- **MOD-12 · Comer/Beber** (`HungerThirstSelectionModal`) — dos barras de hambre y sed con
+  previsualización (hoy porcentajes en texto), las dos columnas Comida/Bebida lado a lado, botón
+  *Saciar con lo mínimo*. **S**
+- **MOD-13 · Saquear la zona** (`SaquearZonaModal`) — un bloque por cuerpo con retrato, *Marcar
+  todo/ninguno* por cuerpo y global, peso/hueco de inventario de lo marcado; los `<input type=checkbox>`
+  nativos pasan a casillas con el estilo del juego. **S**
+- **MOD-14 · Saquear en combate** (`CombatSelectionModal`) y **Cadáver** (`PostCombatInteractionModal`)
+  — mismo tratamiento que MOD-13; el de cadáver enseña la imagen del rival caído en gris. **S**
 
-### 3.3 Subida de nivel con ceremonia **[P]** **M**
-Hoy solo hay un `pop` en el botón de nivel. Propuesta: viñeta de cristal que recorre la pantalla
-(una sola vez), insignia grande "Nivel 7" con `stamp-in`, gemas que se encienden una a una con los
-puntos a repartir y CTA directo a Estadísticas.
+### Viaje y movimiento
+- **MOD-15 · Viajar** (`TravelDestinationModal`) — mini-mapa de la región con el destino resaltado al
+  pasar el ratón por cada fila; ordenar por tiempo; icono de peligro/control de facción si se
+  conoce; la hora de llegada estimada en fecha ficticia. **M**
+- **MOD-16 · Volver al campamento** (`CampSelectionModal`) — se fusiona visualmente con Viajar
+  (misma fila, con el tiempo de viaje que hoy no enseña). **S**
+- **MOD-17 · Moverte por la zona** (`ZonaMovimientoModal`, 90 vh) — leyenda de formas/colores
+  plegable, zoom y desplazamiento con rueda/arrastre, ruta prevista dibujada antes de confirmar,
+  atajo `Z`. **M**
+- **MOD-18 · Salida de zona** (`ZonaSalidaModal`) — la imagen de la salida a ancho completo con
+  degradado y el rumbo como **rosa de los vientos**; si no está visitada, silueta brumosa en vez de
+  nada. **S**
+- **MOD-19 · Punto de la zona / Grupo** (`ZonePointDetailModal`, `ZoneGroupDetailModal`) — retrato o
+  imagen arriba, chips de tipo/color con la misma forma del pin del mapa (círculo, rombo…), acciones
+  como botones con icono (Saquear, Desollar, Ir hasta, Ver ficha). **S**
 
-### 3.4 Sistema de notificaciones (toasts) **[P]** **M**
-Pila en la esquina superior derecha con el lenguaje de `plank-panel` + borde de color por tipo
-(`quest` misión, `moss` logro, `danger` peligro, `accent` sistema): misión aceptada/completada,
-objeto obtenido, expedición vuelta, cambio de relación entre facciones (enlaza con "El mundo vivo,
-visible" del hito 0.1). Agrupa repetidas ("+3 Hierro ×2"). Duración y posición configurables en la
-Fase 1.
+### Personajes, criaturas y compañeros
+- **MOD-20 · Tameo** (`TameoModal`) — arreglos DAD-1/DAD-2; retrato grande de la criatura o
+  prisionero; los 7 botones de atributo con su color y el valor del personaje (hoy todos iguales y
+  sin número); la Felicidad como barra con marcas de umbral y corazones/sellos que se llenan;
+  historial de intentos; `bg-emerald-500` a token. **M**
+- **MOD-21 · Capturar** (`CapturaModal`) — retrato y estado de salud de cada candidato; cuerdas
+  disponibles visibles; animación de cuerda al atar. **S**
+- **MOD-22 · Entregar** (`EntregaModal`) — hoy en dos pasos de lista (objeto → persona). Propuesta:
+  dos columnas (inventario | personas presentes) y **arrastrar el objeto hasta la persona**, con la
+  opción de clic como alternativa; aviso si el objeto es de misión para esa persona. **M**
+- **MOD-23 · Equipo de compañero** (`CompanionEquipModal`) — mismo muñeco de ranuras que
+  `EquipoPanel` del jugador, en pequeño, con comparador. **M**
+- **MOD-24 · Grupos de combate** (`CombatGroupsModal`) — el arrastrar y soltar ya existe: añadir
+  resaltado de zona de destino, orden dentro del grupo, retratos, y alternativa por teclado. **S**
+- **MOD-25 · Aprender oficio** (`AprenderOficioModal`) — ficha del Maestro (retrato, oficio con su
+  icono, qué desbloquea) y coste con el saldo de Goirnos al lado; éxito con sello en vez de texto. **S**
 
-### 3.5 Narración más viva **[P]** **M**
-- **Capitular** (inicial grande decorada en Cinzel) en la primera entrada de cada escena o día.
-- **Separadores de escena** con la gema y hairlines al cambiar de zona, de día o de estación.
-- Cursor parpadeante tipo pluma mientras el narrador escribe (streaming).
-- Diálogo de NPC con **retrato pequeño** a la izquierda si la enciclopedia tiene `thumbnail`.
-- Botón "ir al final" flotante cuando el jugador ha hecho scroll hacia arriba y llega texto nuevo.
+### Progresión y decisiones
+- **MOD-26 · Elegir clase / especialización** (`ClaseModal`, `EspecializacionModal`) — variante
+  ceremonia (MOD-4): tarjetas lado a lado con ilustración, rol, atributos que favorece (con sus
+  colores) y habilidades de ejemplo; comparación directa; confirmación manteniendo pulsado; ocultar
+  `ImagePromptSlot` (H17). **M**
+- **MOD-27 · Fundar reino** (`KingdomFoundingModal`) — ceremonia: estandarte con el nombre que se
+  escribe en vivo, color/emblema del reino (🧭 si se guarda), la región en un mini-mapa y, al
+  aceptar, sello y entrada solemne en el registro. Añadir Escape/foco (H6). **M**
+- **MOD-28 · Confirmar** (`ConfirmModal`) — tamaño `sm`, icono de advertencia, y en lo irreversible
+  mantener pulsado (MOD-4) o al menos foco inicial en *Cancelar*. **S**
 
-### 3.6 Combate con más impacto **[P]** **M**
-- **Sacudida corta del panel** del rival al recibir un golpe y del propio HUD al recibirlo el
-  jugador (desactivable, Fase 1.5).
-- **Números de daño/estado flotantes** sobre la tarjeta del rival.
-- **Ficha del rival con retrato a sangre** (banner a ancho completo con degradado inferior y
-  nombre encima) en lugar de imagen dentro de recuadro.
-- **Indicador de turno** claro: franja superior que cambia entre "Tu ataque" (madera cálida) y
-  "Tu defensa" (azul, ya existe `plank-panel-defense`) con transición cruzada.
-- **Viñeta roja** en los bordes de la pantalla cuando el personaje está GRAVE/CONVALECIENTE.
-- Pantalla de **victoria/derrota** con resumen (daño hecho, recibido, botín) antes de volver.
+### Información
+- **MOD-29 · Ficha de detalle** (`DetailModal`, 718 líneas, 4 tipos) — tamaño `lg`; diseño en dos
+  columnas (imagen | datos) cuando hay imagen; pestañas para variantes por región/sexo/época (hoy
+  apiladas); comparador para objetos equipables (▲▼ por atributo); navegación *anterior/siguiente*
+  y "atrás" entre fichas enlazadas; Escape (H6). **M**
+- **MOD-30 · Detalle de recurso / parcela** (`RecursoDetalleModal`, `ParcelaDetailModal`) — mismo
+  patrón de ficha; la parcela con su producción como barra de progreso hasta la siguiente cosecha. **S**
+- **MOD-31 · Relaciones entre facciones** (`RelacionesFaccionesModal`) — hoy lista de pares con
+  `presión/100`. Propuesta: **matriz** facción × facción con color por relación y, cuando haya más
+  facciones, un grafo; la presión como barra con flecha de tendencia. **M**
+- **MOD-32 · Visor de imagen / mapa ampliado** (`ImagePromptDisplay`, `MapZoomModal`) — zoom con
+  rueda y arrastre, pantalla completa ya existe; añadir Escape unificado y miniatura de navegación. **S**
 
-### 3.7 Dados **[P]** **S-M**
-- Dado con **cara visible que rueda** (SVG de d20 con rotación) en vez de solo el número cambiando.
-- **Crítico/pifia** con efecto propio: destello dorado + partículas para 20 natural, grieta y
-  sacudida para 1 natural.
-- Velocidad y salto según Fase 1.5.
-
-### 3.8 Cajón y paneles **[P]** **S-M**
-- Pestañas internas (Personaje, Reino, Habilidades…) con **indicador deslizante** en vez de saltar
-  de una a otra.
-- **Recordar la última subpestaña** de cada panel.
-- Inventario: **arrastrar y soltar** objetos a las ranuras de equipo y consumibles, con resaltado
-  de ranuras compatibles (`isCompatibleWithSlot` ya existe).
-- **Comparador de objetos** en el tooltip (equipado vs. el que miras, con flechas ▲▼ coloreadas).
-- **Rareza visible** del objeto (borde/brillo según calidad) si el catálogo la tiene. 🧭
-
-### 3.9 Brújula y movimiento **[P]** **S**
-La brújula central (🧭) gira lentamente hacia el rumbo de la última salida tomada, y la aguja
-tiembla en zonas peligrosas. Requiere 2.2 (icono SVG).
-
----
-
-## Fase 4 — Atmósfera y opciones gráficas
-
-Todo lo de esta fase va detrás del ajuste "Efectos ambientales" y "Calidad visual" (Fase 1.5).
-
-### 4.1 Ambiente según hora, estación y clima **[P]** **M**
-El backend ya envía `entorno` (estación + clima) y la fecha ficticia. Propuesta: una capa fija y
-barata detrás de los paneles que cambia el **tinte del fondo** (amanecer cálido, noche azulada
-con el `crystal-sky`, invierno desaturado) y añade **partículas CSS** según el clima: lluvia
-(líneas diagonales), nieve, polvo rojo en la estepa, niebla en la Ciénaga. Máximo ~30 partículas,
-solo `transform`, pausadas cuando la ventana no tiene foco.
-
-### 4.2 Tema visual por región **[P]** **M** 🧭
-Igual que hoy cada mundo tiñe `accent`, cada **región** de Berig podría modular la textura base:
-Llanuras = `dust-road`, Cristal Helado = madera escarchada y acento más frío, Ciénaga Troncal =
-madera húmeda con musgo, Meseta del Orden = `iron-etched` dominante. Encaja con los hitos
-`0.4`–`0.6`. Revisar con el canon de `docs/rpgtarkor/` antes de fijar colores.
-
-### 4.3 Cielo de cristal animado en el inicio **[P]** **S**
-`crystal-sky` hoy es estático por decisión explícita. Propuesta opcional: un parpadeo muy lento
-(10-20 s) de unos pocos cristales y un paralaje leve con el ratón. Desactivado si "Animaciones:
-reducidas". 🧭 Respetar o no la decisión original de "nunca animado".
-
-### 4.4 Pantallas previas a la partida **[H]**/**[P]** **M**
-- **Inicio:** logotipo/título "Tarkor" como elemento principal (hoy domina la pregunta "¿Cómo
-  quieres jugar?"), imagen de fondo de Berig (el mapa `helek-sirik-berig.png` ya existe) con
-  oscurecido, botones de menú clásicos: *Continuar · Partidas · Configuración · Salir*.
-- **Elegir mundo:** tarjeta con imagen del mundo a sangre y paralaje al pasar el ratón.
-- **Elegir personaje:** retrato grande (sustituye la "G"), atributos dibujados como **rueda** en el
-  mismo orden del anillo de debilidades (`ATTRIBUTE_RING`, `attributeWheel.ts`) y con los colores por atributo en vez de barras azules iguales, y un
-  "Continuar" deshabilitado que se lea como tal (H11).
-- **Partidas guardadas:** miniatura de la zona/última escena, fecha ficticia, nivel y tiempo
-  jugado; animación de borrado.
-- Transiciones entre los 3 pasos con deslizamiento lateral (el `StepDots` ya marca el avance).
-
-### 4.5 Pantalla de carga con lore **[P]** **S**
-Sustituir "Cargando partida..." por una tarjeta con ilustración o mapa, un consejo de juego o una
-cita del lore (frases de `waitingFlavor.ts` ya existen como base) y una barra de progreso con la
-gema.
-
-### 4.6 Cursor temático **[P]** **S** 🧭
-Cursor personalizado (guantelete/pluma) en SVG empaquetado, con versión "mano" sobre lo pulsable.
-Opción en Configuración para usar el cursor del sistema.
-
-### 4.7 Mapa interactivo **[P]** **M**
-- **Niebla de guerra** sobre zonas no visitadas (máscara SVG) que se disipa con una transición al
-  descubrirlas.
-- Ruta animada (trazo discontinuo que avanza) durante un viaje en curso.
-- Zoom y desplazamiento con rueda/arrastre suavizado (hoy el zoom es un modal aparte).
-- Leyenda plegable y marcadores con iconos SVG de 2.2.
+### Narrativos
+- **MOD-33 · Modo dinámico** (`DynamicModeModal`) — opciones numeradas con teclas `1-3`; la imagen
+  con leve paralaje/zoom lento (Ken Burns) mientras se espera; marcador de vueltas (`Vuelta 2 de ~4`
+  si se conoce); Escape = *Salir* con confirmación (H6). **S**
+- **MOD-34 · Editor de barras de habilidades** (`SkillBarEditor`) — tamaño `xl`, la barra real en
+  grande arriba y las habilidades disponibles en rejilla filtrable debajo; asignar también con clic +
+  número. **S**
 
 ---
 
-## Fase 5 — Sonido **[P]** 🧭
+## 7. Revisión panel por panel (`PAN`)
 
-La mayor ausencia "de videojuego" del front (H14). Todo empaquetado, todo con su volumen en
-Configuración (1.6).
+Contenedor común: `PanelDrawer` (cajón inferior, `max-w-4xl`, 85 vh).
+- **PAN-1 · Cajón** — Escape para cerrar (H6); animación de salida; arrastrar el asa hacia abajo
+  para cerrar; recordar la altura; navegar entre paneles con `Tab`/`Shift+Tab` o `Q`/`E` sin
+  cerrar; **modo lateral opcional** (cajón desde la derecha que deja ver el registro) para monitores
+  anchos. **M**
 
-- **Gestor de audio** (`AudioContext` propio o `howler.js`, ~10 KB) con canales Música / Efectos /
-  Ambiente / Interfaz y precarga perezosa. **M**
-- **Interfaz:** clic de madera/hierro, abrir/cerrar cajón, pasar página en el Diario. **S**
-- **Dados:** rodar y aterrizar (distinto en crítico/pifia). **S**
-- **Combate:** golpe, bloqueo, fallo, muerte; tambor grave al entrar en combate. **S**
-- **Ambiente** según región/clima (viento de estepa, lluvia, ciénaga). **M**
-- **Música** por estado (exploración, combate, reino, muerte), con fundido cruzado. **L**
-- 🧭 Origen de los audios: librería libre (Freesound/OpenGameArt con licencia compatible) o
-  generados; y si la música entra en `0.x` o se deja para la Beta.
+### Tu personaje
+- **PAN-2 · Inventario** — búsqueda, filtros por tipo y orden (nombre, tipo, nivel, recientes) (H29);
+  barra de capacidad con colores (hoy texto `text-amber-400`); **rareza/nivel visible** en el borde
+  de la carta (`tier` ya existe); menú contextual con clic derecho (Usar, Equipar, Soltar, Ver
+  ficha); arrastrar al equipo (`isCompatibleWithSlot` ya existe); vista lista/cuadrícula. **M**
+- **PAN-3 · Equipo** — silueta del personaje con las ranuras alrededor (estilo hoja de personaje) en
+  vez de rejilla; resaltado de ranuras compatibles al arrastrar; resumen de bonos totales; las 6
+  ranuras de consumibles como "cinturón". **M**
+- **PAN-4 · Estadísticas** — los 7 atributos como **rueda** (mismo orden que `ATTRIBUTE_RING` de
+  `attributeWheel.ts`, con sus colores), para que se vea de un vistazo la rueda de ventajas; reparto
+  de puntos con +/− y vista previa antes de confirmar; barra de XP con barra fantasma. **M**
+- **PAN-5 · Habilidades** (465 líneas) — tarjetas con icono SVG, color del atributo, rol
+  (ataque/defensa/utilidad) como forma; filtros por categoría; arrastrar directamente a la barra de
+  habilidades y al cinturón de combate. **M**
+- **PAN-6 · Compañeros** — tarjetas con retrato, salud, lealtad/felicidad como barra y grupo de
+  combate; acceso directo a su equipo (MOD-23). **S**
+- **PAN-7 · Reino** (5 secciones):
+  - *Visión general*: los indicadores (`KINGDOM_STAT_LABEL`) como medidores con tendencia ▲▼ y
+    sparkline de los últimos días, críticos parpadeando una vez. **M**
+  - *Edificios y parcelas*: **plano del asentamiento** (cuadrícula de parcelas dibujada) además de la
+    lista; construir arrastrando a una parcela. 🧭 **L**
+  - *Producción*: cada cadena como fila con barra de progreso hasta el siguiente lote y entradas →
+    salidas con iconos; los campos "sin tope"/"∞" con `QuantityStepper`. **M**
+  - *Súbditos*: retratos/avatares por raza (`razaTheme`), filtros por rol. **S**
+  - *Diplomacia y mercado*: relación con cada facción como barra centrada (de Guerra a Alianza) con
+    la paleta por raza; mercado con precios y tendencia. **M**
+
+### El mundo
+- **PAN-8 · Mapa** (Zona + Mapa) — ver ATM-7 (niebla, ruta animada, zoom suave); leyenda unificada
+  entre Zona y Berig; botón "centrar en mí". **M**
+- **PAN-9 · Diario** — búsqueda en el texto, filtros por canal (personaje/mundo/reino), saltar a
+  una fecha ficticia, capítulos por día con separador (NAR-3) y exportar la partida como relato
+  (texto/HTML). **M**
+- **PAN-10 · Misiones** — misión seguida fijada en la cabecera (HUD-7); objetivos como lista con
+  casillas; recompensa visible con iconos; las cerradas plegadas. **S**
+- **PAN-11 · Enciclopedia** (1.574 líneas, 15 pestañas) — las 15 pestañas en un **índice lateral**
+  agrupado (Seres · Lugares · Sociedad · Sistemas) en lugar de una fila que no cabe; búsqueda global
+  (hoy solo por nombre dentro de la pestaña); marcas de "nuevo" en entradas recién descubiertas;
+  **línea temporal** visual para Historia (Era Común / Era de las Semillas); fichas en `DetailModal`
+  ampliado (MOD-29). **L**
+- **PAN-12 · Reputación** — bandas como barra segmentada con la posición actual y el umbral
+  siguiente; animación al subir/bajar ya existe (`hit-flash`), añadir el número que cambia. **S**
+
+### Barras y composer
+- **PAN-13 · Composer** (`ChatComposer`) — `↑`/`↓` para recuperar acciones anteriores (H31);
+  contador suave de longitud; botón de enviar con estado *enviando* animado; los chips de objeto y
+  habilidad con su icono SVG. **S**
+- **PAN-14 · Barra de habilidades** (`SkillBarHud`/`SkillBarMenu`) — teclas `1-9` con el número
+  impreso en cada hueco (H16); hueco no disponible con motivo (energía, montura…) como sombreado y
+  tooltip; animación al lanzar. **S**
 
 ---
 
-## Orden recomendado
+## 8. HUD y dinamismo de partida (`HUD`)
+
+- **HUD-1 · Barras con barra fantasma** — salud, energía, hambre y sed: el tramo perdido se queda
+  medio segundo en claro y luego se vacía; solo `transform: scaleX`. **S**
+- **HUD-2 · Números que cuentan** al cambiar energía, XP, Goirnos, reputación. **S**
+- **HUD-3 · Umbrales críticos**: hambre/sed laten suavemente en zona crítica (reutiliza `pulse-slow`)
+  y su icono cambia (plato vacío, gota seca). **S**
+- **HUD-4 · Texto flotante** "+15 XP", "−1 energía", "+3 Hierro" que sube desde el elemento que
+  cambia; componente `FloatingText` genérico. **M**
+- **HUD-5 · Subida de nivel con ceremonia**: viñeta de cristal que recorre la pantalla una vez,
+  insignia "Nivel 7" con `stamp-in`, gemas que se encienden con los puntos a repartir y botón directo
+  a Estadísticas. **M**
+- **HUD-6 · Notificaciones (toasts)**: pila arriba a la derecha con `plank-panel` y borde por tipo
+  (`quest` misión, `moss` logro/obtenido, `danger` peligro, `accent` sistema, `accent2` mundo vivo):
+  misión aceptada/completada, objeto obtenido, expedición vuelta, cambio de relación entre facciones
+  (enlaza con "El mundo vivo, visible" del hito `0.1`). Agrupa repetidas. **M**
+- **HUD-7 · Misión seguida** en la cabecera, con su objetivo actual en una línea. **S**
+- **HUD-8 · Barra de "Ocupado"** (`busyUntil`): hoy una línea de texto con cuenta atrás; propuesta:
+  barra de progreso real con el icono de la actividad y la hora ficticia de fin. **S**
+- **HUD-9 · Reloj del mundo**: la fecha ficticia con un pequeño disco día/noche que gira según la
+  hora, y estación/clima con iconos SVG. **S**
+- **HUD-10 · Brújula** central que apunta al rumbo de la última salida y tiembla en zonas peligrosas
+  (requiere BAS-2). **S**
+- **HUD-11 · Cabecera adaptable a 1280 px**: hoy son 6-7 chips en fila que hacen `flex-wrap`; agrupar
+  hambre/sed/energía en un bloque compacto con tooltip detallado. **S**
+
+---
+
+## 9. Narración y registros (`NAR`)
+
+- **NAR-1 · Capitular** (inicial grande en Cinzel) en la primera entrada de cada escena o día. **S**
+- **NAR-2 · Cursor de pluma** parpadeante mientras el narrador escribe en streaming. **S**
+- **NAR-3 · Separadores de escena** con gema y hairlines al cambiar de zona, día o estación. **S**
+- **NAR-4 · Retrato pequeño** junto al diálogo de un NPC si la enciclopedia tiene `thumbnail`. **S**
+- **NAR-5 · "Ir al final"** flotante cuando el jugador ha subido y llega texto nuevo, con contador de
+  entradas nuevas. **S**
+- **NAR-6 · Ofertas en el registro** (misión, modo dinámico, recurso, caza): hoy tarjetas con colores
+  distintos pero misma forma; darles forma de "carta" con sello del tipo, y que al aceptarlas se
+  sellen en vez de desaparecer. **S**
+- **NAR-7 · Espera del narrador**: la tarjeta "El Narrador escribe" ya tiene barrido de luz y frases
+  rotatorias (`waitingFlavor.ts`); añadir tiempo transcurrido discreto y, pasados ~30 s, una frase
+  de tranquilidad ("el narrador local está pensando…"). **S**
+- **NAR-8 · Banners de entidad** (`entityBanner`): fundido y leve zoom al cargar, en lugar de aparecer
+  de golpe (H10). **S**
+
+---
+
+## 10. Combate (`CMB`)
+
+- **CMB-1 · Indicador de turno** claro: franja superior "Tu ataque" (madera cálida) / "Tu defensa"
+  (azul, `plank-panel-defense` ya existe) con transición cruzada. **S**
+- **CMB-2 · Ficha del rival con retrato a sangre** (banner a ancho completo con degradado y nombre
+  encima) y su salud como barra grande. **S**
+- **CMB-3 · Impacto**: sacudida corta de la tarjeta del rival al recibir un golpe y del HUD propio
+  al recibirlo (desactivable, `CFG-22`); números flotantes sobre la tarjeta. **M**
+- **CMB-4 · Viñeta roja** en los bordes de la pantalla en GRAVE/CONVALECIENTE. **S**
+- **CMB-5 · Orden de turnos** en combate de grupo como fila de retratos (DAD, iniciativa de grupo). **M**
+- **CMB-6 · Cinturón de habilidades** con color de atributo, rol por forma y probabilidad (DAD-13 🧭);
+  hoy rejilla de 2 columnas de texto. **M**
+- **CMB-7 · Pantalla de victoria/derrota** con resumen (daño hecho/recibido, botín, XP) antes de
+  volver, y animación de "envainar" al cerrar el panel. **M**
+- **CMB-8 · Aviso de combate pendiente** ("⚔️ Combatir / 🏃 Huir"): hoy dos botones en la franja
+  inferior; darle presencia de encuentro (retrato del rival, dificultad como calavera 1-5). **S**
+
+---
+
+## 11. Atmósfera y opciones gráficas (`ATM`)
+
+Todo detrás de `CFG-11` y `CFG-21`.
+- **ATM-1 · Ambiente por hora, estación y clima** — el backend ya envía `entorno`: capa fija y barata
+  detrás de los paneles que cambia el tinte (amanecer cálido, noche azulada con `crystal-sky`,
+  invierno desaturado) y partículas CSS según clima (lluvia, nieve, polvo rojo, niebla). Máximo ~30
+  partículas, solo `transform`, pausadas sin foco. **M**
+- **ATM-2 · Tema por región** 🧭 — Llanuras = `dust-road`, Cristal Helado = madera escarchada y
+  acento frío, Ciénaga Troncal = madera húmeda con musgo, Meseta del Orden = `iron-etched`. Encaja
+  con los hitos `0.4`–`0.6`; revisar contra `docs/rpgtarkor/`. **M**
+- **ATM-3 · Cielo de cristal animado en el inicio** 🧭 — parpadeo muy lento de pocos cristales y
+  paralaje leve con el ratón; hoy es estático por decisión explícita. **S**
+- **ATM-4 · Pantalla de carga con lore** — ilustración o mapa, consejo o cita (`waitingFlavor.ts`
+  como base) y barra con la gema, en lugar de "Cargando partida...". **S**
+- **ATM-5 · Cursor temático** 🧭 — guantelete/pluma en SVG, con opción de cursor del sistema. **S**
+- **ATM-6 · Transiciones entre pantallas** con *View Transitions* (fundido de madera, deslizamiento
+  entre los 3 pasos previos). **S**
+- **ATM-7 · Mapa** — niebla de guerra sobre zonas no visitadas que se disipa al descubrirlas; ruta
+  animada durante un viaje; zoom y arrastre suavizados; marcadores SVG. **M**
+- **ATM-8 · Viñeta y grano** suaves opcionales sobre la vista de partida para dar profundidad
+  (imagen estática superpuesta, coste casi nulo). **S**
+
+---
+
+## 12. Pantallas fuera de la partida (`PRE`)
+
+- **PRE-1 · Inicio** — título "Tarkor" como protagonista (hoy domina la pregunta "¿Cómo quieres
+  jugar?"), fondo con el mapa de Berig (`helek-sirik-berig.png` ya existe) oscurecido, menú clásico
+  *Continuar · Partidas · Configuración · Salir*; el enlace de admin solo en modo desarrollador. **M**
+- **PRE-2 · Elegir mundo** — tarjeta con imagen a sangre y paralaje al pasar el ratón. **S**
+- **PRE-3 · Elegir personaje** — retrato grande (sustituye la "G"), atributos como rueda en color
+  (PAN-4), "Continuar" deshabilitado que se lea como tal. *Crear desde cero* (68 puntos) con
+  reparto visual y vista previa de la rueda. **M**
+- **PRE-4 · Partidas guardadas** — miniatura de la última zona, fecha ficticia, nivel, tiempo jugado,
+  dificultad con icono; renombrar/borrar con animación; confirmación de borrado con el nombre
+  escrito en lo irreversible. **M**
+- **PRE-5 · Selector de dificultad** — tres tarjetas con calaveras y lo que implica cada una (hoy
+  texto). **S**
+- **PRE-6 · Pantalla de error** (`ErrorBoundary`) — botones *Volver al inicio* y *Copiar detalles*
+  (versión + error) para reportar (H32). **S**
+- **PRE-7 · Multijugador "próximamente"** — mantener, con la misma estética de tarjeta que el resto. **S**
+
+---
+
+## 13. Sonido (`SON`) **[P]** 🧭
+
+La mayor ausencia "de videojuego" (H14). Todo empaquetado; volumen en `CFG-25`.
+- **SON-1 · Gestor de audio** (`AudioContext` propio o `howler.js`, ~10 KB): canales, precarga
+  perezosa, sin solapar el mismo sonido. **M**
+- **SON-2 · Interfaz**: clic de madera/hierro, abrir/cerrar cajón, pasar página en el Diario. **S**
+- **SON-3 · Dados**: rodar y aterrizar, distinto en crítico/pifia; sincronizado con `DiceTray`. **S**
+- **SON-4 · Combate**: golpe, bloqueo, fallo, muerte; tambor grave al entrar. **S**
+- **SON-5 · Ambiente** por región/clima/hora. **M**
+- **SON-6 · Música** por estado (exploración, combate, reino, muerte) con fundido cruzado. **L**
+- 🧭 Origen (librería libre con licencia compatible o generados) y si la música entra en `0.x` o en
+  la Beta.
+
+---
+
+## 14. Calidad: cómo se verifica todo esto (`QA`)
+
+- **QA-1 · Resoluciones de referencia**: 1280×800 (Steam Deck), 1366×768, 1920×1080, 2560×1440, y
+  escala de interfaz al 80 % y 150 %. Nada se corta ni hace scroll horizontal.
+- **QA-2 · Rendimiento**: 60 fps en la Steam Deck con el narrador generando; ninguna animación en
+  bucle fuera de la vista; medir con el panel de rendimiento antes y después de ATM-1.
+- **QA-3 · Movimiento reducido**: con `CFG-14 = Ninguna` y con `prefers-reduced-motion`, todo el juego
+  sigue siendo usable y las tiradas muestran directamente el resultado.
+- **QA-4 · Teclado y mando**: una partida completa sin ratón (guion del hito `0.1`).
+- **QA-5 · Sin red**: arrancar sin conexión y comprobar fuentes e iconos (BAS-1, BAS-2).
+- **QA-6 · Tests**: cada componente base (BAS-8, `ModalShell`, `DiceTray`) con tests de
+  `@testing-library/react` como los que ya existen (`SelectionModalShell.test.tsx`,
+  `DiceRoll.test.tsx`).
+- **QA-7 · Capturas de referencia**: script de Playwright (Chromium ya está instalado en el entorno)
+  que fotografía las pantallas principales para comparar antes/después de cada bloque.
+
+---
+
+## 15. Orden recomendado
 
 | Orden | Bloque | Motivo |
 |---|---|---|
-| 1 | **1.1–1.5, 1.8** (Configuración básica) + **2.1** (fuentes) | Lo pedido por Álvaro y lo que más arregla con menos riesgo; las fuentes rotas se notan en cada pantalla. |
-| 2 | **2.3, 2.5, 2.7** | Foco/mando para la Steam Deck, `GameView` troceado y animaciones de salida desbloquean casi todo lo demás. |
-| 3 | **3.2, 3.4, 3.6, 3.7** | Lo que más "dinamismo" da durante la partida: HUD vivo, toasts, combate y dados. |
-| 4 | **2.2, 2.4, 2.6, 4.4, 4.5** | Pulido de identidad (iconos, tokens) y pantallas previas. |
-| 5 | **Fase 4** restante y **1.7** | Atmósfera y atajos reasignables. |
-| 6 | **Fase 5** y **1.6** | Sonido, cuando se decida su alcance. |
-| — | **1.3 Resolución / modo ventana nativos** | Al montar el envoltorio Tauri (paso 5 del plan de `20-instalador-distribuible.md`). |
+| 1 | **DAD-1…6** (arreglos de tiradas) + **H17/CFG-33** (ocultar herramientas de admin) | Errores visibles hoy; encajan en el hito `0.1`. |
+| 2 | **CFG-1…6, 7-9, 13-14, 20, 26, 28** + **BAS-1** | Lo pedido por Álvaro y las fuentes rotas. |
+| 3 | **BAS-3, BAS-5, BAS-7, BAS-8, MOD-1…3** | Foco/mando, `GameView` troceado, salidas y componentes base: desbloquean casi todo. |
+| 4 | **DAD-7…12** (`DiceTray`) | El momento que más se repite en una partida. |
+| 5 | **HUD-1…6, CMB-1…4, NAR-1…5** | El dinamismo que más se nota jugando. |
+| 6 | **MOD-10…34** (por grupos) y **PAN-1…14** | Pulido modal a modal y panel a panel. |
+| 7 | **BAS-2, BAS-4, BAS-6, PRE-1…6** | Identidad (iconos, tokens) y pantallas previas. |
+| 8 | **ATM** y resto de **CFG** | Atmósfera y opciones avanzadas. |
+| 9 | **SON** + **CFG-25** | Sonido, cuando se decida su alcance. |
+| — | **CFG-7/8 nativos** | Al montar el envoltorio Tauri. |
 
-## Decisiones pendientes 🧭 (resumen)
-1. ¿Resolución real solo cuando exista Tauri, o se adelanta el envoltorio? (1.3)
-2. Fuente de cuerpo / de narración. (2.1)
-3. Iconos propios o set libre. (2.2)
-4. Hook propio + View Transitions, o añadir `motion`. (2.7)
-5. ¿Se anima el cielo de cristal pese a la decisión original? (4.3)
-6. Colores por región: revisión contra canon. (4.2)
-7. Rareza de objetos visible. (3.8)
-8. Cursor temático sí/no. (4.6)
-9. Alcance y origen del sonido. (Fase 5)
+## 16. Decisiones pendientes 🧭
+
+1. Resolución real solo con Tauri, o adelantar el envoltorio. (CFG-7)
+2. Fuente de cuerpo y de narración. (BAS-1)
+3. Iconos propios o set libre. (BAS-2)
+4. Hook propio + View Transitions, o añadir `motion`. (BAS-7)
+5. Mostrar probabilidad de éxito antes de actuar, y en qué dificultades. (DAD-13)
+6. Dados cosméticos. (DAD-15)
+7. Confirmación "mantener pulsado" para lo irreversible. (MOD-4)
+8. Emblema/color del reino guardado al fundarlo. (MOD-27)
+9. Plano visual del asentamiento. (PAN-7)
+10. Colores por región contra canon. (ATM-2)
+11. Animar el cielo de cristal pese a la decisión original. (ATM-3)
+12. Cursor temático. (ATM-5)
+13. Alcance y origen del sonido. (SON)
