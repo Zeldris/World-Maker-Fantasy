@@ -458,7 +458,8 @@ Contenedor común: `PanelDrawer` (cajón inferior, `max-w-4xl`, 85 vh).
   habilidades y al cinturón de combate. **M**
 - **PAN-6 · Compañeros** — tarjetas con retrato, salud, lealtad/felicidad como barra y grupo de
   combate; acceso directo a su equipo (MOD-23). **S**
-- **PAN-7 · Reino** (5 secciones):
+- **PAN-7 · Reino** (5 secciones) — **análisis completo y propio en
+  [roadmap-front-reino.md](roadmap-front-reino.md)**; lo de abajo es solo el resumen:
   - *Visión general*: los indicadores (`KINGDOM_STAT_LABEL`) como medidores con tendencia ▲▼ y
     sparkline de los últimos días, críticos parpadeando una vez. **M**
   - *Edificios y parcelas*: **plano del asentamiento** (cuadrícula de parcelas dibujada) además de la
