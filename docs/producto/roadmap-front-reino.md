@@ -243,7 +243,7 @@ pausada visualmente detrás. 🧭 **M**
 ## 7. Usabilidad y robustez (arreglos) **arreglo**
 
 - **REI-110** · Prioridad: guardar con *debounce* o al soltar, no en cada tecla (R18). **S**
-- **REI-111** · Todos los `try/finally` de Reino con `catch` y `ErrorBanner` visible (R19). **S**
+- ~~**REI-111** · Todos los `try/finally` de Reino con `catch` y `ErrorBanner` visible (R19). **S**~~ ✅ 2026-10-01 (con `UX-24`)
 - **REI-112** · Topes con `Enter` y confirmación visual (R20). **S**
 - **REI-113** · Sustituir los `<select>` nativos por los selectores del juego (R23). **S**
 - **REI-114** · Esqueletos de carga en lugar de "Cargando…" (R24). **S**

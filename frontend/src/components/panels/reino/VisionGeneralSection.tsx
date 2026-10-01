@@ -79,6 +79,7 @@ export function VisionGeneralSection({
   const [descansarDisponible, setDescansarDisponible] = useState(false)
   const [confirmandoDescanso, setConfirmandoDescanso] = useState(false)
   const [descansando, setDescansando] = useState(false)
+  const [errorDescanso, setErrorDescanso] = useState<string | null>(null)
   useEffect(() => {
     let cancelado = false
     getDescansarCampamentoDisponible(saveId)
@@ -96,13 +97,16 @@ export function VisionGeneralSection({
 
   async function handleDescansar() {
     setDescansando(true)
+    setErrorDescanso(null)
     try {
       await postDescansarCampamento(saveId)
       setConfirmandoDescanso(false)
       await onRefreshSave()
-    } catch {
+    } catch (e) {
       // El modal se queda abierto con el botón reactivado — el jugador puede reintentar sin
       // perder el contexto (mismo criterio que el resto de modales de confirmación del proyecto).
+      // UX-24 (hito 0.1): antes sin ningún mensaje — ahora dice qué falló y el botón pasa a *Reintentar*.
+      setErrorDescanso(`No se pudo descansar en el campamento.${e instanceof Error && e.message ? ` ${e.message}` : ''}`)
     } finally {
       setDescansando(false)
     }
@@ -230,8 +234,12 @@ export function VisionGeneralSection({
           confirmLabel="Descansar"
           tone="accent"
           confirming={descansando}
-          onCancel={() => setConfirmandoDescanso(false)}
+          onCancel={() => {
+            setConfirmandoDescanso(false)
+            setErrorDescanso(null)
+          }}
           onConfirm={handleDescansar}
+          error={errorDescanso}
         />
       )}
     </div>

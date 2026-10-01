@@ -13,6 +13,8 @@ import {
 } from '../../../lib/api'
 import { PanelEmptyState } from '../../PanelEmptyState'
 import { SelectionModalShell, confirmButtonClasses } from '../../SelectionModalShell'
+import { ErrorBanner } from '../../../components/ErrorBanner'
+import { useErrorConReintento } from '../../../hooks/useErrorConReintento'
 
 interface ProduccionSectionProps {
   saveId: string
@@ -81,6 +83,7 @@ function BuildingProduccionCard({
   const [ordenes, setOrdenes] = useState<OrdenProduccionInfo[] | null>(null)
   const [nuevaOrdenAbierta, setNuevaOrdenAbierta] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
+  const { fallo, informar, limpiar } = useErrorConReintento()
   // Recetas del oficio del edificio (P-3, decisión de Álvaro, 2026-09-29): null = sin filtro
   // (edificio sin oficio, o aún sin cargar/error).
   const [recetasPermitidas, setRecetasPermitidas] = useState<string[] | null>(null)
@@ -118,6 +121,8 @@ function BuildingProduccionCard({
     try {
       await actualizarOrdenProduccion(saveId, ordenId, { prioridad })
       await reload()
+    } catch (e) {
+      informar('No se pudo cambiar la prioridad de la orden.', e, () => void handlePrioridadChange(ordenId, prioridad))
     } finally {
       setBusy(null)
     }
@@ -128,6 +133,8 @@ function BuildingProduccionCard({
     try {
       await actualizarOrdenProduccion(saveId, ordenId, { activa: false })
       await reload()
+    } catch (e) {
+      informar('No se pudo desactivar la orden.', e, () => void handleDesactivar(ordenId))
     } finally {
       setBusy(null)
     }
@@ -138,6 +145,8 @@ function BuildingProduccionCard({
     try {
       await asignarCompanionABuilding(saveId, companionId, asignar ? building.id : null)
       await onRefreshSave()
+    } catch (e) {
+      informar('No se pudo cambiar el trabajador del edificio.', e, () => void handleAsignarTrabajador(companionId, asignar))
     } finally {
       setBusy(null)
     }
@@ -146,6 +155,7 @@ function BuildingProduccionCard({
   return (
     <div className="rounded-lg border border-iron-700 bg-wood-950/40 px-3.5 py-3">
       <p className="font-medium text-wood-100">{building.name}</p>
+      {fallo && <div className="mt-2"><ErrorBanner fallo={fallo} onCerrar={limpiar} /></div>}
 
       <p className="mt-2 text-2xs uppercase tracking-wide text-wood-500">Trabajadores</p>
       {companionesReino.length === 0 ? (
@@ -251,12 +261,15 @@ function NuevaOrdenModal({
   const [limite, setLimite] = useState<string>('')
   const [prioridad, setPrioridad] = useState(5)
   const [creando, setCreando] = useState(false)
+  const { fallo, informar, limpiar } = useErrorConReintento()
 
   async function handleCrear() {
     if (!recipeKey) return
     setCreando(true)
     try {
       await onCrear({ recipeKey, modo, limite: limite.trim() ? Number(limite) : null, prioridad })
+    } catch (e) {
+      informar('No se pudo crear la orden de producción.', e, () => void handleCrear())
     } finally {
       setCreando(false)
     }
@@ -273,6 +286,7 @@ function NuevaOrdenModal({
         </button>
       }
     >
+      <ErrorBanner fallo={fallo} onCerrar={limpiar} />
       {professionRecipes.length === 0 ? (
         <p className="text-xs text-wood-500">No hay recetas de crafteo conocidas todavía.</p>
       ) : (
@@ -332,6 +346,7 @@ function NuevaOrdenModal({
 function AlmacenLimitesCard({ saveId, almacenItems, onRefreshSave }: { saveId: string; almacenItems: AlmacenItemInfo[]; onRefreshSave: () => Promise<void> }) {
   const [limites, setLimites] = useState<AlmacenLimiteInfo[] | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  const { fallo, informar, limpiar } = useErrorConReintento()
 
   useEffect(() => {
     let cancelado = false
@@ -364,6 +379,8 @@ function AlmacenLimitesCard({ saveId, almacenItems, onRefreshSave }: { saveId: s
       const res = await getAlmacenLimites(saveId)
       setLimites(res.limites)
       await onRefreshSave()
+    } catch (e) {
+      informar('No se pudo cambiar el tope del almacén.', e, () => void handleLimiteChange(catalogSlug, valor))
     } finally {
       setBusy(null)
     }
@@ -376,6 +393,7 @@ function AlmacenLimitesCard({ saveId, almacenItems, onRefreshSave }: { saveId: s
   return (
     <div className="rounded-lg border border-iron-700 bg-wood-950/40 px-3.5 py-3">
       <p className="font-medium text-wood-100">Topes de Almacén</p>
+      {fallo && <div className="mt-2"><ErrorBanner fallo={fallo} onCerrar={limpiar} /></div>}
       <p className="mt-1 text-2xs text-wood-500">Cuando un recurso alcanza su tope, el trabajador deja de producirlo y pasa a la siguiente orden con hueco.</p>
       <div className="mt-2 flex flex-col gap-1.5">
         {[...stockPorSlug.entries()].map(([slug, { name, count }]) => {

@@ -257,8 +257,12 @@ stateDiagram-v2
   esperando* y *Volver a intentar*. Resuelve H21. **S**
 - **UX-23 · Acciones que no se esfuman** — una acción rechazada se queda en el registro tachada,
   con el motivo y un botón *Volver a escribirla* que la devuelve al composer. Resuelve H22. **S**
-- **UX-24 · Ningún error en silencio** — `ErrorBanner` común con *Reintentar* en toda acción que
-  llame al backend. Resuelve H23. **S** **arreglo**
+- ~~**UX-24 · Ningún error en silencio** — `ErrorBanner` común con *Reintentar* en toda acción que
+  llame al backend. Resuelve H23. **S** **arreglo**~~ ✅ 2026-10-01: `ErrorBanner` +
+  `useErrorConReintento` en todas las acciones de Reino (Súbditos, Producción, Mercado; cierra
+  también `REI-111`) y en borrar/reiniciar/renombrar partida (adiós `window.alert`); Descansar en el
+  campamento enseña el fallo en su `ConfirmModal` (nuevo prop `error`, botón *Reintentar*).
+  Inventario ya lo hacía (`DetailModal`).
 - **UX-25 · Confirmar o deshacer, con criterio** — lo irreversible (Matar, Soltar captura, Sabotear,
   Borrar partida) se confirma; lo que se puede revertir (Tirar un objeto, Desactivar una orden,
   Retirar del almacén) se hace al momento con una notificación de **Deshacer** durante 5 s. Ajuste

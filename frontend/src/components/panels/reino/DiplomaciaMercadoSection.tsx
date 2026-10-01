@@ -5,6 +5,8 @@ import { getMercado, postDiplomacia, postMercadoComprar, postMercadoVender } fro
 import { PanelEmptyState } from '../../PanelEmptyState'
 import { PanelSection } from '../../PanelSection'
 import { razaThemeStyleVars } from '../../../lib/razaTheme'
+import { ErrorBanner } from '../../../components/ErrorBanner'
+import { useErrorConReintento } from '../../../hooks/useErrorConReintento'
 
 // Bandas de FactionRelation (0-100, 50=neutro) — mismo lenguaje visual que REPUTATION_BANDS de
 // ReputacionPanel.tsx (banda con nombre + color), pero sobre un `type`/escala distintos: aquí la
@@ -216,6 +218,7 @@ function MercadoCard({
   const [mercado, setMercado] = useState<{ tratado: boolean; items: MercadoItemInfo[] } | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [errorVenta, setErrorVenta] = useState<string | null>(null)
+  const { fallo, informar, limpiar } = useErrorConReintento()
   const vendibles = almacenItems.filter((i) => i.catalogSlug)
 
   async function reload() {
@@ -245,6 +248,8 @@ function MercadoCard({
       await postMercadoComprar(saveId, target.slug, almacenItemId)
       await reload()
       await onRefreshSave()
+    } catch (e) {
+      informar('No se pudo comprar el objeto.', e, () => void handleComprar(almacenItemId))
     } finally {
       setBusy(null)
     }
@@ -266,6 +271,7 @@ function MercadoCard({
 
   return (
     <PanelSection title="Mercado">
+      <ErrorBanner fallo={fallo} onCerrar={limpiar} />
       {mercado === null ? (
         <p className="text-xs text-wood-500">Consultando…</p>
       ) : !mercado.tratado ? (

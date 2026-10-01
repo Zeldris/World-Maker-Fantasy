@@ -3,6 +3,8 @@ import type { AlmacenItemInfo, CompanionInfo, EquipSlot, InventoryItemInfo, Plan
 import { PanelSection } from '../../PanelSection'
 import { depositarEnAlmacen, retirarDeAlmacen, crearPlantilla, borrarPlantilla, asignarPlantillaCompanion, asignarPlantillaSubject, fijarRolReinoCompanion } from '../../../lib/api'
 import { SLOT_LABEL, SLOT_ORDER } from '../../../lib/equipSlots'
+import { ErrorBanner } from '../../../components/ErrorBanner'
+import { useErrorConReintento } from '../../../hooks/useErrorConReintento'
 
 /// Selector compartido de plantilla — súbdito o compañero integrado en el Reino, mismo desplegable.
 /// Exportado (2026-08-27, auditoría de diseño/UX § 1.3: "cuando `rolReino` no es null, la tarjeta
@@ -29,6 +31,7 @@ export function PlantillaSelect({
   const [confirmed, setConfirmed] = useState(0)
   const [flashing, setFlashing] = useState(false)
   const busyRef = useRef(false)
+  const { fallo, informar, limpiar } = useErrorConReintento()
 
   async function handleChange(id: string | null) {
     if (busyRef.current) return
@@ -37,6 +40,8 @@ export function PlantillaSelect({
       await onChange(id)
       setConfirmed((c) => c + 1)
       setFlashing(true)
+    } catch (e) {
+      informar('No se pudo cambiar la plantilla.', e, () => void handleChange(id))
     } finally {
       busyRef.current = false
     }
@@ -66,6 +71,7 @@ export function PlantillaSelect({
           </option>
         ))}
       </select>
+      <ErrorBanner fallo={fallo} onCerrar={limpiar} />
     </div>
   )
 }
@@ -85,6 +91,7 @@ function AlmacenSection({
   onRefreshSave: () => Promise<void>
 }) {
   const [busy, setBusy] = useState<string | null>(null)
+  const { fallo, informar, limpiar } = useErrorConReintento()
   const depositable = inventory.filter((i) => !i.slot && !i.companionId && !i.subjectId)
 
   async function handleDepositar(itemId: string) {
@@ -92,6 +99,8 @@ function AlmacenSection({
     try {
       await depositarEnAlmacen(saveId, itemId)
       await onRefreshSave()
+    } catch (e) {
+      informar('No se pudo depositar el objeto en el almacén.', e, () => void handleDepositar(itemId))
     } finally {
       setBusy(null)
     }
@@ -102,6 +111,8 @@ function AlmacenSection({
     try {
       await retirarDeAlmacen(saveId, almacenItemId)
       await onRefreshSave()
+    } catch (e) {
+      informar('No se pudo retirar el objeto del almacén.', e, () => void handleRetirar(almacenItemId))
     } finally {
       setBusy(null)
     }
@@ -110,6 +121,7 @@ function AlmacenSection({
   return (
     <PanelSection title="Almacén de Reino">
       <div className="flex flex-col gap-3">
+        <ErrorBanner fallo={fallo} onCerrar={limpiar} />
         {almacenItems.length === 0 ? (
           <p className="text-xs text-wood-500">Vacío — deposita objetos aquí para que se auto-equipen en súbditos/compañeros con plantilla asignada.</p>
         ) : (
@@ -179,6 +191,7 @@ function PlantillasSection({
   const [prioridad, setPrioridad] = useState(0)
   const [rows, setRows] = useState<{ slot: EquipSlot; category: string }[]>([{ slot: 'ARMA_PRINCIPAL', category: '' }])
   const [busy, setBusy] = useState(false)
+  const { fallo, informar, limpiar } = useErrorConReintento()
 
   // B.17 (checklist frontend 2026-08-27) — `category` es texto libre en todo el catálogo (sin
   // enum cerrado en el backend, ver ItemCatalog.category), así que un `<select>` estricto no es
@@ -208,6 +221,8 @@ function PlantillasSection({
       setRows([{ slot: 'ARMA_PRINCIPAL', category: '' }])
       setCreating(false)
       await onRefreshSave()
+    } catch (e) {
+      informar('No se pudo crear la plantilla.', e, () => void handleCrear())
     } finally {
       setBusy(false)
     }
@@ -218,6 +233,8 @@ function PlantillasSection({
     try {
       await borrarPlantilla(saveId, id)
       await onRefreshSave()
+    } catch (e) {
+      informar('No se pudo borrar la plantilla.', e, () => void handleBorrar(id))
     } finally {
       setBusy(false)
     }
@@ -227,6 +244,7 @@ function PlantillasSection({
 
   return (
     <PanelSection title="Plantillas de equipo">
+      <ErrorBanner fallo={fallo} onCerrar={limpiar} />
       <datalist id="plantilla-categorias-conocidas">
         {categoriasConocidas.map((c) => (
           <option key={c} value={c} />
@@ -367,6 +385,7 @@ const ROLES_REINO: { value: string; label: string }[] = [
 /// trabajador ni a diplomático. "Sin rol" lo saca del Reino (y del edificio al que estuviera asignado).
 function RolesReinoSection({ saveId, companions, onRefreshSave }: { saveId: string; companions: CompanionInfo[]; onRefreshSave: () => Promise<void> }) {
   const [busy, setBusy] = useState(false)
+  const { fallo, informar, limpiar } = useErrorConReintento()
   if (companions.length === 0) return null
 
   async function handleChange(companionId: string, rol: string) {
@@ -374,6 +393,8 @@ function RolesReinoSection({ saveId, companions, onRefreshSave }: { saveId: stri
     try {
       await fijarRolReinoCompanion(saveId, companionId, rol || null)
       await onRefreshSave()
+    } catch (e) {
+      informar('No se pudo cambiar el rol.', e, () => void handleChange(companionId, rol))
     } finally {
       setBusy(false)
     }
@@ -382,6 +403,7 @@ function RolesReinoSection({ saveId, companions, onRefreshSave }: { saveId: stri
   return (
     <PanelSection title="Roles en el Reino">
       <div className="flex flex-col gap-1.5">
+        <ErrorBanner fallo={fallo} onCerrar={limpiar} />
         {companions.map((c) => (
           <div key={c.id} className="flex items-center justify-between gap-2 text-xs text-wood-300">
             <span>{c.name}</span>
