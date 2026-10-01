@@ -11,7 +11,7 @@ cada commit.**
 | | |
 |---|---|
 | **Actualizado** | 2026-10-01 |
-| **Rama de trabajo** | `claude/frontend-improvements-roadmap-0mpckt` (Fase A/C del 0.1; pendiente de merge a `main` cuando la usuaria lo confirme) |
+| **Rama de trabajo** | `claude/frontend-improvements-roadmap-0mpckt`. Flujo acordado (2026-10-01): commit + push a esta rama con cada cosa hecha; a `main` se pasa **por pull request** (desde esta sesión el push directo a `main` lo bloquea el filtro de permisos) |
 | **Último commit en `main`** | `423c8a5` — roadmap de roadmaps y revisión cruzada de front y UX (+ el commit de esta bitácora) |
 | **Hito** | `0.1` Llanuras estable — [plan](../producto/plan-roadmap-0.1.md) · [mapa de roadmaps](../producto/21-roadmap.md#qué-entra-en-cada-hito) |
 | **Tarea en curso** | Ninguna. Fase C cerrada; siguiente: arreglos de interfaz del 0.1 |
