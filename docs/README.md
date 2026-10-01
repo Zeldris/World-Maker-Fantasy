@@ -21,6 +21,7 @@ si no sabes dónde buscar, empieza por la tabla de "Qué quiero hacer".
 | Añadir un elemento al catálogo (NPC, objeto, fauna…) | [runbooks/nuevo-elemento-catalogo.md](runbooks/nuevo-elemento-catalogo.md) y [puntos-de-codigo-nuevo-contenido.md](runbooks/puntos-de-codigo-nuevo-contenido.md) |
 | Ampliar lore con OpenCode | [runbooks/ampliar-lore.md](runbooks/ampliar-lore.md) y [borradores-opencode/prompts/00-como-usar.md](borradores-opencode/prompts/00-como-usar.md) |
 | Revisar una partida real buscando fallos | [runbooks/revisar-partida.md](runbooks/revisar-partida.md) |
+| Retomar el trabajo donde lo dejó la última sesión | [registros/traspaso.md](registros/traspaso.md) |
 | Ver hallazgos abiertos | [registros/](#registros--hallazgos-y-checklists-vivos) |
 
 ## Carpetas
@@ -92,6 +93,8 @@ aprobar propuestas. Si choca con `rpgtarkor/`, manda `rpgtarkor/`. Ver su
 
 ### `registros/` — hallazgos y checklists vivos
 Se escriben durante las sesiones y se van cerrando. No son documentación de referencia.
+- [traspaso.md](registros/traspaso.md): **bitácora de traspaso entre sesiones** — rama, tarea en
+  curso y siguiente paso (reglas en `CLAUDE.md`).
 - [checklist-pruebas-juego.md](registros/checklist-pruebas-juego.md): pruebas de juego pendientes.
 - [pruebas-nube-2026-09-28-hallazgos.md](registros/pruebas-nube-2026-09-28-hallazgos.md) y
   [plan-cierre-hallazgos-2026-09-28.md](registros/plan-cierre-hallazgos-2026-09-28.md): última
