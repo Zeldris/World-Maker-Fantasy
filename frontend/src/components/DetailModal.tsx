@@ -16,6 +16,7 @@ import { abilityBonusSuffix } from '../lib/abilityBonusSuffix'
 import { EnciclopediaLinkedText } from './EnciclopediaLinkedText'
 import { useEnciclopediaLink } from '../context/useEnciclopediaLink'
 import { MediaSlot, ImagePromptSlot } from './ImagePromptDisplay'
+import { useHerramientasAdminVisibles } from '../lib/modoDesarrollador'
 import { TooltipAnchor } from './TooltipAnchor'
 
 export type DetailTarget =
@@ -131,6 +132,8 @@ interface DetailModalProps {
 // apilado (evita "cajón dentro de cajón"). Misma carcasa (plank-panel + animate-combat-enter) sin
 // la vestidura de combate.
 export function DetailModal({ target, onClose, onUnequip, onEquip, onTirar, onSaveAbility, onDeleteAbility, onInsert, worldSlug }: DetailModalProps) {
+  // CFG-33 (hito 0.1, H17) — el bloque de prompts de imagen es herramienta de admin.
+  const herramientasAdmin = useHerramientasAdminVisibles()
   // Texto clicable dentro de la propia ficha (2026-07-22, petición explícita: "descripciones que
   // tengamos") — una bio que menciona a otro NPC/lugar/objeto navega a SU ficha, sustituyendo el
   // contenido de este mismo modal (mismo patrón que un enlace de wiki, no un modal apilado).
@@ -617,7 +620,7 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onTirar, onSa
                 {target.extra && (
                   <p className="whitespace-pre-line text-xs leading-relaxed text-wood-400">{target.extra}</p>
                 )}
-                {target.entityType && effective.entitySlug && worldSlug && (
+                {herramientasAdmin && target.entityType && effective.entitySlug && worldSlug && (
                   <div className="flex flex-col gap-2">
                     {/* El prompt sigue visible aunque ya haya imagen real subida (petición
                         explícita, 2026-07-22: "quiero seguir viendo los prompts aunque la imagen

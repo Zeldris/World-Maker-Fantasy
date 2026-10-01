@@ -197,7 +197,11 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
   captura, salir): sí/no. **S**
 - **CFG-33 · Modo desarrollador**: muestra versión completa, id de partida, tiempos del narrador y
   las herramientas de prompts de imagen; **apagado por defecto**, de modo que `ImagePromptSlot`
-  deja de verse en partida (H17). **S**
+  deja de verse en partida (H17). **S** — ✅ parte del 0.1 (2026-10-01): `lib/modoDesarrollador.ts`
+  (`localStorage`, interruptor en la página de admin, que enseña las herramientas siempre);
+  `ImagePromptSlot` y el bloque de prompts de `DetailModal` solo con el modo activo. Pendiente para
+  el menú de Configuración (CFG-1): el interruptor allí, versión completa, id de partida y tiempos del
+  narrador.
 - **CFG-34 · Estilo del mundo** (Cronista D-7): *Tranquilo · Equilibrado · Caótico* — cuántos sucesos
   genera el narrador de fondo (presupuesto de tensión). Por defecto *Equilibrado*. **S**
 - **CFG-35 · Avisos de sucesos**: a partir de qué importancia sale una notificación (`HUD-6`):
