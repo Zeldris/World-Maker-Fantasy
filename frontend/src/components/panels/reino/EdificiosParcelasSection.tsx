@@ -48,10 +48,13 @@ interface EdificiosParcelasSectionProps {
   recipesStatus?: RecipeStatusInfo[]
   /// Manda el texto de construcción por el turno normal (undefined = sin botones).
   onBuild?: (actionText: string) => void
+  /// UX-3 (hito 0.1) — motivo por el que ahora no se puede lanzar un turno (narrador escribiendo,
+  /// ocupado…); `null`/ausente = libre. Deshabilita los botones que mandan una acción al turno.
+  bloqueoTurno?: string | null
 }
 
 /// Sub-tab "Edificios y Parcelas" del Reino (rediseño 2026-09-21) — extraído de `ReinoPanel.tsx`.
-export function EdificiosParcelasSection({ buildings, recipesStatus = [], onBuild }: EdificiosParcelasSectionProps) {
+export function EdificiosParcelasSection({ buildings, recipesStatus = [], onBuild, bloqueoTurno }: EdificiosParcelasSectionProps) {
   const hasCuartel = buildings.some((b) => b.recipeKey === 'cuartel-avanzado')
   const buildButtons = onBuild && (
     <PanelSection title="Construir">
@@ -59,7 +62,7 @@ export function EdificiosParcelasSection({ buildings, recipesStatus = [], onBuil
         {CUARTEL_BUILD_OPTIONS.map((opt) => {
           const status = recipesStatus.find((s) => s.recipeCategory === 'construccion' && s.recipeKey === opt.recipeKey)
           const alreadyBuilt = buildings.some((b) => b.recipeKey === opt.recipeKey)
-          const reason = cuartelBuildDisabledReason(status, hasCuartel, opt.needsCuartel, alreadyBuilt)
+          const reason = cuartelBuildDisabledReason(status, hasCuartel, opt.needsCuartel, alreadyBuilt) ?? bloqueoTurno ?? null
           return (
             <div key={opt.recipeKey}>
               <button

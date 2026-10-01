@@ -157,9 +157,11 @@ stateDiagram-v2
   `{ permitido, motivo }`. **M** [P]
 
 ### 4.2 Bloqueos
-- **UX-3 · Guardia en `handleSubmit`** — rechazar si `characterThinking` o si la fase no lo permite,
+- ~~**UX-3 · Guardia en `handleSubmit`** — rechazar si `characterThinking` o si la fase no lo permite,
   sea cual sea la puerta (Construir, Viajar, Campamento). Los botones que lanzan un turno se
-  deshabilitan igual que el composer. Resuelve H1. **S** **arreglo**
+  deshabilitan igual que el composer. Resuelve H1. **S** **arreglo**~~ ✅ 2026-10-01: guardia en
+  `useTurnFlow` (ref del estado + ref propia contra el doble clic) y `bloqueoTurno` con motivo en
+  Construir, Viajar, Campamento y salida de zona. Lo de "si la fase no lo permite" llega con `UX-1`/`UX-2`.
 - **UX-4 · Tarjetas del registro con el estado global** — `OfferCard` recibe `disabled` y `motivo`
   de `canDo`. Resuelve H2. **S** **arreglo**
 - **UX-5 · Paneles en modo consulta** cuando la fase no permite cambios: se abren y se leen, pero

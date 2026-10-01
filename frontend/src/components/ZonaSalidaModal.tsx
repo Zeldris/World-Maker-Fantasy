@@ -7,6 +7,9 @@ interface ZonaSalidaModalProps {
   salida: ZonaSalidaInfo
   onViajar: (actionText: string) => void
   onCancel: () => void
+  /// UX-3 (hito 0.1) — motivo por el que ahora no se puede lanzar un turno (narrador escribiendo,
+  /// ocupado…); `null`/ausente = libre. Deshabilita los botones que mandan una acción al turno.
+  bloqueoTurno?: string | null
 }
 
 /// Modal del icono de salida de región (2026-09-17, petición explícita de Álvaro: "al pulsarlo saca
@@ -18,7 +21,7 @@ interface ZonaSalidaModalProps {
 /// si no. El botón "Viajar" arma el mismo texto libre que `TravelDestinationModal`
 /// (`onSelect(`Viajo hacia ${nombre}.`)`) — reutiliza el motor de viaje determinista existente
 /// (`resolveTravel`) sin duplicar ninguna lógica de viaje nueva, decisión explícita de Álvaro.
-export function ZonaSalidaModal({ salida, onViajar, onCancel }: ZonaSalidaModalProps) {
+export function ZonaSalidaModal({ salida, onViajar, onCancel, bloqueoTurno }: ZonaSalidaModalProps) {
   const imageUrl = salida.visitada ? resolveImageUrl(salida.imageUrl) : null
 
   return (
@@ -27,8 +30,14 @@ export function ZonaSalidaModal({ salida, onViajar, onCancel }: ZonaSalidaModalP
       title={salida.visitada ? salida.nombre : `Camino hacia el ${rumboSalida(salida)}`}
       onCancel={onCancel}
       footer={
-        <button type="button" onClick={() => onViajar(`Viajo hacia ${salida.nombre}.`)} className={confirmButtonClasses('accent')}>
-          Viajar
+        <button
+          type="button"
+          disabled={!!bloqueoTurno}
+          title={bloqueoTurno ?? undefined}
+          onClick={() => onViajar(`Viajo hacia ${salida.nombre}.`)}
+          className={`${confirmButtonClasses('accent')} disabled:cursor-not-allowed disabled:opacity-50`}
+        >
+          {bloqueoTurno ? '🔒 ' : ''}Viajar
         </button>
       }
     >

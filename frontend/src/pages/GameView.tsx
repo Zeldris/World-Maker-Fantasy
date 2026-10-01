@@ -498,6 +498,18 @@ export function GameView() {
   // combat.combatOpen de useCombatFlow) para tener un único punto de verdad de "hay algo abierto
   // encima del juego ahora mismo" antes de decidir si se abre uno nuevo.
   const anyModalOpen = anyActionModalOpen || !!detailTarget || !!kingdomFoundedInfo || combat.combatOpen
+  // UX-3 (hito 0.1) — mismas condiciones que la guardia de `handleSubmit` (useTurnFlow.ts), con su
+  // motivo: deshabilita los botones que lanzan un turno fuera del composer (Construir, Viajar,
+  // Campamento, salida de zona), que pueden estar a la vista mientras el narrador escribe.
+  const bloqueoTurno = characterThinking
+    ? 'El narrador todavía está escribiendo.'
+    : busyUntil
+      ? 'Estás ocupado con otra actividad.'
+      : endedAt
+        ? 'La partida ha terminado.'
+        : pendingDeathResolution
+          ? 'Primero resuelve lo que ha pasado tras tu muerte.'
+          : null
   // Un agresivo te corta el paso (2026-09-28) — la brújula se oculta hasta reaccionar (el backend
   // rechaza igualmente moverse con 409, esto solo evita ofrecer algo que no se puede hacer).
   const combateForzadoPendiente = characterLog.some((e) => e.dynamicModeOffer?.combateForzado)
@@ -1107,6 +1119,7 @@ export function GameView() {
     fictionalDate,
     characterName,
     busyUntil,
+    characterThinking,
     endedAt,
     pendingDeathResolution,
     characterLog,
@@ -1858,10 +1871,10 @@ export function GameView() {
 
 
       {simpleModal === 'camp' && saveId && (
-        <CampSelectionModal saveId={saveId} onSelect={handleSimpleModalSelect} onCancel={closeSimpleModal} />
+        <CampSelectionModal saveId={saveId} onSelect={handleSimpleModalSelect} onCancel={closeSimpleModal} bloqueoTurno={bloqueoTurno} />
       )}
       {simpleModal === 'travel' && saveId && (
-        <TravelDestinationModal saveId={saveId} onSelect={handleSimpleModalSelect} onCancel={closeSimpleModal} />
+        <TravelDestinationModal saveId={saveId} onSelect={handleSimpleModalSelect} onCancel={closeSimpleModal} bloqueoTurno={bloqueoTurno} />
       )}
       {healModalOpen && (
         <HealSelectionModal
@@ -1965,6 +1978,7 @@ export function GameView() {
             setZonaModalOpen(false)
             handleSubmit(actionText)
           }}
+          bloqueoTurno={bloqueoTurno}
           // Icono de parcela (§ 7.4, 2026-09-21) — roster estático ya cargado por useRecipesData
           // (nombre/descripción por recipeKey) + refreshSave (mismo callback que ya usa ReinoPanel
           // tras "Descansar en campamento", una acción directa sin /turn/narrate).
@@ -2094,6 +2108,7 @@ export function GameView() {
               onSubTabChange={setReinoSubTab}
               recipesStatus={recipesStatus}
               onBuild={(actionText) => handleSubmit(actionText)}
+              bloqueoTurno={bloqueoTurno}
             />
           )}
           {activePanel === 'enciclopedia' && (

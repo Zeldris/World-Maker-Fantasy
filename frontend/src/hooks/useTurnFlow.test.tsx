@@ -91,8 +91,9 @@ function baseClassifyResponse(overrides: Partial<Awaited<ReturnType<typeof reque
   }
 }
 
-function useHarness(fictionalDate = 'Día 1, mañana', onCazaPorTexto?: (r: unknown) => void) {
+function useHarness(fictionalDate = 'Día 1, mañana', onCazaPorTexto?: (r: unknown) => void, thinkingInicial = false) {
   const [characterLog, setCharacterLog] = useState<LogEntry[]>([])
+  const [characterThinking, setCharacterThinking] = useState(thinkingInicial)
   const [condicionFisica, setCondicionFisica] = useState<CondicionFisica>('ILESO')
   const [endedAt, setEndedAt] = useState<string | null>(null)
   const [pendingDeathResolution, setPendingDeathResolution] = useState(false)
@@ -108,6 +109,7 @@ function useHarness(fictionalDate = 'Día 1, mañana', onCazaPorTexto?: (r: unkn
     fictionalDate,
     characterName: 'Gorhorn',
     busyUntil,
+    characterThinking,
     endedAt,
     pendingDeathResolution,
     characterLog,
@@ -117,7 +119,7 @@ function useHarness(fictionalDate = 'Día 1, mañana', onCazaPorTexto?: (r: unkn
     syncFromSave: vi.fn(),
     setCombatAwaitingDefense: vi.fn(),
     setInput: vi.fn(),
-    setCharacterThinking: vi.fn(),
+    setCharacterThinking,
     setTimedThinkingText: vi.fn(),
     setStreamingNarration: vi.fn(),
     setDiceReveal: vi.fn(),
@@ -182,6 +184,37 @@ describe('handleSubmit — guards', () => {
     act(() => result.current.turn.handleSubmit)
     rerender()
     expect(mockClassify).not.toHaveBeenCalled()
+  })
+
+  // UX-3 (hito 0.1) — Construir, Viajar y los modales de Campamento llaman a handleSubmit sin pasar
+  // por el composer deshabilitado.
+  it('UX-3: no llama a la API si el narrador ya está escribiendo (characterThinking)', async () => {
+    const { result } = renderHook(() => useHarness('Día 1, mañana', undefined, true))
+    await act(() => result.current.turn.handleSubmit('Me pongo a construir una empalizada'))
+    expect(mockClassify).not.toHaveBeenCalled()
+    expect(result.current.characterLog).toHaveLength(0)
+  })
+
+  it('UX-3: un segundo envío en el mismo instante (doble clic) no lanza otro turno', async () => {
+    let resolver!: (v: ReturnType<typeof baseClassifyResponse>) => void
+    mockClassify.mockImplementationOnce(() => new Promise((r) => (resolver = r)) as never)
+    mockClassify.mockResolvedValue(baseClassifyResponse())
+    mockNarrate.mockResolvedValue(baseNarrateResponse() as never)
+    const { result } = renderHook(() => useHarness())
+    const submit = result.current.turn.handleSubmit
+    let primero!: Promise<void>
+    act(() => {
+      primero = submit('Viajo a la Hondonada')
+      void submit('Viajo a la Hondonada')
+    })
+    expect(mockClassify).toHaveBeenCalledTimes(1)
+    await act(async () => {
+      resolver(baseClassifyResponse())
+      await primero
+    })
+    // Terminado el turno, se puede volver a actuar.
+    await act(() => result.current.turn.handleSubmit('Miro alrededor'))
+    expect(mockClassify).toHaveBeenCalledTimes(2)
   })
 })
 
