@@ -8,7 +8,10 @@ congelación del hito `0.1`: los bloques marcados **«arreglo»** son correccion
 `0.1`; el resto entra en los hitos que decida Álvaro.
 
 **Documentos hermanos:** [Reino](roadmap-front-reino.md) · [Mapa de zona](roadmap-front-zona.md) ·
-[Experiencia de usuario: flujos, orden y bloqueos](roadmap-front-ux.md).
+[Experiencia de usuario: flujos, orden y bloqueos](roadmap-front-ux.md) ·
+[Cronista: historia viva de la partida](roadmap-cronista.md).
+**Orden y hito de cada fase:** lo fija el [mapa de roadmaps](21-roadmap.md#mapa-de-roadmaps) del
+roadmap general; la tabla de § 15 de este documento queda como referencia de prioridades internas.
 
 **Cómo se usa** (mismo convenio que el roadmap principal):
 - Al cerrar un punto se tacha aquí con su commit.
@@ -36,8 +39,9 @@ congelación del hito `0.1`: los bloques marcados **«arreglo»** son correccion
 12. [Pantallas fuera de la partida](#12-pantallas-fuera-de-la-partida-pre) — `PRE`
 13. [Sonido](#13-sonido-son) — `SON`
 14. [Calidad: cómo se verifica todo esto](#14-calidad-cómo-se-verifica-todo-esto-qa) — `QA`
-15. [Orden recomendado](#15-orden-recomendado)
-16. [Decisiones pendientes](#16-decisiones-pendientes-)
+15. [Lo que piden el Cronista, la zona y el Reino](#15-lo-que-piden-el-cronista-la-zona-y-el-reino-int) — `INT`
+16. [Orden recomendado](#16-orden-recomendado)
+17. [Decisiones pendientes](#17-decisiones-pendientes-)
 
 ---
 
@@ -194,6 +198,14 @@ congelación del hito `0.1`: los bloques marcados **«arreglo»** son correccion
 - **CFG-33 · Modo desarrollador**: muestra versión completa, id de partida, tiempos del narrador y
   las herramientas de prompts de imagen; **apagado por defecto**, de modo que `ImagePromptSlot`
   deja de verse en partida (H17). **S**
+- **CFG-34 · Estilo del mundo** (Cronista D-7): *Tranquilo · Equilibrado · Caótico* — cuántos sucesos
+  genera el narrador de fondo (presupuesto de tensión). Por defecto *Equilibrado*. **S**
+- **CFG-35 · Avisos de sucesos**: a partir de qué importancia sale una notificación (`HUD-6`):
+  todos · importantes (≥ 5, por defecto) · solo graves (≥ 8) · ninguno. **S**
+- **CFG-36 · Crónica**: escribir crónica diaria / semanal / solo al final; mostrar "por qué pasó"
+  (causas) en Leyendas. **S**
+- **CFG-37 · IA en la nube para el Cronista** (Cronista D-4): solo visible si hay clave configurada;
+  apagado por defecto. **S**
 
 ---
 
@@ -457,11 +469,16 @@ Contenedor común: `PanelDrawer` (cajón inferior, `max-w-4xl`, 85 vh).
 - **PAN-4 · Estadísticas** — los 7 atributos como **rueda** (mismo orden que `ATTRIBUTE_RING` de
   `attributeWheel.ts`, con sus colores), para que se vea de un vistazo la rueda de ventajas; reparto
   de puntos con +/− y vista previa antes de confirmar; barra de XP con barra fantasma. **M**
+  Nueva subpestaña **Historia** del panel Personaje: **etiquetas ganadas** (Cronista § 8.1) con el
+  suceso que las otorgó, y la **biografía viva** del personaje escrita por el Cronista. **M**
 - **PAN-5 · Habilidades** (465 líneas) — tarjetas con icono SVG, color del atributo, rol
   (ataque/defensa/utilidad) como forma; filtros por categoría; arrastrar directamente a la barra de
   habilidades y al cinturón de combate. **M**
 - **PAN-6 · Compañeros** — tarjetas con retrato, salud, lealtad/felicidad como barra y grupo de
   combate; acceso directo a su equipo (MOD-23). **S**
+  Con el Cronista (§ 8.2): **barra de aprobación** con sus **valores** (piedad, honor, codicia…)
+  como iconos, las últimas reacciones ("Kaila desaprueba: dejaste morir al prisionero") y aviso
+  visible cuando la aprobación cae a zona de abandono. **S**
 - **PAN-7 · Reino** (5 secciones) — **análisis completo y propio en
   [roadmap-front-reino.md](roadmap-front-reino.md)**; lo de abajo es solo el resumen:
   - *Visión general*: los indicadores (`KINGDOM_STAT_LABEL`) como medidores con tendencia ▲▼ y
@@ -481,6 +498,11 @@ Contenedor común: `PanelDrawer` (cajón inferior, `max-w-4xl`, 85 vh).
 - **PAN-9 · Diario** — búsqueda en el texto, filtros por canal (personaje/mundo/reino), saltar a
   una fecha ficticia, capítulos por día con separador (NAR-3) y exportar la partida como relato
   (texto/HTML). **M**
+- **PAN-9b · Leyendas de tu partida** (Cronista § 14) — Crónica (por días y semanas), Personajes,
+  Facciones, Lugares y Línea temporal, **solo con lo que el personaje sabe**; cada entrada enlaza a
+  sus sucesos y a la Enciclopedia; filtros por familia (clima, diplomacia, vida y muerte…). 🧭
+  ¿Pestaña del Diario o pestaña propia en el riel "El mundo"? (por defecto: pestaña propia, icono de
+  libro, junto a Diario). **L**
 - **PAN-10 · Misiones** — misión seguida fijada en la cabecera (HUD-7); objetivos como lista con
   casillas; recompensa visible con iconos; las cerradas plegadas. **S**
 - **PAN-11 · Enciclopedia** (1.574 líneas, 15 pestañas) — las 15 pestañas en un **índice lateral**
@@ -488,8 +510,13 @@ Contenedor común: `PanelDrawer` (cajón inferior, `max-w-4xl`, 85 vh).
   (hoy solo por nombre dentro de la pestaña); marcas de "nuevo" en entradas recién descubiertas;
   **línea temporal** visual para Historia (Era Común / Era de las Semillas); fichas en `DetailModal`
   ampliado (MOD-29). **L**
+  Con el Cronista: sección **"En tu partida"** en cada ficha (biografía viva, sucesos conocidos,
+  estado actual: muerto, líder, caída); **facciones y NPC nacidos en la partida** aparecen como
+  fichas propias marcadas; nada que el personaje no sepa. **M**
 - **PAN-12 · Reputación** — bandas como barra segmentada con la posición actual y el umbral
   siguiente; animación al subir/bajar ya existe (`hit-flash`), añadir el número que cambia. **S**
+  Con el Cronista: facciones **caídas** atenuadas con su fecha, facciones **nuevas** marcadas, y
+  etiquetas `AMIGO_DE`/`ENEMIGO_DE` junto a cada facción. **S**
 
 ### Barras y composer
 - **PAN-13 · Composer** (`ChatComposer`) — `↑`/`↓` para recuperar acciones anteriores (H31);
@@ -517,6 +544,10 @@ Contenedor común: `PanelDrawer` (cajón inferior, `max-w-4xl`, 85 vh).
   (`quest` misión, `moss` logro/obtenido, `danger` peligro, `accent` sistema, `accent2` mundo vivo):
   misión aceptada/completada, objeto obtenido, expedición vuelta, cambio de relación entre facciones
   (enlaza con "El mundo vivo, visible" del hito `0.1`). Agrupa repetidas. **M**
+  Con el Cronista: es el canal de los **sucesos que el personaje llega a saber** (rumores, caídas,
+  guerras, nacimientos notables, consecuencias), filtrados por importancia (`CFG-35`); cada
+  notificación abre su entrada en Leyendas. Tras un viaje o descanso de varios días, **una sola**
+  notificación resumen ("Mientras viajabas: 3 sucesos") en vez de varias (`UX-31`).
 - **HUD-7 · Misión seguida** en la cabecera, con su objetivo actual en una línea. **S**
 - **HUD-8 · Barra de "Ocupado"** (`busyUntil`): hoy una línea de texto con cuenta atrás; propuesta:
   barra de progreso real con el icono de la actividad y la hora ficticia de fin. **S**
@@ -526,6 +557,10 @@ Contenedor común: `PanelDrawer` (cajón inferior, `max-w-4xl`, 85 vh).
   (requiere BAS-2). **S**
 - **HUD-11 · Cabecera adaptable a 1280 px**: hoy son 6-7 chips en fila que hacen `flex-wrap`; agrupar
   hambre/sed/energía en un bloque compacto con tooltip detallado. **S**
+- **HUD-12 · "El mundo avanza"**: indicador discreto (gema que respira junto a la fecha) mientras
+  corre el avance diario o el Cronista en segundo plano; **nunca bloquea nada** (`UX-29`). **S**
+- **HUD-13 · Etiqueta principal** del personaje bajo su nombre en la cabecera (la de más peso, p. ej.
+  "Verdugo de Torgash"), con las demás en el tooltip. **S**
 
 ---
 
@@ -545,6 +580,12 @@ Contenedor común: `PanelDrawer` (cajón inferior, `max-w-4xl`, 85 vh).
   de tranquilidad ("el narrador local está pensando…"). **S**
 - **NAR-8 · Banners de entidad** (`entityBanner`): fundido y leve zoom al cargar, en lugar de aparecer
   de golpe (H10). **S**
+- **NAR-9 · Rumores en "El mundo"** (Cronista § 9): entradas con estilo propio (pergamino, "Se dice
+  en las Llanuras que…"), región y antigüedad del rumor, enlace a Leyendas. **S**
+- **NAR-10 · Reacciones de compañeros** en el registro de personaje (Cronista § 8.2): línea breve con
+  el retrato y el valor afectado, como el aviso de aprobación de Baldur's Gate 3. **S**
+- **NAR-11 · Informe del amanecer**: al cambiar de día, una sola tarjeta plegable que junta la
+  crónica del día del Cronista y el informe del Reino (`REI-100`), en vez de dos piezas separadas. **M**
 
 ---
 
@@ -644,7 +685,63 @@ La mayor ausencia "de videojuego" (H14). Todo empaquetado; volumen en `CFG-25`.
 
 ---
 
-## 15. Orden recomendado
+## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
+
+Revisión cruzada (2026-10-01) con [roadmap-cronista.md](roadmap-cronista.md),
+[roadmap-front-zona.md](roadmap-front-zona.md) y [roadmap-front-reino.md](roadmap-front-reino.md):
+lo que esos documentos necesitan del diseño general y que este roadmap no tenía. Los cambios ya
+están incorporados en sus secciones (`CFG-34`…`37`, `PAN-4`, `PAN-6`, `PAN-9b`, `PAN-11`,
+`PAN-12`, `HUD-6`, `HUD-12`, `HUD-13`, `NAR-9`…`NAR-11`); aquí van las piezas transversales.
+
+### 15.1 Lenguaje visual del mundo vivo
+- **INT-1 · Familias de sucesos con identidad propia**: un icono SVG (`BAS-2`) y un color de token por
+  familia del Cronista — clima (`accent2`), natural (`moss`), vida y muerte (`wood-200` / `danger`
+  para muertes), diplomacia (`quest`), facción (paleta por raza), economía (`cost`), Reino
+  (`accent`), jugador (`accent`), lore (`wood-300`). Se usan igual en notificaciones, Leyendas,
+  rumores y fichas. **S**
+- **INT-2 · Importancia visible**: 1-4 sin marca, 5-7 con borde, 8-10 con sello de lacre y entrada
+  con `stamp-in`; la importancia nunca se muestra como número al jugador. **S**
+- **INT-3 · Causas enlazadas**: en Leyendas y en las fichas, "por qué pasó" como cadena de sucesos
+  clicables (Día 14 → Día 15 → …), estilo línea de tiempo; activable con `CFG-36`. **M**
+- **INT-4 · Lo desconocido se ve como desconocido**: un suceso del que solo se sabe una parte
+  aparece como rumor ("se dice…"), y lo que el personaje no sabe **no existe en ninguna pantalla**
+  (coherente con `UX-30`). **S**
+
+### 15.2 Personas que recuerdan
+- **INT-5 · Etiquetas como insignias**: mismo componente en la cabecera (`HUD-13`), en la ficha del
+  personaje (`PAN-4`) y en la tarjeta de un NPC que reacciona a ellas ("Te reconoce: Verdugo de
+  Torgash"). **S**
+- **INT-6 · Recuerdo de un NPC**: en su ficha y en el modo dinámico, una línea "Recuerda: le
+  perdonaste la vida (Día 9)". En el mapa de zona, anillo de *némesis* para un NPC con recuerdo muy
+  negativo (ver `ZON-16`). **S**
+- **INT-7 · Compañero que se va**: aviso tres días antes en Compañeros y en el registro; el abandono
+  es una capa de *Decisión* (`UX-9`) con su despedida, nunca un borrado silencioso. **S**
+
+### 15.3 Consecuencias en el mapa de zona
+- **INT-8 · Fichas que vienen de una consecuencia** (Cronista § 7.2: un NPC perdonado que vuelve, un
+  vengador): pictograma normal más un pequeño sello "te conoce"; al pasar el ratón, la tarjeta
+  flotante (`ZON-40`) dice de qué suceso viene. **S**
+- **INT-9 · Rumor con lugar**: si un rumor menciona una zona conocida, el mapa de Berig marca la
+  región con un icono de pergamino hasta que se lee. **S**
+
+### 15.4 Reino y Cronista
+- **INT-10 · Un solo informe diario** (`NAR-11`) que junta el informe del Reino (`REI-100`) y la
+  crónica del día; los sucesos del Reino viven también en Leyendas, filtro "Reino". **S**
+- **INT-11 · Facciones nuevas en Diplomacia** (`REI-70`): una facción escindida o fundada aparece con
+  su paleta por raza, la marca "nueva" y el suceso que la creó. **S**
+
+### 15.5 Epílogo
+- **INT-12 · Epílogo de la partida** (`UX-18` + Cronista `CR-28`): pantalla de pergamino con el
+  texto del Cronista, por secciones (el personaje, sus compañeros, cada facción, cada lugar), con
+  la línea de tiempo de los sucesos de importancia ≥ 8 y botón *Exportar como relato*. **M**
+
+---
+
+## 16. Orden recomendado
+
+> El hito en que entra cada bloque lo fija el [mapa de roadmaps](21-roadmap.md#qué-entra-en-cada-hito);
+> esta tabla solo ordena prioridades dentro del front. Las piezas `INT` entran con la fase del
+> Cronista que las genera (Fases 4-5 en `0.2`/`0.3`, epílogo en `0.4`).
 
 | Orden | Bloque | Motivo |
 |---|---|---|
@@ -659,7 +756,7 @@ La mayor ausencia "de videojuego" (H14). Todo empaquetado; volumen en `CFG-25`.
 | 9 | **SON** + **CFG-25** | Sonido, cuando se decida su alcance. |
 | — | **CFG-7/8 nativos** | Al montar el envoltorio Tauri. |
 
-## 16. Decisiones pendientes 🧭
+## 17. Decisiones pendientes 🧭
 
 1. Resolución real solo con Tauri, o adelantar el envoltorio. (CFG-7)
 2. Fuente de cuerpo y de narración. (BAS-1)
@@ -674,3 +771,4 @@ La mayor ausencia "de videojuego" (H14). Todo empaquetado; volumen en `CFG-25`.
 11. Animar el cielo de cristal pese a la decisión original. (ATM-3)
 12. Cursor temático. (ATM-5)
 13. Alcance y origen del sonido. (SON)
+14. Dónde viven las Leyendas: pestaña propia del riel "El mundo" o dentro del Diario. (PAN-9b)

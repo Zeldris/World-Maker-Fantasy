@@ -23,6 +23,12 @@ gestionar todo lo posible** del Reino, con una interfaz amable, estilizada y din
 Mismas restricciones que el roadmap general: escritorio y Steam Deck (sin móvil), GPU modesta,
 recursos empaquetados.
 
+**Hito de cada fase:** [mapa de roadmaps](21-roadmap.md#qué-entra-en-cada-hito) (R-A en `0.1`,
+R-B…R-E en `0.3`, R-F en `0.5`). **Con el Cronista** (`roadmap-cronista.md`): el informe del
+amanecer (`REI-100`) se une a la crónica del día en una sola tarjeta (`NAR-11`, `INT-10`); las
+facciones nuevas o caídas aparecen en Diplomacia (`INT-11`); la Crónica (`REI-90`) lee del Libro de
+Sucesos con filtro "Reino".
+
 ---
 
 ## 1. Qué hay hoy

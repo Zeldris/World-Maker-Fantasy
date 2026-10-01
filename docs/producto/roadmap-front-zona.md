@@ -23,6 +23,11 @@ se hace desde el mapa* (`docs/mecanicas/20-zona-cuadricula-interactuar.md`).
 **[P]** propuesta, esfuerzo **S/M/L**. Columna **Back**: ✅ solo front · 🔌 exponer un dato que el
 backend ya tiene · 🛠️ lógica nueva en backend. Mismas restricciones que el roadmap general:
 escritorio y Steam Deck (1280×800), GPU modesta, recursos empaquetados, `prefers-reduced-motion`.
+**Hito de cada fase:** [mapa de roadmaps](21-roadmap.md#qué-entra-en-cada-hito) (Z-A en `0.1`, Z-B…Z-D
+en `0.2`, Z-E en `0.4`, Z-F en `0.5`). **Con el Cronista** (`roadmap-cronista.md`): las fichas que
+vienen de una consecuencia aplazada llevan sello "te conoce" y los NPC con recuerdo muy negativo
+anillo de némesis (`INT-6`, `INT-8` del roadmap de front); la hostilidad que pide `ZON-50` sale del
+mismo estado por partida que el Cronista crea.
 
 ---
 

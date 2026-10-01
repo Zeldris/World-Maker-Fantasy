@@ -13,6 +13,10 @@ mientras juegas"*, la única pieza nueva que faltaba) y el **punto 7 ya cerrado*
 **Convenio:** identificadores `CR-n` por tarea; **🧭** = decisión de Álvaro (cada una lleva un
 **valor por defecto** para no bloquear la implementación: si no se dice nada, se implementa el
 valor por defecto); esfuerzo **S** (horas) · **M** (1-2 días) · **L** (varios días).
+**Hito de cada fase:** [mapa de roadmaps](21-roadmap.md#qué-entra-en-cada-hito) — Fase 1 mínima en
+`0.1` (🧭), Fases 2, 3 y 5 en `0.2`, Fases 4 y 6 en `0.3`, Fase 7 en `0.4`, Fase 8 en `0.5`. Lo
+que esto exige a la interfaz está en `roadmap-front.md` § 15 (`INT`) y en
+`roadmap-front-ux.md` § 4.7.
 
 ---
 

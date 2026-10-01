@@ -1,8 +1,11 @@
 # Roadmap de front — Experiencia de usuario (flujos, orden y bloqueos)
 
 **Creado:** 2026-10-01. Documento propio, complementario a [roadmap-front.md](roadmap-front.md)
-(diseño y componentes), [roadmap-front-reino.md](roadmap-front-reino.md) y
-[roadmap-front-zona.md](roadmap-front-zona.md).
+(diseño y componentes), [roadmap-front-reino.md](roadmap-front-reino.md),
+[roadmap-front-zona.md](roadmap-front-zona.md) y [roadmap-cronista.md](roadmap-cronista.md).
+**Orden y hito de cada fase:** [mapa de roadmaps](21-roadmap.md#mapa-de-roadmaps).
+**Revisión 2026-10-01:** incorporado lo que el Cronista añade a la experiencia (sucesos del mundo,
+rumores, consecuencias, compañeros que juzgan, avance diario en segundo plano): § 4.7, § 5 y § 6.
 **Qué cubre (petición de Álvaro):** **en qué orden se abren las vistas, cómo se abren, si ese orden
 es correcto, y si se bloquea lo necesario mientras se ejecuta una acción** — todo lo relacionado
 con la experiencia de uso, no con el aspecto.
@@ -186,13 +189,26 @@ stateDiagram-v2
   | 5 · Crítico | muerte, fin de partida |
   | 6 · Sistema | menú de pausa, configuración, confirmar salida, error |
 
+  Dónde va lo que genera el Cronista (ver § 4.7):
+
+  | Qué | Nivel |
+  |---|---|
+  | Rumor, noticia, nacimiento, cambio de relación | Sin capa: notificación (`HUD-6`) + entrada en el registro |
+  | Informe del amanecer (`NAR-11`) | Sin capa: tarjeta plegable en el registro |
+  | Leyendas, fichas "En tu partida" | 1 · Consulta |
+  | Consecuencia que exige reaccionar (vengador, emboscada) | 3 · Escena (es un encuentro) |
+  | Compañero que se marcha, sucesión que pide decidir | 4 · Decisión |
+  | Epílogo | 5 · Crítico |
+
 - **UX-10 · Decisiones en cola** — clase, especialización y fundación del reino **esperan** a que
   termine el combate o el modo dinámico y a que se haya leído la narración; mientras esperan, un
   aviso en la cabecera ("⚠️ Tienes una clase por elegir") permite abrirlas antes si se quiere.
   Resuelve H8 y H9. **M**
 - **UX-11 · Presentación en orden del turno** — secuencia fija: acción del jugador → tirada
-  (`DiceTray`) → narración → cambios de estado (vida, inventario, XP con su animación) → ofertas
-  en el registro → decisiones de la cola. Cada paso espera al anterior. **M**
+  (`DiceTray`) → narración → cambios de estado (vida, inventario, XP con su animación) →
+  **reacciones de compañeros** (`NAR-10`) → ofertas en el registro → **sucesos del mundo que se
+  acaban de saber** (rumores, informe del día) → decisiones de la cola. Cada paso espera al
+  anterior. **M**
 - **UX-12 · Qué pasa con el cajón abierto cuando llega algo** — eventos **críticos** (combate,
   muerte, encuentro agresivo) cierran el cajón con animación; los **importantes** (narración nueva,
   oferta, misión) muestran una notificación y una marca en el registro; los **menores** no
@@ -248,6 +264,38 @@ stateDiagram-v2
   formularios a medias y decisiones obligatorias); todo panel se abre y se cierra con su misma
   pestaña o su tecla. **S**
 
+### 4.7 El mundo vivo (Cronista)
+El Cronista (`roadmap-cronista.md`) hace que pasen cosas sin que el jugador actúe y que lo que hizo
+vuelva más tarde. Eso exige estas reglas de experiencia:
+
+- **UX-29 · El mundo de fondo nunca bloquea** — el avance diario, el Escriba, el Árbitro y el
+  Cronista corren con menos prioridad que el turno y **no cambian la fase** de la partida
+  (`useGamePhase`); solo encienden el indicador "El mundo avanza" (`HUD-12`). Si el jugador envía una
+  acción, su turno pasa delante (cola con prioridades, Cronista § 13.2). **S**
+- **UX-30 · Solo lo que el personaje sabe** — ninguna pantalla (Leyendas, Enciclopedia, Reputación,
+  Diplomacia, mapa, notificaciones) muestra un suceso que el personaje no conoce; todas leen del
+  mismo filtro de conocimiento del backend. Un suceso a medio saber se presenta como rumor. **S**
+- **UX-31 · Varios días de golpe** — tras un viaje o descanso largo, los sucesos que se han sabido
+  durante esos días llegan **juntos**: una notificación resumen y una tarjeta "Mientras viajabas…"
+  en el registro, nunca una ráfaga de avisos. **S**
+- **UX-32 · Consecuencias como encuentros** — una consecuencia aplazada que aparece en escena
+  (alguien que vuelve) entra por el mismo flujo que un encuentro de zona (fase *Encuentro*, tirada
+  de quién ve a quién, oferta en el registro y sobre la ficha), con un sello "te conoce"
+  (`INT-8`). **S**
+- **UX-33 · Avisos de compañeros con margen** — un compañero que va a marcharse avisa con 3 días
+  ficticios (registro + panel Compañeros); la marcha llega como capa de *Decisión* (despedida, y si
+  procede, intentar convencerle), nunca como desaparición silenciosa. **S**
+- **UX-34 · Sin deshacer para el mundo** — el *Deshacer* de `UX-25` solo vale para acciones de
+  gestión del jugador (tirar, retirar…); lo que cambia la historia (matar, perdonar, prometer) no se
+  deshace. 🧭 ¿Avisar antes de actos de mucho peso (matar a un líder)? Por defecto **no** — como en
+  Baldur's Gate 3, la consecuencia es parte del juego. **S**
+- **UX-35 · El turno no espera al día** — al cruzar un día ficticio, el avance diario se ejecuta
+  **después** de devolver la narración del turno; sus resultados llegan en el siguiente refresco
+  (notificación o informe del amanecer), sin alargar el turno. **S**
+- **UX-36 · Leyendas siempre a una tecla** — atajo `Y` (se añade a la lista de `CFG-26`; `L` sigue
+  siendo la Enciclopedia y `Q`/`E` el cambio de panel de `PAN-1`) y enlace desde cada notificación
+  y rumor a su entrada. **S**
+
 ---
 
 ## 5. Matriz de permisos propuesta
@@ -265,6 +313,9 @@ stateDiagram-v2
 | Elección | ⛔ | ⛔ | ✅ (Enciclopedia) | ⛔ | ⛔ | la propia | ✅ |
 | Muerte pendiente | ⛔ (salvo *Aceptar*) | ⛔ | 👁 | ⛔ | ⛔ | ⏳ | ✅ |
 | Fin | ⛔ | ⛔ | 👁 (Diario) | ⛔ | ⛔ | ⛔ | ✅ |
+
+**Mundo de fondo** (avance diario, Cronista): no es una fila de la matriz porque **no es una fase**;
+mientras corre, todo se comporta según la fase real (`UX-29`).
 
 🧭 Revisar con Álvaro las casillas dudosas: si en *Pensando* debe poderse equipar algo (hoy se
 puede), y si en *Combate* se debe poder abrir Enciclopedia/Habilidades (hoy sí).
@@ -293,6 +344,15 @@ del hook `useGamePhase`.
 11. Corta la red durante un turno → la tarjeta dice "reconectando" y ofrece reintentar.
 12. Tira un objeto → aparece *Deshacer* y funciona.
 13. Una partida completa solo con teclado (y con mando en la Steam Deck).
+14. Cruza un día ficticio con el Cronista activo → el turno llega igual de rápido; el informe del
+    día aparece después (`UX-35`).
+15. Viaja varios días → una sola notificación resumen y una tarjeta "Mientras viajabas…" (`UX-31`).
+16. Un suceso lejano que el personaje no sabe → no aparece en ninguna pantalla hasta que llega como
+    rumor (`UX-30`).
+17. Perdona a un NPC y vuelve a cruzártelo días después → entra como encuentro con sello "te
+    conoce" (`UX-32`).
+18. Contraría a un compañero varias veces → aviso con margen y despedida como decisión (`UX-33`).
+19. Envía una acción mientras el Cronista escribe → tu turno pasa delante (`UX-29`).
 
 ---
 
@@ -305,6 +365,9 @@ del hook `useGamePhase`.
 | **UX-C · Orden** | UX-9, UX-10, UX-11, UX-12 | Una cosa importante a la vez y en el orden en que se lee. |
 | **UX-D · Entrada y salida** | UX-15, UX-17, UX-18, UX-19, UX-20 | Empezar más rápido, salir sin sustos, Atrás como en un juego. |
 | **UX-E · Pulido** | UX-6, UX-21, UX-22, UX-23, UX-25…28 | Foco, esperas, deshacer, primeros pasos. |
+| **UX-F · Mundo vivo** | UX-29…UX-36 | Llega con las fases 3-5 del Cronista (hitos `0.2`-`0.3`); `UX-29` y `UX-35` antes de que el Cronista use la IA. |
+
+El hito exacto de cada fase lo fija el [mapa de roadmaps](21-roadmap.md#qué-entra-en-cada-hito).
 
 ## 8. Decisiones pendientes 🧭
 
@@ -315,3 +378,4 @@ del hook `useGamePhase`.
 5. Ocultar "Crear desde cero" hasta el hito `0.7`. (UX-17)
 6. Atrás sin capas abiertas: menú de pausa o salir. (UX-20)
 7. Qué acciones se confirman y cuáles se deshacen. (UX-25)
+8. Avisar o no antes de actos de mucho peso, como matar a un líder. (UX-34)
