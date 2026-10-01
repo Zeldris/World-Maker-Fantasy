@@ -13,6 +13,9 @@ import { combatKeyFor } from '../lib/gameViewHelpers'
 import { professions } from '../data/professions'
 
 interface LogPanelProps {
+  /// UX-4 (hito 0.1) — motivo global por el que ahora no se puede actuar (mismo `bloqueoTurno` de
+  /// GameView.tsx); se reenvía a todas las tarjetas de oferta. `null`/ausente = libre.
+  bloqueoAcciones?: string | null
   title: string
   subtitle: string
   entries: LogEntry[]
@@ -210,6 +213,7 @@ export const LogPanel = memo(function LogPanel({
   onClementeConvaleciente,
   onViewFullHistory,
   liveEntryIds,
+  bloqueoAcciones,
 }: LogPanelProps) {
   const { enciclopediaIndex, onEntityDetail, onEntityQuickInsert } = useEnciclopediaLink()
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -469,6 +473,7 @@ export const LogPanel = memo(function LogPanel({
                   POST /saves/:id/quests/aceptar; "Cancelar" solo limpia la tarjeta, sin backend. */}
               {entry.questOffer && (
                 <OfferCard
+                  bloqueo={bloqueoAcciones}
                   tone="quest"
                   icon="🎯"
                   title={`Misión propuesta: ${entry.questOffer.title}`}
@@ -501,6 +506,7 @@ export const LogPanel = memo(function LogPanel({
                     offer.tipo === 'FAUNA' && (offer.cantidad ?? 1) > 1 ? `Un grupo de ${offer.cantidad} ${offer.targetName}` : offer.targetName;
                   return (
                     <OfferCard
+                      bloqueo={bloqueoAcciones}
                       tone={offer.combateForzado ? 'danger' : 'accent2'}
                       icon={offer.combateForzado ? '⚔️' : offer.tipo === 'RECURSO' ? '🪨' : '💬'}
                       title={
@@ -577,6 +583,7 @@ export const LogPanel = memo(function LogPanel({
                   vez de los 2 fijos de las otras tarjetas. */}
               {entry.npcInteractionOffer && (
                 <OfferCard
+                  bloqueo={bloqueoAcciones}
                   tone="accent2"
                   icon="🗣️"
                   title={entry.npcInteractionOffer.npcName}
@@ -594,6 +601,7 @@ export const LogPanel = memo(function LogPanel({
                   2026-09-28) — un único botón que abre el modal de movimiento de zona. */}
               {entry.harvestSuggestion && (
                 <OfferCard
+                  bloqueo={bloqueoAcciones}
                   tone="accent2"
                   icon="🧭"
                   title={`Busca ${entry.harvestSuggestion.sourceName} en el mapa de la zona`}
@@ -620,6 +628,7 @@ export const LogPanel = memo(function LogPanel({
                 if (!resuelto) return null
                 return (
                   <OfferCard
+                    bloqueo={bloqueoAcciones}
                     key={offer.combatKey}
                     tone="danger"
                     icon="⚠️"
@@ -730,6 +739,7 @@ export const LogPanel = memo(function LogPanel({
           ?.filter((n) => n.condicion === 'CONVALECIENTE' && !n.dismissed && !n.targetedForKill)
           .map((npc) => (
             <OfferCard
+              bloqueo={bloqueoAcciones}
               key={`persistent-convaleciente-${npc.slug}`}
               tone="danger"
               icon="⚠️"

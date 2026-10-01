@@ -162,8 +162,11 @@ stateDiagram-v2
   deshabilitan igual que el composer. Resuelve H1. **S** **arreglo**~~ ✅ 2026-10-01: guardia en
   `useTurnFlow` (ref del estado + ref propia contra el doble clic) y `bloqueoTurno` con motivo en
   Construir, Viajar, Campamento y salida de zona. Lo de "si la fase no lo permite" llega con `UX-1`/`UX-2`.
-- **UX-4 · Tarjetas del registro con el estado global** — `OfferCard` recibe `disabled` y `motivo`
-  de `canDo`. Resuelve H2. **S** **arreglo**
+- ~~**UX-4 · Tarjetas del registro con el estado global** — `OfferCard` recibe `disabled` y `motivo`
+  de `canDo`. Resuelve H2. **S** **arreglo**~~ ✅ 2026-10-01: `OfferCard` recibe `bloqueo` (el
+  mismo `bloqueoTurno` de UX-3, vía `LogPanel.bloqueoAcciones`) y deshabilita todas sus acciones con
+  el motivo. El combate pendiente queda fuera a propósito: la tarjeta de un agresivo que te corta el
+  paso es justo como se reacciona a él. Pasará a `canDo` con `UX-2`.
 - **UX-5 · Paneles en modo consulta** cuando la fase no permite cambios: se abren y se leen, pero
   los botones que modifican (equipar, tirar, construir, mercado…) se deshabilitan con el motivo.
   Lo que no toca el turno (renombrar una plantilla, ordenar) puede seguir libre. Resuelve H3. **M**

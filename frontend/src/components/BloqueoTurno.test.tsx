@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, fireEvent, cleanup } from '@testing-library/react'
 import { ZonaSalidaModal } from './ZonaSalidaModal'
 import { EdificiosParcelasSection } from './panels/reino/EdificiosParcelasSection'
+import { OfferCard } from './OfferCard'
 import type { ZonaSalidaInfo } from '../lib/api'
 import type { RecipeStatusInfo } from '../types'
 
@@ -43,5 +44,44 @@ describe('UX-3 — botones que lanzan un turno con bloqueoTurno', () => {
     expect(getAllByText('El narrador todavía está escribiendo.').length).toBeGreaterThan(0)
     fireEvent.click(boton)
     expect(onBuild).not.toHaveBeenCalled()
+  })
+
+  // UX-4 (hito 0.1, H2) — las tarjetas del registro solo miraban su propio `busy`.
+  it('OfferCard: con bloqueo, todas las acciones deshabilitadas y el motivo visible', () => {
+    const onAceptar = vi.fn()
+    const { getByRole, getByText } = render(
+      <OfferCard
+        tone="quest"
+        icon="📜"
+        title="Nueva misión"
+        actions={[
+          { label: 'Aceptar', tone: 'primary', onClick: onAceptar },
+          { label: 'Cancelar', tone: 'neutral', onClick: () => {} },
+        ]}
+        bloqueo="El narrador todavía está escribiendo."
+      />,
+    )
+    const aceptar = getByRole('button', { name: 'Aceptar' }) as HTMLButtonElement
+    expect(aceptar.disabled).toBe(true)
+    expect((getByRole('button', { name: 'Cancelar' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(getByText(/El narrador todavía está escribiendo/)).toBeTruthy()
+    fireEvent.click(aceptar)
+    expect(onAceptar).not.toHaveBeenCalled()
+  })
+
+  it('OfferCard: sin bloqueo, cada acción respeta solo su propio disabled', () => {
+    const { getByRole } = render(
+      <OfferCard
+        tone="accent2"
+        icon="💬"
+        title="Un viajero"
+        actions={[
+          { label: 'Interactuar', tone: 'accent', onClick: () => {} },
+          { label: 'Ignorar', tone: 'neutral', disabled: true, onClick: () => {} },
+        ]}
+      />,
+    )
+    expect((getByRole('button', { name: 'Interactuar' }) as HTMLButtonElement).disabled).toBe(false)
+    expect((getByRole('button', { name: 'Ignorar' }) as HTMLButtonElement).disabled).toBe(true)
   })
 })

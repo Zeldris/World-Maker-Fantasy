@@ -1431,6 +1431,7 @@ export function GameView() {
           ) : (
             <LogPanel
               title="Tu personaje"
+              bloqueoAcciones={bloqueoTurno}
               subtitle="Lo que haces, dices y percibes"
               entries={characterLog}
               accent="accent"

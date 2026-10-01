@@ -20,6 +20,10 @@ interface OfferCardProps {
   actions: OfferCardAction[]
   /// "Ya resuelto" (convalecienteOffers) — sustituye las acciones por un texto plano.
   resolvedText?: string
+  /// UX-4 (hito 0.1, roadmap-front-ux.md H2) — estado global que impide actuar ahora (narrador
+  /// escribiendo, de viaje, partida terminada, muerte sin resolver): deshabilita TODAS las acciones
+  /// y enseña el motivo. Antes cada tarjeta solo miraba su propio `busy`.
+  bloqueo?: string | null
 }
 
 const CARD_TONE: Record<OfferCardProps['tone'], string> = {
@@ -46,7 +50,7 @@ const ACTION_TONE: Record<OfferCardAction['tone'], string> = {
 /// con borde/fondo por color semántico, título con emoji, fila de 2-3 botones) casi byte a byte,
 /// tres veces. Un cuarto tipo de oferta no necesitaría reinventar el markup, solo pasar `tone`/
 /// `actions` nuevos.
-export function OfferCard({ tone, icon, title, subtitle, warning, error, actions, resolvedText }: OfferCardProps) {
+export function OfferCard({ tone, icon, title, subtitle, warning, error, actions, resolvedText, bloqueo }: OfferCardProps) {
   return (
     <div className={`mt-2 rounded-lg border px-2.5 py-2 ${CARD_TONE[tone]}`}>
       <p className={`flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-[0.1em] ${TITLE_TONE[tone]}`}>
@@ -64,18 +68,20 @@ export function OfferCard({ tone, icon, title, subtitle, warning, error, actions
       {resolvedText ? (
         <p className="mt-1 text-2xs text-wood-400">{resolvedText}</p>
       ) : (
-        <div className="mt-2 flex flex-wrap gap-2">
+        <div className="mt-2 flex flex-wrap items-center gap-2">
           {actions.map((action) => (
             <button
               key={action.label}
               type="button"
-              disabled={action.disabled}
+              disabled={action.disabled || !!bloqueo}
+              title={bloqueo ?? undefined}
               onClick={action.onClick}
               className={`tactile rounded-lg border px-2.5 py-1 text-2xs font-semibold uppercase tracking-[0.08em] disabled:cursor-not-allowed disabled:opacity-50 ${ACTION_TONE[action.tone]}`}
             >
               {action.label}
             </button>
           ))}
+          {bloqueo && <span className="text-2xs text-wood-500">🔒 {bloqueo}</span>}
         </div>
       )}
     </div>
