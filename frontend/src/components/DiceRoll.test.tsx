@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest'
-import { forcedGradosFor } from './DiceRoll'
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import { render, cleanup, act } from '@testing-library/react'
+import { forcedGradosFor, DiceRollSingle, DiceRollVs, ROLL_DURATION_MS } from './DiceRoll'
 
 // Bug real jugando en vivo (2026-09-07, "las dos tiradas de combate deberían ser mi tirada vs la
 // suya, no contra una dificultad"): en un check OPUESTO (iniciativa, y cualquier intercambio de
@@ -29,5 +30,53 @@ describe('forcedGradosFor', () => {
     expect(leftGrado).toBe('claro')
     expect(rightGrado).toBe('fallo')
     expect([leftGrado, rightGrado]).not.toEqual(['claro', 'claro'])
+  })
+})
+
+/// DAD-3 y DAD-4 (hito 0.1) — la cuenta completa al aterrizar y los nombres reales sin truncar.
+describe('DiceRollSingle / DiceRollVs — DAD-3, DAD-4', () => {
+  afterEach(() => {
+    cleanup()
+    vi.useRealTimers()
+  })
+
+  it('al aterrizar enseña dado + bono = total vs dificultad → Éxito', () => {
+    vi.useFakeTimers()
+    const { getByTestId, queryByTestId } = render(
+      <DiceRollSingle roll={{ attribute: 'fuerza', value: 10, roll: 12, difficulty: 15, result: 17, success: true, gradoExito: 'claro' }} />,
+    )
+    expect(queryByTestId('tirada-total')).toBeNull()
+    act(() => {
+      vi.advanceTimersByTime(ROLL_DURATION_MS + 10)
+    })
+    expect(getByTestId('tirada-total').textContent).toBe('12 + 5 = 17 vs 15 → Éxito')
+  })
+
+  it('suma aparte lo que no es dado ni bono para que la cuenta cuadre', () => {
+    vi.useFakeTimers()
+    const { getByTestId } = render(
+      <DiceRollSingle roll={{ attribute: 'fuerza', value: 10, roll: 3, difficulty: 15, result: 10, success: false, gradoExito: 'fallo' }} />,
+    )
+    act(() => {
+      vi.advanceTimersByTime(ROLL_DURATION_MS + 10)
+    })
+    expect(getByTestId('tirada-total').textContent).toBe('3 + 5 + 2 = 10 vs 15 → Fallo')
+  })
+
+  it('tirada opuesta: nombres reales y, con los dos dados ya caídos, quién gana', () => {
+    vi.useFakeTimers()
+    const lado = (roll: number, result: number) => ({ attribute: 'carisma' as const, value: 8, roll, difficulty: 0, result, success: true })
+    const { getByText, getByTestId, queryByTestId } = render(
+      <DiceRollVs left={lado(15, 19)} right={lado(4, 8)} leftLabel="Gorhorn el de las Llanuras Altas" rightLabel="Corredor de cauce" leftFirst showDifficulty={false} />,
+    )
+    expect(getByText('Gorhorn el de las Llanuras Altas').className).not.toContain('truncate')
+    act(() => {
+      vi.advanceTimersByTime(ROLL_DURATION_MS + 10)
+    })
+    expect(queryByTestId('tirada-comparacion')).toBeNull()
+    act(() => {
+      vi.advanceTimersByTime(ROLL_DURATION_MS)
+    })
+    expect(getByTestId('tirada-comparacion').textContent).toBe('19 vs 8 → Gorhorn el de las Llanuras Altas')
   })
 })

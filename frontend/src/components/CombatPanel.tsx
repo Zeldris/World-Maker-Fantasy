@@ -76,6 +76,8 @@ interface CombatPanelProps {
   /// al de "El mundo" durante un combate). Sin `onCollapse`, no sale ningún botón.
   onCollapse?: () => void
   collapseIcon?: string
+  /// DAD-4 (hito 0.1) — nombre real del personaje en la tirada de iniciativa (sin él, "Tú").
+  characterName?: string
 }
 
 /// Fase 2 de efectos de clase (2026-08-27, auditoría de diseño/UX 2026-08-27 § 2.1: "un AUMENTO/
@@ -346,6 +348,7 @@ function EnemyFicha({
 /// que se queda en la barra inferior (petición explícita: "la barra de abajo queda libre para el
 /// texto") — el estado de selección vive en GameView.tsx, compartido entre este panel y esa barra.
 export function CombatPanel({
+  characterName,
   playerCondicion,
   playerActiveEffects,
   playerAttributes,
@@ -662,8 +665,9 @@ export function CombatPanel({
               key={`${lastInitiativeRoll.jugador.roll}-${lastInitiativeRoll.npc.roll}`}
               left={lastInitiativeRoll.jugador}
               right={lastInitiativeRoll.npc}
-              leftLabel="Tú"
-              rightLabel="el enemigo"
+              leftLabel={characterName ?? 'Tú'}
+              // Un solo rival: su nombre; varios: la iniciativa es del grupo enemigo.
+              rightLabel={npcs.length === 1 ? npcs[0].name : 'Los enemigos'}
               leftFirst={lastInitiativeRoll.ganador === 'jugador'}
               showDifficulty={false}
               onAllLanded={() => setInitiativeRevealed(true)}

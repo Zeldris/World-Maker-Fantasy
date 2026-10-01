@@ -260,15 +260,18 @@ partida (cada turno, cada intercambio, cada recolección). Merece un sistema pro
    de aterrizar) y `GatheringDiceReveal` duplica la lógica en vez de reutilizarla.
 
 ### 4.2 Arreglos inmediatos **arreglo**
-- **DAD-1** · `key` por tirada en `TameoModal` (H18). **S**
-- **DAD-2** · Veredicto de Tameo diferido a `onAllLanded` (H19), como ya hacen Recolección e
-  iniciativa. **S**
-- **DAD-3** · Mostrar siempre `dado + bono = total vs dificultad → Éxito/Fallo` al aterrizar (H20). **S**
-- **DAD-4** · Nombres reales en los dos lados (personaje y rival) en vez de "Tú/el enemigo", y
-  quitar el truncado a 6rem. **S**
-- **DAD-5** · `scrollIntoView` solo si la tirada está fuera de la vista y el jugador no ha hecho
-  scroll manual en los últimos segundos. **S**
-- **DAD-6** · Color propio de fallo (`danger-400`) y subir el contraste de "necesitas X". **S**
+- ~~**DAD-1** · `key` por tirada en `TameoModal` (H18). **S**~~ ✅
+- ~~**DAD-2** · Veredicto de Tameo diferido a `onAllLanded` (H19), como ya hacen Recolección e
+  iniciativa. **S**~~ ✅ (también la subida de Felicidad y el color del recuadro)
+- ~~**DAD-3** · Mostrar siempre `dado + bono = total vs dificultad → Éxito/Fallo` al aterrizar (H20). **S**~~ ✅
+  (lo que el backend suma aparte, como el bono de tirada de una habilidad, sale como término propio;
+  en las opuestas, `total vs total → ganador` al caer los dos dados)
+- ~~**DAD-4** · Nombres reales en los dos lados (personaje y rival) en vez de "Tú/el enemigo", y
+  quitar el truncado a 6rem. **S**~~ ✅ (iniciativa de combate y Tameo; el log ya los pasaba)
+- ~~**DAD-5** · `scrollIntoView` solo si la tirada está fuera de la vista y el jugador no ha hecho
+  scroll manual en los últimos segundos. **S**~~ ✅ (`lib/scrollTirada.ts`, 4 s)
+- ~~**DAD-6** · Color propio de fallo (`danger-400`) y subir el contraste de "necesitas X". **S**~~ ✅
+  (todo cerrado el 2026-10-01)
 
 ### 4.3 Nuevo componente único: `DiceTray` (bandeja de tiradas) **[P]** **L**
 Un solo componente para todas las tiradas, con dos modos (**en vivo** y **histórico compacto**) y

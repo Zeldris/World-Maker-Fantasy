@@ -1511,6 +1511,7 @@ export function GameView() {
             // se sustituye por CombatPanel mientras dura el combate; el log de mundo en sí sigue
             // acumulándose por debajo, sin perderse, listo para cuando termine.
             <CombatPanel
+              characterName={characterName ?? undefined}
               playerCondicion={condicionFisica}
               playerActiveEffects={playerActiveEffects}
               energia={energia}
@@ -2129,7 +2130,7 @@ export function GameView() {
             />
           )}
           {activePanel === 'companeros' && saveId && (
-            <CompanerosPanel saveId={saveId} companions={companions} inventory={inventory} onRefreshSave={refreshSave} plantillasEquipo={plantillasEquipo} />
+            <CompanerosPanel saveId={saveId} companions={companions} inventory={inventory} onRefreshSave={refreshSave} plantillasEquipo={plantillasEquipo} characterName={characterName ?? undefined} />
           )}
           {activePanel === 'misiones' && <MisionesPanel quests={quests} />}
           {activePanel === 'reino' && saveId && (

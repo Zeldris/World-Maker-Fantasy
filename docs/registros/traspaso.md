@@ -14,8 +14,8 @@ cada commit.**
 | **Rama de trabajo** | `claude/frontend-improvements-roadmap-0mpckt`. Flujo acordado (2026-10-01): commit + push a esta rama con cada cosa hecha; a `main` se pasa **por pull request** (desde esta sesión el push directo a `main` lo bloquea el filtro de permisos) |
 | **Último commit en `main`** | `423c8a5` — roadmap de roadmaps y revisión cruzada de front y UX (+ el commit de esta bitácora) |
 | **Hito** | `0.1` Llanuras estable — [plan](../producto/plan-roadmap-0.1.md) · [mapa de roadmaps](../producto/21-roadmap.md#qué-entra-en-cada-hito) |
-| **Tarea en curso** | Ninguna. Bloque UX-A cerrado (`UX-3/4/13/16/24`); siguiente: `DAD-1`…`DAD-6` |
-| **Tests** | Frontend: `tsc -b` 0, `vitest` 42 archivos / 292 tests, `oxlint` 13 avisos (los mismos de antes). Backend en local con Postgres real: `tsc` 0, `oxlint` 0 (solo avisos previos), `vitest` 162/162 archivos, 2851 tests. CI de GitHub en verde (PR #2) |
+| **Tarea en curso** | Ninguna. `DAD-1`…`DAD-6` cerradas; siguiente: `CFG-33` |
+| **Tests** | Frontend: `tsc -b` 0, `vitest` 44 archivos / 299 tests, `oxlint` 13 avisos (los mismos de antes). Backend en local con Postgres real: `tsc` 0, `oxlint` 0 (solo avisos previos), `vitest` 162/162 archivos, 2851 tests. CI de GitHub en verde (PR #2) |
 
 ## Siguientes pasos (en orden)
 
@@ -25,7 +25,7 @@ Del [plan del 0.1](../producto/plan-roadmap-0.1.md) y del [mapa de roadmaps](../
 2. ~~**Fase C — test intermitente**~~ ✅ 2026-10-01 (ver plan del 0.1).
 3. **Arreglos de interfaz del 0.1** (sin decisiones pendientes):
    - ~~`UX-3`~~ ✅, ~~`UX-4`~~ ✅, ~~`UX-13`~~ ✅, ~~`UX-16`~~ ✅, ~~`UX-24`~~ ✅ ([roadmap-front-ux.md](../producto/roadmap-front-ux.md))
-   - `DAD-1`…`DAD-6`, `CFG-33`, `BAS-1` ([roadmap-front.md](../producto/roadmap-front.md))
+   - ~~`DAD-1`…`DAD-6`~~ ✅, `CFG-33`, `BAS-1` ([roadmap-front.md](../producto/roadmap-front.md))
    - Reino R-A: `REI-110`…`REI-116` (~~`REI-111`~~ ✅), `REI-33`, `REI-40`, `REI-41` ([roadmap-front-reino.md](../producto/roadmap-front-reino.md))
    - Zona Z-A: `ZON-10`, `11`, `13`, `14`, `17`, `19`, `20`, `62` + iconos del mapa de `BAS-2` ([roadmap-front-zona.md](../producto/roadmap-front-zona.md))
 4. **Fase D — El mundo vivo, visible** (+ Libro de Sucesos mínimo `CR-1`…`CR-4` si Álvaro lo aprueba, ver decisiones).
@@ -62,6 +62,9 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
+- **2026-10-01** — `DAD-1`…`DAD-6`: Tameo reanima cada tirada y espera a los dados para el
+  veredicto; la tirada enseña la cuenta completa y quién gana; nombres reales; scroll solo si hace
+  falta; fallo en rojo.
 - **2026-10-01** — `UX-24` (+ `REI-111`): `ErrorBanner` con *Reintentar* en Reino y en la lista de
   partidas; Descansar en el campamento avisa del fallo. Bloque UX-A del 0.1 completo.
 - **2026-10-01** — `UX-16`: la elección del asistente sobrevive a recargar (`sessionStorage`) y un

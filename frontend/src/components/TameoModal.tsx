@@ -14,15 +14,20 @@ interface TameoModalProps {
   onConfirmado: () => void
   onSoltado: () => void
   onCancel: () => void
+  /// DAD-4 (hito 0.1) — nombre real del personaje en su lado de la tirada (sin él, "Tú").
+  characterName?: string
 }
 
 /// Tameo/persuasión (Grupo 3 § Compañeros y supervivencia, 2026-08-25, docs/rpgtarkor/
 /// companeros-y-supervivencia.md § 2/3) — elegir un atributo propio, tirada opuesta real contra el
 /// atributo de resistencia del objetivo, Felicidad sube o baja según el resultado. Mutación 100%
 /// determinista, sin narración de por medio (mismo criterio que CapturaModal.tsx).
-export function TameoModal({ saveId, pendiente: initial, onConfirmado, onSoltado, onCancel }: TameoModalProps) {
+export function TameoModal({ saveId, pendiente: initial, onConfirmado, onSoltado, onCancel, characterName }: TameoModalProps) {
   const [pendiente, setPendiente] = useState(initial)
-  const [lastRoll, setLastRoll] = useState<OpposedRollInfo | null>(null)
+  // DAD-1/DAD-2 (hito 0.1, H18/H19) — `seq` da una `key` nueva a cada tirada (sin ella React
+  // reutilizaba el `DiceRollVs` y la segunda tirada no se animaba) y `aterrizada` difiere el
+  // veredicto, el color y la subida de Felicidad hasta que los dos dados han caído.
+  const [tirada, setTirada] = useState<{ seq: number; roll: OpposedRollInfo; felicidad: number; aterrizada: boolean } | null>(null)
   const [busy, setBusy] = useState(false)
   const { error, runCatchingError } = useSubmitError()
 
@@ -30,11 +35,18 @@ export function TameoModal({ saveId, pendiente: initial, onConfirmado, onSoltado
 
   async function handleIntentar(attribute: Attribute) {
     setBusy(true)
-    await runCatchingError(async () => {
-      const res = await postIntentarTameo(saveId, pendiente.npcSlug, attribute)
-      setLastRoll(res.roll)
-      setPendiente((prev) => ({ ...prev, felicidad: res.felicidad }))
-    }, 'No se pudo intentar — puede que ya no esté capturado.')
+    const res = await runCatchingError(() => postIntentarTameo(saveId, pendiente.npcSlug, attribute), 'No se pudo intentar — puede que ya no esté capturado.')
+    if (!res) {
+      setBusy(false)
+      return
+    }
+    // `busy` sigue activo hasta que caigan los dados (`handleAterrizada`): sin solapar tiradas.
+    setTirada((prev) => ({ seq: (prev?.seq ?? 0) + 1, roll: res.roll, felicidad: res.felicidad, aterrizada: false }))
+  }
+
+  function handleAterrizada(seq: number, felicidad: number) {
+    setTirada((prev) => (prev && prev.seq === seq ? { ...prev, aterrizada: true } : prev))
+    setPendiente((prev) => ({ ...prev, felicidad }))
     setBusy(false)
   }
 
@@ -94,13 +106,28 @@ export function TameoModal({ saveId, pendiente: initial, onConfirmado, onSoltado
         </p>
       )}
 
-      {lastRoll &&
+      {tirada &&
         (() => {
-          const { left, right } = opposedRollToSides(lastRoll)
+          const { left, right } = opposedRollToSides(tirada.roll)
+          const { seq, felicidad, aterrizada } = tirada
+          const tono = !aterrizada
+            ? 'border-iron-700 bg-wood-950/30 text-wood-300'
+            : tirada.roll.gano
+              ? 'border-emerald-700 bg-emerald-500/10 text-emerald-300'
+              : 'border-red-800 bg-red-500/10 text-red-300'
           return (
-            <div className={`rounded-lg border p-2.5 text-2xs ${lastRoll.gano ? 'border-emerald-700 bg-emerald-500/10 text-emerald-300' : 'border-red-800 bg-red-500/10 text-red-300'}`}>
-              <p className="mb-0.5 font-medium">{lastRoll.gano ? '¡Gana confianza!' : 'No cede esta vez.'}</p>
-              <DiceRollVs left={left} right={right} leftLabel="Tú" rightLabel="Resistencia" leftFirst showDifficulty={false} />
+            <div key={seq} className={`rounded-lg border p-2.5 text-2xs transition-colors ${tono}`}>
+              <p className="mb-0.5 font-medium">{!aterrizada ? 'Tirando…' : tirada.roll.gano ? '¡Gana confianza!' : 'No cede esta vez.'}</p>
+              <DiceRollVs
+                key={seq}
+                left={left}
+                right={right}
+                leftLabel={characterName ?? 'Tú'}
+                rightLabel={`${pendiente.name} · resistencia`}
+                leftFirst
+                showDifficulty={false}
+                onAllLanded={() => handleAterrizada(seq, felicidad)}
+              />
             </div>
           )
         })()}
