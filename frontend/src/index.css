@@ -573,6 +573,12 @@ body {
 .animate-entry-in {
   animation: entry-in 0.45s ease-out both;
 }
+/* UX-11 (hito 0.2) — presentación en orden del turno: lo que llega con la narración (XP,
+   reputación, misión, ofertas) entra después de la tirada, con el retraso de `--retraso`. */
+.animate-paso-turno {
+  animation: entry-in 0.45s ease-out both;
+  animation-delay: var(--retraso, 0ms);
+}
 /* Misma entrada, mucho más lenta — el fin de partida no llega de golpe, pesa */
 .animate-entry-in-slow {
   animation: entry-in 1.1s ease-out both;
@@ -832,6 +838,7 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .animate-entry-in,
+  .animate-paso-turno,
   .animate-entry-in-slow,
   .animate-overlay-in,
   .animate-drawer-up,

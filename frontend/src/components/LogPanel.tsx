@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { isExtendedLogRoll, type CombatExchangeInfo, type CondicionFisica, type LogEntry, type MetodoObtencion } from '../types'
 import { RollBadge } from './RollBadge'
 import { ExtendedRollBadge } from './ExtendedRollBadge'
@@ -10,6 +10,7 @@ import { EnciclopediaLinkedText } from './EnciclopediaLinkedText'
 import { useEnciclopediaLink } from '../context/useEnciclopediaLink'
 import { OfferCard } from './OfferCard'
 import { combatKeyFor } from '../lib/gameViewHelpers'
+import { retrasoEnVivo } from '../lib/presentacionTurno'
 import { professions } from '../data/professions'
 
 interface LogPanelProps {
@@ -455,6 +456,15 @@ export const LogPanel = memo(function LogPanel({
               {entry.combatExchange && (
                 <CombatExchangeBadge exchange={entry.combatExchange} playerName={characterName} enemyName={entry.npcAbilityUsed?.npcName ?? entry.combatExchange.rivalNombre} />
               )}
+              {/* UX-11 (hito 0.2) — en una entrada en vivo, las consecuencias (misión, ofertas, XP,
+                  reputación) entran cuando ha aterrizado la tirada, no a la vez que el texto. */}
+              {(() => {
+                const retraso = retrasoEnVivo(entry, !!liveEntryIds?.has(entry.id))
+                return (
+              <div
+                className={retraso !== null ? 'animate-paso-turno' : undefined}
+                style={retraso !== null ? ({ '--retraso': `${retraso}ms` } as CSSProperties) : undefined}
+              >
               {entry.newQuest && (
                 <div className="mt-2 rounded-lg border border-quest-600/50 bg-quest-500/10 px-2.5 py-2">
                   <p className="flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-[0.1em] text-quest-400">
@@ -741,6 +751,9 @@ export const LogPanel = memo(function LogPanel({
                   </span>
                 )}
               </div>
+              </div>
+                )
+              })()}
             </div>
           ),
         )}

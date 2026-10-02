@@ -251,11 +251,18 @@ stateDiagram-v2
   narración (`msDeLectura`: ~40 ms por carácter, entre 2 y 12 s). Mientras esperan, la cabecera
   enseña «⚠️ Tienes una clase por elegir» (o especialización, o «Tu reino espera nombre») y al
   pulsarlo se abre ya. Nota para la fase de pruebas: en esa espera el composer sigue libre.
-- **UX-11 · Presentación en orden del turno** — secuencia fija: acción del jugador → tirada
+- ~~**UX-11 · Presentación en orden del turno** — secuencia fija: acción del jugador → tirada
   (`DiceTray`) → narración → cambios de estado (vida, inventario, XP con su animación) →
   **reacciones de compañeros** (`NAR-10`) → ofertas en el registro → **sucesos del mundo que se
   acaban de saber** (rumores, informe del día) → decisiones de la cola. Cada paso espera al
-  anterior. **M**
+  anterior. **M**~~ ✅ 2026-10-02:
+  la secuencia ya era acción → tirada (los dados aterrizan antes de aplicar vida/energía en
+  combate) → narración; ahora, en una entrada recién llegada, las consecuencias (misión nueva,
+  ofertas, XP, reputación, oficio) entran cuando ha aterrizado la tirada (`lib/presentacionTurno.ts`,
+  clase `animate-paso-turno`, sin retraso si se pide reducir el movimiento) y las decisiones
+  esperan a leer la narración (`UX-10`). **Queda:** encajar en la secuencia las reacciones de
+  compañeros (`NAR-10`) y los sucesos del mundo recién sabidos (Cronista, `CR-18`…`CR-20`) cuando
+  existan.
 - **UX-12 · Qué pasa con el cajón abierto cuando llega algo** — eventos **críticos** (combate,
   muerte, encuentro agresivo) cierran el cajón con animación; los **importantes** (narración nueva,
   oferta, misión) muestran una notificación y una marca en el registro; los **menores** no
