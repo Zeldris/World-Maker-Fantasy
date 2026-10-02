@@ -400,8 +400,12 @@ Todos tienen el mismo ancho (`max-w-md`), la misma entrada (`combat-enter`) y ni
   número enfocado, «Máx.» hasta el `tope` con su motivo) en Curar, Comer, Beber y Recolectar.
   Producción ya usaba `NumeroGuardable`. **Queda:** la vista previa del efecto dentro del propio
   selector (hoy cada modal la enseña en su resumen).
-- **MOD-6 · `EntityRow` con miniatura** **S** — cada objeto, NPC, criatura o recurso de un modal
-  enseña su miniatura de la enciclopedia o el icono SVG de su categoría (H27).
+- ~~**MOD-6 · `EntityRow` con miniatura** **S** — cada objeto, NPC, criatura o recurso de un modal
+  enseña su miniatura de la enciclopedia o el icono SVG de su categoría (H27).~~ ✅ 2026-10-02:
+  `components/Miniatura.tsx` (imagen `thumbnail` de la ficha por `entityType:slug` o por nombre;
+  si no hay, el icono de la ficha o uno de reserva) en Curar, Comer, Beber, Entregar (objetos y
+  NPC), Capturar y Aprender oficio. **Queda:** Saquear y Recolectar (filas con casillas y grupos,
+  más complejas) y los iconos SVG de categoría de `BAS-2` en vez de emojis.
 
 ---
 

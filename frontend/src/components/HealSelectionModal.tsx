@@ -4,6 +4,7 @@ import { CONDICION_LABEL, applySequentialHeals } from '../lib/health'
 import { quantityOf, baseNameOf } from '../lib/gameViewHelpers'
 import { SelectionModalShell, confirmButtonClasses } from './SelectionModalShell'
 import { QuantityStepper } from './QuantityStepper'
+import { Miniatura } from './Miniatura'
 
 interface HealSelectionModalProps {
   inventory: InventoryItemInfo[]
@@ -127,7 +128,8 @@ export function HealSelectionModal({ inventory, condicionFisica, onConfirm, onCa
                   value > 0 ? 'border-accent-600/60 bg-accent-500/10' : 'border-iron-700'
                 }`}
               >
-                <span className="min-w-0">
+                <Miniatura nombre={baseNameOf(item.name)} entityType="item" slug={item.catalogSlug ?? undefined} icono="🧪" />
+                <span className="mr-auto min-w-0">
                   <span className="font-semibold text-wood-100">{baseNameOf(item.name)}</span>
                   <span className="ml-1.5 text-2xs text-wood-500">
                     {item.curaHasta &&

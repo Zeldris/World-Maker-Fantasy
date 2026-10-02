@@ -4,6 +4,7 @@ import { SelectionModalShell } from './SelectionModalShell'
 import { useAsyncModalData } from '../hooks/useAsyncModalData'
 import { useSubmitError } from '../hooks/useSubmitError'
 import { CargandoModal, ErrorCarga, ExitoModal } from './EstadosModal'
+import { Miniatura } from './Miniatura'
 
 interface CapturaModalProps {
   saveId: string
@@ -63,10 +64,8 @@ export function CapturaModal({ saveId, onCapturado, onCancel }: CapturaModalProp
         <div className="space-y-2">
           {candidates.map((c) => (
             <div key={c.npcSlug} className="flex items-center justify-between gap-2 rounded-lg border border-iron-700 p-2.5">
-              <span className="text-xs text-wood-200">
-                {c.tipo === 'FAUNA' ? '🐾 ' : ''}
-                {c.name}
-              </span>
+              <Miniatura nombre={c.name} entityType={c.tipo === 'FAUNA' ? 'fauna' : 'npc'} slug={c.npcSlug} icono={c.tipo === 'FAUNA' ? '🐾' : '👤'} />
+              <span className="mr-auto text-xs text-wood-200">{c.name}</span>
               <button type="button"
                 onClick={() => handleCapturar(c.npcSlug)}
                 disabled={!!capturando}

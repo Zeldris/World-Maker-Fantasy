@@ -5,6 +5,7 @@ import { SelectionModalShell } from './SelectionModalShell'
 import { useAsyncModalData } from '../hooks/useAsyncModalData'
 import { useSubmitError } from '../hooks/useSubmitError'
 import { CargandoModal, ErrorCarga, ExitoModal } from './EstadosModal'
+import { Miniatura } from './Miniatura'
 
 interface AprenderOficioModalProps {
   saveId: string
@@ -54,7 +55,8 @@ export function AprenderOficioModal({ saveId, onAprendido, onCancel }: AprenderO
         <div className="space-y-2">
           {maestros.map((maestro) => (
             <div key={maestro.npcSlug} className="flex items-center justify-between gap-2 rounded-lg border border-iron-700 p-2.5">
-              <div>
+              <Miniatura nombre={maestro.name} entityType="npc" slug={maestro.npcSlug} icono="👤" />
+              <div className="mr-auto">
                 <p className="text-xs text-wood-200">{maestro.name}</p>
                 <p className="mt-0.5 text-2xs text-wood-500">
                   {maestro.yaAprendido ? 'Ya conoces este oficio.' : maestro.motivoBloqueo ?? `Cuesta 🪙 ${maestro.costeGoirnos}`}

@@ -5,6 +5,7 @@ import { SelectionModalShell } from './SelectionModalShell'
 import { useAsyncModalData } from '../hooks/useAsyncModalData'
 import { useSubmitError } from '../hooks/useSubmitError'
 import { CargandoModal, ErrorCarga, ExitoModal } from './EstadosModal'
+import { Miniatura } from './Miniatura'
 
 interface EntregaModalProps {
   saveId: string
@@ -71,8 +72,9 @@ export function EntregaModal({ saveId, onEntregado, onCancel }: EntregaModalProp
               key={item.id}
               type="button"
               onClick={() => setSelectedItem({ id: item.id, name: item.name })}
-              className="tactile flex w-full items-center justify-between gap-2 rounded-lg border border-iron-700 p-2.5 text-left text-xs text-wood-200 transition-colors hover:border-accent-600/60"
+              className="tactile flex w-full items-center gap-2 rounded-lg border border-iron-700 p-2.5 text-left text-xs text-wood-200 transition-colors hover:border-accent-600/60"
             >
+              <Miniatura nombre={item.name} icono="🎒" />
               {item.name}
             </button>
           ))}
@@ -85,7 +87,8 @@ export function EntregaModal({ saveId, onEntregado, onCancel }: EntregaModalProp
           <p className="text-2xs text-wood-500">¿A quién le entregas {selectedItem.name}?</p>
           {npcs.map((npc) => (
             <div key={npc.npcSlug} className="flex items-center justify-between gap-2 rounded-lg border border-iron-700 p-2.5">
-              <span className="text-xs text-wood-200">{npc.name}</span>
+              <Miniatura nombre={npc.name} entityType="npc" slug={npc.npcSlug} icono="👤" />
+              <span className="mr-auto text-xs text-wood-200">{npc.name}</span>
               <button
                 type="button"
                 onClick={() => handleEntregar(npc)}
