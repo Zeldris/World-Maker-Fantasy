@@ -363,6 +363,13 @@ Todos tienen el mismo ancho (`max-w-md`), la misma entrada (`combat-enter`) y ni
     `aria-labelledby`.
   - **Animación de salida** (BAS-7) y **apilado** (z-index gestionado; hoy hay `z-50`, `z-[60]` y
     `z-40` repartidos a mano).
+
+  🚧 en curso (2026-10-02): `components/ModalShell.tsx` con tamaños, cabecera (icono, título,
+  subtítulo, ✕), pie fijo, Escape, Tab atrapado, foco devuelto al cerrar y `aria-labelledby`;
+  `SelectionModalShell` ya es una envoltura suya (los modales de selección lo heredan sin ✕, que
+  ya tienen «Cancelar»). El apilado lo lleva el gestor de capas (`UX-9`). **Falta:** migrar los 8
+  overlays propios (Clase, Especialización, Fundar reino, Modo dinámico, Detalle, Moverte por la
+  zona, Mapa ampliado, imagen) y la animación de salida (`BAS-7`).
 - **MOD-2 · Estados comunes** **S** — `Skeleton` mientras carga (con la altura final aproximada, para
   que el modal no salte, H28), `ErrorBanner` con botón *Reintentar*, `SuccessState` con icono y
   sello animado (hoy cada modal escribe su frase en `emerald-300`).
