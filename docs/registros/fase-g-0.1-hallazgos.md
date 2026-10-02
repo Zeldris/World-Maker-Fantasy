@@ -19,7 +19,7 @@ Partida: Gorhorn, **Cazador** (su clase real), dificultad Novato.
 | Zona y movimiento | 🚧 mapa, ficha de punto e «Ir hasta aquí» funcionan; faltan salidas a otra zona |
 | Caza en solitario y en grupo (aviso de riesgo) | ✅ solitario (G4, G5, G7, G8) y en grupo: aviso de riesgo, arranque (G10), tiradas visibles (G11, G15), acercarse a un grupo (G14). Queda la decisión G13 |
 | Cadáveres, saqueo y Goirnos | 🚧 cadáver de fauna y desollar ✅ (G8); falta saqueo de un NPC y Goirnos |
-| Recolección con cada método (ficha de flora) | pendiente |
+| Recolección con cada método (ficha de flora) | 🚧 extracción ✅ (Salvia del Polvo, ficha de flora, G17, G18); minería bloqueada por nivel como debe («Minar a nivel 4»); en la Hondonada no hay tala/pesca/búsqueda — probar en otra zona |
 | Combate con muerte y renacer | ✅ muerte en grupo → Derrota → nota de la Entidad → «Aceptar» → sin punto de guardado, reinicio «como una pesadilla» (diseño de Álvaro) (G12) |
 | Compañeros | pendiente |
 | Reino (fundar, construir, taller, diplomacia con XP, mercado) | pendiente |
@@ -44,3 +44,7 @@ Partida: Gorhorn, **Cazador** (su clase real), dificultad Novato.
 | G14 | Pegado ya a un pin de fauna (p. ej. tras «Ignorar» su encuentro), su ficha no tenía ninguna acción: ni «Ir hasta aquí» ni forma de cazarlo sin alejarse y volver. | ✅ 2026-10-02: la ficha ofrece «Acercarte», que pulsa la propia casilla (el backend vuelve a mirar los encuentros sin silenciar el último, camino ya existente). Comprobado en vivo: sale el encuentro con el grupo de 4 y su aviso de riesgo «mortal». |
 | G15 | En combate de grupo la tarjeta del intercambio llamaba al rival «el enemigo» («la defensa de el enemigo»): no hay `npcAbilityUsed` del que sacar el nombre. | ✅ 2026-10-02: el intercambio lleva `rivalNombre` (backend y tipo del frontend) y `LogPanel` lo usa; también en directo (`onExchangeResolved`). |
 | G16 | Test intermitente: «crea el encuentro con iniciativa real y resuelve turnos autónomos hasta terminar» (`combateMultipleOrquestacion.integration.test.ts`, solo NPC) falló 1 vez de ~7 ejecuciones junto a otros archivos; aislado pasa siempre. No depende de los cambios de esta fase. | pendiente — revisar como en la Fase C (tiradas reales sin semilla) |
+| G17 | Recolección desde la zona de un recurso marcado `sinTirada` (Salvia del Polvo: «para Gorhorn no requiere tirada»): se enseña igual una tirada de Voluntad («15 + 4 = 19») que no cuenta para nada. | pendiente (menor) — ocultar el dado cuando todos los yields son `sinTirada` |
+| G18 | Detalles de texto e iconos vistos de paso: la tarjeta «Salvia del Polvo a la vista» usa 🪨 para una planta; la ficha de flora anida paréntesis («(reconocerla (los orcos… tirada))»); «Analisis Salvaje» (ver G6). | pendiente (menor) |
+| G19 | Tras reiniciar «como una pesadilla», el cadáver de antes del reinicio sigue pendiente de desollar en la zona («Hay presas caídas sin desollar»). Si todo fue un sueño, ¿debería desaparecer? | 🧭 decisión (menor) |
+| G20 | «Acercarte» (G14) dispara el encuentro más cercano a tu casilla, que puede no ser el pin cuya ficha abriste (salió Gistera en vez del Yerreo). | pendiente (menor) — mandar el pin preferido al backend |

@@ -15,7 +15,7 @@ cada commit.**
 | **Último commit en `main`** | Fusión del PR #3 (2026-10-02): bitácora recortada, paso 8 «después del 0.1», cobertura de roadmaps (367/367) y `tools/roadmap/cobertura.py`. La rama de trabajo y `main` quedan iguales |
 | **Hito** | `0.1` Llanuras estable — [plan](../producto/plan-roadmap-0.1.md) · [mapa de roadmaps](../producto/21-roadmap.md#qué-entra-en-cada-hito) |
 | **Tarea en curso** | 🚧 **Fase G — pasada de juego completa** con el Ollama simulado (lo determinista; la calidad narrativa queda para Ollama real). Guion, estado por tramo y hallazgos en [`fase-g-0.1-hallazgos.md`](fase-g-0.1-hallazgos.md). Fase F espera a que Álvaro ejecute el benchmark; Fase E bloqueada (pobladores) |
-| **Tests** | Frontend: `tsc -b` 0, `vitest` 56 archivos / 330 tests, `oxlint` 13 avisos (los mismos de antes). Backend en local con Postgres real: `tsc` 0, `oxlint` 0 (solo avisos previos), `vitest` 165/165 archivos, 2869 tests. CI de GitHub en verde (PR #2) |
+| **Tests** | Frontend: `tsc -b` 0, `vitest` 56 archivos / 334 tests, `oxlint` 13 avisos (los mismos de antes). Backend en local con Postgres real: `tsc` 0, `vitest` 165/165 archivos, 2874 tests (última pasada completa, 2026-10-02); 1 test intermitente apuntado (G16). CI de GitHub en verde (PR #3) |
 
 ## Dónde está todo (para saber qué sigue)
 
@@ -94,7 +94,7 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
-- **2026-10-02** — Fase G empezada. G1: la narración ya no enlaza palabras comunes como entidades («tira» ≠ NPC Tira) y el chip muestra la palabra del texto.
+- **2026-10-02** — Fase G en curso: G1-G15 (14 arreglados): enlaces de entidades, asistente, combate (iniciativa, capturar, respaldo de narración, tiradas en grupo, nombre del rival), desollar al acabar, caza de grupos tras matar a uno, muerte con «Aceptar», «Acercarte». Detalle en `fase-g-0.1-hallazgos.md`.
 - **2026-10-02** — PR #2 fusionado a `main` (Fases A, C, D, F parcial y todos los arreglos de
   interfaz del 0.1). Se sigue trabajando en la misma rama.
 - **2026-10-02** — Fase F: script `npm run benchmark-turno` (clasificar / resolver / narrar, con
