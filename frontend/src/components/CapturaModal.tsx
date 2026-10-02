@@ -3,6 +3,7 @@ import { getCapturables, postCapturar, type CapturableCandidate } from '../lib/a
 import { SelectionModalShell } from './SelectionModalShell'
 import { useAsyncModalData } from '../hooks/useAsyncModalData'
 import { useSubmitError } from '../hooks/useSubmitError'
+import { CargandoModal, ErrorCarga, ExitoModal } from './EstadosModal'
 
 interface CapturaModalProps {
   saveId: string
@@ -23,7 +24,7 @@ export function CapturaModal({ saveId, onCapturado, onCancel }: CapturaModalProp
   // cerrar el modal sin explicación (mismo criterio que el resto de mutaciones deterministas de
   // este proyecto: confirmar lo que acaba de pasar, no dejarlo implícito).
   const [atado, setAtado] = useState<{ tipo: 'FAUNA' | 'NPC' } | null>(null)
-  const { loading, error: loadError } = useAsyncModalData(
+  const { loading, error: loadError, reintentar } = useAsyncModalData(
     () => getCapturables(saveId),
     (res) => {
       setCandidates(res.candidates)
@@ -47,11 +48,11 @@ export function CapturaModal({ saveId, onCapturado, onCancel }: CapturaModalProp
   return (
     <SelectionModalShell title="Capturar" onCancel={onCancel} cancelDisabled={!!capturando}>
       {atado ? (
-        <p className="text-xs text-emerald-300">
+        <ExitoModal>
           ¡Atado! Ahora llevas {atado.tipo === 'FAUNA' ? 'a la criatura' : 'al prisionero'} en tu inventario — deposítalo en una Jaula desde ahí para empezar a ganarte su confianza.
-        </p>
+        </ExitoModal>
       ) : loading ? (
-        <p className="text-xs text-wood-500">Buscando quién sigue a tu alcance...</p>
+        <CargandoModal texto="Buscando quién sigue a tu alcance..." />
       ) : !tieneCuerdas ? (
         <p className="text-xs text-wood-400">
           Necesitas cuerdas (en el inventario) para intentar atar a alguien.
@@ -77,7 +78,7 @@ export function CapturaModal({ saveId, onCapturado, onCancel }: CapturaModalProp
           ))}
         </div>
       )}
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      {error && <ErrorCarga mensaje={error} onReintentar={loadError ? reintentar : undefined} />}
     </SelectionModalShell>
   )
 }

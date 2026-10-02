@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { getSaquearZona, type LootZoneCandidate } from '../lib/api'
 import { SelectionModalShell, confirmButtonClasses } from './SelectionModalShell'
 import { useAsyncModalData } from '../hooks/useAsyncModalData'
+import { CargandoModal, ErrorCarga } from './EstadosModal'
 
 interface SaquearZonaModalProps {
   saveId: string
@@ -24,7 +25,7 @@ export function SaquearZonaModal({ saveId, onConfirm, onCancel, soloNpcSlug }: S
   const [candidates, setCandidates] = useState<LootZoneCandidate[]>([])
   const [selected, setSelected] = useState<Set<string>>(new Set()) // `${npcSlug}::${itemName}` (o `${npcSlug}::__marcar__` para un NPC sin objetos)
   const [confirming, setConfirming] = useState(false)
-  const { loading, error } = useAsyncModalData(
+  const { loading, error, reintentar } = useAsyncModalData(
     () => getSaquearZona(saveId),
     (res) => setCandidates(soloNpcSlug ? res.candidates.filter((c) => c.slug === soloNpcSlug) : res.candidates),
     'No se pudo comprobar qué hay que saquear en la zona.',
@@ -73,9 +74,9 @@ export function SaquearZonaModal({ saveId, onConfirm, onCancel, soloNpcSlug }: S
       }
     >
       {loading ? (
-        <p className="text-xs text-wood-500">Buscando cuerpos por la zona...</p>
+        <CargandoModal texto="Buscando cuerpos por la zona..." />
       ) : error ? (
-        <p className="text-xs text-red-400">{error}</p>
+        <ErrorCarga mensaje={error} onReintentar={reintentar} />
       ) : candidates.length === 0 ? (
         <p className="text-xs text-wood-500">No hay nadie por aquí que aún tenga algo que saquear.</p>
       ) : (

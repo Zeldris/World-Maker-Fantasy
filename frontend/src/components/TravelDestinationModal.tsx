@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { getDestinosViaje, type TravelDestinationInfo } from '../lib/api'
 import { formatMinutos } from '../lib/gameViewHelpers'
 import { SelectionModalShell } from './SelectionModalShell'
+import { CargandoModal, ErrorCarga } from './EstadosModal'
 
 interface TravelDestinationModalProps {
   saveId: string
@@ -46,9 +47,9 @@ export function TravelDestinationModal({ saveId, onSelect, onCancel, bloqueoTurn
       </p>
 
       {loading ? (
-        <p className="text-xs text-wood-500">Buscando destinos...</p>
+        <CargandoModal texto="Buscando destinos..." />
       ) : error ? (
-        <p className="text-xs text-red-400">{error}</p>
+        <ErrorCarga mensaje={error} />
       ) : destinations.length === 0 ? (
         <p className="text-xs text-wood-500">Todavía no has descubierto ningún otro lugar.</p>
       ) : (

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { getCampamentos, type CampInfo } from '../lib/api'
 import { SelectionModalShell } from './SelectionModalShell'
 import { useAsyncModalData } from '../hooks/useAsyncModalData'
+import { CargandoModal, ErrorCarga } from './EstadosModal'
 
 interface CampSelectionModalProps {
   saveId: string
@@ -19,7 +20,7 @@ interface CampSelectionModalProps {
 /// así que no hace falta ninguna lógica de viaje nueva aquí.
 export function CampSelectionModal({ saveId, onSelect, onCancel, bloqueoTurno }: CampSelectionModalProps) {
   const [camps, setCamps] = useState<CampInfo[]>([])
-  const { loading, error } = useAsyncModalData(
+  const { loading, error, reintentar } = useAsyncModalData(
     () => getCampamentos(saveId),
     (res) => setCamps(res.camps),
     'No se pudo comprobar qué campamentos tienes construidos.',
@@ -29,9 +30,9 @@ export function CampSelectionModal({ saveId, onSelect, onCancel, bloqueoTurno }:
   return (
     <SelectionModalShell title="Volver al campamento" onCancel={onCancel}>
       {loading ? (
-        <p className="text-xs text-wood-500">Buscando tus campamentos...</p>
+        <CargandoModal texto="Buscando tus campamentos..." />
       ) : error ? (
-        <p className="text-xs text-red-400">{error}</p>
+        <ErrorCarga mensaje={error} onReintentar={reintentar} />
       ) : camps.length === 0 ? (
         <p className="text-xs text-wood-500">Todavía no has construido ningún campamento.</p>
       ) : (

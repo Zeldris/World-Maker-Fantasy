@@ -5,6 +5,7 @@ import { getRecolectarLocalizado, confirmarRecoleccion } from '../lib/api'
 import { SelectionModalShell, confirmButtonClasses } from './SelectionModalShell'
 import { useAsyncModalData } from '../hooks/useAsyncModalData'
 import { GatheringDiceReveal } from './GatheringDiceReveal'
+import { CargandoModal, ErrorCarga } from './EstadosModal'
 
 interface HarvestSelectionModalProps {
   saveId: string
@@ -74,7 +75,7 @@ export function HarvestSelectionModal({
   // Fase 10 (2026-09-29) — segundas tiradas de tier alto cuando NINGUNA selección se materializó
   // (no hay LogEntry en la que mostrarlas): se enseñan aquí en vez de cerrar el modal sin explicación.
   const [segundasFallidas, setSegundasFallidas] = useState<SegundaTiradaInfo[] | null>(null)
-  const { loading, error, setError } = useAsyncModalData(
+  const { loading, error, setError, reintentar } = useAsyncModalData(
     () => getRecolectarLocalizado(saveId, oficio),
     (res) => {
       setSources(res.sources)
@@ -140,9 +141,9 @@ export function HarvestSelectionModal({
         </div>
       )}
       {loading ? (
-        <p className="text-xs text-wood-500">Buscando qué hay en la zona...</p>
+        <CargandoModal texto="Buscando qué hay en la zona..." />
       ) : error && sources.length === 0 ? (
-        <p className="text-xs text-red-400">{error}</p>
+        <ErrorCarga mensaje={error} onReintentar={reintentar} />
       ) : sources.length === 0 ? (
         enCooldown ? (
           <p className="text-xs text-wood-400">Ya has agotado lo accesible por ahora — vuelve más tarde o busca en otra zona.</p>

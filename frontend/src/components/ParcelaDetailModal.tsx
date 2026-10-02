@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { construirEnParcela, getParcela } from '../lib/api'
 import type { LogEntry, ParcelaDetailInfo, ProfessionRecipeInfo, RecipeStatusInfo, ZonaParcelaInfo } from '../types'
 import { SelectionModalShell, confirmButtonClasses } from './SelectionModalShell'
+import { CargandoModal } from './EstadosModal'
 
 interface ParcelaDetailModalProps {
   saveId: string
@@ -138,7 +139,7 @@ export function ParcelaDetailModal({ saveId, parcela, professionRecipes, onCance
         ) : undefined
       }
     >
-      {loading && <p className="text-xs text-wood-400">Consultando la parcela…</p>}
+      {loading && <CargandoModal texto="Consultando la parcela…" filas={2} />}
       {error && <p className="text-xs text-danger-400">{error}</p>}
       {subtitle && <p className="text-xs text-wood-400">{subtitle}</p>}
       {!loading && detail && detail.candidates.length === 0 && (

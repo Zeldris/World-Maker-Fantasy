@@ -371,9 +371,13 @@ Todos tienen el mismo ancho (`max-w-md`), la misma entrada (`combat-enter`) y ni
   ampliado. El visor de imagen (`ImagePromptDisplay`) queda fuera a propósito: es un visor a
   pantalla completa sin marco, no un panel (ya cierra con Escape). El apilado lo lleva el gestor de
   capas (`UX-9`). **Queda:** la animación de salida, con `BAS-7` (🧭).
-- **MOD-2 · Estados comunes** **S** — `Skeleton` mientras carga (con la altura final aproximada, para
+- ~~**MOD-2 · Estados comunes** **S** — `Skeleton` mientras carga (con la altura final aproximada, para
   que el modal no salte, H28), `ErrorBanner` con botón *Reintentar*, `SuccessState` con icono y
-  sello animado (hoy cada modal escribe su frase en `emerald-300`).
+  sello animado (hoy cada modal escribe su frase en `emerald-300`).~~ ✅ 2026-10-02:
+  `components/EstadosModal.tsx`: `CargandoModal` (filas de esqueleto con la altura final, `aria-busy`),
+  `ErrorCarga` (con «Reintentar»; `useAsyncModalData` devuelve `reintentar()`) y `ExitoModal` (sello
+  ✓ en tono `moss`). Aplicados en Saquear, Aprender oficio, Campamento, Entregar, Capturar, Viajar,
+  Recolectar, Grupos de combate y Parcela. Viajar no ofrece reintentar (carga propia sin el hook).
 - **MOD-3 · Teclado en modales** **S** — `Enter` confirma, números `1-9` eligen opción en listas
   cortas (Modo dinámico, Viajar, Clase), flechas recorren la lista.
 - **MOD-4 · Modales de ceremonia** **M** — variante para decisiones grandes o irreversibles (fundar
