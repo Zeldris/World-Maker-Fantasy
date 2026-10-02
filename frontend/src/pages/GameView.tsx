@@ -1,6 +1,7 @@
 import { useNoticiasMundo } from '../hooks/useNoticiasMundo'
 import { useGamePhase } from '../hooks/useGamePhase'
 import { GameHeader } from '../components/GameHeader'
+import { GameFooter } from '../components/GameFooter'
 import { avisoDeLlegadas, pesoDeLlegada } from '../lib/llegadas'
 import { useDecisionesEnCola } from '../hooks/useDecisionesEnCola'
 import { resolverCapas, type CapaAbierta } from '../lib/capas'
@@ -13,15 +14,13 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useSession } from '../context/useSession'
 import { LogPanel } from '../components/LogPanel'
 import { CollapsedRail } from '../components/CollapsedRail'
-import { ChatComposer, type ChatComposerHandle } from '../components/ChatComposer'
+import type { ChatComposerHandle } from '../components/ChatComposer'
 import type { ComposerChip } from '../types'
 // Sugerencias desactivadas (2026-09-06, ver comentario junto a `suggestions` más abajo) —
 // `SuggestionBar` deja de importarse mientras la entrada visible está oculta.
 // import { SuggestionBar } from '../components/SuggestionBar'
-import { SkillBarMenu, type SkillHudView } from '../components/SkillBarMenu'
-import { SkillBarHud } from '../components/SkillBarHud'
+import type { SkillHudView } from '../components/SkillBarMenu'
 import { SkillBarEditor } from '../components/SkillBarEditor'
-import { TooltipAnchor } from '../components/TooltipAnchor'
 import { SideNav } from '../components/SideNav'
 import { characterTabs, worldTabs, type PanelId } from '../components/NavTabs'
 import { PanelDrawer } from '../components/PanelDrawer'
@@ -1404,6 +1403,25 @@ export function GameView() {
     reputacion: 'accent2',
   }
 
+  // Composer (UX-13, hito 0.1; UX-1/UX-2, hito 0.2) — se bloquea si la fase no deja enviar turno o
+  // hay una capa encima. El cajón de paneles (`activePanel`) queda fuera a propósito: la
+  // Enciclopedia inserta chips en el composer con el cajón abierto. B.24 (checklist 2026-08-27):
+  // el texto de ayuda dice el primer motivo que aplique de verdad.
+  const capaEncimaAbierta =
+    anyModalOpen || zonaModalOpen || confirmingExit || !!editingSkillBar || !!recursoDetalle || claseVisible || especializacionVisible
+  const composerDisabled = !permisoTurno.permitido || capaEncimaAbierta
+  const composerDisabledReason = characterThinking
+    ? combateIniciado
+      ? 'Resolviendo el combate — puede tardar más de lo habitual...'
+      : 'Esperando la narración de tu último turno...'
+    : busyUntil
+      ? 'Ocupado con algo que lleva tiempo — vuelve cuando termine.'
+      : combateIniciado && !combat.combatOpen
+        ? 'En combate — usa el panel de combate para actuar.'
+        : capaEncimaAbierta
+          ? 'Resuelve lo que tienes abierto antes de escribir una nueva acción.'
+          : (permisoTurno.motivo ?? undefined)
+
   // UX-9 (hito 0.2) — gestor de capas: cada overlay abierto con su nivel (§ 4.3), en orden de
   // prioridad dentro del nivel. Solo se ve el de nivel más alto; el resto espera oculto y montado
   // (lib/capas.ts). Las condiciones son las mismas con las que se pinta cada uno más abajo.
@@ -1695,164 +1713,49 @@ export function GameView() {
         </div>
       )}
 
-      {endedAt ? (
-        <div className="animate-entry-in-slow border-t border-iron-800 bg-wood-950/90 px-4 py-5 text-center">
-          <div className="animate-line-extend mx-auto mb-3 h-px w-24 origin-center bg-red-800" />
-          <p className="text-sm text-danger-400">
-            {characterName} ya no puede seguir — esta partida ha terminado. Volviendo a "Sus partidas"...
-          </p>
-        </div>
-      ) : pendingDeathResolution ? (
-        // Muerte permanente, botón Aceptar/Reintentar (2026-08-31) — el susurro de la Entidad ya
-        // está en el log (LogPanel, arriba); este bloque sustituye al composer normal hasta que el
-        // jugador confirma, mismo criterio visual que el bloque de `endedAt`.
-        <div className="animate-entry-in-slow border-t border-iron-800 bg-wood-950/90 px-4 py-5 text-center">
-          <div className="animate-line-extend mx-auto mb-3 h-px w-24 origin-center bg-accent-700" />
-          <button
-            type="button"
-            onClick={handleResolveDeath}
-            disabled={resolvingDeath}
-            className="tactile rounded-lg border border-accent-600 bg-accent-500/10 px-4 py-2 text-sm font-bold uppercase tracking-wide text-accent-300 transition-colors hover:bg-accent-500/20 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {resolvingDeath ? 'Resolviendo...' : 'Aceptar'}
-          </button>
-        </div>
-      ) : combat.combatOpen && combateIniciado ? (
-        // Rework 2026-07-24, recortado en el rediseño de la vista de combate (2026-07-28): sigue
-        // sustituyendo al ChatComposer normal en el mismo sitio, pero ahora solo es el input de
-        // texto libre — enemigos/ficha/habilidades/objetos/Actuar viven en CombatPanel, arriba.
-        <CombatComposer
-          freeText={combat.combatFreeText}
-          onFreeTextChange={combat.setCombatFreeText}
-          onSubmit={combat.handleCombatFreeSubmit}
-          busy={combat.combatBusy || combat.awaitingNextInitiative || combat.awaitingExchangeApply}
-          ended={combat.combatEnded}
-          pendingDecisions={combat.combatHasPendingConvalecientes}
-          rematar={combat.combatNpcsDisplay.filter((n) => n.condicion === 'CONVALECIENTE' && n.targetedForKill && !n.dismissed).map((n) => n.name)}
-        />
-      ) : (
-        <>
-          {/* Petición explícita, 2026-08-15: "si se detecta combate: true que no saque
-              sugerencias" — sin `!combateIniciado`, la barra seguía saliendo con el aviso
-              "⚔️ Combatir / 🏃 Huir" ya en pantalla (combate detectado pero el popup todavía sin
-              abrir, `combatOpen` false): mismo criterio que ya usa `composerDisabled`/el propio
-              banner de arriba para esa combinación exacta de estados. */}
-          {!combateIniciado && carcassPending && (
-            // Desollar pasiva (2026-08-25) — sustituye al botón que había en Habilidades: aparece
-            // solo mientras hay cadáveres reales pendientes en la escena actual (narrativos o los
-            // que deja un CombatEncounter resuelto), abre el mismo pop-up de siempre.
-            <button
-              type="button"
-              onClick={() => setHarvestModal({ oficio: 'desollador', label: 'Desollar' })}
-              disabled={anyModalOpen || pendingDeathResolution}
-              className="tactile mx-4 mb-2 flex items-center gap-2 rounded-lg border border-accent-700/60 bg-accent-500/10 px-3 py-2 text-left text-sm text-accent-200 hover:bg-accent-500/20 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <span className="text-lg leading-none">🔪</span>
-              <span>Hay presas caídas sin desollar en esta zona.</span>
-            </button>
-          )}
-          {/* Sugerencias desactivadas (2026-09-06, decisión explícita de la usuaria: "son
-              malísimas y no aportan casi ningún valor... por ahora lo descartamos... dejándolo
-              pendiente por si algún día lo mejoramos") — solo se oculta la entrada visible
-              (SuggestionBar + botón "Sugerir" del composer), sin borrar `handleRequestSuggestions`/
-              `requestSuggestions` ni el endpoint de generación, por si se retoma más adelante. */}
-          {(() => {
-            // A.4 (checklist frontend 2026-08-27): `anyModalOpen` cubre postCombatTarget/
-            // activeDynamicMode/detailTarget/kingdomFoundedInfo — antes el composer seguía editable
-            // por debajo de esos modales pese a estar tapado visualmente. Mismo cálculo reutilizado
-            // para el toggle y la SkillBar (2026-08-29) — ninguno de los dos debe quedar activo
-            // cuando el composer normal tampoco lo estaría.
-            // UX-13 (hito 0.1, H11) — `anyModalOpen` es el guard de exclusión entre modales de acción;
-            // para el composer cuentan además el resto de capas que se abren encima del juego. El cajón
-            // de paneles (`activePanel`) queda fuera a propósito: la Enciclopedia inserta chips en el
-            // composer con el cajón abierto.
-            const capaEncimaAbierta =
-              anyModalOpen || zonaModalOpen || confirmingExit || !!editingSkillBar || !!recursoDetalle || claseVisible || especializacionVisible
-            const composerDisabled = !permisoTurno.permitido || capaEncimaAbierta
-            // Toggle a la IZQUIERDA de la propia fila del composer/barra, no encima en su propia
-            // línea (2026-08-29, feedback en vivo, segunda vuelta: "no bajaste el botón... a la
-            // izquierda donde te dije") — mismo slot visual que la barra, `leftSlot` de
-            // `ChatComposer` lo inserta en la MISMA fila flex que el panel de texto, compartiendo
-            // el borde/fondo exterior en vez de duplicarlo con una franja aparte. Solo se muestra
-            // en la vista `composer` — las otras 2 vistas (menú-barras/barra-activa) ya tienen su
-            // propia forma de volver (botón Atrás o ⌨️ directo).
-            const skillToggle = !combateIniciado && skillHudView.screen === 'composer' && (
-              <TooltipAnchor text="Elegir una habilidad por botón en vez de escribir">
-                <button
-                  type="button"
-                  onClick={() => setSkillHudView({ screen: 'menu-barras' })}
-                  disabled={composerDisabled}
-                  aria-label="Habilidades"
-                  className="skill-slot tactile"
-                >
-                  <span aria-hidden="true">✨</span>
-                </button>
-              </TooltipAnchor>
-            )
-            const activeBar = skillHudView.screen === 'barra-activa' ? skillBars.find((b) => b.id === skillHudView.skillBarId) : undefined
-            return (
-              <>
-                {!combateIniciado && skillHudView.screen === 'menu-barras' ? (
-                  <div className="border-t border-iron-800 bg-wood-950/90 px-4 pb-3 pt-3.5">
-                    <SkillBarMenu
-                      skillBars={skillBars}
-                      onNavigate={setSkillHudView}
-                      onSelectBar={handleSelectSkillBar}
-                      onCreateBar={handleCreateSkillBar}
-                      onEditBar={setEditingSkillBar}
-                      onDeleteBar={handleDeleteSkillBar}
-                    />
-                  </div>
-                ) : !combateIniciado && skillHudView.screen === 'barra-activa' && activeBar ? (
-                  <div className="border-t border-iron-800 bg-wood-950/90 px-4 pb-3 pt-3.5">
-                    <SkillBarHud
-                      bar={activeBar}
-                      savedActions={savedActions}
-                      onUse={handleAttachAbility}
-                      onBackToComposer={handleBackToComposer}
-                      onBackToBars={() => setSkillHudView({ screen: 'menu-barras' })}
-                      onEdit={() => setEditingSkillBar(activeBar)}
-                      disabled={composerDisabled}
-                    />
-                  </div>
-                ) : (
-                  <ChatComposer
-                    ref={composerRef}
-                    onChange={setInput}
-                    onSubmit={handleSubmit}
-                    disabled={composerDisabled}
-                    leftSlot={skillToggle}
-                    // B.24 (checklist frontend 2026-08-27) — antes el texto de ayuda era siempre el
-                    // mismo sin importar por qué el composer estaba apagado; orden de prioridad = el
-                    // primero que aplique de verdad (characterThinking/busyUntil son los más
-                    // frecuentes en la práctica).
-                    // Pista de combate (bug real jugando en vivo, 2026-09-03, "narración lenta e
-                    // indistinguible de un turno atascado" — hallazgo de UX, no arquitectura: el
-                    // combate se resuelve siempre de forma síncrona vía `characterThinking`, sin
-                    // `busyUntil`/countdown, así que un turno de combate/caza más lento que el
-                    // habitual daba el mismo mensaje genérico que uno realmente colgado).
-                    // `combateIniciado` (no `combat.combatOpen`, que exige el panel ya abierto) es
-                    // la señal disponible ANTES de que vuelva la respuesta.
-                    disabledReason={
-                      characterThinking
-                        ? combateIniciado
-                          ? 'Resolviendo el combate — puede tardar más de lo habitual...'
-                          : 'Esperando la narración de tu último turno...'
-                        : busyUntil
-                          ? 'Ocupado con algo que lleva tiempo — vuelve cuando termine.'
-                          : combateIniciado && !combat.combatOpen
-                            ? 'En combate — usa el panel de combate para actuar.'
-                            : capaEncimaAbierta
-                              ? 'Resuelve lo que tienes abierto antes de escribir una nueva acción.'
-                              : (permisoTurno.motivo ?? undefined)
-                    }
-                  />
-                )}
-              </>
-            )
-          })()}
-        </>
-      )}
+      <GameFooter
+        modo={endedAt ? 'fin' : pendingDeathResolution ? 'muerte' : combat.combatOpen && combateIniciado ? 'combate' : 'normal'}
+        characterName={characterName}
+        onResolverMuerte={handleResolveDeath}
+        resolviendoMuerte={resolvingDeath}
+        combatComposer={
+            // Rework 2026-07-24, recortado en el rediseño de la vista de combate (2026-07-28): sigue
+            // sustituyendo al ChatComposer normal en el mismo sitio, pero ahora solo es el input de
+            // texto libre — enemigos/ficha/habilidades/objetos/Actuar viven en CombatPanel, arriba.
+            <CombatComposer
+              freeText={combat.combatFreeText}
+              onFreeTextChange={combat.setCombatFreeText}
+              onSubmit={combat.handleCombatFreeSubmit}
+              busy={combat.combatBusy || combat.awaitingNextInitiative || combat.awaitingExchangeApply}
+              ended={combat.combatEnded}
+              pendingDecisions={combat.combatHasPendingConvalecientes}
+              rematar={combat.combatNpcsDisplay.filter((n) => n.condicion === 'CONVALECIENTE' && n.targetedForKill && !n.dismissed).map((n) => n.name)}
+            />
+        }
+        // Petición explícita, 2026-08-15: "si se detecta combate: true que no saque sugerencias" —
+        // ni el aviso de desollar ni la barra de habilidades con un combate detectado.
+        desollar={
+          !combateIniciado && carcassPending
+            ? { disabled: anyModalOpen || pendingDeathResolution, onClick: () => setHarvestModal({ oficio: 'desollador', label: 'Desollar' }) }
+            : null
+        }
+        conHabilidades={!combateIniciado}
+        skillHudView={skillHudView}
+        setSkillHudView={setSkillHudView}
+        skillBars={skillBars}
+        savedActions={savedActions}
+        onSelectBar={handleSelectSkillBar}
+        onCreateBar={handleCreateSkillBar}
+        onEditBar={setEditingSkillBar}
+        onDeleteBar={handleDeleteSkillBar}
+        onUseAbility={handleAttachAbility}
+        onBackToComposer={handleBackToComposer}
+        composerRef={composerRef}
+        onChange={setInput}
+        onSubmit={handleSubmit}
+        composerDisabled={composerDisabled}
+        disabledReason={composerDisabledReason}
+      />
 
       {detailTarget && (
         <Capa id="detalle" hija>

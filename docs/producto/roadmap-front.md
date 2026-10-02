@@ -238,8 +238,10 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
   borrar clases muertas (H8).
 - **BAS-5 · Partir `GameView.tsx`** **[H]** **L** — `GameHeader`, `GameFooter`, `GameModals`,
   `GameLayout`. Sin cambio visual; desbloquea HUD y Configuración. 🚧 en curso (2026-10-02): hecho
-  `GameHeader` (`components/GameHeader.tsx`, con las animaciones de nivel y muertes); faltan
-  `GameFooter`, `GameModals` y `GameLayout`.
+  `GameHeader` (`components/GameHeader.tsx`, con las animaciones de nivel y muertes) y `GameFooter`
+  (`components/GameFooter.tsx`: fin, muerte, composer de combate como hueco, composer normal con
+  barra de habilidades; el bloqueo y su motivo se calculan en GameView); faltan `GameModals` y
+  `GameLayout`.
 - **BAS-6 · Carga** **[H]** **S** — `React.lazy` para Enciclopedia, `MapZoomModal`, `InteractiveMap`,
   admin y secciones de Reino; `loading="lazy"`, `decoding="async"` y fundido en todas las `<img>`.
 - **BAS-7 · Animaciones de salida y de cambio de layout** **[P]** **M** 🧭
