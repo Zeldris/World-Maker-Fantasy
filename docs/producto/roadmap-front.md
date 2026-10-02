@@ -206,9 +206,14 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
   *silenciar al perder el foco de la ventana*. **S**
 
 ### 2.6 Pestaña Controles
-- **CFG-26 · Atajos de teclado reasignables**: `I` Inventario, `M` Mapa, `P` Personaje, `H`
+- ~~**CFG-26 · Atajos de teclado reasignables**: `I` Inventario, `M` Mapa, `P` Personaje, `H`
   Habilidades, `J` Diario, `K` Reino, `L` Enciclopedia, `1-9` barra de habilidades, `Z` moverse por
-  la zona, `Enter` enviar, `↑` recuperar última acción, `Esc` menú. Hoy no hay ninguno (H16). **M**
+  la zona, `Enter` enviar, `↑` recuperar última acción, `Esc` menú. Hoy no hay ninguno (H16). **M**~~
+  ✅ 2026-10-02: `lib/atajos.ts` (I, M, P, H, J, K, L, Z; reasignar intercambia si la tecla ya era de
+  otra acción; números, Espacio, Enter, Esc y Tab reservados) y pestaña «Controles» del panel. En
+  `GameView` abren o cierran su panel con las mismas pestañas bloqueadas que la barra lateral y el
+  permiso de la fase; Z solo si se puede mover. **Queda:** `1-9` para la barra de habilidades y `↑`
+  para recuperar la última acción.
 - **CFG-27 · Mando / Steam Deck**: foco visible grande, esquema de botones, repetición al mantener
   la cruceta. Depende de `BAS-3`. **M**
 

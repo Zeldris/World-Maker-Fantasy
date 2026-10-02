@@ -2,17 +2,19 @@ import { useState } from 'react'
 import { ModalShell } from './ModalShell'
 import { useAjustes } from '../context/useAjustes'
 import { AJUSTES_POR_DEFECTO, type Ajustes } from '../lib/ajustes'
+import { ACCIONES_ATAJO, asignarAtajo, teclaValida, type AccionAtajo } from '../lib/atajos'
 
 // CFG-4 (hito 0.2, roadmap-front.md § 2.1) — panel de configuración: pestañas laterales, vista
 // previa en vivo (los cambios se ven al momento pero no se guardan hasta «Aplicar»), pie
 // Restablecer · Cancelar · Aplicar y aviso si se cierra con cambios sin aplicar.
 
-type Pestana = 'pantalla' | 'texto' | 'animaciones' | 'accesibilidad'
+type Pestana = 'pantalla' | 'texto' | 'animaciones' | 'controles' | 'accesibilidad'
 
 const PESTANAS: { id: Pestana; label: string; icono: string }[] = [
   { id: 'pantalla', label: 'Pantalla', icono: '🖥️' },
   { id: 'texto', label: 'Interfaz y texto', icono: '📜' },
   { id: 'animaciones', label: 'Animaciones', icono: '✨' },
+  { id: 'controles', label: 'Controles', icono: '⌨️' },
   { id: 'accesibilidad', label: 'Accesibilidad', icono: '👁' },
 ]
 
@@ -64,6 +66,8 @@ export function PanelAjustes({ guardados, onCerrar }: { guardados: Ajustes; onCe
   const [borrador, setBorrador] = useState<Ajustes>(guardados)
   const [pestana, setPestana] = useState<Pestana>('pantalla')
   const [confirmandoSalida, setConfirmandoSalida] = useState(false)
+  // CFG-26 — acción cuyo atajo se está cambiando (espera la siguiente tecla).
+  const [capturando, setCapturando] = useState<AccionAtajo | null>(null)
   const hayCambios = JSON.stringify(borrador) !== JSON.stringify(guardados)
 
   const cambiar = <K extends keyof Ajustes>(clave: K, valor: Ajustes[K]) => {
@@ -204,6 +208,49 @@ export function PanelAjustes({ guardados, onCerrar }: { guardados: Ajustes; onCe
                 ]}
               />
             </>
+          )}
+          {pestana === 'controles' && (
+            <div className="flex flex-col gap-1.5">
+              <p className="mb-1 text-2xs text-wood-500">
+                Atajos de teclado (fuera de los campos de texto). Enter envía y Esc abre el menú; los números eligen opciones.
+              </p>
+              {ACCIONES_ATAJO.map(({ accion, label }) => (
+                <div key={accion} className="flex items-center justify-between gap-3 rounded-lg border border-iron-800 px-3 py-1.5 text-xs">
+                  <span className="text-wood-200">{label}</span>
+                  {capturando === accion ? (
+                    <input
+                      autoFocus
+                      readOnly
+                      aria-label={`Pulsa la nueva tecla para ${label}`}
+                      placeholder="Pulsa una tecla…"
+                      onKeyDown={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        if (e.key === 'Escape') return setCapturando(null)
+                        if (!teclaValida(e.key)) return
+                        cambiar('atajos', asignarAtajo(borrador.atajos, accion, e.key))
+                        setCapturando(null)
+                      }}
+                      onBlur={() => setCapturando(null)}
+                      className="w-32 rounded border border-accent-500 bg-wood-950/60 px-2 py-0.5 text-center text-2xs text-accent-200 outline-none"
+                    />
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <kbd className="min-w-6 rounded border border-iron-700 bg-wood-950/60 px-1.5 py-0.5 text-center font-mono uppercase text-wood-100">
+                        {borrador.atajos[accion]}
+                      </kbd>
+                      <button
+                        type="button"
+                        onClick={() => setCapturando(accion)}
+                        className="tactile rounded border border-iron-700 px-2 py-0.5 text-2xs text-wood-400 hover:text-accent-300"
+                      >
+                        Cambiar
+                      </button>
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
           )}
           {pestana === 'accesibilidad' && (
             <Interruptor

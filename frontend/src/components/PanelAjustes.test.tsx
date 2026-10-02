@@ -47,4 +47,17 @@ describe('CFG-4 — panel de configuración', () => {
     fireEvent.click(getByRole('button', { name: 'Restablecer' }))
     expect(getByRole('radio', { name: 'Dramática' }).getAttribute('aria-checked')).toBe('true')
   })
+
+  it('CFG-26: reasignar un atajo en Controles intercambia con el que tenía esa tecla', () => {
+    const { getByRole, getByText, getAllByRole } = montar()
+    fireEvent.click(getByRole('button', { name: 'Configuración' }))
+    fireEvent.click(getByText('Controles'))
+    fireEvent.click(getAllByRole('button', { name: 'Cambiar' })[0])
+    fireEvent.keyDown(getByRole('textbox', { name: /Inventario/ }), { key: 'm' })
+    fireEvent.click(getByRole('button', { name: 'Aplicar' }))
+    const atajos = JSON.parse(localStorage.getItem(CLAVE_AJUSTES)!).atajos
+    expect(atajos.inventario).toBe('m')
+    expect(atajos.mapa).toBe('i')
+  })
 })
+

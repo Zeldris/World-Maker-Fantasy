@@ -1,4 +1,5 @@
 import { setFactorDados } from './duracionTirada'
+import { ATAJOS_POR_DEFECTO, normalizarAtajos, type MapaAtajos } from './atajos'
 
 // Ajustes del jugador (CFG-5 y CFG-6, hito 0.2 — roadmap-front.md § 2). Aquí la parte pura:
 // valores por defecto, validación y carga/guardado en `localStorage` con clave versionada y
@@ -22,6 +23,8 @@ export interface Ajustes {
   velocidadDados: VelocidadDados
   /// CFG-28 — alto contraste.
   altoContraste: boolean
+  /// CFG-26 — atajos de teclado.
+  atajos: MapaAtajos
 }
 
 export const AJUSTES_POR_DEFECTO: Ajustes = {
@@ -32,6 +35,7 @@ export const AJUSTES_POR_DEFECTO: Ajustes = {
   animaciones: 'sistema',
   velocidadDados: 'dramatica',
   altoContraste: false,
+  atajos: ATAJOS_POR_DEFECTO,
 }
 
 export const CLAVE_AJUSTES = 'tarkor.settings.v1'
@@ -54,6 +58,7 @@ export function normalizarAjustes(crudo: unknown): Ajustes {
     animaciones: uno(o.animaciones, ['sistema', 'completas', 'reducidas', 'ninguna'] as const, d.animaciones),
     velocidadDados: uno(o.velocidadDados, ['dramatica', 'normal', 'rapida', 'instantanea'] as const, d.velocidadDados),
     altoContraste: typeof o.altoContraste === 'boolean' ? o.altoContraste : d.altoContraste,
+    atajos: normalizarAtajos(o.atajos),
   }
 }
 
