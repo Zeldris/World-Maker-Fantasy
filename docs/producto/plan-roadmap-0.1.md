@@ -71,6 +71,13 @@ un tránsito): `doPassiveTurn` narra directo con la clasificación del mock. 25/
   con botín, es interceptada o tiene bajas, y cuando una relación entre facciones cambia de banda
   (p. ej. de TENSION a GUERRA). Solo lo que el personaje podría saber: facciones de su región o con
   las que tiene reputación.
+  ✅ **Hecho** (2026-10-02): `services/noticiasMundo.ts` (textos deterministas, filtro de
+  conocimiento y reparto a las partidas del mundo, nunca a una cuyo reloj no ha llegado a ese día),
+  enganchado en `factionExpeditions.ts` (vuelta con botín, asalto rechazado o con carga perdida,
+  cambio de banda provocado por un asalto). Para verlas sin recargar: `GET /saves/:id/mundo/nuevas`
+  y el hook `useNoticiasMundo` (al terminar cada turno y cada 2 min). Los cambios de banda que causa
+  el propio jugador ya iban a su registro. **Pendiente para 0.2:** cambios de banda por la economía
+  de facción y noticias de otras fuentes (pasarán a sucesos del Cronista).
 - **Migrar `worldAgenda.ts`** a `FactionRelation`: el conflicto fijo Serhu+Concordia contra
   Helsig+Goshg pasa a leerse de las relaciones reales (sembradas el 2026-09-29), sin cambiar lo que
   ve el jugador hoy.

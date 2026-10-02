@@ -14,8 +14,8 @@ cada commit.**
 | **Rama de trabajo** | `claude/frontend-improvements-roadmap-0mpckt`. Flujo acordado (2026-10-01): commit + push a esta rama con cada cosa hecha; a `main` se pasa **por pull request** (desde esta sesión el push directo a `main` lo bloquea el filtro de permisos) |
 | **Último commit en `main`** | `423c8a5` — roadmap de roadmaps y revisión cruzada de front y UX (+ el commit de esta bitácora) |
 | **Hito** | `0.1` Llanuras estable — [plan](../producto/plan-roadmap-0.1.md) · [mapa de roadmaps](../producto/21-roadmap.md#qué-entra-en-cada-hito) |
-| **Tarea en curso** | 🚧 Fase D del 0.1, parte 1 (noticias del mundo) — commit `WIP:`. Hecho: `services/noticiasMundo.ts` (textos + filtro de conocimiento + reparto a partidas), enganche en `factionExpeditions.ts`, `GET /saves/:id/mundo/nuevas` (`log.ts`), hook `useNoticiasMundo` en el front. Tests nuevos en verde por separado y front completo 330/330. **Falta:** pasar la suite completa del backend (la usuaria la interrumpió), quitar el `WIP`, documentar en el plan; después, parte 2: migrar `worldAgenda.ts` a `FactionRelation` |
-| **Tests** | Frontend: `tsc -b` 0, `vitest` 55 archivos / 328 tests, `oxlint` 13 avisos (los mismos de antes). Backend en local con Postgres real: `tsc` 0, `oxlint` 0 (solo avisos previos), `vitest` 162/162 archivos, 2851 tests. CI de GitHub en verde (PR #2) |
+| **Tarea en curso** | Fase D del 0.1: parte 1 (noticias del mundo) hecha; siguiente, parte 2: migrar `worldAgenda.ts` a `FactionRelation` sin cambiar lo que ve el jugador |
+| **Tests** | Frontend: `tsc -b` 0, `vitest` 56 archivos / 330 tests, `oxlint` 13 avisos (los mismos de antes). Backend en local con Postgres real: `tsc` 0, `oxlint` 0 (solo avisos previos), `vitest` 163/163 archivos, 2860 tests. CI de GitHub en verde (PR #2) |
 
 ## Siguientes pasos (en orden)
 
@@ -68,6 +68,8 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
+- **2026-10-02** — Fase D parte 1: noticias de expediciones de facción en "El mundo", repartidas
+  según lo que sabe cada personaje y recogidas sin recargar.
 - **2026-10-02** — Z-A paso 4: `ZON-20` (leyenda en la esquina del mapa) y `ZON-62` (cuadrícula con
   `Alt` o botón). **Zona Z-A completa; con ella, todos los arreglos de interfaz del 0.1.**
 - **2026-10-02** — Z-A paso 3: `ZON-17` (salidas como estandartes con el destino) y `ZON-19`
