@@ -128,10 +128,16 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
 - ~~**CFG-1 · Botón ⚙️ fijo** en la cabecera de hierro de la partida (junto a la fecha) y en la esquina
   superior derecha de `Home`. **S**~~ ✅ 2026-10-02: `components/BotonAjustes.tsx` en `GameHeader` y
   `Home`.
-- **CFG-2 · `Esc` abre el menú** cuando no hay ningún modal/cajón abierto (si lo hay, `Esc` lo cierra
-  primero, como en cualquier juego); botón *Menú/Start* del mando igual. **S**
-- **CFG-3 · Menú de pausa** dentro de la partida: *Reanudar · Configuración · Guardar y salir a tus
-  partidas · Salir al inicio*. Absorbe el actual "← Salir a tus partidas" de la cabecera. **M**
+- ~~**CFG-2 · `Esc` abre el menú** cuando no hay ningún modal/cajón abierto (si lo hay, `Esc` lo cierra
+  primero, como en cualquier juego); botón *Menú/Start* del mando igual. **S**~~ ✅ 2026-10-02:
+  escuchador en `GameView` sobre el gestor de capas: sin capa abierta, abre la pausa; con el cajón
+  arriba, lo cierra; los modales cierran con su propio Esc (`ModalShell`). **Queda:** el botón
+  *Menú/Start* del mando (Gamepad API, con `CFG-27`).
+- ~~**CFG-3 · Menú de pausa** dentro de la partida: *Reanudar · Configuración · Guardar y salir a tus
+  partidas · Salir al inicio*. Absorbe el actual "← Salir a tus partidas" de la cabecera. **M**~~
+  ✅ 2026-10-02: `components/MenuPausa.tsx` (opciones con número, MOD-3), abierto con «☰ Menú» de la
+  cabecera o Esc; sustituye a la confirmación de salida (la partida se guarda en cada turno; si hay
+  algo en curso, avisa con el motivo de `canDo(fase, 'salir')`).
 - ~~**CFG-4 · Panel de configuración** a pantalla casi completa, pestañas laterales (lenguaje de
   `SideNav`), `plank-panel` + `iron-band`. Pie: **Restablecer · Cancelar · Aplicar**, previsualización
   en vivo, aviso si se cierra con cambios sin aplicar. **M**~~ ✅ 2026-10-02:

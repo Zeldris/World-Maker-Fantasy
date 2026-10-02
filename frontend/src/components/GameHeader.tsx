@@ -96,7 +96,7 @@ export function GameHeader({
             onClick={onSalir}
             className="text-xs text-wood-500 transition-colors hover:text-accent-300"
           >
-            ← Salir a tus partidas
+            ☰ Menú
           </button>
           <p className="mt-0.5 truncate font-serif text-base tracking-wide text-wood-200">
             <span className="text-accent-400">{characterName}</span>

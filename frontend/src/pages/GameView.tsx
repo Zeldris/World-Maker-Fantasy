@@ -1,5 +1,7 @@
 import { useNoticiasMundo } from '../hooks/useNoticiasMundo'
 import { useGamePhase } from '../hooks/useGamePhase'
+import { MenuPausa } from '../components/MenuPausa'
+import { useAjustes } from '../context/useAjustes'
 import { useNotificaciones } from '../hooks/useNotificaciones'
 import { notificacionesDeEntrada } from '../lib/notificaciones'
 import { Notificaciones } from '../components/Notificaciones'
@@ -75,7 +77,6 @@ import { EntregaModal } from '../components/EntregaModal'
 import { AprenderOficioModal } from '../components/AprenderOficioModal'
 import { EspecializacionModal } from '../components/EspecializacionModal'
 import { ClaseModal } from '../components/ClaseModal'
-import { ConfirmModal } from '../components/ConfirmModal'
 import { inventoryCapacityFor, totalInventoryUnits } from '../lib/inventoryCapacity'
 import {
   requestTurnClassify,
@@ -1437,6 +1438,15 @@ export function GameView() {
     reputacion: 'accent2',
   }
 
+  // Salir a tus partidas (menú de pausa, CFG-3). Bug real (2026-09-04): cerrar el menú antes de
+  // navegar, si no quedaba montado por encima de la vista nueva. Bug real (2026-07-24): volver a
+  // las partidas de este personaje, con `characterName` por query como respaldo tras recargar.
+  function salirAPartidas() {
+    setConfirmingExit(false)
+    navigate(`/solitario/mundo/${worldIdSlug}/personaje/${saveId}?characterName=${encodeURIComponent(characterName ?? '')}`)
+  }
+  const { abrirPanel: abrirPanelAjustes } = useAjustes()
+
   // Composer (UX-13, hito 0.1; UX-1/UX-2, hito 0.2) — se bloquea si la fase no deja enviar turno o
   // hay una capa encima. El cajón de paneles (`activePanel`) queda fuera a propósito: la
   // Enciclopedia inserta chips en el composer con el cajón abierto. B.24 (checklist 2026-08-27):
@@ -1481,6 +1491,23 @@ export function GameView() {
     confirmingExit && { id: 'salir', nivel: 'sistema' },
   ].filter((c): c is CapaAbierta => !!c)
   const estadoCapas = resolverCapas(capasAbiertas)
+  // CFG-2 (hito 0.2) — Esc como en un juego: con algo abierto, lo cierra (los modales lo hacen
+  // ellos mismos; aquí, el cajón de paneles); sin nada abierto, abre el menú de pausa.
+  const capaSuperior = estadoCapas.superior
+  useEffect(() => {
+    const alPulsar = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return
+      if (capaSuperior === null) {
+        e.preventDefault()
+        setConfirmingExit(true)
+      } else if (capaSuperior === 'panel') {
+        e.preventDefault()
+        setActivePanel(null)
+      }
+    }
+    window.addEventListener('keydown', alPulsar)
+    return () => window.removeEventListener('keydown', alPulsar)
+  }, [capaSuperior, setActivePanel])
 
   return (
     <EnciclopediaLinkProvider
@@ -1848,26 +1875,18 @@ export function GameView() {
 
       {confirmingExit && (
         <Capa id="salir">
-        <ConfirmModal
-          title="Salir a tus partidas"
-          message="¿Seguro que quieres salir? Tu progreso ya está guardado — puedes volver a esta partida cuando quieras."
-          confirmLabel="Salir"
-          tone="accent"
-          onCancel={() => setConfirmingExit(false)}
-          onConfirm={() => {
-            // Bug real (2026-09-04, "la url se actualiza pero no vuelve a la selección de
-            // partida"): `navigate()` sin cerrar el modal antes lo dejaba montado por encima de la
-            // vista nueva (z-50, overlay a pantalla completa) — la ruta cambiaba de verdad, pero
-            // visualmente seguía tapada.
+        {/* CFG-3 (hito 0.2) — menú de pausa (antes, la confirmación de «Salir a tus partidas»). */}
+        <MenuPausa
+          aviso={puede('salir').motivo}
+          onReanudar={() => setConfirmingExit(false)}
+          onConfiguracion={() => {
             setConfirmingExit(false)
-            // Bug real (2026-07-24, "al darle a salir de la partida, que me lleve a las partidas
-            // no a seleccionar mundo"): CharacterSaves resuelve el personaje por id contra
-            // `pregeneratedCharacters` o `selectedCharacter` (SessionContext, en memoria, se
-            // pierde al recargar) — tras recargar GameView directamente, ninguna de las dos vías
-            // resuelve nada (aquí nunca se manda un id de personaje real, sino `saveId`), así que
-            // caía al aviso de "elige mundo y personaje". `characterName` va por query, como
-            // respaldo que CharacterSaves ya puede usar sin depender de esa sesión en memoria.
-            navigate(`/solitario/mundo/${worldIdSlug}/personaje/${saveId}?characterName=${encodeURIComponent(characterName ?? '')}`)
+            abrirPanelAjustes()
+          }}
+          onSalirPartidas={salirAPartidas}
+          onSalirInicio={() => {
+            setConfirmingExit(false)
+            navigate('/')
           }}
         />
         </Capa>
