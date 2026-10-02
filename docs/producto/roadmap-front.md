@@ -284,12 +284,21 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
   - **A (recomendada):** hook propio `usePresence(open, ms)` + *View Transitions API* con degradado a
     corte seco donde el webview no la soporte. Cero dependencias.
   - **B:** `motion` (Framer Motion, ~30 KB gz) con `AnimatePresence`/`layout`.
-- **BAS-8 · Librería de componentes base** **[P]** **M** — `QuantityStepper`, `EntityRow` (miniatura
+- ~~**BAS-8 · Librería de componentes base** **[P]** **M** — `QuantityStepper`, `EntityRow` (miniatura
   + nombre + subtítulo + acción), `Skeleton`, `ErrorBanner`, `SuccessState`, `Tabs` con indicador
-  deslizante, `ProgressBar` (con barra fantasma), `Chip`. Hoy cada uno vive copiado en varios sitios.
-- **BAS-9 · Catálogo visual** **[P]** **M** — una ruta `/admin/ui` (como `/admin/enciclopedia`) que
+  deslizante, `ProgressBar` (con barra fantasma), `Chip`. Hoy cada uno vive copiado en varios sitios.~~
+  ✅ 2026-10-02: `components/base/` con `Chip`, `ProgressBar` (barra fantasma al bajar), `Tabs`
+  (indicador deslizante, flechas/Inicio/Fin) y `EntityRow` (con `Miniatura`); los demás ya salieron
+  con `MOD-2`/`MOD-5` (`EstadosModal`, `QuantityStepper`, `ErrorBanner`). `ResourceBar` usa
+  `ProgressBar` y los chips de XP del registro usan `Chip`. **Queda:** pasar a ellos el resto de
+  copias (barras de vida/energía, pestañas de los paneles, filas de Saquear/Recolectar) según se
+  toquen.
+- ~~**BAS-9 · Catálogo visual** **[P]** **M** — una ruta `/admin/ui` (como `/admin/enciclopedia`) que
   pinta todos los componentes y estados (vacío, cargando, error, deshabilitado) para revisar el
-  diseño sin jugar. Sustituye a Storybook sin añadir dependencias.
+  diseño sin jugar. Sustituye a Storybook sin añadir dependencias.~~ ✅ 2026-10-02:
+  `pages/AdminUI.tsx` en `/admin/ui` (chips, barras, pestañas, filas, cantidades, estados de modal,
+  tarjetas de oferta, mantener pulsado, notificaciones y los 5 tamaños de `ModalShell`), con el
+  botón ⚙️ para ver cada componente con los ajustes aplicados.
 
 ---
 
