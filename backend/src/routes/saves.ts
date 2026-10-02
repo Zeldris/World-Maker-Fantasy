@@ -27,6 +27,7 @@ import { deathRoutes } from './saves/death.js';
 import { entregaRoutes } from './saves/entrega.js';
 import { aprenderOficioRoutes } from './saves/aprenderOficio.js';
 import { npcInteractionRoutes } from './saves/npcInteraction.js';
+import { libroRoutes } from './saves/libro.js';
 
 /// Rutas de persistencia real de partidas (decisión 2026-07-17: /turn y /entorno dejan de ser
 /// stateless — el frontend crea una partida una vez y a partir de ahí solo manda `saveId`).
@@ -68,4 +69,6 @@ export async function savesRoutes(app: FastifyInstance) {
   await app.register(entregaRoutes);
   await app.register(aprenderOficioRoutes);
   await app.register(npcInteractionRoutes);
+  // Libro de Sucesos, vista de administración (CR-4, hito 0.2).
+  await app.register(libroRoutes);
 }
