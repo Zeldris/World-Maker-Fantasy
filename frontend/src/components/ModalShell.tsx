@@ -8,11 +8,11 @@ import { useEffect, useId, useRef, type KeyboardEvent, type ReactNode } from 're
 export type TamanoModal = 'sm' | 'md' | 'lg' | 'xl' | 'ceremonia'
 
 const ANCHO: Record<TamanoModal, string> = {
-  sm: 'max-w-sm',
-  md: 'max-w-md',
-  lg: 'max-w-2xl',
+  sm: 'max-w-sm max-h-[85vh]',
+  md: 'max-w-md max-h-[85vh]',
+  lg: 'max-w-2xl max-h-[85vh]',
   xl: 'max-w-[90rem] h-[90vh]',
-  ceremonia: 'max-w-3xl min-h-[60vh]',
+  ceremonia: 'max-w-3xl min-h-[60vh] max-h-[90vh]',
 }
 
 const FOCUSABLE_SELECTOR =
@@ -31,6 +31,8 @@ export interface ModalShellProps {
   sinCerrar?: boolean
   /// El título solo para lectores de pantalla (la ficha pinta su propio encabezado con imagen).
   tituloOculto?: boolean
+  /// El cuerpo no hace scroll propio (mapas que gestionan su desplazamiento).
+  cuerpoSinScroll?: boolean
   /// Texto del botón de cerrar en vez de la ✕ (p. ej. «Salir» de una escena).
   etiquetaCerrar?: string
   disableOverlayClose?: boolean
@@ -49,6 +51,7 @@ export function ModalShell({
   sinCerrar = false,
   etiquetaCerrar,
   tituloOculto = false,
+  cuerpoSinScroll = false,
   disableOverlayClose = false,
   children,
   footer,
@@ -99,7 +102,7 @@ export function ModalShell({
         aria-labelledby={tituloId}
         aria-label={title}
         onKeyDown={handleKeyDown}
-        className={`plank-panel animate-combat-enter relative flex max-h-[85vh] w-full flex-col rounded-xl outline-none ${ANCHO[tamano]}`}
+        className={`plank-panel animate-combat-enter relative flex w-full flex-col rounded-xl outline-none ${ANCHO[tamano]}`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex shrink-0 items-start gap-3 px-5 pt-5">
@@ -122,7 +125,7 @@ export function ModalShell({
             </button>
           )}
         </div>
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-4">{children}</div>
+        <div className={`flex min-h-0 flex-1 flex-col gap-4 px-5 py-4 ${cuerpoSinScroll ? 'overflow-hidden' : 'overflow-y-auto'}`}>{children}</div>
         {footer && <div className="flex shrink-0 gap-2 border-t border-iron-800/60 px-5 py-3">{footer}</div>}
       </div>
     </div>

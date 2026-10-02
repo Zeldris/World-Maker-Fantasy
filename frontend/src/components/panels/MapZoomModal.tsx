@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import berigMapUrl from '../../assets/maps/helek-sirik-berig.png'
 import { projectLlanurasNodes, type LlanurasEdge, type LlanurasNode, type CristalHeladoNode, type MapNodeOption } from '../../data/map'
+import { ModalShell } from '../ModalShell'
 
 interface MapZoomModalProps {
   onClose: () => void
@@ -119,13 +120,9 @@ export function MapZoomModal({
   }
 
   return (
-    <div className="animate-overlay-in fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" onClick={onClose}>
-      <div
-        className="plank-panel animate-combat-enter relative flex h-[88vh] w-full max-w-5xl flex-col gap-3 rounded-xl p-4"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-serif text-lg text-wood-100">Mapa completo</h2>
+    // MOD-1 (hito 0.2): sobre ModalShell tamaño xl, sin scroll propio (zoom y arrastre del mapa).
+    <ModalShell title="Mapa completo" tamano="xl" onClose={onClose} cuerpoSinScroll>
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <div className="flex flex-wrap items-center gap-1.5">
             <button type="button"
               onClick={() => setScale((s) => clampScale(s - ZOOM_STEP))}
@@ -147,12 +144,6 @@ export function MapZoomModal({
               className="tactile rounded-lg border border-iron-700 px-2.5 py-1 text-xs text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300"
             >
               Restablecer
-            </button>
-            <button type="button"
-              onClick={onClose}
-              className="tactile rounded-lg border border-iron-700 bg-wood-950/50 px-2.5 py-1 text-xs text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300"
-            >
-              Cerrar ✕
             </button>
           </div>
         </div>
@@ -466,7 +457,6 @@ export function MapZoomModal({
         </div>
 
         <p className="text-center text-2xs text-wood-500">Arrastra para moverte · rueda del ratón o +/− para hacer zoom</p>
-      </div>
-    </div>
+    </ModalShell>
   )
 }

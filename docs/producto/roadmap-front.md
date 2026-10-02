@@ -352,7 +352,7 @@ Variantes que cubre (todas las que hoy existen):
 Hoy hay dos familias: 22 modales sobre `SelectionModalShell` y 8 overlays con cascarón propio (H6).
 Todos tienen el mismo ancho (`max-w-md`), la misma entrada (`combat-enter`) y ninguna salida.
 
-- **MOD-1 · `ModalShell` único** **M** — evolución de `SelectionModalShell` que absorbe los 8
+- ~~**MOD-1 · `ModalShell` único** **M**~~ — evolución de `SelectionModalShell` que absorbe los 8
   overlays propios:
   - **Tamaños**: `sm` (confirmar), `md` (selección, actual), `lg` (fichas de la enciclopedia,
     Tameo), `xl` (Moverte por la zona, editor de barras), `ceremonia` (pantalla casi completa,
@@ -364,14 +364,13 @@ Todos tienen el mismo ancho (`max-w-md`), la misma entrada (`combat-enter`) y ni
   - **Animación de salida** (BAS-7) y **apilado** (z-index gestionado; hoy hay `z-50`, `z-[60]` y
     `z-40` repartidos a mano).
 
-  🚧 en curso (2026-10-02): `components/ModalShell.tsx` con tamaños, cabecera (icono, título,
-  subtítulo, ✕), pie fijo, Escape, Tab atrapado, foco devuelto al cerrar y `aria-labelledby`;
-  `SelectionModalShell` ya es una envoltura suya (los modales de selección lo heredan sin ✕, que
-  ya tienen «Cancelar»). El apilado lo lleva el gestor de capas (`UX-9`). Migrados: Clase y
-  Especialización (obligatorias: sin ✕ ni cierre), Fundar reino (se pospone con Cancelar/✕/Escape),
-  Modo dinámico («Salir» como botón de cerrar, opciones en el pie) y Detalle (título solo accesible:
-  cada ficha pinta su encabezado con imagen). **Falta:** Moverte por la zona, Mapa ampliado e
-  imagen, y la animación de salida (`BAS-7`).
+  ✅ 2026-10-02: `components/ModalShell.tsx` con tamaños, cabecera (icono,
+  título, subtítulo, ✕ o texto propio), pie fijo, cuerpo con o sin scroll, Escape, Tab atrapado,
+  foco devuelto al cerrar y `aria-labelledby`; `SelectionModalShell` es una envoltura suya. Migrados
+  Clase, Especialización, Fundar reino, Modo dinámico, Detalle, Moverte por la zona y Mapa
+  ampliado. El visor de imagen (`ImagePromptDisplay`) queda fuera a propósito: es un visor a
+  pantalla completa sin marco, no un panel (ya cierra con Escape). El apilado lo lleva el gestor de
+  capas (`UX-9`). **Queda:** la animación de salida, con `BAS-7` (🧭).
 - **MOD-2 · Estados comunes** **S** — `Skeleton` mientras carga (con la altura final aproximada, para
   que el modal no salte, H28), `ErrorBanner` con botón *Reintentar*, `SuccessState` con icono y
   sello animado (hoy cada modal escribe su frase en `emerald-300`).
