@@ -4,6 +4,7 @@ import { setCompanionItemSlot } from '../lib/api'
 import { isCompatibleWithSlot, SLOT_LABEL } from '../lib/equipSlots'
 import { SelectionModalShell } from './SelectionModalShell'
 import { useSubmitError } from '../hooks/useSubmitError'
+import { useModoConsulta } from '../context/useModoConsulta'
 
 // Grupo 3 § Compañeros y supervivencia (2026-08-25, docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md
 // § 6) — "ranuras reducidas" de fauna simplificadas a un set fijo (mismo criterio consciente que
@@ -29,6 +30,8 @@ interface CompanionEquipModalProps {
 /// reales para fauna, no vale la pena el layout anatómico).
 export function CompanionEquipModal({ saveId, companion, inventory, onClose, onChanged }: CompanionEquipModalProps) {
   const [pickingSlot, setPickingSlot] = useState<EquipSlot | null>(null)
+  // UX-5 (hito 0.2) — equipar/quitar no mientras el panel que lo abre está en modo consulta.
+  const consulta = useModoConsulta()
   const [busy, setBusy] = useState(false)
   const { error, runCatchingError } = useSubmitError()
 
@@ -60,7 +63,8 @@ export function CompanionEquipModal({ saveId, companion, inventory, onClose, onC
                 <button type="button"
                   key={item.id}
                   onClick={() => handleEquip(pickingSlot, item.id)}
-                  disabled={busy}
+                  disabled={busy || !!consulta}
+                  title={consulta ?? undefined}
                   className="tactile rounded-lg border border-iron-700 px-3 py-2 text-left text-xs text-wood-200 transition-colors hover:border-accent-600/60 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {item.name}
@@ -85,7 +89,8 @@ export function CompanionEquipModal({ saveId, companion, inventory, onClose, onC
                   {equipped && (
                     <button type="button"
                       onClick={() => handleEquip(slot, null)}
-                      disabled={busy}
+                      disabled={busy || !!consulta}
+                      title={consulta ?? undefined}
                       className="tactile rounded border border-iron-700 px-2 py-1 text-2xs text-wood-400 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Quitar
@@ -93,7 +98,8 @@ export function CompanionEquipModal({ saveId, companion, inventory, onClose, onC
                   )}
                   <button type="button"
                     onClick={() => setPickingSlot(slot)}
-                    disabled={busy}
+                    disabled={busy || !!consulta}
+                    title={consulta ?? undefined}
                     className="tactile rounded border border-accent-600/60 px-2 py-1 text-2xs text-accent-300 hover:bg-accent-500/10 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {equipped ? 'Cambiar' : 'Equipar'}

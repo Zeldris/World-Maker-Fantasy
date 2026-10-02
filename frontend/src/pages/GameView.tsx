@@ -1,5 +1,6 @@
 import { useNoticiasMundo } from '../hooks/useNoticiasMundo'
 import { useGamePhase } from '../hooks/useGamePhase'
+import { ModoConsultaContext } from '../context/modoConsultaContext'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useSession } from '../context/useSession'
@@ -540,6 +541,9 @@ export function GameView() {
   // UX-3 (hito 0.1) — deshabilita con su motivo los botones que lanzan un turno fuera del composer
   // (Construir, Viajar, Campamento, salida de zona); desde UX-2 el motivo sale de la matriz.
   const bloqueoTurno = permisoTurno.motivo
+  // UX-5 (hito 0.2) — paneles en modo consulta: se abren y se leen, pero lo que cambia datos se
+  // deshabilita con el motivo (contexto ModoConsulta).
+  const modoConsulta = puede('modificarPanel').motivo
 
   // Pop del botón "Nivel X" solo en una subida real, nunca al cargar la partida (roadmap de
   // animaciones 2026-07-20, item 7) — mismo patrón que HealthBar: comparar contra un ref, no
@@ -2103,7 +2107,8 @@ export function GameView() {
       )}
 
       {activePanel && (
-        <PanelDrawer title={panelTitles[activePanel]} accent={panelAccent[activePanel]} onClose={() => setActivePanel(null)}>
+        <PanelDrawer title={panelTitles[activePanel]} accent={panelAccent[activePanel]} onClose={() => setActivePanel(null)} modoConsulta={modoConsulta}>
+          <ModoConsultaContext.Provider value={modoConsulta}>
           {activePanel === 'personaje' && (
             <PersonajePanel
               activeSubTab={personajeSubTab}
@@ -2215,6 +2220,7 @@ export function GameView() {
               onDetail={handleAbilityDetail}
             />
           )}
+          </ModoConsultaContext.Provider>
         </PanelDrawer>
       )}
     </div>

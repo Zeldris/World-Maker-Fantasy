@@ -180,6 +180,12 @@ stateDiagram-v2
 - **UX-5 · Paneles en modo consulta** cuando la fase no permite cambios: se abren y se leen, pero
   los botones que modifican (equipar, tirar, construir, mercado…) se deshabilitan con el motivo.
   Lo que no toca el turno (renombrar una plantilla, ordenar) puede seguir libre. Resuelve H3. **M**
+  🚧 en curso (2026-10-02): contexto `ModoConsulta` (`context/modoConsultaContext.ts`,
+  `useModoConsulta`) con el motivo de `canDo(fase, 'modificarPanel')`; el cajón muestra «👁 Solo
+  consulta: <motivo>». Hecho: Inventario (depositar/soltar capturas), Estadísticas (repartir
+  puntos), Compañeros (capturar, tamear, plantilla) y el equipo de compañero; `SelectorJuego` admite
+  `title`. Libres a propósito: grupos de combate, crear/borrar plantillas (solo organizan).
+  **Falta:** secciones de Reino (almacén, producción, súbditos, mercado/diplomacia, campamento).
 - **UX-6 · Un narrador a la vez** — al enviar una acción con la ambientación del mundo en marcha:
   (A) esperar con el mensaje "Tu acción saldrá en cuanto el mundo termine", o (B) cancelar la
   ambientación. 🧭 Resuelve H4. **S**

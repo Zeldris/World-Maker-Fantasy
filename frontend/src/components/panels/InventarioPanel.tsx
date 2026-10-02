@@ -8,6 +8,7 @@ import { useSubmitError } from '../../hooks/useSubmitError'
 import { PanelEmptyState } from '../PanelEmptyState'
 import { PanelSection } from '../PanelSection'
 import { IconCard } from '../IconCard'
+import { useModoConsulta } from '../../context/useModoConsulta'
 
 interface InventarioPanelProps {
   saveId: string
@@ -32,6 +33,8 @@ interface InventarioPanelProps {
 function CapturasEnTransito({ saveId, items, onRefreshSave }: { saveId: string; items: InventoryItemInfo[]; onRefreshSave: () => Promise<void> }) {
   const [busyId, setBusyId] = useState<string | null>(null)
   const { error, runCatchingError } = useSubmitError()
+  // UX-5 (hito 0.2) — depositar/soltar cambian datos: no mientras el panel está en modo consulta.
+  const consulta = useModoConsulta()
 
   async function handleDepositar(item: InventoryItemInfo) {
     setBusyId(item.id)
@@ -59,14 +62,16 @@ function CapturasEnTransito({ saveId, items, onRefreshSave }: { saveId: string; 
             <div className="flex shrink-0 gap-1.5">
               <button type="button"
                 onClick={() => handleDepositar(item)}
-                disabled={busyId === item.id}
+                disabled={busyId === item.id || !!consulta}
+                title={consulta ?? undefined}
                 className="tactile rounded-lg border border-accent-600/60 px-2.5 py-1.5 text-2xs font-bold uppercase tracking-wide text-accent-300 transition-colors hover:bg-accent-500/10 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {busyId === item.id ? '...' : 'Depositar'}
               </button>
               <button type="button"
                 onClick={() => handleSoltar(item)}
-                disabled={busyId === item.id}
+                disabled={busyId === item.id || !!consulta}
+                title={consulta ?? undefined}
                 className="tactile rounded-lg border border-danger-700/60 px-2.5 py-1.5 text-2xs font-bold uppercase tracking-wide text-danger-300 transition-colors hover:bg-danger-600/15 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Soltar

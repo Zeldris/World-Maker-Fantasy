@@ -7,6 +7,7 @@ import { PanelSection } from '../PanelSection'
 import { HealthBar } from '../HealthBar'
 import { EnergyBar } from '../EnergyBar'
 import { ResourceBar } from '../ResourceBar'
+import { useModoConsulta } from '../../context/useModoConsulta'
 
 interface EstadisticasPanelProps {
   // Bug real (auditoría de elementos desconectados, 2026-08-23): el backend ya mandaba estos dos
@@ -52,6 +53,8 @@ export function EstadisticasPanel({
   sed,
 }: EstadisticasPanelProps) {
   const progress = xpProgress(level, xp)
+  // UX-5 (hito 0.2) — repartir puntos cambia el personaje: no en modo consulta.
+  const consulta = useModoConsulta()
   const percent = progress.span > 0 ? Math.min(100, (progress.current / progress.span) * 100) : 100
 
   return (
@@ -125,7 +128,8 @@ export function EstadisticasPanel({
               <button type="button"
                 key={attr}
                 onClick={() => onSpendPoint(attr)}
-                disabled={attributes[attr] >= 18}
+                disabled={attributes[attr] >= 18 || !!consulta}
+                title={consulta ?? undefined}
                 className="rounded-lg border border-accent-600/60 bg-wood-950/50 px-2.5 py-1 text-xs text-accent-300 transition-colors hover:bg-accent-500/20 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 +1 {attributeLabels[attr]}

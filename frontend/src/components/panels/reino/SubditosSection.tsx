@@ -7,6 +7,7 @@ import { crearPlantilla, borrarPlantilla, asignarPlantillaCompanion, asignarPlan
 import { SLOT_LABEL, SLOT_ORDER } from '../../../lib/equipSlots'
 import { ErrorBanner } from '../../../components/ErrorBanner'
 import { useErrorConReintento } from '../../../hooks/useErrorConReintento'
+import { useModoConsulta } from '../../../context/useModoConsulta'
 
 /// Selector compartido de plantilla — súbdito o compañero integrado en el Reino, mismo desplegable.
 /// Exportado (2026-08-27, auditoría de diseño/UX § 1.3: "cuando `rolReino` no es null, la tarjeta
@@ -33,6 +34,8 @@ export function PlantillaSelect({
   const [confirmed, setConfirmed] = useState(0)
   const [flashing, setFlashing] = useState(false)
   const busyRef = useRef(false)
+  // UX-5 (hito 0.2) — asignar una plantilla re-equipa al compañero: no mientras no toca.
+  const consulta = useModoConsulta()
   const { fallo, informar, limpiar } = useErrorConReintento()
 
   async function handleChange(id: string | null) {
@@ -67,6 +70,8 @@ export function PlantillaSelect({
         value={value ?? ''}
         opciones={[{ value: '', label: 'Sin plantilla' }, ...plantillas.map((p) => ({ value: p.id, label: `${p.name} (${p.rol})` }))]}
         onChange={(v) => void handleChange(v || null)}
+        disabled={!!consulta}
+        title={consulta ?? undefined}
         className={`w-full ${flashing ? 'border-accent-500' : ''}`}
       />
       <ErrorBanner fallo={fallo} onCerrar={limpiar} />
