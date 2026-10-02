@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { calcularFase, canDo, type EstadoParaFase, type FaseJuego } from './gamePhase'
+import { calcularFase, canDo, etiquetaDeFase, type EstadoParaFase, type FaseJuego } from './gamePhase'
 
 const base: EstadoParaFase = {
   terminada: false, muertePendiente: false, enCombate: false, modoDinamico: false,
@@ -65,5 +65,14 @@ describe('UX-2 — canDo', () => {
     expect(canDo('pensando', 'salir').motivo).toMatch(/narrador/)
     expect(canDo('combate', 'salir').motivo).toMatch(/combate/)
     expect(canDo('muerte', 'salir')).toEqual({ permitido: true, motivo: null })
+  })
+})
+
+/// UX-8 (hito 0.2) — indicador de fase en la cabecera.
+describe('UX-8 — etiquetaDeFase', () => {
+  it('nada en libre; icono y texto en el resto', () => {
+    expect(etiquetaDeFase('libre')).toBeNull()
+    expect(etiquetaDeFase('pensando')).toEqual({ icono: '✒️', texto: 'El narrador escribe' })
+    expect(etiquetaDeFase('combate')?.texto).toBe('En combate')
   })
 })

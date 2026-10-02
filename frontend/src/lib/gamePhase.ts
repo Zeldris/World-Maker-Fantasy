@@ -101,3 +101,20 @@ export function canDo(fase: FaseJuego, accion: AccionJuego): Permiso {
       return SI
   }
 }
+
+/// UX-8 (hito 0.2) — indicador de la fase en la cabecera ("✒️ El narrador escribe"). En `libre` no
+/// se enseña nada: el indicador solo aparece cuando algo está bloqueado.
+const ETIQUETA_FASE: Record<Exclude<FaseJuego, 'libre'>, { icono: string; texto: string }> = {
+  pensando: { icono: '✒️', texto: 'El narrador escribe' },
+  ocupado: { icono: '🧭', texto: 'Ocupado' },
+  encuentro: { icono: '⚠️', texto: 'Te cortan el paso' },
+  combate: { icono: '⚔️', texto: 'En combate' },
+  dinamico: { icono: '💬', texto: 'En una escena' },
+  eleccion: { icono: '⭐', texto: 'Elección pendiente' },
+  muerte: { icono: '💀', texto: 'Has caído' },
+  fin: { icono: '📜', texto: 'Partida terminada' },
+}
+
+export function etiquetaDeFase(fase: FaseJuego): { icono: string; texto: string } | null {
+  return fase === 'libre' ? null : ETIQUETA_FASE[fase]
+}

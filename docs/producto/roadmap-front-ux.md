@@ -203,9 +203,13 @@ stateDiagram-v2
   con `combateForzado`) tienen «✍️ Responder», que cierra el panel abierto, vuelve de la barra de
   habilidades al composer y escribe «Le digo a <nombre>: » con el nombre como chip y el cursor al
   final. La fauna no lo lleva. Tests en `LogPanel.test.tsx`.
-- **UX-8 · Bloqueos visibles** — un icono de candado y el motivo en tooltip en todo lo
+- ~~**UX-8 · Bloqueos visibles** — un icono de candado y el motivo en tooltip en todo lo
   deshabilitado; en la cabecera, un indicador de la fase actual ("✒️ El narrador escribe", "🧭 De
-  viaje · 12 min", "⚔️ En combate"). **S**
+  viaje · 12 min", "⚔️ En combate"). **S**~~ ✅ 2026-10-02: chip de fase en la cabecera
+  (`etiquetaDeFase`, `lib/gamePhase.ts`: ✒️ El narrador escribe, 🧭 Ocupado · cuenta atrás, ⚠️ Te
+  cortan el paso, ⚔️ En combate…; no aparece en `libre`) con el motivo en el tooltip; 🔒 en la
+  brújula deshabilitada. El resto ya enseñaba candado o motivo: tarjetas del registro (`UX-4`),
+  composer (texto de ayuda), botones de turno (`UX-3`) y paneles (aviso «👁 Solo consulta», `UX-5`).
 
 ### 4.3 Orden y prioridad de lo que se abre
 - **UX-9 · Gestor de capas con prioridad** — un `OverlayManager` con niveles fijos; dentro de un

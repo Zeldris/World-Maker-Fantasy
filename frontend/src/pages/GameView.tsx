@@ -1,5 +1,6 @@
 import { useNoticiasMundo } from '../hooks/useNoticiasMundo'
 import { useGamePhase } from '../hooks/useGamePhase'
+import { etiquetaDeFase } from '../lib/gamePhase'
 import { ModoConsultaContext } from '../context/modoConsultaContext'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -527,7 +528,7 @@ export function GameView() {
   const especializacionVisible = !!pendingEspecializacionChoice && !pendingDeathResolution && !endedAt && !!clase && !!worldIdSlug
   // UX-1/UX-2 (hito 0.2) — una sola fase de partida y su matriz de permisos (lib/gamePhase.ts) en
   // vez de banderas sueltas.
-  const { puede } = useGamePhase({
+  const { fase, puede } = useGamePhase({
     terminada: !!endedAt,
     muertePendiente: pendingDeathResolution,
     enCombate: !!combateIniciado || combat.combatOpen,
@@ -546,6 +547,7 @@ export function GameView() {
   const modoConsulta = puede('modificarPanel').motivo
   // UX-7 (hito 0.2) — la brújula y el mapa de zona: moverse solo en `libre`.
   const permisoMover = puede('moverse')
+  const etiquetaFase = etiquetaDeFase(fase)
 
   // Pop del botón "Nivel X" solo en una subida real, nunca al cargar la partida (roadmap de
   // animaciones 2026-07-20, item 7) — mismo patrón que HealthBar: comparar contra un ref, no
@@ -1452,6 +1454,18 @@ export function GameView() {
               💀 {deathCount}/{LIMITE_MUERTES[dificultad]}
             </span>
           )}
+          {/* UX-8 (hito 0.2) — indicador de la fase cuando algo está bloqueado, con el motivo al
+              pasar el ratón; en `libre` no aparece. */}
+          {etiquetaFase && (
+            <span
+              role="status"
+              title={permisoTurno.motivo ?? undefined}
+              className="rounded-full border border-iron-700 bg-wood-950/60 px-2.5 py-1 font-serif text-2xs tracking-wide text-wood-300"
+            >
+              <span aria-hidden="true">{etiquetaFase.icono}</span> {etiquetaFase.texto}
+              {fase === 'ocupado' && busyUntil ? ` · ${formatCountdown(busyUntil, nowTick)}` : ''}
+            </span>
+          )}
           <span
             // C.11 (checklist frontend 2026-08-27) — mismo `rounded-full`/`text-2xs` que el badge
             // expandido de MapaPanel (misma info, tratamiento compacto vs. expandido a propósito,
@@ -1514,6 +1528,12 @@ export function GameView() {
               className="tactile absolute bottom-1 left-1/2 z-40 hidden h-12 w-12 -translate-x-1/2 items-center justify-center rounded-full border border-accent2-600/60 bg-wood-950/90 text-xl shadow-lg backdrop-blur-sm transition-colors hover:border-accent2-400 hover:bg-wood-900 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-accent2-600/60 disabled:hover:bg-wood-950/90 lg:flex"
             >
               🧭
+              {/* UX-8 (hito 0.2) — candado visible además del motivo en el tooltip. */}
+              {!permisoMover.permitido && (
+                <span aria-hidden="true" className="absolute -right-1 -top-1 text-xs">
+                  🔒
+                </span>
+              )}
             </button>
           )}
           {collapsedSide === 'character' ? (
