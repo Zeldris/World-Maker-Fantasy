@@ -81,6 +81,18 @@ un tránsito): `doPassiveTurn` narra directo con la clasificación del mock. 25/
 - **Migrar `worldAgenda.ts`** a `FactionRelation`: el conflicto fijo Serhu+Concordia contra
   Helsig+Goshg pasa a leerse de las relaciones reales (sembradas el 2026-09-29), sin cambiar lo que
   ve el jugador hoy.
+  ✅ **Hecho** (2026-10-02): el control de Cristal Helado y Ciénaga Troncal sale de Serhu→Helsig y
+  Serhu→Goshg (`regionControlActual`, usado por `zona.ts` y por el contexto del narrador); con la
+  presión sembrada (70, etapa 1) el resultado es el de antes. El temporizador de 7 días se mantiene
+  pero ahora **empuja** esas relaciones (sube la presión al mínimo de su etapa, nunca la baja) y
+  sincroniza partidas que ya iban más avanzadas; textos y bajas de población, igual. Sin relación en
+  BD se usa la agenda como antes. De paso: `factionRelations.integration.test.ts` borraba la
+  relación sembrada Serhu→Helsig al terminar; ahora la restaura.
+  **Pendiente para 0.2:** que el conflicto avance por sucesos reales y no por temporizador (motor de
+  eventos del Cronista) y que la Concordia→Helsig/Goshg cuente.
+
+✅ **Fase D cerrada** el 2026-10-02 (sin el Libro de Sucesos `CR-1`…`CR-4`, que sigue pendiente de
+la decisión de Álvaro).
 
 ## Fase E — Súbditos del Reino, versión mínima 🧭
 

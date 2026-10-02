@@ -1,5 +1,6 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { appendSessionFacts, loadSessionFacts } from './worldFacts.js';
+import { stageForPresion, typeForPresion } from './factionRelations.js';
 
 /// Canal WORLD (Grupo 3 § Mundo determinista, docs/rpgtarkor/lore-mundo/mundo-determinista.md, 2026-08-25):
 /// hasta ahora `STAGE_FACTS` solo alimentaba `sessionFacts` (contexto invisible del Narrador) — el
@@ -103,17 +104,73 @@ const REGION_DEFENSOR: Record<string, string> = {
 /// Viento Rojo (del propio Clan Serhu) son la única excepción: siempre dueño original, pase lo que
 /// pase con la etapa.
 export function regionControlFor(region: string, agenda: AgendaEntry[], duenoOriginal: string): RegionControlState {
-  if (region === REGION_DEL_AGRESOR) return { estado: 'NEUTRAL_O_DUENO_ORIGINAL', duenoActual: duenoOriginal };
-
-  const defensor = REGION_DEFENSOR[region];
-  if (!defensor) return { estado: 'NEUTRAL_O_DUENO_ORIGINAL', duenoActual: duenoOriginal };
-
   const conflicto = agenda.find((entry) => entry.id === CONFLICTO_ID);
-  const stage = conflicto?.stage ?? 0;
-  const maxStage = conflicto?.maxStage ?? STAGE_FACTS.length - 1;
+  return regionControlDesdeStage(region, conflicto?.stage ?? 0, duenoOriginal);
+}
+
+/// Puro — misma regla de `regionControlFor`, a partir de una etapa ya conocida (0-4).
+export function regionControlDesdeStage(region: string, stage: number, duenoOriginal: string): RegionControlState {
+  if (region === REGION_DEL_AGRESOR) return { estado: 'NEUTRAL_O_DUENO_ORIGINAL', duenoActual: duenoOriginal };
+  if (!REGION_DEFENSOR[region]) return { estado: 'NEUTRAL_O_DUENO_ORIGINAL', duenoActual: duenoOriginal };
+  const maxStage = STAGE_FACTS.length - 1;
   if (stage >= maxStage) return { estado: 'CONQUISTADA', duenoActual: AGRESOR };
   if (stage >= 2) return { estado: 'EN_DISPUTA', duenoActual: duenoOriginal, agresor: AGRESOR };
   return { estado: 'NEUTRAL_O_DUENO_ORIGINAL', duenoActual: duenoOriginal };
+}
+
+// ─────────── Fase D del hito 0.1: el conflicto se lee de las relaciones reales ───────────
+//
+// `FactionRelation` (sembradas el 2026-09-29, `factionRelationsIniciales`) ya tiene Serhu→Helsig y
+// Serhu→Goshg con su `presion`/`stage` reales, que además se mueven solas (asaltos de expediciones,
+// `factionExpeditions.ts`). El control de cada región en disputa sale ahora de SU relación: Cristal
+// Helado de Serhu→Helsig, Ciénaga Troncal de Serhu→Goshg. El temporizador de la agenda sigue (sin él
+// nada haría avanzar el conflicto en 0.1), pero en vez de ser la fuente de verdad empuja esas
+// relaciones: cada etapa cruzada sube su presión hasta el mínimo de esa etapa (`presionMinimaDeEtapa`,
+// nunca la baja). Con la presión sembrada (70 = etapa 1) el control queda igual que antes (etapas 0-1 =
+// dueño original), así que la jugadora no ve ningún cambio; una partida que ya iba más avanzada
+// sincroniza su relación al primer tick (`sincronizarRelacionesConflicto`). Sin relación en BD (mundo
+// sin sembrar) se usa la agenda, como antes.
+
+const AGRESOR_FACCION = 'Clan Serhu';
+
+/// Presión mínima para que `stageForPresion` dé `stage` (etapa 0 → 60, 1 → 70… 4 → 100).
+export function presionMinimaDeEtapa(stage: number): number {
+  return Math.min(100, 60 + 10 * Math.max(0, stage));
+}
+
+type RelacionesClient = Pick<PrismaClient, 'factionRelation' | 'faction'>;
+
+/// Etapa del conflicto por región desde las relaciones reales; región ausente = sin relación en BD.
+export async function stagesConflictoPorRegion(db: RelacionesClient, worldId: string): Promise<Map<string, number>> {
+  const relaciones = await db.factionRelation.findMany({
+    where: { worldId, sourceFaction: { name: AGRESOR_FACCION, saveId: null }, targetFaction: { name: { in: Object.values(REGION_DEFENSOR) }, saveId: null } },
+    select: { presion: true, targetFaction: { select: { name: true } } },
+  });
+  const porRegion = new Map<string, number>();
+  for (const [region, defensor] of Object.entries(REGION_DEFENSOR)) {
+    const rel = relaciones.find((r) => r.targetFaction.name === defensor);
+    if (rel) porRegion.set(region, stageForPresion(rel.presion));
+  }
+  return porRegion;
+}
+
+/// Control actual de una región: de su relación real si existe; si no, de la agenda (como antes).
+export async function regionControlActual(db: RelacionesClient, worldId: string, region: string, agenda: AgendaEntry[], duenoOriginal: string): Promise<RegionControlState> {
+  if (!REGION_DEFENSOR[region]) return regionControlFor(region, agenda, duenoOriginal);
+  const stage = (await stagesConflictoPorRegion(db, worldId)).get(region);
+  return stage === undefined ? regionControlFor(region, agenda, duenoOriginal) : regionControlDesdeStage(region, stage, duenoOriginal);
+}
+
+/// Sube (nunca baja) la presión de Serhu→Helsig y Serhu→Goshg hasta el mínimo de `stage`.
+export async function sincronizarRelacionesConflicto(db: RelacionesClient, worldId: string, stage: number): Promise<void> {
+  const minima = presionMinimaDeEtapa(stage);
+  const relaciones = await db.factionRelation.findMany({
+    where: { worldId, presion: { lt: minima }, sourceFaction: { name: AGRESOR_FACCION, saveId: null }, targetFaction: { name: { in: Object.values(REGION_DEFENSOR) }, saveId: null } },
+    select: { id: true },
+  });
+  for (const r of relaciones) {
+    await db.factionRelation.update({ where: { id: r.id }, data: { presion: minima, type: typeForPresion(minima), stage: stageForPresion(minima) } });
+  }
 }
 
 /// Puro: cuántas etapas cruza una entrada dado el tiempo de ficción actual, y su estado
@@ -190,6 +247,11 @@ export async function advanceWorldAgenda(prisma: PrismaClient): Promise<{ states
       }
       return advanced;
     });
+
+    // Fase D (hito 0.1) — la etapa de la agenda empuja las relaciones reales (y sincroniza partidas
+    // que ya iban más avanzadas que la relación sembrada); idempotente, solo sube presión.
+    const conflicto = nextAgenda.find((entry) => entry.id === CONFLICTO_ID);
+    if (conflicto) await sincronizarRelacionesConflicto(prisma, state.save.worldId, conflicto.stage);
 
     if (!needsWrite) continue;
 

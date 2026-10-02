@@ -14,8 +14,8 @@ cada commit.**
 | **Rama de trabajo** | `claude/frontend-improvements-roadmap-0mpckt`. Flujo acordado (2026-10-01): commit + push a esta rama con cada cosa hecha; a `main` se pasa **por pull request** (desde esta sesión el push directo a `main` lo bloquea el filtro de permisos) |
 | **Último commit en `main`** | `423c8a5` — roadmap de roadmaps y revisión cruzada de front y UX (+ el commit de esta bitácora) |
 | **Hito** | `0.1` Llanuras estable — [plan](../producto/plan-roadmap-0.1.md) · [mapa de roadmaps](../producto/21-roadmap.md#qué-entra-en-cada-hito) |
-| **Tarea en curso** | Fase D del 0.1: parte 1 (noticias del mundo) hecha; siguiente, parte 2: migrar `worldAgenda.ts` a `FactionRelation` sin cambiar lo que ve el jugador |
-| **Tests** | Frontend: `tsc -b` 0, `vitest` 56 archivos / 330 tests, `oxlint` 13 avisos (los mismos de antes). Backend en local con Postgres real: `tsc` 0, `oxlint` 0 (solo avisos previos), `vitest` 163/163 archivos, 2860 tests. CI de GitHub en verde (PR #2) |
+| **Tarea en curso** | Ninguna. **Fase D cerrada.** Siguiente: Fase F (script de benchmark de latencia para la Steam Deck; lo ejecuta Álvaro). Después E (bloqueada) y G (pasada de juego) |
+| **Tests** | Frontend: `tsc -b` 0, `vitest` 56 archivos / 330 tests, `oxlint` 13 avisos (los mismos de antes). Backend en local con Postgres real: `tsc` 0, `oxlint` 0 (solo avisos previos), `vitest` 164/164 archivos, 2865 tests. CI de GitHub en verde (PR #2) |
 
 ## Siguientes pasos (en orden)
 
@@ -28,7 +28,7 @@ Del [plan del 0.1](../producto/plan-roadmap-0.1.md) y del [mapa de roadmaps](../
    - ~~`DAD-1`…`DAD-6`~~ ✅, ~~`CFG-33`~~ ✅, ~~`BAS-1`~~ ✅ ([roadmap-front.md](../producto/roadmap-front.md))
    - ~~Reino R-A~~ ✅ (`REI-110`…`REI-116`, `REI-33`, `REI-40`, `REI-41`; ver [roadmap-front-reino.md](../producto/roadmap-front-reino.md))
    - ~~Zona Z-A~~ ✅ (`ZON-10`, `11`, `13`, `14`, `17`, `19`, `20`, `62` + pictogramas del mapa de `BAS-2`; captura en `docs/producto/img/zona-mapa-z-a.jpg`)
-4. **Fase D — El mundo vivo, visible** (+ Libro de Sucesos mínimo `CR-1`…`CR-4` si Álvaro lo aprueba, ver decisiones).
+4. ~~**Fase D — El mundo vivo, visible**~~ ✅ 2026-10-02 (noticias del mundo + agenda leída de `FactionRelation`; el Libro de Sucesos `CR-1`…`CR-4` sigue esperando la decisión de Álvaro).
 5. **Fase F — latencia en la Steam Deck** (script de benchmark; lo ejecuta Álvaro).
 6. **Fase E — súbditos mínimos** (bloqueada, ver decisiones).
 7. **Fase G — pasada de juego completa** y cierre del hito.
@@ -68,6 +68,9 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
+- **2026-10-02** — Fase D parte 2: el control de las regiones en conflicto sale de las relaciones
+  reales Serhu→Helsig/Goshg; la agenda las empuja. Arreglado un test que borraba Serhu→Helsig.
+  **Fase D cerrada.**
 - **2026-10-02** — Fase D parte 1: noticias de expediciones de facción en "El mundo", repartidas
   según lo que sabe cada personaje y recogidas sin recargar.
 - **2026-10-02** — Z-A paso 4: `ZON-20` (leyenda en la esquina del mapa) y `ZON-62` (cuadrícula con

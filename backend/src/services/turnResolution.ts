@@ -15,7 +15,7 @@ import { slugify } from '../lib/slugify.js';
 import { appendSessionFacts, selectRelevantFacts } from './worldFacts.js';
 import { closeItemQuests, completeNpcTargetQuests, grantQuestRewardItems, questRewardNarrationFor, GISTERA_DESPEDIDA_NARRATION, type QuestCompletedInfo } from './questResolution.js';
 import { applyFactionRepDelta, effectiveTemperamento, resolveFoundingOutcome, parseFactionsStatus, FACTION_REP_PEACE_DELTA, REGION_OWNING_FACTIONS, type FoundingOutcome, type FactionRepChangeInfo } from './reputation.js';
-import { regionControlFor, parseAgenda } from './worldAgenda.js';
+import { regionControlActual, parseAgenda } from './worldAgenda.js';
 import { opcionesDisponiblesPara } from './npcInteraction.js';
 import { detectNpcsInScene, npcSceneBlockFor, npcSceneLineFor, difficultyHintFor, utilityDifficultyFor, detectsAttackIntent, detectsHostileSearchIntent, detectsDialogueIntent, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, scopeFor, pickAmbientEncounterCandidate, buildNpcInScene, candidateNpcNamesNotInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
 import { resolveExchange, resolveIndependentExchange, rollInitiative, exchangeContextBlock, effectiveExchangeOutcome, independentExchangeContextBlock, hitSeverityHint, utilityTriggered, isReactiveUtility, type PendingNpcAttack, type PendingCanalizacion, type InitiativeResult, type CombatExchangeDisplay } from './combatExchange.js';
@@ -3242,7 +3242,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   if (activeRegion) {
     const duenoOriginal = REGION_OWNING_FACTIONS[activeRegion]?.[0] ?? null;
     if (duenoOriginal) {
-      const regionControl = regionControlFor(activeRegion, parseAgenda(worldStateForFactionsAndAgenda?.agenda), duenoOriginal);
+      // Fase D (hito 0.1) — de la relación real Serhu→defensor (worldAgenda.ts § regionControlActual).
+      const regionControl = await regionControlActual(prisma, worldId, activeRegion, parseAgenda(worldStateForFactionsAndAgenda?.agenda), duenoOriginal);
       if (regionControl.estado === 'CONQUISTADA') {
         contextBlocks.push(`CONTROL DE LA REGIÓN (${activeRegion}): conquistada por ${regionControl.duenoActual} — refleja este dominio en la ambientación (patrullas, banderas, tensión propia de territorio ocupado), no la narres como si siguiera en calma neutral.`);
       } else if (regionControl.estado === 'EN_DISPUTA') {

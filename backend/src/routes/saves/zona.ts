@@ -25,7 +25,7 @@ import {
   type ZonePointColor,
 } from '../../services/zonePoints.js';
 import { NOMBRE_OCULTO_GENERICO } from '../../services/dynamicMode.js';
-import { parseAgenda, regionControlFor, type RegionControlState } from '../../services/worldAgenda.js';
+import { parseAgenda, regionControlActual, type RegionControlState } from '../../services/worldAgenda.js';
 import { REGION_OWNING_FACTIONS, effectiveTemperamento } from '../../services/reputation.js';
 import { LIENZO_ANCHO, LIENZO_ALTO, posicionAleatoriaEnLienzo, celdaLibreEnEspiral, claveCelda, celdaDePixel, pixelDeCelda, calcularCamino, celdaAdyacenteOMisma, mismaCelda, posicionesDeSalidas, tirarQuienIniciaEncuentro, type IniciativaEncuentroLogRoll } from '../../services/zonaPosicion.js';
 import { rejectIfEnded, rejectIfPendingDeath } from './shared.js';
@@ -242,7 +242,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     // `resolveFoundingOutcome`, reputation.ts).
     const duenoOriginal = REGION_OWNING_FACTIONS[region]?.[0] ?? null;
     const regionControl: RegionControlState | null = duenoOriginal
-      ? regionControlFor(region, parseAgenda(save.worldState?.agenda), duenoOriginal)
+      ? await regionControlActual(prisma, save.worldId, region, parseAgenda(save.worldState?.agenda), duenoOriginal)
       : null;
     // Instancia viva (2026-08-27, Pieza 3 de "Dinamismo del mundo") — solo puntos `activo` se
     // muestran; `recalcularZonePointsDeLocation` (turnResolution.ts) ya decide cantidad/actividad

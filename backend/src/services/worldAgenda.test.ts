@@ -118,11 +118,15 @@ describe('advanceWorldAgenda', () => {
       logEntry: { create: logEntryCreate },
     };
     const $transaction = vi.fn((fn: (tx: unknown) => Promise<void>) => fn(tx));
+    // Fase D (hito 0.1): la agenda sincroniza las relaciones reales Serhu→Helsig/Goshg.
+    const factionRelationFindMany = vi.fn().mockResolvedValue([{ id: 'rel-helsig' }, { id: 'rel-goshg' }]);
+    const factionRelationUpdate = vi.fn();
     const prisma = {
       worldState: { findMany: vi.fn().mockResolvedValue(states) },
+      factionRelation: { findMany: factionRelationFindMany, update: factionRelationUpdate },
       $transaction,
     };
-    return { prisma, worldStateUpdate, worldPopulationUpdateMany, logEntryCreate };
+    return { prisma, worldStateUpdate, worldPopulationUpdateMany, logEntryCreate, factionRelationFindMany, factionRelationUpdate };
   }
 
   it('siembra la agenda inicial si está vacía, sin depleciones ni hechos (etapa 0 es silenciosa)', async () => {
@@ -148,10 +152,13 @@ describe('advanceWorldAgenda', () => {
 
   it('al cruzar una etapa, deplecia Helsig Y Goshg y añade el hecho narrativo de esa etapa', async () => {
     const agenda = [{ id: 'conflicto-serhu-concordia-vs-helsig-goshg', title: 't', stage: 0, maxStage: 4, nextStageAtMinutes: 500 }];
-    const { prisma, worldPopulationUpdateMany, logEntryCreate } = makePrisma([
+    const { prisma, worldPopulationUpdateMany, logEntryCreate, factionRelationFindMany, factionRelationUpdate } = makePrisma([
       { id: 'ws1', saveId: 'save1', agenda, fictionalMinutes: 500, fictionalDateLabel: 'Día 8, mañana', save: { worldId: 'world1' } },
     ]);
     await advanceWorldAgenda(prisma as never);
+    // Fase D (hito 0.1) — la etapa 1 empuja Serhu→Helsig/Goshg hasta presión 70 (solo las que estén por debajo).
+    expect(factionRelationFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ worldId: 'world1', presion: { lt: 70 } }) }));
+    expect(factionRelationUpdate).toHaveBeenCalledWith({ where: { id: 'rel-helsig' }, data: { presion: 70, type: typeForPresion(70), stage: 1 } });
     expect(worldPopulationUpdateMany).toHaveBeenCalledWith({
       where: { worldId: 'world1', targetType: 'RAZA', targetSlug: 'orcos-cristal-helado', poblacion: { gte: 20 } },
       data: { poblacion: { decrement: 20 } },
@@ -179,5 +186,27 @@ describe('advanceWorldAgenda', () => {
     expect(prisma.worldState.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { save: { characterName: 'Gorhorn', endedAt: null } } }),
     );
+  });
+});
+
+/// Fase D del hito 0.1 — el control de región sale de la relación real; con la presión sembrada no
+/// cambia nada de lo que ve la jugadora.
+import { presionMinimaDeEtapa, regionControlDesdeStage } from './worldAgenda.js';
+import { stageForPresion, typeForPresion } from './factionRelations.js';
+
+describe('Fase D — control de región desde la relación real', () => {
+  it('la presión mínima de cada etapa da exactamente esa etapa', () => {
+    for (let etapa = 0; etapa <= 4; etapa++) expect(stageForPresion(presionMinimaDeEtapa(etapa))).toBe(etapa);
+  });
+
+  it('con la presión sembrada (70, etapa 1) el control es el de siempre: dueño original', () => {
+    expect(regionControlDesdeStage('Cristal Helado', stageForPresion(70), 'Clan Helsig')).toEqual({ estado: 'NEUTRAL_O_DUENO_ORIGINAL', duenoActual: 'Clan Helsig' });
+  });
+
+  it('misma regla que la agenda: 2-3 en disputa, 4 conquistada, y las Llanuras nunca entran en disputa', () => {
+    expect(regionControlDesdeStage('Ciénaga Troncal', 2, 'Clan Goshg').estado).toBe('EN_DISPUTA');
+    expect(regionControlDesdeStage('Ciénaga Troncal', 4, 'Clan Goshg')).toMatchObject({ estado: 'CONQUISTADA' });
+    expect(regionControlDesdeStage('Las Llanuras del Viento Rojo', 4, 'Clan Serhu').estado).toBe('NEUTRAL_O_DUENO_ORIGINAL');
+    expect(regionControlDesdeStage('Meseta del Orden', 4, 'Concordia de Hierro').estado).toBe('NEUTRAL_O_DUENO_ORIGINAL');
   });
 });
