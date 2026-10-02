@@ -158,6 +158,8 @@ export function ModalShell({
             </button>
           )}
         </div>
+        {/* MOD-4 — ceremonia: línea de cristal que se extiende bajo el título. */}
+        {tamano === 'ceremonia' && <div aria-hidden="true" className="animate-line-extend mx-5 mt-3 h-px origin-left bg-accent-600/70" />}
         <div className={`flex min-h-0 flex-1 flex-col gap-4 px-5 py-4 ${cuerpoSinScroll ? 'overflow-hidden' : 'overflow-y-auto'}`}>{children}</div>
         {footer && <div className="flex shrink-0 gap-2 border-t border-iron-800/60 px-5 py-3">{footer}</div>}
       </div>

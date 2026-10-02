@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { KingdomFoundedInfo } from '../types'
 import { useSubmitError } from '../hooks/useSubmitError'
 import { ModalShell } from './ModalShell'
+import { BotonMantener } from './BotonMantener'
 
 interface KingdomFoundingModalProps {
   info: KingdomFoundedInfo
@@ -42,12 +43,13 @@ export function KingdomFoundingModal({ info, onConfirm, onCancel }: KingdomFound
   }
 
   return (
-    // MOD-1 (hito 0.2): sobre ModalShell. Se puede posponer (Cancelar, ✕ o Escape), salvo mientras
+    // MOD-1/MOD-4 (hito 0.2): modal de ceremonia; fundar se confirma manteniendo pulsado 1 s. Se puede posponer (Cancelar, ✕ o Escape), salvo mientras
     // se está fundando; Cancelar y Aceptar en el pie fijo.
     <ModalShell
       title="Fundación de reino"
       subtitle={`Termina de construir ${info.title} en ${info.region} — el reino empieza a existir de verdad.`}
       icon="👑"
+      tamano="ceremonia"
       onClose={onCancel}
       closeDisabled={busy}
       disableOverlayClose
@@ -60,14 +62,9 @@ export function KingdomFoundingModal({ info, onConfirm, onCancel }: KingdomFound
           >
             Cancelar
           </button>
-          <button type="button"
-            data-confirmar
-            onClick={handleConfirm}
-            disabled={busy || (!info.nameLocked && !kingdomName.trim())}
-            className="tactile flex-1 rounded-lg border border-accent-600 bg-gradient-to-b from-accent-400 to-accent-600 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-wood-950 transition-colors disabled:cursor-not-allowed disabled:border-iron-700 disabled:from-wood-700 disabled:to-wood-700 disabled:text-wood-500"
-          >
-            {busy ? '...' : 'Aceptar'}
-          </button>
+          <BotonMantener onConfirmar={() => void handleConfirm()} disabled={busy || (!info.nameLocked && !kingdomName.trim())}>
+            {busy ? '...' : 'Mantén para fundar'}
+          </BotonMantener>
         </>
       }
     >

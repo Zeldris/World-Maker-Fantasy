@@ -384,10 +384,16 @@ Todos tienen el mismo ancho (`max-w-md`), la misma entrada (`combat-enter`) y ni
   las recorren y Enter pulsa la marcada con `data-confirmar` (no si el foco está en un botón o un
   área de texto; al escribir en un campo, números y flechas son del campo). Marcados Modo dinámico
   (con el número delante de cada opción), Viajar, Clase, Especialización y Fundar reino.
-- **MOD-4 · Modales de ceremonia** **M** — variante para decisiones grandes o irreversibles (fundar
+- ~~**MOD-4 · Modales de ceremonia** **M** — variante para decisiones grandes o irreversibles (fundar
   reino, clase, especialización, muerte, subida de nivel): ancho grande, ilustración, título en
   Cinzel grande, línea de cristal que se extiende (`line-extend`), botón de confirmar que hay que
-  **mantener pulsado** 1 s en lo irreversible en vez del doble clic "Aceptar → Confirmar".
+  **mantener pulsado** 1 s en lo irreversible en vez del doble clic "Aceptar → Confirmar".~~ ✅ 2026-10-02:
+  tamaño `ceremonia` de `ModalShell` (ancho grande, título grande, línea de cristal `line-extend`) y
+  `components/BotonMantener.tsx` (mantener 1 s con ratón, toque, Espacio o Enter; soltar antes
+  cancela). Aplicado a Clase y Especialización (aviso fijo «No podrás cambiar… más adelante» en vez
+  de la pregunta del doble clic) y Fundar reino («Mantén para fundar»). **Queda:** muerte y subida
+  de nivel no son modales hoy (la muerte sustituye al composer, la subida es una entrada del
+  registro); pasarán a ceremonia si se rediseñan como modales.
 - **MOD-5 · `QuantityStepper` compartido** **S** — sustituye las 5 copias (H26): botón *Máx.*,
   mantener pulsado para repetir, rueda del ratón, número editable y vista previa del efecto.
 - **MOD-6 · `EntityRow` con miniatura** **S** — cada objeto, NPC, criatura o recurso de un modal

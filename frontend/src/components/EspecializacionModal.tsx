@@ -5,6 +5,7 @@ import { MediaSlot, ImagePromptSlot } from './ImagePromptDisplay'
 import { resolveImageUrl } from '../lib/api'
 import { useSubmitError } from '../hooks/useSubmitError'
 import { ModalShell } from './ModalShell'
+import { BotonMantener } from './BotonMantener'
 
 interface EspecializacionModalProps {
   clase: Clase
@@ -21,7 +22,6 @@ interface EspecializacionModalProps {
 /// al composer normal mientras `pendingEspecializacionChoice` sea `true`).
 export function EspecializacionModal({ clase, especializaciones, worldSlug, onConfirm, onOpenEnciclopedia }: EspecializacionModalProps) {
   const [seleccionada, setSeleccionada] = useState<Especializacion | null>(null)
-  const [confirmando, setConfirmando] = useState(false)
   const [busy, setBusy] = useState(false)
   const { error, runCatchingError } = useSubmitError()
 
@@ -35,11 +35,13 @@ export function EspecializacionModal({ clase, especializaciones, worldSlug, onCo
   }
 
   return (
-    // MOD-1 (hito 0.2): sobre ModalShell. Elección obligatoria: sin ✕ ni cierre; «Atrás/Aceptar» en el pie fijo.
+    // MOD-1/MOD-4 (hito 0.2): modal de ceremonia sobre ModalShell. Elección obligatoria e
+    // irreversible: sin ✕ ni cierre; se confirma manteniendo pulsado 1 s (BotonMantener).
     <ModalShell
       title={detalle ? especializacionLabel(detalle.especializacion) : 'Elige tu especialización'}
       subtitle={detalle ? claseLabel(clase) : `Nivel 10 alcanzado — como ${claseLabel(clase)}, tu personaje debe especializarse antes de seguir.`}
       onClose={() => {}}
+      tamano="ceremonia"
       sinCerrar
       closeDisabled
       disableOverlayClose
@@ -48,21 +50,15 @@ export function EspecializacionModal({ clase, especializaciones, worldSlug, onCo
           <>
             <button
               type="button"
-              onClick={() => (confirmando ? setConfirmando(false) : setSeleccionada(null))}
+              onClick={() => setSeleccionada(null)}
               disabled={busy}
               className="tactile flex-1 rounded-lg border border-iron-700 bg-wood-950/50 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Atrás
             </button>
-            <button
-              type="button"
-              data-confirmar
-                onClick={() => (confirmando ? handleAceptar() : setConfirmando(true))}
-              disabled={busy}
-              className="tactile flex-1 rounded-lg border border-accent-600 bg-gradient-to-b from-accent-400 to-accent-600 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-wood-950 transition-colors disabled:cursor-not-allowed disabled:border-iron-700 disabled:from-wood-700 disabled:to-wood-700 disabled:text-wood-500"
-            >
-              {busy ? '...' : confirmando ? 'Confirmar' : 'Aceptar'}
-            </button>
+            <BotonMantener onConfirmar={() => void handleAceptar()} disabled={busy}>
+              {busy ? '...' : `Mantén para elegir ${especializacionLabel(detalle.especializacion)}`}
+            </BotonMantener>
           </>
         ) : undefined
       }
@@ -106,11 +102,9 @@ export function EspecializacionModal({ clase, especializaciones, worldSlug, onCo
                   />
                 )}
 
-                {confirmando && (
-                  <div className="rounded-lg border border-danger-600/50 bg-danger-500/10 px-3.5 py-2.5 text-xs leading-relaxed text-danger-300">
-                    No podrás cambiar de especialización más adelante — ¿confirmas {especializacionLabel(detalle.especializacion)}?
-                  </div>
-                )}
+                <p className="rounded-lg border border-danger-600/50 bg-danger-500/10 px-3.5 py-2.5 text-xs leading-relaxed text-danger-300">
+                    No podrás cambiar de especialización más adelante.
+                  </p>
                 {error && <p className="text-xs text-red-400">{error}</p>}
 
           </>
