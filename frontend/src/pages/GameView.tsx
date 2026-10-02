@@ -1,5 +1,6 @@
 import { useNoticiasMundo } from '../hooks/useNoticiasMundo'
 import { useGamePhase } from '../hooks/useGamePhase'
+import { usePresence } from '../hooks/usePresence'
 import { MenuPausa } from '../components/MenuPausa'
 import { accionDeTecla } from '../lib/atajos'
 import { useAjustes } from '../context/useAjustes'
@@ -564,6 +565,8 @@ export function GameView() {
   // UX-5 (hito 0.2) — paneles en modo consulta: se abren y se leen, pero lo que cambia datos se
   // deshabilita con el motivo (contexto ModoConsulta).
   const modoConsulta = puede('modificarPanel').motivo
+  // BAS-7 (hito 0.2) — el cajón se mantiene montado mientras hace su animación de salida.
+  const { mostrado: panelMostrado, saliendo: panelSaliendo } = usePresence(activePanel, 220)
   // UX-12 (hito 0.2) — lo que llega al registro con el cajón abierto (lib/llegadas.ts): lo crítico
   // lo cierra, lo importante avisa dentro del cajón, lo menor no interrumpe. `inicioCajon` es la
   // longitud del registro al abrirlo; null en el render de apertura, para no tomar como recién
@@ -1394,7 +1397,7 @@ export function GameView() {
   // (lib/capas.ts). Las condiciones son las mismas con las que se pinta cada uno más abajo.
   const capasAbiertas: CapaAbierta[] = [
     detailTarget && { id: 'detalle', nivel: 'consulta', hija: true },
-    activePanel && { id: 'panel', nivel: 'consulta' },
+    panelMostrado && { id: 'panel', nivel: 'consulta' },
     zonaModalOpen && saveId && { id: 'zona', nivel: 'consulta' },
     harvestModal && saveId && characterAttributes && { id: 'recolectar', nivel: 'accion' },
     simpleModal === 'camp' && saveId && { id: 'campamento', nivel: 'accion' },
@@ -2146,14 +2149,15 @@ export function GameView() {
         </Capa>
       )}
 
-      {activePanel && (
+      {panelMostrado && (
         <Capa id="panel">
-        <PanelDrawer title={panelTitles[activePanel]} accent={panelAccent[activePanel]} onClose={() => setActivePanel(null)}
+        <PanelDrawer title={panelTitles[panelMostrado]} accent={panelAccent[panelMostrado]} onClose={() => setActivePanel(null)}
+          saliendo={panelSaliendo}
           modoConsulta={modoConsulta}
           novedad={avisoLlegadas ? { texto: avisoLlegadas, onVer: () => setActivePanel(null) } : null}
         >
           <ModoConsultaContext.Provider value={modoConsulta}>
-          {activePanel === 'personaje' && (
+          {panelMostrado === 'personaje' && (
             <PersonajePanel
               activeSubTab={personajeSubTab}
               onSubTabChange={setPersonajeSubTab}
@@ -2175,10 +2179,10 @@ export function GameView() {
               sed={sed}
             />
           )}
-          {activePanel === 'reputacion' && (
+          {panelMostrado === 'reputacion' && (
             <ReputacionPanel factionsStatus={factionsStatus} factions={enciclopediaData?.factions ?? []} worldSlug={worldIdSlug} saveId={saveId} />
           )}
-          {activePanel === 'mapa' && (
+          {panelMostrado === 'mapa' && (
             <MapaPanel
               worldSlug={worldIdSlug}
               saveId={saveId}
@@ -2195,8 +2199,8 @@ export function GameView() {
               onEncuentroZona={(entry) => setCharacterLog((prev) => [...prev, entry])}
             />
           )}
-          {activePanel === 'diario' && saveId && <DiarioPanel saveId={saveId} />}
-          {activePanel === 'inventario' && saveId && (
+          {panelMostrado === 'diario' && saveId && <DiarioPanel saveId={saveId} />}
+          {panelMostrado === 'inventario' && saveId && (
             <InventarioPanel
               saveId={saveId}
               items={inventory}
@@ -2210,11 +2214,11 @@ export function GameView() {
               onRefreshSave={refreshSave}
             />
           )}
-          {activePanel === 'companeros' && saveId && (
+          {panelMostrado === 'companeros' && saveId && (
             <CompanerosPanel saveId={saveId} companions={companions} inventory={inventory} onRefreshSave={refreshSave} plantillasEquipo={plantillasEquipo} characterName={characterName ?? undefined} />
           )}
-          {activePanel === 'misiones' && <MisionesPanel quests={quests} />}
-          {activePanel === 'reino' && saveId && (
+          {panelMostrado === 'misiones' && <MisionesPanel quests={quests} />}
+          {panelMostrado === 'reino' && saveId && (
             <ReinoPanel
               saveId={saveId}
               kingdomName={kingdomName}
@@ -2239,7 +2243,7 @@ export function GameView() {
               bloqueoTurno={bloqueoTurno}
             />
           )}
-          {activePanel === 'enciclopedia' && (
+          {panelMostrado === 'enciclopedia' && (
             <EnciclopediaPanel
               key={enciclopediaOpenKey}
               data={enciclopediaData}
@@ -2250,7 +2254,7 @@ export function GameView() {
               initialCategory={enciclopediaInitialCategory}
             />
           )}
-          {activePanel === 'habilidades' && (
+          {panelMostrado === 'habilidades' && (
             <HabilidadesPanel
               savedActions={savedActions}
               combatSlots={combatSlots}

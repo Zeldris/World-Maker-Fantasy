@@ -609,6 +609,32 @@ body {
 .animate-drawer-up {
   animation: drawer-up 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
+/* BAS-7 (hito 0.2) — salidas: el cajón baja y el fondo se aclara antes de desmontarse
+   (usePresence, 220 ms). */
+@keyframes drawer-down {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+}
+.animate-drawer-down {
+  animation: drawer-down 0.22s ease-in both;
+}
+@keyframes overlay-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+.animate-overlay-out {
+  animation: overlay-out 0.22s ease-in both;
+}
 
 /* Barrido de luz lento sobre la tarjeta "pensando" — algo se mueve aunque tarde minutos */
 @keyframes sheen-sweep {
@@ -837,6 +863,8 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion='completas']) .animate-drawer-down,
+  :root:not([data-motion='completas']) .animate-overlay-out,
   /* CFG-14 (hito 0.2): si el jugador fuerza «Completas», el sistema no las quita. */
   :root:not([data-motion='completas']) .animate-entry-in,
   :root:not([data-motion='completas']) .animate-paso-turno,

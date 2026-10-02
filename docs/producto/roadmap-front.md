@@ -284,6 +284,13 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
   - **A (recomendada):** hook propio `usePresence(open, ms)` + *View Transitions API* con degradado a
     corte seco donde el webview no la soporte. Cero dependencias.
   - **B:** `motion` (Framer Motion, ~30 KB gz) con `AnimatePresence`/`layout`.
+
+  🚧 2026-10-02 — **se toma la opción A por defecto** (la recomendada; Álvaro puede cambiarla):
+  `hooks/usePresence.ts` mantiene montado lo que se cierra durante su salida (cierra en seco con
+  «Animaciones: ninguna»). Aplicado al cajón de paneles (`animate-drawer-down` + fondo que se
+  aclara, 220 ms; sigue registrado en el gestor de capas mientras sale). **Falta:** salida de
+  `ModalShell` y de las notificaciones, y View Transitions para los cambios de disposición
+  (plegar un lado, cambiar de pestaña).
 - ~~**BAS-8 · Librería de componentes base** **[P]** **M** — `QuantityStepper`, `EntityRow` (miniatura
   + nombre + subtítulo + acción), `Skeleton`, `ErrorBanner`, `SuccessState`, `Tabs` con indicador
   deslizante, `ProgressBar` (con barra fantasma), `Chip`. Hoy cada uno vive copiado en varios sitios.~~
