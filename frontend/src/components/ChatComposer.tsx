@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import type { ComposerChip } from '../types'
-import type { EnciclopediaIndex } from '../lib/enciclopediaIndex'
+import { buscarMenciones, type EnciclopediaIndex } from '../lib/enciclopediaIndex'
 
 export interface ChatComposerHandle {
   insertChip: (chip: ComposerChip) => void
@@ -238,11 +238,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
         el.appendChild(document.createTextNode(text))
       } else {
         let cursor = 0
-        for (const match of text.matchAll(index.regex)) {
-          const start = match.index ?? 0
-          const matchedText = match[0]
-          const target = index.entries.get(matchedText.toLowerCase())
-          if (!target) continue
+        for (const { inicio: start, texto: matchedText, target } of buscarMenciones(index, text)) {
           if (start > cursor) el.appendChild(document.createTextNode(text.slice(cursor, start)))
           const chipNode = buildChipNode({ icon: target.icon, label: target.name, description: target.description })
           el.appendChild(chipNode)

@@ -116,6 +116,9 @@ ejecutarlo en la Steam Deck con el Ollama real y pasar el JSON para fijar el obj
 
 ## Fase G — Pasada de juego completa (Opus, con el navegador)
 
+🚧 **En curso** (2026-10-02) con el Ollama simulado: estado por tramo y hallazgos en
+[`docs/registros/fase-g-0.1-hallazgos.md`](../registros/fase-g-0.1-hallazgos.md).
+
 Guion: primer turno y Gistera; zona y movimiento; caza en solitario y en grupo (aviso de riesgo);
 cadáveres, saqueo y Goirnos; recolección con cada método (ficha de flora); combate con muerte y
 renacer; compañeros; Reino (fundar, construir, taller con trabajador, diplomacia con XP, mercado,

@@ -10,11 +10,11 @@ cada commit.**
 
 | | |
 |---|---|
-| **Actualizado** | 2026-10-01 |
+| **Actualizado** | 2026-10-02 |
 | **Rama de trabajo** | `claude/frontend-improvements-roadmap-0mpckt`. Flujo acordado (2026-10-01): commit + push a esta rama con cada cosa hecha; a `main` se pasa **por pull request** (desde esta sesión el push directo a `main` lo bloquea el filtro de permisos) |
 | **Último commit en `main`** | Fusión del PR #3 (2026-10-02): bitácora recortada, paso 8 «después del 0.1», cobertura de roadmaps (367/367) y `tools/roadmap/cobertura.py`. La rama de trabajo y `main` quedan iguales |
 | **Hito** | `0.1` Llanuras estable — [plan](../producto/plan-roadmap-0.1.md) · [mapa de roadmaps](../producto/21-roadmap.md#qué-entra-en-cada-hito) |
-| **Tarea en curso** | Ninguna. Fase F: script hecho, **falta que Álvaro lo ejecute en la Steam Deck** (`npm run benchmark-turno`). Fase E bloqueada (decisión de pobladores). Siguiente que se puede hacer sin esperar: Fase G (pasada de juego completa) |
+| **Tarea en curso** | 🚧 **Fase G — pasada de juego completa** con el Ollama simulado (lo determinista; la calidad narrativa queda para Ollama real). Guion, estado por tramo y hallazgos en [`fase-g-0.1-hallazgos.md`](fase-g-0.1-hallazgos.md). Fase F espera a que Álvaro ejecute el benchmark; Fase E bloqueada (pobladores) |
 | **Tests** | Frontend: `tsc -b` 0, `vitest` 56 archivos / 330 tests, `oxlint` 13 avisos (los mismos de antes). Backend en local con Postgres real: `tsc` 0, `oxlint` 0 (solo avisos previos), `vitest` 165/165 archivos, 2869 tests. CI de GitHub en verde (PR #2) |
 
 ## Dónde está todo (para saber qué sigue)
@@ -50,7 +50,7 @@ Del [plan del 0.1](../producto/plan-roadmap-0.1.md) y del [mapa de roadmaps](../
 4. ~~**Fase D — El mundo vivo, visible**~~ ✅ 2026-10-02 (noticias del mundo + agenda leída de `FactionRelation`; el Libro de Sucesos `CR-1`…`CR-4` sigue esperando la decisión de Álvaro).
 5. 🚧 **Fase F — latencia en la Steam Deck**: script `npm run benchmark-turno` hecho (2026-10-02); falta que Álvaro lo ejecute en la Steam Deck y pase el JSON.
 6. **Fase E — súbditos mínimos** (bloqueada, ver decisiones).
-7. **Fase G — pasada de juego completa** y cierre del hito.
+7. 🚧 **Fase G — pasada de juego completa** (en curso, ver [`fase-g-0.1-hallazgos.md`](fase-g-0.1-hallazgos.md): seguir el guion por el primer tramo pendiente y arreglar cada hallazgo) y cierre del hito.
 8. **Después del 0.1:** cerrar el hito (etiqueta `v0.1.0-alpha`, subida a GitHub) y seguir con el
    hito `0.2` Facciones vivas según la fila `0.2` de
    [«Qué entra en cada hito»](../producto/21-roadmap.md#qué-entra-en-cada-hito), y así hito a hito
@@ -94,6 +94,7 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
+- **2026-10-02** — Fase G empezada. G1: la narración ya no enlaza palabras comunes como entidades («tira» ≠ NPC Tira) y el chip muestra la palabra del texto.
 - **2026-10-02** — PR #2 fusionado a `main` (Fases A, C, D, F parcial y todos los arreglos de
   interfaz del 0.1). Se sigue trabajando en la misma rama.
 - **2026-10-02** — Fase F: script `npm run benchmark-turno` (clasificar / resolver / narrar, con
@@ -112,5 +113,3 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
   pictograma y anillo de color (tokens), tamaño fijo de pantalla e insignia de grupo.
 - **2026-10-02** — `REI-116`: XP y nivel del diplomático al negociar; presión con barra y etapa al
   espiar. **Reino R-A completa.**
-- **2026-10-02** — `REI-115`: tooltips con el efecto real de cada indicador, estado y rol de Reino.
-  Hallazgo de la bebida apuntado en decisiones.

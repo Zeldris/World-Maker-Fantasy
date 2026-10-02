@@ -37,6 +37,34 @@ export interface EnciclopediaIndex {
   /// (rework 2026-07-24, persistencia de banners) — reconstruir el banner de una LogEntry ya
   /// guardada llega con la referencia que persistió el backend, no con el texto original.
   bySlugKey: Map<string, EnciclopediaLinkTarget>
+  /// Claves de nombres propios (NPC, lugar, personaje) que solo se enlazan si en el texto llevan
+  /// alguna mayúscula («Tira», «el Manco»; no «tira» ni «la hondonada») (Fase G del 0.1, 2026-10-02): el NPC «Tira» se enlazaba en «algo que tira de
+  /// él». Opcional para que los índices vacíos o de test escritos a mano sigan valiendo.
+  soloConMayuscula?: Set<string>
+}
+
+export interface MencionEnciclopedia {
+  inicio: number
+  /// Texto tal cual aparece (se muestra este, no el nombre canónico, para no romper la frase:
+  /// «las rocas» no puede pasar a «las Roca de Llanura Roja»).
+  texto: string
+  target: EnciclopediaLinkTarget
+}
+
+/// Menciones enlazables de `text`, ya filtradas — único sitio que decide qué cuenta como mención
+/// (lo usan la narración, el composer y el banner de entidad mencionada).
+export function buscarMenciones(index: EnciclopediaIndex, text: string): MencionEnciclopedia[] {
+  if (!index.regex) return []
+  const menciones: MencionEnciclopedia[] = []
+  for (const match of text.matchAll(index.regex)) {
+    const texto = match[0]
+    const clave = texto.toLowerCase()
+    const target = index.entries.get(clave)
+    if (!target) continue
+    if (index.soloConMayuscula?.has(clave) && texto === clave) continue
+    menciones.push({ inicio: match.index ?? 0, texto, target })
+  }
+  return menciones
 }
 
 export const EMPTY_ENCICLOPEDIA_INDEX: EnciclopediaIndex = { regex: null, entries: new Map(), bySlugKey: new Map() }
@@ -59,17 +87,20 @@ export function buildEnciclopediaIndex(data: EnciclopediaResponse | null, recipe
 
   const entries = new Map<string, EnciclopediaLinkTarget>()
   const bySlugKey = new Map<string, EnciclopediaLinkTarget>()
-  const register = (pattern: string, target: EnciclopediaLinkTarget) => {
+  const soloConMayuscula = new Set<string>()
+  const register = (pattern: string, target: EnciclopediaLinkTarget, nombrePropio = false) => {
     const key = pattern.trim().toLowerCase()
     if (target.entityType && target.entitySlug) bySlugKey.set(`${target.entityType}:${target.entitySlug}`, target)
     if (key.length < MIN_PATTERN_LENGTH) return
-    if (!entries.has(key)) entries.set(key, target)
+    if (entries.has(key)) return
+    entries.set(key, target)
+    if (nombrePropio) soloConMayuscula.add(key)
   }
 
   for (const npc of data.npcs) {
     const target = npcToDetailTarget(npc)
-    register(npc.name, target)
-    npc.aliases.forEach((alias) => register(alias, target))
+    register(npc.name, target, true)
+    npc.aliases.forEach((alias) => register(alias, target, true))
   }
   for (const item of data.items) {
     const target = itemToDetailTarget(item)
@@ -83,13 +114,13 @@ export function buildEnciclopediaIndex(data: EnciclopediaResponse | null, recipe
   }
   for (const loc of data.locations) {
     const target = locationToDetailTarget(loc)
-    register(loc.name, target)
-    loc.aliases.forEach((alias) => register(alias, target))
+    register(loc.name, target, true)
+    loc.aliases.forEach((alias) => register(alias, target, true))
   }
   for (const pj of data.personajes) {
     const target = personajeToDetailTarget(pj)
-    register(pj.name, target)
-    ;(pj.aliases ?? []).forEach((alias) => register(alias, target))
+    register(pj.name, target, true)
+    ;(pj.aliases ?? []).forEach((alias) => register(alias, target, true))
   }
 
   // Recetas de crafteo/construcción (2026-08-13, bug real encontrado revisando el enlace "ⓘ Ver
@@ -112,7 +143,7 @@ export function buildEnciclopediaIndex(data: EnciclopediaResponse | null, recipe
     if (target.entityType && target.entitySlug) bySlugKey.set(`${target.entityType}:${target.entitySlug}`, target)
   }
 
-  if (entries.size === 0) return { regex: null, entries, bySlugKey }
+  if (entries.size === 0) return { regex: null, entries, bySlugKey, soloConMayuscula }
 
   // Más largas primero: la alternación de regex prueba en orden y se queda con la primera que
   // encaje en cada posición — sin esto, "torgash" ganaría siempre a "kort'ikar torgash".
@@ -122,5 +153,5 @@ export function buildEnciclopediaIndex(data: EnciclopediaResponse | null, recipe
   // acentuadas (á, é, ñ...) como "no palabra", rompiendo el límite justo en nombres propios de
   // este mundo. `i` + `u` juntos sí manejan bien el plegado de mayúsculas en vocales acentuadas.
   const regex = new RegExp(`(?<![\\p{L}\\p{N}])(?:${alternation})(?![\\p{L}\\p{N}])`, 'giu')
-  return { regex, entries, bySlugKey }
+  return { regex, entries, bySlugKey, soloConMayuscula }
 }
