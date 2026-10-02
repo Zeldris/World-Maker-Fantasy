@@ -865,3 +865,13 @@ body {
     animation: none;
   }
 }
+
+/* BAS-3 (hito 0.2) — foco visible global: anillo de cristal accent-400 con brillo suave, solo con
+   teclado o mando (:focus-visible). Fuera los contenedores que se enfocan por código
+   (tabindex="-1", p. ej. el cuerpo del cajón de paneles). Especificidad 0 (:where) para que una
+   utilidad propia del componente pueda ajustarlo. */
+:where(button, a[href], input, select, textarea, summary, [contenteditable='true'], [tabindex]:not([tabindex='-1'])):focus-visible {
+  outline: 2px solid var(--color-accent-400);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--color-accent-400) 22%, transparent);
+}

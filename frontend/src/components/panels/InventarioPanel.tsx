@@ -9,6 +9,7 @@ import { PanelEmptyState } from '../PanelEmptyState'
 import { PanelSection } from '../PanelSection'
 import { IconCard } from '../IconCard'
 import { useModoConsulta } from '../../context/useModoConsulta'
+import { useNavegacionRejilla } from '../../hooks/useNavegacionRejilla'
 
 interface InventarioPanelProps {
   saveId: string
@@ -86,8 +87,10 @@ function CapturasEnTransito({ saveId, items, onRefreshSave }: { saveId: string; 
 }
 
 function ItemGrid({ items, onUse, onDetail }: Pick<InventarioPanelProps, 'items' | 'onUse' | 'onDetail'>) {
+  // BAS-3 (hito 0.2) — flechas/cruceta entre objetos.
+  const navegar = useNavegacionRejilla()
   return (
-    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4" onKeyDown={navegar}>
       {items.map((item) => (
         <IconCard
           key={item.id}

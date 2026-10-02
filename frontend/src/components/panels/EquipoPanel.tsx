@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { EquipSlot, InventoryItemInfo } from '../../types'
 import { TooltipAnchor } from '../TooltipAnchor'
 import { SLOT_ORDER, SLOT_LABEL, CONSUMIBLE_SLOTS } from '../../lib/equipSlots'
+import { useNavegacionRejilla } from '../../hooks/useNavegacionRejilla'
 
 // Ranuras del paperdoll anatómico de siempre — separadas de CONSUMIBLE_SLOTS (fila propia debajo,
 // sin sitio en la silueta) para no meter 6 huecos más dentro de `gridTemplateAreas`.
@@ -102,6 +103,7 @@ function PaperdollSlot({ slot, equipped, onClick, gridArea }: PaperdollSlotProps
         className="block h-full min-w-0"
       >
         <button type="button"
+          data-celda
           onClick={onClick}
           className="tactile relative flex h-full w-full min-w-0 flex-col items-center justify-center gap-1 overflow-hidden rounded-lg border border-iron-700 bg-wood-950/40 px-1.5 py-2.5 text-center transition-colors hover:border-accent-600/60 hover:bg-accent-500/10"
         >
@@ -121,8 +123,10 @@ function PaperdollSlot({ slot, equipped, onClick, gridArea }: PaperdollSlotProps
 }
 
 export function EquipoPanel({ items, onSlotClick }: EquipoPanelProps) {
+  // BAS-3 (hito 0.2) — flechas/cruceta entre ranuras (muñeco y consumibles, un solo recorrido).
+  const navegar = useNavegacionRejilla()
   return (
-    <div className="mx-auto flex w-full max-w-lg flex-col gap-4">
+    <div onKeyDown={navegar} className="mx-auto flex w-full max-w-lg flex-col gap-4">
       <div
         className="grid w-full gap-2.5"
         style={{

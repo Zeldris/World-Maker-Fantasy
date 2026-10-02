@@ -225,9 +225,13 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
   actual es el sobrante de la plantilla de Vite, iconos de redes sociales). Navegación, HUD, combate,
   dados y estados; los emoji se quedan solo dentro del texto narrado. Permite animar iconos y
   distinguir d20/d6/d100. 🧭 Dibujados a mano o partir de un set libre (Game-icons.net, CC BY 3.0).
-- **BAS-3 · Foco visible y navegación** **[H]** **M** — `:focus-visible` global (anillo de cristal
+- ~~**BAS-3 · Foco visible y navegación** **[H]** **M** — `:focus-visible` global (anillo de cristal
   `accent-400` + glow suave); navegación con flechas/cruceta en rejillas (inventario, equipo, barra de
-  habilidades, mapa).
+  habilidades, mapa).~~ ✅ 2026-10-02: anillo global en `index.css` (`:where(…):focus-visible`, sin
+  los contenedores `tabindex="-1"`). Navegación **espacial** con flechas, Inicio y Fin
+  (`lib/navegacionRejilla.ts`, `useNavegacionRejilla`, celdas marcadas con `data-celda`) en
+  inventario, habilidades, equipo (muñeco + consumibles) y barra de habilidades. **Queda:** el mapa
+  de zona (SVG con pines) va con el roadmap de zona (Z-B/Z-D).
 - **BAS-4 · Limpieza de tokens** **[H]** **M** — colores sueltos a tokens (`danger-700..950` como
   estructurales, `success` = `moss` en vez de `emerald`); sombras repetidas como utilidades con nombre
   (`shadow-plank`, `glow-accent`, `inset-well`); `Button` con variantes `alert`, `compact`, `icon`;

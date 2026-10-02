@@ -1,6 +1,7 @@
 import type { SavedActionInfo, SkillBarInfo } from '../types'
 import { TooltipAnchor } from './TooltipAnchor'
 import { ABILITIES_REQUIEREN_MONTURA, MONTURA_TOOLTIP_SUFFIX } from '../lib/abilitiesRequierenMontura'
+import { useNavegacionRejilla } from '../hooks/useNavegacionRejilla'
 
 /// Vista "barra activa" del HUD (2026-09-04, v2 de la SkillBar única de 2026-08-29; rediseñado
 /// 2026-09-06, hallazgo 10: la barra ya no pertenece a ninguna categoría, puede mezclar
@@ -34,8 +35,10 @@ export function SkillBarHud({
   const byName = new Map(savedActions.map((a) => [a.name, a]))
   const abilities = bar.abilityNames.map((name) => byName.get(name)).filter((a): a is SavedActionInfo => !!a)
 
+  // BAS-3 (hito 0.2) — flechas/cruceta entre las habilidades de la barra.
+  const navegar = useNavegacionRejilla()
   return (
-    <div className="flex flex-1 items-center gap-2">
+    <div className="flex flex-1 items-center gap-2" onKeyDown={navegar}>
       <TooltipAnchor text="Volver a escribir tu acción libremente">
         <button type="button" onClick={onBackToComposer} disabled={disabled} aria-label="Texto libre" className="skill-slot tactile">
           <span aria-hidden="true">⌨️</span>
@@ -56,7 +59,7 @@ export function SkillBarHud({
             const requiereMontura = ABILITIES_REQUIEREN_MONTURA.has(a.name)
             return (
               <TooltipAnchor key={a.id} text={a.name} subtext={requiereMontura ? `${a.description}${MONTURA_TOOLTIP_SUFFIX}` : a.description}>
-                <button type="button" onClick={() => onUse(a)} disabled={disabled || requiereMontura} aria-label={a.name} className="skill-slot tactile">
+                <button type="button" data-celda onClick={() => onUse(a)} disabled={disabled || requiereMontura} aria-label={a.name} className="skill-slot tactile">
                   <span aria-hidden="true">{a.icon}</span>
                 </button>
               </TooltipAnchor>
