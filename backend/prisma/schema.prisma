@@ -64,16 +64,16 @@ model User {
 /// Plantilla de mundo del catálogo (distinta de la instancia jugada — ver WorldState).
 model World {
   expediciones Expedicion[]
-  id        String    @id @default(cuid())
-  slug      String    @unique
-  name      String
-  tagline   String
-  synopsis  String
-  tone      String
-  lethality Lethality
+  id           String       @id @default(cuid())
+  slug         String       @unique
+  name         String
+  tagline      String
+  synopsis     String
+  tone         String
+  lethality    Lethality
   /// Tema de color por mundo (accent300-600, accent2 300-600) — mismo shape que WorldTheme en el frontend.
-  theme     Json
-  createdAt DateTime  @default(now())
+  theme        Json
+  createdAt    DateTime     @default(now())
 
   saves            Save[]
   loreChunks       LoreChunk[]
@@ -463,6 +463,8 @@ model Save {
   professionProgress ProfessionProgress[]
   kingdomStats       KingdomStats?
   discoveredEntities DiscoveredEntity[]
+  /// Libro de Sucesos (Cronista, CR-1) — todo lo que pasa en la partida, del jugador o del mundo.
+  sucesos            Suceso[]
   sessionFacts       SessionFact[]
   foundedFactions    Faction[]
 
@@ -474,37 +476,37 @@ model Save {
 /// la fuente de verdad editorial sigue siendo docs/rpgtarkor/lore-mundo/areas.md.
 model Location {
   expediciones Expedicion[]
-  id          String   @id @default(cuid())
-  worldId     String
-  world       World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  id           String       @id @default(cuid())
+  worldId      String
+  world        World        @relation(fields: [worldId], references: [id], onDelete: Cascade)
   /// Clave estable para seeds, aliases y referencias cruzadas ("hondonada-del-eco")
-  slug        String
-  name        String
+  slug         String
+  name         String
   /// Nombre de región del lore — string libre, no FK (misma razón que Territory.region:
   /// el lore vive en .md)
-  region      String
+  region       String
   /// Tipo libre ("refugio", "hito", "punto de agua", "cruce", "ruinas", "asentamiento") —
   /// no enum cerrado, misma razón que Companion.role
-  kind        String
+  kind         String
   /// Descripción de LLEGADA: lo que se inyecta al Narrador cuando el personaje llega aquí
   /// o está aquí — redactada con vocabulario de jugador (lección RAG 2026-07-18)
-  description String
+  description  String
   /// Frase corta para el icono de salida de región en Zona (2026-09-17, petición explícita de
   /// Álvaro: modal con "una breve si no lo conoces y la larga si ya lo descubierto") — se muestra
   /// SOLO mientras la Location no tiene ninguna fila en `LocationVisit` para la partida (nunca
   /// revela `description`, que sigue siendo la única fuente para una Location ya visitada). Null
   /// para el resto del catálogo (no toda Location es destino real de un LocationLink hoy) — el
   /// caller cae a un texto genérico si falta, nunca revienta.
-  teaser      String?
+  teaser       String?
   /// Nombres con los que un jugador se refiere de verdad al sitio ("los pilares", "el pozo") —
   /// para que el matcher DETERMINISTA de destinos resuelva sin pasar por el modelo
-  aliases     String[]
+  aliases      String[]
   /// Coordenadas cartográficas reales en km, origen Los Pilares Rotos, +x=este/+y=norte (2026-08-15,
   /// necesarias para que la Aguja de Cardo Brújula calcule dirección cardinal). Opcionales: no toda
   /// Location las tiene todavía — ver comentario de LocationInput en worldCatalog.ts.
-  x           Float?
-  y           Float?
-  createdAt   DateTime @default(now())
+  x            Float?
+  y            Float?
+  createdAt    DateTime     @default(now())
 
   linksFrom    LocationLink[]  @relation("linkFrom")
   linksTo      LocationLink[]  @relation("linkTo")
@@ -1727,39 +1729,39 @@ model ProfessionProgress {
 /// conviven sin problema) solo para que Prisma pueda expresar la relación 1:1 hacia `Save`/
 /// `Faction`; `ownerKey` sigue siendo la clave operativa real.
 model KingdomStats {
-  id                 String   @id @default(cuid())
-  ownerKey           String   @unique
-  saveId             String?  @unique
-  save               Save?    @relation(fields: [saveId], references: [id], onDelete: Cascade)
-  factionId          String?  @unique
-  faction            Faction? @relation(fields: [factionId], references: [id], onDelete: Cascade)
-  poblacion          Int      @default(0)
-  felicidad          Int      @default(50)
-  comida             Int      @default(0)
-  bebida             Int      @default(0)
-  riqueza            Int      @default(0)
-  soldados           Int      @default(0)
-  trabajadores       Int      @default(0)
-  visitantes         Int      @default(0)
+  id                  String   @id @default(cuid())
+  ownerKey            String   @unique
+  saveId              String?  @unique
+  save                Save?    @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  factionId           String?  @unique
+  faction             Faction? @relation(fields: [factionId], references: [id], onDelete: Cascade)
+  poblacion           Int      @default(0)
+  felicidad           Int      @default(50)
+  comida              Int      @default(0)
+  bebida              Int      @default(0)
+  riqueza             Int      @default(0)
+  soldados            Int      @default(0)
+  trabajadores        Int      @default(0)
+  visitantes          Int      @default(0)
   /// Rachas de días consecutivos de felicidad alta/baja (2026-08-23, Grupo 3 § Territory.control) —
   /// puro estado interno del tick, nunca se serializa al frontend. Se resetea a 0 en cuanto la
   /// felicidad sale de su banda (ver `tickKingdomOneDay`, kingdomTick.ts). Cruzar el umbral de días
   /// dispara consolidar/perder territorios — ver el bloque de `diasCruzados` en turnResolution.ts.
-  diasFelicidadAlta  Int      @default(0)
-  diasFelicidadBaja  Int      @default(0)
+  diasFelicidadAlta   Int      @default(0)
+  diasFelicidadBaja   Int      @default(0)
   /// Solo filas de facción (Fase 4 del plan oct-2026, H-6): último día de ficción del MUNDO (floor de
   /// minutos/1440, máximo de sus partidas) para el que `advanceFactionEconomy` (factionEconomy.ts,
   /// llamado desde worldTick) ya produjo/consumió. Marcador de idempotencia: cada día se procesa una
   /// sola vez aunque haya varias partidas o varios ticks. Null = aún sin línea base (el primer tick
   /// la fija al día actual sin producir retroactivamente).
-  ultimoDiaProducido Int?
+  ultimoDiaProducido  Int?
   /// Solo filas de facción (Fase 13-B del plan oct-2026): último día de ficción del MUNDO para el que
   /// `advanceFactionExpeditions` (factionExpeditions.ts) ya avanzó/lanzó expediciones de esta facción.
   /// Mismo patrón que `ultimoDiaProducido` (reclamo atómico, catch-up acotado); marcador propio para
   /// que economía y expediciones no se pisen el reclamo del día. Null = sin línea base (el primer
   /// tick la fija al día actual sin lanzar nada retroactivamente).
   ultimoDiaExpedicion Int?
-  updatedAt          DateTime @updatedAt
+  updatedAt           DateTime @updatedAt
 }
 
 /// El cupo lo da el nivel (docs/mecanicas/10-niveles-xp-reino.md § 4.3): 3 + floor(nivel/2).
@@ -2326,7 +2328,7 @@ enum Especializacion {
 /// sigue viviendo en WorldState.facts, igual que hasta ahora). Sembrado desde
 /// worldCatalog.ts; la prosa larga vive en docs/rpgtarkor/personajes/npcs.md y en lore chunks SIN números.
 model Npc {
-  expedicionMembers ExpedicionMember[]
+  expedicionMembers   ExpedicionMember[]
   id                  String               @id @default(cuid())
   worldId             String
   world               World                @relation(fields: [worldId], references: [id], onDelete: Cascade)
@@ -2544,15 +2546,15 @@ model Npc {
 /// `save.id`, así que nunca choca ni con el catálogo ni con la de otra partida.
 model Faction {
   expediciones Expedicion[]
-  id          String  @id @default(cuid())
-  worldId     String
-  world       World   @relation(fields: [worldId], references: [id], onDelete: Cascade)
-  saveId      String?
-  save        Save?   @relation(fields: [saveId], references: [id], onDelete: Cascade)
-  slug        String
-  name        String
-  raza        String
-  description String
+  id           String       @id @default(cuid())
+  worldId      String
+  world        World        @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  saveId       String?
+  save         Save?        @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  slug         String
+  name         String
+  raza         String
+  description  String
 
   /// Motor de facciones estilo X4 (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.2, 2026-09-21) — mismo
   /// modelo exacto que usa el jugador para su reino, con `factionId` relleno en vez de `saveId`.
@@ -3266,20 +3268,20 @@ enum ExpedicionStatus {
 /// (`worldFictionDay`), no en `DateTime`. Sin `@@unique` por facción: el límite de "una activa" lo
 /// aplica el servicio al lanzar. Nadie muere si se intercepta (los `Npc` son de mundo).
 model Expedicion {
-  id                String            @id @default(cuid())
+  id                String             @id @default(cuid())
   worldId           String
-  world             World             @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  world             World              @relation(fields: [worldId], references: [id], onDelete: Cascade)
   factionId         String
-  faction           Faction           @relation(fields: [factionId], references: [id], onDelete: Cascade)
+  faction           Faction            @relation(fields: [factionId], references: [id], onDelete: Cascade)
   destinoLocationId String
-  destino           Location          @relation(fields: [destinoLocationId], references: [id], onDelete: Cascade)
+  destino           Location           @relation(fields: [destinoLocationId], references: [id], onDelete: Cascade)
   /// `professionId` real del recolector (p. ej. 'pescador', 'minero-cristal', 'herborista-orcos-llanuras').
   professionId      String
-  status            ExpedicionStatus  @default(EN_TRANSITO)
+  status            ExpedicionStatus   @default(EN_TRANSITO)
   diaSalida         Int
   diaRegreso        Int
   /// Riesgo de intercepción (0-100) calculado al lanzar y la tirada (0-100) hecha al llegar.
-  riesgo            Int               @default(0)
+  riesgo            Int                @default(0)
   tiradaRiesgo      Float?
   /// Carga recogida al llegar: { items: [{ npcId, professionId, catalogSlug, name, cantidad, tier }] }.
   /// Null hasta la llegada o si se interceptó (la carga se pierde). Se deposita al COMPLETAR.
@@ -3289,8 +3291,8 @@ model Expedicion {
   /// ('sin-guardias' | 'sin-atacante' | 'tope') y si se aplicó presión. Null si no hubo intercepción.
   interceptacion    Json?
   members           ExpedicionMember[]
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 
   @@index([factionId, status])
   @@index([worldId, status])
@@ -3307,4 +3309,88 @@ model ExpedicionMember {
 
   @@index([expedicionId])
   @@index([npcId])
+}
+
+// ─── Libro de Sucesos (roadmap-cronista.md § 5.1, CR-1, hito 0.2) ───────────────────────────────
+// Solo crece: cada cosa que pasa en una partida (del jugador o del mundo) queda como un suceso con
+// sus causas y sus actores. `Conocimiento` (rumores, CR-18) y el `embedding` llegan con las tareas
+// que los usan.
+
+/// Libro de Sucesos — todo lo que pasa en una partida, del jugador o del mundo. Solo crece.
+model Suceso {
+  id               String        @id @default(cuid())
+  saveId           String
+  save             Save          @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  /// Clave del catálogo (roadmap-cronista.md § 6.1), p. ej. "MUERTE_NPC".
+  tipo             String
+  familia          FamiliaSuceso
+  /// Cuándo ocurrió en la ficción.
+  fictionalMinutes Int
+  regionSlug       String?
+  locationId       String?
+  /// 1-10, por reglas (§ 6.3).
+  importancia      Int
+  origen           OrigenSuceso
+  /// Datos tipados por `tipo` (§ 6.2).
+  datos            Json
+  /// Frase de plantilla, siempre presente (la alternativa sin IA).
+  texto            String
+  /// Versión del Cronista, si existe.
+  textoNarrado     String?
+  causas           SucesoCausa[] @relation("efecto")
+  efectos          SucesoCausa[] @relation("causa")
+  actores          SucesoActor[]
+  /// Entrada del registro que lo originó, si la hay.
+  logEntryId       String?
+  /// Para reproducir el azar.
+  semilla          String
+  createdAt        DateTime      @default(now())
+
+  @@index([saveId, fictionalMinutes])
+  @@index([saveId, tipo])
+  @@index([saveId, importancia])
+}
+
+/// Qué suceso causó qué otro (las cadenas del Libro).
+model SucesoCausa {
+  causaId  String
+  causa    Suceso @relation("causa", fields: [causaId], references: [id], onDelete: Cascade)
+  efectoId String
+  efecto   Suceso @relation("efecto", fields: [efectoId], references: [id], onDelete: Cascade)
+
+  @@id([causaId, efectoId])
+}
+
+/// Quién participa en un suceso y con qué papel.
+/// entidadTipo: PERSONAJE | NPC | COMPANERO | FACCION | REGION | LOCATION | TERRITORIO | EDIFICIO
+/// papel: AUTOR | VICTIMA | TESTIGO | BENEFICIARIO | AFECTADO | LUGAR
+model SucesoActor {
+  sucesoId    String
+  suceso      Suceso @relation(fields: [sucesoId], references: [id], onDelete: Cascade)
+  entidadTipo String
+  entidadId   String
+  papel       String
+
+  @@id([sucesoId, entidadTipo, entidadId, papel])
+  @@index([entidadTipo, entidadId])
+}
+
+enum FamiliaSuceso {
+  CLIMA
+  NATURAL
+  VIDA_MUERTE
+  DIPLOMACIA
+  FACCION
+  ECONOMIA
+  REINO
+  JUGADOR
+  LORE
+  SISTEMA
+}
+
+enum OrigenSuceso {
+  JUGADOR
+  MUNDO
+  MOTOR
+  IA_PROPUESTA
 }

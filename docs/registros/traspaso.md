@@ -14,7 +14,7 @@ cada commit.**
 | **Rama de trabajo** | `claude/frontend-improvements-roadmap-0mpckt`. Flujo acordado (2026-10-01): commit + push a esta rama con cada cosa hecha; a `main` se pasa **por pull request** (desde esta sesión el push directo a `main` lo bloquea el filtro de permisos) |
 | **Último commit en `main`** | Fusión del PR #3 (2026-10-02): bitácora recortada, paso 8 «después del 0.1», cobertura de roadmaps (367/367) y `tools/roadmap/cobertura.py`. La rama de trabajo y `main` quedan iguales |
 | **Hito** | `0.2` Facciones vivas — [plan](../producto/plan-roadmap-0.2.md) · [mapa de roadmaps](../producto/21-roadmap.md#qué-entra-en-cada-hito) (el `0.1` sigue abierto solo por las Fases E y F, ver abajo) |
-| **Tarea en curso** | `0.2` Fase A — Libro de Sucesos: empezar por `CR-1` ([plan del 0.2](../producto/plan-roadmap-0.2.md)). Forma de trabajo: implementación continua con tests; pruebas de juego en la fase única antes de la beta (decisión de la usuaria, 2026-10-02). Del `0.1` quedan abiertas la Fase E (bloqueada, pobladores) y la F (Álvaro ejecuta el benchmark); la G, aplazada a la fase única |
+| **Tarea en curso** | `0.2` Fase A — Libro de Sucesos: ~~`CR-1`~~ ✅ (modelos); siguiente `CR-2` (`registrarSuceso()`, importancia y plantillas de § 6.1) ([plan del 0.2](../producto/plan-roadmap-0.2.md)). Forma de trabajo: implementación continua con tests; pruebas de juego en la fase única antes de la beta (decisión de la usuaria, 2026-10-02). Del `0.1` quedan abiertas la Fase E (bloqueada, pobladores) y la F (Álvaro ejecuta el benchmark); la G, aplazada a la fase única |
 | **Tests** | Frontend: `tsc -b` 0, `vitest` 56 archivos / 334 tests, `oxlint` 13 avisos (los mismos de antes). Backend en local con Postgres real: `tsc` 0, `vitest` 165/165 archivos, 2874 tests (última pasada completa, 2026-10-02); 1 test intermitente apuntado (G16). CI de GitHub en verde (PR #3) |
 
 ## Dónde está todo (para saber qué sigue)
@@ -96,6 +96,7 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
+- **2026-10-02** — `CR-1`: modelos del Libro de Sucesos (`Suceso`, `SucesoCausa`, `SucesoActor`) con migración y test; el reinicio de partida vacía el Libro.
 - **2026-10-02** — Fase G aplazada a una fase única de pruebas antes de la beta (decisión de la usuaria); se empieza el `0.2`. G1-G29 en `fase-g-0.1-hallazgos.md` (21 arreglados).
 - **2026-10-02** — Fase G en curso: G1-G15 (14 arreglados): enlaces de entidades, asistente, combate (iniciativa, capturar, respaldo de narración, tiradas en grupo, nombre del rival), desollar al acabar, caza de grupos tras matar a uno, muerte con «Aceptar», «Acercarte». Detalle en `fase-g-0.1-hallazgos.md`.
 - **2026-10-02** — PR #2 fusionado a `main` (Fases A, C, D, F parcial y todos los arreglos de
@@ -112,5 +113,3 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 - **2026-10-02** — Z-A paso 3: `ZON-17` (salidas como estandartes con el destino) y `ZON-19`
   (nombres cerca del personaje, del seleccionado y al pasar el ratón).
 - **2026-10-02** — Z-A paso 2: `ZON-14`, ficha del personaje con anillo de cristal, dirección y halo.
-- **2026-10-02** — Z-A paso 1: `ZON-10`, `ZON-11`, `ZON-13` — fichas del mapa de zona con placa,
-  pictograma y anillo de color (tokens), tamaño fijo de pantalla e insignia de grupo.
