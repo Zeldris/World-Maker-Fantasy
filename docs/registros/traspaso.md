@@ -32,6 +32,11 @@ Del [plan del 0.1](../producto/plan-roadmap-0.1.md) y del [mapa de roadmaps](../
 5. 🚧 **Fase F — latencia en la Steam Deck**: script `npm run benchmark-turno` hecho (2026-10-02); falta que Álvaro lo ejecute en la Steam Deck y pase el JSON.
 6. **Fase E — súbditos mínimos** (bloqueada, ver decisiones).
 7. **Fase G — pasada de juego completa** y cierre del hito.
+8. **Después del 0.1:** cerrar el hito (etiqueta `v0.1.0-alpha`, subida a GitHub) y seguir con el
+   hito `0.2` Facciones vivas según la fila `0.2` de
+   [«Qué entra en cada hito»](../producto/21-roadmap.md#qué-entra-en-cada-hito), y así hito a hito
+   hasta `1.0`. Regla del roadmap: un hito no empieza hasta cerrar el anterior; adelantar trabajo
+   del `0.2` mientras el `0.1` espera a Álvaro solo si él lo decide.
 
 ## Decisiones de Álvaro que bloquean algo
 
