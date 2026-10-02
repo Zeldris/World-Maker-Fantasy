@@ -11,6 +11,8 @@ const findManyNpc = vi.fn();
 // vez. Vacío por defecto: la mayoría de tests de este archivo no tocan NPC dinámicos con estado.
 const findManyNpcState = vi.fn();
 const upsertNpcState = vi.fn();
+const findFirstFaction = vi.fn();
+const upsertDiscoveredEntity = vi.fn();
 const updateNpcState = vi.fn();
 // "Tirar" objetos al suelo de la Zona (2026-09-06) — vacío por defecto: la mayoría de tests de este
 // archivo no tocan objetos tirados.
@@ -66,7 +68,8 @@ vi.mock('../../lib/prisma.js', () => ({
       update: (...args: unknown[]) => updateNpcState(...args),
     },
     droppedItem: { findMany: (...args: unknown[]) => findManyDroppedItem(...args) },
-    discoveredEntity: { findMany: (...args: unknown[]) => findManyDiscoveredEntity(...args) },
+    discoveredEntity: { findMany: (...args: unknown[]) => findManyDiscoveredEntity(...args), upsert: (...args: unknown[]) => upsertDiscoveredEntity(...args) },
+    faction: { findFirst: (...args: unknown[]) => findFirstFaction(...args) },
     quest: { findMany: (...args: unknown[]) => findManyQuest(...args) },
     locationLink: { findMany: (...args: unknown[]) => findManyLocationLink(...args) },
     locationVisit: { findMany: (...args: unknown[]) => findManyLocationVisit(...args) },
@@ -116,6 +119,8 @@ async function buildApp() {
 beforeEach(() => {
   findManyNpcState.mockReset().mockResolvedValue([]);
   upsertNpcState.mockReset().mockResolvedValue({});
+  findFirstFaction.mockReset().mockResolvedValue(null);
+  upsertDiscoveredEntity.mockReset().mockResolvedValue({});
   findManyDroppedItem.mockReset().mockResolvedValue([]);
   zoneMapImageUrlMock.mockReset().mockReturnValue(null);
   findManyDiscoveredEntity.mockReset().mockResolvedValue(DISCOVERED_BY_DEFAULT);
@@ -308,6 +313,26 @@ describe('GET /saves/:id/zona', () => {
     const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
     const body = res.json();
     expect(body.regionControl).toEqual({ estado: 'NEUTRAL_O_DUENO_ORIGINAL', duenoActual: 'Clan Helsig' });
+  });
+
+  // Fase G del 0.1 (hallazgo G25): estar en el territorio de una facción la descubre (CITADA) —
+  // Diplomacia lo promete («visitando su territorio») y antes no pasaba.
+  it('estar en el territorio de una facción la deja descubierta', async () => {
+    findUniqueSave.mockResolvedValueOnce({
+      id: 's1',
+      worldId: 'w1',
+      currentLocation: { id: 'loc1', slug: 'restos-de-maktor', name: 'Los Restos de Maktor', region: 'Cristal Helado', zonePoints: [] },
+      worldState: { fictionalMinutes: 480, factionsStatus: {}, agenda: [] },
+    });
+    loadSessionFactsMock.mockResolvedValueOnce([]);
+    detectNpcsInSceneMock.mockResolvedValueOnce([]);
+    findFirstFaction.mockResolvedValueOnce({ slug: 'clan-helsig' });
+    const app = await buildApp();
+    await app.inject({ method: 'GET', url: '/saves/s1/zona' });
+    expect(findFirstFaction).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ name: 'Clan Helsig' }) }));
+    expect(upsertDiscoveredEntity).toHaveBeenCalledWith(
+      expect.objectContaining({ create: { saveId: 's1', entityType: 'faction', entitySlug: 'clan-helsig' } }),
+    );
   });
 
   // Tanda OpenCode 2026-09-27/28 (A-02/A-04): El Margen Silencioso deja de ser SIN_DUENO — Keseg
