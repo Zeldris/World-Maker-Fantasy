@@ -227,7 +227,7 @@ export function EstandarteSalida({ escala, angulo, texto }: { escala: number; an
       <g transform={`rotate(${angulo})`}>
         <path d="M -7 -7 L 4 0 L -7 7 L -4 0 Z M 1 -7 L 12 0 L 1 7 L 4 0 Z" fill="var(--color-wood-100)" />
       </g>
-      <EtiquetaNombre texto={texto} x={etiqueta.x} y={etiqueta.y} anchor={etiqueta.anchor} />
+      {texto && <EtiquetaNombre texto={texto} x={etiqueta.x} y={etiqueta.y} anchor={etiqueta.anchor} />}
     </g>
   )
 }

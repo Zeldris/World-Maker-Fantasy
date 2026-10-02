@@ -229,9 +229,16 @@ function GridOverlay() {
     const y = row * GRID_CELL_PX
     lineas.push(<line key={`h${row}`} x1={0} y1={y} x2={GRID_COLS * GRID_CELL_PX} y2={y} />)
   }
+  // ZON-62 (hito 0.1, Z11) — cada línea dos veces: oscura y ancha debajo, clara y fina encima, para
+  // verse sobre terreno claro y oscuro sin ensuciar la ilustración.
   return (
-    <g stroke="white" strokeWidth={1} opacity={0.12} pointerEvents="none">
-      {lineas}
+    <g pointerEvents="none" data-testid="cuadricula">
+      <g stroke="black" strokeWidth={2} opacity={0.28}>
+        {lineas}
+      </g>
+      <g stroke="white" strokeWidth={0.8} opacity={0.4}>
+        {lineas}
+      </g>
     </g>
   )
 }
@@ -316,6 +323,26 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
   // ZON-19 (hito 0.1) — nombre visible: lo cercano al personaje (≤ 2,5 celdas), lo seleccionado y lo
   // que está bajo el ratón.
   const [claveBajoRaton, setClaveBajoRaton] = useState<string | null>(null)
+  // ZON-62 (hito 0.1) — cuadrícula: fijada con el botón del mapa o mientras se mantiene Alt.
+  const [cuadriculaFijada, setCuadriculaFijada] = useState(false)
+  const [altPulsado, setAltPulsado] = useState(false)
+  useEffect(() => {
+    const abajo = (e: KeyboardEvent) => {
+      if (e.key === 'Alt') setAltPulsado(true)
+    }
+    const arriba = (e: KeyboardEvent) => {
+      if (e.key === 'Alt') setAltPulsado(false)
+    }
+    const soltar = () => setAltPulsado(false)
+    window.addEventListener('keydown', abajo)
+    window.addEventListener('keyup', arriba)
+    window.addEventListener('blur', soltar)
+    return () => {
+      window.removeEventListener('keydown', abajo)
+      window.removeEventListener('keyup', arriba)
+      window.removeEventListener('blur', soltar)
+    }
+  }, [])
   const posJugadorAnteriorRef = useRef<{ x: number; y: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
   // Modal de detalle (2026-09-04) — comparte un mismo modal entre ZonePoint reales (`puntos`) y
@@ -554,7 +581,98 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
             — una zona-interior recién creada (Capital/Cuartel Avanzado) nace sin ZonePoint/
             dinámicos, pero SÍ con Parcelas reales que pintar. */}
         {(data.puntos.length > 0 || dinamicos.length > 0 || data.jugador || data.parcelas.length > 0) && (
-          <div className={`flex overflow-hidden rounded-lg border border-iron-700 bg-wood-950/60 ${columnasAncho ? 'min-h-0 flex-1 items-center justify-center' : ''}`}>
+          <div className={`relative flex overflow-hidden rounded-lg border border-iron-700 bg-wood-950/60 ${columnasAncho ? 'min-h-0 flex-1 items-center justify-center' : ''}`}>
+            {/* ZON-20 (hito 0.1) — leyenda compacta fija en una esquina del mapa (BG3), plegada por
+                defecto, con las mismas fichas reales que se pintan en el lienzo. */}
+            <div className="absolute bottom-2 left-2 z-10">
+            <details className="group max-h-[70%] max-w-[min(22rem,calc(100%-1rem))] overflow-y-auto rounded-lg border border-iron-700 bg-wood-950/90 text-2xs text-wood-400 shadow-lg backdrop-blur-sm">
+              <summary className="tactile flex cursor-pointer select-none items-center gap-1.5 px-3 py-1.5 font-semibold uppercase tracking-[0.1em] text-wood-500 marker:content-none">
+                <span aria-hidden="true" className="transition-transform group-open:rotate-90">▸</span>
+                Leyenda
+              </summary>
+              <div className="flex flex-col gap-2 border-t border-iron-800 px-3 py-2">
+                <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+                  {(Object.keys(TIPO_LABEL) as (ZonaPinTipo)[]).map((tipo) => (
+                    <span key={tipo} className="flex items-center gap-1.5">
+                      <svg viewBox="-18 -18 36 36" width={20} height={20} aria-hidden="true">
+                        <ZonePointMarker tipo={tipo} x={0} y={0} color={COLOR_HEX.NEUTRO} escala={1} sombra={false} />
+                      </svg>
+                      {TIPO_LABEL[tipo]}
+                    </span>
+                  ))}
+                  <span className="flex items-center gap-1.5">
+                    <svg viewBox="-18 -18 36 36" width={20} height={20} aria-hidden="true">
+                      <JugadorMarker x={0} y={0} escala={1} angulo={null} quieto={false} sombra={false} />
+                    </svg>
+                    Tú
+                  </span>
+                  {/* Compañero de fauna con nombre propio (C10, 2026-09-13) — entrada propia en la
+                      leyenda para el anillo punteado, mismo criterio del comentario de arriba
+                      ("nunca puede desincronizarse de lo que de verdad se pinta"). */}
+                  <span className="flex items-center gap-1.5">
+                    <svg viewBox="-18 -18 36 36" width={20} height={20} aria-hidden="true">
+                      <ZonePointMarker tipo="NPC" x={0} y={0} color={COLOR_HEX.NEUTRO} escala={1} sombra={false} hasCompanion />
+                    </svg>
+                    NPC con compañero
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <svg viewBox="-18 -18 36 36" width={20} height={20} aria-hidden="true">
+                      <EstandarteSalida escala={1} angulo={0} texto="" />
+                    </svg>
+                    Salida de la región
+                  </span>
+                  {/* Icono de parcela (§ 7.4, 2026-09-21) — cuadrado con cruz = hueco vacío donde
+                      construir, sólido = ya ocupado. Mismo criterio ("nunca desincronizarse de lo
+                      que de verdad se pinta") que el resto de esta leyenda. */}
+                  <span className="flex items-center gap-1.5">
+                    <svg viewBox="0 0 24 24" width={14} height={14} aria-hidden="true">
+                      <ParcelaMarker x={12} y={12} ocupada={false} />
+                    </svg>
+                    Parcela vacía
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <svg viewBox="0 0 24 24" width={14} height={14} aria-hidden="true">
+                      <ParcelaMarker x={12} y={12} ocupada={true} />
+                    </svg>
+                    Parcela construida
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: COLOR_HEX.ALIADO }} />
+                    Aliado
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: COLOR_HEX.NEUTRO }} />
+                    Neutro
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: COLOR_HEX.ENEMIGO }} />
+                    Enemigo
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: COLOR_HEX.SIN_FACCION }} />
+                    Sin facción
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: COLOR_HEX.INERTE }} />
+                    Salvaje
+                  </span>
+                </div>
+              </div>
+            </details>
+            </div>
+            {/* ZON-62 (hito 0.1, Z11) — cuadrícula bajo demanda: oculta por defecto, visible mientras se
+                mantiene Alt o fijada con este botón (para mando/Steam Deck, sin tecla Alt). */}
+            <button
+              type="button"
+              onClick={() => setCuadriculaFijada((v) => !v)}
+              aria-pressed={cuadriculaFijada}
+              title="Cuadrícula (o mantén Alt)"
+              className={`tactile absolute right-2 top-2 z-10 rounded-md border px-2 py-1 text-2xs font-semibold transition-colors ${cuadriculaFijada ? 'border-accent-500 bg-accent-500/20 text-accent-200' : 'border-iron-700 bg-wood-950/85 text-wood-400 hover:text-wood-200'}`}
+            >
+              <span aria-hidden="true">▦</span> Cuadrícula
+            </button>
             {/* Sistema de movimiento por cuadrícula (2026-09-08) — clic en el LIENZO (fondo, no un
                 pin) mueve al jugador hacia ese punto; `getScreenCTM().inverse()` convierte la
                 coordenada de pantalla del clic a coordenadas reales del viewBox 800×600 (el SVG se
@@ -600,7 +718,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
             >
               <DefsFichas />
               {imageUrl && <image href={imageUrl} x={0} y={0} width={800} height={600} preserveAspectRatio="xMidYMid slice" />}
-              <GridOverlay />
+              {(cuadriculaFijada || altPulsado) && <GridOverlay />}
               {data.puntos.map((p) => (
                 <g
                   key={p.id}
@@ -707,78 +825,6 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
             puede desincronizarse de lo que de verdad se pinta. Formas dibujadas con el mismo
             `ZonePointMarker` de los pines reales, a tamaño de leyenda (viewBox propio 20×20), en
             vez de reconstruir cada silueta a mano en CSS. */}
-        {(data.puntos.length > 0 || dinamicos.length > 0 || data.jugador || data.parcelas.length > 0) && (
-          <details className="group rounded-lg border border-iron-700 bg-wood-950/40 text-2xs text-wood-400">
-            <summary className="tactile flex cursor-pointer select-none items-center gap-1.5 px-3 py-1.5 font-semibold uppercase tracking-[0.1em] text-wood-500 marker:content-none">
-              <span aria-hidden="true" className="transition-transform group-open:rotate-90">▸</span>
-              Leyenda del mapa
-            </summary>
-            <div className="flex flex-col gap-2 border-t border-iron-800 px-3 py-2">
-              <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-                {(Object.keys(TIPO_LABEL) as (ZonaPinTipo)[]).map((tipo) => (
-                  <span key={tipo} className="flex items-center gap-1.5">
-                    <svg viewBox="-18 -18 36 36" width={20} height={20} aria-hidden="true">
-                      <ZonePointMarker tipo={tipo} x={0} y={0} color={COLOR_HEX.NEUTRO} escala={1} sombra={false} />
-                    </svg>
-                    {TIPO_LABEL[tipo]}
-                  </span>
-                ))}
-                <span className="flex items-center gap-1.5">
-                  <svg viewBox="-18 -18 36 36" width={20} height={20} aria-hidden="true">
-                    <JugadorMarker x={0} y={0} escala={1} angulo={null} quieto={false} sombra={false} />
-                  </svg>
-                  Tú
-                </span>
-                {/* Compañero de fauna con nombre propio (C10, 2026-09-13) — entrada propia en la
-                    leyenda para el anillo punteado, mismo criterio del comentario de arriba
-                    ("nunca puede desincronizarse de lo que de verdad se pinta"). */}
-                <span className="flex items-center gap-1.5">
-                  <svg viewBox="-18 -18 36 36" width={20} height={20} aria-hidden="true">
-                    <ZonePointMarker tipo="NPC" x={0} y={0} color={COLOR_HEX.NEUTRO} escala={1} sombra={false} hasCompanion />
-                  </svg>
-                  NPC con compañero
-                </span>
-                {/* Icono de parcela (§ 7.4, 2026-09-21) — cuadrado con cruz = hueco vacío donde
-                    construir, sólido = ya ocupado. Mismo criterio ("nunca desincronizarse de lo
-                    que de verdad se pinta") que el resto de esta leyenda. */}
-                <span className="flex items-center gap-1.5">
-                  <svg viewBox="0 0 24 24" width={14} height={14} aria-hidden="true">
-                    <ParcelaMarker x={12} y={12} ocupada={false} />
-                  </svg>
-                  Parcela vacía
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <svg viewBox="0 0 24 24" width={14} height={14} aria-hidden="true">
-                    <ParcelaMarker x={12} y={12} ocupada={true} />
-                  </svg>
-                  Parcela construida
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: COLOR_HEX.ALIADO }} />
-                  Aliado
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: COLOR_HEX.NEUTRO }} />
-                  Neutro
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: COLOR_HEX.ENEMIGO }} />
-                  Enemigo
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: COLOR_HEX.SIN_FACCION }} />
-                  Sin facción
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: COLOR_HEX.INERTE }} />
-                  Salvaje
-                </span>
-              </div>
-            </div>
-          </details>
-        )}
         {data.puntos.length > 0 && (
           <div className="flex flex-col gap-1.5">
             {data.puntos.map((p) => (
