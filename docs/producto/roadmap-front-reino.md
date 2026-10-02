@@ -247,7 +247,7 @@ pausada visualmente detrás. 🧭 **M**
 - ~~**REI-112** · Topes con `Enter` y confirmación visual (R20). **S**~~ ✅ 2026-10-02 (mismo componente: ✓ al confirmar, `Esc` deshace, vacío = sin tope)
 - ~~**REI-113** · Sustituir los `<select>` nativos por los selectores del juego (R23). **S**~~ ✅ 2026-10-02: nuevo `SelectorJuego` (lista accesible con teclado) en plantilla, hueco, rol, receta y modo. Fuera de Reino quedan `<select>` nativos (se tratarán con `BAS-8`/componentes base).
 - ~~**REI-114** · Esqueletos de carga en lugar de "Cargando…" (R24). **S**~~ ✅ 2026-10-02: componente `Esqueleto` (pulso solo con `motion-safe`, `role="status"`) en órdenes de producción y mercado. El motivo "Cargando requisitos..." de los botones de Construir sigue en texto (es un tooltip de botón deshabilitado).
-- **REI-115** · Tooltips de explicación en cada indicador, rol y estado (R25). **S**
+- ~~**REI-115** · Tooltips de explicación en cada indicador, rol y estado (R25). **S**~~ ✅ 2026-10-02: los 8 indicadores de Economía con su efecto real y cifras del tick diario (`kingdomTick.ts`), estado de territorio y de edificio al pasar por encima, y cada rol explicado en el selector. **Hallazgo para Álvaro:** en el reino del jugador nada repone la *bebida* en el tick diario (solo la de las facciones), así que con habitantes acaba en 0 y la felicidad baja 5 al día; el tooltip lo dice tal cual.
 - **REI-116** · Declarar `xpGanada`, `nivelDiplomatico` y `stage` en `DiplomaciaResultado` (R4). **S**
 
 ---

@@ -1,5 +1,6 @@
 import type { BuildingInfo, RecipeStatusInfo } from '../../../types'
 import { PanelSection } from '../../PanelSection'
+import { TooltipAnchor } from '../../TooltipAnchor'
 import { cuartelBuildDisabledReason } from '../../../lib/cuartelBuild'
 
 const buildingStatusLabel: Record<BuildingInfo['status'], string> = {
@@ -109,9 +110,12 @@ export function EdificiosParcelasSection({ buildings, recipesStatus = [], onBuil
           <div key={b.id} className="rounded-lg border border-iron-700 bg-wood-950/40 px-3.5 py-2.5">
             <p className="flex items-center justify-between font-medium text-wood-100">
               {b.name}
-              <span className={`rounded-full border px-2 py-0.5 text-2xs uppercase tracking-wide ${BUILDING_STATUS_TONE[b.status]}`}>
-                {buildingStatusLabel[b.status]}
-              </span>
+              {/* REI-115 (hito 0.1) — el significado del estado al pasar por encima, no solo en la leyenda. */}
+              <TooltipAnchor text={buildingStatusLabel[b.status]} subtext={BUILDING_STATE_HINT[b.status]}>
+                <span className={`rounded-full border px-2 py-0.5 text-2xs uppercase tracking-wide ${BUILDING_STATUS_TONE[b.status]}`}>
+                  {buildingStatusLabel[b.status]}
+                </span>
+              </TooltipAnchor>
             </p>
             <p className="mt-0.5 text-2xs text-wood-500">
               {b.kind}

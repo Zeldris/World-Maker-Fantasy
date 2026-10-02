@@ -3,6 +3,7 @@ import type { BuildingInfo, KingdomStatsInfo, TerritoryInfo } from '../../../typ
 import { PanelSection } from '../../PanelSection'
 import { getDescansarCampamentoDisponible, postDescansarCampamento } from '../../../lib/api'
 import { ConfirmModal } from '../../ConfirmModal'
+import { TooltipAnchor } from '../../TooltipAnchor'
 
 // `diasFelicidadBaja`/`diasFelicidadAlta` (B.19) quedan fuera a propósito — son metadatos de
 // "cuántos días lleva así", no un recurso del reino que tenga sentido como tarjeta en Economía.
@@ -17,6 +18,20 @@ const KINGDOM_STAT_LABEL: Record<KingdomStatKey, string> = {
   soldados: 'Soldados',
   trabajadores: 'Trabajadores',
   visitantes: 'Visitantes',
+}
+
+/// REI-115 (hito 0.1, roadmap-front-reino.md R25) — qué hace de verdad cada indicador, con las cifras
+/// del tick diario (`backend/src/services/kingdomTick.ts`: "bocas" = población + soldados + visitantes).
+/// Si cambian esas constantes, hay que cambiar estos textos.
+const KINGDOM_STAT_HINT: Record<KingdomStatKey, string> = {
+  poblacion: 'Habitantes de tus territorios. Cada uno come y bebe 1 al día. Con felicidad 70 o más crece 2 al día por territorio; con 20 o menos baja 3.',
+  felicidad: 'De 0 a 100. Sube 2 al día si sobra comida y bebida, baja 5 si falta cualquiera de las dos. 7 días seguidos en 70 o más consolidan un territorio; 7 en 20 o menos lo pierden.',
+  comida: 'Cada trabajador produce 2 al día; cada boca (población, soldados y visitantes) gasta 1.',
+  bebida: 'Cada boca (población, soldados y visitantes) gasta 1 al día. Ahora mismo ningún trabajador la repone en el reparto diario.',
+  riqueza: 'Cada trabajador aporta 1 al día; cada soldado cuesta 1 de mantenimiento.',
+  soldados: 'Comen y beben como un habitante y cuestan 1 de riqueza al día.',
+  trabajadores: 'Producen 2 de comida y 1 de riqueza al día cada uno.',
+  visitantes: 'Gente de paso: comen y beben como un habitante (1 al día).',
 }
 
 export const controlLabel: Record<TerritoryInfo['control'], string> = {
@@ -146,13 +161,14 @@ export function VisionGeneralSection({
             {(Object.keys(KINGDOM_STAT_LABEL) as KingdomStatKey[]).map((key) => {
               const critico = (key === 'comida' || key === 'bebida') && kingdomStats[key] <= 0
               return (
+                <TooltipAnchor key={key} text={KINGDOM_STAT_LABEL[key]} subtext={KINGDOM_STAT_HINT[key]} className="block">
                 <div
-                  key={key}
                   className={`rounded-lg border px-2.5 py-2 text-center ${critico ? 'border-danger-600/50 bg-danger-600/10' : 'border-iron-700 bg-wood-950/40'}`}
                 >
                   <p className="text-2xs uppercase tracking-wide text-wood-500">{KINGDOM_STAT_LABEL[key]}</p>
                   <p className={`font-mono text-sm tabular-nums ${critico ? 'text-danger-400' : 'text-accent2-300'}`}>{kingdomStats[key]}</p>
                 </div>
+                </TooltipAnchor>
               )
             })}
           </div>
@@ -203,9 +219,11 @@ export function VisionGeneralSection({
               <div key={t.id} className="rounded-lg border border-iron-700 bg-wood-950/40 px-3.5 py-2.5">
                 <p className="flex items-center justify-between font-medium text-wood-100">
                   {t.name}
-                  <span className={`rounded-full border px-2 py-0.5 text-2xs uppercase tracking-wide ${CONTROL_TONE[t.control]}`}>
-                    {controlLabel[t.control]}
-                  </span>
+                  <TooltipAnchor text={controlLabel[t.control]} subtext={TERRITORY_STATE_HINT[t.control]}>
+                    <span className={`rounded-full border px-2 py-0.5 text-2xs uppercase tracking-wide ${CONTROL_TONE[t.control]}`}>
+                      {controlLabel[t.control]}
+                    </span>
+                  </TooltipAnchor>
                 </p>
                 {t.region && <p className="mt-0.5 text-2xs text-wood-500">{t.region}</p>}
                 <p className="mt-1 text-xs leading-relaxed text-wood-400">{t.description}</p>

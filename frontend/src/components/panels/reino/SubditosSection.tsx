@@ -279,11 +279,15 @@ function PlantillasSection({
 }
 
 /// Roles de Reino válidos (mismos que `ROLES_REINO` del backend, companeros.ts).
-const ROLES_REINO: { value: string; label: string }[] = [
-  { value: 'trabajador', label: 'Trabajador' },
-  { value: 'guardia', label: 'Guardia' },
-  { value: 'productor', label: 'Productor' },
-  { value: 'diplomatico', label: 'Diplomático' },
+/// REI-115 (hito 0.1, R25) — qué hace hoy cada rol en el código (`backend/src/routes/saves/companeros.ts`,
+/// `dailyTick.ts`, `reino.ts`): cualquier rol mete al compañero en el Reino (puede trabajar en un
+/// edificio y lo atiende la Casa de curas); guardia/productor/trabajador solo cambian qué plantilla
+/// de equipo se le aplica; diplomático habilita la diplomacia con facciones.
+const ROLES_REINO: { value: string; label: string; descripcion: string }[] = [
+  { value: 'trabajador', label: 'Trabajador', descripcion: 'Puede trabajar en un edificio. Recibe la plantilla de equipo de rol «trabajador».' },
+  { value: 'guardia', label: 'Guardia', descripcion: 'Puede trabajar en un edificio. Recibe la plantilla de rol «guardia» (arma y ropa).' },
+  { value: 'productor', label: 'Productor', descripcion: 'Puede trabajar en un edificio. Recibe la plantilla de rol «productor» (herramienta).' },
+  { value: 'diplomatico', label: 'Diplomático', descripcion: 'Necesario para negociar, sabotear o espiar a otras facciones.' },
 ]
 
 /// Selector de rol de Reino por compañero (H-1): sin `rolReino` un compañero no es candidato a
@@ -316,7 +320,10 @@ function RolesReinoSection({ saveId, companions, onRefreshSave }: { saveId: stri
               ariaLabel={`Rol en el Reino de ${c.name}`}
               value={c.rolReino ?? ''}
               disabled={busy}
-              opciones={[{ value: '', label: 'Sin rol' }, ...ROLES_REINO.map((r) => ({ value: r.value, label: r.label }))]}
+              opciones={[
+                { value: '', label: 'Sin rol', descripcion: 'Fuera del Reino: no trabaja en edificios ni lo atiende la Casa de curas.' },
+                ...ROLES_REINO.map((r) => ({ value: r.value, label: r.label, descripcion: r.descripcion })),
+              ]}
               onChange={(v) => void handleChange(c.id, v)}
               className="min-w-[8rem]"
             />

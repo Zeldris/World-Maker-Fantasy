@@ -14,8 +14,8 @@ cada commit.**
 | **Rama de trabajo** | `claude/frontend-improvements-roadmap-0mpckt`. Flujo acordado (2026-10-01): commit + push a esta rama con cada cosa hecha; a `main` se pasa **por pull request** (desde esta sesión el push directo a `main` lo bloquea el filtro de permisos) |
 | **Último commit en `main`** | `423c8a5` — roadmap de roadmaps y revisión cruzada de front y UX (+ el commit de esta bitácora) |
 | **Hito** | `0.1` Llanuras estable — [plan](../producto/plan-roadmap-0.1.md) · [mapa de roadmaps](../producto/21-roadmap.md#qué-entra-en-cada-hito) |
-| **Tarea en curso** | Ninguna. Segundo test intermitente de CI arreglado (Fase C); siguiente: Reino R-A, quedan `REI-115` y `REI-116` |
-| **Tests** | Frontend: `tsc -b` 0, `vitest` 51 archivos / 316 tests, `oxlint` 13 avisos (los mismos de antes). Backend en local con Postgres real: `tsc` 0, `oxlint` 0 (solo avisos previos), `vitest` 162/162 archivos, 2851 tests. CI de GitHub en verde (PR #2) |
+| **Tarea en curso** | Ninguna. Segundo test intermitente de CI arreglado (Fase C); siguiente: `REI-116` (último de Reino R-A) |
+| **Tests** | Frontend: `tsc -b` 0, `vitest` 52 archivos / 317 tests, `oxlint` 13 avisos (los mismos de antes). Backend en local con Postgres real: `tsc` 0, `oxlint` 0 (solo avisos previos), `vitest` 162/162 archivos, 2851 tests. CI de GitHub en verde (PR #2) |
 
 ## Siguientes pasos (en orden)
 
@@ -41,6 +41,7 @@ Del [plan del 0.1](../producto/plan-roadmap-0.1.md) y del [mapa de roadmaps](../
 | Fase D del 0.1 | ¿Se adelanta el Libro de Sucesos (`CR-1`…`CR-4`) al 0.1 o espera a 0.2? | `21-roadmap.md`, preguntas abiertas 8 |
 | Maestro de diplomacia | ¿Quién lo enseña y dónde? | `21-roadmap.md`, preguntas abiertas 2 |
 | Z-C (0.2) | ¿Dónde vive el mapa de zona? (`ZON-1`) | `roadmap-front-zona.md` § 16 |
+| Equilibrio del Reino (no bloquea) | En el reino del jugador nada repone la **bebida** en el tick diario (`kingdomTick.ts`; solo se rellena la de las facciones): con habitantes acaba en 0 y la felicidad baja 5/día. ¿Falta una fuente (pozo, orden de producción) o es intencionado? | `roadmap-front-reino.md`, `REI-115` |
 
 El resto de decisiones (Cronista D-1…D-10, 🧭 de los roadmaps de interfaz) tienen valor por defecto
 o no bloquean el 0.1.
@@ -64,6 +65,8 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
+- **2026-10-02** — `REI-115`: tooltips con el efecto real de cada indicador, estado y rol de Reino.
+  Hallazgo de la bebida apuntado en decisiones.
 - **2026-10-02** — `REI-114`: esqueletos de carga (`Esqueleto`) en producción y mercado.
 - **2026-10-02** — `REI-113`: `SelectorJuego` sustituye los `<select>` nativos de Reino.
 - **2026-10-02** — `REI-40`, `REI-41`: Almacén agrupado por recurso con su tope al lado (los topes
