@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { NumeroGuardable } from '../../NumeroGuardable'
+import { SelectorJuego } from '../../SelectorJuego'
 import type { AlmacenItemInfo, BuildingInfo, CompanionInfo, ProfessionRecipeInfo } from '../../../types'
 import {
   type OrdenProduccionInfo,
@@ -398,28 +399,28 @@ function NuevaOrdenModal({
         <p className="text-xs text-wood-500">No hay recetas de crafteo conocidas todavía.</p>
       ) : (
         <>
-          <select
-            value={recipeKey}
-            onChange={(e) => setRecipeKey(e.target.value)}
-            className="w-full rounded-lg border border-iron-700 bg-wood-950/60 px-2 py-1.5 text-xs text-wood-200"
-          >
-            {professionRecipes.map((r) => (
-              <option key={r.recipeKey} value={r.recipeKey}>
-                {r.ability.name}
-              </option>
-            ))}
-          </select>
+          <div className="flex flex-col">
+            <SelectorJuego
+              ariaLabel="Receta"
+              value={recipeKey}
+              opciones={professionRecipes.map((r) => ({ value: r.recipeKey, label: r.ability.name }))}
+              onChange={setRecipeKey}
+              className="py-1.5 text-xs"
+            />
+          </div>
           <div className="mt-2 flex gap-2">
             <label className="flex flex-1 flex-col gap-1 text-2xs text-wood-500">
               Modo
-              <select
+              <SelectorJuego<'unico' | 'reponer'>
+                ariaLabel="Modo"
                 value={modo}
-                onChange={(e) => setModo(e.target.value as 'unico' | 'reponer')}
-                className="rounded-lg border border-iron-700 bg-wood-950/60 px-2 py-1.5 text-xs text-wood-200"
-              >
-                <option value="reponer">Reponer (repite mientras haya hueco)</option>
-                <option value="unico">Único (produce el lote y se desactiva)</option>
-              </select>
+                opciones={[
+                  { value: 'reponer', label: 'Reponer', descripcion: 'Repite mientras haya hueco en el Almacén' },
+                  { value: 'unico', label: 'Único', descripcion: 'Produce el lote y se desactiva' },
+                ]}
+                onChange={setModo}
+                className="py-1.5 text-xs"
+              />
             </label>
             <label className="flex w-24 flex-col gap-1 text-2xs text-wood-500">
               Límite

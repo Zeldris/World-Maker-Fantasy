@@ -245,7 +245,7 @@ pausada visualmente detrás. 🧭 **M**
 - ~~**REI-110** · Prioridad: guardar con *debounce* o al soltar, no en cada tecla (R18). **S**~~ ✅ 2026-10-02 (`NumeroGuardable`: guarda con `Enter` o al salir del campo, solo si cambió)
 - ~~**REI-111** · Todos los `try/finally` de Reino con `catch` y `ErrorBanner` visible (R19). **S**~~ ✅ 2026-10-01 (con `UX-24`)
 - ~~**REI-112** · Topes con `Enter` y confirmación visual (R20). **S**~~ ✅ 2026-10-02 (mismo componente: ✓ al confirmar, `Esc` deshace, vacío = sin tope)
-- **REI-113** · Sustituir los `<select>` nativos por los selectores del juego (R23). **S**
+- ~~**REI-113** · Sustituir los `<select>` nativos por los selectores del juego (R23). **S**~~ ✅ 2026-10-02: nuevo `SelectorJuego` (lista accesible con teclado) en plantilla, hueco, rol, receta y modo. Fuera de Reino quedan `<select>` nativos (se tratarán con `BAS-8`/componentes base).
 - **REI-114** · Esqueletos de carga en lugar de "Cargando…" (R24). **S**
 - **REI-115** · Tooltips de explicación en cada indicador, rol y estado (R25). **S**
 - **REI-116** · Declarar `xpGanada`, `nivelDiplomatico` y `stage` en `DiplomaciaResultado` (R4). **S**

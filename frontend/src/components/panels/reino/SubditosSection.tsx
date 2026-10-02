@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { AlmacenItemInfo, CompanionInfo, EquipSlot, InventoryItemInfo, PlantillaEquipoInfo, SubjectInfo } from '../../../types'
 import { PanelSection } from '../../PanelSection'
+import { SelectorJuego } from '../../SelectorJuego'
 import { AlmacenSection } from './AlmacenSection'
 import { crearPlantilla, borrarPlantilla, asignarPlantillaCompanion, asignarPlantillaSubject, fijarRolReinoCompanion } from '../../../lib/api'
 import { SLOT_LABEL, SLOT_ORDER } from '../../../lib/equipSlots'
@@ -57,21 +58,17 @@ export function PlantillaSelect({
   }, [flashing])
 
   return (
-    // El `key` va en el contenedor, no en el propio `<select>` (evita remontar el control nativo —
-    // y con él el foco/desplegable — justo después de que la usuaria acabe de interactuar con él).
-    <div key={confirmed} className={flashing ? 'animate-pop-once' : undefined}>
-      <select
+    // El `key` va en el contenedor, no en el propio selector (evita remontar el control — y con él
+    // el foco — justo después de que la usuaria acabe de interactuar con él).
+    <div key={confirmed} className={`mt-2 ${flashing ? 'animate-pop-once' : ''}`}>
+      {/* REI-113 (hito 0.1) — selector del juego en vez del `<select>` nativo. */}
+      <SelectorJuego
+        ariaLabel="Plantilla de equipo"
         value={value ?? ''}
-        onChange={(e) => void handleChange(e.target.value || null)}
-        className={`mt-2 w-full rounded-lg border bg-wood-950/60 px-2 py-1 text-2xs text-wood-300 ${flashing ? 'border-accent-500' : 'border-iron-700'}`}
-      >
-        <option value="">Sin plantilla</option>
-        {plantillas.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name} ({p.rol})
-          </option>
-        ))}
-      </select>
+        opciones={[{ value: '', label: 'Sin plantilla' }, ...plantillas.map((p) => ({ value: p.id, label: `${p.name} (${p.rol})` }))]}
+        onChange={(v) => void handleChange(v || null)}
+        className={`w-full ${flashing ? 'border-accent-500' : ''}`}
+      />
       <ErrorBanner fallo={fallo} onCerrar={limpiar} />
     </div>
   )
@@ -231,17 +228,13 @@ function PlantillasSection({
             </div>
             {rows.map((row, i) => (
               <div key={i} className="flex gap-2">
-                <select
+                <SelectorJuego<EquipSlot>
+                  ariaLabel={`Hueco de la fila ${i + 1}`}
                   value={row.slot}
-                  onChange={(e) => setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, slot: e.target.value as EquipSlot } : r)))}
-                  className="rounded-lg border border-iron-700 bg-wood-950/60 px-2 py-1.5 text-2xs text-wood-200"
-                >
-                  {SLOT_ORDER.map((s) => (
-                    <option key={s} value={s}>
-                      {SLOT_LABEL[s]}
-                    </option>
-                  ))}
-                </select>
+                  opciones={SLOT_ORDER.map((s) => ({ value: s, label: SLOT_LABEL[s] }))}
+                  onChange={(v) => setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, slot: v } : r)))}
+                  className="py-1.5"
+                />
                 <input
                   value={row.category}
                   onChange={(e) => setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, category: e.target.value } : r)))}
@@ -319,20 +312,14 @@ function RolesReinoSection({ saveId, companions, onRefreshSave }: { saveId: stri
         {companions.map((c) => (
           <div key={c.id} className="flex items-center justify-between gap-2 text-xs text-wood-300">
             <span>{c.name}</span>
-            <select
+            <SelectorJuego
+              ariaLabel={`Rol en el Reino de ${c.name}`}
               value={c.rolReino ?? ''}
               disabled={busy}
-              onChange={(e) => void handleChange(c.id, e.target.value)}
-              aria-label={`Rol en el Reino de ${c.name}`}
-              className="rounded-lg border border-iron-700 bg-wood-950/60 px-2 py-1 text-2xs text-wood-300 disabled:opacity-50"
-            >
-              <option value="">Sin rol</option>
-              {ROLES_REINO.map((r) => (
-                <option key={r.value} value={r.value}>
-                  {r.label}
-                </option>
-              ))}
-            </select>
+              opciones={[{ value: '', label: 'Sin rol' }, ...ROLES_REINO.map((r) => ({ value: r.value, label: r.label }))]}
+              onChange={(v) => void handleChange(c.id, v)}
+              className="min-w-[8rem]"
+            />
           </div>
         ))}
       </div>
