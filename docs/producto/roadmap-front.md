@@ -368,9 +368,10 @@ Todos tienen el mismo ancho (`max-w-md`), la misma entrada (`combat-enter`) y ni
   subtítulo, ✕), pie fijo, Escape, Tab atrapado, foco devuelto al cerrar y `aria-labelledby`;
   `SelectionModalShell` ya es una envoltura suya (los modales de selección lo heredan sin ✕, que
   ya tienen «Cancelar»). El apilado lo lleva el gestor de capas (`UX-9`). Migrados: Clase y
-  Especialización (obligatorias: sin ✕ ni cierre), Fundar reino (se pospone con Cancelar/✕/Escape).
-  **Falta:** Modo dinámico, Detalle, Moverte por la zona, Mapa ampliado e imagen, y la animación de
-  salida (`BAS-7`).
+  Especialización (obligatorias: sin ✕ ni cierre), Fundar reino (se pospone con Cancelar/✕/Escape),
+  Modo dinámico («Salir» como botón de cerrar, opciones en el pie) y Detalle (título solo accesible:
+  cada ficha pinta su encabezado con imagen). **Falta:** Moverte por la zona, Mapa ampliado e
+  imagen, y la animación de salida (`BAS-7`).
 - **MOD-2 · Estados comunes** **S** — `Skeleton` mientras carga (con la altura final aproximada, para
   que el modal no salte, H28), `ErrorBanner` con botón *Reintentar*, `SuccessState` con icono y
   sello animado (hoy cada modal escribe su frase en `emerald-300`).

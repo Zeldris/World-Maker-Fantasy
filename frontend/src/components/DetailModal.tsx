@@ -18,6 +18,21 @@ import { useEnciclopediaLink } from '../context/useEnciclopediaLink'
 import { MediaSlot, ImagePromptSlot } from './ImagePromptDisplay'
 import { useHerramientasAdminVisibles } from '../lib/modoDesarrollador'
 import { TooltipAnchor } from './TooltipAnchor'
+import { ModalShell } from './ModalShell'
+
+/// Nombre de la ficha para el título accesible del modal (MOD-1).
+function tituloDeFicha(target: DetailTarget): string {
+  switch (target.kind) {
+    case 'item':
+      return target.item.name
+    case 'ability':
+      return target.ability.name
+    case 'slotManager':
+      return target.slotLabel
+    case 'info':
+      return target.name
+  }
+}
 
 export type DetailTarget =
   | { kind: 'item'; item: InventoryItemInfo }
@@ -203,11 +218,9 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onTirar, onSa
   }, [targetKey])
 
   return (
-    <div className="animate-overlay-in fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4" onClick={onClose}>
-      <div
-        className="plank-panel animate-combat-enter relative flex max-h-[85vh] w-full max-w-md flex-col gap-4 overflow-y-auto rounded-xl p-5"
-        onClick={(e) => e.stopPropagation()}
-      >
+    // MOD-1 (hito 0.2): sobre ModalShell. Cada tipo pinta su propio encabezado (imagen y nombre),
+    // así que el título va solo para lectores de pantalla; gana ✕, Escape y foco devuelto.
+    <ModalShell title={tituloDeFicha(target)} tituloOculto onClose={onClose}>
         {target.kind === 'item' && (
           <>
             {/* Bug real jugando en vivo (2026-08-07): mismo fallo que InventarioPanel.tsx — un
@@ -715,7 +728,6 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onTirar, onSa
         >
           Cerrar
         </button>
-      </div>
-    </div>
+    </ModalShell>
   )
 }

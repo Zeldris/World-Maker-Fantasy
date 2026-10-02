@@ -29,6 +29,10 @@ export interface ModalShellProps {
   closeDisabled?: boolean
   /// Sin ✕ en la cabecera (p. ej. si el pie ya tiene «Cancelar» y no se quiere duplicar).
   sinCerrar?: boolean
+  /// El título solo para lectores de pantalla (la ficha pinta su propio encabezado con imagen).
+  tituloOculto?: boolean
+  /// Texto del botón de cerrar en vez de la ✕ (p. ej. «Salir» de una escena).
+  etiquetaCerrar?: string
   disableOverlayClose?: boolean
   children: ReactNode
   /// Pie fijo: queda abajo aunque el contenido haga scroll.
@@ -43,6 +47,8 @@ export function ModalShell({
   onClose,
   closeDisabled = false,
   sinCerrar = false,
+  etiquetaCerrar,
+  tituloOculto = false,
   disableOverlayClose = false,
   children,
   footer,
@@ -99,20 +105,20 @@ export function ModalShell({
         <div className="flex shrink-0 items-start gap-3 px-5 pt-5">
           {icon && <div className="shrink-0 text-2xl leading-none">{icon}</div>}
           <div className="min-w-0 flex-1">
-            <h3 id={tituloId} className={`font-serif text-wood-100 ${tamano === 'ceremonia' ? 'text-2xl tracking-wide' : 'text-lg'}`}>
+            <h3 id={tituloId} className={tituloOculto ? 'sr-only' : `font-serif text-wood-100 ${tamano === 'ceremonia' ? 'text-2xl tracking-wide' : 'text-lg'}`}>
               {title}
             </h3>
-            {subtitle && <p className="mt-0.5 text-xs text-wood-500">{subtitle}</p>}
+            {subtitle && !tituloOculto && <p className="mt-0.5 text-xs text-wood-500">{subtitle}</p>}
           </div>
           {!sinCerrar && (
             <button
               type="button"
               onClick={onClose}
               disabled={closeDisabled}
-              aria-label="Cerrar"
+              aria-label={etiquetaCerrar ?? 'Cerrar'}
               className="tactile shrink-0 rounded-md border border-iron-700 px-2 py-0.5 text-xs text-wood-500 transition-colors hover:border-danger-600/60 hover:text-danger-300 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              ✕
+              {etiquetaCerrar ?? '✕'}
             </button>
           )}
         </div>
