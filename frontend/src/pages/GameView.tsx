@@ -1,5 +1,6 @@
 import { useNoticiasMundo } from '../hooks/useNoticiasMundo'
 import { useGamePhase } from '../hooks/useGamePhase'
+import { GameHeader } from '../components/GameHeader'
 import { avisoDeLlegadas, pesoDeLlegada } from '../lib/llegadas'
 import { useDecisionesEnCola } from '../hooks/useDecisionesEnCola'
 import { resolverCapas, type CapaAbierta } from '../lib/capas'
@@ -56,8 +57,6 @@ import { MisionesPanel } from '../components/panels/MisionesPanel'
 import { HabilidadesPanel } from '../components/panels/HabilidadesPanel'
 import { CombatComposer } from '../components/CombatComposer'
 import { CombatPanel } from '../components/CombatPanel'
-import { HealthBar } from '../components/HealthBar'
-import { EnergyBar } from '../components/EnergyBar'
 import { KingdomFoundingModal } from '../components/KingdomFoundingModal'
 import { HarvestSelectionModal } from '../components/HarvestSelectionModal'
 import { REINO_ABILITY_RECIPE_KEY } from '../data/reinoRecipes'
@@ -70,8 +69,6 @@ import { TravelDestinationModal } from '../components/TravelDestinationModal'
 import { SaquearZonaModal } from '../components/SaquearZonaModal'
 import { HealSelectionModal } from '../components/HealSelectionModal'
 import { HungerThirstSelectionModal } from '../components/HungerThirstSelectionModal'
-import { HungerBar } from '../components/HungerBar'
-import { ThirstBar } from '../components/ThirstBar'
 import { EntregaModal } from '../components/EntregaModal'
 import { AprenderOficioModal } from '../components/AprenderOficioModal'
 import { EspecializacionModal } from '../components/EspecializacionModal'
@@ -96,7 +93,6 @@ import {
 } from '../lib/api'
 import { characterWaitingFlavor, combatWaitingFlavor, worldWaitingFlavor, useRotatingFlavor } from '../lib/waitingFlavor'
 import { formatCountdown, formatFictionalDuration, applyInventoryDelta, combatKeyFor } from '../lib/gameViewHelpers'
-import { ESTACION_ICON, CLIMA_ICON } from '../lib/entorno'
 import { sinHabilidadesRetiradas } from '../lib/abilitiesRetiradasFase4'
 import type {
   ActiveEffect,
@@ -130,7 +126,6 @@ import type {
 /// mantiene la mención simple de siempre.
 // Espejo de limiteMuertes() en backend/src/services/death.ts — NOVATO no tiene límite, así que
 // no aparece aquí (el indicador de muerte permanente solo se muestra para MEDIO/AVANZADO).
-const LIMITE_MUERTES: Record<Exclude<Dificultad, 'NOVATO'>, number> = { MEDIO: 4, AVANZADO: 2 }
 
 export function GameView() {
   const { id } = useParams()
@@ -584,28 +579,6 @@ export function GameView() {
   // UX-7 (hito 0.2) — la brújula y el mapa de zona: moverse solo en `libre`.
   const permisoMover = puede('moverse')
   const etiquetaFase = etiquetaDeFase(fase)
-
-  // Pop del botón "Nivel X" solo en una subida real, nunca al cargar la partida (roadmap de
-  // animaciones 2026-07-20, item 7) — mismo patrón que HealthBar: comparar contra un ref, no
-  // animar en el primer render.
-  const [levelPop, setLevelPop] = useState(0)
-  const prevLevelRef = useRef(level)
-  useEffect(() => {
-    if (prevLevelRef.current !== level) {
-      setLevelPop((p) => p + 1)
-      prevLevelRef.current = level
-    }
-  }, [level])
-
-  // Mismo patrón que el pop de nivel — el chip de muertes solo destella cuando sube de verdad.
-  const [deathPop, setDeathPop] = useState(0)
-  const prevDeathCountRef = useRef(deathCount)
-  useEffect(() => {
-    if (prevDeathCountRef.current !== deathCount) {
-      setDeathPop((p) => p + 1)
-      prevDeathCountRef.current = deathCount
-    }
-  }, [deathCount])
 
   // Sondeo de ambientación cada 10 min reales — ver src/hooks/useSurroundingsPolling.ts para la
   // lógica completa (por qué usa refs internos, por qué se corta durante un turno/combate en
@@ -1463,106 +1436,33 @@ export function GameView() {
     >
     <CapasContext.Provider value={estadoCapas}>
     <div className="relative flex min-h-0 flex-1 flex-col">
-      <header className="iron-band relative flex flex-wrap items-center justify-between gap-2 px-5 pb-3 pt-2.5">
-        <div className="min-w-0">
-          <button type="button"
-            onClick={() => setConfirmingExit(true)}
-            className="text-xs text-wood-500 transition-colors hover:text-accent-300"
-          >
-            ← Salir a tus partidas
-          </button>
-          <p className="mt-0.5 truncate font-serif text-base tracking-wide text-wood-200">
-            <span className="text-accent-400">{characterName}</span>
-            <span className="mx-2 text-wood-600">·</span>
-            <span className="text-wood-300">{worldName}</span>
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <button type="button"
-            onClick={() => {
-              setPersonajeSubTab('estadisticas')
-              setActivePanel('personaje')
-            }}
-            title={pendingAttributePoints > 0 ? `${pendingAttributePoints} puntos de atributo por repartir` : 'Nivel'}
-            className="relative flex items-center gap-1.5 rounded-md border border-iron-700 bg-wood-950/60 px-2.5 py-1 font-serif text-xs tracking-wide text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300"
-          >
-            <span key={levelPop} className={`inline-flex items-center gap-1.5 ${levelPop > 0 ? 'animate-pop-once' : ''}`}>
-              <span className="gem" />
-              Nivel {level}
-            </span>
-            {pendingAttributePoints > 0 && (
-              <span className="ml-1 rounded-full bg-accent-500 px-1.5 text-2xs font-bold text-wood-950">
-                +{pendingAttributePoints}
-              </span>
-            )}
-          </button>
-          <HealthBar condicionFisica={condicionFisica} />
-          <EnergyBar energia={energia} energiaMax={energiaMax} />
-          <HungerBar hambre={hambre} />
-          <ThirstBar sed={sed} />
-          {dificultad !== 'NOVATO' && (
-            // Indicador de muerte permanente (2026-07-19, auditoría de frontend): docs/14 § 4.2
-            // ya tiene un límite real de muertes por dificultad, pero el jugador no tenía ninguna
-            // señal en pantalla de cuántas le quedan hasta el fin de partida definitivo.
-            <span
-              key={deathPop}
-              title={`Muerte permanente a la ${LIMITE_MUERTES[dificultad]}ª muerte (dificultad ${dificultad.toLowerCase()})`}
-              className={`relative rounded-md border border-iron-700 bg-wood-950/60 px-2.5 py-1 font-serif text-xs tracking-wide text-wood-300 ${
-                deathPop > 0 ? 'animate-pop-once' : ''
-              }`}
-            >
-              {deathPop > 0 && (
-                <span aria-hidden="true" className="animate-edge-flash-red pointer-events-none absolute inset-0 rounded-md border border-danger-500" />
-              )}
-              💀 {deathCount}/{LIMITE_MUERTES[dificultad]}
-            </span>
-          )}
-          {/* UX-10 (hito 0.2) — decisión en cola: aviso con botón para abrirla ya. */}
-          {decisiones.enEspera && (
-            <button
-              type="button"
-              onClick={decisiones.abrirYa}
-              title="Se abrirá sola al terminar; pulsa para abrirla ahora"
-              className="tactile rounded-full border border-accent-600/70 bg-accent-500/10 px-2.5 py-1 font-serif text-2xs tracking-wide text-accent-300 hover:bg-accent-500/20"
-            >
-              <span aria-hidden="true">⚠️</span> {avisoDecision}
-            </button>
-          )}
-          {/* UX-8 (hito 0.2) — indicador de la fase cuando algo está bloqueado, con el motivo al
-              pasar el ratón; en `libre` no aparece. */}
-          {etiquetaFase && (
-            <span
-              role="status"
-              title={permisoTurno.motivo ?? undefined}
-              className="rounded-full border border-iron-700 bg-wood-950/60 px-2.5 py-1 font-serif text-2xs tracking-wide text-wood-300"
-            >
-              <span aria-hidden="true">{etiquetaFase.icono}</span> {etiquetaFase.texto}
-              {fase === 'ocupado' && busyUntil ? ` · ${formatCountdown(busyUntil, nowTick)}` : ''}
-            </span>
-          )}
-          <span
-            // C.11 (checklist frontend 2026-08-27) — mismo `rounded-full`/`text-2xs` que el badge
-            // expandido de MapaPanel (misma info, tratamiento compacto vs. expandido a propósito,
-            // ver comentario de abajo — solo se unifica la FORMA del contenedor, no el contenido).
-            className="rounded-full border border-iron-700 bg-wood-950/60 px-2.5 py-1 font-serif text-2xs tracking-wide text-wood-300"
-            // Estación/clima (2026-08-27, diseño/UX § 4.1: "candidato natural para absorber
-            // estación/clima sin que la jugadora tenga que ir a buscarlos a ningún panel... cero
-            // clics adicionales") — solo iconos aquí (el detalle completo en texto ya vive en el
-            // badge de Mapa > Berig), el `title` da el nombre completo al pasar el ratón.
-            title={entorno ? `${entorno.estacion.nombre}${entorno.clima ? ` · ${entorno.clima.nombre}` : ''}` : undefined}
-          >
-            {fictionalDate}
-            {entorno && (
-              <>
-                {' '}
-                {ESTACION_ICON[entorno.estacion.key]}
-                {entorno.clima && CLIMA_ICON[entorno.clima.key]}
-              </>
-            )}
-          </span>
-        </div>
-        <div className="accent-hairline absolute inset-x-0 bottom-0" />
-      </header>
+      <GameHeader
+        characterName={characterName}
+        worldName={worldName}
+        level={level}
+        pendingAttributePoints={pendingAttributePoints}
+        condicionFisica={condicionFisica}
+        energia={energia}
+        energiaMax={energiaMax}
+        hambre={hambre}
+        sed={sed}
+        dificultad={dificultad}
+        deathCount={deathCount}
+        decisionEnEspera={decisiones.enEspera}
+        avisoDecision={avisoDecision}
+        onAbrirDecision={decisiones.abrirYa}
+        etiquetaFase={etiquetaFase}
+        motivoFase={permisoTurno.motivo}
+        ocupadoHasta={fase === 'ocupado' ? busyUntil : null}
+        nowTick={nowTick}
+        fictionalDate={fictionalDate}
+        entorno={entorno}
+        onSalir={() => setConfirmingExit(true)}
+        onAbrirNivel={() => {
+          setPersonajeSubTab('estadisticas')
+          setActivePanel('personaje')
+        }}
+      />
 
       <div className="flex min-h-0 flex-1 gap-2 overflow-hidden p-2">
         <SideNav
