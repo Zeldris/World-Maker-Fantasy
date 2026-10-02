@@ -4,6 +4,8 @@ import type { LogEntry } from '../types'
 import { SelectionModalShell } from './SelectionModalShell'
 import { useAsyncModalData } from '../hooks/useAsyncModalData'
 import { useSubmitError } from '../hooks/useSubmitError'
+import { CargandoModal, ErrorCarga, ExitoModal } from './EstadosModal'
+import { Miniatura } from './Miniatura'
 
 interface EntregaModalProps {
   saveId: string
@@ -25,7 +27,7 @@ export function EntregaModal({ saveId, onEntregado, onCancel }: EntregaModalProp
   const [selectedItem, setSelectedItem] = useState<{ id: string; name: string } | null>(null)
   const [entregando, setEntregando] = useState<string | null>(null)
   const [entregado, setEntregado] = useState<{ npcName: string; itemName: string } | null>(null)
-  const { loading, error: loadError } = useAsyncModalData(
+  const { loading, error: loadError, reintentar } = useAsyncModalData(
     () => getEntregables(saveId),
     (res) => {
       setItems(res.items)
@@ -53,11 +55,11 @@ export function EntregaModal({ saveId, onEntregado, onCancel }: EntregaModalProp
   return (
     <SelectionModalShell title="Entregar" onCancel={onCancel} cancelDisabled={!!entregando}>
       {entregado ? (
-        <p className="text-xs text-emerald-300">
+        <ExitoModal>
           Le entregas {entregado.itemName} a {entregado.npcName}.
-        </p>
+        </ExitoModal>
       ) : loading ? (
-        <p className="text-xs text-wood-500">Comprobando qué llevas encima...</p>
+        <CargandoModal texto="Comprobando qué llevas encima..." />
       ) : items.length === 0 ? (
         <p className="text-xs text-wood-500">No llevas nada que puedas entregar (desequípalo primero si lo llevas puesto).</p>
       ) : npcs.length === 0 ? (
@@ -70,8 +72,9 @@ export function EntregaModal({ saveId, onEntregado, onCancel }: EntregaModalProp
               key={item.id}
               type="button"
               onClick={() => setSelectedItem({ id: item.id, name: item.name })}
-              className="tactile flex w-full items-center justify-between gap-2 rounded-lg border border-iron-700 p-2.5 text-left text-xs text-wood-200 transition-colors hover:border-accent-600/60"
+              className="tactile flex w-full items-center gap-2 rounded-lg border border-iron-700 p-2.5 text-left text-xs text-wood-200 transition-colors hover:border-accent-600/60"
             >
+              <Miniatura nombre={item.name} icono="🎒" />
               {item.name}
             </button>
           ))}
@@ -84,7 +87,8 @@ export function EntregaModal({ saveId, onEntregado, onCancel }: EntregaModalProp
           <p className="text-2xs text-wood-500">¿A quién le entregas {selectedItem.name}?</p>
           {npcs.map((npc) => (
             <div key={npc.npcSlug} className="flex items-center justify-between gap-2 rounded-lg border border-iron-700 p-2.5">
-              <span className="text-xs text-wood-200">{npc.name}</span>
+              <Miniatura nombre={npc.name} entityType="npc" slug={npc.npcSlug} icono="👤" />
+              <span className="mr-auto text-xs text-wood-200">{npc.name}</span>
               <button
                 type="button"
                 onClick={() => handleEntregar(npc)}
@@ -97,7 +101,7 @@ export function EntregaModal({ saveId, onEntregado, onCancel }: EntregaModalProp
           ))}
         </div>
       )}
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      {error && <ErrorCarga mensaje={error} onReintentar={loadError ? reintentar : undefined} />}
     </SelectionModalShell>
   )
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { SelectionModalShell } from './SelectionModalShell'
+import { CargandoModal } from './EstadosModal'
 import {
   getCombatGroups,
   createCombatGroup,
@@ -88,7 +89,7 @@ export function CombatGroupsModal({ saveId, onClose }: { saveId: string; onClose
       {error && <p className="text-xs text-danger-400">{error}</p>}
 
       {groups === null ? (
-        <p className="text-xs text-wood-500">Cargando…</p>
+        <CargandoModal texto="Cargando tus grupos…" filas={2} />
       ) : (
         <div className="flex flex-col gap-3">
           {groups.map((group) => (

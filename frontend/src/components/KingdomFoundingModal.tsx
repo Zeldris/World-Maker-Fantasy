@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import type { KingdomFoundedInfo } from '../types'
 import { useSubmitError } from '../hooks/useSubmitError'
+import { ModalShell } from './ModalShell'
+import { BotonMantener } from './BotonMantener'
 
 interface KingdomFoundingModalProps {
   info: KingdomFoundedInfo
@@ -41,14 +43,31 @@ export function KingdomFoundingModal({ info, onConfirm, onCancel }: KingdomFound
   }
 
   return (
-    <div className="animate-overlay-in fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-      <div className="plank-panel animate-combat-enter relative flex max-h-[85vh] w-full max-w-md flex-col gap-4 overflow-y-auto rounded-xl p-5">
-        <div>
-          <h3 className="font-serif text-lg text-wood-100">Fundación de reino</h3>
-          <p className="mt-1 text-xs text-wood-400">
-            Termina de construir {info.title} en {info.region} — el reino empieza a existir de verdad.
-          </p>
-        </div>
+    // MOD-1/MOD-4 (hito 0.2): modal de ceremonia; fundar se confirma manteniendo pulsado 1 s. Se puede posponer (Cancelar, ✕ o Escape), salvo mientras
+    // se está fundando; Cancelar y Aceptar en el pie fijo.
+    <ModalShell
+      title="Fundación de reino"
+      subtitle={`Termina de construir ${info.title} en ${info.region} — el reino empieza a existir de verdad.`}
+      icon="👑"
+      tamano="ceremonia"
+      onClose={onCancel}
+      closeDisabled={busy}
+      disableOverlayClose
+      footer={
+        <>
+          <button type="button"
+            onClick={onCancel}
+            disabled={busy}
+            className="tactile flex-1 rounded-lg border border-iron-700 bg-wood-950/50 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Cancelar
+          </button>
+          <BotonMantener onConfirmar={() => void handleConfirm()} disabled={busy || (!info.nameLocked && !kingdomName.trim())}>
+            {busy ? '...' : 'Mantén para fundar'}
+          </BotonMantener>
+        </>
+      }
+    >
 
         <div className={`rounded-lg border px-3.5 py-2.5 text-xs leading-relaxed ${OUTCOME_TONE[info.outcome]}`}>
           {OUTCOME_LABEL[info.outcome]}
@@ -76,24 +95,6 @@ export function KingdomFoundingModal({ info, onConfirm, onCancel }: KingdomFound
         </div>
 
         {error && <p className="text-xs text-red-400">{error}</p>}
-
-        <div className="flex gap-2">
-          <button type="button"
-            onClick={onCancel}
-            disabled={busy}
-            className="tactile flex-1 rounded-lg border border-iron-700 bg-wood-950/50 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            Cancelar
-          </button>
-          <button type="button"
-            onClick={handleConfirm}
-            disabled={busy || (!info.nameLocked && !kingdomName.trim())}
-            className="tactile flex-1 rounded-lg border border-accent-600 bg-gradient-to-b from-accent-400 to-accent-600 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-wood-950 transition-colors disabled:cursor-not-allowed disabled:border-iron-700 disabled:from-wood-700 disabled:to-wood-700 disabled:text-wood-500"
-          >
-            {busy ? '...' : 'Aceptar'}
-          </button>
-        </div>
-      </div>
-    </div>
+    </ModalShell>
   )
 }

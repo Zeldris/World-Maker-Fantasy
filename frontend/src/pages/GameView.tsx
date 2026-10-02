@@ -1,5 +1,10 @@
 import { useNoticiasMundo } from '../hooks/useNoticiasMundo'
 import { useGamePhase } from '../hooks/useGamePhase'
+import { useNotificaciones } from '../hooks/useNotificaciones'
+import { notificacionesDeEntrada } from '../lib/notificaciones'
+import { Notificaciones } from '../components/Notificaciones'
+import { GameHeader } from '../components/GameHeader'
+import { GameFooter } from '../components/GameFooter'
 import { avisoDeLlegadas, pesoDeLlegada } from '../lib/llegadas'
 import { useDecisionesEnCola } from '../hooks/useDecisionesEnCola'
 import { resolverCapas, type CapaAbierta } from '../lib/capas'
@@ -12,15 +17,13 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useSession } from '../context/useSession'
 import { LogPanel } from '../components/LogPanel'
 import { CollapsedRail } from '../components/CollapsedRail'
-import { ChatComposer, type ChatComposerHandle } from '../components/ChatComposer'
+import type { ChatComposerHandle } from '../components/ChatComposer'
 import type { ComposerChip } from '../types'
 // Sugerencias desactivadas (2026-09-06, ver comentario junto a `suggestions` más abajo) —
 // `SuggestionBar` deja de importarse mientras la entrada visible está oculta.
 // import { SuggestionBar } from '../components/SuggestionBar'
-import { SkillBarMenu, type SkillHudView } from '../components/SkillBarMenu'
-import { SkillBarHud } from '../components/SkillBarHud'
+import type { SkillHudView } from '../components/SkillBarMenu'
 import { SkillBarEditor } from '../components/SkillBarEditor'
-import { TooltipAnchor } from '../components/TooltipAnchor'
 import { SideNav } from '../components/SideNav'
 import { characterTabs, worldTabs, type PanelId } from '../components/NavTabs'
 import { PanelDrawer } from '../components/PanelDrawer'
@@ -56,8 +59,6 @@ import { MisionesPanel } from '../components/panels/MisionesPanel'
 import { HabilidadesPanel } from '../components/panels/HabilidadesPanel'
 import { CombatComposer } from '../components/CombatComposer'
 import { CombatPanel } from '../components/CombatPanel'
-import { HealthBar } from '../components/HealthBar'
-import { EnergyBar } from '../components/EnergyBar'
 import { KingdomFoundingModal } from '../components/KingdomFoundingModal'
 import { HarvestSelectionModal } from '../components/HarvestSelectionModal'
 import { REINO_ABILITY_RECIPE_KEY } from '../data/reinoRecipes'
@@ -70,8 +71,6 @@ import { TravelDestinationModal } from '../components/TravelDestinationModal'
 import { SaquearZonaModal } from '../components/SaquearZonaModal'
 import { HealSelectionModal } from '../components/HealSelectionModal'
 import { HungerThirstSelectionModal } from '../components/HungerThirstSelectionModal'
-import { HungerBar } from '../components/HungerBar'
-import { ThirstBar } from '../components/ThirstBar'
 import { EntregaModal } from '../components/EntregaModal'
 import { AprenderOficioModal } from '../components/AprenderOficioModal'
 import { EspecializacionModal } from '../components/EspecializacionModal'
@@ -96,7 +95,6 @@ import {
 } from '../lib/api'
 import { characterWaitingFlavor, combatWaitingFlavor, worldWaitingFlavor, useRotatingFlavor } from '../lib/waitingFlavor'
 import { formatCountdown, formatFictionalDuration, applyInventoryDelta, combatKeyFor } from '../lib/gameViewHelpers'
-import { ESTACION_ICON, CLIMA_ICON } from '../lib/entorno'
 import { sinHabilidadesRetiradas } from '../lib/abilitiesRetiradasFase4'
 import type {
   ActiveEffect,
@@ -130,7 +128,6 @@ import type {
 /// mantiene la mención simple de siempre.
 // Espejo de limiteMuertes() en backend/src/services/death.ts — NOVATO no tiene límite, así que
 // no aparece aquí (el indicador de muerte permanente solo se muestra para MEDIO/AVANZADO).
-const LIMITE_MUERTES: Record<Exclude<Dificultad, 'NOVATO'>, number> = { MEDIO: 4, AVANZADO: 2 }
 
 export function GameView() {
   const { id } = useParams()
@@ -585,28 +582,6 @@ export function GameView() {
   const permisoMover = puede('moverse')
   const etiquetaFase = etiquetaDeFase(fase)
 
-  // Pop del botón "Nivel X" solo en una subida real, nunca al cargar la partida (roadmap de
-  // animaciones 2026-07-20, item 7) — mismo patrón que HealthBar: comparar contra un ref, no
-  // animar en el primer render.
-  const [levelPop, setLevelPop] = useState(0)
-  const prevLevelRef = useRef(level)
-  useEffect(() => {
-    if (prevLevelRef.current !== level) {
-      setLevelPop((p) => p + 1)
-      prevLevelRef.current = level
-    }
-  }, [level])
-
-  // Mismo patrón que el pop de nivel — el chip de muertes solo destella cuando sube de verdad.
-  const [deathPop, setDeathPop] = useState(0)
-  const prevDeathCountRef = useRef(deathCount)
-  useEffect(() => {
-    if (prevDeathCountRef.current !== deathCount) {
-      setDeathPop((p) => p + 1)
-      prevDeathCountRef.current = deathCount
-    }
-  }, [deathCount])
-
   // Sondeo de ambientación cada 10 min reales — ver src/hooks/useSurroundingsPolling.ts para la
   // lógica completa (por qué usa refs internos, por qué se corta durante un turno/combate en
   // curso; mismo patrón que useReconnectionPolling/useEntityBanner).
@@ -620,7 +595,37 @@ export function GameView() {
   })
 
   // Fase D (hito 0.1) — noticias del mundo escritas en segundo plano, sin esperar a recargar.
-  useNoticiasMundo({ saveId, worldLog, setWorldLog, characterThinking })
+  // HUD-6 (hito 0.2) — notificaciones (toasts): misiones, reputación, oficio, objetos nuevos y
+  // noticias del mundo (lib/notificaciones.ts).
+  const { notificaciones, notificar, descartar: descartarNotificacion } = useNotificaciones()
+  useNoticiasMundo({
+    saveId,
+    worldLog,
+    setWorldLog,
+    characterThinking,
+    onNuevas: (entradas) =>
+      entradas.forEach((e) => notificar({ tipo: 'accent2', icono: '📜', texto: e.text.length > 90 ? `${e.text.slice(0, 88)}…` : e.text })),
+  })
+  // Avisos de las entradas nuevas del registro llegadas en vivo (no las de la carga de la partida).
+  const procesadasRef = useRef(0)
+  useEffect(() => {
+    const nuevas = characterLog.slice(procesadasRef.current)
+    procesadasRef.current = characterLog.length
+    for (const e of nuevas) {
+      if (liveRevealedIdsRef.current.has(e.id)) notificacionesDeEntrada(e).forEach(notificar)
+    }
+  }, [characterLog, notificar])
+  // Objetos nuevos en el inventario: `syncFromSave` apunta los que ya había (carga, reconexión), así
+  // solo avisa de lo que llega con un turno.
+  const inventarioConocidoRef = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    for (const item of inventory) {
+      if (!inventarioConocidoRef.current.has(item.id)) {
+        inventarioConocidoRef.current.add(item.id)
+        notificar({ tipo: 'moss', icono: '🎒', texto: `Obtienes ${item.name}` })
+      }
+    }
+  }, [inventory, notificar])
 
   const characterFlavor = useRotatingFlavor(characterThinking, combat.combatOpen ? combatWaitingFlavor : characterWaitingFlavor)
   const worldFlavor = useRotatingFlavor(worldThinking, worldWaitingFlavor)
@@ -663,6 +668,7 @@ export function GameView() {
     setCharacterLogRaw(save.characterLog)
     setWorldLog(save.worldLog)
     setKingdomLog(save.kingdomLog)
+    inventarioConocidoRef.current = new Set(save.inventory.map((i) => i.id))
     setInventory(save.inventory)
     setCompanions(save.companions)
     setLevel(save.level)
@@ -1431,6 +1437,25 @@ export function GameView() {
     reputacion: 'accent2',
   }
 
+  // Composer (UX-13, hito 0.1; UX-1/UX-2, hito 0.2) — se bloquea si la fase no deja enviar turno o
+  // hay una capa encima. El cajón de paneles (`activePanel`) queda fuera a propósito: la
+  // Enciclopedia inserta chips en el composer con el cajón abierto. B.24 (checklist 2026-08-27):
+  // el texto de ayuda dice el primer motivo que aplique de verdad.
+  const capaEncimaAbierta =
+    anyModalOpen || zonaModalOpen || confirmingExit || !!editingSkillBar || !!recursoDetalle || claseVisible || especializacionVisible
+  const composerDisabled = !permisoTurno.permitido || capaEncimaAbierta
+  const composerDisabledReason = characterThinking
+    ? combateIniciado
+      ? 'Resolviendo el combate — puede tardar más de lo habitual...'
+      : 'Esperando la narración de tu último turno...'
+    : busyUntil
+      ? 'Ocupado con algo que lleva tiempo — vuelve cuando termine.'
+      : combateIniciado && !combat.combatOpen
+        ? 'En combate — usa el panel de combate para actuar.'
+        : capaEncimaAbierta
+          ? 'Resuelve lo que tienes abierto antes de escribir una nueva acción.'
+          : (permisoTurno.motivo ?? undefined)
+
   // UX-9 (hito 0.2) — gestor de capas: cada overlay abierto con su nivel (§ 4.3), en orden de
   // prioridad dentro del nivel. Solo se ve el de nivel más alto; el resto espera oculto y montado
   // (lib/capas.ts). Las condiciones son las mismas con las que se pinta cada uno más abajo.
@@ -1463,106 +1488,34 @@ export function GameView() {
     >
     <CapasContext.Provider value={estadoCapas}>
     <div className="relative flex min-h-0 flex-1 flex-col">
-      <header className="iron-band relative flex flex-wrap items-center justify-between gap-2 px-5 pb-3 pt-2.5">
-        <div className="min-w-0">
-          <button type="button"
-            onClick={() => setConfirmingExit(true)}
-            className="text-xs text-wood-500 transition-colors hover:text-accent-300"
-          >
-            ← Salir a tus partidas
-          </button>
-          <p className="mt-0.5 truncate font-serif text-base tracking-wide text-wood-200">
-            <span className="text-accent-400">{characterName}</span>
-            <span className="mx-2 text-wood-600">·</span>
-            <span className="text-wood-300">{worldName}</span>
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <button type="button"
-            onClick={() => {
-              setPersonajeSubTab('estadisticas')
-              setActivePanel('personaje')
-            }}
-            title={pendingAttributePoints > 0 ? `${pendingAttributePoints} puntos de atributo por repartir` : 'Nivel'}
-            className="relative flex items-center gap-1.5 rounded-md border border-iron-700 bg-wood-950/60 px-2.5 py-1 font-serif text-xs tracking-wide text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300"
-          >
-            <span key={levelPop} className={`inline-flex items-center gap-1.5 ${levelPop > 0 ? 'animate-pop-once' : ''}`}>
-              <span className="gem" />
-              Nivel {level}
-            </span>
-            {pendingAttributePoints > 0 && (
-              <span className="ml-1 rounded-full bg-accent-500 px-1.5 text-2xs font-bold text-wood-950">
-                +{pendingAttributePoints}
-              </span>
-            )}
-          </button>
-          <HealthBar condicionFisica={condicionFisica} />
-          <EnergyBar energia={energia} energiaMax={energiaMax} />
-          <HungerBar hambre={hambre} />
-          <ThirstBar sed={sed} />
-          {dificultad !== 'NOVATO' && (
-            // Indicador de muerte permanente (2026-07-19, auditoría de frontend): docs/14 § 4.2
-            // ya tiene un límite real de muertes por dificultad, pero el jugador no tenía ninguna
-            // señal en pantalla de cuántas le quedan hasta el fin de partida definitivo.
-            <span
-              key={deathPop}
-              title={`Muerte permanente a la ${LIMITE_MUERTES[dificultad]}ª muerte (dificultad ${dificultad.toLowerCase()})`}
-              className={`relative rounded-md border border-iron-700 bg-wood-950/60 px-2.5 py-1 font-serif text-xs tracking-wide text-wood-300 ${
-                deathPop > 0 ? 'animate-pop-once' : ''
-              }`}
-            >
-              {deathPop > 0 && (
-                <span aria-hidden="true" className="animate-edge-flash-red pointer-events-none absolute inset-0 rounded-md border border-danger-500" />
-              )}
-              💀 {deathCount}/{LIMITE_MUERTES[dificultad]}
-            </span>
-          )}
-          {/* UX-10 (hito 0.2) — decisión en cola: aviso con botón para abrirla ya. */}
-          {decisiones.enEspera && (
-            <button
-              type="button"
-              onClick={decisiones.abrirYa}
-              title="Se abrirá sola al terminar; pulsa para abrirla ahora"
-              className="tactile rounded-full border border-accent-600/70 bg-accent-500/10 px-2.5 py-1 font-serif text-2xs tracking-wide text-accent-300 hover:bg-accent-500/20"
-            >
-              <span aria-hidden="true">⚠️</span> {avisoDecision}
-            </button>
-          )}
-          {/* UX-8 (hito 0.2) — indicador de la fase cuando algo está bloqueado, con el motivo al
-              pasar el ratón; en `libre` no aparece. */}
-          {etiquetaFase && (
-            <span
-              role="status"
-              title={permisoTurno.motivo ?? undefined}
-              className="rounded-full border border-iron-700 bg-wood-950/60 px-2.5 py-1 font-serif text-2xs tracking-wide text-wood-300"
-            >
-              <span aria-hidden="true">{etiquetaFase.icono}</span> {etiquetaFase.texto}
-              {fase === 'ocupado' && busyUntil ? ` · ${formatCountdown(busyUntil, nowTick)}` : ''}
-            </span>
-          )}
-          <span
-            // C.11 (checklist frontend 2026-08-27) — mismo `rounded-full`/`text-2xs` que el badge
-            // expandido de MapaPanel (misma info, tratamiento compacto vs. expandido a propósito,
-            // ver comentario de abajo — solo se unifica la FORMA del contenedor, no el contenido).
-            className="rounded-full border border-iron-700 bg-wood-950/60 px-2.5 py-1 font-serif text-2xs tracking-wide text-wood-300"
-            // Estación/clima (2026-08-27, diseño/UX § 4.1: "candidato natural para absorber
-            // estación/clima sin que la jugadora tenga que ir a buscarlos a ningún panel... cero
-            // clics adicionales") — solo iconos aquí (el detalle completo en texto ya vive en el
-            // badge de Mapa > Berig), el `title` da el nombre completo al pasar el ratón.
-            title={entorno ? `${entorno.estacion.nombre}${entorno.clima ? ` · ${entorno.clima.nombre}` : ''}` : undefined}
-          >
-            {fictionalDate}
-            {entorno && (
-              <>
-                {' '}
-                {ESTACION_ICON[entorno.estacion.key]}
-                {entorno.clima && CLIMA_ICON[entorno.clima.key]}
-              </>
-            )}
-          </span>
-        </div>
-        <div className="accent-hairline absolute inset-x-0 bottom-0" />
-      </header>
+      <GameHeader
+        characterName={characterName}
+        worldName={worldName}
+        level={level}
+        pendingAttributePoints={pendingAttributePoints}
+        condicionFisica={condicionFisica}
+        energia={energia}
+        energiaMax={energiaMax}
+        hambre={hambre}
+        sed={sed}
+        dificultad={dificultad}
+        deathCount={deathCount}
+        decisionEnEspera={decisiones.enEspera}
+        avisoDecision={avisoDecision}
+        onAbrirDecision={decisiones.abrirYa}
+        etiquetaFase={etiquetaFase}
+        motivoFase={permisoTurno.motivo}
+        ocupadoHasta={fase === 'ocupado' ? busyUntil : null}
+        nowTick={nowTick}
+        fictionalDate={fictionalDate}
+        entorno={entorno}
+        mundoAvanza={worldThinking}
+        onSalir={() => setConfirmingExit(true)}
+        onAbrirNivel={() => {
+          setPersonajeSubTab('estadisticas')
+          setActivePanel('personaje')
+        }}
+      />
 
       <div className="flex min-h-0 flex-1 gap-2 overflow-hidden p-2">
         <SideNav
@@ -1795,164 +1748,49 @@ export function GameView() {
         </div>
       )}
 
-      {endedAt ? (
-        <div className="animate-entry-in-slow border-t border-iron-800 bg-wood-950/90 px-4 py-5 text-center">
-          <div className="animate-line-extend mx-auto mb-3 h-px w-24 origin-center bg-red-800" />
-          <p className="text-sm text-danger-400">
-            {characterName} ya no puede seguir — esta partida ha terminado. Volviendo a "Sus partidas"...
-          </p>
-        </div>
-      ) : pendingDeathResolution ? (
-        // Muerte permanente, botón Aceptar/Reintentar (2026-08-31) — el susurro de la Entidad ya
-        // está en el log (LogPanel, arriba); este bloque sustituye al composer normal hasta que el
-        // jugador confirma, mismo criterio visual que el bloque de `endedAt`.
-        <div className="animate-entry-in-slow border-t border-iron-800 bg-wood-950/90 px-4 py-5 text-center">
-          <div className="animate-line-extend mx-auto mb-3 h-px w-24 origin-center bg-accent-700" />
-          <button
-            type="button"
-            onClick={handleResolveDeath}
-            disabled={resolvingDeath}
-            className="tactile rounded-lg border border-accent-600 bg-accent-500/10 px-4 py-2 text-sm font-bold uppercase tracking-wide text-accent-300 transition-colors hover:bg-accent-500/20 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {resolvingDeath ? 'Resolviendo...' : 'Aceptar'}
-          </button>
-        </div>
-      ) : combat.combatOpen && combateIniciado ? (
-        // Rework 2026-07-24, recortado en el rediseño de la vista de combate (2026-07-28): sigue
-        // sustituyendo al ChatComposer normal en el mismo sitio, pero ahora solo es el input de
-        // texto libre — enemigos/ficha/habilidades/objetos/Actuar viven en CombatPanel, arriba.
-        <CombatComposer
-          freeText={combat.combatFreeText}
-          onFreeTextChange={combat.setCombatFreeText}
-          onSubmit={combat.handleCombatFreeSubmit}
-          busy={combat.combatBusy || combat.awaitingNextInitiative || combat.awaitingExchangeApply}
-          ended={combat.combatEnded}
-          pendingDecisions={combat.combatHasPendingConvalecientes}
-          rematar={combat.combatNpcsDisplay.filter((n) => n.condicion === 'CONVALECIENTE' && n.targetedForKill && !n.dismissed).map((n) => n.name)}
-        />
-      ) : (
-        <>
-          {/* Petición explícita, 2026-08-15: "si se detecta combate: true que no saque
-              sugerencias" — sin `!combateIniciado`, la barra seguía saliendo con el aviso
-              "⚔️ Combatir / 🏃 Huir" ya en pantalla (combate detectado pero el popup todavía sin
-              abrir, `combatOpen` false): mismo criterio que ya usa `composerDisabled`/el propio
-              banner de arriba para esa combinación exacta de estados. */}
-          {!combateIniciado && carcassPending && (
-            // Desollar pasiva (2026-08-25) — sustituye al botón que había en Habilidades: aparece
-            // solo mientras hay cadáveres reales pendientes en la escena actual (narrativos o los
-            // que deja un CombatEncounter resuelto), abre el mismo pop-up de siempre.
-            <button
-              type="button"
-              onClick={() => setHarvestModal({ oficio: 'desollador', label: 'Desollar' })}
-              disabled={anyModalOpen || pendingDeathResolution}
-              className="tactile mx-4 mb-2 flex items-center gap-2 rounded-lg border border-accent-700/60 bg-accent-500/10 px-3 py-2 text-left text-sm text-accent-200 hover:bg-accent-500/20 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <span className="text-lg leading-none">🔪</span>
-              <span>Hay presas caídas sin desollar en esta zona.</span>
-            </button>
-          )}
-          {/* Sugerencias desactivadas (2026-09-06, decisión explícita de la usuaria: "son
-              malísimas y no aportan casi ningún valor... por ahora lo descartamos... dejándolo
-              pendiente por si algún día lo mejoramos") — solo se oculta la entrada visible
-              (SuggestionBar + botón "Sugerir" del composer), sin borrar `handleRequestSuggestions`/
-              `requestSuggestions` ni el endpoint de generación, por si se retoma más adelante. */}
-          {(() => {
-            // A.4 (checklist frontend 2026-08-27): `anyModalOpen` cubre postCombatTarget/
-            // activeDynamicMode/detailTarget/kingdomFoundedInfo — antes el composer seguía editable
-            // por debajo de esos modales pese a estar tapado visualmente. Mismo cálculo reutilizado
-            // para el toggle y la SkillBar (2026-08-29) — ninguno de los dos debe quedar activo
-            // cuando el composer normal tampoco lo estaría.
-            // UX-13 (hito 0.1, H11) — `anyModalOpen` es el guard de exclusión entre modales de acción;
-            // para el composer cuentan además el resto de capas que se abren encima del juego. El cajón
-            // de paneles (`activePanel`) queda fuera a propósito: la Enciclopedia inserta chips en el
-            // composer con el cajón abierto.
-            const capaEncimaAbierta =
-              anyModalOpen || zonaModalOpen || confirmingExit || !!editingSkillBar || !!recursoDetalle || claseVisible || especializacionVisible
-            const composerDisabled = !permisoTurno.permitido || capaEncimaAbierta
-            // Toggle a la IZQUIERDA de la propia fila del composer/barra, no encima en su propia
-            // línea (2026-08-29, feedback en vivo, segunda vuelta: "no bajaste el botón... a la
-            // izquierda donde te dije") — mismo slot visual que la barra, `leftSlot` de
-            // `ChatComposer` lo inserta en la MISMA fila flex que el panel de texto, compartiendo
-            // el borde/fondo exterior en vez de duplicarlo con una franja aparte. Solo se muestra
-            // en la vista `composer` — las otras 2 vistas (menú-barras/barra-activa) ya tienen su
-            // propia forma de volver (botón Atrás o ⌨️ directo).
-            const skillToggle = !combateIniciado && skillHudView.screen === 'composer' && (
-              <TooltipAnchor text="Elegir una habilidad por botón en vez de escribir">
-                <button
-                  type="button"
-                  onClick={() => setSkillHudView({ screen: 'menu-barras' })}
-                  disabled={composerDisabled}
-                  aria-label="Habilidades"
-                  className="skill-slot tactile"
-                >
-                  <span aria-hidden="true">✨</span>
-                </button>
-              </TooltipAnchor>
-            )
-            const activeBar = skillHudView.screen === 'barra-activa' ? skillBars.find((b) => b.id === skillHudView.skillBarId) : undefined
-            return (
-              <>
-                {!combateIniciado && skillHudView.screen === 'menu-barras' ? (
-                  <div className="border-t border-iron-800 bg-wood-950/90 px-4 pb-3 pt-3.5">
-                    <SkillBarMenu
-                      skillBars={skillBars}
-                      onNavigate={setSkillHudView}
-                      onSelectBar={handleSelectSkillBar}
-                      onCreateBar={handleCreateSkillBar}
-                      onEditBar={setEditingSkillBar}
-                      onDeleteBar={handleDeleteSkillBar}
-                    />
-                  </div>
-                ) : !combateIniciado && skillHudView.screen === 'barra-activa' && activeBar ? (
-                  <div className="border-t border-iron-800 bg-wood-950/90 px-4 pb-3 pt-3.5">
-                    <SkillBarHud
-                      bar={activeBar}
-                      savedActions={savedActions}
-                      onUse={handleAttachAbility}
-                      onBackToComposer={handleBackToComposer}
-                      onBackToBars={() => setSkillHudView({ screen: 'menu-barras' })}
-                      onEdit={() => setEditingSkillBar(activeBar)}
-                      disabled={composerDisabled}
-                    />
-                  </div>
-                ) : (
-                  <ChatComposer
-                    ref={composerRef}
-                    onChange={setInput}
-                    onSubmit={handleSubmit}
-                    disabled={composerDisabled}
-                    leftSlot={skillToggle}
-                    // B.24 (checklist frontend 2026-08-27) — antes el texto de ayuda era siempre el
-                    // mismo sin importar por qué el composer estaba apagado; orden de prioridad = el
-                    // primero que aplique de verdad (characterThinking/busyUntil son los más
-                    // frecuentes en la práctica).
-                    // Pista de combate (bug real jugando en vivo, 2026-09-03, "narración lenta e
-                    // indistinguible de un turno atascado" — hallazgo de UX, no arquitectura: el
-                    // combate se resuelve siempre de forma síncrona vía `characterThinking`, sin
-                    // `busyUntil`/countdown, así que un turno de combate/caza más lento que el
-                    // habitual daba el mismo mensaje genérico que uno realmente colgado).
-                    // `combateIniciado` (no `combat.combatOpen`, que exige el panel ya abierto) es
-                    // la señal disponible ANTES de que vuelva la respuesta.
-                    disabledReason={
-                      characterThinking
-                        ? combateIniciado
-                          ? 'Resolviendo el combate — puede tardar más de lo habitual...'
-                          : 'Esperando la narración de tu último turno...'
-                        : busyUntil
-                          ? 'Ocupado con algo que lleva tiempo — vuelve cuando termine.'
-                          : combateIniciado && !combat.combatOpen
-                            ? 'En combate — usa el panel de combate para actuar.'
-                            : capaEncimaAbierta
-                              ? 'Resuelve lo que tienes abierto antes de escribir una nueva acción.'
-                              : (permisoTurno.motivo ?? undefined)
-                    }
-                  />
-                )}
-              </>
-            )
-          })()}
-        </>
-      )}
+      <GameFooter
+        modo={endedAt ? 'fin' : pendingDeathResolution ? 'muerte' : combat.combatOpen && combateIniciado ? 'combate' : 'normal'}
+        characterName={characterName}
+        onResolverMuerte={handleResolveDeath}
+        resolviendoMuerte={resolvingDeath}
+        combatComposer={
+            // Rework 2026-07-24, recortado en el rediseño de la vista de combate (2026-07-28): sigue
+            // sustituyendo al ChatComposer normal en el mismo sitio, pero ahora solo es el input de
+            // texto libre — enemigos/ficha/habilidades/objetos/Actuar viven en CombatPanel, arriba.
+            <CombatComposer
+              freeText={combat.combatFreeText}
+              onFreeTextChange={combat.setCombatFreeText}
+              onSubmit={combat.handleCombatFreeSubmit}
+              busy={combat.combatBusy || combat.awaitingNextInitiative || combat.awaitingExchangeApply}
+              ended={combat.combatEnded}
+              pendingDecisions={combat.combatHasPendingConvalecientes}
+              rematar={combat.combatNpcsDisplay.filter((n) => n.condicion === 'CONVALECIENTE' && n.targetedForKill && !n.dismissed).map((n) => n.name)}
+            />
+        }
+        // Petición explícita, 2026-08-15: "si se detecta combate: true que no saque sugerencias" —
+        // ni el aviso de desollar ni la barra de habilidades con un combate detectado.
+        desollar={
+          !combateIniciado && carcassPending
+            ? { disabled: anyModalOpen || pendingDeathResolution, onClick: () => setHarvestModal({ oficio: 'desollador', label: 'Desollar' }) }
+            : null
+        }
+        conHabilidades={!combateIniciado}
+        skillHudView={skillHudView}
+        setSkillHudView={setSkillHudView}
+        skillBars={skillBars}
+        savedActions={savedActions}
+        onSelectBar={handleSelectSkillBar}
+        onCreateBar={handleCreateSkillBar}
+        onEditBar={setEditingSkillBar}
+        onDeleteBar={handleDeleteSkillBar}
+        onUseAbility={handleAttachAbility}
+        onBackToComposer={handleBackToComposer}
+        composerRef={composerRef}
+        onChange={setInput}
+        onSubmit={handleSubmit}
+        composerDisabled={composerDisabled}
+        disabledReason={composerDisabledReason}
+      />
 
       {detailTarget && (
         <Capa id="detalle" hija>
@@ -2375,6 +2213,7 @@ export function GameView() {
         </PanelDrawer>
         </Capa>
       )}
+      <Notificaciones notificaciones={notificaciones} onDescartar={descartarNotificacion} />
     </div>
     </CapasContext.Provider>
     </EnciclopediaLinkProvider>

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { ModalShell } from './ModalShell'
 import type { DynamicModeTurno } from '../lib/api'
 
 interface DynamicModeModalProps {
@@ -35,33 +35,48 @@ interface DynamicModeModalProps {
 /// más allá de la primera vez; forzar remount por vuelta hace que cada respuesta del NPC/fauna
 /// vuelva a animarse en vez de "saltar" de texto sin transición.
 export function DynamicModeModal({ turno, busy, error, imageUrl, onElegir, onCerrar, onSalir }: DynamicModeModalProps) {
-  // Foco al abrirse por primera vez (2026-08-31, "revisa bien todos los casos del foco/scroll") —
-  // solo en la vuelta 1 (el modal permanece montado entre vueltas, ver comentario de cabecera sobre
-  // `key={turno.vuelta}`), para no robarle el foco al jugador en cada respuesta si ya está
-  // interactuando con el teclado dentro del propio modal.
-  const rootRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (turno.vuelta === 1) rootRef.current?.focus()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
   return (
-    <div ref={rootRef} tabIndex={-1} className="animate-overlay-in fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 outline-none">
-      <div className="plank-panel animate-combat-enter relative flex w-full max-w-md flex-col gap-4 rounded-xl p-5">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-2xs font-semibold uppercase tracking-[0.2em] text-accent2-400">
-            Vuelta {turno.vuelta} — {turno.timeLabel}
-          </p>
-          {!turno.cierra && (
+    // MOD-1 (hito 0.2): sobre ModalShell. «Salir» (o Escape) abandona la escena; en la vuelta que
+    // la cierra solo queda «Continuar». El modal sigue montado entre vueltas, así que el foco
+    // inicial de ModalShell solo se toma en la primera.
+    <ModalShell
+      title={`Vuelta ${turno.vuelta} — ${turno.timeLabel}`}
+      onClose={onSalir}
+      sinCerrar={turno.cierra}
+      closeDisabled={busy || turno.cierra}
+      etiquetaCerrar="Salir"
+      disableOverlayClose
+      footer={
+        <div className="flex w-full flex-col gap-2">
+          {turno.cierra ? (
             <button
               type="button"
-              onClick={onSalir}
+              data-confirmar
+              onClick={onCerrar}
               disabled={busy}
-              className="tactile shrink-0 rounded-md border border-iron-700 px-2 py-0.5 text-2xs font-semibold text-wood-500 transition-colors hover:border-danger-600/60 hover:text-danger-300 disabled:cursor-not-allowed disabled:opacity-50"
+              className="tactile w-full rounded-lg border border-accent2-600 bg-gradient-to-b from-accent2-400 to-accent2-600 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-wood-950 disabled:cursor-not-allowed disabled:border-iron-700 disabled:from-wood-700 disabled:to-wood-700 disabled:text-wood-500"
             >
-              Salir
+              Continuar
             </button>
+          ) : (
+            turno.opciones.map((opcion, i) => (
+              <button
+                type="button"
+                data-opcion
+                key={opcion}
+                onClick={() => onElegir(opcion)}
+                disabled={busy}
+                className="tactile w-full rounded-lg border border-iron-700 bg-wood-950/50 px-3.5 py-2 text-left text-xs font-semibold text-wood-200 transition-colors hover:border-accent2-600/60 hover:text-accent2-300 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {/* MOD-3 (hito 0.2) — el número que la elige con el teclado. */}
+                {i < 9 && <span aria-hidden="true" className="mr-2 font-mono text-wood-500">{i + 1}</span>}
+                {opcion}
+              </button>
+            ))
           )}
         </div>
+      }
+    >
         <div key={turno.vuelta} className="animate-entry-in flex flex-col gap-3">
           {imageUrl && <img src={imageUrl} alt="" className="aspect-[2.5/1] w-full rounded-lg object-cover" />}
           <p className="text-sm leading-relaxed text-wood-100">{turno.narration}</p>
@@ -87,31 +102,6 @@ export function DynamicModeModal({ turno, busy, error, imageUrl, onElegir, onCer
           </div>
         )}
         {error && <p className="text-xs text-red-400">{error}</p>}
-        <div className="flex flex-col gap-2">
-          {turno.cierra ? (
-            <button
-              type="button"
-              onClick={onCerrar}
-              disabled={busy}
-              className="tactile w-full rounded-lg border border-accent2-600 bg-gradient-to-b from-accent2-400 to-accent2-600 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-wood-950 disabled:cursor-not-allowed disabled:border-iron-700 disabled:from-wood-700 disabled:to-wood-700 disabled:text-wood-500"
-            >
-              Continuar
-            </button>
-          ) : (
-            turno.opciones.map((opcion) => (
-              <button
-                type="button"
-                key={opcion}
-                onClick={() => onElegir(opcion)}
-                disabled={busy}
-                className="tactile w-full rounded-lg border border-iron-700 bg-wood-950/50 px-3.5 py-2 text-left text-xs font-semibold text-wood-200 transition-colors hover:border-accent2-600/60 hover:text-accent2-300 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {opcion}
-              </button>
-            ))
-          )}
-        </div>
-      </div>
-    </div>
+    </ModalShell>
   )
 }

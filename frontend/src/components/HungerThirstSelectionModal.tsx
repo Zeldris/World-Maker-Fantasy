@@ -3,6 +3,8 @@ import type { InventoryItemInfo } from '../types'
 import { applySequentialHunger, applySequentialThirst } from '../lib/hungerThirst'
 import { quantityOf, baseNameOf } from '../lib/gameViewHelpers'
 import { SelectionModalShell, confirmButtonClasses } from './SelectionModalShell'
+import { QuantityStepper } from './QuantityStepper'
+import { Miniatura } from './Miniatura'
 
 interface HungerThirstSelectionModalProps {
   inventory: InventoryItemInfo[]
@@ -130,33 +132,22 @@ export function HungerThirstSelectionModal({ inventory, hambre, sed, onConfirm, 
                   value > 0 ? 'border-accent-600/60 bg-accent-500/10' : 'border-iron-700'
                 }`}
               >
-                <span className="min-w-0">
+                <Miniatura nombre={baseNameOf(item.name)} entityType="item" slug={item.catalogSlug ?? undefined} icono="🍖" />
+                <span className="mr-auto min-w-0">
                   <span className="font-semibold text-wood-100">{baseNameOf(item.name)}</span>
                   <span className="ml-1.5 text-2xs text-wood-500">
                     {`+${item.curaHambre} hambre`}
                     {max > 1 ? ` · llevas ${max}` : ''}
                   </span>
                 </span>
-                <div className="flex shrink-0 items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setQuantity(item.id, value - 1, max)}
-                    disabled={value <= 0}
-                    className="tactile h-6 w-6 rounded border border-iron-700 text-wood-300 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    −
-                  </button>
-                  <span className="w-4 text-center font-mono text-wood-100">{value}</span>
-                  <button
-                    type="button"
-                    onClick={() => setQuantity(item.id, value + 1, max)}
-                    disabled={value >= max || (blockedByLleno && value === 0)}
-                    title={blockedByLleno ? 'Ya estarías saciado con lo marcado — no hace falta más' : undefined}
-                    className="tactile h-6 w-6 rounded border border-iron-700 text-wood-300 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    +
-                  </button>
-                </div>
+                <QuantityStepper
+                  value={value}
+                  max={max}
+                  tope={blockedByLleno && value === 0 ? 0 : max}
+                  onChange={(n) => setQuantity(item.id, n, max)}
+                  etiqueta={item.name}
+                  motivoTope="Ya estarías saciado con lo marcado — no hace falta más"
+                />
               </div>
             )
           })
@@ -181,33 +172,22 @@ export function HungerThirstSelectionModal({ inventory, hambre, sed, onConfirm, 
                   value > 0 ? 'border-accent-600/60 bg-accent-500/10' : 'border-iron-700'
                 }`}
               >
-                <span className="min-w-0">
+                <Miniatura nombre={baseNameOf(item.name)} entityType="item" slug={item.catalogSlug ?? undefined} icono="🍖" />
+                <span className="mr-auto min-w-0">
                   <span className="font-semibold text-wood-100">{baseNameOf(item.name)}</span>
                   <span className="ml-1.5 text-2xs text-wood-500">
                     {`+${item.curaAgua} sed`}
                     {max > 1 ? ` · llevas ${max}` : ''}
                   </span>
                 </span>
-                <div className="flex shrink-0 items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setQuantity(item.id, value - 1, max)}
-                    disabled={value <= 0}
-                    className="tactile h-6 w-6 rounded border border-iron-700 text-wood-300 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    −
-                  </button>
-                  <span className="w-4 text-center font-mono text-wood-100">{value}</span>
-                  <button
-                    type="button"
-                    onClick={() => setQuantity(item.id, value + 1, max)}
-                    disabled={value >= max || (blockedByLlena && value === 0)}
-                    title={blockedByLlena ? 'Ya no tendrías sed con lo marcado — no hace falta más' : undefined}
-                    className="tactile h-6 w-6 rounded border border-iron-700 text-wood-300 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    +
-                  </button>
-                </div>
+                <QuantityStepper
+                  value={value}
+                  max={max}
+                  tope={blockedByLlena && value === 0 ? 0 : max}
+                  onChange={(n) => setQuantity(item.id, n, max)}
+                  etiqueta={item.name}
+                  motivoTope="Ya no tendrías sed con lo marcado — no hace falta más"
+                />
               </div>
             )
           })

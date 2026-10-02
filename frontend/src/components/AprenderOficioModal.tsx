@@ -4,6 +4,8 @@ import type { LogEntry } from '../types'
 import { SelectionModalShell } from './SelectionModalShell'
 import { useAsyncModalData } from '../hooks/useAsyncModalData'
 import { useSubmitError } from '../hooks/useSubmitError'
+import { CargandoModal, ErrorCarga, ExitoModal } from './EstadosModal'
+import { Miniatura } from './Miniatura'
 
 interface AprenderOficioModalProps {
   saveId: string
@@ -20,7 +22,7 @@ export function AprenderOficioModal({ saveId, onAprendido, onCancel }: AprenderO
   const [maestros, setMaestros] = useState<AprenderOficioMaestro[]>([])
   const [aprendiendo, setAprendiendo] = useState<string | null>(null)
   const [aprendido, setAprendido] = useState<{ npcName: string; professionId: string } | null>(null)
-  const { loading, error: loadError } = useAsyncModalData(
+  const { loading, error: loadError, reintentar } = useAsyncModalData(
     () => getAprenderOficioMaestros(saveId),
     (res) => setMaestros(res.maestros),
     'No se pudo comprobar quién hay cerca.',
@@ -44,16 +46,17 @@ export function AprenderOficioModal({ saveId, onAprendido, onCancel }: AprenderO
   return (
     <SelectionModalShell title="Aprender oficio" onCancel={onCancel} cancelDisabled={!!aprendiendo}>
       {aprendido ? (
-        <p className="text-xs text-emerald-300">{aprendido.npcName} te enseña su oficio.</p>
+        <ExitoModal>{aprendido.npcName} te enseña su oficio.</ExitoModal>
       ) : loading ? (
-        <p className="text-xs text-wood-500">Comprobando quién hay cerca...</p>
+        <CargandoModal texto="Comprobando quién hay cerca..." />
       ) : maestros.length === 0 ? (
         <p className="text-xs text-wood-500">No hay ningún Maestro de oficio aquí.</p>
       ) : (
         <div className="space-y-2">
           {maestros.map((maestro) => (
             <div key={maestro.npcSlug} className="flex items-center justify-between gap-2 rounded-lg border border-iron-700 p-2.5">
-              <div>
+              <Miniatura nombre={maestro.name} entityType="npc" slug={maestro.npcSlug} icono="👤" />
+              <div className="mr-auto">
                 <p className="text-xs text-wood-200">{maestro.name}</p>
                 <p className="mt-0.5 text-2xs text-wood-500">
                   {maestro.yaAprendido ? 'Ya conoces este oficio.' : maestro.motivoBloqueo ?? `Cuesta 🪙 ${maestro.costeGoirnos}`}
@@ -71,7 +74,7 @@ export function AprenderOficioModal({ saveId, onAprendido, onCancel }: AprenderO
           ))}
         </div>
       )}
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      {error && <ErrorCarga mensaje={error} onReintentar={loadError ? reintentar : undefined} />}
     </SelectionModalShell>
   )
 }

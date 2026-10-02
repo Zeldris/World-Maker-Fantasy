@@ -237,7 +237,13 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
   (`shadow-plank`, `glow-accent`, `inset-well`); `Button` con variantes `alert`, `compact`, `icon`;
   borrar clases muertas (H8).
 - **BAS-5 · Partir `GameView.tsx`** **[H]** **L** — `GameHeader`, `GameFooter`, `GameModals`,
-  `GameLayout`. Sin cambio visual; desbloquea HUD y Configuración.
+  `GameLayout`. Sin cambio visual; desbloquea HUD y Configuración. 🚧 en curso (2026-10-02): hecho
+  `GameHeader` (`components/GameHeader.tsx`, con las animaciones de nivel y muertes) y `GameFooter`
+  (`components/GameFooter.tsx`: fin, muerte, composer de combate como hueco, composer normal con
+  barra de habilidades; el bloqueo y su motivo se calculan en GameView). **Queda, aplazado al
+  final de la Fase B del 0.2:** `GameModals` y `GameLayout`. Medido: las 19 capas usan 135 nombres
+  de GameView y solo el cajón de paneles 70; sacarlos a props solo cambiaría de sitio la lista. Se
+  hará con un contexto/almacén del estado de la partida que les dé acceso directo.
 - **BAS-6 · Carga** **[H]** **S** — `React.lazy` para Enciclopedia, `MapZoomModal`, `InteractiveMap`,
   admin y secciones de Reino; `loading="lazy"`, `decoding="async"` y fundido en todas las `<img>`.
 - **BAS-7 · Animaciones de salida y de cambio de layout** **[P]** **M** 🧭
@@ -346,7 +352,7 @@ Variantes que cubre (todas las que hoy existen):
 Hoy hay dos familias: 22 modales sobre `SelectionModalShell` y 8 overlays con cascarón propio (H6).
 Todos tienen el mismo ancho (`max-w-md`), la misma entrada (`combat-enter`) y ninguna salida.
 
-- **MOD-1 · `ModalShell` único** **M** — evolución de `SelectionModalShell` que absorbe los 8
+- ~~**MOD-1 · `ModalShell` único** **M**~~ — evolución de `SelectionModalShell` que absorbe los 8
   overlays propios:
   - **Tamaños**: `sm` (confirmar), `md` (selección, actual), `lg` (fichas de la enciclopedia,
     Tameo), `xl` (Moverte por la zona, editor de barras), `ceremonia` (pantalla casi completa,
@@ -357,19 +363,49 @@ Todos tienen el mismo ancho (`max-w-md`), la misma entrada (`combat-enter`) y ni
     `aria-labelledby`.
   - **Animación de salida** (BAS-7) y **apilado** (z-index gestionado; hoy hay `z-50`, `z-[60]` y
     `z-40` repartidos a mano).
-- **MOD-2 · Estados comunes** **S** — `Skeleton` mientras carga (con la altura final aproximada, para
+
+  ✅ 2026-10-02: `components/ModalShell.tsx` con tamaños, cabecera (icono,
+  título, subtítulo, ✕ o texto propio), pie fijo, cuerpo con o sin scroll, Escape, Tab atrapado,
+  foco devuelto al cerrar y `aria-labelledby`; `SelectionModalShell` es una envoltura suya. Migrados
+  Clase, Especialización, Fundar reino, Modo dinámico, Detalle, Moverte por la zona y Mapa
+  ampliado. El visor de imagen (`ImagePromptDisplay`) queda fuera a propósito: es un visor a
+  pantalla completa sin marco, no un panel (ya cierra con Escape). El apilado lo lleva el gestor de
+  capas (`UX-9`). **Queda:** la animación de salida, con `BAS-7` (🧭).
+- ~~**MOD-2 · Estados comunes** **S** — `Skeleton` mientras carga (con la altura final aproximada, para
   que el modal no salte, H28), `ErrorBanner` con botón *Reintentar*, `SuccessState` con icono y
-  sello animado (hoy cada modal escribe su frase en `emerald-300`).
-- **MOD-3 · Teclado en modales** **S** — `Enter` confirma, números `1-9` eligen opción en listas
-  cortas (Modo dinámico, Viajar, Clase), flechas recorren la lista.
-- **MOD-4 · Modales de ceremonia** **M** — variante para decisiones grandes o irreversibles (fundar
+  sello animado (hoy cada modal escribe su frase en `emerald-300`).~~ ✅ 2026-10-02:
+  `components/EstadosModal.tsx`: `CargandoModal` (filas de esqueleto con la altura final, `aria-busy`),
+  `ErrorCarga` (con «Reintentar»; `useAsyncModalData` devuelve `reintentar()`) y `ExitoModal` (sello
+  ✓ en tono `moss`). Aplicados en Saquear, Aprender oficio, Campamento, Entregar, Capturar, Viajar,
+  Recolectar, Grupos de combate y Parcela. Viajar no ofrece reintentar (carga propia sin el hook).
+- ~~**MOD-3 · Teclado en modales** **S** — `Enter` confirma, números `1-9` eligen opción en listas
+  cortas (Modo dinámico, Viajar, Clase), flechas recorren la lista.~~ ✅ 2026-10-02: en `ModalShell`
+  (`teclaDeModal`): números 1-9 pulsan la opción N marcada con `data-opcion`, flechas arriba/abajo
+  las recorren y Enter pulsa la marcada con `data-confirmar` (no si el foco está en un botón o un
+  área de texto; al escribir en un campo, números y flechas son del campo). Marcados Modo dinámico
+  (con el número delante de cada opción), Viajar, Clase, Especialización y Fundar reino.
+- ~~**MOD-4 · Modales de ceremonia** **M** — variante para decisiones grandes o irreversibles (fundar
   reino, clase, especialización, muerte, subida de nivel): ancho grande, ilustración, título en
   Cinzel grande, línea de cristal que se extiende (`line-extend`), botón de confirmar que hay que
-  **mantener pulsado** 1 s en lo irreversible en vez del doble clic "Aceptar → Confirmar".
-- **MOD-5 · `QuantityStepper` compartido** **S** — sustituye las 5 copias (H26): botón *Máx.*,
-  mantener pulsado para repetir, rueda del ratón, número editable y vista previa del efecto.
-- **MOD-6 · `EntityRow` con miniatura** **S** — cada objeto, NPC, criatura o recurso de un modal
-  enseña su miniatura de la enciclopedia o el icono SVG de su categoría (H27).
+  **mantener pulsado** 1 s en lo irreversible en vez del doble clic "Aceptar → Confirmar".~~ ✅ 2026-10-02:
+  tamaño `ceremonia` de `ModalShell` (ancho grande, título grande, línea de cristal `line-extend`) y
+  `components/BotonMantener.tsx` (mantener 1 s con ratón, toque, Espacio o Enter; soltar antes
+  cancela). Aplicado a Clase y Especialización (aviso fijo «No podrás cambiar… más adelante» en vez
+  de la pregunta del doble clic) y Fundar reino («Mantén para fundar»). **Queda:** muerte y subida
+  de nivel no son modales hoy (la muerte sustituye al composer, la subida es una entrada del
+  registro); pasarán a ceremonia si se rediseñan como modales.
+- ~~**MOD-5 · `QuantityStepper` compartido** **S** — sustituye las 5 copias (H26): botón *Máx.*,
+  mantener pulsado para repetir, rueda del ratón, número editable y vista previa del efecto.~~ ✅ 2026-10-02:
+  `components/QuantityStepper.tsx` (−/+ que repiten al mantener, número editable, rueda sobre el
+  número enfocado, «Máx.» hasta el `tope` con su motivo) en Curar, Comer, Beber y Recolectar.
+  Producción ya usaba `NumeroGuardable`. **Queda:** la vista previa del efecto dentro del propio
+  selector (hoy cada modal la enseña en su resumen).
+- ~~**MOD-6 · `EntityRow` con miniatura** **S** — cada objeto, NPC, criatura o recurso de un modal
+  enseña su miniatura de la enciclopedia o el icono SVG de su categoría (H27).~~ ✅ 2026-10-02:
+  `components/Miniatura.tsx` (imagen `thumbnail` de la ficha por `entityType:slug` o por nombre;
+  si no hay, el icono de la ficha o uno de reserva) en Curar, Comer, Beber, Entregar (objetos y
+  NPC), Capturar y Aprender oficio. **Queda:** Saquear y Recolectar (filas con casillas y grupos,
+  más complejas) y los iconos SVG de categoría de `BAS-2` en vez de emojis.
 
 ---
 
@@ -553,7 +589,7 @@ Contenedor común: `PanelDrawer` (cajón inferior, `max-w-4xl`, 85 vh).
 - **HUD-5 · Subida de nivel con ceremonia**: viñeta de cristal que recorre la pantalla una vez,
   insignia "Nivel 7" con `stamp-in`, gemas que se encienden con los puntos a repartir y botón directo
   a Estadísticas. **M**
-- **HUD-6 · Notificaciones (toasts)**: pila arriba a la derecha con `plank-panel` y borde por tipo
+- ~~**HUD-6 · Notificaciones (toasts)**~~ ✅ 2026-10-02 (parte del `0.2`): pila arriba a la derecha con `plank-panel` y borde por tipo
   (`quest` misión, `moss` logro/obtenido, `danger` peligro, `accent` sistema, `accent2` mundo vivo):
   misión aceptada/completada, objeto obtenido, expedición vuelta, cambio de relación entre facciones
   (enlaza con "El mundo vivo, visible" del hito `0.1`). Agrupa repetidas. **M**
@@ -561,6 +597,13 @@ Contenedor común: `PanelDrawer` (cajón inferior, `max-w-4xl`, 85 vh).
   guerras, nacimientos notables, consecuencias), filtrados por importancia (`CFG-35`); cada
   notificación abre su entrada en Leyendas. Tras un viaje o descanso de varios días, **una sola**
   notificación resumen ("Mientras viajabas: 3 sucesos") en vez de varias (`UX-31`).
+  Hecho en el `0.2`: `lib/notificaciones.ts` (tipos con su borde, agrupar repetidas «×N», tope de
+  4), `useNotificaciones` (se van solas a los 7 s) y `components/Notificaciones.tsx`. Avisan:
+  misión aceptada/completada, cambio de reputación (verde o rojo), oficio que sube de nivel, objeto
+  nuevo en el inventario (solo los que llegan con un turno, no los de la carga) y noticias del
+  mundo (`useNoticiasMundo`, `onNuevas`). **Queda:** los sucesos del Cronista filtrados por
+  importancia (`CFG-35`) que abren su entrada en Leyendas, y el resumen tras viajes largos
+  (`UX-31`); objetos que llegan por `refreshSave` (recolectar, cazar) aún no avisan.
 - **HUD-7 · Misión seguida** en la cabecera, con su objetivo actual en una línea. **S**
 - **HUD-8 · Barra de "Ocupado"** (`busyUntil`): hoy una línea de texto con cuenta atrás; propuesta:
   barra de progreso real con el icono de la actividad y la hora ficticia de fin. **S**
@@ -570,8 +613,11 @@ Contenedor común: `PanelDrawer` (cajón inferior, `max-w-4xl`, 85 vh).
   (requiere BAS-2). **S**
 - **HUD-11 · Cabecera adaptable a 1280 px**: hoy son 6-7 chips en fila que hacen `flex-wrap`; agrupar
   hambre/sed/energía en un bloque compacto con tooltip detallado. **S**
-- **HUD-12 · "El mundo avanza"**: indicador discreto (gema que respira junto a la fecha) mientras
-  corre el avance diario o el Cronista en segundo plano; **nunca bloquea nada** (`UX-29`). **S**
+- ~~**HUD-12 · "El mundo avanza"**: indicador discreto (gema que respira junto a la fecha) mientras
+  corre el avance diario o el Cronista en segundo plano; **nunca bloquea nada** (`UX-29`). **S**~~
+  ✅ 2026-10-02: gema en `GameHeader` (`mundoAvanza`, con `role="status"`). Hoy la señal es la
+  ambientación en curso (`worldThinking`); el avance diario corre dentro del turno en el backend.
+  **Queda:** engancharla al Cronista en segundo plano cuando exista (`CR-12`).
 - **HUD-13 · Etiqueta principal** del personaje bajo su nombre en la cabecera (la de más peso, p. ej.
   "Verdugo de Torgash"), con las demás en el tooltip. **S**
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { ModalShell } from './ModalShell'
 import { ZonaPanel } from './panels/ZonaPanel'
 import type { LogEntry, ProfessionRecipeInfo } from '../types'
 
@@ -41,31 +41,9 @@ interface ZonaMovimientoModalProps {
 /// explícita de Álvaro: "aprovechemos el espacio horizontal... así no teniendo que scrollear",
 /// aplicado SOLO aquí, no en el tab Mapa informativo.
 export function ZonaMovimientoModal({ saveId, onEncuentroZona, onClose, onViajarA, professionRecipes, onRefreshSave, onOfertaDescartada, onHoraActualizada, onSaquearCadaver, onDesollarCadaver, bloqueoTurno, bloqueoMovimiento }: ZonaMovimientoModalProps) {
-  const rootRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    rootRef.current?.focus()
-  }, [])
-
   return (
-    <div
-      ref={rootRef}
-      tabIndex={-1}
-      className="animate-overlay-in fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 outline-none"
-      onKeyDown={(e) => {
-        if (e.key === 'Escape') onClose()
-      }}
-    >
-      <div className="plank-panel animate-combat-enter relative flex h-[90vh] w-full max-w-[90rem] flex-col gap-3 overflow-hidden rounded-xl p-5">
-        <div className="flex shrink-0 items-center justify-between gap-2">
-          <p className="font-serif text-sm tracking-wide text-accent2-300">🧭 Moverte por la zona</p>
-          <button
-            type="button"
-            onClick={onClose}
-            className="tactile shrink-0 rounded-md border border-iron-700 px-2.5 py-1 text-2xs font-semibold text-wood-500 transition-colors hover:border-danger-600/60 hover:text-danger-300"
-          >
-            Cerrar
-          </button>
-        </div>
+    // MOD-1 (hito 0.2): sobre ModalShell tamaño xl, sin scroll propio (el mapa gestiona el suyo).
+    <ModalShell title="🧭 Moverte por la zona" tamano="xl" onClose={onClose} etiquetaCerrar="Cerrar" disableOverlayClose cuerpoSinScroll>
         <div className="min-h-0 flex-1 overflow-hidden">
           <ZonaPanel
             saveId={saveId}
@@ -84,7 +62,6 @@ export function ZonaMovimientoModal({ saveId, onEncuentroZona, onClose, onViajar
             onDesollarCadaver={onDesollarCadaver}
           />
         </div>
-      </div>
-    </div>
+    </ModalShell>
   )
 }

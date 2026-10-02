@@ -13,18 +13,21 @@ export function useAsyncModalData<T>(
   onSuccess: (result: T) => void,
   errorMessage: string,
   deps: DependencyList,
-): { loading: boolean; error: string | null; setError: (error: string | null) => void } {
+): { loading: boolean; error: string | null; setError: (error: string | null) => void; reintentar: () => void } {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  // MOD-2 (hito 0.2) — «Reintentar» tras un fallo de carga: vuelve a pedir lo mismo.
+  const [intento, setIntento] = useState(0)
 
   useEffect(() => {
     setLoading(true)
+    setError(null)
     fetchFn()
       .then(onSuccess)
       .catch(() => setError(errorMessage))
       .finally(() => setLoading(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps)
+  }, [...deps, intento])
 
-  return { loading, error, setError }
+  return { loading, error, setError, reintentar: () => setIntento((n) => n + 1) }
 }
