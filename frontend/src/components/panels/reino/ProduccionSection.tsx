@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { NumeroGuardable } from '../../NumeroGuardable'
 import type { AlmacenItemInfo, BuildingInfo, CompanionInfo, ProfessionRecipeInfo } from '../../../types'
 import {
   type OrdenProduccionInfo,
@@ -116,13 +117,15 @@ function BuildingProduccionCard({
     }
   }, [saveId, building.id])
 
-  async function handlePrioridadChange(ordenId: string, prioridad: number) {
+  async function handlePrioridadChange(ordenId: string, prioridad: number): Promise<boolean> {
     setBusy(ordenId)
     try {
       await actualizarOrdenProduccion(saveId, ordenId, { prioridad })
       await reload()
+      return true
     } catch (e) {
       informar('No se pudo cambiar la prioridad de la orden.', e, () => void handlePrioridadChange(ordenId, prioridad))
+      return false
     } finally {
       setBusy(null)
     }
@@ -201,14 +204,13 @@ function BuildingProduccionCard({
                 <span className="text-2xs text-wood-500">{o.modo === 'unico' ? 'único' : 'reponer'}</span>
                 <label className="flex items-center gap-1 text-2xs text-wood-500">
                   prioridad
-                  <input
-                    type="number"
+                  <NumeroGuardable
+                    ariaLabel={`Prioridad de ${recipeLabel(o.recipeKey, professionRecipes)}`}
+                    valor={o.prioridad}
                     min={0}
                     max={9}
-                    value={o.prioridad}
                     disabled={busy === o.id}
-                    onChange={(e) => handlePrioridadChange(o.id, Math.max(0, Math.min(9, Number(e.target.value))))}
-                    className="w-12 rounded border border-iron-700 bg-wood-950/80 px-1.5 py-0.5 text-center text-2xs text-wood-200"
+                    onGuardar={(v) => handlePrioridadChange(o.id, v ?? 0)}
                   />
                 </label>
                 <button
@@ -371,16 +373,17 @@ function AlmacenLimitesCard({ saveId, almacenItems, onRefreshSave }: { saveId: s
     else stockPorSlug.set(item.catalogSlug, { name: item.name, count: 1 })
   }
 
-  async function handleLimiteChange(catalogSlug: string, valor: string) {
+  async function handleLimiteChange(catalogSlug: string, limite: number | null): Promise<boolean> {
     setBusy(catalogSlug)
     try {
-      const limite = valor.trim() ? Number(valor) : null
       await setAlmacenLimite(saveId, catalogSlug, limite)
       const res = await getAlmacenLimites(saveId)
       setLimites(res.limites)
       await onRefreshSave()
+      return true
     } catch (e) {
-      informar('No se pudo cambiar el tope del almacén.', e, () => void handleLimiteChange(catalogSlug, valor))
+      informar('No se pudo cambiar el tope del almacén.', e, () => void handleLimiteChange(catalogSlug, limite))
+      return false
     } finally {
       setBusy(null)
     }
@@ -404,13 +407,14 @@ function AlmacenLimitesCard({ saveId, almacenItems, onRefreshSave }: { saveId: s
               <span className="text-2xs font-mono text-wood-500">{count}</span>
               <label className="flex items-center gap-1 text-2xs text-wood-500">
                 tope
-                <input
-                  type="number"
+                <NumeroGuardable
+                  ariaLabel={`Tope de ${name}`}
+                  valor={limiteActual}
                   min={1}
+                  permitirVacio
                   placeholder="∞"
-                  defaultValue={limiteActual ?? ''}
                   disabled={busy === slug}
-                  onBlur={(e) => handleLimiteChange(slug, e.target.value)}
+                  onGuardar={(v) => handleLimiteChange(slug, v)}
                   className="w-14 rounded border border-iron-700 bg-wood-950/80 px-1.5 py-0.5 text-center text-2xs text-wood-200"
                 />
               </label>
