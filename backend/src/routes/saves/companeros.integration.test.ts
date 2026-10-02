@@ -169,6 +169,8 @@ describe('Compañeros: cobertura de ruta — captura → tameo → confirmar (au
     // Fase G del 0.1 (hallazgo G28): sin grupo, ya no queda un fantasma GRAVE/CONVALECIENTE en
     // escena que bloquee `combat/cerrar` (409) — vuelve a ILESO como el siguiente de la especie.
     expect(state.condicionFisica).toBe('ILESO');
+    // Libro de Sucesos (CR-3): la captura queda registrada.
+    expect(await prisma.suceso.count({ where: { saveId, tipo: 'CAPTURA' } })).toBe(1);
 
     const cuerdas = await prisma.inventoryItem.findFirst({ where: { saveId, catalogSlug: 'cuerdas' } });
     expect(cuerdas).toBeNull();

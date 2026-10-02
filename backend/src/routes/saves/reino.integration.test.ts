@@ -64,6 +64,10 @@ describe('POST /saves/:id/reino/fundar — Location-interior dinámica (2026-09-
       payload: { kingdomName: 'Reino de Prueba' },
     });
     expect(res.statusCode).toBe(200);
+    // Libro de Sucesos (CR-3): la fundación queda registrada, con el jugador como autor.
+    const fundacion = await prisma.suceso.findFirstOrThrow({ where: { saveId, tipo: 'REINO_FUNDADO' }, include: { actores: true } });
+    expect(fundacion.texto).toContain('Reino de Prueba');
+    expect(fundacion.actores.some((a) => a.entidadTipo === 'PERSONAJE' && a.papel === 'AUTOR')).toBe(true);
 
     const kingdomLocation = await prisma.location.findUnique({
       where: { worldId_slug: { worldId, slug: `ayuntamiento-interior-${saveId}` } },

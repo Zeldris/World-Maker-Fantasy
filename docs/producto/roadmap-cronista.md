@@ -845,6 +845,13 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
 - **CR-3** Emisores en: turno (`turnResolution.ts`: combate, muerte causada, perdón, captura,
   misión, construcción, fundación, entrega), `death.ts`, `recordFactionEvent`, expediciones,
   población, agenda, clima, `dailyTick`, cadáveres/recuperación. **M**
+  🚧 en curso (2026-10-02). Hechos: fundación de reino (`REINO_FUNDADO`, `reino.ts`), captura
+  (`CAPTURA`, `companeros.ts`), Clemente (`PERDON_CONCEDIDO`, `session.ts`, los dos caminos),
+  muerte del jugador y fin de partida (`MUERTE_JUGADOR`, `FIN_PARTIDA`, `turnResolution.ts`) y
+  despertar (`RENACER`, `death.ts`; el reinicio total no lo registra porque vacía el Libro), con
+  aserciones en sus tests de integración. Faltan: combate ganado/perdido y muerte causada, misión,
+  construcción, entrega, `recordFactionEvent`, expediciones, población, agenda, clima,
+  `dailyTick`, cadáveres/recuperación.
 - **CR-4** Vista de administración `/admin/partida/:id/libro` (solo lectura). **M**
 - **Hecho cuando:** jugar 1 hora deja en el Libro todos los sucesos con causas correctas; tests de
   cada emisor.

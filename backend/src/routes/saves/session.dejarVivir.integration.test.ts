@@ -88,6 +88,10 @@ describe('POST /saves/:id/combat/dejar-vivir/:npcSlug', () => {
 
     const logEntry = await prisma.logEntry.findFirstOrThrow({ where: { saveId }, orderBy: { createdAt: 'desc' } });
     expect(logEntry.text).toContain('deja con vida a Orco enfurecido');
+
+    // Libro de Sucesos (CR-3): el perdón queda registrado, enlazado a su entrada del diario.
+    const perdon = await prisma.suceso.findFirstOrThrow({ where: { saveId, tipo: 'PERDON_CONCEDIDO' } });
+    expect(perdon.logEntryId).toBe(logEntry.id);
   });
 
   it('BUG CERRADO (auditoría 2026-09-01, condición de carrera): dejar vivir dos veces al mismo NPC rechaza la segunda con 409 en vez de duplicar el LogEntry', async () => {

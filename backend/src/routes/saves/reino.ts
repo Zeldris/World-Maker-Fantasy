@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
+import { registrarSuceso, minutosDeFiccion } from '../../services/cronista/sucesos.js';
 import { slugify } from '../../lib/slugify.js';
 import { rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 import { professionLevelForXp, alivioForLevel } from '../../services/professionProgress.js';
@@ -150,6 +151,23 @@ export async function reinoRoutes(app: FastifyInstance) {
               { locationId: kingdomLocation.id, x: 250, y: 400, tipo: 'BASICA' },
               { locationId: kingdomLocation.id, x: 550, y: 400, tipo: 'BASICA' },
             ],
+          });
+
+          // Libro de Sucesos (CR-3, hito 0.2).
+          const region = ayuntamiento.location?.region ?? '';
+          await registrarSuceso(tx, {
+            saveId: save.id,
+            tipo: 'REINO_FUNDADO',
+            fictionalMinutes: await minutosDeFiccion(tx, save.id),
+            regionSlug: region ? slugify(region) : null,
+            locationId: ayuntamiento.locationId,
+            origen: 'JUGADOR',
+            actores: [
+              { entidadTipo: 'PERSONAJE', entidadId: save.id, papel: 'AUTOR' },
+              { entidadTipo: 'FACCION', entidadId: faction.slug, papel: 'BENEFICIARIO' },
+              ...(ayuntamiento.locationId ? [{ entidadTipo: 'LOCATION' as const, entidadId: ayuntamiento.locationId, papel: 'LUGAR' as const }] : []),
+            ],
+            datos: { reino: finalKingdomName, fundador: save.characterName, region: region || 'tierra sin nombre' },
           });
         });
       } catch (err) {

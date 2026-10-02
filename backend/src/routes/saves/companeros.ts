@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
+import { registrarSuceso } from '../../services/cronista/sucesos.js';
 import { scopeFor } from '../../services/npcScene.js';
 import { equipSlotFamily, effectiveAttributes, effectiveInventorySlotsBonus } from '../../services/equipment.js';
 import { inventoryCapacityFor, totalInventoryUnits } from '../../services/inventoryCapacity.js';
@@ -244,6 +245,19 @@ export async function companerosRoutes(app: FastifyInstance) {
           capturaScope: scope,
           capturaExpiraAtMinutes,
         },
+      });
+      // Libro de Sucesos (CR-3, hito 0.2).
+      await registrarSuceso(tx, {
+        saveId: save.id,
+        tipo: 'CAPTURA',
+        fictionalMinutes: nowMinutes,
+        locationId: save.currentLocationId,
+        origen: 'JUGADOR',
+        actores: [
+          { entidadTipo: 'PERSONAJE', entidadId: save.id, papel: 'AUTOR' },
+          { entidadTipo: 'NPC', entidadId: npc.id, papel: 'VICTIMA' },
+        ],
+        datos: { personaje: save.characterName, capturado: npc.name },
       });
       // Reputación de facción (2026-09-04, bug real jugando en vivo: "me resta la reputación
       // antes de matarlo... si elijo matar tiene que esperar a que resuelva el combate antes de

@@ -3549,6 +3549,8 @@ describe('Respawn tras morir: vuelve al último campamento, no se queda donde mu
     expect(savedAfterDeath.deathCount).toBe(1);
     expect(savedAfterDeath.endedAt).toBeNull(); // NOVATO, sin fin de partida
     expect(savedAfterDeath.pendingDeathResolution).toBe(true);
+    // Libro de Sucesos (CR-3): la muerte queda registrada.
+    expect(await prisma.suceso.count({ where: { saveId, tipo: 'MUERTE_JUGADOR' } })).toBe(1);
     // Bug real jugando en vivo (ronda de pruebas 2026-08-28): morir no limpiaba
     // `pendingCombatNpcSlugs` — el aviso "COMBATIR/HUIR" contra el agresor seguía apareciendo pese
     // a que el jugador ya no puede seguir jugando. El combate debe cerrarse del todo, aunque el
@@ -3571,6 +3573,8 @@ describe('Respawn tras morir: vuelve al último campamento, no se queda donde mu
     expect(savedAfterResolve.pendingDeathResolution).toBe(false);
     expect(savedAfterResolve.currentLocationId).toBe(hondonadaId); // vuelve al campamento…
     expect(savedAfterResolve.currentLocationId).not.toBe(pilaresId); // …no se queda donde murió
+    // Libro de Sucesos (CR-3): el despertar queda registrado.
+    expect(await prisma.suceso.count({ where: { saveId, tipo: 'RENACER' } })).toBe(1);
   }, 20_000);
 });
 

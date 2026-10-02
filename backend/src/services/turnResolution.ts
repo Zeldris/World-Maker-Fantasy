@@ -57,6 +57,7 @@ import { resolverTurnoJugador, resolverTurnosAutonomosHastaJugadora, fijarElecci
 import { invalidateCarcassRollCache } from '../routes/saves/recolectar.js';
 import { instanceNumbersByParticipantId, resolverObjetivoPorTexto, type HabilidadParaIntercambio } from './combateMultiple.js';
 import { prisma } from '../lib/prisma.js';
+import { registrarSuceso } from './cronista/sucesos.js';
 import { effectiveAttributesConDuracion, pushActiveEffect, decrementActiveEffects, type ActiveEffect } from './activeEffects.js';
 import type { RollResult, AttributeBlock, Attribute, GradoExito } from './dice.js';
 import type { SecondaryAttributeBlock } from './secondaryAttributes.js';
@@ -6451,6 +6452,29 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         });
         finalCondicion = 'MUERTO';
         finalPendingDeathResolution = true;
+      }
+      // Libro de Sucesos (CR-3, hito 0.2): la muerte del personaje, y el final si no quedan vidas.
+      const actoresMuerte = [{ entidadTipo: 'PERSONAJE' as const, entidadId: saveId, papel: 'VICTIMA' as const }];
+      const muerteId = await registrarSuceso(tx, {
+        saveId,
+        tipo: 'MUERTE_JUGADOR',
+        fictionalMinutes: nuevoFictionalMinutes,
+        locationId: currentLocationId,
+        origen: 'JUGADOR',
+        actores: actoresMuerte,
+        datos: { personaje: characterName },
+      });
+      if (outcome.finDePartida) {
+        await registrarSuceso(tx, {
+          saveId,
+          tipo: 'FIN_PARTIDA',
+          fictionalMinutes: nuevoFictionalMinutes,
+          locationId: currentLocationId,
+          origen: 'JUGADOR',
+          actores: actoresMuerte,
+          datos: { personaje: characterName },
+          causas: [muerteId],
+        });
       }
     }
 

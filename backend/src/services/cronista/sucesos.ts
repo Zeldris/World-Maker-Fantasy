@@ -69,3 +69,9 @@ export async function registrarSuceso<T extends TipoSuceso>(db: Db, s: NuevoSuce
   });
   return suceso.id;
 }
+
+/// Minuto de ficción actual de la partida, para los emisores que no lo tienen a mano.
+export async function minutosDeFiccion(db: Db, saveId: string): Promise<number> {
+  const ws = await db.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true } });
+  return ws?.fictionalMinutes ?? 480;
+}
