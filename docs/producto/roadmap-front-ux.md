@@ -148,13 +148,23 @@ stateDiagram-v2
 ## 4. Propuestas
 
 ### 4.1 Estado único de la partida
-- **UX-1 · `useGamePhase`** — hook que calcula la fase actual (`libre`, `pensando`, `ocupado`,
+- ~~**UX-1 · `useGamePhase`** — hook que calcula la fase actual (`libre`, `pensando`, `ocupado`,
   `encuentro`, `combate`, `dinamico`, `eleccion`, `muerte`, `fin`) a partir del estado existente,
   con prioridad fija si coinciden. Sustituye a `composerDisabled`, `anyModalOpen` y las listas de
-  pestañas deshabilitadas. Tests con una tabla de casos. **M** [P]
-- **UX-2 · Matriz de permisos** como datos (la tabla de § 5), no como condiciones repartidas por
+  pestañas deshabilitadas. Tests con una tabla de casos. **M** [P]~~ ✅ 2026-10-02:
+  `calcularFase` en `lib/gamePhase.ts` (prioridad fin > muerte > pensando > combate > dinámico >
+  elección > encuentro > ocupado > libre) y `hooks/useGamePhase.ts`; `GameView` saca de ahí el
+  bloqueo del composer, de la barra de habilidades, de la clasificación anticipada y de los botones
+  que lanzan turno (`bloqueoTurno`). **Queda:** `anyModalOpen` sigue como guarda entre modales
+  hasta el gestor de capas (`UX-9`); la guardia interna de `useTurnFlow` (refs) no se ha tocado.
+- ~~**UX-2 · Matriz de permisos** como datos (la tabla de § 5), no como condiciones repartidas por
   el JSX: `canDo(phase, 'enviarTurno' | 'tarjeta' | 'modificarInventario' | 'moverse' | …)` devuelve
-  `{ permitido, motivo }`. **M** [P]
+  `{ permitido, motivo }`. **M** [P]~~ ✅ 2026-10-02: `canDo(fase, accion)` en `lib/gamePhase.ts`
+  con acciones `enviarTurno`, `tarjeta`, `abrirPanel`, `modificarPanel`, `moverse`, `decidir`,
+  `salir`, tests de la matriz. Desviaciones de § 5 a propósito: en *Encuentro* se puede escribir y
+  usar la tarjeta (el backend acepta el turno y hablar es una reacción válida; solo bloquea
+  moverse). **Queda:** que la usen los paneles (`UX-5`), la brújula (`UX-7`), las tarjetas y el
+  menú de salir (`UX-8`/`UX-18`).
 
 ### 4.2 Bloqueos
 - ~~**UX-3 · Guardia en `handleSubmit`** — rechazar si `characterThinking` o si la fase no lo permite,

@@ -1,4 +1,5 @@
 import { useNoticiasMundo } from '../hooks/useNoticiasMundo'
+import { useGamePhase } from '../hooks/useGamePhase'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useSession } from '../context/useSession'
@@ -517,21 +518,28 @@ export function GameView() {
   // combat.combatOpen de useCombatFlow) para tener un único punto de verdad de "hay algo abierto
   // encima del juego ahora mismo" antes de decidir si se abre uno nuevo.
   const anyModalOpen = anyActionModalOpen || !!detailTarget || !!kingdomFoundedInfo || combat.combatOpen
-  // UX-3 (hito 0.1) — mismas condiciones que la guardia de `handleSubmit` (useTurnFlow.ts), con su
-  // motivo: deshabilita los botones que lanzan un turno fuera del composer (Construir, Viajar,
-  // Campamento, salida de zona), que pueden estar a la vista mientras el narrador escribe.
-  const bloqueoTurno = characterThinking
-    ? 'El narrador todavía está escribiendo.'
-    : busyUntil
-      ? 'Estás ocupado con otra actividad.'
-      : endedAt
-        ? 'La partida ha terminado.'
-        : pendingDeathResolution
-          ? 'Primero resuelve lo que ha pasado tras tu muerte.'
-          : null
   // Un agresivo te corta el paso (2026-09-28) — la brújula se oculta hasta reaccionar (el backend
   // rechaza igualmente moverse con 409, esto solo evita ofrecer algo que no se puede hacer).
   const combateForzadoPendiente = characterLog.some((e) => e.dynamicModeOffer?.combateForzado)
+  // Elecciones obligatorias a la vista (mismas condiciones con las que se pintan sus modales).
+  const claseVisible = !!pendingClaseChoice && !pendingDeathResolution && !endedAt && !!worldIdSlug
+  const especializacionVisible = !!pendingEspecializacionChoice && !pendingDeathResolution && !endedAt && !!clase && !!worldIdSlug
+  // UX-1/UX-2 (hito 0.2) — una sola fase de partida y su matriz de permisos (lib/gamePhase.ts) en
+  // vez de banderas sueltas.
+  const { puede } = useGamePhase({
+    terminada: !!endedAt,
+    muertePendiente: pendingDeathResolution,
+    enCombate: !!combateIniciado || combat.combatOpen,
+    modoDinamico: !!activeDynamicMode,
+    narradorEscribiendo: characterThinking,
+    eleccionAbierta: claseVisible || especializacionVisible || !!kingdomFoundedInfo,
+    encuentroPendiente: combateForzadoPendiente,
+    ocupado: !!busyUntil,
+  })
+  const permisoTurno = puede('enviarTurno')
+  // UX-3 (hito 0.1) — deshabilita con su motivo los botones que lanzan un turno fuera del composer
+  // (Construir, Viajar, Campamento, salida de zona); desde UX-2 el motivo sale de la matriz.
+  const bloqueoTurno = permisoTurno.motivo
 
   // Pop del botón "Nivel X" solo en una subida real, nunca al cargar la partida (roadmap de
   // animaciones 2026-07-20, item 7) — mismo patrón que HealthBar: comparar contra un ref, no
@@ -586,16 +594,14 @@ export function GameView() {
   // respuesta cruda del preview (evita el riesgo de perder "discoveries"/"transit" del envío real).
   useEffect(() => {
     const action = input.trim()
-    const composerDisabled =
-      characterThinking || !!busyUntil || !!endedAt || pendingDeathResolution || (!!combateIniciado && !combat.combatOpen)
-    if (!action || !saveId || composerDisabled) return
+    if (!action || !saveId || !puede('enviarTurno').permitido) return
 
     const timer = setTimeout(() => {
       requestTurnClassify({ saveId, action, preview: true }).catch(() => {})
     }, 1500)
 
     return () => clearTimeout(timer)
-  }, [input, saveId, characterThinking, busyUntil, endedAt, pendingDeathResolution, combateIniciado, combat.combatOpen])
+  }, [input, saveId, puede])
 
   // Vuelca un SaveDetail completo en el estado local — usado al cargar la partida y al
   // resincronizar tras resolverse una acción por tiempo en diferido (CharacterTransit).
@@ -1746,11 +1752,9 @@ export function GameView() {
             // para el composer cuentan además el resto de capas que se abren encima del juego. El cajón
             // de paneles (`activePanel`) queda fuera a propósito: la Enciclopedia inserta chips en el
             // composer con el cajón abierto.
-            const claseVisible = !!pendingClaseChoice && !pendingDeathResolution && !endedAt && !!worldIdSlug
-            const especializacionVisible = !!pendingEspecializacionChoice && !pendingDeathResolution && !endedAt && !!clase && !!worldIdSlug
             const capaEncimaAbierta =
               anyModalOpen || zonaModalOpen || confirmingExit || !!editingSkillBar || !!recursoDetalle || claseVisible || especializacionVisible
-            const composerDisabled = characterThinking || !!busyUntil || (!!combateIniciado && !combat.combatOpen) || capaEncimaAbierta
+            const composerDisabled = !permisoTurno.permitido || capaEncimaAbierta
             // Toggle a la IZQUIERDA de la propia fila del composer/barra, no encima en su propia
             // línea (2026-08-29, feedback en vivo, segunda vuelta: "no bajaste el botón... a la
             // izquierda donde te dije") — mismo slot visual que la barra, `leftSlot` de
@@ -1826,7 +1830,7 @@ export function GameView() {
                             ? 'En combate — usa el panel de combate para actuar.'
                             : capaEncimaAbierta
                               ? 'Resuelve lo que tienes abierto antes de escribir una nueva acción.'
-                              : undefined
+                              : (permisoTurno.motivo ?? undefined)
                     }
                   />
                 )}
