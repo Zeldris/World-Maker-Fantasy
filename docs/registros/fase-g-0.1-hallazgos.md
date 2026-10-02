@@ -22,7 +22,7 @@ Partida: Gorhorn, **Cazador** (su clase real), dificultad Novato.
 | Recolección con cada método (ficha de flora) | 🚧 extracción ✅ (Salvia del Polvo, ficha de flora, G17, G18); minería bloqueada por nivel como debe («Minar a nivel 4»); en la Hondonada no hay tala/pesca/búsqueda — probar en otra zona |
 | Combate con muerte y renacer | ✅ muerte en grupo → Derrota → nota de la Entidad → «Aceptar» → sin punto de guardado, reinicio «como una pesadilla» (diseño de Álvaro) (G12) |
 | Compañeros | pendiente |
-| Reino (fundar, construir, taller, diplomacia con XP, mercado) | pendiente |
+| Reino (fundar, construir, taller, diplomacia con XP, mercado) | 🚧 fundar ✅ (Habilidades → Reino → «Fundar ayuntamiento» → nombre → panel con 5 pestañas; G21, G22, G23); faltan construir, taller, diplomacia y mercado |
 
 ## Hallazgos
 
@@ -48,3 +48,6 @@ Partida: Gorhorn, **Cazador** (su clase real), dificultad Novato.
 | G18 | Detalles de texto e iconos vistos de paso: la tarjeta «Salvia del Polvo a la vista» usa 🪨 para una planta; la ficha de flora anida paréntesis («(reconocerla (los orcos… tirada))»); «Analisis Salvaje» (ver G6). | pendiente (menor) |
 | G19 | Tras reiniciar «como una pesadilla», el cadáver de antes del reinicio sigue pendiente de desollar en la zona («Hay presas caídas sin desollar»). Si todo fue un sueño, ¿debería desaparecer? | 🧭 decisión (menor) |
 | G20 | «Acercarte» (G14) dispara el encuentro más cercano a tu casilla, que puede no ser el pin cuya ficha abriste (salió Gistera en vez del Yerreo). | pendiente (menor) — mandar el pin preferido al backend |
+| G21 | Observación de diseño (para Álvaro): fundar el reino con el pequeño ayuntamiento pide 44 unidades de material, pero la construcción solo cuenta el inventario y Gorhorn al empezar carga 37 (20 + Fuerza 10 + Constitución 7). Además pide Carisma 10 (tiene 6). Se puede tras subir de nivel o con una bolsa, pero no al principio. Para probar el Reino se preparó la partida de prueba (Carisma 10, Fuerza 20 y los materiales). | 🧭 decisión |
+| G22 | Construir el ayuntamiento junto al punto de Gistera en el mapa (ya presentada y marchada) añadía otra vez su llegada «Una sombra se acerca… una orca con la marca del Clan Serhu…» al final de la narración. | ✅ 2026-10-02: la llegada solo se añade antes de presentarse (`turnResolution.ts`); test nuevo en `turn.integration.test.ts` (falla sin el arreglo). |
+| G23 | Reino recién fundado: «Población 0» en Economía junto a «Población: 15» en el territorio — son cosas distintas (súbditos frente a habitantes de la región) con la misma etiqueta. | pendiente (menor) — renombrar una de las dos |

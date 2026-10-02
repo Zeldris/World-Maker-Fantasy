@@ -4616,7 +4616,10 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // arriba). `newFacts` usa un marcador reconocible por código ("sin nombre revelado todavía")
   // pero que no contiene ninguno de sus aliases reales, para que ni la Enciclopedia ni el resto
   // de NPCs la reconozcan como "Gistera Koh" antes de que ella misma se presente.
-  if (gisteraKoh) {
+  // Fase G del 0.1 (hallazgo G22): `gisteraKoh` solo mira que su punto del mapa esté al lado, y
+  // ese punto sigue activo tras presentarse y marcharse — la llegada «sin nombre» se añadía otra
+  // vez a cualquier turno junto a él (p. ej. construir el ayuntamiento). Solo antes de presentarse.
+  if (gisteraKoh && !gisteraYaPresentada && !gisteraSeHaMarchado && !gisteraSinNombreEnEscena) {
     narration.narration = `${narration.narration} Una sombra se acerca a gran velocidad por la llanura. En cuanto la tiene a la vista, distingue que es una orca con la marca del Clan Serhu — se acerca a toda prisa, sin aliento, mirando constantemente hacia atrás, como si algo la persiguiera.`;
     narration.newFacts = [
       ...narration.newFacts,
