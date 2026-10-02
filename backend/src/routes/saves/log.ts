@@ -31,6 +31,27 @@ export async function logRoutes(app: FastifyInstance) {
     },
   );
 
+  // Fase D del hito 0.1 («El mundo vivo, visible») — noticias del mundo que el tick de fondo escribe
+  // en el canal WORLD mientras la partida está abierta (expediciones de facción, `noticiasMundo.ts`;
+  // etapas de la agenda, `worldAgenda.ts`). Antes solo aparecían al recargar. El cliente pide lo
+  // posterior a la última entrada WORLD que ya tiene (`desde` = su id); sin `desde`, nada (no
+  // reenvía el registro entero, eso ya lo hace GET /saves/:id). Mismo formato que `worldLog` allí.
+  app.get<{ Params: { id: string }; Querystring: { desde?: string } }>('/saves/:id/mundo/nuevas', async (request, reply) => {
+    const { id } = request.params;
+    const save = await prisma.save.findUnique({ where: { id }, select: { id: true } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    const desde = request.query.desde;
+    if (!desde) return { entradas: [] };
+    const referencia = await prisma.logEntry.findFirst({ where: { id: desde, saveId: id }, select: { createdAt: true } });
+    if (!referencia) return { entradas: [] };
+    const nuevas = await prisma.logEntry.findMany({
+      where: { saveId: id, channel: 'WORLD', createdAt: { gt: referencia.createdAt } },
+      orderBy: { createdAt: 'asc' },
+      take: 50,
+    });
+    return { entradas: nuevas.map(toFrontendLogEntry) };
+  });
+
   // Registro completo de la partida, agrupado por día de ficción (rework 2026-07-24: "el log de
   // personaje solo muestre 24h... si quieres verlo todo vendrá clasificado por días en el diario").
   // A diferencia de GET /saves/:id, aquí no hay ventana de tiempo ni banner de entidad — el Diario

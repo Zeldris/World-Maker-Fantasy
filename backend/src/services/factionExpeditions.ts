@@ -1,3 +1,4 @@
+import { difundirNoticias, textoAsalto, textoExpedicionDeVuelta, type NoticiaMundo } from './noticiasMundo.js';
 import type { Prisma, PrismaClient, FactionRelationType, CondicionFisica, Npc } from '@prisma/client';
 import type { MetodoObtencion } from '@prisma/client';
 import { cabeEnStock, pendingFactionDays, worldFictionDay } from './factionEconomy.js';
@@ -383,7 +384,7 @@ export interface ResumenInterceptacion {
 /// la probabilidad de morir (`tirarMuertes`): la muerte es de mundo (`Npc.muertoEnMundo`), se anota en
 /// `resumen.muertes`. Atacante y guardias solo salen de `npcElegibleParaExpedicion` (sin líderes,
 /// misiones, Maestros ni muertos), así que un tick no puede romper la trama.
-export async function resolverInterceptacion(tx: TxDb, ctx: ContextoInterceptacion, random: () => number): Promise<{ carga: 'perdida' | 'salva'; resumen: ResumenInterceptacion }> {
+export async function resolverInterceptacion(tx: TxDb, ctx: ContextoInterceptacion, random: () => number): Promise<{ carga: 'perdida' | 'salva'; resumen: ResumenInterceptacion; hechoRelacion?: string | null }> {
   const base = { faccionHostil: ctx.faccionHostilNombre, atacanteSlug: null, guardias: [] as string[], rondas: 0, muertes: [] as ResumenInterceptacion['muertes'] };
   const perdidaSinCombate = (motivo: 'sin-guardias' | 'sin-atacante', guardias: string[] = []) =>
     ({ carga: 'perdida' as const, resumen: { ...base, guardias, ganador: 'sin-combate' as const, motivo, presionAplicada: false } });
@@ -422,8 +423,11 @@ export async function resolverInterceptacion(tx: TxDb, ctx: ContextoInterceptaci
       select: { sourceFactionId: true, targetFactionId: true, type: true },
     });
     const rel = [...existentes].sort((a, b) => riesgoPorRelacion(b.type) - riesgoPorRelacion(a.type))[0] ?? { sourceFactionId: hostil.id, targetFactionId: ctx.factionId };
-    await recordFactionEvent(tx, ctx.worldId, rel.sourceFactionId, rel.targetFactionId, EVENTO_PRESION_INTERCEPTACION);
+    // Fase D (hito 0.1) — si el asalto cambia la banda de la relación (p. ej. TENSION → GUERRA), el
+    // texto vuelve para convertirse en noticia; antes se descartaba.
+    const hechoRelacion = await recordFactionEvent(tx, ctx.worldId, rel.sourceFactionId, rel.targetFactionId, EVENTO_PRESION_INTERCEPTACION);
     resumen.presionAplicada = true;
+    return { carga: 'perdida', resumen, hechoRelacion };
   }
   return { carga: 'perdida', resumen };
 }
@@ -434,13 +438,14 @@ type Db = Pick<
   PrismaClient,
   | '$transaction' | 'kingdomStats' | 'worldState' | 'faction' | 'factionRelation' | 'npc' | 'npcProfessionPotential'
   | 'npcProfessionProgress' | 'location' | 'expedicion' | 'expedicionMember' | 'almacenItem' | 'itemCatalog'
-  | 'harvestYield' | 'worldPopulation'
+  | 'harvestYield' | 'worldPopulation' | 'save' | 'logEntry'
 >;
 type TxDb = Prisma.TransactionClient;
 
 const ACTIVAS = ['EN_TRANSITO', 'RECOLECTANDO', 'RETORNANDO'] as const;
 
-export interface ResultadoExpediciones { diasProcesados: number; lanzadas: number; completadas: number; interceptadas: number; depositados: number; muertes: number }
+/// `noticias`: entradas del canal "El mundo" creadas en las partidas (Fase D del hito 0.1).
+export interface ResultadoExpediciones { diasProcesados: number; lanzadas: number; completadas: number; interceptadas: number; depositados: number; muertes: number; noticias: number }
 
 export interface OpcionesExpediciones {
   /// Sustituye a `PROBABILIDAD_MUERTE_EN_INTERCEPCION` (tests).
@@ -451,7 +456,7 @@ export interface OpcionesExpediciones {
 /// expediciones y lanza una nueva si no tienen ninguna activa. Marcador: `KingdomStats.ultimoDiaExpedicion`.
 /// `random` es inyectable (tirada de riesgo, tiradas de recolección y elección de botín).
 export async function advanceFactionExpeditions(prisma: Db, random: () => number = Math.random, opciones: OpcionesExpediciones = {}): Promise<ResultadoExpediciones> {
-  const result: ResultadoExpediciones = { diasProcesados: 0, lanzadas: 0, completadas: 0, interceptadas: 0, depositados: 0, muertes: 0 };
+  const result: ResultadoExpediciones = { diasProcesados: 0, lanzadas: 0, completadas: 0, interceptadas: 0, depositados: 0, muertes: 0, noticias: 0 };
 
   const estados = await prisma.worldState.findMany({ select: { fictionalMinutes: true, save: { select: { worldId: true } } } });
   const minutosPorMundo = new Map<string, number[]>();
@@ -480,25 +485,28 @@ export async function advanceFactionExpeditions(prisma: Db, random: () => number
           data: { ultimoDiaExpedicion: diaActual },
         });
         if (claim.count === 0 || pendientes === 0) return; // otro tick ya lo hizo, o solo se fija la línea base
+        const noticias: NoticiaMundo[] = [];
         for (let i = 1; i <= pendientes; i++) {
           const dia = diaActual - pendientes + i;
-          await avanzarDiaFaccion(tx, worldId, faction, dia, random, result, opciones);
+          await avanzarDiaFaccion(tx, worldId, faction, dia, random, result, opciones, noticias);
         }
         result.diasProcesados += pendientes;
+        // Fase D (hito 0.1) — en la misma transacción que el reclamo del día: cada noticia sale una vez.
+        result.noticias += await difundirNoticias(tx, worldId, noticias);
       }, { timeout: 60_000, maxWait: 10_000 });
     }
   }
   return result;
 }
 
-async function avanzarDiaFaccion(tx: TxDb, worldId: string, faction: { id: string; name: string }, dia: number, random: () => number, result: ResultadoExpediciones, opciones: OpcionesExpediciones): Promise<void> {
+async function avanzarDiaFaccion(tx: TxDb, worldId: string, faction: { id: string; name: string }, dia: number, random: () => number, result: ResultadoExpediciones, opciones: OpcionesExpediciones, noticias: NoticiaMundo[]): Promise<void> {
   const activas = await tx.expedicion.findMany({ where: { factionId: faction.id, status: { in: [...ACTIVAS] } }, include: { members: true }, orderBy: { diaSalida: 'asc' } });
   for (const exp of activas) {
     if (exp.status === 'RETORNANDO' && dia >= exp.diaRegreso) {
-      result.depositados += await completarExpedicion(tx, exp);
+      result.depositados += await completarExpedicion(tx, exp, faction.name, dia, noticias);
       result.completadas++;
     } else if (exp.status !== 'RETORNANDO' && dia >= exp.diaSalida + 1) {
-      const { interceptada, muertes } = await llegarAlDestino(tx, worldId, faction, exp, dia, random, opciones);
+      const { interceptada, muertes } = await llegarAlDestino(tx, worldId, faction, exp, dia, random, opciones, noticias);
       if (interceptada) result.interceptadas++;
       result.muertes += muertes;
     }
@@ -575,9 +583,9 @@ async function lanzarExpedicion(tx: TxDb, worldId: string, faction: { id: string
 async function llegarAlDestino(
   tx: TxDb, worldId: string, faction: { id: string; name: string },
   exp: { id: string; destinoLocationId: string; professionId: string; riesgo: number; members: { npcId: string; rol: string }[] },
-  dia: number, random: () => number, opciones: OpcionesExpediciones,
+  dia: number, random: () => number, opciones: OpcionesExpediciones, noticias: NoticiaMundo[],
 ): Promise<{ interceptada: boolean; muertes: number }> {
-  const destino = await tx.location.findUniqueOrThrow({ where: { id: exp.destinoLocationId }, select: { slug: true, region: true } });
+  const destino = await tx.location.findUniqueOrThrow({ where: { id: exp.destinoLocationId }, select: { slug: true, region: true, name: true } });
   const tirada = random();
   let interceptacion: Prisma.InputJsonValue | undefined;
   let muertes = 0;
@@ -597,6 +605,23 @@ async function llegarAlDestino(
     }, random);
     muertes = res.resumen.muertes.length;
     interceptacion = res.resumen as unknown as Prisma.InputJsonValue;
+    // Fase D (hito 0.1) — noticia del asalto y, si movió la relación de banda, del cambio.
+    const implicadas = [faction.name, ...(res.resumen.faccionHostil ? [res.resumen.faccionHostil] : [])];
+    noticias.push({
+      facciones: implicadas,
+      region: destino.region,
+      dia,
+      texto: textoAsalto({
+        faccion: faction.name,
+        lugar: destino.name,
+        hostil: res.resumen.faccionHostil,
+        carga: res.carga,
+        motivo: res.resumen.motivo,
+        muertesPropias: res.resumen.muertes.filter((m) => m.rol === 'guardia').length,
+        muertesHostiles: res.resumen.muertes.filter((m) => m.rol === 'atacante').length,
+      }),
+    });
+    if (res.hechoRelacion) noticias.push({ facciones: implicadas, region: null, dia, texto: res.hechoRelacion });
     if (res.carga === 'perdida') {
       await tx.expedicion.update({ where: { id: exp.id }, data: { status: 'INTERCEPTADA', tiradaRiesgo: tirada * 100, botin: undefined, interceptacion } });
       return { interceptada: true, muertes };
@@ -634,8 +659,20 @@ async function llegarAlDestino(
 /// Regreso (día `diaRegreso`): el botín entra en `AlmacenItem.factionId` (una fila por unidad, respetando
 /// el tope `cabeEnStock` por `catalogSlug`) y cada recolector que sacó algo recibe XP de oficio en
 /// `NpcProfessionProgress` (sin pasar de su `nivelMaximo`). Devuelve las unidades depositadas.
-async function completarExpedicion(tx: TxDb, exp: { id: string; factionId: string; worldId: string; professionId: string; botin: unknown }): Promise<number> {
+async function completarExpedicion(
+  tx: TxDb,
+  exp: { id: string; factionId: string; worldId: string; professionId: string; botin: unknown; destinoLocationId: string },
+  faccionNombre: string,
+  dia: number,
+  noticias: NoticiaMundo[],
+): Promise<number> {
   const items = ((exp.botin as { items?: BotinItem[] } | null)?.items) ?? [];
+  // Fase D (hito 0.1) — noticia del regreso con botín (sin botín no hay nada que contar).
+  if (items.length > 0) {
+    const destino = await tx.location.findUnique({ where: { id: exp.destinoLocationId }, select: { name: true, region: true } });
+    const texto = textoExpedicionDeVuelta(faccionNombre, destino?.name ?? 'los alrededores', items);
+    if (texto) noticias.push({ facciones: [faccionNombre], region: destino?.region ?? null, dia, texto });
+  }
   let depositados = 0;
   if (items.length > 0) {
     const existentes = await tx.almacenItem.findMany({ where: { factionId: exp.factionId, catalogSlug: { not: null } }, select: { catalogSlug: true } });

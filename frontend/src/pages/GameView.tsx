@@ -1,3 +1,4 @@
+import { useNoticiasMundo } from '../hooks/useNoticiasMundo'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useSession } from '../context/useSession'
@@ -551,6 +552,9 @@ export function GameView() {
     buildEntityBanner,
     setWorldLog,
   })
+
+  // Fase D (hito 0.1) — noticias del mundo escritas en segundo plano, sin esperar a recargar.
+  useNoticiasMundo({ saveId, worldLog, setWorldLog, characterThinking })
 
   const characterFlavor = useRotatingFlavor(characterThinking, combat.combatOpen ? combatWaitingFlavor : characterWaitingFlavor)
   const worldFlavor = useRotatingFlavor(worldThinking, worldWaitingFlavor)

@@ -14,7 +14,7 @@ cada commit.**
 | **Rama de trabajo** | `claude/frontend-improvements-roadmap-0mpckt`. Flujo acordado (2026-10-01): commit + push a esta rama con cada cosa hecha; a `main` se pasa **por pull request** (desde esta sesión el push directo a `main` lo bloquea el filtro de permisos) |
 | **Último commit en `main`** | `423c8a5` — roadmap de roadmaps y revisión cruzada de front y UX (+ el commit de esta bitácora) |
 | **Hito** | `0.1` Llanuras estable — [plan](../producto/plan-roadmap-0.1.md) · [mapa de roadmaps](../producto/21-roadmap.md#qué-entra-en-cada-hito) |
-| **Tarea en curso** | Ninguna. **Todos los arreglos de interfaz del 0.1 hechos** (UX-A, DAD-1…6, CFG-33, BAS-1, Reino R-A, Zona Z-A). Siguiente: Fase D del 0.1 «El mundo vivo, visible» (ver plan) |
+| **Tarea en curso** | 🚧 Fase D del 0.1, parte 1 (noticias del mundo) — commit `WIP:`. Hecho: `services/noticiasMundo.ts` (textos + filtro de conocimiento + reparto a partidas), enganche en `factionExpeditions.ts`, `GET /saves/:id/mundo/nuevas` (`log.ts`), hook `useNoticiasMundo` en el front. Tests nuevos en verde por separado y front completo 330/330. **Falta:** pasar la suite completa del backend (la usuaria la interrumpió), quitar el `WIP`, documentar en el plan; después, parte 2: migrar `worldAgenda.ts` a `FactionRelation` |
 | **Tests** | Frontend: `tsc -b` 0, `vitest` 55 archivos / 328 tests, `oxlint` 13 avisos (los mismos de antes). Backend en local con Postgres real: `tsc` 0, `oxlint` 0 (solo avisos previos), `vitest` 162/162 archivos, 2851 tests. CI de GitHub en verde (PR #2) |
 
 ## Siguientes pasos (en orden)

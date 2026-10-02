@@ -480,6 +480,12 @@ export interface EntornoResponse {
   logEntryId: string
 }
 
+/// Fase D del hito 0.1 — entradas de "El mundo" posteriores a `desde` (id de la última WORLD que ya tiene
+/// el cliente): noticias que el tick de fondo escribe mientras la partida está abierta.
+export async function getNuevasDelMundo(saveId: string, desde: string): Promise<{ entradas: LogEntry[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/mundo/nuevas?desde=${encodeURIComponent(desde)}`)
+}
+
 export async function requestSurroundings(params: { saveId: string }): Promise<EntornoResponse> {
   return fetchJson(`${API_URL}/entorno`, {
     method: 'POST',
