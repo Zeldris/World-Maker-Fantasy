@@ -11,6 +11,8 @@ interface ZonaMovimientoModalProps {
   /// UX-3 (hito 0.1) — motivo por el que ahora no se puede lanzar un turno (narrador escribiendo,
   /// ocupado…); `null`/ausente = libre. Deshabilita los botones que mandan una acción al turno.
   bloqueoTurno?: string | null
+  /// UX-7 (hito 0.2) — pasado tal cual a `ZonaPanel`.
+  bloqueoMovimiento?: string | null
   /// Icono de parcela (§ 7.4, 2026-09-21) — pasados tal cual a `ZonaPanel`, ver comentario ahí.
   professionRecipes?: ProfessionRecipeInfo[]
   onRefreshSave?: () => Promise<void>
@@ -38,7 +40,7 @@ interface ZonaMovimientoModalProps {
 /// izquierda (70%) y el resto del contenido a la derecha (30%) con su propio scroll — petición
 /// explícita de Álvaro: "aprovechemos el espacio horizontal... así no teniendo que scrollear",
 /// aplicado SOLO aquí, no en el tab Mapa informativo.
-export function ZonaMovimientoModal({ saveId, onEncuentroZona, onClose, onViajarA, professionRecipes, onRefreshSave, onOfertaDescartada, onHoraActualizada, onSaquearCadaver, onDesollarCadaver, bloqueoTurno }: ZonaMovimientoModalProps) {
+export function ZonaMovimientoModal({ saveId, onEncuentroZona, onClose, onViajarA, professionRecipes, onRefreshSave, onOfertaDescartada, onHoraActualizada, onSaquearCadaver, onDesollarCadaver, bloqueoTurno, bloqueoMovimiento }: ZonaMovimientoModalProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     rootRef.current?.focus()
@@ -73,6 +75,7 @@ export function ZonaMovimientoModal({ saveId, onEncuentroZona, onClose, onViajar
             onClose={onClose}
             onViajarA={onViajarA}
             bloqueoTurno={bloqueoTurno}
+            bloqueoMovimiento={bloqueoMovimiento}
             professionRecipes={professionRecipes}
             onRefreshSave={onRefreshSave}
             onOfertaDescartada={onOfertaDescartada}

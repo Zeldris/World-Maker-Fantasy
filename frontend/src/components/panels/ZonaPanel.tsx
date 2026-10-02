@@ -49,6 +49,9 @@ interface ZonaPanelProps {
   /// UX-3 (hito 0.1) — motivo por el que ahora no se puede lanzar un turno (narrador escribiendo,
   /// ocupado…); `null`/ausente = libre. Deshabilita los botones que mandan una acción al turno.
   bloqueoTurno?: string | null
+  /// UX-7 (hito 0.2) — motivo de `canDo(fase, 'moverse')` si ahora no se puede andar ni recoger
+  /// (narrador escribiendo, encuentro, combate…). El mapa se sigue viendo; el paso no sale.
+  bloqueoMovimiento?: string | null
   /// Icono de parcela (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) — construir es DIRECTO,
   /// sin pasar por `onViajarA`/`/turn/narrate` (mismo criterio que "Descansar en campamento"). El
   /// roster estático de recetas (ya cargado una vez en GameView.tsx vía `useRecipesData`) resuelve
@@ -313,7 +316,7 @@ function regionControlDisplay(control: RegionControlInfo): { text: string; tone:
   }
 }
 
-export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, columnasAncho = false, onClose, onViajarA, professionRecipes, onRefreshSave, onOfertaDescartada, onHoraActualizada, onSaquearCadaver, onDesollarCadaver, bloqueoTurno }: ZonaPanelProps) {
+export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, columnasAncho = false, onClose, onViajarA, professionRecipes, onRefreshSave, onOfertaDescartada, onHoraActualizada, onSaquearCadaver, onDesollarCadaver, bloqueoTurno, bloqueoMovimiento = null }: ZonaPanelProps) {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<ZonaResponse | null>(null)
   // ZON-11 (hito 0.1) — unidades del lienzo por píxel de pantalla: las fichas miden siempre lo mismo.
@@ -396,6 +399,10 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
   // "Tirar" objetos al suelo de la Zona (2026-09-06, hallazgo 8) — tras recoger uno, el pin debe
   // desaparecer del mapa sin esperar a que el jugador cambie de pestaña y vuelva.
   async function handleRecoger(droppedItemId: string) {
+    if (bloqueoMovimiento) {
+      setMensajeMovimiento(bloqueoMovimiento)
+      return
+    }
     await recogerDroppedItem(saveId, droppedItemId)
     getZona(saveId).then(setData).catch(() => {})
   }
@@ -440,6 +447,10 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
   }
 
   async function handleMoverA(destino: { x: number; y: number }): Promise<ZonaResponse | null> {
+    if (bloqueoMovimiento) {
+      setMensajeMovimiento(bloqueoMovimiento)
+      return null
+    }
     const miToken = ++movimientoTokenRef.current
     setMovimientoEnCurso(true)
     setMensajeMovimiento(null)

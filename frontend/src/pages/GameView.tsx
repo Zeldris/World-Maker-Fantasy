@@ -544,6 +544,8 @@ export function GameView() {
   // UX-5 (hito 0.2) — paneles en modo consulta: se abren y se leen, pero lo que cambia datos se
   // deshabilita con el motivo (contexto ModoConsulta).
   const modoConsulta = puede('modificarPanel').motivo
+  // UX-7 (hito 0.2) — la brújula y el mapa de zona: moverse solo en `libre`.
+  const permisoMover = puede('moverse')
 
   // Pop del botón "Nivel X" solo en una subida real, nunca al cargar la partida (roadmap de
   // animaciones 2026-07-20, item 7) — mismo patrón que HealthBar: comparar contra un ref, no
@@ -1491,12 +1493,16 @@ export function GameView() {
               POR ENCIMA del `PanelDrawer` de Mapa/Reputación/Diario/etc., que vive en `z-20` — ese
               drawer nunca contó como "modal" para `anyModalOpen`, así que la brújula tapaba su
               contenido en vez de quedar oculta detrás). */}
-          {saveId && !anyModalOpen && !zonaModalOpen && !activePanel && !combateForzadoPendiente && (
+          {/* UX-7 (hito 0.2) — si la fase no deja moverse (narrador escribiendo, encuentro, combate…),
+              la brújula sigue a la vista pero deshabilitada con el motivo, en vez de desaparecer. */}
+          {saveId && !anyModalOpen && !zonaModalOpen && !activePanel && (
             <button
               type="button"
               onClick={() => setZonaModalOpen(true)}
-              title="Moverte por la zona"
-              className="tactile absolute bottom-1 left-1/2 z-40 hidden h-12 w-12 -translate-x-1/2 items-center justify-center rounded-full border border-accent2-600/60 bg-wood-950/90 text-xl shadow-lg backdrop-blur-sm transition-colors hover:border-accent2-400 hover:bg-wood-900 lg:flex"
+              disabled={!permisoMover.permitido}
+              title={permisoMover.motivo ?? 'Moverte por la zona'}
+              aria-label="Moverte por la zona"
+              className="tactile absolute bottom-1 left-1/2 z-40 hidden h-12 w-12 -translate-x-1/2 items-center justify-center rounded-full border border-accent2-600/60 bg-wood-950/90 text-xl shadow-lg backdrop-blur-sm transition-colors hover:border-accent2-400 hover:bg-wood-900 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-accent2-600/60 disabled:hover:bg-wood-950/90 lg:flex"
             >
               🧭
             </button>
@@ -2062,6 +2068,7 @@ export function GameView() {
             handleSubmit(actionText)
           }}
           bloqueoTurno={bloqueoTurno}
+          bloqueoMovimiento={permisoMover.motivo}
           // Icono de parcela (§ 7.4, 2026-09-21) — roster estático ya cargado por useRecipesData
           // (nombre/descripción por recipeKey) + refreshSave (mismo callback que ya usa ReinoPanel
           // tras "Descansar en campamento", una acción directa sin /turn/narrate).

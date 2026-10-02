@@ -190,8 +190,12 @@ stateDiagram-v2
 - **UX-6 · Un narrador a la vez** — al enviar una acción con la ambientación del mundo en marcha:
   (A) esperar con el mensaje "Tu acción saldrá en cuanto el mundo termine", o (B) cancelar la
   ambientación. 🧭 Resuelve H4. **S**
-- **UX-7 · La brújula y el mapa respetan la fase** — moverse solo en `libre`; en el resto, el botón
-  sigue visible, deshabilitado y con el motivo. Resuelve H5 y H6. **S**
+- ~~**UX-7 · La brújula y el mapa respetan la fase** — moverse solo en `libre`; en el resto, el botón
+  sigue visible, deshabilitado y con el motivo. Resuelve H5 y H6. **S**~~ ✅ 2026-10-02: la brújula
+  ya no desaparece con un encuentro pendiente; se deshabilita con el motivo de
+  `canDo(fase, 'moverse')`. El mapa de zona recibe `bloqueoMovimiento`: andar y recoger del suelo
+  no piden nada al backend y dejan el motivo a la vista (el mapa se sigue consultando). Sigue oculta
+  bajo un modal o el cajón (lo decidirá el gestor de capas, `UX-9`).
 - **UX-8 · Bloqueos visibles** — un icono de candado y el motivo en tooltip en todo lo
   deshabilitado; en la cabecera, un indicador de la fase actual ("✒️ El narrador escribe", "🧭 De
   viaje · 12 min", "⚔️ En combate"). **S**
