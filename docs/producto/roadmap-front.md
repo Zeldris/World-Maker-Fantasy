@@ -394,8 +394,12 @@ Todos tienen el mismo ancho (`max-w-md`), la misma entrada (`combat-enter`) y ni
   de la pregunta del doble clic) y Fundar reino («Mantén para fundar»). **Queda:** muerte y subida
   de nivel no son modales hoy (la muerte sustituye al composer, la subida es una entrada del
   registro); pasarán a ceremonia si se rediseñan como modales.
-- **MOD-5 · `QuantityStepper` compartido** **S** — sustituye las 5 copias (H26): botón *Máx.*,
-  mantener pulsado para repetir, rueda del ratón, número editable y vista previa del efecto.
+- ~~**MOD-5 · `QuantityStepper` compartido** **S** — sustituye las 5 copias (H26): botón *Máx.*,
+  mantener pulsado para repetir, rueda del ratón, número editable y vista previa del efecto.~~ ✅ 2026-10-02:
+  `components/QuantityStepper.tsx` (−/+ que repiten al mantener, número editable, rueda sobre el
+  número enfocado, «Máx.» hasta el `tope` con su motivo) en Curar, Comer, Beber y Recolectar.
+  Producción ya usaba `NumeroGuardable`. **Queda:** la vista previa del efecto dentro del propio
+  selector (hoy cada modal la enseña en su resumen).
 - **MOD-6 · `EntityRow` con miniatura** **S** — cada objeto, NPC, criatura o recurso de un modal
   enseña su miniatura de la enciclopedia o el icono SVG de su categoría (H27).
 

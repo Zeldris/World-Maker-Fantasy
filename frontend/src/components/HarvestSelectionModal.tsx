@@ -6,6 +6,7 @@ import { SelectionModalShell, confirmButtonClasses } from './SelectionModalShell
 import { useAsyncModalData } from '../hooks/useAsyncModalData'
 import { GatheringDiceReveal } from './GatheringDiceReveal'
 import { CargandoModal, ErrorCarga } from './EstadosModal'
+import { QuantityStepper } from './QuantityStepper'
 
 interface HarvestSelectionModalProps {
   saveId: string
@@ -208,25 +209,15 @@ export function HarvestSelectionModal({
                             className={`flex items-center justify-between gap-2 rounded px-1.5 py-1 text-xs text-wood-300 ${roll ? 'animate-entry-in' : ''} ${isHighlighted ? 'bg-accent-500/10 ring-1 ring-accent-500/40' : ''}`}
                           >
                             <span className="min-w-0 truncate">{y.itemName}</span>
-                            <div className="flex shrink-0 items-center gap-2">
-                              <button type="button"
-                                onClick={() => setQuantity(key, value - 1, max)}
-                                disabled={value <= 0}
-                                className="tactile flex h-6 w-6 items-center justify-center rounded border border-iron-700 text-wood-300 disabled:cursor-not-allowed disabled:opacity-40"
-                              >
-                                −
-                              </button>
-                              <span className="w-10 text-center font-mono tabular-nums">
-                                {value}/{max}
-                              </span>
-                              <button type="button"
-                                onClick={() => setQuantity(key, value + 1, max)}
-                                disabled={value >= max || espacioLibre - totalSeleccionado <= 0}
-                                className="tactile flex h-6 w-6 items-center justify-center rounded border border-iron-700 text-wood-300 disabled:cursor-not-allowed disabled:opacity-40"
-                              >
-                                +
-                              </button>
-                            </div>
+                            <QuantityStepper
+                              value={value}
+                              max={max}
+                              tope={Math.min(max, value + espacioLibre - totalSeleccionado)}
+                              onChange={(n) => setQuantity(key, n, max)}
+                              etiqueta={y.itemName}
+                              motivoTope="No te cabe más en la mochila"
+                              mostrarMax
+                            />
                           </div>
                         )
                       })}

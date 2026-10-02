@@ -3,6 +3,7 @@ import type { InventoryItemInfo, CondicionFisica } from '../types'
 import { CONDICION_LABEL, applySequentialHeals } from '../lib/health'
 import { quantityOf, baseNameOf } from '../lib/gameViewHelpers'
 import { SelectionModalShell, confirmButtonClasses } from './SelectionModalShell'
+import { QuantityStepper } from './QuantityStepper'
 
 interface HealSelectionModalProps {
   inventory: InventoryItemInfo[]
@@ -135,26 +136,14 @@ export function HealSelectionModal({ inventory, condicionFisica, onConfirm, onCa
                     {max > 1 ? ` · llevas ${max}` : ''}
                   </span>
                 </span>
-                <div className="flex shrink-0 items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setQuantity(item.id, value - 1, max)}
-                    disabled={value <= 0}
-                    className="tactile h-6 w-6 rounded border border-iron-700 text-wood-300 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    −
-                  </button>
-                  <span className="w-4 text-center font-mono text-wood-100">{value}</span>
-                  <button
-                    type="button"
-                    onClick={() => setQuantity(item.id, value + 1, max)}
-                    disabled={value >= max || blockedByIleso}
-                    title={blockedByIleso ? 'Ya estarías ileso con lo marcado — no hace falta más' : undefined}
-                    className="tactile h-6 w-6 rounded border border-iron-700 text-wood-300 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    +
-                  </button>
-                </div>
+                <QuantityStepper
+                  value={value}
+                  max={max}
+                  tope={blockedByIleso ? value : max}
+                  onChange={(n) => setQuantity(item.id, n, max)}
+                  etiqueta={item.name}
+                  motivoTope="Ya estarías ileso con lo marcado — no hace falta más"
+                />
               </div>
             )
           })}
