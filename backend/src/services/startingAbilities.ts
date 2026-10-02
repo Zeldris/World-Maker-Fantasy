@@ -218,6 +218,30 @@ const GORHORN_REINO_ABILITIES: StartingAbility[] = [
     promptText: 'Amplío mi ayuntamiento hasta convertirlo en uno grande.',
     category: 'reino',
   },
+  // Jaulas (Fase G del 0.1, hallazgo G29) — sin oficio en construction.ts («cualquiera puede
+  // levantar una jaula sencilla»), pero no estaban aquí: tras capturar un animal no había ningún
+  // botón para levantar dónde depositarlo (solo escribirlo a mano). Tamaño según la criatura.
+  {
+    name: 'Construir jaula pequeña',
+    icon: '🪤',
+    description: 'Levanta una jaula sencilla de varas y cuerda para un animal pequeño capturado — donde ganarte su confianza.',
+    promptText: 'Construyo una jaula pequeña con lo que llevo encima.',
+    category: 'reino',
+  },
+  {
+    name: 'Construir jaula mediana',
+    icon: '🪤',
+    description: 'Levanta una jaula robusta de postes reforzados con hueso para un animal de tamaño medio capturado.',
+    promptText: 'Construyo una jaula mediana con lo que llevo encima.',
+    category: 'reino',
+  },
+  {
+    name: 'Construir jaula grande',
+    icon: '🪤',
+    description: 'Levanta una jaula grande para una bestia capturada de gran tamaño.',
+    promptText: 'Construyo una jaula grande con lo que llevo encima.',
+    category: 'reino',
+  },
 ];
 
 export function startingAbilitiesFor(characterName: string): StartingAbility[] {
