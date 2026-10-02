@@ -429,6 +429,20 @@ export function GameView() {
     handleAssignEspecializacion,
   } = useClaseEspecializacionState(saveId, syncFromSave)
   const [combateIniciado, setCombateIniciado] = useState<{ npcs: NpcInSceneInfo[] } | null>(null)
+  // Fase G del 0.1 (hallazgo G8): al cerrar un combate 1v1 contra fauna, el cadáver ya estaba
+  // en el backend pero «Hay presas caídas sin desollar» no salía hasta cambiar de escena (la
+  // comprobación de arriba solo mira la ubicación). Se recomprueba al pasar de combate a sin combate.
+  const habiaCombateRef = useRef(false)
+  useEffect(() => {
+    const hayCombate = combateIniciado !== null
+    const acabaDeTerminar = habiaCombateRef.current && !hayCombate
+    habiaCombateRef.current = hayCombate
+    if (!acabaDeTerminar || !saveId) return
+    getRecolectarLocalizado(saveId, 'desollador')
+      .then(({ sources }) => checkCarcassPending(sources.length > 0))
+      .catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `checkCarcassPending` es un setter con nombre, estable en la práctica (mismo criterio que el efecto de ubicación de arriba)
+  }, [combateIniciado, saveId])
   // Rediseño del turno de combate (2026-07-29, "quiero que sea más claro cuando es turno de
   // ataque... indicándome qué salió en los dados") — tirada real de iniciativa del último turno
   // resuelto, para que CombatPanel explique CON NÚMEROS por qué le toca atacar/defender ahora.
