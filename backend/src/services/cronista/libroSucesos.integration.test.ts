@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
+import { advanceCorpseAndRecoveryTimeouts } from '../companionSupervivencia.js';
 import { registrarSuceso } from './sucesos.js';
 
 // CR-1 (hito 0.2, roadmap-cronista.md § 5.1): el esquema del Libro de Sucesos contra Postgres real —
@@ -166,5 +167,48 @@ describe('registrarSuceso (CR-2)', () => {
       }),
     ).rejects.toThrow('el turno falla');
     expect(await prisma.suceso.count({ where: { saveId, tipo: 'TORMENTA' } })).toBe(0);
+  });
+});
+
+// CR-3 (hito 0.2): con el tiempo, un NPC convaleciente se recupera y un cadáver desaparece — los dos
+// quedan en el Libro (barrido del mundo, `advanceCorpseAndRecoveryTimeouts`).
+describe('emisores de recuperación y cadáveres (CR-3)', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const save = await prisma.save.create({
+      data: {
+        userId: await getDefaultUserId(), worldId: world.id, characterName: 'Gorhorn de prueba (timeouts del Libro)', characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor', characterMotivation: 'x', portraitInitial: 'G',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId, fictionalMinutes: 10 * 1440 } });
+  });
+
+  afterAll(async () => {
+    await prisma.save.deleteMany({ where: { id: saveId } });
+  });
+
+  it('la recuperación y el cadáver que desaparece dejan RECUPERACION_NPC y CADAVER_DESAPARECE', async () => {
+    const [herido, muerto] = await Promise.all([
+      prisma.npc.findFirstOrThrow({ where: { slug: 'gistera-koh' } }),
+      prisma.npc.findFirstOrThrow({ where: { slug: 'aullador-rojo' } }),
+    ]);
+    await prisma.npcState.createMany({
+      data: [
+        { saveId, npcId: herido.id, scope: 'libro-timeouts', condicionFisica: 'CONVALECIENTE', condicionFisicaSinceMinutes: 0 },
+        { saveId, npcId: muerto.id, scope: 'libro-timeouts', condicionFisica: 'MUERTO', condicionFisicaSinceMinutes: 0 },
+      ],
+    });
+
+    await advanceCorpseAndRecoveryTimeouts(prisma);
+
+    const recuperacion = await prisma.suceso.findFirstOrThrow({ where: { saveId, tipo: 'RECUPERACION_NPC' } });
+    expect(recuperacion.texto).toBe(`${herido.name} se recupera de sus heridas.`);
+    const cadaver = await prisma.suceso.findFirstOrThrow({ where: { saveId, tipo: 'CADAVER_DESAPARECE' } });
+    expect(cadaver.texto).toBe(`Del cuerpo de ${muerto.name} ya no queda nada.`);
   });
 });

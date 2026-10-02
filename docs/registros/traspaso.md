@@ -14,7 +14,7 @@ cada commit.**
 | **Rama de trabajo** | `claude/frontend-improvements-roadmap-0mpckt`. Flujo acordado (2026-10-01): commit + push a esta rama con cada cosa hecha; a `main` se pasa **por pull request** (desde esta sesión el push directo a `main` lo bloquea el filtro de permisos) |
 | **Último commit en `main`** | Fusión del PR #3 (2026-10-02): bitácora recortada, paso 8 «después del 0.1», cobertura de roadmaps (367/367) y `tools/roadmap/cobertura.py`. La rama de trabajo y `main` quedan iguales |
 | **Hito** | `0.2` Facciones vivas — [plan](../producto/plan-roadmap-0.2.md) · [mapa de roadmaps](../producto/21-roadmap.md#qué-entra-en-cada-hito) (el `0.1` sigue abierto solo por las Fases E y F, ver abajo) |
-| **Tarea en curso** | `0.2` Fase A — Libro de Sucesos: ~~`CR-1`~~ ✅ (modelos), ~~`CR-2`~~ ✅ (`registrarSuceso` y catálogo); 🚧 `CR-3` emisores: hechos los del jugador (fundación, captura, Clemente, muerte/fin, despertar, muerte causada, combate ganado, misiones, construcción, entrega); hechos también relaciones, diplomacia, expediciones, agenda y clima (`dailyTick`); faltan combate perdido, población y cadáveres (lista al día en `roadmap-cronista.md` § 17) ([plan del 0.2](../producto/plan-roadmap-0.2.md)). Forma de trabajo: implementación continua con tests; pruebas de juego en la fase única antes de la beta (decisión de la usuaria, 2026-10-02). Del `0.1` quedan abiertas la Fase E (bloqueada, pobladores) y la F (Álvaro ejecuta el benchmark); la G, aplazada a la fase única |
+| **Tarea en curso** | `0.2` Fase A — Libro de Sucesos: ~~`CR-1`~~ ✅, ~~`CR-2`~~ ✅, ~~`CR-3`~~ ✅ (emisores); siguiente `CR-4` (vista de administración `/admin/partida/:id/libro`, solo lectura) ([plan del 0.2](../producto/plan-roadmap-0.2.md)). Forma de trabajo: implementación continua con tests; pruebas de juego en la fase única antes de la beta (decisión de la usuaria, 2026-10-02). Del `0.1` quedan abiertas la Fase E (bloqueada, pobladores) y la F (Álvaro ejecuta el benchmark); la G, aplazada a la fase única |
 | **Tests** | Frontend: `tsc -b` 0, `vitest` 56 archivos / 334 tests, `oxlint` 13 avisos (los mismos de antes). Backend en local con Postgres real: `tsc` 0, `vitest` 165/165 archivos, 2874 tests (última pasada completa, 2026-10-02); 1 test intermitente apuntado (G16). CI de GitHub en verde (PR #3) |
 
 ## Dónde está todo (para saber qué sigue)
@@ -96,6 +96,7 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
+- **2026-10-02** — `CR-3`: el Libro de Sucesos ya recibe los sucesos del jugador y del mundo (combate, misiones, reino, diplomacia, expediciones, agenda, clima, cadáveres).
 - **2026-10-02** — `CR-2`: `registrarSuceso()` y catálogo de los 74 tipos de suceso (familia, importancia, plantilla).
 - **2026-10-02** — `CR-1`: modelos del Libro de Sucesos (`Suceso`, `SucesoCausa`, `SucesoActor`) con migración y test; el reinicio de partida vacía el Libro.
 - **2026-10-02** — Fase G aplazada a una fase única de pruebas antes de la beta (decisión de la usuaria); se empieza el `0.2`. G1-G29 en `fase-g-0.1-hallazgos.md` (21 arreglados).
@@ -111,5 +112,3 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
   según lo que sabe cada personaje y recogidas sin recargar.
 - **2026-10-02** — Z-A paso 4: `ZON-20` (leyenda en la esquina del mapa) y `ZON-62` (cuadrícula con
   `Alt` o botón). **Zona Z-A completa; con ella, todos los arreglos de interfaz del 0.1.**
-- **2026-10-02** — Z-A paso 3: `ZON-17` (salidas como estandartes con el destino) y `ZON-19`
-  (nombres cerca del personaje, del seleccionado y al pasar el ratón).

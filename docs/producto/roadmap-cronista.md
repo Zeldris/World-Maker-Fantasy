@@ -842,24 +842,21 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
 ### Fase 1 — Libro de Sucesos (sin IA) · **M-L**
 - ~~**CR-1** Modelos `Suceso`, `SucesoCausa`, `SucesoActor`, enums. **S**~~ ✅ 2026-10-02: modelos y enums en `schema.prisma` (migración `20261002120000_libro_de_sucesos`, hecha con `migrate diff` porque la base sombra no tiene pgvector), el reinicio de partida vacía el Libro, test de integración `services/cronista/libroSucesos.integration.test.ts`. Quedan para sus tareas: `Conocimiento` (CR-18) y el `embedding` (cuando se use).
 - ~~**CR-2** `registrarSuceso()`, importancia y plantillas de texto para todos los tipos de § 6.1. **M**~~ ✅ 2026-10-02: `services/cronista/catalogoSucesos.ts` (los 74 tipos de § 6.1 con familia, importancia base de § 6.3 y plantilla; datos tipados por tipo) y `services/cronista/sucesos.ts` (`registrarSuceso`, dentro de la transacción del llamador; modificadores +1 jugador autor / núcleo jugable / hilo). Del contrato de § 6.2 quedan para sus tareas: sembrar `Conocimiento` (CR-18) y encolar reacciones (CR-10). Tests: `catalogoSucesos.test.ts` y `libroSucesos.integration.test.ts`.
-- **CR-3** Emisores en: turno (`turnResolution.ts`: combate, muerte causada, perdón, captura,
+- ~~**CR-3** Emisores en: turno (`turnResolution.ts`: combate, muerte causada, perdón, captura,
   misión, construcción, fundación, entrega), `death.ts`, `recordFactionEvent`, expediciones,
-  población, agenda, clima, `dailyTick`, cadáveres/recuperación. **M**
-  🚧 en curso (2026-10-02). Hechos: fundación de reino (`REINO_FUNDADO`, `reino.ts`), captura
-  (`CAPTURA`, `companeros.ts`), Clemente (`PERDON_CONCEDIDO`, `session.ts`, los dos caminos),
-  muerte del jugador y fin de partida (`MUERTE_JUGADOR`, `FIN_PARTIDA`, `turnResolution.ts`) y
-  despertar (`RENACER`, `death.ts`; el reinicio total no lo registra porque vacía el Libro), con
-  aserciones en sus tests de integración. También (2/3): muerte causada y combate ganado
-  (`applyKillSideEffects`, 1v1 y grupo; en grupo el autor es el bando del jugador), misiones
-  completadas/fallidas por los 5 caminos (`cronista/emisores.ts` → `registrarFinDeMision`),
-  construcción (`EDIFICIO_CONSTRUIDO`, receta y edificio narrado) y entrega (`REGALO`).
-  También (3/3, parte): cambios de banda de relación desde `recordFactionEvent` (guerra, alianza,
-  tratado, tregua o cambio; en la partida que lo causa o, si es del mundo, en todas las del mundo),
-  sabotaje y espionaje del diplomático, y salida / asalto / vuelta de expediciones
-  (`registrarEnPartidasDelMundo`, `cronista/emisores.ts`). Convención: actores FACCION por slug.
-  Agenda Serhu: cada etapa cruzada deja su suceso (`sucesosDeEtapaConflicto`, `worldAgenda.ts`).
-  Clima en `runDailyTick` (`cronista/clima.ts`): tormentas de la región del personaje y cambio de
-  estación (las 8 regiones llenarían el Libro). Faltan: combate perdido, población, cadáveres/recuperación.
+  población, agenda, clima, `dailyTick`, cadáveres/recuperación. **M**~~ ✅ 2026-10-02.
+  Emisores: fundación (`REINO_FUNDADO`), captura, Clemente (`PERDON_CONCEDIDO`), muerte del
+  jugador / fin de partida / despertar, muerte causada y combate ganado (`applyKillSideEffects`,
+  1v1 y grupo; en grupo el autor es el bando del jugador), combate perdido (caer convaleciente),
+  misiones completadas/fallidas por sus 5 caminos (`registrarFinDeMision`), construcción, entrega
+  (`REGALO`), cambios de banda de relación (`recordFactionEvent(…, saveId?)`), sabotaje y
+  espionaje, expediciones (salida/asalto/vuelta), etapas de la agenda Serhu, clima (tormentas en la
+  región del personaje y cambio de estación, `cronista/clima.ts`) y recuperación/cadáver
+  (`registrarSucesoDeNpc`). Los del mundo se apuntan en cada partida viva del mundo
+  (`registrarEnPartidasDelMundo`) hasta que CR-6 dé un mundo por partida. Convención de actores:
+  PERSONAJE = id de la partida, NPC = `Npc.id`, FACCION/REGION = slug.
+  **Queda fuera a propósito:** población (auge/declive): qué cambio merece un suceso lo decide el
+  narrador de fondo (`CR-12`). Tests de integración con aserciones del Libro en cada ruta.
 - **CR-4** Vista de administración `/admin/partida/:id/libro` (solo lectura). **M**
 - **Hecho cuando:** jugar 1 hora deja en el Libro todos los sucesos con causas correctas; tests de
   cada emisor.

@@ -38,3 +38,21 @@ export async function registrarEnPartidasDelMundo(
   for (const { id } of saves) ids.push(await registrarSuceso(db, construir(id, await minutosDeFiccion(db, id))));
   return ids;
 }
+
+/// Lo que le pasa con el tiempo a un NPC herido o muerto: se recupera de estar convaleciente, o su
+/// cadáver termina desapareciendo.
+export async function registrarSucesoDeNpc(
+  db: Db,
+  params: { saveId: string; npcId: string; tipo: 'RECUPERACION_NPC' | 'CADAVER_DESAPARECE'; fictionalMinutes: number },
+): Promise<string | null> {
+  const npc = await db.npc.findUnique({ where: { id: params.npcId }, select: { name: true } });
+  if (!npc) return null;
+  return registrarSuceso(db, {
+    saveId: params.saveId,
+    tipo: params.tipo,
+    fictionalMinutes: params.fictionalMinutes,
+    origen: 'MUNDO',
+    actores: [{ entidadTipo: 'NPC', entidadId: params.npcId, papel: 'AFECTADO' }],
+    datos: { npc: npc.name },
+  });
+}

@@ -1,4 +1,4 @@
-import { registrarFinDeMision } from './cronista/emisores.js';
+import { registrarFinDeMision, registrarSucesoDeNpc } from './cronista/emisores.js';
 import { env } from '../config/env.js';
 import { applyLootMode, applyCombatExchangeToNpcState, applyKillSideEffects, applyHarvest, applyFactionRepDeltaForResolution, goirnosDeBotin, pickFlavor, LOOT_FLAVOR_SUCCESS, LOOT_FLAVOR_EMPTY, HARVEST_FLAVOR_YA_DESPIEZADA } from './turnLootKill.js';
 
@@ -1966,7 +1966,7 @@ async function writeKingdomLogForBuild(
 async function applyCondicionTimeouts(tx: Prisma.TransactionClient, saveId: string, nowMinutes: number): Promise<void> {
   const affected = await tx.npcState.findMany({
     where: { saveId, condicionFisica: { in: ['CONVALECIENTE', 'MUERTO'] } },
-    select: { id: true, condicionFisica: true, condicionFisicaSinceMinutes: true },
+    select: { id: true, npcId: true, condicionFisica: true, condicionFisicaSinceMinutes: true },
   });
   for (const state of affected) {
     if (state.condicionFisica === 'CONVALECIENTE' && npcRecoversFromConvaleciente(state.condicionFisicaSinceMinutes, nowMinutes)) {
@@ -1974,8 +1974,10 @@ async function applyCondicionTimeouts(tx: Prisma.TransactionClient, saveId: stri
         where: { id: state.id },
         data: { condicionFisica: 'HERIDO', condicionFisicaSinceMinutes: nowMinutes },
       });
+      await registrarSucesoDeNpc(tx, { saveId, npcId: state.npcId, tipo: 'RECUPERACION_NPC', fictionalMinutes: nowMinutes });
     } else if (state.condicionFisica === 'MUERTO' && npcCorpseShouldDespawn(state.condicionFisicaSinceMinutes, nowMinutes)) {
       await tx.npcState.delete({ where: { id: state.id } });
+      await registrarSucesoDeNpc(tx, { saveId, npcId: state.npcId, tipo: 'CADAVER_DESAPARECE', fictionalMinutes: nowMinutes });
     }
   }
 }
@@ -6456,6 +6458,20 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       if (ownBuildingHere) {
         finalLastRestLocationId = currentLocationRecord.id;
       }
+    }
+
+    // Libro de Sucesos (CR-3, hito 0.2): caer convaleciente en un combate es perderlo (morir tiene
+    // su propio suceso, más abajo).
+    if (enCombate && proposedCondicion === 'CONVALECIENTE' && params.condicionFisica !== 'CONVALECIENTE') {
+      await registrarSuceso(tx, {
+        saveId,
+        tipo: 'COMBATE_PERDIDO',
+        fictionalMinutes: nuevoFictionalMinutes,
+        locationId: currentLocationId,
+        origen: 'JUGADOR',
+        actores: [{ entidadTipo: 'PERSONAJE', entidadId: saveId, papel: 'VICTIMA' }],
+        datos: { personaje: characterName, rival: npcAbilityUsed?.npcName ?? combatExchangeDisplayFinal?.rivalNombre ?? 'sus enemigos' },
+      });
     }
 
     let finalPendingDeathResolution = false;
