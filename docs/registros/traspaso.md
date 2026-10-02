@@ -12,10 +12,29 @@ cada commit.**
 |---|---|
 | **Actualizado** | 2026-10-01 |
 | **Rama de trabajo** | `claude/frontend-improvements-roadmap-0mpckt`. Flujo acordado (2026-10-01): commit + push a esta rama con cada cosa hecha; a `main` se pasa **por pull request** (desde esta sesión el push directo a `main` lo bloquea el filtro de permisos) |
-| **Último commit en `main`** | Fusión del PR #2 (2026-10-02, a petición de la usuaria): todo lo de esta rama hasta la Fase F, incluida esta línea |
+| **Último commit en `main`** | Fusión del PR #3 (2026-10-02): bitácora recortada, paso 8 «después del 0.1», cobertura de roadmaps (367/367) y `tools/roadmap/cobertura.py`. La rama de trabajo y `main` quedan iguales |
 | **Hito** | `0.1` Llanuras estable — [plan](../producto/plan-roadmap-0.1.md) · [mapa de roadmaps](../producto/21-roadmap.md#qué-entra-en-cada-hito) |
 | **Tarea en curso** | Ninguna. Fase F: script hecho, **falta que Álvaro lo ejecute en la Steam Deck** (`npm run benchmark-turno`). Fase E bloqueada (decisión de pobladores). Siguiente que se puede hacer sin esperar: Fase G (pasada de juego completa) |
 | **Tests** | Frontend: `tsc -b` 0, `vitest` 56 archivos / 330 tests, `oxlint` 13 avisos (los mismos de antes). Backend en local con Postgres real: `tsc` 0, `oxlint` 0 (solo avisos previos), `vitest` 165/165 archivos, 2869 tests. CI de GitHub en verde (PR #2) |
+
+## Dónde está todo (para saber qué sigue)
+
+Orden de lectura para decidir el siguiente trabajo, de lo general a lo concreto:
+
+1. **Esta bitácora** — qué se está haciendo ahora y el paso inmediato.
+2. **[Mapa de roadmaps](../producto/21-roadmap.md#mapa-de-roadmaps)** — la tabla [«Qué entra en cada
+   hito»](../producto/21-roadmap.md#qué-entra-en-cada-hito) dice, hito a hito (`0.1` → `1.0`), qué
+   tareas de cada roadmap tocan. Todas las tareas de todos los roadmaps están asignadas a un hito
+   (comprobado con `python3 tools/roadmap/cobertura.py`, 2026-10-02: 367 de 367).
+3. **[Plan del hito actual](../producto/plan-roadmap-0.1.md)** — fases A-G del `0.1` con su estado.
+4. **Los roadmaps por tema** — el detalle de cada tarea, con su estado (`✅`, `🚧`, pendiente):
+   - [roadmap-front.md](../producto/roadmap-front.md) — `CFG` `BAS` `DAD` `MOD` `PAN` `HUD` `NAR` `CMB` `ATM` `PRE` `SON` `QA` `INT`
+   - [roadmap-front-ux.md](../producto/roadmap-front-ux.md) — `UX` (fases UX-A…UX-F)
+   - [roadmap-front-zona.md](../producto/roadmap-front-zona.md) — `ZON` (fases Z-A…Z-F)
+   - [roadmap-front-reino.md](../producto/roadmap-front-reino.md) — `REI` (fases R-A…R-F)
+   - [roadmap-cronista.md](../producto/roadmap-cronista.md) — `CR` (fases 1-8)
+5. **Lore:** propuestas pendientes de Álvaro en `docs/borradores-opencode/propuestas-lore.md` (nunca
+   editar `docs/rpgtarkor/` directamente, ver `AGENTS.md`).
 
 ## Siguientes pasos (en orden)
 
@@ -32,6 +51,11 @@ Del [plan del 0.1](../producto/plan-roadmap-0.1.md) y del [mapa de roadmaps](../
 5. 🚧 **Fase F — latencia en la Steam Deck**: script `npm run benchmark-turno` hecho (2026-10-02); falta que Álvaro lo ejecute en la Steam Deck y pase el JSON.
 6. **Fase E — súbditos mínimos** (bloqueada, ver decisiones).
 7. **Fase G — pasada de juego completa** y cierre del hito.
+8. **Después del 0.1:** cerrar el hito (etiqueta `v0.1.0-alpha`, subida a GitHub) y seguir con el
+   hito `0.2` Facciones vivas según la fila `0.2` de
+   [«Qué entra en cada hito»](../producto/21-roadmap.md#qué-entra-en-cada-hito), y así hito a hito
+   hasta `1.0`. Regla del roadmap: un hito no empieza hasta cerrar el anterior; adelantar trabajo
+   del `0.2` mientras el `0.1` espera a Álvaro solo si él lo decide.
 
 ## Decisiones de Álvaro que bloquean algo
 
@@ -54,6 +78,7 @@ o no bloquean el 0.1.
 cd backend && npx tsc -p tsconfig.json --noEmit && npx vitest run && npx oxlint
 # Frontend
 cd frontend && npx tsc -b && npx vitest run && npx oxlint
+# Cobertura de los roadmaps (¿alguna tarea sin hito?): python3 tools/roadmap/cobertura.py
 # Si el contenedor se reinicia: pg_ctlcluster 16 main start y volver a lanzar el Ollama simulado
 #   (node tools/ci/mock-ollama.mjs &) — sin él fallan ~27 tests con ECONNREFUSED 11434.
 # Postgres desde cero en un contenedor nuevo (como la CI): apt install postgresql-16-pgvector,
@@ -89,37 +114,3 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
   espiar. **Reino R-A completa.**
 - **2026-10-02** — `REI-115`: tooltips con el efecto real de cada indicador, estado y rol de Reino.
   Hallazgo de la bebida apuntado en decisiones.
-- **2026-10-02** — `REI-114`: esqueletos de carga (`Esqueleto`) en producción y mercado.
-- **2026-10-02** — `REI-113`: `SelectorJuego` sustituye los `<select>` nativos de Reino.
-- **2026-10-02** — `REI-40`, `REI-41`: Almacén agrupado por recurso con su tope al lado (los topes
-  salen de Producción). Pendiente (backend): icono y categoría por recurso.
-- **2026-10-02** — `REI-33`: órdenes desactivadas con *Reactivar* y *Borrar*; límite de órdenes
-  *único* editable. Pendiente (backend): editar el modo de una orden.
-- **2026-10-02** — `REI-110`, `REI-112`: prioridad de órdenes y topes del Almacén se guardan con
-  `Enter`/al salir del campo, con ✓ de confirmación (`NumeroGuardable`).
-- **2026-10-02** — Fase C (2.º test intermitente): `OrdenProduccion`/territorio de
-  `turn.integration.test.ts` competían con la resolución de tránsito en segundo plano. Arreglado en
-  el test; ver plan del 0.1.
-- **2026-10-01** — `BAS-1`: Cinzel e Inter empaquetadas en `woff2` (sin Google Fonts; funcionan sin red).
-- **2026-10-01** — `CFG-33`: modo desarrollador (apagado por defecto, se activa en la página de
-  admin); las herramientas de prompts de imagen ya no salen en partida.
-- **2026-10-01** — `DAD-1`…`DAD-6`: Tameo reanima cada tirada y espera a los dados para el
-  veredicto; la tirada enseña la cuenta completa y quién gana; nombres reales; scroll solo si hace
-  falta; fallo en rojo.
-- **2026-10-01** — `UX-24` (+ `REI-111`): `ErrorBanner` con *Reintentar* en Reino y en la lista de
-  partidas; Descansar en el campamento avisa del fallo. Bloque UX-A del 0.1 completo.
-- **2026-10-01** — `UX-16`: la elección del asistente sobrevive a recargar (`sessionStorage`) y un
-  fallo al crear la partida avisa con *Reintentar*. `vitest.config.ts` incluye ya `src/context`.
-- **2026-10-01** — `UX-13`: composer deshabilitado y sin foco con cualquier capa abierta encima.
-- **2026-10-01** — **CI de GitHub en verde** por primera vez desde los tests con Postgres real
-  (run 79 del PR #2, con el arreglo de la Fase C).
-- **2026-10-01** — `UX-4`: las tarjetas del registro (misión, modo dinámico, NPC, recolección,
-  convalecientes) se deshabilitan con el motivo mientras no se puede actuar.
-- **2026-10-01** — `UX-3`: `handleSubmit` rechaza un turno si el narrador ya escribe (y el doble
-  clic); Construir, Viajar, Campamento y salida de zona se deshabilitan con el motivo. Front: `tsc`,
-  281 tests y lint sin avisos nuevos.
-- **2026-10-01** — Seis roadmaps coordinados en `main` (`423c8a5`): front, UX, mapa de zona, Reino,
-  Cronista, y `21-roadmap.md` convertido en roadmap de roadmaps. Solo documentación.
-- **2026-10-01** — Fase C del 0.1: test intermitente "ANALIZAR RIVAL: contra un miembro de grupo"
-  arreglado (el test suponía un orden de `findMany`; ahora usa el rival en duelo real). Fase A cerrada.
-- **2026-10-01** — Reglas de trabajo por relevos (`CLAUDE.md`) y esta bitácora.
