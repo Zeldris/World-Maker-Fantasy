@@ -13,11 +13,14 @@ interface PanelDrawerProps {
   /// UX-5 (hito 0.2) — si no es null, el panel está en modo consulta: se lee, pero lo que cambia
   /// datos está deshabilitado con este motivo.
   modoConsulta?: string | null
+  /// UX-12 (hito 0.2) — algo importante ha llegado al registro con el cajón abierto: aviso con
+  /// botón «Ver» (cierra el cajón para leerlo).
+  novedad?: { texto: string; onVer: () => void } | null
 }
 
 /// Panel deslizante genérico por encima de la partida — nunca navega a otra página, así el
 /// jugador no pierde de vista los logs/chat de fondo (docs/mecanicas/09-panel-personaje.md § 1).
-export function PanelDrawer({ title, subtitle, onClose, children, accent = 'accent', modoConsulta = null }: PanelDrawerProps) {
+export function PanelDrawer({ title, subtitle, onClose, children, accent = 'accent', modoConsulta = null, novedad = null }: PanelDrawerProps) {
   const hairlineClass = accent === 'accent2' ? 'accent2-hairline' : 'accent-hairline'
   const closeHoverClass = accent === 'accent2' ? 'hover:border-accent2-600/60 hover:text-accent2-300' : 'hover:border-accent-600/60 hover:text-accent-300'
   // Foco + scroll al inicio al abrirse (2026-08-31, "revisa bien todos los casos del foco/scroll")
@@ -62,6 +65,17 @@ export function PanelDrawer({ title, subtitle, onClose, children, accent = 'acce
           </button>
           <div className={`absolute inset-x-0 bottom-0 ${hairlineClass}`} />
         </div>
+        {novedad && (
+          <div role="status" className="animate-entry-in mx-5 mt-3 flex items-center justify-between gap-2 rounded-lg border border-accent-600/60 bg-accent-500/10 px-3 py-1.5 text-2xs text-accent-200">
+            <span>
+              <span aria-hidden="true">📜 </span>
+              {novedad.texto}
+            </span>
+            <button type="button" onClick={novedad.onVer} className="tactile shrink-0 rounded border border-accent-600/60 px-2 py-0.5 font-semibold uppercase tracking-wide text-accent-300 hover:bg-accent-500/20">
+              Ver
+            </button>
+          </div>
+        )}
         {modoConsulta && (
           <p role="status" className="mx-5 mt-3 rounded-lg border border-iron-700 bg-wood-950/60 px-3 py-1.5 text-2xs text-wood-400">
             👁 Solo consulta: {modoConsulta}

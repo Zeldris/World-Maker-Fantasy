@@ -263,10 +263,15 @@ stateDiagram-v2
   esperan a leer la narración (`UX-10`). **Queda:** encajar en la secuencia las reacciones de
   compañeros (`NAR-10`) y los sucesos del mundo recién sabidos (Cronista, `CR-18`…`CR-20`) cuando
   existan.
-- **UX-12 · Qué pasa con el cajón abierto cuando llega algo** — eventos **críticos** (combate,
+- ~~**UX-12 · Qué pasa con el cajón abierto cuando llega algo** — eventos **críticos** (combate,
   muerte, encuentro agresivo) cierran el cajón con animación; los **importantes** (narración nueva,
   oferta, misión) muestran una notificación y una marca en el registro; los **menores** no
-  interrumpen. Resuelve H10. **S**
+  interrumpen. Resuelve H10. **S**~~ ✅ 2026-10-02:
+  `lib/llegadas.ts` clasifica lo que entra al registro con el cajón abierto: combate o alguien que te
+  corta el paso → cierra el cajón; narración, oferta o misión → aviso «📜 …» dentro del cajón con
+  botón «Ver» (cierra el cajón para leerlo); tu propia acción no interrumpe. La «marca en el
+  registro» es la propia entrada nueva, que queda a la vista al cerrar. **Queda:** la notificación
+  general fuera del cajón llega con `HUD-6`.
 - ~~**UX-13 · `anyModalOpen` completo**, o mejor, sustituido por el gestor de capas: el composer
   pierde el foco y se deshabilita con cualquier capa ≥ 1 abierta. Resuelve H11. **S** **arreglo**~~
   ✅ 2026-10-01: el composer cuenta también el mapa de zona, Confirmar salida, Clase,

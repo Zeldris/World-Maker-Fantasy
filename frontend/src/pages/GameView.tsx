@@ -1,5 +1,6 @@
 import { useNoticiasMundo } from '../hooks/useNoticiasMundo'
 import { useGamePhase } from '../hooks/useGamePhase'
+import { avisoDeLlegadas, pesoDeLlegada } from '../lib/llegadas'
 import { useDecisionesEnCola } from '../hooks/useDecisionesEnCola'
 import { resolverCapas, type CapaAbierta } from '../lib/capas'
 import { CapasContext } from '../context/capasContext'
@@ -564,6 +565,22 @@ export function GameView() {
   // UX-5 (hito 0.2) — paneles en modo consulta: se abren y se leen, pero lo que cambia datos se
   // deshabilita con el motivo (contexto ModoConsulta).
   const modoConsulta = puede('modificarPanel').motivo
+  // UX-12 (hito 0.2) — lo que llega al registro con el cajón abierto (lib/llegadas.ts): lo crítico
+  // lo cierra, lo importante avisa dentro del cajón, lo menor no interrumpe. `inicioCajon` es la
+  // longitud del registro al abrirlo; null en el render de apertura, para no tomar como recién
+  // llegado todo lo anterior.
+  const [inicioCajon, setInicioCajon] = useState<number | null>(null)
+  const cajonAbierto = !!activePanel
+  useEffect(() => {
+    setInicioCajon(cajonAbierto ? characterLog.length : null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cajonAbierto])
+  const llegadasCajon = activePanel && inicioCajon !== null ? characterLog.slice(inicioCajon) : []
+  const llegaCritico = llegadasCajon.some((e) => pesoDeLlegada(e) === 'critico')
+  useEffect(() => {
+    if (llegaCritico) setActivePanel(null)
+  }, [llegaCritico, setActivePanel])
+  const avisoLlegadas = avisoDeLlegadas(llegadasCajon)
   // UX-7 (hito 0.2) — la brújula y el mapa de zona: moverse solo en `libre`.
   const permisoMover = puede('moverse')
   const etiquetaFase = etiquetaDeFase(fase)
@@ -2238,7 +2255,10 @@ export function GameView() {
 
       {activePanel && (
         <Capa id="panel">
-        <PanelDrawer title={panelTitles[activePanel]} accent={panelAccent[activePanel]} onClose={() => setActivePanel(null)} modoConsulta={modoConsulta}>
+        <PanelDrawer title={panelTitles[activePanel]} accent={panelAccent[activePanel]} onClose={() => setActivePanel(null)}
+          modoConsulta={modoConsulta}
+          novedad={avisoLlegadas ? { texto: avisoLlegadas, onVer: () => setActivePanel(null) } : null}
+        >
           <ModoConsultaContext.Provider value={modoConsulta}>
           {activePanel === 'personaje' && (
             <PersonajePanel
