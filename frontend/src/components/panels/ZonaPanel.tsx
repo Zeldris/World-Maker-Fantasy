@@ -49,6 +49,9 @@ interface ZonaPanelProps {
   /// UX-3 (hito 0.1) — motivo por el que ahora no se puede lanzar un turno (narrador escribiendo,
   /// ocupado…); `null`/ausente = libre. Deshabilita los botones que mandan una acción al turno.
   bloqueoTurno?: string | null
+  /// UX-7 (hito 0.2) — motivo de `canDo(fase, 'moverse')` si ahora no se puede andar ni recoger
+  /// (narrador escribiendo, encuentro, combate…). El mapa se sigue viendo; el paso no sale.
+  bloqueoMovimiento?: string | null
   /// Icono de parcela (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) — construir es DIRECTO,
   /// sin pasar por `onViajarA`/`/turn/narrate` (mismo criterio que "Descansar en campamento"). El
   /// roster estático de recetas (ya cargado una vez en GameView.tsx vía `useRecipesData`) resuelve
@@ -313,7 +316,7 @@ function regionControlDisplay(control: RegionControlInfo): { text: string; tone:
   }
 }
 
-export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, columnasAncho = false, onClose, onViajarA, professionRecipes, onRefreshSave, onOfertaDescartada, onHoraActualizada, onSaquearCadaver, onDesollarCadaver, bloqueoTurno }: ZonaPanelProps) {
+export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, columnasAncho = false, onClose, onViajarA, professionRecipes, onRefreshSave, onOfertaDescartada, onHoraActualizada, onSaquearCadaver, onDesollarCadaver, bloqueoTurno, bloqueoMovimiento = null }: ZonaPanelProps) {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<ZonaResponse | null>(null)
   // ZON-11 (hito 0.1) — unidades del lienzo por píxel de pantalla: las fichas miden siempre lo mismo.
@@ -396,6 +399,10 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
   // "Tirar" objetos al suelo de la Zona (2026-09-06, hallazgo 8) — tras recoger uno, el pin debe
   // desaparecer del mapa sin esperar a que el jugador cambie de pestaña y vuelva.
   async function handleRecoger(droppedItemId: string) {
+    if (bloqueoMovimiento) {
+      setMensajeMovimiento(bloqueoMovimiento)
+      return
+    }
     await recogerDroppedItem(saveId, droppedItemId)
     getZona(saveId).then(setData).catch(() => {})
   }
@@ -414,8 +421,16 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
   // (no en la vista informativa) y si el jugador no está ya pegado al pin.
   function irHastaPin(pin: { x: number; y: number }): (() => void) | undefined {
     if (soloConsulta) return undefined
-    if (data?.jugador && Math.abs(data.jugador.x - pin.x) <= 50 && Math.abs(data.jugador.y - pin.y) <= 50) return undefined
+    // Fase G del 0.1 (hallazgo G14): pegado ya al pin, la ficha se quedaba sin ninguna acción (ni
+    // ir, ni cazar) — tras ignorar un encuentro no había forma de volver a él sin alejarse. Ahora
+    // «Acercarte» pulsa la propia casilla, que en el backend vuelve a mirar los encuentros sin
+    // silenciar el último (mismo camino que clicar tu casilla en el mapa).
+    if (pegadoAPin(pin)) return () => void handleMoverA({ x: data!.jugador!.x, y: data!.jugador!.y })
     return () => void handleMoverA({ x: pin.x, y: pin.y })
+  }
+
+  function pegadoAPin(pin: { x: number; y: number }): boolean {
+    return !!data?.jugador && Math.abs(data.jugador.x - pin.x) <= 50 && Math.abs(data.jugador.y - pin.y) <= 50
   }
 
   // Cadáveres en el mapa (Fase 5, 2026-09-28) — mismo patrón que las salidas lejanas
@@ -432,6 +447,10 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
   }
 
   async function handleMoverA(destino: { x: number; y: number }): Promise<ZonaResponse | null> {
+    if (bloqueoMovimiento) {
+      setMensajeMovimiento(bloqueoMovimiento)
+      return null
+    }
     const miToken = ++movimientoTokenRef.current
     setMovimientoEnCurso(true)
     setMensajeMovimiento(null)
@@ -897,13 +916,14 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
       )}
       {selectedPoint &&
         ('id' in selectedPoint ? (
-          <ZonePointDetailModal point={selectedPoint} onClose={() => setSelectedPoint(null)} onIrHasta={irHastaPin(selectedPoint)} />
+          <ZonePointDetailModal point={selectedPoint} onClose={() => setSelectedPoint(null)} onIrHasta={irHastaPin(selectedPoint)} irHastaLabel={pegadoAPin(selectedPoint) ? 'Acercarte' : undefined} />
         ) : (
           <ZonePointDetailModal
             point={zonaDinamicoToDetailSource(selectedPoint)}
             onClose={() => setSelectedPoint(null)}
             onRecoger={handleRecoger}
             onIrHasta={irHastaPin(selectedPoint)}
+            irHastaLabel={pegadoAPin(selectedPoint) ? 'Acercarte' : undefined}
             onSaquear={onSaquearCadaver ? (npcSlug) => void accionSobreCadaver(selectedPoint, () => onSaquearCadaver(npcSlug)) : undefined}
             onDesollar={onDesollarCadaver ? (npcSlug) => void accionSobreCadaver(selectedPoint, () => onDesollarCadaver(npcSlug)) : undefined}
           />

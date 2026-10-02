@@ -1,3 +1,4 @@
+import { registrarSucesoDeNpc } from './cronista/emisores.js';
 import type { Prisma, PrismaClient, CondicionFisica, EquipSlot } from '@prisma/client';
 import type { Attribute, AttributeBlock } from './dice.js';
 import { rollOpposed, type OpposedRollResult } from './dice.js';
@@ -332,14 +333,16 @@ export async function advanceCorpseAndRecoveryTimeouts(prisma: PrismaClient): Pr
     if (nowMinutes == null) continue;
     const affected = await prisma.npcState.findMany({
       where: { saveId: s.id, condicionFisica: { in: ['CONVALECIENTE', 'MUERTO'] } },
-      select: { id: true, condicionFisica: true, condicionFisicaSinceMinutes: true },
+      select: { id: true, npcId: true, condicionFisica: true, condicionFisicaSinceMinutes: true },
     });
     for (const state of affected) {
       if (state.condicionFisica === 'CONVALECIENTE' && npcRecoversFromConvaleciente(state.condicionFisicaSinceMinutes, nowMinutes)) {
         await prisma.npcState.update({ where: { id: state.id }, data: { condicionFisica: 'HERIDO', condicionFisicaSinceMinutes: nowMinutes } });
+        await registrarSucesoDeNpc(prisma, { saveId: s.id, npcId: state.npcId, tipo: 'RECUPERACION_NPC', fictionalMinutes: nowMinutes });
         recovered++;
       } else if (state.condicionFisica === 'MUERTO' && npcCorpseShouldDespawn(state.condicionFisicaSinceMinutes, nowMinutes)) {
         await prisma.npcState.delete({ where: { id: state.id } });
+        await registrarSucesoDeNpc(prisma, { saveId: s.id, npcId: state.npcId, tipo: 'CADAVER_DESAPARECE', fictionalMinutes: nowMinutes });
         despawned++;
       }
     }

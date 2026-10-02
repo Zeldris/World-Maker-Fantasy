@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
-import { iniciarCombatEncounter, resolverTurnoAutonomo, resolverTurnoJugador, fijarEleccionRondaJugador } from './combateMultipleOrquestacion.js';
+import { iniciarCombatEncounter, resolverTurnoAutonomo, resolverTurnoJugador, fijarEleccionRondaJugador, resolverTurnosAutonomosHastaJugadora } from './combateMultipleOrquestacion.js';
 import type { HabilidadParaIntercambio } from './combateMultiple.js';
 import { parseActiveEffects, type ActiveEffect } from './activeEffects.js';
 
@@ -179,6 +179,28 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
 
     await prisma.combatEncounter.deleteMany({ where: { id: encounterId } });
   }, 15_000);
+
+  // Fase G del 0.1 (hallazgo G11): con un enemigo más rápido, su intercambio contra la jugadora
+  // resuelve el duelo de la ronda y el turno de ella se salta — ese intercambio tiene que llegar al
+  // caller para que el frontend lo pinte (antes la jugadora no veía ninguna tirada).
+  it('un enemigo más rápido que la ataca deja su intercambio en intercambiosContraJugadora', async () => {
+    const enemigo = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } });
+    const { encounterId } = await prisma.$transaction((tx) =>
+      iniciarCombatEncounter(tx, saveId, [
+        { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 1, inteligencia: 10 },
+        { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-jugadora-g11', destreza: 1000, inteligencia: 6 },
+      ]),
+    );
+
+    const ronda = await resolverTurnosAutonomosHastaJugadora({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
+
+    expect(ronda.intercambiosContraJugadora.length).toBeGreaterThanOrEqual(1);
+    expect(ronda.intercambiosContraJugadora[0].display.atacanteEsJugador).toBe(false);
+    expect(ronda.intercambiosContraJugadora[0].atacanteNombre).toBe(enemigo.name);
+
+    await prisma.combatEncounter.delete({ where: { id: encounterId } });
+    await prisma.save.update({ where: { id: saveId }, data: { activeEffects: [], condicionFisica: 'ILESO', energia: 100 } });
+  }, 30_000);
 
   it('con la jugadora en persona en un bando — resolverTurnoJugador ataca, resolverTurnoAutonomo cubre el resto', async () => {
     const enemigo = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } });

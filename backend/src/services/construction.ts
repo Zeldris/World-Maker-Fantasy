@@ -1568,7 +1568,7 @@ export async function computeBuildBlockedReason(params: {
       // no tiene sentido (sería un segundo "edificio de reino" normal ahí), así que también se
       // bloquea, igual que la Choza.
       if (activeRegion === ayuntamiento.location.region) {
-        return 'un Cuartel Avanzado se levanta en una región distinta a la del Ayuntamiento — para expandir dentro de la misma región ya está la Choza';
+        return 'un Cuartel Avanzado se levanta en una región distinta a la del Ayuntamiento — para expandir dentro de la misma región ya está la Choza (la levanta un carpintero, desde Habilidades → Profesiones)';
       }
       const cuartelCount = await db.building.count({
         where: { saveId, recipeKey: { in: CUARTEL_AVANZADO_RECIPE_KEYS }, status: 'ACTIVO' },

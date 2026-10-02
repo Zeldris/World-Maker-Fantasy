@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
+import { startingAbilitiesFor } from '../../services/startingAbilities.js';
 import { maxCombatAbilitiesFor } from '../../services/progression.js';
 import { energiaMaxFor } from '../../services/energy.js';
 import { destinationsFrom } from '../../services/travel.js';
@@ -79,6 +80,18 @@ export async function detailRoutes(app: FastifyInstance) {
         skipDuplicates: true,
       });
       save.skillBars = await prisma.skillBar.findMany({ where: { saveId: save.id }, orderBy: [{ slotIndex: 'asc' }] });
+    }
+
+    // Fase G del 0.1 (hallazgo G29): habilidades de Reino añadidas después de crear la partida (las
+    // jaulas) — misma reconciliación en lectura, solo categoría 'reino' (las de partida inicial no se
+    // pueden borrar, así que una que falte es que no existía al crearla).
+    {
+      const tiene = new Set(save.savedActions.map((a) => a.name));
+      const faltan = startingAbilitiesFor(save.characterName).filter((a) => a.category === 'reino' && !tiene.has(a.name));
+      if (faltan.length > 0) {
+        await prisma.savedAction.createMany({ data: faltan.map((a) => ({ ...a, saveId: save.id, isStarting: true })) });
+        save.savedActions = await prisma.savedAction.findMany({ where: { saveId: save.id }, orderBy: { createdAt: 'asc' } });
+      }
     }
 
     // B19 (pruebas 2026-09-28): partidas que subieron de nivel con especialización elegida antes de

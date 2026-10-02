@@ -6,7 +6,7 @@ vi.mock('../../lib/api', async (importOriginal) => {
   return { ...real, getZona: vi.fn(), moverEnZona: vi.fn(), recogerDroppedItem: vi.fn() }
 })
 
-import { getZona } from '../../lib/api'
+import { getZona, moverEnZona } from '../../lib/api'
 import { ZonaPanel } from './ZonaPanel'
 
 /// Z-A (hito 0.1, roadmap-front-zona.md) — ZON-20 (leyenda en el mapa) y ZON-62 (cuadrícula bajo demanda).
@@ -65,3 +65,26 @@ describe('ZonaPanel — Z-A', () => {
     expect(leyenda.textContent).toContain('Salida de la región')
   })
 })
+
+/// UX-7 (hito 0.2) — el mapa de zona respeta la fase: con un motivo para no moverse, el clic no
+/// pide el paso al backend y deja el motivo a la vista.
+describe('ZonaPanel — UX-7', () => {
+  afterEach(() => {
+    cleanup()
+    vi.clearAllMocks()
+  })
+
+  it('con bloqueoMovimiento, ir hacia una salida lejana no llama a moverEnZona y enseña el motivo', async () => {
+    const salida = { locationId: 'l2', slug: 'vado', nombre: 'Vado', x: 700, y: 500, visitada: true, alcanzable: false, teaser: null, description: null, imageUrl: null }
+    vi.mocked(getZona).mockResolvedValue({ ...zona, salidas: [salida] } as never)
+    const utils = render(<ZonaPanel saveId="s1" bloqueoMovimiento="El narrador todavía está escribiendo." />)
+    await act(async () => {})
+    const marcador = Array.from(utils.container.querySelectorAll('svg g > title')).find((t) => t.textContent === 'Vado')!.parentElement!
+    await act(async () => {
+      fireEvent.click(marcador)
+    })
+    expect(moverEnZona).not.toHaveBeenCalled()
+    expect(utils.getByText('El narrador todavía está escribiendo.')).toBeTruthy()
+  })
+})
+

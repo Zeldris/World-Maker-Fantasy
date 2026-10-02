@@ -1,4 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
+// Libro de Sucesos (CR-3): tiene sus propios tests; aquí la transacción simulada no lo lleva.
+vi.mock('./cronista/sucesos.js', () => ({ registrarSuceso: vi.fn(async () => 'suceso-1') }));
 import { advanceEntry, initialAgenda, parseAgenda, advanceWorldAgenda, regionControlFor, type AgendaEntry } from './worldAgenda.js';
 
 const loadSessionFacts = vi.fn();
@@ -208,5 +210,21 @@ describe('Fase D — control de región desde la relación real', () => {
     expect(regionControlDesdeStage('Ciénaga Troncal', 4, 'Clan Goshg')).toMatchObject({ estado: 'CONQUISTADA' });
     expect(regionControlDesdeStage('Las Llanuras del Viento Rojo', 4, 'Clan Serhu').estado).toBe('NEUTRAL_O_DUENO_ORIGINAL');
     expect(regionControlDesdeStage('Meseta del Orden', 4, 'Concordia de Hierro').estado).toBe('NEUTRAL_O_DUENO_ORIGINAL');
+  });
+});
+
+// CR-3 (hito 0.2): lo que apunta el Libro de Sucesos al cruzar cada etapa del conflicto.
+import { sucesosDeEtapaConflicto } from './worldAgenda.js';
+import { textoDeSuceso, type TipoSuceso, type DatosSuceso } from './cronista/catalogoSucesos.js';
+
+describe('sucesosDeEtapaConflicto', () => {
+  const textos = (etapa: number) => sucesosDeEtapaConflicto(etapa).map((s) => textoDeSuceso(s.tipo as TipoSuceso, s.datos as DatosSuceso[TipoSuceso]));
+
+  it('cada etapa 1-4 deja su suceso, con frases bien construidas', () => {
+    expect(textos(1)).toEqual(['La relación entre el Clan Serhu y los clanes Helsig y Goshg pasa de escaramuzas sueltas a incursiones organizadas.']);
+    expect(textos(2)).toEqual(['El Clan Serhu y la Concordia de Hierro sellan una alianza.']);
+    expect(textos(3)).toEqual(['El Clan Helsig pierde parte de sus asentamientos.', 'El Clan Goshg pierde parte de sus asentamientos.']);
+    expect(textos(4)).toEqual(['El Clan Serhu, con la Concordia de Hierro, declara la guerra a los clanes Helsig y Goshg.']);
+    expect(sucesosDeEtapaConflicto(0)).toEqual([]);
   });
 });

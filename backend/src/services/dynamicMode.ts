@@ -203,7 +203,7 @@ export function narrarVueltaGistera(vuelta: number, respuesta: RespuestaGistera 
   if (respuesta === 'aceptar') {
     return {
       narration:
-        'Gistera esboza un gesto de alivio que apenas dura un instante. «Gracias, Gorhorn, no puedo quedarme aquí más tiempo pero si nos volvemos a ver te lo agradeceré como corresponde!» Se aleja a toda velocidad entre las rocas de la hondonada sin mirar atrás.',
+        'Gistera esboza un gesto de alivio que apenas dura un instante. «Gracias, Gorhorn. No puedo quedarme aquí más tiempo, pero si nos volvemos a ver, ¡te lo agradeceré como corresponde!» Se aleja a toda velocidad entre las rocas de la hondonada sin mirar atrás.',
       opciones: [],
       cierra: true,
     };

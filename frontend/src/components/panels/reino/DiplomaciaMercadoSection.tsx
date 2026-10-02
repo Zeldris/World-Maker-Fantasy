@@ -8,6 +8,7 @@ import { razaThemeStyleVars } from '../../../lib/razaTheme'
 import { ErrorBanner } from '../../../components/ErrorBanner'
 import { useErrorConReintento } from '../../../hooks/useErrorConReintento'
 import { Esqueleto } from '../../Esqueleto'
+import { useModoConsulta } from '../../../context/useModoConsulta'
 
 // Bandas de FactionRelation (0-100, 50=neutro) — mismo lenguaje visual que REPUTATION_BANDS de
 // ReputacionPanel.tsx (banda con nombre + color), pero sobre un `type`/escala distintos: aquí la
@@ -117,6 +118,8 @@ function DiplomaciaCard({
   /// espiar no cambian si hay tratado o no, ver `verificaTratadoComercial` en backend).
   onNegociarExito: () => void
 }) {
+  // UX-5 (hito 0.2) — modo consulta: lo que cambia datos se deshabilita con el motivo.
+  const consulta = useModoConsulta()
   const [resultado, setResultado] = useState<DiplomaciaResultado | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<'negociar' | 'sabotear' | 'espiar' | null>(null)
@@ -147,7 +150,7 @@ function DiplomaciaCard({
     <PanelSection title="Diplomacia">
       {!diplomatico ? (
         <p className="text-xs text-wood-500">
-          Asigna a un compañero el rol de diplomático (rolReino: "diplomatico") en Súbditos para poder negociar.
+          Asigna a un compañero el rol de Diplomático en Súbditos para poder negociar.
         </p>
       ) : (
         <div className="flex flex-col gap-2">
@@ -156,7 +159,8 @@ function DiplomaciaCard({
             <button
               type="button"
               onClick={() => handleAccion('negociar')}
-              disabled={busy !== null}
+              disabled={busy !== null || !!consulta}
+              title={consulta ?? undefined}
               className="tactile flex-1 rounded-lg border border-accent-600/60 px-3 py-1.5 text-2xs font-bold uppercase tracking-wide text-accent-300 transition-colors hover:bg-accent-500/10 disabled:opacity-50"
             >
               {busy === 'negociar' ? '…' : 'Negociar'}
@@ -164,7 +168,8 @@ function DiplomaciaCard({
             <button
               type="button"
               onClick={() => handleAccion('sabotear')}
-              disabled={busy !== null}
+              disabled={busy !== null || !!consulta}
+              title={consulta ?? undefined}
               className="tactile flex-1 rounded-lg border border-danger-600/60 px-3 py-1.5 text-2xs font-bold uppercase tracking-wide text-danger-400 transition-colors hover:bg-danger-500/10 disabled:opacity-50"
             >
               {busy === 'sabotear' ? '…' : 'Sabotear'}
@@ -172,7 +177,8 @@ function DiplomaciaCard({
             <button
               type="button"
               onClick={() => handleAccion('espiar')}
-              disabled={busy !== null}
+              disabled={busy !== null || !!consulta}
+              title={consulta ?? undefined}
               className="tactile flex-1 rounded-lg border border-iron-700 px-3 py-1.5 text-2xs font-bold uppercase tracking-wide text-wood-300 transition-colors hover:border-accent-600/40 disabled:opacity-50"
             >
               {busy === 'espiar' ? '…' : 'Espiar'}
@@ -234,6 +240,8 @@ function MercadoCard({
   /// `target.slug` no haya cambiado (negociar con la MISMA facción ya seleccionada).
   refreshToken: number
 }) {
+  // UX-5 (hito 0.2) — modo consulta: lo que cambia datos se deshabilita con el motivo.
+  const consulta = useModoConsulta()
   const [mercado, setMercado] = useState<{ tratado: boolean; items: MercadoItemInfo[] } | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [errorVenta, setErrorVenta] = useState<string | null>(null)
@@ -307,7 +315,8 @@ function MercadoCard({
               <button
                 type="button"
                 onClick={() => handleComprar(item.almacenItemId)}
-                disabled={busy === item.almacenItemId || goirnos < item.precio}
+                disabled={busy === item.almacenItemId || goirnos < item.precio || !!consulta}
+                title={consulta ?? undefined}
                 className="tactile shrink-0 rounded border border-accent-600/60 px-2 py-1 text-2xs text-accent-300 hover:bg-accent-500/10 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {busy === item.almacenItemId ? '...' : 'Comprar'}
@@ -329,7 +338,8 @@ function MercadoCard({
                 <button
                   type="button"
                   onClick={() => handleVender(item.id)}
-                  disabled={busy === item.id}
+                  disabled={busy === item.id || !!consulta}
+                  title={consulta ?? undefined}
                   className="tactile shrink-0 rounded border border-accent-600/60 px-2 py-1 text-2xs text-accent-300 hover:bg-accent-500/10 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {busy === item.id ? '...' : 'Vender'}

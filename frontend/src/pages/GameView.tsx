@@ -1,4 +1,7 @@
 import { useNoticiasMundo } from '../hooks/useNoticiasMundo'
+import { useGamePhase } from '../hooks/useGamePhase'
+import { etiquetaDeFase } from '../lib/gamePhase'
+import { ModoConsultaContext } from '../context/modoConsultaContext'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useSession } from '../context/useSession'
@@ -429,6 +432,20 @@ export function GameView() {
     handleAssignEspecializacion,
   } = useClaseEspecializacionState(saveId, syncFromSave)
   const [combateIniciado, setCombateIniciado] = useState<{ npcs: NpcInSceneInfo[] } | null>(null)
+  // Fase G del 0.1 (hallazgo G8): al cerrar un combate 1v1 contra fauna, el cadáver ya estaba
+  // en el backend pero «Hay presas caídas sin desollar» no salía hasta cambiar de escena (la
+  // comprobación de arriba solo mira la ubicación). Se recomprueba al pasar de combate a sin combate.
+  const habiaCombateRef = useRef(false)
+  useEffect(() => {
+    const hayCombate = combateIniciado !== null
+    const acabaDeTerminar = habiaCombateRef.current && !hayCombate
+    habiaCombateRef.current = hayCombate
+    if (!acabaDeTerminar || !saveId) return
+    getRecolectarLocalizado(saveId, 'desollador')
+      .then(({ sources }) => checkCarcassPending(sources.length > 0))
+      .catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `checkCarcassPending` es un setter con nombre, estable en la práctica (mismo criterio que el efecto de ubicación de arriba)
+  }, [combateIniciado, saveId])
   // Rediseño del turno de combate (2026-07-29, "quiero que sea más claro cuando es turno de
   // ataque... indicándome qué salió en los dados") — tirada real de iniciativa del último turno
   // resuelto, para que CombatPanel explique CON NÚMEROS por qué le toca atacar/defender ahora.
@@ -503,21 +520,34 @@ export function GameView() {
   // combat.combatOpen de useCombatFlow) para tener un único punto de verdad de "hay algo abierto
   // encima del juego ahora mismo" antes de decidir si se abre uno nuevo.
   const anyModalOpen = anyActionModalOpen || !!detailTarget || !!kingdomFoundedInfo || combat.combatOpen
-  // UX-3 (hito 0.1) — mismas condiciones que la guardia de `handleSubmit` (useTurnFlow.ts), con su
-  // motivo: deshabilita los botones que lanzan un turno fuera del composer (Construir, Viajar,
-  // Campamento, salida de zona), que pueden estar a la vista mientras el narrador escribe.
-  const bloqueoTurno = characterThinking
-    ? 'El narrador todavía está escribiendo.'
-    : busyUntil
-      ? 'Estás ocupado con otra actividad.'
-      : endedAt
-        ? 'La partida ha terminado.'
-        : pendingDeathResolution
-          ? 'Primero resuelve lo que ha pasado tras tu muerte.'
-          : null
   // Un agresivo te corta el paso (2026-09-28) — la brújula se oculta hasta reaccionar (el backend
   // rechaza igualmente moverse con 409, esto solo evita ofrecer algo que no se puede hacer).
   const combateForzadoPendiente = characterLog.some((e) => e.dynamicModeOffer?.combateForzado)
+  // Elecciones obligatorias a la vista (mismas condiciones con las que se pintan sus modales).
+  const claseVisible = !!pendingClaseChoice && !pendingDeathResolution && !endedAt && !!worldIdSlug
+  const especializacionVisible = !!pendingEspecializacionChoice && !pendingDeathResolution && !endedAt && !!clase && !!worldIdSlug
+  // UX-1/UX-2 (hito 0.2) — una sola fase de partida y su matriz de permisos (lib/gamePhase.ts) en
+  // vez de banderas sueltas.
+  const { fase, puede } = useGamePhase({
+    terminada: !!endedAt,
+    muertePendiente: pendingDeathResolution,
+    enCombate: !!combateIniciado || combat.combatOpen,
+    modoDinamico: !!activeDynamicMode,
+    narradorEscribiendo: characterThinking,
+    eleccionAbierta: claseVisible || especializacionVisible || !!kingdomFoundedInfo,
+    encuentroPendiente: combateForzadoPendiente,
+    ocupado: !!busyUntil,
+  })
+  const permisoTurno = puede('enviarTurno')
+  // UX-3 (hito 0.1) — deshabilita con su motivo los botones que lanzan un turno fuera del composer
+  // (Construir, Viajar, Campamento, salida de zona); desde UX-2 el motivo sale de la matriz.
+  const bloqueoTurno = permisoTurno.motivo
+  // UX-5 (hito 0.2) — paneles en modo consulta: se abren y se leen, pero lo que cambia datos se
+  // deshabilita con el motivo (contexto ModoConsulta).
+  const modoConsulta = puede('modificarPanel').motivo
+  // UX-7 (hito 0.2) — la brújula y el mapa de zona: moverse solo en `libre`.
+  const permisoMover = puede('moverse')
+  const etiquetaFase = etiquetaDeFase(fase)
 
   // Pop del botón "Nivel X" solo en una subida real, nunca al cargar la partida (roadmap de
   // animaciones 2026-07-20, item 7) — mismo patrón que HealthBar: comparar contra un ref, no
@@ -572,16 +602,14 @@ export function GameView() {
   // respuesta cruda del preview (evita el riesgo de perder "discoveries"/"transit" del envío real).
   useEffect(() => {
     const action = input.trim()
-    const composerDisabled =
-      characterThinking || !!busyUntil || !!endedAt || pendingDeathResolution || (!!combateIniciado && !combat.combatOpen)
-    if (!action || !saveId || composerDisabled) return
+    if (!action || !saveId || !puede('enviarTurno').permitido) return
 
     const timer = setTimeout(() => {
       requestTurnClassify({ saveId, action, preview: true }).catch(() => {})
     }, 1500)
 
     return () => clearTimeout(timer)
-  }, [input, saveId, characterThinking, busyUntil, endedAt, pendingDeathResolution, combateIniciado, combat.combatOpen])
+  }, [input, saveId, puede])
 
   // Vuelca un SaveDetail completo en el estado local — usado al cargar la partida y al
   // resincronizar tras resolverse una acción por tiempo en diferido (CharacterTransit).
@@ -736,6 +764,16 @@ export function GameView() {
     syncFromSave(save)
   }
 
+  // Fase G del 0.1 (hallazgo G12): al morir en combate, la respuesta del turno no trae la nota de
+  // la Entidad (es una LogEntry aparte) ni el turno de combate aplicaba `pendingDeathResolution` —
+  // al salir de «Derrota» el juego quedaba con «Muerto» arriba, sin nota, sin «Aceptar» y con el
+  // cuadro de texto activo hasta recargar. Se resincroniza la partida al salir tras morir.
+  function handleContinuarTrasCombate() {
+    const murio = combat.combatPlayerJustDied
+    combat.closeCombat()
+    if (murio) refreshSave().catch(() => {})
+  }
+
   async function handleFundarReino(name: string, description?: string) {
     if (!saveId) return
     try {
@@ -883,6 +921,15 @@ export function GameView() {
       options: inventory.filter((i) => !i.slot && i.id !== equipped?.id && isCompatibleWithSlot(i, slot)),
     })
     setDetailInsertHandler(null)
+  }
+
+  // Responder escribiendo (petición de la usuaria, 2026-10-02) — desde la tarjeta de quien te habla:
+  // vuelve al composer (aunque estuviera la barra de habilidades o un panel abierto) con «Le digo a
+  // <nombre>: » ya escrito, el nombre como chip y el cursor al final.
+  function handleResponderEscribiendo(nombre: string) {
+    if (skillHudView.screen !== 'composer') handleBackToComposer()
+    setActivePanel(null)
+    requestAnimationFrame(() => composerRef.current?.setTextWithChips(`Le digo a ${nombre}: `, enciclopediaIndex))
   }
 
   function handleEnciclopediaInsert(chip: { icon: string; label: string; description?: string }) {
@@ -1407,6 +1454,18 @@ export function GameView() {
               💀 {deathCount}/{LIMITE_MUERTES[dificultad]}
             </span>
           )}
+          {/* UX-8 (hito 0.2) — indicador de la fase cuando algo está bloqueado, con el motivo al
+              pasar el ratón; en `libre` no aparece. */}
+          {etiquetaFase && (
+            <span
+              role="status"
+              title={permisoTurno.motivo ?? undefined}
+              className="rounded-full border border-iron-700 bg-wood-950/60 px-2.5 py-1 font-serif text-2xs tracking-wide text-wood-300"
+            >
+              <span aria-hidden="true">{etiquetaFase.icono}</span> {etiquetaFase.texto}
+              {fase === 'ocupado' && busyUntil ? ` · ${formatCountdown(busyUntil, nowTick)}` : ''}
+            </span>
+          )}
           <span
             // C.11 (checklist frontend 2026-08-27) — mismo `rounded-full`/`text-2xs` que el badge
             // expandido de MapaPanel (misma info, tratamiento compacto vs. expandido a propósito,
@@ -1457,14 +1516,24 @@ export function GameView() {
               POR ENCIMA del `PanelDrawer` de Mapa/Reputación/Diario/etc., que vive en `z-20` — ese
               drawer nunca contó como "modal" para `anyModalOpen`, así que la brújula tapaba su
               contenido en vez de quedar oculta detrás). */}
-          {saveId && !anyModalOpen && !zonaModalOpen && !activePanel && !combateForzadoPendiente && (
+          {/* UX-7 (hito 0.2) — si la fase no deja moverse (narrador escribiendo, encuentro, combate…),
+              la brújula sigue a la vista pero deshabilitada con el motivo, en vez de desaparecer. */}
+          {saveId && !anyModalOpen && !zonaModalOpen && !activePanel && (
             <button
               type="button"
               onClick={() => setZonaModalOpen(true)}
-              title="Moverte por la zona"
-              className="tactile absolute bottom-1 left-1/2 z-40 hidden h-12 w-12 -translate-x-1/2 items-center justify-center rounded-full border border-accent2-600/60 bg-wood-950/90 text-xl shadow-lg backdrop-blur-sm transition-colors hover:border-accent2-400 hover:bg-wood-900 lg:flex"
+              disabled={!permisoMover.permitido}
+              title={permisoMover.motivo ?? 'Moverte por la zona'}
+              aria-label="Moverte por la zona"
+              className="tactile absolute bottom-1 left-1/2 z-40 hidden h-12 w-12 -translate-x-1/2 items-center justify-center rounded-full border border-accent2-600/60 bg-wood-950/90 text-xl shadow-lg backdrop-blur-sm transition-colors hover:border-accent2-400 hover:bg-wood-900 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-accent2-600/60 disabled:hover:bg-wood-950/90 lg:flex"
             >
               🧭
+              {/* UX-8 (hito 0.2) — candado visible además del motivo en el tooltip. */}
+              {!permisoMover.permitido && (
+                <span aria-hidden="true" className="absolute -right-1 -top-1 text-xs">
+                  🔒
+                </span>
+              )}
             </button>
           )}
           {collapsedSide === 'character' ? (
@@ -1490,6 +1559,7 @@ export function GameView() {
               onAcceptQuestOffer={handleAcceptQuestOffer}
               onDismissQuestOffer={handleDismissQuestOffer}
               onInteractuarModoDinamico={handleInteractuarModoDinamico}
+              onResponderEscribiendo={handleResponderEscribiendo}
               onVerRecursoDetalle={handleVerRecursoDetalle}
               onCazarEnZona={handleCazarEnZona}
               onDismissDynamicModeOffer={handleDismissDynamicModeOffer}
@@ -1553,7 +1623,7 @@ export function GameView() {
               onActuar={combat.handleCombatActuar}
               onRegistrar={combat.handleCombatRegistrar}
               onHuir={combat.handleCombatHuir}
-              onContinue={combat.closeCombat}
+              onContinue={handleContinuarTrasCombate}
               onSaquearSeleccion={combat.handleSaquearSeleccion}
               onAbilityDetail={handleAbilityDetail}
               onItemDetail={handleItemDetail}
@@ -1722,11 +1792,9 @@ export function GameView() {
             // para el composer cuentan además el resto de capas que se abren encima del juego. El cajón
             // de paneles (`activePanel`) queda fuera a propósito: la Enciclopedia inserta chips en el
             // composer con el cajón abierto.
-            const claseVisible = !!pendingClaseChoice && !pendingDeathResolution && !endedAt && !!worldIdSlug
-            const especializacionVisible = !!pendingEspecializacionChoice && !pendingDeathResolution && !endedAt && !!clase && !!worldIdSlug
             const capaEncimaAbierta =
               anyModalOpen || zonaModalOpen || confirmingExit || !!editingSkillBar || !!recursoDetalle || claseVisible || especializacionVisible
-            const composerDisabled = characterThinking || !!busyUntil || (!!combateIniciado && !combat.combatOpen) || capaEncimaAbierta
+            const composerDisabled = !permisoTurno.permitido || capaEncimaAbierta
             // Toggle a la IZQUIERDA de la propia fila del composer/barra, no encima en su propia
             // línea (2026-08-29, feedback en vivo, segunda vuelta: "no bajaste el botón... a la
             // izquierda donde te dije") — mismo slot visual que la barra, `leftSlot` de
@@ -1802,7 +1870,7 @@ export function GameView() {
                             ? 'En combate — usa el panel de combate para actuar.'
                             : capaEncimaAbierta
                               ? 'Resuelve lo que tienes abierto antes de escribir una nueva acción.'
-                              : undefined
+                              : (permisoTurno.motivo ?? undefined)
                     }
                   />
                 )}
@@ -2030,6 +2098,7 @@ export function GameView() {
             handleSubmit(actionText)
           }}
           bloqueoTurno={bloqueoTurno}
+          bloqueoMovimiento={permisoMover.motivo}
           // Icono de parcela (§ 7.4, 2026-09-21) — roster estático ya cargado por useRecipesData
           // (nombre/descripción por recipeKey) + refreshSave (mismo callback que ya usa ReinoPanel
           // tras "Descansar en campamento", una acción directa sin /turn/narrate).
@@ -2075,7 +2144,8 @@ export function GameView() {
       )}
 
       {activePanel && (
-        <PanelDrawer title={panelTitles[activePanel]} accent={panelAccent[activePanel]} onClose={() => setActivePanel(null)}>
+        <PanelDrawer title={panelTitles[activePanel]} accent={panelAccent[activePanel]} onClose={() => setActivePanel(null)} modoConsulta={modoConsulta}>
+          <ModoConsultaContext.Provider value={modoConsulta}>
           {activePanel === 'personaje' && (
             <PersonajePanel
               activeSubTab={personajeSubTab}
@@ -2187,6 +2257,7 @@ export function GameView() {
               onDetail={handleAbilityDetail}
             />
           )}
+          </ModoConsultaContext.Provider>
         </PanelDrawer>
       )}
     </div>

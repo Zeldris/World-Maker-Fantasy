@@ -1,3 +1,5 @@
+import { registrarSuceso } from './cronista/sucesos.js';
+import { sucesosDeClima } from './cronista/clima.js';
 import type { Prisma } from '@prisma/client';
 import { tickKingdom, daysCrossed, territoryPopulationDelta, DIAS_PARA_CONSOLIDAR, DIAS_PARA_REBELION } from './kingdomTick.js';
 import { tickOrdenesProduccion, companionesQueCuraCasaDeCuras, type TrabajadorReino, type OrdenProduccionInput } from './kingdomProduction.js';
@@ -260,5 +262,10 @@ export async function runDailyTick(
   // Hermanos (no anidados en KingdomStats): un Building puede existir sin fila KingdomStats.
   await tickProduccionReino(tx, saveId, worldId);
   await servicioCasaDeCuras(tx, saveId);
+  // Libro de Sucesos (CR-3, hito 0.2): tormentas donde está el personaje y cambios de estación.
+  const save = await tx.save.findUnique({ where: { id: saveId }, select: { raza: true, currentLocation: { select: { region: true } } } });
+  for (const suceso of sucesosDeClima(minutosAntes, minutosDespues, save?.currentLocation?.region ?? null, save?.raza ?? null)) {
+    await registrarSuceso(tx, { ...suceso, saveId, origen: 'MUNDO' });
+  }
   return result;
 }

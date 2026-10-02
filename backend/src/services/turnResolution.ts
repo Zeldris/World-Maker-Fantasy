@@ -1,3 +1,4 @@
+import { registrarFinDeMision, registrarSucesoDeNpc } from './cronista/emisores.js';
 import { env } from '../config/env.js';
 import { applyLootMode, applyCombatExchangeToNpcState, applyKillSideEffects, applyHarvest, applyFactionRepDeltaForResolution, goirnosDeBotin, pickFlavor, LOOT_FLAVOR_SUCCESS, LOOT_FLAVOR_EMPTY, HARVEST_FLAVOR_YA_DESPIEZADA } from './turnLootKill.js';
 
@@ -57,6 +58,7 @@ import { resolverTurnoJugador, resolverTurnosAutonomosHastaJugadora, fijarElecci
 import { invalidateCarcassRollCache } from '../routes/saves/recolectar.js';
 import { instanceNumbersByParticipantId, resolverObjetivoPorTexto, type HabilidadParaIntercambio } from './combateMultiple.js';
 import { prisma } from '../lib/prisma.js';
+import { registrarSuceso } from './cronista/sucesos.js';
 import { effectiveAttributesConDuracion, pushActiveEffect, decrementActiveEffects, type ActiveEffect } from './activeEffects.js';
 import type { RollResult, AttributeBlock, Attribute, GradoExito } from './dice.js';
 import type { SecondaryAttributeBlock } from './secondaryAttributes.js';
@@ -1964,7 +1966,7 @@ async function writeKingdomLogForBuild(
 async function applyCondicionTimeouts(tx: Prisma.TransactionClient, saveId: string, nowMinutes: number): Promise<void> {
   const affected = await tx.npcState.findMany({
     where: { saveId, condicionFisica: { in: ['CONVALECIENTE', 'MUERTO'] } },
-    select: { id: true, condicionFisica: true, condicionFisicaSinceMinutes: true },
+    select: { id: true, npcId: true, condicionFisica: true, condicionFisicaSinceMinutes: true },
   });
   for (const state of affected) {
     if (state.condicionFisica === 'CONVALECIENTE' && npcRecoversFromConvaleciente(state.condicionFisicaSinceMinutes, nowMinutes)) {
@@ -1972,8 +1974,10 @@ async function applyCondicionTimeouts(tx: Prisma.TransactionClient, saveId: stri
         where: { id: state.id },
         data: { condicionFisica: 'HERIDO', condicionFisicaSinceMinutes: nowMinutes },
       });
+      await registrarSucesoDeNpc(tx, { saveId, npcId: state.npcId, tipo: 'RECUPERACION_NPC', fictionalMinutes: nowMinutes });
     } else if (state.condicionFisica === 'MUERTO' && npcCorpseShouldDespawn(state.condicionFisicaSinceMinutes, nowMinutes)) {
       await tx.npcState.delete({ where: { id: state.id } });
+      await registrarSucesoDeNpc(tx, { saveId, npcId: state.npcId, tipo: 'CADAVER_DESAPARECE', fictionalMinutes: nowMinutes });
     }
   }
 }
@@ -4396,6 +4400,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // función gestiona sus transacciones cortas internamente y llama a Ollama fuera de ellas.
     const antes = await resolverTurnosAutonomosHastaJugadora({ prisma, worldId, saveId, encounterId });
     narraciones.push(...antes.narraciones);
+    const intercambiosContraJugadora = [...antes.intercambiosContraJugadora];
     combatEncounterCaidos.push(...antes.caidos);
     combatEncounterTerminado = antes.encounterTerminado;
 
@@ -4460,15 +4465,23 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         // nunca les llegaba nada para el modo CombatEncounter. Solo se rellena cuando el turno de
         // la jugadora fue un intercambio real con oposición (turnoJugadora.combatExchangeDisplay
         // es `null` en los caminos sin tirada: golpe gratis, invocación, avance sin atacar).
-        if (turnoJugadora.combatExchangeDisplay) combatExchangeDisplayFinal = turnoJugadora.combatExchangeDisplay;
+        if (turnoJugadora.combatExchangeDisplay) combatExchangeDisplayFinal = { ...turnoJugadora.combatExchangeDisplay, rivalNombre: turnoJugadora.defensorNombre };
       }
 
       if (!combatEncounterTerminado) {
         const despues = await resolverTurnosAutonomosHastaJugadora({ prisma, worldId, saveId, encounterId });
         narraciones.push(...despues.narraciones);
+        intercambiosContraJugadora.push(...despues.intercambiosContraJugadora);
         combatEncounterCaidos.push(...despues.caidos);
         combatEncounterTerminado = despues.encounterTerminado;
       }
+    }
+
+    // Fase G del 0.1 (hallazgo G11): si la jugadora no tuvo intercambio propio este turno (un
+    // enemigo con más iniciativa ya resolvió el duelo de la ronda), se enseña el primer intercambio
+    // real en el que la atacaron — antes no salía ninguna tirada y su acción parecía no hacer nada.
+    if (!combatExchangeDisplayFinal && intercambiosContraJugadora.length > 0) {
+      combatExchangeDisplayFinal = { ...intercambiosContraJugadora[0].display, rivalNombre: intercambiosContraJugadora[0].atacanteNombre };
     }
 
     combatEncounterNarration = narraciones.filter(Boolean).join(' ') || `${characterName} se mantiene en guardia, pero el intercambio no llega a resolverse este turno.`;
@@ -4499,7 +4512,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // está fijado en este punto para cualquier turno con intercambio real (1v1 o combate múltiple),
   // y esto es lo más cerca posible del arranque real de `narrateAction` (la parte lenta) sin
   // adelantarse a ningún guard de arriba que todavía pudiera descartar el turno entero.
-  if (combatExchangeDisplayFinal) onExchangeResolved?.(combatExchangeDisplayFinal, npcAbilityUsed?.npcName ?? null);
+  if (combatExchangeDisplayFinal) onExchangeResolved?.(combatExchangeDisplayFinal, npcAbilityUsed?.npcName ?? combatExchangeDisplayFinal.rivalNombre ?? null);
 
   const narration: NarrationResult = combatEncounterMode
     ? { narration: combatEncounterNarration, newFacts: [] }
@@ -4607,7 +4620,10 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // arriba). `newFacts` usa un marcador reconocible por código ("sin nombre revelado todavía")
   // pero que no contiene ninguno de sus aliases reales, para que ni la Enciclopedia ni el resto
   // de NPCs la reconozcan como "Gistera Koh" antes de que ella misma se presente.
-  if (gisteraKoh) {
+  // Fase G del 0.1 (hallazgo G22): `gisteraKoh` solo mira que su punto del mapa esté al lado, y
+  // ese punto sigue activo tras presentarse y marcharse — la llegada «sin nombre» se añadía otra
+  // vez a cualquier turno junto a él (p. ej. construir el ayuntamiento). Solo antes de presentarse.
+  if (gisteraKoh && !gisteraYaPresentada && !gisteraSeHaMarchado && !gisteraSinNombreEnEscena) {
     narration.narration = `${narration.narration} Una sombra se acerca a gran velocidad por la llanura. En cuanto la tiene a la vista, distingue que es una orca con la marca del Clan Serhu — se acerca a toda prisa, sin aliento, mirando constantemente hacia atrás, como si algo la persiguiera.`;
     narration.newFacts = [
       ...narration.newFacts,
@@ -5106,7 +5122,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     if (combatEncounterCaidos.length > 0) {
       const npcCaidosIds = combatEncounterCaidos.filter((c) => c.tipo === 'NPC' && c.npcId).map((c) => c.npcId!);
       const npcCaidosRows = npcCaidosIds.length
-        ? await tx.npc.findMany({ where: { id: { in: npcCaidosIds } }, select: { id: true, raza: true, slug: true, faction: true } })
+        ? await tx.npc.findMany({ where: { id: { in: npcCaidosIds } }, select: { id: true, name: true, raza: true, slug: true, faction: true } })
         : [];
       const npcCaidoById = new Map(npcCaidosRows.map((n) => [n.id, n]));
       for (const caido of combatEncounterCaidos) {
@@ -5760,6 +5776,20 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
                 y: params.jugadorZonaPosEntradaY ?? undefined,
               },
             });
+        // Libro de Sucesos (CR-3, hito 0.2).
+        await registrarSuceso(tx, {
+          saveId,
+          tipo: 'EDIFICIO_CONSTRUIDO',
+          fictionalMinutes: nuevoFictionalMinutes,
+          regionSlug: activeRegion ? slugify(activeRegion) : null,
+          locationId: currentLocationId,
+          origen: 'JUGADOR',
+          actores: [
+            { entidadTipo: 'PERSONAJE', entidadId: saveId, papel: 'AUTOR' },
+            { entidadTipo: 'EDIFICIO', entidadId: created.id, papel: 'BENEFICIARIO' },
+          ],
+          datos: { edificio: buildRecipe.name },
+        });
         // Fundación de reino (2026-08-04): solo al construir el Ayuntamiento tier 1 desde cero,
         // nunca en una mejora (esa rama ni pasa por aquí). Resuelve contra la(s) facción(es) dueña
         // de la región (reputation.ts) y crea el Territory correspondiente — mismo criterio que
@@ -5844,7 +5874,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
             if (duenoOriginalName && duenoOriginalName !== playerFaction.name) {
               const targetFaction = await tx.faction.findFirst({ where: { worldId, name: duenoOriginalName, saveId: null }, select: { id: true } });
               if (targetFaction) {
-                const fact = await recordFactionEvent(tx, worldId, playerFaction.id, targetFaction.id, 'EXPANSION_TERRITORIAL_AGRESIVA');
+                const fact = await recordFactionEvent(tx, worldId, playerFaction.id, targetFaction.id, 'EXPANSION_TERRITORIAL_AGRESIVA', saveId);
                 if (fact) {
                   await tx.logEntry.create({
                     data: { saveId, channel: 'WORLD', text: fact, timeLabel, fictionalMinutes: fictionalMinutesActuales, isSystemMessage: true },
@@ -5858,7 +5888,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       reinoXp = Math.max(reinoXp, REINO_XP.buildingActive);
     } else if (narration.newBuilding) {
       assertExactlyOneOwner({ saveId }, 'turnResolution.ts newBuilding');
-      await tx.building.create({
+      const edificioNarrado = await tx.building.create({
         data: {
           saveId,
           territoryId: await resolveTerritoryId(narration.newBuilding.territoryName),
@@ -5869,6 +5899,20 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         },
       });
       reinoXp = Math.max(reinoXp, REINO_XP.buildingActive);
+      // Libro de Sucesos (CR-3, hito 0.2).
+      await registrarSuceso(tx, {
+        saveId,
+        tipo: 'EDIFICIO_CONSTRUIDO',
+        fictionalMinutes: nuevoFictionalMinutes,
+        regionSlug: activeRegion ? slugify(activeRegion) : null,
+        locationId: currentLocationId,
+        origen: 'JUGADOR',
+        actores: [
+          { entidadTipo: 'PERSONAJE', entidadId: saveId, papel: 'AUTOR' },
+          { entidadTipo: 'EDIFICIO', entidadId: edificioNarrado.id, papel: 'BENEFICIARIO' },
+        ],
+        datos: { edificio: narration.newBuilding.name },
+      });
       // Nudge determinista por palabra clave (sesión de diseño 2026-07-23, mismo criterio que
       // tabulatedAttackAttribute en npcScene.ts) — sin campo nuevo en el JSON del modelo: el
       // `kind` libre que ya propone es la única señal que hace falta.
@@ -6043,6 +6087,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         where: { saveId, title: narration.questProgress.title, status: 'ACTIVA' },
         data: { status: narration.questProgress.status },
       });
+      for (const mision of matchingQuests) {
+        await registrarFinDeMision(tx, { saveId, titulo: mision.title, estado: narration.questProgress.status, fictionalMinutes: nuevoFictionalMinutes });
+      }
 
       // Reputación positiva de facción (roadmap 2026-07-20, P1 de Fable): cerrar con COMPLETADA
       // una misión que apuntaba a un NPC (Quest.targetNpcId) que sigue SIN derrotar es la señal
@@ -6151,10 +6198,14 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       // Cierre de misión "llegar a Y" (roadmap 2026-07-20, P1 de Fable, Quest.targetLocationId):
       // llegar de verdad al destino (no solo pasar por un nodo intermedio del camino) cierra sola
       // cualquier misión ACTIVA que lo tuviera como objetivo.
+      const misionesDeLlegada = await tx.quest.findMany({ where: { saveId, targetLocationId: travel.toLocationId, status: 'ACTIVA' }, select: { title: true } });
       await tx.quest.updateMany({
         where: { saveId, targetLocationId: travel.toLocationId, status: 'ACTIVA' },
         data: { status: 'COMPLETADA' },
       });
+      for (const mision of misionesDeLlegada) {
+        await registrarFinDeMision(tx, { saveId, titulo: mision.title, estado: 'COMPLETADA', fictionalMinutes: nuevoFictionalMinutes });
+      }
     }
 
     // Bug real jugando en vivo (revisión de partida 2026-08-08, "+525 XP" en un simple golpe de
@@ -6409,6 +6460,20 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       }
     }
 
+    // Libro de Sucesos (CR-3, hito 0.2): caer convaleciente en un combate es perderlo (morir tiene
+    // su propio suceso, más abajo).
+    if (enCombate && proposedCondicion === 'CONVALECIENTE' && params.condicionFisica !== 'CONVALECIENTE') {
+      await registrarSuceso(tx, {
+        saveId,
+        tipo: 'COMBATE_PERDIDO',
+        fictionalMinutes: nuevoFictionalMinutes,
+        locationId: currentLocationId,
+        origen: 'JUGADOR',
+        actores: [{ entidadTipo: 'PERSONAJE', entidadId: saveId, papel: 'VICTIMA' }],
+        datos: { personaje: characterName, rival: npcAbilityUsed?.npcName ?? combatExchangeDisplayFinal?.rivalNombre ?? 'sus enemigos' },
+      });
+    }
+
     let finalPendingDeathResolution = false;
     if (proposedCondicion === 'MUERTO') {
       const outcome = resolveDeathOutcome(params.dificultad, params.deathCount);
@@ -6439,6 +6504,29 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         });
         finalCondicion = 'MUERTO';
         finalPendingDeathResolution = true;
+      }
+      // Libro de Sucesos (CR-3, hito 0.2): la muerte del personaje, y el final si no quedan vidas.
+      const actoresMuerte = [{ entidadTipo: 'PERSONAJE' as const, entidadId: saveId, papel: 'VICTIMA' as const }];
+      const muerteId = await registrarSuceso(tx, {
+        saveId,
+        tipo: 'MUERTE_JUGADOR',
+        fictionalMinutes: nuevoFictionalMinutes,
+        locationId: currentLocationId,
+        origen: 'JUGADOR',
+        actores: actoresMuerte,
+        datos: { personaje: characterName },
+      });
+      if (outcome.finDePartida) {
+        await registrarSuceso(tx, {
+          saveId,
+          tipo: 'FIN_PARTIDA',
+          fictionalMinutes: nuevoFictionalMinutes,
+          locationId: currentLocationId,
+          origen: 'JUGADOR',
+          actores: actoresMuerte,
+          datos: { personaje: characterName },
+          causas: [muerteId],
+        });
       }
     }
 

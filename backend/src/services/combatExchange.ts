@@ -234,6 +234,9 @@ export interface CombatExchangeDisplay {
   /// B23 (2026-09-28): el atacante es un NPC que no ataca (`ataqueNatural` "No ataca…") — su
   /// "golpe" nunca hace daño; el frontend no debe presentarlo como un ataque que conecta.
   atacanteInofensivo?: true;
+  /// Nombre del rival de la jugadora en este intercambio — solo combate de grupo (Fase G del 0.1,
+  /// hallazgo G15): ahí no hay `npcAbilityUsed` del que sacarlo y la tarjeta decía «el enemigo».
+  rivalNombre?: string;
 }
 
 /// Una sola tirada de un atributo — extraído (2026-09-04, centralización de todas las tiradas del

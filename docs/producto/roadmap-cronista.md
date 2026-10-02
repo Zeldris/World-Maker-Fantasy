@@ -13,8 +13,8 @@ mientras juegas"*, la única pieza nueva que faltaba) y el **punto 7 ya cerrado*
 **Convenio:** identificadores `CR-n` por tarea; **🧭** = decisión de Álvaro (cada una lleva un
 **valor por defecto** para no bloquear la implementación: si no se dice nada, se implementa el
 valor por defecto); esfuerzo **S** (horas) · **M** (1-2 días) · **L** (varios días).
-**Hito de cada fase:** [mapa de roadmaps](21-roadmap.md#qué-entra-en-cada-hito) — Fase 1 mínima en
-`0.1` (🧭), Fases 2, 3 y 5 en `0.2`, Fases 4 y 6 en `0.3`, Fase 7 en `0.4`, Fase 8 en `0.5`. Lo
+**Hito de cada fase:** [mapa de roadmaps](21-roadmap.md#qué-entra-en-cada-hito) — Fases 1, 2, 3 y 5
+en `0.2` (la 1 venía del `0.1` como 🧭; pasó al `0.2` el 2026-10-02, [plan del 0.2](plan-roadmap-0.2.md)), Fases 4 y 6 en `0.3`, Fase 7 en `0.4`, Fase 8 en `0.5`. Lo
 que esto exige a la interfaz está en `roadmap-front.md` § 15 (`INT`) y en
 `roadmap-front-ux.md` § 4.7.
 
@@ -840,12 +840,30 @@ Endpoints nuevos (`routes/saves/cronista.ts`):
 Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
 
 ### Fase 1 — Libro de Sucesos (sin IA) · **M-L**
-- **CR-1** Modelos `Suceso`, `SucesoCausa`, `SucesoActor`, enums. **S**
-- **CR-2** `registrarSuceso()`, importancia y plantillas de texto para todos los tipos de § 6.1. **M**
-- **CR-3** Emisores en: turno (`turnResolution.ts`: combate, muerte causada, perdón, captura,
+- ~~**CR-1** Modelos `Suceso`, `SucesoCausa`, `SucesoActor`, enums. **S**~~ ✅ 2026-10-02: modelos y enums en `schema.prisma` (migración `20261002120000_libro_de_sucesos`, hecha con `migrate diff` porque la base sombra no tiene pgvector), el reinicio de partida vacía el Libro, test de integración `services/cronista/libroSucesos.integration.test.ts`. Quedan para sus tareas: `Conocimiento` (CR-18) y el `embedding` (cuando se use).
+- ~~**CR-2** `registrarSuceso()`, importancia y plantillas de texto para todos los tipos de § 6.1. **M**~~ ✅ 2026-10-02: `services/cronista/catalogoSucesos.ts` (los 74 tipos de § 6.1 con familia, importancia base de § 6.3 y plantilla; datos tipados por tipo) y `services/cronista/sucesos.ts` (`registrarSuceso`, dentro de la transacción del llamador; modificadores +1 jugador autor / núcleo jugable / hilo). Del contrato de § 6.2 quedan para sus tareas: sembrar `Conocimiento` (CR-18) y encolar reacciones (CR-10). Tests: `catalogoSucesos.test.ts` y `libroSucesos.integration.test.ts`.
+- ~~**CR-3** Emisores en: turno (`turnResolution.ts`: combate, muerte causada, perdón, captura,
   misión, construcción, fundación, entrega), `death.ts`, `recordFactionEvent`, expediciones,
-  población, agenda, clima, `dailyTick`, cadáveres/recuperación. **M**
-- **CR-4** Vista de administración `/admin/partida/:id/libro` (solo lectura). **M**
+  población, agenda, clima, `dailyTick`, cadáveres/recuperación. **M**~~ ✅ 2026-10-02.
+  Emisores: fundación (`REINO_FUNDADO`), captura, Clemente (`PERDON_CONCEDIDO`), muerte del
+  jugador / fin de partida / despertar, muerte causada y combate ganado (`applyKillSideEffects`,
+  1v1 y grupo; en grupo el autor es el bando del jugador), combate perdido (caer convaleciente),
+  misiones completadas/fallidas por sus 5 caminos (`registrarFinDeMision`), construcción, entrega
+  (`REGALO`), cambios de banda de relación (`recordFactionEvent(…, saveId?)`), sabotaje y
+  espionaje, expediciones (salida/asalto/vuelta), etapas de la agenda Serhu, clima (tormentas en la
+  región del personaje y cambio de estación, `cronista/clima.ts`) y recuperación/cadáver
+  (`registrarSucesoDeNpc`). Los del mundo se apuntan en cada partida viva del mundo
+  (`registrarEnPartidasDelMundo`) hasta que CR-6 dé un mundo por partida. Convención de actores:
+  PERSONAJE = id de la partida, NPC = `Npc.id`, FACCION/REGION = slug.
+  **Queda fuera a propósito:** población (auge/declive): qué cambio merece un suceso lo decide el
+  narrador de fondo (`CR-12`). Tests de integración con aserciones del Libro en cada ruta.
+- ~~**CR-4** Vista de administración `/admin/partida/:id/libro` (solo lectura). **M**~~ ✅ 2026-10-02.
+  Ruta `GET /saves/:id/libro` (`routes/saves/libro.ts`: filtros `familia`, `tipo`, `importanciaMin`,
+  paginación `limite` + `antesDe` = id del último suceso; cada suceso con fecha de ficción, texto,
+  actores y causas/efectos) y página `frontend/src/pages/AdminLibro.tsx` (filtro por familia e
+  importancia mínima, «Cargar más», causas y efectos resueltos a su texto). Sin enlace en flujos de
+  jugador, como `/admin/enciclopedia`. Tests: integración de la ruta y test de la página.
+  **Queda:** el «Hecho cuando» de abajo (1 hora de juego) se comprueba en la fase única de pruebas.
 - **Hecho cuando:** jugar 1 hora deja en el Libro todos los sucesos con causas correctas; tests de
   cada emisor.
 

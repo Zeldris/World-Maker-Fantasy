@@ -23,6 +23,9 @@ const createLocationLink = vi.fn();
 const createParcela = vi.fn();
 const createManyParcela = vi.fn();
 
+// Libro de Sucesos (CR-3): tiene sus propios tests; aquí la transacción simulada no lo lleva.
+vi.mock('../../services/cronista/sucesos.js', () => ({ registrarSuceso: vi.fn(async () => 'suceso-1'), minutosDeFiccion: vi.fn(async () => 480) }));
+
 vi.mock('../../lib/prisma.js', () => ({
   prisma: {
     save: {

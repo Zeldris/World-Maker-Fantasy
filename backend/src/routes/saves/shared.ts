@@ -217,6 +217,8 @@ export async function restartSaveTransactionBody(
   const startingQuestsData = await buildStartingQuestsData(save.worldId, save.characterName);
 
   await tx.logEntry.deleteMany({ where: { saveId: save.id } });
+  // Libro de Sucesos (CR-1, hito 0.2): reiniciar es empezar la historia de cero — lo vivido se va.
+  await tx.suceso.deleteMany({ where: { saveId: save.id } });
   // Bug real (2026-09-22, jugando en vivo): un CombatEncounter EN_CURSO (combate múltiple) nunca se
   // borraba al reiniciar — mismo patrón que zonaPosX/Y y pendingCombatNpcSlugs, un dato nuevo que
   // este flujo desconocía. `GET /saves/:id` (detail.ts) reconstruye `combateIniciado` con un

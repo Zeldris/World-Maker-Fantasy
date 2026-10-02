@@ -35,10 +35,12 @@ const PLAYABLE_CHARACTER_IDS = new Set(['char-gorhorn'])
 export function CharacterSelect() {
   const navigate = useNavigate()
   const { worldId } = useParams()
-  const { selectedCharacter, setSelectedWorld, setSelectedCharacter } = useSession()
+  const { selectedCharacter: elegido, setSelectedWorld, setSelectedCharacter } = useSession()
   const world = worlds.find((w) => w.id === worldId) ?? null
   const [tab, setTab] = useState<'pregen' | 'custom'>('pregen')
   const playableCharacters = pregeneratedCharacters.filter((c) => PLAYABLE_CHARACTER_IDS.has(c.id))
+  // Con un único preseleccionado jugable sale ya elegido (Fase G del 0.1, hallazgo G2).
+  const selectedCharacter = elegido ?? (playableCharacters.length === 1 ? playableCharacters[0] : null)
 
   useEffect(() => {
     if (world) setSelectedWorld(world)
@@ -199,7 +201,10 @@ export function CharacterSelect() {
       <div className="flex justify-end">
         <Button
           disabled={!selectedCharacter}
-          onClick={() => navigate(`/solitario/mundo/${world.id}/personaje/${selectedCharacter!.id}`)}
+          onClick={() => {
+            setSelectedCharacter(selectedCharacter!)
+            navigate(`/solitario/mundo/${world.id}/personaje/${selectedCharacter!.id}`)
+          }}
         >
           Continuar →
         </Button>

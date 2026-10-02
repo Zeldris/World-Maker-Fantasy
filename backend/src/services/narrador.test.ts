@@ -1901,6 +1901,14 @@ describe('deterministicFallbackNarration', () => {
     expect(claro.narration).not.toBe(fallo.narration);
   });
 
+  it('en un intercambio de combate no contradice el resultado del intercambio con la tirada suelta (G7)', () => {
+    const rollFallido = { attribute: 'fuerza' as const, value: 11, roll: 2, result: 7, difficulty: 15, success: false, gradoExito: 'fallo' as const };
+    const conecta = deterministicFallbackNarration({ action: 'Lanzo un tajo.', roll: rollFallido, combatRealHitLanded: true });
+    expect(conecta.narration).toBe('Lanzo un tajo. El intercambio se salda con un golpe que conecta.');
+    const nadie = deterministicFallbackNarration({ action: 'Lanzo un tajo.', roll: rollFallido, combatBothMissed: true });
+    expect(nadie.narration).toBe('Lanzo un tajo. Ningún golpe llega a conectar.');
+  });
+
   it('sin tirada, narra igualmente sin romper', () => {
     expect(deterministicFallbackNarration({ action: 'Miro el paisaje' }).narration.length).toBeGreaterThan(0);
   });

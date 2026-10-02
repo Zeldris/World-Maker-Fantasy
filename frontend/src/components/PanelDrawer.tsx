@@ -10,11 +10,14 @@ interface PanelDrawerProps {
   /// (characterTabs), 'accent2' para los de "El mundo" (worldTabs), mismo lenguaje que ya usa
   /// LogPanel entre sus dos canales. Por defecto 'accent', para no romper ningún uso existente.
   accent?: 'accent' | 'accent2'
+  /// UX-5 (hito 0.2) — si no es null, el panel está en modo consulta: se lee, pero lo que cambia
+  /// datos está deshabilitado con este motivo.
+  modoConsulta?: string | null
 }
 
 /// Panel deslizante genérico por encima de la partida — nunca navega a otra página, así el
 /// jugador no pierde de vista los logs/chat de fondo (docs/mecanicas/09-panel-personaje.md § 1).
-export function PanelDrawer({ title, subtitle, onClose, children, accent = 'accent' }: PanelDrawerProps) {
+export function PanelDrawer({ title, subtitle, onClose, children, accent = 'accent', modoConsulta = null }: PanelDrawerProps) {
   const hairlineClass = accent === 'accent2' ? 'accent2-hairline' : 'accent-hairline'
   const closeHoverClass = accent === 'accent2' ? 'hover:border-accent2-600/60 hover:text-accent2-300' : 'hover:border-accent-600/60 hover:text-accent-300'
   // Foco + scroll al inicio al abrirse (2026-08-31, "revisa bien todos los casos del foco/scroll")
@@ -59,6 +62,11 @@ export function PanelDrawer({ title, subtitle, onClose, children, accent = 'acce
           </button>
           <div className={`absolute inset-x-0 bottom-0 ${hairlineClass}`} />
         </div>
+        {modoConsulta && (
+          <p role="status" className="mx-5 mt-3 rounded-lg border border-iron-700 bg-wood-950/60 px-3 py-1.5 text-2xs text-wood-400">
+            👁 Solo consulta: {modoConsulta}
+          </p>
+        )}
         <div ref={scrollRef} tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto px-5 py-4 outline-none">{children}</div>
       </div>
     </div>

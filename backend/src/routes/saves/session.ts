@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
+import { registrarSuceso, minutosDeFiccion } from '../../services/cronista/sucesos.js';
 import { contraataqueDifficultyFor, scopeFor, hasPendingLoot } from '../../services/npcScene.js';
 import { effectiveAttributes, effectiveDefense } from '../../services/equipment.js';
 import { rollCheck } from '../../services/dice.js';
@@ -406,6 +407,21 @@ export async function sessionRoutes(app: FastifyInstance) {
       // siempre) — nunca en `NpcState`, que es una fila COMPARTIDA por toda la especie. Marcar
       // `dismissedGrupo: true` es lo que `detail.ts` respeta al reconstruir la tarjeta pendiente
       // tras recargar.
+      // Libro de Sucesos (CR-3, hito 0.2) — Clemente es un perdón, en los dos caminos de abajo.
+      const registrarPerdon = async (tx: Prisma.TransactionClient, logEntryId: string) =>
+        registrarSuceso(tx, {
+          saveId: save.id,
+          tipo: 'PERDON_CONCEDIDO',
+          fictionalMinutes: await minutosDeFiccion(tx, save.id),
+          locationId: save.currentLocation?.id ?? null,
+          origen: 'JUGADOR',
+          logEntryId,
+          actores: [
+            { entidadTipo: 'PERSONAJE', entidadId: save.id, papel: 'AUTOR' },
+            { entidadTipo: 'NPC', entidadId: npc.id, papel: 'BENEFICIARIO' },
+          ],
+          datos: { personaje: save.characterName, perdonado: npc.name },
+        });
       const participantId = request.body?.participantId;
       if (participantId) {
         const participant = await prisma.combatParticipant.findUnique({ where: { id: participantId } });
@@ -435,6 +451,7 @@ export async function sessionRoutes(app: FastifyInstance) {
           await tx.combatParticipant.update({ where: { id: participantId }, data: { dismissedGrupo: true } });
           // isSystemMessage (ver comentario completo en schema.prisma) — texto fijo determinista.
           const created = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, isSystemMessage: true } });
+          await registrarPerdon(tx, created.id);
           // Reputación de facción (2026-09-04) — mismo criterio que el camino 1v1 clásico de más
           // abajo, ver su comentario completo.
           const factionRepChange = await applyFactionRepDeltaForResolution(tx, save.id, npc.faction, FACTION_REP_MERCY_DELTA);
@@ -480,6 +497,7 @@ export async function sessionRoutes(app: FastifyInstance) {
         await tx.save.update({ where: { id: save.id }, data: { pendingCombatNpcSlugs: freshSlugs } });
         // isSystemMessage (ver comentario completo en schema.prisma) — texto fijo determinista.
         const created = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, isSystemMessage: true } });
+        await registrarPerdon(tx, created.id);
         // Reputación de facción (2026-09-04, bug real jugando en vivo: "me resta la reputación
         // antes de matarlo... si elijo matar tiene que esperar a que resuelva el combate antes de
         // restarlo, en el turno final") — Clemente es una de las 3 decisiones finales posibles

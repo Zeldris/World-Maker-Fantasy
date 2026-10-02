@@ -1,3 +1,5 @@
+import { slugify } from '../lib/slugify.js';
+import { registrarEnPartidasDelMundo } from './cronista/emisores.js';
 import { difundirNoticias, textoAsalto, textoExpedicionDeVuelta, type NoticiaMundo } from './noticiasMundo.js';
 import type { Prisma, PrismaClient, FactionRelationType, CondicionFisica, Npc } from '@prisma/client';
 import type { MetodoObtencion } from '@prisma/client';
@@ -540,7 +542,7 @@ async function lanzarExpedicion(tx: TxDb, worldId: string, faction: { id: string
 
   const regiones = regionesElegibles(faction.name, (await tx.location.findMany({ where: { worldId }, distinct: ['region'], select: { region: true } })).map((l) => l.region));
   if (regiones.length === 0) return false;
-  const locations = (await tx.location.findMany({ where: { worldId, region: { in: regiones } }, select: { id: true, slug: true, region: true } }))
+  const locations = (await tx.location.findMany({ where: { worldId, region: { in: regiones } }, select: { id: true, slug: true, region: true, name: true } }))
     .filter((l) => !l.slug.includes('-interior')); // interiores de edificios: no son destinos de recolección
   const destinos = ordenarDestinos(locations, dia, faction.id);
 
@@ -568,6 +570,13 @@ async function lanzarExpedicion(tx: TxDb, worldId: string, faction: { id: string
           members: { create: [...recolectores.map((r) => ({ npcId: r.npcId, rol: 'recolector' })), ...guardias.map((npcId) => ({ npcId, rol: 'guardia' }))] },
         },
       });
+      // Libro de Sucesos (CR-3, hito 0.2).
+      const faccionSlug = (await tx.faction.findUniqueOrThrow({ where: { id: faction.id }, select: { slug: true } })).slug;
+      await registrarEnPartidasDelMundo(tx, worldId, (saveId, fictionalMinutes) => ({
+        saveId, tipo: 'EXPEDICION_SALE', fictionalMinutes, regionSlug: slugify(destino.region), locationId: destino.id, origen: 'MUNDO',
+        actores: [{ entidadTipo: 'FACCION', entidadId: faccionSlug, papel: 'AUTOR' }],
+        datos: { faccion: faction.name, destino: destino.name },
+      }));
       return true;
     }
   }
@@ -622,6 +631,13 @@ async function llegarAlDestino(
       }),
     });
     if (res.hechoRelacion) noticias.push({ facciones: implicadas, region: null, dia, texto: res.hechoRelacion });
+    // Libro de Sucesos (CR-3, hito 0.2): el asalto, con su resultado en los datos del texto.
+    const faccionSlug = (await tx.faction.findUniqueOrThrow({ where: { id: faction.id }, select: { slug: true } })).slug;
+    await registrarEnPartidasDelMundo(tx, worldId, (saveId, fictionalMinutes) => ({
+      saveId, tipo: 'EXPEDICION_INTERCEPTADA', fictionalMinutes, regionSlug: slugify(destino.region), locationId: exp.destinoLocationId, origen: 'MUNDO',
+      actores: [{ entidadTipo: 'FACCION', entidadId: faccionSlug, papel: 'VICTIMA' }],
+      datos: { faccion: faction.name, interceptora: res.resumen.faccionHostil ?? 'unos asaltantes', destino: destino.name },
+    }));
     if (res.carga === 'perdida') {
       await tx.expedicion.update({ where: { id: exp.id }, data: { status: 'INTERCEPTADA', tiradaRiesgo: tirada * 100, botin: undefined, interceptacion } });
       return { interceptada: true, muertes };
@@ -673,6 +689,15 @@ async function completarExpedicion(
     const texto = textoExpedicionDeVuelta(faccionNombre, destino?.name ?? 'los alrededores', items);
     if (texto) noticias.push({ facciones: [faccionNombre], region: destino?.region ?? null, dia, texto });
   }
+  // Libro de Sucesos (CR-3, hito 0.2): la vuelta, con o sin botín.
+  const destinoVuelta = await tx.location.findUnique({ where: { id: exp.destinoLocationId }, select: { name: true, region: true } });
+  const botin = items.length > 0 ? [...new Set(items.map((i) => i.name))].slice(0, 3).join(', ') : undefined;
+  const faccionSlug = (await tx.faction.findUniqueOrThrow({ where: { id: exp.factionId }, select: { slug: true } })).slug;
+  await registrarEnPartidasDelMundo(tx, exp.worldId, (saveId, fictionalMinutes) => ({
+    saveId, tipo: 'EXPEDICION_VUELVE', fictionalMinutes, regionSlug: destinoVuelta ? slugify(destinoVuelta.region) : null, origen: 'MUNDO',
+    actores: [{ entidadTipo: 'FACCION', entidadId: faccionSlug, papel: 'AUTOR' }],
+    datos: { faccion: faccionNombre, destino: destinoVuelta?.name ?? 'los alrededores', botin },
+  }));
   let depositados = 0;
   if (items.length > 0) {
     const existentes = await tx.almacenItem.findMany({ where: { factionId: exp.factionId, catalogSlug: { not: null } }, select: { catalogSlug: true } });

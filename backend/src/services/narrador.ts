@@ -1662,13 +1662,25 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
   return deterministicFallbackNarration(ctx);
 }
 
-export function deterministicFallbackNarration(ctx: { action: string; roll?: RollResult }): NarrationResult {
+export function deterministicFallbackNarration(ctx: {
+  action: string;
+  roll?: RollResult;
+  combatBothMissed?: boolean;
+  combatRealHitLanded?: boolean;
+}): NarrationResult {
   const { action, roll } = ctx;
-  const resultado = !roll
-    ? 'La acción transcurre sin incidentes.'
-    : roll.gradoExito === 'claro'
-      ? 'La acción sale exactamente como se esperaba.'
-      : 'La acción no sale como se esperaba.';
+  // En un intercambio de combate manda el intercambio, no `roll` (Fase G del 0.1, hallazgo G7):
+  // «Gana Gorhorn · el golpe conecta» salía junto a «La acción no sale como se esperaba». Sin saber
+  // aquí qué lado conectó, se dice solo lo que es seguro y la tarjeta de la tirada cuenta el resto.
+  const resultado = ctx.combatBothMissed
+    ? 'Ningún golpe llega a conectar.'
+    : ctx.combatRealHitLanded
+      ? 'El intercambio se salda con un golpe que conecta.'
+      : !roll
+        ? 'La acción transcurre sin incidentes.'
+        : roll.gradoExito === 'claro'
+          ? 'La acción sale exactamente como se esperaba.'
+          : 'La acción no sale como se esperaba.';
   return {
     narration: `${action} ${resultado}`,
     newFacts: [],

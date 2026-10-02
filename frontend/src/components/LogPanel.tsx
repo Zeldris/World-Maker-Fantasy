@@ -64,6 +64,10 @@ interface LogPanelProps {
   /// panel de "Tu personaje", el único que puede recibir `questOffer`).
   onAcceptQuestOffer?: (entryId: string, title: string, description: string) => void
   onDismissQuestOffer?: (entryId: string) => void
+  /// Responder escribiendo (petición de la usuaria, 2026-10-02) — cuando una persona te habla o te
+  /// corta el paso, «✍️ Responder» lleva al composer con «Le digo a <nombre>: » ya puesto, para
+  /// contestar con texto libre sin pasar por el modo dinámico.
+  onResponderEscribiendo?: (targetName: string) => void
   /// "Modo dinámico" (2026-08-27, `entry.dynamicModeOffer`) — mismo criterio opcional que
   /// `onAcceptQuestOffer`/`onDismissQuestOffer`. Solo NPC/FAUNA (conversación de vueltas, abre
   /// DynamicModeModal) — RECURSO usa `onVerRecursoDetalle` abajo (modal de detalle propio).
@@ -201,6 +205,7 @@ export const LogPanel = memo(function LogPanel({
   onDiceRevealAllLanded,
   onAcceptQuestOffer,
   onDismissQuestOffer,
+  onResponderEscribiendo,
   onInteractuarModoDinamico,
   onVerRecursoDetalle,
   onCazarEnZona,
@@ -448,7 +453,7 @@ export const LogPanel = memo(function LogPanel({
                 </>
               )}
               {entry.combatExchange && (
-                <CombatExchangeBadge exchange={entry.combatExchange} playerName={characterName} enemyName={entry.npcAbilityUsed?.npcName} />
+                <CombatExchangeBadge exchange={entry.combatExchange} playerName={characterName} enemyName={entry.npcAbilityUsed?.npcName ?? entry.combatExchange.rivalNombre} />
               )}
               {entry.newQuest && (
                 <div className="mt-2 rounded-lg border border-quest-600/50 bg-quest-500/10 px-2.5 py-2">
@@ -553,6 +558,18 @@ export const LogPanel = memo(function LogPanel({
                                   offer.cantidad,
                                 ),
                         },
+                        // Responder escribiendo (2026-10-02) — solo personas (NPC), también si te
+                        // cortan el paso: hablar es una reacción válida y el backend la acepta.
+                        ...(offer.tipo === 'NPC' && onResponderEscribiendo
+                          ? [
+                              {
+                                label: '✍️ Responder',
+                                tone: 'accent' as const,
+                                disabled: offer.busy,
+                                onClick: () => onResponderEscribiendo(offer.targetName),
+                              },
+                            ]
+                          : []),
                         // Cazar desde la tarjeta (Fase 2, 2026-09-28) — solo FAUNA no forzada con un
                         // `zonePointId` real (el grupo exacto con el que se ha colisionado); un
                         // agresivo (`combateForzado`) nunca lo ofrece, ya tiene su propio árbol de

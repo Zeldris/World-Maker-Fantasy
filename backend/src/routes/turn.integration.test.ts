@@ -3549,6 +3549,8 @@ describe('Respawn tras morir: vuelve al último campamento, no se queda donde mu
     expect(savedAfterDeath.deathCount).toBe(1);
     expect(savedAfterDeath.endedAt).toBeNull(); // NOVATO, sin fin de partida
     expect(savedAfterDeath.pendingDeathResolution).toBe(true);
+    // Libro de Sucesos (CR-3): la muerte queda registrada.
+    expect(await prisma.suceso.count({ where: { saveId, tipo: 'MUERTE_JUGADOR' } })).toBe(1);
     // Bug real jugando en vivo (ronda de pruebas 2026-08-28): morir no limpiaba
     // `pendingCombatNpcSlugs` — el aviso "COMBATIR/HUIR" contra el agresor seguía apareciendo pese
     // a que el jugador ya no puede seguir jugando. El combate debe cerrarse del todo, aunque el
@@ -3571,6 +3573,8 @@ describe('Respawn tras morir: vuelve al último campamento, no se queda donde mu
     expect(savedAfterResolve.pendingDeathResolution).toBe(false);
     expect(savedAfterResolve.currentLocationId).toBe(hondonadaId); // vuelve al campamento…
     expect(savedAfterResolve.currentLocationId).not.toBe(pilaresId); // …no se queda donde murió
+    // Libro de Sucesos (CR-3): el despertar queda registrado.
+    expect(await prisma.suceso.count({ where: { saveId, tipo: 'RENACER' } })).toBe(1);
   }, 20_000);
 });
 
@@ -4025,6 +4029,10 @@ describe('Decapitar cierra una misión "derrotar a X" con rewardItems y entrega 
 
     const quest = await prisma.quest.findFirstOrThrow({ where: { saveId, title: { contains: 'Orco Enfurecido (prueba)' } } });
     expect(quest.status).toBe('COMPLETADA');
+    // Libro de Sucesos (CR-3): la misión cerrada y la muerte que la cerró quedan en el Libro.
+    const fin = await prisma.suceso.findFirstOrThrow({ where: { saveId, tipo: 'MISION_COMPLETADA' }, orderBy: { createdAt: 'desc' } });
+    expect(fin.texto).toContain('Orco Enfurecido (prueba)');
+    expect(await prisma.suceso.count({ where: { saveId, tipo: 'MUERTE_CAUSADA' } })).toBeGreaterThanOrEqual(1);
 
     const item = await prisma.inventoryItem.findFirst({ where: { saveId, name: 'Mapa de las Llanuras (prueba)' } });
     expect(item).not.toBeNull();
@@ -8410,6 +8418,52 @@ describe('Gistera Koh solo aparece en La Hondonada del Eco mientras sigue sin pr
     }
   }, 15_000);
 
+  // Fase G del 0.1 (hallazgo G22): su ZonePoint sigue activo tras presentarse y marcharse — la
+  // llegada «sin nombre» se volvía a pegar a cualquier turno junto a él (construir el ayuntamiento).
+  it('en la celda de su ZonePoint pero con su misión ya aceptada (ya se marchó), el gancho NO se dispara', async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (Gistera ya marchada)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+        zonaPosX: 220,
+        zonaPosY: 500,
+      },
+    });
+    try {
+      await prisma.worldState.create({ data: { saveId: save.id } });
+      await prisma.quest.create({ data: { saveId: save.id, title: 'Acabar con el Orco Enfurecido', description: 'x', status: 'ACTIVA' } });
+      classifyAction.mockResolvedValue({
+        requiereTirada: false, atributo: 'destreza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+      });
+      const app = await buildApp();
+      const action = 'Exploro la zona';
+      const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId: save.id, action, enCombate: false } });
+      const { classification, roll } = classifyRes.json();
+      const narrateRes = await app.inject({
+        method: 'POST',
+        url: '/turn/narrate',
+        payload: { saveId: save.id, action, classification, roll, enCombate: false },
+      });
+      expect(narrateRes.statusCode).toBe(200);
+      expect(narrateRes.body).not.toContain('Una sombra se acerca');
+
+      const facts = await prisma.sessionFact.findMany({ where: { saveId: save.id } });
+      expect(facts.some((f) => f.text.includes('sin nombre revelado todavía'))).toBe(false);
+    } finally {
+      await prisma.save.delete({ where: { id: save.id } });
+    }
+  }, 15_000);
+
   // Auditoría de pruebas en vivo (2026-09-16): mismo bug real que motivó reconectar el hook al
   // sistema de Zona — jugando de verdad, la primera acción del jugador no fue diálogo, la fase 1
   // nunca se disparó, y el segundo intento de hablar quedó sin ningún guardarraíl determinista (el
@@ -8508,7 +8562,7 @@ describe('lastNarrationText excluye mensajes de sistema deterministas (bug real 
     expect(claseRes.statusCode).toBe(200);
 
     const logEntry = await prisma.logEntry.findFirstOrThrow({ where: { saveId }, orderBy: { createdAt: 'desc' } });
-    expect(logEntry.text).toContain('asume su clase');
+    expect(logEntry.text).toContain('asume su clase: Guerrero.');
     expect(logEntry.isSystemMessage).toBe(true);
 
     classifyAction.mockResolvedValue({

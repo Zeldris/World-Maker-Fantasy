@@ -1,4 +1,4 @@
-import type { EnciclopediaIndex, EnciclopediaLinkTarget } from './enciclopediaIndex'
+import { buscarMenciones, type EnciclopediaIndex, type EnciclopediaLinkTarget } from './enciclopediaIndex'
 
 // Banner de elemento citado bajo la narración (petición explícita de la usuaria, 2026-07-24):
 // reutiliza el MISMO índice que ya hace clicable el texto de la narración (EnciclopediaLinkedText)
@@ -58,9 +58,7 @@ export function pickMentionedEntityBanner(
 
   const seen = new Set<string>()
   const candidates: MentionedEntityMatch[] = []
-  for (const match of text.matchAll(index.regex)) {
-    const target = index.entries.get(match[0].toLowerCase())
-    if (!target) continue
+  for (const { target } of buscarMenciones(index, text)) {
     const bannerUrl = resolveBannerUrl(target)
     if (!bannerUrl) continue
     const key = keyFor(target)

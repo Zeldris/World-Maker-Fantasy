@@ -7,6 +7,7 @@ import { crearPlantilla, borrarPlantilla, asignarPlantillaCompanion, asignarPlan
 import { SLOT_LABEL, SLOT_ORDER } from '../../../lib/equipSlots'
 import { ErrorBanner } from '../../../components/ErrorBanner'
 import { useErrorConReintento } from '../../../hooks/useErrorConReintento'
+import { useModoConsulta } from '../../../context/useModoConsulta'
 
 /// Selector compartido de plantilla — súbdito o compañero integrado en el Reino, mismo desplegable.
 /// Exportado (2026-08-27, auditoría de diseño/UX § 1.3: "cuando `rolReino` no es null, la tarjeta
@@ -33,6 +34,8 @@ export function PlantillaSelect({
   const [confirmed, setConfirmed] = useState(0)
   const [flashing, setFlashing] = useState(false)
   const busyRef = useRef(false)
+  // UX-5 (hito 0.2) — asignar una plantilla re-equipa al compañero: no mientras no toca.
+  const consulta = useModoConsulta()
   const { fallo, informar, limpiar } = useErrorConReintento()
 
   async function handleChange(id: string | null) {
@@ -67,6 +70,8 @@ export function PlantillaSelect({
         value={value ?? ''}
         opciones={[{ value: '', label: 'Sin plantilla' }, ...plantillas.map((p) => ({ value: p.id, label: `${p.name} (${p.rol})` }))]}
         onChange={(v) => void handleChange(v || null)}
+        disabled={!!consulta}
+        title={consulta ?? undefined}
         className={`w-full ${flashing ? 'border-accent-500' : ''}`}
       />
       <ErrorBanner fallo={fallo} onCerrar={limpiar} />
@@ -293,6 +298,8 @@ const ROLES_REINO: { value: string; label: string; descripcion: string }[] = [
 /// Selector de rol de Reino por compañero (H-1): sin `rolReino` un compañero no es candidato a
 /// trabajador ni a diplomático. "Sin rol" lo saca del Reino (y del edificio al que estuviera asignado).
 function RolesReinoSection({ saveId, companions, onRefreshSave }: { saveId: string; companions: CompanionInfo[]; onRefreshSave: () => Promise<void> }) {
+  // UX-5 (hito 0.2) — modo consulta: lo que cambia datos se deshabilita con el motivo.
+  const consulta = useModoConsulta()
   const [busy, setBusy] = useState(false)
   const { fallo, informar, limpiar } = useErrorConReintento()
   if (companions.length === 0) return null
@@ -319,7 +326,8 @@ function RolesReinoSection({ saveId, companions, onRefreshSave }: { saveId: stri
             <SelectorJuego
               ariaLabel={`Rol en el Reino de ${c.name}`}
               value={c.rolReino ?? ''}
-              disabled={busy}
+              disabled={busy || !!consulta}
+              title={consulta ?? undefined}
               opciones={[
                 { value: '', label: 'Sin rol', descripcion: 'Fuera del Reino: no trabaja en edificios ni lo atiende la Casa de curas.' },
                 ...ROLES_REINO.map((r) => ({ value: r.value, label: r.label, descripcion: r.descripcion })),

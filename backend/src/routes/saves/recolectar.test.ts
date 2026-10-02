@@ -47,6 +47,9 @@ const findManyItemCatalogTx = vi.fn();
 // `WorldState.fictionalMinutes` dentro de la misma transacción cuando se consigue algo de verdad.
 const updateWorldStateTx = vi.fn();
 
+// Libro de Sucesos (CR-3): tiene sus propios tests; aquí la transacción simulada no lo lleva.
+vi.mock('../../services/cronista/emisores.js', () => ({ registrarFinDeMision: vi.fn(async () => 'suceso-1') }));
+
 vi.mock('../../lib/prisma.js', () => ({
   prisma: {
     save: { findUnique: (...args: unknown[]) => findUniqueSave(...args), update: (...args: unknown[]) => updateSave(...args) },

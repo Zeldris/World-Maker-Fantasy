@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
+import { registrarSuceso, minutosDeFiccion } from '../../services/cronista/sucesos.js';
 import { initialLocationSlugFor } from '../../services/travel.js';
 import { awakensText } from '../../services/death.js';
 import { restartSaveTransactionBody } from './shared.js';
@@ -60,7 +61,7 @@ export async function deathRoutes(app: FastifyInstance) {
         }
         // isSystemMessage (ver comentario completo en schema.prisma) — awakensText es una función
         // pura, texto fijo determinista, nunca pasa por el LLM.
-        await tx.logEntry.create({
+        const despertar = await tx.logEntry.create({
           data: {
             saveId: save.id,
             channel: 'CHARACTER',
@@ -68,6 +69,18 @@ export async function deathRoutes(app: FastifyInstance) {
             timeLabel: save.worldState?.fictionalDateLabel ?? 'Día 1, mañana',
             isSystemMessage: true,
           },
+        });
+        // Libro de Sucesos (CR-3, hito 0.2). El reinicio total de abajo no lo registra: «todo fue
+        // un sueño» vacía el Libro y la historia empieza de cero.
+        await registrarSuceso(tx, {
+          saveId: save.id,
+          tipo: 'RENACER',
+          fictionalMinutes: await minutosDeFiccion(tx, save.id),
+          locationId: respawnLocationId,
+          origen: 'JUGADOR',
+          logEntryId: despertar.id,
+          actores: [{ entidadTipo: 'PERSONAJE', entidadId: save.id, papel: 'AFECTADO' }],
+          datos: { personaje: save.characterName, lugar: respawnLocation?.name ?? 'un lugar que reconoce' },
         });
         await tx.save.update({
           where: { id: save.id },

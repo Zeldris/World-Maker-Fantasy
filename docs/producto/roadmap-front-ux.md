@@ -148,13 +148,24 @@ stateDiagram-v2
 ## 4. Propuestas
 
 ### 4.1 Estado único de la partida
-- **UX-1 · `useGamePhase`** — hook que calcula la fase actual (`libre`, `pensando`, `ocupado`,
+- ~~**UX-1 · `useGamePhase`** — hook que calcula la fase actual (`libre`, `pensando`, `ocupado`,
   `encuentro`, `combate`, `dinamico`, `eleccion`, `muerte`, `fin`) a partir del estado existente,
   con prioridad fija si coinciden. Sustituye a `composerDisabled`, `anyModalOpen` y las listas de
-  pestañas deshabilitadas. Tests con una tabla de casos. **M** [P]
-- **UX-2 · Matriz de permisos** como datos (la tabla de § 5), no como condiciones repartidas por
+  pestañas deshabilitadas. Tests con una tabla de casos. **M** [P]~~ ✅ 2026-10-02:
+  `calcularFase` en `lib/gamePhase.ts` (prioridad fin > muerte > pensando > combate > dinámico >
+  elección > encuentro > ocupado > libre) y `hooks/useGamePhase.ts`; `GameView` saca de ahí el
+  bloqueo del composer, de la barra de habilidades, de la clasificación anticipada y de los botones
+  que lanzan turno (`bloqueoTurno`). **Queda:** `anyModalOpen` sigue como guarda entre modales
+  hasta el gestor de capas (`UX-9`); la guardia interna de `useTurnFlow` (refs) no se ha tocado.
+- ~~**UX-2 · Matriz de permisos** como datos (la tabla de § 5), no como condiciones repartidas por
   el JSX: `canDo(phase, 'enviarTurno' | 'tarjeta' | 'modificarInventario' | 'moverse' | …)` devuelve
-  `{ permitido, motivo }`. **M** [P]
+  `{ permitido, motivo }`. **M** [P]~~ ✅ 2026-10-02: `canDo(fase, accion)` en `lib/gamePhase.ts`
+  con acciones `enviarTurno`, `tarjeta`, `abrirPanel`, `modificarPanel`, `moverse`, `decidir`,
+  `salir`, tests de la matriz. Desviaciones de § 5 a propósito: en *Encuentro* se puede escribir y
+  usar la tarjeta (el backend acepta el turno y hablar es una reacción válida; solo bloquea
+  moverse). **Confirmado por la usuaria (2026-10-02)**, que pide además que responder escribiendo
+  sea más accesible: `UX-37`. **Queda:** que la usen los paneles (`UX-5`), la brújula (`UX-7`), las tarjetas y el
+  menú de salir (`UX-8`/`UX-18`).
 
 ### 4.2 Bloqueos
 - ~~**UX-3 · Guardia en `handleSubmit`** — rechazar si `characterThinking` o si la fase no lo permite,
@@ -167,17 +178,38 @@ stateDiagram-v2
   mismo `bloqueoTurno` de UX-3, vía `LogPanel.bloqueoAcciones`) y deshabilita todas sus acciones con
   el motivo. El combate pendiente queda fuera a propósito: la tarjeta de un agresivo que te corta el
   paso es justo como se reacciona a él. Pasará a `canDo` con `UX-2`.
-- **UX-5 · Paneles en modo consulta** cuando la fase no permite cambios: se abren y se leen, pero
+- ~~**UX-5 · Paneles en modo consulta** cuando la fase no permite cambios: se abren y se leen, pero
   los botones que modifican (equipar, tirar, construir, mercado…) se deshabilitan con el motivo.
-  Lo que no toca el turno (renombrar una plantilla, ordenar) puede seguir libre. Resuelve H3. **M**
+  Lo que no toca el turno (renombrar una plantilla, ordenar) puede seguir libre. Resuelve H3. **M**~~ ✅ 2026-10-02:
+  contexto `ModoConsulta` (`context/modoConsultaContext.ts`, `useModoConsulta`) con el motivo de
+  `canDo(fase, 'modificarPanel')`; el cajón muestra «👁 Solo consulta: <motivo>». Deshabilitados con
+  el motivo: capturas (depositar/soltar), repartir puntos, capturar, tamear, plantilla y equipo de
+  compañero; en Reino, almacén (depositar/retirar), producción (trabajadores, órdenes), roles,
+  diplomacia, mercado, campamento y «Fundar reino». Libres a propósito: grupos de combate,
+  crear/borrar plantillas y el tope del almacén (solo organizan). Construir ya iba por
+  `bloqueoTurno`. **Queda:** la zona (recoger, moverse) va con `UX-7`.
 - **UX-6 · Un narrador a la vez** — al enviar una acción con la ambientación del mundo en marcha:
   (A) esperar con el mensaje "Tu acción saldrá en cuanto el mundo termine", o (B) cancelar la
   ambientación. 🧭 Resuelve H4. **S**
-- **UX-7 · La brújula y el mapa respetan la fase** — moverse solo en `libre`; en el resto, el botón
-  sigue visible, deshabilitado y con el motivo. Resuelve H5 y H6. **S**
-- **UX-8 · Bloqueos visibles** — un icono de candado y el motivo en tooltip en todo lo
+- ~~**UX-7 · La brújula y el mapa respetan la fase** — moverse solo en `libre`; en el resto, el botón
+  sigue visible, deshabilitado y con el motivo. Resuelve H5 y H6. **S**~~ ✅ 2026-10-02: la brújula
+  ya no desaparece con un encuentro pendiente; se deshabilita con el motivo de
+  `canDo(fase, 'moverse')`. El mapa de zona recibe `bloqueoMovimiento`: andar y recoger del suelo
+  no piden nada al backend y dejan el motivo a la vista (el mapa se sigue consultando). Sigue oculta
+  bajo un modal o el cajón (lo decidirá el gestor de capas, `UX-9`).
+- ~~**UX-37 · Responder escribiendo** — cuando alguien te habla o te corta el paso, contestar con
+  texto libre tiene que estar a mano, no solo vía *Interactuar*. Petición de la usuaria
+  (2026-10-02). **S**~~ ✅ 2026-10-02: las tarjetas de encuentro con una persona (NPC, también
+  con `combateForzado`) tienen «✍️ Responder», que cierra el panel abierto, vuelve de la barra de
+  habilidades al composer y escribe «Le digo a <nombre>: » con el nombre como chip y el cursor al
+  final. La fauna no lo lleva. Tests en `LogPanel.test.tsx`.
+- ~~**UX-8 · Bloqueos visibles** — un icono de candado y el motivo en tooltip en todo lo
   deshabilitado; en la cabecera, un indicador de la fase actual ("✒️ El narrador escribe", "🧭 De
-  viaje · 12 min", "⚔️ En combate"). **S**
+  viaje · 12 min", "⚔️ En combate"). **S**~~ ✅ 2026-10-02: chip de fase en la cabecera
+  (`etiquetaDeFase`, `lib/gamePhase.ts`: ✒️ El narrador escribe, 🧭 Ocupado · cuenta atrás, ⚠️ Te
+  cortan el paso, ⚔️ En combate…; no aparece en `libre`) con el motivo en el tooltip; 🔒 en la
+  brújula deshabilitada. El resto ya enseñaba candado o motivo: tarjetas del registro (`UX-4`),
+  composer (texto de ayuda), botones de turno (`UX-3`) y paneles (aviso «👁 Solo consulta», `UX-5`).
 
 ### 4.3 Orden y prioridad de lo que se abre
 - **UX-9 · Gestor de capas con prioridad** — un `OverlayManager` con niveles fijos; dentro de un
@@ -376,7 +408,7 @@ del hook `useGamePhase`.
 | Fase | Contenido | Por qué |
 |---|---|---|
 | **UX-A · Arreglos** | UX-3, UX-4, UX-13, UX-16, UX-24 | Evitan dobles turnos, acciones fuera de tiempo y errores invisibles. Pequeños y encajan en el hito `0.1`. |
-| **UX-B · Estado único** | UX-1, UX-2, UX-5, UX-7, UX-8 | La base para que todos los bloqueos sean coherentes y se expliquen. |
+| **UX-B · Estado único** | UX-1, UX-2, UX-5, UX-7, UX-8, UX-37 | La base para que todos los bloqueos sean coherentes y se expliquen. |
 | **UX-C · Orden** | UX-9, UX-10, UX-11, UX-12 | Una cosa importante a la vez y en el orden en que se lee. |
 | **UX-D · Entrada y salida** | UX-15, UX-17, UX-18, UX-19, UX-20 | Empezar más rápido, salir sin sustos, Atrás como en un juego. |
 | **UX-E · Pulido** | UX-6, UX-21, UX-22, UX-23, UX-25…28 | Foco, esperas, deshacer, primeros pasos. |

@@ -98,6 +98,12 @@ describe('advanceFactionExpeditions — integración (Fase 13-B)', () => {
     expect(r3.completadas).toBeGreaterThan(0);
     exps = await propias();
     expect(exps[0]!.status).toBe('COMPLETADA');
+    // Libro de Sucesos (CR-3): la salida y la vuelta quedan en el Libro de cada partida del mundo
+    // (el conocimiento — quién se entera — es otra cosa, CR-18; las noticias siguen su propio filtro).
+    for (const id of [saveId, saveAjenaId]) {
+      expect(await prisma.suceso.count({ where: { saveId: id, tipo: 'EXPEDICION_SALE' } })).toBeGreaterThan(0);
+      expect(await prisma.suceso.count({ where: { saveId: id, tipo: 'EXPEDICION_VUELVE' } })).toBeGreaterThan(0);
+    }
     const almacen = await prisma.almacenItem.findMany({ where: { factionId: serhuId, id: { notIn: almacenPreviosIds } } });
     for (const it of items) expect(almacen.some((a) => a.catalogSlug === it.catalogSlug)).toBe(true);
     const xpDespues = await prisma.npcProfessionProgress.findMany({ where: { npcId: { in: items.map((i) => i.npcId) }, professionId: exp.professionId } });

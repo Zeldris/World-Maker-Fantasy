@@ -25,7 +25,7 @@ export interface ImagePromptSubject {
 /// Formato Title Case desde SNAKE_CASE, mismo criterio que `especializacionLabel`/`claseLabel`
 /// del frontend (lib/dice.ts) — replicado aquí en vez de compartido porque backend/frontend no
 /// comparten módulos de utilidades (roadmap de UI de especialización, 2026-09-01).
-function enumLabel(value: string): string {
+export function enumLabel(value: string): string {
   return value
     .toLowerCase()
     .split('_')

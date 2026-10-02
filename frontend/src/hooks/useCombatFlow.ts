@@ -550,11 +550,28 @@ export function useCombatFlow(params: UseCombatFlowParams) {
         ...prev,
         { id: logEntry.id, channel: 'character', text: textoConAviso, timeLabel: logEntry.timeLabel, createdAt: logEntry.createdAt, combate: true, factionRepChange: factionRepChange ?? undefined },
       ])
-    } catch {
-      // Best-effort (mismo criterio que el resto de acciones deterministas de combate): sin
-      // cuerdas o sin jaula libre, el backend ya devuelve el motivo — no hay nada que deshacer
-      // aquí porque el estado optimista nunca llegó a aplicarse.
+    } catch (err) {
+      // Nada que deshacer (el estado optimista nunca llegó a aplicarse), pero el motivo del
+      // backend («Necesitas cuerdas…», «No tienes hueco…») se enseña: antes se tragaba y el botón
+      // parecía no hacer nada (Fase G del 0.1, hallazgo G5).
+      avisarErrorEnLog('capturar-err', err, 'No se pudo atar.')
     }
+  }
+
+  /// Motivo de un fallo de acción determinista de combate, como entrada del diario (mismo criterio
+  /// que `handleCombatHuir`).
+  function avisarErrorEnLog(prefijo: string, err: unknown, porDefecto: string) {
+    setCharacterLog((prev) => [
+      ...prev,
+      {
+        id: `${prefijo}-${Date.now()}`,
+        channel: 'character',
+        text: err instanceof Error && err.message ? err.message : porDefecto,
+        timeLabel: fictionalDate,
+        createdAt: new Date().toISOString(),
+        combate: true,
+      },
+    ])
   }
 
   // Botón "Clemente" (2026-08-26, antes "Dejarlo vivir") — saca al NPC de
@@ -582,8 +599,8 @@ export function useCombatFlow(params: UseCombatFlowParams) {
         ...prev,
         { id: logEntry.id, channel: 'character', text: textoConAviso, timeLabel: logEntry.timeLabel, createdAt: logEntry.createdAt, combate: true, factionRepChange: factionRepChange ?? undefined },
       ])
-    } catch {
-      // Best-effort — ver comentario de `handleCapturarSeleccion`.
+    } catch (err) {
+      avisarErrorEnLog('clemente-err', err, 'No se pudo dejarlo ir.')
     }
   }
 

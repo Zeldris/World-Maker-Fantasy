@@ -98,6 +98,7 @@ export function ZonePointDetailModal({
   onClose,
   onRecoger,
   onIrHasta,
+  irHastaLabel = 'Ir hasta aquí',
   onSaquear,
   onDesollar,
 }: {
@@ -106,6 +107,8 @@ export function ZonePointDetailModal({
   /// B3 (pruebas 2026-09-28): pulsar un pin abría su ficha sin forma de llegar hasta él — el
   /// mapa de movimiento pasa aquí cómo caminar hasta el pin (ausente en la vista informativa).
   onIrHasta?: () => void
+  /// «Acercarte» cuando ya estás pegado al pin (Fase G del 0.1, hallazgo G14).
+  irHastaLabel?: string
   /// Cadáveres en el mapa (Fase 5, 2026-09-28) — el caller camina hasta el cadáver si hace falta
   /// y abre el modal real de Saquear/Desollar.
   onSaquear?: (npcSlug: string) => void
@@ -136,7 +139,7 @@ export function ZonePointDetailModal({
           )}
           {point.tipo !== 'CADAVER' && onIrHasta && (
             <button type="button" onClick={() => { onIrHasta(); onClose() }} className={confirmButtonClasses('accent')}>
-              Ir hasta aquí
+              {irHastaLabel}
             </button>
           )}
           {point.tipo === 'OBJETO' && point.droppedItemId && (

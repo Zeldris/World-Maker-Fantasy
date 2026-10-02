@@ -18,11 +18,13 @@ interface SelectorJuegoProps<T extends string> {
   onChange: (value: T) => void
   ariaLabel: string
   disabled?: boolean
+  /// Tooltip del botón (p. ej. el motivo de que esté deshabilitado).
+  title?: string
   /// Clases extra para el botón (ancho, tamaño de letra…).
   className?: string
 }
 
-export function SelectorJuego<T extends string>({ value, opciones, onChange, ariaLabel, disabled, className }: SelectorJuegoProps<T>) {
+export function SelectorJuego<T extends string>({ value, opciones, onChange, ariaLabel, disabled, title, className }: SelectorJuegoProps<T>) {
   const [abierto, setAbierto] = useState(false)
   const [activo, setActivo] = useState(0)
   const raizRef = useRef<HTMLDivElement>(null)
@@ -109,6 +111,7 @@ export function SelectorJuego<T extends string>({ value, opciones, onChange, ari
         aria-expanded={abierto}
         aria-controls={abierto ? idLista : undefined}
         disabled={disabled}
+        title={title}
         onClick={() => (abierto ? cerrar() : abrir())}
         onKeyDown={onKeyDownBoton}
         className={`tactile flex w-full items-center justify-between gap-2 rounded-lg border border-iron-700 bg-wood-950/60 px-2 py-1 text-left text-2xs text-wood-200 transition-colors hover:border-accent-600/60 disabled:cursor-not-allowed disabled:opacity-50 ${className ?? ''}`}

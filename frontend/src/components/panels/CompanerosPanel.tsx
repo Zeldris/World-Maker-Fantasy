@@ -10,6 +10,7 @@ import { CombatGroupsModal } from '../CombatGroupsModal'
 import { PlantillaSelect } from './ReinoPanel'
 import { ResourceBar } from '../ResourceBar'
 import { HealthBar } from '../HealthBar'
+import { useModoConsulta } from '../../context/useModoConsulta'
 
 // Grupo 3 § Compañeros y supervivencia (2026-08-25, docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md)
 // — `felicidad: null` = compañero de quest/narración libre (comportamiento de siempre, sin capa
@@ -36,6 +37,8 @@ interface CompanerosPanelProps {
 
 export function CompanerosPanel({ saveId, companions, inventory, onRefreshSave, plantillasEquipo, characterName }: CompanerosPanelProps) {
   const [capturaOpen, setCapturaOpen] = useState(false)
+  // UX-5 (hito 0.2) — capturar y tamear cambian datos: no en modo consulta.
+  const consulta = useModoConsulta()
   const [pendientes, setPendientes] = useState<TameoPendiente[]>([])
   const [tameoAbierto, setTameoAbierto] = useState<TameoPendiente | null>(null)
   const [equipoAbierto, setEquipoAbierto] = useState<CompanionInfo | null>(null)
@@ -60,6 +63,8 @@ export function CompanerosPanel({ saveId, companions, inventory, onRefreshSave, 
     <div className="flex flex-col gap-4">
       <button type="button"
         onClick={() => setCapturaOpen(true)}
+        disabled={!!consulta}
+        title={consulta ?? undefined}
         className="tactile w-full rounded-lg border border-accent-600/60 bg-wood-950/40 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-accent-300 transition-colors hover:bg-accent-500/10"
       >
         🪢 Capturar en la zona
@@ -81,6 +86,8 @@ export function CompanerosPanel({ saveId, companions, inventory, onRefreshSave, 
               <button type="button"
                 key={p.npcSlug}
                 onClick={() => setTameoAbierto(p)}
+                disabled={!!consulta}
+                title={consulta ?? undefined}
                 className="tactile flex items-center justify-between gap-2 rounded-lg border border-iron-700 bg-wood-950/40 px-3.5 py-2.5 text-left transition-colors hover:border-accent-600/60"
               >
                 <span className="text-xs text-wood-200">

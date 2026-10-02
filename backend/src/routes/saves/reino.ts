@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
+import { registrarSuceso, minutosDeFiccion } from '../../services/cronista/sucesos.js';
 import { slugify } from '../../lib/slugify.js';
 import { rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 import { professionLevelForXp, alivioForLevel } from '../../services/professionProgress.js';
@@ -151,6 +152,23 @@ export async function reinoRoutes(app: FastifyInstance) {
               { locationId: kingdomLocation.id, x: 550, y: 400, tipo: 'BASICA' },
             ],
           });
+
+          // Libro de Sucesos (CR-3, hito 0.2).
+          const region = ayuntamiento.location?.region ?? '';
+          await registrarSuceso(tx, {
+            saveId: save.id,
+            tipo: 'REINO_FUNDADO',
+            fictionalMinutes: await minutosDeFiccion(tx, save.id),
+            regionSlug: region ? slugify(region) : null,
+            locationId: ayuntamiento.locationId,
+            origen: 'JUGADOR',
+            actores: [
+              { entidadTipo: 'PERSONAJE', entidadId: save.id, papel: 'AUTOR' },
+              { entidadTipo: 'FACCION', entidadId: faction.slug, papel: 'BENEFICIARIO' },
+              ...(ayuntamiento.locationId ? [{ entidadTipo: 'LOCATION' as const, entidadId: ayuntamiento.locationId, papel: 'LUGAR' as const }] : []),
+            ],
+            datos: { reino: finalKingdomName, fundador: save.characterName, region: region || 'tierra sin nombre' },
+          });
         });
       } catch (err) {
         // Condición de carrera (auditoría de código completa, 2026-08-07): el guard de
@@ -206,7 +224,7 @@ export async function reinoRoutes(app: FastifyInstance) {
       const sourceFaction = await prisma.faction.findFirst({ where: { saveId: save.id }, select: { id: true, name: true, worldId: true } });
       if (!sourceFaction) return reply.status(400).send({ error: 'Todavía no has fundado tu Reino' });
 
-      const targetFaction = await prisma.faction.findFirst({ where: { worldId: sourceFaction.worldId, slug: targetFactionSlug }, select: { id: true, name: true } });
+      const targetFaction = await prisma.faction.findFirst({ where: { worldId: sourceFaction.worldId, slug: targetFactionSlug }, select: { id: true, name: true, slug: true } });
       if (!targetFaction) return reply.status(404).send({ error: `Facción desconocida: ${targetFactionSlug}` });
       if (targetFaction.id === sourceFaction.id) return reply.status(400).send({ error: 'No puedes hacer diplomacia contra tu propio Reino' });
 
@@ -220,6 +238,16 @@ export async function reinoRoutes(app: FastifyInstance) {
         .$transaction(async (tx) => {
           if (accion === 'espiar') {
             const info = await espiarFactionRelation(tx, sourceFaction.worldId, sourceFaction.id, targetFaction.id);
+            // Libro de Sucesos (CR-3, hito 0.2).
+            await registrarSuceso(tx, {
+              saveId: save.id, tipo: 'ESPIONAJE', fictionalMinutes: await minutosDeFiccion(tx, save.id), origen: 'JUGADOR',
+              actores: [
+                { entidadTipo: 'PERSONAJE', entidadId: save.id, papel: 'AUTOR' },
+                { entidadTipo: 'COMPANERO', entidadId: companion.id, papel: 'AUTOR' },
+                { entidadTipo: 'FACCION', entidadId: targetFaction.slug, papel: 'AFECTADO' },
+              ],
+              datos: { autor: sourceFaction.name, espiada: targetFaction.name },
+            });
             return { ok: true as const, accion, targetFaction: targetFaction.name, hechoDeMundo: null as string | null, ...info };
           }
 
@@ -232,7 +260,20 @@ export async function reinoRoutes(app: FastifyInstance) {
           }
 
           const event = DIPLOMACIA_ACCIONES[accion]!;
-          const hechoDeMundo = await recordFactionEvent(tx, sourceFaction.worldId, sourceFaction.id, targetFaction.id, event);
+          const hechoDeMundo = await recordFactionEvent(tx, sourceFaction.worldId, sourceFaction.id, targetFaction.id, event, save.id);
+          // Libro de Sucesos (CR-3, hito 0.2): el sabotaje es un suceso aunque no cambie la banda;
+          // negociar solo cuenta cuando la cambia (tregua, tratado…), y eso ya lo apunta recordFactionEvent.
+          if (accion === 'sabotear') {
+            await registrarSuceso(tx, {
+              saveId: save.id, tipo: 'SABOTAJE', fictionalMinutes: await minutosDeFiccion(tx, save.id), origen: 'JUGADOR',
+              actores: [
+                { entidadTipo: 'PERSONAJE', entidadId: save.id, papel: 'AUTOR' },
+                { entidadTipo: 'COMPANERO', entidadId: companion.id, papel: 'AUTOR' },
+                { entidadTipo: 'FACCION', entidadId: targetFaction.slug, papel: 'VICTIMA' },
+              ],
+              datos: { autor: sourceFaction.name, victima: targetFaction.name },
+            });
+          }
 
           // H-5 parcial (decisión de Álvaro, 2026-09-29): cada negociación conseguida da XP de
           // oficio 'diplomatico' al diplomático — así el gate de nivel deja de bloquear tras la

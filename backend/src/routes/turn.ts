@@ -742,7 +742,14 @@ export async function turnRoutes(app: FastifyInstance) {
     // mecánico legítimo. No hay nada nuevo que narrar sobre alguien ya resuelto, así que el turno
     // no llega ni a `classifyAction` — el frontend recibe la ficha y decide Saquear/Decapitar/Salir
     // sin que este intento de interacción cuente como una acción de verdad.
-    if (!enCombate) {
+    // Fase G del 0.1 (hallazgo G10): el estado de fauna es por especie y lugar, así que tras matar a
+    // un Gesgurio el texto de la caza de OTRO («Salgo a cazar y ataco a 'Gesgurio'.», que manda la
+    // propia caza de la zona) abría la ficha del muerto en vez del combate. El texto de la caza
+    // nunca es «tocar el cadáver», y con un combate de grupo ya creado tampoco.
+    const textoDeCaza = esActionTextDeCaza(action);
+    const combateDeGrupoEnCurso =
+      enCombate || textoDeCaza ? null : await prisma.combatEncounter.findFirst({ where: { saveId, estado: 'EN_CURSO', jugable: true }, select: { id: true } });
+    if (!enCombate && !textoDeCaza && !combateDeGrupoEnCurso) {
       const postCombatTarget = detectsPostCombatInteraction(action, npcsInSceneForValidation);
       if (postCombatTarget) {
         return { postCombatInteraction: postCombatTarget };

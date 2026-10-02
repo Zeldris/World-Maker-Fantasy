@@ -1,3 +1,4 @@
+import { registrarSuceso, type NuevoSuceso } from './cronista/sucesos.js';
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { appendSessionFacts, loadSessionFacts } from './worldFacts.js';
 import { stageForPresion, typeForPresion } from './factionRelations.js';
@@ -213,6 +214,30 @@ async function depleteClanPopulation(tx: TxClient, worldId: string, targetSlug: 
 /// toca la partida jugable real de hoy (`characterName === 'Gorhorn'`, mismo criterio que
 /// `classAbilityUnlocksFor`) — siembra la agenda inicial si está vacía (partidas ya en curso antes
 /// de que esto existiera) y avanza cualquier etapa ya vencida.
+type SucesoDeEtapa = Omit<NuevoSuceso, 'saveId' | 'fictionalMinutes' | 'origen'>;
+const faccion = (slug: string, papel: 'AUTOR' | 'VICTIMA' | 'AFECTADO') => ({ entidadTipo: 'FACCION' as const, entidadId: slug, papel });
+
+/// Qué apunta el Libro al cruzar cada etapa del conflicto Serhu (mismas etapas que `STAGE_FACTS`):
+/// 1 la relación empeora, 2 la Concordia se alía abiertamente con Serhu, 3 Helsig y Goshg pierden
+/// terreno, 4 guerra abierta.
+export function sucesosDeEtapaConflicto(etapa: number): SucesoDeEtapa[] {
+  switch (etapa) {
+    case 1:
+      return [{ tipo: 'CAMBIO_RELACION', actores: [faccion('clan-serhu', 'AUTOR'), faccion('clan-helsig', 'AFECTADO'), faccion('clan-goshg', 'AFECTADO')], datos: { faccionA: 'el Clan Serhu', faccionB: 'los clanes Helsig y Goshg', antes: 'escaramuzas sueltas', despues: 'incursiones organizadas' } }];
+    case 2:
+      return [{ tipo: 'ALIANZA', actores: [faccion('clan-serhu', 'AUTOR'), faccion('concordia-de-hierro', 'AUTOR')], datos: { faccionA: 'El Clan Serhu', faccionB: 'la Concordia de Hierro' } }];
+    case 3:
+      return [
+        { tipo: 'TERRITORIO_PERDIDO', actores: [faccion('clan-helsig', 'VICTIMA'), faccion('clan-serhu', 'AUTOR')], datos: { faccion: 'El Clan Helsig', territorio: 'parte de sus asentamientos' } },
+        { tipo: 'TERRITORIO_PERDIDO', actores: [faccion('clan-goshg', 'VICTIMA'), faccion('clan-serhu', 'AUTOR')], datos: { faccion: 'El Clan Goshg', territorio: 'parte de sus asentamientos' } },
+      ];
+    case 4:
+      return [{ tipo: 'GUERRA_DECLARADA', actores: [faccion('clan-serhu', 'AUTOR'), faccion('concordia-de-hierro', 'AUTOR'), faccion('clan-helsig', 'VICTIMA'), faccion('clan-goshg', 'VICTIMA')], datos: { atacante: 'El Clan Serhu, con la Concordia de Hierro,', atacada: 'los clanes Helsig y Goshg' } }];
+    default:
+      return [];
+  }
+}
+
 export async function advanceWorldAgenda(prisma: PrismaClient): Promise<{ statesAdvanced: number; stagesCrossed: number }> {
   const states = await prisma.worldState.findMany({
     where: { save: { characterName: 'Gorhorn', endedAt: null } },
@@ -266,6 +291,13 @@ export async function advanceWorldAgenda(prisma: PrismaClient): Promise<{ states
         await tx.logEntry.create({
           data: { saveId: state.saveId, channel: 'WORLD', text: fact, timeLabel: state.fictionalDateLabel, fictionalMinutes: state.fictionalMinutes },
         });
+      }
+      // Libro de Sucesos (CR-3, hito 0.2): cada etapa cruzada del conflicto, en orden.
+      const previa = agenda.find((entry) => entry.id === CONFLICTO_ID)?.stage ?? 0;
+      for (let etapa = previa + 1; etapa <= (conflicto?.stage ?? previa); etapa++) {
+        for (const suceso of sucesosDeEtapaConflicto(etapa)) {
+          await registrarSuceso(tx, { ...suceso, saveId: state.saveId, fictionalMinutes: state.fictionalMinutes, origen: 'MUNDO' });
+        }
       }
     });
 

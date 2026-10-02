@@ -4,6 +4,7 @@ import { PanelSection } from '../../PanelSection'
 import { getDescansarCampamentoDisponible, postDescansarCampamento } from '../../../lib/api'
 import { ConfirmModal } from '../../ConfirmModal'
 import { TooltipAnchor } from '../../TooltipAnchor'
+import { useModoConsulta } from '../../../context/useModoConsulta'
 
 // `diasFelicidadBaja`/`diasFelicidadAlta` (B.19) quedan fuera a propósito — son metadatos de
 // "cuántos días lleva así", no un recurso del reino que tenga sentido como tarjeta en Economía.
@@ -87,6 +88,8 @@ export function VisionGeneralSection({
   onFundarReino,
   onRefreshSave,
 }: VisionGeneralSectionProps) {
+  // UX-5 (hito 0.2) — modo consulta: lo que cambia datos se deshabilita con el motivo.
+  const consulta = useModoConsulta()
   // "Descansar en campamento" (2026-09-08, diseño de Álvaro: "una habilidad que solo aparecerá
   // cuando tienes construido el campamento") — visibilidad condicional real, consultada al backend
   // (mismo criterio de "Building propio ACTIVO en la Location actual" que fija el punto de
@@ -143,6 +146,8 @@ export function VisionGeneralSection({
             {onFundarReino && (
               <button type="button"
                 onClick={onFundarReino}
+                disabled={!!consulta}
+                title={consulta ?? undefined}
                 className="tactile shrink-0 rounded-lg border border-accent-600 bg-gradient-to-b from-accent-400 to-accent-600 px-3 py-1.5 text-2xs font-bold uppercase tracking-wide text-wood-950 transition-colors"
               >
                 Fundar reino
@@ -239,6 +244,8 @@ export function VisionGeneralSection({
       {descansarDisponible && (
         <button type="button"
           onClick={() => setConfirmandoDescanso(true)}
+          disabled={!!consulta}
+          title={consulta ?? undefined}
           className="tactile w-full rounded-lg border border-accent-600/60 bg-wood-950/40 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-accent-300 transition-colors hover:bg-accent-500/10"
         >
           🔥 Descansar en el campamento

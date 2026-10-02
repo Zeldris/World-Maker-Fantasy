@@ -46,6 +46,13 @@ siguiente sesión.
 - **La bitácora se actualiza en el mismo commit** que el trabajo que describe, no al final de la
   sesión.
 
+## Pruebas de juego
+
+Decisión de la usuaria (2026-10-02): **implementación continua** comprobando solo con tests (tsc +
+vitest + oxlint en verde antes de subir). Nada de pasadas de juego por tarea; las pruebas de juego y
+sus arreglos se hacen en una **fase única antes de la beta** (fila `0.8` de
+[«Qué entra en cada hito»](docs/producto/21-roadmap.md#qué-entra-en-cada-hito)).
+
 ## Mensajes de commit
 
 - Primera línea en español, qué cambia, con los identificadores de las tareas tocadas.

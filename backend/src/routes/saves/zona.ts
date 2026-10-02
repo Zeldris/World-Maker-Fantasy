@@ -244,6 +244,20 @@ export async function zonaRoutes(app: FastifyInstance) {
     const regionControl: RegionControlState | null = duenoOriginal
       ? await regionControlActual(prisma, save.worldId, region, parseAgenda(save.worldState?.agenda), duenoOriginal)
       : null;
+    // Fase G del 0.1 (hallazgo G25): Diplomacia dice que una facción se descubre «hablando con sus
+    // NPC o visitando su territorio», pero estar en «Territorio de Clan Serhu» no descubría nada —
+    // con un reino recién fundado no había con quién negociar. Estar en la zona cuenta como
+    // visitarla: la facción que la controla queda CITADA (mismo nivel que la cascada de un NPC).
+    if (regionControl?.duenoActual) {
+      const faccionDuena = await prisma.faction.findFirst({ where: { worldId: save.worldId, name: regionControl.duenoActual, saveId: null }, select: { slug: true } });
+      if (faccionDuena) {
+        await prisma.discoveredEntity.upsert({
+          where: { saveId_entityType_entitySlug: { saveId: save.id, entityType: 'faction', entitySlug: faccionDuena.slug } },
+          create: { saveId: save.id, entityType: 'faction', entitySlug: faccionDuena.slug },
+          update: {},
+        });
+      }
+    }
     // Instancia viva (2026-08-27, Pieza 3 de "Dinamismo del mundo") — solo puntos `activo` se
     // muestran; `recalcularZonePointsDeLocation` (turnResolution.ts) ya decide cantidad/actividad
     // real en cada turno, aquí solo se lee lo que ya está persistido.

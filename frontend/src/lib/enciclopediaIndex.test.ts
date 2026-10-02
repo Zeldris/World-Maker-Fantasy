@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildEnciclopediaIndex, MIN_PATTERN_LENGTH } from './enciclopediaIndex'
+import { buildEnciclopediaIndex, buscarMenciones, MIN_PATTERN_LENGTH } from './enciclopediaIndex'
 import type {
   EnciclopediaConstructionRecipe,
   EnciclopediaCraftingRecipe,
@@ -134,5 +134,39 @@ describe('buildEnciclopediaIndex', () => {
 
     expect(index.bySlugKey.get('crafteo:antorcha-de-campo')?.name).toBe('Antorcha de campo')
     expect(index.bySlugKey.get('construccion:campamento-base')?.name).toBe('Un campamento base')
+  })
+})
+
+describe('buscarMenciones', () => {
+  it('un nombre propio escrito todo en minúsculas no se enlaza (el NPC «Tira» en «algo que tira de él»)', () => {
+    const tira = makeNpc({ slug: 'tira', name: 'Tira', aliases: ['tira'] })
+    const manco = makeNpc({ slug: 'gruth', name: 'Gruth', aliases: ['el manco'] })
+    const index = buildEnciclopediaIndex(emptyResponse({ npcs: [tira, manco] }))
+
+    expect(buscarMenciones(index, 'Algo que tira de él.')).toEqual([])
+    expect(buscarMenciones(index, 'Habla con Tira.').map((m) => m.target.entitySlug)).toEqual(['tira'])
+    expect(buscarMenciones(index, 'Llega el Manco.').map((m) => m.texto)).toEqual(['el Manco'])
+    expect(buscarMenciones(index, 'Llega el manco.')).toEqual([])
+  })
+
+  it('devuelve el texto tal cual aparece y la posición, no el nombre canónico', () => {
+    const index = buildEnciclopediaIndex(
+      emptyResponse({
+        faunaFlora: [
+          {
+            kind: 'flora',
+            sourceSlug: 'piedra',
+            sourceName: 'Roca de Llanura Roja',
+            aliases: ['rocas'],
+            description: 'Roca rojiza.',
+            yields: [],
+          } as unknown as EnciclopediaResponse['faunaFlora'][number],
+        ],
+      }),
+    )
+    const [mencion] = buscarMenciones(index, 'Golpea las rocas.')
+    expect(mencion.texto).toBe('rocas')
+    expect(mencion.inicio).toBe(11)
+    expect(mencion.target.name).toBe('Roca de Llanura Roja')
   })
 })
