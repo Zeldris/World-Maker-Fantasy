@@ -15,7 +15,7 @@ cada commit.**
 | **Último commit en `main`** | Fusión del PR #6 (2026-10-02, pedida por la usuaria): `BAS-5` parcial (GameHeader/GameFooter), `MOD-1`…`MOD-6`, `HUD-6`, `HUD-12`. CI en verde. Antes, PR #5 (UX-C, UX-6, BAS-3) y PR #4 (Fase G del 0.1, Libro de Sucesos, UX-B). La rama de trabajo sigue desde ese punto |
 | **Hito** | `0.2` Facciones vivas — [plan](../producto/plan-roadmap-0.2.md) · [mapa de roadmaps](../producto/21-roadmap.md#qué-entra-en-cada-hito) (el `0.1` sigue abierto solo por las Fases E y F, ver abajo) |
 | **Tarea en curso** | `0.2` Fase B — Interfaz base. **UX-B ✅ cerrada** (`UX-1`, `UX-2`, `UX-5`, `UX-7`, `UX-8`, `UX-37`; `lib/gamePhase.ts`). **UX-C** orden y prioridad de lo que se abre ([roadmap-front-ux.md](../producto/roadmap-front-ux.md) § 4.3): ~~`UX-9`~~ ✅ (gestor de capas, `lib/capas.ts` + `<Capa>`); ~~`UX-10`~~ ✅ (decisiones en cola, `useDecisionesEnCola`); ~~`UX-11`~~ ✅ (consecuencias tras la tirada, `lib/presentacionTurno.ts`); ~~`UX-12`~~ ✅ (`lib/llegadas.ts`) → **UX-C cerrada**. ~~`UX-6`~~ ✅ (opción B, decisión de la usuaria: la ambientación se cancela al enviar una acción; revisar con `CR-12`). ~~`BAS-3`~~ ✅ (foco visible y flechas en rejillas). 🚧 `BAS-5` partir `GameView.tsx` (2382 → 2185 líneas): hechos `GameHeader` y `GameFooter`; `GameModals`/`GameLayout` aplazados al final de la Fase B (135 nombres de GameView; se hará con un contexto de partida). ~~`MOD-1`~~ ✅ (`ModalShell`, 7 overlays migrados; el visor de imagen fuera a propósito). ~~`MOD-2`~~ ✅ (`EstadosModal`: cargando, error con Reintentar, éxito). ~~`MOD-3`~~ ✅ (teclado en modales). ~~`MOD-4`~~ ✅ (ceremonia + `BotonMantener`). ~~`MOD-5`~~ ✅ (`QuantityStepper`). ~~`MOD-6`~~ ✅ (miniaturas) → **MOD-1…MOD-6 cerrados**. ~~`HUD-6`~~ ✅ (notificaciones) y ~~`HUD-12`~~ ✅ («El mundo avanza»). Siguiente: la configuración básica (`CFG-1`…`CFG-6`, `CFG-9`, `CFG-13`, `CFG-14`, `CFG-20`, `CFG-26`, `CFG-28`); al final de la fase, `BAS-5` (resto, con contexto de partida), `BAS-7`…`BAS-9`. Después, el resto de la Fase B según [plan-roadmap-0.2.md](../producto/plan-roadmap-0.2.md):, `BAS-7`…`BAS-9`, `MOD-1`…`MOD-6`, `HUD-6`, `HUD-12`, configuración básica (`CFG-*`). `UX-14` espera a `ZON-1` (🧭 Álvaro). Fase A ✅ (`CR-1`…`CR-4`); Fase C (`CR-5`…`CR-8`) tras la B. |
-| **Tests** | Frontend: `tsc -b` 0, `vitest` 76 archivos / 404 tests (ahora incluye `src/pages/**`), `oxlint` 12 avisos. Backend en local con Postgres real: `tsc` 0, `vitest` 165/165 archivos, 2874 tests (última pasada completa, 2026-10-02); 1 test intermitente apuntado (G16). CI de GitHub en verde (PR #3) |
+| **Tests** | Frontend: `tsc -b` 0, `vitest` 76 archivos / 406 tests (ahora incluye `src/pages/**`), `oxlint` 12 avisos. Backend en local con Postgres real: `tsc` 0, `vitest` 165/165 archivos, 2874 tests (última pasada completa, 2026-10-02); 1 test intermitente apuntado (G16). CI de GitHub en verde (PR #3) |
 
 ## Dónde está todo (para saber qué sigue)
 
@@ -95,6 +95,7 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
+- **2026-10-02** — Arreglo (hallazgo jugando de la usuaria): en combate, Matar/Clemente de un rival convaleciente ya no salen bloqueados (regresión de `UX-2`).
 - **2026-10-02** — PR #6 fusionado a `main` (modales, notificaciones, cabecera/pie). Pausa pedida por la usuaria; al volver, configuración básica (`CFG-*`).
 - **2026-10-02** — `HUD-6` y `HUD-12`: notificaciones (misiones, reputación, oficio, objetos, noticias del mundo) y gema «El mundo avanza» junto a la fecha.
 - **2026-10-02** — `MOD-6`: miniatura de la entidad en las filas de los modales. **MOD-1…MOD-6 cerrados.**
@@ -104,4 +105,3 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 - **2026-10-02** — `MOD-2`: estados comunes de modal (esqueleto al cargar, error con «Reintentar», éxito con sello) en nueve modales.
 - **2026-10-02** — `MOD-1`: `ModalShell` único (tamaños, ✕, pie fijo, foco devuelto); Clase, Especialización, Fundar reino, Modo dinámico, Detalle y los dos mapas migrados.
 - **2026-10-02** — PR #5 fusionado a `main` (UX-C, `UX-6`, `BAS-3`). Se sigue en la misma rama, al día con `main`.
-- **2026-10-02** — `BAS-3`: anillo de foco global y navegación con flechas/cruceta en inventario, habilidades, equipo y barra de habilidades.

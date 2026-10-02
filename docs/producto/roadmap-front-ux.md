@@ -165,7 +165,10 @@ stateDiagram-v2
   usar la tarjeta (el backend acepta el turno y hablar es una reacción válida; solo bloquea
   moverse). **Confirmado por la usuaria (2026-10-02)**, que pide además que responder escribiendo
   sea más accesible: `UX-37`. **Queda:** que la usen los paneles (`UX-5`), la brújula (`UX-7`), las tarjetas y el
-  menú de salir (`UX-8`/`UX-18`).
+  menú de salir (`UX-8`/`UX-18`). **Arreglado 2026-10-02** (hallazgo jugando de la usuaria): en
+  combate, la tarjeta de un rival convaleciente salía con Matar/Clemente bloqueados («Estás en
+  combate»); las tarjetas del combate usan ahora `bloqueoCombate` (null en la fase de combate; el
+  motivo normal mientras el narrador escribe o fuera de combate).
 
 ### 4.2 Bloqueos
 - ~~**UX-3 · Guardia en `handleSubmit`** — rechazar si `characterThinking` o si la fase no lo permite,

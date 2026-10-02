@@ -17,6 +17,10 @@ interface LogPanelProps {
   /// UX-4 (hito 0.1) — motivo global por el que ahora no se puede actuar (mismo `bloqueoTurno` de
   /// GameView.tsx); se reenvía a todas las tarjetas de oferta. `null`/ausente = libre.
   bloqueoAcciones?: string | null
+  /// Motivo para las tarjetas del propio combate (Matar / Capturar / Clemente de un convaleciente).
+  /// En la fase de combate son justo la acción que toca, así que GameView pasa null; mientras el
+  /// narrador escribe o fuera de combate, el mismo motivo que el resto. Ausente = `bloqueoAcciones`.
+  bloqueoCombate?: string | null
   title: string
   subtitle: string
   entries: LogEntry[]
@@ -220,6 +224,7 @@ export const LogPanel = memo(function LogPanel({
   onViewFullHistory,
   liveEntryIds,
   bloqueoAcciones,
+  bloqueoCombate,
 }: LogPanelProps) {
   const { enciclopediaIndex, onEntityDetail, onEntityQuickInsert } = useEnciclopediaLink()
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -655,7 +660,7 @@ export const LogPanel = memo(function LogPanel({
                 if (!resuelto) return null
                 return (
                   <OfferCard
-                    bloqueo={bloqueoAcciones}
+                    bloqueo={bloqueoCombate !== undefined ? bloqueoCombate : bloqueoAcciones}
                     key={offer.combatKey}
                     tone="danger"
                     icon="⚠️"
@@ -769,7 +774,7 @@ export const LogPanel = memo(function LogPanel({
           ?.filter((n) => n.condicion === 'CONVALECIENTE' && !n.dismissed && !n.targetedForKill)
           .map((npc) => (
             <OfferCard
-              bloqueo={bloqueoAcciones}
+              bloqueo={bloqueoCombate !== undefined ? bloqueoCombate : bloqueoAcciones}
               key={`persistent-convaleciente-${npc.slug}`}
               tone="danger"
               icon="⚠️"

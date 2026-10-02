@@ -1569,6 +1569,9 @@ export function GameView() {
             <LogPanel
               title="Tu personaje"
               bloqueoAcciones={bloqueoTurno}
+              // Las tarjetas del combate (Matar/Clemente…) son la acción que toca en combate: no
+              // las bloquea la fase de combate, sí el narrador escribiendo o la partida terminada.
+              bloqueoCombate={fase === 'combate' ? null : bloqueoTurno}
               subtitle="Lo que haces, dices y percibes"
               entries={characterLog}
               accent="accent"
