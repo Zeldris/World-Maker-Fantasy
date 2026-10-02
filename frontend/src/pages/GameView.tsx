@@ -750,6 +750,16 @@ export function GameView() {
     syncFromSave(save)
   }
 
+  // Fase G del 0.1 (hallazgo G12): al morir en combate, la respuesta del turno no trae la nota de
+  // la Entidad (es una LogEntry aparte) ni el turno de combate aplicaba `pendingDeathResolution` —
+  // al salir de «Derrota» el juego quedaba con «Muerto» arriba, sin nota, sin «Aceptar» y con el
+  // cuadro de texto activo hasta recargar. Se resincroniza la partida al salir tras morir.
+  function handleContinuarTrasCombate() {
+    const murio = combat.combatPlayerJustDied
+    combat.closeCombat()
+    if (murio) refreshSave().catch(() => {})
+  }
+
   async function handleFundarReino(name: string, description?: string) {
     if (!saveId) return
     try {
@@ -1567,7 +1577,7 @@ export function GameView() {
               onActuar={combat.handleCombatActuar}
               onRegistrar={combat.handleCombatRegistrar}
               onHuir={combat.handleCombatHuir}
-              onContinue={combat.closeCombat}
+              onContinue={handleContinuarTrasCombate}
               onSaquearSeleccion={combat.handleSaquearSeleccion}
               onAbilityDetail={handleAbilityDetail}
               onItemDetail={handleItemDetail}

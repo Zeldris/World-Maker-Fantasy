@@ -448,7 +448,7 @@ export const LogPanel = memo(function LogPanel({
                 </>
               )}
               {entry.combatExchange && (
-                <CombatExchangeBadge exchange={entry.combatExchange} playerName={characterName} enemyName={entry.npcAbilityUsed?.npcName} />
+                <CombatExchangeBadge exchange={entry.combatExchange} playerName={characterName} enemyName={entry.npcAbilityUsed?.npcName ?? entry.combatExchange.rivalNombre} />
               )}
               {entry.newQuest && (
                 <div className="mt-2 rounded-lg border border-quest-600/50 bg-quest-500/10 px-2.5 py-2">

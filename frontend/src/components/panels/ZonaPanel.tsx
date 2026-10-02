@@ -414,8 +414,16 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
   // (no en la vista informativa) y si el jugador no está ya pegado al pin.
   function irHastaPin(pin: { x: number; y: number }): (() => void) | undefined {
     if (soloConsulta) return undefined
-    if (data?.jugador && Math.abs(data.jugador.x - pin.x) <= 50 && Math.abs(data.jugador.y - pin.y) <= 50) return undefined
+    // Fase G del 0.1 (hallazgo G14): pegado ya al pin, la ficha se quedaba sin ninguna acción (ni
+    // ir, ni cazar) — tras ignorar un encuentro no había forma de volver a él sin alejarse. Ahora
+    // «Acercarte» pulsa la propia casilla, que en el backend vuelve a mirar los encuentros sin
+    // silenciar el último (mismo camino que clicar tu casilla en el mapa).
+    if (pegadoAPin(pin)) return () => void handleMoverA({ x: data!.jugador!.x, y: data!.jugador!.y })
     return () => void handleMoverA({ x: pin.x, y: pin.y })
+  }
+
+  function pegadoAPin(pin: { x: number; y: number }): boolean {
+    return !!data?.jugador && Math.abs(data.jugador.x - pin.x) <= 50 && Math.abs(data.jugador.y - pin.y) <= 50
   }
 
   // Cadáveres en el mapa (Fase 5, 2026-09-28) — mismo patrón que las salidas lejanas
@@ -897,13 +905,14 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
       )}
       {selectedPoint &&
         ('id' in selectedPoint ? (
-          <ZonePointDetailModal point={selectedPoint} onClose={() => setSelectedPoint(null)} onIrHasta={irHastaPin(selectedPoint)} />
+          <ZonePointDetailModal point={selectedPoint} onClose={() => setSelectedPoint(null)} onIrHasta={irHastaPin(selectedPoint)} irHastaLabel={pegadoAPin(selectedPoint) ? 'Acercarte' : undefined} />
         ) : (
           <ZonePointDetailModal
             point={zonaDinamicoToDetailSource(selectedPoint)}
             onClose={() => setSelectedPoint(null)}
             onRecoger={handleRecoger}
             onIrHasta={irHastaPin(selectedPoint)}
+            irHastaLabel={pegadoAPin(selectedPoint) ? 'Acercarte' : undefined}
             onSaquear={onSaquearCadaver ? (npcSlug) => void accionSobreCadaver(selectedPoint, () => onSaquearCadaver(npcSlug)) : undefined}
             onDesollar={onDesollarCadaver ? (npcSlug) => void accionSobreCadaver(selectedPoint, () => onDesollarCadaver(npcSlug)) : undefined}
           />

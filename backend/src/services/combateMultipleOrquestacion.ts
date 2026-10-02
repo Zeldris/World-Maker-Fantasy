@@ -1906,7 +1906,7 @@ export interface ResolucionRondaCombate {
   /// Fase G del 0.1 (hallazgo G11): intercambios reales de esta tanda en los que la jugadora fue la
   /// defensora, en orden. Si un enemigo con más iniciativa resolvió el duelo de la ronda, el turno
   /// de la jugadora se salta y sin esto no veía ninguna tirada.
-  intercambiosContraJugadora: CombatExchangeDisplay[];
+  intercambiosContraJugadora: { display: CombatExchangeDisplay; atacanteNombre: string }[];
 }
 
 export interface ResolverTurnosAutonomosHastaJugadoraParams {
@@ -1930,7 +1930,7 @@ export async function resolverTurnosAutonomosHastaJugadora({
 }: ResolverTurnosAutonomosHastaJugadoraParams): Promise<ResolucionRondaCombate> {
   const narraciones: string[] = [];
   const caidos: ParticipanteCaidoInfo[] = [];
-  const intercambiosContraJugadora: CombatExchangeDisplay[] = [];
+  const intercambiosContraJugadora: { display: CombatExchangeDisplay; atacanteNombre: string }[] = [];
   for (let i = 0; i < maxIteraciones; i++) {
     const resultado = await resolverTurnoAutonomo({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto, narrarFn });
     if (resultado === null) {
@@ -1947,7 +1947,7 @@ export async function resolverTurnosAutonomosHastaJugadora({
     if (resultado.narracion) narraciones.push(resultado.narracion);
     narraciones.push(...resultado.narracionesExtra);
     caidos.push(...resultado.caidos);
-    if (resultado.combatExchangeDisplay && resultado.defensorEsJugador) intercambiosContraJugadora.push(resultado.combatExchangeDisplay);
+    if (resultado.combatExchangeDisplay && resultado.defensorEsJugador) intercambiosContraJugadora.push({ display: resultado.combatExchangeDisplay, atacanteNombre: resultado.atacanteNombre });
     if (resultado.encounterTerminado) return { narraciones, encounterTerminado: true, caidos, esperandoAccionJugadora: false, esperandoEleccionRonda: false, intercambiosContraJugadora };
   }
   // Tope de seguridad alcanzado (2026-08-25) — no debería pasar nunca con el límite de 4v4, pero

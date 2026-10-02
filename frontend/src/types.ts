@@ -399,6 +399,8 @@ export interface CombatExchangeInfo {
   margen?: number
   /// B23 (2026-09-28) — el atacante es un NPC que no ataca: su "golpe" nunca hace daño.
   atacanteInofensivo?: true
+  /// Combate de grupo: nombre del rival en este intercambio (Fase G del 0.1, hallazgo G15).
+  rivalNombre?: string
 }
 
 /// Tirada de iniciativa para el PRÓXIMO intercambio de combate (backend, combatExchange.ts §

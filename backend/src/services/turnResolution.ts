@@ -4461,7 +4461,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         // nunca les llegaba nada para el modo CombatEncounter. Solo se rellena cuando el turno de
         // la jugadora fue un intercambio real con oposición (turnoJugadora.combatExchangeDisplay
         // es `null` en los caminos sin tirada: golpe gratis, invocación, avance sin atacar).
-        if (turnoJugadora.combatExchangeDisplay) combatExchangeDisplayFinal = turnoJugadora.combatExchangeDisplay;
+        if (turnoJugadora.combatExchangeDisplay) combatExchangeDisplayFinal = { ...turnoJugadora.combatExchangeDisplay, rivalNombre: turnoJugadora.defensorNombre };
       }
 
       if (!combatEncounterTerminado) {
@@ -4476,7 +4476,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // Fase G del 0.1 (hallazgo G11): si la jugadora no tuvo intercambio propio este turno (un
     // enemigo con más iniciativa ya resolvió el duelo de la ronda), se enseña el primer intercambio
     // real en el que la atacaron — antes no salía ninguna tirada y su acción parecía no hacer nada.
-    if (!combatExchangeDisplayFinal && intercambiosContraJugadora.length > 0) combatExchangeDisplayFinal = intercambiosContraJugadora[0];
+    if (!combatExchangeDisplayFinal && intercambiosContraJugadora.length > 0) {
+      combatExchangeDisplayFinal = { ...intercambiosContraJugadora[0].display, rivalNombre: intercambiosContraJugadora[0].atacanteNombre };
+    }
 
     combatEncounterNarration = narraciones.filter(Boolean).join(' ') || `${characterName} se mantiene en guardia, pero el intercambio no llega a resolverse este turno.`;
 
@@ -4506,7 +4508,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // está fijado en este punto para cualquier turno con intercambio real (1v1 o combate múltiple),
   // y esto es lo más cerca posible del arranque real de `narrateAction` (la parte lenta) sin
   // adelantarse a ningún guard de arriba que todavía pudiera descartar el turno entero.
-  if (combatExchangeDisplayFinal) onExchangeResolved?.(combatExchangeDisplayFinal, npcAbilityUsed?.npcName ?? null);
+  if (combatExchangeDisplayFinal) onExchangeResolved?.(combatExchangeDisplayFinal, npcAbilityUsed?.npcName ?? combatExchangeDisplayFinal.rivalNombre ?? null);
 
   const narration: NarrationResult = combatEncounterMode
     ? { narration: combatEncounterNarration, newFacts: [] }

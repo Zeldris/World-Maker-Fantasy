@@ -195,7 +195,8 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     const ronda = await resolverTurnosAutonomosHastaJugadora({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
 
     expect(ronda.intercambiosContraJugadora.length).toBeGreaterThanOrEqual(1);
-    expect(ronda.intercambiosContraJugadora[0].atacanteEsJugador).toBe(false);
+    expect(ronda.intercambiosContraJugadora[0].display.atacanteEsJugador).toBe(false);
+    expect(ronda.intercambiosContraJugadora[0].atacanteNombre).toBe(enemigo.name);
 
     await prisma.combatEncounter.delete({ where: { id: encounterId } });
     await prisma.save.update({ where: { id: saveId }, data: { activeEffects: [], condicionFisica: 'ILESO', energia: 100 } });
