@@ -2,6 +2,9 @@
 // (Fase 12 del plan, refactor puro: mismo código, solo cambia de archivo).
 
 
+import { registrarFinDeMision } from './cronista/emisores.js';
+import { registrarSuceso } from './cronista/sucesos.js';
+import { slugify } from '../lib/slugify.js';
 import type { NewInventoryItemInfo } from './turnResolution.js';
 import { recordFactionEvent } from './factionRelations.js';
 
@@ -142,6 +145,7 @@ export async function applyLootMode(params: {
     if (rewardQuest) {
       questRewardXp += rewardQuest.rewardXp!;
       await tx.quest.update({ where: { id: rewardQuest.id }, data: { status: 'COMPLETADA' } });
+      await registrarFinDeMision(tx, { saveId, titulo: rewardQuest.title, estado: 'COMPLETADA' });
     }
   }
   const narrationOverride =
@@ -345,7 +349,7 @@ export async function applyFactionRepDeltaForResolution(
 /// schema.prisma), pero SÍ necesita este mismo cierre de misión/reputación/población al caer.
 export async function applyKillSideEffects(params: {
   tx: Prisma.TransactionClient;
-  npc: { id: string; raza: string | null; slug: string; faction: string | null };
+  npc: { id: string; name: string; raza: string | null; slug: string; faction: string | null };
   nuevaCondicion: CondicionFisica;
   saveId: string;
   worldId: string;
@@ -417,6 +421,22 @@ export async function applyKillSideEffects(params: {
   // adelante (mismo slug de PLANTILLA, otra aparición) — solo cuenta la primera vez de verdad.
   if (nuevaCondicion === 'MUERTO' && npc.slug === 'orco-enfurecido-hondonada') {
     await tx.save.updateMany({ where: { id: saveId, tutorialCompletedAt: null }, data: { tutorialCompletedAt: new Date() } });
+  }
+  // Libro de Sucesos (CR-3, hito 0.2): matar es una muerte causada; dejarlo convaleciente, un
+  // combate ganado (lo que haga después — rematar, capturar, perdonar — es otro suceso). En combate
+  // de grupo el golpe puede ser de un compañero: el autor es el bando del jugador, que lo representa.
+  const save = await tx.save.findUnique({ where: { id: saveId }, select: { characterName: true, currentLocationId: true } });
+  if (save && (nuevaCondicion === 'MUERTO' || nuevaCondicion === 'CONVALECIENTE')) {
+    const actores = [
+      { entidadTipo: 'PERSONAJE' as const, entidadId: saveId, papel: 'AUTOR' as const },
+      { entidadTipo: 'NPC' as const, entidadId: npc.id, papel: 'VICTIMA' as const },
+    ];
+    const comun = { saveId, fictionalMinutes: nuevoFictionalMinutes, regionSlug: activeRegion ? slugify(activeRegion) : null, locationId: save.currentLocationId, origen: 'JUGADOR' as const, actores };
+    if (nuevaCondicion === 'MUERTO') {
+      await registrarSuceso(tx, { ...comun, tipo: 'MUERTE_CAUSADA', datos: { personaje: save.characterName, victima: npc.name } });
+    } else {
+      await registrarSuceso(tx, { ...comun, tipo: 'COMBATE_GANADO', datos: { personaje: save.characterName, rival: npc.name } });
+    }
   }
   return { questCompletedInfo, factionRepChange };
 }

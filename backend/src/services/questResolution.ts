@@ -1,3 +1,4 @@
+import { registrarFinDeMision } from './cronista/emisores.js';
 import { normalizeText } from './travel.js';
 import { Prisma } from '@prisma/client';
 import { companionSlotsForRecipeKey } from './construction.js';
@@ -188,6 +189,7 @@ export async function closeItemQuests(params: {
     const conseguido = createdItemNames.some((name) => normalizeText(name).includes(targetNormalized));
     if (conseguido) {
       await tx.quest.update({ where: { id: quest.id }, data: { status: 'COMPLETADA' } });
+      await registrarFinDeMision(tx, { saveId, titulo: quest.title, estado: 'COMPLETADA', fictionalMinutes });
       const grantedItems = await grantQuestRewardItems(tx, saveId, worldId, quest.rewardItems);
       const { grantedRecipeKeys, grantedCompanionName } = await grantQuestRewardRecipesAndCompanion(
         tx,
@@ -250,6 +252,7 @@ export async function completeNpcTargetQuests(
   let lastCompleted: QuestCompletedInfo | null = null;
   for (const quest of activeQuestsWithNpc) {
     await tx.quest.update({ where: { id: quest.id }, data: { status: 'COMPLETADA' } });
+    await registrarFinDeMision(tx, { saveId, titulo: quest.title, estado: 'COMPLETADA' });
     const grantedItems = await grantQuestRewardItems(tx, saveId, worldId, quest.rewardItems);
     const { grantedRecipeKeys, grantedCompanionName } = await grantQuestRewardRecipesAndCompanion(
       tx,

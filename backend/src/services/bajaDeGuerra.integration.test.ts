@@ -13,7 +13,7 @@ describe('BAJA_DE_GUERRA al matar NPC de la facción dueña de la región', () =
   let saveId: string;
   let worldId: string;
   let targetFactionId: string;
-  let npc: { id: string; raza: string | null; slug: string; faction: string | null };
+  let npc: { id: string; name: string; raza: string | null; slug: string; faction: string | null };
 
   beforeAll(async () => {
     const userId = await getDefaultUserId();
@@ -21,7 +21,7 @@ describe('BAJA_DE_GUERRA al matar NPC de la facción dueña de la región', () =
     worldId = world.id;
     targetFactionId = (await prisma.faction.findFirstOrThrow({ where: { worldId, name: FACCION, saveId: null } })).id;
     const npcRow = await prisma.npc.findFirstOrThrow({ where: { worldId, faction: FACCION } });
-    npc = { id: npcRow.id, raza: npcRow.raza, slug: npcRow.slug, faction: npcRow.faction };
+    npc = { id: npcRow.id, name: npcRow.name, raza: npcRow.raza, slug: npcRow.slug, faction: npcRow.faction };
     const save = await prisma.save.create({
       data: {
         userId,
@@ -78,12 +78,17 @@ describe('BAJA_DE_GUERRA al matar NPC de la facción dueña de la región', () =
     expect(await presion(reino.id)).toBeNull();
     await matar('MUERTO', REGION);
     expect(await presion(reino.id)).toBe(58);
+    // Libro de Sucesos (CR-3): la muerte queda como muerte causada por el jugador.
+    const muerte = await prisma.suceso.findFirstOrThrow({ where: { saveId, tipo: 'MUERTE_CAUSADA' }, orderBy: { createdAt: 'desc' }, include: { actores: true } });
+    expect(muerte.actores.some((a) => a.entidadTipo === 'NPC' && a.entidadId === npc.id && a.papel === 'VICTIMA')).toBe(true);
   });
 
   it('CONVALECIENTE no dispara', async () => {
     const reino = await crearReino();
     await matar('CONVALECIENTE', REGION);
     expect(await presion(reino.id)).toBeNull();
+    // Libro de Sucesos (CR-3): dejarlo convaleciente es un combate ganado, no una muerte.
+    expect(await prisma.suceso.count({ where: { saveId, tipo: 'COMBATE_GANADO' } })).toBeGreaterThanOrEqual(1);
   });
 
   it('fuera de la región de esa facción no dispara', async () => {

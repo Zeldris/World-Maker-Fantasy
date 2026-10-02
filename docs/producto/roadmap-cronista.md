@@ -849,8 +849,11 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   (`CAPTURA`, `companeros.ts`), Clemente (`PERDON_CONCEDIDO`, `session.ts`, los dos caminos),
   muerte del jugador y fin de partida (`MUERTE_JUGADOR`, `FIN_PARTIDA`, `turnResolution.ts`) y
   despertar (`RENACER`, `death.ts`; el reinicio total no lo registra porque vacía el Libro), con
-  aserciones en sus tests de integración. Faltan: combate ganado/perdido y muerte causada, misión,
-  construcción, entrega, `recordFactionEvent`, expediciones, población, agenda, clima,
+  aserciones en sus tests de integración. También (2/3): muerte causada y combate ganado
+  (`applyKillSideEffects`, 1v1 y grupo; en grupo el autor es el bando del jugador), misiones
+  completadas/fallidas por los 5 caminos (`cronista/emisores.ts` → `registrarFinDeMision`),
+  construcción (`EDIFICIO_CONSTRUIDO`, receta y edificio narrado) y entrega (`REGALO`).
+  Faltan (3/3): combate perdido, `recordFactionEvent`, expediciones, población, agenda, clima,
   `dailyTick`, cadáveres/recuperación.
 - **CR-4** Vista de administración `/admin/partida/:id/libro` (solo lectura). **M**
 - **Hecho cuando:** jugar 1 hora deja en el Libro todos los sucesos con causas correctas; tests de

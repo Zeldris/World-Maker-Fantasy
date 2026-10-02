@@ -4029,6 +4029,10 @@ describe('Decapitar cierra una misión "derrotar a X" con rewardItems y entrega 
 
     const quest = await prisma.quest.findFirstOrThrow({ where: { saveId, title: { contains: 'Orco Enfurecido (prueba)' } } });
     expect(quest.status).toBe('COMPLETADA');
+    // Libro de Sucesos (CR-3): la misión cerrada y la muerte que la cerró quedan en el Libro.
+    const fin = await prisma.suceso.findFirstOrThrow({ where: { saveId, tipo: 'MISION_COMPLETADA' }, orderBy: { createdAt: 'desc' } });
+    expect(fin.texto).toContain('Orco Enfurecido (prueba)');
+    expect(await prisma.suceso.count({ where: { saveId, tipo: 'MUERTE_CAUSADA' } })).toBeGreaterThanOrEqual(1);
 
     const item = await prisma.inventoryItem.findFirst({ where: { saveId, name: 'Mapa de las Llanuras (prueba)' } });
     expect(item).not.toBeNull();

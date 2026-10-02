@@ -94,6 +94,10 @@ describe('Entregar objeto a NPC (2026-08-31)', () => {
     // explícita: "pasa al loot del NPC, saqueable después") — verificado contra el estado real.
     const state = await prisma.npcState.findUniqueOrThrow({ where: { saveId_npcId_scope: { saveId, npcId: auladorId, scope: hondonadaId } } });
     expect(state.givenItems).toEqual([expect.objectContaining({ name: 'Cuchillo de hielo sílice' })]);
+
+    // Libro de Sucesos (CR-3): la entrega queda como regalo.
+    const regalo = await prisma.suceso.findFirstOrThrow({ where: { saveId, tipo: 'REGALO' } });
+    expect(regalo.texto).toContain('entrega Cuchillo de hielo sílice a Aullador Rojo.');
   });
 
   it('POST /entregar de nuevo (sin ese item ya) falla con 404 — no se puede entregar dos veces lo mismo', async () => {

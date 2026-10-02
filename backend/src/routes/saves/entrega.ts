@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
+import { registrarSuceso } from '../../services/cronista/sucesos.js';
 import { scopeFor, type NpcItemInScene } from '../../services/npcScene.js';
 import { rejectIfEnded, rejectIfPendingDeath, toFrontendLogEntry } from './shared.js';
 import { CONDICIONES_INTERACTUABLE } from '../../services/death.js';
@@ -122,7 +123,7 @@ export async function entregaRoutes(app: FastifyInstance) {
           where: { saveId_npcId_scope: { saveId: save.id, npcId: npc.id, scope } },
           data: { givenItems: [...existingGivenItems, givenItem] as unknown as object },
         });
-        return tx.logEntry.create({
+        const entrada = await tx.logEntry.create({
           data: {
             saveId: save.id,
             channel: 'CHARACTER',
@@ -132,6 +133,21 @@ export async function entregaRoutes(app: FastifyInstance) {
             isPlayerAction: true,
           },
         });
+        // Libro de Sucesos (CR-3, hito 0.2).
+        await registrarSuceso(tx, {
+          saveId: save.id,
+          tipo: 'REGALO',
+          fictionalMinutes,
+          locationId: save.currentLocationId,
+          origen: 'JUGADOR',
+          logEntryId: entrada.id,
+          actores: [
+            { entidadTipo: 'PERSONAJE', entidadId: save.id, papel: 'AUTOR' },
+            { entidadTipo: 'NPC', entidadId: npc.id, papel: 'BENEFICIARIO' },
+          ],
+          datos: { personaje: save.characterName, a: npc.name, objeto: { nombre: item.name } },
+        });
+        return entrada;
       });
 
       return { npcSlug: npc.slug, itemName: item.name, logEntry: toFrontendLogEntry(createdLogEntry) };

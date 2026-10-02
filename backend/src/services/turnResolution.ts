@@ -1,3 +1,4 @@
+import { registrarFinDeMision } from './cronista/emisores.js';
 import { env } from '../config/env.js';
 import { applyLootMode, applyCombatExchangeToNpcState, applyKillSideEffects, applyHarvest, applyFactionRepDeltaForResolution, goirnosDeBotin, pickFlavor, LOOT_FLAVOR_SUCCESS, LOOT_FLAVOR_EMPTY, HARVEST_FLAVOR_YA_DESPIEZADA } from './turnLootKill.js';
 
@@ -5119,7 +5120,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     if (combatEncounterCaidos.length > 0) {
       const npcCaidosIds = combatEncounterCaidos.filter((c) => c.tipo === 'NPC' && c.npcId).map((c) => c.npcId!);
       const npcCaidosRows = npcCaidosIds.length
-        ? await tx.npc.findMany({ where: { id: { in: npcCaidosIds } }, select: { id: true, raza: true, slug: true, faction: true } })
+        ? await tx.npc.findMany({ where: { id: { in: npcCaidosIds } }, select: { id: true, name: true, raza: true, slug: true, faction: true } })
         : [];
       const npcCaidoById = new Map(npcCaidosRows.map((n) => [n.id, n]));
       for (const caido of combatEncounterCaidos) {
@@ -5773,6 +5774,20 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
                 y: params.jugadorZonaPosEntradaY ?? undefined,
               },
             });
+        // Libro de Sucesos (CR-3, hito 0.2).
+        await registrarSuceso(tx, {
+          saveId,
+          tipo: 'EDIFICIO_CONSTRUIDO',
+          fictionalMinutes: nuevoFictionalMinutes,
+          regionSlug: activeRegion ? slugify(activeRegion) : null,
+          locationId: currentLocationId,
+          origen: 'JUGADOR',
+          actores: [
+            { entidadTipo: 'PERSONAJE', entidadId: saveId, papel: 'AUTOR' },
+            { entidadTipo: 'EDIFICIO', entidadId: created.id, papel: 'BENEFICIARIO' },
+          ],
+          datos: { edificio: buildRecipe.name },
+        });
         // Fundación de reino (2026-08-04): solo al construir el Ayuntamiento tier 1 desde cero,
         // nunca en una mejora (esa rama ni pasa por aquí). Resuelve contra la(s) facción(es) dueña
         // de la región (reputation.ts) y crea el Territory correspondiente — mismo criterio que
@@ -5871,7 +5886,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       reinoXp = Math.max(reinoXp, REINO_XP.buildingActive);
     } else if (narration.newBuilding) {
       assertExactlyOneOwner({ saveId }, 'turnResolution.ts newBuilding');
-      await tx.building.create({
+      const edificioNarrado = await tx.building.create({
         data: {
           saveId,
           territoryId: await resolveTerritoryId(narration.newBuilding.territoryName),
@@ -5882,6 +5897,20 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         },
       });
       reinoXp = Math.max(reinoXp, REINO_XP.buildingActive);
+      // Libro de Sucesos (CR-3, hito 0.2).
+      await registrarSuceso(tx, {
+        saveId,
+        tipo: 'EDIFICIO_CONSTRUIDO',
+        fictionalMinutes: nuevoFictionalMinutes,
+        regionSlug: activeRegion ? slugify(activeRegion) : null,
+        locationId: currentLocationId,
+        origen: 'JUGADOR',
+        actores: [
+          { entidadTipo: 'PERSONAJE', entidadId: saveId, papel: 'AUTOR' },
+          { entidadTipo: 'EDIFICIO', entidadId: edificioNarrado.id, papel: 'BENEFICIARIO' },
+        ],
+        datos: { edificio: narration.newBuilding.name },
+      });
       // Nudge determinista por palabra clave (sesión de diseño 2026-07-23, mismo criterio que
       // tabulatedAttackAttribute en npcScene.ts) — sin campo nuevo en el JSON del modelo: el
       // `kind` libre que ya propone es la única señal que hace falta.
@@ -6056,6 +6085,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         where: { saveId, title: narration.questProgress.title, status: 'ACTIVA' },
         data: { status: narration.questProgress.status },
       });
+      for (const mision of matchingQuests) {
+        await registrarFinDeMision(tx, { saveId, titulo: mision.title, estado: narration.questProgress.status, fictionalMinutes: nuevoFictionalMinutes });
+      }
 
       // Reputación positiva de facción (roadmap 2026-07-20, P1 de Fable): cerrar con COMPLETADA
       // una misión que apuntaba a un NPC (Quest.targetNpcId) que sigue SIN derrotar es la señal
@@ -6164,10 +6196,14 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       // Cierre de misión "llegar a Y" (roadmap 2026-07-20, P1 de Fable, Quest.targetLocationId):
       // llegar de verdad al destino (no solo pasar por un nodo intermedio del camino) cierra sola
       // cualquier misión ACTIVA que lo tuviera como objetivo.
+      const misionesDeLlegada = await tx.quest.findMany({ where: { saveId, targetLocationId: travel.toLocationId, status: 'ACTIVA' }, select: { title: true } });
       await tx.quest.updateMany({
         where: { saveId, targetLocationId: travel.toLocationId, status: 'ACTIVA' },
         data: { status: 'COMPLETADA' },
       });
+      for (const mision of misionesDeLlegada) {
+        await registrarFinDeMision(tx, { saveId, titulo: mision.title, estado: 'COMPLETADA', fictionalMinutes: nuevoFictionalMinutes });
+      }
     }
 
     // Bug real jugando en vivo (revisión de partida 2026-08-08, "+525 XP" en un simple golpe de
