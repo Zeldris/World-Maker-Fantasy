@@ -33,6 +33,8 @@ interface GameHeaderProps {
   nowTick: number
   fictionalDate: string
   entorno: EntornoTemporalInfo | null
+  /// HUD-12 — el mundo trabaja en segundo plano (ambientación, avance diario, Cronista).
+  mundoAvanza: boolean
   onSalir: () => void
   onAbrirNivel: () => void
 }
@@ -60,6 +62,7 @@ export function GameHeader({
   nowTick,
   fictionalDate,
   entorno,
+  mundoAvanza,
   onSalir,
   onAbrirNivel,
 }: GameHeaderProps) {
@@ -171,7 +174,9 @@ export function GameHeader({
             // badge de Mapa > Berig), el `title` da el nombre completo al pasar el ratón.
             title={entorno ? `${entorno.estacion.nombre}${entorno.clima ? ` · ${entorno.clima.nombre}` : ''}` : undefined}
           >
-            {fictionalDate}
+            {/* HUD-12 (hito 0.2) — «El mundo avanza»: gema que respira junto a la fecha; nunca bloquea. */}
+          {mundoAvanza && <span role="status" aria-label="El mundo avanza" title="El mundo avanza" className="gem animate-pulse-soft mr-1.5 inline-block align-middle" />}
+          {fictionalDate}
             {entorno && (
               <>
                 {' '}

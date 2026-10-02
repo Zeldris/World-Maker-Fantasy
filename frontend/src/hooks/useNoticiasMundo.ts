@@ -13,9 +13,11 @@ interface Params {
   worldLog: LogEntry[]
   setWorldLog: Dispatch<SetStateAction<LogEntry[]>>
   characterThinking: boolean
+  /// HUD-6 (hito 0.2) — noticias recién llegadas, para avisar con una notificación.
+  onNuevas?: (entradas: LogEntry[]) => void
 }
 
-export function useNoticiasMundo({ saveId, worldLog, setWorldLog, characterThinking }: Params) {
+export function useNoticiasMundo({ saveId, worldLog, setWorldLog, characterThinking, onNuevas }: Params) {
   const ultimaIdRef = useRef<string | null>(null)
   ultimaIdRef.current = worldLog.length > 0 ? worldLog[worldLog.length - 1].id : null
   const pidiendoRef = useRef(false)
@@ -27,6 +29,7 @@ export function useNoticiasMundo({ saveId, worldLog, setWorldLog, characterThink
     try {
       const { entradas } = await getNuevasDelMundo(saveId, desde)
       if (entradas.length > 0) {
+        onNuevas?.(entradas)
         setWorldLog((prev) => {
           const ids = new Set(prev.map((e) => e.id))
           const nuevas = entradas.filter((e) => !ids.has(e.id))

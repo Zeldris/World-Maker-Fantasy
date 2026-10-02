@@ -1,5 +1,8 @@
 import { useNoticiasMundo } from '../hooks/useNoticiasMundo'
 import { useGamePhase } from '../hooks/useGamePhase'
+import { useNotificaciones } from '../hooks/useNotificaciones'
+import { notificacionesDeEntrada } from '../lib/notificaciones'
+import { Notificaciones } from '../components/Notificaciones'
 import { GameHeader } from '../components/GameHeader'
 import { GameFooter } from '../components/GameFooter'
 import { avisoDeLlegadas, pesoDeLlegada } from '../lib/llegadas'
@@ -592,7 +595,37 @@ export function GameView() {
   })
 
   // Fase D (hito 0.1) — noticias del mundo escritas en segundo plano, sin esperar a recargar.
-  useNoticiasMundo({ saveId, worldLog, setWorldLog, characterThinking })
+  // HUD-6 (hito 0.2) — notificaciones (toasts): misiones, reputación, oficio, objetos nuevos y
+  // noticias del mundo (lib/notificaciones.ts).
+  const { notificaciones, notificar, descartar: descartarNotificacion } = useNotificaciones()
+  useNoticiasMundo({
+    saveId,
+    worldLog,
+    setWorldLog,
+    characterThinking,
+    onNuevas: (entradas) =>
+      entradas.forEach((e) => notificar({ tipo: 'accent2', icono: '📜', texto: e.text.length > 90 ? `${e.text.slice(0, 88)}…` : e.text })),
+  })
+  // Avisos de las entradas nuevas del registro llegadas en vivo (no las de la carga de la partida).
+  const procesadasRef = useRef(0)
+  useEffect(() => {
+    const nuevas = characterLog.slice(procesadasRef.current)
+    procesadasRef.current = characterLog.length
+    for (const e of nuevas) {
+      if (liveRevealedIdsRef.current.has(e.id)) notificacionesDeEntrada(e).forEach(notificar)
+    }
+  }, [characterLog, notificar])
+  // Objetos nuevos en el inventario: `syncFromSave` apunta los que ya había (carga, reconexión), así
+  // solo avisa de lo que llega con un turno.
+  const inventarioConocidoRef = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    for (const item of inventory) {
+      if (!inventarioConocidoRef.current.has(item.id)) {
+        inventarioConocidoRef.current.add(item.id)
+        notificar({ tipo: 'moss', icono: '🎒', texto: `Obtienes ${item.name}` })
+      }
+    }
+  }, [inventory, notificar])
 
   const characterFlavor = useRotatingFlavor(characterThinking, combat.combatOpen ? combatWaitingFlavor : characterWaitingFlavor)
   const worldFlavor = useRotatingFlavor(worldThinking, worldWaitingFlavor)
@@ -635,6 +668,7 @@ export function GameView() {
     setCharacterLogRaw(save.characterLog)
     setWorldLog(save.worldLog)
     setKingdomLog(save.kingdomLog)
+    inventarioConocidoRef.current = new Set(save.inventory.map((i) => i.id))
     setInventory(save.inventory)
     setCompanions(save.companions)
     setLevel(save.level)
@@ -1475,6 +1509,7 @@ export function GameView() {
         nowTick={nowTick}
         fictionalDate={fictionalDate}
         entorno={entorno}
+        mundoAvanza={worldThinking}
         onSalir={() => setConfirmingExit(true)}
         onAbrirNivel={() => {
           setPersonajeSubTab('estadisticas')
@@ -2178,6 +2213,7 @@ export function GameView() {
         </PanelDrawer>
         </Capa>
       )}
+      <Notificaciones notificaciones={notificaciones} onDescartar={descartarNotificacion} />
     </div>
     </CapasContext.Provider>
     </EnciclopediaLinkProvider>

@@ -589,7 +589,7 @@ Contenedor común: `PanelDrawer` (cajón inferior, `max-w-4xl`, 85 vh).
 - **HUD-5 · Subida de nivel con ceremonia**: viñeta de cristal que recorre la pantalla una vez,
   insignia "Nivel 7" con `stamp-in`, gemas que se encienden con los puntos a repartir y botón directo
   a Estadísticas. **M**
-- **HUD-6 · Notificaciones (toasts)**: pila arriba a la derecha con `plank-panel` y borde por tipo
+- ~~**HUD-6 · Notificaciones (toasts)**~~ ✅ 2026-10-02 (parte del `0.2`): pila arriba a la derecha con `plank-panel` y borde por tipo
   (`quest` misión, `moss` logro/obtenido, `danger` peligro, `accent` sistema, `accent2` mundo vivo):
   misión aceptada/completada, objeto obtenido, expedición vuelta, cambio de relación entre facciones
   (enlaza con "El mundo vivo, visible" del hito `0.1`). Agrupa repetidas. **M**
@@ -597,6 +597,13 @@ Contenedor común: `PanelDrawer` (cajón inferior, `max-w-4xl`, 85 vh).
   guerras, nacimientos notables, consecuencias), filtrados por importancia (`CFG-35`); cada
   notificación abre su entrada en Leyendas. Tras un viaje o descanso de varios días, **una sola**
   notificación resumen ("Mientras viajabas: 3 sucesos") en vez de varias (`UX-31`).
+  Hecho en el `0.2`: `lib/notificaciones.ts` (tipos con su borde, agrupar repetidas «×N», tope de
+  4), `useNotificaciones` (se van solas a los 7 s) y `components/Notificaciones.tsx`. Avisan:
+  misión aceptada/completada, cambio de reputación (verde o rojo), oficio que sube de nivel, objeto
+  nuevo en el inventario (solo los que llegan con un turno, no los de la carga) y noticias del
+  mundo (`useNoticiasMundo`, `onNuevas`). **Queda:** los sucesos del Cronista filtrados por
+  importancia (`CFG-35`) que abren su entrada en Leyendas, y el resumen tras viajes largos
+  (`UX-31`); objetos que llegan por `refreshSave` (recolectar, cazar) aún no avisan.
 - **HUD-7 · Misión seguida** en la cabecera, con su objetivo actual en una línea. **S**
 - **HUD-8 · Barra de "Ocupado"** (`busyUntil`): hoy una línea de texto con cuenta atrás; propuesta:
   barra de progreso real con el icono de la actividad y la hora ficticia de fin. **S**
@@ -606,8 +613,11 @@ Contenedor común: `PanelDrawer` (cajón inferior, `max-w-4xl`, 85 vh).
   (requiere BAS-2). **S**
 - **HUD-11 · Cabecera adaptable a 1280 px**: hoy son 6-7 chips en fila que hacen `flex-wrap`; agrupar
   hambre/sed/energía en un bloque compacto con tooltip detallado. **S**
-- **HUD-12 · "El mundo avanza"**: indicador discreto (gema que respira junto a la fecha) mientras
-  corre el avance diario o el Cronista en segundo plano; **nunca bloquea nada** (`UX-29`). **S**
+- ~~**HUD-12 · "El mundo avanza"**: indicador discreto (gema que respira junto a la fecha) mientras
+  corre el avance diario o el Cronista en segundo plano; **nunca bloquea nada** (`UX-29`). **S**~~
+  ✅ 2026-10-02: gema en `GameHeader` (`mundoAvanza`, con `role="status"`). Hoy la señal es la
+  ambientación en curso (`worldThinking`); el avance diario corre dentro del turno en el backend.
+  **Queda:** engancharla al Cronista en segundo plano cuando exista (`CR-12`).
 - **HUD-13 · Etiqueta principal** del personaje bajo su nombre en la cabecera (la de más peso, p. ej.
   "Verdugo de Torgash"), con las demás en el tooltip. **S**
 
