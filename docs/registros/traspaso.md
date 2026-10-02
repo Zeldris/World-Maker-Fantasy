@@ -13,8 +13,8 @@ cada commit.**
 | **Actualizado** | 2026-10-02 |
 | **Rama de trabajo** | `claude/frontend-improvements-roadmap-0mpckt`. Flujo acordado (2026-10-01): commit + push a esta rama con cada cosa hecha; a `main` se pasa **por pull request** (desde esta sesión el push directo a `main` lo bloquea el filtro de permisos) |
 | **Último commit en `main`** | Fusión del PR #3 (2026-10-02): bitácora recortada, paso 8 «después del 0.1», cobertura de roadmaps (367/367) y `tools/roadmap/cobertura.py`. La rama de trabajo y `main` quedan iguales |
-| **Hito** | `0.1` Llanuras estable — [plan](../producto/plan-roadmap-0.1.md) · [mapa de roadmaps](../producto/21-roadmap.md#qué-entra-en-cada-hito) |
-| **Tarea en curso** | 🚧 **Fase G — pasada de juego completa** con el Ollama simulado (lo determinista; la calidad narrativa queda para Ollama real). Guion, estado por tramo y hallazgos en [`fase-g-0.1-hallazgos.md`](fase-g-0.1-hallazgos.md). Fase F espera a que Álvaro ejecute el benchmark; Fase E bloqueada (pobladores) |
+| **Hito** | `0.2` Facciones vivas — [mapa de roadmaps](../producto/21-roadmap.md#qué-entra-en-cada-hito) (el `0.1` sigue abierto solo por las Fases E y F, ver abajo) |
+| **Tarea en curso** | Empezar el hito `0.2` Facciones vivas (decisión de la usuaria, 2026-10-02: implementación continua comprobando con tests; las pruebas de juego, en una fase única antes de la beta). Del `0.1` quedan abiertas la Fase E (bloqueada, pobladores) y la F (Álvaro ejecuta el benchmark); la Fase G queda aplazada a la fase única de pruebas |
 | **Tests** | Frontend: `tsc -b` 0, `vitest` 56 archivos / 334 tests, `oxlint` 13 avisos (los mismos de antes). Backend en local con Postgres real: `tsc` 0, `vitest` 165/165 archivos, 2874 tests (última pasada completa, 2026-10-02); 1 test intermitente apuntado (G16). CI de GitHub en verde (PR #3) |
 
 ## Dónde está todo (para saber qué sigue)
@@ -50,12 +50,14 @@ Del [plan del 0.1](../producto/plan-roadmap-0.1.md) y del [mapa de roadmaps](../
 4. ~~**Fase D — El mundo vivo, visible**~~ ✅ 2026-10-02 (noticias del mundo + agenda leída de `FactionRelation`; el Libro de Sucesos `CR-1`…`CR-4` sigue esperando la decisión de Álvaro).
 5. 🚧 **Fase F — latencia en la Steam Deck**: script `npm run benchmark-turno` hecho (2026-10-02); falta que Álvaro lo ejecute en la Steam Deck y pase el JSON.
 6. **Fase E — súbditos mínimos** (bloqueada, ver decisiones).
-7. 🚧 **Fase G — pasada de juego completa** (en curso, ver [`fase-g-0.1-hallazgos.md`](fase-g-0.1-hallazgos.md): seguir el guion por el primer tramo pendiente y arreglar cada hallazgo) y cierre del hito.
-8. **Después del 0.1:** cerrar el hito (etiqueta `v0.1.0-alpha`, subida a GitHub) y seguir con el
-   hito `0.2` Facciones vivas según la fila `0.2` de
-   [«Qué entra en cada hito»](../producto/21-roadmap.md#qué-entra-en-cada-hito), y así hito a hito
-   hasta `1.0`. Regla del roadmap: un hito no empieza hasta cerrar el anterior; adelantar trabajo
-   del `0.2` mientras el `0.1` espera a Álvaro solo si él lo decide.
+7. ⏸ **Fase G — pasada de juego completa**: aplazada a la **fase única de pruebas** (fila `0.8` del mapa). Lo hecho y lo pendiente, en [`fase-g-0.1-hallazgos.md`](fase-g-0.1-hallazgos.md).
+8. 🚧 **Hito `0.2` Facciones vivas** (empezado 2026-10-02 por decisión de la usuaria, con el `0.1`
+   aún abierto por E y F): seguir la fila `0.2` de
+   [«Qué entra en cada hito»](../producto/21-roadmap.md#qué-entra-en-cada-hito), y así hito a hito.
+   **Forma de trabajo desde aquí:** implementación continua; cada tarea con sus tests y tsc + vitest
+   + oxlint en verde antes de subir; sin pasadas de juego (solo una captura si algo no se puede
+   comprobar de otra forma). Las pruebas de juego, en la fase única antes de la beta (`0.8`).
+   La etiqueta `v0.1.0-alpha` espera a cerrar E y F.
 
 ## Decisiones de Álvaro que bloquean algo
 
@@ -94,6 +96,7 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
+- **2026-10-02** — Fase G aplazada a una fase única de pruebas antes de la beta (decisión de la usuaria); se empieza el `0.2`. G1-G29 en `fase-g-0.1-hallazgos.md` (21 arreglados).
 - **2026-10-02** — Fase G en curso: G1-G15 (14 arreglados): enlaces de entidades, asistente, combate (iniciativa, capturar, respaldo de narración, tiradas en grupo, nombre del rival), desollar al acabar, caza de grupos tras matar a uno, muerte con «Aceptar», «Acercarte». Detalle en `fase-g-0.1-hallazgos.md`.
 - **2026-10-02** — PR #2 fusionado a `main` (Fases A, C, D, F parcial y todos los arreglos de
   interfaz del 0.1). Se sigue trabajando en la misma rama.
@@ -111,5 +114,3 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 - **2026-10-02** — Z-A paso 2: `ZON-14`, ficha del personaje con anillo de cristal, dirección y halo.
 - **2026-10-02** — Z-A paso 1: `ZON-10`, `ZON-11`, `ZON-13` — fichas del mapa de zona con placa,
   pictograma y anillo de color (tokens), tamaño fijo de pantalla e insignia de grupo.
-- **2026-10-02** — `REI-116`: XP y nivel del diplomático al negociar; presión con barra y etapa al
-  espiar. **Reino R-A completa.**
