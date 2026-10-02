@@ -6,6 +6,7 @@ import { ErrorBanner } from '../../ErrorBanner'
 import { useErrorConReintento } from '../../../hooks/useErrorConReintento'
 import { depositarEnAlmacen, retirarDeAlmacen, getAlmacenLimites, setAlmacenLimite, type AlmacenLimiteInfo } from '../../../lib/api'
 import { agruparAlmacen, proporcionTope } from '../../../lib/almacen'
+import { useModoConsulta } from '../../../context/useModoConsulta'
 
 /// Almacén de Reino (§6-7) — pool de objetos separado de la mochila personal. Depositar mueve un
 /// objeto SIN equipar de la mochila al Almacén (y dispara el auto-equipo del backend); Retirar
@@ -25,6 +26,8 @@ export function AlmacenSection({
   almacenItems: AlmacenItemInfo[]
   onRefreshSave: () => Promise<void>
 }) {
+  // UX-5 (hito 0.2) — modo consulta: lo que cambia datos se deshabilita con el motivo.
+  const consulta = useModoConsulta()
   const [busy, setBusy] = useState<string | null>(null)
   const [limites, setLimites] = useState<AlmacenLimiteInfo[] | null>(null)
   const { fallo, informar, limpiar } = useErrorConReintento()
@@ -107,7 +110,8 @@ export function AlmacenSection({
                     <button
                       type="button"
                       onClick={() => handleRetirar(primera.id)}
-                      disabled={busy === primera.id}
+                      disabled={busy === primera.id || !!consulta}
+                      title={consulta ?? undefined}
                       className="tactile shrink-0 rounded border border-iron-700 px-2 py-1 text-2xs text-wood-400 hover:text-accent-300 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {busy === primera.id ? '...' : cantidad > 1 ? 'Retirar 1' : 'Retirar'}
@@ -153,7 +157,8 @@ export function AlmacenSection({
                             <button
                               type="button"
                               onClick={() => handleRetirar(u.id)}
-                              disabled={busy === u.id}
+                              disabled={busy === u.id || !!consulta}
+                              title={consulta ?? undefined}
                               className="tactile shrink-0 rounded border border-iron-700 px-1.5 py-0.5 text-wood-400 hover:text-accent-300 disabled:opacity-50"
                             >
                               {busy === u.id ? '...' : 'Retirar'}
@@ -179,7 +184,8 @@ export function AlmacenSection({
                   <button
                     type="button"
                     onClick={() => handleDepositar(item.id)}
-                    disabled={busy === item.id}
+                    disabled={busy === item.id || !!consulta}
+                    title={consulta ?? undefined}
                     className="tactile shrink-0 rounded border border-accent-600/60 px-2 py-1 text-2xs text-accent-300 hover:bg-accent-500/10 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {busy === item.id ? '...' : 'Depositar'}

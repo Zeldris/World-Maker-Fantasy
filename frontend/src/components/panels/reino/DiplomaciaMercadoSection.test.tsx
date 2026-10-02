@@ -12,6 +12,7 @@ import { getMercado, postDiplomacia } from '../../../lib/api'
 import { DiplomaciaMercadoSection } from './DiplomaciaMercadoSection'
 import type { CompanionInfo } from '../../../types'
 import type { EnciclopediaFaccionInfo } from '../../../lib/api'
+import { ModoConsultaContext } from '../../../context/modoConsultaContext'
 
 /// REI-116 (hito 0.1, roadmap-front-reino.md R4) — la XP y el nivel del diplomático y la etapa de la
 /// relación llegaban del backend sin enseñarse.
@@ -53,5 +54,21 @@ describe('DiplomaciaMercadoSection — REI-116', () => {
     expect(getByText('Presión 72 / 100')).toBeTruthy()
     expect(getByText('Etapa 1 de 4')).toBeTruthy()
     expect(getByRole('meter', { name: 'Presión entre facciones' }).getAttribute('aria-valuenow')).toBe('72')
+  })
+
+  it('UX-5 (hito 0.2): en modo consulta las acciones de diplomacia se deshabilitan con el motivo', async () => {
+    const utils = render(
+      <ModoConsultaContext.Provider value="El narrador todavía está escribiendo.">
+        <DiplomaciaMercadoSection saveId="s1" companions={[ana]} factions={[faccion]} goirnos={0} onRefreshSave={async () => {}} />
+      </ModoConsultaContext.Provider>,
+    )
+    await act(async () => {
+      fireEvent.click(utils.getByRole('button', { name: /Serhu/ }))
+    })
+    const negociar = utils.getByRole('button', { name: 'Negociar' }) as HTMLButtonElement
+    expect(negociar.disabled).toBe(true)
+    expect(negociar.title).toBe('El narrador todavía está escribiendo.')
+    fireEvent.click(negociar)
+    expect(postDiplomacia).not.toHaveBeenCalled()
   })
 })

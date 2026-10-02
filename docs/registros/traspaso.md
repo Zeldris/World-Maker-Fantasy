@@ -14,8 +14,8 @@ cada commit.**
 | **Rama de trabajo** | `claude/frontend-improvements-roadmap-0mpckt`. Flujo acordado (2026-10-01): commit + push a esta rama con cada cosa hecha; a `main` se pasa **por pull request** (desde esta sesión el push directo a `main` lo bloquea el filtro de permisos) |
 | **Último commit en `main`** | Fusión del PR #3 (2026-10-02): bitácora recortada, paso 8 «después del 0.1», cobertura de roadmaps (367/367) y `tools/roadmap/cobertura.py`. La rama de trabajo y `main` quedan iguales |
 | **Hito** | `0.2` Facciones vivas — [plan](../producto/plan-roadmap-0.2.md) · [mapa de roadmaps](../producto/21-roadmap.md#qué-entra-en-cada-hito) (el `0.1` sigue abierto solo por las Fases E y F, ver abajo) |
-| **Tarea en curso** | `0.2` Fase B — Interfaz base, **UX-B** (estado único, [roadmap-front-ux.md](../producto/roadmap-front-ux.md)): ~~`UX-1`~~ ✅, ~~`UX-2`~~ ✅ (`lib/gamePhase.ts`); 🚧 `UX-5` paneles en modo consulta: hecho el contexto, el aviso del cajón, Inventario, Estadísticas y Compañeros; **falta Reino** (almacén, producción, súbditos, mercado/diplomacia, campamento); luego `UX-7`, `UX-8`. Fase A ✅ cerrada (`CR-1`…`CR-4`); Fase C (`CR-5`…`CR-8`) tras la B ([plan del 0.2](../producto/plan-roadmap-0.2.md)). Forma de trabajo: implementación continua con tests; pruebas de juego en la fase única antes de la beta (decisión de la usuaria, 2026-10-02). Del `0.1` quedan abiertas la Fase E (bloqueada, pobladores) y la F (Álvaro ejecuta el benchmark); la G, aplazada a la fase única |
-| **Tests** | Frontend: `tsc -b` 0, `vitest` 59 archivos / 353 tests (ahora incluye `src/pages/**`), `oxlint` 13 avisos (los mismos de antes). Backend en local con Postgres real: `tsc` 0, `vitest` 165/165 archivos, 2874 tests (última pasada completa, 2026-10-02); 1 test intermitente apuntado (G16). CI de GitHub en verde (PR #3) |
+| **Tarea en curso** | `0.2` Fase B — Interfaz base, **UX-B** (estado único, [roadmap-front-ux.md](../producto/roadmap-front-ux.md)): ~~`UX-1`~~ ✅, ~~`UX-2`~~ ✅ (`lib/gamePhase.ts`); ~~`UX-5`~~ ✅ (paneles en modo consulta); siguiente `UX-7` (brújula y mapa de zona respetan la fase: visibles, deshabilitados con el motivo de `canDo(fase,'moverse')`), luego `UX-8`. Fase A ✅ cerrada (`CR-1`…`CR-4`); Fase C (`CR-5`…`CR-8`) tras la B ([plan del 0.2](../producto/plan-roadmap-0.2.md)). Forma de trabajo: implementación continua con tests; pruebas de juego en la fase única antes de la beta (decisión de la usuaria, 2026-10-02). Del `0.1` quedan abiertas la Fase E (bloqueada, pobladores) y la F (Álvaro ejecuta el benchmark); la G, aplazada a la fase única |
+| **Tests** | Frontend: `tsc -b` 0, `vitest` 59 archivos / 354 tests (ahora incluye `src/pages/**`), `oxlint` 13 avisos (los mismos de antes). Backend en local con Postgres real: `tsc` 0, `vitest` 165/165 archivos, 2874 tests (última pasada completa, 2026-10-02); 1 test intermitente apuntado (G16). CI de GitHub en verde (PR #3) |
 
 ## Dónde está todo (para saber qué sigue)
 
@@ -95,6 +95,7 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
+- **2026-10-02** — `UX-5`: paneles en modo consulta (se leen siempre; lo que cambia datos se deshabilita con el motivo de la fase), con aviso en el cajón.
 - **2026-10-02** — `UX-1` y `UX-2`: fase única de partida y matriz de permisos (`lib/gamePhase.ts`, `useGamePhase`); `GameView` saca de ahí los bloqueos del composer y de los botones de turno.
 - **2026-10-02** — `CR-4`: vista de administración del Libro de Sucesos (`GET /saves/:id/libro` + página `/admin/partida/:id/libro`). **Fase A del 0.2 cerrada.**
 - **2026-10-02** — `CR-3`: el Libro de Sucesos ya recibe los sucesos del jugador y del mundo (combate, misiones, reino, diplomacia, expediciones, agenda, clima, cadáveres).
@@ -106,6 +107,3 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
   interfaz del 0.1). Se sigue trabajando en la misma rama.
 - **2026-10-02** — Fase F: script `npm run benchmark-turno` (clasificar / resolver / narrar, con
   mediana, p90 y JSON). Pendiente: ejecución en la Steam Deck.
-- **2026-10-02** — Fase D parte 2: el control de las regiones en conflicto sale de las relaciones
-  reales Serhu→Helsig/Goshg; la agenda las empuja. Arreglado un test que borraba Serhu→Helsig.
-  **Fase D cerrada.**

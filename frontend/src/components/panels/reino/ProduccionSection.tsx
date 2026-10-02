@@ -17,6 +17,7 @@ import { SelectionModalShell, confirmButtonClasses } from '../../SelectionModalS
 import { ConfirmModal } from '../../ConfirmModal'
 import { ErrorBanner } from '../../../components/ErrorBanner'
 import { useErrorConReintento } from '../../../hooks/useErrorConReintento'
+import { useModoConsulta } from '../../../context/useModoConsulta'
 
 interface ProduccionSectionProps {
   saveId: string
@@ -85,6 +86,8 @@ function BuildingProduccionCard({
   professionRecipes: ProfessionRecipeInfo[]
   onRefreshSave: () => Promise<void>
 }) {
+  // UX-5 (hito 0.2) — modo consulta: lo que cambia datos se deshabilita con el motivo.
+  const consulta = useModoConsulta()
   const [ordenes, setOrdenes] = useState<OrdenProduccionInfo[] | null>(null)
   const [nuevaOrdenAbierta, setNuevaOrdenAbierta] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
@@ -220,9 +223,9 @@ function BuildingProduccionCard({
               <button
                 type="button"
                 key={c.id}
-                disabled={busy === c.id}
+                disabled={busy === c.id || !!consulta}
                 onClick={() => handleAsignarTrabajador(c.id, !asignadoAqui)}
-                title={asignadoAOtro ? 'Asignado a otro edificio — clic para moverlo aquí' : undefined}
+                title={consulta ?? (asignadoAOtro ? 'Asignado a otro edificio — clic para moverlo aquí' : undefined)}
                 className={`tactile rounded-full border px-2.5 py-1 text-2xs transition-colors disabled:opacity-50 ${
                   asignadoAqui
                     ? 'border-accent-600/70 bg-accent-600/10 text-accent-200'
@@ -257,7 +260,7 @@ function BuildingProduccionCard({
                     valor={o.prioridad}
                     min={0}
                     max={9}
-                    disabled={busy === o.id}
+                    disabled={busy === o.id || !!consulta}
                     onGuardar={(v) => handlePrioridadChange(o.id, v ?? 0)}
                   />
                 </label>
@@ -270,7 +273,7 @@ function BuildingProduccionCard({
                       min={1}
                       permitirVacio
                       placeholder="∞"
-                      disabled={busy === o.id}
+                      disabled={busy === o.id || !!consulta}
                       onGuardar={(v) => handleLimiteOrden(o.id, v)}
                     />
                   </label>
@@ -278,8 +281,8 @@ function BuildingProduccionCard({
                 <button
                   type="button"
                   onClick={() => handleDesactivar(o.id)}
-                  disabled={busy === o.id}
-                  title="Desactivar (no borra — se reactiva desde «Desactivadas»)"
+                  disabled={busy === o.id || !!consulta}
+                  title={consulta ?? 'Desactivar (no borra — se reactiva desde «Desactivadas»)'}
                   aria-label={`Desactivar ${recipeLabel(o.recipeKey, professionRecipes)}`}
                   className="tactile shrink-0 text-2xs text-wood-500 hover:text-danger-300 disabled:opacity-50"
                 >
@@ -303,7 +306,8 @@ function BuildingProduccionCard({
                       <button
                         type="button"
                         onClick={() => handleReactivar(o.id)}
-                        disabled={busy === o.id}
+                        disabled={busy === o.id || !!consulta}
+                        title={consulta ?? undefined}
                         className="tactile rounded border border-accent-600/50 px-2 py-0.5 text-accent-300 hover:bg-accent-500/10 disabled:opacity-50"
                       >
                         Reactivar
@@ -311,7 +315,8 @@ function BuildingProduccionCard({
                       <button
                         type="button"
                         onClick={() => setOrdenABorrar(o)}
-                        disabled={busy === o.id}
+                        disabled={busy === o.id || !!consulta}
+                        title={consulta ?? undefined}
                         className="tactile rounded border border-danger-700/60 px-2 py-0.5 text-danger-300 hover:bg-danger-600/15 disabled:opacity-50"
                       >
                         Borrar
@@ -365,6 +370,8 @@ function NuevaOrdenModal({
   onCancel: () => void
   onCrear: (params: { recipeKey: string; modo: 'unico' | 'reponer'; limite: number | null; prioridad: number }) => Promise<void>
 }) {
+  // UX-5 (hito 0.2) — modo consulta: lo que cambia datos se deshabilita con el motivo.
+  const consulta = useModoConsulta()
   const [recipeKey, setRecipeKey] = useState(professionRecipes[0]?.recipeKey ?? '')
   const [modo, setModo] = useState<'unico' | 'reponer'>('reponer')
   const [limite, setLimite] = useState<string>('')
@@ -390,7 +397,7 @@ function NuevaOrdenModal({
       onCancel={onCancel}
       cancelDisabled={creando}
       footer={
-        <button type="button" onClick={handleCrear} disabled={!recipeKey || creando} className={confirmButtonClasses('accent')}>
+        <button type="button" onClick={handleCrear} disabled={!recipeKey || creando || !!consulta} title={consulta ?? undefined} className={confirmButtonClasses('accent')}>
           {creando ? 'Creando…' : 'Crear'}
         </button>
       }
