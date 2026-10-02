@@ -57,6 +57,7 @@ export function TravelDestinationModal({ saveId, onSelect, onCancel, bloqueoTurn
           {bloqueoTurno && <p className="text-2xs text-wood-500">🔒 {bloqueoTurno}</p>}
           {destinations.map((d) => (
             <button type="button"
+              data-opcion
               key={d.locationSlug}
               disabled={!!bloqueoTurno}
               title={bloqueoTurno ?? undefined}

@@ -15,6 +15,38 @@ const ANCHO: Record<TamanoModal, string> = {
   ceremonia: 'max-w-3xl min-h-[60vh] max-h-[90vh]',
 }
 
+/// MOD-3 (hito 0.2) — teclado en modales: números 1-9 eligen la opción N entre las marcadas con
+/// `data-opcion`, flechas arriba/abajo las recorren y Enter pulsa la marcada con `data-confirmar`
+/// (si el foco no está ya en un botón ni en un área de texto). Al escribir en un campo de texto,
+/// los números y las flechas son del campo. Devuelve true si ha gestionado la tecla.
+function teclaDeModal(e: KeyboardEvent<HTMLDivElement>): boolean {
+  const destino = e.target as HTMLElement
+  const escribiendo = destino.closest('input, textarea, select, [contenteditable="true"]') !== null
+  const opciones = Array.from(e.currentTarget.querySelectorAll<HTMLButtonElement>('[data-opcion]:not(:disabled)'))
+  if (!escribiendo && /^[1-9]$/.test(e.key)) {
+    const opcion = opciones[Number(e.key) - 1]
+    if (!opcion) return false
+    e.preventDefault()
+    opcion.click()
+    return true
+  }
+  if (!escribiendo && (e.key === 'ArrowDown' || e.key === 'ArrowUp') && opciones.length > 0) {
+    const actual = opciones.indexOf(document.activeElement as HTMLButtonElement)
+    const siguiente = actual === -1 ? 0 : Math.min(opciones.length - 1, Math.max(0, actual + (e.key === 'ArrowDown' ? 1 : -1)))
+    e.preventDefault()
+    opciones[siguiente].focus()
+    return true
+  }
+  if (e.key === 'Enter' && !e.shiftKey && destino.tagName !== 'BUTTON' && destino.tagName !== 'TEXTAREA') {
+    const confirmar = e.currentTarget.querySelector<HTMLButtonElement>('[data-confirmar]:not(:disabled)')
+    if (!confirmar) return false
+    e.preventDefault()
+    confirmar.click()
+    return true
+  }
+  return false
+}
+
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
@@ -69,6 +101,7 @@ export function ModalShell({
   }, [])
 
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (teclaDeModal(e)) return
     if (e.key === 'Escape') {
       if (closeDisabled) return
       e.stopPropagation()

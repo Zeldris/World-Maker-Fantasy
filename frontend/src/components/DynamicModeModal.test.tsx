@@ -34,4 +34,25 @@ describe('MOD-1 — DynamicModeModal', () => {
     fireEvent.click(getByRole('button', { name: 'Continuar' }))
     expect(onCerrar).toHaveBeenCalled()
   })
+
+  it('MOD-3 (hito 0.2): el número elige la opción y Enter pulsa «Continuar»', () => {
+    const onElegir = vi.fn()
+    const { getByRole, rerender } = render(<DynamicModeModal turno={turno()} onElegir={onElegir} onCerrar={vi.fn()} onSalir={vi.fn()} />)
+    fireEvent.keyDown(getByRole('dialog'), { key: '2' })
+    expect(onElegir).toHaveBeenCalledWith('Irte')
+    fireEvent.keyDown(getByRole('dialog'), { key: '7' })
+    expect(onElegir).toHaveBeenCalledTimes(1)
+    const onCerrar = vi.fn()
+    rerender(<DynamicModeModal turno={turno({ cierra: true })} onElegir={onElegir} onCerrar={onCerrar} onSalir={vi.fn()} />)
+    fireEvent.keyDown(getByRole('dialog'), { key: 'Enter' })
+    expect(onCerrar).toHaveBeenCalled()
+  })
+
+  it('MOD-3: las flechas recorren las opciones', () => {
+    const { getByRole, getByText } = render(<DynamicModeModal turno={turno()} onElegir={vi.fn()} onCerrar={vi.fn()} onSalir={vi.fn()} />)
+    fireEvent.keyDown(getByRole('dialog'), { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(getByText('Saludar').closest('button'))
+    fireEvent.keyDown(getByRole('dialog'), { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(getByText('Irte').closest('button'))
+  })
 })

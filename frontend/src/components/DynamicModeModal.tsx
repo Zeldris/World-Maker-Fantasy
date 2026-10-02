@@ -51,6 +51,7 @@ export function DynamicModeModal({ turno, busy, error, imageUrl, onElegir, onCer
           {turno.cierra ? (
             <button
               type="button"
+              data-confirmar
               onClick={onCerrar}
               disabled={busy}
               className="tactile w-full rounded-lg border border-accent2-600 bg-gradient-to-b from-accent2-400 to-accent2-600 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-wood-950 disabled:cursor-not-allowed disabled:border-iron-700 disabled:from-wood-700 disabled:to-wood-700 disabled:text-wood-500"
@@ -58,14 +59,17 @@ export function DynamicModeModal({ turno, busy, error, imageUrl, onElegir, onCer
               Continuar
             </button>
           ) : (
-            turno.opciones.map((opcion) => (
+            turno.opciones.map((opcion, i) => (
               <button
                 type="button"
+                data-opcion
                 key={opcion}
                 onClick={() => onElegir(opcion)}
                 disabled={busy}
                 className="tactile w-full rounded-lg border border-iron-700 bg-wood-950/50 px-3.5 py-2 text-left text-xs font-semibold text-wood-200 transition-colors hover:border-accent2-600/60 hover:text-accent2-300 disabled:cursor-not-allowed disabled:opacity-60"
               >
+                {/* MOD-3 (hito 0.2) — el número que la elige con el teclado. */}
+                {i < 9 && <span aria-hidden="true" className="mr-2 font-mono text-wood-500">{i + 1}</span>}
                 {opcion}
               </button>
             ))

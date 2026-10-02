@@ -378,8 +378,12 @@ Todos tienen el mismo ancho (`max-w-md`), la misma entrada (`combat-enter`) y ni
   `ErrorCarga` (con «Reintentar»; `useAsyncModalData` devuelve `reintentar()`) y `ExitoModal` (sello
   ✓ en tono `moss`). Aplicados en Saquear, Aprender oficio, Campamento, Entregar, Capturar, Viajar,
   Recolectar, Grupos de combate y Parcela. Viajar no ofrece reintentar (carga propia sin el hook).
-- **MOD-3 · Teclado en modales** **S** — `Enter` confirma, números `1-9` eligen opción en listas
-  cortas (Modo dinámico, Viajar, Clase), flechas recorren la lista.
+- ~~**MOD-3 · Teclado en modales** **S** — `Enter` confirma, números `1-9` eligen opción en listas
+  cortas (Modo dinámico, Viajar, Clase), flechas recorren la lista.~~ ✅ 2026-10-02: en `ModalShell`
+  (`teclaDeModal`): números 1-9 pulsan la opción N marcada con `data-opcion`, flechas arriba/abajo
+  las recorren y Enter pulsa la marcada con `data-confirmar` (no si el foco está en un botón o un
+  área de texto; al escribir en un campo, números y flechas son del campo). Marcados Modo dinámico
+  (con el número delante de cada opción), Viajar, Clase, Especialización y Fundar reino.
 - **MOD-4 · Modales de ceremonia** **M** — variante para decisiones grandes o irreversibles (fundar
   reino, clase, especialización, muerte, subida de nivel): ancho grande, ilustración, título en
   Cinzel grande, línea de cristal que se extiende (`line-extend`), botón de confirmar que hay que

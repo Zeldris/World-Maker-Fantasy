@@ -56,7 +56,8 @@ export function EspecializacionModal({ clase, especializaciones, worldSlug, onCo
             </button>
             <button
               type="button"
-              onClick={() => (confirmando ? handleAceptar() : setConfirmando(true))}
+              data-confirmar
+                onClick={() => (confirmando ? handleAceptar() : setConfirmando(true))}
               disabled={busy}
               className="tactile flex-1 rounded-lg border border-accent-600 bg-gradient-to-b from-accent-400 to-accent-600 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-wood-950 transition-colors disabled:cursor-not-allowed disabled:border-iron-700 disabled:from-wood-700 disabled:to-wood-700 disabled:text-wood-500"
             >
@@ -72,6 +73,7 @@ export function EspecializacionModal({ clase, especializaciones, worldSlug, onCo
                   {especializaciones.map((e) => (
                     <button
                       key={e.especializacion}
+                  data-opcion
                       type="button"
                       onClick={() => setSeleccionada(e.especializacion)}
                       className="tactile flex flex-col gap-1 rounded-lg border border-iron-700 bg-wood-950/50 px-3.5 py-2.5 text-left transition-colors hover:border-accent-600/60"
