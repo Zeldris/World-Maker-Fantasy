@@ -303,8 +303,9 @@ describe('advanceFactionExpeditions — intercepción con combate (Fase 13-C)', 
     expect(await escena(tardia.id, objetivo.name)).not.toContain(objetivo.slug);
 
     // Un upsert como el de `seed-catalog` (el `update` no incluye `muertoEnMundo`) no lo resucita.
+    const existente = await prisma.npc.findFirst({ where: { worldId, slug: objetivo.slug, saveId: null }, select: { id: true } });
     await prisma.npc.upsert({
-      where: { worldId_slug: { worldId, slug: objetivo.slug } },
+      where: { id: existente?.id ?? '__nuevo__' },
       update: { name: objetivo.name, role: objetivo.role, level: objetivo.level, bio: objetivo.bio },
       create: { ...objetivo, id: undefined, attributes: objetivo.attributes as object, habilidadesRaciales: objetivo.habilidadesRaciales as object },
     });

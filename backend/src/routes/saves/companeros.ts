@@ -126,7 +126,7 @@ export async function companerosRoutes(app: FastifyInstance) {
     if (!cuerdasItem) return reply.status(400).send({ error: 'Necesitas cuerdas (en inventario) para intentar atar.' });
     const cuerdaCatalog = await prisma.itemCatalog.findFirst({ where: { worldId: save.worldId, slug: cuerdasItem.catalogSlug ?? 'cuerdas' }, select: { tier: true } });
 
-    const npc = await prisma.npc.findUnique({ where: { worldId_slug: { worldId: save.worldId, slug: request.params.npcSlug } } });
+    const npc = await prisma.npc.findFirst({ where: { worldId: save.worldId, slug: request.params.npcSlug, saveId: null } });
     if (!npc || !npc.atributoResistencia) return reply.status(404).send({ error: 'Objetivo no capturable' });
 
     // Combate múltiple real (2026-08-29, ver comentario de `CombatParticipant.dismissedGrupo` en
@@ -428,7 +428,7 @@ export async function companerosRoutes(app: FastifyInstance) {
       if (rejectIfEnded(save, reply)) return;
       if (rejectIfPendingDeath(save, reply)) return;
 
-      const npc = await prisma.npc.findUnique({ where: { worldId_slug: { worldId: save.worldId, slug: request.params.npcSlug } } });
+      const npc = await prisma.npc.findFirst({ where: { worldId: save.worldId, slug: request.params.npcSlug, saveId: null } });
       if (!npc || !npc.atributoResistencia) return reply.status(404).send({ error: 'Objetivo no encontrado' });
       const state = await prisma.npcState.findFirst({ where: { saveId: save.id, npcId: npc.id, capturado: true } });
       if (!state) return reply.status(400).send({ error: 'Este objetivo no está capturado todavía.' });
@@ -465,7 +465,7 @@ export async function companerosRoutes(app: FastifyInstance) {
       if (rejectIfEnded(save, reply)) return;
       if (rejectIfPendingDeath(save, reply)) return;
 
-      const npc = await prisma.npc.findUnique({ where: { worldId_slug: { worldId: save.worldId, slug: request.params.npcSlug } } });
+      const npc = await prisma.npc.findFirst({ where: { worldId: save.worldId, slug: request.params.npcSlug, saveId: null } });
       if (!npc) return reply.status(404).send({ error: 'Objetivo no encontrado' });
       const state = await prisma.npcState.findFirst({ where: { saveId: save.id, npcId: npc.id, capturado: true } });
       if (!state) return reply.status(400).send({ error: 'Este objetivo no está capturado todavía.' });
@@ -549,7 +549,7 @@ export async function companerosRoutes(app: FastifyInstance) {
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
     if (rejectIfEnded(save, reply)) return;
     if (rejectIfPendingDeath(save, reply)) return;
-    const npc = await prisma.npc.findUnique({ where: { worldId_slug: { worldId: save.worldId, slug: request.params.npcSlug } } });
+    const npc = await prisma.npc.findFirst({ where: { worldId: save.worldId, slug: request.params.npcSlug, saveId: null } });
     if (!npc) return reply.status(404).send({ error: 'Objetivo no encontrado' });
     await prisma.npcState.updateMany({ where: { saveId: save.id, npcId: npc.id, capturado: true }, data: { capturaJaulaBuildingId: null } });
     return { ok: true };

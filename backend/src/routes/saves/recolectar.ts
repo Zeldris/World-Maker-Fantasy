@@ -817,7 +817,7 @@ export async function resolverRecoleccion(
             // (si no, la segunda vería `saqueado:true` recién puesto por la primera y se
             // bloquearía a sí misma dentro de la misma petición).
             if (!sourcesTouchedThisRequest.has(sel.sourceSlug)) {
-              const npc = await tx.npc.findUnique({ where: { worldId_slug: { worldId: save.worldId, slug: sel.sourceSlug } }, select: { id: true, kind: true } });
+              const npc = await tx.npc.findFirst({ where: { worldId: save.worldId, slug: sel.sourceSlug, saveId: null }, select: { id: true, kind: true } });
               if (!npc) continue;
               const scope = scopeFor(npc.kind, save.currentLocationId);
               // Caza en grupo (2026-08-13) — un grupo (`groupSize` no nulo) tiene varios cadáveres

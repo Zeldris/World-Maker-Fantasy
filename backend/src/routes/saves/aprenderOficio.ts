@@ -94,7 +94,7 @@ export async function aprenderOficioRoutes(app: FastifyInstance) {
       if (rejectIfPendingDeath(save, reply)) return;
       if (!save.currentLocationId) return reply.status(400).send({ error: 'Sin ubicación actual' });
 
-      const npc = await prisma.npc.findUnique({ where: { worldId_slug: { worldId: save.worldId, slug: request.params.npcSlug } } });
+      const npc = await prisma.npc.findFirst({ where: { worldId: save.worldId, slug: request.params.npcSlug, saveId: null } });
       if (!npc || !npc.teachesProfession) return reply.status(404).send({ error: 'Ese NPC no enseña ningún oficio' });
       if (!npc.faction) return reply.status(400).send({ error: 'Ese NPC no tiene facción — no se le puede pedir reputación real' });
 

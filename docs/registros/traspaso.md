@@ -14,8 +14,8 @@ cada commit.**
 | **Rama de trabajo** | `claude/frontend-improvements-roadmap-0mpckt`. Flujo acordado (2026-10-01): commit + push a esta rama con cada cosa hecha; a `main` se pasa **por pull request** (desde esta sesión el push directo a `main` lo bloquea el filtro de permisos) |
 | **Último commit en `main`** | Fusión del PR #8 (2026-10-02, pedida por la usuaria): configuración básica (`CFG-*`). Antes, PR #7 (arreglo Matar/Clemente), #6, #5 y #4. La rama lleva encima `BAS-8`/`BAS-9` |
 | **Hito** | `0.2` Facciones vivas — [plan](../producto/plan-roadmap-0.2.md) · [mapa de roadmaps](../producto/21-roadmap.md#qué-entra-en-cada-hito) (el `0.1` sigue abierto solo por las Fases E y F, ver abajo) |
-| **Tarea en curso** | `0.2` **Fase C — Mundo por partida** ([plan](../producto/plan-roadmap-0.2.md), [Cronista Fase 2](../producto/roadmap-cronista.md#fase-2--mundo-por-partida--l)): siguiente `CR-5` (cambios de esquema de § 5.2 de roadmap-cronista.md + índices parciales), luego `CR-6` (`asegurarMundoDePartida`), `CR-7` (avance diario por partida), `CR-8` (migración). Fase A ✅. **Fase B cerrada con pendientes apuntados** en el plan (resto de `BAS-5` y salida de `ModalShell` con un contexto de partida; View Transitions de `BAS-7`; `UX-14` espera `ZON-1`; parte de `CFG-20`). Lint: contar también errores (`npx oxlint src` y buscar «error»); en `GameView`, ningún hook tras los `return` de carga |
-| **Tests** | Frontend: `tsc -b` 0, `vitest` 83 archivos / 424 tests (ahora incluye `src/pages/**`), `oxlint` 12 avisos. Backend en local con Postgres real: `tsc` 0, `vitest` 165/165 archivos, 2874 tests (última pasada completa, 2026-10-02); 1 test intermitente apuntado (G16). CI de GitHub en verde (PR #3) |
+| **Tarea en curso** | `0.2` **Fase C — Mundo por partida** ([plan](../producto/plan-roadmap-0.2.md), [Cronista Fase 2](../producto/roadmap-cronista.md#fase-2--mundo-por-partida--l)): ~~`CR-5`~~ ✅ (migración `20261002200000_mundo_por_partida`, únicos parciales en `Faction`/`Npc`/`WorldPopulation`; **`prisma migrate diff` propondrá borrarlos: quitar esas líneas**); siguiente `CR-6` (`asegurarMundoDePartida` en `mundoPartida.ts`, § 5.3, y adaptar lecturas/escrituras de facciones, relaciones, población, expediciones y NPC muertos a la partida), `CR-7` (avance diario por partida), `CR-8` (migración). Fase A ✅. **Fase B cerrada con pendientes apuntados** en el plan (resto de `BAS-5` y salida de `ModalShell` con un contexto de partida; View Transitions de `BAS-7`; `UX-14` espera `ZON-1`; parte de `CFG-20`). Lint: contar también errores (`npx oxlint src` y buscar «error»); en `GameView`, ningún hook tras los `return` de carga |
+| **Tests** | Frontend: `tsc -b` 0, `vitest` 83 archivos / 424 tests (ahora incluye `src/pages/**`), `oxlint` 12 avisos. Backend en local con Postgres real: `tsc` 0, `vitest` 169/169 archivos, 2893 tests (última pasada completa, 2026-10-02, tras `CR-5`); 1 test intermitente apuntado (G16). CI de GitHub en verde (PR #3) |
 
 ## Dónde está todo (para saber qué sigue)
 
@@ -95,6 +95,7 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
+- **2026-10-02** — `CR-5`: esquema del mundo por partida (campos de § 5.2 y únicos parciales); backend 2893 tests en verde.
 - **2026-10-02** — `BAS-7`: también las notificaciones animan su salida. **Fase B del 0.2 cerrada** con pendientes apuntados; se pasa a la Fase C (mundo por partida).
 - **2026-10-02** — `BAS-7` (en parte, opción A por defecto): `usePresence`; el cajón de paneles anima su salida.
 - **2026-10-02** — PR #8 fusionado (configuración básica). `BAS-8` (componentes base: Chip, ProgressBar con barra fantasma, Tabs, EntityRow) y `BAS-9` (catálogo `/admin/ui`).
@@ -104,4 +105,3 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 - **2026-10-02** — Arreglo (hallazgo jugando de la usuaria): en combate, Matar/Clemente de un rival convaleciente ya no salen bloqueados (regresión de `UX-2`).
 - **2026-10-02** — PR #6 fusionado a `main` (modales, notificaciones, cabecera/pie). Pausa pedida por la usuaria; al volver, configuración básica (`CFG-*`).
 - **2026-10-02** — `HUD-6` y `HUD-12`: notificaciones (misiones, reputación, oficio, objetos, noticias del mundo) y gema «El mundo avanza» junto a la fecha.
-- **2026-10-02** — `MOD-6`: miniatura de la entidad en las filas de los modales. **MOD-1…MOD-6 cerrados.**

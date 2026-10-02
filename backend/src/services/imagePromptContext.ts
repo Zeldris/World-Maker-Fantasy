@@ -136,7 +136,7 @@ export async function loreContextFor(worldId: string, entityType: ImagePromptEnt
     // (soldado/oficial de la Concordia hoy) — nunca a individuos únicos con nombre propio, que ya
     // tienen un sexo fijo en su propio lore y no están en NPC_SEXO_VARIANTES.
     const sexoMatch = stripSexoSuffix(entitySlug);
-    const npc = await prisma.npc.findUnique({ where: { worldId_slug: { worldId, slug: sexoMatch?.baseSlug ?? entitySlug } } });
+    const npc = await prisma.npc.findFirst({ where: { worldId, slug: sexoMatch?.baseSlug ?? entitySlug, saveId: null } });
     if (!npc) return null;
     const general = `${npc.role}${npc.faction ? `, ${npc.faction}` : ''}. ${npc.bio} ${npc.personality}`;
     return {
@@ -168,7 +168,7 @@ export async function loreContextFor(worldId: string, entityType: ImagePromptEnt
     const baseSlug = sexoMatch?.baseSlug ?? entitySlug;
     const [yieldRow, npc] = await Promise.all([
       prisma.harvestYield.findFirst({ where: { worldId, sourceSlug: baseSlug } }),
-      prisma.npc.findUnique({ where: { worldId_slug: { worldId, slug: baseSlug } } }),
+      prisma.npc.findFirst({ where: { worldId, slug: baseSlug, saveId: null } }),
     ]);
     if (!yieldRow) return null;
     const aliases = harvestSourceAliases[baseSlug] ?? [];
@@ -269,7 +269,7 @@ export async function loreContextFor(worldId: string, entityType: ImagePromptEnt
   }
 
   if (entityType === 'faction') {
-    const faction = await prisma.faction.findUnique({ where: { worldId_slug: { worldId, slug: entitySlug } } });
+    const faction = await prisma.faction.findFirst({ where: { worldId, slug: entitySlug, saveId: null } });
     if (!faction) return null;
     return { name: faction.name, loreContext: `Raza dominante: ${faction.raza}. ${faction.description}` };
   }

@@ -868,7 +868,16 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   cada emisor.
 
 ### Fase 2 — Mundo por partida · **L**
-- **CR-5** Cambios de esquema § 5.2 + índices parciales. **M**
+- ~~**CR-5** Cambios de esquema § 5.2 + índices parciales. **M**~~ ✅ 2026-10-02: migración
+  `20261002200000_mundo_por_partida` con los campos de § 5.2 (`Faction.origenSlug/disueltaEn/
+  fundadaEn/cohesion`, `saveId` en `FactionRelation`, `WorldPopulation`, `Expedicion` y `Npc`,
+  `NpcState.muerto/muertoEn/cargo/lealtadFaccionId`, `Companion.valores/aprobacion`, `WorldState.
+  ultimoDiaSimulado/presupuestoTension/estiloNarrador/mundoClonadoEn`) y únicos **parciales** para
+  `Faction`, `Npc` y `WorldPopulation` (catálogo `saveId IS NULL` por mundo; partida por `saveId`).
+  Las búsquedas por `worldId_slug` de NPC/facción pasan a `findFirst` con `saveId: null` (la fila
+  de catálogo, mismo resultado que antes); la siembra hace `upsert` por id (sigue idempotente).
+  **Ojo:** Prisma no expresa índices parciales; `prisma migrate diff` propondrá borrarlos en
+  migraciones futuras: quitar esas líneas. Aún nada lee ni escribe por partida: eso es `CR-6`.
 - **CR-6** `asegurarMundoDePartida` y adaptar lecturas/escrituras de facciones, relaciones,
   población, expediciones y NPC muertos a la partida. **L**
 - **CR-7** `avanceDiario` por partida; sacar las funciones de mundo de `worldTick.ts`. **M**
