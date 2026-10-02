@@ -166,6 +166,9 @@ describe('Compañeros: cobertura de ruta — captura → tameo → confirmar (au
     const state = await prisma.npcState.findFirstOrThrow({ where: { saveId, npcId: corretolvasId } });
     expect(state.capturado).toBe(false);
     expect(state.capturaJaulaBuildingId).toBeNull();
+    // Fase G del 0.1 (hallazgo G28): sin grupo, ya no queda un fantasma GRAVE/CONVALECIENTE en
+    // escena que bloquee `combat/cerrar` (409) — vuelve a ILESO como el siguiente de la especie.
+    expect(state.condicionFisica).toBe('ILESO');
 
     const cuerdas = await prisma.inventoryItem.findFirst({ where: { saveId, catalogSlug: 'cuerdas' } });
     expect(cuerdas).toBeNull();

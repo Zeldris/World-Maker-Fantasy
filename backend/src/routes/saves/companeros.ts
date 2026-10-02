@@ -108,7 +108,7 @@ export async function companerosRoutes(app: FastifyInstance) {
   /// la vez en toda la partida — regla nueva. CONVALECIENTE deja de ser "victoria automática"
   /// (2026-08-26) — requiere `cuerdas` (crafteable, se consume al atar).
   app.post<{ Params: { id: string; npcSlug: string }; Body: { participantId?: string } }>('/saves/:id/capturar/:npcSlug', async (request, reply) => {
-    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, worldId: true, currentLocationId: true, endedAt: true, pendingDeathResolution: true, characterName: true, worldState: { select: { fictionalMinutes: true, fictionalDateLabel: true } } } });
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, worldId: true, currentLocationId: true, endedAt: true, pendingDeathResolution: true, characterName: true, pendingCombatNpcSlugs: true, worldState: { select: { fictionalMinutes: true, fictionalDateLabel: true } } } });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
     if (rejectIfEnded(save, reply)) return;
     if (rejectIfPendingDeath(save, reply)) return;
@@ -194,16 +194,23 @@ export async function companerosRoutes(app: FastifyInstance) {
       if (claimed.count === 0) return reply.status(409).send({ error: 'Alguien más ya ató a este objetivo.' });
 
       // Libera el NpcState de origen — mismo criterio EXACTO que `grupoContinua`
-      // (turnResolution.ts): si quedan más miembros del grupo, resucita a ILESO para el siguiente;
-      // si no, se queda en la condición ya resuelta (MUERTO/CONVALECIENTE normal), disponible para
-      // saqueo/decapitar como cualquier baja normal — la captura ya no vive ahí, vive en el inventario.
+      // (turnResolution.ts): si quedan más miembros del grupo, resucita a ILESO para el siguiente.
+      // Sin grupo (Fase G del 0.1, hallazgo G28): antes se quedaba CONVALECIENTE «disponible para
+      // saqueo/decapitar», pero el individuo ya está atado en el inventario — quedaba un fantasma
+      // en escena que se podía volver a matar, y `combat/cerrar` lo contaba como pendiente (409):
+      // el combate no se cerraba nunca. Ahora también vuelve a ILESO (el siguiente de la especie)
+      // y sale de `pendingCombatNpcSlugs`.
       const grupoContinua = !!(state!.groupSize && state!.groupDefeated + 1 < state!.groupSize);
       await prisma.npcState.update({
         where: { id: state!.id },
         data: grupoContinua
           ? { condicionFisica: 'ILESO', groupDefeated: { increment: 1 }, capturado: false, capturaFelicidad: 0 }
-          : { capturado: false, capturaFelicidad: 0 },
+          : { condicionFisica: 'ILESO', capturado: false, capturaFelicidad: 0 },
       });
+      if (!grupoContinua) {
+        const pendientes = ((save.pendingCombatNpcSlugs as string[] | null) ?? []).filter((slug) => slug !== npc.slug);
+        await prisma.save.update({ where: { id: save.id }, data: { pendingCombatNpcSlugs: pendientes } });
+      }
     }
 
     const nowMinutes = save.worldState?.fictionalMinutes ?? 480;

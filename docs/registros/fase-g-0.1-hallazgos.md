@@ -21,7 +21,7 @@ Partida: Gorhorn, **Cazador** (su clase real), dificultad Novato.
 | Cadáveres, saqueo y Goirnos | 🚧 cadáver de fauna y desollar ✅ (G8); falta saqueo de un NPC y Goirnos |
 | Recolección con cada método (ficha de flora) | 🚧 extracción ✅ (Salvia del Polvo, ficha de flora, G17, G18); minería bloqueada por nivel como debe («Minar a nivel 4»); en la Hondonada no hay tala/pesca/búsqueda — probar en otra zona |
 | Combate con muerte y renacer | ✅ muerte en grupo → Derrota → nota de la Entidad → «Aceptar» → sin punto de guardado, reinicio «como una pesadilla» (diseño de Álvaro) (G12) |
-| Compañeros | pendiente |
+| Compañeros | 🚧 cuerdas (Trenzar cuerdas) → caza → convaleciente → Capturar ✅ (G28); falta depositar en Jaula, tameo y compañero real |
 | Reino (fundar, construir, taller, diplomacia con XP, mercado) | 🚧 fundar ✅ (Habilidades → Reino → «Fundar ayuntamiento» → nombre → panel con 5 pestañas; G21, G22, G23); faltan construir, taller, diplomacia y mercado |
 
 ## Hallazgos
@@ -53,3 +53,6 @@ Partida: Gorhorn, **Cazador** (su clase real), dificultad Novato.
 | G23 | Reino recién fundado: «Población 0» en Economía junto a «Población: 15» en el territorio — son cosas distintas (súbditos frente a habitantes de la región) con la misma etiqueta. | pendiente (menor) — renombrar una de las dos |
 | G24 | Reino → Edificios: el Cuartel avanzado en la región del Ayuntamiento dice «para expandir dentro de la misma región ya está la Choza», pero la Choza no sale en ese panel ni en Habilidades → Reino (es del oficio de carpintero), así que no se sabe dónde buscarla. | ✅ 2026-10-02: el mensaje dice «la levanta un carpintero, desde Habilidades → Profesiones» (`construction.ts`). |
 | G25 | Diplomacia dice que una facción se descubre «hablando con sus NPC o visitando su territorio», pero estar en «Territorio de Clan Serhu» no descubría nada: con el reino recién fundado no había con quién negociar (Gistera no tiene facción). | ✅ 2026-10-02: abrir el mapa de una zona con dueño (`GET /saves/:id/zona`) deja su facción CITADA (`zona.ts`); test nuevo en `zona.test.ts`. Comprobado en vivo: «Clan Serhu» sale en Diplomacia (tras el siguiente refresco de la Enciclopedia: turno o recarga). |
+| G26 | Diplomacia sin diplomático decía «Asigna a un compañero el rol de diplomático (rolReino: "diplomatico") en Súbditos» — se colaba el nombre interno del campo. | ✅ 2026-10-02: «…el rol de Diplomático en Súbditos…» (`DiplomaciaMercadoSection.tsx`). |
+| G27 | Una acción lanzada desde una habilidad de oficio sale entre comillas en el diario («'Trenzo un par de cuerdas con la fibra que llevo encima.'»). | pendiente (menor) |
+| G28 | Capturar a un animal solo (sin grupo) dejaba su estado en escena CONVALECIENTE «disponible para saqueo/decapitar» aunque ya estaba atado en el inventario: quedaba un fantasma que se podía volver a matar, y «Salir» del combate daba 409 (`combat/cerrar` lo contaba como pendiente), así que el combate se quedaba colgado. | ✅ 2026-10-02: sin grupo, la captura deja el estado en ILESO (el siguiente de la especie, igual que con grupo) y lo saca de `pendingCombatNpcSlugs` (`companeros.ts`); test de `companeros.integration` ampliado. |

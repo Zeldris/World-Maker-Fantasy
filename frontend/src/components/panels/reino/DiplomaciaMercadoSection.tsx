@@ -147,7 +147,7 @@ function DiplomaciaCard({
     <PanelSection title="Diplomacia">
       {!diplomatico ? (
         <p className="text-xs text-wood-500">
-          Asigna a un compañero el rol de diplomático (rolReino: "diplomatico") en Súbditos para poder negociar.
+          Asigna a un compañero el rol de Diplomático en Súbditos para poder negociar.
         </p>
       ) : (
         <div className="flex flex-col gap-2">
