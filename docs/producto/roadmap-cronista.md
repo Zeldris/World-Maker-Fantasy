@@ -857,7 +857,13 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   PERSONAJE = id de la partida, NPC = `Npc.id`, FACCION/REGION = slug.
   **Queda fuera a propósito:** población (auge/declive): qué cambio merece un suceso lo decide el
   narrador de fondo (`CR-12`). Tests de integración con aserciones del Libro en cada ruta.
-- **CR-4** Vista de administración `/admin/partida/:id/libro` (solo lectura). **M**
+- ~~**CR-4** Vista de administración `/admin/partida/:id/libro` (solo lectura). **M**~~ ✅ 2026-10-02.
+  Ruta `GET /saves/:id/libro` (`routes/saves/libro.ts`: filtros `familia`, `tipo`, `importanciaMin`,
+  paginación `limite` + `antesDe` = id del último suceso; cada suceso con fecha de ficción, texto,
+  actores y causas/efectos) y página `frontend/src/pages/AdminLibro.tsx` (filtro por familia e
+  importancia mínima, «Cargar más», causas y efectos resueltos a su texto). Sin enlace en flujos de
+  jugador, como `/admin/enciclopedia`. Tests: integración de la ruta y test de la página.
+  **Queda:** el «Hecho cuando» de abajo (1 hora de juego) se comprueba en la fase única de pruebas.
 - **Hecho cuando:** jugar 1 hora deja en el Libro todos los sucesos con causas correctas; tests de
   cada emisor.
 

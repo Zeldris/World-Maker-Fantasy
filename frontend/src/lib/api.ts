@@ -2447,3 +2447,42 @@ export async function requestImagePrompt(
 export async function getWorldLocations(worldSlug: string): Promise<WorldLocationsResponse> {
   return fetchJson(`${API_URL}/world/${worldSlug}/locations`)
 }
+
+// ─── Libro de Sucesos, vista de administración (CR-4, hito 0.2) ───────────────────────────────
+export type FamiliaSuceso = 'CLIMA' | 'NATURAL' | 'VIDA_MUERTE' | 'DIPLOMACIA' | 'FACCION' | 'ECONOMIA' | 'REINO' | 'JUGADOR' | 'LORE' | 'SISTEMA'
+
+export interface SucesoLibro {
+  id: string
+  tipo: string
+  familia: FamiliaSuceso
+  fictionalMinutes: number
+  fecha: string
+  regionSlug: string | null
+  importancia: number
+  origen: 'JUGADOR' | 'MUNDO' | 'MOTOR' | 'IA_PROPUESTA'
+  texto: string
+  textoNarrado: string | null
+  actores: { entidadTipo: string; entidadId: string; papel: string }[]
+  causaIds: string[]
+  efectoIds: string[]
+}
+
+export interface LibroDeSucesos {
+  personaje: string
+  total: number
+  sucesos: SucesoLibro[]
+  hayMas: boolean
+}
+
+export async function getLibroDeSucesos(
+  saveId: string,
+  filtros: { familia?: FamiliaSuceso | null; importanciaMin?: number; antesDe?: string; limite?: number } = {},
+): Promise<LibroDeSucesos> {
+  const params = new URLSearchParams()
+  if (filtros.familia) params.set('familia', filtros.familia)
+  if (filtros.importanciaMin) params.set('importanciaMin', String(filtros.importanciaMin))
+  if (filtros.antesDe) params.set('antesDe', filtros.antesDe)
+  if (filtros.limite) params.set('limite', String(filtros.limite))
+  const qs = params.toString()
+  return fetchJson(`${API_URL}/saves/${saveId}/libro${qs ? `?${qs}` : ''}`)
+}

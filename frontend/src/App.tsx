@@ -6,6 +6,7 @@ import { CharacterSaves } from './pages/CharacterSaves'
 import { GameView } from './pages/GameView'
 import { ComingSoon } from './pages/ComingSoon'
 import { AdminEnciclopedia } from './pages/AdminEnciclopedia'
+import { AdminLibro } from './pages/AdminLibro'
 
 function App() {
   return (
@@ -20,6 +21,8 @@ function App() {
         {/* Solo admin (petición explícita de Álvaro, 2026-09-21) — sin enlace en ningún flujo de
             jugador salvo el texto discreto de Home.tsx; no se lleva al instalador. */}
         <Route path="/admin/enciclopedia" element={<AdminEnciclopedia />} />
+        {/* Libro de Sucesos de una partida (CR-4, hito 0.2) — solo admin, mismo criterio. */}
+        <Route path="/admin/partida/:id/libro" element={<AdminLibro />} />
       </Routes>
     </div>
   )
