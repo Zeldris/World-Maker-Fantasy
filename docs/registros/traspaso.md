@@ -17,6 +17,25 @@ cada commit.**
 | **Tarea en curso** | Ninguna. Fase F: script hecho, **falta que Álvaro lo ejecute en la Steam Deck** (`npm run benchmark-turno`). Fase E bloqueada (decisión de pobladores). Siguiente que se puede hacer sin esperar: Fase G (pasada de juego completa) |
 | **Tests** | Frontend: `tsc -b` 0, `vitest` 56 archivos / 330 tests, `oxlint` 13 avisos (los mismos de antes). Backend en local con Postgres real: `tsc` 0, `oxlint` 0 (solo avisos previos), `vitest` 165/165 archivos, 2869 tests. CI de GitHub en verde (PR #2) |
 
+## Dónde está todo (para saber qué sigue)
+
+Orden de lectura para decidir el siguiente trabajo, de lo general a lo concreto:
+
+1. **Esta bitácora** — qué se está haciendo ahora y el paso inmediato.
+2. **[Mapa de roadmaps](../producto/21-roadmap.md#mapa-de-roadmaps)** — la tabla [«Qué entra en cada
+   hito»](../producto/21-roadmap.md#qué-entra-en-cada-hito) dice, hito a hito (`0.1` → `1.0`), qué
+   tareas de cada roadmap tocan. Todas las tareas de todos los roadmaps están asignadas a un hito
+   (comprobado con `python3 tools/roadmap/cobertura.py`, 2026-10-02: 367 de 367).
+3. **[Plan del hito actual](../producto/plan-roadmap-0.1.md)** — fases A-G del `0.1` con su estado.
+4. **Los roadmaps por tema** — el detalle de cada tarea, con su estado (`✅`, `🚧`, pendiente):
+   - [roadmap-front.md](../producto/roadmap-front.md) — `CFG` `BAS` `DAD` `MOD` `PAN` `HUD` `NAR` `CMB` `ATM` `PRE` `SON` `QA` `INT`
+   - [roadmap-front-ux.md](../producto/roadmap-front-ux.md) — `UX` (fases UX-A…UX-F)
+   - [roadmap-front-zona.md](../producto/roadmap-front-zona.md) — `ZON` (fases Z-A…Z-F)
+   - [roadmap-front-reino.md](../producto/roadmap-front-reino.md) — `REI` (fases R-A…R-F)
+   - [roadmap-cronista.md](../producto/roadmap-cronista.md) — `CR` (fases 1-8)
+5. **Lore:** propuestas pendientes de Álvaro en `docs/borradores-opencode/propuestas-lore.md` (nunca
+   editar `docs/rpgtarkor/` directamente, ver `AGENTS.md`).
+
 ## Siguientes pasos (en orden)
 
 Del [plan del 0.1](../producto/plan-roadmap-0.1.md) y del [mapa de roadmaps](../producto/21-roadmap.md#qué-entra-en-cada-hito):
@@ -59,6 +78,7 @@ o no bloquean el 0.1.
 cd backend && npx tsc -p tsconfig.json --noEmit && npx vitest run && npx oxlint
 # Frontend
 cd frontend && npx tsc -b && npx vitest run && npx oxlint
+# Cobertura de los roadmaps (¿alguna tarea sin hito?): python3 tools/roadmap/cobertura.py
 # Si el contenedor se reinicia: pg_ctlcluster 16 main start y volver a lanzar el Ollama simulado
 #   (node tools/ci/mock-ollama.mjs &) — sin él fallan ~27 tests con ECONNREFUSED 11434.
 # Postgres desde cero en un contenedor nuevo (como la CI): apt install postgresql-16-pgvector,

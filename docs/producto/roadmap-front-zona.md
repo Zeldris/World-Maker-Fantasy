@@ -292,11 +292,11 @@ son de relleno.*
 | Fase | Contenido | Resultado |
 |---|---|---|
 | **Z-A · Que se lea** ✅ 2026-10-02 | ZON-10, 11, 13, 14, 17, 19, 20, 62 | Las fichas se distinguen sobre cualquier ilustración y a tamaño de Steam Deck. Solo front. **Hecha entera** — resultado en [`img/zona-mapa-z-a.jpg`](img/zona-mapa-z-a.jpg). Pendientes que necesitan backend o fases posteriores: tiempo de viaje en las salidas (🔌), retrato/inicial y compañeros en la ficha del personaje, cuadrícula con zoom (`ZON-60`) y en Configuración. |
-| **Z-B · Que se entienda antes de actuar** | ZON-30, 31, 32, 34, 35, 36, 40, 41, 51 | Ruta, coste, parar, velocidad y menú contextual. Solo front. |
-| **Z-C · Siempre a mano** | ZON-1 (decisión de disposición), 2 o 3, 4, 5, 45 | El mapa deja de ser un modal escondido. |
+| **Z-B · Que se entienda antes de actuar** | ZON-30, 31, 32, 34, 35, 36, 38 (🧭), 40, 41, 51, 18 (parcelas como fichas) + base técnica ZON-80, 81, 86 | Ruta, coste, parar, velocidad y menú contextual. Solo front. |
+| **Z-C · Siempre a mano** | ZON-1 (decisión de disposición), 2 o 3, 4, 5, 6, 45 | El mapa deja de ser un modal escondido. |
 | **Z-D · Sin sorpresas** | Exponer hostilidad y rutas → ZON-33, 50, 53, 16, 58 | El peligro se ve antes de que llegue. |
-| **Z-E · Que se sienta vivo** | ZON-37, 42, 43, 54, 56, 60, 61, 70-73 | Animación, hora del día, cámara. |
-| **Z-F · Profundidad** | ZON-12, 15, 44, 52, 55, 57, 72, 74, 39 | Retratos, compañeros, niebla, clima, marcas, terreno. |
+| **Z-E · Que se sienta vivo** | ZON-37, 42, 43, 54, 56, 60, 61, 70-73, 82 (fichas con zoom; el tamaño fijo ya está hecho en ZON-11), 83, 84 | Animación, hora del día, cámara. |
+| **Z-F · Profundidad** | ZON-12, 15, 44, 52, 55, 57, 74, 39, 85 (accesibilidad) | Retratos, compañeros, niebla, clima, marcas, terreno. |
 | **Siempre** | ZON-80…86 | Base técnica que acompaña a cada fase. |
 
 **Criterios para dar una fase por buena** (`QA` del roadmap general): se juega en la Steam Deck a

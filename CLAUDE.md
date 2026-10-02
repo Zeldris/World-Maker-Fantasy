@@ -31,6 +31,10 @@ siguiente sesión.
   tarea se cerró solo en parte (p. ej. "parte del 0.1 hecha; falta X para el menú de
   Configuración"). Una tarea a medias se marca `🚧 en curso` con lo hecho y lo que falta. Así la otra
   cuenta sabe exactamente qué está implementado sin leer el código ni el historial.
+- **Ninguna tarea sin hito** (petición de la usuaria, 2026-10-02): toda tarea nueva que se añada a
+  cualquier roadmap entra en una fase de su roadmap o en una fila de «Qué entra en cada hito»
+  (`21-roadmap.md`). Antes de cerrar un hito y tras añadir tareas, `python3 tools/roadmap/cobertura.py`
+  tiene que dar «SIN HITO: 0».
 - **Dentro de una tarea grande**, commit + push en cada punto estable (tests en verde). Las tareas
   grandes se parten en pasos pequeños con su propio commit.
 - **Nunca más de 30-45 minutos de trabajo sin subir.**
