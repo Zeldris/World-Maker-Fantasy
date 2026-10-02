@@ -14,7 +14,7 @@ cada commit.**
 | **Rama de trabajo** | `claude/frontend-improvements-roadmap-0mpckt`. Flujo acordado (2026-10-01): commit + push a esta rama con cada cosa hecha; a `main` se pasa **por pull request** (desde esta sesión el push directo a `main` lo bloquea el filtro de permisos) |
 | **Último commit en `main`** | `423c8a5` — roadmap de roadmaps y revisión cruzada de front y UX (+ el commit de esta bitácora) |
 | **Hito** | `0.1` Llanuras estable — [plan](../producto/plan-roadmap-0.1.md) · [mapa de roadmaps](../producto/21-roadmap.md#qué-entra-en-cada-hito) |
-| **Tarea en curso** | Ninguna. `BAS-1` cerrada; siguiente: Reino R-A (`REI-110`, `REI-112`…`REI-116`, `REI-33`, `REI-40`, `REI-41`) |
+| **Tarea en curso** | Ninguna. Segundo test intermitente de CI arreglado (Fase C); siguiente: Reino R-A (`REI-110`, `REI-112`…`REI-116`, `REI-33`, `REI-40`, `REI-41`) |
 | **Tests** | Frontend: `tsc -b` 0, `vitest` 45 archivos / 302 tests, `oxlint` 13 avisos (los mismos de antes). Backend en local con Postgres real: `tsc` 0, `oxlint` 0 (solo avisos previos), `vitest` 162/162 archivos, 2851 tests. CI de GitHub en verde (PR #2) |
 
 ## Siguientes pasos (en orden)
@@ -52,6 +52,8 @@ o no bloquean el 0.1.
 cd backend && npx tsc -p tsconfig.json --noEmit && npx vitest run && npx oxlint
 # Frontend
 cd frontend && npx tsc -b && npx vitest run && npx oxlint
+# Si el contenedor se reinicia: pg_ctlcluster 16 main start y volver a lanzar el Ollama simulado
+#   (node tools/ci/mock-ollama.mjs &) — sin él fallan ~27 tests con ECONNREFUSED 11434.
 # Postgres desde cero en un contenedor nuevo (como la CI): apt install postgresql-16-pgvector,
 #   pg_ctlcluster 16 main start, usuario/BD tarkor:tarkor, CREATE EXTENSION vector; después en backend/:
 #   export DATABASE_URL=postgresql://tarkor:tarkor@localhost:5432/tarkor DIRECT_URL=$DATABASE_URL OLLAMA_BASE_URL=http://localhost:11434
@@ -62,6 +64,9 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
+- **2026-10-02** — Fase C (2.º test intermitente): `OrdenProduccion`/territorio de
+  `turn.integration.test.ts` competían con la resolución de tránsito en segundo plano. Arreglado en
+  el test; ver plan del 0.1.
 - **2026-10-01** — `BAS-1`: Cinzel e Inter empaquetadas en `woff2` (sin Google Fonts; funcionan sin red).
 - **2026-10-01** — `CFG-33`: modo desarrollador (apagado por defecto, se activa en la página de
   admin); las herramientas de prompts de imagen ya no salen en partida.

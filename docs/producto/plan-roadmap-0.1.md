@@ -55,6 +55,16 @@ primera fila de un `findMany` sin `orderBy`, y solo coincidía cuando la tirada 
 esa fila delante (falló ~1 de cada 12 en local). Ahora toma como analizado al rival con el que la
 jugadora está realmente en duelo: 25/25 en bucle y suite completa 162/162 con Postgres real.
 
+Segundo test intermitente, aparecido ya con la CI en marcha (2026-10-02): el bloque
+`OrdenProduccion` de `turn.integration.test.ts` (y el de consolidación de territorio, mismo helper
+`doPassiveTurn`). Con banda `larga`, `/turn/classify` crea un `CharacterTransit` y lanza
+`startEagerTransitResolution` en segundo plano; el `/turn/narrate` del test competía con ella por el
+candado de turno y, si ganaba la de fondo, no persistía hasta `busyUntil` (30 min reales): el tick
+diario no se veía (~1 de cada 5). También seguía viva tras borrar la partida (error de FK de
+`ZonePoint` en los logs de la CI). Es del test, no del juego (el frontend nunca llama a narrate tras
+un tránsito): `doPassiveTurn` narra directo con la clasificación del mock. 25/25 en bucle (antes
+3/15 en rojo) y suite completa 162/162.
+
 ## Fase D — El mundo vivo, visible
 
 - Noticias en el registro de la partida (canal "El mundo") cuando una expedición de facción vuelve

@@ -2900,11 +2900,18 @@ describe('Territory.control/population: felicidad sostenida consolida o rebela (
   // fija `duracionEstimadaMinutos: 7*1440+60` a propósito para simular el salto real de 7 días
   // del Reino, así que el texto tiene que declarar esa duración con un número/palabra reconocido
   // por `mentionsExplicitDuration` ("varios días") para que ningún guard lo capture y lo cape.
+  // Fase C del hito 0.1 (2026-10-01, test intermitente en CI): NO pasar por `/turn/classify`. Con banda
+  // 'larga', classify crea un `CharacterTransit` y lanza `startEagerTransitResolution` en segundo
+  // plano sin esperarla; el `/turn/narrate` de después competía con ella por el candado de turno
+  // (`claimTurnInFlight`). Si ganaba la de fondo, narraba pero no persistía hasta `busyUntil` (30 min
+  // reales) y el test leía el Reino sin el tick diario (~1 de cada 5 en local); además seguía viva
+  // tras el `afterEach` y escribía sobre la partida ya borrada (error de FK de `ZonePoint` en la CI).
+  // Lo que se prueba aquí es el tick dentro de `narrateAndPersistTurn`, así que se narra directo con
+  // la misma clasificación que devolvería el mock — el frontend tampoco llama a narrate tras un tránsito.
   async function doPassiveTurn(action: string) {
     const app = await buildApp();
-    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
-    const { classification, roll } = classifyRes.json();
-    return app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll, enCombate: false } });
+    const classification = await classifyAction();
+    return app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll: undefined, enCombate: false } });
   }
 
   it('felicidad ≥70 sostenida 7 días consolida el territorio y da 300 XP de Reino', async () => {
@@ -2999,11 +3006,18 @@ describe('OrdenProduccion: tick real de producción de Reino (§ 4.4-ter, 2026-0
     await prisma.save.delete({ where: { id: saveId } });
   });
 
+  // Fase C del hito 0.1 (2026-10-01, test intermitente en CI): NO pasar por `/turn/classify`. Con banda
+  // 'larga', classify crea un `CharacterTransit` y lanza `startEagerTransitResolution` en segundo
+  // plano sin esperarla; el `/turn/narrate` de después competía con ella por el candado de turno
+  // (`claimTurnInFlight`). Si ganaba la de fondo, narraba pero no persistía hasta `busyUntil` (30 min
+  // reales) y el test leía el Reino sin el tick diario (~1 de cada 5 en local); además seguía viva
+  // tras el `afterEach` y escribía sobre la partida ya borrada (error de FK de `ZonePoint` en la CI).
+  // Lo que se prueba aquí es el tick dentro de `narrateAndPersistTurn`, así que se narra directo con
+  // la misma clasificación que devolvería el mock — el frontend tampoco llama a narrate tras un tránsito.
   async function doPassiveTurn(action: string) {
     const app = await buildApp();
-    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
-    const { classification, roll } = classifyRes.json();
-    return app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll, enCombate: false } });
+    const classification = await classifyAction();
+    return app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll: undefined, enCombate: false } });
   }
 
   it('con materia prima en el Almacén, un trabajador sin oficio produce una receta sin oficio (smokeMeat)', async () => {
