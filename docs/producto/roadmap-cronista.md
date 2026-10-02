@@ -858,7 +858,8 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   sabotaje y espionaje del diplomático, y salida / asalto / vuelta de expediciones
   (`registrarEnPartidasDelMundo`, `cronista/emisores.ts`). Convención: actores FACCION por slug.
   Agenda Serhu: cada etapa cruzada deja su suceso (`sucesosDeEtapaConflicto`, `worldAgenda.ts`).
-  Faltan: combate perdido, población, clima, `dailyTick`, cadáveres/recuperación.
+  Clima en `runDailyTick` (`cronista/clima.ts`): tormentas de la región del personaje y cambio de
+  estación (las 8 regiones llenarían el Libro). Faltan: combate perdido, población, cadáveres/recuperación.
 - **CR-4** Vista de administración `/admin/partida/:id/libro` (solo lectura). **M**
 - **Hecho cuando:** jugar 1 hora deja en el Libro todos los sucesos con causas correctas; tests de
   cada emisor.
