@@ -163,7 +163,8 @@ stateDiagram-v2
   con acciones `enviarTurno`, `tarjeta`, `abrirPanel`, `modificarPanel`, `moverse`, `decidir`,
   `salir`, tests de la matriz. Desviaciones de § 5 a propósito: en *Encuentro* se puede escribir y
   usar la tarjeta (el backend acepta el turno y hablar es una reacción válida; solo bloquea
-  moverse). **Queda:** que la usen los paneles (`UX-5`), la brújula (`UX-7`), las tarjetas y el
+  moverse). **Confirmado por la usuaria (2026-10-02)**, que pide además que responder escribiendo
+  sea más accesible: `UX-37`. **Queda:** que la usen los paneles (`UX-5`), la brújula (`UX-7`), las tarjetas y el
   menú de salir (`UX-8`/`UX-18`).
 
 ### 4.2 Bloqueos
@@ -196,6 +197,12 @@ stateDiagram-v2
   `canDo(fase, 'moverse')`. El mapa de zona recibe `bloqueoMovimiento`: andar y recoger del suelo
   no piden nada al backend y dejan el motivo a la vista (el mapa se sigue consultando). Sigue oculta
   bajo un modal o el cajón (lo decidirá el gestor de capas, `UX-9`).
+- ~~**UX-37 · Responder escribiendo** — cuando alguien te habla o te corta el paso, contestar con
+  texto libre tiene que estar a mano, no solo vía *Interactuar*. Petición de la usuaria
+  (2026-10-02). **S**~~ ✅ 2026-10-02: las tarjetas de encuentro con una persona (NPC, también
+  con `combateForzado`) tienen «✍️ Responder», que cierra el panel abierto, vuelve de la barra de
+  habilidades al composer y escribe «Le digo a <nombre>: » con el nombre como chip y el cursor al
+  final. La fauna no lo lleva. Tests en `LogPanel.test.tsx`.
 - **UX-8 · Bloqueos visibles** — un icono de candado y el motivo en tooltip en todo lo
   deshabilitado; en la cabecera, un indicador de la fase actual ("✒️ El narrador escribe", "🧭 De
   viaje · 12 min", "⚔️ En combate"). **S**
@@ -397,7 +404,7 @@ del hook `useGamePhase`.
 | Fase | Contenido | Por qué |
 |---|---|---|
 | **UX-A · Arreglos** | UX-3, UX-4, UX-13, UX-16, UX-24 | Evitan dobles turnos, acciones fuera de tiempo y errores invisibles. Pequeños y encajan en el hito `0.1`. |
-| **UX-B · Estado único** | UX-1, UX-2, UX-5, UX-7, UX-8 | La base para que todos los bloqueos sean coherentes y se expliquen. |
+| **UX-B · Estado único** | UX-1, UX-2, UX-5, UX-7, UX-8, UX-37 | La base para que todos los bloqueos sean coherentes y se expliquen. |
 | **UX-C · Orden** | UX-9, UX-10, UX-11, UX-12 | Una cosa importante a la vez y en el orden en que se lee. |
 | **UX-D · Entrada y salida** | UX-15, UX-17, UX-18, UX-19, UX-20 | Empezar más rápido, salir sin sustos, Atrás como en un juego. |
 | **UX-E · Pulido** | UX-6, UX-21, UX-22, UX-23, UX-25…28 | Foco, esperas, deshacer, primeros pasos. |

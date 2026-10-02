@@ -14,8 +14,8 @@ cada commit.**
 | **Rama de trabajo** | `claude/frontend-improvements-roadmap-0mpckt`. Flujo acordado (2026-10-01): commit + push a esta rama con cada cosa hecha; a `main` se pasa **por pull request** (desde esta sesión el push directo a `main` lo bloquea el filtro de permisos) |
 | **Último commit en `main`** | Fusión del PR #3 (2026-10-02): bitácora recortada, paso 8 «después del 0.1», cobertura de roadmaps (367/367) y `tools/roadmap/cobertura.py`. La rama de trabajo y `main` quedan iguales |
 | **Hito** | `0.2` Facciones vivas — [plan](../producto/plan-roadmap-0.2.md) · [mapa de roadmaps](../producto/21-roadmap.md#qué-entra-en-cada-hito) (el `0.1` sigue abierto solo por las Fases E y F, ver abajo) |
-| **Tarea en curso** | `0.2` Fase B — Interfaz base, **UX-B** (estado único, [roadmap-front-ux.md](../producto/roadmap-front-ux.md)): ~~`UX-1`~~ ✅, ~~`UX-2`~~ ✅ (`lib/gamePhase.ts`); ~~`UX-5`~~ ✅ (paneles en modo consulta); ~~`UX-7`~~ ✅ (brújula y mapa de zona respetan la fase); siguiente `UX-8` (candado y motivo en lo deshabilitado + indicador de fase en la cabecera), con la que se cierra UX-B. Fase A ✅ cerrada (`CR-1`…`CR-4`); Fase C (`CR-5`…`CR-8`) tras la B ([plan del 0.2](../producto/plan-roadmap-0.2.md)). Forma de trabajo: implementación continua con tests; pruebas de juego en la fase única antes de la beta (decisión de la usuaria, 2026-10-02). Del `0.1` quedan abiertas la Fase E (bloqueada, pobladores) y la F (Álvaro ejecuta el benchmark); la G, aplazada a la fase única |
-| **Tests** | Frontend: `tsc -b` 0, `vitest` 59 archivos / 355 tests (ahora incluye `src/pages/**`), `oxlint` 13 avisos (los mismos de antes). Backend en local con Postgres real: `tsc` 0, `vitest` 165/165 archivos, 2874 tests (última pasada completa, 2026-10-02); 1 test intermitente apuntado (G16). CI de GitHub en verde (PR #3) |
+| **Tarea en curso** | `0.2` Fase B — Interfaz base, **UX-B** (estado único, [roadmap-front-ux.md](../producto/roadmap-front-ux.md)): ~~`UX-1`~~ ✅, ~~`UX-2`~~ ✅ (`lib/gamePhase.ts`); ~~`UX-5`~~ ✅ (paneles en modo consulta); ~~`UX-7`~~ ✅ (brújula y mapa de zona respetan la fase), ~~`UX-37`~~ ✅ («✍️ Responder» en la tarjeta de quien te habla); siguiente `UX-8` (candado y motivo en lo deshabilitado + indicador de fase en la cabecera), con la que se cierra UX-B. Fase A ✅ cerrada (`CR-1`…`CR-4`); Fase C (`CR-5`…`CR-8`) tras la B ([plan del 0.2](../producto/plan-roadmap-0.2.md)). Forma de trabajo: implementación continua con tests; pruebas de juego en la fase única antes de la beta (decisión de la usuaria, 2026-10-02). Del `0.1` quedan abiertas la Fase E (bloqueada, pobladores) y la F (Álvaro ejecuta el benchmark); la G, aplazada a la fase única |
+| **Tests** | Frontend: `tsc -b` 0, `vitest` 59 archivos / 357 tests (ahora incluye `src/pages/**`), `oxlint` 13 avisos (los mismos de antes). Backend en local con Postgres real: `tsc` 0, `vitest` 165/165 archivos, 2874 tests (última pasada completa, 2026-10-02); 1 test intermitente apuntado (G16). CI de GitHub en verde (PR #3) |
 
 ## Dónde está todo (para saber qué sigue)
 
@@ -95,6 +95,7 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
+- **2026-10-02** — `UX-37` (petición de la usuaria): «✍️ Responder» en la tarjeta de una persona que te habla o te corta el paso, que deja «Le digo a <nombre>: » en el composer. Confirmado que en un encuentro se puede escribir.
 - **2026-10-02** — `UX-7`: la brújula se deshabilita con el motivo en vez de desaparecer y el mapa de zona no deja andar ni recoger cuando la fase no lo permite.
 - **2026-10-02** — `UX-5`: paneles en modo consulta (se leen siempre; lo que cambia datos se deshabilita con el motivo de la fase), con aviso en el cajón.
 - **2026-10-02** — `UX-1` y `UX-2`: fase única de partida y matriz de permisos (`lib/gamePhase.ts`, `useGamePhase`); `GameView` saca de ahí los bloqueos del composer y de los botones de turno.
@@ -104,5 +105,3 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 - **2026-10-02** — `CR-1`: modelos del Libro de Sucesos (`Suceso`, `SucesoCausa`, `SucesoActor`) con migración y test; el reinicio de partida vacía el Libro.
 - **2026-10-02** — Fase G aplazada a una fase única de pruebas antes de la beta (decisión de la usuaria); se empieza el `0.2`. G1-G29 en `fase-g-0.1-hallazgos.md` (21 arreglados).
 - **2026-10-02** — Fase G en curso: G1-G15 (14 arreglados): enlaces de entidades, asistente, combate (iniciativa, capturar, respaldo de narración, tiradas en grupo, nombre del rival), desollar al acabar, caza de grupos tras matar a uno, muerte con «Aceptar», «Acercarte». Detalle en `fase-g-0.1-hallazgos.md`.
-- **2026-10-02** — PR #2 fusionado a `main` (Fases A, C, D, F parcial y todos los arreglos de
-  interfaz del 0.1). Se sigue trabajando en la misma rama.

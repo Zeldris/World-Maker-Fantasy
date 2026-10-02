@@ -177,3 +177,29 @@ describe('LogPanel — "Interactuar" en una oferta RECURSO', () => {
     expect(onVerRecursoDetalle).not.toHaveBeenCalled()
   })
 })
+
+/// Responder escribiendo (petición de la usuaria, 2026-10-02) — la tarjeta de una persona que te
+/// habla o te corta el paso ofrece «✍️ Responder»; la de fauna, no.
+describe('LogPanel — Responder escribiendo', () => {
+  const baseProps = { title: 'Tu personaje', subtitle: 'x', accent: 'accent' as const, emptyHint: 'vacío' }
+  Element.prototype.scrollTo = vi.fn() as unknown as typeof Element.prototype.scrollTo
+  const conOferta = (oferta: NonNullable<LogEntry['dynamicModeOffer']>): LogEntry => ({
+    id: 'e1', channel: 'character', text: 'x', timeLabel: 'Día 1', createdAt: new Date().toISOString(), dynamicModeOffer: oferta,
+  })
+
+  it('en una persona, también si te corta el paso, llama con su nombre', () => {
+    const onResponder = vi.fn()
+    const { getByRole } = render(
+      <LogPanel {...baseProps} entries={[conOferta({ tipo: 'NPC', targetSlug: 'brenn', targetName: 'Brenn', combateForzado: true })]} onResponderEscribiendo={onResponder} />,
+    )
+    fireEvent.click(getByRole('button', { name: '✍️ Responder' }))
+    expect(onResponder).toHaveBeenCalledWith('Brenn')
+  })
+
+  it('en fauna no aparece', () => {
+    const { queryByRole } = render(
+      <LogPanel {...baseProps} entries={[conOferta({ tipo: 'FAUNA', targetSlug: 'lobo', targetName: 'Lobo' })]} onResponderEscribiendo={vi.fn()} />,
+    )
+    expect(queryByRole('button', { name: '✍️ Responder' })).toBeNull()
+  })
+})

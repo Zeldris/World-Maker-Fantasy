@@ -921,6 +921,15 @@ export function GameView() {
     setDetailInsertHandler(null)
   }
 
+  // Responder escribiendo (petición de la usuaria, 2026-10-02) — desde la tarjeta de quien te habla:
+  // vuelve al composer (aunque estuviera la barra de habilidades o un panel abierto) con «Le digo a
+  // <nombre>: » ya escrito, el nombre como chip y el cursor al final.
+  function handleResponderEscribiendo(nombre: string) {
+    if (skillHudView.screen !== 'composer') handleBackToComposer()
+    setActivePanel(null)
+    requestAnimationFrame(() => composerRef.current?.setTextWithChips(`Le digo a ${nombre}: `, enciclopediaIndex))
+  }
+
   function handleEnciclopediaInsert(chip: { icon: string; label: string; description?: string }) {
     composerRef.current?.insertChip(chip)
     setActivePanel(null)
@@ -1530,6 +1539,7 @@ export function GameView() {
               onAcceptQuestOffer={handleAcceptQuestOffer}
               onDismissQuestOffer={handleDismissQuestOffer}
               onInteractuarModoDinamico={handleInteractuarModoDinamico}
+              onResponderEscribiendo={handleResponderEscribiendo}
               onVerRecursoDetalle={handleVerRecursoDetalle}
               onCazarEnZona={handleCazarEnZona}
               onDismissDynamicModeOffer={handleDismissDynamicModeOffer}
