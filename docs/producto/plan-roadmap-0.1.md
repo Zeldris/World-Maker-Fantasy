@@ -107,6 +107,13 @@ Script `backend/src/scripts/benchmark-turno.ts` que juega N turnos típicos cont
 Ollama reales y saca tiempos por fase (clasificar, resolver, narrar). Álvaro lo ejecuta en la
 Steam Deck; con los números se fija el objetivo de turno en el roadmap.
 
+🚧 **Script hecho** (2026-10-02): `npm run benchmark-turno -- [--turnos 5] [--url …] [--save <id>]
+[--conservar] [--salida informe.json]` con el backend arrancado. Crea una partida de Gorhorn (la
+borra al acabar), juega acciones cortas típicas y mide clasificar, resolver (hasta la primera línea
+del stream de narración) y narrar (hasta `done`); imprime mediana, p90 y máximo y guarda un JSON con
+máquina, modelos y versión. Probado en local contra el Ollama simulado. **Falta (Álvaro):**
+ejecutarlo en la Steam Deck con el Ollama real y pasar el JSON para fijar el objetivo de turno.
+
 ## Fase G — Pasada de juego completa (Opus, con el navegador)
 
 Guion: primer turno y Gistera; zona y movimiento; caza en solitario y en grupo (aviso de riesgo);
