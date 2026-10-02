@@ -4396,6 +4396,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // función gestiona sus transacciones cortas internamente y llama a Ollama fuera de ellas.
     const antes = await resolverTurnosAutonomosHastaJugadora({ prisma, worldId, saveId, encounterId });
     narraciones.push(...antes.narraciones);
+    const intercambiosContraJugadora = [...antes.intercambiosContraJugadora];
     combatEncounterCaidos.push(...antes.caidos);
     combatEncounterTerminado = antes.encounterTerminado;
 
@@ -4466,10 +4467,16 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       if (!combatEncounterTerminado) {
         const despues = await resolverTurnosAutonomosHastaJugadora({ prisma, worldId, saveId, encounterId });
         narraciones.push(...despues.narraciones);
+        intercambiosContraJugadora.push(...despues.intercambiosContraJugadora);
         combatEncounterCaidos.push(...despues.caidos);
         combatEncounterTerminado = despues.encounterTerminado;
       }
     }
+
+    // Fase G del 0.1 (hallazgo G11): si la jugadora no tuvo intercambio propio este turno (un
+    // enemigo con más iniciativa ya resolvió el duelo de la ronda), se enseña el primer intercambio
+    // real en el que la atacaron — antes no salía ninguna tirada y su acción parecía no hacer nada.
+    if (!combatExchangeDisplayFinal && intercambiosContraJugadora.length > 0) combatExchangeDisplayFinal = intercambiosContraJugadora[0];
 
     combatEncounterNarration = narraciones.filter(Boolean).join(' ') || `${characterName} se mantiene en guardia, pero el intercambio no llega a resolverse este turno.`;
 

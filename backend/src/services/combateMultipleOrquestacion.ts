@@ -682,6 +682,11 @@ export interface TurnoAutonomoResultado {
   /// que ya usa el 1v1 clásico — mismos componentes de frontend (`DiceRollReveal`/
   /// `CombatExchangeBadge`) sin ningún cambio en ese lado.
   combatExchangeDisplay: CombatExchangeDisplay | null;
+  /// Fase G del 0.1 (hallazgo G11): true cuando el defensor de este intercambio es la jugadora — su
+  /// turno de la ronda puede no llegar (`dueloYaResueltoPorElOtro`) y este es entonces el único
+  /// intercambio real que la ha tocado; `resolverTurnosAutonomosHastaJugadora` lo recoge para que
+  /// el frontend lo pinte.
+  defensorEsJugador?: boolean;
 }
 
 /// Campos compartidos por `ejecutarIntercambioYAvanzar`/`ejecutarGolpeGratisYAvanzar`/
@@ -1300,6 +1305,7 @@ async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): P
     caidos,
     narracionesExtra: totems.narraciones,
     combatExchangeDisplay: resultado.display,
+    defensorEsJugador: defensor.tipo === 'JUGADOR',
   };
 }
 
@@ -1897,6 +1903,10 @@ export interface ResolucionRondaCombate {
   /// "ya le toca actuar con su objetivo ya fijo". El caller debe llamar a
   /// `fijarEleccionRondaJugador` antes de poder seguir resolviendo nada de esta ronda.
   esperandoEleccionRonda: boolean;
+  /// Fase G del 0.1 (hallazgo G11): intercambios reales de esta tanda en los que la jugadora fue la
+  /// defensora, en orden. Si un enemigo con más iniciativa resolvió el duelo de la ronda, el turno
+  /// de la jugadora se salta y sin esto no veía ninguna tirada.
+  intercambiosContraJugadora: CombatExchangeDisplay[];
 }
 
 export interface ResolverTurnosAutonomosHastaJugadoraParams {
@@ -1920,6 +1930,7 @@ export async function resolverTurnosAutonomosHastaJugadora({
 }: ResolverTurnosAutonomosHastaJugadoraParams): Promise<ResolucionRondaCombate> {
   const narraciones: string[] = [];
   const caidos: ParticipanteCaidoInfo[] = [];
+  const intercambiosContraJugadora: CombatExchangeDisplay[] = [];
   for (let i = 0; i < maxIteraciones; i++) {
     const resultado = await resolverTurnoAutonomo({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto, narrarFn });
     if (resultado === null) {
@@ -1930,16 +1941,18 @@ export async function resolverTurnosAutonomosHastaJugadora({
         caidos,
         esperandoAccionJugadora: encounter.estado !== 'RESUELTO',
         esperandoEleccionRonda: encounter.estado !== 'RESUELTO' && encounter.esperandoEleccionJugadora,
+        intercambiosContraJugadora,
       };
     }
     if (resultado.narracion) narraciones.push(resultado.narracion);
     narraciones.push(...resultado.narracionesExtra);
     caidos.push(...resultado.caidos);
-    if (resultado.encounterTerminado) return { narraciones, encounterTerminado: true, caidos, esperandoAccionJugadora: false, esperandoEleccionRonda: false };
+    if (resultado.combatExchangeDisplay && resultado.defensorEsJugador) intercambiosContraJugadora.push(resultado.combatExchangeDisplay);
+    if (resultado.encounterTerminado) return { narraciones, encounterTerminado: true, caidos, esperandoAccionJugadora: false, esperandoEleccionRonda: false, intercambiosContraJugadora };
   }
   // Tope de seguridad alcanzado (2026-08-25) — no debería pasar nunca con el límite de 4v4, pero
   // devuelve el control a la jugadora en vez de colgar la petición HTTP indefinidamente.
-  return { narraciones, encounterTerminado: false, caidos, esperandoAccionJugadora: true, esperandoEleccionRonda: false };
+  return { narraciones, encounterTerminado: false, caidos, esperandoAccionJugadora: true, esperandoEleccionRonda: false, intercambiosContraJugadora };
 }
 
 /// Bug real cazado en integración contra Postgres real (2026-08-26, objetivo individual): esto
