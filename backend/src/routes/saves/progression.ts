@@ -3,6 +3,7 @@ import { prisma } from '../../lib/prisma.js';
 import { attributeCapForLevel } from '../../services/progression.js';
 import type { AttributeBlock, Attribute } from '../../services/dice.js';
 import { VALID_ATTRIBUTES, rejectIfEnded, rejectIfPendingDeath, lockRowForUpdate } from './shared.js';
+import { enumLabel } from '../../services/imagePromptContext.js';
 import {
   classAbilityUnlocksFor,
   especializacionAbilityUnlocksFor,
@@ -153,7 +154,7 @@ export async function progressionRoutes(app: FastifyInstance) {
         data: {
           saveId: save.id,
           channel: 'CHARACTER',
-          text: `${save.characterName} asume su clase: ${clase}.`,
+          text: `${save.characterName} asume su clase: ${enumLabel(clase)}.`,
           timeLabel: save.worldState?.fictionalDateLabel ?? 'Día 1, mañana',
           // Bug real (2026-09-05, ver comentario completo en schema.prisma § isSystemMessage) —
           // texto fijo determinista, nunca generado por el LLM: sin esto, el turno SIGUIENTE lo

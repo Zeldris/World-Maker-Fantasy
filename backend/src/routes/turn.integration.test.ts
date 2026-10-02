@@ -8508,7 +8508,7 @@ describe('lastNarrationText excluye mensajes de sistema deterministas (bug real 
     expect(claseRes.statusCode).toBe(200);
 
     const logEntry = await prisma.logEntry.findFirstOrThrow({ where: { saveId }, orderBy: { createdAt: 'desc' } });
-    expect(logEntry.text).toContain('asume su clase');
+    expect(logEntry.text).toContain('asume su clase: Guerrero.');
     expect(logEntry.isSystemMessage).toBe(true);
 
     classifyAction.mockResolvedValue({
