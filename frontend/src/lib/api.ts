@@ -1608,7 +1608,14 @@ export interface DiplomaciaResultado {
   /// jugador ve el estado de una FactionRelation.
   presion?: number
   type?: 'NEUTRAL' | 'TENSION' | 'GUERRA' | 'ALIANZA' | 'TRATADO_COMERCIAL'
+  /// Etapa narrativa de la relación (0-4, `stageForPresion` en factionRelations.ts): 0 hasta 59 de
+  /// presión, luego una cada 10 puntos. Solo en `espiar`.
   stage?: number
+  /// REI-116 (hito 0.1, roadmap-front-reino.md R4) — el backend ya los mandaba y el front los
+  /// ignoraba: XP de oficio "diplomático" ganada por el compañero (solo al negociar con éxito; 0 si
+  /// no) y su nivel resultante. Ausentes en `espiar`.
+  xpGanada?: number
+  nivelDiplomatico?: number
 }
 
 export async function postDiplomacia(

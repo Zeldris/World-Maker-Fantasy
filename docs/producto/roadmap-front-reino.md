@@ -248,7 +248,7 @@ pausada visualmente detrás. 🧭 **M**
 - ~~**REI-113** · Sustituir los `<select>` nativos por los selectores del juego (R23). **S**~~ ✅ 2026-10-02: nuevo `SelectorJuego` (lista accesible con teclado) en plantilla, hueco, rol, receta y modo. Fuera de Reino quedan `<select>` nativos (se tratarán con `BAS-8`/componentes base).
 - ~~**REI-114** · Esqueletos de carga en lugar de "Cargando…" (R24). **S**~~ ✅ 2026-10-02: componente `Esqueleto` (pulso solo con `motion-safe`, `role="status"`) en órdenes de producción y mercado. El motivo "Cargando requisitos..." de los botones de Construir sigue en texto (es un tooltip de botón deshabilitado).
 - ~~**REI-115** · Tooltips de explicación en cada indicador, rol y estado (R25). **S**~~ ✅ 2026-10-02: los 8 indicadores de Economía con su efecto real y cifras del tick diario (`kingdomTick.ts`), estado de territorio y de edificio al pasar por encima, y cada rol explicado en el selector. **Hallazgo para Álvaro:** en el reino del jugador nada repone la *bebida* en el tick diario (solo la de las facciones), así que con habitantes acaba en 0 y la felicidad baja 5 al día; el tooltip lo dice tal cual.
-- **REI-116** · Declarar `xpGanada`, `nivelDiplomatico` y `stage` en `DiplomaciaResultado` (R4). **S**
+- ~~**REI-116** · Declarar `xpGanada`, `nivelDiplomatico` y `stage` en `DiplomaciaResultado` (R4). **S**~~ ✅ 2026-10-02: negociar enseña la XP ganada y el nivel del diplomático; espiar, la presión con barra y la etapa (0-4).
 
 ---
 
@@ -274,7 +274,7 @@ mecánicas; casi todas ya se calculan):
 
 | Fase | Contenido | Por qué |
 |---|---|---|
-| **R-A · Arreglos** | REI-110…116, REI-33 (reactivar/borrar órdenes), REI-40/41 (almacén agrupado con topes) | Errores y fricciones visibles hoy, solo front. |
+| **R-A · Arreglos** ✅ 2026-10-02 | REI-110…116, REI-33 (reactivar/borrar órdenes), REI-40/41 (almacén agrupado con topes) | Errores y fricciones visibles hoy, solo front. **Hecha entera**; pendientes que pasan a R-B: editar el *modo* de una orden (🔌), icono y categoría por recurso del Almacén (🔌). |
 | **R-B · Saber y prever** | REI-1, REI-10…12, REI-14, REI-31, REI-61, REI-71 | El salto grande de información, casi todo solo front. |
 | **R-C · Por qué se para** | Exponer `ResultadoOrden` y `xpPorOficio` → REI-30, REI-35, REI-37 | Lo que más ayuda a gestionar la producción. |
 | **R-D · Gestionar todo** | REI-22, REI-23, REI-32, REI-34, REI-42, REI-50…52, REI-70, REI-72, REI-80…82, REI-90 | Que ninguna gestión necesite texto libre. |

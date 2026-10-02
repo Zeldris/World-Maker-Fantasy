@@ -185,8 +185,26 @@ function DiplomaciaCard({
                 <p className={`text-2xs font-bold uppercase tracking-wide ${RELATION_TONE[resultado.type]}`}>{RELATION_LABEL[resultado.type]}</p>
               )}
               {resultado.hechoDeMundo && <p className="mt-1 text-xs leading-relaxed text-wood-300">{resultado.hechoDeMundo}</p>}
-              {resultado.accion === 'espiar' && !resultado.hechoDeMundo && (
-                <p className="mt-1 text-xs leading-relaxed text-wood-400">Presión: {resultado.presion} / 100</p>
+              {resultado.accion === 'espiar' && resultado.presion != null && (
+                // REI-116 (hito 0.1) — presión con barra y la etapa de la relación, que llegaba sin usarse.
+                <div className="mt-1.5 flex flex-col gap-1 text-2xs text-wood-400">
+                  <div className="flex items-center justify-between">
+                    <span>Presión {resultado.presion} / 100</span>
+                    {resultado.stage != null && (
+                      <span title="Etapa de la relación: 0 hasta 59 de presión, luego una más cada 10 puntos (máx. 4).">Etapa {resultado.stage} de 4</span>
+                    )}
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-iron-800" role="meter" aria-label="Presión entre facciones" aria-valuemin={0} aria-valuemax={100} aria-valuenow={resultado.presion}>
+                    <div className="h-full rounded-full bg-cost-500" style={{ width: `${Math.min(100, Math.max(0, resultado.presion))}%` }} />
+                  </div>
+                </div>
+              )}
+              {resultado.accion === 'negociar' && resultado.nivelDiplomatico != null && diplomatico && (
+                // REI-116 (hito 0.1, R4) — el diplomático subía de nivel sin que el jugador lo supiera.
+                <p className="mt-1 text-2xs text-accent2-300">
+                  {resultado.xpGanada ? `+${resultado.xpGanada} XP de diplomacia · ` : ''}
+                  {diplomatico.name}: diplomático nivel {resultado.nivelDiplomatico}
+                </p>
               )}
             </div>
           )}
