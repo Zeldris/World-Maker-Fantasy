@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PanelRivets } from '../components/Rivet'
 import { VersionTag } from '../components/VersionTag'
+import { BotonAjustes } from '../components/BotonAjustes'
 import { listSaves, type SaveSummary } from '../lib/api'
 
 export function Home() {
@@ -15,7 +16,9 @@ export function Home() {
   }, [])
 
   return (
-    <div className="crystal-sky flex flex-1 flex-col items-center justify-center gap-10 px-6 py-16">
+    <div className="crystal-sky relative flex flex-1 flex-col items-center justify-center gap-10 px-6 py-16">
+      {/* CFG-1 (hito 0.2) — configuración desde el inicio, en la esquina superior derecha. */}
+      <BotonAjustes className="absolute right-4 top-4" />
       <div className="flex flex-col items-center text-center">
         <div className="mb-3 flex w-56 items-center gap-3 sm:w-72">
           <span className="accent-hairline flex-1" />

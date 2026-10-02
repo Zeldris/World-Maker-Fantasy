@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { GatheringRollInfo } from '../types'
 import { attributeLabels, attributeColorClasses } from '../lib/dice'
-import { ROLL_DURATION_MS, ROLL_TICK_DELAYS_MS } from './DiceRoll'
+import { duracionTirada, retardosTirada } from '../lib/duracionTirada'
 
 /// Tirada visible de Explorar/Desollar (rediseño de recolección, 2026-08-22, petición explícita:
 /// "hay que añadirle una tirada visual con dado... como el combate"). Mismo lenguaje de caída que
@@ -37,7 +37,7 @@ export function GatheringDiceReveal({ roll, oficioLabel, onLanded }: { roll: Gat
     let cancelled = false
     const timers: ReturnType<typeof setTimeout>[] = []
     let elapsed = 0
-    for (const delay of ROLL_TICK_DELAYS_MS) {
+    for (const delay of retardosTirada()) {
       elapsed += delay
       timers.push(
         setTimeout(() => {
@@ -57,7 +57,7 @@ export function GatheringDiceReveal({ roll, oficioLabel, onLanded }: { roll: Gat
         // aviso el listado se pintaba entero desde el primer render, spoileando el resultado
         // mientras el dado todavía giraba).
         onLanded?.()
-      }, ROLL_DURATION_MS),
+      }, duracionTirada()),
     )
     return () => {
       cancelled = true

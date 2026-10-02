@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { HealthBar } from './HealthBar'
+import { BotonAjustes } from './BotonAjustes'
 import { EnergyBar } from './EnergyBar'
 import { HungerBar } from './HungerBar'
 import { ThirstBar } from './ThirstBar'
@@ -95,7 +96,7 @@ export function GameHeader({
             onClick={onSalir}
             className="text-xs text-wood-500 transition-colors hover:text-accent-300"
           >
-            ← Salir a tus partidas
+            ☰ Menú
           </button>
           <p className="mt-0.5 truncate font-serif text-base tracking-wide text-wood-200">
             <span className="text-accent-400">{characterName}</span>
@@ -185,6 +186,8 @@ export function GameHeader({
               </>
             )}
           </span>
+          {/* CFG-1 (hito 0.2) — configuración siempre a mano. */}
+          <BotonAjustes />
         </div>
         <div className="accent-hairline absolute inset-x-0 bottom-0" />
       </header>

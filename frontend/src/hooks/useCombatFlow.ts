@@ -3,7 +3,7 @@ import type { CombatNpcDisplay } from '../components/CombatComposer'
 import { requestTurnClassify, requestTurnNarrate, requestFlee, requestHuirEnCurso, requestCerrarCombate, requestMatar, postCapturar, dejarVivir, type EnciclopediaResponse } from '../lib/api'
 import { isTurnLockedError, npcInSceneToCombatDisplay, combatKeyFor, combatDisplayNameFor, applyInventoryDelta, questCompletedLogEntry } from '../lib/gameViewHelpers'
 import { combatDifficultyFor, type CombatDifficulty } from '../lib/combatDifficulty'
-import { ROLL_DURATION_MS } from '../components/DiceRoll'
+import { duracionTirada } from '../lib/duracionTirada'
 import type {
   ActiveEffect,
   CombatExchangeInfo,
@@ -873,7 +873,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     const arrancarSiguienteIniciativa = () => {
       setLastInitiativeRoll(params.nextInitiativeRoll)
       if (params.nextInitiativeRoll && !params.finDePartida) {
-        awaitingDefenseTimerRef.current = setTimeout(applyTurnAwaitingDefense, 2 * ROLL_DURATION_MS)
+        awaitingDefenseTimerRef.current = setTimeout(applyTurnAwaitingDefense, 2 * duracionTirada())
       } else {
         applyTurnAwaitingDefense()
       }
@@ -900,7 +900,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
       // montarse/disparar (p.ej. la tarjeta de "pensando" se cierra por otra vía primero), el
       // intercambio no debe quedar aplicado para siempre: se resuelve solo, algo más tarde que la
       // animación real para no adelantarse a ella en el caso normal.
-      exchangeApplyTimerRef.current = setTimeout(resolverIntercambio, 2 * ROLL_DURATION_MS + 1000)
+      exchangeApplyTimerRef.current = setTimeout(resolverIntercambio, 2 * duracionTirada() + 1000)
     } else {
       applyExchangeResult()
       setDiceReveal(null)

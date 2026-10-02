@@ -1,5 +1,8 @@
 import { useNoticiasMundo } from '../hooks/useNoticiasMundo'
 import { useGamePhase } from '../hooks/useGamePhase'
+import { MenuPausa } from '../components/MenuPausa'
+import { accionDeTecla } from '../lib/atajos'
+import { useAjustes } from '../context/useAjustes'
 import { useNotificaciones } from '../hooks/useNotificaciones'
 import { notificacionesDeEntrada } from '../lib/notificaciones'
 import { Notificaciones } from '../components/Notificaciones'
@@ -75,7 +78,6 @@ import { EntregaModal } from '../components/EntregaModal'
 import { AprenderOficioModal } from '../components/AprenderOficioModal'
 import { EspecializacionModal } from '../components/EspecializacionModal'
 import { ClaseModal } from '../components/ClaseModal'
-import { ConfirmModal } from '../components/ConfirmModal'
 import { inventoryCapacityFor, totalInventoryUnits } from '../lib/inventoryCapacity'
 import {
   requestTurnClassify,
@@ -1359,6 +1361,108 @@ export function GameView() {
   // (arriba) y `handleSubmit` (abajo, en el catch de `isBusyError`), fuera del hook.
   const { cancelingTransit, nowTick, handleCancelTransit } = useTransitPolling({ saveId, busyUntil, syncFromSave })
 
+  // Salir a tus partidas (menú de pausa, CFG-3). Bug real (2026-09-04): cerrar el menú antes de
+  // navegar, si no quedaba montado por encima de la vista nueva. Bug real (2026-07-24): volver a
+  // las partidas de este personaje, con `characterName` por query como respaldo tras recargar.
+  function salirAPartidas() {
+    setConfirmingExit(false)
+    navigate(`/solitario/mundo/${worldIdSlug}/personaje/${saveId}?characterName=${encodeURIComponent(characterName ?? '')}`)
+  }
+  const { abrirPanel: abrirPanelAjustes, ajustes } = useAjustes()
+
+  // Composer (UX-13, hito 0.1; UX-1/UX-2, hito 0.2) — se bloquea si la fase no deja enviar turno o
+  // hay una capa encima. El cajón de paneles (`activePanel`) queda fuera a propósito: la
+  // Enciclopedia inserta chips en el composer con el cajón abierto. B.24 (checklist 2026-08-27):
+  // el texto de ayuda dice el primer motivo que aplique de verdad.
+  const capaEncimaAbierta =
+    anyModalOpen || zonaModalOpen || confirmingExit || !!editingSkillBar || !!recursoDetalle || claseVisible || especializacionVisible
+  const composerDisabled = !permisoTurno.permitido || capaEncimaAbierta
+  const composerDisabledReason = characterThinking
+    ? combateIniciado
+      ? 'Resolviendo el combate — puede tardar más de lo habitual...'
+      : 'Esperando la narración de tu último turno...'
+    : busyUntil
+      ? 'Ocupado con algo que lleva tiempo — vuelve cuando termine.'
+      : combateIniciado && !combat.combatOpen
+        ? 'En combate — usa el panel de combate para actuar.'
+        : capaEncimaAbierta
+          ? 'Resuelve lo que tienes abierto antes de escribir una nueva acción.'
+          : (permisoTurno.motivo ?? undefined)
+
+  // UX-9 (hito 0.2) — gestor de capas: cada overlay abierto con su nivel (§ 4.3), en orden de
+  // prioridad dentro del nivel. Solo se ve el de nivel más alto; el resto espera oculto y montado
+  // (lib/capas.ts). Las condiciones son las mismas con las que se pinta cada uno más abajo.
+  const capasAbiertas: CapaAbierta[] = [
+    detailTarget && { id: 'detalle', nivel: 'consulta', hija: true },
+    activePanel && { id: 'panel', nivel: 'consulta' },
+    zonaModalOpen && saveId && { id: 'zona', nivel: 'consulta' },
+    harvestModal && saveId && characterAttributes && { id: 'recolectar', nivel: 'accion' },
+    simpleModal === 'camp' && saveId && { id: 'campamento', nivel: 'accion' },
+    simpleModal === 'travel' && saveId && { id: 'viajar', nivel: 'accion' },
+    healModalOpen && { id: 'curar', nivel: 'accion' },
+    hungerThirstModalOpen && { id: 'comer', nivel: 'accion' },
+    entregaModalOpen && saveId && { id: 'entregar', nivel: 'accion' },
+    aprenderOficioModalOpen && saveId && { id: 'oficio', nivel: 'accion' },
+    saquearZonaModalOpen && saveId && { id: 'saquear', nivel: 'accion' },
+    postCombatTarget && { id: 'botin', nivel: 'accion' },
+    recursoDetalle && { id: 'recurso', nivel: 'accion' },
+    editingSkillBar && { id: 'barra', nivel: 'accion' },
+    activeDynamicMode && { id: 'dinamico', nivel: 'escena' },
+    claseVisible && { id: 'clase', nivel: 'decision' },
+    especializacionVisible && { id: 'especializacion', nivel: 'decision' },
+    reinoVisible && { id: 'reino', nivel: 'decision' },
+    confirmingExit && { id: 'salir', nivel: 'sistema' },
+  ].filter((c): c is CapaAbierta => !!c)
+  const estadoCapas = resolverCapas(capasAbiertas)
+  // CFG-2 (hito 0.2) — Esc como en un juego: con algo abierto, lo cierra (los modales lo hacen
+  // ellos mismos; aquí, el cajón de paneles); sin nada abierto, abre el menú de pausa.
+  const capaSuperior = estadoCapas.superior
+  useEffect(() => {
+    const alPulsar = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return
+      if (capaSuperior === null) {
+        e.preventDefault()
+        setConfirmingExit(true)
+      } else if (capaSuperior === 'panel') {
+        e.preventDefault()
+        setActivePanel(null)
+      }
+    }
+    window.addEventListener('keydown', alPulsar)
+    return () => window.removeEventListener('keydown', alPulsar)
+  }, [capaSuperior, setActivePanel])
+
+  // CFG-26 (hito 0.2) — atajos de teclado (lib/atajos.ts, reasignables en Configuración): abren o
+  // cierran su panel con las mismas pestañas deshabilitadas que la barra lateral; Z abre la zona si
+  // la fase deja moverse. Solo sin modales encima (con el cajón abierto, cambian de panel).
+  const pestanasBloqueadas: readonly PanelId[] = pendingDeathResolution
+    ? DEATH_PENDING_DISABLED_TABS
+    : combat.combatOpen
+      ? [...COMBAT_DISABLED_CHARACTER_TABS, ...COMBAT_DISABLED_WORLD_TABS]
+      : []
+  const atajoRef = useRef({ capaSuperior, pestanasBloqueadas, puedeAbrir: puede('abrirPanel').permitido, puedeMover: permisoMover.permitido, atajos: ajustes.atajos })
+  atajoRef.current = { capaSuperior, pestanasBloqueadas, puedeAbrir: puede('abrirPanel').permitido, puedeMover: permisoMover.permitido, atajos: ajustes.atajos }
+  useEffect(() => {
+    const alPulsar = (e: KeyboardEvent) => {
+      const c = atajoRef.current
+      if (e.defaultPrevented || (c.capaSuperior !== null && c.capaSuperior !== 'panel')) return
+      const accion = accionDeTecla(e, c.atajos)
+      if (!accion) return
+      if (accion === 'zona') {
+        if (!c.puedeMover || !saveId) return
+        e.preventDefault()
+        setActivePanel(null)
+        setZonaModalOpen(true)
+        return
+      }
+      if (!c.puedeAbrir || c.pestanasBloqueadas.includes(accion)) return
+      e.preventDefault()
+      setActivePanel((prev) => (prev === accion ? null : accion))
+    }
+    window.addEventListener('keydown', alPulsar)
+    return () => window.removeEventListener('keydown', alPulsar)
+  }, [saveId, setActivePanel, setZonaModalOpen])
+
   if (id === 'nueva' && creacionError) {
     return (
       <div role="alert" className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
@@ -1437,50 +1541,6 @@ export function GameView() {
     reputacion: 'accent2',
   }
 
-  // Composer (UX-13, hito 0.1; UX-1/UX-2, hito 0.2) — se bloquea si la fase no deja enviar turno o
-  // hay una capa encima. El cajón de paneles (`activePanel`) queda fuera a propósito: la
-  // Enciclopedia inserta chips en el composer con el cajón abierto. B.24 (checklist 2026-08-27):
-  // el texto de ayuda dice el primer motivo que aplique de verdad.
-  const capaEncimaAbierta =
-    anyModalOpen || zonaModalOpen || confirmingExit || !!editingSkillBar || !!recursoDetalle || claseVisible || especializacionVisible
-  const composerDisabled = !permisoTurno.permitido || capaEncimaAbierta
-  const composerDisabledReason = characterThinking
-    ? combateIniciado
-      ? 'Resolviendo el combate — puede tardar más de lo habitual...'
-      : 'Esperando la narración de tu último turno...'
-    : busyUntil
-      ? 'Ocupado con algo que lleva tiempo — vuelve cuando termine.'
-      : combateIniciado && !combat.combatOpen
-        ? 'En combate — usa el panel de combate para actuar.'
-        : capaEncimaAbierta
-          ? 'Resuelve lo que tienes abierto antes de escribir una nueva acción.'
-          : (permisoTurno.motivo ?? undefined)
-
-  // UX-9 (hito 0.2) — gestor de capas: cada overlay abierto con su nivel (§ 4.3), en orden de
-  // prioridad dentro del nivel. Solo se ve el de nivel más alto; el resto espera oculto y montado
-  // (lib/capas.ts). Las condiciones son las mismas con las que se pinta cada uno más abajo.
-  const capasAbiertas: CapaAbierta[] = [
-    detailTarget && { id: 'detalle', nivel: 'consulta', hija: true },
-    activePanel && { id: 'panel', nivel: 'consulta' },
-    zonaModalOpen && saveId && { id: 'zona', nivel: 'consulta' },
-    harvestModal && saveId && characterAttributes && { id: 'recolectar', nivel: 'accion' },
-    simpleModal === 'camp' && saveId && { id: 'campamento', nivel: 'accion' },
-    simpleModal === 'travel' && saveId && { id: 'viajar', nivel: 'accion' },
-    healModalOpen && { id: 'curar', nivel: 'accion' },
-    hungerThirstModalOpen && { id: 'comer', nivel: 'accion' },
-    entregaModalOpen && saveId && { id: 'entregar', nivel: 'accion' },
-    aprenderOficioModalOpen && saveId && { id: 'oficio', nivel: 'accion' },
-    saquearZonaModalOpen && saveId && { id: 'saquear', nivel: 'accion' },
-    postCombatTarget && { id: 'botin', nivel: 'accion' },
-    recursoDetalle && { id: 'recurso', nivel: 'accion' },
-    editingSkillBar && { id: 'barra', nivel: 'accion' },
-    activeDynamicMode && { id: 'dinamico', nivel: 'escena' },
-    claseVisible && { id: 'clase', nivel: 'decision' },
-    especializacionVisible && { id: 'especializacion', nivel: 'decision' },
-    reinoVisible && { id: 'reino', nivel: 'decision' },
-    confirmingExit && { id: 'salir', nivel: 'sistema' },
-  ].filter((c): c is CapaAbierta => !!c)
-  const estadoCapas = resolverCapas(capasAbiertas)
 
   return (
     <EnciclopediaLinkProvider
@@ -1848,26 +1908,18 @@ export function GameView() {
 
       {confirmingExit && (
         <Capa id="salir">
-        <ConfirmModal
-          title="Salir a tus partidas"
-          message="¿Seguro que quieres salir? Tu progreso ya está guardado — puedes volver a esta partida cuando quieras."
-          confirmLabel="Salir"
-          tone="accent"
-          onCancel={() => setConfirmingExit(false)}
-          onConfirm={() => {
-            // Bug real (2026-09-04, "la url se actualiza pero no vuelve a la selección de
-            // partida"): `navigate()` sin cerrar el modal antes lo dejaba montado por encima de la
-            // vista nueva (z-50, overlay a pantalla completa) — la ruta cambiaba de verdad, pero
-            // visualmente seguía tapada.
+        {/* CFG-3 (hito 0.2) — menú de pausa (antes, la confirmación de «Salir a tus partidas»). */}
+        <MenuPausa
+          aviso={puede('salir').motivo}
+          onReanudar={() => setConfirmingExit(false)}
+          onConfiguracion={() => {
             setConfirmingExit(false)
-            // Bug real (2026-07-24, "al darle a salir de la partida, que me lleve a las partidas
-            // no a seleccionar mundo"): CharacterSaves resuelve el personaje por id contra
-            // `pregeneratedCharacters` o `selectedCharacter` (SessionContext, en memoria, se
-            // pierde al recargar) — tras recargar GameView directamente, ninguna de las dos vías
-            // resuelve nada (aquí nunca se manda un id de personaje real, sino `saveId`), así que
-            // caía al aviso de "elige mundo y personaje". `characterName` va por query, como
-            // respaldo que CharacterSaves ya puede usar sin depender de esa sesión en memoria.
-            navigate(`/solitario/mundo/${worldIdSlug}/personaje/${saveId}?characterName=${encodeURIComponent(characterName ?? '')}`)
+            abrirPanelAjustes()
+          }}
+          onSalirPartidas={salirAPartidas}
+          onSalirInicio={() => {
+            setConfirmingExit(false)
+            navigate('/')
           }}
         />
         </Capa>

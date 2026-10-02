@@ -1,5 +1,5 @@
 import { useState, type Dispatch, type SetStateAction } from 'react'
-import { ROLL_DURATION_MS } from '../components/DiceRoll'
+import { duracionTirada } from '../lib/duracionTirada'
 import {
   chooseNpcInteraction,
   getSave,
@@ -203,7 +203,7 @@ export function useModoDinamico({
             roll: { kind: 'recoleccion', tirada: resultado.roll },
           },
         ])
-        await new Promise((resolve) => setTimeout(resolve, ROLL_DURATION_MS + 500))
+        await new Promise((resolve) => setTimeout(resolve, duracionTirada() + 500))
       }
       if (resultado.items || resultado.updatedItems) {
         setInventory((prev) => applyInventoryDelta(prev, resultado.items ?? [], [], resultado.updatedItems ?? []))

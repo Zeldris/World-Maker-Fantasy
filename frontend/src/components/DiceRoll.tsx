@@ -5,6 +5,7 @@ import { gradoOf, formatMultiplier, difficultyLabelFor } from './CombatExchangeB
 import { TooltipAnchor } from './TooltipAnchor'
 import { RollBreakdown } from './RollBreakdown'
 import { debeDesplazarseATirada, escucharScrollManual } from '../lib/scrollTirada'
+import { buildRollTickDelays, duracionTirada, retardosTirada, ROLL_DURATION_MS } from '../lib/duracionTirada'
 
 /// Núcleo genérico de "tirada en vivo" (2026-09-04, centralización de todas las tiradas del juego
 /// — petición explícita: "como si jugaras una partida D&D... que el efecto de los dados suceda de
@@ -25,25 +26,9 @@ const GRADE_LAND_ANIM: Record<'claro' | 'fallo', string> = {
   fallo: 'animate-shake-no',
 }
 
-/// Duración de la caída de UN dado — SECUENCIAL en `DiceRollVs` (el segundo no empieza a girar
-/// hasta que el primero ya aterrizó), ~10s en total para un "vs" completo. Ver histórico de la
-/// cadencia en el comentario original de `buildRollTickDelays` más abajo.
-export const ROLL_DURATION_MS = 5000
-
-/// Cadencia de la tirada (ms entre cada número al azar que se enseña) — arranca rápida (30ms) y se
-/// va frenando (×1.06 por paso, tope 180ms) antes de aterrizar, sin física real ni librería de
-/// animación: generada para sumar justo `ROLL_DURATION_MS`.
-function buildRollTickDelays(totalMs: number): number[] {
-  const delays: number[] = []
-  let elapsed = 0
-  let delay = 30
-  while (elapsed + delay < totalMs) {
-    delays.push(delay)
-    elapsed += delay
-    delay = Math.min(180, Math.round(delay * 1.06))
-  }
-  return delays
-}
+// CFG-20 (hito 0.2) — la duración vive en lib/duracionTirada.ts (ajustable); se reexportan las
+// constantes de siempre para quien solo necesite el valor de referencia (tests).
+export { ROLL_DURATION_MS } from '../lib/duracionTirada'
 export const ROLL_TICK_DELAYS_MS = buildRollTickDelays(ROLL_DURATION_MS)
 
 /// Un lado de una tirada, cayendo — solo el NÚMERO gira, el 🎲 se queda fijo. Acepta cualquier
@@ -83,7 +68,7 @@ export function DiceFace({
     let cancelled = false
     const timers: ReturnType<typeof setTimeout>[] = []
     let elapsed = startDelayMs
-    for (const delay of ROLL_TICK_DELAYS_MS) {
+    for (const delay of retardosTirada()) {
       elapsed += delay
       timers.push(
         setTimeout(() => {
@@ -97,7 +82,7 @@ export function DiceFace({
         if (cancelled) return
         setDisplay(side.roll)
         setLanded(true)
-      }, startDelayMs + ROLL_DURATION_MS),
+      }, startDelayMs + duracionTirada()),
     )
     return () => {
       cancelled = true
@@ -281,13 +266,13 @@ export function DiceRollVs({
   /// textual hasta que ambos números sean visibles de verdad.
   onAllLanded?: () => void
 }) {
-  const leftDelayMs = leftFirst ? 0 : ROLL_DURATION_MS
-  const rightDelayMs = leftFirst ? ROLL_DURATION_MS : 0
+  const leftDelayMs = leftFirst ? 0 : duracionTirada()
+  const rightDelayMs = leftFirst ? duracionTirada() : 0
   const ref = useScrollIntoViewOnMount<HTMLDivElement>()
   const [ambosAterrizados, setAmbosAterrizados] = useState(false)
 
   useEffect(() => {
-    const totalMs = Math.max(leftDelayMs, rightDelayMs) + ROLL_DURATION_MS
+    const totalMs = Math.max(leftDelayMs, rightDelayMs) + duracionTirada()
     const timer = setTimeout(() => {
       setAmbosAterrizados(true)
       onAllLanded?.()

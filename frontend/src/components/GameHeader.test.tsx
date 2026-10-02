@@ -26,7 +26,7 @@ describe('BAS-5 — GameHeader', () => {
     expect(getByText(/Ocupado/).getAttribute('title')).toBe('Estás ocupado con otra actividad.')
     fireEvent.click(getByText(/Tienes una clase por elegir/))
     expect(props.onAbrirDecision).toHaveBeenCalled()
-    fireEvent.click(getByText('← Salir a tus partidas'))
+    fireEvent.click(getByText('☰ Menú'))
     expect(props.onSalir).toHaveBeenCalled()
   })
 })
