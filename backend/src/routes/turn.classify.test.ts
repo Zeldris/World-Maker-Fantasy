@@ -24,6 +24,7 @@ const findManyQuest = vi.fn();
 const findFirstQuest = vi.fn();
 const logEntryCreate = vi.fn();
 const classifyAction = vi.fn();
+const findFirstCombatEncounter = vi.fn();
 
 vi.mock('../lib/prisma.js', () => ({
   prisma: {
@@ -42,6 +43,7 @@ vi.mock('../lib/prisma.js', () => ({
       findFirst: (...args: unknown[]) => findFirstQuest(...args),
     },
     logEntry: { create: (...args: unknown[]) => logEntryCreate(...args) },
+    combatEncounter: { findFirst: (...args: unknown[]) => findFirstCombatEncounter(...args) },
   },
 }));
 
@@ -781,5 +783,55 @@ describe('POST /turn/classify — flora/mineral inventado citado entre comillas 
     const body = res.json();
     expect(typeof body.blocked?.narration).toBe('string');
     expect(classifyAction).not.toHaveBeenCalled();
+  });
+});
+
+// Fase G del 0.1 (hallazgo G10): el estado de fauna es por especie y lugar — tras matar a un
+// Gesgurio, la caza de OTRO desde la zona abría la ficha del muerto en vez del combate.
+describe('POST /turn/classify — ficha del muerto frente a una caza nueva de la misma especie (G10)', () => {
+  const SAVE = {
+    id: 'save1', worldId: 'world1', level: 3, attributes: ATTRS, inventoryItems: [], condicionFisica: 'ILESO',
+    currentLocationId: null, endedAt: null, characterTransit: null, worldState: { fictionalDateLabel: 'Día 1, mañana', fictionalMinutes: 480 },
+  };
+  beforeEach(() => {
+    findUniqueSave.mockReset().mockResolvedValue(SAVE);
+    findManyNpc.mockReset().mockResolvedValue([
+      {
+        id: 'npc1', aliases: ['gesgurio'], slug: 'gesgurio', name: 'Gesgurio', kind: 'PRINCIPAL', level: 1, role: 'fauna', faction: null,
+        personality: 'x', bio: 'x', items: [], attributes: ATTRS, raza: null, clase: null, ataqueNatural: 'Mordisco', habilidadesRaciales: [], temperamento: 'CAUTELOSO',
+      },
+    ]);
+    findManyNpcState.mockReset().mockResolvedValue([
+      { npcId: 'npc1', scope: '', condicionFisica: 'MUERTO', saqueado: true, energia: null, lootedItemNames: [], analizado: false },
+    ]);
+    findUniqueLocation.mockReset().mockResolvedValue(null);
+    findManyLocation.mockReset().mockResolvedValue([]);
+    findManyQuest.mockReset().mockResolvedValue([]);
+    findFirstQuest.mockReset().mockResolvedValue(null);
+    logEntryCreate.mockReset().mockResolvedValue({});
+    findFirstCombatEncounter.mockReset().mockResolvedValue(null);
+    classifyAction.mockReset().mockResolvedValue({
+      requiereTirada: false, atributo: 'fuerza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+  });
+
+  async function clasificar(action: string) {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId: 'save1', action } });
+    expect(res.statusCode).toBe(200);
+    return res.json();
+  }
+
+  it('nombrar al muerto fuera de combate sigue abriendo su ficha', async () => {
+    expect((await clasificar('Registro al Gesgurio caído.')).postCombatInteraction?.slug).toBe('gesgurio');
+  });
+
+  it('el texto de la caza de la zona no abre la ficha del muerto', async () => {
+    expect((await clasificar("Salgo a cazar y ataco a 'Gesgurio'.")).postCombatInteraction).toBeUndefined();
+  });
+
+  it('con un combate de grupo ya en curso tampoco', async () => {
+    findFirstCombatEncounter.mockResolvedValue({ id: 'enc1' } as never);
+    expect((await clasificar('Registro al Gesgurio caído.')).postCombatInteraction).toBeUndefined();
   });
 });

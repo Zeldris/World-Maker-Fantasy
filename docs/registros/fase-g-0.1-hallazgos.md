@@ -17,7 +17,7 @@ Partida: Gorhorn, **Cazador** (su clase real), dificultad Novato.
 | Crear partida y primer turno | ✅ (G1, G2, G3) |
 | Gistera | ✅ «Alguien» en el mapa → Interactuar → escena guionizada de 3 vueltas → acepta → se marcha y crea «Acabar con el Orco Enfurecido» (G9) |
 | Zona y movimiento | 🚧 mapa, ficha de punto e «Ir hasta aquí» funcionan; faltan salidas a otra zona |
-| Caza en solitario y en grupo (aviso de riesgo) | 🚧 solitario hecho (encuentro → iniciativa → Cazar → combate de 12 rondas → convaleciente; G4, G5); falta en grupo |
+| Caza en solitario y en grupo (aviso de riesgo) | 🚧 solitario ✅ (G4, G5); en grupo: aviso de riesgo ✅, arranque arreglado (G10), intercambios del jugador en estudio (G11) |
 | Cadáveres, saqueo y Goirnos | 🚧 cadáver de fauna y desollar ✅ (G8); falta saqueo de un NPC y Goirnos |
 | Recolección con cada método (ficha de flora) | pendiente |
 | Combate con muerte y renacer | pendiente |
@@ -37,3 +37,5 @@ Partida: Gorhorn, **Cazador** (su clase real), dificultad Novato.
 | G7 | Cuando el narrador cae al texto fijo de respaldo (3 intentos fallidos), en combate podía contradecir el intercambio: «La acción no sale como se esperaba» junto a «Gana Gorhorn · el golpe conecta». | ✅ 2026-10-02: en un intercambio, el respaldo dice solo lo seguro («El intercambio se salda con un golpe que conecta» / «Ningún golpe llega a conectar») según `combatRealHitLanded`/`combatBothMissed` (`narrador.ts`); test nuevo. |
 | G8 | Tras matar a una presa en combate 1v1, el aviso «Hay presas caídas sin desollar» no salía hasta cambiar de escena o recargar (el cadáver sí estaba en el backend). | ✅ 2026-10-02: `GameView.tsx` recomprueba los cadáveres al pasar de combate a sin combate. Desollar comprobado: 3 trozos de quitina, +25 XP, el aviso desaparece. |
 | G9 | Despedida de Gistera: «…si nos volvemos a ver te lo agradeceré como corresponde!» sin «¡». | ✅ 2026-10-02: «Gracias, Gorhorn. No puedo quedarme aquí más tiempo, pero si nos volvemos a ver, ¡te lo agradeceré como corresponde!» (`dynamicMode.ts`). |
+| G10 | Tras matar a un Gesgurio, «Cazar» un grupo de Gesgurios en la misma zona abría la ficha del muerto («El cuerpo ya está registrado») en vez del combate: el estado de fauna es por especie y lugar, y el turno interceptaba el texto de la propia caza como «tocar el cadáver». | ✅ 2026-10-02: `/turn/classify` no intercepta el texto de la caza (`esActionTextDeCaza`) ni con un combate de grupo en curso (`turn.ts`); 3 tests en `turn.classify.test.ts` (2 fallan sin el arreglo). |
+| G11 | En el combate de grupo de la partida en vivo, las acciones de Gorhorn no quedaron como intercambio (sin tarjeta de dados, el Gesgurio siguió «Ileso» 5 rondas) mientras los ataques del enemigo sí le hirieron hasta morir. Con el mismo flujo por API (`repro-grupo.ts`, local) el intercambio sí se guarda: el fallo depende de algo del frontend o del estado previo (fase de defensa). | 🚧 investigando |
