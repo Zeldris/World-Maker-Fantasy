@@ -7,6 +7,7 @@ import { PanelSection } from '../../PanelSection'
 import { razaThemeStyleVars } from '../../../lib/razaTheme'
 import { ErrorBanner } from '../../../components/ErrorBanner'
 import { useErrorConReintento } from '../../../hooks/useErrorConReintento'
+import { Esqueleto } from '../../Esqueleto'
 
 // Bandas de FactionRelation (0-100, 50=neutro) — mismo lenguaje visual que REPUTATION_BANDS de
 // ReputacionPanel.tsx (banda con nombre + color), pero sobre un `type`/escala distintos: aquí la
@@ -273,7 +274,7 @@ function MercadoCard({
     <PanelSection title="Mercado">
       <ErrorBanner fallo={fallo} onCerrar={limpiar} />
       {mercado === null ? (
-        <p className="text-xs text-wood-500">Consultando…</p>
+        <Esqueleto filas={3} que="el mercado" />
       ) : !mercado.tratado ? (
         <p className="text-xs text-wood-500">Negocia un tratado comercial con {target.name} primero (botón Negociar arriba).</p>
       ) : mercado.items.length === 0 ? (

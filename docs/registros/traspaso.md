@@ -14,8 +14,8 @@ cada commit.**
 | **Rama de trabajo** | `claude/frontend-improvements-roadmap-0mpckt`. Flujo acordado (2026-10-01): commit + push a esta rama con cada cosa hecha; a `main` se pasa **por pull request** (desde esta sesión el push directo a `main` lo bloquea el filtro de permisos) |
 | **Último commit en `main`** | `423c8a5` — roadmap de roadmaps y revisión cruzada de front y UX (+ el commit de esta bitácora) |
 | **Hito** | `0.1` Llanuras estable — [plan](../producto/plan-roadmap-0.1.md) · [mapa de roadmaps](../producto/21-roadmap.md#qué-entra-en-cada-hito) |
-| **Tarea en curso** | Ninguna. Segundo test intermitente de CI arreglado (Fase C); siguiente: Reino R-A, quedan `REI-114`…`REI-116` |
-| **Tests** | Frontend: `tsc -b` 0, `vitest` 50 archivos / 315 tests, `oxlint` 13 avisos (los mismos de antes). Backend en local con Postgres real: `tsc` 0, `oxlint` 0 (solo avisos previos), `vitest` 162/162 archivos, 2851 tests. CI de GitHub en verde (PR #2) |
+| **Tarea en curso** | Ninguna. Segundo test intermitente de CI arreglado (Fase C); siguiente: Reino R-A, quedan `REI-115` y `REI-116` |
+| **Tests** | Frontend: `tsc -b` 0, `vitest` 51 archivos / 316 tests, `oxlint` 13 avisos (los mismos de antes). Backend en local con Postgres real: `tsc` 0, `oxlint` 0 (solo avisos previos), `vitest` 162/162 archivos, 2851 tests. CI de GitHub en verde (PR #2) |
 
 ## Siguientes pasos (en orden)
 
@@ -64,6 +64,7 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
+- **2026-10-02** — `REI-114`: esqueletos de carga (`Esqueleto`) en producción y mercado.
 - **2026-10-02** — `REI-113`: `SelectorJuego` sustituye los `<select>` nativos de Reino.
 - **2026-10-02** — `REI-40`, `REI-41`: Almacén agrupado por recurso con su tope al lado (los topes
   salen de Producción). Pendiente (backend): icono y categoría por recurso.

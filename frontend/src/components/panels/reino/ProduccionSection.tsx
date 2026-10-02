@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { NumeroGuardable } from '../../NumeroGuardable'
 import { SelectorJuego } from '../../SelectorJuego'
+import { Esqueleto } from '../../Esqueleto'
 import type { AlmacenItemInfo, BuildingInfo, CompanionInfo, ProfessionRecipeInfo } from '../../../types'
 import {
   type OrdenProduccionInfo,
@@ -237,7 +238,7 @@ function BuildingProduccionCard({
 
       <p className="mt-3 text-2xs uppercase tracking-wide text-wood-500">Órdenes de producción</p>
       {ordenes === null ? (
-        <p className="mt-1 text-2xs text-wood-500">Cargando…</p>
+        <Esqueleto filas={2} que="órdenes de producción" className="mt-1" />
       ) : (
         <div className="mt-1 flex flex-col gap-1.5">
           {ordenes.filter((o) => o.activa).length === 0 && trabajadores.length === 0 && (
