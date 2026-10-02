@@ -157,11 +157,16 @@ stateDiagram-v2
   `{ permitido, motivo }`. **M** [P]
 
 ### 4.2 Bloqueos
-- **UX-3 · Guardia en `handleSubmit`** — rechazar si `characterThinking` o si la fase no lo permite,
+- ~~**UX-3 · Guardia en `handleSubmit`** — rechazar si `characterThinking` o si la fase no lo permite,
   sea cual sea la puerta (Construir, Viajar, Campamento). Los botones que lanzan un turno se
-  deshabilitan igual que el composer. Resuelve H1. **S** **arreglo**
-- **UX-4 · Tarjetas del registro con el estado global** — `OfferCard` recibe `disabled` y `motivo`
-  de `canDo`. Resuelve H2. **S** **arreglo**
+  deshabilitan igual que el composer. Resuelve H1. **S** **arreglo**~~ ✅ 2026-10-01: guardia en
+  `useTurnFlow` (ref del estado + ref propia contra el doble clic) y `bloqueoTurno` con motivo en
+  Construir, Viajar, Campamento y salida de zona. Lo de "si la fase no lo permite" llega con `UX-1`/`UX-2`.
+- ~~**UX-4 · Tarjetas del registro con el estado global** — `OfferCard` recibe `disabled` y `motivo`
+  de `canDo`. Resuelve H2. **S** **arreglo**~~ ✅ 2026-10-01: `OfferCard` recibe `bloqueo` (el
+  mismo `bloqueoTurno` de UX-3, vía `LogPanel.bloqueoAcciones`) y deshabilita todas sus acciones con
+  el motivo. El combate pendiente queda fuera a propósito: la tarjeta de un agresivo que te corta el
+  paso es justo como se reacciona a él. Pasará a `canDo` con `UX-2`.
 - **UX-5 · Paneles en modo consulta** cuando la fase no permite cambios: se abren y se leen, pero
   los botones que modifican (equipar, tirar, construir, mercado…) se deshabilitan con el motivo.
   Lo que no toca el turno (renombrar una plantilla, ordenar) puede seguir libre. Resuelve H3. **M**
@@ -213,8 +218,12 @@ stateDiagram-v2
   muerte, encuentro agresivo) cierran el cajón con animación; los **importantes** (narración nueva,
   oferta, misión) muestran una notificación y una marca en el registro; los **menores** no
   interrumpen. Resuelve H10. **S**
-- **UX-13 · `anyModalOpen` completo**, o mejor, sustituido por el gestor de capas: el composer
-  pierde el foco y se deshabilita con cualquier capa ≥ 1 abierta. Resuelve H11. **S** **arreglo**
+- ~~**UX-13 · `anyModalOpen` completo**, o mejor, sustituido por el gestor de capas: el composer
+  pierde el foco y se deshabilita con cualquier capa ≥ 1 abierta. Resuelve H11. **S** **arreglo**~~
+  ✅ 2026-10-01: el composer cuenta también el mapa de zona, Confirmar salida, Clase,
+  Especialización, el editor de barras y el detalle de recurso, y `ChatComposer` suelta el foco al
+  deshabilitarse. El cajón de paneles queda fuera (la Enciclopedia inserta chips en el composer);
+  lo decidirá el gestor de capas de `UX-9`.
 - **UX-14 · Encuentros sin cortes** — con el mapa fuera del modal (`roadmap-front-zona.md`, ZON-1),
   el encuentro aparece sobre la ficha y en el registro sin cerrar nada. Resuelve H12.
 
@@ -223,9 +232,11 @@ stateDiagram-v2
   principal; *Nueva partida* abre un **asistente en una sola pantalla**: mundo, personaje,
   dificultad y nombre de la partida, con resumen y un botón *Empezar*. Los pasos con una sola
   opción vienen ya elegidos y plegados, sin desaparecer. Resuelve H13 y H14. **M**
-- **UX-16 · El asistente sobrevive a recargar** — su estado va en la URL o en `sessionStorage`; un
+- ~~**UX-16 · El asistente sobrevive a recargar** — su estado va en la URL o en `sessionStorage`; un
   fallo al crear dice "No se pudo crear la partida" con *Reintentar*. Resuelve H16. **S**
-  **arreglo**
+  **arreglo**~~ ✅ 2026-10-01: `SessionProvider` guarda mundo, personaje y dificultad en
+  `sessionStorage`; `GameView` distingue "No se pudo crear la partida" (con *Reintentar*) de "Se ha
+  perdido la elección" en vez del genérico "No se encuentra esta partida".
 - **UX-17 · "Crear desde cero"** oculto o marcado "Próximamente" hasta el hito `0.7`, si se
   confirma que no está listo. 🧭 Resuelve H15. **S**
 - **UX-18 · Epílogo de fin de partida** — pantalla de cierre con el último texto, un resumen (días,
@@ -246,8 +257,12 @@ stateDiagram-v2
   esperando* y *Volver a intentar*. Resuelve H21. **S**
 - **UX-23 · Acciones que no se esfuman** — una acción rechazada se queda en el registro tachada,
   con el motivo y un botón *Volver a escribirla* que la devuelve al composer. Resuelve H22. **S**
-- **UX-24 · Ningún error en silencio** — `ErrorBanner` común con *Reintentar* en toda acción que
-  llame al backend. Resuelve H23. **S** **arreglo**
+- ~~**UX-24 · Ningún error en silencio** — `ErrorBanner` común con *Reintentar* en toda acción que
+  llame al backend. Resuelve H23. **S** **arreglo**~~ ✅ 2026-10-01: `ErrorBanner` +
+  `useErrorConReintento` en todas las acciones de Reino (Súbditos, Producción, Mercado; cierra
+  también `REI-111`) y en borrar/reiniciar/renombrar partida (adiós `window.alert`); Descansar en el
+  campamento enseña el fallo en su `ConfirmModal` (nuevo prop `error`, botón *Reintentar*).
+  Inventario ya lo hacía (`DetailModal`).
 - **UX-25 · Confirmar o deshacer, con criterio** — lo irreversible (Matar, Soltar captura, Sabotear,
   Borrar partida) se confirma; lo que se puede revertir (Tirar un objeto, Desactivar una orden,
   Retirar del almacén) se hace al momento con una notificación de **Deshacer** durante 5 s. Ajuste

@@ -5,6 +5,8 @@ import { anguloSalida, rumboSalida } from '../../lib/rumboSalida'
 import { ZoneGroupDetailModal } from '../ZoneGroupDetailModal'
 import { ZonaSalidaModal } from '../ZonaSalidaModal'
 import { ParcelaDetailModal } from '../ParcelaDetailModal'
+import { DefsFichas, EstandarteSalida, EtiquetaNombre, FichaJugador, FichaZona } from '../zona/FichaZona'
+import { COLOR_DISPOSICION, useEscalaPantalla } from '../../lib/zonaFichas'
 import type { LogEntry, ProfessionRecipeInfo, ZonaParcelaInfo } from '../../types'
 
 interface ZonaPanelProps {
@@ -44,6 +46,9 @@ interface ZonaPanelProps {
   /// ninguna lógica de viaje nueva — decisión explícita de Álvaro. `undefined` en el caller de
   /// MapaPanel.tsx (vista informativa, no ofrece viajar desde ahí) — no rompe nada sin tocarlo.
   onViajarA?: (actionText: string) => void
+  /// UX-3 (hito 0.1) — motivo por el que ahora no se puede lanzar un turno (narrador escribiendo,
+  /// ocupado…); `null`/ausente = libre. Deshabilita los botones que mandan una acción al turno.
+  bloqueoTurno?: string | null
   /// Icono de parcela (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) — construir es DIRECTO,
   /// sin pasar por `onViajarA`/`/turn/narrate` (mismo criterio que "Descansar en campamento"). El
   /// roster estático de recetas (ya cargado una vez en GameView.tsx vía `useRecipesData`) resuelve
@@ -107,13 +112,8 @@ const TIPO_LABEL: Record<ZonaPinTipo, string> = {
 /// paneles distintos ahora comparten paleta, aunque cada una siga con su propio número de bandas
 /// (aquí 3+SIN_FACCION+INERTE por punto de mapa, allí 5 por temperamento de combate — legítimamente
 /// distintas, no se tocan los umbrales de ninguna).
-const COLOR_HEX: Record<ZonePointInfo['color'], string> = {
-  ALIADO: '#10b981',
-  NEUTRO: '#d4af37',
-  ENEMIGO: '#ef4444',
-  SIN_FACCION: '#f97316',
-  INERTE: '#8a8578',
-}
+/// ZON-10 (hito 0.1, Z12) — ahora sale de los tokens del juego (`COLOR_DISPOSICION`, zona/FichaZona.tsx).
+const COLOR_HEX: Record<ZonePointInfo['color'], string> = COLOR_DISPOSICION
 
 /// 4 formas fijas por categoría (2026-08-27, diseño cerrado con la usuaria) — círculo=seres vivos
 /// genéricos (fauna, grupos sin nombre propio), triángulo=NPC con nombre propio, cuadrado=edificio,
@@ -151,6 +151,10 @@ const COLOR_HEX: Record<ZonePointInfo['color'], string> = {
 /// pedía evitar.
 const MS_POR_PASO_MOVIMIENTO = 600
 
+/// ZON-19 (hito 0.1) — a esta distancia del personaje (2,5 celdas de 50 unidades) los nombres se ven sin
+/// pasar el ratón.
+const DISTANCIA_NOMBRE_VISIBLE = 125
+
 /// Cada forma se dibuja SIEMPRE relativa al origen (0,0) — quien la envuelve (`ZonePointMarker`
 /// más abajo) es el único responsable de posicionarla en el lienzo, vía un `<g transform>` que
 /// mueve TODO el conjunto (forma + anillo de companion + texto de cantidad + badge) a la vez. Antes
@@ -161,51 +165,18 @@ const MS_POR_PASO_MOVIMIENTO = 600
 /// que el triángulo"). Un único `transform` en el `<g>` exterior es la única animación que el
 /// navegador tiene que interpolar por punto — todo el conjunto se mueve pegado, mismo patrón que ya
 /// usaba `JugadorMarker` desde el principio.
-function ZonePointShape({ tipo, color, hasCompanion }: { tipo: ZonaPinTipo; color: string; hasCompanion?: boolean }) {
-  const common = { fill: color, stroke: 'white', strokeWidth: 1.5 }
-  switch (tipo) {
-    case 'NPC':
-      // Compañero de fauna con nombre propio en el mismo punto (C10, 2026-09-13) — "un icono
-      // nuevo para los grupos": anillo punteado extra alrededor del triángulo normal de NPC, en
-      // vez de una 5ª forma completa (mantiene la silueta ya reconocible de "NPC con nombre
-      // propio", solo añade la señal de "aquí hay más de uno").
-      return (
-        <>
-          {hasCompanion && <circle cx={0} cy={0} r={12} fill="none" stroke={color} strokeWidth={1.2} strokeDasharray="2.5 2" opacity={0.85} />}
-          <polygon points="0,-9 -8,7 8,7" {...common} />
-        </>
-      )
-    case 'EDIFICIO':
-      return <rect x={-7} y={-7} width={14} height={14} {...common} />
-    case 'RECURSO':
-      return <polygon points="0,-10 7,0 0,10 -7,0" {...common} />
-    case 'FAUNA':
-      return <circle cx={0} cy={0} r={8} {...common} />
-    case 'OBJETO':
-      // "Tirar" objetos al suelo de la Zona (2026-09-06) — mismo rombo que RECURSO pero gris fijo,
-      // para no confundir un objeto tirado por el jugador con un recurso natural sembrado.
-      return <polygon points="0,-10 7,0 0,10 -7,0" fill="#8a8a8a" stroke="white" strokeWidth={1.5} />
-    case 'CADAVER':
-      // Cadáveres en el mapa (Fase 5, 2026-09-28) — aspa rojo oscuro: forma nueva, nunca usada por
-      // ningún ser vivo ni recurso, para leerse de un vistazo como "aquí cayó algo".
-      return (
-        <>
-          <circle cx={0} cy={0} r={9} fill="#2a1a17" stroke="white" strokeWidth={1.2} />
-          <path d="M -5 -5 L 5 5 M 5 -5 L -5 5" stroke="#c0392b" strokeWidth={2.5} strokeLinecap="round" />
-        </>
-      )
-  }
-}
-
 /// Envuelve `ZonePointShape` (y, si aplica, el texto/badge de cantidad) en un único `<g transform>`
 /// — ver el comentario de `ZonePointShape` de arriba para el motivo. `children` opcional para poder
 /// insertar el texto de cantidad DENTRO del mismo grupo animado (ver `data.puntos.map` más abajo),
 /// en vez de que cada caller tenga que repetir el `<g>`/`transform` a mano.
-function ZonePointMarker({ x, y, tipo, color, hasCompanion, children }: { x: number; y: number; tipo: ZonaPinTipo; color: string; hasCompanion?: boolean; children?: ReactNode }) {
+function ZonePointMarker({ x, y, tipo, color, escala, hasCompanion, cantidad, sombra, children }: { x: number; y: number; tipo: ZonaPinTipo; color: string; escala: number; hasCompanion?: boolean; cantidad?: number; sombra?: boolean; children?: ReactNode }) {
+  // ZON-10/ZON-11 (hito 0.1) — la ficha (placa + pictograma + anillo) vive en zona/FichaZona.tsx y se
+  // dibuja en píxeles de pantalla; aquí solo se coloca y se anima en coordenadas del lienzo.
   return (
     <g style={{ transform: `translate(${x}px, ${y}px)`, transition: `transform ${MS_POR_PASO_MOVIMIENTO}ms linear` }}>
-      <ZonePointShape tipo={tipo} color={color} hasCompanion={hasCompanion} />
-      {children}
+      <FichaZona tipo={tipo} color={color} escala={escala} hasCompanion={hasCompanion} cantidad={cantidad} sombra={sombra}>
+        {children}
+      </FichaZona>
     </g>
   )
 }
@@ -227,17 +198,11 @@ function ZonePointMarker({ x, y, tipo, color, hasCompanion, children }: { x: num
 /// saltar entre los dos centros de celda. Duración = `MS_POR_PASO_MOVIMIENTO` exacta (ver ese
 /// comentario más arriba) — el deslizamiento ocupa el intervalo completo entre pasos, sin quedarse
 /// quieto esperando al siguiente.
-const JUGADOR_MARKER_PUNTOS = Array.from({ length: 10 }, (_, i) => {
-  const r = i % 2 === 0 ? 11 : 4.5
-  const angle = (Math.PI / 5) * i - Math.PI / 2
-  return `${r * Math.cos(angle)},${r * Math.sin(angle)}`
-}).join(' ')
-
-function JugadorMarker({ x, y }: { x: number; y: number }) {
+function JugadorMarker({ x, y, escala, angulo, quieto, sombra }: { x: number; y: number; escala: number; angulo: number | null; quieto: boolean; sombra?: boolean }) {
+  // ZON-14 (hito 0.1) — la estrella negra pasa a ficha propia (zona/FichaZona.tsx · FichaJugador).
   return (
     <g style={{ transform: `translate(${x}px, ${y}px)`, transition: `transform ${MS_POR_PASO_MOVIMIENTO}ms linear` }}>
-      <circle cx={0} cy={0} r={14} fill="none" stroke="white" strokeWidth={1.5} opacity={0.8} />
-      <polygon points={JUGADOR_MARKER_PUNTOS} fill="#0a0a0a" stroke="white" strokeWidth={1.5} />
+      <FichaJugador escala={escala} angulo={angulo} quieto={quieto} sombra={sombra} />
       <title>Tú estás aquí</title>
     </g>
   )
@@ -264,9 +229,16 @@ function GridOverlay() {
     const y = row * GRID_CELL_PX
     lineas.push(<line key={`h${row}`} x1={0} y1={y} x2={GRID_COLS * GRID_CELL_PX} y2={y} />)
   }
+  // ZON-62 (hito 0.1, Z11) — cada línea dos veces: oscura y ancha debajo, clara y fina encima, para
+  // verse sobre terreno claro y oscuro sin ensuciar la ilustración.
   return (
-    <g stroke="white" strokeWidth={1} opacity={0.12} pointerEvents="none">
-      {lineas}
+    <g pointerEvents="none" data-testid="cuadricula">
+      <g stroke="black" strokeWidth={2} opacity={0.28}>
+        {lineas}
+      </g>
+      <g stroke="white" strokeWidth={0.8} opacity={0.4}>
+        {lineas}
+      </g>
     </g>
   )
 }
@@ -279,12 +251,12 @@ function GridOverlay() {
 /// flecha apuntando hacia afuera dentro de un círculo, "puerta hacia otra región". Sin `transform`
 /// animado (a diferencia de `ZonePointMarker`) — una salida nunca se mueve, es un punto fijo del
 /// propio mapa, como la cuadrícula.
-function SalidaMarker({ x, y }: { x: number; y: number }) {
-  // B6 (pruebas 2026-09-28): la flecha apuntaba siempre a la derecha — ahora gira hacia su rumbo real.
+function SalidaMarker({ x, y, escala, texto }: { x: number; y: number; escala: number; texto: string }) {
+  // B6 (pruebas 2026-09-28): la flecha gira hacia su rumbo real. ZON-17 (hito 0.1): estandarte con el
+  // destino escrito (zona/FichaZona.tsx · EstandarteSalida).
   return (
     <g style={{ transform: `translate(${x}px, ${y}px)` }}>
-      <circle cx={0} cy={0} r={12} fill="#1a1410" stroke="#d4af37" strokeWidth={1.5} opacity={0.9} />
-      <polygon points="-4,-5 4,0 -4,5" fill="#d4af37" transform={`rotate(${anguloSalida({ x, y })})`} />
+      <EstandarteSalida escala={escala} angulo={anguloSalida({ x, y })} texto={texto} />
     </g>
   )
 }
@@ -341,9 +313,37 @@ function regionControlDisplay(control: RegionControlInfo): { text: string; tone:
   }
 }
 
-export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, columnasAncho = false, onClose, onViajarA, professionRecipes, onRefreshSave, onOfertaDescartada, onHoraActualizada, onSaquearCadaver, onDesollarCadaver }: ZonaPanelProps) {
+export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, columnasAncho = false, onClose, onViajarA, professionRecipes, onRefreshSave, onOfertaDescartada, onHoraActualizada, onSaquearCadaver, onDesollarCadaver, bloqueoTurno }: ZonaPanelProps) {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<ZonaResponse | null>(null)
+  // ZON-11 (hito 0.1) — unidades del lienzo por píxel de pantalla: las fichas miden siempre lo mismo.
+  const { ref: svgRef, escala } = useEscalaPantalla()
+  // ZON-14 (hito 0.1) — hacia dónde mira la ficha del personaje: el ángulo del último paso real.
+  const [anguloJugador, setAnguloJugador] = useState<number | null>(null)
+  // ZON-19 (hito 0.1) — nombre visible: lo cercano al personaje (≤ 2,5 celdas), lo seleccionado y lo
+  // que está bajo el ratón.
+  const [claveBajoRaton, setClaveBajoRaton] = useState<string | null>(null)
+  // ZON-62 (hito 0.1) — cuadrícula: fijada con el botón del mapa o mientras se mantiene Alt.
+  const [cuadriculaFijada, setCuadriculaFijada] = useState(false)
+  const [altPulsado, setAltPulsado] = useState(false)
+  useEffect(() => {
+    const abajo = (e: KeyboardEvent) => {
+      if (e.key === 'Alt') setAltPulsado(true)
+    }
+    const arriba = (e: KeyboardEvent) => {
+      if (e.key === 'Alt') setAltPulsado(false)
+    }
+    const soltar = () => setAltPulsado(false)
+    window.addEventListener('keydown', abajo)
+    window.addEventListener('keyup', arriba)
+    window.addEventListener('blur', soltar)
+    return () => {
+      window.removeEventListener('keydown', abajo)
+      window.removeEventListener('keyup', arriba)
+      window.removeEventListener('blur', soltar)
+    }
+  }, [])
+  const posJugadorAnteriorRef = useRef<{ x: number; y: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
   // Modal de detalle (2026-09-04) — comparte un mismo modal entre ZonePoint reales (`puntos`) y
   // dinámicos (`dinamicos`, sin ZonePoint sembrado), vía `zonaDinamicoToDetailSource`.
@@ -365,6 +365,21 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
   // anima el trayecto actual, para no solapar dos llamadas al backend a la vez.
   const [mensajeMovimiento, setMensajeMovimiento] = useState<string | null>(null)
   const [movimientoEnCurso, setMovimientoEnCurso] = useState(false)
+  const jugadorX = data?.jugador?.x
+  const jugadorY = data?.jugador?.y
+  useEffect(() => {
+    if (jugadorX == null || jugadorY == null) return
+    const anterior = posJugadorAnteriorRef.current
+    if (anterior && (anterior.x !== jugadorX || anterior.y !== jugadorY)) {
+      setAnguloJugador((Math.atan2(jugadorY - anterior.y, jugadorX - anterior.x) * 180) / Math.PI)
+    }
+    posJugadorAnteriorRef.current = { x: jugadorX, y: jugadorY }
+  }, [jugadorX, jugadorY])
+  function nombreVisible(clave: string, punto: { x: number; y: number }, seleccionado: boolean): boolean {
+    if (seleccionado || claveBajoRaton === clave) return true
+    if (jugadorX == null || jugadorY == null) return false
+    return Math.hypot(punto.x - jugadorX, punto.y - jugadorY) <= DISTANCIA_NOMBRE_VISIBLE
+  }
   // Token de cancelación (2026-09-08) — si el jugador clica un destino NUEVO a mitad de la
   // animación del anterior, el bucle en curso debe parar de seguir pidiendo pasos del trayecto
   // viejo; comparar contra el token actual en cada iteración es más simple que cancelar promesas.
@@ -566,7 +581,98 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
             — una zona-interior recién creada (Capital/Cuartel Avanzado) nace sin ZonePoint/
             dinámicos, pero SÍ con Parcelas reales que pintar. */}
         {(data.puntos.length > 0 || dinamicos.length > 0 || data.jugador || data.parcelas.length > 0) && (
-          <div className={`flex overflow-hidden rounded-lg border border-iron-700 bg-wood-950/60 ${columnasAncho ? 'min-h-0 flex-1 items-center justify-center' : ''}`}>
+          <div className={`relative flex overflow-hidden rounded-lg border border-iron-700 bg-wood-950/60 ${columnasAncho ? 'min-h-0 flex-1 items-center justify-center' : ''}`}>
+            {/* ZON-20 (hito 0.1) — leyenda compacta fija en una esquina del mapa (BG3), plegada por
+                defecto, con las mismas fichas reales que se pintan en el lienzo. */}
+            <div className="absolute bottom-2 left-2 z-10">
+            <details className="group max-h-[70%] max-w-[min(22rem,calc(100%-1rem))] overflow-y-auto rounded-lg border border-iron-700 bg-wood-950/90 text-2xs text-wood-400 shadow-lg backdrop-blur-sm">
+              <summary className="tactile flex cursor-pointer select-none items-center gap-1.5 px-3 py-1.5 font-semibold uppercase tracking-[0.1em] text-wood-500 marker:content-none">
+                <span aria-hidden="true" className="transition-transform group-open:rotate-90">▸</span>
+                Leyenda
+              </summary>
+              <div className="flex flex-col gap-2 border-t border-iron-800 px-3 py-2">
+                <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+                  {(Object.keys(TIPO_LABEL) as (ZonaPinTipo)[]).map((tipo) => (
+                    <span key={tipo} className="flex items-center gap-1.5">
+                      <svg viewBox="-18 -18 36 36" width={20} height={20} aria-hidden="true">
+                        <ZonePointMarker tipo={tipo} x={0} y={0} color={COLOR_HEX.NEUTRO} escala={1} sombra={false} />
+                      </svg>
+                      {TIPO_LABEL[tipo]}
+                    </span>
+                  ))}
+                  <span className="flex items-center gap-1.5">
+                    <svg viewBox="-18 -18 36 36" width={20} height={20} aria-hidden="true">
+                      <JugadorMarker x={0} y={0} escala={1} angulo={null} quieto={false} sombra={false} />
+                    </svg>
+                    Tú
+                  </span>
+                  {/* Compañero de fauna con nombre propio (C10, 2026-09-13) — entrada propia en la
+                      leyenda para el anillo punteado, mismo criterio del comentario de arriba
+                      ("nunca puede desincronizarse de lo que de verdad se pinta"). */}
+                  <span className="flex items-center gap-1.5">
+                    <svg viewBox="-18 -18 36 36" width={20} height={20} aria-hidden="true">
+                      <ZonePointMarker tipo="NPC" x={0} y={0} color={COLOR_HEX.NEUTRO} escala={1} sombra={false} hasCompanion />
+                    </svg>
+                    NPC con compañero
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <svg viewBox="-18 -18 36 36" width={20} height={20} aria-hidden="true">
+                      <EstandarteSalida escala={1} angulo={0} texto="" />
+                    </svg>
+                    Salida de la región
+                  </span>
+                  {/* Icono de parcela (§ 7.4, 2026-09-21) — cuadrado con cruz = hueco vacío donde
+                      construir, sólido = ya ocupado. Mismo criterio ("nunca desincronizarse de lo
+                      que de verdad se pinta") que el resto de esta leyenda. */}
+                  <span className="flex items-center gap-1.5">
+                    <svg viewBox="0 0 24 24" width={14} height={14} aria-hidden="true">
+                      <ParcelaMarker x={12} y={12} ocupada={false} />
+                    </svg>
+                    Parcela vacía
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <svg viewBox="0 0 24 24" width={14} height={14} aria-hidden="true">
+                      <ParcelaMarker x={12} y={12} ocupada={true} />
+                    </svg>
+                    Parcela construida
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: COLOR_HEX.ALIADO }} />
+                    Aliado
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: COLOR_HEX.NEUTRO }} />
+                    Neutro
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: COLOR_HEX.ENEMIGO }} />
+                    Enemigo
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: COLOR_HEX.SIN_FACCION }} />
+                    Sin facción
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: COLOR_HEX.INERTE }} />
+                    Salvaje
+                  </span>
+                </div>
+              </div>
+            </details>
+            </div>
+            {/* ZON-62 (hito 0.1, Z11) — cuadrícula bajo demanda: oculta por defecto, visible mientras se
+                mantiene Alt o fijada con este botón (para mando/Steam Deck, sin tecla Alt). */}
+            <button
+              type="button"
+              onClick={() => setCuadriculaFijada((v) => !v)}
+              aria-pressed={cuadriculaFijada}
+              title="Cuadrícula (o mantén Alt)"
+              className={`tactile absolute right-2 top-2 z-10 rounded-md border px-2 py-1 text-2xs font-semibold transition-colors ${cuadriculaFijada ? 'border-accent-500 bg-accent-500/20 text-accent-200' : 'border-iron-700 bg-wood-950/85 text-wood-400 hover:text-wood-200'}`}
+            >
+              <span aria-hidden="true">▦</span> Cuadrícula
+            </button>
             {/* Sistema de movimiento por cuadrícula (2026-09-08) — clic en el LIENZO (fondo, no un
                 pin) mueve al jugador hacia ese punto; `getScreenCTM().inverse()` convierte la
                 coordenada de pantalla del clic a coordenadas reales del viewBox 800×600 (el SVG se
@@ -591,6 +697,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                 ejes sin forzar ninguno, exactamente el comportamiento de una `<img>` con
                 `object-fit: contain`. El div contenedor centra el resultado con flex. */}
             <svg
+              ref={svgRef}
               viewBox="0 0 800 600"
               className={`${columnasAncho ? 'max-h-full max-w-full' : 'h-auto w-full'} ${soloConsulta ? '' : movimientoEnCurso ? 'cursor-wait' : 'cursor-crosshair'}`}
               onClick={
@@ -609,30 +716,18 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                     }
               }
             >
+              <DefsFichas />
               {imageUrl && <image href={imageUrl} x={0} y={0} width={800} height={600} preserveAspectRatio="xMidYMid slice" />}
-              <GridOverlay />
+              {(cuadriculaFijada || altPulsado) && <GridOverlay />}
               {data.puntos.map((p) => (
-                <g key={p.id} onClick={(e) => { e.stopPropagation(); p.companion ? setSelectedGroup(p) : setSelectedPoint(p) }} className="cursor-pointer">
-                  <ZonePointMarker x={p.x} y={p.y} tipo={p.tipo} color={COLOR_HEX[p.color]} hasCompanion={!!p.companion}>
-                    {/* C.5 (checklist frontend 2026-08-27) — con 2 dígitos, el número centrado
-                        dentro del icono podía sobresalir de formas estrechas (rombo/triángulo);
-                        a partir de 10 se pinta como badge fuera del icono, arriba a la derecha.
-                        Coordenadas relativas al origen (0,0) — mismo `<g transform>` animado que
-                        la forma, se mueven pegados en vez de saltar por separado. */}
-                    {p.cantidad > 1 && p.cantidad < 10 && (
-                      <text x={0} y={3} textAnchor="middle" fontSize={9} fontWeight="bold" fill="white" stroke="black" strokeWidth={0.3}>
-                        {p.cantidad}
-                      </text>
-                    )}
-                    {p.cantidad >= 10 && (
-                      <>
-                        <circle cx={9} cy={-9} r={7} fill="#1a1410" stroke="white" strokeWidth={1} />
-                        <text x={9} y={-6} textAnchor="middle" fontSize={8} fontWeight="bold" fill="white">
-                          {p.cantidad}
-                        </text>
-                      </>
-                    )}
-                  </ZonePointMarker>
+                <g
+                  key={p.id}
+                  onClick={(e) => { e.stopPropagation(); p.companion ? setSelectedGroup(p) : setSelectedPoint(p) }}
+                  onMouseEnter={() => setClaveBajoRaton(`p:${p.id}`)}
+                  onMouseLeave={() => setClaveBajoRaton(null)}
+                  className="cursor-pointer"
+                >
+                  <ZonePointMarker x={p.x} y={p.y} tipo={p.tipo} color={COLOR_HEX[p.color]} escala={escala} hasCompanion={!!p.companion} cantidad={p.cantidad} />
                   <title>{`${p.nombre}${p.cantidad > 1 ? ` ×${p.cantidad}` : ''} (${TIPO_LABEL[p.tipo]})${p.companion ? ` — con ${p.companion.nombre}` : ''}`}</title>
                 </g>
               ))}
@@ -640,12 +735,18 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                   la posición asignada por el backend (`posicionAleatoriaEnLienzo`), reutilizando
                   `ZonePointMarker` tal cual (su `tipo` ya es subconjunto válido). */}
               {dinamicos.map((d) => (
-                <g key={d.slug} onClick={(e) => { e.stopPropagation(); setSelectedPoint(d) }} className="cursor-pointer">
-                  <ZonePointMarker x={d.x} y={d.y} tipo={d.tipo} color={COLOR_HEX[d.color]} />
+                <g
+                  key={d.slug}
+                  onClick={(e) => { e.stopPropagation(); setSelectedPoint(d) }}
+                  onMouseEnter={() => setClaveBajoRaton(`d:${d.slug}`)}
+                  onMouseLeave={() => setClaveBajoRaton(null)}
+                  className="cursor-pointer"
+                >
+                  <ZonePointMarker x={d.x} y={d.y} tipo={d.tipo} color={COLOR_HEX[d.color]} escala={escala} />
                   <title>{`${d.nombre} (${TIPO_LABEL[d.tipo]})`}</title>
                 </g>
               ))}
-              {data.jugador && <JugadorMarker x={data.jugador.x} y={data.jugador.y} />}
+              {data.jugador && <JugadorMarker x={data.jugador.x} y={data.jugador.y} escala={escala} angulo={anguloJugador} quieto={!movimientoEnCurso} />}
               {/* Iconos de salida de región (2026-09-17) — siempre VISIBLES en su posición real
                   (dirección cardinal), incluso con `soloConsulta` (vista de MapaPanel). Umbral de
                   proximidad (2026-09-20, petición explícita de Álvaro: "al estar a una celda si
@@ -663,7 +764,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                   }}
                   className={`${s.alcanzable ? '' : 'opacity-60'} ${s.alcanzable || !soloConsulta ? 'cursor-pointer' : 'cursor-not-allowed'}`}
                 >
-                  <SalidaMarker x={s.x} y={s.y} />
+                  <SalidaMarker x={s.x} y={s.y} escala={escala} texto={s.visitada ? s.nombre : `Camino hacia el ${rumboSalida(s)}`} />
                   <title>{s.visitada ? s.nombre : `Camino hacia el ${rumboSalida(s)}`}</title>
                 </g>
               ))}
@@ -685,6 +786,22 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                   <title>{p.building ? p.building.name : 'Parcela vacía'}</title>
                 </g>
               ))}
+              {/* ZON-19 (hito 0.1) — nombres en una capa por encima de todo (ni salidas ni otras fichas los
+                  tapan), con la misma animación de desplazamiento que su ficha. */}
+              <g pointerEvents="none">
+                {[
+                  ...data.puntos.map((p) => ({ clave: `p:${p.id}`, x: p.x, y: p.y, nombre: p.nombre, sel: selectedPoint === p || selectedGroup === p })),
+                  ...dinamicos.map((d) => ({ clave: `d:${d.slug}`, x: d.x, y: d.y, nombre: d.nombre, sel: selectedPoint === d })),
+                ]
+                  .filter((e) => nombreVisible(e.clave, e, e.sel))
+                  .map((e) => (
+                    <g key={e.clave} style={{ transform: `translate(${e.x}px, ${e.y}px)`, transition: `transform ${MS_POR_PASO_MOVIMIENTO}ms linear` }}>
+                      <g transform={`scale(${escala})`}>
+                        <EtiquetaNombre texto={e.nombre} />
+                      </g>
+                    </g>
+                  ))}
+              </g>
             </svg>
           </div>
         )}
@@ -708,78 +825,6 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
             puede desincronizarse de lo que de verdad se pinta. Formas dibujadas con el mismo
             `ZonePointMarker` de los pines reales, a tamaño de leyenda (viewBox propio 20×20), en
             vez de reconstruir cada silueta a mano en CSS. */}
-        {(data.puntos.length > 0 || dinamicos.length > 0 || data.jugador || data.parcelas.length > 0) && (
-          <details className="group rounded-lg border border-iron-700 bg-wood-950/40 text-2xs text-wood-400">
-            <summary className="tactile flex cursor-pointer select-none items-center gap-1.5 px-3 py-1.5 font-semibold uppercase tracking-[0.1em] text-wood-500 marker:content-none">
-              <span aria-hidden="true" className="transition-transform group-open:rotate-90">▸</span>
-              Leyenda del mapa
-            </summary>
-            <div className="flex flex-col gap-2 border-t border-iron-800 px-3 py-2">
-              <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-                {(Object.keys(TIPO_LABEL) as (ZonaPinTipo)[]).map((tipo) => (
-                  <span key={tipo} className="flex items-center gap-1.5">
-                    <svg viewBox="0 0 24 24" width={14} height={14} aria-hidden="true">
-                      <ZonePointMarker tipo={tipo} x={12} y={12} color="#8a8578" />
-                    </svg>
-                    {TIPO_LABEL[tipo]}
-                  </span>
-                ))}
-                <span className="flex items-center gap-1.5">
-                  <svg viewBox="0 0 24 24" width={14} height={14} aria-hidden="true">
-                    <JugadorMarker x={12} y={12} />
-                  </svg>
-                  Tú
-                </span>
-                {/* Compañero de fauna con nombre propio (C10, 2026-09-13) — entrada propia en la
-                    leyenda para el anillo punteado, mismo criterio del comentario de arriba
-                    ("nunca puede desincronizarse de lo que de verdad se pinta"). */}
-                <span className="flex items-center gap-1.5">
-                  <svg viewBox="0 0 24 24" width={14} height={14} aria-hidden="true">
-                    <ZonePointMarker tipo="NPC" x={12} y={12} color="#8a8578" hasCompanion />
-                  </svg>
-                  NPC con compañero
-                </span>
-                {/* Icono de parcela (§ 7.4, 2026-09-21) — cuadrado con cruz = hueco vacío donde
-                    construir, sólido = ya ocupado. Mismo criterio ("nunca desincronizarse de lo
-                    que de verdad se pinta") que el resto de esta leyenda. */}
-                <span className="flex items-center gap-1.5">
-                  <svg viewBox="0 0 24 24" width={14} height={14} aria-hidden="true">
-                    <ParcelaMarker x={12} y={12} ocupada={false} />
-                  </svg>
-                  Parcela vacía
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <svg viewBox="0 0 24 24" width={14} height={14} aria-hidden="true">
-                    <ParcelaMarker x={12} y={12} ocupada={true} />
-                  </svg>
-                  Parcela construida
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: COLOR_HEX.ALIADO }} />
-                  Aliado
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: COLOR_HEX.NEUTRO }} />
-                  Neutro
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: COLOR_HEX.ENEMIGO }} />
-                  Enemigo
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: COLOR_HEX.SIN_FACCION }} />
-                  Sin facción
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: COLOR_HEX.INERTE }} />
-                  Salvaje
-                </span>
-              </div>
-            </div>
-          </details>
-        )}
         {data.puntos.length > 0 && (
           <div className="flex flex-col gap-1.5">
             {data.puntos.map((p) => (
@@ -868,6 +913,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
         <ZonaSalidaModal
           salida={selectedSalida}
           onCancel={() => setSelectedSalida(null)}
+          bloqueoTurno={bloqueoTurno}
           onViajar={(actionText) => {
             setSelectedSalida(null)
             onViajarA?.(actionText)

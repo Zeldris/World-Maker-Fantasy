@@ -4,6 +4,7 @@ import { attributeLabels, attributeColorClasses } from '../lib/dice'
 import { gradoOf, formatMultiplier, difficultyLabelFor } from './CombatExchangeBadge'
 import { TooltipAnchor } from './TooltipAnchor'
 import { RollBreakdown } from './RollBreakdown'
+import { debeDesplazarseATirada, escucharScrollManual } from '../lib/scrollTirada'
 
 /// Núcleo genérico de "tirada en vivo" (2026-09-04, centralización de todas las tiradas del juego
 /// — petición explícita: "como si jugaras una partida D&D... que el efecto de los dados suceda de
@@ -14,9 +15,10 @@ import { RollBreakdown } from './RollBreakdown'
 /// no cambia). `GatheringDiceReveal.tsx` (recolección) mantiene su propio JSX — shape (`rolls[]`
 /// con posible ventaja, sin "vs") demasiado distinto para forzarlo aquí — pero reimporta las
 /// constantes de cadencia desde este archivo en vez de duplicarlas.
+// DAD-6 (hito 0.1, H22) — el fallo tenía el gris del texto normal; ahora tiene color propio.
 const GRADE_COLOR: Record<'claro' | 'fallo', string> = {
   claro: 'text-moss-400',
-  fallo: 'text-wood-400',
+  fallo: 'text-danger-400',
 }
 const GRADE_LAND_ANIM: Record<'claro' | 'fallo', string> = {
   claro: 'animate-stamp-in',
@@ -111,10 +113,12 @@ export function DiceFace({
   const valorCrudo = Math.max(1, side.value - (enriched.malus || 0) + (enriched.attributeBonus || 0))
   const valorEfectivo = enriched.valorEfectivo ?? side.value
   const bono = Math.floor(valorEfectivo / 2)
+  const otros = side.result - side.roll - bono
 
   return (
     <div className="flex flex-col items-center gap-1">
-      <span className="max-w-[6rem] truncate text-2xs uppercase tracking-wide text-wood-500">{label}</span>
+      {/* DAD-4 (hito 0.1, H23) — sin truncar: el nombre real del personaje o del rival cabe entero. */}
+      <span className="max-w-[11rem] text-center text-2xs uppercase leading-tight tracking-wide text-wood-400 break-words">{label}</span>
       <span className="flex items-baseline justify-center gap-2">
         <span className="flex items-center gap-1">
           <span aria-hidden="true">🎲</span>
@@ -140,6 +144,22 @@ export function DiceFace({
         </span>
       </span>
       <span className={`text-2xs font-semibold ${attributeColorClasses[side.attribute].text}`}>{attributeLabels[side.attribute]}</span>
+      {/* DAD-3 (hito 0.1, H20) — al aterrizar, la cuenta completa sin sumar de cabeza:
+          dado + bono = total, y contra la dificultad con su veredicto si la hay. */}
+      {landed && (
+        <span data-testid="tirada-total" className="animate-entry-in font-mono text-xs text-wood-200">
+          {side.roll} + {bono}
+          {/* Lo que el backend suma aparte del dado y la mitad del atributo (bono de tirada de una
+              habilidad, dado con ventaja…) — siempre explícito para que la cuenta cuadre. */}
+          {otros !== 0 && ` ${otros > 0 ? '+' : '−'} ${Math.abs(otros)}`} = <span className="font-bold">{side.result}</span>
+          {showDifficulty && (
+            <>
+              {' '}vs {side.difficulty} →{' '}
+              <span className={`font-semibold ${GRADE_COLOR[grado]}`}>{grado === 'claro' ? 'Éxito' : 'Fallo'}</span>
+            </>
+          )}
+        </span>
+      )}
       {showDifficulty && (
         <TooltipAnchor
           text={
@@ -147,7 +167,7 @@ export function DiceFace({
             `Dificultad fija según tu nivel frente al del rival — no es la tirada del otro lado. Umbral real: ${side.difficulty}.`
           }
         >
-          <span className="font-mono text-2xs text-wood-600 underline decoration-dotted decoration-wood-700 underline-offset-2">
+          <span className="font-mono text-2xs text-wood-400 underline decoration-dotted decoration-wood-600 underline-offset-2">
             necesitas {difficultyLabelFor(side.difficulty)} ({side.difficulty})
           </span>
         </TooltipAnchor>
@@ -176,13 +196,19 @@ export function DiceFace({
 /// Deliberadamente SIN `.focus()` — `CombatPanel.tsx` ya documentó (2026-08-31) que robar el foco
 /// al abrir combate es más intrusivo que útil; mismo criterio aquí, el scroll basta para "no
 /// perdérsela" sin secuestrar el teclado de en medio de lo que el jugador esté haciendo.
+///
+/// DAD-5 (hito 0.1, H24) — ya no es incondicional: solo si la tirada no se ve y el jugador no ha
+/// movido el scroll a mano hace poco (lib/scrollTirada.ts), para no arrastrarle mientras lee.
 function useScrollIntoViewOnMount<T extends HTMLElement>() {
   const ref = useRef<T>(null)
   useEffect(() => {
+    escucharScrollManual()
     const timer = setTimeout(() => {
+      const el = ref.current
+      if (!el || !debeDesplazarseATirada(el)) return
       // `scrollIntoView` no existe en jsdom (entorno de test) — comprobación explícita en vez de
       // solo `?.` en el elemento, que no protege contra un método ausente del todo.
-      ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
+      el.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
     }, 0)
     return () => clearTimeout(timer)
   }, [])
@@ -258,22 +284,36 @@ export function DiceRollVs({
   const leftDelayMs = leftFirst ? 0 : ROLL_DURATION_MS
   const rightDelayMs = leftFirst ? ROLL_DURATION_MS : 0
   const ref = useScrollIntoViewOnMount<HTMLDivElement>()
+  const [ambosAterrizados, setAmbosAterrizados] = useState(false)
 
   useEffect(() => {
-    if (!onAllLanded) return
     const totalMs = Math.max(leftDelayMs, rightDelayMs) + ROLL_DURATION_MS
-    const timer = setTimeout(onAllLanded, totalMs)
+    const timer = setTimeout(() => {
+      setAmbosAterrizados(true)
+      onAllLanded?.()
+    }, totalMs)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- misma disciplina que DiceFace: arranca una sola vez por tirada, `leftDelayMs`/`rightDelayMs`/`onAllLanded` son estables durante su vida
   }, [])
 
   const { leftGrado, rightGrado } = forcedGradosFor(left.result, right.result, showDifficulty)
 
+  const nombreIzq = leftLabel ?? 'Tú'
+  const nombreDer = rightLabel ?? 'el enemigo'
+
   return (
-    <div ref={ref} className="animate-entry-in mt-2 flex items-center justify-center gap-14 rounded-lg border border-dashed border-iron-700 bg-wood-950/30 px-3 py-3">
-      <DiceFace label={leftLabel ?? 'Tú'} side={left} startDelayMs={leftDelayMs} showDifficulty={showDifficulty} forcedGrado={leftGrado} />
-      <span className="text-xs text-wood-600">vs</span>
-      <DiceFace label={rightLabel ?? 'el enemigo'} side={right} startDelayMs={rightDelayMs} showDifficulty={showDifficulty} forcedGrado={rightGrado} />
+    <div ref={ref} className="animate-entry-in mt-2 flex flex-col items-center gap-2 rounded-lg border border-dashed border-iron-700 bg-wood-950/30 px-3 py-3">
+      <div className="flex items-start justify-center gap-14">
+        <DiceFace label={nombreIzq} side={left} startDelayMs={leftDelayMs} showDifficulty={showDifficulty} forcedGrado={leftGrado} />
+        <span className="self-center text-xs text-wood-500">vs</span>
+        <DiceFace label={nombreDer} side={right} startDelayMs={rightDelayMs} showDifficulty={showDifficulty} forcedGrado={rightGrado} />
+      </div>
+      {/* DAD-3 (hito 0.1, H20) — en una tirada opuesta, la comparación final cuando ya se ven los dos dados. */}
+      {!showDifficulty && ambosAterrizados && (
+        <p data-testid="tirada-comparacion" className="animate-entry-in font-mono text-xs text-wood-200">
+          {left.result} vs {right.result} → <span className="font-semibold text-moss-400">{leftGrado === 'claro' ? nombreIzq : nombreDer}</span>
+        </p>
+      )}
     </div>
   )
 }

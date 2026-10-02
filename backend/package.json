@@ -12,6 +12,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "test:turn": "tsx src/scripts/test-turn.ts",
+    "benchmark-turno": "tsx src/scripts/benchmark-turno.ts",
     "reindex-lore": "tsx src/scripts/reindex-lore.ts",
     "seed-catalog": "tsx src/scripts/seed-catalog.ts",
     "sync-item-catalog": "tsx src/scripts/sync-item-catalog.ts",

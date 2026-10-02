@@ -5,6 +5,9 @@ import { getMercado, postDiplomacia, postMercadoComprar, postMercadoVender } fro
 import { PanelEmptyState } from '../../PanelEmptyState'
 import { PanelSection } from '../../PanelSection'
 import { razaThemeStyleVars } from '../../../lib/razaTheme'
+import { ErrorBanner } from '../../../components/ErrorBanner'
+import { useErrorConReintento } from '../../../hooks/useErrorConReintento'
+import { Esqueleto } from '../../Esqueleto'
 
 // Bandas de FactionRelation (0-100, 50=neutro) — mismo lenguaje visual que REPUTATION_BANDS de
 // ReputacionPanel.tsx (banda con nombre + color), pero sobre un `type`/escala distintos: aquí la
@@ -182,8 +185,26 @@ function DiplomaciaCard({
                 <p className={`text-2xs font-bold uppercase tracking-wide ${RELATION_TONE[resultado.type]}`}>{RELATION_LABEL[resultado.type]}</p>
               )}
               {resultado.hechoDeMundo && <p className="mt-1 text-xs leading-relaxed text-wood-300">{resultado.hechoDeMundo}</p>}
-              {resultado.accion === 'espiar' && !resultado.hechoDeMundo && (
-                <p className="mt-1 text-xs leading-relaxed text-wood-400">Presión: {resultado.presion} / 100</p>
+              {resultado.accion === 'espiar' && resultado.presion != null && (
+                // REI-116 (hito 0.1) — presión con barra y la etapa de la relación, que llegaba sin usarse.
+                <div className="mt-1.5 flex flex-col gap-1 text-2xs text-wood-400">
+                  <div className="flex items-center justify-between">
+                    <span>Presión {resultado.presion} / 100</span>
+                    {resultado.stage != null && (
+                      <span title="Etapa de la relación: 0 hasta 59 de presión, luego una más cada 10 puntos (máx. 4).">Etapa {resultado.stage} de 4</span>
+                    )}
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-iron-800" role="meter" aria-label="Presión entre facciones" aria-valuemin={0} aria-valuemax={100} aria-valuenow={resultado.presion}>
+                    <div className="h-full rounded-full bg-cost-500" style={{ width: `${Math.min(100, Math.max(0, resultado.presion))}%` }} />
+                  </div>
+                </div>
+              )}
+              {resultado.accion === 'negociar' && resultado.nivelDiplomatico != null && diplomatico && (
+                // REI-116 (hito 0.1, R4) — el diplomático subía de nivel sin que el jugador lo supiera.
+                <p className="mt-1 text-2xs text-accent2-300">
+                  {resultado.xpGanada ? `+${resultado.xpGanada} XP de diplomacia · ` : ''}
+                  {diplomatico.name}: diplomático nivel {resultado.nivelDiplomatico}
+                </p>
               )}
             </div>
           )}
@@ -216,6 +237,7 @@ function MercadoCard({
   const [mercado, setMercado] = useState<{ tratado: boolean; items: MercadoItemInfo[] } | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [errorVenta, setErrorVenta] = useState<string | null>(null)
+  const { fallo, informar, limpiar } = useErrorConReintento()
   const vendibles = almacenItems.filter((i) => i.catalogSlug)
 
   async function reload() {
@@ -245,6 +267,8 @@ function MercadoCard({
       await postMercadoComprar(saveId, target.slug, almacenItemId)
       await reload()
       await onRefreshSave()
+    } catch (e) {
+      informar('No se pudo comprar el objeto.', e, () => void handleComprar(almacenItemId))
     } finally {
       setBusy(null)
     }
@@ -266,8 +290,9 @@ function MercadoCard({
 
   return (
     <PanelSection title="Mercado">
+      <ErrorBanner fallo={fallo} onCerrar={limpiar} />
       {mercado === null ? (
-        <p className="text-xs text-wood-500">Consultando…</p>
+        <Esqueleto filas={3} que="el mercado" />
       ) : !mercado.tratado ? (
         <p className="text-xs text-wood-500">Negocia un tratado comercial con {target.name} primero (botón Negociar arriba).</p>
       ) : mercado.items.length === 0 ? (

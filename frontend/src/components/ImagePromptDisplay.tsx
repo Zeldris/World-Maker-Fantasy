@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { requestImagePrompt, type ImagePromptEntityType, type ImagePromptSizeProfile } from '../lib/api'
+import { useHerramientasAdminVisibles } from '../lib/modoDesarrollador'
 
 /// Extraído de DetailModal.tsx (auditoría 2026-07-22): la generación de prompts de imagen (red +
 /// su propio estado de carga/error) es un asunto separado de "mostrar el detalle de un objeto/
@@ -172,21 +173,24 @@ function ImagePromptBox({
 // entrada en la Enciclopedia remonte esto limpio (sin arrastrar el resultado de la anterior).
 // Estado `prompt` propio (ya no `existingPrompt ?? generatedPrompt`, 2026-07-22): regenerar
 // sobrescribe este valor directamente, sin que el prop original `existingPrompt` vuelva a ganar.
-export function ImagePromptSlot({
-  label,
-  existingPrompt,
-  worldSlug,
-  entityType,
-  entitySlug,
-  sizeProfile,
-}: {
+interface ImagePromptSlotProps {
   label: string
   existingPrompt: string | null
   worldSlug: string
   entityType: ImagePromptEntityType
   entitySlug: string
   sizeProfile: ImagePromptSizeProfile
-}) {
+}
+
+/// CFG-33 (hito 0.1, H17) — herramienta de admin: solo con el modo desarrollador activo o dentro de la
+/// página de admin (`HerramientasAdminContext`). Envoltorio aparte para que el contenido, con sus
+/// propios hooks, se monte o desmonte entero al cambiar el modo.
+export function ImagePromptSlot(props: ImagePromptSlotProps) {
+  const visible = useHerramientasAdminVisibles()
+  return visible ? <ImagePromptSlotContenido {...props} /> : null
+}
+
+function ImagePromptSlotContenido({ label, existingPrompt, worldSlug, entityType, entitySlug, sizeProfile }: ImagePromptSlotProps) {
   const [prompt, setPrompt] = useState<string | null>(existingPrompt)
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)

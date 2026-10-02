@@ -19,6 +19,10 @@ describe('GET /world/:slug/faction-relations (2026-09-21)', () => {
   let saveId: string;
   let serhuId: string;
   let helsigId: string;
+  /// Fase D (hito 0.1, 2026-10-02): Serhu→Helsig está SEMBRADA (factionRelationsIniciales) y la usa el
+  /// control de región (worldAgenda.ts). Antes este test la sobrescribía y al final la BORRABA, dejando
+  /// el mundo sin ella para el resto de la suite; ahora restaura la fila previa y solo borra si la creó.
+  let relacionPrevia: { presion: number; type: never; stage: number } | null = null;
 
   beforeAll(async () => {
     const userId = await getDefaultUserId();
@@ -30,6 +34,10 @@ describe('GET /world/:slug/faction-relations (2026-09-21)', () => {
     const helsig = await prisma.faction.findFirstOrThrow({ where: { worldId, slug: 'clan-helsig' } });
     helsigId = helsig.id;
 
+    relacionPrevia = (await prisma.factionRelation.findUnique({
+      where: { sourceFactionId_targetFactionId: { sourceFactionId: serhuId, targetFactionId: helsigId } },
+      select: { presion: true, type: true, stage: true },
+    })) as never;
     await prisma.factionRelation.upsert({
       where: { sourceFactionId_targetFactionId: { sourceFactionId: serhuId, targetFactionId: helsigId } },
       update: { type: 'TENSION', presion: 65 },
@@ -53,7 +61,14 @@ describe('GET /world/:slug/faction-relations (2026-09-21)', () => {
 
   afterAll(async () => {
     await prisma.discoveredEntity.deleteMany({ where: { saveId } });
-    await prisma.factionRelation.deleteMany({ where: { sourceFactionId: serhuId, targetFactionId: helsigId } });
+    if (relacionPrevia) {
+      await prisma.factionRelation.update({
+        where: { sourceFactionId_targetFactionId: { sourceFactionId: serhuId, targetFactionId: helsigId } },
+        data: relacionPrevia,
+      });
+    } else {
+      await prisma.factionRelation.deleteMany({ where: { sourceFactionId: serhuId, targetFactionId: helsigId } });
+    }
     await prisma.save.delete({ where: { id: saveId } });
   });
 

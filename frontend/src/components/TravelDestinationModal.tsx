@@ -7,6 +7,9 @@ interface TravelDestinationModalProps {
   saveId: string
   onSelect: (actionText: string) => void
   onCancel: () => void
+  /// UX-3 (hito 0.1) — motivo por el que ahora no se puede lanzar un turno (narrador escribiendo,
+  /// ocupado…); `null`/ausente = libre. Deshabilita los botones que mandan una acción al turno.
+  bloqueoTurno?: string | null
 }
 
 /// Pop-up de "Viajar" (2026-08-17, comentario de startingAbilities.ts: "igual que volver al
@@ -20,7 +23,7 @@ interface TravelDestinationModalProps {
 /// (buildAdjacency + shortestPath + minutosConDestreza), tiempo de FICCIÓN, nunca de reloj real;
 /// `null` cuando el destino no tiene camino real por el grafo desde aquí (se lista igual, sin
 /// badge de tiempo).
-export function TravelDestinationModal({ saveId, onSelect, onCancel }: TravelDestinationModalProps) {
+export function TravelDestinationModal({ saveId, onSelect, onCancel, bloqueoTurno }: TravelDestinationModalProps) {
   const [loading, setLoading] = useState(true)
   const [hasMap, setHasMap] = useState(false)
   const [destinations, setDestinations] = useState<TravelDestinationInfo[]>([])
@@ -50,11 +53,14 @@ export function TravelDestinationModal({ saveId, onSelect, onCancel }: TravelDes
         <p className="text-xs text-wood-500">Todavía no has descubierto ningún otro lugar.</p>
       ) : (
         <div className="space-y-2">
+          {bloqueoTurno && <p className="text-2xs text-wood-500">🔒 {bloqueoTurno}</p>}
           {destinations.map((d) => (
             <button type="button"
               key={d.locationSlug}
+              disabled={!!bloqueoTurno}
+              title={bloqueoTurno ?? undefined}
               onClick={() => onSelect(`Viajo hacia ${d.locationName}.`)}
-              className="tactile flex w-full items-center justify-between gap-3 rounded-lg border border-wood-600/40 bg-wood-950/40 p-3 text-left text-xs text-wood-300 shadow-sm transition-colors hover:border-accent-600/60 hover:bg-accent-500/10"
+              className="tactile flex w-full items-center justify-between gap-3 rounded-lg border border-wood-600/40 bg-wood-950/40 p-3 text-left text-xs text-wood-300 shadow-sm transition-colors hover:border-accent-600/60 hover:bg-accent-500/10 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <span className="min-w-0">
                 <span className="block truncate font-semibold text-wood-100">{d.locationName}</span>

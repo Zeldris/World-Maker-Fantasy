@@ -56,6 +56,9 @@ interface ReinoPanelProps {
   /// H-12 — estado de recetas de construcción + envío del texto de construir (Edificios).
   recipesStatus?: RecipeStatusInfo[]
   onBuild?: (actionText: string) => void
+  /// UX-3 (hito 0.1) — motivo por el que ahora no se puede lanzar un turno (narrador escribiendo,
+  /// ocupado…); `null`/ausente = libre. Deshabilita los botones que mandan una acción al turno.
+  bloqueoTurno?: string | null
 }
 
 /// Cascarón de sub-tabs del Reino (rediseño 2026-09-21, docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md) —
@@ -85,6 +88,7 @@ export function ReinoPanel({
   onSubTabChange,
   recipesStatus,
   onBuild,
+  bloqueoTurno,
 }: ReinoPanelProps) {
   const isEmpty = territories.length === 0 && buildings.length === 0 && subjects.length === 0
   const ayuntamiento = buildings.some((b) => b.recipeKey === 'ayuntamiento')
@@ -136,7 +140,7 @@ export function ReinoPanel({
           onRefreshSave={onRefreshSave}
         />
       )}
-      {activeSubTab === 'edificios' && <EdificiosParcelasSection buildings={buildings} recipesStatus={recipesStatus} onBuild={onBuild} />}
+      {activeSubTab === 'edificios' && <EdificiosParcelasSection buildings={buildings} recipesStatus={recipesStatus} onBuild={onBuild} bloqueoTurno={bloqueoTurno} />}
       {activeSubTab === 'produccion' && (
         <ProduccionSection
           saveId={saveId}

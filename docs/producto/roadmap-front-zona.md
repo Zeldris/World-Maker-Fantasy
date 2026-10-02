@@ -177,17 +177,17 @@ son de relleno.*
 
 | Id | Propuesta | Back | Esf. |
 |---|---|---|---|
-| ZON-10 | **Fichas con placa oscura + pictograma + anillo de disposición** (Foundry VTT). La placa conserva la **forma por categoría** ya decidida (círculo fauna, escudo NPC, cuadrado edificio, rombo recurso) para no romper lo aprendido; dentro, un **pictograma SVG** claro (huella, busto, casa, mineral, calavera, saco); el color pasa del relleno al **anillo**, y los colores salen de los tokens del juego (`moss`, `wood-200`, `danger`, `cost`, `accent2`). Sombra suave para separarla de la ilustración. Resuelve Z6, Z9, Z12. | ✅ | M |
-| ZON-11 | **Tamaño mínimo garantizado**: las fichas se dibujan a tamaño de pantalla fijo (~28 px de diámetro) sea cual sea la escala del lienzo, con área de clic de 40 px. Resuelve Z7. | ✅ | S |
+| ~~ZON-10~~ | ~~**Fichas con placa oscura + pictograma + anillo de disposición** (Foundry VTT). La placa conserva la **forma por categoría** ya decidida (círculo fauna, escudo NPC, cuadrado edificio, rombo recurso) para no romper lo aprendido; dentro, un **pictograma SVG** claro (huella, busto, casa, mineral, calavera, saco); el color pasa del relleno al **anillo**, y los colores salen de los tokens del juego (`moss`, `wood-200`, `danger`, `cost`, `accent2`). Sombra suave para separarla de la ilustración. Resuelve Z6, Z9, Z12.~~ ✅ 2026-10-02: `zona/FichaZona.tsx` (placa oscura con la forma de su categoría, pictograma SVG —huella, busto, casa, cristal, saco, calavera— y anillo de color con tokens `moss`/`wood-200`/`danger`/`cost`/`accent2`, sombra suave). | ✅ | M |
+| ~~ZON-11~~ | ~~**Tamaño mínimo garantizado**: las fichas se dibujan a tamaño de pantalla fijo (~28 px de diámetro) sea cual sea la escala del lienzo, con área de clic de 40 px. Resuelve Z7.~~ ✅ 2026-10-02: ~28 px de pantalla a cualquier tamaño de mapa (`useEscalaPantalla`, `lib/zonaFichas.ts`) y área de clic de 40 px. | ✅ | S |
 | ZON-12 | **Pictograma por especie o NPC** cuando haya icono o miniatura en la Enciclopedia (las fichas de fauna y NPC ya tienen `thumbnail`): retrato recortado en la ficha, como en una mesa virtual; pictograma genérico si no hay. | ✅ | M |
-| ZON-13 | **Grupos legibles**: insignia "×3" en píldora clara fuera de la ficha; a partir de 3, fichas ligeramente apiladas para que se vea "varios". Resuelve Z8. | ✅ | S |
-| ZON-14 | **Ficha del personaje**: retrato o inicial, anillo de cristal `accent` (el color de "tu personaje" en todo el juego), **flecha de dirección** según el último paso y halo suave que respira cuando está quieto. Resuelve Z10. | ✅ | S |
+| ~~ZON-13~~ | ~~**Grupos legibles**: insignia "×3" en píldora clara fuera de la ficha; a partir de 3, fichas ligeramente apiladas para que se vea "varios". Resuelve Z8.~~ ✅ 2026-10-02: píldora clara "×N" fuera de la ficha; desde 3, dos placas apiladas detrás. | ✅ | S |
+| ~~ZON-14~~ | ~~**Ficha del personaje**: retrato o inicial, anillo de cristal `accent` (el color de "tu personaje" en todo el juego), **flecha de dirección** según el último paso y halo suave que respira cuando está quieto. Resuelve Z10.~~ ✅ 2026-10-02: `FichaJugador` — placa con silueta, anillo de cristal `accent`, flecha según el último paso y halo que respira quieto (`animate-pulse-slow`, se apaga con «reducir movimiento»). **Pendiente:** retrato o inicial del personaje (el mapa no recibe el nombre; hoy silueta) y compañeros que viajan con él (Z10). | ✅ | S |
 | ZON-15 | **Compañeros que siguen al personaje** como fichas pequeñas detrás de él (Banner Saga), con su estado de salud en el anillo. | 🔌 (compañeros que viajan) | M |
 | ZON-16 | **Estados de descubrimiento** (Darkest Dungeon): no descubierto = ficha en silueta con "?" y anillo punteado; conocido = normal; agotado/en enfriamiento = ficha atenuada con reloj. Resuelve Z21. | ✅ / 🔌 (enfriamiento) | S |
-| ZON-17 | **Salidas como estandartes de camino**: flecha grande hacia el borde, placa con el nombre (o "Camino hacia el norte" si no se ha visitado) y el tiempo de viaje si se conoce; atenuada si está lejos. | ✅ | S |
+| ~~ZON-17~~ | ~~**Salidas como estandartes de camino**: flecha grande hacia el borde, placa con el nombre (o "Camino hacia el norte" si no se ha visitado) y el tiempo de viaje si se conoce; atenuada si está lejos.~~ ✅ 2026-10-02: `EstandarteSalida` — placa con doble flecha hacia el borde y etiqueta con el destino (o «Camino hacia el …») que crece hacia el interior; atenuada si no está al alcance. **Pendiente:** tiempo de viaje en la etiqueta — `ZonaSalidaInfo` no lo trae (🔌). | ✅ | S |
 | ZON-18 | **Parcelas** con el mismo lenguaje de ficha: vacía = cimientos punteados con "+"; ocupada = icono del edificio con su estado (dañado, en obras). | ✅ | S |
-| ZON-19 | **Etiquetas de nombre**: siempre visibles para los puntos a 2-3 celdas del personaje y para el seleccionado; el resto al pasar el ratón. Placa oscura semitransparente con texto claro. | ✅ | S |
-| ZON-20 | **Leyenda compacta** fija en una esquina del mapa (BG3), plegable, con las mismas fichas reales. | ✅ | S |
+| ~~ZON-19~~ | ~~**Etiquetas de nombre**: siempre visibles para los puntos a 2-3 celdas del personaje y para el seleccionado; el resto al pasar el ratón. Placa oscura semitransparente con texto claro.~~ ✅ 2026-10-02: `EtiquetaNombre` en una capa por encima de todo: siempre para lo que está a ≤ 2,5 celdas del personaje y lo seleccionado; el resto al pasar el ratón. | ✅ | S |
+| ~~ZON-20~~ | ~~**Leyenda compacta** fija en una esquina del mapa (BG3), plegable, con las mismas fichas reales.~~ ✅ 2026-10-02: leyenda plegable en la esquina inferior izquierda del mapa, con las fichas reales (incluida la salida); sale de debajo del mapa. | ✅ | S |
 | ZON-21 | **Modo daltónico** (`CFG-29`): además del color, el anillo de hostil lleva muescas y el de aliado es doble. | ✅ | S |
 
 ## 8. Movimiento y ruta (`ZON-M`)
@@ -236,7 +236,7 @@ son de relleno.*
 |---|---|---|---|
 | ZON-60 | **Zoom y desplazamiento** con rueda y arrastre, suavizados, con límites; doble clic en el personaje lo centra. Las fichas no crecen con el zoom (tamaño fijo en pantalla, ZON-11). Resuelve Z24. | ✅ | M |
 | ZON-61 | **Seguir al personaje** opcional mientras anda, con el mapa ampliado. | ✅ | S |
-| ZON-62 | **Cuadrícula bajo demanda** (Z11): oculta por defecto, visible al mantener `Alt`, al hacer zoom o activada en Configuración; con líneas oscuras y claras alternas para verse en cualquier terreno. | ✅ | S |
+| ~~ZON-62~~ | ~~**Cuadrícula bajo demanda** (Z11): oculta por defecto, visible al mantener `Alt`, al hacer zoom o activada en Configuración; con líneas oscuras y claras alternas para verse en cualquier terreno.~~ ✅ 2026-10-02: oculta por defecto; visible mientras se mantiene `Alt` o fijada con el botón «▦ Cuadrícula» del mapa (mando/Steam Deck); líneas oscura + clara. **Pendiente:** al hacer zoom (llega con `ZON-60`) y opción en Configuración (`CFG`). | ✅ | S |
 
 ## 12. Vida y animación (`ZON-V`)
 
@@ -291,7 +291,7 @@ son de relleno.*
 
 | Fase | Contenido | Resultado |
 |---|---|---|
-| **Z-A · Que se lea** | ZON-10, 11, 13, 14, 17, 19, 20, 62 | Las fichas se distinguen sobre cualquier ilustración y a tamaño de Steam Deck. Solo front. |
+| **Z-A · Que se lea** ✅ 2026-10-02 | ZON-10, 11, 13, 14, 17, 19, 20, 62 | Las fichas se distinguen sobre cualquier ilustración y a tamaño de Steam Deck. Solo front. **Hecha entera** — resultado en [`img/zona-mapa-z-a.jpg`](img/zona-mapa-z-a.jpg). Pendientes que necesitan backend o fases posteriores: tiempo de viaje en las salidas (🔌), retrato/inicial y compañeros en la ficha del personaje, cuadrícula con zoom (`ZON-60`) y en Configuración. |
 | **Z-B · Que se entienda antes de actuar** | ZON-30, 31, 32, 34, 35, 36, 40, 41, 51 | Ruta, coste, parar, velocidad y menú contextual. Solo front. |
 | **Z-C · Siempre a mano** | ZON-1 (decisión de disposición), 2 o 3, 4, 5, 45 | El mapa deja de ser un modal escondido. |
 | **Z-D · Sin sorpresas** | Exponer hostilidad y rutas → ZON-33, 50, 53, 16, 58 | El peligro se ve antes de que llegue. |

@@ -30,9 +30,11 @@ interface CompanerosPanelProps {
   /// mismas plantillas ya cargadas para ReinoPanel.tsx, reutilizadas aquí para no duplicar el
   /// fetch ni la mutación.
   plantillasEquipo: PlantillaEquipoInfo[]
+  /// DAD-4 (hito 0.1) — reenviado a `TameoModal` para la etiqueta de la tirada.
+  characterName?: string
 }
 
-export function CompanerosPanel({ saveId, companions, inventory, onRefreshSave, plantillasEquipo }: CompanerosPanelProps) {
+export function CompanerosPanel({ saveId, companions, inventory, onRefreshSave, plantillasEquipo, characterName }: CompanerosPanelProps) {
   const [capturaOpen, setCapturaOpen] = useState(false)
   const [pendientes, setPendientes] = useState<TameoPendiente[]>([])
   const [tameoAbierto, setTameoAbierto] = useState<TameoPendiente | null>(null)
@@ -179,6 +181,7 @@ export function CompanerosPanel({ saveId, companions, inventory, onRefreshSave, 
       {tameoAbierto && (
         <TameoModal
           saveId={saveId}
+          characterName={characterName}
           pendiente={tameoAbierto}
           onConfirmado={async () => {
             setTameoAbierto(null)

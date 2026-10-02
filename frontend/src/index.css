@@ -1,6 +1,8 @@
 /* Cinzel nunca se cargaba de verdad — --font-serif solo tenía el nombre, sin @font-face ni link,
-   así que caía en silencio a Georgia salvo que la tuvieras instalada en el sistema. */
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&display=swap');
+   así que caía en silencio a Georgia salvo que la tuvieras instalada en el sistema. BAS-1 (hito 0.1):
+   ya no viene de Google Fonts sino empaquetada con el juego, igual que Inter (que antes ni se
+   cargaba: caía a la fuente del sistema). */
+@import "./assets/fonts/fonts.css";
 @import "tailwindcss";
 
 @theme {

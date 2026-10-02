@@ -2764,8 +2764,20 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
         { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-analizar-grupo', destreza: 1, inteligencia: 6, esGrupo: true },
       ]),
     );
-    const [analizado, otro] = await prisma.combatParticipant.findMany({ where: { encounterId, npcId: enemigo.id } });
-    await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: analizado.id });
+    // Fase C del 0.1 (2026-10-01, test intermitente): NO se puede dar por hecho que la jugadora
+    // analiza a la primera fila de `findMany` (sin orden garantizado). Con destreza 1000 actúa
+    // primero, pero `iniciarCombatEncounter` ya calcula los enganches de la ronda 1: el primer
+    // miembro del grupo en iniciativa la reclama a ella y, por la regla 3 del enganche ("si ya te
+    // han elegido, no eliges tú"), queda en duelo con ese y `fijarEleccionRondaJugador` no cambia
+    // nada (`esperandoEleccionJugadora: false`). Qué miembro va antes lo decide la tirada de
+    // iniciativa, así que el analizado es el rival con el que de verdad está en duelo.
+    const miembros = await prisma.combatParticipant.findMany({ where: { encounterId, npcId: enemigo.id } });
+    await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: miembros[0].id });
+    const jugadora = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'JUGADOR' } });
+    const analizado = miembros.find((m) => m.id === jugadora.objetivoActualId)!;
+    const otro = miembros.find((m) => m.id !== jugadora.objetivoActualId)!;
+    expect(analizado).toBeDefined();
+    expect(otro).toBeDefined();
 
     const habilidad: HabilidadParaIntercambio = {
       name: 'Analizar Rival (prueba grupo)',

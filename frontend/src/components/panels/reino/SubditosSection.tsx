@@ -1,8 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import type { AlmacenItemInfo, CompanionInfo, EquipSlot, InventoryItemInfo, PlantillaEquipoInfo, SubjectInfo } from '../../../types'
 import { PanelSection } from '../../PanelSection'
-import { depositarEnAlmacen, retirarDeAlmacen, crearPlantilla, borrarPlantilla, asignarPlantillaCompanion, asignarPlantillaSubject, fijarRolReinoCompanion } from '../../../lib/api'
+import { SelectorJuego } from '../../SelectorJuego'
+import { AlmacenSection } from './AlmacenSection'
+import { crearPlantilla, borrarPlantilla, asignarPlantillaCompanion, asignarPlantillaSubject, fijarRolReinoCompanion } from '../../../lib/api'
 import { SLOT_LABEL, SLOT_ORDER } from '../../../lib/equipSlots'
+import { ErrorBanner } from '../../../components/ErrorBanner'
+import { useErrorConReintento } from '../../../hooks/useErrorConReintento'
 
 /// Selector compartido de plantilla — súbdito o compañero integrado en el Reino, mismo desplegable.
 /// Exportado (2026-08-27, auditoría de diseño/UX § 1.3: "cuando `rolReino` no es null, la tarjeta
@@ -29,6 +33,7 @@ export function PlantillaSelect({
   const [confirmed, setConfirmed] = useState(0)
   const [flashing, setFlashing] = useState(false)
   const busyRef = useRef(false)
+  const { fallo, informar, limpiar } = useErrorConReintento()
 
   async function handleChange(id: string | null) {
     if (busyRef.current) return
@@ -37,6 +42,8 @@ export function PlantillaSelect({
       await onChange(id)
       setConfirmed((c) => c + 1)
       setFlashing(true)
+    } catch (e) {
+      informar('No se pudo cambiar la plantilla.', e, () => void handleChange(id))
     } finally {
       busyRef.current = false
     }
@@ -51,105 +58,19 @@ export function PlantillaSelect({
   }, [flashing])
 
   return (
-    // El `key` va en el contenedor, no en el propio `<select>` (evita remontar el control nativo —
-    // y con él el foco/desplegable — justo después de que la usuaria acabe de interactuar con él).
-    <div key={confirmed} className={flashing ? 'animate-pop-once' : undefined}>
-      <select
+    // El `key` va en el contenedor, no en el propio selector (evita remontar el control — y con él
+    // el foco — justo después de que la usuaria acabe de interactuar con él).
+    <div key={confirmed} className={`mt-2 ${flashing ? 'animate-pop-once' : ''}`}>
+      {/* REI-113 (hito 0.1) — selector del juego en vez del `<select>` nativo. */}
+      <SelectorJuego
+        ariaLabel="Plantilla de equipo"
         value={value ?? ''}
-        onChange={(e) => void handleChange(e.target.value || null)}
-        className={`mt-2 w-full rounded-lg border bg-wood-950/60 px-2 py-1 text-2xs text-wood-300 ${flashing ? 'border-accent-500' : 'border-iron-700'}`}
-      >
-        <option value="">Sin plantilla</option>
-        {plantillas.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name} ({p.rol})
-          </option>
-        ))}
-      </select>
+        opciones={[{ value: '', label: 'Sin plantilla' }, ...plantillas.map((p) => ({ value: p.id, label: `${p.name} (${p.rol})` }))]}
+        onChange={(v) => void handleChange(v || null)}
+        className={`w-full ${flashing ? 'border-accent-500' : ''}`}
+      />
+      <ErrorBanner fallo={fallo} onCerrar={limpiar} />
     </div>
-  )
-}
-
-/// Almacén de Reino (§6-7) — pool de objetos separado de la mochila personal. Depositar mueve un
-/// objeto SIN equipar de la mochila al Almacén (y dispara el auto-equipo del backend); Retirar
-/// hace el camino contrario, sin equiparlo en nadie.
-function AlmacenSection({
-  saveId,
-  inventory,
-  almacenItems,
-  onRefreshSave,
-}: {
-  saveId: string
-  inventory: InventoryItemInfo[]
-  almacenItems: AlmacenItemInfo[]
-  onRefreshSave: () => Promise<void>
-}) {
-  const [busy, setBusy] = useState<string | null>(null)
-  const depositable = inventory.filter((i) => !i.slot && !i.companionId && !i.subjectId)
-
-  async function handleDepositar(itemId: string) {
-    setBusy(itemId)
-    try {
-      await depositarEnAlmacen(saveId, itemId)
-      await onRefreshSave()
-    } finally {
-      setBusy(null)
-    }
-  }
-
-  async function handleRetirar(almacenItemId: string) {
-    setBusy(almacenItemId)
-    try {
-      await retirarDeAlmacen(saveId, almacenItemId)
-      await onRefreshSave()
-    } finally {
-      setBusy(null)
-    }
-  }
-
-  return (
-    <PanelSection title="Almacén de Reino">
-      <div className="flex flex-col gap-3">
-        {almacenItems.length === 0 ? (
-          <p className="text-xs text-wood-500">Vacío — deposita objetos aquí para que se auto-equipen en súbditos/compañeros con plantilla asignada.</p>
-        ) : (
-          <div className="flex flex-col gap-1.5">
-            {almacenItems.map((item) => (
-              <div key={item.id} className="flex items-center justify-between gap-2 rounded-lg border border-iron-700 bg-wood-950/40 px-3 py-2">
-                <span className="truncate text-xs text-wood-200">{item.name}</span>
-                <button type="button"
-                  onClick={() => handleRetirar(item.id)}
-                  disabled={busy === item.id}
-                  className="tactile shrink-0 rounded border border-iron-700 px-2 py-1 text-2xs text-wood-400 hover:text-accent-300 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {busy === item.id ? '...' : 'Retirar'}
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {depositable.length > 0 && (
-          <details className="text-xs">
-            <summary className="cursor-pointer text-wood-400 hover:text-accent-300">Depositar desde la mochila</summary>
-            <div className="mt-2 flex flex-col gap-1.5">
-              {depositable.map((item) => (
-                <div key={item.id} className="flex items-center justify-between gap-2 rounded-lg border border-iron-700 bg-wood-950/40 px-3 py-2">
-                  <span className="truncate text-xs text-wood-200">{item.name}</span>
-                  <button type="button"
-                    onClick={() => handleDepositar(item.id)}
-                    disabled={busy === item.id}
-                    className="tactile shrink-0 rounded border border-accent-600/60 px-2 py-1 text-2xs text-accent-300 hover:bg-accent-500/10 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {busy === item.id ? '...' : 'Depositar'}
-                  </button>
-                </div>
-              ))}
-            </div>
-          </details>
-        )}
-      </div>
-    </PanelSection>
   )
 }
 
@@ -179,6 +100,7 @@ function PlantillasSection({
   const [prioridad, setPrioridad] = useState(0)
   const [rows, setRows] = useState<{ slot: EquipSlot; category: string }[]>([{ slot: 'ARMA_PRINCIPAL', category: '' }])
   const [busy, setBusy] = useState(false)
+  const { fallo, informar, limpiar } = useErrorConReintento()
 
   // B.17 (checklist frontend 2026-08-27) — `category` es texto libre en todo el catálogo (sin
   // enum cerrado en el backend, ver ItemCatalog.category), así que un `<select>` estricto no es
@@ -208,6 +130,8 @@ function PlantillasSection({
       setRows([{ slot: 'ARMA_PRINCIPAL', category: '' }])
       setCreating(false)
       await onRefreshSave()
+    } catch (e) {
+      informar('No se pudo crear la plantilla.', e, () => void handleCrear())
     } finally {
       setBusy(false)
     }
@@ -218,6 +142,8 @@ function PlantillasSection({
     try {
       await borrarPlantilla(saveId, id)
       await onRefreshSave()
+    } catch (e) {
+      informar('No se pudo borrar la plantilla.', e, () => void handleBorrar(id))
     } finally {
       setBusy(false)
     }
@@ -227,6 +153,7 @@ function PlantillasSection({
 
   return (
     <PanelSection title="Plantillas de equipo">
+      <ErrorBanner fallo={fallo} onCerrar={limpiar} />
       <datalist id="plantilla-categorias-conocidas">
         {categoriasConocidas.map((c) => (
           <option key={c} value={c} />
@@ -301,17 +228,13 @@ function PlantillasSection({
             </div>
             {rows.map((row, i) => (
               <div key={i} className="flex gap-2">
-                <select
+                <SelectorJuego<EquipSlot>
+                  ariaLabel={`Hueco de la fila ${i + 1}`}
                   value={row.slot}
-                  onChange={(e) => setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, slot: e.target.value as EquipSlot } : r)))}
-                  className="rounded-lg border border-iron-700 bg-wood-950/60 px-2 py-1.5 text-2xs text-wood-200"
-                >
-                  {SLOT_ORDER.map((s) => (
-                    <option key={s} value={s}>
-                      {SLOT_LABEL[s]}
-                    </option>
-                  ))}
-                </select>
+                  opciones={SLOT_ORDER.map((s) => ({ value: s, label: SLOT_LABEL[s] }))}
+                  onChange={(v) => setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, slot: v } : r)))}
+                  className="py-1.5"
+                />
                 <input
                   value={row.category}
                   onChange={(e) => setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, category: e.target.value } : r)))}
@@ -356,17 +279,22 @@ function PlantillasSection({
 }
 
 /// Roles de Reino válidos (mismos que `ROLES_REINO` del backend, companeros.ts).
-const ROLES_REINO: { value: string; label: string }[] = [
-  { value: 'trabajador', label: 'Trabajador' },
-  { value: 'guardia', label: 'Guardia' },
-  { value: 'productor', label: 'Productor' },
-  { value: 'diplomatico', label: 'Diplomático' },
+/// REI-115 (hito 0.1, R25) — qué hace hoy cada rol en el código (`backend/src/routes/saves/companeros.ts`,
+/// `dailyTick.ts`, `reino.ts`): cualquier rol mete al compañero en el Reino (puede trabajar en un
+/// edificio y lo atiende la Casa de curas); guardia/productor/trabajador solo cambian qué plantilla
+/// de equipo se le aplica; diplomático habilita la diplomacia con facciones.
+const ROLES_REINO: { value: string; label: string; descripcion: string }[] = [
+  { value: 'trabajador', label: 'Trabajador', descripcion: 'Puede trabajar en un edificio. Recibe la plantilla de equipo de rol «trabajador».' },
+  { value: 'guardia', label: 'Guardia', descripcion: 'Puede trabajar en un edificio. Recibe la plantilla de rol «guardia» (arma y ropa).' },
+  { value: 'productor', label: 'Productor', descripcion: 'Puede trabajar en un edificio. Recibe la plantilla de rol «productor» (herramienta).' },
+  { value: 'diplomatico', label: 'Diplomático', descripcion: 'Necesario para negociar, sabotear o espiar a otras facciones.' },
 ]
 
 /// Selector de rol de Reino por compañero (H-1): sin `rolReino` un compañero no es candidato a
 /// trabajador ni a diplomático. "Sin rol" lo saca del Reino (y del edificio al que estuviera asignado).
 function RolesReinoSection({ saveId, companions, onRefreshSave }: { saveId: string; companions: CompanionInfo[]; onRefreshSave: () => Promise<void> }) {
   const [busy, setBusy] = useState(false)
+  const { fallo, informar, limpiar } = useErrorConReintento()
   if (companions.length === 0) return null
 
   async function handleChange(companionId: string, rol: string) {
@@ -374,6 +302,8 @@ function RolesReinoSection({ saveId, companions, onRefreshSave }: { saveId: stri
     try {
       await fijarRolReinoCompanion(saveId, companionId, rol || null)
       await onRefreshSave()
+    } catch (e) {
+      informar('No se pudo cambiar el rol.', e, () => void handleChange(companionId, rol))
     } finally {
       setBusy(false)
     }
@@ -382,23 +312,21 @@ function RolesReinoSection({ saveId, companions, onRefreshSave }: { saveId: stri
   return (
     <PanelSection title="Roles en el Reino">
       <div className="flex flex-col gap-1.5">
+        <ErrorBanner fallo={fallo} onCerrar={limpiar} />
         {companions.map((c) => (
           <div key={c.id} className="flex items-center justify-between gap-2 text-xs text-wood-300">
             <span>{c.name}</span>
-            <select
+            <SelectorJuego
+              ariaLabel={`Rol en el Reino de ${c.name}`}
               value={c.rolReino ?? ''}
               disabled={busy}
-              onChange={(e) => void handleChange(c.id, e.target.value)}
-              aria-label={`Rol en el Reino de ${c.name}`}
-              className="rounded-lg border border-iron-700 bg-wood-950/60 px-2 py-1 text-2xs text-wood-300 disabled:opacity-50"
-            >
-              <option value="">Sin rol</option>
-              {ROLES_REINO.map((r) => (
-                <option key={r.value} value={r.value}>
-                  {r.label}
-                </option>
-              ))}
-            </select>
+              opciones={[
+                { value: '', label: 'Sin rol', descripcion: 'Fuera del Reino: no trabaja en edificios ni lo atiende la Casa de curas.' },
+                ...ROLES_REINO.map((r) => ({ value: r.value, label: r.label, descripcion: r.descripcion })),
+              ]}
+              onChange={(v) => void handleChange(c.id, v)}
+              className="min-w-[8rem]"
+            />
           </div>
         ))}
       </div>

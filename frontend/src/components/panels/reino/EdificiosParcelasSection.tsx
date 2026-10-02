@@ -1,5 +1,6 @@
 import type { BuildingInfo, RecipeStatusInfo } from '../../../types'
 import { PanelSection } from '../../PanelSection'
+import { TooltipAnchor } from '../../TooltipAnchor'
 import { cuartelBuildDisabledReason } from '../../../lib/cuartelBuild'
 
 const buildingStatusLabel: Record<BuildingInfo['status'], string> = {
@@ -48,10 +49,13 @@ interface EdificiosParcelasSectionProps {
   recipesStatus?: RecipeStatusInfo[]
   /// Manda el texto de construcción por el turno normal (undefined = sin botones).
   onBuild?: (actionText: string) => void
+  /// UX-3 (hito 0.1) — motivo por el que ahora no se puede lanzar un turno (narrador escribiendo,
+  /// ocupado…); `null`/ausente = libre. Deshabilita los botones que mandan una acción al turno.
+  bloqueoTurno?: string | null
 }
 
 /// Sub-tab "Edificios y Parcelas" del Reino (rediseño 2026-09-21) — extraído de `ReinoPanel.tsx`.
-export function EdificiosParcelasSection({ buildings, recipesStatus = [], onBuild }: EdificiosParcelasSectionProps) {
+export function EdificiosParcelasSection({ buildings, recipesStatus = [], onBuild, bloqueoTurno }: EdificiosParcelasSectionProps) {
   const hasCuartel = buildings.some((b) => b.recipeKey === 'cuartel-avanzado')
   const buildButtons = onBuild && (
     <PanelSection title="Construir">
@@ -59,7 +63,7 @@ export function EdificiosParcelasSection({ buildings, recipesStatus = [], onBuil
         {CUARTEL_BUILD_OPTIONS.map((opt) => {
           const status = recipesStatus.find((s) => s.recipeCategory === 'construccion' && s.recipeKey === opt.recipeKey)
           const alreadyBuilt = buildings.some((b) => b.recipeKey === opt.recipeKey)
-          const reason = cuartelBuildDisabledReason(status, hasCuartel, opt.needsCuartel, alreadyBuilt)
+          const reason = cuartelBuildDisabledReason(status, hasCuartel, opt.needsCuartel, alreadyBuilt) ?? bloqueoTurno ?? null
           return (
             <div key={opt.recipeKey}>
               <button
@@ -106,9 +110,12 @@ export function EdificiosParcelasSection({ buildings, recipesStatus = [], onBuil
           <div key={b.id} className="rounded-lg border border-iron-700 bg-wood-950/40 px-3.5 py-2.5">
             <p className="flex items-center justify-between font-medium text-wood-100">
               {b.name}
-              <span className={`rounded-full border px-2 py-0.5 text-2xs uppercase tracking-wide ${BUILDING_STATUS_TONE[b.status]}`}>
-                {buildingStatusLabel[b.status]}
-              </span>
+              {/* REI-115 (hito 0.1) — el significado del estado al pasar por encima, no solo en la leyenda. */}
+              <TooltipAnchor text={buildingStatusLabel[b.status]} subtext={BUILDING_STATE_HINT[b.status]}>
+                <span className={`rounded-full border px-2 py-0.5 text-2xs uppercase tracking-wide ${BUILDING_STATUS_TONE[b.status]}`}>
+                  {buildingStatusLabel[b.status]}
+                </span>
+              </TooltipAnchor>
             </p>
             <p className="mt-0.5 text-2xs text-wood-500">
               {b.kind}

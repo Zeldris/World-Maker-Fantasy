@@ -1,3 +1,4 @@
+import { useNoticiasMundo } from '../hooks/useNoticiasMundo'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useSession } from '../context/useSession'
@@ -386,6 +387,10 @@ export function GameView() {
   // de banners persistidos al cargar la Enciclopedia).
   const { buildEntityBanner } = useEntityBanner(saveId, enciclopediaIndex, setCharacterLog, setWorldLog)
   const [notFound, setNotFound] = useState(false)
+  // UX-16 (hito 0.1, H16) — por qué no se pudo crear la partida nueva: sin la selección del
+  // asistente (no debería pasar ya, ver SessionContext) o un fallo real de `createSave`.
+  const [creacionError, setCreacionError] = useState<'sin-seleccion' | 'fallo' | null>(null)
+  const [reintentosCreacion, setReintentosCreacion] = useState(0)
   const [condicionFisica, setCondicionFisica] = useState<CondicionFisica>('ILESO')
   // Fase 2 de efectos de clase (2026-08-27, indicador de combate) — mismo patrón que
   // condicionFisica: se sincroniza al cargar la partida y se actualiza con cada respuesta de turno.
@@ -498,6 +503,18 @@ export function GameView() {
   // combat.combatOpen de useCombatFlow) para tener un único punto de verdad de "hay algo abierto
   // encima del juego ahora mismo" antes de decidir si se abre uno nuevo.
   const anyModalOpen = anyActionModalOpen || !!detailTarget || !!kingdomFoundedInfo || combat.combatOpen
+  // UX-3 (hito 0.1) — mismas condiciones que la guardia de `handleSubmit` (useTurnFlow.ts), con su
+  // motivo: deshabilita los botones que lanzan un turno fuera del composer (Construir, Viajar,
+  // Campamento, salida de zona), que pueden estar a la vista mientras el narrador escribe.
+  const bloqueoTurno = characterThinking
+    ? 'El narrador todavía está escribiendo.'
+    : busyUntil
+      ? 'Estás ocupado con otra actividad.'
+      : endedAt
+        ? 'La partida ha terminado.'
+        : pendingDeathResolution
+          ? 'Primero resuelve lo que ha pasado tras tu muerte.'
+          : null
   // Un agresivo te corta el paso (2026-09-28) — la brújula se oculta hasta reaccionar (el backend
   // rechaza igualmente moverse con 409, esto solo evita ofrecer algo que no se puede hacer).
   const combateForzadoPendiente = characterLog.some((e) => e.dynamicModeOffer?.combateForzado)
@@ -535,6 +552,9 @@ export function GameView() {
     buildEntityBanner,
     setWorldLog,
   })
+
+  // Fase D (hito 0.1) — noticias del mundo escritas en segundo plano, sin esperar a recargar.
+  useNoticiasMundo({ saveId, worldLog, setWorldLog, characterThinking })
 
   const characterFlavor = useRotatingFlavor(characterThinking, combat.combatOpen ? combatWaitingFlavor : characterWaitingFlavor)
   const worldFlavor = useRotatingFlavor(worldThinking, worldWaitingFlavor)
@@ -975,7 +995,7 @@ export function GameView() {
       // este `return` silencioso dejaba "Cargando partida..." para siempre; ahora se muestra la
       // pantalla de error con botón de volver a partidas.
       if (!selectedWorld || !selectedCharacter) {
-        if (!cancelled) setNotFound(true)
+        if (!cancelled) setCreacionError('sin-seleccion')
         return
       }
       // Intro propia por personaje pregenerado (2026-07-28, petición explícita: "había
@@ -1007,7 +1027,9 @@ export function GameView() {
         const { id: newId } = await creatingSaveRef.current
         if (!cancelled) navigate(`/solitario/partida/${newId}`, { replace: true })
       } catch {
-        if (!cancelled) setNotFound(true)
+        // Sin limpiar la promesa, *Reintentar* volvería a esperar la misma ya rechazada.
+        creatingSaveRef.current = null
+        if (!cancelled) setCreacionError('fallo')
       }
     }
 
@@ -1050,6 +1072,7 @@ export function GameView() {
     }
 
     if (id === 'nueva') {
+      setCreacionError(null)
       createNewSave()
     } else if (id) {
       loadExistingSave(id)
@@ -1058,12 +1081,13 @@ export function GameView() {
     return () => {
       cancelled = true
     }
-    // Deliberadamente solo `id`: este efecto debe correr una única vez por navegación de ruta
+    // Deliberadamente solo `id` (y `reintentosCreacion`, que solo cambia al pulsar *Reintentar* de
+    // UX-16): este efecto debe correr una única vez por navegación de ruta
     // (crear o cargar), nunca de nuevo porque `selectedWorld`/`selectedCharacter`/
     // `selectedDificultad` (SessionContext) cambien de referencia por otra razón — eso repetiría
     // `createNewSave`/`loadExistingSave` sin que el jugador haya navegado a ningún sitio nuevo.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id])
+  }, [id, reintentosCreacion])
 
   // Pausar/reanudar la partida de verdad al salir (roadmap 2026-07-20: "quiero que la partida se
   // pause si salgo de ella"). `resume` al entrar/recuperar `saveId`; `pause` tanto al desmontar
@@ -1107,6 +1131,7 @@ export function GameView() {
     fictionalDate,
     characterName,
     busyUntil,
+    characterThinking,
     endedAt,
     pendingDeathResolution,
     characterLog,
@@ -1244,6 +1269,35 @@ export function GameView() {
   // `busyUntil`/`busyActivity`/`busyDuracionMinutos` los siguen escribiendo `syncFromSave`
   // (arriba) y `handleSubmit` (abajo, en el catch de `isBusyError`), fuera del hook.
   const { cancelingTransit, nowTick, handleCancelTransit } = useTransitPolling({ saveId, busyUntil, syncFromSave })
+
+  if (id === 'nueva' && creacionError) {
+    return (
+      <div role="alert" className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
+        <p className="text-wood-200">
+          {creacionError === 'fallo' ? 'No se pudo crear la partida.' : 'Se ha perdido la elección de mundo y personaje.'}
+        </p>
+        <p className="max-w-md text-xs text-wood-500">
+          {creacionError === 'fallo'
+            ? 'El servidor no respondió como esperábamos. Tu elección sigue guardada: puedes volver a intentarlo.'
+            : 'Vuelve a elegir el mundo y el personaje para empezar.'}
+        </p>
+        <div className="flex gap-4">
+          {creacionError === 'fallo' && (
+            <button
+              type="button"
+              onClick={() => setReintentosCreacion((n) => n + 1)}
+              className="tactile rounded-lg border border-accent-600 bg-accent-500/20 px-3.5 py-1.5 text-sm font-semibold text-accent-300 hover:bg-accent-500/35"
+            >
+              Reintentar
+            </button>
+          )}
+          <button type="button" onClick={() => navigate('/solitario')} className="text-sm text-accent-400 hover:text-accent-300">
+            ← Volver al menú
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   if (notFound || (!saveId && id !== 'nueva')) {
     return (
@@ -1418,6 +1472,7 @@ export function GameView() {
           ) : (
             <LogPanel
               title="Tu personaje"
+              bloqueoAcciones={bloqueoTurno}
               subtitle="Lo que haces, dices y percibes"
               entries={characterLog}
               accent="accent"
@@ -1460,6 +1515,7 @@ export function GameView() {
             // se sustituye por CombatPanel mientras dura el combate; el log de mundo en sí sigue
             // acumulándose por debajo, sin perderse, listo para cuando termine.
             <CombatPanel
+              characterName={characterName ?? undefined}
               playerCondicion={condicionFisica}
               playerActiveEffects={playerActiveEffects}
               energia={energia}
@@ -1662,7 +1718,15 @@ export function GameView() {
             // por debajo de esos modales pese a estar tapado visualmente. Mismo cálculo reutilizado
             // para el toggle y la SkillBar (2026-08-29) — ninguno de los dos debe quedar activo
             // cuando el composer normal tampoco lo estaría.
-            const composerDisabled = characterThinking || !!busyUntil || (!!combateIniciado && !combat.combatOpen) || anyModalOpen
+            // UX-13 (hito 0.1, H11) — `anyModalOpen` es el guard de exclusión entre modales de acción;
+            // para el composer cuentan además el resto de capas que se abren encima del juego. El cajón
+            // de paneles (`activePanel`) queda fuera a propósito: la Enciclopedia inserta chips en el
+            // composer con el cajón abierto.
+            const claseVisible = !!pendingClaseChoice && !pendingDeathResolution && !endedAt && !!worldIdSlug
+            const especializacionVisible = !!pendingEspecializacionChoice && !pendingDeathResolution && !endedAt && !!clase && !!worldIdSlug
+            const capaEncimaAbierta =
+              anyModalOpen || zonaModalOpen || confirmingExit || !!editingSkillBar || !!recursoDetalle || claseVisible || especializacionVisible
+            const composerDisabled = characterThinking || !!busyUntil || (!!combateIniciado && !combat.combatOpen) || capaEncimaAbierta
             // Toggle a la IZQUIERDA de la propia fila del composer/barra, no encima en su propia
             // línea (2026-08-29, feedback en vivo, segunda vuelta: "no bajaste el botón... a la
             // izquierda donde te dije") — mismo slot visual que la barra, `leftSlot` de
@@ -1736,7 +1800,7 @@ export function GameView() {
                           ? 'Ocupado con algo que lleva tiempo — vuelve cuando termine.'
                           : combateIniciado && !combat.combatOpen
                             ? 'En combate — usa el panel de combate para actuar.'
-                            : anyModalOpen
+                            : capaEncimaAbierta
                               ? 'Resuelve lo que tienes abierto antes de escribir una nueva acción.'
                               : undefined
                     }
@@ -1858,10 +1922,10 @@ export function GameView() {
 
 
       {simpleModal === 'camp' && saveId && (
-        <CampSelectionModal saveId={saveId} onSelect={handleSimpleModalSelect} onCancel={closeSimpleModal} />
+        <CampSelectionModal saveId={saveId} onSelect={handleSimpleModalSelect} onCancel={closeSimpleModal} bloqueoTurno={bloqueoTurno} />
       )}
       {simpleModal === 'travel' && saveId && (
-        <TravelDestinationModal saveId={saveId} onSelect={handleSimpleModalSelect} onCancel={closeSimpleModal} />
+        <TravelDestinationModal saveId={saveId} onSelect={handleSimpleModalSelect} onCancel={closeSimpleModal} bloqueoTurno={bloqueoTurno} />
       )}
       {healModalOpen && (
         <HealSelectionModal
@@ -1965,6 +2029,7 @@ export function GameView() {
             setZonaModalOpen(false)
             handleSubmit(actionText)
           }}
+          bloqueoTurno={bloqueoTurno}
           // Icono de parcela (§ 7.4, 2026-09-21) — roster estático ya cargado por useRecipesData
           // (nombre/descripción por recipeKey) + refreshSave (mismo callback que ya usa ReinoPanel
           // tras "Descansar en campamento", una acción directa sin /turn/narrate).
@@ -2069,7 +2134,7 @@ export function GameView() {
             />
           )}
           {activePanel === 'companeros' && saveId && (
-            <CompanerosPanel saveId={saveId} companions={companions} inventory={inventory} onRefreshSave={refreshSave} plantillasEquipo={plantillasEquipo} />
+            <CompanerosPanel saveId={saveId} companions={companions} inventory={inventory} onRefreshSave={refreshSave} plantillasEquipo={plantillasEquipo} characterName={characterName ?? undefined} />
           )}
           {activePanel === 'misiones' && <MisionesPanel quests={quests} />}
           {activePanel === 'reino' && saveId && (
@@ -2094,6 +2159,7 @@ export function GameView() {
               onSubTabChange={setReinoSubTab}
               recipesStatus={recipesStatus}
               onBuild={(actionText) => handleSubmit(actionText)}
+              bloqueoTurno={bloqueoTurno}
             />
           )}
           {activePanel === 'enciclopedia' && (

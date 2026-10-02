@@ -197,7 +197,11 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
   captura, salir): sí/no. **S**
 - **CFG-33 · Modo desarrollador**: muestra versión completa, id de partida, tiempos del narrador y
   las herramientas de prompts de imagen; **apagado por defecto**, de modo que `ImagePromptSlot`
-  deja de verse en partida (H17). **S**
+  deja de verse en partida (H17). **S** — ✅ parte del 0.1 (2026-10-01): `lib/modoDesarrollador.ts`
+  (`localStorage`, interruptor en la página de admin, que enseña las herramientas siempre);
+  `ImagePromptSlot` y el bloque de prompts de `DetailModal` solo con el modo activo. Pendiente para
+  el menú de Configuración (CFG-1): el interruptor allí, versión completa, id de partida y tiempos del
+  narrador.
 - **CFG-34 · Estilo del mundo** (Cronista D-7): *Tranquilo · Equilibrado · Caótico* — cuántos sucesos
   genera el narrador de fondo (presupuesto de tensión). Por defecto *Equilibrado*. **S**
 - **CFG-35 · Avisos de sucesos**: a partir de qué importancia sale una notificación (`HUD-6`):
@@ -211,8 +215,10 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
 
 ## 3. Base técnica del diseño (`BAS`)
 
-- **BAS-1 · Fuentes empaquetadas** **[H]** **S** — `woff2` en `frontend/src/assets/fonts`,
-  `@font-face` + `font-display: swap`, fuera el `@import` de Google. Requisito para Tauri sin red.
+- ~~**BAS-1 · Fuentes empaquetadas** **[H]** **S** — `woff2` en `frontend/src/assets/fonts`,
+  `@font-face` + `font-display: swap`, fuera el `@import` de Google. Requisito para Tauri sin red.~~
+  ✅ 2026-10-01: Cinzel e Inter variables (latin + latin-ext, OFL) en `src/assets/fonts/fonts.css`;
+  Inter, que antes no se cargaba, ya se ve de verdad. Comprobado sin red en Chromium.
   🧭 Fuente de cuerpo: Inter (ya declarada) o una serif de lectura para la narración (*EB Garamond*,
   *Crimson Pro*, *Spectral*) manteniendo Inter en la interfaz.
 - **BAS-2 · Iconos SVG propios** **[H]** **M** — `Icon.tsx` + sprite propio (el `public/icons.svg`
@@ -260,15 +266,18 @@ partida (cada turno, cada intercambio, cada recolección). Merece un sistema pro
    de aterrizar) y `GatheringDiceReveal` duplica la lógica en vez de reutilizarla.
 
 ### 4.2 Arreglos inmediatos **arreglo**
-- **DAD-1** · `key` por tirada en `TameoModal` (H18). **S**
-- **DAD-2** · Veredicto de Tameo diferido a `onAllLanded` (H19), como ya hacen Recolección e
-  iniciativa. **S**
-- **DAD-3** · Mostrar siempre `dado + bono = total vs dificultad → Éxito/Fallo` al aterrizar (H20). **S**
-- **DAD-4** · Nombres reales en los dos lados (personaje y rival) en vez de "Tú/el enemigo", y
-  quitar el truncado a 6rem. **S**
-- **DAD-5** · `scrollIntoView` solo si la tirada está fuera de la vista y el jugador no ha hecho
-  scroll manual en los últimos segundos. **S**
-- **DAD-6** · Color propio de fallo (`danger-400`) y subir el contraste de "necesitas X". **S**
+- ~~**DAD-1** · `key` por tirada en `TameoModal` (H18). **S**~~ ✅
+- ~~**DAD-2** · Veredicto de Tameo diferido a `onAllLanded` (H19), como ya hacen Recolección e
+  iniciativa. **S**~~ ✅ (también la subida de Felicidad y el color del recuadro)
+- ~~**DAD-3** · Mostrar siempre `dado + bono = total vs dificultad → Éxito/Fallo` al aterrizar (H20). **S**~~ ✅
+  (lo que el backend suma aparte, como el bono de tirada de una habilidad, sale como término propio;
+  en las opuestas, `total vs total → ganador` al caer los dos dados)
+- ~~**DAD-4** · Nombres reales en los dos lados (personaje y rival) en vez de "Tú/el enemigo", y
+  quitar el truncado a 6rem. **S**~~ ✅ (iniciativa de combate y Tameo; el log ya los pasaba)
+- ~~**DAD-5** · `scrollIntoView` solo si la tirada está fuera de la vista y el jugador no ha hecho
+  scroll manual en los últimos segundos. **S**~~ ✅ (`lib/scrollTirada.ts`, 4 s)
+- ~~**DAD-6** · Color propio de fallo (`danger-400`) y subir el contraste de "necesitas X". **S**~~ ✅
+  (todo cerrado el 2026-10-01)
 
 ### 4.3 Nuevo componente único: `DiceTray` (bandeja de tiradas) **[P]** **L**
 Un solo componente para todas las tiradas, con dos modos (**en vivo** y **histórico compacto**) y

@@ -163,7 +163,7 @@ pausada visualmente detrás. 🧭 **M**
 | REI-30 | **Estado de cada orden** (R2): chip verde "Produciendo", ámbar "Almacén lleno", rojo "Falta materia prima: 3 Hierro", gris "Sin trabajador con nivel", "Edificio de nivel insuficiente", "Completada". Es lo más importante de toda la pestaña. | 🔌 | M |
 | REI-31 | **Progreso de la orden** (R3): `producido / límite` como barra; en modo *reponer*, stock actual frente al tope del almacén. | ✅ | S |
 | REI-32 | **Nueva orden con ficha de receta** (R7): selector visual con buscador, mostrando ingredientes (con stock en almacén), resultado, oficio y nivel requerido; avisa antes de crear si nadie puede producirla. | ✅ | M |
-| REI-33 | **Editar, reactivar y borrar órdenes** (R13, R14): pestaña "Desactivadas" con *Reactivar*; menú ⋯ con *Editar* y *Borrar*. | ✅ | S |
+| ~~REI-33~~ | ~~**Editar, reactivar y borrar órdenes** (R13, R14): pestaña "Desactivadas" con *Reactivar*; menú ⋯ con *Editar* y *Borrar*.~~ ✅ 2026-10-02: bloque plegable "Desactivadas" con *Reactivar* y *Borrar* (con confirmación); límite de las órdenes *único* editable en línea (`producidas/límite`). **Pendiente:** cambiar el *modo* de una orden ya creada — el PATCH del backend no lo acepta (🔌). | ✅ | S |
 | REI-34 | **Prioridad arrastrable** estilo Bellwright: las órdenes de un edificio en lista ordenable (arrastrar para cambiar prioridad) o un selector 0-9 con botones; una sola petición al soltar (R18). | ✅ | M |
 | REI-35 | **Trabajadores con oficio y nivel** (R6): cada chip muestra retrato, oficio principal y nivel; los que no tienen nivel para ninguna receta del edificio aparecen atenuados con el motivo. Arrastrar un compañero de un edificio a otro. | 🔌 | M |
 | REI-36 | **Mapa de la red** (X4): diagrama de flujo recurso → edificio → producto (nodos y flechas SVG), resaltando los cuellos de botella en rojo. 🧭 | ✅ | L |
@@ -172,8 +172,8 @@ pausada visualmente detrás. 🧭 **M**
 ### 5.4 Almacén
 | Id | Propuesta | Back | Esf. |
 |---|---|---|---|
-| REI-40 | **Agrupado por recurso** (R9): una fila/carta por tipo con cantidad, icono, categoría (comida, bebida, material, medicina, equipo — clasificación ya hecha en `construcciones-reino.md`), y botón para ver unidades sueltas si hiciera falta. | ✅ | S |
-| REI-41 | **Topes junto al stock** (R22): barra `cantidad / tope` por recurso con el tope editable (stepper o deslizador, `Enter` para guardar, confirmación visual) (R20). | ✅ | S |
+| ~~REI-40~~ | ~~**Agrupado por recurso** (R9): una fila/carta por tipo con cantidad, icono, categoría (comida, bebida, material, medicina, equipo — clasificación ya hecha en `construcciones-reino.md`), y botón para ver unidades sueltas si hiciera falta.~~ ✅ 2026-10-02: fila por recurso (`catalogSlug` o nombre) con `×cantidad`, *Retirar 1*, desplegable de unidades sueltas y total en la cabecera (`reino/AlmacenSection.tsx`, `lib/almacen.ts`). **Pendiente:** icono y categoría por recurso — `AlmacenItemInfo` no trae categoría (🔌), entra con la pestaña Almacén de R-B. | ✅ | S |
+| ~~REI-41~~ | ~~**Topes junto al stock** (R22): barra `cantidad / tope` por recurso con el tope editable (stepper o deslizador, `Enter` para guardar, confirmación visual) (R20).~~ ✅ 2026-10-02: barra `cantidad / tope` y tope editable (`NumeroGuardable`) en cada recurso del Almacén; la tarjeta "Topes de Almacén" sale de Producción. Los objetos sin `catalogSlug` no admiten tope (el backend los limita por slug). | ✅ | S |
 | REI-42 | **Depositar y retirar en cantidad** (R15): selector de cantidad (`QuantityStepper`, MOD-5), "Depositar todo lo de este tipo", "Depositar todo menos lo equipado". Arrastrar desde la mochila. | ✅ (varias llamadas) / 🔌 (en lote) | M |
 | REI-43 | **Buscar, filtrar, ordenar** (por categoría, cantidad, cerca del tope). | ✅ | S |
 | REI-44 | **Uso de cada recurso**: en la ficha de un recurso, qué órdenes lo consumen y cuáles lo producen (enlaza con REI-36). | ✅ | M |
@@ -242,13 +242,13 @@ pausada visualmente detrás. 🧭 **M**
 
 ## 7. Usabilidad y robustez (arreglos) **arreglo**
 
-- **REI-110** · Prioridad: guardar con *debounce* o al soltar, no en cada tecla (R18). **S**
-- **REI-111** · Todos los `try/finally` de Reino con `catch` y `ErrorBanner` visible (R19). **S**
-- **REI-112** · Topes con `Enter` y confirmación visual (R20). **S**
-- **REI-113** · Sustituir los `<select>` nativos por los selectores del juego (R23). **S**
-- **REI-114** · Esqueletos de carga en lugar de "Cargando…" (R24). **S**
-- **REI-115** · Tooltips de explicación en cada indicador, rol y estado (R25). **S**
-- **REI-116** · Declarar `xpGanada`, `nivelDiplomatico` y `stage` en `DiplomaciaResultado` (R4). **S**
+- ~~**REI-110** · Prioridad: guardar con *debounce* o al soltar, no en cada tecla (R18). **S**~~ ✅ 2026-10-02 (`NumeroGuardable`: guarda con `Enter` o al salir del campo, solo si cambió)
+- ~~**REI-111** · Todos los `try/finally` de Reino con `catch` y `ErrorBanner` visible (R19). **S**~~ ✅ 2026-10-01 (con `UX-24`)
+- ~~**REI-112** · Topes con `Enter` y confirmación visual (R20). **S**~~ ✅ 2026-10-02 (mismo componente: ✓ al confirmar, `Esc` deshace, vacío = sin tope)
+- ~~**REI-113** · Sustituir los `<select>` nativos por los selectores del juego (R23). **S**~~ ✅ 2026-10-02: nuevo `SelectorJuego` (lista accesible con teclado) en plantilla, hueco, rol, receta y modo. Fuera de Reino quedan `<select>` nativos (se tratarán con `BAS-8`/componentes base).
+- ~~**REI-114** · Esqueletos de carga en lugar de "Cargando…" (R24). **S**~~ ✅ 2026-10-02: componente `Esqueleto` (pulso solo con `motion-safe`, `role="status"`) en órdenes de producción y mercado. El motivo "Cargando requisitos..." de los botones de Construir sigue en texto (es un tooltip de botón deshabilitado).
+- ~~**REI-115** · Tooltips de explicación en cada indicador, rol y estado (R25). **S**~~ ✅ 2026-10-02: los 8 indicadores de Economía con su efecto real y cifras del tick diario (`kingdomTick.ts`), estado de territorio y de edificio al pasar por encima, y cada rol explicado en el selector. **Hallazgo para Álvaro:** en el reino del jugador nada repone la *bebida* en el tick diario (solo la de las facciones), así que con habitantes acaba en 0 y la felicidad baja 5 al día; el tooltip lo dice tal cual.
+- ~~**REI-116** · Declarar `xpGanada`, `nivelDiplomatico` y `stage` en `DiplomaciaResultado` (R4). **S**~~ ✅ 2026-10-02: negociar enseña la XP ganada y el nivel del diplomático; espiar, la presión con barra y la etapa (0-4).
 
 ---
 
@@ -274,7 +274,7 @@ mecánicas; casi todas ya se calculan):
 
 | Fase | Contenido | Por qué |
 |---|---|---|
-| **R-A · Arreglos** | REI-110…116, REI-33 (reactivar/borrar órdenes), REI-40/41 (almacén agrupado con topes) | Errores y fricciones visibles hoy, solo front. |
+| **R-A · Arreglos** ✅ 2026-10-02 | REI-110…116, REI-33 (reactivar/borrar órdenes), REI-40/41 (almacén agrupado con topes) | Errores y fricciones visibles hoy, solo front. **Hecha entera**; pendientes que pasan a R-B: editar el *modo* de una orden (🔌), icono y categoría por recurso del Almacén (🔌). |
 | **R-B · Saber y prever** | REI-1, REI-10…12, REI-14, REI-31, REI-61, REI-71 | El salto grande de información, casi todo solo front. |
 | **R-C · Por qué se para** | Exponer `ResultadoOrden` y `xpPorOficio` → REI-30, REI-35, REI-37 | Lo que más ayuda a gestionar la producción. |
 | **R-D · Gestionar todo** | REI-22, REI-23, REI-32, REI-34, REI-42, REI-50…52, REI-70, REI-72, REI-80…82, REI-90 | Que ninguna gestión necesite texto libre. |

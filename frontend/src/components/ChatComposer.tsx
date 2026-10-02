@@ -160,6 +160,14 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
     onSubmit(text)
   }
 
+  // UX-13 (hito 0.1, roadmap-front-ux.md H11) — al deshabilitarse (turno en curso o una capa
+  // abierta encima) suelta el foco: con `contentEditable` a false el editor podía conservarlo y
+  // seguir recibiendo teclas por detrás de un modal que no atrapa el foco (Clase, Especialización).
+  useEffect(() => {
+    const el = editorRef.current
+    if (disabled && el && document.activeElement === el) el.blur()
+  }, [disabled])
+
   useImperativeHandle(ref, () => ({
     insertChip(chip: ComposerChip) {
       const el = editorRef.current

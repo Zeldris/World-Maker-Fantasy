@@ -26,6 +26,11 @@ siguiente sesión.
 - **Al cerrar cada tarea** del roadmap (identificadores `UX-3`, `CR-12`, `ZON-10`…): commit +
   push en el acto, la tarea tachada en su roadmap y en el mapa de `21-roadmap.md`, y la bitácora
   actualizada.
+- **El estado vive en los `.md`, no en la conversación** (petición de la usuaria, 2026-10-02): en el
+  roadmap de cada tarea, junto al tachado, `✅ fecha` + qué se hizo y **qué queda pendiente** si la
+  tarea se cerró solo en parte (p. ej. "parte del 0.1 hecha; falta X para el menú de
+  Configuración"). Una tarea a medias se marca `🚧 en curso` con lo hecho y lo que falta. Así la otra
+  cuenta sabe exactamente qué está implementado sin leer el código ni el historial.
 - **Dentro de una tarea grande**, commit + push en cada punto estable (tests en verde). Las tareas
   grandes se parten en pasos pequeños con su propio commit.
 - **Nunca más de 30-45 minutos de trabajo sin subir.**

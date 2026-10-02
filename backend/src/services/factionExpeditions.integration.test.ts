@@ -14,6 +14,8 @@ describe('advanceFactionExpeditions — integración (Fase 13-B)', () => {
   const random = () => 0.99; // tirada 20 (recolección OK), sin intercepción
   let worldId: string;
   let saveId: string;
+  /// Fase D (hito 0.1): partida en el mismo día, sin reputación con Serhu ni en su región — no debe enterarse.
+  let saveAjenaId: string;
   let serhuId: string;
   let statsSnapshot: { id: string; ultimoDiaExpedicion: number | null }[] = [];
   let progresoSnapshot: Awaited<ReturnType<typeof prisma.npcProfessionProgress.findMany>> = [];
@@ -33,7 +35,16 @@ describe('advanceFactionExpeditions — integración (Fase 13-B)', () => {
       },
     });
     saveId = save.id;
-    await prisma.worldState.create({ data: { saveId, fictionalMinutes: DIA * 1440 + 30 } });
+    // Reputación con el Clan Serhu: el personaje se entera de lo que le pasa (Fase D, noticias del mundo).
+    await prisma.worldState.create({ data: { saveId, fictionalMinutes: DIA * 1440 + 30, factionsStatus: { 'Clan Serhu': 0 } } });
+    const ajena = await prisma.save.create({
+      data: {
+        userId, worldId, characterName: 'Sin noticias de Serhu', characterArchetype: 'guerrero', characterOrigin: 'x', characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 }, portraitInitial: 'S',
+      },
+    });
+    saveAjenaId = ajena.id;
+    await prisma.worldState.create({ data: { saveId: saveAjenaId, fictionalMinutes: DIA * 1440 + 30, factionsStatus: { 'Concordia de Hierro': 0 } } });
     serhuId = (await prisma.faction.findFirstOrThrow({ where: { worldId, slug: 'clan-serhu', saveId: null } })).id;
     statsSnapshot = (await prisma.kingdomStats.findMany({ where: { faction: { worldId } }, select: { id: true, ultimoDiaExpedicion: true } }));
     progresoSnapshot = await prisma.npcProfessionProgress.findMany({ where: { npc: { worldId } } });
@@ -48,7 +59,7 @@ describe('advanceFactionExpeditions — integración (Fase 13-B)', () => {
     await prisma.almacenItem.deleteMany({ where: { faction: { worldId }, id: { notIn: almacenPreviosIds } } });
     for (const p of progresoSnapshot) await prisma.npcProfessionProgress.update({ where: { id: p.id }, data: { nivel: p.nivel, xp: p.xp } });
     for (const s of statsSnapshot) await prisma.kingdomStats.update({ where: { id: s.id }, data: { ultimoDiaExpedicion: s.ultimoDiaExpedicion } });
-    await prisma.save.deleteMany({ where: { id: saveId } });
+    await prisma.save.deleteMany({ where: { id: { in: [saveId, saveAjenaId] } } });
   });
 
   it('lanza, llega, completa, deposita stock y da XP; el mismo día dos veces es idempotente; la intercepción pierde la carga', async () => {
@@ -98,6 +109,12 @@ describe('advanceFactionExpeditions — integración (Fase 13-B)', () => {
     expect(exps).toHaveLength(2);
     expect(exps[1]!.status).toBe('EN_TRANSITO');
 
+    // Fase D (hito 0.1) — el regreso con botín es noticia en "El mundo" de quien conoce a Serhu.
+    const noticiasDe = (id: string) => prisma.logEntry.findMany({ where: { saveId: id, channel: 'WORLD' }, orderBy: { createdAt: 'asc' } });
+    expect(r3.noticias).toBeGreaterThan(0);
+    const tras3 = await noticiasDe(saveId);
+    expect(tras3.some((l) => l.text.startsWith('Los recolectores de Clan Serhu regresan de '))).toBe(true);
+
     // Segunda expedición con riesgo 100: la intercepción la marca INTERCEPTADA y pierde la carga.
     await prisma.expedicion.update({ where: { id: exps[1]!.id }, data: { riesgo: 100 } });
     const stockAntes = await prisma.almacenItem.count({ where: { factionId: serhuId } });
@@ -106,6 +123,12 @@ describe('advanceFactionExpeditions — integración (Fase 13-B)', () => {
     expect(r4.interceptadas).toBeGreaterThan(0);
     const interceptada = await prisma.expedicion.findUniqueOrThrow({ where: { id: exps[1]!.id } });
     expect(interceptada.status).toBe('INTERCEPTADA');
+    // Fase D — el asalto también es noticia (con el texto que toque según cómo se perdió la carga)…
+    const tras4 = await noticiasDe(saveId);
+    expect(tras4.length).toBeGreaterThan(tras3.length);
+    expect(tras4.slice(tras3.length).some((l) => l.text.includes('expedición de Clan Serhu'))).toBe(true);
+    // …y la partida que ni conoce a Serhu ni está en su región no se entera de nada.
+    expect(await noticiasDe(saveAjenaId)).toHaveLength(0);
     expect(interceptada.botin).toBeNull();
     // Nada entra al Almacén por la interceptada.
     expect(await prisma.almacenItem.count({ where: { factionId: serhuId } })).toBe(stockAntes);

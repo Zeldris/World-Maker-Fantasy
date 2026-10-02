@@ -31,6 +31,9 @@ interface UseTurnFlowParams {
   fictionalDate: string
   characterName: string | null
   busyUntil: string | null
+  /// UX-3 (hito 0.1) — turno o respuesta del narrador ya en curso (lo marcan también combate,
+  /// misiones y la reconexión, no solo este hook).
+  characterThinking: boolean
   endedAt: string | null
   pendingDeathResolution: boolean
   characterLog: LogEntry[]
@@ -113,6 +116,7 @@ export function useTurnFlow(params: UseTurnFlowParams) {
     fictionalDate,
     characterName,
     busyUntil,
+    characterThinking,
     endedAt,
     pendingDeathResolution,
     characterLog,
@@ -170,6 +174,16 @@ export function useTurnFlow(params: UseTurnFlowParams) {
   const fictionalDateRef = useRef(fictionalDate)
   fictionalDateRef.current = fictionalDate
 
+  // UX-3 (hito 0.1, roadmap-front-ux.md H1) — el composer ya se deshabilitaba con un turno en curso,
+  // pero Construir (Reino), Viajar desde una salida de zona y los modales de Campamento/Viajar
+  // llaman a `handleSubmit` directamente: la acción salía en el registro y el backend la rechazaba
+  // después (`isTurnLockedError`). Dos guardias: la ref del estado de GameView (mismo motivo que
+  // `fictionalDateRef`, un `handleSubmit` de un render anterior leería el valor viejo) y otra
+  // propia que se marca en el acto, antes de cualquier render (doble clic).
+  const characterThinkingRef = useRef(characterThinking)
+  characterThinkingRef.current = characterThinking
+  const turnoEnCursoRef = useRef(false)
+
   async function handleSubmit(
     action: string,
     // Panel "Curar" con varios objetos/usos a la vez (petición explícita, 2026-08-18) — reenviado
@@ -178,6 +192,8 @@ export function useTurnFlow(params: UseTurnFlowParams) {
     extras?: { healItemUses?: { itemId: string; quantity: number }[]; hambreSedItemUses?: { itemId: string; quantity: number }[] },
   ) {
     if (!action || !saveId || busyUntil || endedAt || pendingDeathResolution) return
+    if (turnoEnCursoRef.current || characterThinkingRef.current) return
+    turnoEnCursoRef.current = true
     composerRef.current?.clear()
     setInput('')
     // Bug real (2026-07-23, "al cambiar de pestaña el narrador da error de localhost"): el stream
@@ -513,6 +529,7 @@ export function useTurnFlow(params: UseTurnFlowParams) {
       }
       setDiceReveal(null)
     } finally {
+      turnoEnCursoRef.current = false
       setCharacterThinking(false)
       setTimedThinkingText(null)
       setStreamingNarration(null)

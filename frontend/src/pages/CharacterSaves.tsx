@@ -4,6 +4,8 @@ import { pregeneratedCharacters, worlds } from '../data/mock'
 import { useSession } from '../context/useSession'
 import { Button } from '../components/Button'
 import { ConfirmModal } from '../components/ConfirmModal'
+import { ErrorBanner } from '../components/ErrorBanner'
+import { useErrorConReintento } from '../hooks/useErrorConReintento'
 import { StepDots } from '../components/StepDots'
 import { listSaves, deleteSave, restartSave, updateSaveName, type SaveSummary } from '../lib/api'
 import type { Character, Dificultad } from '../types'
@@ -74,6 +76,9 @@ export function CharacterSaves() {
   // salga nuestro propio modal en vez de esto") — mismo `saveId` sirve para las dos acciones
   // irreversibles de esta lista, `kind` decide cuál ejecutar y qué texto mostrar.
   const [pendingConfirm, setPendingConfirm] = useState<{ kind: 'delete' | 'restart'; saveId: string } | null>(null)
+  // UX-24 (hito 0.1) — sustituye a los `window.alert` de borrar/reiniciar; *Reintentar* vuelve a
+  // abrir la misma confirmación.
+  const { fallo, informar, limpiar } = useErrorConReintento()
   // Nombre editable de la partida (2026-09-06, "poder nombrar las partidas con nombres custom para
   // diferenciarlas") — mismo patrón de botón-lápiz que SkillBarHud, pero sin modal aparte: el
   // título se convierte en un input inline, se guarda al perder foco o pulsar Enter.
@@ -98,8 +103,8 @@ export function CharacterSaves() {
       try {
         await deleteSave(saveId)
         setSaves((prev) => prev.filter((s) => s.id !== saveId))
-      } catch {
-        window.alert('No se pudo borrar. ¿Está el backend corriendo en localhost:3001?')
+      } catch (e) {
+        informar('No se pudo borrar la partida.', e, () => setPendingConfirm({ kind: 'delete', saveId }))
       } finally {
         setDeletingId(null)
       }
@@ -116,8 +121,8 @@ export function CharacterSaves() {
             s.id === saveId ? { ...s, fictionalDate: 'Día 1, mañana', lastPlayedAt: new Date().toISOString(), endedAt: null } : s,
           ),
         )
-      } catch {
-        window.alert('No se pudo reiniciar. ¿Está el backend corriendo en localhost:3001?')
+      } catch (e) {
+        informar('No se pudo reiniciar la partida.', e, () => setPendingConfirm({ kind: 'restart', saveId }))
       } finally {
         setRestartingId(null)
       }
@@ -141,11 +146,11 @@ export function CharacterSaves() {
     setSaves((prev) => prev.map((s) => (s.id === saveId ? { ...s, saveName: nextName } : s)))
     try {
       await updateSaveName(saveId, nextName)
-    } catch {
-      // Sin bloqueo modal para un fallo de renombrado — se revierte en silencio y el usuario puede
-      // reintentarlo, mismo criterio de tolerancia que el resto de esta pantalla no tiene para
-      // borrar/reiniciar (esas sí son irreversibles y avisan con window.alert).
+    } catch (e) {
+      // Sin bloqueo modal para un fallo de renombrado — se revierte el nombre. UX-24 (hito 0.1):
+      // antes en silencio; ahora con el mismo aviso que borrar/reiniciar (renombrar se repite a mano).
       setSaves((prev) => prev.map((s) => (s.id === saveId ? { ...s, saveName: save?.saveName ?? null } : s)))
+      informar('No se pudo cambiar el nombre de la partida.', e)
     }
   }
 
@@ -184,6 +189,7 @@ export function CharacterSaves() {
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-6 py-12">
+      <ErrorBanner fallo={fallo} onCerrar={limpiar} />
       <div>
         <button type="button"
           onClick={() => navigate(`/solitario/mundo/${world.id}`)}
