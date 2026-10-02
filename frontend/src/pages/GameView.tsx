@@ -1,5 +1,10 @@
 import { useNoticiasMundo } from '../hooks/useNoticiasMundo'
 import { useGamePhase } from '../hooks/useGamePhase'
+import { avisoDeLlegadas, pesoDeLlegada } from '../lib/llegadas'
+import { useDecisionesEnCola } from '../hooks/useDecisionesEnCola'
+import { resolverCapas, type CapaAbierta } from '../lib/capas'
+import { CapasContext } from '../context/capasContext'
+import { Capa } from '../components/Capa'
 import { etiquetaDeFase } from '../lib/gamePhase'
 import { ModoConsultaContext } from '../context/modoConsultaContext'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -519,13 +524,28 @@ export function GameView() {
   // los 3 que viven fuera de él (detailTarget/kingdomFoundedInfo de este componente,
   // combat.combatOpen de useCombatFlow) para tener un único punto de verdad de "hay algo abierto
   // encima del juego ahora mismo" antes de decidir si se abre uno nuevo.
-  const anyModalOpen = anyActionModalOpen || !!detailTarget || !!kingdomFoundedInfo || combat.combatOpen
+  // UX-10 (hito 0.2) — clase, especialización y fundar reino esperan a que acabe el combate, la
+  // escena o la narración y a que dé tiempo a leer lo último; la cabecera avisa y deja abrirlas antes.
+  const clasePendiente = !!pendingClaseChoice && !pendingDeathResolution && !endedAt && !!worldIdSlug
+  const especializacionPendiente = !!pendingEspecializacionChoice && !pendingDeathResolution && !endedAt && !!clase && !!worldIdSlug
+  const decisiones = useDecisionesEnCola({
+    hayDecision: clasePendiente || especializacionPendiente || !!kingdomFoundedInfo,
+    bloqueada: !!combateIniciado || combat.combatOpen || !!activeDynamicMode || characterThinking,
+    ultimaNarracion: characterLog[characterLog.length - 1]?.text ?? '',
+  })
+  const reinoVisible = !!kingdomFoundedInfo && decisiones.mostrar
+  const avisoDecision = clasePendiente
+    ? 'Tienes una clase por elegir'
+    : especializacionPendiente
+      ? 'Tienes una especialización por elegir'
+      : 'Tu reino espera nombre'
+  const anyModalOpen = anyActionModalOpen || !!detailTarget || reinoVisible || combat.combatOpen
   // Un agresivo te corta el paso (2026-09-28) — la brújula se oculta hasta reaccionar (el backend
   // rechaza igualmente moverse con 409, esto solo evita ofrecer algo que no se puede hacer).
   const combateForzadoPendiente = characterLog.some((e) => e.dynamicModeOffer?.combateForzado)
-  // Elecciones obligatorias a la vista (mismas condiciones con las que se pintan sus modales).
-  const claseVisible = !!pendingClaseChoice && !pendingDeathResolution && !endedAt && !!worldIdSlug
-  const especializacionVisible = !!pendingEspecializacionChoice && !pendingDeathResolution && !endedAt && !!clase && !!worldIdSlug
+  // Elecciones obligatorias a la vista (cuando la cola de UX-10 las deja salir).
+  const claseVisible = clasePendiente && decisiones.mostrar
+  const especializacionVisible = especializacionPendiente && decisiones.mostrar
   // UX-1/UX-2 (hito 0.2) — una sola fase de partida y su matriz de permisos (lib/gamePhase.ts) en
   // vez de banderas sueltas.
   const { fase, puede } = useGamePhase({
@@ -534,7 +554,7 @@ export function GameView() {
     enCombate: !!combateIniciado || combat.combatOpen,
     modoDinamico: !!activeDynamicMode,
     narradorEscribiendo: characterThinking,
-    eleccionAbierta: claseVisible || especializacionVisible || !!kingdomFoundedInfo,
+    eleccionAbierta: claseVisible || especializacionVisible || reinoVisible,
     encuentroPendiente: combateForzadoPendiente,
     ocupado: !!busyUntil,
   })
@@ -545,6 +565,22 @@ export function GameView() {
   // UX-5 (hito 0.2) — paneles en modo consulta: se abren y se leen, pero lo que cambia datos se
   // deshabilita con el motivo (contexto ModoConsulta).
   const modoConsulta = puede('modificarPanel').motivo
+  // UX-12 (hito 0.2) — lo que llega al registro con el cajón abierto (lib/llegadas.ts): lo crítico
+  // lo cierra, lo importante avisa dentro del cajón, lo menor no interrumpe. `inicioCajon` es la
+  // longitud del registro al abrirlo; null en el render de apertura, para no tomar como recién
+  // llegado todo lo anterior.
+  const [inicioCajon, setInicioCajon] = useState<number | null>(null)
+  const cajonAbierto = !!activePanel
+  useEffect(() => {
+    setInicioCajon(cajonAbierto ? characterLog.length : null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cajonAbierto])
+  const llegadasCajon = activePanel && inicioCajon !== null ? characterLog.slice(inicioCajon) : []
+  const llegaCritico = llegadasCajon.some((e) => pesoDeLlegada(e) === 'critico')
+  useEffect(() => {
+    if (llegaCritico) setActivePanel(null)
+  }, [llegaCritico, setActivePanel])
+  const avisoLlegadas = avisoDeLlegadas(llegadasCajon)
   // UX-7 (hito 0.2) — la brújula y el mapa de zona: moverse solo en `libre`.
   const permisoMover = puede('moverse')
   const etiquetaFase = etiquetaDeFase(fase)
@@ -1395,10 +1431,37 @@ export function GameView() {
     reputacion: 'accent2',
   }
 
+  // UX-9 (hito 0.2) — gestor de capas: cada overlay abierto con su nivel (§ 4.3), en orden de
+  // prioridad dentro del nivel. Solo se ve el de nivel más alto; el resto espera oculto y montado
+  // (lib/capas.ts). Las condiciones son las mismas con las que se pinta cada uno más abajo.
+  const capasAbiertas: CapaAbierta[] = [
+    detailTarget && { id: 'detalle', nivel: 'consulta', hija: true },
+    activePanel && { id: 'panel', nivel: 'consulta' },
+    zonaModalOpen && saveId && { id: 'zona', nivel: 'consulta' },
+    harvestModal && saveId && characterAttributes && { id: 'recolectar', nivel: 'accion' },
+    simpleModal === 'camp' && saveId && { id: 'campamento', nivel: 'accion' },
+    simpleModal === 'travel' && saveId && { id: 'viajar', nivel: 'accion' },
+    healModalOpen && { id: 'curar', nivel: 'accion' },
+    hungerThirstModalOpen && { id: 'comer', nivel: 'accion' },
+    entregaModalOpen && saveId && { id: 'entregar', nivel: 'accion' },
+    aprenderOficioModalOpen && saveId && { id: 'oficio', nivel: 'accion' },
+    saquearZonaModalOpen && saveId && { id: 'saquear', nivel: 'accion' },
+    postCombatTarget && { id: 'botin', nivel: 'accion' },
+    recursoDetalle && { id: 'recurso', nivel: 'accion' },
+    editingSkillBar && { id: 'barra', nivel: 'accion' },
+    activeDynamicMode && { id: 'dinamico', nivel: 'escena' },
+    claseVisible && { id: 'clase', nivel: 'decision' },
+    especializacionVisible && { id: 'especializacion', nivel: 'decision' },
+    reinoVisible && { id: 'reino', nivel: 'decision' },
+    confirmingExit && { id: 'salir', nivel: 'sistema' },
+  ].filter((c): c is CapaAbierta => !!c)
+  const estadoCapas = resolverCapas(capasAbiertas)
+
   return (
     <EnciclopediaLinkProvider
       value={{ enciclopediaIndex, onEntityDetail: handleEntityDetailNavigate, onEntityQuickInsert: handleEntityQuickInsert }}
     >
+    <CapasContext.Provider value={estadoCapas}>
     <div className="relative flex min-h-0 flex-1 flex-col">
       <header className="iron-band relative flex flex-wrap items-center justify-between gap-2 px-5 pb-3 pt-2.5">
         <div className="min-w-0">
@@ -1453,6 +1516,17 @@ export function GameView() {
               )}
               💀 {deathCount}/{LIMITE_MUERTES[dificultad]}
             </span>
+          )}
+          {/* UX-10 (hito 0.2) — decisión en cola: aviso con botón para abrirla ya. */}
+          {decisiones.enEspera && (
+            <button
+              type="button"
+              onClick={decisiones.abrirYa}
+              title="Se abrirá sola al terminar; pulsa para abrirla ahora"
+              className="tactile rounded-full border border-accent-600/70 bg-accent-500/10 px-2.5 py-1 font-serif text-2xs tracking-wide text-accent-300 hover:bg-accent-500/20"
+            >
+              <span aria-hidden="true">⚠️</span> {avisoDecision}
+            </button>
           )}
           {/* UX-8 (hito 0.2) — indicador de la fase cuando algo está bloqueado, con el motivo al
               pasar el ratón; en `libre` no aparece. */}
@@ -1881,6 +1955,7 @@ export function GameView() {
       )}
 
       {detailTarget && (
+        <Capa id="detalle" hija>
         <DetailModal
           target={detailTarget}
           onClose={() => {
@@ -1895,25 +1970,31 @@ export function GameView() {
           onInsert={detailInsertHandler ?? undefined}
           worldSlug={worldIdSlug}
         />
+        </Capa>
       )}
 
-      {kingdomFoundedInfo && (
+      {reinoVisible && kingdomFoundedInfo && (
+        <Capa id="reino">
         <KingdomFoundingModal info={kingdomFoundedInfo} onCancel={() => setKingdomFoundedInfo(null)} onConfirm={handleFundarReino} />
+        </Capa>
       )}
 
       {/* Elección obligatoria de clase al empezar a jugar (2026-09-01, fix de bug real: personaje
           custom sin clase para siempre) — overlay bloqueante, mismo criterio de prioridad que
           muerte/fin de partida. Nunca coincide con el modal de especialización de abajo:
           pendingEspecializacionChoice exige `save.clase` ya asignada. */}
-      {pendingClaseChoice && !pendingDeathResolution && !endedAt && worldIdSlug && (
+      {claseVisible && pendingClaseChoice && worldIdSlug && (
+        <Capa id="clase">
         <ClaseModal clases={clasesDisponibles} worldSlug={worldIdSlug} onConfirm={handleAssignClase} />
+        </Capa>
       )}
 
       {/* Elección obligatoria de especialización a nivel 10 (2026-09-01) — overlay bloqueante,
           mismo criterio de prioridad que el resto de estados excluyentes de la partida: la muerte
           permanente/fin de partida ganan si coinciden (no debería pasar de verdad: resolver una
           muerte no sube de nivel), especialización solo se muestra si ninguna de esas dos aplica. */}
-      {pendingEspecializacionChoice && !pendingDeathResolution && !endedAt && clase && worldIdSlug && (
+      {especializacionVisible && pendingEspecializacionChoice && clase && worldIdSlug && (
+        <Capa id="especializacion">
         <EspecializacionModal
           clase={clase}
           especializaciones={especializacionesDisponibles}
@@ -1921,9 +2002,11 @@ export function GameView() {
           onConfirm={handleAssignEspecializacion}
           onOpenEnciclopedia={handleOpenEnciclopediaClasses}
         />
+        </Capa>
       )}
 
       {confirmingExit && (
+        <Capa id="salir">
         <ConfirmModal
           title="Salir a tus partidas"
           message="¿Seguro que quieres salir? Tu progreso ya está guardado — puedes volver a esta partida cuando quieras."
@@ -1946,9 +2029,11 @@ export function GameView() {
             navigate(`/solitario/mundo/${worldIdSlug}/personaje/${saveId}?characterName=${encodeURIComponent(characterName ?? '')}`)
           }}
         />
+        </Capa>
       )}
 
       {harvestModal && saveId && characterAttributes && (
+        <Capa id="recolectar">
         <HarvestSelectionModal
           saveId={saveId}
           oficio={harvestModal.oficio}
@@ -1986,16 +2071,22 @@ export function GameView() {
           }}
           onCancel={() => setHarvestModal(null)}
         />
+        </Capa>
       )}
 
 
       {simpleModal === 'camp' && saveId && (
+        <Capa id="campamento">
         <CampSelectionModal saveId={saveId} onSelect={handleSimpleModalSelect} onCancel={closeSimpleModal} bloqueoTurno={bloqueoTurno} />
+        </Capa>
       )}
       {simpleModal === 'travel' && saveId && (
+        <Capa id="viajar">
         <TravelDestinationModal saveId={saveId} onSelect={handleSimpleModalSelect} onCancel={closeSimpleModal} bloqueoTurno={bloqueoTurno} />
+        </Capa>
       )}
       {healModalOpen && (
+        <Capa id="curar">
         <HealSelectionModal
           inventory={inventory}
           condicionFisica={condicionFisica}
@@ -2005,9 +2096,11 @@ export function GameView() {
           }}
           onCancel={() => setHealModalOpen(false)}
         />
+        </Capa>
       )}
 
       {hungerThirstModalOpen && (
+        <Capa id="comer">
         <HungerThirstSelectionModal
           inventory={inventory}
           hambre={hambre}
@@ -2018,18 +2111,22 @@ export function GameView() {
           }}
           onCancel={() => setHungerThirstModalOpen(false)}
         />
+        </Capa>
       )}
 
       {editingSkillBar && (
+        <Capa id="barra">
         <SkillBarEditor
           bar={editingSkillBar}
           savedActions={savedActions}
           onSave={handleSaveSkillBarEdit}
           onCancel={() => setEditingSkillBar(null)}
         />
+        </Capa>
       )}
 
       {entregaModalOpen && saveId && (
+        <Capa id="entregar">
         <EntregaModal
           saveId={saveId}
           onEntregado={(itemId, logEntry) => {
@@ -2040,9 +2137,11 @@ export function GameView() {
           }}
           onCancel={() => setEntregaModalOpen(false)}
         />
+        </Capa>
       )}
 
       {aprenderOficioModalOpen && saveId && (
+        <Capa id="oficio">
         <AprenderOficioModal
           saveId={saveId}
           onAprendido={(professionId, costeGoirnos, logEntry) => {
@@ -2054,9 +2153,11 @@ export function GameView() {
           }}
           onCancel={() => setAprenderOficioModalOpen(false)}
         />
+        </Capa>
       )}
 
       {saquearZonaModalOpen && saveId && (
+        <Capa id="saquear">
         <SaquearZonaModal
           saveId={saveId}
           soloNpcSlug={saquearSoloNpcSlug ?? undefined}
@@ -2070,9 +2171,11 @@ export function GameView() {
             setSaquearSoloNpcSlug(null)
           }}
         />
+        </Capa>
       )}
 
       {postCombatTarget && (
+        <Capa id="botin">
         <PostCombatInteractionModal
           target={postCombatTarget}
           busy={characterThinking}
@@ -2083,9 +2186,11 @@ export function GameView() {
             handleSubmit(`Saqueo el cuerpo de '${target.name}'.`)
           }}
         />
+        </Capa>
       )}
 
       {zonaModalOpen && saveId && (
+        <Capa id="zona">
         <ZonaMovimientoModal
           saveId={saveId}
           onEncuentroZona={(entry) => setCharacterLog((prev) => [...prev, entry])}
@@ -2119,9 +2224,11 @@ export function GameView() {
             setCharacterLog((prev) => prev.map((e) => (e.dynamicModeOffer && !e.dynamicModeOffer.combateForzado ? { ...e, dynamicModeOffer: undefined } : e)))
           }
         />
+        </Capa>
       )}
 
       {recursoDetalle && (
+        <Capa id="recurso">
         <RecursoDetalleModal
           nombre={recursoDetalle.targetName}
           metodo={recursoDetalle.metodo}
@@ -2129,9 +2236,11 @@ export function GameView() {
           onAccion={handleAccionRecursoDetalle}
           onCerrar={handleCerrarRecursoDetalle}
         />
+        </Capa>
       )}
 
       {activeDynamicMode && (
+        <Capa id="dinamico">
         <DynamicModeModal
           turno={activeDynamicMode.turno}
           busy={activeDynamicMode.busy}
@@ -2141,10 +2250,15 @@ export function GameView() {
           onCerrar={() => setActiveDynamicMode(null)}
           onSalir={handleSalirDynamicMode}
         />
+        </Capa>
       )}
 
       {activePanel && (
-        <PanelDrawer title={panelTitles[activePanel]} accent={panelAccent[activePanel]} onClose={() => setActivePanel(null)} modoConsulta={modoConsulta}>
+        <Capa id="panel">
+        <PanelDrawer title={panelTitles[activePanel]} accent={panelAccent[activePanel]} onClose={() => setActivePanel(null)}
+          modoConsulta={modoConsulta}
+          novedad={avisoLlegadas ? { texto: avisoLlegadas, onVer: () => setActivePanel(null) } : null}
+        >
           <ModoConsultaContext.Provider value={modoConsulta}>
           {activePanel === 'personaje' && (
             <PersonajePanel
@@ -2259,8 +2373,10 @@ export function GameView() {
           )}
           </ModoConsultaContext.Provider>
         </PanelDrawer>
+        </Capa>
       )}
     </div>
+    </CapasContext.Provider>
     </EnciclopediaLinkProvider>
   )
 }

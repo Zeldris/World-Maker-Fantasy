@@ -11,6 +11,7 @@ import { CombatAbilityBelt, CombatAbilityToggleGrid } from '../CombatAbilityBelt
 import { abilityBonusSuffix } from '../../lib/abilityBonusSuffix'
 import { PASSIVE_ABILITY_NAMES } from '../../lib/passiveAbilities'
 import { ABILITIES_REQUIEREN_MONTURA, MONTURA_TOOLTIP_SUFFIX } from '../../lib/abilitiesRequierenMontura'
+import { useNavegacionRejilla } from '../../hooks/useNavegacionRejilla'
 
 interface HabilidadesPanelProps {
   savedActions: SavedActionInfo[]
@@ -77,8 +78,10 @@ function AbilityGrid({
   onDetail: (ability: SavedActionInfo) => void
   statusFor?: (abilityName: string) => RecipeStatusInfo | undefined
 }) {
+  // BAS-3 (hito 0.2) — flechas/cruceta entre habilidades.
+  const navegar = useNavegacionRejilla()
   return (
-    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4" onKeyDown={navegar}>
       {abilities.map((a) => {
         const status = statusFor?.(a.name)
         const passive = PASSIVE_ABILITY_NAMES.has(a.name)

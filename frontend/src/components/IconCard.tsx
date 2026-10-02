@@ -44,6 +44,7 @@ export function IconCard({
     <div className="group relative">
       <TooltipAnchor text={tooltip} className="block">
         <button type="button"
+          data-celda
           onClick={inert ? undefined : onUse}
           disabled={!!inert}
           className={`tactile flex w-full flex-col items-center gap-1 rounded-lg border px-2 py-3 text-center transition-colors ${

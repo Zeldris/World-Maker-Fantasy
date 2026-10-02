@@ -188,9 +188,13 @@ stateDiagram-v2
   diplomacia, mercado, campamento y «Fundar reino». Libres a propósito: grupos de combate,
   crear/borrar plantillas y el tope del almacén (solo organizan). Construir ya iba por
   `bloqueoTurno`. **Queda:** la zona (recoger, moverse) va con `UX-7`.
-- **UX-6 · Un narrador a la vez** — al enviar una acción con la ambientación del mundo en marcha:
+- ~~**UX-6 · Un narrador a la vez** — al enviar una acción con la ambientación del mundo en marcha:
   (A) esperar con el mensaje "Tu acción saldrá en cuanto el mundo termine", o (B) cancelar la
-  ambientación. 🧭 Resuelve H4. **S**
+  ambientación. 🧭 Resuelve H4. **S**~~ ✅ 2026-10-02, **opción B** (decisión de la usuaria: hoy la
+  ambientación «tiene peso 0» — son plantillas deterministas desde 2026-07-24, sin modelo — y no
+  merece la espera). `useSurroundingsPolling` aborta la petición en curso (`AbortController`) en
+  cuanto el narrador empieza a escribir el turno y descarta su resultado. **Revisar la opción A**
+  cuando la ambientación gane peso con el narrador de fondo del Cronista (`CR-12`).
 - ~~**UX-7 · La brújula y el mapa respetan la fase** — moverse solo en `libre`; en el resto, el botón
   sigue visible, deshabilitado y con el motivo. Resuelve H5 y H6. **S**~~ ✅ 2026-10-02: la brújula
   ya no desaparece con un encuentro pendiente; se deshabilita con el motivo de
@@ -212,9 +216,15 @@ stateDiagram-v2
   composer (texto de ayuda), botones de turno (`UX-3`) y paneles (aviso «👁 Solo consulta», `UX-5`).
 
 ### 4.3 Orden y prioridad de lo que se abre
-- **UX-9 · Gestor de capas con prioridad** — un `OverlayManager` con niveles fijos; dentro de un
+- ~~**UX-9 · Gestor de capas con prioridad** — un `OverlayManager` con niveles fijos; dentro de un
   nivel, una sola capa; una de nivel inferior espera en cola mientras haya otra superior. Resuelve
-  H7. **L**
+  H7. **L**~~ ✅ 2026-10-02: `resolverCapas` (`lib/capas.ts`) y `<Capa id>` (`components/Capa.tsx`,
+  contexto `CapasContext`). `GameView` registra sus 19 overlays con su nivel; solo se ve el de más
+  nivel y el resto espera **oculto pero montado** (no pierde lo que tenía a medias). La ficha de
+  detalle es capa «hija»: siempre encima, no hace esperar a nadie. Muerte, fin y combate no son
+  capas (sustituyen al composer o al panel derecho). **Queda:** `anyModalOpen` sigue como guarda
+  para no abrir un modal de acción sobre otro; que las decisiones esperen al combate/escena y a
+  leer la narración es `UX-10`.
 
   | Nivel | Qué |
   |---|---|
@@ -237,19 +247,35 @@ stateDiagram-v2
   | Compañero que se marcha, sucesión que pide decidir | 4 · Decisión |
   | Epílogo | 5 · Crítico |
 
-- **UX-10 · Decisiones en cola** — clase, especialización y fundación del reino **esperan** a que
+- ~~**UX-10 · Decisiones en cola** — clase, especialización y fundación del reino **esperan** a que
   termine el combate o el modo dinámico y a que se haya leído la narración; mientras esperan, un
   aviso en la cabecera ("⚠️ Tienes una clase por elegir") permite abrirlas antes si se quiere.
-  Resuelve H8 y H9. **M**
-- **UX-11 · Presentación en orden del turno** — secuencia fija: acción del jugador → tirada
+  Resuelve H8 y H9. **M**~~ ✅ 2026-10-02: `hooks/useDecisionesEnCola.ts`. Esperan mientras hay
+  combate, modo dinámico o narrador escribiendo, y después un tiempo de lectura de la última
+  narración (`msDeLectura`: ~40 ms por carácter, entre 2 y 12 s). Mientras esperan, la cabecera
+  enseña «⚠️ Tienes una clase por elegir» (o especialización, o «Tu reino espera nombre») y al
+  pulsarlo se abre ya. Nota para la fase de pruebas: en esa espera el composer sigue libre.
+- ~~**UX-11 · Presentación en orden del turno** — secuencia fija: acción del jugador → tirada
   (`DiceTray`) → narración → cambios de estado (vida, inventario, XP con su animación) →
   **reacciones de compañeros** (`NAR-10`) → ofertas en el registro → **sucesos del mundo que se
   acaban de saber** (rumores, informe del día) → decisiones de la cola. Cada paso espera al
-  anterior. **M**
-- **UX-12 · Qué pasa con el cajón abierto cuando llega algo** — eventos **críticos** (combate,
+  anterior. **M**~~ ✅ 2026-10-02:
+  la secuencia ya era acción → tirada (los dados aterrizan antes de aplicar vida/energía en
+  combate) → narración; ahora, en una entrada recién llegada, las consecuencias (misión nueva,
+  ofertas, XP, reputación, oficio) entran cuando ha aterrizado la tirada (`lib/presentacionTurno.ts`,
+  clase `animate-paso-turno`, sin retraso si se pide reducir el movimiento) y las decisiones
+  esperan a leer la narración (`UX-10`). **Queda:** encajar en la secuencia las reacciones de
+  compañeros (`NAR-10`) y los sucesos del mundo recién sabidos (Cronista, `CR-18`…`CR-20`) cuando
+  existan.
+- ~~**UX-12 · Qué pasa con el cajón abierto cuando llega algo** — eventos **críticos** (combate,
   muerte, encuentro agresivo) cierran el cajón con animación; los **importantes** (narración nueva,
   oferta, misión) muestran una notificación y una marca en el registro; los **menores** no
-  interrumpen. Resuelve H10. **S**
+  interrumpen. Resuelve H10. **S**~~ ✅ 2026-10-02:
+  `lib/llegadas.ts` clasifica lo que entra al registro con el cajón abierto: combate o alguien que te
+  corta el paso → cierra el cajón; narración, oferta o misión → aviso «📜 …» dentro del cajón con
+  botón «Ver» (cierra el cajón para leerlo); tu propia acción no interrumpe. La «marca en el
+  registro» es la propia entrada nueva, que queda a la vista al cerrar. **Queda:** la notificación
+  general fuera del cajón llega con `HUD-6`.
 - ~~**UX-13 · `anyModalOpen` completo**, o mejor, sustituido por el gestor de capas: el composer
   pierde el foco y se deshabilita con cualquier capa ≥ 1 abierta. Resuelve H11. **S** **arreglo**~~
   ✅ 2026-10-01: el composer cuenta también el mapa de zona, Confirmar salida, Clase,

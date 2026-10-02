@@ -12,10 +12,10 @@ cada commit.**
 |---|---|
 | **Actualizado** | 2026-10-02 |
 | **Rama de trabajo** | `claude/frontend-improvements-roadmap-0mpckt`. Flujo acordado (2026-10-01): commit + push a esta rama con cada cosa hecha; a `main` se pasa **por pull request** (desde esta sesión el push directo a `main` lo bloquea el filtro de permisos) |
-| **Último commit en `main`** | Fusión del PR #3 (2026-10-02): bitácora recortada, paso 8 «después del 0.1», cobertura de roadmaps (367/367) y `tools/roadmap/cobertura.py`. La rama de trabajo y `main` quedan iguales |
+| **Último commit en `main`** | Fusión del PR #4 (2026-10-02, confirmada por la usuaria): Fase G del 0.1, Fase A del 0.2 (Libro de Sucesos `CR-1`…`CR-4`) y UX-B (`UX-1`, `2`, `5`, `7`, `8`, `37`). CI en verde. La rama de trabajo sigue desde ese punto |
 | **Hito** | `0.2` Facciones vivas — [plan](../producto/plan-roadmap-0.2.md) · [mapa de roadmaps](../producto/21-roadmap.md#qué-entra-en-cada-hito) (el `0.1` sigue abierto solo por las Fases E y F, ver abajo) |
-| **Tarea en curso** | `0.2` Fase B — Interfaz base. **UX-B ✅ cerrada** (`UX-1`, `UX-2`, `UX-5`, `UX-7`, `UX-8`, `UX-37`; `lib/gamePhase.ts`). Siguiente: **UX-C** orden y prioridad de lo que se abre — `UX-9` gestor de capas (`OverlayManager`, niveles de § 4.3 de [roadmap-front-ux.md](../producto/roadmap-front-ux.md)), luego `UX-10`…`UX-12`. Fase A ✅ (`CR-1`…`CR-4`); Fase C (`CR-5`…`CR-8`) tras la B. PR #4 a `main` abierto (2026-10-02, la usuaria lo pidió): se fusiona con la CI en verde |
-| **Tests** | Frontend: `tsc -b` 0, `vitest` 59 archivos / 358 tests (ahora incluye `src/pages/**`), `oxlint` 13 avisos (los mismos de antes). Backend en local con Postgres real: `tsc` 0, `vitest` 165/165 archivos, 2874 tests (última pasada completa, 2026-10-02); 1 test intermitente apuntado (G16). CI de GitHub en verde (PR #3) |
+| **Tarea en curso** | `0.2` Fase B — Interfaz base. **UX-B ✅ cerrada** (`UX-1`, `UX-2`, `UX-5`, `UX-7`, `UX-8`, `UX-37`; `lib/gamePhase.ts`). **UX-C** orden y prioridad de lo que se abre ([roadmap-front-ux.md](../producto/roadmap-front-ux.md) § 4.3): ~~`UX-9`~~ ✅ (gestor de capas, `lib/capas.ts` + `<Capa>`); ~~`UX-10`~~ ✅ (decisiones en cola, `useDecisionesEnCola`); ~~`UX-11`~~ ✅ (consecuencias tras la tirada, `lib/presentacionTurno.ts`); ~~`UX-12`~~ ✅ (`lib/llegadas.ts`) → **UX-C cerrada**. ~~`UX-6`~~ ✅ (opción B, decisión de la usuaria: la ambientación se cancela al enviar una acción; revisar con `CR-12`). ~~`BAS-3`~~ ✅ (foco visible y flechas en rejillas). Siguiente: el resto de la Fase B según [plan-roadmap-0.2.md](../producto/plan-roadmap-0.2.md): `BAS-5`, `BAS-7`…`BAS-9`, `MOD-1`…`MOD-6`, `HUD-6`, `HUD-12`, configuración básica (`CFG-*`). `UX-14` espera a `ZON-1` (🧭 Álvaro). Fase A ✅ (`CR-1`…`CR-4`); Fase C (`CR-5`…`CR-8`) tras la B. |
+| **Tests** | Frontend: `tsc -b` 0, `vitest` 66 archivos / 378 tests (ahora incluye `src/pages/**`), `oxlint` 13 avisos (los mismos de antes). Backend en local con Postgres real: `tsc` 0, `vitest` 165/165 archivos, 2874 tests (última pasada completa, 2026-10-02); 1 test intermitente apuntado (G16). CI de GitHub en verde (PR #3) |
 
 ## Dónde está todo (para saber qué sigue)
 
@@ -95,13 +95,13 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
+- **2026-10-02** — `BAS-3`: anillo de foco global y navegación con flechas/cruceta en inventario, habilidades, equipo y barra de habilidades.
+- **2026-10-02** — `UX-6` (opción B, decisión de la usuaria): enviar una acción cancela la ambientación del mundo en curso. Revisar la opción A con `CR-12`.
+- **2026-10-02** — `UX-12`: con el cajón abierto, un combate lo cierra y una narración u oferta nueva avisa dentro con «Ver». **UX-C cerrada.**
+- **2026-10-02** — `UX-11`: en un turno recién llegado, misión, ofertas, XP y reputación entran cuando aterriza la tirada, no a la vez que el texto.
+- **2026-10-02** — `UX-10`: clase, especialización y fundar reino esperan al combate, la escena y a leer la narración, con aviso en la cabecera para abrirlas antes.
+- **2026-10-02** — `UX-9`: gestor de capas; cuando coinciden dos overlays gana el más importante y el otro espera oculto sin perder su estado.
+- **2026-10-02** — PR #4 fusionado a `main` (Fase G del 0.1, Libro de Sucesos y UX-B). Se sigue en la misma rama, ya al día con `main`.
 - **2026-10-02** — `UX-8`: chip de la fase en la cabecera y candado en la brújula. **UX-B cerrada.**
 - **2026-10-02** — `UX-37` (petición de la usuaria): «✍️ Responder» en la tarjeta de una persona que te habla o te corta el paso, que deja «Le digo a <nombre>: » en el composer. Confirmado que en un encuentro se puede escribir.
 - **2026-10-02** — `UX-7`: la brújula se deshabilita con el motivo en vez de desaparecer y el mapa de zona no deja andar ni recoger cuando la fase no lo permite.
-- **2026-10-02** — `UX-5`: paneles en modo consulta (se leen siempre; lo que cambia datos se deshabilita con el motivo de la fase), con aviso en el cajón.
-- **2026-10-02** — `UX-1` y `UX-2`: fase única de partida y matriz de permisos (`lib/gamePhase.ts`, `useGamePhase`); `GameView` saca de ahí los bloqueos del composer y de los botones de turno.
-- **2026-10-02** — `CR-4`: vista de administración del Libro de Sucesos (`GET /saves/:id/libro` + página `/admin/partida/:id/libro`). **Fase A del 0.2 cerrada.**
-- **2026-10-02** — `CR-3`: el Libro de Sucesos ya recibe los sucesos del jugador y del mundo (combate, misiones, reino, diplomacia, expediciones, agenda, clima, cadáveres).
-- **2026-10-02** — `CR-2`: `registrarSuceso()` y catálogo de los 74 tipos de suceso (familia, importancia, plantilla).
-- **2026-10-02** — `CR-1`: modelos del Libro de Sucesos (`Suceso`, `SucesoCausa`, `SucesoActor`) con migración y test; el reinicio de partida vacía el Libro.
-- **2026-10-02** — Fase G aplazada a una fase única de pruebas antes de la beta (decisión de la usuaria); se empieza el `0.2`. G1-G29 en `fase-g-0.1-hallazgos.md` (21 arreglados).

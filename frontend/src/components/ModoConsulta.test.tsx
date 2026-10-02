@@ -38,4 +38,16 @@ describe('UX-5 — modo consulta', () => {
     expect(queryByRole('status')).toBeNull()
     expect(getByText('Depositar').closest('button')!.disabled).toBe(false)
   })
+
+  it('UX-12 (hito 0.2): con una novedad, el cajón la avisa y «Ver» llama a onVer', () => {
+    const onVer = vi.fn()
+    const { getByRole } = render(
+      <PanelDrawer title="Inventario" onClose={vi.fn()} novedad={{ texto: 'El narrador ha respondido', onVer }}>
+        contenido
+      </PanelDrawer>,
+    )
+    expect(getByRole('status').textContent).toContain('El narrador ha respondido')
+    getByRole('button', { name: 'Ver' }).click()
+    expect(onVer).toHaveBeenCalled()
+  })
 })

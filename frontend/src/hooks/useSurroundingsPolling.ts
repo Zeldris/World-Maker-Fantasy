@@ -29,6 +29,14 @@ export function useSurroundingsPolling(params: {
 
   // El temporizador de alrededores vive en un efecto aparte que no se reinicia en cada render (ver
   // más abajo) — necesita leer el valor más reciente de estos, no el de cuando arrancó.
+  // UX-6 (hito 0.2, decisión de la usuaria 2026-10-02: opción B) — un narrador a la vez: si el
+  // jugador envía una acción con una ambientación en curso, la ambientación se cancela y la acción
+  // sale en el acto. Hoy la ambientación son plantillas y no pesa nada; si gana peso (narrador de
+  // fondo del Cronista) se revisará la opción A (esperar).
+  const ambientacionRef = useRef<AbortController | null>(null)
+  useEffect(() => {
+    if (characterThinking) ambientacionRef.current?.abort()
+  }, [characterThinking])
   const characterThinkingRef = useRef(characterThinking)
   const fictionalDateRef = useRef(fictionalDate)
   // Bug real encontrado auditando la partida de Gorhorn (2026-07-23, "revisar partida" — petición
@@ -70,8 +78,10 @@ export function useSurroundingsPolling(params: {
         // Puramente descriptivo (petición explícita de la usuaria, 2026-07-23: "el sondeo
         // ambiental solo tiene que lanzarse en el chat de mundo... no tiene que preguntar que
         // hace, solo exponer que hay a tu alrededor") — ya nunca toca el chat de PERSONAJE.
-        const { description, logEntryId } = await requestSurroundings({ saveId: saveId! })
-        if (cancelled) return
+        const controller = new AbortController()
+        ambientacionRef.current = controller
+        const { description, logEntryId } = await requestSurroundings({ saveId: saveId! }, controller.signal)
+        if (cancelled || controller.signal.aborted) return
         const nowIso = new Date().toISOString()
         const entityBanner = buildEntityBanner(description, logEntryId)
         // El backend reutiliza el mismo LogEntry.id (mundo sin avanzar desde el último sondeo, ver
@@ -84,6 +94,7 @@ export function useSurroundingsPolling(params: {
         // Ambientación fallida no bloquea la partida — se reintenta en el siguiente tick.
       } finally {
         inFlight = false
+        ambientacionRef.current = null
         if (!cancelled) setWorldThinking(false)
       }
     }
