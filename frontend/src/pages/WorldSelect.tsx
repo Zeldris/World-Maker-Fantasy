@@ -7,7 +7,9 @@ import { StepDots } from '../components/StepDots'
 
 export function WorldSelect() {
   const navigate = useNavigate()
-  const { selectedWorld, setSelectedWorld } = useSession()
+  const { selectedWorld: elegido, setSelectedWorld } = useSession()
+  // Con un único mundo no hay nada que elegir: sale ya seleccionado (Fase G del 0.1, hallazgo G2).
+  const selectedWorld = elegido ?? (worlds.length === 1 ? worlds[0] : null)
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-6 py-12">
@@ -35,7 +37,10 @@ export function WorldSelect() {
       </div>
 
       <div className="flex justify-end">
-        <Button disabled={!selectedWorld} onClick={() => navigate(`/solitario/mundo/${selectedWorld!.id}`)}>
+        <Button disabled={!selectedWorld} onClick={() => {
+          setSelectedWorld(selectedWorld!)
+          navigate(`/solitario/mundo/${selectedWorld!.id}`)
+        }}>
           Continuar →
         </Button>
       </div>
