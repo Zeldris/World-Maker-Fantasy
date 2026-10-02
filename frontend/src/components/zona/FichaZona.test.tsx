@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { render, cleanup } from '@testing-library/react'
-import { FichaZona } from './FichaZona'
+import { FichaJugador, FichaZona } from './FichaZona'
 import { COLOR_DISPOSICION } from '../../lib/zonaFichas'
 
 /// ZON-10/11/13 (hito 0.1, roadmap-front-zona.md) — ficha legible y a tamaño fijo de pantalla.
@@ -37,5 +37,16 @@ describe('FichaZona', () => {
   it('una sola unidad no lleva insignia', () => {
     const { container } = enSvg(<FichaZona tipo="EDIFICIO" color={COLOR_DISPOSICION.NEUTRO} escala={1} />)
     expect(container.textContent).toBe('')
+  })
+
+  // ZON-14 (hito 0.1, Z10) — el personaje se distingue, dice hacia dónde va y respira quieto.
+  it('ficha del personaje: flecha según el último paso y halo solo quieto', () => {
+    const quieto = enSvg(<FichaJugador escala={1} angulo={90} quieto />)
+    expect(quieto.getByTestId('flecha-direccion').getAttribute('transform')).toBe('rotate(90)')
+    expect(quieto.container.querySelector('.animate-pulse-slow')).not.toBeNull()
+    cleanup()
+    const andando = enSvg(<FichaJugador escala={1} angulo={null} quieto={false} />)
+    expect(andando.queryByTestId('flecha-direccion')).toBeNull()
+    expect(andando.container.querySelector('.animate-pulse-slow')).toBeNull()
   })
 })

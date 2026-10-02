@@ -159,3 +159,26 @@ export function InsigniaGrupo({ cantidad }: { cantidad: number }) {
 
 /// Pictograma suelto para leyendas fuera del lienzo.
 export { Pictograma }
+
+/// ZON-14 (hito 0.1, Z10) — ficha del personaje: placa con silueta, anillo de cristal `accent` (el color
+/// de "tu personaje" en todo el juego), flecha de dirección según el último paso (`angulo` en grados,
+/// 0 = derecha; `null` = aún no se ha movido) y halo que respira mientras está quieto.
+export function FichaJugador({ escala, angulo, quieto, sombra = true }: { escala: number; angulo: number | null; quieto: boolean; sombra?: boolean }) {
+  return (
+    <g transform={`scale(${escala})`}>
+      <circle cx={0} cy={0} r={FICHA_AREA_CLIC_PX / 2} fill="transparent" />
+      {quieto && <circle cx={0} cy={0} r={19} fill="var(--color-accent-400)" opacity={0.28} className="animate-pulse-slow" pointerEvents="none" />}
+      <g filter={sombra ? 'url(#sombra-ficha)' : undefined}>
+        <circle cx={0} cy={0} r={14} fill={PLACA} fillOpacity={0.94} />
+      </g>
+      <circle cx={0} cy={0} r={14} fill="none" stroke="var(--color-accent-400)" strokeWidth={3} />
+      <circle cx={0} cy={0} r={11.2} fill="none" stroke="var(--color-accent-300)" strokeWidth={0.8} opacity={0.7} />
+      {angulo !== null && (
+        <g transform={`rotate(${angulo})`} data-testid="flecha-direccion">
+          <path d="M 15 -5 L 22 0 L 15 5 Z" fill="var(--color-accent-300)" stroke={PLACA} strokeWidth={1} strokeLinejoin="round" />
+        </g>
+      )}
+      <Pictograma tipo="JUGADOR" />
+    </g>
+  )
+}

@@ -5,7 +5,7 @@ import { anguloSalida, rumboSalida } from '../../lib/rumboSalida'
 import { ZoneGroupDetailModal } from '../ZoneGroupDetailModal'
 import { ZonaSalidaModal } from '../ZonaSalidaModal'
 import { ParcelaDetailModal } from '../ParcelaDetailModal'
-import { DefsFichas, FichaZona } from '../zona/FichaZona'
+import { DefsFichas, FichaJugador, FichaZona } from '../zona/FichaZona'
 import { COLOR_DISPOSICION, useEscalaPantalla } from '../../lib/zonaFichas'
 import type { LogEntry, ProfessionRecipeInfo, ZonaParcelaInfo } from '../../types'
 
@@ -194,17 +194,11 @@ function ZonePointMarker({ x, y, tipo, color, escala, hasCompanion, cantidad, so
 /// saltar entre los dos centros de celda. Duración = `MS_POR_PASO_MOVIMIENTO` exacta (ver ese
 /// comentario más arriba) — el deslizamiento ocupa el intervalo completo entre pasos, sin quedarse
 /// quieto esperando al siguiente.
-const JUGADOR_MARKER_PUNTOS = Array.from({ length: 10 }, (_, i) => {
-  const r = i % 2 === 0 ? 11 : 4.5
-  const angle = (Math.PI / 5) * i - Math.PI / 2
-  return `${r * Math.cos(angle)},${r * Math.sin(angle)}`
-}).join(' ')
-
-function JugadorMarker({ x, y }: { x: number; y: number }) {
+function JugadorMarker({ x, y, escala, angulo, quieto, sombra }: { x: number; y: number; escala: number; angulo: number | null; quieto: boolean; sombra?: boolean }) {
+  // ZON-14 (hito 0.1) — la estrella negra pasa a ficha propia (zona/FichaZona.tsx · FichaJugador).
   return (
     <g style={{ transform: `translate(${x}px, ${y}px)`, transition: `transform ${MS_POR_PASO_MOVIMIENTO}ms linear` }}>
-      <circle cx={0} cy={0} r={14} fill="none" stroke="white" strokeWidth={1.5} opacity={0.8} />
-      <polygon points={JUGADOR_MARKER_PUNTOS} fill="#0a0a0a" stroke="white" strokeWidth={1.5} />
+      <FichaJugador escala={escala} angulo={angulo} quieto={quieto} sombra={sombra} />
       <title>Tú estás aquí</title>
     </g>
   )
@@ -313,6 +307,9 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
   const [data, setData] = useState<ZonaResponse | null>(null)
   // ZON-11 (hito 0.1) — unidades del lienzo por píxel de pantalla: las fichas miden siempre lo mismo.
   const { ref: svgRef, escala } = useEscalaPantalla()
+  // ZON-14 (hito 0.1) — hacia dónde mira la ficha del personaje: el ángulo del último paso real.
+  const [anguloJugador, setAnguloJugador] = useState<number | null>(null)
+  const posJugadorAnteriorRef = useRef<{ x: number; y: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
   // Modal de detalle (2026-09-04) — comparte un mismo modal entre ZonePoint reales (`puntos`) y
   // dinámicos (`dinamicos`, sin ZonePoint sembrado), vía `zonaDinamicoToDetailSource`.
@@ -334,6 +331,16 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
   // anima el trayecto actual, para no solapar dos llamadas al backend a la vez.
   const [mensajeMovimiento, setMensajeMovimiento] = useState<string | null>(null)
   const [movimientoEnCurso, setMovimientoEnCurso] = useState(false)
+  const jugadorX = data?.jugador?.x
+  const jugadorY = data?.jugador?.y
+  useEffect(() => {
+    if (jugadorX == null || jugadorY == null) return
+    const anterior = posJugadorAnteriorRef.current
+    if (anterior && (anterior.x !== jugadorX || anterior.y !== jugadorY)) {
+      setAnguloJugador((Math.atan2(jugadorY - anterior.y, jugadorX - anterior.x) * 180) / Math.PI)
+    }
+    posJugadorAnteriorRef.current = { x: jugadorX, y: jugadorY }
+  }, [jugadorX, jugadorY])
   // Token de cancelación (2026-09-08) — si el jugador clica un destino NUEVO a mitad de la
   // animación del anterior, el bucle en curso debe parar de seguir pidiendo pasos del trayecto
   // viejo; comparar contra el token actual en cada iteración es más simple que cancelar promesas.
@@ -597,7 +604,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                   <title>{`${d.nombre} (${TIPO_LABEL[d.tipo]})`}</title>
                 </g>
               ))}
-              {data.jugador && <JugadorMarker x={data.jugador.x} y={data.jugador.y} />}
+              {data.jugador && <JugadorMarker x={data.jugador.x} y={data.jugador.y} escala={escala} angulo={anguloJugador} quieto={!movimientoEnCurso} />}
               {/* Iconos de salida de región (2026-09-17) — siempre VISIBLES en su posición real
                   (dirección cardinal), incluso con `soloConsulta` (vista de MapaPanel). Umbral de
                   proximidad (2026-09-20, petición explícita de Álvaro: "al estar a una celda si
@@ -677,8 +684,8 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                   </span>
                 ))}
                 <span className="flex items-center gap-1.5">
-                  <svg viewBox="0 0 24 24" width={14} height={14} aria-hidden="true">
-                    <JugadorMarker x={12} y={12} />
+                  <svg viewBox="-18 -18 36 36" width={20} height={20} aria-hidden="true">
+                    <JugadorMarker x={0} y={0} escala={1} angulo={null} quieto={false} sombra={false} />
                   </svg>
                   Tú
                 </span>
