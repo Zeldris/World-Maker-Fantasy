@@ -125,15 +125,21 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
 > cual el jugador podrá ajustar resolución y otro tipo de cosas".
 
 ### 2.1 Acceso y estructura
-- **CFG-1 · Botón ⚙️ fijo** en la cabecera de hierro de la partida (junto a la fecha) y en la esquina
-  superior derecha de `Home`. **S**
+- ~~**CFG-1 · Botón ⚙️ fijo** en la cabecera de hierro de la partida (junto a la fecha) y en la esquina
+  superior derecha de `Home`. **S**~~ ✅ 2026-10-02: `components/BotonAjustes.tsx` en `GameHeader` y
+  `Home`.
 - **CFG-2 · `Esc` abre el menú** cuando no hay ningún modal/cajón abierto (si lo hay, `Esc` lo cierra
   primero, como en cualquier juego); botón *Menú/Start* del mando igual. **S**
 - **CFG-3 · Menú de pausa** dentro de la partida: *Reanudar · Configuración · Guardar y salir a tus
   partidas · Salir al inicio*. Absorbe el actual "← Salir a tus partidas" de la cabecera. **M**
-- **CFG-4 · Panel de configuración** a pantalla casi completa, pestañas laterales (lenguaje de
+- ~~**CFG-4 · Panel de configuración** a pantalla casi completa, pestañas laterales (lenguaje de
   `SideNav`), `plank-panel` + `iron-band`. Pie: **Restablecer · Cancelar · Aplicar**, previsualización
-  en vivo, aviso si se cierra con cambios sin aplicar. **M**
+  en vivo, aviso si se cierra con cambios sin aplicar. **M**~~ ✅ 2026-10-02:
+  `components/PanelAjustes.tsx` sobre `ModalShell` (`lg`), pestañas Pantalla · Interfaz y texto ·
+  Animaciones · Accesibilidad; vista previa sin guardar (`setAjustes(…, { vistaPrevia })`), aviso
+  «Hay cambios sin aplicar» con Descartar / Aplicar y cerrar. Lo pinta `AjustesProvider`
+  (`abrirPanel()`), así se abre desde cualquier pantalla. **Queda:** pestañas Sonido y Controles
+  cuando lleguen sus ajustes (`CFG-25`, `CFG-26`).
 - ~~**CFG-5 · Persistencia**: `localStorage` con clave versionada (`tarkor.settings.v1`) y migración
   entre versiones; con Tauri, fichero de configuración del sistema. **S**~~ ✅ 2026-10-02:
   `lib/ajustes.ts` (`cargarAjustes`/`guardarAjustes`, `normalizarAjustes` campo a campo, hueco de
@@ -155,15 +161,17 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
 |---|---|---|---|
 | CFG-7 | **Resolución** | 1280×720, 1280×800, 1366×768, 1600×900, 1920×1080, 2560×1440, nativa | Real con Tauri (`setSize`). En navegador, deshabilitado con aviso "disponible en la versión instalada". 🧭 |
 | CFG-8 | **Modo de ventana** | Ventana · Sin bordes · Pantalla completa | Navegador: `requestFullscreen()`; Tauri: `setFullscreen`/`setDecorations`. Atajo `F11`. |
-| CFG-9 | **Escala de la interfaz** | 80 %–150 % | `font-size` raíz; clave en Steam Deck y monitores 4K. |
+| ~~CFG-9~~ ✅ 2026-10-02 | **Escala de la interfaz** | 80 %–150 % | `font-size` raíz; clave en Steam Deck y monitores 4K. Deslizador de 5 en 5 en la pestaña Pantalla. |
 | CFG-10 | **Ancho máximo del juego** | 1600 px (actual) · 1920 px · sin límite | Hoy `max-w-[1600px]` fijo en `App.tsx`. |
 | CFG-11 | **Calidad visual** | Alta · Media · Baja | Agrupa texturas, partículas y sombras; "Baja" pensada para Steam Deck en batería. |
 | CFG-12 | **Brillo / gamma de la interfaz** | deslizador | Las texturas de madera son muy oscuras en pantallas con poco brillo. |
 
 ### 2.3 Pestaña Interfaz y texto
-- **CFG-13 · Tamaño y tipografía de la narración** (independiente de la escala general): tamaño
+- ~~**CFG-13 · Tamaño y tipografía de la narración** (independiente de la escala general): tamaño
   pequeño · normal · grande · muy grande; fuente serif de lectura · sans · *Atkinson Hyperlegible*
-  (empaquetada); interlineado normal/amplio. **S**
+  (empaquetada); interlineado normal/amplio. **S**~~ ✅ 2026-10-02: tamaño, fuente (Normal = la de
+  siempre · Serif de lectura = Georgia · Muy legible) e interlineado amplio, sobre `.texto-narracion`.
+  **Queda:** empaquetar Atkinson Hyperlegible (hoy cae en Verdana si no está instalada).
 - **CFG-15 · Revelado del texto del narrador**: tal como llega del streaming (actual) o suavizado con
   efecto máquina de escribir (rápido/normal). **S**
 - **CFG-16 · Tooltips**: siempre · con retardo · nunca. **S**
@@ -173,12 +181,15 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
 - **CFG-19 · Formato de fecha ficticia** en cabecera: corto / largo. **S**
 
 ### 2.4 Pestaña Gráficos y animaciones
-- **CFG-14 · Animaciones**: Completas · Reducidas · Ninguna. Por defecto sigue a
+- ~~**CFG-14 · Animaciones**: Completas · Reducidas · Ninguna. Por defecto sigue a
   `prefers-reduced-motion`, pero se puede forzar. Implementación: `[data-motion]` reutilizando la
-  lista de clases que ya existe en `index.css`. **S**
+  lista de clases que ya existe en `index.css`. **S**~~ ✅ 2026-10-02: Como el sistema · Completas ·
+  Reducidas · Ninguna («Ninguna» quita también las transiciones; «Completas» manda sobre el sistema).
 - **CFG-20 · Tiradas de dados** (detalle en §4): velocidad *Dramática* (actual) · *Normal* · *Rápida* ·
   *Instantánea*; dónde se muestran (*en el registro* · *en primer plano* · *solo las importantes en
-  primer plano*); saltar con clic/`Espacio`. **S** (resuelve H3)
+  primer plano*); saltar con clic/`Espacio`. **S** (resuelve H3) 🚧 2026-10-02: hecha la
+  **velocidad** (`lib/duracionTirada.ts`: todo lo que espera a los dados usa `duracionTirada()`).
+  **Falta:** dónde se muestran (va con `DAD-*`, tirada en primer plano) y saltar con clic/Espacio.
 - **CFG-21 · Efectos ambientales** (§11): sí/no. **S**
 - **CFG-22 · Sacudidas de pantalla y destellos**: sí/no (también accesibilidad). **S**
 - **CFG-23 · Texturas**: Detalladas · Lisas (versión plana de `.plank-panel`/`.iron-band`). **S**
@@ -196,7 +207,9 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
   la cruceta. Depende de `BAS-3`. **M**
 
 ### 2.7 Pestaña Accesibilidad
-- **CFG-28 · Alto contraste**: sube un paso los textos `wood-400/500/600` y engrosa bordes. **S**
+- ~~**CFG-28 · Alto contraste**: sube un paso los textos `wood-400/500/600` y engrosa bordes. **S**~~
+  ✅ 2026-10-02: `[data-contrast='alto']` aclara `text-wood-400/500/600` un paso y marca los bordes
+  `iron-700/800`.
 - **CFG-29 · Modo daltónico**: éxito/fallo y los 7 colores de atributo con forma/icono además de
   color; paletas Deuteranopía/Protanopía/Tritanopía. **M**
 - **CFG-30 · Subrayar enlaces a la enciclopedia** en el texto (hoy solo color). **S**
