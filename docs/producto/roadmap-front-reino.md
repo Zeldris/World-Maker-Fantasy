@@ -172,8 +172,8 @@ pausada visualmente detrás. 🧭 **M**
 ### 5.4 Almacén
 | Id | Propuesta | Back | Esf. |
 |---|---|---|---|
-| REI-40 | **Agrupado por recurso** (R9): una fila/carta por tipo con cantidad, icono, categoría (comida, bebida, material, medicina, equipo — clasificación ya hecha en `construcciones-reino.md`), y botón para ver unidades sueltas si hiciera falta. | ✅ | S |
-| REI-41 | **Topes junto al stock** (R22): barra `cantidad / tope` por recurso con el tope editable (stepper o deslizador, `Enter` para guardar, confirmación visual) (R20). | ✅ | S |
+| ~~REI-40~~ | ~~**Agrupado por recurso** (R9): una fila/carta por tipo con cantidad, icono, categoría (comida, bebida, material, medicina, equipo — clasificación ya hecha en `construcciones-reino.md`), y botón para ver unidades sueltas si hiciera falta.~~ ✅ 2026-10-02: fila por recurso (`catalogSlug` o nombre) con `×cantidad`, *Retirar 1*, desplegable de unidades sueltas y total en la cabecera (`reino/AlmacenSection.tsx`, `lib/almacen.ts`). **Pendiente:** icono y categoría por recurso — `AlmacenItemInfo` no trae categoría (🔌), entra con la pestaña Almacén de R-B. | ✅ | S |
+| ~~REI-41~~ | ~~**Topes junto al stock** (R22): barra `cantidad / tope` por recurso con el tope editable (stepper o deslizador, `Enter` para guardar, confirmación visual) (R20).~~ ✅ 2026-10-02: barra `cantidad / tope` y tope editable (`NumeroGuardable`) en cada recurso del Almacén; la tarjeta "Topes de Almacén" sale de Producción. Los objetos sin `catalogSlug` no admiten tope (el backend los limita por slug). | ✅ | S |
 | REI-42 | **Depositar y retirar en cantidad** (R15): selector de cantidad (`QuantityStepper`, MOD-5), "Depositar todo lo de este tipo", "Depositar todo menos lo equipado". Arrastrar desde la mochila. | ✅ (varias llamadas) / 🔌 (en lote) | M |
 | REI-43 | **Buscar, filtrar, ordenar** (por categoría, cantidad, cerca del tope). | ✅ | S |
 | REI-44 | **Uso de cada recurso**: en la ficha de un recurso, qué órdenes lo consumen y cuáles lo producen (enlaza con REI-36). | ✅ | M |

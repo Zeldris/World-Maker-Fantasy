@@ -3,15 +3,12 @@ import { NumeroGuardable } from '../../NumeroGuardable'
 import type { AlmacenItemInfo, BuildingInfo, CompanionInfo, ProfessionRecipeInfo } from '../../../types'
 import {
   type OrdenProduccionInfo,
-  type AlmacenLimiteInfo,
   getOrdenesProduccion,
   getRecetasProduccionEdificio,
   crearOrdenProduccion,
   actualizarOrdenProduccion,
   borrarOrdenProduccion,
   asignarCompanionABuilding,
-  getAlmacenLimites,
-  setAlmacenLimite,
 } from '../../../lib/api'
 import { PanelEmptyState } from '../../PanelEmptyState'
 import { SelectionModalShell, confirmButtonClasses } from '../../SelectionModalShell'
@@ -23,7 +20,8 @@ interface ProduccionSectionProps {
   saveId: string
   buildings: BuildingInfo[]
   companions: CompanionInfo[]
-  almacenItems: AlmacenItemInfo[]
+  /// Ya no se usa aquí (los topes pasaron al Almacén, REI-41); se mantiene para no tocar al llamador.
+  almacenItems?: AlmacenItemInfo[]
   professionRecipes: ProfessionRecipeInfo[]
   onRefreshSave: () => Promise<void>
 }
@@ -34,7 +32,7 @@ interface ProduccionSectionProps {
 /// REI-33 (2026-10-02) las desactivadas se pueden reactivar o borrar, y el límite de una orden
 /// "único" se edita en línea. El motor de tick (`kingdomProduction.ts`) ya corre cada día de ficción; hasta este
 /// panel no había ninguna forma real de crear una orden o asignar un trabajador.
-export function ProduccionSection({ saveId, buildings, companions, almacenItems, professionRecipes, onRefreshSave }: ProduccionSectionProps) {
+export function ProduccionSection({ saveId, buildings, companions, professionRecipes, onRefreshSave }: ProduccionSectionProps) {
   // Solo edificios de reino (Ayuntamiento/Choza/Cuartel...) son candidatos a producir — mismo
   // criterio que `requiresAyuntamiento` del catálogo, aproximado aquí sin importar construction.ts
   // al cliente: cualquier edificio ya construido puede tener trabajadores/órdenes reales.
@@ -63,7 +61,8 @@ export function ProduccionSection({ saveId, buildings, companions, almacenItems,
           onRefreshSave={onRefreshSave}
         />
       ))}
-      <AlmacenLimitesCard saveId={saveId} almacenItems={almacenItems} onRefreshSave={onRefreshSave} />
+      {/* REI-41 (hito 0.1, R22) — los topes del Almacén viven ya junto al stock, en Súbditos › Almacén. */}
+      <p className="text-2xs text-wood-500">Los topes de cada recurso se ajustan junto a su stock, en Súbditos › Almacén de Reino.</p>
     </div>
   )
 }
@@ -451,83 +450,3 @@ function NuevaOrdenModal({
   )
 }
 
-function AlmacenLimitesCard({ saveId, almacenItems, onRefreshSave }: { saveId: string; almacenItems: AlmacenItemInfo[]; onRefreshSave: () => Promise<void> }) {
-  const [limites, setLimites] = useState<AlmacenLimiteInfo[] | null>(null)
-  const [busy, setBusy] = useState<string | null>(null)
-  const { fallo, informar, limpiar } = useErrorConReintento()
-
-  useEffect(() => {
-    let cancelado = false
-    getAlmacenLimites(saveId)
-      .then((res) => {
-        if (!cancelado) setLimites(res.limites)
-      })
-      .catch(() => {
-        if (!cancelado) setLimites([])
-      })
-    return () => {
-      cancelado = true
-    }
-  }, [saveId])
-
-  // Stock actual agrupado por catalogSlug (dato ya disponible vía almacenItems, sin llamada nueva).
-  const stockPorSlug = new Map<string, { name: string; count: number }>()
-  for (const item of almacenItems) {
-    if (!item.catalogSlug) continue
-    const existing = stockPorSlug.get(item.catalogSlug)
-    if (existing) existing.count += 1
-    else stockPorSlug.set(item.catalogSlug, { name: item.name, count: 1 })
-  }
-
-  async function handleLimiteChange(catalogSlug: string, limite: number | null): Promise<boolean> {
-    setBusy(catalogSlug)
-    try {
-      await setAlmacenLimite(saveId, catalogSlug, limite)
-      const res = await getAlmacenLimites(saveId)
-      setLimites(res.limites)
-      await onRefreshSave()
-      return true
-    } catch (e) {
-      informar('No se pudo cambiar el tope del almacén.', e, () => void handleLimiteChange(catalogSlug, limite))
-      return false
-    } finally {
-      setBusy(null)
-    }
-  }
-
-  if (stockPorSlug.size === 0) {
-    return null
-  }
-
-  return (
-    <div className="rounded-lg border border-iron-700 bg-wood-950/40 px-3.5 py-3">
-      <p className="font-medium text-wood-100">Topes de Almacén</p>
-      {fallo && <div className="mt-2"><ErrorBanner fallo={fallo} onCerrar={limpiar} /></div>}
-      <p className="mt-1 text-2xs text-wood-500">Cuando un recurso alcanza su tope, el trabajador deja de producirlo y pasa a la siguiente orden con hueco.</p>
-      <div className="mt-2 flex flex-col gap-1.5">
-        {[...stockPorSlug.entries()].map(([slug, { name, count }]) => {
-          const limiteActual = limites?.find((l) => l.catalogSlug === slug)?.limite ?? null
-          return (
-            <div key={slug} className="flex items-center gap-2 rounded-lg border border-iron-700 bg-wood-950/60 px-2.5 py-1.5">
-              <span className="flex-1 truncate text-xs text-wood-200">{name}</span>
-              <span className="text-2xs font-mono text-wood-500">{count}</span>
-              <label className="flex items-center gap-1 text-2xs text-wood-500">
-                tope
-                <NumeroGuardable
-                  ariaLabel={`Tope de ${name}`}
-                  valor={limiteActual}
-                  min={1}
-                  permitirVacio
-                  placeholder="∞"
-                  disabled={busy === slug}
-                  onGuardar={(v) => handleLimiteChange(slug, v)}
-                  className="w-14 rounded border border-iron-700 bg-wood-950/80 px-1.5 py-0.5 text-center text-2xs text-wood-200"
-                />
-              </label>
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}

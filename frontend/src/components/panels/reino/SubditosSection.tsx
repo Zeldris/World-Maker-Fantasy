@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import type { AlmacenItemInfo, CompanionInfo, EquipSlot, InventoryItemInfo, PlantillaEquipoInfo, SubjectInfo } from '../../../types'
 import { PanelSection } from '../../PanelSection'
-import { depositarEnAlmacen, retirarDeAlmacen, crearPlantilla, borrarPlantilla, asignarPlantillaCompanion, asignarPlantillaSubject, fijarRolReinoCompanion } from '../../../lib/api'
+import { AlmacenSection } from './AlmacenSection'
+import { crearPlantilla, borrarPlantilla, asignarPlantillaCompanion, asignarPlantillaSubject, fijarRolReinoCompanion } from '../../../lib/api'
 import { SLOT_LABEL, SLOT_ORDER } from '../../../lib/equipSlots'
 import { ErrorBanner } from '../../../components/ErrorBanner'
 import { useErrorConReintento } from '../../../hooks/useErrorConReintento'
@@ -73,95 +74,6 @@ export function PlantillaSelect({
       </select>
       <ErrorBanner fallo={fallo} onCerrar={limpiar} />
     </div>
-  )
-}
-
-/// Almacén de Reino (§6-7) — pool de objetos separado de la mochila personal. Depositar mueve un
-/// objeto SIN equipar de la mochila al Almacén (y dispara el auto-equipo del backend); Retirar
-/// hace el camino contrario, sin equiparlo en nadie.
-function AlmacenSection({
-  saveId,
-  inventory,
-  almacenItems,
-  onRefreshSave,
-}: {
-  saveId: string
-  inventory: InventoryItemInfo[]
-  almacenItems: AlmacenItemInfo[]
-  onRefreshSave: () => Promise<void>
-}) {
-  const [busy, setBusy] = useState<string | null>(null)
-  const { fallo, informar, limpiar } = useErrorConReintento()
-  const depositable = inventory.filter((i) => !i.slot && !i.companionId && !i.subjectId)
-
-  async function handleDepositar(itemId: string) {
-    setBusy(itemId)
-    try {
-      await depositarEnAlmacen(saveId, itemId)
-      await onRefreshSave()
-    } catch (e) {
-      informar('No se pudo depositar el objeto en el almacén.', e, () => void handleDepositar(itemId))
-    } finally {
-      setBusy(null)
-    }
-  }
-
-  async function handleRetirar(almacenItemId: string) {
-    setBusy(almacenItemId)
-    try {
-      await retirarDeAlmacen(saveId, almacenItemId)
-      await onRefreshSave()
-    } catch (e) {
-      informar('No se pudo retirar el objeto del almacén.', e, () => void handleRetirar(almacenItemId))
-    } finally {
-      setBusy(null)
-    }
-  }
-
-  return (
-    <PanelSection title="Almacén de Reino">
-      <div className="flex flex-col gap-3">
-        <ErrorBanner fallo={fallo} onCerrar={limpiar} />
-        {almacenItems.length === 0 ? (
-          <p className="text-xs text-wood-500">Vacío — deposita objetos aquí para que se auto-equipen en súbditos/compañeros con plantilla asignada.</p>
-        ) : (
-          <div className="flex flex-col gap-1.5">
-            {almacenItems.map((item) => (
-              <div key={item.id} className="flex items-center justify-between gap-2 rounded-lg border border-iron-700 bg-wood-950/40 px-3 py-2">
-                <span className="truncate text-xs text-wood-200">{item.name}</span>
-                <button type="button"
-                  onClick={() => handleRetirar(item.id)}
-                  disabled={busy === item.id}
-                  className="tactile shrink-0 rounded border border-iron-700 px-2 py-1 text-2xs text-wood-400 hover:text-accent-300 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {busy === item.id ? '...' : 'Retirar'}
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {depositable.length > 0 && (
-          <details className="text-xs">
-            <summary className="cursor-pointer text-wood-400 hover:text-accent-300">Depositar desde la mochila</summary>
-            <div className="mt-2 flex flex-col gap-1.5">
-              {depositable.map((item) => (
-                <div key={item.id} className="flex items-center justify-between gap-2 rounded-lg border border-iron-700 bg-wood-950/40 px-3 py-2">
-                  <span className="truncate text-xs text-wood-200">{item.name}</span>
-                  <button type="button"
-                    onClick={() => handleDepositar(item.id)}
-                    disabled={busy === item.id}
-                    className="tactile shrink-0 rounded border border-accent-600/60 px-2 py-1 text-2xs text-accent-300 hover:bg-accent-500/10 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {busy === item.id ? '...' : 'Depositar'}
-                  </button>
-                </div>
-              ))}
-            </div>
-          </details>
-        )}
-      </div>
-    </PanelSection>
   )
 }
 
