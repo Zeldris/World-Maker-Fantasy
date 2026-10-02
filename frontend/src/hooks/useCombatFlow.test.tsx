@@ -1120,3 +1120,35 @@ describe('handleCombatTurnResolved — condición/energía/vida del rival se ret
     expect(result.current.combat.awaitingExchangeApply).toBe(false)
   })
 })
+
+// Fase G del 0.1 (hallazgo G5): el motivo del backend se tragaba y Capturar parecía no hacer nada.
+describe('handleCapturarSeleccion/handleDejarVivirSeleccion: el fallo se cuenta en el diario', () => {
+  it('Capturar sin cuerdas deja el motivo del backend en el diario y no marca dismissed', async () => {
+    const { result } = renderHook(() => useHarness())
+    const npcs = [npc({ slug: 'gesgurio', name: 'Gesgurio', condicionFisica: 'CONVALECIENTE' })]
+    act(() => {
+      result.current.setCombateIniciado({ npcs })
+      result.current.combat.openCombat({ npcs })
+    })
+    mockPostCapturar.mockRejectedValueOnce(new Error('Necesitas cuerdas (en inventario) para intentar atar.'))
+
+    await act(() => result.current.combat.handleCapturarSeleccion(result.current.combat.combatNpcsDisplay[0]))
+
+    expect(result.current.characterLog.at(-1)?.text).toBe('Necesitas cuerdas (en inventario) para intentar atar.')
+    expect(result.current.combat.combatNpcsDisplay[0].dismissed).not.toBe(true)
+  })
+
+  it('Clemente que falla también deja el motivo en el diario', async () => {
+    const { result } = renderHook(() => useHarness())
+    const npcs = [npc({ slug: 'gesgurio', name: 'Gesgurio', condicionFisica: 'CONVALECIENTE' })]
+    act(() => {
+      result.current.setCombateIniciado({ npcs })
+      result.current.combat.openCombat({ npcs })
+    })
+    mockDejarVivir.mockRejectedValueOnce(new Error('Ese combatiente ya fue resuelto.'))
+
+    await act(() => result.current.combat.handleDejarVivirSeleccion(result.current.combat.combatNpcsDisplay[0]))
+
+    expect(result.current.characterLog.at(-1)?.text).toBe('Ese combatiente ya fue resuelto.')
+  })
+})

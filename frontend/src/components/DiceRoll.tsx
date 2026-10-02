@@ -116,10 +116,10 @@ export function DiceFace({
   const otros = side.result - side.roll - bono
 
   return (
-    <div className="flex flex-col items-center gap-1">
+    <div className="flex min-w-0 max-w-full flex-col items-center gap-1">
       {/* DAD-4 (hito 0.1, H23) — sin truncar: el nombre real del personaje o del rival cabe entero. */}
       <span className="max-w-[11rem] text-center text-2xs uppercase leading-tight tracking-wide text-wood-400 break-words">{label}</span>
-      <span className="flex items-baseline justify-center gap-2">
+      <span className="flex flex-wrap items-baseline justify-center gap-x-2">
         <span className="flex items-center gap-1">
           <span aria-hidden="true">🎲</span>
           <span
@@ -303,7 +303,10 @@ export function DiceRollVs({
 
   return (
     <div ref={ref} className="animate-entry-in mt-2 flex flex-col items-center gap-2 rounded-lg border border-dashed border-iron-700 bg-wood-950/30 px-3 py-3">
-      <div className="flex items-start justify-center gap-14">
+      {/* Fase G del 0.1 (hallazgo G4): en el panel de combate, estrecho, los dos lados no cabían en
+          fila con `gap-14` y la fórmula del rival se cortaba con barra horizontal — ahora se
+          acercan y, si aun así no caben, el rival baja debajo. */}
+      <div className="flex max-w-full flex-wrap items-start justify-center gap-x-8 gap-y-2">
         <DiceFace label={nombreIzq} side={left} startDelayMs={leftDelayMs} showDifficulty={showDifficulty} forcedGrado={leftGrado} />
         <span className="self-center text-xs text-wood-500">vs</span>
         <DiceFace label={nombreDer} side={right} startDelayMs={rightDelayMs} showDifficulty={showDifficulty} forcedGrado={rightGrado} />

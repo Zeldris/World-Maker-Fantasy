@@ -14,10 +14,10 @@ Partida: Gorhorn, **Cazador** (su clase real), dificultad Novato.
 
 | Tramo | Estado |
 |---|---|
-| Crear partida y primer turno | 🚧 en curso |
-| Gistera | pendiente |
-| Zona y movimiento | pendiente |
-| Caza en solitario y en grupo (aviso de riesgo) | pendiente |
+| Crear partida y primer turno | ✅ (G1, G2, G3) |
+| Gistera | 🚧 en curso — en la Hondonada salió antes un Gesgurio (encuentro de fauna) |
+| Zona y movimiento | 🚧 mapa, ficha de punto e «Ir hasta aquí» funcionan; faltan salidas a otra zona |
+| Caza en solitario y en grupo (aviso de riesgo) | 🚧 solitario hecho (encuentro → iniciativa → Cazar → combate de 12 rondas → convaleciente; G4, G5); falta en grupo |
 | Cadáveres, saqueo y Goirnos | pendiente |
 | Recolección con cada método (ficha de flora) | pendiente |
 | Combate con muerte y renacer | pendiente |
@@ -31,3 +31,6 @@ Partida: Gorhorn, **Cazador** (su clase real), dificultad Novato.
 | G1 | La narración enlazaba palabras comunes como si fueran entidades: «algo que **tira** de él» salía como el NPC «Tira», y el chip mostraba el nombre canónico en vez de la palabra («las **Roca de Llanura Roja**» por «las rocas»). | ✅ 2026-10-02: los nombres propios (NPC, lugar, personaje) solo se enlazan si en el texto llevan alguna mayúscula, y el chip de la narración muestra la palabra tal cual. Una sola función (`buscarMenciones` en `lib/enciclopediaIndex.ts`) para narración, composer y banner. |
 | G2 | Con un único mundo (y con un único personaje preseleccionado) «Continuar» está desactivado hasta pulsar la tarjeta: un clic de más sin elección real. | ✅ 2026-10-02: con un único mundo o un único preseleccionado jugable, sale ya elegido (`WorldSelect.tsx`, `CharacterSelect.tsx`). |
 | G3 | Al elegir clase, el diario decía «asume su clase: CAZADOR» (el nombre interno en mayúsculas). | ✅ 2026-10-02: sale «Cazador» (`enumLabel` de `imagePromptContext.ts`, ya existente, ahora exportado); test de `turn.integration` lo comprueba. |
+| G4 | En el panel de combate (estrecho), la tirada «Actúas primero» no cabía: la fórmula del rival se cortaba y salía barra horizontal. | ✅ 2026-10-02: los dos lados de `DiceRollVs` se acercan y, si no caben, el rival baja debajo (`DiceRoll.tsx`). |
+| G5 | «Capturar» a un rival convaleciente sin cuerdas no hacía nada visible: el backend daba el motivo (400 «Necesitas cuerdas…») y el frontend se lo tragaba. Igual en «Clemente». | ✅ 2026-10-02: el motivo sale en el diario (`useCombatFlow.ts`, `avisarErrorEnLog`), con 2 tests. Mejora posible aparte: avisar antes de pulsar (el backend ya expone `tieneCuerdas` en `GET /capturables`). |
+| G6 | La habilidad «Analisis Salvaje» va sin tilde. | pendiente — el nombre hace de identificador de las `SavedAction` ya guardadas (anti-duplicado por nombre en `progression.ts`): cambiarlo necesita migrar las partidas existentes. |
