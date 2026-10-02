@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
+import { registrarSuceso } from './sucesos.js';
 
 // CR-1 (hito 0.2, roadmap-cronista.md § 5.1): el esquema del Libro de Sucesos contra Postgres real —
 // un suceso con sus actores, una cadena causa → efecto, y todo se va con la partida.
@@ -98,5 +99,72 @@ describe('Libro de Sucesos: modelos (CR-1)', () => {
 
     expect(await prisma.suceso.findUnique({ where: { id: s.id } })).toBeNull();
     expect(await prisma.sucesoActor.count({ where: { sucesoId: s.id } })).toBe(0);
+  });
+});
+
+// CR-2 (hito 0.2, roadmap-cronista.md § 6.2): la única puerta de entrada al Libro.
+describe('registrarSuceso (CR-2)', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const save = await prisma.save.create({
+      data: {
+        userId: await getDefaultUserId(),
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (registrarSuceso)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        portraitInitial: 'G',
+      },
+    });
+    saveId = save.id;
+  });
+
+  afterAll(async () => {
+    await prisma.save.deleteMany({ where: { id: saveId } });
+  });
+
+  it('calcula familia, texto e importancia (jugador autor + NPC del núcleo) y guarda actores y causas', async () => {
+    const gistera = await prisma.npc.findFirstOrThrow({ where: { slug: 'gistera-koh' } });
+    const previo = await registrarSuceso(prisma, {
+      saveId, tipo: 'PROMESA', fictionalMinutes: 500, origen: 'JUGADOR',
+      actores: [{ entidadTipo: 'PERSONAJE', entidadId: saveId, papel: 'AUTOR' }],
+      datos: { personaje: 'Gorhorn', a: 'Gistera Koh', promesa: 'acabar con su perseguidor' },
+    });
+    const id = await registrarSuceso(prisma, {
+      saveId, tipo: 'PERDON_CONCEDIDO', fictionalMinutes: 600, regionSlug: 'llanuras-viento-rojo', origen: 'JUGADOR',
+      actores: [
+        { entidadTipo: 'PERSONAJE', entidadId: saveId, papel: 'AUTOR' },
+        { entidadTipo: 'NPC', entidadId: gistera.id, papel: 'BENEFICIARIO' },
+        { entidadTipo: 'NPC', entidadId: gistera.id, papel: 'BENEFICIARIO' },
+      ],
+      datos: { personaje: 'Gorhorn', perdonado: 'Gistera Koh' },
+      causas: [previo, previo],
+    });
+
+    const suceso = await prisma.suceso.findUniqueOrThrow({ where: { id }, include: { actores: true, causas: true } });
+    expect(suceso.familia).toBe('JUGADOR');
+    expect(suceso.texto).toBe('Gorhorn perdona la vida a Gistera Koh.');
+    expect(suceso.importancia).toBe(4 + 1 + 1); // base 4, jugador autor, Gistera es del núcleo jugable
+    expect(suceso.actores).toHaveLength(2); // el actor repetido cuenta una vez
+    expect(suceso.causas.map((c) => c.causaId)).toEqual([previo]);
+    expect(suceso.semilla).toBeTruthy();
+  });
+
+  it('dentro de una transacción que falla, el suceso no queda en el Libro', async () => {
+    await expect(
+      prisma.$transaction(async (tx) => {
+        await registrarSuceso(tx, {
+          saveId, tipo: 'TORMENTA', fictionalMinutes: 700, origen: 'MUNDO',
+          actores: [{ entidadTipo: 'REGION', entidadId: 'llanuras-viento-rojo', papel: 'LUGAR' }],
+          datos: { region: 'las Llanuras del Viento Rojo' },
+        });
+        throw new Error('el turno falla');
+      }),
+    ).rejects.toThrow('el turno falla');
+    expect(await prisma.suceso.count({ where: { saveId, tipo: 'TORMENTA' } })).toBe(0);
   });
 });

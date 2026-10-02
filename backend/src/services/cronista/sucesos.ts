@@ -1,0 +1,71 @@
+// Libro de Sucesos — única puerta de entrada (CR-2, hito 0.2 — roadmap-cronista.md § 6.2).
+//
+// `registrarSuceso` calcula la importancia y la frase de plantilla e inserta el suceso con sus
+// actores y causas, dentro de la transacción del llamador. Quedan para sus tareas los dos pasos
+// siguientes del contrato: sembrar el `Conocimiento` inicial (CR-18) y encolar reacciones (CR-10).
+import { randomUUID } from 'node:crypto';
+import type { OrigenSuceso, Prisma, PrismaClient } from '@prisma/client';
+import { CATALOGO_SUCESOS, importanciaDeSuceso, textoDeSuceso, type DatosSuceso, type TipoSuceso } from './catalogoSucesos.js';
+
+export type EntidadTipo = 'PERSONAJE' | 'NPC' | 'COMPANERO' | 'FACCION' | 'REGION' | 'LOCATION' | 'TERRITORIO' | 'EDIFICIO';
+export type PapelSuceso = 'AUTOR' | 'VICTIMA' | 'TESTIGO' | 'BENEFICIARIO' | 'AFECTADO' | 'LUGAR';
+
+export interface ActorSuceso {
+  entidadTipo: EntidadTipo;
+  /// PERSONAJE = id de la partida; NPC = `Npc.id`; FACCION = slug de la facción; REGION = slug.
+  entidadId: string;
+  papel: PapelSuceso;
+}
+
+export interface NuevoSuceso<T extends TipoSuceso = TipoSuceso> {
+  saveId: string;
+  tipo: T;
+  fictionalMinutes: number;
+  regionSlug?: string | null;
+  locationId?: string | null;
+  actores: ActorSuceso[];
+  datos: DatosSuceso[T];
+  /// Ids de sucesos previos que lo causaron.
+  causas?: string[];
+  origen: OrigenSuceso;
+  logEntryId?: string | null;
+  /// +1 de importancia si abre o cierra un hilo (§ 6.3); lo pasa quien lo sabe (buscadores, CR-17).
+  tocaHilo?: boolean;
+  /// Para reproducir el azar; si no se da, se genera.
+  semilla?: string;
+}
+
+type Db = PrismaClient | Prisma.TransactionClient;
+
+/// Registra un suceso en el Libro y devuelve su id. Llamar dentro de la transacción del turno o del
+/// día, para que el suceso exista si y solo si existe lo que lo causó.
+export async function registrarSuceso<T extends TipoSuceso>(db: Db, s: NuevoSuceso<T>): Promise<string> {
+  const jugadorAutor = s.actores.some((a) => a.entidadTipo === 'PERSONAJE' && a.papel === 'AUTOR');
+  const npcIds = s.actores.filter((a) => a.entidadTipo === 'NPC').map((a) => a.entidadId);
+  const afectaNucleoJugable =
+    npcIds.length > 0 && (await db.npc.count({ where: { id: { in: npcIds }, nucleoJugable: true } })) > 0;
+
+  // Mismo actor con el mismo papel dos veces = una sola fila (clave primaria compuesta).
+  const actores = Array.from(new Map(s.actores.map((a) => [`${a.entidadTipo}|${a.entidadId}|${a.papel}`, a])).values());
+
+  const suceso = await db.suceso.create({
+    data: {
+      saveId: s.saveId,
+      tipo: s.tipo,
+      familia: CATALOGO_SUCESOS[s.tipo].familia,
+      fictionalMinutes: s.fictionalMinutes,
+      regionSlug: s.regionSlug ?? null,
+      locationId: s.locationId ?? null,
+      importancia: importanciaDeSuceso(s.tipo, { jugadorAutor, afectaNucleoJugable, tocaHilo: !!s.tocaHilo }),
+      origen: s.origen,
+      datos: s.datos as unknown as Prisma.InputJsonValue,
+      texto: textoDeSuceso(s.tipo, s.datos),
+      logEntryId: s.logEntryId ?? null,
+      semilla: s.semilla ?? randomUUID(),
+      actores: { create: actores },
+      causas: s.causas?.length ? { create: [...new Set(s.causas)].map((causaId) => ({ causaId })) } : undefined,
+    },
+    select: { id: true },
+  });
+  return suceso.id;
+}

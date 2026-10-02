@@ -841,7 +841,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
 
 ### Fase 1 — Libro de Sucesos (sin IA) · **M-L**
 - ~~**CR-1** Modelos `Suceso`, `SucesoCausa`, `SucesoActor`, enums. **S**~~ ✅ 2026-10-02: modelos y enums en `schema.prisma` (migración `20261002120000_libro_de_sucesos`, hecha con `migrate diff` porque la base sombra no tiene pgvector), el reinicio de partida vacía el Libro, test de integración `services/cronista/libroSucesos.integration.test.ts`. Quedan para sus tareas: `Conocimiento` (CR-18) y el `embedding` (cuando se use).
-- **CR-2** `registrarSuceso()`, importancia y plantillas de texto para todos los tipos de § 6.1. **M**
+- ~~**CR-2** `registrarSuceso()`, importancia y plantillas de texto para todos los tipos de § 6.1. **M**~~ ✅ 2026-10-02: `services/cronista/catalogoSucesos.ts` (los 74 tipos de § 6.1 con familia, importancia base de § 6.3 y plantilla; datos tipados por tipo) y `services/cronista/sucesos.ts` (`registrarSuceso`, dentro de la transacción del llamador; modificadores +1 jugador autor / núcleo jugable / hilo). Del contrato de § 6.2 quedan para sus tareas: sembrar `Conocimiento` (CR-18) y encolar reacciones (CR-10). Tests: `catalogoSucesos.test.ts` y `libroSucesos.integration.test.ts`.
 - **CR-3** Emisores en: turno (`turnResolution.ts`: combate, muerte causada, perdón, captura,
   misión, construcción, fundación, entrega), `death.ts`, `recordFactionEvent`, expediciones,
   población, agenda, clima, `dailyTick`, cadáveres/recuperación. **M**
