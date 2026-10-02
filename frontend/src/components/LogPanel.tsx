@@ -427,7 +427,8 @@ export const LogPanel = memo(function LogPanel({
                   se colapsaba a un simple espacio por el HTML por defecto — la reacción de Gorhorn
                   y la de Gistera se leían pegadas en la misma frase corrida, sin ninguna pausa entre
                   ambas. Inocuo para el resto de narraciones (sin `\n\n` en el texto, se ve idéntico). */}
-              <p className="whitespace-pre-line">
+              {/* CFG-13 (hito 0.2) — tamaño, fuente e interlineado de la narración desde los ajustes. */}
+              <p className="texto-narracion whitespace-pre-line">
                 <EnciclopediaLinkedText
                   text={entry.text}
                   index={enciclopediaIndex}

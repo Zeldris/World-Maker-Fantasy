@@ -134,11 +134,21 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
 - **CFG-4 · Panel de configuración** a pantalla casi completa, pestañas laterales (lenguaje de
   `SideNav`), `plank-panel` + `iron-band`. Pie: **Restablecer · Cancelar · Aplicar**, previsualización
   en vivo, aviso si se cierra con cambios sin aplicar. **M**
-- **CFG-5 · Persistencia**: `localStorage` con clave versionada (`tarkor.settings.v1`) y migración
-  entre versiones; con Tauri, fichero de configuración del sistema. **S**
-- **CFG-6 · `SettingsContext`** que aplica los ajustes como variables CSS y atributos en `<html>`
+- ~~**CFG-5 · Persistencia**: `localStorage` con clave versionada (`tarkor.settings.v1`) y migración
+  entre versiones; con Tauri, fichero de configuración del sistema. **S**~~ ✅ 2026-10-02:
+  `lib/ajustes.ts` (`cargarAjustes`/`guardarAjustes`, `normalizarAjustes` campo a campo, hueco de
+  migración `CLAVES_ANTIGUAS`). **Queda:** el fichero de configuración con Tauri.
+- ~~**CFG-6 · `SettingsContext`** que aplica los ajustes como variables CSS y atributos en `<html>`
   (`data-motion`, `data-contrast`, `data-texture`, `--ui-scale`, `--narration-size`…), para que los
-  componentes no lean ajustes uno a uno. **M**
+  componentes no lean ajustes uno a uno. **M**~~ ✅ 2026-10-02: `AjustesProvider` (en `main.tsx`) +
+  `useAjustes` y `aplicarAjustes`: `font-size` raíz (escala), `data-motion` («sistema» resuelto con
+  `prefers-reduced-motion`), `data-contrast`, `data-narration-font`, `--narration-size`,
+  `--narration-leading` y el factor de los dados (`lib/duracionTirada.ts`). Admite vista previa sin
+  guardar para el panel (`CFG-4`). **Queda:** `data-texture` con `CFG-23`.
+  Ya se aplican (falta su control en el panel `CFG-4`): escala (`CFG-9`), narración (`CFG-13`, clase
+  `.texto-narracion`), animaciones (`CFG-14`, reglas `[data-motion]` sobre la lista de
+  `prefers-reduced-motion`), velocidad de los dados (`CFG-20`, `duracionTirada()` en todo lo que
+  espera a los dados) y alto contraste (`CFG-28`).
 
 ### 2.2 Pestaña Pantalla
 | Id | Ajuste | Opciones | Notas |

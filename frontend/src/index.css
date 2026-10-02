@@ -837,31 +837,31 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-entry-in,
-  .animate-paso-turno,
-  .animate-entry-in-slow,
-  .animate-overlay-in,
-  .animate-drawer-up,
-  .thinking-sheen,
-  .animate-pulse-soft,
-  .animate-pulse-slow,
-  .animate-stamp-in,
-  .animate-shake-no,
-  .animate-edge-flash-amber,
-  .animate-edge-flash-accent,
-  .animate-edge-flash-red,
-  .animate-pop-once,
-  .animate-stamp-in-equip,
-  .animate-sheen-sweep-once,
-  .animate-combat-enter,
-  .animate-line-extend,
-  .animate-alert-pulse,
-  .animate-pop-subtle,
-  .animate-gem-breathe,
-  .animate-hit-flash-red,
-  .animate-hit-flash-moss,
-  .animate-hairline-toll,
-  .tooltip-portal {
+  /* CFG-14 (hito 0.2): si el jugador fuerza «Completas», el sistema no las quita. */
+  :root:not([data-motion='completas']) .animate-entry-in,
+  :root:not([data-motion='completas']) .animate-paso-turno,
+  :root:not([data-motion='completas']) .animate-entry-in-slow,
+  :root:not([data-motion='completas']) .animate-overlay-in,
+  :root:not([data-motion='completas']) .animate-drawer-up,
+  :root:not([data-motion='completas']) .thinking-sheen,
+  :root:not([data-motion='completas']) .animate-pulse-soft,
+  :root:not([data-motion='completas']) .animate-pulse-slow,
+  :root:not([data-motion='completas']) .animate-stamp-in,
+  :root:not([data-motion='completas']) .animate-shake-no,
+  :root:not([data-motion='completas']) .animate-edge-flash-amber,
+  :root:not([data-motion='completas']) .animate-edge-flash-accent,
+  :root:not([data-motion='completas']) .animate-edge-flash-red,
+  :root:not([data-motion='completas']) .animate-pop-once,
+  :root:not([data-motion='completas']) .animate-stamp-in-equip,
+  :root:not([data-motion='completas']) .animate-sheen-sweep-once,
+  :root:not([data-motion='completas']) .animate-combat-enter,
+  :root:not([data-motion='completas']) .animate-line-extend,
+  :root:not([data-motion='completas']) .animate-alert-pulse,
+  :root:not([data-motion='completas']) .animate-pop-subtle,
+  :root:not([data-motion='completas']) .animate-gem-breathe,
+  :root:not([data-motion='completas']) .animate-hit-flash-red,
+  :root:not([data-motion='completas']) .animate-hit-flash-moss,
+  :root:not([data-motion='completas']) .animate-hairline-toll {
     animation: none;
   }
 }
@@ -874,4 +874,93 @@ body {
   outline: 2px solid var(--color-accent-400);
   outline-offset: 2px;
   box-shadow: 0 0 0 5px color-mix(in srgb, var(--color-accent-400) 22%, transparent);
+}
+
+/* CFG-14 (hito 0.2, roadmap-front.md § 2.4) — Animaciones: Reducidas y Ninguna, forzadas desde los
+   ajustes (atributo data-motion en <html>, ver context/AjustesContext.tsx). Misma lista de clases
+   que respeta prefers-reduced-motion; «Ninguna» además quita las transiciones. */
+:root[data-motion='reducidas'] .animate-entry-in,
+:root[data-motion='ninguna'] .animate-entry-in,
+:root[data-motion='reducidas'] .animate-paso-turno,
+:root[data-motion='ninguna'] .animate-paso-turno,
+:root[data-motion='reducidas'] .animate-entry-in-slow,
+:root[data-motion='ninguna'] .animate-entry-in-slow,
+:root[data-motion='reducidas'] .animate-overlay-in,
+:root[data-motion='ninguna'] .animate-overlay-in,
+:root[data-motion='reducidas'] .animate-drawer-up,
+:root[data-motion='ninguna'] .animate-drawer-up,
+:root[data-motion='reducidas'] .thinking-sheen,
+:root[data-motion='ninguna'] .thinking-sheen,
+:root[data-motion='reducidas'] .animate-pulse-soft,
+:root[data-motion='ninguna'] .animate-pulse-soft,
+:root[data-motion='reducidas'] .animate-pulse-slow,
+:root[data-motion='ninguna'] .animate-pulse-slow,
+:root[data-motion='reducidas'] .animate-stamp-in,
+:root[data-motion='ninguna'] .animate-stamp-in,
+:root[data-motion='reducidas'] .animate-shake-no,
+:root[data-motion='ninguna'] .animate-shake-no,
+:root[data-motion='reducidas'] .animate-edge-flash-amber,
+:root[data-motion='ninguna'] .animate-edge-flash-amber,
+:root[data-motion='reducidas'] .animate-edge-flash-accent,
+:root[data-motion='ninguna'] .animate-edge-flash-accent,
+:root[data-motion='reducidas'] .animate-edge-flash-red,
+:root[data-motion='ninguna'] .animate-edge-flash-red,
+:root[data-motion='reducidas'] .animate-pop-once,
+:root[data-motion='ninguna'] .animate-pop-once,
+:root[data-motion='reducidas'] .animate-stamp-in-equip,
+:root[data-motion='ninguna'] .animate-stamp-in-equip,
+:root[data-motion='reducidas'] .animate-sheen-sweep-once,
+:root[data-motion='ninguna'] .animate-sheen-sweep-once,
+:root[data-motion='reducidas'] .animate-combat-enter,
+:root[data-motion='ninguna'] .animate-combat-enter,
+:root[data-motion='reducidas'] .animate-line-extend,
+:root[data-motion='ninguna'] .animate-line-extend,
+:root[data-motion='reducidas'] .animate-alert-pulse,
+:root[data-motion='ninguna'] .animate-alert-pulse,
+:root[data-motion='reducidas'] .animate-pop-subtle,
+:root[data-motion='ninguna'] .animate-pop-subtle,
+:root[data-motion='reducidas'] .animate-gem-breathe,
+:root[data-motion='ninguna'] .animate-gem-breathe,
+:root[data-motion='reducidas'] .animate-hit-flash-red,
+:root[data-motion='ninguna'] .animate-hit-flash-red,
+:root[data-motion='reducidas'] .animate-hit-flash-moss,
+:root[data-motion='ninguna'] .animate-hit-flash-moss,
+:root[data-motion='reducidas'] .animate-hairline-toll,
+:root[data-motion='ninguna'] .animate-hairline-toll {
+  animation: none;
+}
+:root[data-motion='ninguna'] *,
+:root[data-motion='ninguna'] *::before,
+:root[data-motion='ninguna'] *::after {
+  transition: none !important;
+  animation: none !important;
+}
+
+/* CFG-28 (hito 0.2) — Alto contraste: los textos apagados suben un paso y los bordes se marcan. */
+:root[data-contrast='alto'] .text-wood-600 {
+  color: var(--color-wood-400);
+}
+:root[data-contrast='alto'] .text-wood-500 {
+  color: var(--color-wood-300);
+}
+:root[data-contrast='alto'] .text-wood-400 {
+  color: var(--color-wood-200);
+}
+:root[data-contrast='alto'] .border-iron-700,
+:root[data-contrast='alto'] .border-iron-800 {
+  border-color: var(--color-wood-500);
+}
+
+/* CFG-13 (hito 0.2) — narración: tamaño, fuente e interlineado propios (variables y atributo en
+   <html>); la clase .texto-narracion la llevan los párrafos del registro. */
+.texto-narracion {
+  font-size: var(--narration-size, 0.875rem);
+  line-height: var(--narration-leading, 1.625);
+}
+:root[data-narration-font='serif'] .texto-narracion {
+  font-family: Georgia, 'Iowan Old Style', 'Times New Roman', serif;
+}
+:root[data-narration-font='legible'] .texto-narracion {
+  font-family: 'Atkinson Hyperlegible', Verdana, var(--font-sans);
+  letter-spacing: 0.01em;
 }
