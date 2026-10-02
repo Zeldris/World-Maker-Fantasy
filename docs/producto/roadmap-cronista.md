@@ -857,7 +857,8 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   tratado, tregua o cambio; en la partida que lo causa o, si es del mundo, en todas las del mundo),
   sabotaje y espionaje del diplomático, y salida / asalto / vuelta de expediciones
   (`registrarEnPartidasDelMundo`, `cronista/emisores.ts`). Convención: actores FACCION por slug.
-  Faltan: combate perdido, población, agenda, clima, `dailyTick`, cadáveres/recuperación.
+  Agenda Serhu: cada etapa cruzada deja su suceso (`sucesosDeEtapaConflicto`, `worldAgenda.ts`).
+  Faltan: combate perdido, población, clima, `dailyTick`, cadáveres/recuperación.
 - **CR-4** Vista de administración `/admin/partida/:id/libro` (solo lectura). **M**
 - **Hecho cuando:** jugar 1 hora deja en el Libro todos los sucesos con causas correctas; tests de
   cada emisor.
