@@ -853,8 +853,11 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   (`applyKillSideEffects`, 1v1 y grupo; en grupo el autor es el bando del jugador), misiones
   completadas/fallidas por los 5 caminos (`cronista/emisores.ts` → `registrarFinDeMision`),
   construcción (`EDIFICIO_CONSTRUIDO`, receta y edificio narrado) y entrega (`REGALO`).
-  Faltan (3/3): combate perdido, `recordFactionEvent`, expediciones, población, agenda, clima,
-  `dailyTick`, cadáveres/recuperación.
+  También (3/3, parte): cambios de banda de relación desde `recordFactionEvent` (guerra, alianza,
+  tratado, tregua o cambio; en la partida que lo causa o, si es del mundo, en todas las del mundo),
+  sabotaje y espionaje del diplomático, y salida / asalto / vuelta de expediciones
+  (`registrarEnPartidasDelMundo`, `cronista/emisores.ts`). Convención: actores FACCION por slug.
+  Faltan: combate perdido, población, agenda, clima, `dailyTick`, cadáveres/recuperación.
 - **CR-4** Vista de administración `/admin/partida/:id/libro` (solo lectura). **M**
 - **Hecho cuando:** jugar 1 hora deja en el Libro todos los sucesos con causas correctas; tests de
   cada emisor.

@@ -1,3 +1,4 @@
+import { registrarSuceso, minutosDeFiccion } from './cronista/sucesos.js';
 import type { FactionRelationType, Prisma, PrismaClient } from '@prisma/client';
 import { xpForCraftSuccess } from './professionProgress.js';
 
@@ -138,6 +139,10 @@ export async function recordFactionEvent(
   sourceFactionId: string,
   targetFactionId: string,
   event: FactionEventType,
+  /// Libro de Sucesos (CR-3): partida en la que pasa. Sin ella (eventos del propio mundo, como las
+  /// expediciones), el cambio de banda se apunta en todas las partidas vivas de ese mundo — hoy el
+  /// mundo es compartido; con el mundo por partida (CR-6) cada una tendrá el suyo.
+  saveId?: string,
 ): Promise<string | null> {
   const relation = await ensureFactionRelation(tx, worldId, sourceFactionId, targetFactionId);
   const nextPresion = applyFactionEvent(relation.presion, event);
@@ -149,10 +154,59 @@ export async function recordFactionEvent(
   });
   if (nextType === relation.type) return null;
   const [source, target] = await Promise.all([
-    tx.faction.findUniqueOrThrow({ where: { id: sourceFactionId }, select: { name: true } }),
-    tx.faction.findUniqueOrThrow({ where: { id: targetFactionId }, select: { name: true } }),
+    tx.faction.findUniqueOrThrow({ where: { id: sourceFactionId }, select: { name: true, slug: true } }),
+    tx.faction.findUniqueOrThrow({ where: { id: targetFactionId }, select: { name: true, slug: true } }),
   ]);
+  await registrarCambioDeRelacion(tx, worldId, saveId, { slug: source.slug, nombre: source.name }, { slug: target.slug, nombre: target.name }, relation.type, nextType);
   return stageFactFor(source.name, target.name, nextType);
+}
+
+const ETIQUETA_BANDA: Record<FactionRelationType, string> = {
+  ALIANZA: 'alianza',
+  TRATADO_COMERCIAL: 'tratado comercial',
+  NEUTRAL: 'neutralidad',
+  TENSION: 'tensión',
+  GUERRA: 'guerra',
+};
+
+/// Tipo de suceso según la banda nueva: entrar en guerra, en alianza o en tratado tiene su propio
+/// suceso; salir de la guerra es una tregua; el resto, un cambio de relación.
+export function tipoSucesoDeCambioDeBanda(
+  antes: FactionRelationType,
+  despues: FactionRelationType,
+): 'GUERRA_DECLARADA' | 'ALIANZA' | 'TRATADO_COMERCIAL' | 'TREGUA' | 'CAMBIO_RELACION' {
+  if (despues === 'GUERRA') return 'GUERRA_DECLARADA';
+  if (despues === 'ALIANZA') return 'ALIANZA';
+  if (despues === 'TRATADO_COMERCIAL' && antes !== 'ALIANZA') return 'TRATADO_COMERCIAL';
+  if (antes === 'GUERRA') return 'TREGUA';
+  return 'CAMBIO_RELACION';
+}
+
+async function registrarCambioDeRelacion(
+  tx: Prisma.TransactionClient,
+  worldId: string,
+  saveId: string | undefined,
+  source: { slug: string; nombre: string },
+  target: { slug: string; nombre: string },
+  antes: FactionRelationType,
+  despues: FactionRelationType,
+): Promise<void> {
+  const saveIds = saveId ? [saveId] : (await tx.save.findMany({ where: { worldId, endedAt: null }, select: { id: true } })).map((s) => s.id);
+  const tipo = tipoSucesoDeCambioDeBanda(antes, despues);
+  const actores = [
+    { entidadTipo: 'FACCION' as const, entidadId: source.slug, papel: 'AUTOR' as const },
+    { entidadTipo: 'FACCION' as const, entidadId: target.slug, papel: 'AFECTADO' as const },
+  ];
+  for (const id of saveIds) {
+    const comun = { saveId: id, fictionalMinutes: await minutosDeFiccion(tx, id), origen: 'MUNDO' as const, actores };
+    if (tipo === 'GUERRA_DECLARADA') {
+      await registrarSuceso(tx, { ...comun, tipo, datos: { atacante: source.nombre, atacada: target.nombre } });
+    } else if (tipo === 'CAMBIO_RELACION') {
+      await registrarSuceso(tx, { ...comun, tipo, datos: { faccionA: source.nombre, faccionB: target.nombre, antes: ETIQUETA_BANDA[antes], despues: ETIQUETA_BANDA[despues] } });
+    } else {
+      await registrarSuceso(tx, { ...comun, tipo, datos: { faccionA: source.nombre, faccionB: target.nombre } });
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

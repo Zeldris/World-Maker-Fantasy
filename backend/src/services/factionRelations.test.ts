@@ -11,6 +11,7 @@ import {
   PRESION_NEUTRAL,
   PRESION_MIN,
   PRESION_MAX,
+  tipoSucesoDeCambioDeBanda,
 } from './factionRelations.js';
 
 describe('typeForPresion', () => {
@@ -143,5 +144,17 @@ describe('xpPorNegociacion (H-5 parcial, decisión de Álvaro, 2026-09-29)', () 
       xp += xpPorNegociacion(exigido);
       presion = applyFactionEvent(presion, 'NEGOCIACION_TREGUA');
     }
+  });
+});
+
+// CR-3 (hito 0.2): qué suceso del Libro corresponde a cada cambio de banda.
+describe('tipoSucesoDeCambioDeBanda', () => {
+  it('entrar en guerra, alianza o tratado tiene su suceso; salir de la guerra es una tregua', () => {
+    expect(tipoSucesoDeCambioDeBanda('TENSION', 'GUERRA')).toBe('GUERRA_DECLARADA');
+    expect(tipoSucesoDeCambioDeBanda('TRATADO_COMERCIAL', 'ALIANZA')).toBe('ALIANZA');
+    expect(tipoSucesoDeCambioDeBanda('NEUTRAL', 'TRATADO_COMERCIAL')).toBe('TRATADO_COMERCIAL');
+    expect(tipoSucesoDeCambioDeBanda('GUERRA', 'TENSION')).toBe('TREGUA');
+    expect(tipoSucesoDeCambioDeBanda('ALIANZA', 'TRATADO_COMERCIAL')).toBe('CAMBIO_RELACION');
+    expect(tipoSucesoDeCambioDeBanda('NEUTRAL', 'TENSION')).toBe('CAMBIO_RELACION');
   });
 });

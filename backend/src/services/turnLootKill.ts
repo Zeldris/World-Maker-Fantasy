@@ -405,7 +405,7 @@ export async function applyKillSideEffects(params: {
       if (playerFaction && playerFaction.name !== npc.faction) {
         const targetFaction = await tx.faction.findFirst({ where: { worldId, name: npc.faction, saveId: null }, select: { id: true } });
         if (targetFaction) {
-          const fact = await recordFactionEvent(tx, worldId, playerFaction.id, targetFaction.id, 'BAJA_DE_GUERRA');
+          const fact = await recordFactionEvent(tx, worldId, playerFaction.id, targetFaction.id, 'BAJA_DE_GUERRA', saveId);
           if (fact) {
             await tx.logEntry.create({
               data: { saveId, channel: 'WORLD', text: fact, timeLabel: nuevaFictionalDateLabel, fictionalMinutes: nuevoFictionalMinutes, isSystemMessage: true },

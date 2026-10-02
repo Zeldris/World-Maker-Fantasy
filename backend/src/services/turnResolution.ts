@@ -5872,7 +5872,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
             if (duenoOriginalName && duenoOriginalName !== playerFaction.name) {
               const targetFaction = await tx.faction.findFirst({ where: { worldId, name: duenoOriginalName, saveId: null }, select: { id: true } });
               if (targetFaction) {
-                const fact = await recordFactionEvent(tx, worldId, playerFaction.id, targetFaction.id, 'EXPANSION_TERRITORIAL_AGRESIVA');
+                const fact = await recordFactionEvent(tx, worldId, playerFaction.id, targetFaction.id, 'EXPANSION_TERRITORIAL_AGRESIVA', saveId);
                 if (fact) {
                   await tx.logEntry.create({
                     data: { saveId, channel: 'WORLD', text: fact, timeLabel, fictionalMinutes: fictionalMinutesActuales, isSystemMessage: true },

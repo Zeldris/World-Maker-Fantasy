@@ -14,7 +14,7 @@ cada commit.**
 | **Rama de trabajo** | `claude/frontend-improvements-roadmap-0mpckt`. Flujo acordado (2026-10-01): commit + push a esta rama con cada cosa hecha; a `main` se pasa **por pull request** (desde esta sesión el push directo a `main` lo bloquea el filtro de permisos) |
 | **Último commit en `main`** | Fusión del PR #3 (2026-10-02): bitácora recortada, paso 8 «después del 0.1», cobertura de roadmaps (367/367) y `tools/roadmap/cobertura.py`. La rama de trabajo y `main` quedan iguales |
 | **Hito** | `0.2` Facciones vivas — [plan](../producto/plan-roadmap-0.2.md) · [mapa de roadmaps](../producto/21-roadmap.md#qué-entra-en-cada-hito) (el `0.1` sigue abierto solo por las Fases E y F, ver abajo) |
-| **Tarea en curso** | `0.2` Fase A — Libro de Sucesos: ~~`CR-1`~~ ✅ (modelos), ~~`CR-2`~~ ✅ (`registrarSuceso` y catálogo); 🚧 `CR-3` emisores: hechos los del jugador (fundación, captura, Clemente, muerte/fin, despertar, muerte causada, combate ganado, misiones, construcción, entrega); faltan los del mundo (combate perdido, facciones, expediciones, población, agenda, clima, `dailyTick`, cadáveres) (lista al día en `roadmap-cronista.md` § 17) ([plan del 0.2](../producto/plan-roadmap-0.2.md)). Forma de trabajo: implementación continua con tests; pruebas de juego en la fase única antes de la beta (decisión de la usuaria, 2026-10-02). Del `0.1` quedan abiertas la Fase E (bloqueada, pobladores) y la F (Álvaro ejecuta el benchmark); la G, aplazada a la fase única |
+| **Tarea en curso** | `0.2` Fase A — Libro de Sucesos: ~~`CR-1`~~ ✅ (modelos), ~~`CR-2`~~ ✅ (`registrarSuceso` y catálogo); 🚧 `CR-3` emisores: hechos los del jugador (fundación, captura, Clemente, muerte/fin, despertar, muerte causada, combate ganado, misiones, construcción, entrega); hechos también relaciones, diplomacia y expediciones; faltan combate perdido, población, agenda, clima, `dailyTick` y cadáveres (lista al día en `roadmap-cronista.md` § 17) ([plan del 0.2](../producto/plan-roadmap-0.2.md)). Forma de trabajo: implementación continua con tests; pruebas de juego en la fase única antes de la beta (decisión de la usuaria, 2026-10-02). Del `0.1` quedan abiertas la Fase E (bloqueada, pobladores) y la F (Álvaro ejecuta el benchmark); la G, aplazada a la fase única |
 | **Tests** | Frontend: `tsc -b` 0, `vitest` 56 archivos / 334 tests, `oxlint` 13 avisos (los mismos de antes). Backend en local con Postgres real: `tsc` 0, `vitest` 165/165 archivos, 2874 tests (última pasada completa, 2026-10-02); 1 test intermitente apuntado (G16). CI de GitHub en verde (PR #3) |
 
 ## Dónde está todo (para saber qué sigue)
@@ -81,7 +81,7 @@ cd backend && npx tsc -p tsconfig.json --noEmit && npx vitest run && npx oxlint
 # Frontend
 cd frontend && npx tsc -b && npx vitest run && npx oxlint
 # Cobertura de los roadmaps (¿alguna tarea sin hito?): python3 tools/roadmap/cobertura.py
-# Si el contenedor se reinicia: pg_ctlcluster 16 main start y volver a lanzar el Ollama simulado
+# Si el contenedor se reinicia (pasa a menudo): pg_ctlcluster 16 main start y volver a lanzar el Ollama simulado
 #   (node tools/ci/mock-ollama.mjs &) — sin él fallan ~27 tests con ECONNREFUSED 11434.
 # Postgres desde cero en un contenedor nuevo (como la CI): apt install postgresql-16-pgvector,
 #   pg_ctlcluster 16 main start, usuario/BD tarkor:tarkor, CREATE EXTENSION vector; después en backend/:

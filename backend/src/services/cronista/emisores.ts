@@ -2,7 +2,7 @@
 // de ficción) no siempre tiene a mano quien los dispara. Mismo contrato que `registrarSuceso`:
 // dentro de la transacción del llamador.
 import type { Prisma, PrismaClient } from '@prisma/client';
-import { registrarSuceso, minutosDeFiccion } from './sucesos.js';
+import { registrarSuceso, minutosDeFiccion, type NuevoSuceso } from './sucesos.js';
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -23,4 +23,18 @@ export async function registrarFinDeMision(
     actores: [{ entidadTipo: 'PERSONAJE', entidadId: params.saveId, papel: 'AUTOR' }],
     datos: { personaje: save.characterName, mision: params.titulo },
   });
+}
+
+/// Un suceso del propio mundo (expediciones, agenda, clima…) se apunta en el Libro de cada partida
+/// viva de ese mundo. Hoy el mundo es compartido; con el mundo por partida (CR-6) cada partida
+/// tendrá el suyo y esto pasará a ser una sola. Devuelve los ids creados.
+export async function registrarEnPartidasDelMundo(
+  db: Db,
+  worldId: string,
+  construir: (saveId: string, fictionalMinutes: number) => NuevoSuceso,
+): Promise<string[]> {
+  const saves = await db.save.findMany({ where: { worldId, endedAt: null }, select: { id: true } });
+  const ids: string[] = [];
+  for (const { id } of saves) ids.push(await registrarSuceso(db, construir(id, await minutosDeFiccion(db, id))));
+  return ids;
 }
