@@ -14,8 +14,8 @@ cada commit.**
 | **Rama de trabajo** | `claude/frontend-improvements-roadmap-0mpckt`. Flujo acordado (2026-10-01): commit + push a esta rama con cada cosa hecha; a `main` se pasa **por pull request** (desde esta sesión el push directo a `main` lo bloquea el filtro de permisos) |
 | **Último commit en `main`** | `423c8a5` — roadmap de roadmaps y revisión cruzada de front y UX (+ el commit de esta bitácora) |
 | **Hito** | `0.1` Llanuras estable — [plan](../producto/plan-roadmap-0.1.md) · [mapa de roadmaps](../producto/21-roadmap.md#qué-entra-en-cada-hito) |
-| **Tarea en curso** | 🚧 Zona Z-A: hechas `ZON-10`, `11`, `13`, `14` (fichas nuevas y ficha del personaje); faltan `17` (salidas), `19` (etiquetas), `20` (leyenda en esquina), `62` (cuadrícula bajo demanda). Vista previa local: ver «Comandos» |
-| **Tests** | Frontend: `tsc -b` 0, `vitest` 54 archivos / 324 tests, `oxlint` 13 avisos (los mismos de antes). Backend en local con Postgres real: `tsc` 0, `oxlint` 0 (solo avisos previos), `vitest` 162/162 archivos, 2851 tests. CI de GitHub en verde (PR #2) |
+| **Tarea en curso** | 🚧 Zona Z-A: hechas `ZON-10`, `11`, `13`, `14`, `17`, `19` (fichas, personaje, salidas y nombres); faltan `20` (leyenda en esquina), `62` (cuadrícula bajo demanda). Vista previa local: ver «Comandos» |
+| **Tests** | Frontend: `tsc -b` 0, `vitest` 54 archivos / 326 tests, `oxlint` 13 avisos (los mismos de antes). Backend en local con Postgres real: `tsc` 0, `oxlint` 0 (solo avisos previos), `vitest` 162/162 archivos, 2851 tests. CI de GitHub en verde (PR #2) |
 
 ## Siguientes pasos (en orden)
 
@@ -27,7 +27,7 @@ Del [plan del 0.1](../producto/plan-roadmap-0.1.md) y del [mapa de roadmaps](../
    - ~~`UX-3`~~ ✅, ~~`UX-4`~~ ✅, ~~`UX-13`~~ ✅, ~~`UX-16`~~ ✅, ~~`UX-24`~~ ✅ ([roadmap-front-ux.md](../producto/roadmap-front-ux.md))
    - ~~`DAD-1`…`DAD-6`~~ ✅, ~~`CFG-33`~~ ✅, ~~`BAS-1`~~ ✅ ([roadmap-front.md](../producto/roadmap-front.md))
    - ~~Reino R-A~~ ✅ (`REI-110`…`REI-116`, `REI-33`, `REI-40`, `REI-41`; ver [roadmap-front-reino.md](../producto/roadmap-front-reino.md))
-   - 🚧 Zona Z-A: ~~`ZON-10`~~ ✅ ~~`11`~~ ✅ ~~`13`~~ ✅ ~~`14`~~ ✅, `17`, `19`, `20`, `62` + iconos del mapa de `BAS-2` (pictogramas de fichas hechos) ([roadmap-front-zona.md](../producto/roadmap-front-zona.md))
+   - 🚧 Zona Z-A: ~~`ZON-10`~~ ✅ ~~`11`~~ ✅ ~~`13`~~ ✅ ~~`14`~~ ✅ ~~`17`~~ ✅ ~~`19`~~ ✅, `20`, `62` + iconos del mapa de `BAS-2` (pictogramas de fichas hechos) ([roadmap-front-zona.md](../producto/roadmap-front-zona.md))
 4. **Fase D — El mundo vivo, visible** (+ Libro de Sucesos mínimo `CR-1`…`CR-4` si Álvaro lo aprueba, ver decisiones).
 5. **Fase F — latencia en la Steam Deck** (script de benchmark; lo ejecuta Álvaro).
 6. **Fase E — súbditos mínimos** (bloqueada, ver decisiones).
@@ -68,6 +68,8 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
+- **2026-10-02** — Z-A paso 3: `ZON-17` (salidas como estandartes con el destino) y `ZON-19`
+  (nombres cerca del personaje, del seleccionado y al pasar el ratón).
 - **2026-10-02** — Z-A paso 2: `ZON-14`, ficha del personaje con anillo de cristal, dirección y halo.
 - **2026-10-02** — Z-A paso 1: `ZON-10`, `ZON-11`, `ZON-13` — fichas del mapa de zona con placa,
   pictograma y anillo de color (tokens), tamaño fijo de pantalla e insignia de grupo.

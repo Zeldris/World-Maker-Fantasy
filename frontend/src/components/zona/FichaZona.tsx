@@ -182,3 +182,52 @@ export function FichaJugador({ escala, angulo, quieto, sombra = true }: { escala
     </g>
   )
 }
+
+/// ZON-19 (hito 0.1) — etiqueta de nombre: placa oscura semitransparente con texto claro, en píxeles de
+/// pantalla. `anchor` decide hacia dónde crece desde (x, y).
+export function EtiquetaNombre({ texto, x = 0, y = 24, anchor = 'middle' }: { texto: string; x?: number; y?: number; anchor?: 'start' | 'middle' | 'end' }) {
+  const ancho = Math.round(texto.length * 6.1 + 12)
+  const rectX = anchor === 'middle' ? x - ancho / 2 : anchor === 'start' ? x : x - ancho
+  return (
+    <g pointerEvents="none" data-testid="etiqueta-nombre">
+      <rect x={rectX} y={y - 9} width={ancho} height={18} rx={4} fill="var(--color-wood-950)" fillOpacity={0.82} />
+      <text
+        x={rectX + ancho / 2}
+        y={y + 3.8}
+        textAnchor="middle"
+        fontSize={11}
+        fontWeight={600}
+        fill="var(--color-wood-100)"
+        style={{ fontFamily: 'var(--font-sans)' }}
+      >
+        {texto}
+      </text>
+    </g>
+  )
+}
+
+/// ZON-17 (hito 0.1) — salida de región como estandarte de camino: placa con una flecha grande hacia el
+/// borde (`angulo` en grados, 0 = este) y una etiqueta hacia el interior del mapa con el destino, para
+/// que no se salga del lienzo.
+export function EstandarteSalida({ escala, angulo, texto }: { escala: number; angulo: number; texto: string }) {
+  const rad = (angulo * Math.PI) / 180
+  const dx = Math.cos(rad)
+  const dy = Math.sin(rad)
+  const horizontal = Math.abs(dx) >= Math.abs(dy)
+  const etiqueta = horizontal
+    ? { x: dx > 0 ? -20 : 20, y: 0, anchor: (dx > 0 ? 'end' : 'start') as 'start' | 'end' }
+    : { x: 0, y: dy > 0 ? -26 : 26, anchor: 'middle' as const }
+  return (
+    <g transform={`scale(${escala})`}>
+      <circle cx={0} cy={0} r={FICHA_AREA_CLIC_PX / 2} fill="transparent" />
+      <g filter="url(#sombra-ficha)">
+        <circle cx={0} cy={0} r={14} fill={PLACA} fillOpacity={0.92} />
+      </g>
+      <circle cx={0} cy={0} r={14} fill="none" stroke="var(--color-wood-200)" strokeWidth={2.5} strokeDasharray="5 3" />
+      <g transform={`rotate(${angulo})`}>
+        <path d="M -7 -7 L 4 0 L -7 7 L -4 0 Z M 1 -7 L 12 0 L 1 7 L 4 0 Z" fill="var(--color-wood-100)" />
+      </g>
+      <EtiquetaNombre texto={texto} x={etiqueta.x} y={etiqueta.y} anchor={etiqueta.anchor} />
+    </g>
+  )
+}

@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { render, cleanup } from '@testing-library/react'
-import { FichaJugador, FichaZona } from './FichaZona'
+import { EstandarteSalida, EtiquetaNombre, FichaJugador, FichaZona } from './FichaZona'
 import { COLOR_DISPOSICION } from '../../lib/zonaFichas'
 
 /// ZON-10/11/13 (hito 0.1, roadmap-front-zona.md) — ficha legible y a tamaño fijo de pantalla.
@@ -48,5 +48,26 @@ describe('FichaZona', () => {
     const andando = enSvg(<FichaJugador escala={1} angulo={null} quieto={false} />)
     expect(andando.queryByTestId('flecha-direccion')).toBeNull()
     expect(andando.container.querySelector('.animate-pulse-slow')).toBeNull()
+  })
+
+  // ZON-17 (hito 0.1) — la salida dice a dónde lleva y su etiqueta crece hacia el interior del mapa.
+  it('estandarte de salida: destino escrito, etiqueta hacia dentro', () => {
+    const este = enSvg(<EstandarteSalida escala={1} angulo={0} texto="Llanura del Viento Rojo" />)
+    expect(este.container.textContent).toBe('Llanura del Viento Rojo')
+    const rectEste = este.container.querySelector('[data-testid="etiqueta-nombre"] rect')!
+    expect(Number(rectEste.getAttribute('x'))).toBeLessThan(0) // crece hacia el oeste (dentro)
+    cleanup()
+    const norte = enSvg(<EstandarteSalida escala={1} angulo={-90} texto="Camino hacia el norte" />)
+    const rectNorte = norte.container.querySelector('[data-testid="etiqueta-nombre"] rect')!
+    expect(Number(rectNorte.getAttribute('y'))).toBeGreaterThan(0) // debajo de la salida norte
+  })
+
+  // ZON-19 (hito 0.1) — etiqueta legible: placa oscura con texto claro, centrada bajo la ficha.
+  it('etiqueta de nombre centrada bajo la ficha', () => {
+    const { container } = enSvg(<EtiquetaNombre texto="Gistera Koh" />)
+    const rect = container.querySelector('rect')!
+    const ancho = Number(rect.getAttribute('width'))
+    expect(Number(rect.getAttribute('x'))).toBeCloseTo(-ancho / 2)
+    expect(container.textContent).toBe('Gistera Koh')
   })
 })

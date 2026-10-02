@@ -5,7 +5,7 @@ import { anguloSalida, rumboSalida } from '../../lib/rumboSalida'
 import { ZoneGroupDetailModal } from '../ZoneGroupDetailModal'
 import { ZonaSalidaModal } from '../ZonaSalidaModal'
 import { ParcelaDetailModal } from '../ParcelaDetailModal'
-import { DefsFichas, FichaJugador, FichaZona } from '../zona/FichaZona'
+import { DefsFichas, EstandarteSalida, EtiquetaNombre, FichaJugador, FichaZona } from '../zona/FichaZona'
 import { COLOR_DISPOSICION, useEscalaPantalla } from '../../lib/zonaFichas'
 import type { LogEntry, ProfessionRecipeInfo, ZonaParcelaInfo } from '../../types'
 
@@ -151,6 +151,10 @@ const COLOR_HEX: Record<ZonePointInfo['color'], string> = COLOR_DISPOSICION
 /// pedía evitar.
 const MS_POR_PASO_MOVIMIENTO = 600
 
+/// ZON-19 (hito 0.1) — a esta distancia del personaje (2,5 celdas de 50 unidades) los nombres se ven sin
+/// pasar el ratón.
+const DISTANCIA_NOMBRE_VISIBLE = 125
+
 /// Cada forma se dibuja SIEMPRE relativa al origen (0,0) — quien la envuelve (`ZonePointMarker`
 /// más abajo) es el único responsable de posicionarla en el lienzo, vía un `<g transform>` que
 /// mueve TODO el conjunto (forma + anillo de companion + texto de cantidad + badge) a la vez. Antes
@@ -240,12 +244,12 @@ function GridOverlay() {
 /// flecha apuntando hacia afuera dentro de un círculo, "puerta hacia otra región". Sin `transform`
 /// animado (a diferencia de `ZonePointMarker`) — una salida nunca se mueve, es un punto fijo del
 /// propio mapa, como la cuadrícula.
-function SalidaMarker({ x, y }: { x: number; y: number }) {
-  // B6 (pruebas 2026-09-28): la flecha apuntaba siempre a la derecha — ahora gira hacia su rumbo real.
+function SalidaMarker({ x, y, escala, texto }: { x: number; y: number; escala: number; texto: string }) {
+  // B6 (pruebas 2026-09-28): la flecha gira hacia su rumbo real. ZON-17 (hito 0.1): estandarte con el
+  // destino escrito (zona/FichaZona.tsx · EstandarteSalida).
   return (
     <g style={{ transform: `translate(${x}px, ${y}px)` }}>
-      <circle cx={0} cy={0} r={12} fill="#1a1410" stroke="#d4af37" strokeWidth={1.5} opacity={0.9} />
-      <polygon points="-4,-5 4,0 -4,5" fill="#d4af37" transform={`rotate(${anguloSalida({ x, y })})`} />
+      <EstandarteSalida escala={escala} angulo={anguloSalida({ x, y })} texto={texto} />
     </g>
   )
 }
@@ -309,6 +313,9 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
   const { ref: svgRef, escala } = useEscalaPantalla()
   // ZON-14 (hito 0.1) — hacia dónde mira la ficha del personaje: el ángulo del último paso real.
   const [anguloJugador, setAnguloJugador] = useState<number | null>(null)
+  // ZON-19 (hito 0.1) — nombre visible: lo cercano al personaje (≤ 2,5 celdas), lo seleccionado y lo
+  // que está bajo el ratón.
+  const [claveBajoRaton, setClaveBajoRaton] = useState<string | null>(null)
   const posJugadorAnteriorRef = useRef<{ x: number; y: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
   // Modal de detalle (2026-09-04) — comparte un mismo modal entre ZonePoint reales (`puntos`) y
@@ -341,6 +348,11 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
     }
     posJugadorAnteriorRef.current = { x: jugadorX, y: jugadorY }
   }, [jugadorX, jugadorY])
+  function nombreVisible(clave: string, punto: { x: number; y: number }, seleccionado: boolean): boolean {
+    if (seleccionado || claveBajoRaton === clave) return true
+    if (jugadorX == null || jugadorY == null) return false
+    return Math.hypot(punto.x - jugadorX, punto.y - jugadorY) <= DISTANCIA_NOMBRE_VISIBLE
+  }
   // Token de cancelación (2026-09-08) — si el jugador clica un destino NUEVO a mitad de la
   // animación del anterior, el bucle en curso debe parar de seguir pidiendo pasos del trayecto
   // viejo; comparar contra el token actual en cada iteración es más simple que cancelar promesas.
@@ -590,7 +602,13 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
               {imageUrl && <image href={imageUrl} x={0} y={0} width={800} height={600} preserveAspectRatio="xMidYMid slice" />}
               <GridOverlay />
               {data.puntos.map((p) => (
-                <g key={p.id} onClick={(e) => { e.stopPropagation(); p.companion ? setSelectedGroup(p) : setSelectedPoint(p) }} className="cursor-pointer">
+                <g
+                  key={p.id}
+                  onClick={(e) => { e.stopPropagation(); p.companion ? setSelectedGroup(p) : setSelectedPoint(p) }}
+                  onMouseEnter={() => setClaveBajoRaton(`p:${p.id}`)}
+                  onMouseLeave={() => setClaveBajoRaton(null)}
+                  className="cursor-pointer"
+                >
                   <ZonePointMarker x={p.x} y={p.y} tipo={p.tipo} color={COLOR_HEX[p.color]} escala={escala} hasCompanion={!!p.companion} cantidad={p.cantidad} />
                   <title>{`${p.nombre}${p.cantidad > 1 ? ` ×${p.cantidad}` : ''} (${TIPO_LABEL[p.tipo]})${p.companion ? ` — con ${p.companion.nombre}` : ''}`}</title>
                 </g>
@@ -599,7 +617,13 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                   la posición asignada por el backend (`posicionAleatoriaEnLienzo`), reutilizando
                   `ZonePointMarker` tal cual (su `tipo` ya es subconjunto válido). */}
               {dinamicos.map((d) => (
-                <g key={d.slug} onClick={(e) => { e.stopPropagation(); setSelectedPoint(d) }} className="cursor-pointer">
+                <g
+                  key={d.slug}
+                  onClick={(e) => { e.stopPropagation(); setSelectedPoint(d) }}
+                  onMouseEnter={() => setClaveBajoRaton(`d:${d.slug}`)}
+                  onMouseLeave={() => setClaveBajoRaton(null)}
+                  className="cursor-pointer"
+                >
                   <ZonePointMarker x={d.x} y={d.y} tipo={d.tipo} color={COLOR_HEX[d.color]} escala={escala} />
                   <title>{`${d.nombre} (${TIPO_LABEL[d.tipo]})`}</title>
                 </g>
@@ -622,7 +646,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                   }}
                   className={`${s.alcanzable ? '' : 'opacity-60'} ${s.alcanzable || !soloConsulta ? 'cursor-pointer' : 'cursor-not-allowed'}`}
                 >
-                  <SalidaMarker x={s.x} y={s.y} />
+                  <SalidaMarker x={s.x} y={s.y} escala={escala} texto={s.visitada ? s.nombre : `Camino hacia el ${rumboSalida(s)}`} />
                   <title>{s.visitada ? s.nombre : `Camino hacia el ${rumboSalida(s)}`}</title>
                 </g>
               ))}
@@ -644,6 +668,22 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                   <title>{p.building ? p.building.name : 'Parcela vacía'}</title>
                 </g>
               ))}
+              {/* ZON-19 (hito 0.1) — nombres en una capa por encima de todo (ni salidas ni otras fichas los
+                  tapan), con la misma animación de desplazamiento que su ficha. */}
+              <g pointerEvents="none">
+                {[
+                  ...data.puntos.map((p) => ({ clave: `p:${p.id}`, x: p.x, y: p.y, nombre: p.nombre, sel: selectedPoint === p || selectedGroup === p })),
+                  ...dinamicos.map((d) => ({ clave: `d:${d.slug}`, x: d.x, y: d.y, nombre: d.nombre, sel: selectedPoint === d })),
+                ]
+                  .filter((e) => nombreVisible(e.clave, e, e.sel))
+                  .map((e) => (
+                    <g key={e.clave} style={{ transform: `translate(${e.x}px, ${e.y}px)`, transition: `transform ${MS_POR_PASO_MOVIMIENTO}ms linear` }}>
+                      <g transform={`scale(${escala})`}>
+                        <EtiquetaNombre texto={e.nombre} />
+                      </g>
+                    </g>
+                  ))}
+              </g>
             </svg>
           </div>
         )}
