@@ -635,6 +635,15 @@ body {
 .animate-overlay-out {
   animation: overlay-out 0.22s ease-in both;
 }
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+.animate-toast-out {
+  animation: toast-out 0.2s ease-in both;
+}
 
 /* Barrido de luz lento sobre la tarjeta "pensando" — algo se mueve aunque tarde minutos */
 @keyframes sheen-sweep {
@@ -865,6 +874,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
   :root:not([data-motion='completas']) .animate-drawer-down,
   :root:not([data-motion='completas']) .animate-overlay-out,
+  :root:not([data-motion='completas']) .animate-toast-out,
   /* CFG-14 (hito 0.2): si el jugador fuerza «Completas», el sistema no las quita. */
   :root:not([data-motion='completas']) .animate-entry-in,
   :root:not([data-motion='completas']) .animate-paso-turno,

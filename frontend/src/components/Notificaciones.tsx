@@ -18,7 +18,7 @@ export function Notificaciones({ notificaciones, onDescartar }: { notificaciones
         <div
           key={n.id}
           role="status"
-          className={`plank-panel animate-entry-in pointer-events-auto flex items-start gap-2 rounded-lg border-l-4 px-3 py-2 text-xs text-wood-100 shadow-lg ${BORDE[n.tipo]}`}
+          className={`plank-panel ${n.saliendo ? 'animate-toast-out pointer-events-none' : 'animate-entry-in pointer-events-auto'} flex items-start gap-2 rounded-lg border-l-4 px-3 py-2 text-xs text-wood-100 shadow-lg ${BORDE[n.tipo]}`}
         >
           <span aria-hidden="true">{n.icono}</span>
           <p className="min-w-0 flex-1">

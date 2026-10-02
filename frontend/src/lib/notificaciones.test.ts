@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { agregarNotificacion, MAX_NOTIFICACIONES, notificacionesDeEntrada, type Notificacion } from './notificaciones'
-import { DURACION_NOTIFICACION_MS, useNotificaciones } from '../hooks/useNotificaciones'
+import { DURACION_NOTIFICACION_MS, SALIDA_NOTIFICACION_MS, useNotificaciones } from '../hooks/useNotificaciones'
 import type { LogEntry } from '../types'
 
 const e = (extra: Partial<LogEntry>): LogEntry => ({ id: 'x', channel: 'character', text: 't', timeLabel: '', createdAt: '', ...extra }) as LogEntry
@@ -44,7 +44,13 @@ describe('HUD-6 — notificaciones', () => {
     expect(result.current.notificaciones).toHaveLength(1)
     expect(result.current.notificaciones[0].veces).toBe(2)
     act(() => {
-      vi.advanceTimersByTime(DURACION_NOTIFICACION_MS)
+      // Ya pasaron 2000 ms desde la repetida: avanzar justo hasta que caduca.
+      vi.advanceTimersByTime(DURACION_NOTIFICACION_MS - 2000)
+    })
+    // BAS-7: primero se marca saliendo y la quita tras la animación.
+    expect(result.current.notificaciones[0].saliendo).toBe(true)
+    act(() => {
+      vi.advanceTimersByTime(SALIDA_NOTIFICACION_MS)
     })
     expect(result.current.notificaciones).toHaveLength(0)
   })
