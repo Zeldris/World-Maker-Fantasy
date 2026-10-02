@@ -881,7 +881,9 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
 - **CR-10** Reacciones inmediatas (tabla § 7.1). **M**
 - **CR-11** Consecuencias aplazadas con sus disparos y las 7 iniciales (§ 7.2). **M**
 - **CR-12** Narrador de fondo con presupuesto, enfriamientos y reglas de facción (§ 7.3);
-  agenda Serhu como primera cadena. **L**
+  agenda Serhu como primera cadena. **L** Al hacerlo, revisar `UX-6` (roadmap-front-ux.md): hoy
+  la ambientación se cancela al enviar una acción porque no pesa nada; con contenido real puede
+  convenir que la acción espere (opción A).
 - **CR-13** Nacimientos notables y generador de nombres (§ 12.3). **M**
 - **Hecho cuando:** `cronista:simular 60` produce caídas, escisiones, tormentas con daños, guerras
   y nacimientos coherentes; perdonar a un NPC lo hace volver en otra región.

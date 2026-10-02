@@ -486,11 +486,12 @@ export async function getNuevasDelMundo(saveId: string, desde: string): Promise<
   return fetchJson(`${API_URL}/saves/${saveId}/mundo/nuevas?desde=${encodeURIComponent(desde)}`)
 }
 
-export async function requestSurroundings(params: { saveId: string }): Promise<EntornoResponse> {
+export async function requestSurroundings(params: { saveId: string }, signal?: AbortSignal): Promise<EntornoResponse> {
   return fetchJson(`${API_URL}/entorno`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
+    signal,
   })
 }
 

@@ -139,3 +139,28 @@ describe('useSurroundingsPolling', () => {
     expect(setWorldLog).toHaveBeenCalledTimes(1)
   })
 })
+
+/// UX-6 (hito 0.2, opción B decidida por la usuaria 2026-10-02) — un narrador a la vez: al enviar
+/// el jugador una acción, la ambientación en curso se cancela y su resultado no se pinta.
+describe('useSurroundingsPolling — UX-6', () => {
+  it('si el narrador empieza a escribir con una ambientación en curso, se aborta y se descarta', async () => {
+    let resolveFn!: (value: { description: string; logEntryId: string }) => void
+    mockRequestSurroundings.mockReturnValueOnce(new Promise((resolve) => { resolveFn = resolve }))
+    const setWorldLog = vi.fn()
+    const { rerender } = renderHook((p) => useSurroundingsPolling(p), { initialProps: baseParams({ setWorldLog }) })
+
+    await vi.advanceTimersByTimeAsync(TEN_MINUTES_MS)
+    const signal = mockRequestSurroundings.mock.calls[0][1] as AbortSignal
+    expect(signal.aborted).toBe(false)
+
+    rerender(baseParams({ setWorldLog, characterThinking: true }))
+    await act(async () => {})
+    expect(signal.aborted).toBe(true)
+
+    resolveFn({ description: 'Llueve.', logEntryId: 'log-x' })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(setWorldLog).not.toHaveBeenCalled()
+  })
+})

@@ -188,9 +188,13 @@ stateDiagram-v2
   diplomacia, mercado, campamento y «Fundar reino». Libres a propósito: grupos de combate,
   crear/borrar plantillas y el tope del almacén (solo organizan). Construir ya iba por
   `bloqueoTurno`. **Queda:** la zona (recoger, moverse) va con `UX-7`.
-- **UX-6 · Un narrador a la vez** — al enviar una acción con la ambientación del mundo en marcha:
+- ~~**UX-6 · Un narrador a la vez** — al enviar una acción con la ambientación del mundo en marcha:
   (A) esperar con el mensaje "Tu acción saldrá en cuanto el mundo termine", o (B) cancelar la
-  ambientación. 🧭 Resuelve H4. **S**
+  ambientación. 🧭 Resuelve H4. **S**~~ ✅ 2026-10-02, **opción B** (decisión de la usuaria: hoy la
+  ambientación «tiene peso 0» — son plantillas deterministas desde 2026-07-24, sin modelo — y no
+  merece la espera). `useSurroundingsPolling` aborta la petición en curso (`AbortController`) en
+  cuanto el narrador empieza a escribir el turno y descarta su resultado. **Revisar la opción A**
+  cuando la ambientación gane peso con el narrador de fondo del Cronista (`CR-12`).
 - ~~**UX-7 · La brújula y el mapa respetan la fase** — moverse solo en `libre`; en el resto, el botón
   sigue visible, deshabilitado y con el motivo. Resuelve H5 y H6. **S**~~ ✅ 2026-10-02: la brújula
   ya no desaparece con un encuentro pendiente; se deshabilita con el motivo de
