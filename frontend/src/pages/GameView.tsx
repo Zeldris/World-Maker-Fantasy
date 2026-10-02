@@ -1,5 +1,8 @@
 import { useNoticiasMundo } from '../hooks/useNoticiasMundo'
 import { useGamePhase } from '../hooks/useGamePhase'
+import { resolverCapas, type CapaAbierta } from '../lib/capas'
+import { CapasContext } from '../context/capasContext'
+import { Capa } from '../components/Capa'
 import { etiquetaDeFase } from '../lib/gamePhase'
 import { ModoConsultaContext } from '../context/modoConsultaContext'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -1395,10 +1398,37 @@ export function GameView() {
     reputacion: 'accent2',
   }
 
+  // UX-9 (hito 0.2) — gestor de capas: cada overlay abierto con su nivel (§ 4.3), en orden de
+  // prioridad dentro del nivel. Solo se ve el de nivel más alto; el resto espera oculto y montado
+  // (lib/capas.ts). Las condiciones son las mismas con las que se pinta cada uno más abajo.
+  const capasAbiertas: CapaAbierta[] = [
+    detailTarget && { id: 'detalle', nivel: 'consulta', hija: true },
+    activePanel && { id: 'panel', nivel: 'consulta' },
+    zonaModalOpen && saveId && { id: 'zona', nivel: 'consulta' },
+    harvestModal && saveId && characterAttributes && { id: 'recolectar', nivel: 'accion' },
+    simpleModal === 'camp' && saveId && { id: 'campamento', nivel: 'accion' },
+    simpleModal === 'travel' && saveId && { id: 'viajar', nivel: 'accion' },
+    healModalOpen && { id: 'curar', nivel: 'accion' },
+    hungerThirstModalOpen && { id: 'comer', nivel: 'accion' },
+    entregaModalOpen && saveId && { id: 'entregar', nivel: 'accion' },
+    aprenderOficioModalOpen && saveId && { id: 'oficio', nivel: 'accion' },
+    saquearZonaModalOpen && saveId && { id: 'saquear', nivel: 'accion' },
+    postCombatTarget && { id: 'botin', nivel: 'accion' },
+    recursoDetalle && { id: 'recurso', nivel: 'accion' },
+    editingSkillBar && { id: 'barra', nivel: 'accion' },
+    activeDynamicMode && { id: 'dinamico', nivel: 'escena' },
+    claseVisible && { id: 'clase', nivel: 'decision' },
+    especializacionVisible && { id: 'especializacion', nivel: 'decision' },
+    kingdomFoundedInfo && { id: 'reino', nivel: 'decision' },
+    confirmingExit && { id: 'salir', nivel: 'sistema' },
+  ].filter((c): c is CapaAbierta => !!c)
+  const estadoCapas = resolverCapas(capasAbiertas)
+
   return (
     <EnciclopediaLinkProvider
       value={{ enciclopediaIndex, onEntityDetail: handleEntityDetailNavigate, onEntityQuickInsert: handleEntityQuickInsert }}
     >
+    <CapasContext.Provider value={estadoCapas}>
     <div className="relative flex min-h-0 flex-1 flex-col">
       <header className="iron-band relative flex flex-wrap items-center justify-between gap-2 px-5 pb-3 pt-2.5">
         <div className="min-w-0">
@@ -1881,6 +1911,7 @@ export function GameView() {
       )}
 
       {detailTarget && (
+        <Capa id="detalle" hija>
         <DetailModal
           target={detailTarget}
           onClose={() => {
@@ -1895,10 +1926,13 @@ export function GameView() {
           onInsert={detailInsertHandler ?? undefined}
           worldSlug={worldIdSlug}
         />
+        </Capa>
       )}
 
       {kingdomFoundedInfo && (
+        <Capa id="reino">
         <KingdomFoundingModal info={kingdomFoundedInfo} onCancel={() => setKingdomFoundedInfo(null)} onConfirm={handleFundarReino} />
+        </Capa>
       )}
 
       {/* Elección obligatoria de clase al empezar a jugar (2026-09-01, fix de bug real: personaje
@@ -1906,7 +1940,9 @@ export function GameView() {
           muerte/fin de partida. Nunca coincide con el modal de especialización de abajo:
           pendingEspecializacionChoice exige `save.clase` ya asignada. */}
       {pendingClaseChoice && !pendingDeathResolution && !endedAt && worldIdSlug && (
+        <Capa id="clase">
         <ClaseModal clases={clasesDisponibles} worldSlug={worldIdSlug} onConfirm={handleAssignClase} />
+        </Capa>
       )}
 
       {/* Elección obligatoria de especialización a nivel 10 (2026-09-01) — overlay bloqueante,
@@ -1914,6 +1950,7 @@ export function GameView() {
           permanente/fin de partida ganan si coinciden (no debería pasar de verdad: resolver una
           muerte no sube de nivel), especialización solo se muestra si ninguna de esas dos aplica. */}
       {pendingEspecializacionChoice && !pendingDeathResolution && !endedAt && clase && worldIdSlug && (
+        <Capa id="especializacion">
         <EspecializacionModal
           clase={clase}
           especializaciones={especializacionesDisponibles}
@@ -1921,9 +1958,11 @@ export function GameView() {
           onConfirm={handleAssignEspecializacion}
           onOpenEnciclopedia={handleOpenEnciclopediaClasses}
         />
+        </Capa>
       )}
 
       {confirmingExit && (
+        <Capa id="salir">
         <ConfirmModal
           title="Salir a tus partidas"
           message="¿Seguro que quieres salir? Tu progreso ya está guardado — puedes volver a esta partida cuando quieras."
@@ -1946,9 +1985,11 @@ export function GameView() {
             navigate(`/solitario/mundo/${worldIdSlug}/personaje/${saveId}?characterName=${encodeURIComponent(characterName ?? '')}`)
           }}
         />
+        </Capa>
       )}
 
       {harvestModal && saveId && characterAttributes && (
+        <Capa id="recolectar">
         <HarvestSelectionModal
           saveId={saveId}
           oficio={harvestModal.oficio}
@@ -1986,16 +2027,22 @@ export function GameView() {
           }}
           onCancel={() => setHarvestModal(null)}
         />
+        </Capa>
       )}
 
 
       {simpleModal === 'camp' && saveId && (
+        <Capa id="campamento">
         <CampSelectionModal saveId={saveId} onSelect={handleSimpleModalSelect} onCancel={closeSimpleModal} bloqueoTurno={bloqueoTurno} />
+        </Capa>
       )}
       {simpleModal === 'travel' && saveId && (
+        <Capa id="viajar">
         <TravelDestinationModal saveId={saveId} onSelect={handleSimpleModalSelect} onCancel={closeSimpleModal} bloqueoTurno={bloqueoTurno} />
+        </Capa>
       )}
       {healModalOpen && (
+        <Capa id="curar">
         <HealSelectionModal
           inventory={inventory}
           condicionFisica={condicionFisica}
@@ -2005,9 +2052,11 @@ export function GameView() {
           }}
           onCancel={() => setHealModalOpen(false)}
         />
+        </Capa>
       )}
 
       {hungerThirstModalOpen && (
+        <Capa id="comer">
         <HungerThirstSelectionModal
           inventory={inventory}
           hambre={hambre}
@@ -2018,18 +2067,22 @@ export function GameView() {
           }}
           onCancel={() => setHungerThirstModalOpen(false)}
         />
+        </Capa>
       )}
 
       {editingSkillBar && (
+        <Capa id="barra">
         <SkillBarEditor
           bar={editingSkillBar}
           savedActions={savedActions}
           onSave={handleSaveSkillBarEdit}
           onCancel={() => setEditingSkillBar(null)}
         />
+        </Capa>
       )}
 
       {entregaModalOpen && saveId && (
+        <Capa id="entregar">
         <EntregaModal
           saveId={saveId}
           onEntregado={(itemId, logEntry) => {
@@ -2040,9 +2093,11 @@ export function GameView() {
           }}
           onCancel={() => setEntregaModalOpen(false)}
         />
+        </Capa>
       )}
 
       {aprenderOficioModalOpen && saveId && (
+        <Capa id="oficio">
         <AprenderOficioModal
           saveId={saveId}
           onAprendido={(professionId, costeGoirnos, logEntry) => {
@@ -2054,9 +2109,11 @@ export function GameView() {
           }}
           onCancel={() => setAprenderOficioModalOpen(false)}
         />
+        </Capa>
       )}
 
       {saquearZonaModalOpen && saveId && (
+        <Capa id="saquear">
         <SaquearZonaModal
           saveId={saveId}
           soloNpcSlug={saquearSoloNpcSlug ?? undefined}
@@ -2070,9 +2127,11 @@ export function GameView() {
             setSaquearSoloNpcSlug(null)
           }}
         />
+        </Capa>
       )}
 
       {postCombatTarget && (
+        <Capa id="botin">
         <PostCombatInteractionModal
           target={postCombatTarget}
           busy={characterThinking}
@@ -2083,9 +2142,11 @@ export function GameView() {
             handleSubmit(`Saqueo el cuerpo de '${target.name}'.`)
           }}
         />
+        </Capa>
       )}
 
       {zonaModalOpen && saveId && (
+        <Capa id="zona">
         <ZonaMovimientoModal
           saveId={saveId}
           onEncuentroZona={(entry) => setCharacterLog((prev) => [...prev, entry])}
@@ -2119,9 +2180,11 @@ export function GameView() {
             setCharacterLog((prev) => prev.map((e) => (e.dynamicModeOffer && !e.dynamicModeOffer.combateForzado ? { ...e, dynamicModeOffer: undefined } : e)))
           }
         />
+        </Capa>
       )}
 
       {recursoDetalle && (
+        <Capa id="recurso">
         <RecursoDetalleModal
           nombre={recursoDetalle.targetName}
           metodo={recursoDetalle.metodo}
@@ -2129,9 +2192,11 @@ export function GameView() {
           onAccion={handleAccionRecursoDetalle}
           onCerrar={handleCerrarRecursoDetalle}
         />
+        </Capa>
       )}
 
       {activeDynamicMode && (
+        <Capa id="dinamico">
         <DynamicModeModal
           turno={activeDynamicMode.turno}
           busy={activeDynamicMode.busy}
@@ -2141,9 +2206,11 @@ export function GameView() {
           onCerrar={() => setActiveDynamicMode(null)}
           onSalir={handleSalirDynamicMode}
         />
+        </Capa>
       )}
 
       {activePanel && (
+        <Capa id="panel">
         <PanelDrawer title={panelTitles[activePanel]} accent={panelAccent[activePanel]} onClose={() => setActivePanel(null)} modoConsulta={modoConsulta}>
           <ModoConsultaContext.Provider value={modoConsulta}>
           {activePanel === 'personaje' && (
@@ -2259,8 +2326,10 @@ export function GameView() {
           )}
           </ModoConsultaContext.Provider>
         </PanelDrawer>
+        </Capa>
       )}
     </div>
+    </CapasContext.Provider>
     </EnciclopediaLinkProvider>
   )
 }

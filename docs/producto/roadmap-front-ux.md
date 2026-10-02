@@ -212,9 +212,15 @@ stateDiagram-v2
   composer (texto de ayuda), botones de turno (`UX-3`) y paneles (aviso «👁 Solo consulta», `UX-5`).
 
 ### 4.3 Orden y prioridad de lo que se abre
-- **UX-9 · Gestor de capas con prioridad** — un `OverlayManager` con niveles fijos; dentro de un
+- ~~**UX-9 · Gestor de capas con prioridad** — un `OverlayManager` con niveles fijos; dentro de un
   nivel, una sola capa; una de nivel inferior espera en cola mientras haya otra superior. Resuelve
-  H7. **L**
+  H7. **L**~~ ✅ 2026-10-02: `resolverCapas` (`lib/capas.ts`) y `<Capa id>` (`components/Capa.tsx`,
+  contexto `CapasContext`). `GameView` registra sus 19 overlays con su nivel; solo se ve el de más
+  nivel y el resto espera **oculto pero montado** (no pierde lo que tenía a medias). La ficha de
+  detalle es capa «hija»: siempre encima, no hace esperar a nadie. Muerte, fin y combate no son
+  capas (sustituyen al composer o al panel derecho). **Queda:** `anyModalOpen` sigue como guarda
+  para no abrir un modal de acción sobre otro; que las decisiones esperen al combate/escena y a
+  leer la narración es `UX-10`.
 
   | Nivel | Qué |
   |---|---|
