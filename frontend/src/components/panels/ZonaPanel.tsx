@@ -5,6 +5,8 @@ import { anguloSalida, rumboSalida } from '../../lib/rumboSalida'
 import { ZoneGroupDetailModal } from '../ZoneGroupDetailModal'
 import { ZonaSalidaModal } from '../ZonaSalidaModal'
 import { ParcelaDetailModal } from '../ParcelaDetailModal'
+import { DefsFichas, FichaZona } from '../zona/FichaZona'
+import { COLOR_DISPOSICION, useEscalaPantalla } from '../../lib/zonaFichas'
 import type { LogEntry, ProfessionRecipeInfo, ZonaParcelaInfo } from '../../types'
 
 interface ZonaPanelProps {
@@ -110,13 +112,8 @@ const TIPO_LABEL: Record<ZonaPinTipo, string> = {
 /// paneles distintos ahora comparten paleta, aunque cada una siga con su propio número de bandas
 /// (aquí 3+SIN_FACCION+INERTE por punto de mapa, allí 5 por temperamento de combate — legítimamente
 /// distintas, no se tocan los umbrales de ninguna).
-const COLOR_HEX: Record<ZonePointInfo['color'], string> = {
-  ALIADO: '#10b981',
-  NEUTRO: '#d4af37',
-  ENEMIGO: '#ef4444',
-  SIN_FACCION: '#f97316',
-  INERTE: '#8a8578',
-}
+/// ZON-10 (hito 0.1, Z12) — ahora sale de los tokens del juego (`COLOR_DISPOSICION`, zona/FichaZona.tsx).
+const COLOR_HEX: Record<ZonePointInfo['color'], string> = COLOR_DISPOSICION
 
 /// 4 formas fijas por categoría (2026-08-27, diseño cerrado con la usuaria) — círculo=seres vivos
 /// genéricos (fauna, grupos sin nombre propio), triángulo=NPC con nombre propio, cuadrado=edificio,
@@ -164,51 +161,18 @@ const MS_POR_PASO_MOVIMIENTO = 600
 /// que el triángulo"). Un único `transform` en el `<g>` exterior es la única animación que el
 /// navegador tiene que interpolar por punto — todo el conjunto se mueve pegado, mismo patrón que ya
 /// usaba `JugadorMarker` desde el principio.
-function ZonePointShape({ tipo, color, hasCompanion }: { tipo: ZonaPinTipo; color: string; hasCompanion?: boolean }) {
-  const common = { fill: color, stroke: 'white', strokeWidth: 1.5 }
-  switch (tipo) {
-    case 'NPC':
-      // Compañero de fauna con nombre propio en el mismo punto (C10, 2026-09-13) — "un icono
-      // nuevo para los grupos": anillo punteado extra alrededor del triángulo normal de NPC, en
-      // vez de una 5ª forma completa (mantiene la silueta ya reconocible de "NPC con nombre
-      // propio", solo añade la señal de "aquí hay más de uno").
-      return (
-        <>
-          {hasCompanion && <circle cx={0} cy={0} r={12} fill="none" stroke={color} strokeWidth={1.2} strokeDasharray="2.5 2" opacity={0.85} />}
-          <polygon points="0,-9 -8,7 8,7" {...common} />
-        </>
-      )
-    case 'EDIFICIO':
-      return <rect x={-7} y={-7} width={14} height={14} {...common} />
-    case 'RECURSO':
-      return <polygon points="0,-10 7,0 0,10 -7,0" {...common} />
-    case 'FAUNA':
-      return <circle cx={0} cy={0} r={8} {...common} />
-    case 'OBJETO':
-      // "Tirar" objetos al suelo de la Zona (2026-09-06) — mismo rombo que RECURSO pero gris fijo,
-      // para no confundir un objeto tirado por el jugador con un recurso natural sembrado.
-      return <polygon points="0,-10 7,0 0,10 -7,0" fill="#8a8a8a" stroke="white" strokeWidth={1.5} />
-    case 'CADAVER':
-      // Cadáveres en el mapa (Fase 5, 2026-09-28) — aspa rojo oscuro: forma nueva, nunca usada por
-      // ningún ser vivo ni recurso, para leerse de un vistazo como "aquí cayó algo".
-      return (
-        <>
-          <circle cx={0} cy={0} r={9} fill="#2a1a17" stroke="white" strokeWidth={1.2} />
-          <path d="M -5 -5 L 5 5 M 5 -5 L -5 5" stroke="#c0392b" strokeWidth={2.5} strokeLinecap="round" />
-        </>
-      )
-  }
-}
-
 /// Envuelve `ZonePointShape` (y, si aplica, el texto/badge de cantidad) en un único `<g transform>`
 /// — ver el comentario de `ZonePointShape` de arriba para el motivo. `children` opcional para poder
 /// insertar el texto de cantidad DENTRO del mismo grupo animado (ver `data.puntos.map` más abajo),
 /// en vez de que cada caller tenga que repetir el `<g>`/`transform` a mano.
-function ZonePointMarker({ x, y, tipo, color, hasCompanion, children }: { x: number; y: number; tipo: ZonaPinTipo; color: string; hasCompanion?: boolean; children?: ReactNode }) {
+function ZonePointMarker({ x, y, tipo, color, escala, hasCompanion, cantidad, sombra, children }: { x: number; y: number; tipo: ZonaPinTipo; color: string; escala: number; hasCompanion?: boolean; cantidad?: number; sombra?: boolean; children?: ReactNode }) {
+  // ZON-10/ZON-11 (hito 0.1) — la ficha (placa + pictograma + anillo) vive en zona/FichaZona.tsx y se
+  // dibuja en píxeles de pantalla; aquí solo se coloca y se anima en coordenadas del lienzo.
   return (
     <g style={{ transform: `translate(${x}px, ${y}px)`, transition: `transform ${MS_POR_PASO_MOVIMIENTO}ms linear` }}>
-      <ZonePointShape tipo={tipo} color={color} hasCompanion={hasCompanion} />
-      {children}
+      <FichaZona tipo={tipo} color={color} escala={escala} hasCompanion={hasCompanion} cantidad={cantidad} sombra={sombra}>
+        {children}
+      </FichaZona>
     </g>
   )
 }
@@ -347,6 +311,8 @@ function regionControlDisplay(control: RegionControlInfo): { text: string; tone:
 export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, columnasAncho = false, onClose, onViajarA, professionRecipes, onRefreshSave, onOfertaDescartada, onHoraActualizada, onSaquearCadaver, onDesollarCadaver, bloqueoTurno }: ZonaPanelProps) {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<ZonaResponse | null>(null)
+  // ZON-11 (hito 0.1) — unidades del lienzo por píxel de pantalla: las fichas miden siempre lo mismo.
+  const { ref: svgRef, escala } = useEscalaPantalla()
   const [error, setError] = useState<string | null>(null)
   // Modal de detalle (2026-09-04) — comparte un mismo modal entre ZonePoint reales (`puntos`) y
   // dinámicos (`dinamicos`, sin ZonePoint sembrado), vía `zonaDinamicoToDetailSource`.
@@ -594,6 +560,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                 ejes sin forzar ninguno, exactamente el comportamiento de una `<img>` con
                 `object-fit: contain`. El div contenedor centra el resultado con flex. */}
             <svg
+              ref={svgRef}
               viewBox="0 0 800 600"
               className={`${columnasAncho ? 'max-h-full max-w-full' : 'h-auto w-full'} ${soloConsulta ? '' : movimientoEnCurso ? 'cursor-wait' : 'cursor-crosshair'}`}
               onClick={
@@ -612,30 +579,12 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                     }
               }
             >
+              <DefsFichas />
               {imageUrl && <image href={imageUrl} x={0} y={0} width={800} height={600} preserveAspectRatio="xMidYMid slice" />}
               <GridOverlay />
               {data.puntos.map((p) => (
                 <g key={p.id} onClick={(e) => { e.stopPropagation(); p.companion ? setSelectedGroup(p) : setSelectedPoint(p) }} className="cursor-pointer">
-                  <ZonePointMarker x={p.x} y={p.y} tipo={p.tipo} color={COLOR_HEX[p.color]} hasCompanion={!!p.companion}>
-                    {/* C.5 (checklist frontend 2026-08-27) — con 2 dígitos, el número centrado
-                        dentro del icono podía sobresalir de formas estrechas (rombo/triángulo);
-                        a partir de 10 se pinta como badge fuera del icono, arriba a la derecha.
-                        Coordenadas relativas al origen (0,0) — mismo `<g transform>` animado que
-                        la forma, se mueven pegados en vez de saltar por separado. */}
-                    {p.cantidad > 1 && p.cantidad < 10 && (
-                      <text x={0} y={3} textAnchor="middle" fontSize={9} fontWeight="bold" fill="white" stroke="black" strokeWidth={0.3}>
-                        {p.cantidad}
-                      </text>
-                    )}
-                    {p.cantidad >= 10 && (
-                      <>
-                        <circle cx={9} cy={-9} r={7} fill="#1a1410" stroke="white" strokeWidth={1} />
-                        <text x={9} y={-6} textAnchor="middle" fontSize={8} fontWeight="bold" fill="white">
-                          {p.cantidad}
-                        </text>
-                      </>
-                    )}
-                  </ZonePointMarker>
+                  <ZonePointMarker x={p.x} y={p.y} tipo={p.tipo} color={COLOR_HEX[p.color]} escala={escala} hasCompanion={!!p.companion} cantidad={p.cantidad} />
                   <title>{`${p.nombre}${p.cantidad > 1 ? ` ×${p.cantidad}` : ''} (${TIPO_LABEL[p.tipo]})${p.companion ? ` — con ${p.companion.nombre}` : ''}`}</title>
                 </g>
               ))}
@@ -644,7 +593,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                   `ZonePointMarker` tal cual (su `tipo` ya es subconjunto válido). */}
               {dinamicos.map((d) => (
                 <g key={d.slug} onClick={(e) => { e.stopPropagation(); setSelectedPoint(d) }} className="cursor-pointer">
-                  <ZonePointMarker x={d.x} y={d.y} tipo={d.tipo} color={COLOR_HEX[d.color]} />
+                  <ZonePointMarker x={d.x} y={d.y} tipo={d.tipo} color={COLOR_HEX[d.color]} escala={escala} />
                   <title>{`${d.nombre} (${TIPO_LABEL[d.tipo]})`}</title>
                 </g>
               ))}
@@ -721,8 +670,8 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
               <div className="flex flex-wrap gap-x-4 gap-y-1.5">
                 {(Object.keys(TIPO_LABEL) as (ZonaPinTipo)[]).map((tipo) => (
                   <span key={tipo} className="flex items-center gap-1.5">
-                    <svg viewBox="0 0 24 24" width={14} height={14} aria-hidden="true">
-                      <ZonePointMarker tipo={tipo} x={12} y={12} color="#8a8578" />
+                    <svg viewBox="-18 -18 36 36" width={20} height={20} aria-hidden="true">
+                      <ZonePointMarker tipo={tipo} x={0} y={0} color={COLOR_HEX.NEUTRO} escala={1} sombra={false} />
                     </svg>
                     {TIPO_LABEL[tipo]}
                   </span>
@@ -737,8 +686,8 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                     leyenda para el anillo punteado, mismo criterio del comentario de arriba
                     ("nunca puede desincronizarse de lo que de verdad se pinta"). */}
                 <span className="flex items-center gap-1.5">
-                  <svg viewBox="0 0 24 24" width={14} height={14} aria-hidden="true">
-                    <ZonePointMarker tipo="NPC" x={12} y={12} color="#8a8578" hasCompanion />
+                  <svg viewBox="-18 -18 36 36" width={20} height={20} aria-hidden="true">
+                    <ZonePointMarker tipo="NPC" x={0} y={0} color={COLOR_HEX.NEUTRO} escala={1} sombra={false} hasCompanion />
                   </svg>
                   NPC con compañero
                 </span>
