@@ -203,3 +203,31 @@ describe('LogPanel — Responder escribiendo', () => {
     expect(queryByRole('button', { name: '✍️ Responder' })).toBeNull()
   })
 })
+
+/// Bug real jugando (2026-10-02, captura de la usuaria): en combate, la tarjeta de un rival
+/// convaleciente salía con Matar y Clemente bloqueados («🔒 Estás en combate») por el permiso de
+/// fase de UX-2. Las tarjetas del combate usan `bloqueoCombate`, que GameView deja a null en combate.
+describe('LogPanel — tarjeta de convaleciente en combate', () => {
+  const baseProps = { title: 'Tu personaje', subtitle: 'x', accent: 'accent' as const, emptyHint: 'vacío', entries: [] }
+  Element.prototype.scrollTo = vi.fn() as unknown as typeof Element.prototype.scrollTo
+  const orco = [{ slug: 'orco', name: 'Orco enfurecido', condicion: 'CONVALECIENTE' as const }]
+
+  it('con bloqueoCombate null, Matar y Clemente funcionan aunque el resto esté bloqueado', () => {
+    const onMatar = vi.fn()
+    const { getByRole } = render(
+      <LogPanel {...baseProps} combatNpcsDisplay={orco} bloqueoAcciones="Estás en combate." bloqueoCombate={null} onMatarConvaleciente={onMatar} onClementeConvaleciente={vi.fn()} />,
+    )
+    const matar = getByRole('button', { name: 'Matar' }) as HTMLButtonElement
+    expect(matar.disabled).toBe(false)
+    expect((getByRole('button', { name: 'Clemente' }) as HTMLButtonElement).disabled).toBe(false)
+    fireEvent.click(matar)
+    expect(onMatar).toHaveBeenCalled()
+  })
+
+  it('mientras el narrador escribe siguen bloqueados', () => {
+    const { getByRole } = render(
+      <LogPanel {...baseProps} combatNpcsDisplay={orco} bloqueoAcciones="El narrador todavía está escribiendo." bloqueoCombate="El narrador todavía está escribiendo." />,
+    )
+    expect((getByRole('button', { name: 'Matar' }) as HTMLButtonElement).disabled).toBe(true)
+  })
+})
