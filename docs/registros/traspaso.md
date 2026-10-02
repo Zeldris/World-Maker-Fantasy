@@ -12,7 +12,7 @@ cada commit.**
 |---|---|
 | **Actualizado** | 2026-10-01 |
 | **Rama de trabajo** | `claude/frontend-improvements-roadmap-0mpckt`. Flujo acordado (2026-10-01): commit + push a esta rama con cada cosa hecha; a `main` se pasa **por pull request** (desde esta sesión el push directo a `main` lo bloquea el filtro de permisos) |
-| **Último commit en `main`** | Fusión del PR #2 (2026-10-02, a petición de la usuaria): todo lo de esta rama hasta la Fase F, incluida esta línea |
+| **Último commit en `main`** | Fusión del PR #3 (2026-10-02): bitácora recortada, paso 8 «después del 0.1», cobertura de roadmaps (367/367) y `tools/roadmap/cobertura.py`. La rama de trabajo y `main` quedan iguales |
 | **Hito** | `0.1` Llanuras estable — [plan](../producto/plan-roadmap-0.1.md) · [mapa de roadmaps](../producto/21-roadmap.md#qué-entra-en-cada-hito) |
 | **Tarea en curso** | Ninguna. Fase F: script hecho, **falta que Álvaro lo ejecute en la Steam Deck** (`npm run benchmark-turno`). Fase E bloqueada (decisión de pobladores). Siguiente que se puede hacer sin esperar: Fase G (pasada de juego completa) |
 | **Tests** | Frontend: `tsc -b` 0, `vitest` 56 archivos / 330 tests, `oxlint` 13 avisos (los mismos de antes). Backend en local con Postgres real: `tsc` 0, `oxlint` 0 (solo avisos previos), `vitest` 165/165 archivos, 2869 tests. CI de GitHub en verde (PR #2) |
