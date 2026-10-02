@@ -1,5 +1,6 @@
 import { useNoticiasMundo } from '../hooks/useNoticiasMundo'
 import { useGamePhase } from '../hooks/useGamePhase'
+import { useDecisionesEnCola } from '../hooks/useDecisionesEnCola'
 import { resolverCapas, type CapaAbierta } from '../lib/capas'
 import { CapasContext } from '../context/capasContext'
 import { Capa } from '../components/Capa'
@@ -522,13 +523,28 @@ export function GameView() {
   // los 3 que viven fuera de él (detailTarget/kingdomFoundedInfo de este componente,
   // combat.combatOpen de useCombatFlow) para tener un único punto de verdad de "hay algo abierto
   // encima del juego ahora mismo" antes de decidir si se abre uno nuevo.
-  const anyModalOpen = anyActionModalOpen || !!detailTarget || !!kingdomFoundedInfo || combat.combatOpen
+  // UX-10 (hito 0.2) — clase, especialización y fundar reino esperan a que acabe el combate, la
+  // escena o la narración y a que dé tiempo a leer lo último; la cabecera avisa y deja abrirlas antes.
+  const clasePendiente = !!pendingClaseChoice && !pendingDeathResolution && !endedAt && !!worldIdSlug
+  const especializacionPendiente = !!pendingEspecializacionChoice && !pendingDeathResolution && !endedAt && !!clase && !!worldIdSlug
+  const decisiones = useDecisionesEnCola({
+    hayDecision: clasePendiente || especializacionPendiente || !!kingdomFoundedInfo,
+    bloqueada: !!combateIniciado || combat.combatOpen || !!activeDynamicMode || characterThinking,
+    ultimaNarracion: characterLog[characterLog.length - 1]?.text ?? '',
+  })
+  const reinoVisible = !!kingdomFoundedInfo && decisiones.mostrar
+  const avisoDecision = clasePendiente
+    ? 'Tienes una clase por elegir'
+    : especializacionPendiente
+      ? 'Tienes una especialización por elegir'
+      : 'Tu reino espera nombre'
+  const anyModalOpen = anyActionModalOpen || !!detailTarget || reinoVisible || combat.combatOpen
   // Un agresivo te corta el paso (2026-09-28) — la brújula se oculta hasta reaccionar (el backend
   // rechaza igualmente moverse con 409, esto solo evita ofrecer algo que no se puede hacer).
   const combateForzadoPendiente = characterLog.some((e) => e.dynamicModeOffer?.combateForzado)
-  // Elecciones obligatorias a la vista (mismas condiciones con las que se pintan sus modales).
-  const claseVisible = !!pendingClaseChoice && !pendingDeathResolution && !endedAt && !!worldIdSlug
-  const especializacionVisible = !!pendingEspecializacionChoice && !pendingDeathResolution && !endedAt && !!clase && !!worldIdSlug
+  // Elecciones obligatorias a la vista (cuando la cola de UX-10 las deja salir).
+  const claseVisible = clasePendiente && decisiones.mostrar
+  const especializacionVisible = especializacionPendiente && decisiones.mostrar
   // UX-1/UX-2 (hito 0.2) — una sola fase de partida y su matriz de permisos (lib/gamePhase.ts) en
   // vez de banderas sueltas.
   const { fase, puede } = useGamePhase({
@@ -537,7 +553,7 @@ export function GameView() {
     enCombate: !!combateIniciado || combat.combatOpen,
     modoDinamico: !!activeDynamicMode,
     narradorEscribiendo: characterThinking,
-    eleccionAbierta: claseVisible || especializacionVisible || !!kingdomFoundedInfo,
+    eleccionAbierta: claseVisible || especializacionVisible || reinoVisible,
     encuentroPendiente: combateForzadoPendiente,
     ocupado: !!busyUntil,
   })
@@ -1419,7 +1435,7 @@ export function GameView() {
     activeDynamicMode && { id: 'dinamico', nivel: 'escena' },
     claseVisible && { id: 'clase', nivel: 'decision' },
     especializacionVisible && { id: 'especializacion', nivel: 'decision' },
-    kingdomFoundedInfo && { id: 'reino', nivel: 'decision' },
+    reinoVisible && { id: 'reino', nivel: 'decision' },
     confirmingExit && { id: 'salir', nivel: 'sistema' },
   ].filter((c): c is CapaAbierta => !!c)
   const estadoCapas = resolverCapas(capasAbiertas)
@@ -1483,6 +1499,17 @@ export function GameView() {
               )}
               💀 {deathCount}/{LIMITE_MUERTES[dificultad]}
             </span>
+          )}
+          {/* UX-10 (hito 0.2) — decisión en cola: aviso con botón para abrirla ya. */}
+          {decisiones.enEspera && (
+            <button
+              type="button"
+              onClick={decisiones.abrirYa}
+              title="Se abrirá sola al terminar; pulsa para abrirla ahora"
+              className="tactile rounded-full border border-accent-600/70 bg-accent-500/10 px-2.5 py-1 font-serif text-2xs tracking-wide text-accent-300 hover:bg-accent-500/20"
+            >
+              <span aria-hidden="true">⚠️</span> {avisoDecision}
+            </button>
           )}
           {/* UX-8 (hito 0.2) — indicador de la fase cuando algo está bloqueado, con el motivo al
               pasar el ratón; en `libre` no aparece. */}
@@ -1929,7 +1956,7 @@ export function GameView() {
         </Capa>
       )}
 
-      {kingdomFoundedInfo && (
+      {reinoVisible && kingdomFoundedInfo && (
         <Capa id="reino">
         <KingdomFoundingModal info={kingdomFoundedInfo} onCancel={() => setKingdomFoundedInfo(null)} onConfirm={handleFundarReino} />
         </Capa>
@@ -1939,7 +1966,7 @@ export function GameView() {
           custom sin clase para siempre) — overlay bloqueante, mismo criterio de prioridad que
           muerte/fin de partida. Nunca coincide con el modal de especialización de abajo:
           pendingEspecializacionChoice exige `save.clase` ya asignada. */}
-      {pendingClaseChoice && !pendingDeathResolution && !endedAt && worldIdSlug && (
+      {claseVisible && pendingClaseChoice && worldIdSlug && (
         <Capa id="clase">
         <ClaseModal clases={clasesDisponibles} worldSlug={worldIdSlug} onConfirm={handleAssignClase} />
         </Capa>
@@ -1949,7 +1976,7 @@ export function GameView() {
           mismo criterio de prioridad que el resto de estados excluyentes de la partida: la muerte
           permanente/fin de partida ganan si coinciden (no debería pasar de verdad: resolver una
           muerte no sube de nivel), especialización solo se muestra si ninguna de esas dos aplica. */}
-      {pendingEspecializacionChoice && !pendingDeathResolution && !endedAt && clase && worldIdSlug && (
+      {especializacionVisible && pendingEspecializacionChoice && clase && worldIdSlug && (
         <Capa id="especializacion">
         <EspecializacionModal
           clase={clase}

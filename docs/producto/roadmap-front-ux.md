@@ -243,10 +243,14 @@ stateDiagram-v2
   | Compañero que se marcha, sucesión que pide decidir | 4 · Decisión |
   | Epílogo | 5 · Crítico |
 
-- **UX-10 · Decisiones en cola** — clase, especialización y fundación del reino **esperan** a que
+- ~~**UX-10 · Decisiones en cola** — clase, especialización y fundación del reino **esperan** a que
   termine el combate o el modo dinámico y a que se haya leído la narración; mientras esperan, un
   aviso en la cabecera ("⚠️ Tienes una clase por elegir") permite abrirlas antes si se quiere.
-  Resuelve H8 y H9. **M**
+  Resuelve H8 y H9. **M**~~ ✅ 2026-10-02: `hooks/useDecisionesEnCola.ts`. Esperan mientras hay
+  combate, modo dinámico o narrador escribiendo, y después un tiempo de lectura de la última
+  narración (`msDeLectura`: ~40 ms por carácter, entre 2 y 12 s). Mientras esperan, la cabecera
+  enseña «⚠️ Tienes una clase por elegir» (o especialización, o «Tu reino espera nombre») y al
+  pulsarlo se abre ya. Nota para la fase de pruebas: en esa espera el composer sigue libre.
 - **UX-11 · Presentación en orden del turno** — secuencia fija: acción del jugador → tirada
   (`DiceTray`) → narración → cambios de estado (vida, inventario, XP con su animación) →
   **reacciones de compañeros** (`NAR-10`) → ofertas en el registro → **sucesos del mundo que se
