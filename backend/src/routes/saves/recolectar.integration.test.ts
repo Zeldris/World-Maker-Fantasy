@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import Fastify from 'fastify';
 import { prisma } from '../../lib/prisma.js';
+import { asegurarMundoDePartida } from '../../services/mundoPartida.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
 import type { AttributeBlock } from '../../services/dice.js';
 
@@ -37,18 +38,6 @@ describe('Cooldown de recolección: cambiar de Location lo salta, quedarse quiet
     locationAId = locationA.id;
     locationBId = locationB.id;
 
-    const pop = await prisma.worldPopulation.findFirstOrThrow({
-      where: { worldId, targetType: 'RECURSO', targetSlug: 'roca-pilares-rotos' },
-    });
-    originalPopulation = { poblacion: pop.poblacion, lastHarvestedAt: pop.lastHarvestedAt, lastHarvestedLocationId: pop.lastHarvestedLocationId };
-    // Punto de partida limpio: nunca recolectada (cooldown irrelevante hasta que el propio test lo
-    // fije), para que el primer harvest de Location A no dependa de cuándo se corrió la suite
-    // anterior.
-    await prisma.worldPopulation.update({
-      where: { id: pop.id },
-      data: { lastHarvestedAt: null, lastHarvestedLocationId: null },
-    });
-
     const save = await prisma.save.create({
       data: {
         userId,
@@ -64,14 +53,23 @@ describe('Cooldown de recolección: cambiar de Location lo salta, quedarse quiet
     });
     saveId = save.id;
     await prisma.worldState.create({ data: { saveId } });
+
+    // CR-6 (hito 0.2): la recolección gasta la población de ESTA partida (copia del catálogo, que se
+    // borra con la partida). Punto de partida limpio: nunca recolectada (cooldown irrelevante hasta
+    // que el propio test lo fije).
+    await asegurarMundoDePartida(prisma, saveId);
+    const pop = await prisma.worldPopulation.findFirstOrThrow({
+      where: { saveId, targetType: 'RECURSO', targetSlug: 'roca-pilares-rotos' },
+    });
+    originalPopulation = { poblacion: pop.poblacion, lastHarvestedAt: null, lastHarvestedLocationId: null };
+    await prisma.worldPopulation.update({
+      where: { id: pop.id },
+      data: { lastHarvestedAt: null, lastHarvestedLocationId: null },
+    });
   });
 
   afterAll(async () => {
     await prisma.save.delete({ where: { id: saveId } });
-    await prisma.worldPopulation.updateMany({
-      where: { worldId, targetType: 'RECURSO', targetSlug: 'roca-pilares-rotos' },
-      data: originalPopulation,
-    });
   });
 
   it('recolecta en Location A, un segundo intento inmediato en el MISMO sitio no da nada nuevo', async () => {
@@ -91,7 +89,7 @@ describe('Cooldown de recolección: cambiar de Location lo salta, quedarse quiet
     expect(afterFirst.items[0].name).toBe('Roca de Llanura Roja (3)');
 
     const popAfterFirst = await prisma.worldPopulation.findFirstOrThrow({
-      where: { worldId, targetType: 'RECURSO', targetSlug: 'roca-pilares-rotos' },
+      where: { saveId, targetType: 'RECURSO', targetSlug: 'roca-pilares-rotos' },
     });
     expect(popAfterFirst.poblacion).toBe(originalPopulation.poblacion - 3);
     expect(popAfterFirst.lastHarvestedLocationId).toBe(locationAId);
@@ -105,7 +103,7 @@ describe('Cooldown de recolección: cambiar de Location lo salta, quedarse quiet
     expect(second.statusCode).toBe(200);
     expect(JSON.parse(second.body).items).toHaveLength(0);
     const popAfterSecond = await prisma.worldPopulation.findFirstOrThrow({
-      where: { worldId, targetType: 'RECURSO', targetSlug: 'roca-pilares-rotos' },
+      where: { saveId, targetType: 'RECURSO', targetSlug: 'roca-pilares-rotos' },
     });
     expect(popAfterSecond.poblacion).toBe(originalPopulation.poblacion - 3);
   }, 15_000);
@@ -150,7 +148,7 @@ describe('Cooldown de recolección: cambiar de Location lo salta, quedarse quiet
     expect(body.updatedItems).toEqual([expect.objectContaining({ name: 'Roca de Llanura Roja (6)' })]);
 
     const pop = await prisma.worldPopulation.findFirstOrThrow({
-      where: { worldId, targetType: 'RECURSO', targetSlug: 'roca-pilares-rotos' },
+      where: { saveId, targetType: 'RECURSO', targetSlug: 'roca-pilares-rotos' },
     });
     expect(pop.poblacion).toBe(originalPopulation.poblacion - 6);
     expect(pop.lastHarvestedLocationId).toBe(locationBId);

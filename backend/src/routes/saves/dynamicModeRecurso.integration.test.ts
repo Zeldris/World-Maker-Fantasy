@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import Fastify from 'fastify';
 import { prisma } from '../../lib/prisma.js';
+import { asegurarMundoDePartida } from '../../services/mundoPartida.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
 
 /// "Interactuar" sobre RECURSO (2026-09-08, "Ver qué hay en la zona") — harness de integración real
@@ -165,9 +166,10 @@ describe('POST /saves/:id/modo-dinamico/recurso/:targetSlug', () => {
       where: { id: saveId },
       data: { pendingDynamicModeOffer: { tipo: 'RECURSO', targetSlug: 'yerreo', targetName: 'Yerreo' } },
     });
-    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    // CR-6 (hito 0.2): se agota la población de ESTA partida (su copia del catálogo).
+    await asegurarMundoDePartida(prisma, saveId);
     const poblacionReal = await prisma.worldPopulation.findFirstOrThrow({
-      where: { worldId: world.id, targetType: 'RECURSO', targetSlug: 'yerreo' },
+      where: { saveId, targetType: 'RECURSO', targetSlug: 'yerreo' },
     });
     // Población a 0: `candidateSourcesFor` filtra por `poblacion: { gt: 0 }` — sin ninguna fila con
     // población real, yerreo deja de ser candidato aunque el resto de condiciones (región/terreno/

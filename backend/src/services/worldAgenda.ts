@@ -199,12 +199,13 @@ type TxClient = Pick<PrismaClient, 'worldPopulation'>;
 async function depleteClanPopulation(tx: TxClient, worldId: string, targetSlug: string, amount: number): Promise<void> {
   if (amount <= 0) return;
   const result = await tx.worldPopulation.updateMany({
-    where: { worldId, targetType: 'RAZA', targetSlug, poblacion: { gte: amount } },
+    // CR-6: la agenda sigue siendo del mundo (pasa a cada partida con CR-7): filas de catálogo.
+    where: { worldId, saveId: null, targetType: 'RAZA', targetSlug, poblacion: { gte: amount } },
     data: { poblacion: { decrement: amount } },
   });
   if (result.count === 0) {
     await tx.worldPopulation.updateMany({
-      where: { worldId, targetType: 'RAZA', targetSlug, poblacion: { gt: 0 } },
+      where: { worldId, saveId: null, targetType: 'RAZA', targetSlug, poblacion: { gt: 0 } },
       data: { poblacion: 0 },
     });
   }

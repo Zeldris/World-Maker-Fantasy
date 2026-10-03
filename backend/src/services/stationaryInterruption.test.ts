@@ -11,6 +11,8 @@ vi.mock('../lib/prisma.js', () => ({
     zonePoint: { findMany: (...args: unknown[]) => zonePointFindMany(...args) },
     npc: { findMany: (...args: unknown[]) => npcFindMany(...args) },
     worldPopulation: { findMany: (...args: unknown[]) => worldPopulationFindMany(...args) },
+    // CR-6 (hito 0.2): partida con su mundo ya clonado (la población se lee por saveId).
+    save: { findUniqueOrThrow: async () => ({ worldId: 'world1', worldState: { mundoClonadoEn: new Date() } }) },
   },
 }));
 

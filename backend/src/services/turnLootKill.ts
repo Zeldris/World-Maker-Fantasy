@@ -395,13 +395,13 @@ export async function applyKillSideEffects(params: {
   // Población dinámica (docs/mecanicas/16-poblacion-dinamica.md): solo MUERTO resta población de verdad —
   // CONVALECIENTE es solo derrotado, no una baja real de la especie/raza.
   if (nuevaCondicion === 'MUERTO') {
-    await decrementPopulationOnDeath(tx, worldId, npc.raza, npc.slug, activeRegion);
+    await decrementPopulationOnDeath(tx, saveId, npc.raza, npc.slug, activeRegion);
     // H-3 (2026-09-28): BAJA_DE_GUERRA — el jugador con Reino fundado (su propia `Faction`, el
     // `source`) mata a un NPC de otra facción dentro de una región de esa facción. Sin Reino
     // fundado no hay `source` y no se dispara. Cubre a la vez el golpe clásico y el combate
     // múltiple, que comparten esta función.
     if (npc.faction && activeRegion && REGION_OWNING_FACTIONS[activeRegion]?.includes(npc.faction)) {
-      const playerFaction = await tx.faction.findFirst({ where: { saveId }, select: { id: true, name: true } });
+      const playerFaction = await tx.faction.findFirst({ where: { saveId, origenSlug: null }, select: { id: true, name: true } });
       if (playerFaction && playerFaction.name !== npc.faction) {
         const targetFaction = await tx.faction.findFirst({ where: { worldId, name: npc.faction, saveId: null }, select: { id: true } });
         if (targetFaction) {

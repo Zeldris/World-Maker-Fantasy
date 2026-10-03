@@ -221,10 +221,11 @@ export async function reinoRoutes(app: FastifyInstance) {
       const companion = await prisma.companion.findFirst({ where: { id: companionId, saveId: save.id, rolReino: 'diplomatico' } });
       if (!companion) return reply.status(400).send({ error: 'Ese Companion no es un diplomático de tu Reino (rolReino: "diplomatico")' });
 
-      const sourceFaction = await prisma.faction.findFirst({ where: { saveId: save.id }, select: { id: true, name: true, worldId: true } });
+      const sourceFaction = await prisma.faction.findFirst({ where: { saveId: save.id, origenSlug: null }, select: { id: true, name: true, worldId: true } });
       if (!sourceFaction) return reply.status(400).send({ error: 'Todavía no has fundado tu Reino' });
 
-      const targetFaction = await prisma.faction.findFirst({ where: { worldId: sourceFaction.worldId, slug: targetFactionSlug }, select: { id: true, name: true, slug: true } });
+      // CR-6 (hito 0.2): objetivo = facción del catálogo o el propio Reino (nunca una copia del mundo de la partida).
+      const targetFaction = await prisma.faction.findFirst({ where: { worldId: sourceFaction.worldId, slug: targetFactionSlug, OR: [{ saveId: null }, { saveId: save.id, origenSlug: null }] }, select: { id: true, name: true, slug: true } });
       if (!targetFaction) return reply.status(404).send({ error: `Facción desconocida: ${targetFactionSlug}` });
       if (targetFaction.id === sourceFaction.id) return reply.status(400).send({ error: 'No puedes hacer diplomacia contra tu propio Reino' });
 
@@ -335,9 +336,9 @@ export async function reinoRoutes(app: FastifyInstance) {
       const save = await prisma.save.findUnique({ where: { id: request.params.id } });
       if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
 
-      const sourceFaction = await prisma.faction.findFirst({ where: { saveId: save.id }, select: { id: true, worldId: true } });
+      const sourceFaction = await prisma.faction.findFirst({ where: { saveId: save.id, origenSlug: null }, select: { id: true, worldId: true } });
       if (!sourceFaction) return reply.status(400).send({ error: 'Todavía no has fundado tu Reino' });
-      const targetFaction = await prisma.faction.findFirst({ where: { worldId: sourceFaction.worldId, slug: targetFactionSlug }, select: { id: true, name: true } });
+      const targetFaction = await prisma.faction.findFirst({ where: { worldId: sourceFaction.worldId, slug: targetFactionSlug, OR: [{ saveId: null }, { saveId: save.id, origenSlug: null }] }, select: { id: true, name: true } });
       if (!targetFaction) return reply.status(404).send({ error: `Facción desconocida: ${targetFactionSlug}` });
 
       const tratado = await prisma
@@ -395,9 +396,9 @@ export async function reinoRoutes(app: FastifyInstance) {
       if (rejectIfEnded(save, reply)) return;
       if (rejectIfPendingDeath(save, reply)) return;
 
-      const sourceFaction = await prisma.faction.findFirst({ where: { saveId: save.id }, select: { id: true, worldId: true } });
+      const sourceFaction = await prisma.faction.findFirst({ where: { saveId: save.id, origenSlug: null }, select: { id: true, worldId: true } });
       if (!sourceFaction) return reply.status(400).send({ error: 'Todavía no has fundado tu Reino' });
-      const targetFaction = await prisma.faction.findFirst({ where: { worldId: sourceFaction.worldId, slug: targetFactionSlug }, select: { id: true, name: true } });
+      const targetFaction = await prisma.faction.findFirst({ where: { worldId: sourceFaction.worldId, slug: targetFactionSlug, OR: [{ saveId: null }, { saveId: save.id, origenSlug: null }] }, select: { id: true, name: true } });
       if (!targetFaction) return reply.status(404).send({ error: `Facción desconocida: ${targetFactionSlug}` });
 
       const item = await prisma.almacenItem.findFirst({ where: { id: almacenItemId, factionId: targetFaction.id } });
@@ -447,9 +448,9 @@ export async function reinoRoutes(app: FastifyInstance) {
       if (rejectIfEnded(save, reply)) return;
       if (rejectIfPendingDeath(save, reply)) return;
 
-      const sourceFaction = await prisma.faction.findFirst({ where: { saveId: save.id }, select: { id: true, worldId: true } });
+      const sourceFaction = await prisma.faction.findFirst({ where: { saveId: save.id, origenSlug: null }, select: { id: true, worldId: true } });
       if (!sourceFaction) return reply.status(400).send({ error: 'Todavía no has fundado tu Reino' });
-      const targetFaction = await prisma.faction.findFirst({ where: { worldId: sourceFaction.worldId, slug: targetFactionSlug }, select: { id: true, name: true } });
+      const targetFaction = await prisma.faction.findFirst({ where: { worldId: sourceFaction.worldId, slug: targetFactionSlug, OR: [{ saveId: null }, { saveId: save.id, origenSlug: null }] }, select: { id: true, name: true } });
       if (!targetFaction) return reply.status(404).send({ error: `Facción desconocida: ${targetFactionSlug}` });
 
       const item = await prisma.almacenItem.findFirst({ where: { id: almacenItemId, saveId: save.id } });

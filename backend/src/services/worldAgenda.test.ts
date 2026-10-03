@@ -162,11 +162,11 @@ describe('advanceWorldAgenda', () => {
     expect(factionRelationFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ worldId: 'world1', presion: { lt: 70 } }) }));
     expect(factionRelationUpdate).toHaveBeenCalledWith({ where: { id: 'rel-helsig' }, data: { presion: 70, type: typeForPresion(70), stage: 1 } });
     expect(worldPopulationUpdateMany).toHaveBeenCalledWith({
-      where: { worldId: 'world1', targetType: 'RAZA', targetSlug: 'orcos-cristal-helado', poblacion: { gte: 20 } },
+      where: { worldId: 'world1', saveId: null, targetType: 'RAZA', targetSlug: 'orcos-cristal-helado', poblacion: { gte: 20 } },
       data: { poblacion: { decrement: 20 } },
     });
     expect(worldPopulationUpdateMany).toHaveBeenCalledWith({
-      where: { worldId: 'world1', targetType: 'RAZA', targetSlug: 'orcos-cienaga', poblacion: { gte: 20 } },
+      where: { worldId: 'world1', saveId: null, targetType: 'RAZA', targetSlug: 'orcos-cienaga', poblacion: { gte: 20 } },
       data: { poblacion: { decrement: 20 } },
     });
     expect(appendSessionFacts).toHaveBeenCalledTimes(1);

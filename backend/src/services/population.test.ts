@@ -46,6 +46,9 @@ describe('populationTargetSlugFor', () => {
   });
 });
 
+// CR-6 (hito 0.2): partida con su mundo ya clonado — la población que se toca es la suya.
+const saveClonada = { findUniqueOrThrow: vi.fn().mockResolvedValue({ worldId: 'world1', worldState: { mundoClonadoEn: new Date() } }) };
+
 describe('decrementPopulationOnDeath', () => {
   // Cobertura reescrita (auditoría 2026-08-06, bug real de condición de carrera): antes esto era
   // `findUnique` + `update` con el valor de `poblacion` capturado en memoria — sin bloqueo, un tick
@@ -53,28 +56,28 @@ describe('decrementPopulationOnDeath', () => {
   // Ahora es un `updateMany` atómico con `{ decrement: 1 }`, guardado por `poblacion: { gt: 0 } }`.
   it('resta 1 a la fila que corresponde de forma atómica, sin leer nada antes', async () => {
     const updateMany = vi.fn().mockResolvedValue({ count: 1 });
-    const tx = { worldPopulation: { updateMany } };
-    await decrementPopulationOnDeath(tx as any, 'world1', null, 'murgol', 'Las Llanuras del Viento Rojo');
+    const tx = { worldPopulation: { updateMany }, save: saveClonada };
+    await decrementPopulationOnDeath(tx as any, 'save1', null, 'murgol', 'Las Llanuras del Viento Rojo');
     expect(updateMany).toHaveBeenCalledWith({
-      where: { worldId: 'world1', targetType: 'FAUNA', targetSlug: 'murgol', poblacion: { gt: 0 } },
+      where: { saveId: 'save1', targetType: 'FAUNA', targetSlug: 'murgol', poblacion: { gt: 0 } },
       data: { poblacion: { decrement: 1 } },
     });
   });
 
   it('el guard poblacion > 0 evita bajar de 0 sin necesidad de releer nada', async () => {
     const updateMany = vi.fn().mockResolvedValue({ count: 0 });
-    const tx = { worldPopulation: { updateMany } };
-    await decrementPopulationOnDeath(tx as any, 'world1', 'orcos', 'torgash', 'Las Llanuras del Viento Rojo');
+    const tx = { worldPopulation: { updateMany }, save: saveClonada };
+    await decrementPopulationOnDeath(tx as any, 'save1', 'orcos', 'torgash', 'Las Llanuras del Viento Rojo');
     expect(updateMany).toHaveBeenCalledWith({
-      where: { worldId: 'world1', targetType: 'RAZA', targetSlug: 'orcos-llanuras', poblacion: { gt: 0 } },
+      where: { saveId: 'save1', targetType: 'RAZA', targetSlug: 'orcos-llanuras', poblacion: { gt: 0 } },
       data: { poblacion: { decrement: 1 } },
     });
   });
 
   it('no hace nada si populationTargetSlugFor no reconoce la región (nunca bloquea el turno)', async () => {
     const updateMany = vi.fn();
-    const tx = { worldPopulation: { updateMany } };
-    await decrementPopulationOnDeath(tx as any, 'world1', 'orcos', 'algun-npc', null);
+    const tx = { worldPopulation: { updateMany }, save: saveClonada };
+    await decrementPopulationOnDeath(tx as any, 'save1', 'orcos', 'algun-npc', null);
     // Región nula para 'orcos' => populationTargetSlugFor devuelve null antes de tocar la DB.
     expect(updateMany).not.toHaveBeenCalled();
   });

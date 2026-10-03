@@ -532,7 +532,7 @@ describe('GET /world/:slug/enciclopedia', () => {
       await app.inject({ method: 'GET', url: '/world/helek-sirik/enciclopedia?saveId=save1' });
 
       expect(findManyFaction).toHaveBeenCalledWith({
-        where: { worldId: 'world1', OR: [{ saveId: null }, { saveId: 'save1' }] },
+        where: { worldId: 'world1', OR: [{ saveId: null }, { saveId: 'save1', origenSlug: null }] },
         include: { liderNpc: { select: { slug: true, name: true } } },
       });
     });

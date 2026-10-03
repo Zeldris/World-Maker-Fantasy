@@ -64,6 +64,7 @@ import type { RollResult, AttributeBlock, Attribute, GradoExito } from './dice.j
 import type { SecondaryAttributeBlock } from './secondaryAttributes.js';
 import { Prisma } from '@prisma/client';
 import type { CondicionFisica, Dificultad, AbilityEffect, AbilityRol, Clase, Especializacion } from '@prisma/client';
+import { ambitoPoblacion } from './mundoPartida.js';
 
 const REINO_XP = { territory: 150, buildingActive: 100, firstSubject: 100, subject: 25, consolidado: 300 } as const;
 /// Población anónima con la que arranca todo Territory nuevo (2026-08-23, Grupo 3) — un puñado de
@@ -3331,7 +3332,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     });
     if (itinerantCandidates.length > 0) {
       const populationRows = await prisma.worldPopulation.findMany({
-        where: { worldId, targetType: 'FAUNA', targetSlug: { in: itinerantCandidates.map((c) => c.slug) } },
+        where: { ...(await ambitoPoblacion(prisma, saveId)), targetType: 'FAUNA', targetSlug: { in: itinerantCandidates.map((c) => c.slug) } },
       });
       const populationBySlug = new Map(populationRows.map((row) => [row.targetSlug, row]));
       // Fauna diurna/nocturna real (2026-09-02) — mismo criterio "sin dato = sin filtrar" que
@@ -5844,7 +5845,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         //     dispara el evento discreto que alimenta `FactionRelation` (§ 7.3), primer caller real
         //     de `recordFactionEvent` en producción.
         if (buildRecipe.isCuartelAvanzado) {
-          const playerFaction = await tx.faction.findFirst({ where: { saveId }, select: { id: true, name: true } });
+          const playerFaction = await tx.faction.findFirst({ where: { saveId, origenSlug: null }, select: { id: true, name: true } });
           const cuartelLocationSlug = `cuartel-avanzado-interior-${created.id}`;
           const cuartelLocation = await tx.location.create({
             data: {

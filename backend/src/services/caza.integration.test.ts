@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import { prisma } from '../lib/prisma.js';
+import { asegurarMundoDePartida } from './mundoPartida.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
 import { iniciarCaza, dispersionCooldownActivo, rollGroupEngagement, rollGroupEngagementDetail, groupVarianceClause, type CazaTarget } from './caza.js';
 import type { AttributeBlock } from './dice.js';
@@ -182,7 +183,9 @@ describe('iniciarCaza — integración real (Postgres, sobre el catálogo de hel
 
     it('dos iniciarCaza simultáneos contra la misma presa débil crean como mucho 1 LogEntry y decrementan la población una sola vez', async () => {
       randomSpy.mockReturnValue(0); // garantiza éxito en la tirada de caza limpia
-      const poblacionAntes = (await prisma.worldPopulation.findFirstOrThrow({ where: { worldId, targetSlug: 'zense-ceniza' } })).poblacion;
+      // CR-6 (hito 0.2): la caza resta de la población de esta partida, no de la del mundo.
+      await asegurarMundoDePartida(prisma, saveId);
+      const poblacionAntes = (await prisma.worldPopulation.findFirstOrThrow({ where: { saveId, targetSlug: 'zense-ceniza' } })).poblacion;
 
       const save = await saveParaCaza(saveId, 10);
       const targets: CazaTarget[] = [{ npc: zenseCeniza, cantidadObjetivo: 1 }];
@@ -194,7 +197,7 @@ describe('iniciarCaza — integración real (Postgres, sobre el catálogo de hel
       const logCount = await prisma.logEntry.count({ where: { saveId, text: { contains: 'Zense Ceniza' } } });
       expect(logCount).toBe(1);
 
-      const poblacionDespues = (await prisma.worldPopulation.findFirstOrThrow({ where: { worldId, targetSlug: 'zense-ceniza' } })).poblacion;
+      const poblacionDespues = (await prisma.worldPopulation.findFirstOrThrow({ where: { saveId, targetSlug: 'zense-ceniza' } })).poblacion;
       expect(poblacionAntes - poblacionDespues).toBe(1);
 
       const saveTrasCaza = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
@@ -243,16 +246,14 @@ describe('iniciarCaza — integración real (Postgres, sobre el catálogo de hel
 
     beforeAll(async () => {
       saveId = await crearSave(1, 'Gorhorn de prueba (caza.ts, cooldown de dispersión)');
+      // CR-6 (hito 0.2): el cooldown se escribe en la población de esta partida (se borra con ella).
+      await asegurarMundoDePartida(prisma, saveId);
       await prisma.worldPopulation.updateMany({
-        where: { worldId, targetType: 'FAUNA', targetSlug: 'zense-ceniza' },
+        where: { saveId, targetType: 'FAUNA', targetSlug: 'zense-ceniza' },
         data: { dispersadoEnLocationId: null, dispersadoDesdeMinutes: null },
       });
     });
     afterAll(async () => {
-      await prisma.worldPopulation.updateMany({
-        where: { worldId, targetType: 'FAUNA', targetSlug: 'zense-ceniza' },
-        data: { dispersadoEnLocationId: null, dispersadoDesdeMinutes: null },
-      });
       await limpiarSave(saveId);
     });
 
@@ -267,7 +268,7 @@ describe('iniciarCaza — integración real (Postgres, sobre el catálogo de hel
         randomSpy.mockRestore();
       }
 
-      const pop = await prisma.worldPopulation.findFirstOrThrow({ where: { worldId, targetType: 'FAUNA', targetSlug: 'zense-ceniza' } });
+      const pop = await prisma.worldPopulation.findFirstOrThrow({ where: { saveId, targetType: 'FAUNA', targetSlug: 'zense-ceniza' } });
       expect(pop.dispersadoEnLocationId).toBe(locationId);
       expect(pop.dispersadoDesdeMinutes).not.toBeNull();
     }, 20_000);
