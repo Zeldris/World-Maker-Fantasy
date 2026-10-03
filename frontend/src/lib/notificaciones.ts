@@ -18,6 +18,8 @@ export interface Notificacion extends NuevaNotificacion {
   id: number
   /// Cuántas veces ha llegado la misma (se enseña «×N»).
   veces: number
+  /// BAS-7 — se está yendo (anima la salida antes de quitarla).
+  saliendo?: boolean
 }
 
 export const MAX_NOTIFICACIONES = 4

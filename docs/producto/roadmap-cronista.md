@@ -868,9 +868,26 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   cada emisor.
 
 ### Fase 2 — Mundo por partida · **L**
-- **CR-5** Cambios de esquema § 5.2 + índices parciales. **M**
+- ~~**CR-5** Cambios de esquema § 5.2 + índices parciales. **M**~~ ✅ 2026-10-02: migración
+  `20261002200000_mundo_por_partida` con los campos de § 5.2 (`Faction.origenSlug/disueltaEn/
+  fundadaEn/cohesion`, `saveId` en `FactionRelation`, `WorldPopulation`, `Expedicion` y `Npc`,
+  `NpcState.muerto/muertoEn/cargo/lealtadFaccionId`, `Companion.valores/aprobacion`, `WorldState.
+  ultimoDiaSimulado/presupuestoTension/estiloNarrador/mundoClonadoEn`) y únicos **parciales** para
+  `Faction`, `Npc` y `WorldPopulation` (catálogo `saveId IS NULL` por mundo; partida por `saveId`).
+  Las búsquedas por `worldId_slug` de NPC/facción pasan a `findFirst` con `saveId: null` (la fila
+  de catálogo, mismo resultado que antes); la siembra hace `upsert` por id (sigue idempotente).
+  **Ojo:** Prisma no expresa índices parciales; `prisma migrate diff` propondrá borrarlos en
+  migraciones futuras: quitar esas líneas. Aún nada lee ni escribe por partida: eso es `CR-6`.
 - **CR-6** `asegurarMundoDePartida` y adaptar lecturas/escrituras de facciones, relaciones,
-  población, expediciones y NPC muertos a la partida. **L**
+  población, expediciones y NPC muertos a la partida. **L** 🚧 2026-10-02 — **paso 1 hecho:**
+  `services/mundoPartida.ts` (`asegurarMundoDePartida`, con candado de Postgres; clona facciones
+  con `origenSlug`, relaciones, `KingdomStats`, territorios y edificios de facción —sin `saveId`,
+  cuelgan de la copia—, población; marca `mundoClonadoEn` y emite `SISTEMA_MUNDO_INICIADO`) y
+  `copiaDeFila` (Json nulos como `DbNull`). Test de integración: idempotente, dos partidas
+  divergen, se borra con la partida. **Falta:** llamarlo al crear partida y al inicio del turno, y
+  pasar a las filas de la partida las lecturas/escrituras de facciones y relaciones
+  (`factionRelations.ts`, `worldAgenda.ts`, diplomacia), población (`population.ts`, caza,
+  recolección, muertes), expediciones (`factionExpeditions.ts`) y NPC muertos (`NpcState.muerto`).
 - **CR-7** `avanceDiario` por partida; sacar las funciones de mundo de `worldTick.ts`. **M**
 - **CR-8** Script de migración (§ 16). **M**
 - **Hecho cuando:** dos partidas del mismo mundo divergen (una mata a un NPC, la otra no lo ve);

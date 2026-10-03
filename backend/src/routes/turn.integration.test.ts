@@ -1987,8 +1987,8 @@ describe('npcInteractionOffer: menú contextual al hablar con un NPC con interac
     const userId = await getDefaultUserId();
     const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
     const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
-    await prisma.npc.update({
-      where: { worldId_slug: { worldId: world.id, slug: 'orco-enfurecido-hondonada' } },
+    await prisma.npc.updateMany({
+      where: { worldId: world.id, slug: 'orco-enfurecido-hondonada', saveId: null },
       data: { interactionTypes: ['NPC_LORE'] },
     });
     const save = await prisma.save.create({
@@ -2018,8 +2018,8 @@ describe('npcInteractionOffer: menú contextual al hablar con un NPC con interac
     vi.restoreAllMocks();
     await prisma.save.delete({ where: { id: saveId } });
     const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
-    await prisma.npc.update({
-      where: { worldId_slug: { worldId: world.id, slug: 'orco-enfurecido-hondonada' } },
+    await prisma.npc.updateMany({
+      where: { worldId: world.id, slug: 'orco-enfurecido-hondonada', saveId: null },
       data: { interactionTypes: [] },
     });
   });
@@ -3763,24 +3763,24 @@ describe('Matar (CONVALECIENTE): condición de carrera en turnos concurrentes (a
     // alto y conocido antes de medir, y se restaura al mismo valor de semilla al cerrar (no al valor
     // que hubiera quedado degradado antes de este fix) — deliberado: perpetuar el número viejo solo
     // pospondría el mismo agotamiento para la próxima sesión de tests.
-    await prisma.worldPopulation.update({
-      where: { worldId_targetType_targetSlug: { worldId: world.id, targetType: 'RAZA', targetSlug: 'orcos-llanuras' } },
+    await prisma.worldPopulation.updateMany({
+      where: { worldId: world.id, targetType: 'RAZA', targetSlug: 'orcos-llanuras', saveId: null },
       data: { poblacion: 600 },
     });
   });
 
   afterAll(async () => {
     await prisma.save.delete({ where: { id: saveId } });
-    await prisma.worldPopulation.update({
-      where: { worldId_targetType_targetSlug: { worldId, targetType: 'RAZA', targetSlug: 'orcos-llanuras' } },
+    await prisma.worldPopulation.updateMany({
+      where: { worldId, targetType: 'RAZA', targetSlug: 'orcos-llanuras', saveId: null },
       data: { poblacion: 600 },
     });
   });
 
   it('dos ataques simultáneos contra el mismo convaleciente solo restan población una vez', async () => {
     const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
-    const before = await prisma.worldPopulation.findUniqueOrThrow({
-      where: { worldId_targetType_targetSlug: { worldId: world.id, targetType: 'RAZA', targetSlug: 'orcos-llanuras' } },
+    const before = await prisma.worldPopulation.findFirstOrThrow({
+      where: { worldId: world.id, targetType: 'RAZA', targetSlug: 'orcos-llanuras', saveId: null },
     });
 
     // Math.random()=0.99 garantiza el mejor resultado posible en cualquier tirada — con esto, el
@@ -3793,8 +3793,8 @@ describe('Matar (CONVALECIENTE): condición de carrera en turnos concurrentes (a
 
     const state = await prisma.npcState.findUniqueOrThrow({ where: { saveId_npcId_scope: { saveId, npcId, scope: '' } } });
     expect(state.condicionFisica).toBe('MUERTO');
-    const after = await prisma.worldPopulation.findUniqueOrThrow({
-      where: { worldId_targetType_targetSlug: { worldId: world.id, targetType: 'RAZA', targetSlug: 'orcos-llanuras' } },
+    const after = await prisma.worldPopulation.findFirstOrThrow({
+      where: { worldId: world.id, targetType: 'RAZA', targetSlug: 'orcos-llanuras', saveId: null },
     });
     // Si la carrera duplicara el efecto, la población bajaría 2, no 1.
     expect(before.poblacion - after.poblacion).toBe(1);

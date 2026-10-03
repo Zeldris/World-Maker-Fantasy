@@ -2698,8 +2698,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     (detectsSearchIntent(action) || detectsAttackIntent(action) || detectsHostileSearchIntent(action)) &&
     !npcsInSceneWithInterruption.some((n) => n.slug === 'orco-enfurecido-hondonada')
   ) {
-    const pursuerNpc: NpcWithItems | null = await prisma.npc.findUnique({
-      where: { worldId_slug: { worldId, slug: 'orco-enfurecido-hondonada' } },
+    const pursuerNpc: NpcWithItems | null = await prisma.npc.findFirst({
+      where: { worldId, slug: 'orco-enfurecido-hondonada', saveId: null },
       include: { items: { include: { item: true } } },
     });
     if (pursuerNpc) {
@@ -3872,7 +3872,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
             take: 1,
           });
           if (!zp || !celdaAdyacenteOMisma(celdaDePixel(zp), celdaDePixel({ x: params.zonaPosX!, y: params.zonaPosY! }))) return null;
-          return prisma.npc.findUnique({ where: { worldId_slug: { worldId, slug: 'gistera-koh' } } });
+          return prisma.npc.findFirst({ where: { worldId, slug: 'gistera-koh', saveId: null } });
         })()
       : null;
   // Determinismo total (segunda vuelta, 2026-07-23: "revisar partida" volvió a encontrar la

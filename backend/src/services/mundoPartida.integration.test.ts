@@ -1,0 +1,89 @@
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { prisma } from '../lib/prisma.js';
+import { getDefaultUserId } from '../lib/defaultUser.js';
+import { asegurarMundoDePartida } from './mundoPartida.js';
+
+// CR-6 (hito 0.2, roadmap-cronista.md § 5.3) — clonado perezoso e idempotente del mundo vivo de una
+// partida, contra Postgres real: dos partidas del mismo mundo tienen copias independientes.
+describe('asegurarMundoDePartida (CR-6)', () => {
+  const saveIds: string[] = [];
+  let worldId: string;
+
+  async function crearPartida(nombre: string) {
+    const userId = await getDefaultUserId();
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId,
+        characterName: nombre,
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        portraitInitial: 'G',
+        worldState: { create: { fictionalMinutes: 480, fictionalDateLabel: 'Día 1, mañana' } },
+      },
+    });
+    saveIds.push(save.id);
+    return save.id;
+  }
+
+  beforeAll(async () => {
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    worldId = world.id;
+  });
+
+  afterAll(async () => {
+    await prisma.save.deleteMany({ where: { id: { in: saveIds } } });
+  });
+
+  it('clona facciones, relaciones, reino de facción y población; marca y deja suceso; la segunda vez no hace nada', async () => {
+    const saveId = await crearPartida('Mundo por partida (CR-6) A');
+    const [nFacciones, nPoblacion, nRelaciones] = await Promise.all([
+      prisma.faction.count({ where: { worldId, saveId: null } }),
+      prisma.worldPopulation.count({ where: { worldId, saveId: null } }),
+      prisma.factionRelation.count({ where: { sourceFaction: { worldId, saveId: null }, targetFaction: { saveId: null } } }),
+    ]);
+
+    expect(await asegurarMundoDePartida(prisma, saveId)).toBe(true);
+
+    const copias = await prisma.faction.findMany({ where: { saveId }, include: { kingdomStats: true } });
+    expect(copias).toHaveLength(nFacciones);
+    expect(copias.every((c) => c.origenSlug === c.slug)).toBe(true);
+    expect(await prisma.factionRelation.count({ where: { saveId } })).toBe(nRelaciones);
+    expect(await prisma.worldPopulation.count({ where: { saveId } })).toBe(nPoblacion);
+    const serhu = copias.find((c) => c.slug === 'clan-serhu')!;
+    expect(serhu.kingdomStats?.ownerKey).toBe(`faction:${serhu.id}`);
+    const ws = await prisma.worldState.findUniqueOrThrow({ where: { saveId } });
+    expect(ws.mundoClonadoEn).not.toBeNull();
+    expect(await prisma.suceso.count({ where: { saveId, tipo: 'SISTEMA_MUNDO_INICIADO' } })).toBe(1);
+
+    expect(await asegurarMundoDePartida(prisma, saveId)).toBe(false);
+    expect(await prisma.faction.count({ where: { saveId } })).toBe(nFacciones);
+  });
+
+  it('dos partidas del mismo mundo divergen: cambiar la población de una no toca la otra ni el catálogo', async () => {
+    const a = await crearPartida('Mundo por partida (CR-6) B');
+    const b = await crearPartida('Mundo por partida (CR-6) C');
+    await Promise.all([asegurarMundoDePartida(prisma, a), asegurarMundoDePartida(prisma, b)]);
+    const filtro = { targetType: 'RAZA' as const, targetSlug: 'orcos-llanuras' };
+    const catalogo = await prisma.worldPopulation.findFirstOrThrow({ where: { worldId, saveId: null, ...filtro } });
+    await prisma.worldPopulation.updateMany({ where: { saveId: a, ...filtro }, data: { poblacion: { decrement: 7 } } });
+    const [enA, enB, enCatalogo] = await Promise.all([
+      prisma.worldPopulation.findFirstOrThrow({ where: { saveId: a, ...filtro } }),
+      prisma.worldPopulation.findFirstOrThrow({ where: { saveId: b, ...filtro } }),
+      prisma.worldPopulation.findFirstOrThrow({ where: { worldId, saveId: null, ...filtro } }),
+    ]);
+    expect(enA.poblacion).toBe(catalogo.poblacion - 7);
+    expect(enB.poblacion).toBe(catalogo.poblacion);
+    expect(enCatalogo.poblacion).toBe(catalogo.poblacion);
+  });
+
+  it('borrar la partida se lleva su mundo clonado', async () => {
+    const saveId = await crearPartida('Mundo por partida (CR-6) D');
+    await asegurarMundoDePartida(prisma, saveId);
+    await prisma.save.delete({ where: { id: saveId } });
+    expect(await prisma.faction.count({ where: { saveId } })).toBe(0);
+    expect(await prisma.worldPopulation.count({ where: { saveId } })).toBe(0);
+  });
+});

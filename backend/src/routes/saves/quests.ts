@@ -121,7 +121,7 @@ export async function aceptarQuest(
     // cuenta antes de pulsar Aceptar.
     const isOrcoEnfurecido = isOrcoEnfurecidoTitle;
     const orcoEnfurecido = isOrcoEnfurecido
-      ? await tx.npc.findUnique({ where: { worldId_slug: { worldId: save.worldId, slug: 'orco-enfurecido-hondonada' } } })
+      ? await tx.npc.findFirst({ where: { worldId: save.worldId, slug: 'orco-enfurecido-hondonada', saveId: null } })
       : null;
     const orcoState = orcoEnfurecido
       ? await tx.npcState.findUnique({ where: { saveId_npcId_scope: { saveId: save.id, npcId: orcoEnfurecido.id, scope: '' } } })

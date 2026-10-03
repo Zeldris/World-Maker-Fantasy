@@ -12,6 +12,7 @@ import { OfferCard } from './OfferCard'
 import { combatKeyFor } from '../lib/gameViewHelpers'
 import { retrasoEnVivo } from '../lib/presentacionTurno'
 import { professions } from '../data/professions'
+import { Chip } from './base/Chip'
 
 interface LogPanelProps {
   /// UX-4 (hito 0.1) — motivo global por el que ahora no se puede actuar (mismo `bloqueoTurno` de
@@ -724,9 +725,9 @@ export const LogPanel = memo(function LogPanel({
                     resto — evita contar el mismo XP dos veces y, si el resto es 0 (turno fallido
                     con solo hito detrás), no pinta un "+0 XP" confuso junto al resultado. */}
                 {!!entry.xpDelta && entry.xpDelta - (entry.xpHitoDelta ?? 0) > 0 && (
-                  <span className="rounded-full border border-accent-600/50 bg-accent-500/10 px-1.5 py-0.5 font-mono text-2xs text-accent-300">
+                  <Chip tono="accent" mono>
                     +{entry.xpDelta - (entry.xpHitoDelta ?? 0)} XP
-                  </span>
+                  </Chip>
                 )}
                 {/* Feedback de UX (2026-08-30, "falta que la suma de repu o la perdida se refleje
                     en la UX... sino el usuario ni se entera") — mismo patrón visual que el chip de
@@ -751,10 +752,10 @@ export const LogPanel = memo(function LogPanel({
                     nunca se confunda con la XP de personaje de al lado. "🆙" adicional si el
                     oficio cruzó de nivel este mismo turno. */}
                 {!!entry.professionXpGain && (
-                  <span className="rounded-full border border-accent-600/50 bg-accent-500/10 px-1.5 py-0.5 font-mono text-2xs text-accent-300">
+                  <Chip tono="accent" mono>
                     +{entry.professionXpGain.xpDelta} XP {professionNameFor(entry.professionXpGain.oficio)}
                     {entry.professionXpGain.leveledUp ? ` (nivel ${entry.professionXpGain.newLevel})` : ''}
-                  </span>
+                  </Chip>
                 )}
               </div>
               </div>

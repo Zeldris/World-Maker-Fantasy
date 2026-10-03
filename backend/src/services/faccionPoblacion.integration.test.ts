@@ -59,8 +59,15 @@ describe('Reproducción poblacional de facción — flujo real de dos pasos (202
     expect(kingdomStatsAfter.poblacion).toBe(rowAfterGrow.poblacion);
     // Los otros 3 campos (soldados/trabajadores/visitantes) también se re-escriben en cada sync,
     // reflejando su fila WorldPopulation correspondiente — no solo poblacion.
-    expect(kingdomStatsAfter.soldados).toBe(500);
-    expect(kingdomStatsAfter.trabajadores).toBe(150);
-    expect(kingdomStatsAfter.visitantes).toBe(0);
+    // Contra el valor real de cada fila (2026-10-02): growAllPopulations también hace crecer
+    // soldados/trabajadores según el tiempo real desde su último crecimiento, así que un número
+    // fijo (500) fallaba en una base local con horas de uso. En la CI la base está recién sembrada.
+    const filas = await prisma.worldPopulation.findMany({
+      where: { worldId, targetType: 'FACCION', targetSlug: { in: ['clan-serhu-soldados', 'clan-serhu-trabajadores', 'clan-serhu-visitantes'] }, saveId: null },
+    });
+    const valor = (slug: string) => filas.find((f) => f.targetSlug === slug)!.poblacion;
+    expect(kingdomStatsAfter.soldados).toBe(valor('clan-serhu-soldados'));
+    expect(kingdomStatsAfter.trabajadores).toBe(valor('clan-serhu-trabajadores'));
+    expect(kingdomStatsAfter.visitantes).toBe(valor('clan-serhu-visitantes'));
   }, 15_000);
 });

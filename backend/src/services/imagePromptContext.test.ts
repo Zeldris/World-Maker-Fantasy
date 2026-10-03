@@ -18,11 +18,12 @@ const findUniqueHistoria = vi.fn();
 
 vi.mock('../lib/prisma.js', () => ({
   prisma: {
-    npc: { findUnique: (...args: unknown[]) => findUniqueNpc(...args) },
+    // CR-5 (hito 0.2): NPC y facción de catálogo se buscan con findFirst (saveId null).
+    npc: { findFirst: (...args: unknown[]) => findUniqueNpc(...args) },
     itemCatalog: { findUnique: (...args: unknown[]) => findUniqueItem(...args) },
     harvestYield: { findFirst: (...args: unknown[]) => findFirstHarvestYield(...args) },
     location: { findUnique: (...args: unknown[]) => findUniqueLocation(...args) },
-    faction: { findUnique: (...args: unknown[]) => findUniqueFaction(...args) },
+    faction: { findFirst: (...args: unknown[]) => findUniqueFaction(...args) },
     historiaEntry: { findUnique: (...args: unknown[]) => findUniqueHistoria(...args) },
   },
 }));
@@ -99,7 +100,7 @@ describe('loreContextFor — npc', () => {
 
     const result = await loreContextFor('w1', 'npc', 'soldado-concordia-hembra');
 
-    expect(findUniqueNpc).toHaveBeenCalledWith({ where: { worldId_slug: { worldId: 'w1', slug: 'soldado-concordia' } } });
+    expect(findUniqueNpc).toHaveBeenCalledWith({ where: { worldId: 'w1', slug: 'soldado-concordia', saveId: null } });
     expect(result?.loreContext).toContain('Es de sexo hembra (mujer, femenino).');
     expect(result?.loreContext).toContain('Mide aproximadamente 174 cm');
     expect(result?.loreContext).toContain('igual de resistente a la marcha y la carga');

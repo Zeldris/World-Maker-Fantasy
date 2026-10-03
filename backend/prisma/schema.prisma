@@ -468,6 +468,11 @@ model Save {
   sessionFacts       SessionFact[]
   foundedFactions    Faction[]
 
+  /// CR-5 (hito 0.2) — mundo clonado de la partida.
+  npcsDePartida Npc[]             @relation("NpcsDePartida")
+  poblaciones   WorldPopulation[]
+  expediciones  Expedicion[]
+
   @@index([userId])
 }
 
@@ -784,9 +789,14 @@ enum EntityDiscoveryFase {
 /// La fuente de verdad de una partida — no es prosa, son hechos estructurados.
 /// Se lee/escribe en cada llamada al Narrador/Cronista para que nunca se contradigan (ver 01-analisis-producto.md § 4).
 model WorldState {
-  id     String @id @default(cuid())
-  saveId String @unique
-  save   Save   @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  id                 String    @id @default(cuid())
+  saveId             String    @unique
+  save               Save      @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  /// CR-5 (hito 0.2) — avance diario por partida (CR-7) y Cronista.
+  ultimoDiaSimulado  Int       @default(0)
+  presupuestoTension Int       @default(0)
+  estiloNarrador     String    @default("EQUILIBRADO")
+  mundoClonadoEn     DateTime?
 
   fictionalDateLabel String @default("Día 1, mañana")
   /// Minutos ficticios totales transcurridos desde Día 1, 00:00 (480 = 08:00, el mismo origen que
@@ -1137,6 +1147,10 @@ model Companion {
   /// Nivel de oficio propio del trabajador de Reino (§ 4.4-ter) — ver comentario completo en
   /// `ProfessionProgress.companionId`. Vacío para compañeros personales sin `rolReino`.
   professionProgress ProfessionProgress[]
+
+  /// CR-5 (hito 0.2) — valores del compañero (p. ej. { "piedad": 2, "honor": 1 }) y aprobación.
+  valores    Json @default("{}")
+  aprobacion Int  @default(50)
 
   @@index([saveId])
   @@index([plantillaEquipoId])
@@ -2526,7 +2540,13 @@ model Npc {
   professionPotential NpcProfessionPotential[]
   professionProgress  NpcProfessionProgress[]
 
-  @@unique([worldId, slug])
+  /// CR-5 (hito 0.2) — NPC nacido en una partida (sucesores, líderes nuevos); null = de catálogo.
+  /// Unicidad parcial en el SQL, como en Faction.
+  saveId String?
+  save   Save?   @relation("NpcsDePartida", fields: [saveId], references: [id], onDelete: Cascade)
+
+  @@index([worldId, slug])
+  @@index([saveId])
 }
 
 /// Facción/clan que el jugador puede descubrir (sección "Facciones" de la Enciclopedia,
@@ -2581,7 +2601,16 @@ model Faction {
   relationsAsSource FactionRelation[] @relation("FactionRelationSource")
   relationsAsTarget FactionRelation[] @relation("FactionRelationTarget")
 
-  @@unique([worldId, slug])
+  /// CR-5 (hito 0.2, roadmap-cronista.md § 5.2) — facción de catálogo (saveId null) o copia de
+  /// partida (o nacida en ella). La unicidad es parcial y vive en el SQL de la migración:
+  /// (worldId, slug) WHERE saveId IS NULL y (saveId, slug) WHERE saveId IS NOT NULL.
+  origenSlug String?
+  disueltaEn Int?
+  fundadaEn  Int?
+  cohesion   Int     @default(70)
+
+  @@index([worldId, slug])
+  @@index([saveId])
 }
 
 enum FactionRelationType {
@@ -2631,9 +2660,12 @@ model FactionRelation {
   ultimaSemanaDecaida Int?
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
+  /// CR-5 — partida de las facciones que relaciona (solo para consultar; cascada por las facciones).
+  saveId              String?
 
   @@unique([sourceFactionId, targetFactionId])
   @@index([worldId])
+  @@index([saveId])
 }
 
 /// Entrada de lore descubrible como objeto físico (libro/diario/nota) — sección "Historia" de la
@@ -2831,6 +2863,12 @@ model NpcState {
   /// El propio golpe de gracia sigue siendo un intercambio real (`explicitTarget`/habilidad
   /// elegida) — esto solo recuerda la DECISIÓN de intentarlo, no resuelve nada por sí mismo.
   targetedForKill             Boolean         @default(false)
+  /// CR-5 (hito 0.2) — muertes y cargos por partida (fuente única; sustituye a
+  /// Save.npcsRetiredForever y Npc.muertoEnMundo).
+  muerto                      Boolean         @default(false)
+  muertoEn                    Int?
+  cargo                       String?
+  lealtadFaccionId            String?
   updatedAt                   DateTime        @updatedAt
 
   @@unique([saveId, npcId, scope])
@@ -3095,9 +3133,13 @@ enum PopulationTargetType {
 /// región, biología distinta entre ellas — no fluyen entre sí salvo guerra o evento de mundo muy
 /// concreto), cada una con su propia `distribucion` de un solo peso 100%.
 model WorldPopulation {
-  id      String @id @default(cuid())
+  id      String  @id @default(cuid())
   worldId String
-  world   World  @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  world   World   @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  /// CR-5 — población de la partida (null = la del mundo). Unicidad parcial en el SQL:
+  /// (worldId, targetType, targetSlug) WHERE saveId IS NULL y (saveId, …) WHERE NOT NULL.
+  saveId  String?
+  save    Save?   @relation(fields: [saveId], references: [id], onDelete: Cascade)
 
   targetType PopulationTargetType
   /// Slug de raza (berigLore.ts) o de fauna (Npc.slug) — string suelto, mismo criterio laxo que
@@ -3148,7 +3190,8 @@ model WorldPopulation {
   dispersadoEnLocationId String?
   dispersadoDesdeMinutes Int?
 
-  @@unique([worldId, targetType, targetSlug])
+  @@index([worldId, targetType, targetSlug])
+  @@index([saveId])
 }
 
 /// Resúmenes por capítulos — memoria de partida para no perder coherencia en partidas largas (riesgo 1 del análisis).
@@ -3271,6 +3314,9 @@ model Expedicion {
   id                String             @id @default(cuid())
   worldId           String
   world             World              @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  /// CR-5 — expedición de una partida (null = del mundo compartido, antes de CR-6).
+  saveId            String?
+  save              Save?              @relation(fields: [saveId], references: [id], onDelete: Cascade)
   factionId         String
   faction           Faction            @relation(fields: [factionId], references: [id], onDelete: Cascade)
   destinoLocationId String
@@ -3296,6 +3342,7 @@ model Expedicion {
 
   @@index([factionId, status])
   @@index([worldId, status])
+  @@index([saveId])
 }
 
 model ExpedicionMember {

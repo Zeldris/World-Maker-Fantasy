@@ -81,7 +81,7 @@ export async function entregaRoutes(app: FastifyInstance) {
       if (!item || item.saveId !== save.id) return reply.status(404).send({ error: 'Objeto no encontrado en tu inventario' });
       if (item.slot !== null) return reply.status(400).send({ error: 'Desequípalo antes de entregarlo' });
 
-      const npc = await prisma.npc.findUnique({ where: { worldId_slug: { worldId: save.worldId, slug: request.params.npcSlug } } });
+      const npc = await prisma.npc.findFirst({ where: { worldId: save.worldId, slug: request.params.npcSlug, saveId: null } });
       if (!npc) return reply.status(404).send({ error: 'NPC no encontrado' });
       const isCompanion = await prisma.companion.findFirst({ where: { saveId: save.id, sourceSlug: npc.slug } });
       if (!isCompanion) return reply.status(400).send({ error: 'Solo puedes entregar objetos a compañeros de tu equipo' });

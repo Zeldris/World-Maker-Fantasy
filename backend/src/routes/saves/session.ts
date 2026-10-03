@@ -363,7 +363,7 @@ export async function sessionRoutes(app: FastifyInstance) {
     // sobre un combate que el motor ya decidió cerrar porque el jugador está muerto/inconsciente.
     if (rejectIfPendingDeath(save, reply)) return;
 
-    const npc = await prisma.npc.findUnique({ where: { worldId_slug: { worldId: save.worldId, slug: request.params.npcSlug } } });
+    const npc = await prisma.npc.findFirst({ where: { worldId: save.worldId, slug: request.params.npcSlug, saveId: null } });
     if (!npc) return reply.status(404).send({ error: 'NPC no encontrado' });
 
     const scope = scopeFor(npc.kind, save.currentLocationId);
@@ -397,7 +397,7 @@ export async function sessionRoutes(app: FastifyInstance) {
       // Hallazgo 53 (revisar-partida-hallazgos.md, 2026-09-15) — mismo motivo que /combat/matar.
       if (rejectIfPendingDeath(save, reply)) return;
 
-      const npc = await prisma.npc.findUnique({ where: { worldId_slug: { worldId: save.worldId, slug: request.params.npcSlug } } });
+      const npc = await prisma.npc.findFirst({ where: { worldId: save.worldId, slug: request.params.npcSlug, saveId: null } });
       if (!npc) return reply.status(404).send({ error: 'NPC no encontrado' });
 
       // Combate múltiple real (2026-08-29, bug real jugando en vivo — ver comentario de

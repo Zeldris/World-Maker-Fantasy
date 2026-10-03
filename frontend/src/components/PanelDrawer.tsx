@@ -16,11 +16,13 @@ interface PanelDrawerProps {
   /// UX-12 (hito 0.2) — algo importante ha llegado al registro con el cajón abierto: aviso con
   /// botón «Ver» (cierra el cajón para leerlo).
   novedad?: { texto: string; onVer: () => void } | null
+  /// BAS-7 (hito 0.2) — se está cerrando: anima la salida (usePresence) y deja de recibir clics.
+  saliendo?: boolean
 }
 
 /// Panel deslizante genérico por encima de la partida — nunca navega a otra página, así el
 /// jugador no pierde de vista los logs/chat de fondo (docs/mecanicas/09-panel-personaje.md § 1).
-export function PanelDrawer({ title, subtitle, onClose, children, accent = 'accent', modoConsulta = null, novedad = null }: PanelDrawerProps) {
+export function PanelDrawer({ title, subtitle, onClose, children, accent = 'accent', modoConsulta = null, novedad = null, saliendo = false }: PanelDrawerProps) {
   const hairlineClass = accent === 'accent2' ? 'accent2-hairline' : 'accent-hairline'
   const closeHoverClass = accent === 'accent2' ? 'hover:border-accent2-600/60 hover:text-accent2-300' : 'hover:border-accent-600/60 hover:text-accent-300'
   // Foco + scroll al inicio al abrirse (2026-08-31, "revisa bien todos los casos del foco/scroll")
@@ -36,7 +38,7 @@ export function PanelDrawer({ title, subtitle, onClose, children, accent = 'acce
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [title])
   return (
-    <div className="absolute inset-0 z-20 flex flex-col justify-end">
+    <div className={`absolute inset-0 z-20 flex flex-col justify-end ${saliendo ? 'pointer-events-none' : ''}`}>
       <button type="button"
         aria-label="Cerrar"
         onClick={onClose}
@@ -46,9 +48,9 @@ export function PanelDrawer({ title, subtitle, onClose, children, accent = 'acce
         // renderizado donde el desenfoque sale como un bloque sólido negro en vez de difuminar el
         // contenido de debajo. Era el único `backdrop-blur` de toda la app. El oscurecido
         // (`bg-iron-900/75`) por sí solo ya cumple la función de atenuar el fondo.
-        className="animate-overlay-in absolute inset-0 bg-iron-900/75"
+        className={`${saliendo ? 'animate-overlay-out' : 'animate-overlay-in'} absolute inset-0 bg-iron-900/75`}
       />
-      <div className="plank-panel animate-drawer-up relative z-10 mx-auto flex min-h-0 max-h-[min(85vh,100%)] w-full max-w-4xl flex-col rounded-t-2xl border-b-0 shadow-[0_-16px_48px_-16px_rgba(0,0,0,0.85)]">
+      <div className={`plank-panel ${saliendo ? 'animate-drawer-down' : 'animate-drawer-up'} relative z-10 mx-auto flex min-h-0 max-h-[min(85vh,100%)] w-full max-w-4xl flex-col rounded-t-2xl border-b-0 shadow-[0_-16px_48px_-16px_rgba(0,0,0,0.85)]`}>
         <span className="rivet rivet-tl" />
         <span className="rivet rivet-tr" />
         <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-iron-700" />

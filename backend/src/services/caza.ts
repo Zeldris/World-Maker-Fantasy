@@ -379,8 +379,8 @@ async function intentarCazaEnGrupo(save: SaveParaCaza, targets: CazaTarget[]): P
       }
       if (currentLocationId) {
         for (const slug of especiesDispersadas) {
-          await tx.worldPopulation.update({
-            where: { worldId_targetType_targetSlug: { worldId: save.worldId, targetType: 'FAUNA', targetSlug: slug } },
+          await tx.worldPopulation.updateMany({
+            where: { worldId: save.worldId, targetType: 'FAUNA', targetSlug: slug, saveId: null },
             data: { dispersadoEnLocationId: currentLocationId, dispersadoDesdeMinutes: save.fictionalMinutes },
           });
         }
@@ -466,7 +466,7 @@ export async function faunaCercanaNombrada(params: {
   });
   for (const punto of puntos) {
     if (!celdaAdyacenteOMisma(celdaDePixel(punto), celdaJugador)) continue;
-    const npc = await prisma.npc.findUnique({ where: { worldId_slug: { worldId, slug: punto.targetSlug } } });
+    const npc = await prisma.npc.findFirst({ where: { worldId, slug: punto.targetSlug, saveId: null } });
     if (!npc) continue;
     // Ya derrotada/convaleciente en esta partida: eso es "matar/saquear" (interacción post-combate),
     // no una caza nueva.

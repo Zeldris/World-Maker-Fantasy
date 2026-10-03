@@ -149,7 +149,7 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
         harvestYield: { findFirst: (...args: unknown[]) => findFirstHarvestYield(...args) },
         worldPopulation: { updateMany: (...args: unknown[]) => updateManyWorldPopulation(...args) },
         worldState: { update: (...args: unknown[]) => updateWorldStateTx(...args) },
-        npc: { findUnique: (...args: unknown[]) => findUniqueNpcTx(...args) },
+        npc: { findFirst: (...args: unknown[]) => findUniqueNpcTx(...args) },
         npcState: {
           updateMany: (...args: unknown[]) => updateManyNpcStateTx(...args),
           findUnique: (...args: unknown[]) => findUniqueNpcStateTx(...args),

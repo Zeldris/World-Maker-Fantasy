@@ -168,7 +168,7 @@ export async function detectHarvest(params: {
 
   // Fauna cazable (mismo slug que su Npc en worldCatalog.ts): sin haberla derrotado en esta
   // partida, no hay presa que despiezar — antes esto era repetible infinito sin cazar nada.
-  const faunaNpc = await prisma.npc.findUnique({ where: { worldId_slug: { worldId: params.worldId, slug: sourceSlug } } });
+  const faunaNpc = await prisma.npc.findFirst({ where: { worldId: params.worldId, slug: sourceSlug, saveId: null } });
   const sourceName = sourceDisplayNameFor(sourceSlug, faunaNpc?.name);
   if (faunaNpc) {
     const scope = scopeFor(faunaNpc.kind, params.currentLocationId);

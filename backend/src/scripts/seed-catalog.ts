@@ -103,8 +103,11 @@ async function main() {
   const factionNameSet = new Set(factions.map((f) => f.name));
   const factionIdByName = new Map<string, string>();
   for (const faction of factions) {
+    // CR-5 (hito 0.2): la unicidad (worldId, slug) es parcial (solo filas de catálogo, saveId
+    // null); se busca la de catálogo y se hace upsert por id (un id inexistente crea la fila).
+    const existenteFaccion = await prisma.faction.findFirst({ where: { worldId, slug: faction.slug, saveId: null }, select: { id: true } })
     const row = await prisma.faction.upsert({
-      where: { worldId_slug: { worldId, slug: faction.slug } },
+      where: { id: existenteFaccion?.id ?? '__nuevo__' },
       update: { name: faction.name, raza: faction.raza, description: faction.description },
       create: { worldId, ...faction },
     });
@@ -145,8 +148,11 @@ async function main() {
     // array de una interfaz con propiedades nombradas (sin índice de firma `string`) no satisface
     // el `InputJsonValue` de Prisma por estructura, aunque el dato en sí sea JSON válido.
     const habilidadesRacialesJson = (habilidadesRaciales ?? []) as unknown as Prisma.InputJsonValue;
+    // CR-5 (hito 0.2): la unicidad (worldId, slug) es parcial (solo filas de catálogo, saveId
+    // null); se busca la de catálogo y se hace upsert por id (un id inexistente crea la fila).
+    const existenteNpc = await prisma.npc.findFirst({ where: { worldId, slug: npc.slug, saveId: null }, select: { id: true } })
     const row = await prisma.npc.upsert({
-      where: { worldId_slug: { worldId, slug: npc.slug } },
+      where: { id: existenteNpc?.id ?? '__nuevo__' },
       update: {
         name: npcData.name,
         kind: npcData.kind,
@@ -264,8 +270,8 @@ async function main() {
   for (const [factionSlug, leaderSlug] of Object.entries(FACTION_LEADER_SLUG)) {
     const leaderNpcId = npcIdBySlug.get(leaderSlug);
     if (!leaderNpcId) throw new Error(`Faction "${factionSlug}" referencia un líder desconocido: ${leaderSlug}`);
-    await prisma.faction.update({
-      where: { worldId_slug: { worldId, slug: factionSlug } },
+    await prisma.faction.updateMany({
+      where: { worldId, slug: factionSlug, saveId: null },
       data: { liderNpcId: leaderNpcId },
     });
   }
@@ -357,8 +363,12 @@ async function main() {
   // sembrado nunca habría aplicado). `distribucion` en concreto no es solo cosmético: lo lee
   // travelInterruption.ts para ponderar encuentros ambientales por región.
   for (const pop of worldPopulations) {
+    const existentePoblacion = await prisma.worldPopulation.findFirst({
+      where: { worldId, targetType: pop.targetType, targetSlug: pop.targetSlug, saveId: null },
+      select: { id: true },
+    })
     await prisma.worldPopulation.upsert({
-      where: { worldId_targetType_targetSlug: { worldId, targetType: pop.targetType, targetSlug: pop.targetSlug } },
+      where: { id: existentePoblacion?.id ?? '__nuevo__' },
       update: { label: pop.label, poblacionMax: pop.poblacionMax, distribucion: pop.distribucion },
       create: {
         worldId,
