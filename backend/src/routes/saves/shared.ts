@@ -244,12 +244,15 @@ export async function restartSaveTransactionBody(
   await tx.npcState.deleteMany({ where: { saveId: save.id } });
   await tx.professionProgress.deleteMany({ where: { saveId: save.id } });
   await tx.kingdomStats.deleteMany({ where: { saveId: save.id } });
+  // CR-6 (hito 0.2): también se van las copias del mundo de esta partida (facciones con su origen y
+  // población); `mundoClonadoEn: null` hace que se vuelvan a clonar del catálogo en el primer uso.
   await tx.faction.deleteMany({ where: { saveId: save.id } });
+  await tx.worldPopulation.deleteMany({ where: { saveId: save.id } });
   await tx.discoveredEntity.deleteMany({ where: { saveId: save.id } });
   await tx.sessionFact.deleteMany({ where: { saveId: save.id } });
   await tx.worldState.update({
     where: { saveId: save.id },
-    data: { fictionalDateLabel, fictionalMinutes: 480, agenda: [], factionsStatus: {} },
+    data: { fictionalDateLabel, fictionalMinutes: 480, agenda: [], factionsStatus: {}, mundoClonadoEn: null },
   });
   // isSystemMessage (ver comentario completo en schema.prisma) — ambos textos son deterministas
   // (awakensText es pura, introWorldText es plantilla fija), nunca pasan por el LLM.

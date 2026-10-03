@@ -66,6 +66,7 @@ import { iniciarCaza, faunaCercanaNombrada, esActionTextDeCaza } from '../servic
 import { startEagerTransitResolution } from '../workers/worldTick.js';
 import { detectDeterministicCraft, detectsCraftIntent, CRAFTING_RECIPES } from '../services/crafting.js';
 import { planDeterministicBuild, detectsBuildIntent, CONSTRUCTION_RECIPES, buildingTierFor } from '../services/construction.js';
+import { ambitoPoblacion } from '../services/mundoPartida.js';
 
 interface ClassifyBody {
   saveId: string;
@@ -1007,7 +1008,7 @@ export async function turnRoutes(app: FastifyInstance) {
       // (llegada real, no la del destino pedido) y el candidato elegido entra en escena de verdad
       // en cuanto se resuelva el tránsito (ver turnResolution.ts).
       const interruption = travel
-        ? await pickTravelInterruption(save.worldId, travel, env.travelInterruptionProbabilityPerSegment, attributes)
+        ? await pickTravelInterruption(save.worldId, travel, env.travelInterruptionProbabilityPerSegment, attributes, Math.random, await ambitoPoblacion(prisma, save.id))
         : null;
       // Grupo 3 § Mundo determinista, Capa 2 (2026-08-25) — generaliza lo de arriba a acciones
       // largas SIN desplazamiento (descansar, construir, crafteo largo que llegue a pasar por aquí):

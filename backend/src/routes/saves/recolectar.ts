@@ -22,6 +22,7 @@ import { Prisma } from '@prisma/client';
 import type { Estacion, EstadoClima, MetodoObtencion } from '@prisma/client';
 import { rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 import { posicionDeObjetivo, moverJugadorA } from '../../services/zonaPosicion.js';
+import { ambitoPoblacion, poblacionDeCatalogo, type FiltroPoblacion } from '../../services/mundoPartida.js';
 
 /// Recolección (rediseño de profesiones, 2026-08-07) — lado "recolectora" (minero/talador/
 /// desollador): a diferencia de las de oficio creador (crafting.ts, un solo objeto por texto
@@ -249,6 +250,8 @@ export async function candidateSourcesFor(
   /// Cliente inyectable (Fase 13-B, expediciones de facción): la función es solo lectura y no
   /// depende de ninguna partida, así que `factionExpeditions.ts` la reutiliza con su propio `db`/`tx`.
   db: Pick<typeof prisma, 'harvestYield' | 'worldPopulation'> = prisma,
+  /// CR-6 (hito 0.2): población de la partida (por defecto, la del mundo: expediciones de facción).
+  poblacion: FiltroPoblacion = poblacionDeCatalogo(worldId),
 ): Promise<{ candidates: SourceCandidate[]; anyOnCooldown: boolean }> {
   const rows = await db.harvestYield.findMany({ where: { worldId, metodoObtencion: metodo }, include: { item: true } });
   if (rows.length === 0) return { candidates: [], anyOnCooldown: false };
@@ -259,7 +262,7 @@ export async function candidateSourcesFor(
   }
   const esFauna = esFaunaMetodo(metodo);
   const populations = await db.worldPopulation.findMany({
-    where: { worldId, targetType: esFauna ? 'FAUNA' : 'RECURSO', targetSlug: { in: [...bySlug.keys()] }, poblacion: { gt: 0 } },
+    where: { ...poblacion, targetType: esFauna ? 'FAUNA' : 'RECURSO', targetSlug: { in: [...bySlug.keys()] }, poblacion: { gt: 0 } },
   });
   const cooldownCutoff = Date.now() - RECOLECCION_COOLDOWN_MS;
   const candidates: SourceCandidate[] = [];
@@ -890,7 +893,7 @@ export async function resolverRecoleccion(
             // todo (fallo cerrado: solo puede saltar el cooldown por tiempo, nunca por ubicación).
             const result = await tx.worldPopulation.updateMany({
               where: {
-                worldId: save.worldId,
+                ...(await ambitoPoblacion(tx, save.id)),
                 targetType: 'RECURSO',
                 targetSlug: sel.sourceSlug,
                 poblacion: { gte: cantidad },

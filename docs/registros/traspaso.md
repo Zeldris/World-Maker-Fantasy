@@ -10,12 +10,12 @@ cada commit.**
 
 | | |
 |---|---|
-| **Actualizado** | 2026-10-02 |
+| **Actualizado** | 2026-10-03 |
 | **Rama de trabajo** | `claude/frontend-improvements-roadmap-0mpckt`. Flujo acordado (2026-10-01): commit + push a esta rama con cada cosa hecha; a `main` se pasa **por pull request** (desde esta sesión el push directo a `main` lo bloquea el filtro de permisos) |
-| **Último commit en `main`** | Fusión del PR #8 (2026-10-02, pedida por la usuaria): configuración básica (`CFG-*`). Antes, PR #7 (arreglo Matar/Clemente), #6, #5 y #4. La rama lleva encima `BAS-8`/`BAS-9` |
+| **Último commit en `main`** | Fusión del PR #9 (2026-10-03, pedida por la usuaria): cierre de Fase B, `BAS-7/8/9`, `CR-5`, `CR-6` paso 1. Antes, PR #8 (configuración básica), #7, #6, #5 y #4. Paso 2 de `CR-6` va en el PR siguiente |
 | **Hito** | `0.2` Facciones vivas — [plan](../producto/plan-roadmap-0.2.md) · [mapa de roadmaps](../producto/21-roadmap.md#qué-entra-en-cada-hito) (el `0.1` sigue abierto solo por las Fases E y F, ver abajo) |
-| **Tarea en curso** | `0.2` **Fase C — Mundo por partida** ([plan](../producto/plan-roadmap-0.2.md), [Cronista Fase 2](../producto/roadmap-cronista.md#fase-2--mundo-por-partida--l)): ~~`CR-5`~~ ✅ (migración `20261002200000_mundo_por_partida`, únicos parciales en `Faction`/`Npc`/`WorldPopulation`; **`prisma migrate diff` propondrá borrarlos: quitar esas líneas**); 🚧 `CR-6`: paso 1 hecho (`services/mundoPartida.ts`, `asegurarMundoDePartida` + test de integración); siguiente, engancharlo (crear partida, inicio de turno) y pasar sistema a sistema las lecturas/escrituras a las filas de la partida: población → facciones/relaciones/agenda/diplomacia → expediciones → NPC muertos (`NpcState.muerto`). Cada sistema con su test de integración y la suite completa en verde, `CR-7` (avance diario por partida), `CR-8` (migración). Fase A ✅. **Fase B cerrada con pendientes apuntados** en el plan (resto de `BAS-5` y salida de `ModalShell` con un contexto de partida; View Transitions de `BAS-7`; `UX-14` espera `ZON-1`; parte de `CFG-20`). Lint: contar también errores (`npx oxlint src` y buscar «error»); en `GameView`, ningún hook tras los `return` de carga |
-| **Tests** | Frontend: `tsc -b` 0, `vitest` 83 archivos / 424 tests (ahora incluye `src/pages/**`), `oxlint` 12 avisos. Backend en local con Postgres real: `tsc` 0, `vitest` 169/169 archivos, 2893 tests (última pasada completa, 2026-10-02, tras `CR-5`; después +3 de `mundoPartida`); 1 test intermitente apuntado (G16). CI de GitHub en verde (PR #3) |
+| **Tarea en curso** | `0.2` **Fase C — Mundo por partida** ([plan](../producto/plan-roadmap-0.2.md), [Cronista Fase 2](../producto/roadmap-cronista.md#fase-2--mundo-por-partida--l)): ~~`CR-5`~~ ✅ (migración `20261002200000_mundo_por_partida`, únicos parciales en `Faction`/`Npc`/`WorldPopulation`; **`prisma migrate diff` propondrá borrarlos: quitar esas líneas**); 🚧 `CR-6`: paso 1 hecho (`services/mundoPartida.ts`, `asegurarMundoDePartida`); paso 2 hecho (población por partida con `ambitoPoblacion`; el Reino del jugador se busca con `origenSlug: null`, porque las copias del mundo también llevan `saveId`). Siguiente: engancharlo (crear partida, inicio de turno) y pasar facciones/relaciones/agenda/diplomacia → expediciones → NPC muertos (`NpcState.muerto`). Cada sistema con su test de integración y la suite completa en verde, `CR-7` (avance diario por partida), `CR-8` (migración). Fase A ✅. **Fase B cerrada con pendientes apuntados** en el plan (resto de `BAS-5` y salida de `ModalShell` con un contexto de partida; View Transitions de `BAS-7`; `UX-14` espera `ZON-1`; parte de `CFG-20`). Lint: contar también errores (`npx oxlint src` y buscar «error»); en `GameView`, ningún hook tras los `return` de carga |
+| **Tests** | Frontend: `tsc -b` 0, `vitest` 83 archivos / 424 tests (ahora incluye `src/pages/**`), `oxlint` 12 avisos. Backend en local con Postgres real: `tsc` 0, `vitest` 170 archivos, 2896 tests (2026-10-03, tras `CR-6` paso 2; los 2 que fallaron en la última pasada completa, arreglados y pasados aparte), `oxlint` 0 errores; 1 test intermitente apuntado (G16) y P3.2 del viaje interrumpido falló una vez en suite completa (pasa aislado y en la pasada siguiente). CI de GitHub en verde (PR #3) |
 
 ## Dónde está todo (para saber qué sigue)
 
@@ -95,6 +95,7 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
+- **2026-10-03** — PR #9 fusionado. `CR-6` paso 2: población por partida (muertes, caza, recolección, encuentros, zona) y Reino del jugador distinguido de las copias del mundo.
 - **2026-10-02** — `CR-5`: esquema del mundo por partida (campos de § 5.2 y únicos parciales); backend 2893 tests en verde.
 - **2026-10-02** — `BAS-7`: también las notificaciones animan su salida. **Fase B del 0.2 cerrada** con pendientes apuntados; se pasa a la Fase C (mundo por partida).
 - **2026-10-02** — `BAS-7` (en parte, opción A por defecto): `usePresence`; el cajón de paneles anima su salida.
@@ -104,4 +105,3 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 - **2026-10-02** — Configuración: botón ⚙️ y panel con vista previa (escala, narración, animaciones, velocidad de dados, alto contraste), guardado en `localStorage` (`CFG-1`, `CFG-4`, `CFG-5`, `CFG-6`, `CFG-9`, `CFG-13`, `CFG-14`, `CFG-28`; `CFG-20` en parte).
 - **2026-10-02** — Arreglo (hallazgo jugando de la usuaria): en combate, Matar/Clemente de un rival convaleciente ya no salen bloqueados (regresión de `UX-2`).
 - **2026-10-02** — PR #6 fusionado a `main` (modales, notificaciones, cabecera/pie). Pausa pedida por la usuaria; al volver, configuración básica (`CFG-*`).
-- **2026-10-02** — `HUD-6` y `HUD-12`: notificaciones (misiones, reputación, oficio, objetos, noticias del mundo) y gema «El mundo avanza» junto a la fecha.

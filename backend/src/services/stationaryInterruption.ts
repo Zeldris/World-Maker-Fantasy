@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma.js';
 import { pickAmbientEncounterCandidate, type AmbientEncounterCandidate } from './npcScene.js';
+import { ambitoPoblacion } from './mundoPartida.js';
 
 /// Grupo 3 § Mundo determinista, Capa 2 (docs/rpgtarkor/lore-mundo/mundo-determinista.md, 2026-08-25) —
 /// generaliza `pickTravelInterruption` (travelInterruption.ts) a acciones largas SIN
@@ -38,7 +39,7 @@ export async function pickStationaryInterruption(
   const targetSlugs = [...new Set(zonePoints.map((p) => p.targetSlug))];
   const [npcRows, populationRows] = await Promise.all([
     prisma.npc.findMany({ where: { worldId, slug: { in: targetSlugs } }, select: { id: true, slug: true, name: true, role: true } }),
-    prisma.worldPopulation.findMany({ where: { worldId, targetType: 'FAUNA', targetSlug: { in: targetSlugs } } }),
+    prisma.worldPopulation.findMany({ where: { ...(await ambitoPoblacion(prisma, saveId)), targetType: 'FAUNA', targetSlug: { in: targetSlugs } } }),
   ]);
   if (npcRows.length === 0) return null;
   const populationBySlug = new Map(populationRows.map((row) => [row.targetSlug, row]));

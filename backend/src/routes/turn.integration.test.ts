@@ -3,6 +3,7 @@ import { goirnosDeBotin } from '../services/turnResolution.js';
 import Fastify from 'fastify';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
+import { asegurarMundoDePartida } from '../services/mundoPartida.js';
 import { env } from '../config/env.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
 import { resolveDueTransits, startEagerTransitResolution } from '../workers/worldTick.js';
@@ -3778,9 +3779,10 @@ describe('Matar (CONVALECIENTE): condición de carrera en turnos concurrentes (a
   });
 
   it('dos ataques simultáneos contra el mismo convaleciente solo restan población una vez', async () => {
-    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    // CR-6 (hito 0.2): la muerte resta de la población de ESTA partida (copia del catálogo, 600).
+    await asegurarMundoDePartida(prisma, saveId);
     const before = await prisma.worldPopulation.findFirstOrThrow({
-      where: { worldId: world.id, targetType: 'RAZA', targetSlug: 'orcos-llanuras', saveId: null },
+      where: { saveId, targetType: 'RAZA', targetSlug: 'orcos-llanuras' },
     });
 
     // Math.random()=0.99 garantiza el mejor resultado posible en cualquier tirada — con esto, el
@@ -3794,10 +3796,15 @@ describe('Matar (CONVALECIENTE): condición de carrera en turnos concurrentes (a
     const state = await prisma.npcState.findUniqueOrThrow({ where: { saveId_npcId_scope: { saveId, npcId, scope: '' } } });
     expect(state.condicionFisica).toBe('MUERTO');
     const after = await prisma.worldPopulation.findFirstOrThrow({
-      where: { worldId: world.id, targetType: 'RAZA', targetSlug: 'orcos-llanuras', saveId: null },
+      where: { saveId, targetType: 'RAZA', targetSlug: 'orcos-llanuras' },
     });
     // Si la carrera duplicara el efecto, la población bajaría 2, no 1.
     expect(before.poblacion - after.poblacion).toBe(1);
+    // CR-6 (hito 0.2): la del mundo (catálogo) no se toca — cada partida tiene su propia población.
+    const catalogo = await prisma.worldPopulation.findFirstOrThrow({
+      where: { worldId, targetType: 'RAZA', targetSlug: 'orcos-llanuras', saveId: null },
+    });
+    expect(catalogo.poblacion).toBe(600);
   }, 20_000);
 });
 

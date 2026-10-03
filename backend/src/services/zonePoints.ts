@@ -18,6 +18,7 @@ import { siguienteCeldaDeZonePoint, enRangoDePersecucion } from './movementTempl
 import type { FaunaCategoria } from './faunaAbilities.js';
 import { effectiveTemperamento } from './reputation.js';
 import type { MomentoDelDia } from './worldClock.js';
+import { ambitoPoblacion } from './mundoPartida.js';
 
 export type ZonePointColor = 'ALIADO' | 'NEUTRO' | 'ENEMIGO' | 'SIN_FACCION' | 'INERTE';
 
@@ -339,7 +340,7 @@ export async function recalcularZonePointsDeLocation(
 
   const targetSlugs = [...new Set(puntos.map((p) => p.targetSlug))];
   const poblaciones = await tx.worldPopulation.findMany({
-    where: { worldId, targetSlug: { in: targetSlugs } },
+    where: { ...(await ambitoPoblacion(tx, saveId)), targetSlug: { in: targetSlugs } },
   });
   const regionSinArticulo = region ? stripRegionArticle(region) : null;
   // Población REAL disponible para esta especie en ESTA región concreta — el peso relativo de

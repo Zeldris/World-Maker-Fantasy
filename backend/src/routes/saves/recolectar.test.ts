@@ -148,6 +148,8 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
         logEntry: { create: (...args: unknown[]) => createLogEntry(...args) },
         harvestYield: { findFirst: (...args: unknown[]) => findFirstHarvestYield(...args) },
         worldPopulation: { updateMany: (...args: unknown[]) => updateManyWorldPopulation(...args) },
+        // CR-6 (hito 0.2): partida con su mundo ya clonado — la población se filtra por saveId.
+        save: { findUniqueOrThrow: async () => ({ worldId: 'world1', worldState: { mundoClonadoEn: new Date() } }) },
         worldState: { update: (...args: unknown[]) => updateWorldStateTx(...args) },
         npc: { findFirst: (...args: unknown[]) => findUniqueNpcTx(...args) },
         npcState: {

@@ -558,7 +558,7 @@ export async function worldRoutes(app: FastifyInstance) {
       // cliente. `select` mínimo (nunca el Npc completo) — el frontend solo necesita nombre/slug
       // para mostrar "liderada por X" y enlazar a su ficha si algún día la tiene.
       prisma.faction.findMany({
-        where: { worldId: world.id, OR: saveId ? [{ saveId: null }, { saveId }] : [{ saveId: null }] },
+        where: { worldId: world.id, OR: saveId ? [{ saveId: null }, { saveId, origenSlug: null }] : [{ saveId: null }] },
         include: { liderNpc: { select: { slug: true, name: true } } },
       }),
       prisma.historiaEntry.findMany({ where: { worldId: world.id } }),

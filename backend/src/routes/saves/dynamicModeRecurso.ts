@@ -7,6 +7,7 @@ import { estacionFor, climaFor, formatFictionalDate } from '../../services/world
 import { candidateSourcesFor, gatheringRollFor, applyGatheringRoll, resolverRecoleccion, type RecoleccionLogRoll } from './recolectar.js';
 import { sourceDisplayNameFor } from '../../scripts/worldCatalog.js';
 import type { AttributeBlock } from '../../services/dice.js';
+import { ambitoPoblacion } from '../../services/mundoPartida.js';
 
 /// "Interactuar" sobre un candidato RECURSO (2026-09-08, "Ver qué hay en la zona") — a diferencia
 /// de NPC/FAUNA (conversación de vueltas, dynamicMode.ts), no hay diálogo real que tener con una
@@ -63,7 +64,8 @@ export async function dynamicModeRecursoRoutes(app: FastifyInstance) {
 
     const nivelOficio = save.professionProgress.find((p) => p.professionId === professionIdReal)?.nivel ?? 1;
     const metodo = yieldRow.metodoObtencion;
-    const { candidates } = await candidateSourcesFor(worldId, metodo, region, currentLocationId, locationSlug, estacionActual, climaActual, nivelOficio);
+    const poblacion = await ambitoPoblacion(prisma, save.id);
+    const { candidates } = await candidateSourcesFor(worldId, metodo, region, currentLocationId, locationSlug, estacionActual, climaActual, nivelOficio, prisma, poblacion);
     const candidato = candidates.find((c) => c.sourceSlug === targetSlug);
     if (!candidato) {
       // Motivo REAL del rechazo (2026-09-28, bug real jugando en vivo con Playwright: el Yerreo de
@@ -72,7 +74,7 @@ export async function dynamicModeRecursoRoutes(app: FastifyInstance) {
       // no tenía forma de saber que le faltaba nivel de oficio). Se re-evalúa sin tope de nivel: si
       // ENTONCES sí aparece como candidato, lo único que falla es el nivel.
       const nombre = sourceDisplayNameFor(targetSlug);
-      const sinTopeDeNivel = await candidateSourcesFor(worldId, metodo, region, currentLocationId, locationSlug, estacionActual, climaActual, Number.MAX_SAFE_INTEGER);
+      const sinTopeDeNivel = await candidateSourcesFor(worldId, metodo, region, currentLocationId, locationSlug, estacionActual, climaActual, Number.MAX_SAFE_INTEGER, prisma, poblacion);
       const candidatoSinTope = sinTopeDeNivel.candidates.find((c) => c.sourceSlug === targetSlug);
       const error = candidatoSinTope
         ? `Todavía no sabes aprovechar ${nombre}: hace falta ${ability.ability.name} a nivel ${Math.min(...candidatoSinTope.yields.map((y) => y.tier ?? 1))} (tienes nivel ${nivelOficio}).`

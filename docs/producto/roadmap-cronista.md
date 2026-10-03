@@ -884,10 +884,18 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   con `origenSlug`, relaciones, `KingdomStats`, territorios y edificios de facción —sin `saveId`,
   cuelgan de la copia—, población; marca `mundoClonadoEn` y emite `SISTEMA_MUNDO_INICIADO`) y
   `copiaDeFila` (Json nulos como `DbNull`). Test de integración: idempotente, dos partidas
-  divergen, se borra con la partida. **Falta:** llamarlo al crear partida y al inicio del turno, y
-  pasar a las filas de la partida las lecturas/escrituras de facciones y relaciones
-  (`factionRelations.ts`, `worldAgenda.ts`, diplomacia), población (`population.ts`, caza,
-  recolección, muertes), expediciones (`factionExpeditions.ts`) y NPC muertos (`NpcState.muerto`).
+  divergen, se borra con la partida. **Paso 2 hecho (2026-10-03): población por partida.**
+  `ambitoPoblacion(db, saveId)` (clona el mundo de la partida la primera vez que se necesita; sin
+  `WorldState`, catálogo) y `FiltroPoblacion`; lo usan muertes (`decrementPopulationOnDeath` recibe
+  `saveId`), caza, recolección (`candidateSourcesFor` con filtro, por defecto catálogo para las
+  expediciones), modo dinámico de recurso, encuentros de viaje y en el sitio, puntos de zona y
+  encuentro ambiental. `syncFactionPopulationToKingdomStats` agrupa por partida. La agenda del mundo
+  (`worldAgenda.ts`) sigue en catálogo hasta `CR-7`. Arreglos que trajo la clonación: el Reino del
+  jugador se busca con `origenSlug: null` (combate, expansión, rutas de reino, enciclopedia) y la
+  diplomacia apunta a catálogo o al propio Reino; reiniciar la partida borra su copia del mundo y
+  limpia `mundoClonadoEn`. **Falta:** llamarlo al crear partida y al inicio del turno; facciones y
+  relaciones (`factionRelations.ts`, `worldAgenda.ts`, diplomacia), expediciones
+  (`factionExpeditions.ts`) y NPC muertos (`NpcState.muerto`).
 - **CR-7** `avanceDiario` por partida; sacar las funciones de mundo de `worldTick.ts`. **M**
 - **CR-8** Script de migración (§ 16). **M**
 - **Hecho cuando:** dos partidas del mismo mundo divergen (una mata a un NPC, la otra no lo ve);

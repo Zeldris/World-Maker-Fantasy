@@ -117,3 +117,18 @@ async function clonarConCandado(tx: Tx, saveId: string): Promise<boolean> {
   });
   return true;
 }
+
+/// Filtro de `WorldPopulation` (CR-6): las filas de una partida, o las del mundo (catálogo).
+/// Ninguna consulta de población debe filtrar solo por `worldId`: vería catálogo y partidas a la vez.
+export type FiltroPoblacion = { saveId: string } | { worldId: string; saveId: null };
+
+export const poblacionDeCatalogo = (worldId: string): FiltroPoblacion => ({ worldId, saveId: null });
+
+/// Filtro de la población de la partida, clonando su mundo si aún no lo tiene. Una partida sin
+/// `WorldState` (solo en tests antiguos) usa la del mundo.
+export async function ambitoPoblacion(db: Db, saveId: string): Promise<FiltroPoblacion> {
+  const save = await db.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true, worldState: { select: { mundoClonadoEn: true } } } });
+  if (!save.worldState) return poblacionDeCatalogo(save.worldId);
+  if (!save.worldState.mundoClonadoEn) await asegurarMundoDePartida(db, saveId);
+  return { saveId };
+}

@@ -10,6 +10,7 @@ import { recordEntityDiscoveries } from './entityDiscovery.js';
 import { iniciarCombatEncounter, resolverTurnosAutonomosHastaJugadora, type CombatienteInicial, type IniciativaParticipanteInfo } from './combateMultipleOrquestacion.js';
 import { MAX_COMBATIENTES_POR_BANDO } from './combateMultiple.js';
 import { lockRowForUpdate } from '../routes/saves/shared.js';
+import { ambitoPoblacion } from './mundoPartida.js';
 
 /// Servicio de caza (Fase 2, 2026-09-28, `plan-mecanicas-por-zona-2026-09-28.md`) — extraído del
 /// núcleo de `POST /saves/:id/cazar/confirmar` (`cazar.ts`, todo lo que corre TRAS elegir
@@ -244,7 +245,7 @@ async function intentarCazaLimpia(save: SaveParaCaza, target: CazaTarget): Promi
       const zonaObjetivo = await posicionDeObjetivo(tx, save.id, currentLocationId, npc.slug);
       if (zonaObjetivo) await moverJugadorA(tx, save.id, zonaObjetivo.x, zonaObjetivo.y);
     }
-    await decrementPopulationOnDeath(tx, save.worldId, null, npc.slug, save.region);
+    await decrementPopulationOnDeath(tx, save.id, null, npc.slug, save.region);
     await tx.worldState.update({ where: { saveId: save.id }, data: { fictionalMinutes: nuevoFictionalMinutes, fictionalDateLabel: timeLabel } });
     const created = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: nuevoFictionalMinutes, isPlayerAction: false, isSystemMessage: true, roll: cazaLimpia as unknown as Prisma.InputJsonValue } });
     await tx.save.update({ where: { id: save.id }, data: { pendingCombatNpcSlugs: [npc.slug] } });
@@ -380,7 +381,7 @@ async function intentarCazaEnGrupo(save: SaveParaCaza, targets: CazaTarget[]): P
       if (currentLocationId) {
         for (const slug of especiesDispersadas) {
           await tx.worldPopulation.updateMany({
-            where: { worldId: save.worldId, targetType: 'FAUNA', targetSlug: slug, saveId: null },
+            where: { ...(await ambitoPoblacion(tx, save.id)), targetType: 'FAUNA', targetSlug: slug },
             data: { dispersadoEnLocationId: currentLocationId, dispersadoDesdeMinutes: save.fictionalMinutes },
           });
         }

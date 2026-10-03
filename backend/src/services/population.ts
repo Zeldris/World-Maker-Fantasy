@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient, PopulationTargetType } from '@prisma/client';
+import { ambitoPoblacion } from './mundoPartida.js';
 
 /// Población dinámica (docs/mecanicas/16-poblacion-dinamica.md) — hasta 2026-08-03, `WorldPopulation` era
 /// solo dato semilla (2026-07-29) sin ningún código de partida que lo leyera ni lo modificara. Esto
@@ -69,7 +70,7 @@ export function populationTargetSlugFor(raza: string | null, slug: string, regio
   return raza;
 }
 
-type TxClient = Pick<PrismaClient, 'worldPopulation'> | Prisma.TransactionClient;
+type TxClient = PrismaClient | Prisma.TransactionClient;
 
 /// Resta 1 (sin bajar de 0) a la fila de población que corresponda a este NPC, dentro de la MISMA
 /// transacción que resuelve el turno (docs/16 § 3.2) — llamado solo cuando un NPC pasa de verdad a
@@ -78,7 +79,8 @@ type TxClient = Pick<PrismaClient, 'worldPopulation'> | Prisma.TransactionClient
 /// motor).
 export async function decrementPopulationOnDeath(
   tx: TxClient,
-  worldId: string,
+  /// CR-6 (hito 0.2): la partida; resta en su población (roadmap-cronista.md § 5.3).
+  saveId: string,
   raza: string | null,
   slug: string,
   region: string | null,
@@ -94,8 +96,9 @@ export async function decrementPopulationOnDeath(
   // obsoleto, borrando en silencio la muerte o el crecimiento del otro. `updateMany` con
   // `{ decrement: 1 }` es atómico de verdad en Postgres — el guard `poblacion: { gt: 0 }` evita
   // que baje de 0 sin necesitar releer nada antes.
+  const ambito = await ambitoPoblacion(tx, saveId);
   await tx.worldPopulation.updateMany({
-    where: { worldId, targetType, targetSlug, poblacion: { gt: 0 } },
+    where: { ...ambito, targetType, targetSlug, poblacion: { gt: 0 } },
     data: { poblacion: { decrement: 1 } },
   });
 }
@@ -160,20 +163,23 @@ export async function syncFactionPopulationToKingdomStats(
   const rows = await prisma.worldPopulation.findMany({ where: { targetType: 'FACCION' } });
   if (rows.length === 0) return { synced: 0 };
 
-  const byFactionSlug = new Map<string, { poblacion?: number; soldados?: number; trabajadores?: number; visitantes?: number }>();
+  // CR-6 (hito 0.2): agrupado por partida y facción — las filas de una partida van a la copia de la
+  // facción de esa partida; las del mundo (saveId null), a la facción de catálogo.
+  const byFactionSlug = new Map<string, { saveId: string | null; slug: string; poblacion?: number; soldados?: number; trabajadores?: number; visitantes?: number }>();
   const CAMPOS = ['poblacion', 'soldados', 'trabajadores', 'visitantes'] as const;
   for (const row of rows) {
     const campo = CAMPOS.find((c) => row.targetSlug.endsWith(`-${c}`));
     if (!campo) continue; // fila FACCION con targetSlug que no sigue el patrón — se ignora, no inventa nada
     const factionSlug = row.targetSlug.slice(0, -(campo.length + 1));
-    const entry = byFactionSlug.get(factionSlug) ?? {};
+    const clave = `${row.saveId ?? ''}|${factionSlug}`;
+    const entry = byFactionSlug.get(clave) ?? { saveId: row.saveId ?? null, slug: factionSlug };
     entry[campo] = row.poblacion;
-    byFactionSlug.set(factionSlug, entry);
+    byFactionSlug.set(clave, entry);
   }
 
   let synced = 0;
-  for (const [factionSlug, campos] of byFactionSlug) {
-    const faction = await prisma.faction.findFirst({ where: { slug: factionSlug, saveId: null }, select: { id: true } });
+  for (const campos of byFactionSlug.values()) {
+    const faction = await prisma.faction.findFirst({ where: { slug: campos.slug, saveId: campos.saveId }, select: { id: true } });
     if (!faction) continue; // catálogo desalineado (fila sembrada sin su Faction) — no bloquea el resto
     const kingdomStats = await prisma.kingdomStats.findFirst({ where: { factionId: faction.id }, select: { id: true } });
     if (!kingdomStats) continue; // sin KingdomStats todavía (facción sin reino fundado) — nada que sincronizar

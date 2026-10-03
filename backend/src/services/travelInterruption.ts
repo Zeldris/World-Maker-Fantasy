@@ -3,6 +3,7 @@ import type { AttributeBlock } from './dice.js';
 import { minutosConDestreza, bandaForMinutos, type TravelResolution } from './travel.js';
 import { pickAmbientEncounterCandidate, type AmbientEncounterCandidate } from './npcScene.js';
 import { stripRegionArticle } from './population.js';
+import { poblacionDeCatalogo, type FiltroPoblacion } from './mundoPartida.js';
 
 /// Eventos de viaje interactivos (2026-08-05, petición explícita: "que las esperas entre los
 /// movimientos de zonas sean más dinámicas"). Un viaje "extendida"/"larga" se resolvía siempre de
@@ -58,6 +59,8 @@ export async function pickTravelInterruption(
   perSegmentProbability: number,
   attributes: AttributeBlock,
   random: () => number = Math.random,
+  /// CR-6 (hito 0.2): población de la partida (por defecto, la del mundo).
+  poblacion: FiltroPoblacion = poblacionDeCatalogo(worldId),
 ): Promise<TravelInterruption | null> {
   // pathIds = [origen, ...intermedios, destino] — sin al menos un nodo intermedio real, no hay
   // dónde interrumpir (un salto directo de un solo tramo nunca se ve afectado).
@@ -71,7 +74,7 @@ export async function pickTravelInterruption(
 
   const [populationRows, intermediateLocations] = await Promise.all([
     prisma.worldPopulation.findMany({
-      where: { worldId, targetType: 'FAUNA', targetSlug: { in: itinerantNpcs.map((n) => n.slug) } },
+      where: { ...poblacion, targetType: 'FAUNA', targetSlug: { in: itinerantNpcs.map((n) => n.slug) } },
     }),
     prisma.location.findMany({
       where: { worldId, id: { in: travel.pathIds.slice(1, -1) } },
