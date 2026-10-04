@@ -946,7 +946,15 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   integración del núcleo (no las llama nadie más). Pendiente para la fase de pruebas: el test P3.2
   del viaje interrumpido falla a veces en la suite completa (pasa aislado; hipótesis: un encuentro
   ambiental al azar inicia combate y anula la reanudación) — diagnosticar con `diagnosing-bugs`.
-- **CR-8** Script de migración (§ 16). **M**
+- ~~**CR-8** Script de migración (§ 16). **M**~~ ✅ 2026-10-04: `services/cronista/migrarPartidas.ts`
+  (`migrarPartida`, `migrarTodasLasPartidas`) y `npm run cronista:migrar-partidas` (solo informa;
+  `-- --aplicar` aplica; idempotente). Por partida: clona su mundo, pasa a `NpcState.muerto` sus
+  `npcsRetiredForever` y los `Npc.muertoEnMundo` (en todas las partidas existentes, D-10; luego se
+  quita la marca del `Npc` para que las partidas nuevas los reciban vivos), lleva la etapa del
+  conflicto de su agenda a sus relaciones y fija `ultimoDiaSimulado` en el día actual. Sin los
+  sucesos fundacionales desde `SessionSummary` (opcionales). Test de integración (simulación sin
+  cambios, aplicar, repetir sin cambios). **Pendiente de ejecutar con `--aplicar` en la base real**
+  (Supabase) antes de llevar el hito a los jugadores.
 - **Hecho cuando:** dos partidas del mismo mundo divergen (una mata a un NPC, la otra no lo ve);
   todos los tests de integración actuales pasan.
 

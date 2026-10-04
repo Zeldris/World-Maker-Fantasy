@@ -44,7 +44,7 @@ const POBLACION_PERDIDA_POR_ETAPA = 20;
 const HELSIG_TARGET_SLUG = 'orcos-cristal-helado';
 const GOSHG_TARGET_SLUG = 'orcos-cienaga';
 
-const CONFLICTO_ID = 'conflicto-serhu-concordia-vs-helsig-goshg';
+export const CONFLICTO_ID = 'conflicto-serhu-concordia-vs-helsig-goshg';
 
 /// Narración de cada etapa cruzada (índice = etapa nueva, la 0 nunca se narra — es el estado de
 /// partida, silencioso). El Narrador la recibe como hecho de mundo (`appendSessionFacts`), no como
