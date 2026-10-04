@@ -1274,8 +1274,15 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     la misma situación, y claramente menos decisiones grandes en Tranquilo que en Caótico.
   - **Q19 Cadena Serhu frente a la IA** (2026-10-04): manda la IA; si se firma la paz entre Serhu y
     Helsig o Goshg, la cadena se corta (como cuando cae una de las partes). Diseño cerrado.
+  - ✅ **34a hecho (2026-10-04):** `cronista/carencias.ts` (puro): `carenciasDe` (lo neto: con
+    producción ≥ consumo no hay carencia aunque la reserva esté a 0, que es como empiezan todas las
+    del catálogo), `UMBRALES_CARENCIA` en un solo sitio, `tramoDeInteligencia`, `inteligenciaDelLider`
+    (10 si no está sembrada, null sin líder) y `tocaRevisar` (semanal o antes por carencia grave);
+    `balanceDiario` en `kingdomTick.ts` con las mismas cifras del tick. El impulsivo solo ve lo
+    grave; el estratega ve lo leve con 1,5× de margen. Líderes sembrados: Inteligencia 14-20 (Serhu y
+    Feg Tusha estrategas, el resto sensatos).
   - **Orden de trabajo:** ~~`CR-35`~~ ✅ primero; después los pasos de `CR-34` (34a carencias e
-    Inteligencia, 34b expediciones dirigidas, 34c diplomacia, 34d expansión y asalto, 34e propuesta
+    Inteligencia ✅, 34b expediciones dirigidas, 34c diplomacia, 34d expansión y asalto, 34e propuesta
     al Reino, 34f simulación de 60 días).
 - ~~**CR-35** Economía y expediciones de facción en el mundo de la partida (`CR-34` Q1). **M**~~ ✅
   2026-10-04 — Ya lo hacía `CR-7` (`avanceDiario.ts`: `producirFacciones`, `decaerRelaciones` y
