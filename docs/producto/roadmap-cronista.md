@@ -1281,8 +1281,16 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     `balanceDiario` en `kingdomTick.ts` con las mismas cifras del tick. El impulsivo solo ve lo
     grave; el estratega ve lo leve con 1,5× de margen. Líderes sembrados: Inteligencia 14-20 (Serhu y
     Feg Tusha estrategas, el resto sensatos).
+  - ✅ **34b hecho (2026-10-04):** `lanzarExpedicion` lee la situación de la facción
+    (`cronista/situacionFaccion.ts`): con carencia de comida, la pesca y luego la extracción salen
+    primero (la caza no va de expedición); el estratega prueba antes los destinos con menos riesgo.
+    `Expedicion.motivo` (migración `20261005030000_expedicion_motivo`): si salió por hambre, lo
+    comestible del botín (categoría `consumible` o `curaHambre`) suma a la reserva de comida, a
+    `RACIONES_POR_UNIDAD_COMESTIBLE` = 10 por unidad (provisional, pregunta 5), en vez de ir al
+    Almacén. Con la economía de hoy apenas alivia (Serhu gasta ~270 al día de más): el alivio real
+    llega con los números de la economía de supervivencia.
   - **Orden de trabajo:** ~~`CR-35`~~ ✅ primero; después los pasos de `CR-34` (34a carencias e
-    Inteligencia ✅, 34b expediciones dirigidas, 34c diplomacia, 34d expansión y asalto, 34e propuesta
+    Inteligencia ✅, 34b expediciones dirigidas ✅, 34c diplomacia, 34d expansión y asalto, 34e propuesta
     al Reino, 34f simulación de 60 días).
 - ~~**CR-35** Economía y expediciones de facción en el mundo de la partida (`CR-34` Q1). **M**~~ ✅
   2026-10-04 — Ya lo hacía `CR-7` (`avanceDiario.ts`: `producirFacciones`, `decaerRelaciones` y

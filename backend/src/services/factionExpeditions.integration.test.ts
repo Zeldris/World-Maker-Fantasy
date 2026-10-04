@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { prisma } from '../lib/prisma.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
-import { avanzarExpedicionesDePartida } from './factionExpeditions.js';
+import { avanzarExpedicionesDePartida, metodoExpedicionFor, RACIONES_POR_UNIDAD_COMESTIBLE } from './factionExpeditions.js';
 import { asegurarMundoDePartida } from './mundoPartida.js';
 import { REGION_OWNING_FACTIONS } from './reputation.js';
 import { detectNpcsInScene } from './npcScene.js';
@@ -373,5 +373,61 @@ describe('avanzarExpedicionesDePartida — por partida (CR-7)', () => {
       (await detectNpcsInScene({ action: `Hablo con ${objetivo.name}`, worldId, sessionFacts: [], saveId: sid, currentLocationId: null, fictionalMinutes: 480 })).map((n) => n.slug);
     expect(await escena(a)).not.toContain(objetivo.slug);
     expect(await escena(b)).toContain(objetivo.slug);
+  }, 60_000);
+});
+
+/// CR-34 34b contra Postgres real: una facción con hambre (el Clan Serhu sembrado: 570 bocas, 150
+/// trabajadores, reserva 0) manda la expedición por comida, y lo comestible que trae suma a su reserva
+/// en vez de ir al Almacén. Sin hambre, la expedición sale sin motivo.
+describe('avanzarExpedicionesDePartida — expediciones dirigidas (CR-34 34b)', () => {
+  const DIA = 30;
+  let worldId: string;
+  let saveId: string;
+  let serhuId: string;
+  let progresoSnapshot: Awaited<ReturnType<typeof prisma.npcProfessionProgress.findMany>> = [];
+
+  beforeAll(async () => {
+    worldId = (await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } })).id;
+    progresoSnapshot = await prisma.npcProfessionProgress.findMany({ where: { npc: { worldId } } });
+    saveId = await crearPartida(worldId, 'Expediciones dirigidas', DIA);
+    serhuId = (await prisma.faction.findFirstOrThrow({ where: { saveId, origenSlug: 'clan-serhu' } })).id;
+    await prisma.kingdomStats.updateMany({ where: { faction: { saveId } }, data: { ultimoDiaExpedicion: DIA - 1 } });
+  });
+
+  afterAll(async () => {
+    for (const p of progresoSnapshot) await prisma.npcProfessionProgress.update({ where: { id: p.id }, data: { nivel: p.nivel, xp: p.xp } });
+    await prisma.save.deleteMany({ where: { id: saveId } });
+  });
+
+  it('con hambre sale a por comida y lo comestible va a la reserva; sin hambre, sin motivo', async () => {
+    await avanzarExpedicionesDePartida(prisma, worldId, saveId, DIA, () => 0.99);
+    const exp = await prisma.expedicion.findFirstOrThrow({ where: { factionId: serhuId }, orderBy: { diaSalida: 'desc' } });
+    expect(exp.motivo).toBe('COMIDA');
+    expect(['PESCA', 'EXTRACCION']).toContain(metodoExpedicionFor(exp.professionId));
+
+    // Botín conocido: un comestible (bulbo del Cauce) y algo que no se come (mena).
+    const [comestible, mena] = await Promise.all([
+      prisma.itemCatalog.findFirstOrThrow({ where: { worldId, slug: 'bulbo-cauce' } }),
+      prisma.itemCatalog.findFirstOrThrow({ where: { worldId, category: 'mena' } }),
+    ]);
+    const npcId = (await prisma.expedicionMember.findFirstOrThrow({ where: { expedicionId: exp.id, rol: 'recolector' } })).npcId;
+    const items = [
+      { npcId, professionId: exp.professionId, sourceSlug: 'x', catalogSlug: comestible.slug, name: comestible.name, cantidad: 3, tier: 1 },
+      { npcId, professionId: exp.professionId, sourceSlug: 'y', catalogSlug: mena.slug, name: mena.name, cantidad: 1, tier: 1 },
+    ];
+    await prisma.expedicion.update({ where: { id: exp.id }, data: { status: 'RETORNANDO', botin: { items } } });
+    await prisma.kingdomStats.update({ where: { ownerKey: `faction:${serhuId}` }, data: { comida: 0 } });
+
+    await avanzarExpedicionesDePartida(prisma, worldId, saveId, exp.diaRegreso, () => 0.99);
+    expect((await prisma.kingdomStats.findUniqueOrThrow({ where: { ownerKey: `faction:${serhuId}` } })).comida).toBe(3 * RACIONES_POR_UNIDAD_COMESTIBLE);
+    const almacen = await prisma.almacenItem.findMany({ where: { factionId: serhuId } });
+    expect(almacen.some((a) => a.catalogSlug === comestible.slug)).toBe(false);
+    expect(almacen.some((a) => a.catalogSlug === mena.slug)).toBe(true);
+
+    // Sin hambre (reserva enorme), la siguiente sale sin motivo.
+    await prisma.kingdomStats.update({ where: { ownerKey: `faction:${serhuId}` }, data: { comida: 1_000_000 } });
+    await prisma.expedicion.deleteMany({ where: { saveId } });
+    await avanzarExpedicionesDePartida(prisma, worldId, saveId, exp.diaRegreso + 1, () => 0.99);
+    expect((await prisma.expedicion.findFirstOrThrow({ where: { factionId: serhuId } })).motivo).toBeNull();
   }, 60_000);
 });

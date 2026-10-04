@@ -3357,6 +3357,9 @@ model Expedicion {
   /// slug del atacante, guardias, rondas, ganador ('atacante' | 'defensores' | 'sin-combate'), motivo
   /// ('sin-guardias' | 'sin-atacante' | 'tope') y si se aplicó presión. Null si no hubo intercepción.
   interceptacion    Json?
+  /// CR-34 (34b): carencia que la mandó (`COMIDA`…), o null si salió por rotación. Con `COMIDA`, lo
+  /// comestible del botín va a la reserva de comida de la facción en vez de al Almacén.
+  motivo            String?
   members           ExpedicionMember[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt

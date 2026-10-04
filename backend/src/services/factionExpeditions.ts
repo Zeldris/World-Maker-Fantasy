@@ -21,6 +21,8 @@ import { npcAttributesForLevel } from './progression.js';
 import { oneStepWorseThan } from './death.js';
 import { recordFactionEvent } from './factionRelations.js';
 import type { Clase } from './classAbilities.js';
+import type { Carencia, Tramo } from './cronista/carencias.js';
+import { situacionDeFaccion } from './cronista/situacionFaccion.js';
 
 /// Expediciones de facción (Fase 13-B del plan oct-2026; diseño en
 /// docs/rpgtarkor/sistemas-reino/expediciones-poblacion.md § 4.5). Corren en el avance diario de cada
@@ -199,6 +201,45 @@ export function ordenarDestinos<T extends { slug: string }>(destinos: T[], dia: 
   if (orden.length === 0) return orden;
   const inicio = (dia + hashEstable(semilla)) % orden.length;
   return [...orden.slice(inicio), ...orden.slice(0, inicio)];
+}
+
+// ─────────────────────────── Expediciones dirigidas (CR-34 34b) ───────────────────────────
+
+/// Métodos que traen comida, en orden de preferencia cuando falta (Q11): la pesca antes que la
+/// extracción. La caza no va de expedición (ver `METODOS_EXPEDICION`).
+export const METODOS_COMIDA: MetodoObtencion[] = ['PESCA', 'EXTRACCION'];
+/// PROVISIONAL (economía de supervivencia, pregunta 5 a Álvaro): raciones que suma a la reserva de
+/// comida cada unidad comestible que trae una expedición mandada por hambre.
+export const RACIONES_POR_UNIDAD_COMESTIBLE = 10;
+
+function rangoComida(professionId: string): number {
+  const metodo = metodoExpedicionFor(professionId);
+  const i = metodo ? METODOS_COMIDA.indexOf(metodo) : -1;
+  return i === -1 ? METODOS_COMIDA.length : i;
+}
+
+/// Puro: con carencia de comida, los oficios que la traen van primero (orden estable: dentro de cada
+/// grupo se mantiene la rotación del día). Sin carencia, la rotación tal cual.
+export function priorizarOficios(oficios: string[], carencias: Carencia[]): string[] {
+  if (!carencias.some((c) => c.tipo === 'COMIDA')) return oficios;
+  return oficios.map((o, i) => ({ o, i })).sort((a, b) => rangoComida(a.o) - rangoComida(b.o) || a.i - b.i).map((x) => x.o);
+}
+
+/// Puro: el estratega prueba antes los destinos con menos riesgo de intercepción (Q4); el resto,
+/// la rotación del día.
+export function priorizarDestinos<T>(destinos: T[], riesgoDe: (d: T) => number, tramo: Tramo | null): T[] {
+  if (tramo !== 'ESTRATEGA') return destinos;
+  return destinos.map((d, i) => ({ d, i, r: riesgoDe(d) })).sort((a, b) => a.r - b.r || a.i - b.i).map((x) => x.d);
+}
+
+/// Puro: la carencia que manda la expedición, si el oficio elegido la atiende (hoy solo la comida).
+export function motivoDeExpedicion(professionId: string, carencias: Carencia[]): 'COMIDA' | null {
+  return carencias.some((c) => c.tipo === 'COMIDA') && rangoComida(professionId) < METODOS_COMIDA.length ? 'COMIDA' : null;
+}
+
+/// Puro: ¿se come? Lo recolectable lleva la categoría `consumible`; lo cocinado, `curaHambre`.
+export function esComestible(cat: { category: string; curaHambre: number | null }): boolean {
+  return cat.category === 'consumible' || (cat.curaHambre ?? 0) > 0;
 }
 
 /// Regiones donde una facción puede recolectar: las suyas (`REGION_OWNING_FACTIONS`) y las sin dueño.
@@ -581,14 +622,24 @@ async function lanzarExpedicion(tx: TxDb, worldId: string, saveId: string | null
     professionId: p.professionId,
     nivel: nivelEfectivo(progresos.find((g) => g.npcId === p.npcId && g.professionId === p.professionId), p),
   }));
-  const oficios = oficiosDeRecoleccionOrdenados(candidatos, dia, faction.id);
+  // CR-34 34b: la carencia (vista con el juicio del líder) decide qué oficio sale primero.
+  const situacion = await situacionDeFaccion(tx, faction.id);
+  const carencias = situacion?.carencias ?? [];
+  const oficios = priorizarOficios(oficiosDeRecoleccionOrdenados(candidatos, dia, faction.id), carencias);
   if (oficios.length === 0) return false;
 
   const regiones = regionesElegibles(faction.name, (await tx.location.findMany({ where: { worldId }, distinct: ['region'], select: { region: true } })).map((l) => l.region));
   if (regiones.length === 0) return false;
   const locations = (await tx.location.findMany({ where: { worldId, region: { in: regiones } }, select: { id: true, slug: true, region: true, name: true } }))
     .filter((l) => !l.slug.includes('-interior')); // interiores de edificios: no son destinos de recolección
-  const destinos = ordenarDestinos(locations, dia, faction.id);
+  const relaciones = await tx.factionRelation.findMany({ where: { worldId, OR: [{ sourceFactionId: faction.id }, { targetFactionId: faction.id }] }, include: { sourceFaction: { select: { name: true } }, targetFaction: { select: { name: true } } } });
+  const porFaccion = new Map<string, FactionRelationType>();
+  for (const r of relaciones) {
+    const otra = r.sourceFactionId === faction.id ? r.targetFaction.name : r.sourceFaction.name;
+    // Si hay relación en ambas direcciones, manda la de mayor riesgo.
+    if (riesgoPorRelacion(r.type) >= riesgoPorRelacion(porFaccion.get(otra))) porFaccion.set(otra, r.type);
+  }
+  const destinos = priorizarDestinos(ordenarDestinos(locations, dia, faction.id), (d) => riesgoIntercepcion(d.region, faction.name, porFaccion), situacion?.tramo ?? null);
 
   for (const professionId of oficios) {
     const recolectores = elegirRecolectores(candidatos, professionId);
@@ -598,19 +649,13 @@ async function lanzarExpedicion(tx: TxDb, worldId: string, saveId: string | null
       const { candidates } = await candidateSourcesFor(worldId, metodo, destino.region, null, destino.slug, estacionFor(dia * 1440), climaFor(dia * 1440, destino.region), nivelMax, tx, poblacionDeAmbito(worldId, saveId));
       if (candidates.length === 0) continue;
 
-      const relaciones = await tx.factionRelation.findMany({ where: { worldId, OR: [{ sourceFactionId: faction.id }, { targetFactionId: faction.id }] }, include: { sourceFaction: { select: { name: true } }, targetFaction: { select: { name: true } } } });
-      const porFaccion = new Map<string, FactionRelationType>();
-      for (const r of relaciones) {
-        const otra = r.sourceFactionId === faction.id ? r.targetFaction.name : r.sourceFaction.name;
-        // Si hay relación en ambas direcciones, manda la de mayor riesgo.
-        if (riesgoPorRelacion(r.type) >= riesgoPorRelacion(porFaccion.get(otra))) porFaccion.set(otra, r.type);
-      }
       const guardias = elegirGuardias(todos.filter((n) => npcElegibleParaExpedicion(n, 'guardia', protegidos)), recolectores.map((r) => r.npcId));
       await tx.expedicion.create({
         data: {
           worldId, saveId, factionId: faction.id, destinoLocationId: destino.id, professionId,
           status: 'EN_TRANSITO', diaSalida: dia, diaRegreso: dia + DURACION_EXPEDICION_DIAS,
           riesgo: riesgoIntercepcion(destino.region, faction.name, porFaccion),
+          motivo: motivoDeExpedicion(professionId, carencias),
           members: { create: [...recolectores.map((r) => ({ npcId: r.npcId, rol: 'recolector' })), ...guardias.map((npcId) => ({ npcId, rol: 'guardia' }))] },
         },
       });
@@ -722,7 +767,7 @@ async function llegarAlDestino(
 /// `NpcProfessionProgress` (sin pasar de su `nivelMaximo`). Devuelve las unidades depositadas.
 async function completarExpedicion(
   tx: TxDb,
-  exp: { id: string; factionId: string; worldId: string; saveId: string | null; professionId: string; botin: unknown; destinoLocationId: string },
+  exp: { id: string; factionId: string; worldId: string; saveId: string | null; professionId: string; botin: unknown; destinoLocationId: string; motivo: string | null },
   faccionNombre: string,
   dia: number,
   noticias: NoticiaMundo[],
@@ -748,10 +793,16 @@ async function completarExpedicion(
     const existentes = await tx.almacenItem.findMany({ where: { factionId: exp.factionId, catalogSlug: { not: null } }, select: { catalogSlug: true } });
     const cuenta = new Map<string, number>();
     for (const e of existentes) cuenta.set(e.catalogSlug!, (cuenta.get(e.catalogSlug!) ?? 0) + 1);
-    const catalogo = await tx.itemCatalog.findMany({ where: { worldId: exp.worldId, slug: { in: [...new Set(items.map((i) => i.catalogSlug))] } }, select: { slug: true, name: true, description: true } });
+    const catalogo = await tx.itemCatalog.findMany({ where: { worldId: exp.worldId, slug: { in: [...new Set(items.map((i) => i.catalogSlug))] } }, select: { slug: true, name: true, description: true, category: true, curaHambre: true } });
     const nuevos: Prisma.AlmacenItemCreateManyInput[] = [];
+    let raciones = 0;
     for (const item of items) {
       const cat = catalogo.find((c) => c.slug === item.catalogSlug);
+      // CR-34 34b: si salió por hambre, lo que se come va a la reserva, no al Almacén.
+      if (exp.motivo === 'COMIDA' && cat && esComestible(cat)) {
+        raciones += item.cantidad * RACIONES_POR_UNIDAD_COMESTIBLE;
+        continue;
+      }
       for (let u = 0; u < item.cantidad; u++) {
         const actual = cuenta.get(item.catalogSlug) ?? 0;
         if (!cabeEnStock(actual)) break;
@@ -760,6 +811,7 @@ async function completarExpedicion(
       }
     }
     if (nuevos.length > 0) await tx.almacenItem.createMany({ data: nuevos });
+    if (raciones > 0) await tx.kingdomStats.updateMany({ where: { factionId: exp.factionId }, data: { comida: { increment: raciones } } });
     depositados = nuevos.length;
 
     // XP de oficio: una vez por recolector que sacó algo.

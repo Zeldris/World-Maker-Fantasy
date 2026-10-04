@@ -5,6 +5,7 @@ import {
   oficioRutaFor, oficiosDeRecoleccionOrdenados, ordenarDestinos, regionesElegibles, resolverInterceptacion,
   MAX_RONDAS_INTERCEPTACION, elegirAtacante, faccionHostilDeRegion, simularCombateInterceptacion, type CombatienteInterceptacion,
   riesgoIntercepcion, riesgoPorRelacion, seIntercepta, xpRecolector,
+  priorizarOficios, priorizarDestinos, motivoDeExpedicion, esComestible,
   PROBABILIDAD_MUERTE_EN_INTERCEPCION, muereTrasCaer, tirarMuertes, npcElegibleParaExpedicion, SLUGS_NPC_DE_TRAMA, type NpcParaElegibilidad, type NpcsProtegidos,
 } from './factionExpeditions.js';
 import type { SourceCandidate } from '../routes/saves/recolectar.js';
@@ -234,5 +235,37 @@ describe('npcElegibleParaExpedicion', () => {
   });
   it('es determinista (pura): mismas entradas, mismo resultado', () => {
     expect(npcElegibleParaExpedicion(npc(), 'guardia', ninguno)).toBe(npcElegibleParaExpedicion(npc(), 'guardia', ninguno));
+  });
+});
+
+describe('expediciones dirigidas (CR-34 34b)', () => {
+  const comida = [{ tipo: 'COMIDA' as const, gravedad: 'GRAVE' as const }];
+
+  it('con hambre, la pesca y después la extracción van primero; sin hambre, la rotación del día', () => {
+    expect(metodoExpedicionFor('herborista-orcos-llanuras')).toBe('EXTRACCION');
+    expect(metodoExpedicionFor('minero-cristal')).toBe('MINERIA');
+    const rotacion = ['minero-cristal', 'herborista-orcos-llanuras', 'pescador'];
+    expect(priorizarOficios(rotacion, [])).toEqual(rotacion);
+    expect(priorizarOficios(rotacion, comida)).toEqual(['pescador', 'herborista-orcos-llanuras', 'minero-cristal']);
+    expect(priorizarOficios(rotacion, [{ tipo: 'GOIRNOS', gravedad: 'GRAVE' }])).toEqual(rotacion);
+  });
+
+  it('el estratega prueba antes los destinos con menos riesgo; los demás siguen la rotación', () => {
+    const destinos = [{ slug: 'a', r: 50 }, { slug: 'b', r: 0 }, { slug: 'c', r: 20 }, { slug: 'd', r: 0 }];
+    expect(priorizarDestinos(destinos, (d) => d.r, 'ESTRATEGA').map((d) => d.slug)).toEqual(['b', 'd', 'c', 'a']);
+    expect(priorizarDestinos(destinos, (d) => d.r, 'SENSATO')).toEqual(destinos);
+    expect(priorizarDestinos(destinos, (d) => d.r, null)).toEqual(destinos);
+  });
+
+  it('el motivo es la comida solo si falta y el oficio la trae', () => {
+    expect(motivoDeExpedicion('pescador', comida)).toBe('COMIDA');
+    expect(motivoDeExpedicion('minero-cristal', comida)).toBeNull();
+    expect(motivoDeExpedicion('pescador', [])).toBeNull();
+  });
+
+  it('comestible: lo recolectable consumible y lo que quita hambre', () => {
+    expect(esComestible({ category: 'consumible', curaHambre: null })).toBe(true);
+    expect(esComestible({ category: 'piel', curaHambre: 10 })).toBe(true);
+    expect(esComestible({ category: 'mena', curaHambre: null })).toBe(false);
   });
 });
