@@ -5,6 +5,7 @@ import {
   daysCrossed,
   territoryPopulationDelta,
   tickFactionProduction,
+  hambrunaNueva,
   DEFAULT_KINGDOM_STATS,
   FELICIDAD_ALTA_UMBRAL,
   FELICIDAD_BAJA_UMBRAL,
@@ -147,5 +148,27 @@ describe('tickFactionProduction (docs/rpgtarkor/sistemas-reino/edificios-de-ofic
       { recipeKey: 'herboristeria-serhu', status: 'EN_CONSTRUCCION' },
     ];
     expect(tickFactionProduction(buildings)).toEqual({ comida: 3, riqueza: 4 });
+  });
+});
+
+// CR-12 (12c, hito 0.2) — la cuenta de días seguidos de hambre y cuándo toca una HAMBRUNA.
+describe('hambre', () => {
+  it('un día con déficit de comida suma a la racha; uno sin déficit la rompe', () => {
+    const hambrientos: KingdomStatsBlock = { ...DEFAULT_KINGDOM_STATS, poblacion: 10, comida: 0, bebida: 100, diasHambre: 2 };
+    expect(tickKingdomOneDay(hambrientos).diasHambre).toBe(3);
+    expect(tickKingdomOneDay({ ...hambrientos, comida: 100 }).diasHambre).toBe(0);
+  });
+
+  it('hambruna al llegar a 3 días seguidos y cada 3 más, como mucho una por llamada', () => {
+    expect(hambrunaNueva(2, 3, 1)).toBe(true);
+    expect(hambrunaNueva(3, 4, 1)).toBe(false);
+    expect(hambrunaNueva(5, 6, 1)).toBe(true);
+    expect(hambrunaNueva(0, 2, 2)).toBe(false);
+    // Un viaje de 10 días con hambre todo el rato: una sola.
+    expect(hambrunaNueva(0, 10, 10)).toBe(true);
+    // La racha se rompió en medio y la nueva aún no llega a 3.
+    expect(hambrunaNueva(2, 2, 5)).toBe(false);
+    // Se rompió y la nueva ya llega a 3: cuenta desde cero.
+    expect(hambrunaNueva(2, 3, 5)).toBe(true);
   });
 });

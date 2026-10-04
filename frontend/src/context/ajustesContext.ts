@@ -9,6 +9,9 @@ export interface AjustesValue {
   descartarVistaPrevia: () => void
   /// CFG-4 — abre el panel de configuración (desde la cabecera, Inicio o el menú de pausa).
   abrirPanel: () => void
+  /// CR-12 — partida abierta (para la pestaña «Partida» del panel); null fuera de una partida.
+  partidaActual: string | null
+  setPartidaActual: (saveId: string | null) => void
 }
 
 /// CFG-6 (hito 0.2) — ajustes del jugador. Sin proveedor (tests), los de por defecto.
@@ -17,4 +20,6 @@ export const AjustesContext = createContext<AjustesValue>({
   setAjustes: () => {},
   descartarVistaPrevia: () => {},
   abrirPanel: () => {},
+  partidaActual: null,
+  setPartidaActual: () => {},
 })

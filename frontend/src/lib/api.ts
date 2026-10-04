@@ -688,6 +688,21 @@ export interface SaveSummary {
   endedAt: string | null
 }
 
+/// CR-12 (hito 0.2) — «Ritmo del mundo» de la partida: cuánto pasa en el mundo por sí solo.
+export type EstiloNarrador = 'TRANQUILO' | 'EQUILIBRADO' | 'CAOTICO'
+
+export async function getRitmoMundo(id: string): Promise<{ estiloNarrador: EstiloNarrador }> {
+  return fetchJson(`${API_URL}/saves/${id}/ritmo`)
+}
+
+export async function setRitmoMundo(id: string, estiloNarrador: EstiloNarrador): Promise<{ estiloNarrador: EstiloNarrador }> {
+  return fetchJson(`${API_URL}/saves/${id}/ritmo`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ estiloNarrador }),
+  })
+}
+
 export async function updateSaveName(id: string, saveName: string | null): Promise<{ saveName: string | null }> {
   return fetchJson(`${API_URL}/saves/${id}/name`, {
     method: 'PATCH',

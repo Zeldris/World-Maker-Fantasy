@@ -367,8 +367,8 @@ alcance de conocimiento inicial (§ 9). Lista inicial (ampliable como datos):
 |---|---|
 | **JUGADOR** | `ACCION_RELEVANTE`, `COMBATE_GANADO`, `COMBATE_PERDIDO`, `MUERTE_CAUSADA`, `PERDON_CONCEDIDO` (dejar vivir/clemente), `CAPTURA`, `PROMESA`, `PROMESA_CUMPLIDA`, `PROMESA_ROTA`, `REGALO` (entregar), `ROBO`, `MISION_COMPLETADA`, `MISION_FALLIDA`, `DESCUBRIMIENTO`, `OFICIO_APRENDIDO`, `MUERTE_JUGADOR`, `RENACER`, `FIN_PARTIDA` |
 | **VIDA_MUERTE** | `NACIMIENTO_NOTABLE` (NPC con nombre), `MUERTE_NPC`, `MUERTE_LIDER`, `SUCESION`, `HEREDERO_DESIGNADO`, `RECUPERACION_NPC`, `CADAVER_DESAPARECE` |
-| **DIPLOMACIA** | `CAMBIO_RELACION` (de `recordFactionEvent`), `GUERRA_DECLARADA`, `TREGUA`, `ALIANZA`, `TRATADO_COMERCIAL`, `RUPTURA`, `SABOTAJE`, `ESPIONAJE` |
-| **FACCION** | `FACCION_CAE`, `FACCION_ESCINDIDA`, `FACCION_FUNDADA`, `FACCION_ABSORBIDA`, `CAMBIO_LIDER`, `TERRITORIO_CONQUISTADO`, `TERRITORIO_PERDIDO`, `EXPEDICION_SALE`, `EXPEDICION_INTERCEPTADA`, `EXPEDICION_VUELVE` |
+| **DIPLOMACIA** | `CAMBIO_RELACION` (de `recordFactionEvent`), `GUERRA_DECLARADA`, `TREGUA`, `ALIANZA`, `TRATADO_COMERCIAL`, `RUPTURA`, `SABOTAJE`, `ESPIONAJE`, `ESCARAMUZA` (CR-12) |
+| **FACCION** | `FACCION_CAE`, `FACCION_ESCINDIDA`, `FACCION_FUNDADA`, `FACCION_ABSORBIDA`, `CAMBIO_LIDER`, `TERRITORIO_CONQUISTADO`, `TERRITORIO_PERDIDO`, `EXPEDICION_SALE`, `EXPEDICION_INTERCEPTADA`, `EXPEDICION_VUELVE`, `MALESTAR_INTERNO` (CR-12) |
 | **CLIMA** | `TORMENTA`, `TORMENTA_EXTREMA`, `CAMBIO_ESTACION`, `SEQUIA`, `OLA_FRIO` |
 | **NATURAL** | `MIGRACION_FAUNA`, `PLAGA`, `INCENDIO`, `CRECIDA`, `DESPRENDIMIENTO`, `AUGE_POBLACION`, `DECLIVE_POBLACION` |
 | **ECONOMIA** | `ESCASEZ`, `AUGE_COMERCIAL`, `CARAVANA`, `PRECIOS_DISPARADOS` |
@@ -943,9 +943,10 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   los tránsitos ya pasan por `narrateAndPersistTurn`. Borradas `growAllPopulations` y
   `advanceWorldAgenda` (sus tests, a la partida). `advanceFactionEconomy` y
   `advanceFactionExpeditions` quedan solo como ejecución sobre el catálogo que usan sus tests de
-  integración del núcleo (no las llama nadie más). Pendiente para la fase de pruebas: el test P3.2
-  del viaje interrumpido falla a veces en la suite completa (pasa aislado; hipótesis: un encuentro
-  ambiental al azar inicia combate y anula la reanudación) — diagnosticar con `diagnosing-bugs`.
+  integración del núcleo (no las llama nadie más). El test P3.2 del viaje interrumpido que fallaba
+  a veces se diagnosticó con `diagnosing-bugs` (2026-10-04): era un fallo real de `worldTick.ts`
+  (la resolución anticipada se rendía con el candado del turno cogido y dejaba el viaje atascado),
+  ya arreglado.
 - ~~**CR-8** Script de migración (§ 16). **M**~~ ✅ 2026-10-04: `services/cronista/migrarPartidas.ts`
   (`migrarPartida`, `migrarTodasLasPartidas`) y `npm run cronista:migrar-partidas` (solo informa;
   `-- --aplicar` aplica; idempotente). Por partida: clona su mundo, pasa a `NpcState.muerto` sus
@@ -982,7 +983,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   líder → `MUERTE_LIDER` → cohesión −25; perder el último territorio → `FACCION_CAE`; tormenta
   extrema → tirada de daño a edificios del jugador en la región. `GUERRA_DECLARADA` ya la registra
   `recordFactionEvent`. Las que faltan van con su tarea (anotado en ellas): CR-11, CR-12, CR-14, CR-16.
-- **CR-11** Consecuencias aplazadas con sus disparos y las 7 iniciales (§ 7.2). **M** Incluye los
+- ~~**CR-11** Consecuencias aplazadas con sus disparos y las 7 iniciales (§ 7.2). **M**~~ ✅ 2026-10-04 (4 reglas; las otras 3, con su tarea — ver decisiones). Incluye los
   efectos `programarConsecuencia`/`anularConsecuencia` y `ajustarPrecios` (para `PUEBLO_ABANDONADO`)
   en `efectos.ts` (CR-9), las reacciones que programan consecuencias (`SUCESION_PENDIENTE` tras
   `MUERTE_LIDER`, `DEUDA_DE_VIDA` tras `PERDON_CONCEDIDO`, `PROMESA_VENCE` tras `PROMESA`) y pasar
@@ -1005,7 +1006,8 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     sucesión. Sucesor: el heredero designado si lo hay; si no, el NPC con nombre vivo de más
     Inteligencia de la facción. CR-12 podrá matizarlo.
   - **Escisión:** nombre según el pueblo (propuesta `propuestas-lore.md`, 2026-10-04): orcos, el
-    nombre de quien la encabeza con terminación de clan (Varka → Clan Varkag); Nabieus, Keseg +
+    nombre de quien la encabeza sin vocal final + -ig/-g (Helsa → Helsig, Gosha → Goshg; Varka →
+    Clan Varkig); Nabieus, Keseg +
     palabra; Faerus, Feg + palabra; con su traducción en la descripción. Los goirntes no se escinden
     hasta que Álvaro decida (Q13).
   - **Refugiados:** se reparten por las regiones vecinas que da el lore (`areas.md` § Cómo encajan
@@ -1013,12 +1015,112 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   - **Lo que ve la jugadora:** las consecuencias de sus actos, insinuadas con una frase al crearse
     («Algo te dice que volverás a ver a *X*.»); las del mundo, ocultas hasta que pasan. Admin ve
     todas. Al caducar, `CONSECUENCIA_PERDIDA` en silencio.
+  🚧 2026-10-04 — **paso 1 hecho (infraestructura):** modelo `Consecuencia` (migración
+  `20261004200000_consecuencias`), efectos `programarConsecuencia` (con aviso opcional en el canal
+  del personaje) y `anularConsecuencia`, `services/cronista/consecuencias.ts` (`registrarRegla`,
+  `evaluarConsecuencias`: caduca lo vencido y dispara por días o por estar en una región;
+  `ENCUENTRO_NPC` por los `npcIds` del momento; `SUCESO` desde la cola de reacciones). Se evalúa
+  tras cada turno, día y acción. Lo que supera el tope de cascada de CR-10 es ya la regla
+  `REACCION_APLAZADA` del día siguiente (vuelve a comprobar su condición). 5 tests de integración.
+  **Paso 2a hecho (2026-10-04):** `SUCESION_PENDIENTE` (reacción a `MUERTE_LIDER`, 1-3 días; por
+  cohesión cae, se escinde o sucede; sucesor: heredero designado o el NPC con nombre vivo de más
+  Inteligencia; la escindida se lleva el 30 % de la gente) y `REFUGIADOS` (reacción a
+  `FACCION_CAE`, 2-6 días; la mitad del peso regional de su raza se reparte por las regiones
+  vecinas y la facción se queda sin gente), en `reglasConsecuencias.ts`; nombres de escisión
+  (`nombresFaccion.ts`) y regiones vecinas del lore (`regiones.ts`). Arreglo: una muerte que llega
+  por dos vías ya no registra dos veces la muerte del líder. **Paso 2b hecho (2026-10-04):**
+  `DEUDA_DE_VIDA` — reacción a `PERDON_CONCEDIDO` (solo NPC con nombre; aviso «Algo te dice que
+  volverás a ver a X.»), se dispara al estar en otra región tras 3+ días (caduca a los 20): el
+  perdonado aparece como punto de NPC a una celda de la jugadora; al cruzarse (`ENCUENTRO_NPC` =
+  punto activo a ≤ 1,5 celdas en su lugar actual) regala un objeto de su equipo o 10-30 goirnos
+  (efecto nuevo `regalarAlJugador`, suceso `REGALO`) y se va; sin cruce, se va a los 2 días
+  (`alCaducar`). **Paso 2c hecho (2026-10-04):** al matar, los NPC con nombre con punto activo en
+  el lugar quedan como `TESTIGO` del suceso (`testigos.ts`); `VENGANZA_PARIENTE` (reacción a
+  `MUERTE_CAUSADA` si un testigo es de la facción de la víctima; aviso «X lo ha visto todo, y no lo
+  va a olvidar.»; 5-15 días, caduca a los 30): el vengador aparece a una celda y, al cruzarse,
+  ataca (efecto nuevo `forzarCombate`, mismo camino que un viaje interrumpido); si muere antes, se
+  pierde. Arreglo de paso: dos `NOT` en el mismo filtro de Prisma se pisaban y colaban muertos como
+  vivos (ahora `AND`). **Pendiente, con su tarea:** `PROMESA_VENCE` (cuando algo registre promesas),
+  `RUMOR_DE_HAZANA` (Fase 5), `PUEBLO_ABANDONADO` (comercio local), refugiados al Reino (pregunta 1
+  de Álvaro), ayuda en combate de la deuda de vida (`0.3`).
 - **CR-12** Narrador de fondo con presupuesto, enfriamientos y reglas de facción (§ 7.3);
   agenda Serhu como primera cadena. **L** Al hacerlo, revisar `UX-6` (roadmap-front-ux.md): hoy
   la ambientación se cancela al enviar una acción porque no pesa nada; con contenido real puede
   convenir que la acción espere (opción A). Incluye de la tabla de reacciones (CR-10): la fauna
   que huye de una tormenta extrema a una región vecina (necesita vecinos entre regiones) y
   `HAMBRUNA` 3 días seguidos → cohesión −10 y posible `REBELION` (necesita llevar la cuenta).
+  🚧 en curso (2026-10-04): diseño acordado con la usuaria (grill, ronda 1):
+  - **Pasos:** 12a motor (candidatos, presupuesto, enfriamientos, elección por peso sin IA) +
+    catálogo inicial + «Ritmo del mundo» en Configuración; 12b agenda Serhu como primera cadena;
+    12c fauna que huye de la tormenta extrema y `HAMBRUNA`. «Favorecer hilos» espera a CR-17 y el
+    árbitro con IA, a la Fase 7.
+  - **Catálogo inicial (8):** escaramuza (tensión/guerra → presión), caravana (tratado/alianza →
+    riqueza y distensión), plaga y auge de fauna en una región, migración de fauna a región vecina,
+    incendio o crecida (daña edificio de facción), malestar interno (cohesión baja → baja más),
+    visitante ilustre en el Reino de la jugadora (felicidad).
+  - **Ritmo:** +3/+1/+5 al día (Equilibrado/Tranquilo/Caótico), coste = importancia (3-5); día con
+    3+ sucesos de la jugadora → sin suceso de fondo.
+  - **Visibilidad:** todo al Libro; al canal «El mundo» solo lo que el personaje podría saber
+    (facción conocida o región donde está), mismo filtro que las noticias de expediciones (D-5).
+  - **Estilo (D-7):** opción «Ritmo del mundo» en Configuración › Partida, cambiable siempre.
+  - **Reglas de facción:** absorción como candidato del narrador de fondo; fundación por
+    asentamiento queda para cuando se resuelva la pregunta 1 de Álvaro (población).
+  - **UX-6:** se mantiene la opción B (la ambientación se cancela al actuar). La usuaria pide en su
+    lugar **dar valor de verdad al canal «El mundo»** (que sirva y aporte algo). Ronda 2 cerrada:
+  - **12d — noticias que abren oportunidades:** cada suceso de fondo que llega al canal deja algo
+    que hacer con plazo (consecuencia programada + punto de zona; si no vas, se pierde sin más):
+    escaramuza → campo de batalla con botín y un herido al que ayudar o rematar (3 días); caravana →
+    comerciar a mejor precio o asaltarla (2 días); plaga/auge de fauna → caza escasa o abundante
+    en la región (5 días); incendio/crecida → la facción pide materiales, llevarlos da reputación
+    (5 días); malestar interno → un descontento se ofrece como informante o recluta (4 días);
+    visitante ilustre → audiencia en tu Reino (3 días).
+  - **Rumor o certeza por distancia:** misma región, al momento y como hecho; región vecina, al día
+    siguiente y como «Se dice que…»; más lejos, 2-3 días y como rumor (la oportunidad puede llegar
+    pasada). Aliados o con tratado avisan sin retraso. Sin rumores falsos aún (`RUMOR_DE_HAZANA`,
+    Fase 5).
+  - **Resumen al cruzar varios días:** una entrada «Mientras viajabas…» desplegable en vez de
+    ráfaga (es `UX-31`).
+  - **Ambientación informada:** la llamada de ambientación (`routes/entorno.ts`) recibe los 2-3
+    últimos sucesos visibles de la región para hablar de ellos.
+  - **Frontend:** entradas con icono, enlaces y etiqueta de distancia/plazo → `UX-38`.
+  - ✅ **12a hecho (2026-10-04):** `services/cronista/narradorFondo.ts` (`narrarDia`, una vez por día
+    simulado desde `avanceDiario`): presupuesto +1/+3/+5 con tope 10, coste = importancia base,
+    enfriamiento por tipo (días desde el último de ese tipo con origen `MUNDO`), día con 3+ sucesos
+    de la jugadora sin suceso de fondo, elección por peso. Catálogo: escaramuza, caravana (riqueza
+    +5 a las dos, efecto nuevo `ajustarReino`), plaga, auge, migración de fauna, incendio, crecida
+    (solo Ciénaga Troncal), malestar interno, visitante ilustre (felicidad +5) y absorción. Tipos
+    nuevos `ESCARAMUZA` y `MALESTAR_INTERNO`; `ajustarPoblacion`/`moverPoblacion` aceptan
+    `sinSuceso`. Noticia al canal «El mundo» con el filtro de `difundirNoticias`. «Ritmo del mundo»:
+    `GET/PATCH /saves/:id/ritmo` y pestaña «Partida» en Configuración (solo con partida abierta).
+    **Queda:** 12b, 12c, 12d.
+  - ✅ **12b hecho (2026-10-04):** motor de cadenas `services/cronista/cadenas.ts` (`Cadena`:
+    pasos con texto, sucesos y efectos; `intervaloDias`; `aplicaA`; `motivoDeCorte`; `sincronizar`;
+    estado en `WorldState.agenda` con la forma de siempre, sin migración). La agenda Serhu es
+    `CADENA_CONFLICTO_SERHU` (`worldAgenda.ts`): los textos de `STAGE_FACTS` son los de cada paso, las
+    bajas de Helsig y Goshg van por `ajustarPoblacion`, y la cadena **se corta** si cae el Clan Serhu
+    o caen Helsig y Goshg a la vez (noticia de cierre en «El mundo»). **Queda:** cadenas que nazcan a
+    mitad de partida (p. ej. una guerra a partir de escaramuzas), como candidatos del narrador de
+    fondo; 12c y 12d.
+  - ✅ **12c hecho (2026-10-04):** reacción `TORMENTA_ESPANTA_FAUNA` (hasta 2 especies de la región
+    de una `TORMENTA_EXTREMA` mueven el 30 % de su peso a una región vecina, `MIGRACION_FAUNA`) y
+    hambruna: `KingdomStats.diasHambre` (migración `20261004220000_dias_hambre`) cuenta los días
+    seguidos con déficit de comida; cada 3 se registra `HAMBRUNA` (`cronista/hambruna.ts`) y la
+    reacción `HAMBRUNA_DIVIDE` quita 10 de cohesión y puede desatar `REBELION` (25 %, 50 % si la
+    cohesión queda por debajo de 30). **Pendiente:** la hambruna solo se registra para el Reino de la
+    jugadora; en las facciones del mundo está apagada (`HAMBRUNA_EN_FACCIONES`) porque con los números
+    provisionales de su economía 6 de las 9 sembradas pasan hambre siempre. Se enciende con los
+    números de la economía de supervivencia (pregunta 5 a Álvaro). `REBELION` aún no tiene
+    consecuencias propias más allá del Libro (las tendrá con la economía y las reglas de facción).
+  - 🚧 **12d en curso (2026-10-04).** Hecho:
+    - **Rumor por distancia** (`cronista/noticias.ts`, `darNoticia`): misma región o facción aliada
+      / con tratado del Reino → al momento y como hecho; vecina → 1 día; más lejos → 2-3 días, como
+      «Se dice que…»; sin lugar → solo si conoce la facción, 1 día y como rumor. Lo que llega tarde
+      es una consecuencia `NOTICIA` (disparo por días). Lo usa el narrador de fondo.
+    - **Ambientación informada** (`cronista/rastros.ts`): la ambientación es de plantillas (no usa
+      IA, corrige lo dicho en la ronda 2), y ahora añade hasta 2 rastros de sucesos de los últimos
+      3 días en la región (incendio, crecida, tormenta, plaga, auge, fauna que llega, edificio
+      dañado).
+    **Falta:** resumen «Mientras viajabas…» al cruzar varios días y las oportunidades con plazo.
 - **CR-13** Nacimientos notables y generador de nombres (§ 12.3). **M** Incluye el efecto `crearNpc`
   en `efectos.ts` (CR-9).
 - **Hecho cuando:** `cronista:simular 60` produce caídas, escisiones, tormentas con daños, guerras

@@ -1371,7 +1371,12 @@ export function GameView() {
     setConfirmingExit(false)
     navigate(`/solitario/mundo/${worldIdSlug}/personaje/${saveId}?characterName=${encodeURIComponent(characterName ?? '')}`)
   }
-  const { abrirPanel: abrirPanelAjustes, ajustes } = useAjustes()
+  const { abrirPanel: abrirPanelAjustes, ajustes, setPartidaActual } = useAjustes()
+  // CR-12 — el panel de configuración muestra la pestaña «Partida» mientras haya una abierta.
+  useEffect(() => {
+    setPartidaActual(saveId)
+    return () => setPartidaActual(null)
+  }, [saveId, setPartidaActual])
 
   // Composer (UX-13, hito 0.1; UX-1/UX-2, hito 0.2) — se bloquea si la fase no deja enviar turno o
   // hay una capa encima. El cajón de paneles (`activePanel`) queda fuera a propósito: la

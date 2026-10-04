@@ -89,13 +89,38 @@ async function fetchDueTransits() {
 /// `resolveDueTransits` para que `startEagerTransitResolution` (turn.ts, viaje sin evento) pueda
 /// reusarlo tal cual, con la única diferencia de CUÁNDO se llama y qué `notBefore` le pasa a
 /// `narrateAndPersistTurn`. El caller ya reclamó la fila (`narrationClaimedAt`) antes de llamar.
+/// Cuánto espera la resolución anticipada a que el turno en curso suelte el candado: un turno real
+/// con el modelo de lenguaje puede tardar varios minutos.
+const ESPERA_MAX_TURNO_EAGER_MS = 5 * 60_000;
+const PASO_ESPERA_TURNO_MS = 250;
+
+/// Reclama el candado de turno, esperando hasta `maxMs` a que se libere.
+async function esperarTurno(saveId: string, maxMs: number): Promise<boolean> {
+  const hasta = Date.now() + maxMs;
+  for (;;) {
+    if (claimTurnInFlight(saveId)) return true;
+    if (Date.now() >= hasta) return false;
+    await new Promise((r) => setTimeout(r, PASO_ESPERA_TURNO_MS));
+  }
+}
+
 async function resolveClaimedTransit(transit: DueTransit, notBefore?: Date): Promise<void> {
   // Candado de turno (auditoría de código completa, 2026-08-07, ver turnLock.ts) — este mismo
   // `saveId` puede tener un turno EN VIVO resolviéndose ahora mismo vía POST /turn/narrate
   // (turn.ts), que comparte este mismo candado. Sin esto, un tránsito diferido y una acción
   // manual del jugador podían llamar a `narrateAndPersistTurn` en paralelo para la misma
   // partida — la resolución exacta que este candado existe para evitar.
-  if (!claimTurnInFlight(transit.save.id)) return;
+  //
+  // Bug real (2026-10-04, test intermitente P3.2): la reanudación de un viaje lanza la resolución
+  // anticipada desde DENTRO de su propio turno, que aún tiene el candado; antes se rendía al
+  // perderlo y dejaba la fila reclamada (`narrationClaimedAt`), así que el barrido periódico, que
+  // solo recoge filas sin reclamar, nunca la reintentaba: viaje atascado para siempre. Ahora la vía
+  // anticipada espera a que el turno lo suelte, y si aun así no lo consigue (o es el barrido, que no
+  // espera), libera la fila para el siguiente barrido.
+  if (!(await esperarTurno(transit.save.id, notBefore ? ESPERA_MAX_TURNO_EAGER_MS : 0))) {
+    await prisma.characterTransit.updateMany({ where: { id: transit.id }, data: { narrationClaimedAt: null } }).catch(() => {});
+    return;
+  }
 
   try {
     const { action, classification, roll, travel, travelInterruptionNpcId, travelInterruptionOriginalDestinationName, buildingId } =

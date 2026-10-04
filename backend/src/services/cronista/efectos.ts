@@ -10,8 +10,11 @@
 // Reino del jugador). Los efectos numéricos internos (cohesión) no registran suceso propio: lo
 // registran sus consecuencias (p. ej. `FACCION_CAE`).
 //
-// Pendientes de la tarea que los necesita o crea su modelo: `programarConsecuencia`/
-// `anularConsecuencia` y `ajustarPrecios` (CR-11: hoy no hay precios que ajustar fuera del stock),
+// `programarConsecuencia`/`anularConsecuencia` (CR-11) no registran suceso: lo que queda pendiente
+// no ha pasado todavía (lo registra la regla al dispararse, o `CONSECUENCIA_PERDIDA` al caducar).
+//
+// Pendientes de la tarea que los necesita o crea su modelo: `ajustarPrecios` (cuando haya comercio
+// local; hoy no hay precios que ajustar fuera del stock),
 // `crearNpc` (CR-13, con nacimientos y nombres), `anadirEtiqueta`/`quitarEtiqueta`,
 // `cambiarAprobacion` y `anadirRecuerdo` (Fase 4), `propagarConocimiento` (Fase 5),
 // `abrirHilo`/`cerrarHilo` (buscadores de historias) y `ofrecerMision` (gancho, sin implementar).
@@ -36,7 +39,19 @@ export interface CtxEfecto {
   causas?: string[];
   /// Nivel de cascada de los sucesos que se registren (CR-10).
   nivelCascada?: number;
+  /// Azar (días de un disparo, tiradas); por defecto `Math.random`.
+  random?: () => number;
 }
+
+/// Cuándo puede dispararse una consecuencia aplazada (§ 7.2). `minDias`: no antes de esos días
+/// desde que se programa. `CUALQUIERA_SALVO_ORIGEN`: cualquier región distinta de `origenSlug`.
+export type Disparo =
+  | { tipo: 'DIAS'; min: number; max: number }
+  | { tipo: 'LLEGAR_REGION'; regionSlug: string; origenSlug?: string; minDias?: number }
+  | { tipo: 'ENCUENTRO_NPC'; npcId: string; minDias?: number }
+  | { tipo: 'SUCESO'; tipos: TipoSuceso[] };
+
+export const CUALQUIERA_SALVO_ORIGEN = 'CUALQUIERA_SALVO_ORIGEN';
 
 export type Efecto =
   | { tipo: 'cambiarPresion'; origenSlug: string; destinoSlug: string; evento: FactionEventType }
@@ -44,16 +59,21 @@ export type Efecto =
   | { tipo: 'asignarCargo'; npcId: string; cargo: string | null; faccionSlug?: string }
   | { tipo: 'cambiarCohesion'; faccionSlug: string; delta: number }
   | { tipo: 'cambiarLider'; faccionSlug: string; npcId: string }
-  | { tipo: 'crearFaccion'; slug: string; nombre: string; raza: string; descripcion: string; escindidaDe?: string; liderNpcId?: string }
+  | { tipo: 'crearFaccion'; slug: string; nombre: string; raza: string; descripcion: string; escindidaDe?: string; liderNpcId?: string; fraccionPoblacion?: number }
   | { tipo: 'disolverFaccion'; faccionSlug: string }
   | { tipo: 'absorberFaccion'; faccionSlug: string; absorbenteSlug: string }
-  | { tipo: 'ajustarPoblacion'; targetSlug: string; delta: number; region?: string }
-  | { tipo: 'moverPoblacion'; targetSlug: string; desde: string; hacia: string; fraccion: number }
+  | { tipo: 'ajustarPoblacion'; targetSlug: string; delta: number; region?: string; sinSuceso?: boolean }
+  | { tipo: 'moverPoblacion'; targetSlug: string; desde: string; hacia: string; fraccion: number; sinSuceso?: boolean }
   | { tipo: 'danarEdificio'; buildingId: string; causa?: string }
   | { tipo: 'repararEdificio'; buildingId: string }
   | { tipo: 'cambiarControlTerritorio'; territoryId: string; faccionSlug: string | null; control: TerritoryControl }
   | { tipo: 'crearPuntoZona'; locationId: string; puntoTipo: ZonePointTipo; targetSlug: string; x: number; y: number; cantidad?: number; label?: string }
-  | { tipo: 'retirarPuntoZona'; zonePointId: string };
+  | { tipo: 'retirarPuntoZona'; zonePointId: string }
+  | { tipo: 'programarConsecuencia'; regla: string; disparo: Disparo; datos: Record<string, unknown>; caducaDias?: number; aviso?: string; npcId?: string }
+  | { tipo: 'anularConsecuencia'; regla: string; npcId?: string }
+  | { tipo: 'regalarAlJugador'; npcId: string; mensaje: string }
+  | { tipo: 'forzarCombate'; npcId: string; mensaje: string }
+  | { tipo: 'ajustarReino'; faccionSlug?: string; riqueza?: number; felicidad?: number };
 
 export interface ResultadoEfecto {
   aplicado: boolean;
@@ -107,6 +127,16 @@ export async function aplicarEfecto(ctx: CtxEfecto, e: Efecto): Promise<Resultad
       return crearPuntoZona(ctx, e);
     case 'retirarPuntoZona':
       return retirarPuntoZona(ctx, e);
+    case 'programarConsecuencia':
+      return programarConsecuencia(ctx, e);
+    case 'anularConsecuencia':
+      return anularConsecuencia(ctx, e);
+    case 'regalarAlJugador':
+      return regalarAlJugador(ctx, e);
+    case 'ajustarReino':
+      return ajustarReino(ctx, e);
+    case 'forzarCombate':
+      return forzarCombate(ctx, e);
   }
 }
 
@@ -219,7 +249,17 @@ async function crearFaccion(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'crearFac
       liderNpcId: e.liderNpcId ?? null,
     },
   });
-  await ctx.tx.kingdomStats.create({ data: { factionId: faccion.id, ownerKey: ownerKeyFor({ factionId: faccion.id }) } });
+  // En una escisión, la nueva se lleva parte de la gente de la madre.
+  const statsMadre = madre && e.fraccionPoblacion ? await ctx.tx.kingdomStats.findUnique({ where: { factionId: madre.id } }) : null;
+  const parte = (n: number) => Math.floor(n * Math.min(1, e.fraccionPoblacion ?? 0));
+  const llevada = statsMadre ? { poblacion: parte(statsMadre.poblacion), soldados: parte(statsMadre.soldados), trabajadores: parte(statsMadre.trabajadores) } : null;
+  await ctx.tx.kingdomStats.create({ data: { factionId: faccion.id, ownerKey: ownerKeyFor({ factionId: faccion.id }), ...(llevada ?? {}) } });
+  if (statsMadre && llevada) {
+    await ctx.tx.kingdomStats.update({
+      where: { id: statsMadre.id },
+      data: { poblacion: { decrement: llevada.poblacion }, soldados: { decrement: llevada.soldados }, trabajadores: { decrement: llevada.trabajadores } },
+    });
+  }
   if (e.liderNpcId) await estadoNpc(ctx, e.liderNpcId, { cargo: 'lider', lealtadFaccionId: faccion.id });
   const sucesoId = madre
     ? await registrar(ctx, {
@@ -304,7 +344,8 @@ async function ajustarPoblacion(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'ajus
   const cambio = poblacion - fila.poblacion;
   if (cambio === 0) return NO_APLICADO;
   await ctx.tx.worldPopulation.update({ where: { id: fila.id }, data: { poblacion } });
-  if (Math.abs(cambio) < Math.max(1, fila.poblacion * UMBRAL_CAMBIO_NOTABLE)) return { aplicado: true, sucesoId: null };
+  // `sinSuceso`: lo cuenta el suceso que lo causa (p. ej. una plaga del narrador de fondo, CR-12).
+  if (e.sinSuceso || Math.abs(cambio) < Math.max(1, fila.poblacion * UMBRAL_CAMBIO_NOTABLE)) return { aplicado: true, sucesoId: null };
   const sucesoId = await registrar(ctx, {
     tipo: cambio > 0 ? 'AUGE_POBLACION' : 'DECLIVE_POBLACION',
     actores: e.region ? [{ entidadTipo: 'REGION', entidadId: slugify(e.region), papel: 'LUGAR' }] : [],
@@ -328,6 +369,7 @@ async function moverPoblacion(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'moverP
   distribucion[desde] = origen - movido;
   distribucion[hacia] = (distribucion[hacia] ?? 0) + movido;
   await ctx.tx.worldPopulation.update({ where: { id: fila.id }, data: { distribucion } });
+  if (e.sinSuceso) return { aplicado: true, sucesoId: null };
   const sucesoId = await registrar(ctx, {
     tipo: 'MIGRACION_FAUNA',
     actores: [{ entidadTipo: 'REGION', entidadId: slugify(e.desde), papel: 'AFECTADO' }, { entidadTipo: 'REGION', entidadId: slugify(e.hacia), papel: 'BENEFICIARIO' }],
@@ -414,4 +456,127 @@ async function crearPuntoZona(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'crearP
 async function retirarPuntoZona(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'retirarPuntoZona' }>): Promise<ResultadoEfecto> {
   const r = await ctx.tx.zonePoint.updateMany({ where: { id: e.zonePointId, saveId: ctx.saveId, activo: true }, data: { activo: false } });
   return r.count > 0 ? { aplicado: true, sucesoId: null } : NO_APLICADO;
+}
+
+// ─────────────────────────── Consecuencias aplazadas (CR-11) ───────────────────────────
+
+/// Deja una consecuencia pendiente. `aviso`: frase insinuada en el canal del personaje (solo para las
+/// que nacen de un acto de la jugadora). `npcId`: a quién afecta (para anularla o dispararla al
+/// cruzarse con él).
+async function programarConsecuencia(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'programarConsecuencia' }>): Promise<ResultadoEfecto> {
+  const random = ctx.random ?? Math.random;
+  const hoy = Math.floor(ctx.fictionalMinutes / 1440);
+  const d = e.disparo;
+  const desdeDia =
+    d.tipo === 'DIAS' ? hoy + d.min + Math.floor(random() * (d.max - d.min + 1))
+    : d.tipo === 'SUCESO' ? hoy
+    : hoy + (d.minDias ?? 0);
+  await ctx.tx.consecuencia.create({
+    data: {
+      saveId: ctx.saveId,
+      regla: e.regla,
+      tipoDisparo: d.tipo,
+      disparo: d as unknown as Prisma.InputJsonValue,
+      desdeDia,
+      regionSlug: d.tipo === 'LLEGAR_REGION' ? d.regionSlug : null,
+      npcId: d.tipo === 'ENCUENTRO_NPC' ? d.npcId : (e.npcId ?? null),
+      caducaEn: e.caducaDias !== undefined ? ctx.fictionalMinutes + e.caducaDias * 1440 : null,
+      datos: e.datos as Prisma.InputJsonValue,
+      origenSucesoId: ctx.causas?.[0] ?? null,
+      creadaEn: ctx.fictionalMinutes,
+    },
+  });
+  if (e.aviso) {
+    const ws = await ctx.tx.worldState.findUnique({ where: { saveId: ctx.saveId }, select: { fictionalDateLabel: true } });
+    await ctx.tx.logEntry.create({
+      data: { saveId: ctx.saveId, channel: 'CHARACTER', text: e.aviso, timeLabel: ws?.fictionalDateLabel ?? '', fictionalMinutes: ctx.fictionalMinutes, isSystemMessage: true },
+    });
+  }
+  return { aplicado: true, sucesoId: null };
+}
+
+async function anularConsecuencia(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'anularConsecuencia' }>): Promise<ResultadoEfecto> {
+  const r = await ctx.tx.consecuencia.updateMany({
+    where: { saveId: ctx.saveId, regla: e.regla, estado: 'PENDIENTE', ...(e.npcId ? { npcId: e.npcId } : {}) },
+    data: { estado: 'ANULADA', resueltaEn: ctx.fictionalMinutes },
+  });
+  return r.count > 0 ? { aplicado: true, sucesoId: null } : NO_APLICADO;
+}
+
+// ─────────────────────────── Reino ───────────────────────────
+
+/// Suma riqueza o felicidad (0-100) al reino de una facción de la partida o, sin `faccionSlug`, al
+/// Reino de la jugadora (CR-12: caravanas, visitante ilustre). Sin suceso propio: es estado y lo
+/// cuenta el suceso que lo causa.
+async function ajustarReino(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'ajustarReino' }>): Promise<ResultadoEfecto> {
+  let ownerKey = ownerKeyFor({ saveId: ctx.saveId });
+  if (e.faccionSlug) {
+    const faccion = await faccionViva(ctx, e.faccionSlug);
+    if (!faccion) return NO_APLICADO;
+    ownerKey = ownerKeyFor({ factionId: faccion.id });
+  }
+  const stats = await ctx.tx.kingdomStats.findUnique({ where: { ownerKey } });
+  if (!stats) return NO_APLICADO;
+  const riqueza = Math.max(0, stats.riqueza + (e.riqueza ?? 0));
+  const felicidad = Math.max(0, Math.min(100, stats.felicidad + (e.felicidad ?? 0)));
+  if (riqueza === stats.riqueza && felicidad === stats.felicidad) return NO_APLICADO;
+  await ctx.tx.kingdomStats.update({ where: { id: stats.id }, data: { riqueza, felicidad } });
+  return { aplicado: true, sucesoId: null };
+}
+
+// ─────────────────────────── Regalos ───────────────────────────
+
+/// Goirnos que regala un NPC sin nada en su equipo (10-30).
+export const GOIRNOS_REGALO_MIN = 10;
+export const GOIRNOS_REGALO_MAX = 30;
+
+/// Un NPC regala algo a la jugadora: un objeto de su propio equipo de catálogo o, si no lleva nada,
+/// unos goirnos. `mensaje` va al canal del personaje con lo regalado al final. Registra `REGALO`.
+async function regalarAlJugador(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'regalarAlJugador' }>): Promise<ResultadoEfecto> {
+  const [npc, save] = await Promise.all([
+    ctx.tx.npc.findFirst({ where: { id: e.npcId, worldId: ctx.worldId }, select: { id: true, name: true, items: { include: { item: true }, orderBy: { item: { name: 'asc' } } } } }),
+    ctx.tx.save.findUnique({ where: { id: ctx.saveId }, select: { characterName: true, worldState: { select: { fictionalDateLabel: true } } } }),
+  ]);
+  if (!npc || !save) return NO_APLICADO;
+  const objeto = npc.items[0]?.item ?? null;
+  let regalo: string;
+  if (objeto) {
+    await ctx.tx.inventoryItem.create({
+      data: {
+        saveId: ctx.saveId, name: objeto.name, description: objeto.description, origin: `regalo de ${npc.name}`,
+        catalogSlug: objeto.slug, statBonuses: objeto.statBonuses ?? undefined,
+      },
+    });
+    regalo = objeto.name;
+  } else {
+    const random = ctx.random ?? Math.random;
+    const goirnos = GOIRNOS_REGALO_MIN + Math.floor(random() * (GOIRNOS_REGALO_MAX - GOIRNOS_REGALO_MIN + 1));
+    await ctx.tx.save.update({ where: { id: ctx.saveId }, data: { goirnos: { increment: goirnos } } });
+    regalo = `${goirnos} goirnos`;
+  }
+  await ctx.tx.logEntry.create({
+    data: { saveId: ctx.saveId, channel: 'CHARACTER', text: `${e.mensaje} Te entrega ${regalo}.`, timeLabel: save.worldState?.fictionalDateLabel ?? '', fictionalMinutes: ctx.fictionalMinutes, isSystemMessage: true },
+  });
+  const sucesoId = await registrar(ctx, {
+    tipo: 'REGALO',
+    actores: [actorNpc(npc.id, 'AUTOR'), { entidadTipo: 'PERSONAJE', entidadId: ctx.saveId, papel: 'BENEFICIARIO' }],
+    datos: { personaje: npc.name, a: save.characterName, objeto: { nombre: regalo } },
+  });
+  return { aplicado: true, sucesoId };
+}
+
+/// Un NPC se lanza contra la jugadora: queda como combate pendiente (mismo camino que un viaje
+/// interrumpido por un agresor). Sin suceso propio: el desenlace del combate registra el suyo.
+async function forzarCombate(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'forzarCombate' }>): Promise<ResultadoEfecto> {
+  const [npc, save] = await Promise.all([
+    ctx.tx.npc.findFirst({ where: { id: e.npcId, worldId: ctx.worldId }, select: { slug: true } }),
+    ctx.tx.save.findUnique({ where: { id: ctx.saveId }, select: { pendingCombatNpcSlugs: true, worldState: { select: { fictionalDateLabel: true } } } }),
+  ]);
+  const pendientes = Array.isArray(save?.pendingCombatNpcSlugs) ? (save.pendingCombatNpcSlugs as string[]) : [];
+  if (!npc || !save || pendientes.includes(npc.slug)) return NO_APLICADO;
+  await ctx.tx.save.update({ where: { id: ctx.saveId }, data: { pendingCombatNpcSlugs: [...pendientes, npc.slug] } });
+  await ctx.tx.logEntry.create({
+    data: { saveId: ctx.saveId, channel: 'CHARACTER', text: e.mensaje, timeLabel: save.worldState?.fictionalDateLabel ?? '', fictionalMinutes: ctx.fictionalMinutes, isSystemMessage: true },
+  });
+  return { aplicado: true, sucesoId: null };
 }

@@ -1,14 +1,15 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ModalShell } from './ModalShell'
 import { useAjustes } from '../context/useAjustes'
 import { AJUSTES_POR_DEFECTO, type Ajustes } from '../lib/ajustes'
 import { ACCIONES_ATAJO, asignarAtajo, teclaValida, type AccionAtajo } from '../lib/atajos'
+import { getRitmoMundo, setRitmoMundo, type EstiloNarrador } from '../lib/api'
 
 // CFG-4 (hito 0.2, roadmap-front.md § 2.1) — panel de configuración: pestañas laterales, vista
 // previa en vivo (los cambios se ven al momento pero no se guardan hasta «Aplicar»), pie
 // Restablecer · Cancelar · Aplicar y aviso si se cierra con cambios sin aplicar.
 
-type Pestana = 'pantalla' | 'texto' | 'animaciones' | 'controles' | 'accesibilidad'
+type Pestana = 'pantalla' | 'texto' | 'animaciones' | 'controles' | 'accesibilidad' | 'partida'
 
 const PESTANAS: { id: Pestana; label: string; icono: string }[] = [
   { id: 'pantalla', label: 'Pantalla', icono: '🖥️' },
@@ -17,6 +18,9 @@ const PESTANAS: { id: Pestana; label: string; icono: string }[] = [
   { id: 'controles', label: 'Controles', icono: '⌨️' },
   { id: 'accesibilidad', label: 'Accesibilidad', icono: '👁' },
 ]
+
+/// CR-12 — solo con una partida abierta: lo que se guarda en ella, no en este navegador.
+const PESTANA_PARTIDA = { id: 'partida' as const, label: 'Partida', icono: '🌍' }
 
 function Opciones<T extends string>({ etiqueta, valor, opciones, onChange, ayuda }: {
   etiqueta: string
@@ -61,14 +65,33 @@ function Interruptor({ etiqueta, valor, onChange, ayuda }: { etiqueta: string; v
   )
 }
 
-export function PanelAjustes({ guardados, onCerrar }: { guardados: Ajustes; onCerrar: () => void }) {
+export function PanelAjustes({ guardados, partidaId = null, onCerrar }: { guardados: Ajustes; partidaId?: string | null; onCerrar: () => void }) {
   const { setAjustes, descartarVistaPrevia } = useAjustes()
   const [borrador, setBorrador] = useState<Ajustes>(guardados)
   const [pestana, setPestana] = useState<Pestana>('pantalla')
   const [confirmandoSalida, setConfirmandoSalida] = useState(false)
   // CFG-26 — acción cuyo atajo se está cambiando (espera la siguiente tecla).
   const [capturando, setCapturando] = useState<AccionAtajo | null>(null)
-  const hayCambios = JSON.stringify(borrador) !== JSON.stringify(guardados)
+  // CR-12 — «Ritmo del mundo» de la partida abierta (null hasta cargarlo).
+  const [ritmoGuardado, setRitmoGuardado] = useState<EstiloNarrador | null>(null)
+  const [ritmo, setRitmo] = useState<EstiloNarrador | null>(null)
+  useEffect(() => {
+    if (!partidaId) return
+    let vivo = true
+    getRitmoMundo(partidaId)
+      .then(({ estiloNarrador }) => {
+        if (!vivo) return
+        setRitmoGuardado(estiloNarrador)
+        setRitmo(estiloNarrador)
+      })
+      .catch(() => {})
+    return () => {
+      vivo = false
+    }
+  }, [partidaId])
+  const ritmoCambiado = partidaId !== null && ritmo !== null && ritmo !== ritmoGuardado
+  const hayCambios = JSON.stringify(borrador) !== JSON.stringify(guardados) || ritmoCambiado
+  const pestanas = partidaId ? [...PESTANAS, PESTANA_PARTIDA] : PESTANAS
 
   const cambiar = <K extends keyof Ajustes>(clave: K, valor: Ajustes[K]) => {
     const nuevo = { ...borrador, [clave]: valor }
@@ -82,11 +105,13 @@ export function PanelAjustes({ guardados, onCerrar }: { guardados: Ajustes; onCe
   const intentarCerrar = () => (hayCambios ? setConfirmandoSalida(true) : cancelar())
   const aplicar = () => {
     setAjustes(borrador)
+    if (ritmoCambiado && partidaId && ritmo) setRitmoMundo(partidaId, ritmo).catch(() => {})
     onCerrar()
   }
   const restablecer = () => {
     setBorrador(AJUSTES_POR_DEFECTO)
     setAjustes(AJUSTES_POR_DEFECTO, { vistaPrevia: true })
+    if (ritmo !== null) setRitmo('EQUILIBRADO')
   }
 
   const boton =
@@ -125,7 +150,7 @@ export function PanelAjustes({ guardados, onCerrar }: { guardados: Ajustes; onCe
     >
       <div className="flex min-h-[18rem] gap-4">
         <nav aria-label="Secciones de la configuración" className="flex w-40 shrink-0 flex-col gap-1">
-          {PESTANAS.map((p) => (
+          {pestanas.map((p) => (
             <button
               key={p.id}
               type="button"
@@ -251,6 +276,19 @@ export function PanelAjustes({ guardados, onCerrar }: { guardados: Ajustes; onCe
                 </div>
               ))}
             </div>
+          )}
+          {pestana === 'partida' && ritmo !== null && (
+            <Opciones
+              etiqueta="Ritmo del mundo"
+              valor={ritmo}
+              onChange={setRitmo}
+              ayuda="Cuánto pasa en el mundo por sí solo: escaramuzas, caravanas, plagas, incendios… Se puede cambiar en cualquier momento."
+              opciones={[
+                { valor: 'TRANQUILO', label: 'Tranquilo' },
+                { valor: 'EQUILIBRADO', label: 'Equilibrado' },
+                { valor: 'CAOTICO', label: 'Caótico' },
+              ]}
+            />
           )}
           {pestana === 'accesibilidad' && (
             <Interruptor

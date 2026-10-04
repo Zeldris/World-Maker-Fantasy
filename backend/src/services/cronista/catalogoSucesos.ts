@@ -49,12 +49,14 @@ export interface DatosSuceso {
   RUPTURA: { faccionA: string; faccionB: string };
   SABOTAJE: { autor: string; victima: string };
   ESPIONAJE: { autor: string; espiada: string };
+  ESCARAMUZA: { faccionA: string; faccionB: string; region?: string };
   // FACCION
   FACCION_CAE: { faccion: string };
   FACCION_ESCINDIDA: { faccion: string; nueva: string };
   FACCION_FUNDADA: { faccion: string; fundador?: string };
   FACCION_ABSORBIDA: { faccion: string; absorbente: string };
   CAMBIO_LIDER: { faccion: string; nuevoLider: string };
+  MALESTAR_INTERNO: { faccion: string };
   TERRITORIO_CONQUISTADO: { faccion: string; territorio: string; anteriorDueno?: string };
   TERRITORIO_PERDIDO: { faccion: string; territorio: string };
   EXPEDICION_SALE: { faccion: string; destino: string };
@@ -148,12 +150,14 @@ export const CATALOGO_SUCESOS: Catalogo = {
   TRATADO_COMERCIAL: { familia: 'DIPLOMACIA', importanciaBase: 5, plantilla: (d) => `${d.faccionA} y ${d.faccionB} firman un tratado comercial.` },
   RUPTURA: { familia: 'DIPLOMACIA', importanciaBase: 6, plantilla: (d) => `${d.faccionA} y ${d.faccionB} rompen relaciones.` },
   SABOTAJE: { familia: 'DIPLOMACIA', importanciaBase: 5, plantilla: (d) => `${d.autor} sabotea a ${d.victima}.` },
+  ESCARAMUZA: { familia: 'DIPLOMACIA', importanciaBase: 4, plantilla: (d) => `Gente de ${d.faccionA} y de ${d.faccionB} llega a las manos${d.region ? ` en ${d.region}` : ''}.` },
   ESPIONAJE: { familia: 'DIPLOMACIA', importanciaBase: 3, plantilla: (d) => `${d.autor} espía a ${d.espiada}.` },
   // FACCION
   FACCION_CAE: { familia: 'FACCION', importanciaBase: 10, plantilla: (d) => `${d.faccion} cae.` },
   FACCION_ESCINDIDA: { familia: 'FACCION', importanciaBase: 9, plantilla: (d) => `${d.faccion} se escinde: nace ${d.nueva}.` },
   FACCION_FUNDADA: { familia: 'FACCION', importanciaBase: 9, plantilla: (d) => `Se funda ${d.faccion}${d.fundador ? `, por ${d.fundador}` : ''}.` },
   FACCION_ABSORBIDA: { familia: 'FACCION', importanciaBase: 8, plantilla: (d) => `${d.absorbente} absorbe a ${d.faccion}.` },
+  MALESTAR_INTERNO: { familia: 'FACCION', importanciaBase: 3, plantilla: (d) => `Crece el descontento dentro de ${d.faccion}.` },
   CAMBIO_LIDER: { familia: 'FACCION', importanciaBase: 7, plantilla: (d) => `${d.nuevoLider} pasa a liderar ${d.faccion}.` },
   TERRITORIO_CONQUISTADO: { familia: 'FACCION', importanciaBase: 8, plantilla: (d) => `${d.faccion} conquista ${d.territorio}${d.anteriorDueno ? ` a ${d.anteriorDueno}` : ''}.` },
   TERRITORIO_PERDIDO: { familia: 'FACCION', importanciaBase: 7, plantilla: (d) => `${d.faccion} pierde ${d.territorio}.` },

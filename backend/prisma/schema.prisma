@@ -465,6 +465,7 @@ model Save {
   discoveredEntities DiscoveredEntity[]
   /// Libro de Sucesos (Cronista, CR-1) — todo lo que pasa en la partida, del jugador o del mundo.
   sucesos            Suceso[]
+  consecuencias      Consecuencia[]
   sessionFacts       SessionFact[]
   foundedFactions    Faction[]
 
@@ -1763,6 +1764,9 @@ model KingdomStats {
   /// dispara consolidar/perder territorios — ver el bloque de `diasCruzados` en turnResolution.ts.
   diasFelicidadAlta   Int      @default(0)
   diasFelicidadBaja   Int      @default(0)
+  /// CR-12 (12c, hito 0.2): días seguidos con déficit de comida (hambre). Cada 3 seguidos se
+  /// registra `HAMBRUNA` (cohesión −10 y posible `REBELION`, reacción `HAMBRUNA_DIVIDE`).
+  diasHambre          Int      @default(0)
   /// Solo filas de facción (Fase 4 del plan oct-2026, H-6): último día de ficción del MUNDO (floor de
   /// minutos/1440, máximo de sus partidas) para el que `advanceFactionEconomy` (factionEconomy.ts,
   /// llamado desde worldTick) ya produjo/consumió. Marcador de idempotencia: cada día se procesa una
@@ -3445,4 +3449,43 @@ enum OrigenSuceso {
   MUNDO
   MOTOR
   IA_PROPUESTA
+}
+
+// ─── Consecuencias aplazadas (roadmap-cronista.md § 7.2, CR-11, hito 0.2) ─────────────────────────
+
+enum EstadoConsecuencia {
+  PENDIENTE
+  DISPARADA
+  CADUCADA
+  ANULADA
+}
+
+/// Algo que un suceso deja pendiente y que ocurre más tarde, cuando se cumple su disparo
+/// (`services/cronista/consecuencias.ts`).
+model Consecuencia {
+  id             String             @id @default(cuid())
+  saveId         String
+  save           Save               @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  /// Id de la regla (`DEUDA_DE_VIDA`, `SUCESION_PENDIENTE`…).
+  regla          String
+  estado         EstadoConsecuencia @default(PENDIENTE)
+  /// `DIAS` | `LLEGAR_REGION` | `ENCUENTRO_NPC` | `SUCESO` — para filtrar barato por momento.
+  tipoDisparo    String
+  /// Disparo completo (§ 7.2).
+  disparo        Json
+  /// Desde qué día de ficción puede dispararse (`DIAS`: el día elegido al programarla).
+  desdeDia       Int                @default(0)
+  regionSlug     String?
+  npcId          String?
+  /// Minuto de ficción a partir del cual caduca sin dispararse.
+  caducaEn       Int?
+  /// Datos de la regla (quién, qué, dónde).
+  datos          Json
+  /// Suceso que la originó.
+  origenSucesoId String?
+  creadaEn       Int
+  resueltaEn     Int?
+  createdAt      DateTime           @default(now())
+
+  @@index([saveId, estado, tipoDisparo])
 }

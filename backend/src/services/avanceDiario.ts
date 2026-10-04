@@ -16,6 +16,8 @@ import { asegurarMundoDePartida } from './mundoPartida.js';
 import { crecerPoblacionDePartida, syncFactionPopulationToKingdomStats } from './population.js';
 import { avanzarAgendaDePartida } from './worldAgenda.js';
 import { procesarReacciones } from './cronista/reacciones.js';
+import { evaluarConsecuencias } from './cronista/consecuencias.js';
+import { narrarDia } from './cronista/narradorFondo.js';
 
 export const MAX_DIAS_POR_LLAMADA = 30;
 
@@ -38,18 +40,18 @@ export async function avanzarMundoHasta(
   random: () => number = Math.random,
 ): Promise<{ diasSimulados: number }> {
   await asegurarMundoDePartida(prisma, saveId);
-  const diasSimulados = await prisma.$transaction(
+  const { dias: diasSimulados, desde } = await prisma.$transaction(
     async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`avance|${saveId}`}))`;
       const estado = await tx.worldState.findUnique({ where: { saveId }, select: { ultimoDiaSimulado: true } });
-      if (!estado) return 0;
+      if (!estado) return { dias: 0, desde: 0 };
       const dias = diasPendientes(estado.ultimoDiaSimulado, diaDeFiccion(fictionalMinutes));
-      if (dias === 0) return 0;
+      if (dias === 0) return { dias: 0, desde: 0 };
 
       await crecerPoblacionDePartida(tx, saveId, dias, random);
       await syncFactionPopulationToKingdomStats(tx, { saveId });
       await tx.worldState.update({ where: { saveId }, data: { ultimoDiaSimulado: estado.ultimoDiaSimulado + dias } });
-      return dias;
+      return { dias, desde: estado.ultimoDiaSimulado + 1 };
     },
     { maxWait: 10_000, timeout: 20_000 },
   );
@@ -64,9 +66,14 @@ export async function avanzarMundoHasta(
     await avanzarExpedicionesDePartida(prisma, worldId, saveId, dia, random);
     // La agenda lleva sus propias transacciones y avanza por umbrales de tiempo (no por día).
     await avanzarAgendaDePartida(prisma, saveId);
+    // CR-12: el narrador de fondo, una vez por cada día simulado (cada día lo reclama una sola llamada,
+    // la que lo simuló arriba).
+    for (let d = desde; d < desde + diasSimulados; d++) await narrarDia(prisma, saveId, d, random);
   }
-  // CR-10: reacciones de lo que haya pasado en el turno o en estos días.
+  // CR-10: reacciones de lo que haya pasado en el turno o en estos días; CR-11: consecuencias que
+  // toquen ahora (días, región), y otra vuelta de reacciones por lo que hayan registrado.
   await procesarReacciones(prisma, saveId, random);
+  if ((await evaluarConsecuencias(prisma, saveId, {}, random)).disparadas > 0) await procesarReacciones(prisma, saveId, random);
   return { diasSimulados };
 }
 
@@ -88,7 +95,11 @@ export function registrarAvanceTrasAcciones(app: FastifyInstance, prisma: Prisma
     const saveId = (request.params as { id?: string } | undefined)?.id;
     if (!saveId) return;
     await avanzarSiCruzaDia(prisma, saveId).catch((err) => console.error('[avanceDiario] error tras la acción:', err));
-    // CR-10: reacciones de lo que haya registrado la acción (si cruzó día, ya se procesaron).
+    // CR-10/CR-11: reacciones de lo que haya registrado la acción y consecuencias que toquen (p. ej.
+    // al llegar a otra región). Si cruzó día, ya se hizo arriba; repetirlo no cambia nada.
     await procesarReacciones(prisma, saveId).catch((err) => console.error('[reacciones] error tras la acción:', err));
+    await evaluarConsecuencias(prisma, saveId)
+      .then((r) => (r.disparadas > 0 ? procesarReacciones(prisma, saveId) : undefined))
+      .catch((err) => console.error('[consecuencias] error tras la acción:', err));
   });
 }

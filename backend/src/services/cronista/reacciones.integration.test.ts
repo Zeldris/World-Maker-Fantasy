@@ -92,7 +92,7 @@ describe('reacciones inmediatas (CR-10)', () => {
     expect(await sucesos('EDIFICIO_DANADO')).toHaveLength(1);
   });
 
-  it('una cascada que se alimenta a sí misma se corta en el tope de niveles con CONSECUENCIA_PERDIDA', async () => {
+  it('una cascada que se alimenta a sí misma se corta en el tope de niveles y lo que sobra pasa al día siguiente', async () => {
     const eco: Reaccion = {
       id: 'ECO_DE_PRUEBA',
       escucha: ['TORMENTA'],
@@ -106,7 +106,10 @@ describe('reacciones inmediatas (CR-10)', () => {
     expect(r).toEqual({ procesados: TOPE_NIVEL_CASCADA, aplazados: 1 });
     const tormentas = await sucesos('TORMENTA');
     expect(Math.max(...tormentas.map((t) => t.nivelCascada))).toBe(TOPE_NIVEL_CASCADA);
-    expect(await sucesos('CONSECUENCIA_PERDIDA')).toHaveLength(1);
+    // CR-11: lo que pasa del tope queda como consecuencia del día siguiente.
+    const aplazadas = await prisma.consecuencia.findMany({ where: { saveId, regla: 'REACCION_APLAZADA', estado: 'PENDIENTE' } });
+    expect(aplazadas).toHaveLength(1);
+    expect(aplazadas[0]!.desdeDia).toBe(Math.floor(MIN / 1440) + 1);
     expect(await prisma.suceso.count({ where: { saveId, reaccionesPendientes: true } })).toBe(0);
   });
 });

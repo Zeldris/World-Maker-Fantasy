@@ -114,11 +114,12 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
       expect(objetivo?.bando).not.toBe(p.bando);
     }
 
-    // Corre turnos autónomos hasta que el encuentro se resuelva — tope de seguridad generoso
-    // (nunca debería hacer falta tantos con solo 4 combatientes) para que un bug real de bucle
-    // infinito falle el test en vez de colgarlo para siempre.
+    // Corre turnos autónomos hasta que el encuentro se resuelva — tope de seguridad generoso para
+    // que un bug real de bucle infinito falle el test en vez de colgarlo para siempre. Medido el
+    // 2026-10-04 (diagnosing-bugs, intermitente de este test): de 120 combates, 5 pasaron de 60
+    // turnos (el más largo, 93) y todos terminaron; el tope antiguo de 60 fallaba ~1 de cada 40.
     let terminado = false;
-    for (let i = 0; i < 60 && !terminado; i++) {
+    for (let i = 0; i < 400 && !terminado; i++) {
       const resultado = await resolverTurnoAutonomo({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
       if (resultado?.encounterTerminado) terminado = true;
     }

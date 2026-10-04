@@ -16,6 +16,8 @@ describe('catálogo de sucesos', () => {
       'PRECIOS_DISPARADOS', 'REINO_FUNDADO', 'EDIFICIO_CONSTRUIDO', 'EDIFICIO_DANADO', 'REBELION', 'CONSOLIDACION', 'HAMBRUNA', 'LLEGADA_POBLADORES',
       'VISITANTE_ILUSTRE', 'HALLAZGO_RUINA', 'HALLAZGO_DOCUMENTO', 'LEYENDA_NACE', 'SISTEMA_MUNDO_INICIADO', 'CONSECUENCIA_PERDIDA', 'HILO_ABIERTO',
       'HILO_CERRADO',
+      // CR-12 (narrador de fondo).
+      'ESCARAMUZA', 'MALESTAR_INTERNO',
     ];
     expect(Object.keys(CATALOGO_SUCESOS).sort()).toEqual([...esperados].sort());
     for (const def of Object.values(CATALOGO_SUCESOS)) {
