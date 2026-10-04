@@ -72,6 +72,16 @@ async function faccionLideradaPor(ctx: CtxReaccion, npcId: string) {
   return ctx.tx.faction.findFirst({ where: { saveId: ctx.suceso.saveId, liderNpcId: npcId, disueltaEn: null } });
 }
 
+/// Testigo de la muerte que es de la facción de la víctima (el primero, si hay varios).
+async function vengadorDe(ctx: CtxReaccion) {
+  const victimaId = actor(ctx.suceso, 'NPC', 'VICTIMA');
+  const testigos = ctx.suceso.actores.filter((a) => a.entidadTipo === 'NPC' && a.papel === 'TESTIGO').map((a) => a.entidadId);
+  if (!victimaId || testigos.length === 0 || !actor(ctx.suceso, 'PERSONAJE', 'AUTOR')) return null;
+  const victima = await ctx.tx.npc.findUnique({ where: { id: victimaId }, select: { faction: true } });
+  if (!victima?.faction) return null;
+  return ctx.tx.npc.findFirst({ where: { id: { in: testigos }, faction: victima.faction }, select: { id: true, name: true }, orderBy: { slug: 'asc' } });
+}
+
 const reinoDelJugador = (ctx: CtxReaccion) => ctx.tx.faction.findFirst({ where: { saveId: ctx.suceso.saveId, origenSlug: null } });
 
 // ─────────────────────────── Reacciones ───────────────────────────
@@ -163,6 +173,21 @@ export const REACCIONES: Reaccion[] = [
         disparo: { tipo: 'LLEGAR_REGION', regionSlug: CUALQUIERA_SALVO_ORIGEN, origenSlug: slugify(lugar.region), minDias: 3 },
         caducaDias: 20, npcId: perdonado, datos: { npcId: perdonado },
         aviso: `Algo te dice que volverás a ver a ${npc.name}.`,
+      }];
+    },
+  },
+  {
+    // CR-11: como mucho un vengador, el testigo de la facción de la víctima (regla VENGANZA_PARIENTE).
+    id: 'MUERTE_CAUSADA_VENGANZA',
+    escucha: ['MUERTE_CAUSADA'],
+    prioridad: 30,
+    condicion: async (ctx) => !!(await vengadorDe(ctx)),
+    efectos: async (ctx) => {
+      const vengador = (await vengadorDe(ctx))!;
+      return [{
+        tipo: 'programarConsecuencia', regla: 'VENGANZA_PARIENTE', disparo: { tipo: 'DIAS', min: 5, max: 15 },
+        caducaDias: 30, npcId: vengador.id, datos: { vengadorId: vengador.id, victimaId: actor(ctx.suceso, 'NPC', 'VICTIMA')! },
+        aviso: `${vengador.name} lo ha visto todo, y no lo va a olvidar.`,
       }];
     },
   },

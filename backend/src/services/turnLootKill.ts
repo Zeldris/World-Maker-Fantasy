@@ -28,6 +28,7 @@ import type { RollResult } from './dice.js';
 import { Prisma } from '@prisma/client';
 import type { CondicionFisica, AbilityEffect } from '@prisma/client';
 import { ambitoFacciones } from './mundoPartida.js';
+import { testigosEnLugar } from './cronista/testigos.js';
 
 export interface LootModeResult {
   actualLootedNames: string[];
@@ -429,9 +430,12 @@ export async function applyKillSideEffects(params: {
   // de grupo el golpe puede ser de un compañero: el autor es el bando del jugador, que lo representa.
   const save = await tx.save.findUnique({ where: { id: saveId }, select: { characterName: true, currentLocationId: true } });
   if (save && (nuevaCondicion === 'MUERTO' || nuevaCondicion === 'CONVALECIENTE')) {
+    // CR-11: quién lo vio (para una posible venganza).
+    const testigos = nuevaCondicion === 'MUERTO' && save.currentLocationId ? await testigosEnLugar(tx, saveId, worldId, save.currentLocationId, npc.id) : [];
     const actores = [
       { entidadTipo: 'PERSONAJE' as const, entidadId: saveId, papel: 'AUTOR' as const },
       { entidadTipo: 'NPC' as const, entidadId: npc.id, papel: 'VICTIMA' as const },
+      ...testigos.map((id) => ({ entidadTipo: 'NPC' as const, entidadId: id, papel: 'TESTIGO' as const })),
     ];
     const comun = { saveId, fictionalMinutes: nuevoFictionalMinutes, regionSlug: activeRegion ? slugify(activeRegion) : null, locationId: save.currentLocationId, origen: 'JUGADOR' as const, actores };
     if (nuevaCondicion === 'MUERTO') {

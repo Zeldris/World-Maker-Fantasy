@@ -983,7 +983,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   líder → `MUERTE_LIDER` → cohesión −25; perder el último territorio → `FACCION_CAE`; tormenta
   extrema → tirada de daño a edificios del jugador en la región. `GUERRA_DECLARADA` ya la registra
   `recordFactionEvent`. Las que faltan van con su tarea (anotado en ellas): CR-11, CR-12, CR-14, CR-16.
-- **CR-11** Consecuencias aplazadas con sus disparos y las 7 iniciales (§ 7.2). **M** Incluye los
+- ~~**CR-11** Consecuencias aplazadas con sus disparos y las 7 iniciales (§ 7.2). **M**~~ ✅ 2026-10-04 (4 reglas; las otras 3, con su tarea — ver decisiones). Incluye los
   efectos `programarConsecuencia`/`anularConsecuencia` y `ajustarPrecios` (para `PUEBLO_ABANDONADO`)
   en `efectos.ts` (CR-9), las reacciones que programan consecuencias (`SUCESION_PENDIENTE` tras
   `MUERTE_LIDER`, `DEUDA_DE_VIDA` tras `PERDON_CONCEDIDO`, `PROMESA_VENCE` tras `PROMESA`) y pasar
@@ -1034,7 +1034,15 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   perdonado aparece como punto de NPC a una celda de la jugadora; al cruzarse (`ENCUENTRO_NPC` =
   punto activo a ≤ 1,5 celdas en su lugar actual) regala un objeto de su equipo o 10-30 goirnos
   (efecto nuevo `regalarAlJugador`, suceso `REGALO`) y se va; sin cruce, se va a los 2 días
-  (`alCaducar`). **Falta:** `VENGANZA_PARIENTE` con testigos (paso 2c).
+  (`alCaducar`). **Paso 2c hecho (2026-10-04):** al matar, los NPC con nombre con punto activo en
+  el lugar quedan como `TESTIGO` del suceso (`testigos.ts`); `VENGANZA_PARIENTE` (reacción a
+  `MUERTE_CAUSADA` si un testigo es de la facción de la víctima; aviso «X lo ha visto todo, y no lo
+  va a olvidar.»; 5-15 días, caduca a los 30): el vengador aparece a una celda y, al cruzarse,
+  ataca (efecto nuevo `forzarCombate`, mismo camino que un viaje interrumpido); si muere antes, se
+  pierde. Arreglo de paso: dos `NOT` en el mismo filtro de Prisma se pisaban y colaban muertos como
+  vivos (ahora `AND`). **Pendiente, con su tarea:** `PROMESA_VENCE` (cuando algo registre promesas),
+  `RUMOR_DE_HAZANA` (Fase 5), `PUEBLO_ABANDONADO` (comercio local), refugiados al Reino (pregunta 1
+  de Álvaro), ayuda en combate de la deuda de vida (`0.3`).
 - **CR-12** Narrador de fondo con presupuesto, enfriamientos y reglas de facción (§ 7.3);
   agenda Serhu como primera cadena. **L** Al hacerlo, revisar `UX-6` (roadmap-front-ux.md): hoy
   la ambientación se cancela al enviar una acción porque no pesa nada; con contenido real puede

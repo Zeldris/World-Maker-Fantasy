@@ -71,7 +71,8 @@ export type Efecto =
   | { tipo: 'retirarPuntoZona'; zonePointId: string }
   | { tipo: 'programarConsecuencia'; regla: string; disparo: Disparo; datos: Record<string, unknown>; caducaDias?: number; aviso?: string; npcId?: string }
   | { tipo: 'anularConsecuencia'; regla: string; npcId?: string }
-  | { tipo: 'regalarAlJugador'; npcId: string; mensaje: string };
+  | { tipo: 'regalarAlJugador'; npcId: string; mensaje: string }
+  | { tipo: 'forzarCombate'; npcId: string; mensaje: string };
 
 export interface ResultadoEfecto {
   aplicado: boolean;
@@ -131,6 +132,8 @@ export async function aplicarEfecto(ctx: CtxEfecto, e: Efecto): Promise<Resultad
       return anularConsecuencia(ctx, e);
     case 'regalarAlJugador':
       return regalarAlJugador(ctx, e);
+    case 'forzarCombate':
+      return forzarCombate(ctx, e);
   }
 }
 
@@ -534,4 +537,20 @@ async function regalarAlJugador(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'rega
     datos: { personaje: npc.name, a: save.characterName, objeto: { nombre: regalo } },
   });
   return { aplicado: true, sucesoId };
+}
+
+/// Un NPC se lanza contra la jugadora: queda como combate pendiente (mismo camino que un viaje
+/// interrumpido por un agresor). Sin suceso propio: el desenlace del combate registra el suyo.
+async function forzarCombate(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'forzarCombate' }>): Promise<ResultadoEfecto> {
+  const [npc, save] = await Promise.all([
+    ctx.tx.npc.findFirst({ where: { id: e.npcId, worldId: ctx.worldId }, select: { slug: true } }),
+    ctx.tx.save.findUnique({ where: { id: ctx.saveId }, select: { pendingCombatNpcSlugs: true, worldState: { select: { fictionalDateLabel: true } } } }),
+  ]);
+  const pendientes = Array.isArray(save?.pendingCombatNpcSlugs) ? (save.pendingCombatNpcSlugs as string[]) : [];
+  if (!npc || !save || pendientes.includes(npc.slug)) return NO_APLICADO;
+  await ctx.tx.save.update({ where: { id: ctx.saveId }, data: { pendingCombatNpcSlugs: [...pendientes, npc.slug] } });
+  await ctx.tx.logEntry.create({
+    data: { saveId: ctx.saveId, channel: 'CHARACTER', text: e.mensaje, timeLabel: save.worldState?.fictionalDateLabel ?? '', fictionalMinutes: ctx.fictionalMinutes, isSystemMessage: true },
+  });
+  return { aplicado: true, sucesoId: null };
 }

@@ -29,9 +29,10 @@ const inteligencia = (attributes: unknown) => Number((attributes as { inteligenc
 export async function candidatosALider(tx: Tx, saveId: string, worldId: string, faccion: Faction) {
   const npcs = await tx.npc.findMany({
     where: {
-      worldId, faction: faccion.name, kind: 'PRINCIPAL', ...npcVivoEnPartida(saveId),
+      worldId, faction: faccion.name, kind: 'PRINCIPAL',
       ...(faccion.liderNpcId ? { id: { not: faccion.liderNpcId } } : {}),
-      NOT: { npcStates: { some: { saveId, OR: [{ muerto: true }, { condicionFisica: 'MUERTO' }] } } },
+      // Ojo: `npcVivoEnPartida` ya trae su propio NOT; dos NOT en el mismo objeto se pisan.
+      AND: [npcVivoEnPartida(saveId), { NOT: { npcStates: { some: { saveId, condicionFisica: 'MUERTO' } } } }],
     },
     select: { id: true, name: true, attributes: true, npcStates: { where: { saveId, cargo: 'heredero', lealtadFaccionId: faccion.id }, select: { id: true } } },
   });
@@ -99,7 +100,7 @@ const REFUGIADOS: ReglaConsecuencia = {
 /// NPC vivo en la partida (ni muerto fuera de escena, ni a manos del jugador, ni de mundo).
 async function npcVivo(tx: Tx, saveId: string, npcId: string) {
   return tx.npc.findFirst({
-    where: { id: npcId, ...npcVivoEnPartida(saveId), NOT: { npcStates: { some: { saveId, condicionFisica: 'MUERTO' } } } },
+    where: { id: npcId, AND: [npcVivoEnPartida(saveId), { NOT: { npcStates: { some: { saveId, condicionFisica: 'MUERTO' } } } }] },
     select: { id: true, slug: true, name: true, temperamento: true },
   });
 }
@@ -155,4 +156,43 @@ const DEUDA_DE_VIDA_REGALO: ReglaConsecuencia = {
   },
 };
 
-export const REGLAS_DEL_JUEGO: ReglaConsecuencia[] = [SUCESION_PENDIENTE, REFUGIADOS, DEUDA_DE_VIDA, DEUDA_DE_VIDA_REGALO];
+// ─────────────────────────── Venganza ───────────────────────────
+
+/// A los 5-15 días, el vengador aparece a una celda de la jugadora (si sigue vivo). Al cruzarse,
+/// combate (VENGANZA_ATAQUE). Si no llegan a cruzarse (3 días), se va.
+const VENGANZA_PARIENTE: ReglaConsecuencia = {
+  id: 'VENGANZA_PARIENTE',
+  alDisparar: async (ctx) => {
+    const { vengadorId } = ctx.consecuencia.datos as { vengadorId: string };
+    const [npc, save] = await Promise.all([
+      npcVivo(ctx.tx, ctx.saveId, vengadorId),
+      ctx.tx.save.findUnique({ where: { id: ctx.saveId }, select: { currentLocationId: true, zonaPosX: true, zonaPosY: true } }),
+    ]);
+    if (!npc || !save?.currentLocationId) return null;
+    const x0 = save.zonaPosX ?? 400;
+    const x = x0 + CELL_SIZE_PX <= LIENZO_ANCHO ? x0 + CELL_SIZE_PX : x0 - CELL_SIZE_PX;
+    return [
+      { tipo: 'crearPuntoZona', locationId: save.currentLocationId, puntoTipo: 'NPC', targetSlug: npc.slug, x, y: save.zonaPosY ?? 300, label: npc.name },
+      {
+        tipo: 'programarConsecuencia', regla: 'VENGANZA_ATAQUE', disparo: { tipo: 'ENCUENTRO_NPC', npcId: npc.id },
+        caducaDias: 3, npcId: npc.id, datos: { npcId: npc.id, locationId: save.currentLocationId },
+      },
+    ];
+  },
+};
+
+const VENGANZA_ATAQUE: ReglaConsecuencia = {
+  id: 'VENGANZA_ATAQUE',
+  alDisparar: async (ctx) => {
+    const { npcId } = ctx.consecuencia.datos as { npcId: string };
+    const npc = await npcVivo(ctx.tx, ctx.saveId, npcId);
+    if (!npc) return null;
+    return [{ tipo: 'forzarCombate', npcId: npc.id, mensaje: `${npc.name} te ha encontrado. «Vi lo que hiciste.»` }];
+  },
+  alCaducar: async (ctx) => {
+    const punto = await puntoDelNpc(ctx);
+    return punto ? [{ tipo: 'retirarPuntoZona', zonePointId: punto.id }] : [];
+  },
+};
+
+export const REGLAS_DEL_JUEGO: ReglaConsecuencia[] = [SUCESION_PENDIENTE, REFUGIADOS, DEUDA_DE_VIDA, DEUDA_DE_VIDA_REGALO, VENGANZA_PARIENTE, VENGANZA_ATAQUE];
