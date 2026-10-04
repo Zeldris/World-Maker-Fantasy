@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import Fastify from 'fastify';
 import { prisma } from '../lib/prisma.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
-import { avanzarMundoHasta } from './avanceDiario.js';
+import { avanzarMundoHasta, registrarAvanceTrasAcciones } from './avanceDiario.js';
 
 // CR-7 (hito 0.2, roadmap-cronista.md § 13.1) — el mundo de una partida avanza con SU reloj, contra
 // Postgres real: crece su población (no la de otra partida ni la del catálogo) y cada día se
@@ -77,5 +78,23 @@ describe('avanzarMundoHasta (CR-7)', () => {
     expect(copiasTras.every((k) => k.ultimoDiaProducido === 3)).toBe(true);
     const catalogoTras = await prisma.kingdomStats.findMany({ where: { faction: { worldId, saveId: null } }, select: { id: true, ultimoDiaProducido: true, comida: true } });
     expect(catalogoTras).toEqual(catalogoAntes);
+  }, 30_000);
+
+  it('una acción que mueve el reloj fuera del turno (POST /saves/:id/...) también avanza el mundo', async () => {
+    const a = await crearPartida('Avance diario (CR-7) tras acción');
+    const app = Fastify();
+    registrarAvanceTrasAcciones(app, prisma);
+    // Acción de prueba: como descansar, adelanta el reloj dos días.
+    app.post<{ Params: { id: string } }>('/saves/:id/accion-de-prueba', async (request) => {
+      await prisma.worldState.update({ where: { saveId: request.params.id }, data: { fictionalMinutes: 480 + 2 * 1440 } });
+      return { ok: true };
+    });
+    const res = await app.inject({ method: 'POST', url: `/saves/${a}/accion-de-prueba` });
+    expect(res.statusCode).toBe(200);
+    // El gancho va tras enviar la respuesta.
+    await vi.waitFor(async () => {
+      expect((await prisma.worldState.findUniqueOrThrow({ where: { saveId: a } })).ultimoDiaSimulado).toBe(2);
+    });
+    await app.close();
   }, 30_000);
 });

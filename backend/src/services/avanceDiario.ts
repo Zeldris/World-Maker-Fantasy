@@ -9,6 +9,7 @@
 // en `NpcState.muerto` de la partida) y la agenda del conflicto. El Reino del jugador ya avanza por
 // días en `dailyTick.ts`.
 import type { PrismaClient } from '@prisma/client';
+import type { FastifyInstance } from 'fastify';
 import { decaerRelaciones, producirFacciones } from './factionEconomy.js';
 import { avanzarExpedicionesDePartida } from './factionExpeditions.js';
 import { asegurarMundoDePartida } from './mundoPartida.js';
@@ -64,4 +65,25 @@ export async function avanzarMundoHasta(
     await avanzarAgendaDePartida(prisma, saveId);
   }
   return { diasSimulados };
+}
+
+/// Avanza el mundo de la partida solo si su reloj ha cruzado algún día sin simular (una lectura si
+/// no hay nada que hacer).
+export async function avanzarSiCruzaDia(prisma: PrismaClient, saveId: string): Promise<{ diasSimulados: number }> {
+  const ws = await prisma.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true, ultimoDiaSimulado: true } });
+  if (!ws || diaDeFiccion(ws.fictionalMinutes) <= ws.ultimoDiaSimulado) return { diasSimulados: 0 };
+  return avanzarMundoHasta(prisma, saveId, ws.fictionalMinutes);
+}
+
+/// Tras cada POST correcto a una partida (`/saves/:id/...`): moverse por la zona, descansar,
+/// recolectar, cazar, el modo dinámico… cualquier acción que mueva el reloj sin pasar por el turno
+/// narrado avanza también el mundo de la partida. Nunca rompe la respuesta (va tras enviarla).
+export function registrarAvanceTrasAcciones(app: FastifyInstance, prisma: PrismaClient): void {
+  app.addHook('onResponse', async (request, reply) => {
+    if (request.method !== 'POST' || reply.statusCode >= 400) return;
+    if (!request.routeOptions.url?.startsWith('/saves/:id')) return;
+    const saveId = (request.params as { id?: string } | undefined)?.id;
+    if (!saveId) return;
+    await avanzarSiCruzaDia(prisma, saveId).catch((err) => console.error('[avanceDiario] error tras la acción:', err));
+  });
 }

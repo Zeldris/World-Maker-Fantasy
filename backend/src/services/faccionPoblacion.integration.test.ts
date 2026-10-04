@@ -1,73 +1,63 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { prisma } from '../lib/prisma.js';
-import { growAllPopulations, syncFactionPopulationToKingdomStats } from './population.js';
+import { getDefaultUserId } from '../lib/defaultUser.js';
+import { asegurarMundoDePartida } from './mundoPartida.js';
+import { crecerPoblacionDePartida, syncFactionPopulationToKingdomStats } from './population.js';
 
 /// Reproducción poblacional de facciones (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.6, 2026-09-21) —
-/// verifica el flujo real de dos pasos que corre en worldTick.ts: growAllPopulations incrementa
-/// las filas WorldPopulation FACCION reales (Clan Serhu), y syncFactionPopulationToKingdomStats
-/// refleja ese crecimiento en el KingdomStats real de la Faction — sin mocks, contra Postgres.
-describe('Reproducción poblacional de facción — flujo real de dos pasos (2026-09-21)', () => {
-  let worldId: string;
+/// verifica el flujo real de dos pasos del avance diario de una partida (CR-7, hito 0.2):
+/// `crecerPoblacionDePartida` incrementa sus filas WorldPopulation FACCION (Clan Serhu), y
+/// `syncFactionPopulationToKingdomStats` refleja ese crecimiento en el KingdomStats de la copia de
+/// la Faction en esa partida — sin mocks, contra Postgres.
+describe('Reproducción poblacional de facción — flujo real de dos pasos (CR-7)', () => {
+  let saveId: string;
   let serhuFactionId: string;
-  let poblacionRowId: string;
-  let originalPoblacion: number;
-  let originalUpdatedAt: Date;
 
   beforeAll(async () => {
     const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
-    worldId = world.id;
-    const serhu = await prisma.faction.findFirstOrThrow({ where: { worldId, slug: 'clan-serhu', saveId: null } });
-    serhuFactionId = serhu.id;
-    const poblacionRow = await prisma.worldPopulation.findFirstOrThrow({
-      where: { worldId, targetType: 'FACCION', targetSlug: 'clan-serhu-poblacion' },
+    const save = await prisma.save.create({
+      data: {
+        userId: await getDefaultUserId(),
+        worldId: world.id,
+        characterName: 'Reproducción de facción (CR-7)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'x',
+        characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        portraitInitial: 'R',
+        worldState: { create: { fictionalMinutes: 480 } },
+      },
     });
-    poblacionRowId = poblacionRow.id;
-    originalPoblacion = poblacionRow.poblacion;
-    originalUpdatedAt = poblacionRow.updatedAt;
-
-    // Retrasa `updatedAt` 60 días reales para forzar un delta de crecimiento real y medible —
-    // mismo criterio que growAllPopulations.test.ts (population.test.ts).
-    await prisma.worldPopulation.update({
-      where: { id: poblacionRowId },
-      data: { updatedAt: new Date(Date.now() - 60 * 24 * 60 * 60_000) },
-    });
+    saveId = save.id;
+    await asegurarMundoDePartida(prisma, saveId);
+    serhuFactionId = (await prisma.faction.findFirstOrThrow({ where: { saveId, origenSlug: 'clan-serhu' } })).id;
   });
 
   afterAll(async () => {
-    // Restaura el estado real del sandbox — esta fila es compartida (World, no Save), no se borra.
-    await prisma.worldPopulation.update({ where: { id: poblacionRowId }, data: { poblacion: originalPoblacion, updatedAt: originalUpdatedAt } });
+    await prisma.save.delete({ where: { id: saveId } });
   });
 
-  it('growAllPopulations incrementa la fila FACCION real, y el sync la refleja en el KingdomStats real de esa Faction', async () => {
-    // `WorldPopulation`/`KingdomStats` de Faction son de `World`, compartidas entre TODA la suite
-    // (mismo criterio que el resto de `WorldPopulation`) — otro test corriendo en paralelo puede
-    // haber tocado esta misma fila justo antes. Se compara por DELTA relativo al valor real leído
-    // aquí mismo, nunca contra un número fijo capturado en `beforeAll` (ese sí puede quedar
-    // obsoleto por la carrera).
-    const rowBeforeGrow = await prisma.worldPopulation.findUniqueOrThrow({ where: { id: poblacionRowId } });
+  it('crecer la población de la partida incrementa su fila FACCION, y el sync la refleja en el KingdomStats de su copia', async () => {
+    const fila = () => prisma.worldPopulation.findFirstOrThrow({ where: { saveId, targetType: 'FACCION', targetSlug: 'clan-serhu-poblacion' } });
+    const antes = await fila();
 
-    const growResult = await growAllPopulations(prisma);
-    expect(growResult.updated).toBeGreaterThan(0);
+    expect(await crecerPoblacionDePartida(prisma, saveId, 60, () => 0)).toBeGreaterThan(0);
+    const tras = await fila();
+    expect(tras.poblacion).toBeGreaterThan(antes.poblacion);
 
-    const rowAfterGrow = await prisma.worldPopulation.findUniqueOrThrow({ where: { id: poblacionRowId } });
-    expect(rowAfterGrow.poblacion).toBeGreaterThan(rowBeforeGrow.poblacion);
-
-    const syncResult = await syncFactionPopulationToKingdomStats(prisma);
+    const syncResult = await syncFactionPopulationToKingdomStats(prisma, { saveId });
     expect(syncResult.synced).toBeGreaterThan(0);
 
-    const kingdomStatsAfter = await prisma.kingdomStats.findFirstOrThrow({ where: { factionId: serhuFactionId } });
-    expect(kingdomStatsAfter.poblacion).toBe(rowAfterGrow.poblacion);
+    const kingdomStats = await prisma.kingdomStats.findFirstOrThrow({ where: { factionId: serhuFactionId } });
+    expect(kingdomStats.poblacion).toBe(tras.poblacion);
     // Los otros 3 campos (soldados/trabajadores/visitantes) también se re-escriben en cada sync,
-    // reflejando su fila WorldPopulation correspondiente — no solo poblacion.
-    // Contra el valor real de cada fila (2026-10-02): growAllPopulations también hace crecer
-    // soldados/trabajadores según el tiempo real desde su último crecimiento, así que un número
-    // fijo (500) fallaba en una base local con horas de uso. En la CI la base está recién sembrada.
+    // reflejando su fila WorldPopulation de la partida — no solo poblacion.
     const filas = await prisma.worldPopulation.findMany({
-      where: { worldId, targetType: 'FACCION', targetSlug: { in: ['clan-serhu-soldados', 'clan-serhu-trabajadores', 'clan-serhu-visitantes'] }, saveId: null },
+      where: { saveId, targetType: 'FACCION', targetSlug: { in: ['clan-serhu-soldados', 'clan-serhu-trabajadores', 'clan-serhu-visitantes'] } },
     });
     const valor = (slug: string) => filas.find((f) => f.targetSlug === slug)!.poblacion;
-    expect(kingdomStatsAfter.soldados).toBe(valor('clan-serhu-soldados'));
-    expect(kingdomStatsAfter.trabajadores).toBe(valor('clan-serhu-trabajadores'));
-    expect(kingdomStatsAfter.visitantes).toBe(valor('clan-serhu-visitantes'));
+    expect(kingdomStats.soldados).toBe(valor('clan-serhu-soldados'));
+    expect(kingdomStats.trabajadores).toBe(valor('clan-serhu-trabajadores'));
+    expect(kingdomStats.visitantes).toBe(valor('clan-serhu-visitantes'));
   }, 15_000);
 });

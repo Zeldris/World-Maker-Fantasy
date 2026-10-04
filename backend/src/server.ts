@@ -13,6 +13,8 @@ import { savesRoutes } from './routes/saves.js';
 import { worldRoutes } from './routes/world.js';
 import { factionRelationsRoutes } from './routes/factionRelations.js';
 import { startWorldTickWorker, stopWorldTickWorker } from './workers/worldTick.js';
+import { prisma } from './lib/prisma.js';
+import { registrarAvanceTrasAcciones } from './services/avanceDiario.js';
 import { ollamaGenerate } from './lib/ollama.js';
 import { narratorWarmupPrompt } from './services/narrador.js';
 
@@ -51,6 +53,8 @@ await app.register(fastifyStatic, {
   prefix: '/images/',
 });
 await app.register(healthRoutes);
+// CR-7 (hito 0.2): acciones que mueven el reloj fuera del turno también avanzan el mundo de la partida.
+registrarAvanceTrasAcciones(app, prisma);
 await app.register(turnRoutes);
 await app.register(entornoRoutes);
 await app.register(savesRoutes);

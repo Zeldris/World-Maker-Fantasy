@@ -907,7 +907,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   jugador↔facción (bajas de guerra, expansión, diplomacia, mercado) siguen contra la facción de
   catálogo porque su almacén y su economía no se copian hasta `CR-7`; ya guardan el `saveId` de la
   partida. Test: el conflicto de una partida no toca el de otra ni el del catálogo.
-- **CR-7** `avanceDiario` por partida; sacar las funciones de mundo de `worldTick.ts`. **M** Incluye
+- ~~**CR-7** `avanceDiario` por partida; sacar las funciones de mundo de `worldTick.ts`. **M**~~ ✅ 2026-10-04. Incluye
   lo que pasa de `CR-6`: expediciones de facción de la partida (`factionExpeditions.ts`, con
   `Expedicion.saveId`) y sus muertes de NPC en `NpcState.muerto` en vez de `Npc.muertoEnMundo`;
   economía y decaimiento de presión de las copias; y entonces almacén/mercado de las copias y las
@@ -937,10 +937,15 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   guerra y expansión van contra la copia de la facción en la partida (su almacén ya se copia), y
   `worldTick` deja de avanzar el catálogo (crecimiento, reino de facciones, economía): solo queda lo
   de tiempo real (tránsitos, supervivencia, cadáveres), como pide D-1. `asegurarMundoDePartida` no
-  hace nada sin `WorldState`. **Falta:** llamar al avance diario también al moverse por la zona (los
-  tránsitos ya pasan por `narrateAndPersistTurn`), y borrar las versiones de mundo que ya no se
-  llaman (`growAllPopulations`, `advanceFactionEconomy`, `advanceFactionExpeditions`,
-  `advanceWorldAgenda`) pasando sus tests a la partida.
+  hace nada sin `WorldState`. **Paso 5 hecho (2026-10-04):** `registrarAvanceTrasAcciones` (gancho
+  `onResponse` de Fastify, `server.ts`): tras cada POST correcto a `/saves/:id/...` (zona, descanso,
+  recolección, caza, modo dinámico…) avanza el mundo si el reloj cruzó un día (una lectura si no);
+  los tránsitos ya pasan por `narrateAndPersistTurn`. Borradas `growAllPopulations` y
+  `advanceWorldAgenda` (sus tests, a la partida). `advanceFactionEconomy` y
+  `advanceFactionExpeditions` quedan solo como ejecución sobre el catálogo que usan sus tests de
+  integración del núcleo (no las llama nadie más). Pendiente para la fase de pruebas: el test P3.2
+  del viaje interrumpido falla a veces en la suite completa (pasa aislado; hipótesis: un encuentro
+  ambiental al azar inicia combate y anula la reanudación) — diagnosticar con `diagnosing-bugs`.
 - **CR-8** Script de migración (§ 16). **M**
 - **Hecho cuando:** dos partidas del mismo mundo divergen (una mata a un NPC, la otra no lo ve);
   todos los tests de integración actuales pasan.

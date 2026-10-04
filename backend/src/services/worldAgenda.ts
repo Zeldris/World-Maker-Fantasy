@@ -213,10 +213,6 @@ async function depleteClanPopulation(tx: TxClient, poblacion: FiltroPoblacion, t
   }
 }
 
-/// Llamado desde el tick periódico de fondo (worldTick.ts), igual que `growAllPopulations`. Solo
-/// toca la partida jugable real de hoy (`characterName === 'Gorhorn'`, mismo criterio que
-/// `classAbilityUnlocksFor`) — siembra la agenda inicial si está vacía (partidas ya en curso antes
-/// de que esto existiera) y avanza cualquier etapa ya vencida.
 type SucesoDeEtapa = Omit<NuevoSuceso, 'saveId' | 'fictionalMinutes' | 'origen'>;
 const faccion = (slug: string, papel: 'AUTOR' | 'VICTIMA' | 'AFECTADO') => ({ entidadTipo: 'FACCION' as const, entidadId: slug, papel });
 
@@ -246,20 +242,10 @@ type EstadoAgenda = Prisma.WorldStateGetPayload<{ select: typeof SELECT_ESTADO_A
 /// Solo la partida jugable real de hoy (`characterName === 'Gorhorn'`) y viva.
 const PARTIDA_CON_AGENDA = { characterName: 'Gorhorn', endedAt: null } as const;
 
-export async function advanceWorldAgenda(prisma: PrismaClient): Promise<{ statesAdvanced: number; stagesCrossed: number }> {
-  const states = await prisma.worldState.findMany({ where: { save: PARTIDA_CON_AGENDA }, select: SELECT_ESTADO_AGENDA });
-
-  let statesAdvanced = 0;
-  let totalStagesCrossed = 0;
-  for (const state of states) {
-    const r = await avanzarEstadoDeAgenda(prisma, state);
-    totalStagesCrossed += r.stagesCrossed;
-    if (r.advanced) statesAdvanced += 1;
-  }
-  return { statesAdvanced, stagesCrossed: totalStagesCrossed };
-}
-
-/// CR-7 (hito 0.2): la agenda de UNA partida, desde su avance diario (`avanceDiario.ts`).
+/// CR-7 (hito 0.2): la agenda de UNA partida, desde su avance diario (`avanceDiario.ts`). Solo la
+/// partida jugable real de hoy (`characterName === 'Gorhorn'`, mismo criterio que
+/// `classAbilityUnlocksFor`) — siembra la agenda inicial si está vacía (partidas ya en curso antes
+/// de que esto existiera) y avanza cualquier etapa ya vencida.
 export async function avanzarAgendaDePartida(prisma: PrismaClient, saveId: string): Promise<{ advanced: boolean; stagesCrossed: number }> {
   const state = await prisma.worldState.findFirst({ where: { saveId, save: PARTIDA_CON_AGENDA }, select: SELECT_ESTADO_AGENDA });
   return state ? avanzarEstadoDeAgenda(prisma, state) : { advanced: false, stagesCrossed: 0 };

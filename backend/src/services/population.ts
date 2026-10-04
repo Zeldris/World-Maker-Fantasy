@@ -91,7 +91,7 @@ export async function decrementPopulationOnDeath(
 
   // Bug real (auditoría 2026-08-06): antes esto era un `findUnique` + `update` con el valor de
   // `poblacion` capturado en memoria — sin ningún bloqueo, una muerte resuelta en un turno en vivo
-  // y un tick de `growAllPopulations` (worldTick.ts) casi simultáneos sobre la MISMA fila podían
+  // y un crecimiento diario (`crecerPoblacionDePartida`) casi simultáneos sobre la MISMA fila podían
   // pisarse: el que escribe último sobrescribe con un número calculado sobre un `poblacion` ya
   // obsoleto, borrando en silencio la muerte o el crecimiento del otro. `updateMany` con
   // `{ decrement: 1 }` es atómico de verdad en Postgres — el guard `poblacion: { gt: 0 }` evita
@@ -103,10 +103,8 @@ export async function decrementPopulationOnDeath(
   });
 }
 
-const MS_POR_DIA = 24 * 60 * 60_000;
-
 /// CR-7 (hito 0.2): crecimiento de una fila en `dias` días de ficción — compuesto a la tasa de su
-/// tipo, con el mismo umbral y techo que `growAllPopulations`. La parte fraccionaria se gana con esa
+/// tipo, con umbral mínimo de reproducción y techo (`poblacionMax`). La parte fraccionaria se gana con esa
 /// probabilidad (sin ella, una población pequeña de crecimiento lento nunca sumaría un individuo en
 /// un solo día). Puro salvo por `random`.
 export function crecimientoEnDias(
@@ -146,60 +144,15 @@ export async function crecerPoblacionDePartida(
   return cambiadas;
 }
 
-/// Crecimiento prorrateado por tiempo real desde la última actualización de cada fila (docs/16
-/// § 3.3), llamado desde el tick periódico de `worldTick.ts` — nunca desde el turno síncrono, ya
-/// que `WorldPopulation` es del `World`, no de una `Save` concreta.
-///
-/// Solo se escribe la fila (y por tanto se avanza su `updatedAt`) cuando el crecimiento calculado
-/// cruza al menos 1 individuo entero — si actualizáramos en cada tick aunque el delta fuera 0,
-/// `updatedAt` se resetearía sin parar y el tiempo transcurrido nunca llegaría a acumularse lo
-/// bastante para cruzar el siguiente entero. Dejar la fila intacta hace que seguir esperando en el
-/// próximo tick sea exactamente igual de válido que esperar más entre ticks.
-export async function growAllPopulations(prisma: Pick<PrismaClient, 'worldPopulation'>): Promise<{ updated: number }> {
-  // CR-7 (hito 0.2): solo el catálogo; la población de cada partida crece con su propio reloj
-  // (`crecerPoblacionDePartida`, desde `avanceDiario.ts`).
-  const rows = await prisma.worldPopulation.findMany({ where: { saveId: null } });
-  const now = Date.now();
-  let updated = 0;
-
-  for (const row of rows) {
-    if (row.poblacion < UMBRAL_MINIMO_REPRODUCCION) continue;
-    const elapsedDays = (now - row.updatedAt.getTime()) / MS_POR_DIA;
-    if (elapsedDays <= 0) continue;
-    const deltaSinTope = Math.floor(row.poblacion * GROWTH_RATE_PER_DAY[row.targetType] * elapsedDays);
-    // Techo real (auditoría de elementos desconectados, 2026-08-23): `poblacionMax` llevaba
-    // sembrado desde el principio como "techo de referencia para cálculos futuros", pero nunca se
-    // aplicaba — el crecimiento era literalmente ilimitado. Se acota aquí, mismo criterio de
-    // aproximación ya aceptado por el resto de la función (basado en el `row.poblacion` ya leído
-    // en este ciclo, no en una relectura atómica — la carrera con una muerte/crecimiento
-    // concurrente ya es un riesgo asumido, ver comentario de `decrementPopulationOnDeath` arriba).
-    const delta = Math.min(deltaSinTope, Math.max(0, row.poblacionMax - row.poblacion));
-    if (delta < 1) continue;
-
-    // Bug real (auditoría 2026-08-06, ver comentario de decrementPopulationOnDeath arriba): mismo
-    // riesgo de carrera con una muerte resuelta en un turno en vivo justo entre este `findMany` y
-    // este `update` — `{ increment: delta }` es atómico, no pisa lo que haya escrito el otro lado
-    // mientras tanto (a diferencia de sumar `delta` a un `row.poblacion` ya capturado en memoria).
-    await prisma.worldPopulation.update({
-      where: { id: row.id },
-      data: { poblacion: { increment: delta } },
-    });
-    updated++;
-  }
-
-  return { updated };
-}
-
 /// Sincroniza `WorldPopulation` (targetType FACCION) → `KingdomStats` de cada `Faction` de
 /// catálogo (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.6, 2026-09-21) — el "reino" de una facción ya
-/// generalizado en § 4.2 necesita reflejar el crecimiento real de `growAllPopulations` para que
+/// generalizado en § 4.2 necesita reflejar el crecimiento real de la población para que
 /// tenga efecto observable (antes de esto, la tasa `FACCION` existía pero no escribía en ningún
 /// sitio que el resto del motor leyera). 4 filas por facción, `targetSlug` = `<faction.slug>-
 /// poblacion`/`-soldados`/`-trabajadores`/`-visitantes` (ver worldPopulation.ts) — cada una
 /// alimenta el campo homónimo de `KingdomStats`, mismos 4 conceptos ya usados por el reino del
-/// jugador (`tickKingdomOneDay`). Llamada desde el mismo tick que `growAllPopulations`
-/// (`worldTick.ts`) — nunca desde el turno del jugador, mismo criterio que el resto de
-/// `WorldPopulation` (es del `World`, no de una `Save`).
+/// jugador (`tickKingdomOneDay`). Llamada desde el avance diario de la partida (`avanceDiario.ts`),
+/// tras hacer crecer su población.
 export async function syncFactionPopulationToKingdomStats(
   prisma: Pick<PrismaClient, 'worldPopulation' | 'faction' | 'kingdomStats'> | Prisma.TransactionClient,
   /// CR-7 (hito 0.2): `{ saveId }` para una partida (desde `avanceDiario.ts`); el tick del mundo
