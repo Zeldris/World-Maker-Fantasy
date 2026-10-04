@@ -41,8 +41,9 @@ describe('oportunidades (CR-12)', () => {
 
   it('campo de batalla: un caído y un herido en tierras de la atacada; se retiran al vencer el plazo', async () => {
     const saveId = await partida('Oportunidad (CR-12) batalla');
-    const pista = await abrir(saveId, (ctx) => abrirCampoDeBatalla(ctx, 'Clan Serhu', 'Concordia de Hierro'));
-    expect(pista).toMatch(/^Dicen que en .+ aún quedan caídos/);
+    const abierta = await abrir(saveId, (ctx) => abrirCampoDeBatalla(ctx, 'Clan Serhu', 'Concordia de Hierro'));
+    expect(abierta?.pista).toMatch(/^Dicen que en .+ aún quedan caídos/);
+    expect(abierta?.venceEn).toBe(480 + (10 + PLAZO_CAMPO_BATALLA) * DIA);
     const puntos = await prisma.zonePoint.findMany({ where: { saveId, tipo: 'NPC', activo: true } });
     expect(puntos).toHaveLength(2);
     const estados = await prisma.npcState.findMany({ where: { saveId, scope: puntos[0]!.locationId }, include: { npc: { select: { faction: true } } } });
@@ -60,7 +61,7 @@ describe('oportunidades (CR-12)', () => {
 
   it('caravana: vencer a su guardia da la carga; vencer a otro no', async () => {
     const saveId = await partida('Oportunidad (CR-12) caravana');
-    expect(await abrir(saveId, (ctx) => abrirCaravana(ctx, 'Concordia de Hierro', 'Clan Serhu'))).toMatch(/^La caravana pasará por /);
+    expect((await abrir(saveId, (ctx) => abrirCaravana(ctx, 'Concordia de Hierro', 'Clan Serhu')))?.pista).toMatch(/^La caravana pasará por /);
     const punto = await prisma.zonePoint.findFirstOrThrow({ where: { saveId, tipo: 'NPC', activo: true } });
     expect(punto.label).toBe('Caravana de Concordia de Hierro');
     const guardia = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: punto.targetSlug } });
@@ -88,7 +89,7 @@ describe('oportunidades (CR-12)', () => {
       include: { location: true },
     });
     await prisma.building.update({ where: { id: edificio.id }, data: { status: 'DANADO' } });
-    expect(await abrir(saveId, (ctx) => abrirEncargo(ctx, 'Clan Serhu', edificio.id, edificio.locationId!, edificio.location!.name))).toContain('buscan madera o piedra');
+    expect((await abrir(saveId, (ctx) => abrirEncargo(ctx, 'Clan Serhu', edificio.id, edificio.locationId!, edificio.location!.name)))?.pista).toContain('buscan madera o piedra');
     const punto = await prisma.zonePoint.findFirstOrThrow({ where: { saveId, tipo: 'NPC', activo: true } });
     const encargado = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: punto.targetSlug } });
     const regalo = (categoria: string) => suceso({

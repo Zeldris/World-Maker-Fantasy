@@ -371,11 +371,20 @@ vuelva más tarde. Eso exige estas reglas de experiencia:
 - **UX-36 · Leyendas siempre a una tecla** — atajo `Y` (se añade a la lista de `CFG-26`; `L` sigue
   siendo la Enciclopedia y `Q`/`E` el cambio de panel de `PAN-1`) y enlace desde cada notificación
   y rumor a su entrada. **S**
-- **UX-38 · Noticias del mundo que se pueden tocar** (usuaria, 2026-10-04, al dar valor al canal
+- ~~**UX-38 · Noticias del mundo que se pueden tocar** (usuaria, 2026-10-04, al dar valor al canal
   «El mundo» en `CR-12`) — cada entrada del canal lleva icono de categoría (guerra, comercio,
   naturaleza, tu Reino); los nombres de facciones, lugares y NPC son enlaces a su ficha o a su sitio
   en el mapa; y si la noticia abre una oportunidad (`CR-12` paso 12d), una etiqueta con distancia y
-  plazo («a 6 h de ti · quedan 2 días»). Filtrar por categoría, más adelante. **S**
+  plazo («a 6 h de ti · quedan 2 días»). Filtrar por categoría, más adelante. **S**~~ ✅ 2026-10-04:
+  `LogEntry.noticia` (migración `20261004230000_noticia_log`) con categoría, oportunidad y resumen;
+  `NoticiaMundo.tsx` pinta el icono (⚔️ conflicto, 🐪 comercio, 🌿 naturaleza, 🏰 tu Reino), la
+  etiqueta «📍 En {lugar} · hasta el día N» y el resumen «Mientras pasaban los días…» plegado (`UX-31`
+  en el registro). Los enlaces a la ficha ya existían (`EnciclopediaLinkedText`). Lo pendiente pasa a
+  `UX-39`.
+- **UX-39 · Noticias del mundo, segunda parte** (lo que quedó de `UX-38`, 2026-10-04) — distancia
+  en la etiqueta de la oportunidad («a 6 h de ti», según dónde esté el personaje en cada momento),
+  enlace del lugar a su sitio en el mapa, filtro del canal por categoría, y categoría también para
+  las noticias que no salen del narrador de fondo (expediciones, agenda Serhu). **S**
 
 ---
 
@@ -446,7 +455,7 @@ del hook `useGamePhase`.
 | **UX-C · Orden** | UX-9, UX-10, UX-11, UX-12 | Una cosa importante a la vez y en el orden en que se lee. |
 | **UX-D · Entrada y salida** | UX-15, UX-17, UX-18, UX-19, UX-20 | Empezar más rápido, salir sin sustos, Atrás como en un juego. |
 | **UX-E · Pulido** | UX-6, UX-21, UX-22, UX-23, UX-25…28 | Foco, esperas, deshacer, primeros pasos. |
-| **UX-F · Mundo vivo** | UX-29…UX-36, UX-38 | Llega con las fases 3-5 del Cronista (hitos `0.2`-`0.3`); `UX-29` y `UX-35` antes de que el Cronista use la IA. |
+| **UX-F · Mundo vivo** | UX-29…UX-36, UX-38, UX-39 | Llega con las fases 3-5 del Cronista (hitos `0.2`-`0.3`); `UX-29` y `UX-35` antes de que el Cronista use la IA. |
 
 El hito exacto de cada fase lo fija el [mapa de roadmaps](21-roadmap.md#qué-entra-en-cada-hito).
 

@@ -20,8 +20,46 @@ import type { CtxConsecuencia, ReglaConsecuencia } from './consecuencias.js';
 
 type Tx = Prisma.TransactionClient;
 
+/// UX-38: categoría de una noticia (icono en «El mundo»).
+export type CategoriaNoticia = 'CONFLICTO' | 'COMERCIO' | 'NATURALEZA' | 'REINO';
+
+/// Oportunidad que abre una noticia: dónde y hasta cuándo (minuto de ficción).
+export interface OportunidadNoticia {
+  lugar: string;
+  locationId: string;
+  venceEn: number;
+}
+
+/// Metadatos que guarda `LogEntry.noticia` (UX-38).
+export interface MetaNoticia {
+  categoria?: CategoriaNoticia;
+  oportunidad?: OportunidadNoticia;
+  resumen?: true;
+}
+
+/// Categoría según la familia del suceso del Libro.
+export function categoriaDeFamilia(familia: string): CategoriaNoticia | undefined {
+  switch (familia) {
+    case 'DIPLOMACIA':
+    case 'FACCION':
+    case 'VIDA_MUERTE':
+      return 'CONFLICTO';
+    case 'ECONOMIA':
+      return 'COMERCIO';
+    case 'NATURAL':
+    case 'CLIMA':
+      return 'NATURALEZA';
+    case 'REINO':
+      return 'REINO';
+    default:
+      return undefined;
+  }
+}
+
 export interface Noticia {
   texto: string;
+  categoria?: CategoriaNoticia;
+  oportunidad?: OportunidadNoticia;
   /// Nombres de las facciones implicadas (`Faction.name`).
   facciones: string[];
   /// Región donde pasa (`Location.region`); null si no tiene lugar concreto.
@@ -88,9 +126,16 @@ async function aliadasDelReino(tx: Tx, saveId: string): Promise<Set<string>> {
   return new Set(relaciones.map((r) => (r.sourceFaction.id === reino.id ? r.targetFaction.name : r.sourceFaction.name)));
 }
 
-async function escribir(tx: Tx, saveId: string, texto: string, fictionalMinutes: number): Promise<void> {
+async function escribir(tx: Tx, saveId: string, texto: string, fictionalMinutes: number, meta: MetaNoticia | null): Promise<void> {
   const ws = await tx.worldState.findUnique({ where: { saveId }, select: { fictionalDateLabel: true } });
-  await tx.logEntry.create({ data: { saveId, channel: 'WORLD', text: texto, timeLabel: ws?.fictionalDateLabel ?? '', fictionalMinutes, isSystemMessage: true } });
+  await tx.logEntry.create({
+    data: { saveId, channel: 'WORLD', text: texto, timeLabel: ws?.fictionalDateLabel ?? '', fictionalMinutes, isSystemMessage: true, ...(meta ? { noticia: meta as Prisma.InputJsonValue } : {}) },
+  });
+}
+
+function metaDe(noticia: Noticia): MetaNoticia | null {
+  const meta: MetaNoticia = { ...(noticia.categoria ? { categoria: noticia.categoria } : {}), ...(noticia.oportunidad ? { oportunidad: noticia.oportunidad } : {}) };
+  return Object.keys(meta).length > 0 ? meta : null;
 }
 
 /// Da una noticia a la partida: al momento, o como rumor que llega días después. Devuelve cuándo.
@@ -112,13 +157,14 @@ export async function darNoticia(
   const cuando = entrega(noticia, personaje);
   if (!cuando) return null;
   const texto = cuando.rumor ? comoRumor(noticia.texto) : noticia.texto;
+  const meta = metaDe(noticia);
   if (cuando.dias === 0) {
-    await escribir(tx, ctx.saveId, texto, ctx.fictionalMinutes);
+    await escribir(tx, ctx.saveId, texto, ctx.fictionalMinutes, meta);
     return cuando;
   }
   await aplicarEfecto(
     { tx, saveId: ctx.saveId, worldId: ctx.worldId, fictionalMinutes: ctx.fictionalMinutes, origen: 'MOTOR', causas: ctx.causa ? [ctx.causa] : [] },
-    { tipo: 'programarConsecuencia', regla: 'NOTICIA', disparo: { tipo: 'DIAS', min: cuando.dias, max: cuando.dias }, datos: { texto }, caducaDias: cuando.dias + 30 },
+    { tipo: 'programarConsecuencia', regla: 'NOTICIA', disparo: { tipo: 'DIAS', min: cuando.dias, max: cuando.dias }, datos: { texto, meta }, caducaDias: cuando.dias + 30 },
   );
   return cuando;
 }
@@ -127,8 +173,8 @@ export async function darNoticia(
 export const NOTICIA: ReglaConsecuencia = {
   id: 'NOTICIA',
   alDisparar: async (ctx: CtxConsecuencia) => {
-    const { texto } = ctx.consecuencia.datos as { texto: string };
-    await escribir(ctx.tx, ctx.saveId, texto, ctx.fictionalMinutes);
+    const { texto, meta } = ctx.consecuencia.datos as { texto: string; meta?: MetaNoticia | null };
+    await escribir(ctx.tx, ctx.saveId, texto, ctx.fictionalMinutes, meta ?? null);
     return [];
   },
 };
@@ -151,7 +197,7 @@ export async function agruparNoticias(prisma: PrismaClient, saveId: string, marc
     await tx.logEntry.deleteMany({ where: { id: { in: entradas.map((e) => e.id) } } });
     await tx.logEntry.create({
       data: {
-        saveId, channel: 'WORLD', isSystemMessage: true, timeLabel: ultima.timeLabel, fictionalMinutes: ultima.fictionalMinutes,
+        saveId, channel: 'WORLD', isSystemMessage: true, timeLabel: ultima.timeLabel, fictionalMinutes: ultima.fictionalMinutes, noticia: { resumen: true },
         text: [CABECERA_RESUMEN, ...entradas.map((e) => `• ${e.text}`)].join('\n'),
       },
     });

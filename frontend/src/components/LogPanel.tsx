@@ -7,6 +7,7 @@ import { CombatExchangeBadge } from './CombatExchangeBadge'
 import { DiceRollReveal } from './DiceRollReveal'
 import { PanelRivets } from './Rivet'
 import { EnciclopediaLinkedText } from './EnciclopediaLinkedText'
+import { NoticiaMundo } from './NoticiaMundo'
 import { useEnciclopediaLink } from '../context/useEnciclopediaLink'
 import { OfferCard } from './OfferCard'
 import { combatKeyFor } from '../lib/gameViewHelpers'
@@ -429,14 +430,25 @@ export const LogPanel = memo(function LogPanel({
                   y la de Gistera se leían pegadas en la misma frase corrida, sin ninguna pausa entre
                   ambas. Inocuo para el resto de narraciones (sin `\n\n` en el texto, se ve idéntico). */}
               {/* CFG-13 (hito 0.2) — tamaño, fuente e interlineado de la narración desde los ajustes. */}
-              <p className="texto-narracion whitespace-pre-line">
-                <EnciclopediaLinkedText
+              {/* UX-38 — noticia de «El mundo» con categoría, oportunidad o resumen plegable. */}
+              {entry.noticia ? (
+                <NoticiaMundo
                   text={entry.text}
-                  index={enciclopediaIndex}
-                  onDetail={(t) => onEntityDetail?.(t)}
-                  onQuickInsert={(t) => onEntityQuickInsert?.(t)}
+                  noticia={entry.noticia}
+                  texto={(t) => (
+                    <EnciclopediaLinkedText text={t} index={enciclopediaIndex} onDetail={(x) => onEntityDetail?.(x)} onQuickInsert={(x) => onEntityQuickInsert?.(x)} />
+                  )}
                 />
-              </p>
+              ) : (
+                <p className="texto-narracion whitespace-pre-line">
+                  <EnciclopediaLinkedText
+                    text={entry.text}
+                    index={enciclopediaIndex}
+                    onDetail={(t) => onEntityDetail?.(t)}
+                    onQuickInsert={(t) => onEntityQuickInsert?.(t)}
+                  />
+                </p>
+              )}
               {/* Bug real (2026-08-14, petición explícita: "ahora hay 3" — la tirada del jugador
                   salía dos veces, aquí y dentro de CombatExchangeBadge más abajo): el backend
                   copia la tirada del jugador de un intercambio al campo genérico `roll` por

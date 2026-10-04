@@ -860,6 +860,10 @@ model LogEntry {
   /// una ubicación, etc. — texto fijo, nunca generado por el LLM) para excluirlo de
   /// `lastNarration` (turnResolution.ts) sin depender de reconocer el texto por coincidencia.
   isSystemMessage   Boolean    @default(false)
+  /// UX-38 (hito 0.2): metadatos de una noticia de «El mundo» — `{ categoria?: 'CONFLICTO' |
+  /// 'COMERCIO' | 'NATURALEZA' | 'REINO', oportunidad?: { lugar, locationId, venceEn }, resumen?:
+  /// true }`. Null en el resto de entradas.
+  noticia           Json?
   timeLabel         String
   /// XP ganada en esta entrada, si alguna (docs/mecanicas/10-niveles-xp-reino.md § 6) — permite mostrar
   /// "+50 XP" en el Diario y auditar el nivel sumando el log.

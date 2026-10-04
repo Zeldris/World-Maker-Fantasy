@@ -26,8 +26,8 @@ import { CATALOGO_SUCESOS, type DatosSuceso, type TipoSuceso } from './catalogoS
 import { aplicarEfectos, type CtxEfecto, type Efecto } from './efectos.js';
 import { REGIONES_VECINAS } from './regiones.js';
 import { registrarSuceso, type ActorSuceso } from './sucesos.js';
-import { darNoticia } from './noticias.js';
-import { abrirCampoDeBatalla, abrirCaravana, abrirEncargo, type CtxOportunidad } from './oportunidades.js';
+import { categoriaDeFamilia, darNoticia } from './noticias.js';
+import { abrirCampoDeBatalla, abrirCaravana, abrirEncargo, type CtxOportunidad, type OportunidadAbierta } from './oportunidades.js';
 import { ownerKeyFor } from '../reinoOwner.js';
 
 type Tx = Prisma.TransactionClient;
@@ -53,9 +53,9 @@ export interface Instancia {
   /// `absorberFaccion` registra `FACCION_ABSORBIDA`).
   suceso?: { datos: DatosSuceso[TipoSuceso]; actores: ActorSuceso[]; regionSlug?: string | null; locationId?: string | null };
   efectos: Efecto[];
-  /// CR-12 (12d): oportunidad con plazo que abre (campo de batalla, caravana, encargo); devuelve la
-  /// pista que se añade a la noticia, o null si no se pudo abrir.
-  oportunidad?: (ctx: CtxOportunidad) => Promise<string | null>;
+  /// CR-12 (12d): oportunidad con plazo que abre (campo de batalla, caravana, encargo); su pista se
+  /// añade a la noticia. Null si no se pudo abrir.
+  oportunidad?: (ctx: CtxOportunidad) => Promise<OportunidadAbierta | null>;
   /// Para decidir a quién llega la noticia (nombres de facción y `Location.region`).
   noticia: { facciones: string[]; region: string | null };
 }
@@ -362,10 +362,15 @@ export async function narrarDia(
       presupuesto -= costeDe(elegida.tipo);
       await guardar();
       const { texto } = await tx.suceso.findUniqueOrThrow({ where: { id: sucesoId }, select: { texto: true } });
-      const pista = elegida.instancia.oportunidad
+      const oportunidad = elegida.instancia.oportunidad
         ? await elegida.instancia.oportunidad({ tx, saveId, worldId: save.worldId, fictionalMinutes: minutos, random, causa: sucesoId })
         : null;
-      await darNoticia(tx, { saveId, worldId: save.worldId, fictionalMinutes: minutos, causa: sucesoId }, { ...elegida.instancia.noticia, texto: pista ? `${texto} ${pista}` : texto });
+      await darNoticia(tx, { saveId, worldId: save.worldId, fictionalMinutes: minutos, causa: sucesoId }, {
+        ...elegida.instancia.noticia,
+        texto: oportunidad ? `${texto} ${oportunidad.pista}` : texto,
+        categoria: categoriaDeFamilia(CATALOGO_SUCESOS[elegida.tipo].familia),
+        ...(oportunidad ? { oportunidad: { lugar: oportunidad.lugar, locationId: oportunidad.locationId, venceEn: oportunidad.venceEn } } : {}),
+      });
       return { sucesoId, tipo: elegida.tipo, presupuesto };
     },
     { maxWait: 10_000, timeout: 20_000 },

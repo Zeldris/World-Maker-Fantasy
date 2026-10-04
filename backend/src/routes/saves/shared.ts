@@ -129,9 +129,12 @@ export function toFrontendLogEntry(entry: {
   npcAbilityUsed?: unknown;
   playerAbilityUsed?: unknown;
   initiativeRoll?: unknown;
+  noticia?: unknown;
 }) {
   return {
     id: entry.id,
+    // UX-38: categoría, oportunidad y resumen de una noticia de «El mundo».
+    noticia: entry.noticia ?? undefined,
     channel: entry.channel.toLowerCase(),
     text: entry.text,
     timeLabel: entry.timeLabel,

@@ -34,6 +34,14 @@ export const REPUTACION_ENCARGO = 80;
 /// Lo que vale como «materiales» para una reparación (categoría del catálogo).
 export const CATEGORIAS_MATERIALES = ['madera', 'piedra'];
 
+/// Lo que devuelve abrir una oportunidad: la pista para la noticia y dónde y hasta cuándo (UX-38).
+export interface OportunidadAbierta {
+  pista: string;
+  lugar: string;
+  locationId: string;
+  venceEn: number;
+}
+
 export interface CtxOportunidad {
   tx: Tx;
   saveId: string;
@@ -78,6 +86,10 @@ async function ponerNpc(ctx: CtxOportunidad, npc: { id: string; slug: string }, 
   return r.id ?? null;
 }
 
+const abierta = (ctx: CtxOportunidad, pista: string, lugar: string, locationId: string, plazo: number): OportunidadAbierta => ({
+  pista, lugar, locationId, venceEn: ctx.fictionalMinutes + plazo * 1440,
+});
+
 /// Retira los puntos cuando vence el plazo.
 async function cerrarEn(ctx: CtxOportunidad, plazo: number, puntos: (string | null)[]) {
   await aplicarEfecto(ctxEfecto(ctx), {
@@ -87,8 +99,8 @@ async function cerrarEn(ctx: CtxOportunidad, plazo: number, puntos: (string | nu
 }
 
 /// Tras una escaramuza entre `atacante` y `atacada`: un caído y un herido en tierras de la atacada.
-/// Devuelve la pista para la noticia, o null si no hay quien haga de caído y de herido.
-export async function abrirCampoDeBatalla(ctx: CtxOportunidad, atacante: string, atacada: string): Promise<string | null> {
+/// Null si no hay quien haga de caído y de herido.
+export async function abrirCampoDeBatalla(ctx: CtxOportunidad, atacante: string, atacada: string): Promise<OportunidadAbierta | null> {
   const [deA, deB] = await Promise.all([plantillasDe(ctx.tx, ctx.worldId, atacante), plantillasDe(ctx.tx, ctx.worldId, atacada)]);
   const caido = elegir(deB, ctx.random) ?? elegir(deA, ctx.random);
   const herido = elegir(deA.filter((n) => n.id !== caido?.id), ctx.random) ?? elegir(deB.filter((n) => n.id !== caido?.id), ctx.random);
@@ -96,11 +108,11 @@ export async function abrirCampoDeBatalla(ctx: CtxOportunidad, atacante: string,
   if (!caido || !herido || !lugar) return null;
   const puntos = [await ponerNpc(ctx, caido, lugar.id, 'MUERTO'), await ponerNpc(ctx, herido, lugar.id, 'GRAVE')];
   await cerrarEn(ctx, PLAZO_CAMPO_BATALLA, puntos);
-  return `Dicen que en ${lugar.name} aún quedan caídos y algún herido del choque.`;
+  return abierta(ctx, `Dicen que en ${lugar.name} aún quedan caídos y algún herido del choque.`, lugar.name, lugar.id, PLAZO_CAMPO_BATALLA);
 }
 
 /// Una caravana de `desde` pasa por un lugar de su región con un guardia.
-export async function abrirCaravana(ctx: CtxOportunidad, desde: string, hacia: string): Promise<string | null> {
+export async function abrirCaravana(ctx: CtxOportunidad, desde: string, hacia: string): Promise<OportunidadAbierta | null> {
   for (const faccion of [desde, hacia]) {
     const guardia = elegir(await plantillasDe(ctx.tx, ctx.worldId, faccion), ctx.random);
     const lugar = await lugarDe(ctx.tx, ctx.worldId, faccion, ctx.random);
@@ -111,14 +123,14 @@ export async function abrirCaravana(ctx: CtxOportunidad, desde: string, hacia: s
       datos: { faccion, punto }, caducaDias: PLAZO_CARAVANA, npcId: guardia.id,
     });
     await cerrarEn(ctx, PLAZO_CARAVANA, [punto]);
-    return `La caravana pasará por ${lugar.name} en los próximos días.`;
+    return abierta(ctx, `La caravana pasará por ${lugar.name} en los próximos días.`, lugar.name, lugar.id, PLAZO_CARAVANA);
   }
   return null;
 }
 
 /// Tras un incendio o una crecida que daña un edificio de `faccion` en `locationId`: alguien de la
 /// facción pide materiales para repararlo.
-export async function abrirEncargo(ctx: CtxOportunidad, faccion: string, buildingId: string, locationId: string, lugar: string): Promise<string | null> {
+export async function abrirEncargo(ctx: CtxOportunidad, faccion: string, buildingId: string, locationId: string, lugar: string): Promise<OportunidadAbierta | null> {
   const encargado = elegir(await plantillasDe(ctx.tx, ctx.worldId, faccion), ctx.random);
   if (!encargado) return null;
   const punto = await ponerNpc(ctx, encargado, locationId, 'ILESO', 'Pide materiales');
@@ -127,7 +139,7 @@ export async function abrirEncargo(ctx: CtxOportunidad, faccion: string, buildin
     datos: { faccion, buildingId, punto, encargado: encargado.name }, caducaDias: PLAZO_ENCARGO, npcId: encargado.id,
   });
   await cerrarEn(ctx, PLAZO_ENCARGO, [punto]);
-  return `En ${lugar} buscan madera o piedra para reparar lo dañado.`;
+  return abierta(ctx, `En ${lugar} buscan madera o piedra para reparar lo dañado.`, lugar, locationId, PLAZO_ENCARGO);
 }
 
 // ─────────────────────────── Reglas ───────────────────────────
