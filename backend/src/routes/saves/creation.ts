@@ -20,6 +20,7 @@ import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
 import type { AttributeBlock } from '../../services/dice.js';
 import { type Dificultad } from '@prisma/client';
 import { buildStartingQuestsData, VALID_ATTRIBUTES, withCatalogStatBonuses, restartSaveTransactionBody } from './shared.js';
+import { asegurarMundoDePartida } from '../../services/mundoPartida.js';
 
 /// Auditoría 2026-08-11 ("pruebas por API"): el guard de la ruta solo cubría 3 de los ~10 campos
 /// `string` no opcionales de `CreateSaveBody` — faltar cualquier otro (p. ej. `characterOrigin`)
@@ -278,6 +279,10 @@ export async function creationRoutes(app: FastifyInstance) {
       { maxWait: 10_000, timeout: 20_000 },
     );
 
+    // CR-6 (hito 0.2): la partida nace con su copia del mundo (facciones, relaciones, población).
+    // Fuera de la transacción de arriba para no alargarla; si fallara, el primer turno la crea.
+    await asegurarMundoDePartida(prisma, save.id);
+
     return { id: save.id };
   });
 
@@ -315,6 +320,8 @@ export async function creationRoutes(app: FastifyInstance) {
       maxWait: 10_000,
       timeout: 20_000,
     });
+    // CR-6 (hito 0.2): el reinicio borra la copia del mundo; se vuelve a clonar del catálogo.
+    await asegurarMundoDePartida(prisma, save.id);
 
     return { id: save.id };
   });

@@ -893,9 +893,13 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   (`worldAgenda.ts`) sigue en catálogo hasta `CR-7`. Arreglos que trajo la clonación: el Reino del
   jugador se busca con `origenSlug: null` (combate, expansión, rutas de reino, enciclopedia) y la
   diplomacia apunta a catálogo o al propio Reino; reiniciar la partida borra su copia del mundo y
-  limpia `mundoClonadoEn`. **Falta:** llamarlo al crear partida y al inicio del turno; facciones y
-  relaciones (`factionRelations.ts`, `worldAgenda.ts`, diplomacia), expediciones
-  (`factionExpeditions.ts`) y NPC muertos (`NpcState.muerto`).
+  limpia `mundoClonadoEn`. **Paso 3 hecho (2026-10-04): enganchado.** `asegurarMundoDePartida` se
+  llama al crear la partida y al reiniciarla (fuera de su transacción) y al inicio de
+  `narrateAndPersistTurn` (las partidas anteriores reciben su copia en su primer turno; luego es una
+  sola lectura). Test de integración: crear clona tantas facciones y filas de población como el
+  catálogo, y reiniciar las rehace sin duplicar. **Falta:** facciones y relaciones
+  (`factionRelations.ts`, `worldAgenda.ts`, diplomacia), expediciones (`factionExpeditions.ts`) y
+  NPC muertos (`NpcState.muerto`).
 - **CR-7** `avanceDiario` por partida; sacar las funciones de mundo de `worldTick.ts`. **M**
 - **CR-8** Script de migración (§ 16). **M**
 - **Hecho cuando:** dos partidas del mismo mundo divergen (una mata a un NPC, la otra no lo ve);

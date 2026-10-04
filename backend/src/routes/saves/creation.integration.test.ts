@@ -273,3 +273,49 @@ describe('POST /saves/:id/restart rellena statBonuses del inventario inicial des
     expect(hacha.statBonuses).toEqual({ fuerza: 1 });
   }, 15_000);
 });
+
+// CR-6 (hito 0.2): la partida nace con su copia del mundo, y el reinicio la rehace desde el
+// catálogo (sin duplicar copias).
+describe('Mundo por partida al crear y al reiniciar (CR-6)', () => {
+  let saveId: string | undefined;
+
+  afterAll(async () => {
+    if (saveId) await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('POST /saves clona el mundo; /restart lo vuelve a clonar sin duplicar', async () => {
+    const app = await buildApp();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/saves',
+      payload: {
+        worldSlug: 'helek-sirik',
+        characterName: 'Gorhorn de prueba (mundo por partida)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        portraitInitial: 'G',
+        introCharacterText: 'Intro del personaje.',
+        introWorldText: 'Intro del mundo.',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    saveId = JSON.parse(res.body).id as string;
+
+    const faccionesCatalogo = await prisma.faction.count({ where: { worldId: world.id, saveId: null } });
+    const poblacionCatalogo = await prisma.worldPopulation.count({ where: { worldId: world.id, saveId: null } });
+    const estado = await prisma.worldState.findUniqueOrThrow({ where: { saveId } });
+    expect(estado.mundoClonadoEn).not.toBeNull();
+    expect(await prisma.faction.count({ where: { saveId, origenSlug: { not: null } } })).toBe(faccionesCatalogo);
+    expect(await prisma.worldPopulation.count({ where: { saveId } })).toBe(poblacionCatalogo);
+
+    const reinicio = await app.inject({ method: 'POST', url: `/saves/${saveId}/restart`, payload: {} });
+    expect(reinicio.statusCode).toBe(200);
+    const estadoTras = await prisma.worldState.findUniqueOrThrow({ where: { saveId } });
+    expect(estadoTras.mundoClonadoEn).not.toBeNull();
+    expect(await prisma.faction.count({ where: { saveId, origenSlug: { not: null } } })).toBe(faccionesCatalogo);
+    expect(await prisma.worldPopulation.count({ where: { saveId } })).toBe(poblacionCatalogo);
+  }, 30_000);
+});

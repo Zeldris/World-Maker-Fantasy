@@ -64,7 +64,7 @@ import type { RollResult, AttributeBlock, Attribute, GradoExito } from './dice.j
 import type { SecondaryAttributeBlock } from './secondaryAttributes.js';
 import { Prisma } from '@prisma/client';
 import type { CondicionFisica, Dificultad, AbilityEffect, AbilityRol, Clase, Especializacion } from '@prisma/client';
-import { ambitoPoblacion } from './mundoPartida.js';
+import { ambitoPoblacion, asegurarMundoDePartida } from './mundoPartida.js';
 
 const REINO_XP = { territory: 150, buildingActive: 100, firstSubject: 100, subject: 25, consolidado: 300 } as const;
 /// Población anónima con la que arranca todo Territory nuevo (2026-08-23, Grupo 3) — un puñado de
@@ -2481,6 +2481,10 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     travelInterruptionNpcId,
     travelInterruptionOriginalDestinationName,
   } = params;
+
+  // CR-6 (hito 0.2): partidas anteriores al mundo por partida (o reiniciadas) reciben aquí su copia
+  // del mundo; una vez hecha, es una sola lectura.
+  await asegurarMundoDePartida(prisma, saveId);
 
   // Revisión técnica 2026-07-22: estas 4 consultas no dependen entre sí (retrieveLore es la única
   // que depende de una de ellas, ver más abajo) — antes iban en `await` secuencial, una detrás de
