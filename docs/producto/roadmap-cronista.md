@@ -911,7 +911,16 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   lo que pasa de `CR-6`: expediciones de facción de la partida (`factionExpeditions.ts`, con
   `Expedicion.saveId`) y sus muertes de NPC en `NpcState.muerto` en vez de `Npc.muertoEnMundo`;
   economía y decaimiento de presión de las copias; y entonces almacén/mercado de las copias y las
-  relaciones jugador↔facción contra la copia (hoy contra el catálogo).
+  relaciones jugador↔facción contra la copia (hoy contra el catálogo). 🚧 2026-10-04 — **paso 1
+  hecho:** `services/avanceDiario.ts` (`avanzarMundoHasta`, candado por partida, tope de 30 días por
+  llamada, `WorldState.ultimoDiaSimulado`): crece la población de la partida por días de ficción
+  (`crecerPoblacionDePartida`, compuesto con la fracción ganada por probabilidad; antes era por días
+  reales), la refleja en el `KingdomStats` de sus facciones y avanza su agenda
+  (`avanzarAgendaDePartida`). Se llama tras el commit de cada turno. `worldTick` ya no avanza la
+  agenda y su crecimiento de población solo toca el catálogo. Tests: unitarios del cálculo y de
+  integración (crece solo la partida, cada día una vez). **Falta:** economía y expediciones de
+  facción de la partida (con sus muertes en `NpcState.muerto`), almacén/mercado y relaciones
+  jugador↔facción contra la copia, y llamarlo también al resolver tránsitos y al moverse por la zona.
 - **CR-8** Script de migración (§ 16). **M**
 - **Hecho cuando:** dos partidas del mismo mundo divergen (una mata a un NPC, la otra no lo ve);
   todos los tests de integración actuales pasan.

@@ -105,6 +105,47 @@ export async function decrementPopulationOnDeath(
 
 const MS_POR_DIA = 24 * 60 * 60_000;
 
+/// CR-7 (hito 0.2): crecimiento de una fila en `dias` días de ficción — compuesto a la tasa de su
+/// tipo, con el mismo umbral y techo que `growAllPopulations`. La parte fraccionaria se gana con esa
+/// probabilidad (sin ella, una población pequeña de crecimiento lento nunca sumaría un individuo en
+/// un solo día). Puro salvo por `random`.
+export function crecimientoEnDias(
+  poblacion: number,
+  poblacionMax: number,
+  tipo: PopulationTargetType,
+  dias: number,
+  random: () => number = Math.random,
+): number {
+  if (dias <= 0 || poblacion < UMBRAL_MINIMO_REPRODUCCION) return 0;
+  const esperado = poblacion * ((1 + GROWTH_RATE_PER_DAY[tipo]) ** dias - 1);
+  const entero = Math.floor(esperado);
+  const delta = entero + (random() < esperado - entero ? 1 : 0);
+  return Math.min(delta, Math.max(0, poblacionMax - poblacion));
+}
+
+/// CR-7 (hito 0.2): hace crecer `dias` días de ficción la población de una partida. Devuelve
+/// cuántas filas cambiaron.
+export async function crecerPoblacionDePartida(
+  tx: Pick<PrismaClient, 'worldPopulation'> | Prisma.TransactionClient,
+  saveId: string,
+  dias: number,
+  random: () => number = Math.random,
+): Promise<number> {
+  if (dias <= 0) return 0;
+  const filas = await tx.worldPopulation.findMany({
+    where: { saveId, poblacion: { gte: UMBRAL_MINIMO_REPRODUCCION } },
+    select: { id: true, poblacion: true, poblacionMax: true, targetType: true },
+  });
+  let cambiadas = 0;
+  for (const fila of filas) {
+    const delta = crecimientoEnDias(fila.poblacion, fila.poblacionMax, fila.targetType, dias, random);
+    if (delta < 1) continue;
+    await tx.worldPopulation.update({ where: { id: fila.id }, data: { poblacion: { increment: delta } } });
+    cambiadas++;
+  }
+  return cambiadas;
+}
+
 /// Crecimiento prorrateado por tiempo real desde la última actualización de cada fila (docs/16
 /// § 3.3), llamado desde el tick periódico de `worldTick.ts` — nunca desde el turno síncrono, ya
 /// que `WorldPopulation` es del `World`, no de una `Save` concreta.
@@ -115,7 +156,9 @@ const MS_POR_DIA = 24 * 60 * 60_000;
 /// bastante para cruzar el siguiente entero. Dejar la fila intacta hace que seguir esperando en el
 /// próximo tick sea exactamente igual de válido que esperar más entre ticks.
 export async function growAllPopulations(prisma: Pick<PrismaClient, 'worldPopulation'>): Promise<{ updated: number }> {
-  const rows = await prisma.worldPopulation.findMany();
+  // CR-7 (hito 0.2): solo el catálogo; la población de cada partida crece con su propio reloj
+  // (`crecerPoblacionDePartida`, desde `avanceDiario.ts`).
+  const rows = await prisma.worldPopulation.findMany({ where: { saveId: null } });
   const now = Date.now();
   let updated = 0;
 
@@ -158,9 +201,12 @@ export async function growAllPopulations(prisma: Pick<PrismaClient, 'worldPopula
 /// (`worldTick.ts`) — nunca desde el turno del jugador, mismo criterio que el resto de
 /// `WorldPopulation` (es del `World`, no de una `Save`).
 export async function syncFactionPopulationToKingdomStats(
-  prisma: Pick<PrismaClient, 'worldPopulation' | 'faction' | 'kingdomStats'>,
+  prisma: Pick<PrismaClient, 'worldPopulation' | 'faction' | 'kingdomStats'> | Prisma.TransactionClient,
+  /// CR-7 (hito 0.2): `{ saveId }` para una partida (desde `avanceDiario.ts`); el tick del mundo
+  /// pasa `{ saveId: null }` (catálogo).
+  filtro: Prisma.WorldPopulationWhereInput = {},
 ): Promise<{ synced: number }> {
-  const rows = await prisma.worldPopulation.findMany({ where: { targetType: 'FACCION' } });
+  const rows = await prisma.worldPopulation.findMany({ where: { ...filtro, targetType: 'FACCION' } });
   if (rows.length === 0) return { synced: 0 };
 
   // CR-6 (hito 0.2): agrupado por partida y facción — las filas de una partida van a la copia de la

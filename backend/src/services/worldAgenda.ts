@@ -241,77 +241,90 @@ export function sucesosDeEtapaConflicto(etapa: number): SucesoDeEtapa[] {
   }
 }
 
+const SELECT_ESTADO_AGENDA = { id: true, saveId: true, agenda: true, fictionalMinutes: true, fictionalDateLabel: true, save: { select: { worldId: true } } } as const;
+type EstadoAgenda = Prisma.WorldStateGetPayload<{ select: typeof SELECT_ESTADO_AGENDA }>;
+/// Solo la partida jugable real de hoy (`characterName === 'Gorhorn'`) y viva.
+const PARTIDA_CON_AGENDA = { characterName: 'Gorhorn', endedAt: null } as const;
+
 export async function advanceWorldAgenda(prisma: PrismaClient): Promise<{ statesAdvanced: number; stagesCrossed: number }> {
-  const states = await prisma.worldState.findMany({
-    where: { save: { characterName: 'Gorhorn', endedAt: null } },
-    select: { id: true, saveId: true, agenda: true, fictionalMinutes: true, fictionalDateLabel: true, save: { select: { worldId: true } } },
-  });
+  const states = await prisma.worldState.findMany({ where: { save: PARTIDA_CON_AGENDA }, select: SELECT_ESTADO_AGENDA });
 
   let statesAdvanced = 0;
   let totalStagesCrossed = 0;
-
   for (const state of states) {
-    let agenda = parseAgenda(state.agenda);
-    let needsWrite = false;
-    if (agenda.length === 0) {
-      agenda = initialAgenda(state.fictionalMinutes);
-      needsWrite = true;
-    }
+    const r = await avanzarEstadoDeAgenda(prisma, state);
+    totalStagesCrossed += r.stagesCrossed;
+    if (r.advanced) statesAdvanced += 1;
+  }
+  return { statesAdvanced, stagesCrossed: totalStagesCrossed };
+}
 
-    const facts: string[] = [];
-    let helsigLoss = 0;
-    let goshgLoss = 0;
-    const nextAgenda = agenda.map((entry) => {
-      const { entry: advanced, stagesCrossed } = advanceEntry(entry, state.fictionalMinutes);
-      if (stagesCrossed === 0) return advanced;
-      needsWrite = true;
-      totalStagesCrossed += stagesCrossed;
-      if (entry.id === CONFLICTO_ID) {
-        helsigLoss += POBLACION_PERDIDA_POR_ETAPA * stagesCrossed;
-        goshgLoss += POBLACION_PERDIDA_POR_ETAPA * stagesCrossed;
-        for (let s = entry.stage + 1; s <= advanced.stage; s++) {
-          if (STAGE_FACTS[s]) facts.push(STAGE_FACTS[s]);
-        }
-      }
-      return advanced;
-    });
+/// CR-7 (hito 0.2): la agenda de UNA partida, desde su avance diario (`avanceDiario.ts`).
+export async function avanzarAgendaDePartida(prisma: PrismaClient, saveId: string): Promise<{ advanced: boolean; stagesCrossed: number }> {
+  const state = await prisma.worldState.findFirst({ where: { saveId, save: PARTIDA_CON_AGENDA }, select: SELECT_ESTADO_AGENDA });
+  return state ? avanzarEstadoDeAgenda(prisma, state) : { advanced: false, stagesCrossed: 0 };
+}
 
-    // Fase D (hito 0.1) — la etapa de la agenda empuja las relaciones reales (y sincroniza partidas
-    // que ya iban más avanzadas que la relación sembrada); idempotente, solo sube presión.
-    const conflicto = nextAgenda.find((entry) => entry.id === CONFLICTO_ID);
-    // CR-6: las relaciones y la población de ESTA partida (su copia del mundo).
-    if (conflicto) await sincronizarRelacionesConflicto(prisma, await ambitoFacciones(prisma, state.saveId), conflicto.stage);
-
-    if (!needsWrite) continue;
-
-    await prisma.$transaction(async (tx) => {
-      await tx.worldState.update({ where: { id: state.id }, data: { agenda: nextAgenda as unknown as Prisma.InputJsonValue } });
-      const poblacion = await ambitoPoblacion(tx, state.saveId);
-      await depleteClanPopulation(tx, poblacion, HELSIG_TARGET_SLUG, helsigLoss);
-      await depleteClanPopulation(tx, poblacion, GOSHG_TARGET_SLUG, goshgLoss);
-      // Canal WORLD (ver comentario de cabecera) — una fila por etapa cruzada, mismo texto ya
-      // escrito a mano que recibe sessionFacts, para que el panel "El mundo" cuente lo mismo que ya
-      // sabe el Narrador.
-      for (const fact of facts) {
-        await tx.logEntry.create({
-          data: { saveId: state.saveId, channel: 'WORLD', text: fact, timeLabel: state.fictionalDateLabel, fictionalMinutes: state.fictionalMinutes },
-        });
-      }
-      // Libro de Sucesos (CR-3, hito 0.2): cada etapa cruzada del conflicto, en orden.
-      const previa = agenda.find((entry) => entry.id === CONFLICTO_ID)?.stage ?? 0;
-      for (let etapa = previa + 1; etapa <= (conflicto?.stage ?? previa); etapa++) {
-        for (const suceso of sucesosDeEtapaConflicto(etapa)) {
-          await registrarSuceso(tx, { ...suceso, saveId: state.saveId, fictionalMinutes: state.fictionalMinutes, origen: 'MUNDO' });
-        }
-      }
-    });
-
-    if (facts.length > 0) {
-      const existing = await loadSessionFacts(state.saveId);
-      await appendSessionFacts(state.saveId, existing, facts);
-    }
-    statesAdvanced += 1;
+async function avanzarEstadoDeAgenda(prisma: PrismaClient, state: EstadoAgenda): Promise<{ advanced: boolean; stagesCrossed: number }> {
+  let totalStagesCrossed = 0;
+  let agenda = parseAgenda(state.agenda);
+  let needsWrite = false;
+  if (agenda.length === 0) {
+    agenda = initialAgenda(state.fictionalMinutes);
+    needsWrite = true;
   }
 
-  return { statesAdvanced, stagesCrossed: totalStagesCrossed };
+  const facts: string[] = [];
+  let helsigLoss = 0;
+  let goshgLoss = 0;
+  const nextAgenda = agenda.map((entry) => {
+    const { entry: advanced, stagesCrossed } = advanceEntry(entry, state.fictionalMinutes);
+    if (stagesCrossed === 0) return advanced;
+    needsWrite = true;
+    totalStagesCrossed += stagesCrossed;
+    if (entry.id === CONFLICTO_ID) {
+      helsigLoss += POBLACION_PERDIDA_POR_ETAPA * stagesCrossed;
+      goshgLoss += POBLACION_PERDIDA_POR_ETAPA * stagesCrossed;
+      for (let s = entry.stage + 1; s <= advanced.stage; s++) {
+        if (STAGE_FACTS[s]) facts.push(STAGE_FACTS[s]);
+      }
+    }
+    return advanced;
+  });
+
+  // Fase D (hito 0.1) — la etapa de la agenda empuja las relaciones reales (y sincroniza partidas
+  // que ya iban más avanzadas que la relación sembrada); idempotente, solo sube presión.
+  const conflicto = nextAgenda.find((entry) => entry.id === CONFLICTO_ID);
+  // CR-6: las relaciones y la población de ESTA partida (su copia del mundo).
+  if (conflicto) await sincronizarRelacionesConflicto(prisma, await ambitoFacciones(prisma, state.saveId), conflicto.stage);
+
+  if (!needsWrite) return { advanced: false, stagesCrossed: totalStagesCrossed };
+
+  await prisma.$transaction(async (tx) => {
+    await tx.worldState.update({ where: { id: state.id }, data: { agenda: nextAgenda as unknown as Prisma.InputJsonValue } });
+    const poblacion = await ambitoPoblacion(tx, state.saveId);
+    await depleteClanPopulation(tx, poblacion, HELSIG_TARGET_SLUG, helsigLoss);
+    await depleteClanPopulation(tx, poblacion, GOSHG_TARGET_SLUG, goshgLoss);
+    // Canal WORLD (ver comentario de cabecera) — una fila por etapa cruzada, mismo texto ya
+    // escrito a mano que recibe sessionFacts, para que el panel "El mundo" cuente lo mismo que ya
+    // sabe el Narrador.
+    for (const fact of facts) {
+      await tx.logEntry.create({
+        data: { saveId: state.saveId, channel: 'WORLD', text: fact, timeLabel: state.fictionalDateLabel, fictionalMinutes: state.fictionalMinutes },
+      });
+    }
+    // Libro de Sucesos (CR-3, hito 0.2): cada etapa cruzada del conflicto, en orden.
+    const previa = agenda.find((entry) => entry.id === CONFLICTO_ID)?.stage ?? 0;
+    for (let etapa = previa + 1; etapa <= (conflicto?.stage ?? previa); etapa++) {
+      for (const suceso of sucesosDeEtapaConflicto(etapa)) {
+        await registrarSuceso(tx, { ...suceso, saveId: state.saveId, fictionalMinutes: state.fictionalMinutes, origen: 'MUNDO' });
+      }
+    }
+  });
+
+  if (facts.length > 0) {
+    const existing = await loadSessionFacts(state.saveId);
+    await appendSessionFacts(state.saveId, existing, facts);
+  }
+  return { advanced: true, stagesCrossed: totalStagesCrossed };
 }
