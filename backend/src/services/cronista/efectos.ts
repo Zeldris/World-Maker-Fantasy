@@ -70,7 +70,8 @@ export type Efecto =
   | { tipo: 'crearPuntoZona'; locationId: string; puntoTipo: ZonePointTipo; targetSlug: string; x: number; y: number; cantidad?: number; label?: string }
   | { tipo: 'retirarPuntoZona'; zonePointId: string }
   | { tipo: 'programarConsecuencia'; regla: string; disparo: Disparo; datos: Record<string, unknown>; caducaDias?: number; aviso?: string; npcId?: string }
-  | { tipo: 'anularConsecuencia'; regla: string; npcId?: string };
+  | { tipo: 'anularConsecuencia'; regla: string; npcId?: string }
+  | { tipo: 'regalarAlJugador'; npcId: string; mensaje: string };
 
 export interface ResultadoEfecto {
   aplicado: boolean;
@@ -128,6 +129,8 @@ export async function aplicarEfecto(ctx: CtxEfecto, e: Efecto): Promise<Resultad
       return programarConsecuencia(ctx, e);
     case 'anularConsecuencia':
       return anularConsecuencia(ctx, e);
+    case 'regalarAlJugador':
+      return regalarAlJugador(ctx, e);
   }
 }
 
@@ -490,4 +493,45 @@ async function anularConsecuencia(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'an
     data: { estado: 'ANULADA', resueltaEn: ctx.fictionalMinutes },
   });
   return r.count > 0 ? { aplicado: true, sucesoId: null } : NO_APLICADO;
+}
+
+// ─────────────────────────── Regalos ───────────────────────────
+
+/// Goirnos que regala un NPC sin nada en su equipo (10-30).
+export const GOIRNOS_REGALO_MIN = 10;
+export const GOIRNOS_REGALO_MAX = 30;
+
+/// Un NPC regala algo a la jugadora: un objeto de su propio equipo de catálogo o, si no lleva nada,
+/// unos goirnos. `mensaje` va al canal del personaje con lo regalado al final. Registra `REGALO`.
+async function regalarAlJugador(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'regalarAlJugador' }>): Promise<ResultadoEfecto> {
+  const [npc, save] = await Promise.all([
+    ctx.tx.npc.findFirst({ where: { id: e.npcId, worldId: ctx.worldId }, select: { id: true, name: true, items: { include: { item: true }, orderBy: { item: { name: 'asc' } } } } }),
+    ctx.tx.save.findUnique({ where: { id: ctx.saveId }, select: { characterName: true, worldState: { select: { fictionalDateLabel: true } } } }),
+  ]);
+  if (!npc || !save) return NO_APLICADO;
+  const objeto = npc.items[0]?.item ?? null;
+  let regalo: string;
+  if (objeto) {
+    await ctx.tx.inventoryItem.create({
+      data: {
+        saveId: ctx.saveId, name: objeto.name, description: objeto.description, origin: `regalo de ${npc.name}`,
+        catalogSlug: objeto.slug, statBonuses: objeto.statBonuses ?? undefined,
+      },
+    });
+    regalo = objeto.name;
+  } else {
+    const random = ctx.random ?? Math.random;
+    const goirnos = GOIRNOS_REGALO_MIN + Math.floor(random() * (GOIRNOS_REGALO_MAX - GOIRNOS_REGALO_MIN + 1));
+    await ctx.tx.save.update({ where: { id: ctx.saveId }, data: { goirnos: { increment: goirnos } } });
+    regalo = `${goirnos} goirnos`;
+  }
+  await ctx.tx.logEntry.create({
+    data: { saveId: ctx.saveId, channel: 'CHARACTER', text: `${e.mensaje} Te entrega ${regalo}.`, timeLabel: save.worldState?.fictionalDateLabel ?? '', fictionalMinutes: ctx.fictionalMinutes, isSystemMessage: true },
+  });
+  const sucesoId = await registrar(ctx, {
+    tipo: 'REGALO',
+    actores: [actorNpc(npc.id, 'AUTOR'), { entidadTipo: 'PERSONAJE', entidadId: ctx.saveId, papel: 'BENEFICIARIO' }],
+    datos: { personaje: npc.name, a: save.characterName, objeto: { nombre: regalo } },
+  });
+  return { aplicado: true, sucesoId };
 }

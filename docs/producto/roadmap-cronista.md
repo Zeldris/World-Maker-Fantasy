@@ -1028,8 +1028,13 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   `FACCION_CAE`, 2-6 días; la mitad del peso regional de su raza se reparte por las regiones
   vecinas y la facción se queda sin gente), en `reglasConsecuencias.ts`; nombres de escisión
   (`nombresFaccion.ts`) y regiones vecinas del lore (`regiones.ts`). Arreglo: una muerte que llega
-  por dos vías ya no registra dos veces la muerte del líder. **Falta:** `DEUDA_DE_VIDA` (paso 2b) y
-  `VENGANZA_PARIENTE` con testigos (paso 2c).
+  por dos vías ya no registra dos veces la muerte del líder. **Paso 2b hecho (2026-10-04):**
+  `DEUDA_DE_VIDA` — reacción a `PERDON_CONCEDIDO` (solo NPC con nombre; aviso «Algo te dice que
+  volverás a ver a X.»), se dispara al estar en otra región tras 3+ días (caduca a los 20): el
+  perdonado aparece como punto de NPC a una celda de la jugadora; al cruzarse (`ENCUENTRO_NPC` =
+  punto activo a ≤ 1,5 celdas en su lugar actual) regala un objeto de su equipo o 10-30 goirnos
+  (efecto nuevo `regalarAlJugador`, suceso `REGALO`) y se va; sin cruce, se va a los 2 días
+  (`alCaducar`). **Falta:** `VENGANZA_PARIENTE` con testigos (paso 2c).
 - **CR-12** Narrador de fondo con presupuesto, enfriamientos y reglas de facción (§ 7.3);
   agenda Serhu como primera cadena. **L** Al hacerlo, revisar `UX-6` (roadmap-front-ux.md): hoy
   la ambientación se cancela al enviar una acción porque no pesa nada; con contenido real puede

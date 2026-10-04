@@ -9,6 +9,7 @@
 // reacciones al procesar cada suceso (`dispararPorSuceso`).
 import type { Consecuencia, Prisma, PrismaClient } from '@prisma/client';
 import { slugify } from '../../lib/slugify.js';
+import { CELL_SIZE_PX } from '../zonaPosicion.js';
 import { aplicarEfectos, CUALQUIERA_SALVO_ORIGEN, type CtxEfecto, type Disparo, type Efecto } from './efectos.js';
 import { ejecutarReaccion, REACCIONES } from './reacciones.js';
 import { registrarSuceso } from './sucesos.js';
@@ -29,6 +30,8 @@ export interface ReglaConsecuencia {
   id: string;
   /// Efectos al dispararse; `null` = ya no tiene sentido (se pierde).
   alDisparar: (ctx: CtxConsecuencia) => Promise<Efecto[] | null>;
+  /// Limpieza al caducar sin dispararse (p. ej. retirar un punto de zona).
+  alCaducar?: (ctx: CtxConsecuencia) => Promise<Efecto[]>;
 }
 
 /// Reglas por id. Las del juego se añaden con `registrarRegla` desde su propio módulo.
@@ -46,7 +49,7 @@ registrarRegla({
     const reaccion = REACCIONES.find((r) => r.id === reaccionId);
     const suceso = await ctx.tx.suceso.findUnique({
       where: { id: sucesoId },
-      select: { id: true, tipo: true, saveId: true, fictionalMinutes: true, regionSlug: true, nivelCascada: true, actores: true },
+      select: { id: true, tipo: true, saveId: true, fictionalMinutes: true, regionSlug: true, locationId: true, nivelCascada: true, actores: true },
     });
     if (!reaccion || !suceso) return null;
     // Nueva cascada desde cero: el día siguiente es otro momento. Si ya no se cumple, se pierde.
@@ -63,6 +66,19 @@ for (const regla of REGLAS_DEL_JUEGO) registrarRegla(regla);
 async function regionActual(db: PrismaClient | Tx, saveId: string): Promise<string | null> {
   const save = await db.save.findUnique({ where: { id: saveId }, select: { currentLocation: { select: { region: true } } } });
   return save?.currentLocation ? slugify(save.currentLocation.region) : null;
+}
+
+/// Distancia (px del lienzo de zona) a la que la jugadora «se cruza» con un NPC: celda y media.
+export const RADIO_ENCUENTRO_PX = CELL_SIZE_PX * 1.5;
+
+/// NPC con un punto activo de la partida en su lugar actual, a menos de `RADIO_ENCUENTRO_PX` de ella.
+async function npcsCercanos(db: PrismaClient, saveId: string): Promise<string[]> {
+  const save = await db.save.findUnique({ where: { id: saveId }, select: { worldId: true, currentLocationId: true, zonaPosX: true, zonaPosY: true } });
+  if (!save?.currentLocationId || save.zonaPosX === null || save.zonaPosY === null) return [];
+  const puntos = await db.zonePoint.findMany({ where: { saveId, locationId: save.currentLocationId, activo: true, tipo: { in: ['NPC', 'FAUNA'] } }, select: { x: true, y: true, targetSlug: true } });
+  const cerca = puntos.filter((p) => Math.hypot(p.x - save.zonaPosX!, p.y - save.zonaPosY!) <= RADIO_ENCUENTRO_PX).map((p) => p.targetSlug);
+  if (cerca.length === 0) return [];
+  return (await db.npc.findMany({ where: { worldId: save.worldId, slug: { in: cerca } }, select: { id: true } })).map((n) => n.id);
 }
 
 /// ¿Se cumple el disparo en este momento? (el día ya se ha comprobado con `desdeDia`).
@@ -121,18 +137,25 @@ export async function evaluarConsecuencias(
   for (const c of vencidas) {
     await prisma.$transaction(async (tx) => {
       const claim = await tx.consecuencia.updateMany({ where: { id: c.id, estado: 'PENDIENTE' }, data: { estado: 'CADUCADA' } });
-      if (claim.count > 0) await perder(tx, c, 'CADUCADA', minutos);
+      if (claim.count === 0) return;
+      await perder(tx, c, 'CADUCADA', minutos);
+      const alCaducar = REGLAS.get(c.regla)?.alCaducar;
+      if (alCaducar) {
+        const efectos = await alCaducar({ tx, saveId, worldId: save.worldId, fictionalMinutes: minutos, consecuencia: c, random });
+        await aplicarEfectos({ tx, saveId, worldId: save.worldId, fictionalMinutes: minutos, origen: 'MOTOR', random }, efectos);
+      }
     });
   }
 
   const region = await regionActual(prisma, saveId);
+  const npcIds = [...(momento.npcIds ?? []), ...(await npcsCercanos(prisma, saveId))];
   const candidatas = await prisma.consecuencia.findMany({
     where: { saveId, estado: 'PENDIENTE', tipoDisparo: { not: 'SUCESO' }, desdeDia: { lte: dia } },
     orderBy: { createdAt: 'asc' },
   });
   let disparadas = 0;
   for (const c of candidatas) {
-    if (!seCumple(c, region, momento.npcIds ?? [])) continue;
+    if (!seCumple(c, region, npcIds)) continue;
     if (await prisma.$transaction((tx) => disparar(tx, save.worldId, c, minutos, random))) disparadas++;
   }
   return { disparadas, caducadas: vencidas.length };

@@ -14,7 +14,7 @@
 // `recordFactionEvent` al pasar a guerra.
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { slugify } from '../../lib/slugify.js';
-import { aplicarEfectos, type CtxEfecto, type Efecto } from './efectos.js';
+import { aplicarEfectos, CUALQUIERA_SALVO_ORIGEN, type CtxEfecto, type Efecto } from './efectos.js';
 import { registrarSuceso, type NuevoSuceso } from './sucesos.js';
 import { dispararPorSuceso } from './consecuencias.js';
 import type { TipoSuceso } from './catalogoSucesos.js';
@@ -32,6 +32,7 @@ export interface SucesoEnCola {
   saveId: string;
   fictionalMinutes: number;
   regionSlug: string | null;
+  locationId?: string | null;
   nivelCascada: number;
   actores: { entidadTipo: string; entidadId: string; papel: string }[];
 }
@@ -140,6 +141,32 @@ export const REACCIONES: Reaccion[] = [
     }],
   },
   {
+    // CR-11: el perdonado volverá a agradecerlo en otra región (regla DEUDA_DE_VIDA). Solo NPC con
+    // nombre: una plantilla no es nadie en concreto que pueda volver.
+    id: 'PERDON_DEUDA_DE_VIDA',
+    escucha: ['PERDON_CONCEDIDO'],
+    prioridad: 10,
+    condicion: async (ctx) => {
+      const perdonado = actor(ctx.suceso, 'NPC', 'BENEFICIARIO');
+      if (!perdonado || !actor(ctx.suceso, 'PERSONAJE', 'AUTOR')) return false;
+      return (await ctx.tx.npc.count({ where: { id: perdonado, kind: 'PRINCIPAL' } })) > 0;
+    },
+    efectos: async (ctx) => {
+      const perdonado = actor(ctx.suceso, 'NPC', 'BENEFICIARIO')!;
+      const npc = await ctx.tx.npc.findUniqueOrThrow({ where: { id: perdonado }, select: { name: true } });
+      const lugar = ctx.suceso.locationId
+        ? await ctx.tx.location.findUnique({ where: { id: ctx.suceso.locationId }, select: { region: true } })
+        : (await ctx.tx.save.findUnique({ where: { id: ctx.suceso.saveId }, select: { currentLocation: { select: { region: true } } } }))?.currentLocation;
+      if (!lugar) return [];
+      return [{
+        tipo: 'programarConsecuencia', regla: 'DEUDA_DE_VIDA',
+        disparo: { tipo: 'LLEGAR_REGION', regionSlug: CUALQUIERA_SALVO_ORIGEN, origenSlug: slugify(lugar.region), minDias: 3 },
+        caducaDias: 20, npcId: perdonado, datos: { npcId: perdonado },
+        aviso: `Algo te dice que volverás a ver a ${npc.name}.`,
+      }];
+    },
+  },
+  {
     id: 'SIN_TERRITORIOS_CAE',
     escucha: ['TERRITORIO_CONQUISTADO'],
     prioridad: 10,
@@ -197,7 +224,7 @@ export async function procesarReacciones(prisma: PrismaClient, saveId: string, r
       where: { saveId, reaccionesPendientes: true },
       orderBy: [{ nivelCascada: 'asc' }, { createdAt: 'asc' }],
       take: 50,
-      select: { id: true, tipo: true, saveId: true, fictionalMinutes: true, regionSlug: true, nivelCascada: true, actores: true },
+      select: { id: true, tipo: true, saveId: true, fictionalMinutes: true, regionSlug: true, locationId: true, nivelCascada: true, actores: true },
     });
     if (pendientes.length === 0) break;
 

@@ -9,6 +9,7 @@ import { REGION_OWNING_FACTIONS } from '../reputation.js';
 import type { Efecto } from './efectos.js';
 import { nombreDeEscision } from './nombresFaccion.js';
 import { regionesVecinas } from './regiones.js';
+import { CELL_SIZE_PX, LIENZO_ANCHO } from '../zonaPosicion.js';
 import type { CtxConsecuencia, ReglaConsecuencia } from './consecuencias.js';
 
 type Tx = Prisma.TransactionClient;
@@ -93,4 +94,65 @@ const REFUGIADOS: ReglaConsecuencia = {
   },
 };
 
-export const REGLAS_DEL_JUEGO: ReglaConsecuencia[] = [SUCESION_PENDIENTE, REFUGIADOS];
+// ─────────────────────────── Deuda de vida ───────────────────────────
+
+/// NPC vivo en la partida (ni muerto fuera de escena, ni a manos del jugador, ni de mundo).
+async function npcVivo(tx: Tx, saveId: string, npcId: string) {
+  return tx.npc.findFirst({
+    where: { id: npcId, ...npcVivoEnPartida(saveId), NOT: { npcStates: { some: { saveId, condicionFisica: 'MUERTO' } } } },
+    select: { id: true, slug: true, name: true, temperamento: true },
+  });
+}
+
+/// Al llegar a otra región (3-20 días después del perdón), el perdonado aparece junto a la jugadora
+/// como punto de NPC; al cruzarse con él (ENCUENTRO_NPC) llega el regalo. Si murió o es enemigo, se
+/// pierde.
+const DEUDA_DE_VIDA: ReglaConsecuencia = {
+  id: 'DEUDA_DE_VIDA',
+  alDisparar: async (ctx) => {
+    const { npcId } = ctx.consecuencia.datos as { npcId: string };
+    const [npc, save] = await Promise.all([
+      npcVivo(ctx.tx, ctx.saveId, npcId),
+      ctx.tx.save.findUnique({ where: { id: ctx.saveId }, select: { currentLocationId: true, zonaPosX: true, zonaPosY: true } }),
+    ]);
+    if (!npc || npc.temperamento === 'ENEMIGO' || !save?.currentLocationId) return null;
+    // Una celda a su derecha (o a la izquierda si no cabe).
+    const x0 = save.zonaPosX ?? 400;
+    const x = x0 + CELL_SIZE_PX <= LIENZO_ANCHO ? x0 + CELL_SIZE_PX : x0 - CELL_SIZE_PX;
+    return [
+      { tipo: 'crearPuntoZona', locationId: save.currentLocationId, puntoTipo: 'NPC', targetSlug: npc.slug, x, y: save.zonaPosY ?? 300, label: npc.name },
+      {
+        tipo: 'programarConsecuencia', regla: 'DEUDA_DE_VIDA_REGALO', disparo: { tipo: 'ENCUENTRO_NPC', npcId: npc.id },
+        caducaDias: 2, npcId: npc.id, datos: { npcId: npc.id, locationId: save.currentLocationId },
+      },
+    ];
+  },
+};
+
+async function puntoDelNpc(ctx: CtxConsecuencia) {
+  const { npcId, locationId } = ctx.consecuencia.datos as { npcId: string; locationId: string };
+  const npc = await ctx.tx.npc.findUnique({ where: { id: npcId }, select: { slug: true } });
+  if (!npc) return null;
+  return ctx.tx.zonePoint.findFirst({ where: { saveId: ctx.saveId, locationId, targetSlug: npc.slug, activo: true }, select: { id: true } });
+}
+
+/// Al cruzarse con él: su regalo y el punto se retira. Si no llega a cruzarse (2 días), se va igual.
+const DEUDA_DE_VIDA_REGALO: ReglaConsecuencia = {
+  id: 'DEUDA_DE_VIDA_REGALO',
+  alDisparar: async (ctx) => {
+    const { npcId } = ctx.consecuencia.datos as { npcId: string };
+    const npc = await npcVivo(ctx.tx, ctx.saveId, npcId);
+    if (!npc) return null;
+    const punto = await puntoDelNpc(ctx);
+    return [
+      { tipo: 'regalarAlJugador', npcId: npc.id, mensaje: `${npc.name} se acerca: «No olvido que me dejaste vivir.»` },
+      ...(punto ? [{ tipo: 'retirarPuntoZona' as const, zonePointId: punto.id }] : []),
+    ];
+  },
+  alCaducar: async (ctx) => {
+    const punto = await puntoDelNpc(ctx);
+    return punto ? [{ tipo: 'retirarPuntoZona', zonePointId: punto.id }] : [];
+  },
+};
+
+export const REGLAS_DEL_JUEGO: ReglaConsecuencia[] = [SUCESION_PENDIENTE, REFUGIADOS, DEUDA_DE_VIDA, DEUDA_DE_VIDA_REGALO];
