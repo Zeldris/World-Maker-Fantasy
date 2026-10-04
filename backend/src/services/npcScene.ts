@@ -9,6 +9,7 @@ import { parseActiveEffects, type ActiveEffect } from './activeEffects.js';
 import { effectiveTemperamento } from './reputation.js';
 import { momentoDelDiaFor } from './worldClock.js';
 import { faunaMomentoDelDia } from '../scripts/worldCatalog.js';
+import { npcVivoEnPartida } from './mundoPartida.js';
 
 /// Detección determinista de "NPC en escena" (docs/mecanicas/12-mundo-estructurado.md § 2.5) — sin llamada
 /// extra a Ollama: se busca Npc.aliases (normalizados) en el texto de la acción y en los hechos
@@ -553,8 +554,8 @@ export async function detectNpcsInScene(params: {
   const estaEnCombate = (npc: { id: string; slug: string }) => enCombateSlugs.has(npc.slug) || enCombateIds.has(npc.id);
   const [npcs, currentLocation, activeQuestTargets, encounteredStates, saveRow] = await Promise.all([
     prisma.npc.findMany({
-      // `muertoEnMundo` (muerte de expedición de facción, en todas las partidas): nunca en escena.
-      where: { worldId: params.worldId, muertoEnMundo: false },
+      // Muertos de mundo o fuera de escena en esta partida (expedición de facción): nunca en escena.
+      where: { worldId: params.worldId, ...npcVivoEnPartida(params.saveId) },
       include: { items: { include: { item: true } } },
     }),
     params.currentLocationId
@@ -652,7 +653,7 @@ export async function candidateNpcNamesNotInScene(
 ): Promise<string[]> {
   const [npcs, currentLocation, activeQuestTargets, encounteredStates] = await Promise.all([
     prisma.npc.findMany({
-      where: { worldId, muertoEnMundo: false },
+      where: { worldId, ...npcVivoEnPartida(saveId) },
       select: { id: true, name: true, kind: true, homeLocationSlug: true, nucleoJugable: true },
     }),
     currentLocationId ? prisma.location.findUnique({ where: { id: currentLocationId }, select: { slug: true, region: true } }) : Promise.resolve(null),

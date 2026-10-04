@@ -7,6 +7,7 @@ import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
 import { grantQuestRewardItems, questRewardNarrationFor, GISTERA_DESPEDIDA_NARRATION } from '../../services/questResolution.js';
 import { generateQuestResponseNarration } from '../../services/narrador.js';
 import { rejectIfEnded, rejectIfPendingDeath, clearPendingOffer } from './shared.js';
+import { npcVivoEnPartida } from '../../services/mundoPartida.js';
 
 /// Misión con lógica especial propia, además del anclaje genérico NPC/Location/Item (bug real
 /// 2026-08-28, "misión se salta los botones" — la creaba directamente `turnResolution.ts`, ahora
@@ -74,7 +75,7 @@ export async function aceptarQuest(
 
   const questText = normalizeText(`${title} ${description}`);
   const [worldNpcs, worldLocations, worldItems] = await Promise.all([
-    prisma.npc.findMany({ where: { worldId: save.worldId, muertoEnMundo: false } }),
+    prisma.npc.findMany({ where: { worldId: save.worldId, ...npcVivoEnPartida(save.id) } }),
     prisma.location.findMany({ where: { worldId: save.worldId } }),
     prisma.itemCatalog.findMany({ where: { worldId: save.worldId } }),
   ]);

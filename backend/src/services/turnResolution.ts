@@ -64,7 +64,7 @@ import type { RollResult, AttributeBlock, Attribute, GradoExito } from './dice.j
 import type { SecondaryAttributeBlock } from './secondaryAttributes.js';
 import { Prisma } from '@prisma/client';
 import type { CondicionFisica, Dificultad, AbilityEffect, AbilityRol, Clase, Especializacion } from '@prisma/client';
-import { ambitoFacciones, ambitoPoblacion, asegurarMundoDePartida } from './mundoPartida.js';
+import { ambitoFacciones, ambitoPoblacion, asegurarMundoDePartida, npcVivoEnPartida } from './mundoPartida.js';
 import { avanzarMundoHasta } from './avanceDiario.js';
 
 const REINO_XP = { territory: 150, buildingActive: 100, firstSubject: 100, subject: 25, consolidado: 300 } as const;
@@ -3331,7 +3331,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // siendo lo único que importa en producción con `Math.random()` real — esto solo fija el orden
     // de iteración para que sea reproducible en pruebas.
     const itinerantCandidates = await prisma.npc.findMany({
-      where: { worldId, kind: 'PLANTILLA', homeLocationSlug: null, muertoEnMundo: false },
+      where: { worldId, kind: 'PLANTILLA', homeLocationSlug: null, ...npcVivoEnPartida(saveId) },
       select: { slug: true, name: true, role: true, temperamento: true, faction: true },
       orderBy: { slug: 'asc' },
     });
@@ -5981,7 +5981,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       // Mismo criterio que ya usan targetLocationId/targetItemName más abajo (buscan en TODO el
       // mundo, no solo en escena) — se extiende aquí por consistencia.
       if (!targetNpcId) {
-        const worldNpcs = await tx.npc.findMany({ where: { worldId, muertoEnMundo: false } });
+        const worldNpcs = await tx.npc.findMany({ where: { worldId, ...npcVivoEnPartida(saveId) } });
         targetNpcId = worldNpcs.find((npc) => questText.includes(normalizeText(npc.name)))?.id;
       }
 

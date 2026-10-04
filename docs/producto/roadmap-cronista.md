@@ -923,8 +923,12 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   tick del mundo solo procesa el catálogo; el avance diario, las copias de la partida y sus
   relaciones. El clonado arranca los marcadores de día/semana de las copias en el día de la partida
   (antes copiaba los del mundo, que podían ir muy por delante) y copia el almacén de cada facción.
-  **Falta:** expediciones de la partida (con sus muertes en `NpcState.muerto`), mercado y relaciones
-  jugador↔facción contra la copia, y llamarlo también al resolver tránsitos y al moverse por la zona.
+  **Paso 3a hecho (2026-10-04):** `npcVivoEnPartida(saveId)` / `npcsMuertosEnPartida`: todo lo que
+  lista NPC (escena, encuentros ambientales y de viaje, objetivos de misión, mapa y colisiones de
+  zona) excluye también los muertos fuera de escena en esa partida (`NpcState.muerto`), además de
+  `muertoEnMundo`. **Falta:** expediciones de la partida (que marquen `NpcState.muerto` en vez de
+  `muertoEnMundo`), mercado y relaciones jugador↔facción contra la copia, y llamar al avance diario
+  también al resolver tránsitos y al moverse por la zona.
 - **CR-8** Script de migración (§ 16). **M**
 - **Hecho cuando:** dos partidas del mismo mundo divergen (una mata a un NPC, la otra no lo ve);
   todos los tests de integración actuales pasan.

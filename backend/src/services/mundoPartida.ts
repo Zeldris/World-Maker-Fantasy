@@ -160,3 +160,16 @@ export async function ambitoFacciones(db: Db, saveId: string): Promise<FiltroFac
   const poblacion = await ambitoPoblacion(db, saveId);
   return 'worldId' in poblacion ? faccionesDeCatalogo(poblacion.worldId) : { saveId, origenSlug: { not: null } };
 }
+
+/// Filtro de `Npc` vivos para una partida (CR-7): ni muertos de mundo (`Npc.muertoEnMundo`, de antes
+/// del mundo por partida) ni muertos en ESTA partida fuera de escena (`NpcState.muerto`, p. ej. en
+/// una expedición de facción).
+export function npcVivoEnPartida(saveId: string): Prisma.NpcWhereInput {
+  return { muertoEnMundo: false, NOT: { npcStates: { some: { saveId, muerto: true } } } };
+}
+
+/// Ids de los NPC muertos fuera de escena en una partida (para filtros en memoria).
+export async function npcsMuertosEnPartida(db: Db, saveId: string): Promise<Set<string>> {
+  const filas = await db.npcState.findMany({ where: { saveId, muerto: true }, select: { npcId: true } });
+  return new Set(filas.map((f) => f.npcId));
+}

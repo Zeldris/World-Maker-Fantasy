@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { prisma } from '../lib/prisma.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
-import { ambitoFacciones, asegurarMundoDePartida, faccionesDeCatalogo } from './mundoPartida.js';
+import { ambitoFacciones, asegurarMundoDePartida, faccionesDeCatalogo, npcVivoEnPartida, npcsMuertosEnPartida } from './mundoPartida.js';
 import { sincronizarRelacionesConflicto, stagesConflictoPorRegion } from './worldAgenda.js';
 
 // CR-6 (hito 0.2, roadmap-cronista.md § 5.3) — clonado perezoso e idempotente del mundo vivo de una
@@ -102,5 +102,17 @@ describe('asegurarMundoDePartida (CR-6)', () => {
     expect((await stagesConflictoPorRegion(prisma, faccionesA)).get('Cristal Helado')).toBe(4);
     expect(await stagesConflictoPorRegion(prisma, faccionesB)).toEqual(antesB);
     expect(await stagesConflictoPorRegion(prisma, catalogo)).toEqual(antesCatalogo);
+  });
+
+  it('un NPC muerto fuera de escena en una partida (NpcState.muerto) sigue vivo en otra', async () => {
+    const a = await crearPartida('Mundo por partida (CR-7) muerto A');
+    const b = await crearPartida('Mundo por partida (CR-7) muerto B');
+    const npc = await prisma.npc.findFirstOrThrow({ where: { worldId, muertoEnMundo: false }, orderBy: { slug: 'asc' } });
+    await prisma.npcState.create({ data: { saveId: a, npcId: npc.id, scope: '', muerto: true, muertoEn: 480 } });
+
+    expect(await prisma.npc.count({ where: { id: npc.id, ...npcVivoEnPartida(a) } })).toBe(0);
+    expect(await prisma.npc.count({ where: { id: npc.id, ...npcVivoEnPartida(b) } })).toBe(1);
+    expect((await npcsMuertosEnPartida(prisma, a)).has(npc.id)).toBe(true);
+    expect((await npcsMuertosEnPartida(prisma, b)).has(npc.id)).toBe(false);
   });
 });
