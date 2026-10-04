@@ -4,13 +4,11 @@ import { daysCrossed, hambrunaNueva, tickFactionProduction, tickKingdomOneDay, t
 import { decayPresion, stageForPresion, typeForPresion } from './factionRelations.js';
 import { registrarHambruna } from './cronista/hambruna.js';
 
-/// Economía de facción en `worldTick` (Fase 4 del plan oct-2026: H-6, H-2, H-4). Antes
-/// `tickFactionProduction` corría en el turno de CADA partida (producción duplicada, sin consumo);
-/// ahora corre aquí, UNA vez por mundo y por día de ficción, desde `tick()` de workers/worldTick.ts.
-///
-/// El reloj de ficción vive por partida (`WorldState.fictionalMinutes`): el día de ficción de un
-/// mundo = el máximo de sus partidas. `KingdomStats.ultimoDiaProducido` (y
-/// `FactionRelation.ultimaSemanaDecaida`) garantizan que cada día/semana se procesa una sola vez.
+/// Economía de facción (Fase 4 del plan oct-2026: H-6, H-2, H-4). Corre sobre las facciones del mundo
+/// de cada partida, en su avance diario (`avanceDiario.ts`, CR-7), con el reloj de esa partida; el
+/// catálogo nunca cambia jugando (CR-35 quitó la versión que corría sobre él desde `worldTick`).
+/// `KingdomStats.ultimoDiaProducido` (y `FactionRelation.ultimaSemanaDecaida`) garantizan que cada
+/// día/semana se procesa una sola vez.
 
 /// DECISIÓN POR DEFECTO REVISABLE: tope de unidades de un mismo `catalogSlug` que una facción
 /// acumula en su Almacén (`AlmacenItem.factionId`). Sin tope el stock crecería sin límite.
@@ -19,12 +17,6 @@ export const TOPE_STOCK_FACCION_POR_SLUG = 5;
 /// tras semanas con el backend apagado o un salto enorme de reloj) — el resto se descarta.
 export const MAX_DIAS_CATCHUP_FACCION = 30;
 const SALON_KIND = 'sede';
-
-/// Puro: día de ficción del mundo = máximo de `fictionalMinutes` de sus partidas.
-export function worldFictionDay(fictionalMinutesPorPartida: number[]): number | null {
-  if (fictionalMinutesPorPartida.length === 0) return null;
-  return Math.floor(Math.max(...fictionalMinutesPorPartida) / 1440);
-}
 
 /// Puro: días de ficción pendientes de procesar. `ultimo` null = sin línea base → 0 (se fija al día
 /// actual sin producir retroactivamente). Reutiliza `daysCrossed` (kingdomTick.ts) sobre minutos de
@@ -74,29 +66,6 @@ export function cabeEnStock(existentes: number, tope: number = TOPE_STOCK_FACCIO
 }
 
 type Db = Pick<PrismaClient, '$transaction' | 'kingdomStats' | 'worldState' | 'factionRelation' | 'itemCatalog'>;
-
-/// Recorre las facciones de catálogo y aplica, por mundo y una sola vez por día/semana de ficción:
-/// producción + consumo (KingdomStats), stock real en el Almacén (H-2) y decaimiento de presión (H-4).
-export async function advanceFactionEconomy(prisma: Db): Promise<{ diasProcesados: number; semanasDecaidas: number; depositados: number }> {
-  const result = { diasProcesados: 0, semanasDecaidas: 0, depositados: 0 };
-
-  const estados = await prisma.worldState.findMany({ select: { fictionalMinutes: true, save: { select: { worldId: true } } } });
-  const minutosPorMundo = new Map<string, number[]>();
-  for (const e of estados) {
-    const lista = minutosPorMundo.get(e.save.worldId) ?? [];
-    lista.push(e.fictionalMinutes);
-    minutosPorMundo.set(e.save.worldId, lista);
-  }
-
-  for (const [worldId, minutos] of minutosPorMundo) {
-    const diaActual = worldFictionDay(minutos);
-    if (diaActual === null) continue;
-    // CR-7 (hito 0.2): aquí solo el catálogo; las copias de cada partida, en su avance diario.
-    await producirFacciones(prisma, worldId, { worldId, saveId: null }, diaActual, result);
-    await decaerRelaciones(prisma, { worldId, saveId: null }, diaActual, result);
-  }
-  return result;
-}
 
 type ResultadoEconomia = { diasProcesados: number; semanasDecaidas: number; depositados: number };
 

@@ -129,7 +129,7 @@ export function daysCrossed(minutosAntes: number, minutosDespues: number): numbe
   return Math.floor(minutosDespues / 1440) - Math.floor(minutosAntes / 1440);
 }
 
-/// (Fase 4 oct-2026: se aplica desde `advanceFactionEconomy`/worldTick, una vez por mundo y día — ya no en el turno.)
+/// (Se aplica desde `producirFacciones`, en el avance diario de cada partida — ya no en el turno.)
 /// Producción de facción agregada (docs/rpgtarkor/sistemas-reino/edificios-de-oficio.md § 4/§ 7,
 /// 2026-09-28, decisión de Álvaro): el Almacén de Reino (`AlmacenItem`) es solo del jugador (§
 /// 4.4-ter) — las facciones NO tienen objetos reales, solo un número agregado por día a

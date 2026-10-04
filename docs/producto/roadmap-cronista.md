@@ -1218,8 +1218,8 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   Diseño con `/grill-with-docs` (2026-10-04, ronda 1 aceptada entera por la usuaria; términos en
   `GLOSSARY.md`: decisión de facción, carencia, disposición):
   - **Q1 Dónde:** en el **mundo de la partida**, una vez por día de ficción de esa partida (junto al
-    narrador de fondo), nunca en el catálogo ni en tiempo real. Pasar economía y expediciones de
-    facción al mundo de la partida → `CR-35`.
+    narrador de fondo), nunca en el catálogo ni en tiempo real. Economía y expediciones de facción
+    ya iban por partida desde `CR-7`; `CR-35` quitó las versiones del catálogo.
   - **Q2 Sin los números de la economía de supervivencia:** carencias calculadas sobre lo que hay hoy
     (comida, bebida, riqueza, soldados frente al enemigo) con umbrales provisionales en un solo sitio;
     con la respuesta de Álvaro (pregunta 5) solo cambian los umbrales.
@@ -1272,10 +1272,18 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   - **Q18 Hecho cuando:** test de simulación de 60 días en una partida con expediciones por carencia,
     al menos un tratado, una guerra con paz o asalto, decisiones distintas con distinta Inteligencia en
     la misma situación, y claramente menos decisiones grandes en Tranquilo que en Caótico.
-  - **Orden de trabajo:** `CR-35` primero (Q1 necesita la economía por partida).
-- **CR-35** Economía y expediciones de facción en el mundo de la partida (`CR-34` Q1): hoy
-  `advanceFactionEconomy` y `advanceFactionExpeditions` corren sobre el catálogo (`saveId` null) una
-  vez por día del mundo; deben correr sobre la copia de cada partida, por su propio día. **M**
+  - **Q19 Cadena Serhu frente a la IA** (2026-10-04): manda la IA; si se firma la paz entre Serhu y
+    Helsig o Goshg, la cadena se corta (como cuando cae una de las partes). Diseño cerrado.
+  - **Orden de trabajo:** ~~`CR-35`~~ ✅ primero; después los pasos de `CR-34` (34a carencias e
+    Inteligencia, 34b expediciones dirigidas, 34c diplomacia, 34d expansión y asalto, 34e propuesta
+    al Reino, 34f simulación de 60 días).
+- ~~**CR-35** Economía y expediciones de facción en el mundo de la partida (`CR-34` Q1). **M**~~ ✅
+  2026-10-04 — Ya lo hacía `CR-7` (`avanceDiario.ts`: `producirFacciones`, `decaerRelaciones` y
+  `avanzarExpedicionesDePartida` sobre las facciones de la partida, con su reloj); la Q1 partía de un
+  dato equivocado. Lo que quedaba: quitar las versiones que corrían sobre el catálogo
+  (`advanceFactionEconomy`, `advanceFactionExpeditions`, `worldFictionDay`), que ya nadie llamaba y
+  contradecían «el catálogo nunca cambia jugando». Sus tests de integración (economía, 13-B y 13-C)
+  pasan a una partida con su copia del mundo; la prueba de re-seed (D-10) se mantiene aparte.
 - **Hecho cuando:** `cronista:simular 60` produce caídas, escisiones, tormentas con daños, guerras
   y nacimientos coherentes; perdonar a un NPC lo hace volver en otra región.
 

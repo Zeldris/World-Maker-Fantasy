@@ -6,7 +6,7 @@ import { npcVivoEnPartida, poblacionDeCatalogo, type FiltroPoblacion } from './m
 import { difundirNoticias, textoAsalto, textoExpedicionDeVuelta, type NoticiaMundo } from './noticiasMundo.js';
 import type { Prisma, PrismaClient, FactionRelationType, CondicionFisica, Npc } from '@prisma/client';
 import type { MetodoObtencion } from '@prisma/client';
-import { cabeEnStock, pendingFactionDays, worldFictionDay } from './factionEconomy.js';
+import { cabeEnStock, pendingFactionDays } from './factionEconomy.js';
 import { REGION_OWNING_FACTIONS } from './reputation.js';
 import { aplicarXpNpc, nivelEfectivo } from './npcProfession.js';
 import { xpForCraftSuccess } from './professionProgress.js';
@@ -23,9 +23,10 @@ import { recordFactionEvent } from './factionRelations.js';
 import type { Clase } from './classAbilities.js';
 
 /// Expediciones de facción (Fase 13-B del plan oct-2026; diseño en
-/// docs/rpgtarkor/sistemas-reino/expediciones-poblacion.md § 4.5). Corren en `worldTick`
-/// (`advanceFactionExpeditions`, justo después de `advanceFactionEconomy`), una vez por mundo y día de
-/// ficción, con el mismo reloj (`worldFictionDay`) y el mismo catch-up acotado que la economía.
+/// docs/rpgtarkor/sistemas-reino/expediciones-poblacion.md § 4.5). Corren en el avance diario de cada
+/// partida (`avanzarExpedicionesDePartida`, desde `avanceDiario.ts`, justo después de su economía),
+/// sobre las facciones de su mundo y con el mismo catch-up acotado que la economía (CR-7; CR-35 quitó
+/// la versión que corría sobre el catálogo).
 ///
 /// Ciclo (todo en días de ficción): lanzar el día D (EN_TRANSITO, `diaSalida` D) → al llegar, el día
 /// D+1, tirada de riesgo y recolección (RECOLECTANDO → RETORNANDO en el mismo paso: la recolección es
@@ -505,28 +506,6 @@ export interface OpcionesExpediciones {
   probabilidadMuerte?: number;
 }
 
-/// Recorre las facciones de catálogo y, por mundo y una sola vez por día de ficción, avanza sus
-/// expediciones y lanza una nueva si no tienen ninguna activa. Marcador: `KingdomStats.ultimoDiaExpedicion`.
-/// `random` es inyectable (tirada de riesgo, tiradas de recolección y elección de botín).
-export async function advanceFactionExpeditions(prisma: Db, random: () => number = Math.random, opciones: OpcionesExpediciones = {}): Promise<ResultadoExpediciones> {
-  const result: ResultadoExpediciones = { diasProcesados: 0, lanzadas: 0, completadas: 0, interceptadas: 0, depositados: 0, muertes: 0, noticias: 0 };
-
-  const estados = await prisma.worldState.findMany({ select: { fictionalMinutes: true, save: { select: { worldId: true } } } });
-  const minutosPorMundo = new Map<string, number[]>();
-  for (const e of estados) {
-    const lista = minutosPorMundo.get(e.save.worldId) ?? [];
-    lista.push(e.fictionalMinutes);
-    minutosPorMundo.set(e.save.worldId, lista);
-  }
-
-  for (const [worldId, minutos] of minutosPorMundo) {
-    const diaActual = worldFictionDay(minutos);
-    if (diaActual === null) continue;
-    await expedicionesDeFacciones(prisma, worldId, null, diaActual, random, opciones, result);
-  }
-  return result;
-}
-
 /// CR-7 (hito 0.2): expediciones de las facciones de UNA partida hasta su día de ficción, desde su
 /// avance diario (`avanceDiario.ts`).
 export async function avanzarExpedicionesDePartida(prisma: Db, worldId: string, saveId: string, diaActual: number, random: () => number = Math.random, opciones: OpcionesExpediciones = {}): Promise<ResultadoExpediciones> {
@@ -535,9 +514,9 @@ export async function avanzarExpedicionesDePartida(prisma: Db, worldId: string, 
   return result;
 }
 
-/// Avanza y lanza las expediciones de las facciones del ámbito (catálogo si `saveId` es null).
-/// Idempotente por `KingdomStats.ultimoDiaExpedicion`.
-async function expedicionesDeFacciones(prisma: Db, worldId: string, saveId: string | null, diaActual: number, random: () => number, opciones: OpcionesExpediciones, result: ResultadoExpediciones): Promise<void> {
+/// Avanza y lanza las expediciones de las facciones de la partida. Idempotente por
+/// `KingdomStats.ultimoDiaExpedicion`.
+async function expedicionesDeFacciones(prisma: Db, worldId: string, saveId: string, diaActual: number, random: () => number, opciones: OpcionesExpediciones, result: ResultadoExpediciones): Promise<void> {
   const statsRows = await prisma.kingdomStats.findMany({
     where: { faction: faccionesDeAmbito(worldId, saveId) },
     include: { faction: { select: { id: true, name: true } } },
