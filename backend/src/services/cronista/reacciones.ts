@@ -8,12 +8,13 @@
 // que supere el tope pasa al día siguiente como consecuencia aplazada (`REACCION_APLAZADA`, CR-11).
 //
 // De la tabla de § 7.1 faltan (con su tarea): recuerdos y etiquetas tras una muerte o un perdón
-// (Fase 4), `SUCESION_PENDIENTE`, `DEUDA_DE_VIDA` y `PROMESA_VENCE` (CR-11), la fauna que huye de
-// una tormenta (necesita vecinos entre regiones), la hambruna de 3 días seguidos (necesita llevar la
-// cuenta) y etiquetas/aprobación por sucesos del jugador (Fase 4). `GUERRA_DECLARADA` ya la registra
+// (Fase 4), `PROMESA_VENCE` (cuando algo registre promesas) y etiquetas/aprobación por sucesos del
+// jugador (Fase 4). La fauna que huye de una tormenta y la hambruna llegaron con CR-12 (paso 12c). `GUERRA_DECLARADA` ya la registra
 // `recordFactionEvent` al pasar a guerra.
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { slugify } from '../../lib/slugify.js';
+import { stripRegionArticle } from '../population.js';
+import { REGIONES_VECINAS } from './regiones.js';
 import { aplicarEfectos, CUALQUIERA_SALVO_ORIGEN, type CtxEfecto, type Efecto } from './efectos.js';
 import { registrarSuceso, type NuevoSuceso } from './sucesos.js';
 import { dispararPorSuceso } from './consecuencias.js';
@@ -25,6 +26,13 @@ export const TOPE_NIVEL_CASCADA = 3;
 export const TOPE_SUCESOS_CASCADA = 20;
 /// Probabilidad de que una tormenta extrema dañe cada edificio activo del jugador en su región.
 export const PROB_DANO_TORMENTA = 0.5;
+/// CR-12 (12c): cuántas especies huyen de una tormenta extrema y qué parte de su peso en la región.
+export const ESPECIES_QUE_HUYEN = 2;
+export const FRACCION_QUE_HUYE = 0.3;
+/// CR-12 (12c): cohesión que quita una hambruna y probabilidad de rebelión (el doble si la cohesión
+/// ya ha quedado por debajo de 30).
+export const COHESION_HAMBRUNA = -10;
+export const PROB_REBELION_HAMBRUNA = 0.25;
 
 export interface SucesoEnCola {
   id: string;
@@ -219,7 +227,58 @@ export const REACCIONES: Reaccion[] = [
         .map((b) => ({ tipo: 'danarEdificio' as const, buildingId: b.id, causa: 'una tormenta' }));
     },
   },
+  {
+    // CR-12 (12c): hasta `ESPECIES_QUE_HUYEN` especies de la región huyen a una región vecina.
+    id: 'TORMENTA_ESPANTA_FAUNA',
+    escucha: ['TORMENTA_EXTREMA'],
+    prioridad: 20,
+    condicion: async (ctx) => !!regionDeSlug(ctx.suceso.regionSlug),
+    efectos: async (ctx) => {
+      const region = regionDeSlug(ctx.suceso.regionSlug)!;
+      const vecinas = REGIONES_VECINAS[region]!;
+      const fauna = await ctx.tx.worldPopulation.findMany({
+        where: { saveId: ctx.suceso.saveId, targetType: { not: 'RAZA' }, poblacion: { gt: 0 } },
+        select: { targetSlug: true, distribucion: true },
+        orderBy: { targetSlug: 'asc' },
+      });
+      const presentes = fauna.filter((f) => ((f.distribucion as Record<string, number> | null)?.[stripRegionArticle(region)] ?? 0) > 0);
+      // Barajado con el azar dado (Fisher-Yates) y las primeras.
+      for (let i = presentes.length - 1; i > 0; i--) {
+        const j = Math.floor(ctx.random() * (i + 1));
+        [presentes[i], presentes[j]] = [presentes[j]!, presentes[i]!];
+      }
+      return presentes.slice(0, ESPECIES_QUE_HUYEN).map((f) => ({
+        tipo: 'moverPoblacion' as const,
+        targetSlug: f.targetSlug,
+        desde: region,
+        hacia: vecinas[Math.floor(ctx.random() * vecinas.length)]!,
+        fraccion: FRACCION_QUE_HUYE,
+      }));
+    },
+  },
+  {
+    // CR-12 (12c): la hambruna divide al reino que la sufre y puede acabar en rebelión.
+    id: 'HAMBRUNA_DIVIDE',
+    escucha: ['HAMBRUNA'],
+    prioridad: 10,
+    condicion: async (ctx) => !!actor(ctx.suceso, 'FACCION', 'AFECTADO'),
+    efectos: async (ctx) => [{ tipo: 'cambiarCohesion', faccionSlug: actor(ctx.suceso, 'FACCION', 'AFECTADO')!, delta: COHESION_HAMBRUNA }],
+    registra: async (ctx) => {
+      const slug = actor(ctx.suceso, 'FACCION', 'AFECTADO')!;
+      const f = await ctx.tx.faction.findFirst({ where: { saveId: ctx.suceso.saveId, slug, disueltaEn: null }, select: { name: true, cohesion: true } });
+      if (!f) return [];
+      const prob = f.cohesion < 30 ? PROB_REBELION_HAMBRUNA * 2 : PROB_REBELION_HAMBRUNA;
+      if (ctx.random() >= prob) return [];
+      return [{ tipo: 'REBELION', actores: [{ entidadTipo: 'FACCION', entidadId: slug, papel: 'VICTIMA' }], datos: { reino: f.name } }];
+    },
+  },
 ];
+
+/// Región (nombre de `Location.region`, el de `REGIONES_VECINAS`) a partir de su slug.
+function regionDeSlug(slug: string | null): string | null {
+  if (!slug) return null;
+  return Object.keys(REGIONES_VECINAS).find((r) => slugify(r) === slug) ?? null;
+}
 
 // ─────────────────────────── Cola ───────────────────────────
 

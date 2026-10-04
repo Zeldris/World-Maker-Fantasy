@@ -16,6 +16,20 @@ export interface KingdomStatsBlock {
   /// Territory.control) — ver comentario del campo homónimo en schema.prisma.
   diasFelicidadAlta: number;
   diasFelicidadBaja: number;
+  /// CR-12 (12c): días seguidos con déficit de comida. Opcional (bloques antiguos sin él = 0).
+  diasHambre?: number;
+}
+
+/// CR-12 (12c): días seguidos de hambre que hacen una `HAMBRUNA` (y otra cada tantos más).
+export const DIAS_PARA_HAMBRUNA = 3;
+
+/// Puro: ¿la racha de hambre ha cruzado un múltiplo de `DIAS_PARA_HAMBRUNA` en estos `dias`? (como
+/// mucho una hambruna por llamada, aunque un viaje largo cruce varias).
+export function hambrunaNueva(antes: number, despues: number, dias: number): boolean {
+  if (despues < DIAS_PARA_HAMBRUNA) return false;
+  // Si la racha se rompió en medio, solo cuenta la de ahora.
+  const base = despues === antes + dias ? antes : 0;
+  return Math.floor(despues / DIAS_PARA_HAMBRUNA) > Math.floor(base / DIAS_PARA_HAMBRUNA);
 }
 
 export const DEFAULT_KINGDOM_STATS: KingdomStatsBlock = {
@@ -29,6 +43,7 @@ export const DEFAULT_KINGDOM_STATS: KingdomStatsBlock = {
   visitantes: 0,
   diasFelicidadAlta: 0,
   diasFelicidadBaja: 0,
+  diasHambre: 0,
 };
 
 const FELICIDAD_MIN = 0;
@@ -84,6 +99,7 @@ export function tickKingdomOneDay(stats: KingdomStatsBlock): KingdomStatsBlock {
     // consecutivos, mismo criterio "todo o nada" que el resto de umbrales de este archivo.
     diasFelicidadAlta: nuevaFelicidad >= FELICIDAD_ALTA_UMBRAL ? stats.diasFelicidadAlta + 1 : 0,
     diasFelicidadBaja: nuevaFelicidad <= FELICIDAD_BAJA_UMBRAL ? stats.diasFelicidadBaja + 1 : 0,
+    diasHambre: comidaNeta < 0 ? (stats.diasHambre ?? 0) + 1 : 0,
   };
 }
 

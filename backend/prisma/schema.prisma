@@ -1764,6 +1764,9 @@ model KingdomStats {
   /// dispara consolidar/perder territorios — ver el bloque de `diasCruzados` en turnResolution.ts.
   diasFelicidadAlta   Int      @default(0)
   diasFelicidadBaja   Int      @default(0)
+  /// CR-12 (12c, hito 0.2): días seguidos con déficit de comida (hambre). Cada 3 seguidos se
+  /// registra `HAMBRUNA` (cohesión −10 y posible `REBELION`, reacción `HAMBRUNA_DIVIDE`).
+  diasHambre          Int      @default(0)
   /// Solo filas de facción (Fase 4 del plan oct-2026, H-6): último día de ficción del MUNDO (floor de
   /// minutos/1440, máximo de sus partidas) para el que `advanceFactionEconomy` (factionEconomy.ts,
   /// llamado desde worldTick) ya produjo/consumió. Marcador de idempotencia: cada día se procesa una

@@ -1,7 +1,8 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { CRAFTING_RECIPES, type CraftingRecipe } from './crafting.js';
-import { daysCrossed, tickFactionProduction, tickKingdomOneDay, type KingdomStatsBlock } from './kingdomTick.js';
+import { daysCrossed, hambrunaNueva, tickFactionProduction, tickKingdomOneDay, type KingdomStatsBlock } from './kingdomTick.js';
 import { decayPresion, stageForPresion, typeForPresion } from './factionRelations.js';
+import { registrarHambruna } from './cronista/hambruna.js';
 
 /// Economía de facción en `worldTick` (Fase 4 del plan oct-2026: H-6, H-2, H-4). Antes
 /// `tickFactionProduction` corría en el turno de CADA partida (producción duplicada, sin consumo);
@@ -101,10 +102,24 @@ type ResultadoEconomia = { diasProcesados: number; semanasDecaidas: number; depo
 
 /// Producción, consumo y stock (H-6, H-2) de las facciones de `faccion` hasta `diaActual`.
 /// Idempotente por `KingdomStats.ultimoDiaProducido`.
-export async function producirFacciones(prisma: Db, worldId: string, faccion: Prisma.FactionWhereInput, diaActual: number, result: ResultadoEconomia): Promise<void> {
+/// CR-12 (12c): las facciones del mundo llevan la cuenta de días de hambre, pero aún no registran
+/// `HAMBRUNA`: con los números provisionales de su economía, 6 de las 9 sembradas pasan hambre siempre
+/// (sin trabajadores o con más bocas que comida) y se hundirían en semanas. Se enciende cuando estén
+/// los números de la economía de supervivencia (pregunta 5 a Álvaro).
+export const HAMBRUNA_EN_FACCIONES = false;
+
+export async function producirFacciones(
+  prisma: Db,
+  worldId: string,
+  faccion: Prisma.FactionWhereInput,
+  diaActual: number,
+  result: ResultadoEconomia,
+  opciones: { hambruna?: boolean } = {},
+): Promise<void> {
+  const hambruna = opciones.hambruna ?? HAMBRUNA_EN_FACCIONES;
   const statsRows = await prisma.kingdomStats.findMany({
     where: { faction: faccion },
-    include: { faction: { select: { id: true } } },
+    include: { faction: { select: { id: true, saveId: true } } },
   });
   const slugsValidos = new Map<string, boolean>(); // catalogSlug → tiene valor de mercado > 0
   for (const fks of statsRows) {
@@ -124,14 +139,18 @@ export async function producirFacciones(prisma: Db, worldId: string, faccion: Pr
       let stats: KingdomStatsBlock = {
         poblacion: fks.poblacion, felicidad: fks.felicidad, comida: fks.comida, bebida: fks.bebida, riqueza: fks.riqueza,
         soldados: fks.soldados, trabajadores: fks.trabajadores, visitantes: fks.visitantes,
-        diasFelicidadAlta: fks.diasFelicidadAlta, diasFelicidadBaja: fks.diasFelicidadBaja,
+        diasFelicidadAlta: fks.diasFelicidadAlta, diasFelicidadBaja: fks.diasFelicidadBaja, diasHambre: fks.diasHambre,
       };
       for (let i = 0; i < pendientes; i++) stats = tickFactionOneDay(stats, porDia);
+      // CR-12 (12c): hambruna de una facción del mundo de una partida (las del catálogo no tienen Libro).
+      if (hambruna && fks.faction?.saveId && hambrunaNueva(fks.diasHambre, stats.diasHambre ?? 0, pendientes)) {
+        await registrarHambruna(tx, fks.faction.saveId, { factionId });
+      }
       await tx.kingdomStats.update({
         where: { id: fks.id },
         data: {
           comida: stats.comida, riqueza: stats.riqueza, felicidad: stats.felicidad,
-          diasFelicidadAlta: stats.diasFelicidadAlta, diasFelicidadBaja: stats.diasFelicidadBaja,
+          diasFelicidadAlta: stats.diasFelicidadAlta, diasFelicidadBaja: stats.diasFelicidadBaja, diasHambre: stats.diasHambre ?? 0,
         },
       });
 

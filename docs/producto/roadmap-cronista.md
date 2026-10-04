@@ -1101,6 +1101,16 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     o caen Helsig y Goshg a la vez (noticia de cierre en «El mundo»). **Queda:** cadenas que nazcan a
     mitad de partida (p. ej. una guerra a partir de escaramuzas), como candidatos del narrador de
     fondo; 12c y 12d.
+  - ✅ **12c hecho (2026-10-04):** reacción `TORMENTA_ESPANTA_FAUNA` (hasta 2 especies de la región
+    de una `TORMENTA_EXTREMA` mueven el 30 % de su peso a una región vecina, `MIGRACION_FAUNA`) y
+    hambruna: `KingdomStats.diasHambre` (migración `20261004220000_dias_hambre`) cuenta los días
+    seguidos con déficit de comida; cada 3 se registra `HAMBRUNA` (`cronista/hambruna.ts`) y la
+    reacción `HAMBRUNA_DIVIDE` quita 10 de cohesión y puede desatar `REBELION` (25 %, 50 % si la
+    cohesión queda por debajo de 30). **Pendiente:** la hambruna solo se registra para el Reino de la
+    jugadora; en las facciones del mundo está apagada (`HAMBRUNA_EN_FACCIONES`) porque con los números
+    provisionales de su economía 6 de las 9 sembradas pasan hambre siempre. Se enciende con los
+    números de la economía de supervivencia (pregunta 5 a Álvaro). `REBELION` aún no tiene
+    consecuencias propias más allá del Libro (las tendrá con la economía y las reglas de facción).
 - **CR-13** Nacimientos notables y generador de nombres (§ 12.3). **M** Incluye el efecto `crearNpc`
   en `efectos.ts` (CR-9).
 - **Hecho cuando:** `cronista:simular 60` produce caídas, escisiones, tormentas con daños, guerras
