@@ -49,6 +49,8 @@ async function clonarConCandado(tx: Tx, saveId: string): Promise<boolean> {
   });
   if (save.worldState?.mundoClonadoEn) return false;
   const { worldId } = save;
+  // CR-7: los marcadores de día de las copias arrancan en el día de la partida (no en el del mundo).
+  const diaPartida = Math.floor((save.worldState?.fictionalMinutes ?? 480) / 1440);
 
   // 2. Facciones de catálogo → copias de la partida (el líder sigue apuntando al Npc de catálogo;
   //    su estado vive en NpcState).
@@ -73,6 +75,7 @@ async function clonarConCandado(tx: Tx, saveId: string): Promise<boolean> {
             saveId,
             sourceFactionId: copiaDe.get(r.sourceFactionId)!,
             targetFactionId: copiaDe.get(r.targetFactionId)!,
+            ultimaSemanaDecaida: Math.floor(diaPartida / 7),
           }) as Prisma.FactionRelationCreateManyInput,
       ),
     });
@@ -85,7 +88,19 @@ async function clonarConCandado(tx: Tx, saveId: string): Promise<boolean> {
   for (const k of stats) {
     const nueva = copiaDe.get(k.factionId!)!;
     await tx.kingdomStats.create({
-      data: copiaDeFila('KingdomStats', k, { factionId: nueva, ownerKey: ownerKeyFor({ factionId: nueva }) }) as Prisma.KingdomStatsUncheckedCreateInput,
+      data: copiaDeFila('KingdomStats', k, {
+        factionId: nueva,
+        ownerKey: ownerKeyFor({ factionId: nueva }),
+        ultimoDiaProducido: diaPartida,
+        ultimoDiaExpedicion: diaPartida,
+      }) as Prisma.KingdomStatsUncheckedCreateInput,
+    });
+  }
+  // Almacén de cada facción (stock del mercado) → a su copia.
+  const almacen = await tx.almacenItem.findMany({ where: { factionId: { in: idsCatalogo } } });
+  if (almacen.length > 0) {
+    await tx.almacenItem.createMany({
+      data: almacen.map((a) => copiaDeFila('AlmacenItem', a, { factionId: copiaDe.get(a.factionId!)! }) as Prisma.AlmacenItemCreateManyInput),
     });
   }
   const territorios = await tx.territory.findMany({ where: { factionId: { in: idsCatalogo } } });

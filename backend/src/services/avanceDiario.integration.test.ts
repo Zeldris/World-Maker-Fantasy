@@ -61,4 +61,21 @@ describe('avanzarMundoHasta (CR-7)', () => {
     expect(await avanzarMundoHasta(prisma, a, diezDias, () => 0)).toEqual({ diasSimulados: 0 });
     expect(await totalPoblacion({ saveId: a })).toBe(tras);
   }, 30_000);
+
+  it('la economía avanza las copias de la partida con su reloj y deja quietas las del catálogo', async () => {
+    const a = await crearPartida('Avance diario (CR-7) economía');
+    await avanzarMundoHasta(prisma, a, 480);
+    const copias = await prisma.kingdomStats.findMany({ where: { faction: { saveId: a, origenSlug: { not: null } } } });
+    expect(copias.length).toBeGreaterThan(0);
+    // Al clonar, los marcadores arrancan en el día de la partida (0), no en el del mundo.
+    expect(copias.every((k) => k.ultimoDiaProducido === 0 && k.ultimoDiaExpedicion === 0)).toBe(true);
+    const catalogoAntes = await prisma.kingdomStats.findMany({ where: { faction: { worldId, saveId: null } }, select: { id: true, ultimoDiaProducido: true, comida: true } });
+
+    await avanzarMundoHasta(prisma, a, 480 + 3 * 1440, () => 0);
+
+    const copiasTras = await prisma.kingdomStats.findMany({ where: { faction: { saveId: a, origenSlug: { not: null } } } });
+    expect(copiasTras.every((k) => k.ultimoDiaProducido === 3)).toBe(true);
+    const catalogoTras = await prisma.kingdomStats.findMany({ where: { faction: { worldId, saveId: null } }, select: { id: true, ultimoDiaProducido: true, comida: true } });
+    expect(catalogoTras).toEqual(catalogoAntes);
+  }, 30_000);
 });

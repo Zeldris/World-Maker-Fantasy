@@ -918,8 +918,12 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   reales), la refleja en el `KingdomStats` de sus facciones y avanza su agenda
   (`avanzarAgendaDePartida`). Se llama tras el commit de cada turno. `worldTick` ya no avanza la
   agenda y su crecimiento de población solo toca el catálogo. Tests: unitarios del cálculo y de
-  integración (crece solo la partida, cada día una vez). **Falta:** economía y expediciones de
-  facción de la partida (con sus muertes en `NpcState.muerto`), almacén/mercado y relaciones
+  integración (crece solo la partida, cada día una vez). **Paso 2 hecho (2026-10-04): economía por
+  partida.** `factionEconomy.ts` partida en `producirFacciones` y `decaerRelaciones` por ámbito: el
+  tick del mundo solo procesa el catálogo; el avance diario, las copias de la partida y sus
+  relaciones. El clonado arranca los marcadores de día/semana de las copias en el día de la partida
+  (antes copiaba los del mundo, que podían ir muy por delante) y copia el almacén de cada facción.
+  **Falta:** expediciones de la partida (con sus muertes en `NpcState.muerto`), mercado y relaciones
   jugador↔facción contra la copia, y llamarlo también al resolver tránsitos y al moverse por la zona.
 - **CR-8** Script de migración (§ 16). **M**
 - **Hecho cuando:** dos partidas del mismo mundo divergen (una mata a un NPC, la otra no lo ve);

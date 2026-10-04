@@ -90,94 +90,105 @@ export async function advanceFactionEconomy(prisma: Db): Promise<{ diasProcesado
   for (const [worldId, minutos] of minutosPorMundo) {
     const diaActual = worldFictionDay(minutos);
     if (diaActual === null) continue;
-
-    // ── Producción, consumo y stock (H-6, H-2) ──
-    const statsRows = await prisma.kingdomStats.findMany({
-      where: { faction: { worldId, saveId: null } },
-      include: { faction: { select: { id: true } } },
-    });
-    const slugsValidos = new Map<string, boolean>(); // catalogSlug → tiene valor de mercado > 0
-    for (const fks of statsRows) {
-      const pendientes = pendingFactionDays(fks.ultimoDiaProducido, diaActual);
-      if (fks.ultimoDiaProducido !== null && pendientes === 0 && fks.ultimoDiaProducido >= diaActual) continue;
-      const factionId = fks.factionId!;
-      await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-        // Reclamo atómico del día: solo procesa quien consigue mover el marcador.
-        const claim = await tx.kingdomStats.updateMany({
-          where: { id: fks.id, ultimoDiaProducido: fks.ultimoDiaProducido },
-          data: { ultimoDiaProducido: diaActual },
-        });
-        if (claim.count === 0 || pendientes === 0) return; // otro tick ya lo hizo, o solo se fija la línea base
-
-        const edificios = await tx.building.findMany({ where: { factionId, status: 'ACTIVO' }, select: { recipeKey: true, status: true, kind: true } });
-        const porDia = tickFactionProduction(edificios);
-        let stats: KingdomStatsBlock = {
-          poblacion: fks.poblacion, felicidad: fks.felicidad, comida: fks.comida, bebida: fks.bebida, riqueza: fks.riqueza,
-          soldados: fks.soldados, trabajadores: fks.trabajadores, visitantes: fks.visitantes,
-          diasFelicidadAlta: fks.diasFelicidadAlta, diasFelicidadBaja: fks.diasFelicidadBaja,
-        };
-        for (let i = 0; i < pendientes; i++) stats = tickFactionOneDay(stats, porDia);
-        await tx.kingdomStats.update({
-          where: { id: fks.id },
-          data: {
-            comida: stats.comida, riqueza: stats.riqueza, felicidad: stats.felicidad,
-            diasFelicidadAlta: stats.diasFelicidadAlta, diasFelicidadBaja: stats.diasFelicidadBaja,
-          },
-        });
-
-        // Stock real: 1 unidad por edificio de oficio y día, tope por catalogSlug.
-        const oficios = edificios.filter((b) => b.kind !== SALON_KIND).map((b) => b.kind);
-        if (oficios.length > 0) {
-          const existentes = await tx.almacenItem.findMany({ where: { factionId, catalogSlug: { not: null } }, select: { catalogSlug: true } });
-          const cuenta = new Map<string, number>();
-          for (const e of existentes) cuenta.set(e.catalogSlug!, (cuenta.get(e.catalogSlug!) ?? 0) + 1);
-          const nuevos: Prisma.AlmacenItemCreateManyInput[] = [];
-          for (let d = 1; d <= pendientes; d++) {
-            const dia = diaActual - pendientes + d;
-            for (const oficio of oficios) {
-              const receta = pickDailyProduct(productRecipesForOficio(oficio), dia);
-              if (!receta) continue;
-              const slug = receta.resultCatalogSlug!;
-              if (!slugsValidos.has(slug)) {
-                const cat = await prisma.itemCatalog.findFirst({ where: { worldId, slug }, select: { valorGoirnos: true } });
-                slugsValidos.set(slug, !!cat && cat.valorGoirnos > 0);
-              }
-              if (!slugsValidos.get(slug)) continue;
-              const actual = cuenta.get(slug) ?? 0;
-              if (!cabeEnStock(actual)) continue;
-              cuenta.set(slug, actual + 1);
-              nuevos.push({
-                factionId, name: receta.resultName, description: receta.resultDescription, catalogSlug: slug,
-                statBonuses: receta.statBonuses ? (receta.statBonuses as Prisma.InputJsonValue) : undefined,
-              });
-            }
-          }
-          if (nuevos.length > 0) {
-            await tx.almacenItem.createMany({ data: nuevos });
-            result.depositados += nuevos.length;
-          }
-        }
-        result.diasProcesados += pendientes;
-      });
-    }
-
-    // ── Decaimiento de presión (H-4) ──
-    const relaciones = await prisma.factionRelation.findMany({ where: { worldId } });
-    const semanaActual = Math.floor(diaActual / 7);
-    for (const rel of relaciones) {
-      if (rel.ultimaSemanaDecaida !== null && rel.ultimaSemanaDecaida >= semanaActual) continue;
-      const semanas = pendingWeeks(rel.ultimaSemanaDecaida, diaActual);
-      const claim = await prisma.factionRelation.updateMany({
-        where: { id: rel.id, ultimaSemanaDecaida: rel.ultimaSemanaDecaida },
-        data: { ultimaSemanaDecaida: semanaActual },
-      });
-      if (claim.count === 0 || semanas === 0) continue;
-      const presion = decayPresion(rel.presion, semanas);
-      if (presion !== rel.presion) {
-        await prisma.factionRelation.update({ where: { id: rel.id }, data: { presion, type: typeForPresion(presion), stage: stageForPresion(presion) } });
-      }
-      result.semanasDecaidas += semanas;
-    }
+    // CR-7 (hito 0.2): aquí solo el catálogo; las copias de cada partida, en su avance diario.
+    await producirFacciones(prisma, worldId, { worldId, saveId: null }, diaActual, result);
+    await decaerRelaciones(prisma, { worldId, saveId: null }, diaActual, result);
   }
   return result;
+}
+
+type ResultadoEconomia = { diasProcesados: number; semanasDecaidas: number; depositados: number };
+
+/// Producción, consumo y stock (H-6, H-2) de las facciones de `faccion` hasta `diaActual`.
+/// Idempotente por `KingdomStats.ultimoDiaProducido`.
+export async function producirFacciones(prisma: Db, worldId: string, faccion: Prisma.FactionWhereInput, diaActual: number, result: ResultadoEconomia): Promise<void> {
+  const statsRows = await prisma.kingdomStats.findMany({
+    where: { faction: faccion },
+    include: { faction: { select: { id: true } } },
+  });
+  const slugsValidos = new Map<string, boolean>(); // catalogSlug → tiene valor de mercado > 0
+  for (const fks of statsRows) {
+    const pendientes = pendingFactionDays(fks.ultimoDiaProducido, diaActual);
+    if (fks.ultimoDiaProducido !== null && pendientes === 0 && fks.ultimoDiaProducido >= diaActual) continue;
+    const factionId = fks.factionId!;
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      // Reclamo atómico del día: solo procesa quien consigue mover el marcador.
+      const claim = await tx.kingdomStats.updateMany({
+        where: { id: fks.id, ultimoDiaProducido: fks.ultimoDiaProducido },
+        data: { ultimoDiaProducido: diaActual },
+      });
+      if (claim.count === 0 || pendientes === 0) return; // otro tick ya lo hizo, o solo se fija la línea base
+
+      const edificios = await tx.building.findMany({ where: { factionId, status: 'ACTIVO' }, select: { recipeKey: true, status: true, kind: true } });
+      const porDia = tickFactionProduction(edificios);
+      let stats: KingdomStatsBlock = {
+        poblacion: fks.poblacion, felicidad: fks.felicidad, comida: fks.comida, bebida: fks.bebida, riqueza: fks.riqueza,
+        soldados: fks.soldados, trabajadores: fks.trabajadores, visitantes: fks.visitantes,
+        diasFelicidadAlta: fks.diasFelicidadAlta, diasFelicidadBaja: fks.diasFelicidadBaja,
+      };
+      for (let i = 0; i < pendientes; i++) stats = tickFactionOneDay(stats, porDia);
+      await tx.kingdomStats.update({
+        where: { id: fks.id },
+        data: {
+          comida: stats.comida, riqueza: stats.riqueza, felicidad: stats.felicidad,
+          diasFelicidadAlta: stats.diasFelicidadAlta, diasFelicidadBaja: stats.diasFelicidadBaja,
+        },
+      });
+
+      // Stock real: 1 unidad por edificio de oficio y día, tope por catalogSlug.
+      const oficios = edificios.filter((b) => b.kind !== SALON_KIND).map((b) => b.kind);
+      if (oficios.length > 0) {
+        const existentes = await tx.almacenItem.findMany({ where: { factionId, catalogSlug: { not: null } }, select: { catalogSlug: true } });
+        const cuenta = new Map<string, number>();
+        for (const e of existentes) cuenta.set(e.catalogSlug!, (cuenta.get(e.catalogSlug!) ?? 0) + 1);
+        const nuevos: Prisma.AlmacenItemCreateManyInput[] = [];
+        for (let d = 1; d <= pendientes; d++) {
+          const dia = diaActual - pendientes + d;
+          for (const oficio of oficios) {
+            const receta = pickDailyProduct(productRecipesForOficio(oficio), dia);
+            if (!receta) continue;
+            const slug = receta.resultCatalogSlug!;
+            if (!slugsValidos.has(slug)) {
+              const cat = await prisma.itemCatalog.findFirst({ where: { worldId, slug }, select: { valorGoirnos: true } });
+              slugsValidos.set(slug, !!cat && cat.valorGoirnos > 0);
+            }
+            if (!slugsValidos.get(slug)) continue;
+            const actual = cuenta.get(slug) ?? 0;
+            if (!cabeEnStock(actual)) continue;
+            cuenta.set(slug, actual + 1);
+            nuevos.push({
+              factionId, name: receta.resultName, description: receta.resultDescription, catalogSlug: slug,
+              statBonuses: receta.statBonuses ? (receta.statBonuses as Prisma.InputJsonValue) : undefined,
+            });
+          }
+        }
+        if (nuevos.length > 0) {
+          await tx.almacenItem.createMany({ data: nuevos });
+          result.depositados += nuevos.length;
+        }
+      }
+      result.diasProcesados += pendientes;
+    });
+  }
+}
+
+/// Decaimiento de presión (H-4) de las relaciones de `relacion` hasta `diaActual`. Idempotente por
+/// `FactionRelation.ultimaSemanaDecaida`.
+export async function decaerRelaciones(prisma: Db, relacion: Prisma.FactionRelationWhereInput, diaActual: number, result: ResultadoEconomia): Promise<void> {
+  const relaciones = await prisma.factionRelation.findMany({ where: relacion });
+  const semanaActual = Math.floor(diaActual / 7);
+  for (const rel of relaciones) {
+    if (rel.ultimaSemanaDecaida !== null && rel.ultimaSemanaDecaida >= semanaActual) continue;
+    const semanas = pendingWeeks(rel.ultimaSemanaDecaida, diaActual);
+    const claim = await prisma.factionRelation.updateMany({
+      where: { id: rel.id, ultimaSemanaDecaida: rel.ultimaSemanaDecaida },
+      data: { ultimaSemanaDecaida: semanaActual },
+    });
+    if (claim.count === 0 || semanas === 0) continue;
+    const presion = decayPresion(rel.presion, semanas);
+    if (presion !== rel.presion) {
+      await prisma.factionRelation.update({ where: { id: rel.id }, data: { presion, type: typeForPresion(presion), stage: stageForPresion(presion) } });
+    }
+    result.semanasDecaidas += semanas;
+  }
 }
