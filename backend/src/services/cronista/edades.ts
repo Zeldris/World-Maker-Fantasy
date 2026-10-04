@@ -76,10 +76,10 @@ export function esAdulto(raza: string | null | undefined, edad: number): boolean
 export function atributosPorEdad(potenciales: Atributos, raza: string | null | undefined, edad: number): Atributos {
   const { madurez, esperanza } = cicloVital(raza);
   const crecimiento = edad >= madurez ? 1 : FACTOR_AL_NACER + (1 - FACTOR_AL_NACER) * (edad / madurez);
-  const anosDeVejez = Math.max(0, edad - Math.floor(INICIO_VEJEZ * esperanza));
+  const vejez = Math.max(0, edad - Math.floor(INICIO_VEJEZ * esperanza));
   const resultado: Atributos = {};
   for (const [k, v] of Object.entries(potenciales)) {
-    const conEdad = Math.round(v * crecimiento) - (ATRIBUTOS_QUE_ENVEJECEN.includes(k) ? anosDeVejez : 0);
+    const conEdad = Math.round(v * crecimiento) - (ATRIBUTOS_QUE_ENVEJECEN.includes(k) ? vejez : 0);
     resultado[k] = Math.max(v === 0 ? 0 : 1, conEdad);
   }
   return resultado;
@@ -93,4 +93,24 @@ export function probMuerteDeViejoPorDia(raza: string | null | undefined, edad: n
   if (edad < inicio) return 0;
   const anual = Math.min(1, ((edad - inicio) / (0.4 * esperanza)) ** 2 + 0.02);
   return anual / DIAS_POR_ANIO;
+}
+
+/// Años de vejez a una edad (0 antes de empezar).
+export function anosDeVejez(raza: string | null | undefined, edad: number): number {
+  return Math.max(0, edad - Math.floor(INICIO_VEJEZ * cicloVital(raza).esperanza));
+}
+
+/// Resta los años de vejez a fuerza, destreza y constitución (nunca por debajo de 1). Para los NPC
+/// del catálogo, cuyos atributos son del mundo: la vejez de cada partida va en `NpcState.vejez`.
+export function restarVejez<T extends Record<string, number>>(atributos: T, anos: number): T {
+  if (anos <= 0) return atributos;
+  const r: Record<string, number> = { ...atributos };
+  for (const k of ATRIBUTOS_QUE_ENVEJECEN) if (k in r) r[k] = Math.max(1, r[k]! - anos);
+  return r as T;
+}
+
+/// Edad fértil: de la madurez al 60 % de la esperanza de vida (para los nacimientos, CR-13 13c).
+export function esFertil(raza: string | null | undefined, edad: number): boolean {
+  const { madurez, esperanza } = cicloVital(raza);
+  return edad >= madurez && edad <= 0.6 * esperanza;
 }

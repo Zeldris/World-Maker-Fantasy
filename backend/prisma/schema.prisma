@@ -2776,6 +2776,9 @@ model NpcState {
   /// ("itinerante" si no hay ubicación resuelta en el turno) — así cada aparición nueva en un
   /// sitio distinto empieza fresca, sin memoria de otras plantillas del mismo arquetipo.
   scope                       String          @default("")
+  /// CR-13 13c (hito 0.2): años de vejez de un NPC del catálogo en ESTA partida (sus atributos son
+  /// del mundo): se restan a fuerza, destreza y constitución al usarlos (`restarVejez`, edades.ts).
+  vejez               Int                  @default(0)
   condicionFisica             CondicionFisica @default(ILESO)
   /// Sistema de fatiga simétrico (2026-07-30, deuda técnica: "los NPC siguen eligiendo habilidad
   /// sin restricción de energía" — ver energy.ts) — null = tope completo, mismo criterio lazy que

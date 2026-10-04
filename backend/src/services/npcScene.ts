@@ -1,3 +1,4 @@
+import { restarVejez } from './cronista/edades.js';
 import { prisma } from '../lib/prisma.js';
 import { normalizeText, fuzzyMatchCandidates, fuzzyMatchesAnyStem, findFuzzyStemMatch, matchesAliasBoundary, levenshtein } from './travel.js';
 import type { NpcKind, CondicionFisica, Temperamento, WeaponCategory, EquipSlot, ItemTipo, Prisma, NpcState, AbilityEffect, NpcInteractionType } from '@prisma/client';
@@ -227,7 +228,8 @@ export function buildNpcInScene(npc: NpcWithItems, state: NpcState | undefined):
     // el mismo ritmo de puntos que el PJ (ver npcAttributesForLevel, progression.ts). `raza`/
     // `clase` solo existen en humanoides; la fauna (sin clase) reparte proporcional a su propio
     // perfil de nivel 1 en vez de por tabla de clase.
-    attributes: npcAttributesForLevel(npc.attributes as AttributeBlock, npc.level, npc.clase as Clase | null) as NpcInScene['attributes'],
+    // CR-13 13c: la vejez de un NPC del catálogo en esta partida (`NpcState.vejez`).
+    attributes: restarVejez(npcAttributesForLevel(npc.attributes as AttributeBlock, npc.level, npc.clase as Clase | null), state?.vejez ?? 0) as NpcInScene['attributes'],
     raza: npc.raza,
     clase: npc.clase,
     especializacion: npc.especializacion,

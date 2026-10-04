@@ -5,12 +5,12 @@
 // - Los NPC con nombre de una facción pueden morir de viejo (`probMuerteDeViejoPorDia`): efecto
 //   `matarNpc` con la causa «de viejo», que abre sucesión si era líder (reacciones de CR-10).
 //
-// Los del catálogo no cambian de atributos con la edad (son del mundo, no de la partida; pendiente de
-// atributos por partida, ver la entrada de CR-13); sí envejecen y mueren en cada partida.
+// Los del catálogo no cambian sus atributos (son del mundo): sus años de vejez en esta partida van a
+// `NpcState.vejez` (CR-13 13c) y se restan al usarlos en escena y en combate (`restarVejez`).
 import type { PrismaClient } from '@prisma/client';
 import { npcVivoEnPartida } from '../mundoPartida.js';
 import { aplicarEfecto } from './efectos.js';
-import { atributosPorEdad, edadEnAnios, nacidoEnDe, probMuerteDeViejoPorDia } from './edades.js';
+import { anosDeVejez, atributosPorEdad, edadEnAnios, nacidoEnDe, probMuerteDeViejoPorDia } from './edades.js';
 import type { Atributos } from './herencia.js';
 
 export async function envejecerDia(prisma: PrismaClient, saveId: string, dia: number, random: () => number = Math.random): Promise<{ ajustados: number; muertos: string[] }> {
@@ -29,6 +29,9 @@ export async function envejecerDia(prisma: PrismaClient, saveId: string, dia: nu
     orderBy: { id: 'asc' },
   });
 
+  const vejezPorNpc = new Map(
+    (await prisma.npcState.findMany({ where: { saveId, scope: '', npcId: { in: npcs.map((n) => n.id) } }, select: { npcId: true, vejez: true } })).map((s) => [s.npcId, s.vejez]),
+  );
   let ajustados = 0;
   const muertos: string[] = [];
   for (const npc of npcs) {
@@ -37,6 +40,18 @@ export async function envejecerDia(prisma: PrismaClient, saveId: string, dia: nu
       const atributos = atributosPorEdad(npc.atributosPotenciales as Atributos, npc.raza, edad);
       if (JSON.stringify(atributos) !== JSON.stringify(npc.attributes)) {
         await prisma.npc.update({ where: { id: npc.id }, data: { attributes: atributos } });
+        ajustados++;
+      }
+    } else if (npc.saveId === null) {
+      // CR-13 13c: los del catálogo guardan su vejez en esta partida (sus atributos son del mundo).
+      const vejez = anosDeVejez(npc.raza, edad);
+      const actual = vejezPorNpc.get(npc.id) ?? 0;
+      if (vejez !== actual) {
+        await prisma.npcState.upsert({
+          where: { saveId_npcId_scope: { saveId, npcId: npc.id, scope: '' } },
+          create: { saveId, npcId: npc.id, scope: '', vejez },
+          update: { vejez },
+        });
         ajustados++;
       }
     }

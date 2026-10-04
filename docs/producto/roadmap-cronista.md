@@ -1146,8 +1146,9 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
       edificio y da +80 de reputación, `ENCARGO_MATERIALES`, 5 días). Al vencer se retiran los
       puntos (`OPORTUNIDAD_CIERRA`). Efectos nuevos `situarNpc` y `botinAlJugador`; el disparo
       `SUCESO` filtra por NPC y por categoría del objeto.
-- **CR-13** Nacimientos notables y generador de nombres (§ 12.3). **M** Incluye el efecto `crearNpc`
-  en `efectos.ts` (CR-9). 🚧 en curso (2026-10-04). Diseño acordado con la usuaria en dos rondas
+- ~~**CR-13** Nacimientos notables y generador de nombres (§ 12.3). **M** Incluye el efecto `crearNpc`
+  en `efectos.ts` (CR-9).~~ ✅ 2026-10-04 (13a-13c). **Pendiente, con su tarea:** cifras de razas y
+  edades del catálogo → Álvaro (`propuestas-lore.md`); envejecimiento de la jugadora → `CR-33`. Diseño acordado con la usuaria en dos rondas
   de `/grill-with-docs` (la segunda la abrió ella: herencia de los padres, edad, madurez y
   esperanza de vida, con Medieval Dynasty de referencia). Pasa a ser **L**:
   - **«Alguien que destaca»** (Q1): no un bebé, sino un adulto joven de la facción que empieza a
@@ -1196,7 +1197,15 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     edad y los NPC con nombre de una facción pueden morir de viejo («Muere X (de viejo).», abre
     sucesión). **Pendiente:** que los NPC **del catálogo** también pierdan atributos en la vejez
     necesita atributos por partida (son del mundo, compartidos); con las edades provisionales nadie
-    del catálogo llega a viejo en unos 6 años de ficción (720 días). Va en 13c. **Queda:** 13c.
+    del catálogo llega a viejo en unos 6 años de ficción (720 días). Va en 13c.
+  - ✅ **13c hecho (2026-10-04):** nacimientos de verdad: `crearNpc` con `como: 'NACE'` (bebé de 0
+    años de una pareja de su facción en edad fértil —de la madurez al 60 % de la esperanza—,
+    herencia de los dos, `NACIMIENTO_NOTABLE` «Nace X, hija de A y B.»; sin pareja no nace) y
+    candidato del narrador de fondo (facciones con hombres y mujeres con nombre, enfriamiento 15
+    días). Los niños no salen de expedición. Vejez del catálogo por partida: `NpcState.vejez`
+    (migración `20261005020000_npc_state_vejez`), que `envejecer.ts` actualiza y que se resta en la
+    escena (`buildNpcInScene`) y en el combate múltiple (`restarVejez`). Las interceptaciones de
+    expediciones aún usan los atributos sin vejez (`combatienteDeNpc` no recibe el estado; caso raro).
 - **Hecho cuando:** `cronista:simular 60` produce caídas, escisiones, tormentas con daños, guerras
   y nacimientos coherentes; perdonar a un NPC lo hace volver en otra región.
 

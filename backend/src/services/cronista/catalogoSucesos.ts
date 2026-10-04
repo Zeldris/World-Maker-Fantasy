@@ -36,7 +36,7 @@ export interface DatosSuceso {
   RENACER: { personaje: string; lugar: string };
   FIN_PARTIDA: { personaje: string };
   // VIDA_MUERTE
-  NACIMIENTO_NOTABLE: { nacido: string; padres?: string; lugar?: string };
+  NACIMIENTO_NOTABLE: { nacido: string; padres?: string; lugar?: string; genero?: string };
   NPC_DESTACA: { npc: string; faccion: string; genero?: string; padres?: string };
   MUERTE_NPC: { npc: string; causa?: string };
   MUERTE_LIDER: { lider: string; faccion: string; causa?: string };
@@ -140,7 +140,7 @@ export const CATALOGO_SUCESOS: Catalogo = {
   RENACER: { familia: 'JUGADOR', importanciaBase: 5, plantilla: (d) => `${d.personaje} despierta de nuevo en ${d.lugar}.` },
   FIN_PARTIDA: { familia: 'JUGADOR', importanciaBase: 10, plantilla: (d) => `La historia de ${d.personaje} termina.` },
   // VIDA_MUERTE
-  NACIMIENTO_NOTABLE: { familia: 'VIDA_MUERTE', importanciaBase: 4, plantilla: (d) => `Nace ${d.nacido}${d.padres ? `, hijo de ${d.padres}` : ''}${d.lugar ? `, en ${d.lugar}` : ''}.` },
+  NACIMIENTO_NOTABLE: { familia: 'VIDA_MUERTE', importanciaBase: 4, plantilla: (d) => `Nace ${d.nacido}${d.padres ? `, ${d.genero === 'F' ? 'hija' : 'hijo'} de ${d.padres}` : ''}${d.lugar ? `, en ${d.lugar}` : ''}.` },
   NPC_DESTACA: { familia: 'VIDA_MUERTE', importanciaBase: 4, plantilla: (d) => `${d.npc} empieza a hacerse un nombre en ${d.faccion}${d.padres ? `, ${d.genero === 'F' ? 'hija' : 'hijo'} de ${d.padres}` : ''}.` },
   MUERTE_NPC: { familia: 'VIDA_MUERTE', importanciaBase: 5, plantilla: (d) => `Muere ${d.npc}${con(d.causa)}.` },
   MUERTE_LIDER: { familia: 'VIDA_MUERTE', importanciaBase: 9, plantilla: (d) => `Muere ${d.lider}, líder de ${d.faccion}${con(d.causa)}.` },

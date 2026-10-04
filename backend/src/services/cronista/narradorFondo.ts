@@ -289,6 +289,24 @@ export const SUCESOS_DE_FONDO: SucesoDeFondo[] = [
     },
   },
   {
+    // CR-13 (13c): una pareja con nombre de una facción tiene un hijo (crece y hereda; con años de
+    // 120 días tarda en servir para algo).
+    tipo: 'NACIMIENTO_NOTABLE',
+    enfriamientoDias: 15,
+    candidatos: async (ctx) => {
+      const facciones = await ctx.tx.faction.findMany({ where: { saveId: ctx.saveId, ...faccionesVivas }, select: { slug: true, name: true }, orderBy: { slug: 'asc' } });
+      const conPareja = await ctx.tx.npc.groupBy({
+        by: ['faction', 'genero'],
+        where: { worldId: ctx.worldId, kind: 'PRINCIPAL', genero: { in: ['M', 'F'] }, faction: { in: facciones.map((f) => f.name) }, ...npcVivoEnPartida(ctx.saveId) },
+      });
+      // Una primera criba barata (hombres y mujeres con nombre); la edad fértil la mira `crearNpc`.
+      const tiene = (f: string, g: string) => conPareja.some((c) => c.faction === f && c.genero === g);
+      return facciones
+        .filter((f) => tiene(f.name, 'M') && tiene(f.name, 'F'))
+        .map((f) => ({ peso: 1, efectos: [{ tipo: 'crearNpc' as const, faccionSlug: f.slug, como: 'NACE' as const }], noticia: { facciones: [f.name], region: null } }));
+    },
+  },
+  {
     // Una facción débil aliada con una fuerte acaba absorbida por ella (regla de facción, § 7.3).
     tipo: 'FACCION_ABSORBIDA',
     enfriamientoDias: 10,
