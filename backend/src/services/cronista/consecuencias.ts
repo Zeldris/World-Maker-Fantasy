@@ -12,6 +12,7 @@ import { slugify } from '../../lib/slugify.js';
 import { aplicarEfectos, CUALQUIERA_SALVO_ORIGEN, type CtxEfecto, type Disparo, type Efecto } from './efectos.js';
 import { ejecutarReaccion, REACCIONES } from './reacciones.js';
 import { registrarSuceso } from './sucesos.js';
+import { REGLAS_DEL_JUEGO } from './reglasConsecuencias.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -55,6 +56,8 @@ registrarRegla({
     return [];
   },
 });
+
+for (const regla of REGLAS_DEL_JUEGO) registrarRegla(regla);
 
 /// Región actual de la partida (slug), para los disparos `LLEGAR_REGION`.
 async function regionActual(db: PrismaClient | Tx, saveId: string): Promise<string | null> {

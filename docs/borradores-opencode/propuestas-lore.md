@@ -33,9 +33,10 @@ facción necesita un nombre con peso en el lore, no una etiqueta genérica. Se s
 cada pueblo ya usa para nombrarse (ver `lore-mundo/clanes-orcos.md`, `lore-mundo/lenguas-helek.md`,
 `lore-mundo/razas.md`):
 
-- **Orcos** — el clan toma el nombre de quien encabeza la escisión, con la terminación orca de
-  Helsig (Helsa) y Goshg (Gosha): *Varka* → Clan **Varkag**; si ya existe, la otra terminación
-  (**Varksig**). Mismo criterio que los dos clanes emigrados.
+- **Orcos** — el clan toma el nombre de quien encabeza la escisión sin su vocal final y con la
+  terminación de los dos clanes emigrados: Helsa → Hels**ig**, Gosha → Gos**hg**. *Varka* → Clan
+  **Varkig**; si ya existe, Clan **Varkg**. (Corregido el mismo día: el primer borrador decía
+  «Varkag», que no seguía el patrón.)
 - **Nabieus** — **Keseg** + una palabra de su diccionario, nunca repetida (sus clanes son «el fin
   de algo»): Keseg **Tannis** (el fin de la mentira), Keseg **Karo** (el fin de la carta),
   Keseg **Tovh** (el fin de la mano abierta), Keseg **Vhurne** (el fin de la reunión).

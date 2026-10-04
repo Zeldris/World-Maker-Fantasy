@@ -95,7 +95,10 @@ export const REACCIONES: Reaccion[] = [
     prioridad: 20,
     condicion: async (ctx) => {
       const victima = actor(ctx.suceso, 'NPC', 'VICTIMA');
-      return !!victima && !!(await faccionLideradaPor(ctx, victima));
+      if (!victima || !(await faccionLideradaPor(ctx, victima))) return false;
+      // Una muerte puede llegar por dos vías (MUERTE_CAUSADA y MUERTE_NPC): el líder muere una vez.
+      const yaRegistrada = await ctx.tx.sucesoActor.count({ where: { entidadTipo: 'NPC', entidadId: victima, papel: 'VICTIMA', suceso: { saveId: ctx.suceso.saveId, tipo: 'MUERTE_LIDER' } } });
+      return yaRegistrada === 0;
     },
     registra: async (ctx) => {
       const victimaId = actor(ctx.suceso, 'NPC', 'VICTIMA')!;
@@ -113,6 +116,28 @@ export const REACCIONES: Reaccion[] = [
     prioridad: 10,
     condicion: async (ctx) => !!actor(ctx.suceso, 'FACCION', 'AFECTADO'),
     efectos: async (ctx) => [{ tipo: 'cambiarCohesion', faccionSlug: actor(ctx.suceso, 'FACCION', 'AFECTADO')!, delta: -25 }],
+  },
+  {
+    // CR-11: la sucesión se decide a los 1-3 días (regla SUCESION_PENDIENTE, por cohesión).
+    id: 'MUERTE_LIDER_ABRE_SUCESION',
+    escucha: ['MUERTE_LIDER'],
+    prioridad: 20,
+    condicion: async (ctx) => !!actor(ctx.suceso, 'FACCION', 'AFECTADO'),
+    efectos: async (ctx) => [{
+      tipo: 'programarConsecuencia', regla: 'SUCESION_PENDIENTE', disparo: { tipo: 'DIAS', min: 1, max: 3 },
+      datos: { faccionSlug: actor(ctx.suceso, 'FACCION', 'AFECTADO')! },
+    }],
+  },
+  {
+    // CR-11: a los 2-6 días su gente huye a las regiones vecinas (regla REFUGIADOS).
+    id: 'FACCION_CAE_REFUGIADOS',
+    escucha: ['FACCION_CAE'],
+    prioridad: 10,
+    condicion: async (ctx) => !!actor(ctx.suceso, 'FACCION', 'VICTIMA'),
+    efectos: async (ctx) => [{
+      tipo: 'programarConsecuencia', regla: 'REFUGIADOS', disparo: { tipo: 'DIAS', min: 2, max: 6 },
+      datos: { faccionSlug: actor(ctx.suceso, 'FACCION', 'VICTIMA')! },
+    }],
   },
   {
     id: 'SIN_TERRITORIOS_CAE',

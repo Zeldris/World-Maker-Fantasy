@@ -59,7 +59,7 @@ export type Efecto =
   | { tipo: 'asignarCargo'; npcId: string; cargo: string | null; faccionSlug?: string }
   | { tipo: 'cambiarCohesion'; faccionSlug: string; delta: number }
   | { tipo: 'cambiarLider'; faccionSlug: string; npcId: string }
-  | { tipo: 'crearFaccion'; slug: string; nombre: string; raza: string; descripcion: string; escindidaDe?: string; liderNpcId?: string }
+  | { tipo: 'crearFaccion'; slug: string; nombre: string; raza: string; descripcion: string; escindidaDe?: string; liderNpcId?: string; fraccionPoblacion?: number }
   | { tipo: 'disolverFaccion'; faccionSlug: string }
   | { tipo: 'absorberFaccion'; faccionSlug: string; absorbenteSlug: string }
   | { tipo: 'ajustarPoblacion'; targetSlug: string; delta: number; region?: string }
@@ -240,7 +240,17 @@ async function crearFaccion(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'crearFac
       liderNpcId: e.liderNpcId ?? null,
     },
   });
-  await ctx.tx.kingdomStats.create({ data: { factionId: faccion.id, ownerKey: ownerKeyFor({ factionId: faccion.id }) } });
+  // En una escisión, la nueva se lleva parte de la gente de la madre.
+  const statsMadre = madre && e.fraccionPoblacion ? await ctx.tx.kingdomStats.findUnique({ where: { factionId: madre.id } }) : null;
+  const parte = (n: number) => Math.floor(n * Math.min(1, e.fraccionPoblacion ?? 0));
+  const llevada = statsMadre ? { poblacion: parte(statsMadre.poblacion), soldados: parte(statsMadre.soldados), trabajadores: parte(statsMadre.trabajadores) } : null;
+  await ctx.tx.kingdomStats.create({ data: { factionId: faccion.id, ownerKey: ownerKeyFor({ factionId: faccion.id }), ...(llevada ?? {}) } });
+  if (statsMadre && llevada) {
+    await ctx.tx.kingdomStats.update({
+      where: { id: statsMadre.id },
+      data: { poblacion: { decrement: llevada.poblacion }, soldados: { decrement: llevada.soldados }, trabajadores: { decrement: llevada.trabajadores } },
+    });
+  }
   if (e.liderNpcId) await estadoNpc(ctx, e.liderNpcId, { cargo: 'lider', lealtadFaccionId: faccion.id });
   const sucesoId = madre
     ? await registrar(ctx, {

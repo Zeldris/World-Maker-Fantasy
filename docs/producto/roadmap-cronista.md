@@ -1006,7 +1006,8 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     sucesión. Sucesor: el heredero designado si lo hay; si no, el NPC con nombre vivo de más
     Inteligencia de la facción. CR-12 podrá matizarlo.
   - **Escisión:** nombre según el pueblo (propuesta `propuestas-lore.md`, 2026-10-04): orcos, el
-    nombre de quien la encabeza con terminación de clan (Varka → Clan Varkag); Nabieus, Keseg +
+    nombre de quien la encabeza sin vocal final + -ig/-g (Helsa → Helsig, Gosha → Goshg; Varka →
+    Clan Varkig); Nabieus, Keseg +
     palabra; Faerus, Feg + palabra; con su traducción en la descripción. Los goirntes no se escinden
     hasta que Álvaro decida (Q13).
   - **Refugiados:** se reparten por las regiones vecinas que da el lore (`areas.md` § Cómo encajan
@@ -1021,8 +1022,14 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   `ENCUENTRO_NPC` por los `npcIds` del momento; `SUCESO` desde la cola de reacciones). Se evalúa
   tras cada turno, día y acción. Lo que supera el tope de cascada de CR-10 es ya la regla
   `REACCION_APLAZADA` del día siguiente (vuelve a comprobar su condición). 5 tests de integración.
-  **Falta:** las 4 reglas (`DEUDA_DE_VIDA`, `VENGANZA_PARIENTE` con testigos, `SUCESION_PENDIENTE`,
-  `REFUGIADOS`), los nombres de escisión y la tabla de regiones vecinas.
+  **Paso 2a hecho (2026-10-04):** `SUCESION_PENDIENTE` (reacción a `MUERTE_LIDER`, 1-3 días; por
+  cohesión cae, se escinde o sucede; sucesor: heredero designado o el NPC con nombre vivo de más
+  Inteligencia; la escindida se lleva el 30 % de la gente) y `REFUGIADOS` (reacción a
+  `FACCION_CAE`, 2-6 días; la mitad del peso regional de su raza se reparte por las regiones
+  vecinas y la facción se queda sin gente), en `reglasConsecuencias.ts`; nombres de escisión
+  (`nombresFaccion.ts`) y regiones vecinas del lore (`regiones.ts`). Arreglo: una muerte que llega
+  por dos vías ya no registra dos veces la muerte del líder. **Falta:** `DEUDA_DE_VIDA` (paso 2b) y
+  `VENGANZA_PARIENTE` con testigos (paso 2c).
 - **CR-12** Narrador de fondo con presupuesto, enfriamientos y reglas de facción (§ 7.3);
   agenda Serhu como primera cadena. **L** Al hacerlo, revisar `UX-6` (roadmap-front-ux.md): hoy
   la ambientación se cancela al enviar una acción porque no pesa nada; con contenido real puede
