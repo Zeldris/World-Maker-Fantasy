@@ -1147,7 +1147,39 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
       puntos (`OPORTUNIDAD_CIERRA`). Efectos nuevos `situarNpc` y `botinAlJugador`; el disparo
       `SUCESO` filtra por NPC y por categoría del objeto.
 - **CR-13** Nacimientos notables y generador de nombres (§ 12.3). **M** Incluye el efecto `crearNpc`
-  en `efectos.ts` (CR-9).
+  en `efectos.ts` (CR-9). 🚧 en curso (2026-10-04). Diseño acordado con la usuaria en dos rondas
+  de `/grill-with-docs` (la segunda la abrió ella: herencia de los padres, edad, madurez y
+  esperanza de vida, con Medieval Dynasty de referencia). Pasa a ser **L**:
+  - **«Alguien que destaca»** (Q1): no un bebé, sino un adulto joven de la facción que empieza a
+    tener nombre propio, candidato a líder y heredero desde el primer día. Cubre las sucesiones
+    (Goshg solo tiene 2 NPC con nombre). «X empieza a hacerse un nombre en …».
+  - **Cuándo** (Q2): candidato del narrador de fondo, con mucho peso si la facción tiene menos de 3
+    NPC con nombre vivos y poco si tiene muchos; enfriamiento de unos 10 días. No depende de los
+    números de población (provisionales, pregunta 1 a Álvaro).
+  - **Nombres** (Q3): generador por sílabas (`nombres.ts`), con el sonido de los nombres que ya hay y
+    las raíces de `docs/canon-opencode/01-lenguas.md`: orcos de consonantes duras, a veces con
+    apellido corto (Brenka, Hagar Kiugh); Faerus de dos sílabas abiertas (Gero, Kiri); Nabieus y
+    Goirntes con nombre y apellido seco (Ilka Dren, Kael Dorn). Semilla por partida; no repite
+    ninguno de la partida ni del catálogo; 3-12 letras. Se quedan en la partida (no van a lore).
+  - **Herencia** (Q4, a petición de la usuaria: «huella genética»): cada atributo = media de los
+    del padre y la madre ± 2; el atributo más alto de cada progenitor pasa con un 50 % como huella
+    (+1). Padres: un hombre y una mujer con nombre, adultos, de su raza y facción (vivos o muertos);
+    si no hay pareja, «de padres desconocidos» y atributos de alguien de su raza. Los padres quedan
+    en el NPC y en el Libro.
+  - **Edad y madurez** (Q6): fecha de nacimiento y atributos potenciales (de adulto); los que
+    cuentan crecen del 40 % al nacer al 100 % a la madurez. Antes de madurar no trabaja, no combate
+    y no puede ser líder ni heredero. Madurez: orcos 10 años (canon, `clanes-orcos.md`); el resto,
+    provisional para Álvaro (`propuestas-lore.md`): Faerus 8, Nabieus 14, Goirntes 16.
+  - **Vejez** (Q7): esperanza de vida provisional (orcos 60, Faerus 40, Nabieus 90, Goirntes 70).
+    Desde el 80 % de ella, −1 a fuerza, destreza y constitución cada año y probabilidad creciente
+    de morir de viejo (abre sucesión si era líder).
+  - **Edades del catálogo** (Q8): provisionales y deterministas (adultos entre la madurez y el 70 %
+    de su esperanza de vida, los líderes de los mayores), para que Álvaro las corrija.
+  - **Nacimientos de verdad** (Q9): además, una pareja con nombre tiene hijos de vez en cuando, que
+    crecen y heredan (con años de 120 días tardan en servir).
+  - **La jugadora no envejece** por ahora (Q10) → `CR-33`.
+  - **Pasos** (Q11): **13a** generador de nombres y «alguien que destaca» con herencia; **13b**
+    edades, madurez y vejez; **13c** nacimientos de verdad y crecimiento.
 - **Hecho cuando:** `cronista:simular 60` produce caídas, escisiones, tormentas con daños, guerras
   y nacimientos coherentes; perdonar a un NPC lo hace volver en otra región.
 
@@ -1194,6 +1226,9 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
 - **CR-29** `cronista:reproducir`, anulación de sucesos de IA en admin. **M**
 - **CR-30** `exportar-leyendas` a `propuestas-lore.md`. **S**
 - **CR-31** Ajuste de pesos y presupuesto con 3 partidas largas simuladas. **M**
+- **CR-33** Envejecimiento de la jugadora (usuaria, 2026-10-04, Q10 de `CR-13`): su personaje también
+  cumple años con las reglas de madurez, vejez y esperanza de vida de su raza (`CR-13`), sin romper
+  la muerte permanente ni la dificultad. **M**
 
 ---
 
