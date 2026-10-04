@@ -1111,6 +1111,16 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     provisionales de su economía 6 de las 9 sembradas pasan hambre siempre. Se enciende con los
     números de la economía de supervivencia (pregunta 5 a Álvaro). `REBELION` aún no tiene
     consecuencias propias más allá del Libro (las tendrá con la economía y las reglas de facción).
+  - 🚧 **12d en curso (2026-10-04).** Hecho:
+    - **Rumor por distancia** (`cronista/noticias.ts`, `darNoticia`): misma región o facción aliada
+      / con tratado del Reino → al momento y como hecho; vecina → 1 día; más lejos → 2-3 días, como
+      «Se dice que…»; sin lugar → solo si conoce la facción, 1 día y como rumor. Lo que llega tarde
+      es una consecuencia `NOTICIA` (disparo por días). Lo usa el narrador de fondo.
+    - **Ambientación informada** (`cronista/rastros.ts`): la ambientación es de plantillas (no usa
+      IA, corrige lo dicho en la ronda 2), y ahora añade hasta 2 rastros de sucesos de los últimos
+      3 días en la región (incendio, crecida, tormenta, plaga, auge, fauna que llega, edificio
+      dañado).
+    **Falta:** resumen «Mientras viajabas…» al cruzar varios días y las oportunidades con plazo.
 - **CR-13** Nacimientos notables y generador de nombres (§ 12.3). **M** Incluye el efecto `crearNpc`
   en `efectos.ts` (CR-9).
 - **Hecho cuando:** `cronista:simular 60` produce caídas, escisiones, tormentas con daños, guerras

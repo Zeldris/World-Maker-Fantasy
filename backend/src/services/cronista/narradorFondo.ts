@@ -12,20 +12,20 @@
 //    tipo de fondo hace menos de `enfriamientoDias`) o no caben en el presupuesto se descartan.
 // 4. **Elección por peso** con el azar dado (semilla en tests) y **aplicación**: registra el suceso
 //    (origen `MUNDO`) y aplica sus efectos de la lista cerrada con él como causa.
-// 5. **Noticia:** al canal «El mundo» solo si el personaje podría saberlo (`difundirNoticias`: su
-//    región o una facción que conoce).
+// 5. **Noticia:** al canal «El mundo» según dónde pase (`noticias.ts`): al momento en su región o
+//    de una facción aliada; como rumor y días después si pasa lejos o es de una facción que conoce.
 //
 // Pendiente con su paso (entrada `CR-12`): cadenas (agenda Serhu, 12b), fauna que huye de la
-// tormenta y hambruna (12c), oportunidades con plazo, rumor por distancia y resumen (12d); favorecer
+// tormenta y hambruna (12c), oportunidades con plazo y resumen (12d); favorecer
 // hilos abiertos (CR-17) y árbitro con IA (Fase 7).
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { stripRegionArticle } from '../population.js';
 import { slugify } from '../../lib/slugify.js';
-import { difundirNoticias, type NoticiaMundo } from '../noticiasMundo.js';
 import { CATALOGO_SUCESOS, type DatosSuceso, type TipoSuceso } from './catalogoSucesos.js';
 import { aplicarEfectos, type CtxEfecto, type Efecto } from './efectos.js';
 import { REGIONES_VECINAS } from './regiones.js';
 import { registrarSuceso, type ActorSuceso } from './sucesos.js';
+import { darNoticia } from './noticias.js';
 import { ownerKeyFor } from '../reinoOwner.js';
 
 type Tx = Prisma.TransactionClient;
@@ -209,8 +209,7 @@ export const SUCESOS_DE_FONDO: SucesoDeFondo[] = [
               regionSlug: slugify(desde),
             },
             efectos: [{ tipo: 'moverPoblacion' as const, targetSlug: f.targetSlug, desde, hacia, fraccion: 0.3, sinSuceso: true }],
-            // Se entera quien está en cualquiera de las dos regiones: va por la de destino, que es
-            // donde se nota; la de origen, con 12d (rumor por distancia).
+            // La noticia va por la región de destino, que es donde se nota.
             noticia: { facciones: [], region: hacia },
           })),
         ),
@@ -355,8 +354,7 @@ export async function narrarDia(
       presupuesto -= costeDe(elegida.tipo);
       await guardar();
       const { texto } = await tx.suceso.findUniqueOrThrow({ where: { id: sucesoId }, select: { texto: true } });
-      const noticia: NoticiaMundo = { ...elegida.instancia.noticia, texto, dia };
-      await difundirNoticias(tx, save.worldId, [noticia], saveId);
+      await darNoticia(tx, { saveId, worldId: save.worldId, fictionalMinutes: minutos, causa: sucesoId }, { ...elegida.instancia.noticia, texto });
       return { sucesoId, tipo: elegida.tipo, presupuesto };
     },
     { maxWait: 10_000, timeout: 20_000 },

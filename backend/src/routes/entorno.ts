@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { generateSurroundings } from '../services/entorno.js';
 import { prisma } from '../lib/prisma.js';
 import { recordEntityDiscoveries } from '../services/entityDiscovery.js';
+import { rastrosDeRegion } from '../services/cronista/rastros.js';
 
 interface EntornoBody {
   saveId: string;
@@ -56,7 +57,11 @@ export async function entornoRoutes(app: FastifyInstance) {
     // Anti-repetición (bug real jugando en vivo, revisión de partida 2026-08-08): `lastWorldEntry`
     // ya se leyó arriba para el corte por `timeLabel` — se reutiliza su texto para que
     // `generateSurroundings` pueda evitar repetirlo literalmente si vuelve a tocar la misma franja.
-    const result = generateSurroundings({ region: save.currentLocation?.region ?? null, timeLabel }, undefined, lastWorldEntry?.text ?? null);
+    const generado = generateSurroundings({ region: save.currentLocation?.region ?? null, timeLabel }, undefined, lastWorldEntry?.text ?? null);
+    // CR-12 (12d): el rastro de lo que ha pasado hace poco en la región (incendio, crecida, fauna…).
+    const region = save.currentLocation?.region;
+    const rastros = region ? await rastrosDeRegion(prisma, saveId, region, save.worldState?.fictionalMinutes ?? 480) : [];
+    const result = rastros.length > 0 ? { ...generado, description: `${generado.description} ${rastros.join(' ')}` } : generado;
 
     // Ya no se toca el canal CHARACTER desde aquí (petición explícita de la usuaria, 2026-07-23 —
     // ver comentario del módulo). El "gancho"/evento con "¿Qué haces?" que antes vivía aquí

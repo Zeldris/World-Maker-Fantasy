@@ -8,6 +8,7 @@ import { populationTargetSlugFor } from '../population.js';
 import { REGION_OWNING_FACTIONS } from '../reputation.js';
 import type { Efecto } from './efectos.js';
 import { nombreDeEscision } from './nombresFaccion.js';
+import { NOTICIA } from './noticias.js';
 import { regionesVecinas } from './regiones.js';
 import { CELL_SIZE_PX, LIENZO_ANCHO } from '../zonaPosicion.js';
 import type { CtxConsecuencia, ReglaConsecuencia } from './consecuencias.js';
@@ -196,4 +197,4 @@ const VENGANZA_ATAQUE: ReglaConsecuencia = {
   },
 };
 
-export const REGLAS_DEL_JUEGO: ReglaConsecuencia[] = [SUCESION_PENDIENTE, REFUGIADOS, DEUDA_DE_VIDA, DEUDA_DE_VIDA_REGALO, VENGANZA_PARIENTE, VENGANZA_ATAQUE];
+export const REGLAS_DEL_JUEGO: ReglaConsecuencia[] = [SUCESION_PENDIENTE, REFUGIADOS, DEUDA_DE_VIDA, DEUDA_DE_VIDA_REGALO, VENGANZA_PARIENTE, VENGANZA_ATAQUE, NOTICIA];
