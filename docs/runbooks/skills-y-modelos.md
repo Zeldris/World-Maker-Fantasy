@@ -2,13 +2,17 @@
 
 **Para qué:** qué skills usa Claude en este proyecto, cuándo, y con qué modelo conviene trabajar
 cada tipo de tarea. Petición de la usuaria (2026-10-04), tras revisar
-[mattpocock/skills](https://github.com/mattpocock/skills). Las skills están en
-[`.claude/skills/`](../../.claude/skills/README.md), así que las cargan las dos cuentas y las
-sesiones en la nube sin instalar nada.
+[mattpocock/skills](https://github.com/mattpocock/skills).
+
+**De momento `.claude/` sigue fuera de git** (decisión de la usuaria, 2026-10-04): las skills solo
+existen donde se hayan copiado a `.claude/skills/`. Esta guía es la referencia que vale en cualquier
+sesión. Si una skill no está cargada, se sigue su descripción de aquí. Para copiarlas: `git clone
+https://github.com/mattpocock/skills` y copiar las carpetas de la tabla (sin `agents/`) a
+`.claude/skills/`; la de `selector` es la tabla de abajo.
 
 ## Cómo se usa
 
-1. **Al empezar cada tarea**, Claude aplica la skill `selector`: clasifica la tarea, dice en una
+1. **Al empezar cada tarea**, Claude aplica el selector (la tabla de abajo): clasifica la tarea, dice en una
    línea qué skill y qué modelo pide, y sigue.
 2. **La usuaria** puede invocar a mano las de la columna «Se invoca»: escribiendo `/nombre`.
 3. **Nada cambia** de las reglas de `CLAUDE.md`: commit + push, bitácora, roadmaps con hito, tests en

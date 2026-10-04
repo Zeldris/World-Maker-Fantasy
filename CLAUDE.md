@@ -12,7 +12,7 @@ perder nada y sin preguntar por dónde iba**. Todo lo de este archivo existe par
    coincide con lo que dice la bitácora.
 3. Comprueba que los tests están como dice la bitácora antes de tocar nada.
 4. Sigue por el **siguiente paso** de la bitácora, salvo que el usuario pida otra cosa.
-5. Al empezar cada tarea, aplica la skill `selector` (qué skill y qué modelo pide el caso). Guía:
+5. Al empezar cada tarea, aplica el selector (qué skill y qué modelo pide el caso) de
    [`docs/runbooks/skills-y-modelos.md`](docs/runbooks/skills-y-modelos.md).
 
 Otras reglas que siguen vigentes: [`AGENTS.md`](AGENTS.md) (lore: nunca editar `docs/rpgtarkor/`

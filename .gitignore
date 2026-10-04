@@ -11,9 +11,8 @@ logs/
 /node_modules/
 
 # Configuración local de Claude Code (permisos de sesión, locks) — específica de esta máquina,
-# no del proyecto. Las skills del proyecto (`.claude/skills/`) sí se versionan (2026-10-04).
-.claude/*
-!.claude/skills/
+# no del proyecto.
+.claude/
 
 # Playwright que usa Claude para jugar el frontend real y hacer pruebas en vivo — herramienta de
 # Claude, no dependencia del juego. node_modules/browsers propios, scripts .mjs sueltos y capturas

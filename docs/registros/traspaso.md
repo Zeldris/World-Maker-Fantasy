@@ -95,7 +95,7 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
-- **2026-10-04** — Skills del proyecto en `.claude/skills/` (8 de mattpocock/skills + `selector` propio de skill y modelo) y guía [`docs/runbooks/skills-y-modelos.md`](../runbooks/skills-y-modelos.md); `CLAUDE.md` pide aplicar `selector` al empezar cada tarea.
+- **2026-10-04** — Guía de skills y selector de skill/modelo: [`docs/runbooks/skills-y-modelos.md`](../runbooks/skills-y-modelos.md); `CLAUDE.md` pide aplicar el selector al empezar cada tarea. `.claude/` sigue fuera de git por decisión de la usuaria: las skills solo están en local.
 - **2026-10-03** — PRs #9 y #10 fusionados (pausa tras ellos). `CR-6` paso 2: población por partida (muertes, caza, recolección, encuentros, zona) y Reino del jugador distinguido de las copias del mundo.
 - **2026-10-02** — `CR-5`: esquema del mundo por partida (campos de § 5.2 y únicos parciales); backend 2893 tests en verde.
 - **2026-10-02** — `BAS-7`: también las notificaciones animan su salida. **Fase B del 0.2 cerrada** con pendientes apuntados; se pasa a la Fase C (mundo por partida).
