@@ -1066,7 +1066,23 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   - **Reglas de facción:** absorción como candidato del narrador de fondo; fundación por
     asentamiento queda para cuando se resuelva la pregunta 1 de Álvaro (población).
   - **UX-6:** se mantiene la opción B (la ambientación se cancela al actuar). La usuaria pide en su
-    lugar **dar valor de verdad al canal «El mundo»** (que sirva y aporte algo): en diseño, ronda 2.
+    lugar **dar valor de verdad al canal «El mundo»** (que sirva y aporte algo). Ronda 2 cerrada:
+  - **12d — noticias que abren oportunidades:** cada suceso de fondo que llega al canal deja algo
+    que hacer con plazo (consecuencia programada + punto de zona; si no vas, se pierde sin más):
+    escaramuza → campo de batalla con botín y un herido al que ayudar o rematar (3 días); caravana →
+    comerciar a mejor precio o asaltarla (2 días); plaga/auge de fauna → caza escasa o abundante
+    en la región (5 días); incendio/crecida → la facción pide materiales, llevarlos da reputación
+    (5 días); malestar interno → un descontento se ofrece como informante o recluta (4 días);
+    visitante ilustre → audiencia en tu Reino (3 días).
+  - **Rumor o certeza por distancia:** misma región, al momento y como hecho; región vecina, al día
+    siguiente y como «Se dice que…»; más lejos, 2-3 días y como rumor (la oportunidad puede llegar
+    pasada). Aliados o con tratado avisan sin retraso. Sin rumores falsos aún (`RUMOR_DE_HAZANA`,
+    Fase 5).
+  - **Resumen al cruzar varios días:** una entrada «Mientras viajabas…» desplegable en vez de
+    ráfaga (es `UX-31`).
+  - **Ambientación informada:** la llamada de ambientación (`routes/entorno.ts`) recibe los 2-3
+    últimos sucesos visibles de la región para hablar de ellos.
+  - **Frontend:** entradas con icono, enlaces y etiqueta de distancia/plazo → `UX-38`.
 - **CR-13** Nacimientos notables y generador de nombres (§ 12.3). **M** Incluye el efecto `crearNpc`
   en `efectos.ts` (CR-9).
 - **Hecho cuando:** `cronista:simular 60` produce caídas, escisiones, tormentas con daños, guerras
