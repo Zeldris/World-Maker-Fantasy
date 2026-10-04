@@ -959,7 +959,17 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   todos los tests de integración actuales pasan.
 
 ### Fase 3 — Motor sin IA · **L**
-- **CR-9** Lista cerrada de efectos con sus sucesos. **M**
+- **CR-9** Lista cerrada de efectos con sus sucesos. **M** 🚧 2026-10-04 — **paso 1 hecho:**
+  `services/cronista/efectos.ts` (`aplicarEfecto`/`aplicarEfectos` con `CtxEfecto`; lo que no se
+  puede aplicar devuelve `aplicado: false` sin fallar). Efectos de facciones y NPC: `cambiarPresion`,
+  `matarNpc` (`NpcState.muerto`), `asignarCargo` (suceso solo para heredero), `cambiarCohesion` (sin
+  suceso: número interno), `cambiarLider`, `crearFaccion` (escisión o fundación, con su reino),
+  `disolverFaccion` (nunca el Reino del jugador) y `absorberFaccion` (gente, recursos, territorios,
+  edificios y almacén). Test de integración por efecto. **Falta (paso 2):** `moverPoblacion`,
+  `ajustarPoblacion`, `danarEdificio`/`repararEdificio`, `cambiarControlTerritorio`,
+  `crearPuntoZona`/`retirarPuntoZona`, `ajustarPrecios`, `crearNpc`. Los que dependen de modelos
+  nuevos van con su tarea: consecuencias (CR-11), etiquetas/aprobación/recuerdos (Fase 4),
+  conocimiento (Fase 5), hilos (buscadores) y `ofrecerMision` (gancho).
 - **CR-10** Reacciones inmediatas (tabla § 7.1). **M**
 - **CR-11** Consecuencias aplazadas con sus disparos y las 7 iniciales (§ 7.2). **M**
 - **CR-12** Narrador de fondo con presupuesto, enfriamientos y reglas de facción (§ 7.3);
