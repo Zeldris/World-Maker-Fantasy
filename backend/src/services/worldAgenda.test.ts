@@ -112,14 +112,16 @@ describe('regionControlFor', () => {
 describe('avanzarAgendaDePartida (CR-7)', () => {
   function makePrisma(states: unknown[]) {
     const worldStateUpdate = vi.fn();
-    const worldPopulationUpdateMany = vi.fn().mockResolvedValue({ count: 1 });
+    // CR-12 (12b): las bajas van por el efecto `ajustarPoblacion` (busca la fila de la partida y la actualiza).
+    const worldPopulationFindFirst = vi.fn(async ({ where }: { where: { targetSlug: string } }) => ({ id: `pop-${where.targetSlug}`, poblacion: 400, poblacionMax: 1000, label: where.targetSlug }));
+    const worldPopulationUpdate = vi.fn();
     const logEntryCreate = vi.fn();
     // CR-6 (hito 0.2): partida con su mundo ya clonado — relaciones y población de la partida.
     const save = { findUniqueOrThrow: vi.fn().mockResolvedValue({ worldId: 'world1', worldState: { mundoClonadoEn: new Date() } }) };
     const tx = {
       save,
       worldState: { update: worldStateUpdate },
-      worldPopulation: { updateMany: worldPopulationUpdateMany },
+      worldPopulation: { findFirst: worldPopulationFindFirst, update: worldPopulationUpdate },
       logEntry: { create: logEntryCreate },
     };
     const $transaction = vi.fn((fn: (tx: unknown) => Promise<void>) => fn(tx));
@@ -130,19 +132,21 @@ describe('avanzarAgendaDePartida (CR-7)', () => {
       save,
       worldState: { findFirst: vi.fn().mockResolvedValue(states[0] ?? null) },
       factionRelation: { findMany: factionRelationFindMany, update: factionRelationUpdate },
+      // CR-12 (12b): ¿ha caído alguna parte del conflicto? (ninguna).
+      faction: { findMany: vi.fn().mockResolvedValue([]) },
       $transaction,
     };
-    return { prisma, worldStateUpdate, worldPopulationUpdateMany, logEntryCreate, factionRelationFindMany, factionRelationUpdate };
+    return { prisma, worldStateUpdate, worldPopulationUpdate, logEntryCreate, factionRelationFindMany, factionRelationUpdate };
   }
 
   it('siembra la agenda inicial si está vacía, sin depleciones ni hechos (etapa 0 es silenciosa)', async () => {
-    const { prisma, worldStateUpdate, worldPopulationUpdateMany } = makePrisma([
+    const { prisma, worldStateUpdate, worldPopulationUpdate } = makePrisma([
       { id: 'ws1', saveId: 'save1', agenda: [], fictionalMinutes: 480, save: { worldId: 'world1' } },
     ]);
     const result = await avanzarAgendaDePartida(prisma as never, 'save1');
     expect(result).toEqual({ advanced: true, stagesCrossed: 0 });
     expect(worldStateUpdate).toHaveBeenCalledTimes(1);
-    expect(worldPopulationUpdateMany).not.toHaveBeenCalled();
+    expect(worldPopulationUpdate).not.toHaveBeenCalled();
     expect(appendSessionFacts).not.toHaveBeenCalled();
   });
 
@@ -158,21 +162,15 @@ describe('avanzarAgendaDePartida (CR-7)', () => {
 
   it('al cruzar una etapa, deplecia Helsig Y Goshg y añade el hecho narrativo de esa etapa', async () => {
     const agenda = [{ id: 'conflicto-serhu-concordia-vs-helsig-goshg', title: 't', stage: 0, maxStage: 4, nextStageAtMinutes: 500 }];
-    const { prisma, worldPopulationUpdateMany, logEntryCreate, factionRelationFindMany, factionRelationUpdate } = makePrisma([
+    const { prisma, worldPopulationUpdate, logEntryCreate, factionRelationFindMany, factionRelationUpdate } = makePrisma([
       { id: 'ws1', saveId: 'save1', agenda, fictionalMinutes: 500, fictionalDateLabel: 'Día 8, mañana', save: { worldId: 'world1' } },
     ]);
     await avanzarAgendaDePartida(prisma as never, 'save1');
     // Fase D (hito 0.1) — la etapa 1 empuja Serhu→Helsig/Goshg hasta presión 70 (solo las que estén por debajo).
     expect(factionRelationFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ presion: { lt: 70 }, sourceFaction: { saveId: 'save1', origenSlug: { not: null }, name: 'Clan Serhu' } }) }));
     expect(factionRelationUpdate).toHaveBeenCalledWith({ where: { id: 'rel-helsig' }, data: { presion: 70, type: typeForPresion(70), stage: 1 } });
-    expect(worldPopulationUpdateMany).toHaveBeenCalledWith({
-      where: { saveId: 'save1', targetType: 'RAZA', targetSlug: 'orcos-cristal-helado', poblacion: { gte: 20 } },
-      data: { poblacion: { decrement: 20 } },
-    });
-    expect(worldPopulationUpdateMany).toHaveBeenCalledWith({
-      where: { saveId: 'save1', targetType: 'RAZA', targetSlug: 'orcos-cienaga', poblacion: { gte: 20 } },
-      data: { poblacion: { decrement: 20 } },
-    });
+    expect(worldPopulationUpdate).toHaveBeenCalledWith({ where: { id: 'pop-orcos-cristal-helado' }, data: { poblacion: 380 } });
+    expect(worldPopulationUpdate).toHaveBeenCalledWith({ where: { id: 'pop-orcos-cienaga' }, data: { poblacion: 380 } });
     expect(appendSessionFacts).toHaveBeenCalledTimes(1);
     const facts = appendSessionFacts.mock.calls[0]?.[2] as string[];
     expect(facts).toHaveLength(1);

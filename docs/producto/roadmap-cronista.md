@@ -1093,6 +1093,14 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     `sinSuceso`. Noticia al canal «El mundo» con el filtro de `difundirNoticias`. «Ritmo del mundo»:
     `GET/PATCH /saves/:id/ritmo` y pestaña «Partida» en Configuración (solo con partida abierta).
     **Queda:** 12b, 12c, 12d.
+  - ✅ **12b hecho (2026-10-04):** motor de cadenas `services/cronista/cadenas.ts` (`Cadena`:
+    pasos con texto, sucesos y efectos; `intervaloDias`; `aplicaA`; `motivoDeCorte`; `sincronizar`;
+    estado en `WorldState.agenda` con la forma de siempre, sin migración). La agenda Serhu es
+    `CADENA_CONFLICTO_SERHU` (`worldAgenda.ts`): los textos de `STAGE_FACTS` son los de cada paso, las
+    bajas de Helsig y Goshg van por `ajustarPoblacion`, y la cadena **se corta** si cae el Clan Serhu
+    o caen Helsig y Goshg a la vez (noticia de cierre en «El mundo»). **Queda:** cadenas que nazcan a
+    mitad de partida (p. ej. una guerra a partir de escaramuzas), como candidatos del narrador de
+    fondo; 12c y 12d.
 - **CR-13** Nacimientos notables y generador de nombres (§ 12.3). **M** Incluye el efecto `crearNpc`
   en `efectos.ts` (CR-9).
 - **Hecho cuando:** `cronista:simular 60` produce caídas, escisiones, tormentas con daños, guerras

@@ -1,77 +1,33 @@
-import { registrarSuceso, type NuevoSuceso } from './cronista/sucesos.js';
-import type { Prisma, PrismaClient } from '@prisma/client';
-import { appendSessionFacts, loadSessionFacts } from './worldFacts.js';
+import type { PrismaClient } from '@prisma/client';
 import { stageForPresion, typeForPresion } from './factionRelations.js';
-import { ambitoFacciones, ambitoPoblacion, type FiltroFacciones, type FiltroPoblacion } from './mundoPartida.js';
+import { ambitoFacciones, type FiltroFacciones } from './mundoPartida.js';
+import { advanceEntry, avanzarCadena, entradaInicial, parseAgenda, type AgendaEntry, type Cadena, type SucesoDePaso } from './cronista/cadenas.js';
 
-/// Canal WORLD (Grupo 3 § Mundo determinista, docs/rpgtarkor/lore-mundo/mundo-determinista.md, 2026-08-25):
-/// hasta ahora `STAGE_FACTS` solo alimentaba `sessionFacts` (contexto invisible del Narrador) — el
-/// panel "El mundo" que la jugadora sí ve (`entorno.ts`, canal `LogEntry.WORLD`) nunca se enteraba
-/// de que la agenda había avanzado, pese a depletar población real. Ya es texto determinista escrito
-/// a mano (`STAGE_FACTS`), cero coste añadido de LLM — solo hacía falta el cable.
+export { advanceEntry, parseAgenda, type AgendaEntry };
 
-/// `WorldState.agenda` (Grupo 3, docs/producto/21-roadmap.md) — hitos de mundo que avanzan solos con el
-/// tiempo de ficción si nadie interviene, más allá de la ambientación pasiva de `entorno.ts`.
-/// Diseño cerrado con la usuaria (2026-08-24): un solo hito de partida, el conflicto entre el Clan
-/// Serhu (aliado en la sombra con la Concordia de Hierro) contra los clanes Helsig y Goshg, que
-/// resisten. "No hay guerra abierta todavía, solo pequeños conflictos" es la etapa 0 — cada etapa
-/// que se cruza sin que la jugadora intervenga agrava el conflicto y deplete de verdad la
-/// población de Helsig/Goshg (`WorldPopulation`, ya trackeada por clan — `population.ts`).
+/// El conflicto Serhu (Grupo 3, docs/producto/21-roadmap.md; diseño cerrado con la usuaria el
+/// 2026-08-24): el Clan Serhu, aliado en la sombra con la Concordia de Hierro, presiona a los clanes
+/// Helsig y Goshg, que resisten. «No hay guerra abierta todavía, solo pequeños conflictos» es el paso
+/// 0; cada paso que se cruza sin que la jugadora intervenga agrava el conflicto y se cobra población
+/// real de Helsig y Goshg.
 ///
-/// Simplificación conocida: `WorldPopulation` es del `World`, no de una `Save` — con una sola
-/// partida jugable real hoy (Gorhorn) esto no importa, pero si algún día hay varias partidas en el
-/// mismo mundo, la agenda de una partida depleciona población compartida por todas. Igual que el
-/// resto de `population.ts`, no se resuelve aquí a propósito.
+/// CR-12 (paso 12b, hito 0.2): es la primera **cadena** del Cronista (`cronista/cadenas.ts`): cada
+/// paso tiene su texto (canal «El mundo» y hechos del Narrador), sus sucesos del Libro y sus efectos
+/// de la lista cerrada; se corta si cae el Clan Serhu o caen Helsig y Goshg a la vez. Su estado sigue
+/// en `WorldState.agenda` con la misma forma de siempre.
 
-export interface AgendaEntry {
-  id: string;
-  title: string;
-  stage: number;
-  maxStage: number;
-  /// `WorldState.fictionalMinutes` a partir del cual la próxima etapa puede cruzarse.
-  nextStageAtMinutes: number;
-}
+/// 7 días de ficción por paso — cifra de partida, a afinar jugando.
+const DIAS_POR_PASO = 7;
 
-/// 7 días de ficción por etapa — cifra de partida (petición explícita: "cada varios días de
-/// juego"), a afinar jugando como el resto de números pendientes del proyecto.
-const STAGE_INTERVAL_MINUTES = 7 * 24 * 60;
-
-/// Bajas por etapa en cada uno de los dos clanes que resisten — cifra de partida, sin verificar en
+/// Bajas por paso en cada uno de los dos clanes que resisten — cifra de partida, sin verificar en
 /// juego real todavía. Helsig (400 población) y Goshg (600) son lo bastante grandes para que esto
-/// se note sin ser catastrófico en una sola etapa.
+/// se note sin ser catastrófico en un solo paso.
 const POBLACION_PERDIDA_POR_ETAPA = 20;
 
 const HELSIG_TARGET_SLUG = 'orcos-cristal-helado';
 const GOSHG_TARGET_SLUG = 'orcos-cienaga';
 
 export const CONFLICTO_ID = 'conflicto-serhu-concordia-vs-helsig-goshg';
-
-/// Narración de cada etapa cruzada (índice = etapa nueva, la 0 nunca se narra — es el estado de
-/// partida, silencioso). El Narrador la recibe como hecho de mundo (`appendSessionFacts`), no como
-/// prosa ya escrita en el log — mismo criterio que el resto de hechos deterministas del proyecto.
-const STAGE_FACTS: readonly string[] = [
-  '',
-  'Los guerreros del Clan Serhu, animados en secreto por la Concordia de Hierro, intensifican sus incursiones contra los asentamientos del Clan Helsig y el Clan Goshg — ya no son escaramuzas sueltas, hay un patrón real detrás.',
-  'Pequeñas partidas Goirntes empiezan a acompañar a los guerreros Serhu en sus asaltos contra Helsig y Goshg — la Concordia deja de ocultar del todo su mano en el conflicto.',
-  'Helsig y Goshg pierden terreno de verdad frente a la presión conjunta de Serhu y la Concordia — corren rumores de aldeas enteras abandonadas.',
-  'El conflicto entre Serhu-Concordia y Helsig-Goshg se ha convertido en guerra abierta, con bajas reales en ambos bandos cada semana que pasa.',
-];
-
-export function initialAgenda(fictionalMinutes: number): AgendaEntry[] {
-  return [
-    {
-      id: CONFLICTO_ID,
-      title: 'El Clan Serhu, alineado con la Concordia, presiona a Helsig y Goshg',
-      stage: 0,
-      maxStage: STAGE_FACTS.length - 1,
-      nextStageAtMinutes: fictionalMinutes + STAGE_INTERVAL_MINUTES,
-    },
-  ];
-}
-
-export function parseAgenda(raw: Prisma.JsonValue | null | undefined): AgendaEntry[] {
-  return (raw as AgendaEntry[] | null) ?? [];
-}
 
 export type RegionControlEstado = 'NEUTRAL_O_DUENO_ORIGINAL' | 'EN_DISPUTA' | 'CONQUISTADA';
 
@@ -114,7 +70,7 @@ export function regionControlFor(region: string, agenda: AgendaEntry[], duenoOri
 export function regionControlDesdeStage(region: string, stage: number, duenoOriginal: string): RegionControlState {
   if (region === REGION_DEL_AGRESOR) return { estado: 'NEUTRAL_O_DUENO_ORIGINAL', duenoActual: duenoOriginal };
   if (!REGION_DEFENSOR[region]) return { estado: 'NEUTRAL_O_DUENO_ORIGINAL', duenoActual: duenoOriginal };
-  const maxStage = STAGE_FACTS.length - 1;
+  const maxStage = CADENA_CONFLICTO_SERHU.pasos.length - 1;
   if (stage >= maxStage) return { estado: 'CONQUISTADA', duenoActual: AGRESOR };
   if (stage >= 2) return { estado: 'EN_DISPUTA', duenoActual: duenoOriginal, agresor: AGRESOR };
   return { estado: 'NEUTRAL_O_DUENO_ORIGINAL', duenoActual: duenoOriginal };
@@ -176,50 +132,11 @@ export async function sincronizarRelacionesConflicto(db: RelacionesClient, facci
   }
 }
 
-/// Puro: cuántas etapas cruza una entrada dado el tiempo de ficción actual, y su estado
-/// resultante. Puede cruzar más de una etapa a la vez (un salto grande de tiempo de ficción, ej.
-/// un viaje largo) — nunca se queda "atrasada" esperando varios ticks para ponerse al día.
-export function advanceEntry(entry: AgendaEntry, fictionalMinutes: number): { entry: AgendaEntry; stagesCrossed: number } {
-  let current = entry;
-  let stagesCrossed = 0;
-  while (current.stage < current.maxStage && fictionalMinutes >= current.nextStageAtMinutes) {
-    current = {
-      ...current,
-      stage: current.stage + 1,
-      nextStageAtMinutes: current.nextStageAtMinutes + STAGE_INTERVAL_MINUTES,
-    };
-    stagesCrossed += 1;
-  }
-  return { entry: current, stagesCrossed };
-}
-
-type TxClient = Prisma.TransactionClient;
-
-/// Resta `amount` sin bajar de 0 — mismo criterio atómico que `decrementPopulationOnDeath`
-/// (population.ts), en dos pasos porque aquí la cantidad no es fija (puede superar lo que queda si
-/// se cruzan varias etapas de golpe con población ya mermada).
-/// CR-6: la agenda es de cada partida (`WorldState.agenda`), así que resta de su población.
-async function depleteClanPopulation(tx: TxClient, poblacion: FiltroPoblacion, targetSlug: string, amount: number): Promise<void> {
-  if (amount <= 0) return;
-  const result = await tx.worldPopulation.updateMany({
-    where: { ...poblacion, targetType: 'RAZA', targetSlug, poblacion: { gte: amount } },
-    data: { poblacion: { decrement: amount } },
-  });
-  if (result.count === 0) {
-    await tx.worldPopulation.updateMany({
-      where: { ...poblacion, targetType: 'RAZA', targetSlug, poblacion: { gt: 0 } },
-      data: { poblacion: 0 },
-    });
-  }
-}
-
-type SucesoDeEtapa = Omit<NuevoSuceso, 'saveId' | 'fictionalMinutes' | 'origen'>;
 const faccion = (slug: string, papel: 'AUTOR' | 'VICTIMA' | 'AFECTADO') => ({ entidadTipo: 'FACCION' as const, entidadId: slug, papel });
 
-/// Qué apunta el Libro al cruzar cada etapa del conflicto Serhu (mismas etapas que `STAGE_FACTS`):
-/// 1 la relación empeora, 2 la Concordia se alía abiertamente con Serhu, 3 Helsig y Goshg pierden
-/// terreno, 4 guerra abierta.
-export function sucesosDeEtapaConflicto(etapa: number): SucesoDeEtapa[] {
+/// Qué apunta el Libro al cruzar cada paso del conflicto: 1 la relación empeora, 2 la Concordia se
+/// alía abiertamente con Serhu, 3 Helsig y Goshg pierden terreno, 4 guerra abierta.
+export function sucesosDeEtapaConflicto(etapa: number): SucesoDePaso[] {
   switch (etapa) {
     case 1:
       return [{ tipo: 'CAMBIO_RELACION', actores: [faccion('clan-serhu', 'AUTOR'), faccion('clan-helsig', 'AFECTADO'), faccion('clan-goshg', 'AFECTADO')], datos: { faccionA: 'el Clan Serhu', faccionB: 'los clanes Helsig y Goshg', antes: 'escaramuzas sueltas', despues: 'incursiones organizadas' } }];
@@ -237,80 +154,56 @@ export function sucesosDeEtapaConflicto(etapa: number): SucesoDeEtapa[] {
   }
 }
 
-const SELECT_ESTADO_AGENDA = { id: true, saveId: true, agenda: true, fictionalMinutes: true, fictionalDateLabel: true, save: { select: { worldId: true } } } as const;
-type EstadoAgenda = Prisma.WorldStateGetPayload<{ select: typeof SELECT_ESTADO_AGENDA }>;
-/// Solo la partida jugable real de hoy (`characterName === 'Gorhorn'`) y viva.
-const PARTIDA_CON_AGENDA = { characterName: 'Gorhorn', endedAt: null } as const;
+/// Textos de cada paso (los de la antigua agenda, escritos a mano; el 0 es silencioso).
+const TEXTOS_CONFLICTO: readonly string[] = [
+  '',
+  'Los guerreros del Clan Serhu, animados en secreto por la Concordia de Hierro, intensifican sus incursiones contra los asentamientos del Clan Helsig y el Clan Goshg — ya no son escaramuzas sueltas, hay un patrón real detrás.',
+  'Pequeñas partidas Goirntes empiezan a acompañar a los guerreros Serhu en sus asaltos contra Helsig y Goshg — la Concordia deja de ocultar del todo su mano en el conflicto.',
+  'Helsig y Goshg pierden terreno de verdad frente a la presión conjunta de Serhu y la Concordia — corren rumores de aldeas enteras abandonadas.',
+  'El conflicto entre Serhu-Concordia y Helsig-Goshg se ha convertido en guerra abierta, con bajas reales en ambos bandos cada semana que pasa.',
+];
 
-/// CR-7 (hito 0.2): la agenda de UNA partida, desde su avance diario (`avanceDiario.ts`). Solo la
-/// partida jugable real de hoy (`characterName === 'Gorhorn'`, mismo criterio que
-/// `classAbilityUnlocksFor`) — siembra la agenda inicial si está vacía (partidas ya en curso antes
-/// de que esto existiera) y avanza cualquier etapa ya vencida.
-export async function avanzarAgendaDePartida(prisma: PrismaClient, saveId: string): Promise<{ advanced: boolean; stagesCrossed: number }> {
-  const state = await prisma.worldState.findFirst({ where: { saveId, save: PARTIDA_CON_AGENDA }, select: SELECT_ESTADO_AGENDA });
-  return state ? avanzarEstadoDeAgenda(prisma, state) : { advanced: false, stagesCrossed: 0 };
+/// La cadena se corta si cae el agresor, o si caen los dos que resisten (facciones de la partida).
+async function motivoDeCorteConflicto({ db, saveId }: { db: Pick<PrismaClient, 'faction'>; saveId: string }): Promise<string | null> {
+  const defensores = Object.values(REGION_DEFENSOR);
+  const filas = await db.faction.findMany({
+    where: { saveId, origenSlug: { not: null }, name: { in: [AGRESOR_FACCION, ...defensores] } },
+    select: { name: true, disueltaEn: true },
+  });
+  const caida = (nombre: string) => filas.some((f) => f.name === nombre && f.disueltaEn !== null);
+  if (caida(AGRESOR_FACCION)) return 'Con la caída del Clan Serhu, sus incursiones contra Helsig y Goshg se apagan.';
+  if (defensores.every(caida)) return 'Caídos Helsig y Goshg, ya no queda nadie que resista al Clan Serhu: su campaña contra ellos termina.';
+  return null;
 }
 
-async function avanzarEstadoDeAgenda(prisma: PrismaClient, state: EstadoAgenda): Promise<{ advanced: boolean; stagesCrossed: number }> {
-  let totalStagesCrossed = 0;
-  let agenda = parseAgenda(state.agenda);
-  let needsWrite = false;
-  if (agenda.length === 0) {
-    agenda = initialAgenda(state.fictionalMinutes);
-    needsWrite = true;
-  }
+export const CADENA_CONFLICTO_SERHU: Cadena = {
+  id: CONFLICTO_ID,
+  titulo: 'El Clan Serhu, alineado con la Concordia, presiona a Helsig y Goshg',
+  intervaloDias: DIAS_POR_PASO,
+  pasos: TEXTOS_CONFLICTO.map((texto, paso) => ({
+    texto,
+    sucesos: sucesosDeEtapaConflicto(paso),
+    efectos:
+      paso === 0
+        ? []
+        : [
+            { tipo: 'ajustarPoblacion', targetSlug: HELSIG_TARGET_SLUG, delta: -POBLACION_PERDIDA_POR_ETAPA, sinSuceso: true },
+            { tipo: 'ajustarPoblacion', targetSlug: GOSHG_TARGET_SLUG, delta: -POBLACION_PERDIDA_POR_ETAPA, sinSuceso: true },
+          ],
+  })),
+  // Solo la partida jugable real de hoy (`characterName === 'Gorhorn'`, mismo criterio que
+  // `classAbilityUnlocksFor`) y viva.
+  aplicaA: { characterName: 'Gorhorn', endedAt: null },
+  motivoDeCorte: motivoDeCorteConflicto,
+  // Fase D (hito 0.1): el paso empuja las relaciones reales de la partida (idempotente, solo sube).
+  sincronizar: async (prisma, saveId, paso) => sincronizarRelacionesConflicto(prisma, await ambitoFacciones(prisma, saveId), paso),
+};
 
-  const facts: string[] = [];
-  let helsigLoss = 0;
-  let goshgLoss = 0;
-  const nextAgenda = agenda.map((entry) => {
-    const { entry: advanced, stagesCrossed } = advanceEntry(entry, state.fictionalMinutes);
-    if (stagesCrossed === 0) return advanced;
-    needsWrite = true;
-    totalStagesCrossed += stagesCrossed;
-    if (entry.id === CONFLICTO_ID) {
-      helsigLoss += POBLACION_PERDIDA_POR_ETAPA * stagesCrossed;
-      goshgLoss += POBLACION_PERDIDA_POR_ETAPA * stagesCrossed;
-      for (let s = entry.stage + 1; s <= advanced.stage; s++) {
-        if (STAGE_FACTS[s]) facts.push(STAGE_FACTS[s]);
-      }
-    }
-    return advanced;
-  });
+export function initialAgenda(fictionalMinutes: number): AgendaEntry[] {
+  return [entradaInicial(CADENA_CONFLICTO_SERHU, fictionalMinutes)];
+}
 
-  // Fase D (hito 0.1) — la etapa de la agenda empuja las relaciones reales (y sincroniza partidas
-  // que ya iban más avanzadas que la relación sembrada); idempotente, solo sube presión.
-  const conflicto = nextAgenda.find((entry) => entry.id === CONFLICTO_ID);
-  // CR-6: las relaciones y la población de ESTA partida (su copia del mundo).
-  if (conflicto) await sincronizarRelacionesConflicto(prisma, await ambitoFacciones(prisma, state.saveId), conflicto.stage);
-
-  if (!needsWrite) return { advanced: false, stagesCrossed: totalStagesCrossed };
-
-  await prisma.$transaction(async (tx) => {
-    await tx.worldState.update({ where: { id: state.id }, data: { agenda: nextAgenda as unknown as Prisma.InputJsonValue } });
-    const poblacion = await ambitoPoblacion(tx, state.saveId);
-    await depleteClanPopulation(tx, poblacion, HELSIG_TARGET_SLUG, helsigLoss);
-    await depleteClanPopulation(tx, poblacion, GOSHG_TARGET_SLUG, goshgLoss);
-    // Canal WORLD (ver comentario de cabecera) — una fila por etapa cruzada, mismo texto ya
-    // escrito a mano que recibe sessionFacts, para que el panel "El mundo" cuente lo mismo que ya
-    // sabe el Narrador.
-    for (const fact of facts) {
-      await tx.logEntry.create({
-        data: { saveId: state.saveId, channel: 'WORLD', text: fact, timeLabel: state.fictionalDateLabel, fictionalMinutes: state.fictionalMinutes },
-      });
-    }
-    // Libro de Sucesos (CR-3, hito 0.2): cada etapa cruzada del conflicto, en orden.
-    const previa = agenda.find((entry) => entry.id === CONFLICTO_ID)?.stage ?? 0;
-    for (let etapa = previa + 1; etapa <= (conflicto?.stage ?? previa); etapa++) {
-      for (const suceso of sucesosDeEtapaConflicto(etapa)) {
-        await registrarSuceso(tx, { ...suceso, saveId: state.saveId, fictionalMinutes: state.fictionalMinutes, origen: 'MUNDO' });
-      }
-    }
-  });
-
-  if (facts.length > 0) {
-    const existing = await loadSessionFacts(state.saveId);
-    await appendSessionFacts(state.saveId, existing, facts);
-  }
-  return { advanced: true, stagesCrossed: totalStagesCrossed };
+/// CR-7 (hito 0.2): la agenda de UNA partida, desde su avance diario (`avanceDiario.ts`).
+export async function avanzarAgendaDePartida(prisma: PrismaClient, saveId: string): Promise<{ advanced: boolean; stagesCrossed: number }> {
+  return avanzarCadena(prisma, saveId, CADENA_CONFLICTO_SERHU);
 }
