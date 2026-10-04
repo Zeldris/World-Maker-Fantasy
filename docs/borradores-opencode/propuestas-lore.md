@@ -24,6 +24,37 @@ checklist).
 
 ## Categoría: Facciones y diplomacia
 
+2026-10-04 — Nombres de las facciones nacidas de una escisión (CR-11, hito 0.2)
+Estado: SIN REVISAR
+
+Origen: entrevista de diseño de CR-11 con la usuaria (decisiones Q9, Q12 y Q13). Cuando una
+facción pierde a su líder y queda con cohesión media, el motor la parte en dos (escisión). La nueva
+facción necesita un nombre con peso en el lore, no una etiqueta genérica. Se siguen las reglas que
+cada pueblo ya usa para nombrarse (ver `lore-mundo/clanes-orcos.md`, `lore-mundo/lenguas-helek.md`,
+`lore-mundo/razas.md`):
+
+- **Orcos** — el clan toma el nombre de quien encabeza la escisión, con la terminación orca de
+  Helsig (Helsa) y Goshg (Gosha): *Varka* → Clan **Varkag**; si ya existe, la otra terminación
+  (**Varksig**). Mismo criterio que los dos clanes emigrados.
+- **Nabieus** — **Keseg** + una palabra de su diccionario, nunca repetida (sus clanes son «el fin
+  de algo»): Keseg **Tannis** (el fin de la mentira), Keseg **Karo** (el fin de la carta),
+  Keseg **Tovh** (el fin de la mano abierta), Keseg **Vhurne** (el fin de la reunión).
+- **Faerus** — **Feg** + una palabra concreta suya (como Feg Ger, «manada roja»): Feg **Sil**
+  (manada del fuego), Feg **Kegi** (manada de la arena), Feg **Krul** (manada del colmillo),
+  Feg **Nur** (manada de los heridos).
+- Cada nombre lleva su traducción en la descripción de la facción.
+
+**Pregunta abierta (Q13):** ¿cómo se nombraría una escisión **goirnte**? Para un goirnte no hay más
+Imperio que el suyo (`Ord`, sin apellido); una escisión sería una ruptura con el Imperio. Mientras
+no se decida, el motor no escinde la Concordia (solo puede caer o sostenerse).
+
+El motor usa esta tabla como provisional (`backend/src/services/cronista/nombresFaccion.ts`) hasta
+que se valide o se cambie.
+
+Archivos que tocaría si se aprueba: `docs/rpgtarkor/lore-mundo/lenguas-helek.md` (las palabras
+nuevas como nombres de clan), `docs/rpgtarkor/lore-mundo/clanes-orcos.md` (regla de nombre de los
+clanes escindidos).
+
 ---
 
 ## Categoría: Razas y cultura

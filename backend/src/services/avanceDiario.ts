@@ -15,6 +15,7 @@ import { avanzarExpedicionesDePartida } from './factionExpeditions.js';
 import { asegurarMundoDePartida } from './mundoPartida.js';
 import { crecerPoblacionDePartida, syncFactionPopulationToKingdomStats } from './population.js';
 import { avanzarAgendaDePartida } from './worldAgenda.js';
+import { procesarReacciones } from './cronista/reacciones.js';
 
 export const MAX_DIAS_POR_LLAMADA = 30;
 
@@ -64,6 +65,8 @@ export async function avanzarMundoHasta(
     // La agenda lleva sus propias transacciones y avanza por umbrales de tiempo (no por día).
     await avanzarAgendaDePartida(prisma, saveId);
   }
+  // CR-10: reacciones de lo que haya pasado en el turno o en estos días.
+  await procesarReacciones(prisma, saveId, random);
   return { diasSimulados };
 }
 
@@ -85,5 +88,7 @@ export function registrarAvanceTrasAcciones(app: FastifyInstance, prisma: Prisma
     const saveId = (request.params as { id?: string } | undefined)?.id;
     if (!saveId) return;
     await avanzarSiCruzaDia(prisma, saveId).catch((err) => console.error('[avanceDiario] error tras la acción:', err));
+    // CR-10: reacciones de lo que haya registrado la acción (si cruzó día, ya se procesaron).
+    await procesarReacciones(prisma, saveId).catch((err) => console.error('[reacciones] error tras la acción:', err));
   });
 }
