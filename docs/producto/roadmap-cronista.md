@@ -1120,7 +1120,10 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
       IA, corrige lo dicho en la ronda 2), y ahora añade hasta 2 rastros de sucesos de los últimos
       3 días en la región (incendio, crecida, tormenta, plaga, auge, fauna que llega, edificio
       dañado).
-    **Falta:** resumen «Mientras viajabas…» al cruzar varios días y las oportunidades con plazo.
+    - **Resumen de varios días** (`agruparNoticias`, también `UX-31`): si el avance diario simula 2
+      días o más, lo que haya llegado a «El mundo» en ese avance se junta en una sola entrada
+      «Mientras pasaban los días…» con una línea por noticia. Desplegarla bonita es de `UX-38`.
+    **Falta:** las oportunidades con plazo.
 - **CR-13** Nacimientos notables y generador de nombres (§ 12.3). **M** Incluye el efecto `crearNpc`
   en `efectos.ts` (CR-9).
 - **Hecho cuando:** `cronista:simular 60` produce caídas, escisiones, tormentas con daños, guerras

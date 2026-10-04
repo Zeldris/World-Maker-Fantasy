@@ -13,7 +13,7 @@
 //
 // Lo que llega tarde se guarda como consecuencia aplazada (`NOTICIA`, disparo por días) y se escribe
 // al vencer. Sin rumores falsos todavía (`RUMOR_DE_HAZANA`, Fase 5).
-import type { Prisma } from '@prisma/client';
+import type { Prisma, PrismaClient } from '@prisma/client';
 import { aplicarEfecto } from './efectos.js';
 import { REGIONES_VECINAS } from './regiones.js';
 import type { CtxConsecuencia, ReglaConsecuencia } from './consecuencias.js';
@@ -132,3 +132,36 @@ export const NOTICIA: ReglaConsecuencia = {
     return [];
   },
 };
+
+/// Cabecera del resumen de varios días (UX-31).
+export const CABECERA_RESUMEN = 'Mientras pasaban los días…';
+
+/// Resumen al cruzar varios días de golpe (UX-31, decisión de la ronda 2 de CR-12): las entradas de
+/// «El mundo» escritas después de `marca` (`marcaDeNoticias`) se juntan en una sola, con una línea
+/// por noticia, en vez de llegar en ráfaga. Con menos de 2 no hace nada.
+export async function agruparNoticias(prisma: PrismaClient, saveId: string, marca: Date): Promise<number> {
+  return prisma.$transaction(async (tx) => {
+    const entradas = await tx.logEntry.findMany({
+      where: { saveId, channel: 'WORLD', createdAt: { gt: marca } },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      select: { id: true, text: true, timeLabel: true, fictionalMinutes: true },
+    });
+    if (entradas.length < 2) return 0;
+    const ultima = entradas[entradas.length - 1]!;
+    await tx.logEntry.deleteMany({ where: { id: { in: entradas.map((e) => e.id) } } });
+    await tx.logEntry.create({
+      data: {
+        saveId, channel: 'WORLD', isSystemMessage: true, timeLabel: ultima.timeLabel, fictionalMinutes: ultima.fictionalMinutes,
+        text: [CABECERA_RESUMEN, ...entradas.map((e) => `• ${e.text}`)].join('\n'),
+      },
+    });
+    return entradas.length;
+  });
+}
+
+/// Marca para `agruparNoticias`: el `createdAt` de la última entrada de «El mundo» (mismo reloj que
+/// el de las que vendrán), o el principio de los tiempos si no hay ninguna.
+export async function marcaDeNoticias(prisma: PrismaClient, saveId: string): Promise<Date> {
+  const ultima = await prisma.logEntry.findFirst({ where: { saveId, channel: 'WORLD' }, orderBy: { createdAt: 'desc' }, select: { createdAt: true } });
+  return ultima?.createdAt ?? new Date(0);
+}

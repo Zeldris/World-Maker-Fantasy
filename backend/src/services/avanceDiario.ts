@@ -18,6 +18,7 @@ import { avanzarAgendaDePartida } from './worldAgenda.js';
 import { procesarReacciones } from './cronista/reacciones.js';
 import { evaluarConsecuencias } from './cronista/consecuencias.js';
 import { narrarDia } from './cronista/narradorFondo.js';
+import { agruparNoticias, marcaDeNoticias } from './cronista/noticias.js';
 
 export const MAX_DIAS_POR_LLAMADA = 30;
 
@@ -40,6 +41,7 @@ export async function avanzarMundoHasta(
   random: () => number = Math.random,
 ): Promise<{ diasSimulados: number }> {
   await asegurarMundoDePartida(prisma, saveId);
+  const marcaNoticias = await marcaDeNoticias(prisma, saveId);
   const { dias: diasSimulados, desde } = await prisma.$transaction(
     async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`avance|${saveId}`}))`;
@@ -74,6 +76,8 @@ export async function avanzarMundoHasta(
   // toquen ahora (días, región), y otra vuelta de reacciones por lo que hayan registrado.
   await procesarReacciones(prisma, saveId, random);
   if ((await evaluarConsecuencias(prisma, saveId, {}, random)).disparadas > 0) await procesarReacciones(prisma, saveId, random);
+  // CR-12 (12d) / UX-31: varios días de golpe (viaje, descanso largo) → un solo resumen en «El mundo».
+  if (diasSimulados >= 2) await agruparNoticias(prisma, saveId, marcaNoticias);
   return { diasSimulados };
 }
 
