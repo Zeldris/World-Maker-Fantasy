@@ -10,7 +10,7 @@ cada commit.**
 
 | | |
 |---|---|
-| **Actualizado** | 2026-10-03 |
+| **Actualizado** | 2026-10-04 |
 | **Rama de trabajo** | `claude/frontend-improvements-roadmap-0mpckt`. Flujo acordado (2026-10-01): commit + push a esta rama con cada cosa hecha; a `main` se pasa **por pull request** (desde esta sesión el push directo a `main` lo bloquea el filtro de permisos) |
 | **Último commit en `main`** | Fusión del PR #10 (2026-10-03, pedida por la usuaria): `CR-6` paso 2 (población por partida), CI en verde. Antes, PR #9 (cierre de Fase B, `BAS-7/8/9`, `CR-5`, `CR-6` paso 1), #8, #7, #6, #5 y #4. Pausa pedida por la usuaria; al volver, `CR-6` paso 3 |
 | **Hito** | `0.2` Facciones vivas — [plan](../producto/plan-roadmap-0.2.md) · [mapa de roadmaps](../producto/21-roadmap.md#qué-entra-en-cada-hito) (el `0.1` sigue abierto solo por las Fases E y F, ver abajo) |
@@ -95,6 +95,7 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
+- **2026-10-04** — Skills del proyecto en `.claude/skills/` (8 de mattpocock/skills + `selector` propio de skill y modelo) y guía [`docs/runbooks/skills-y-modelos.md`](../runbooks/skills-y-modelos.md); `CLAUDE.md` pide aplicar `selector` al empezar cada tarea.
 - **2026-10-03** — PRs #9 y #10 fusionados (pausa tras ellos). `CR-6` paso 2: población por partida (muertes, caza, recolección, encuentros, zona) y Reino del jugador distinguido de las copias del mundo.
 - **2026-10-02** — `CR-5`: esquema del mundo por partida (campos de § 5.2 y únicos parciales); backend 2893 tests en verde.
 - **2026-10-02** — `BAS-7`: también las notificaciones animan su salida. **Fase B del 0.2 cerrada** con pendientes apuntados; se pasa a la Fase C (mundo por partida).
@@ -104,4 +105,3 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 - **2026-10-02** — `CFG-3` y `CFG-2`: menú de pausa («☰ Menú» o Esc) con Reanudar, Configuración, Salir a tus partidas y Salir al inicio.
 - **2026-10-02** — Configuración: botón ⚙️ y panel con vista previa (escala, narración, animaciones, velocidad de dados, alto contraste), guardado en `localStorage` (`CFG-1`, `CFG-4`, `CFG-5`, `CFG-6`, `CFG-9`, `CFG-13`, `CFG-14`, `CFG-28`; `CFG-20` en parte).
 - **2026-10-02** — Arreglo (hallazgo jugando de la usuaria): en combate, Matar/Clemente de un rival convaleciente ya no salen bloqueados (regresión de `UX-2`).
-- **2026-10-02** — PR #6 fusionado a `main` (modales, notificaciones, cabecera/pie). Pausa pedida por la usuaria; al volver, configuración básica (`CFG-*`).
