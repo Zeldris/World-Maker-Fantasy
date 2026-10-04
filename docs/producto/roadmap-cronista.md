@@ -1243,6 +1243,36 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     más. Líder sin Inteligencia sembrada: 10.
   - **Q9 Lo que ve la jugadora:** cada decisión es un suceso del Libro y llega a «El mundo» con el
     rumor por distancia (`darNoticia`); nada nuevo en la interfaz.
+  Ronda 2 (2026-10-04, aceptada entera):
+  - **Q10 Umbrales provisionales:** comida/bebida leve < 10 días de consumo, grave < 3 (la bebida no
+    salta hasta la economía: hoy se rellena sola); Goirnos leve si no paga 14 días de soldados, grave
+    < 3; soldados: < 60 % de los de un enemigo en tensión o guerra. Todos en un solo sitio.
+  - **Q11 Respuesta a cada carencia:** comida → expedición de caza o recolección (su región o vecina);
+    bebida → reclamar territorio con fuente (Los Manaderos, el Cauce) o pactar con quien la tiene;
+    Goirnos → tratado comercial, o saqueo si es belicosa; soldados → alianza contra su enemigo, o
+    pedir la paz si va perdiendo; sin carencias → según la disposición (expandirse, presionar a un
+    rival, afianzar un pacto).
+  - **Q12 Pactos entre facciones:** la destinataria responde en el acto con su propia IA (carencias,
+    disposición, Inteligencia). Acepta → presión de las dos direcciones a 35 (tratado) o 15 (alianza);
+    rechaza → +5 de la que propuso. Alianza solo desde tratado.
+  - **Q13 Guerra y paz:** declarar solo desde tensión (las dos direcciones a 80; los aliados de la
+    víctima suben su presión contra el agresor). Paz solo en guerra, aceptada si la otra también sufre
+    (carencia o menos soldados) → las dos a 65.
+  - **Q14 Expansión:** territorio sin dueño → se reclama; de otra facción → solo en guerra con ella,
+    por asalto (tirada ponderada por soldados): si gana, cambia de manos y sube la presión del
+    perdedor (`EXPANSION_TERRITORIAL_AGRESIVA`); si pierde, bajas de soldados. Nunca del Reino (`CR-37`).
+  - **Q15 Propuesta al Reino:** noticia en «El mundo» con Aceptar/Rechazar y plazo de 3 días (sobre la
+    tarjeta de oportunidad de `UX-38`). Aceptar → tratado o alianza en las dos direcciones y su
+    mercado; rechazar o dejar pasar → +5 de esa facción hacia el Reino.
+  - **Q16 Disposiciones:** belicosa, mercantil, recelosa y neutral (por defecto). Propuesta por
+    facción a Álvaro en `propuestas-lore.md`; neutras hasta que conteste.
+  - **Q17 Presupuesto:** según la importancia del suceso: guerra alta; alianza, paz y asalto media;
+    tratado y reclamar sin dueño baja. Sin presupuesto, espera a otra semana (la carencia grave
+    adelanta la revisión, no se salta el presupuesto).
+  - **Q18 Hecho cuando:** test de simulación de 60 días en una partida con expediciones por carencia,
+    al menos un tratado, una guerra con paz o asalto, decisiones distintas con distinta Inteligencia en
+    la misma situación, y claramente menos decisiones grandes en Tranquilo que en Caótico.
+  - **Orden de trabajo:** `CR-35` primero (Q1 necesita la economía por partida).
 - **CR-35** Economía y expediciones de facción en el mundo de la partida (`CR-34` Q1): hoy
   `advanceFactionEconomy` y `advanceFactionExpeditions` corren sobre el catálogo (`saveId` null) una
   vez por día del mundo; deben correr sobre la copia de cada partida, por su propio día. **M**
