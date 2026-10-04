@@ -101,3 +101,17 @@ _Evitar_: mayoría de edad
 
 **Vejez**:
 Los años que alguien vive más allá del 80 % de la esperanza de vida de su pueblo: pierde fuerza, destreza y constitución, y puede morir de viejo.
+
+## Las facciones que deciden
+
+**Decisión de facción**:
+Lo que una facción del mundo de la partida elige hacer por sí misma (mandar una expedición, pactar, declarar la guerra, pedir la paz, reclamar un territorio), según la Inteligencia de su líder.
+_Evitar_: IA de facción, acción de facción
+
+**Carencia**:
+Lo que le falta a una facción para sostenerse (comida, bebida, Goirnos, soldados frente a sus enemigos) y que la empuja a decidir.
+_Evitar_: necesidad, déficit
+
+**Disposición**:
+La inclinación de una facción (belicosa, mercantil, recelosa…) que pesa en sus decisiones cuando tiene varias opciones.
+_Evitar_: personalidad, temperamento

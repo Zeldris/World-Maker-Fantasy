@@ -1214,6 +1214,38 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     fértil; el resumen de varios días conserva la categoría y la oportunidad de cada línea; y **los
     líderes del catálogo ya no tienen edad provisional aparte** (cambio sobre la Q8: la misma edad
     en todos los sistemas; las de los líderes, para Álvaro con el resto).
+- **CR-34** 🚧 Decisiones de facción (IA de decisión de facción del `0.2`, [21-roadmap § 0.2](21-roadmap.md#02--facciones-vivas)). **L**
+  Diseño con `/grill-with-docs` (2026-10-04, ronda 1 aceptada entera por la usuaria; términos en
+  `GLOSSARY.md`: decisión de facción, carencia, disposición):
+  - **Q1 Dónde:** en el **mundo de la partida**, una vez por día de ficción de esa partida (junto al
+    narrador de fondo), nunca en el catálogo ni en tiempo real. Pasar economía y expediciones de
+    facción al mundo de la partida → `CR-35`.
+  - **Q2 Sin los números de la economía de supervivencia:** carencias calculadas sobre lo que hay hoy
+    (comida, bebida, riqueza, soldados frente al enemigo) con umbrales provisionales en un solo sitio;
+    con la respuesta de Álvaro (pregunta 5) solo cambian los umbrales.
+  - **Q3 Qué decide en el `0.2`:** expediciones dirigidas (oficio y destino según la carencia, no por
+    rotación), diplomacia (proponer tratado o alianza, declarar la guerra, pedir la paz, moviendo la
+    presión con `cambiarPresion`) y expandirse (reclamar un territorio sin control o disputado de su
+    región o vecina, `cambiarControlTerritorio`). Construir → `CR-36` (`0.3`).
+  - **Q4 Inteligencia del líder,** mismos tramos que la IA de combate: **< 10** impulsivo (solo ante
+    carencias graves, casi al azar entre lo válido); **10-20** sensato (puntúa necesidad, fuerza propia
+    contra la del otro y relaciones; elige la mejor con algo de ruido); **20+** estratega (se adelanta a
+    la carencia, ataca al más débil, busca aliados contra un enemigo común, nunca dos guerras a la vez).
+  - **Q5 Disposición** por facción (belicosa, mercantil, recelosa…) que inclina la elección; propuesta
+    a Álvaro en `propuestas-lore.md`, neutra mientras no conteste. Que la dé el líder → `CR-38`.
+  - **Q6 Ritmo:** cada facción revisa su situación una vez por semana de ficción, o antes si una
+    carencia se vuelve grave. Guerra, alianza, paz y expansión gastan **presupuesto de tensión** (las
+    gobierna el Ritmo del mundo); las expediciones no.
+  - **Q7 Contra el Reino de la jugadora:** solo diplomacia (te proponen tratado o alianza con tarjeta
+    aceptar/rechazar, o te suben la tensión); la guerra contra el Reino → `CR-37` (`0.3`, con los
+    edificios de defensa).
+  - **Q8 Sin líder** (sucesión pendiente): solo inercia (expediciones), nada grande, y la cohesión pesa
+    más. Líder sin Inteligencia sembrada: 10.
+  - **Q9 Lo que ve la jugadora:** cada decisión es un suceso del Libro y llega a «El mundo» con el
+    rumor por distancia (`darNoticia`); nada nuevo en la interfaz.
+- **CR-35** Economía y expediciones de facción en el mundo de la partida (`CR-34` Q1): hoy
+  `advanceFactionEconomy` y `advanceFactionExpeditions` corren sobre el catálogo (`saveId` null) una
+  vez por día del mundo; deben correr sobre la copia de cada partida, por su propio día. **M**
 - **Hecho cuando:** `cronista:simular 60` produce caídas, escisiones, tormentas con daños, guerras
   y nacimientos coherentes; perdonar a un NPC lo hace volver en otra región.
 
@@ -1228,6 +1260,13 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   un NPC sin pelear (tirada de persuasión según si le gusta lo que dices; idea de la usuaria del
   2026-09-06) para que se una al Reino o te pase información de su facción. Abre la oportunidad
   del malestar interno del narrador de fondo (un descontento se ofrece). **M**
+- **CR-36** Las facciones del mundo construyen (`CR-34` Q3, va al `0.3` con el Reino profundo): obras
+  con coste y plazo según sus carencias (pozo, granero…), con los números de la economía de
+  supervivencia. **M**
+- **CR-37** Guerra de una facción contra el Reino de la jugadora (`CR-34` Q7, `0.3`): solo cuando
+  existan los edificios de defensa. **M**
+- **CR-38** La disposición de una facción la da su líder (`CR-34` Q5): un rasgo del NPC que cambia con
+  la sucesión de `CR-11`. **S**
 - **Hecho cuando:** matar al hermano de un NPC abre un hilo de venganza y el vengador aparece;
   un compañero se queja y acaba yéndose si se le contraría repetidamente.
 
