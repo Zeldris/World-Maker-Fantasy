@@ -878,8 +878,10 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   de catálogo, mismo resultado que antes); la siembra hace `upsert` por id (sigue idempotente).
   **Ojo:** Prisma no expresa índices parciales; `prisma migrate diff` propondrá borrarlos en
   migraciones futuras: quitar esas líneas. Aún nada lee ni escribe por partida: eso es `CR-6`.
-- **CR-6** `asegurarMundoDePartida` y adaptar lecturas/escrituras de facciones, relaciones,
-  población, expediciones y NPC muertos a la partida. **L** 🚧 2026-10-02 — **paso 1 hecho:**
+- ~~**CR-6** `asegurarMundoDePartida` y adaptar lecturas/escrituras de facciones, relaciones,
+  población, expediciones y NPC muertos a la partida. **L**~~ ✅ 2026-10-04 (pasos 1-4; expediciones
+  y muertes de NPC por expedición **pasan a `CR-7`**: las mueve el tick del mundo por día de ficción
+  del mundo, y § 13.1 las pone en el avance diario de cada partida) — **paso 1 hecho:**
   `services/mundoPartida.ts` (`asegurarMundoDePartida`, con candado de Postgres; clona facciones
   con `origenSlug`, relaciones, `KingdomStats`, territorios y edificios de facción —sin `saveId`,
   cuelgan de la copia—, población; marca `mundoClonadoEn` y emite `SISTEMA_MUNDO_INICIADO`) y
@@ -904,10 +906,12 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   `GET /world/:slug/faction-relations?saveId=` leen la copia de la partida. Las relaciones
   jugador↔facción (bajas de guerra, expansión, diplomacia, mercado) siguen contra la facción de
   catálogo porque su almacén y su economía no se copian hasta `CR-7`; ya guardan el `saveId` de la
-  partida. Test: el conflicto de una partida no toca el de otra ni el del catálogo. **Falta:**
-  expediciones (`factionExpeditions.ts`) y NPC muertos (`NpcState.muerto`); la economía y el
-  decaimiento de presión siguen en el tick del mundo (`CR-7`).
-- **CR-7** `avanceDiario` por partida; sacar las funciones de mundo de `worldTick.ts`. **M**
+  partida. Test: el conflicto de una partida no toca el de otra ni el del catálogo.
+- **CR-7** `avanceDiario` por partida; sacar las funciones de mundo de `worldTick.ts`. **M** Incluye
+  lo que pasa de `CR-6`: expediciones de facción de la partida (`factionExpeditions.ts`, con
+  `Expedicion.saveId`) y sus muertes de NPC en `NpcState.muerto` en vez de `Npc.muertoEnMundo`;
+  economía y decaimiento de presión de las copias; y entonces almacén/mercado de las copias y las
+  relaciones jugador↔facción contra la copia (hoy contra el catálogo).
 - **CR-8** Script de migración (§ 16). **M**
 - **Hecho cuando:** dos partidas del mismo mundo divergen (una mata a un NPC, la otra no lo ve);
   todos los tests de integración actuales pasan.
