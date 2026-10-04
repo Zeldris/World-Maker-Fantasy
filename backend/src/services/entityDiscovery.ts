@@ -59,7 +59,7 @@ export async function recordEntityDiscoveries(
       // Enciclopedia) — ver uso más abajo en los loops de npc/item. Catálogo (saveId null) + la
       // fundada en ESTA partida (reino.ts) — nunca la de otra partida distinta, aunque compartan
       // nombre (mismo filtro que /world/:slug/enciclopedia, ver world.ts).
-      client.faction.findMany({ where: { worldId: params.worldId, OR: [{ saveId: null }, { saveId: params.saveId }] } }),
+      client.faction.findMany({ where: { worldId: params.worldId, OR: [{ saveId: null }, { saveId: params.saveId, origenSlug: null }] } }),
       client.historiaEntry.findMany({ where: { worldId: params.worldId } }),
     ]);
     const factionSlugByName = new Map(factionRows.map((f) => [f.name, f.slug]));

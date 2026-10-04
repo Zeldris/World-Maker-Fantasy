@@ -114,7 +114,10 @@ describe('advanceWorldAgenda', () => {
     const worldStateUpdate = vi.fn();
     const worldPopulationUpdateMany = vi.fn().mockResolvedValue({ count: 1 });
     const logEntryCreate = vi.fn();
+    // CR-6 (hito 0.2): partida con su mundo ya clonado — relaciones y población de la partida.
+    const save = { findUniqueOrThrow: vi.fn().mockResolvedValue({ worldId: 'world1', worldState: { mundoClonadoEn: new Date() } }) };
     const tx = {
+      save,
       worldState: { update: worldStateUpdate },
       worldPopulation: { updateMany: worldPopulationUpdateMany },
       logEntry: { create: logEntryCreate },
@@ -124,6 +127,7 @@ describe('advanceWorldAgenda', () => {
     const factionRelationFindMany = vi.fn().mockResolvedValue([{ id: 'rel-helsig' }, { id: 'rel-goshg' }]);
     const factionRelationUpdate = vi.fn();
     const prisma = {
+      save,
       worldState: { findMany: vi.fn().mockResolvedValue(states) },
       factionRelation: { findMany: factionRelationFindMany, update: factionRelationUpdate },
       $transaction,
@@ -159,14 +163,14 @@ describe('advanceWorldAgenda', () => {
     ]);
     await advanceWorldAgenda(prisma as never);
     // Fase D (hito 0.1) — la etapa 1 empuja Serhu→Helsig/Goshg hasta presión 70 (solo las que estén por debajo).
-    expect(factionRelationFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ worldId: 'world1', presion: { lt: 70 } }) }));
+    expect(factionRelationFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ presion: { lt: 70 }, sourceFaction: { saveId: 'save1', origenSlug: { not: null }, name: 'Clan Serhu' } }) }));
     expect(factionRelationUpdate).toHaveBeenCalledWith({ where: { id: 'rel-helsig' }, data: { presion: 70, type: typeForPresion(70), stage: 1 } });
     expect(worldPopulationUpdateMany).toHaveBeenCalledWith({
-      where: { worldId: 'world1', saveId: null, targetType: 'RAZA', targetSlug: 'orcos-cristal-helado', poblacion: { gte: 20 } },
+      where: { saveId: 'save1', targetType: 'RAZA', targetSlug: 'orcos-cristal-helado', poblacion: { gte: 20 } },
       data: { poblacion: { decrement: 20 } },
     });
     expect(worldPopulationUpdateMany).toHaveBeenCalledWith({
-      where: { worldId: 'world1', saveId: null, targetType: 'RAZA', targetSlug: 'orcos-cienaga', poblacion: { gte: 20 } },
+      where: { saveId: 'save1', targetType: 'RAZA', targetSlug: 'orcos-cienaga', poblacion: { gte: 20 } },
       data: { poblacion: { decrement: 20 } },
     });
     expect(appendSessionFacts).toHaveBeenCalledTimes(1);

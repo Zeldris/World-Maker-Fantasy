@@ -33,6 +33,7 @@ import { createInFlightClaimSet } from '../../lib/inFlightClaimSet.js';
 import { iniciarCaza, type CazaTarget } from '../../services/caza.js';
 import { riesgoDeCaza, type RiesgoCazaInfo } from '../../services/cazaRiesgo.js';
 import type { AttributeBlock } from '../../services/dice.js';
+import { ambitoFacciones } from '../../services/mundoPartida.js';
 
 /// Candado de "movimiento en curso" (hallazgo 45, revisar-partida-hallazgos.md, 2026-09-15) —
 /// mismo patrón que `turnLock.ts`/`chapterSummary.ts` (`createInFlightClaimSet`), pero con
@@ -242,7 +243,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     // `resolveFoundingOutcome`, reputation.ts).
     const duenoOriginal = REGION_OWNING_FACTIONS[region]?.[0] ?? null;
     const regionControl: RegionControlState | null = duenoOriginal
-      ? await regionControlActual(prisma, save.worldId, region, parseAgenda(save.worldState?.agenda), duenoOriginal)
+      ? await regionControlActual(prisma, await ambitoFacciones(prisma, save.id), region, parseAgenda(save.worldState?.agenda), duenoOriginal)
       : null;
     // Fase G del 0.1 (hallazgo G25): Diplomacia dice que una facción se descubre «hablando con sus
     // NPC o visitando su territorio», pero estar en «Territorio de Clan Serhu» no descubría nada —

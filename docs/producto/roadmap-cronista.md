@@ -897,9 +897,16 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   llama al crear la partida y al reiniciarla (fuera de su transacción) y al inicio de
   `narrateAndPersistTurn` (las partidas anteriores reciben su copia en su primer turno; luego es una
   sola lectura). Test de integración: crear clona tantas facciones y filas de población como el
-  catálogo, y reiniciar las rehace sin duplicar. **Falta:** facciones y relaciones
-  (`factionRelations.ts`, `worldAgenda.ts`, diplomacia), expediciones (`factionExpeditions.ts`) y
-  NPC muertos (`NpcState.muerto`).
+  catálogo, y reiniciar las rehace sin duplicar. **Paso 4 hecho (2026-10-04): relaciones por
+  partida.** `FiltroFacciones` / `ambitoFacciones` (copias de la partida, sin su Reino). El conflicto
+  de la agenda (`WorldState.agenda`, ya de cada partida) sincroniza las relaciones Serhu→defensores
+  de SU copia y resta de SU población; el control de región (turno y zona) y el listado
+  `GET /world/:slug/faction-relations?saveId=` leen la copia de la partida. Las relaciones
+  jugador↔facción (bajas de guerra, expansión, diplomacia, mercado) siguen contra la facción de
+  catálogo porque su almacén y su economía no se copian hasta `CR-7`; ya guardan el `saveId` de la
+  partida. Test: el conflicto de una partida no toca el de otra ni el del catálogo. **Falta:**
+  expediciones (`factionExpeditions.ts`) y NPC muertos (`NpcState.muerto`); la economía y el
+  decaimiento de presión siguen en el tick del mundo (`CR-7`).
 - **CR-7** `avanceDiario` por partida; sacar las funciones de mundo de `worldTick.ts`. **M**
 - **CR-8** Script de migración (§ 16). **M**
 - **Hecho cuando:** dos partidas del mismo mundo divergen (una mata a un NPC, la otra no lo ve);

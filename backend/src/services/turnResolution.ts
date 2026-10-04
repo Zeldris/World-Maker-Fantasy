@@ -64,7 +64,7 @@ import type { RollResult, AttributeBlock, Attribute, GradoExito } from './dice.j
 import type { SecondaryAttributeBlock } from './secondaryAttributes.js';
 import { Prisma } from '@prisma/client';
 import type { CondicionFisica, Dificultad, AbilityEffect, AbilityRol, Clase, Especializacion } from '@prisma/client';
-import { ambitoPoblacion, asegurarMundoDePartida } from './mundoPartida.js';
+import { ambitoFacciones, ambitoPoblacion, asegurarMundoDePartida } from './mundoPartida.js';
 
 const REINO_XP = { territory: 150, buildingActive: 100, firstSubject: 100, subject: 25, consolidado: 300 } as const;
 /// Población anónima con la que arranca todo Territory nuevo (2026-08-23, Grupo 3) — un puñado de
@@ -3252,7 +3252,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     const duenoOriginal = REGION_OWNING_FACTIONS[activeRegion]?.[0] ?? null;
     if (duenoOriginal) {
       // Fase D (hito 0.1) — de la relación real Serhu→defensor (worldAgenda.ts § regionControlActual).
-      const regionControl = await regionControlActual(prisma, worldId, activeRegion, parseAgenda(worldStateForFactionsAndAgenda?.agenda), duenoOriginal);
+      const regionControl = await regionControlActual(prisma, await ambitoFacciones(prisma, saveId), activeRegion, parseAgenda(worldStateForFactionsAndAgenda?.agenda), duenoOriginal);
       if (regionControl.estado === 'CONQUISTADA') {
         contextBlocks.push(`CONTROL DE LA REGIÓN (${activeRegion}): conquistada por ${regionControl.duenoActual} — refleja este dominio en la ambientación (patrullas, banderas, tensión propia de territorio ocupado), no la narres como si siguiera en calma neutral.`);
       } else if (regionControl.estado === 'EN_DISPUTA') {
@@ -5877,6 +5877,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           if (playerFaction && activeRegion) {
             const duenoOriginalName = REGION_OWNING_FACTIONS[activeRegion]?.[0];
             if (duenoOriginalName && duenoOriginalName !== playerFaction.name) {
+              // CR-6: jugador↔facción, contra la de catálogo (como diplomacia y mercado, hasta CR-7); la
+              // relación ya es de la partida porque su Reino lo es.
               const targetFaction = await tx.faction.findFirst({ where: { worldId, name: duenoOriginalName, saveId: null }, select: { id: true } });
               if (targetFaction) {
                 const fact = await recordFactionEvent(tx, worldId, playerFaction.id, targetFaction.id, 'EXPANSION_TERRITORIAL_AGRESIVA', saveId);

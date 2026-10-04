@@ -132,3 +132,16 @@ export async function ambitoPoblacion(db: Db, saveId: string): Promise<FiltroPob
   if (!save.worldState.mundoClonadoEn) await asegurarMundoDePartida(db, saveId);
   return { saveId };
 }
+
+/// Filtro de `Faction` (CR-6): las copias del mundo de una partida, o las de catálogo. El Reino del
+/// jugador (con `saveId` pero sin `origenSlug`) no entra en ninguno de los dos.
+export type FiltroFacciones = { saveId: string; origenSlug: { not: null } } | { worldId: string; saveId: null };
+
+export const faccionesDeCatalogo = (worldId: string): FiltroFacciones => ({ worldId, saveId: null });
+
+/// Filtro de las facciones de la partida, clonando su mundo si aún no lo tiene (mismo criterio
+/// que `ambitoPoblacion`).
+export async function ambitoFacciones(db: Db, saveId: string): Promise<FiltroFacciones> {
+  const poblacion = await ambitoPoblacion(db, saveId);
+  return 'worldId' in poblacion ? faccionesDeCatalogo(poblacion.worldId) : { saveId, origenSlug: { not: null } };
+}
