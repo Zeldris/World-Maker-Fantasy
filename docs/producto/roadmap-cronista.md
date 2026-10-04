@@ -987,6 +987,32 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   en `efectos.ts` (CR-9), las reacciones que programan consecuencias (`SUCESION_PENDIENTE` tras
   `MUERTE_LIDER`, `DEUDA_DE_VIDA` tras `PERDON_CONCEDIDO`, `PROMESA_VENCE` tras `PROMESA`) y pasar
   lo que supera el tope de cascada a consecuencia del día siguiente (hoy `CONSECUENCIA_PERDIDA`) (CR-10).
+  **Decisiones de la entrevista con la usuaria (2026-10-04, `/grill-with-docs`):**
+  - **Alcance:** infraestructura completa (modelo, disparos, caducidad, evaluación) +
+    `DEUDA_DE_VIDA`, `SUCESION_PENDIENTE`, `VENGANZA_PARIENTE` y la parte de población de
+    `REFUGIADOS`. `PROMESA_VENCE` espera a que algo registre promesas (misiones/diálogo),
+    `RUMOR_DE_HAZANA` a la Fase 5 (conocimiento), `PUEBLO_ABANDONADO` a que haya comercio local, y
+    la llegada de refugiados al Reino a la pregunta 1 de Álvaro (población).
+  - **Deuda de vida:** el perdonado aparece como punto de NPC en la zona de otra región (3-20 días);
+    al interactuar regala un objeto de su equipo (o 10-30 goirnos) y se registra `REGALO`. El punto
+    se va al aceptar o al salir de la región. Si el NPC murió o es hostil, la deuda se pierde. La
+    ayuda en combate, al `0.3`.
+  - **Venganza:** solo testigos (NPC con nombre en escena al matar; se apuntan en la muerte). Como
+    mucho un vengador: el testigo de la facción de la víctima. A los 5-15 días o al cruzarse,
+    aparece como punto agresivo en la zona del jugador y el choque abre combate. Se cierra si muere
+    o se le perdona; se pierde si el testigo muere antes. El parentesco, como propuesta de lore.
+  - **Sucesión sin IA:** determinista por cohesión (§ 7.3): < 20 cae, 20-50 escisión, > 50
+    sucesión. Sucesor: el heredero designado si lo hay; si no, el NPC con nombre vivo de más
+    Inteligencia de la facción. CR-12 podrá matizarlo.
+  - **Escisión:** nombre según el pueblo (propuesta `propuestas-lore.md`, 2026-10-04): orcos, el
+    nombre de quien la encabeza con terminación de clan (Varka → Clan Varkag); Nabieus, Keseg +
+    palabra; Faerus, Feg + palabra; con su traducción en la descripción. Los goirntes no se escinden
+    hasta que Álvaro decida (Q13).
+  - **Refugiados:** se reparten por las regiones vecinas que da el lore (`areas.md` § Cómo encajan
+    en el mapa); la misma tabla sirve a la fauna que huye de una tormenta (CR-12).
+  - **Lo que ve la jugadora:** las consecuencias de sus actos, insinuadas con una frase al crearse
+    («Algo te dice que volverás a ver a *X*.»); las del mundo, ocultas hasta que pasan. Admin ve
+    todas. Al caducar, `CONSECUENCIA_PERDIDA` en silencio.
 - **CR-12** Narrador de fondo con presupuesto, enfriamientos y reglas de facción (§ 7.3);
   agenda Serhu como primera cadena. **L** Al hacerlo, revisar `UX-6` (roadmap-front-ux.md): hoy
   la ambientación se cancela al enviar una acción porque no pesa nada; con contenido real puede
