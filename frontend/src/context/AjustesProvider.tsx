@@ -8,6 +8,7 @@ export function AjustesProvider({ children }: { children: ReactNode }) {
   const [guardados, setGuardados] = useState<Ajustes>(() => cargarAjustes())
   const [vista, setVista] = useState<Ajustes | null>(null)
   const [panelAbierto, setPanelAbierto] = useState(false)
+  const [partidaActual, setPartidaActual] = useState<string | null>(null)
   const ajustes = vista ?? guardados
 
   useEffect(() => {
@@ -27,12 +28,15 @@ export function AjustesProvider({ children }: { children: ReactNode }) {
   const descartarVistaPrevia = useCallback(() => setVista(null), [])
   const abrirPanel = useCallback(() => setPanelAbierto(true), [])
 
-  const value = useMemo(() => ({ ajustes, setAjustes, descartarVistaPrevia, abrirPanel }), [ajustes, setAjustes, descartarVistaPrevia, abrirPanel])
+  const value = useMemo(
+    () => ({ ajustes, setAjustes, descartarVistaPrevia, abrirPanel, partidaActual, setPartidaActual }),
+    [ajustes, setAjustes, descartarVistaPrevia, abrirPanel, partidaActual],
+  )
   return (
     <AjustesContext.Provider value={value}>
       {children}
       {/* CFG-4 — el panel vive aquí para abrirse desde cualquier pantalla. */}
-      {panelAbierto && <PanelAjustes guardados={guardados} onCerrar={() => setPanelAbierto(false)} />}
+      {panelAbierto && <PanelAjustes guardados={guardados} partidaId={partidaActual} onCerrar={() => setPanelAbierto(false)} />}
     </AjustesContext.Provider>
   )
 }

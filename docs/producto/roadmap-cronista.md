@@ -367,8 +367,8 @@ alcance de conocimiento inicial (§ 9). Lista inicial (ampliable como datos):
 |---|---|
 | **JUGADOR** | `ACCION_RELEVANTE`, `COMBATE_GANADO`, `COMBATE_PERDIDO`, `MUERTE_CAUSADA`, `PERDON_CONCEDIDO` (dejar vivir/clemente), `CAPTURA`, `PROMESA`, `PROMESA_CUMPLIDA`, `PROMESA_ROTA`, `REGALO` (entregar), `ROBO`, `MISION_COMPLETADA`, `MISION_FALLIDA`, `DESCUBRIMIENTO`, `OFICIO_APRENDIDO`, `MUERTE_JUGADOR`, `RENACER`, `FIN_PARTIDA` |
 | **VIDA_MUERTE** | `NACIMIENTO_NOTABLE` (NPC con nombre), `MUERTE_NPC`, `MUERTE_LIDER`, `SUCESION`, `HEREDERO_DESIGNADO`, `RECUPERACION_NPC`, `CADAVER_DESAPARECE` |
-| **DIPLOMACIA** | `CAMBIO_RELACION` (de `recordFactionEvent`), `GUERRA_DECLARADA`, `TREGUA`, `ALIANZA`, `TRATADO_COMERCIAL`, `RUPTURA`, `SABOTAJE`, `ESPIONAJE` |
-| **FACCION** | `FACCION_CAE`, `FACCION_ESCINDIDA`, `FACCION_FUNDADA`, `FACCION_ABSORBIDA`, `CAMBIO_LIDER`, `TERRITORIO_CONQUISTADO`, `TERRITORIO_PERDIDO`, `EXPEDICION_SALE`, `EXPEDICION_INTERCEPTADA`, `EXPEDICION_VUELVE` |
+| **DIPLOMACIA** | `CAMBIO_RELACION` (de `recordFactionEvent`), `GUERRA_DECLARADA`, `TREGUA`, `ALIANZA`, `TRATADO_COMERCIAL`, `RUPTURA`, `SABOTAJE`, `ESPIONAJE`, `ESCARAMUZA` (CR-12) |
+| **FACCION** | `FACCION_CAE`, `FACCION_ESCINDIDA`, `FACCION_FUNDADA`, `FACCION_ABSORBIDA`, `CAMBIO_LIDER`, `TERRITORIO_CONQUISTADO`, `TERRITORIO_PERDIDO`, `EXPEDICION_SALE`, `EXPEDICION_INTERCEPTADA`, `EXPEDICION_VUELVE`, `MALESTAR_INTERNO` (CR-12) |
 | **CLIMA** | `TORMENTA`, `TORMENTA_EXTREMA`, `CAMBIO_ESTACION`, `SEQUIA`, `OLA_FRIO` |
 | **NATURAL** | `MIGRACION_FAUNA`, `PLAGA`, `INCENDIO`, `CRECIDA`, `DESPRENDIMIENTO`, `AUGE_POBLACION`, `DECLIVE_POBLACION` |
 | **ECONOMIA** | `ESCASEZ`, `AUGE_COMERCIAL`, `CARAVANA`, `PRECIOS_DISPARADOS` |
@@ -1083,6 +1083,16 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   - **Ambientación informada:** la llamada de ambientación (`routes/entorno.ts`) recibe los 2-3
     últimos sucesos visibles de la región para hablar de ellos.
   - **Frontend:** entradas con icono, enlaces y etiqueta de distancia/plazo → `UX-38`.
+  - ✅ **12a hecho (2026-10-04):** `services/cronista/narradorFondo.ts` (`narrarDia`, una vez por día
+    simulado desde `avanceDiario`): presupuesto +1/+3/+5 con tope 10, coste = importancia base,
+    enfriamiento por tipo (días desde el último de ese tipo con origen `MUNDO`), día con 3+ sucesos
+    de la jugadora sin suceso de fondo, elección por peso. Catálogo: escaramuza, caravana (riqueza
+    +5 a las dos, efecto nuevo `ajustarReino`), plaga, auge, migración de fauna, incendio, crecida
+    (solo Ciénaga Troncal), malestar interno, visitante ilustre (felicidad +5) y absorción. Tipos
+    nuevos `ESCARAMUZA` y `MALESTAR_INTERNO`; `ajustarPoblacion`/`moverPoblacion` aceptan
+    `sinSuceso`. Noticia al canal «El mundo» con el filtro de `difundirNoticias`. «Ritmo del mundo»:
+    `GET/PATCH /saves/:id/ritmo` y pestaña «Partida» en Configuración (solo con partida abierta).
+    **Queda:** 12b, 12c, 12d.
 - **CR-13** Nacimientos notables y generador de nombres (§ 12.3). **M** Incluye el efecto `crearNpc`
   en `efectos.ts` (CR-9).
 - **Hecho cuando:** `cronista:simular 60` produce caídas, escisiones, tormentas con daños, guerras

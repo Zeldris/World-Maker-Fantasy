@@ -1,8 +1,16 @@
-import { describe, it, expect, afterEach, beforeEach } from 'vitest'
-import { render, cleanup, fireEvent } from '@testing-library/react'
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
+import { render, cleanup, fireEvent, waitFor } from '@testing-library/react'
 import { AjustesProvider } from '../context/AjustesProvider'
 import { BotonAjustes } from './BotonAjustes'
-import { CLAVE_AJUSTES } from '../lib/ajustes'
+import { AJUSTES_POR_DEFECTO, CLAVE_AJUSTES } from '../lib/ajustes'
+import { PanelAjustes } from './PanelAjustes'
+
+const getRitmoMundo = vi.fn()
+const setRitmoMundo = vi.fn()
+vi.mock('../lib/api', () => ({
+  getRitmoMundo: (...a: unknown[]) => getRitmoMundo(...a),
+  setRitmoMundo: (...a: unknown[]) => setRitmoMundo(...a),
+}))
 
 /// CFG-1/CFG-4 (hito 0.2) — botón ⚙️ y panel de configuración con vista previa.
 describe('CFG-4 — panel de configuración', () => {
@@ -61,3 +69,30 @@ describe('CFG-4 — panel de configuración', () => {
   })
 })
 
+
+/// CR-12 (hito 0.2) — «Ritmo del mundo», pestaña Partida (solo con una partida abierta).
+describe('CR-12 — ritmo del mundo en Configuración', () => {
+  beforeEach(() => {
+    getRitmoMundo.mockReset().mockResolvedValue({ estiloNarrador: 'EQUILIBRADO' })
+    setRitmoMundo.mockReset().mockResolvedValue({})
+  })
+  afterEach(() => cleanup())
+
+  it('sin partida no hay pestaña Partida', () => {
+    const { queryByText } = render(<PanelAjustes guardados={AJUSTES_POR_DEFECTO} onCerrar={() => {}} />)
+    expect(queryByText('Partida')).toBeNull()
+    expect(getRitmoMundo).not.toHaveBeenCalled()
+  })
+
+  it('con partida carga el ritmo y Aplicar guarda el nuevo en la partida', async () => {
+    const onCerrar = vi.fn()
+    const { getByText, getByRole } = render(<PanelAjustes guardados={AJUSTES_POR_DEFECTO} partidaId="s1" onCerrar={onCerrar} />)
+    fireEvent.click(getByText('Partida'))
+    await waitFor(() => expect(getByRole('radio', { name: 'Equilibrado' }).getAttribute('aria-checked')).toBe('true'))
+    expect((getByRole('button', { name: 'Aplicar' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(getByRole('radio', { name: 'Caótico' }))
+    fireEvent.click(getByRole('button', { name: 'Aplicar' }))
+    expect(setRitmoMundo).toHaveBeenCalledWith('s1', 'CAOTICO')
+    expect(onCerrar).toHaveBeenCalled()
+  })
+})

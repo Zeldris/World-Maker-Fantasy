@@ -17,6 +17,7 @@ import { crecerPoblacionDePartida, syncFactionPopulationToKingdomStats } from '.
 import { avanzarAgendaDePartida } from './worldAgenda.js';
 import { procesarReacciones } from './cronista/reacciones.js';
 import { evaluarConsecuencias } from './cronista/consecuencias.js';
+import { narrarDia } from './cronista/narradorFondo.js';
 
 export const MAX_DIAS_POR_LLAMADA = 30;
 
@@ -39,18 +40,18 @@ export async function avanzarMundoHasta(
   random: () => number = Math.random,
 ): Promise<{ diasSimulados: number }> {
   await asegurarMundoDePartida(prisma, saveId);
-  const diasSimulados = await prisma.$transaction(
+  const { dias: diasSimulados, desde } = await prisma.$transaction(
     async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`avance|${saveId}`}))`;
       const estado = await tx.worldState.findUnique({ where: { saveId }, select: { ultimoDiaSimulado: true } });
-      if (!estado) return 0;
+      if (!estado) return { dias: 0, desde: 0 };
       const dias = diasPendientes(estado.ultimoDiaSimulado, diaDeFiccion(fictionalMinutes));
-      if (dias === 0) return 0;
+      if (dias === 0) return { dias: 0, desde: 0 };
 
       await crecerPoblacionDePartida(tx, saveId, dias, random);
       await syncFactionPopulationToKingdomStats(tx, { saveId });
       await tx.worldState.update({ where: { saveId }, data: { ultimoDiaSimulado: estado.ultimoDiaSimulado + dias } });
-      return dias;
+      return { dias, desde: estado.ultimoDiaSimulado + 1 };
     },
     { maxWait: 10_000, timeout: 20_000 },
   );
@@ -65,6 +66,9 @@ export async function avanzarMundoHasta(
     await avanzarExpedicionesDePartida(prisma, worldId, saveId, dia, random);
     // La agenda lleva sus propias transacciones y avanza por umbrales de tiempo (no por día).
     await avanzarAgendaDePartida(prisma, saveId);
+    // CR-12: el narrador de fondo, una vez por cada día simulado (cada día lo reclama una sola llamada,
+    // la que lo simuló arriba).
+    for (let d = desde; d < desde + diasSimulados; d++) await narrarDia(prisma, saveId, d, random);
   }
   // CR-10: reacciones de lo que haya pasado en el turno o en estos días; CR-11: consecuencias que
   // toquen ahora (días, región), y otra vuelta de reacciones por lo que hayan registrado.

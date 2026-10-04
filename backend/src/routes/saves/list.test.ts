@@ -8,6 +8,8 @@ import { Prisma } from '@prisma/client';
 const updateSave = vi.fn();
 const deleteSave = vi.fn();
 const findManySave = vi.fn();
+const findUniqueWs = vi.fn();
+const updateManyWs = vi.fn();
 
 vi.mock('../../lib/prisma.js', () => ({
   prisma: {
@@ -15,6 +17,10 @@ vi.mock('../../lib/prisma.js', () => ({
       update: (...args: unknown[]) => updateSave(...args),
       delete: (...args: unknown[]) => deleteSave(...args),
       findMany: (...args: unknown[]) => findManySave(...args),
+    },
+    worldState: {
+      findUnique: (...args: unknown[]) => findUniqueWs(...args),
+      updateMany: (...args: unknown[]) => updateManyWs(...args),
     },
   },
 }));
@@ -88,5 +94,34 @@ describe('PATCH /saves/:id/name', () => {
     const res = await app.inject({ method: 'PATCH', url: '/saves/save1/name', payload: { saveName: 'X' } });
 
     expect(res.statusCode).toBe(500);
+  });
+});
+
+// CR-12 (hito 0.2) — «Ritmo del mundo» de la partida.
+describe('GET/PATCH /saves/:id/ritmo', () => {
+  beforeEach(() => {
+    findUniqueWs.mockReset();
+    updateManyWs.mockReset();
+  });
+
+  it('devuelve el ritmo guardado (y Equilibrado si es un valor antiguo desconocido)', async () => {
+    const app = await buildApp();
+    findUniqueWs.mockResolvedValueOnce({ estiloNarrador: 'CAOTICO' }).mockResolvedValueOnce({ estiloNarrador: 'RARO' }).mockResolvedValueOnce(null);
+    expect((await app.inject({ method: 'GET', url: '/saves/s1/ritmo' })).json()).toEqual({ estiloNarrador: 'CAOTICO' });
+    expect((await app.inject({ method: 'GET', url: '/saves/s1/ritmo' })).json()).toEqual({ estiloNarrador: 'EQUILIBRADO' });
+    expect((await app.inject({ method: 'GET', url: '/saves/s1/ritmo' })).statusCode).toBe(404);
+  });
+
+  it('cambia el ritmo y rechaza valores que no existen', async () => {
+    const app = await buildApp();
+    updateManyWs.mockResolvedValue({ count: 1 });
+    const ok = await app.inject({ method: 'PATCH', url: '/saves/s1/ritmo', payload: { estiloNarrador: 'TRANQUILO' } });
+    expect(ok.statusCode).toBe(200);
+    expect(updateManyWs).toHaveBeenCalledWith({ where: { saveId: 's1' }, data: { estiloNarrador: 'TRANQUILO' } });
+
+    const mal = await app.inject({ method: 'PATCH', url: '/saves/s1/ritmo', payload: { estiloNarrador: 'FRENETICO' } });
+    expect(mal.statusCode).toBe(400);
+    updateManyWs.mockResolvedValue({ count: 0 });
+    expect((await app.inject({ method: 'PATCH', url: '/saves/nope/ritmo', payload: { estiloNarrador: 'CAOTICO' } })).statusCode).toBe(404);
   });
 });

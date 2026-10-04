@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
+import { esEstiloNarrador } from '../../services/cronista/narradorFondo.js';
 
 /// Listado y borrado de partidas (deuda técnica 2026-07-30, split de saves.ts) — la pantalla de
 /// "Continuar partida" (CharacterSaves.tsx) solo necesita estos dos: la lista resumida de todas
@@ -59,5 +60,21 @@ export async function listRoutes(app: FastifyInstance) {
       throw err;
     }
     return reply.status(200).send({ saveName });
+  });
+
+  // CR-12 (hito 0.2, decisión D-7) — «Ritmo del mundo» de la partida (Configuración › Partida): cuánta
+  // tensión gana cada día el narrador de fondo. Cambiable en cualquier momento.
+  app.get<{ Params: { id: string } }>('/saves/:id/ritmo', async (request, reply) => {
+    const ws = await prisma.worldState.findUnique({ where: { saveId: request.params.id }, select: { estiloNarrador: true } });
+    if (!ws) return reply.status(404).send();
+    return { estiloNarrador: esEstiloNarrador(ws.estiloNarrador) ? ws.estiloNarrador : 'EQUILIBRADO' };
+  });
+
+  app.patch<{ Params: { id: string }; Body: { estiloNarrador?: unknown } }>('/saves/:id/ritmo', async (request, reply) => {
+    const { estiloNarrador } = request.body ?? {};
+    if (!esEstiloNarrador(estiloNarrador)) return reply.status(400).send({ error: 'estiloNarrador debe ser TRANQUILO, EQUILIBRADO o CAOTICO' });
+    const r = await prisma.worldState.updateMany({ where: { saveId: request.params.id }, data: { estiloNarrador } });
+    if (r.count === 0) return reply.status(404).send();
+    return { estiloNarrador };
   });
 }

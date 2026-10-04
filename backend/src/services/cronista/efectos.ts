@@ -62,8 +62,8 @@ export type Efecto =
   | { tipo: 'crearFaccion'; slug: string; nombre: string; raza: string; descripcion: string; escindidaDe?: string; liderNpcId?: string; fraccionPoblacion?: number }
   | { tipo: 'disolverFaccion'; faccionSlug: string }
   | { tipo: 'absorberFaccion'; faccionSlug: string; absorbenteSlug: string }
-  | { tipo: 'ajustarPoblacion'; targetSlug: string; delta: number; region?: string }
-  | { tipo: 'moverPoblacion'; targetSlug: string; desde: string; hacia: string; fraccion: number }
+  | { tipo: 'ajustarPoblacion'; targetSlug: string; delta: number; region?: string; sinSuceso?: boolean }
+  | { tipo: 'moverPoblacion'; targetSlug: string; desde: string; hacia: string; fraccion: number; sinSuceso?: boolean }
   | { tipo: 'danarEdificio'; buildingId: string; causa?: string }
   | { tipo: 'repararEdificio'; buildingId: string }
   | { tipo: 'cambiarControlTerritorio'; territoryId: string; faccionSlug: string | null; control: TerritoryControl }
@@ -72,7 +72,8 @@ export type Efecto =
   | { tipo: 'programarConsecuencia'; regla: string; disparo: Disparo; datos: Record<string, unknown>; caducaDias?: number; aviso?: string; npcId?: string }
   | { tipo: 'anularConsecuencia'; regla: string; npcId?: string }
   | { tipo: 'regalarAlJugador'; npcId: string; mensaje: string }
-  | { tipo: 'forzarCombate'; npcId: string; mensaje: string };
+  | { tipo: 'forzarCombate'; npcId: string; mensaje: string }
+  | { tipo: 'ajustarReino'; faccionSlug?: string; riqueza?: number; felicidad?: number };
 
 export interface ResultadoEfecto {
   aplicado: boolean;
@@ -132,6 +133,8 @@ export async function aplicarEfecto(ctx: CtxEfecto, e: Efecto): Promise<Resultad
       return anularConsecuencia(ctx, e);
     case 'regalarAlJugador':
       return regalarAlJugador(ctx, e);
+    case 'ajustarReino':
+      return ajustarReino(ctx, e);
     case 'forzarCombate':
       return forzarCombate(ctx, e);
   }
@@ -341,7 +344,8 @@ async function ajustarPoblacion(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'ajus
   const cambio = poblacion - fila.poblacion;
   if (cambio === 0) return NO_APLICADO;
   await ctx.tx.worldPopulation.update({ where: { id: fila.id }, data: { poblacion } });
-  if (Math.abs(cambio) < Math.max(1, fila.poblacion * UMBRAL_CAMBIO_NOTABLE)) return { aplicado: true, sucesoId: null };
+  // `sinSuceso`: lo cuenta el suceso que lo causa (p. ej. una plaga del narrador de fondo, CR-12).
+  if (e.sinSuceso || Math.abs(cambio) < Math.max(1, fila.poblacion * UMBRAL_CAMBIO_NOTABLE)) return { aplicado: true, sucesoId: null };
   const sucesoId = await registrar(ctx, {
     tipo: cambio > 0 ? 'AUGE_POBLACION' : 'DECLIVE_POBLACION',
     actores: e.region ? [{ entidadTipo: 'REGION', entidadId: slugify(e.region), papel: 'LUGAR' }] : [],
@@ -365,6 +369,7 @@ async function moverPoblacion(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'moverP
   distribucion[desde] = origen - movido;
   distribucion[hacia] = (distribucion[hacia] ?? 0) + movido;
   await ctx.tx.worldPopulation.update({ where: { id: fila.id }, data: { distribucion } });
+  if (e.sinSuceso) return { aplicado: true, sucesoId: null };
   const sucesoId = await registrar(ctx, {
     tipo: 'MIGRACION_FAUNA',
     actores: [{ entidadTipo: 'REGION', entidadId: slugify(e.desde), papel: 'AFECTADO' }, { entidadTipo: 'REGION', entidadId: slugify(e.hacia), papel: 'BENEFICIARIO' }],
@@ -496,6 +501,27 @@ async function anularConsecuencia(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'an
     data: { estado: 'ANULADA', resueltaEn: ctx.fictionalMinutes },
   });
   return r.count > 0 ? { aplicado: true, sucesoId: null } : NO_APLICADO;
+}
+
+// ─────────────────────────── Reino ───────────────────────────
+
+/// Suma riqueza o felicidad (0-100) al reino de una facción de la partida o, sin `faccionSlug`, al
+/// Reino de la jugadora (CR-12: caravanas, visitante ilustre). Sin suceso propio: es estado y lo
+/// cuenta el suceso que lo causa.
+async function ajustarReino(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'ajustarReino' }>): Promise<ResultadoEfecto> {
+  let ownerKey = ownerKeyFor({ saveId: ctx.saveId });
+  if (e.faccionSlug) {
+    const faccion = await faccionViva(ctx, e.faccionSlug);
+    if (!faccion) return NO_APLICADO;
+    ownerKey = ownerKeyFor({ factionId: faccion.id });
+  }
+  const stats = await ctx.tx.kingdomStats.findUnique({ where: { ownerKey } });
+  if (!stats) return NO_APLICADO;
+  const riqueza = Math.max(0, stats.riqueza + (e.riqueza ?? 0));
+  const felicidad = Math.max(0, Math.min(100, stats.felicidad + (e.felicidad ?? 0)));
+  if (riqueza === stats.riqueza && felicidad === stats.felicidad) return NO_APLICADO;
+  await ctx.tx.kingdomStats.update({ where: { id: stats.id }, data: { riqueza, felicidad } });
+  return { aplicado: true, sucesoId: null };
 }
 
 // ─────────────────────────── Regalos ───────────────────────────

@@ -3,6 +3,7 @@ import Fastify from 'fastify';
 import { prisma } from '../lib/prisma.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
 import { avanzarMundoHasta, registrarAvanceTrasAcciones } from './avanceDiario.js';
+import { SUCESOS_DE_FONDO } from './cronista/narradorFondo.js';
 
 // CR-7 (hito 0.2, roadmap-cronista.md § 13.1) — el mundo de una partida avanza con SU reloj, contra
 // Postgres real: crece su población (no la de otra partida ni la del catálogo) y cada día se
@@ -57,10 +58,16 @@ describe('avanzarMundoHasta (CR-7)', () => {
     expect(await totalPoblacion({ saveId: b })).toBe(antesB);
     expect(await totalPoblacion({ worldId, saveId: null })).toBe(antesCatalogo);
     expect((await prisma.worldState.findUniqueOrThrow({ where: { saveId: a } })).ultimoDiaSimulado).toBe(10);
+    // CR-12: el narrador de fondo ha pasado por esos días (en la otra partida, no).
+    const deFondoWhere = { origen: 'MUNDO' as const, tipo: { in: SUCESOS_DE_FONDO.map((e) => e.tipo) } };
+    const deFondo = await prisma.suceso.count({ where: { saveId: a, ...deFondoWhere } });
+    expect(deFondo).toBeGreaterThan(0);
+    expect(await prisma.suceso.count({ where: { saveId: b, ...deFondoWhere } })).toBe(0);
 
     const tras = await totalPoblacion({ saveId: a });
     expect(await avanzarMundoHasta(prisma, a, diezDias, () => 0)).toEqual({ diasSimulados: 0 });
     expect(await totalPoblacion({ saveId: a })).toBe(tras);
+    expect(await prisma.suceso.count({ where: { saveId: a, ...deFondoWhere } })).toBe(deFondo);
   }, 30_000);
 
   it('la economía avanza las copias de la partida con su reloj y deja quietas las del catálogo', async () => {
