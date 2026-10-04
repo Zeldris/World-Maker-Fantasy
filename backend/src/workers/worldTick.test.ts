@@ -43,6 +43,7 @@ vi.mock('../config/env.js', () => ({ env: { worldTickIntervalMinutes: 20 } }));
 vi.mock('../services/worldFacts.js', () => ({ loadSessionFacts: vi.fn(() => Promise.resolve([])) }));
 
 const { resolveDueTransits, startEagerTransitResolution } = await import('./worldTick.js');
+const { claimTurnInFlight, releaseTurnInFlight } = await import('../services/turnLock.js');
 
 function transitFixture(overrides: Partial<Record<string, unknown>> = {}) {
   return {
@@ -84,6 +85,19 @@ describe('resolveDueTransits', () => {
     del.mockReset();
     narrateAndPersistTurn.mockReset();
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  });
+
+  it('si no puede reclamar el turno (hay uno en curso), libera la fila para que el siguiente barrido la reintente', async () => {
+    findMany.mockResolvedValue([transitFixture()]);
+    updateMany.mockResolvedValue({ count: 1 });
+    expect(claimTurnInFlight('save1')).toBe(true);
+    try {
+      await resolveDueTransits();
+    } finally {
+      releaseTurnInFlight('save1');
+    }
+    expect(narrateAndPersistTurn).not.toHaveBeenCalled();
+    expect(updateMany).toHaveBeenLastCalledWith({ where: { id: 't1' }, data: { narrationClaimedAt: null } });
   });
 
   it('no hace nada si no hay ningún tránsito vencido', async () => {
@@ -249,5 +263,21 @@ describe('startEagerTransitResolution', () => {
     await startEagerTransitResolution('t1', new Date());
 
     expect(narrateAndPersistTurn).not.toHaveBeenCalled();
+  });
+
+  // Bug real (2026-10-04, diagnosticado con el test intermitente P3.2 de turn.integration.test.ts):
+  // la reanudación de un viaje lanza esta resolución desde DENTRO de su propio turno, que aún tiene
+  // el candado. Antes se rendía al no poder reclamarlo y dejaba la fila reclamada: el viaje no se
+  // resolvía nunca (el barrido periódico solo recoge filas sin reclamar).
+  it('si el turno en curso tiene el candado, espera a que lo suelte y narra igualmente', async () => {
+    findUnique.mockResolvedValue(transitFixture());
+    updateMany.mockResolvedValue({ count: 1 });
+    narrateAndPersistTurn.mockResolvedValue(undefined);
+    expect(claimTurnInFlight('save1')).toBe(true);
+    setTimeout(() => releaseTurnInFlight('save1'), 100);
+
+    await startEagerTransitResolution('t1', new Date());
+
+    expect(narrateAndPersistTurn).toHaveBeenCalledTimes(1);
   });
 });

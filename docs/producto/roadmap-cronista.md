@@ -943,9 +943,10 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   los tránsitos ya pasan por `narrateAndPersistTurn`. Borradas `growAllPopulations` y
   `advanceWorldAgenda` (sus tests, a la partida). `advanceFactionEconomy` y
   `advanceFactionExpeditions` quedan solo como ejecución sobre el catálogo que usan sus tests de
-  integración del núcleo (no las llama nadie más). Pendiente para la fase de pruebas: el test P3.2
-  del viaje interrumpido falla a veces en la suite completa (pasa aislado; hipótesis: un encuentro
-  ambiental al azar inicia combate y anula la reanudación) — diagnosticar con `diagnosing-bugs`.
+  integración del núcleo (no las llama nadie más). El test P3.2 del viaje interrumpido que fallaba
+  a veces se diagnosticó con `diagnosing-bugs` (2026-10-04): era un fallo real de `worldTick.ts`
+  (la resolución anticipada se rendía con el candado del turno cogido y dejaba el viaje atascado),
+  ya arreglado.
 - ~~**CR-8** Script de migración (§ 16). **M**~~ ✅ 2026-10-04: `services/cronista/migrarPartidas.ts`
   (`migrarPartida`, `migrarTodasLasPartidas`) y `npm run cronista:migrar-partidas` (solo informa;
   `-- --aplicar` aplica; idempotente). Por partida: clona su mundo, pasa a `NpcState.muerto` sus
