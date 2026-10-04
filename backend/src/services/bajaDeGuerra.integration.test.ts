@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterEach, afterAll } from 'vitest';
 import { prisma } from '../lib/prisma.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
 import { applyKillSideEffects } from './turnResolution.js';
+import { asegurarMundoDePartida } from './mundoPartida.js';
 
 /// H-3 (2026-09-28) — BAJA_DE_GUERRA se dispara al MATAR a un NPC de la facción dueña de la región
 /// activa cuando el jugador tiene Reino fundado (su propia Faction). Contra Postgres real.
@@ -19,7 +20,6 @@ describe('BAJA_DE_GUERRA al matar NPC de la facción dueña de la región', () =
     const userId = await getDefaultUserId();
     const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
     worldId = world.id;
-    targetFactionId = (await prisma.faction.findFirstOrThrow({ where: { worldId, name: FACCION, saveId: null } })).id;
     const npcRow = await prisma.npc.findFirstOrThrow({ where: { worldId, faction: FACCION } });
     npc = { id: npcRow.id, name: npcRow.name, raza: npcRow.raza, slug: npcRow.slug, faction: npcRow.faction };
     const save = await prisma.save.create({
@@ -36,10 +36,14 @@ describe('BAJA_DE_GUERRA al matar NPC de la facción dueña de la región', () =
     });
     saveId = save.id;
     await prisma.worldState.upsert({ where: { saveId }, create: { saveId }, update: {} });
+    // CR-7 (hito 0.2): la baja de guerra va contra la copia de la facción en esta partida.
+    await asegurarMundoDePartida(prisma, saveId);
+    targetFactionId = (await prisma.faction.findFirstOrThrow({ where: { saveId, name: FACCION, origenSlug: { not: null } } })).id;
   });
 
   afterEach(async () => {
-    await prisma.faction.deleteMany({ where: { saveId } });
+    // Solo el Reino del jugador (las copias del mundo de la partida se quedan).
+    await prisma.faction.deleteMany({ where: { saveId, origenSlug: null } });
   });
 
   afterAll(async () => {
@@ -99,7 +103,7 @@ describe('BAJA_DE_GUERRA al matar NPC de la facción dueña de la región', () =
 
   it('sin Reino fundado no hay source y no dispara ni falla', async () => {
     await matar('MUERTO', REGION);
-    const count = await prisma.factionRelation.count({ where: { targetFactionId, sourceFaction: { saveId } } });
+    const count = await prisma.factionRelation.count({ where: { targetFactionId, sourceFaction: { saveId, origenSlug: null } } });
     expect(count).toBe(0);
   });
 });

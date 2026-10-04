@@ -5878,9 +5878,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           if (playerFaction && activeRegion) {
             const duenoOriginalName = REGION_OWNING_FACTIONS[activeRegion]?.[0];
             if (duenoOriginalName && duenoOriginalName !== playerFaction.name) {
-              // CR-6: jugador↔facción, contra la de catálogo (como diplomacia y mercado, hasta CR-7); la
-              // relación ya es de la partida porque su Reino lo es.
-              const targetFaction = await tx.faction.findFirst({ where: { worldId, name: duenoOriginalName, saveId: null }, select: { id: true } });
+              // CR-7: la copia de esa facción en esta partida.
+              const targetFaction = await tx.faction.findFirst({ where: { ...(await ambitoFacciones(tx, saveId)), name: duenoOriginalName }, select: { id: true } });
               if (targetFaction) {
                 const fact = await recordFactionEvent(tx, worldId, playerFaction.id, targetFaction.id, 'EXPANSION_TERRITORIAL_AGRESIVA', saveId);
                 if (fact) {

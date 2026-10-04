@@ -9,7 +9,8 @@ import { CRAFTING_RECIPES } from './crafting.js';
 
 // Tick diario extraído de `turnResolution.ts` (Fase 7 del plan, refactor puro): todo lo que corre
 // UNA vez por turno que cruza al menos un día de ficción. La producción/consumo de facción vive
-// aparte, en `factionEconomy.ts` (`advanceFactionEconomy`, llamado desde workers/worldTick.ts).
+// aparte, en `factionEconomy.ts` (`producirFacciones`, desde el avance diario de la partida,
+// `avanceDiario.ts`).
 
 export interface DailyTickResult {
   /** true si este tick pasó algún territorio a CONSOLIDADO (suma XP de Reino en el turno). */
@@ -258,7 +259,7 @@ export async function runDailyTick(
   if (diasCruzados <= 0) return { territoryConsolidatedThisTurn: false };
   const result = await advanceKingdomStatsDay(tx, saveId, diasCruzados);
   // La producción/consumo de facción (H-6/H-2) y el decaimiento de presión (H-4) NO corren aquí:
-  // viven en `advanceFactionEconomy` (factionEconomy.ts).
+  // viven en `producirFacciones`/`decaerRelaciones` (factionEconomy.ts), desde `avanceDiario.ts`.
   // Hermanos (no anidados en KingdomStats): un Building puede existir sin fila KingdomStats.
   await tickProduccionReino(tx, saveId, worldId);
   await servicioCasaDeCuras(tx, saveId);

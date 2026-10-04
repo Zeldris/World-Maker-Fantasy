@@ -933,9 +933,14 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   `saveId`), volver; Libro de Sucesos y noticias solo en esa partida. `avanzarExpedicionesDePartida`
   va en el avance diario y `worldTick` ya no lanza expediciones (el catálogo es plantilla).
   `advanceFactionExpeditions` queda para el catálogo (lo usan sus tests). Test: muerte en una
-  partida, vivo en otra y en el mundo. **Falta:** mercado y relaciones jugador↔facción contra la
-  copia (y entonces sacar la economía del catálogo de `worldTick`), y llamar al avance diario
-  también al resolver tránsitos y al moverse por la zona.
+  partida, vivo en otra y en el mundo. **Paso 4 hecho (2026-10-04):** diplomacia, mercado, bajas de
+  guerra y expansión van contra la copia de la facción en la partida (su almacén ya se copia), y
+  `worldTick` deja de avanzar el catálogo (crecimiento, reino de facciones, economía): solo queda lo
+  de tiempo real (tránsitos, supervivencia, cadáveres), como pide D-1. `asegurarMundoDePartida` no
+  hace nada sin `WorldState`. **Falta:** llamar al avance diario también al moverse por la zona (los
+  tránsitos ya pasan por `narrateAndPersistTurn`), y borrar las versiones de mundo que ya no se
+  llaman (`growAllPopulations`, `advanceFactionEconomy`, `advanceFactionExpeditions`,
+  `advanceWorldAgenda`) pasando sus tests a la partida.
 - **CR-8** Script de migración (§ 16). **M**
 - **Hecho cuando:** dos partidas del mismo mundo divergen (una mata a un NPC, la otra no lo ve);
   todos los tests de integración actuales pasan.

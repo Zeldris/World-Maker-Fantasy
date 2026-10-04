@@ -138,7 +138,8 @@ describe('Cuartel Avanzado en territorio ajeno — evento territorial real (2026
     expect(parcelas.filter((p) => p.tipo === 'BASICA')).toHaveLength(1);
 
     // Evento territorial real: FactionRelation dirigida jugador → Clan Helsig, con presión subida.
-    const helsigFaction = await prisma.faction.findFirstOrThrow({ where: { worldId, name: 'Clan Helsig', saveId: null } });
+    // CR-7 (hito 0.2): la expansión va contra la copia de la facción en esta partida.
+    const helsigFaction = await prisma.faction.findFirstOrThrow({ where: { saveId, name: 'Clan Helsig', origenSlug: { not: null } } });
     const relation = await prisma.factionRelation.findUniqueOrThrow({
       where: { sourceFactionId_targetFactionId: { sourceFactionId: playerFactionId, targetFactionId: helsigFaction.id } },
     });

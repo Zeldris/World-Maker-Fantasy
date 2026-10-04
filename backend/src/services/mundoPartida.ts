@@ -35,7 +35,8 @@ export function copiaDeFila<T extends Record<string, unknown>>(modelo: Prisma.Mo
 /// Clona el mundo vivo de la partida si todavía no lo tiene. Devuelve true si ha clonado ahora.
 export async function asegurarMundoDePartida(db: Db, saveId: string): Promise<boolean> {
   const estado = await db.worldState.findUnique({ where: { saveId }, select: { mundoClonadoEn: true } });
-  if (estado?.mundoClonadoEn) return false;
+  // Sin `WorldState` (solo partidas a medio crear o de tests antiguos) no hay dónde marcar la copia.
+  if (!estado || estado.mundoClonadoEn) return false;
   if ('$transaction' in db) return db.$transaction((tx) => clonarConCandado(tx, saveId));
   return clonarConCandado(db, saveId);
 }
