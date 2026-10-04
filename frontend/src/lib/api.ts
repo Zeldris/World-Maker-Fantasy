@@ -1897,6 +1897,8 @@ export type NpcInteractionAccion =
   | { accion: 'FORZAR_COMBATE'; npcSlug: string }
   | { accion: 'MOSTRAR_OFERTA_MISION' }
   | { accion: 'CERRAR' }
+  /// CR-12 — «Ayudar» a un malherido: la entrada del registro que lo cuenta.
+  | { accion: 'AYUDADO'; logEntry: LogEntry }
 
 export async function chooseNpcInteraction(saveId: string, npcSlug: string, opcion: string): Promise<NpcInteractionAccion> {
   return fetchJson(`${API_URL}/saves/${saveId}/npc-interaction/${npcSlug}/elegir`, {

@@ -1,3 +1,4 @@
+import { npcDeLaPartida } from '../services/mundoPartida.js';
 import type { FastifyInstance } from 'fastify';
 import type { AttributeBlock, Attribute } from '../services/dice.js';
 import { prisma } from '../lib/prisma.js';
@@ -532,7 +533,8 @@ export async function worldRoutes(app: FastifyInstance) {
     const { saveId } = request.query;
 
     const [npcs, items, yields, locations, imagePrompts, discoveredEntities, locationVisits, npcItems, factionRows, historiaRows] = await Promise.all([
-      prisma.npc.findMany({ where: { worldId: world.id } }),
+      // CR-13: los nacidos en otras partidas no existen aquí (sin partida, solo el catálogo).
+      prisma.npc.findMany({ where: { worldId: world.id, ...(saveId ? npcDeLaPartida(saveId) : { saveId: null }) } }),
       prisma.itemCatalog.findMany({ where: { worldId: world.id } }),
       prisma.harvestYield.findMany({ where: { worldId: world.id }, include: { item: true } }),
       prisma.location.findMany({ where: { worldId: world.id } }),

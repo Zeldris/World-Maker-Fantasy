@@ -9,6 +9,8 @@ import { REGION_OWNING_FACTIONS } from '../reputation.js';
 import type { Efecto } from './efectos.js';
 import { nombreDeEscision } from './nombresFaccion.js';
 import { NOTICIA } from './noticias.js';
+import { edadEnAnios, esAdulto, nacidoEnDe } from './edades.js';
+import { REGLAS_OPORTUNIDADES } from './oportunidades.js';
 import { regionesVecinas } from './regiones.js';
 import { CELL_SIZE_PX, LIENZO_ANCHO } from '../zonaPosicion.js';
 import type { CtxConsecuencia, ReglaConsecuencia } from './consecuencias.js';
@@ -35,9 +37,13 @@ export async function candidatosALider(tx: Tx, saveId: string, worldId: string, 
       // Ojo: `npcVivoEnPartida` ya trae su propio NOT; dos NOT en el mismo objeto se pisan.
       AND: [npcVivoEnPartida(saveId), { NOT: { npcStates: { some: { saveId, condicionFisica: 'MUERTO' } } } }],
     },
-    select: { id: true, name: true, attributes: true, npcStates: { where: { saveId, cargo: 'heredero', lealtadFaccionId: faccion.id }, select: { id: true } } },
+    select: { id: true, name: true, attributes: true, slug: true, raza: true, nacidoEn: true, npcStates: { where: { saveId, cargo: 'heredero', lealtadFaccionId: faccion.id }, select: { id: true } } },
   });
-  return npcs.sort((a, b) => (b.npcStates.length - a.npcStates.length) || inteligencia(b.attributes) - inteligencia(a.attributes) || a.id.localeCompare(b.id));
+  // CR-13 13b: solo adultos pueden liderar o heredar.
+  const ahora = (await tx.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true } }))?.fictionalMinutes ?? 0;
+  return npcs
+    .filter((n) => esAdulto(n.raza, edadEnAnios(nacidoEnDe(n), ahora)))
+    .sort((a, b) => (b.npcStates.length - a.npcStates.length) || inteligencia(b.attributes) - inteligencia(a.attributes) || a.id.localeCompare(b.id));
 }
 
 const SUCESION_PENDIENTE: ReglaConsecuencia = {
@@ -197,4 +203,4 @@ const VENGANZA_ATAQUE: ReglaConsecuencia = {
   },
 };
 
-export const REGLAS_DEL_JUEGO: ReglaConsecuencia[] = [SUCESION_PENDIENTE, REFUGIADOS, DEUDA_DE_VIDA, DEUDA_DE_VIDA_REGALO, VENGANZA_PARIENTE, VENGANZA_ATAQUE, NOTICIA];
+export const REGLAS_DEL_JUEGO: ReglaConsecuencia[] = [SUCESION_PENDIENTE, REFUGIADOS, DEUDA_DE_VIDA, DEUDA_DE_VIDA_REGALO, VENGANZA_PARIENTE, VENGANZA_ATAQUE, NOTICIA, ...REGLAS_OPORTUNIDADES];

@@ -58,9 +58,9 @@ describe('opcionesDisponiblesPara', () => {
     ]);
   });
 
-  it('capturable y en condición GRAVE: ofrece Reclutar', () => {
+  it('capturable y en condición GRAVE: ofrece Ayudar y Reclutar', () => {
     const npc = npcFixture({ interactionTypes: ['NPC_LORE'], capturable: true, condicionFisica: 'GRAVE' });
-    expect(opcionesDisponiblesPara(npc, { hayMisionOfertadaDeEsteNpc: false })).toEqual(['Charlar', 'Reclutar', 'Combatir', 'Salir']);
+    expect(opcionesDisponiblesPara(npc, { hayMisionOfertadaDeEsteNpc: false })).toEqual(['Charlar', 'Ayudar', 'Reclutar', 'Combatir', 'Salir']);
   });
 
   it('capturable pero ILESO todavía (no derrotado): no ofrece Reclutar', () => {
@@ -68,9 +68,9 @@ describe('opcionesDisponiblesPara', () => {
     expect(opcionesDisponiblesPara(npc, { hayMisionOfertadaDeEsteNpc: false })).toEqual(['Charlar', 'Combatir', 'Salir']);
   });
 
-  it('GRAVE pero sin atributoResistencia (capturable: false): no ofrece Reclutar', () => {
+  it('GRAVE pero sin atributoResistencia (capturable: false): no ofrece Reclutar, sí Ayudar (CR-12)', () => {
     const npc = npcFixture({ interactionTypes: ['NPC_LORE'], capturable: false, condicionFisica: 'GRAVE' });
-    expect(opcionesDisponiblesPara(npc, { hayMisionOfertadaDeEsteNpc: false })).toEqual(['Charlar', 'Combatir', 'Salir']);
+    expect(opcionesDisponiblesPara(npc, { hayMisionOfertadaDeEsteNpc: false })).toEqual(['Charlar', 'Ayudar', 'Combatir', 'Salir']);
   });
 
   it('los 3 interactionTypes a la vez, multivaluado (decisión explícita de la usuaria)', () => {
@@ -84,9 +84,16 @@ describe('opcionesDisponiblesPara', () => {
       'Charlar',
       'Aprender profesión',
       'Misión: La deuda de Ulkha',
+      'Ayudar',
       'Reclutar',
       'Combatir',
       'Salir',
     ]);
+  });
+
+  it('CR-12: un malherido sin interactionTypes (soldado de un campo de batalla) tiene menú para ayudarle', () => {
+    const npc = npcFixture({ interactionTypes: [], capturable: false, condicionFisica: 'GRAVE' });
+    expect(opcionesDisponiblesPara(npc, { hayMisionOfertadaDeEsteNpc: false })).toEqual(['Charlar', 'Ayudar', 'Combatir', 'Salir']);
+    expect(opcionesDisponiblesPara(npcFixture({ interactionTypes: [], condicionFisica: 'ILESO' }), { hayMisionOfertadaDeEsteNpc: false })).toEqual([]);
   });
 });

@@ -1,3 +1,4 @@
+import { restarVejez } from './cronista/edades.js';
 import type { PrismaClient, CondicionFisica, Npc, Clase, AbilityEffect } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import type { AttributeBlock, Attribute } from './dice.js';
@@ -391,7 +392,8 @@ async function datosVivosDe({ tx, worldId, saveId, participant, weaponNames }: D
     const npcActiveEffects = parseActiveEffects(state?.activeEffects);
     return {
       nombre: npc.name,
-      attributes: effectiveAttributesConDuracion(npcAttributesForLevel(npc.attributes as unknown as AttributeBlock, npc.level, npc.clase as Clase | null), npcActiveEffects),
+      // CR-13 13c: con la vejez de esta partida (`NpcState.vejez`).
+      attributes: effectiveAttributesConDuracion(restarVejez(npcAttributesForLevel(npc.attributes as unknown as AttributeBlock, npc.level, npc.clase as Clase | null), state?.vejez ?? 0), npcActiveEffects),
       condicionFisica: state?.condicionFisica ?? 'ILESO',
       energia: state?.energia ?? 100,
       abilities: npcCombatAbilitiesFor(toNpcForCombatAbilities(npc), weaponNames),

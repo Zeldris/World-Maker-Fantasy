@@ -860,6 +860,10 @@ model LogEntry {
   /// una ubicación, etc. — texto fijo, nunca generado por el LLM) para excluirlo de
   /// `lastNarration` (turnResolution.ts) sin depender de reconocer el texto por coincidencia.
   isSystemMessage   Boolean    @default(false)
+  /// UX-38 (hito 0.2): metadatos de una noticia de «El mundo» — `{ categoria?: 'CONFLICTO' |
+  /// 'COMERCIO' | 'NATURALEZA' | 'REINO', oportunidad?: { lugar, locationId, venceEn }, resumen?:
+  /// true }`. Null en el resto de entradas.
+  noticia           Json?
   timeLabel         String
   /// XP ganada en esta entrada, si alguna (docs/mecanicas/10-niveles-xp-reino.md § 6) — permite mostrar
   /// "+50 XP" en el Diario y auditar el nivel sumando el log.
@@ -2548,6 +2552,16 @@ model Npc {
   /// Unicidad parcial en el SQL, como en Faction.
   saveId String?
   save   Save?   @relation("NpcsDePartida", fields: [saveId], references: [id], onDelete: Cascade)
+  /// CR-13 (hito 0.2): padre y madre (ids de `Npc`) de un NPC nacido o destacado en la partida, de
+  /// quienes hereda la «huella» de sus atributos. Null = de padres desconocidos (o del catálogo).
+  padreNpcId String?
+  madreNpcId String?
+  /// CR-13 13b: minuto de ficción en que nació (negativo = antes del día 0 de la partida). Null en
+  /// el catálogo: su edad es provisional y determinista (`edades.ts`, hasta que Álvaro la fije).
+  nacidoEn   Int?
+  /// CR-13 13b: atributos de adulto de un NPC nacido en la partida; `attributes` son los que cuentan
+  /// hoy según su edad (crecen hasta la madurez, bajan en la vejez). Null en el catálogo.
+  atributosPotenciales Json?
 
   @@index([worldId, slug])
   @@index([saveId])
@@ -2762,6 +2776,9 @@ model NpcState {
   /// ("itinerante" si no hay ubicación resuelta en el turno) — así cada aparición nueva en un
   /// sitio distinto empieza fresca, sin memoria de otras plantillas del mismo arquetipo.
   scope                       String          @default("")
+  /// CR-13 13c (hito 0.2): años de vejez de un NPC del catálogo en ESTA partida (sus atributos son
+  /// del mundo): se restan a fuerza, destreza y constitución al usarlos (`restarVejez`, edades.ts).
+  vejez               Int                  @default(0)
   condicionFisica             CondicionFisica @default(ILESO)
   /// Sistema de fatiga simétrico (2026-07-30, deuda técnica: "los NPC siguen eligiendo habilidad
   /// sin restricción de energía" — ver energy.ts) — null = tope completo, mismo criterio lazy que

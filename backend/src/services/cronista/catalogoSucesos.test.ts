@@ -17,7 +17,7 @@ describe('catálogo de sucesos', () => {
       'VISITANTE_ILUSTRE', 'HALLAZGO_RUINA', 'HALLAZGO_DOCUMENTO', 'LEYENDA_NACE', 'SISTEMA_MUNDO_INICIADO', 'CONSECUENCIA_PERDIDA', 'HILO_ABIERTO',
       'HILO_CERRADO',
       // CR-12 (narrador de fondo).
-      'ESCARAMUZA', 'MALESTAR_INTERNO',
+      'ESCARAMUZA', 'MALESTAR_INTERNO', 'AYUDA_PRESTADA', 'NPC_DESTACA',
     ];
     expect(Object.keys(CATALOGO_SUCESOS).sort()).toEqual([...esperados].sort());
     for (const def of Object.values(CATALOGO_SUCESOS)) {

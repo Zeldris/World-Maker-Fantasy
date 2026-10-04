@@ -429,11 +429,23 @@ export interface MentionedEntityBanner {
   imageUrl: string
 }
 
+/// UX-38 (hito 0.2) — metadatos de una noticia de «El mundo» (`LogEntry.noticia` en backend).
+export interface NoticiaMeta {
+  categoria?: 'CONFLICTO' | 'COMERCIO' | 'NATURALEZA' | 'REINO' | 'GENTE'
+  /// Oportunidad que abre: dónde y hasta qué minuto de ficción.
+  oportunidad?: { lugar: string; locationId: string; venceEn: number }
+  /// Resumen de varios días: primera línea cabecera, el resto una noticia por línea.
+  resumen?: true
+  /// En un resumen: los metadatos de cada línea, en orden (null si la línea no tenía).
+  lineas?: (NoticiaMeta | null)[]
+}
+
 export interface LogEntry {
   id: string
   channel: LogChannel
   text: string
   timeLabel: string
+  noticia?: NoticiaMeta
   roll?: LogEntryRoll
   isPlayerAction?: boolean
   createdAt: string

@@ -17,7 +17,7 @@ import { appendSessionFacts, selectRelevantFacts } from './worldFacts.js';
 import { closeItemQuests, completeNpcTargetQuests, grantQuestRewardItems, questRewardNarrationFor, GISTERA_DESPEDIDA_NARRATION, type QuestCompletedInfo } from './questResolution.js';
 import { applyFactionRepDelta, effectiveTemperamento, resolveFoundingOutcome, parseFactionsStatus, FACTION_REP_PEACE_DELTA, REGION_OWNING_FACTIONS, type FoundingOutcome, type FactionRepChangeInfo } from './reputation.js';
 import { regionControlActual, parseAgenda } from './worldAgenda.js';
-import { opcionesDisponiblesPara } from './npcInteraction.js';
+import { estaMalherido, opcionesDisponiblesPara } from './npcInteraction.js';
 import { detectNpcsInScene, npcSceneBlockFor, npcSceneLineFor, difficultyHintFor, utilityDifficultyFor, detectsAttackIntent, detectsHostileSearchIntent, detectsDialogueIntent, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, scopeFor, pickAmbientEncounterCandidate, buildNpcInScene, candidateNpcNamesNotInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
 import { resolveExchange, resolveIndependentExchange, rollInitiative, exchangeContextBlock, effectiveExchangeOutcome, independentExchangeContextBlock, hitSeverityHint, utilityTriggered, isReactiveUtility, type PendingNpcAttack, type PendingCanalizacion, type InitiativeResult, type CombatExchangeDisplay } from './combatExchange.js';
 import { npcCombatAbilitiesFor, chooseNpcAbility } from './npcCombatAbilities.js';
@@ -3464,7 +3464,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // sería peor UX, no mejor. `hayMisionOfertadaDeEsteNpc` se resuelve más abajo, tras calcular
   // `newQuestOfferInfo` de este turno (necesita su valor definitivo).
   const npcInteractionCandidate =
-    dialogueTarget && dialogueTarget.slug !== 'gistera-koh' && dialogueTarget.interactionTypes.length > 0 ? dialogueTarget : null;
+    dialogueTarget && dialogueTarget.slug !== 'gistera-koh' && (dialogueTarget.interactionTypes.length > 0 || estaMalherido(dialogueTarget)) ? dialogueTarget : null;
 
   // Atribución de armas determinista (roadmap 2026-07-20, mitigación de calidad narrativa,
   // hallazgo real jugando: el modelo puso "la maza orca" —el arma del enemigo— en manos del

@@ -47,3 +47,57 @@ Testigo de la misma facción que la víctima que vuelve a buscar a quien mató.
 **Escisión**:
 Cuando una facción sin líder se parte y nace otra de ella; la nueva se nombra según las costumbres de su pueblo.
 _Evitar_: disidentes
+
+## El mundo que cambia solo
+
+**Narrador de fondo**:
+Lo que decide, una vez por día de ficción, si en el mundo de la partida pasa algo sin que la jugadora intervenga.
+_Evitar_: director, generador de eventos
+
+**Presupuesto de tensión**:
+Cuánto puede pasar en el mundo de la partida: crece cada día según el ritmo del mundo y lo gasta cada suceso de fondo según su importancia.
+
+**Ritmo del mundo**:
+Lo que elige la jugadora para su partida (Tranquilo, Equilibrado, Caótico): cuánto pasa en el mundo por sí solo.
+_Evitar_: estilo del narrador, dificultad
+
+**Cadena**:
+Un suceso de varios pasos que avanza con el tiempo y puede cortarse si deja de tener sentido; el conflicto Serhu es la primera.
+_Evitar_: agenda, misión
+
+**Noticia**:
+Lo que la jugadora llega a saber de un suceso del mundo, en el canal «El mundo».
+_Evitar_: log de mundo
+
+**Rumor**:
+Noticia de algo que pasó lejos, que llega días después y como «Se dice que…».
+
+**Rastro**:
+La huella visible que un suceso reciente deja en una región (humo, barro, animales que llegan) y que aparece en la ambientación.
+
+**Oportunidad**:
+Algo que una noticia deja hacer durante unos días en un lugar concreto (un campo de batalla, una caravana, un encargo); si nadie va, se pierde.
+_Evitar_: misión, evento
+
+**Encargo**:
+Oportunidad en la que alguien de una facción pide algo (materiales) a cambio de su favor; quien lo pide es el único que no es compañero al que se le pueden entregar objetos.
+
+## Las personas del mundo
+
+**Alguien que destaca**:
+Un adulto joven de una facción que empieza a tener nombre propio en la partida; no es un nacimiento.
+_Evitar_: nacimiento notable
+
+**Nacimiento**:
+Un bebé que nace en la partida de una pareja con nombre de su facción; crece y hereda de sus padres.
+
+**Huella**:
+El atributo más alto de un progenitor que pasa a su hijo por encima de la media de los dos.
+_Evitar_: gen, rasgo
+
+**Madurez**:
+La edad a la que alguien de un pueblo puede trabajar, combatir y liderar; los orcos, a los 10 años ([clanes-orcos.md](docs/rpgtarkor/lore-mundo/clanes-orcos.md)).
+_Evitar_: mayoría de edad
+
+**Vejez**:
+Los años que alguien vive más allá del 80 % de la esperanza de vida de su pueblo: pierde fuerza, destreza y constitución, y puede morir de viejo.

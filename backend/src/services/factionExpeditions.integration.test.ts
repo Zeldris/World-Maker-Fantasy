@@ -308,7 +308,7 @@ describe('advanceFactionExpeditions — intercepción con combate (Fase 13-C)', 
     await prisma.npc.upsert({
       where: { id: existente?.id ?? '__nuevo__' },
       update: { name: objetivo.name, role: objetivo.role, level: objetivo.level, bio: objetivo.bio },
-      create: { ...objetivo, id: undefined, attributes: objetivo.attributes as object, habilidadesRaciales: objetivo.habilidadesRaciales as object },
+      create: { ...objetivo, id: undefined, attributes: objetivo.attributes as object, habilidadesRaciales: objetivo.habilidadesRaciales as object, atributosPotenciales: undefined },
     });
     expect((await prisma.npc.findUniqueOrThrow({ where: { id: objetivo.id } })).muertoEnMundo).toBe(true);
     expect(readFileSync(new URL('../scripts/seed-catalog.ts', import.meta.url), 'utf8')).not.toContain('muertoEnMundo');

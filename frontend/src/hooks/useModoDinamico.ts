@@ -265,6 +265,8 @@ export function useModoDinamico({
       } else if (resultado.accion === 'FORZAR_COMBATE') {
         const npcName = characterLog.find((e) => e.id === entryId)?.npcInteractionOffer?.npcName ?? 'él'
         handleSubmit(`Ataco a '${npcName}'.`)
+      } else if (resultado.accion === 'AYUDADO') {
+        setCharacterLog((prev) => [...prev, resultado.logEntry])
       }
       // 'MOSTRAR_OFERTA_MISION'/'CERRAR' no necesitan ninguna acción más — la tarjeta ya se limpió
       // arriba, y la oferta de misión (si la hay) ya vive en su propia tarjeta independiente.

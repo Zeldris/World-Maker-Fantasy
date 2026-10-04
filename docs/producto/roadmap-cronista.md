@@ -1043,13 +1043,17 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   vivos (ahora `AND`). **Pendiente, con su tarea:** `PROMESA_VENCE` (cuando algo registre promesas),
   `RUMOR_DE_HAZANA` (Fase 5), `PUEBLO_ABANDONADO` (comercio local), refugiados al Reino (pregunta 1
   de Álvaro), ayuda en combate de la deuda de vida (`0.3`).
-- **CR-12** Narrador de fondo con presupuesto, enfriamientos y reglas de facción (§ 7.3);
-  agenda Serhu como primera cadena. **L** Al hacerlo, revisar `UX-6` (roadmap-front-ux.md): hoy
+- ~~**CR-12** Narrador de fondo con presupuesto, enfriamientos y reglas de facción (§ 7.3);
+  agenda Serhu como primera cadena. **L**~~ ✅ 2026-10-04 (pasos 12a-12d, ver abajo). **Pendiente,
+  con su tarea:** cadenas que nacen a mitad de partida (p. ej. una guerra a partir de escaramuzas) y
+  favorecer hilos abiertos → `CR-17`; árbitro con IA → Fase 7; hambruna de las facciones → pregunta
+  5 de Álvaro; comerciar con caravanas → comercio del 0.2; informante/recluta → `CR-32`; audiencia →
+  `REI-117`; frontend de las noticias → `UX-38`. Al hacerlo, revisar `UX-6` (roadmap-front-ux.md): hoy
   la ambientación se cancela al enviar una acción porque no pesa nada; con contenido real puede
   convenir que la acción espere (opción A). Incluye de la tabla de reacciones (CR-10): la fauna
   que huye de una tormenta extrema a una región vecina (necesita vecinos entre regiones) y
   `HAMBRUNA` 3 días seguidos → cohesión −10 y posible `REBELION` (necesita llevar la cuenta).
-  🚧 en curso (2026-10-04): diseño acordado con la usuaria (grill, ronda 1):
+  Diseño acordado con la usuaria (grill, ronda 1, 2026-10-04):
   - **Pasos:** 12a motor (candidatos, presupuesto, enfriamientos, elección por peso sin IA) +
     catálogo inicial + «Ritmo del mundo» en Configuración; 12b agenda Serhu como primera cadena;
     12c fauna que huye de la tormenta extrema y `HAMBRUNA`. «Favorecer hilos» espera a CR-17 y el
@@ -1111,7 +1115,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     provisionales de su economía 6 de las 9 sembradas pasan hambre siempre. Se enciende con los
     números de la economía de supervivencia (pregunta 5 a Álvaro). `REBELION` aún no tiene
     consecuencias propias más allá del Libro (las tendrá con la economía y las reglas de facción).
-  - 🚧 **12d en curso (2026-10-04).** Hecho:
+  - ✅ **12d hecho (2026-10-04):**
     - **Rumor por distancia** (`cronista/noticias.ts`, `darNoticia`): misma región o facción aliada
       / con tratado del Reino → al momento y como hecho; vecina → 1 día; más lejos → 2-3 días, como
       «Se dice que…»; sin lugar → solo si conoce la facción, 1 día y como rumor. Lo que llega tarde
@@ -1120,9 +1124,96 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
       IA, corrige lo dicho en la ronda 2), y ahora añade hasta 2 rastros de sucesos de los últimos
       3 días en la región (incendio, crecida, tormenta, plaga, auge, fauna que llega, edificio
       dañado).
-    **Falta:** resumen «Mientras viajabas…» al cruzar varios días y las oportunidades con plazo.
-- **CR-13** Nacimientos notables y generador de nombres (§ 12.3). **M** Incluye el efecto `crearNpc`
-  en `efectos.ts` (CR-9).
+    - **Resumen de varios días** (`agruparNoticias`, también `UX-31`): si el avance diario simula 2
+      días o más, lo que haya llegado a «El mundo» en ese avance se junta en una sola entrada
+      «Mientras pasaban los días…» con una línea por noticia. Desplegarla bonita es de `UX-38`.
+    **Falta:** las oportunidades con plazo. Decisión de la usuaria (Q14, 2026-10-04): ahora solo
+    las que se apoyan en mecánicas que ya existen: **campo de batalla** tras una escaramuza (botín
+    y un herido al que «Ayudar», opción nueva, o rematar), **asalto a la caravana** (combate) y
+    **encargo de materiales** tras un incendio o crecida (entrega a un NPC de la facción, con
+    reputación). Lo que no tiene mecánica va a su tarea: comerciar con la caravana → comercio de
+    volumen (Fase G del 0.2); informante o recluta tras el malestar → `CR-32`; audiencia del
+    visitante ilustre → `REI-117`. Plaga y auge ya cambian la caza solos (la zona sale de la
+    población).
+    - ✅ **«Ayudar»** (2026-10-04, `services/ayudarNpc.ts`): opción del menú de un NPC GRAVE o
+      CONVALECIENTE (también sin `interactionTypes`): pasa a HERIDO, +60 de reputación con su facción
+      y `AYUDA_PRESTADA` en el Libro. `REGALO` guarda ya la categoría del objeto (para el encargo).
+    - ✅ **Oportunidades** (2026-10-04, `cronista/oportunidades.ts`), con un NPC PLANTILLA de la
+      facción (hoy Serhu, Helsig y Concordia; sin plantilla no hay oportunidad) y su pista en la
+      noticia: campo de batalla tras una escaramuza (un caído para saquear y un herido, 3 días),
+      caravana con un guardia (vencerlo da 40-90 goirnos, `CARAVANA_ASALTADA`, 2 días) y encargo de
+      materiales tras un incendio o crecida (entregar madera o piedra al encargado repara el
+      edificio y da +80 de reputación, `ENCARGO_MATERIALES`, 5 días). Al vencer se retiran los
+      puntos (`OPORTUNIDAD_CIERRA`). Efectos nuevos `situarNpc` y `botinAlJugador`; el disparo
+      `SUCESO` filtra por NPC y por categoría del objeto.
+- ~~**CR-13** Nacimientos notables y generador de nombres (§ 12.3). **M** Incluye el efecto `crearNpc`
+  en `efectos.ts` (CR-9).~~ ✅ 2026-10-04 (13a-13c). **Pendiente, con su tarea:** cifras de razas y
+  edades del catálogo → Álvaro (`propuestas-lore.md`); envejecimiento de la jugadora → `CR-33`. Diseño acordado con la usuaria en dos rondas
+  de `/grill-with-docs` (la segunda la abrió ella: herencia de los padres, edad, madurez y
+  esperanza de vida, con Medieval Dynasty de referencia). Pasa a ser **L**:
+  - **«Alguien que destaca»** (Q1): no un bebé, sino un adulto joven de la facción que empieza a
+    tener nombre propio, candidato a líder y heredero desde el primer día. Cubre las sucesiones
+    (Goshg solo tiene 2 NPC con nombre). «X empieza a hacerse un nombre en …».
+  - **Cuándo** (Q2): candidato del narrador de fondo, con mucho peso si la facción tiene menos de 3
+    NPC con nombre vivos y poco si tiene muchos; enfriamiento de unos 10 días. No depende de los
+    números de población (provisionales, pregunta 1 a Álvaro).
+  - **Nombres** (Q3): generador por sílabas (`nombres.ts`), con el sonido de los nombres que ya hay y
+    las raíces de `docs/canon-opencode/01-lenguas.md`: orcos de consonantes duras, a veces con
+    apellido corto (Brenka, Hagar Kiugh); Faerus de dos sílabas abiertas (Gero, Kiri); Nabieus y
+    Goirntes con nombre y apellido seco (Ilka Dren, Kael Dorn). Semilla por partida; no repite
+    ninguno de la partida ni del catálogo; 3-12 letras. Se quedan en la partida (no van a lore).
+  - **Herencia** (Q4, a petición de la usuaria: «huella genética»): cada atributo = media de los
+    del padre y la madre ± 2; el atributo más alto de cada progenitor pasa con un 50 % como huella
+    (+1). Padres: un hombre y una mujer con nombre, adultos, de su raza y facción (vivos o muertos);
+    si no hay pareja, «de padres desconocidos» y atributos de alguien de su raza. Los padres quedan
+    en el NPC y en el Libro.
+  - **Edad y madurez** (Q6): fecha de nacimiento y atributos potenciales (de adulto); los que
+    cuentan crecen del 40 % al nacer al 100 % a la madurez. Antes de madurar no trabaja, no combate
+    y no puede ser líder ni heredero. Madurez: orcos 10 años (canon, `clanes-orcos.md`); el resto,
+    provisional para Álvaro (`propuestas-lore.md`): Faerus 8, Nabieus 14, Goirntes 16.
+  - **Vejez** (Q7): esperanza de vida provisional (orcos 60, Faerus 40, Nabieus 90, Goirntes 70).
+    Desde el 80 % de ella, −1 a fuerza, destreza y constitución cada año y probabilidad creciente
+    de morir de viejo (abre sucesión si era líder).
+  - **Edades del catálogo** (Q8): provisionales y deterministas (adultos entre la madurez y el 70 %
+    de su esperanza de vida, los líderes de los mayores), para que Álvaro las corrija.
+  - **Nacimientos de verdad** (Q9): además, una pareja con nombre tiene hijos de vez en cuando, que
+    crecen y heredan (con años de 120 días tardan en servir).
+  - **La jugadora no envejece** por ahora (Q10) → `CR-33`.
+  - **Pasos** (Q11): **13a** generador de nombres y «alguien que destaca» con herencia; **13b**
+    edades, madurez y vejez; **13c** nacimientos de verdad y crecimiento.
+  - ✅ **13a hecho (2026-10-04):** `cronista/nombres.ts` (generador por pueblo, semilla, sin
+    repetir, ordinal de respaldo), `cronista/herencia.ts` (media ± 2 y huella +1 al 50 %), efecto
+    `crearNpc` (elige género, padres de su facción y raza, nombre y atributos; NPC con `saveId`,
+    `padreNpcId`/`madreNpcId`, migración `20261005000000_npc_padres`; registra `NPC_DESTACA`) y
+    candidato `NPC_DESTACA` del narrador de fondo (peso 4 con menos de 3 NPC con nombre vivos, 1
+    con menos de 6, 0,2 si no; enfriamiento 10 días). Categoría de noticia **Gente** (👤) para la
+    familia VIDA_MUERTE. Los NPC nacidos en una partida no existen en las demás: `npcVivoEnPartida`
+    filtra también por partida y `npcDeLaPartida` acota la Enciclopedia y los descubrimientos.
+  - ✅ **13b hecho (2026-10-04):** `cronista/edades.ts` (ciclo vital por raza, edades provisionales
+    deterministas del catálogo, atributos por edad, probabilidad diaria de morir de viejo),
+    `Npc.nacidoEn` y `Npc.atributosPotenciales` (migración `20261005010000_npc_edad`), quien destaca
+    nace adulto joven (madurez a +5 años), solo adultos pueden ser padres, líderes o herederos, y
+    `cronista/envejecer.ts` cada día simulado: los nacidos en la partida ajustan sus atributos a su
+    edad y los NPC con nombre de una facción pueden morir de viejo («Muere X (de viejo).», abre
+    sucesión). **Pendiente:** que los NPC **del catálogo** también pierdan atributos en la vejez
+    necesita atributos por partida (son del mundo, compartidos); con las edades provisionales nadie
+    del catálogo llega a viejo en unos 6 años de ficción (720 días). Va en 13c.
+  - ✅ **13c hecho (2026-10-04):** nacimientos de verdad: `crearNpc` con `como: 'NACE'` (bebé de 0
+    años de una pareja de su facción en edad fértil —de la madurez al 60 % de la esperanza—,
+    herencia de los dos, `NACIMIENTO_NOTABLE` «Nace X, hija de A y B.»; sin pareja no nace) y
+    candidato del narrador de fondo (facciones con hombres y mujeres con nombre, enfriamiento 15
+    días). Los niños no salen de expedición. Vejez del catálogo por partida: `NpcState.vejez`
+    (migración `20261005020000_npc_state_vejez`), que `envejecer.ts` actualiza y que se resta en la
+    escena (`buildNpcInScene`) y en el combate múltiple (`restarVejez`). Las interceptaciones de
+    expediciones aún usan los atributos sin vejez (`combatienteDeNpc` no recibe el estado; caso raro).
+  - **Revisión con `/code-review` antes del PR (2026-10-04), 7 arreglos:** el encargo de materiales
+    no se podía completar (la entrega solo admitía compañeros; ahora también el encargado de un
+    encargo pendiente); el disparo de la caravana y del encargo comprueba también el lugar (las
+    plantillas se comparten); quien cae en combate con la jugadora no es padre de un bebé ni muere
+    otra vez de viejo (`npcSinMorirEnPartida`); el narrador solo ofrece nacimientos donde hay pareja
+    fértil; el resumen de varios días conserva la categoría y la oportunidad de cada línea; y **los
+    líderes del catálogo ya no tienen edad provisional aparte** (cambio sobre la Q8: la misma edad
+    en todos los sistemas; las de los líderes, para Álvaro con el resto).
 - **Hecho cuando:** `cronista:simular 60` produce caídas, escisiones, tormentas con daños, guerras
   y nacimientos coherentes; perdonar a un NPC lo hace volver en otra región.
 
@@ -1133,6 +1224,10 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
 - **CR-16** Recuerdos de NPC (§ 8.3). **S** Incluye las reacciones de CR-10: `recuerdo(testigos,
   jugador, −6)` tras una muerte causada y `recuerdo(víctima, jugador, +5)` tras un perdón.
 - **CR-17** Buscadores de historias e hilos (§ 7.4). **M**
+- **CR-32** Reclutamiento pacífico e informantes (usuaria, 2026-10-04, Q14 de `CR-12`): convencer a
+  un NPC sin pelear (tirada de persuasión según si le gusta lo que dices; idea de la usuaria del
+  2026-09-06) para que se una al Reino o te pase información de su facción. Abre la oportunidad
+  del malestar interno del narrador de fondo (un descontento se ofrece). **M**
 - **Hecho cuando:** matar al hermano de un NPC abre un hilo de venganza y el vengador aparece;
   un compañero se queja y acaba yéndose si se le contraría repetidamente.
 
@@ -1165,6 +1260,9 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
 - **CR-29** `cronista:reproducir`, anulación de sucesos de IA en admin. **M**
 - **CR-30** `exportar-leyendas` a `propuestas-lore.md`. **S**
 - **CR-31** Ajuste de pesos y presupuesto con 3 partidas largas simuladas. **M**
+- **CR-33** Envejecimiento de la jugadora (usuaria, 2026-10-04, Q10 de `CR-13`): su personaje también
+  cumple años con las reglas de madurez, vejez y esperanza de vida de su raza (`CR-13`), sin romper
+  la muerte permanente ni la dificultad. **M**
 
 ---
 

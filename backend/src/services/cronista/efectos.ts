@@ -18,7 +18,11 @@
 // `crearNpc` (CR-13, con nacimientos y nombres), `anadirEtiqueta`/`quitarEtiqueta`,
 // `cambiarAprobacion` y `anadirRecuerdo` (Fase 4), `propagarConocimiento` (Fase 5),
 // `abrirHilo`/`cerrarHilo` (buscadores de historias) y `ofrecerMision` (gancho, sin implementar).
-import type { OrigenSuceso, Prisma, TerritoryControl, ZonePointTipo } from '@prisma/client';
+import type { CondicionFisica, OrigenSuceso, Prisma, TerritoryControl, ZonePointTipo } from '@prisma/client';
+import { scopeFor } from '../npcScene.js';
+import { generarNombre, type Genero } from './nombres.js';
+import { atributosSinPadres, heredarAtributos, type Atributos } from './herencia.js';
+import { atributosPorEdad, cicloVital, edadEnAnios, esAdulto, esFertil, MINUTOS_POR_ANIO, nacidoEnDe } from './edades.js';
 import { stripRegionArticle } from '../population.js';
 import { slugify } from '../../lib/slugify.js';
 import { recordFactionEvent, type FactionEventType } from '../factionRelations.js';
@@ -49,7 +53,7 @@ export type Disparo =
   | { tipo: 'DIAS'; min: number; max: number }
   | { tipo: 'LLEGAR_REGION'; regionSlug: string; origenSlug?: string; minDias?: number }
   | { tipo: 'ENCUENTRO_NPC'; npcId: string; minDias?: number }
-  | { tipo: 'SUCESO'; tipos: TipoSuceso[] };
+  | { tipo: 'SUCESO'; tipos: TipoSuceso[]; npcId?: string; categorias?: string[]; locationId?: string };
 
 export const CUALQUIERA_SALVO_ORIGEN = 'CUALQUIERA_SALVO_ORIGEN';
 
@@ -73,7 +77,10 @@ export type Efecto =
   | { tipo: 'anularConsecuencia'; regla: string; npcId?: string }
   | { tipo: 'regalarAlJugador'; npcId: string; mensaje: string }
   | { tipo: 'forzarCombate'; npcId: string; mensaje: string }
-  | { tipo: 'ajustarReino'; faccionSlug?: string; riqueza?: number; felicidad?: number };
+  | { tipo: 'ajustarReino'; faccionSlug?: string; riqueza?: number; felicidad?: number }
+  | { tipo: 'situarNpc'; npcId: string; locationId: string; condicion: CondicionFisica }
+  | { tipo: 'botinAlJugador'; goirnos: number; mensaje: string }
+  | { tipo: 'crearNpc'; faccionSlug: string; como?: 'DESTACA' | 'NACE' };
 
 export interface ResultadoEfecto {
   aplicado: boolean;
@@ -81,6 +88,8 @@ export interface ResultadoEfecto {
   sucesoId: string | null;
   /// Hecho de mundo para narrar, si el efecto lo produce (p. ej. un cambio de banda de relación).
   hecho?: string | null;
+  /// Id de lo que el efecto ha creado, si crea algo (p. ej. el punto de `crearPuntoZona`).
+  id?: string;
 }
 
 const NO_APLICADO: ResultadoEfecto = { aplicado: false, sucesoId: null };
@@ -135,6 +144,12 @@ export async function aplicarEfecto(ctx: CtxEfecto, e: Efecto): Promise<Resultad
       return regalarAlJugador(ctx, e);
     case 'ajustarReino':
       return ajustarReino(ctx, e);
+    case 'situarNpc':
+      return situarNpc(ctx, e);
+    case 'botinAlJugador':
+      return botinAlJugador(ctx, e);
+    case 'crearNpc':
+      return crearNpc(ctx, e);
     case 'forzarCombate':
       return forzarCombate(ctx, e);
   }
@@ -443,14 +458,14 @@ async function cambiarControlTerritorio(ctx: CtxEfecto, e: Extract<Efecto, { tip
 async function crearPuntoZona(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'crearPuntoZona' }>): Promise<ResultadoEfecto> {
   const location = await ctx.tx.location.findFirst({ where: { id: e.locationId, worldId: ctx.worldId }, select: { id: true } });
   if (!location) return NO_APLICADO;
-  await ctx.tx.zonePoint.create({
+  const punto = await ctx.tx.zonePoint.create({
     data: {
       saveId: ctx.saveId, locationId: location.id, tipo: e.puntoTipo, targetSlug: e.targetSlug,
       x: e.x, y: e.y, origenX: e.x, origenY: e.y, cantidad: e.cantidad ?? 1, label: e.label ?? null,
       lastUpdatedAtMinutes: ctx.fictionalMinutes,
     },
   });
-  return { aplicado: true, sucesoId: null };
+  return { aplicado: true, sucesoId: null, id: punto.id };
 }
 
 async function retirarPuntoZona(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'retirarPuntoZona' }>): Promise<ResultadoEfecto> {
@@ -522,6 +537,120 @@ async function ajustarReino(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'ajustarR
   if (riqueza === stats.riqueza && felicidad === stats.felicidad) return NO_APLICADO;
   await ctx.tx.kingdomStats.update({ where: { id: stats.id }, data: { riqueza, felicidad } });
   return { aplicado: true, sucesoId: null };
+}
+
+// ─────────────────────────── NPC en un lugar (CR-12) ───────────────────────────
+
+/// Pone a un NPC en un lugar con una condición (p. ej. el caído y el herido de un campo de
+/// batalla): su estado en la partida con el ámbito que le toca allí (`scopeFor`). Sin suceso: lo
+/// cuenta el suceso que lo causa.
+async function situarNpc(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'situarNpc' }>): Promise<ResultadoEfecto> {
+  const npc = await ctx.tx.npc.findFirst({ where: { id: e.npcId, worldId: ctx.worldId }, select: { id: true, kind: true } });
+  const location = await ctx.tx.location.findFirst({ where: { id: e.locationId, worldId: ctx.worldId }, select: { id: true } });
+  if (!npc || !location) return NO_APLICADO;
+  const scope = scopeFor(npc.kind, location.id);
+  const data = { condicionFisica: e.condicion, saqueado: false, muerto: e.condicion === 'MUERTO' && scope === '', ...(e.condicion === 'MUERTO' ? { muertoEn: ctx.fictionalMinutes } : {}) };
+  await ctx.tx.npcState.upsert({
+    where: { saveId_npcId_scope: { saveId: ctx.saveId, npcId: npc.id, scope } },
+    create: { saveId: ctx.saveId, npcId: npc.id, scope, ...data },
+    update: data,
+  });
+  return { aplicado: true, sucesoId: null };
+}
+
+/// La jugadora se lleva unos goirnos (p. ej. la carga de una caravana asaltada). `mensaje` va al
+/// canal del personaje. Sin suceso propio: lo cuenta el que lo causa.
+async function botinAlJugador(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'botinAlJugador' }>): Promise<ResultadoEfecto> {
+  if (e.goirnos <= 0) return NO_APLICADO;
+  const save = await ctx.tx.save.update({ where: { id: ctx.saveId }, data: { goirnos: { increment: e.goirnos } }, select: { worldState: { select: { fictionalDateLabel: true } } } });
+  await ctx.tx.logEntry.create({
+    data: { saveId: ctx.saveId, channel: 'CHARACTER', text: e.mensaje, timeLabel: save.worldState?.fictionalDateLabel ?? '', fictionalMinutes: ctx.fictionalMinutes, isSystemMessage: true },
+  });
+  return { aplicado: true, sucesoId: null };
+}
+
+// ─────────────────────────── NPC nuevos (CR-13) ───────────────────────────
+
+/// «Alguien que destaca» (CR-13 13a): un adulto joven de una facción de la partida empieza a tener
+/// nombre propio. Con `como: 'NACE'` (13c), un bebé de una pareja de la facción en edad fértil
+/// (`NACIMIENTO_NOTABLE`); sin pareja, no nace. Elige género al azar; si la facción tiene un hombre y una mujer con nombre de su
+/// raza (vivos o muertos), son sus padres y hereda de ellos (`herencia.ts`); si no, toma los
+/// atributos de alguien de su raza con ±1. Nombre del generador (`nombres.ts`), sin repetir ninguno
+/// del mundo ni de la partida. El NPC es de la partida (`Npc.saveId`). Registra `NPC_DESTACA`.
+async function crearNpc(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'crearNpc' }>): Promise<ResultadoEfecto> {
+  const random = ctx.random ?? Math.random;
+  const faccion = await faccionViva(ctx, e.faccionSlug);
+  if (!faccion) return NO_APLICADO;
+  const deLaPartida = { OR: [{ saveId: null }, { saveId: ctx.saveId }] };
+  const conNombre = await ctx.tx.npc.findMany({
+    where: { worldId: ctx.worldId, kind: 'PRINCIPAL', raza: faccion.raza, ...deLaPartida },
+    orderBy: { slug: 'asc' },
+  });
+  // CR-13 13b: solo adultos pueden ser padres; 13c: para un nacimiento, en edad fértil y vivos.
+  const nace = e.como === 'NACE';
+  // Muertos fuera de escena o caídos en combate con la jugadora (solo `condicionFisica`).
+  const muertos = nace
+    ? await ctx.tx.npcState.findMany({ where: { saveId: ctx.saveId, OR: [{ muerto: true }, { scope: '', condicionFisica: 'MUERTO' }] }, select: { npcId: true } })
+    : [];
+  const muertosIds = new Set(muertos.map((m) => m.npcId));
+  const adultos = conNombre.filter((n) => {
+    const edadPadre = edadEnAnios(nacidoEnDe(n), ctx.fictionalMinutes);
+    return nace ? esFertil(n.raza, edadPadre) && !n.muertoEnMundo && !muertosIds.has(n.id) : esAdulto(n.raza, edadPadre);
+  });
+  const deSuFaccion = adultos.filter((n) => n.faction === faccion.name);
+  const elegir = <T>(l: T[]) => (l.length === 0 ? null : l[Math.floor(random() * l.length)]!);
+  const padre = elegir(deSuFaccion.filter((n) => n.genero === 'M'));
+  const madre = elegir(deSuFaccion.filter((n) => n.genero === 'F'));
+  const base = padre ?? madre ?? elegir(deSuFaccion) ?? elegir(adultos);
+  if (!base || (nace && !(padre && madre))) return NO_APLICADO;
+
+  const genero: Genero = random() < 0.5 ? 'F' : 'M';
+  const potenciales: Atributos = padre && madre
+    ? heredarAtributos(padre.attributes as Atributos, madre.attributes as Atributos, random).atributos
+    : atributosSinPadres(base.attributes as Atributos, random);
+  const usados = new Set(
+    (await ctx.tx.npc.findMany({ where: { worldId: ctx.worldId, ...deLaPartida }, select: { name: true } })).map((n) => n.name.toLowerCase()),
+  );
+  const nombre = generarNombre(faccion.raza, genero, random, usados);
+  // CR-13 13b: quien destaca es un adulto joven (de la madurez de su raza a 5 años más); 13c: un
+  // nacimiento, hoy.
+  const edad = nace ? 0 : cicloVital(faccion.raza).madurez + Math.floor(random() * 6);
+  const nacidoEn = nace ? ctx.fictionalMinutes : ctx.fictionalMinutes - edad * MINUTOS_POR_ANIO - Math.floor(random() * MINUTOS_POR_ANIO);
+  const padres = padre && madre ? `${padre.name} y ${madre.name}` : undefined;
+
+  const npc = await ctx.tx.npc.create({
+    data: {
+      worldId: ctx.worldId,
+      saveId: ctx.saveId,
+      kind: 'PRINCIPAL',
+      slug: `${slugify(nombre)}-${ctx.saveId.slice(-6)}`,
+      name: nombre,
+      aliases: [...new Set([nombre.toLowerCase(), nombre.split(' ')[0]!.toLowerCase()])],
+      faction: faccion.name,
+      role: nace ? `${genero === 'F' ? 'Niña' : 'Niño'} de ${faccion.name}` : `Joven de ${faccion.name}`,
+      genero,
+      level: base.level,
+      attributes: atributosPorEdad(potenciales, faccion.raza, edadEnAnios(nacidoEn, ctx.fictionalMinutes)),
+      atributosPotenciales: potenciales,
+      nacidoEn,
+      bio: nace
+        ? `${genero === 'F' ? 'Nacida' : 'Nacido'} en ${faccion.name}, ${genero === 'F' ? 'hija' : 'hijo'} de ${padres}.`
+        : `Joven de ${faccion.name} que empieza a hacerse un nombre${padres ? `; ${genero === 'F' ? 'hija' : 'hijo'} de ${padres}` : ''}.`,
+      personality: base.personality,
+      homeLocationSlug: base.homeLocationSlug,
+      raza: faccion.raza,
+      clase: base.clase,
+      temperamento: base.temperamento,
+      habilidadesRaciales: base.habilidadesRaciales ?? [],
+      padreNpcId: padre && madre ? padre.id : null,
+      madreNpcId: padre && madre ? madre.id : null,
+    },
+  });
+  const actores = [actorNpc(npc.id, 'AUTOR'), actorFaccion(faccion.slug, 'BENEFICIARIO'), ...(padre && madre ? [actorNpc(padre.id, 'AFECTADO'), actorNpc(madre.id, 'AFECTADO')] : [])];
+  const sucesoId = nace
+    ? await registrar(ctx, { tipo: 'NACIMIENTO_NOTABLE', actores, datos: { nacido: nombre, genero, ...(padres ? { padres } : {}) } })
+    : await registrar(ctx, { tipo: 'NPC_DESTACA', actores, datos: { npc: nombre, faccion: faccion.name, genero, ...(padres ? { padres } : {}) } });
+  return { aplicado: true, sucesoId, id: npc.id };
 }
 
 // ─────────────────────────── Regalos ───────────────────────────

@@ -1,6 +1,7 @@
 import { slugify } from '../lib/slugify.js';
 import { registrarEnPartidasDelMundo } from './cronista/emisores.js';
 import { minutosDeFiccion, registrarSuceso, type NuevoSuceso } from './cronista/sucesos.js';
+import { edadEnAnios, esAdulto, nacidoEnDe } from './cronista/edades.js';
 import { npcVivoEnPartida, poblacionDeCatalogo, type FiltroPoblacion } from './mundoPartida.js';
 import { difundirNoticias, textoAsalto, textoExpedicionDeVuelta, type NoticiaMundo } from './noticiasMundo.js';
 import type { Prisma, PrismaClient, FactionRelationType, CondicionFisica, Npc } from '@prisma/client';
@@ -585,10 +586,11 @@ async function avanzarDiaFaccion(tx: TxDb, worldId: string, saveId: string | nul
 /// Devuelve false si no hay recolectores o ningún destino viable.
 async function lanzarExpedicion(tx: TxDb, worldId: string, saveId: string | null, faction: { id: string; name: string }, dia: number): Promise<boolean> {
   const [todos, protegidos] = await Promise.all([
-    tx.npc.findMany({ where: { worldId, faction: faction.name, ...npcsVivos(saveId) }, select: { id: true, slug: true, role: true, interactionTypes: true, teachesProfession: true, muertoEnMundo: true } }),
+    tx.npc.findMany({ where: { worldId, faction: faction.name, ...npcsVivos(saveId) }, select: { id: true, slug: true, role: true, interactionTypes: true, teachesProfession: true, muertoEnMundo: true, raza: true, nacidoEn: true } }),
     cargarProtegidos(tx, worldId, saveId),
   ]);
-  const npcs = todos.filter((n) => npcElegibleParaExpedicion(n, 'recolector', protegidos));
+  // CR-13 13c: los niños (nacidos en la partida sin llegar a la madurez) no salen de expedición.
+  const npcs = todos.filter((n) => esAdulto(n.raza, edadEnAnios(nacidoEnDe(n), dia * 1440)) && npcElegibleParaExpedicion(n, 'recolector', protegidos));
   if (npcs.length === 0) return false;
   const npcIds = npcs.map((n) => n.id);
   const [potenciales, progresos] = await Promise.all([

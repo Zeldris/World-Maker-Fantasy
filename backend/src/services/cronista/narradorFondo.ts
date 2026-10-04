@@ -15,9 +15,10 @@
 // 5. **Noticia:** al canal «El mundo» según dónde pase (`noticias.ts`): al momento en su región o
 //    de una facción aliada; como rumor y días después si pasa lejos o es de una facción que conoce.
 //
-// Pendiente con su paso (entrada `CR-12`): cadenas (agenda Serhu, 12b), fauna que huye de la
-// tormenta y hambruna (12c), oportunidades con plazo y resumen (12d); favorecer
-// hilos abiertos (CR-17) y árbitro con IA (Fase 7).
+// 6. **Oportunidad** (12d): escaramuza, caravana, incendio y crecida abren algo que hacer con plazo
+//    (`oportunidades.ts`) y su pista va en la noticia.
+//
+// Pendiente: favorecer hilos abiertos (CR-17) y árbitro con IA (Fase 7).
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { stripRegionArticle } from '../population.js';
 import { slugify } from '../../lib/slugify.js';
@@ -25,8 +26,11 @@ import { CATALOGO_SUCESOS, type DatosSuceso, type TipoSuceso } from './catalogoS
 import { aplicarEfectos, type CtxEfecto, type Efecto } from './efectos.js';
 import { REGIONES_VECINAS } from './regiones.js';
 import { registrarSuceso, type ActorSuceso } from './sucesos.js';
-import { darNoticia } from './noticias.js';
+import { categoriaDeFamilia, darNoticia } from './noticias.js';
+import { abrirCampoDeBatalla, abrirCaravana, abrirEncargo, type CtxOportunidad, type OportunidadAbierta } from './oportunidades.js';
 import { ownerKeyFor } from '../reinoOwner.js';
+import { npcSinMorirEnPartida } from '../mundoPartida.js';
+import { edadEnAnios, esFertil, nacidoEnDe } from './edades.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -51,6 +55,9 @@ export interface Instancia {
   /// `absorberFaccion` registra `FACCION_ABSORBIDA`).
   suceso?: { datos: DatosSuceso[TipoSuceso]; actores: ActorSuceso[]; regionSlug?: string | null; locationId?: string | null };
   efectos: Efecto[];
+  /// CR-12 (12d): oportunidad con plazo que abre (campo de batalla, caravana, encargo); su pista se
+  /// añade a la noticia. Null si no se pudo abrir.
+  oportunidad?: (ctx: CtxOportunidad) => Promise<OportunidadAbierta | null>;
   /// Para decidir a quién llega la noticia (nombres de facción y `Location.region`).
   noticia: { facciones: string[]; region: string | null };
 }
@@ -120,6 +127,7 @@ function desastre(tipo: 'INCENDIO' | 'CRECIDA', causa: string, region?: string):
         regionSlug: null,
       },
       efectos: [{ tipo: 'danarEdificio', buildingId: b.id, causa }],
+      oportunidad: (o: CtxOportunidad) => abrirEncargo(o, b.faction!.name, b.id, b.location!.id, b.location!.name),
       noticia: { facciones: [b.faction!.name], region: b.location!.region },
     }));
 }
@@ -138,6 +146,7 @@ export const SUCESOS_DE_FONDO: SucesoDeFondo[] = [
           actores: [actorFaccion(r.sourceFaction.slug, 'AUTOR'), actorFaccion(r.targetFaction.slug, 'VICTIMA')],
         },
         efectos: [{ tipo: 'cambiarPresion', origenSlug: r.sourceFaction.slug, destinoSlug: r.targetFaction.slug, evento: 'BAJA_DE_GUERRA' }],
+        oportunidad: (o: CtxOportunidad) => abrirCampoDeBatalla(o, r.sourceFaction.name, r.targetFaction.name),
         noticia: { facciones: [r.sourceFaction.name, r.targetFaction.name], region: null },
       })),
   },
@@ -157,6 +166,7 @@ export const SUCESOS_DE_FONDO: SucesoDeFondo[] = [
           { tipo: 'ajustarReino', faccionSlug: r.sourceFaction.slug, riqueza: 5 },
           { tipo: 'ajustarReino', faccionSlug: r.targetFaction.slug, riqueza: 5 },
         ],
+        oportunidad: (o: CtxOportunidad) => abrirCaravana(o, r.sourceFaction.name, r.targetFaction.name),
         noticia: { facciones: [r.sourceFaction.name, r.targetFaction.name], region: null },
       })),
   },
@@ -257,6 +267,49 @@ export const SUCESOS_DE_FONDO: SucesoDeFondo[] = [
     },
   },
   {
+    // CR-13 (13a): alguien de una facción empieza a hacerse un nombre. Mucho peso si a la facción le
+    // quedan pocos NPC con nombre (sucesiones), poco si tiene muchos.
+    tipo: 'NPC_DESTACA',
+    enfriamientoDias: 10,
+    candidatos: async (ctx) => {
+      const facciones = await ctx.tx.faction.findMany({ where: { saveId: ctx.saveId, ...faccionesVivas }, select: { slug: true, name: true }, orderBy: { slug: 'asc' } });
+      const vivos = await ctx.tx.npc.groupBy({
+        by: ['faction'],
+        where: { worldId: ctx.worldId, kind: 'PRINCIPAL', faction: { in: facciones.map((f) => f.name) }, ...npcSinMorirEnPartida(ctx.saveId) },
+        _count: { _all: true },
+      });
+      const cuantos = new Map(vivos.map((v) => [v.faction, v._count._all]));
+      return facciones.map((f) => {
+        const n = cuantos.get(f.name) ?? 0;
+        return {
+          peso: n < 3 ? 4 : n < 6 ? 1 : 0.2,
+          efectos: [{ tipo: 'crearNpc' as const, faccionSlug: f.slug }],
+          noticia: { facciones: [f.name], region: null },
+        };
+      });
+    },
+  },
+  {
+    // CR-13 (13c): una pareja con nombre de una facción tiene un hijo (crece y hereda; con años de
+    // 120 días tarda en servir para algo).
+    tipo: 'NACIMIENTO_NOTABLE',
+    enfriamientoDias: 15,
+    candidatos: async (ctx) => {
+      const facciones = await ctx.tx.faction.findMany({ where: { saveId: ctx.saveId, ...faccionesVivas }, select: { slug: true, name: true }, orderBy: { slug: 'asc' } });
+      const ahora = (await ctx.tx.worldState.findUnique({ where: { saveId: ctx.saveId }, select: { fictionalMinutes: true } }))?.fictionalMinutes ?? 0;
+      const npcs = await ctx.tx.npc.findMany({
+        where: { worldId: ctx.worldId, kind: 'PRINCIPAL', genero: { in: ['M', 'F'] }, faction: { in: facciones.map((f) => f.name) }, ...npcSinMorirEnPartida(ctx.saveId) },
+        select: { slug: true, raza: true, nacidoEn: true, genero: true, faction: true },
+      });
+      // Hombres y mujeres con nombre en edad fértil (lo mismo que mirará `crearNpc`).
+      const fertiles = npcs.filter((x) => esFertil(x.raza, edadEnAnios(nacidoEnDe(x), ahora)));
+      const tiene = (f: string, g: string) => fertiles.some((c) => c.faction === f && c.genero === g);
+      return facciones
+        .filter((f) => tiene(f.name, 'M') && tiene(f.name, 'F'))
+        .map((f) => ({ peso: 1, efectos: [{ tipo: 'crearNpc' as const, faccionSlug: f.slug, como: 'NACE' as const }], noticia: { facciones: [f.name], region: null } }));
+    },
+  },
+  {
     // Una facción débil aliada con una fuerte acaba absorbida por ella (regla de facción, § 7.3).
     tipo: 'FACCION_ABSORBIDA',
     enfriamientoDias: 10,
@@ -354,7 +407,15 @@ export async function narrarDia(
       presupuesto -= costeDe(elegida.tipo);
       await guardar();
       const { texto } = await tx.suceso.findUniqueOrThrow({ where: { id: sucesoId }, select: { texto: true } });
-      await darNoticia(tx, { saveId, worldId: save.worldId, fictionalMinutes: minutos, causa: sucesoId }, { ...elegida.instancia.noticia, texto });
+      const oportunidad = elegida.instancia.oportunidad
+        ? await elegida.instancia.oportunidad({ tx, saveId, worldId: save.worldId, fictionalMinutes: minutos, random, causa: sucesoId })
+        : null;
+      await darNoticia(tx, { saveId, worldId: save.worldId, fictionalMinutes: minutos, causa: sucesoId }, {
+        ...elegida.instancia.noticia,
+        texto: oportunidad ? `${texto} ${oportunidad.pista}` : texto,
+        categoria: categoriaDeFamilia(CATALOGO_SUCESOS[elegida.tipo].familia),
+        ...(oportunidad ? { oportunidad: { lugar: oportunidad.lugar, locationId: oportunidad.locationId, venceEn: oportunidad.venceEn } } : {}),
+      });
       return { sucesoId, tipo: elegida.tipo, presupuesto };
     },
     { maxWait: 10_000, timeout: 20_000 },

@@ -218,6 +218,34 @@ catálogo en `backend/src/scripts/worldCatalog.ts` y la exclusión de alias en c
 
 ## Categoría: Personajes y NPCs
 
+2026-10-04 — Madurez, esperanza de vida y edades de los NPC por raza (CR-13)
+Estado: SIN REVISAR
+
+Qué se propone: el motor necesita, por raza, la edad de madurez (antes no trabajan, ni combaten, ni
+pueden liderar), la esperanza de vida (vejez y muerte de viejo) y una edad para cada NPC con nombre
+del catálogo. Solo hay canon de la madurez orca: 10 años, con la cacería ritual
+(`docs/rpgtarkor/lore-mundo/clanes-orcos.md`). El resto son cifras provisionales que ya usa el juego
+hasta que Álvaro decida:
+
+| Raza | Madurez | Esperanza de vida | Nota |
+|---|---|---|---|
+| Orcos | 10 (canon) | 60 | Vida dura de clan y guerra |
+| Faerus | 8 | 40 | Manada, vida corta e intensa |
+| Nabieus | 14 | 90 | Pueblo del silencio, longevo y paciente |
+| Goirntes | 16 | 70 | Imperio, crianza larga y formal |
+
+Edades de los NPC del catálogo: provisionales y deterministas (adultos entre la madurez y el 70 % de
+la esperanza de vida; los líderes, de los mayores). Un año de ficción son 120 días. Hace falta que
+Álvaro confirme las cifras y, si quiere, fije la edad de los NPC con peso en la historia (líderes,
+Gistera Koh, Hagar Kiugh…).
+
+Por qué: herencia de los padres, madurez y vejez son parte de CR-13 (decisión de la usuaria,
+2026-10-04, con Medieval Dynasty de referencia).
+
+Archivos que tocaría si se aprueba: `docs/rpgtarkor/lore-mundo/razas.md` (madurez y esperanza de vida
+por raza), `docs/rpgtarkor/personajes/npcs.md` (edades) y, fuera de lore, `backend/src/services/
+cronista/edades.ts` (cifras).
+
 2026-09-29 — Dessa Kaltrenn, Yerin Slaad y Riko pasan de pregenerados a NPC (Fase 8, alcance pre-alpha)
 Estado: SIN REVISAR
 

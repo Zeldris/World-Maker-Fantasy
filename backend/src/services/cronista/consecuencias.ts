@@ -161,12 +161,40 @@ export async function evaluarConsecuencias(
   return { disparadas, caducadas: vencidas.length };
 }
 
+/// ¿Este suceso cumple el disparo `SUCESO`? Tipo, y si lo pide, que pase en ese lugar, que el NPC
+/// salga en él (CR-12: el guardia de una caravana, el encargado de una reparación) y que el objeto
+/// sea de alguna de las categorías (`datos.objeto.categoria`, p. ej. un `REGALO` de madera o piedra).
+export function cumpleDisparoSuceso(
+  d: Extract<Disparo, { tipo: 'SUCESO' }>,
+  suceso: { tipo: string; locationId?: string | null; actores?: { entidadTipo: string; entidadId: string }[]; datos?: unknown },
+): boolean {
+  if (!d.tipos.includes(suceso.tipo as never)) return false;
+  // Las plantillas se comparten entre lugares: el guardia de esta caravana es el de ESTE sitio.
+  if (d.locationId && suceso.locationId !== d.locationId) return false;
+  if (d.npcId && !(suceso.actores ?? []).some((a) => a.entidadTipo === 'NPC' && a.entidadId === d.npcId)) return false;
+  if (d.categorias) {
+    const categoria = (suceso.datos as { objeto?: { categoria?: string } } | null)?.objeto?.categoria;
+    if (!categoria || !d.categorias.includes(categoria)) return false;
+  }
+  return true;
+}
+
 /// Disparo `SUCESO`: lo llama la cola de reacciones por cada suceso que procesa.
-export async function dispararPorSuceso(tx: Tx, worldId: string, suceso: { saveId: string; tipo: string; fictionalMinutes: number }, random: () => number): Promise<void> {
+export async function dispararPorSuceso(
+  tx: Tx,
+  worldId: string,
+  suceso: { id?: string; saveId: string; tipo: string; fictionalMinutes: number; locationId?: string | null; actores?: { entidadTipo: string; entidadId: string }[] },
+  random: () => number,
+): Promise<void> {
   const dia = Math.floor(suceso.fictionalMinutes / 1440);
   const pendientes = await tx.consecuencia.findMany({ where: { saveId: suceso.saveId, estado: 'PENDIENTE', tipoDisparo: 'SUCESO', desdeDia: { lte: dia } } });
+  if (pendientes.length === 0) return;
+  // Los datos solo hacen falta si alguna pide categoría.
+  const datos = pendientes.some((c) => (c.disparo as unknown as Disparo & { categorias?: string[] }).categorias) && suceso.id
+    ? (await tx.suceso.findUnique({ where: { id: suceso.id }, select: { datos: true } }))?.datos
+    : undefined;
   for (const c of pendientes) {
     const d = c.disparo as unknown as Disparo;
-    if (d.tipo === 'SUCESO' && d.tipos.includes(suceso.tipo as never)) await disparar(tx, worldId, c, suceso.fictionalMinutes, random);
+    if (d.tipo === 'SUCESO' && cumpleDisparoSuceso(d, { ...suceso, datos })) await disparar(tx, worldId, c, suceso.fictionalMinutes, random);
   }
 }

@@ -164,9 +164,26 @@ export async function ambitoFacciones(db: Db, saveId: string): Promise<FiltroFac
 
 /// Filtro de `Npc` vivos para una partida (CR-7): ni muertos de mundo (`Npc.muertoEnMundo`, de antes
 /// del mundo por partida) ni muertos en ESTA partida fuera de escena (`NpcState.muerto`, p. ej. en
-/// una expedición de facción).
+/// una expedición de facción). CR-13: y solo los del catálogo o nacidos en ESTA partida (un NPC
+/// nacido en otra partida no existe aquí). Todo va en el mismo `NOT` (lista): el filtro no añade
+/// otras claves de primer nivel que pisen las del que lo usa.
 export function npcVivoEnPartida(saveId: string): Prisma.NpcWhereInput {
-  return { muertoEnMundo: false, NOT: { npcStates: { some: { saveId, muerto: true } } } };
+  return {
+    muertoEnMundo: false,
+    NOT: [{ npcStates: { some: { saveId, muerto: true } } }, { saveId: { not: null }, NOT: { saveId } }],
+  };
+}
+
+/// CR-13: vivo en la partida y además sin haber caído en combate con la jugadora (un NPC con nombre
+/// muerto en combate solo tiene `condicionFisica: 'MUERTO'` en su estado de ámbito '', no `muerto`).
+export function npcSinMorirEnPartida(saveId: string): Prisma.NpcWhereInput {
+  return { AND: [npcVivoEnPartida(saveId), { NOT: { npcStates: { some: { saveId, scope: '', condicionFisica: 'MUERTO' } } } }] };
+}
+
+/// CR-13: `Npc` que existen en una partida: los del catálogo y los nacidos en ella (sin mirar si
+/// viven). Para listados del mundo entero (Enciclopedia, descubrimientos).
+export function npcDeLaPartida(saveId: string): Prisma.NpcWhereInput {
+  return { OR: [{ saveId: null }, { saveId }] };
 }
 
 /// Ids de los NPC muertos fuera de escena en una partida (para filtros en memoria).

@@ -27,6 +27,15 @@ import { CONDICIONES_INTERACTUABLE } from '../../services/death.js';
 /// concreto es derrotado más adelante, el objeto entregado aparece entre lo saqueable, mismo
 /// pipeline que el loot de catálogo, sin lógica paralela (ver comentario del campo en
 /// schema.prisma).
+/// CR-12 (12d): quien pide materiales en un encargo pendiente (`ENCARGO_MATERIALES`) también puede
+/// recibir objetos: es la única excepción a «solo compañeros» (decisión de la usuaria del 2026-09-06).
+async function slugsDeEncargados(saveId: string, worldId: string): Promise<Set<string>> {
+  const encargos = await prisma.consecuencia.findMany({ where: { saveId, regla: 'ENCARGO_MATERIALES', estado: 'PENDIENTE', npcId: { not: null } }, select: { npcId: true } });
+  if (encargos.length === 0) return new Set();
+  const npcs = await prisma.npc.findMany({ where: { worldId, id: { in: encargos.map((e) => e.npcId!) } }, select: { slug: true } });
+  return new Set(npcs.map((n) => n.slug));
+}
+
 export async function entregaRoutes(app: FastifyInstance) {
   /// Candidatos: objetos NO equipados del inventario + compañeros de equipo ya presentes en esta
   /// ubicación (mismo criterio de presencia que Capturar/Saquear-zona: `NpcState` real +
@@ -42,6 +51,8 @@ export async function entregaRoutes(app: FastifyInstance) {
     const companionSourceSlugs = new Set(
       (await prisma.companion.findMany({ where: { saveId: save.id, sourceSlug: { not: null } }, select: { sourceSlug: true } })).map((c) => c.sourceSlug!),
     );
+    // CR-12: también quien pide materiales en un encargo pendiente (oportunidades.ts).
+    for (const slug of await slugsDeEncargados(save.id, save.worldId)) companionSourceSlugs.add(slug);
     if (companionSourceSlugs.size === 0) return { items: save.inventoryItems, npcs: [] };
 
     const states = await prisma.npcState.findMany({
@@ -84,7 +95,8 @@ export async function entregaRoutes(app: FastifyInstance) {
       const npc = await prisma.npc.findFirst({ where: { worldId: save.worldId, slug: request.params.npcSlug, saveId: null } });
       if (!npc) return reply.status(404).send({ error: 'NPC no encontrado' });
       const isCompanion = await prisma.companion.findFirst({ where: { saveId: save.id, sourceSlug: npc.slug } });
-      if (!isCompanion) return reply.status(400).send({ error: 'Solo puedes entregar objetos a compañeros de tu equipo' });
+      const esEncargado = !isCompanion && (await slugsDeEncargados(save.id, save.worldId)).has(npc.slug);
+      if (!isCompanion && !esEncargado) return reply.status(400).send({ error: 'Solo puedes entregar objetos a compañeros de tu equipo' });
       const scope = scopeFor(npc.kind, save.currentLocationId);
       const state = await prisma.npcState.findUnique({ where: { saveId_npcId_scope: { saveId: save.id, npcId: npc.id, scope } } });
       if (!state || !CONDICIONES_INTERACTUABLE.includes(state.condicionFisica)) {
@@ -145,7 +157,7 @@ export async function entregaRoutes(app: FastifyInstance) {
             { entidadTipo: 'PERSONAJE', entidadId: save.id, papel: 'AUTOR' },
             { entidadTipo: 'NPC', entidadId: npc.id, papel: 'BENEFICIARIO' },
           ],
-          datos: { personaje: save.characterName, a: npc.name, objeto: { nombre: item.name } },
+          datos: { personaje: save.characterName, a: npc.name, objeto: { nombre: item.name, ...(catalog?.category ? { categoria: catalog.category } : {}) } },
         });
         return entrada;
       });

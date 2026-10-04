@@ -9,6 +9,8 @@ import type { FamiliaSuceso } from '@prisma/client';
 /// Un objeto o recurso mencionado en un suceso.
 interface Cosa {
   nombre: string;
+  /// Categoría del catálogo (`ItemCatalog.category`), si la tiene (CR-12: encargos de materiales).
+  categoria?: string;
 }
 
 /// Datos que necesita cada tipo. Campos `*Nombre` = nombre legible; el resto, lo que la regla use.
@@ -19,6 +21,7 @@ export interface DatosSuceso {
   COMBATE_PERDIDO: { personaje: string; rival: string };
   MUERTE_CAUSADA: { personaje: string; victima: string };
   PERDON_CONCEDIDO: { personaje: string; perdonado: string };
+  AYUDA_PRESTADA: { personaje: string; a: string };
   CAPTURA: { personaje: string; capturado: string };
   PROMESA: { personaje: string; a: string; promesa: string };
   PROMESA_CUMPLIDA: { personaje: string; a: string; promesa: string };
@@ -33,7 +36,8 @@ export interface DatosSuceso {
   RENACER: { personaje: string; lugar: string };
   FIN_PARTIDA: { personaje: string };
   // VIDA_MUERTE
-  NACIMIENTO_NOTABLE: { nacido: string; padres?: string; lugar?: string };
+  NACIMIENTO_NOTABLE: { nacido: string; padres?: string; lugar?: string; genero?: string };
+  NPC_DESTACA: { npc: string; faccion: string; genero?: string; padres?: string };
   MUERTE_NPC: { npc: string; causa?: string };
   MUERTE_LIDER: { lider: string; faccion: string; causa?: string };
   SUCESION: { nuevoLider: string; anterior: string; faccion: string };
@@ -121,6 +125,7 @@ export const CATALOGO_SUCESOS: Catalogo = {
   COMBATE_PERDIDO: { familia: 'JUGADOR', importanciaBase: 3, plantilla: (d) => `${d.personaje} cae ante ${d.rival}.` },
   MUERTE_CAUSADA: { familia: 'JUGADOR', importanciaBase: 5, plantilla: (d) => `${d.personaje} da muerte a ${d.victima}.` },
   PERDON_CONCEDIDO: { familia: 'JUGADOR', importanciaBase: 4, plantilla: (d) => `${d.personaje} perdona la vida a ${d.perdonado}.` },
+  AYUDA_PRESTADA: { familia: 'JUGADOR', importanciaBase: 3, plantilla: (d) => `${d.personaje} atiende las heridas de ${d.a}.` },
   CAPTURA: { familia: 'JUGADOR', importanciaBase: 3, plantilla: (d) => `${d.personaje} captura a ${d.capturado}.` },
   PROMESA: { familia: 'JUGADOR', importanciaBase: 5, plantilla: (d) => `${d.personaje} promete a ${d.a}: ${d.promesa}.` },
   PROMESA_CUMPLIDA: { familia: 'JUGADOR', importanciaBase: 5, plantilla: (d) => `${d.personaje} cumple lo prometido a ${d.a}: ${d.promesa}.` },
@@ -135,7 +140,8 @@ export const CATALOGO_SUCESOS: Catalogo = {
   RENACER: { familia: 'JUGADOR', importanciaBase: 5, plantilla: (d) => `${d.personaje} despierta de nuevo en ${d.lugar}.` },
   FIN_PARTIDA: { familia: 'JUGADOR', importanciaBase: 10, plantilla: (d) => `La historia de ${d.personaje} termina.` },
   // VIDA_MUERTE
-  NACIMIENTO_NOTABLE: { familia: 'VIDA_MUERTE', importanciaBase: 4, plantilla: (d) => `Nace ${d.nacido}${d.padres ? `, hijo de ${d.padres}` : ''}${d.lugar ? `, en ${d.lugar}` : ''}.` },
+  NACIMIENTO_NOTABLE: { familia: 'VIDA_MUERTE', importanciaBase: 4, plantilla: (d) => `Nace ${d.nacido}${d.padres ? `, ${d.genero === 'F' ? 'hija' : 'hijo'} de ${d.padres}` : ''}${d.lugar ? `, en ${d.lugar}` : ''}.` },
+  NPC_DESTACA: { familia: 'VIDA_MUERTE', importanciaBase: 4, plantilla: (d) => `${d.npc} empieza a hacerse un nombre en ${d.faccion}${d.padres ? `, ${d.genero === 'F' ? 'hija' : 'hijo'} de ${d.padres}` : ''}.` },
   MUERTE_NPC: { familia: 'VIDA_MUERTE', importanciaBase: 5, plantilla: (d) => `Muere ${d.npc}${con(d.causa)}.` },
   MUERTE_LIDER: { familia: 'VIDA_MUERTE', importanciaBase: 9, plantilla: (d) => `Muere ${d.lider}, líder de ${d.faccion}${con(d.causa)}.` },
   SUCESION: { familia: 'VIDA_MUERTE', importanciaBase: 7, plantilla: (d) => `${d.nuevoLider} sucede a ${d.anterior} al frente de ${d.faccion}.` },
