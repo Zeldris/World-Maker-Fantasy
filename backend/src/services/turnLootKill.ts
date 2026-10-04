@@ -27,6 +27,7 @@ import type { RollResult } from './dice.js';
 
 import { Prisma } from '@prisma/client';
 import type { CondicionFisica, AbilityEffect } from '@prisma/client';
+import { ambitoFacciones } from './mundoPartida.js';
 
 export interface LootModeResult {
   actualLootedNames: string[];
@@ -403,7 +404,8 @@ export async function applyKillSideEffects(params: {
     if (npc.faction && activeRegion && REGION_OWNING_FACTIONS[activeRegion]?.includes(npc.faction)) {
       const playerFaction = await tx.faction.findFirst({ where: { saveId, origenSlug: null }, select: { id: true, name: true } });
       if (playerFaction && playerFaction.name !== npc.faction) {
-        const targetFaction = await tx.faction.findFirst({ where: { worldId, name: npc.faction, saveId: null }, select: { id: true } });
+        // CR-7: la copia de esa facción en esta partida.
+        const targetFaction = await tx.faction.findFirst({ where: { ...(await ambitoFacciones(tx, saveId)), name: npc.faction }, select: { id: true } });
         if (targetFaction) {
           const fact = await recordFactionEvent(tx, worldId, playerFaction.id, targetFaction.id, 'BAJA_DE_GUERRA', saveId);
           if (fact) {

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 // Libro de Sucesos (CR-3): tiene sus propios tests; aquí la transacción simulada no lo lleva.
 vi.mock('./cronista/sucesos.js', () => ({ registrarSuceso: vi.fn(async () => 'suceso-1') }));
-import { advanceEntry, initialAgenda, parseAgenda, advanceWorldAgenda, regionControlFor, type AgendaEntry } from './worldAgenda.js';
+import { advanceEntry, initialAgenda, parseAgenda, avanzarAgendaDePartida, regionControlFor, type AgendaEntry } from './worldAgenda.js';
 
 const loadSessionFacts = vi.fn();
 const appendSessionFacts = vi.fn();
@@ -109,12 +109,15 @@ describe('regionControlFor', () => {
   });
 });
 
-describe('advanceWorldAgenda', () => {
+describe('avanzarAgendaDePartida (CR-7)', () => {
   function makePrisma(states: unknown[]) {
     const worldStateUpdate = vi.fn();
     const worldPopulationUpdateMany = vi.fn().mockResolvedValue({ count: 1 });
     const logEntryCreate = vi.fn();
+    // CR-6 (hito 0.2): partida con su mundo ya clonado — relaciones y población de la partida.
+    const save = { findUniqueOrThrow: vi.fn().mockResolvedValue({ worldId: 'world1', worldState: { mundoClonadoEn: new Date() } }) };
     const tx = {
+      save,
       worldState: { update: worldStateUpdate },
       worldPopulation: { updateMany: worldPopulationUpdateMany },
       logEntry: { create: logEntryCreate },
@@ -124,7 +127,8 @@ describe('advanceWorldAgenda', () => {
     const factionRelationFindMany = vi.fn().mockResolvedValue([{ id: 'rel-helsig' }, { id: 'rel-goshg' }]);
     const factionRelationUpdate = vi.fn();
     const prisma = {
-      worldState: { findMany: vi.fn().mockResolvedValue(states) },
+      save,
+      worldState: { findFirst: vi.fn().mockResolvedValue(states[0] ?? null) },
       factionRelation: { findMany: factionRelationFindMany, update: factionRelationUpdate },
       $transaction,
     };
@@ -135,8 +139,8 @@ describe('advanceWorldAgenda', () => {
     const { prisma, worldStateUpdate, worldPopulationUpdateMany } = makePrisma([
       { id: 'ws1', saveId: 'save1', agenda: [], fictionalMinutes: 480, save: { worldId: 'world1' } },
     ]);
-    const result = await advanceWorldAgenda(prisma as never);
-    expect(result).toEqual({ statesAdvanced: 1, stagesCrossed: 0 });
+    const result = await avanzarAgendaDePartida(prisma as never, 'save1');
+    expect(result).toEqual({ advanced: true, stagesCrossed: 0 });
     expect(worldStateUpdate).toHaveBeenCalledTimes(1);
     expect(worldPopulationUpdateMany).not.toHaveBeenCalled();
     expect(appendSessionFacts).not.toHaveBeenCalled();
@@ -147,8 +151,8 @@ describe('advanceWorldAgenda', () => {
     const { prisma, worldStateUpdate } = makePrisma([
       { id: 'ws1', saveId: 'save1', agenda, fictionalMinutes: 480, save: { worldId: 'world1' } },
     ]);
-    const result = await advanceWorldAgenda(prisma as never);
-    expect(result).toEqual({ statesAdvanced: 0, stagesCrossed: 0 });
+    const result = await avanzarAgendaDePartida(prisma as never, 'save1');
+    expect(result).toEqual({ advanced: false, stagesCrossed: 0 });
     expect(worldStateUpdate).not.toHaveBeenCalled();
   });
 
@@ -157,16 +161,16 @@ describe('advanceWorldAgenda', () => {
     const { prisma, worldPopulationUpdateMany, logEntryCreate, factionRelationFindMany, factionRelationUpdate } = makePrisma([
       { id: 'ws1', saveId: 'save1', agenda, fictionalMinutes: 500, fictionalDateLabel: 'Día 8, mañana', save: { worldId: 'world1' } },
     ]);
-    await advanceWorldAgenda(prisma as never);
+    await avanzarAgendaDePartida(prisma as never, 'save1');
     // Fase D (hito 0.1) — la etapa 1 empuja Serhu→Helsig/Goshg hasta presión 70 (solo las que estén por debajo).
-    expect(factionRelationFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ worldId: 'world1', presion: { lt: 70 } }) }));
+    expect(factionRelationFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ presion: { lt: 70 }, sourceFaction: { saveId: 'save1', origenSlug: { not: null }, name: 'Clan Serhu' } }) }));
     expect(factionRelationUpdate).toHaveBeenCalledWith({ where: { id: 'rel-helsig' }, data: { presion: 70, type: typeForPresion(70), stage: 1 } });
     expect(worldPopulationUpdateMany).toHaveBeenCalledWith({
-      where: { worldId: 'world1', saveId: null, targetType: 'RAZA', targetSlug: 'orcos-cristal-helado', poblacion: { gte: 20 } },
+      where: { saveId: 'save1', targetType: 'RAZA', targetSlug: 'orcos-cristal-helado', poblacion: { gte: 20 } },
       data: { poblacion: { decrement: 20 } },
     });
     expect(worldPopulationUpdateMany).toHaveBeenCalledWith({
-      where: { worldId: 'world1', saveId: null, targetType: 'RAZA', targetSlug: 'orcos-cienaga', poblacion: { gte: 20 } },
+      where: { saveId: 'save1', targetType: 'RAZA', targetSlug: 'orcos-cienaga', poblacion: { gte: 20 } },
       data: { poblacion: { decrement: 20 } },
     });
     expect(appendSessionFacts).toHaveBeenCalledTimes(1);
@@ -182,11 +186,11 @@ describe('advanceWorldAgenda', () => {
     });
   });
 
-  it('solo mira partidas de Gorhorn no terminadas (filtro ya en el where de la query)', async () => {
+  it('solo partidas de Gorhorn no terminadas (filtro ya en el where de la query); sin ella no hace nada', async () => {
     const { prisma } = makePrisma([]);
-    await advanceWorldAgenda(prisma as never);
-    expect(prisma.worldState.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { save: { characterName: 'Gorhorn', endedAt: null } } }),
+    expect(await avanzarAgendaDePartida(prisma as never, 'save1')).toEqual({ advanced: false, stagesCrossed: 0 });
+    expect(prisma.worldState.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { saveId: 'save1', save: { characterName: 'Gorhorn', endedAt: null } } }),
     );
   });
 });

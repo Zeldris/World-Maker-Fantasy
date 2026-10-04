@@ -33,6 +33,7 @@ import { createInFlightClaimSet } from '../../lib/inFlightClaimSet.js';
 import { iniciarCaza, type CazaTarget } from '../../services/caza.js';
 import { riesgoDeCaza, type RiesgoCazaInfo } from '../../services/cazaRiesgo.js';
 import type { AttributeBlock } from '../../services/dice.js';
+import { ambitoFacciones } from '../../services/mundoPartida.js';
 
 /// Candado de "movimiento en curso" (hallazgo 45, revisar-partida-hallazgos.md, 2026-09-15) —
 /// mismo patrón que `turnLock.ts`/`chapterSummary.ts` (`createInFlightClaimSet`), pero con
@@ -242,7 +243,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     // `resolveFoundingOutcome`, reputation.ts).
     const duenoOriginal = REGION_OWNING_FACTIONS[region]?.[0] ?? null;
     const regionControl: RegionControlState | null = duenoOriginal
-      ? await regionControlActual(prisma, save.worldId, region, parseAgenda(save.worldState?.agenda), duenoOriginal)
+      ? await regionControlActual(prisma, await ambitoFacciones(prisma, save.id), region, parseAgenda(save.worldState?.agenda), duenoOriginal)
       : null;
     // Fase G del 0.1 (hallazgo G25): Diplomacia dice que una facción se descubre «hablando con sus
     // NPC o visitando su territorio», pero estar en «Territorio de Clan Serhu» no descubría nada —
@@ -338,7 +339,8 @@ export async function zonaRoutes(app: FastifyInstance) {
               worldId: save.worldId,
               OR: [{ slug: { in: npcFaunaZonePointSlugs } }, { companionOfNpcSlug: { in: npcFaunaZonePointSlugs } }],
             },
-            select: { id: true, slug: true, name: true, kind: true, companionOfNpcSlug: true, muertoEnMundo: true },
+            // CR-7: `npcStates` muertos en esta partida fuera de escena (expedición de facción).
+            select: { id: true, slug: true, name: true, kind: true, companionOfNpcSlug: true, muertoEnMundo: true, npcStates: { where: { saveId: save.id, muerto: true }, select: { id: true } } },
           })
         : [];
     const npcFaunaZonePointIds = npcFaunaZonePointRows.filter((n) => npcFaunaZonePointSlugs.includes(n.slug));
@@ -387,8 +389,9 @@ export async function zonaRoutes(app: FastifyInstance) {
       const npc = npcFaunaZonePointIds.find((n) => n.id === npcId)!;
       const state = npcStateByKey.get(`${npcId}|${scopeFor(npc.kind, locationId)}`);
       if (estaMuertoParaSiempre(npc.kind, state)) return false;
-      // Muerto de mundo (intercepción de expedición de facción): nunca se pinta, sea del `kind` que sea.
-      if (npc.muertoEnMundo) return false;
+      // Muerto de mundo o en esta partida (intercepción de expedición de facción): nunca se pinta,
+      // sea del `kind` que sea.
+      if (npc.muertoEnMundo || (npc.npcStates?.length ?? 0) > 0) return false;
       // Grupos de fauna reales (Fase 2, 2026-09-28) — bug real encontrado en pruebas: `NpcState` es
       // UNO por especie y Location (`scopeFor`), así que abatir UN individuo de un grupo marcaba
       // `zonaAusenteHastaMinutes` en esa única fila, y este filtro ocultaba TODOS los `ZonePoint`
@@ -678,7 +681,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     const npcs = puntos.length
       ? await tx.npc.findMany({
           where: { worldId, slug: { in: puntos.map((p) => p.targetSlug) } },
-          select: { id: true, slug: true, name: true, temperamento: true, faction: true, kind: true, attributes: true, level: true, muertoEnMundo: true },
+          select: { id: true, slug: true, name: true, temperamento: true, faction: true, kind: true, attributes: true, level: true, muertoEnMundo: true, npcStates: { where: { saveId, muerto: true }, select: { id: true } } },
         })
       : [];
     const npcBySlug = new Map(npcs.map((n) => [n.slug, n]));
@@ -694,7 +697,7 @@ export async function zonaRoutes(app: FastifyInstance) {
       npcs.map((n) => [n.slug, npcStatesColision.find((s) => s.npcId === n.id && s.scope === scopeFor(n.kind, locationId))]),
     );
     const puntosVivos = puntos.filter(
-      (p) => !npcBySlug.get(p.targetSlug)?.muertoEnMundo && !zonePointNpcMuertoParaSiempre(npcBySlug.get(p.targetSlug)?.kind ?? '', npcStateBySlugColision.get(p.targetSlug)?.condicionFisica),
+      (p) => !npcBySlug.get(p.targetSlug)?.muertoEnMundo && !(npcBySlug.get(p.targetSlug)?.npcStates?.length ?? 0) && !zonePointNpcMuertoParaSiempre(npcBySlug.get(p.targetSlug)?.kind ?? '', npcStateBySlugColision.get(p.targetSlug)?.condicionFisica),
     );
     // Nombre oculto genérico (2026-09-09, generalización pedida por Álvaro: "esta lógica se debe
     // aplicar a todos los que tienen nombre propio" — hasta ahora la colisión de Zona era el único

@@ -1,5 +1,7 @@
 import { slugify } from '../lib/slugify.js';
 import { registrarEnPartidasDelMundo } from './cronista/emisores.js';
+import { minutosDeFiccion, registrarSuceso, type NuevoSuceso } from './cronista/sucesos.js';
+import { npcVivoEnPartida, poblacionDeCatalogo, type FiltroPoblacion } from './mundoPartida.js';
 import { difundirNoticias, textoAsalto, textoExpedicionDeVuelta, type NoticiaMundo } from './noticiasMundo.js';
 import type { Prisma, PrismaClient, FactionRelationType, CondicionFisica, Npc } from '@prisma/client';
 import type { MetodoObtencion } from '@prisma/client';
@@ -108,12 +110,14 @@ export function npcElegibleParaExpedicion(npc: NpcParaElegibilidad, rol: RolExpe
 }
 
 /// Carga los protegidos del mundo: líderes de facción, objetivos de cualquier misión (de cualquier
-/// partida y estado), slugs de trama y compañeros reclutados.
-export async function cargarProtegidos(tx: TxDb, worldId: string): Promise<NpcsProtegidos> {
+/// partida y estado), slugs de trama y compañeros reclutados. CR-7: con `saveId`, solo las misiones y
+/// compañeros de esa partida (su mundo es solo suyo).
+export async function cargarProtegidos(tx: TxDb, worldId: string, saveId: string | null = null): Promise<NpcsProtegidos> {
+  const dePartidas = saveId ? { saveId } : { save: { worldId } };
   const [lideres, misiones, companeros] = await Promise.all([
     tx.faction.findMany({ where: { worldId, liderNpcId: { not: null } }, select: { liderNpcId: true } }),
-    tx.quest.findMany({ where: { save: { worldId }, targetNpcId: { not: null } }, select: { targetNpcId: true } }),
-    tx.companion.findMany({ where: { save: { worldId }, sourceSlug: { not: null } }, select: { sourceSlug: true } }),
+    tx.quest.findMany({ where: { ...dePartidas, targetNpcId: { not: null } }, select: { targetNpcId: true } }),
+    tx.companion.findMany({ where: { ...dePartidas, sourceSlug: { not: null } }, select: { sourceSlug: true } }),
   ]);
   return {
     ids: new Set([...lideres.map((f) => f.liderNpcId!), ...misiones.map((q) => q.targetNpcId!)]),
@@ -362,6 +366,11 @@ export interface ContextoInterceptacion {
   recolectorNpcIds: string[];
   /// Probabilidad de morir al caer (por defecto `PROBABILIDAD_MUERTE_EN_INTERCEPCION`); inyectable en tests.
   probabilidadMuerte?: number;
+  /// CR-7: partida de la expedición (null = catálogo: muertes de mundo). Con partida, las muertes van a
+  /// su `NpcState.muerto` y la facción hostil es la copia de esa partida.
+  saveId?: string | null;
+  /// Minuto de ficción de las muertes (`NpcState.muertoEn`).
+  minutoMuerte?: number;
 }
 
 /// Resumen del combate que se guarda en `Expedicion.interceptacion`.
@@ -394,9 +403,9 @@ export async function resolverInterceptacion(tx: TxDb, ctx: ContextoInterceptaci
   if (ctx.guardiaNpcIds.length === 0) return perdidaSinCombate('sin-guardias');
   if (!ctx.faccionHostilNombre) return perdidaSinCombate('sin-atacante');
   const [candidatos, guardiasNpc, protegidos] = await Promise.all([
-    tx.npc.findMany({ where: { worldId: ctx.worldId, faction: ctx.faccionHostilNombre, muertoEnMundo: false } }),
-    tx.npc.findMany({ where: { id: { in: ctx.guardiaNpcIds }, muertoEnMundo: false }, orderBy: { id: 'asc' } }),
-    cargarProtegidos(tx, ctx.worldId),
+    tx.npc.findMany({ where: { worldId: ctx.worldId, faction: ctx.faccionHostilNombre, ...npcsVivos(ctx.saveId) } }),
+    tx.npc.findMany({ where: { id: { in: ctx.guardiaNpcIds }, ...npcsVivos(ctx.saveId) }, orderBy: { id: 'asc' } }),
+    cargarProtegidos(tx, ctx.worldId, ctx.saveId ?? null),
   ]);
   const atacanteNpc = elegirAtacante(candidatos.filter((n) => npcElegibleParaExpedicion(n, 'atacante', protegidos)));
   if (!atacanteNpc) return perdidaSinCombate('sin-atacante');
@@ -408,7 +417,7 @@ export async function resolverInterceptacion(tx: TxDb, ctx: ContextoInterceptaci
     guardiasNpc.map((g, i) => ({ id: g.id, slug: g.slug, condicion: combate.condicionGuardias[i]! })),
     ctx.probabilidadMuerte ?? PROBABILIDAD_MUERTE_EN_INTERCEPCION, random,
   );
-  if (muertes.length > 0) await tx.npc.updateMany({ where: { id: { in: muertes.map((m) => m.npcId) } }, data: { muertoEnMundo: true } });
+  if (muertes.length > 0) await marcarMuertes(tx, muertes.map((m) => m.npcId), ctx.saveId ?? null, ctx.minutoMuerte ?? null);
   const resumen: ResumenInterceptacion = {
     faccionHostil: ctx.faccionHostilNombre, atacanteSlug: atacanteNpc.slug, guardias: guardiasNpc.map((g) => g.slug),
     rondas: combate.rondas, ganador: combate.ganador, ...(combate.tope ? { motivo: 'tope' as const } : {}), presionAplicada: false,
@@ -418,7 +427,7 @@ export async function resolverInterceptacion(tx: TxDb, ctx: ContextoInterceptaci
 
   // Ganan los atacantes: presión sobre la relación existente entre las dos facciones (en su
   // dirección real, para no crear una fila espejo NEUTRAL); sin fila previa, la del atacante hacia la nuestra.
-  const hostil = await tx.faction.findFirst({ where: { worldId: ctx.worldId, name: ctx.faccionHostilNombre, saveId: null }, select: { id: true } });
+  const hostil = await tx.faction.findFirst({ where: { ...faccionesDeAmbito(ctx.worldId, ctx.saveId ?? null), name: ctx.faccionHostilNombre }, select: { id: true } });
   if (hostil) {
     const existentes = await tx.factionRelation.findMany({
       where: { worldId: ctx.worldId, OR: [{ sourceFactionId: hostil.id, targetFactionId: ctx.factionId }, { sourceFactionId: ctx.factionId, targetFactionId: hostil.id }] },
@@ -427,11 +436,52 @@ export async function resolverInterceptacion(tx: TxDb, ctx: ContextoInterceptaci
     const rel = [...existentes].sort((a, b) => riesgoPorRelacion(b.type) - riesgoPorRelacion(a.type))[0] ?? { sourceFactionId: hostil.id, targetFactionId: ctx.factionId };
     // Fase D (hito 0.1) — si el asalto cambia la banda de la relación (p. ej. TENSION → GUERRA), el
     // texto vuelve para convertirse en noticia; antes se descartaba.
-    const hechoRelacion = await recordFactionEvent(tx, ctx.worldId, rel.sourceFactionId, rel.targetFactionId, EVENTO_PRESION_INTERCEPTACION);
+    const hechoRelacion = await recordFactionEvent(tx, ctx.worldId, rel.sourceFactionId, rel.targetFactionId, EVENTO_PRESION_INTERCEPTACION, ctx.saveId ?? undefined);
     resumen.presionAplicada = true;
     return { carga: 'perdida', resumen, hechoRelacion };
   }
   return { carga: 'perdida', resumen };
+}
+
+// ─────────────────────────── Ámbito: catálogo o partida (CR-7) ───────────────────────────
+
+/// NPC vivos en el ámbito: del catálogo (sin muertos de mundo) o de una partida (tampoco los muertos
+/// fuera de escena en ella).
+function npcsVivos(saveId: string | null | undefined): Prisma.NpcWhereInput {
+  return saveId ? npcVivoEnPartida(saveId) : { muertoEnMundo: false };
+}
+
+/// Facciones del ámbito: las de catálogo o las copias de la partida.
+function faccionesDeAmbito(worldId: string, saveId: string | null): Prisma.FactionWhereInput {
+  return saveId ? { saveId, origenSlug: { not: null } } : { worldId, saveId: null };
+}
+
+function poblacionDeAmbito(worldId: string, saveId: string | null): FiltroPoblacion {
+  return saveId ? { saveId } : poblacionDeCatalogo(worldId);
+}
+
+/// Muertes de una intercepción: en una partida, en su `NpcState.muerto`; en el catálogo, de mundo.
+async function marcarMuertes(tx: TxDb, npcIds: string[], saveId: string | null, minuto: number | null): Promise<void> {
+  if (!saveId) {
+    await tx.npc.updateMany({ where: { id: { in: npcIds } }, data: { muertoEnMundo: true } });
+    return;
+  }
+  for (const npcId of npcIds) {
+    await tx.npcState.upsert({
+      where: { saveId_npcId_scope: { saveId, npcId, scope: '' } },
+      create: { saveId, npcId, scope: '', muerto: true, muertoEn: minuto },
+      update: { muerto: true, muertoEn: minuto },
+    });
+  }
+}
+
+/// Libro de Sucesos de una expedición: en su partida, o (catálogo) en todas las partidas del mundo.
+async function registrarEnAmbito(tx: TxDb, worldId: string, saveId: string | null, construir: (saveId: string, fictionalMinutes: number) => NuevoSuceso): Promise<void> {
+  if (!saveId) {
+    await registrarEnPartidasDelMundo(tx, worldId, construir);
+    return;
+  }
+  await registrarSuceso(tx, construir(saveId, await minutosDeFiccion(tx, saveId)));
 }
 
 // ─────────────────────────── Ciclo en worldTick ───────────────────────────
@@ -471,59 +521,72 @@ export async function advanceFactionExpeditions(prisma: Db, random: () => number
   for (const [worldId, minutos] of minutosPorMundo) {
     const diaActual = worldFictionDay(minutos);
     if (diaActual === null) continue;
-
-    const statsRows = await prisma.kingdomStats.findMany({
-      where: { faction: { worldId, saveId: null } },
-      include: { faction: { select: { id: true, name: true } } },
-    });
-    for (const fks of statsRows) {
-      const pendientes = pendingFactionDays(fks.ultimoDiaExpedicion, diaActual);
-      if (fks.ultimoDiaExpedicion !== null && pendientes === 0 && fks.ultimoDiaExpedicion >= diaActual) continue;
-      const faction = fks.faction!;
-      await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-        // Reclamo atómico del día: solo procesa quien consigue mover el marcador.
-        const claim = await tx.kingdomStats.updateMany({
-          where: { id: fks.id, ultimoDiaExpedicion: fks.ultimoDiaExpedicion },
-          data: { ultimoDiaExpedicion: diaActual },
-        });
-        if (claim.count === 0 || pendientes === 0) return; // otro tick ya lo hizo, o solo se fija la línea base
-        const noticias: NoticiaMundo[] = [];
-        for (let i = 1; i <= pendientes; i++) {
-          const dia = diaActual - pendientes + i;
-          await avanzarDiaFaccion(tx, worldId, faction, dia, random, result, opciones, noticias);
-        }
-        result.diasProcesados += pendientes;
-        // Fase D (hito 0.1) — en la misma transacción que el reclamo del día: cada noticia sale una vez.
-        result.noticias += await difundirNoticias(tx, worldId, noticias);
-      }, { timeout: 60_000, maxWait: 10_000 });
-    }
+    await expedicionesDeFacciones(prisma, worldId, null, diaActual, random, opciones, result);
   }
   return result;
 }
 
-async function avanzarDiaFaccion(tx: TxDb, worldId: string, faction: { id: string; name: string }, dia: number, random: () => number, result: ResultadoExpediciones, opciones: OpcionesExpediciones, noticias: NoticiaMundo[]): Promise<void> {
+/// CR-7 (hito 0.2): expediciones de las facciones de UNA partida hasta su día de ficción, desde su
+/// avance diario (`avanceDiario.ts`).
+export async function avanzarExpedicionesDePartida(prisma: Db, worldId: string, saveId: string, diaActual: number, random: () => number = Math.random, opciones: OpcionesExpediciones = {}): Promise<ResultadoExpediciones> {
+  const result: ResultadoExpediciones = { diasProcesados: 0, lanzadas: 0, completadas: 0, interceptadas: 0, depositados: 0, muertes: 0, noticias: 0 };
+  await expedicionesDeFacciones(prisma, worldId, saveId, diaActual, random, opciones, result);
+  return result;
+}
+
+/// Avanza y lanza las expediciones de las facciones del ámbito (catálogo si `saveId` es null).
+/// Idempotente por `KingdomStats.ultimoDiaExpedicion`.
+async function expedicionesDeFacciones(prisma: Db, worldId: string, saveId: string | null, diaActual: number, random: () => number, opciones: OpcionesExpediciones, result: ResultadoExpediciones): Promise<void> {
+  const statsRows = await prisma.kingdomStats.findMany({
+    where: { faction: faccionesDeAmbito(worldId, saveId) },
+    include: { faction: { select: { id: true, name: true } } },
+  });
+  for (const fks of statsRows) {
+    const pendientes = pendingFactionDays(fks.ultimoDiaExpedicion, diaActual);
+    if (fks.ultimoDiaExpedicion !== null && pendientes === 0 && fks.ultimoDiaExpedicion >= diaActual) continue;
+    const faction = fks.faction!;
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      // Reclamo atómico del día: solo procesa quien consigue mover el marcador.
+      const claim = await tx.kingdomStats.updateMany({
+        where: { id: fks.id, ultimoDiaExpedicion: fks.ultimoDiaExpedicion },
+        data: { ultimoDiaExpedicion: diaActual },
+      });
+      if (claim.count === 0 || pendientes === 0) return; // otro tick ya lo hizo, o solo se fija la línea base
+      const noticias: NoticiaMundo[] = [];
+      for (let i = 1; i <= pendientes; i++) {
+        const dia = diaActual - pendientes + i;
+        await avanzarDiaFaccion(tx, worldId, saveId, faction, dia, random, result, opciones, noticias);
+      }
+      result.diasProcesados += pendientes;
+      // Fase D (hito 0.1) — en la misma transacción que el reclamo del día: cada noticia sale una vez.
+      result.noticias += await difundirNoticias(tx, worldId, noticias, saveId);
+    }, { timeout: 60_000, maxWait: 10_000 });
+  }
+}
+
+async function avanzarDiaFaccion(tx: TxDb, worldId: string, saveId: string | null, faction: { id: string; name: string }, dia: number, random: () => number, result: ResultadoExpediciones, opciones: OpcionesExpediciones, noticias: NoticiaMundo[]): Promise<void> {
   const activas = await tx.expedicion.findMany({ where: { factionId: faction.id, status: { in: [...ACTIVAS] } }, include: { members: true }, orderBy: { diaSalida: 'asc' } });
   for (const exp of activas) {
     if (exp.status === 'RETORNANDO' && dia >= exp.diaRegreso) {
       result.depositados += await completarExpedicion(tx, exp, faction.name, dia, noticias);
       result.completadas++;
     } else if (exp.status !== 'RETORNANDO' && dia >= exp.diaSalida + 1) {
-      const { interceptada, muertes } = await llegarAlDestino(tx, worldId, faction, exp, dia, random, opciones, noticias);
+      const { interceptada, muertes } = await llegarAlDestino(tx, worldId, saveId, faction, exp, dia, random, opciones, noticias);
       if (interceptada) result.interceptadas++;
       result.muertes += muertes;
     }
   }
   const sigueActiva = await tx.expedicion.count({ where: { factionId: faction.id, status: { in: [...ACTIVAS] } } });
-  if (sigueActiva === 0 && (await lanzarExpedicion(tx, worldId, faction, dia))) result.lanzadas++;
+  if (sigueActiva === 0 && (await lanzarExpedicion(tx, worldId, saveId, faction, dia))) result.lanzadas++;
 }
 
 /// Lanza como mucho una expedición: oficio de recolección de "hoy" entre los NPC de la facción con
 /// potencial, destino = `Location` de sus regiones (o sin dueño) que tenga fuentes para ese oficio.
 /// Devuelve false si no hay recolectores o ningún destino viable.
-async function lanzarExpedicion(tx: TxDb, worldId: string, faction: { id: string; name: string }, dia: number): Promise<boolean> {
+async function lanzarExpedicion(tx: TxDb, worldId: string, saveId: string | null, faction: { id: string; name: string }, dia: number): Promise<boolean> {
   const [todos, protegidos] = await Promise.all([
-    tx.npc.findMany({ where: { worldId, faction: faction.name, muertoEnMundo: false }, select: { id: true, slug: true, role: true, interactionTypes: true, teachesProfession: true, muertoEnMundo: true } }),
-    cargarProtegidos(tx, worldId),
+    tx.npc.findMany({ where: { worldId, faction: faction.name, ...npcsVivos(saveId) }, select: { id: true, slug: true, role: true, interactionTypes: true, teachesProfession: true, muertoEnMundo: true } }),
+    cargarProtegidos(tx, worldId, saveId),
   ]);
   const npcs = todos.filter((n) => npcElegibleParaExpedicion(n, 'recolector', protegidos));
   if (npcs.length === 0) return false;
@@ -551,7 +614,7 @@ async function lanzarExpedicion(tx: TxDb, worldId: string, faction: { id: string
     const nivelMax = Math.max(...recolectores.map((r) => r.nivel));
     const metodo = metodoExpedicionFor(professionId)!;
     for (const destino of destinos) {
-      const { candidates } = await candidateSourcesFor(worldId, metodo, destino.region, null, destino.slug, estacionFor(dia * 1440), climaFor(dia * 1440, destino.region), nivelMax, tx);
+      const { candidates } = await candidateSourcesFor(worldId, metodo, destino.region, null, destino.slug, estacionFor(dia * 1440), climaFor(dia * 1440, destino.region), nivelMax, tx, poblacionDeAmbito(worldId, saveId));
       if (candidates.length === 0) continue;
 
       const relaciones = await tx.factionRelation.findMany({ where: { worldId, OR: [{ sourceFactionId: faction.id }, { targetFactionId: faction.id }] }, include: { sourceFaction: { select: { name: true } }, targetFaction: { select: { name: true } } } });
@@ -564,7 +627,7 @@ async function lanzarExpedicion(tx: TxDb, worldId: string, faction: { id: string
       const guardias = elegirGuardias(todos.filter((n) => npcElegibleParaExpedicion(n, 'guardia', protegidos)), recolectores.map((r) => r.npcId));
       await tx.expedicion.create({
         data: {
-          worldId, factionId: faction.id, destinoLocationId: destino.id, professionId,
+          worldId, saveId, factionId: faction.id, destinoLocationId: destino.id, professionId,
           status: 'EN_TRANSITO', diaSalida: dia, diaRegreso: dia + DURACION_EXPEDICION_DIAS,
           riesgo: riesgoIntercepcion(destino.region, faction.name, porFaccion),
           members: { create: [...recolectores.map((r) => ({ npcId: r.npcId, rol: 'recolector' })), ...guardias.map((npcId) => ({ npcId, rol: 'guardia' }))] },
@@ -572,8 +635,8 @@ async function lanzarExpedicion(tx: TxDb, worldId: string, faction: { id: string
       });
       // Libro de Sucesos (CR-3, hito 0.2).
       const faccionSlug = (await tx.faction.findUniqueOrThrow({ where: { id: faction.id }, select: { slug: true } })).slug;
-      await registrarEnPartidasDelMundo(tx, worldId, (saveId, fictionalMinutes) => ({
-        saveId, tipo: 'EXPEDICION_SALE', fictionalMinutes, regionSlug: slugify(destino.region), locationId: destino.id, origen: 'MUNDO',
+      await registrarEnAmbito(tx, worldId, saveId, (partida, fictionalMinutes) => ({
+        saveId: partida, tipo: 'EXPEDICION_SALE', fictionalMinutes, regionSlug: slugify(destino.region), locationId: destino.id, origen: 'MUNDO',
         actores: [{ entidadTipo: 'FACCION', entidadId: faccionSlug, papel: 'AUTOR' }],
         datos: { faccion: faction.name, destino: destino.name },
       }));
@@ -590,7 +653,7 @@ async function lanzarExpedicion(tx: TxDb, worldId: string, faction: { id: string
 /// el botín guardado (se deposita al completar). No reduce la población del mundo ni pone cooldown a
 /// la fuente: son NPC de facción, no una partida. Devuelve si fue interceptada y cuántos murieron en el combate.
 async function llegarAlDestino(
-  tx: TxDb, worldId: string, faction: { id: string; name: string },
+  tx: TxDb, worldId: string, saveId: string | null, faction: { id: string; name: string },
   exp: { id: string; destinoLocationId: string; professionId: string; riesgo: number; members: { npcId: string; rol: string }[] },
   dia: number, random: () => number, opciones: OpcionesExpediciones, noticias: NoticiaMundo[],
 ): Promise<{ interceptada: boolean; muertes: number }> {
@@ -611,6 +674,7 @@ async function llegarAlDestino(
       guardiaNpcIds: exp.members.filter((m) => m.rol === 'guardia').map((m) => m.npcId),
       recolectorNpcIds: exp.members.filter((m) => m.rol === 'recolector').map((m) => m.npcId),
       probabilidadMuerte: opciones.probabilidadMuerte,
+      saveId, minutoMuerte: dia * 1440,
     }, random);
     muertes = res.resumen.muertes.length;
     interceptacion = res.resumen as unknown as Prisma.InputJsonValue;
@@ -633,8 +697,8 @@ async function llegarAlDestino(
     if (res.hechoRelacion) noticias.push({ facciones: implicadas, region: null, dia, texto: res.hechoRelacion });
     // Libro de Sucesos (CR-3, hito 0.2): el asalto, con su resultado en los datos del texto.
     const faccionSlug = (await tx.faction.findUniqueOrThrow({ where: { id: faction.id }, select: { slug: true } })).slug;
-    await registrarEnPartidasDelMundo(tx, worldId, (saveId, fictionalMinutes) => ({
-      saveId, tipo: 'EXPEDICION_INTERCEPTADA', fictionalMinutes, regionSlug: slugify(destino.region), locationId: exp.destinoLocationId, origen: 'MUNDO',
+    await registrarEnAmbito(tx, worldId, saveId, (partida, fictionalMinutes) => ({
+      saveId: partida, tipo: 'EXPEDICION_INTERCEPTADA', fictionalMinutes, regionSlug: slugify(destino.region), locationId: exp.destinoLocationId, origen: 'MUNDO',
       actores: [{ entidadTipo: 'FACCION', entidadId: faccionSlug, papel: 'VICTIMA' }],
       datos: { faccion: faction.name, interceptora: res.resumen.faccionHostil ?? 'unos asaltantes', destino: destino.name },
     }));
@@ -648,7 +712,7 @@ async function llegarAlDestino(
   const ruta = oficioRutaFor(exp.professionId);
   const recolectorIds = exp.members.filter((m) => m.rol === 'recolector').map((m) => m.npcId);
   const [npcs, potenciales, progresos] = await Promise.all([
-    tx.npc.findMany({ where: { id: { in: recolectorIds }, muertoEnMundo: false }, select: { id: true, attributes: true } }),
+    tx.npc.findMany({ where: { id: { in: recolectorIds }, ...npcsVivos(saveId) }, select: { id: true, attributes: true } }),
     tx.npcProfessionPotential.findMany({ where: { npcId: { in: recolectorIds }, professionId: exp.professionId } }),
     tx.npcProfessionProgress.findMany({ where: { npcId: { in: recolectorIds }, professionId: exp.professionId } }),
   ]);
@@ -661,7 +725,7 @@ async function llegarAlDestino(
       { attributes: npc.attributes as unknown as AttributeBlock, secondaryAttributesJson: null, inventoryItems: [], professionProgress: [{ professionId: professionIdForOficio(ruta), nivel }] },
       ruta, random,
     );
-    const { candidates } = await candidateSourcesFor(worldId, metodo, destino.region, null, destino.slug, estacionFor(dia * 1440), climaFor(dia * 1440, destino.region), nivel, tx);
+    const { candidates } = await candidateSourcesFor(worldId, metodo, destino.region, null, destino.slug, estacionFor(dia * 1440), climaFor(dia * 1440, destino.region), nivel, tx, poblacionDeAmbito(worldId, saveId));
     const item = elegirBotinDeRecolector(applyGatheringRoll(candidates, roll), npc.id, exp.professionId, random);
     if (item) items.push(item);
   }
@@ -677,7 +741,7 @@ async function llegarAlDestino(
 /// `NpcProfessionProgress` (sin pasar de su `nivelMaximo`). Devuelve las unidades depositadas.
 async function completarExpedicion(
   tx: TxDb,
-  exp: { id: string; factionId: string; worldId: string; professionId: string; botin: unknown; destinoLocationId: string },
+  exp: { id: string; factionId: string; worldId: string; saveId: string | null; professionId: string; botin: unknown; destinoLocationId: string },
   faccionNombre: string,
   dia: number,
   noticias: NoticiaMundo[],
@@ -693,8 +757,8 @@ async function completarExpedicion(
   const destinoVuelta = await tx.location.findUnique({ where: { id: exp.destinoLocationId }, select: { name: true, region: true } });
   const botin = items.length > 0 ? [...new Set(items.map((i) => i.name))].slice(0, 3).join(', ') : undefined;
   const faccionSlug = (await tx.faction.findUniqueOrThrow({ where: { id: exp.factionId }, select: { slug: true } })).slug;
-  await registrarEnPartidasDelMundo(tx, exp.worldId, (saveId, fictionalMinutes) => ({
-    saveId, tipo: 'EXPEDICION_VUELVE', fictionalMinutes, regionSlug: destinoVuelta ? slugify(destinoVuelta.region) : null, origen: 'MUNDO',
+  await registrarEnAmbito(tx, exp.worldId, exp.saveId, (partida, fictionalMinutes) => ({
+    saveId: partida, tipo: 'EXPEDICION_VUELVE', fictionalMinutes, regionSlug: destinoVuelta ? slugify(destinoVuelta.region) : null, origen: 'MUNDO',
     actores: [{ entidadTipo: 'FACCION', entidadId: faccionSlug, papel: 'AUTOR' }],
     datos: { faccion: faccionNombre, destino: destinoVuelta?.name ?? 'los alrededores', botin },
   }));

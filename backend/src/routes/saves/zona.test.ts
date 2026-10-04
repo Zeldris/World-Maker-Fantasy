@@ -56,6 +56,8 @@ vi.mock('../../lib/prisma.js', () => ({
         ultimaPartidaMock = r;
         return r;
       },
+      // CR-6 (hito 0.2): sin WorldState clonado en el mock — facciones de catálogo.
+      findUniqueOrThrow: async () => ({ worldId: 'world1', worldState: null }),
     },
     zonePoint: {
       findMany: async () => ultimaPartidaMock?.currentLocation?.zonePoints ?? [],

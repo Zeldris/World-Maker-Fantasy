@@ -121,11 +121,13 @@ export async function ensureFactionRelation(
   worldId: string,
   sourceFactionId: string,
   targetFactionId: string,
+  /// CR-6: partida a la que pertenece la relación (null = del mundo).
+  saveId?: string,
 ): Promise<{ id: string; presion: number; type: FactionRelationType }> {
   return tx.factionRelation.upsert({
     where: { sourceFactionId_targetFactionId: { sourceFactionId, targetFactionId } },
     update: {},
-    create: { worldId, sourceFactionId, targetFactionId, presion: PRESION_NEUTRAL, type: 'NEUTRAL' },
+    create: { worldId, saveId: saveId ?? null, sourceFactionId, targetFactionId, presion: PRESION_NEUTRAL, type: 'NEUTRAL' },
     select: { id: true, presion: true, type: true },
   });
 }
@@ -144,7 +146,7 @@ export async function recordFactionEvent(
   /// mundo es compartido; con el mundo por partida (CR-6) cada una tendrá el suyo.
   saveId?: string,
 ): Promise<string | null> {
-  const relation = await ensureFactionRelation(tx, worldId, sourceFactionId, targetFactionId);
+  const relation = await ensureFactionRelation(tx, worldId, sourceFactionId, targetFactionId, saveId);
   const nextPresion = applyFactionEvent(relation.presion, event);
   const nextType = typeForPresion(nextPresion);
   const nextStage = stageForPresion(nextPresion);
@@ -249,7 +251,8 @@ export async function espiarFactionRelation(
   worldId: string,
   sourceFactionId: string,
   targetFactionId: string,
+  saveId?: string,
 ): Promise<{ presion: number; type: FactionRelationType; stage: number }> {
-  const relation = await ensureFactionRelation(tx, worldId, sourceFactionId, targetFactionId);
+  const relation = await ensureFactionRelation(tx, worldId, sourceFactionId, targetFactionId, saveId);
   return { presion: relation.presion, type: relation.type, stage: stageForPresion(relation.presion) };
 }

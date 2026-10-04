@@ -83,10 +83,16 @@ export function personajePuedeSaberlo(ctx: ContextoPersonaje, noticia: NoticiaMu
 
 /// Reparte las noticias del mundo `worldId` a las partidas en curso que puedan saberlo. Devuelve cuántas
 /// entradas de registro creó.
-export async function difundirNoticias(tx: Prisma.TransactionClient, worldId: string, noticias: NoticiaMundo[]): Promise<number> {
+export async function difundirNoticias(
+  tx: Prisma.TransactionClient,
+  worldId: string,
+  noticias: NoticiaMundo[],
+  /// CR-7 (hito 0.2): noticias del mundo de UNA partida (sus expediciones) solo llegan a ella.
+  soloPartida: string | null = null,
+): Promise<number> {
   if (noticias.length === 0) return 0;
   const partidas = await tx.save.findMany({
-    where: { worldId, endedAt: null, worldState: { isNot: null } },
+    where: { worldId, endedAt: null, worldState: { isNot: null }, ...(soloPartida ? { id: soloPartida } : {}) },
     select: {
       id: true,
       currentLocation: { select: { region: true } },

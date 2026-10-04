@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../lib/prisma.js';
+import { ambitoFacciones, faccionesDeCatalogo } from '../services/mundoPartida.js';
 
 /// GET de relaciones entre facciones NPC (hueco A, rediseño de frontend 2026-09-21,
 /// docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.3) — hasta ahora no existía ninguna vía de LISTAR
@@ -18,9 +19,11 @@ export async function factionRelationsRoutes(app: FastifyInstance) {
       if (!world) return reply.status(404).send({ error: 'Mundo no encontrado' });
 
       const { saveId } = request.query;
+      // CR-6 (hito 0.2): con partida, las relaciones entre las facciones de SU copia del mundo.
+      const facciones = saveId ? await ambitoFacciones(prisma, saveId) : faccionesDeCatalogo(world.id);
       const [relations, discoveredEntities] = await Promise.all([
         prisma.factionRelation.findMany({
-          where: { worldId: world.id, sourceFaction: { saveId: null }, targetFaction: { saveId: null } },
+          where: { sourceFaction: facciones, targetFaction: facciones },
           include: {
             sourceFaction: { select: { slug: true, name: true, raza: true } },
             targetFaction: { select: { slug: true, name: true, raza: true } },

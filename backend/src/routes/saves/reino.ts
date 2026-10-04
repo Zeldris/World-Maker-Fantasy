@@ -8,6 +8,7 @@ import { professionLevelForXp, alivioForLevel } from '../../services/professionP
 import { recordFactionEvent, espiarFactionRelation, nivelDiplomaticoRequerido, xpPorNegociacion, type FactionEventType } from '../../services/factionRelations.js';
 import { precioDinamico } from '../../services/economia.js';
 import { quantityOf } from '../../services/ingredients.js';
+import { asegurarMundoDePartida } from '../../services/mundoPartida.js';
 
 /// Fundación de reino (2026-08-04, docs/mecanicas/17-reglas-construcciones-reino.md) — el popup que se abre
 /// al terminar de construir el Ayuntamiento (tier 1) manda aquí el formulario. Decisión manual de
@@ -221,11 +222,12 @@ export async function reinoRoutes(app: FastifyInstance) {
       const companion = await prisma.companion.findFirst({ where: { id: companionId, saveId: save.id, rolReino: 'diplomatico' } });
       if (!companion) return reply.status(400).send({ error: 'Ese Companion no es un diplomático de tu Reino (rolReino: "diplomatico")' });
 
+      await asegurarMundoDePartida(prisma, save.id);
       const sourceFaction = await prisma.faction.findFirst({ where: { saveId: save.id, origenSlug: null }, select: { id: true, name: true, worldId: true } });
       if (!sourceFaction) return reply.status(400).send({ error: 'Todavía no has fundado tu Reino' });
 
-      // CR-6 (hito 0.2): objetivo = facción del catálogo o el propio Reino (nunca una copia del mundo de la partida).
-      const targetFaction = await prisma.faction.findFirst({ where: { worldId: sourceFaction.worldId, slug: targetFactionSlug, OR: [{ saveId: null }, { saveId: save.id, origenSlug: null }] }, select: { id: true, name: true, slug: true } });
+      // CR-7 (hito 0.2): objetivo = la copia de esa facción en esta partida (o el propio Reino).
+      const targetFaction = await prisma.faction.findFirst({ where: { worldId: sourceFaction.worldId, slug: targetFactionSlug, saveId: save.id }, select: { id: true, name: true, slug: true } });
       if (!targetFaction) return reply.status(404).send({ error: `Facción desconocida: ${targetFactionSlug}` });
       if (targetFaction.id === sourceFaction.id) return reply.status(400).send({ error: 'No puedes hacer diplomacia contra tu propio Reino' });
 
@@ -238,7 +240,7 @@ export async function reinoRoutes(app: FastifyInstance) {
       const resultado = await prisma
         .$transaction(async (tx) => {
           if (accion === 'espiar') {
-            const info = await espiarFactionRelation(tx, sourceFaction.worldId, sourceFaction.id, targetFaction.id);
+            const info = await espiarFactionRelation(tx, sourceFaction.worldId, sourceFaction.id, targetFaction.id, save.id);
             // Libro de Sucesos (CR-3, hito 0.2).
             await registrarSuceso(tx, {
               saveId: save.id, tipo: 'ESPIONAJE', fictionalMinutes: await minutosDeFiccion(tx, save.id), origen: 'JUGADOR',
@@ -254,7 +256,7 @@ export async function reinoRoutes(app: FastifyInstance) {
 
           // Gate de nivel — mismo criterio que trabajadorPuedeProducir (kingdomProduction.ts):
           // cuanto más lejos del neutro ya está la relación, más nivel exige moverla más.
-          const relacionPrevia = await espiarFactionRelation(tx, sourceFaction.worldId, sourceFaction.id, targetFaction.id);
+          const relacionPrevia = await espiarFactionRelation(tx, sourceFaction.worldId, sourceFaction.id, targetFaction.id, save.id);
           const nivelExigido = nivelDiplomaticoRequerido(relacionPrevia.presion);
           if (nivelExigido > Math.max(1, alivioForLevel(nivel) + 1)) {
             throw new NivelDiplomaticoInsuficienteError(nivel, nivelExigido);
@@ -317,8 +319,8 @@ export async function reinoRoutes(app: FastifyInstance) {
   class SinTratadoComercialError extends Error {}
   class StockInsuficienteError extends Error {}
 
-  async function verificaTratadoComercial(tx: Prisma.TransactionClient, worldId: string, sourceFactionId: string, targetFactionId: string): Promise<void> {
-    const relation = await espiarFactionRelation(tx, worldId, sourceFactionId, targetFactionId);
+  async function verificaTratadoComercial(tx: Prisma.TransactionClient, worldId: string, sourceFactionId: string, targetFactionId: string, saveId: string): Promise<void> {
+    const relation = await espiarFactionRelation(tx, worldId, sourceFactionId, targetFactionId, saveId);
     if (!TIPOS_CON_ACCESO_A_MERCADO.has(relation.type)) throw new SinTratadoComercialError();
   }
 
@@ -336,13 +338,14 @@ export async function reinoRoutes(app: FastifyInstance) {
       const save = await prisma.save.findUnique({ where: { id: request.params.id } });
       if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
 
+      await asegurarMundoDePartida(prisma, save.id);
       const sourceFaction = await prisma.faction.findFirst({ where: { saveId: save.id, origenSlug: null }, select: { id: true, worldId: true } });
       if (!sourceFaction) return reply.status(400).send({ error: 'Todavía no has fundado tu Reino' });
-      const targetFaction = await prisma.faction.findFirst({ where: { worldId: sourceFaction.worldId, slug: targetFactionSlug, OR: [{ saveId: null }, { saveId: save.id, origenSlug: null }] }, select: { id: true, name: true } });
+      const targetFaction = await prisma.faction.findFirst({ where: { worldId: sourceFaction.worldId, slug: targetFactionSlug, saveId: save.id }, select: { id: true, name: true } });
       if (!targetFaction) return reply.status(404).send({ error: `Facción desconocida: ${targetFactionSlug}` });
 
       const tratado = await prisma
-        .$transaction((tx) => verificaTratadoComercial(tx, sourceFaction.worldId, sourceFaction.id, targetFaction.id))
+        .$transaction((tx) => verificaTratadoComercial(tx, sourceFaction.worldId, sourceFaction.id, targetFaction.id, save.id))
         .then(() => true)
         .catch((err) => {
           if (err instanceof SinTratadoComercialError) return false;
@@ -396,9 +399,10 @@ export async function reinoRoutes(app: FastifyInstance) {
       if (rejectIfEnded(save, reply)) return;
       if (rejectIfPendingDeath(save, reply)) return;
 
+      await asegurarMundoDePartida(prisma, save.id);
       const sourceFaction = await prisma.faction.findFirst({ where: { saveId: save.id, origenSlug: null }, select: { id: true, worldId: true } });
       if (!sourceFaction) return reply.status(400).send({ error: 'Todavía no has fundado tu Reino' });
-      const targetFaction = await prisma.faction.findFirst({ where: { worldId: sourceFaction.worldId, slug: targetFactionSlug, OR: [{ saveId: null }, { saveId: save.id, origenSlug: null }] }, select: { id: true, name: true } });
+      const targetFaction = await prisma.faction.findFirst({ where: { worldId: sourceFaction.worldId, slug: targetFactionSlug, saveId: save.id }, select: { id: true, name: true } });
       if (!targetFaction) return reply.status(404).send({ error: `Facción desconocida: ${targetFactionSlug}` });
 
       const item = await prisma.almacenItem.findFirst({ where: { id: almacenItemId, factionId: targetFaction.id } });
@@ -409,7 +413,7 @@ export async function reinoRoutes(app: FastifyInstance) {
 
       const resultado = await prisma
         .$transaction(async (tx) => {
-          await verificaTratadoComercial(tx, sourceFaction.worldId, sourceFaction.id, targetFaction.id);
+          await verificaTratadoComercial(tx, sourceFaction.worldId, sourceFaction.id, targetFaction.id, save.id);
           const stockDisponible = await tx.almacenItem.count({ where: { factionId: targetFaction.id, catalogSlug: item.catalogSlug } });
           // Un montón ("Trozo de quitina roja (3)") se traspasa entero: se cobra por su cantidad real.
           const cantidad = quantityOf(item.name);
@@ -448,9 +452,10 @@ export async function reinoRoutes(app: FastifyInstance) {
       if (rejectIfEnded(save, reply)) return;
       if (rejectIfPendingDeath(save, reply)) return;
 
+      await asegurarMundoDePartida(prisma, save.id);
       const sourceFaction = await prisma.faction.findFirst({ where: { saveId: save.id, origenSlug: null }, select: { id: true, worldId: true } });
       if (!sourceFaction) return reply.status(400).send({ error: 'Todavía no has fundado tu Reino' });
-      const targetFaction = await prisma.faction.findFirst({ where: { worldId: sourceFaction.worldId, slug: targetFactionSlug, OR: [{ saveId: null }, { saveId: save.id, origenSlug: null }] }, select: { id: true, name: true } });
+      const targetFaction = await prisma.faction.findFirst({ where: { worldId: sourceFaction.worldId, slug: targetFactionSlug, saveId: save.id }, select: { id: true, name: true } });
       if (!targetFaction) return reply.status(404).send({ error: `Facción desconocida: ${targetFactionSlug}` });
 
       const item = await prisma.almacenItem.findFirst({ where: { id: almacenItemId, saveId: save.id } });
@@ -461,7 +466,7 @@ export async function reinoRoutes(app: FastifyInstance) {
 
       const resultado = await prisma
         .$transaction(async (tx) => {
-          await verificaTratadoComercial(tx, sourceFaction.worldId, sourceFaction.id, targetFaction.id);
+          await verificaTratadoComercial(tx, sourceFaction.worldId, sourceFaction.id, targetFaction.id, save.id);
           const stockDisponible = await tx.almacenItem.count({ where: { saveId: save.id, catalogSlug: item.catalogSlug } });
           // Un montón ("Trozo de quitina roja (3)") se traspasa entero: se cobra por su cantidad real.
           const cantidad = quantityOf(item.name);

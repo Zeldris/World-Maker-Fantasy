@@ -248,7 +248,7 @@ describe('recordEntityDiscoveries', () => {
 
     await recordEntityDiscoveries({ saveId: 's1', worldId: 'w1', mentionedText: 'x' }, client as never);
 
-    expect(client.faction.findMany).toHaveBeenCalledWith({ where: { worldId: 'w1', OR: [{ saveId: null }, { saveId: 's1' }] } });
+    expect(client.faction.findMany).toHaveBeenCalledWith({ where: { worldId: 'w1', OR: [{ saveId: null }, { saveId: 's1', origenSlug: null }] } });
   });
 
   it('un NPC sin facción, o cuya facción no tiene fila en el catálogo, no dispara ninguna cascada', async () => {

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { prisma } from '../lib/prisma.js';
 import { regionControlActual, sincronizarRelacionesConflicto, stagesConflictoPorRegion } from './worldAgenda.js';
+import { faccionesDeCatalogo } from './mundoPartida.js';
 
 /// Fase D del hito 0.1 contra Postgres real: el control de Cristal Helado y Ciénaga Troncal sale de las
 /// relaciones sembradas Serhu→Helsig/Goshg (presión 70 = etapa 1 → dueño original, igual que antes) y
@@ -26,21 +27,21 @@ describe('worldAgenda — control de región desde FactionRelation (Fase D)', ()
     // Línea base conocida: la presión sembrada (70).
     for (const r of snapshot) await prisma.factionRelation.update({ where: { id: r.id }, data: { presion: 70, type: 'TENSION', stage: 1 } });
 
-    const stages = await stagesConflictoPorRegion(prisma, worldId);
+    const stages = await stagesConflictoPorRegion(prisma, faccionesDeCatalogo(worldId));
     expect(stages.get('Cristal Helado')).toBe(1);
     expect(stages.get('Ciénaga Troncal')).toBe(1);
-    expect(await regionControlActual(prisma, worldId, 'Cristal Helado', [], 'Clan Helsig')).toEqual({ estado: 'NEUTRAL_O_DUENO_ORIGINAL', duenoActual: 'Clan Helsig' });
+    expect(await regionControlActual(prisma, faccionesDeCatalogo(worldId), 'Cristal Helado', [], 'Clan Helsig')).toEqual({ estado: 'NEUTRAL_O_DUENO_ORIGINAL', duenoActual: 'Clan Helsig' });
 
-    await sincronizarRelacionesConflicto(prisma, worldId, 3);
-    expect(await regionControlActual(prisma, worldId, 'Cristal Helado', [], 'Clan Helsig')).toMatchObject({ estado: 'EN_DISPUTA', duenoActual: 'Clan Helsig' });
-    expect(await regionControlActual(prisma, worldId, 'Ciénaga Troncal', [], 'Clan Goshg')).toMatchObject({ estado: 'EN_DISPUTA' });
+    await sincronizarRelacionesConflicto(prisma, faccionesDeCatalogo(worldId), 3);
+    expect(await regionControlActual(prisma, faccionesDeCatalogo(worldId), 'Cristal Helado', [], 'Clan Helsig')).toMatchObject({ estado: 'EN_DISPUTA', duenoActual: 'Clan Helsig' });
+    expect(await regionControlActual(prisma, faccionesDeCatalogo(worldId), 'Ciénaga Troncal', [], 'Clan Goshg')).toMatchObject({ estado: 'EN_DISPUTA' });
 
     // Nunca baja: sincronizar a una etapa menor no toca nada.
-    await sincronizarRelacionesConflicto(prisma, worldId, 1);
-    expect((await stagesConflictoPorRegion(prisma, worldId)).get('Cristal Helado')).toBe(3);
+    await sincronizarRelacionesConflicto(prisma, faccionesDeCatalogo(worldId), 1);
+    expect((await stagesConflictoPorRegion(prisma, faccionesDeCatalogo(worldId))).get('Cristal Helado')).toBe(3);
   });
 
   it('una región sin conflicto sembrado sigue con su dueño (no se inventa disputa)', async () => {
-    expect(await regionControlActual(prisma, worldId, 'Las Llanuras del Viento Rojo', [], 'Clan Serhu')).toEqual({ estado: 'NEUTRAL_O_DUENO_ORIGINAL', duenoActual: 'Clan Serhu' });
+    expect(await regionControlActual(prisma, faccionesDeCatalogo(worldId), 'Las Llanuras del Viento Rojo', [], 'Clan Serhu')).toEqual({ estado: 'NEUTRAL_O_DUENO_ORIGINAL', duenoActual: 'Clan Serhu' });
   });
 });

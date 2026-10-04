@@ -35,7 +35,8 @@ export function copiaDeFila<T extends Record<string, unknown>>(modelo: Prisma.Mo
 /// Clona el mundo vivo de la partida si todavía no lo tiene. Devuelve true si ha clonado ahora.
 export async function asegurarMundoDePartida(db: Db, saveId: string): Promise<boolean> {
   const estado = await db.worldState.findUnique({ where: { saveId }, select: { mundoClonadoEn: true } });
-  if (estado?.mundoClonadoEn) return false;
+  // Sin `WorldState` (solo partidas a medio crear o de tests antiguos) no hay dónde marcar la copia.
+  if (!estado || estado.mundoClonadoEn) return false;
   if ('$transaction' in db) return db.$transaction((tx) => clonarConCandado(tx, saveId));
   return clonarConCandado(db, saveId);
 }
@@ -49,6 +50,8 @@ async function clonarConCandado(tx: Tx, saveId: string): Promise<boolean> {
   });
   if (save.worldState?.mundoClonadoEn) return false;
   const { worldId } = save;
+  // CR-7: los marcadores de día de las copias arrancan en el día de la partida (no en el del mundo).
+  const diaPartida = Math.floor((save.worldState?.fictionalMinutes ?? 480) / 1440);
 
   // 2. Facciones de catálogo → copias de la partida (el líder sigue apuntando al Npc de catálogo;
   //    su estado vive en NpcState).
@@ -73,6 +76,7 @@ async function clonarConCandado(tx: Tx, saveId: string): Promise<boolean> {
             saveId,
             sourceFactionId: copiaDe.get(r.sourceFactionId)!,
             targetFactionId: copiaDe.get(r.targetFactionId)!,
+            ultimaSemanaDecaida: Math.floor(diaPartida / 7),
           }) as Prisma.FactionRelationCreateManyInput,
       ),
     });
@@ -85,7 +89,19 @@ async function clonarConCandado(tx: Tx, saveId: string): Promise<boolean> {
   for (const k of stats) {
     const nueva = copiaDe.get(k.factionId!)!;
     await tx.kingdomStats.create({
-      data: copiaDeFila('KingdomStats', k, { factionId: nueva, ownerKey: ownerKeyFor({ factionId: nueva }) }) as Prisma.KingdomStatsUncheckedCreateInput,
+      data: copiaDeFila('KingdomStats', k, {
+        factionId: nueva,
+        ownerKey: ownerKeyFor({ factionId: nueva }),
+        ultimoDiaProducido: diaPartida,
+        ultimoDiaExpedicion: diaPartida,
+      }) as Prisma.KingdomStatsUncheckedCreateInput,
+    });
+  }
+  // Almacén de cada facción (stock del mercado) → a su copia.
+  const almacen = await tx.almacenItem.findMany({ where: { factionId: { in: idsCatalogo } } });
+  if (almacen.length > 0) {
+    await tx.almacenItem.createMany({
+      data: almacen.map((a) => copiaDeFila('AlmacenItem', a, { factionId: copiaDe.get(a.factionId!)! }) as Prisma.AlmacenItemCreateManyInput),
     });
   }
   const territorios = await tx.territory.findMany({ where: { factionId: { in: idsCatalogo } } });
@@ -131,4 +147,30 @@ export async function ambitoPoblacion(db: Db, saveId: string): Promise<FiltroPob
   if (!save.worldState) return poblacionDeCatalogo(save.worldId);
   if (!save.worldState.mundoClonadoEn) await asegurarMundoDePartida(db, saveId);
   return { saveId };
+}
+
+/// Filtro de `Faction` (CR-6): las copias del mundo de una partida, o las de catálogo. El Reino del
+/// jugador (con `saveId` pero sin `origenSlug`) no entra en ninguno de los dos.
+export type FiltroFacciones = { saveId: string; origenSlug: { not: null } } | { worldId: string; saveId: null };
+
+export const faccionesDeCatalogo = (worldId: string): FiltroFacciones => ({ worldId, saveId: null });
+
+/// Filtro de las facciones de la partida, clonando su mundo si aún no lo tiene (mismo criterio
+/// que `ambitoPoblacion`).
+export async function ambitoFacciones(db: Db, saveId: string): Promise<FiltroFacciones> {
+  const poblacion = await ambitoPoblacion(db, saveId);
+  return 'worldId' in poblacion ? faccionesDeCatalogo(poblacion.worldId) : { saveId, origenSlug: { not: null } };
+}
+
+/// Filtro de `Npc` vivos para una partida (CR-7): ni muertos de mundo (`Npc.muertoEnMundo`, de antes
+/// del mundo por partida) ni muertos en ESTA partida fuera de escena (`NpcState.muerto`, p. ej. en
+/// una expedición de facción).
+export function npcVivoEnPartida(saveId: string): Prisma.NpcWhereInput {
+  return { muertoEnMundo: false, NOT: { npcStates: { some: { saveId, muerto: true } } } };
+}
+
+/// Ids de los NPC muertos fuera de escena en una partida (para filtros en memoria).
+export async function npcsMuertosEnPartida(db: Db, saveId: string): Promise<Set<string>> {
+  const filas = await db.npcState.findMany({ where: { saveId, muerto: true }, select: { npcId: true } });
+  return new Set(filas.map((f) => f.npcId));
 }

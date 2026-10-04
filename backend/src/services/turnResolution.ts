@@ -64,7 +64,8 @@ import type { RollResult, AttributeBlock, Attribute, GradoExito } from './dice.j
 import type { SecondaryAttributeBlock } from './secondaryAttributes.js';
 import { Prisma } from '@prisma/client';
 import type { CondicionFisica, Dificultad, AbilityEffect, AbilityRol, Clase, Especializacion } from '@prisma/client';
-import { ambitoPoblacion } from './mundoPartida.js';
+import { ambitoFacciones, ambitoPoblacion, asegurarMundoDePartida, npcVivoEnPartida } from './mundoPartida.js';
+import { avanzarMundoHasta } from './avanceDiario.js';
 
 const REINO_XP = { territory: 150, buildingActive: 100, firstSubject: 100, subject: 25, consolidado: 300 } as const;
 /// Población anónima con la que arranca todo Territory nuevo (2026-08-23, Grupo 3) — un puñado de
@@ -2482,6 +2483,10 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     travelInterruptionOriginalDestinationName,
   } = params;
 
+  // CR-6 (hito 0.2): partidas anteriores al mundo por partida (o reiniciadas) reciben aquí su copia
+  // del mundo; una vez hecha, es una sola lectura.
+  await asegurarMundoDePartida(prisma, saveId);
+
   // Revisión técnica 2026-07-22: estas 4 consultas no dependen entre sí (retrieveLore es la única
   // que depende de una de ellas, ver más abajo) — antes iban en `await` secuencial, una detrás de
   // otra, cada una su propio viaje de ida y vuelta a Postgres. Agrupadas en Promise.all para pagar
@@ -3248,7 +3253,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     const duenoOriginal = REGION_OWNING_FACTIONS[activeRegion]?.[0] ?? null;
     if (duenoOriginal) {
       // Fase D (hito 0.1) — de la relación real Serhu→defensor (worldAgenda.ts § regionControlActual).
-      const regionControl = await regionControlActual(prisma, worldId, activeRegion, parseAgenda(worldStateForFactionsAndAgenda?.agenda), duenoOriginal);
+      const regionControl = await regionControlActual(prisma, await ambitoFacciones(prisma, saveId), activeRegion, parseAgenda(worldStateForFactionsAndAgenda?.agenda), duenoOriginal);
       if (regionControl.estado === 'CONQUISTADA') {
         contextBlocks.push(`CONTROL DE LA REGIÓN (${activeRegion}): conquistada por ${regionControl.duenoActual} — refleja este dominio en la ambientación (patrullas, banderas, tensión propia de territorio ocupado), no la narres como si siguiera en calma neutral.`);
       } else if (regionControl.estado === 'EN_DISPUTA') {
@@ -3326,7 +3331,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // siendo lo único que importa en producción con `Math.random()` real — esto solo fija el orden
     // de iteración para que sea reproducible en pruebas.
     const itinerantCandidates = await prisma.npc.findMany({
-      where: { worldId, kind: 'PLANTILLA', homeLocationSlug: null, muertoEnMundo: false },
+      where: { worldId, kind: 'PLANTILLA', homeLocationSlug: null, ...npcVivoEnPartida(saveId) },
       select: { slug: true, name: true, role: true, temperamento: true, faction: true },
       orderBy: { slug: 'asc' },
     });
@@ -5873,7 +5878,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           if (playerFaction && activeRegion) {
             const duenoOriginalName = REGION_OWNING_FACTIONS[activeRegion]?.[0];
             if (duenoOriginalName && duenoOriginalName !== playerFaction.name) {
-              const targetFaction = await tx.faction.findFirst({ where: { worldId, name: duenoOriginalName, saveId: null }, select: { id: true } });
+              // CR-7: la copia de esa facción en esta partida.
+              const targetFaction = await tx.faction.findFirst({ where: { ...(await ambitoFacciones(tx, saveId)), name: duenoOriginalName }, select: { id: true } });
               if (targetFaction) {
                 const fact = await recordFactionEvent(tx, worldId, playerFaction.id, targetFaction.id, 'EXPANSION_TERRITORIAL_AGRESIVA', saveId);
                 if (fact) {
@@ -5974,7 +5980,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       // Mismo criterio que ya usan targetLocationId/targetItemName más abajo (buscan en TODO el
       // mundo, no solo en escena) — se extiende aquí por consistencia.
       if (!targetNpcId) {
-        const worldNpcs = await tx.npc.findMany({ where: { worldId, muertoEnMundo: false } });
+        const worldNpcs = await tx.npc.findMany({ where: { worldId, ...npcVivoEnPartida(saveId) } });
         targetNpcId = worldNpcs.find((npc) => questText.includes(normalizeText(npc.name)))?.id;
       }
 
@@ -6682,6 +6688,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     deathCount: finalDeathCountResult,
     discoveredLocationSlug,
   } = transactionResult;
+  // CR-7 (hito 0.2): el mundo de la partida avanza los días de ficción que haya cruzado este turno.
+  // Tras el commit y sin tumbar el turno si falla: el siguiente lo recupera (`ultimoDiaSimulado`).
+  await avanzarMundoHasta(prisma, saveId, nuevoFictionalMinutes).catch((err) => console.error('[avanceDiario] error avanzando el mundo de la partida:', err));
   // La transacción hizo commit de verdad — ahora sí se dispara la generación lenta de fondo (ver
   // el comentario de `chapterDue` más arriba).
   if (chapterDue) {

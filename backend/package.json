@@ -15,6 +15,7 @@
     "benchmark-turno": "tsx src/scripts/benchmark-turno.ts",
     "reindex-lore": "tsx src/scripts/reindex-lore.ts",
     "seed-catalog": "tsx src/scripts/seed-catalog.ts",
+    "cronista:migrar-partidas": "tsx src/scripts/cronista-migrar-partidas.ts",
     "sync-item-catalog": "tsx src/scripts/sync-item-catalog.ts",
     "seed-image-prompts": "tsx src/scripts/seedImagePrompts.ts",
     "export-image-prompts": "tsx src/scripts/exportImagePrompts.ts",

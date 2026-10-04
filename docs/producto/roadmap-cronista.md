@@ -878,8 +878,10 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   de catálogo, mismo resultado que antes); la siembra hace `upsert` por id (sigue idempotente).
   **Ojo:** Prisma no expresa índices parciales; `prisma migrate diff` propondrá borrarlos en
   migraciones futuras: quitar esas líneas. Aún nada lee ni escribe por partida: eso es `CR-6`.
-- **CR-6** `asegurarMundoDePartida` y adaptar lecturas/escrituras de facciones, relaciones,
-  población, expediciones y NPC muertos a la partida. **L** 🚧 2026-10-02 — **paso 1 hecho:**
+- ~~**CR-6** `asegurarMundoDePartida` y adaptar lecturas/escrituras de facciones, relaciones,
+  población, expediciones y NPC muertos a la partida. **L**~~ ✅ 2026-10-04 (pasos 1-4; expediciones
+  y muertes de NPC por expedición **pasan a `CR-7`**: las mueve el tick del mundo por día de ficción
+  del mundo, y § 13.1 las pone en el avance diario de cada partida) — **paso 1 hecho:**
   `services/mundoPartida.ts` (`asegurarMundoDePartida`, con candado de Postgres; clona facciones
   con `origenSlug`, relaciones, `KingdomStats`, territorios y edificios de facción —sin `saveId`,
   cuelgan de la copia—, población; marca `mundoClonadoEn` y emite `SISTEMA_MUNDO_INICIADO`) y
@@ -893,11 +895,66 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   (`worldAgenda.ts`) sigue en catálogo hasta `CR-7`. Arreglos que trajo la clonación: el Reino del
   jugador se busca con `origenSlug: null` (combate, expansión, rutas de reino, enciclopedia) y la
   diplomacia apunta a catálogo o al propio Reino; reiniciar la partida borra su copia del mundo y
-  limpia `mundoClonadoEn`. **Falta:** llamarlo al crear partida y al inicio del turno; facciones y
-  relaciones (`factionRelations.ts`, `worldAgenda.ts`, diplomacia), expediciones
-  (`factionExpeditions.ts`) y NPC muertos (`NpcState.muerto`).
-- **CR-7** `avanceDiario` por partida; sacar las funciones de mundo de `worldTick.ts`. **M**
-- **CR-8** Script de migración (§ 16). **M**
+  limpia `mundoClonadoEn`. **Paso 3 hecho (2026-10-04): enganchado.** `asegurarMundoDePartida` se
+  llama al crear la partida y al reiniciarla (fuera de su transacción) y al inicio de
+  `narrateAndPersistTurn` (las partidas anteriores reciben su copia en su primer turno; luego es una
+  sola lectura). Test de integración: crear clona tantas facciones y filas de población como el
+  catálogo, y reiniciar las rehace sin duplicar. **Paso 4 hecho (2026-10-04): relaciones por
+  partida.** `FiltroFacciones` / `ambitoFacciones` (copias de la partida, sin su Reino). El conflicto
+  de la agenda (`WorldState.agenda`, ya de cada partida) sincroniza las relaciones Serhu→defensores
+  de SU copia y resta de SU población; el control de región (turno y zona) y el listado
+  `GET /world/:slug/faction-relations?saveId=` leen la copia de la partida. Las relaciones
+  jugador↔facción (bajas de guerra, expansión, diplomacia, mercado) siguen contra la facción de
+  catálogo porque su almacén y su economía no se copian hasta `CR-7`; ya guardan el `saveId` de la
+  partida. Test: el conflicto de una partida no toca el de otra ni el del catálogo.
+- ~~**CR-7** `avanceDiario` por partida; sacar las funciones de mundo de `worldTick.ts`. **M**~~ ✅ 2026-10-04. Incluye
+  lo que pasa de `CR-6`: expediciones de facción de la partida (`factionExpeditions.ts`, con
+  `Expedicion.saveId`) y sus muertes de NPC en `NpcState.muerto` en vez de `Npc.muertoEnMundo`;
+  economía y decaimiento de presión de las copias; y entonces almacén/mercado de las copias y las
+  relaciones jugador↔facción contra la copia (hoy contra el catálogo). 🚧 2026-10-04 — **paso 1
+  hecho:** `services/avanceDiario.ts` (`avanzarMundoHasta`, candado por partida, tope de 30 días por
+  llamada, `WorldState.ultimoDiaSimulado`): crece la población de la partida por días de ficción
+  (`crecerPoblacionDePartida`, compuesto con la fracción ganada por probabilidad; antes era por días
+  reales), la refleja en el `KingdomStats` de sus facciones y avanza su agenda
+  (`avanzarAgendaDePartida`). Se llama tras el commit de cada turno. `worldTick` ya no avanza la
+  agenda y su crecimiento de población solo toca el catálogo. Tests: unitarios del cálculo y de
+  integración (crece solo la partida, cada día una vez). **Paso 2 hecho (2026-10-04): economía por
+  partida.** `factionEconomy.ts` partida en `producirFacciones` y `decaerRelaciones` por ámbito: el
+  tick del mundo solo procesa el catálogo; el avance diario, las copias de la partida y sus
+  relaciones. El clonado arranca los marcadores de día/semana de las copias en el día de la partida
+  (antes copiaba los del mundo, que podían ir muy por delante) y copia el almacén de cada facción.
+  **Paso 3a hecho (2026-10-04):** `npcVivoEnPartida(saveId)` / `npcsMuertosEnPartida`: todo lo que
+  lista NPC (escena, encuentros ambientales y de viaje, objetivos de misión, mapa y colisiones de
+  zona) excluye también los muertos fuera de escena en esa partida (`NpcState.muerto`), además de
+  `muertoEnMundo`. **Paso 3b hecho (2026-10-04): expediciones por partida.** `factionExpeditions.ts`
+  recibe el ámbito (`saveId`, o null = catálogo) en toda la cadena: lanzar (copias, NPC vivos en la
+  partida, protegidos y población de la partida, `Expedicion.saveId`), llegar e interceptar (facción
+  hostil = copia; muertes en `NpcState.muerto` de la partida, no `muertoEnMundo`; relación con
+  `saveId`), volver; Libro de Sucesos y noticias solo en esa partida. `avanzarExpedicionesDePartida`
+  va en el avance diario y `worldTick` ya no lanza expediciones (el catálogo es plantilla).
+  `advanceFactionExpeditions` queda para el catálogo (lo usan sus tests). Test: muerte en una
+  partida, vivo en otra y en el mundo. **Paso 4 hecho (2026-10-04):** diplomacia, mercado, bajas de
+  guerra y expansión van contra la copia de la facción en la partida (su almacén ya se copia), y
+  `worldTick` deja de avanzar el catálogo (crecimiento, reino de facciones, economía): solo queda lo
+  de tiempo real (tránsitos, supervivencia, cadáveres), como pide D-1. `asegurarMundoDePartida` no
+  hace nada sin `WorldState`. **Paso 5 hecho (2026-10-04):** `registrarAvanceTrasAcciones` (gancho
+  `onResponse` de Fastify, `server.ts`): tras cada POST correcto a `/saves/:id/...` (zona, descanso,
+  recolección, caza, modo dinámico…) avanza el mundo si el reloj cruzó un día (una lectura si no);
+  los tránsitos ya pasan por `narrateAndPersistTurn`. Borradas `growAllPopulations` y
+  `advanceWorldAgenda` (sus tests, a la partida). `advanceFactionEconomy` y
+  `advanceFactionExpeditions` quedan solo como ejecución sobre el catálogo que usan sus tests de
+  integración del núcleo (no las llama nadie más). Pendiente para la fase de pruebas: el test P3.2
+  del viaje interrumpido falla a veces en la suite completa (pasa aislado; hipótesis: un encuentro
+  ambiental al azar inicia combate y anula la reanudación) — diagnosticar con `diagnosing-bugs`.
+- ~~**CR-8** Script de migración (§ 16). **M**~~ ✅ 2026-10-04: `services/cronista/migrarPartidas.ts`
+  (`migrarPartida`, `migrarTodasLasPartidas`) y `npm run cronista:migrar-partidas` (solo informa;
+  `-- --aplicar` aplica; idempotente). Por partida: clona su mundo, pasa a `NpcState.muerto` sus
+  `npcsRetiredForever` y los `Npc.muertoEnMundo` (en todas las partidas existentes, D-10; luego se
+  quita la marca del `Npc` para que las partidas nuevas los reciban vivos), lleva la etapa del
+  conflicto de su agenda a sus relaciones y fija `ultimoDiaSimulado` en el día actual. Sin los
+  sucesos fundacionales desde `SessionSummary` (opcionales). Test de integración (simulación sin
+  cambios, aplicar, repetir sin cambios). **Pendiente de ejecutar con `--aplicar` en la base real**
+  (Supabase) antes de llevar el hito a los jugadores.
 - **Hecho cuando:** dos partidas del mismo mundo divergen (una mata a un NPC, la otra no lo ve);
   todos los tests de integración actuales pasan.
 

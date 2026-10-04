@@ -4,6 +4,7 @@ import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { reinoRoutes } from './reino.js';
 import { buildAdjacency, shortestPath } from '../../services/travel.js';
+import { asegurarMundoDePartida } from '../../services/mundoPartida.js';
 
 /// Zona-interior navegable propia del reino (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) —
 /// primera vez que el motor crea una `Location` en TIEMPO DE PARTIDA (hasta ahora, 100% catálogo
@@ -158,15 +159,18 @@ describe('POST /saves/:id/reino/diplomacia', () => {
       },
     });
     saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
     await prisma.building.create({
       data: { saveId, locationId: hondonada.id, recipeKey: 'ayuntamiento', name: 'x', kind: 'ayuntamiento', description: 'x', status: 'ACTIVO', tier: 1 },
     });
     const app = await buildApp();
     await app.inject({ method: 'POST', url: `/saves/${saveId}/reino/fundar`, payload: { kingdomName: 'Reino de Prueba Diplomacia' } });
-    const sourceFaction = await prisma.faction.findFirstOrThrow({ where: { saveId } });
+    const sourceFaction = await prisma.faction.findFirstOrThrow({ where: { saveId, origenSlug: null } });
     sourceFactionId = sourceFaction.id;
 
-    const targetFaction = await prisma.faction.findFirstOrThrow({ where: { worldId, slug: 'clan-helsig' } });
+    // CR-7 (hito 0.2): la diplomacia y el mercado van contra la copia de la facción en esta partida.
+    await asegurarMundoDePartida(prisma, saveId);
+    const targetFaction = await prisma.faction.findFirstOrThrow({ where: { saveId, slug: 'clan-helsig' } });
     targetFactionSlug = targetFaction.slug;
     targetFactionId = targetFaction.id;
   });
@@ -349,15 +353,18 @@ describe('POST /saves/:id/reino/mercado/comprar y /vender', () => {
       },
     });
     saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
     await prisma.building.create({
       data: { saveId, locationId: hondonada.id, recipeKey: 'ayuntamiento', name: 'x', kind: 'ayuntamiento', description: 'x', status: 'ACTIVO', tier: 1 },
     });
     const app = await buildApp();
     await app.inject({ method: 'POST', url: `/saves/${saveId}/reino/fundar`, payload: { kingdomName: 'Reino de Prueba Mercado' } });
-    const sourceFaction = await prisma.faction.findFirstOrThrow({ where: { saveId } });
+    const sourceFaction = await prisma.faction.findFirstOrThrow({ where: { saveId, origenSlug: null } });
     sourceFactionId = sourceFaction.id;
 
-    const targetFaction = await prisma.faction.findFirstOrThrow({ where: { worldId, slug: 'clan-helsig' } });
+    // CR-7 (hito 0.2): la diplomacia y el mercado van contra la copia de la facción en esta partida.
+    await asegurarMundoDePartida(prisma, saveId);
+    const targetFaction = await prisma.faction.findFirstOrThrow({ where: { saveId, slug: 'clan-helsig' } });
     targetFactionSlug = targetFaction.slug;
     targetFactionId = targetFaction.id;
   });
@@ -505,15 +512,18 @@ describe('GET /saves/:id/reino/mercado/:targetFactionSlug', () => {
       },
     });
     saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
     await prisma.building.create({
       data: { saveId, locationId: hondonada.id, recipeKey: 'ayuntamiento', name: 'x', kind: 'ayuntamiento', description: 'x', status: 'ACTIVO', tier: 1 },
     });
     const app = await buildApp();
     await app.inject({ method: 'POST', url: `/saves/${saveId}/reino/fundar`, payload: { kingdomName: 'Reino de Prueba Catálogo' } });
-    const sourceFaction = await prisma.faction.findFirstOrThrow({ where: { saveId } });
+    const sourceFaction = await prisma.faction.findFirstOrThrow({ where: { saveId, origenSlug: null } });
     sourceFactionId = sourceFaction.id;
 
-    const targetFaction = await prisma.faction.findFirstOrThrow({ where: { worldId, slug: 'clan-helsig' } });
+    // CR-7 (hito 0.2): la diplomacia y el mercado van contra la copia de la facción en esta partida.
+    await asegurarMundoDePartida(prisma, saveId);
+    const targetFaction = await prisma.faction.findFirstOrThrow({ where: { saveId, slug: 'clan-helsig' } });
     targetFactionSlug = targetFaction.slug;
     targetFactionId = targetFaction.id;
   });
@@ -539,6 +549,8 @@ describe('GET /saves/:id/reino/mercado/:targetFactionSlug', () => {
       update: { type: 'TRATADO_COMERCIAL', presion: 30 },
       create: { worldId, sourceFactionId, targetFactionId, type: 'TRATADO_COMERCIAL', presion: 30 },
     });
+    // La copia de la partida trae el almacén del catálogo (CR-7): se parte de vacío.
+    await prisma.almacenItem.deleteMany({ where: { factionId: targetFactionId } });
     // 2 filas del MISMO catalogSlug — deben agruparse en 1 item con stock: 2, no 2 items sueltos.
     await prisma.almacenItem.createMany({
       data: [

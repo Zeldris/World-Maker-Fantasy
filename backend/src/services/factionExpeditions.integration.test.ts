@@ -2,7 +2,8 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { prisma } from '../lib/prisma.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
-import { advanceFactionExpeditions } from './factionExpeditions.js';
+import { advanceFactionExpeditions, avanzarExpedicionesDePartida } from './factionExpeditions.js';
+import { asegurarMundoDePartida } from './mundoPartida.js';
 import { REGION_OWNING_FACTIONS } from './reputation.js';
 import { detectNpcsInScene } from './npcScene.js';
 
@@ -332,5 +333,90 @@ describe('advanceFactionExpeditions — intercepción con combate (Fase 13-C)', 
     const r = await advanceFactionExpeditions(prisma, () => 0);
     expect(r.interceptadas).toBe(0);
     expect((await propias())[0]!.interceptacion).toBeNull();
+  }, 60_000);
+});
+
+/// CR-7 (hito 0.2): las expediciones de las copias de una partida avanzan con SU reloj; sus muertes
+/// van a `NpcState.muerto` de esa partida (el NPC sigue vivo en otra) y el Libro y las noticias solo
+/// llegan a ella.
+describe('avanzarExpedicionesDePartida — por partida (CR-7)', () => {
+  const REGION = 'Las Llanuras del Viento Rojo';
+  const bloque = (v: number) => ({ fuerza: v, destreza: v, constitucion: v, inteligencia: v, voluntad: v, carisma: v, magia: v });
+  const tiradaBajaLuegoAlta = () => { let n = 0; return () => (n++ === 0 ? 0.1 : 0.99); };
+  const DIA = 5;
+  let worldId: string;
+  let a: string;
+  let b: string;
+  let duenosOriginales: string[];
+  let npcSnapshot: { id: string; attributes: unknown; level: number }[] = [];
+  let progresoSnapshot: Awaited<ReturnType<typeof prisma.npcProfessionProgress.findMany>> = [];
+
+  const crear = async (nombre: string) => {
+    const save = await prisma.save.create({
+      data: {
+        userId: await getDefaultUserId(), worldId, characterName: nombre, characterArchetype: 'guerrero', characterOrigin: 'x', characterMotivation: 'x',
+        attributes: bloque(10), portraitInitial: 'P',
+        worldState: { create: { fictionalMinutes: DIA * 1440 + 30, factionsStatus: { 'Clan Serhu': 0 } } },
+      },
+    });
+    return save.id;
+  };
+
+  beforeAll(async () => {
+    worldId = (await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } })).id;
+    npcSnapshot = await prisma.npc.findMany({ where: { worldId, faction: { in: ['Clan Serhu', 'Feg Ger'] } }, select: { id: true, attributes: true, level: true } });
+    progresoSnapshot = await prisma.npcProfessionProgress.findMany({ where: { npc: { worldId } } });
+    duenosOriginales = REGION_OWNING_FACTIONS[REGION]!;
+    REGION_OWNING_FACTIONS[REGION] = ['Clan Serhu', 'Feg Ger'];
+    a = await crear('Expediciones por partida A');
+    b = await crear('Expediciones por partida B');
+    await asegurarMundoDePartida(prisma, a);
+    await asegurarMundoDePartida(prisma, b);
+    // Relación en guerra entre las copias de A (riesgo 50 %) y línea base del día anterior.
+    const serhu = await prisma.faction.findFirstOrThrow({ where: { saveId: a, origenSlug: 'clan-serhu' } });
+    const feg = await prisma.faction.findFirstOrThrow({ where: { saveId: a, origenSlug: 'feg-ger' } });
+    await prisma.factionRelation.upsert({
+      where: { sourceFactionId_targetFactionId: { sourceFactionId: serhu.id, targetFactionId: feg.id } },
+      update: { presion: 85, type: 'GUERRA' }, create: { worldId, saveId: a, sourceFactionId: serhu.id, targetFactionId: feg.id, presion: 85, type: 'GUERRA' },
+    });
+    await prisma.kingdomStats.updateMany({ where: { faction: { saveId: a } }, data: { ultimoDiaExpedicion: DIA - 1 } });
+    // Guardias de Serhu débiles frente a Feg Ger: caen siempre.
+    await prisma.npc.updateMany({ where: { worldId, faction: 'Clan Serhu' }, data: { attributes: bloque(4), level: 1 } });
+    await prisma.npc.updateMany({ where: { worldId, faction: 'Feg Ger' }, data: { attributes: bloque(18), level: 1 } });
+  });
+
+  afterAll(async () => {
+    REGION_OWNING_FACTIONS[REGION] = duenosOriginales;
+    for (const n of npcSnapshot) await prisma.npc.update({ where: { id: n.id }, data: { attributes: n.attributes as object, level: n.level } });
+    for (const p of progresoSnapshot) await prisma.npcProfessionProgress.update({ where: { id: p.id }, data: { nivel: p.nivel, xp: p.xp } });
+    await prisma.save.deleteMany({ where: { id: { in: [a, b] } } });
+  });
+
+  it('lanza en la copia de la partida; la intercepción mata en esa partida y no en otra ni en el mundo', async () => {
+    const r1 = await avanzarExpedicionesDePartida(prisma, worldId, a, DIA, () => 0.99);
+    expect(r1.lanzadas).toBeGreaterThan(0);
+    const exp = await prisma.expedicion.findFirstOrThrow({ where: { saveId: a, faction: { origenSlug: 'clan-serhu' } }, include: { members: true } });
+    expect(exp).toMatchObject({ status: 'EN_TRANSITO', riesgo: 50 });
+    expect(await prisma.expedicion.count({ where: { saveId: b } })).toBe(0);
+    expect(await prisma.suceso.count({ where: { saveId: a, tipo: 'EXPEDICION_SALE' } })).toBeGreaterThan(0);
+    expect(await prisma.suceso.count({ where: { saveId: b, tipo: 'EXPEDICION_SALE' } })).toBe(0);
+
+    const guardiaIds = exp.members.filter((m) => m.rol === 'guardia').map((m) => m.npcId);
+    expect(guardiaIds.length).toBeGreaterThan(0);
+    const r2 = await avanzarExpedicionesDePartida(prisma, worldId, a, DIA + 1, tiradaBajaLuegoAlta(), { probabilidadMuerte: 1 });
+    expect(r2.interceptadas).toBe(1);
+    expect(r2.muertes).toBeGreaterThanOrEqual(guardiaIds.length);
+
+    const muertosA = await prisma.npcState.findMany({ where: { saveId: a, npcId: { in: guardiaIds }, muerto: true } });
+    expect(muertosA).toHaveLength(guardiaIds.length);
+    expect(await prisma.npcState.count({ where: { saveId: b, npcId: { in: guardiaIds }, muerto: true } })).toBe(0);
+    const npcs = await prisma.npc.findMany({ where: { id: { in: guardiaIds } }, select: { muertoEnMundo: true } });
+    expect(npcs.every((n) => !n.muertoEnMundo)).toBe(true);
+
+    const objetivo = await prisma.npc.findUniqueOrThrow({ where: { id: guardiaIds[0]! } });
+    const escena = async (sid: string) =>
+      (await detectNpcsInScene({ action: `Hablo con ${objetivo.name}`, worldId, sessionFacts: [], saveId: sid, currentLocationId: null, fictionalMinutes: 480 })).map((n) => n.slug);
+    expect(await escena(a)).not.toContain(objetivo.slug);
+    expect(await escena(b)).toContain(objetivo.slug);
   }, 60_000);
 });

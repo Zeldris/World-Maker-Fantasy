@@ -2,6 +2,7 @@ import { registrarSuceso, type NuevoSuceso } from './cronista/sucesos.js';
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { appendSessionFacts, loadSessionFacts } from './worldFacts.js';
 import { stageForPresion, typeForPresion } from './factionRelations.js';
+import { ambitoFacciones, ambitoPoblacion, type FiltroFacciones, type FiltroPoblacion } from './mundoPartida.js';
 
 /// Canal WORLD (Grupo 3 § Mundo determinista, docs/rpgtarkor/lore-mundo/mundo-determinista.md, 2026-08-25):
 /// hasta ahora `STAGE_FACTS` solo alimentaba `sessionFacts` (contexto invisible del Narrador) — el
@@ -43,7 +44,7 @@ const POBLACION_PERDIDA_POR_ETAPA = 20;
 const HELSIG_TARGET_SLUG = 'orcos-cristal-helado';
 const GOSHG_TARGET_SLUG = 'orcos-cienaga';
 
-const CONFLICTO_ID = 'conflicto-serhu-concordia-vs-helsig-goshg';
+export const CONFLICTO_ID = 'conflicto-serhu-concordia-vs-helsig-goshg';
 
 /// Narración de cada etapa cruzada (índice = etapa nueva, la 0 nunca se narra — es el estado de
 /// partida, silencioso). El Narrador la recibe como hecho de mundo (`appendSessionFacts`), no como
@@ -142,9 +143,10 @@ export function presionMinimaDeEtapa(stage: number): number {
 type RelacionesClient = Pick<PrismaClient, 'factionRelation' | 'faction'>;
 
 /// Etapa del conflicto por región desde las relaciones reales; región ausente = sin relación en BD.
-export async function stagesConflictoPorRegion(db: RelacionesClient, worldId: string): Promise<Map<string, number>> {
+/// CR-6: `facciones` = las de la partida (`ambitoFacciones`) o las del catálogo.
+export async function stagesConflictoPorRegion(db: RelacionesClient, facciones: FiltroFacciones): Promise<Map<string, number>> {
   const relaciones = await db.factionRelation.findMany({
-    where: { worldId, sourceFaction: { name: AGRESOR_FACCION, saveId: null }, targetFaction: { name: { in: Object.values(REGION_DEFENSOR) }, saveId: null } },
+    where: { sourceFaction: { ...facciones, name: AGRESOR_FACCION }, targetFaction: { ...facciones, name: { in: Object.values(REGION_DEFENSOR) } } },
     select: { presion: true, targetFaction: { select: { name: true } } },
   });
   const porRegion = new Map<string, number>();
@@ -156,17 +158,17 @@ export async function stagesConflictoPorRegion(db: RelacionesClient, worldId: st
 }
 
 /// Control actual de una región: de su relación real si existe; si no, de la agenda (como antes).
-export async function regionControlActual(db: RelacionesClient, worldId: string, region: string, agenda: AgendaEntry[], duenoOriginal: string): Promise<RegionControlState> {
+export async function regionControlActual(db: RelacionesClient, facciones: FiltroFacciones, region: string, agenda: AgendaEntry[], duenoOriginal: string): Promise<RegionControlState> {
   if (!REGION_DEFENSOR[region]) return regionControlFor(region, agenda, duenoOriginal);
-  const stage = (await stagesConflictoPorRegion(db, worldId)).get(region);
+  const stage = (await stagesConflictoPorRegion(db, facciones)).get(region);
   return stage === undefined ? regionControlFor(region, agenda, duenoOriginal) : regionControlDesdeStage(region, stage, duenoOriginal);
 }
 
 /// Sube (nunca baja) la presión de Serhu→Helsig y Serhu→Goshg hasta el mínimo de `stage`.
-export async function sincronizarRelacionesConflicto(db: RelacionesClient, worldId: string, stage: number): Promise<void> {
+export async function sincronizarRelacionesConflicto(db: RelacionesClient, facciones: FiltroFacciones, stage: number): Promise<void> {
   const minima = presionMinimaDeEtapa(stage);
   const relaciones = await db.factionRelation.findMany({
-    where: { worldId, presion: { lt: minima }, sourceFaction: { name: AGRESOR_FACCION, saveId: null }, targetFaction: { name: { in: Object.values(REGION_DEFENSOR) }, saveId: null } },
+    where: { presion: { lt: minima }, sourceFaction: { ...facciones, name: AGRESOR_FACCION }, targetFaction: { ...facciones, name: { in: Object.values(REGION_DEFENSOR) } } },
     select: { id: true },
   });
   for (const r of relaciones) {
@@ -191,30 +193,26 @@ export function advanceEntry(entry: AgendaEntry, fictionalMinutes: number): { en
   return { entry: current, stagesCrossed };
 }
 
-type TxClient = Pick<PrismaClient, 'worldPopulation'>;
+type TxClient = Prisma.TransactionClient;
 
 /// Resta `amount` sin bajar de 0 — mismo criterio atómico que `decrementPopulationOnDeath`
 /// (population.ts), en dos pasos porque aquí la cantidad no es fija (puede superar lo que queda si
 /// se cruzan varias etapas de golpe con población ya mermada).
-async function depleteClanPopulation(tx: TxClient, worldId: string, targetSlug: string, amount: number): Promise<void> {
+/// CR-6: la agenda es de cada partida (`WorldState.agenda`), así que resta de su población.
+async function depleteClanPopulation(tx: TxClient, poblacion: FiltroPoblacion, targetSlug: string, amount: number): Promise<void> {
   if (amount <= 0) return;
   const result = await tx.worldPopulation.updateMany({
-    // CR-6: la agenda sigue siendo del mundo (pasa a cada partida con CR-7): filas de catálogo.
-    where: { worldId, saveId: null, targetType: 'RAZA', targetSlug, poblacion: { gte: amount } },
+    where: { ...poblacion, targetType: 'RAZA', targetSlug, poblacion: { gte: amount } },
     data: { poblacion: { decrement: amount } },
   });
   if (result.count === 0) {
     await tx.worldPopulation.updateMany({
-      where: { worldId, saveId: null, targetType: 'RAZA', targetSlug, poblacion: { gt: 0 } },
+      where: { ...poblacion, targetType: 'RAZA', targetSlug, poblacion: { gt: 0 } },
       data: { poblacion: 0 },
     });
   }
 }
 
-/// Llamado desde el tick periódico de fondo (worldTick.ts), igual que `growAllPopulations`. Solo
-/// toca la partida jugable real de hoy (`characterName === 'Gorhorn'`, mismo criterio que
-/// `classAbilityUnlocksFor`) — siembra la agenda inicial si está vacía (partidas ya en curso antes
-/// de que esto existiera) y avanza cualquier etapa ya vencida.
 type SucesoDeEtapa = Omit<NuevoSuceso, 'saveId' | 'fictionalMinutes' | 'origen'>;
 const faccion = (slug: string, papel: 'AUTOR' | 'VICTIMA' | 'AFECTADO') => ({ entidadTipo: 'FACCION' as const, entidadId: slug, papel });
 
@@ -239,75 +237,80 @@ export function sucesosDeEtapaConflicto(etapa: number): SucesoDeEtapa[] {
   }
 }
 
-export async function advanceWorldAgenda(prisma: PrismaClient): Promise<{ statesAdvanced: number; stagesCrossed: number }> {
-  const states = await prisma.worldState.findMany({
-    where: { save: { characterName: 'Gorhorn', endedAt: null } },
-    select: { id: true, saveId: true, agenda: true, fictionalMinutes: true, fictionalDateLabel: true, save: { select: { worldId: true } } },
-  });
+const SELECT_ESTADO_AGENDA = { id: true, saveId: true, agenda: true, fictionalMinutes: true, fictionalDateLabel: true, save: { select: { worldId: true } } } as const;
+type EstadoAgenda = Prisma.WorldStateGetPayload<{ select: typeof SELECT_ESTADO_AGENDA }>;
+/// Solo la partida jugable real de hoy (`characterName === 'Gorhorn'`) y viva.
+const PARTIDA_CON_AGENDA = { characterName: 'Gorhorn', endedAt: null } as const;
 
-  let statesAdvanced = 0;
+/// CR-7 (hito 0.2): la agenda de UNA partida, desde su avance diario (`avanceDiario.ts`). Solo la
+/// partida jugable real de hoy (`characterName === 'Gorhorn'`, mismo criterio que
+/// `classAbilityUnlocksFor`) — siembra la agenda inicial si está vacía (partidas ya en curso antes
+/// de que esto existiera) y avanza cualquier etapa ya vencida.
+export async function avanzarAgendaDePartida(prisma: PrismaClient, saveId: string): Promise<{ advanced: boolean; stagesCrossed: number }> {
+  const state = await prisma.worldState.findFirst({ where: { saveId, save: PARTIDA_CON_AGENDA }, select: SELECT_ESTADO_AGENDA });
+  return state ? avanzarEstadoDeAgenda(prisma, state) : { advanced: false, stagesCrossed: 0 };
+}
+
+async function avanzarEstadoDeAgenda(prisma: PrismaClient, state: EstadoAgenda): Promise<{ advanced: boolean; stagesCrossed: number }> {
   let totalStagesCrossed = 0;
-
-  for (const state of states) {
-    let agenda = parseAgenda(state.agenda);
-    let needsWrite = false;
-    if (agenda.length === 0) {
-      agenda = initialAgenda(state.fictionalMinutes);
-      needsWrite = true;
-    }
-
-    const facts: string[] = [];
-    let helsigLoss = 0;
-    let goshgLoss = 0;
-    const nextAgenda = agenda.map((entry) => {
-      const { entry: advanced, stagesCrossed } = advanceEntry(entry, state.fictionalMinutes);
-      if (stagesCrossed === 0) return advanced;
-      needsWrite = true;
-      totalStagesCrossed += stagesCrossed;
-      if (entry.id === CONFLICTO_ID) {
-        helsigLoss += POBLACION_PERDIDA_POR_ETAPA * stagesCrossed;
-        goshgLoss += POBLACION_PERDIDA_POR_ETAPA * stagesCrossed;
-        for (let s = entry.stage + 1; s <= advanced.stage; s++) {
-          if (STAGE_FACTS[s]) facts.push(STAGE_FACTS[s]);
-        }
-      }
-      return advanced;
-    });
-
-    // Fase D (hito 0.1) — la etapa de la agenda empuja las relaciones reales (y sincroniza partidas
-    // que ya iban más avanzadas que la relación sembrada); idempotente, solo sube presión.
-    const conflicto = nextAgenda.find((entry) => entry.id === CONFLICTO_ID);
-    if (conflicto) await sincronizarRelacionesConflicto(prisma, state.save.worldId, conflicto.stage);
-
-    if (!needsWrite) continue;
-
-    await prisma.$transaction(async (tx) => {
-      await tx.worldState.update({ where: { id: state.id }, data: { agenda: nextAgenda as unknown as Prisma.InputJsonValue } });
-      await depleteClanPopulation(tx, state.save.worldId, HELSIG_TARGET_SLUG, helsigLoss);
-      await depleteClanPopulation(tx, state.save.worldId, GOSHG_TARGET_SLUG, goshgLoss);
-      // Canal WORLD (ver comentario de cabecera) — una fila por etapa cruzada, mismo texto ya
-      // escrito a mano que recibe sessionFacts, para que el panel "El mundo" cuente lo mismo que ya
-      // sabe el Narrador.
-      for (const fact of facts) {
-        await tx.logEntry.create({
-          data: { saveId: state.saveId, channel: 'WORLD', text: fact, timeLabel: state.fictionalDateLabel, fictionalMinutes: state.fictionalMinutes },
-        });
-      }
-      // Libro de Sucesos (CR-3, hito 0.2): cada etapa cruzada del conflicto, en orden.
-      const previa = agenda.find((entry) => entry.id === CONFLICTO_ID)?.stage ?? 0;
-      for (let etapa = previa + 1; etapa <= (conflicto?.stage ?? previa); etapa++) {
-        for (const suceso of sucesosDeEtapaConflicto(etapa)) {
-          await registrarSuceso(tx, { ...suceso, saveId: state.saveId, fictionalMinutes: state.fictionalMinutes, origen: 'MUNDO' });
-        }
-      }
-    });
-
-    if (facts.length > 0) {
-      const existing = await loadSessionFacts(state.saveId);
-      await appendSessionFacts(state.saveId, existing, facts);
-    }
-    statesAdvanced += 1;
+  let agenda = parseAgenda(state.agenda);
+  let needsWrite = false;
+  if (agenda.length === 0) {
+    agenda = initialAgenda(state.fictionalMinutes);
+    needsWrite = true;
   }
 
-  return { statesAdvanced, stagesCrossed: totalStagesCrossed };
+  const facts: string[] = [];
+  let helsigLoss = 0;
+  let goshgLoss = 0;
+  const nextAgenda = agenda.map((entry) => {
+    const { entry: advanced, stagesCrossed } = advanceEntry(entry, state.fictionalMinutes);
+    if (stagesCrossed === 0) return advanced;
+    needsWrite = true;
+    totalStagesCrossed += stagesCrossed;
+    if (entry.id === CONFLICTO_ID) {
+      helsigLoss += POBLACION_PERDIDA_POR_ETAPA * stagesCrossed;
+      goshgLoss += POBLACION_PERDIDA_POR_ETAPA * stagesCrossed;
+      for (let s = entry.stage + 1; s <= advanced.stage; s++) {
+        if (STAGE_FACTS[s]) facts.push(STAGE_FACTS[s]);
+      }
+    }
+    return advanced;
+  });
+
+  // Fase D (hito 0.1) — la etapa de la agenda empuja las relaciones reales (y sincroniza partidas
+  // que ya iban más avanzadas que la relación sembrada); idempotente, solo sube presión.
+  const conflicto = nextAgenda.find((entry) => entry.id === CONFLICTO_ID);
+  // CR-6: las relaciones y la población de ESTA partida (su copia del mundo).
+  if (conflicto) await sincronizarRelacionesConflicto(prisma, await ambitoFacciones(prisma, state.saveId), conflicto.stage);
+
+  if (!needsWrite) return { advanced: false, stagesCrossed: totalStagesCrossed };
+
+  await prisma.$transaction(async (tx) => {
+    await tx.worldState.update({ where: { id: state.id }, data: { agenda: nextAgenda as unknown as Prisma.InputJsonValue } });
+    const poblacion = await ambitoPoblacion(tx, state.saveId);
+    await depleteClanPopulation(tx, poblacion, HELSIG_TARGET_SLUG, helsigLoss);
+    await depleteClanPopulation(tx, poblacion, GOSHG_TARGET_SLUG, goshgLoss);
+    // Canal WORLD (ver comentario de cabecera) — una fila por etapa cruzada, mismo texto ya
+    // escrito a mano que recibe sessionFacts, para que el panel "El mundo" cuente lo mismo que ya
+    // sabe el Narrador.
+    for (const fact of facts) {
+      await tx.logEntry.create({
+        data: { saveId: state.saveId, channel: 'WORLD', text: fact, timeLabel: state.fictionalDateLabel, fictionalMinutes: state.fictionalMinutes },
+      });
+    }
+    // Libro de Sucesos (CR-3, hito 0.2): cada etapa cruzada del conflicto, en orden.
+    const previa = agenda.find((entry) => entry.id === CONFLICTO_ID)?.stage ?? 0;
+    for (let etapa = previa + 1; etapa <= (conflicto?.stage ?? previa); etapa++) {
+      for (const suceso of sucesosDeEtapaConflicto(etapa)) {
+        await registrarSuceso(tx, { ...suceso, saveId: state.saveId, fictionalMinutes: state.fictionalMinutes, origen: 'MUNDO' });
+      }
+    }
+  });
+
+  if (facts.length > 0) {
+    const existing = await loadSessionFacts(state.saveId);
+    await appendSessionFacts(state.saveId, existing, facts);
+  }
+  return { advanced: true, stagesCrossed: totalStagesCrossed };
 }
