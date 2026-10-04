@@ -1123,7 +1123,17 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     - **Resumen de varios días** (`agruparNoticias`, también `UX-31`): si el avance diario simula 2
       días o más, lo que haya llegado a «El mundo» en ese avance se junta en una sola entrada
       «Mientras pasaban los días…» con una línea por noticia. Desplegarla bonita es de `UX-38`.
-    **Falta:** las oportunidades con plazo.
+    **Falta:** las oportunidades con plazo. Decisión de la usuaria (Q14, 2026-10-04): ahora solo
+    las que se apoyan en mecánicas que ya existen: **campo de batalla** tras una escaramuza (botín
+    y un herido al que «Ayudar», opción nueva, o rematar), **asalto a la caravana** (combate) y
+    **encargo de materiales** tras un incendio o crecida (entrega a un NPC de la facción, con
+    reputación). Lo que no tiene mecánica va a su tarea: comerciar con la caravana → comercio de
+    volumen (Fase G del 0.2); informante o recluta tras el malestar → `CR-32`; audiencia del
+    visitante ilustre → `REI-117`. Plaga y auge ya cambian la caza solos (la zona sale de la
+    población).
+    - ✅ **«Ayudar»** (2026-10-04, `services/ayudarNpc.ts`): opción del menú de un NPC GRAVE o
+      CONVALECIENTE (también sin `interactionTypes`): pasa a HERIDO, +60 de reputación con su facción
+      y `AYUDA_PRESTADA` en el Libro. `REGALO` guarda ya la categoría del objeto (para el encargo).
 - **CR-13** Nacimientos notables y generador de nombres (§ 12.3). **M** Incluye el efecto `crearNpc`
   en `efectos.ts` (CR-9).
 - **Hecho cuando:** `cronista:simular 60` produce caídas, escisiones, tormentas con daños, guerras
@@ -1136,6 +1146,10 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
 - **CR-16** Recuerdos de NPC (§ 8.3). **S** Incluye las reacciones de CR-10: `recuerdo(testigos,
   jugador, −6)` tras una muerte causada y `recuerdo(víctima, jugador, +5)` tras un perdón.
 - **CR-17** Buscadores de historias e hilos (§ 7.4). **M**
+- **CR-32** Reclutamiento pacífico e informantes (usuaria, 2026-10-04, Q14 de `CR-12`): convencer a
+  un NPC sin pelear (tirada de persuasión según si le gusta lo que dices; idea de la usuaria del
+  2026-09-06) para que se una al Reino o te pase información de su facción. Abre la oportunidad
+  del malestar interno del narrador de fondo (un descontento se ofrece). **M**
 - **Hecho cuando:** matar al hermano de un NPC abre un hilo de venganza y el vengador aparece;
   un compañero se queja y acaba yéndose si se le contraría repetidamente.
 

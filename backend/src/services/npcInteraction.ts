@@ -18,11 +18,16 @@ export interface NpcInteractionOptionsParams {
 
 const CONDICIONES_CAPTURABLES = new Set(['GRAVE', 'CONVALECIENTE']);
 
+/// CR-12: un malherido tiene menú aunque no tenga `interactionTypes` (para poder ayudarle).
+export function estaMalherido(npc: Pick<NpcInScene, 'condicionFisica'>): boolean {
+  return CONDICIONES_CAPTURABLES.has(npc.condicionFisica);
+}
+
 /// Opciones del menú contextual para este NPC concreto, en el orden en que deben mostrarse.
 /// `[]` no debería ocurrir en la práctica (el caller ya exige `interactionTypes.length > 0` antes
 /// de llamar aquí), pero la función no asume eso por sí misma.
 export function opcionesDisponiblesPara(npc: NpcInScene, params: NpcInteractionOptionsParams): string[] {
-  if (npc.interactionTypes.length === 0) return [];
+  if (npc.interactionTypes.length === 0 && !estaMalherido(npc)) return [];
 
   const opciones: string[] = ['Charlar'];
 
@@ -40,6 +45,10 @@ export function opcionesDisponiblesPara(npc: NpcInScene, params: NpcInteractionO
   // tiradas de convencimiento según si al NPC "le gusta lo que dices") queda para una pieza futura
   // que diseñe esa mecánica de persuasión de cero — no existe todavía ninguna habilidad de utilidad
   // de ese tipo en el catálogo.
+  // Ayudar (CR-12, 2026-10-04): atender a un malherido (p. ej. el herido de un campo de batalla del
+  // narrador de fondo) para que vuelva con los suyos; su facción lo agradece (`ayudarNpc.ts`).
+  if (CONDICIONES_CAPTURABLES.has(npc.condicionFisica)) opciones.push('Ayudar');
+
   if (CONDICIONES_CAPTURABLES.has(npc.condicionFisica) && npc.capturable) {
     opciones.push('Reclutar');
   }

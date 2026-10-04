@@ -145,7 +145,7 @@ export async function entregaRoutes(app: FastifyInstance) {
             { entidadTipo: 'PERSONAJE', entidadId: save.id, papel: 'AUTOR' },
             { entidadTipo: 'NPC', entidadId: npc.id, papel: 'BENEFICIARIO' },
           ],
-          datos: { personaje: save.characterName, a: npc.name, objeto: { nombre: item.name } },
+          datos: { personaje: save.characterName, a: npc.name, objeto: { nombre: item.name, ...(catalog?.category ? { categoria: catalog.category } : {}) } },
         });
         return entrada;
       });

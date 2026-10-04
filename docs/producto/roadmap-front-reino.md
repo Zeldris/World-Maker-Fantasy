@@ -217,6 +217,7 @@ pausada visualmente detrás. 🧭 **M**
 |---|---|---|---|
 | REI-90 | **Registro de reino dentro del panel** (hoy `kingdomLog` solo en el panel "El mundo" con el botón Reino), con filtros (construcción, producción, población, diplomacia). | ✅ | S |
 | REI-91 | **Hitos del reino** como línea de tiempo: fundación, primer territorio consolidado, mejoras del Ayuntamiento, tratados. | ✅/🛠️ | M |
+| REI-117 | **Audiencias** (usuaria, 2026-10-04, Q14 de `CR-12`): un visitante ilustre pide audiencia en el Reino y la jugadora elige qué sacar de ella (un tratado, un regalo, información, reputación). Abre la oportunidad del `VISITANTE_ILUSTRE` del narrador de fondo, que hoy solo sube la felicidad. | 🛠️ | M |
 
 ---
 
@@ -277,7 +278,7 @@ mecánicas; casi todas ya se calculan):
 | **R-A · Arreglos** ✅ 2026-10-02 | REI-110…116, REI-33 (reactivar/borrar órdenes), REI-40/41 (almacén agrupado con topes) | Errores y fricciones visibles hoy, solo front. **Hecha entera**; pendientes que pasan a R-B: editar el *modo* de una orden (🔌), icono y categoría por recurso del Almacén (🔌). |
 | **R-B · Saber y prever** | REI-1, REI-10…12, REI-14, REI-15 (🧭), REI-24 (🔌), REI-31, REI-43, REI-61, REI-63, REI-71 | El salto grande de información, casi todo solo front. |
 | **R-C · Por qué se para** | Exponer `ResultadoOrden` y `xpPorOficio` → REI-30, REI-35, REI-37 | Lo que más ayuda a gestionar la producción. |
-| **R-D · Gestionar todo** | REI-16, REI-21, REI-22, REI-23, REI-25, REI-26, REI-32, REI-34, REI-42, REI-50…54 (REI-53/54 cuando existan los súbditos mínimos), REI-70, REI-72, REI-80…83, REI-90 | Que ninguna gestión necesite texto libre. |
+| **R-D · Gestionar todo** | REI-16, REI-21, REI-22, REI-23, REI-25, REI-26, REI-32, REI-34, REI-42, REI-50…54 (REI-53/54 cuando existan los súbditos mínimos), REI-70, REI-72, REI-80…83, REI-90, REI-117 | Que ninguna gestión necesite texto libre. |
 | **R-E · Vida y estilo** | REI-100…106, REI-60, REI-62, REI-73, REI-91 | Dinamismo y estética propia. |
 | **R-F · Grandes vistas** | REI-20 (plano), REI-36 (red), REI-44 (uso de cada recurso, va con la red), REI-74 (matriz de relaciones, con `MOD-31`), REI-13 (tendencias), REI-2 (pantalla completa) | Las más vistosas y las más caras. |
 | **Futuro** | Súbditos completos (REI-53/54), Defensa/Escuadrones | Dependen de diseño y backend aún abiertos. |
