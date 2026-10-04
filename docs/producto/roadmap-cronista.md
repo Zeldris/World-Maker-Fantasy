@@ -926,8 +926,15 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   **Paso 3a hecho (2026-10-04):** `npcVivoEnPartida(saveId)` / `npcsMuertosEnPartida`: todo lo que
   lista NPC (escena, encuentros ambientales y de viaje, objetivos de misión, mapa y colisiones de
   zona) excluye también los muertos fuera de escena en esa partida (`NpcState.muerto`), además de
-  `muertoEnMundo`. **Falta:** expediciones de la partida (que marquen `NpcState.muerto` en vez de
-  `muertoEnMundo`), mercado y relaciones jugador↔facción contra la copia, y llamar al avance diario
+  `muertoEnMundo`. **Paso 3b hecho (2026-10-04): expediciones por partida.** `factionExpeditions.ts`
+  recibe el ámbito (`saveId`, o null = catálogo) en toda la cadena: lanzar (copias, NPC vivos en la
+  partida, protegidos y población de la partida, `Expedicion.saveId`), llegar e interceptar (facción
+  hostil = copia; muertes en `NpcState.muerto` de la partida, no `muertoEnMundo`; relación con
+  `saveId`), volver; Libro de Sucesos y noticias solo en esa partida. `avanzarExpedicionesDePartida`
+  va en el avance diario y `worldTick` ya no lanza expediciones (el catálogo es plantilla).
+  `advanceFactionExpeditions` queda para el catálogo (lo usan sus tests). Test: muerte en una
+  partida, vivo en otra y en el mundo. **Falta:** mercado y relaciones jugador↔facción contra la
+  copia (y entonces sacar la economía del catálogo de `worldTick`), y llamar al avance diario
   también al resolver tránsitos y al moverse por la zona.
 - **CR-8** Script de migración (§ 16). **M**
 - **Hecho cuando:** dos partidas del mismo mundo divergen (una mata a un NPC, la otra no lo ve);

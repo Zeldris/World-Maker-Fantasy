@@ -4,12 +4,13 @@
 // vez, con tope de `MAX_DIAS_POR_LLAMADA` por llamada (un viaje muy largo se completa en las
 // siguientes).
 //
-// Hoy simula: población de la partida (y su reflejo en el reino de sus facciones), economía de sus
-// facciones (producción, consumo, almacén y decaimiento de presión) y la agenda del conflicto. Las
-// expediciones siguen en `worldTick.ts` sobre el catálogo hasta el siguiente paso de CR-7; el Reino
-// del jugador ya avanza por días en `dailyTick.ts`.
+// Simula: población de la partida (y su reflejo en el reino de sus facciones), economía de sus
+// facciones (producción, consumo, almacén y decaimiento de presión), sus expediciones (con muertes
+// en `NpcState.muerto` de la partida) y la agenda del conflicto. El Reino del jugador ya avanza por
+// días en `dailyTick.ts`.
 import type { PrismaClient } from '@prisma/client';
 import { decaerRelaciones, producirFacciones } from './factionEconomy.js';
+import { avanzarExpedicionesDePartida } from './factionExpeditions.js';
 import { asegurarMundoDePartida } from './mundoPartida.js';
 import { crecerPoblacionDePartida, syncFactionPopulationToKingdomStats } from './population.js';
 import { avanzarAgendaDePartida } from './worldAgenda.js';
@@ -58,6 +59,7 @@ export async function avanzarMundoHasta(
     const resultado = { diasProcesados: 0, semanasDecaidas: 0, depositados: 0 };
     await producirFacciones(prisma, worldId, { saveId, origenSlug: { not: null } }, dia, resultado);
     await decaerRelaciones(prisma, { saveId }, dia, resultado);
+    await avanzarExpedicionesDePartida(prisma, worldId, saveId, dia, random);
     // La agenda lleva sus propias transacciones y avanza por umbrales de tiempo (no por día).
     await avanzarAgendaDePartida(prisma, saveId);
   }
