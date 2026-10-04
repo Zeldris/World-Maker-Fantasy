@@ -4,11 +4,10 @@
 cada tipo de tarea. Petición de la usuaria (2026-10-04), tras revisar
 [mattpocock/skills](https://github.com/mattpocock/skills).
 
-**De momento `.claude/` sigue fuera de git** (decisión de la usuaria, 2026-10-04): las skills solo
-existen donde se hayan copiado a `.claude/skills/`. Esta guía es la referencia que vale en cualquier
-sesión. Si una skill no está cargada, se sigue su descripción de aquí. Para copiarlas: `git clone
-https://github.com/mattpocock/skills` y copiar las carpetas de la tabla (sin `agents/`) a
-`.claude/skills/`; la de `selector` es la tabla de abajo.
+**`.claude/` sigue en el `.gitignore`, pero `.claude/skills/` está versionado** (decisión de la
+usuaria, 2026-10-04: subir las skills junto con lo que vaya a `main`). Git sigue los archivos ya
+añadidos aunque la carpeta esté ignorada; una skill **nueva** se añade con
+`git add -f .claude/skills/<nombre>`. Si una skill no está cargada, se sigue su descripción de aquí.
 
 ## Cómo se usa
 
