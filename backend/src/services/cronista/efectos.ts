@@ -22,6 +22,7 @@ import type { CondicionFisica, OrigenSuceso, Prisma, TerritoryControl, ZonePoint
 import { scopeFor } from '../npcScene.js';
 import { generarNombre, type Genero } from './nombres.js';
 import { atributosSinPadres, heredarAtributos, type Atributos } from './herencia.js';
+import { atributosPorEdad, cicloVital, edadEnAnios, esAdulto, MINUTOS_POR_ANIO, nacidoEnDe } from './edades.js';
 import { stripRegionArticle } from '../population.js';
 import { slugify } from '../../lib/slugify.js';
 import { recordFactionEvent, type FactionEventType } from '../factionRelations.js';
@@ -584,21 +585,26 @@ async function crearNpc(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'crearNpc' }>
     where: { worldId: ctx.worldId, kind: 'PRINCIPAL', raza: faccion.raza, ...deLaPartida },
     orderBy: { slug: 'asc' },
   });
-  const deSuFaccion = conNombre.filter((n) => n.faction === faccion.name);
+  // CR-13 13b: solo adultos pueden ser padres.
+  const adultos = conNombre.filter((n) => esAdulto(n.raza, edadEnAnios(nacidoEnDe(n), ctx.fictionalMinutes)));
+  const deSuFaccion = adultos.filter((n) => n.faction === faccion.name);
   const elegir = <T>(l: T[]) => (l.length === 0 ? null : l[Math.floor(random() * l.length)]!);
   const padre = elegir(deSuFaccion.filter((n) => n.genero === 'M'));
   const madre = elegir(deSuFaccion.filter((n) => n.genero === 'F'));
-  const base = padre ?? madre ?? elegir(deSuFaccion) ?? elegir(conNombre);
+  const base = padre ?? madre ?? elegir(deSuFaccion) ?? elegir(adultos);
   if (!base) return NO_APLICADO;
 
   const genero: Genero = random() < 0.5 ? 'F' : 'M';
-  const atributos: Atributos = padre && madre
+  const potenciales: Atributos = padre && madre
     ? heredarAtributos(padre.attributes as Atributos, madre.attributes as Atributos, random).atributos
     : atributosSinPadres(base.attributes as Atributos, random);
   const usados = new Set(
     (await ctx.tx.npc.findMany({ where: { worldId: ctx.worldId, ...deLaPartida }, select: { name: true } })).map((n) => n.name.toLowerCase()),
   );
   const nombre = generarNombre(faccion.raza, genero, random, usados);
+  // CR-13 13b: un adulto joven, de la madurez de su raza a 5 años más.
+  const edad = cicloVital(faccion.raza).madurez + Math.floor(random() * 6);
+  const nacidoEn = ctx.fictionalMinutes - edad * MINUTOS_POR_ANIO - Math.floor(random() * MINUTOS_POR_ANIO);
   const padres = padre && madre ? `${padre.name} y ${madre.name}` : undefined;
 
   const npc = await ctx.tx.npc.create({
@@ -613,7 +619,9 @@ async function crearNpc(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'crearNpc' }>
       role: `Joven de ${faccion.name}`,
       genero,
       level: base.level,
-      attributes: atributos,
+      attributes: atributosPorEdad(potenciales, faccion.raza, edadEnAnios(nacidoEn, ctx.fictionalMinutes)),
+      atributosPotenciales: potenciales,
+      nacidoEn,
       bio: `Joven de ${faccion.name} que empieza a hacerse un nombre${padres ? `; ${genero === 'F' ? 'hija' : 'hijo'} de ${padres}` : ''}.`,
       personality: base.personality,
       homeLocationSlug: base.homeLocationSlug,

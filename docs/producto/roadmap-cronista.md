@@ -1188,7 +1188,15 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     con menos de 6, 0,2 si no; enfriamiento 10 días). Categoría de noticia **Gente** (👤) para la
     familia VIDA_MUERTE. Los NPC nacidos en una partida no existen en las demás: `npcVivoEnPartida`
     filtra también por partida y `npcDeLaPartida` acota la Enciclopedia y los descubrimientos.
-    **Queda:** 13b y 13c.
+  - ✅ **13b hecho (2026-10-04):** `cronista/edades.ts` (ciclo vital por raza, edades provisionales
+    deterministas del catálogo, atributos por edad, probabilidad diaria de morir de viejo),
+    `Npc.nacidoEn` y `Npc.atributosPotenciales` (migración `20261005010000_npc_edad`), quien destaca
+    nace adulto joven (madurez a +5 años), solo adultos pueden ser padres, líderes o herederos, y
+    `cronista/envejecer.ts` cada día simulado: los nacidos en la partida ajustan sus atributos a su
+    edad y los NPC con nombre de una facción pueden morir de viejo («Muere X (de viejo).», abre
+    sucesión). **Pendiente:** que los NPC **del catálogo** también pierdan atributos en la vejez
+    necesita atributos por partida (son del mundo, compartidos); con las edades provisionales nadie
+    del catálogo llega a viejo en unos 6 años de ficción (720 días). Va en 13c. **Queda:** 13c.
 - **Hecho cuando:** `cronista:simular 60` produce caídas, escisiones, tormentas con daños, guerras
   y nacimientos coherentes; perdonar a un NPC lo hace volver en otra región.
 

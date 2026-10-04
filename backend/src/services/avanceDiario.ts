@@ -18,6 +18,7 @@ import { avanzarAgendaDePartida } from './worldAgenda.js';
 import { procesarReacciones } from './cronista/reacciones.js';
 import { evaluarConsecuencias } from './cronista/consecuencias.js';
 import { narrarDia } from './cronista/narradorFondo.js';
+import { envejecerDia } from './cronista/envejecer.js';
 import { agruparNoticias, marcaDeNoticias } from './cronista/noticias.js';
 
 export const MAX_DIAS_POR_LLAMADA = 30;
@@ -70,7 +71,11 @@ export async function avanzarMundoHasta(
     await avanzarAgendaDePartida(prisma, saveId);
     // CR-12: el narrador de fondo, una vez por cada día simulado (cada día lo reclama una sola llamada,
     // la que lo simuló arriba).
-    for (let d = desde; d < desde + diasSimulados; d++) await narrarDia(prisma, saveId, d, random);
+    for (let d = desde; d < desde + diasSimulados; d++) {
+      await narrarDia(prisma, saveId, d, random);
+      // CR-13 13b: edad de los nacidos en la partida y muerte de viejo.
+      await envejecerDia(prisma, saveId, d, random);
+    }
   }
   // CR-10: reacciones de lo que haya pasado en el turno o en estos días; CR-11: consecuencias que
   // toquen ahora (días, región), y otra vuelta de reacciones por lo que hayan registrado.

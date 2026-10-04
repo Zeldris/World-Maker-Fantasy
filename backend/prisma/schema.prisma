@@ -2556,6 +2556,12 @@ model Npc {
   /// quienes hereda la «huella» de sus atributos. Null = de padres desconocidos (o del catálogo).
   padreNpcId String?
   madreNpcId String?
+  /// CR-13 13b: minuto de ficción en que nació (negativo = antes del día 0 de la partida). Null en
+  /// el catálogo: su edad es provisional y determinista (`edades.ts`, hasta que Álvaro la fije).
+  nacidoEn   Int?
+  /// CR-13 13b: atributos de adulto de un NPC nacido en la partida; `attributes` son los que cuentan
+  /// hoy según su edad (crecen hasta la madurez, bajan en la vejez). Null en el catálogo.
+  atributosPotenciales Json?
 
   @@index([worldId, slug])
   @@index([saveId])
