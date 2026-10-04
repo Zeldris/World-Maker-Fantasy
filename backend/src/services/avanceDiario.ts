@@ -16,6 +16,7 @@ import { asegurarMundoDePartida } from './mundoPartida.js';
 import { crecerPoblacionDePartida, syncFactionPopulationToKingdomStats } from './population.js';
 import { avanzarAgendaDePartida } from './worldAgenda.js';
 import { procesarReacciones } from './cronista/reacciones.js';
+import { evaluarConsecuencias } from './cronista/consecuencias.js';
 
 export const MAX_DIAS_POR_LLAMADA = 30;
 
@@ -65,8 +66,10 @@ export async function avanzarMundoHasta(
     // La agenda lleva sus propias transacciones y avanza por umbrales de tiempo (no por día).
     await avanzarAgendaDePartida(prisma, saveId);
   }
-  // CR-10: reacciones de lo que haya pasado en el turno o en estos días.
+  // CR-10: reacciones de lo que haya pasado en el turno o en estos días; CR-11: consecuencias que
+  // toquen ahora (días, región), y otra vuelta de reacciones por lo que hayan registrado.
   await procesarReacciones(prisma, saveId, random);
+  if ((await evaluarConsecuencias(prisma, saveId, {}, random)).disparadas > 0) await procesarReacciones(prisma, saveId, random);
   return { diasSimulados };
 }
 
@@ -88,7 +91,11 @@ export function registrarAvanceTrasAcciones(app: FastifyInstance, prisma: Prisma
     const saveId = (request.params as { id?: string } | undefined)?.id;
     if (!saveId) return;
     await avanzarSiCruzaDia(prisma, saveId).catch((err) => console.error('[avanceDiario] error tras la acción:', err));
-    // CR-10: reacciones de lo que haya registrado la acción (si cruzó día, ya se procesaron).
+    // CR-10/CR-11: reacciones de lo que haya registrado la acción y consecuencias que toquen (p. ej.
+    // al llegar a otra región). Si cruzó día, ya se hizo arriba; repetirlo no cambia nada.
     await procesarReacciones(prisma, saveId).catch((err) => console.error('[reacciones] error tras la acción:', err));
+    await evaluarConsecuencias(prisma, saveId)
+      .then((r) => (r.disparadas > 0 ? procesarReacciones(prisma, saveId) : undefined))
+      .catch((err) => console.error('[consecuencias] error tras la acción:', err));
   });
 }

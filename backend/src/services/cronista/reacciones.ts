@@ -5,8 +5,7 @@
 // `registrarSuceso` deja cada suceso en cola (`Suceso.reaccionesPendientes`); `procesarReacciones`
 // la vacía al final del turno, del día o de una acción — nunca dentro de la misma llamada. En
 // anchura, con tope de `TOPE_NIVEL_CASCADA` niveles y `TOPE_SUCESOS_CASCADA` sucesos por llamada: lo
-// que supere el tope queda como `CONSECUENCIA_PERDIDA` hasta que existan las consecuencias aplazadas
-// (CR-11), que lo pasarán al día siguiente.
+// que supere el tope pasa al día siguiente como consecuencia aplazada (`REACCION_APLAZADA`, CR-11).
 //
 // De la tabla de § 7.1 faltan (con su tarea): recuerdos y etiquetas tras una muerte o un perdón
 // (Fase 4), `SUCESION_PENDIENTE`, `DEUDA_DE_VIDA` y `PROMESA_VENCE` (CR-11), la fauna que huye de
@@ -17,6 +16,7 @@ import type { Prisma, PrismaClient } from '@prisma/client';
 import { slugify } from '../../lib/slugify.js';
 import { aplicarEfectos, type CtxEfecto, type Efecto } from './efectos.js';
 import { registrarSuceso, type NuevoSuceso } from './sucesos.js';
+import { dispararPorSuceso } from './consecuencias.js';
 import type { TipoSuceso } from './catalogoSucesos.js';
 
 type Tx = Prisma.TransactionClient;
@@ -146,6 +146,19 @@ export const REACCIONES: Reaccion[] = [
 
 // ─────────────────────────── Cola ───────────────────────────
 
+/// Aplica una reacción a un suceso: sus efectos y los sucesos que registra, un nivel de cascada más abajo.
+export async function ejecutarReaccion(tx: Tx, worldId: string, suceso: SucesoEnCola, r: Reaccion, random: () => number): Promise<void> {
+  const ctx: CtxReaccion = { tx, worldId, suceso, random };
+  const ctxEfecto: CtxEfecto = {
+    tx, saveId: suceso.saveId, worldId, fictionalMinutes: suceso.fictionalMinutes, origen: 'MOTOR',
+    causas: [suceso.id], nivelCascada: suceso.nivelCascada + 1, random,
+  };
+  if (r.efectos) await aplicarEfectos(ctxEfecto, await r.efectos(ctx));
+  for (const d of (await r.registra?.(ctx)) ?? []) {
+    await registrarSuceso(tx, { ...d, saveId: suceso.saveId, fictionalMinutes: suceso.fictionalMinutes, origen: 'MOTOR', causas: [suceso.id], nivelCascada: suceso.nivelCascada + 1 } as NuevoSuceso);
+  }
+}
+
 /// Vacía la cola de reacciones de la partida. Devuelve cuántos sucesos reaccionaron.
 export async function procesarReacciones(prisma: PrismaClient, saveId: string, random: () => number = Math.random, reacciones: Reaccion[] = REACCIONES): Promise<{ procesados: number; aplazados: number }> {
   const save = await prisma.save.findUnique({ where: { id: saveId }, select: { worldId: true } });
@@ -171,31 +184,22 @@ export async function procesarReacciones(prisma: PrismaClient, saveId: string, r
         const ctx: CtxReaccion = { tx, worldId: save.worldId, suceso, random };
         const aplican: Reaccion[] = [];
         for (const r of ordenadas) if (r.escucha.includes(suceso.tipo as TipoSuceso) && (await r.condicion(ctx))) aplican.push(r);
+        // CR-11: consecuencias que esperaban a un suceso de este tipo.
+        await dispararPorSuceso(tx, save.worldId, suceso, random);
         if (aplican.length === 0) return;
 
         if (suceso.nivelCascada >= TOPE_NIVEL_CASCADA || procesados >= TOPE_SUCESOS_CASCADA) {
-          // CR-11 lo convertirá en consecuencia aplazada al día siguiente; hasta entonces queda anotado.
-          for (const r of aplican) {
-            await registrarSuceso(tx, {
-              saveId, tipo: 'CONSECUENCIA_PERDIDA', fictionalMinutes: suceso.fictionalMinutes, origen: 'MOTOR',
-              actores: [], datos: { regla: r.id }, causas: [suceso.id], nivelCascada: suceso.nivelCascada + 1,
-            });
-          }
+          // Pasa del tope: se ejecutará al día siguiente (CR-11).
+          const ctxEfecto: CtxEfecto = { tx, saveId, worldId: save.worldId, fictionalMinutes: suceso.fictionalMinutes, origen: 'MOTOR', causas: [suceso.id], random };
+          await aplicarEfectos(ctxEfecto, aplican.map((r) => ({
+            tipo: 'programarConsecuencia' as const, regla: 'REACCION_APLAZADA', disparo: { tipo: 'DIAS' as const, min: 1, max: 1 }, datos: { sucesoId: suceso.id, reaccionId: r.id },
+          })));
           aplazados += aplican.length;
           return;
         }
 
         procesados++;
-        const ctxEfecto: CtxEfecto = {
-          tx, saveId, worldId: save.worldId, fictionalMinutes: suceso.fictionalMinutes, origen: 'MOTOR',
-          causas: [suceso.id], nivelCascada: suceso.nivelCascada + 1,
-        };
-        for (const r of aplican) {
-          if (r.efectos) await aplicarEfectos(ctxEfecto, await r.efectos(ctx));
-          for (const d of (await r.registra?.(ctx)) ?? []) {
-            await registrarSuceso(tx, { ...d, saveId, fictionalMinutes: suceso.fictionalMinutes, origen: 'MOTOR', causas: [suceso.id], nivelCascada: suceso.nivelCascada + 1 } as NuevoSuceso);
-          }
-        }
+        for (const r of aplican) await ejecutarReaccion(tx, save.worldId, suceso, r, random);
       });
     }
   }

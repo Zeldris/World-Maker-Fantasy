@@ -1014,6 +1014,15 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   - **Lo que ve la jugadora:** las consecuencias de sus actos, insinuadas con una frase al crearse
     («Algo te dice que volverás a ver a *X*.»); las del mundo, ocultas hasta que pasan. Admin ve
     todas. Al caducar, `CONSECUENCIA_PERDIDA` en silencio.
+  🚧 2026-10-04 — **paso 1 hecho (infraestructura):** modelo `Consecuencia` (migración
+  `20261004200000_consecuencias`), efectos `programarConsecuencia` (con aviso opcional en el canal
+  del personaje) y `anularConsecuencia`, `services/cronista/consecuencias.ts` (`registrarRegla`,
+  `evaluarConsecuencias`: caduca lo vencido y dispara por días o por estar en una región;
+  `ENCUENTRO_NPC` por los `npcIds` del momento; `SUCESO` desde la cola de reacciones). Se evalúa
+  tras cada turno, día y acción. Lo que supera el tope de cascada de CR-10 es ya la regla
+  `REACCION_APLAZADA` del día siguiente (vuelve a comprobar su condición). 5 tests de integración.
+  **Falta:** las 4 reglas (`DEUDA_DE_VIDA`, `VENGANZA_PARIENTE` con testigos, `SUCESION_PENDIENTE`,
+  `REFUGIADOS`), los nombres de escisión y la tabla de regiones vecinas.
 - **CR-12** Narrador de fondo con presupuesto, enfriamientos y reglas de facción (§ 7.3);
   agenda Serhu como primera cadena. **L** Al hacerlo, revisar `UX-6` (roadmap-front-ux.md): hoy
   la ambientación se cancela al enviar una acción porque no pesa nada; con contenido real puede

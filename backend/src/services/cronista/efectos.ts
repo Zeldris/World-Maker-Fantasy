@@ -10,8 +10,11 @@
 // Reino del jugador). Los efectos numéricos internos (cohesión) no registran suceso propio: lo
 // registran sus consecuencias (p. ej. `FACCION_CAE`).
 //
-// Pendientes de la tarea que los necesita o crea su modelo: `programarConsecuencia`/
-// `anularConsecuencia` y `ajustarPrecios` (CR-11: hoy no hay precios que ajustar fuera del stock),
+// `programarConsecuencia`/`anularConsecuencia` (CR-11) no registran suceso: lo que queda pendiente
+// no ha pasado todavía (lo registra la regla al dispararse, o `CONSECUENCIA_PERDIDA` al caducar).
+//
+// Pendientes de la tarea que los necesita o crea su modelo: `ajustarPrecios` (cuando haya comercio
+// local; hoy no hay precios que ajustar fuera del stock),
 // `crearNpc` (CR-13, con nacimientos y nombres), `anadirEtiqueta`/`quitarEtiqueta`,
 // `cambiarAprobacion` y `anadirRecuerdo` (Fase 4), `propagarConocimiento` (Fase 5),
 // `abrirHilo`/`cerrarHilo` (buscadores de historias) y `ofrecerMision` (gancho, sin implementar).
@@ -36,7 +39,19 @@ export interface CtxEfecto {
   causas?: string[];
   /// Nivel de cascada de los sucesos que se registren (CR-10).
   nivelCascada?: number;
+  /// Azar (días de un disparo, tiradas); por defecto `Math.random`.
+  random?: () => number;
 }
+
+/// Cuándo puede dispararse una consecuencia aplazada (§ 7.2). `minDias`: no antes de esos días
+/// desde que se programa. `CUALQUIERA_SALVO_ORIGEN`: cualquier región distinta de `origenSlug`.
+export type Disparo =
+  | { tipo: 'DIAS'; min: number; max: number }
+  | { tipo: 'LLEGAR_REGION'; regionSlug: string; origenSlug?: string; minDias?: number }
+  | { tipo: 'ENCUENTRO_NPC'; npcId: string; minDias?: number }
+  | { tipo: 'SUCESO'; tipos: TipoSuceso[] };
+
+export const CUALQUIERA_SALVO_ORIGEN = 'CUALQUIERA_SALVO_ORIGEN';
 
 export type Efecto =
   | { tipo: 'cambiarPresion'; origenSlug: string; destinoSlug: string; evento: FactionEventType }
@@ -53,7 +68,9 @@ export type Efecto =
   | { tipo: 'repararEdificio'; buildingId: string }
   | { tipo: 'cambiarControlTerritorio'; territoryId: string; faccionSlug: string | null; control: TerritoryControl }
   | { tipo: 'crearPuntoZona'; locationId: string; puntoTipo: ZonePointTipo; targetSlug: string; x: number; y: number; cantidad?: number; label?: string }
-  | { tipo: 'retirarPuntoZona'; zonePointId: string };
+  | { tipo: 'retirarPuntoZona'; zonePointId: string }
+  | { tipo: 'programarConsecuencia'; regla: string; disparo: Disparo; datos: Record<string, unknown>; caducaDias?: number; aviso?: string; npcId?: string }
+  | { tipo: 'anularConsecuencia'; regla: string; npcId?: string };
 
 export interface ResultadoEfecto {
   aplicado: boolean;
@@ -107,6 +124,10 @@ export async function aplicarEfecto(ctx: CtxEfecto, e: Efecto): Promise<Resultad
       return crearPuntoZona(ctx, e);
     case 'retirarPuntoZona':
       return retirarPuntoZona(ctx, e);
+    case 'programarConsecuencia':
+      return programarConsecuencia(ctx, e);
+    case 'anularConsecuencia':
+      return anularConsecuencia(ctx, e);
   }
 }
 
@@ -413,5 +434,50 @@ async function crearPuntoZona(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'crearP
 
 async function retirarPuntoZona(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'retirarPuntoZona' }>): Promise<ResultadoEfecto> {
   const r = await ctx.tx.zonePoint.updateMany({ where: { id: e.zonePointId, saveId: ctx.saveId, activo: true }, data: { activo: false } });
+  return r.count > 0 ? { aplicado: true, sucesoId: null } : NO_APLICADO;
+}
+
+// ─────────────────────────── Consecuencias aplazadas (CR-11) ───────────────────────────
+
+/// Deja una consecuencia pendiente. `aviso`: frase insinuada en el canal del personaje (solo para las
+/// que nacen de un acto de la jugadora). `npcId`: a quién afecta (para anularla o dispararla al
+/// cruzarse con él).
+async function programarConsecuencia(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'programarConsecuencia' }>): Promise<ResultadoEfecto> {
+  const random = ctx.random ?? Math.random;
+  const hoy = Math.floor(ctx.fictionalMinutes / 1440);
+  const d = e.disparo;
+  const desdeDia =
+    d.tipo === 'DIAS' ? hoy + d.min + Math.floor(random() * (d.max - d.min + 1))
+    : d.tipo === 'SUCESO' ? hoy
+    : hoy + (d.minDias ?? 0);
+  await ctx.tx.consecuencia.create({
+    data: {
+      saveId: ctx.saveId,
+      regla: e.regla,
+      tipoDisparo: d.tipo,
+      disparo: d as unknown as Prisma.InputJsonValue,
+      desdeDia,
+      regionSlug: d.tipo === 'LLEGAR_REGION' ? d.regionSlug : null,
+      npcId: d.tipo === 'ENCUENTRO_NPC' ? d.npcId : (e.npcId ?? null),
+      caducaEn: e.caducaDias !== undefined ? ctx.fictionalMinutes + e.caducaDias * 1440 : null,
+      datos: e.datos as Prisma.InputJsonValue,
+      origenSucesoId: ctx.causas?.[0] ?? null,
+      creadaEn: ctx.fictionalMinutes,
+    },
+  });
+  if (e.aviso) {
+    const ws = await ctx.tx.worldState.findUnique({ where: { saveId: ctx.saveId }, select: { fictionalDateLabel: true } });
+    await ctx.tx.logEntry.create({
+      data: { saveId: ctx.saveId, channel: 'CHARACTER', text: e.aviso, timeLabel: ws?.fictionalDateLabel ?? '', fictionalMinutes: ctx.fictionalMinutes, isSystemMessage: true },
+    });
+  }
+  return { aplicado: true, sucesoId: null };
+}
+
+async function anularConsecuencia(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'anularConsecuencia' }>): Promise<ResultadoEfecto> {
+  const r = await ctx.tx.consecuencia.updateMany({
+    where: { saveId: ctx.saveId, regla: e.regla, estado: 'PENDIENTE', ...(e.npcId ? { npcId: e.npcId } : {}) },
+    data: { estado: 'ANULADA', resueltaEn: ctx.fictionalMinutes },
+  });
   return r.count > 0 ? { aplicado: true, sucesoId: null } : NO_APLICADO;
 }
