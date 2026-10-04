@@ -18,7 +18,8 @@
 // `crearNpc` (CR-13, con nacimientos y nombres), `anadirEtiqueta`/`quitarEtiqueta`,
 // `cambiarAprobacion` y `anadirRecuerdo` (Fase 4), `propagarConocimiento` (Fase 5),
 // `abrirHilo`/`cerrarHilo` (buscadores de historias) y `ofrecerMision` (gancho, sin implementar).
-import type { OrigenSuceso, Prisma, TerritoryControl, ZonePointTipo } from '@prisma/client';
+import type { CondicionFisica, OrigenSuceso, Prisma, TerritoryControl, ZonePointTipo } from '@prisma/client';
+import { scopeFor } from '../npcScene.js';
 import { stripRegionArticle } from '../population.js';
 import { slugify } from '../../lib/slugify.js';
 import { recordFactionEvent, type FactionEventType } from '../factionRelations.js';
@@ -49,7 +50,7 @@ export type Disparo =
   | { tipo: 'DIAS'; min: number; max: number }
   | { tipo: 'LLEGAR_REGION'; regionSlug: string; origenSlug?: string; minDias?: number }
   | { tipo: 'ENCUENTRO_NPC'; npcId: string; minDias?: number }
-  | { tipo: 'SUCESO'; tipos: TipoSuceso[] };
+  | { tipo: 'SUCESO'; tipos: TipoSuceso[]; npcId?: string; categorias?: string[] };
 
 export const CUALQUIERA_SALVO_ORIGEN = 'CUALQUIERA_SALVO_ORIGEN';
 
@@ -73,7 +74,9 @@ export type Efecto =
   | { tipo: 'anularConsecuencia'; regla: string; npcId?: string }
   | { tipo: 'regalarAlJugador'; npcId: string; mensaje: string }
   | { tipo: 'forzarCombate'; npcId: string; mensaje: string }
-  | { tipo: 'ajustarReino'; faccionSlug?: string; riqueza?: number; felicidad?: number };
+  | { tipo: 'ajustarReino'; faccionSlug?: string; riqueza?: number; felicidad?: number }
+  | { tipo: 'situarNpc'; npcId: string; locationId: string; condicion: CondicionFisica }
+  | { tipo: 'botinAlJugador'; goirnos: number; mensaje: string };
 
 export interface ResultadoEfecto {
   aplicado: boolean;
@@ -81,6 +84,8 @@ export interface ResultadoEfecto {
   sucesoId: string | null;
   /// Hecho de mundo para narrar, si el efecto lo produce (p. ej. un cambio de banda de relación).
   hecho?: string | null;
+  /// Id de lo que el efecto ha creado, si crea algo (p. ej. el punto de `crearPuntoZona`).
+  id?: string;
 }
 
 const NO_APLICADO: ResultadoEfecto = { aplicado: false, sucesoId: null };
@@ -135,6 +140,10 @@ export async function aplicarEfecto(ctx: CtxEfecto, e: Efecto): Promise<Resultad
       return regalarAlJugador(ctx, e);
     case 'ajustarReino':
       return ajustarReino(ctx, e);
+    case 'situarNpc':
+      return situarNpc(ctx, e);
+    case 'botinAlJugador':
+      return botinAlJugador(ctx, e);
     case 'forzarCombate':
       return forzarCombate(ctx, e);
   }
@@ -443,14 +452,14 @@ async function cambiarControlTerritorio(ctx: CtxEfecto, e: Extract<Efecto, { tip
 async function crearPuntoZona(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'crearPuntoZona' }>): Promise<ResultadoEfecto> {
   const location = await ctx.tx.location.findFirst({ where: { id: e.locationId, worldId: ctx.worldId }, select: { id: true } });
   if (!location) return NO_APLICADO;
-  await ctx.tx.zonePoint.create({
+  const punto = await ctx.tx.zonePoint.create({
     data: {
       saveId: ctx.saveId, locationId: location.id, tipo: e.puntoTipo, targetSlug: e.targetSlug,
       x: e.x, y: e.y, origenX: e.x, origenY: e.y, cantidad: e.cantidad ?? 1, label: e.label ?? null,
       lastUpdatedAtMinutes: ctx.fictionalMinutes,
     },
   });
-  return { aplicado: true, sucesoId: null };
+  return { aplicado: true, sucesoId: null, id: punto.id };
 }
 
 async function retirarPuntoZona(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'retirarPuntoZona' }>): Promise<ResultadoEfecto> {
@@ -521,6 +530,36 @@ async function ajustarReino(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'ajustarR
   const felicidad = Math.max(0, Math.min(100, stats.felicidad + (e.felicidad ?? 0)));
   if (riqueza === stats.riqueza && felicidad === stats.felicidad) return NO_APLICADO;
   await ctx.tx.kingdomStats.update({ where: { id: stats.id }, data: { riqueza, felicidad } });
+  return { aplicado: true, sucesoId: null };
+}
+
+// ─────────────────────────── NPC en un lugar (CR-12) ───────────────────────────
+
+/// Pone a un NPC en un lugar con una condición (p. ej. el caído y el herido de un campo de
+/// batalla): su estado en la partida con el ámbito que le toca allí (`scopeFor`). Sin suceso: lo
+/// cuenta el suceso que lo causa.
+async function situarNpc(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'situarNpc' }>): Promise<ResultadoEfecto> {
+  const npc = await ctx.tx.npc.findFirst({ where: { id: e.npcId, worldId: ctx.worldId }, select: { id: true, kind: true } });
+  const location = await ctx.tx.location.findFirst({ where: { id: e.locationId, worldId: ctx.worldId }, select: { id: true } });
+  if (!npc || !location) return NO_APLICADO;
+  const scope = scopeFor(npc.kind, location.id);
+  const data = { condicionFisica: e.condicion, saqueado: false, muerto: e.condicion === 'MUERTO' && scope === '', ...(e.condicion === 'MUERTO' ? { muertoEn: ctx.fictionalMinutes } : {}) };
+  await ctx.tx.npcState.upsert({
+    where: { saveId_npcId_scope: { saveId: ctx.saveId, npcId: npc.id, scope } },
+    create: { saveId: ctx.saveId, npcId: npc.id, scope, ...data },
+    update: data,
+  });
+  return { aplicado: true, sucesoId: null };
+}
+
+/// La jugadora se lleva unos goirnos (p. ej. la carga de una caravana asaltada). `mensaje` va al
+/// canal del personaje. Sin suceso propio: lo cuenta el que lo causa.
+async function botinAlJugador(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'botinAlJugador' }>): Promise<ResultadoEfecto> {
+  if (e.goirnos <= 0) return NO_APLICADO;
+  const save = await ctx.tx.save.update({ where: { id: ctx.saveId }, data: { goirnos: { increment: e.goirnos } }, select: { worldState: { select: { fictionalDateLabel: true } } } });
+  await ctx.tx.logEntry.create({
+    data: { saveId: ctx.saveId, channel: 'CHARACTER', text: e.mensaje, timeLabel: save.worldState?.fictionalDateLabel ?? '', fictionalMinutes: ctx.fictionalMinutes, isSystemMessage: true },
+  });
   return { aplicado: true, sucesoId: null };
 }
 

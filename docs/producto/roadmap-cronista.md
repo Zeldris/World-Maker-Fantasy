@@ -1043,13 +1043,17 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   vivos (ahora `AND`). **Pendiente, con su tarea:** `PROMESA_VENCE` (cuando algo registre promesas),
   `RUMOR_DE_HAZANA` (Fase 5), `PUEBLO_ABANDONADO` (comercio local), refugiados al Reino (pregunta 1
   de Álvaro), ayuda en combate de la deuda de vida (`0.3`).
-- **CR-12** Narrador de fondo con presupuesto, enfriamientos y reglas de facción (§ 7.3);
-  agenda Serhu como primera cadena. **L** Al hacerlo, revisar `UX-6` (roadmap-front-ux.md): hoy
+- ~~**CR-12** Narrador de fondo con presupuesto, enfriamientos y reglas de facción (§ 7.3);
+  agenda Serhu como primera cadena. **L**~~ ✅ 2026-10-04 (pasos 12a-12d, ver abajo). **Pendiente,
+  con su tarea:** cadenas que nacen a mitad de partida (p. ej. una guerra a partir de escaramuzas) y
+  favorecer hilos abiertos → `CR-17`; árbitro con IA → Fase 7; hambruna de las facciones → pregunta
+  5 de Álvaro; comerciar con caravanas → comercio del 0.2; informante/recluta → `CR-32`; audiencia →
+  `REI-117`; frontend de las noticias → `UX-38`. Al hacerlo, revisar `UX-6` (roadmap-front-ux.md): hoy
   la ambientación se cancela al enviar una acción porque no pesa nada; con contenido real puede
   convenir que la acción espere (opción A). Incluye de la tabla de reacciones (CR-10): la fauna
   que huye de una tormenta extrema a una región vecina (necesita vecinos entre regiones) y
   `HAMBRUNA` 3 días seguidos → cohesión −10 y posible `REBELION` (necesita llevar la cuenta).
-  🚧 en curso (2026-10-04): diseño acordado con la usuaria (grill, ronda 1):
+  Diseño acordado con la usuaria (grill, ronda 1, 2026-10-04):
   - **Pasos:** 12a motor (candidatos, presupuesto, enfriamientos, elección por peso sin IA) +
     catálogo inicial + «Ritmo del mundo» en Configuración; 12b agenda Serhu como primera cadena;
     12c fauna que huye de la tormenta extrema y `HAMBRUNA`. «Favorecer hilos» espera a CR-17 y el
@@ -1111,7 +1115,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     provisionales de su economía 6 de las 9 sembradas pasan hambre siempre. Se enciende con los
     números de la economía de supervivencia (pregunta 5 a Álvaro). `REBELION` aún no tiene
     consecuencias propias más allá del Libro (las tendrá con la economía y las reglas de facción).
-  - 🚧 **12d en curso (2026-10-04).** Hecho:
+  - ✅ **12d hecho (2026-10-04):**
     - **Rumor por distancia** (`cronista/noticias.ts`, `darNoticia`): misma región o facción aliada
       / con tratado del Reino → al momento y como hecho; vecina → 1 día; más lejos → 2-3 días, como
       «Se dice que…»; sin lugar → solo si conoce la facción, 1 día y como rumor. Lo que llega tarde
@@ -1134,6 +1138,14 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     - ✅ **«Ayudar»** (2026-10-04, `services/ayudarNpc.ts`): opción del menú de un NPC GRAVE o
       CONVALECIENTE (también sin `interactionTypes`): pasa a HERIDO, +60 de reputación con su facción
       y `AYUDA_PRESTADA` en el Libro. `REGALO` guarda ya la categoría del objeto (para el encargo).
+    - ✅ **Oportunidades** (2026-10-04, `cronista/oportunidades.ts`), con un NPC PLANTILLA de la
+      facción (hoy Serhu, Helsig y Concordia; sin plantilla no hay oportunidad) y su pista en la
+      noticia: campo de batalla tras una escaramuza (un caído para saquear y un herido, 3 días),
+      caravana con un guardia (vencerlo da 40-90 goirnos, `CARAVANA_ASALTADA`, 2 días) y encargo de
+      materiales tras un incendio o crecida (entregar madera o piedra al encargado repara el
+      edificio y da +80 de reputación, `ENCARGO_MATERIALES`, 5 días). Al vencer se retiran los
+      puntos (`OPORTUNIDAD_CIERRA`). Efectos nuevos `situarNpc` y `botinAlJugador`; el disparo
+      `SUCESO` filtra por NPC y por categoría del objeto.
 - **CR-13** Nacimientos notables y generador de nombres (§ 12.3). **M** Incluye el efecto `crearNpc`
   en `efectos.ts` (CR-9).
 - **Hecho cuando:** `cronista:simular 60` produce caídas, escisiones, tormentas con daños, guerras

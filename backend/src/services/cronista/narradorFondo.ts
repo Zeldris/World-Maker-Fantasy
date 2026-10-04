@@ -15,9 +15,10 @@
 // 5. **Noticia:** al canal «El mundo» según dónde pase (`noticias.ts`): al momento en su región o
 //    de una facción aliada; como rumor y días después si pasa lejos o es de una facción que conoce.
 //
-// Pendiente con su paso (entrada `CR-12`): cadenas (agenda Serhu, 12b), fauna que huye de la
-// tormenta y hambruna (12c), oportunidades con plazo y resumen (12d); favorecer
-// hilos abiertos (CR-17) y árbitro con IA (Fase 7).
+// 6. **Oportunidad** (12d): escaramuza, caravana, incendio y crecida abren algo que hacer con plazo
+//    (`oportunidades.ts`) y su pista va en la noticia.
+//
+// Pendiente: favorecer hilos abiertos (CR-17) y árbitro con IA (Fase 7).
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { stripRegionArticle } from '../population.js';
 import { slugify } from '../../lib/slugify.js';
@@ -26,6 +27,7 @@ import { aplicarEfectos, type CtxEfecto, type Efecto } from './efectos.js';
 import { REGIONES_VECINAS } from './regiones.js';
 import { registrarSuceso, type ActorSuceso } from './sucesos.js';
 import { darNoticia } from './noticias.js';
+import { abrirCampoDeBatalla, abrirCaravana, abrirEncargo, type CtxOportunidad } from './oportunidades.js';
 import { ownerKeyFor } from '../reinoOwner.js';
 
 type Tx = Prisma.TransactionClient;
@@ -51,6 +53,9 @@ export interface Instancia {
   /// `absorberFaccion` registra `FACCION_ABSORBIDA`).
   suceso?: { datos: DatosSuceso[TipoSuceso]; actores: ActorSuceso[]; regionSlug?: string | null; locationId?: string | null };
   efectos: Efecto[];
+  /// CR-12 (12d): oportunidad con plazo que abre (campo de batalla, caravana, encargo); devuelve la
+  /// pista que se añade a la noticia, o null si no se pudo abrir.
+  oportunidad?: (ctx: CtxOportunidad) => Promise<string | null>;
   /// Para decidir a quién llega la noticia (nombres de facción y `Location.region`).
   noticia: { facciones: string[]; region: string | null };
 }
@@ -120,6 +125,7 @@ function desastre(tipo: 'INCENDIO' | 'CRECIDA', causa: string, region?: string):
         regionSlug: null,
       },
       efectos: [{ tipo: 'danarEdificio', buildingId: b.id, causa }],
+      oportunidad: (o: CtxOportunidad) => abrirEncargo(o, b.faction!.name, b.id, b.location!.id, b.location!.name),
       noticia: { facciones: [b.faction!.name], region: b.location!.region },
     }));
 }
@@ -138,6 +144,7 @@ export const SUCESOS_DE_FONDO: SucesoDeFondo[] = [
           actores: [actorFaccion(r.sourceFaction.slug, 'AUTOR'), actorFaccion(r.targetFaction.slug, 'VICTIMA')],
         },
         efectos: [{ tipo: 'cambiarPresion', origenSlug: r.sourceFaction.slug, destinoSlug: r.targetFaction.slug, evento: 'BAJA_DE_GUERRA' }],
+        oportunidad: (o: CtxOportunidad) => abrirCampoDeBatalla(o, r.sourceFaction.name, r.targetFaction.name),
         noticia: { facciones: [r.sourceFaction.name, r.targetFaction.name], region: null },
       })),
   },
@@ -157,6 +164,7 @@ export const SUCESOS_DE_FONDO: SucesoDeFondo[] = [
           { tipo: 'ajustarReino', faccionSlug: r.sourceFaction.slug, riqueza: 5 },
           { tipo: 'ajustarReino', faccionSlug: r.targetFaction.slug, riqueza: 5 },
         ],
+        oportunidad: (o: CtxOportunidad) => abrirCaravana(o, r.sourceFaction.name, r.targetFaction.name),
         noticia: { facciones: [r.sourceFaction.name, r.targetFaction.name], region: null },
       })),
   },
@@ -354,7 +362,10 @@ export async function narrarDia(
       presupuesto -= costeDe(elegida.tipo);
       await guardar();
       const { texto } = await tx.suceso.findUniqueOrThrow({ where: { id: sucesoId }, select: { texto: true } });
-      await darNoticia(tx, { saveId, worldId: save.worldId, fictionalMinutes: minutos, causa: sucesoId }, { ...elegida.instancia.noticia, texto });
+      const pista = elegida.instancia.oportunidad
+        ? await elegida.instancia.oportunidad({ tx, saveId, worldId: save.worldId, fictionalMinutes: minutos, random, causa: sucesoId })
+        : null;
+      await darNoticia(tx, { saveId, worldId: save.worldId, fictionalMinutes: minutos, causa: sucesoId }, { ...elegida.instancia.noticia, texto: pista ? `${texto} ${pista}` : texto });
       return { sucesoId, tipo: elegida.tipo, presupuesto };
     },
     { maxWait: 10_000, timeout: 20_000 },
