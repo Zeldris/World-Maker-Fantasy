@@ -20,6 +20,8 @@
 // `abrirHilo`/`cerrarHilo` (buscadores de historias) y `ofrecerMision` (gancho, sin implementar).
 import type { CondicionFisica, OrigenSuceso, Prisma, TerritoryControl, ZonePointTipo } from '@prisma/client';
 import { scopeFor } from '../npcScene.js';
+import { generarNombre, type Genero } from './nombres.js';
+import { atributosSinPadres, heredarAtributos, type Atributos } from './herencia.js';
 import { stripRegionArticle } from '../population.js';
 import { slugify } from '../../lib/slugify.js';
 import { recordFactionEvent, type FactionEventType } from '../factionRelations.js';
@@ -76,7 +78,8 @@ export type Efecto =
   | { tipo: 'forzarCombate'; npcId: string; mensaje: string }
   | { tipo: 'ajustarReino'; faccionSlug?: string; riqueza?: number; felicidad?: number }
   | { tipo: 'situarNpc'; npcId: string; locationId: string; condicion: CondicionFisica }
-  | { tipo: 'botinAlJugador'; goirnos: number; mensaje: string };
+  | { tipo: 'botinAlJugador'; goirnos: number; mensaje: string }
+  | { tipo: 'crearNpc'; faccionSlug: string };
 
 export interface ResultadoEfecto {
   aplicado: boolean;
@@ -144,6 +147,8 @@ export async function aplicarEfecto(ctx: CtxEfecto, e: Efecto): Promise<Resultad
       return situarNpc(ctx, e);
     case 'botinAlJugador':
       return botinAlJugador(ctx, e);
+    case 'crearNpc':
+      return crearNpc(ctx, e);
     case 'forzarCombate':
       return forzarCombate(ctx, e);
   }
@@ -561,6 +566,71 @@ async function botinAlJugador(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'botinA
     data: { saveId: ctx.saveId, channel: 'CHARACTER', text: e.mensaje, timeLabel: save.worldState?.fictionalDateLabel ?? '', fictionalMinutes: ctx.fictionalMinutes, isSystemMessage: true },
   });
   return { aplicado: true, sucesoId: null };
+}
+
+// ─────────────────────────── NPC nuevos (CR-13) ───────────────────────────
+
+/// «Alguien que destaca» (CR-13 13a): un adulto joven de una facción de la partida empieza a tener
+/// nombre propio. Elige género al azar; si la facción tiene un hombre y una mujer con nombre de su
+/// raza (vivos o muertos), son sus padres y hereda de ellos (`herencia.ts`); si no, toma los
+/// atributos de alguien de su raza con ±1. Nombre del generador (`nombres.ts`), sin repetir ninguno
+/// del mundo ni de la partida. El NPC es de la partida (`Npc.saveId`). Registra `NPC_DESTACA`.
+async function crearNpc(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'crearNpc' }>): Promise<ResultadoEfecto> {
+  const random = ctx.random ?? Math.random;
+  const faccion = await faccionViva(ctx, e.faccionSlug);
+  if (!faccion) return NO_APLICADO;
+  const deLaPartida = { OR: [{ saveId: null }, { saveId: ctx.saveId }] };
+  const conNombre = await ctx.tx.npc.findMany({
+    where: { worldId: ctx.worldId, kind: 'PRINCIPAL', raza: faccion.raza, ...deLaPartida },
+    orderBy: { slug: 'asc' },
+  });
+  const deSuFaccion = conNombre.filter((n) => n.faction === faccion.name);
+  const elegir = <T>(l: T[]) => (l.length === 0 ? null : l[Math.floor(random() * l.length)]!);
+  const padre = elegir(deSuFaccion.filter((n) => n.genero === 'M'));
+  const madre = elegir(deSuFaccion.filter((n) => n.genero === 'F'));
+  const base = padre ?? madre ?? elegir(deSuFaccion) ?? elegir(conNombre);
+  if (!base) return NO_APLICADO;
+
+  const genero: Genero = random() < 0.5 ? 'F' : 'M';
+  const atributos: Atributos = padre && madre
+    ? heredarAtributos(padre.attributes as Atributos, madre.attributes as Atributos, random).atributos
+    : atributosSinPadres(base.attributes as Atributos, random);
+  const usados = new Set(
+    (await ctx.tx.npc.findMany({ where: { worldId: ctx.worldId, ...deLaPartida }, select: { name: true } })).map((n) => n.name.toLowerCase()),
+  );
+  const nombre = generarNombre(faccion.raza, genero, random, usados);
+  const padres = padre && madre ? `${padre.name} y ${madre.name}` : undefined;
+
+  const npc = await ctx.tx.npc.create({
+    data: {
+      worldId: ctx.worldId,
+      saveId: ctx.saveId,
+      kind: 'PRINCIPAL',
+      slug: `${slugify(nombre)}-${ctx.saveId.slice(-6)}`,
+      name: nombre,
+      aliases: [...new Set([nombre.toLowerCase(), nombre.split(' ')[0]!.toLowerCase()])],
+      faction: faccion.name,
+      role: `Joven de ${faccion.name}`,
+      genero,
+      level: base.level,
+      attributes: atributos,
+      bio: `Joven de ${faccion.name} que empieza a hacerse un nombre${padres ? `; ${genero === 'F' ? 'hija' : 'hijo'} de ${padres}` : ''}.`,
+      personality: base.personality,
+      homeLocationSlug: base.homeLocationSlug,
+      raza: faccion.raza,
+      clase: base.clase,
+      temperamento: base.temperamento,
+      habilidadesRaciales: base.habilidadesRaciales ?? [],
+      padreNpcId: padre && madre ? padre.id : null,
+      madreNpcId: padre && madre ? madre.id : null,
+    },
+  });
+  const sucesoId = await registrar(ctx, {
+    tipo: 'NPC_DESTACA',
+    actores: [actorNpc(npc.id, 'AUTOR'), actorFaccion(faccion.slug, 'BENEFICIARIO'), ...(padre && madre ? [actorNpc(padre.id, 'AFECTADO'), actorNpc(madre.id, 'AFECTADO')] : [])],
+    datos: { npc: nombre, faccion: faccion.name, genero, ...(padres ? { padres } : {}) },
+  });
+  return { aplicado: true, sucesoId, id: npc.id };
 }
 
 // ─────────────────────────── Regalos ───────────────────────────

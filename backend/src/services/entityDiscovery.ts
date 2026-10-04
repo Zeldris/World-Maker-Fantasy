@@ -1,3 +1,4 @@
+import { npcDeLaPartida } from './mundoPartida.js';
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { normalizeText, matchesAliasBoundary } from './travel.js';
@@ -51,7 +52,7 @@ export async function recordEntityDiscoveries(
     const discovered: { entityType: string; entitySlug: string; fase: 'CITADO' | 'DESCUBIERTO' }[] = [];
 
     const [npcs, yields, items, inventoryItems, factionRows, historiaRows] = await Promise.all([
-      client.npc.findMany({ where: { worldId: params.worldId } }),
+      client.npc.findMany({ where: { worldId: params.worldId, ...npcDeLaPartida(params.saveId) } }),
       client.harvestYield.findMany({ where: { worldId: params.worldId } }),
       client.itemCatalog.findMany({ where: { worldId: params.worldId } }),
       client.inventoryItem.findMany({ where: { saveId: params.saveId } }),

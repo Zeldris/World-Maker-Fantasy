@@ -2552,6 +2552,10 @@ model Npc {
   /// Unicidad parcial en el SQL, como en Faction.
   saveId String?
   save   Save?   @relation("NpcsDePartida", fields: [saveId], references: [id], onDelete: Cascade)
+  /// CR-13 (hito 0.2): padre y madre (ids de `Npc`) de un NPC nacido o destacado en la partida, de
+  /// quienes hereda la «huella» de sus atributos. Null = de padres desconocidos (o del catálogo).
+  padreNpcId String?
+  madreNpcId String?
 
   @@index([worldId, slug])
   @@index([saveId])

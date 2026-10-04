@@ -431,7 +431,7 @@ export interface MentionedEntityBanner {
 
 /// UX-38 (hito 0.2) — metadatos de una noticia de «El mundo» (`LogEntry.noticia` en backend).
 export interface NoticiaMeta {
-  categoria?: 'CONFLICTO' | 'COMERCIO' | 'NATURALEZA' | 'REINO'
+  categoria?: 'CONFLICTO' | 'COMERCIO' | 'NATURALEZA' | 'REINO' | 'GENTE'
   /// Oportunidad que abre: dónde y hasta qué minuto de ficción.
   oportunidad?: { lugar: string; locationId: string; venceEn: number }
   /// Resumen de varios días: primera línea cabecera, el resto una noticia por línea.

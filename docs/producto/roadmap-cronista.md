@@ -1180,6 +1180,15 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   - **La jugadora no envejece** por ahora (Q10) → `CR-33`.
   - **Pasos** (Q11): **13a** generador de nombres y «alguien que destaca» con herencia; **13b**
     edades, madurez y vejez; **13c** nacimientos de verdad y crecimiento.
+  - ✅ **13a hecho (2026-10-04):** `cronista/nombres.ts` (generador por pueblo, semilla, sin
+    repetir, ordinal de respaldo), `cronista/herencia.ts` (media ± 2 y huella +1 al 50 %), efecto
+    `crearNpc` (elige género, padres de su facción y raza, nombre y atributos; NPC con `saveId`,
+    `padreNpcId`/`madreNpcId`, migración `20261005000000_npc_padres`; registra `NPC_DESTACA`) y
+    candidato `NPC_DESTACA` del narrador de fondo (peso 4 con menos de 3 NPC con nombre vivos, 1
+    con menos de 6, 0,2 si no; enfriamiento 10 días). Categoría de noticia **Gente** (👤) para la
+    familia VIDA_MUERTE. Los NPC nacidos en una partida no existen en las demás: `npcVivoEnPartida`
+    filtra también por partida y `npcDeLaPartida` acota la Enciclopedia y los descubrimientos.
+    **Queda:** 13b y 13c.
 - **Hecho cuando:** `cronista:simular 60` produce caídas, escisiones, tormentas con daños, guerras
   y nacimientos coherentes; perdonar a un NPC lo hace volver en otra región.
 

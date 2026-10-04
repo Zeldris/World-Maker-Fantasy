@@ -21,7 +21,7 @@ import type { CtxConsecuencia, ReglaConsecuencia } from './consecuencias.js';
 type Tx = Prisma.TransactionClient;
 
 /// UX-38: categoría de una noticia (icono en «El mundo»).
-export type CategoriaNoticia = 'CONFLICTO' | 'COMERCIO' | 'NATURALEZA' | 'REINO';
+export type CategoriaNoticia = 'CONFLICTO' | 'COMERCIO' | 'NATURALEZA' | 'REINO' | 'GENTE';
 
 /// Oportunidad que abre una noticia: dónde y hasta cuándo (minuto de ficción).
 export interface OportunidadNoticia {
@@ -42,8 +42,10 @@ export function categoriaDeFamilia(familia: string): CategoriaNoticia | undefine
   switch (familia) {
     case 'DIPLOMACIA':
     case 'FACCION':
-    case 'VIDA_MUERTE':
       return 'CONFLICTO';
+    // CR-13 (Q5): nacimientos, quien destaca, sucesiones y muertes.
+    case 'VIDA_MUERTE':
+      return 'GENTE';
     case 'ECONOMIA':
       return 'COMERCIO';
     case 'NATURAL':

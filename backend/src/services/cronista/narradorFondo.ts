@@ -29,6 +29,7 @@ import { registrarSuceso, type ActorSuceso } from './sucesos.js';
 import { categoriaDeFamilia, darNoticia } from './noticias.js';
 import { abrirCampoDeBatalla, abrirCaravana, abrirEncargo, type CtxOportunidad, type OportunidadAbierta } from './oportunidades.js';
 import { ownerKeyFor } from '../reinoOwner.js';
+import { npcVivoEnPartida } from '../mundoPartida.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -262,6 +263,29 @@ export const SUCESOS_DE_FONDO: SucesoDeFondo[] = [
         efectos: [{ tipo: 'ajustarReino' as const, felicidad: 5 }],
         noticia: { facciones: [reino.name], region: null },
       }));
+    },
+  },
+  {
+    // CR-13 (13a): alguien de una facción empieza a hacerse un nombre. Mucho peso si a la facción le
+    // quedan pocos NPC con nombre (sucesiones), poco si tiene muchos.
+    tipo: 'NPC_DESTACA',
+    enfriamientoDias: 10,
+    candidatos: async (ctx) => {
+      const facciones = await ctx.tx.faction.findMany({ where: { saveId: ctx.saveId, ...faccionesVivas }, select: { slug: true, name: true }, orderBy: { slug: 'asc' } });
+      const vivos = await ctx.tx.npc.groupBy({
+        by: ['faction'],
+        where: { worldId: ctx.worldId, kind: 'PRINCIPAL', faction: { in: facciones.map((f) => f.name) }, ...npcVivoEnPartida(ctx.saveId) },
+        _count: { _all: true },
+      });
+      const cuantos = new Map(vivos.map((v) => [v.faction, v._count._all]));
+      return facciones.map((f) => {
+        const n = cuantos.get(f.name) ?? 0;
+        return {
+          peso: n < 3 ? 4 : n < 6 ? 1 : 0.2,
+          efectos: [{ tipo: 'crearNpc' as const, faccionSlug: f.slug }],
+          noticia: { facciones: [f.name], region: null },
+        };
+      });
     },
   },
   {
