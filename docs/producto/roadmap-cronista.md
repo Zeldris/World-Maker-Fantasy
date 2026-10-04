@@ -972,23 +972,38 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   ellas): `programarConsecuencia`/`anularConsecuencia` y `ajustarPrecios` (CR-11), `crearNpc`
   (CR-13), etiquetas/aprobación/recuerdos (Fase 4), conocimiento (Fase 5), hilos (buscadores) y
   `ofrecerMision` (gancho).
-- **CR-10** Reacciones inmediatas (tabla § 7.1). **M**
+- ~~**CR-10** Reacciones inmediatas (tabla § 7.1). **M**~~ ✅ 2026-10-04: `services/cronista/reacciones.ts`
+  (datos `Reaccion`: escucha, prioridad, condición, efectos de la lista cerrada o sucesos
+  derivados). Cola en BD (`Suceso.reaccionesPendientes`, `nivelCascada`; migración
+  `20261004180000_cola_reacciones`, los sucesos previos no reaccionan) y `procesarReacciones` en
+  anchura con tope de 3 niveles y 20 sucesos (lo que pasa del tope, `CONSECUENCIA_PERDIDA` hasta
+  CR-11). Se procesa tras cada turno, cada día simulado y cada POST a `/saves/:id/...`. Reacciones:
+  muerte causada por el jugador → presión de la facción de la víctima contra su Reino; muerte del
+  líder → `MUERTE_LIDER` → cohesión −25; perder el último territorio → `FACCION_CAE`; tormenta
+  extrema → tirada de daño a edificios del jugador en la región. `GUERRA_DECLARADA` ya la registra
+  `recordFactionEvent`. Las que faltan van con su tarea (anotado en ellas): CR-11, CR-12, CR-14, CR-16.
 - **CR-11** Consecuencias aplazadas con sus disparos y las 7 iniciales (§ 7.2). **M** Incluye los
   efectos `programarConsecuencia`/`anularConsecuencia` y `ajustarPrecios` (para `PUEBLO_ABANDONADO`)
-  en `efectos.ts` (CR-9).
+  en `efectos.ts` (CR-9), las reacciones que programan consecuencias (`SUCESION_PENDIENTE` tras
+  `MUERTE_LIDER`, `DEUDA_DE_VIDA` tras `PERDON_CONCEDIDO`, `PROMESA_VENCE` tras `PROMESA`) y pasar
+  lo que supera el tope de cascada a consecuencia del día siguiente (hoy `CONSECUENCIA_PERDIDA`) (CR-10).
 - **CR-12** Narrador de fondo con presupuesto, enfriamientos y reglas de facción (§ 7.3);
   agenda Serhu como primera cadena. **L** Al hacerlo, revisar `UX-6` (roadmap-front-ux.md): hoy
   la ambientación se cancela al enviar una acción porque no pesa nada; con contenido real puede
-  convenir que la acción espere (opción A).
+  convenir que la acción espere (opción A). Incluye de la tabla de reacciones (CR-10): la fauna
+  que huye de una tormenta extrema a una región vecina (necesita vecinos entre regiones) y
+  `HAMBRUNA` 3 días seguidos → cohesión −10 y posible `REBELION` (necesita llevar la cuenta).
 - **CR-13** Nacimientos notables y generador de nombres (§ 12.3). **M** Incluye el efecto `crearNpc`
   en `efectos.ts` (CR-9).
 - **Hecho cuando:** `cronista:simular 60` produce caídas, escisiones, tormentas con daños, guerras
   y nacimientos coherentes; perdonar a un NPC lo hace volver en otra región.
 
 ### Fase 4 — Personas que recuerdan · **M**
-- **CR-14** Etiquetas (§ 8.1). **S**
+- **CR-14** Etiquetas (§ 8.1). **S** Incluye las reacciones de CR-10: etiqueta tras matar a un NPC
+  con nombre y evaluación de etiquetas por cualquier suceso del jugador como autor.
 - **CR-15** Aprobación con valores (§ 8.2). **M**
-- **CR-16** Recuerdos de NPC (§ 8.3). **S**
+- **CR-16** Recuerdos de NPC (§ 8.3). **S** Incluye las reacciones de CR-10: `recuerdo(testigos,
+  jugador, −6)` tras una muerte causada y `recuerdo(víctima, jugador, +5)` tras un perdón.
 - **CR-17** Buscadores de historias e hilos (§ 7.4). **M**
 - **Hecho cuando:** matar al hermano de un NPC abre un hilo de venganza y el vengador aparece;
   un compañero se queja y acaba yéndose si se le contraría repetidamente.

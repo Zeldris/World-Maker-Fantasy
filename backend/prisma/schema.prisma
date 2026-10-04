@@ -3391,8 +3391,13 @@ model Suceso {
   logEntryId       String?
   /// Para reproducir el azar.
   semilla          String
+  /// CR-10 (§ 6.2): cola de reacciones. Se procesan al final del turno o del día, en anchura;
+  /// `nivelCascada` = cuántas reacciones lo separan del suceso original (tope 3).
+  reaccionesPendientes Boolean     @default(true)
+  nivelCascada     Int           @default(0)
   createdAt        DateTime      @default(now())
 
+  @@index([saveId, reaccionesPendientes])
   @@index([saveId, fictionalMinutes])
   @@index([saveId, tipo])
   @@index([saveId, importancia])

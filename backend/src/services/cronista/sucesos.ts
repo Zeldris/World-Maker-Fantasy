@@ -2,7 +2,8 @@
 //
 // `registrarSuceso` calcula la importancia y la frase de plantilla e inserta el suceso con sus
 // actores y causas, dentro de la transacción del llamador. Quedan para sus tareas los dos pasos
-// siguientes del contrato: sembrar el `Conocimiento` inicial (CR-18) y encolar reacciones (CR-10).
+// siguientes del contrato: sembrar el `Conocimiento` inicial (CR-18). Las reacciones (CR-10) quedan
+// en cola (`Suceso.reaccionesPendientes`) y las procesa `procesarReacciones` (reacciones.ts).
 import { randomUUID } from 'node:crypto';
 import type { OrigenSuceso, Prisma, PrismaClient } from '@prisma/client';
 import { CATALOGO_SUCESOS, importanciaDeSuceso, textoDeSuceso, type DatosSuceso, type TipoSuceso } from './catalogoSucesos.js';
@@ -33,6 +34,8 @@ export interface NuevoSuceso<T extends TipoSuceso = TipoSuceso> {
   tocaHilo?: boolean;
   /// Para reproducir el azar; si no se da, se genera.
   semilla?: string;
+  /// CR-10: reacciones que lo separan del suceso original (lo pone `procesarReacciones`).
+  nivelCascada?: number;
 }
 
 type Db = PrismaClient | Prisma.TransactionClient;
@@ -62,6 +65,7 @@ export async function registrarSuceso<T extends TipoSuceso>(db: Db, s: NuevoSuce
       texto: textoDeSuceso(s.tipo, s.datos),
       logEntryId: s.logEntryId ?? null,
       semilla: s.semilla ?? randomUUID(),
+      nivelCascada: s.nivelCascada ?? 0,
       actores: { create: actores },
       causas: s.causas?.length ? { create: [...new Set(s.causas)].map((causaId) => ({ causaId })) } : undefined,
     },

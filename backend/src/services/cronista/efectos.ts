@@ -34,6 +34,8 @@ export interface CtxEfecto {
   origen: OrigenSuceso;
   /// Sucesos que causan estos efectos (quedan como causas de los que se registren).
   causas?: string[];
+  /// Nivel de cascada de los sucesos que se registren (CR-10).
+  nivelCascada?: number;
 }
 
 export type Efecto =
@@ -116,7 +118,7 @@ async function faccionViva(ctx: CtxEfecto, slug: string) {
 }
 
 async function registrar<T extends TipoSuceso>(ctx: CtxEfecto, s: Omit<NuevoSuceso<T>, 'saveId' | 'fictionalMinutes' | 'origen' | 'causas'>): Promise<string> {
-  return registrarSuceso(ctx.tx, { ...s, saveId: ctx.saveId, fictionalMinutes: ctx.fictionalMinutes, origen: ctx.origen, causas: ctx.causas } as NuevoSuceso<T>);
+  return registrarSuceso(ctx.tx, { ...s, saveId: ctx.saveId, fictionalMinutes: ctx.fictionalMinutes, origen: ctx.origen, causas: ctx.causas, nivelCascada: ctx.nivelCascada } as NuevoSuceso<T>);
 }
 
 const actorFaccion = (slug: string, papel: 'AUTOR' | 'VICTIMA' | 'AFECTADO' | 'BENEFICIARIO') => ({ entidadTipo: 'FACCION' as const, entidadId: slug, papel });
