@@ -117,4 +117,51 @@ describe('efectos del motor (CR-9)', () => {
     await prisma.faction.create({ data: { worldId, saveId, slug: `reino-${saveId}`, name: 'Reino de prueba', raza: 'orcos', description: 'x' } });
     expect(await aplicar({ tipo: 'disolverFaccion', faccionSlug: `reino-${saveId}` })).toMatchObject({ aplicado: false });
   });
+
+  it('ajustarPoblacion acota y registra auge o declive solo si es notable; moverPoblacion reparte el peso regional', async () => {
+    const fila = await prisma.worldPopulation.findFirstOrThrow({ where: { saveId, targetType: 'FAUNA', poblacion: { gt: 50 } }, orderBy: { targetSlug: 'asc' } });
+    expect((await aplicar({ tipo: 'ajustarPoblacion', targetSlug: fila.targetSlug, delta: -1 })).sucesoId).toBeNull();
+    const r = await aplicar({ tipo: 'ajustarPoblacion', targetSlug: fila.targetSlug, delta: -10_000, region: 'Cristal Helado' });
+    expect(r.sucesoId).not.toBeNull();
+    expect((await prisma.worldPopulation.findUniqueOrThrow({ where: { id: fila.id } })).poblacion).toBe(0);
+    expect(await aplicar({ tipo: 'ajustarPoblacion', targetSlug: fila.targetSlug, delta: -5 })).toMatchObject({ aplicado: false });
+
+    const conPeso = await prisma.worldPopulation.findMany({ where: { saveId } });
+    const migra = conPeso.find((f) => Object.values((f.distribucion as Record<string, number>) ?? {}).some((v) => v > 0))!;
+    const [desde] = Object.entries(migra.distribucion as Record<string, number>).find(([, v]) => v > 0)!;
+    const total = (d: unknown) => Object.values(d as Record<string, number>).reduce((a, b) => a + b, 0);
+    expect((await aplicar({ tipo: 'moverPoblacion', targetSlug: migra.targetSlug, desde, hacia: 'Región de prueba', fraccion: 0.5 })).sucesoId).not.toBeNull();
+    const tras = await prisma.worldPopulation.findUniqueOrThrow({ where: { id: migra.id } });
+    expect((tras.distribucion as Record<string, number>)['Región de prueba']).toBeGreaterThan(0);
+    expect(total(tras.distribucion)).toBeCloseTo(total(migra.distribucion));
+  });
+
+  it('dañar y reparar un edificio de una facción de la partida; el de otra partida no se toca', async () => {
+    const edificio = await prisma.building.findFirstOrThrow({ where: { faction: { saveId }, status: 'ACTIVO' } });
+    expect((await aplicar({ tipo: 'danarEdificio', buildingId: edificio.id, causa: 'una tormenta' })).sucesoId).not.toBeNull();
+    expect((await prisma.building.findUniqueOrThrow({ where: { id: edificio.id } })).status).toBe('DANADO');
+    expect(await aplicar({ tipo: 'danarEdificio', buildingId: edificio.id })).toMatchObject({ aplicado: false });
+    expect(await aplicar({ tipo: 'repararEdificio', buildingId: edificio.id })).toEqual({ aplicado: true, sucesoId: null });
+    const ajeno = await prisma.building.findFirst({ where: { faction: { saveId: null } }, select: { id: true } });
+    if (ajeno) expect(await aplicar({ tipo: 'danarEdificio', buildingId: ajeno.id })).toMatchObject({ aplicado: false });
+  });
+
+  it('cambiarControlTerritorio pasa un territorio a otra facción de la partida con TERRITORIO_CONQUISTADO', async () => {
+    // El catálogo aún no siembra territorios de facción: uno de Helsig en esta partida.
+    const territorio = await prisma.territory.create({ data: { factionId: (await faccion('clan-helsig')).id, name: 'Paso de prueba', region: 'Cristal Helado', description: 'x' } });
+    const r = await aplicar({ tipo: 'cambiarControlTerritorio', territoryId: territorio.id, faccionSlug: 'clan-serhu', control: 'DISPUTADO' });
+    expect(r.sucesoId).not.toBeNull();
+    const tras = await prisma.territory.findUniqueOrThrow({ where: { id: territorio.id } });
+    expect(tras).toMatchObject({ factionId: (await faccion('clan-serhu')).id, control: 'DISPUTADO' });
+    expect(await aplicar({ tipo: 'cambiarControlTerritorio', territoryId: territorio.id, faccionSlug: 'clan-serhu', control: 'DISPUTADO' })).toMatchObject({ aplicado: false });
+  });
+
+  it('crear y retirar un punto de zona de la partida', async () => {
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId, slug: 'hondonada-del-eco' } });
+    expect((await aplicar({ tipo: 'crearPuntoZona', locationId: location.id, puntoTipo: 'NPC', targetSlug: 'npc-de-prueba', x: 100, y: 120 })).aplicado).toBe(true);
+    const punto = await prisma.zonePoint.findFirstOrThrow({ where: { saveId, targetSlug: 'npc-de-prueba' } });
+    expect(punto).toMatchObject({ activo: true, x: 100, origenX: 100 });
+    expect((await aplicar({ tipo: 'retirarPuntoZona', zonePointId: punto.id })).aplicado).toBe(true);
+    expect(await aplicar({ tipo: 'retirarPuntoZona', zonePointId: punto.id })).toMatchObject({ aplicado: false });
+  });
 });

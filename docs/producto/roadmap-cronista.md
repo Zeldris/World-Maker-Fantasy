@@ -959,24 +959,29 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   todos los tests de integración actuales pasan.
 
 ### Fase 3 — Motor sin IA · **L**
-- **CR-9** Lista cerrada de efectos con sus sucesos. **M** 🚧 2026-10-04 — **paso 1 hecho:**
+- ~~**CR-9** Lista cerrada de efectos con sus sucesos. **M**~~ ✅ 2026-10-04 — **paso 1:**
   `services/cronista/efectos.ts` (`aplicarEfecto`/`aplicarEfectos` con `CtxEfecto`; lo que no se
   puede aplicar devuelve `aplicado: false` sin fallar). Efectos de facciones y NPC: `cambiarPresion`,
   `matarNpc` (`NpcState.muerto`), `asignarCargo` (suceso solo para heredero), `cambiarCohesion` (sin
   suceso: número interno), `cambiarLider`, `crearFaccion` (escisión o fundación, con su reino),
   `disolverFaccion` (nunca el Reino del jugador) y `absorberFaccion` (gente, recursos, territorios,
-  edificios y almacén). Test de integración por efecto. **Falta (paso 2):** `moverPoblacion`,
-  `ajustarPoblacion`, `danarEdificio`/`repararEdificio`, `cambiarControlTerritorio`,
-  `crearPuntoZona`/`retirarPuntoZona`, `ajustarPrecios`, `crearNpc`. Los que dependen de modelos
-  nuevos van con su tarea: consecuencias (CR-11), etiquetas/aprobación/recuerdos (Fase 4),
-  conocimiento (Fase 5), hilos (buscadores) y `ofrecerMision` (gancho).
+  edificios y almacén). **Paso 2:** `ajustarPoblacion` (auge/declive si cambia ≥ 10 %),
+  `moverPoblacion` (reparte `distribucion`; `MIGRACION_FAUNA`), `danarEdificio`/`repararEdificio`,
+  `cambiarControlTerritorio` (conquista o pérdida; el del jugador cuelga de la partida) y
+  `crearPuntoZona`/`retirarPuntoZona`. 11 tests de integración. **Van con su tarea** (anotados en
+  ellas): `programarConsecuencia`/`anularConsecuencia` y `ajustarPrecios` (CR-11), `crearNpc`
+  (CR-13), etiquetas/aprobación/recuerdos (Fase 4), conocimiento (Fase 5), hilos (buscadores) y
+  `ofrecerMision` (gancho).
 - **CR-10** Reacciones inmediatas (tabla § 7.1). **M**
-- **CR-11** Consecuencias aplazadas con sus disparos y las 7 iniciales (§ 7.2). **M**
+- **CR-11** Consecuencias aplazadas con sus disparos y las 7 iniciales (§ 7.2). **M** Incluye los
+  efectos `programarConsecuencia`/`anularConsecuencia` y `ajustarPrecios` (para `PUEBLO_ABANDONADO`)
+  en `efectos.ts` (CR-9).
 - **CR-12** Narrador de fondo con presupuesto, enfriamientos y reglas de facción (§ 7.3);
   agenda Serhu como primera cadena. **L** Al hacerlo, revisar `UX-6` (roadmap-front-ux.md): hoy
   la ambientación se cancela al enviar una acción porque no pesa nada; con contenido real puede
   convenir que la acción espere (opción A).
-- **CR-13** Nacimientos notables y generador de nombres (§ 12.3). **M**
+- **CR-13** Nacimientos notables y generador de nombres (§ 12.3). **M** Incluye el efecto `crearNpc`
+  en `efectos.ts` (CR-9).
 - **Hecho cuando:** `cronista:simular 60` produce caídas, escisiones, tormentas con daños, guerras
   y nacimientos coherentes; perdonar a un NPC lo hace volver en otra región.
 

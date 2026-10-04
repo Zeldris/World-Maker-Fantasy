@@ -10,11 +10,14 @@
 // Reino del jugador). Los efectos numéricos internos (cohesión) no registran suceso propio: lo
 // registran sus consecuencias (p. ej. `FACCION_CAE`).
 //
-// Pendientes de la tarea que crea su modelo: `programarConsecuencia`/`anularConsecuencia` (CR-11),
-// `anadirEtiqueta`/`quitarEtiqueta`, `cambiarAprobacion` y `anadirRecuerdo` (Fase 4),
-// `propagarConocimiento` (Fase 5), `abrirHilo`/`cerrarHilo` (buscadores de historias) y
-// `ofrecerMision` (gancho, sin implementar).
-import type { OrigenSuceso, Prisma } from '@prisma/client';
+// Pendientes de la tarea que los necesita o crea su modelo: `programarConsecuencia`/
+// `anularConsecuencia` y `ajustarPrecios` (CR-11: hoy no hay precios que ajustar fuera del stock),
+// `crearNpc` (CR-13, con nacimientos y nombres), `anadirEtiqueta`/`quitarEtiqueta`,
+// `cambiarAprobacion` y `anadirRecuerdo` (Fase 4), `propagarConocimiento` (Fase 5),
+// `abrirHilo`/`cerrarHilo` (buscadores de historias) y `ofrecerMision` (gancho, sin implementar).
+import type { OrigenSuceso, Prisma, TerritoryControl, ZonePointTipo } from '@prisma/client';
+import { stripRegionArticle } from '../population.js';
+import { slugify } from '../../lib/slugify.js';
 import { recordFactionEvent, type FactionEventType } from '../factionRelations.js';
 import { ownerKeyFor } from '../reinoOwner.js';
 import { registrarSuceso, type NuevoSuceso } from './sucesos.js';
@@ -41,7 +44,14 @@ export type Efecto =
   | { tipo: 'cambiarLider'; faccionSlug: string; npcId: string }
   | { tipo: 'crearFaccion'; slug: string; nombre: string; raza: string; descripcion: string; escindidaDe?: string; liderNpcId?: string }
   | { tipo: 'disolverFaccion'; faccionSlug: string }
-  | { tipo: 'absorberFaccion'; faccionSlug: string; absorbenteSlug: string };
+  | { tipo: 'absorberFaccion'; faccionSlug: string; absorbenteSlug: string }
+  | { tipo: 'ajustarPoblacion'; targetSlug: string; delta: number; region?: string }
+  | { tipo: 'moverPoblacion'; targetSlug: string; desde: string; hacia: string; fraccion: number }
+  | { tipo: 'danarEdificio'; buildingId: string; causa?: string }
+  | { tipo: 'repararEdificio'; buildingId: string }
+  | { tipo: 'cambiarControlTerritorio'; territoryId: string; faccionSlug: string | null; control: TerritoryControl }
+  | { tipo: 'crearPuntoZona'; locationId: string; puntoTipo: ZonePointTipo; targetSlug: string; x: number; y: number; cantidad?: number; label?: string }
+  | { tipo: 'retirarPuntoZona'; zonePointId: string };
 
 export interface ResultadoEfecto {
   aplicado: boolean;
@@ -81,6 +91,20 @@ export async function aplicarEfecto(ctx: CtxEfecto, e: Efecto): Promise<Resultad
       return disolverFaccion(ctx, e);
     case 'absorberFaccion':
       return absorberFaccion(ctx, e);
+    case 'ajustarPoblacion':
+      return ajustarPoblacion(ctx, e);
+    case 'moverPoblacion':
+      return moverPoblacion(ctx, e);
+    case 'danarEdificio':
+      return danarEdificio(ctx, e);
+    case 'repararEdificio':
+      return repararEdificio(ctx, e);
+    case 'cambiarControlTerritorio':
+      return cambiarControlTerritorio(ctx, e);
+    case 'crearPuntoZona':
+      return crearPuntoZona(ctx, e);
+    case 'retirarPuntoZona':
+      return retirarPuntoZona(ctx, e);
   }
 }
 
@@ -262,4 +286,130 @@ async function absorberFaccion(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'absor
     datos: { faccion: absorbida.name, absorbente: absorbente.name },
   });
   return { aplicado: true, sucesoId };
+}
+
+// ─────────────────────────── Población ───────────────────────────
+
+/// Cambio de población a partir del cual se registra auge o declive (fracción de la de antes).
+export const UMBRAL_CAMBIO_NOTABLE = 0.1;
+
+/// Suma o resta población de la partida (entre 0 y su techo). Registra `AUGE_POBLACION` o
+/// `DECLIVE_POBLACION` si el cambio es notable (≥ 10 % de la de antes).
+async function ajustarPoblacion(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'ajustarPoblacion' }>): Promise<ResultadoEfecto> {
+  const fila = await ctx.tx.worldPopulation.findFirst({ where: { saveId: ctx.saveId, targetSlug: e.targetSlug } });
+  if (!fila) return NO_APLICADO;
+  const poblacion = Math.max(0, Math.min(fila.poblacionMax, fila.poblacion + e.delta));
+  const cambio = poblacion - fila.poblacion;
+  if (cambio === 0) return NO_APLICADO;
+  await ctx.tx.worldPopulation.update({ where: { id: fila.id }, data: { poblacion } });
+  if (Math.abs(cambio) < Math.max(1, fila.poblacion * UMBRAL_CAMBIO_NOTABLE)) return { aplicado: true, sucesoId: null };
+  const sucesoId = await registrar(ctx, {
+    tipo: cambio > 0 ? 'AUGE_POBLACION' : 'DECLIVE_POBLACION',
+    actores: e.region ? [{ entidadTipo: 'REGION', entidadId: slugify(e.region), papel: 'LUGAR' }] : [],
+    datos: { especie: fila.label, region: e.region ?? 'la región' },
+  });
+  return { aplicado: true, sucesoId };
+}
+
+/// Pasa una fracción del peso regional (`distribucion`) de una región a otra: la población no cambia,
+/// cambia dónde aparece. Registra `MIGRACION_FAUNA`.
+async function moverPoblacion(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'moverPoblacion' }>): Promise<ResultadoEfecto> {
+  const desde = stripRegionArticle(e.desde);
+  const hacia = stripRegionArticle(e.hacia);
+  if (desde === hacia || e.fraccion <= 0) return NO_APLICADO;
+  const fila = await ctx.tx.worldPopulation.findFirst({ where: { saveId: ctx.saveId, targetSlug: e.targetSlug } });
+  if (!fila) return NO_APLICADO;
+  const distribucion = { ...((fila.distribucion as Record<string, number> | null) ?? {}) };
+  const origen = distribucion[desde] ?? 0;
+  if (origen <= 0) return NO_APLICADO;
+  const movido = origen * Math.min(1, e.fraccion);
+  distribucion[desde] = origen - movido;
+  distribucion[hacia] = (distribucion[hacia] ?? 0) + movido;
+  await ctx.tx.worldPopulation.update({ where: { id: fila.id }, data: { distribucion } });
+  const sucesoId = await registrar(ctx, {
+    tipo: 'MIGRACION_FAUNA',
+    actores: [{ entidadTipo: 'REGION', entidadId: slugify(e.desde), papel: 'AFECTADO' }, { entidadTipo: 'REGION', entidadId: slugify(e.hacia), papel: 'BENEFICIARIO' }],
+    datos: { especie: fila.label, desde: e.desde, hacia: e.hacia },
+  });
+  return { aplicado: true, sucesoId };
+}
+
+// ─────────────────────────── Edificios y territorio ───────────────────────────
+
+/// Edificio de la partida: del jugador (`saveId`) o de una facción de su mundo.
+async function edificioDePartida(ctx: CtxEfecto, id: string) {
+  return ctx.tx.building.findFirst({ where: { id, OR: [{ saveId: ctx.saveId }, { faction: { saveId: ctx.saveId } }] } });
+}
+
+async function danarEdificio(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'danarEdificio' }>): Promise<ResultadoEfecto> {
+  const edificio = await edificioDePartida(ctx, e.buildingId);
+  if (!edificio || edificio.status !== 'ACTIVO') return NO_APLICADO;
+  await ctx.tx.building.update({ where: { id: edificio.id }, data: { status: 'DANADO' } });
+  const sucesoId = await registrar(ctx, {
+    tipo: 'EDIFICIO_DANADO',
+    actores: [{ entidadTipo: 'EDIFICIO', entidadId: edificio.id, papel: 'VICTIMA' }],
+    datos: { edificio: edificio.name, ...(e.causa ? { causa: e.causa } : {}) },
+  });
+  return { aplicado: true, sucesoId };
+}
+
+/// Sin suceso propio: reparar es estado (el Libro ya tiene el daño).
+async function repararEdificio(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'repararEdificio' }>): Promise<ResultadoEfecto> {
+  const edificio = await edificioDePartida(ctx, e.buildingId);
+  if (!edificio || edificio.status !== 'DANADO') return NO_APLICADO;
+  await ctx.tx.building.update({ where: { id: edificio.id }, data: { status: 'ACTIVO' } });
+  return { aplicado: true, sucesoId: null };
+}
+
+/// Cambia quién controla un territorio de la partida y cómo. `faccionSlug` null = sin dueño. El
+/// territorio del jugador cuelga de la partida (`saveId`); el de una facción, de la facción.
+async function cambiarControlTerritorio(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'cambiarControlTerritorio' }>): Promise<ResultadoEfecto> {
+  const territorio = await ctx.tx.territory.findFirst({
+    where: { id: e.territoryId, OR: [{ saveId: ctx.saveId }, { faction: { saveId: ctx.saveId } }] },
+    include: { faction: { select: { slug: true, name: true } } },
+  });
+  if (!territorio) return NO_APLICADO;
+  const nueva = e.faccionSlug ? await faccionViva(ctx, e.faccionSlug) : null;
+  if (e.faccionSlug && !nueva) return NO_APLICADO;
+  const delJugador = nueva?.origenSlug === null;
+  const dueno = delJugador ? { saveId: ctx.saveId, factionId: null } : nueva ? { saveId: null, factionId: nueva.id } : { saveId: null, factionId: null };
+  const mismoDueno = territorio.saveId === dueno.saveId && territorio.factionId === dueno.factionId;
+  if (mismoDueno && territorio.control === e.control) return NO_APLICADO;
+  await ctx.tx.territory.update({ where: { id: territorio.id }, data: { ...dueno, control: e.control } });
+  if (mismoDueno && e.control !== 'PERDIDO') return { aplicado: true, sucesoId: null };
+
+  const anterior = territorio.faction?.name ?? (territorio.saveId ? 'el reino del jugador' : undefined);
+  const sucesoId = nueva && !mismoDueno
+    ? await registrar(ctx, {
+        tipo: 'TERRITORIO_CONQUISTADO',
+        actores: [actorFaccion(nueva.slug, 'AUTOR'), { entidadTipo: 'TERRITORIO', entidadId: territorio.id, papel: 'LUGAR' }, ...(territorio.faction ? [actorFaccion(territorio.faction.slug, 'VICTIMA')] : [])],
+        datos: { faccion: nueva.name, territorio: territorio.name, ...(anterior ? { anteriorDueno: anterior } : {}) },
+      })
+    : await registrar(ctx, {
+        tipo: 'TERRITORIO_PERDIDO',
+        actores: [{ entidadTipo: 'TERRITORIO', entidadId: territorio.id, papel: 'LUGAR' }, ...(territorio.faction ? [actorFaccion(territorio.faction.slug, 'VICTIMA')] : [])],
+        datos: { faccion: anterior ?? 'nadie', territorio: territorio.name },
+      });
+  return { aplicado: true, sucesoId };
+}
+
+// ─────────────────────────── Puntos de zona ───────────────────────────
+
+/// Punto nuevo en el mapa de zona de la partida (sin suceso: es lo que se ve, no lo que pasa).
+async function crearPuntoZona(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'crearPuntoZona' }>): Promise<ResultadoEfecto> {
+  const location = await ctx.tx.location.findFirst({ where: { id: e.locationId, worldId: ctx.worldId }, select: { id: true } });
+  if (!location) return NO_APLICADO;
+  await ctx.tx.zonePoint.create({
+    data: {
+      saveId: ctx.saveId, locationId: location.id, tipo: e.puntoTipo, targetSlug: e.targetSlug,
+      x: e.x, y: e.y, origenX: e.x, origenY: e.y, cantidad: e.cantidad ?? 1, label: e.label ?? null,
+      lastUpdatedAtMinutes: ctx.fictionalMinutes,
+    },
+  });
+  return { aplicado: true, sucesoId: null };
+}
+
+async function retirarPuntoZona(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'retirarPuntoZona' }>): Promise<ResultadoEfecto> {
+  const r = await ctx.tx.zonePoint.updateMany({ where: { id: e.zonePointId, saveId: ctx.saveId, activo: true }, data: { activo: false } });
+  return r.count > 0 ? { aplicado: true, sucesoId: null } : NO_APLICADO;
 }
