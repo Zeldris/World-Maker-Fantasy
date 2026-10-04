@@ -104,6 +104,22 @@ describe('narrador de fondo (CR-12)', () => {
     expect(await prisma.logEntry.count({ where: { saveId, channel: 'WORLD', text: texto } })).toBe(1);
   });
 
+  it('una plaga resta solo la parte de la especie que vive en la región', async () => {
+    const saveId = await partida('Narrador (CR-12) plaga regional', 'EQUILIBRADO', TOPE_PRESUPUESTO);
+    const plaga = SUCESOS_DE_FONDO.find((s) => s.tipo === 'PLAGA')!;
+    const fauna = await prisma.worldPopulation.findMany({ where: { saveId, targetType: { not: 'RAZA' }, poblacion: { gte: 10 } } });
+    const antes = new Map(fauna.map((f) => [f.targetSlug, f.poblacion]));
+    const r = await narrarDia(prisma, saveId, 10, semilla(7), [plaga]);
+    const suceso = await prisma.suceso.findUniqueOrThrow({ where: { id: r.sucesoId! } });
+    const afectada = fauna.find((f) => f.label === (suceso.datos as { afecta: string }).afecta)!;
+    const dist = afectada.distribucion as Record<string, number>;
+    const total = Object.values(dist).reduce((s, v) => s + v, 0);
+    const region = (suceso.datos as { region: string }).region.replace(/^(Las|La|El|Los) /, '');
+    const esperada = Math.max(1, Math.round(antes.get(afectada.targetSlug)! * ((dist[region] ?? 0) / total) * 0.2));
+    const despues = (await prisma.worldPopulation.findFirstOrThrow({ where: { saveId, targetSlug: afectada.targetSlug } })).poblacion;
+    expect(antes.get(afectada.targetSlug)! - despues).toBe(esperada);
+  });
+
   it('cada entrada del catálogo inicial se aplica sobre el mundo de la partida cuando tiene candidatos', async () => {
     const saveId = await partida('Narrador (CR-12) catálogo');
     await descontenta(saveId);
@@ -136,6 +152,12 @@ describe('narrador de fondo (CR-12)', () => {
     }
     // En el mundo sembrado hay facciones en tensión y con tratado, fauna, edificios de facción, y lo de arriba.
     expect(aplicados).toEqual(SUCESOS_DE_FONDO.map((e) => e.tipo));
+    // Las regiones van por su slug, como en el resto del Libro.
+    const deFauna = await prisma.suceso.findMany({ where: { saveId, tipo: { in: ['PLAGA', 'AUGE_POBLACION', 'MIGRACION_FAUNA'] } }, include: { actores: true } });
+    for (const s of deFauna) {
+      expect(s.regionSlug).toMatch(/^[a-z0-9-]+$/);
+      for (const a of s.actores.filter((x) => x.entidadTipo === 'REGION')) expect(a.entidadId).toMatch(/^[a-z0-9-]+$/);
+    }
     expect((await prisma.kingdomStats.findUniqueOrThrow({ where: { ownerKey: `save:${saveId}` } })).felicidad).toBe(55);
     expect((await prisma.faction.findUniqueOrThrow({ where: { id: debil!.id } })).disueltaEn).not.toBeNull();
   });

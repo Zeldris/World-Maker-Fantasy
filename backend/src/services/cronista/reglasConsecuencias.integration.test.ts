@@ -91,6 +91,8 @@ describe('reglas de consecuencias: sucesión y refugiados (CR-11)', () => {
     expect(d['Llanuras del Viento Rojo']).toBeCloseTo(0.25);
     expect(d['Ciénaga Troncal']).toBeCloseTo(0.25);
     expect((await prisma.worldPopulation.findFirstOrThrow({ where: { saveId, targetSlug: 'clan-helsig-poblacion' } })).poblacion).toBe(0);
+    // Sin ruido en el Libro: la gente que se dispersa no es fauna que migra ni un declive natural.
+    expect(await prisma.suceso.count({ where: { saveId, tipo: { in: ['MIGRACION_FAUNA', 'DECLIVE_POBLACION'] } } })).toBe(0);
   });
 
   it('una muerte que llega por dos vías no registra dos veces la muerte del líder', async () => {

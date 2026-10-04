@@ -86,11 +86,12 @@ const REFUGIADOS: ReglaConsecuencia = {
       if (!targetSlug || vecinas.length === 0) continue;
       const porVecina = FRACCION_REFUGIADOS / vecinas.length;
       vecinas.forEach((hacia, i) => {
-        efectos.push({ tipo: 'moverPoblacion', targetSlug, desde: region, hacia, fraccion: porVecina / (1 - i * porVecina) });
+        efectos.push({ tipo: 'moverPoblacion', targetSlug, desde: region, hacia, fraccion: porVecina / (1 - i * porVecina), sinSuceso: true });
       });
     }
-    // La facción como tal deja de tener gente.
-    for (const campo of CAMPOS_FACCION) efectos.push({ tipo: 'ajustarPoblacion', targetSlug: `${faccionSlug}-${campo}`, delta: -1_000_000 });
+    // La facción como tal deja de tener gente. Sin sucesos propios (no son fauna que migra ni un
+    // declive natural): lo cuenta `FACCION_CAE`.
+    for (const campo of CAMPOS_FACCION) efectos.push({ tipo: 'ajustarPoblacion', targetSlug: `${faccionSlug}-${campo}`, delta: -1_000_000, sinSuceso: true });
     return efectos;
   },
 };

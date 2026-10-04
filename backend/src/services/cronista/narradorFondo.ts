@@ -20,6 +20,7 @@
 // hilos abiertos (CR-17) y árbitro con IA (Fase 7).
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { stripRegionArticle } from '../population.js';
+import { slugify } from '../../lib/slugify.js';
 import { difundirNoticias, type NoticiaMundo } from '../noticiasMundo.js';
 import { CATALOGO_SUCESOS, type DatosSuceso, type TipoSuceso } from './catalogoSucesos.js';
 import { aplicarEfectos, type CtxEfecto, type Efecto } from './efectos.js';
@@ -67,6 +68,8 @@ export interface SucesoDeFondo {
 }
 
 const actorFaccion = (slug: string, papel: ActorSuceso['papel']): ActorSuceso => ({ entidadTipo: 'FACCION', entidadId: slug, papel });
+/// Las regiones van en el Libro por su slug, como en el resto del Cronista.
+const actorRegion = (region: string, papel: ActorSuceso['papel']): ActorSuceso => ({ entidadTipo: 'REGION', entidadId: slugify(region), papel });
 
 /// Facciones vivas del mundo de la partida (copias y nacidas en ella; nunca el Reino de la jugadora).
 const faccionesVivas = { origenSlug: { not: null }, disueltaEn: null } as const;
@@ -89,9 +92,11 @@ async function faunaDePartida(ctx: CtxNarrador) {
   });
   return filas.map((f) => {
     const dist = (f.distribucion as Record<string, number> | null) ?? {};
-    // Regiones con nombre completo (el de `Location.region`) en las que la especie tiene peso.
-    const regiones = Object.keys(REGIONES_VECINAS).filter((r) => (dist[stripRegionArticle(r)] ?? 0) > 0);
-    return { ...f, regiones };
+    // Regiones con nombre completo (el de `Location.region`) en las que la especie tiene peso, y qué
+    // parte de la especie vive en cada una.
+    const pesos = Object.keys(REGIONES_VECINAS).map((region) => ({ region, peso: dist[stripRegionArticle(region)] ?? 0 })).filter((r) => r.peso > 0);
+    const total = pesos.reduce((s, r) => s + r.peso, 0);
+    return { ...f, regiones: pesos.map((r) => ({ region: r.region, parte: r.peso / total })) };
   });
 }
 
@@ -156,33 +161,35 @@ export const SUCESOS_DE_FONDO: SucesoDeFondo[] = [
       })),
   },
   {
-    // Una plaga se ceba con una especie en una de sus regiones: pierde un quinto.
+    // Una plaga se ceba con una especie en una de sus regiones: pierde un quinto de lo que vive allí
+    // (la población es de la especie entera; se resta la parte de esa región según su peso). Cada
+    // especie pesa 1 en total, repartido entre sus regiones.
     tipo: 'PLAGA',
     enfriamientoDias: 6,
     candidatos: async (ctx) =>
       (await faunaDePartida(ctx))
         .filter((f) => f.poblacion >= 10)
         .flatMap((f) =>
-          f.regiones.map((region) => ({
-            peso: 1,
-            suceso: { datos: { region, afecta: f.label }, actores: [{ entidadTipo: 'REGION' as const, entidadId: region, papel: 'LUGAR' as const }] },
-            efectos: [{ tipo: 'ajustarPoblacion' as const, targetSlug: f.targetSlug, delta: -Math.round(f.poblacion * 0.2), region, sinSuceso: true }],
+          f.regiones.map(({ region, parte }) => ({
+            peso: parte,
+            suceso: { datos: { region, afecta: f.label }, actores: [actorRegion(region, 'LUGAR')], regionSlug: slugify(region) },
+            efectos: [{ tipo: 'ajustarPoblacion' as const, targetSlug: f.targetSlug, delta: -Math.max(1, Math.round(f.poblacion * parte * 0.2)), region, sinSuceso: true }],
             noticia: { facciones: [], region },
           })),
         ),
   },
   {
-    // Una especie lejos de su techo prolifera.
+    // Una especie lejos de su techo prolifera en una de sus regiones (+15 % de lo que vive allí).
     tipo: 'AUGE_POBLACION',
     enfriamientoDias: 4,
     candidatos: async (ctx) =>
       (await faunaDePartida(ctx))
         .filter((f) => f.poblacion < f.poblacionMax * 0.8)
         .flatMap((f) =>
-          f.regiones.map((region) => ({
-            peso: 1,
-            suceso: { datos: { especie: f.label, region }, actores: [{ entidadTipo: 'REGION' as const, entidadId: region, papel: 'LUGAR' as const }] },
-            efectos: [{ tipo: 'ajustarPoblacion' as const, targetSlug: f.targetSlug, delta: Math.max(1, Math.round(f.poblacion * 0.15)), region, sinSuceso: true }],
+          f.regiones.map(({ region, parte }) => ({
+            peso: parte,
+            suceso: { datos: { especie: f.label, region }, actores: [actorRegion(region, 'LUGAR')], regionSlug: slugify(region) },
+            efectos: [{ tipo: 'ajustarPoblacion' as const, targetSlug: f.targetSlug, delta: Math.max(1, Math.round(f.poblacion * parte * 0.15)), region, sinSuceso: true }],
             noticia: { facciones: [], region },
           })),
         ),
@@ -193,12 +200,13 @@ export const SUCESOS_DE_FONDO: SucesoDeFondo[] = [
     enfriamientoDias: 4,
     candidatos: async (ctx) =>
       (await faunaDePartida(ctx)).flatMap((f) =>
-        f.regiones.flatMap((desde) =>
+        f.regiones.flatMap(({ region: desde, parte }) =>
           REGIONES_VECINAS[desde]!.map((hacia) => ({
-            peso: 1,
+            peso: parte / REGIONES_VECINAS[desde]!.length,
             suceso: {
               datos: { especie: f.label, desde, hacia },
-              actores: [{ entidadTipo: 'REGION' as const, entidadId: desde, papel: 'AFECTADO' as const }, { entidadTipo: 'REGION' as const, entidadId: hacia, papel: 'BENEFICIARIO' as const }],
+              actores: [actorRegion(desde, 'AFECTADO'), actorRegion(hacia, 'BENEFICIARIO')],
+              regionSlug: slugify(desde),
             },
             efectos: [{ tipo: 'moverPoblacion' as const, targetSlug: f.targetSlug, desde, hacia, fraccion: 0.3, sinSuceso: true }],
             // Se entera quien está en cualquiera de las dos regiones: va por la de destino, que es
