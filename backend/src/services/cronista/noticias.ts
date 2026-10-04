@@ -35,6 +35,8 @@ export interface MetaNoticia {
   categoria?: CategoriaNoticia;
   oportunidad?: OportunidadNoticia;
   resumen?: true;
+  /// En un resumen: los metadatos de cada línea (en orden; null si la línea no tenía).
+  lineas?: (MetaNoticia | null)[];
 }
 
 /// Categoría según la familia del suceso del Libro.
@@ -192,15 +194,16 @@ export async function agruparNoticias(prisma: PrismaClient, saveId: string, marc
     const entradas = await tx.logEntry.findMany({
       where: { saveId, channel: 'WORLD', createdAt: { gt: marca } },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-      select: { id: true, text: true, timeLabel: true, fictionalMinutes: true },
+      select: { id: true, text: true, timeLabel: true, fictionalMinutes: true, noticia: true },
     });
     if (entradas.length < 2) return 0;
     const ultima = entradas[entradas.length - 1]!;
     await tx.logEntry.deleteMany({ where: { id: { in: entradas.map((e) => e.id) } } });
     await tx.logEntry.create({
       data: {
-        saveId, channel: 'WORLD', isSystemMessage: true, timeLabel: ultima.timeLabel, fictionalMinutes: ultima.fictionalMinutes, noticia: { resumen: true },
+        saveId, channel: 'WORLD', isSystemMessage: true, timeLabel: ultima.timeLabel, fictionalMinutes: ultima.fictionalMinutes, noticia: { resumen: true, lineas: entradas.map((e) => (e.noticia as MetaNoticia | null) ?? null) } as Prisma.InputJsonValue,
         text: [CABECERA_RESUMEN, ...entradas.map((e) => `• ${e.text}`)].join('\n'),
+        // Cada línea conserva su categoría y su oportunidad (revisión del PR de CR-13).
       },
     });
     return entradas.length;

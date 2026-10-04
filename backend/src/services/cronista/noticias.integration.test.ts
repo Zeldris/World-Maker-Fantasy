@@ -35,7 +35,7 @@ describe('resumen de varios días (CR-12)', () => {
     expect(await agruparNoticias(prisma, saveId, desde)).toBe(2);
     const mundo = await prisma.logEntry.findMany({ where: { saveId, channel: 'WORLD' }, orderBy: { createdAt: 'asc' } });
     expect(mundo.map((e) => e.text)).toEqual(['Antes del viaje.', `${CABECERA_RESUMEN}\n• Una caravana viaja de A a B.\n• Se dice que una plaga golpea C.`]);
-    expect(mundo[1]!.noticia).toEqual({ resumen: true });
+    expect(mundo[1]!.noticia).toEqual({ resumen: true, lineas: [null, null] });
     expect(await prisma.logEntry.count({ where: { saveId, channel: 'CHARACTER' } })).toBe(1);
 
     // Con una sola no hay resumen.

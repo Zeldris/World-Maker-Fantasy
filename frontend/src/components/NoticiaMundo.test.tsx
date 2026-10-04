@@ -32,6 +32,19 @@ describe('UX-38 — NoticiaMundo', () => {
     expect(getByText('Una caravana viaja de A a B.')).toBeTruthy()
   })
 
+  it('cada línea del resumen conserva su icono y su oportunidad', () => {
+    const { getByRole, getByText } = render(
+      <NoticiaMundo
+        text={'Mientras pasaban los días…\n• Una caravana viaja de A a B.\n• Algo sin más.'}
+        noticia={{ resumen: true, lineas: [{ categoria: 'COMERCIO', oportunidad: { lugar: 'Vado', locationId: 'l', venceEn: 3 * 1440 } }, null] }}
+        texto={texto}
+      />,
+    )
+    fireEvent.click(getByText('Mientras pasaban los días…'))
+    expect(getByRole('img', { name: 'Comercio' })).toBeTruthy()
+    expect(getByText(/En Vado · hasta el día 4/)).toBeTruthy()
+  })
+
   it('día de ficción desde minutos (día 1 = el primero)', () => {
     expect(diaDeFiccion(0)).toBe(1)
     expect(diaDeFiccion(1440)).toBe(2)

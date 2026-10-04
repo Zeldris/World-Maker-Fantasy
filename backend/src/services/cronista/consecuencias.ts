@@ -161,14 +161,16 @@ export async function evaluarConsecuencias(
   return { disparadas, caducadas: vencidas.length };
 }
 
-/// ¿Este suceso cumple el disparo `SUCESO`? Tipo, y si lo pide, que el NPC salga en él (CR-12: el
-/// guardia de una caravana, el encargado de una reparación) y que el objeto sea de alguna de las
-/// categorías (`datos.objeto.categoria`, p. ej. un `REGALO` de madera o piedra).
+/// ¿Este suceso cumple el disparo `SUCESO`? Tipo, y si lo pide, que pase en ese lugar, que el NPC
+/// salga en él (CR-12: el guardia de una caravana, el encargado de una reparación) y que el objeto
+/// sea de alguna de las categorías (`datos.objeto.categoria`, p. ej. un `REGALO` de madera o piedra).
 export function cumpleDisparoSuceso(
   d: Extract<Disparo, { tipo: 'SUCESO' }>,
-  suceso: { tipo: string; actores?: { entidadTipo: string; entidadId: string }[]; datos?: unknown },
+  suceso: { tipo: string; locationId?: string | null; actores?: { entidadTipo: string; entidadId: string }[]; datos?: unknown },
 ): boolean {
   if (!d.tipos.includes(suceso.tipo as never)) return false;
+  // Las plantillas se comparten entre lugares: el guardia de esta caravana es el de ESTE sitio.
+  if (d.locationId && suceso.locationId !== d.locationId) return false;
   if (d.npcId && !(suceso.actores ?? []).some((a) => a.entidadTipo === 'NPC' && a.entidadId === d.npcId)) return false;
   if (d.categorias) {
     const categoria = (suceso.datos as { objeto?: { categoria?: string } } | null)?.objeto?.categoria;
@@ -181,7 +183,7 @@ export function cumpleDisparoSuceso(
 export async function dispararPorSuceso(
   tx: Tx,
   worldId: string,
-  suceso: { id?: string; saveId: string; tipo: string; fictionalMinutes: number; actores?: { entidadTipo: string; entidadId: string }[] },
+  suceso: { id?: string; saveId: string; tipo: string; fictionalMinutes: number; locationId?: string | null; actores?: { entidadTipo: string; entidadId: string }[] },
   random: () => number,
 ): Promise<void> {
   const dia = Math.floor(suceso.fictionalMinutes / 1440);

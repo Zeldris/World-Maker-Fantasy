@@ -66,13 +66,18 @@ describe('oportunidades (CR-12)', () => {
     expect(punto.label).toBe('Caravana de Concordia de Hierro');
     const guardia = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: punto.targetSlug } });
     const otro = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'guardia-serhu' } });
-    const muerte = (npcId: string) => suceso({
-      saveId, tipo: 'MUERTE_CAUSADA', fictionalMinutes: 480 + 10 * DIA + 60, origen: 'JUGADOR',
+    const muerte = (npcId: string, locationId = punto.locationId) => suceso({
+      saveId, tipo: 'MUERTE_CAUSADA', fictionalMinutes: 480 + 10 * DIA + 60, origen: 'JUGADOR', locationId,
       actores: [{ entidadTipo: 'PERSONAJE', entidadId: saveId, papel: 'AUTOR' }, { entidadTipo: 'NPC', entidadId: npcId, papel: 'VICTIMA' }],
       datos: { personaje: 'O', victima: 'x' },
     });
 
     await muerte(otro.id);
+    await procesarReacciones(prisma, saveId);
+    expect((await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).goirnos).toBe(0);
+    // La misma plantilla de guardia vencida en otro sitio no es el guardia de esta caravana.
+    const otroLugar = await prisma.location.findFirstOrThrow({ where: { worldId, id: { not: punto.locationId } } });
+    await muerte(guardia.id, otroLugar.id);
     await procesarReacciones(prisma, saveId);
     expect((await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).goirnos).toBe(0);
 
@@ -93,7 +98,7 @@ describe('oportunidades (CR-12)', () => {
     const punto = await prisma.zonePoint.findFirstOrThrow({ where: { saveId, tipo: 'NPC', activo: true } });
     const encargado = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: punto.targetSlug } });
     const regalo = (categoria: string) => suceso({
-      saveId, tipo: 'REGALO', fictionalMinutes: 480 + 10 * DIA + 60, origen: 'JUGADOR',
+      saveId, tipo: 'REGALO', fictionalMinutes: 480 + 10 * DIA + 60, origen: 'JUGADOR', locationId: edificio.locationId,
       actores: [{ entidadTipo: 'PERSONAJE', entidadId: saveId, papel: 'AUTOR' }, { entidadTipo: 'NPC', entidadId: encargado.id, papel: 'BENEFICIARIO' }],
       datos: { personaje: 'O', a: encargado.name, objeto: { nombre: 'algo', categoria } },
     });

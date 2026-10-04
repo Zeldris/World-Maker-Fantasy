@@ -71,7 +71,7 @@ describe('envejecer (CR-13)', () => {
     const otra = await partida('Envejecer (CR-13) otra');
     const dulgren = await prisma.npc.findFirstOrThrow({ where: { worldId, name: 'Dulgren', saveId: null } });
     // Lo bastante lejos para que Dulgren sea muy viejo (esperanza orca 60).
-    const anos = 70 - edadProvisional(dulgren.slug, 'orcos', false);
+    const anos = 70 - edadProvisional(dulgren.slug, 'orcos');
     const futuro = AHORA + anos * MINUTOS_POR_ANIO;
     await prisma.worldState.update({ where: { saveId }, data: { fictionalMinutes: futuro } });
     const { muertos } = await envejecerDia(prisma, saveId, Math.floor(futuro / 1440), () => 0);

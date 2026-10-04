@@ -1206,6 +1206,14 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     (migración `20261005020000_npc_state_vejez`), que `envejecer.ts` actualiza y que se resta en la
     escena (`buildNpcInScene`) y en el combate múltiple (`restarVejez`). Las interceptaciones de
     expediciones aún usan los atributos sin vejez (`combatienteDeNpc` no recibe el estado; caso raro).
+  - **Revisión con `/code-review` antes del PR (2026-10-04), 7 arreglos:** el encargo de materiales
+    no se podía completar (la entrega solo admitía compañeros; ahora también el encargado de un
+    encargo pendiente); el disparo de la caravana y del encargo comprueba también el lugar (las
+    plantillas se comparten); quien cae en combate con la jugadora no es padre de un bebé ni muere
+    otra vez de viejo (`npcSinMorirEnPartida`); el narrador solo ofrece nacimientos donde hay pareja
+    fértil; el resumen de varios días conserva la categoría y la oportunidad de cada línea; y **los
+    líderes del catálogo ya no tienen edad provisional aparte** (cambio sobre la Q8: la misma edad
+    en todos los sistemas; las de los líderes, para Álvaro con el resto).
 - **Hecho cuando:** `cronista:simular 60` produce caídas, escisiones, tormentas con daños, guerras
   y nacimientos coherentes; perdonar a un NPC lo hace volver en otra región.
 

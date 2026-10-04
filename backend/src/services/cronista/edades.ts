@@ -7,7 +7,8 @@
 // - **Vejez:** desde el 80 % de la esperanza de vida, −1 a fuerza, destreza y constitución por año, y
 //   cada día una probabilidad creciente de morir de viejo.
 // - **Edades del catálogo:** provisionales y deterministas por `slug` (adultos entre la madurez y el
-//   70 % de su esperanza de vida; los líderes, entre el 50 % y el 70 %), hasta que Álvaro las fije.
+//   70 % de su esperanza de vida), hasta que Álvaro las fije. Sin rango aparte para los líderes: la
+//   misma edad en todos los sistemas pesa más (revisión del PR de CR-13).
 //
 // Las cifras de razas son provisionales salvo la madurez orca (10 años, canon de `clanes-orcos.md`);
 // propuesta pendiente en `docs/borradores-opencode/propuestas-lore.md`.
@@ -51,16 +52,14 @@ function hash01(texto: string): number {
 }
 
 /// Edad provisional (años) de un NPC del catálogo sin fecha de nacimiento.
-export function edadProvisional(slug: string, raza: string | null | undefined, esLider: boolean): number {
+export function edadProvisional(slug: string, raza: string | null | undefined): number {
   const { madurez, esperanza } = cicloVital(raza);
-  const u = hash01(slug);
-  const [desde, hasta] = esLider ? [0.5 * esperanza, 0.7 * esperanza] : [madurez, 0.7 * esperanza];
-  return Math.floor(desde + u * (hasta - desde));
+  return Math.floor(madurez + hash01(slug) * (0.7 * esperanza - madurez));
 }
 
 /// Minuto de nacimiento: el guardado o, en el catálogo, el que da su edad provisional en el día 0.
-export function nacidoEnDe(npc: { slug: string; raza: string | null; nacidoEn: number | null }, esLider = false): number {
-  return npc.nacidoEn ?? -edadProvisional(npc.slug, npc.raza, esLider) * MINUTOS_POR_ANIO;
+export function nacidoEnDe(npc: { slug: string; raza: string | null; nacidoEn: number | null }): number {
+  return npc.nacidoEn ?? -edadProvisional(npc.slug, npc.raza) * MINUTOS_POR_ANIO;
 }
 
 /// Edad en años cumplidos en el minuto `ahora`.

@@ -34,17 +34,16 @@ describe('edades (CR-13)', () => {
     expect(probMuerteDeViejoPorDia('orcos', 80)).toBeCloseTo(1 / 120);
   });
 
-  it('edades provisionales del catálogo: deterministas, adultas y sin llegar a la vejez; los líderes, mayores', () => {
-    expect(edadProvisional('dulgren', 'orcos', false)).toBe(edadProvisional('dulgren', 'orcos', false));
+  it('edades provisionales del catálogo: deterministas, adultas y sin llegar a la vejez', () => {
+    expect(edadProvisional('dulgren', 'orcos')).toBe(edadProvisional('dulgren', 'orcos'));
     for (const slug of ['dulgren', 'doshka', 'gistera-koh', 'hagar-kiugh', 'brenka']) {
-      const e = edadProvisional(slug, 'orcos', false);
+      const e = edadProvisional(slug, 'orcos');
       expect(e).toBeGreaterThanOrEqual(10);
       expect(e).toBeLessThan(42);
-      expect(edadProvisional(slug, 'orcos', true)).toBeGreaterThanOrEqual(30);
     }
     // Sin fecha guardada, la edad en el día 0 es la provisional; un año después, uno más.
     const n = nacidoEnDe({ slug: 'dulgren', raza: 'orcos', nacidoEn: null });
-    expect(edadEnAnios(n, 0)).toBe(edadProvisional('dulgren', 'orcos', false));
-    expect(edadEnAnios(n, MINUTOS_POR_ANIO)).toBe(edadProvisional('dulgren', 'orcos', false) + 1);
+    expect(edadEnAnios(n, 0)).toBe(edadProvisional('dulgren', 'orcos'));
+    expect(edadEnAnios(n, MINUTOS_POR_ANIO)).toBe(edadProvisional('dulgren', 'orcos') + 1);
   });
 });

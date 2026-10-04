@@ -8,7 +8,7 @@
 // Los del catálogo no cambian sus atributos (son del mundo): sus años de vejez en esta partida van a
 // `NpcState.vejez` (CR-13 13c) y se restan al usarlos en escena y en combate (`restarVejez`).
 import type { PrismaClient } from '@prisma/client';
-import { npcVivoEnPartida } from '../mundoPartida.js';
+import { npcSinMorirEnPartida } from '../mundoPartida.js';
 import { aplicarEfecto } from './efectos.js';
 import { anosDeVejez, atributosPorEdad, edadEnAnios, nacidoEnDe, probMuerteDeViejoPorDia } from './edades.js';
 import type { Atributos } from './herencia.js';
@@ -19,12 +19,9 @@ export async function envejecerDia(prisma: PrismaClient, saveId: string, dia: nu
   const ahora = Math.min(dia * 1440 + 720, save.worldState.fictionalMinutes);
   const worldId = save.worldId;
 
-  // Los líderes del catálogo tienen edad provisional de mayores (estable aunque la sucesión cambie).
-  const lideresCatalogo = new Set(
-    (await prisma.faction.findMany({ where: { worldId, saveId: null, liderNpcId: { not: null } }, select: { liderNpcId: true } })).map((f) => f.liderNpcId!),
-  );
   const npcs = await prisma.npc.findMany({
-    where: { worldId, kind: 'PRINCIPAL', faction: { not: null }, ...npcVivoEnPartida(saveId) },
+    // Ni los muertos fuera de escena ni los que cayeron en combate con la jugadora.
+    where: { worldId, kind: 'PRINCIPAL', faction: { not: null }, ...npcSinMorirEnPartida(saveId) },
     select: { id: true, slug: true, raza: true, nacidoEn: true, attributes: true, atributosPotenciales: true, saveId: true },
     orderBy: { id: 'asc' },
   });
@@ -35,7 +32,7 @@ export async function envejecerDia(prisma: PrismaClient, saveId: string, dia: nu
   let ajustados = 0;
   const muertos: string[] = [];
   for (const npc of npcs) {
-    const edad = edadEnAnios(nacidoEnDe(npc, lideresCatalogo.has(npc.id)), ahora);
+    const edad = edadEnAnios(nacidoEnDe(npc), ahora);
     if (npc.saveId === saveId && npc.atributosPotenciales) {
       const atributos = atributosPorEdad(npc.atributosPotenciales as Atributos, npc.raza, edad);
       if (JSON.stringify(atributos) !== JSON.stringify(npc.attributes)) {

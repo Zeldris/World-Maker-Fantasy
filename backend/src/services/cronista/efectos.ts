@@ -53,7 +53,7 @@ export type Disparo =
   | { tipo: 'DIAS'; min: number; max: number }
   | { tipo: 'LLEGAR_REGION'; regionSlug: string; origenSlug?: string; minDias?: number }
   | { tipo: 'ENCUENTRO_NPC'; npcId: string; minDias?: number }
-  | { tipo: 'SUCESO'; tipos: TipoSuceso[]; npcId?: string; categorias?: string[] };
+  | { tipo: 'SUCESO'; tipos: TipoSuceso[]; npcId?: string; categorias?: string[]; locationId?: string };
 
 export const CUALQUIERA_SALVO_ORIGEN = 'CUALQUIERA_SALVO_ORIGEN';
 
@@ -588,7 +588,10 @@ async function crearNpc(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'crearNpc' }>
   });
   // CR-13 13b: solo adultos pueden ser padres; 13c: para un nacimiento, en edad fértil y vivos.
   const nace = e.como === 'NACE';
-  const muertos = nace ? await ctx.tx.npcState.findMany({ where: { saveId: ctx.saveId, muerto: true }, select: { npcId: true } }) : [];
+  // Muertos fuera de escena o caídos en combate con la jugadora (solo `condicionFisica`).
+  const muertos = nace
+    ? await ctx.tx.npcState.findMany({ where: { saveId: ctx.saveId, OR: [{ muerto: true }, { scope: '', condicionFisica: 'MUERTO' }] }, select: { npcId: true } })
+    : [];
   const muertosIds = new Set(muertos.map((m) => m.npcId));
   const adultos = conNombre.filter((n) => {
     const edadPadre = edadEnAnios(nacidoEnDe(n), ctx.fictionalMinutes);

@@ -119,7 +119,7 @@ export async function abrirCaravana(ctx: CtxOportunidad, desde: string, hacia: s
     if (!guardia || !lugar) continue;
     const punto = await ponerNpc(ctx, guardia, lugar.id, 'ILESO', `Caravana de ${faccion}`);
     await aplicarEfecto(ctxEfecto(ctx), {
-      tipo: 'programarConsecuencia', regla: 'CARAVANA_ASALTADA', disparo: { tipo: 'SUCESO', tipos: ['MUERTE_CAUSADA', 'COMBATE_GANADO'], npcId: guardia.id },
+      tipo: 'programarConsecuencia', regla: 'CARAVANA_ASALTADA', disparo: { tipo: 'SUCESO', tipos: ['MUERTE_CAUSADA', 'COMBATE_GANADO'], npcId: guardia.id, locationId: lugar.id },
       datos: { faccion, punto }, caducaDias: PLAZO_CARAVANA, npcId: guardia.id,
     });
     await cerrarEn(ctx, PLAZO_CARAVANA, [punto]);
@@ -135,7 +135,7 @@ export async function abrirEncargo(ctx: CtxOportunidad, faccion: string, buildin
   if (!encargado) return null;
   const punto = await ponerNpc(ctx, encargado, locationId, 'ILESO', 'Pide materiales');
   await aplicarEfecto(ctxEfecto(ctx), {
-    tipo: 'programarConsecuencia', regla: 'ENCARGO_MATERIALES', disparo: { tipo: 'SUCESO', tipos: ['REGALO'], npcId: encargado.id, categorias: CATEGORIAS_MATERIALES },
+    tipo: 'programarConsecuencia', regla: 'ENCARGO_MATERIALES', disparo: { tipo: 'SUCESO', tipos: ['REGALO'], npcId: encargado.id, categorias: CATEGORIAS_MATERIALES, locationId },
     datos: { faccion, buildingId, punto, encargado: encargado.name }, caducaDias: PLAZO_ENCARGO, npcId: encargado.id,
   });
   await cerrarEn(ctx, PLAZO_ENCARGO, [punto]);

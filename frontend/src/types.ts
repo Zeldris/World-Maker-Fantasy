@@ -436,6 +436,8 @@ export interface NoticiaMeta {
   oportunidad?: { lugar: string; locationId: string; venceEn: number }
   /// Resumen de varios días: primera línea cabecera, el resto una noticia por línea.
   resumen?: true
+  /// En un resumen: los metadatos de cada línea, en orden (null si la línea no tenía).
+  lineas?: (NoticiaMeta | null)[]
 }
 
 export interface LogEntry {

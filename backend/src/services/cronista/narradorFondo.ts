@@ -29,7 +29,8 @@ import { registrarSuceso, type ActorSuceso } from './sucesos.js';
 import { categoriaDeFamilia, darNoticia } from './noticias.js';
 import { abrirCampoDeBatalla, abrirCaravana, abrirEncargo, type CtxOportunidad, type OportunidadAbierta } from './oportunidades.js';
 import { ownerKeyFor } from '../reinoOwner.js';
-import { npcVivoEnPartida } from '../mundoPartida.js';
+import { npcSinMorirEnPartida } from '../mundoPartida.js';
+import { edadEnAnios, esFertil, nacidoEnDe } from './edades.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -274,7 +275,7 @@ export const SUCESOS_DE_FONDO: SucesoDeFondo[] = [
       const facciones = await ctx.tx.faction.findMany({ where: { saveId: ctx.saveId, ...faccionesVivas }, select: { slug: true, name: true }, orderBy: { slug: 'asc' } });
       const vivos = await ctx.tx.npc.groupBy({
         by: ['faction'],
-        where: { worldId: ctx.worldId, kind: 'PRINCIPAL', faction: { in: facciones.map((f) => f.name) }, ...npcVivoEnPartida(ctx.saveId) },
+        where: { worldId: ctx.worldId, kind: 'PRINCIPAL', faction: { in: facciones.map((f) => f.name) }, ...npcSinMorirEnPartida(ctx.saveId) },
         _count: { _all: true },
       });
       const cuantos = new Map(vivos.map((v) => [v.faction, v._count._all]));
@@ -295,12 +296,14 @@ export const SUCESOS_DE_FONDO: SucesoDeFondo[] = [
     enfriamientoDias: 15,
     candidatos: async (ctx) => {
       const facciones = await ctx.tx.faction.findMany({ where: { saveId: ctx.saveId, ...faccionesVivas }, select: { slug: true, name: true }, orderBy: { slug: 'asc' } });
-      const conPareja = await ctx.tx.npc.groupBy({
-        by: ['faction', 'genero'],
-        where: { worldId: ctx.worldId, kind: 'PRINCIPAL', genero: { in: ['M', 'F'] }, faction: { in: facciones.map((f) => f.name) }, ...npcVivoEnPartida(ctx.saveId) },
+      const ahora = (await ctx.tx.worldState.findUnique({ where: { saveId: ctx.saveId }, select: { fictionalMinutes: true } }))?.fictionalMinutes ?? 0;
+      const npcs = await ctx.tx.npc.findMany({
+        where: { worldId: ctx.worldId, kind: 'PRINCIPAL', genero: { in: ['M', 'F'] }, faction: { in: facciones.map((f) => f.name) }, ...npcSinMorirEnPartida(ctx.saveId) },
+        select: { slug: true, raza: true, nacidoEn: true, genero: true, faction: true },
       });
-      // Una primera criba barata (hombres y mujeres con nombre); la edad fértil la mira `crearNpc`.
-      const tiene = (f: string, g: string) => conPareja.some((c) => c.faction === f && c.genero === g);
+      // Hombres y mujeres con nombre en edad fértil (lo mismo que mirará `crearNpc`).
+      const fertiles = npcs.filter((x) => esFertil(x.raza, edadEnAnios(nacidoEnDe(x), ahora)));
+      const tiene = (f: string, g: string) => fertiles.some((c) => c.faction === f && c.genero === g);
       return facciones
         .filter((f) => tiene(f.name, 'M') && tiene(f.name, 'F'))
         .map((f) => ({ peso: 1, efectos: [{ tipo: 'crearNpc' as const, faccionSlug: f.slug, como: 'NACE' as const }], noticia: { facciones: [f.name], region: null } }));

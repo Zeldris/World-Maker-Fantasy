@@ -174,6 +174,12 @@ export function npcVivoEnPartida(saveId: string): Prisma.NpcWhereInput {
   };
 }
 
+/// CR-13: vivo en la partida y además sin haber caído en combate con la jugadora (un NPC con nombre
+/// muerto en combate solo tiene `condicionFisica: 'MUERTO'` en su estado de ámbito '', no `muerto`).
+export function npcSinMorirEnPartida(saveId: string): Prisma.NpcWhereInput {
+  return { AND: [npcVivoEnPartida(saveId), { NOT: { npcStates: { some: { saveId, scope: '', condicionFisica: 'MUERTO' } } } }] };
+}
+
 /// CR-13: `Npc` que existen en una partida: los del catálogo y los nacidos en ella (sin mirar si
 /// viven). Para listados del mundo entero (Enciclopedia, descubrimientos).
 export function npcDeLaPartida(saveId: string): Prisma.NpcWhereInput {

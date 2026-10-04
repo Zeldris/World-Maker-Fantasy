@@ -7,6 +7,26 @@ import { diaDeFiccion, ICONO_CATEGORIA } from '../lib/noticias'
 // («Mientras pasaban los días…», UX-31), plegada con una línea por noticia. Los nombres de
 // facciones, lugares y NPC ya son enlaces a su ficha: los pinta `texto` (EnciclopediaLinkedText).
 
+function Linea({ text, noticia, texto }: { text: string; noticia: NoticiaMeta | null; texto: (t: string) => ReactNode }) {
+  const categoria = noticia?.categoria ? ICONO_CATEGORIA[noticia.categoria] : null
+  return (
+    <>
+      {categoria && (
+        <span role="img" aria-label={categoria.label} title={categoria.label} className="mr-1.5 not-italic">
+          {categoria.icono}
+        </span>
+      )}
+      {texto(text)}
+      {noticia?.oportunidad && (
+        <span className="ml-1.5 inline-flex items-center gap-1 rounded-full border border-accent-600/50 bg-accent-500/10 px-2 py-0.5 text-2xs text-accent-200">
+          <span aria-hidden="true">📍</span>
+          En {noticia.oportunidad.lugar} · hasta el día {diaDeFiccion(noticia.oportunidad.venceEn)}
+        </span>
+      )}
+    </>
+  )
+}
+
 export function NoticiaMundo({ text, noticia, texto }: { text: string; noticia: NoticiaMeta; texto: (t: string) => ReactNode }) {
   if (noticia.resumen) {
     const [cabecera, ...lineas] = text.split('\n')
@@ -17,29 +37,17 @@ export function NoticiaMundo({ text, noticia, texto }: { text: string; noticia: 
         </summary>
         <ul className="mt-1 flex flex-col gap-1 pl-1">
           {lineas.map((l, i) => (
-            <li key={i}>{texto(l.replace(/^• /, ''))}</li>
+            <li key={i}>
+              <Linea text={l.replace(/^• /, '')} noticia={noticia.lineas?.[i] ?? null} texto={texto} />
+            </li>
           ))}
         </ul>
       </details>
     )
   }
-  const categoria = noticia.categoria ? ICONO_CATEGORIA[noticia.categoria] : null
   return (
-    <div>
-      <p className="texto-narracion whitespace-pre-line">
-        {categoria && (
-          <span role="img" aria-label={categoria.label} title={categoria.label} className="mr-1.5 not-italic">
-            {categoria.icono}
-          </span>
-        )}
-        {texto(text)}
-      </p>
-      {noticia.oportunidad && (
-        <p className="mt-1 inline-flex items-center gap-1 rounded-full border border-accent-600/50 bg-accent-500/10 px-2 py-0.5 text-2xs text-accent-200">
-          <span aria-hidden="true">📍</span>
-          En {noticia.oportunidad.lugar} · hasta el día {diaDeFiccion(noticia.oportunidad.venceEn)}
-        </p>
-      )}
-    </div>
+    <p className="texto-narracion whitespace-pre-line">
+      <Linea text={text} noticia={noticia} texto={texto} />
+    </p>
   )
 }

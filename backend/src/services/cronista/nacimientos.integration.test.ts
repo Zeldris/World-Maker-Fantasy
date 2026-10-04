@@ -64,7 +64,7 @@ describe('nacimientos y vejez del catálogo (CR-13)', () => {
     const saveId = await partida('Vejez del catálogo (CR-13)');
     const dulgren = await prisma.npc.findFirstOrThrow({ where: { worldId, name: 'Dulgren', saveId: null }, include: { items: { include: { item: true } } } });
     // 51 años en esta partida: 3 de vejez (orcos, desde los 48).
-    const futuro = AHORA + (51 - edadProvisional(dulgren.slug, 'orcos', false)) * MINUTOS_POR_ANIO;
+    const futuro = AHORA + (51 - edadProvisional(dulgren.slug, 'orcos')) * MINUTOS_POR_ANIO;
     await prisma.worldState.update({ where: { saveId }, data: { fictionalMinutes: futuro } });
     await envejecerDia(prisma, saveId, Math.floor(futuro / 1440), () => 0.99);
     const estado = await prisma.npcState.findFirstOrThrow({ where: { saveId, npcId: dulgren.id, scope: '' } });
@@ -75,5 +75,19 @@ describe('nacimientos y vejez del catálogo (CR-13)', () => {
     expect(enEscena.voluntad).toBe(base.voluntad);
     // El catálogo no cambia.
     expect((await prisma.npc.findUniqueOrThrow({ where: { id: dulgren.id } })).attributes).toEqual(dulgren.attributes);
+  });
+
+  it('quien cayó en combate con la jugadora no es madre de nadie ni vuelve a morir de viejo', async () => {
+    const saveId = await partida('Nacimiento (CR-13) caída');
+    const [doshka, dulgren] = await Promise.all([
+      prisma.npc.findFirstOrThrow({ where: { worldId, name: 'Doshka', saveId: null } }),
+      prisma.npc.findFirstOrThrow({ where: { worldId, name: 'Dulgren', saveId: null } }),
+    ]);
+    // Muertos en combate: solo `condicionFisica`, como deja `turnLootKill`.
+    for (const npc of [doshka, dulgren]) await prisma.npcState.create({ data: { saveId, npcId: npc.id, scope: '', condicionFisica: 'MUERTO' } });
+    expect((await nacer(saveId, 'clan-goshg')).aplicado).toBe(false);
+    const futuro = AHORA + 80 * MINUTOS_POR_ANIO;
+    await prisma.worldState.update({ where: { saveId }, data: { fictionalMinutes: futuro } });
+    expect((await envejecerDia(prisma, saveId, Math.floor(futuro / 1440), () => 0)).muertos).not.toContain(dulgren.id);
   });
 });
