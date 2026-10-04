@@ -1049,6 +1049,24 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   convenir que la acción espere (opción A). Incluye de la tabla de reacciones (CR-10): la fauna
   que huye de una tormenta extrema a una región vecina (necesita vecinos entre regiones) y
   `HAMBRUNA` 3 días seguidos → cohesión −10 y posible `REBELION` (necesita llevar la cuenta).
+  🚧 en curso (2026-10-04): diseño acordado con la usuaria (grill, ronda 1):
+  - **Pasos:** 12a motor (candidatos, presupuesto, enfriamientos, elección por peso sin IA) +
+    catálogo inicial + «Ritmo del mundo» en Configuración; 12b agenda Serhu como primera cadena;
+    12c fauna que huye de la tormenta extrema y `HAMBRUNA`. «Favorecer hilos» espera a CR-17 y el
+    árbitro con IA, a la Fase 7.
+  - **Catálogo inicial (8):** escaramuza (tensión/guerra → presión), caravana (tratado/alianza →
+    riqueza y distensión), plaga y auge de fauna en una región, migración de fauna a región vecina,
+    incendio o crecida (daña edificio de facción), malestar interno (cohesión baja → baja más),
+    visitante ilustre en el Reino de la jugadora (felicidad).
+  - **Ritmo:** +3/+1/+5 al día (Equilibrado/Tranquilo/Caótico), coste = importancia (3-5); día con
+    3+ sucesos de la jugadora → sin suceso de fondo.
+  - **Visibilidad:** todo al Libro; al canal «El mundo» solo lo que el personaje podría saber
+    (facción conocida o región donde está), mismo filtro que las noticias de expediciones (D-5).
+  - **Estilo (D-7):** opción «Ritmo del mundo» en Configuración › Partida, cambiable siempre.
+  - **Reglas de facción:** absorción como candidato del narrador de fondo; fundación por
+    asentamiento queda para cuando se resuelva la pregunta 1 de Álvaro (población).
+  - **UX-6:** se mantiene la opción B (la ambientación se cancela al actuar). La usuaria pide en su
+    lugar **dar valor de verdad al canal «El mundo»** (que sirva y aporte algo): en diseño, ronda 2.
 - **CR-13** Nacimientos notables y generador de nombres (§ 12.3). **M** Incluye el efecto `crearNpc`
   en `efectos.ts` (CR-9).
 - **Hecho cuando:** `cronista:simular 60` produce caídas, escisiones, tormentas con daños, guerras
