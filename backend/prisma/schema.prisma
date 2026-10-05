@@ -1797,6 +1797,9 @@ model KingdomStats {
   /// que economía y expediciones no se pisen el reclamo del día. Null = sin línea base (el primer
   /// tick la fija al día actual sin lanzar nada retroactivamente).
   ultimoDiaExpedicion Int?
+  /// CR-48: si no pudo lanzar una expedición (sin recolectores ni destino con recursos), no lo
+  /// vuelve a intentar hasta este día — antes lo reintentaba a diario con todo el coste.
+  expedicionReintentoDia Int?
   updatedAt           DateTime @updatedAt
 }
 

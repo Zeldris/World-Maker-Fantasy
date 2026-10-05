@@ -45,6 +45,8 @@ import { situacionDeFaccion } from './cronista/situacionFaccion.js';
 
 /// Días entre salida y regreso: ida + recolección el primero, vuelta el segundo.
 export const DURACION_EXPEDICION_DIAS = 2;
+/// CR-48: días de espera tras no poder lanzar una expedición.
+export const REINTENTO_EXPEDICION_DIAS = 3;
 export const MAX_RECOLECTORES = 2;
 export const MAX_GUARDIAS = 2;
 /// Tope de unidades que un recolector saca en una expedición (una sola fuente/objeto por recolector).
@@ -601,7 +603,12 @@ async function avanzarDiaFaccion(tx: TxDb, worldId: string, saveId: string | nul
     }
   }
   const sigueActiva = await tx.expedicion.count({ where: { factionId: faction.id, status: { in: [...ACTIVAS] } } });
-  if (sigueActiva === 0 && (await lanzarExpedicion(tx, worldId, saveId, faction, dia))) result.lanzadas++;
+  if (sigueActiva > 0) return;
+  // CR-48: tras un intento fallido, espera unos días antes de volver a buscar recolectores y destino.
+  const espera = await tx.kingdomStats.findUnique({ where: { factionId: faction.id }, select: { expedicionReintentoDia: true } });
+  if (espera?.expedicionReintentoDia != null && dia < espera.expedicionReintentoDia) return;
+  if (await lanzarExpedicion(tx, worldId, saveId, faction, dia)) result.lanzadas++;
+  else await tx.kingdomStats.updateMany({ where: { factionId: faction.id }, data: { expedicionReintentoDia: dia + REINTENTO_EXPEDICION_DIAS } });
 }
 
 /// Lanza como mucho una expedición: oficio de recolección de "hoy" entre los NPC de la facción con

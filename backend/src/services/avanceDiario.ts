@@ -39,6 +39,25 @@ export function diasPendientes(ultimoDiaSimulado: number, diaActual: number): nu
   return Math.min(MAX_DIAS_POR_LLAMADA, Math.max(0, diaActual - ultimoDiaSimulado));
 }
 
+/// CR-48: tiempo por paso del avance diario (solo con `AVANCE_PERFIL=1`; `npm run benchmark-avance`).
+const perfil = new Map<string, { ms: number; veces: number }>();
+async function paso<T>(nombre: string, fn: () => Promise<T>): Promise<T> {
+  if (process.env.AVANCE_PERFIL !== '1') return fn();
+  const t = performance.now();
+  try {
+    return await fn();
+  } finally {
+    const p = perfil.get(nombre) ?? { ms: 0, veces: 0 };
+    perfil.set(nombre, { ms: p.ms + performance.now() - t, veces: p.veces + 1 });
+  }
+}
+/// Lo medido hasta ahora (y lo vacía).
+export function leerPerfilAvance(): Record<string, { ms: number; veces: number }> {
+  const r = Object.fromEntries(perfil);
+  perfil.clear();
+  return r;
+}
+
 /// Simula los días pendientes del mundo de la partida hasta `fictionalMinutes`. Idempotente: dos
 /// llamadas con el mismo reloj simulan los días una sola vez (candado de Postgres por partida).
 export async function avanzarMundoHasta(
@@ -47,9 +66,9 @@ export async function avanzarMundoHasta(
   fictionalMinutes: number,
   random: () => number = Math.random,
 ): Promise<{ diasSimulados: number }> {
-  await asegurarMundoDePartida(prisma, saveId);
+  await paso('asegurarMundo', () => asegurarMundoDePartida(prisma, saveId));
   const marcaNoticias = await marcaDeNoticias(prisma, saveId);
-  const { dias: diasSimulados, desde } = await prisma.$transaction(
+  const { dias: diasSimulados, desde } = await paso('poblacion', () => prisma.$transaction(
     async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`avance|${saveId}`}))`;
       const estado = await tx.worldState.findUnique({ where: { saveId }, select: { ultimoDiaSimulado: true } });
@@ -63,43 +82,43 @@ export async function avanzarMundoHasta(
       return { dias, desde: estado.ultimoDiaSimulado + 1 };
     },
     { maxWait: 10_000, timeout: 20_000 },
-  );
+  ));
   if (diasSimulados > 0) {
     // Economía de las facciones de la partida: idempotente por sus propios marcadores de día y
     // semana (con transacción por facción), así que va fuera de la de arriba.
     const dia = diaDeFiccion(fictionalMinutes);
     const { worldId } = await prisma.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } });
     const resultado = { diasProcesados: 0, semanasDecaidas: 0, depositados: 0 };
-    await producirFacciones(prisma, worldId, { saveId, origenSlug: { not: null } }, dia, resultado);
-    await decaerRelaciones(prisma, { saveId }, dia, resultado);
-    await avanzarExpedicionesDePartida(prisma, worldId, saveId, dia, random);
+    await paso('producirFacciones', () => producirFacciones(prisma, worldId, { saveId, origenSlug: { not: null } }, dia, resultado));
+    await paso('decaerRelaciones', () => decaerRelaciones(prisma, { saveId }, dia, resultado));
+    await paso('expediciones', () => avanzarExpedicionesDePartida(prisma, worldId, saveId, dia, random));
     // La agenda lleva sus propias transacciones y avanza por umbrales de tiempo (no por día).
-    await avanzarAgendaDePartida(prisma, saveId);
+    await paso('agenda', () => avanzarAgendaDePartida(prisma, saveId));
     // CR-12: el narrador de fondo, una vez por cada día simulado (cada día lo reclama una sola llamada,
     // la que lo simuló arriba).
     for (let d = desde; d < desde + diasSimulados; d++) {
-      await narrarDia(prisma, saveId, d, random);
+      await paso('narrarDia', () => narrarDia(prisma, saveId, d, random));
       // CR-34: decisiones de las facciones del mundo de la partida (gastan el mismo presupuesto).
-      await decidirFacciones(prisma, saveId, d, random);
+      await paso('decidirFacciones', () => decidirFacciones(prisma, saveId, d, random));
       // CR-40: avisos vencidos fuera y tablones de avisos rellenos con misiones del mundo de la partida.
-      await renovarTablones(prisma, saveId, d, random);
+      await paso('renovarTablones', () => renovarTablones(prisma, saveId, d, random));
       // CR-13 13b: edad de los nacidos en la partida y muerte de viejo.
-      await envejecerDia(prisma, saveId, d, random);
+      await paso('envejecerDia', () => envejecerDia(prisma, saveId, d, random));
       // CR-47: caravanas del Reino (salen las órdenes que toque, comercian al llegar, vuelven).
-      await avanzarComercio(prisma, saveId, d, random);
+      await paso('comercio', () => avanzarComercio(prisma, saveId, d, random));
     }
   }
   // CR-10: reacciones de lo que haya pasado en el turno o en estos días; CR-11: consecuencias que
   // toquen ahora (días, región), y otra vuelta de reacciones por lo que hayan registrado.
-  await procesarReacciones(prisma, saveId, random);
-  if ((await evaluarConsecuencias(prisma, saveId, {}, random)).disparadas > 0) await procesarReacciones(prisma, saveId, random);
+  await paso('reacciones', () => procesarReacciones(prisma, saveId, random));
+  if ((await paso('consecuencias', () => evaluarConsecuencias(prisma, saveId, {}, random))).disparadas > 0) await paso('reacciones', () => procesarReacciones(prisma, saveId, random));
   // CR-18 (18b): lo que llega solo (≥ 7 o de una aliada) a la región donde está el personaje; antes
   // del resumen, para que lo que llega al final de un viaje entre en él.
-  await difundir(prisma, saveId);
+  await paso('difundir', () => difundir(prisma, saveId));
   // CR-12 (12d) / UX-31: varios días de golpe (viaje, descanso largo) → un solo resumen en «El mundo».
-  if (diasSimulados >= 2) await agruparNoticias(prisma, saveId, marcaNoticias);
+  if (diasSimulados >= 2) await paso('agruparNoticias', () => agruparNoticias(prisma, saveId, marcaNoticias));
   // CR-40 (40e): misiones del motor exploradas, objetivos caídos o plazos vencidos.
-  await revisarMisiones(prisma, saveId);
+  await paso('revisarMisiones', () => revisarMisiones(prisma, saveId));
   return { diasSimulados };
 }
 

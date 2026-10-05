@@ -1492,7 +1492,16 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     unidad (cada unidad vacía el almacén y encarece la siguiente, como X4; sin descuento por
     volumen). Las caravanas del narrador de fondo que pasan cerca son ocasión de comerciar sin
     desplazarse (Q14 de `CR-12`).
-  - **CR-48** Pasada de rendimiento del avance diario con el motor completo. **S**
+  - ~~**CR-48**~~ ✅ 2026-10-05 Pasada de rendimiento del avance diario con el motor completo. **S**
+    Medición con `npm run benchmark-avance -- 10` (`AVANCE_PERFIL=1` mide cada paso de
+    `avanceDiario.ts`; base local con el catálogo sembrado): las expediciones de facción eran más
+    de la mitad del tiempo porque una facción que no podía lanzar (sin recolectores o sin destino
+    con recursos) lo reintentaba cada día con todo el coste (102 intentos en 12 días, ~95 fallidos).
+    Arreglo: tras un intento fallido espera 3 días (`KingdomStats.expedicionReintentoDia`,
+    migración `20261005100000_expedicion_reintento`). Un día: 690 → 460 ms; diez de golpe:
+    4,1 → 2,9 s (expediciones 2,5 → 1,3 s). Lo que queda más caro: `candidateSourcesFor` al
+    buscar destino, el narrador de fondo (~50 ms/día) y los tablones (~40 ms/día). Con UX-35 el
+    avance va tras responder, así que el turno no lo espera.
 - **Hecho cuando:** `cronista:simular 60` produce caídas, escisiones, tormentas con daños, guerras
   y nacimientos coherentes; perdonar a un NPC lo hace volver en otra región.
 
