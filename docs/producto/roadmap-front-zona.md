@@ -170,7 +170,7 @@ son de relleno.*
 | ZON-2 | **Minimapa permanente** (si no se elige A): esquina de la cabecera o del registro, ~200 px, con el personaje centrado, los puntos cercanos y **clic para andar** (OSRS). | ✅ | M |
 | ZON-3 | **Un solo mapa**: la vista de consulta de *Mapa → Zona* pasa a ser la misma vista, con el movimiento activo. | ✅ | S |
 | ZON-4 | **Atajos**: `M` abre o centra el mapa, `Z` alterna mapa grande / minimapa, flechas o `WASD` mueven una celda, `Espacio` para o reanuda, `Tab` recorre los puntos cercanos, `Enter` interactúa con el seleccionado. Mando: cruceta = celda, A = confirmar, B = parar. | ✅ | M |
-| ZON-5 | **El encuentro no cierra nada**: con el mapa en la pantalla de juego, la tarjeta de Interactuar aparece en el registro de al lado y además **sobre la ficha** del encuentro en el mapa (ver ZON-41). | ✅ | S |
+| ~~ZON-5~~ ✅ 2026-10-05 (adelantada de Z-C a petición de la usuaria: chocar con algo ya no cierra el mapa de movimiento; la tarjeta del encuentro sale junto a su ficha con sus acciones —las mismas del registro, `lib/ofertaModoDinamico.ts`— más «Seguir mi camino»; hablar o recolectar se abren encima y el mapa vuelve; solo se cierra para escribir una respuesta o al empezar un combate. Lo de «con el mapa en la pantalla de juego» sigue esperando `ZON-1`) | **El encuentro no cierra nada**: con el mapa en la pantalla de juego, la tarjeta de Interactuar aparece en el registro de al lado y además **sobre la ficha** del encuentro en el mapa (ver ZON-41). | ✅ | S |
 | ZON-6 | **Pantalla completa del mapa** (`F` o doble clic en el borde) para explorar con detalle. | ✅ | S |
 
 ## 7. Fichas e iconos (`ZON-I`)
@@ -311,7 +311,7 @@ sigue siendo completamente usable.
 2. Pasar de relleno de color a anillo de color manteniendo las formas por categoría. (ZON-10)
 3. Retratos de la Enciclopedia dentro de las fichas. (ZON-12)
 4. ~~Velocidades de paso y si el backend devuelve varios pasos por llamada. (ZON-36, ZON-38)~~ → decidido por la usuaria (2026-10-05, ronda de la Fase F): **solo en el frontend**, pidiendo el siguiente paso mientras se anima el actual (parar sigue siendo exacto); tres velocidades (normal 600 ms por defecto, rápida ~250 ms, inmediata sin animación pero paso a paso) en Ajustes › Animaciones, y doble clic = ir rápido ese trayecto. Clic en una ficha (ZON-40/41): tarjeta al pasar el ratón y **menú pegado a la ficha** con la información arriba y las acciones; el modal grande queda como «Ver ficha completa»; en táctil el menú hace de tarjeta.
-5. Mostrar la amenaza de los agresivos antes del encuentro (puede quitar sorpresa). (ZON-50)
+5. ~~Mostrar la amenaza de los agresivos antes del encuentro (puede quitar sorpresa). (ZON-50)~~ → decidido por la usuaria (2026-10-05, ronda de Z-D): radio rojo discontinuo de 2 celdas (el de persecución real) y estado «vigila» / «te persigue» **solo en hostiles ya descubiertos**; los no descubiertos siguen sorprendiendo. `ZON-33`: las celdas de la ruta prevista en el radio de un hostil conocido, en rojo con 👁, y la ruta entera en rojo si acaba pegada a uno. `ZON-53`: la patrulla al pasar el ratón, solo si ya está descubierto.
 6. Niebla y círculo de visión: solo estético o con efecto en el juego. (ZON-52)
 7. Marcas propias del jugador. (ZON-44)
 8. Capa de terreno no transitable. (ZON-39)

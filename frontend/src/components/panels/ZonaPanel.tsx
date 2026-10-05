@@ -12,7 +12,8 @@ import { MS_POR_VELOCIDAD, PasoZonaContext } from '../../lib/zonaMovimiento'
 import { useAjustes } from '../../context/useAjustes'
 import { celdaDePixel, pixelDeCelda, rutaPrevista, textoCoste, type Celda } from '../../lib/zonaRuta'
 import { BanderaDestino, CeldaResaltada, EtiquetaCoste, LineaRuta } from '../zona/RutaZona'
-import { MenuFicha, TarjetaFicha, type AccionFicha, type InfoFicha } from '../zona/MenuFicha'
+import { MenuFicha, TarjetaEncuentro, TarjetaFicha, type AccionFicha, type InfoFicha } from '../zona/MenuFicha'
+import type { PresentacionOferta } from '../../lib/ofertaModoDinamico'
 import { useEnciclopediaLink } from '../../context/useEnciclopediaLink'
 import { LeyendaZona } from '../zona/LeyendaZona'
 import { useMovimientoZona } from '../../hooks/useMovimientoZona'
@@ -81,6 +82,10 @@ interface ZonaPanelProps {
   /// GameView). `undefined` en la vista informativa: el pin se ve, sin acción.
   onSaquearCadaver?: (npcSlug: string) => void
   onDesollarCadaver?: (npcSlug: string) => void
+  /// ZON-5 (hito 0.2): textos y acciones de la oferta de un encuentro (de su entrada del registro), para
+  /// pintarla junto a la ficha sin cerrar el mapa; null cuando ya no hay oferta (ignorada, resuelta).
+  /// Sin él, un encuentro cierra el mapa como siempre.
+  ofertaEnMapa?: (entryId: string) => PresentacionOferta | null
 }
 
 /// ZON-19 (hito 0.1) — a esta distancia del personaje (2,5 celdas de 50 unidades) los nombres se ven sin
@@ -119,7 +124,7 @@ function puntoDelLienzo(e: { currentTarget: SVGSVGElement; clientX: number; clie
   return { x: local.x, y: local.y }
 }
 
-export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, columnasAncho = false, onClose, onViajarA, professionRecipes, onRefreshSave, onOfertaDescartada, onHoraActualizada, onSaquearCadaver, onDesollarCadaver, bloqueoTurno, bloqueoMovimiento = null }: ZonaPanelProps) {
+export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, columnasAncho = false, onClose, onViajarA, professionRecipes, onRefreshSave, onOfertaDescartada, onHoraActualizada, onSaquearCadaver, onDesollarCadaver, bloqueoTurno, bloqueoMovimiento = null, ofertaEnMapa }: ZonaPanelProps) {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<ZonaResponse | null>(null)
   // ZON-11 (hito 0.1) — unidades del lienzo por píxel de pantalla: las fichas miden siempre lo mismo.
@@ -188,13 +193,20 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
     return Math.hypot(punto.x - jugadorX, punto.y - jugadorY) <= DISTANCIA_NOMBRE_VISIBLE
   }
 
+  // ZON-5: el encuentro que se está mostrando en el mapa (su entrada del registro y, si la hay, su ficha).
+  const [encuentroMapa, setEncuentroMapa] = useState<{ entryId: string; zonePointId?: string } | null>(null)
   // ZON-36: velocidad de paso de Ajustes; ZON-35: parar, reanudar y cancelar.
   const { ajustes } = useAjustes()
   const {
     moverA: handleMoverA, movimientoEnCurso, mensajeMovimiento, setMensajeMovimiento, parar, reanudar, cancelar, destinoPendiente, msPasoActual, caminoRestante,
   } = useMovimientoZona({
     saveId, setData, bloqueoMovimiento, onEncuentroZona, onClose, onOfertaDescartada, onHoraActualizada, msPorPaso: MS_POR_VELOCIDAD[ajustes.velocidadPasoZona],
+    onEncuentroEnMapa: ofertaEnMapa ? setEncuentroMapa : undefined,
   })
+  // ZON-5: al volver a andar, la tarjeta del encuentro anterior sobra (alejarse ya la descarta).
+  useEffect(() => {
+    if (movimientoEnCurso) setEncuentroMapa(null)
+  }, [movimientoEnCurso])
   // ZON-35: Espacio para y reanuda (fuera de los campos de texto).
   const pararReanudarRef = useRef<() => void>(() => {})
   pararReanudarRef.current = () => (movimientoEnCurso ? parar() : reanudar())
@@ -558,6 +570,21 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                 const punto = claveBajoRaton && claveBajoRaton !== menuFicha?.clave ? puntoPorClave(claveBajoRaton) : null
                 return punto ? <TarjetaFicha x={punto.x} y={punto.y} escala={escala} info={infoDeFicha(punto)} /> : null
               })()}
+              {/* ZON-5: la tarjeta del encuentro, junto a su ficha (o al personaje si no tiene ficha propia). */}
+              {encuentroMapa && ofertaEnMapa && data.jugador &&
+                (() => {
+                  const presentacion = ofertaEnMapa(encuentroMapa.entryId)
+                  if (!presentacion) return null
+                  const ficha = encuentroMapa.zonePointId ? data.puntos.find((p) => p.id === encuentroMapa.zonePointId) : undefined
+                  const donde = ficha ?? data.jugador
+                  // «Seguir mi camino»: ignorar y continuar hacia donde se iba (no con un agresivo).
+                  const ignorar = presentacion.actions.find((a) => a.label === 'Ignorar')
+                  const acciones =
+                    ignorar && destinoPendiente
+                      ? [...presentacion.actions, { label: 'Seguir mi camino', tone: 'neutral' as const, disabled: ignorar.disabled, onClick: () => { ignorar.onClick(); setEncuentroMapa(null); reanudar() } }]
+                      : presentacion.actions
+                  return <TarjetaEncuentro x={donde.x} y={donde.y} escala={escala} presentacion={{ ...presentacion, actions: acciones }} bloqueo={bloqueoTurno} />
+                })()}
               {/* ZON-41: menú pegado a la ficha pulsada. */}
               {menuFicha && (
                 <MenuFicha

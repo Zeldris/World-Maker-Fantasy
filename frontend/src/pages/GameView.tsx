@@ -35,6 +35,7 @@ import { MapaPanel } from '../components/panels/MapaPanel'
 import { DiarioPanel } from '../components/panels/DiarioPanel'
 import { LeyendasPanel } from '../components/panels/LeyendasPanel'
 import { debeAvisar } from '../lib/noticias'
+import { presentacionOferta } from '../lib/ofertaModoDinamico'
 import { useRumoresDelMapa } from '../hooks/useRumoresDelMapa'
 import { InventarioPanel } from '../components/panels/InventarioPanel'
 import { EnciclopediaPanel } from '../components/panels/EnciclopediaPanel'
@@ -1351,6 +1352,11 @@ export function GameView() {
   const { zonaModalOpen, setZonaModalOpen, saquearSoloNpcSlug, setSaquearSoloNpcSlug, handleCazarEnZona, handleHuntResolved } =
     useZonaAcciones({ saveId, setCharacterLog, setCombateIniciado, openCombat: combat.openCombat, handleSubmit })
   cazaPorTextoRef.current = handleHuntResolved
+  // ZON-5 (hito 0.2): el mapa de movimiento ya no se cierra al chocar con algo; si de ahí sale un
+  // combate (cazar, un agresivo, o desde la conversación), el combate manda y el mapa se cierra.
+  useEffect(() => {
+    if (combat.combatOpen) setZonaModalOpen(false)
+  }, [combat.combatOpen, setZonaModalOpen])
 
   // Modo dinámico/Interactuar/menú de NPC (Fase 12) — ver hooks/useModoDinamico.ts. Va tras
   // useTurnFlow porque necesita `handleSubmit`; los usos anteriores son solo callbacks/JSX.
@@ -2223,6 +2229,24 @@ export function GameView() {
           onOfertaDescartada={() =>
             setCharacterLog((prev) => prev.map((e) => (e.dynamicModeOffer && !e.dynamicModeOffer.combateForzado ? { ...e, dynamicModeOffer: undefined } : e)))
           }
+          // ZON-5 (hito 0.2, petición de la usuaria): el encuentro sale también junto a su ficha y el
+          // mapa no se cierra. Hablar o recolectar se abren encima (el mapa espera debajo y vuelve);
+          // solo se cierra para escribir una respuesta o cuando empieza un combate (efecto de abajo).
+          ofertaEnMapa={(entryId) => {
+            const offer = characterLog.find((e) => e.id === entryId)?.dynamicModeOffer
+            if (!offer) return null
+            const cerrarMapa = () => setZonaModalOpen(false)
+            return presentacionOferta(entryId, offer, {
+              onInteractuarModoDinamico: handleInteractuarModoDinamico,
+              onResponderEscribiendo: (nombre) => {
+                cerrarMapa()
+                handleResponderEscribiendo(nombre)
+              },
+              onVerRecursoDetalle: handleVerRecursoDetalle,
+              onCazarEnZona: handleCazarEnZona,
+              onDismissDynamicModeOffer: handleDismissDynamicModeOffer,
+            })
+          }}
         />
         </Capa>
       )}

@@ -17,11 +17,15 @@ export interface OpcionesMovimientoZona {
   onHoraActualizada?: (fictionalDateLabel: string) => void
   /// ZON-36: duración de cada paso según la velocidad elegida en Ajustes (600, 250 o 0 ms).
   msPorPaso?: number
+  /// ZON-5 (hito 0.2): si se da, un encuentro con oferta NO cierra el mapa: se avisa aquí (para pintar
+  /// la tarjeta junto a la ficha) y el destino se guarda para «Seguir mi camino». Sin él, se cierra
+  /// como siempre (`onClose`).
+  onEncuentroEnMapa?: (encuentro: { entryId: string; zonePointId?: string }) => void
 }
 
 const dormir = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
-export function useMovimientoZona({ saveId, setData, bloqueoMovimiento = null, onEncuentroZona, onClose, onOfertaDescartada, onHoraActualizada, msPorPaso = MS_POR_VELOCIDAD.normal }: OpcionesMovimientoZona) {
+export function useMovimientoZona({ saveId, setData, bloqueoMovimiento = null, onEncuentroZona, onClose, onOfertaDescartada, onHoraActualizada, msPorPaso = MS_POR_VELOCIDAD.normal, onEncuentroEnMapa }: OpcionesMovimientoZona) {
   // Sistema de movimiento por cuadrícula (2026-09-08) — mensaje simple de colisión/aviso ("por
   // ahora, acabaremos metiendo una animación" — placeholder consciente hasta que Franja 3 conecte
   // esto con combate/Interactuar real). `movimientoEnCurso` deshabilita nuevos clics mientras se
@@ -64,6 +68,8 @@ export function useMovimientoZona({ saveId, setData, bloqueoMovimiento = null, o
     setMensajeMovimiento(null)
     let llegado = false
     let parado = false
+    // ZON-5: un encuentro mostrado en el mapa corta el trayecto pero conserva el destino.
+    let interrumpido = false
     // ZON-38: lo que tardó la última llamada y cuándo empezó la última animación.
     let latencia = 0
     let inicioAnimacion = Number.NEGATIVE_INFINITY
@@ -119,8 +125,12 @@ export function useMovimientoZona({ saveId, setData, bloqueoMovimiento = null, o
             })
             // Cierra el modal de movimiento (2026-09-09) — sin esto la tarjeta de Interactuar
             // quedaba insertada en el log DETRÁS del propio modal, invisible/inaccesible hasta que
-            // el jugador lo cerrara a mano sin saber por qué.
-            onClose?.()
+            // el jugador lo cerrara a mano sin saber por qué. ZON-5: con la tarjeta en el mapa, ya
+            // no hace falta cerrarlo.
+            if (onEncuentroEnMapa) {
+              onEncuentroEnMapa({ entryId: resultado.logEntry.id, zonePointId: resultado.dynamicModeOffer.zonePointId })
+              interrumpido = true
+            } else onClose?.()
           } else if (resultado.colision.temperamento === 'AGRESIVO' && resultado.logEntry) {
             // Bug real jugando en vivo (2026-09-15): un AGRESIVO en la misma celda cerraba el modal
             // sin dejar ningún rastro — el jugador no sabía que debía reaccionar. El backend ya deja
@@ -152,7 +162,10 @@ export function useMovimientoZona({ saveId, setData, bloqueoMovimiento = null, o
             roll: resultado.logEntry.roll,
             dynamicModeOffer: { ...resultado.dynamicModeOffer, busy: false },
           })
-          onClose?.()
+          if (onEncuentroEnMapa) {
+            onEncuentroEnMapa({ entryId: resultado.logEntry.id, zonePointId: resultado.dynamicModeOffer.zonePointId })
+            interrumpido = true
+          } else onClose?.()
           sigue = false
         } else if (resultado.caminoRestante.length === 0) {
           sigue = false
@@ -178,7 +191,7 @@ export function useMovimientoZona({ saveId, setData, bloqueoMovimiento = null, o
         setMovimientoEnCurso(false)
         // Parado: el destino queda para reanudar; si no, el trayecto se acabó (llegada, encuentro…).
         if (parado) setMensajeMovimiento('Te detienes.')
-        else {
+        else if (!interrumpido) {
           setDestinoPendiente(null)
           setCaminoRestante([])
         }

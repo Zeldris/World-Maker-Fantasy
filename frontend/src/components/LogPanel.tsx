@@ -10,6 +10,7 @@ import { EnciclopediaLinkedText } from './EnciclopediaLinkedText'
 import { NoticiaMundo, type ResponderPropuesta } from './NoticiaMundo'
 import { useEnciclopediaLink } from '../context/useEnciclopediaLink'
 import { OfferCard } from './OfferCard'
+import { presentacionOferta } from '../lib/ofertaModoDinamico'
 import { combatKeyFor } from '../lib/gameViewHelpers'
 import { retrasoEnVivo } from '../lib/presentacionTurno'
 import { professions } from '../data/professions'
@@ -538,100 +539,18 @@ export const LogPanel = memo(function LogPanel({
                   conversación, "Interactuar" resuelve la recolección real de una sola llamada
                   (`onVerRecursoDetalle` abre RecursoDetalleModal, no DynamicModeModal) — mismo botón/
                   tarjeta, callback distinto. */}
-              {entry.dynamicModeOffer &&
-                (() => {
-                  // Grupos de fauna reales (Fase 1, 2026-09-28) — "Un grupo de N {nombre}" en vez del
-                  // nombre suelto cuando el punto colisionado representa más de un individuo (nunca
-                  // aplica a NPC/RECURSO, que no se agrupan). Se calcula una vez y se reutiliza en las
-                  // 3 variantes de título de abajo.
-                  const offer = entry.dynamicModeOffer!;
-                  const nombreOferta =
-                    offer.tipo === 'FAUNA' && (offer.cantidad ?? 1) > 1 ? `Un grupo de ${offer.cantidad} ${offer.targetName}` : offer.targetName;
-                  return (
-                    <OfferCard
-                      bloqueo={bloqueoAcciones}
-                      tone={offer.combateForzado ? 'danger' : 'accent2'}
-                      icon={offer.combateForzado ? '⚔️' : offer.tipo === 'RECURSO' ? '🪨' : '💬'}
-                      title={
-                        offer.combateForzado
-                          ? `${nombreOferta} te corta el paso`
-                          : offer.tipo === 'RECURSO'
-                            ? `${nombreOferta} a la vista`
-                            : `${nombreOferta} busca tu atención`
-                      }
-                      subtitle={
-                        offer.combateForzado
-                          ? 'No parece dispuesto a dejarte pasar.'
-                          : offer.tipo === 'NPC'
-                            ? 'Puedes hablar con esta persona.'
-                            : offer.tipo === 'RECURSO'
-                              ? 'Hay algo cerca que podrías recolectar.'
-                              : 'Hay algo cerca con lo que puedes interactuar.'
-                      }
-                      warning={
-                        offer.riesgoCaza && offer.riesgoCaza.riesgo !== 'bajo' && offer.tipo === 'FAUNA' && !offer.combateForzado
-                          ? {
-                              nivel: offer.riesgoCaza.riesgo,
-                              text: `${offer.riesgoCaza.riesgo === 'mortal' ? 'Cazar esto puede matarte en un solo turno.' : 'Cazar esto es peligroso.'} ${offer.riesgoCaza.motivo}`.trim(),
-                            }
-                          : undefined
-                      }
-                      error={offer.error}
-                      actions={[
-                        {
-                          label: offer.busy ? 'Interactuando...' : 'Interactuar',
-                          tone: 'primary',
-                          disabled: offer.busy,
-                          onClick: () =>
-                            offer.tipo === 'RECURSO'
-                              ? onVerRecursoDetalle?.(entry.id, offer.targetSlug, offer.targetName, offer.metodo)
-                              : onInteractuarModoDinamico?.(
-                                  entry.id,
-                                  offer.tipo as 'NPC' | 'FAUNA',
-                                  offer.targetSlug,
-                                  offer.targetName,
-                                  offer.quienInicia,
-                                  offer.combateForzado,
-                                  offer.zonePointId,
-                                  offer.cantidad,
-                                ),
-                        },
-                        // Responder escribiendo (2026-10-02) — solo personas (NPC), también si te
-                        // cortan el paso: hablar es una reacción válida y el backend la acepta.
-                        ...(offer.tipo === 'NPC' && onResponderEscribiendo
-                          ? [
-                              {
-                                label: '✍️ Responder',
-                                tone: 'accent' as const,
-                                disabled: offer.busy,
-                                onClick: () => onResponderEscribiendo(offer.targetName),
-                              },
-                            ]
-                          : []),
-                        // Cazar desde la tarjeta (Fase 2, 2026-09-28) — solo FAUNA no forzada con un
-                        // `zonePointId` real (el grupo exacto con el que se ha colisionado); un
-                        // agresivo (`combateForzado`) nunca lo ofrece, ya tiene su propio árbol de
-                        // Combatir/Huir. Orden pedido explícitamente: Interactuar / Cazar / Ignorar.
-                        ...(offer.tipo === 'FAUNA' && offer.zonePointId && !offer.combateForzado
-                          ? [
-                              {
-                                label: offer.busy ? 'Cazando...' : 'Cazar',
-                                tone: 'primary' as const,
-                                disabled: offer.busy,
-                                onClick: () => onCazarEnZona?.(entry.id, offer.zonePointId!),
-                              },
-                            ]
-                          : []),
-                        // Un agresivo que te corta el paso no se ignora (2026-09-28): Interactuar
-                        // lleva a combatir o, si lo viste tú primero, a huir — nunca una salida
-                        // silenciosa.
-                        ...(offer.combateForzado
-                          ? []
-                          : [{ label: 'Ignorar', tone: 'neutral' as const, disabled: offer.busy, onClick: () => onDismissDynamicModeOffer?.(entry.id) }]),
-                      ]}
-                    />
-                  );
-                })()}
+              {entry.dynamicModeOffer && (
+                <OfferCard
+                  bloqueo={bloqueoAcciones}
+                  {...presentacionOferta(entry.id, entry.dynamicModeOffer, {
+                    onInteractuarModoDinamico,
+                    onResponderEscribiendo,
+                    onVerRecursoDetalle,
+                    onCazarEnZona,
+                    onDismissDynamicModeOffer,
+                  })}
+                />
+              )}
               {/* Menú contextual de interacción con NPC (2026-09-06, "Aprender oficio" deja de
                   depender de una habilidad suelta) — mismo patrón que `dynamicModeOffer`: un botón
                   por cada opción real de `npcInteractionOffer.options` (varía según el NPC), en

@@ -192,3 +192,56 @@ describe('ZonaPanel — Z-B, radio y parcelas', () => {
   })
 })
 
+
+/// ZON-5 (hito 0.2, petición de la usuaria) — chocar con algo no cierra el mapa: la tarjeta del
+/// encuentro sale junto a su ficha, con sus acciones y «Seguir mi camino».
+describe('ZonaPanel — ZON-5, encuentro en el mapa', () => {
+  beforeEach(() => {
+    vi.mocked(getZona).mockResolvedValue(zona as never)
+    const proto = SVGSVGElement.prototype as unknown as Record<string, unknown>
+    proto.createSVGPoint = () => ({ x: 0, y: 0, matrixTransform(this: { x: number; y: number }) { return { x: this.x, y: this.y } } })
+    proto.getScreenCTM = () => ({ inverse: () => ({}) })
+  })
+  afterEach(() => {
+    cleanup()
+    vi.clearAllMocks()
+  })
+
+  it('el mapa sigue abierto, la tarjeta sale junto a la ficha y «Seguir mi camino» ignora y continúa', async () => {
+    let paso = 0
+    vi.mocked(moverEnZona).mockImplementation(async () => {
+      paso++
+      if (paso === 1) {
+        return {
+          jugador: { x: 325, y: 325 }, caminoRestante: [{ x: 275, y: 325 }], zonePointsMovidos: [],
+          colision: { targetSlug: 'aullador', targetName: 'Aullador rojo', temperamento: 'CAUTELOSO' },
+          dynamicModeOffer: { tipo: 'FAUNA', targetSlug: 'aullador', targetName: 'Aullador rojo', zonePointId: 'p1', cantidad: 3 },
+          logEntry: { id: 'l1', text: 'Un grupo de aulladores.', timeLabel: '', createdAt: '' },
+        } as never
+      }
+      return { jugador: { x: 275, y: 325 }, caminoRestante: [], zonePointsMovidos: [] } as never
+    })
+    const onClose = vi.fn()
+    const ignorar = vi.fn()
+    const ofertaEnMapa = vi.fn((entryId: string) =>
+      entryId === 'l1'
+        ? { tone: 'accent2' as const, icon: '💬', title: 'Un grupo de 3 Aullador rojo busca tu atención', subtitle: '', actions: [{ label: 'Interactuar', tone: 'primary' as const, onClick: vi.fn() }, { label: 'Ignorar', tone: 'neutral' as const, onClick: ignorar }] }
+        : null,
+    )
+    const { container, findByTestId, getByRole } = render(<ZonaPanel saveId="s1" onClose={onClose} onEncuentroZona={vi.fn()} ofertaEnMapa={ofertaEnMapa} />)
+    await act(async () => {})
+    const svg = [...container.querySelectorAll('svg')].find((e) => e.getAttribute('viewBox') === '0 0 800 600')!
+    fireEvent.click(svg, { clientX: 275, clientY: 325 })
+    const tarjeta = await findByTestId('encuentro-en-mapa')
+    expect(onClose).not.toHaveBeenCalled()
+    expect(tarjeta.textContent).toContain('busca tu atención')
+    // Junto a la ficha del aullador (175, 125), no al personaje.
+    expect(Number(tarjeta.getAttribute('x'))).toBeLessThan(400)
+    fireEvent.click(getByRole('button', { name: 'Seguir mi camino' }))
+    expect(ignorar).toHaveBeenCalledTimes(1)
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 900))
+    })
+    expect(moverEnZona).toHaveBeenCalledTimes(2)
+  })
+})
