@@ -81,4 +81,25 @@ describe('CR-47 — caravanas del Reino', () => {
     expect(final.riqueza).toBeGreaterThan(0);
     expect((await prisma.kingdomStats.findUniqueOrThrow({ where: { saveId } })).riqueza).toBe(riquezaAntes + final.riqueza);
   });
+
+  it('47c: hacia una región con otro dueño en guerra con el Reino, la caravana puede caer en un asalto y lo pierde todo', async () => {
+    await prisma.ordenComercio.updateMany({ where: { saveId }, data: { activa: false } });
+    const goshg = await prisma.faction.findFirstOrThrow({ where: { saveId, origenSlug: 'clan-goshg' } });
+    const prisilke = await prisma.faction.findFirstOrThrow({ where: { saveId, origenSlug: 'keseg-prisilke' } });
+    await prisma.factionRelation.create({ data: { worldId, saveId, sourceFactionId: reinoId, targetFactionId: goshg.id, type: 'TRATADO_COMERCIAL' } });
+    await prisma.factionRelation.create({ data: { worldId, saveId, sourceFactionId: reinoId, targetFactionId: prisilke.id, type: 'GUERRA' } });
+    const item = await prisma.itemCatalog.findFirstOrThrow({ where: { worldId, slug: catalogSlug }, select: { name: true, description: true } });
+    await prisma.almacenItem.createMany({ data: Array.from({ length: 5 }, () => ({ factionId: goshg.id, name: item.name, description: item.description, catalogSlug })) });
+    await prisma.almacenItem.deleteMany({ where: { saveId, catalogSlug } });
+    await prisma.ordenComercio.create({ data: { saveId, catalogSlug, tipo: 'COMPRA', umbral: 3, lote: 3, factionSlug: 'clan-goshg' } });
+
+    expect((await avanzarComercio(prisma, saveId, 40)).salen).toBe(1);
+    const c = await prisma.caravana.findFirstOrThrow({ where: { saveId, factionId: goshg.id } });
+    expect(c.riqueza).toBeGreaterThan(0);
+    // Tirada 0: por debajo del riesgo de guerra (50 %).
+    expect((await avanzarComercio(prisma, saveId, c.diaLlegada, () => 0)).asaltadas).toBe(1);
+    expect(await prisma.caravana.findUniqueOrThrow({ where: { id: c.id } })).toMatchObject({ status: 'ASALTADA', riqueza: 0, traidas: 0 });
+    expect(await prisma.almacenItem.count({ where: { factionId: goshg.id, catalogSlug } })).toBe(5);
+    await prisma.almacenItem.deleteMany({ where: { factionId: goshg.id, catalogSlug } });
+  });
 });

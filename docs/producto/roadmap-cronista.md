@@ -1485,7 +1485,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     facciones con tratado o alianza y las que pasan por la región donde está el personaje (como en
     X4: aliado = ves sus órdenes; lo demás, solo lo que tienes cerca). Icono de la facción que
     avanza por la ruta según los días; al pulsarlo, facción, a qué va y día de vuelta.
-  - 🚧 **CR-47** Comercio de volumen Reino↔facción. **L** Pasos: 47a reglas puras, modelo y Mercado ✅ · 47b caravanas en el avance diario ✅ (`caravanas.ts`: salen, compran o venden unidad a unidad al llegar, vuelven; registro en «Reino») · 47c asaltos por el camino · 47d panel del Mercado (órdenes) y caravanas en el mapa · 47e caravanas del narrador de fondo como ocasión de comerciar. (fórmula decidida por la usuaria; la revisa
+  - 🚧 **CR-47** Comercio de volumen Reino↔facción. **L** Pasos: 47a reglas puras, modelo y Mercado ✅ · 47b caravanas en el avance diario ✅ (`caravanas.ts`: salen, compran o venden unidad a unidad al llegar, vuelven; registro en «Reino») · 47c asaltos ✅ (al llegar, mismo riesgo que las expediciones de facción: otro dueño de la región del destino en guerra o tensión con el Reino; asaltada, pierde la carga) · 47d panel del Mercado (órdenes) y caravanas en el mapa · 47e caravanas del narrador de fondo como ocasión de comerciar. (fórmula decidida por la usuaria; la revisa
     Álvaro después). Edificio Mercado con órdenes permanentes («compra hierro si baja de 20»,
     «vende madera si pasa de 80»); caravanas del Reino que viajan días a las facciones con tratado o
     alianza, se ven en el mapa (`CR-46`) y se pueden asaltar. Precio: `precioDinamico` unidad a

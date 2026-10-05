@@ -86,7 +86,7 @@ export async function avanzarMundoHasta(
       // CR-13 13b: edad de los nacidos en la partida y muerte de viejo.
       await envejecerDia(prisma, saveId, d, random);
       // CR-47: caravanas del Reino (salen las órdenes que toque, comercian al llegar, vuelven).
-      await avanzarComercio(prisma, saveId, d);
+      await avanzarComercio(prisma, saveId, d, random);
     }
   }
   // CR-10: reacciones de lo que haya pasado en el turno o en estos días; CR-11: consecuencias que

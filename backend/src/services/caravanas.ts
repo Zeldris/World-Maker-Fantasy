@@ -4,11 +4,14 @@
 // 2. La que llega comercia unidad a unidad (`comercioVolumen.ts`, como X4): compra lo que puede
 //    pagar del almacén de la facción, o vende lo que la facción puede pagar.
 // 3. La que vuelve deja en el Reino lo comprado o lo cobrado, y lo que no vendió.
-// Los asaltos por el camino van en el paso 47c.
+// 47c: al llegar, si la región del destino tiene otro dueño en guerra o en tensión con el Reino, la
+// caravana puede caer en un asalto (mismo riesgo que las expediciones de facción): pierde la carga.
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { cotizarCompra, cotizarVenta, diasDeCamino, unidadesDeOrden, type TipoOrden } from './comercioVolumen.js';
 import { buildAdjacency, shortestPath } from './travel.js';
 import { MERCADO_RECIPE_KEY } from './construction.js';
+import { riesgoIntercepcion, seIntercepta } from './factionExpeditions.js';
+import type { FactionRelationType } from '@prisma/client';
 
 type Tx = Prisma.TransactionClient;
 
@@ -65,11 +68,27 @@ export interface ResultadoComercio {
   salen: number;
   comercian: number;
   vuelven: number;
+  asaltadas: number;
+}
+
+/// Relación del Reino con cada otra facción (por nombre), la de más riesgo si hay dos.
+async function relacionesDelReino(db: Tx | PrismaClient, reinoId: string): Promise<Map<string, FactionRelationType>> {
+  const rel = await db.factionRelation.findMany({
+    where: { OR: [{ sourceFactionId: reinoId }, { targetFactionId: reinoId }] },
+    select: { type: true, sourceFaction: { select: { id: true, name: true } }, targetFaction: { select: { id: true, name: true } } },
+  });
+  const m = new Map<string, FactionRelationType>();
+  const peso: Partial<Record<FactionRelationType, number>> = { GUERRA: 2, TENSION: 1 };
+  for (const r of rel) {
+    const otra = r.sourceFaction.id === reinoId ? r.targetFaction.name : r.sourceFaction.name;
+    if ((peso[r.type] ?? 0) >= (peso[m.get(otra)!] ?? 0)) m.set(otra, r.type);
+  }
+  return m;
 }
 
 /// Un día de comercio de la partida (idempotente por día: cada caravana avanza por su estado).
-export async function avanzarComercio(prisma: PrismaClient, saveId: string, dia: number): Promise<ResultadoComercio> {
-  const resultado: ResultadoComercio = { salen: 0, comercian: 0, vuelven: 0 };
+export async function avanzarComercio(prisma: PrismaClient, saveId: string, dia: number, random: () => number = Math.random): Promise<ResultadoComercio> {
+  const resultado: ResultadoComercio = { salen: 0, comercian: 0, vuelven: 0, asaltadas: 0 };
   const save = await prisma.save.findUnique({ where: { id: saveId }, select: { worldId: true } });
   const reino = await prisma.faction.findFirst({ where: { saveId, origenSlug: null, disueltaEn: null }, select: { id: true, name: true } });
   if (!save || !reino) return resultado;
@@ -94,8 +113,18 @@ export async function avanzarComercio(prisma: PrismaClient, saveId: string, dia:
     resultado.vuelven++;
   }
 
-  // 2. Llegan y comercian.
-  for (const c of await prisma.caravana.findMany({ where: { saveId, status: 'EN_CAMINO', diaLlegada: { lte: dia } } })) {
+  // 2. Llegan y comercian (o caen en un asalto).
+  const relaciones = await relacionesDelReino(prisma, reino.id);
+  for (const c of await prisma.caravana.findMany({ where: { saveId, status: 'EN_CAMINO', diaLlegada: { lte: dia } }, include: { destino: { select: { region: true, name: true } }, faction: { select: { name: true } } } })) {
+    if (seIntercepta(riesgoIntercepcion(c.destino.region, reino.name, relaciones), random())) {
+      await prisma.$transaction(async (tx) => {
+        const fresca = await tx.caravana.updateMany({ where: { id: c.id, status: 'EN_CAMINO' }, data: { status: 'ASALTADA', riqueza: 0, traidas: 0 } });
+        if (fresca.count === 0) return;
+        await registrarEnReino(tx, saveId, `Asaltan la caravana que iba a ${c.faction.name} cerca de ${c.destino.name}: se pierde todo lo que llevaba.`);
+      });
+      resultado.asaltadas++;
+      continue;
+    }
     await prisma.$transaction(async (tx) => {
       const fresca = await tx.caravana.updateMany({ where: { id: c.id, status: 'EN_CAMINO' }, data: { status: 'VOLVIENDO' } });
       if (fresca.count === 0) return;
