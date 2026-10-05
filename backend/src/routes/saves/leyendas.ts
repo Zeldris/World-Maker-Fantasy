@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { FamiliaSuceso } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
-import { FAMILIAS, leyendasDeEntidad, leyendasDePartida, TIPOS_ENTIDAD } from '../../services/cronista/leyendas.js';
+import { FAMILIAS, FICHAS_CON_LEYENDAS, leyendasDeEntidad, leyendasDeFicha, leyendasDePartida, TIPOS_ENTIDAD, type FichaConLeyendas } from '../../services/cronista/leyendas.js';
 import type { EntidadTipo } from '../../services/cronista/sucesos.js';
 
 /// Leyendas de la partida (CR-19, hito 0.2 — roadmap-cronista.md § 14): solo lo que sabe el
@@ -27,5 +27,13 @@ export async function leyendasRoutes(app: FastifyInstance) {
     const tipo = request.params.tipo.toUpperCase() as EntidadTipo;
     if (!TIPOS_ENTIDAD.includes(tipo)) return reply.status(400).send({ error: `Tipo de entidad desconocido: ${request.params.tipo}` });
     return { entradas: await leyendasDeEntidad(prisma, save.id, tipo, request.params.entidadId) };
+  });
+
+  // CR-20 (20b): sección «En tu partida» de una ficha de la Enciclopedia, por su slug.
+  app.get<{ Params: { id: string; ficha: string; slug: string } }>('/saves/:id/leyendas/ficha/:ficha/:slug', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (!(request.params.ficha in FICHAS_CON_LEYENDAS)) return reply.status(400).send({ error: `Ficha sin leyendas: ${request.params.ficha}` });
+    return { entradas: await leyendasDeFicha(prisma, save.id, request.params.ficha as FichaConLeyendas, request.params.slug) };
   });
 }

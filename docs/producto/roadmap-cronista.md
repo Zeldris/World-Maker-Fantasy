@@ -1540,13 +1540,14 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   solo sucesos con `Conocimiento`; nivel NORMAL/DESTACADO/GRAVE en vez del número (INT-2); un rumor, sin
   actores, fecha, lugar ni causas; causas solo si también se saben (INT-3)). Las etiquetas (`GET /etiquetas`) van con `CR-14` y el
   epílogo con `UX-18` (`CR-18` Q6, 2026-10-05).
-- **CR-20** Front: Leyendas y fichas "En tu partida" en la Enciclopedia. **M** Decidido (`CR-18` Q5 y
+- ~~**CR-20** Front: Leyendas y fichas "En tu partida" en la Enciclopedia. **M**~~ ✅ 2026-10-05 Decidido (`CR-18` Q5 y
   Q6, 2026-10-05): panel propio con icono de libro junto al Diario, con Crónica, Personajes,
   Facciones, Lugares y Línea temporal; causas enlazadas (`INT-3`) siempre visibles hasta que llegue
   `CFG-36` (`0.3`); rumor con lugar en el mapa (`INT-9`). Etiquetas y aprobación, con `CR-14`/`CR-15`.
-  🚧 20a ✅ 2026-10-05 (`LeyendasPanel.tsx` y `lib/leyendas.ts`: panel «Leyendas» junto al Diario con Crónica
+  20a ✅ 2026-10-05 (`LeyendasPanel.tsx` y `lib/leyendas.ts`: panel «Leyendas» junto al Diario con Crónica
   por días o semanas, Personajes, Facciones, Lugares y Línea temporal, filtro por familia, `INT-1`, `INT-2`
-  e `INT-3`); falta 20b (fichas «En tu partida» en la Enciclopedia).
+  e `INT-3`); 20b ✅ 2026-10-05 (`EnTuPartida.tsx` en la ficha de la Enciclopedia de un NPC, una facción
+  o un lugar, con `GET /saves/:id/leyendas/ficha/:ficha/:slug`; no aparece si no se sabe nada).
 - **Hecho cuando:** un suceso lejano llega como rumor días después y aparece en Leyendas; nada que
   el personaje no sepa es visible.
 

@@ -1944,6 +1944,7 @@ export function GameView() {
           onDeleteAbility={handleDeleteHabilidad}
           onInsert={detailInsertHandler ?? undefined}
           worldSlug={worldIdSlug}
+          saveId={saveId}
         />
         </Capa>
       )}

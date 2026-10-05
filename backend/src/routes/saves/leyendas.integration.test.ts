@@ -102,4 +102,14 @@ describe('GET /saves/:id/leyendas (CR-19)', () => {
   it('niveles de importancia (INT-2)', () => {
     expect([1, 4, 5, 7, 8, 10].map(nivelDeImportancia)).toEqual(['NORMAL', 'NORMAL', 'DESTACADO', 'DESTACADO', 'GRAVE', 'GRAVE']);
   });
+
+  // 20b: la ficha de la Enciclopedia pregunta por slug.
+  it('ficha de la Enciclopedia por slug (facción; un NPC o un lugar sin nada sabido salen vacíos)', async () => {
+    const { status, body } = await leer(`/saves/${saveId}/leyendas/ficha/faction/${serhuSlug}`);
+    expect(status).toBe(200);
+    expect(body.entradas.map((e) => e.sucesoId)).toEqual([ids.rumor, ids.hecho, ids.causaSabida]);
+    expect((await leer(`/saves/${saveId}/leyendas/ficha/npc/maestro-cocinero-serhu`)).body.entradas).toEqual([]);
+    expect((await leer(`/saves/${saveId}/leyendas/ficha/item/espada`)).status).toBe(400);
+  });
 });
+

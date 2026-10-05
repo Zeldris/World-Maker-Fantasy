@@ -149,3 +149,33 @@ export async function leyendasDeEntidad(prisma: PrismaClient, saveId: string, ti
   });
   return aEntradas(prisma, saveId, filas);
 }
+
+/// Fichas de la Enciclopedia que tienen sección «En tu partida» (20b) y el tipo de actor del Libro.
+export const FICHAS_CON_LEYENDAS = { npc: 'NPC', faction: 'FACCION', location: 'LOCATION' } as const;
+export type FichaConLeyendas = keyof typeof FICHAS_CON_LEYENDAS;
+
+/// Lo que el personaje sabe de una ficha de la Enciclopedia, por su slug: los NPC y los lugares
+/// figuran en el Libro por id (del catálogo o, si nació en la partida, el suyo); las facciones de la
+/// partida conservan el slug del catálogo.
+export async function leyendasDeFicha(prisma: PrismaClient, saveId: string, ficha: FichaConLeyendas, slug: string): Promise<EntradaLeyenda[]> {
+  const save = await prisma.save.findUnique({ where: { id: saveId }, select: { worldId: true } });
+  if (!save) return [];
+  const tipo = FICHAS_CON_LEYENDAS[ficha];
+  let ids: string[] = [slug];
+  if (ficha === 'npc') {
+    ids = (await prisma.npc.findMany({ where: { slug, OR: [{ worldId: save.worldId, saveId: null }, { saveId }] }, select: { id: true } })).map((n) => n.id);
+  } else if (ficha === 'location') {
+    ids = (await prisma.location.findMany({ where: { worldId: save.worldId, slug }, select: { id: true } })).map((l) => l.id);
+  }
+  if (ids.length === 0) return [];
+  const donde: Prisma.SucesoWhereInput[] = [{ actores: { some: { entidadTipo: tipo, entidadId: { in: ids } } } }];
+  if (tipo === 'LOCATION') donde.push({ locationId: { in: ids } });
+  const filas = await prisma.conocimiento.findMany({
+    where: { saveId, suceso: { OR: donde } },
+    select: { via: true, confirmado: true, desde: true, suceso: { select: SELECT_SUCESO } },
+    orderBy: [{ suceso: { fictionalMinutes: 'desc' } }, { id: 'desc' }],
+    take: LIMITE_LEYENDAS,
+  });
+  return aEntradas(prisma, saveId, filas);
+}
+

@@ -83,3 +83,10 @@ export function porEntidad(entradas: EntradaLeyenda[], seccion: SeccionEntidad):
 export function lineaTemporal(entradas: EntradaLeyenda[]): EntradaLeyenda[] {
   return entradas.filter((e) => e.nivel !== 'NORMAL').sort((a, b) => diaDeEntrada(a) - diaDeEntrada(b))
 }
+
+/// CR-20 (20b): fichas de la Enciclopedia con sección «En tu partida».
+export type FichaConLeyendas = 'npc' | 'faction' | 'location'
+
+export function esFichaConLeyendas(tipo: string | undefined): tipo is FichaConLeyendas {
+  return tipo === 'npc' || tipo === 'faction' || tipo === 'location'
+}

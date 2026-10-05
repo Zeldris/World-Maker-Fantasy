@@ -2612,6 +2612,11 @@ export async function getLeyendas(saveId: string, params: { familia?: FamiliaSuc
   return fetchJson(`${API_URL}/saves/${saveId}/leyendas${qs ? `?${qs}` : ''}`)
 }
 
+/// CR-20 (20b): sección «En tu partida» de una ficha de la Enciclopedia (npc, faction o location).
+export async function getLeyendasFicha(saveId: string, ficha: 'npc' | 'faction' | 'location', slug: string): Promise<{ entradas: EntradaLeyenda[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/leyendas/ficha/${ficha}/${encodeURIComponent(slug)}`)
+}
+
 /// Lo que el personaje sabe de una entidad (ficha «En tu partida»).
 export async function getLeyendasEntidad(saveId: string, tipo: string, entidadId: string): Promise<{ entradas: EntradaLeyenda[] }> {
   return fetchJson(`${API_URL}/saves/${saveId}/leyendas/entidad/${encodeURIComponent(tipo)}/${encodeURIComponent(entidadId)}`)

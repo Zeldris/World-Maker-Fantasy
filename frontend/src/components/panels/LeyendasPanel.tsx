@@ -67,11 +67,21 @@ export function EntradaLeyendaItem({ entrada: e, porId, irA, resaltada = false }
           <span>Por qué pasó:</span>
           {e.causas.map((id) => {
             const causa = porId?.get(id)
-            return (
-              <button key={id} type="button" onClick={() => irA?.(id)} className="rounded border border-iron-700 px-1.5 py-0.5 text-wood-300 hover:bg-wood-900/60">
+            const contenido = (
+              <>
                 {causa ? `Día ${diaDeEntrada(causa)}` : 'Antes'}
                 {causa && <span className="ml-1 text-wood-500">{causa.texto.length > 40 ? `${causa.texto.slice(0, 40)}…` : causa.texto}</span>}
+              </>
+            )
+            // Sin `irA` (una ficha) la causa se nombra pero no lleva a ningún sitio.
+            return irA ? (
+              <button key={id} type="button" onClick={() => irA(id)} className="rounded border border-iron-700 px-1.5 py-0.5 text-wood-300 hover:bg-wood-900/60">
+                {contenido}
               </button>
+            ) : (
+              <span key={id} className="rounded border border-iron-800 px-1.5 py-0.5 text-wood-400">
+                {contenido}
+              </span>
             )
           })}
         </p>
