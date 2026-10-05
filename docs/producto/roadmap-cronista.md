@@ -1400,9 +1400,18 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     (guerrero con nombre de la facción en guerra, nunca su líder) y Explorar (lugar de la región no
     visitado). Ayudar sigue siendo la oportunidad de `CR-12`. Noticia «X ha colgado nuevos avisos en…».
     De paso: `alimento` también cuenta como comida en las expediciones por hambre (34b).
+  - ✅ **40e hecho (2026-10-05):** `cronista/misionesJugadora.ts` y `routes/saves/misiones.ts`
+    (`POST /saves/:id/misiones/avisos/:avisoId/aceptar`, `/:questId/entregar`, `/:questId/abandonar`).
+    Aceptar: como mucho 3 activas y una por facción; nace la `Quest` con recompensa, plazo y, en
+    Entregar, el lugar de entrega (el del tablón); Combatir sitúa 1-2 plantillas de la enemiga en el
+    lugar con su punto de zona. Progreso: Cazar con cada pieza de la especie
+    (`decrementPopulationOnDeath`); Entregar al entregar donde se aceptó; Explorar, Eliminar y
+    Combatir los revisa `revisarMisiones` tras cada turno (`avanzarMundoHasta`) y tras cada acción.
+    Cumplir: XP (con subida de nivel), Goirnos, reputación (+ con quien encarga, − con la enemiga) y
+    `MISION_COMPLETADA`; fallar por plazo o abandonar restan reputación.
   - **Pasos:** 40a plantillas, tipos y recompensas (puro) ✅ · 40b modelo y migración ✅ · 40c tablones
     (sembrados y del Reino) ✅ · 40d generación en el avance diario ✅ · 40e aceptar, progreso, cumplir,
-    fallar y reputación · 40f oferta pendiente única (ADR), «¿Tienes trabajo?» del NPC y el narrador
+    fallar y reputación ✅ · 40f oferta pendiente única (ADR), «¿Tienes trabajo?» del NPC y el narrador
     deja de crear misiones · 40g interfaz del tablón y del diario.
 - **Hecho cuando:** `cronista:simular 60` produce caídas, escisiones, tormentas con daños, guerras
   y nacimientos coherentes; perdonar a un NPC lo hace volver en otra región.

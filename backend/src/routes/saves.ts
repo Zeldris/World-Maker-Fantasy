@@ -7,6 +7,7 @@ import { habilidadesRoutes } from './saves/habilidades.js';
 import { skillBarsRoutes } from './saves/skillBars.js';
 import { inventarioRoutes } from './saves/inventario.js';
 import { logRoutes } from './saves/log.js';
+import { misionesRoutes } from './saves/misiones.js';
 import { listRoutes } from './saves/list.js';
 import { reinoRoutes } from './saves/reino.js';
 import { recolectarRoutes } from './saves/recolectar.js';
@@ -45,6 +46,7 @@ export async function savesRoutes(app: FastifyInstance) {
   await app.register(skillBarsRoutes);
   await app.register(inventarioRoutes);
   await app.register(logRoutes);
+  await app.register(misionesRoutes);
   await app.register(listRoutes);
   await app.register(reinoRoutes);
   // "Cazar" (rutas /cazar/explorar, /cazar/confirmar) retirado en Fase 4 (2026-09-28,
