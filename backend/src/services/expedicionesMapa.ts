@@ -68,5 +68,22 @@ export async function expedicionesVisibles(prisma: PrismaClient, saveId: string)
       diaRegreso: e.diaRegreso, progreso: progresoDeExpedicion(e.diaSalida, e.diaRegreso, dia), delReino,
     });
   }
+  // CR-47: las caravanas del Reino, del Mercado al socio.
+  if (reino) {
+    const mercado = await prisma.building.findFirst({ where: { saveId, recipeKey: 'mercado', status: 'ACTIVO', locationId: { not: null } }, select: { location: { select: { slug: true } } } });
+    if (mercado?.location) {
+      const caravanas = await prisma.caravana.findMany({
+        where: { saveId, status: { in: ['EN_CAMINO', 'VOLVIENDO'] } },
+        select: { id: true, tipo: true, diaSalida: true, diaRegreso: true, faction: { select: { name: true } }, destino: { select: { slug: true, name: true } } },
+      });
+      for (const c of caravanas) {
+        visibles.push({
+          id: c.id, faccion: c.faction.name, oficio: c.tipo === 'COMPRA' ? 'caravana de compra' : 'caravana de venta', motivo: null,
+          origenSlug: exterior(mercado.location.slug), destinoSlug: c.destino.slug, destinoNombre: c.destino.name,
+          diaRegreso: c.diaRegreso, progreso: progresoDeExpedicion(c.diaSalida, c.diaRegreso, dia), delReino: true,
+        });
+      }
+    }
+  }
   return visibles;
 }

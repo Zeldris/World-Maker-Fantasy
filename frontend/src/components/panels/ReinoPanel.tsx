@@ -6,6 +6,7 @@ import { EdificiosParcelasSection } from './reino/EdificiosParcelasSection'
 import { ProduccionSection } from './reino/ProduccionSection'
 import { SubditosSection } from './reino/SubditosSection'
 import { DiplomaciaMercadoSection } from './reino/DiplomaciaMercadoSection'
+import { ComercioSection } from './reino/ComercioSection'
 
 // Re-exportado tal cual (2026-09-21, rediseño en sub-tabs) — CompanerosPanel.tsx lo importa desde
 // aquí (`import { PlantillaSelect } from './ReinoPanel'`); el componente real ahora vive en
@@ -163,7 +164,11 @@ export function ReinoPanel({
         />
       )}
       {activeSubTab === 'diplomacia-mercado' && (
-        <DiplomaciaMercadoSection saveId={saveId} companions={companions} factions={factions} goirnos={goirnos} onRefreshSave={onRefreshSave} almacenItems={almacenItems} />
+        <>
+          <DiplomaciaMercadoSection saveId={saveId} companions={companions} factions={factions} goirnos={goirnos} onRefreshSave={onRefreshSave} almacenItems={almacenItems} />
+          {/* CR-47: comercio de volumen con caravanas. */}
+          <ComercioSection saveId={saveId} />
+        </>
       )}
     </div>
   )

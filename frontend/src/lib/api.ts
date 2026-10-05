@@ -1721,6 +1721,55 @@ export async function postMercadoVender(saveId: string, targetFactionSlug: strin
   })
 }
 
+/// CR-47 (47d): el Mercado del Reino — órdenes permanentes y caravanas.
+export interface OrdenComercioInfo {
+  id: string
+  catalogSlug: string
+  nombre: string
+  tipo: 'COMPRA' | 'VENTA'
+  umbral: number
+  lote: number
+  factionSlug: string | null
+}
+export interface CaravanaInfo {
+  id: string
+  tipo: 'COMPRA' | 'VENTA'
+  nombre: string
+  faccion: string
+  unidades: number
+  traidas: number
+  riqueza: number
+  status: 'EN_CAMINO' | 'VOLVIENDO' | 'TERMINADA' | 'ASALTADA'
+  diaRegreso: number
+}
+export interface ComercioInfo {
+  reino: boolean
+  mercado: boolean
+  socios: { slug: string; name: string }[]
+  objetos: { slug: string; name: string }[]
+  ordenes: OrdenComercioInfo[]
+  caravanas: CaravanaInfo[]
+}
+
+export async function getComercio(saveId: string): Promise<ComercioInfo> {
+  return fetchJson(`${API_URL}/saves/${saveId}/reino/comercio`)
+}
+
+export async function postOrdenComercio(
+  saveId: string,
+  orden: { catalogSlug: string; tipo: 'COMPRA' | 'VENTA'; umbral: number; lote: number; factionSlug: string | null },
+): Promise<{ orden: OrdenComercioInfo }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/reino/comercio/ordenes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(orden),
+  })
+}
+
+export async function deleteOrdenComercio(saveId: string, ordenId: string): Promise<{ ok: boolean }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/reino/comercio/ordenes/${ordenId}`, { method: 'DELETE' })
+}
+
 /// Relaciones entre facciones NPC (Fase 4, 2026-09-21, docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.3) —
 /// nunca la facción del jugador, solo facciones de catálogo entre sí. `worldSlug` es el `slug` de
 /// `World`, no confundir con un slug de Faction.
