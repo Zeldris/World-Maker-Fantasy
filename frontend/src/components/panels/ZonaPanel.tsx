@@ -302,6 +302,10 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
     const detalles = [TIPO_LABEL[punto.tipo], DISPOSICION_LABEL[punto.color]]
     if ('cantidad' in punto && punto.cantidad > 1) detalles.push(`×${punto.cantidad}`)
     if ('companion' in punto && punto.companion) detalles.push(`con ${punto.companion.nombre}`)
+    // ZON-16/ZON-58: lo desconocido, agotado o con candado, también en la tarjeta.
+    if (!punto.descubierto) detalles.push('sin descubrir')
+    if ('agotado' in punto && punto.agotado) detalles.push('agotado por ahora')
+    if ('nivelRequerido' in punto && punto.nivelRequerido) detalles.push(`pide nivel ${punto.nivelRequerido} de oficio`)
     if (data?.jugador) {
       const d = distanciaEnCeldas(data.jugador, punto)
       detalles.push(d === 0 ? 'aquí' : `a ${d} ${d === 1 ? 'celda' : 'celdas'}`)
@@ -543,7 +547,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                   onMouseLeave={() => setClaveBajoRaton(null)}
                   className="cursor-pointer"
                 >
-                  <ZonePointMarker x={p.x} y={p.y} tipo={p.tipo} color={COLOR_HEX[p.color]} escala={escala} hasCompanion={!!p.companion} cantidad={p.cantidad} />
+                  <ZonePointMarker x={p.x} y={p.y} tipo={p.tipo} color={COLOR_HEX[p.color]} escala={escala} hasCompanion={!!p.companion} cantidad={p.cantidad} desconocido={!p.descubierto} agotado={p.agotado} nivelRequerido={p.nivelRequerido} />
                   <title>{`${p.nombre}${p.cantidad > 1 ? ` ×${p.cantidad}` : ''} (${TIPO_LABEL[p.tipo]})${p.companion ? ` — con ${p.companion.nombre}` : ''}`}</title>
                 </g>
               ))}
@@ -558,7 +562,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                   onMouseLeave={() => setClaveBajoRaton(null)}
                   className="cursor-pointer"
                 >
-                  <ZonePointMarker x={d.x} y={d.y} tipo={d.tipo} color={COLOR_HEX[d.color]} escala={escala} />
+                  <ZonePointMarker x={d.x} y={d.y} tipo={d.tipo} color={COLOR_HEX[d.color]} escala={escala} desconocido={!d.descubierto} />
                   <title>{`${d.nombre} (${TIPO_LABEL[d.tipo]})`}</title>
                 </g>
               ))}

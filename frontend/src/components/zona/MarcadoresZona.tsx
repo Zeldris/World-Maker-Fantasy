@@ -59,14 +59,37 @@ export const MS_POR_PASO_MOVIMIENTO = MS_POR_VELOCIDAD.normal
 /// — ver el comentario de `ZonePointShape` de arriba para el motivo. `children` opcional para poder
 /// insertar el texto de cantidad DENTRO del mismo grupo animado (ver `data.puntos.map` más abajo),
 /// en vez de que cada caller tenga que repetir el `<g>`/`transform` a mano.
-export function ZonePointMarker({ x, y, tipo, color, escala, hasCompanion, cantidad, sombra, children }: { x: number; y: number; tipo: ZonaPinTipo; color: string; escala: number; hasCompanion?: boolean; cantidad?: number; sombra?: boolean; children?: ReactNode }) {
+export function ZonePointMarker({ x, y, tipo, color, escala, hasCompanion, cantidad, sombra, desconocido = false, agotado = false, nivelRequerido, children }: { x: number; y: number; tipo: ZonaPinTipo; color: string; escala: number; hasCompanion?: boolean; cantidad?: number; sombra?: boolean; desconocido?: boolean; agotado?: boolean; nivelRequerido?: number; children?: ReactNode }) {
   // ZON-36: la animación dura lo que el paso (según la velocidad elegida).
   const msPaso = useMsPaso()
   // ZON-10/ZON-11 (hito 0.1) — la ficha (placa + pictograma + anillo) vive en zona/FichaZona.tsx y se
   // dibuja en píxeles de pantalla; aquí solo se coloca y se anima en coordenadas del lienzo.
+  // ZON-16 (hito 0.2): no descubierto = silueta con «?» y anillo punteado; agotado = atenuado con ⏳.
+  // ZON-58: candado con el nivel de oficio que pide.
   return (
-    <g style={{ transform: `translate(${x}px, ${y}px)`, transition: `transform ${msPaso}ms linear` }}>
-      <FichaZona tipo={tipo} color={color} escala={escala} hasCompanion={hasCompanion} cantidad={cantidad} sombra={sombra}>
+    <g style={{ transform: `translate(${x}px, ${y}px)`, transition: `transform ${msPaso}ms linear` }} opacity={agotado ? 0.45 : 1}>
+      <FichaZona tipo={tipo} color={desconocido ? 'var(--color-wood-400)' : color} escala={escala} hasCompanion={hasCompanion} cantidad={cantidad} sombra={sombra}>
+        {desconocido && (
+          <>
+            <circle r={17.5} fill="none" stroke="var(--color-wood-300)" strokeWidth={1.2} strokeDasharray="2.5 2.5" />
+            <text data-testid="ficha-desconocida" x={0} y={4.5} textAnchor="middle" fontSize={13} fontWeight={700} fill="#f5f0e6" stroke="#1c1917" strokeWidth={2.5} paintOrder="stroke">
+              ?
+            </text>
+          </>
+        )}
+        {agotado && (
+          <text data-testid="ficha-agotada" x={12} y={-9} textAnchor="middle" fontSize={10}>
+            ⏳
+          </text>
+        )}
+        {nivelRequerido !== undefined && (
+          <g data-testid="ficha-candado" transform="translate(12, -11)">
+            <rect x={-10} y={-7} width={20} height={12} rx={3} fill="rgba(20,16,12,0.9)" stroke="var(--color-cost-400)" strokeWidth={1} />
+            <text x={0} y={2.5} textAnchor="middle" fontSize={8} fill="#f5f0e6">
+              🔒{nivelRequerido}
+            </text>
+          </g>
+        )}
         {children}
       </FichaZona>
     </g>

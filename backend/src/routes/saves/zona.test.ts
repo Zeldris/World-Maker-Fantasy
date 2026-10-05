@@ -42,6 +42,7 @@ const findManyLocationVisit = vi.fn();
 const findManyParcela = vi.fn();
 // Cadáveres en el mapa (Fase 5, 2026-09-28) — sin despiece de catálogo por defecto.
 const findManyHarvestYield = vi.fn().mockResolvedValue([]);
+const findManyWorldPopulation = vi.fn().mockResolvedValue([]);
 
 // Fase 5 (B1): `zona.ts` lee los `ZonePoint` de la partida con `zonePoint.findMany` — el mock los
 // sigue sacando de `currentLocation.zonePoints` del último `save` devuelto por `findUnique`.
@@ -79,6 +80,7 @@ vi.mock('../../lib/prisma.js', () => ({
     // CR-40 (40g): tablón de avisos del lugar (ninguno en estos tests).
     building: { findFirst: async () => null },
     harvestYield: { findMany: (...args: unknown[]) => findManyHarvestYield(...args) },
+    worldPopulation: { findMany: (...args: unknown[]) => findManyWorldPopulation(...args) },
     // Fase D (hito 0.1): control de región desde FactionRelation; sin filas, cae a la agenda (como antes).
     factionRelation: { findMany: async () => [] },
   },
@@ -228,7 +230,7 @@ describe('GET /saves/:id/zona', () => {
       { id: 'zp1', x: 620, y: 180, tipo: 'FAUNA', targetSlug: 'kirelon-arenoso', nombre: 'Kirelon Arenoso', cantidad: 1, color: 'SIN_FACCION', descubierto: true, hostil: false },
       // RECURSO nunca tiene facción por diseño (2026-09-09) — INERTE (gris), no SIN_FACCION
       // (naranja, reservado a NPC/FAUNA/EDIFICIO independientes) — ver zonePointColorFor.
-      { id: 'zp2', x: 400, y: 470, tipo: 'RECURSO', targetSlug: 'yerreo', nombre: expect.any(String), cantidad: 1, color: 'INERTE', descubierto: true, hostil: false },
+      { id: 'zp2', x: 400, y: 470, tipo: 'RECURSO', targetSlug: 'yerreo', nombre: expect.any(String), cantidad: 1, color: 'INERTE', descubierto: true, hostil: false, agotado: false },
       { id: 'zp3', x: 100, y: 100, tipo: 'FAUNA', targetSlug: 'gesgurio', nombre: 'Etiqueta a mano', cantidad: 3, color: 'SIN_FACCION', descubierto: true, hostil: false }, // label manda sobre el nombre real
     ]);
     expect(body.dinamicos).toEqual([]);
@@ -257,7 +259,7 @@ describe('GET /saves/:id/zona', () => {
     const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
     const body = res.json();
     expect(body.puntos).toEqual([
-      { id: 'zp2', x: 400, y: 470, tipo: 'RECURSO', targetSlug: 'yerreo', nombre: expect.any(String), cantidad: 1, color: 'INERTE', descubierto: true, hostil: false },
+      { id: 'zp2', x: 400, y: 470, tipo: 'RECURSO', targetSlug: 'yerreo', nombre: expect.any(String), cantidad: 1, color: 'INERTE', descubierto: true, hostil: false, agotado: false },
     ]);
   });
 
@@ -661,6 +663,44 @@ describe('GET /saves/:id/zona', () => {
       const oculto = (await app.inject({ method: 'GET', url: '/saves/s1/zona' })).json();
       expect(oculto.puntos[0].hostil).toBe(false);
       expect(oculto.puntos[0].ruta).toBeUndefined();
+    });
+
+    // ZON-58 / ZON-16 (hito 0.2): recurso agotado (recolectado aquí hace nada) y recurso con candado.
+    it('un recurso recién recolectado aquí sale agotado; uno que pide más nivel de oficio, con candado', async () => {
+      findManyDiscoveredEntity.mockReset().mockResolvedValue([{ entityType: 'flora', entitySlug: 'yerreo' }, { entityType: 'flora', entitySlug: 'roca-dura' }]);
+      findUniqueSave.mockResolvedValueOnce({
+        id: 's1',
+        worldId: 'w1',
+        currentLocation: {
+          id: 'loc1',
+          slug: 'hondonada-del-eco',
+          name: 'La Hondonada del Eco',
+          zonePoints: [
+            { id: 'zp2', x: 400, y: 470, tipo: 'RECURSO', targetSlug: 'yerreo', label: null, activo: true, cantidad: 1, factionSlug: null },
+            { id: 'zp4', x: 300, y: 470, tipo: 'RECURSO', targetSlug: 'roca-dura', label: null, activo: true, cantidad: 1, factionSlug: null },
+          ],
+        },
+        worldState: { fictionalMinutes: 600, factionsStatus: null, agenda: null },
+        professionProgress: [{ professionId: 'minero-llanuras', nivel: 2 }],
+      });
+      findManyNpc.mockResolvedValueOnce([]);
+      findManyHarvestYield.mockResolvedValueOnce([
+        { sourceSlug: 'yerreo', metodoObtencion: 'EXTRACCION', item: { tier: 1 } },
+        { sourceSlug: 'roca-dura', metodoObtencion: 'MINERIA', item: { tier: 4 } },
+        { sourceSlug: 'roca-dura', metodoObtencion: 'MINERIA', item: { tier: 5 } },
+      ]);
+      findManyWorldPopulation.mockResolvedValueOnce([
+        { targetSlug: 'yerreo', poblacion: 10, lastHarvestedAt: new Date(), lastHarvestedLocationId: 'loc1' },
+        { targetSlug: 'roca-dura', poblacion: 10, lastHarvestedAt: null, lastHarvestedLocationId: null },
+      ]);
+      loadSessionFactsMock.mockResolvedValueOnce([]);
+      detectNpcsInSceneMock.mockResolvedValueOnce([]);
+      const app = await buildApp();
+      const body = (await app.inject({ method: 'GET', url: '/saves/s1/zona' })).json();
+      const porId = Object.fromEntries(body.puntos.map((p: { id: string }) => [p.id, p]));
+      expect(porId.zp2).toMatchObject({ agotado: true });
+      expect(porId.zp2.nivelRequerido).toBeUndefined();
+      expect(porId.zp4).toMatchObject({ agotado: false, nivelRequerido: 4 });
     });
 
     it('un ZonePoint RECURSO aún no descubierto sale con nombre "???", pero uno ya descubierto sale con su nombre real', async () => {

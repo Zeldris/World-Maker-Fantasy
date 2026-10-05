@@ -1139,6 +1139,10 @@ export interface ZonePointInfo {
   hostil?: boolean
   /// ZON-53: su patrulla (puntos del lienzo, en bucle), solo si ya está descubierto.
   ruta?: { x: number; y: number }[]
+  /// ZON-58/ZON-16: recurso recolectado aquí hace poco o sin población (se ve agotado), y nivel de
+  /// oficio que pide si el tuyo no llega (candado). Solo en recursos ya descubiertos.
+  agotado?: boolean
+  nivelRequerido?: number
   /// Compañero de fauna con nombre propio (auditoría de lore 2026-09-13, C10 — "los compañeros de
   /// npc deben formar un mismo punto en el mapa de zona... se mueven como 1"). Presente solo en
   /// puntos `tipo: 'NPC'` cuyo dueño tiene un `Npc.companionOfNpcSlug` apuntándole — el companion

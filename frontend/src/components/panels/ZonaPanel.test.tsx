@@ -275,3 +275,30 @@ describe('ZonaPanel — Z-D, sin sorpresas', () => {
   })
 })
 
+
+/// Z-D (hito 0.2) — ZON-16/ZON-58: estados de las fichas (sin descubrir, agotado, con candado).
+describe('ZonaPanel — Z-D, estados de las fichas', () => {
+  afterEach(() => {
+    cleanup()
+    vi.clearAllMocks()
+  })
+
+  it('lo no descubierto sale como silueta con «?»; un recurso agotado, con ⏳; uno que pide nivel, con candado', async () => {
+    vi.mocked(getZona).mockResolvedValue({
+      ...zona,
+      puntos: [
+        { ...zona.puntos[0]!, nombre: '???', descubierto: false },
+        { id: 'r1', x: 525, y: 125, tipo: 'RECURSO', targetSlug: 'yerreo', nombre: 'Yerreo', cantidad: 1, color: 'INERTE', descubierto: true, agotado: true },
+        { id: 'r2', x: 625, y: 125, tipo: 'RECURSO', targetSlug: 'roca-dura', nombre: 'Roca dura', cantidad: 1, color: 'INERTE', descubierto: true, nivelRequerido: 4 },
+      ],
+    } as never)
+    const { container, getByTestId, getAllByTestId } = render(<ZonaPanel saveId="s1" />)
+    await act(async () => {})
+    expect(getAllByTestId('ficha-desconocida').length).toBeGreaterThan(0)
+    expect(getByTestId('ficha-agotada')).toBeTruthy()
+    expect(getByTestId('ficha-candado').textContent).toBe('🔒4')
+    const roca = [...container.querySelectorAll('g.cursor-pointer')].find((g) => g.querySelector('title')?.textContent?.startsWith('Roca dura'))!
+    fireEvent.mouseEnter(roca)
+    expect(getByTestId('tarjeta-ficha').textContent).toContain('pide nivel 4 de oficio')
+  })
+})

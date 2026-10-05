@@ -9,6 +9,7 @@ import { loadSessionFacts } from '../../services/worldFacts.js';
 import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
 import { energiaMaxFor, energiaPasivaEntre } from '../../services/energy.js';
 import { harvestAbilityForMetodo, matchesOficioPrefix, metodoPrincipalDeFuente } from '../../services/harvestAbilities.js';
+import { RECOLECCION_COOLDOWN_MS } from './recolectar.js';
 import { momentoDelDiaFor, estacionFor, advanceFictionalMinutes, formatFictionalDate } from '../../services/worldClock.js';
 
 /// B2 (2026-09-28) — minutos ficticios que cuesta cada paso real por la cuadrícula de la zona.
@@ -209,6 +210,8 @@ export async function zonaRoutes(app: FastifyInstance) {
         zonaPosY: true,
         currentLocation: { select: { id: true, slug: true, name: true, region: true, kind: true, x: true, y: true } },
         worldState: { select: { fictionalMinutes: true, factionsStatus: true, agenda: true } },
+        // ZON-58: nivel de oficio para el candado de los recursos.
+        professionProgress: { select: { professionId: true, nivel: true } },
       },
     });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
@@ -573,6 +576,34 @@ export async function zonaRoutes(app: FastifyInstance) {
     // Reutiliza `npcNameBySlugZonePoint` (ya cargado arriba para el filtro de ausencia) en vez de
     // repetir la misma query.
 
+    // ZON-58 / ZON-16 (hito 0.2): estado de los recursos del mapa, con las mismas reglas que Recolectar:
+    // agotado si se recolectó aquí hace menos del enfriamiento o ya no queda población; candado si
+    // hasta lo más sencillo que da pide más nivel del oficio que lo recolecta.
+    const recursoSlugs = [...new Set(zonePoints.filter((p) => p.tipo === 'RECURSO').map((p) => p.targetSlug))];
+    const estadoRecurso = new Map<string, { agotado: boolean; nivelRequerido?: number }>();
+    if (recursoSlugs.length > 0) {
+      const [yields, poblaciones] = await Promise.all([
+        prisma.harvestYield.findMany({ where: { worldId: save.worldId, sourceSlug: { in: recursoSlugs } }, select: { sourceSlug: true, metodoObtencion: true, item: { select: { tier: true } } } }),
+        prisma.worldPopulation.findMany({ where: { saveId: save.id, targetType: 'RECURSO', targetSlug: { in: recursoSlugs } }, select: { targetSlug: true, poblacion: true, lastHarvestedAt: true, lastHarvestedLocationId: true } }),
+      ]);
+      const corte = Date.now() - RECOLECCION_COOLDOWN_MS;
+      for (const slug of recursoSlugs) {
+        const filas = yields.filter((y) => y.sourceSlug === slug);
+        const pob = poblaciones.find((q) => q.targetSlug === slug);
+        const enfriando = !!pob?.lastHarvestedAt && pob.lastHarvestedAt.getTime() > corte && pob.lastHarvestedLocationId === locationId;
+        const agotado = enfriando || (pob !== undefined && pob.poblacion <= 0);
+        const metodo = metodoPrincipalDeFuente(filas.map((f) => f.metodoObtencion));
+        const oficio = metodo && metodo !== 'PASIVO' ? harvestAbilityForMetodo(metodo)?.oficio : undefined;
+        let nivelRequerido: number | undefined;
+        if (oficio && filas.length > 0) {
+          const nivel = Math.max(1, ...(save.professionProgress ?? []).filter((pp) => matchesOficioPrefix(pp.professionId, oficio)).map((pp) => pp.nivel));
+          const minimo = Math.min(...filas.map((f) => f.item.tier ?? 1));
+          if (minimo > nivel) nivelRequerido = minimo;
+        }
+        estadoRecurso.set(slug, { agotado, ...(nivelRequerido ? { nivelRequerido } : {}) });
+      }
+    }
+
     return {
       disponible: true,
       // ZON-32 (hito 0.2): hora de ficción actual, para la hora de llegada de la ruta prevista.
@@ -611,6 +642,8 @@ export async function zonaRoutes(app: FastifyInstance) {
           // de lo ya descubierto; lo desconocido sigue sorprendiendo.
           hostil: yaDescubierto && (hostilBySlugZonePoint.get(p.targetSlug) ?? false),
           ruta: yaDescubierto && Array.isArray(p.ruta) && p.ruta.length > 1 ? (p.ruta as { x: number; y: number }[]) : undefined,
+          // ZON-58 / ZON-16: agotado o con candado (solo recursos ya descubiertos).
+          ...(p.tipo === 'RECURSO' && yaDescubierto ? estadoRecurso.get(p.targetSlug) : {}),
         };
       }),
       dinamicos,
