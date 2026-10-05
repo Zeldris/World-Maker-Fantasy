@@ -132,14 +132,21 @@ export async function esperarSegundoPlano(saveId: string): Promise<void> {
   while (fondoPorPartida.has(saveId)) await fondoPorPartida.get(saveId);
 }
 
+/// Espera a que acabe el trabajo de fondo de todas las partidas (para los tests con base real, que
+/// borran su partida nada más terminar).
+export async function esperarTodoElFondo(): Promise<void> {
+  while (fondoPorPartida.size > 0) await Promise.all([...fondoPorPartida.values()]);
+}
+
 /// Tras cada POST correcto a una partida (`/saves/:id/...`): moverse por la zona, descansar,
 /// recolectar, cazar, el modo dinámico… cualquier acción que mueva el reloj sin pasar por el turno
 /// narrado avanza también el mundo de la partida. Nunca rompe la respuesta (va tras enviarla).
 export function registrarAvanceTrasAcciones(app: FastifyInstance, prisma: PrismaClient): void {
   // UX-29: ninguna acción de la partida empieza mientras su trabajo de fondo (p. ej. el día que cruzó
   // el turno anterior) sigue escribiendo; así nunca se pisan ni se bloquean en la base.
+  // También al borrarla: un borrado en cascada a la vez que el avance del día se bloquea en Postgres.
   app.addHook('preHandler', async (request) => {
-    if (request.method !== 'POST' || !request.routeOptions.url?.startsWith('/saves/:id')) return;
+    if (request.method === 'GET' || !request.routeOptions.url?.startsWith('/saves/:id')) return;
     const saveId = (request.params as { id?: string } | undefined)?.id;
     if (saveId) await esperarSegundoPlano(saveId);
   });
