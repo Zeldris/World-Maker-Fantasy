@@ -141,7 +141,10 @@ async function abrirCombateForzadoDesdeInteractuar(
     where: { slug: targetSlug, raza: { not: null }, OR: [{ worldId: save.worldId, saveId: null }, { saveId: save.id }] },
     select: { id: true, slug: true, kind: true, faction: true, raza: true, attributes: true, name: true },
   });
-  if (persona) {
+  // Muerta o convaleciente no abre combate de grupo (el 1v1 de abajo ya lo descarta).
+  const estadoPersona = persona ? await prisma.npcState.findFirst({ where: { saveId: save.id, npcId: persona.id }, select: { condicionFisica: true, muerto: true } }) : null;
+  const personaEnPie = !!persona && !estadoPersona?.muerto && estadoPersona?.condicionFisica !== 'MUERTO' && estadoPersona?.condicionFisica !== 'CONVALECIENTE';
+  if (persona && personaEnPie) {
     const grupo = await grupoDePersona(prisma, { saveId: save.id, worldId: save.worldId, locationId: save.currentLocationId, objetivo: persona });
     if (grupo.length > 1) {
       const abierto = await abrirCombateDePersonas(

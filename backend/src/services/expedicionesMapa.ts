@@ -47,7 +47,8 @@ export async function expedicionesVisibles(prisma: PrismaClient, saveId: string)
     for (const r of rel) aliadas.add(r.sourceFactionId === reino.id ? r.targetFactionId : r.sourceFactionId);
   }
   const expediciones = await prisma.expedicion.findMany({
-    where: { saveId, status: 'EN_TRANSITO' },
+    // Toda la expedición en curso: de camino, recolectando y de vuelta.
+    where: { saveId, status: { in: ['EN_TRANSITO', 'RECOLECTANDO', 'RETORNANDO'] } },
     select: {
       id: true, professionId: true, motivo: true, diaSalida: true, diaRegreso: true,
       destino: { select: { slug: true, name: true, region: true } },

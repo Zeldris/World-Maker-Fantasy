@@ -215,7 +215,7 @@ export async function avanzarComercio(prisma: PrismaClient, saveId: string, dia:
         tx,
         saveId,
         cercana
-          ? `La caravana de ${socio.name} pasa cerca del Mercado: se le ${orden.tipo === 'COMPRA' ? 'compran' : 'venden'} ${carga} de ${item} sin salir de la región.`
+          ? `La caravana de ${socio.name} pasa cerca del Mercado: mañana se ${orden.tipo === 'COMPRA' ? 'le compra' : 'le vende'} ${item} (hasta ${carga}) sin salir de la región.`
           : `Sale una caravana hacia ${socio.name} a ${orden.tipo === 'COMPRA' ? 'comprar' : 'vender'} ${carga} de ${item}; vuelve en ${2 * dias} días.`,
       );
       resultado.salen++;

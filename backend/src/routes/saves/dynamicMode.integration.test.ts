@@ -605,6 +605,19 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
       const encuentro = await prisma.combatEncounter.findFirstOrThrow({ where: { saveId, estado: 'EN_CURSO' }, include: { participantes: true } });
       expect(encuentro.participantes.filter((p) => p.bando === 'ENEMIGO').map((p) => p.npcId).sort()).toEqual([...ids].sort());
     });
+
+    it('contra alguien ya muerto no se abre combate de grupo', async () => {
+      await prisma.combatEncounter.deleteMany({ where: { saveId } });
+      await prisma.npcState.create({ data: { saveId, npcId: ids[0]!, scope: '', condicionFisica: 'MUERTO', muerto: true } });
+      const app = await buildApp();
+      const res = await app.inject({
+        method: 'POST',
+        url: `/saves/${saveId}/modo-dinamico/interactuar`,
+        payload: { tipo: 'NPC', targetSlug: 'test-cr49-jefe', targetName: 'test-cr49-jefe', quienInicia: 'npc', combateForzado: true },
+      });
+      expect(res.statusCode).toBe(400);
+      expect(await prisma.combatEncounter.count({ where: { saveId, estado: 'EN_CURSO' } })).toBe(0);
+    });
   });
 
   describe('AGRESIVO/ENEMIGO — combateForzado desde Interactuar (2026-09-20)', () => {

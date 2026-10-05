@@ -2268,7 +2268,9 @@ async function avanzarYComprobarFin({
     return { terminado: false, totemsQueAtacan: [] };
   }
 
-  const encounterParaEnganche = { ordenIniciativa: encounter.ordenIniciativa, participantes: participantesFrescos as (ParticipantRef & { bando: Bando })[] };
+  // CR-44: quien acaba de huir en este mismo paso ya no cuenta para el enganche de la ronda nueva.
+  const participantesParaEnganche = participantesFrescos.map((p) => (moral.huidos.includes(p.id) ? { ...p, huido: true } : p));
+  const encounterParaEnganche = { ordenIniciativa: encounter.ordenIniciativa, participantes: participantesParaEnganche as (ParticipantRef & { bando: Bando })[] };
   const { enganches, esperandoJugadora, ordenCapitan } = await calcularEnganchesRonda({ tx, worldId, saveId, encounter: encounterParaEnganche, weaponNamesPorDefecto, jugadoraTargetId: null });
   // CR-45: que se vea quién manda y a por quién van (una vez por ronda).
   if (ordenCapitan) {
