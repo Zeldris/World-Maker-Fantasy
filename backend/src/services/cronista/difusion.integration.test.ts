@@ -154,5 +154,24 @@ describe('difusión de sucesos al personaje (CR-18 18b)', () => {
     expect(await prisma.logEntry.count({ where: { saveId, channel: 'WORLD', text: { contains: 'Los del bando' } } })).toBe(1);
     expect(await leerBandos(prisma, saveId, 'no-existe')).toBeNull();
   });
+
+  // 18e (Q4): ir donde pasó confirma el rumor.
+  it('un rumor se confirma al llegar a la región donde pasó', async () => {
+    await pasarDias(1);
+    const lejana = await alianza('cienaga-troncal');
+    await pasarDias(1);
+    await difundir(prisma, saveId);
+    expect(await prisma.conocimiento.findUnique({ where: { saveId_sucesoId: { saveId, sucesoId: lejana } } })).toMatchObject({ confirmado: false });
+    const worldId = (await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).worldId;
+    const cienaga = await prisma.location.findFirstOrThrow({ where: { worldId, region: 'Ciénaga Troncal' }, select: { id: true } });
+    await prisma.save.update({ where: { id: saveId }, data: { currentLocationId: cienaga.id } });
+    try {
+      await difundir(prisma, saveId);
+      expect(await prisma.conocimiento.findUnique({ where: { saveId_sucesoId: { saveId, sucesoId: lejana } } })).toMatchObject({ confirmado: true });
+      expect(await prisma.logEntry.count({ where: { saveId, channel: 'WORLD', text: 'Se confirma: Los de prueba y Los otros sellan una alianza.' } })).toBeGreaterThanOrEqual(1);
+    } finally {
+      await prisma.save.update({ where: { id: saveId }, data: { currentLocationId: lugarId } });
+    }
+  });
 });
 

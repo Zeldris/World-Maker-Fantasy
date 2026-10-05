@@ -1486,7 +1486,8 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   un compañero se queja y acaba yéndose si se le contraría repetidamente.
 
 ### Fase 5 — Conocimiento y lo que ve el jugador · **M**
-- **CR-18** Propagación y rumores (§ 9). **M**
+- ~~**CR-18** Propagación y rumores (§ 9). **M**~~ ✅ 2026-10-05 (pasos 18a-18e abajo; lo que falta de la
+  Fase 5 es lo que ve la jugadora: `CR-19`, `CR-20`).
   - **Diseño, ronda 1** (2026-10-05, `grilling` + `domain-modeling`; aceptado por la usuaria salvo Q3):
     - **Q1 · Conocimiento solo del personaje**: se guarda qué suceso sabe el personaje, desde cuándo y
       cómo lo supo (testigo, de oídas, confirmado, por un NPC). Lo que sabe una región, una facción o
@@ -1530,8 +1531,10 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     es de allí o de una facción implicada confirma el rumor con «Se confirma: …»); ~~18d~~ ✅ 2026-10-05
     (`leerBandos` en `difusion.ts` y `POST /saves/:id/tablones/:buildingId/bandos/leer`: hasta 5 sucesos
     de importancia ≥ 5 de los últimos 15 días de la región del tablón o de su facción; leerlos los da
-    como hecho; sección «Bandos» en el modal de avisos, con el día en que pasó cada uno); 18e confirmar
-    rumores.
+    como hecho; sección «Bandos» en el modal de avisos, con el día en que pasó cada uno); ~~18e~~ ✅
+    2026-10-05 (en la misma pasada de `difundir`: un rumor de los últimos 30 días se confirma al estar
+    en la región donde pasó o si implica a una aliada, con «Se confirma: …» en «El mundo»; verlo con
+    tus ojos ya lo apunta `registrarSuceso`, y un NPC de allí lo confirma en 18c).
 - **CR-19** Endpoints de Leyendas (§ 14). **S** Las etiquetas (`GET /etiquetas`) van con `CR-14` y el
   epílogo con `UX-18` (`CR-18` Q6, 2026-10-05).
 - **CR-20** Front: Leyendas y fichas "En tu partida" en la Enciclopedia. **M** Decidido (`CR-18` Q5 y

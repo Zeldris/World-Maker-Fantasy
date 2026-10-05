@@ -117,7 +117,7 @@ export async function conocer(
 }
 
 /// Lo que llega solo (Q10): sucesos recientes que el personaje no sabe y cuya noticia ya alcanza la
-/// región donde está. Devuelve cuántos supo.
+/// región donde está; y los rumores que ahí se confirman (18e). Devuelve cuántos supo o confirmó.
 export async function difundirEn(tx: Tx, saveId: string, opciones: { sucesoIds?: string[] } = {}): Promise<number> {
   const save = await tx.save.findUnique({
     where: { id: saveId },
@@ -149,7 +149,28 @@ export async function difundirEn(tx: Tx, saveId: string, opciones: { sucesoIds?:
     });
     if (r) sabidos++;
   }
-  return sabidos;
+  return sabidos + (await confirmarRumores(tx, saveId, ahora, personaje));
+}
+
+/// 18e (Q4): un rumor se confirma al estar en la región donde pasó o si implica a una facción
+/// aliada (que lo cuenta de primera mano). Solo rumores de los últimos 30 días: después ya nadie
+/// habla de ello.
+async function confirmarRumores(tx: Tx, saveId: string, ahora: number, personaje: { region: string | null; aliadas: Set<string> }): Promise<number> {
+  const rumores = await tx.suceso.findMany({
+    where: { saveId, fictionalMinutes: { gte: ahora - DIAS_MEMORIA_NPC * MINUTOS_DIA }, conocimientos: { some: { confirmado: false } } },
+    select: { id: true, importancia: true, regionSlug: true, locationId: true, noticia: true, actores: { select: { entidadTipo: true, entidadId: true } } },
+  });
+  if (rumores.length === 0) return 0;
+  const alcance = await alcanceDeSucesos(tx, saveId, rumores);
+  let confirmados = 0;
+  for (const s of rumores) {
+    const a = alcance.get(s.id)!;
+    const alli = !!personaje.region && a.origenes.includes(personaje.region);
+    if (!alli && !a.facciones.some((f) => personaje.aliadas.has(f))) continue;
+    const r = await conocer(tx, { saveId, sucesoId: s.id, via: alli ? 'OIDAS' : 'ALIADA', confirmado: true, minutos: ahora, escribirNoticia: true });
+    if (r) confirmados++;
+  }
+  return confirmados;
 }
 
 /// `difundirEn` en su propia transacción (tras cada día simulado y tras cada acción).
