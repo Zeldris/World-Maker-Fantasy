@@ -1214,7 +1214,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     fértil; el resumen de varios días conserva la categoría y la oportunidad de cada línea; y **los
     líderes del catálogo ya no tienen edad provisional aparte** (cambio sobre la Q8: la misma edad
     en todos los sistemas; las de los líderes, para Álvaro con el resto).
-- **CR-34** 🚧 Decisiones de facción (todo hecho salvo 34d, bloqueada) (IA de decisión de facción del `0.2`, [21-roadmap § 0.2](21-roadmap.md#02--facciones-vivas)). **L**
+- ~~**CR-34** Decisiones de facción~~ ✅ 2026-10-05 (34d, expansión, pasa a `CR-39` en el `0.3`; Q20) (IA de decisión de facción del `0.2`, [21-roadmap § 0.2](21-roadmap.md#02--facciones-vivas)). **L**
   Diseño con `/grill-with-docs` (2026-10-04, ronda 1 aceptada entera por la usuaria; términos en
   `GLOSSARY.md`: decisión de facción, carencia, disposición):
   - **Q1 Dónde:** en el **mundo de la partida**, una vez por día de ficción de esa partida (junto al
@@ -1305,7 +1305,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     Rechazar (`LogEntry.noticia.propuesta`, `NoticiaMundo.tsx`); `POST /saves/:id/mundo/propuestas/
     :propuestaId` `{ acepta }`. Aceptar → pacto en las dos direcciones (abre su mercado); rechazar o
     dejar pasar el plazo → +5 de la facción hacia el Reino. Una propuesta pendiente por facción.
-  - 🧭 **34d bloqueada (2026-10-05):** la tabla `Territory` no tiene territorios de facción (solo los
+  - ➡️ **34d → `CR-39` (Q20, decisión de la usuaria 2026-10-05: la opción completa, en el `0.3`).** Antes, bloqueada (2026-10-05): la tabla `Territory` no tiene territorios de facción (solo los
     del Reino de la jugadora); el dominio de las regiones vive fijo en `REGION_OWNING_FACTIONS`. La
     expansión de la Q14 no tiene sobre qué actuar: decisión pedida a la usuaria.
   - ✅ **34f hecho (2026-10-05):** `cronista/simulacion60.integration.test.ts`: dos partidas de Gorhorn
@@ -1315,7 +1315,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     (expediciones por hambre, pactos, guerra o paz, y Tranquilo < Caótico / 1,5), no cifras exactas.
     Restaura el progreso de oficio de los NPC (compartido): sin eso, otros tests de expediciones
     fallan con «expected 2399 to be greater than 2399» (diagnosticado con `diagnosing-bugs`).
-    **Queda de `CR-34`:** solo 34d (bloqueada, ver arriba).
+    **`CR-34` cerrada** con todo salvo la expansión, que pasa entera a `CR-39`.
   - **Orden de trabajo:** ~~`CR-35`~~ ✅ primero; después los pasos de `CR-34` (34a carencias e
     Inteligencia ✅, 34b expediciones dirigidas ✅, 34c diplomacia ✅, 34d expansión y asalto 🧭 (bloqueada: no hay territorios de facción, ver 34d), 34e propuesta
     al Reino ✅, 34f simulación de 60 días ✅).
@@ -1345,6 +1345,20 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   supervivencia. **M**
 - **CR-37** Guerra de una facción contra el Reino de la jugadora (`CR-34` Q7, `0.3`): solo cuando
   existan los edificios de defensa. **M**
+- **CR-39** Territorios de facción y expansión (`CR-34` Q14 y Q20, va al `0.3` con `CR-36`; la usuaria
+  eligió la versión completa, 2026-10-05). **L**
+  - Territorios reales de facción en el mundo de cada partida: uno por asentamiento de cada facción y
+    los lugares sin dueño que importan (puntos de agua como Los Manaderos y el Pozo de Cauce Viejo,
+    pastos, canteras…). Lista propuesta a Álvaro en `propuestas-lore.md` antes de sembrar.
+  - Quien domina cada región sale de esos territorios de la partida, no de `REGION_OWNING_FACTIONS`:
+    migrar a sus lectores (reputación, expediciones y riesgo de intercepción, mapa de zona, contexto
+    del narrador, `regionControlActual`). La tabla fija queda como valor inicial del catálogo.
+  - Expansión (Q14): reclamar un territorio sin dueño de su región o vecina; con dueño, solo en guerra
+    y por asalto (tirada ponderada por soldados; si gana, cambia de manos y sube la presión del
+    perdedor con `EXPANSION_TERRITORIAL_AGRESIVA`; si pierde, bajas de soldados). Nunca del Reino
+    (`CR-37`). Bebida (Q11): reclamar un territorio con fuente.
+  - Consecuencias de tener territorio (producción, agua, población) con los números de la economía
+    de supervivencia (pregunta 5 a Álvaro).
 - **CR-38** La disposición de una facción la da su líder (`CR-34` Q5): un rasgo del NPC que cambia con
   la sucesión de `CR-11`. **S**
 - **Hecho cuando:** matar al hermano de un NPC abre un hilo de venganza y el vengador aparece;

@@ -199,8 +199,8 @@ en CI, y la latencia está medida. Se etiqueta `v0.1.0-alpha`.
   tiene que salir de este hito. **[H]**
 - **IA de decisión de facción** según la Inteligencia de su líder (`liderNpcId`): construir,
   expandirse, pactar, declarar la guerra, lanzar expediciones. Las carencias de supervivencia son
-  sus disparadores. **[A]** → `CR-34` (y ~~`CR-35`~~ ✅; construir `CR-36` y guerra contra el Reino `CR-37`
-  van al `0.3`).
+  sus disparadores. **[A]** → ~~`CR-34`~~ ✅ 2026-10-05 (y ~~`CR-35`~~ ✅; construir `CR-36`, guerra contra el Reino `CR-37` y
+  territorios y expansión `CR-39` van al `0.3`).
 - **Motor de eventos de mundo unificado**: eventos discretos que alimentan relaciones, lore y
   misiones; función pura llamada desde el turno y desde `worldTick`. **[A]**
   Diseño completo en [roadmap-cronista.md](roadmap-cronista.md) § 7 (reacciones, consecuencias
