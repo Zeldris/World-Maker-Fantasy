@@ -3508,6 +3508,8 @@ model Conocimiento {
   confirmadoEn Int?
   /// Entrada de «El mundo» con la que lo supo, si la hubo.
   logEntryId   String?
+  /// Quién se lo contó: slug del NPC («¿Qué se cuenta?») o id del tablón (bandos).
+  fuente       String?
 
   @@unique([saveId, sucesoId])
   @@index([saveId, desde])

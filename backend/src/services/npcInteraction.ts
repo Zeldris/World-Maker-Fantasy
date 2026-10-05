@@ -17,10 +17,14 @@ export interface NpcInteractionOptionsParams {
   /// CR-40 (40f): NPC con nombre de una facción viva de la partida — puede ofrecer una misión
   /// personal («¿Tienes trabajo?»). El caller lo decide; aquí solo se pinta la opción.
   puedeOfrecerTrabajo?: boolean;
+  /// CR-18 (18c): el mismo NPC puede contar lo que se dice («¿Qué se cuenta?»).
+  puedeContarNoticias?: boolean;
 }
 
 /// CR-40 (40f): opción del menú para pedir una misión personal.
 export const OPCION_TRABAJO = '¿Tienes trabajo?';
+/// CR-18 (18c, Q9): opción del menú para preguntar por las novedades.
+export const OPCION_NOTICIAS = '¿Qué se cuenta?';
 
 const CONDICIONES_CAPTURABLES = new Set(['GRAVE', 'CONVALECIENTE']);
 
@@ -54,7 +58,10 @@ export function opcionesDisponiblesPara(npc: NpcInScene, params: NpcInteractionO
   // Ayudar (CR-12, 2026-10-04): atender a un malherido (p. ej. el herido de un campo de batalla del
   // narrador de fondo) para que vuelva con los suyos; su facción lo agradece (`ayudarNpc.ts`).
   if (CONDICIONES_CAPTURABLES.has(npc.condicionFisica)) opciones.push('Ayudar');
-  else if (params.puedeOfrecerTrabajo) opciones.push(OPCION_TRABAJO);
+  else {
+    if (params.puedeOfrecerTrabajo) opciones.push(OPCION_TRABAJO);
+    if (params.puedeContarNoticias) opciones.push(OPCION_NOTICIAS);
+  }
 
   if (CONDICIONES_CAPTURABLES.has(npc.condicionFisica) && npc.capturable) {
     opciones.push('Reclutar');

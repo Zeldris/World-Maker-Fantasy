@@ -3,7 +3,7 @@ import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { asegurarMundoDePartida } from '../mundoPartida.js';
 import { registrarSuceso } from './sucesos.js';
-import { difundir, VENTANA_DIAS_LLEGA_SOLA } from './difusion.js';
+import { difundir, preguntarNoticias, VENTANA_DIAS_LLEGA_SOLA } from './difusion.js';
 import type { MetaNoticia } from './noticias.js';
 
 // CR-18 (18b, hito 0.2) — lo visto y lo que llega solo: la importancia dice hasta dónde, la distancia
@@ -87,5 +87,44 @@ describe('difusión de sucesos al personaje (CR-18 18b)', () => {
     const viejo = await alianza('las-llanuras-del-viento-rojo', (await ahora()) - (VENTANA_DIAS_LLEGA_SOLA + 1) * 1440);
     await difundir(prisma, saveId);
     expect(await prisma.conocimiento.count({ where: { saveId, sucesoId: viejo } })).toBe(0);
+  });
+
+  // 18c (Q9): «¿Qué se cuenta?».
+  describe('«¿Qué se cuenta?»', () => {
+    const NPC = 'maestro-cocinero-serhu';
+
+    it('cuenta como hecho lo menor de su región que no llega solo, una vez al día', async () => {
+      await pasarDias(1);
+      const tregua = await registrarSuceso(prisma, {
+        saveId, tipo: 'TREGUA', fictionalMinutes: await ahora(), regionSlug: 'las-llanuras-del-viento-rojo', origen: 'MUNDO', actores: [],
+        datos: { faccionA: 'Los del vado', faccionB: 'Los del puente' },
+      });
+      const r = await preguntarNoticias(prisma, saveId, NPC);
+      expect(r!.contadas).toBeGreaterThanOrEqual(1);
+      expect(r!.frase).toContain('«Los del vado y Los del puente pactan una tregua.»');
+      expect(await prisma.conocimiento.findUnique({ where: { saveId_sucesoId: { saveId, sucesoId: tregua } } })).toMatchObject({ via: 'NPC', confirmado: true, fuente: NPC });
+      expect(await prisma.logEntry.count({ where: { saveId, channel: 'WORLD', text: 'Los del vado y Los del puente pactan una tregua.' } })).toBe(1);
+      expect((await preguntarNoticias(prisma, saveId, NPC))!.frase).toContain('Ya te he contado todo lo que sé');
+    });
+
+    it('confirma un rumor de su facción; sin nada nuevo, habla del tiempo', async () => {
+      await pasarDias(1);
+      const serhu = await prisma.faction.findFirstOrThrow({ where: { saveId, origenSlug: 'clan-serhu' }, select: { slug: true } });
+      const lejana = await registrarSuceso(prisma, {
+        saveId, tipo: 'ALIANZA', fictionalMinutes: await ahora(), regionSlug: 'cienaga-troncal', origen: 'MUNDO',
+        actores: [{ entidadTipo: 'FACCION', entidadId: serhu.slug, papel: 'AUTOR' }], datos: { faccionA: 'Clan Serhu', faccionB: 'Los de lejos' },
+      });
+      await pasarDias(1);
+      await difundir(prisma, saveId);
+      expect(await prisma.conocimiento.findUnique({ where: { saveId_sucesoId: { saveId, sucesoId: lejana } } })).toMatchObject({ confirmado: false });
+      const r = await preguntarNoticias(prisma, saveId, NPC);
+      expect(r!.frase).toContain('Clan Serhu y Los de lejos sellan una alianza.');
+      expect(await prisma.conocimiento.findUnique({ where: { saveId_sucesoId: { saveId, sucesoId: lejana } } })).toMatchObject({ confirmado: true });
+      expect(await prisma.logEntry.count({ where: { saveId, channel: 'WORLD', text: 'Se confirma: Clan Serhu y Los de lejos sellan una alianza.' } })).toBe(1);
+      await pasarDias(1);
+      const nada = await preguntarNoticias(prisma, saveId, NPC);
+      expect(nada!.contadas).toBe(0);
+      expect(nada!.frase).toContain('del tiempo');
+    });
   });
 });

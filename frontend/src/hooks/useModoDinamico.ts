@@ -269,7 +269,7 @@ export function useModoDinamico({
       } else if (resultado.accion === 'FORZAR_COMBATE') {
         const npcName = characterLog.find((e) => e.id === entryId)?.npcInteractionOffer?.npcName ?? 'él'
         handleSubmit(`Ataco a '${npcName}'.`)
-      } else if (resultado.accion === 'AYUDADO') {
+      } else if (resultado.accion === 'AYUDADO' || resultado.accion === 'CONTADO') {
         setCharacterLog((prev) => [...prev, resultado.logEntry])
       } else if (resultado.accion === 'OFERTA_TRABAJO') {
         onOfertaTrabajo?.(resultado.npcName, resultado.aviso)

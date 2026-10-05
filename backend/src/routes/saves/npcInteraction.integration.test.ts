@@ -114,6 +114,20 @@ describe('POST /saves/:id/npc-interaction/:npcSlug/elegir', () => {
     expect(JSON.parse(res.body)).toEqual({ accion: 'CERRAR' });
   });
 
+  // CR-18 (18c): la frase del NPC va al registro del personaje.
+  it('¿Qué se cuenta?: responde CONTADO con la frase del NPC en el registro', async () => {
+    await prisma.save.update({
+      where: { id: saveId },
+      data: { pendingNpcInteractionOffer: { npcSlug: 'maestro-cocinero-serhu', npcName: 'El cocinero', options: ['Charlar', '¿Qué se cuenta?', 'Salir'] } },
+    });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/npc-interaction/maestro-cocinero-serhu/elegir`, payload: { opcion: '¿Qué se cuenta?' } });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body) as { accion: string; logEntry: { text: string; channel: string } };
+    expect(body.accion).toBe('CONTADO');
+    expect(body.logEntry.text).toContain('«Por aquí no se habla de otra cosa que del tiempo.»');
+  });
+
   it('Misión: <título>: limpia la oferta y responde MOSTRAR_OFERTA_MISION', async () => {
     await prisma.save.update({
       where: { id: saveId },

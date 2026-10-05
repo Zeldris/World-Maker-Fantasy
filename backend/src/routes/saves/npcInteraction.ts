@@ -3,7 +3,8 @@ import { prisma } from '../../lib/prisma.js';
 import { rejectIfEnded, clearPendingOffer, toFrontendLogEntry } from './shared.js';
 import { ayudarNpc } from '../../services/ayudarNpc.js';
 import { ofrecerTrabajoDeNpc } from '../../services/cronista/generarMisiones.js';
-import { OPCION_TRABAJO } from '../../services/npcInteraction.js';
+import { OPCION_NOTICIAS, OPCION_TRABAJO } from '../../services/npcInteraction.js';
+import { preguntarNoticias } from '../../services/cronista/difusion.js';
 
 /// Menú contextual de interacción con NPC (2026-09-06, "Aprender oficio" deja de depender de una
 /// habilidad suelta) — el motor ya decidió el candidato y sus opciones en el turno normal
@@ -55,6 +56,16 @@ export async function npcInteractionRoutes(app: FastifyInstance) {
         return aviso
           ? { accion: 'OFERTA_TRABAJO' as const, npcName: offer.npcName, aviso }
           : { accion: 'SIN_TRABAJO' as const, texto: `${offer.npcName} no tiene ningún encargo para ti ahora mismo.` };
+      }
+      // CR-18 (18c): lo que se dice por aquí; las noticias van a «El mundo» y la frase del NPC, al registro.
+      if (opcion === OPCION_NOTICIAS) {
+        const contado = await preguntarNoticias(prisma, save.id, offer.npcSlug);
+        if (!contado) return { accion: 'CERRAR' as const };
+        const ws = await prisma.worldState.findUnique({ where: { saveId: save.id }, select: { fictionalMinutes: true, fictionalDateLabel: true } });
+        const entrada = await prisma.logEntry.create({
+          data: { saveId: save.id, channel: 'CHARACTER', isSystemMessage: true, text: contado.frase, fictionalMinutes: ws?.fictionalMinutes ?? 0, timeLabel: ws?.fictionalDateLabel ?? '' },
+        });
+        return { accion: 'CONTADO' as const, logEntry: toFrontendLogEntry(entrada) };
       }
       // 'Charlar' y 'Salir' no necesitan ninguna acción más allá de cerrar la tarjeta.
       return { accion: 'CERRAR' as const };

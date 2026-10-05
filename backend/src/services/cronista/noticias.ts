@@ -103,10 +103,14 @@ export function retrasoPorDistancia(distancia: number): number {
 /// una especie, un NPC… y se queda tal cual).
 const INICIOS_COMUNES = ['Gente ', 'Una ', 'Un ', 'Crece ', 'Las aguas ', 'Escasea ', 'Llega ', 'Llegan ', 'Muere ', 'Nace ', 'Se '];
 
+/// Para seguir una frase: minúscula inicial salvo si empieza por un nombre propio.
+export function enMitadDeFrase(texto: string): string {
+  return INICIOS_COMUNES.some((i) => texto.startsWith(i)) ? texto.charAt(0).toLowerCase() + texto.slice(1) : texto;
+}
+
 /// «Una caravana viaja…» → «Se dice que una caravana viaja…».
 export function comoRumor(texto: string): string {
-  const comun = INICIOS_COMUNES.some((i) => texto.startsWith(i));
-  return `Se dice que ${comun ? texto.charAt(0).toLowerCase() + texto.slice(1) : texto}`;
+  return `Se dice que ${enMitadDeFrase(texto)}`;
 }
 
 /// Cuándo y cómo le llega una noticia a la partida: `null` = no le llega.

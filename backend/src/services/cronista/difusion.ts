@@ -9,8 +9,9 @@
 //   que guardó su emisor (`Suceso.noticia`) o con la frase del suceso, como rumor si no está confirmado.
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { REGION_OWNING_FACTIONS } from '../reputation.js';
-import { llegaSola, regionDeSlug, type SucesoConAlcance, type Via } from './conocimiento.js';
-import { aliadasDelReino, categoriaDeFamilia, comoRumor, escribir, type MetaNoticia } from './noticias.js';
+import { cuentaComoHecho, llegaSola, npcSabe, regionDeSlug, type SucesoConAlcance, type Via } from './conocimiento.js';
+import { npcSinMorirEnPartida } from '../mundoPartida.js';
+import { aliadasDelReino, categoriaDeFamilia, comoRumor, enMitadDeFrase, escribir, type MetaNoticia } from './noticias.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -69,34 +70,47 @@ export async function alcanceDeSucesos(tx: Tx, saveId: string, sucesos: SucesoBa
   return resultado;
 }
 
+/// Texto y metadatos de la noticia de un suceso: la que guardó su emisor o la frase del suceso.
+async function textoDeNoticia(tx: Tx, sucesoId: string): Promise<{ texto: string; meta: MetaNoticia; pasoEn: number }> {
+  const s = await tx.suceso.findUniqueOrThrow({ where: { id: sucesoId }, select: { texto: true, familia: true, noticia: true, fictionalMinutes: true } });
+  const emisor = s.noticia as NoticiaDeSuceso | null;
+  const categoria = categoriaDeFamilia(s.familia);
+  return { texto: emisor?.texto ?? s.texto, meta: { ...(categoria ? { categoria } : {}), ...(emisor?.meta ?? {}) }, pasoEn: s.fictionalMinutes };
+}
+
 /// Apunta que el personaje sabe un suceso. Devuelve NUEVO, CONFIRMADO (era rumor y ya no) o null
 /// (nada cambia). `escribirNoticia`: false para lo vivido, que no necesita entrada en «El mundo».
 export async function conocer(
   tx: Tx,
-  args: { saveId: string; sucesoId: string; via: Via; confirmado: boolean; minutos: number; escribirNoticia: boolean; region?: string | null },
+  args: { saveId: string; sucesoId: string; via: Via; confirmado: boolean; minutos: number; escribirNoticia: boolean; region?: string | null; fuente?: string | null },
 ): Promise<'NUEVO' | 'CONFIRMADO' | null> {
   const previo = await tx.conocimiento.findUnique({ where: { saveId_sucesoId: { saveId: args.saveId, sucesoId: args.sucesoId } }, select: { id: true, confirmado: true } });
   if (previo) {
     if (previo.confirmado || !args.confirmado) return null;
-    await tx.conocimiento.update({ where: { id: previo.id }, data: { confirmado: true, confirmadoEn: args.minutos } });
+    // Q4: el rumor pasa a hecho sabido; «El mundo» lo dice si quien lo confirma no es lo vivido.
+    let logEntryId: string | undefined;
+    if (args.escribirNoticia) {
+      const base = await textoDeNoticia(tx, args.sucesoId);
+      logEntryId = await escribir(tx, args.saveId, `Se confirma: ${enMitadDeFrase(base.texto)}`, args.minutos, { ...base.meta, sucesoId: args.sucesoId });
+    }
+    await tx.conocimiento.update({ where: { id: previo.id }, data: { confirmado: true, confirmadoEn: args.minutos, ...(logEntryId ? { logEntryId } : {}) } });
     return 'CONFIRMADO';
   }
   let logEntryId: string | null = null;
   if (args.escribirNoticia) {
-    const s = await tx.suceso.findUniqueOrThrow({ where: { id: args.sucesoId }, select: { texto: true, familia: true, fictionalMinutes: true, noticia: true } });
-    const emisor = s.noticia as NoticiaDeSuceso | null;
-    const base = emisor?.texto ?? s.texto;
-    const categoria = categoriaDeFamilia(s.familia);
+    const base = await textoDeNoticia(tx, args.sucesoId);
     const meta: MetaNoticia = {
-      ...(categoria ? { categoria } : {}),
-      ...(emisor?.meta ?? {}),
+      ...base.meta,
       sucesoId: args.sucesoId,
-      ...(args.confirmado ? {} : { rumor: { region: args.region ?? null, pasoEn: s.fictionalMinutes } }),
+      ...(args.confirmado ? {} : { rumor: { region: args.region ?? null, pasoEn: base.pasoEn } }),
     };
-    logEntryId = await escribir(tx, args.saveId, args.confirmado ? base : comoRumor(base), args.minutos, meta);
+    logEntryId = await escribir(tx, args.saveId, args.confirmado ? base.texto : comoRumor(base.texto), args.minutos, meta);
   }
   await tx.conocimiento.create({
-    data: { saveId: args.saveId, sucesoId: args.sucesoId, desde: args.minutos, via: args.via, confirmado: args.confirmado, confirmadoEn: args.confirmado ? args.minutos : null, logEntryId },
+    data: {
+      saveId: args.saveId, sucesoId: args.sucesoId, desde: args.minutos, via: args.via, confirmado: args.confirmado,
+      confirmadoEn: args.confirmado ? args.minutos : null, logEntryId, fuente: args.fuente ?? null,
+    },
   });
   return 'NUEVO';
 }
@@ -147,4 +161,69 @@ export async function difundir(prisma: PrismaClient, saveId: string): Promise<nu
 export async function darNoticiaDeSuceso(tx: Tx, saveId: string, sucesoId: string, noticia: NoticiaDeSuceso): Promise<boolean> {
   await tx.suceso.update({ where: { id: sucesoId }, data: { noticia: noticia as unknown as Prisma.InputJsonValue } });
   return (await difundirEn(tx, saveId, { sucesoIds: [sucesoId] })) > 0;
+}
+
+// ─────────────────────────── «¿Qué se cuenta?» (18c, Q9) ───────────────────────────
+
+/// Cuántas cosas cuenta un NPC cada vez y de cuántos días atrás.
+export const MAX_CONTADAS = 2;
+export const DIAS_MEMORIA_NPC = 30;
+
+/// Lo que cuenta un NPC al preguntarle «¿Qué se cuenta?». Cuenta hasta 2 sucesos que se saben en la
+/// región donde está o en su facción y la jugadora no sabe (o sabe solo de oídas y él puede
+/// confirmar), primero lo más importante y reciente; una vez al día. Devuelve la frase del NPC para
+/// el registro del personaje y escribe las noticias en «El mundo». null si el NPC no puede contar.
+export async function preguntarNoticias(prisma: PrismaClient, saveId: string, npcSlug: string): Promise<{ frase: string; contadas: number } | null> {
+  return prisma.$transaction(async (tx) => {
+    const save = await tx.save.findUniqueOrThrow({
+      where: { id: saveId },
+      select: { worldId: true, currentLocation: { select: { region: true } }, worldState: { select: { fictionalMinutes: true } } },
+    });
+    const npc = await tx.npc.findFirst({
+      where: { worldId: save.worldId, slug: npcSlug, kind: { not: 'PLANTILLA' }, faction: { not: null }, ...npcSinMorirEnPartida(saveId) },
+      select: { name: true, faction: true },
+    });
+    if (!npc) return null;
+    const ahora = save.worldState?.fictionalMinutes ?? 0;
+    const inicioDia = Math.floor(ahora / MINUTOS_DIA) * MINUTOS_DIA;
+    if ((await tx.conocimiento.count({ where: { saveId, fuente: npcSlug, desde: { gte: inicioDia } } })) > 0) {
+      return { frase: `${npc.name}: «Ya te he contado todo lo que sé.»`, contadas: 0 };
+    }
+
+    const sucesos = await tx.suceso.findMany({
+      where: {
+        saveId,
+        importancia: { gte: 4 },
+        fictionalMinutes: { gte: ahora - DIAS_MEMORIA_NPC * MINUTOS_DIA, lte: ahora },
+        OR: [{ conocimientos: { none: {} } }, { conocimientos: { some: { confirmado: false } } }],
+      },
+      select: {
+        id: true, importancia: true, regionSlug: true, locationId: true, noticia: true, fictionalMinutes: true, texto: true,
+        actores: { select: { entidadTipo: true, entidadId: true } }, conocimientos: { select: { id: true } },
+      },
+    });
+    const alcance = await alcanceDeSucesos(tx, saveId, sucesos);
+    const quien = { region: save.currentLocation?.region ?? null, faccion: npc.faction };
+    const candidatos = sucesos
+      .filter((s) => {
+        const a = alcance.get(s.id)!;
+        if (!npcSabe(a, quien, (ahora - s.fictionalMinutes) / MINUTOS_DIA)) return false;
+        // Lo que ya sabe de oídas solo vale la pena si él puede confirmarlo.
+        return s.conocimientos.length === 0 || cuentaComoHecho(a, quien);
+      })
+      .sort((x, y) => y.importancia - x.importancia || y.fictionalMinutes - x.fictionalMinutes)
+      .slice(0, MAX_CONTADAS);
+
+    const frases: string[] = [];
+    for (const s of candidatos) {
+      const a = alcance.get(s.id)!;
+      const hecho = cuentaComoHecho(a, quien);
+      const r = await conocer(tx, { saveId, sucesoId: s.id, via: 'NPC', confirmado: hecho, minutos: ahora, escribirNoticia: true, region: a.origenes[0] ?? null, fuente: npcSlug });
+      if (!r) continue;
+      const texto = (s.noticia as NoticiaDeSuceso | null)?.texto ?? s.texto;
+      frases.push(hecho ? texto : comoRumor(texto));
+    }
+    if (frases.length === 0) return { frase: `${npc.name}: «Por aquí no se habla de otra cosa que del tiempo.»`, contadas: 0 };
+    return { frase: `${npc.name} te cuenta lo que se dice: ${frases.map((f) => `«${f}»`).join(' ')}`, contadas: frases.length };
+  }, { maxWait: 10_000, timeout: 20_000 });
 }

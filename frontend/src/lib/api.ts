@@ -1910,6 +1910,8 @@ export type NpcInteractionAccion =
   | { accion: 'CERRAR' }
   /// CR-12 — «Ayudar» a un malherido: la entrada del registro que lo cuenta.
   | { accion: 'AYUDADO'; logEntry: LogEntry }
+  /// CR-18 (18c): «¿Qué se cuenta?»; la frase del NPC (las noticias llegan a «El mundo»).
+  | { accion: 'CONTADO'; logEntry: LogEntry }
   /// CR-40 (40f) — «¿Tienes trabajo?»: la misión personal que propone el NPC, o que no tiene nada.
   | { accion: 'OFERTA_TRABAJO'; npcName: string; aviso: AvisoMisionInfo }
   | { accion: 'SIN_TRABAJO'; texto: string }
