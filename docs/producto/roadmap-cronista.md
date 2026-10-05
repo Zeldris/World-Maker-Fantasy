@@ -1214,7 +1214,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     fértil; el resumen de varios días conserva la categoría y la oportunidad de cada línea; y **los
     líderes del catálogo ya no tienen edad provisional aparte** (cambio sobre la Q8: la misma edad
     en todos los sistemas; las de los líderes, para Álvaro con el resto).
-- **CR-34** 🚧 Decisiones de facción (IA de decisión de facción del `0.2`, [21-roadmap § 0.2](21-roadmap.md#02--facciones-vivas)). **L**
+- **CR-34** 🚧 Decisiones de facción (todo hecho salvo 34d, bloqueada) (IA de decisión de facción del `0.2`, [21-roadmap § 0.2](21-roadmap.md#02--facciones-vivas)). **L**
   Diseño con `/grill-with-docs` (2026-10-04, ronda 1 aceptada entera por la usuaria; términos en
   `GLOSSARY.md`: decisión de facción, carencia, disposición):
   - **Q1 Dónde:** en el **mundo de la partida**, una vez por día de ficción de esa partida (junto al
@@ -1308,9 +1308,17 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   - 🧭 **34d bloqueada (2026-10-05):** la tabla `Territory` no tiene territorios de facción (solo los
     del Reino de la jugadora); el dominio de las regiones vive fijo en `REGION_OWNING_FACTIONS`. La
     expansión de la Q14 no tiene sobre qué actuar: decisión pedida a la usuaria.
+  - ✅ **34f hecho (2026-10-05):** `cronista/simulacion60.integration.test.ts`: dos partidas de Gorhorn
+    60 días con todo el motor y el azar fijado (Caótico y Tranquilo, en paralelo, ~50 s). Con la
+    semilla 7: Caótico 13 tratados, 3 alianzas y 2 treguas; Tranquilo 5 alianzas y 1 guerra (19
+    sucesos diplomáticos frente a 7); unas 30 expediciones por hambre en cada una. Comprueba la forma
+    (expediciones por hambre, pactos, guerra o paz, y Tranquilo < Caótico / 1,5), no cifras exactas.
+    Restaura el progreso de oficio de los NPC (compartido): sin eso, otros tests de expediciones
+    fallan con «expected 2399 to be greater than 2399» (diagnosticado con `diagnosing-bugs`).
+    **Queda de `CR-34`:** solo 34d (bloqueada, ver arriba).
   - **Orden de trabajo:** ~~`CR-35`~~ ✅ primero; después los pasos de `CR-34` (34a carencias e
     Inteligencia ✅, 34b expediciones dirigidas ✅, 34c diplomacia ✅, 34d expansión y asalto 🧭 (bloqueada: no hay territorios de facción, ver 34d), 34e propuesta
-    al Reino ✅, 34f simulación de 60 días).
+    al Reino ✅, 34f simulación de 60 días ✅).
 - ~~**CR-35** Economía y expediciones de facción en el mundo de la partida (`CR-34` Q1). **M**~~ ✅
   2026-10-04 — Ya lo hacía `CR-7` (`avanceDiario.ts`: `producirFacciones`, `decaerRelaciones` y
   `avanzarExpedicionesDePartida` sobre las facciones de la partida, con su reloj); la Q1 partía de un
