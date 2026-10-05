@@ -1373,7 +1373,12 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   - **Q17 Reputación:** cumplir sube la de quien encarga (`factionsStatus`); contra otra facción
     (Combatir, Eliminar a uno de los suyos) baja la de esa; con reputación alta, esa facción propone
     tratado al Reino antes (`CR-34`).
-  - **Pasos:** 40a plantillas, tipos y recompensas (puro) · 40b modelo y migración · 40c tablones
+  - ✅ **40a hecho (2026-10-05):** `cronista/misiones.ts` (puro): tipos, huecos exigidos por tipo,
+    `validarHuecos` (sin dato válido no hay misión), topes de cantidad y plazos, dificultad,
+    `recompensaDe` (XP, Goirnos y reputación por tabla; +25 % si la encarga un NPC con nombre; pérdida
+    al fallar y con la facción contra la que va), `textoDeMision` (dos frases por tipo y cierre por
+    pueblo, sin IA) y exceso de población (> 80 %, cazar 3-8).
+  - **Pasos:** 40a plantillas, tipos y recompensas (puro) ✅ · 40b modelo y migración · 40c tablones
     (sembrados y del Reino) · 40d generación en el avance diario · 40e aceptar, progreso, cumplir,
     fallar y reputación · 40f oferta pendiente única (ADR), «¿Tienes trabajo?» del NPC y el narrador
     deja de crear misiones · 40g interfaz del tablón y del diario.
