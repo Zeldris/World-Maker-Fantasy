@@ -2,12 +2,24 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { prisma } from '../lib/prisma.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
-import { avanzarExpedicionesDePartida, metodoExpedicionFor, RACIONES_POR_UNIDAD_COMESTIBLE } from './factionExpeditions.js';
+import { avanzarExpedicionesDePartida, esComestible, metodoExpedicionFor, RACIONES_POR_UNIDAD_COMESTIBLE } from './factionExpeditions.js';
 import { asegurarMundoDePartida } from './mundoPartida.js';
 import { REGION_OWNING_FACTIONS } from './reputation.js';
 import { detectNpcsInScene } from './npcScene.js';
 
 const bloque = (v: number) => ({ fuerza: v, destreza: v, constitucion: v, inteligencia: v, voluntad: v, carisma: v, magia: v });
+
+/// El botín va al Almacén de la facción, salvo lo comestible de una expedición mandada por hambre
+/// (CR-34 34b), que va a su reserva de comida.
+async function esperarDestinoDelBotin(factionId: string, motivo: string | null, items: { catalogSlug: string }[]): Promise<void> {
+  const almacen = await prisma.almacenItem.findMany({ where: { factionId } });
+  const catalogo = await prisma.itemCatalog.findMany({ where: { slug: { in: items.map((i) => i.catalogSlug) } }, select: { slug: true, category: true, curaHambre: true } });
+  for (const it of items) {
+    const cat = catalogo.find((c) => c.slug === it.catalogSlug)!;
+    const aLaReserva = motivo === 'COMIDA' && esComestible(cat);
+    expect(almacen.some((a) => a.catalogSlug === it.catalogSlug)).toBe(!aLaReserva);
+  }
+}
 
 /// Partida de prueba con su copia del mundo (CR-6). Borrarla borra sus facciones, expediciones y Almacén.
 async function crearPartida(worldId: string, nombre: string, dia: number, factionsStatus: Record<string, number> = {}): Promise<string> {
@@ -94,8 +106,7 @@ describe('avanzarExpedicionesDePartida — ciclo completo (Fase 13-B)', () => {
     expect(await prisma.suceso.count({ where: { saveId, tipo: 'EXPEDICION_SALE' } })).toBeGreaterThan(0);
     expect(await prisma.suceso.count({ where: { saveId, tipo: 'EXPEDICION_VUELVE' } })).toBeGreaterThan(0);
     expect(await prisma.suceso.count({ where: { saveId: saveAjenaId, tipo: { in: ['EXPEDICION_SALE', 'EXPEDICION_VUELVE'] } } })).toBe(0);
-    const almacen = await prisma.almacenItem.findMany({ where: { factionId: serhuId } });
-    for (const it of items) expect(almacen.some((a) => a.catalogSlug === it.catalogSlug)).toBe(true);
+    await esperarDestinoDelBotin(serhuId, exp.motivo, items);
     const xpDespues = await prisma.npcProfessionProgress.findMany({ where: { npcId: { in: items.map((i) => i.npcId) }, professionId: exp.professionId } });
     expect(xpDespues.length).toBeGreaterThan(0);
     for (const d of xpDespues) {
@@ -214,8 +225,7 @@ describe('avanzarExpedicionesDePartida — intercepción con combate (Fase 13-C)
     expect(fin.status).toBe('COMPLETADA');
     const items = (fin.botin as { items: { catalogSlug: string }[] }).items;
     expect(items.length).toBeGreaterThan(0);
-    const almacen = await prisma.almacenItem.findMany({ where: { factionId: serhuId } });
-    for (const it of items) expect(almacen.some((a) => a.catalogSlug === it.catalogSlug)).toBe(true);
+    await esperarDestinoDelBotin(serhuId, fin.motivo, items);
     expect(fin.interceptacion).toMatchObject({ ganador: 'defensores' });
   }, 60_000);
 

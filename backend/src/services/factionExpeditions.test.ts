@@ -266,6 +266,7 @@ describe('expediciones dirigidas (CR-34 34b)', () => {
   it('comestible: lo recolectable consumible y lo que quita hambre', () => {
     expect(esComestible({ category: 'consumible', curaHambre: null })).toBe(true);
     expect(esComestible({ category: 'piel', curaHambre: 10 })).toBe(true);
+    expect(esComestible({ category: 'alimento', curaHambre: null })).toBe(true);
     expect(esComestible({ category: 'mena', curaHambre: null })).toBe(false);
   });
 });

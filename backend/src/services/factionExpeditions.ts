@@ -237,9 +237,12 @@ export function motivoDeExpedicion(professionId: string, carencias: Carencia[]):
   return carencias.some((c) => c.tipo === 'COMIDA') && rangoComida(professionId) < METODOS_COMIDA.length ? 'COMIDA' : null;
 }
 
-/// Puro: ¿se come? Lo recolectable lleva la categoría `consumible`; lo cocinado, `curaHambre`.
+/// Categorías de objeto que se comen (carne, huevos, leche: `alimento`; lo recolectable: `consumible`).
+export const CATEGORIAS_COMESTIBLES = ['alimento', 'consumible'];
+
+/// Puro: ¿se come? Por su categoría o porque quita hambre (lo cocinado).
 export function esComestible(cat: { category: string; curaHambre: number | null }): boolean {
-  return cat.category === 'consumible' || (cat.curaHambre ?? 0) > 0;
+  return CATEGORIAS_COMESTIBLES.includes(cat.category) || (cat.curaHambre ?? 0) > 0;
 }
 
 /// Regiones donde una facción puede recolectar: las suyas (`REGION_OWNING_FACTIONS`) y las sin dueño.

@@ -1393,7 +1393,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     (`cronista/tablones.ts`); no produce en la economía de facción; receta del Reino
     `tablon-avisos` (común, con Ayuntamiento, uno por región).
   - **Pasos:** 40a plantillas, tipos y recompensas (puro) ✅ · 40b modelo y migración ✅ · 40c tablones
-    (sembrados y del Reino) ✅ · 40d generación en el avance diario · 40e aceptar, progreso, cumplir,
+(sembrados y del Reino) ✅ · 40d generación en el avance diario ✅ · 40e aceptar, progreso, cumplir,
     fallar y reputación · 40f oferta pendiente única (ADR), «¿Tienes trabajo?» del NPC y el narrador
     deja de crear misiones · 40g interfaz del tablón y del diario.
 - **Hecho cuando:** `cronista:simular 60` produce caídas, escisiones, tormentas con daños, guerras

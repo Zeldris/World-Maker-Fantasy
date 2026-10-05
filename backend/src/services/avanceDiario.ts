@@ -20,6 +20,7 @@ import { procesarReacciones } from './cronista/reacciones.js';
 import { evaluarConsecuencias } from './cronista/consecuencias.js';
 import { narrarDia } from './cronista/narradorFondo.js';
 import { decidirFacciones } from './cronista/decisionesFaccion.js';
+import { renovarTablones } from './cronista/generarMisiones.js';
 import { envejecerDia } from './cronista/envejecer.js';
 import { agruparNoticias, marcaDeNoticias } from './cronista/noticias.js';
 
@@ -77,6 +78,8 @@ export async function avanzarMundoHasta(
       await narrarDia(prisma, saveId, d, random);
       // CR-34: decisiones de las facciones del mundo de la partida (gastan el mismo presupuesto).
       await decidirFacciones(prisma, saveId, d, random);
+      // CR-40: avisos vencidos fuera y tablones de avisos rellenos con misiones del mundo de la partida.
+      await renovarTablones(prisma, saveId, d, random);
       // CR-13 13b: edad de los nacidos en la partida y muerte de viejo.
       await envejecerDia(prisma, saveId, d, random);
     }
