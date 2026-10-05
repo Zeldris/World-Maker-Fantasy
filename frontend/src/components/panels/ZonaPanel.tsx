@@ -7,7 +7,7 @@ import { ZonaSalidaModal } from '../ZonaSalidaModal'
 import { ParcelaDetailModal } from '../ParcelaDetailModal'
 import { DefsFichas, EtiquetaNombre } from '../zona/FichaZona'
 import { COLOR_HEX, DISPOSICION_LABEL, distanciaEnCeldas, regionControlDisplay, TIPO_LABEL, useEscalaPantalla } from '../../lib/zonaFichas'
-import { GridOverlay, JugadorMarker, ParcelaMarker, SalidaMarker, ZonePointMarker } from '../zona/MarcadoresZona'
+import { AnilloInteraccion, GridOverlay, JugadorMarker, ParcelaMarker, SalidaMarker, ZonePointMarker } from '../zona/MarcadoresZona'
 import { MS_POR_VELOCIDAD, PasoZonaContext } from '../../lib/zonaMovimiento'
 import { useAjustes } from '../../context/useAjustes'
 import { celdaDePixel, pixelDeCelda, rutaPrevista, textoCoste, type Celda } from '../../lib/zonaRuta'
@@ -446,6 +446,8 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
               <DefsFichas />
               {imageUrl && <image href={imageUrl} x={0} y={0} width={800} height={600} preserveAspectRatio="xMidYMid slice" />}
               {(cuadriculaFijada || altPulsado) && <GridOverlay />}
+              {/* ZON-51: hasta dónde llega «Interactuar». */}
+              {data.jugador && !soloConsulta && <AnilloInteraccion x={data.jugador.x} y={data.jugador.y} />}
               {/* ZON-30/31/32/34 (capa de ruta, bajo las fichas): celda bajo el cursor; sin andar, la ruta
                   prevista con su coste; andando o parado, la ruta que queda y la bandera de destino. */}
               {celdaCursor && !soloConsulta && <CeldaResaltada celda={celdaCursor} bloqueada={!!bloqueoMovimiento} />}
@@ -467,34 +469,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                     </>
                   )
                 })()}
-              {data.puntos.map((p) => (
-                <g
-                  key={p.id}
-                  onClick={(e) => { e.stopPropagation(); setMenuFicha({ clave: `p:${p.id}`, punto: p }) }}
-                  onMouseEnter={() => setClaveBajoRaton(`p:${p.id}`)}
-                  onMouseLeave={() => setClaveBajoRaton(null)}
-                  className="cursor-pointer"
-                >
-                  <ZonePointMarker x={p.x} y={p.y} tipo={p.tipo} color={COLOR_HEX[p.color]} escala={escala} hasCompanion={!!p.companion} cantidad={p.cantidad} />
-                  <title>{`${p.nombre}${p.cantidad > 1 ? ` ×${p.cantidad}` : ''} (${TIPO_LABEL[p.tipo]})${p.companion ? ` — con ${p.companion.nombre}` : ''}`}</title>
-                </g>
-              ))}
-              {/* NPC/fauna dinámicos (2026-09-04) — ahora también se pintan como pines reales, con
-                  la posición asignada por el backend (`posicionAleatoriaEnLienzo`), reutilizando
-                  `ZonePointMarker` tal cual (su `tipo` ya es subconjunto válido). */}
-              {dinamicos.map((d) => (
-                <g
-                  key={d.slug}
-                  onClick={(e) => { e.stopPropagation(); setMenuFicha({ clave: `d:${d.slug}`, punto: d }) }}
-                  onMouseEnter={() => setClaveBajoRaton(`d:${d.slug}`)}
-                  onMouseLeave={() => setClaveBajoRaton(null)}
-                  className="cursor-pointer"
-                >
-                  <ZonePointMarker x={d.x} y={d.y} tipo={d.tipo} color={COLOR_HEX[d.color]} escala={escala} />
-                  <title>{`${d.nombre} (${TIPO_LABEL[d.tipo]})`}</title>
-                </g>
-              ))}
-              {data.jugador && <JugadorMarker x={data.jugador.x} y={data.jugador.y} escala={escala} angulo={anguloJugador} quieto={!movimientoEnCurso} />}
+              {/* ZON-81: lo fijo (salidas y parcelas) bajo lo que se mueve. */}
               {/* Iconos de salida de región (2026-09-17) — siempre VISIBLES en su posición real
                   (dirección cardinal), incluso con `soloConsulta` (vista de MapaPanel). Umbral de
                   proximidad (2026-09-20, petición explícita de Álvaro: "al estar a una celda si
@@ -530,10 +505,38 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                   }}
                   className="cursor-pointer"
                 >
-                  <ParcelaMarker x={p.x} y={p.y} ocupada={p.building !== null} />
+                  <ParcelaMarker x={p.x} y={p.y} ocupada={p.building !== null} estado={p.building?.status} escala={escala} />
                   <title>{p.building ? p.building.name : 'Parcela vacía'}</title>
                 </g>
               ))}
+              {data.puntos.map((p) => (
+                <g
+                  key={p.id}
+                  onClick={(e) => { e.stopPropagation(); setMenuFicha({ clave: `p:${p.id}`, punto: p }) }}
+                  onMouseEnter={() => setClaveBajoRaton(`p:${p.id}`)}
+                  onMouseLeave={() => setClaveBajoRaton(null)}
+                  className="cursor-pointer"
+                >
+                  <ZonePointMarker x={p.x} y={p.y} tipo={p.tipo} color={COLOR_HEX[p.color]} escala={escala} hasCompanion={!!p.companion} cantidad={p.cantidad} />
+                  <title>{`${p.nombre}${p.cantidad > 1 ? ` ×${p.cantidad}` : ''} (${TIPO_LABEL[p.tipo]})${p.companion ? ` — con ${p.companion.nombre}` : ''}`}</title>
+                </g>
+              ))}
+              {/* NPC/fauna dinámicos (2026-09-04) — ahora también se pintan como pines reales, con
+                  la posición asignada por el backend (`posicionAleatoriaEnLienzo`), reutilizando
+                  `ZonePointMarker` tal cual (su `tipo` ya es subconjunto válido). */}
+              {dinamicos.map((d) => (
+                <g
+                  key={d.slug}
+                  onClick={(e) => { e.stopPropagation(); setMenuFicha({ clave: `d:${d.slug}`, punto: d }) }}
+                  onMouseEnter={() => setClaveBajoRaton(`d:${d.slug}`)}
+                  onMouseLeave={() => setClaveBajoRaton(null)}
+                  className="cursor-pointer"
+                >
+                  <ZonePointMarker x={d.x} y={d.y} tipo={d.tipo} color={COLOR_HEX[d.color]} escala={escala} />
+                  <title>{`${d.nombre} (${TIPO_LABEL[d.tipo]})`}</title>
+                </g>
+              ))}
+              {data.jugador && <JugadorMarker x={data.jugador.x} y={data.jugador.y} escala={escala} angulo={anguloJugador} quieto={!movimientoEnCurso} />}
               {/* ZON-19 (hito 0.1) — nombres en una capa por encima de todo (ni salidas ni otras fichas los
                   tapan), con la misma animación de desplazamiento que su ficha. */}
               <g pointerEvents="none">

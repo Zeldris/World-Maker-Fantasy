@@ -185,7 +185,7 @@ son de relleno.*
 | ZON-15 | **Compañeros que siguen al personaje** como fichas pequeñas detrás de él (Banner Saga), con su estado de salud en el anillo. | 🔌 (compañeros que viajan) | M |
 | ZON-16 | **Estados de descubrimiento** (Darkest Dungeon): no descubierto = ficha en silueta con "?" y anillo punteado; conocido = normal; agotado/en enfriamiento = ficha atenuada con reloj. Resuelve Z21. | ✅ / 🔌 (enfriamiento) | S |
 | ~~ZON-17~~ | ~~**Salidas como estandartes de camino**: flecha grande hacia el borde, placa con el nombre (o "Camino hacia el norte" si no se ha visitado) y el tiempo de viaje si se conoce; atenuada si está lejos.~~ ✅ 2026-10-02: `EstandarteSalida` — placa con doble flecha hacia el borde y etiqueta con el destino (o «Camino hacia el …») que crece hacia el interior; atenuada si no está al alcance. **Pendiente:** tiempo de viaje en la etiqueta — `ZonaSalidaInfo` no lo trae (🔌). | ✅ | S |
-| ZON-18 | **Parcelas** con el mismo lenguaje de ficha: vacía = cimientos punteados con "+"; ocupada = icono del edificio con su estado (dañado, en obras). | ✅ | S |
+| ~~ZON-18~~ ✅ 2026-10-05 (`ParcelaMarker` a tamaño de pantalla: cimientos punteados con «+», o ficha de edificio con 🔨 en obras, ⚠ dañado y atenuada si está abandonada) | **Parcelas** con el mismo lenguaje de ficha: vacía = cimientos punteados con "+"; ocupada = icono del edificio con su estado (dañado, en obras). | ✅ | S |
 | ~~ZON-19~~ | ~~**Etiquetas de nombre**: siempre visibles para los puntos a 2-3 celdas del personaje y para el seleccionado; el resto al pasar el ratón. Placa oscura semitransparente con texto claro.~~ ✅ 2026-10-02: `EtiquetaNombre` en una capa por encima de todo: siempre para lo que está a ≤ 2,5 celdas del personaje y lo seleccionado; el resto al pasar el ratón. | ✅ | S |
 | ~~ZON-20~~ | ~~**Leyenda compacta** fija en una esquina del mapa (BG3), plegable, con las mismas fichas reales.~~ ✅ 2026-10-02: leyenda plegable en la esquina inferior izquierda del mapa, con las fichas reales (incluida la salida); sale de debajo del mapa. | ✅ | S |
 | ZON-21 | **Modo daltónico** (`CFG-29`): además del color, el anillo de hostil lleva muescas y el de aliado es doble. | ✅ | S |
@@ -221,7 +221,7 @@ son de relleno.*
 | Id | Propuesta | Back | Esf. |
 |---|---|---|---|
 | ZON-50 | **Radio de amenaza** (Into the Breach): círculo rojo discontinuo de 2 celdas alrededor de cada agresivo conocido, y su estado ("vigila", "¡te ha visto!", "te persigue") sobre la ficha. Resuelve Z18. | 🔌 (hostil + estado de persecución) | M |
-| ZON-51 | **Radio de interacción** del personaje (100 px): anillo tenue que dice hasta dónde llega "Interactuar". | ✅ | S |
+| ~~ZON-51~~ ✅ 2026-10-05 (`AnilloInteraccion`, sigue al personaje; no en la vista informativa) | **Radio de interacción** del personaje (100 px): anillo tenue que dice hasta dónde llega "Interactuar". | ✅ | S |
 | ZON-52 | **Círculo de visión y niebla suave** (Battle Brothers) 🧭: fuera de un radio alrededor del personaje, el mapa se oscurece un poco y las fichas lejanas se ven como silueta; de noche el radio se reduce. Opcional, desactivable. | 🛠️ (si la visión cambia mecánicas) / ✅ (solo visual) | M |
 | ZON-53 | **Rutas de patrulla** (Shadow Tactics): al pasar el ratón por un NPC con ruta, su recorrido como línea punteada. | 🔌 (`ruta`) | S |
 | ZON-54 | **Hora del día en el mapa** (Z19): tinte por momento del día (amanecer cálido, noche azul con el cielo de cristal), luz de antorcha alrededor del personaje de noche; y usar las ilustraciones por momento y estación en cuanto existan (el backend ya las busca). | ✅ | S |
@@ -257,7 +257,7 @@ son de relleno.*
 - ~~**ZON-80 · Partir `ZonaPanel.tsx`**~~ ✅ 2026-10-05 (978 → 562 líneas sin cambiar comportamiento: `zona/MarcadoresZona.tsx`, `zona/LeyendaZona.tsx`, `hooks/useMovimientoZona.ts` con el bucle de pasos, y etiquetas, colores y control regional en `lib/zonaFichas.ts`; la capa de ruta nace con `ZON-31`) (897 líneas) en `ZoneMap` (lienzo y capas), `ZoneToken`,
   `ZonePath`, `ZoneOverlays` (visión, amenaza, clima), `ZoneSidebar` y un hook `useZoneMovement`
   con el bucle de pasos, la cancelación y la velocidad. **M**
-- **ZON-81 · Capas SVG ordenadas**: ilustración → tinte/viñeta → cuadrícula → radios → rutas →
+- ~~**ZON-81 · Capas SVG ordenadas**~~ ✅ 2026-10-05 (ilustración → cuadrícula (con `memo`) → radio → ruta → salidas y parcelas → fichas → personaje → nombres → tarjeta y menú): ilustración → tinte/viñeta → cuadrícula → radios → rutas →
   fichas → etiquetas → tarjetas. Las capas estáticas en un `<g>` que no se vuelve a pintar. **S**
 - **ZON-82 · Fichas a tamaño de pantalla** con `vector-effect` / escala inversa al zoom, para que
   ZON-11 y ZON-60 convivan. **S**
@@ -268,7 +268,7 @@ son de relleno.*
   de hora del día. **S**
 - **ZON-85 · Accesibilidad**: cada ficha enfocable con `aria-label` ("Grupo de fauna, 3, neutral, a 4
   celdas"), anuncio `aria-live` de encuentros y llegada. **S**
-- **ZON-86 · Tests**: el cálculo de ruta espejado con los mismos casos que `zonaPosicion.test.ts`;
+- ~~**ZON-86 · Tests**~~ ✅ 2026-10-05 (`zonaRuta.test.ts` espeja los casos de `calcularCamino`; `useMovimientoZona.test.ts`: andar, parar, reanudar, cancelar, encuentro y ritmo): el cálculo de ruta espejado con los mismos casos que `zonaPosicion.test.ts`;
   tests de la máquina de estados del movimiento (andar, parar, encuentro, cancelar). **S**
 
 ## 14. Qué necesita backend
@@ -292,7 +292,7 @@ son de relleno.*
 | Fase | Contenido | Resultado |
 |---|---|---|
 | **Z-A · Que se lea** ✅ 2026-10-02 | ZON-10, 11, 13, 14, 17, 19, 20, 62 | Las fichas se distinguen sobre cualquier ilustración y a tamaño de Steam Deck. Solo front. **Hecha entera** — resultado en [`img/zona-mapa-z-a.jpg`](img/zona-mapa-z-a.jpg). Pendientes que necesitan backend o fases posteriores: tiempo de viaje en las salidas (🔌), retrato/inicial y compañeros en la ficha del personaje, cuadrícula con zoom (`ZON-60`) y en Configuración. |
-| **Z-B · Que se entienda antes de actuar** | ZON-30, 31, 32, 34, 35, 36, 38 (🧭), 40, 41, 51, 18 (parcelas como fichas) + base técnica ZON-80, 81, 86 | Ruta, coste, parar, velocidad y menú contextual. Solo front. |
+| **Z-B · Que se entienda antes de actuar** ✅ 2026-10-05 | ZON-30, 31, 32, 34, 35, 36, 38 (🧭), 40, 41, 51, 18 (parcelas como fichas) + base técnica ZON-80, 81, 86 | Ruta, coste, parar, velocidad y menú contextual. Solo front. |
 | **Z-C · Siempre a mano** | ZON-1 (decisión de disposición), 2 o 3, 4, 5, 6, 45 | El mapa deja de ser un modal escondido. |
 | **Z-D · Sin sorpresas** | Exponer hostilidad y rutas → ZON-33, 50, 53, 16, 58 | El peligro se ve antes de que llegue. |
 | **Z-E · Que se sienta vivo** | ZON-37, 42, 43, 54, 56, 60, 61, 70-73, 82 (fichas con zoom; el tamaño fijo ya está hecho en ZON-11), 83, 84 | Animación, hora del día, cámara. |

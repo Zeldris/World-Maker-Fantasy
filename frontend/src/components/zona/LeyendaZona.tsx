@@ -50,14 +50,14 @@ export function LeyendaZona() {
               construir, sólido = ya ocupado. Mismo criterio ("nunca desincronizarse de lo
               que de verdad se pinta") que el resto de esta leyenda. */}
           <span className="flex items-center gap-1.5">
-            <svg viewBox="0 0 24 24" width={14} height={14} aria-hidden="true">
-              <ParcelaMarker x={12} y={12} ocupada={false} />
+            <svg viewBox="-18 -18 36 36" width={20} height={20} aria-hidden="true">
+              <ParcelaMarker x={0} y={0} ocupada={false} />
             </svg>
             Parcela vacía
           </span>
           <span className="flex items-center gap-1.5">
-            <svg viewBox="0 0 24 24" width={14} height={14} aria-hidden="true">
-              <ParcelaMarker x={12} y={12} ocupada={true} />
+            <svg viewBox="-18 -18 36 36" width={20} height={20} aria-hidden="true">
+              <ParcelaMarker x={0} y={0} ocupada={true} />
             </svg>
             Parcela construida
           </span>

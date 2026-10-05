@@ -165,3 +165,30 @@ describe('ZonaPanel — Z-B, tarjeta y menú de la ficha', () => {
     expect(await findByRole('dialog')).toBeTruthy()
   })
 })
+
+/// Z-B (hito 0.2) — ZON-51 (radio de interacción) y ZON-18 (parcelas con lenguaje de ficha).
+describe('ZonaPanel — Z-B, radio y parcelas', () => {
+  afterEach(() => {
+    cleanup()
+    vi.clearAllMocks()
+  })
+
+  it('el radio de interacción rodea al personaje (no en la vista informativa) y la parcela en obras lo dice', async () => {
+    vi.mocked(getZona).mockResolvedValue({
+      ...zona,
+      parcelas: [
+        { id: 'pa1', x: 125, y: 475, tipo: 'BASICA', building: null },
+        { id: 'pa2', x: 225, y: 475, tipo: 'BASICA', building: { id: 'b1', name: 'Granero', status: 'EN_CONSTRUCCION' } },
+      ],
+    } as never)
+    const { getByTestId, getByLabelText, unmount } = render(<ZonaPanel saveId="s1" />)
+    await act(async () => {})
+    expect(getByTestId('radio-interaccion').getAttribute('style')).toContain('translate(375px, 325px)')
+    expect(getByLabelText('En obras')).toBeTruthy()
+    unmount()
+    const consulta = render(<ZonaPanel saveId="s1" soloConsulta />)
+    await act(async () => {})
+    expect(consulta.queryByTestId('radio-interaccion')).toBeNull()
+  })
+})
+

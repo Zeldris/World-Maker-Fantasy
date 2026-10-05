@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react'
+import { memo, type ReactNode } from 'react'
 import { EstandarteSalida, FichaJugador, FichaZona } from './FichaZona'
+import { COLOR_DISPOSICION } from '../../lib/zonaFichas'
 import { anguloSalida } from '../../lib/rumboSalida'
 import type { ZonaPinTipo } from '../ZonePointDetailModal'
 import { MS_POR_VELOCIDAD, useMsPaso } from '../../lib/zonaMovimiento'
@@ -111,7 +112,8 @@ const GRID_CELL_PX = 50
 const GRID_COLS = 16
 const GRID_ROWS = 12
 
-export function GridOverlay() {
+// ZON-81: capa estática; con `memo` no se vuelve a pintar a cada paso.
+export const GridOverlay = memo(function GridOverlay() {
   const lineas: ReactNode[] = []
   for (let col = 1; col < GRID_COLS; col++) {
     const x = col * GRID_CELL_PX
@@ -133,7 +135,7 @@ export function GridOverlay() {
       </g>
     </g>
   )
-}
+})
 
 /// Icono de salida de región (2026-09-17, petición explícita de Álvaro: "cada salida debe estar
 /// ubicada en su posición correcta hacia el camino que se indica en el mapa" — la posición YA la
@@ -153,21 +155,46 @@ export function SalidaMarker({ x, y, escala, texto }: { x: number; y: number; es
   )
 }
 
-/// Icono de parcela (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) — cuadrado (mismo lenguaje
-/// que `ZonePointShape` usa para EDIFICIO, coherente con "aquí puede haber una construcción") con
-/// una cruz dentro cuando está vacía (hueco disponible) y sin ella cuando ya tiene `Building`
-/// (edificio real, el icono se lee igual que un EDIFICIO normal del mapa). Sin `transform`
+/// Icono de parcela (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21). Sin `transform`
 /// animado — como `SalidaMarker`, una parcela nunca se mueve, es un hueco fijo del propio PNG.
-export function ParcelaMarker({ x, y, ocupada }: { x: number; y: number; ocupada: boolean }) {
+/// ZON-18 (hito 0.2): con el mismo lenguaje de ficha y a tamaño de pantalla (`escala`, ZON-11). Vacía =
+/// cimientos punteados con «+»; ocupada = ficha de edificio con su estado (🔨 en obras, ⚠ dañado,
+/// atenuada si está abandonado).
+export function ParcelaMarker({ x, y, ocupada, estado, escala = 1 }: { x: number; y: number; ocupada: boolean; estado?: string; escala?: number }) {
+  if (!ocupada) {
+    return (
+      <g style={{ transform: `translate(${x}px, ${y}px)` }}>
+        <g transform={`scale(${escala})`}>
+          <rect x={-11} y={-11} width={22} height={22} rx={3} fill="rgba(26,20,16,0.75)" stroke="#d4af37" strokeWidth={1.6} strokeDasharray="4 3" />
+          <line x1={-5} y1={0} x2={5} y2={0} stroke="#d4af37" strokeWidth={2} strokeLinecap="round" />
+          <line x1={0} y1={-5} x2={0} y2={5} stroke="#d4af37" strokeWidth={2} strokeLinecap="round" />
+        </g>
+      </g>
+    )
+  }
+  const marca = estado === 'EN_CONSTRUCCION' ? '🔨' : estado === 'DANADO' ? '⚠' : null
   return (
-    <g style={{ transform: `translate(${x}px, ${y}px)` }}>
-      <rect x={-9} y={-9} width={18} height={18} fill={ocupada ? '#3a2f1f' : '#1a1410'} stroke={ocupada ? '#a8a29e' : '#d4af37'} strokeWidth={1.5} opacity={0.9} />
-      {!ocupada && (
-        <>
-          <line x1={-5} y1={0} x2={5} y2={0} stroke="#d4af37" strokeWidth={2} />
-          <line x1={0} y1={-5} x2={0} y2={5} stroke="#d4af37" strokeWidth={2} />
-        </>
-      )}
+    <g style={{ transform: `translate(${x}px, ${y}px)` }} opacity={estado === 'ABANDONADO' ? 0.5 : 1}>
+      <FichaZona tipo="EDIFICIO" color={COLOR_DISPOSICION.NEUTRO} escala={escala} sombra={false}>
+        {marca && (
+          <text x={11} y={-9} fontSize={10} textAnchor="middle" aria-label={estado === 'EN_CONSTRUCCION' ? 'En obras' : 'Dañado'}>
+            {marca}
+          </text>
+        )}
+      </FichaZona>
+    </g>
+  )
+}
+
+/// ZON-51 (hito 0.2): hasta dónde llega «Interactuar» desde el personaje (`RADIO_INTERACCION_PX`, 100
+/// unidades del lienzo en el motor). Un anillo tenue que le sigue al andar.
+export const RADIO_INTERACCION = 100
+
+export function AnilloInteraccion({ x, y }: { x: number; y: number }) {
+  const msPaso = useMsPaso()
+  return (
+    <g pointerEvents="none" data-testid="radio-interaccion" style={{ transform: `translate(${x}px, ${y}px)`, transition: `transform ${msPaso}ms linear` }}>
+      <circle r={RADIO_INTERACCION} fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.35)" strokeWidth={1} strokeDasharray="6 6" />
     </g>
   )
 }

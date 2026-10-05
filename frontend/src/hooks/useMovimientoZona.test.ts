@@ -79,4 +79,23 @@ describe('useMovimientoZona', () => {
     // Con la red descontada, ~250 ms entre pedidos (sin descontarla serían ~400).
     for (const d of intervalos.slice(1)) expect(d).toBeLessThan(340)
   })
+
+  it('un encuentro corta el trayecto, deja la oferta en el registro y olvida el destino', async () => {
+    vi.mocked(moverEnZona).mockResolvedValue({
+      jugador: { x: 50, y: 0 }, caminoRestante: [{ x: 100, y: 0 }], zonePointsMovidos: [],
+      colision: { targetName: 'Aullador rojo', temperamento: 'CAUTELOSO' },
+      dynamicModeOffer: { targetName: 'Aullador rojo' },
+      logEntry: { id: 'l1', text: 'Te topas con un aullador.', timeLabel: '', createdAt: '' },
+    } as never)
+    const onEncuentroZona = vi.fn()
+    const { result } = renderHook(() => useMovimientoZona({ saveId: 's1', setData: vi.fn(), msPorPaso: 0, onEncuentroZona }))
+    await act(async () => {
+      await result.current.moverA({ x: 300, y: 0 })
+    })
+    expect(moverEnZona).toHaveBeenCalledTimes(1)
+    expect(onEncuentroZona).toHaveBeenCalledWith(expect.objectContaining({ id: 'l1', dynamicModeOffer: expect.objectContaining({ busy: false }) }))
+    expect(result.current.mensajeMovimiento).toBe('Te topas con Aullador rojo.')
+    expect(result.current.destinoPendiente).toBeNull()
+  })
 })
+
