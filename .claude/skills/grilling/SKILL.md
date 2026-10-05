@@ -5,6 +5,11 @@ description: Grill the user relentlessly about a plan, decision, or idea. Use wh
 
 > **En este repositorio:** las rondas, en español. Lo decidido se apunta en el roadmap de la tarea
 > o en la bitácora (`docs/registros/traspaso.md`), como pide `CLAUDE.md`.
+>
+> **Juegos de referencia** (petición de la usuaria, 2026-10-05): antes de cada ronda, busca cómo
+> resuelven esa decisión los juegos que encajen de D&D 5e, Baldur's Gate 3, X4: Foundations,
+> Bellwright y Medieval Dynasty (con `WebSearch`). Cada recomendación dice qué juego la respalda o de
+> cuál se aparta y por qué, y la ronda acaba con las fuentes enlazadas.
 
 Interview the user relentlessly until you reach a shared understanding. Map this as a **design tree**: every decision branches into the decisions that hang off it.
 
