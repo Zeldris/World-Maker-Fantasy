@@ -244,6 +244,17 @@ export function PanelAjustes({ guardados, partidaId = null, onCerrar }: { guarda
                   { valor: 'instantanea', label: 'Instantánea' },
                 ]}
               />
+              <Opciones
+                etiqueta="Velocidad al andar por la zona"
+                valor={borrador.velocidadPasoZona}
+                onChange={(v) => cambiar('velocidadPasoZona', v)}
+                ayuda="Cuánto tarda cada paso en el mapa de zona. Doble clic en el mapa: ese trayecto, rápido."
+                opciones={[
+                  { valor: 'normal', label: 'Normal' },
+                  { valor: 'rapida', label: 'Rápida' },
+                  { valor: 'inmediata', label: 'Inmediata' },
+                ]}
+              />
             </>
           )}
           {pestana === 'controles' && (

@@ -570,6 +570,8 @@ export async function zonaRoutes(app: FastifyInstance) {
 
     return {
       disponible: true,
+      // ZON-32 (hito 0.2): hora de ficción actual, para la hora de llegada de la ruta prevista.
+      fictionalMinutes: save.worldState?.fictionalMinutes ?? 480,
       locationSlug,
       locationName,
       imageUrl: zoneMapImageUrl(locationSlug, momento, estacion),

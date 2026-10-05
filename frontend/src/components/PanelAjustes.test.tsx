@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
-import { render, cleanup, fireEvent, waitFor } from '@testing-library/react'
+import { render, cleanup, fireEvent, waitFor, within } from '@testing-library/react'
 import { AjustesProvider } from '../context/AjustesProvider'
 import { BotonAjustes } from './BotonAjustes'
 import { AJUSTES_POR_DEFECTO, CLAVE_AJUSTES } from '../lib/ajustes'
@@ -47,7 +47,7 @@ describe('CFG-4 — panel de configuración', () => {
     const { getByRole, getByText } = montar()
     fireEvent.click(getByRole('button', { name: 'Configuración' }))
     fireEvent.click(getByText('Animaciones'))
-    fireEvent.click(getByRole('radio', { name: 'Rápida' }))
+    fireEvent.click(within(getByRole('radiogroup', { name: 'Velocidad de las tiradas' })).getByRole('radio', { name: 'Rápida' }))
     fireEvent.click(getByRole('button', { name: 'Aplicar' }))
     expect(JSON.parse(localStorage.getItem(CLAVE_AJUSTES)!).velocidadDados).toBe('rapida')
     fireEvent.click(getByRole('button', { name: 'Configuración' }))

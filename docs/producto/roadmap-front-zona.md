@@ -170,7 +170,7 @@ son de relleno.*
 | ZON-2 | **Minimapa permanente** (si no se elige A): esquina de la cabecera o del registro, ~200 px, con el personaje centrado, los puntos cercanos y **clic para andar** (OSRS). | ✅ | M |
 | ZON-3 | **Un solo mapa**: la vista de consulta de *Mapa → Zona* pasa a ser la misma vista, con el movimiento activo. | ✅ | S |
 | ZON-4 | **Atajos**: `M` abre o centra el mapa, `Z` alterna mapa grande / minimapa, flechas o `WASD` mueven una celda, `Espacio` para o reanuda, `Tab` recorre los puntos cercanos, `Enter` interactúa con el seleccionado. Mando: cruceta = celda, A = confirmar, B = parar. | ✅ | M |
-| ZON-5 | **El encuentro no cierra nada**: con el mapa en la pantalla de juego, la tarjeta de Interactuar aparece en el registro de al lado y además **sobre la ficha** del encuentro en el mapa (ver ZON-41). | ✅ | S |
+| ~~ZON-5~~ ✅ 2026-10-05 (adelantada de Z-C a petición de la usuaria: chocar con algo ya no cierra el mapa de movimiento; la tarjeta del encuentro sale junto a su ficha con sus acciones —las mismas del registro, `lib/ofertaModoDinamico.ts`— más «Seguir mi camino»; hablar o recolectar se abren encima y el mapa vuelve; solo se cierra para escribir una respuesta o al empezar un combate. Lo de «con el mapa en la pantalla de juego» sigue esperando `ZON-1`) | **El encuentro no cierra nada**: con el mapa en la pantalla de juego, la tarjeta de Interactuar aparece en el registro de al lado y además **sobre la ficha** del encuentro en el mapa (ver ZON-41). | ✅ | S |
 | ZON-6 | **Pantalla completa del mapa** (`F` o doble clic en el borde) para explorar con detalle. | ✅ | S |
 
 ## 7. Fichas e iconos (`ZON-I`)
@@ -185,7 +185,7 @@ son de relleno.*
 | ZON-15 | **Compañeros que siguen al personaje** como fichas pequeñas detrás de él (Banner Saga), con su estado de salud en el anillo. | 🔌 (compañeros que viajan) | M |
 | ZON-16 | **Estados de descubrimiento** (Darkest Dungeon): no descubierto = ficha en silueta con "?" y anillo punteado; conocido = normal; agotado/en enfriamiento = ficha atenuada con reloj. Resuelve Z21. | ✅ / 🔌 (enfriamiento) | S |
 | ~~ZON-17~~ | ~~**Salidas como estandartes de camino**: flecha grande hacia el borde, placa con el nombre (o "Camino hacia el norte" si no se ha visitado) y el tiempo de viaje si se conoce; atenuada si está lejos.~~ ✅ 2026-10-02: `EstandarteSalida` — placa con doble flecha hacia el borde y etiqueta con el destino (o «Camino hacia el …») que crece hacia el interior; atenuada si no está al alcance. **Pendiente:** tiempo de viaje en la etiqueta — `ZonaSalidaInfo` no lo trae (🔌). | ✅ | S |
-| ZON-18 | **Parcelas** con el mismo lenguaje de ficha: vacía = cimientos punteados con "+"; ocupada = icono del edificio con su estado (dañado, en obras). | ✅ | S |
+| ~~ZON-18~~ ✅ 2026-10-05 (`ParcelaMarker` a tamaño de pantalla: cimientos punteados con «+», o ficha de edificio con 🔨 en obras, ⚠ dañado y atenuada si está abandonada) | **Parcelas** con el mismo lenguaje de ficha: vacía = cimientos punteados con "+"; ocupada = icono del edificio con su estado (dañado, en obras). | ✅ | S |
 | ~~ZON-19~~ | ~~**Etiquetas de nombre**: siempre visibles para los puntos a 2-3 celdas del personaje y para el seleccionado; el resto al pasar el ratón. Placa oscura semitransparente con texto claro.~~ ✅ 2026-10-02: `EtiquetaNombre` en una capa por encima de todo: siempre para lo que está a ≤ 2,5 celdas del personaje y lo seleccionado; el resto al pasar el ratón. | ✅ | S |
 | ~~ZON-20~~ | ~~**Leyenda compacta** fija en una esquina del mapa (BG3), plegable, con las mismas fichas reales.~~ ✅ 2026-10-02: leyenda plegable en la esquina inferior izquierda del mapa, con las fichas reales (incluida la salida); sale de debajo del mapa. | ✅ | S |
 | ZON-21 | **Modo daltónico** (`CFG-29`): además del color, el anillo de hostil lleva muescas y el de aliado es doble. | ✅ | S |
@@ -194,23 +194,23 @@ son de relleno.*
 
 | Id | Propuesta | Back | Esf. |
 |---|---|---|---|
-| ZON-30 | **Celda bajo el cursor resaltada** con esquinas suaves, y cursor según lo que hay debajo (andar, interactuar, salida, no se puede). | ✅ | S |
-| ZON-31 | **Ruta prevista al pasar el ratón** (Divinity): línea de puntos desde el personaje hasta la celda, calculada en cliente con la misma línea recta que usa el motor (`calcularCamino`, función pura que se puede espejar como ya se hace con otras) y confirmada con `caminoRestante` tras el primer paso. Resuelve Z13. | ✅ | M |
-| ZON-32 | **Coste visible** junto al destino: "8 pasos · 8 min", la hora de llegada en el reloj ficticio y la energía recuperada por el camino. | ✅ | S |
+| ~~ZON-30~~ ✅ 2026-10-05 (`CeldaResaltada`, roja si el movimiento está bloqueado; cursor de andar, esperar o «no se puede») | **Celda bajo el cursor resaltada** con esquinas suaves, y cursor según lo que hay debajo (andar, interactuar, salida, no se puede). | ✅ | S |
+| ~~ZON-31~~ ✅ 2026-10-05 (`lib/zonaRuta.ts`, espejo de `calcularCamino` con sus mismos casos de test; `LineaRuta`) | **Ruta prevista al pasar el ratón** (Divinity): línea de puntos desde el personaje hasta la celda, calculada en cliente con la misma línea recta que usa el motor (`calcularCamino`, función pura que se puede espejar como ya se hace con otras) y confirmada con `caminoRestante` tras el primer paso. Resuelve Z13. | ✅ | M |
+| ~~ZON-32~~ ✅ 2026-10-05 («N pasos · N min · llegas a las HH:MM · +E energía»; `GET /zona` devuelve ya el minuto de ficción) | **Coste visible** junto al destino: "8 pasos · 8 min", la hora de llegada en el reloj ficticio y la energía recuperada por el camino. | ✅ | S |
 | ZON-33 | **Avisos en la ruta** (XCOM): las celdas de la ruta que entran en el radio de un agresivo se marcan en rojo con un ojo; la ruta entera cambia de color si acaba en encuentro seguro. | 🔌 (qué puntos son hostiles) | M |
-| ZON-34 | **Bandera de destino** (OSRS) que se queda hasta llegar, y **la ruta que se va consumiendo** a medida que se anda. | ✅ | S |
-| ZON-35 | **Parar y reanudar**: botón y tecla `Espacio`; clic derecho cancela. Resuelve Z15. | ✅ | S |
-| ZON-36 | **Velocidad de paso** (Mount & Blade): normal (actual, 600 ms), rápida (~250 ms) e inmediata; doble clic = ir rápido. Ajuste en `CFG`. Resuelve Z14. | ✅ | S |
+| ~~ZON-34~~ ✅ 2026-10-05 (`BanderaDestino` y la ruta que queda, con `caminoRestante` de cada paso; se queda al parar) | **Bandera de destino** (OSRS) que se queda hasta llegar, y **la ruta que se va consumiendo** a medida que se anda. | ✅ | S |
+| ~~ZON-35~~ ✅ 2026-10-05 (`useMovimientoZona`: «Parar» se mira justo antes de pedir cada paso, el destino queda para «Reanudar»; botón sobre el mapa, `Espacio` y clic derecho para cancelar) | **Parar y reanudar**: botón y tecla `Espacio`; clic derecho cancela. Resuelve Z15. | ✅ | S |
+| ~~ZON-36~~ ✅ 2026-10-05 (ajuste «Velocidad al andar por la zona» en Ajustes › Animaciones: normal 600 ms, rápida 250 ms, inmediata 0 ms; doble clic = ese trayecto rápido; las fichas se animan con la misma duración vía `PasoZonaContext`) | **Velocidad de paso** (Mount & Blade): normal (actual, 600 ms), rápida (~250 ms) e inmediata; doble clic = ir rápido. Ajuste en `CFG`. Resuelve Z14. | ✅ | S |
 | ZON-37 | **Animación de andar**: interpolación con aceleración suave en vez de `linear`, pequeño balanceo de la ficha en cada paso y huellas que se desvanecen detrás. | ✅ | S |
-| ZON-38 | **Menos esperas de red**: pedir el siguiente paso mientras se anima el actual (el front ya sabe el destino), en vez de animar y luego pedir. 🧭 Alternativa backend: devolver varios pasos por llamada hasta el primer evento. | ✅ / 🛠️ | M |
+| ~~ZON-38~~ ✅ 2026-10-05 (solo front, decisión de la usuaria: el siguiente paso se pide para que llegue al terminar la animación, descontando la latencia de la llamada anterior; así parar sigue dejando al personaje en su celda) | **Menos esperas de red**: pedir el siguiente paso mientras se anima el actual (el front ya sabe el destino), en vez de animar y luego pedir. 🧭 Alternativa backend: devolver varios pasos por llamada hasta el primer evento. | ✅ / 🛠️ | M |
 | ZON-39 | **Terreno** (Z16): a largo plazo, capa de celdas no transitables por zona para que la ruta rodee acantilados y agua. Mientras tanto, nada en el front debe sugerir que se puede atravesar una pared. | 🛠️ | L |
 
 ## 9. Encuentros e interacción (`ZON-X`)
 
 | Id | Propuesta | Back | Esf. |
 |---|---|---|---|
-| ZON-40 | **Tarjeta flotante al pasar el ratón** (BG3): nombre, tipo, cantidad, disposición, retrato y distancia en celdas, sin abrir nada. | ✅ | S |
-| ZON-41 | **Menú contextual en la ficha** en lugar del modal (Z23): al hacer clic, un pequeño menú pegado a la ficha con *Ir hasta aquí*, *Interactuar* (si está adyacente), *Cazar*, *Saquear*, *Desollar*, *Recoger*, *Ver en la Enciclopedia*. El modal grande queda para la ficha completa. | ✅ | M |
+| ~~ZON-40~~ ✅ 2026-10-05 (`zona/MenuFicha.tsx` · `TarjetaFicha`: nombre, tipo, disposición, cantidad, compañero y distancia en celdas; sin retrato todavía, va con `ZON-12`) | **Tarjeta flotante al pasar el ratón** (BG3): nombre, tipo, cantidad, disposición, retrato y distancia en celdas, sin abrir nada. | ✅ | S |
+| ~~ZON-41~~ ✅ 2026-10-05 (`MenuFicha`: la misma información arriba y las acciones que ya tenía la ficha: Ir hasta aquí / Interactuar (al lado), Recoger, Saquear, Desollar, Ver en la Enciclopedia y Ver ficha completa; Cazar sigue saliendo del encuentro al acercarse) | **Menú contextual en la ficha** en lugar del modal (Z23): al hacer clic, un pequeño menú pegado a la ficha con *Ir hasta aquí*, *Interactuar* (si está adyacente), *Cazar*, *Saquear*, *Desollar*, *Recoger*, *Ver en la Enciclopedia*. El modal grande queda para la ficha completa. | ✅ | M |
 | ZON-42 | **Encuentro con presencia**: al chocar, la ficha del otro da un pequeño salto, aparece un aviso sobre ella ("¡Te topas con…!") y el mapa se atenúa un instante alrededor; la tirada de "quién ve a quién" (`DiceTray`, roadmap general § 4) sale anclada al encuentro. Resuelve Z17. | ✅ | M |
 | ZON-43 | **Combate que empieza en el mapa**: transición desde la ficha del rival (destello rojo, zoom breve) hacia el panel de combate, en vez de un cambio seco. | ✅ | M |
 | ZON-44 | **Marcas propias** (BG3): el jugador puede poner una marca con nombre en una celda ("veta de hierro", "cuidado: lobos"). | 🛠️ (guardar marcas) | M |
@@ -221,7 +221,7 @@ son de relleno.*
 | Id | Propuesta | Back | Esf. |
 |---|---|---|---|
 | ZON-50 | **Radio de amenaza** (Into the Breach): círculo rojo discontinuo de 2 celdas alrededor de cada agresivo conocido, y su estado ("vigila", "¡te ha visto!", "te persigue") sobre la ficha. Resuelve Z18. | 🔌 (hostil + estado de persecución) | M |
-| ZON-51 | **Radio de interacción** del personaje (100 px): anillo tenue que dice hasta dónde llega "Interactuar". | ✅ | S |
+| ~~ZON-51~~ ✅ 2026-10-05 (`AnilloInteraccion`, sigue al personaje; no en la vista informativa) | **Radio de interacción** del personaje (100 px): anillo tenue que dice hasta dónde llega "Interactuar". | ✅ | S |
 | ZON-52 | **Círculo de visión y niebla suave** (Battle Brothers) 🧭: fuera de un radio alrededor del personaje, el mapa se oscurece un poco y las fichas lejanas se ven como silueta; de noche el radio se reduce. Opcional, desactivable. | 🛠️ (si la visión cambia mecánicas) / ✅ (solo visual) | M |
 | ZON-53 | **Rutas de patrulla** (Shadow Tactics): al pasar el ratón por un NPC con ruta, su recorrido como línea punteada. | 🔌 (`ruta`) | S |
 | ZON-54 | **Hora del día en el mapa** (Z19): tinte por momento del día (amanecer cálido, noche azul con el cielo de cristal), luz de antorcha alrededor del personaje de noche; y usar las ilustraciones por momento y estación en cuanto existan (el backend ya las busca). | ✅ | S |
@@ -254,10 +254,10 @@ son de relleno.*
 
 ## 13. Técnica y rendimiento (`ZON-T`)
 
-- **ZON-80 · Partir `ZonaPanel.tsx`** (897 líneas) en `ZoneMap` (lienzo y capas), `ZoneToken`,
+- ~~**ZON-80 · Partir `ZonaPanel.tsx`**~~ ✅ 2026-10-05 (978 → 562 líneas sin cambiar comportamiento: `zona/MarcadoresZona.tsx`, `zona/LeyendaZona.tsx`, `hooks/useMovimientoZona.ts` con el bucle de pasos, y etiquetas, colores y control regional en `lib/zonaFichas.ts`; la capa de ruta nace con `ZON-31`) (897 líneas) en `ZoneMap` (lienzo y capas), `ZoneToken`,
   `ZonePath`, `ZoneOverlays` (visión, amenaza, clima), `ZoneSidebar` y un hook `useZoneMovement`
   con el bucle de pasos, la cancelación y la velocidad. **M**
-- **ZON-81 · Capas SVG ordenadas**: ilustración → tinte/viñeta → cuadrícula → radios → rutas →
+- ~~**ZON-81 · Capas SVG ordenadas**~~ ✅ 2026-10-05 (ilustración → cuadrícula (con `memo`) → radio → ruta → salidas y parcelas → fichas → personaje → nombres → tarjeta y menú): ilustración → tinte/viñeta → cuadrícula → radios → rutas →
   fichas → etiquetas → tarjetas. Las capas estáticas en un `<g>` que no se vuelve a pintar. **S**
 - **ZON-82 · Fichas a tamaño de pantalla** con `vector-effect` / escala inversa al zoom, para que
   ZON-11 y ZON-60 convivan. **S**
@@ -268,7 +268,7 @@ son de relleno.*
   de hora del día. **S**
 - **ZON-85 · Accesibilidad**: cada ficha enfocable con `aria-label` ("Grupo de fauna, 3, neutral, a 4
   celdas"), anuncio `aria-live` de encuentros y llegada. **S**
-- **ZON-86 · Tests**: el cálculo de ruta espejado con los mismos casos que `zonaPosicion.test.ts`;
+- ~~**ZON-86 · Tests**~~ ✅ 2026-10-05 (`zonaRuta.test.ts` espeja los casos de `calcularCamino`; `useMovimientoZona.test.ts`: andar, parar, reanudar, cancelar, encuentro y ritmo): el cálculo de ruta espejado con los mismos casos que `zonaPosicion.test.ts`;
   tests de la máquina de estados del movimiento (andar, parar, encuentro, cancelar). **S**
 
 ## 14. Qué necesita backend
@@ -292,7 +292,7 @@ son de relleno.*
 | Fase | Contenido | Resultado |
 |---|---|---|
 | **Z-A · Que se lea** ✅ 2026-10-02 | ZON-10, 11, 13, 14, 17, 19, 20, 62 | Las fichas se distinguen sobre cualquier ilustración y a tamaño de Steam Deck. Solo front. **Hecha entera** — resultado en [`img/zona-mapa-z-a.jpg`](img/zona-mapa-z-a.jpg). Pendientes que necesitan backend o fases posteriores: tiempo de viaje en las salidas (🔌), retrato/inicial y compañeros en la ficha del personaje, cuadrícula con zoom (`ZON-60`) y en Configuración. |
-| **Z-B · Que se entienda antes de actuar** | ZON-30, 31, 32, 34, 35, 36, 38 (🧭), 40, 41, 51, 18 (parcelas como fichas) + base técnica ZON-80, 81, 86 | Ruta, coste, parar, velocidad y menú contextual. Solo front. |
+| **Z-B · Que se entienda antes de actuar** ✅ 2026-10-05 | ZON-30, 31, 32, 34, 35, 36, 38 (🧭), 40, 41, 51, 18 (parcelas como fichas) + base técnica ZON-80, 81, 86 | Ruta, coste, parar, velocidad y menú contextual. Solo front. |
 | **Z-C · Siempre a mano** | ZON-1 (decisión de disposición), 2 o 3, 4, 5, 6, 45 | El mapa deja de ser un modal escondido. |
 | **Z-D · Sin sorpresas** | Exponer hostilidad y rutas → ZON-33, 50, 53, 16, 58 | El peligro se ve antes de que llegue. |
 | **Z-E · Que se sienta vivo** | ZON-37, 42, 43, 54, 56, 60, 61, 70-73, 82 (fichas con zoom; el tamaño fijo ya está hecho en ZON-11), 83, 84 | Animación, hora del día, cámara. |
@@ -310,8 +310,8 @@ sigue siendo completamente usable.
 1. Dónde vive el mapa: columna derecha por defecto, minimapa o modal mejorado. (ZON-1)
 2. Pasar de relleno de color a anillo de color manteniendo las formas por categoría. (ZON-10)
 3. Retratos de la Enciclopedia dentro de las fichas. (ZON-12)
-4. Velocidades de paso y si el backend devuelve varios pasos por llamada. (ZON-36, ZON-38)
-5. Mostrar la amenaza de los agresivos antes del encuentro (puede quitar sorpresa). (ZON-50)
+4. ~~Velocidades de paso y si el backend devuelve varios pasos por llamada. (ZON-36, ZON-38)~~ → decidido por la usuaria (2026-10-05, ronda de la Fase F): **solo en el frontend**, pidiendo el siguiente paso mientras se anima el actual (parar sigue siendo exacto); tres velocidades (normal 600 ms por defecto, rápida ~250 ms, inmediata sin animación pero paso a paso) en Ajustes › Animaciones, y doble clic = ir rápido ese trayecto. Clic en una ficha (ZON-40/41): tarjeta al pasar el ratón y **menú pegado a la ficha** con la información arriba y las acciones; el modal grande queda como «Ver ficha completa»; en táctil el menú hace de tarjeta.
+5. ~~Mostrar la amenaza de los agresivos antes del encuentro (puede quitar sorpresa). (ZON-50)~~ → decidido por la usuaria (2026-10-05, ronda de Z-D): radio rojo discontinuo de 2 celdas (el de persecución real) y estado «vigila» / «te persigue» **solo en hostiles ya descubiertos**; los no descubiertos siguen sorprendiendo. `ZON-33`: las celdas de la ruta prevista en el radio de un hostil conocido, en rojo con 👁, y la ruta entera en rojo si acaba pegada a uno. `ZON-53`: la patrulla al pasar el ratón, solo si ya está descubierto.
 6. Niebla y círculo de visión: solo estético o con efecto en el juego. (ZON-52)
 7. Marcas propias del jugador. (ZON-44)
 8. Capa de terreno no transitable. (ZON-39)
