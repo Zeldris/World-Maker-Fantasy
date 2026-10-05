@@ -804,7 +804,7 @@ Del `/retro` de la Fase D del `0.2` (2026-10-05, aceptadas todas por la usuaria;
   `roadmap-cronista.md` § 13.1, el puntero a `avanceDiario.ts` como entrada de todo lo diario por partida.
 - ~~**QA-10 · Arranque del entorno**~~ ✅ 2026-10-05 (`.claude/hooks/session-start.sh` + `.claude/settings.json`, solo en la nube; ~20 s con todo ya montado): hook de inicio de sesión que levanta Postgres (crea la base si
   falta, migra y siembra) y el Ollama simulado.
-- **QA-11 · Tests rápidos**: `npm run test:rapido` (solo lo relacionado con los cambios) para iterar;
+- ~~**QA-11 · Tests rápidos**~~ ✅ 2026-10-05 (`vitest run --changed` en backend y frontend: solo los tests que dependen de lo no confirmado; un cambio en `package.json` o en la config de vitest los lanza todos): `npm run test:rapido` (solo lo relacionado con los cambios) para iterar;
   la suite completa, antes de cada push.
 - **QA-12 · Intermitente de `ProduccionSection.test.tsx`**: diagnosticarlo con `diagnosing-bugs`
   (1 fallo en ~12 pasadas, 2026-10-05).
