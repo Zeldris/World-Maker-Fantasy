@@ -95,6 +95,7 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
+- **2026-10-05** — Revisión de `propuestas-lore.md` (encargo de la usuaria): las 9 propuestas, revisadas contra el canon y corregidas, pasan a `propuestas-aprobadas.md`. **Ciclo vital decidido por la usuaria** (madurez/esperanza): orcos 10/60, Faerus 8/140, Nabieus 14/90, Goirntes 14/70 (cambia el canon orco de 40-50 años); en `edades.ts` cambian Faerus (40 → 140) y Goirntes (madurez 16 → 14). Quedan pendientes de código `nombresFaccion.ts` (sin Vhurne/Nur/Kegi, escisión goirnte «Los del…»), la disposición de facciones corregida (Helsig y Goshg mercantiles, Feg Tusha recelosa), el renombre del Bulco a Rugoconcha y el alta de Dessa, Yerin y Riko como NPC (cada uno en su entrada aprobada).
 - **2026-10-05** — `CR-40` (misiones secundarias por motor) jugable: plantillas cerradas, tablones de avisos, generación diaria, aceptar/cumplir/fallar/abandonar, «¿Tienes trabajo?», interfaz; revisión con `/code-review` (8 arreglos). Queda 40f-2 (oferta única, interna).
 - **2026-10-05** — `CR-34` 34a-34c, 34e y 34f: carencias, expediciones dirigidas, diplomacia entre facciones, propuestas al Reino con Aceptar/Rechazar y simulación de 60 días. 34d (expansión) bloqueada por falta de territorios de facción.
 - **2026-10-04** — `CR-35`: economía y expediciones de facción solo en el mundo de la partida (quitadas las versiones de catálogo; tests portados). Diseño de `CR-34` cerrado en tres rondas.

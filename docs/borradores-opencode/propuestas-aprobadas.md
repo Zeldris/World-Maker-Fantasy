@@ -515,6 +515,91 @@ con un joven que pasó un año entre ellos (Gorhorn; ver A-39).
 
 ---
 
+### 2026-10-04 — Nombres de las facciones nacidas de una escisión (CR-11)
+**Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-05)**
+
+**Acción de implementación:** añadir
+**Prioridad:** media
+**Dependencias:** ninguna
+**Archivos destino:**
+- `docs/rpgtarkor/lore-mundo/clanes-orcos.md` (regla de nombre de los clanes escindidos)
+- `docs/rpgtarkor/lore-mundo/lenguas-helek.md` (las palabras usadas como nombre de clan)
+- `docs/rpgtarkor/lore-mundo/razas.md` (Nabieus, Faerus y Goirntes: cómo se nombra una escisión)
+
+**Notas del aprobador:** revisada contra el canon. Se quitan dos nombres que chocaban: «Keseg
+Vhurne» (Keseg'Vhurne ya es el **cónclave** Nabieus) y «Feg Nur» (Feg'nur es el **tabú** de no
+abandonar a un herido). Se cambia «Feg Kegi» (Kegi es el poblado de Feg Ger y confundiría). Se
+resuelve la pregunta goirnte (Q13) con el modelo que ya da el canon: Los del Obelisco.
+**Pendiente de código:** `backend/src/services/cronista/nombresFaccion.ts` (quitar Vhurne, Nur y
+Kegi; añadir Leshra y Ashi; permitir la escisión goirnte con el patrón «Los del…»).
+
+---
+
+**Propuesta:**
+
+Cuando una facción pierde a su líder y queda dividida, el motor la parte en dos (escisión). La nueva
+facción se nombra según la costumbre de su pueblo y lleva su traducción en la descripción:
+
+- **Orcos:** el clan toma el nombre de quien encabeza la escisión, sin su vocal final y con la
+  terminación de los clanes emigrados (Helsa → Helsig, Gosha → Goshg; `clanes-orcos.md`). *Varka* →
+  Clan **Varkig**; si ya existe, Clan **Varkg**.
+- **Nabieus:** **Keseg** + una palabra de su diccionario («el fin de…», nunca repetida): Keseg
+  **Tannis** (el fin de la mentira), Keseg **Karo** (el fin de la carta), Keseg **Tovh** (el fin de
+  la palma).
+- **Faerus:** **Feg** + una palabra concreta suya (como Feg Ger, «manada roja»): Feg **Sil** (manada
+  del fuego), Feg **Krul** (manada del colmillo), Feg **Leshra** (manada del ave de noche), Feg
+  **Ashi** (manada que huele). Sin títulos: el nombre es de la manada, no de quien la guía.
+- **Goirntes:** para un Goirnte no hay más Imperio que el suyo, así que una escisión no se llama
+  Imperio ni clan: se nombra, como **Los del Obelisco**, por aquello a lo que se aferra frente al
+  resto: **Los del Edicto**, **Los de la Estela**, **Los del Tributo**, **Los del Vresk** (+ número
+  de su ciudad). En lengua común, como el resto de nombres nuevos.
+
+**Preguntas abiertas resueltas:**
+1. ¿Cómo se nombra una escisión goirnte? → Con el patrón «Los del…» de Los del Obelisco: lo que
+   defienden frente al resto del Imperio.
+
+---
+
+### 2026-10-05 — Disposición de cada facción para sus decisiones (CR-34)
+**Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-05)**
+
+**Acción de implementación:** añadir
+**Prioridad:** media
+**Dependencias:** ninguna
+**Archivos destino:**
+- `docs/canon-opencode/catalogo/facciones-npcs.md` (columna de disposición)
+- las fichas de facción en `docs/rpgtarkor/lore-mundo/` (una línea por facción)
+
+**Notas del aprobador:** revisada contra `facciones-npcs.md` (relaciones actuales). Tres cambios
+sobre el borrador: **Helsig** y **Goshg** pasan a mercantiles (son «neutrales y defensivos» pero
+comercian: la Senda del Sílice es un tratado de siglos); **Feg Tusha** pasa a recelosa (los Faerus
+están «fuera de toda alianza» y son hostiles a quien los caza; no hay base para «belicosa»).
+**Pendiente de código:** sembrado de `Faction.disposicion` con esta tabla.
+
+---
+
+**Propuesta:**
+
+Cada facción tiene una **disposición** que inclina sus decisiones: **belicosa** (saqueo, guerra,
+conquista), **mercantil** (tratados; paz antes que guerra), **recelosa** (rechaza pactos, defiende lo
+suyo, casi nunca ataca primero) o **neutral**.
+
+| Facción | Disposición | Por qué (canon) |
+|---|---|---|
+| Clan Serhu | Belicosa | Casta de Ketg; brazo armado de la Concordia contra los otros clanes y los Faerus |
+| Concordia de Hierro | Belicosa | Facción radical, alianza militar tras El Detonante |
+| Los del Obelisco | Mercantil | Moderados de la ley; frenan a la Concordia desde dentro |
+| Clan Helsig | Mercantil | Neutrales y defensivos; Senda del Sílice con los Goshg |
+| Clan Goshg | Mercantil | Neutrales y defensivos; Senda del Sílice y convivencia práctica con Keseg Prisilke |
+| Keseg Sael | Recelosa | El clan que no dice su nombre hacia fuera; no olvidan la Purga |
+| Keseg Prisilke | Neutral | Cazadores de la Ciénaga, convivencia práctica sin más |
+| Feg Tusha | Recelosa | Fuera de toda alianza; hostiles con la Concordia y los Serhu |
+| Feg Ger | Mercantil | Kegi comercia, aunque en frío; un acuerdo solo vale sellado con la primera pieza |
+
+Más adelante la disposición la dará el líder (`CR-38`) y podrá cambiar con la sucesión.
+
+---
+
 ## Categoría: Razas y cultura
 
 ### A-06 · 2026-09-27 — El Jakut: mandar sin cargo
@@ -727,6 +812,180 @@ nombres "Karot Veku - X Vek" ("Vek" no significa nada; *Veku* es colmillo).
 **Preguntas abiertas resueltas:**
 1. ¿Nombres en Kektira? → No. Se quedan en lengua común, como los tres edificios ya sembrados. *(decidido por Claude, revisable)*
 2. ¿Qué Maestro va a cada taller? → Tabla de arriba. Todos existen ya en `worldCatalog.ts`.
+
+---
+
+### 2026-10-05 — Tablón de avisos de cada pueblo (CR-40)
+**Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-05)**
+
+**Acción de implementación:** añadir
+**Prioridad:** media
+**Dependencias:** ninguna
+**Archivos destino:**
+- `docs/rpgtarkor/sistemas-reino/construcciones-reino.md` (el edificio)
+- `docs/rpgtarkor/lore-mundo/razas.md` (una línea en la cultura de cada pueblo)
+
+**Notas del aprobador:** revisada contra la cultura de cada pueblo. Encaja: los Faerus no tienen
+escritura (por eso marcas y olor), los Nabieus leen con la palma (Tovh'vhurne) y no alzan la voz,
+los Goirntes graban la ley en piedra. Nombres en lengua común, como pide el canon.
+**Pendiente de código:** nombre visible por raza en `backend/src/services/construction.ts`.
+
+---
+
+**Propuesta:**
+
+Las misiones secundarias se cogen hablando con NPC o en un **tablón de avisos** del interior de cada
+pueblo, que también se puede construir en el Reino. Cada pueblo tiene el suyo:
+
+| Pueblo | Nombre | Cómo es |
+|---|---|---|
+| Orcos | Poste de cacería | Poste con pieles clavadas y una marca tallada por cada encargo |
+| Goirntes | Estela de edictos menores | El obelisco de la ley a escala de barrio: avisos grabados en piedra |
+| Nabieus | Muro de los susurros | Muro de nudos y cordeles; cada nudo es un aviso que se lee con la palma, de cerca |
+| Faerus | Árbol de las marcas | Árbol con marcas de garra y de olor que la manada sabe leer |
+
+---
+
+### 2026-09-29 — Economía de supervivencia de facción (almacén, agua, comida y Goirnos)
+**Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-05)**
+
+**Acción de implementación:** añadir
+**Prioridad:** alta (bloquea la economía del 0.2)
+**Dependencias:** los números de la pregunta 5 a Álvaro
+**Archivos destino:**
+- `docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md` (necesidades como motor de la IA de facción)
+- `docs/rpgtarkor/sistemas-reino/construcciones-reino.md` (edificios de almacén y de agua)
+- `docs/rpgtarkor/sistemas-reino/expediciones-poblacion.md` (declive y extinción)
+
+**Notas del aprobador:** es la respuesta de Álvaro a la pregunta 14, coherente con el canon (los
+Manaderos y el Cauce son fuentes de agua de las Llanuras; «cada muerte cuenta»). Parte ya existe en
+el motor: las carencias deciden expediciones y diplomacia (`CR-34`) y la hambruna existe, apagada en
+las facciones hasta tener estos números. Se aprueba el diseño; **los números siguen pendientes**.
+
+---
+
+**Propuesta:**
+
+Una facción (del mundo o el Reino de la jugadora) solo funciona si cubre sus necesidades, y esas
+necesidades son lo que la hace actuar:
+
+1. **Almacén con tope por edificios:** cada edificio de almacén (granero, cisterna, leñera…) suma
+   capacidad a una categoría (comida, bebida, materiales); el Salón o Ayuntamiento da una base.
+2. **Agua obligatoria:** hace falta un pozo, una cisterna o una fuente (en las Llanuras, Los
+   Manaderos y el Cauce). Sin agua, la reserva baja cada día.
+3. **Comida y producción activa:** el consumo por población ya existe; la producción depende de
+   trabajadores asignados de verdad.
+4. **Goirnos como sueldo:** soldados y trabajadores cuestan Goirnos por semana; entran por mercado,
+   comercio y tributo. Sin Goirnos baja la felicidad y después desertan.
+5. **Cascada de declive:** sin agua o comida → menos felicidad → menos producción → gente que muere o
+   se va (vuelve a la población de su raza) → menos soldados → regiones disputables → con población
+   0, la facción **se extingue** para siempre.
+6. **Las carencias deciden:** sin agua, construye o conquista una fuente; sin comida, expediciones o
+   caza; sin Goirnos, comercia o saquea.
+
+**Preguntas abiertas resueltas:** ninguna; quedan los números: capacidad por edificio y categoría,
+agua por persona y día, sueldo por soldado y trabajador, umbrales de deserción y de muerte, y si una
+facción extinta puede refundarse desde la población de su raza.
+
+---
+
+### 2026-09-29 — Ganadería: oficio de ganadero y corrales por especie
+**Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-05)**
+
+**Acción de implementación:** añadir
+**Prioridad:** baja
+**Dependencias:** economía de supervivencia (el corral consume agua y forraje)
+**Archivos destino:**
+- `docs/rpgtarkor/sistemas-reino/construcciones-reino.md` (corrales)
+- `docs/rpgtarkor/sistemas-reino/edificios-de-oficio.md` (oficio ganadero)
+- `docs/rpgtarkor/lore-mundo/regiones/llanuras-del-viento-rojo.md` (el recinto de Múrgol de Karot Veku)
+
+**Notas del aprobador:** respuesta de Álvaro a la pregunta 28. Corregido el nombre: es **Múrgol**,
+con tilde, como en el canon. La pregunta de si los clanes crían ya tiene respuesta en el canon:
+Karot Veku tiene un **recinto de Múrgol** fuera de la empalizada, junto al desolladero y a los
+Corrales del Domador (`llanuras-del-viento-rojo.md`), así que el Ganadero del Clan Serhu cuida ese
+recinto. Se respeta la moratoria del Corredor de Cauce.
+
+---
+
+**Propuesta:**
+
+1. **Oficio `ganadero`**, con variantes por raza y región como el resto (`ganadero-orcos-llanuras`…).
+   Distinto del domador: el domador doma monturas y compañeros; el ganadero cría animales para sacar
+   recursos. El Ganadero del Clan Serhu lo tiene y cuida el recinto de Múrgol de Karot Veku.
+2. **Un corral por especie:** plazas para animales de una especie; cada día produce lo que esa
+   especie da y consume forraje y agua. Sacrificar un animal da su cadáver (cadena del desollador).
+3. **Especies** (fauna domesticable e inofensiva o cautelosa):
+   - **Múrgol:** lana a diario y carne al sacrificar; cierra la cadena de la cuajada de Múrgol.
+   - **Corretolvas:** plumas y carne.
+   - **Canizor:** piel y carne.
+   - **Cuernahoja:** piel, cuerno y carne; más difícil.
+   - **Nunca el Corredor de Cauce** (moratoria: presa sagrada).
+4. **Conseguir los animales:** capturar o domesticar en la zona (ya existe) y criar dentro del corral
+   hasta llenarlo.
+
+**Preguntas abiertas resueltas:**
+1. ¿Los clanes ya tienen corrales? → Sí: el recinto de Múrgol de Karot Veku (canon).
+2. Quedan los números: plazas por corral y producción diaria por especie.
+
+---
+
+### 2026-09-29 + 2026-10-04 — Ciclo vital de los pueblos (madurez, vida, vejez) y población del Reino
+**Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-05)**
+
+**Acción de implementación:** añadir (fusiona dos propuestas: «Población y reproducción del Reino»
+y «Madurez, esperanza de vida y edades de los NPC por raza»)
+**Prioridad:** alta (el motor ya usa estas cifras)
+**Dependencias:** ninguna para la tabla; la población del Reino depende de la vivienda (Fase E del 0.1)
+**Archivos destino:**
+- `docs/rpgtarkor/lore-mundo/razas.md` (madurez y esperanza de vida por raza)
+- `docs/canon-opencode/00-nucleo.md` y `docs/canon-opencode/02-razas.md` (hoy dicen que los orcos
+  viven 40-50 años: pasa a 60)
+- `docs/rpgtarkor/sistemas-reino/expediciones-poblacion.md` (población del Reino)
+- `docs/rpgtarkor/sistemas-reino/construcciones-reino.md` (vivienda y plazas)
+- `docs/rpgtarkor/personajes/npcs.md` (edades, cuando Álvaro las fije)
+
+**Notas del aprobador:** **cifras decididas por la usuaria (2026-10-05)**. Cambian el canon de los
+orcos: hasta ahora vivían 40-50 años (`00-nucleo.md`, `02-razas.md`) y pasan a **60**. Los Faerus,
+con **140 años** de vida, son pocos porque se reproducen poco y despacio para lo que viven. **Pendiente
+de código:** `backend/src/services/cronista/edades.ts` (`CICLO_VITAL`): los orcos y los Nabieus ya
+coinciden; cambian los Faerus (40 → 140 de esperanza) y los Goirntes (madurez 16 → 14). Del Reino, lo
+ya hecho por `CR-13` (herencia, crecer, envejecer, nacimientos de NPC) sirve de base.
+
+---
+
+**Propuesta:**
+
+**Ciclo vital por pueblo** (un año de ficción son 120 días):
+
+| Pueblo | Madurez | Esperanza de vida | Vejez desde | Nota |
+|---|---|---|---|---|
+| Orcos | 10 | 60 | 48 | Madurez canon (cacería ritual, `clanes-orcos.md`); vida decidida por la usuaria |
+| Faerus | 8 | 140 | 112 | Maduran pronto y viven mucho, pero son pocos: tienen pocas crías |
+| Nabieus | 14 | 90 | 72 | Pueblo paciente, de vida larga |
+| Goirntes | 14 | 70 | 56 | |
+
+- Antes de la madurez no trabajan, ni combaten, ni lideran; sus atributos crecen hasta ella.
+- En la vejez pierden fuerza, destreza y constitución con los años y pueden morir de viejos.
+- Edades de los NPC del catálogo: provisionales hasta que Álvaro fije las de los personajes con
+  peso (líderes, Gistera Koh, Hagar Kiugh…). Gorhorn tiene 20 (canon).
+
+**Población del Reino** (estilo Medieval Dynasty):
+
+1. **Llegada de pobladores:** una vez por semana de ficción, con vivienda libre, comida, agua y
+   felicidad mínima, llega un candidato de la población de su raza en la región (se descuenta de
+   ella: Berig tiene 8.000-10.000 almas y cada una cuenta). La jugadora lo acepta o lo rechaza.
+2. **La vivienda limita:** sin plaza no llega nadie ni nace nadie.
+3. **Parejas y crías:** dos súbditos adultos de la misma raza, con vivienda y felicidad alta,
+   pueden tener crías (los pueblos no se mezclan: Goshg y Prisilke «no se casan entre sí»).
+4. **Crecer y envejecer** con la tabla de arriba; también mueren de hambre, sed o combate.
+5. **Salidas:** con la felicidad muy baja, un súbdito se va y vuelve a la población de su raza.
+
+**Preguntas abiertas resueltas:**
+1. Edad adulta y vida de cada pueblo → la tabla de arriba (decidida por la usuaria, 2026-10-05).
+2. Escala de tiempo → sin comprimir (Álvaro, 2026-09-29).
+3. ¿Puede vivir en el Reino un súbdito de otra raza? → Sí (los compañeros capturados ya lo hacen),
+   pero solo tiene crías con alguien de su raza.
 
 ---
 
@@ -1688,6 +1947,35 @@ primera fauna de Berig atribuida a Kroj como creadora y no solo como huella.
 
 ---
 
+### 2026-09-28 — Renombrar el Bulco de Arena (choque con el árbol Bolco)
+**Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-05)**
+
+**Acción de implementación:** reemplazar
+**Prioridad:** media
+**Dependencias:** ninguna
+**Archivos destino:**
+- `docs/rpgtarkor/lore-mundo/regiones/llanuras-del-viento-rojo.md` (ficha del caracol)
+- `docs/rpgtarkor/lore-mundo/flora-fauna.md`
+- `docs/rpgtarkor/items-y-catalogo/items.md`
+
+**Notas del aprobador:** se queda el **Bolco** (árbol de las Marismas, con más peso en el lore) y
+se renombra el caracol de mar de la Playa de Ceniza Blanca. Nombre propuesto con el estilo
+descriptivo de la fauna de las Llanuras (Corretolvas, Cuernahoja): **Rugoconcha**, por su concha
+rugosa. No es el nombre de ningún animal real. **Pendiente de código:** el slug `bulco-de-arena`
+pasa a `rugoconcha` en `backend/src/scripts/worldCatalog.ts` y se quita la exclusión de alias
+`NPC_ALIAS_FUZZY_EXCLUSIONS`.
+
+---
+
+**Propuesta:**
+
+El **Bulco de Arena** pasa a llamarse **Rugoconcha**: caracol de mar de 5-15 cm, de concha rugosa
+entre rojo oscuro y marrón claro (NADANTES, nivel 1, INOFENSIVO, Playa de Ceniza Blanca), marisco que
+se obtiene con la habilidad Buscar. Así deja de confundirse con el **Bolco** (difieren en una letra:
+el motor los mezclaba al escribir y la jugadora los confunde al leer).
+
+---
+
 ## Categoría: Items
 
 *(Categoría añadida: la plantilla no la tenía, pero `propuestas-lore.md` sí.)*
@@ -2081,6 +2369,52 @@ hace fatal.
 
 **Preguntas abiertas resueltas:**
 1. ¿Se canoniza que Yeru conoció a Gorhorn? → Sí: el canon ya dice que pasó un año con los Faerus de las llanuras, y Kegi es su único poblado. No cambia nada más de su historia. *(decidido por Claude, revisable)*
+
+---
+
+### 2026-09-29 — Dessa Kaltrenn, Yerin Slaad y Riko como NPC
+**Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-05)**
+
+**Acción de implementación:** añadir
+**Prioridad:** media
+**Dependencias:** ninguna
+**Archivos destino:**
+- `docs/rpgtarkor/personajes/npcs.md` (las tres fichas de NPC)
+- `docs/rpgtarkor/personajes/personajes.md` (nota: ya no son pregenerados jugables)
+- `docs/canon-opencode/catalogo/facciones-npcs.md` (marcarlos como NPC)
+
+**Notas del aprobador:** se resuelven los huecos con lo que ya fija el lore, sin tocar lo
+reservado: ninguno revela lo que sabe del sabotaje; solo son quienes lo tienen a medias. Los
+atributos salen de su tabla de pregenerado (`personajes.md`), pasada a los 7 atributos reales.
+`capturable` 0 (razas sintientes con historia). **Pendiente de código:** alta en
+`backend/src/scripts/worldCatalog.ts` (plantilla: Kael Dorn o Sella Marn); alias cortos («riko»)
+con cuidado con los fallos de alias difusos.
+
+---
+
+**Propuesta:**
+
+| | Dessa Kaltrenn | Yerin Slaad | Riko |
+|---|---|---|---|
+| Pueblo | Goirnte | Nabieus | Faerus |
+| Dónde está (año 4.010) | **El Cruce de las Ausencias**: el silencio total del Cruce borra su rastro y dentro nadie ataca a nadie de otra raza | **El Refugio sin Nombre**: de ahí salen los mensajeros, y es el único sitio donde un Nabieus no tiene que callar lo que sabe | **El Claro de la Manada**, arrasado: vuelve una y otra vez buscando rastro de los suyos |
+| Facción | Ninguna (desertora; la Concordia la busca) | Keseg Sael | Ninguna («de la Manada Rota») |
+| Clase | Guerrero | Asesino | Cazador |
+| Nivel | 4 | 3 | 4 |
+| Temperamento | Cauteloso | Cauteloso | Cauteloso |
+| Papel | Lore: habla de la noche de la ruptura, sin saber qué vio | Lore: mensajero que entregó una carta sin saber lo que era | Lore: rastreador de las criaturas mutadas del Margen |
+| Atributos (fue, des, con, int, vol, car, mag) | 13, 12, 12, 11, 15, 9, 3 | 6, 11, 6, 10, 14, 6, 4 | 12, 16, 11, 12, 9, 5, 3 |
+
+Ninguno es reclutable de momento: su historia gira en torno a lo que vieron, y eso no se resuelve
+antes de tiempo.
+
+**Preguntas abiertas resueltas:**
+1. ¿Dónde están al arrancar? → La tabla: los tres en el Margen, cada uno en un sitio que su propia
+   historia ya explica.
+2. ¿Qué papel tienen? → NPC de lore, sin misión propia todavía.
+3. ¿Nivel, clase y facción? → La tabla.
+4. ¿Cuándo puede encontrarlos Gorhorn? → Cuando llegue al Margen; nada de lo que dicen resuelve lo
+   reservado.
 
 ---
 
