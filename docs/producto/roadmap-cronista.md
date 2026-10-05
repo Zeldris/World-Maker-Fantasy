@@ -1452,7 +1452,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   alta de Dessa, Yerin y Riko como NPC (cada cosa según su entrada aprobada). **S**
 - **Fase G del `0.2` (ronda de diseño aceptada por la usuaria, 2026-10-05, contrastada con D&D 5e,
   Baldur's Gate 3, X4 y Bellwright; términos en `GLOSSARY.md`):**
-  - **CR-44** Moral y retirada de los NPC en combate. **M** Todo NPC con mente tiene moral (la fauna
+  - 🚧 **CR-44** Moral y retirada de los NPC en combate. **M** Pasos: 44a reglas puras (`moralCombate.ts`) ✅ · 44b combate 1v1 · 44c combate de varios. Todo NPC con mente tiene moral (la fauna
     sigue con su temperamento). Tirada de moral (Voluntad, CD 10; desventaja si la jugadora va
     claramente ganando; en un grupo con líder la hace el líder por todos) la primera vez que su
     bando queda a la mitad de efectivos o él cae a GRAVE, y al caer su capitán. Si falla, intenta
