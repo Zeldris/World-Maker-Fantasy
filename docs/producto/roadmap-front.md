@@ -238,7 +238,7 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
   narrador.
 - ~~**CFG-34 · Estilo del mundo**~~ ✅ 2026-10-05 (ya lo hizo `CR-12`: «Ritmo del mundo» en Ajustes de la partida; cerrada en la ronda 1 de la Fase E) (Cronista D-7): *Tranquilo · Equilibrado · Caótico* — cuántos sucesos
   genera el narrador de fondo (presupuesto de tensión). Por defecto *Equilibrado*. **S**
-- **CFG-35 · Avisos de sucesos**: a partir de qué importancia sale una notificación (`HUD-6`):
+- ~~**CFG-35 · Avisos de sucesos**~~ ✅ 2026-10-05 (ajuste `avisosSucesos` en «Interfaz y texto»; `debeAvisar` en `lib/noticias.ts`; cada noticia de un suceso lleva su nivel; una propuesta al Reino avisa siempre salvo con «ninguno»): a partir de qué importancia sale una notificación (`HUD-6`):
   todos · importantes (≥ 5, por defecto) · solo graves (≥ 8) · ninguno. **S** (Por defecto ≥ 5 confirmado
   en `CR-18` Q7, 2026-10-05.)
 - **CFG-36 · Crónica**: escribir crónica diaria / semanal / solo al final; mostrar "por qué pasó"
@@ -691,7 +691,7 @@ Contenedor común: `PanelDrawer` (cajón inferior, `max-w-4xl`, 85 vh).
   de tranquilidad ("el narrador local está pensando…"). **S**
 - **NAR-8 · Banners de entidad** (`entityBanner`): fundido y leve zoom al cargar, en lugar de aparecer
   de golpe (H10). **S**
-- **NAR-9 · Rumores en "El mundo"** (Cronista § 9): entradas con estilo propio (pergamino, "Se dice
+- ~~**NAR-9 · Rumores en "El mundo"**~~ ✅ 2026-10-05 (`NoticiaMundo`: un rumor en estilo pergamino con «Desde <región> · pasó el día N» y «Ver en Leyendas»; el texto sigue siendo «Se dice que…», Q8) (Cronista § 9): entradas con estilo propio (pergamino, "Se dice
   en las Llanuras que…"), región y antigüedad del rumor, enlace a Leyendas. **S**
 - **NAR-10 · Reacciones de compañeros** en el registro de personaje (Cronista § 8.2): línea breve con
   el retrato y el valor afectado, como el aviso de aprobación de Baldur's Gate 3. **S**

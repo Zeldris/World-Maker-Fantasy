@@ -9,6 +9,9 @@ import { diaDeFiccion, ICONO_CATEGORIA } from '../lib/noticias'
 //
 // CR-34 (34e, Q15): una propuesta de tratado o alianza de una facción al Reino lleva Aceptar y
 // Rechazar mientras está pendiente; después, la respuesta.
+//
+// NAR-9 (Fase E, Q8): un rumor sin confirmar va en estilo pergamino, con la región de donde viene y
+// el día en que pasó en una etiqueta aparte, y un enlace a su entrada de Leyendas.
 
 export type ResponderPropuesta = (propuestaId: string, acepta: boolean) => Promise<RespuestaPropuesta>
 
@@ -57,6 +60,12 @@ function Linea({ text, noticia, texto }: { text: string; noticia: NoticiaMeta | 
         </span>
       )}
       {texto(text)}
+      {noticia?.rumor && (
+        <span className="ml-1.5 inline-flex items-center gap-1 rounded-full border border-wood-600/50 bg-wood-800/40 px-2 py-0.5 text-2xs not-italic text-wood-300">
+          <span aria-hidden="true">📜</span>
+          {noticia.rumor.region ? `Desde ${noticia.rumor.region} · ` : ''}pasó el día {diaDeFiccion(noticia.rumor.pasoEn)}
+        </span>
+      )}
       {noticia?.oportunidad && (
         <span className="ml-1.5 inline-flex items-center gap-1 rounded-full border border-accent-600/50 bg-accent-500/10 px-2 py-0.5 text-2xs text-accent-200">
           <span aria-hidden="true">📍</span>
@@ -67,7 +76,14 @@ function Linea({ text, noticia, texto }: { text: string; noticia: NoticiaMeta | 
   )
 }
 
-export function NoticiaMundo({ text, noticia, texto, onResponderPropuesta }: { text: string; noticia: NoticiaMeta; texto: (t: string) => ReactNode; onResponderPropuesta?: ResponderPropuesta }) {
+export function NoticiaMundo({ text, noticia, texto, onResponderPropuesta, onVerLeyendas }: {
+  text: string
+  noticia: NoticiaMeta
+  texto: (t: string) => ReactNode
+  onResponderPropuesta?: ResponderPropuesta
+  /// NAR-9: abre el panel de Leyendas.
+  onVerLeyendas?: () => void
+}) {
   if (noticia.resumen) {
     const [cabecera, ...lineas] = text.split('\n')
     return (
@@ -86,9 +102,14 @@ export function NoticiaMundo({ text, noticia, texto, onResponderPropuesta }: { t
     )
   }
   return (
-    <p className="texto-narracion whitespace-pre-line">
+    <p className={`texto-narracion whitespace-pre-line ${noticia.rumor ? 'rounded border-l-2 border-wood-600/60 bg-wood-900/30 px-2 py-1 italic' : ''}`}>
       <Linea text={text} noticia={noticia} texto={texto} />
       {noticia.propuesta && <Propuesta propuesta={noticia.propuesta} onResponder={onResponderPropuesta} />}
+      {noticia.sucesoId && onVerLeyendas && (
+        <button type="button" onClick={onVerLeyendas} className="ml-1.5 text-2xs not-italic text-accent2-300 underline-offset-2 hover:underline">
+          Ver en Leyendas
+        </button>
+      )}
     </p>
   )
 }

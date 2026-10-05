@@ -12,6 +12,7 @@ import { REGION_OWNING_FACTIONS } from '../reputation.js';
 import { cuentaComoHecho, llegaSola, npcSabe, regionDeSlug, type SucesoConAlcance, type Via } from './conocimiento.js';
 import { npcSinMorirEnPartida } from '../mundoPartida.js';
 import { TABLON_RECIPE_KEY } from './tablones.js';
+import { nivelDeImportancia } from './leyendas.js';
 import { aliadasDelReino, categoriaDeFamilia, comoRumor, enMitadDeFrase, escribir, type MetaNoticia } from './noticias.js';
 
 type Tx = Prisma.TransactionClient;
@@ -73,10 +74,11 @@ export async function alcanceDeSucesos(tx: Tx, saveId: string, sucesos: SucesoBa
 
 /// Texto y metadatos de la noticia de un suceso: la que guardó su emisor o la frase del suceso.
 async function textoDeNoticia(tx: Tx, sucesoId: string): Promise<{ texto: string; meta: MetaNoticia; pasoEn: number }> {
-  const s = await tx.suceso.findUniqueOrThrow({ where: { id: sucesoId }, select: { texto: true, familia: true, noticia: true, fictionalMinutes: true } });
+  const s = await tx.suceso.findUniqueOrThrow({ where: { id: sucesoId }, select: { texto: true, familia: true, noticia: true, fictionalMinutes: true, importancia: true } });
   const emisor = s.noticia as NoticiaDeSuceso | null;
   const categoria = categoriaDeFamilia(s.familia);
-  return { texto: emisor?.texto ?? s.texto, meta: { ...(categoria ? { categoria } : {}), ...(emisor?.meta ?? {}) }, pasoEn: s.fictionalMinutes };
+  const meta: MetaNoticia = { ...(categoria ? { categoria } : {}), ...(emisor?.meta ?? {}), nivel: nivelDeImportancia(s.importancia) };
+  return { texto: emisor?.texto ?? s.texto, meta, pasoEn: s.fictionalMinutes };
 }
 
 /// Apunta que el personaje sabe un suceso. Devuelve NUEVO, CONFIRMADO (era rumor y ya no) o null

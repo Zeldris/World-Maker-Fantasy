@@ -39,6 +39,8 @@ export interface MetaNoticia {
   resumen?: true;
   /// CR-18: suceso del que es noticia (enlace a Leyendas).
   sucesoId?: string;
+  /// CFG-35: nivel del suceso (avisos emergentes según el umbral de la jugadora).
+  nivel?: 'NORMAL' | 'DESTACADO' | 'GRAVE';
   /// CR-18 (NAR-9): rumor sin confirmar; región donde pasó y minuto de ficción en que pasó.
   rumor?: { region: string | null; pasoEn: number };
   /// En un resumen: los metadatos de cada línea (en orden; null si la línea no tenía).

@@ -34,6 +34,7 @@ import { PanelDrawer } from '../components/PanelDrawer'
 import { MapaPanel } from '../components/panels/MapaPanel'
 import { DiarioPanel } from '../components/panels/DiarioPanel'
 import { LeyendasPanel } from '../components/panels/LeyendasPanel'
+import { debeAvisar } from '../lib/noticias'
 import { InventarioPanel } from '../components/panels/InventarioPanel'
 import { EnciclopediaPanel } from '../components/panels/EnciclopediaPanel'
 import { SLOT_LABEL, isCompatibleWithSlot, isConsumibleSlot } from '../lib/equipSlots'
@@ -616,13 +617,17 @@ export function GameView() {
   // HUD-6 (hito 0.2) — notificaciones (toasts): misiones, reputación, oficio, objetos nuevos y
   // noticias del mundo (lib/notificaciones.ts).
   const { notificaciones, notificar, descartar: descartarNotificacion } = useNotificaciones()
+  const { ajustes: ajustesAvisos } = useAjustes()
   useNoticiasMundo({
     saveId,
     worldLog,
     setWorldLog,
     characterThinking,
+    // CFG-35: solo lo que pasa del umbral elegido en Ajustes (por defecto, lo importante).
     onNuevas: (entradas) =>
-      entradas.forEach((e) => notificar({ tipo: 'accent2', icono: '📜', texto: e.text.length > 90 ? `${e.text.slice(0, 88)}…` : e.text })),
+      entradas
+        .filter((e) => debeAvisar(e.noticia, ajustesAvisos.avisosSucesos))
+        .forEach((e) => notificar({ tipo: 'accent2', icono: '📜', texto: e.text.length > 90 ? `${e.text.slice(0, 88)}…` : e.text })),
   })
   // Avisos de las entradas nuevas del registro llegadas en vivo (no las de la carga de la partida).
   const procesadasRef = useRef(0)
@@ -1804,6 +1809,7 @@ export function GameView() {
               emptyHint={worldLogView === 'world' ? 'El mundo todavía no ha mostrado sus cartas.' : 'Todavía no ha pasado nada en tu reino.'}
               // CR-34 (34e): Aceptar/Rechazar la propuesta de una facción al Reino.
               onResponderPropuesta={saveId ? (propuestaId: string, acepta: boolean) => responderPropuesta(saveId, propuestaId, acepta).then((r) => r.respuesta) : undefined}
+              onVerLeyendas={() => setActivePanel('leyendas')}
               onCollapse={() => setCollapsedSide('world')}
               collapseIcon="›"
               // Alternar Mundo/Reino (2026-08-17) — solo tiene sentido ofrecerlo una vez hay reino

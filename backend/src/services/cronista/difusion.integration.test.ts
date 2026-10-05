@@ -52,6 +52,8 @@ describe('difusión de sucesos al personaje (CR-18 18b)', () => {
     const meta = entrada.noticia as MetaNoticia;
     expect(meta.sucesoId).toBe(id);
     expect(meta.rumor?.region).toBe('Ciénaga Troncal');
+    // CFG-35: la noticia lleva el nivel del suceso (alianza, importancia 7).
+    expect(meta.nivel).toBe('DESTACADO');
     const c = await prisma.conocimiento.findUniqueOrThrow({ where: { saveId_sucesoId: { saveId, sucesoId: id } } });
     expect(c).toMatchObject({ via: 'OIDAS', confirmado: false, logEntryId: entrada.id });
     // No se repite.
