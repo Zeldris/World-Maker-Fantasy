@@ -572,6 +572,7 @@ export function CombatPanel({
                       <span className="truncate font-medium">{combatDisplayNameFor(npc)}</span>
                       <span className="shrink-0 text-2xs text-wood-500">
                         {CONDICION_LABEL[npc.condicion]}
+                        {npc.huido ? ' · huyó' : ''}
                         {npc.yaSaqueado ? ' · saqueado' : ''}
                       </span>
                     </li>

@@ -106,6 +106,8 @@ export function npcInSceneToCombatDisplay(npc: NpcInSceneInfo): CombatNpcDisplay
     instanceNumber: npc.instanceNumber,
     capturable: npc.capturable,
     targetedForKill: npc.targetedForKill,
+    // CR-44: quien huye queda resuelto (como quien se deja ir), sin nada que saquear.
+    ...(npc.huido ? { huido: true, dismissed: true } : {}),
   }
 }
 

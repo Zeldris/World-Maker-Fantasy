@@ -22,6 +22,8 @@ export interface DatosSuceso {
   MUERTE_CAUSADA: { personaje: string; victima: string };
   PERDON_CONCEDIDO: { personaje: string; perdonado: string };
   AYUDA_PRESTADA: { personaje: string; a: string };
+  /// CR-44: un NPC pierde el valor y huye del combate.
+  HUIDA_DE_NPC: { personaje: string; huido: string };
   CAPTURA: { personaje: string; capturado: string };
   PROMESA: { personaje: string; a: string; promesa: string };
   PROMESA_CUMPLIDA: { personaje: string; a: string; promesa: string };
@@ -128,6 +130,7 @@ export const CATALOGO_SUCESOS: Catalogo = {
   MUERTE_CAUSADA: { familia: 'JUGADOR', importanciaBase: 5, plantilla: (d) => `${d.personaje} da muerte a ${d.victima}.` },
   PERDON_CONCEDIDO: { familia: 'JUGADOR', importanciaBase: 4, plantilla: (d) => `${d.personaje} perdona la vida a ${d.perdonado}.` },
   AYUDA_PRESTADA: { familia: 'JUGADOR', importanciaBase: 3, plantilla: (d) => `${d.personaje} atiende las heridas de ${d.a}.` },
+  HUIDA_DE_NPC: { familia: 'JUGADOR', importanciaBase: 3, plantilla: (d) => `${d.huido} huye de ${d.personaje}.` },
   CAPTURA: { familia: 'JUGADOR', importanciaBase: 3, plantilla: (d) => `${d.personaje} captura a ${d.capturado}.` },
   PROMESA: { familia: 'JUGADOR', importanciaBase: 5, plantilla: (d) => `${d.personaje} promete a ${d.a}: ${d.promesa}.` },
   PROMESA_CUMPLIDA: { familia: 'JUGADOR', importanciaBase: 5, plantilla: (d) => `${d.personaje} cumple lo prometido a ${d.a}: ${d.promesa}.` },

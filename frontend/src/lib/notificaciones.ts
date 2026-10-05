@@ -12,6 +12,8 @@ export interface NuevaNotificacion {
   tipo: TipoNotificacion
   icono: string
   texto: string
+  /// UX-36: un enlace del aviso (p. ej. «Ver en Leyendas» desde un suceso).
+  enlace?: { label: string; alPulsar: () => void }
 }
 
 export interface Notificacion extends NuevaNotificacion {

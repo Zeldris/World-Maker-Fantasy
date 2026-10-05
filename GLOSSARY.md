@@ -144,3 +144,31 @@ _Evitar_: misión generada, misión de la IA
 **Tablón de avisos**:
 Edificio de una ciudad donde una facción cuelga sus misiones; cada pueblo le da su propio nombre.
 _Evitar_: tablón de misiones, tablón de encargos
+
+## Combate y comercio (Fase G del 0.2)
+
+**Moral**:
+Tirada de Voluntad con la que un NPC con mente decide si sigue peleando; la hace el líder por su grupo.
+_Evitar_: miedo, valor
+
+**Retirada**:
+Huida de un NPC del combate tras fallar la moral: si escapa, sale de la zona vivo y vuelve a su hogar.
+_Evitar_: huida (reservada a la del personaje)
+
+**Desbandada**:
+Retirada sin orden de un grupo, cada uno por su lado; la provoca la caída o la huida de su capitán.
+
+**Capitán**:
+NPC de Inteligencia 20 o más que manda a los de su bando con menos Inteligencia en un combate.
+_Evitar_: líder (ese es el de una facción)
+
+**Comercio de volumen**:
+Compraventa de recursos entre el Reino y una facción con tratado o alianza, con la riqueza del Reino y unidad a unidad.
+_Evitar_: mercado (ese es el del personaje con sus Goirnos)
+
+**Orden permanente**:
+Regla de compra o venta que la jugadora deja en el Mercado del Reino y que sus caravanas cumplen solas.
+
+**Caravana**:
+Grupo que lleva mercancía entre dos lugares por días, visible en el mapa según lo que sabe el personaje y expuesto a asaltos.
+

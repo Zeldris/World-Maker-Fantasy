@@ -245,3 +245,60 @@ describe('ZonaPanel — ZON-5, encuentro en el mapa', () => {
     expect(moverEnZona).toHaveBeenCalledTimes(2)
   })
 })
+
+/// Z-D (hito 0.2) — ZON-50/33/53: amenaza, ruta con riesgo y patrulla de lo ya descubierto.
+describe('ZonaPanel — Z-D, sin sorpresas', () => {
+  beforeEach(() => {
+    const proto = SVGSVGElement.prototype as unknown as Record<string, unknown>
+    proto.createSVGPoint = () => ({ x: 0, y: 0, matrixTransform(this: { x: number; y: number }) { return { x: this.x, y: this.y } } })
+    proto.getScreenCTM = () => ({ inverse: () => ({}) })
+  })
+  afterEach(() => {
+    cleanup()
+    vi.clearAllMocks()
+  })
+
+  it('un hostil conocido lleva su radio y su estado; la ruta hacia él sale en riesgo; su patrulla, al pasar el ratón', async () => {
+    const hostil = { ...zona.puntos[0]!, x: 475, y: 325, hostil: true, ruta: [{ x: 475, y: 325 }, { x: 575, y: 325 }] }
+    vi.mocked(getZona).mockResolvedValue({ ...zona, puntos: [hostil] } as never)
+    const { container, getByTestId, queryByTestId } = render(<ZonaPanel saveId="s1" />)
+    await act(async () => {})
+    // Personaje en (7, 6) y hostil en (9, 6): a 2 celdas, dentro del radio.
+    expect(getByTestId('radio-amenaza').textContent).toBe('¡te persigue!')
+    const svg = [...container.querySelectorAll('svg')].find((e) => e.getAttribute('viewBox') === '0 0 800 600')!
+    fireEvent.mouseMove(svg, { clientX: 425, clientY: 325 })
+    expect(queryByTestId('ruta-en-riesgo')).not.toBeNull()
+    expect(queryByTestId('ruta-patrulla')).toBeNull()
+    const ficha = [...container.querySelectorAll('g.cursor-pointer')].find((g) => g.querySelector('title')?.textContent?.startsWith('Aullador rojo'))!
+    fireEvent.mouseEnter(ficha)
+    expect(queryByTestId('ruta-patrulla')).not.toBeNull()
+  })
+})
+
+
+/// Z-D (hito 0.2) — ZON-16/ZON-58: estados de las fichas (sin descubrir, agotado, con candado).
+describe('ZonaPanel — Z-D, estados de las fichas', () => {
+  afterEach(() => {
+    cleanup()
+    vi.clearAllMocks()
+  })
+
+  it('lo no descubierto sale como silueta con «?»; un recurso agotado, con ⏳; uno que pide nivel, con candado', async () => {
+    vi.mocked(getZona).mockResolvedValue({
+      ...zona,
+      puntos: [
+        { ...zona.puntos[0]!, nombre: '???', descubierto: false },
+        { id: 'r1', x: 525, y: 125, tipo: 'RECURSO', targetSlug: 'yerreo', nombre: 'Yerreo', cantidad: 1, color: 'INERTE', descubierto: true, agotado: true },
+        { id: 'r2', x: 625, y: 125, tipo: 'RECURSO', targetSlug: 'roca-dura', nombre: 'Roca dura', cantidad: 1, color: 'INERTE', descubierto: true, nivelRequerido: 4 },
+      ],
+    } as never)
+    const { container, getByTestId, getAllByTestId } = render(<ZonaPanel saveId="s1" />)
+    await act(async () => {})
+    expect(getAllByTestId('ficha-desconocida').length).toBeGreaterThan(0)
+    expect(getByTestId('ficha-agotada')).toBeTruthy()
+    expect(getByTestId('ficha-candado').textContent).toBe('🔒4')
+    const roca = [...container.querySelectorAll('g.cursor-pointer')].find((g) => g.querySelector('title')?.textContent?.startsWith('Roca dura'))!
+    fireEvent.mouseEnter(roca)
+    expect(getByTestId('tarjeta-ficha').textContent).toContain('pide nivel 4 de oficio')
+  })
+})

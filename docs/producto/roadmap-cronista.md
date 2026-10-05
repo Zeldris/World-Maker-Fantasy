@@ -1445,11 +1445,54 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     fallar y reputación ✅ · 40f oferta pendiente única (ADR), «¿Tienes trabajo?» del NPC y el narrador
     deja de crear misiones (40f-1 ✅; 40f-2 ❌ no procede: Q21, `docs/adr/0001-ofertas-pendientes-sin-fusionar.md`)
     · 40g interfaz del tablón y del diario ✅.
-- **CR-43** Llevar al código el lore aprobado el 2026-10-05 (`docs/borradores-opencode/propuestas-aprobadas.md`,
+- ~~**CR-43**~~ ✅ 2026-10-05 (ciclo vital, nombres de escisión con la goirnte «Los del Edicto/Estela/Tributo/Vresk», disposiciones sembradas y llevadas a las partidas ya creadas con la migración `20261005071000_disposicion_inicial`, nombre del tablón por pueblo —el del Reino, el del pueblo de la jugadora—, Rugoconcha renombrada en catálogo y partidas con `20261005070000_rugoconcha`, y Dessa, Yerin y Riko en el catálogo. Queda: el número de ciudad en «Los del Vresk», que el motor aún no sabe de qué ciudad es el líder) Llevar al código el lore aprobado el 2026-10-05 (`docs/borradores-opencode/propuestas-aprobadas.md`,
   PR #17): ciclo vital en `edades.ts` (Faerus 8/140, Goirntes 14/70, orcos 10/60, Nabieus 14/90),
   `nombresFaccion.ts` (sin Vhurne, Nur ni Kegi; escisión goirnte «Los del…»), disposiciones de las
   facciones (Helsig y Goshg mercantiles, Feg Tusha recelosa), el Bulco de Arena pasa a Rugoconcha y
   alta de Dessa, Yerin y Riko como NPC (cada cosa según su entrada aprobada). **S**
+- **Fase G del `0.2` (ronda de diseño aceptada por la usuaria, 2026-10-05, contrastada con D&D 5e,
+  Baldur's Gate 3, X4 y Bellwright; términos en `GLOSSARY.md`):**
+  - 🚧 **CR-44** Moral y retirada de los NPC en combate. **M** Pasos: 44a reglas puras (`moralCombate.ts`) ✅ · 44b combate 1v1 ✅ (`huidaNpc.ts`; un grupo cuenta entero; tampoco huye el objetivo de una misión activa, para no dejarla imposible) · 44c combate de varios (espera a `CR-49`). Todo NPC con mente tiene moral (la fauna
+    sigue con su temperamento). Tirada de moral (Voluntad, CD 10; desventaja si la jugadora va
+    claramente ganando; en un grupo con líder la hace el líder por todos) la primera vez que su
+    bando queda a la mitad de efectivos o él cae a GRAVE, y al caer su capitán. Si falla, intenta
+    escapar con la tirada de Destreza de la huida del personaje; si no escapa, pierde el turno.
+    Según la Inteligencia: < 12 desbandada (cada uno por su lado), 12-19 retirada en orden. El que
+    escapa sale del combate y de la zona, vivo, vuelve a su hogar, sin botín, y queda el suceso «X
+    huyó de ti» (Leyendas, reputación; puede volver por `CR-11`). Un líder de facción no huye si con
+    él cae su facción.
+  - **CR-49** Grupos de personas en combate de varios (ronda 2 de la Fase G, aceptada el
+    2026-10-05; hoy solo la caza abre combates de varios y siempre contra fauna). **L** Va antes
+    de 44c y `CR-45`, que lo necesitan. Bandas itinerantes de 2-3 renegados de su pueblo (goirnte
+    renegado, faerus errático, nabieus enloquecido) que patrullan su región con las patrullas de
+    `ZON-53` (como las de Bellwright). Al atacar a una persona se unen los de su facción cercanos
+    (hasta 3, a pocas casillas) y, en el interior de una ciudad, la guardia (como en BG3). Uno de
+    la banda es cabecilla (algo más de nivel e Inteligencia, como en Medieval Dynasty) y tira la
+    moral por todos; si cae, los demás tiran con desventaja. Atacar a cualquiera de la banda abre
+    el combate de varios con toda (texto, tarjeta de encuentro o «Combatir»), con el panel de la
+    caza en grupo; después, resumen y saqueo de cada caído como en la caza (sin despellejar); el
+    que huye no deja nada. Campamentos de bandidos con cabecilla y refuerzos: tarea aparte en el
+    `0.3` (`CR-50`).
+  - **CR-50** Campamentos de bandidos con cabecilla y refuerzos (Bellwright, Medieval Dynasty). **M**
+    Va con `CR-37` en el `0.3`.
+  - **CR-45** Capitán y ataques concentrados. **M** Inteligencia ≥ 20: concentra ataques y manda a
+    los de su bando con menos Inteligencia (atacan a su objetivo). Objetivo = el más vulnerable (poca
+    vida y poca defensa), no siempre el mismo (en BG3 cansa). Pasada previa por el bando al empezar
+    la ronda. Si el capitán cae o huye, sus seguidores tiran moral al momento con desventaja
+    (desbandada). Se ve: línea en el registro («Ulkha ordena caer sobre Gorhorn») y marca en el
+    objetivo.
+  - **CR-46** Expediciones y caravanas en el mapa de Berig. **S** Se ven las del Reino, las de las
+    facciones con tratado o alianza y las que pasan por la región donde está el personaje (como en
+    X4: aliado = ves sus órdenes; lo demás, solo lo que tienes cerca). Icono de la facción que
+    avanza por la ruta según los días; al pulsarlo, facción, a qué va y día de vuelta.
+  - **CR-47** Comercio de volumen Reino↔facción. **L** (fórmula decidida por la usuaria; la revisa
+    Álvaro después). Edificio Mercado con órdenes permanentes («compra hierro si baja de 20»,
+    «vende madera si pasa de 80»); caravanas del Reino que viajan días a las facciones con tratado o
+    alianza, se ven en el mapa (`CR-46`) y se pueden asaltar. Precio: `precioDinamico` unidad a
+    unidad (cada unidad vacía el almacén y encarece la siguiente, como X4; sin descuento por
+    volumen). Las caravanas del narrador de fondo que pasan cerca son ocasión de comerciar sin
+    desplazarse (Q14 de `CR-12`).
+  - **CR-48** Pasada de rendimiento del avance diario con el motor completo. **S**
 - **Hecho cuando:** `cronista:simular 60` produce caídas, escisiones, tormentas con daños, guerras
   y nacimientos coherentes; perdonar a un NPC lo hace volver en otra región.
 

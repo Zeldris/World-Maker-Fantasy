@@ -2417,13 +2417,15 @@ export const fauna: NpcInput[] = [
   },
 
   {
-    slug: 'bulco-de-arena',
-    name: 'Bulco de Arena',
+    // CR-43: antes «Bulco de Arena» (se confundía con el Bolco, hoy Holdo); renombrado en
+    // partidas existentes por la migración `20261005070000_rugoconcha`.
+    slug: 'rugoconcha',
+    name: 'Rugoconcha',
     kind: 'PLANTILLA',
-    aliases: ['bulco de arena', 'bulco'],
+    aliases: ['rugoconcha', 'caracol de mar'],
     faction: null,
     role: 'Caracol de mar de la costa de Playa de Ceniza Blanca',
-    articulo: 'el',
+    articulo: 'la',
     level: 1,
     levelMax: 1,
     attributes: { fuerza: 1, destreza: 1, constitucion: 2, inteligencia: 1, voluntad: 1, carisma: 1, magia: 0 },
@@ -4319,6 +4321,87 @@ export const npcs: NpcInput[] = [
     // (poco) con voluntad frágil, no con la cabeza ni el físico.
     atributoResistencia: 'voluntad',
     capturablePct: 40,
+    loadout: [],
+  },
+  // CR-43 (aprobado 2026-10-05, `propuestas-aprobadas.md` § Dessa Kaltrenn, Yerin Slaad y Riko como
+  // NPC): los tres antiguos pregenerados, ahora NPC de lore en el Margen. Ninguno revela lo que sabe
+  // del sabotaje; solo lo tienen a medias. Atributos de su tabla de pregenerado (`personajes.md`).
+  // No reclutables ni capturables: su historia gira en torno a lo que vieron.
+  {
+    slug: 'dessa-kaltrenn',
+    name: 'Dessa Kaltrenn',
+    kind: 'PRINCIPAL',
+    nucleoJugable: false,
+    aliases: ['dessa kaltrenn', 'dessa', 'kaltrenn'],
+    faction: null,
+    genero: 'F',
+    articulo: 'la',
+    role: 'Desertora de la guardia menor de Berig',
+    level: 4,
+    attributes: { fuerza: 13, destreza: 12, constitucion: 12, inteligencia: 11, voluntad: 15, carisma: 9, magia: 3 },
+    bio: 'Goirnte, antigua soldado rasa de la guardia menor de Berig. Escoltó el sello de contención hasta la isla la noche en que se rompió y desertó esa misma noche; la Concordia lleva su descripción en cada puesto fronterizo. Se esconde en El Cruce de las Ausencias, donde el silencio borra su rastro y nadie ataca a nadie de otra raza. Habla de aquella noche, pero no sabe decir qué vio.',
+    personality: 'Habla en enumeraciones y órdenes ("primero... después... y solo entonces...") y se corrige a media frase cuando se oye sonar "a la guardia". Miente mal: en vez de mentir, cambia de tema con brusquedad.',
+    homeLocationSlug: 'cruce-de-las-ausencias',
+    raza: 'goirntes',
+    clase: 'GUERRERO',
+    especializacion: 'GUARDIAN',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 10,
+    reclutablePct: 0,
+    atributoResistencia: 'voluntad',
+    capturablePct: 0,
+    loadout: [],
+  },
+
+  {
+    slug: 'yerin-slaad',
+    name: 'Yerin Slaad',
+    kind: 'PRINCIPAL',
+    nucleoJugable: false,
+    aliases: ['yerin slaad', 'yerin'],
+    faction: 'Keseg Sael',
+    genero: 'M',
+    articulo: 'el',
+    role: 'Mensajero de Keseg Sael',
+    level: 3,
+    attributes: { fuerza: 6, destreza: 11, constitucion: 6, inteligencia: 10, voluntad: 14, carisma: 6, magia: 4 },
+    bio: 'Nabieus del Margen, mensajero de bajo rango que entregaba correspondencia sellada sin hacer preguntas. Una semana antes de la ruptura entregó una carta cuyo contenido no conocía, y la culpa no lo deja. Vive en El Refugio sin Nombre, de donde salen los mensajeros: el único sitio donde un Nabieus no tiene que callar lo que sabe.',
+    personality: 'Voz apenas audible que obliga a inclinarse hacia él; las palabras justas y ni una más, y muchas respuestas en silencios.',
+    homeLocationSlug: 'refugio-sin-nombre',
+    raza: 'nabieus',
+    clase: 'ASESINO',
+    especializacion: 'MAESTRO_ASESINO',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 0,
+    reclutablePct: 0,
+    atributoResistencia: 'voluntad',
+    capturablePct: 0,
+    loadout: [],
+  },
+
+  {
+    slug: 'riko',
+    name: 'Riko',
+    kind: 'PRINCIPAL',
+    nucleoJugable: false,
+    // «riko» tiene 4 letras: la tolerancia a erratas solo mira palabras de 5+, así que no choca.
+    aliases: ['riko', 'riko de la manada rota'],
+    faction: null,
+    genero: 'M',
+    role: 'Rastreador Faerus de la Manada Rota',
+    level: 4,
+    attributes: { fuerza: 12, destreza: 16, constitucion: 11, inteligencia: 12, voluntad: 9, carisma: 5, magia: 3 },
+    bio: 'Cazador Faerus de las fronteras de Berig. Su manada no vivía en Hashma ni en Kegi: se reunía en El Claro de la Manada, que encontró arrasado por la magia salvaje al volver de una cacería larga. Vuelve al Claro una y otra vez buscando rastro de los suyos, y conoce como nadie el rastro de las criaturas mutadas del Margen.',
+    personality: 'Frases cortas, en presente ("Huele mal. Nos vamos."); describe a la gente por su olor antes que por su aspecto. Cuando piensa, gruñe bajo, casi inaudible.',
+    homeLocationSlug: 'claro-de-la-manada',
+    raza: 'faerus',
+    clase: 'CAZADOR',
+    especializacion: 'INSTINTIVO',
+    temperamento: 'CAUTELOSO',
+    comerciablePct: 10,
+    reclutablePct: 0,
+    atributoResistencia: 'destreza',
+    capturablePct: 0,
     loadout: [],
   },
 
@@ -7154,13 +7237,13 @@ export const items: ItemCatalogInput[] = [
   },
 
   {
-    slug: 'bulco-arena-marisco',
-    name: 'Bulco de Arena',
-    aliases: ['bulco de arena', 'marisco de bulco'],
+    slug: 'rugoconcha-marisco',
+    name: 'Rugoconcha',
+    aliases: ['rugoconcha', 'marisco de rugoconcha'],
     category: 'alimento',
     tipo: 'RECURSO',
     valorGoirnos: 2,
-    description: 'Interior blando y viscoso del caracol Bulco de Arena, mucho sabor a mar — marisco de la costa de Playa de Ceniza Blanca.',
+    description: 'Interior blando y viscoso de la Rugoconcha, mucho sabor a mar — marisco de la costa de Playa de Ceniza Blanca.',
     dimensiones: 'Pieza de 5 a 15 cm.',
     tier: 1,
   },
@@ -8820,6 +8903,8 @@ export const items: ItemCatalogInput[] = [
 export interface FactionInput {
   slug: string;
   name: string;
+  /// CR-34 / CR-43: inclinación al decidir (tabla aprobada de `propuestas-aprobadas.md`, A-04/A-05).
+  disposicion: 'BELICOSA' | 'MERCANTIL' | 'RECELOSA' | 'NEUTRAL';
   /// Uno de BERIG_RAZAS (berigLore.ts: 'goirntes'|'orcos'|'nabieus'|'faerus') — texto libre, sin
   /// FK, mismo criterio que Npc.raza.
   raza: string;
@@ -8835,6 +8920,7 @@ export const factions: FactionInput[] = [
   {
     slug: 'clan-serhu',
     name: 'Clan Serhu',
+    disposicion: 'BELICOSA',
     raza: 'orcos',
     description:
       'Clan orco de las Llanuras del Viento Rojo, asentado en el Campamento del Clan Serhu junto al Pozo de Cauce Viejo — empalizada de estacas afiladas rodeando chozas de techo cónico, con vigías apostados en las torres de la entrada. Fundado generaciones atrás por el usurpador Ketg tras traicionar a su propia Terk\'ikar, Nietka, con ayuda Goirnte — desde entonces gobierna una casta cerrada de descendientes suyos, hoy la Terk\'ikar Ulkha y el Kort\'ikar Torgash, que sostiene su poder puertas adentro por miedo, no por el honor y la asamblea abierta del resto de clanes orcos. Bajo control indirecto de la Concordia de Hierro, que les provee armas a cambio de someter a otras tribus orcas y lanzar incursiones en su nombre. Su tótem es una cabeza de Gargantúa de Ceniza tallada, herencia compartida con el Clan Maktor de antes del golpe de Ketg.',
@@ -8842,6 +8928,7 @@ export const factions: FactionInput[] = [
   {
     slug: 'clan-helsig',
     name: 'Clan Helsig',
+    disposicion: 'MERCANTIL',
     raza: 'orcos',
     description:
       'Tribu orca de las zonas gélidas de Cristal Helado. Gobernada por la Terk\'ikar Brenka y su pareja, la Kort\'ikar Solgra, que lidera la guerra. Su vida diaria la dicta la montaña: turnos en las minas, talla paciente del hielo sílice y una caza tan escasa que racionar es ley no escrita. Comercian cuchillos y herramientas con el resto de clanes a cambio de comida y pieles, y aceptan brazos de fuera en sus minas — así llegó a conocer Gorhorn a Hagar, de este clan. Mantienen un perfil neutral y defensivo ante los Goirntes, evitando la confrontación abierta.',
@@ -8849,6 +8936,7 @@ export const factions: FactionInput[] = [
   {
     slug: 'clan-goshg',
     name: 'Clan Goshg',
+    disposicion: 'MERCANTIL',
     raza: 'orcos',
     description:
       'Dos tribus pequeñas de orcos en las zonas húmedas de Ciénaga Troncal, hermanadas por nombre y parentesco — se reúnen en El Cerco de los Pilotes (empalizadas de madera oscura sobre pilotes, unidas por pasarelas y canoas) en la estación de las crecidas, y casan a sus jóvenes entre sí. Gobernadas por la Terk\'ikar Doshka; su hermano menor, el Kort\'ikar Dulgren, lidera la guerra. Viven de cazar Cornantes y de los Trepadores Ocaso — canoas, empalizadas, antorchas de resina, madera de ciénaga para tótems. Zona rica en alimento pero pobre en minerales. Mantienen, como los Helsig, un perfil neutral y defensivo ante los Goirntes.',
@@ -8856,6 +8944,7 @@ export const factions: FactionInput[] = [
   {
     slug: 'concordia-de-hierro',
     name: 'Concordia de Hierro',
+    disposicion: 'BELICOSA',
     raza: 'goirntes',
     description:
       'Alianza militar Goirnte formada tras El Detonante, con sede en el Baluarte de Goirme — la mayor de las ciudades-fortaleza Goirntes, muros de hierro negro pulido tallados con una simetría antinatural y el obelisco de leyes más alto de todo Berig en su plaza central. La lidera oficialmente la facción radical del orden Goirnte, encabezada por el Primer Censor Tarsen Vold, convencida de que la magia salvaje es una amenaza existencial que exige mano dura — bajo su mando unificado somete a clanes orcos y a los Nabieus, de grado o por presión, y resucita con otro nombre las viejas imposiciones del Yugo de Hierro: tributo en mineral, madera y contingentes de guerra obligatorios. Su mando militar recae en el General Vrask Ombra.',
@@ -8870,6 +8959,7 @@ export const factions: FactionInput[] = [
   {
     slug: 'los-del-obelisco',
     name: 'Los del Obelisco',
+    disposicion: 'MERCANTIL',
     raza: 'goirntes',
     description:
       'Corriente moderada del orden Goirnte, nacida de la casta de ley. Magistrados y archiveros de los obeliscos que se niegan a que la Concordia sea todo el orden: no se rebelan, porque desobedecer es desorden, pero exigen que cada orden se sostenga en un edicto grabado. Los lidera la Archimagistrada Yovenne Tal desde El Baluarte de Goirme. Buscan pruebas presentadas en orden de la traición del sello y citan de memoria el Primer Edicto del Tributo contra el uso que la Concordia hace hoy de los contingentes orcos.',
@@ -8880,6 +8970,7 @@ export const factions: FactionInput[] = [
   {
     slug: 'keseg-sael',
     name: 'Keseg Sael',
+    disposicion: 'RECELOSA',
     raza: 'nabieus',
     description:
       'Los Nabieus de la mitad oriental de El Margen Silencioso, dispersos en torno a El Refugio sin Nombre. Hacia fuera el clan no da su nombre, "el fin del callar", porque el Refugio es el único lugar donde un Nabieus puede dejar de guardar lo que sabe. Sirven a la Concordia como mensajeros por pura supervivencia, bajo el código del Karo\'sael, y guardan bajo el Refugio un archivo de tablillas de observación, herencia del reino que Madre enterró.',
@@ -8889,6 +8980,7 @@ export const factions: FactionInput[] = [
   {
     slug: 'keseg-prisilke',
     name: 'Keseg Prisilke',
+    disposicion: 'NEUTRAL',
     raza: 'nabieus',
     description:
       'El clan nabieus del sur de Ciénaga Troncal, con poblado en Jeyselt ("Fin Susurrado"). Generaciones en aguas altas les dieron brazos y piernas más largos, piel con manchas verdes y una postura encorvada. Viven de la caza y de la madera de los Trepadores Ocaso más que del sigilo, y comparten la Ciénaga con el Clan Goshg en una convivencia práctica. La Concordia les exige madera, no cartas.',
@@ -8899,6 +8991,7 @@ export const factions: FactionInput[] = [
   {
     slug: 'feg-tusha',
     name: 'Feg Tusha',
+    disposicion: 'RECELOSA',
     raza: 'faerus',
     description:
       'La manada base de los Faerus, en Hashma (Selviterna), el poblado colgado sobre los árboles en la selva occidental de El Margen Silencioso, cerca de la costa. La más numerosa y la más salvaje: pelaje denso en tonos de corteza y musgo, artesanía mínima y un olfato que manda sobre la vista. Su asentamiento marca el año 0 de Berig. No tienen cargo de mando: decide quien está sentado en el Jakut Tusha, el Trono Madre. Hostiles a la Concordia y a los Serhu, que los tratan como presa.',
@@ -8909,6 +9002,7 @@ export const factions: FactionInput[] = [
   {
     slug: 'feg-ger',
     name: 'Feg Ger',
+    disposicion: 'MERCANTIL',
     raza: 'faerus',
     description:
       'La manada Faerus de la llanura, en Kegi, en la franja sur de las Llanuras del Viento Rojo. Pelaje corto y rojizo, la artesanía de cuero más fina de su raza y la única manada que comercia de verdad, en El Vergel de Kegi. Nació de un pacto antiguo con el Clan Maktor: comercian con cualquier orco, pero solo comparten la primera pieza con quien consideran de la manada. Deciden desde el Jakut Ger, el Trono Rojo, sin cargo de mando.',
@@ -10259,13 +10353,13 @@ export const harvestYields: HarvestYieldInput[] = [
     cantidad: 1,
   },
 
-  // --- Bulco de Arena (marisco, Buscar — sin herramienta) ---
+  // --- Rugoconcha (marisco, Buscar — sin herramienta) ---
 
   {
-    sourceSlug: 'bulco-de-arena',
+    sourceSlug: 'rugoconcha',
     sourceCategory: 'fauna',
     metodoObtencion: 'BUSQUEDA',
-    itemSlug: 'bulco-arena-marisco',
+    itemSlug: 'rugoconcha-marisco',
     cantidad: 1,
   },
 
@@ -10986,7 +11080,7 @@ export const harvestSourceHomeLocationSlug: Record<string, string | string[]> = 
   toluh: 'playa-de-ceniza-blanca',
   'negueo-turquesa': 'playa-de-ceniza-blanca',
   'negueo-solar': 'playa-de-ceniza-blanca',
-  'bulco-de-arena': 'playa-de-ceniza-blanca',
+  'rugoconcha': 'playa-de-ceniza-blanca',
   'celubia-palida': 'acantilados-partidos',
   terkash: 'acantilados-partidos',
 
@@ -11120,7 +11214,7 @@ export const harvestSourceRegion: Record<string, string> = {
   toluh: 'Llanuras del Viento Rojo',
   'negueo-turquesa': 'Llanuras del Viento Rojo',
   'negueo-solar': 'Llanuras del Viento Rojo',
-  'bulco-de-arena': 'Llanuras del Viento Rojo',
+  'rugoconcha': 'Llanuras del Viento Rojo',
 };
 
 /// Categorías amplias de fuente recolectable (2026-08-15, petición explícita: "tener un enum con
@@ -11936,7 +12030,7 @@ export const zonePoints: ZonePointInput[] = [
   { locationSlug: 'playa-de-ceniza-blanca', x: 60, y: 480, tipo: 'RECURSO', targetSlug: 'negueo-solar', label: 'Negueo Solar entre las rocas' },
   { locationSlug: 'playa-de-ceniza-blanca', x: 700, y: 480, tipo: 'RECURSO', targetSlug: 'negueo-turquesa', label: 'Negueo Turquesa entre las rocas' },
   { locationSlug: 'playa-de-ceniza-blanca', x: 150, y: 140, tipo: 'RECURSO', targetSlug: 'toluh', label: 'Toluh en la orilla profunda' },
-  { locationSlug: 'playa-de-ceniza-blanca', x: 620, y: 140, tipo: 'RECURSO', targetSlug: 'bulco-de-arena', label: 'Bulco de Arena enterrado' },
+  { locationSlug: 'playa-de-ceniza-blanca', x: 620, y: 140, tipo: 'RECURSO', targetSlug: 'rugoconcha', label: 'Rugoconcha enterrada' },
 
   // Hallazgo adicional (2026-09-28, mismo test de cobertura de esta ampliación, no parte de la
   // lista original de 23): Flor de Ceniza y Salvia del Polvo ya tenían `ZonePoint` propio desde
@@ -12229,21 +12323,30 @@ export function tierCapacityFor(tier: number): number {
 }
 
 // CR-40 (hito 0.2, Q11-Q12): un tablón de avisos en el interior de cada ciudad con interior, donde la
-// facción cuelga sus misiones secundarias. Nombre mecánico común; el nombre propio de cada pueblo está
-// propuesto a Álvaro en `propuestas-lore.md` (2026-10-05) y se pondrá cuando lo apruebe.
+// facción cuelga sus misiones secundarias. Cada pueblo lo llama a su manera (CR-43, aprobado en
+// `propuestas-aprobadas.md`); la receta del Reino toma el nombre del pueblo de la jugadora.
 export const TABLON_AVISOS_SLUG = 'tablon-avisos';
-const TABLONES_DE_AVISOS: { factionSlug: string; locationSlug: string; description: string }[] = [
-  { factionSlug: 'Clan Serhu', locationSlug: 'campamento-serhu-interior', description: 'Un poste junto al salón, con pieles clavadas y marcas talladas: cada marca, una cacería o un encargo del clan.' },
-  { factionSlug: 'Clan Helsig', locationSlug: 'campamento-helsig-interior', description: 'Un poste de hielo sílice tallado a la entrada de las minas, con marcas de encargo del clan.' },
-  { factionSlug: 'Clan Goshg', locationSlug: 'campamento-goshg-interior', description: 'Un poste sobre los pilotes, junto a las pasarelas, con marcas de los encargos de las dos tribus.' },
-  { factionSlug: 'Feg Tusha', locationSlug: 'campamento-feg-tusha-interior', description: 'Un árbol del poblado colgado con marcas de garra y olor que la manada sabe leer.' },
-  { factionSlug: 'Feg Ger', locationSlug: 'jakut-ger-interior', description: 'Un árbol junto al Vergel con marcas de garra; los tratantes de la manada cuelgan ahí lo que necesitan.' },
-  { factionSlug: 'Keseg Prisilke', locationSlug: 'conclave-keseg-prisilke-interior', description: 'Un muro de cordeles anudados en el cónclave: cada nudo es un aviso que solo se lee de cerca.' },
+export const NOMBRE_TABLON_POR_RAZA: Record<string, string> = {
+  orcos: 'Poste de cacería',
+  goirntes: 'Estela de edictos menores',
+  nabieus: 'Muro de los susurros',
+  faerus: 'Árbol de las marcas',
+};
+export function nombreDeTablon(raza: string | null | undefined): string {
+  return NOMBRE_TABLON_POR_RAZA[raza ?? ''] ?? 'Tablón de avisos';
+}
+const TABLONES_DE_AVISOS: { factionSlug: string; raza: string; locationSlug: string; description: string }[] = [
+  { factionSlug: 'Clan Serhu', raza: 'orcos', locationSlug: 'campamento-serhu-interior', description: 'Un poste junto al salón, con pieles clavadas y marcas talladas: cada marca, una cacería o un encargo del clan.' },
+  { factionSlug: 'Clan Helsig', raza: 'orcos', locationSlug: 'campamento-helsig-interior', description: 'Un poste de hielo sílice tallado a la entrada de las minas, con marcas de encargo del clan.' },
+  { factionSlug: 'Clan Goshg', raza: 'orcos', locationSlug: 'campamento-goshg-interior', description: 'Un poste sobre los pilotes, junto a las pasarelas, con marcas de los encargos de las dos tribus.' },
+  { factionSlug: 'Feg Tusha', raza: 'faerus', locationSlug: 'campamento-feg-tusha-interior', description: 'Un árbol del poblado colgado con marcas de garra y olor que la manada sabe leer.' },
+  { factionSlug: 'Feg Ger', raza: 'faerus', locationSlug: 'jakut-ger-interior', description: 'Un árbol junto al Vergel con marcas de garra; los tratantes de la manada cuelgan ahí lo que necesitan.' },
+  { factionSlug: 'Keseg Prisilke', raza: 'nabieus', locationSlug: 'conclave-keseg-prisilke-interior', description: 'Un muro de cordeles anudados en el cónclave: cada nudo es un aviso que solo se lee de cerca.' },
 ];
 factionBuildings.push(
   ...TABLONES_DE_AVISOS.map((t) => ({
     slug: TABLON_AVISOS_SLUG,
-    name: 'Tablón de avisos',
+    name: nombreDeTablon(t.raza),
     factionSlug: t.factionSlug,
     locationSlug: t.locationSlug,
     profession: null,

@@ -108,7 +108,7 @@ async function main() {
     const existenteFaccion = await prisma.faction.findFirst({ where: { worldId, slug: faction.slug, saveId: null }, select: { id: true } })
     const row = await prisma.faction.upsert({
       where: { id: existenteFaccion?.id ?? '__nuevo__' },
-      update: { name: faction.name, raza: faction.raza, description: faction.description },
+      update: { name: faction.name, raza: faction.raza, description: faction.description, disposicion: faction.disposicion },
       create: { worldId, ...faction },
     });
     factionIdByName.set(faction.name, row.id);

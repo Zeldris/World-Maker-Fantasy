@@ -13,9 +13,19 @@ describe('Holdo (antes Bolco)', () => {
     expect(harvestYields.some((y) => y.sourceSlug === 'holdo' && y.itemSlug === 'resina-holdo')).toBe(true);
   });
 
-  it('el caracol Bulco de Arena conserva su nombre', () => {
-    expect(items.some((i) => i.slug === 'bulco-arena-marisco')).toBe(true);
-    expect(fauna.some((f) => f.aliases.includes('bulco'))).toBe(true);
+  it('CR-43: el caracol Bulco de Arena pasa a llamarse Rugoconcha', () => {
+    expect(JSON.stringify({ items, harvestYields, fauna })).not.toMatch(/bulco/i);
+    expect(items.some((i) => i.slug === 'rugoconcha-marisco')).toBe(true);
+    expect(fauna.some((f) => f.slug === 'rugoconcha' && f.aliases.includes('rugoconcha'))).toBe(true);
+  });
+
+  it('ninguna palabra del catálogo con la misma inicial está a Levenshtein ≤2 de "rugoconcha"', () => {
+    const textos: string[] = [];
+    for (const n of [...npcs, ...fauna]) textos.push(n.name, ...(n.aliases ?? []));
+    for (const i of items) textos.push(i.name, ...(i.aliases ?? []));
+    const palabras = new Set(textos.flatMap((t) => normalizeText(t).split(/[^\p{L}]+/u)).filter((w) => w.startsWith('r')));
+    palabras.delete('rugoconcha');
+    expect([...palabras].filter((w) => levenshtein('rugoconcha', w) <= 2)).toEqual([]);
   });
 
   it('ninguna palabra de alias/nombre del catálogo está a Levenshtein ≤1 de "holdo"', () => {
@@ -29,9 +39,10 @@ describe('Holdo (antes Bolco)', () => {
     expect(choques).toEqual([]);
   });
 
-  it('sin la exclusión, "bulco" y "busco" siguen sin colar a un alias distinto', () => {
-    const NPCS = [{ id: 'bulco', aliases: ['bulco de arena', 'bulco'] }];
+  it('sin exclusiones, ni "busco" ni la resina de holdo cuelan a la Rugoconcha', () => {
+    const NPCS = [{ id: 'rugoconcha', aliases: ['rugoconcha', 'caracol de mar'] }];
     expect(matchNpcAliases('Busco presas para comer', NPCS)).toEqual([]);
+    expect(matchNpcAliases('Busco una rugoconcha en la arena', NPCS)).toEqual(['rugoconcha']);
     expect(matchNpcAliases('Recojo resina de holdo en la marisma', NPCS)).toEqual([]);
   });
 });

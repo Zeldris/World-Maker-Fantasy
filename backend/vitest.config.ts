@@ -41,6 +41,8 @@ export default defineConfig({
           fileParallelism: false,
           // QA-8: deja como estaba lo que los tests ensucian del catálogo compartido.
           globalSetup: ['./vitest.bdReal.globalSetup.ts'],
+          // UX-35: borrar una partida espera a su avance de fondo (ver el archivo).
+          setupFiles: ['./vitest.setup.ts', './vitest.bdReal.setup.ts'],
         },
       },
     ],

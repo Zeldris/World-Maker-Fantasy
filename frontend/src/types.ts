@@ -994,6 +994,8 @@ export interface AgendaEntryInfo {
 export interface NpcInSceneInfo {
   slug: string
   name: string
+  /// CR-44: perdió el valor y huyó del combate este turno (sale del combate, sin botín).
+  huido?: boolean
   // Estado real de NpcState al empezar este combate (2026-07-19) — evita que el popup asuma
   // siempre ILESO/sin saquear para un NPC que ya venía herido o saqueado de un encuentro anterior.
   condicionFisica: CondicionFisica

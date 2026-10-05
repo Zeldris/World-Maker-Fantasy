@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatFictionalDuration, formatCountdown, applyInventoryDelta, formatMinutos, quantityOf, baseNameOf } from './gameViewHelpers'
+import { formatFictionalDuration, formatCountdown, applyInventoryDelta, formatMinutos, quantityOf, baseNameOf, npcInSceneToCombatDisplay } from './gameViewHelpers'
 import type { InventoryItemInfo } from '../types'
 
 // Auditoría de deuda técnica (2026-08-21): estas 4 funciones no tenían ningún test — la única
@@ -116,5 +116,13 @@ describe('formatFictionalDuration', () => {
   it('días: 1440+ minutos, como el ejemplo de la usuaria ("2 dias en Helek")', () => {
     expect(formatFictionalDuration(2880)).toBe('2 días')
     expect(formatFictionalDuration(4320)).toBe('3 días')
+  })
+})
+
+describe('npcInSceneToCombatDisplay (CR-44)', () => {
+  it('quien huye queda resuelto y marcado como huido', () => {
+    const base = { slug: 'orco', name: 'Orco', condicionFisica: 'GRAVE' as const, saqueado: false, lootedItemNames: [], analizado: false, activeEffects: [], capturable: false, targetedForKill: false }
+    expect(npcInSceneToCombatDisplay({ ...base, huido: true })).toMatchObject({ huido: true, dismissed: true, condicion: 'GRAVE' })
+    expect(npcInSceneToCombatDisplay(base).dismissed).toBeUndefined()
   })
 })

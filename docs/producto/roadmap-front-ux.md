@@ -344,14 +344,14 @@ stateDiagram-v2
 El Cronista (`roadmap-cronista.md`) hace que pasen cosas sin que el jugador actúe y que lo que hizo
 vuelva más tarde. Eso exige estas reglas de experiencia:
 
-- **UX-29 · El mundo de fondo nunca bloquea** — el avance diario, el Escriba, el Árbitro y el
+- ~~**UX-29 · El mundo de fondo nunca bloquea**~~ ✅ 2026-10-05 (el trabajo de fondo de cada partida va en fila tras responder, `enSegundoPlano` de `avanceDiario.ts`; el turno siguiente lo espera antes de empezar, sin bloqueos mutuos en la base; «lo nuevo del mundo» espera a que acabe y el front enciende «El mundo avanza» mientras tanto; nunca cambia la fase. Queda para la Fase 7 del Cronista: la cola con prioridades del Escriba y el Árbitro, que aún no existen) — el avance diario, el Escriba, el Árbitro y el
   Cronista corren con menos prioridad que el turno y **no cambian la fase** de la partida
   (`useGamePhase`); solo encienden el indicador "El mundo avanza" (`HUD-12`). Si el jugador envía una
   acción, su turno pasa delante (cola con prioridades, Cronista § 13.2). **S**
-- **UX-30 · Solo lo que el personaje sabe** — ninguna pantalla (Leyendas, Enciclopedia, Reputación,
+- ~~**UX-30 · Solo lo que el personaje sabe**~~ ✅ 2026-10-05 (cubierto por `INT-4`: todas las pantallas leen de `Conocimiento`) — ninguna pantalla (Leyendas, Enciclopedia, Reputación,
   Diplomacia, mapa, notificaciones) muestra un suceso que el personaje no conoce; todas leen del
   mismo filtro de conocimiento del backend. Un suceso a medio saber se presenta como rumor. **S**
-- **UX-31 · Varios días de golpe** — tras un viaje o descanso largo, los sucesos que se han sabido
+- ~~**UX-31 · Varios días de golpe**~~ ✅ 2026-10-05 (resumen «Mientras pasaban los días…» de `CR-12` 12d con un solo aviso; ahora «lo nuevo del mundo» espera al avance de fondo, así nunca llega el resumen a medias) — tras un viaje o descanso largo, los sucesos que se han sabido
   durante esos días llegan **juntos**: una notificación resumen y una tarjeta "Mientras viajabas…"
   en el registro, nunca una ráfaga de avisos. **S**
 - **UX-32 · Consecuencias como encuentros** — una consecuencia aplazada que aparece en escena
@@ -365,10 +365,10 @@ vuelva más tarde. Eso exige estas reglas de experiencia:
   gestión del jugador (tirar, retirar…); lo que cambia la historia (matar, perdonar, prometer) no se
   deshace. 🧭 ¿Avisar antes de actos de mucho peso (matar a un líder)? Por defecto **no** — como en
   Baldur's Gate 3, la consecuencia es parte del juego. **S**
-- **UX-35 · El turno no espera al día** — al cruzar un día ficticio, el avance diario se ejecuta
+- ~~**UX-35 · El turno no espera al día**~~ ✅ 2026-10-05 (`/turn/narrate` entrega la narración y después avanza el día en segundo plano; test en `turn.integration.test.ts`) — al cruzar un día ficticio, el avance diario se ejecuta
   **después** de devolver la narración del turno; sus resultados llegan en el siguiente refresco
   (notificación o informe del amanecer), sin alargar el turno. **S**
-- **UX-36 · Leyendas siempre a una tecla** — atajo `Y` (se añade a la lista de `CFG-26`; `L` sigue
+- ~~**UX-36 · Leyendas siempre a una tecla**~~ ✅ 2026-10-05 (atajo `Y`, reasignable en Controles; cada aviso de un suceso lleva «Ver en Leyendas»; los rumores ya lo llevaban por `NAR-9`) — atajo `Y` (se añade a la lista de `CFG-26`; `L` sigue
   siendo la Enciclopedia y `Q`/`E` el cambio de panel de `PAN-1`) y enlace desde cada notificación
   y rumor a su entrada. **S**
 - ~~**UX-38 · Noticias del mundo que se pueden tocar** (usuaria, 2026-10-04, al dar valor al canal

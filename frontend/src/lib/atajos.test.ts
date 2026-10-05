@@ -10,6 +10,9 @@ describe('CFG-26 — atajos', () => {
   it('la tecla dispara su acción; no al escribir ni con Ctrl', () => {
     expect(accionDeTecla(tecla('I'), ATAJOS_POR_DEFECTO)).toBe('inventario')
     expect(accionDeTecla(tecla('z'), ATAJOS_POR_DEFECTO)).toBe('zona')
+    // UX-36: Leyendas con Y; L sigue siendo la Enciclopedia.
+    expect(accionDeTecla(tecla('Y'), ATAJOS_POR_DEFECTO)).toBe('leyendas')
+    expect(accionDeTecla(tecla('l'), ATAJOS_POR_DEFECTO)).toBe('enciclopedia')
     expect(accionDeTecla(tecla('q'), ATAJOS_POR_DEFECTO)).toBeNull()
     expect(accionDeTecla(tecla('i', { ctrlKey: true }), ATAJOS_POR_DEFECTO)).toBeNull()
     expect(accionDeTecla(tecla('i', { target: document.createElement('textarea') }), ATAJOS_POR_DEFECTO)).toBeNull()
@@ -25,5 +28,12 @@ describe('CFG-26 — atajos', () => {
   it('normaliza: completa lo que falte y descarta lo inválido', () => {
     expect(normalizarAtajos({ inventario: 'B', mapa: 'Enter' })).toEqual({ ...ATAJOS_POR_DEFECTO, inventario: 'b' })
     expect(normalizarAtajos(null)).toEqual(ATAJOS_POR_DEFECTO)
+  })
+
+  it('UX-36: una acción nueva no quita la tecla que la jugadora ya usaba', () => {
+    const m = normalizarAtajos({ inventario: 'i', mapa: 'm', personaje: 'p', habilidades: 'h', diario: 'j', reino: 'k', enciclopedia: 'l', zona: 'y' })
+    expect(m.zona).toBe('y')
+    expect(m.leyendas).not.toBe('y')
+    expect(new Set(Object.values(m)).size).toBe(Object.values(m).length)
   })
 })

@@ -96,3 +96,28 @@ export function textoCoste(r: RutaPrevista): string {
   if (r.energia > 0) partes.push(`+${r.energia} energía`)
   return partes.join(' · ')
 }
+
+/// ZON-50: a cuántas celdas un hostil va a por ti (`RADIO_PERSECUCION_CELDAS`, movementTemplates.ts).
+export const RADIO_PERSECUCION_CELDAS = 2
+
+function distanciaCeldas(a: Celda, b: Celda): number {
+  return Math.max(Math.abs(a.col - b.col), Math.abs(a.row - b.row))
+}
+
+/// ZON-50: ¿está el personaje dentro del radio de persecución de este hostil?
+export function tePersigue(jugador: { x: number; y: number }, hostil: { x: number; y: number }): boolean {
+  return distanciaCeldas(celdaDePixel(jugador), celdaDePixel(hostil)) <= RADIO_PERSECUCION_CELDAS
+}
+
+/// ZON-33: qué celdas de una ruta entran en el radio de algún hostil conocido, y si acaba pegada a
+/// uno (encuentro seguro: la colisión del motor salta en la misma celda o una vecina).
+export function riesgoDeRuta(puntos: { x: number; y: number }[], hostiles: { x: number; y: number }[]): { enRiesgo: number[]; encuentroSeguro: boolean } {
+  if (hostiles.length === 0 || puntos.length === 0) return { enRiesgo: [], encuentroSeguro: false }
+  const celdasHostiles = hostiles.map(celdaDePixel)
+  const enRiesgo = puntos
+    .map((p, i) => ({ i, c: celdaDePixel(p) }))
+    .filter(({ c }) => celdasHostiles.some((h) => distanciaCeldas(c, h) <= RADIO_PERSECUCION_CELDAS))
+    .map(({ i }) => i)
+  const ultima = celdaDePixel(puntos[puntos.length - 1]!)
+  return { enRiesgo, encuentroSeguro: celdasHostiles.some((h) => distanciaCeldas(ultima, h) <= 1) }
+}

@@ -53,7 +53,7 @@ const { detectNpcsInScene, candidateNpcNamesNotInScene } = await import('./npcSc
 const NPCS_BARRIDO_2026_09_28 = [
   { id: 'nuente', aliases: ['nuente', 'nuentes'] },
   { id: 'quio', aliases: ['quio', 'quios'] },
-  { id: 'bulco', aliases: ['bulco de arena', 'bulco'] },
+  { id: 'rugoconcha', aliases: ['rugoconcha', 'caracol de mar'] },
   { id: 'mercader', aliases: ['mercader de paso', 'mercader', 'comerciante'] },
 ];
 
@@ -68,7 +68,7 @@ describe('matchNpcAliases', () => {
     expect(matchNpcAliases('No sé quien anda por aquí.', NPCS_BARRIDO_2026_09_28)).toEqual([]);
   });
 
-  it('palabras reales a 1 letra de un alias con la misma inicial están excluidas (busco/bulto → Bulco, mercado → Mercader)', () => {
+  it('palabras reales a 1 letra de un alias con la misma inicial están excluidas (mercado → Mercader)', () => {
     expect(matchNpcAliases('Busco un bulto de provisiones en el mercado.', NPCS_BARRIDO_2026_09_28)).toEqual([]);
   });
 

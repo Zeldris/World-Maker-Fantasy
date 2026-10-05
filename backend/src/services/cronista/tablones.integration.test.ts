@@ -16,7 +16,7 @@ describe('tablones de avisos (CR-40 40c)', () => {
     const worldId = (await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } })).id;
     const save = await prisma.save.create({
       data: {
-        userId: await getDefaultUserId(), worldId, characterName: 'Tablones', characterArchetype: 'guerrero', characterOrigin: 'x', characterMotivation: 'x',
+        userId: await getDefaultUserId(), worldId, characterName: 'Tablones', characterArchetype: 'guerrero', raza: 'nabieus', characterOrigin: 'x', characterMotivation: 'x',
         attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 }, portraitInitial: 'T',
         worldState: { create: { fictionalMinutes: 480 } },
       },
@@ -61,7 +61,7 @@ describe('tablones de avisos (CR-40 40c)', () => {
     await aviso(tablonSerhu.id, serhu.id, 'De Serhu');
     await aviso(tablonHelsig.id, helsig.id, 'De Helsig');
 
-    expect(await tablonEnLugar(prisma, saveId, tablonSerhu.locationId!)).toMatchObject({ buildingId: tablonSerhu.id, faccion: 'Clan Serhu' });
+    expect(await tablonEnLugar(prisma, saveId, tablonSerhu.locationId!)).toMatchObject({ buildingId: tablonSerhu.id, nombre: 'Poste de cacería', faccion: 'Clan Serhu' });
     expect((await avisosDeTablon(prisma, saveId, tablonSerhu.id))!.avisos.map((a) => a.titulo)).toEqual(['De Serhu']);
 
     // Tablón del Reino: con tratado con Serhu (y nada con Helsig) solo ve el aviso de Serhu.
@@ -69,7 +69,7 @@ describe('tablones de avisos (CR-40 40c)', () => {
     const reino = await prisma.faction.create({ data: { worldId, saveId, slug: 'reino-tablones', name: 'Reino de los Tablones', raza: 'orcos', description: 'x' } });
     const delReino = await prisma.building.create({ data: { saveId, locationId: lugar.id, recipeKey: TABLON_RECIPE_KEY, name: 'un tablón de avisos', kind: 'tablon', status: 'ACTIVO', description: 'x' } });
     await prisma.factionRelation.create({ data: { worldId, saveId, sourceFactionId: reino.id, targetFactionId: serhu.id, presion: 35, type: 'TRATADO_COMERCIAL' } });
-    expect(await tablonEnLugar(prisma, saveId, lugar.id)).toMatchObject({ buildingId: delReino.id, faccion: null });
+    expect(await tablonEnLugar(prisma, saveId, lugar.id)).toMatchObject({ buildingId: delReino.id, nombre: 'Muro de los susurros', faccion: null });
     expect((await avisosDeTablon(prisma, saveId, delReino.id))!.avisos.map((a) => a.titulo)).toEqual(['De Serhu']);
     expect(await avisosDeTablon(prisma, saveId, 'no-existe')).toBeNull();
   });

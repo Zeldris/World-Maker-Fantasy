@@ -24,6 +24,7 @@ import type { TravelInterruption } from '../services/travelInterruption.js';
 import type { AttributeBlock } from '../services/dice.js';
 import { iniciarCombatEncounter } from '../services/combateMultipleOrquestacion.js';
 import { appendSessionFacts } from '../services/worldFacts.js';
+import { esperarSegundoPlano } from '../services/avanceDiario.js';
 
 /// Harness de integración de la misión de apertura (2026-07-31, "checklist de mejoras de
 /// narración" — acordado al principio de la sesión de replanteamiento de arquitectura y retomado
@@ -8758,4 +8759,45 @@ describe('Franja 3 de "Interactuar": colisión de celda para fauna agresiva dete
     const { combateIniciado } = lastNdjsonLine(narrateRes.payload) as { combateIniciado: { npcs: { slug: string }[] } | null };
     expect(combateIniciado?.npcs.map((n) => n.slug)).toEqual(['test-colision-agresivo']);
   }, 20_000);
+});
+
+// UX-35 (hito 0.2): el turno no espera al día. La narración se entrega y, después, el mundo de la
+// partida avanza los días que el turno haya cruzado.
+describe('UX-35 — el avance diario va después de la narración', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId: await getDefaultUserId(), worldId: world.id, characterName: 'Gorhorn de prueba (UX-35)', characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor', characterMotivation: 'x', attributes: ATTRS, portraitInitial: 'G', currentLocationId: hondonada.id,
+      },
+    });
+    saveId = save.id;
+    // Un minuto antes de medianoche del día 0: el turno (≥ 1 minuto) cruza al día 1.
+    await prisma.worldState.create({ data: { saveId, fictionalMinutes: 1439 } });
+    await asegurarMundoDePartida(prisma, saveId);
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('cruzar un día con un turno narrado acaba simulando ese día', async () => {
+    classifyAction.mockResolvedValueOnce({
+      requiereTirada: false, atributo: 'voluntad', dificultad: 8, razon: 'x', banda: 'corta', duracionEstimadaMinutos: 30,
+    });
+    narrateAction.mockResolvedValueOnce({ narration: 'Gorhorn se sienta a esperar junto al eco de la hondonada.', newFacts: [] });
+    const app = await buildApp();
+    const action = 'Me siento a esperar un rato.';
+    const { classification, roll } = (await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } })).json();
+    const res = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll, enCombate: false } });
+    expect(lastNdjsonLine(res.payload).type).toBe('done');
+    // La respuesta no esperó al día; el trabajo de fondo de la partida lo simula después.
+    await esperarSegundoPlano(saveId);
+    expect((await prisma.worldState.findUniqueOrThrow({ where: { saveId }, select: { ultimoDiaSimulado: true } })).ultimoDiaSimulado).toBeGreaterThanOrEqual(1);
+    await app.close();
+  }, 30_000);
 });

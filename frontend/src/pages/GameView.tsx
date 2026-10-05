@@ -633,7 +633,16 @@ export function GameView() {
     onNuevas: (entradas) =>
       entradas
         .filter((e) => debeAvisar(e.noticia, ajustesAvisos.avisosSucesos))
-        .forEach((e) => notificar({ tipo: 'accent2', icono: '📜', texto: e.text.length > 90 ? `${e.text.slice(0, 88)}…` : e.text })),
+        .forEach((e) => {
+          const sucesoId = e.noticia?.sucesoId
+          notificar({
+            tipo: 'accent2',
+            icono: '📜',
+            texto: e.text.length > 90 ? `${e.text.slice(0, 88)}…` : e.text,
+            // UX-36: cada aviso de un suceso lleva a su entrada de Leyendas.
+            ...(sucesoId ? { enlace: { label: 'Ver en Leyendas', alPulsar: () => { setLeyendaPedida(sucesoId); setActivePanel('leyendas') } } } : {}),
+          })
+        }),
   })
   // Avisos de las entradas nuevas del registro llegadas en vivo (no las de la carga de la partida).
   const procesadasRef = useRef(0)
@@ -1660,7 +1669,7 @@ export function GameView() {
         nowTick={nowTick}
         fictionalDate={fictionalDate}
         entorno={entorno}
-        mundoAvanza={worldThinking}
+        mundoAvanza={worldThinking || noticiasMundo.esperandoMundo}
         onSalir={() => setConfirmingExit(true)}
         onAbrirNivel={() => {
           setPersonajeSubTab('estadisticas')

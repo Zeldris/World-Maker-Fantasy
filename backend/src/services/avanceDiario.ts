@@ -108,25 +108,67 @@ export async function avanzarSiCruzaDia(prisma: PrismaClient, saveId: string): P
   return avanzarMundoHasta(prisma, saveId, ws.fictionalMinutes);
 }
 
+/// UX-29 / UX-35: trabajo de fondo de cada partida tras responder (avance diario, reacciones…). Uno
+/// detrás de otro por partida, y el turno siguiente espera a que acabe antes de empezar: el turno
+/// nunca espera al día, y el día nunca se cruza con un turno en la base (sin bloqueos mutuos).
+const fondoPorPartida = new Map<string, Promise<void>>();
+
+/// Encola `trabajo` tras el fondo que ya tenga la partida. Nunca rechaza.
+export function enSegundoPlano(saveId: string, trabajo: () => Promise<unknown>): Promise<void> {
+  const previo = fondoPorPartida.get(saveId) ?? Promise.resolve();
+  const este = previo.then(trabajo).then(
+    () => undefined,
+    (err) => console.error('[fondo] error en el trabajo de fondo de la partida:', err),
+  );
+  fondoPorPartida.set(saveId, este);
+  void este.finally(() => {
+    if (fondoPorPartida.get(saveId) === este) fondoPorPartida.delete(saveId);
+  });
+  return este;
+}
+
+/// Espera a que acabe el trabajo de fondo pendiente de la partida (si lo hay).
+export async function esperarSegundoPlano(saveId: string): Promise<void> {
+  while (fondoPorPartida.has(saveId)) await fondoPorPartida.get(saveId);
+}
+
+/// Espera a que acabe el trabajo de fondo de todas las partidas (para los tests con base real, que
+/// borran su partida nada más terminar).
+export async function esperarTodoElFondo(): Promise<void> {
+  while (fondoPorPartida.size > 0) await Promise.all([...fondoPorPartida.values()]);
+}
+
 /// Tras cada POST correcto a una partida (`/saves/:id/...`): moverse por la zona, descansar,
 /// recolectar, cazar, el modo dinámico… cualquier acción que mueva el reloj sin pasar por el turno
 /// narrado avanza también el mundo de la partida. Nunca rompe la respuesta (va tras enviarla).
 export function registrarAvanceTrasAcciones(app: FastifyInstance, prisma: PrismaClient): void {
+  // UX-29: ninguna acción de la partida empieza mientras su trabajo de fondo (p. ej. el día que cruzó
+  // el turno anterior) sigue escribiendo; así nunca se pisan ni se bloquean en la base.
+  // También al borrarla: un borrado en cascada a la vez que el avance del día se bloquea en Postgres.
+  app.addHook('preHandler', async (request) => {
+    if (request.method === 'GET' || !request.routeOptions.url?.startsWith('/saves/:id')) return;
+    const saveId = (request.params as { id?: string } | undefined)?.id;
+    if (saveId) await esperarSegundoPlano(saveId);
+  });
   app.addHook('onResponse', async (request, reply) => {
     if (request.method !== 'POST' || reply.statusCode >= 400) return;
     if (!request.routeOptions.url?.startsWith('/saves/:id')) return;
     const saveId = (request.params as { id?: string } | undefined)?.id;
     if (!saveId) return;
-    await avanzarSiCruzaDia(prisma, saveId).catch((err) => console.error('[avanceDiario] error tras la acción:', err));
-    // CR-10/CR-11: reacciones de lo que haya registrado la acción y consecuencias que toquen (p. ej.
-    // al llegar a otra región). Si cruzó día, ya se hizo arriba; repetirlo no cambia nada.
-    await procesarReacciones(prisma, saveId).catch((err) => console.error('[reacciones] error tras la acción:', err));
-    await evaluarConsecuencias(prisma, saveId)
-      .then((r) => (r.disparadas > 0 ? procesarReacciones(prisma, saveId) : undefined))
-      .catch((err) => console.error('[consecuencias] error tras la acción:', err));
-    // CR-18 (18b): al cambiar de región llega lo que allí ya se sabe de lo grande y reciente.
-    await difundir(prisma, saveId).catch((err) => console.error('[difusion] error tras la acción:', err));
-    // CR-40 (40e): moverse por la zona o pelear puede cumplir una misión del motor.
-    await revisarMisiones(prisma, saveId).catch((err) => console.error('[misiones] error tras la acción:', err));
+    await enSegundoPlano(saveId, () => trasAccion(prisma, saveId));
   });
+}
+
+async function trasAccion(prisma: PrismaClient, saveId: string): Promise<void> {
+  await avanzarSiCruzaDia(prisma, saveId).catch((err) => console.error('[avanceDiario] error tras la acción:', err));
+  // CR-10/CR-11: reacciones de lo que haya registrado la acción y consecuencias que toquen (p. ej.
+  // al llegar a otra región). Si cruzó día, ya se hizo arriba; repetirlo no cambia nada.
+  await procesarReacciones(prisma, saveId).catch((err) => console.error('[reacciones] error tras la acción:', err));
+  await evaluarConsecuencias(prisma, saveId)
+    .then((r) => (r.disparadas > 0 ? procesarReacciones(prisma, saveId) : undefined))
+    .catch((err) => console.error('[consecuencias] error tras la acción:', err));
+  // CR-18 (18b): al cambiar de región llega lo que allí ya se sabe de lo grande y reciente.
+  await difundir(prisma, saveId).catch((err) => console.error('[difusion] error tras la acción:', err));
+  // CR-40 (40e): moverse por la zona o pelear puede cumplir una misión del motor.
+  await revisarMisiones(prisma, saveId).catch((err) => console.error('[misiones] error tras la acción:', err));
 }

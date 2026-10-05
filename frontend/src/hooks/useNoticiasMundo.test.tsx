@@ -13,8 +13,8 @@ const entrada = (id: string, text: string): LogEntry => ({ id, channel: 'world',
 function useHarness(thinkingInicial: boolean) {
   const [worldLog, setWorldLog] = useState<LogEntry[]>([entrada('w1', 'Ambiente')])
   const [characterThinking, setCharacterThinking] = useState(thinkingInicial)
-  useNoticiasMundo({ saveId: 's1', worldLog, setWorldLog, characterThinking })
-  return { worldLog, setCharacterThinking }
+  const { esperandoMundo } = useNoticiasMundo({ saveId: 's1', worldLog, setWorldLog, characterThinking })
+  return { worldLog, setCharacterThinking, esperandoMundo }
 }
 
 describe('useNoticiasMundo', () => {
@@ -40,5 +40,19 @@ describe('useNoticiasMundo', () => {
     })
     expect(getNuevasDelMundo).toHaveBeenCalledTimes(1)
     vi.useRealTimers()
+  })
+
+  it('UX-29: tras un turno, «El mundo avanza» mientras espera lo nuevo del mundo', async () => {
+    let responder: (v: { entradas: LogEntry[] }) => void = () => {}
+    vi.mocked(getNuevasDelMundo).mockReturnValue(new Promise((r) => (responder = r)))
+    const { result } = renderHook(() => useHarness(true))
+    await act(async () => {
+      result.current.setCharacterThinking(false)
+    })
+    expect(result.current.esperandoMundo).toBe(true)
+    await act(async () => {
+      responder({ entradas: [] })
+    })
+    expect(result.current.esperandoMundo).toBe(false)
   })
 })
