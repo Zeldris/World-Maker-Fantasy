@@ -1485,8 +1485,28 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
 
 ### Fase 5 — Conocimiento y lo que ve el jugador · **M**
 - **CR-18** Propagación y rumores (§ 9). **M**
-- **CR-19** Endpoints de Leyendas y etiquetas (§ 14). **S**
-- **CR-20** Front: Leyendas, fichas "En tu partida", etiquetas, aprobación. **M**
+  - **Diseño, ronda 1** (2026-10-05, `grilling` + `domain-modeling`; aceptado por la usuaria salvo Q3):
+    - **Q1 · Conocimiento solo del personaje**: se guarda qué suceso sabe el personaje, desde cuándo y
+      cómo lo supo (testigo, de oídas, confirmado, por un NPC). Lo que sabe una región, una facción o
+      un NPC no se guarda: se deduce con una regla pura (importancia, distancia, días pasados).
+    - **Q2 · Alcance por importancia, retraso por distancia**: 1-3 solo testigos y actores; 4-6 su
+      región; 7-8 y las vecinas; 9-10 todo Berig. El retraso, el de `CR-12` (región al momento,
+      vecina 1 día, lejos 2-3). **Todos** los sucesos del Libro pasan por esta regla, no solo los
+      tres emisores de `darNoticia`.
+    - **Q3 · Enterarse al llegar a una región: rechazado** («poco realista»). La usuaria quiere que
+      se sepa hablando con alguien de esa zona o por otra vía realista → ronda 2.
+    - **Q4 · Rumor que se confirma**: un rumor se ve sin detalles («se dice…») hasta que se confirma
+      (ir donde pasó, verlo, o que lo cuente una facción aliada). Los rumores falsos → `CR-41` (`0.4`).
+    - **Q7 · Avisos emergentes** (`CFG-35`): por defecto desde importancia 5; la importancia nunca se
+      enseña como número (`INT-2`).
+    - **Q8 · Rumor en «El mundo»** (`NAR-9`): «Se dice que…» como ahora; región de origen y antigüedad
+      en una etiqueta aparte, estilo pergamino y enlace a Leyendas.
+- **CR-19** Endpoints de Leyendas (§ 14). **S** Las etiquetas (`GET /etiquetas`) van con `CR-14` y el
+  epílogo con `UX-18` (`CR-18` Q6, 2026-10-05).
+- **CR-20** Front: Leyendas y fichas "En tu partida" en la Enciclopedia. **M** Decidido (`CR-18` Q5 y
+  Q6, 2026-10-05): panel propio con icono de libro junto al Diario, con Crónica, Personajes,
+  Facciones, Lugares y Línea temporal; causas enlazadas (`INT-3`) siempre visibles hasta que llegue
+  `CFG-36` (`0.3`); rumor con lugar en el mapa (`INT-9`). Etiquetas y aprobación, con `CR-14`/`CR-15`.
 - **Hecho cuando:** un suceso lejano llega como rumor días después y aparece en Leyendas; nada que
   el personaje no sepa es visible.
 
@@ -1504,6 +1524,8 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   `chapterSummary.ts`). **L**
 - **CR-27** Árbitro (§ 10.2). **M**
 - **CR-28** Epílogo (§ 10.3) + pantalla `UX-18`. **M**
+- **CR-41** Rumores falsos o deformados (`CR-18` Q4, va al `0.4` con la IA del Cronista): una
+  hazaña exagerada, un muerto que no lo está; se desmienten al confirmar. **M**
 - **Hecho cuando:** con IA, la crónica y las justificaciones citan sucesos reales; sin IA (Ollama
   apagado) todo sigue funcionando con plantillas; ningún turno del jugador se retrasa por el
   Cronista.

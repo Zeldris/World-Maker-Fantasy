@@ -70,7 +70,22 @@ Lo que la jugadora llega a saber de un suceso del mundo, en el canal «El mundo�
 _Evitar_: log de mundo
 
 **Rumor**:
-Noticia de algo que pasó lejos, que llega días después y como «Se dice que…».
+Noticia de la que la jugadora solo sabe una parte, que le llega de oídas («Se dice que…») y sigue siéndolo hasta que se confirma.
+_Evitar_: noticia lejana
+
+**Conocimiento**:
+Lo que el personaje de la jugadora sabe de un suceso, desde cuándo y cómo lo supo (lo vio, de oídas, confirmado); lo que sabe una región o un NPC no se apunta, se deduce.
+_Evitar_: lo que sabe el jugador, visibilidad
+
+**Alcance**:
+Hasta dónde llega por sí sola la noticia de un suceso según su importancia: solo los testigos, su región, las vecinas o todo Berig.
+
+**Confirmar**:
+Pasar un rumor a hecho sabido, porque la jugadora lo ve, va donde pasó o se lo cuenta alguien que lo sabe de primera mano.
+
+**Leyendas**:
+La crónica de la partida tal como la conoce el personaje: solo sucesos de los que tiene conocimiento.
+_Evitar_: libro de sucesos (ese lo contiene todo)
 
 **Rastro**:
 La huella visible que un suceso reciente deja en una región (humo, barro, animales que llegan) y que aparece en la ambientación.

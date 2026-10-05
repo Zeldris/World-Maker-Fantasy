@@ -236,10 +236,11 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
   `ImagePromptSlot` y el bloque de prompts de `DetailModal` solo con el modo activo. Pendiente para
   el menú de Configuración (CFG-1): el interruptor allí, versión completa, id de partida y tiempos del
   narrador.
-- **CFG-34 · Estilo del mundo** (Cronista D-7): *Tranquilo · Equilibrado · Caótico* — cuántos sucesos
+- ~~**CFG-34 · Estilo del mundo**~~ ✅ 2026-10-05 (ya lo hizo `CR-12`: «Ritmo del mundo» en Ajustes de la partida; cerrada en la ronda 1 de la Fase E) (Cronista D-7): *Tranquilo · Equilibrado · Caótico* — cuántos sucesos
   genera el narrador de fondo (presupuesto de tensión). Por defecto *Equilibrado*. **S**
 - **CFG-35 · Avisos de sucesos**: a partir de qué importancia sale una notificación (`HUD-6`):
-  todos · importantes (≥ 5, por defecto) · solo graves (≥ 8) · ninguno. **S**
+  todos · importantes (≥ 5, por defecto) · solo graves (≥ 8) · ninguno. **S** (Por defecto ≥ 5 confirmado
+  en `CR-18` Q7, 2026-10-05.)
 - **CFG-36 · Crónica**: escribir crónica diaria / semanal / solo al final; mostrar "por qué pasó"
   (causas) en Leyendas. **S**
 - **CFG-37 · IA en la nube para el Cronista** (Cronista D-4): solo visible si hay clave configurada;
@@ -601,8 +602,8 @@ Contenedor común: `PanelDrawer` (cajón inferior, `max-w-4xl`, 85 vh).
 - **PAN-9b · Leyendas de tu partida** (Cronista § 14) — Crónica (por días y semanas), Personajes,
   Facciones, Lugares y Línea temporal, **solo con lo que el personaje sabe**; cada entrada enlaza a
   sus sucesos y a la Enciclopedia; filtros por familia (clima, diplomacia, vida y muerte…). 🧭
-  ¿Pestaña del Diario o pestaña propia en el riel "El mundo"? (por defecto: pestaña propia, icono de
-  libro, junto a Diario). **L**
+  ¿Pestaña del Diario o pestaña propia en el riel "El mundo"? → **panel propio, icono de libro, junto
+  al Diario** (`CR-18` Q5, 2026-10-05). **L**
 - **PAN-10 · Misiones** — misión seguida fijada en la cabecera (HUD-7); objetivos como lista con
   casillas; recompensa visible con iconos; las cerradas plegadas. **S**
 - **PAN-11 · Enciclopedia** (1.574 líneas, 15 pestañas) — las 15 pestañas en un **índice lateral**
