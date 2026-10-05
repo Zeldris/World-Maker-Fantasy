@@ -1455,6 +1455,8 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
 - **CR-16** Recuerdos de NPC (§ 8.3). **S** Incluye las reacciones de CR-10: `recuerdo(testigos,
   jugador, −6)` tras una muerte causada y `recuerdo(víctima, jugador, +5)` tras un perdón.
 - **CR-17** Buscadores de historias e hilos (§ 7.4). **M**
+- **CR-42** Compañeros que cuentan lo de su tierra (`CR-18` Q9, va al `0.3` con `CR-15`): un compañero
+  de una región cuenta lo que se sabe allí cuando se le pregunta. **S**
 - **CR-32** Reclutamiento pacífico e informantes (usuaria, 2026-10-04, Q14 de `CR-12`): convencer a
   un NPC sin pelear (tirada de persuasión según si le gusta lo que dices; idea de la usuaria del
   2026-09-06) para que se una al Reino o te pase información de su facción. Abre la oportunidad
@@ -1501,6 +1503,24 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
       enseña como número (`INT-2`).
     - **Q8 · Rumor en «El mundo»** (`NAR-9`): «Se dice que…» como ahora; región de origen y antigüedad
       en una etiqueta aparte, estilo pergamino y enlace a Leyendas.
+  - **Diseño, ronda 2** (2026-10-05, aceptada entera; **diseño cerrado**):
+    - **Q9 · Vías realistas para enterarse** (sustituye a Q3):
+      - **«¿Qué se cuenta?»**, opción nueva del menú de un NPC con nombre, de facción viva y no hostil
+        (también los de un encuentro de viaje). Cuenta hasta 2 sucesos que se saben en su región o en
+        su facción y la jugadora no sabe, primero lo más importante y reciente. Si el NPC es de la
+        región donde pasó o de una facción implicada, lo cuenta como hecho y confirma; si no, como
+        rumor. Una vez al día por NPC; sin nada nuevo, una frase de «nada que contar». Texto de
+        plantilla, sin IA.
+      - **Bandos en el tablón de avisos**: sección «Bandos» del modal de avisos con lo de importancia
+        ≥ 5 de la región y de la facción de la ciudad de los últimos 15 días. Leerlo da el conocimiento
+        como hecho confirmado (es oficial).
+      - Los compañeros que cuentan lo de su tierra → `CR-42` (`0.3`).
+    - **Q10 · Lo que llega solo**: sin hacer nada solo llega lo de importancia ≥ 7 (con su alcance
+      de Q2) y lo de las facciones aliadas o con tratado. Lo de 4-6 se sabe viéndolo, preguntando o
+      en el tablón; lo de 1-3, solo viéndolo.
+  - **Pasos**: 18a regla pura de alcance y modelo `Conocimiento`; 18b lo visto y lo que llega solo
+    (todos los sucesos, no solo los emisores de `darNoticia`), con la noticia enlazada a su suceso;
+    18c «¿Qué se cuenta?»; 18d bandos en el tablón; 18e confirmar rumores.
 - **CR-19** Endpoints de Leyendas (§ 14). **S** Las etiquetas (`GET /etiquetas`) van con `CR-14` y el
   epílogo con `UX-18` (`CR-18` Q6, 2026-10-05).
 - **CR-20** Front: Leyendas y fichas "En tu partida" en la Enciclopedia. **M** Decidido (`CR-18` Q5 y
