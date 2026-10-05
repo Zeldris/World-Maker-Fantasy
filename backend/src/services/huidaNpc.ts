@@ -103,7 +103,7 @@ export async function decidirMoralTrasIntercambio(
 /// registra el suceso. Dentro de la transacción del turno.
 export async function aplicarHuidaNpc(
   tx: Prisma.TransactionClient,
-  p: { saveId: string; npc: NpcInScene; characterName: string; currentLocationId: string | null; fictionalMinutes: number; logEntryId?: string | null },
+  p: { saveId: string; npc: Pick<NpcInScene, 'id' | 'name' | 'kind'>; characterName: string; currentLocationId: string | null; fictionalMinutes: number; logEntryId?: string | null },
 ): Promise<void> {
   const scope = scopeFor(p.npc.kind, p.currentLocationId);
   const ausencia = { zonaAusenteHastaMinutes: minutoDeReaparicion(p.fictionalMinutes), zonaLocationId: p.currentLocationId };

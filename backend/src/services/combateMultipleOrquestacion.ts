@@ -1,3 +1,4 @@
+import { revisarMoralDelCombate } from './moralGrupo.js';
 import { restarVejez } from './cronista/edades.js';
 import type { PrismaClient, CondicionFisica, Npc, Clase, AbilityEffect } from '@prisma/client';
 import { Prisma } from '@prisma/client';
@@ -213,6 +214,8 @@ interface ParticipantRef {
   /// AREA real (2026-09-14) — ver comentario de las 2 columnas en schema.prisma.
   areaDefensaPorRondas: number | null;
   areaTrampaPorRondas: number | null;
+  /// CR-44 (44c): escapó del combate (opcional: los refs construidos a mano en tests no lo traen).
+  huido?: boolean;
 }
 
 /// Mismo shape que `PendingCanalizacion` (combatExchange.ts) menos `npcId` — ver comentario de
@@ -326,6 +329,8 @@ interface DatosVivosDeParams {
 }
 
 async function datosVivosDe({ tx, worldId, saveId, participant, weaponNames }: DatosVivosDeParams): Promise<DatosCombatiente | null> {
+  // CR-44 (44c): quien huyó ya no está en el combate (ni ataca, ni es objetivo, ni cuenta para el fin).
+  if (participant.huido) return null;
   if (participant.tipo === 'JUGADOR') {
     // La jugadora en un CombatEncounter real (2026-08-25) — a diferencia de NPC/COMPANION, en su
     // propio turno ELIGE la habilidad de ataque explícitamente (ver `resolverTurnoJugador`, no
@@ -2202,6 +2207,24 @@ async function avanzarYComprobarFin({
   const condiciones = await Promise.all(
     participantesFrescos.map(async (p) => ({ p, datos: await datosVivosDe({ tx, worldId, saveId, participant: p, weaponNames: weaponNamesPorDefecto }) })),
   );
+  // CR-44 (44c): moral del bando enemigo tras este turno; quien escapa sale del combate ya.
+  const moral = await revisarMoralDelCombate(tx, {
+    saveId,
+    encounterId,
+    combatientes: condiciones.map(({ p, datos }) => ({
+      participantId: p.id, bando: p.bando, tipo: p.tipo, npcId: p.npcId, esGrupo: p.condicionFisicaGrupo !== null, huido: p.huido, moralTirada: p.moralTirada,
+      condicion: datos?.condicionFisica ?? 'MUERTO', attributes: datos?.attributes ?? null,
+    })),
+  });
+  if (moral.huidos.length) {
+    for (const c of condiciones) if (moral.huidos.includes(c.p.id)) c.datos = null;
+  }
+  if (moral.textos.length) {
+    const ws = await tx.worldState.findUnique({ where: { saveId }, select: { fictionalDateLabel: true, fictionalMinutes: true } });
+    for (const text of moral.textos) {
+      await tx.logEntry.create({ data: { saveId, channel: 'CHARACTER', isSystemMessage: true, text, timeLabel: ws?.fictionalDateLabel ?? '', fictionalMinutes: ws?.fictionalMinutes ?? undefined } });
+    }
+  }
   const candidatosPorBando = (bando: Bando): ObjetivoCandidato[] =>
     condiciones
       .filter(({ p }) => p.bando === bando)

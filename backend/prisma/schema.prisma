@@ -1216,6 +1216,8 @@ model CombatEncounter {
   /// reclamar); se pone a false en cuanto su elección de esa ronda queda fija (reclamada por
   /// alguien, o elegida por ella).
   esperandoEleccionJugadora Boolean               @default(false)
+  /// CR-44 (44c): bandos que ya tiraron la moral por quedar a la mitad (solo la primera vez).
+  moralMitadBandos          String[]              @default([])
   createdAt                 DateTime              @default(now())
   resolvedAt                DateTime?
   participantes             CombatParticipant[]
@@ -1386,6 +1388,10 @@ model CombatParticipant {
   /// aturdido, sin importar quién sea (a diferencia de PROVOCACION/MARCAR, no fija un objetivo
   /// concreto de antemano). Null/0 = sin trampa activa.
   areaTrampaPorRondas       Int?
+  /// CR-44 (44c): perdió el valor y escapó; fuera del combate (sin datos vivos, sin botín).
+  huido                     Boolean               @default(false)
+  /// CR-44 (44c): ya tiró la moral por caer a GRAVE (solo la primera vez).
+  moralTirada               Boolean               @default(false)
   createdAt                 DateTime              @default(now())
 
   @@index([encounterId])

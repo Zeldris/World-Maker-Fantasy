@@ -2081,6 +2081,8 @@ async function vistaCombateDeGrupo(saveId: string, encounterId: string, terminad
       activeEffects: [] as ActiveEffect[],
       participantId: p.id,
       instanceNumber: numeroInstancia,
+      // CR-44 (44c): escapó; el panel lo da por resuelto.
+      ...(p.huido ? { huido: true } : {}),
     };
   });
   if (!terminado) {
