@@ -7,7 +7,9 @@ import { ZonaSalidaModal } from '../ZonaSalidaModal'
 import { ParcelaDetailModal } from '../ParcelaDetailModal'
 import { DefsFichas, EtiquetaNombre } from '../zona/FichaZona'
 import { COLOR_HEX, regionControlDisplay, TIPO_LABEL, useEscalaPantalla } from '../../lib/zonaFichas'
-import { GridOverlay, JugadorMarker, MS_POR_PASO_MOVIMIENTO, ParcelaMarker, SalidaMarker, ZonePointMarker } from '../zona/MarcadoresZona'
+import { GridOverlay, JugadorMarker, ParcelaMarker, SalidaMarker, ZonePointMarker } from '../zona/MarcadoresZona'
+import { MS_POR_VELOCIDAD, PasoZonaContext } from '../../lib/zonaMovimiento'
+import { useAjustes } from '../../context/useAjustes'
 import { LeyendaZona } from '../zona/LeyendaZona'
 import { useMovimientoZona } from '../../hooks/useMovimientoZona'
 import type { LogEntry, ProfessionRecipeInfo, ZonaParcelaInfo } from '../../types'
@@ -100,6 +102,19 @@ const DISTANCIA_NOMBRE_VISIBLE = 125
 
 
 
+/// Punto del lienzo (viewBox 800×600) bajo un clic: el SVG se escala con CSS, así que `clientX/Y`
+/// se pasan a coordenadas reales con la matriz de pantalla.
+function puntoDelLienzo(e: { currentTarget: SVGSVGElement; clientX: number; clientY: number }): { x: number; y: number } | null {
+  const svg = e.currentTarget
+  const punto = svg.createSVGPoint()
+  punto.x = e.clientX
+  punto.y = e.clientY
+  const ctm = svg.getScreenCTM()
+  if (!ctm) return null
+  const local = punto.matrixTransform(ctm.inverse())
+  return { x: local.x, y: local.y }
+}
+
 export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, columnasAncho = false, onClose, onViajarA, professionRecipes, onRefreshSave, onOfertaDescartada, onHoraActualizada, onSaquearCadaver, onDesollarCadaver, bloqueoTurno, bloqueoMovimiento = null }: ZonaPanelProps) {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<ZonaResponse | null>(null)
@@ -164,9 +179,28 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
     return Math.hypot(punto.x - jugadorX, punto.y - jugadorY) <= DISTANCIA_NOMBRE_VISIBLE
   }
 
-  const { moverA: handleMoverA, movimientoEnCurso, mensajeMovimiento, setMensajeMovimiento } = useMovimientoZona({
-    saveId, setData, bloqueoMovimiento, onEncuentroZona, onClose, onOfertaDescartada, onHoraActualizada,
+  // ZON-36: velocidad de paso de Ajustes; ZON-35: parar, reanudar y cancelar.
+  const { ajustes } = useAjustes()
+  const {
+    moverA: handleMoverA, movimientoEnCurso, mensajeMovimiento, setMensajeMovimiento, parar, reanudar, cancelar, destinoPendiente, msPasoActual,
+  } = useMovimientoZona({
+    saveId, setData, bloqueoMovimiento, onEncuentroZona, onClose, onOfertaDescartada, onHoraActualizada, msPorPaso: MS_POR_VELOCIDAD[ajustes.velocidadPasoZona],
   })
+  // ZON-35: Espacio para y reanuda (fuera de los campos de texto).
+  const pararReanudarRef = useRef<() => void>(() => {})
+  pararReanudarRef.current = () => (movimientoEnCurso ? parar() : reanudar())
+  useEffect(() => {
+    if (soloConsulta) return
+    const tecla = (e: KeyboardEvent) => {
+      if (e.key !== ' ' || e.repeat) return
+      const t = e.target as HTMLElement | null
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return
+      e.preventDefault()
+      pararReanudarRef.current()
+    }
+    window.addEventListener('keydown', tecla)
+    return () => window.removeEventListener('keydown', tecla)
+  }, [soloConsulta])
 
   useEffect(() => {
     setLoading(true)
@@ -302,6 +336,18 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                 intrínseco del <svg> a partir de su viewBox (800×600, 4:3) y lo limita por AMBOS
                 ejes sin forzar ninguno, exactamente el comportamiento de una `<img>` con
                 `object-fit: contain`. El div contenedor centra el resultado con flex. */}
+            {/* ZON-35: parar y reanudar (también con Espacio). */}
+            {!soloConsulta && (movimientoEnCurso || destinoPendiente) && (
+              <button
+                type="button"
+                onClick={movimientoEnCurso ? parar : reanudar}
+                className="tactile absolute left-2 top-2 z-10 rounded-md border border-iron-700 bg-wood-950/85 px-2 py-1 text-2xs font-semibold text-wood-200 hover:text-wood-100"
+                title={movimientoEnCurso ? 'Parar (Espacio)' : 'Reanudar (Espacio)'}
+              >
+                {movimientoEnCurso ? '⏸ Parar' : '▶ Reanudar'}
+              </button>
+            )}
+            <PasoZonaContext.Provider value={msPasoActual}>
             <svg
               ref={svgRef}
               viewBox="0 0 800 600"
@@ -311,14 +357,27 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                   ? undefined
                   : (e) => {
                       if (movimientoEnCurso) return
-                      const svg = e.currentTarget
-                      const punto = svg.createSVGPoint()
-                      punto.x = e.clientX
-                      punto.y = e.clientY
-                      const ctm = svg.getScreenCTM()
-                      if (!ctm) return
-                      const local = punto.matrixTransform(ctm.inverse())
-                      handleMoverA({ x: local.x, y: local.y })
+                      const local = puntoDelLienzo(e)
+                      if (local) handleMoverA(local)
+                    }
+              }
+              // ZON-36: doble clic = ir rápido (corta el trayecto que haya y sale de nuevo, rápido).
+              onDoubleClick={
+                soloConsulta
+                  ? undefined
+                  : (e) => {
+                      const local = puntoDelLienzo(e)
+                      if (local) handleMoverA(local, { rapido: true })
+                    }
+              }
+              // ZON-35: clic derecho cancela el trayecto.
+              onContextMenu={
+                soloConsulta
+                  ? undefined
+                  : (e) => {
+                      if (!movimientoEnCurso && !destinoPendiente) return
+                      e.preventDefault()
+                      cancelar()
                     }
               }
             >
@@ -401,7 +460,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                 ]
                   .filter((e) => nombreVisible(e.clave, e, e.sel))
                   .map((e) => (
-                    <g key={e.clave} style={{ transform: `translate(${e.x}px, ${e.y}px)`, transition: `transform ${MS_POR_PASO_MOVIMIENTO}ms linear` }}>
+                    <g key={e.clave} style={{ transform: `translate(${e.x}px, ${e.y}px)`, transition: `transform ${msPasoActual}ms linear` }}>
                       <g transform={`scale(${escala})`}>
                         <EtiquetaNombre texto={e.nombre} />
                       </g>
@@ -409,6 +468,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                   ))}
               </g>
             </svg>
+            </PasoZonaContext.Provider>
           </div>
         )}
     </>

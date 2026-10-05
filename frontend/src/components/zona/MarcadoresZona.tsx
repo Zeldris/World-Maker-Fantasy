@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { EstandarteSalida, FichaJugador, FichaZona } from './FichaZona'
 import { anguloSalida } from '../../lib/rumboSalida'
 import type { ZonaPinTipo } from '../ZonePointDetailModal'
+import { MS_POR_VELOCIDAD, useMsPaso } from '../../lib/zonaMovimiento'
 
 // ZON-80 (hito 0.2) — marcadores del mapa de zona, sacados de `ZonaPanel.tsx` tal cual: fichas que se
 // desplazan, el personaje, las salidas, las parcelas y la cuadrícula.
@@ -40,7 +41,7 @@ import type { ZonaPinTipo } from '../ZonePointDetailModal'
 /// antes del siguiente paso) — al subir el intervalo sin tocar la transición, el marcador se
 /// deslizaba rápido y luego quedaba quieto el resto del tiempo, justo el efecto de "salto" que se
 /// pedía evitar.
-export const MS_POR_PASO_MOVIMIENTO = 600
+export const MS_POR_PASO_MOVIMIENTO = MS_POR_VELOCIDAD.normal
 
 
 /// Cada forma se dibuja SIEMPRE relativa al origen (0,0) — quien la envuelve (`ZonePointMarker`
@@ -58,10 +59,12 @@ export const MS_POR_PASO_MOVIMIENTO = 600
 /// insertar el texto de cantidad DENTRO del mismo grupo animado (ver `data.puntos.map` más abajo),
 /// en vez de que cada caller tenga que repetir el `<g>`/`transform` a mano.
 export function ZonePointMarker({ x, y, tipo, color, escala, hasCompanion, cantidad, sombra, children }: { x: number; y: number; tipo: ZonaPinTipo; color: string; escala: number; hasCompanion?: boolean; cantidad?: number; sombra?: boolean; children?: ReactNode }) {
+  // ZON-36: la animación dura lo que el paso (según la velocidad elegida).
+  const msPaso = useMsPaso()
   // ZON-10/ZON-11 (hito 0.1) — la ficha (placa + pictograma + anillo) vive en zona/FichaZona.tsx y se
   // dibuja en píxeles de pantalla; aquí solo se coloca y se anima en coordenadas del lienzo.
   return (
-    <g style={{ transform: `translate(${x}px, ${y}px)`, transition: `transform ${MS_POR_PASO_MOVIMIENTO}ms linear` }}>
+    <g style={{ transform: `translate(${x}px, ${y}px)`, transition: `transform ${msPaso}ms linear` }}>
       <FichaZona tipo={tipo} color={color} escala={escala} hasCompanion={hasCompanion} cantidad={cantidad} sombra={sombra}>
         {children}
       </FichaZona>
@@ -87,9 +90,10 @@ export function ZonePointMarker({ x, y, tipo, color, escala, hasCompanion, canti
 /// comentario más arriba) — el deslizamiento ocupa el intervalo completo entre pasos, sin quedarse
 /// quieto esperando al siguiente.
 export function JugadorMarker({ x, y, escala, angulo, quieto, sombra }: { x: number; y: number; escala: number; angulo: number | null; quieto: boolean; sombra?: boolean }) {
+  const msPaso = useMsPaso()
   // ZON-14 (hito 0.1) — la estrella negra pasa a ficha propia (zona/FichaZona.tsx · FichaJugador).
   return (
-    <g style={{ transform: `translate(${x}px, ${y}px)`, transition: `transform ${MS_POR_PASO_MOVIMIENTO}ms linear` }}>
+    <g style={{ transform: `translate(${x}px, ${y}px)`, transition: `transform ${msPaso}ms linear` }}>
       <FichaJugador escala={escala} angulo={angulo} quieto={quieto} sombra={sombra} />
       <title>Tú estás aquí</title>
     </g>

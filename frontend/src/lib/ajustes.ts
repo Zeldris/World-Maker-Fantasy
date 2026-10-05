@@ -1,5 +1,6 @@
 import { setFactorDados } from './duracionTirada'
 import { ATAJOS_POR_DEFECTO, normalizarAtajos, type MapaAtajos } from './atajos'
+import type { VelocidadPasoZona } from './zonaMovimiento'
 
 // Ajustes del jugador (CFG-5 y CFG-6, hito 0.2 — roadmap-front.md § 2). Aquí la parte pura:
 // valores por defecto, validación y carga/guardado en `localStorage` con clave versionada y
@@ -29,6 +30,8 @@ export interface Ajustes {
   atajos: MapaAtajos
   /// CFG-35 — avisos de sucesos (por defecto, los importantes: decisión Q7 de la Fase E).
   avisosSucesos: AvisosSucesos
+  /// ZON-36 — velocidad de paso en el mapa de zona (decisión de la usuaria, Fase F del 0.2).
+  velocidadPasoZona: VelocidadPasoZona
 }
 
 export const AJUSTES_POR_DEFECTO: Ajustes = {
@@ -41,6 +44,7 @@ export const AJUSTES_POR_DEFECTO: Ajustes = {
   altoContraste: false,
   atajos: ATAJOS_POR_DEFECTO,
   avisosSucesos: 'importantes',
+  velocidadPasoZona: 'normal',
 }
 
 export const CLAVE_AJUSTES = 'tarkor.settings.v1'
@@ -65,6 +69,7 @@ export function normalizarAjustes(crudo: unknown): Ajustes {
     altoContraste: typeof o.altoContraste === 'boolean' ? o.altoContraste : d.altoContraste,
     atajos: normalizarAtajos(o.atajos),
     avisosSucesos: uno(o.avisosSucesos, ['todos', 'importantes', 'graves', 'ninguno'] as const, d.avisosSucesos),
+    velocidadPasoZona: uno(o.velocidadPasoZona, ['normal', 'rapida', 'inmediata'] as const, d.velocidadPasoZona),
   }
 }
 

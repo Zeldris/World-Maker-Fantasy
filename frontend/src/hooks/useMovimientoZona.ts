@@ -1,6 +1,6 @@
 import { useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { getZona, moverEnZona, type ZonaResponse } from '../lib/api'
-import { MS_POR_PASO_MOVIMIENTO } from '../components/zona/MarcadoresZona'
+import { esperaAntesDePedir, MS_POR_VELOCIDAD } from '../lib/zonaMovimiento'
 import type { LogEntry } from '../types'
 
 // ZON-80 (hito 0.2) — el bucle de pasos del mapa de zona, sacado de `ZonaPanel.tsx` tal cual: pide
@@ -15,9 +15,13 @@ export interface OpcionesMovimientoZona {
   onClose?: () => void
   onOfertaDescartada?: () => void
   onHoraActualizada?: (fictionalDateLabel: string) => void
+  /// ZON-36: duración de cada paso según la velocidad elegida en Ajustes (600, 250 o 0 ms).
+  msPorPaso?: number
 }
 
-export function useMovimientoZona({ saveId, setData, bloqueoMovimiento = null, onEncuentroZona, onClose, onOfertaDescartada, onHoraActualizada }: OpcionesMovimientoZona) {
+const dormir = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+export function useMovimientoZona({ saveId, setData, bloqueoMovimiento = null, onEncuentroZona, onClose, onOfertaDescartada, onHoraActualizada, msPorPaso = MS_POR_VELOCIDAD.normal }: OpcionesMovimientoZona) {
   // Sistema de movimiento por cuadrícula (2026-09-08) — mensaje simple de colisión/aviso ("por
   // ahora, acabaremos metiendo una animación" — placeholder consciente hasta que Franja 3 conecte
   // esto con combate/Interactuar real). `movimientoEnCurso` deshabilita nuevos clics mientras se
@@ -28,6 +32,11 @@ export function useMovimientoZona({ saveId, setData, bloqueoMovimiento = null, o
   // animación del anterior, el bucle en curso debe parar de seguir pidiendo pasos del trayecto
   // viejo; comparar contra el token actual en cada iteración es más simple que cancelar promesas.
   const movimientoTokenRef = useRef(0)
+  // ZON-35: «Parar» se mira justo antes de pedir cada paso (así el personaje se queda en la celda
+  // donde está); el destino se guarda para reanudar. ZON-36: duración del paso del trayecto en curso.
+  const pararRef = useRef(false)
+  const [destinoPendiente, setDestinoPendiente] = useState<{ x: number; y: number } | null>(null)
+  const [msPasoActual, setMsPasoActual] = useState(msPorPaso)
   // Sistema de movimiento por cuadrícula (2026-09-08) — clic en el lienzo (fondo o pin) pide el
   // destino real en píxel; el backend calcula el camino entero pero solo avanza UN PASO por
   // llamada (mismo criterio "el motor decide, el frontend solo pide"), así que aquí se sigue
@@ -38,20 +47,37 @@ export function useMovimientoZona({ saveId, setData, bloqueoMovimiento = null, o
   // real jugando en vivo con Playwright): `salidas[].alcanzable` solo se calculaba al abrir el
   // panel — tras caminar hasta una salida, pulsarla seguía diciendo "Tienes que acercarte más"
   // hasta cerrar y reabrir el modal.
-  async function moverA(destino: { x: number; y: number }): Promise<ZonaResponse | null> {
+  async function moverA(destino: { x: number; y: number }, opciones: { rapido?: boolean } = {}): Promise<ZonaResponse | null> {
     if (bloqueoMovimiento) {
       setMensajeMovimiento(bloqueoMovimiento)
       return null
     }
     const miToken = ++movimientoTokenRef.current
+    // ZON-36: doble clic = este trayecto, rápido (nunca más lento que lo elegido).
+    const ms = opciones.rapido ? Math.min(msPorPaso, MS_POR_VELOCIDAD.rapida) : msPorPaso
+    setMsPasoActual(ms)
+    pararRef.current = false
+    setDestinoPendiente(destino)
     setMovimientoEnCurso(true)
     setMensajeMovimiento(null)
     let llegado = false
+    let parado = false
+    // ZON-38: lo que tardó la última llamada y cuándo empezó la última animación.
+    let latencia = 0
+    let inicioAnimacion = Number.NEGATIVE_INFINITY
     try {
       let sigue = true
       while (sigue && movimientoTokenRef.current === miToken) {
+        const pedido = performance.now()
         const resultado = await moverEnZona(saveId, destino)
+        latencia = performance.now() - pedido
         if (movimientoTokenRef.current !== miToken) break // cancelado por un clic nuevo mientras esperaba
+        // Si la respuesta llega antes de que acabe la animación anterior, se espera a que acabe para
+        // que cada paso se vea entero (sin acelerones).
+        const falta = ms - (performance.now() - inicioAnimacion)
+        if (falta > 0) await dormir(falta)
+        if (movimientoTokenRef.current !== miToken) break
+        inicioAnimacion = performance.now()
         if (resultado.ofertaDescartada) onOfertaDescartada?.()
         if (resultado.fictionalDateLabel) onHoraActualizada?.(resultado.fictionalDateLabel)
         // Sincronización real del mundo (2026-09-09, bug real: "los elementos se mueven, pero no...
@@ -127,15 +153,29 @@ export function useMovimientoZona({ saveId, setData, bloqueoMovimiento = null, o
         } else if (resultado.caminoRestante.length === 0) {
           sigue = false
           llegado = true
+        } else if (pararRef.current) {
+          parado = true
+          sigue = false
         } else {
-          await new Promise((r) => setTimeout(r, MS_POR_PASO_MOVIMIENTO))
+          // ZON-38: el siguiente paso se pide para que llegue justo al terminar esta animación.
+          const espera = esperaAntesDePedir(ms, latencia)
+          if (espera > 0) await dormir(espera)
+          if (pararRef.current) {
+            parado = true
+            sigue = false
+          }
         }
       }
     } catch (err) {
       // El backend explica por qué no (p.ej. un agresivo que te corta el paso, 409) — mostrarlo.
       if (movimientoTokenRef.current === miToken) setMensajeMovimiento(err instanceof Error && err.message ? err.message : 'No se pudo mover — inténtalo de nuevo.')
     } finally {
-      if (movimientoTokenRef.current === miToken) setMovimientoEnCurso(false)
+      if (movimientoTokenRef.current === miToken) {
+        setMovimientoEnCurso(false)
+        // Parado: el destino queda para reanudar; si no, el trayecto se acabó (llegada, encuentro…).
+        if (parado) setMensajeMovimiento('Te detienes.')
+        else setDestinoPendiente(null)
+      }
     }
     if (!llegado || movimientoTokenRef.current !== miToken) return null
     const fresca = await getZona(saveId).catch(() => null)
@@ -143,5 +183,18 @@ export function useMovimientoZona({ saveId, setData, bloqueoMovimiento = null, o
     return fresca
   }
 
-  return { moverA, movimientoEnCurso, mensajeMovimiento, setMensajeMovimiento }
+  /// ZON-35: para en la celda donde esté (el destino se guarda para reanudar).
+  function parar() {
+    if (movimientoEnCurso) pararRef.current = true
+  }
+  function reanudar() {
+    if (!movimientoEnCurso && destinoPendiente) void moverA(destinoPendiente)
+  }
+  /// Clic derecho: para y olvida el destino.
+  function cancelar() {
+    pararRef.current = true
+    setDestinoPendiente(null)
+  }
+
+  return { moverA, movimientoEnCurso, mensajeMovimiento, setMensajeMovimiento, parar, reanudar, cancelar, destinoPendiente, msPasoActual }
 }

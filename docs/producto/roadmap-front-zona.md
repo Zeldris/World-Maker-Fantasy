@@ -199,10 +199,10 @@ son de relleno.*
 | ZON-32 | **Coste visible** junto al destino: "8 pasos · 8 min", la hora de llegada en el reloj ficticio y la energía recuperada por el camino. | ✅ | S |
 | ZON-33 | **Avisos en la ruta** (XCOM): las celdas de la ruta que entran en el radio de un agresivo se marcan en rojo con un ojo; la ruta entera cambia de color si acaba en encuentro seguro. | 🔌 (qué puntos son hostiles) | M |
 | ZON-34 | **Bandera de destino** (OSRS) que se queda hasta llegar, y **la ruta que se va consumiendo** a medida que se anda. | ✅ | S |
-| ZON-35 | **Parar y reanudar**: botón y tecla `Espacio`; clic derecho cancela. Resuelve Z15. | ✅ | S |
-| ZON-36 | **Velocidad de paso** (Mount & Blade): normal (actual, 600 ms), rápida (~250 ms) e inmediata; doble clic = ir rápido. Ajuste en `CFG`. Resuelve Z14. | ✅ | S |
+| ~~ZON-35~~ ✅ 2026-10-05 (`useMovimientoZona`: «Parar» se mira justo antes de pedir cada paso, el destino queda para «Reanudar»; botón sobre el mapa, `Espacio` y clic derecho para cancelar) | **Parar y reanudar**: botón y tecla `Espacio`; clic derecho cancela. Resuelve Z15. | ✅ | S |
+| ~~ZON-36~~ ✅ 2026-10-05 (ajuste «Velocidad al andar por la zona» en Ajustes › Animaciones: normal 600 ms, rápida 250 ms, inmediata 0 ms; doble clic = ese trayecto rápido; las fichas se animan con la misma duración vía `PasoZonaContext`) | **Velocidad de paso** (Mount & Blade): normal (actual, 600 ms), rápida (~250 ms) e inmediata; doble clic = ir rápido. Ajuste en `CFG`. Resuelve Z14. | ✅ | S |
 | ZON-37 | **Animación de andar**: interpolación con aceleración suave en vez de `linear`, pequeño balanceo de la ficha en cada paso y huellas que se desvanecen detrás. | ✅ | S |
-| ZON-38 | **Menos esperas de red**: pedir el siguiente paso mientras se anima el actual (el front ya sabe el destino), en vez de animar y luego pedir. 🧭 Alternativa backend: devolver varios pasos por llamada hasta el primer evento. | ✅ / 🛠️ | M |
+| ~~ZON-38~~ ✅ 2026-10-05 (solo front, decisión de la usuaria: el siguiente paso se pide para que llegue al terminar la animación, descontando la latencia de la llamada anterior; así parar sigue dejando al personaje en su celda) | **Menos esperas de red**: pedir el siguiente paso mientras se anima el actual (el front ya sabe el destino), en vez de animar y luego pedir. 🧭 Alternativa backend: devolver varios pasos por llamada hasta el primer evento. | ✅ / 🛠️ | M |
 | ZON-39 | **Terreno** (Z16): a largo plazo, capa de celdas no transitables por zona para que la ruta rodee acantilados y agua. Mientras tanto, nada en el front debe sugerir que se puede atravesar una pared. | 🛠️ | L |
 
 ## 9. Encuentros e interacción (`ZON-X`)
