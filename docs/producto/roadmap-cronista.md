@@ -1523,8 +1523,12 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     `registrarSuceso`; lo que llega solo, `difundir` tras cada día y cada acción, con ventana de 5 días;
     `darNoticiaDeSuceso` guarda la noticia con su suceso en `Suceso.noticia`, migración
     `20261005061000_suceso_noticia`; la noticia lleva `sucesoId` y, si es rumor, región y cuándo pasó;
-    `darNoticia` queda para noticias sin suceso, como los avisos nuevos del tablón);
-    18c «¿Qué se cuenta?»; 18d bandos en el tablón; 18e confirmar rumores.
+    `darNoticia` queda para noticias sin suceso, como los avisos nuevos del tablón); ~~18c~~ ✅ 2026-10-05
+    («¿Qué se cuenta?» en el menú de quien puede dar trabajo: `preguntarNoticias` en `difusion.ts`, hasta
+    2 sucesos de los últimos 30 días, una vez al día por NPC con `Conocimiento.fuente`, migración
+    `20261005062000_conocimiento_fuente`; frase del NPC al registro y noticias a «El mundo»; si el NPC
+    es de allí o de una facción implicada confirma el rumor con «Se confirma: …»); 18d bandos en el
+    tablón; 18e confirmar rumores.
 - **CR-19** Endpoints de Leyendas (§ 14). **S** Las etiquetas (`GET /etiquetas`) van con `CR-14` y el
   epílogo con `UX-18` (`CR-18` Q6, 2026-10-05).
 - **CR-20** Front: Leyendas y fichas "En tu partida" en la Enciclopedia. **M** Decidido (`CR-18` Q5 y
