@@ -1461,7 +1461,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     escapa sale del combate y de la zona, vivo, vuelve a su hogar, sin botín, y queda el suceso «X
     huyó de ti» (Leyendas, reputación; puede volver por `CR-11`). Un líder de facción no huye si con
     él cae su facción.
-  - **CR-49** Grupos de personas en combate de varios (ronda 2 de la Fase G, aceptada el
+  - 🚧 **CR-49** Grupos de personas en combate de varios (ronda 2 de la Fase G, aceptada el
     2026-10-05; hoy solo la caza abre combates de varios y siempre contra fauna). **L** Va antes
     de 44c y `CR-45`, que lo necesitan. Bandas itinerantes de 2-3 renegados de su pueblo (goirnte
     renegado, faerus errático, nabieus enloquecido) que patrullan su región con las patrullas de
@@ -1472,7 +1472,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     el combate de varios con toda (texto, tarjeta de encuentro o «Combatir»), con el panel de la
     caza en grupo; después, resumen y saqueo de cada caído como en la caza (sin despellejar); el
     que huye no deja nada. Campamentos de bandidos con cabecilla y refuerzos: tarea aparte en el
-    `0.3` (`CR-50`).
+    `0.3` (`CR-50`). Pasos: 49a motor ✅ (`combatePersonas.ts`: banda por la `cantidad` de su punto, aliados de su facción a ≤ 3 casillas y la guardia de un interior; el turno que abre combate contra una persona con grupo abre el de varios) · 49b entradas que no pasan por el turno (tarjeta de encuentro, modo dinámico) · 49c bandas de verdad (propuesta de lore a Álvaro: dónde y quiénes; cabecilla) · 49d saqueo de personas tras el combate de grupo.
   - **CR-50** Campamentos de bandidos con cabecilla y refuerzos (Bellwright, Medieval Dynasty). **M**
     Va con `CR-37` en el `0.3`.
   - **CR-45** Capitán y ataques concentrados. **M** Inteligencia ≥ 20: concentra ataques y manda a

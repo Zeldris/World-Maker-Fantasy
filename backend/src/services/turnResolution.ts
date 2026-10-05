@@ -60,6 +60,7 @@ import { instanceNumbersByParticipantId, resolverObjetivoPorTexto, type Habilida
 import { prisma } from '../lib/prisma.js';
 import { registrarSuceso } from './cronista/sucesos.js';
 import { aplicarHuidaNpc, decidirMoralTrasIntercambio } from './huidaNpc.js';
+import { abrirCombateDePersonas, grupoDePersona } from './combatePersonas.js';
 import { effectiveAttributesConDuracion, pushActiveEffect, decrementActiveEffects, type ActiveEffect } from './activeEffects.js';
 import type { RollResult, AttributeBlock, Attribute, GradoExito } from './dice.js';
 import type { SecondaryAttributeBlock } from './secondaryAttributes.js';
@@ -2025,6 +2026,69 @@ async function posicionDeSalidaHacia(locationId: string, coords: { x: number; y:
     .map((l) => (l.from.id === locationId ? l.to : l.from))
     .filter((v): v is { id: string; x: number; y: number } => v.x != null && v.y != null);
   return posicionesDeSalidas(coords, vecinos).get(haciaId) ?? null;
+}
+
+/// Vista del combate de grupo para el panel (participantes con su condición real), y
+/// `pendingCombatNpcSlugs` sincronizado — extraída del turno para usarla también al abrir un
+/// combate de personas en grupo (CR-49).
+async function vistaCombateDeGrupo(saveId: string, encounterId: string, terminado: boolean) {
+  const participantesFinal = await prisma.combatParticipant.findMany({ where: { encounterId } });
+  const enemigoNpcIds = participantesFinal.filter((p) => p.tipo === 'NPC' && p.npcId).map((p) => p.npcId!);
+  const enemigoNpcRows = enemigoNpcIds.length
+    ? await prisma.npc.findMany({ where: { id: { in: enemigoNpcIds } }, select: { id: true, slug: true, name: true, kind: true, atributoResistencia: true } })
+    : [];
+  const npcRowById = new Map(enemigoNpcRows.map((n) => [n.id, n]));
+  // Bug real de display (2026-08-25, hallado al cerrar saqueo/desuello): un participante
+  // SOLITARIO siempre tiene `condicionFisicaGrupo: null` (ver comentario del campo en
+  // schema.prisma — solo lo usan los miembros de grupo) así que `?? 'ILESO'` lo mostraba
+  // "ileso" en el popup aunque ya estuviera MUERTO de verdad en su `NpcState` real.
+  const soloNpcIds = participantesFinal.filter((p) => p.tipo === 'NPC' && p.npcId && p.condicionFisicaGrupo === null).map((p) => p.npcId!);
+  const soloStates = soloNpcIds.length
+    ? await prisma.npcState.findMany({
+        where: { saveId, npcId: { in: soloNpcIds } },
+        select: { npcId: true, scope: true, condicionFisica: true, analizado: true },
+      })
+    : [];
+  const soloCondicionByNpcId = new Map(soloStates.map((s) => [s.npcId, s.condicionFisica]));
+  // "Analizar Rival" real en combate múltiple (2026-08-27) — mismo criterio que
+  // `soloCondicionByNpcId`: solitario lee de `NpcState.analizado`, miembro de grupo lee de su
+  // propio `CombatParticipant.analizadoGrupo` (ver comentario de la columna en schema.prisma).
+  const soloAnalizadoByNpcId = new Map(soloStates.map((s) => [s.npcId, s.analizado]));
+  const enemigosParaDisplay = participantesFinal.filter((p) => p.tipo === 'NPC' && p.npcId && npcRowById.has(p.npcId));
+  // Identificador de combatientes duplicados (2026-08-27, bug real jugando: "ataqué a los dos
+  // buitres a la vez" — no podía dirigir el golpe al segundo, `slug` no distingue individuos
+  // de un mismo Npc de catálogo). Misma función pura que usa el matching por texto de arriba
+  // (`esperandoEleccionJugadora`), para que el número que ve la jugadora sea siempre el mismo
+  // que el backend interpreta al citarlo — null para un enemigo solitario (ver comentario de
+  // `NpcInSceneInfo.instanceNumber`, types.ts, frontend).
+  const instanceNumberByParticipantIdDisplay = instanceNumbersByParticipantId(
+    enemigosParaDisplay.map((p) => ({ participantId: p.id, npcId: p.npcId! })),
+  );
+  const npcs = enemigosParaDisplay.map((p) => {
+    const npcRow = npcRowById.get(p.npcId!)!;
+    const numeroInstancia = instanceNumberByParticipantIdDisplay.get(p.id) ?? null;
+    return {
+      slug: npcRow.slug,
+      name: npcRow.name,
+      condicionFisica: p.condicionFisicaGrupo ?? soloCondicionByNpcId.get(p.npcId!) ?? 'ILESO',
+      saqueado: false,
+      lootedItemNames: [] as string[],
+      analizado: p.condicionFisicaGrupo !== null ? (p.analizadoGrupo ?? false) : (soloAnalizadoByNpcId.get(p.npcId!) ?? false),
+      capturable: npcRow.atributoResistencia !== null,
+      // `combateMultipleOrquestacion.ts` no lee/aplica `activeEffects` todavía (Fase 2,
+      // 2026-08-26, deferred a propósito — ver docs/producto/21-roadmap.md § Fase 2) — `[]` real,
+      // no un hueco de este display en concreto.
+      activeEffects: [] as ActiveEffect[],
+      participantId: p.id,
+      instanceNumber: numeroInstancia,
+    };
+  });
+  if (!terminado) {
+    await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: npcs.map((n) => n.slug) } });
+  } else {
+    await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: [] } });
+  }
+  return { npcs };
 }
 
 async function resolveCombatSlugsAndPersist(params: {
@@ -6791,66 +6855,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // quedan en su valor por defecto — mientras el encuentro sigue EN_CURSO nadie ha podido saquear
   // nada todavía (petición explícita: solo se puede saquear/desollar al RESOLVERSE del todo, ver
   // `combatEncounterLootSummary` arriba). Este display es solo para el popup DURANTE el combate.
-  const combateIniciado = combatEncounterMode
-    ? await (async () => {
-        const participantesFinal = await prisma.combatParticipant.findMany({ where: { encounterId: combatEncounterId! } });
-        const enemigoNpcIds = participantesFinal.filter((p) => p.tipo === 'NPC' && p.npcId).map((p) => p.npcId!);
-        const enemigoNpcRows = enemigoNpcIds.length
-          ? await prisma.npc.findMany({ where: { id: { in: enemigoNpcIds } }, select: { id: true, slug: true, name: true, kind: true, atributoResistencia: true } })
-          : [];
-        const npcRowById = new Map(enemigoNpcRows.map((n) => [n.id, n]));
-        // Bug real de display (2026-08-25, hallado al cerrar saqueo/desuello): un participante
-        // SOLITARIO siempre tiene `condicionFisicaGrupo: null` (ver comentario del campo en
-        // schema.prisma — solo lo usan los miembros de grupo) así que `?? 'ILESO'` lo mostraba
-        // "ileso" en el popup aunque ya estuviera MUERTO de verdad en su `NpcState` real.
-        const soloNpcIds = participantesFinal.filter((p) => p.tipo === 'NPC' && p.npcId && p.condicionFisicaGrupo === null).map((p) => p.npcId!);
-        const soloStates = soloNpcIds.length
-          ? await prisma.npcState.findMany({
-              where: { saveId, npcId: { in: soloNpcIds } },
-              select: { npcId: true, scope: true, condicionFisica: true, analizado: true },
-            })
-          : [];
-        const soloCondicionByNpcId = new Map(soloStates.map((s) => [s.npcId, s.condicionFisica]));
-        // "Analizar Rival" real en combate múltiple (2026-08-27) — mismo criterio que
-        // `soloCondicionByNpcId`: solitario lee de `NpcState.analizado`, miembro de grupo lee de su
-        // propio `CombatParticipant.analizadoGrupo` (ver comentario de la columna en schema.prisma).
-        const soloAnalizadoByNpcId = new Map(soloStates.map((s) => [s.npcId, s.analizado]));
-        const enemigosParaDisplay = participantesFinal.filter((p) => p.tipo === 'NPC' && p.npcId && npcRowById.has(p.npcId));
-        // Identificador de combatientes duplicados (2026-08-27, bug real jugando: "ataqué a los dos
-        // buitres a la vez" — no podía dirigir el golpe al segundo, `slug` no distingue individuos
-        // de un mismo Npc de catálogo). Misma función pura que usa el matching por texto de arriba
-        // (`esperandoEleccionJugadora`), para que el número que ve la jugadora sea siempre el mismo
-        // que el backend interpreta al citarlo — null para un enemigo solitario (ver comentario de
-        // `NpcInSceneInfo.instanceNumber`, types.ts, frontend).
-        const instanceNumberByParticipantIdDisplay = instanceNumbersByParticipantId(
-          enemigosParaDisplay.map((p) => ({ participantId: p.id, npcId: p.npcId! })),
-        );
-        const npcs = enemigosParaDisplay.map((p) => {
-          const npcRow = npcRowById.get(p.npcId!)!;
-          const numeroInstancia = instanceNumberByParticipantIdDisplay.get(p.id) ?? null;
-          return {
-            slug: npcRow.slug,
-            name: npcRow.name,
-            condicionFisica: p.condicionFisicaGrupo ?? soloCondicionByNpcId.get(p.npcId!) ?? 'ILESO',
-            saqueado: false,
-            lootedItemNames: [] as string[],
-            analizado: p.condicionFisicaGrupo !== null ? (p.analizadoGrupo ?? false) : (soloAnalizadoByNpcId.get(p.npcId!) ?? false),
-            capturable: npcRow.atributoResistencia !== null,
-            // `combateMultipleOrquestacion.ts` no lee/aplica `activeEffects` todavía (Fase 2,
-            // 2026-08-26, deferred a propósito — ver docs/producto/21-roadmap.md § Fase 2) — `[]` real,
-            // no un hueco de este display en concreto.
-            activeEffects: [] as ActiveEffect[],
-            participantId: p.id,
-            instanceNumber: numeroInstancia,
-          };
-        });
-        if (!combatEncounterTerminado) {
-          await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: npcs.map((n) => n.slug) } });
-        } else {
-          await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: [] } });
-        }
-        return { npcs };
-      })()
+  const combateIniciado1v1 = combatEncounterMode
+    ? await vistaCombateDeGrupo(saveId, combatEncounterId!, combatEncounterTerminado)
     : (await resolveCombatSlugsAndPersist({
         saveId,
         action,
@@ -6881,6 +6887,29 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         attackerRollGradoExito: roll?.gradoExito ?? null,
         attackTarget: candidateAttackTarget,
       })).combateIniciado;
+
+  // CR-49: al abrir combate contra una persona con banda o con los suyos cerca, pelean todos, en el
+  // combate de varios (mismo motor y panel que la caza en grupo). Desde el turno siguiente lo lleva
+  // `activeCombatEncounter`.
+  let combateIniciado = combateIniciado1v1;
+  if (!combatEncounterMode && !enCombate && proposedCondicion !== 'MUERTO' && combateIniciado1v1?.npcs.length) {
+    const objetivo = npcsInScene.find((n) => n.slug === combateIniciado1v1.npcs[0]!.slug);
+    if (objetivo?.raza && objetivo.condicionFisica !== 'CONVALECIENTE' && objetivo.condicionFisica !== 'MUERTO') {
+      const grupo = await grupoDePersona(prisma, { saveId, worldId, locationId: currentLocationId, objetivo });
+      if (grupo.length > 1) {
+        const abierto = await abrirCombateDePersonas(
+          prisma,
+          { id: saveId, characterName, attributes, fictionalMinutes: nuevoFictionalMinutes, timeLabel: nuevaFictionalDateLabel },
+          grupo,
+        );
+        if (abierto) {
+          // El ataque a ciegas que el 1v1 hubiera dejado sembrado no sigue en el combate de varios.
+          await prisma.save.update({ where: { id: saveId }, data: { pendingNpcAttack: Prisma.JsonNull } });
+          combateIniciado = await vistaCombateDeGrupo(saveId, abierto.encounterId, false);
+        }
+      }
+    }
+  }
 
   // Log de diagnóstico por turno (roadmap 2026-07-20, prioridad P0 de Fable): una línea
   // estructurada con qué detectores dispararon y con qué resultado. Los 3 bugs reales de hoy
