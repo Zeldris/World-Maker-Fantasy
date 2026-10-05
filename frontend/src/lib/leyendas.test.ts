@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { agruparCronica, colorDeEntrada, lineaTemporal, porEntidad } from './leyendas'
+import { agruparCronica, colorDeEntrada, lineaTemporal, porEntidad, rumoresConLugar } from './leyendas'
 import type { EntradaLeyenda } from './api'
 
 /// CR-20 (hito 0.2) — agrupaciones de las Leyendas.
@@ -41,4 +41,17 @@ describe('leyendas', () => {
     expect(colorDeEntrada({ familia: 'VIDA_MUERTE', tipo: 'MUERTE_NPC' })).toBe('text-danger-400')
     expect(colorDeEntrada({ familia: 'VIDA_MUERTE', tipo: 'NACIMIENTO' })).toBe('text-wood-200')
   })
+
+  it('rumores con lugar de «El mundo» (INT-9): uno por suceso y fuera los ya confirmados', () => {
+    const e = (id: string, text: string, noticia: object) => ({ id, channel: 'world', text, timeLabel: '', createdAt: '', noticia }) as never
+    const log = [
+      e('1', 'Se dice que A.', { sucesoId: 'a', rumor: { region: 'Ciénaga Troncal', pasoEn: 0 } }),
+      e('2', 'Se dice que A.', { sucesoId: 'a', rumor: { region: 'Ciénaga Troncal', pasoEn: 0 } }),
+      e('3', 'Se dice que B.', { sucesoId: 'b', rumor: { region: 'Cristal Helado', pasoEn: 0 } }),
+      e('4', 'Se confirma: B.', { sucesoId: 'b' }),
+      e('5', 'Se dice que C.', { sucesoId: 'c', rumor: { region: null, pasoEn: 0 } }),
+    ]
+    expect(rumoresConLugar(log)).toEqual([{ sucesoId: 'a', region: 'Ciénaga Troncal', texto: 'Se dice que A.' }])
+  })
 })
+

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { projectLlanurasNodes, type LlanurasEdge, type LlanurasNode, type CristalHeladoNode, type MapNodeOption, type MapRegion } from '../../data/map'
 import berigMapUrl from '../../assets/maps/helek-sirik-berig.png'
 import { MapZoomModal } from './MapZoomModal'
+import type { RumorConLugar } from '../../lib/leyendas'
 
 // "Paleta de puntos" (2026-08-04, ver MapNodeOption en data/map.ts): abanico de satélites por
 // encima del punto, en vez de un menú/modal aparte — el propio nodo "se abre". Radio y ángulos en
@@ -136,6 +137,11 @@ interface InteractiveMapProps {
   /// misión activa no tiene objetivo geográfico conocido, o si aún no coincide con ningún nodo
   /// con coordenadas.
   questTargetLocationSlug?: string | null
+  /// INT-9 (hito 0.2): rumores con lugar de «El mundo»; las regiones de `regionesConRumor` (sin leer)
+  /// llevan un pergamino hasta que se pulsan, y la tarjeta de la región enseña sus rumores.
+  rumores?: RumorConLugar[]
+  regionesConRumor?: Set<string>
+  onLeerRumores?: (region: string) => void
 }
 
 export function InteractiveMap({
@@ -150,6 +156,9 @@ export function InteractiveMap({
   hasLlanurasMap,
   hasCristalHeladoMap,
   questTargetLocationSlug,
+  rumores = [],
+  regionesConRumor,
+  onLeerRumores,
 }: InteractiveMapProps) {
   const [selectedName, setSelectedName] = useState(currentRegion)
   // Paleta de puntos (2026-08-04): qué nodo tiene su abanico de satélites desplegado ahora mismo,
@@ -236,11 +245,15 @@ export function InteractiveMap({
                 key={shape.name}
                 role="button"
                 tabIndex={0}
-                onClick={() => setSelectedName(shape.name)}
+                onClick={() => {
+                  setSelectedName(shape.name)
+                  onLeerRumores?.(shape.name)
+                }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault()
                     setSelectedName(shape.name)
+                    onLeerRumores?.(shape.name)
                   }
                 }}
                 className="cursor-pointer outline-none"
@@ -250,6 +263,20 @@ export function InteractiveMap({
                   className={isCurrent || isSelected ? undefined : 'map-region'}
                   style={{ fill, stroke, strokeWidth: isCurrent ? 1.5 : 1 }}
                 />
+                {regionesConRumor?.has(shape.name) && (
+                  // INT-9: pergamino de rumor sin leer, encima del nombre de la región.
+                  <text
+                    x={shape.labelX}
+                    y={shape.labelY - 14}
+                    textAnchor="middle"
+                    fontSize={18}
+                    className="pointer-events-none"
+                    aria-label={`Rumores de ${shape.name} sin leer`}
+                    role="img"
+                  >
+                    📜
+                  </text>
+                )}
                 {isCurrent && !isLlanurasWithGraph && (
                   // +20 para no tapar el nombre de la región que ya viene escrito en la propia
                   // imagen (Azgaar pinta su etiqueta decorativa cerca del centro de cada estado).
@@ -659,6 +686,18 @@ export function InteractiveMap({
             {selected.name}
           </p>
           <p className="mt-1 text-xs leading-relaxed text-wood-400">{selected.description}</p>
+          {rumores.some((r) => r.region === selected.name) && (
+            <ul aria-label={`Rumores de ${selected.name}`} className="mt-2 flex flex-col gap-1 border-t border-iron-800 pt-2">
+              {rumores
+                .filter((r) => r.region === selected.name)
+                .map((r) => (
+                  <li key={r.sucesoId} className="text-xs italic text-wood-300">
+                    <span aria-hidden="true" className="mr-1 not-italic">📜</span>
+                    {r.texto}
+                  </li>
+                ))}
+            </ul>
+          )}
         </div>
       )}
 

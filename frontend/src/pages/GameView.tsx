@@ -35,6 +35,7 @@ import { MapaPanel } from '../components/panels/MapaPanel'
 import { DiarioPanel } from '../components/panels/DiarioPanel'
 import { LeyendasPanel } from '../components/panels/LeyendasPanel'
 import { debeAvisar } from '../lib/noticias'
+import { useRumoresDelMapa } from '../hooks/useRumoresDelMapa'
 import { InventarioPanel } from '../components/panels/InventarioPanel'
 import { EnciclopediaPanel } from '../components/panels/EnciclopediaPanel'
 import { SLOT_LABEL, isCompatibleWithSlot, isConsumibleSlot } from '../lib/equipSlots'
@@ -618,6 +619,8 @@ export function GameView() {
   // noticias del mundo (lib/notificaciones.ts).
   const { notificaciones, notificar, descartar: descartarNotificacion } = useNotificaciones()
   const { ajustes: ajustesAvisos } = useAjustes()
+  // INT-9: rumores con lugar para el mapa de Berig (pergamino hasta que se leen).
+  const rumoresDelMapa = useRumoresDelMapa(saveId ?? null, worldLog)
   useNoticiasMundo({
     saveId,
     worldLog,
@@ -2290,6 +2293,9 @@ export function GameView() {
                 setActivePanel(null)
               }}
               onEncuentroZona={(entry) => setCharacterLog((prev) => [...prev, entry])}
+              rumores={rumoresDelMapa.rumores}
+              regionesConRumor={rumoresDelMapa.sinLeer}
+              onLeerRumores={rumoresDelMapa.marcarLeidos}
             />
           )}
           {panelMostrado === 'diario' && saveId && <DiarioPanel saveId={saveId} />}

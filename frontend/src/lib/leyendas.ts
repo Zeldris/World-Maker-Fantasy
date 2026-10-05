@@ -1,6 +1,7 @@
 // CR-20 (hito 0.2) — piezas de las Leyendas de la partida (ver `components/panels/LeyendasPanel.tsx`).
 import type { EntradaLeyenda, FamiliaSuceso, NivelLeyenda } from './api'
 import { diaDeFiccion } from './noticias'
+import type { LogEntry } from '../types'
 
 /// INT-1: cada familia de sucesos con su icono y su color, iguales en Leyendas, rumores y fichas.
 export const FAMILIA_ESTILO: Record<FamiliaSuceso, { icono: string; label: string; color: string }> = {
@@ -89,4 +90,27 @@ export type FichaConLeyendas = 'npc' | 'faction' | 'location'
 
 export function esFichaConLeyendas(tipo: string | undefined): tipo is FichaConLeyendas {
   return tipo === 'npc' || tipo === 'faction' || tipo === 'location'
+}
+
+/// INT-9: un rumor de «El mundo» con lugar, para marcar su región en el mapa de Berig.
+export interface RumorConLugar {
+  sucesoId: string
+  region: string
+  texto: string
+}
+
+/// Rumores con región de las noticias de «El mundo» que aún no se han confirmado (una noticia
+/// posterior del mismo suceso sin marca de rumor lo confirma), uno por suceso.
+export function rumoresConLugar(log: LogEntry[]): RumorConLugar[] {
+  const confirmados = new Set(log.filter((e) => e.noticia?.sucesoId && !e.noticia.rumor).map((e) => e.noticia!.sucesoId!))
+  const vistos = new Set<string>()
+  const rumores: RumorConLugar[] = []
+  for (const e of log) {
+    const id = e.noticia?.sucesoId
+    const region = e.noticia?.rumor?.region
+    if (!id || !region || confirmados.has(id) || vistos.has(id)) continue
+    vistos.add(id)
+    rumores.push({ sucesoId: id, region, texto: e.text })
+  }
+  return rumores
 }

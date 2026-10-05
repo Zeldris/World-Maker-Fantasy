@@ -830,7 +830,7 @@ están incorporados en sus secciones (`CFG-34`…`37`, `PAN-4`, `PAN-6`, `PAN-9b
   con `stamp-in`; la importancia nunca se muestra como número al jugador. **S**
 - ~~**INT-3 · Causas enlazadas**~~ ✅ 2026-10-05 (en Leyendas, botones «Por qué pasó» que llevan a la causa; en las fichas, la causa se nombra): en Leyendas y en las fichas, "por qué pasó" como cadena de sucesos
   clicables (Día 14 → Día 15 → …), estilo línea de tiempo; activable con `CFG-36`. **M**
-- **INT-4 · Lo desconocido se ve como desconocido**: un suceso del que solo se sabe una parte
+- ~~**INT-4 · Lo desconocido se ve como desconocido**~~ ✅ 2026-10-05 (comprobado: Leyendas, fichas «En tu partida», «El mundo» y avisos solo reciben lo que está en `Conocimiento`; un rumor sale sin detalles; el Libro entero solo en `/admin/partida/:id/libro`, D-5; lo que recibe el narrador como sabido es de la Fase 6 del Cronista): un suceso del que solo se sabe una parte
   aparece como rumor ("se dice…"), y lo que el personaje no sabe **no existe en ninguna pantalla**
   (coherente con `UX-30`). **S**
 
@@ -848,7 +848,7 @@ están incorporados en sus secciones (`CFG-34`…`37`, `PAN-4`, `PAN-6`, `PAN-9b
 - **INT-8 · Fichas que vienen de una consecuencia** (Cronista § 7.2: un NPC perdonado que vuelve, un
   vengador): pictograma normal más un pequeño sello "te conoce"; al pasar el ratón, la tarjeta
   flotante (`ZON-40`) dice de qué suceso viene. **S**
-- **INT-9 · Rumor con lugar**: si un rumor menciona una zona conocida, el mapa de Berig marca la
+- ~~**INT-9 · Rumor con lugar**~~ ✅ 2026-10-05 (`useRumoresDelMapa` y `rumoresConLugar`: pergamino 📜 en la región del mapa de Berig con rumores sin confirmar sin leer; pulsar la región enseña sus rumores en su tarjeta y los da por leídos; lo leído, en `localStorage` por partida): si un rumor menciona una zona conocida, el mapa de Berig marca la
   región con un icono de pergamino hasta que se lee. **S**
 
 ### 15.4 Reino y Cronista
