@@ -10,8 +10,8 @@
 //   70 % de su esperanza de vida), hasta que Álvaro las fije. Sin rango aparte para los líderes: la
 //   misma edad en todos los sistemas pesa más (revisión del PR de CR-13).
 //
-// Las cifras de razas son provisionales salvo la madurez orca (10 años, canon de `clanes-orcos.md`);
-// propuesta pendiente en `docs/borradores-opencode/propuestas-lore.md`.
+// Ciclo vital por pueblo aprobado (2026-10-05, `propuestas-aprobadas.md` § Ciclo vital; CR-43). La
+// madurez orca es canon de `clanes-orcos.md`.
 import type { Atributos } from './herencia.js';
 
 export const DIAS_POR_ANIO = 120;
@@ -24,9 +24,9 @@ export interface CicloVital {
 
 export const CICLO_VITAL: Record<string, CicloVital> = {
   orcos: { madurez: 10, esperanza: 60 },
-  faerus: { madurez: 8, esperanza: 40 },
+  faerus: { madurez: 8, esperanza: 140 },
   nabieus: { madurez: 14, esperanza: 90 },
-  goirntes: { madurez: 16, esperanza: 70 },
+  goirntes: { madurez: 14, esperanza: 70 },
 };
 const CICLO_POR_DEFECTO: CicloVital = { madurez: 14, esperanza: 70 };
 

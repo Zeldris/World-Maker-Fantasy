@@ -1333,7 +1333,9 @@ export const TABLON_AVISOS_RECIPE: ConstructionRecipe = {
   name: 'un tablón de avisos',
   description:
     'Un poste ancho clavado en la plaza del reino, con tablillas y cordeles donde se cuelgan los avisos de quien necesita manos: cacerías, entregas, escoltas. Quien pasa por el reino sabe que aquí se encuentra trabajo.',
-  nounRegex: /tabl[oó]n.*avisos?/,
+  // CR-43: también por el nombre de cada pueblo (poste de cacería, estela de edictos, muro de los
+  // susurros, árbol de las marcas).
+  nounRegex: /tabl[oó]n.*avisos?|poste de cacer[ií]a|estela de edictos|muro de los susurros|[aá]rbol de las marcas/,
   requirements: [
     { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 6, label: 'leña' },
     { match: { kind: 'category', tipo: 'RECURSO', category: 'fibras' }, cantidad: 4, label: 'fibra' },

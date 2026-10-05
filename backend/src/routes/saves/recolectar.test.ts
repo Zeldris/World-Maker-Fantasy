@@ -909,14 +909,14 @@ describe('POST /saves/:id/recolectar/confirmar', () => {
     });
 
     it('Buscar (BUSQUEDA) da el marisco sin ninguna herramienta ni cebo en el inventario', async () => {
-      findFirstHarvestYield.mockResolvedValue({ cantidad: 1, metodoObtencion: 'BUSQUEDA', item: { slug: 'bulco-arena-marisco', name: 'Bulco de Arena', tier: 1 } });
+      findFirstHarvestYield.mockResolvedValue({ cantidad: 1, metodoObtencion: 'BUSQUEDA', item: { slug: 'rugoconcha-marisco', name: 'Rugoconcha', tier: 1 } });
       createInventoryItem.mockResolvedValue({ id: 'item1' });
       const app = await buildApp();
 
       const res = await app.inject({
         method: 'POST',
         url: '/saves/save1/recolectar/confirmar',
-        payload: { selections: [{ sourceSlug: 'bulco-de-arena', itemSlug: 'bulco-arena-marisco', cantidad: 1 }] },
+        payload: { selections: [{ sourceSlug: 'rugoconcha', itemSlug: 'rugoconcha-marisco', cantidad: 1 }] },
       });
 
       expect(res.statusCode).toBe(200);

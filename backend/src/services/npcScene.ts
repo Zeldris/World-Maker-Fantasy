@@ -371,6 +371,7 @@ const NPC_ALIAS_FUZZY_EXCLUSIONS = new Set([
   // Tercer barrido (2026-09-28), ya con la regla estructural de `esErrataDeAlias` (misma inicial,
   // ≤1 en alias cortos) — contra TODO el vocabulario del repo (docs/ + código). Lo que queda son
   // palabras reales a 1 letra de un alias corto, o a 2 de uno largo:
+  'densa', // dessa (Dessa Kaltrenn, CR-43) — «niebla densa», «selva densa»
   'mercado', // mercader (Mercader de paso) — "Mercado" es además un panel real del Reino
   'mercados',
   'marcador',
@@ -387,11 +388,6 @@ const NPC_ALIAS_FUZZY_EXCLUSIONS = new Set([
   'justa', // jusha (Jusha esmeralda)
   'justas',
   'marinas', // miruinas (Miruina)
-  'busco', // bulco (Bulco de arena) — verbo muy frecuente ("busco presas", "busco vetas")
-  'bulbo',
-  'bulbos',
-  'bulto',
-  'bultos',
 ]);
 
 /// Tolerancia a erratas acotada (2026-09-28, bug real jugando en vivo con Playwright: la habilidad de

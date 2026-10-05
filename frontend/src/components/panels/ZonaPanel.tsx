@@ -690,7 +690,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
             onClick={() => misiones.abrirTablon(data.tablon!.buildingId)}
             className="rounded border border-accent-600/60 bg-accent-500/10 px-2.5 py-1 text-xs text-accent-100 hover:bg-accent-500/20"
           >
-            📜 Tablón de avisos{data.tablon.faccion ? ` · ${data.tablon.faccion}` : ''}
+            📜 {data.tablon.nombre}{data.tablon.faccion ? ` · ${data.tablon.faccion}` : ''}
           </button>
         )}
       </div>

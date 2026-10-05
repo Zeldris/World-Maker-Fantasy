@@ -223,7 +223,7 @@ describe('POST /saves/:id/modo-dinamico/recurso/:targetSlug — PESCA y BUSQUEDA
 
   for (const [slug, nombre, habilidad] of [
     ['jashil-rojo', 'Jashil Rojo', 'Pescar'],
-    ['bulco-de-arena', 'Bulco de Arena', 'Buscar'],
+    ['rugoconcha', 'Rugoconcha', 'Buscar'],
   ] as const) {
     it(`${slug}: la interacción se resuelve (200 con habilidad ${habilidad}) y limpia la oferta pendiente`, async () => {
       await prisma.save.update({

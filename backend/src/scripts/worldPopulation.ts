@@ -879,7 +879,7 @@ export const worldPopulations: WorldPopulationInput[] = [
   // recolectar.ts) — la cifra aquí es solo el gate "hay peces en esta costa", no un contador que
   // baje con cada captura. Jashil/Negueo: "muy abundante"/pez común de toda la costa → población
   // alta (800-1500, igual de orden de magnitud que otra fauna abundante como Aullador Rojo).
-  // Bulco de Arena: caracol de marea, igual de común → misma franja alta. Toluh: "pez migratorio
+  // Rugoconcha: caracol de marea, igual de común → misma franja alta. Toluh: "pez migratorio
   // de gran tamaño... muy apreciado por lo raro que es dar con uno" → población baja (80-150,
   // orden de magnitud de Rondador de Brasas/Canizor, la fauna más rara ya sembrada) — su
   // disponibilidad REAL por estación (solo otoño) vive en `HarvestYield.estacionRequerida`, no
@@ -926,8 +926,8 @@ export const worldPopulations: WorldPopulationInput[] = [
   },
   {
     targetType: 'FAUNA',
-    targetSlug: 'bulco-de-arena',
-    label: 'Bulco de Arena',
+    targetSlug: 'rugoconcha',
+    label: 'Rugoconcha',
     poblacion: 1500,
     poblacionMax: 2500,
     distribucion: { 'Llanuras del Viento Rojo': 1 },

@@ -293,7 +293,7 @@ export async function candidateSourcesFor(
     // (recursos PASIVO), nunca en MINERIA/TALA/EXTRACCION — mismo criterio de comparación estricta
     // que ahí. Recursos sin el campo definido (la mayoría) no cambian de comportamiento. Fauna
     // (PESCA/BUSQUEDA) no lo necesita: los 6 Npc de peces/marisco ya llevan su propio
-    // `homeLocationSlug` directo en la ficha (jashil/toluh/negueo/bulco, todos
+    // `homeLocationSlug` directo en la ficha (jashil/toluh/negueo/rugoconcha, todos
     // 'playa-de-ceniza-blanca') — mismo criterio que jusha-esmeralda (fauna con Npc propio nunca
     // usa este mapa, solo lo usan fuentes SIN fila Npc, ver comentario de
     // `harvestSourceHomeLocationSlug` en worldCatalog.ts).

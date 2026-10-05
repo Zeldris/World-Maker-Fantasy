@@ -1445,7 +1445,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     fallar y reputación ✅ · 40f oferta pendiente única (ADR), «¿Tienes trabajo?» del NPC y el narrador
     deja de crear misiones (40f-1 ✅; 40f-2 ❌ no procede: Q21, `docs/adr/0001-ofertas-pendientes-sin-fusionar.md`)
     · 40g interfaz del tablón y del diario ✅.
-- **CR-43** Llevar al código el lore aprobado el 2026-10-05 (`docs/borradores-opencode/propuestas-aprobadas.md`,
+- ~~**CR-43**~~ ✅ 2026-10-05 (ciclo vital, nombres de escisión con la goirnte «Los del Edicto/Estela/Tributo/Vresk», disposiciones sembradas y llevadas a las partidas ya creadas con la migración `20261005071000_disposicion_inicial`, nombre del tablón por pueblo —el del Reino, el del pueblo de la jugadora—, Rugoconcha renombrada en catálogo y partidas con `20261005070000_rugoconcha`, y Dessa, Yerin y Riko en el catálogo. Queda: el número de ciudad en «Los del Vresk», que el motor aún no sabe de qué ciudad es el líder) Llevar al código el lore aprobado el 2026-10-05 (`docs/borradores-opencode/propuestas-aprobadas.md`,
   PR #17): ciclo vital en `edades.ts` (Faerus 8/140, Goirntes 14/70, orcos 10/60, Nabieus 14/90),
   `nombresFaccion.ts` (sin Vhurne, Nur ni Kegi; escisión goirnte «Los del…»), disposiciones de las
   facciones (Helsig y Goshg mercantiles, Feg Tusha recelosa), el Bulco de Arena pasa a Rugoconcha y

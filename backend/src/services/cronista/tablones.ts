@@ -4,6 +4,7 @@
 // de que existiera lo reciben aquí, de forma perezosa e idempotente.
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { copiaDeFila } from '../mundoPartida.js';
+import { nombreDeTablon } from '../../scripts/worldCatalog.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -51,6 +52,13 @@ export interface TablonEnLugar {
   faccion: string | null;
 }
 
+/// CR-43: cada pueblo llama al tablón a su manera; el del Reino, como el pueblo de la jugadora.
+async function nombreVisible(db: Tx | PrismaClient, saveId: string, razaFaccion: string | null): Promise<string> {
+  if (razaFaccion) return nombreDeTablon(razaFaccion);
+  const save = await db.save.findUnique({ where: { id: saveId }, select: { raza: true } });
+  return nombreDeTablon(save?.raza);
+}
+
 /// El tablón de avisos activo en un lugar de la partida (de una facción de su mundo o del Reino).
 export async function tablonEnLugar(db: Tx | PrismaClient, saveId: string, locationId: string): Promise<TablonEnLugar | null> {
   const b = await db.building.findFirst({
@@ -58,9 +66,9 @@ export async function tablonEnLugar(db: Tx | PrismaClient, saveId: string, locat
       recipeKey: TABLON_RECIPE_KEY, status: 'ACTIVO', locationId,
       OR: [{ saveId }, { faction: { saveId, origenSlug: { not: null }, disueltaEn: null } }],
     },
-    select: { id: true, name: true, faction: { select: { name: true } } },
+    select: { id: true, name: true, faction: { select: { name: true, raza: true } } },
   });
-  return b ? { buildingId: b.id, nombre: b.name, faccion: b.faction?.name ?? null } : null;
+  return b ? { buildingId: b.id, nombre: await nombreVisible(db, saveId, b.faction?.raza ?? null), faccion: b.faction?.name ?? null } : null;
 }
 
 export interface AvisoInfo {
@@ -78,7 +86,7 @@ export interface AvisoInfo {
 export async function avisosDeTablon(db: Tx | PrismaClient, saveId: string, buildingId: string): Promise<{ tablon: TablonEnLugar; avisos: AvisoInfo[] } | null> {
   const b = await db.building.findFirst({
     where: { id: buildingId, recipeKey: TABLON_RECIPE_KEY, OR: [{ saveId }, { faction: { saveId } }] },
-    select: { id: true, name: true, saveId: true, factionId: true, faction: { select: { name: true } } },
+    select: { id: true, name: true, saveId: true, factionId: true, faction: { select: { name: true, raza: true } } },
   });
   if (!b) return null;
   let donde: Prisma.MisionOfrecidaWhereInput = { buildingId: b.id };
@@ -98,7 +106,7 @@ export async function avisosDeTablon(db: Tx | PrismaClient, saveId: string, buil
   });
   const nombres = new Map((await db.faction.findMany({ where: { id: { in: [...new Set(filas.map((f) => f.factionId))] } }, select: { id: true, name: true } })).map((f) => [f.id, f.name]));
   return {
-    tablon: { buildingId: b.id, nombre: b.name, faccion: b.faction?.name ?? null },
+    tablon: { buildingId: b.id, nombre: await nombreVisible(db, saveId, b.faction?.raza ?? null), faccion: b.faction?.name ?? null },
     avisos: filas.map((f) => ({ id: f.id, titulo: f.titulo, descripcion: f.descripcion, tipo: f.tipo, faccion: nombres.get(f.factionId) ?? '', recompensa: f.recompensa, retiraEn: f.retiraEn })),
   };
 }

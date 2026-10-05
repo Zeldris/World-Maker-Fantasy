@@ -156,10 +156,10 @@ describe('Cooldown de recolección: cambiar de Location lo salta, quedarse quiet
 });
 
 /// Profesión "pescador" nueva (2026-09-02, Pieza 1/2/3) — contra el catálogo REAL sembrado
-/// (Playa de Ceniza Blanca, jashil-verde/toluh/bulco-de-arena): confirma que las 6 filas de
+/// (Playa de Ceniza Blanca, jashil-verde/toluh/rugoconcha): confirma que las 6 filas de
 /// HarvestYield nuevas (seed-catalog.ts § worldCatalog.ts) de verdad enganchan con el motor de
 /// principio a fin — Explorar → confirmar, sin mockear nada. No toca `WorldPopulation` real de
-/// jashil/bulco (Pescar/Buscar nunca depletan población, ver `esFaunaMetodo`), así que no hace
+/// jashil/rugoconcha (Pescar/Buscar nunca depletan población, ver `esFaunaMetodo`), así que no hace
 /// falta snapshot/restore de esas filas — solo borrar la partida/inventario de prueba al final.
 describe('Pescador (PESCA/BUSQUEDA) contra el catálogo real sembrado', () => {
   let saveId: string;
@@ -229,7 +229,7 @@ describe('Pescador (PESCA/BUSQUEDA) contra el catálogo real sembrado', () => {
     expect(sources.length).toBeGreaterThan(0);
     const itemSlugs = sources.flatMap((s) => s.yields.map((y) => y.itemSlug));
     expect(itemSlugs.every((slug: string) => ['carne-jashil', 'carne-negueo', 'carne-toluh', 'escamas-toluh'].includes(slug))).toBe(true);
-    expect(itemSlugs).not.toContain('bulco-arena-marisco');
+    expect(itemSlugs).not.toContain('rugoconcha-marisco');
   }, 15_000);
 
   it('confirmar Pescar da el pez y consume 1 cebo de la pila, sin tocar ninguna WorldPopulation', async () => {
@@ -283,7 +283,7 @@ describe('Pescador (PESCA/BUSQUEDA) contra el catálogo real sembrado', () => {
 
   // Fase 4 (2026-09-28) — ver comentario del test de Pescar arriba (mismo motivo, mismo camino
   // directo contra `candidateSourcesFor`/`gatheringRollFor`/`applyGatheringRoll`).
-  it('Explorar con Buscar localiza marisco (bulco-arena-marisco), no peces', async () => {
+  it('Explorar con Buscar localiza marisco (rugoconcha-marisco), no peces', async () => {
     const save = await prisma.save.findUniqueOrThrow({
       where: { id: saveId },
       include: { inventoryItems: { where: { slot: { not: null } }, select: { statBonuses: true } }, professionProgress: { select: { professionId: true, nivel: true } } },
@@ -299,7 +299,7 @@ describe('Pescador (PESCA/BUSQUEDA) contra el catálogo real sembrado', () => {
 
     expect(sources.length).toBeGreaterThan(0);
     const itemSlugs = sources.flatMap((s) => s.yields.map((y) => y.itemSlug));
-    expect(itemSlugs).toEqual(['bulco-arena-marisco']);
+    expect(itemSlugs).toEqual(['rugoconcha-marisco']);
   }, 15_000);
 
   it('confirmar Buscar da el marisco sin ninguna herramienta (caña/cebo no aplican a BUSQUEDA)', async () => {
@@ -309,12 +309,12 @@ describe('Pescador (PESCA/BUSQUEDA) contra el catálogo real sembrado', () => {
     const res = await app.inject({
       method: 'POST',
       url: `/saves/${saveId}/recolectar/confirmar`,
-      payload: { selections: [{ sourceSlug: 'bulco-de-arena', itemSlug: 'bulco-arena-marisco', cantidad: 1 }] },
+      payload: { selections: [{ sourceSlug: 'rugoconcha', itemSlug: 'rugoconcha-marisco', cantidad: 1 }] },
     });
 
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
-    expect(body.items.some((i: { name: string }) => i.name.includes('Bulco de Arena'))).toBe(true);
+    expect(body.items.some((i: { name: string }) => i.name.includes('Rugoconcha'))).toBe(true);
 
     // Buscar no toca el cebo — sigue igual que tras el test anterior.
     const ceboDespues = await prisma.inventoryItem.findFirstOrThrow({ where: { saveId, catalogSlug: 'cebo-pesca' } });

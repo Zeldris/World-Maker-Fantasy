@@ -530,7 +530,7 @@ con un joven que pasó un año entre ellos (Gorhorn; ver A-39).
 Vhurne» (Keseg'Vhurne ya es el **cónclave** Nabieus) y «Feg Nur» (Feg'nur es el **tabú** de no
 abandonar a un herido). Se cambia «Feg Kegi» (Kegi es el poblado de Feg Ger y confundiría). Se
 resuelve la pregunta goirnte (Q13) con el modelo que ya da el canon: Los del Obelisco.
-**Pendiente de código:** `backend/src/services/cronista/nombresFaccion.ts` (quitar Vhurne, Nur y
+**Código ✅ 2026-10-05 (`CR-43`), antes pendiente:** `backend/src/services/cronista/nombresFaccion.ts` (quitar Vhurne, Nur y
 Kegi; añadir Leshra y Ashi; permitir la escisión goirnte con el patrón «Los del…»).
 
 ---
@@ -574,7 +574,7 @@ facción se nombra según la costumbre de su pueblo y lleva su traducción en la
 sobre el borrador: **Helsig** y **Goshg** pasan a mercantiles (son «neutrales y defensivos» pero
 comercian: la Senda del Sílice es un tratado de siglos); **Feg Tusha** pasa a recelosa (los Faerus
 están «fuera de toda alianza» y son hostiles a quien los caza; no hay base para «belicosa»).
-**Pendiente de código:** sembrado de `Faction.disposicion` con esta tabla.
+**Código ✅ 2026-10-05 (`CR-43`), antes pendiente:** sembrado de `Faction.disposicion` con esta tabla.
 
 ---
 
@@ -828,7 +828,7 @@ nombres "Karot Veku - X Vek" ("Vek" no significa nada; *Veku* es colmillo).
 **Notas del aprobador:** revisada contra la cultura de cada pueblo. Encaja: los Faerus no tienen
 escritura (por eso marcas y olor), los Nabieus leen con la palma (Tovh'vhurne) y no alzan la voz,
 los Goirntes graban la ley en piedra. Nombres en lengua común, como pide el canon.
-**Pendiente de código:** nombre visible por raza en `backend/src/services/construction.ts`.
+**Código ✅ 2026-10-05 (`CR-43`), antes pendiente:** nombre visible por raza en `backend/src/services/construction.ts`.
 
 ---
 
@@ -947,8 +947,8 @@ y «Madurez, esperanza de vida y edades de los NPC por raza»)
 
 **Notas del aprobador:** **cifras decididas por la usuaria (2026-10-05)**. Cambian el canon de los
 orcos: hasta ahora vivían 40-50 años (`00-nucleo.md`, `02-razas.md`) y pasan a **60**. Los Faerus,
-con **140 años** de vida, son pocos porque se reproducen poco y despacio para lo que viven. **Pendiente
-de código:** `backend/src/services/cronista/edades.ts` (`CICLO_VITAL`): los orcos y los Nabieus ya
+con **140 años** de vida, son pocos porque se reproducen poco y despacio para lo que viven. **Código ✅ 2026-10-05 (`CR-43`), antes
+pendiente:** `backend/src/services/cronista/edades.ts` (`CICLO_VITAL`): los orcos y los Nabieus ya
 coinciden; cambian los Faerus (40 → 140 de esperanza) y los Goirntes (madurez 16 → 14). Del Reino, lo
 ya hecho por `CR-13` (herencia, crecer, envejecer, nacimientos de NPC) sirve de base.
 
@@ -1961,7 +1961,7 @@ primera fauna de Berig atribuida a Kroj como creadora y no solo como huella.
 **Notas del aprobador:** se queda el **Bolco** (árbol de las Marismas, con más peso en el lore) y
 se renombra el caracol de mar de la Playa de Ceniza Blanca. Nombre propuesto con el estilo
 descriptivo de la fauna de las Llanuras (Corretolvas, Cuernahoja): **Rugoconcha**, por su concha
-rugosa. No es el nombre de ningún animal real. **Pendiente de código:** el slug `bulco-de-arena`
+rugosa. No es el nombre de ningún animal real. **Código ✅ 2026-10-05 (`CR-43`), antes pendiente:** el slug `bulco-de-arena`
 pasa a `rugoconcha` en `backend/src/scripts/worldCatalog.ts` y se quita la exclusión de alias
 `NPC_ALIAS_FUZZY_EXCLUSIONS`.
 
@@ -2386,7 +2386,7 @@ hace fatal.
 **Notas del aprobador:** se resuelven los huecos con lo que ya fija el lore, sin tocar lo
 reservado: ninguno revela lo que sabe del sabotaje; solo son quienes lo tienen a medias. Los
 atributos salen de su tabla de pregenerado (`personajes.md`), pasada a los 7 atributos reales.
-`capturable` 0 (razas sintientes con historia). **Pendiente de código:** alta en
+`capturable` 0 (razas sintientes con historia). **Código ✅ 2026-10-05 (`CR-43`), antes pendiente:** alta en
 `backend/src/scripts/worldCatalog.ts` (plantilla: Kael Dorn o Sella Marn); alias cortos («riko»)
 con cuidado con los fallos de alias difusos.
 

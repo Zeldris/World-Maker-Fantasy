@@ -9,10 +9,16 @@ describe('nombres de escisión (CR-11)', () => {
     expect(nombreDeEscision('orcos', 'Varka la Roja', new Set())).toMatchObject({ nombre: 'Clan Varkig', traduccion: expect.stringContaining('Varka') });
   });
 
-  it('Nabieus y Faerus: la primera palabra libre de su tabla; goirntes no se escinden', () => {
+  it('Nabieus, Faerus y goirntes: el primer nombre libre de su tabla', () => {
     expect(nombreDeEscision('nabieus', 'x', new Set(['Keseg Tannis']))?.nombre).toBe('Keseg Karo');
     expect(nombreDeEscision('faerus', 'x', new Set())).toEqual({ nombre: 'Feg Sil', traduccion: 'manada del fuego' });
-    expect(nombreDeEscision('goirntes', 'x', new Set())).toBeNull();
+    expect(nombreDeEscision('goirntes', 'x', new Set())?.nombre).toBe('Los del Edicto');
+    expect(nombreDeEscision('goirntes', 'x', new Set(['Los del Edicto', 'Los de la Estela']))?.nombre).toBe('Los del Tributo');
+    // Fuera los que chocaban con el canon (cónclave, tabú y poblado).
+    const faerus = new Set<string>();
+    for (let n = nombreDeEscision('faerus', 'x', faerus); n; n = nombreDeEscision('faerus', 'x', faerus)) faerus.add(n.nombre);
+    expect([...faerus]).toEqual(['Feg Sil', 'Feg Krul', 'Feg Leshra', 'Feg Ashi']);
+    expect(nombreDeEscision('nabieus', 'x', new Set(['Keseg Tannis', 'Keseg Karo', 'Keseg Tovh']))).toBeNull();
   });
 });
 

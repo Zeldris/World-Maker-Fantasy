@@ -69,7 +69,7 @@ const FAUNA_SIN_NPC_PROPIO_EXCEPCION = new Set(['espina-del-viento']);
 /// devolvería también como candidatas de Cazar (no las excluye el filtro de "puramente acuático"
 /// tal y como está hoy), y entonces necesitarían además su propio `ZonePoint` FAUNA.
 const FAUNA_MODELADA_COMO_RECURSO_PESCA_EXCEPCION = new Set([
-  'jashil-rojo', 'jashil-verde', 'negueo-solar', 'negueo-turquesa', 'toluh', 'bulco-de-arena',
+  'jashil-rojo', 'jashil-verde', 'negueo-solar', 'negueo-turquesa', 'toluh', 'rugoconcha',
 ]);
 
 /// Excepción documentada — conflicto de datos YA EXISTENTE (no introducido por esta tarea, y fuera
