@@ -9,6 +9,7 @@
 // en `NpcState.muerto` de la partida), la agenda del conflicto, el narrador de fondo y las
 // decisiones de facción (CR-34). El Reino del jugador ya avanza por
 // días en `dailyTick.ts`.
+import { difundir } from './cronista/difusion.js';
 import type { PrismaClient } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 import { decaerRelaciones, producirFacciones } from './factionEconomy.js';
@@ -91,6 +92,8 @@ export async function avanzarMundoHasta(
   if ((await evaluarConsecuencias(prisma, saveId, {}, random)).disparadas > 0) await procesarReacciones(prisma, saveId, random);
   // CR-12 (12d) / UX-31: varios días de golpe (viaje, descanso largo) → un solo resumen en «El mundo».
   if (diasSimulados >= 2) await agruparNoticias(prisma, saveId, marcaNoticias);
+  // CR-18 (18b): lo que llega solo (≥ 7 o de una aliada) a la región donde está el personaje.
+  await difundir(prisma, saveId);
   // CR-40 (40e): misiones del motor exploradas, objetivos caídos o plazos vencidos.
   await revisarMisiones(prisma, saveId);
   return { diasSimulados };
@@ -120,6 +123,8 @@ export function registrarAvanceTrasAcciones(app: FastifyInstance, prisma: Prisma
     await evaluarConsecuencias(prisma, saveId)
       .then((r) => (r.disparadas > 0 ? procesarReacciones(prisma, saveId) : undefined))
       .catch((err) => console.error('[consecuencias] error tras la acción:', err));
+    // CR-18 (18b): al cambiar de región llega lo que allí ya se sabe de lo grande y reciente.
+    await difundir(prisma, saveId).catch((err) => console.error('[difusion] error tras la acción:', err));
     // CR-40 (40e): moverse por la zona o pelear puede cumplir una misión del motor.
     await revisarMisiones(prisma, saveId).catch((err) => console.error('[misiones] error tras la acción:', err));
   });

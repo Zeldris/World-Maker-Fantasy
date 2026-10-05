@@ -4,6 +4,7 @@ import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { asegurarMundoDePartida } from '../mundoPartida.js';
 import { registrarSuceso } from './sucesos.js';
 import { evaluarConsecuencias } from './consecuencias.js';
+import { difundir } from './difusion.js';
 import { ACTIVIDAD_ALTA, narrarDia, SUCESOS_DE_FONDO, TOPE_PRESUPUESTO, type SucesoDeFondo } from './narradorFondo.js';
 
 // CR-12 (hito 0.2, roadmap-cronista.md § 7.3) — narrador de fondo contra Postgres real: presupuesto
@@ -93,19 +94,20 @@ describe('narrador de fondo (CR-12)', () => {
     expect((await narrarDia(prisma, saveId, 11, semilla(3), [malestar])).tipo).toBe('MALESTAR_INTERNO');
   });
 
-  it('una noticia sin lugar solo llega si el personaje conoce la facción, como rumor y al día siguiente', async () => {
+  // CR-18 (Q10): lo menor no llega solo aunque se conozca la facción; su noticia queda con el suceso
+  // para quien se entere preguntando o en el tablón.
+  it('una noticia menor no llega sola: queda guardada con su suceso', async () => {
     const saveId = await partida('Narrador (CR-12) noticia');
     const f = await descontenta(saveId);
-    await narrarDia(prisma, saveId, 10, semilla(4), [malestar]);
-    expect(await prisma.consecuencia.count({ where: { saveId, regla: 'NOTICIA' } })).toBe(0);
-
     await prisma.worldState.update({ where: { saveId }, data: { factionsStatus: { [f.name]: 0 }, fictionalMinutes: 14 * 1440 + 720 } });
-    await narrarDia(prisma, saveId, 14, semilla(4), [malestar]);
-    const rumor = `Se dice que crece el descontento dentro de ${f.name}.`;
-    expect(await prisma.logEntry.count({ where: { saveId, channel: 'WORLD', text: rumor } })).toBe(0);
+    const r = await narrarDia(prisma, saveId, 14, semilla(4), [malestar]);
     await prisma.worldState.update({ where: { saveId }, data: { fictionalMinutes: 15 * 1440 + 480 } });
     await evaluarConsecuencias(prisma, saveId);
-    expect(await prisma.logEntry.count({ where: { saveId, channel: 'WORLD', text: rumor } })).toBe(1);
+    await difundir(prisma, saveId);
+    expect(await prisma.logEntry.count({ where: { saveId, channel: 'WORLD', text: { contains: 'crece el descontento' } } })).toBe(0);
+    expect(await prisma.consecuencia.count({ where: { saveId, regla: 'NOTICIA' } })).toBe(0);
+    const suceso = await prisma.suceso.findUniqueOrThrow({ where: { id: r.sucesoId! } });
+    expect((suceso.noticia as { texto: string }).texto).toBe(`Crece el descontento dentro de ${f.name}.`);
   });
 
   it('una plaga resta solo la parte de la especie que vive en la región', async () => {

@@ -3468,6 +3468,9 @@ model Suceso {
   texto                String
   /// Versión del Cronista, si existe.
   textoNarrado         String?
+  /// CR-18: la noticia tal como la da su emisor (texto con la pista y metadatos de «El mundo»: categoría,
+  /// oportunidad), para quien se entere después (de oídas, por un NPC o un bando). Null = `texto`.
+  noticia              Json?
   conocimientos        Conocimiento[]
   causas               SucesoCausa[]  @relation("efecto")
   efectos              SucesoCausa[]  @relation("causa")

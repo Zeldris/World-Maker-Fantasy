@@ -66,8 +66,10 @@ describe('decidirFacciones — guerra, paz y corte de la cadena (CR-34 34c)', ()
     expect(r1.presupuesto).toBe(2); // 10 − 8 (guerra)
     const guerra = await prisma.suceso.findFirstOrThrow({ where: { saveId, tipo: 'GUERRA_DECLARADA', origen: 'MUNDO' } });
     expect(guerra.texto).toContain('declara la guerra');
-    // Conoce a las dos, pero sin lugar concreto: le llega como rumor al día siguiente (Q9).
-    expect(await prisma.consecuencia.count({ where: { saveId, regla: 'NOTICIA', origenSucesoId: guerra.id } })).toBe(1);
+    // CR-18 (Q10): el personaje no está en ninguna región, así que no le llega sola; la noticia queda
+    // guardada con su suceso para quien se entere después.
+    expect((guerra.noticia as { texto: string } | null)?.texto).toContain('declara la guerra');
+    expect(await prisma.conocimiento.count({ where: { saveId, sucesoId: guerra.id } })).toBe(0);
 
     // Mismo día: nadie vuelve a revisar.
     expect((await decidirFacciones(prisma, saveId, DIA, () => 0.5)).revisadas).toBe(0);

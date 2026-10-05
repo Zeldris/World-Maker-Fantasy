@@ -1,0 +1,91 @@
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { prisma } from '../../lib/prisma.js';
+import { getDefaultUserId } from '../../lib/defaultUser.js';
+import { asegurarMundoDePartida } from '../mundoPartida.js';
+import { registrarSuceso } from './sucesos.js';
+import { difundir, VENTANA_DIAS_LLEGA_SOLA } from './difusion.js';
+import type { MetaNoticia } from './noticias.js';
+
+// CR-18 (18b, hito 0.2) — lo visto y lo que llega solo: la importancia dice hasta dónde, la distancia
+// cuándo, y solo llega solo lo de importancia ≥ 7 (Q10).
+describe('difusión de sucesos al personaje (CR-18 18b)', () => {
+  const DIA = 20;
+  let saveId: string;
+  let lugarId: string;
+
+  beforeAll(async () => {
+    const worldId = (await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } })).id;
+    const lugar = await prisma.location.findFirstOrThrow({ where: { worldId, region: 'Las Llanuras del Viento Rojo' }, select: { id: true } });
+    lugarId = lugar.id;
+    const save = await prisma.save.create({
+      data: {
+        userId: await getDefaultUserId(), worldId, characterName: 'Difusión CR-18', characterArchetype: 'guerrero', characterOrigin: 'x', characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 }, portraitInitial: 'D',
+        currentLocationId: lugarId,
+        worldState: { create: { fictionalMinutes: DIA * 1440 + 600 } },
+      },
+    });
+    saveId = save.id;
+    await asegurarMundoDePartida(prisma, saveId);
+  });
+
+  afterAll(async () => {
+    await prisma.save.deleteMany({ where: { id: saveId } });
+  });
+
+  const ahora = async () => (await prisma.worldState.findUniqueOrThrow({ where: { saveId } })).fictionalMinutes;
+  const pasarDias = async (dias: number) => prisma.worldState.update({ where: { saveId }, data: { fictionalMinutes: (await ahora()) + dias * 1440 } });
+  const alianza = async (region: string, minutos?: number) =>
+    registrarSuceso(prisma, {
+      saveId, tipo: 'ALIANZA', fictionalMinutes: minutos ?? (await ahora()), regionSlug: region, origen: 'MUNDO', actores: [],
+      datos: { faccionA: 'Los de prueba', faccionB: 'Los otros' },
+    });
+
+  it('lo de importancia ≥ 7 de una región vecina llega al día siguiente, como rumor y enlazado a su suceso', async () => {
+    const id = await alianza('cienaga-troncal');
+    expect(await difundir(prisma, saveId)).toBe(0);
+    await pasarDias(1);
+    expect(await difundir(prisma, saveId)).toBe(1);
+    const entrada = await prisma.logEntry.findFirstOrThrow({ where: { saveId, channel: 'WORLD', text: { contains: 'sellan una alianza' } } });
+    expect(entrada.text).toBe('Se dice que Los de prueba y Los otros sellan una alianza.');
+    const meta = entrada.noticia as MetaNoticia;
+    expect(meta.sucesoId).toBe(id);
+    expect(meta.rumor?.region).toBe('Ciénaga Troncal');
+    const c = await prisma.conocimiento.findUniqueOrThrow({ where: { saveId_sucesoId: { saveId, sucesoId: id } } });
+    expect(c).toMatchObject({ via: 'OIDAS', confirmado: false, logEntryId: entrada.id });
+    // No se repite.
+    expect(await difundir(prisma, saveId)).toBe(0);
+  });
+
+  it('en su región llega al momento y como hecho; más allá de su alcance, nunca', async () => {
+    const aqui = await alianza('las-llanuras-del-viento-rojo');
+    const lejos = await alianza('la-meseta-del-orden');
+    expect(await difundir(prisma, saveId)).toBe(1);
+    expect(await prisma.conocimiento.findUnique({ where: { saveId_sucesoId: { saveId, sucesoId: aqui } } })).toMatchObject({ confirmado: true });
+    await pasarDias(3);
+    await difundir(prisma, saveId);
+    expect(await prisma.conocimiento.count({ where: { saveId, sucesoId: lejos } })).toBe(0);
+  });
+
+  it('lo menor no llega solo; lo que pasa donde está el personaje lo sabe por haberlo visto, sin noticia', async () => {
+    const menor = await registrarSuceso(prisma, {
+      saveId, tipo: 'TREGUA', fictionalMinutes: await ahora(), regionSlug: 'las-llanuras-del-viento-rojo', origen: 'MUNDO', actores: [],
+      datos: { faccionA: 'Unos', faccionB: 'Otros' },
+    });
+    await difundir(prisma, saveId);
+    expect(await prisma.conocimiento.count({ where: { saveId, sucesoId: menor } })).toBe(0);
+
+    const visto = await registrarSuceso(prisma, {
+      saveId, tipo: 'TREGUA', fictionalMinutes: await ahora(), locationId: lugarId, origen: 'MUNDO', actores: [],
+      datos: { faccionA: 'Estos', faccionB: 'Aquellos' },
+    });
+    expect(await prisma.conocimiento.findUnique({ where: { saveId_sucesoId: { saveId, sucesoId: visto } } })).toMatchObject({ via: 'TESTIGO', confirmado: true, logEntryId: null });
+    expect(await prisma.logEntry.count({ where: { saveId, text: { contains: 'Estos y Aquellos' } } })).toBe(0);
+  });
+
+  it('pasada la ventana de días ya no es novedad y no llega', async () => {
+    const viejo = await alianza('las-llanuras-del-viento-rojo', (await ahora()) - (VENTANA_DIAS_LLEGA_SOLA + 1) * 1440);
+    await difundir(prisma, saveId);
+    expect(await prisma.conocimiento.count({ where: { saveId, sucesoId: viejo } })).toBe(0);
+  });
+});

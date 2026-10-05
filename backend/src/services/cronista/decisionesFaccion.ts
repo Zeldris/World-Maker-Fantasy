@@ -27,7 +27,8 @@ import { ETIQUETA_BANDA, stageForPresion, typeForPresion, PRESION_MAX, PRESION_M
 import { carenciasDe, inteligenciaDelLider, tocaRevisar, tramoDeInteligencia, UMBRALES_CARENCIA, type Carencia, type Tramo } from './carencias.js';
 import { CATALOGO_SUCESOS, type TipoSuceso } from './catalogoSucesos.js';
 import { costeDe } from './narradorFondo.js';
-import { categoriaDeFamilia, darNoticia, type MetaNoticia } from './noticias.js';
+import { categoriaDeFamilia, type MetaNoticia } from './noticias.js';
+import { darNoticiaDeSuceso } from './difusion.js';
 import type { CtxConsecuencia } from './consecuencias.js';
 import { registrarSuceso, type ActorSuceso } from './sucesos.js';
 
@@ -389,9 +390,8 @@ async function registrarYAvisar(ctx: CtxDecision, autor: Parte, afectada: Parte,
   ];
   const sucesoId = await registrarSuceso(ctx.tx, { saveId: ctx.saveId, tipo, fictionalMinutes: ctx.minutos, origen: 'MUNDO', actores, datos } as Parameters<typeof registrarSuceso>[1]);
   const { texto } = await ctx.tx.suceso.findUniqueOrThrow({ where: { id: sucesoId }, select: { texto: true } });
-  await darNoticia(ctx.tx, { saveId: ctx.saveId, worldId: ctx.worldId, fictionalMinutes: ctx.minutos, causa: sucesoId }, {
-    texto, facciones: [autor.name, afectada.name], region: null, categoria: categoriaDeFamilia(CATALOGO_SUCESOS[tipo].familia),
-  });
+  const categoria = categoriaDeFamilia(CATALOGO_SUCESOS[tipo].familia);
+  await darNoticiaDeSuceso(ctx.tx, ctx.saveId, sucesoId, { texto, facciones: [autor.name, afectada.name], region: null, meta: categoria ? { categoria } : null });
 }
 
 // ─────────────────────────── Propuestas al Reino de la jugadora (34e) ───────────────────────────

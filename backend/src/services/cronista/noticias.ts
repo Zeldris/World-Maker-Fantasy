@@ -37,6 +37,10 @@ export interface MetaNoticia {
   /// CR-34 (34e): propuesta de una facción al Reino, con Aceptar y Rechazar.
   propuesta?: { id: string; faccion: string; tipo: 'TRATADO' | 'ALIANZA'; venceEn: number; respuesta?: 'ACEPTADA' | 'RECHAZADA' | 'CADUCADA' };
   resumen?: true;
+  /// CR-18: suceso del que es noticia (enlace a Leyendas).
+  sucesoId?: string;
+  /// CR-18 (NAR-9): rumor sin confirmar; región donde pasó y minuto de ficción en que pasó.
+  rumor?: { region: string | null; pasoEn: number };
   /// En un resumen: los metadatos de cada línea (en orden; null si la línea no tenía).
   lineas?: (MetaNoticia | null)[];
 }
@@ -122,7 +126,7 @@ export function entrega(
 }
 
 /// Facciones aliadas o con tratado con el Reino de la jugadora (por nombre).
-async function aliadasDelReino(tx: Tx, saveId: string): Promise<Set<string>> {
+export async function aliadasDelReino(tx: Tx, saveId: string): Promise<Set<string>> {
   const reino = await tx.faction.findFirst({ where: { saveId, origenSlug: null, disueltaEn: null }, select: { id: true } });
   if (!reino) return new Set();
   const relaciones = await tx.factionRelation.findMany({
@@ -132,11 +136,13 @@ async function aliadasDelReino(tx: Tx, saveId: string): Promise<Set<string>> {
   return new Set(relaciones.map((r) => (r.sourceFaction.id === reino.id ? r.targetFaction.name : r.sourceFaction.name)));
 }
 
-async function escribir(tx: Tx, saveId: string, texto: string, fictionalMinutes: number, meta: MetaNoticia | null): Promise<void> {
+export async function escribir(tx: Tx, saveId: string, texto: string, fictionalMinutes: number, meta: MetaNoticia | null): Promise<string> {
   const ws = await tx.worldState.findUnique({ where: { saveId }, select: { fictionalDateLabel: true } });
-  await tx.logEntry.create({
+  const entrada = await tx.logEntry.create({
     data: { saveId, channel: 'WORLD', text: texto, timeLabel: ws?.fictionalDateLabel ?? '', fictionalMinutes, isSystemMessage: true, ...(meta ? { noticia: meta as Prisma.InputJsonValue } : {}) },
+    select: { id: true },
   });
+  return entrada.id;
 }
 
 function metaDe(noticia: Noticia): MetaNoticia | null {

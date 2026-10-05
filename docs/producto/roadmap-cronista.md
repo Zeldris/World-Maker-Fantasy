@@ -1519,8 +1519,11 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
       de Q2) y lo de las facciones aliadas o con tratado. Lo de 4-6 se sabe viéndolo, preguntando o
       en el tablón; lo de 1-3, solo viéndolo.
   - **Pasos**: ~~18a~~ ✅ 2026-10-05 (`cronista/conocimiento.ts`, puro; modelo `Conocimiento`, migración
-    `20261005060000_conocimiento`); 18a regla pura de alcance y modelo `Conocimiento`; 18b lo visto y lo que llega solo
-    (todos los sucesos, no solo los emisores de `darNoticia`), con la noticia enlazada a su suceso;
+    `20261005060000_conocimiento`); ~~18b~~ ✅ 2026-10-05 (`cronista/difusion.ts`: lo visto lo apunta
+    `registrarSuceso`; lo que llega solo, `difundir` tras cada día y cada acción, con ventana de 5 días;
+    `darNoticiaDeSuceso` guarda la noticia con su suceso en `Suceso.noticia`, migración
+    `20261005061000_suceso_noticia`; la noticia lleva `sucesoId` y, si es rumor, región y cuándo pasó;
+    `darNoticia` queda para noticias sin suceso, como los avisos nuevos del tablón);
     18c «¿Qué se cuenta?»; 18d bandos en el tablón; 18e confirmar rumores.
 - **CR-19** Endpoints de Leyendas (§ 14). **S** Las etiquetas (`GET /etiquetas`) van con `CR-14` y el
   epílogo con `UX-18` (`CR-18` Q6, 2026-10-05).
