@@ -73,6 +73,10 @@ export async function aceptarMision(prisma: PrismaClient, saveId: string, mision
     if (oferta.buildingId) {
       const tablon = await tx.building.findUnique({ where: { id: oferta.buildingId }, select: { locationId: true } });
       if (tablon?.locationId) huecos.entregaEn = tablon.locationId;
+    } else if (oferta.npcId) {
+      // Misión personal (40f): se entrega donde se aceptó, donde estaba el NPC.
+      const save = await tx.save.findUnique({ where: { id: saveId }, select: { currentLocationId: true } });
+      if (save?.currentLocationId) huecos.entregaEn = save.currentLocationId;
     }
     // Combatir (Q16): el grupo enemigo aparece en el lugar al aceptar.
     if (huecos.tipo === 'COMBATIR' && huecos.enemiga && huecos.lugar) {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { opcionesDisponiblesPara } from './npcInteraction.js';
+import { opcionesDisponiblesPara, OPCION_TRABAJO } from './npcInteraction.js';
 import type { NpcInScene } from './npcScene.js';
 
 function npcFixture(overrides: Partial<NpcInScene> = {}): NpcInScene {
@@ -95,5 +95,15 @@ describe('opcionesDisponiblesPara', () => {
     const npc = npcFixture({ interactionTypes: [], capturable: false, condicionFisica: 'GRAVE' });
     expect(opcionesDisponiblesPara(npc, { hayMisionOfertadaDeEsteNpc: false })).toEqual(['Charlar', 'Ayudar', 'Combatir', 'Salir']);
     expect(opcionesDisponiblesPara(npcFixture({ interactionTypes: [], condicionFisica: 'ILESO' }), { hayMisionOfertadaDeEsteNpc: false })).toEqual([]);
+  });
+});
+
+describe('CR-40 (40f): «¿Tienes trabajo?»', () => {
+  it('sale solo si el caller dice que el NPC puede ofrecer trabajo, y nunca a un malherido', () => {
+    const npc = npcFixture({ interactionTypes: ['CHARLA'] as never, condicionFisica: 'ILESO' });
+    expect(opcionesDisponiblesPara(npc, { hayMisionOfertadaDeEsteNpc: false })).not.toContain(OPCION_TRABAJO);
+    expect(opcionesDisponiblesPara(npc, { hayMisionOfertadaDeEsteNpc: false, puedeOfrecerTrabajo: true })).toContain(OPCION_TRABAJO);
+    const herido = npcFixture({ interactionTypes: ['CHARLA'] as never, condicionFisica: 'GRAVE' });
+    expect(opcionesDisponiblesPara(herido, { hayMisionOfertadaDeEsteNpc: false, puedeOfrecerTrabajo: true })).not.toContain(OPCION_TRABAJO);
   });
 });

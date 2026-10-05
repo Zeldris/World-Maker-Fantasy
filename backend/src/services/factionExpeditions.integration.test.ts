@@ -53,6 +53,9 @@ describe('avanzarExpedicionesDePartida — ciclo completo (Fase 13-B)', () => {
   beforeAll(async () => {
     worldId = (await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } })).id;
     progresoSnapshot = await prisma.npcProfessionProgress.findMany({ where: { npc: { worldId } } });
+    // El progreso de oficio de los NPC es del catálogo y otros tests pueden dejarlo en el tope (la XP ya
+    // no sube): se parte de 0 para los de Serhu y `afterAll` lo restaura.
+    await prisma.npcProfessionProgress.updateMany({ where: { npc: { worldId, faction: 'Clan Serhu' } }, data: { nivel: 1, xp: 0 } });
     // Reputación con el Clan Serhu: el personaje se entera de lo que le pasa (Fase D, noticias del mundo).
     saveId = await crearPartida(worldId, 'Expediciones de facción', DIA, { 'Clan Serhu': 0 });
     saveAjenaId = await crearPartida(worldId, 'Sin noticias de Serhu', DIA, { 'Concordia de Hierro': 0 });

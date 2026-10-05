@@ -1876,7 +1876,10 @@ describe('newQuestOfferInfo + POST /saves/:id/quests/aceptar: oferta de misión 
     await prisma.save.delete({ where: { id: saveId } });
   });
 
-  it('el turno ofrece la misión (newQuestOfferInfo) pero NO la crea todavía', async () => {
+  // CR-40 (hito 0.2, Q1): el narrador ya no crea misiones — un `newQuest` del modelo se ignora (ni
+  // oferta ni `Quest`). Las misiones secundarias salen del motor (tablones de avisos y NPC). La ruta
+  // de aceptar sigue sirviendo a la oferta fija de Gistera y a ofertas antiguas guardadas.
+  it('CR-40: el turno ignora un newQuest del narrador (ni oferta ni misión)', async () => {
     narrateAction.mockResolvedValueOnce({
       narration: 'El Orco Enfurecido te ofrece una tregua si le traes su maza perdida.',
       newFacts: [],
@@ -1886,10 +1889,8 @@ describe('newQuestOfferInfo + POST /saves/:id/quests/aceptar: oferta de misión 
     const body = lastNdjsonLine(res.payload);
 
     expect(body.newQuestInfo).toBeNull();
-    expect(body.newQuestOfferInfo).toEqual({
-      title: 'Recuperar la maza del Orco Enfurecido',
-      description: 'El Orco Enfurecido ofrece una tregua a cambio de su maza perdida.',
-    });
+    expect(body.newQuestOfferInfo).toBeNull();
+    expect((await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).pendingQuestOfferInfo).toBeNull();
     const quest = await prisma.quest.findFirst({ where: { saveId, title: 'Recuperar la maza del Orco Enfurecido' } });
     expect(quest).toBeNull();
   }, 20_000);
@@ -2090,11 +2091,12 @@ describe('pendingQuestOfferInfo: la oferta de misión sobrevive a un F5 (auditor
     await prisma.save.delete({ where: { id: saveId } });
   });
 
-  it('el turno persiste la oferta, y GET /saves/:id la reconstruye tras "recargar"', async () => {
-    narrateAction.mockResolvedValueOnce({
-      narration: 'El Orco Enfurecido te ofrece una tregua si le traes su maza perdida.',
-      newFacts: [],
-      newQuest: { title: 'Recuperar la maza del Orco Enfurecido (F5)', description: 'El Orco Enfurecido ofrece una tregua a cambio de su maza perdida.' },
+  // CR-40: la oferta ya no la crea un `newQuest` del narrador; se siembra como la dejaría la oferta
+  // fija de Gistera (o una partida antigua) para comprobar que sobrevive a una recarga.
+  it('la oferta guardada se mantiene, y GET /saves/:id la reconstruye tras "recargar"', async () => {
+    await prisma.save.update({
+      where: { id: saveId },
+      data: { pendingQuestOfferInfo: { title: 'Recuperar la maza del Orco Enfurecido (F5)', description: 'El Orco Enfurecido ofrece una tregua a cambio de su maza perdida.' } },
     });
     await doTurn(saveId, "Me acerco despacio a 'Orco enfurecido' sin decir nada.");
 
@@ -2129,12 +2131,10 @@ describe('pendingQuestOfferInfo: la oferta de misión sobrevive a un F5 (auditor
   }, 20_000);
 
   it('POST /quests/cancelar limpia pendingQuestOfferInfo sin crear ninguna Quest', async () => {
-    narrateAction.mockResolvedValueOnce({
-      narration: 'El Orco Enfurecido te ofrece otra tregua si le traes su casco perdido.',
-      newFacts: [],
-      newQuest: { title: 'Recuperar el casco del Orco Enfurecido', description: 'El Orco Enfurecido ofrece una tregua a cambio de su casco perdido.' },
+    await prisma.save.update({
+      where: { id: saveId },
+      data: { pendingQuestOfferInfo: { title: 'Recuperar el casco del Orco Enfurecido', description: 'El Orco Enfurecido ofrece una tregua a cambio de su casco perdido.' } },
     });
-    await doTurn(saveId, "Me acerco despacio a 'Orco enfurecido' sin decir nada de nuevo.");
     const saveWithOffer = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(saveWithOffer.pendingQuestOfferInfo).not.toBeNull();
 

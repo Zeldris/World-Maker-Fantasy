@@ -48,9 +48,12 @@ async function lugaresAbiertos(tx: Tx, worldId: string, region: string) {
 
 const elegir = <T>(lista: T[], random: () => number): T | undefined => (lista.length === 0 ? undefined : lista[Math.min(lista.length - 1, Math.floor(random() * lista.length))]);
 
-/// Candidatas que la facción podría colgar en su tablón de `region` (ya validadas).
-export async function candidatasDeFaccion(tx: Tx, saveId: string, worldId: string, faccion: FaccionQueEncarga, region: string, random: () => number): Promise<HuecosMision[]> {
-  const base = { faccion: { slug: faccion.slug, nombre: faccion.name, pueblo: faccion.raza }, region };
+/// Candidatas que la facción podría colgar en su tablón de `region` (ya validadas). Con `npc`, son
+/// misiones personales de ese NPC (Q13).
+export async function candidatasDeFaccion(
+  tx: Tx, saveId: string, worldId: string, faccion: FaccionQueEncarga, region: string, random: () => number, npc?: { id: string; nombre: string },
+): Promise<HuecosMision[]> {
+  const base = { faccion: { slug: faccion.slug, nombre: faccion.name, pueblo: faccion.raza }, region, ...(npc ? { npc } : {}) };
   const regionCorta = stripRegionArticle(region);
   const candidatas: HuecosMision[] = [];
 
@@ -181,3 +184,46 @@ export async function renovarTablones(prisma: PrismaClient, saveId: string, dia:
   );
 }
 
+
+// ─────────────────────────── Misión personal de un NPC (40f) ───────────────────────────
+
+/// Plazo que tiene la jugadora para aceptar lo que le propone un NPC en persona.
+export const DIAS_OFERTA_PERSONAL = 1;
+
+export interface OfertaPersonal {
+  id: string;
+  titulo: string;
+  descripcion: string;
+  recompensa: unknown;
+}
+
+/// «¿Tienes trabajo?» (Q13): el NPC con nombre propone UNA misión personal, armada con las mismas
+/// plantillas que el tablón y la región donde está la jugadora. Null si no tiene nada que proponer
+/// (o ya tiene una propuesta suya a la vista).
+export async function ofrecerTrabajoDeNpc(prisma: PrismaClient, saveId: string, npcSlug: string, random: () => number = Math.random): Promise<OfertaPersonal | null> {
+  return prisma.$transaction(async (tx) => {
+    const save = await tx.save.findUniqueOrThrow({
+      where: { id: saveId },
+      select: { worldId: true, currentLocationId: true, currentLocation: { select: { region: true } }, worldState: { select: { fictionalMinutes: true } } },
+    });
+    const npc = await tx.npc.findFirst({ where: { worldId: save.worldId, slug: npcSlug, kind: { not: 'PLANTILLA' }, faction: { not: null }, ...npcSinMorirEnPartida(saveId) }, select: { id: true, name: true, faction: true } });
+    const region = save.currentLocation?.region;
+    if (!npc?.faction || !region) return null;
+    const faccion = await tx.faction.findFirst({ where: { saveId, name: npc.faction, origenSlug: { not: null }, disueltaEn: null }, select: { id: true, slug: true, name: true, raza: true } });
+    if (!faccion) return null;
+    const minutos = save.worldState?.fictionalMinutes ?? 0;
+    const vigente = await tx.misionOfrecida.findFirst({ where: { saveId, npcId: npc.id, estado: 'DISPONIBLE', retiraEn: { gt: minutos } } });
+    if (vigente) return { id: vigente.id, titulo: vigente.titulo, descripcion: vigente.descripcion, recompensa: vigente.recompensa };
+    const abiertas = await clavesAbiertas(tx, saveId);
+    const [h] = escogerParaTablon(await candidatasDeFaccion(tx, saveId, save.worldId, faccion, region, random, { id: npc.id, nombre: npc.name }), 1, abiertas, random);
+    if (!h) return null;
+    const { titulo, descripcion } = textoDeMision(h, Math.floor(random() * 10));
+    const oferta = await tx.misionOfrecida.create({
+      data: {
+        saveId, npcId: npc.id, factionId: faccion.id, tipo: h.tipo, motivo: h.motivo, huecos: h as unknown as Prisma.InputJsonValue, titulo, descripcion,
+        recompensa: recompensaDe(h) as unknown as Prisma.InputJsonValue, creadaEn: minutos, retiraEn: minutos + DIAS_OFERTA_PERSONAL * 1440,
+      },
+    });
+    return { id: oferta.id, titulo, descripcion, recompensa: oferta.recompensa };
+  });
+}

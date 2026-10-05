@@ -38,7 +38,7 @@ import { protectedFactsFor } from './protectedFacts.js';
 import { lintRegionMismatch } from './narrationLint.js';
 import { stripRegionArticle } from './population.js';
 import { startEagerTransitResolution } from '../workers/worldTick.js';
-import { destinationsFrom, normalizeText, matchDestination, detectsTravelIntent, detectsVagueMovementIntent, cardinalDirectionBetween, resolveTravelToLocationId, segundosRealesPorTramos, type TravelResolution } from './travel.js';
+import { destinationsFrom, normalizeText, detectsTravelIntent, detectsVagueMovementIntent, cardinalDirectionBetween, resolveTravelToLocationId, segundosRealesPorTramos, type TravelResolution } from './travel.js';
 import { detectsRestIntent, type Produccion } from './timedActions.js';
 import { puntoDeEntradaParaDireccion, posicionesDeSalidas, direccionDeEntrada, posicionDeObjetivo, minutoDeReaparicion, moverJugadorA, volverAEntrada, celdaDePixel, mismaCelda, celdaAdyacenteOMisma } from './zonaPosicion.js';
 import { claimChapterIfDue, scheduleChapterSummaryGeneration, releaseChapterClaim } from './chapterSummary.js';
@@ -3822,9 +3822,18 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // OFICIOS_CONSTRUCCION_REQUERIDOS en construction.ts) — a diferencia de `alivioFor` (que solo
   // relaja el requisito), esto distingue "no tiene el oficio en absoluto" de "lo tiene a nivel 1".
   const tieneOficioFor = (oficio: string | undefined) => (oficio ? oficioNivelById.has(oficio) : true);
-  if (activeQuests.length) {
+  // CR-40 (Q1, Q9): el narrador solo puede cerrar las misiones antiguas suyas (sin `tipoMision`); las
+  // del motor las ve para narrarlas, pero las cierra el juego.
+  const misionesDelNarrador = activeQuests.filter((q) => !q.tipoMision);
+  const misionesDelMundo = activeQuests.filter((q) => q.tipoMision);
+  if (misionesDelMundo.length) {
     contextBlocks.push(
-      `MISIONES ACTIVAS (usa el título EXACTO en "questProgress" si esta escena la cierra):\n${activeQuests
+      `MISIONES DEL MUNDO (no las cierres tú: las cierra el juego):\n${misionesDelMundo.map((q) => `- ${q.title}: ${q.description}`).join('\n')}`,
+    );
+  }
+  if (misionesDelNarrador.length) {
+    contextBlocks.push(
+      `MISIONES ACTIVAS (usa el título EXACTO en "questProgress" si esta escena la cierra):\n${misionesDelNarrador
         .map((q) => `- ${q.title}: ${q.description}`)
         .join('\n')}`,
     );
@@ -3843,12 +3852,13 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // la historia" sea difícil para un 7B. En vez de dejarlo a la improvisación total, se sugiere
   // (nunca se fuerza) UN gancho ya escrito y anclado en canon (LoreChunk tipo GANCHO) como columna
   // vertebral de la sesión. Determinista y estable (mismo gancho mientras no haya misión activa),
-  // no aleatorio — desaparece solo en cuanto el modelo lo recoge de verdad con "newQuest".
+  // no aleatorio — desaparece en cuanto hay una misión activa. CR-40: el modelo ya no crea misiones
+  // con "newQuest"; el gancho solo da color a la escena.
   if (activeQuests.length === 0) {
     const [gancho] = await prisma.loreChunk.findMany({ where: { worldId, type: 'GANCHO' }, orderBy: { title: 'asc' }, take: 1 });
     if (gancho) {
       contextBlocks.push(
-        `GANCHO DE SESIÓN (opcional — úsalo solo si encaja de forma natural en esta escena concreta, nunca lo fuerces ni lo menciones si no viene a cuento): ${gancho.text} Si esta escena lo introduce de verdad como un objetivo real, puedes crear la misión correspondiente con "newQuest".`,
+        `GANCHO DE SESIÓN (opcional — úsalo solo si encaja de forma natural en esta escena concreta, nunca lo fuerces ni lo menciones si no viene a cuento): ${gancho.text}`,
       );
     }
   }
@@ -5961,68 +5971,11 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       }
     }
 
-    // Misiones (docs/mecanicas/09-panel-personaje.md) — mismo patrón que Reino: el modelo propone, el
-    // backend valida y materializa. questProgress solo actúa si matchea una misión ACTIVA real.
-    // `title?.trim()` (2026-09-07, "salen misiones como UNDEFINED") — el schema no obliga a que el
-    // modelo rellene `title`; sin este guard, un `newQuest` con el campo vacío/ausente seguía todo
-    // este bloque (incluida la búsqueda de anclaje con "undefined" literal en el texto).
-    if (narration.newQuest?.title?.trim()) {
-      // Cierre detectable por backend (roadmap 2026-07-19, mecánicas): si el título/descripción
-      // menciona a un NPC ya confirmado en npcsInScene, se guarda como objetivo — en cuanto ese
-      // NPC caiga (CONVALECIENTE/MUERTO, ver npcAttackTarget más abajo), la misión se cierra sola,
-      // sin depender de que el modelo repita el título EXACTO en "questProgress".
-      const questText = normalizeText(`${narration.newQuest.title} ${narration.newQuest.description}`);
-      let targetNpcId = npcsInScene.find((npc) => questText.includes(normalizeText(npc.name)))?.id;
-      // Fallback a todo el mundo (segunda vuelta de diseño, 2026-07-23): una misión de "cazar a
-      // X" puede aceptarse hablando con alguien QUE NO ES X (p. ej. Gistera Koh pidiendo ayuda
-      // contra el Orco Enfurecido, que no está físicamente presente en esa conversación) — sin
-      // esto, targetNpcId se quedaba sin resolver y la misión nunca se cerraba sola al derrotarlo.
-      // Mismo criterio que ya usan targetLocationId/targetItemName más abajo (buscan en TODO el
-      // mundo, no solo en escena) — se extiende aquí por consistencia.
-      if (!targetNpcId) {
-        const worldNpcs = await tx.npc.findMany({ where: { worldId, ...npcVivoEnPartida(saveId) } });
-        targetNpcId = worldNpcs.find((npc) => questText.includes(normalizeText(npc.name)))?.id;
-      }
-
-      // Mismo patrón, extendido (roadmap 2026-07-20, P1 de Fable) — "llegar a Y": mismo matcher
-      // que travel.ts usa para resolver destinos, contra TODAS las Location del mundo (no solo
-      // las de la escena, a diferencia de targetNpcId: un objetivo de viaje puede estar lejos de
-      // donde se acepta la misión).
-      const worldLocations = await tx.location.findMany({ where: { worldId } });
-      const targetLocationId = matchDestination(questText, worldLocations)?.id;
-
-      // "conseguir Z": mismo patrón contra el catálogo de objetos del mundo — se guarda el
-      // NOMBRE (no id), porque el InventoryItem real que la cierre no siempre coincide 1:1 con
-      // una fila de catálogo (botín/despiece/crafteo pueden personalizar el nombre final).
-      const worldItems = await tx.itemCatalog.findMany({ where: { worldId } });
-      const targetItemName = worldItems.find((item) => questText.includes(normalizeText(item.name)))?.name;
-
-      // Guard real (Grupo 3 § Mundo determinista, docs/rpgtarkor/lore-mundo/mundo-determinista.md, 2026-08-25):
-      // hasta ahora se creaba una `Quest` real por CUALQUIER `newQuest` que el modelo propusiera,
-      // sin ningún anclaje a nada real del mundo — título y descripción 100% libres. Exigir al
-      // menos UNO de los tres anclajes ya resueltos arriba (NPC/Location/Item reales) no es una
-      // solución completa (eso exige un catálogo de misiones propio, fuera de alcance de esta
-      // pasada — ver el documento), pero cierra el caso más grave: una misión completamente
-      // inventada, sin ninguna conexión con el mundo real, que ni siquiera podría cerrarse sola.
-      //
-      // Botones Aceptar/Cancelar (2026-08-26, petición explícita: "en vez de depender de que la
-      // jugadora escriba texto libre para aceptar... que 'Aceptar' genere una narración
-      // determinista de aceptación, sin esperar a que el LLM decida si acepta o no") — este bloque
-      // YA NO crea la `Quest` aquí: solo confirma que hay un anclaje real (mismo guard de siempre)
-      // y ofrece el título/descripción para que el frontend pinte los botones. La `Quest` de
-      // verdad nace en `POST /saves/:id/quests/aceptar` (quests.ts), que vuelve a resolver los
-      // anclajes por su cuenta contra el título/descripción exactos — nunca contra `npcsInScene`
-      // de este turno concreto, que para entonces ya puede haber cambiado.
-      // Bug real jugando en vivo (2026-09-07, "salen misiones como UNDEFINED"): el schema JSON del
-      // narrador (`newQuest: { title, description }`) no obliga a que el modelo rellene `title` —
-      // sin este guard, un turno donde el modelo devolvía el objeto con el campo vacío/ausente
-      // llegaba tal cual hasta el frontend, que literalmente interpola `undefined` en el texto del
-      // botón ("Misión propuesta: undefined"). Mismo criterio que el resto de guards de esta
-      // familia: mejor no ofrecer nada que ofrecer una tarjeta rota.
-      if ((targetNpcId || targetLocationId || targetItemName) && narration.newQuest?.title?.trim()) {
-        newQuestOfferInfo = { title: narration.newQuest.title.trim(), description: narration.newQuest.description ?? '' };
-      }
-    }
+    // Misiones del narrador: RETIRADAS (CR-40, hito 0.2, Q1 — «solo el motor crea y cierra las
+    // misiones; el narrador solo narra»). Antes, un `newQuest` del modelo con algún anclaje real
+    // (NPC/lugar/objeto) se ofrecía con Aceptar/Cancelar; ahora las misiones secundarias salen del
+    // motor (tablones de avisos y NPC con nombre, `cronista/generarMisiones.ts`) y el `newQuest` del
+    // modelo se ignora. La oferta fija de Gistera (más abajo) no cambia: la decide el motor.
 
     // Oferta determinista de "acabar con el Orco Enfurecido" (segunda vuelta de diseño,
     // 2026-07-23, "revisar partida": el jugador aceptó con claridad — "Gorhorn ha aceptado ayudar
@@ -6078,20 +6031,28 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // diálogo con este NPC Y una oferta nació en este mismo turno" (única señal real disponible sin
     // ampliar el modelo de datos, coherente con el alcance de esta pieza).
     if (npcInteractionCandidate) {
+      // CR-40 (40f): un NPC con nombre de una facción viva de la partida puede ofrecer trabajo.
+      // Nunca quien te trata como enemigo (temperamento efectivo agresivo o enemigo).
+      const puedeOfrecerTrabajo =
+        npcInteractionCandidate.kind !== 'PLANTILLA' && !!npcInteractionCandidate.faction &&
+        ['AMIGABLE', 'INOFENSIVO', 'CAUTELOSO'].includes(effectiveTemperamento(npcInteractionCandidate.temperamento, npcInteractionCandidate.faction, factionsStatus)) &&
+        (await tx.faction.count({ where: { saveId, name: npcInteractionCandidate.faction, origenSlug: { not: null }, disueltaEn: null } })) > 0;
       const opciones = opcionesDisponiblesPara(npcInteractionCandidate, {
         hayMisionOfertadaDeEsteNpc: !!newQuestOfferInfo,
         tituloMisionOfertada: newQuestOfferInfo?.title,
+        puedeOfrecerTrabajo,
       });
       npcInteractionOffer = { npcSlug: npcInteractionCandidate.slug, npcName: npcInteractionCandidate.name, options: opciones };
       await tx.save.update({ where: { id: saveId }, data: { pendingNpcInteractionOffer: npcInteractionOffer } });
     }
 
     if (narration.questProgress) {
+      // CR-40 (Q9): solo las misiones antiguas del narrador (las del motor las cierra el juego).
       const matchingQuests = await tx.quest.findMany({
-        where: { saveId, title: narration.questProgress.title, status: 'ACTIVA' },
+        where: { saveId, title: narration.questProgress.title, status: 'ACTIVA', tipoMision: null },
       });
       await tx.quest.updateMany({
-        where: { saveId, title: narration.questProgress.title, status: 'ACTIVA' },
+        where: { saveId, title: narration.questProgress.title, status: 'ACTIVA', tipoMision: null },
         data: { status: narration.questProgress.status },
       });
       for (const mision of matchingQuests) {

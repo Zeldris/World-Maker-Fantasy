@@ -1409,10 +1409,18 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     Combatir los revisa `revisarMisiones` tras cada turno (`avanzarMundoHasta`) y tras cada acción.
     Cumplir: XP (con subida de nivel), Goirnos, reputación (+ con quien encarga, − con la enemiga) y
     `MISION_COMPLETADA`; fallar por plazo o abandonar restan reputación.
+  - ✅ **40f-1 hecho (2026-10-05):** el narrador ya no crea misiones (`newQuest` se ignora; el prompt
+    lo pide siempre null) y solo cierra con `questProgress` las antiguas suyas (sin `tipoMision`);
+    las del motor las ve aparte («no las cierres tú»). La oferta fija de Gistera no cambia.
+    «¿Tienes trabajo?» en el menú de un NPC con nombre de una facción viva de la partida que no te
+    trata como enemigo (temperamento efectivo amigable, inofensivo o cauteloso): `ofrecerTrabajoDeNpc`
+    arma UNA misión personal con las plantillas (su nombre, +25 %, se entrega donde se aceptó, 1 día
+    para aceptarla) o responde que no tiene nada. **Falta en el frontend (40g):** mostrar esa
+    oferta; hoy la tarjeta del NPC solo se cierra.
   - **Pasos:** 40a plantillas, tipos y recompensas (puro) ✅ · 40b modelo y migración ✅ · 40c tablones
     (sembrados y del Reino) ✅ · 40d generación en el avance diario ✅ · 40e aceptar, progreso, cumplir,
     fallar y reputación ✅ · 40f oferta pendiente única (ADR), «¿Tienes trabajo?» del NPC y el narrador
-    deja de crear misiones · 40g interfaz del tablón y del diario.
+    deja de crear misiones (🚧 40f-1 ✅, falta 40f-2: la oferta única con su ADR) · 40g interfaz del tablón y del diario.
 - **Hecho cuando:** `cronista:simular 60` produce caídas, escisiones, tormentas con daños, guerras
   y nacimientos coherentes; perdonar a un NPC lo hace volver en otra región.
 

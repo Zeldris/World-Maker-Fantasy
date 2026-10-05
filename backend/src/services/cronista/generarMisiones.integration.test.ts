@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { asegurarMundoDePartida } from '../mundoPartida.js';
-import { renovarTablones } from './generarMisiones.js';
+import { ofrecerTrabajoDeNpc, renovarTablones } from './generarMisiones.js';
 import { validarHuecos, MISIONES_POR_TABLON, type HuecosMision } from './misiones.js';
 
 /// CR-40 40d contra Postgres real: el tablón del Clan Serhu se llena con misiones que salen del mundo
@@ -68,5 +68,56 @@ describe('renovarTablones (CR-40 40d)', () => {
     expect(r.retiradas).toBeGreaterThanOrEqual(MISIONES_POR_TABLON);
     expect(await prisma.misionOfrecida.count({ where: { buildingId: tablonSerhu, estado: 'RETIRADA' } })).toBe(MISIONES_POR_TABLON);
     expect(await prisma.misionOfrecida.count({ where: { buildingId: tablonSerhu, estado: 'DISPONIBLE' } })).toBe(MISIONES_POR_TABLON);
+  }, 60_000);
+});
+
+/// CR-40 40f contra Postgres real: «¿Tienes trabajo?» a un NPC con nombre de una facción viva de la
+/// partida da UNA misión personal de las plantillas (con su nombre y más recompensa), la misma si se
+/// vuelve a preguntar, y nada si el NPC no es de ninguna facción de la partida.
+describe('ofrecerTrabajoDeNpc (CR-40 40f)', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const worldId = (await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } })).id;
+    const campamento = await prisma.location.findFirstOrThrow({ where: { worldId, slug: 'campamento-serhu' } });
+    const save = await prisma.save.create({
+      data: {
+        userId: await getDefaultUserId(), worldId, characterName: 'Trabajo', characterArchetype: 'guerrero', characterOrigin: 'x', characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 }, portraitInitial: 'T',
+        currentLocationId: campamento.id, worldState: { create: { fictionalMinutes: 5 * 1440 } },
+      },
+    });
+    saveId = save.id;
+    await asegurarMundoDePartida(prisma, saveId);
+    const serhu = await prisma.faction.findFirstOrThrow({ where: { saveId, origenSlug: 'clan-serhu' } });
+    const helsig = await prisma.faction.findFirstOrThrow({ where: { saveId, origenSlug: 'clan-helsig' } });
+    // Algo que encargar seguro: guerra con Helsig (Combatir) en las Llanuras.
+    await prisma.factionRelation.upsert({
+      where: { sourceFactionId_targetFactionId: { sourceFactionId: serhu.id, targetFactionId: helsig.id } },
+      update: { presion: 85, type: 'GUERRA' }, create: { worldId, saveId, sourceFactionId: serhu.id, targetFactionId: helsig.id, presion: 85, type: 'GUERRA' },
+    });
+  });
+
+  afterAll(async () => {
+    await prisma.save.deleteMany({ where: { id: saveId } });
+  });
+
+  it('el NPC con nombre propone una misión personal de las plantillas; la misma si se le vuelve a preguntar', async () => {
+    const npc = await prisma.npc.findFirstOrThrow({ where: { faction: 'Clan Serhu', kind: { not: 'PLANTILLA' }, slug: { not: 'ulkha-ketg' } }, orderBy: { slug: 'asc' } });
+    const aviso = await ofrecerTrabajoDeNpc(prisma, saveId, npc.slug, () => 0.4);
+    expect(aviso).not.toBeNull();
+    expect(aviso!.descripcion.startsWith(`${npc.name}: «`)).toBe(true);
+    const fila = await prisma.misionOfrecida.findUniqueOrThrow({ where: { id: aviso!.id } });
+    expect(fila).toMatchObject({ npcId: npc.id, buildingId: null, estado: 'DISPONIBLE', retiraEn: 5 * 1440 + 1440 });
+    const h = fila.huecos as unknown as HuecosMision;
+    expect(validarHuecos(h)).toEqual([]);
+    expect(h.npc).toEqual({ id: npc.id, nombre: npc.name });
+    expect((await ofrecerTrabajoDeNpc(prisma, saveId, npc.slug, () => 0.9))!.id).toBe(aviso!.id);
+  }, 60_000);
+
+  it('sin facción viva en la partida no hay trabajo', async () => {
+    const sinFaccion = await prisma.npc.findFirst({ where: { faction: null, kind: { not: 'PLANTILLA' } } });
+    if (sinFaccion) expect(await ofrecerTrabajoDeNpc(prisma, saveId, sinFaccion.slug)).toBeNull();
+    expect(await ofrecerTrabajoDeNpc(prisma, saveId, 'no-existe')).toBeNull();
   }, 60_000);
 });

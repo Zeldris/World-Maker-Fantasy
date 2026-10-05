@@ -2,6 +2,8 @@ import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { rejectIfEnded, clearPendingOffer, toFrontendLogEntry } from './shared.js';
 import { ayudarNpc } from '../../services/ayudarNpc.js';
+import { ofrecerTrabajoDeNpc } from '../../services/cronista/generarMisiones.js';
+import { OPCION_TRABAJO } from '../../services/npcInteraction.js';
 
 /// Menú contextual de interacción con NPC (2026-09-06, "Aprender oficio" deja de depender de una
 /// habilidad suelta) — el motor ya decidió el candidato y sus opciones en el turno normal
@@ -47,6 +49,13 @@ export async function npcInteractionRoutes(app: FastifyInstance) {
         return entrada ? { accion: 'AYUDADO' as const, logEntry: toFrontendLogEntry(entrada) } : { accion: 'CERRAR' as const };
       }
       if (opcion.startsWith('Misión: ')) return { accion: 'MOSTRAR_OFERTA_MISION' as const };
+      // CR-40 (40f): misión personal del NPC, de las plantillas del motor (nunca inventada).
+      if (opcion === OPCION_TRABAJO) {
+        const aviso = await ofrecerTrabajoDeNpc(prisma, save.id, offer.npcSlug);
+        return aviso
+          ? { accion: 'OFERTA_TRABAJO' as const, npcName: offer.npcName, aviso }
+          : { accion: 'SIN_TRABAJO' as const, texto: `${offer.npcName} no tiene ningún encargo para ti ahora mismo.` };
+      }
       // 'Charlar' y 'Salir' no necesitan ninguna acción más allá de cerrar la tarjeta.
       return { accion: 'CERRAR' as const };
     },

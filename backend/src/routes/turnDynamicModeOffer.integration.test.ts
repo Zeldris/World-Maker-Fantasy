@@ -247,7 +247,10 @@ describe('dynamicModeOffer en /turn/narrate', () => {
     }
   }, 30_000);
 
-  it('si este turno ya ofrece una misión (newQuestOfferInfo), nunca ofrece modo dinámico a la vez', async () => {
+  // CR-40 (hito 0.2, Q1): el camino genérico por el que un `newQuest` del narrador ofrecía misión ya no
+  // existe; la única oferta de misión de un turno es la fija de Gistera (motor). Se comprueba que el
+  // `newQuest` del modelo no produce oferta.
+  it('CR-40: un newQuest del narrador ya no ofrece misión', async () => {
     const zonePoint = await prisma.zonePoint.create({
       data: { locationId, saveId, x: 10, y: 10, tipo: 'FAUNA', targetSlug: 'fauna-prueba-oferta-modo-dinamico-21', cantidad: 5, activo: true },
     });
@@ -267,8 +270,7 @@ describe('dynamicModeOffer en /turn/narrate', () => {
       const { classification, roll } = classifyRes.json();
       const narrateRes = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action: 'Ayudo.', classification, roll, enCombate: false } });
       const done = JSON.parse(narrateRes.body.trim().split('\n').pop()!);
-      expect(done.newQuestOfferInfo).not.toBeNull();
-      expect(done.dynamicModeOffer).toBeNull();
+      expect(done.newQuestOfferInfo).toBeNull();
     } finally {
       await prisma.zonePoint.delete({ where: { id: zonePoint.id } });
       await prisma.save.update({ where: { id: saveId }, data: { lastDynamicModeOfferAtMinutes: null } });
