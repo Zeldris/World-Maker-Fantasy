@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
-import { enSegundoPlano, esperarSegundoPlano } from './avanceDiario.js';
+import Fastify from 'fastify';
+import type { PrismaClient } from '@prisma/client';
+import { enSegundoPlano, esperarSegundoPlano, registrarAvanceTrasAcciones } from './avanceDiario.js';
 
 /// UX-29 / UX-35: el trabajo de fondo de una partida va en fila y el turno siguiente puede esperarlo.
 describe('trabajo de fondo por partida', () => {
@@ -17,5 +19,20 @@ describe('trabajo de fondo por partida', () => {
     error.mockRestore();
     // Sin nada pendiente, no espera.
     await expect(esperarSegundoPlano('nadie')).resolves.toBeUndefined();
+  });
+
+  it('una acción de la partida no empieza hasta que acaba su trabajo de fondo', async () => {
+    const app = Fastify();
+    registrarAvanceTrasAcciones(app, {} as PrismaClient);
+    const orden: string[] = [];
+    // 400: el hook de después de la acción no encola nada (no hace falta base de datos).
+    app.post('/saves/:id/accion', async (_req, reply) => {
+      orden.push('accion');
+      return reply.status(400).send({});
+    });
+    void enSegundoPlano('p1', () => new Promise<void>((r) => setTimeout(() => { orden.push('fondo'); r(); }, 20)));
+    await app.inject({ method: 'POST', url: '/saves/p1/accion' });
+    expect(orden).toEqual(['fondo', 'accion']);
+    await app.close();
   });
 });

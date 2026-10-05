@@ -136,6 +136,13 @@ export async function esperarSegundoPlano(saveId: string): Promise<void> {
 /// recolectar, cazar, el modo dinámico… cualquier acción que mueva el reloj sin pasar por el turno
 /// narrado avanza también el mundo de la partida. Nunca rompe la respuesta (va tras enviarla).
 export function registrarAvanceTrasAcciones(app: FastifyInstance, prisma: PrismaClient): void {
+  // UX-29: ninguna acción de la partida empieza mientras su trabajo de fondo (p. ej. el día que cruzó
+  // el turno anterior) sigue escribiendo; así nunca se pisan ni se bloquean en la base.
+  app.addHook('preHandler', async (request) => {
+    if (request.method !== 'POST' || !request.routeOptions.url?.startsWith('/saves/:id')) return;
+    const saveId = (request.params as { id?: string } | undefined)?.id;
+    if (saveId) await esperarSegundoPlano(saveId);
+  });
   app.addHook('onResponse', async (request, reply) => {
     if (request.method !== 'POST' || reply.statusCode >= 400) return;
     if (!request.routeOptions.url?.startsWith('/saves/:id')) return;

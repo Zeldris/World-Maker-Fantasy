@@ -12,4 +12,6 @@ FROM (VALUES
   ('feg-tusha', 'RECELOSA'),
   ('feg-ger', 'MERCANTIL')
 ) AS v(slug, d)
-WHERE f."disposicion" = 'NEUTRAL' AND (f."slug" = v.slug OR f."origenSlug" = v.slug);
+-- Solo por `slug`: el catálogo y sus copias por partida lo comparten; una escisión lleva su propio
+-- slug (y en `origenSlug` el de su madre), así que no hereda la disposición de esta.
+WHERE f."disposicion" = 'NEUTRAL' AND f."slug" = v.slug;

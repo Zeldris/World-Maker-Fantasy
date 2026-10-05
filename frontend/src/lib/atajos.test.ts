@@ -29,4 +29,11 @@ describe('CFG-26 — atajos', () => {
     expect(normalizarAtajos({ inventario: 'B', mapa: 'Enter' })).toEqual({ ...ATAJOS_POR_DEFECTO, inventario: 'b' })
     expect(normalizarAtajos(null)).toEqual(ATAJOS_POR_DEFECTO)
   })
+
+  it('UX-36: una acción nueva no quita la tecla que la jugadora ya usaba', () => {
+    const m = normalizarAtajos({ inventario: 'i', mapa: 'm', personaje: 'p', habilidades: 'h', diario: 'j', reino: 'k', enciclopedia: 'l', zona: 'y' })
+    expect(m.zona).toBe('y')
+    expect(m.leyendas).not.toBe('y')
+    expect(new Set(Object.values(m)).size).toBe(Object.values(m).length)
+  })
 })

@@ -1464,7 +1464,7 @@ export async function turnRoutes(app: FastifyInstance) {
     }
     // UX-35: el turno no espera al día. Con la narración ya entregada, el mundo de la partida avanza
     // los días que haya cruzado; sus noticias llegan en el siguiente refresco. El turno siguiente
-    // espera a que acabe (`esperarSegundoPlano`, arriba), así nunca se cruzan en la base.
+    // y las acciones de la partida (`POST /saves/:id/…`) esperan a que acabe, así nunca se cruzan en la base.
     void enSegundoPlano(saveId, () => avanzarSiCruzaDia(prisma, saveId));
   });
 }

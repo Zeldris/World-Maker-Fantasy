@@ -37,12 +37,27 @@ const RESERVADAS = new Set(['1', '2', '3', '4', '5', '6', '7', '8', '9', ' ', 'e
 export const teclaValida = (tecla: string): boolean => tecla.length === 1 && !RESERVADAS.has(tecla.toLowerCase())
 
 /// Completa con los de por defecto lo que falte o sea inválido.
+/// Una acción nueva (p. ej. Leyendas, UX-36) nunca quita la tecla a un atajo que la jugadora ya
+/// eligió: si su tecla por defecto está ocupada, toma la primera letra libre.
 export function normalizarAtajos(crudo: unknown): MapaAtajos {
   const o = (crudo && typeof crudo === 'object' ? crudo : {}) as Record<string, unknown>
-  const mapa = { ...ATAJOS_POR_DEFECTO }
+  const guardados = new Map<AccionAtajo, string>()
   for (const { accion } of ACCIONES_ATAJO) {
     const t = o[accion]
-    if (typeof t === 'string' && teclaValida(t)) mapa[accion] = t.toLowerCase()
+    if (typeof t === 'string' && teclaValida(t)) guardados.set(accion, t.toLowerCase())
+  }
+  const mapa = { ...ATAJOS_POR_DEFECTO }
+  const usadas = new Set(guardados.values())
+  for (const { accion } of ACCIONES_ATAJO) {
+    const guardada = guardados.get(accion)
+    if (guardada) {
+      mapa[accion] = guardada
+      continue
+    }
+    let tecla = ATAJOS_POR_DEFECTO[accion]
+    if (usadas.has(tecla)) tecla = [...'abcdefghijklmnopqrstuvwxyz'].find((l) => !usadas.has(l) && teclaValida(l)) ?? tecla
+    mapa[accion] = tecla
+    usadas.add(tecla)
   }
   return mapa
 }
