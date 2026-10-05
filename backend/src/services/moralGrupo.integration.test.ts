@@ -75,4 +75,19 @@ describe('CR-44 (44c) — moral en el combate de varios', () => {
     expect(r.huidos).toEqual([]);
     expect(r.textos[0]).toContain('siguen peleando');
   });
+
+  it('CR-45: si cae el capitán (Int ≥ 20), los suyos tiran con desventaja, una sola vez', async () => {
+    const cs = await bandaDeTres();
+    const [capitan, ...resto] = enemigos(cs);
+    capitan!.attributes = { ...capitan!.attributes!, inteligencia: 20 };
+    capitan!.condicion = 'CONVALECIENTE';
+    for (const m of resto) m.attributes = { ...m.attributes!, inteligencia: 8 };
+    const encounterId = (await prisma.combatParticipant.findUniqueOrThrow({ where: { id: cs[0]!.participantId } })).encounterId;
+    // Desbandada (Int 8): cada uno tira moral con desventaja (2 dados) y, si falla, escape.
+    const r = await prisma.$transaction((tx) => revisarMoralDelCombate(tx, { saveId, encounterId, combatientes: cs, random: d20(1, 1, 20) }));
+    expect(r.textos[0]).toContain('sin quien los mande');
+    expect(r.huidos.length).toBeGreaterThan(0);
+    const otra = await prisma.$transaction((tx) => revisarMoralDelCombate(tx, { saveId, encounterId, combatientes: cs.map((c) => (r.huidos.includes(c.participantId) ? { ...c, huido: true } : c)), random: d20(1, 1, 20) }));
+    expect(otra.textos.some((t) => t.includes('sin quien los mande'))).toBe(false);
+  });
 });

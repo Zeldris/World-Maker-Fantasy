@@ -30,14 +30,15 @@ describe('CR-49 — grupos de personas en combate', () => {
 
   const objetivo = async (slug: string) => prisma.npc.findFirstOrThrow({ where: { worldId, slug, saveId: null } });
 
-  it('al atacar a Torgash se unen los del Clan Serhu cercanos (Ulkha entre ellos), como mucho 4 en total', async () => {
+  it('al atacar a Torgash se unen los del Clan Serhu cercanos, como mucho 4 en total', async () => {
     const torgash = await objetivo('torgash-ketg');
     const grupo = await grupoDePersona(prisma, { saveId, worldId, locationId: interiorId, objetivo: torgash });
     expect(grupo[0]!.npcId).toBe(torgash.id);
     expect(grupo.length).toBeGreaterThan(1);
     expect(grupo.length).toBeLessThanOrEqual(4);
-    const nombres = grupo.map((m) => m.nombre);
-    expect(nombres).toContain('Ulkha Ketg');
+    // Todos de su facción; cuáles, depende de quién esté más cerca de él en el mapa.
+    const aliados = await prisma.npc.findMany({ where: { id: { in: grupo.slice(1).map((m) => m.npcId) } }, select: { faction: true } });
+    expect(aliados.every((a) => a.faction === 'Clan Serhu')).toBe(true);
   });
 
   it('una persona sin facción ni banda pelea sola', async () => {

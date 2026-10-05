@@ -8,6 +8,10 @@ import type { CondicionFisica, Prisma } from '@prisma/client';
 import type { AttributeBlock } from './dice.js';
 import { EN_PIE, formaDeRetirada, quienTiraMoral, tieneMoral, tirarEscape, tirarMoral, vaClaramentePerdiendo } from './moralCombate.js';
 import { aplicarHuidaNpc } from './huidaNpc.js';
+import { INTELIGENCIA_CAPITAN } from './combateMultiple.js';
+
+/// Marca de «ya tiraron por la caída del capitán» en `CombatEncounter.moralMitadBandos`.
+const MARCA_CAPITAN = 'CAPITAN:ENEMIGO';
 
 export interface CombatienteParaMoral {
   participantId: string;
@@ -39,10 +43,13 @@ export async function revisarMoralDelCombate(
   const npcs = new Map(
     (await tx.npc.findMany({ where: { id: { in: npcIds } }, select: { id: true, name: true, kind: true, raza: true, faunaCategoria: true, level: true } })).map((n) => [n.id, n]),
   );
-  const miembros = p.combatientes.filter((c) => {
+  const conMoral = p.combatientes.filter((c) => {
     const npc = c.bando === 'ENEMIGO' && c.npcId ? npcs.get(c.npcId) : undefined;
-    return !!npc && !c.huido && tieneMoral({ raza: npc.raza, faunaCategoria: npc.faunaCategoria });
+    return !!npc && tieneMoral({ raza: npc.raza, faunaCategoria: npc.faunaCategoria });
   });
+  const miembros = conMoral.filter((c) => !c.huido);
+  // CR-45: el capitán (Inteligencia ≥ 20) — si cae o huye, los suyos tiran con desventaja.
+  const capitan = [...conMoral].filter((c) => (c.attributes?.inteligencia ?? 0) >= INTELIGENCIA_CAPITAN).sort((a, b) => (b.attributes?.inteligencia ?? 0) - (a.attributes?.inteligencia ?? 0))[0];
   if (miembros.length === 0) return resultado;
   const enPie = miembros.filter((m) => EN_PIE(m.condicion));
   if (enPie.length === 0) return resultado;
@@ -51,14 +58,19 @@ export async function revisarMoralDelCombate(
   const recienGraves = enPie.filter((m) => m.condicion === 'GRAVE' && !m.moralTirada);
   const total = miembros.length;
   const aLaMitad = total > 1 && enPie.length <= total / 2 && !encuentro.moralMitadBandos.includes('ENEMIGO');
-  if (recienGraves.length === 0 && !aLaMitad) return resultado;
+  const capitanCaido = !!capitan && (capitan.huido || !EN_PIE(capitan.condicion)) && !encuentro.moralMitadBandos.includes(MARCA_CAPITAN);
+  if (recienGraves.length === 0 && !aLaMitad && !capitanCaido) return resultado;
+  if (capitanCaido) {
+    await tx.combatEncounter.update({ where: { id: p.encounterId }, data: { moralMitadBandos: { push: MARCA_CAPITAN } } });
+    resultado.textos.push(`Cae ${npcs.get(capitan!.npcId!)!.name}: los suyos se quedan sin quien los mande.`);
+  }
 
   if (recienGraves.length) await tx.combatParticipant.updateMany({ where: { id: { in: recienGraves.map((m) => m.participantId) } }, data: { moralTirada: true } });
   if (aLaMitad) await tx.combatEncounter.update({ where: { id: p.encounterId }, data: { moralMitadBandos: { push: 'ENEMIGO' } } });
 
   const contrarios = p.combatientes.filter((c) => c.bando !== 'ENEMIGO' && !c.huido).map((c) => c.condicion);
   // Cuentan también sus caídos: perder a la mitad es ir claramente perdiendo.
-  const desventaja = vaClaramentePerdiendo(miembros.map((m) => m.condicion), contrarios);
+  const desventaja = capitanCaido || vaClaramentePerdiendo(miembros.map((m) => m.condicion), contrarios);
   const nivelPerseguidor = (await tx.save.findUnique({ where: { id: p.saveId }, select: { level: true } }))?.level ?? 1;
   const nombre = (m: CombatienteParaMoral) => npcs.get(m.npcId!)!.name;
   const voluntad = (m: CombatienteParaMoral) => m.attributes?.voluntad ?? 0;

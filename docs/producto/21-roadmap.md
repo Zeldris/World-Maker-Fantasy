@@ -209,7 +209,7 @@ en CI, y la latencia está medida. Se etiqueta `v0.1.0-alpha`.
   tres `pending*Offer`). **[A]** → ~~`CR-40`~~ ✅ 2026-10-05 (fusión de `pending*Offer` descartada: ADR 0001).
 - **IA de combate NPC, tramo Inteligencia 20+**: retirada (decidida: huida inmediata con tirada),
   concentrar ataques en el mismo objetivo y órdenes de un capitán. **[A]** → ~~`CR-44`~~ ✅ 2026-10-05 (moral y
-  retirada para todo NPC con mente) y `CR-45` (capitán y ataques concentrados), diseño 2026-10-05.
+  retirada para todo NPC con mente) y ~~`CR-45`~~ ✅ 2026-10-05 (capitán y ataques concentrados).
 - **Comercio de volumen Reino↔facción**: todo el catálogo, según el origen del objeto y el oficio
   de los NPC por raza y región. **[A]** → `CR-47` (fórmula decidida por la usuaria el 2026-10-05:
   Mercado con órdenes permanentes, caravanas del Reino y precio unidad a unidad).

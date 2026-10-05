@@ -147,6 +147,23 @@ export function elegirObjetivo(inteligenciaAtacante: number, candidatos: Objetiv
   return masHerido.participantId;
 }
 
+/// CR-45 (hito 0.2, Fase G): desde aquí un NPC es capitán — manda a los de su bando con menos
+/// Inteligencia y concentra con ellos los ataques en un mismo objetivo.
+export const INTELIGENCIA_CAPITAN = 20;
+
+/// CR-45: el objetivo que el capitán señala a los suyos — el más vulnerable (peor condición y, a
+/// igualdad, menos Constitución). Entre empatados elige al azar, para que no sea siempre el mismo
+/// (en Baldur's Gate 3, que la IA vaya siempre a por el más débil es de lo que más se quejan).
+export function objetivoConcentrado(candidatos: (ObjetivoCandidato & { constitucion: number })[], random: () => number = Math.random): string | null {
+  const validos = new Set(objetivosValidosParaAtacar(candidatos).map((c) => c.participantId));
+  const vivos = candidatos.filter((c) => validos.has(c.participantId));
+  if (vivos.length === 0) return null;
+  const puntos = (c: (typeof vivos)[number]) => ORDEN_CONDICION.indexOf(c.condicionFisica) * 100 - c.constitucion;
+  const mejor = Math.max(...vivos.map(puntos));
+  const empatados = vivos.filter((c) => puntos(c) === mejor);
+  return empatados[Math.floor(random() * empatados.length)]!.participantId;
+}
+
 /// Fase 3 § 3b de efectos de clase (2026-08-27, docs/producto/21-roadmap.md) — objetivo adicional para
 /// `MULTIPLE` (el mismo golpe alcanza a un segundo combatiente) y `DESVIAR`/`INVOCACION` más
 /// adelante: uno aleatorio entre los vivos de `candidatos`, excluyendo al objetivo principal —

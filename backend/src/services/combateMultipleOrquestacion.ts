@@ -1,4 +1,5 @@
 import { revisarMoralDelCombate } from './moralGrupo.js';
+import { INTELIGENCIA_CAPITAN, objetivoConcentrado } from './combateMultiple.js';
 import { restarVejez } from './cronista/edades.js';
 import type { PrismaClient, CondicionFisica, Npc, Clase, AbilityEffect } from '@prisma/client';
 import { Prisma } from '@prisma/client';
@@ -500,7 +501,7 @@ async function calcularEnganchesRonda({
   encounter,
   weaponNamesPorDefecto,
   jugadoraTargetId,
-}: CalcularEnganchesRondaParams): Promise<{ enganches: Map<string, string | null>; esperandoJugadora: boolean }> {
+}: CalcularEnganchesRondaParams): Promise<{ enganches: Map<string, string | null>; esperandoJugadora: boolean; ordenCapitan: { capitan: string; objetivo: string } | null }> {
   const datosPorParticipante = new Map<string, DatosCombatiente | null>();
   await Promise.all(
     encounter.participantes.map(async (p) => {
@@ -524,8 +525,27 @@ async function calcularEnganchesRonda({
   const combatientes = vivos.map((p) => ({ participantId: p.id, bando: p.bando }));
   const jugadoraId = vivos.find((p) => p.tipo === 'JUGADOR')?.id ?? null;
 
+  // CR-45: el capitán (Inteligencia ≥ 20, el de más del bando enemigo) señala un objetivo y los suyos
+  // de menos Inteligencia lo siguen; los demás de Inteligencia ≥ 20 también concentran en él.
+  const intDe = (pid: string) => datosPorParticipante.get(pid)?.attributes.inteligencia ?? 0;
+  const enemigosNpc = vivos.filter((p) => p.bando === 'ENEMIGO' && p.tipo === 'NPC');
+  const capitan = [...enemigosNpc].filter((p) => intDe(p.id) >= INTELIGENCIA_CAPITAN).sort((a, b) => intDe(b.id) - intDe(a.id))[0] ?? null;
+  const objetivoCapitan = capitan
+    ? objetivoConcentrado(
+        vivos
+          .filter((p) => p.bando !== capitan.bando)
+          .map((p) => ({
+            participantId: p.id, condicionFisica: datosPorParticipante.get(p.id)?.condicionFisica ?? 'MUERTO', esJugadorReal: p.id === jugadoraId,
+            constitucion: datosPorParticipante.get(p.id)?.attributes.constitucion ?? 0,
+          })),
+        Math.random,
+      )
+    : null;
+  const sigueAlCapitan = new Set(capitan && objetivoCapitan ? enemigosNpc.map((p) => p.id) : []);
+
   const elegirObjetivoPara = (id: string, candidatos: string[]): string | null => {
     if (id === jugadoraId) return jugadoraTargetId;
+    if (sigueAlCapitan.has(id) && objetivoCapitan && candidatos.includes(objetivoCapitan)) return objetivoCapitan;
     // `esJugadorReal` (2026-08-29, mismo hallazgo que arriba): sin esto, un NPC con SOLO la
     // jugadora convaleciente como candidato nunca podía elegirla — `elegirObjetivo` la trataba
     // como cualquier otro CONVALECIENTE, `objetivoActualId` se quedaba `null` para siempre.
@@ -562,7 +582,11 @@ async function calcularEnganchesRonda({
   );
   const enganches = resolverEnganchesRonda(encounter.ordenIniciativa, combatientes, elegirObjetivoPara, ocultosOExpulsados, provocaciones, marcas);
   const esperandoJugadora = jugadoraId !== null && enganches.get(jugadoraId) === null;
-  return { enganches, esperandoJugadora };
+  const ordenCapitan =
+    capitan && objetivoCapitan
+      ? { capitan: datosPorParticipante.get(capitan.id)?.nombre ?? '', objetivo: datosPorParticipante.get(objetivoCapitan)?.nombre ?? '' }
+      : null;
+  return { enganches, esperandoJugadora, ordenCapitan };
 }
 
 interface EscribirCondicionYEnergiaParams {
@@ -2245,7 +2269,14 @@ async function avanzarYComprobarFin({
   }
 
   const encounterParaEnganche = { ordenIniciativa: encounter.ordenIniciativa, participantes: participantesFrescos as (ParticipantRef & { bando: Bando })[] };
-  const { enganches, esperandoJugadora } = await calcularEnganchesRonda({ tx, worldId, saveId, encounter: encounterParaEnganche, weaponNamesPorDefecto, jugadoraTargetId: null });
+  const { enganches, esperandoJugadora, ordenCapitan } = await calcularEnganchesRonda({ tx, worldId, saveId, encounter: encounterParaEnganche, weaponNamesPorDefecto, jugadoraTargetId: null });
+  // CR-45: que se vea quién manda y a por quién van (una vez por ronda).
+  if (ordenCapitan) {
+    const ws = await tx.worldState.findUnique({ where: { saveId }, select: { fictionalDateLabel: true, fictionalMinutes: true } });
+    await tx.logEntry.create({
+      data: { saveId, channel: 'CHARACTER', isSystemMessage: true, text: `${ordenCapitan.capitan} ordena caer sobre ${ordenCapitan.objetivo}.`, timeLabel: ws?.fictionalDateLabel ?? '', fictionalMinutes: ws?.fictionalMinutes ?? undefined },
+    });
+  }
   await Promise.all([...enganches.entries()].map(([id, objetivo]) => tx.combatParticipant.update({ where: { id }, data: { objetivoActualId: objetivo } })));
   // CONTROL real (Fase 3 § 3a, 2026-08-27) — un turno de duración menos por cada ronda que cruza
   // (nunca dentro de la misma ronda en que se fija, mismo cuidado de orden que `ActiveEffect`).
