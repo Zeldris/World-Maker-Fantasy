@@ -1331,7 +1331,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   (`advanceFactionEconomy`, `advanceFactionExpeditions`, `worldFictionDay`), que ya nadie llamaba y
   contradecían «el catálogo nunca cambia jugando». Sus tests de integración (economía, 13-B y 13-C)
   pasan a una partida con su copia del mundo; la prueba de re-seed (D-10) se mantiene aparte.
-- **CR-40** 🚧 Misiones secundarias por motor (todo hecho y jugable salvo 40f-2, interno) (`0.2`, Fase D; [21-roadmap § 0.2](21-roadmap.md#02--facciones-vivas)). **L**
+- ~~**CR-40** Misiones secundarias por motor~~ ✅ 2026-10-05 (fusionado en `main` con el PR #16; 40f-2 descartado, ADR 0001) (`0.2`, Fase D; [21-roadmap § 0.2](21-roadmap.md#02--facciones-vivas)). **L**
   Diseño con `/grill-with-docs` (2026-10-05). Ronda 1 aceptada entera:
   - **Q1** Solo el motor crea y cierra las misiones; el narrador solo narra la oferta, el avance y el
     final (deja de devolver `newQuest`/`questProgress` para las nuevas).
@@ -1433,11 +1433,13 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     cuenta en la región de la misión. **Deuda anotada:** `situacionFaccion.ts` repite el cálculo de
     carencias y enemigos de la mesa de `decisionesFaccion.ts` con una regla de enemigo algo distinta
     (unirlos puede cambiar decisiones: tarea aparte).
+  - **Q21 (2026-10-05, revisa la Q6):** no se fusionan las ofertas pendientes: las misiones del motor
+    no usan ninguna (viven en `MisionOfrecida`); la de misión queda solo para Gistera. ADR 0001.
   - **Pasos:** 40a plantillas, tipos y recompensas (puro) ✅ · 40b modelo y migración ✅ · 40c tablones
     (sembrados y del Reino) ✅ · 40d generación en el avance diario ✅ · 40e aceptar, progreso, cumplir,
     fallar y reputación ✅ · 40f oferta pendiente única (ADR), «¿Tienes trabajo?» del NPC y el narrador
-    deja de crear misiones (40f-1 ✅; 40f-2, la oferta única con su ADR, pendiente para el siguiente PR:
-    es interna y no cambia nada para quien juega) · 40g interfaz del tablón y del diario ✅.
+    deja de crear misiones (40f-1 ✅; 40f-2 ❌ no procede: Q21, `docs/adr/0001-ofertas-pendientes-sin-fusionar.md`)
+    · 40g interfaz del tablón y del diario ✅.
 - **Hecho cuando:** `cronista:simular 60` produce caídas, escisiones, tormentas con daños, guerras
   y nacimientos coherentes; perdonar a un NPC lo hace volver en otra región.
 

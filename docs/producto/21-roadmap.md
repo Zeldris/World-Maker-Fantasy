@@ -206,7 +206,7 @@ en CI, y la latencia está medida. Se etiqueta `v0.1.0-alpha`.
   Diseño completo en [roadmap-cronista.md](roadmap-cronista.md) § 7 (reacciones, consecuencias
   aplazadas, narrador de fondo); requiere antes el mundo por partida (Cronista, Fase 2).
 - **Misiones secundarias por motor** en vez de por el LLM (momento de revisitar la fusión de los
-  tres `pending*Offer`). **[A]** → `CR-40` (diseño en curso, 2026-10-05).
+  tres `pending*Offer`). **[A]** → ~~`CR-40`~~ ✅ 2026-10-05 (fusión de `pending*Offer` descartada: ADR 0001).
 - **IA de combate NPC, tramo Inteligencia 20+**: retirada (decidida: huida inmediata con tirada),
   concentrar ataques en el mismo objetivo y órdenes de un capitán. **[A]**
 - **Comercio de volumen Reino↔facción**: todo el catálogo, según el origen del objeto y el oficio
