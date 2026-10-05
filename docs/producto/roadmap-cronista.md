@@ -1289,8 +1289,18 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     `RACIONES_POR_UNIDAD_COMESTIBLE` = 10 por unidad (provisional, pregunta 5), en vez de ir al
     Almacén. Con la economía de hoy apenas alivia (Serhu gasta ~270 al día de más): el alivio real
     llega con los números de la economía de supervivencia.
+  - ✅ **34c hecho (2026-10-05):** `cronista/decisionesFaccion.ts`, tras el narrador de fondo en cada día
+    simulado de la partida. Revisión semanal (o antes por carencia grave) con `KingdomStats.ultimaRevision`;
+    `Faction.disposicion` (enum, neutral por defecto; propuesta por facción para Álvaro en
+    `propuestas-lore.md`). Migración `20261005040000_decisiones_faccion`. Opciones con puntuación
+    (tratado desde neutral, alianza solo desde tratado, guerra desde tensión, paz en guerra, presionar
+    si es belicosa), elección por tramo (impulsivo al azar y a veces nada; sensato con ruido;
+    estratega la mejor y nunca dos guerras), respuesta de la otra con su propia IA, aliados de la
+    víctima contra el agresor, coste en presupuesto de tensión (importancia del suceso), suceso en el
+    Libro y noticia con rumor por distancia. La paz entre Serhu y Helsig o Goshg corta la cadena (Q19).
+    Ojo: en el catálogo Serhu ya está en guerra con Feg Tusha, así que su estratega no abre otra.
   - **Orden de trabajo:** ~~`CR-35`~~ ✅ primero; después los pasos de `CR-34` (34a carencias e
-    Inteligencia ✅, 34b expediciones dirigidas ✅, 34c diplomacia, 34d expansión y asalto, 34e propuesta
+    Inteligencia ✅, 34b expediciones dirigidas ✅, 34c diplomacia ✅, 34d expansión y asalto, 34e propuesta
     al Reino, 34f simulación de 60 días).
 - ~~**CR-35** Economía y expediciones de facción en el mundo de la partida (`CR-34` Q1). **M**~~ ✅
   2026-10-04 — Ya lo hacía `CR-7` (`avanceDiario.ts`: `producirFacciones`, `decaerRelaciones` y

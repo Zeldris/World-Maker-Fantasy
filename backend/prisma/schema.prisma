@@ -1771,6 +1771,9 @@ model KingdomStats {
   /// CR-12 (12c, hito 0.2): días seguidos con déficit de comida (hambre). Cada 3 seguidos se
   /// registra `HAMBRUNA` (cohesión −10 y posible `REBELION`, reacción `HAMBRUNA_DIVIDE`).
   diasHambre          Int      @default(0)
+  /// CR-34 (Q6): último día de ficción en que la facción revisó su situación para decidir (null =
+  /// nunca). Solo facciones del mundo de la partida; el Reino de la jugadora no lo usa.
+  ultimaRevision      Int?
   /// Solo filas de facción (Fase 4 del plan oct-2026, H-6): último día de ficción del MUNDO (floor de
   /// minutos/1440, máximo de sus partidas) para el que `advanceFactionEconomy` (factionEconomy.ts,
   /// llamado desde worldTick) ya produjo/consumió. Marcador de idempotencia: cada día se procesa una
@@ -1952,6 +1955,14 @@ model Quest {
   updatedAt        DateTime    @updatedAt
 
   @@index([saveId])
+}
+
+/// CR-34: disposición de una facción (glosario: «Disposición»).
+enum Disposicion {
+  NEUTRAL
+  BELICOSA
+  MERCANTIL
+  RECELOSA
 }
 
 enum TerritoryControl {
@@ -2613,6 +2624,9 @@ model Faction {
   /// Null = facción sin líder NPC real sembrado todavía (usa un valor por defecto/neutro en el
   /// motor de disputas hasta que se siembre uno) — nunca inventado en servicio.
   liderNpcId String?
+  /// CR-34 (Q5/Q16): inclinación de la facción al decidir (belicosa, mercantil, recelosa, neutral).
+  /// Neutral hasta que Álvaro revise la propuesta por facción de `propuestas-lore.md`.
+  disposicion Disposicion @default(NEUTRAL)
   liderNpc   Npc?    @relation(fields: [liderNpcId], references: [id], onDelete: SetNull)
 
   /// Motor de disputas (§ 4.3) — dirigidas, ver comentario completo de `FactionRelation`.

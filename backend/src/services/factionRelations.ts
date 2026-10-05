@@ -163,7 +163,7 @@ export async function recordFactionEvent(
   return stageFactFor(source.name, target.name, nextType);
 }
 
-const ETIQUETA_BANDA: Record<FactionRelationType, string> = {
+export const ETIQUETA_BANDA: Record<FactionRelationType, string> = {
   ALIANZA: 'alianza',
   TRATADO_COMERCIAL: 'tratado comercial',
   NEUTRAL: 'neutralidad',

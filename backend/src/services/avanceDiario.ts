@@ -6,7 +6,8 @@
 //
 // Simula: población de la partida (y su reflejo en el reino de sus facciones), economía de sus
 // facciones (producción, consumo, almacén y decaimiento de presión), sus expediciones (con muertes
-// en `NpcState.muerto` de la partida) y la agenda del conflicto. El Reino del jugador ya avanza por
+// en `NpcState.muerto` de la partida), la agenda del conflicto, el narrador de fondo y las
+// decisiones de facción (CR-34). El Reino del jugador ya avanza por
 // días en `dailyTick.ts`.
 import type { PrismaClient } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
@@ -18,6 +19,7 @@ import { avanzarAgendaDePartida } from './worldAgenda.js';
 import { procesarReacciones } from './cronista/reacciones.js';
 import { evaluarConsecuencias } from './cronista/consecuencias.js';
 import { narrarDia } from './cronista/narradorFondo.js';
+import { decidirFacciones } from './cronista/decisionesFaccion.js';
 import { envejecerDia } from './cronista/envejecer.js';
 import { agruparNoticias, marcaDeNoticias } from './cronista/noticias.js';
 
@@ -73,6 +75,8 @@ export async function avanzarMundoHasta(
     // la que lo simuló arriba).
     for (let d = desde; d < desde + diasSimulados; d++) {
       await narrarDia(prisma, saveId, d, random);
+      // CR-34: decisiones de las facciones del mundo de la partida (gastan el mismo presupuesto).
+      await decidirFacciones(prisma, saveId, d, random);
       // CR-13 13b: edad de los nacidos en la partida y muerte de viejo.
       await envejecerDia(prisma, saveId, d, random);
     }
