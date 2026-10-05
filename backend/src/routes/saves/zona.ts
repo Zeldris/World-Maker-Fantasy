@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { tablonEnLugar } from '../../services/cronista/tablones.js';
 import { Prisma, type MetodoObtencion } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { zoneMapImageUrl } from '../../lib/imageAssets.js';
@@ -529,6 +530,8 @@ export async function zonaRoutes(app: FastifyInstance) {
       where: { locationId },
       include: { building: { select: { id: true, name: true, status: true } } },
     });
+    // CR-40 (40g): tablón de avisos de este lugar, si lo hay (botón en el panel de zona).
+    const tablon = await tablonEnLugar(prisma, save.id, locationId);
     const parcelas: ZonaParcelaInfo[] = parcelasRaw.map((p) => ({
       id: p.id,
       x: p.x,
@@ -554,6 +557,7 @@ export async function zonaRoutes(app: FastifyInstance) {
         jugador,
         salidas,
         parcelas,
+        tablon,
       };
     }
 
@@ -602,6 +606,7 @@ export async function zonaRoutes(app: FastifyInstance) {
       jugador,
       salidas,
       parcelas,
+      tablon,
     };
   });
 

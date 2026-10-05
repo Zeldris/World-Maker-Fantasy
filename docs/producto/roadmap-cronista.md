@@ -1331,7 +1331,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   (`advanceFactionEconomy`, `advanceFactionExpeditions`, `worldFictionDay`), que ya nadie llamaba y
   contradecían «el catálogo nunca cambia jugando». Sus tests de integración (economía, 13-B y 13-C)
   pasan a una partida con su copia del mundo; la prueba de re-seed (D-10) se mantiene aparte.
-- **CR-40** 🚧 Misiones secundarias por motor (`0.2`, Fase D; [21-roadmap § 0.2](21-roadmap.md#02--facciones-vivas)). **L**
+- **CR-40** 🚧 Misiones secundarias por motor (todo hecho y jugable salvo 40f-2, interno) (`0.2`, Fase D; [21-roadmap § 0.2](21-roadmap.md#02--facciones-vivas)). **L**
   Diseño con `/grill-with-docs` (2026-10-05). Ronda 1 aceptada entera:
   - **Q1** Solo el motor crea y cierra las misiones; el narrador solo narra la oferta, el avance y el
     final (deja de devolver `newQuest`/`questProgress` para las nuevas).
@@ -1417,10 +1417,18 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     arma UNA misión personal con las plantillas (su nombre, +25 %, se entrega donde se aceptó, 1 día
     para aceptarla) o responde que no tiene nada. **Falta en el frontend (40g):** mostrar esa
     oferta; hoy la tarjeta del NPC solo se cierra.
+  - ✅ **40g hecho (2026-10-05):** `GET /saves/:id/zona` trae `tablon` (si hay uno en ese lugar) y
+    `GET /saves/:id/tablones/:buildingId` sus avisos (el del Reino, los de sus aliados); el panel de
+    zona enseña «📜 Tablón de avisos», que abre `AvisosModal.tsx` (recompensa, día en que se retira,
+    Aceptar con el motivo del backend si no se puede). «¿Tienes trabajo?» abre el mismo modal con la
+    misión personal o «no tiene nada». El panel de Misiones enseña en las del motor quién encarga,
+    progreso, día límite y Goirnos, con Entregar (las de entregar) y Abandonar con confirmación.
+    `MisionesContext` (lo provee GameView) evita pasar callbacks por cada panel.
   - **Pasos:** 40a plantillas, tipos y recompensas (puro) ✅ · 40b modelo y migración ✅ · 40c tablones
     (sembrados y del Reino) ✅ · 40d generación en el avance diario ✅ · 40e aceptar, progreso, cumplir,
     fallar y reputación ✅ · 40f oferta pendiente única (ADR), «¿Tienes trabajo?» del NPC y el narrador
-    deja de crear misiones (🚧 40f-1 ✅, falta 40f-2: la oferta única con su ADR) · 40g interfaz del tablón y del diario.
+    deja de crear misiones (40f-1 ✅; 40f-2, la oferta única con su ADR, pendiente para el siguiente PR:
+    es interna y no cambia nada para quien juega) · 40g interfaz del tablón y del diario ✅.
 - **Hecho cuando:** `cronista:simular 60` produce caídas, escisiones, tormentas con daños, guerras
   y nacimientos coherentes; perdonar a un NPC lo hace volver en otra región.
 

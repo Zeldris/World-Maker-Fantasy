@@ -1228,6 +1228,8 @@ export interface ZonaResponse {
   /// Icono de parcela (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) — solo relleno en las
   /// zonas-interior de Capital/Cuartel Avanzado; `[]` en el resto del mundo.
   parcelas: ZonaParcelaInfo[]
+  /// CR-40 (40g): tablón de avisos de este lugar, si lo hay. `faccion` null = el del Reino.
+  tablon?: { buildingId: string; nombre: string; faccion: string | null } | null
 }
 export async function getZona(saveId: string): Promise<ZonaResponse> {
   return fetchJson(`${API_URL}/saves/${saveId}/zona`)
@@ -1908,6 +1910,9 @@ export type NpcInteractionAccion =
   | { accion: 'CERRAR' }
   /// CR-12 — «Ayudar» a un malherido: la entrada del registro que lo cuenta.
   | { accion: 'AYUDADO'; logEntry: LogEntry }
+  /// CR-40 (40f) — «¿Tienes trabajo?»: la misión personal que propone el NPC, o que no tiene nada.
+  | { accion: 'OFERTA_TRABAJO'; npcName: string; aviso: AvisoMisionInfo }
+  | { accion: 'SIN_TRABAJO'; texto: string }
 
 export async function chooseNpcInteraction(saveId: string, npcSlug: string, opcion: string): Promise<NpcInteractionAccion> {
   return fetchJson(`${API_URL}/saves/${saveId}/npc-interaction/${npcSlug}/elegir`, {
@@ -2512,4 +2517,42 @@ export async function getLibroDeSucesos(
   if (filtros.limite) params.set('limite', String(filtros.limite))
   const qs = params.toString()
   return fetchJson(`${API_URL}/saves/${saveId}/libro${qs ? `?${qs}` : ''}`)
+}
+
+// ─────────────────────────── CR-40 (40g): misiones secundarias del motor ───────────────────────────
+
+/// Recompensa por tabla de una misión del motor (`cronista/misiones.ts`).
+export interface RecompensaMision {
+  xp: number
+  goirnos: number
+  reputacion: number
+  reputacionAlFallar: number
+  reputacionConEnemiga: number
+}
+
+/// Un aviso a la vista en un tablón o en boca de un NPC.
+export interface AvisoMisionInfo {
+  id: string
+  titulo: string
+  descripcion: string
+  tipo?: string
+  faccion?: string
+  recompensa: RecompensaMision
+  retiraEn?: number
+}
+
+export async function getAvisosTablon(saveId: string, buildingId: string): Promise<{ tablon: { buildingId: string; nombre: string; faccion: string | null }; avisos: AvisoMisionInfo[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/tablones/${encodeURIComponent(buildingId)}`)
+}
+
+export async function aceptarAviso(saveId: string, avisoId: string): Promise<{ questId: string; title: string }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/misiones/avisos/${encodeURIComponent(avisoId)}/aceptar`, { method: 'POST' })
+}
+
+export async function entregarMision(saveId: string, questId: string): Promise<{ status: string; progreso: number; cantidad: number | null }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/misiones/${encodeURIComponent(questId)}/entregar`, { method: 'POST' })
+}
+
+export async function abandonarMision(saveId: string, questId: string): Promise<{ status: string }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/misiones/${encodeURIComponent(questId)}/abandonar`, { method: 'POST' })
 }

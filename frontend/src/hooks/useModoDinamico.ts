@@ -9,6 +9,7 @@ import {
   resolveImageUrl,
   responderModoDinamico,
 } from '../lib/api'
+import type { AvisoMisionInfo } from '../lib/api'
 import { applyInventoryDelta, questCompletedLogEntry } from '../lib/gameViewHelpers'
 import type { PanelId } from '../components/NavTabs'
 import type { EnciclopediaIndex } from '../lib/enciclopediaIndex'
@@ -32,6 +33,8 @@ interface UseModoDinamicoParams {
   setXp: Dispatch<SetStateAction<number>>
   setQuests: Dispatch<SetStateAction<QuestInfo[]>>
   setAprenderOficioModalOpen: (open: boolean) => void
+  /// CR-40 (40f/40g): propuesta de trabajo de un NPC («¿Tienes trabajo?»); `aviso` null = no tiene nada.
+  onOfertaTrabajo?: (npcName: string, aviso: AvisoMisionInfo | null) => void
   setActivePanel: Dispatch<SetStateAction<PanelId | null>>
   openCombat: (npcs: { npcs: NpcInSceneInfo[] }) => void
   handleSubmit: (actionText: string) => void | Promise<void>
@@ -63,6 +66,7 @@ export function useModoDinamico({
   setQuests,
   setAprenderOficioModalOpen,
   setActivePanel,
+  onOfertaTrabajo,
   openCombat,
   handleSubmit,
   refetchEnciclopedia,
@@ -267,6 +271,11 @@ export function useModoDinamico({
         handleSubmit(`Ataco a '${npcName}'.`)
       } else if (resultado.accion === 'AYUDADO') {
         setCharacterLog((prev) => [...prev, resultado.logEntry])
+      } else if (resultado.accion === 'OFERTA_TRABAJO') {
+        onOfertaTrabajo?.(resultado.npcName, resultado.aviso)
+      } else if (resultado.accion === 'SIN_TRABAJO') {
+        const npcName = characterLog.find((e) => e.id === entryId)?.npcInteractionOffer?.npcName ?? 'Nadie'
+        onOfertaTrabajo?.(npcName, null)
       }
       // 'MOSTRAR_OFERTA_MISION'/'CERRAR' no necesitan ninguna acción más — la tarjeta ya se limpió
       // arriba, y la oferta de misión (si la hay) ya vive en su propia tarjeta independiente.

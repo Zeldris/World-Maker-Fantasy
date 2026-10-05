@@ -609,6 +609,13 @@ export async function detailRoutes(app: FastifyInstance) {
           rewardXp: q.rewardXp,
           rewardItems: q.rewardItems,
           targetLocationSlug: fromLocation ?? fromNpc ?? null,
+      // CR-40 (40g): misiones del motor (sin `tipoMision`, las de siempre).
+      tipoMision: q.tipoMision,
+      progreso: q.progreso,
+      cantidad: q.cantidad,
+      venceEn: q.venceEn,
+      encarga: (q.huecos as { npc?: { nombre: string }; faccion?: { nombre: string } } | null)?.npc?.nombre ?? (q.huecos as { faccion?: { nombre: string } } | null)?.faccion?.nombre ?? null,
+      recompensa: q.recompensa,
         };
       }),
       combateIniciado,

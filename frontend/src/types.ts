@@ -807,6 +807,15 @@ export interface QuestInfo {
   /// NPC en vez de a un sitio, desde su `homeLocationSlug`. Null si no hay objetivo geográfico
   /// conocido todavía.
   targetLocationSlug: string | null
+  /// CR-40 (40g): misión secundaria del motor (sin él, del narrador o fija).
+  tipoMision?: string | null
+  progreso?: number
+  cantidad?: number | null
+  /// Minuto de ficción en que vence.
+  venceEn?: number | null
+  /// Quién la encarga (NPC con nombre o facción).
+  encarga?: string | null
+  recompensa?: { xp: number; goirnos: number; reputacion: number } | null
 }
 
 /// 'profesion' (2026-08-07) — habilidades de oficio desbloqueadas por nivel, su propia pestaña
