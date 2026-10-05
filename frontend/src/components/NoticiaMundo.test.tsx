@@ -1,5 +1,5 @@
-import { describe, it, expect, afterEach } from 'vitest'
-import { render, cleanup, fireEvent } from '@testing-library/react'
+import { describe, it, expect, afterEach, vi } from 'vitest'
+import { render, cleanup, fireEvent, waitFor } from '@testing-library/react'
 import { NoticiaMundo } from './NoticiaMundo'
 import { diaDeFiccion } from '../lib/noticias'
 
@@ -48,5 +48,30 @@ describe('UX-38 — NoticiaMundo', () => {
   it('día de ficción desde minutos (día 1 = el primero)', () => {
     expect(diaDeFiccion(0)).toBe(1)
     expect(diaDeFiccion(1440)).toBe(2)
+  })
+
+  it('CR-34 (34e): la propuesta pendiente lleva Aceptar y Rechazar y, al responder, queda la respuesta', async () => {
+    const onResponder = vi.fn(async () => 'ACEPTADA' as const)
+    const { getByRole, getByText, queryByRole } = render(
+      <NoticiaMundo
+        text="Feg Ger propone a tu reino un tratado comercial."
+        noticia={{ propuesta: { id: 'p1', faccion: 'Feg Ger', tipo: 'TRATADO', venceEn: 9 * 1440 } }}
+        texto={texto}
+        onResponderPropuesta={onResponder}
+      />,
+    )
+    expect(getByText(/Hasta el día 10/)).toBeTruthy()
+    fireEvent.click(getByRole('button', { name: 'Aceptar' }))
+    await waitFor(() => expect(getByText('Aceptada')).toBeTruthy())
+    expect(onResponder).toHaveBeenCalledWith('p1', true)
+    expect(queryByRole('button', { name: 'Rechazar' })).toBeNull()
+  })
+
+  it('CR-34 (34e): una propuesta ya cerrada solo muestra la respuesta', () => {
+    const { getByText, queryByRole } = render(
+      <NoticiaMundo text="Feg Ger propone a tu reino una alianza." noticia={{ propuesta: { id: 'p2', faccion: 'Feg Ger', tipo: 'ALIANZA', venceEn: 0, respuesta: 'CADUCADA' } }} texto={texto} />,
+    )
+    expect(getByText('Sin respuesta: rechazada')).toBeTruthy()
+    expect(queryByRole('button', { name: 'Aceptar' })).toBeNull()
   })
 })

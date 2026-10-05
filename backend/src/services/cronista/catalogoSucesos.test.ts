@@ -18,6 +18,8 @@ describe('catálogo de sucesos', () => {
       'HILO_CERRADO',
       // CR-12 (narrador de fondo).
       'ESCARAMUZA', 'MALESTAR_INTERNO', 'AYUDA_PRESTADA', 'NPC_DESTACA',
+      // CR-40 (misiones del motor): dejar una misión no es fracasar.
+      'MISION_ABANDONADA',
     ];
     expect(Object.keys(CATALOGO_SUCESOS).sort()).toEqual([...esperados].sort());
     for (const def of Object.values(CATALOGO_SUCESOS)) {

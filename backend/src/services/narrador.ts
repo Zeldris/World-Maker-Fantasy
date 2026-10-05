@@ -1187,7 +1187,7 @@ CAMPOS OPCIONALES (todos poco frecuentes, la mayoría de turnos van en null): si
 
 Progresión: si este turno logra algo significativo que no sea solo superar la tirada (un descubrimiento importante, cerrar un objetivo menor, cerrar un objetivo mayor/misión larga), rellena "hito" con "descubrimiento", "objetivo_menor" u "objetivo_mayor" — en caso contrario, null. Esto es poco frecuente, no pasa en cada turno.
 
-Misiones: solo si la escena establece de verdad un objetivo narrativo concreto con entidad propia (no cualquier intención pasajera del jugador), rellena "newQuest" con un título corto y su descripción — en caso contrario, null. Si esta acción resuelve (con éxito o fracaso definitivo) una misión que ya existía, rellena "questProgress" con el título EXACTO de esa misión y "COMPLETADA" o "FALLIDA" — en caso contrario, null. Ambos muy poco frecuentes, nunca en el mismo turno que se crea la misión.
+Misiones: nunca crees misiones nuevas: "newQuest" va SIEMPRE a null (las misiones las da el mundo, no tú). Si esta acción resuelve (con éxito o fracaso definitivo) una misión que ya existía, rellena "questProgress" con el título EXACTO de esa misión y "COMPLETADA" o "FALLIDA" — en caso contrario, null (muy poco frecuente).
 
 ${
     // Roadmap de velocidad (Fable, 2026-07-19): este párrafo (y los 3 campos del schema que

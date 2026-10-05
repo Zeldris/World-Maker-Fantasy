@@ -6,7 +6,8 @@
 //
 // Simula: población de la partida (y su reflejo en el reino de sus facciones), economía de sus
 // facciones (producción, consumo, almacén y decaimiento de presión), sus expediciones (con muertes
-// en `NpcState.muerto` de la partida) y la agenda del conflicto. El Reino del jugador ya avanza por
+// en `NpcState.muerto` de la partida), la agenda del conflicto, el narrador de fondo y las
+// decisiones de facción (CR-34). El Reino del jugador ya avanza por
 // días en `dailyTick.ts`.
 import type { PrismaClient } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
@@ -18,6 +19,9 @@ import { avanzarAgendaDePartida } from './worldAgenda.js';
 import { procesarReacciones } from './cronista/reacciones.js';
 import { evaluarConsecuencias } from './cronista/consecuencias.js';
 import { narrarDia } from './cronista/narradorFondo.js';
+import { decidirFacciones } from './cronista/decisionesFaccion.js';
+import { renovarTablones } from './cronista/generarMisiones.js';
+import { revisarMisiones } from './cronista/misionesJugadora.js';
 import { envejecerDia } from './cronista/envejecer.js';
 import { agruparNoticias, marcaDeNoticias } from './cronista/noticias.js';
 
@@ -73,6 +77,10 @@ export async function avanzarMundoHasta(
     // la que lo simuló arriba).
     for (let d = desde; d < desde + diasSimulados; d++) {
       await narrarDia(prisma, saveId, d, random);
+      // CR-34: decisiones de las facciones del mundo de la partida (gastan el mismo presupuesto).
+      await decidirFacciones(prisma, saveId, d, random);
+      // CR-40: avisos vencidos fuera y tablones de avisos rellenos con misiones del mundo de la partida.
+      await renovarTablones(prisma, saveId, d, random);
       // CR-13 13b: edad de los nacidos en la partida y muerte de viejo.
       await envejecerDia(prisma, saveId, d, random);
     }
@@ -83,6 +91,8 @@ export async function avanzarMundoHasta(
   if ((await evaluarConsecuencias(prisma, saveId, {}, random)).disparadas > 0) await procesarReacciones(prisma, saveId, random);
   // CR-12 (12d) / UX-31: varios días de golpe (viaje, descanso largo) → un solo resumen en «El mundo».
   if (diasSimulados >= 2) await agruparNoticias(prisma, saveId, marcaNoticias);
+  // CR-40 (40e): misiones del motor exploradas, objetivos caídos o plazos vencidos.
+  await revisarMisiones(prisma, saveId);
   return { diasSimulados };
 }
 
@@ -110,5 +120,7 @@ export function registrarAvanceTrasAcciones(app: FastifyInstance, prisma: Prisma
     await evaluarConsecuencias(prisma, saveId)
       .then((r) => (r.disparadas > 0 ? procesarReacciones(prisma, saveId) : undefined))
       .catch((err) => console.error('[consecuencias] error tras la acción:', err));
+    // CR-40 (40e): moverse por la zona o pelear puede cumplir una misión del motor.
+    await revisarMisiones(prisma, saveId).catch((err) => console.error('[misiones] error tras la acción:', err));
   });
 }

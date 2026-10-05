@@ -30,6 +30,8 @@ export interface DatosSuceso {
   ROBO: { personaje: string; a: string; objeto: Cosa };
   MISION_COMPLETADA: { personaje: string; mision: string };
   MISION_FALLIDA: { personaje: string; mision: string };
+  /// CR-40: la jugadora deja una misión del motor (no es un fracaso: lo decide ella).
+  MISION_ABANDONADA: { personaje: string; mision: string };
   DESCUBRIMIENTO: { personaje: string; descubierto: string };
   OFICIO_APRENDIDO: { personaje: string; oficio: string };
   MUERTE_JUGADOR: { personaje: string; causa?: string };
@@ -134,6 +136,7 @@ export const CATALOGO_SUCESOS: Catalogo = {
   ROBO: { familia: 'JUGADOR', importanciaBase: 4, plantilla: (d) => `${d.personaje} roba ${d.objeto.nombre} a ${d.a}.` },
   MISION_COMPLETADA: { familia: 'JUGADOR', importanciaBase: 4, plantilla: (d) => `${d.personaje} completa «${d.mision}».` },
   MISION_FALLIDA: { familia: 'JUGADOR', importanciaBase: 4, plantilla: (d) => `${d.personaje} fracasa en «${d.mision}».` },
+  MISION_ABANDONADA: { familia: 'JUGADOR', importanciaBase: 3, plantilla: (d) => `${d.personaje} abandona «${d.mision}».` },
   DESCUBRIMIENTO: { familia: 'JUGADOR', importanciaBase: 3, plantilla: (d) => `${d.personaje} descubre ${d.descubierto}.` },
   OFICIO_APRENDIDO: { familia: 'JUGADOR', importanciaBase: 3, plantilla: (d) => `${d.personaje} aprende el oficio de ${d.oficio}.` },
   MUERTE_JUGADOR: { familia: 'JUGADOR', importanciaBase: 9, plantilla: (d) => `${d.personaje} muere${con(d.causa)}.` },

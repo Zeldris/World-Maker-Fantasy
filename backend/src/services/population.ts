@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient, PopulationTargetType } from '@prisma/client';
+import { avanzarCaza } from './cronista/misionesJugadora.js';
 import { ambitoPoblacion } from './mundoPartida.js';
 
 /// Población dinámica (docs/mecanicas/16-poblacion-dinamica.md) — hasta 2026-08-03, `WorldPopulation` era
@@ -101,6 +102,8 @@ export async function decrementPopulationOnDeath(
     where: { ...ambito, targetType, targetSlug, poblacion: { gt: 0 } },
     data: { poblacion: { decrement: 1 } },
   });
+  // CR-40 (40e): una pieza más para las misiones de cazar esa especie.
+  if (targetType === 'FAUNA') await avanzarCaza(tx, saveId, targetSlug, region);
 }
 
 /// CR-7 (hito 0.2): crecimiento de una fila en `dias` días de ficción — compuesto a la tasa de su

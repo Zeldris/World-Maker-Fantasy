@@ -9,6 +9,7 @@ import { REGION_OWNING_FACTIONS } from '../reputation.js';
 import type { Efecto } from './efectos.js';
 import { nombreDeEscision } from './nombresFaccion.js';
 import { NOTICIA } from './noticias.js';
+import { caducarPropuesta } from './decisionesFaccion.js';
 import { edadEnAnios, esAdulto, nacidoEnDe } from './edades.js';
 import { REGLAS_OPORTUNIDADES } from './oportunidades.js';
 import { regionesVecinas } from './regiones.js';
@@ -203,4 +204,13 @@ const VENGANZA_ATAQUE: ReglaConsecuencia = {
   },
 };
 
-export const REGLAS_DEL_JUEGO: ReglaConsecuencia[] = [SUCESION_PENDIENTE, REFUGIADOS, DEUDA_DE_VIDA, DEUDA_DE_VIDA_REGALO, VENGANZA_PARIENTE, VENGANZA_ATAQUE, NOTICIA, ...REGLAS_OPORTUNIDADES];
+/// CR-34 (34e): propuesta de una facción al Reino que vence sin respuesta → cuenta como rechazo.
+const PROPUESTA_REINO: ReglaConsecuencia = {
+  id: 'PROPUESTA_REINO', // = REGLA_PROPUESTA_REINO (literal: la constante podría no estar cargada aún)
+  alDisparar: async (ctx) => {
+    await caducarPropuesta(ctx);
+    return [];
+  },
+};
+
+export const REGLAS_DEL_JUEGO: ReglaConsecuencia[] = [SUCESION_PENDIENTE, REFUGIADOS, DEUDA_DE_VIDA, DEUDA_DE_VIDA_REGALO, VENGANZA_PARIENTE, VENGANZA_ATAQUE, NOTICIA, PROPUESTA_REINO, ...REGLAS_OPORTUNIDADES];

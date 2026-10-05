@@ -1,95 +1,96 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { prisma } from '../lib/prisma.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
-import { advanceFactionEconomy, TOPE_STOCK_FACCION_POR_SLUG } from './factionEconomy.js';
+import { decaerRelaciones, producirFacciones, TOPE_STOCK_FACCION_POR_SLUG } from './factionEconomy.js';
+import { asegurarMundoDePartida } from './mundoPartida.js';
 
-/// Fase 4 (H-6/H-2/H-4) contra Postgres real: dos partidas del MISMO mundo no duplican la producción,
-/// un segundo tick el mismo día no hace nada, el Almacén de la facción recibe stock real (con tope) y
-/// las relaciones decaen una semana. Se restauran los marcadores/stats del mundo al terminar.
-describe('advanceFactionEconomy — integración (Fase 4)', () => {
-  const DIA = 100_001; // muy por encima de cualquier partida real: domina el "máximo del mundo"
+/// Fase 4 (H-6/H-2/H-4) contra Postgres real, sobre el mundo de una partida (CR-35): un segundo tick
+/// el mismo día no hace nada, el Almacén de la facción recibe stock real (con tope), las relaciones
+/// decaen una semana y ni el catálogo ni la otra partida cambian. Borrar las partidas borra sus copias.
+describe('producirFacciones / decaerRelaciones — integración (Fase 4, por partida)', () => {
+  const DIA = 40;
   let worldId: string;
-  let saveIds: string[] = [];
+  let saveId: string;
+  let otraId: string;
   let serhuId: string;
-  let statsSnapshot: Awaited<ReturnType<typeof prisma.kingdomStats.findMany>> = [];
-  let relSnapshot: Awaited<ReturnType<typeof prisma.factionRelation.findMany>> = [];
-  let almacenPreviosIds: string[] = [];
-  let relCreadaId: string | null = null;
+  let serhuOtraId: string;
+
+  const crear = async (nombre: string) => {
+    const save = await prisma.save.create({
+      data: {
+        userId: await getDefaultUserId(), worldId, characterName: nombre, characterArchetype: 'guerrero', characterOrigin: 'x', characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 }, portraitInitial: 'E',
+        worldState: { create: { fictionalMinutes: DIA * 1440 + 30 } },
+      },
+    });
+    await asegurarMundoDePartida(prisma, save.id);
+    return save.id;
+  };
 
   beforeAll(async () => {
-    const userId = await getDefaultUserId();
-    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
-    worldId = world.id;
-    for (const [i, min] of [DIA * 1440 + 30, (DIA - 3) * 1440].entries()) {
-      const save = await prisma.save.create({
-        data: {
-          userId, worldId, characterName: `Economía de facción ${i}`, characterArchetype: 'guerrero', characterOrigin: 'x', characterMotivation: 'x',
-          attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 }, portraitInitial: 'E',
-        },
-      });
-      await prisma.worldState.create({ data: { saveId: save.id, fictionalMinutes: min } });
-      saveIds.push(save.id);
-    }
-    const serhu = await prisma.faction.findFirstOrThrow({ where: { worldId, slug: 'clan-serhu', saveId: null } });
-    serhuId = serhu.id;
-    statsSnapshot = await prisma.kingdomStats.findMany({ where: { faction: { worldId } } });
-    relSnapshot = await prisma.factionRelation.findMany({ where: { worldId } });
-    almacenPreviosIds = (await prisma.almacenItem.findMany({ where: { factionId: serhuId }, select: { id: true } })).map((a) => a.id);
+    worldId = (await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } })).id;
+    saveId = await crear('Economía de facción');
+    otraId = await crear('Economía de facción (otra)');
+    serhuId = (await prisma.faction.findFirstOrThrow({ where: { saveId, origenSlug: 'clan-serhu' } })).id;
+    serhuOtraId = (await prisma.faction.findFirstOrThrow({ where: { saveId: otraId, origenSlug: 'clan-serhu' } })).id;
 
     // Línea base: Serhu tenía producido hasta DIA-1 → exactamente 1 día pendiente.
-    await prisma.kingdomStats.updateMany({ where: { faction: { worldId } }, data: { ultimoDiaProducido: DIA - 1 } });
-    // Riqueza de partida conocida (CI, 2026-09-29): en una BD recién sembrada Serhu empieza con 0 y,
-    // como sus 500 soldados cuestan más de lo que rinden sus 150 trabajadores, el día la dejaba en
-    // 0 (Math.max) y la aserción "la riqueza cambia" solo pasaba con riqueza acumulada de antes.
+    await prisma.kingdomStats.updateMany({ where: { faction: { saveId } }, data: { ultimoDiaProducido: DIA - 1 } });
+    // Riqueza conocida (CI, 2026-09-29): con 0, sus 500 soldados cuestan más de lo que rinden sus 150
+    // trabajadores y el día la dejaba en 0 (Math.max), así que "la riqueza cambia" no se vería.
     await prisma.kingdomStats.update({ where: { ownerKey: `faction:${serhuId}` }, data: { riqueza: 10_000 } });
-    // Relación Serhu→otra facción con presión 80 y 2 semanas pendientes.
-    const otra = await prisma.faction.findFirstOrThrow({ where: { worldId, saveId: null, id: { not: serhuId } } });
-    const existente = await prisma.factionRelation.findUnique({ where: { sourceFactionId_targetFactionId: { sourceFactionId: serhuId, targetFactionId: otra.id } } });
-    const data = { presion: 80, type: 'GUERRA' as const, ultimaSemanaDecaida: Math.floor(DIA / 7) - 2 };
-    if (existente) await prisma.factionRelation.update({ where: { id: existente.id }, data });
-    else relCreadaId = (await prisma.factionRelation.create({ data: { worldId, sourceFactionId: serhuId, targetFactionId: otra.id, ...data } })).id;
+    // Relación Serhu→otra facción de la partida con presión 80 y 2 semanas pendientes.
+    const otra = await prisma.faction.findFirstOrThrow({ where: { saveId, origenSlug: { not: null }, id: { not: serhuId } } });
+    await prisma.factionRelation.upsert({
+      where: { sourceFactionId_targetFactionId: { sourceFactionId: serhuId, targetFactionId: otra.id } },
+      update: { presion: 80, type: 'GUERRA', ultimaSemanaDecaida: Math.floor(DIA / 7) - 2 },
+      create: { worldId, saveId, sourceFactionId: serhuId, targetFactionId: otra.id, presion: 80, type: 'GUERRA', ultimaSemanaDecaida: Math.floor(DIA / 7) - 2 },
+    });
   });
 
   afterAll(async () => {
-    await prisma.almacenItem.deleteMany({ where: { factionId: serhuId, id: { notIn: almacenPreviosIds } } });
-    for (const s of statsSnapshot) {
-      await prisma.kingdomStats.update({
-        where: { id: s.id },
-        data: { comida: s.comida, riqueza: s.riqueza, felicidad: s.felicidad, diasFelicidadAlta: s.diasFelicidadAlta, diasFelicidadBaja: s.diasFelicidadBaja, ultimoDiaProducido: s.ultimoDiaProducido },
-      });
-    }
-    if (relCreadaId) await prisma.factionRelation.delete({ where: { id: relCreadaId } });
-    for (const r of relSnapshot) {
-      await prisma.factionRelation.update({ where: { id: r.id }, data: { presion: r.presion, type: r.type, stage: r.stage, ultimaSemanaDecaida: r.ultimaSemanaDecaida } });
-    }
-    await prisma.save.deleteMany({ where: { id: { in: saveIds } } });
+    await prisma.save.deleteMany({ where: { id: { in: [saveId, otraId] } } });
   });
 
-  it('con dos partidas del mismo mundo procesa UN día una sola vez, deposita stock con tope y decae la presión', async () => {
-    const antes = await prisma.kingdomStats.findUniqueOrThrow({ where: { ownerKey: `faction:${serhuId}` } });
-    const r1 = await advanceFactionEconomy(prisma);
+  it('procesa UN día una sola vez, deposita stock con tope y decae la presión, sin tocar el catálogo ni otra partida', async () => {
+    const statsDe = (factionId: string) => prisma.kingdomStats.findUniqueOrThrow({ where: { ownerKey: `faction:${factionId}` } });
+    const catalogoAntes = await prisma.kingdomStats.findMany({ where: { faction: { worldId, saveId: null } }, orderBy: { id: 'asc' } });
+    const otraAntes = await statsDe(serhuOtraId);
+    const antes = await statsDe(serhuId);
+    const tick = async () => {
+      const r = { diasProcesados: 0, semanasDecaidas: 0, depositados: 0 };
+      await producirFacciones(prisma, worldId, { saveId, origenSlug: { not: null } }, DIA, r);
+      await decaerRelaciones(prisma, { saveId }, DIA, r);
+      return r;
+    };
+
+    const r1 = await tick();
     expect(r1.diasProcesados).toBeGreaterThan(0);
-    const tras1 = await prisma.kingdomStats.findUniqueOrThrow({ where: { ownerKey: `faction:${serhuId}` } });
+    const tras1 = await statsDe(serhuId);
     expect(tras1.ultimoDiaProducido).toBe(DIA);
     expect(tras1.riqueza).not.toBe(antes.riqueza);
 
-    // Segundo tick el mismo día (y "otra partida"): idempotente, nada cambia.
-    const r2 = await advanceFactionEconomy(prisma);
+    // Segundo tick el mismo día: idempotente, nada cambia.
+    const r2 = await tick();
     expect(r2.diasProcesados).toBe(0);
     expect(r2.depositados).toBe(0);
-    const tras2 = await prisma.kingdomStats.findUniqueOrThrow({ where: { ownerKey: `faction:${serhuId}` } });
+    const tras2 = await statsDe(serhuId);
     expect({ c: tras2.comida, r: tras2.riqueza, f: tras2.felicidad }).toEqual({ c: tras1.comida, r: tras1.riqueza, f: tras1.felicidad });
 
     // Stock real (H-2): lo que lee GET /reino/mercado/:faccion (AlmacenItem.factionId agrupado por slug).
-    const items = await prisma.almacenItem.findMany({ where: { factionId: serhuId, id: { notIn: almacenPreviosIds } } });
+    const items = await prisma.almacenItem.findMany({ where: { factionId: serhuId } });
     expect(items.length).toBeGreaterThan(0);
     const porSlug = new Map<string, number>();
     for (const it of items) porSlug.set(it.catalogSlug!, (porSlug.get(it.catalogSlug!) ?? 0) + 1);
     expect(Math.max(...porSlug.values())).toBeLessThanOrEqual(TOPE_STOCK_FACCION_POR_SLUG);
 
     // H-4: 2 semanas pendientes → presión 80 → 78; segunda pasada no decae más.
-    const rel = await prisma.factionRelation.findFirstOrThrow({ where: { worldId, sourceFactionId: serhuId, presion: { in: [78, 80] } } });
+    const rel = await prisma.factionRelation.findFirstOrThrow({ where: { saveId, sourceFactionId: serhuId, presion: { in: [78, 80] } } });
     expect(rel.presion).toBe(78);
     expect(rel.ultimaSemanaDecaida).toBe(Math.floor(DIA / 7));
+
+    // El catálogo nunca cambia jugando, y la otra partida no se entera.
+    expect(await prisma.kingdomStats.findMany({ where: { faction: { worldId, saveId: null } }, orderBy: { id: 'asc' } })).toEqual(catalogoAntes);
+    expect(await statsDe(serhuOtraId)).toEqual(otraAntes);
   }, 30_000);
 });

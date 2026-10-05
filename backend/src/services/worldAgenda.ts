@@ -164,15 +164,28 @@ const TEXTOS_CONFLICTO: readonly string[] = [
 ];
 
 /// La cadena se corta si cae el agresor, o si caen los dos que resisten (facciones de la partida).
-async function motivoDeCorteConflicto({ db, saveId }: { db: Pick<PrismaClient, 'faction'>; saveId: string }): Promise<string | null> {
+async function motivoDeCorteConflicto({ db, saveId }: { db: Pick<PrismaClient, 'faction' | 'suceso'>; saveId: string }): Promise<string | null> {
   const defensores = Object.values(REGION_DEFENSOR);
   const filas = await db.faction.findMany({
     where: { saveId, origenSlug: { not: null }, name: { in: [AGRESOR_FACCION, ...defensores] } },
-    select: { name: true, disueltaEn: true },
+    select: { name: true, slug: true, disueltaEn: true },
   });
   const caida = (nombre: string) => filas.some((f) => f.name === nombre && f.disueltaEn !== null);
   if (caida(AGRESOR_FACCION)) return 'Con la caída del Clan Serhu, sus incursiones contra Helsig y Goshg se apagan.';
   if (defensores.every(caida)) return 'Caídos Helsig y Goshg, ya no queda nadie que resista al Clan Serhu: su campaña contra ellos termina.';
+  // CR-34 (Q19): manda la IA de facción; si Serhu firma la paz con uno de los dos, la campaña se acaba.
+  const agresor = filas.find((f) => f.name === AGRESOR_FACCION);
+  const slugsDefensores = filas.filter((f) => f.name !== AGRESOR_FACCION).map((f) => f.slug);
+  if (agresor && slugsDefensores.length > 0) {
+    const paz = await db.suceso.findFirst({
+      where: {
+        saveId, tipo: 'TREGUA',
+        AND: [{ actores: { some: { entidadTipo: 'FACCION', entidadId: agresor.slug } } }, { actores: { some: { entidadTipo: 'FACCION', entidadId: { in: slugsDefensores } } } }],
+      },
+      select: { id: true },
+    });
+    if (paz) return 'Firmada la paz, el Clan Serhu deja de presionar a Helsig y Goshg: su campaña contra ellos termina.';
+  }
   return null;
 }
 

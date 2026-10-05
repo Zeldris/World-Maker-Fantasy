@@ -470,9 +470,10 @@ model Save {
   foundedFactions    Faction[]
 
   /// CR-5 (hito 0.2) — mundo clonado de la partida.
-  npcsDePartida Npc[]             @relation("NpcsDePartida")
-  poblaciones   WorldPopulation[]
-  expediciones  Expedicion[]
+  npcsDePartida     Npc[]             @relation("NpcsDePartida")
+  poblaciones       WorldPopulation[]
+  expediciones      Expedicion[]
+  misionesOfrecidas MisionOfrecida[]
 
   @@index([userId])
 }
@@ -1771,6 +1772,9 @@ model KingdomStats {
   /// CR-12 (12c, hito 0.2): días seguidos con déficit de comida (hambre). Cada 3 seguidos se
   /// registra `HAMBRUNA` (cohesión −10 y posible `REBELION`, reacción `HAMBRUNA_DIVIDE`).
   diasHambre          Int      @default(0)
+  /// CR-34 (Q6): último día de ficción en que la facción revisó su situación para decidir (null =
+  /// nunca). Solo facciones del mundo de la partida; el Reino de la jugadora no lo usa.
+  ultimaRevision      Int?
   /// Solo filas de facción (Fase 4 del plan oct-2026, H-6): último día de ficción del MUNDO (floor de
   /// minutos/1440, máximo de sus partidas) para el que `advanceFactionEconomy` (factionEconomy.ts,
   /// llamado desde worldTick) ya produjo/consumió. Marcador de idempotencia: cada día se procesa una
@@ -1878,10 +1882,39 @@ model SavedAction {
   @@index([saveId])
 }
 
+/// CR-40: misión secundaria a la vista antes de aceptarla, en un tablón de avisos (`buildingId`) o en
+/// boca de un NPC con nombre (`npcId`). Al aceptarla nace su `Quest`; si nadie la coge, se retira.
+model MisionOfrecida {
+  id          String   @id @default(cuid())
+  saveId      String
+  save        Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  buildingId  String?
+  npcId       String?
+  factionId   String
+  tipo        String
+  motivo      String
+  huecos      Json
+  titulo      String
+  descripcion String
+  recompensa  Json
+  creadaEn    Int
+  /// Minuto de ficción en que se retira del tablón si nadie la ha cogido.
+  retiraEn    Int
+  /// DISPONIBLE, ACEPTADA o RETIRADA.
+  estado      String   @default("DISPONIBLE")
+  questId     String?
+  createdAt   DateTime @default(now())
+
+  @@index([saveId, estado])
+  @@index([buildingId])
+}
+
 enum QuestStatus {
   ACTIVA
   COMPLETADA
   FALLIDA
+  /// CR-40: la jugadora la deja (pierde reputación con quien la encargó, como al fallar).
+  ABANDONADA
 }
 
 /// Misión/objetivo narrativo (docs/mecanicas/09-panel-personaje.md § pestaña "Misiones", única pestaña
@@ -1948,10 +1981,33 @@ model Quest {
   /// compañero (companionSlotsForRecipeKey) — si no hay hueco al completarse la misión, no se
   /// crea (nunca se pierde silenciosamente el resto de la recompensa por esto).
   rewardCompanion  Json?
+  /// CR-40 (misiones secundarias por motor): tipo de la plantilla (`cronista/misiones.ts`); null = misión
+  /// del narrador o fija (se cierran como siempre).
+  tipoMision       String?
+  /// Huecos de la plantilla (`HuecosMision`) con los que se creó: quién la encarga, qué, dónde…
+  huecos           Json?
+  /// Recompensa por tabla (`Recompensa`), fijada al crearla.
+  recompensa       Json?
+  /// Facción y NPC que la encargan (el NPC, si es personal).
+  encargaFaccionId String?
+  encargaNpcId     String?
+  /// Cuánto lleva hecho (piezas cazadas, unidades entregadas…) de `cantidad`.
+  progreso         Int         @default(0)
+  cantidad         Int?
+  /// Minuto de ficción en que vence; pasado, falla.
+  venceEn          Int?
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
 
   @@index([saveId])
+}
+
+/// CR-34: disposición de una facción (glosario: «Disposición»).
+enum Disposicion {
+  NEUTRAL
+  BELICOSA
+  MERCANTIL
+  RECELOSA
 }
 
 enum TerritoryControl {
@@ -2550,15 +2606,15 @@ model Npc {
 
   /// CR-5 (hito 0.2) — NPC nacido en una partida (sucesores, líderes nuevos); null = de catálogo.
   /// Unicidad parcial en el SQL, como en Faction.
-  saveId String?
-  save   Save?   @relation("NpcsDePartida", fields: [saveId], references: [id], onDelete: Cascade)
+  saveId               String?
+  save                 Save?   @relation("NpcsDePartida", fields: [saveId], references: [id], onDelete: Cascade)
   /// CR-13 (hito 0.2): padre y madre (ids de `Npc`) de un NPC nacido o destacado en la partida, de
   /// quienes hereda la «huella» de sus atributos. Null = de padres desconocidos (o del catálogo).
-  padreNpcId String?
-  madreNpcId String?
+  padreNpcId           String?
+  madreNpcId           String?
   /// CR-13 13b: minuto de ficción en que nació (negativo = antes del día 0 de la partida). Null en
   /// el catálogo: su edad es provisional y determinista (`edades.ts`, hasta que Álvaro la fije).
-  nacidoEn   Int?
+  nacidoEn             Int?
   /// CR-13 13b: atributos de adulto de un NPC nacido en la partida; `attributes` son los que cuentan
   /// hoy según su edad (crecen hasta la madurez, bajan en la vejez). Null en el catálogo.
   atributosPotenciales Json?
@@ -2612,8 +2668,11 @@ model Faction {
   /// catálogo del mismo `World`, así que aquí sí hay una referencia estable real a la que engancharse.
   /// Null = facción sin líder NPC real sembrado todavía (usa un valor por defecto/neutro en el
   /// motor de disputas hasta que se siembre uno) — nunca inventado en servicio.
-  liderNpcId String?
-  liderNpc   Npc?    @relation(fields: [liderNpcId], references: [id], onDelete: SetNull)
+  liderNpcId  String?
+  /// CR-34 (Q5/Q16): inclinación de la facción al decidir (belicosa, mercantil, recelosa, neutral).
+  /// Neutral hasta que Álvaro revise la propuesta por facción de `propuestas-lore.md`.
+  disposicion Disposicion @default(NEUTRAL)
+  liderNpc    Npc?        @relation(fields: [liderNpcId], references: [id], onDelete: SetNull)
 
   /// Motor de disputas (§ 4.3) — dirigidas, ver comentario completo de `FactionRelation`.
   relationsAsSource FactionRelation[] @relation("FactionRelationSource")
@@ -2778,7 +2837,7 @@ model NpcState {
   scope                       String          @default("")
   /// CR-13 13c (hito 0.2): años de vejez de un NPC del catálogo en ESTA partida (sus atributos son
   /// del mundo): se restan a fuerza, destreza y constitución al usarlos (`restarVejez`, edades.ts).
-  vejez               Int                  @default(0)
+  vejez                       Int             @default(0)
   condicionFisica             CondicionFisica @default(ILESO)
   /// Sistema de fatiga simétrico (2026-07-30, deuda técnica: "los NPC siguen eligiendo habilidad
   /// sin restricción de energía" — ver energy.ts) — null = tope completo, mismo criterio lazy que
@@ -3357,6 +3416,9 @@ model Expedicion {
   /// slug del atacante, guardias, rondas, ganador ('atacante' | 'defensores' | 'sin-combate'), motivo
   /// ('sin-guardias' | 'sin-atacante' | 'tope') y si se aplicó presión. Null si no hubo intercepción.
   interceptacion    Json?
+  /// CR-34 (34b): carencia que la mandó (`COMIDA`…), o null si salió por rotación. Con `COMIDA`, lo
+  /// comestible del botín va a la reserva de comida de la facción en vez de al Almacén.
+  motivo            String?
   members           ExpedicionMember[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
@@ -3386,37 +3448,37 @@ model ExpedicionMember {
 
 /// Libro de Sucesos — todo lo que pasa en una partida, del jugador o del mundo. Solo crece.
 model Suceso {
-  id               String        @id @default(cuid())
-  saveId           String
-  save             Save          @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  id                   String        @id @default(cuid())
+  saveId               String
+  save                 Save          @relation(fields: [saveId], references: [id], onDelete: Cascade)
   /// Clave del catálogo (roadmap-cronista.md § 6.1), p. ej. "MUERTE_NPC".
-  tipo             String
-  familia          FamiliaSuceso
+  tipo                 String
+  familia              FamiliaSuceso
   /// Cuándo ocurrió en la ficción.
-  fictionalMinutes Int
-  regionSlug       String?
-  locationId       String?
+  fictionalMinutes     Int
+  regionSlug           String?
+  locationId           String?
   /// 1-10, por reglas (§ 6.3).
-  importancia      Int
-  origen           OrigenSuceso
+  importancia          Int
+  origen               OrigenSuceso
   /// Datos tipados por `tipo` (§ 6.2).
-  datos            Json
+  datos                Json
   /// Frase de plantilla, siempre presente (la alternativa sin IA).
-  texto            String
+  texto                String
   /// Versión del Cronista, si existe.
-  textoNarrado     String?
-  causas           SucesoCausa[] @relation("efecto")
-  efectos          SucesoCausa[] @relation("causa")
-  actores          SucesoActor[]
+  textoNarrado         String?
+  causas               SucesoCausa[] @relation("efecto")
+  efectos              SucesoCausa[] @relation("causa")
+  actores              SucesoActor[]
   /// Entrada del registro que lo originó, si la hay.
-  logEntryId       String?
+  logEntryId           String?
   /// Para reproducir el azar.
-  semilla          String
+  semilla              String
   /// CR-10 (§ 6.2): cola de reacciones. Se procesan al final del turno o del día, en anchura;
   /// `nivelCascada` = cuántas reacciones lo separan del suceso original (tope 3).
-  reaccionesPendientes Boolean     @default(true)
-  nivelCascada     Int           @default(0)
-  createdAt        DateTime      @default(now())
+  reaccionesPendientes Boolean       @default(true)
+  nivelCascada         Int           @default(0)
+  createdAt            DateTime      @default(now())
 
   @@index([saveId, reaccionesPendientes])
   @@index([saveId, fictionalMinutes])

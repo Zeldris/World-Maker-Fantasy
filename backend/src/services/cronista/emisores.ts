@@ -9,13 +9,13 @@ type Db = PrismaClient | Prisma.TransactionClient;
 /// Una misión se cierra (completada o fallida), sea cual sea el camino que la cierra.
 export async function registrarFinDeMision(
   db: Db,
-  params: { saveId: string; titulo: string; estado: 'COMPLETADA' | 'FALLIDA'; fictionalMinutes?: number; logEntryId?: string | null },
+  params: { saveId: string; titulo: string; estado: 'COMPLETADA' | 'FALLIDA' | 'ABANDONADA'; fictionalMinutes?: number; logEntryId?: string | null },
 ): Promise<string | null> {
   const save = await db.save.findUnique({ where: { id: params.saveId }, select: { characterName: true, currentLocationId: true } });
   if (!save) return null;
   return registrarSuceso(db, {
     saveId: params.saveId,
-    tipo: params.estado === 'COMPLETADA' ? 'MISION_COMPLETADA' : 'MISION_FALLIDA',
+    tipo: params.estado === 'COMPLETADA' ? 'MISION_COMPLETADA' : params.estado === 'ABANDONADA' ? 'MISION_ABANDONADA' : 'MISION_FALLIDA',
     fictionalMinutes: params.fictionalMinutes ?? (await minutosDeFiccion(db, params.saveId)),
     locationId: save.currentLocationId,
     origen: 'JUGADOR',

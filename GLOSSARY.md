@@ -80,7 +80,7 @@ Algo que una noticia deja hacer durante unos días en un lugar concreto (un camp
 _Evitar_: misión, evento
 
 **Encargo**:
-Oportunidad en la que alguien de una facción pide algo (materiales) a cambio de su favor; quien lo pide es el único que no es compañero al que se le pueden entregar objetos.
+Misión de entregar materiales a alguien de una facción a cambio de su favor; quien la encarga es el único que no es compañero al que se le pueden entregar objetos.
 
 ## Las personas del mundo
 
@@ -101,3 +101,31 @@ _Evitar_: mayoría de edad
 
 **Vejez**:
 Los años que alguien vive más allá del 80 % de la esperanza de vida de su pueblo: pierde fuerza, destreza y constitución, y puede morir de viejo.
+
+## Las facciones que deciden
+
+**Decisión de facción**:
+Lo que una facción del mundo de la partida elige hacer por sí misma (mandar una expedición, pactar, declarar la guerra, pedir la paz, reclamar un territorio), según la Inteligencia de su líder.
+_Evitar_: IA de facción, acción de facción
+
+**Carencia**:
+Lo que le falta a una facción para sostenerse (comida, bebida, Goirnos, soldados frente a sus enemigos) y que la empuja a decidir.
+_Evitar_: necesidad, déficit
+
+**Disposición**:
+La inclinación de una facción (belicosa, mercantil, recelosa…) que pesa en sus decisiones cuando tiene varias opciones.
+_Evitar_: personalidad, temperamento
+
+## Las misiones
+
+**Misión**:
+Lo que la jugadora acepta hacer para alguien: queda en su diario con objetivo, quién la encarga, plazo y recompensa, y fallarla o abandonarla tiene consecuencias.
+_Evitar_: quest, tarea, oportunidad
+
+**Misión secundaria**:
+Misión que el motor crea a partir de lo que pasa en el mundo de la partida, con una plantilla cerrada por tipo (entregar, cazar, eliminar, explorar, ayudar, combatir).
+_Evitar_: misión generada, misión de la IA
+
+**Tablón de avisos**:
+Edificio de una ciudad donde una facción cuelga sus misiones; cada pueblo le da su propio nombre.
+_Evitar_: tablón de misiones, tablón de encargos

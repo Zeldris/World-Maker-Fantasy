@@ -1214,6 +1214,230 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     fértil; el resumen de varios días conserva la categoría y la oportunidad de cada línea; y **los
     líderes del catálogo ya no tienen edad provisional aparte** (cambio sobre la Q8: la misma edad
     en todos los sistemas; las de los líderes, para Álvaro con el resto).
+- ~~**CR-34** Decisiones de facción~~ ✅ 2026-10-05 (34d, expansión, pasa a `CR-39` en el `0.3`; Q20) (IA de decisión de facción del `0.2`, [21-roadmap § 0.2](21-roadmap.md#02--facciones-vivas)). **L**
+  Diseño con `/grill-with-docs` (2026-10-04, ronda 1 aceptada entera por la usuaria; términos en
+  `GLOSSARY.md`: decisión de facción, carencia, disposición):
+  - **Q1 Dónde:** en el **mundo de la partida**, una vez por día de ficción de esa partida (junto al
+    narrador de fondo), nunca en el catálogo ni en tiempo real. Economía y expediciones de facción
+    ya iban por partida desde `CR-7`; `CR-35` quitó las versiones del catálogo.
+  - **Q2 Sin los números de la economía de supervivencia:** carencias calculadas sobre lo que hay hoy
+    (comida, bebida, riqueza, soldados frente al enemigo) con umbrales provisionales en un solo sitio;
+    con la respuesta de Álvaro (pregunta 5) solo cambian los umbrales.
+  - **Q3 Qué decide en el `0.2`:** expediciones dirigidas (oficio y destino según la carencia, no por
+    rotación), diplomacia (proponer tratado o alianza, declarar la guerra, pedir la paz, moviendo la
+    presión con `cambiarPresion`) y expandirse (reclamar un territorio sin control o disputado de su
+    región o vecina, `cambiarControlTerritorio`). Construir → `CR-36` (`0.3`).
+  - **Q4 Inteligencia del líder,** mismos tramos que la IA de combate: **< 10** impulsivo (solo ante
+    carencias graves, casi al azar entre lo válido); **10-20** sensato (puntúa necesidad, fuerza propia
+    contra la del otro y relaciones; elige la mejor con algo de ruido); **20+** estratega (se adelanta a
+    la carencia, ataca al más débil, busca aliados contra un enemigo común, nunca dos guerras a la vez).
+  - **Q5 Disposición** por facción (belicosa, mercantil, recelosa…) que inclina la elección; propuesta
+    a Álvaro en `propuestas-lore.md`, neutra mientras no conteste. Que la dé el líder → `CR-38`.
+  - **Q6 Ritmo:** cada facción revisa su situación una vez por semana de ficción, o antes si una
+    carencia se vuelve grave. Guerra, alianza, paz y expansión gastan **presupuesto de tensión** (las
+    gobierna el Ritmo del mundo); las expediciones no.
+  - **Q7 Contra el Reino de la jugadora:** solo diplomacia (te proponen tratado o alianza con tarjeta
+    aceptar/rechazar, o te suben la tensión); la guerra contra el Reino → `CR-37` (`0.3`, con los
+    edificios de defensa).
+  - **Q8 Sin líder** (sucesión pendiente): solo inercia (expediciones), nada grande, y la cohesión pesa
+    más. Líder sin Inteligencia sembrada: 10.
+  - **Q9 Lo que ve la jugadora:** cada decisión es un suceso del Libro y llega a «El mundo» con el
+    rumor por distancia (`darNoticia`); nada nuevo en la interfaz.
+  Ronda 2 (2026-10-04, aceptada entera):
+  - **Q10 Umbrales provisionales:** comida/bebida leve < 10 días de consumo, grave < 3 (la bebida no
+    salta hasta la economía: hoy se rellena sola); Goirnos leve si no paga 14 días de soldados, grave
+    < 3; soldados: < 60 % de los de un enemigo en tensión o guerra. Todos en un solo sitio.
+  - **Q11 Respuesta a cada carencia:** comida → expedición de caza o recolección (su región o vecina);
+    bebida → reclamar territorio con fuente (Los Manaderos, el Cauce) o pactar con quien la tiene;
+    Goirnos → tratado comercial, o saqueo si es belicosa; soldados → alianza contra su enemigo, o
+    pedir la paz si va perdiendo; sin carencias → según la disposición (expandirse, presionar a un
+    rival, afianzar un pacto).
+  - **Q12 Pactos entre facciones:** la destinataria responde en el acto con su propia IA (carencias,
+    disposición, Inteligencia). Acepta → presión de las dos direcciones a 35 (tratado) o 15 (alianza);
+    rechaza → +5 de la que propuso. Alianza solo desde tratado.
+  - **Q13 Guerra y paz:** declarar solo desde tensión (las dos direcciones a 80; los aliados de la
+    víctima suben su presión contra el agresor). Paz solo en guerra, aceptada si la otra también sufre
+    (carencia o menos soldados) → las dos a 65.
+  - **Q14 Expansión:** territorio sin dueño → se reclama; de otra facción → solo en guerra con ella,
+    por asalto (tirada ponderada por soldados): si gana, cambia de manos y sube la presión del
+    perdedor (`EXPANSION_TERRITORIAL_AGRESIVA`); si pierde, bajas de soldados. Nunca del Reino (`CR-37`).
+  - **Q15 Propuesta al Reino:** noticia en «El mundo» con Aceptar/Rechazar y plazo de 3 días (sobre la
+    tarjeta de oportunidad de `UX-38`). Aceptar → tratado o alianza en las dos direcciones y su
+    mercado; rechazar o dejar pasar → +5 de esa facción hacia el Reino.
+  - **Q16 Disposiciones:** belicosa, mercantil, recelosa y neutral (por defecto). Propuesta por
+    facción a Álvaro en `propuestas-lore.md`; neutras hasta que conteste.
+  - **Q17 Presupuesto:** según la importancia del suceso: guerra alta; alianza, paz y asalto media;
+    tratado y reclamar sin dueño baja. Sin presupuesto, espera a otra semana (la carencia grave
+    adelanta la revisión, no se salta el presupuesto).
+  - **Q18 Hecho cuando:** test de simulación de 60 días en una partida con expediciones por carencia,
+    al menos un tratado, una guerra con paz o asalto, decisiones distintas con distinta Inteligencia en
+    la misma situación, y claramente menos decisiones grandes en Tranquilo que en Caótico.
+  - **Q19 Cadena Serhu frente a la IA** (2026-10-04): manda la IA; si se firma la paz entre Serhu y
+    Helsig o Goshg, la cadena se corta (como cuando cae una de las partes). Diseño cerrado.
+  - ✅ **34a hecho (2026-10-04):** `cronista/carencias.ts` (puro): `carenciasDe` (lo neto: con
+    producción ≥ consumo no hay carencia aunque la reserva esté a 0, que es como empiezan todas las
+    del catálogo), `UMBRALES_CARENCIA` en un solo sitio, `tramoDeInteligencia`, `inteligenciaDelLider`
+    (10 si no está sembrada, null sin líder) y `tocaRevisar` (semanal o antes por carencia grave);
+    `balanceDiario` en `kingdomTick.ts` con las mismas cifras del tick. El impulsivo solo ve lo
+    grave; el estratega ve lo leve con 1,5× de margen. Líderes sembrados: Inteligencia 14-20 (Serhu y
+    Feg Tusha estrategas, el resto sensatos).
+  - ✅ **34b hecho (2026-10-04):** `lanzarExpedicion` lee la situación de la facción
+    (`cronista/situacionFaccion.ts`): con carencia de comida, la pesca y luego la extracción salen
+    primero (la caza no va de expedición); el estratega prueba antes los destinos con menos riesgo.
+    `Expedicion.motivo` (migración `20261005030000_expedicion_motivo`): si salió por hambre, lo
+    comestible del botín (categoría `consumible` o `curaHambre`) suma a la reserva de comida, a
+    `RACIONES_POR_UNIDAD_COMESTIBLE` = 10 por unidad (provisional, pregunta 5), en vez de ir al
+    Almacén. Con la economía de hoy apenas alivia (Serhu gasta ~270 al día de más): el alivio real
+    llega con los números de la economía de supervivencia.
+  - ✅ **34c hecho (2026-10-05):** `cronista/decisionesFaccion.ts`, tras el narrador de fondo en cada día
+    simulado de la partida. Revisión semanal (o antes por carencia grave) con `KingdomStats.ultimaRevision`;
+    `Faction.disposicion` (enum, neutral por defecto; propuesta por facción para Álvaro en
+    `propuestas-lore.md`). Migración `20261005040000_decisiones_faccion`. Opciones con puntuación
+    (tratado desde neutral, alianza solo desde tratado, guerra desde tensión, paz en guerra, presionar
+    si es belicosa), elección por tramo (impulsivo al azar y a veces nada; sensato con ruido;
+    estratega la mejor y nunca dos guerras), respuesta de la otra con su propia IA, aliados de la
+    víctima contra el agresor, coste en presupuesto de tensión (importancia del suceso), suceso en el
+    Libro y noticia con rumor por distancia. La paz entre Serhu y Helsig o Goshg corta la cadena (Q19).
+    Ojo: en el catálogo Serhu ya está en guerra con Feg Tusha, así que su estratega no abre otra.
+    Arreglo (2026-10-05, `diagnosing-bugs`): «pedir la paz si va perdiendo» se medía con la carencia de
+    soldados, que solo señala al enemigo más fuerte (Helsig: la Concordia, en tensión); frente a Serhu,
+    con quien estaba en guerra, no sumaba y empataba con los tratados (el empate lo deshacía el orden
+    de ids: test intermitente ~1/4). Ahora se mide con la proporción frente a ese enemigo; regresión en
+    `decisionesFaccion.test.ts`.
+  - ✅ **34e hecho (2026-10-05):** el Reino de la jugadora entra en la mesa del día solo como destinatario:
+    se le proponen tratado o alianza, o se le presiona; nunca guerra ni paz (Q7). La propuesta es una
+    `Consecuencia` `PROPUESTA_REINO` con 3 días de plazo y una noticia de «El mundo» con Aceptar y
+    Rechazar (`LogEntry.noticia.propuesta`, `NoticiaMundo.tsx`); `POST /saves/:id/mundo/propuestas/
+    :propuestaId` `{ acepta }`. Aceptar → pacto en las dos direcciones (abre su mercado); rechazar o
+    dejar pasar el plazo → +5 de la facción hacia el Reino. Una propuesta pendiente por facción.
+  - ➡️ **34d → `CR-39` (Q20, decisión de la usuaria 2026-10-05: la opción completa, en el `0.3`).** Antes, bloqueada (2026-10-05): la tabla `Territory` no tiene territorios de facción (solo los
+    del Reino de la jugadora); el dominio de las regiones vive fijo en `REGION_OWNING_FACTIONS`. La
+    expansión de la Q14 no tiene sobre qué actuar: decisión pedida a la usuaria.
+  - ✅ **34f hecho (2026-10-05):** `cronista/simulacion60.integration.test.ts`: dos partidas de Gorhorn
+    60 días con todo el motor y el azar fijado (Caótico y Tranquilo, en paralelo, ~50 s). Con la
+    semilla 7: Caótico 13 tratados, 3 alianzas y 2 treguas; Tranquilo 5 alianzas y 1 guerra (19
+    sucesos diplomáticos frente a 7); unas 30 expediciones por hambre en cada una. Comprueba la forma
+    (expediciones por hambre, pactos, guerra o paz, y Tranquilo < Caótico / 1,5), no cifras exactas.
+    Restaura el progreso de oficio de los NPC (compartido): sin eso, otros tests de expediciones
+    fallan con «expected 2399 to be greater than 2399» (diagnosticado con `diagnosing-bugs`).
+    **`CR-34` cerrada** con todo salvo la expansión, que pasa entera a `CR-39`.
+  - **Orden de trabajo:** ~~`CR-35`~~ ✅ primero; después los pasos de `CR-34` (34a carencias e
+    Inteligencia ✅, 34b expediciones dirigidas ✅, 34c diplomacia ✅, 34d expansión y asalto 🧭 (bloqueada: no hay territorios de facción, ver 34d), 34e propuesta
+    al Reino ✅, 34f simulación de 60 días ✅).
+- ~~**CR-35** Economía y expediciones de facción en el mundo de la partida (`CR-34` Q1). **M**~~ ✅
+  2026-10-04 — Ya lo hacía `CR-7` (`avanceDiario.ts`: `producirFacciones`, `decaerRelaciones` y
+  `avanzarExpedicionesDePartida` sobre las facciones de la partida, con su reloj); la Q1 partía de un
+  dato equivocado. Lo que quedaba: quitar las versiones que corrían sobre el catálogo
+  (`advanceFactionEconomy`, `advanceFactionExpeditions`, `worldFictionDay`), que ya nadie llamaba y
+  contradecían «el catálogo nunca cambia jugando». Sus tests de integración (economía, 13-B y 13-C)
+  pasan a una partida con su copia del mundo; la prueba de re-seed (D-10) se mantiene aparte.
+- **CR-40** 🚧 Misiones secundarias por motor (todo hecho y jugable salvo 40f-2, interno) (`0.2`, Fase D; [21-roadmap § 0.2](21-roadmap.md#02--facciones-vivas)). **L**
+  Diseño con `/grill-with-docs` (2026-10-05). Ronda 1 aceptada entera:
+  - **Q1** Solo el motor crea y cierra las misiones; el narrador solo narra la oferta, el avance y el
+    final (deja de devolver `newQuest`/`questProgress` para las nuevas).
+  - **Q2** Misión = lo que la jugadora acepta (diario, objetivo, quién la encarga, plazo, recompensa,
+    consecuencias si falla o abandona). La oportunidad sigue siendo sin compromiso. El encargo de
+    materiales de `CR-12` pasa a ser una misión de tipo Entregar.
+  - **Q3** Tipos del `0.2`: Entregar, Cazar, Eliminar, Explorar y Ayudar; Escoltar, más adelante.
+  - **Q4** Nacen del mundo de la partida: carencias de facción (`CR-34`), sucesos (plaga de fauna,
+    vengador, rumor) y oportunidades. Como mucho una misión abierta por facción para la jugadora.
+  - **Q5** (corregida por la usuaria en la ronda 1): las dan **NPC** con nombre o un **tablón** en el
+    interior de las ciudades (edificio construible; ver ronda 2).
+  - **Q6** Fusionar `pendingQuestOfferInfo` con `pendingDynamicModeOffer` en una sola oferta
+    pendiente con su tipo (las dos las decide el motor); el menú del NPC, aparte. ADR al hacerlo.
+  - **Q7** Recompensas por tabla (tipo y dificultad): XP, Goirnos, reputación con quien la encarga y a
+    veces un objeto de su Almacén; fallar o abandonar resta reputación.
+  - **Q8** Plazo en días (vencido → fallida); como mucho 3 secundarias activas.
+  - **Q9** Las misiones del narrador de partidas en curso siguen como hasta ahora (sus anclas y su
+    `questProgress`, solo para ellas).
+  - Petición de la usuaria: **plantillas y reglas** para que la generación no produzca basura.
+  Ronda 2 (2026-10-05, aceptada entera; diseño cerrado):
+  - **Q10 Plantillas cerradas** por tipo con huecos que solo admiten datos reales de la partida
+    (quién encarga: NPC vivo o facción del tablón; qué: especie, objeto o NPC existente; cuántos:
+    calculado; dónde: región o lugar del catálogo; plazo y recompensa por tabla). Hueco sin dato
+    válido → no hay misión. Nunca repetidas ni imposibles (especie extinguida en la región, NPC
+    muerto). Texto de plantillas sin IA en el `0.2` (varias frases por tipo y raza); en la Fase 7 la
+    IA solo reescribe con los mismos huecos, validados (nombres y cifras), con la plantilla de reserva.
+  - **Q11 Tablón de avisos** (nombre mecánico) con nombre propio por pueblo, propuesto a Álvaro:
+    Poste de cacería (orcos), Estela de edictos menores (Goirntes), Muro de los susurros (Nabieus),
+    Árbol de las marcas (Faerus).
+  - **Q12 Dónde:** sembrado en el interior de las ciudades con interior (campamentos de Serhu, Helsig,
+    Goshg y Feg Tusha, Jakut Ger, cónclave de Keseg Prisilke) y construible en el Reino de la jugadora
+    (muestra las misiones de las facciones con tratado o alianza). Que las facciones construyan
+    tablones nuevos, con `CR-36` (`0.3`).
+  - **Q13 Tablón o NPC:** el tablón, misiones de la facción (unas 3 a la vista, se renuevan cada
+    semana); un NPC con nombre, misión personal con algo más de recompensa. La noticia de «El mundo»
+    solo avisa; la misión se coge en el tablón o hablando.
+  - **Q14 Cazar por exceso:** especie > 80 % de su máximo en una región → cazar una parte del exceso
+    (3-8); al cumplirla baja su población de verdad; la encarga la dueña de la región.
+  - **Q15 Recolectar** = Entregar, de flora que se ha extendido (mismo umbral) o de materiales que le
+    faltan a la facción.
+  - **Q16 Combatir** (tipo nuevo del `0.2`): solo con la facción en tensión o guerra; el motor sitúa un
+    grupo enemigo (patrulla, partida de saqueo) en un lugar de la región; derrotarlo sube la presión
+    del enemigo contra quien la encarga. Defender una expedición = Escoltar, más adelante.
+  - **Q17 Reputación:** cumplir sube la de quien encarga (`factionsStatus`); contra otra facción
+    (Combatir, Eliminar a uno de los suyos) baja la de esa; con reputación alta, esa facción propone
+    tratado al Reino antes (`CR-34`).
+  - ✅ **40a hecho (2026-10-05):** `cronista/misiones.ts` (puro): tipos, huecos exigidos por tipo,
+    `validarHuecos` (sin dato válido no hay misión), topes de cantidad y plazos, dificultad,
+    `recompensaDe` (XP, Goirnos y reputación por tabla; +25 % si la encarga un NPC con nombre; pérdida
+    al fallar y con la facción contra la que va), `textoDeMision` (dos frases por tipo y cierre por
+    pueblo, sin IA) y exceso de población (> 80 %, cazar 3-8).
+  - ✅ **40b hecho (2026-10-05):** migración `20261005050000_misiones_motor`: `Quest` gana `tipoMision`
+    (null = del narrador o fija), `huecos`, `recompensa`, `encargaFaccionId`/`encargaNpcId`, `progreso`,
+    `cantidad` y `venceEn`; estado `ABANDONADA`; modelo `MisionOfrecida` (a la vista en un tablón o en
+    boca de un NPC, con `retiraEn`; al aceptarla nace su `Quest`). Panel de Misiones con «Abandonada».
+  - ✅ **40c hecho (2026-10-05):** tablón de avisos sembrado en las 6 ciudades con interior
+    (`worldCatalog.ts`, `TABLON_AVISOS_SLUG`, `kind: 'tablon'`, nombre común hasta que Álvaro apruebe
+    los de cada pueblo), copiado al clonar el mundo y, en partidas anteriores, de forma perezosa
+    (`cronista/tablones.ts`); no produce en la economía de facción; receta del Reino
+    `tablon-avisos` (común, con Ayuntamiento, uno por región).
+  - ✅ **40d hecho (2026-10-05):** `cronista/generarMisiones.ts`, tras las decisiones de facción en cada
+    día simulado: retira los avisos vencidos (7 días) y rellena cada tablón de facción hasta 3 avisos
+    sin repetir tipo ni clave (tipo + objetivo + quien encarga). Candidatas del mundo de la partida:
+    Cazar (especie > 80 % en la región), Entregar (recurso abundante de la región, o comida si la
+    facción pasa hambre), Combatir (facción en tensión o guerra, lugar abierto de la región), Eliminar
+    (guerrero con nombre de la facción en guerra, nunca su líder) y Explorar (lugar de la región no
+    visitado). Ayudar sigue siendo la oportunidad de `CR-12`. Noticia «X ha colgado nuevos avisos en…».
+    De paso: `alimento` también cuenta como comida en las expediciones por hambre (34b).
+  - ✅ **40e hecho (2026-10-05):** `cronista/misionesJugadora.ts` y `routes/saves/misiones.ts`
+    (`POST /saves/:id/misiones/avisos/:avisoId/aceptar`, `/:questId/entregar`, `/:questId/abandonar`).
+    Aceptar: como mucho 3 activas y una por facción; nace la `Quest` con recompensa, plazo y, en
+    Entregar, el lugar de entrega (el del tablón); Combatir sitúa 1-2 plantillas de la enemiga en el
+    lugar con su punto de zona. Progreso: Cazar con cada pieza de la especie
+    (`decrementPopulationOnDeath`); Entregar al entregar donde se aceptó; Explorar, Eliminar y
+    Combatir los revisa `revisarMisiones` tras cada turno (`avanzarMundoHasta`) y tras cada acción.
+    Cumplir: XP (con subida de nivel), Goirnos, reputación (+ con quien encarga, − con la enemiga) y
+    `MISION_COMPLETADA`; fallar por plazo o abandonar restan reputación.
+  - ✅ **40f-1 hecho (2026-10-05):** el narrador ya no crea misiones (`newQuest` se ignora; el prompt
+    lo pide siempre null) y solo cierra con `questProgress` las antiguas suyas (sin `tipoMision`);
+    las del motor las ve aparte («no las cierres tú»). La oferta fija de Gistera no cambia.
+    «¿Tienes trabajo?» en el menú de un NPC con nombre de una facción viva de la partida que no te
+    trata como enemigo (temperamento efectivo amigable, inofensivo o cauteloso): `ofrecerTrabajoDeNpc`
+    arma UNA misión personal con las plantillas (su nombre, +25 %, se entrega donde se aceptó, 1 día
+    para aceptarla) o responde que no tiene nada. **Falta en el frontend (40g):** mostrar esa
+    oferta; hoy la tarjeta del NPC solo se cierra.
+  - ✅ **40g hecho (2026-10-05):** `GET /saves/:id/zona` trae `tablon` (si hay uno en ese lugar) y
+    `GET /saves/:id/tablones/:buildingId` sus avisos (el del Reino, los de sus aliados); el panel de
+    zona enseña «📜 Tablón de avisos», que abre `AvisosModal.tsx` (recompensa, día en que se retira,
+    Aceptar con el motivo del backend si no se puede). «¿Tienes trabajo?» abre el mismo modal con la
+    misión personal o «no tiene nada». El panel de Misiones enseña en las del motor quién encarga,
+    progreso, día límite y Goirnos, con Entregar (las de entregar) y Abandonar con confirmación.
+    `MisionesContext` (lo provee GameView) evita pasar callbacks por cada panel.
+  - ✅ **Revisión con `/code-review` antes del PR (2026-10-05)**, 8 arreglos: las propuestas al Reino
+    ya no se pierden en el resumen de varios días (`agruparNoticias` las deja fuera); Eliminar solo
+    apunta a NPC con nombre; Combatir solo si la enemiga tiene plantillas que enviar; un NPC no
+    propone trabajo si ya hay misión abierta con su facción; no se acepta un aviso vencido, ni el de
+    explorar un lugar ya pisado, ni el de eliminar a alguien ya caído; el tablón no se reabre si se
+    cerró antes de cargar; abandonar es `MISION_ABANDONADA` en el Libro (antes «fallida»); cazar solo
+    cuenta en la región de la misión. **Deuda anotada:** `situacionFaccion.ts` repite el cálculo de
+    carencias y enemigos de la mesa de `decisionesFaccion.ts` con una regla de enemigo algo distinta
+    (unirlos puede cambiar decisiones: tarea aparte).
+  - **Pasos:** 40a plantillas, tipos y recompensas (puro) ✅ · 40b modelo y migración ✅ · 40c tablones
+    (sembrados y del Reino) ✅ · 40d generación en el avance diario ✅ · 40e aceptar, progreso, cumplir,
+    fallar y reputación ✅ · 40f oferta pendiente única (ADR), «¿Tienes trabajo?» del NPC y el narrador
+    deja de crear misiones (40f-1 ✅; 40f-2, la oferta única con su ADR, pendiente para el siguiente PR:
+    es interna y no cambia nada para quien juega) · 40g interfaz del tablón y del diario ✅.
 - **Hecho cuando:** `cronista:simular 60` produce caídas, escisiones, tormentas con daños, guerras
   y nacimientos coherentes; perdonar a un NPC lo hace volver en otra región.
 
@@ -1228,6 +1452,27 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   un NPC sin pelear (tirada de persuasión según si le gusta lo que dices; idea de la usuaria del
   2026-09-06) para que se una al Reino o te pase información de su facción. Abre la oportunidad
   del malestar interno del narrador de fondo (un descontento se ofrece). **M**
+- **CR-36** Las facciones del mundo construyen (`CR-34` Q3, va al `0.3` con el Reino profundo): obras
+  con coste y plazo según sus carencias (pozo, granero…), con los números de la economía de
+  supervivencia. **M**
+- **CR-37** Guerra de una facción contra el Reino de la jugadora (`CR-34` Q7, `0.3`): solo cuando
+  existan los edificios de defensa. **M**
+- **CR-39** Territorios de facción y expansión (`CR-34` Q14 y Q20, va al `0.3` con `CR-36`; la usuaria
+  eligió la versión completa, 2026-10-05). **L**
+  - Territorios reales de facción en el mundo de cada partida: uno por asentamiento de cada facción y
+    los lugares sin dueño que importan (puntos de agua como Los Manaderos y el Pozo de Cauce Viejo,
+    pastos, canteras…). Lista propuesta a Álvaro en `propuestas-lore.md` antes de sembrar.
+  - Quien domina cada región sale de esos territorios de la partida, no de `REGION_OWNING_FACTIONS`:
+    migrar a sus lectores (reputación, expediciones y riesgo de intercepción, mapa de zona, contexto
+    del narrador, `regionControlActual`). La tabla fija queda como valor inicial del catálogo.
+  - Expansión (Q14): reclamar un territorio sin dueño de su región o vecina; con dueño, solo en guerra
+    y por asalto (tirada ponderada por soldados; si gana, cambia de manos y sube la presión del
+    perdedor con `EXPANSION_TERRITORIAL_AGRESIVA`; si pierde, bajas de soldados). Nunca del Reino
+    (`CR-37`). Bebida (Q11): reclamar un territorio con fuente.
+  - Consecuencias de tener territorio (producción, agua, población) con los números de la economía
+    de supervivencia (pregunta 5 a Álvaro).
+- **CR-38** La disposición de una facción la da su líder (`CR-34` Q5): un rasgo del NPC que cambia con
+  la sucesión de `CR-11`. **S**
 - **Hecho cuando:** matar al hermano de un NPC abre un hilo de venganza y el vengador aparece;
   un compañero se queja y acaba yéndose si se le contraría repetidamente.
 

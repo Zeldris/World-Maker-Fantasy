@@ -8,6 +8,7 @@ import { ParcelaDetailModal } from '../ParcelaDetailModal'
 import { DefsFichas, EstandarteSalida, EtiquetaNombre, FichaJugador, FichaZona } from '../zona/FichaZona'
 import { COLOR_DISPOSICION, useEscalaPantalla } from '../../lib/zonaFichas'
 import type { LogEntry, ProfessionRecipeInfo, ZonaParcelaInfo } from '../../types'
+import { useMisiones } from '../../context/misionesContext'
 
 interface ZonaPanelProps {
   saveId: string
@@ -362,6 +363,8 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
   // `ParcelaDetailModal`, mismo criterio que `selectedSalida` (puramente informativo hasta que se
   // pulsa "Construir", nunca dispara movimiento/colisión).
   const [selectedParcela, setSelectedParcela] = useState<ZonaParcelaInfo | null>(null)
+  // CR-40 (40g): abrir el tablón de avisos (lo provee GameView; sin él, no sale el botón).
+  const misiones = useMisiones()
   // Sistema de movimiento por cuadrícula (2026-09-08) — mensaje simple de colisión/aviso ("por
   // ahora, acabaremos metiendo una animación" — placeholder consciente hasta que Franja 3 conecte
   // esto con combate/Interactuar real). `movimientoEnCurso` deshabilita nuevos clics mientras se
@@ -887,7 +890,19 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
 
   return (
     <div className={`flex flex-col gap-3 ${columnasAncho ? 'h-full min-h-0' : ''}`}>
-      <p className="text-sm font-medium text-wood-100">{data.locationName}</p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-medium text-wood-100">{data.locationName}</p>
+        {/* CR-40 (40g): el tablón de avisos de este lugar (de una facción o del Reino). */}
+        {data.tablon && misiones && (
+          <button
+            type="button"
+            onClick={() => misiones.abrirTablon(data.tablon!.buildingId)}
+            className="rounded border border-accent-600/60 bg-accent-500/10 px-2.5 py-1 text-xs text-accent-100 hover:bg-accent-500/20"
+          >
+            📜 Tablón de avisos{data.tablon.faccion ? ` · ${data.tablon.faccion}` : ''}
+          </button>
+        )}
+      </div>
       {/* Pieza 2 (2026-09-09) — recuerda dónde vive el movimiento real cuando esta vista es solo
           informativa, para no dejar al jugador buscando un clic que ya no hace nada aquí. */}
       {soloConsulta && (

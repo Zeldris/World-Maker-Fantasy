@@ -55,12 +55,15 @@ describe('decrementPopulationOnDeath', () => {
   // Ahora es un `updateMany` atómico con `{ decrement: 1 }`, guardado por `poblacion: { gt: 0 } }`.
   it('resta 1 a la fila que corresponde de forma atómica, sin leer nada antes', async () => {
     const updateMany = vi.fn().mockResolvedValue({ count: 1 });
-    const tx = { worldPopulation: { updateMany }, save: saveClonada };
+    // CR-40 (40e): la muerte de fauna también hace avanzar las misiones de cazar esa especie.
+    const quests = vi.fn().mockResolvedValue([]);
+    const tx = { worldPopulation: { updateMany }, save: saveClonada, quest: { findMany: quests } };
     await decrementPopulationOnDeath(tx as any, 'save1', null, 'murgol', 'Las Llanuras del Viento Rojo');
     expect(updateMany).toHaveBeenCalledWith({
       where: { saveId: 'save1', targetType: 'FAUNA', targetSlug: 'murgol', poblacion: { gt: 0 } },
       data: { poblacion: { decrement: 1 } },
     });
+    expect(quests).toHaveBeenCalledWith({ where: { saveId: 'save1', status: 'ACTIVA', tipoMision: 'CAZAR' } });
   });
 
   it('el guard poblacion > 0 evita bajar de 0 sin necesidad de releer nada', async () => {

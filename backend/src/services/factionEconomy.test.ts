@@ -1,13 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { worldFictionDay, pendingFactionDays, pendingWeeks, tickFactionOneDay, productRecipesForOficio, pickDailyProduct, cabeEnStock, TOPE_STOCK_FACCION_POR_SLUG, MAX_DIAS_CATCHUP_FACCION } from './factionEconomy.js';
+import { pendingFactionDays, pendingWeeks, tickFactionOneDay, productRecipesForOficio, pickDailyProduct, cabeEnStock, TOPE_STOCK_FACCION_POR_SLUG, MAX_DIAS_CATCHUP_FACCION } from './factionEconomy.js';
 import { DEFAULT_KINGDOM_STATS } from './kingdomTick.js';
 
 describe('factionEconomy — funciones puras (Fase 4, H-6/H-2/H-4)', () => {
-  it('worldFictionDay usa el máximo de las partidas del mundo', () => {
-    expect(worldFictionDay([])).toBeNull();
-    expect(worldFictionDay([1440 * 3 + 5, 1440 * 5 + 10, 100])).toBe(5);
-  });
-
   it('pendingFactionDays: sin línea base = 0; cuenta días cruzados; acota el catch-up', () => {
     expect(pendingFactionDays(null, 10)).toBe(0);
     expect(pendingFactionDays(10, 10)).toBe(0);

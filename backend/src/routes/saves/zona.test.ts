@@ -76,6 +76,8 @@ vi.mock('../../lib/prisma.js', () => ({
     locationLink: { findMany: (...args: unknown[]) => findManyLocationLink(...args) },
     locationVisit: { findMany: (...args: unknown[]) => findManyLocationVisit(...args) },
     parcela: { findMany: (...args: unknown[]) => findManyParcela(...args) },
+    // CR-40 (40g): tablón de avisos del lugar (ninguno en estos tests).
+    building: { findFirst: async () => null },
     harvestYield: { findMany: (...args: unknown[]) => findManyHarvestYield(...args) },
     // Fase D (hito 0.1): control de región desde FactionRelation; sin filas, cae a la agenda (como antes).
     factionRelation: { findMany: async () => [] },

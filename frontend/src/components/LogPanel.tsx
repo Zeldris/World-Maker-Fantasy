@@ -7,7 +7,7 @@ import { CombatExchangeBadge } from './CombatExchangeBadge'
 import { DiceRollReveal } from './DiceRollReveal'
 import { PanelRivets } from './Rivet'
 import { EnciclopediaLinkedText } from './EnciclopediaLinkedText'
-import { NoticiaMundo } from './NoticiaMundo'
+import { NoticiaMundo, type ResponderPropuesta } from './NoticiaMundo'
 import { useEnciclopediaLink } from '../context/useEnciclopediaLink'
 import { OfferCard } from './OfferCard'
 import { combatKeyFor } from '../lib/gameViewHelpers'
@@ -46,6 +46,9 @@ interface LogPanelProps {
   /// glifo: GameView.tsx pasa uno que apunta hacia el borde de pantalla más cercano a este panel.
   onCollapse?: () => void
   collapseIcon?: string
+  /// CR-34 (34e): responder a la propuesta de una facción al Reino (noticia de «El mundo»). Sin él,
+  /// los botones salen deshabilitados.
+  onResponderPropuesta?: ResponderPropuesta
   /// Alternar de canal (2026-08-17, log de Reino que se alterna con el de mundo, uno u otro,
   /// nunca los dos a la vez) — sin `onToggleView`, no sale ningún botón (mismo patrón opcional
   /// que `onCollapse`). `toggleViewLabel` es el texto del botón (apunta a la vista A LA QUE SE
@@ -205,6 +208,7 @@ export const LogPanel = memo(function LogPanel({
   combate,
   onCollapse,
   collapseIcon,
+  onResponderPropuesta,
   onToggleView,
   toggleViewLabel,
   characterName,
@@ -435,6 +439,7 @@ export const LogPanel = memo(function LogPanel({
                 <NoticiaMundo
                   text={entry.text}
                   noticia={entry.noticia}
+                  onResponderPropuesta={onResponderPropuesta}
                   texto={(t) => (
                     <EnciclopediaLinkedText text={t} index={enciclopediaIndex} onDetail={(x) => onEntityDetail?.(x)} onQuickInsert={(x) => onEntityQuickInsert?.(x)} />
                   )}

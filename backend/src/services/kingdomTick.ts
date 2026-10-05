@@ -75,6 +75,20 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
+/// Puro: lo que gana (o pierde, si es negativo) un reino en un día sin contar su reserva: trabajadores
+/// y `extra` (producción de edificios de una facción) frente a bocas y soldados. Mismas cifras que
+/// `tickKingdomOneDay`; lo usan las carencias de las decisiones de facción (CR-34).
+export function balanceDiario(stats: KingdomStatsBlock, extra: { comida: number; riqueza: number } = { comida: 0, riqueza: 0 }): { comida: number; bebida: number; riqueza: number; consumoComida: number; sueldos: number } {
+  const bocas = stats.poblacion + stats.soldados + stats.visitantes;
+  return {
+    comida: stats.trabajadores * COMIDA_POR_TRABAJADOR + extra.comida - bocas * CONSUMO_POR_BOCA,
+    bebida: -bocas * CONSUMO_POR_BOCA,
+    riqueza: stats.trabajadores * RIQUEZA_POR_TRABAJADOR + extra.riqueza - stats.soldados * MANTENIMIENTO_POR_SOLDADO,
+    consumoComida: bocas * CONSUMO_POR_BOCA,
+    sueldos: stats.soldados * MANTENIMIENTO_POR_SOLDADO,
+  };
+}
+
 /// Puro: un solo día de reino. Superávit de comida Y bebida sube la felicidad; déficit de
 /// cualquiera de las dos la baja — el propio défict de recursos ya se clampa en 0 (no hay hambruna
 /// numérica negativa, la consecuencia real vive en la felicidad, no en un contador que se hunde).
@@ -129,7 +143,7 @@ export function daysCrossed(minutosAntes: number, minutosDespues: number): numbe
   return Math.floor(minutosDespues / 1440) - Math.floor(minutosAntes / 1440);
 }
 
-/// (Fase 4 oct-2026: se aplica desde `advanceFactionEconomy`/worldTick, una vez por mundo y día — ya no en el turno.)
+/// (Se aplica desde `producirFacciones`, en el avance diario de cada partida — ya no en el turno.)
 /// Producción de facción agregada (docs/rpgtarkor/sistemas-reino/edificios-de-oficio.md § 4/§ 7,
 /// 2026-09-28, decisión de Álvaro): el Almacén de Reino (`AlmacenItem`) es solo del jugador (§
 /// 4.4-ter) — las facciones NO tienen objetos reales, solo un número agregado por día a
@@ -145,7 +159,8 @@ const COCINA_RECIPE_KEYS = new Set(['cocina', 'cocina-obrador', 'cocina-gran-obr
 /// agregado — el salón (`*-sedsar`) y la boca de mina/embarcadero cuentan igual que cualquier otro
 /// taller (dan riqueza, no comida), pero el propio salón (`Ketg'sedsar`...) NO es un edificio de
 /// oficio y no produce nada — se excluye explícitamente.
-const SALON_RECIPE_KEYS = new Set(['ketg-sedsar', 'helsig-sedsar', 'goshg-sedsar']);
+// CR-40: el tablón de avisos tampoco produce (no es un edificio de oficio).
+const SALON_RECIPE_KEYS = new Set(['ketg-sedsar', 'helsig-sedsar', 'goshg-sedsar', 'tablon-avisos']);
 
 export interface FactionBuildingForTick {
   recipeKey: string | null;

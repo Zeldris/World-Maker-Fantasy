@@ -58,6 +58,54 @@ clanes escindidos).
 
 ---
 
+2026-10-05 — Disposición de cada facción para sus decisiones (CR-34)
+Estado: SIN REVISAR
+
+Qué se propone: las facciones del mundo ya deciden solas (pactos, guerra, paz) según la Inteligencia
+de su líder y sus carencias. Para que dos facciones en la misma situación no actúen igual, cada una
+tiene una **disposición** que inclina sus elecciones: **belicosa** (saqueo, guerra, conquista),
+**mercantil** (tratados; paz antes que guerra), **recelosa** (rechaza pactos, defiende lo suyo, casi
+nunca ataca primero) o **neutral**. Hoy todas son neutrales; esta es la propuesta sacada de su
+descripción:
+
+| Facción | Disposición | Por qué |
+|---|---|---|
+| Clan Serhu | Belicosa | Clan del usurpador Ketg, en campaña contra Helsig y Goshg |
+| Clan Helsig | Recelosa | La montaña manda; raciona y se defiende, comercia lo justo |
+| Clan Goshg | Recelosa | Dos tribus pequeñas hermanadas que se cierran sobre sí mismas |
+| Concordia de Hierro | Belicosa | Alianza militar Goirnte nacida tras El Detonante |
+| Los del Obelisco | Mercantil | Moderados de la ley: prefieren el edicto y el pacto a la guerra |
+| Keseg Sael | Recelosa | El clan que no da su nombre hacia fuera |
+| Keseg Prisilke | Neutral | Viven de la caza y la madera, sin rasgo claro |
+| Feg Tusha | Belicosa | La manada más numerosa y salvaje |
+| Feg Ger | Mercantil | La única manada que comercia de verdad (El Vergel de Kegi) |
+
+Por qué: decisión de la usuaria (2026-10-04, Q5 y Q16 de `CR-34`). Más adelante la disposición la
+dará el líder (`CR-38`) y cambiará con la sucesión.
+
+Archivos que tocaría si se aprueba: `docs/rpgtarkor/lore-mundo/facciones*.md` (una línea por
+facción) y, fuera de lore, el sembrado de `Faction.disposicion` en `backend/src/scripts/`.
+
+2026-10-05 — Nombre del tablón de avisos de cada pueblo (CR-40)
+Estado: SIN REVISAR
+
+Qué se propone: las misiones secundarias del motor se cogen hablando con NPC o en un **tablón de
+avisos** del interior de las ciudades (edificio que también se puede construir en el Reino). Nombre
+propio por pueblo:
+
+| Pueblo | Nombre | Cómo es |
+|---|---|---|
+| Orcos | Poste de cacería | Poste con pieles clavadas y marcas talladas de cada encargo |
+| Goirntes | Estela de edictos menores | El obelisco de la ley, a escala de barrio: avisos grabados |
+| Nabieus | Muro de los susurros | Muro de nudos y cordeles; cada nudo, un aviso que solo se lee de cerca |
+| Faerus | Árbol de las marcas | Árbol con marcas de garra y olor; la manada sabe leerlas |
+
+Por qué: decisión de la usuaria (2026-10-05, Q11 de `CR-40`): «tablón de misiones» suena a
+videojuego y cada pueblo tendría el suyo.
+
+Archivos que tocaría si se aprueba: `docs/rpgtarkor/sistemas-reino/construcciones-reino.md` (el
+edificio) y las fichas de cultura de cada pueblo; fuera de lore, `backend/src/services/construction.ts`.
+
 ## Categoría: Razas y cultura
 
 ---

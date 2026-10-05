@@ -199,13 +199,14 @@ en CI, y la latencia está medida. Se etiqueta `v0.1.0-alpha`.
   tiene que salir de este hito. **[H]**
 - **IA de decisión de facción** según la Inteligencia de su líder (`liderNpcId`): construir,
   expandirse, pactar, declarar la guerra, lanzar expediciones. Las carencias de supervivencia son
-  sus disparadores. **[A]**
+  sus disparadores. **[A]** → ~~`CR-34`~~ ✅ 2026-10-05 (y ~~`CR-35`~~ ✅; construir `CR-36`, guerra contra el Reino `CR-37` y
+  territorios y expansión `CR-39` van al `0.3`).
 - **Motor de eventos de mundo unificado**: eventos discretos que alimentan relaciones, lore y
   misiones; función pura llamada desde el turno y desde `worldTick`. **[A]**
   Diseño completo en [roadmap-cronista.md](roadmap-cronista.md) § 7 (reacciones, consecuencias
   aplazadas, narrador de fondo); requiere antes el mundo por partida (Cronista, Fase 2).
 - **Misiones secundarias por motor** en vez de por el LLM (momento de revisitar la fusión de los
-  tres `pending*Offer`). **[A]**
+  tres `pending*Offer`). **[A]** → `CR-40` (diseño en curso, 2026-10-05).
 - **IA de combate NPC, tramo Inteligencia 20+**: retirada (decidida: huida inmediata con tirada),
   concentrar ataques en el mismo objetivo y órdenes de un capitán. **[A]**
 - **Comercio de volumen Reino↔facción**: todo el catálogo, según el origen del objeto y el oficio

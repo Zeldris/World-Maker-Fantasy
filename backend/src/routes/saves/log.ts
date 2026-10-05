@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { calendarioFor } from '../../services/worldClock.js';
 import { toFrontendLogEntry } from './shared.js';
+import { responderPropuesta } from '../../services/cronista/decisionesFaccion.js';
 
 /// Registro de la partida (deuda técnica 2026-07-30, split de saves.ts): guardar qué entidad se
 /// mostró como banner bajo una narración, y el Diario completo agrupado por día — a diferencia de
@@ -50,6 +51,16 @@ export async function logRoutes(app: FastifyInstance) {
       take: 50,
     });
     return { entradas: nuevas.map(toFrontendLogEntry) };
+  });
+
+  // CR-34 (34e, Q15): la jugadora acepta o rechaza la propuesta de tratado o alianza de una facción
+  // (noticia de «El mundo» con plazo). 404 si no existe o ya se respondió o caducó.
+  app.post<{ Params: { id: string; propuestaId: string }; Body: { acepta?: unknown } }>('/saves/:id/mundo/propuestas/:propuestaId', async (request, reply) => {
+    const { id, propuestaId } = request.params;
+    if (typeof request.body?.acepta !== 'boolean') return reply.status(400).send({ error: 'Falta "acepta" (true o false)' });
+    const r = await responderPropuesta(prisma, id, propuestaId, request.body.acepta);
+    if (!r) return reply.status(404).send({ error: 'La propuesta ya no está pendiente' });
+    return r;
   });
 
   // Registro completo de la partida, agrupado por día de ficción (rework 2026-07-24: "el log de

@@ -60,6 +60,8 @@ import { EnciclopediaLinkProvider } from '../context/EnciclopediaLinkContext'
 import { CompanerosPanel } from '../components/panels/CompanerosPanel'
 import { ReinoPanel, type ReinoSubTab } from '../components/panels/ReinoPanel'
 import { MisionesPanel } from '../components/panels/MisionesPanel'
+import { AvisosModal } from '../components/AvisosModal'
+import { MisionesContext, type MisionesValue } from '../context/misionesContext'
 import { HabilidadesPanel } from '../components/panels/HabilidadesPanel'
 import { CombatComposer } from '../components/CombatComposer'
 import { CombatPanel } from '../components/CombatPanel'
@@ -94,6 +96,12 @@ import {
   getRecolectarLocalizado,
   resolveImageUrl,
   resolveDeath,
+  responderPropuesta,
+  getAvisosTablon,
+  aceptarAviso,
+  entregarMision,
+  abandonarMision,
+  type AvisoMisionInfo,
   type SaveDetail,
 } from '../lib/api'
 import { characterWaitingFlavor, combatWaitingFlavor, worldWaitingFlavor, useRotatingFlavor } from '../lib/waitingFlavor'
@@ -476,6 +484,8 @@ export function GameView() {
   const DEATH_PENDING_DISABLED_TABS: PanelId[] = ['inventario', 'companeros', 'reino', 'habilidades']
 
   const [quests, setQuests] = useState<QuestInfo[]>([])
+  // CR-40 (40g): avisos abiertos (un tablón o la propuesta de un NPC).
+  const [avisosAbiertos, setAvisosAbiertos] = useState<{ titulo: string; subtitulo?: string; avisos: AvisoMisionInfo[]; vacio: string; cargando: boolean } | null>(null)
 
   // Bloque de combate (deuda técnica 2026-08-21) — ver src/hooks/useCombatFlow.ts para la lógica
   // completa. `combateIniciado`/`lastInitiativeRoll` siguen viviendo aquí (los escribe también
@@ -809,6 +819,49 @@ export function GameView() {
     if (!saveId) return
     const save = await getSave(saveId)
     syncFromSave(save)
+  }
+
+  // CR-40 (40g): misiones secundarias del motor — abrir un tablón, la propuesta de un NPC, aceptar,
+  // entregar y abandonar. El backend escribe el registro; aquí se resincroniza la partida.
+  const misionesValue: MisionesValue = {
+    abrirTablon: (buildingId) => {
+      if (!saveId) return
+      setAvisosAbiertos({ titulo: 'Tablón de avisos', avisos: [], vacio: '', cargando: true })
+      // Solo si el modal sigue abierto esperando esta lectura: cerrarlo (o abrir otra cosa) antes de
+      // que llegue la respuesta no debe reabrirlo.
+      getAvisosTablon(saveId, buildingId)
+        .then(({ tablon, avisos }) =>
+          setAvisosAbiertos((prev) =>
+            prev?.cargando
+              ? {
+                  titulo: tablon.nombre.charAt(0).toUpperCase() + tablon.nombre.slice(1),
+                  subtitulo: tablon.faccion ?? 'Avisos de las facciones con las que tienes tratado o alianza',
+                  avisos,
+                  vacio: 'No hay avisos colgados ahora mismo. Vuelve en unos días.',
+                  cargando: false,
+                }
+              : prev,
+          ),
+        )
+        .catch(() => setAvisosAbiertos((prev) => (prev?.cargando ? { titulo: 'Tablón de avisos', avisos: [], vacio: 'No se pudo leer el tablón.', cargando: false } : prev)))
+    },
+    mostrarOfertaNpc: (npcName, aviso) =>
+      setAvisosAbiertos({ titulo: `Trabajo de ${npcName}`, avisos: aviso ? [aviso] : [], vacio: `${npcName} no tiene ningún encargo para ti ahora mismo.`, cargando: false }),
+  }
+  async function handleAceptarAviso(avisoId: string) {
+    if (!saveId) return
+    await aceptarAviso(saveId, avisoId)
+    await refreshSave()
+  }
+  async function handleEntregarMision(questId: string) {
+    if (!saveId) return
+    await entregarMision(saveId, questId)
+    await refreshSave()
+  }
+  async function handleAbandonarMision(questId: string) {
+    if (!saveId) return
+    await abandonarMision(saveId, questId)
+    await refreshSave()
   }
 
   // Fase G del 0.1 (hallazgo G12): al morir en combate, la respuesta del turno no trae la nota de
@@ -1309,6 +1362,7 @@ export function GameView() {
     setQuests,
     setAprenderOficioModalOpen,
     setActivePanel,
+    onOfertaTrabajo: misionesValue.mostrarOfertaNpc,
     openCombat: combat.openCombat,
     handleSubmit,
     refetchEnciclopedia,
@@ -1411,6 +1465,7 @@ export function GameView() {
     hungerThirstModalOpen && { id: 'comer', nivel: 'accion' },
     entregaModalOpen && saveId && { id: 'entregar', nivel: 'accion' },
     aprenderOficioModalOpen && saveId && { id: 'oficio', nivel: 'accion' },
+    avisosAbiertos && { id: 'avisos', nivel: 'accion' },
     saquearZonaModalOpen && saveId && { id: 'saquear', nivel: 'accion' },
     postCombatTarget && { id: 'botin', nivel: 'accion' },
     recursoDetalle && { id: 'recurso', nivel: 'accion' },
@@ -1555,6 +1610,7 @@ export function GameView() {
       value={{ enciclopediaIndex, onEntityDetail: handleEntityDetailNavigate, onEntityQuickInsert: handleEntityQuickInsert }}
     >
     <CapasContext.Provider value={estadoCapas}>
+    <MisionesContext.Provider value={misionesValue}>
     <div className="relative flex min-h-0 flex-1 flex-col">
       <GameHeader
         characterName={characterName}
@@ -1738,6 +1794,8 @@ export function GameView() {
               isThinking={worldLogView === 'world' && worldThinking}
               thinkingText={worldFlavor}
               emptyHint={worldLogView === 'world' ? 'El mundo todavía no ha mostrado sus cartas.' : 'Todavía no ha pasado nada en tu reino.'}
+              // CR-34 (34e): Aceptar/Rechazar la propuesta de una facción al Reino.
+              onResponderPropuesta={saveId ? (propuestaId: string, acepta: boolean) => responderPropuesta(saveId, propuestaId, acepta).then((r) => r.respuesta) : undefined}
               onCollapse={() => setCollapsedSide('world')}
               collapseIcon="›"
               // Alternar Mundo/Reino (2026-08-17) — solo tiene sentido ofrecerlo una vez hay reino
@@ -2041,6 +2099,20 @@ export function GameView() {
         </Capa>
       )}
 
+      {avisosAbiertos && (
+        <Capa id="avisos">
+          <AvisosModal
+            titulo={avisosAbiertos.titulo}
+            subtitulo={avisosAbiertos.subtitulo}
+            avisos={avisosAbiertos.avisos}
+            vacio={avisosAbiertos.vacio}
+            cargando={avisosAbiertos.cargando}
+            onAceptar={handleAceptarAviso}
+            onClose={() => setAvisosAbiertos(null)}
+          />
+        </Capa>
+      )}
+
       {aprenderOficioModalOpen && saveId && (
         <Capa id="oficio">
         <AprenderOficioModal
@@ -2222,7 +2294,7 @@ export function GameView() {
           {panelMostrado === 'companeros' && saveId && (
             <CompanerosPanel saveId={saveId} companions={companions} inventory={inventory} onRefreshSave={refreshSave} plantillasEquipo={plantillasEquipo} characterName={characterName ?? undefined} />
           )}
-          {panelMostrado === 'misiones' && <MisionesPanel quests={quests} />}
+          {panelMostrado === 'misiones' && <MisionesPanel quests={quests} onEntregar={handleEntregarMision} onAbandonar={handleAbandonarMision} />}
           {panelMostrado === 'reino' && saveId && (
             <ReinoPanel
               saveId={saveId}
@@ -2279,6 +2351,7 @@ export function GameView() {
       )}
       <Notificaciones notificaciones={notificaciones} onDescartar={descartarNotificacion} />
     </div>
+    </MisionesContext.Provider>
     </CapasContext.Provider>
     </EnciclopediaLinkProvider>
   )
