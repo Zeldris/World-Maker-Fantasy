@@ -1392,8 +1392,16 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     los de cada pueblo), copiado al clonar el mundo y, en partidas anteriores, de forma perezosa
     (`cronista/tablones.ts`); no produce en la economía de facción; receta del Reino
     `tablon-avisos` (común, con Ayuntamiento, uno por región).
+  - ✅ **40d hecho (2026-10-05):** `cronista/generarMisiones.ts`, tras las decisiones de facción en cada
+    día simulado: retira los avisos vencidos (7 días) y rellena cada tablón de facción hasta 3 avisos
+    sin repetir tipo ni clave (tipo + objetivo + quien encarga). Candidatas del mundo de la partida:
+    Cazar (especie > 80 % en la región), Entregar (recurso abundante de la región, o comida si la
+    facción pasa hambre), Combatir (facción en tensión o guerra, lugar abierto de la región), Eliminar
+    (guerrero con nombre de la facción en guerra, nunca su líder) y Explorar (lugar de la región no
+    visitado). Ayudar sigue siendo la oportunidad de `CR-12`. Noticia «X ha colgado nuevos avisos en…».
+    De paso: `alimento` también cuenta como comida en las expediciones por hambre (34b).
   - **Pasos:** 40a plantillas, tipos y recompensas (puro) ✅ · 40b modelo y migración ✅ · 40c tablones
-(sembrados y del Reino) ✅ · 40d generación en el avance diario ✅ · 40e aceptar, progreso, cumplir,
+    (sembrados y del Reino) ✅ · 40d generación en el avance diario ✅ · 40e aceptar, progreso, cumplir,
     fallar y reputación · 40f oferta pendiente única (ADR), «¿Tienes trabajo?» del NPC y el narrador
     deja de crear misiones · 40g interfaz del tablón y del diario.
 - **Hecho cuando:** `cronista:simular 60` produce caídas, escisiones, tormentas con daños, guerras
