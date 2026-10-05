@@ -939,15 +939,18 @@ y «Madurez, esperanza de vida y edades de los NPC por raza»)
 **Dependencias:** ninguna para la tabla; la población del Reino depende de la vivienda (Fase E del 0.1)
 **Archivos destino:**
 - `docs/rpgtarkor/lore-mundo/razas.md` (madurez y esperanza de vida por raza)
+- `docs/canon-opencode/00-nucleo.md` y `docs/canon-opencode/02-razas.md` (hoy dicen que los orcos
+  viven 40-50 años: pasa a 60)
 - `docs/rpgtarkor/sistemas-reino/expediciones-poblacion.md` (población del Reino)
 - `docs/rpgtarkor/sistemas-reino/construcciones-reino.md` (vivienda y plazas)
 - `docs/rpgtarkor/personajes/npcs.md` (edades, cuando Álvaro las fije)
 
-**Notas del aprobador:** **corrección importante:** el canon dice que los orcos viven **40-50
-años** (`00-nucleo.md`); el borrador de CR-13 usaba 60, mal. Las demás cifras se reescalan para que
-encajen con esa referencia. **Pendiente de código:** `backend/src/services/cronista/edades.ts`
-(`CICLO_VITAL`) a esta tabla. Del Reino, lo ya hecho por `CR-13` (herencia, crecer, envejecer,
-nacimientos de NPC) sirve de base.
+**Notas del aprobador:** **cifras decididas por la usuaria (2026-10-05)**. Cambian el canon de los
+orcos: hasta ahora vivían 40-50 años (`00-nucleo.md`, `02-razas.md`) y pasan a **60**. Los Faerus,
+con **140 años** de vida, son pocos porque se reproducen poco y despacio para lo que viven. **Pendiente
+de código:** `backend/src/services/cronista/edades.ts` (`CICLO_VITAL`): los orcos y los Nabieus ya
+coinciden; cambian los Faerus (40 → 140 de esperanza) y los Goirntes (madurez 16 → 14). Del Reino, lo
+ya hecho por `CR-13` (herencia, crecer, envejecer, nacimientos de NPC) sirve de base.
 
 ---
 
@@ -955,12 +958,12 @@ nacimientos de NPC) sirve de base.
 
 **Ciclo vital por pueblo** (un año de ficción son 120 días):
 
-| Pueblo | Madurez | Esperanza de vida | Vejez desde | Fuente |
+| Pueblo | Madurez | Esperanza de vida | Vejez desde | Nota |
 |---|---|---|---|---|
-| Orcos | 10 | 45 (40-50) | 36 | Canon (`clanes-orcos.md`, `00-nucleo.md`) |
-| Faerus | 8 | 35 | 28 | Provisional: manada de vida corta e intensa |
-| Nabieus | 14 | 60 | 48 | Provisional: pueblo paciente, de vida más larga |
-| Goirntes | 16 | 55 | 44 | Provisional: crianza larga y formal |
+| Orcos | 10 | 60 | 48 | Madurez canon (cacería ritual, `clanes-orcos.md`); vida decidida por la usuaria |
+| Faerus | 8 | 140 | 112 | Maduran pronto y viven mucho, pero son pocos: tienen pocas crías |
+| Nabieus | 14 | 90 | 72 | Pueblo paciente, de vida larga |
+| Goirntes | 14 | 70 | 56 | |
 
 - Antes de la madurez no trabajan, ni combaten, ni lideran; sus atributos crecen hasta ella.
 - En la vejez pierden fuerza, destreza y constitución con los años y pueden morir de viejos.
@@ -979,7 +982,7 @@ nacimientos de NPC) sirve de base.
 5. **Salidas:** con la felicidad muy baja, un súbdito se va y vuelve a la población de su raza.
 
 **Preguntas abiertas resueltas:**
-1. Edad adulta y vida de Goirntes, Nabieus y Faerus → la tabla de arriba (provisional).
+1. Edad adulta y vida de cada pueblo → la tabla de arriba (decidida por la usuaria, 2026-10-05).
 2. Escala de tiempo → sin comprimir (Álvaro, 2026-09-29).
 3. ¿Puede vivir en el Reino un súbdito de otra raza? → Sí (los compañeros capturados ya lo hacen),
    pero solo tiene crías con alguien de su raza.
