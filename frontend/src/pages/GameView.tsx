@@ -94,6 +94,7 @@ import {
   getRecolectarLocalizado,
   resolveImageUrl,
   resolveDeath,
+  responderPropuesta,
   type SaveDetail,
 } from '../lib/api'
 import { characterWaitingFlavor, combatWaitingFlavor, worldWaitingFlavor, useRotatingFlavor } from '../lib/waitingFlavor'
@@ -1738,6 +1739,8 @@ export function GameView() {
               isThinking={worldLogView === 'world' && worldThinking}
               thinkingText={worldFlavor}
               emptyHint={worldLogView === 'world' ? 'El mundo todavía no ha mostrado sus cartas.' : 'Todavía no ha pasado nada en tu reino.'}
+              // CR-34 (34e): Aceptar/Rechazar la propuesta de una facción al Reino.
+              onResponderPropuesta={saveId ? (propuestaId: string, acepta: boolean) => responderPropuesta(saveId, propuestaId, acepta).then((r) => r.respuesta) : undefined}
               onCollapse={() => setCollapsedSide('world')}
               collapseIcon="›"
               // Alternar Mundo/Reino (2026-08-17) — solo tiene sentido ofrecerlo una vez hay reino

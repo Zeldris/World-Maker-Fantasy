@@ -34,6 +34,8 @@ export interface OportunidadNoticia {
 export interface MetaNoticia {
   categoria?: CategoriaNoticia;
   oportunidad?: OportunidadNoticia;
+  /// CR-34 (34e): propuesta de una facción al Reino, con Aceptar y Rechazar.
+  propuesta?: { id: string; faccion: string; tipo: 'TRATADO' | 'ALIANZA'; venceEn: number; respuesta?: 'ACEPTADA' | 'RECHAZADA' | 'CADUCADA' };
   resumen?: true;
   /// En un resumen: los metadatos de cada línea (en orden; null si la línea no tenía).
   lineas?: (MetaNoticia | null)[];

@@ -53,3 +53,13 @@ describe('decisiones de facción (CR-34 34c)', () => {
     expect(aceptaPropuesta('PEDIR_PAZ', vista({ tramo: 'ESTRATEGA', disposicion: 'BELICOSA', soldados: 500, carencias: [{ tipo: 'COMIDA', gravedad: 'LEVE' }] }), { id: 'p', soldados: 60 }, () => 0.5)).toBe(false);
   });
 });
+
+describe('el Reino de la jugadora como destinatario (CR-34 34e, Q7)', () => {
+  it('se le proponen pactos o se le presiona, nunca una guerra ni una paz', () => {
+    const reino = (tipo: VistaRelacion['tipo']) => ({ ...rel('reino', tipo, 10), esReino: true });
+    expect(acciones(vista({ relaciones: [reino('NEUTRAL')] }))).toEqual(['PROPONER_TRATADO:reino']);
+    expect(acciones(vista({ tramo: 'ESTRATEGA', soldados: 1000, disposicion: 'BELICOSA', relaciones: [reino('TENSION')] }))).toEqual([]);
+    expect(acciones(vista({ carencias: [{ tipo: 'SOLDADOS', gravedad: 'GRAVE', enemigoId: 'reino' }], relaciones: [reino('GUERRA')] }))).toEqual([]);
+    expect(acciones(vista({ disposicion: 'BELICOSA', relaciones: [reino('NEUTRAL')] }))).toContain('PRESIONAR:reino');
+  });
+});

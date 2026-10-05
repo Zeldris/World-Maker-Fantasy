@@ -1,11 +1,51 @@
-import type { ReactNode } from 'react'
-import type { NoticiaMeta } from '../types'
+import { useState, type ReactNode } from 'react'
+import type { NoticiaMeta, RespuestaPropuesta } from '../types'
 import { diaDeFiccion, ICONO_CATEGORIA } from '../lib/noticias'
 
 // UX-38 (hito 0.2, roadmap-front-ux.md § 4.7) — una noticia del canal «El mundo» con su categoría
 // (icono), la oportunidad que abre (dónde y hasta qué día) y, si es el resumen de varios días
 // («Mientras pasaban los días…», UX-31), plegada con una línea por noticia. Los nombres de
 // facciones, lugares y NPC ya son enlaces a su ficha: los pinta `texto` (EnciclopediaLinkedText).
+//
+// CR-34 (34e, Q15): una propuesta de tratado o alianza de una facción al Reino lleva Aceptar y
+// Rechazar mientras está pendiente; después, la respuesta.
+
+export type ResponderPropuesta = (propuestaId: string, acepta: boolean) => Promise<RespuestaPropuesta>
+
+const ETIQUETA_RESPUESTA: Record<RespuestaPropuesta, string> = { ACEPTADA: 'Aceptada', RECHAZADA: 'Rechazada', CADUCADA: 'Sin respuesta: rechazada' }
+
+function Propuesta({ propuesta, onResponder }: { propuesta: NonNullable<NoticiaMeta['propuesta']>; onResponder?: ResponderPropuesta }) {
+  const [respuesta, setRespuesta] = useState<RespuestaPropuesta | undefined>(propuesta.respuesta)
+  const [enviando, setEnviando] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  if (respuesta) {
+    return <span className="mt-1 block text-2xs text-wood-400">{ETIQUETA_RESPUESTA[respuesta]}</span>
+  }
+  const responder = async (acepta: boolean) => {
+    if (!onResponder) return
+    setEnviando(true)
+    setError(null)
+    try {
+      setRespuesta(await onResponder(propuesta.id, acepta))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo responder')
+    } finally {
+      setEnviando(false)
+    }
+  }
+  return (
+    <span className="mt-1.5 flex flex-wrap items-center gap-2 not-italic">
+      <span className="text-2xs text-wood-400">Hasta el día {diaDeFiccion(propuesta.venceEn)}</span>
+      <button type="button" disabled={enviando || !onResponder} onClick={() => responder(true)} className="rounded border border-accent-600/60 bg-accent-500/15 px-2 py-0.5 text-xs text-accent-100 hover:bg-accent-500/25 disabled:opacity-50">
+        Aceptar
+      </button>
+      <button type="button" disabled={enviando || !onResponder} onClick={() => responder(false)} className="rounded border border-wood-600/60 px-2 py-0.5 text-xs text-wood-200 hover:bg-wood-700/40 disabled:opacity-50">
+        Rechazar
+      </button>
+      {error && <span className="text-2xs text-red-300">{error}</span>}
+    </span>
+  )
+}
 
 function Linea({ text, noticia, texto }: { text: string; noticia: NoticiaMeta | null; texto: (t: string) => ReactNode }) {
   const categoria = noticia?.categoria ? ICONO_CATEGORIA[noticia.categoria] : null
@@ -27,7 +67,7 @@ function Linea({ text, noticia, texto }: { text: string; noticia: NoticiaMeta | 
   )
 }
 
-export function NoticiaMundo({ text, noticia, texto }: { text: string; noticia: NoticiaMeta; texto: (t: string) => ReactNode }) {
+export function NoticiaMundo({ text, noticia, texto, onResponderPropuesta }: { text: string; noticia: NoticiaMeta; texto: (t: string) => ReactNode; onResponderPropuesta?: ResponderPropuesta }) {
   if (noticia.resumen) {
     const [cabecera, ...lineas] = text.split('\n')
     return (
@@ -48,6 +88,7 @@ export function NoticiaMundo({ text, noticia, texto }: { text: string; noticia: 
   return (
     <p className="texto-narracion whitespace-pre-line">
       <Linea text={text} noticia={noticia} texto={texto} />
+      {noticia.propuesta && <Propuesta propuesta={noticia.propuesta} onResponder={onResponderPropuesta} />}
     </p>
   )
 }

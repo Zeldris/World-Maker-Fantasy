@@ -18,14 +18,17 @@
 // narrador de fondo según la importancia de su suceso (Q17), así que el Ritmo del mundo las gobierna.
 // Cada una queda en el Libro y llega a «El mundo» con el rumor por distancia (Q9).
 //
-// El Reino de la jugadora queda fuera (Q7: su propuesta es el paso 34e).
+// El Reino de la jugadora (Q7, paso 34e) solo recibe propuestas de tratado o alianza (una noticia con
+// Aceptar y Rechazar y 3 días de plazo; dejarla pasar es rechazarla) y presión de las belicosas;
+// nunca una guerra (`CR-37`). Él no decide aquí: responde la jugadora.
 import type { Disposicion, FactionRelationType, Prisma, PrismaClient } from '@prisma/client';
 import { tickFactionProduction } from '../kingdomTick.js';
 import { ETIQUETA_BANDA, stageForPresion, typeForPresion, PRESION_MAX, PRESION_MIN, PRESION_NEUTRAL } from '../factionRelations.js';
 import { carenciasDe, inteligenciaDelLider, tocaRevisar, tramoDeInteligencia, type Carencia, type Tramo } from './carencias.js';
 import { CATALOGO_SUCESOS, type TipoSuceso } from './catalogoSucesos.js';
 import { costeDe } from './narradorFondo.js';
-import { categoriaDeFamilia, darNoticia } from './noticias.js';
+import { categoriaDeFamilia, darNoticia, type MetaNoticia } from './noticias.js';
+import type { CtxConsecuencia } from './consecuencias.js';
 import { registrarSuceso, type ActorSuceso } from './sucesos.js';
 
 type Tx = Prisma.TransactionClient;
@@ -50,6 +53,8 @@ export interface VistaRelacion {
   soldadosOtro: number;
   /// Las dos están en tensión o guerra con una tercera.
   enemigoComun: boolean;
+  /// Es el Reino de la jugadora: solo se le proponen pactos o se le presiona (Q7).
+  esReino?: boolean;
 }
 
 export interface VistaFaccion {
@@ -101,11 +106,14 @@ export function opcionesDiplomaticas(v: VistaFaccion): Opcion[] {
         break;
       }
       case 'TENSION':
+        // Nunca contra el Reino de la jugadora (Q7, `CR-37`).
+        if (r.esReino) break;
         // El estratega nunca abre dos guerras a la vez (Q4).
         if (v.tramo === 'ESTRATEGA' && enGuerras > 0) break;
         push('DECLARAR_GUERRA', -0.5 + ventajaMilitar(v, r) + bono(v, { BELICOSA: 3, MERCANTIL: -2, RECELOSA: -3 }) + (v.disposicion === 'BELICOSA' && tiene(v, 'GOIRNOS') ? 1 : 0));
         break;
       case 'GUERRA': {
+        if (r.esReino) break;
         const contraEste = v.carencias.find((c) => c.tipo === 'SOLDADOS' && c.enemigoId === r.otroId);
         const perdiendo = contraEste ? (contraEste.gravedad === 'GRAVE' ? 4 : 2) : 0;
         push('PEDIR_PAZ', -0.5 + perdiendo + graves + bono(v, { MERCANTIL: 1, BELICOSA: -1 }));
@@ -176,10 +184,16 @@ export const SUCESO_DE_ACCION: Record<AccionDiplomatica, TipoSuceso> = {
 
 // ─────────────────────────── Orquestación por partida ───────────────────────────
 
-interface FaccionCargada {
+/// Lo justo de una facción para mover su relación con otra.
+interface Parte {
   id: string;
   slug: string;
   name: string;
+}
+
+interface FaccionCargada extends Parte {
+  /// El Reino de la jugadora: destinatario, nunca decide aquí.
+  esReino: boolean;
   disposicion: Disposicion;
   statsId: string;
   ultimaRevision: number | null;
@@ -211,7 +225,7 @@ class Mesa {
     const mios = hostiles(f.id);
     const relaciones = otras.map((o) => {
       const suyos = hostiles(o.id);
-      return { otroId: o.id, tipo: this.tipoPar(f.id, o.id), soldadosOtro: o.soldados, enemigoComun: [...mios].some((x) => x !== o.id && suyos.has(x)) };
+      return { otroId: o.id, tipo: this.tipoPar(f.id, o.id), soldadosOtro: o.soldados, enemigoComun: [...mios].some((x) => x !== o.id && suyos.has(x)), ...(o.esReino ? { esReino: true } : {}) };
     });
     const enemigos = otras.filter((o) => mios.has(o.id)).map((o) => ({ factionId: o.id, soldados: o.soldados }));
     const carencias = carenciasDe({ stats: f.stats, produccion: f.produccion, enemigos }, f.tramo ?? 'SENSATO');
@@ -244,11 +258,21 @@ export async function decidirFacciones(prisma: PrismaClient, saveId: string, dia
       const facciones: FaccionCargada[] = filas.map((f) => {
         const inteligencia = inteligenciaDelLider(f.liderNpc);
         return {
+          esReino: false,
           id: f.id, slug: f.slug, name: f.name, disposicion: f.disposicion, statsId: f.kingdomStats!.id, ultimaRevision: f.kingdomStats!.ultimaRevision,
           soldados: f.kingdomStats!.soldados, stats: f.kingdomStats!, produccion: tickFactionProduction(f.buildings),
           tramo: inteligencia === null ? null : tramoDeInteligencia(inteligencia),
         };
       });
+      // Q7: el Reino de la jugadora, solo como destinatario (su reino cuelga de la partida).
+      const reino = await tx.faction.findFirst({ where: { saveId, origenSlug: null, disueltaEn: null }, select: { id: true, slug: true, name: true } });
+      const statsReino = reino ? await tx.kingdomStats.findUnique({ where: { saveId } }) : null;
+      if (reino && statsReino) {
+        facciones.push({
+          esReino: true, ...reino, disposicion: 'NEUTRAL', statsId: statsReino.id, ultimaRevision: null, soldados: statsReino.soldados,
+          stats: statsReino, produccion: { comida: 0, riqueza: 0 }, tramo: null,
+        });
+      }
       const mesa = new Mesa(facciones);
       const ids = facciones.map((f) => f.id);
       for (const r of await tx.factionRelation.findMany({ where: { sourceFactionId: { in: ids }, targetFactionId: { in: ids } }, select: { sourceFactionId: true, targetFactionId: true, presion: true } })) {
@@ -261,6 +285,7 @@ export async function decidirFacciones(prisma: PrismaClient, saveId: string, dia
       let presupuesto = ws.presupuestoTension;
 
       for (const f of facciones) {
+        if (f.esReino) continue;
         const vista = mesa.vista(f);
         if (!tocaRevisar(dia, f.ultimaRevision, vista.carencias)) continue;
         resultado.revisadas++;
@@ -294,6 +319,10 @@ interface CtxDecision {
 
 /// Aplica la decisión. Devuelve si la otra aceptó (null si no había nada que aceptar).
 async function aplicarDecision(ctx: CtxDecision, f: FaccionCargada, o: FaccionCargada, accion: AccionDiplomatica, random: () => number): Promise<boolean | null> {
+  if (o.esReino && (accion === 'PROPONER_TRATADO' || accion === 'PROPONER_ALIANZA')) {
+    // Responde la jugadora: sin respuesta todavía (null); false si ya tenía una propuesta suya pendiente.
+    return (await proponerAlReino(ctx, f, accion === 'PROPONER_TRATADO' ? 'TRATADO' : 'ALIANZA')) ? null : false;
+  }
   switch (accion) {
     case 'PROPONER_TRATADO':
     case 'PROPONER_ALIANZA':
@@ -322,7 +351,7 @@ async function aplicarDecision(ctx: CtxDecision, f: FaccionCargada, o: FaccionCa
   }
 }
 
-async function guardarPresion(ctx: CtxDecision, origen: FaccionCargada, destino: FaccionCargada, presion: number): Promise<void> {
+async function guardarPresion(ctx: CtxDecision, origen: Parte, destino: Parte, presion: number): Promise<void> {
   const valor = Math.max(PRESION_MIN, Math.min(PRESION_MAX, presion));
   const data = { presion: valor, type: typeForPresion(valor), stage: stageForPresion(valor) };
   await ctx.tx.factionRelation.upsert({
@@ -334,7 +363,7 @@ async function guardarPresion(ctx: CtxDecision, origen: FaccionCargada, destino:
 }
 
 /// Pacto, guerra o paz: las dos direcciones a `presion`, su suceso y su noticia.
-async function fijarPar(ctx: CtxDecision, f: FaccionCargada, o: FaccionCargada, presion: number, tipo: TipoSuceso): Promise<void> {
+async function fijarPar(ctx: CtxDecision, f: Parte, o: Parte, presion: number, tipo: TipoSuceso): Promise<void> {
   await guardarPresion(ctx, f, o, presion);
   await guardarPresion(ctx, o, f, presion);
   const datos: Record<string, string> = tipo === 'GUERRA_DECLARADA' ? { atacante: f.name, atacada: o.name } : { faccionA: f.name, faccionB: o.name };
@@ -342,7 +371,7 @@ async function fijarPar(ctx: CtxDecision, f: FaccionCargada, o: FaccionCargada, 
 }
 
 /// Una sola dirección (rechazo, presión, aliados): si cambia de banda, queda en el Libro y se avisa.
-async function moverPresion(ctx: CtxDecision, origen: FaccionCargada, destino: FaccionCargada, presion: number): Promise<void> {
+async function moverPresion(ctx: CtxDecision, origen: Parte, destino: Parte, presion: number): Promise<void> {
   const antes = ctx.mesa.tipoPar(origen.id, destino.id);
   await guardarPresion(ctx, origen, destino, presion);
   const despues = ctx.mesa.tipoPar(origen.id, destino.id);
@@ -350,7 +379,7 @@ async function moverPresion(ctx: CtxDecision, origen: FaccionCargada, destino: F
   await registrarYAvisar(ctx, origen, destino, 'CAMBIO_RELACION', { faccionA: origen.name, faccionB: destino.name, antes: ETIQUETA_BANDA[antes], despues: ETIQUETA_BANDA[despues] });
 }
 
-async function registrarYAvisar(ctx: CtxDecision, autor: FaccionCargada, afectada: FaccionCargada, tipo: TipoSuceso, datos: Record<string, string>): Promise<void> {
+async function registrarYAvisar(ctx: CtxDecision, autor: Parte, afectada: Parte, tipo: TipoSuceso, datos: Record<string, string>): Promise<void> {
   const actores: ActorSuceso[] = [
     { entidadTipo: 'FACCION', entidadId: autor.slug, papel: 'AUTOR' },
     { entidadTipo: 'FACCION', entidadId: afectada.slug, papel: 'AFECTADO' },
@@ -360,4 +389,112 @@ async function registrarYAvisar(ctx: CtxDecision, autor: FaccionCargada, afectad
   await darNoticia(ctx.tx, { saveId: ctx.saveId, worldId: ctx.worldId, fictionalMinutes: ctx.minutos, causa: sucesoId }, {
     texto, facciones: [autor.name, afectada.name], region: null, categoria: categoriaDeFamilia(CATALOGO_SUCESOS[tipo].familia),
   });
+}
+
+// ─────────────────────────── Propuestas al Reino de la jugadora (34e) ───────────────────────────
+
+export const REGLA_PROPUESTA_REINO = 'PROPUESTA_REINO';
+/// Días que tiene la jugadora para responder (Q15).
+export const DIAS_PARA_RESPONDER = 3;
+
+export type TipoPropuesta = 'TRATADO' | 'ALIANZA';
+export type RespuestaPropuesta = 'ACEPTADA' | 'RECHAZADA' | 'CADUCADA';
+
+interface DatosPropuesta {
+  faccionId: string;
+  faccion: string;
+  tipo: TipoPropuesta;
+  logEntryId?: string;
+}
+
+/// Lo que guarda la noticia de una propuesta (`LogEntry.noticia.propuesta`).
+export interface PropuestaNoticia {
+  id: string;
+  faccion: string;
+  tipo: TipoPropuesta;
+  venceEn: number;
+  respuesta?: RespuestaPropuesta;
+}
+
+/// Texto de la propuesta en «El mundo».
+export function textoPropuesta(faccion: string, tipo: TipoPropuesta): string {
+  return `${faccion} propone a tu reino ${tipo === 'TRATADO' ? 'un tratado comercial' : 'una alianza'}. Tienes ${DIAS_PARA_RESPONDER} días para responder.`;
+}
+
+/// Crea la propuesta (consecuencia con plazo) y su noticia con Aceptar y Rechazar. False si la
+/// facción ya tenía una pendiente con este reino.
+async function proponerAlReino(ctx: CtxDecision, f: Parte, tipo: TipoPropuesta): Promise<boolean> {
+  const pendientes = await ctx.tx.consecuencia.findMany({ where: { saveId: ctx.saveId, regla: REGLA_PROPUESTA_REINO, estado: 'PENDIENTE' }, select: { datos: true } });
+  if (pendientes.some((p) => (p.datos as unknown as DatosPropuesta).faccionId === f.id)) return false;
+  const hoy = Math.floor(ctx.minutos / 1440);
+  const datos: DatosPropuesta = { faccionId: f.id, faccion: f.name, tipo };
+  const consecuencia = await ctx.tx.consecuencia.create({
+    data: {
+      saveId: ctx.saveId, regla: REGLA_PROPUESTA_REINO, tipoDisparo: 'DIAS', disparo: { tipo: 'DIAS', min: DIAS_PARA_RESPONDER, max: DIAS_PARA_RESPONDER },
+      desdeDia: hoy + DIAS_PARA_RESPONDER, datos: datos as unknown as Prisma.InputJsonValue, creadaEn: ctx.minutos,
+    },
+  });
+  const ws = await ctx.tx.worldState.findUnique({ where: { saveId: ctx.saveId }, select: { fictionalDateLabel: true } });
+  const propuesta: PropuestaNoticia = { id: consecuencia.id, faccion: f.name, tipo, venceEn: ctx.minutos + DIAS_PARA_RESPONDER * 1440 };
+  const meta: MetaNoticia = { categoria: categoriaDeFamilia('DIPLOMACIA'), propuesta };
+  const entrada = await ctx.tx.logEntry.create({
+    data: { saveId: ctx.saveId, channel: 'WORLD', text: textoPropuesta(f.name, tipo), timeLabel: ws?.fictionalDateLabel ?? '', fictionalMinutes: ctx.minutos, isSystemMessage: true, noticia: meta as unknown as Prisma.InputJsonValue },
+  });
+  await ctx.tx.consecuencia.update({ where: { id: consecuencia.id }, data: { datos: { ...datos, logEntryId: entrada.id } as unknown as Prisma.InputJsonValue } });
+  return true;
+}
+
+/// Contexto de una respuesta, fuera de la mesa del día: la mesa solo con el par.
+async function ctxDePar(tx: Tx, saveId: string, a: Parte, b: Parte): Promise<CtxDecision> {
+  const save = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true, worldState: { select: { fictionalMinutes: true } } } });
+  const mesa = new Mesa([]);
+  for (const r of await tx.factionRelation.findMany({ where: { OR: [{ sourceFactionId: a.id, targetFactionId: b.id }, { sourceFactionId: b.id, targetFactionId: a.id }] }, select: { sourceFactionId: true, targetFactionId: true, presion: true } })) {
+    mesa.presion.set(clave(r.sourceFactionId, r.targetFactionId), r.presion);
+  }
+  return { tx, saveId, worldId: save.worldId, minutos: save.worldState?.fictionalMinutes ?? 0, mesa };
+}
+
+/// Cierra la propuesta: aceptada → el pacto en las dos direcciones (y su mercado); rechazada o
+/// caducada → +5 de la facción hacia el Reino. Marca la noticia con la respuesta.
+async function cerrarPropuesta(tx: Tx, saveId: string, consecuencia: { id: string; datos: Prisma.JsonValue }, respuesta: RespuestaPropuesta): Promise<boolean> {
+  const datos = consecuencia.datos as unknown as DatosPropuesta;
+  const [faccion, reino] = await Promise.all([
+    tx.faction.findFirst({ where: { id: datos.faccionId, saveId, disueltaEn: null }, select: { id: true, slug: true, name: true } }),
+    tx.faction.findFirst({ where: { saveId, origenSlug: null, disueltaEn: null }, select: { id: true, slug: true, name: true } }),
+  ]);
+  if (faccion && reino) {
+    const ctx = await ctxDePar(tx, saveId, faccion, reino);
+    if (respuesta === 'ACEPTADA') {
+      await fijarPar(ctx, faccion, reino, datos.tipo === 'TRATADO' ? PRESION_TRAS.TRATADO : PRESION_TRAS.ALIANZA, datos.tipo === 'TRATADO' ? 'TRATADO_COMERCIAL' : 'ALIANZA');
+    } else {
+      await moverPresion(ctx, faccion, reino, ctx.mesa.presionDe(faccion.id, reino.id) + SUBE_AL_RECHAZAR);
+    }
+  }
+  if (datos.logEntryId) {
+    const entrada = await tx.logEntry.findUnique({ where: { id: datos.logEntryId }, select: { noticia: true } });
+    const meta = (entrada?.noticia as unknown as MetaNoticia | null) ?? null;
+    if (meta?.propuesta) await tx.logEntry.update({ where: { id: datos.logEntryId }, data: { noticia: { ...meta, propuesta: { ...meta.propuesta, respuesta } } as unknown as Prisma.InputJsonValue } });
+  }
+  return Boolean(faccion && reino);
+}
+
+/// La jugadora responde a una propuesta pendiente. Null si no existe o ya no está pendiente.
+export async function responderPropuesta(prisma: PrismaClient, saveId: string, propuestaId: string, acepta: boolean): Promise<{ respuesta: RespuestaPropuesta } | null> {
+  return prisma.$transaction(async (tx) => {
+    const consecuencia = await tx.consecuencia.findFirst({ where: { id: propuestaId, saveId, regla: REGLA_PROPUESTA_REINO, estado: 'PENDIENTE' }, select: { id: true, datos: true } });
+    if (!consecuencia) return null;
+    // Reclamo atómico: solo una respuesta (ni dos clics ni la caducidad a la vez).
+    const ws = await tx.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true } });
+    const claim = await tx.consecuencia.updateMany({ where: { id: consecuencia.id, estado: 'PENDIENTE' }, data: { estado: 'ANULADA', resueltaEn: ws?.fictionalMinutes ?? 0 } });
+    if (claim.count === 0) return null;
+    const respuesta: RespuestaPropuesta = acepta ? 'ACEPTADA' : 'RECHAZADA';
+    await cerrarPropuesta(tx, saveId, consecuencia, respuesta);
+    return { respuesta };
+  });
+}
+
+/// Plazo vencido sin respuesta: cuenta como rechazo (Q15). Lo llama la regla `PROPUESTA_REINO`
+/// (`reglasConsecuencias.ts`; función y no constante para no depender del orden de carga).
+export async function caducarPropuesta(ctx: CtxConsecuencia): Promise<void> {
+  await cerrarPropuesta(ctx.tx, ctx.saveId, ctx.consecuencia, 'CADUCADA');
 }

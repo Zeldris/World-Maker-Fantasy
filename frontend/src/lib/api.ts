@@ -486,6 +486,15 @@ export async function getNuevasDelMundo(saveId: string, desde: string): Promise<
   return fetchJson(`${API_URL}/saves/${saveId}/mundo/nuevas?desde=${encodeURIComponent(desde)}`)
 }
 
+/// CR-34 (34e): aceptar o rechazar la propuesta de tratado o alianza de una facción al Reino.
+export async function responderPropuesta(saveId: string, propuestaId: string, acepta: boolean): Promise<{ respuesta: 'ACEPTADA' | 'RECHAZADA' }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/mundo/propuestas/${encodeURIComponent(propuestaId)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ acepta }),
+  })
+}
+
 export async function requestSurroundings(params: { saveId: string }, signal?: AbortSignal): Promise<EntornoResponse> {
   return fetchJson(`${API_URL}/entorno`, {
     method: 'POST',

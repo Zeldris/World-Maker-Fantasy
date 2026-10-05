@@ -438,7 +438,12 @@ export interface NoticiaMeta {
   resumen?: true
   /// En un resumen: los metadatos de cada línea, en orden (null si la línea no tenía).
   lineas?: (NoticiaMeta | null)[]
+  /// CR-34 (34e): propuesta de tratado o alianza de una facción al Reino, con plazo (minuto de
+  /// ficción) y, si ya se cerró, la respuesta.
+  propuesta?: { id: string; faccion: string; tipo: 'TRATADO' | 'ALIANZA'; venceEn: number; respuesta?: RespuestaPropuesta }
 }
+
+export type RespuestaPropuesta = 'ACEPTADA' | 'RECHAZADA' | 'CADUCADA'
 
 export interface LogEntry {
   id: string

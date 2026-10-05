@@ -4,7 +4,10 @@ import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { asegurarMundoDePartida } from '../mundoPartida.js';
 import { avanzarAgendaDePartida, initialAgenda } from '../worldAgenda.js';
 import { parseAgenda } from './cadenas.js';
-import { decidirFacciones } from './decisionesFaccion.js';
+import Fastify from 'fastify';
+import { decidirFacciones, responderPropuesta } from './decisionesFaccion.js';
+import { evaluarConsecuencias } from './consecuencias.js';
+import { logRoutes } from '../../routes/saves/log.js';
 
 /// CR-34 34c contra Postgres real, en el mundo de una partida: el Clan Serhu (líder estratega, 500
 /// soldados) en tensión con Helsig (60) le declara la guerra; Helsig, que se queda corta, pide la paz
@@ -96,4 +99,104 @@ describe('decidirFacciones — guerra, paz y corte de la cadena (CR-34 34c)', ()
     expect(r.decisiones).toEqual([]);
     expect(await presionPar(serhu.id, helsig.id)).toEqual([70, 70]);
   }, 60_000);
+});
+
+/// CR-34 34e contra Postgres real: una facción propone un tratado al Reino de la jugadora (noticia con
+/// plazo); aceptarlo deja el tratado en las dos direcciones; rechazarlo o dejarlo pasar sube la presión.
+describe('propuestas al Reino de la jugadora (CR-34 34e)', () => {
+  const DIA = 70;
+  let saveId: string;
+  let feg: { id: string; slug: string };
+  let reinoId: string;
+
+  const proponer = async (dia: number) => {
+    await prisma.worldState.update({ where: { saveId }, data: { presupuestoTension: 10, fictionalMinutes: dia * 1440 + 900 } });
+    await prisma.kingdomStats.updateMany({ where: { faction: { saveId } }, data: { ultimaRevision: dia } });
+    await prisma.kingdomStats.update({ where: { factionId: feg.id }, data: { ultimaRevision: null } });
+    return decidirFacciones(prisma, saveId, dia, () => 0.5);
+  };
+  const ultimaPropuesta = async () => {
+    const entrada = await prisma.logEntry.findFirstOrThrow({ where: { saveId, channel: 'WORLD', text: { contains: 'propone a tu reino' } }, orderBy: { createdAt: 'desc' } });
+    return { entrada, propuesta: (entrada.noticia as { propuesta: { id: string; respuesta?: string; tipo: string } }).propuesta };
+  };
+  const presiones = async () => {
+    const filas = await prisma.factionRelation.findMany({ where: { OR: [{ sourceFactionId: feg.id, targetFactionId: reinoId }, { sourceFactionId: reinoId, targetFactionId: feg.id }] }, select: { sourceFactionId: true, presion: true } });
+    return { fegAlReino: filas.find((f) => f.sourceFactionId === feg.id)?.presion, reinoAFeg: filas.find((f) => f.sourceFactionId === reinoId)?.presion };
+  };
+
+  beforeAll(async () => {
+    const worldId = (await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } })).id;
+    const save = await prisma.save.create({
+      data: {
+        userId: await getDefaultUserId(), worldId, characterName: 'Propuestas al Reino', characterArchetype: 'guerrero', characterOrigin: 'x', characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 }, portraitInitial: 'P',
+        worldState: { create: { fictionalMinutes: DIA * 1440 + 900, presupuestoTension: 10 } },
+      },
+    });
+    saveId = save.id;
+    await asegurarMundoDePartida(prisma, saveId);
+    reinoId = (await prisma.faction.create({ data: { worldId, saveId, slug: 'reino-propuestas', name: 'Reino de las Propuestas', raza: 'orcos', description: 'x' } })).id;
+    await prisma.kingdomStats.create({ data: { saveId, ownerKey: `save:${saveId}`, poblacion: 10, soldados: 5 } });
+    feg = await prisma.faction.findFirstOrThrow({ where: { saveId, origenSlug: 'feg-ger' }, select: { id: true, slug: true } });
+    // Feg Ger, mercantil y sin carencias, en alianza con todas las demás: solo le queda el Reino.
+    await prisma.faction.update({ where: { id: feg.id }, data: { disposicion: 'MERCANTIL' } });
+    await prisma.kingdomStats.update({ where: { factionId: feg.id }, data: { comida: 1_000_000, riqueza: 1_000_000 } });
+    const otras = await prisma.faction.findMany({ where: { saveId, origenSlug: { not: null }, id: { not: feg.id } }, select: { id: true } });
+    for (const o of otras) {
+      for (const [a, b] of [[feg.id, o.id], [o.id, feg.id]]) {
+        await prisma.factionRelation.upsert({
+          where: { sourceFactionId_targetFactionId: { sourceFactionId: a!, targetFactionId: b! } },
+          update: { presion: 10, type: 'ALIANZA', stage: 0 }, create: { worldId, saveId, sourceFactionId: a!, targetFactionId: b!, presion: 10, type: 'ALIANZA', stage: 0 },
+        });
+      }
+    }
+  });
+
+  afterAll(async () => {
+    await prisma.save.deleteMany({ where: { id: saveId } });
+  });
+
+  it('propone un tratado con plazo; aceptarlo lo deja en las dos direcciones y abre su comercio', async () => {
+    const r = await proponer(DIA);
+    expect(r.decisiones).toEqual([{ faccion: feg.slug, accion: 'PROPONER_TRATADO', objetivo: 'reino-propuestas', aceptada: null }]);
+    const { propuesta } = await ultimaPropuesta();
+    expect(propuesta).toMatchObject({ tipo: 'TRATADO' });
+    expect(propuesta.respuesta).toBeUndefined();
+    // Con una pendiente no vuelve a proponer.
+    expect((await proponer(DIA + 1)).decisiones[0]).toMatchObject({ aceptada: false });
+
+    expect(await responderPropuesta(prisma, saveId, propuesta.id, true)).toEqual({ respuesta: 'ACEPTADA' });
+    expect(await presiones()).toEqual({ fegAlReino: 35, reinoAFeg: 35 });
+    expect(await prisma.suceso.count({ where: { saveId, tipo: 'TRATADO_COMERCIAL' } })).toBe(1);
+    expect((await ultimaPropuesta()).propuesta.respuesta).toBe('ACEPTADA');
+    // Ya respondida: no se puede responder otra vez.
+    expect(await responderPropuesta(prisma, saveId, propuesta.id, false)).toBeNull();
+  }, 60_000);
+
+  it('rechazar o dejar pasar el plazo sube 5 la presión de la facción hacia el Reino', async () => {
+    // De vuelta a neutral para que vuelva a proponer.
+    await prisma.factionRelation.updateMany({ where: { OR: [{ sourceFactionId: feg.id, targetFactionId: reinoId }, { sourceFactionId: reinoId, targetFactionId: feg.id }] }, data: { presion: 50, type: 'NEUTRAL', stage: 0 } });
+    await proponer(DIA + 10);
+    const primera = (await ultimaPropuesta()).propuesta;
+    expect(await responderPropuesta(prisma, saveId, primera.id, false)).toEqual({ respuesta: 'RECHAZADA' });
+    expect((await presiones()).fegAlReino).toBe(55);
+
+    await proponer(DIA + 20);
+    const segunda = (await ultimaPropuesta()).propuesta;
+    expect(segunda.id).not.toBe(primera.id);
+    // Pasan los 3 días sin responder.
+    await prisma.worldState.update({ where: { saveId }, data: { fictionalMinutes: (DIA + 24) * 1440 } });
+    await evaluarConsecuencias(prisma, saveId);
+    expect((await presiones()).fegAlReino).toBe(60);
+    expect((await ultimaPropuesta()).propuesta.respuesta).toBe('CADUCADA');
+  }, 60_000);
+
+  it('POST /saves/:id/mundo/propuestas/:propuestaId: 400 sin «acepta», 404 si ya no está pendiente', async () => {
+    const app = Fastify();
+    await app.register(logRoutes);
+    const { propuesta } = await ultimaPropuesta();
+    expect((await app.inject({ method: 'POST', url: `/saves/${saveId}/mundo/propuestas/${propuesta.id}`, payload: {} })).statusCode).toBe(400);
+    expect((await app.inject({ method: 'POST', url: `/saves/${saveId}/mundo/propuestas/${propuesta.id}`, payload: { acepta: true } })).statusCode).toBe(404);
+    await app.close();
+  });
 });

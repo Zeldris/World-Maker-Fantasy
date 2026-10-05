@@ -1299,9 +1299,18 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     víctima contra el agresor, coste en presupuesto de tensión (importancia del suceso), suceso en el
     Libro y noticia con rumor por distancia. La paz entre Serhu y Helsig o Goshg corta la cadena (Q19).
     Ojo: en el catálogo Serhu ya está en guerra con Feg Tusha, así que su estratega no abre otra.
+  - ✅ **34e hecho (2026-10-05):** el Reino de la jugadora entra en la mesa del día solo como destinatario:
+    se le proponen tratado o alianza, o se le presiona; nunca guerra ni paz (Q7). La propuesta es una
+    `Consecuencia` `PROPUESTA_REINO` con 3 días de plazo y una noticia de «El mundo» con Aceptar y
+    Rechazar (`LogEntry.noticia.propuesta`, `NoticiaMundo.tsx`); `POST /saves/:id/mundo/propuestas/
+    :propuestaId` `{ acepta }`. Aceptar → pacto en las dos direcciones (abre su mercado); rechazar o
+    dejar pasar el plazo → +5 de la facción hacia el Reino. Una propuesta pendiente por facción.
+  - 🧭 **34d bloqueada (2026-10-05):** la tabla `Territory` no tiene territorios de facción (solo los
+    del Reino de la jugadora); el dominio de las regiones vive fijo en `REGION_OWNING_FACTIONS`. La
+    expansión de la Q14 no tiene sobre qué actuar: decisión pedida a la usuaria.
   - **Orden de trabajo:** ~~`CR-35`~~ ✅ primero; después los pasos de `CR-34` (34a carencias e
-    Inteligencia ✅, 34b expediciones dirigidas ✅, 34c diplomacia ✅, 34d expansión y asalto, 34e propuesta
-    al Reino, 34f simulación de 60 días).
+    Inteligencia ✅, 34b expediciones dirigidas ✅, 34c diplomacia ✅, 34d expansión y asalto 🧭 (bloqueada: no hay territorios de facción, ver 34d), 34e propuesta
+    al Reino ✅, 34f simulación de 60 días).
 - ~~**CR-35** Economía y expediciones de facción en el mundo de la partida (`CR-34` Q1). **M**~~ ✅
   2026-10-04 — Ya lo hacía `CR-7` (`avanceDiario.ts`: `producirFacciones`, `decaerRelaciones` y
   `avanzarExpedicionesDePartida` sobre las facciones de la partida, con su reloj); la Q1 partía de un
