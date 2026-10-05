@@ -827,17 +827,23 @@ export function GameView() {
     abrirTablon: (buildingId) => {
       if (!saveId) return
       setAvisosAbiertos({ titulo: 'Tablón de avisos', avisos: [], vacio: '', cargando: true })
+      // Solo si el modal sigue abierto esperando esta lectura: cerrarlo (o abrir otra cosa) antes de
+      // que llegue la respuesta no debe reabrirlo.
       getAvisosTablon(saveId, buildingId)
         .then(({ tablon, avisos }) =>
-          setAvisosAbiertos({
-            titulo: tablon.nombre.charAt(0).toUpperCase() + tablon.nombre.slice(1),
-            subtitulo: tablon.faccion ?? 'Avisos de las facciones con las que tienes tratado o alianza',
-            avisos,
-            vacio: 'No hay avisos colgados ahora mismo. Vuelve en unos días.',
-            cargando: false,
-          }),
+          setAvisosAbiertos((prev) =>
+            prev?.cargando
+              ? {
+                  titulo: tablon.nombre.charAt(0).toUpperCase() + tablon.nombre.slice(1),
+                  subtitulo: tablon.faccion ?? 'Avisos de las facciones con las que tienes tratado o alianza',
+                  avisos,
+                  vacio: 'No hay avisos colgados ahora mismo. Vuelve en unos días.',
+                  cargando: false,
+                }
+              : prev,
+          ),
         )
-        .catch(() => setAvisosAbiertos({ titulo: 'Tablón de avisos', avisos: [], vacio: 'No se pudo leer el tablón.', cargando: false }))
+        .catch(() => setAvisosAbiertos((prev) => (prev?.cargando ? { titulo: 'Tablón de avisos', avisos: [], vacio: 'No se pudo leer el tablón.', cargando: false } : prev)))
     },
     mostrarOfertaNpc: (npcName, aviso) =>
       setAvisosAbiertos({ titulo: `Trabajo de ${npcName}`, avisos: aviso ? [aviso] : [], vacio: `${npcName} no tiene ningún encargo para ti ahora mismo.`, cargando: false }),

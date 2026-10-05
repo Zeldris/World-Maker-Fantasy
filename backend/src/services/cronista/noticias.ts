@@ -193,11 +193,13 @@ export const CABECERA_RESUMEN = 'Mientras pasaban los días…';
 /// por noticia, en vez de llegar en ráfaga. Con menos de 2 no hace nada.
 export async function agruparNoticias(prisma: PrismaClient, saveId: string, marca: Date): Promise<number> {
   return prisma.$transaction(async (tx) => {
-    const entradas = await tx.logEntry.findMany({
+    // Las propuestas al Reino (CR-34 34e) quedan fuera: su entrada guarda los botones de Aceptar y
+    // Rechazar, y `cerrarPropuesta` la busca por id para marcar la respuesta.
+    const entradas = (await tx.logEntry.findMany({
       where: { saveId, channel: 'WORLD', createdAt: { gt: marca } },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
       select: { id: true, text: true, timeLabel: true, fictionalMinutes: true, noticia: true },
-    });
+    })).filter((e) => !(e.noticia as MetaNoticia | null)?.propuesta);
     if (entradas.length < 2) return 0;
     const ultima = entradas[entradas.length - 1]!;
     await tx.logEntry.deleteMany({ where: { id: { in: entradas.map((e) => e.id) } } });

@@ -65,11 +65,21 @@ export async function aceptarMision(prisma: PrismaClient, saveId: string, mision
     const activas = await tx.quest.findMany({ where: { saveId, status: 'ACTIVA', tipoMision: { not: null } }, select: { encargaFaccionId: true } });
     if (activas.length >= MAX_SECUNDARIAS_ACTIVAS) throw new ErrorMision(`Ya llevas ${MAX_SECUNDARIAS_ACTIVAS} misiones secundarias: termina o abandona alguna antes`);
     if (activas.some((a) => a.encargaFaccionId === oferta.factionId)) throw new ErrorMision('Ya tienes una misión abierta para esta facción');
+    const ahora = await reloj(tx, saveId);
+    // El aviso se retira en el avance diario; entre su `retiraEn` y esa pasada ya no vale.
+    if (oferta.retiraEn <= ahora) throw new ErrorMision('Ese aviso ya no está disponible');
+    const huecos: HuecosQuest = { ...(oferta.huecos as unknown as HuecosMision) };
+    // Lo que pedía el aviso ya está hecho (lugar pisado u objetivo caído desde que se colgó): no se
+    // acepta para cobrarlo en la siguiente `revisarMisiones`.
+    if (huecos.tipo === 'EXPLORAR' && huecos.lugar && (await tx.locationVisit.count({ where: { saveId, locationId: huecos.lugar.id } })) > 0) {
+      throw new ErrorMision(`Ya conoces ${huecos.lugar.nombre}: ese aviso no tiene sentido`);
+    }
+    if (huecos.tipo === 'ELIMINAR' && huecos.objetivoNpc && (await caido(tx, saveId, huecos.objetivoNpc.id))) {
+      throw new ErrorMision(`${huecos.objetivoNpc.nombre} ya no es una amenaza`);
+    }
     const claim = await tx.misionOfrecida.updateMany({ where: { id: oferta.id, estado: 'DISPONIBLE' }, data: { estado: 'ACEPTADA' } });
     if (claim.count === 0) throw new ErrorMision('Ese aviso ya no está disponible');
 
-    const ahora = await reloj(tx, saveId);
-    const huecos: HuecosQuest = { ...(oferta.huecos as unknown as HuecosMision) };
     if (oferta.buildingId) {
       const tablon = await tx.building.findUnique({ where: { id: oferta.buildingId }, select: { locationId: true } });
       if (tablon?.locationId) huecos.entregaEn = tablon.locationId;
@@ -147,7 +157,7 @@ export async function cerrarSinCumplir(tx: Tx, quest: Quest, estado: 'FALLIDA' |
   const h = huecosDe(quest);
   const ahora = await reloj(tx, quest.saveId);
   await aplicarReputacion(tx, quest.saveId, [{ faccion: h.faccion.nombre, delta: recompensaDe(quest).reputacionAlFallar }]);
-  await registrarFinDeMision(tx, { saveId: quest.saveId, titulo: quest.title, estado: 'FALLIDA', fictionalMinutes: ahora });
+  await registrarFinDeMision(tx, { saveId: quest.saveId, titulo: quest.title, estado, fictionalMinutes: ahora });
   const motivo = estado === 'FALLIDA' ? 'se acabó el plazo' : 'la has dejado';
   await escribir(tx, quest.saveId, `Misión ${estado === 'FALLIDA' ? 'fallida' : 'abandonada'}: "${quest.title}" (${motivo}). ${h.faccion.nombre} no lo olvidará.`, ahora);
   return true;
@@ -163,11 +173,14 @@ export async function abandonarMision(prisma: PrismaClient, saveId: string, ques
 
 // ─────────────────────────── Avanzar ───────────────────────────
 
-/// Cazar: una pieza más de `especieSlug` abatida (desde `decrementPopulationOnDeath`).
-export async function avanzarCaza(tx: Tx, saveId: string, especieSlug: string): Promise<void> {
+/// Cazar: una pieza más de `especieSlug` abatida en `region` (desde `decrementPopulationOnDeath`). Solo
+/// cuenta en la región de la misión; sin región conocida, cuenta.
+export async function avanzarCaza(tx: Tx, saveId: string, especieSlug: string, region: string | null = null): Promise<void> {
   const misiones = await tx.quest.findMany({ where: { saveId, status: 'ACTIVA', tipoMision: 'CAZAR' } });
   for (const q of misiones) {
-    if (huecosDe(q).especie?.slug !== especieSlug) continue;
+    const h = huecosDe(q);
+    if (h.especie?.slug !== especieSlug) continue;
+    if (region && h.region && region !== h.region) continue;
     const progreso = q.progreso + 1;
     await tx.quest.update({ where: { id: q.id }, data: { progreso } });
     if (progreso >= (q.cantidad ?? 1)) await cumplirMision(tx, { ...q, progreso });

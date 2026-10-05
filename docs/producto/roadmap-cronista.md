@@ -1424,6 +1424,15 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     misión personal o «no tiene nada». El panel de Misiones enseña en las del motor quién encarga,
     progreso, día límite y Goirnos, con Entregar (las de entregar) y Abandonar con confirmación.
     `MisionesContext` (lo provee GameView) evita pasar callbacks por cada panel.
+  - ✅ **Revisión con `/code-review` antes del PR (2026-10-05)**, 8 arreglos: las propuestas al Reino
+    ya no se pierden en el resumen de varios días (`agruparNoticias` las deja fuera); Eliminar solo
+    apunta a NPC con nombre; Combatir solo si la enemiga tiene plantillas que enviar; un NPC no
+    propone trabajo si ya hay misión abierta con su facción; no se acepta un aviso vencido, ni el de
+    explorar un lugar ya pisado, ni el de eliminar a alguien ya caído; el tablón no se reabre si se
+    cerró antes de cargar; abandonar es `MISION_ABANDONADA` en el Libro (antes «fallida»); cazar solo
+    cuenta en la región de la misión. **Deuda anotada:** `situacionFaccion.ts` repite el cálculo de
+    carencias y enemigos de la mesa de `decisionesFaccion.ts` con una regla de enemigo algo distinta
+    (unirlos puede cambiar decisiones: tarea aparte).
   - **Pasos:** 40a plantillas, tipos y recompensas (puro) ✅ · 40b modelo y migración ✅ · 40c tablones
     (sembrados y del Reino) ✅ · 40d generación en el avance diario ✅ · 40e aceptar, progreso, cumplir,
     fallar y reputación ✅ · 40f oferta pendiente única (ADR), «¿Tienes trabajo?» del NPC y el narrador

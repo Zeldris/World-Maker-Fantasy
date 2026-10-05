@@ -103,7 +103,7 @@ export async function decrementPopulationOnDeath(
     data: { poblacion: { decrement: 1 } },
   });
   // CR-40 (40e): una pieza más para las misiones de cazar esa especie.
-  if (targetType === 'FAUNA') await avanzarCaza(tx, saveId, targetSlug);
+  if (targetType === 'FAUNA') await avanzarCaza(tx, saveId, targetSlug, region);
 }
 
 /// CR-7 (hito 0.2): crecimiento de una fila en `dias` días de ficción — compuesto a la tasa de su

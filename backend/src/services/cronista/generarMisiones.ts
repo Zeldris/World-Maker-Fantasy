@@ -96,10 +96,14 @@ export async function candidatasDeFaccion(
   for (const r of relaciones) {
     const enemiga = { slug: r.targetFaction.slug, nombre: r.targetFaction.name };
     const lugar = elegir(lugares, random);
-    if (lugar) candidatas.push({ ...base, tipo: 'COMBATIR', motivo: 'CONFLICTO', enemiga, lugar: { id: lugar.id, nombre: lugar.name }, cantidad: 1, plazoDias: PLAZO_DIAS.COMBATIR });
+    // Combatir necesita plantillas de la enemiga para formar el grupo al aceptar (`aceptarMision`);
+    // sin ellas (p. ej. una escisión con nombre nuevo) el aviso no se podría aceptar nunca.
+    const tienePartida = (await tx.npc.count({ where: { worldId, kind: 'PLANTILLA', faction: r.targetFaction.name, muertoEnMundo: false } })) > 0;
+    if (lugar && tienePartida) candidatas.push({ ...base, tipo: 'COMBATIR', motivo: 'CONFLICTO', enemiga, lugar: { id: lugar.id, nombre: lugar.name }, cantidad: 1, plazoDias: PLAZO_DIAS.COMBATIR });
     if (r.type !== 'GUERRA') continue;
     const guerreros = await tx.npc.findMany({
-      where: { worldId, faction: r.targetFaction.name, role: { contains: 'guerr', mode: 'insensitive' }, ...npcSinMorirEnPartida(saveId), ...(r.targetFaction.liderNpcId ? { id: { not: r.targetFaction.liderNpcId } } : {}) },
+      // Solo NPC con nombre: una PLANTILLA («Guerrero serhu») no tiene un estado único que `revisarMisiones` pueda ver caer.
+      where: { worldId, kind: 'PRINCIPAL', faction: r.targetFaction.name, role: { contains: 'guerr', mode: 'insensitive' }, ...npcSinMorirEnPartida(saveId), ...(r.targetFaction.liderNpcId ? { id: { not: r.targetFaction.liderNpcId } } : {}) },
       select: { id: true, name: true }, orderBy: { id: 'asc' },
     });
     const objetivo = elegir(guerreros, random);
@@ -211,6 +215,8 @@ export async function ofrecerTrabajoDeNpc(prisma: PrismaClient, saveId: string, 
     if (!npc?.faction || !region) return null;
     const faccion = await tx.faction.findFirst({ where: { saveId, name: npc.faction, origenSlug: { not: null }, disueltaEn: null }, select: { id: true, slug: true, name: true, raza: true } });
     if (!faccion) return null;
+    // Una misión abierta por facción (Q4, `aceptarMision`): no se propone lo que no se podría aceptar.
+    if ((await tx.quest.count({ where: { saveId, status: 'ACTIVA', tipoMision: { not: null }, encargaFaccionId: faccion.id } })) > 0) return null;
     const minutos = save.worldState?.fictionalMinutes ?? 0;
     const vigente = await tx.misionOfrecida.findFirst({ where: { saveId, npcId: npc.id, estado: 'DISPONIBLE', retiraEn: { gt: minutos } } });
     if (vigente) return { id: vigente.id, titulo: vigente.titulo, descripcion: vigente.descripcion, recompensa: vigente.recompensa };

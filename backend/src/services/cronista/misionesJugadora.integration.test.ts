@@ -127,6 +127,28 @@ describe('misiones secundarias de la jugadora (CR-40 40e)', () => {
     expect((await prisma.quest.findMany({ where: { id: { in: [q1.id, q3.id] } } })).map((q) => q.status)).toEqual(['FALLIDA', 'FALLIDA']);
   }, 60_000);
 
+  it('revisión (2026-10-05): no se acepta un aviso vencido ni el de explorar un lugar ya pisado; abandonar es MISION_ABANDONADA; cazar fuera de la región no cuenta', async () => {
+    const vencido = await aviso('feg-ger', { tipo: 'EXPLORAR', motivo: 'RUMOR', lugar: { id: 'z', nombre: 'Z' } });
+    await prisma.misionOfrecida.update({ where: { id: vencido.id }, data: { retiraEn: 0 } });
+    await expect(aceptarMision(prisma, saveId, vencido.id)).rejects.toThrow('Ese aviso ya no está disponible');
+    const ruinas = await prisma.location.findFirstOrThrow({ where: { worldId, slug: 'dunas-ahogadas' } });
+    // Ya visitado en el test de explorar.
+    const yaPisado = await aviso('feg-ger', { tipo: 'EXPLORAR', motivo: 'RUMOR', lugar: { id: ruinas.id, nombre: ruinas.name } });
+    await expect(aceptarMision(prisma, saveId, yaPisado.id)).rejects.toThrow('ese aviso no tiene sentido');
+
+    // Cazar: una pieza en otra región no cuenta; en la suya, sí. Luego se abandona.
+    await prisma.worldState.update({ where: { saveId }, data: { fictionalMinutes: 10 * 1440 } });
+    await prisma.quest.updateMany({ where: { saveId, status: 'ACTIVA' }, data: { status: 'FALLIDA' } });
+    const caza = await aceptarMision(prisma, saveId, (await aviso('feg-ger', { tipo: 'CAZAR', motivo: 'EXCESO_FAUNA', especie: { slug: 'canizor', nombre: 'canizores' }, cantidad: 3 })).id);
+    await decrementPopulationOnDeath(prisma, saveId, null, 'canizor', 'Cristal Helado');
+    expect((await prisma.quest.findUniqueOrThrow({ where: { id: caza.id } })).progreso).toBe(0);
+    await decrementPopulationOnDeath(prisma, saveId, null, 'canizor', 'Las Llanuras del Viento Rojo');
+    expect((await prisma.quest.findUniqueOrThrow({ where: { id: caza.id } })).progreso).toBe(1);
+    const abandonosAntes = await prisma.suceso.count({ where: { saveId, tipo: 'MISION_ABANDONADA' } });
+    await abandonarMision(prisma, saveId, caza.id);
+    expect(await prisma.suceso.count({ where: { saveId, tipo: 'MISION_ABANDONADA' } })).toBe(abandonosAntes + 1);
+  }, 60_000);
+
   it('rutas: 404 si el aviso no existe, 409 si ya no se puede aceptar', async () => {
     const app = Fastify();
     await app.register(misionesRoutes);
