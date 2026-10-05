@@ -3,6 +3,10 @@ import { prisma } from '../../lib/prisma.js';
 import { calendarioFor } from '../../services/worldClock.js';
 import { toFrontendLogEntry } from './shared.js';
 import { responderPropuesta } from '../../services/cronista/decisionesFaccion.js';
+import { esperarSegundoPlano } from '../../services/avanceDiario.js';
+
+/// UX-29: lo más que espera «lo nuevo del mundo» a que acabe el avance de fondo de la partida.
+const ESPERA_FONDO_MS = 20_000;
 
 /// Registro de la partida (deuda técnica 2026-07-30, split de saves.ts): guardar qué entidad se
 /// mostró como banner bajo una narración, y el Diario completo agrupado por día — a diferencia de
@@ -43,6 +47,9 @@ export async function logRoutes(app: FastifyInstance) {
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
     const desde = request.query.desde;
     if (!desde) return { entradas: [] };
+    // UX-29/UX-35: tras un turno que cruzó el día, las noticias del día salen cuando el avance de
+    // fondo acaba (el front enciende «El mundo avanza» mientras espera); con un tope.
+    await Promise.race([esperarSegundoPlano(id), new Promise((r) => setTimeout(r, ESPERA_FONDO_MS))]);
     const referencia = await prisma.logEntry.findFirst({ where: { id: desde, saveId: id }, select: { createdAt: true } });
     if (!referencia) return { entradas: [] };
     const nuevas = await prisma.logEntry.findMany({

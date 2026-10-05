@@ -1,4 +1,4 @@
-import { useEffect, useRef, type Dispatch, type SetStateAction } from 'react'
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { getNuevasDelMundo } from '../lib/api'
 import type { LogEntry } from '../types'
 
@@ -21,11 +21,15 @@ export function useNoticiasMundo({ saveId, worldLog, setWorldLog, characterThink
   const ultimaIdRef = useRef<string | null>(null)
   ultimaIdRef.current = worldLog.length > 0 ? worldLog[worldLog.length - 1].id : null
   const pidiendoRef = useRef(false)
+  // UX-29: tras un turno, la petición espera al avance de fondo de la partida; mientras, «El mundo
+  // avanza» (HUD-12). Solo la de después de un turno: la del intervalo no enciende nada.
+  const [esperandoMundo, setEsperandoMundo] = useState(false)
 
-  async function traer() {
+  async function traer(trasTurno = false) {
     const desde = ultimaIdRef.current
     if (!saveId || !desde || pidiendoRef.current) return
     pidiendoRef.current = true
+    if (trasTurno) setEsperandoMundo(true)
     try {
       const { entradas } = await getNuevasDelMundo(saveId, desde)
       if (entradas.length > 0) {
@@ -40,6 +44,7 @@ export function useNoticiasMundo({ saveId, worldLog, setWorldLog, characterThink
       // Best-effort: se reintenta en el siguiente turno o intervalo.
     } finally {
       pidiendoRef.current = false
+      setEsperandoMundo(false)
     }
   }
   const traerRef = useRef(traer)
@@ -48,7 +53,7 @@ export function useNoticiasMundo({ saveId, worldLog, setWorldLog, characterThink
   // Al terminar un turno (characterThinking true → false).
   const pensabaRef = useRef(characterThinking)
   useEffect(() => {
-    if (pensabaRef.current && !characterThinking) void traerRef.current()
+    if (pensabaRef.current && !characterThinking) void traerRef.current(true)
     pensabaRef.current = characterThinking
   }, [characterThinking])
 
@@ -58,5 +63,5 @@ export function useNoticiasMundo({ saveId, worldLog, setWorldLog, characterThink
     return () => clearInterval(intervalo)
   }, [saveId])
 
-  return { traer }
+  return { traer, esperandoMundo }
 }

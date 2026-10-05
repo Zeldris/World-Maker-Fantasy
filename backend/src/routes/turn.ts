@@ -4,6 +4,7 @@ import { rollCheck } from '../services/dice.js';
 import type { AttributeBlock, RollResult } from '../services/dice.js';
 import { computeDuration, detectsRestIntent, mentionsExplicitDuration } from '../services/timedActions.js';
 import { narrateAndPersistTurn } from '../services/turnResolution.js';
+import { avanzarSiCruzaDia, enSegundoPlano, esperarSegundoPlano } from '../services/avanceDiario.js';
 import { recordEntityDiscoveries } from '../services/entityDiscovery.js';
 import type { PendingNpcAttack, PendingCanalizacion } from '../services/combatExchange.js';
 import { resolveTravel, bandaForMinutos, segundosRealesPorTramos, type TravelResolution } from '../services/travel.js';
@@ -1185,6 +1186,9 @@ export async function turnRoutes(app: FastifyInstance) {
     if (!saveId || !action || !classification) {
       return reply.status(400).send({ error: 'Faltan campos: saveId, action, classification' });
     }
+    // UX-29/UX-35: si aún corre el avance de fondo del turno o la acción anterior, este turno espera a
+    // que acabe (suele ser menos de lo que se tarda en leer la narración) y lee el mundo ya avanzado.
+    await esperarSegundoPlano(saveId);
 
     const save = await prisma.save.findUnique({
       where: { id: saveId },
@@ -1336,6 +1340,8 @@ export async function turnRoutes(app: FastifyInstance) {
       } = await narrateAndPersistTurn({
         saveId,
         worldId: save.worldId,
+        // UX-35: el día se avanza tras cerrar la respuesta (abajo), no dentro del turno.
+        avanzarMundo: false,
         action,
         characterSummary: characterSummaryWithEstado,
         characterName: save.characterName,
@@ -1456,5 +1462,9 @@ export async function turnRoutes(app: FastifyInstance) {
       releaseTurnInFlight(saveId);
       reply.raw.end();
     }
+    // UX-35: el turno no espera al día. Con la narración ya entregada, el mundo de la partida avanza
+    // los días que haya cruzado; sus noticias llegan en el siguiente refresco. El turno siguiente
+    // espera a que acabe (`esperarSegundoPlano`, arriba), así nunca se cruzan en la base.
+    void enSegundoPlano(saveId, () => avanzarSiCruzaDia(prisma, saveId));
   });
 }

@@ -2,7 +2,7 @@
 // solo fuera de campos de texto y sin Ctrl/Alt/Meta (no pisan los del navegador). Enter (enviar) y
 // Esc (menú) son fijos y no viven aquí.
 
-export type AccionAtajo = 'inventario' | 'mapa' | 'personaje' | 'habilidades' | 'diario' | 'reino' | 'enciclopedia' | 'zona'
+export type AccionAtajo = 'inventario' | 'mapa' | 'personaje' | 'habilidades' | 'diario' | 'reino' | 'enciclopedia' | 'leyendas' | 'zona'
 
 export const ACCIONES_ATAJO: { accion: AccionAtajo; label: string }[] = [
   { accion: 'inventario', label: 'Inventario' },
@@ -12,6 +12,7 @@ export const ACCIONES_ATAJO: { accion: AccionAtajo; label: string }[] = [
   { accion: 'diario', label: 'Diario' },
   { accion: 'reino', label: 'Reino' },
   { accion: 'enciclopedia', label: 'Enciclopedia' },
+  { accion: 'leyendas', label: 'Leyendas' },
   { accion: 'zona', label: 'Moverte por la zona' },
 ]
 
@@ -25,6 +26,8 @@ export const ATAJOS_POR_DEFECTO: MapaAtajos = {
   diario: 'j',
   reino: 'k',
   enciclopedia: 'l',
+  // UX-36: Leyendas siempre a una tecla.
+  leyendas: 'y',
   zona: 'z',
 }
 

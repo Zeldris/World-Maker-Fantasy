@@ -93,6 +93,9 @@ function minutesLabel(minutos: number): string {
 }
 
 interface NarrateAndPersistParams {
+  /// UX-35: false = quien llama avanza el mundo de la partida después de responder (la ruta del
+  /// turno, para no alargarlo). Por defecto se avanza aquí mismo, tras el commit.
+  avanzarMundo?: boolean;
   saveId: string;
   worldId: string;
   action: string;
@@ -6653,7 +6656,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   } = transactionResult;
   // CR-7 (hito 0.2): el mundo de la partida avanza los días de ficción que haya cruzado este turno.
   // Tras el commit y sin tumbar el turno si falla: el siguiente lo recupera (`ultimoDiaSimulado`).
-  await avanzarMundoHasta(prisma, saveId, nuevoFictionalMinutes).catch((err) => console.error('[avanceDiario] error avanzando el mundo de la partida:', err));
+  if (params.avanzarMundo !== false) {
+    await avanzarMundoHasta(prisma, saveId, nuevoFictionalMinutes).catch((err) => console.error('[avanceDiario] error avanzando el mundo de la partida:', err));
+  }
   // La transacción hizo commit de verdad — ahora sí se dispara la generación lenta de fondo (ver
   // el comentario de `chapterDue` más arriba).
   if (chapterDue) {

@@ -24,6 +24,18 @@ export function Notificaciones({ notificaciones, onDescartar }: { notificaciones
           <p className="min-w-0 flex-1">
             {n.texto}
             {n.veces > 1 && <span className="ml-1.5 font-mono text-2xs text-wood-400">×{n.veces}</span>}
+            {n.enlace && (
+              <button
+                type="button"
+                onClick={() => {
+                  n.enlace!.alPulsar()
+                  onDescartar(n.id)
+                }}
+                className="mt-1 block text-2xs text-accent2-300 underline-offset-2 hover:underline"
+              >
+                {n.enlace.label}
+              </button>
+            )}
           </p>
           <button type="button" onClick={() => onDescartar(n.id)} aria-label="Cerrar aviso" className="shrink-0 text-wood-500 hover:text-wood-200">
             ✕
