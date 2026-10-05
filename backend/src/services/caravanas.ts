@@ -64,6 +64,18 @@ async function registrarEnReino(tx: Tx, saveId: string, text: string) {
   await tx.logEntry.create({ data: { saveId, channel: 'KINGDOM', isSystemMessage: true, text, timeLabel: ws?.fictionalDateLabel ?? '', fictionalMinutes: ws?.fictionalMinutes ?? undefined } });
 }
 
+/// 47e: el lugar por donde pasa ahora una caravana de fondo de `faccion` (punto «Caravana de …» de
+/// `oportunidades.ts`) en la región del Mercado, o null.
+async function caravanaDeFondoCerca(db: Tx | PrismaClient, saveId: string, faccion: string, mercadoLocationId: string): Promise<{ id: string; slug: string } | null> {
+  const mercado = await db.location.findUnique({ where: { id: mercadoLocationId }, select: { region: true } });
+  if (!mercado) return null;
+  const punto = await db.zonePoint.findFirst({
+    where: { saveId, activo: true, label: `Caravana de ${faccion}`, location: { region: mercado.region } },
+    select: { location: { select: { id: true, slug: true } } },
+  });
+  return punto?.location ?? null;
+}
+
 export interface ResultadoComercio {
   salen: number;
   comercian: number;
@@ -116,7 +128,7 @@ export async function avanzarComercio(prisma: PrismaClient, saveId: string, dia:
   // 2. Llegan y comercian (o caen en un asalto).
   const relaciones = await relacionesDelReino(prisma, reino.id);
   for (const c of await prisma.caravana.findMany({ where: { saveId, status: 'EN_CAMINO', diaLlegada: { lte: dia } }, include: { destino: { select: { region: true, name: true } }, faction: { select: { name: true } } } })) {
-    if (seIntercepta(riesgoIntercepcion(c.destino.region, reino.name, relaciones), random())) {
+    if (!c.local && seIntercepta(riesgoIntercepcion(c.destino.region, reino.name, relaciones), random())) {
       await prisma.$transaction(async (tx) => {
         const fresca = await tx.caravana.updateMany({ where: { id: c.id, status: 'EN_CAMINO' }, data: { status: 'ASALTADA', riqueza: 0, traidas: 0 } });
         if (fresca.count === 0) return;
@@ -173,9 +185,12 @@ export async function avanzarComercio(prisma: PrismaClient, saveId: string, dia:
         break;
       }
       if (!socio) return;
-      const destino = await asentamientoDe(tx, worldId, socio.id);
+      // 47e: si una caravana del socio (narrador de fondo) pasa por la región del Mercado, se comercia
+      // con ella allí mismo: ida y vuelta en el día y sin riesgo de asalto.
+      const cercana = await caravanaDeFondoCerca(tx, saveId, socio.name, mercado.locationId!);
+      const destino = cercana ?? (await asentamientoDe(tx, worldId, socio.id));
       if (!destino) return;
-      const dias = diasDeCamino(await minutosEntre(tx, worldId, mercado.locationId!, destino.id));
+      const dias = cercana ? 0 : diasDeCamino(await minutosEntre(tx, worldId, mercado.locationId!, destino.id));
       let riqueza = 0;
       let carga = unidades;
       if (orden.tipo === 'COMPRA') {
@@ -192,11 +207,17 @@ export async function avanzarComercio(prisma: PrismaClient, saveId: string, dia:
       await tx.caravana.create({
         data: {
           saveId, ordenId: orden.id, factionId: socio.id, destinoLocationId: destino.id, tipo: orden.tipo, catalogSlug: orden.catalogSlug,
-          unidades: carga, riqueza, diaSalida: dia, diaLlegada: dia + dias, diaRegreso: dia + 2 * dias,
+          unidades: carga, riqueza, diaSalida: dia, diaLlegada: dia + Math.max(1, dias), diaRegreso: dia + Math.max(1, 2 * dias), local: !!cercana,
         },
       });
       const item = (await tx.itemCatalog.findFirst({ where: { worldId, slug: orden.catalogSlug }, select: { name: true } }))?.name ?? orden.catalogSlug;
-      await registrarEnReino(tx, saveId, `Sale una caravana hacia ${socio.name} a ${orden.tipo === 'COMPRA' ? 'comprar' : 'vender'} ${carga} de ${item}; vuelve en ${2 * dias} días.`);
+      await registrarEnReino(
+        tx,
+        saveId,
+        cercana
+          ? `La caravana de ${socio.name} pasa cerca del Mercado: se le ${orden.tipo === 'COMPRA' ? 'compran' : 'venden'} ${carga} de ${item} sin salir de la región.`
+          : `Sale una caravana hacia ${socio.name} a ${orden.tipo === 'COMPRA' ? 'comprar' : 'vender'} ${carga} de ${item}; vuelve en ${2 * dias} días.`,
+      );
       resultado.salen++;
     });
   }

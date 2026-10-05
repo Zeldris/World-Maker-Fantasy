@@ -102,4 +102,24 @@ describe('CR-47 — caravanas del Reino', () => {
     expect(await prisma.almacenItem.count({ where: { factionId: goshg.id, catalogSlug } })).toBe(5);
     await prisma.almacenItem.deleteMany({ where: { factionId: goshg.id, catalogSlug } });
   });
+
+  it('47e: si una caravana de fondo del socio pasa por la región del Mercado, se comercia allí, sin viaje ni asalto', async () => {
+    await prisma.ordenComercio.updateMany({ where: { saveId }, data: { activa: false } });
+    const helsig = await prisma.faction.findFirstOrThrow({ where: { id: helsigId } });
+    const mercado = await prisma.building.findFirstOrThrow({ where: { saveId, recipeKey: 'mercado' }, select: { locationId: true } });
+    await prisma.zonePoint.create({ data: { saveId, locationId: mercado.locationId!, x: 100, y: 100, tipo: 'NPC', targetSlug: 'guardia-helsig', label: `Caravana de ${helsig.name}` } });
+    const item = await prisma.itemCatalog.findFirstOrThrow({ where: { worldId, slug: catalogSlug }, select: { name: true, description: true } });
+    await prisma.almacenItem.createMany({ data: Array.from({ length: 4 }, () => ({ factionId: helsigId, name: item.name, description: item.description, catalogSlug })) });
+    await prisma.almacenItem.deleteMany({ where: { saveId, catalogSlug } });
+    await prisma.kingdomStats.update({ where: { saveId }, data: { riqueza: 1000 } });
+    await prisma.ordenComercio.create({ data: { saveId, catalogSlug, tipo: 'COMPRA', umbral: 2, lote: 2, factionSlug: helsig.slug } });
+
+    expect((await avanzarComercio(prisma, saveId, 60)).salen).toBe(1);
+    const c = await prisma.caravana.findFirstOrThrow({ where: { saveId, local: true } });
+    expect(c).toMatchObject({ diaLlegada: 61, diaRegreso: 61, destinoLocationId: mercado.locationId });
+    // Aunque el azar diga asalto, una local no se asalta.
+    expect((await avanzarComercio(prisma, saveId, 61, () => 0)).asaltadas).toBe(0);
+    await avanzarComercio(prisma, saveId, 62);
+    expect(await prisma.almacenItem.count({ where: { saveId, catalogSlug } })).toBe(2);
+  });
 });

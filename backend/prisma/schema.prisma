@@ -3659,6 +3659,8 @@ model Caravana {
   traidas           Int            @default(0)
   /// EN_CAMINO → VOLVIENDO → TERMINADA, o ASALTADA.
   status            String         @default("EN_CAMINO")
+  /// 47e: comercia con una caravana de fondo que pasa por la región del Mercado (sin viaje ni asalto).
+  local             Boolean        @default(false)
   diaSalida         Int
   diaLlegada        Int
   diaRegreso        Int
