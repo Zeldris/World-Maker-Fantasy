@@ -1450,6 +1450,35 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   `nombresFaccion.ts` (sin Vhurne, Nur ni Kegi; escisión goirnte «Los del…»), disposiciones de las
   facciones (Helsig y Goshg mercantiles, Feg Tusha recelosa), el Bulco de Arena pasa a Rugoconcha y
   alta de Dessa, Yerin y Riko como NPC (cada cosa según su entrada aprobada). **S**
+- **Fase G del `0.2` (ronda de diseño aceptada por la usuaria, 2026-10-05, contrastada con D&D 5e,
+  Baldur's Gate 3, X4 y Bellwright; términos en `GLOSSARY.md`):**
+  - **CR-44** Moral y retirada de los NPC en combate. **M** Todo NPC con mente tiene moral (la fauna
+    sigue con su temperamento). Tirada de moral (Voluntad, CD 10; desventaja si la jugadora va
+    claramente ganando; en un grupo con líder la hace el líder por todos) la primera vez que su
+    bando queda a la mitad de efectivos o él cae a GRAVE, y al caer su capitán. Si falla, intenta
+    escapar con la tirada de Destreza de la huida del personaje; si no escapa, pierde el turno.
+    Según la Inteligencia: < 12 desbandada (cada uno por su lado), 12-19 retirada en orden. El que
+    escapa sale del combate y de la zona, vivo, vuelve a su hogar, sin botín, y queda el suceso «X
+    huyó de ti» (Leyendas, reputación; puede volver por `CR-11`). Un líder de facción no huye si con
+    él cae su facción.
+  - **CR-45** Capitán y ataques concentrados. **M** Inteligencia ≥ 20: concentra ataques y manda a
+    los de su bando con menos Inteligencia (atacan a su objetivo). Objetivo = el más vulnerable (poca
+    vida y poca defensa), no siempre el mismo (en BG3 cansa). Pasada previa por el bando al empezar
+    la ronda. Si el capitán cae o huye, sus seguidores tiran moral al momento con desventaja
+    (desbandada). Se ve: línea en el registro («Ulkha ordena caer sobre Gorhorn») y marca en el
+    objetivo.
+  - **CR-46** Expediciones y caravanas en el mapa de Berig. **S** Se ven las del Reino, las de las
+    facciones con tratado o alianza y las que pasan por la región donde está el personaje (como en
+    X4: aliado = ves sus órdenes; lo demás, solo lo que tienes cerca). Icono de la facción que
+    avanza por la ruta según los días; al pulsarlo, facción, a qué va y día de vuelta.
+  - **CR-47** Comercio de volumen Reino↔facción. **L** (fórmula decidida por la usuaria; la revisa
+    Álvaro después). Edificio Mercado con órdenes permanentes («compra hierro si baja de 20»,
+    «vende madera si pasa de 80»); caravanas del Reino que viajan días a las facciones con tratado o
+    alianza, se ven en el mapa (`CR-46`) y se pueden asaltar. Precio: `precioDinamico` unidad a
+    unidad (cada unidad vacía el almacén y encarece la siguiente, como X4; sin descuento por
+    volumen). Las caravanas del narrador de fondo que pasan cerca son ocasión de comerciar sin
+    desplazarse (Q14 de `CR-12`).
+  - **CR-48** Pasada de rendimiento del avance diario con el motor completo. **S**
 - **Hecho cuando:** `cronista:simular 60` produce caídas, escisiones, tormentas con daños, guerras
   y nacimientos coherentes; perdonar a un NPC lo hace volver en otra región.
 
