@@ -788,7 +788,7 @@ export interface SessionSummaryInfo {
   summary: string
 }
 
-export type QuestStatus = 'ACTIVA' | 'COMPLETADA' | 'FALLIDA'
+export type QuestStatus = 'ACTIVA' | 'COMPLETADA' | 'FALLIDA' | 'ABANDONADA'
 
 export interface QuestInfo {
   id: string

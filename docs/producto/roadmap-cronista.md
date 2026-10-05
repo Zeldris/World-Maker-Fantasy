@@ -1378,7 +1378,11 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     `recompensaDe` (XP, Goirnos y reputación por tabla; +25 % si la encarga un NPC con nombre; pérdida
     al fallar y con la facción contra la que va), `textoDeMision` (dos frases por tipo y cierre por
     pueblo, sin IA) y exceso de población (> 80 %, cazar 3-8).
-  - **Pasos:** 40a plantillas, tipos y recompensas (puro) ✅ · 40b modelo y migración · 40c tablones
+  - ✅ **40b hecho (2026-10-05):** migración `20261005050000_misiones_motor`: `Quest` gana `tipoMision`
+    (null = del narrador o fija), `huecos`, `recompensa`, `encargaFaccionId`/`encargaNpcId`, `progreso`,
+    `cantidad` y `venceEn`; estado `ABANDONADA`; modelo `MisionOfrecida` (a la vista en un tablón o en
+    boca de un NPC, con `retiraEn`; al aceptarla nace su `Quest`). Panel de Misiones con «Abandonada».
+  - **Pasos:** 40a plantillas, tipos y recompensas (puro) ✅ · 40b modelo y migración ✅ · 40c tablones
     (sembrados y del Reino) · 40d generación en el avance diario · 40e aceptar, progreso, cumplir,
     fallar y reputación · 40f oferta pendiente única (ADR), «¿Tienes trabajo?» del NPC y el narrador
     deja de crear misiones · 40g interfaz del tablón y del diario.

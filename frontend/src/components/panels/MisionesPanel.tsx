@@ -10,12 +10,14 @@ const STATUS_LABEL: Record<QuestInfo['status'], string> = {
   ACTIVA: 'Activa',
   COMPLETADA: 'Completada',
   FALLIDA: 'Fallida',
+  ABANDONADA: 'Abandonada',
 }
 
 const STATUS_CLASS: Record<QuestInfo['status'], string> = {
   ACTIVA: 'border-accent2-600/60 text-accent2-300',
   COMPLETADA: 'border-yellow-600/60 text-yellow-300',
   FALLIDA: 'border-red-900/60 text-red-400/80',
+  ABANDONADA: 'border-iron-600/60 text-wood-400',
 }
 
 // Fondo amarillo para misión completada (petición explícita, docs/19-post-combate-y-recompensas-
@@ -26,6 +28,7 @@ const CARD_CLASS: Record<QuestInfo['status'], string> = {
   ACTIVA: 'border-iron-700 bg-wood-950/40',
   COMPLETADA: 'border-yellow-600/40 bg-yellow-500/10',
   FALLIDA: 'border-iron-700 bg-wood-950/40',
+  ABANDONADA: 'border-iron-700 bg-wood-950/40',
 }
 
 export function MisionesPanel({ quests }: MisionesPanelProps) {
