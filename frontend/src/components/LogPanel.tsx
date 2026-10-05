@@ -49,8 +49,8 @@ interface LogPanelProps {
   /// CR-34 (34e): responder a la propuesta de una facción al Reino (noticia de «El mundo»). Sin él,
   /// los botones salen deshabilitados.
   onResponderPropuesta?: ResponderPropuesta
-  /// NAR-9: abre el panel de Leyendas desde una noticia de un suceso.
-  onVerLeyendas?: () => void
+  /// NAR-9: abre el panel de Leyendas en la entrada del suceso de una noticia.
+  onVerLeyendas?: (sucesoId: string) => void
   /// Alternar de canal (2026-08-17, log de Reino que se alterna con el de mundo, uno u otro,
   /// nunca los dos a la vez) — sin `onToggleView`, no sale ningún botón (mismo patrón opcional
   /// que `onCollapse`). `toggleViewLabel` es el texto del botón (apunta a la vista A LA QUE SE

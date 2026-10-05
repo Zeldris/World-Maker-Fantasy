@@ -90,10 +90,11 @@ export async function avanzarMundoHasta(
   // toquen ahora (días, región), y otra vuelta de reacciones por lo que hayan registrado.
   await procesarReacciones(prisma, saveId, random);
   if ((await evaluarConsecuencias(prisma, saveId, {}, random)).disparadas > 0) await procesarReacciones(prisma, saveId, random);
+  // CR-18 (18b): lo que llega solo (≥ 7 o de una aliada) a la región donde está el personaje; antes
+  // del resumen, para que lo que llega al final de un viaje entre en él.
+  await difundir(prisma, saveId);
   // CR-12 (12d) / UX-31: varios días de golpe (viaje, descanso largo) → un solo resumen en «El mundo».
   if (diasSimulados >= 2) await agruparNoticias(prisma, saveId, marcaNoticias);
-  // CR-18 (18b): lo que llega solo (≥ 7 o de una aliada) a la región donde está el personaje.
-  await difundir(prisma, saveId);
   // CR-40 (40e): misiones del motor exploradas, objetivos caídos o plazos vencidos.
   await revisarMisiones(prisma, saveId);
   return { diasSimulados };

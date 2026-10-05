@@ -102,15 +102,21 @@ export interface RumorConLugar {
 /// Rumores con región de las noticias de «El mundo» que aún no se han confirmado (una noticia
 /// posterior del mismo suceso sin marca de rumor lo confirma), uno por suceso.
 export function rumoresConLugar(log: LogEntry[]): RumorConLugar[] {
-  const confirmados = new Set(log.filter((e) => e.noticia?.sucesoId && !e.noticia.rumor).map((e) => e.noticia!.sucesoId!))
+  // Un resumen de varios días (UX-31) guarda cada noticia como una línea con sus propios metadatos.
+  const noticias = log.flatMap((e) => {
+    if (!e.noticia?.resumen) return e.noticia ? [{ texto: e.text, meta: e.noticia }] : []
+    const lineas = e.text.split('\n').slice(1).map((l) => l.replace(/^• /, ''))
+    return lineas.flatMap((texto, i) => (e.noticia?.lineas?.[i] ? [{ texto, meta: e.noticia.lineas[i]! }] : []))
+  })
+  const confirmados = new Set(noticias.filter((n) => n.meta.sucesoId && !n.meta.rumor).map((n) => n.meta.sucesoId!))
   const vistos = new Set<string>()
   const rumores: RumorConLugar[] = []
-  for (const e of log) {
-    const id = e.noticia?.sucesoId
-    const region = e.noticia?.rumor?.region
+  for (const { texto, meta } of noticias) {
+    const id = meta.sucesoId
+    const region = meta.rumor?.region
     if (!id || !region || confirmados.has(id) || vistos.has(id)) continue
     vistos.add(id)
-    rumores.push({ sucesoId: id, region, texto: e.text })
+    rumores.push({ sucesoId: id, region, texto })
   }
   return rumores
 }

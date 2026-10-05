@@ -3,7 +3,7 @@ import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { asegurarMundoDePartida } from '../mundoPartida.js';
 import { registrarSuceso } from './sucesos.js';
-import { difundir, leerBandos, preguntarNoticias, VENTANA_DIAS_LLEGA_SOLA } from './difusion.js';
+import { conocer, difundir, leerBandos, preguntarNoticias, VENTANA_DIAS_LLEGA_SOLA } from './difusion.js';
 import { asegurarTablonesDePartida, TABLON_RECIPE_KEY } from './tablones.js';
 import type { MetaNoticia } from './noticias.js';
 
@@ -174,6 +174,34 @@ describe('difusión de sucesos al personaje (CR-18 18b)', () => {
     } finally {
       await prisma.save.update({ where: { id: saveId }, data: { currentLocationId: lugarId } });
     }
+  });
+
+  // /code-review: un NPC que solo confirma rumores también cuenta para «una vez al día»; dos
+  // pasadas a la vez no chocan en la clave única.
+  it('un NPC que solo confirma rumores no vuelve a contar el mismo día', async () => {
+    await pasarDias(1);
+    const serhu = await prisma.faction.findFirstOrThrow({ where: { saveId, origenSlug: 'clan-serhu' }, select: { slug: true } });
+    const rumorDeSerhu = await registrarSuceso(prisma, {
+      saveId, tipo: 'ALIANZA', fictionalMinutes: await ahora(), regionSlug: 'cienaga-troncal', origen: 'MUNDO',
+      actores: [{ entidadTipo: 'FACCION', entidadId: serhu.slug, papel: 'AUTOR' }], datos: { faccionA: 'Clan Serhu', faccionB: 'Los del límite' },
+    });
+    await prisma.conocimiento.create({ data: { saveId, sucesoId: rumorDeSerhu, desde: await ahora(), via: 'OIDAS', confirmado: false } });
+    await pasarDias(1);
+    const r = await preguntarNoticias(prisma, saveId, 'curtidor-serhu');
+    expect(r!.frase).toContain('Los del límite');
+    expect(await prisma.conocimiento.findUnique({ where: { saveId_sucesoId: { saveId, sucesoId: rumorDeSerhu } } })).toMatchObject({ confirmado: true, via: 'NPC', fuente: 'curtidor-serhu' });
+    expect((await preguntarNoticias(prisma, saveId, 'curtidor-serhu'))!.frase).toContain('Ya te he contado todo lo que sé');
+  });
+
+  it('dos «conocer» a la vez del mismo suceso: uno lo apunta y el otro no falla', async () => {
+    const id = await alianza('las-llanuras-del-viento-rojo');
+    await prisma.conocimiento.deleteMany({ where: { saveId, sucesoId: id } });
+    const minutos = await ahora();
+    const una = () => prisma.$transaction((tx) => conocer(tx, { saveId, sucesoId: id, via: 'OIDAS', confirmado: true, minutos, escribirNoticia: true }));
+    const resultados = await Promise.all([una(), una()]);
+    expect(resultados.filter((r) => r === 'NUEVO')).toHaveLength(1);
+    expect(await prisma.conocimiento.count({ where: { saveId, sucesoId: id } })).toBe(1);
+    expect(await prisma.logEntry.count({ where: { saveId, channel: 'WORLD', text: { contains: 'Los de prueba y Los otros' }, noticia: { path: ['sucesoId'], equals: id } } })).toBe(1);
   });
 });
 

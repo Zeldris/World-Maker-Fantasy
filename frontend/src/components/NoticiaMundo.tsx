@@ -81,8 +81,8 @@ export function NoticiaMundo({ text, noticia, texto, onResponderPropuesta, onVer
   noticia: NoticiaMeta
   texto: (t: string) => ReactNode
   onResponderPropuesta?: ResponderPropuesta
-  /// NAR-9: abre el panel de Leyendas.
-  onVerLeyendas?: () => void
+  /// NAR-9: abre el panel de Leyendas en la entrada de este suceso.
+  onVerLeyendas?: (sucesoId: string) => void
 }) {
   if (noticia.resumen) {
     const [cabecera, ...lineas] = text.split('\n')
@@ -106,7 +106,7 @@ export function NoticiaMundo({ text, noticia, texto, onResponderPropuesta, onVer
       <Linea text={text} noticia={noticia} texto={texto} />
       {noticia.propuesta && <Propuesta propuesta={noticia.propuesta} onResponder={onResponderPropuesta} />}
       {noticia.sucesoId && onVerLeyendas && (
-        <button type="button" onClick={onVerLeyendas} className="ml-1.5 text-2xs not-italic text-accent2-300 underline-offset-2 hover:underline">
+        <button type="button" onClick={() => onVerLeyendas(noticia.sucesoId!)} className="ml-1.5 text-2xs not-italic text-accent2-300 underline-offset-2 hover:underline">
           Ver en Leyendas
         </button>
       )}

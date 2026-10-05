@@ -7,16 +7,16 @@ import type { EntidadTipo } from '../../services/cronista/sucesos.js';
 /// Leyendas de la partida (CR-19, hito 0.2 — roadmap-cronista.md § 14): solo lo que sabe el
 /// personaje. La vista de administración con todo el Libro es `GET /saves/:id/libro`.
 export async function leyendasRoutes(app: FastifyInstance) {
-  app.get<{ Params: { id: string }; Querystring: { familia?: string; desde?: string; hasta?: string; limite?: string; antesDe?: string } }>(
+  app.get<{ Params: { id: string }; Querystring: { familia?: string; desde?: string; hasta?: string; limite?: string; cursor?: string } }>(
     '/saves/:id/leyendas',
     async (request, reply) => {
       const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true } });
       if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
-      const { familia, desde, hasta, limite, antesDe } = request.query;
+      const { familia, desde, hasta, limite, cursor } = request.query;
       if (familia && !FAMILIAS.includes(familia as FamiliaSuceso)) return reply.status(400).send({ error: `Familia desconocida: ${familia}` });
       const numero = (v?: string) => (v !== undefined && Number.isFinite(Number(v)) ? Number(v) : undefined);
       return leyendasDePartida(prisma, save.id, {
-        familia: familia as FamiliaSuceso | undefined, desde: numero(desde), hasta: numero(hasta), limite: numero(limite), antesDe: numero(antesDe),
+        familia: familia as FamiliaSuceso | undefined, desde: numero(desde), hasta: numero(hasta), limite: numero(limite), cursor: cursor || undefined,
       });
     },
   );

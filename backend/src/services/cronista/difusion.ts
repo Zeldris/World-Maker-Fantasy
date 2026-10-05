@@ -87,19 +87,34 @@ export async function conocer(
   tx: Tx,
   args: { saveId: string; sucesoId: string; via: Via; confirmado: boolean; minutos: number; escribirNoticia: boolean; region?: string | null; fuente?: string | null },
 ): Promise<'NUEVO' | 'CONFIRMADO' | null> {
+  // Dos pasadas a la vez (cada POST lanza `difundir`; «¿Qué se cuenta?» y los bandos, la suya) no
+  // deben chocar en la clave única: primero se reclama la fila sin error (ON CONFLICT DO NOTHING o
+  // un update condicionado) y solo quien la gana escribe la noticia.
   const previo = await tx.conocimiento.findUnique({ where: { saveId_sucesoId: { saveId: args.saveId, sucesoId: args.sucesoId } }, select: { id: true, confirmado: true } });
   if (previo) {
     if (previo.confirmado || !args.confirmado) return null;
-    // Q4: el rumor pasa a hecho sabido; «El mundo» lo dice si quien lo confirma no es lo vivido.
-    let logEntryId: string | undefined;
+    // Q4: el rumor pasa a hecho sabido; quien lo confirma queda como vía y fuente (también para el
+    // límite de una vez al día por NPC).
+    const ganada = await tx.conocimiento.updateMany({
+      where: { id: previo.id, confirmado: false },
+      data: { confirmado: true, confirmadoEn: args.minutos, via: args.via, ...(args.fuente ? { fuente: args.fuente } : {}) },
+    });
+    if (ganada.count === 0) return null;
     if (args.escribirNoticia) {
       const base = await textoDeNoticia(tx, args.sucesoId);
-      logEntryId = await escribir(tx, args.saveId, `Se confirma: ${enMitadDeFrase(base.texto)}`, args.minutos, { ...base.meta, sucesoId: args.sucesoId });
+      const logEntryId = await escribir(tx, args.saveId, `Se confirma: ${enMitadDeFrase(base.texto)}`, args.minutos, { ...base.meta, sucesoId: args.sucesoId });
+      await tx.conocimiento.update({ where: { id: previo.id }, data: { logEntryId } });
     }
-    await tx.conocimiento.update({ where: { id: previo.id }, data: { confirmado: true, confirmadoEn: args.minutos, ...(logEntryId ? { logEntryId } : {}) } });
     return 'CONFIRMADO';
   }
-  let logEntryId: string | null = null;
+  const creada = await tx.conocimiento.createMany({
+    data: [{
+      saveId: args.saveId, sucesoId: args.sucesoId, desde: args.minutos, via: args.via, confirmado: args.confirmado,
+      confirmadoEn: args.confirmado ? args.minutos : null, fuente: args.fuente ?? null,
+    }],
+    skipDuplicates: true,
+  });
+  if (creada.count === 0) return null;
   if (args.escribirNoticia) {
     const base = await textoDeNoticia(tx, args.sucesoId);
     const meta: MetaNoticia = {
@@ -107,14 +122,9 @@ export async function conocer(
       sucesoId: args.sucesoId,
       ...(args.confirmado ? {} : { rumor: { region: args.region ?? null, pasoEn: base.pasoEn } }),
     };
-    logEntryId = await escribir(tx, args.saveId, args.confirmado ? base.texto : comoRumor(base.texto), args.minutos, meta);
+    const logEntryId = await escribir(tx, args.saveId, args.confirmado ? base.texto : comoRumor(base.texto), args.minutos, meta);
+    await tx.conocimiento.update({ where: { saveId_sucesoId: { saveId: args.saveId, sucesoId: args.sucesoId } }, data: { logEntryId } });
   }
-  await tx.conocimiento.create({
-    data: {
-      saveId: args.saveId, sucesoId: args.sucesoId, desde: args.minutos, via: args.via, confirmado: args.confirmado,
-      confirmadoEn: args.confirmado ? args.minutos : null, logEntryId, fuente: args.fuente ?? null,
-    },
-  });
   return 'NUEVO';
 }
 
@@ -138,9 +148,9 @@ export async function difundirEn(tx: Tx, saveId: string, opciones: { sucesoIds?:
     select: { id: true, importancia: true, regionSlug: true, locationId: true, noticia: true, fictionalMinutes: true, actores: { select: { entidadTipo: true, entidadId: true } } },
     orderBy: { fictionalMinutes: 'asc' },
   });
-  if (sucesos.length === 0) return 0;
-  const alcance = await alcanceDeSucesos(tx, saveId, sucesos);
   const personaje = { region: save.currentLocation?.region ?? null, aliadas: await aliadasDelReino(tx, saveId) };
+  if (sucesos.length === 0) return opciones.sucesoIds ? 0 : confirmarRumores(tx, saveId, ahora, personaje);
+  const alcance = await alcanceDeSucesos(tx, saveId, sucesos);
   let sabidos = 0;
   for (const s of sucesos) {
     const a = alcance.get(s.id)!;
@@ -151,7 +161,8 @@ export async function difundirEn(tx: Tx, saveId: string, opciones: { sucesoIds?:
     });
     if (r) sabidos++;
   }
-  return sabidos + (await confirmarRumores(tx, saveId, ahora, personaje));
+  // Repasar los rumores pendientes solo en la pasada general, no por cada noticia de un suceso.
+  return sabidos + (opciones.sucesoIds ? 0 : await confirmarRumores(tx, saveId, ahora, personaje));
 }
 
 /// 18e (Q4): un rumor se confirma al estar en la región donde pasó o si implica a una facción
@@ -210,7 +221,7 @@ export async function preguntarNoticias(prisma: PrismaClient, saveId: string, np
     if (!npc) return null;
     const ahora = save.worldState?.fictionalMinutes ?? 0;
     const inicioDia = Math.floor(ahora / MINUTOS_DIA) * MINUTOS_DIA;
-    if ((await tx.conocimiento.count({ where: { saveId, fuente: npcSlug, desde: { gte: inicioDia } } })) > 0) {
+    if ((await tx.conocimiento.count({ where: { saveId, fuente: npcSlug, OR: [{ desde: { gte: inicioDia } }, { confirmadoEn: { gte: inicioDia } }] } })) > 0) {
       return { frase: `${npc.name}: «Ya te he contado todo lo que sé.»`, contadas: 0 };
     }
 

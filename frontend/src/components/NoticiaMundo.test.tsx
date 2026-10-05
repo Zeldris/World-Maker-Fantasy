@@ -88,7 +88,7 @@ describe('UX-38 — NoticiaMundo', () => {
     )
     expect(getByText(/Desde Ciénaga Troncal · pasó el día 12/)).toBeTruthy()
     fireEvent.click(getByRole('button', { name: 'Ver en Leyendas' }))
-    expect(onVerLeyendas).toHaveBeenCalledTimes(1)
+    expect(onVerLeyendas).toHaveBeenCalledWith('s1')
   })
 })
 

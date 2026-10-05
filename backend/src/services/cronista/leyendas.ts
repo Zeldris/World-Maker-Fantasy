@@ -114,35 +114,39 @@ async function aEntradas(prisma: PrismaClient, saveId: string, filas: FilaConoci
   });
 }
 
-/// La crónica que conoce el personaje, lo más reciente primero; `antesDe` (minuto de ficción) pagina.
+/// La crónica que conoce el personaje, lo más reciente primero. `cursor` (el `siguiente` de la página
+/// anterior) pagina sin saltarse los sucesos que comparten minuto.
 export async function leyendasDePartida(
   prisma: PrismaClient,
   saveId: string,
-  filtro: { familia?: FamiliaSuceso; desde?: number; hasta?: number; limite?: number; antesDe?: number } = {},
-): Promise<{ entradas: EntradaLeyenda[]; hayMas: boolean }> {
+  filtro: { familia?: FamiliaSuceso; desde?: number; hasta?: number; limite?: number; cursor?: string } = {},
+): Promise<{ entradas: EntradaLeyenda[]; hayMas: boolean; siguiente: string | null }> {
   const take = Math.min(LIMITE_LEYENDAS, Math.max(1, filtro.limite ?? LIMITE_LEYENDAS));
   const minutos: Prisma.IntFilter = {
     ...(filtro.desde !== undefined ? { gte: filtro.desde } : {}),
     ...(filtro.hasta !== undefined ? { lte: filtro.hasta } : {}),
-    ...(filtro.antesDe !== undefined ? { lt: filtro.antesDe } : {}),
   };
   const filas = await prisma.conocimiento.findMany({
     where: { saveId, suceso: { ...(filtro.familia ? { familia: filtro.familia } : {}), ...(Object.keys(minutos).length ? { fictionalMinutes: minutos } : {}) } },
-    select: { via: true, confirmado: true, desde: true, suceso: { select: SELECT_SUCESO } },
+    select: { id: true, via: true, confirmado: true, desde: true, suceso: { select: SELECT_SUCESO } },
     orderBy: [{ suceso: { fictionalMinutes: 'desc' } }, { id: 'desc' }],
+    ...(filtro.cursor ? { cursor: { id: filtro.cursor }, skip: 1 } : {}),
     take: take + 1,
   });
-  return { entradas: await aEntradas(prisma, saveId, filas.slice(0, take)), hayMas: filas.length > take };
+  const pagina = filas.slice(0, take);
+  const hayMas = filas.length > take;
+  return { entradas: await aEntradas(prisma, saveId, pagina), hayMas, siguiente: hayMas ? pagina[pagina.length - 1]!.id : null };
 }
 
 /// Lo que el personaje sabe de una entidad (ficha «En tu partida»): sucesos donde es actor y, para
-/// una región o un lugar, lo que pasó allí. Un rumor sale igual que en la crónica, sin detalles.
+/// una región o un lugar, lo que pasó allí. Un rumor no dice quién ni dónde exactamente (Q4), así que
+/// solo sale en la ficha de su región.
 export async function leyendasDeEntidad(prisma: PrismaClient, saveId: string, tipo: EntidadTipo, id: string): Promise<EntradaLeyenda[]> {
-  const donde: Prisma.SucesoWhereInput[] = [{ actores: { some: { entidadTipo: tipo, entidadId: id } } }];
-  if (tipo === 'REGION') donde.push({ regionSlug: id });
-  if (tipo === 'LOCATION') donde.push({ locationId: id });
+  const donde: Prisma.ConocimientoWhereInput[] = [{ confirmado: true, suceso: { actores: { some: { entidadTipo: tipo, entidadId: id } } } }];
+  if (tipo === 'REGION') donde.push({ suceso: { regionSlug: id } });
+  if (tipo === 'LOCATION') donde.push({ confirmado: true, suceso: { locationId: id } });
   const filas = await prisma.conocimiento.findMany({
-    where: { saveId, suceso: { OR: donde } },
+    where: { saveId, OR: donde },
     select: { via: true, confirmado: true, desde: true, suceso: { select: SELECT_SUCESO } },
     orderBy: [{ suceso: { fictionalMinutes: 'desc' } }, { id: 'desc' }],
     take: LIMITE_LEYENDAS,
@@ -168,10 +172,11 @@ export async function leyendasDeFicha(prisma: PrismaClient, saveId: string, fich
     ids = (await prisma.location.findMany({ where: { worldId: save.worldId, slug }, select: { id: true } })).map((l) => l.id);
   }
   if (ids.length === 0) return [];
+  // Solo hechos confirmados: un rumor no revela a quién implica (Q4).
   const donde: Prisma.SucesoWhereInput[] = [{ actores: { some: { entidadTipo: tipo, entidadId: { in: ids } } } }];
   if (tipo === 'LOCATION') donde.push({ locationId: { in: ids } });
   const filas = await prisma.conocimiento.findMany({
-    where: { saveId, suceso: { OR: donde } },
+    where: { saveId, confirmado: true, suceso: { OR: donde } },
     select: { via: true, confirmado: true, desde: true, suceso: { select: SELECT_SUCESO } },
     orderBy: [{ suceso: { fictionalMinutes: 'desc' } }, { id: 'desc' }],
     take: LIMITE_LEYENDAS,

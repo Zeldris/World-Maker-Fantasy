@@ -53,5 +53,15 @@ describe('leyendas', () => {
     ]
     expect(rumoresConLugar(log)).toEqual([{ sucesoId: 'a', region: 'Ciénaga Troncal', texto: 'Se dice que A.' }])
   })
+
+  it('rumores con lugar también dentro de un resumen de varios días, y su confirmación', () => {
+    const e = (id: string, text: string, noticia: object) => ({ id, channel: 'world', text, timeLabel: '', createdAt: '', noticia }) as never
+    const resumen = e('r', 'Mientras pasaban los días…\n• Se dice que D.\n• Se confirma: E.', {
+      resumen: true,
+      lineas: [{ sucesoId: 'd', rumor: { region: 'Cristal Helado', pasoEn: 0 } }, { sucesoId: 'e' }],
+    })
+    const antes = e('1', 'Se dice que E.', { sucesoId: 'e', rumor: { region: 'Ciénaga Troncal', pasoEn: 0 } })
+    expect(rumoresConLugar([antes, resumen])).toEqual([{ sucesoId: 'd', region: 'Cristal Helado', texto: 'Se dice que D.' }])
+  })
 })
 

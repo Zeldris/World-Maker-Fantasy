@@ -2604,10 +2604,11 @@ export interface EntradaLeyenda {
   causas: string[]
 }
 
-export async function getLeyendas(saveId: string, params: { familia?: FamiliaSuceso; antesDe?: number } = {}): Promise<{ entradas: EntradaLeyenda[]; hayMas: boolean }> {
+/// `siguiente` (si hay más) es el cursor para pedir las más antiguas.
+export async function getLeyendas(saveId: string, params: { familia?: FamiliaSuceso; cursor?: string } = {}): Promise<{ entradas: EntradaLeyenda[]; hayMas: boolean; siguiente: string | null }> {
   const q = new URLSearchParams()
   if (params.familia) q.set('familia', params.familia)
-  if (params.antesDe !== undefined) q.set('antesDe', String(params.antesDe))
+  if (params.cursor) q.set('cursor', params.cursor)
   const qs = q.toString()
   return fetchJson(`${API_URL}/saves/${saveId}/leyendas${qs ? `?${qs}` : ''}`)
 }

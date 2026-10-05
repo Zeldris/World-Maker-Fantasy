@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { getLeyendas, type EntradaLeyenda, type FamiliaSuceso } from '../../lib/api'
 import { agruparCronica, colorDeEntrada, diaDeEntrada, FAMILIA_ESTILO, lineaTemporal, NIVEL_CLASES, porEntidad, type SeccionEntidad } from '../../lib/leyendas'
 import { PanelEmptyState } from '../PanelEmptyState'
@@ -90,21 +90,30 @@ export function EntradaLeyendaItem({ entrada: e, porId, irA, resaltada = false }
   )
 }
 
-export function LeyendasPanel({ saveId }: { saveId: string }) {
+export function LeyendasPanel({ saveId, irAlSuceso }: {
+  saveId: string
+  /// NAR-9: al abrir desde una noticia, la entrada de su suceso (se señala y se lleva a la vista).
+  irAlSuceso?: string | null
+}) {
   const [entradas, setEntradas] = useState<EntradaLeyenda[] | null>(null)
   const [fallo, setFallo] = useState(false)
   const [seccion, setSeccion] = useState<Seccion>('cronica')
   const [porSemana, setPorSemana] = useState(false)
   const [familia, setFamilia] = useState<FamiliaSuceso | null>(null)
   const [resaltada, setResaltada] = useState<string | null>(null)
+  const [siguiente, setSiguiente] = useState<string | null>(null)
+  const [cargandoMas, setCargandoMas] = useState(false)
 
   useEffect(() => {
     let cancelado = false
     setEntradas(null)
     setFallo(false)
+    setSiguiente(null)
     getLeyendas(saveId)
       .then((r) => {
-        if (!cancelado) setEntradas(r.entradas)
+        if (cancelado) return
+        setEntradas(r.entradas)
+        setSiguiente(r.siguiente)
       })
       .catch(() => {
         if (!cancelado) setFallo(true)
@@ -124,6 +133,25 @@ export function LeyendasPanel({ saveId }: { saveId: string }) {
     setFamilia(null)
     setResaltada(id)
     requestAnimationFrame(() => document.getElementById(`leyenda-${id}`)?.scrollIntoView?.({ block: 'center', behavior: 'smooth' }))
+  }
+  const irARef = useRef(irA)
+  irARef.current = irA
+  // NAR-9: abierto desde «Ver en Leyendas», a la entrada de ese suceso en cuanto esté cargada.
+  useEffect(() => {
+    if (entradas && irAlSuceso && entradas.some((e) => e.sucesoId === irAlSuceso)) irARef.current(irAlSuceso)
+  }, [entradas, irAlSuceso])
+
+  // Más de una página: las más antiguas se piden con el cursor de la anterior.
+  const verMas = () => {
+    if (!siguiente) return
+    setCargandoMas(true)
+    getLeyendas(saveId, { cursor: siguiente })
+      .then((r) => {
+        setEntradas((prev) => [...(prev ?? []), ...r.entradas])
+        setSiguiente(r.siguiente)
+      })
+      .catch(() => {})
+      .finally(() => setCargandoMas(false))
   }
   const item = (e: EntradaLeyenda) => <EntradaLeyendaItem key={e.sucesoId} entrada={e} porId={porId} irA={irA} resaltada={resaltada === e.sucesoId} />
 
@@ -193,6 +221,12 @@ export function LeyendasPanel({ saveId }: { saveId: string }) {
             </ol>
           )
         })()}
+
+      {siguiente && (
+        <button type="button" disabled={cargandoMas} onClick={verMas} className="self-center rounded border border-iron-700 px-3 py-1 text-xs text-wood-300 hover:bg-wood-900/60 disabled:opacity-50">
+          {cargandoMas ? 'Leyendo…' : 'Ver más antiguas'}
+        </button>
+      )}
     </div>
   )
 }

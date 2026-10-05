@@ -619,9 +619,11 @@ export function GameView() {
   // noticias del mundo (lib/notificaciones.ts).
   const { notificaciones, notificar, descartar: descartarNotificacion } = useNotificaciones()
   const { ajustes: ajustesAvisos } = useAjustes()
+  // NAR-9: suceso al que lleva «Ver en Leyendas» desde una noticia.
+  const [leyendaPedida, setLeyendaPedida] = useState<string | null>(null)
   // INT-9: rumores con lugar para el mapa de Berig (pergamino hasta que se leen).
   const rumoresDelMapa = useRumoresDelMapa(saveId ?? null, worldLog)
-  useNoticiasMundo({
+  const noticiasMundo = useNoticiasMundo({
     saveId,
     worldLog,
     setWorldLog,
@@ -842,7 +844,9 @@ export function GameView() {
       // que llegue la respuesta no debe reabrirlo.
       // CR-18 (18d): los bandos se leen a la vez (un fallo ahí no impide ver los avisos).
       Promise.all([getAvisosTablon(saveId, buildingId), leerBandosTablon(saveId, buildingId).catch(() => ({ bandos: [] as BandoInfo[] }))])
-        .then(([{ tablon, avisos }, { bandos }]) =>
+        .then(([{ tablon, avisos }, { bandos }]) => {
+          // Lo leído en los bandos acaba de llegar a «El mundo».
+          if (bandos.length > 0) void noticiasMundo.traer()
           setAvisosAbiertos((prev) =>
             prev?.cargando
               ? {
@@ -854,8 +858,8 @@ export function GameView() {
                   bandos,
                 }
               : prev,
-          ),
-        )
+          )
+        })
         .catch(() => setAvisosAbiertos((prev) => (prev?.cargando ? { titulo: 'Tablón de avisos', avisos: [], vacio: 'No se pudo leer el tablón.', cargando: false } : prev)))
     },
     mostrarOfertaNpc: (npcName, aviso) =>
@@ -1376,6 +1380,7 @@ export function GameView() {
     setAprenderOficioModalOpen,
     setActivePanel,
     onOfertaTrabajo: misionesValue.mostrarOfertaNpc,
+    onNoticiasNuevas: () => void noticiasMundo.traer(),
     openCombat: combat.openCombat,
     handleSubmit,
     refetchEnciclopedia,
@@ -1812,7 +1817,10 @@ export function GameView() {
               emptyHint={worldLogView === 'world' ? 'El mundo todavía no ha mostrado sus cartas.' : 'Todavía no ha pasado nada en tu reino.'}
               // CR-34 (34e): Aceptar/Rechazar la propuesta de una facción al Reino.
               onResponderPropuesta={saveId ? (propuestaId: string, acepta: boolean) => responderPropuesta(saveId, propuestaId, acepta).then((r) => r.respuesta) : undefined}
-              onVerLeyendas={() => setActivePanel('leyendas')}
+              onVerLeyendas={(sucesoId) => {
+                setLeyendaPedida(sucesoId)
+                setActivePanel('leyendas')
+              }}
               onCollapse={() => setCollapsedSide('world')}
               collapseIcon="›"
               // Alternar Mundo/Reino (2026-08-17) — solo tiene sentido ofrecerlo una vez hay reino
@@ -2299,7 +2307,7 @@ export function GameView() {
             />
           )}
           {panelMostrado === 'diario' && saveId && <DiarioPanel saveId={saveId} />}
-          {panelMostrado === 'leyendas' && saveId && <LeyendasPanel saveId={saveId} />}
+          {panelMostrado === 'leyendas' && saveId && <LeyendasPanel saveId={saveId} irAlSuceso={leyendaPedida} />}
           {panelMostrado === 'inventario' && saveId && (
             <InventarioPanel
               saveId={saveId}

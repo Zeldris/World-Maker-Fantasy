@@ -25,7 +25,7 @@ describe('LeyendasPanel', () => {
   ]
 
   it('crónica por días, con el rumor marcado y las causas para volver a ellas', async () => {
-    vi.mocked(getLeyendas).mockResolvedValue({ entradas, hayMas: false })
+    vi.mocked(getLeyendas).mockResolvedValue({ entradas, hayMas: false, siguiente: null })
     const { findByRole, getByRole, container } = render(<LeyendasPanel saveId="s1" />)
     const dia5 = await findByRole('region', { name: 'Día 5' })
     expect(dia5.textContent).toContain('declara la guerra')
@@ -36,7 +36,7 @@ describe('LeyendasPanel', () => {
   })
 
   it('filtra por familia y agrupa por facción; la línea temporal solo trae lo que marca la historia', async () => {
-    vi.mocked(getLeyendas).mockResolvedValue({ entradas, hayMas: false })
+    vi.mocked(getLeyendas).mockResolvedValue({ entradas, hayMas: false, siguiente: null })
     const { findByRole, getByRole, queryByText, getByText } = render(<LeyendasPanel saveId="s1" />)
     await findByRole('region', { name: 'Día 5' })
     fireEvent.click(getByRole('button', { name: /Clima/ }))
@@ -51,8 +51,30 @@ describe('LeyendasPanel', () => {
   })
 
   it('sin nada sabido, lo dice', async () => {
-    vi.mocked(getLeyendas).mockResolvedValue({ entradas: [], hayMas: false })
+    vi.mocked(getLeyendas).mockResolvedValue({ entradas: [], hayMas: false, siguiente: null })
     const { findByText } = render(<LeyendasPanel saveId="s1" />)
     expect(await findByText('Aún no hay leyendas')).toBeTruthy()
   })
+
+  // /code-review: más de una página y «Ver en Leyendas» desde una noticia.
+  it('«Ver más antiguas» pide la página siguiente con el cursor y la añade', async () => {
+    vi.mocked(getLeyendas)
+      .mockResolvedValueOnce({ entradas: [entradas[1]!], hayMas: true, siguiente: 'c1' })
+      .mockResolvedValueOnce({ entradas: [entradas[2]!], hayMas: false, siguiente: null })
+    const { findByRole, getByRole, queryByRole } = render(<LeyendasPanel saveId="s1" />)
+    fireEvent.click(await findByRole('button', { name: 'Ver más antiguas' }))
+    expect(await findByRole('region', { name: 'Día 2' })).toBeTruthy()
+    expect(getLeyendas).toHaveBeenLastCalledWith('s1', { cursor: 'c1' })
+    expect(getByRole('region', { name: 'Día 5' })).toBeTruthy()
+    expect(queryByRole('button', { name: 'Ver más antiguas' })).toBeNull()
+  })
+
+  it('abierto desde una noticia, señala la entrada de su suceso', async () => {
+    vi.mocked(getLeyendas).mockResolvedValue({ entradas, hayMas: false, siguiente: null })
+    const { findByRole, container } = render(<LeyendasPanel saveId="s1" irAlSuceso="tregua" />)
+    await findByRole('region', { name: 'Día 5' })
+    await new Promise((r) => requestAnimationFrame(() => r(null)))
+    expect(container.querySelector('#leyenda-tregua')?.className).toContain('ring-1')
+  })
 })
+

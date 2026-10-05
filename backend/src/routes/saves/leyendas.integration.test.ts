@@ -46,11 +46,14 @@ describe('GET /saves/:id/leyendas (CR-19)', () => {
     ids.causaSabida = await alianza(m + 10, 'Causa', 'Sabida');
     ids.hecho = await alianza(m + 20, 'Clan Serhu', 'Los del hecho', [ids.oculta, ids.causaSabida]);
     ids.rumor = await alianza(m + 30, 'Clan Serhu', 'Los del rumor');
+    // Mismo minuto que `hecho`: el cursor no debe saltárselo.
+    ids.gemelo = await alianza(m + 20, 'Clan Serhu', 'Los gemelos');
     const saber = (sucesoId: string, confirmado: boolean) =>
       prisma.conocimiento.create({ data: { saveId, sucesoId, desde: m + 40, via: confirmado ? 'NPC' : 'OIDAS', confirmado } });
     await saber(ids.causaSabida, true);
     await saber(ids.hecho, true);
     await saber(ids.rumor, false);
+    await saber(ids.gemelo, true);
   });
 
   afterAll(async () => {
@@ -60,7 +63,8 @@ describe('GET /saves/:id/leyendas (CR-19)', () => {
   it('solo sale lo que sabe, lo más reciente primero (también el comienzo de la historia, que vivió)', async () => {
     const { status, body } = await leer(`/saves/${saveId}/leyendas`);
     expect(status).toBe(200);
-    expect(body.entradas.filter((e) => e.tipo === 'ALIANZA').map((e) => e.sucesoId)).toEqual([ids.rumor, ids.hecho, ids.causaSabida]);
+    expect(body.entradas.filter((e) => e.tipo === 'ALIANZA').map((e) => e.sucesoId).sort()).toEqual([ids.rumor, ids.hecho, ids.gemelo, ids.causaSabida].sort());
+    expect(body.entradas.filter((e) => e.tipo === 'ALIANZA')[0]!.sucesoId).toBe(ids.rumor);
     expect(body.entradas.map((e) => e.sucesoId)).not.toContain(ids.oculta);
     expect(body.entradas.find((e) => e.tipo === 'SISTEMA_MUNDO_INICIADO')).toMatchObject({ via: 'TESTIGO', rumor: false });
   });
@@ -82,20 +86,28 @@ describe('GET /saves/:id/leyendas (CR-19)', () => {
     });
   });
 
-  it('filtra por familia y pagina; valida lo que recibe', async () => {
+  it('filtra por familia y pagina con cursor sin saltarse nada; valida lo que recibe', async () => {
     expect((await leer(`/saves/${saveId}/leyendas?familia=CLIMA`)).body.entradas).toEqual([]);
-    const pagina = await leer(`/saves/${saveId}/leyendas?limite=1`);
-    expect(pagina.body.entradas).toHaveLength(1);
-    expect(pagina.body.hayMas).toBe(true);
+    const todas = (await leer(`/saves/${saveId}/leyendas`)).body.entradas.map((e) => e.sucesoId);
+    const vistas: string[] = [];
+    let cursor: string | null = null;
+    do {
+      const pagina = (await leer(`/saves/${saveId}/leyendas?limite=1${cursor ? `&cursor=${cursor}` : ''}`)).body as { entradas: EntradaLeyenda[]; hayMas: boolean; siguiente: string | null };
+      expect(pagina.entradas).toHaveLength(1);
+      vistas.push(...pagina.entradas.map((e) => e.sucesoId));
+      cursor = pagina.siguiente;
+    } while (cursor);
+    expect(vistas).toEqual(todas);
     expect((await leer(`/saves/${saveId}/leyendas?familia=INVENTADA`)).status).toBe(400);
     expect((await leer('/saves/no-existe/leyendas')).status).toBe(404);
   });
 
-  it('ficha de una entidad: lo sabido donde aparece', async () => {
+  it('ficha de una entidad: lo sabido donde aparece; un rumor no, porque revelaría a quién implica', async () => {
     const { status, body } = await leer(`/saves/${saveId}/leyendas/entidad/faccion/${serhuSlug}`);
     expect(status).toBe(200);
-    expect(body.entradas.map((e) => e.sucesoId)).toEqual([ids.rumor, ids.hecho, ids.causaSabida]);
-    expect((await leer(`/saves/${saveId}/leyendas/entidad/region/cienaga-troncal`)).body.entradas).toHaveLength(3);
+    expect(body.entradas.map((e) => e.sucesoId).sort()).toEqual([ids.hecho, ids.gemelo, ids.causaSabida].sort());
+    // En la ficha de su región sí sale el rumor (la región ya la dice).
+    expect((await leer(`/saves/${saveId}/leyendas/entidad/region/cienaga-troncal`)).body.entradas.map((e) => e.sucesoId)).toContain(ids.rumor);
     expect((await leer(`/saves/${saveId}/leyendas/entidad/dragon/x`)).status).toBe(400);
   });
 
@@ -107,7 +119,7 @@ describe('GET /saves/:id/leyendas (CR-19)', () => {
   it('ficha de la Enciclopedia por slug (facción; un NPC o un lugar sin nada sabido salen vacíos)', async () => {
     const { status, body } = await leer(`/saves/${saveId}/leyendas/ficha/faction/${serhuSlug}`);
     expect(status).toBe(200);
-    expect(body.entradas.map((e) => e.sucesoId)).toEqual([ids.rumor, ids.hecho, ids.causaSabida]);
+    expect(body.entradas.map((e) => e.sucesoId).sort()).toEqual([ids.hecho, ids.gemelo, ids.causaSabida].sort());
     expect((await leer(`/saves/${saveId}/leyendas/ficha/npc/maestro-cocinero-serhu`)).body.entradas).toEqual([]);
     expect((await leer(`/saves/${saveId}/leyendas/ficha/item/espada`)).status).toBe(400);
   });
