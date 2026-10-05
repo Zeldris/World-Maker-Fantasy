@@ -1346,6 +1346,37 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   - **Q9** Las misiones del narrador de partidas en curso siguen como hasta ahora (sus anclas y su
     `questProgress`, solo para ellas).
   - Petición de la usuaria: **plantillas y reglas** para que la generación no produzca basura.
+  Ronda 2 (2026-10-05, aceptada entera; diseño cerrado):
+  - **Q10 Plantillas cerradas** por tipo con huecos que solo admiten datos reales de la partida
+    (quién encarga: NPC vivo o facción del tablón; qué: especie, objeto o NPC existente; cuántos:
+    calculado; dónde: región o lugar del catálogo; plazo y recompensa por tabla). Hueco sin dato
+    válido → no hay misión. Nunca repetidas ni imposibles (especie extinguida en la región, NPC
+    muerto). Texto de plantillas sin IA en el `0.2` (varias frases por tipo y raza); en la Fase 7 la
+    IA solo reescribe con los mismos huecos, validados (nombres y cifras), con la plantilla de reserva.
+  - **Q11 Tablón de avisos** (nombre mecánico) con nombre propio por pueblo, propuesto a Álvaro:
+    Poste de cacería (orcos), Estela de edictos menores (Goirntes), Muro de los susurros (Nabieus),
+    Árbol de las marcas (Faerus).
+  - **Q12 Dónde:** sembrado en el interior de las ciudades con interior (campamentos de Serhu, Helsig,
+    Goshg y Feg Tusha, Jakut Ger, cónclave de Keseg Prisilke) y construible en el Reino de la jugadora
+    (muestra las misiones de las facciones con tratado o alianza). Que las facciones construyan
+    tablones nuevos, con `CR-36` (`0.3`).
+  - **Q13 Tablón o NPC:** el tablón, misiones de la facción (unas 3 a la vista, se renuevan cada
+    semana); un NPC con nombre, misión personal con algo más de recompensa. La noticia de «El mundo»
+    solo avisa; la misión se coge en el tablón o hablando.
+  - **Q14 Cazar por exceso:** especie > 80 % de su máximo en una región → cazar una parte del exceso
+    (3-8); al cumplirla baja su población de verdad; la encarga la dueña de la región.
+  - **Q15 Recolectar** = Entregar, de flora que se ha extendido (mismo umbral) o de materiales que le
+    faltan a la facción.
+  - **Q16 Combatir** (tipo nuevo del `0.2`): solo con la facción en tensión o guerra; el motor sitúa un
+    grupo enemigo (patrulla, partida de saqueo) en un lugar de la región; derrotarlo sube la presión
+    del enemigo contra quien la encarga. Defender una expedición = Escoltar, más adelante.
+  - **Q17 Reputación:** cumplir sube la de quien encarga (`factionsStatus`); contra otra facción
+    (Combatir, Eliminar a uno de los suyos) baja la de esa; con reputación alta, esa facción propone
+    tratado al Reino antes (`CR-34`).
+  - **Pasos:** 40a plantillas, tipos y recompensas (puro) · 40b modelo y migración · 40c tablones
+    (sembrados y del Reino) · 40d generación en el avance diario · 40e aceptar, progreso, cumplir,
+    fallar y reputación · 40f oferta pendiente única (ADR), «¿Tienes trabajo?» del NPC y el narrador
+    deja de crear misiones · 40g interfaz del tablón y del diario.
 - **Hecho cuando:** `cronista:simular 60` produce caídas, escisiones, tormentas con daños, guerras
   y nacimientos coherentes; perdonar a un NPC lo hace volver en otra región.
 

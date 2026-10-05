@@ -86,6 +86,26 @@ dará el líder (`CR-38`) y cambiará con la sucesión.
 Archivos que tocaría si se aprueba: `docs/rpgtarkor/lore-mundo/facciones*.md` (una línea por
 facción) y, fuera de lore, el sembrado de `Faction.disposicion` en `backend/src/scripts/`.
 
+2026-10-05 — Nombre del tablón de avisos de cada pueblo (CR-40)
+Estado: SIN REVISAR
+
+Qué se propone: las misiones secundarias del motor se cogen hablando con NPC o en un **tablón de
+avisos** del interior de las ciudades (edificio que también se puede construir en el Reino). Nombre
+propio por pueblo:
+
+| Pueblo | Nombre | Cómo es |
+|---|---|---|
+| Orcos | Poste de cacería | Poste con pieles clavadas y marcas talladas de cada encargo |
+| Goirntes | Estela de edictos menores | El obelisco de la ley, a escala de barrio: avisos grabados |
+| Nabieus | Muro de los susurros | Muro de nudos y cordeles; cada nudo, un aviso que solo se lee de cerca |
+| Faerus | Árbol de las marcas | Árbol con marcas de garra y olor; la manada sabe leerlas |
+
+Por qué: decisión de la usuaria (2026-10-05, Q11 de `CR-40`): «tablón de misiones» suena a
+videojuego y cada pueblo tendría el suyo.
+
+Archivos que tocaría si se aprueba: `docs/rpgtarkor/sistemas-reino/construcciones-reino.md` (el
+edificio) y las fichas de cultura de cada pueblo; fuera de lore, `backend/src/services/construction.ts`.
+
 ## Categoría: Razas y cultura
 
 ---
