@@ -10,6 +10,8 @@ import { COLOR_HEX, regionControlDisplay, TIPO_LABEL, useEscalaPantalla } from '
 import { GridOverlay, JugadorMarker, ParcelaMarker, SalidaMarker, ZonePointMarker } from '../zona/MarcadoresZona'
 import { MS_POR_VELOCIDAD, PasoZonaContext } from '../../lib/zonaMovimiento'
 import { useAjustes } from '../../context/useAjustes'
+import { celdaDePixel, pixelDeCelda, rutaPrevista, textoCoste, type Celda } from '../../lib/zonaRuta'
+import { BanderaDestino, CeldaResaltada, EtiquetaCoste, LineaRuta } from '../zona/RutaZona'
 import { LeyendaZona } from '../zona/LeyendaZona'
 import { useMovimientoZona } from '../../hooks/useMovimientoZona'
 import type { LogEntry, ProfessionRecipeInfo, ZonaParcelaInfo } from '../../types'
@@ -127,6 +129,8 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
   const [claveBajoRaton, setClaveBajoRaton] = useState<string | null>(null)
   // ZON-62 (hito 0.1) — cuadrícula: fijada con el botón del mapa o mientras se mantiene Alt.
   const [cuadriculaFijada, setCuadriculaFijada] = useState(false)
+  // ZON-30/31: celda bajo el cursor (para resaltarla y prever la ruta hasta ella).
+  const [celdaCursor, setCeldaCursor] = useState<Celda | null>(null)
   const [altPulsado, setAltPulsado] = useState(false)
   useEffect(() => {
     const abajo = (e: KeyboardEvent) => {
@@ -182,7 +186,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
   // ZON-36: velocidad de paso de Ajustes; ZON-35: parar, reanudar y cancelar.
   const { ajustes } = useAjustes()
   const {
-    moverA: handleMoverA, movimientoEnCurso, mensajeMovimiento, setMensajeMovimiento, parar, reanudar, cancelar, destinoPendiente, msPasoActual,
+    moverA: handleMoverA, movimientoEnCurso, mensajeMovimiento, setMensajeMovimiento, parar, reanudar, cancelar, destinoPendiente, msPasoActual, caminoRestante,
   } = useMovimientoZona({
     saveId, setData, bloqueoMovimiento, onEncuentroZona, onClose, onOfertaDescartada, onHoraActualizada, msPorPaso: MS_POR_VELOCIDAD[ajustes.velocidadPasoZona],
   })
@@ -351,7 +355,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
             <svg
               ref={svgRef}
               viewBox="0 0 800 600"
-              className={`${columnasAncho ? 'max-h-full max-w-full' : 'h-auto w-full'} ${soloConsulta ? '' : movimientoEnCurso ? 'cursor-wait' : 'cursor-crosshair'}`}
+              className={`${columnasAncho ? 'max-h-full max-w-full' : 'h-auto w-full'} ${soloConsulta ? '' : bloqueoMovimiento ? 'cursor-not-allowed' : movimientoEnCurso ? 'cursor-wait' : 'cursor-crosshair'}`}
               onClick={
                 soloConsulta
                   ? undefined
@@ -370,6 +374,17 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                       if (local) handleMoverA(local, { rapido: true })
                     }
               }
+              onMouseMove={
+                soloConsulta
+                  ? undefined
+                  : (e) => {
+                      const local = puntoDelLienzo(e)
+                      if (!local) return
+                      const celda = celdaDePixel(local)
+                      setCeldaCursor((prev) => (prev && prev.col === celda.col && prev.row === celda.row ? prev : celda))
+                    }
+              }
+              onMouseLeave={soloConsulta ? undefined : () => setCeldaCursor(null)}
               // ZON-35: clic derecho cancela el trayecto.
               onContextMenu={
                 soloConsulta
@@ -384,6 +399,27 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
               <DefsFichas />
               {imageUrl && <image href={imageUrl} x={0} y={0} width={800} height={600} preserveAspectRatio="xMidYMid slice" />}
               {(cuadriculaFijada || altPulsado) && <GridOverlay />}
+              {/* ZON-30/31/32/34 (capa de ruta, bajo las fichas): celda bajo el cursor; sin andar, la ruta
+                  prevista con su coste; andando o parado, la ruta que queda y la bandera de destino. */}
+              {celdaCursor && !soloConsulta && <CeldaResaltada celda={celdaCursor} bloqueada={!!bloqueoMovimiento} />}
+              {data.jugador && !soloConsulta && destinoPendiente && (
+                <>
+                  <LineaRuta desde={data.jugador} puntos={caminoRestante} escala={escala} tipo="en-curso" />
+                  <BanderaDestino {...pixelDeCelda(celdaDePixel(destinoPendiente))} escala={escala} />
+                </>
+              )}
+              {data.jugador && !soloConsulta && !movimientoEnCurso && !bloqueoMovimiento && celdaCursor &&
+                (() => {
+                  const destino = pixelDeCelda(celdaCursor)
+                  const ruta = rutaPrevista(data.jugador, destino, data.fictionalMinutes)
+                  if (ruta.pasos === 0) return null
+                  return (
+                    <>
+                      <LineaRuta desde={data.jugador} puntos={ruta.puntos} escala={escala} tipo="prevista" />
+                      <EtiquetaCoste x={destino.x} y={destino.y} texto={textoCoste(ruta)} escala={escala} />
+                    </>
+                  )
+                })()}
               {data.puntos.map((p) => (
                 <g
                   key={p.id}

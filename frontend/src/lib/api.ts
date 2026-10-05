@@ -1223,6 +1223,8 @@ export interface ZonaResponse {
   /// Punto del jugador en el mapa de Zona (2026-09-04) — se mueve solo por acciones deterministas
   /// (viajar/cazar/recolectar/combatir/hablar/construir/huir), nunca interpretando narración
   /// libre. `null` = partida previa a esta pieza, o sin nada que asignar todavía.
+  /// ZON-32: minuto de ficción actual (para la hora de llegada de la ruta prevista).
+  fictionalMinutes?: number
   jugador: { x: number; y: number } | null
   salidas: ZonaSalidaInfo[]
   /// Icono de parcela (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) — solo relleno en las

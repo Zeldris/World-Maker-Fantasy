@@ -88,3 +88,48 @@ describe('ZonaPanel — UX-7', () => {
   })
 })
 
+
+/// Z-B (hito 0.2) — ZON-30/31/32: al pasar el ratón, la celda se resalta y se ve la ruta prevista
+/// con su coste. jsdom no tiene la matriz de pantalla del SVG: se sustituye por la identidad.
+describe('ZonaPanel — Z-B, ruta prevista', () => {
+  beforeEach(() => {
+    vi.mocked(getZona).mockResolvedValue({ ...zona, fictionalMinutes: 7 * 60 + 55 } as never)
+    const proto = SVGSVGElement.prototype as unknown as Record<string, unknown>
+    proto.createSVGPoint = () => ({ x: 0, y: 0, matrixTransform(this: { x: number; y: number }) { return { x: this.x, y: this.y } } })
+    proto.getScreenCTM = () => ({ inverse: () => ({}) })
+  })
+  afterEach(() => {
+    cleanup()
+    vi.clearAllMocks()
+  })
+
+  it('pasar el ratón resalta la celda y prevé la ruta con pasos, minutos y hora de llegada', async () => {
+    const { container, queryByTestId, getByTestId } = render(<ZonaPanel saveId="s1" />)
+    await act(async () => {})
+    const svg = [...container.querySelectorAll('svg')].find((e) => e.getAttribute('viewBox') === '0 0 800 600')!
+    // Jugador en (375, 325) = celda (7, 6); ratón en la celda (11, 6): 4 pasos.
+    fireEvent.mouseMove(svg, { clientX: 575, clientY: 325 })
+    expect(queryByTestId('celda-cursor')).not.toBeNull()
+    expect(queryByTestId('ruta-prevista')).not.toBeNull()
+    expect(getByTestId('coste-ruta').textContent).toBe('4 pasos · 4 min · llegas a las 07:59')
+    fireEvent.mouseLeave(svg)
+    expect(queryByTestId('ruta-prevista')).toBeNull()
+  })
+
+  it('al andar: bandera en el destino y la ruta que queda; al llegar desaparecen', async () => {
+    let x = 375
+    vi.mocked(moverEnZona).mockImplementation(async () => {
+      x += 50
+      return { jugador: { x, y: 325 }, caminoRestante: x < 525 ? [{ x: 525, y: 325 }] : [], zonePointsMovidos: [] } as never
+    })
+    const { container, queryByTestId, findByTestId } = render(<ZonaPanel saveId="s1" />)
+    await act(async () => {})
+    const svg = [...container.querySelectorAll('svg')].find((e) => e.getAttribute('viewBox') === '0 0 800 600')!
+    fireEvent.click(svg, { clientX: 525, clientY: 325 })
+    expect(await findByTestId('bandera-destino')).not.toBeNull()
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 2200))
+    })
+    expect(queryByTestId('bandera-destino')).toBeNull()
+  })
+})

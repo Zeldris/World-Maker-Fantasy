@@ -37,6 +37,8 @@ export function useMovimientoZona({ saveId, setData, bloqueoMovimiento = null, o
   const pararRef = useRef(false)
   const [destinoPendiente, setDestinoPendiente] = useState<{ x: number; y: number } | null>(null)
   const [msPasoActual, setMsPasoActual] = useState(msPorPaso)
+  // ZON-34: lo que queda de la ruta en curso (se va consumiendo a cada paso).
+  const [caminoRestante, setCaminoRestante] = useState<{ x: number; y: number }[]>([])
   // Sistema de movimiento por cuadrícula (2026-09-08) — clic en el lienzo (fondo o pin) pide el
   // destino real en píxel; el backend calcula el camino entero pero solo avanza UN PASO por
   // llamada (mismo criterio "el motor decide, el frontend solo pide"), así que aquí se sigue
@@ -78,6 +80,7 @@ export function useMovimientoZona({ saveId, setData, bloqueoMovimiento = null, o
         if (falta > 0) await dormir(falta)
         if (movimientoTokenRef.current !== miToken) break
         inicioAnimacion = performance.now()
+        setCaminoRestante(resultado.caminoRestante)
         if (resultado.ofertaDescartada) onOfertaDescartada?.()
         if (resultado.fictionalDateLabel) onHoraActualizada?.(resultado.fictionalDateLabel)
         // Sincronización real del mundo (2026-09-09, bug real: "los elementos se mueven, pero no...
@@ -93,7 +96,8 @@ export function useMovimientoZona({ saveId, setData, bloqueoMovimiento = null, o
                   return movido ? { ...p, x: movido.x, y: movido.y } : p
                 })
               : prev.puntos
-          return { ...prev, jugador: resultado.jugador, puntos }
+          // ZON-32: la hora avanza con cada paso (para la hora de llegada de la ruta prevista).
+          return { ...prev, jugador: resultado.jugador, puntos, ...(resultado.fictionalMinutes != null ? { fictionalMinutes: resultado.fictionalMinutes } : {}) }
         })
         if (resultado.colision) {
           setMensajeMovimiento(`Te topas con ${resultado.colision.targetName}.`)
@@ -174,7 +178,10 @@ export function useMovimientoZona({ saveId, setData, bloqueoMovimiento = null, o
         setMovimientoEnCurso(false)
         // Parado: el destino queda para reanudar; si no, el trayecto se acabó (llegada, encuentro…).
         if (parado) setMensajeMovimiento('Te detienes.')
-        else setDestinoPendiente(null)
+        else {
+          setDestinoPendiente(null)
+          setCaminoRestante([])
+        }
       }
     }
     if (!llegado || movimientoTokenRef.current !== miToken) return null
@@ -194,7 +201,8 @@ export function useMovimientoZona({ saveId, setData, bloqueoMovimiento = null, o
   function cancelar() {
     pararRef.current = true
     setDestinoPendiente(null)
+    setCaminoRestante([])
   }
 
-  return { moverA, movimientoEnCurso, mensajeMovimiento, setMensajeMovimiento, parar, reanudar, cancelar, destinoPendiente, msPasoActual }
+  return { moverA, movimientoEnCurso, mensajeMovimiento, setMensajeMovimiento, parar, reanudar, cancelar, destinoPendiente, msPasoActual, caminoRestante }
 }
