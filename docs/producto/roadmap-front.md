@@ -793,6 +793,22 @@ La mayor ausencia "de videojuego" (H14). Todo empaquetado; volumen en `CFG-25`.
 - **QA-7 · Capturas de referencia**: script de Playwright (Chromium ya está instalado en el entorno)
   que fotografía las pantallas principales para comparar antes/después de cada bloque.
 
+Del `/retro` de la Fase D del `0.2` (2026-10-05, aceptadas todas por la usuaria; van al `0.2`):
+
+- ~~**QA-8 · Tests que no ensucian el catálogo**~~ ✅ 2026-10-05 (`backend/vitest.bdReal.globalSetup.ts`; comprobado: progreso de los NPC idéntico antes y después de la suite): `globalSetup` del proyecto `bd-real` que guarda y
+  restaura el progreso de oficio de los NPC (`NpcProfessionProgress`, compartido) y borra los
+  interiores de prueba que dejan los tests de cuartel avanzado. Causa del «expected 2399 to be
+  greater than 2399» que salió dos veces en la Fase D.
+- ~~**QA-9 · Verificar al subagente ligero**~~ ✅ 2026-10-05: en `docs/runbooks/skills-y-modelos.md`, lo que reporta un
+  Explore ligero se comprueba con un grep antes de llevarlo a una pregunta de diseño; y en
+  `roadmap-cronista.md` § 13.1, el puntero a `avanceDiario.ts` como entrada de todo lo diario por partida.
+- ~~**QA-10 · Arranque del entorno**~~ ✅ 2026-10-05 (`.claude/hooks/session-start.sh` + `.claude/settings.json`, solo en la nube; ~20 s con todo ya montado): hook de inicio de sesión que levanta Postgres (crea la base si
+  falta, migra y siembra) y el Ollama simulado.
+- **QA-11 · Tests rápidos**: `npm run test:rapido` (solo lo relacionado con los cambios) para iterar;
+  la suite completa, antes de cada push.
+- **QA-12 · Intermitente de `ProduccionSection.test.tsx`**: diagnosticarlo con `diagnosing-bugs`
+  (1 fallo en ~12 pasadas, 2026-10-05).
+
 ---
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)

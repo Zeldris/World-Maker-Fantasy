@@ -743,6 +743,11 @@ tocaría). **Nunca** escribe en `docs/rpgtarkor/`.
 ## 13. Reloj, cola y rendimiento
 
 ### 13.1 Avance diario por partida (`avanceDiario.ts`)
+**Estado real (2026-10-05, `QA-9`):** `avanzarMundoHasta` en `backend/src/services/avanceDiario.ts` es la
+entrada de todo lo que pasa por día y por partida: población, economía y expediciones de facción
+(`CR-7`/`CR-35`), cadena Serhu, narrador de fondo (`CR-12`), decisiones de facción (`CR-34`), tablones de
+avisos (`CR-40`), envejecimiento (`CR-13`), reacciones, consecuencias y revisión de misiones. Lo que
+falte de esta lista, no corre. El `worldTick` (tiempo real) ya no simula facciones.
 - **El mundo de una partida avanza con el reloj de esa partida** (`WorldState.fictionalMinutes`),
   no con el tiempo real. Coherente con la decisión 4 de `mundo-vivo-x4.md` (el Reino ya va atado
   al turno) y con `Save.pausedAt`.
