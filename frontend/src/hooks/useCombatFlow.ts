@@ -837,6 +837,9 @@ export function useCombatFlow(params: UseCombatFlowParams) {
               // longitudes, aunque ninguna otra condición de arriba haya cambiado.
               bySlug.set(key, { ...local, activeEffects: real.activeEffects })
             }
+            // CR-45: la orden del capitán cambia cada ronda; manda siempre la del backend.
+            const actual = bySlug.get(key)!
+            if (actual.ordenaCaerSobre !== real.ordenaCaerSobre) bySlug.set(key, { ...actual, ordenaCaerSobre: real.ordenaCaerSobre })
           }
           return Array.from(bySlug.values())
         })

@@ -90,4 +90,25 @@ describe('CR-44 (44c) — moral en el combate de varios', () => {
     const otra = await prisma.$transaction((tx) => revisarMoralDelCombate(tx, { saveId, encounterId, combatientes: cs.map((c) => (r.huidos.includes(c.participantId) ? { ...c, huido: true } : c)), random: d20(1, 1, 20) }));
     expect(otra.textos.some((t) => t.includes('sin quien los mande'))).toBe(false);
   });
+  it('CR-45: el capitán manda ya en la ronda de apertura; los suyos van a por su objetivo y queda marcado', async () => {
+    await prisma.combatEncounter.deleteMany({ where: { saveId } });
+    const soldado: MiembroDeGrupo = { npcId: renegadoId, nombre: 'Goirnte Renegado', scope: '', destreza: 8, inteligencia: 8, esGrupo: true };
+    const capitan: MiembroDeGrupo = { ...soldado, inteligencia: 20 };
+    const { encounterId } = (await abrirCombateDePersonas(prisma, { id: saveId, characterName: 'Gorhorn', attributes: ATR, fictionalMinutes: 600, timeLabel: 'Día 1' }, [capitan, soldado, soldado]))!;
+    const enc = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId }, include: { participantes: true } });
+    const jugadora = enc.participantes.find((p) => p.tipo === 'JUGADOR')!;
+    expect(enc.objetivoCapitanId).toBe(jugadora.id);
+    expect(enc.participantes.find((p) => p.id === enc.capitanId)?.bando).toBe('ENEMIGO');
+    for (const p of enc.participantes.filter((p) => p.bando === 'ENEMIGO')) expect(p.objetivoActualId).toBe(jugadora.id);
+    const log = await prisma.logEntry.findFirstOrThrow({ where: { saveId }, orderBy: { createdAt: 'desc' } });
+    expect(log.text).toContain('ordena caer sobre Gorhorn');
+  });
+
+  it('CR-45: sin nadie de Inteligencia 20 no hay capitán', async () => {
+    const cs = await bandaDeTres();
+    const encounterId = (await prisma.combatParticipant.findUniqueOrThrow({ where: { id: cs[0]!.participantId } })).encounterId;
+    const enc = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId } });
+    expect(enc.capitanId).toBeNull();
+    expect(enc.objetivoCapitanId).toBeNull();
+  });
 });

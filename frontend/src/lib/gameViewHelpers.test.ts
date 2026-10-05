@@ -125,4 +125,10 @@ describe('npcInSceneToCombatDisplay (CR-44)', () => {
     expect(npcInSceneToCombatDisplay({ ...base, huido: true })).toMatchObject({ huido: true, dismissed: true, condicion: 'GRAVE' })
     expect(npcInSceneToCombatDisplay(base).dismissed).toBeUndefined()
   })
+
+  it('CR-45: el capitán lleva a quién manda caer encima', () => {
+    const base = { slug: 'orco', name: 'Orco', condicionFisica: 'ILESO' as const, saqueado: false, lootedItemNames: [], analizado: false, activeEffects: [], capturable: false, targetedForKill: false }
+    expect(npcInSceneToCombatDisplay({ ...base, ordenaCaerSobre: 'ti' }).ordenaCaerSobre).toBe('ti')
+    expect(npcInSceneToCombatDisplay(base).ordenaCaerSobre).toBeUndefined()
+  })
 })

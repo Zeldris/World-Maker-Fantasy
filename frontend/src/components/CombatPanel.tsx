@@ -517,6 +517,15 @@ export function CombatPanel({
             <span className="max-w-24 truncate text-2xs text-wood-400">{combatDisplayNameFor(npc)}</span>
             <HealthBar condicionFisica={npc.condicion} />
             <ActiveEffectChips effects={npc.activeEffects} />
+            {/* CR-45: el capitán y a quién manda caer encima esta ronda. */}
+            {npc.ordenaCaerSobre && (
+              <span
+                className="rounded border border-danger-600/50 bg-danger-500/10 px-1.5 py-0.5 text-2xs text-danger-200"
+                title={`Capitán: ordena a los suyos caer sobre ${npc.ordenaCaerSobre}`}
+              >
+                ⚑ a por {npc.ordenaCaerSobre}
+              </span>
+            )}
           </div>
         ))}
       </div>

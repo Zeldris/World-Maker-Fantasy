@@ -21,6 +21,8 @@ export interface CombatNpcDisplay {
   dismissed?: boolean
   // CR-44: huyó del combate (cuenta como resuelto, igual que `dismissed`).
   huido?: boolean
+  // CR-45: es el capitán y manda caer sobre este (`'ti'` o un compañero); cambia cada ronda.
+  ordenaCaerSobre?: string
   // Rediseño de "Matar" (2026-08-30, ver tarkor_rediseno_matar_combate_real_2026-08-30): pulsar
   // "Matar" ya NO remata directo — solo marca al NPC como objetivo elegido para desbloquear el
   // panel (`combatHasPendingConvalecientes`) y ocultar su tarjeta persistente del log, dejando que

@@ -1221,6 +1221,9 @@ model CombatEncounter {
   esperandoEleccionJugadora Boolean               @default(false)
   /// CR-44 (44c): bandos que ya tiraron la moral por quedar a la mitad (solo la primera vez).
   moralMitadBandos          String[]              @default([])
+  /// CR-45: capitán del bando enemigo y a quién manda ir esta ronda (para marcarlo en el panel).
+  capitanId                 String?
+  objetivoCapitanId         String?
   createdAt                 DateTime              @default(now())
   resolvedAt                DateTime?
   participantes             CombatParticipant[]

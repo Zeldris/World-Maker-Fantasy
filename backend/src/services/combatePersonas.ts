@@ -121,13 +121,13 @@ export async function abrirCombateDePersonas(
     select: { id: true, name: true, attributes: true },
   });
   const combatientes: (CombatienteInicial & { destreza: number; inteligencia: number })[] = [
-    { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: save.attributes.destreza, inteligencia: save.attributes.inteligencia, nombre: save.characterName },
+    { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: save.attributes.destreza, inteligencia: save.attributes.inteligencia, constitucion: save.attributes.constitucion, nombre: save.characterName },
     ...companeros
       .filter((c) => c.attributes)
       .slice(0, MAX_COMBATIENTES_POR_BANDO - 1)
       .map((c) => {
         const a = c.attributes as AttributeBlock;
-        return { bando: 'JUGADOR' as const, tipo: 'COMPANION' as const, companionId: c.id, destreza: a.destreza, inteligencia: a.inteligencia, nombre: c.name };
+        return { bando: 'JUGADOR' as const, tipo: 'COMPANION' as const, companionId: c.id, destreza: a.destreza, inteligencia: a.inteligencia, constitucion: a.constitucion, nombre: c.name };
       }),
     ...miembros.slice(0, MAX_COMBATIENTES_POR_BANDO).map((m) => ({
       bando: 'ENEMIGO' as const, tipo: 'NPC' as const, npcId: m.npcId, npcScope: m.scope, destreza: m.destreza, inteligencia: m.inteligencia, esGrupo: m.esGrupo, nombre: m.nombre,
@@ -136,12 +136,12 @@ export async function abrirCombateDePersonas(
   return prisma.$transaction(async (tx) => {
     await lockRowForUpdate(tx, 'Save', save.id, ['id']);
     if (await tx.combatEncounter.findFirst({ where: { saveId: save.id, estado: 'EN_CURSO', jugable: true }, select: { id: true } })) return null;
-    const { encounterId, iniciativa } = await iniciarCombatEncounter(tx, save.id, combatientes);
+    const { encounterId, iniciativa, ordenCapitan } = await iniciarCombatEncounter(tx, save.id, combatientes);
     const nombres = [...new Set(miembros.map((m) => m.nombre))].join(', ');
     await tx.logEntry.create({
       data: {
         saveId: save.id, channel: 'CHARACTER', isSystemMessage: true, timeLabel: save.timeLabel, fictionalMinutes: save.fictionalMinutes,
-        text: `Comienza el combate contra ${miembros.length > 1 ? `un grupo (${nombres})` : nombres}: cada combatiente tira iniciativa.`,
+        text: `Comienza el combate contra ${miembros.length > 1 ? `un grupo (${nombres})` : nombres}: cada combatiente tira iniciativa.${ordenCapitan ? ` ${ordenCapitan.capitan} ordena caer sobre ${ordenCapitan.objetivo}.` : ''}`,
         roll: { kind: 'combate-grupo', engagement: [], iniciativa } as unknown as Prisma.InputJsonValue,
       },
     });
