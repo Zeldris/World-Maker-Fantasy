@@ -1481,7 +1481,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     la ronda. Si el capitán cae o huye, sus seguidores tiran moral al momento con desventaja
     (desbandada). Se ve: línea en el registro («Ulkha ordena caer sobre Gorhorn») y marca en el
     objetivo.
-  - **CR-46** Expediciones y caravanas en el mapa de Berig. **S** Se ven las del Reino, las de las
+  - ~~**CR-46**~~ ✅ 2026-10-05 (`GET /saves/:id/expediciones/mapa`, `expedicionesMapa.ts`; banderita ⚑ en el mapa de Llanuras entre el asentamiento de la facción y su destino, con tarjeta; las caravanas del Reino entrarán por aquí con `CR-47`. Solo se dibujan en regiones con nodos en el mapa: hoy, las Llanuras) Expediciones y caravanas en el mapa de Berig. **S** Se ven las del Reino, las de las
     facciones con tratado o alianza y las que pasan por la región donde está el personaje (como en
     X4: aliado = ves sus órdenes; lo demás, solo lo que tienes cerca). Icono de la facción que
     avanza por la ruta según los días; al pulsarlo, facción, a qué va y día de vuelta.

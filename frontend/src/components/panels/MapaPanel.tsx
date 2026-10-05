@@ -9,7 +9,7 @@ import {
   type CristalHeladoNode,
   type MapNodeOption,
 } from '../../data/map'
-import { getEnciclopedia, getWorldLocations, type EnciclopediaConstructionRecipe, type WorldLocationInfo } from '../../lib/api'
+import { getEnciclopedia, getExpedicionesMapa, getWorldLocations, type EnciclopediaConstructionRecipe, type ExpedicionEnMapa, type WorldLocationInfo } from '../../lib/api'
 import { formatMinutos } from '../../lib/gameViewHelpers'
 import { ESTACION_ICON, CLIMA_ICON } from '../../lib/entorno'
 import { ZonaPanel } from './ZonaPanel'
@@ -178,6 +178,20 @@ export function MapaPanel({ worldSlug, saveId, currentLocation, destinations, in
   // nivel superior el mismo día, pero ahora vive DENTRO del botón Mapa de siempre, no en NavTabs.ts).
   // Mismo patrón visual que el tab Era Común/Semillas de EnciclopediaPanel.tsx.
   const [mapaTab, setMapaTab] = useState<'zona' | 'mapa'>('zona')
+  // CR-46: expediciones visibles, al abrir el mapa de Berig (best-effort: sin ellas el mapa sigue igual).
+  const [expediciones, setExpediciones] = useState<ExpedicionEnMapa[]>([])
+  useEffect(() => {
+    if (mapaTab !== 'mapa' || !saveId) return
+    let cancelado = false
+    getExpedicionesMapa(saveId)
+      .then((r) => {
+        if (!cancelado) setExpediciones(r.expediciones)
+      })
+      .catch(() => {})
+    return () => {
+      cancelado = true
+    }
+  }, [mapaTab, saveId])
   const {
     llanurasNodes,
     llanurasEdges,
@@ -314,6 +328,7 @@ export function MapaPanel({ worldSlug, saveId, currentLocation, destinations, in
               rumores={rumores}
               regionesConRumor={regionesConRumor}
               onLeerRumores={onLeerRumores}
+              expediciones={expediciones}
             />
             {!hasLlanurasMap && !hasCristalHeladoMap && (
               <p className="mt-2 text-xs italic text-wood-500">

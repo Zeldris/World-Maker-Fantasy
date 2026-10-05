@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { ExpedicionEnMapa } from '../../lib/api'
+import { posicionDeExpedicion } from '../../lib/leyendas'
 import { projectLlanurasNodes, type LlanurasEdge, type LlanurasNode, type CristalHeladoNode, type MapNodeOption, type MapRegion } from '../../data/map'
 import berigMapUrl from '../../assets/maps/helek-sirik-berig.png'
 import { MapZoomModal } from './MapZoomModal'
@@ -142,6 +144,8 @@ interface InteractiveMapProps {
   rumores?: RumorConLugar[]
   regionesConRumor?: Set<string>
   onLeerRumores?: (region: string) => void
+  /// CR-46: expediciones que el personaje puede ver (las suyas, las aliadas y las de su región).
+  expediciones?: ExpedicionEnMapa[]
 }
 
 export function InteractiveMap({
@@ -159,6 +163,7 @@ export function InteractiveMap({
   rumores = [],
   regionesConRumor,
   onLeerRumores,
+  expediciones = [],
 }: InteractiveMapProps) {
   const [selectedName, setSelectedName] = useState(currentRegion)
   // Paleta de puntos (2026-08-04): qué nodo tiene su abanico de satélites desplegado ahora mismo,
@@ -175,6 +180,7 @@ export function InteractiveMap({
   }, [currentRegion])
   const selected = regions.find((r) => r.name === selectedName) ?? null
   const [selectedNodeSlug, setSelectedNodeSlug] = useState<string | null>(null)
+  const [expedicionVista, setExpedicionVista] = useState<string | null>(null)
   const selectedNode = llanurasNodes?.find((n) => n.slug === selectedNodeSlug) ?? cristalHeladoNodes?.find((n) => n.slug === selectedNodeSlug) ?? null
 
   const nodePositions = useMemo(() => (llanurasNodes ? projectLlanurasNodes(llanurasNodes) : null), [llanurasNodes])
@@ -536,6 +542,35 @@ export function InteractiveMap({
               )
             })}
 
+          {/* CR-46: expediciones en camino, entre su asentamiento y su destino. */}
+          {showLlanurasGraph &&
+            expediciones.map((e) => {
+              const pos = posicionDeExpedicion(nodePositions.get(e.origenSlug), nodePositions.get(e.destinoSlug), e.progreso)
+              if (!pos) return null
+              return (
+                <g
+                  key={e.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Expedición de ${e.faccion}`}
+                  className="cursor-pointer outline-none"
+                  onClick={(ev) => {
+                    ev.stopPropagation()
+                    setExpedicionVista((prev) => (prev === e.id ? null : e.id))
+                  }}
+                  onKeyDown={(ev) => {
+                    if (ev.key === 'Enter' || ev.key === ' ') setExpedicionVista((prev) => (prev === e.id ? null : e.id))
+                  }}
+                >
+                  <title>{`${e.faccion}: ${pos.vuelve ? `vuelve de ${e.destinoNombre}` : `va a ${e.destinoNombre}`}`}</title>
+                  <circle cx={pos.x} cy={pos.y} r={2.2} fill={e.delReino ? 'var(--color-accent-600)' : 'var(--color-wood-900)'} stroke="var(--color-quest-300)" strokeWidth={0.45} />
+                  <text x={pos.x} y={pos.y} textAnchor="middle" dominantBaseline="central" style={{ fontSize: 2.4 }}>
+                    ⚑
+                  </text>
+                </g>
+              )
+            })}
+
           {/* Cristal Helado (añadido 2026-08-22) — mismo dibujado que Llanuras, con dos
               diferencias: `pos` es el propio nodo (ya en espacio de píxeles, sin proyección) y no
               hay insignia de misión/construcción todavía (ninguna misión ni Reino apunta aquí). */}
@@ -678,6 +713,20 @@ export function InteractiveMap({
           <p className="mt-1 text-xs leading-relaxed text-wood-400">{selectedNode.description}</p>
         </div>
       )}
+
+      {(() => {
+        const e = expediciones.find((x) => x.id === expedicionVista)
+        if (!e) return null
+        return (
+          <div role="region" aria-label="Expedición" className="rounded-lg border border-quest-600/50 bg-wood-950/40 px-3.5 py-2.5 text-xs text-wood-300">
+            <p className="font-medium text-wood-100">⚑ {e.delReino ? 'Tu expedición' : `Expedición de ${e.faccion}`}</p>
+            <p className="mt-1">
+              {e.progreso > 0.5 ? `Vuelve de ${e.destinoNombre}` : `Va a ${e.destinoNombre}`} ({e.oficio}
+              {e.motivo === 'COMIDA' ? ', a por comida' : ''}) · de vuelta el día {e.diaRegreso + 1}
+            </p>
+          </div>
+        )
+      })()}
 
       {selected && (
         <div className="rounded-lg border border-iron-700 bg-wood-950/40 px-3.5 py-2.5">

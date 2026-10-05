@@ -483,6 +483,25 @@ export interface EntornoResponse {
 
 /// Fase D del hito 0.1 — entradas de "El mundo" posteriores a `desde` (id de la última WORLD que ya tiene
 /// el cliente): noticias que el tick de fondo escribe mientras la partida está abierta.
+/// CR-46: una expedición que el personaje puede ver en el mapa de Berig.
+export interface ExpedicionEnMapa {
+  id: string
+  faccion: string
+  oficio: string
+  motivo: string | null
+  origenSlug: string
+  destinoSlug: string
+  destinoNombre: string
+  diaRegreso: number
+  /// 0-1 del viaje: hasta 0,5 va, después vuelve.
+  progreso: number
+  delReino: boolean
+}
+
+export async function getExpedicionesMapa(saveId: string): Promise<{ expediciones: ExpedicionEnMapa[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/expediciones/mapa`)
+}
+
 export async function getNuevasDelMundo(saveId: string, desde: string): Promise<{ entradas: LogEntry[] }> {
   return fetchJson(`${API_URL}/saves/${saveId}/mundo/nuevas?desde=${encodeURIComponent(desde)}`)
 }

@@ -213,7 +213,7 @@ en CI, y la latencia está medida. Se etiqueta `v0.1.0-alpha`.
 - **Comercio de volumen Reino↔facción**: todo el catálogo, según el origen del objeto y el oficio
   de los NPC por raza y región. **[A]** → `CR-47` (fórmula decidida por la usuaria el 2026-10-05:
   Mercado con órdenes permanentes, caravanas del Reino y precio unidad a unidad).
-- Expediciones: que se vean en el mapa de mundo. **[P]** → `CR-46`.
+- ~~Expediciones: que se vean en el mapa de mundo.~~ **[P]** → ~~`CR-46`~~ ✅ 2026-10-05.
 - Pasada de rendimiento del `worldTick` con el motor completo. **[P]** → `CR-48` (ya es el avance diario: `CR-7`).
 
 ## `0.3` — Reino profundo
