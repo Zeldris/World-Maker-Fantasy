@@ -2547,6 +2547,19 @@ export async function getAvisosTablon(saveId: string, buildingId: string): Promi
   return fetchJson(`${API_URL}/saves/${saveId}/tablones/${encodeURIComponent(buildingId)}`)
 }
 
+/// CR-18 (18d): un bando del tablón (lo oficial de su región y su facción de los últimos días).
+export interface BandoInfo {
+  sucesoId: string
+  texto: string
+  /// Minuto de ficción en que pasó.
+  pasoEn: number
+}
+
+/// Lee los bandos de un tablón (y los apunta como sabidos).
+export async function leerBandosTablon(saveId: string, buildingId: string): Promise<{ bandos: BandoInfo[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/tablones/${encodeURIComponent(buildingId)}/bandos/leer`, { method: 'POST' })
+}
+
 export async function aceptarAviso(saveId: string, avisoId: string): Promise<{ questId: string; title: string }> {
   return fetchJson(`${API_URL}/saves/${saveId}/misiones/avisos/${encodeURIComponent(avisoId)}/aceptar`, { method: 'POST' })
 }

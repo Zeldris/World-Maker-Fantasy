@@ -1527,8 +1527,11 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     («¿Qué se cuenta?» en el menú de quien puede dar trabajo: `preguntarNoticias` en `difusion.ts`, hasta
     2 sucesos de los últimos 30 días, una vez al día por NPC con `Conocimiento.fuente`, migración
     `20261005062000_conocimiento_fuente`; frase del NPC al registro y noticias a «El mundo»; si el NPC
-    es de allí o de una facción implicada confirma el rumor con «Se confirma: …»); 18d bandos en el
-    tablón; 18e confirmar rumores.
+    es de allí o de una facción implicada confirma el rumor con «Se confirma: …»); ~~18d~~ ✅ 2026-10-05
+    (`leerBandos` en `difusion.ts` y `POST /saves/:id/tablones/:buildingId/bandos/leer`: hasta 5 sucesos
+    de importancia ≥ 5 de los últimos 15 días de la región del tablón o de su facción; leerlos los da
+    como hecho; sección «Bandos» en el modal de avisos, con el día en que pasó cada uno); 18e confirmar
+    rumores.
 - **CR-19** Endpoints de Leyendas (§ 14). **S** Las etiquetas (`GET /etiquetas`) van con `CR-14` y el
   epílogo con `UX-18` (`CR-18` Q6, 2026-10-05).
 - **CR-20** Front: Leyendas y fichas "En tu partida" en la Enciclopedia. **M** Decidido (`CR-18` Q5 y

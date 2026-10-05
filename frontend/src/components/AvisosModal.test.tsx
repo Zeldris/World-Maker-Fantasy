@@ -30,4 +30,15 @@ describe('AvisosModal', () => {
     const { getByText } = render(<AvisosModal titulo="Trabajo de Ulkha" avisos={[]} vacio="Ulkha no tiene ningún encargo para ti ahora mismo." onAceptar={async () => {}} onClose={() => {}} />)
     expect(getByText('Ulkha no tiene ningún encargo para ti ahora mismo.')).toBeTruthy()
   })
+
+  // CR-18 (18d): en un tablón, los bandos arriba, con el día en que pasó cada cosa.
+  it('pinta los bandos del tablón encima de los avisos', () => {
+    const bandos = [{ sucesoId: 's1', texto: 'Clan Serhu y Clan Goshg pactan una tregua.', pasoEn: 12 * 1440 + 600 }]
+    const { getByRole, getByText } = render(<AvisosModal titulo="Tablón" avisos={[aviso]} bandos={bandos} vacio="Nada" onAceptar={async () => {}} onClose={() => {}} />)
+    const seccion = getByRole('region', { name: 'Bandos' })
+    expect(seccion.textContent).toContain('Día 13')
+    expect(seccion.textContent).toContain('pactan una tregua')
+    expect(getByText('Avisos')).toBeTruthy()
+  })
 })
+

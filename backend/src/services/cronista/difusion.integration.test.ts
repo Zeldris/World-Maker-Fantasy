@@ -3,7 +3,8 @@ import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { asegurarMundoDePartida } from '../mundoPartida.js';
 import { registrarSuceso } from './sucesos.js';
-import { difundir, preguntarNoticias, VENTANA_DIAS_LLEGA_SOLA } from './difusion.js';
+import { difundir, leerBandos, preguntarNoticias, VENTANA_DIAS_LLEGA_SOLA } from './difusion.js';
+import { asegurarTablonesDePartida, TABLON_RECIPE_KEY } from './tablones.js';
 import type { MetaNoticia } from './noticias.js';
 
 // CR-18 (18b, hito 0.2) — lo visto y lo que llega solo: la importancia dice hasta dónde, la distancia
@@ -127,4 +128,31 @@ describe('difusión de sucesos al personaje (CR-18 18b)', () => {
       expect(nada!.frase).toContain('del tiempo');
     });
   });
+
+  // 18d (Q9): bandos del tablón.
+  it('los bandos de un tablón anuncian lo importante de su región; leerlos lo da por sabido', async () => {
+    await prisma.$transaction((tx) => asegurarTablonesDePartida(tx, saveId));
+    const tablon = await prisma.building.findFirstOrThrow({
+      where: { recipeKey: TABLON_RECIPE_KEY, faction: { saveId }, location: { region: 'Las Llanuras del Viento Rojo' } },
+      select: { id: true },
+    });
+    await pasarDias(1);
+    const importante = await registrarSuceso(prisma, {
+      saveId, tipo: 'TREGUA', fictionalMinutes: await ahora(), regionSlug: 'las-llanuras-del-viento-rojo', origen: 'MUNDO', actores: [],
+      datos: { faccionA: 'Los del bando', faccionB: 'Los del pregón' },
+    });
+    const menor = await registrarSuceso(prisma, {
+      saveId, tipo: 'CAMBIO_RELACION', fictionalMinutes: await ahora(), regionSlug: 'las-llanuras-del-viento-rojo', origen: 'MUNDO', actores: [],
+      datos: { faccionA: 'Unos menores', faccionB: 'Otros menores', antes: 'neutral', despues: 'tensa' },
+    });
+    const bandos = (await leerBandos(prisma, saveId, tablon.id))!;
+    expect(bandos.map((b) => b.sucesoId)).toContain(importante);
+    expect(bandos.map((b) => b.sucesoId)).not.toContain(menor);
+    expect(await prisma.conocimiento.findUnique({ where: { saveId_sucesoId: { saveId, sucesoId: importante } } })).toMatchObject({ via: 'BANDO', confirmado: true, fuente: tablon.id });
+    // Releerlo no repite la noticia.
+    await leerBandos(prisma, saveId, tablon.id);
+    expect(await prisma.logEntry.count({ where: { saveId, channel: 'WORLD', text: { contains: 'Los del bando' } } })).toBe(1);
+    expect(await leerBandos(prisma, saveId, 'no-existe')).toBeNull();
+  });
 });
+

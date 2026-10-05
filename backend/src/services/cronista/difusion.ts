@@ -11,6 +11,7 @@ import type { Prisma, PrismaClient } from '@prisma/client';
 import { REGION_OWNING_FACTIONS } from '../reputation.js';
 import { cuentaComoHecho, llegaSola, npcSabe, regionDeSlug, type SucesoConAlcance, type Via } from './conocimiento.js';
 import { npcSinMorirEnPartida } from '../mundoPartida.js';
+import { TABLON_RECIPE_KEY } from './tablones.js';
 import { aliadasDelReino, categoriaDeFamilia, comoRumor, enMitadDeFrase, escribir, type MetaNoticia } from './noticias.js';
 
 type Tx = Prisma.TransactionClient;
@@ -225,5 +226,50 @@ export async function preguntarNoticias(prisma: PrismaClient, saveId: string, np
     }
     if (frases.length === 0) return { frase: `${npc.name}: «Por aquí no se habla de otra cosa que del tiempo.»`, contadas: 0 };
     return { frase: `${npc.name} te cuenta lo que se dice: ${frases.map((f) => `«${f}»`).join(' ')}`, contadas: frases.length };
+  }, { maxWait: 10_000, timeout: 20_000 });
+}
+
+// ─────────────────────────── Bandos del tablón de avisos (18d, Q9) ───────────────────────────
+
+export const IMPORTANCIA_BANDO = 5;
+export const DIAS_BANDO = 15;
+export const MAX_BANDOS = 5;
+
+export interface BandoInfo {
+  sucesoId: string;
+  texto: string;
+  /// Minuto de ficción en que pasó.
+  pasoEn: number;
+}
+
+/// Bandos de un tablón: lo de importancia ≥ 5 de los últimos 15 días que pasó en su región o implica
+/// a su facción, lo más reciente primero. Leerlos da el conocimiento como hecho (es oficial). Null si
+/// el tablón no es de la partida.
+export async function leerBandos(prisma: PrismaClient, saveId: string, buildingId: string): Promise<BandoInfo[] | null> {
+  return prisma.$transaction(async (tx) => {
+    const b = await tx.building.findFirst({
+      where: { id: buildingId, recipeKey: TABLON_RECIPE_KEY, OR: [{ saveId }, { faction: { saveId } }] },
+      select: { faction: { select: { name: true } }, location: { select: { region: true } } },
+    });
+    if (!b) return null;
+    const region = b.location?.region ?? null;
+    const faccion = b.faction?.name ?? null;
+    const ahora = (await tx.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true } }))?.fictionalMinutes ?? 0;
+    const sucesos = await tx.suceso.findMany({
+      where: { saveId, importancia: { gte: IMPORTANCIA_BANDO }, fictionalMinutes: { gte: ahora - DIAS_BANDO * MINUTOS_DIA, lte: ahora } },
+      select: { id: true, importancia: true, regionSlug: true, locationId: true, noticia: true, fictionalMinutes: true, texto: true, actores: { select: { entidadTipo: true, entidadId: true } } },
+      orderBy: { fictionalMinutes: 'desc' },
+    });
+    const alcance = await alcanceDeSucesos(tx, saveId, sucesos);
+    const bandos = sucesos
+      .filter((s) => {
+        const a = alcance.get(s.id)!;
+        return (!!region && a.origenes.includes(region)) || (!!faccion && a.facciones.includes(faccion));
+      })
+      .slice(0, MAX_BANDOS);
+    for (const s of bandos) {
+      await conocer(tx, { saveId, sucesoId: s.id, via: 'BANDO', confirmado: true, minutos: ahora, escribirNoticia: true, fuente: buildingId });
+    }
+    return bandos.map((s) => ({ sucesoId: s.id, texto: (s.noticia as NoticiaDeSuceso | null)?.texto ?? s.texto, pasoEn: s.fictionalMinutes }));
   }, { maxWait: 10_000, timeout: 20_000 });
 }

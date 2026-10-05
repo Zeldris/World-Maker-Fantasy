@@ -98,10 +98,12 @@ import {
   resolveDeath,
   responderPropuesta,
   getAvisosTablon,
+  leerBandosTablon,
   aceptarAviso,
   entregarMision,
   abandonarMision,
   type AvisoMisionInfo,
+  type BandoInfo,
   type SaveDetail,
 } from '../lib/api'
 import { characterWaitingFlavor, combatWaitingFlavor, worldWaitingFlavor, useRotatingFlavor } from '../lib/waitingFlavor'
@@ -485,7 +487,7 @@ export function GameView() {
 
   const [quests, setQuests] = useState<QuestInfo[]>([])
   // CR-40 (40g): avisos abiertos (un tablón o la propuesta de un NPC).
-  const [avisosAbiertos, setAvisosAbiertos] = useState<{ titulo: string; subtitulo?: string; avisos: AvisoMisionInfo[]; vacio: string; cargando: boolean } | null>(null)
+  const [avisosAbiertos, setAvisosAbiertos] = useState<{ titulo: string; subtitulo?: string; avisos: AvisoMisionInfo[]; vacio: string; cargando: boolean; bandos?: BandoInfo[] } | null>(null)
 
   // Bloque de combate (deuda técnica 2026-08-21) — ver src/hooks/useCombatFlow.ts para la lógica
   // completa. `combateIniciado`/`lastInitiativeRoll` siguen viviendo aquí (los escribe también
@@ -829,8 +831,9 @@ export function GameView() {
       setAvisosAbiertos({ titulo: 'Tablón de avisos', avisos: [], vacio: '', cargando: true })
       // Solo si el modal sigue abierto esperando esta lectura: cerrarlo (o abrir otra cosa) antes de
       // que llegue la respuesta no debe reabrirlo.
-      getAvisosTablon(saveId, buildingId)
-        .then(({ tablon, avisos }) =>
+      // CR-18 (18d): los bandos se leen a la vez (un fallo ahí no impide ver los avisos).
+      Promise.all([getAvisosTablon(saveId, buildingId), leerBandosTablon(saveId, buildingId).catch(() => ({ bandos: [] as BandoInfo[] }))])
+        .then(([{ tablon, avisos }, { bandos }]) =>
           setAvisosAbiertos((prev) =>
             prev?.cargando
               ? {
@@ -839,6 +842,7 @@ export function GameView() {
                   avisos,
                   vacio: 'No hay avisos colgados ahora mismo. Vuelve en unos días.',
                   cargando: false,
+                  bandos,
                 }
               : prev,
           ),
@@ -2107,6 +2111,7 @@ export function GameView() {
             avisos={avisosAbiertos.avisos}
             vacio={avisosAbiertos.vacio}
             cargando={avisosAbiertos.cargando}
+            bandos={avisosAbiertos.bandos}
             onAceptar={handleAceptarAviso}
             onClose={() => setAvisosAbiertos(null)}
           />
