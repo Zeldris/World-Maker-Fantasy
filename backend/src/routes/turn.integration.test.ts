@@ -8801,3 +8801,47 @@ describe('UX-35 — el avance diario va después de la narración', () => {
     await app.close();
   }, 30_000);
 });
+
+// CR-49: atacar por texto a una persona con los suyos cerca abre el combate de varios con todos.
+describe('CR-49 — atacar a Torgash en su campamento trae a los suyos', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const interior = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'campamento-serhu-interior' } });
+    const save = await prisma.save.create({
+      data: {
+        userId: await getDefaultUserId(), worldId: world.id, characterName: 'Gorhorn de prueba (CR-49)', characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor', characterMotivation: 'x', attributes: ATTRS, portraitInitial: 'G', currentLocationId: interior.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId, fictionalMinutes: 600 } });
+    await asegurarMundoDePartida(prisma, saveId);
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('el turno que abre combate devuelve varios enemigos con su participante', async () => {
+    // Un ataque fallido contra alguien cauteloso no abre combate (por eso el acierto forzado de abajo).
+    classifyAction.mockResolvedValueOnce({
+      requiereTirada: true, atributo: 'fuerza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    narrateAction.mockResolvedValueOnce({ narration: 'Gorhorn carga contra Torgash Ketg.', newFacts: [], combateIniciado: { npcSlugs: ['torgash-ketg'] } });
+    const app = await buildApp();
+    // Citado, como lo envía el frontend al elegir objetivo (sin cita, a un cauteloso no se le ataca).
+    const action = "Ataco a 'Torgash Ketg' con el hacha.";
+    const { classification, roll } = (await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } })).json();
+    // La dificultad la pone la clasificación según el nivel de Torgash: se fuerza un acierto.
+    const acierto = roll ? { ...roll, success: true, gradoExito: 'claro' } : roll;
+    const res = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll: acierto, enCombate: false } });
+    const { combateIniciado } = lastNdjsonLine(res.payload) as { combateIniciado: { npcs: { slug: string; participantId?: string }[] } | null };
+    expect(combateIniciado?.npcs.length ?? 0).toBeGreaterThan(1);
+    expect(combateIniciado!.npcs.map((n) => n.slug)).toContain('torgash-ketg');
+    expect(combateIniciado!.npcs.every((n) => !!n.participantId)).toBe(true);
+    expect(await prisma.combatEncounter.count({ where: { saveId, estado: 'EN_CURSO', jugable: true } })).toBe(1);
+    await app.close();
+  }, 30_000);
+});
