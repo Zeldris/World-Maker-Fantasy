@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import type { ZonePointInfo } from './api'
+import type { RegionControlInfo, ZonePointInfo } from './api'
+import type { ZonaPinTipo } from '../components/ZonePointDetailModal'
 
 /// Datos y medida de las fichas del mapa de zona (Z-A, hito 0.1) — fuera de `zona/FichaZona.tsx` para
 /// que ese archivo solo exporte componentes.
@@ -32,4 +33,68 @@ export function useEscalaPantalla(anchoViewBox = 800, altoViewBox = 600): { ref:
     return () => ro.disconnect()
   }, [svg, anchoViewBox, altoViewBox])
   return { ref: setSvg, escala }
+}
+
+/// Etiqueta de cada tipo de punto de la zona (ZON-80: sale de ZonaPanel.tsx para compartirla con la leyenda).
+export const TIPO_LABEL: Record<ZonaPinTipo, string> = {
+  FAUNA: 'Fauna',
+  RECURSO: 'Recurso',
+  NPC: 'NPC',
+  EDIFICIO: 'Edificio',
+  // "Tirar" objetos al suelo de la Zona (2026-09-06, hallazgo 8) — único tipo exclusivo de
+  // `dinamicos` (instancia por partida, nunca `ZonePoint` de catálogo).
+  OBJETO: 'Objeto en el suelo',
+  CADAVER: 'Cadáver',
+}
+
+/// Color por reputación con la facción del punto (2026-08-27, Pieza 3 de "Dinamismo del mundo") —
+/// verde=aliado, amarillo=neutro, rojo=enemigo; naranja para NPC/FAUNA/EDIFICIO independientes
+/// (podrían tener facción pero no la tienen ahora mismo) — nunca hereda el color de nadie.
+///
+/// INERTE, gris (2026-09-09, corrección de diseño real — Álvaro: "el color de sin facción solo se
+/// debe aplicar en npc/fauna/construcciones... sino debe utilizar [uno propio], ya que el resto de
+/// elementos no dependen de facción") — RECURSO/OBJETO nunca tienen facción por DISEÑO, distinto de
+/// "no la tiene ahora mismo" (SIN_FACCION) — mezclarlos habría sido tan confuso como reutilizar
+/// NEUTRO (que ya significa "neutral CON una facción real"), ver `zonePointColorFor` (backend).
+///
+/// B.11 (checklist frontend 2026-08-27) — mismos tonos exactos (`emerald-500`/`red-500`) que
+/// `ReputacionPanel.tsx` usa para Amigable/Enemigo (`emerald-400`/`red-400` en texto), en vez de un
+/// verde/rojo hex sueltos sin relación — dos representaciones del mismo concepto de reputación en
+/// paneles distintos ahora comparten paleta, aunque cada una siga con su propio número de bandas
+/// (aquí 3+SIN_FACCION+INERTE por punto de mapa, allí 5 por temperamento de combate — legítimamente
+/// distintas, no se tocan los umbrales de ninguna).
+/// ZON-10 (hito 0.1, Z12) — ahora sale de los tokens del juego (`COLOR_DISPOSICION`, zona/FichaZona.tsx).
+export const COLOR_HEX: Record<ZonePointInfo['color'], string> = COLOR_DISPOSICION
+
+/// C.6/C.7 (checklist frontend 2026-08-27) — antes 3 comparaciones sueltas sin exhaustividad
+/// comprobada por TypeScript (un 4º estado futuro se colaría en silencio) y sin comprobar que
+/// `agresor` viniera informado en `EN_DISPUTA` (opcional en el tipo). Ahora un `switch` exhaustivo
+/// (el `never` de abajo rompe la compilación si se añade un estado nuevo sin tratarlo aquí) +
+/// tono de color por estado, mismo criterio que `OUTCOME_TONE` de `KingdomFoundingModal.tsx`.
+/// B.12 (checklist frontend 2026-08-27) — el backend representa al agresor de una disputa como un
+/// nombre de ALIANZA compuesto ("Clan Serhu-Concordia de Hierro"), que no coincide con ninguna
+/// clave real de `factionsStatus`/`ReputacionPanel` (ahí viven "Clan Serhu" y "Concordia de Hierro"
+/// por separado) — no es buscable entre paneles. Se descompone solo para MOSTRAR (" + " en vez del
+/// guion, que puede leerse como parte de un nombre propio), sin tocar el dato real del backend, que
+/// sigue siendo correcto como concepto de alianza.
+function agresorLegible(agresor: string): string {
+  return agresor.includes('-') ? agresor.split('-').join(' + ') : agresor
+}
+
+export function regionControlDisplay(control: RegionControlInfo): { text: string; tone: string } {
+  switch (control.estado) {
+    case 'CONQUISTADA':
+      return { text: `Territorio de ${agresorLegible(control.duenoActual)}`, tone: 'text-danger-400' }
+    case 'EN_DISPUTA':
+      return {
+        text: control.agresor ? `En disputa: ${agresorLegible(control.agresor)} vs ${control.duenoActual}` : `En disputa por ${control.duenoActual}`,
+        tone: 'text-cost-400',
+      }
+    case 'NEUTRAL_O_DUENO_ORIGINAL':
+      return { text: `Territorio de ${control.duenoActual}`, tone: 'text-wood-300' }
+    default: {
+      const _exhaustive: never = control.estado
+      return _exhaustive
+    }
+  }
 }

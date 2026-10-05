@@ -254,7 +254,7 @@ son de relleno.*
 
 ## 13. Técnica y rendimiento (`ZON-T`)
 
-- **ZON-80 · Partir `ZonaPanel.tsx`** (897 líneas) en `ZoneMap` (lienzo y capas), `ZoneToken`,
+- ~~**ZON-80 · Partir `ZonaPanel.tsx`**~~ ✅ 2026-10-05 (978 → 562 líneas sin cambiar comportamiento: `zona/MarcadoresZona.tsx`, `zona/LeyendaZona.tsx`, `hooks/useMovimientoZona.ts` con el bucle de pasos, y etiquetas, colores y control regional en `lib/zonaFichas.ts`; la capa de ruta nace con `ZON-31`) (897 líneas) en `ZoneMap` (lienzo y capas), `ZoneToken`,
   `ZonePath`, `ZoneOverlays` (visión, amenaza, clima), `ZoneSidebar` y un hook `useZoneMovement`
   con el bucle de pasos, la cancelación y la velocidad. **M**
 - **ZON-81 · Capas SVG ordenadas**: ilustración → tinte/viñeta → cuadrícula → radios → rutas →
