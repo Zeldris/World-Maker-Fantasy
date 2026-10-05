@@ -1299,6 +1299,11 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     víctima contra el agresor, coste en presupuesto de tensión (importancia del suceso), suceso en el
     Libro y noticia con rumor por distancia. La paz entre Serhu y Helsig o Goshg corta la cadena (Q19).
     Ojo: en el catálogo Serhu ya está en guerra con Feg Tusha, así que su estratega no abre otra.
+    Arreglo (2026-10-05, `diagnosing-bugs`): «pedir la paz si va perdiendo» se medía con la carencia de
+    soldados, que solo señala al enemigo más fuerte (Helsig: la Concordia, en tensión); frente a Serhu,
+    con quien estaba en guerra, no sumaba y empataba con los tratados (el empate lo deshacía el orden
+    de ids: test intermitente ~1/4). Ahora se mide con la proporción frente a ese enemigo; regresión en
+    `decisionesFaccion.test.ts`.
   - ✅ **34e hecho (2026-10-05):** el Reino de la jugadora entra en la mesa del día solo como destinatario:
     se le proponen tratado o alianza, o se le presiona; nunca guerra ni paz (Q7). La propuesta es una
     `Consecuencia` `PROPUESTA_REINO` con 3 días de plazo y una noticia de «El mundo» con Aceptar y
@@ -1382,8 +1387,13 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     (null = del narrador o fija), `huecos`, `recompensa`, `encargaFaccionId`/`encargaNpcId`, `progreso`,
     `cantidad` y `venceEn`; estado `ABANDONADA`; modelo `MisionOfrecida` (a la vista en un tablón o en
     boca de un NPC, con `retiraEn`; al aceptarla nace su `Quest`). Panel de Misiones con «Abandonada».
+  - ✅ **40c hecho (2026-10-05):** tablón de avisos sembrado en las 6 ciudades con interior
+    (`worldCatalog.ts`, `TABLON_AVISOS_SLUG`, `kind: 'tablon'`, nombre común hasta que Álvaro apruebe
+    los de cada pueblo), copiado al clonar el mundo y, en partidas anteriores, de forma perezosa
+    (`cronista/tablones.ts`); no produce en la economía de facción; receta del Reino
+    `tablon-avisos` (común, con Ayuntamiento, uno por región).
   - **Pasos:** 40a plantillas, tipos y recompensas (puro) ✅ · 40b modelo y migración ✅ · 40c tablones
-    (sembrados y del Reino) · 40d generación en el avance diario · 40e aceptar, progreso, cumplir,
+    (sembrados y del Reino) ✅ · 40d generación en el avance diario · 40e aceptar, progreso, cumplir,
     fallar y reputación · 40f oferta pendiente única (ADR), «¿Tienes trabajo?» del NPC y el narrador
     deja de crear misiones · 40g interfaz del tablón y del diario.
 - **Hecho cuando:** `cronista:simular 60` produce caídas, escisiones, tormentas con daños, guerras

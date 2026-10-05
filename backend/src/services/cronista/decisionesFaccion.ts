@@ -24,7 +24,7 @@
 import type { Disposicion, FactionRelationType, Prisma, PrismaClient } from '@prisma/client';
 import { tickFactionProduction } from '../kingdomTick.js';
 import { ETIQUETA_BANDA, stageForPresion, typeForPresion, PRESION_MAX, PRESION_MIN, PRESION_NEUTRAL } from '../factionRelations.js';
-import { carenciasDe, inteligenciaDelLider, tocaRevisar, tramoDeInteligencia, type Carencia, type Tramo } from './carencias.js';
+import { carenciasDe, inteligenciaDelLider, tocaRevisar, tramoDeInteligencia, UMBRALES_CARENCIA, type Carencia, type Tramo } from './carencias.js';
 import { CATALOGO_SUCESOS, type TipoSuceso } from './catalogoSucesos.js';
 import { costeDe } from './narradorFondo.js';
 import { categoriaDeFamilia, darNoticia, type MetaNoticia } from './noticias.js';
@@ -114,8 +114,11 @@ export function opcionesDiplomaticas(v: VistaFaccion): Opcion[] {
         break;
       case 'GUERRA': {
         if (r.esReino) break;
-        const contraEste = v.carencias.find((c) => c.tipo === 'SOLDADOS' && c.enemigoId === r.otroId);
-        const perdiendo = contraEste ? (contraEste.gravedad === 'GRAVE' ? 4 : 2) : 0;
+        // «Va perdiendo» frente a ESTE enemigo, por la proporción de soldados (mismos umbrales que la
+        // carencia de soldados, que solo señala al enemigo más fuerte y puede ser otro).
+        const proporcion = r.soldadosOtro === 0 ? Infinity : v.soldados / r.soldadosOtro;
+        const umbral = UMBRALES_CARENCIA.soldadosProporcion;
+        const perdiendo = proporcion < umbral / 2 ? 4 : proporcion < umbral ? 2 : 0;
         push('PEDIR_PAZ', -0.5 + perdiendo + graves + bono(v, { MERCANTIL: 1, BELICOSA: -1 }));
         break;
       }

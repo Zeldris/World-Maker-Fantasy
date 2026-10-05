@@ -439,7 +439,7 @@ async function main() {
       update: {
         name: building.name,
         locationId,
-        kind: building.profession ?? 'sede',
+        kind: building.kind ?? building.profession ?? 'sede',
         status: 'ACTIVO',
         description: building.description,
         tier: building.tier,
@@ -449,7 +449,7 @@ async function main() {
         locationId,
         recipeKey: building.slug,
         name: building.name,
-        kind: building.profession ?? 'sede',
+        kind: building.kind ?? building.profession ?? 'sede',
         status: 'ACTIVO',
         description: building.description,
         tier: building.tier,

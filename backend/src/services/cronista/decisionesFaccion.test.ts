@@ -63,3 +63,19 @@ describe('el Reino de la jugadora como destinatario (CR-34 34e, Q7)', () => {
     expect(acciones(vista({ disposicion: 'BELICOSA', relaciones: [reino('NEUTRAL')] }))).toContain('PRESIONAR:reino');
   });
 });
+
+describe('pedir la paz se mide contra el enemigo de esa guerra (regresión, 2026-10-05)', () => {
+  it('perder claramente una guerra pesa aunque la carencia de soldados apunte a otro enemigo más fuerte', () => {
+    // Helsig (60) en guerra con Serhu (500) y en tensión con la Concordia (900): su carencia de soldados
+    // señala a la Concordia, pero la paz con Serhu tiene que ganar a cualquier tratado.
+    const v = vista({
+      soldados: 60,
+      carencias: [{ tipo: 'SOLDADOS', gravedad: 'GRAVE', enemigoId: 'concordia' }],
+      relaciones: [rel('serhu', 'GUERRA', 500), rel('concordia', 'TENSION', 900), rel('obelisco', 'NEUTRAL'), rel('prisilke', 'NEUTRAL')],
+    });
+    const opciones = opcionesDiplomaticas(v);
+    const paz = opciones.find((o) => o.accion === 'PEDIR_PAZ')!;
+    expect(paz.objetivoId).toBe('serhu');
+    expect(paz.puntuacion).toBeGreaterThan(Math.max(...opciones.filter((o) => o.accion !== 'PEDIR_PAZ').map((o) => o.puntuacion)));
+  });
+});

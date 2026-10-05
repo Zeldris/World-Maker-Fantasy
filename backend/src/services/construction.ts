@@ -1326,6 +1326,25 @@ export const PUESTO_COMERCIAL_RECIPE: ConstructionRecipe = {
   cuartelUpgradeBonus: { produccion: 10 },
 };
 
+// CR-40 (hito 0.2, Q12): tablón de avisos del Reino — muestra las misiones secundarias de las
+// facciones con las que el Reino tiene tratado o alianza. Común a todos los pueblos, uno por región.
+export const TABLON_AVISOS_RECIPE: ConstructionRecipe = {
+  key: 'tablon-avisos',
+  name: 'un tablón de avisos',
+  description:
+    'Un poste ancho clavado en la plaza del reino, con tablillas y cordeles donde se cuelgan los avisos de quien necesita manos: cacerías, entregas, escoltas. Quien pasa por el reino sabe que aquí se encuentra trabajo.',
+  nounRegex: /tabl[oó]n.*avisos?/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 6, label: 'leña' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'fibras' }, cantidad: 4, label: 'fibra' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piel' }, cantidad: 2, label: 'piel' },
+  ],
+  tier: 1,
+  requisitos: { carisma: 8 },
+  requiresAyuntamiento: true,
+  maxPerRegion: 1,
+};
+
 // Orden deliberado (2026-08-04): grande y mediano ANTES que pequeño — `CONSTRUCTION_RECIPES.find`
 // se queda con la primera receta cuya `nounRegex` matchea, y el texto "ayuntamiento mediano"
 // también matchea el patrón (más simple) del pequeño si ese se comprobara antes. Mismo criterio
@@ -1341,6 +1360,7 @@ export const CONSTRUCTION_RECIPES: ConstructionRecipe[] = [
   CUARTEL_DE_GUERRA_RECIPE,
   PUESTO_COMERCIAL_RECIPE,
   CUARTEL_AVANZADO_RECIPE,
+  TABLON_AVISOS_RECIPE,
   JAULA_GRANDE_RECIPE,
   JAULA_MEDIANA_RECIPE,
   JAULA_PEQUENA_RECIPE,

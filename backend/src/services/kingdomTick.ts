@@ -159,7 +159,8 @@ const COCINA_RECIPE_KEYS = new Set(['cocina', 'cocina-obrador', 'cocina-gran-obr
 /// agregado — el salón (`*-sedsar`) y la boca de mina/embarcadero cuentan igual que cualquier otro
 /// taller (dan riqueza, no comida), pero el propio salón (`Ketg'sedsar`...) NO es un edificio de
 /// oficio y no produce nada — se excluye explícitamente.
-const SALON_RECIPE_KEYS = new Set(['ketg-sedsar', 'helsig-sedsar', 'goshg-sedsar']);
+// CR-40: el tablón de avisos tampoco produce (no es un edificio de oficio).
+const SALON_RECIPE_KEYS = new Set(['ketg-sedsar', 'helsig-sedsar', 'goshg-sedsar', 'tablon-avisos']);
 
 export interface FactionBuildingForTick {
   recipeKey: string | null;

@@ -11970,6 +11970,8 @@ export interface FactionBuildingInput {
   profession: string | null;
   tier: number;
   description: string;
+  /// `Building.kind`; sin él, el oficio o `sede`.
+  kind?: string;
 }
 
 export const factionBuildings: FactionBuildingInput[] = [
@@ -12225,3 +12227,28 @@ export const factionBuildings: FactionBuildingInput[] = [
 export function tierCapacityFor(tier: number): number {
   return { 1: 1, 2: 3, 3: 6 }[tier] ?? 0;
 }
+
+// CR-40 (hito 0.2, Q11-Q12): un tablón de avisos en el interior de cada ciudad con interior, donde la
+// facción cuelga sus misiones secundarias. Nombre mecánico común; el nombre propio de cada pueblo está
+// propuesto a Álvaro en `propuestas-lore.md` (2026-10-05) y se pondrá cuando lo apruebe.
+export const TABLON_AVISOS_SLUG = 'tablon-avisos';
+const TABLONES_DE_AVISOS: { factionSlug: string; locationSlug: string; description: string }[] = [
+  { factionSlug: 'Clan Serhu', locationSlug: 'campamento-serhu-interior', description: 'Un poste junto al salón, con pieles clavadas y marcas talladas: cada marca, una cacería o un encargo del clan.' },
+  { factionSlug: 'Clan Helsig', locationSlug: 'campamento-helsig-interior', description: 'Un poste de hielo sílice tallado a la entrada de las minas, con marcas de encargo del clan.' },
+  { factionSlug: 'Clan Goshg', locationSlug: 'campamento-goshg-interior', description: 'Un poste sobre los pilotes, junto a las pasarelas, con marcas de los encargos de las dos tribus.' },
+  { factionSlug: 'Feg Tusha', locationSlug: 'campamento-feg-tusha-interior', description: 'Un árbol del poblado colgado con marcas de garra y olor que la manada sabe leer.' },
+  { factionSlug: 'Feg Ger', locationSlug: 'jakut-ger-interior', description: 'Un árbol junto al Vergel con marcas de garra; los tratantes de la manada cuelgan ahí lo que necesitan.' },
+  { factionSlug: 'Keseg Prisilke', locationSlug: 'conclave-keseg-prisilke-interior', description: 'Un muro de cordeles anudados en el cónclave: cada nudo es un aviso que solo se lee de cerca.' },
+];
+factionBuildings.push(
+  ...TABLONES_DE_AVISOS.map((t) => ({
+    slug: TABLON_AVISOS_SLUG,
+    name: 'Tablón de avisos',
+    factionSlug: t.factionSlug,
+    locationSlug: t.locationSlug,
+    profession: null,
+    tier: 1,
+    kind: 'tablon',
+    description: t.description,
+  })),
+);
