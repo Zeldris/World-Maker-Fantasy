@@ -1,31 +1,11 @@
 import type { ZonePointInfo, ZonaDinamicoInfo } from '../lib/api'
 import { useEnciclopediaLink } from '../context/useEnciclopediaLink'
 import { SelectionModalShell, confirmButtonClasses } from './SelectionModalShell'
+import { DISPOSICION_LABEL, TIPO_LABEL } from '../lib/zonaFichas'
 
 /// Tipos de pin del mapa de Zona — `ZonePointInfo` (catálogo) + los que solo existen como dinámicos
 /// de la partida: OBJETO (tirado al suelo) y CADAVER (Fase 5, 2026-09-28).
 export type ZonaPinTipo = ZonePointInfo['tipo'] | 'OBJETO' | 'CADAVER'
-
-const TIPO_LABEL: Record<ZonaPinTipo, string> = {
-  FAUNA: 'Fauna',
-  RECURSO: 'Recurso',
-  NPC: 'NPC',
-  EDIFICIO: 'Edificio',
-  // "Tirar" objetos al suelo de la Zona (2026-09-06, hallazgo 8) — único `tipo` que no viene de
-  // `ZonePointInfo` (catálogo fijo): instancia por partida, `dinamicos` únicamente.
-  OBJETO: 'Objeto en el suelo',
-  CADAVER: 'Cadáver',
-}
-
-const COLOR_LABEL: Record<ZonePointInfo['color'], string> = {
-  ALIADO: 'Aliado',
-  NEUTRO: 'Neutro',
-  ENEMIGO: 'Enemigo',
-  SIN_FACCION: 'Sin facción',
-  // No aplica facción por diseño (2026-09-09) — RECURSO/OBJETO, nunca "sin facción por ahora"
-  // (SIN_FACCION) como un NPC/FAUNA/EDIFICIO independiente, ver zonePointColorFor (backend).
-  INERTE: 'Salvaje',
-}
 
 /// Punto del jugador en el mapa de Zona (2026-09-04) — este modal ahora también se abre desde un
 /// pin `dinamicos` (NPC/fauna sin `ZonePoint` sembrado, `slug`/`targetSlug` es el mismo concepto
@@ -61,7 +41,7 @@ export function ZonePointDetailBody({ point }: { point: ZonePointDetailSource })
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap gap-1.5 text-2xs">
         <span className="rounded-full border border-iron-700 bg-wood-950/50 px-2.5 py-1 uppercase tracking-wide text-wood-400">{TIPO_LABEL[point.tipo]}</span>
-        <span className="rounded-full border border-iron-700 bg-wood-950/50 px-2.5 py-1 uppercase tracking-wide text-wood-400">{COLOR_LABEL[point.color]}</span>
+        <span className="rounded-full border border-iron-700 bg-wood-950/50 px-2.5 py-1 uppercase tracking-wide text-wood-400">{DISPOSICION_LABEL[point.color]}</span>
         {!!point.cantidad && point.cantidad > 1 && <span className="rounded-full border border-iron-700 bg-wood-950/50 px-2.5 py-1 uppercase tracking-wide text-wood-400">×{point.cantidad}</span>}
       </div>
       {!point.descubierto ? (
@@ -164,7 +144,7 @@ export function ZonePointDetailModal({
     >
       <div className="flex flex-wrap gap-1.5 text-2xs">
         <span className="rounded-full border border-iron-700 bg-wood-950/50 px-2.5 py-1 uppercase tracking-wide text-wood-400">{TIPO_LABEL[point.tipo]}</span>
-        <span className="rounded-full border border-iron-700 bg-wood-950/50 px-2.5 py-1 uppercase tracking-wide text-wood-400">{COLOR_LABEL[point.color]}</span>
+        <span className="rounded-full border border-iron-700 bg-wood-950/50 px-2.5 py-1 uppercase tracking-wide text-wood-400">{DISPOSICION_LABEL[point.color]}</span>
         {!!point.cantidad && point.cantidad > 1 && <span className="rounded-full border border-iron-700 bg-wood-950/50 px-2.5 py-1 uppercase tracking-wide text-wood-400">×{point.cantidad}</span>}
       </div>
       {!point.descubierto ? (

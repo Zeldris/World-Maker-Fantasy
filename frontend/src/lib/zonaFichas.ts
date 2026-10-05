@@ -98,3 +98,18 @@ export function regionControlDisplay(control: RegionControlInfo): { text: string
     }
   }
 }
+
+/// Disposición de un punto en palabras (ZON-40: tarjeta y menú de la ficha; también la ficha completa).
+export const DISPOSICION_LABEL: Record<ZonePointInfo['color'], string> = {
+  ALIADO: 'Aliado',
+  NEUTRO: 'Neutro',
+  ENEMIGO: 'Enemigo',
+  SIN_FACCION: 'Sin facción',
+  INERTE: 'Salvaje',
+}
+
+/// Distancia en celdas (de 50) entre dos puntos del lienzo: cuántos pasos hay como mínimo.
+export function distanciaEnCeldas(a: { x: number; y: number }, b: { x: number; y: number }): number {
+  return Math.max(Math.abs(Math.floor(a.x / 50) - Math.floor(b.x / 50)), Math.abs(Math.floor(a.y / 50) - Math.floor(b.y / 50)))
+}
+

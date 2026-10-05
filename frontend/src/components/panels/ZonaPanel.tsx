@@ -6,12 +6,14 @@ import { ZoneGroupDetailModal } from '../ZoneGroupDetailModal'
 import { ZonaSalidaModal } from '../ZonaSalidaModal'
 import { ParcelaDetailModal } from '../ParcelaDetailModal'
 import { DefsFichas, EtiquetaNombre } from '../zona/FichaZona'
-import { COLOR_HEX, regionControlDisplay, TIPO_LABEL, useEscalaPantalla } from '../../lib/zonaFichas'
+import { COLOR_HEX, DISPOSICION_LABEL, distanciaEnCeldas, regionControlDisplay, TIPO_LABEL, useEscalaPantalla } from '../../lib/zonaFichas'
 import { GridOverlay, JugadorMarker, ParcelaMarker, SalidaMarker, ZonePointMarker } from '../zona/MarcadoresZona'
 import { MS_POR_VELOCIDAD, PasoZonaContext } from '../../lib/zonaMovimiento'
 import { useAjustes } from '../../context/useAjustes'
 import { celdaDePixel, pixelDeCelda, rutaPrevista, textoCoste, type Celda } from '../../lib/zonaRuta'
 import { BanderaDestino, CeldaResaltada, EtiquetaCoste, LineaRuta } from '../zona/RutaZona'
+import { MenuFicha, TarjetaFicha, type AccionFicha, type InfoFicha } from '../zona/MenuFicha'
+import { useEnciclopediaLink } from '../../context/useEnciclopediaLink'
 import { LeyendaZona } from '../zona/LeyendaZona'
 import { useMovimientoZona } from '../../hooks/useMovimientoZona'
 import type { LogEntry, ProfessionRecipeInfo, ZonaParcelaInfo } from '../../types'
@@ -158,6 +160,9 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
   // estado de selección SEPARADO del normal: un punto con `companion` abre `ZoneGroupDetailModal`
   // (desglose de ambas entidades) en vez del modal de un solo NPC.
   const [selectedGroup, setSelectedGroup] = useState<ZonePointInfo | null>(null)
+  // ZON-41: menú pegado a la ficha pulsada (el modal de arriba queda como «Ver ficha completa»).
+  const [menuFicha, setMenuFicha] = useState<{ clave: string; punto: ZonePointInfo | ZonaDinamicoInfo } | null>(null)
+  const { enciclopediaIndex, onEntityDetail } = useEnciclopediaLink()
   // Icono de salida de región (2026-09-17) — abre `ZonaSalidaModal`, distinto del resto (nunca
   // dispara movimiento/colisión, es puramente informativo hasta que se pulsa "Viajar").
   const [selectedSalida, setSelectedSalida] = useState<ZonaSalidaInfo | null>(null)
@@ -274,6 +279,43 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
     if (salidaFresca?.alcanzable) setSelectedSalida(salidaFresca)
   }
 
+  // ZON-40/41: lo que dicen la tarjeta y el menú de una ficha, y qué se puede hacer con ella (las
+  // mismas acciones que la ficha completa; ninguna nueva).
+  function puntoPorClave(clave: string): ZonePointInfo | ZonaDinamicoInfo | null {
+    if (!data) return null
+    if (clave.startsWith('p:')) return data.puntos.find((p) => p.id === clave.slice(2)) ?? null
+    return (data.dinamicos ?? []).find((d) => d.slug === clave.slice(2)) ?? null
+  }
+  function infoDeFicha(punto: ZonePointInfo | ZonaDinamicoInfo): InfoFicha {
+    const detalles = [TIPO_LABEL[punto.tipo], DISPOSICION_LABEL[punto.color]]
+    if ('cantidad' in punto && punto.cantidad > 1) detalles.push(`×${punto.cantidad}`)
+    if ('companion' in punto && punto.companion) detalles.push(`con ${punto.companion.nombre}`)
+    if (data?.jugador) {
+      const d = distanciaEnCeldas(data.jugador, punto)
+      detalles.push(d === 0 ? 'aquí' : `a ${d} ${d === 1 ? 'celda' : 'celdas'}`)
+    }
+    return { nombre: punto.nombre, detalles }
+  }
+  function accionesDeFicha(punto: ZonePointInfo | ZonaDinamicoInfo): AccionFicha[] {
+    const acciones: AccionFicha[] = []
+    const ir = irHastaPin(punto)
+    if (ir) acciones.push({ label: pegadoAPin(punto) ? 'Interactuar' : 'Ir hasta aquí', onClick: ir })
+    if ('droppedItemId' in punto && punto.droppedItemId) {
+      const id = punto.droppedItemId
+      acciones.push({ label: 'Recoger', onClick: () => void handleRecoger(id) })
+    }
+    if ('cadaver' in punto && punto.cadaver) {
+      const { npcSlug, saqueable, desollable } = punto.cadaver
+      if (saqueable && onSaquearCadaver) acciones.push({ label: 'Saquear', onClick: () => void accionSobreCadaver(punto, () => onSaquearCadaver(npcSlug)) })
+      if (desollable && onDesollarCadaver) acciones.push({ label: 'Desollar', onClick: () => void accionSobreCadaver(punto, () => onDesollarCadaver(npcSlug)) })
+    }
+    const slug = 'targetSlug' in punto ? punto.targetSlug : punto.slug
+    const ficha = punto.descubierto ? (enciclopediaIndex.bySlugKey.get(`fauna:${slug}`) ?? enciclopediaIndex.bySlugKey.get(`npc:${slug}`)) : undefined
+    if (ficha && onEntityDetail) acciones.push({ label: 'Ver en la Enciclopedia', onClick: () => onEntityDetail(ficha) })
+    acciones.push({ label: 'Ver ficha completa', onClick: () => ('companion' in punto && punto.companion ? setSelectedGroup(punto) : setSelectedPoint(punto)) })
+    return acciones
+  }
+
   if (loading) return <p className="text-sm italic text-wood-500">Cargando zona...</p>
   if (error) return <p className="text-sm italic text-wood-500">{error}</p>
   if (!data?.disponible) {
@@ -360,6 +402,11 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                 soloConsulta
                   ? undefined
                   : (e) => {
+                      // ZON-41: con el menú de una ficha abierto, el clic fuera solo lo cierra.
+                      if (menuFicha) {
+                        setMenuFicha(null)
+                        return
+                      }
                       if (movimientoEnCurso) return
                       const local = puntoDelLienzo(e)
                       if (local) handleMoverA(local)
@@ -423,7 +470,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
               {data.puntos.map((p) => (
                 <g
                   key={p.id}
-                  onClick={(e) => { e.stopPropagation(); p.companion ? setSelectedGroup(p) : setSelectedPoint(p) }}
+                  onClick={(e) => { e.stopPropagation(); setMenuFicha({ clave: `p:${p.id}`, punto: p }) }}
                   onMouseEnter={() => setClaveBajoRaton(`p:${p.id}`)}
                   onMouseLeave={() => setClaveBajoRaton(null)}
                   className="cursor-pointer"
@@ -438,7 +485,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
               {dinamicos.map((d) => (
                 <g
                   key={d.slug}
-                  onClick={(e) => { e.stopPropagation(); setSelectedPoint(d) }}
+                  onClick={(e) => { e.stopPropagation(); setMenuFicha({ clave: `d:${d.slug}`, punto: d }) }}
                   onMouseEnter={() => setClaveBajoRaton(`d:${d.slug}`)}
                   onMouseLeave={() => setClaveBajoRaton(null)}
                   className="cursor-pointer"
@@ -503,6 +550,22 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                     </g>
                   ))}
               </g>
+              {/* ZON-40: tarjeta de la ficha bajo el ratón (si no tiene su menú abierto). */}
+              {(() => {
+                const punto = claveBajoRaton && claveBajoRaton !== menuFicha?.clave ? puntoPorClave(claveBajoRaton) : null
+                return punto ? <TarjetaFicha x={punto.x} y={punto.y} escala={escala} info={infoDeFicha(punto)} /> : null
+              })()}
+              {/* ZON-41: menú pegado a la ficha pulsada. */}
+              {menuFicha && (
+                <MenuFicha
+                  x={menuFicha.punto.x}
+                  y={menuFicha.punto.y}
+                  escala={escala}
+                  info={infoDeFicha(menuFicha.punto)}
+                  acciones={accionesDeFicha(menuFicha.punto)}
+                  onClose={() => setMenuFicha(null)}
+                />
+              )}
             </svg>
             </PasoZonaContext.Provider>
           </div>

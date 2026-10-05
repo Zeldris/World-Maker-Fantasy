@@ -209,8 +209,8 @@ son de relleno.*
 
 | Id | Propuesta | Back | Esf. |
 |---|---|---|---|
-| ZON-40 | **Tarjeta flotante al pasar el ratón** (BG3): nombre, tipo, cantidad, disposición, retrato y distancia en celdas, sin abrir nada. | ✅ | S |
-| ZON-41 | **Menú contextual en la ficha** en lugar del modal (Z23): al hacer clic, un pequeño menú pegado a la ficha con *Ir hasta aquí*, *Interactuar* (si está adyacente), *Cazar*, *Saquear*, *Desollar*, *Recoger*, *Ver en la Enciclopedia*. El modal grande queda para la ficha completa. | ✅ | M |
+| ~~ZON-40~~ ✅ 2026-10-05 (`zona/MenuFicha.tsx` · `TarjetaFicha`: nombre, tipo, disposición, cantidad, compañero y distancia en celdas; sin retrato todavía, va con `ZON-12`) | **Tarjeta flotante al pasar el ratón** (BG3): nombre, tipo, cantidad, disposición, retrato y distancia en celdas, sin abrir nada. | ✅ | S |
+| ~~ZON-41~~ ✅ 2026-10-05 (`MenuFicha`: la misma información arriba y las acciones que ya tenía la ficha: Ir hasta aquí / Interactuar (al lado), Recoger, Saquear, Desollar, Ver en la Enciclopedia y Ver ficha completa; Cazar sigue saliendo del encuentro al acercarse) | **Menú contextual en la ficha** en lugar del modal (Z23): al hacer clic, un pequeño menú pegado a la ficha con *Ir hasta aquí*, *Interactuar* (si está adyacente), *Cazar*, *Saquear*, *Desollar*, *Recoger*, *Ver en la Enciclopedia*. El modal grande queda para la ficha completa. | ✅ | M |
 | ZON-42 | **Encuentro con presencia**: al chocar, la ficha del otro da un pequeño salto, aparece un aviso sobre ella ("¡Te topas con…!") y el mapa se atenúa un instante alrededor; la tirada de "quién ve a quién" (`DiceTray`, roadmap general § 4) sale anclada al encuentro. Resuelve Z17. | ✅ | M |
 | ZON-43 | **Combate que empieza en el mapa**: transición desde la ficha del rival (destello rojo, zoom breve) hacia el panel de combate, en vez de un cambio seco. | ✅ | M |
 | ZON-44 | **Marcas propias** (BG3): el jugador puede poner una marca con nombre en una celda ("veta de hierro", "cuidado: lobos"). | 🛠️ (guardar marcas) | M |

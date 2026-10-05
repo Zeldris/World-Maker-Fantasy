@@ -133,3 +133,35 @@ describe('ZonaPanel — Z-B, ruta prevista', () => {
     expect(queryByTestId('bandera-destino')).toBeNull()
   })
 })
+
+/// Z-B (hito 0.2) — ZON-40/41: tarjeta al pasar el ratón y menú pegado a la ficha al pulsarla.
+describe('ZonaPanel — Z-B, tarjeta y menú de la ficha', () => {
+  beforeEach(() => {
+    vi.mocked(getZona).mockResolvedValue(zona as never)
+  })
+  afterEach(() => {
+    cleanup()
+    vi.clearAllMocks()
+  })
+
+  it('al pasar el ratón, la tarjeta dice qué es, su disposición, cuántos y a qué distancia', async () => {
+    const { container, getByTestId } = render(<ZonaPanel saveId="s1" />)
+    await act(async () => {})
+    const ficha = [...container.querySelectorAll('g.cursor-pointer')].find((g) => g.querySelector('title')?.textContent?.startsWith('Aullador rojo'))!
+    fireEvent.mouseEnter(ficha)
+    // Aullador en la celda (3, 2); el personaje en la (7, 6): 4 celdas.
+    expect(getByTestId('tarjeta-ficha').textContent).toBe('Aullador rojoFauna · Enemigo · ×3 · a 4 celdas')
+  })
+
+  it('al pulsarla, menú pegado con sus acciones; «Ver ficha completa» abre el modal de siempre', async () => {
+    const { container, getByRole, findByRole, queryByRole } = render(<ZonaPanel saveId="s1" />)
+    await act(async () => {})
+    const ficha = [...container.querySelectorAll('g.cursor-pointer')].find((g) => g.querySelector('title')?.textContent?.startsWith('Aullador rojo'))!
+    fireEvent.click(ficha)
+    const menu = getByRole('menu', { name: 'Aullador rojo' })
+    expect([...menu.querySelectorAll('[role="menuitem"]')].map((b) => b.textContent)).toEqual(['Ir hasta aquí', 'Ver ficha completa'])
+    fireEvent.click(getByRole('menuitem', { name: 'Ver ficha completa' }))
+    expect(queryByRole('menu')).toBeNull()
+    expect(await findByRole('dialog')).toBeTruthy()
+  })
+})
