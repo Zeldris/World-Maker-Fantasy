@@ -1326,6 +1326,26 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   (`advanceFactionEconomy`, `advanceFactionExpeditions`, `worldFictionDay`), que ya nadie llamaba y
   contradecían «el catálogo nunca cambia jugando». Sus tests de integración (economía, 13-B y 13-C)
   pasan a una partida con su copia del mundo; la prueba de re-seed (D-10) se mantiene aparte.
+- **CR-40** 🚧 Misiones secundarias por motor (`0.2`, Fase D; [21-roadmap § 0.2](21-roadmap.md#02--facciones-vivas)). **L**
+  Diseño con `/grill-with-docs` (2026-10-05). Ronda 1 aceptada entera:
+  - **Q1** Solo el motor crea y cierra las misiones; el narrador solo narra la oferta, el avance y el
+    final (deja de devolver `newQuest`/`questProgress` para las nuevas).
+  - **Q2** Misión = lo que la jugadora acepta (diario, objetivo, quién la encarga, plazo, recompensa,
+    consecuencias si falla o abandona). La oportunidad sigue siendo sin compromiso. El encargo de
+    materiales de `CR-12` pasa a ser una misión de tipo Entregar.
+  - **Q3** Tipos del `0.2`: Entregar, Cazar, Eliminar, Explorar y Ayudar; Escoltar, más adelante.
+  - **Q4** Nacen del mundo de la partida: carencias de facción (`CR-34`), sucesos (plaga de fauna,
+    vengador, rumor) y oportunidades. Como mucho una misión abierta por facción para la jugadora.
+  - **Q5** (corregida por la usuaria en la ronda 1): las dan **NPC** con nombre o un **tablón** en el
+    interior de las ciudades (edificio construible; ver ronda 2).
+  - **Q6** Fusionar `pendingQuestOfferInfo` con `pendingDynamicModeOffer` en una sola oferta
+    pendiente con su tipo (las dos las decide el motor); el menú del NPC, aparte. ADR al hacerlo.
+  - **Q7** Recompensas por tabla (tipo y dificultad): XP, Goirnos, reputación con quien la encarga y a
+    veces un objeto de su Almacén; fallar o abandonar resta reputación.
+  - **Q8** Plazo en días (vencido → fallida); como mucho 3 secundarias activas.
+  - **Q9** Las misiones del narrador de partidas en curso siguen como hasta ahora (sus anclas y su
+    `questProgress`, solo para ellas).
+  - Petición de la usuaria: **plantillas y reglas** para que la generación no produzca basura.
 - **Hecho cuando:** `cronista:simular 60` produce caídas, escisiones, tormentas con daños, guerras
   y nacimientos coherentes; perdonar a un NPC lo hace volver en otra región.
 
