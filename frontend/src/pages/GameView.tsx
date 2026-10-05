@@ -33,6 +33,7 @@ import { characterTabs, worldTabs, type PanelId } from '../components/NavTabs'
 import { PanelDrawer } from '../components/PanelDrawer'
 import { MapaPanel } from '../components/panels/MapaPanel'
 import { DiarioPanel } from '../components/panels/DiarioPanel'
+import { LeyendasPanel } from '../components/panels/LeyendasPanel'
 import { InventarioPanel } from '../components/panels/InventarioPanel'
 import { EnciclopediaPanel } from '../components/panels/EnciclopediaPanel'
 import { SLOT_LABEL, isCompatibleWithSlot, isConsumibleSlot } from '../lib/equipSlots'
@@ -474,7 +475,7 @@ export function GameView() {
   // 'profesiones' ya no es un PanelId de nivel superior (vive como sub-pestaña dentro de
   // PersonajePanel, que recibe `combatOpen` y deshabilita esa sub-pestaña por su cuenta).
   const COMBAT_DISABLED_CHARACTER_TABS: PanelId[] = ['inventario', 'companeros', 'reino']
-  const COMBAT_DISABLED_WORLD_TABS: PanelId[] = ['mapa', 'diario', 'misiones']
+  const COMBAT_DISABLED_WORLD_TABS: PanelId[] = ['mapa', 'diario', 'leyendas', 'misiones']
 
   // Muerte pendiente de resolver (auditoría de código backend 2026-09-07, decisión confirmada con
   // la usuaria: "bloquear todo hasta Aceptar") — el composer ya se bloqueaba
@@ -1584,6 +1585,7 @@ export function GameView() {
     inventario: 'Inventario',
     personaje: 'Personaje',
     diario: 'Diario',
+    leyendas: 'Leyendas',
     misiones: 'Misiones',
     companeros: 'Compañeros',
     reino: 'Reino',
@@ -1603,6 +1605,8 @@ export function GameView() {
     reino: 'accent',
     mapa: 'accent2',
     diario: 'accent',
+    // CR-20: Leyendas es del riel «El mundo».
+    leyendas: 'accent2',
     misiones: 'accent2',
     enciclopedia: 'accent2',
     reputacion: 'accent2',
@@ -2282,6 +2286,7 @@ export function GameView() {
             />
           )}
           {panelMostrado === 'diario' && saveId && <DiarioPanel saveId={saveId} />}
+          {panelMostrado === 'leyendas' && saveId && <LeyendasPanel saveId={saveId} />}
           {panelMostrado === 'inventario' && saveId && (
             <InventarioPanel
               saveId={saveId}

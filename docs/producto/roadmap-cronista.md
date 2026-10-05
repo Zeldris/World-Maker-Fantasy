@@ -1544,6 +1544,9 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   Q6, 2026-10-05): panel propio con icono de libro junto al Diario, con Crónica, Personajes,
   Facciones, Lugares y Línea temporal; causas enlazadas (`INT-3`) siempre visibles hasta que llegue
   `CFG-36` (`0.3`); rumor con lugar en el mapa (`INT-9`). Etiquetas y aprobación, con `CR-14`/`CR-15`.
+  🚧 20a ✅ 2026-10-05 (`LeyendasPanel.tsx` y `lib/leyendas.ts`: panel «Leyendas» junto al Diario con Crónica
+  por días o semanas, Personajes, Facciones, Lugares y Línea temporal, filtro por familia, `INT-1`, `INT-2`
+  e `INT-3`); falta 20b (fichas «En tu partida» en la Enciclopedia).
 - **Hecho cuando:** un suceso lejano llega como rumor días después y aparece en Leyendas; nada que
   el personaje no sepa es visible.
 

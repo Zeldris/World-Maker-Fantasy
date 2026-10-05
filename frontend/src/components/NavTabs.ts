@@ -3,6 +3,7 @@ export type PanelId =
   | 'inventario'
   | 'personaje'
   | 'diario'
+  | 'leyendas'
   | 'misiones'
   | 'companeros'
   | 'reino'
@@ -33,6 +34,8 @@ export const characterTabs: Tab[] = [
 export const worldTabs: Tab[] = [
   { id: 'mapa', icon: '🗺️', label: 'Mapa' },
   { id: 'diario', icon: '📖', label: 'Diario' },
+  // CR-20 / PAN-9b (hito 0.2, Q5 de la Fase E): panel propio con icono de libro, junto al Diario.
+  { id: 'leyendas', icon: '📕', label: 'Leyendas' },
   { id: 'misiones', icon: '🎯', label: 'Misiones' },
   { id: 'reputacion', icon: '🤝', label: 'Reputación' },
   { id: 'enciclopedia', icon: '📚', label: 'Enciclopedia' },

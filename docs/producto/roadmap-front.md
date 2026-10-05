@@ -599,7 +599,7 @@ Contenedor común: `PanelDrawer` (cajón inferior, `max-w-4xl`, 85 vh).
 - **PAN-9 · Diario** — búsqueda en el texto, filtros por canal (personaje/mundo/reino), saltar a
   una fecha ficticia, capítulos por día con separador (NAR-3) y exportar la partida como relato
   (texto/HTML). **M**
-- **PAN-9b · Leyendas de tu partida** (Cronista § 14) — Crónica (por días y semanas), Personajes,
+- 🚧 **PAN-9b · Leyendas de tu partida** (Cronista § 14; panel hecho el 2026-10-05 con `CR-20` 20a, faltan las fichas de 20b) — Crónica (por días y semanas), Personajes,
   Facciones, Lugares y Línea temporal, **solo con lo que el personaje sabe**; cada entrada enlaza a
   sus sucesos y a la Enciclopedia; filtros por familia (clima, diplomacia, vida y muerte…). 🧭
   ¿Pestaña del Diario o pestaña propia en el riel "El mundo"? → **panel propio, icono de libro, junto
@@ -821,14 +821,14 @@ están incorporados en sus secciones (`CFG-34`…`37`, `PAN-4`, `PAN-6`, `PAN-9b
 `PAN-12`, `HUD-6`, `HUD-12`, `HUD-13`, `NAR-9`…`NAR-11`); aquí van las piezas transversales.
 
 ### 15.1 Lenguaje visual del mundo vivo
-- **INT-1 · Familias de sucesos con identidad propia**: un icono SVG (`BAS-2`) y un color de token por
+- ~~**INT-1 · Familias de sucesos con identidad propia**~~ ✅ 2026-10-05 (`FAMILIA_ESTILO` en `lib/leyendas.ts`; icono emoji como el de las noticias de UX-38 mientras `BAS-2` no tenga los de familia): un icono SVG (`BAS-2`) y un color de token por
   familia del Cronista — clima (`accent2`), natural (`moss`), vida y muerte (`wood-200` / `danger`
   para muertes), diplomacia (`quest`), facción (paleta por raza), economía (`cost`), Reino
   (`accent`), jugador (`accent`), lore (`wood-300`). Se usan igual en notificaciones, Leyendas,
   rumores y fichas. **S**
-- **INT-2 · Importancia visible**: 1-4 sin marca, 5-7 con borde, 8-10 con sello de lacre y entrada
+- ~~**INT-2 · Importancia visible**~~ ✅ 2026-10-05 (nivel NORMAL/DESTACADO/GRAVE desde el backend, borde y sello con `animate-stamp-in` en Leyendas): 1-4 sin marca, 5-7 con borde, 8-10 con sello de lacre y entrada
   con `stamp-in`; la importancia nunca se muestra como número al jugador. **S**
-- **INT-3 · Causas enlazadas**: en Leyendas y en las fichas, "por qué pasó" como cadena de sucesos
+- ~~**INT-3 · Causas enlazadas**~~ ✅ 2026-10-05 en Leyendas (botones «Por qué pasó» que llevan a la causa; en las fichas, con 20b): en Leyendas y en las fichas, "por qué pasó" como cadena de sucesos
   clicables (Día 14 → Día 15 → …), estilo línea de tiempo; activable con `CFG-36`. **M**
 - **INT-4 · Lo desconocido se ve como desconocido**: un suceso del que solo se sabe una parte
   aparece como rumor ("se dice…"), y lo que el personaje no sabe **no existe en ninguna pantalla**

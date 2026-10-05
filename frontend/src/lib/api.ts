@@ -2571,3 +2571,48 @@ export async function entregarMision(saveId: string, questId: string): Promise<{
 export async function abandonarMision(saveId: string, questId: string): Promise<{ status: string }> {
   return fetchJson(`${API_URL}/saves/${saveId}/misiones/${encodeURIComponent(questId)}/abandonar`, { method: 'POST' })
 }
+
+// ─────────────────────────── Leyendas de la partida (CR-19/CR-20, hito 0.2) ───────────────────────────
+
+/// INT-2: la importancia nunca se enseña como número.
+export type NivelLeyenda = 'NORMAL' | 'DESTACADO' | 'GRAVE'
+
+export interface ActorLeyenda {
+  tipo: string
+  id: string
+  nombre: string
+  papel: string
+}
+
+/// Un suceso que el personaje sabe. Un rumor llega sin detalles (sin actores, fecha, lugar ni causas).
+export interface EntradaLeyenda {
+  sucesoId: string
+  tipo: string
+  familia: FamiliaSuceso
+  nivel: NivelLeyenda
+  texto: string
+  rumor: boolean
+  via: 'TESTIGO' | 'OIDAS' | 'NPC' | 'BANDO' | 'ALIADA'
+  /// Minuto de ficción en que lo supo.
+  sabidoEn: number
+  region: string | null
+  cuando: number | null
+  fecha: string | null
+  lugar: { id: string; nombre: string } | null
+  actores: ActorLeyenda[]
+  /// Causas que el personaje también sabe (INT-3).
+  causas: string[]
+}
+
+export async function getLeyendas(saveId: string, params: { familia?: FamiliaSuceso; antesDe?: number } = {}): Promise<{ entradas: EntradaLeyenda[]; hayMas: boolean }> {
+  const q = new URLSearchParams()
+  if (params.familia) q.set('familia', params.familia)
+  if (params.antesDe !== undefined) q.set('antesDe', String(params.antesDe))
+  const qs = q.toString()
+  return fetchJson(`${API_URL}/saves/${saveId}/leyendas${qs ? `?${qs}` : ''}`)
+}
+
+/// Lo que el personaje sabe de una entidad (ficha «En tu partida»).
+export async function getLeyendasEntidad(saveId: string, tipo: string, entidadId: string): Promise<{ entradas: EntradaLeyenda[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/leyendas/entidad/${encodeURIComponent(tipo)}/${encodeURIComponent(entidadId)}`)
+}
