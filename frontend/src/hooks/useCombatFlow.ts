@@ -823,7 +823,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
             // El backend manda: solo se sustituye el estado local si el real ha avanzado más (nunca
             // "resucita" a alguien que el propio jugador ya vio caer más allá).
             const avanza = CONDICION_ORDER.indexOf(real.condicion) > CONDICION_ORDER.indexOf(local.condicion)
-            if (avanza || (real.yaSaqueado && !local.yaSaqueado) || (real.analizado && !local.analizado)) {
+            if (avanza || (real.huido && !local.huido) || (real.yaSaqueado && !local.yaSaqueado) || (real.analizado && !local.analizado)) {
               bySlug.set(key, real)
             } else if (real.lootedItemNames.length > local.lootedItemNames.length) {
               // Saqueo parcial (2026-07-31): `lootedItemNames` solo crece, aunque `condicion`/

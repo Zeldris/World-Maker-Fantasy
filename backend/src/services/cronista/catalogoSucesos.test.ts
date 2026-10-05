@@ -17,7 +17,7 @@ describe('catálogo de sucesos', () => {
       'VISITANTE_ILUSTRE', 'HALLAZGO_RUINA', 'HALLAZGO_DOCUMENTO', 'LEYENDA_NACE', 'SISTEMA_MUNDO_INICIADO', 'CONSECUENCIA_PERDIDA', 'HILO_ABIERTO',
       'HILO_CERRADO',
       // CR-12 (narrador de fondo).
-      'ESCARAMUZA', 'MALESTAR_INTERNO', 'AYUDA_PRESTADA', 'NPC_DESTACA',
+      'ESCARAMUZA', 'MALESTAR_INTERNO', 'AYUDA_PRESTADA', 'HUIDA_DE_NPC', 'NPC_DESTACA',
       // CR-40 (misiones del motor): dejar una misión no es fracasar.
       'MISION_ABANDONADA',
     ];

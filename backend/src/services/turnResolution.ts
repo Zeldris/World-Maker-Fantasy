@@ -59,6 +59,7 @@ import { invalidateCarcassRollCache } from '../routes/saves/recolectar.js';
 import { instanceNumbersByParticipantId, resolverObjetivoPorTexto, type HabilidadParaIntercambio } from './combateMultiple.js';
 import { prisma } from '../lib/prisma.js';
 import { registrarSuceso } from './cronista/sucesos.js';
+import { aplicarHuidaNpc, decidirMoralTrasIntercambio } from './huidaNpc.js';
 import { effectiveAttributesConDuracion, pushActiveEffect, decrementActiveEffects, type ActiveEffect } from './activeEffects.js';
 import type { RollResult, AttributeBlock, Attribute, GradoExito } from './dice.js';
 import type { SecondaryAttributeBlock } from './secondaryAttributes.js';
@@ -2053,6 +2054,9 @@ async function resolveCombatSlugsAndPersist(params: {
   /// `npcTargetNewCondicion`: `npcsInScene` se lee UNA vez antes de la transacción, así que sin
   /// este override el NPC recién golpeado se devolvería con sus efectos ACTIVOS DE ANTES del golpe.
   npcActiveEffectsNext: ActiveEffect[];
+  /// CR-44 (44b): NPC que huyó del combate este turno — fuera de lo persistido; en la respuesta de
+  /// este turno va marcado `huido` para que el panel lo dé por resuelto.
+  npcHuidoSlug?: string | null;
   /// Bug real jugando en vivo (ronda de pruebas 2026-08-28) — true cuando ESTE turno propuso MUERTO
   /// y el jugador respawneó de forma sobrevivible: fuerza `combatSlugs` a vaciarse del todo, sin
   /// importar qué agresor calcularía el resto de esta función. El jugador acaba de reaparecer en su
@@ -2337,6 +2341,7 @@ async function resolveCombatSlugsAndPersist(params: {
   // NPC recién muerto necesita `npcTargetNewCondicion` en vez de su condición ya obsoleta — el
   // resto de NPCs (turnos anteriores) sí tiene la condición real en `npcsInScene`.
   const combatSlugsToPersist = combatSlugs.filter((slug) => {
+    if (slug === params.npcHuidoSlug) return false;
     if (partiallyLootedSlugs.includes(slug)) return true;
     const npc = npcsInScene.find((n) => n.slug === slug);
     const condicionReal = npcAttackTarget && npcAttackHits && npcTargetNewCondicion && npc?.id === npcAttackTarget.id ? npcTargetNewCondicion : npc?.condicionFisica;
@@ -2390,6 +2395,7 @@ async function resolveCombatSlugsAndPersist(params: {
             // "Matar" persistido (2026-09-05) — mismo criterio que analizado/condicionFisica de
             // arriba, se resetea a false por el reset-on-ILESO ya aplicado al escribir NpcState.
             targetedForKill: n.targetedForKill,
+            ...(n.slug === params.npcHuidoSlug ? { huido: true } : {}),
           })),
       }
     : null;
@@ -2970,12 +2976,12 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     npcTargetNewCondicion,
     jugadorRecibeGolpe,
     jugadorGolpeEfectos,
-    nuevoPendingNpcAttack,
+    nuevoPendingNpcAttack: nuevoPendingNpcAttackFase,
     nuevoPendingCanalizacion,
     exchangeNarrationBlock,
     combatExchangeRoll,
     npcAbilityUsed,
-    nextInitiativeRoll,
+    nextInitiativeRoll: nextInitiativeRollFase,
     exchangeHappened,
     playerActedAsDefenderThisExchange,
     npcAttackerIsInoffensive,
@@ -3025,11 +3031,25 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // igual cuando NO hay combate múltiple de por medio.
   let combatExchangeDisplayFinal: CombatExchangeDisplay | null = combatExchangeDisplay;
 
+  // CR-44 (44b): moral del NPC golpeado en el 1v1. Si huye, el combate con él termina; si la moral
+  // falla y no escapa, pierde su próximo golpe (la iniciativa pasa a la jugadora, como un aturdimiento).
+  const moralNpc = combateActivo
+    ? await decidirMoralTrasIntercambio(prisma, {
+        saveId, worldId, npc: npcAttackTarget, npcAttackHits, npcTargetNewCondicion,
+        condicionJugadorTras: jugadorRecibeGolpe ? nextCondicionForAttack(jugadorGolpeEfectos, params.condicionFisica) : params.condicionFisica,
+        nivelJugador: params.currentLevel,
+      })
+    : null;
+  const npcPierdeIniciativa = !!moralNpc && (moralNpc.huye || moralNpc.pierdeTurno);
+  const nuevoPendingNpcAttack = npcPierdeIniciativa ? null : nuevoPendingNpcAttackFase;
+  const nextInitiativeRoll = npcPierdeIniciativa ? null : nextInitiativeRollFase;
+
   // Bloque de posición (docs/12 § 1.5): en un turno de viaje, la narración recibe la llegada al
   // destino + la ruta recorrida; en cualquier otro turno, recibe siempre dónde está y hacia
   // dónde puede ir — reduce los casos "weaklyGrounded" al dar siempre algo concreto que describir.
   const contextBlocks: string[] = [];
   if (exchangeNarrationBlock) contextBlocks.push(exchangeNarrationBlock);
+  if (moralNpc) contextBlocks.push(moralNpc.pista);
   if (abilityEffectHint) contextBlocks.push(abilityEffectHint);
   if (playerAbilityUsageBlockedHint) contextBlocks.push(playerAbilityUsageBlockedHint);
   // Ver `hasFalseTravelClaim` (narrador.ts) — nombres reales de los destinos ambiguos, rellenado
@@ -5108,6 +5128,19 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       activeRegion,
       nextAfterMainLogCreatedAt,
     });
+    // CR-44 (44b): la tirada de moral, en el registro; y si escapó, su huida.
+    if (moralNpc) {
+      const moralLog = await tx.logEntry.create({
+        data: {
+          saveId, channel: 'CHARACTER', isSystemMessage: true, timeLabel: nuevaFictionalDateLabel, fictionalMinutes: nuevoFictionalMinutes,
+          createdAt: nextAfterMainLogCreatedAt(),
+          text: `${moralNpc.texto} (Moral: ${moralNpc.moral.usedRoll}${moralNpc.moral.modo === 'desventaja' ? ' con desventaja' : ''} → ${moralNpc.moral.total} contra ${moralNpc.moral.dificultad}${moralNpc.escape ? `; huida: ${moralNpc.escape.roll} → ${moralNpc.escape.total} contra ${moralNpc.escape.dificultad}` : ''}.)`,
+        },
+      });
+      if (moralNpc.huye && npcAttackTarget) {
+        await aplicarHuidaNpc(tx, { saveId, npc: npcAttackTarget, characterName, currentLocationId, fictionalMinutes: nuevoFictionalMinutes, logEntryId: moralLog.id });
+      }
+    }
     if (combatExchangeResult.questCompletedInfo) questCompletedInfo = combatExchangeResult.questCompletedInfo;
     if (combatExchangeResult.factionRepChange) factionRepChange = combatExchangeResult.factionRepChange;
     // Bug real (auditoría "revisar partida" 2026-08-14): la recompensa de misión se narraba
@@ -6835,6 +6868,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         partiallyLootedSlugs,
         analizarRivalExito,
         npcActiveEffectsNext,
+        npcHuidoSlug: moralNpc?.huye ? moralNpc.npcSlug : null,
         // Bug real jugando en vivo (ronda de pruebas 2026-08-28): morir y respawnear (sobrevivible,
         // sin finDePartida) no limpiaba `pendingCombatNpcSlugs` — el enemigo seguía "enganchado" al
         // jugador aunque este ya no estuviera físicamente donde murió (respawnea en su campamento).

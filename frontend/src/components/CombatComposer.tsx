@@ -19,6 +19,8 @@ export interface CombatNpcDisplay {
   // "Dejarlo vivir": el NPC deja de contar como pendiente de resolver (useCombatFlow.ts §
   // combatEnded), pero su `condicion` NO cambia — sigue CONVALECIENTE de verdad.
   dismissed?: boolean
+  // CR-44: huyó del combate (cuenta como resuelto, igual que `dismissed`).
+  huido?: boolean
   // Rediseño de "Matar" (2026-08-30, ver tarkor_rediseno_matar_combate_real_2026-08-30): pulsar
   // "Matar" ya NO remata directo — solo marca al NPC como objetivo elegido para desbloquear el
   // panel (`combatHasPendingConvalecientes`) y ocultar su tarjeta persistente del log, dejando que
