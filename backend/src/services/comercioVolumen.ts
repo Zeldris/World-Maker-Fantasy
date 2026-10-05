@@ -45,7 +45,10 @@ export function cotizarVenta(valorBase: number, stockComprador: number, unidades
   return ingreso;
 }
 
-/// Días de camino de una caravana por número de tramos del grafo (ida); como mínimo 1.
-export function diasDeCamino(tramos: number): number {
-  return Math.max(1, Math.ceil(tramos / 2));
+/// Minutos de camino que una caravana cubre en un día (bestias de carga, paradas).
+export const MINUTOS_DE_CAMINO_POR_DIA = 480;
+
+/// Días de camino de una caravana (ida) por los minutos del trayecto en el grafo; como mínimo 1.
+export function diasDeCamino(minutos: number): number {
+  return Math.max(1, Math.ceil(minutos / MINUTOS_DE_CAMINO_POR_DIA));
 }

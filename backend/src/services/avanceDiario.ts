@@ -17,6 +17,7 @@ import { avanzarExpedicionesDePartida } from './factionExpeditions.js';
 import { asegurarMundoDePartida } from './mundoPartida.js';
 import { crecerPoblacionDePartida, syncFactionPopulationToKingdomStats } from './population.js';
 import { avanzarAgendaDePartida } from './worldAgenda.js';
+import { avanzarComercio } from './caravanas.js';
 import { procesarReacciones } from './cronista/reacciones.js';
 import { evaluarConsecuencias } from './cronista/consecuencias.js';
 import { narrarDia } from './cronista/narradorFondo.js';
@@ -84,6 +85,8 @@ export async function avanzarMundoHasta(
       await renovarTablones(prisma, saveId, d, random);
       // CR-13 13b: edad de los nacidos en la partida y muerte de viejo.
       await envejecerDia(prisma, saveId, d, random);
+      // CR-47: caravanas del Reino (salen las órdenes que toque, comercian al llegar, vuelven).
+      await avanzarComercio(prisma, saveId, d);
     }
   }
   // CR-10: reacciones de lo que haya pasado en el turno o en estos días; CR-11: consecuencias que

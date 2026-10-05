@@ -31,8 +31,9 @@ describe('comercio de volumen (CR-47)', () => {
     expect(cotizarVenta(10, 0, 10)).toBeLessThan(10 * precioDinamico(10, 0));
   });
 
-  it('días de camino por tramos', () => {
+  it('días de camino por los minutos del trayecto', () => {
     expect(diasDeCamino(0)).toBe(1);
-    expect(diasDeCamino(3)).toBe(2);
+    expect(diasDeCamino(480)).toBe(1);
+    expect(diasDeCamino(900)).toBe(2);
   });
 });
