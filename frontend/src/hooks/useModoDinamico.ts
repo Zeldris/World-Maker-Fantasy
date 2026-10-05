@@ -35,6 +35,8 @@ interface UseModoDinamicoParams {
   setAprenderOficioModalOpen: (open: boolean) => void
   /// CR-40 (40f/40g): propuesta de trabajo de un NPC («¿Tienes trabajo?»); `aviso` null = no tiene nada.
   onOfertaTrabajo?: (npcName: string, aviso: AvisoMisionInfo | null) => void
+  /// CR-18 (18c): tras «¿Qué se cuenta?», traer ya las noticias que el NPC ha dejado en «El mundo».
+  onNoticiasNuevas?: () => void
   setActivePanel: Dispatch<SetStateAction<PanelId | null>>
   openCombat: (npcs: { npcs: NpcInSceneInfo[] }) => void
   handleSubmit: (actionText: string) => void | Promise<void>
@@ -67,6 +69,7 @@ export function useModoDinamico({
   setAprenderOficioModalOpen,
   setActivePanel,
   onOfertaTrabajo,
+  onNoticiasNuevas,
   openCombat,
   handleSubmit,
   refetchEnciclopedia,
@@ -269,8 +272,9 @@ export function useModoDinamico({
       } else if (resultado.accion === 'FORZAR_COMBATE') {
         const npcName = characterLog.find((e) => e.id === entryId)?.npcInteractionOffer?.npcName ?? 'él'
         handleSubmit(`Ataco a '${npcName}'.`)
-      } else if (resultado.accion === 'AYUDADO') {
+      } else if (resultado.accion === 'AYUDADO' || resultado.accion === 'CONTADO') {
         setCharacterLog((prev) => [...prev, resultado.logEntry])
+        if (resultado.accion === 'CONTADO') onNoticiasNuevas?.()
       } else if (resultado.accion === 'OFERTA_TRABAJO') {
         onOfertaTrabajo?.(resultado.npcName, resultado.aviso)
       } else if (resultado.accion === 'SIN_TRABAJO') {

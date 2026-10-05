@@ -39,6 +39,8 @@ export default defineConfig({
           name: 'bd-real',
           include: TESTS_CON_BD_REAL,
           fileParallelism: false,
+          // QA-8: deja como estaba lo que los tests ensucian del catálogo compartido.
+          globalSetup: ['./vitest.bdReal.globalSetup.ts'],
         },
       },
     ],

@@ -74,4 +74,21 @@ describe('UX-38 — NoticiaMundo', () => {
     expect(getByText('Sin respuesta: rechazada')).toBeTruthy()
     expect(queryByRole('button', { name: 'Aceptar' })).toBeNull()
   })
+
+  // NAR-9 (Fase E): rumor en pergamino, con región y día en una etiqueta y enlace a Leyendas.
+  it('un rumor lleva de dónde viene, el día en que pasó y el enlace a Leyendas', () => {
+    const onVerLeyendas = vi.fn()
+    const { getByText, getByRole } = render(
+      <NoticiaMundo
+        text="Se dice que Clan Serhu y Clan Goshg sellan una alianza."
+        noticia={{ sucesoId: 's1', rumor: { region: 'Ciénaga Troncal', pasoEn: 11 * 1440 + 600 } }}
+        texto={texto}
+        onVerLeyendas={onVerLeyendas}
+      />,
+    )
+    expect(getByText(/Desde Ciénaga Troncal · pasó el día 12/)).toBeTruthy()
+    fireEvent.click(getByRole('button', { name: 'Ver en Leyendas' }))
+    expect(onVerLeyendas).toHaveBeenCalledWith('s1')
+  })
 })
+

@@ -9,6 +9,8 @@ export type Animaciones = 'sistema' | 'completas' | 'reducidas' | 'ninguna'
 export type TamanoNarracion = 'pequeno' | 'normal' | 'grande' | 'muy-grande'
 export type FuenteNarracion = 'normal' | 'serif' | 'legible'
 export type VelocidadDados = 'dramatica' | 'normal' | 'rapida' | 'instantanea'
+/// CFG-35: desde qué nivel sale un aviso emergente de una noticia del mundo.
+export type AvisosSucesos = 'todos' | 'importantes' | 'graves' | 'ninguno'
 
 export interface Ajustes {
   /// CFG-9 — escala de toda la interfaz, en % (80–150).
@@ -25,6 +27,8 @@ export interface Ajustes {
   altoContraste: boolean
   /// CFG-26 — atajos de teclado.
   atajos: MapaAtajos
+  /// CFG-35 — avisos de sucesos (por defecto, los importantes: decisión Q7 de la Fase E).
+  avisosSucesos: AvisosSucesos
 }
 
 export const AJUSTES_POR_DEFECTO: Ajustes = {
@@ -36,6 +40,7 @@ export const AJUSTES_POR_DEFECTO: Ajustes = {
   velocidadDados: 'dramatica',
   altoContraste: false,
   atajos: ATAJOS_POR_DEFECTO,
+  avisosSucesos: 'importantes',
 }
 
 export const CLAVE_AJUSTES = 'tarkor.settings.v1'
@@ -59,6 +64,7 @@ export function normalizarAjustes(crudo: unknown): Ajustes {
     velocidadDados: uno(o.velocidadDados, ['dramatica', 'normal', 'rapida', 'instantanea'] as const, d.velocidadDados),
     altoContraste: typeof o.altoContraste === 'boolean' ? o.altoContraste : d.altoContraste,
     atajos: normalizarAtajos(o.atajos),
+    avisosSucesos: uno(o.avisosSucesos, ['todos', 'importantes', 'graves', 'ninguno'] as const, d.avisosSucesos),
   }
 }
 

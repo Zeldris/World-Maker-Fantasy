@@ -441,6 +441,12 @@ export interface NoticiaMeta {
   /// CR-34 (34e): propuesta de tratado o alianza de una facción al Reino, con plazo (minuto de
   /// ficción) y, si ya se cerró, la respuesta.
   propuesta?: { id: string; faccion: string; tipo: 'TRATADO' | 'ALIANZA'; venceEn: number; respuesta?: RespuestaPropuesta }
+  /// CR-18: suceso del que es noticia (enlace a Leyendas).
+  sucesoId?: string
+  /// CFG-35: nivel del suceso (avisos emergentes según el umbral elegido).
+  nivel?: 'NORMAL' | 'DESTACADO' | 'GRAVE'
+  /// CR-18 / NAR-9: rumor sin confirmar; región donde pasó y minuto de ficción en que pasó.
+  rumor?: { region: string | null; pasoEn: number }
 }
 
 export type RespuestaPropuesta = 'ACEPTADA' | 'RECHAZADA' | 'CADUCADA'

@@ -1910,6 +1910,8 @@ export type NpcInteractionAccion =
   | { accion: 'CERRAR' }
   /// CR-12 — «Ayudar» a un malherido: la entrada del registro que lo cuenta.
   | { accion: 'AYUDADO'; logEntry: LogEntry }
+  /// CR-18 (18c): «¿Qué se cuenta?»; la frase del NPC (las noticias llegan a «El mundo»).
+  | { accion: 'CONTADO'; logEntry: LogEntry }
   /// CR-40 (40f) — «¿Tienes trabajo?»: la misión personal que propone el NPC, o que no tiene nada.
   | { accion: 'OFERTA_TRABAJO'; npcName: string; aviso: AvisoMisionInfo }
   | { accion: 'SIN_TRABAJO'; texto: string }
@@ -2545,6 +2547,19 @@ export async function getAvisosTablon(saveId: string, buildingId: string): Promi
   return fetchJson(`${API_URL}/saves/${saveId}/tablones/${encodeURIComponent(buildingId)}`)
 }
 
+/// CR-18 (18d): un bando del tablón (lo oficial de su región y su facción de los últimos días).
+export interface BandoInfo {
+  sucesoId: string
+  texto: string
+  /// Minuto de ficción en que pasó.
+  pasoEn: number
+}
+
+/// Lee los bandos de un tablón (y los apunta como sabidos).
+export async function leerBandosTablon(saveId: string, buildingId: string): Promise<{ bandos: BandoInfo[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/tablones/${encodeURIComponent(buildingId)}/bandos/leer`, { method: 'POST' })
+}
+
 export async function aceptarAviso(saveId: string, avisoId: string): Promise<{ questId: string; title: string }> {
   return fetchJson(`${API_URL}/saves/${saveId}/misiones/avisos/${encodeURIComponent(avisoId)}/aceptar`, { method: 'POST' })
 }
@@ -2555,4 +2570,55 @@ export async function entregarMision(saveId: string, questId: string): Promise<{
 
 export async function abandonarMision(saveId: string, questId: string): Promise<{ status: string }> {
   return fetchJson(`${API_URL}/saves/${saveId}/misiones/${encodeURIComponent(questId)}/abandonar`, { method: 'POST' })
+}
+
+// ─────────────────────────── Leyendas de la partida (CR-19/CR-20, hito 0.2) ───────────────────────────
+
+/// INT-2: la importancia nunca se enseña como número.
+export type NivelLeyenda = 'NORMAL' | 'DESTACADO' | 'GRAVE'
+
+export interface ActorLeyenda {
+  tipo: string
+  id: string
+  nombre: string
+  papel: string
+}
+
+/// Un suceso que el personaje sabe. Un rumor llega sin detalles (sin actores, fecha, lugar ni causas).
+export interface EntradaLeyenda {
+  sucesoId: string
+  tipo: string
+  familia: FamiliaSuceso
+  nivel: NivelLeyenda
+  texto: string
+  rumor: boolean
+  via: 'TESTIGO' | 'OIDAS' | 'NPC' | 'BANDO' | 'ALIADA'
+  /// Minuto de ficción en que lo supo.
+  sabidoEn: number
+  region: string | null
+  cuando: number | null
+  fecha: string | null
+  lugar: { id: string; nombre: string } | null
+  actores: ActorLeyenda[]
+  /// Causas que el personaje también sabe (INT-3).
+  causas: string[]
+}
+
+/// `siguiente` (si hay más) es el cursor para pedir las más antiguas.
+export async function getLeyendas(saveId: string, params: { familia?: FamiliaSuceso; cursor?: string } = {}): Promise<{ entradas: EntradaLeyenda[]; hayMas: boolean; siguiente: string | null }> {
+  const q = new URLSearchParams()
+  if (params.familia) q.set('familia', params.familia)
+  if (params.cursor) q.set('cursor', params.cursor)
+  const qs = q.toString()
+  return fetchJson(`${API_URL}/saves/${saveId}/leyendas${qs ? `?${qs}` : ''}`)
+}
+
+/// CR-20 (20b): sección «En tu partida» de una ficha de la Enciclopedia (npc, faction o location).
+export async function getLeyendasFicha(saveId: string, ficha: 'npc' | 'faction' | 'location', slug: string): Promise<{ entradas: EntradaLeyenda[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/leyendas/ficha/${ficha}/${encodeURIComponent(slug)}`)
+}
+
+/// Lo que el personaje sabe de una entidad (ficha «En tu partida»).
+export async function getLeyendasEntidad(saveId: string, tipo: string, entidadId: string): Promise<{ entradas: EntradaLeyenda[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/leyendas/entidad/${encodeURIComponent(tipo)}/${encodeURIComponent(entidadId)}`)
 }

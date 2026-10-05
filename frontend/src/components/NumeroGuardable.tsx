@@ -24,10 +24,14 @@ export function NumeroGuardable({ valor, min, max, permitirVacio = false, placeh
   const [guardando, setGuardando] = useState(false)
   const [confirmado, setConfirmado] = useState(false)
 
-  // Valor nuevo desde fuera (recarga tras guardar, otro cambio): el borrador lo sigue.
-  useEffect(() => {
+  // Valor nuevo desde fuera (recarga tras guardar, otro cambio): el borrador lo sigue. Se ajusta en
+  // el render y solo si `valor` cambió de verdad (QA-12): un efecto corría también al montar y, si se
+  // había escrito antes de que corrieran los efectos, pisaba lo escrito con el valor de partida.
+  const [valorVisto, setValorVisto] = useState(valor)
+  if (valor !== valorVisto) {
+    setValorVisto(valor)
     setBorrador(valor == null ? '' : String(valor))
-  }, [valor])
+  }
 
   useEffect(() => {
     if (!confirmado) return

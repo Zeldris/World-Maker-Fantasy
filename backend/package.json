@@ -26,6 +26,7 @@
     "export-dpo-dataset": "tsx src/scripts/export-dpo-dataset.ts",
     "generate-dpo-dataset": "tsx src/scripts/generate-dpo-dataset.ts",
     "test": "vitest run",
+    "test:rapido": "vitest run --changed --passWithNoTests",
     "sync-professions": "tsx src/scripts/syncProfessions.ts",
     "lint": "oxlint"
   },

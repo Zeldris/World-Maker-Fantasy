@@ -743,6 +743,11 @@ tocaría). **Nunca** escribe en `docs/rpgtarkor/`.
 ## 13. Reloj, cola y rendimiento
 
 ### 13.1 Avance diario por partida (`avanceDiario.ts`)
+**Estado real (2026-10-05, `QA-9`):** `avanzarMundoHasta` en `backend/src/services/avanceDiario.ts` es la
+entrada de todo lo que pasa por día y por partida: población, economía y expediciones de facción
+(`CR-7`/`CR-35`), cadena Serhu, narrador de fondo (`CR-12`), decisiones de facción (`CR-34`), tablones de
+avisos (`CR-40`), envejecimiento (`CR-13`), reacciones, consecuencias y revisión de misiones. Lo que
+falte de esta lista, no corre. El `worldTick` (tiempo real) ya no simula facciones.
 - **El mundo de una partida avanza con el reloj de esa partida** (`WorldState.fictionalMinutes`),
   no con el tiempo real. Coherente con la decisión 4 de `mundo-vivo-x4.md` (el Reino ya va atado
   al turno) y con `Save.pausedAt`.
@@ -1331,7 +1336,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   (`advanceFactionEconomy`, `advanceFactionExpeditions`, `worldFictionDay`), que ya nadie llamaba y
   contradecían «el catálogo nunca cambia jugando». Sus tests de integración (economía, 13-B y 13-C)
   pasan a una partida con su copia del mundo; la prueba de re-seed (D-10) se mantiene aparte.
-- **CR-40** 🚧 Misiones secundarias por motor (todo hecho y jugable salvo 40f-2, interno) (`0.2`, Fase D; [21-roadmap § 0.2](21-roadmap.md#02--facciones-vivas)). **L**
+- ~~**CR-40** Misiones secundarias por motor~~ ✅ 2026-10-05 (fusionado en `main` con el PR #16; 40f-2 descartado, ADR 0001) (`0.2`, Fase D; [21-roadmap § 0.2](21-roadmap.md#02--facciones-vivas)). **L**
   Diseño con `/grill-with-docs` (2026-10-05). Ronda 1 aceptada entera:
   - **Q1** Solo el motor crea y cierra las misiones; el narrador solo narra la oferta, el avance y el
     final (deja de devolver `newQuest`/`questProgress` para las nuevas).
@@ -1433,11 +1438,13 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     cuenta en la región de la misión. **Deuda anotada:** `situacionFaccion.ts` repite el cálculo de
     carencias y enemigos de la mesa de `decisionesFaccion.ts` con una regla de enemigo algo distinta
     (unirlos puede cambiar decisiones: tarea aparte).
+  - **Q21 (2026-10-05, revisa la Q6):** no se fusionan las ofertas pendientes: las misiones del motor
+    no usan ninguna (viven en `MisionOfrecida`); la de misión queda solo para Gistera. ADR 0001.
   - **Pasos:** 40a plantillas, tipos y recompensas (puro) ✅ · 40b modelo y migración ✅ · 40c tablones
     (sembrados y del Reino) ✅ · 40d generación en el avance diario ✅ · 40e aceptar, progreso, cumplir,
     fallar y reputación ✅ · 40f oferta pendiente única (ADR), «¿Tienes trabajo?» del NPC y el narrador
-    deja de crear misiones (40f-1 ✅; 40f-2, la oferta única con su ADR, pendiente para el siguiente PR:
-    es interna y no cambia nada para quien juega) · 40g interfaz del tablón y del diario ✅.
+    deja de crear misiones (40f-1 ✅; 40f-2 ❌ no procede: Q21, `docs/adr/0001-ofertas-pendientes-sin-fusionar.md`)
+    · 40g interfaz del tablón y del diario ✅.
 - **Hecho cuando:** `cronista:simular 60` produce caídas, escisiones, tormentas con daños, guerras
   y nacimientos coherentes; perdonar a un NPC lo hace volver en otra región.
 
@@ -1448,6 +1455,8 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
 - **CR-16** Recuerdos de NPC (§ 8.3). **S** Incluye las reacciones de CR-10: `recuerdo(testigos,
   jugador, −6)` tras una muerte causada y `recuerdo(víctima, jugador, +5)` tras un perdón.
 - **CR-17** Buscadores de historias e hilos (§ 7.4). **M**
+- **CR-42** Compañeros que cuentan lo de su tierra (`CR-18` Q9, va al `0.3` con `CR-15`): un compañero
+  de una región cuenta lo que se sabe allí cuando se le pregunta. **S**
 - **CR-32** Reclutamiento pacífico e informantes (usuaria, 2026-10-04, Q14 de `CR-12`): convencer a
   un NPC sin pelear (tirada de persuasión según si le gusta lo que dices; idea de la usuaria del
   2026-09-06) para que se una al Reino o te pase información de su facción. Abre la oportunidad
@@ -1477,9 +1486,68 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   un compañero se queja y acaba yéndose si se le contraría repetidamente.
 
 ### Fase 5 — Conocimiento y lo que ve el jugador · **M**
-- **CR-18** Propagación y rumores (§ 9). **M**
-- **CR-19** Endpoints de Leyendas y etiquetas (§ 14). **S**
-- **CR-20** Front: Leyendas, fichas "En tu partida", etiquetas, aprobación. **M**
+- ~~**CR-18** Propagación y rumores (§ 9). **M**~~ ✅ 2026-10-05 (pasos 18a-18e abajo; lo que falta de la
+  Fase 5 es lo que ve la jugadora: `CR-19`, `CR-20`).
+  - **Diseño, ronda 1** (2026-10-05, `grilling` + `domain-modeling`; aceptado por la usuaria salvo Q3):
+    - **Q1 · Conocimiento solo del personaje**: se guarda qué suceso sabe el personaje, desde cuándo y
+      cómo lo supo (testigo, de oídas, confirmado, por un NPC). Lo que sabe una región, una facción o
+      un NPC no se guarda: se deduce con una regla pura (importancia, distancia, días pasados).
+    - **Q2 · Alcance por importancia, retraso por distancia**: 1-3 solo testigos y actores; 4-6 su
+      región; 7-8 y las vecinas; 9-10 todo Berig. El retraso, el de `CR-12` (región al momento,
+      vecina 1 día, lejos 2-3). **Todos** los sucesos del Libro pasan por esta regla, no solo los
+      tres emisores de `darNoticia`.
+    - **Q3 · Enterarse al llegar a una región: rechazado** («poco realista»). La usuaria quiere que
+      se sepa hablando con alguien de esa zona o por otra vía realista → ronda 2.
+    - **Q4 · Rumor que se confirma**: un rumor se ve sin detalles («se dice…») hasta que se confirma
+      (ir donde pasó, verlo, o que lo cuente una facción aliada). Los rumores falsos → `CR-41` (`0.4`).
+    - **Q7 · Avisos emergentes** (`CFG-35`): por defecto desde importancia 5; la importancia nunca se
+      enseña como número (`INT-2`).
+    - **Q8 · Rumor en «El mundo»** (`NAR-9`): «Se dice que…» como ahora; región de origen y antigüedad
+      en una etiqueta aparte, estilo pergamino y enlace a Leyendas.
+  - **Diseño, ronda 2** (2026-10-05, aceptada entera; **diseño cerrado**):
+    - **Q9 · Vías realistas para enterarse** (sustituye a Q3):
+      - **«¿Qué se cuenta?»**, opción nueva del menú de un NPC con nombre, de facción viva y no hostil
+        (también los de un encuentro de viaje). Cuenta hasta 2 sucesos que se saben en su región o en
+        su facción y la jugadora no sabe, primero lo más importante y reciente. Si el NPC es de la
+        región donde pasó o de una facción implicada, lo cuenta como hecho y confirma; si no, como
+        rumor. Una vez al día por NPC; sin nada nuevo, una frase de «nada que contar». Texto de
+        plantilla, sin IA.
+      - **Bandos en el tablón de avisos**: sección «Bandos» del modal de avisos con lo de importancia
+        ≥ 5 de la región y de la facción de la ciudad de los últimos 15 días. Leerlo da el conocimiento
+        como hecho confirmado (es oficial).
+      - Los compañeros que cuentan lo de su tierra → `CR-42` (`0.3`).
+    - **Q10 · Lo que llega solo**: sin hacer nada solo llega lo de importancia ≥ 7 (con su alcance
+      de Q2) y lo de las facciones aliadas o con tratado. Lo de 4-6 se sabe viéndolo, preguntando o
+      en el tablón; lo de 1-3, solo viéndolo.
+  - **Pasos**: ~~18a~~ ✅ 2026-10-05 (`cronista/conocimiento.ts`, puro; modelo `Conocimiento`, migración
+    `20261005060000_conocimiento`); ~~18b~~ ✅ 2026-10-05 (`cronista/difusion.ts`: lo visto lo apunta
+    `registrarSuceso`; lo que llega solo, `difundir` tras cada día y cada acción, con ventana de 5 días;
+    `darNoticiaDeSuceso` guarda la noticia con su suceso en `Suceso.noticia`, migración
+    `20261005061000_suceso_noticia`; la noticia lleva `sucesoId` y, si es rumor, región y cuándo pasó;
+    `darNoticia` queda para noticias sin suceso, como los avisos nuevos del tablón); ~~18c~~ ✅ 2026-10-05
+    («¿Qué se cuenta?» en el menú de quien puede dar trabajo: `preguntarNoticias` en `difusion.ts`, hasta
+    2 sucesos de los últimos 30 días, una vez al día por NPC con `Conocimiento.fuente`, migración
+    `20261005062000_conocimiento_fuente`; frase del NPC al registro y noticias a «El mundo»; si el NPC
+    es de allí o de una facción implicada confirma el rumor con «Se confirma: …»); ~~18d~~ ✅ 2026-10-05
+    (`leerBandos` en `difusion.ts` y `POST /saves/:id/tablones/:buildingId/bandos/leer`: hasta 5 sucesos
+    de importancia ≥ 5 de los últimos 15 días de la región del tablón o de su facción; leerlos los da
+    como hecho; sección «Bandos» en el modal de avisos, con el día en que pasó cada uno); ~~18e~~ ✅
+    2026-10-05 (en la misma pasada de `difundir`: un rumor de los últimos 30 días se confirma al estar
+    en la región donde pasó o si implica a una aliada, con «Se confirma: …» en «El mundo»; verlo con
+    tus ojos ya lo apunta `registrarSuceso`, y un NPC de allí lo confirma en 18c).
+- ~~**CR-19** Endpoints de Leyendas (§ 14). **S**~~ ✅ 2026-10-05 (`cronista/leyendas.ts` y `routes/saves/leyendas.ts`:
+  `GET /saves/:id/leyendas?familia=&desde=&hasta=&limite=&antesDe=` y `GET /saves/:id/leyendas/entidad/:tipo/:entidadId`;
+  solo sucesos con `Conocimiento`; nivel NORMAL/DESTACADO/GRAVE en vez del número (INT-2); un rumor, sin
+  actores, fecha, lugar ni causas; causas solo si también se saben (INT-3)). Las etiquetas (`GET /etiquetas`) van con `CR-14` y el
+  epílogo con `UX-18` (`CR-18` Q6, 2026-10-05).
+- ~~**CR-20** Front: Leyendas y fichas "En tu partida" en la Enciclopedia. **M**~~ ✅ 2026-10-05 Decidido (`CR-18` Q5 y
+  Q6, 2026-10-05): panel propio con icono de libro junto al Diario, con Crónica, Personajes,
+  Facciones, Lugares y Línea temporal; causas enlazadas (`INT-3`) siempre visibles hasta que llegue
+  `CFG-36` (`0.3`); rumor con lugar en el mapa (`INT-9`). Etiquetas y aprobación, con `CR-14`/`CR-15`.
+  20a ✅ 2026-10-05 (`LeyendasPanel.tsx` y `lib/leyendas.ts`: panel «Leyendas» junto al Diario con Crónica
+  por días o semanas, Personajes, Facciones, Lugares y Línea temporal, filtro por familia, `INT-1`, `INT-2`
+  e `INT-3`); 20b ✅ 2026-10-05 (`EnTuPartida.tsx` en la ficha de la Enciclopedia de un NPC, una facción
+  o un lugar, con `GET /saves/:id/leyendas/ficha/:ficha/:slug`; no aparece si no se sabe nada).
 - **Hecho cuando:** un suceso lejano llega como rumor días después y aparece en Leyendas; nada que
   el personaje no sepa es visible.
 
@@ -1497,6 +1565,8 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   `chapterSummary.ts`). **L**
 - **CR-27** Árbitro (§ 10.2). **M**
 - **CR-28** Epílogo (§ 10.3) + pantalla `UX-18`. **M**
+- **CR-41** Rumores falsos o deformados (`CR-18` Q4, va al `0.4` con la IA del Cronista): una
+  hazaña exagerada, un muerto que no lo está; se desmienten al confirmar. **M**
 - **Hecho cuando:** con IA, la crónica y las justificaciones citan sucesos reales; sin IA (Ollama
   apagado) todo sigue funcionando con plantillas; ningún turno del jugador se retrasa por el
   Cronista.

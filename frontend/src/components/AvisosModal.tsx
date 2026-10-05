@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { ModalShell } from './ModalShell'
 import { diaDeFiccion } from '../lib/noticias'
-import type { AvisoMisionInfo } from '../lib/api'
+import type { AvisoMisionInfo, BandoInfo } from '../lib/api'
 
 // CR-40 (40g, hito 0.2) — avisos de misión secundaria: los de un tablón de avisos o la misión
 // personal que propone un NPC con nombre. Cada uno con su recompensa por tabla y Aceptar; los
 // límites (3 activas, una por facción) los aplica el backend y su motivo sale aquí como error.
+// CR-18 (18d): en un tablón, arriba, los bandos (lo oficial de su región y su facción).
 
 export interface AvisosModalProps {
   titulo: string
@@ -16,6 +17,8 @@ export interface AvisosModalProps {
   cargando?: boolean
   onAceptar: (avisoId: string) => Promise<void>
   onClose: () => void
+  /// Solo en un tablón: sus bandos (vacío = ninguno).
+  bandos?: BandoInfo[]
 }
 
 function Aviso({ aviso, onAceptar }: { aviso: AvisoMisionInfo; onAceptar: (id: string) => Promise<void> }) {
@@ -58,9 +61,25 @@ function Aviso({ aviso, onAceptar }: { aviso: AvisoMisionInfo; onAceptar: (id: s
   )
 }
 
-export function AvisosModal({ titulo, subtitulo, avisos, vacio, cargando = false, onAceptar, onClose }: AvisosModalProps) {
+export function AvisosModal({ titulo, subtitulo, avisos, vacio, cargando = false, onAceptar, onClose, bandos }: AvisosModalProps) {
   return (
     <ModalShell title={titulo} subtitle={subtitulo} icon="📜" onClose={onClose}>
+      {!cargando && bandos && bandos.length > 0 && (
+        <section aria-label="Bandos" className="mb-3">
+          <p className="mb-1.5 text-2xs font-semibold uppercase tracking-wide text-wood-500">Bandos</p>
+          <ul className="flex flex-col gap-1">
+            {bandos.map((b) => (
+              <li key={b.sucesoId} className="rounded border border-iron-800 bg-wood-900/40 px-2.5 py-1.5 text-xs text-wood-200">
+                <span className="mr-1.5 text-2xs text-wood-500">Día {diaDeFiccion(b.pasoEn)}</span>
+                {b.texto}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {!cargando && avisos.length > 0 && bandos && bandos.length > 0 && (
+        <p className="mb-1.5 text-2xs font-semibold uppercase tracking-wide text-wood-500">Avisos</p>
+      )}
       {cargando ? (
         <p className="text-sm text-wood-400">Leyendo los avisos…</p>
       ) : avisos.length === 0 ? (

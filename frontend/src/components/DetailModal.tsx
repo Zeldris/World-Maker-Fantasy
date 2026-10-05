@@ -19,6 +19,8 @@ import { MediaSlot, ImagePromptSlot } from './ImagePromptDisplay'
 import { useHerramientasAdminVisibles } from '../lib/modoDesarrollador'
 import { TooltipAnchor } from './TooltipAnchor'
 import { ModalShell } from './ModalShell'
+import { EnTuPartida } from './EnTuPartida'
+import { esFichaConLeyendas } from '../lib/leyendas'
 
 /// Nombre de la ficha para el título accesible del modal (MOD-1).
 function tituloDeFicha(target: DetailTarget): string {
@@ -137,7 +139,8 @@ interface DetailModalProps {
   /// Solo para `kind: 'info'` (Enciclopedia) — inserta este elemento como chip en el composer.
   onInsert?: () => void
   /// Mundo activo — necesario solo para el botón de generar prompt de imagen bajo demanda.
-  worldSlug?: string | null
+  worldSlug?: string | null  /// CR-20 (20b): partida abierta, para la sección «En tu partida» de una ficha de la Enciclopedia.
+  saveId?: string | null
 }
 
 // Modal genérico de detalle (roadmap de rediseño de paneles, Fable 2026-07-20/21): un solo
@@ -146,7 +149,7 @@ interface DetailModalProps {
 // entrada de la Enciclopedia) — centrado en pantalla como CombatModal, no otro PanelDrawer
 // apilado (evita "cajón dentro de cajón"). Misma carcasa (plank-panel + animate-combat-enter) sin
 // la vestidura de combate.
-export function DetailModal({ target, onClose, onUnequip, onEquip, onTirar, onSaveAbility, onDeleteAbility, onInsert, worldSlug }: DetailModalProps) {
+export function DetailModal({ target, onClose, onUnequip, onEquip, onTirar, onSaveAbility, onDeleteAbility, onInsert, worldSlug, saveId }: DetailModalProps) {
   // CFG-33 (hito 0.1, H17) — el bloque de prompts de imagen es herramienta de admin.
   const herramientasAdmin = useHerramientasAdminVisibles()
   // Texto clicable dentro de la propia ficha (2026-07-22, petición explícita: "descripciones que
@@ -632,6 +635,9 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onTirar, onSa
                 )}
                 {target.extra && (
                   <p className="whitespace-pre-line text-xs leading-relaxed text-wood-400">{target.extra}</p>
+                )}
+                {saveId && esFichaConLeyendas(target.entityType) && effective.entitySlug && (
+                  <EnTuPartida saveId={saveId} ficha={target.entityType} slug={effective.entitySlug} />
                 )}
                 {herramientasAdmin && target.entityType && effective.entitySlug && worldSlug && (
                   <div className="flex flex-col gap-2">

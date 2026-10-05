@@ -465,6 +465,7 @@ model Save {
   discoveredEntities DiscoveredEntity[]
   /// Libro de Sucesos (Cronista, CR-1) — todo lo que pasa en la partida, del jugador o del mundo.
   sucesos            Suceso[]
+  conocimientos      Conocimiento[]
   consecuencias      Consecuencia[]
   sessionFacts       SessionFact[]
   foundedFactions    Faction[]
@@ -3448,9 +3449,9 @@ model ExpedicionMember {
 
 /// Libro de Sucesos — todo lo que pasa en una partida, del jugador o del mundo. Solo crece.
 model Suceso {
-  id                   String        @id @default(cuid())
+  id                   String         @id @default(cuid())
   saveId               String
-  save                 Save          @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  save                 Save           @relation(fields: [saveId], references: [id], onDelete: Cascade)
   /// Clave del catálogo (roadmap-cronista.md § 6.1), p. ej. "MUERTE_NPC".
   tipo                 String
   familia              FamiliaSuceso
@@ -3467,8 +3468,12 @@ model Suceso {
   texto                String
   /// Versión del Cronista, si existe.
   textoNarrado         String?
-  causas               SucesoCausa[] @relation("efecto")
-  efectos              SucesoCausa[] @relation("causa")
+  /// CR-18: la noticia tal como la da su emisor (texto con la pista y metadatos de «El mundo»: categoría,
+  /// oportunidad), para quien se entere después (de oídas, por un NPC o un bando). Null = `texto`.
+  noticia              Json?
+  conocimientos        Conocimiento[]
+  causas               SucesoCausa[]  @relation("efecto")
+  efectos              SucesoCausa[]  @relation("causa")
   actores              SucesoActor[]
   /// Entrada del registro que lo originó, si la hay.
   logEntryId           String?
@@ -3476,14 +3481,48 @@ model Suceso {
   semilla              String
   /// CR-10 (§ 6.2): cola de reacciones. Se procesan al final del turno o del día, en anchura;
   /// `nivelCascada` = cuántas reacciones lo separan del suceso original (tope 3).
-  reaccionesPendientes Boolean       @default(true)
-  nivelCascada         Int           @default(0)
-  createdAt            DateTime      @default(now())
+  reaccionesPendientes Boolean        @default(true)
+  nivelCascada         Int            @default(0)
+  createdAt            DateTime       @default(now())
 
   @@index([saveId, reaccionesPendientes])
   @@index([saveId, fictionalMinutes])
   @@index([saveId, tipo])
   @@index([saveId, importancia])
+}
+
+/// CR-18 (hito 0.2, roadmap-cronista.md § 9): lo que el personaje de la partida sabe de un suceso,
+/// desde cuándo y cómo lo supo. Lo que sabe una región, una facción o un NPC no se guarda: se deduce
+/// con la regla de alcance (`cronista/conocimiento.ts`).
+model Conocimiento {
+  id           String          @id @default(cuid())
+  saveId       String
+  save         Save            @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  sucesoId     String
+  suceso       Suceso          @relation(fields: [sucesoId], references: [id], onDelete: Cascade)
+  /// Minuto de ficción en que lo supo.
+  desde        Int
+  via          ViaConocimiento
+  /// false = rumor (se sabe de oídas, sin detalles); true = hecho sabido.
+  confirmado   Boolean
+  confirmadoEn Int?
+  /// Entrada de «El mundo» con la que lo supo, si la hubo.
+  logEntryId   String?
+  /// Quién se lo contó: slug del NPC («¿Qué se cuenta?») o id del tablón (bandos).
+  fuente       String?
+
+  @@unique([saveId, sucesoId])
+  @@index([saveId, desde])
+}
+
+/// Cómo lo supo: lo vio o tomó parte (TESTIGO), le llegó solo de oídas (OIDAS), se lo contó un NPC
+/// (NPC), lo leyó en un bando del tablón (BANDO) o se lo dijo una facción aliada (ALIADA).
+enum ViaConocimiento {
+  TESTIGO
+  OIDAS
+  NPC
+  BANDO
+  ALIADA
 }
 
 /// Qué suceso causó qué otro (las cadenas del Libro).

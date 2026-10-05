@@ -19,6 +19,7 @@ import { PanelSection } from '../PanelSection'
 import { useEnciclopediaLink } from '../../context/useEnciclopediaLink'
 import { constructionToDetailTarget, locationToDetailTarget, personajeToDetailTarget } from '../../lib/enciclopediaTargets'
 import type { EnciclopediaLinkTarget } from '../../lib/enciclopediaIndex'
+import type { RumorConLugar } from '../../lib/leyendas'
 
 // Las 3 recetas de Ayuntamiento (construction.ts, backend) comparten `recipeKey: 'ayuntamiento'`
 // en la fila real de `Building` tras mejorar — solo `Building.tier` distingue pequeño/mediano/
@@ -54,6 +55,10 @@ interface MapaPanelProps {
   /// existía, abierto solo desde la habilidad "Viajar" en el panel de Habilidades, sin ningún
   /// enlace desde el propio Mapa que muestra esos mismos destinos.
   onViajar: () => void
+  /// INT-9 (hito 0.2): rumores con lugar para marcar sus regiones (ver `useRumoresDelMapa`).
+  rumores?: RumorConLugar[]
+  regionesConRumor?: Set<string>
+  onLeerRumores?: (region: string) => void
   /// Conexión real con Interactuar (2026-09-09) — pasado tal cual a `<ZonaPanel>`, ver comentario
   /// ahí. Opcional: sin él, ZonaPanel sigue funcionando, solo sin insertar la tarjeta de oferta al
   /// colisionar con algo no agresivo.
@@ -166,7 +171,7 @@ function useProtagonistaYConstrucciones(worldSlug: string | null) {
   return { protagonistaTarget: target, constructionsByKey }
 }
 
-export function MapaPanel({ worldSlug, saveId, currentLocation, destinations, inventory, quests, buildings, entorno, onViajar, onEncuentroZona }: MapaPanelProps) {
+export function MapaPanel({ worldSlug, saveId, currentLocation, destinations, inventory, quests, buildings, entorno, onViajar, onEncuentroZona, rumores, regionesConRumor, onLeerRumores }: MapaPanelProps) {
   // Sub-tabs Zona/Mapa (2026-08-27, petición explícita: "en la misma sección de Mapa el botón, al
   // darle dentro directamente se vea la zona primero y que sean dos tabs" — Zona vuelve a ser una
   // vista de pleno derecho tras la auditoría de diseño/UX que la había quitado como pestaña de
@@ -306,6 +311,9 @@ export function MapaPanel({ worldSlug, saveId, currentLocation, destinations, in
               questTargetLocationSlug={questTargetLocationSlug}
               getNodeOptions={getNodeOptions}
               buildingIconBySlug={buildingIconBySlug}
+              rumores={rumores}
+              regionesConRumor={regionesConRumor}
+              onLeerRumores={onLeerRumores}
             />
             {!hasLlanurasMap && !hasCristalHeladoMap && (
               <p className="mt-2 text-xs italic text-wood-500">

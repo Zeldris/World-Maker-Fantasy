@@ -26,7 +26,8 @@ import { CATALOGO_SUCESOS, type DatosSuceso, type TipoSuceso } from './catalogoS
 import { aplicarEfectos, type CtxEfecto, type Efecto } from './efectos.js';
 import { REGIONES_VECINAS } from './regiones.js';
 import { registrarSuceso, type ActorSuceso } from './sucesos.js';
-import { categoriaDeFamilia, darNoticia } from './noticias.js';
+import { categoriaDeFamilia } from './noticias.js';
+import { darNoticiaDeSuceso } from './difusion.js';
 import { abrirCampoDeBatalla, abrirCaravana, abrirEncargo, type CtxOportunidad, type OportunidadAbierta } from './oportunidades.js';
 import { ownerKeyFor } from '../reinoOwner.js';
 import { npcSinMorirEnPartida } from '../mundoPartida.js';
@@ -410,11 +411,15 @@ export async function narrarDia(
       const oportunidad = elegida.instancia.oportunidad
         ? await elegida.instancia.oportunidad({ tx, saveId, worldId: save.worldId, fictionalMinutes: minutos, random, causa: sucesoId })
         : null;
-      await darNoticia(tx, { saveId, worldId: save.worldId, fictionalMinutes: minutos, causa: sucesoId }, {
+      // CR-18: la noticia va con su suceso; llega ya si toca (≥ 7 o de una aliada) o a quien pregunte.
+      const categoria = categoriaDeFamilia(CATALOGO_SUCESOS[elegida.tipo].familia);
+      await darNoticiaDeSuceso(tx, saveId, sucesoId, {
         ...elegida.instancia.noticia,
         texto: oportunidad ? `${texto} ${oportunidad.pista}` : texto,
-        categoria: categoriaDeFamilia(CATALOGO_SUCESOS[elegida.tipo].familia),
-        ...(oportunidad ? { oportunidad: { lugar: oportunidad.lugar, locationId: oportunidad.locationId, venceEn: oportunidad.venceEn } } : {}),
+        meta: {
+          ...(categoria ? { categoria } : {}),
+          ...(oportunidad ? { oportunidad: { lugar: oportunidad.lugar, locationId: oportunidad.locationId, venceEn: oportunidad.venceEn } } : {}),
+        },
       });
       return { sucesoId, tipo: elegida.tipo, presupuesto };
     },

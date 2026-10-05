@@ -1,9 +1,9 @@
 // Libro de Sucesos — única puerta de entrada (CR-2, hito 0.2 — roadmap-cronista.md § 6.2).
 //
 // `registrarSuceso` calcula la importancia y la frase de plantilla e inserta el suceso con sus
-// actores y causas, dentro de la transacción del llamador. Quedan para sus tareas los dos pasos
-// siguientes del contrato: sembrar el `Conocimiento` inicial (CR-18). Las reacciones (CR-10) quedan
-// en cola (`Suceso.reaccionesPendientes`) y las procesa `procesarReacciones` (reacciones.ts).
+// actores y causas, dentro de la transacción del llamador, y siembra el `Conocimiento` de lo visto
+// (CR-18; lo que llega después, en difusion.ts). Las reacciones (CR-10) quedan en cola
+// (`Suceso.reaccionesPendientes`) y las procesa `procesarReacciones` (reacciones.ts).
 import { randomUUID } from 'node:crypto';
 import type { OrigenSuceso, Prisma, PrismaClient } from '@prisma/client';
 import { CATALOGO_SUCESOS, importanciaDeSuceso, textoDeSuceso, type DatosSuceso, type TipoSuceso } from './catalogoSucesos.js';
@@ -71,6 +71,17 @@ export async function registrarSuceso<T extends TipoSuceso>(db: Db, s: NuevoSuce
     },
     select: { id: true },
   });
+  // CR-18 (18b): lo visto. El personaje sabe lo que hace o pasa donde está (sin entrada en «El mundo»).
+  let testigo = actores.some((a) => a.entidadTipo === 'PERSONAJE');
+  if (!testigo && s.locationId) {
+    const save = await db.save.findUnique({ where: { id: s.saveId }, select: { currentLocationId: true } });
+    testigo = save?.currentLocationId === s.locationId;
+  }
+  if (testigo) {
+    await db.conocimiento.create({
+      data: { saveId: s.saveId, sucesoId: suceso.id, desde: s.fictionalMinutes, via: 'TESTIGO', confirmado: true, confirmadoEn: s.fictionalMinutes },
+    });
+  }
   return suceso.id;
 }
 

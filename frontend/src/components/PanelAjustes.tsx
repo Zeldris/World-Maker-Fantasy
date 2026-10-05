@@ -205,6 +205,18 @@ export function PanelAjustes({ guardados, partidaId = null, onCerrar }: { guarda
                 ]}
               />
               <Interruptor etiqueta="Interlineado amplio" valor={borrador.interlineadoAmplio} onChange={(v) => cambiar('interlineadoAmplio', v)} />
+              <Opciones
+                etiqueta="Avisos de sucesos"
+                valor={borrador.avisosSucesos}
+                onChange={(v) => cambiar('avisosSucesos', v)}
+                ayuda="Qué noticias del mundo salen como aviso en la esquina. Todas siguen quedando en «El mundo»."
+                opciones={[
+                  { valor: 'todos', label: 'Todos' },
+                  { valor: 'importantes', label: 'Importantes' },
+                  { valor: 'graves', label: 'Solo graves' },
+                  { valor: 'ninguno', label: 'Ninguno' },
+                ]}
+              />
             </>
           )}
           {pestana === 'animaciones' && (

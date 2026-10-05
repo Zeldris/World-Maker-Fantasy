@@ -33,6 +33,9 @@ import { characterTabs, worldTabs, type PanelId } from '../components/NavTabs'
 import { PanelDrawer } from '../components/PanelDrawer'
 import { MapaPanel } from '../components/panels/MapaPanel'
 import { DiarioPanel } from '../components/panels/DiarioPanel'
+import { LeyendasPanel } from '../components/panels/LeyendasPanel'
+import { debeAvisar } from '../lib/noticias'
+import { useRumoresDelMapa } from '../hooks/useRumoresDelMapa'
 import { InventarioPanel } from '../components/panels/InventarioPanel'
 import { EnciclopediaPanel } from '../components/panels/EnciclopediaPanel'
 import { SLOT_LABEL, isCompatibleWithSlot, isConsumibleSlot } from '../lib/equipSlots'
@@ -98,10 +101,12 @@ import {
   resolveDeath,
   responderPropuesta,
   getAvisosTablon,
+  leerBandosTablon,
   aceptarAviso,
   entregarMision,
   abandonarMision,
   type AvisoMisionInfo,
+  type BandoInfo,
   type SaveDetail,
 } from '../lib/api'
 import { characterWaitingFlavor, combatWaitingFlavor, worldWaitingFlavor, useRotatingFlavor } from '../lib/waitingFlavor'
@@ -472,7 +477,7 @@ export function GameView() {
   // 'profesiones' ya no es un PanelId de nivel superior (vive como sub-pestaña dentro de
   // PersonajePanel, que recibe `combatOpen` y deshabilita esa sub-pestaña por su cuenta).
   const COMBAT_DISABLED_CHARACTER_TABS: PanelId[] = ['inventario', 'companeros', 'reino']
-  const COMBAT_DISABLED_WORLD_TABS: PanelId[] = ['mapa', 'diario', 'misiones']
+  const COMBAT_DISABLED_WORLD_TABS: PanelId[] = ['mapa', 'diario', 'leyendas', 'misiones']
 
   // Muerte pendiente de resolver (auditoría de código backend 2026-09-07, decisión confirmada con
   // la usuaria: "bloquear todo hasta Aceptar") — el composer ya se bloqueaba
@@ -485,7 +490,7 @@ export function GameView() {
 
   const [quests, setQuests] = useState<QuestInfo[]>([])
   // CR-40 (40g): avisos abiertos (un tablón o la propuesta de un NPC).
-  const [avisosAbiertos, setAvisosAbiertos] = useState<{ titulo: string; subtitulo?: string; avisos: AvisoMisionInfo[]; vacio: string; cargando: boolean } | null>(null)
+  const [avisosAbiertos, setAvisosAbiertos] = useState<{ titulo: string; subtitulo?: string; avisos: AvisoMisionInfo[]; vacio: string; cargando: boolean; bandos?: BandoInfo[] } | null>(null)
 
   // Bloque de combate (deuda técnica 2026-08-21) — ver src/hooks/useCombatFlow.ts para la lógica
   // completa. `combateIniciado`/`lastInitiativeRoll` siguen viviendo aquí (los escribe también
@@ -613,13 +618,21 @@ export function GameView() {
   // HUD-6 (hito 0.2) — notificaciones (toasts): misiones, reputación, oficio, objetos nuevos y
   // noticias del mundo (lib/notificaciones.ts).
   const { notificaciones, notificar, descartar: descartarNotificacion } = useNotificaciones()
-  useNoticiasMundo({
+  const { ajustes: ajustesAvisos } = useAjustes()
+  // NAR-9: suceso al que lleva «Ver en Leyendas» desde una noticia.
+  const [leyendaPedida, setLeyendaPedida] = useState<string | null>(null)
+  // INT-9: rumores con lugar para el mapa de Berig (pergamino hasta que se leen).
+  const rumoresDelMapa = useRumoresDelMapa(saveId ?? null, worldLog)
+  const noticiasMundo = useNoticiasMundo({
     saveId,
     worldLog,
     setWorldLog,
     characterThinking,
+    // CFG-35: solo lo que pasa del umbral elegido en Ajustes (por defecto, lo importante).
     onNuevas: (entradas) =>
-      entradas.forEach((e) => notificar({ tipo: 'accent2', icono: '📜', texto: e.text.length > 90 ? `${e.text.slice(0, 88)}…` : e.text })),
+      entradas
+        .filter((e) => debeAvisar(e.noticia, ajustesAvisos.avisosSucesos))
+        .forEach((e) => notificar({ tipo: 'accent2', icono: '📜', texto: e.text.length > 90 ? `${e.text.slice(0, 88)}…` : e.text })),
   })
   // Avisos de las entradas nuevas del registro llegadas en vivo (no las de la carga de la partida).
   const procesadasRef = useRef(0)
@@ -829,8 +842,11 @@ export function GameView() {
       setAvisosAbiertos({ titulo: 'Tablón de avisos', avisos: [], vacio: '', cargando: true })
       // Solo si el modal sigue abierto esperando esta lectura: cerrarlo (o abrir otra cosa) antes de
       // que llegue la respuesta no debe reabrirlo.
-      getAvisosTablon(saveId, buildingId)
-        .then(({ tablon, avisos }) =>
+      // CR-18 (18d): los bandos se leen a la vez (un fallo ahí no impide ver los avisos).
+      Promise.all([getAvisosTablon(saveId, buildingId), leerBandosTablon(saveId, buildingId).catch(() => ({ bandos: [] as BandoInfo[] }))])
+        .then(([{ tablon, avisos }, { bandos }]) => {
+          // Lo leído en los bandos acaba de llegar a «El mundo».
+          if (bandos.length > 0) void noticiasMundo.traer()
           setAvisosAbiertos((prev) =>
             prev?.cargando
               ? {
@@ -839,10 +855,11 @@ export function GameView() {
                   avisos,
                   vacio: 'No hay avisos colgados ahora mismo. Vuelve en unos días.',
                   cargando: false,
+                  bandos,
                 }
               : prev,
-          ),
-        )
+          )
+        })
         .catch(() => setAvisosAbiertos((prev) => (prev?.cargando ? { titulo: 'Tablón de avisos', avisos: [], vacio: 'No se pudo leer el tablón.', cargando: false } : prev)))
     },
     mostrarOfertaNpc: (npcName, aviso) =>
@@ -1363,6 +1380,7 @@ export function GameView() {
     setAprenderOficioModalOpen,
     setActivePanel,
     onOfertaTrabajo: misionesValue.mostrarOfertaNpc,
+    onNoticiasNuevas: () => void noticiasMundo.traer(),
     openCombat: combat.openCombat,
     handleSubmit,
     refetchEnciclopedia,
@@ -1580,6 +1598,7 @@ export function GameView() {
     inventario: 'Inventario',
     personaje: 'Personaje',
     diario: 'Diario',
+    leyendas: 'Leyendas',
     misiones: 'Misiones',
     companeros: 'Compañeros',
     reino: 'Reino',
@@ -1599,6 +1618,8 @@ export function GameView() {
     reino: 'accent',
     mapa: 'accent2',
     diario: 'accent',
+    // CR-20: Leyendas es del riel «El mundo».
+    leyendas: 'accent2',
     misiones: 'accent2',
     enciclopedia: 'accent2',
     reputacion: 'accent2',
@@ -1796,6 +1817,10 @@ export function GameView() {
               emptyHint={worldLogView === 'world' ? 'El mundo todavía no ha mostrado sus cartas.' : 'Todavía no ha pasado nada en tu reino.'}
               // CR-34 (34e): Aceptar/Rechazar la propuesta de una facción al Reino.
               onResponderPropuesta={saveId ? (propuestaId: string, acepta: boolean) => responderPropuesta(saveId, propuestaId, acepta).then((r) => r.respuesta) : undefined}
+              onVerLeyendas={(sucesoId) => {
+                setLeyendaPedida(sucesoId)
+                setActivePanel('leyendas')
+              }}
               onCollapse={() => setCollapsedSide('world')}
               collapseIcon="›"
               // Alternar Mundo/Reino (2026-08-17) — solo tiene sentido ofrecerlo una vez hay reino
@@ -1936,6 +1961,7 @@ export function GameView() {
           onDeleteAbility={handleDeleteHabilidad}
           onInsert={detailInsertHandler ?? undefined}
           worldSlug={worldIdSlug}
+          saveId={saveId}
         />
         </Capa>
       )}
@@ -2107,6 +2133,7 @@ export function GameView() {
             avisos={avisosAbiertos.avisos}
             vacio={avisosAbiertos.vacio}
             cargando={avisosAbiertos.cargando}
+            bandos={avisosAbiertos.bandos}
             onAceptar={handleAceptarAviso}
             onClose={() => setAvisosAbiertos(null)}
           />
@@ -2274,9 +2301,13 @@ export function GameView() {
                 setActivePanel(null)
               }}
               onEncuentroZona={(entry) => setCharacterLog((prev) => [...prev, entry])}
+              rumores={rumoresDelMapa.rumores}
+              regionesConRumor={rumoresDelMapa.sinLeer}
+              onLeerRumores={rumoresDelMapa.marcarLeidos}
             />
           )}
           {panelMostrado === 'diario' && saveId && <DiarioPanel saveId={saveId} />}
+          {panelMostrado === 'leyendas' && saveId && <LeyendasPanel saveId={saveId} irAlSuceso={leyendaPedida} />}
           {panelMostrado === 'inventario' && saveId && (
             <InventarioPanel
               saveId={saveId}

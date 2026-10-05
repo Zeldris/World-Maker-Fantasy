@@ -6041,6 +6041,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         hayMisionOfertadaDeEsteNpc: !!newQuestOfferInfo,
         tituloMisionOfertada: newQuestOfferInfo?.title,
         puedeOfrecerTrabajo,
+        // CR-18 (18c): quien puede dar trabajo (con nombre, de facción viva, no hostil) cuenta lo que se dice.
+        puedeContarNoticias: puedeOfrecerTrabajo,
       });
       npcInteractionOffer = { npcSlug: npcInteractionCandidate.slug, npcName: npcInteractionCandidate.name, options: opciones };
       await tx.save.update({ where: { id: saveId }, data: { pendingNpcInteractionOffer: npcInteractionOffer } });

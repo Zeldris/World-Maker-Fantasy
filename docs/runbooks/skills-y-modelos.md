@@ -55,7 +55,7 @@ Tres tamaños: **grande** (Opus), **medio** (Sonnet), **ligero** (Haiku).
 | Bug difícil o intermitente | grande | Hace falta sostener la hipótesis y el bucle de prueba |
 | Bug con causa visible, tarea de roadmap acotada (componente, ajuste, endpoint) | medio | Bien definida; lo caro es escribir, no pensar |
 | Cambios mecánicos (docs, bitácora, renombrados, tests por firma nueva) | medio o ligero | Poco razonamiento |
-| Búsquedas amplias en el código (subagente) | ligero | Solo localizar; la conclusión la saca la sesión principal |
+| Búsquedas amplias en el código (subagente) | ligero | Solo localizar; la conclusión la saca la sesión principal. Lo que el subagente afirme («X no existe», «Y corre sobre el catálogo») se comprueba con un grep antes de llevarlo a una pregunta de diseño (`QA-9`: en la Fase D del `0.2` un dato falso acabó en la Q1 de `CR-34`) |
 | Revisión del diff antes de PR, `/retro`, arquitectura | grande | Juicio sobre el conjunto |
 
 **Límites:**

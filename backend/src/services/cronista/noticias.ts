@@ -37,6 +37,12 @@ export interface MetaNoticia {
   /// CR-34 (34e): propuesta de una facción al Reino, con Aceptar y Rechazar.
   propuesta?: { id: string; faccion: string; tipo: 'TRATADO' | 'ALIANZA'; venceEn: number; respuesta?: 'ACEPTADA' | 'RECHAZADA' | 'CADUCADA' };
   resumen?: true;
+  /// CR-18: suceso del que es noticia (enlace a Leyendas).
+  sucesoId?: string;
+  /// CFG-35: nivel del suceso (avisos emergentes según el umbral de la jugadora).
+  nivel?: 'NORMAL' | 'DESTACADO' | 'GRAVE';
+  /// CR-18 (NAR-9): rumor sin confirmar; región donde pasó y minuto de ficción en que pasó.
+  rumor?: { region: string | null; pasoEn: number };
   /// En un resumen: los metadatos de cada línea (en orden; null si la línea no tenía).
   lineas?: (MetaNoticia | null)[];
 }
@@ -99,10 +105,14 @@ export function retrasoPorDistancia(distancia: number): number {
 /// una especie, un NPC… y se queda tal cual).
 const INICIOS_COMUNES = ['Gente ', 'Una ', 'Un ', 'Crece ', 'Las aguas ', 'Escasea ', 'Llega ', 'Llegan ', 'Muere ', 'Nace ', 'Se '];
 
+/// Para seguir una frase: minúscula inicial salvo si empieza por un nombre propio.
+export function enMitadDeFrase(texto: string): string {
+  return INICIOS_COMUNES.some((i) => texto.startsWith(i)) ? texto.charAt(0).toLowerCase() + texto.slice(1) : texto;
+}
+
 /// «Una caravana viaja…» → «Se dice que una caravana viaja…».
 export function comoRumor(texto: string): string {
-  const comun = INICIOS_COMUNES.some((i) => texto.startsWith(i));
-  return `Se dice que ${comun ? texto.charAt(0).toLowerCase() + texto.slice(1) : texto}`;
+  return `Se dice que ${enMitadDeFrase(texto)}`;
 }
 
 /// Cuándo y cómo le llega una noticia a la partida: `null` = no le llega.
@@ -122,7 +132,7 @@ export function entrega(
 }
 
 /// Facciones aliadas o con tratado con el Reino de la jugadora (por nombre).
-async function aliadasDelReino(tx: Tx, saveId: string): Promise<Set<string>> {
+export async function aliadasDelReino(tx: Tx, saveId: string): Promise<Set<string>> {
   const reino = await tx.faction.findFirst({ where: { saveId, origenSlug: null, disueltaEn: null }, select: { id: true } });
   if (!reino) return new Set();
   const relaciones = await tx.factionRelation.findMany({
@@ -132,11 +142,13 @@ async function aliadasDelReino(tx: Tx, saveId: string): Promise<Set<string>> {
   return new Set(relaciones.map((r) => (r.sourceFaction.id === reino.id ? r.targetFaction.name : r.sourceFaction.name)));
 }
 
-async function escribir(tx: Tx, saveId: string, texto: string, fictionalMinutes: number, meta: MetaNoticia | null): Promise<void> {
+export async function escribir(tx: Tx, saveId: string, texto: string, fictionalMinutes: number, meta: MetaNoticia | null): Promise<string> {
   const ws = await tx.worldState.findUnique({ where: { saveId }, select: { fictionalDateLabel: true } });
-  await tx.logEntry.create({
+  const entrada = await tx.logEntry.create({
     data: { saveId, channel: 'WORLD', text: texto, timeLabel: ws?.fictionalDateLabel ?? '', fictionalMinutes, isSystemMessage: true, ...(meta ? { noticia: meta as Prisma.InputJsonValue } : {}) },
+    select: { id: true },
   });
+  return entrada.id;
 }
 
 function metaDe(noticia: Noticia): MetaNoticia | null {

@@ -236,10 +236,11 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
   `ImagePromptSlot` y el bloque de prompts de `DetailModal` solo con el modo activo. Pendiente para
   el menú de Configuración (CFG-1): el interruptor allí, versión completa, id de partida y tiempos del
   narrador.
-- **CFG-34 · Estilo del mundo** (Cronista D-7): *Tranquilo · Equilibrado · Caótico* — cuántos sucesos
+- ~~**CFG-34 · Estilo del mundo**~~ ✅ 2026-10-05 (ya lo hizo `CR-12`: «Ritmo del mundo» en Ajustes de la partida; cerrada en la ronda 1 de la Fase E) (Cronista D-7): *Tranquilo · Equilibrado · Caótico* — cuántos sucesos
   genera el narrador de fondo (presupuesto de tensión). Por defecto *Equilibrado*. **S**
-- **CFG-35 · Avisos de sucesos**: a partir de qué importancia sale una notificación (`HUD-6`):
-  todos · importantes (≥ 5, por defecto) · solo graves (≥ 8) · ninguno. **S**
+- ~~**CFG-35 · Avisos de sucesos**~~ ✅ 2026-10-05 (ajuste `avisosSucesos` en «Interfaz y texto»; `debeAvisar` en `lib/noticias.ts`; cada noticia de un suceso lleva su nivel; una propuesta al Reino avisa siempre salvo con «ninguno»): a partir de qué importancia sale una notificación (`HUD-6`):
+  todos · importantes (≥ 5, por defecto) · solo graves (≥ 8) · ninguno. **S** (Por defecto ≥ 5 confirmado
+  en `CR-18` Q7, 2026-10-05.)
 - **CFG-36 · Crónica**: escribir crónica diaria / semanal / solo al final; mostrar "por qué pasó"
   (causas) en Leyendas. **S**
 - **CFG-37 · IA en la nube para el Cronista** (Cronista D-4): solo visible si hay clave configurada;
@@ -598,11 +599,11 @@ Contenedor común: `PanelDrawer` (cajón inferior, `max-w-4xl`, 85 vh).
 - **PAN-9 · Diario** — búsqueda en el texto, filtros por canal (personaje/mundo/reino), saltar a
   una fecha ficticia, capítulos por día con separador (NAR-3) y exportar la partida como relato
   (texto/HTML). **M**
-- **PAN-9b · Leyendas de tu partida** (Cronista § 14) — Crónica (por días y semanas), Personajes,
+- ~~**PAN-9b · Leyendas de tu partida**~~ ✅ 2026-10-05 (`CR-20`: panel «Leyendas» y fichas «En tu partida»; Cronista § 14) — Crónica (por días y semanas), Personajes,
   Facciones, Lugares y Línea temporal, **solo con lo que el personaje sabe**; cada entrada enlaza a
   sus sucesos y a la Enciclopedia; filtros por familia (clima, diplomacia, vida y muerte…). 🧭
-  ¿Pestaña del Diario o pestaña propia en el riel "El mundo"? (por defecto: pestaña propia, icono de
-  libro, junto a Diario). **L**
+  ¿Pestaña del Diario o pestaña propia en el riel "El mundo"? → **panel propio, icono de libro, junto
+  al Diario** (`CR-18` Q5, 2026-10-05). **L**
 - **PAN-10 · Misiones** — misión seguida fijada en la cabecera (HUD-7); objetivos como lista con
   casillas; recompensa visible con iconos; las cerradas plegadas. **S**
 - **PAN-11 · Enciclopedia** (1.574 líneas, 15 pestañas) — las 15 pestañas en un **índice lateral**
@@ -690,7 +691,7 @@ Contenedor común: `PanelDrawer` (cajón inferior, `max-w-4xl`, 85 vh).
   de tranquilidad ("el narrador local está pensando…"). **S**
 - **NAR-8 · Banners de entidad** (`entityBanner`): fundido y leve zoom al cargar, en lugar de aparecer
   de golpe (H10). **S**
-- **NAR-9 · Rumores en "El mundo"** (Cronista § 9): entradas con estilo propio (pergamino, "Se dice
+- ~~**NAR-9 · Rumores en "El mundo"**~~ ✅ 2026-10-05 (`NoticiaMundo`: un rumor en estilo pergamino con «Desde <región> · pasó el día N» y «Ver en Leyendas»; el texto sigue siendo «Se dice que…», Q8) (Cronista § 9): entradas con estilo propio (pergamino, "Se dice
   en las Llanuras que…"), región y antigüedad del rumor, enlace a Leyendas. **S**
 - **NAR-10 · Reacciones de compañeros** en el registro de personaje (Cronista § 8.2): línea breve con
   el retrato y el valor afectado, como el aviso de aprobación de Baldur's Gate 3. **S**
@@ -793,6 +794,22 @@ La mayor ausencia "de videojuego" (H14). Todo empaquetado; volumen en `CFG-25`.
 - **QA-7 · Capturas de referencia**: script de Playwright (Chromium ya está instalado en el entorno)
   que fotografía las pantallas principales para comparar antes/después de cada bloque.
 
+Del `/retro` de la Fase D del `0.2` (2026-10-05, aceptadas todas por la usuaria; van al `0.2`):
+
+- ~~**QA-8 · Tests que no ensucian el catálogo**~~ ✅ 2026-10-05 (`backend/vitest.bdReal.globalSetup.ts`; comprobado: progreso de los NPC idéntico antes y después de la suite): `globalSetup` del proyecto `bd-real` que guarda y
+  restaura el progreso de oficio de los NPC (`NpcProfessionProgress`, compartido) y borra los
+  interiores de prueba que dejan los tests de cuartel avanzado. Causa del «expected 2399 to be
+  greater than 2399» que salió dos veces en la Fase D.
+- ~~**QA-9 · Verificar al subagente ligero**~~ ✅ 2026-10-05: en `docs/runbooks/skills-y-modelos.md`, lo que reporta un
+  Explore ligero se comprueba con un grep antes de llevarlo a una pregunta de diseño; y en
+  `roadmap-cronista.md` § 13.1, el puntero a `avanceDiario.ts` como entrada de todo lo diario por partida.
+- ~~**QA-10 · Arranque del entorno**~~ ✅ 2026-10-05 (`.claude/hooks/session-start.sh` + `.claude/settings.json`, solo en la nube; ~20 s con todo ya montado): hook de inicio de sesión que levanta Postgres (crea la base si
+  falta, migra y siembra) y el Ollama simulado.
+- ~~**QA-11 · Tests rápidos**~~ ✅ 2026-10-05 (`vitest run --changed` en backend y frontend: solo los tests que dependen de lo no confirmado; un cambio en `package.json` o en la config de vitest los lanza todos): `npm run test:rapido` (solo lo relacionado con los cambios) para iterar;
+  la suite completa, antes de cada push.
+- ~~**QA-12 · Intermitente de `ProduccionSection.test.tsx`**~~ ✅ 2026-10-05 (era un fallo real de `NumeroGuardable`: el efecto que copiaba `valor` al borrador corría también al montar y pisaba lo escrito antes de los efectos; ahora se ajusta en el render solo si `valor` cambia. Test de regresión determinista en `NumeroGuardable.test.tsx`; bucle de estrés 0/80 tras el arreglo, ~1/20 antes): diagnosticarlo con `diagnosing-bugs`
+  (1 fallo en ~12 pasadas, 2026-10-05).
+
 ---
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
@@ -804,16 +821,16 @@ están incorporados en sus secciones (`CFG-34`…`37`, `PAN-4`, `PAN-6`, `PAN-9b
 `PAN-12`, `HUD-6`, `HUD-12`, `HUD-13`, `NAR-9`…`NAR-11`); aquí van las piezas transversales.
 
 ### 15.1 Lenguaje visual del mundo vivo
-- **INT-1 · Familias de sucesos con identidad propia**: un icono SVG (`BAS-2`) y un color de token por
+- ~~**INT-1 · Familias de sucesos con identidad propia**~~ ✅ 2026-10-05 (`FAMILIA_ESTILO` en `lib/leyendas.ts`; icono emoji como el de las noticias de UX-38 mientras `BAS-2` no tenga los de familia): un icono SVG (`BAS-2`) y un color de token por
   familia del Cronista — clima (`accent2`), natural (`moss`), vida y muerte (`wood-200` / `danger`
   para muertes), diplomacia (`quest`), facción (paleta por raza), economía (`cost`), Reino
   (`accent`), jugador (`accent`), lore (`wood-300`). Se usan igual en notificaciones, Leyendas,
   rumores y fichas. **S**
-- **INT-2 · Importancia visible**: 1-4 sin marca, 5-7 con borde, 8-10 con sello de lacre y entrada
+- ~~**INT-2 · Importancia visible**~~ ✅ 2026-10-05 (nivel NORMAL/DESTACADO/GRAVE desde el backend, borde y sello con `animate-stamp-in` en Leyendas): 1-4 sin marca, 5-7 con borde, 8-10 con sello de lacre y entrada
   con `stamp-in`; la importancia nunca se muestra como número al jugador. **S**
-- **INT-3 · Causas enlazadas**: en Leyendas y en las fichas, "por qué pasó" como cadena de sucesos
+- ~~**INT-3 · Causas enlazadas**~~ ✅ 2026-10-05 (en Leyendas, botones «Por qué pasó» que llevan a la causa; en las fichas, la causa se nombra): en Leyendas y en las fichas, "por qué pasó" como cadena de sucesos
   clicables (Día 14 → Día 15 → …), estilo línea de tiempo; activable con `CFG-36`. **M**
-- **INT-4 · Lo desconocido se ve como desconocido**: un suceso del que solo se sabe una parte
+- ~~**INT-4 · Lo desconocido se ve como desconocido**~~ ✅ 2026-10-05 (comprobado: Leyendas, fichas «En tu partida», «El mundo» y avisos solo reciben lo que está en `Conocimiento`; un rumor sale sin detalles; el Libro entero solo en `/admin/partida/:id/libro`, D-5; lo que recibe el narrador como sabido es de la Fase 6 del Cronista): un suceso del que solo se sabe una parte
   aparece como rumor ("se dice…"), y lo que el personaje no sabe **no existe en ninguna pantalla**
   (coherente con `UX-30`). **S**
 
@@ -831,7 +848,7 @@ están incorporados en sus secciones (`CFG-34`…`37`, `PAN-4`, `PAN-6`, `PAN-9b
 - **INT-8 · Fichas que vienen de una consecuencia** (Cronista § 7.2: un NPC perdonado que vuelve, un
   vengador): pictograma normal más un pequeño sello "te conoce"; al pasar el ratón, la tarjeta
   flotante (`ZON-40`) dice de qué suceso viene. **S**
-- **INT-9 · Rumor con lugar**: si un rumor menciona una zona conocida, el mapa de Berig marca la
+- ~~**INT-9 · Rumor con lugar**~~ ✅ 2026-10-05 (`useRumoresDelMapa` y `rumoresConLugar`: pergamino 📜 en la región del mapa de Berig con rumores sin confirmar sin leer; pulsar la región enseña sus rumores en su tarjeta y los da por leídos; lo leído, en `localStorage` por partida): si un rumor menciona una zona conocida, el mapa de Berig marca la
   región con un icono de pergamino hasta que se lee. **S**
 
 ### 15.4 Reino y Cronista
