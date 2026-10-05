@@ -1134,6 +1134,11 @@ export interface ZonePointInfo {
   /// (`DiscoveredEntity`); el modal de detalle debe ocultar "Ver en la Enciclopedia" en ese caso,
   /// aunque exista ficha real. `EDIFICIO` siempre `true` (nunca tiene ficha que ocultar).
   descubierto: boolean
+  /// ZON-50/ZON-33 (hito 0.2): te perseguiría si te acercas (agresivo o enemigo por tu reputación).
+  /// Solo viene a true si ya está descubierto (decisión de la usuaria: lo desconocido sorprende).
+  hostil?: boolean
+  /// ZON-53: su patrulla (puntos del lienzo, en bucle), solo si ya está descubierto.
+  ruta?: { x: number; y: number }[]
   /// Compañero de fauna con nombre propio (auditoría de lore 2026-09-13, C10 — "los compañeros de
   /// npc deben formar un mismo punto en el mapa de zona... se mueven como 1"). Presente solo en
   /// puntos `tipo: 'NPC'` cuyo dueño tiene un `Npc.companionOfNpcSlug` apuntándole — el companion

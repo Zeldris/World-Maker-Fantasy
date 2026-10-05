@@ -225,11 +225,11 @@ describe('GET /saves/:id/zona', () => {
     // Comprobamos el patrón esperado en vez de un valor fijo, sea cual sea el estado del archivo.
     expect(body.imageUrl === null || body.imageUrl === '/images/zona/hondonada-del-eco-mapa.png').toBe(true);
     expect(body.puntos).toEqual([
-      { id: 'zp1', x: 620, y: 180, tipo: 'FAUNA', targetSlug: 'kirelon-arenoso', nombre: 'Kirelon Arenoso', cantidad: 1, color: 'SIN_FACCION', descubierto: true },
+      { id: 'zp1', x: 620, y: 180, tipo: 'FAUNA', targetSlug: 'kirelon-arenoso', nombre: 'Kirelon Arenoso', cantidad: 1, color: 'SIN_FACCION', descubierto: true, hostil: false },
       // RECURSO nunca tiene facción por diseño (2026-09-09) — INERTE (gris), no SIN_FACCION
       // (naranja, reservado a NPC/FAUNA/EDIFICIO independientes) — ver zonePointColorFor.
-      { id: 'zp2', x: 400, y: 470, tipo: 'RECURSO', targetSlug: 'yerreo', nombre: expect.any(String), cantidad: 1, color: 'INERTE', descubierto: true },
-      { id: 'zp3', x: 100, y: 100, tipo: 'FAUNA', targetSlug: 'gesgurio', nombre: 'Etiqueta a mano', cantidad: 3, color: 'SIN_FACCION', descubierto: true }, // label manda sobre el nombre real
+      { id: 'zp2', x: 400, y: 470, tipo: 'RECURSO', targetSlug: 'yerreo', nombre: expect.any(String), cantidad: 1, color: 'INERTE', descubierto: true, hostil: false },
+      { id: 'zp3', x: 100, y: 100, tipo: 'FAUNA', targetSlug: 'gesgurio', nombre: 'Etiqueta a mano', cantidad: 3, color: 'SIN_FACCION', descubierto: true, hostil: false }, // label manda sobre el nombre real
     ]);
     expect(body.dinamicos).toEqual([]);
   });
@@ -257,7 +257,7 @@ describe('GET /saves/:id/zona', () => {
     const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
     const body = res.json();
     expect(body.puntos).toEqual([
-      { id: 'zp2', x: 400, y: 470, tipo: 'RECURSO', targetSlug: 'yerreo', nombre: expect.any(String), cantidad: 1, color: 'INERTE', descubierto: true },
+      { id: 'zp2', x: 400, y: 470, tipo: 'RECURSO', targetSlug: 'yerreo', nombre: expect.any(String), cantidad: 1, color: 'INERTE', descubierto: true, hostil: false },
     ]);
   });
 
@@ -625,8 +625,42 @@ describe('GET /saves/:id/zona', () => {
       const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
       const body = res.json();
       expect(body.puntos).toEqual([
-        { id: 'zp1', x: 620, y: 180, tipo: 'FAUNA', targetSlug: 'kirelon-arenoso', nombre: '???', cantidad: 1, color: 'SIN_FACCION', descubierto: false },
+        { id: 'zp1', x: 620, y: 180, tipo: 'FAUNA', targetSlug: 'kirelon-arenoso', nombre: '???', cantidad: 1, color: 'SIN_FACCION', descubierto: false, hostil: false },
       ]);
+    });
+
+    // ZON-50/ZON-33/ZON-53 (hito 0.2, ronda de Z-D): la amenaza y la patrulla, solo de lo descubierto.
+    it('un agresivo descubierto sale hostil y con su patrulla; sin descubrir, ni una cosa ni otra', async () => {
+      const preparar = (descubierto: boolean) => {
+        findManyDiscoveredEntity.mockReset().mockResolvedValue(descubierto ? [{ entityType: 'fauna', entitySlug: 'kirelon-arenoso' }] : []);
+        findUniqueSave.mockResolvedValueOnce({
+          id: 's1',
+          worldId: 'w1',
+          currentLocation: {
+            id: 'loc1',
+            slug: 'hondonada-del-eco',
+            name: 'La Hondonada del Eco',
+            zonePoints: [
+              {
+                id: 'zp1', x: 620, y: 180, tipo: 'FAUNA', targetSlug: 'kirelon-arenoso', label: null, activo: true, cantidad: 1, factionSlug: null, lastUpdatedAtMinutes: 480,
+                ruta: [{ x: 625, y: 175 }, { x: 675, y: 175 }],
+              },
+            ],
+          },
+          worldState: { fictionalMinutes: 1320, factionsStatus: null, agenda: null },
+        });
+        findManyNpc.mockResolvedValueOnce([{ slug: 'kirelon-arenoso', name: 'Kirelon Arenoso', temperamento: 'AGRESIVO', faction: null }]);
+        loadSessionFactsMock.mockResolvedValueOnce([]);
+        detectNpcsInSceneMock.mockResolvedValueOnce([]);
+      };
+      preparar(true);
+      const app = await buildApp();
+      const visto = (await app.inject({ method: 'GET', url: '/saves/s1/zona' })).json();
+      expect(visto.puntos[0]).toMatchObject({ hostil: true, ruta: [{ x: 625, y: 175 }, { x: 675, y: 175 }] });
+      preparar(false);
+      const oculto = (await app.inject({ method: 'GET', url: '/saves/s1/zona' })).json();
+      expect(oculto.puntos[0].hostil).toBe(false);
+      expect(oculto.puntos[0].ruta).toBeUndefined();
     });
 
     it('un ZonePoint RECURSO aún no descubierto sale con nombre "???", pero uno ya descubierto sale con su nombre real', async () => {

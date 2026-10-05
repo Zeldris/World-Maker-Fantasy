@@ -10,8 +10,8 @@ import { COLOR_HEX, DISPOSICION_LABEL, distanciaEnCeldas, regionControlDisplay, 
 import { AnilloInteraccion, GridOverlay, JugadorMarker, ParcelaMarker, SalidaMarker, ZonePointMarker } from '../zona/MarcadoresZona'
 import { MS_POR_VELOCIDAD, PasoZonaContext } from '../../lib/zonaMovimiento'
 import { useAjustes } from '../../context/useAjustes'
-import { celdaDePixel, pixelDeCelda, rutaPrevista, textoCoste, type Celda } from '../../lib/zonaRuta'
-import { BanderaDestino, CeldaResaltada, EtiquetaCoste, LineaRuta } from '../zona/RutaZona'
+import { celdaDePixel, pixelDeCelda, riesgoDeRuta, rutaPrevista, tePersigue, textoCoste, type Celda } from '../../lib/zonaRuta'
+import { BanderaDestino, CeldaResaltada, CeldasEnRiesgo, EtiquetaCoste, LineaRuta, RadioAmenaza, RutaPatrulla } from '../zona/RutaZona'
 import { MenuFicha, TarjetaEncuentro, TarjetaFicha, type AccionFicha, type InfoFicha } from '../zona/MenuFicha'
 import type { PresentacionOferta } from '../../lib/ofertaModoDinamico'
 import { useEnciclopediaLink } from '../../context/useEnciclopediaLink'
@@ -335,6 +335,8 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
   }
 
   const imageUrl = resolveImageUrl(data.imageUrl ?? null)
+  // ZON-50/ZON-33: hostiles conocidos (el backend solo los marca si ya están descubiertos).
+  const hostiles = data.puntos.filter((p) => p.hostil)
   const dinamicos = data.dinamicos ?? []
 
   // Layout de 2 columnas (2026-09-09) — solo cuando `columnasAncho` (ZonaMovimientoModal): mapa a
@@ -460,6 +462,15 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
               {(cuadriculaFijada || altPulsado) && <GridOverlay />}
               {/* ZON-51: hasta dónde llega «Interactuar». */}
               {data.jugador && !soloConsulta && <AnilloInteraccion x={data.jugador.x} y={data.jugador.y} />}
+              {/* ZON-50: radio de persecución de los hostiles ya descubiertos, con «vigila» o «¡te persigue!». */}
+              {hostiles.map((h) => (
+                <RadioAmenaza key={h.id} x={h.x} y={h.y} escala={escala} persigue={!!data.jugador && tePersigue(data.jugador, h)} />
+              ))}
+              {/* ZON-53: la patrulla de la ficha bajo el ratón (si ya está descubierta). */}
+              {(() => {
+                const punto = claveBajoRaton ? puntoPorClave(claveBajoRaton) : null
+                return punto && 'ruta' in punto && punto.ruta ? <RutaPatrulla ruta={punto.ruta} escala={escala} /> : null
+              })()}
               {/* ZON-30/31/32/34 (capa de ruta, bajo las fichas): celda bajo el cursor; sin andar, la ruta
                   prevista con su coste; andando o parado, la ruta que queda y la bandera de destino. */}
               {celdaCursor && !soloConsulta && <CeldaResaltada celda={celdaCursor} bloqueada={!!bloqueoMovimiento} />}
@@ -474,9 +485,12 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                   const destino = pixelDeCelda(celdaCursor)
                   const ruta = rutaPrevista(data.jugador, destino, data.fictionalMinutes)
                   if (ruta.pasos === 0) return null
+                  // ZON-33: celdas en el radio de un hostil conocido; en rojo entera si acaba en encuentro seguro.
+                  const riesgo = riesgoDeRuta(ruta.puntos, hostiles)
                   return (
                     <>
-                      <LineaRuta desde={data.jugador} puntos={ruta.puntos} escala={escala} tipo="prevista" />
+                      {riesgo.enRiesgo.length > 0 && <CeldasEnRiesgo puntos={riesgo.enRiesgo.map((i) => ruta.puntos[i]!)} escala={escala} />}
+                      <LineaRuta desde={data.jugador} puntos={ruta.puntos} escala={escala} tipo="prevista" peligro={riesgo.encuentroSeguro} />
                       <EtiquetaCoste x={destino.x} y={destino.y} texto={textoCoste(ruta)} escala={escala} />
                     </>
                   )

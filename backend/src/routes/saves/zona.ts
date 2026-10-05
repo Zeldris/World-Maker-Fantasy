@@ -341,12 +341,17 @@ export async function zonaRoutes(app: FastifyInstance) {
               OR: [{ slug: { in: npcFaunaZonePointSlugs } }, { companionOfNpcSlug: { in: npcFaunaZonePointSlugs } }],
             },
             // CR-7: `npcStates` muertos en esta partida fuera de escena (expedición de facción).
-            select: { id: true, slug: true, name: true, kind: true, companionOfNpcSlug: true, muertoEnMundo: true, npcStates: { where: { saveId: save.id, muerto: true }, select: { id: true } } },
+            select: { id: true, slug: true, name: true, kind: true, companionOfNpcSlug: true, muertoEnMundo: true, temperamento: true, faction: true, npcStates: { where: { saveId: save.id, muerto: true }, select: { id: true } } },
           })
         : [];
     const npcFaunaZonePointIds = npcFaunaZonePointRows.filter((n) => npcFaunaZonePointSlugs.includes(n.slug));
     const npcIdBySlugZonePoint = new Map(npcFaunaZonePointIds.map((n) => [n.slug, n.id]));
     const npcNameBySlugZonePoint = new Map(npcFaunaZonePointIds.map((n) => [n.slug, n.name]));
+    // ZON-50/ZON-33 (hito 0.2): quién te perseguiría (misma regla que la persecución de
+    // `avanzarZonePointsUnPaso`: temperamento efectivo según tu reputación con su facción).
+    const hostilBySlugZonePoint = new Map(
+      npcFaunaZonePointIds.map((n) => [n.slug, esTemperamentoHostil(effectiveTemperamento(n.temperamento, n.faction, factionsStatus))]),
+    );
     for (const n of npcFaunaZonePointIds) npcKindBySlug.set(n.slug, n.kind);
     const companionsByOwnerSlug = new Map(
       npcFaunaZonePointRows.filter((n) => n.companionOfNpcSlug).map((c) => [c.companionOfNpcSlug!, { slug: c.slug, nombre: c.name }]),
@@ -602,6 +607,10 @@ export async function zonaRoutes(app: FastifyInstance) {
           // dueño de un companion; mismo criterio de `yaDescubierto` que el resto del punto (el
           // dueño no descubierto no debe filtrar el nombre real del companion).
           companion: companion ? { slug: companion.slug, nombre: yaDescubierto ? companion.nombre : '???' } : undefined,
+          // ZON-50/ZON-33/ZON-53 (decisión de la usuaria, ronda de Z-D): la amenaza y la patrulla solo
+          // de lo ya descubierto; lo desconocido sigue sorprendiendo.
+          hostil: yaDescubierto && (hostilBySlugZonePoint.get(p.targetSlug) ?? false),
+          ruta: yaDescubierto && Array.isArray(p.ruta) && p.ruta.length > 1 ? (p.ruta as { x: number; y: number }[]) : undefined,
         };
       }),
       dinamicos,
