@@ -806,7 +806,7 @@ Del `/retro` de la Fase D del `0.2` (2026-10-05, aceptadas todas por la usuaria;
   falta, migra y siembra) y el Ollama simulado.
 - ~~**QA-11 · Tests rápidos**~~ ✅ 2026-10-05 (`vitest run --changed` en backend y frontend: solo los tests que dependen de lo no confirmado; un cambio en `package.json` o en la config de vitest los lanza todos): `npm run test:rapido` (solo lo relacionado con los cambios) para iterar;
   la suite completa, antes de cada push.
-- **QA-12 · Intermitente de `ProduccionSection.test.tsx`**: diagnosticarlo con `diagnosing-bugs`
+- ~~**QA-12 · Intermitente de `ProduccionSection.test.tsx`**~~ ✅ 2026-10-05 (era un fallo real de `NumeroGuardable`: el efecto que copiaba `valor` al borrador corría también al montar y pisaba lo escrito antes de los efectos; ahora se ajusta en el render solo si `valor` cambia. Test de regresión determinista en `NumeroGuardable.test.tsx`; bucle de estrés 0/80 tras el arreglo, ~1/20 antes): diagnosticarlo con `diagnosing-bugs`
   (1 fallo en ~12 pasadas, 2026-10-05).
 
 ---
