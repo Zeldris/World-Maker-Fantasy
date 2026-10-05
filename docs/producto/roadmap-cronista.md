@@ -1452,7 +1452,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   alta de Dessa, Yerin y Riko como NPC (cada cosa según su entrada aprobada). **S**
 - **Fase G del `0.2` (ronda de diseño aceptada por la usuaria, 2026-10-05, contrastada con D&D 5e,
   Baldur's Gate 3, X4 y Bellwright; términos en `GLOSSARY.md`):**
-  - 🚧 **CR-44** Moral y retirada de los NPC en combate. **M** Pasos: 44a reglas puras (`moralCombate.ts`) ✅ · 44b combate 1v1 ✅ (`huidaNpc.ts`; un grupo cuenta entero; tampoco huye el objetivo de una misión activa, para no dejarla imposible) · 44c combate de varios (espera a `CR-49`). Todo NPC con mente tiene moral (la fauna
+  - ~~**CR-44**~~ ✅ 2026-10-05 Moral y retirada de los NPC en combate. **M** Pasos: 44a reglas puras (`moralCombate.ts`) ✅ · 44b combate 1v1 ✅ (`huidaNpc.ts`; un grupo cuenta entero; tampoco huye el objetivo de una misión activa, para no dejarla imposible) · 44c combate de varios ✅ (`moralGrupo.ts`, tras cada turno en `avanzarYComprobarFin`; columnas `huido`/`moralTirada` del participante y `moralMitadBandos` del combate, migración `20261005080000_moral_combate_multiple`; en el combate de varios, no escapar no quita el turno: se anota en el registro). Todo NPC con mente tiene moral (la fauna
     sigue con su temperamento). Tirada de moral (Voluntad, CD 10; desventaja si la jugadora va
     claramente ganando; en un grupo con líder la hace el líder por todos) la primera vez que su
     bando queda a la mitad de efectivos o él cae a GRAVE, y al caer su capitán. Si falla, intenta
@@ -1461,7 +1461,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     escapa sale del combate y de la zona, vivo, vuelve a su hogar, sin botín, y queda el suceso «X
     huyó de ti» (Leyendas, reputación; puede volver por `CR-11`). Un líder de facción no huye si con
     él cae su facción.
-  - **CR-49** Grupos de personas en combate de varios (ronda 2 de la Fase G, aceptada el
+  - 🚧 **CR-49** Grupos de personas en combate de varios (ronda 2 de la Fase G, aceptada el
     2026-10-05; hoy solo la caza abre combates de varios y siempre contra fauna). **L** Va antes
     de 44c y `CR-45`, que lo necesitan. Bandas itinerantes de 2-3 renegados de su pueblo (goirnte
     renegado, faerus errático, nabieus enloquecido) que patrullan su región con las patrullas de
@@ -1472,27 +1472,36 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     el combate de varios con toda (texto, tarjeta de encuentro o «Combatir»), con el panel de la
     caza en grupo; después, resumen y saqueo de cada caído como en la caza (sin despellejar); el
     que huye no deja nada. Campamentos de bandidos con cabecilla y refuerzos: tarea aparte en el
-    `0.3` (`CR-50`).
+    `0.3` (`CR-50`). Pasos: 49a motor ✅ (`combatePersonas.ts`: banda por la `cantidad` de su punto, aliados de su facción a ≤ 3 casillas y la guardia de un interior; el turno que abre combate contra una persona con grupo abre el de varios) · 49b entradas ✅ (texto libre con objetivo citado, como lo envía el frontend; «Combatir» del encuentro y del modo dinámico; test del turno con Torgash en su campamento) · 49c bandas de verdad 🧭 (propuesta de lore escrita el 2026-10-05 en `propuestas-lore.md` § Personajes y NPCs; en cuanto se apruebe: puntos de patrulla de 2-3 en el mapa y los tres cabecillas; el motor ya las trata como banda por la `cantidad` de su punto) · 49d saqueo de personas ✅ (el resumen marca `esPersona` y el aviso de despellejar solo sale si cayó fauna; los caídos solitarios se resuelven con Matar/Capturar/Clemente como en el 1v1, por su `NpcState`; sin test propio: el cierre de un combate de varios con personas no tiene arnés todavía, queda para la fase de pruebas `0.8`).
   - **CR-50** Campamentos de bandidos con cabecilla y refuerzos (Bellwright, Medieval Dynasty). **M**
     Va con `CR-37` en el `0.3`.
-  - **CR-45** Capitán y ataques concentrados. **M** Inteligencia ≥ 20: concentra ataques y manda a
+  - ~~**CR-45**~~ ✅ 2026-10-05 (capitán = el de más Inteligencia ≥ 20 del bando enemigo; `objetivoConcentrado` en `combateMultiple.ts` y `calcularEnganchesRonda`: él y los suyos van a por el más vulnerable, empatados al azar; «X ordena caer sobre Y» en el registro al empezar cada ronda; su caída hace tirar moral con desventaja, `moralGrupo.ts`. Queda: la marca visual en el objetivo — el panel de grupo solo lista enemigos y el objetivo es de tu bando; va con la siguiente pasada del panel de combate. En la primera ronda el enganche inicial aún no sigue al capitán) Capitán y ataques concentrados. **M** Inteligencia ≥ 20: concentra ataques y manda a
     los de su bando con menos Inteligencia (atacan a su objetivo). Objetivo = el más vulnerable (poca
     vida y poca defensa), no siempre el mismo (en BG3 cansa). Pasada previa por el bando al empezar
     la ronda. Si el capitán cae o huye, sus seguidores tiran moral al momento con desventaja
     (desbandada). Se ve: línea en el registro («Ulkha ordena caer sobre Gorhorn») y marca en el
     objetivo.
-  - **CR-46** Expediciones y caravanas en el mapa de Berig. **S** Se ven las del Reino, las de las
+  - ~~**CR-46**~~ ✅ 2026-10-05 (`GET /saves/:id/expediciones/mapa`, `expedicionesMapa.ts`; banderita ⚑ en el mapa de Llanuras entre el asentamiento de la facción y su destino, con tarjeta; las caravanas del Reino entrarán por aquí con `CR-47`. Solo se dibujan en regiones con nodos en el mapa: hoy, las Llanuras) Expediciones y caravanas en el mapa de Berig. **S** Se ven las del Reino, las de las
     facciones con tratado o alianza y las que pasan por la región donde está el personaje (como en
     X4: aliado = ves sus órdenes; lo demás, solo lo que tienes cerca). Icono de la facción que
     avanza por la ruta según los días; al pulsarlo, facción, a qué va y día de vuelta.
-  - **CR-47** Comercio de volumen Reino↔facción. **L** (fórmula decidida por la usuaria; la revisa
+  - ~~**CR-47**~~ ✅ 2026-10-05 Comercio de volumen Reino↔facción. **L** Pasos: 47a reglas puras, modelo y Mercado ✅ · 47b caravanas en el avance diario ✅ (`caravanas.ts`: salen, compran o venden unidad a unidad al llegar, vuelven; registro en «Reino») · 47c asaltos ✅ (al llegar, mismo riesgo que las expediciones de facción: otro dueño de la región del destino en guerra o tensión con el Reino; asaltada, pierde la carga) · 47d panel del Mercado y caravanas en el mapa ✅ (rutas `/saves/:id/reino/comercio…`, `ComercioSection` en Diplomacia y Mercado; las caravanas del Reino salen en el mapa de Berig con `CR-46`) · 47e caravanas de fondo ✅ (si una caravana del socio pasa por la región del Mercado, la orden comercia con ella allí, sin viaje ni asalto; migración `20261005091000_caravana_local`. Queda para más adelante: que el personaje también pueda comerciar en persona con esa caravana, con sus Goirnos). (fórmula decidida por la usuaria; la revisa
     Álvaro después). Edificio Mercado con órdenes permanentes («compra hierro si baja de 20»,
     «vende madera si pasa de 80»); caravanas del Reino que viajan días a las facciones con tratado o
     alianza, se ven en el mapa (`CR-46`) y se pueden asaltar. Precio: `precioDinamico` unidad a
     unidad (cada unidad vacía el almacén y encarece la siguiente, como X4; sin descuento por
     volumen). Las caravanas del narrador de fondo que pasan cerca son ocasión de comerciar sin
     desplazarse (Q14 de `CR-12`).
-  - **CR-48** Pasada de rendimiento del avance diario con el motor completo. **S**
+  - ~~**CR-48**~~ ✅ 2026-10-05 Pasada de rendimiento del avance diario con el motor completo. **S**
+    Medición con `npm run benchmark-avance -- 10` (`AVANCE_PERFIL=1` mide cada paso de
+    `avanceDiario.ts`; base local con el catálogo sembrado): las expediciones de facción eran más
+    de la mitad del tiempo porque una facción que no podía lanzar (sin recolectores o sin destino
+    con recursos) lo reintentaba cada día con todo el coste (102 intentos en 12 días, ~95 fallidos).
+    Arreglo: tras un intento fallido espera 3 días (`KingdomStats.expedicionReintentoDia`,
+    migración `20261005100000_expedicion_reintento`). Un día: 690 → 460 ms; diez de golpe:
+    4,1 → 2,9 s (expediciones 2,5 → 1,3 s). Lo que queda más caro: `candidateSourcesFor` al
+    buscar destino, el narrador de fondo (~50 ms/día) y los tablones (~40 ms/día). Con UX-35 el
+    avance va tras responder, así que el turno no lo espera.
 - **Hecho cuando:** `cronista:simular 60` produce caídas, escisiones, tormentas con daños, guerras
   y nacimientos coherentes; perdonar a un NPC lo hace volver en otra región.
 

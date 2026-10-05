@@ -911,3 +911,18 @@ describe('resolverIntercambioCompleto', () => {
     expect(resultado.atacanteOcultacionDisparada).toBe(false);
   });
 });
+
+describe('objetivoConcentrado (CR-45)', () => {
+  it('el más vulnerable: peor condición y, a igualdad, menos Constitución; empatados al azar', async () => {
+    const { objetivoConcentrado } = await import('./combateMultiple.js');
+    const c = (id: string, condicionFisica: 'ILESO' | 'HERIDO' | 'GRAVE' | 'CONVALECIENTE' | 'MUERTO', constitucion: number, esJugadorReal = false) => ({ participantId: id, condicionFisica, constitucion, esJugadorReal });
+    expect(objetivoConcentrado([c('a', 'ILESO', 8), c('b', 'HERIDO', 14), c('c', 'ILESO', 6)])).toBe('b');
+    expect(objetivoConcentrado([c('a', 'ILESO', 8), c('c', 'ILESO', 6)])).toBe('c');
+    // Un compañero convaleciente ya no es objetivo; la jugadora convaleciente sí.
+    expect(objetivoConcentrado([c('comp', 'CONVALECIENTE', 1), c('a', 'ILESO', 20)])).toBe('a');
+    expect(objetivoConcentrado([c('yo', 'CONVALECIENTE', 10, true), c('a', 'ILESO', 20)])).toBe('yo');
+    const elegidos = new Set([0.1, 0.9].map((r) => objetivoConcentrado([c('x', 'HERIDO', 10), c('y', 'HERIDO', 10)], () => r)));
+    expect(elegidos).toEqual(new Set(['x', 'y']));
+    expect(objetivoConcentrado([c('m', 'MUERTO', 1)])).toBeNull();
+  });
+});

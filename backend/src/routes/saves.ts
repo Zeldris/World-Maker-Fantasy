@@ -30,6 +30,7 @@ import { aprenderOficioRoutes } from './saves/aprenderOficio.js';
 import { npcInteractionRoutes } from './saves/npcInteraction.js';
 import { libroRoutes } from './saves/libro.js';
 import { leyendasRoutes } from './saves/leyendas.js';
+import { comercioRoutes } from './saves/comercio.js';
 
 /// Rutas de persistencia real de partidas (decisión 2026-07-17: /turn y /entorno dejan de ser
 /// stateless — el frontend crea una partida una vez y a partir de ahí solo manda `saveId`).
@@ -47,6 +48,7 @@ export async function savesRoutes(app: FastifyInstance) {
   await app.register(skillBarsRoutes);
   await app.register(inventarioRoutes);
   await app.register(logRoutes);
+  await app.register(comercioRoutes);
   await app.register(misionesRoutes);
   await app.register(listRoutes);
   await app.register(reinoRoutes);

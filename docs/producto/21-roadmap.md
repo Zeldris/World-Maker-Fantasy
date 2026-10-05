@@ -208,13 +208,13 @@ en CI, y la latencia está medida. Se etiqueta `v0.1.0-alpha`.
 - **Misiones secundarias por motor** en vez de por el LLM (momento de revisitar la fusión de los
   tres `pending*Offer`). **[A]** → ~~`CR-40`~~ ✅ 2026-10-05 (fusión de `pending*Offer` descartada: ADR 0001).
 - **IA de combate NPC, tramo Inteligencia 20+**: retirada (decidida: huida inmediata con tirada),
-  concentrar ataques en el mismo objetivo y órdenes de un capitán. **[A]** → `CR-44` (moral y
-  retirada para todo NPC con mente) y `CR-45` (capitán y ataques concentrados), diseño 2026-10-05.
+  concentrar ataques en el mismo objetivo y órdenes de un capitán. **[A]** → ~~`CR-44`~~ ✅ 2026-10-05 (moral y
+  retirada para todo NPC con mente) y ~~`CR-45`~~ ✅ 2026-10-05 (capitán y ataques concentrados).
 - **Comercio de volumen Reino↔facción**: todo el catálogo, según el origen del objeto y el oficio
-  de los NPC por raza y región. **[A]** → `CR-47` (fórmula decidida por la usuaria el 2026-10-05:
+  de los NPC por raza y región. **[A]** → ~~`CR-47`~~ ✅ 2026-10-05 (fórmula decidida por la usuaria el 2026-10-05:
   Mercado con órdenes permanentes, caravanas del Reino y precio unidad a unidad).
-- Expediciones: que se vean en el mapa de mundo. **[P]** → `CR-46`.
-- Pasada de rendimiento del `worldTick` con el motor completo. **[P]** → `CR-48` (ya es el avance diario: `CR-7`).
+- ~~Expediciones: que se vean en el mapa de mundo.~~ **[P]** → ~~`CR-46`~~ ✅ 2026-10-05.
+- ~~Pasada de rendimiento del `worldTick` con el motor completo.~~ **[P]** → ~~`CR-48`~~ ✅ 2026-10-05 (ya es el avance diario: `CR-7`).
 
 ## `0.3` — Reino profundo
 

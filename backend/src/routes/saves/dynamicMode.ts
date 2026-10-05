@@ -20,6 +20,7 @@ import {
 import { narrarVueltaModoDinamico } from '../../services/dynamicModeNarracion.js';
 import { aceptarQuest } from './quests.js';
 import { detectNpcsInScene } from '../../services/npcScene.js';
+import { abrirCombateDePersonas, grupoDePersona } from '../../services/combatePersonas.js';
 import { iniciarCaza, type CazaTarget, type TiradaGrupoInfo, type CombateGrupoLogRoll, type TiradaCazaLimpia } from '../../services/caza.js';
 import type { AttributeBlock } from '../../services/dice.js';
 
@@ -134,6 +135,30 @@ async function abrirCombateForzadoDesdeInteractuar(
   zonePointId?: string,
   cantidad?: number,
 ): Promise<{ combate: ReturnType<typeof combateNpcShape> } | { actionText: string; tiradasGrupo?: TiradaGrupoInfo[]; combateGrupoLogEntry?: { id: string; text: string; timeLabel: string; createdAt: string; roll: CombateGrupoLogRoll | TiradaCazaLimpia } } | null> {
+  // CR-49: una persona con banda o con los suyos cerca no pelea sola — combate de varios con todos,
+  // y el turno siguiente (con `actionText`) lo lleva el motor de grupo, como la caza en grupo.
+  const persona = await prisma.npc.findFirst({
+    where: { slug: targetSlug, raza: { not: null }, OR: [{ worldId: save.worldId, saveId: null }, { saveId: save.id }] },
+    select: { id: true, slug: true, kind: true, faction: true, raza: true, attributes: true, name: true },
+  });
+  // Muerta o convaleciente no abre combate de grupo (el 1v1 de abajo ya lo descarta).
+  const estadoPersona = persona ? await prisma.npcState.findFirst({ where: { saveId: save.id, npcId: persona.id }, select: { condicionFisica: true, muerto: true } }) : null;
+  const personaEnPie = !!persona && !estadoPersona?.muerto && estadoPersona?.condicionFisica !== 'MUERTO' && estadoPersona?.condicionFisica !== 'CONVALECIENTE';
+  if (persona && personaEnPie) {
+    const grupo = await grupoDePersona(prisma, { saveId: save.id, worldId: save.worldId, locationId: save.currentLocationId, objetivo: persona });
+    if (grupo.length > 1) {
+      const abierto = await abrirCombateDePersonas(
+        prisma,
+        { id: save.id, characterName: save.characterName, attributes: save.attributes as AttributeBlock, fictionalMinutes, timeLabel: formatFictionalDate(fictionalMinutes) },
+        grupo,
+      );
+      if (!abierto) return null;
+      await prisma.save.update({ where: { id: save.id }, data: { pendingDynamicModeOffer: Prisma.JsonNull, pendingDynamicMode: Prisma.JsonNull } });
+      await recordEntityDiscoveries({ saveId: save.id, worldId: save.worldId, mentionedText: persona.name, npcSlugsInScene: [persona.slug] });
+      return { actionText: `Me enfrento a ${persona.name} y a los suyos.` };
+    }
+  }
+
   if (zonePointId && cantidad != null && cantidad > 1) {
     const puntoBruto = await prisma.zonePoint.findUnique({ where: { id: zonePointId } });
     const punto = puntoBruto && puntoBruto.saveId === save.id ? puntoBruto : null;

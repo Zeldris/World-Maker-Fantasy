@@ -560,6 +560,66 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
   // (esperando al turno de texto libre siguiente): abre el mismo modal de Interactuar, marcado
   // `combateForzado`. Harness propio con un `Npc` real (necesita pasar por `detectNpcsInScene` de
   // verdad, a diferencia del resto de tests de este archivo que usan slugs sin fila de catálogo).
+  // CR-49: una persona agresiva con los suyos cerca no pelea sola: el combate forzado abre el de
+  // varios con todos (como la caza en grupo: `actionText` para el turno siguiente).
+  describe('CR-49 — combate forzado contra una persona con los suyos cerca', () => {
+    let locationId: string;
+    const ids: string[] = [];
+
+    beforeAll(async () => {
+      const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+      locationId = (await prisma.location.create({
+        data: { worldId: world.id, slug: 'test-cr49-banda', name: 'Zona de Prueba CR-49', region: 'Zona de Pruebas', kind: 'hito', description: 'x', aliases: ['zona de prueba cr49'] },
+      })).id;
+      for (const [slug, x] of [['test-cr49-jefe', 400], ['test-cr49-segundo', 450]] as const) {
+        const npc = await prisma.npc.create({
+          data: {
+            worldId: world.id, kind: 'PLANTILLA', slug, name: slug, aliases: [slug], role: 'x', level: 1, faction: 'Banda de Prueba CR-49', raza: 'orcos',
+            attributes: { fuerza: 8, destreza: 8, constitucion: 8, inteligencia: 8, voluntad: 8, carisma: 2, magia: 0 }, bio: 'x', personality: 'x', homeLocationSlug: null, temperamento: 'AGRESIVO',
+          },
+        });
+        ids.push(npc.id);
+        await prisma.zonePoint.create({ data: { saveId, locationId, x, y: 300, tipo: 'NPC', targetSlug: slug } });
+      }
+      await prisma.save.update({ where: { id: saveId }, data: { currentLocationId: locationId } });
+    });
+
+    afterAll(async () => {
+      await prisma.combatEncounter.deleteMany({ where: { saveId } });
+      await prisma.save.update({ where: { id: saveId }, data: { currentLocationId: null, pendingCombatNpcSlugs: [] } });
+      await prisma.zonePoint.deleteMany({ where: { locationId } });
+      await prisma.npcState.deleteMany({ where: { saveId, npcId: { in: ids } } });
+      await prisma.npc.deleteMany({ where: { id: { in: ids } } });
+      await prisma.location.delete({ where: { id: locationId } });
+    });
+
+    it('abre el combate de varios con los dos y devuelve el texto del turno siguiente', async () => {
+      const app = await buildApp();
+      const res = await app.inject({
+        method: 'POST',
+        url: `/saves/${saveId}/modo-dinamico/interactuar`,
+        payload: { tipo: 'NPC', targetSlug: 'test-cr49-jefe', targetName: 'test-cr49-jefe', quienInicia: 'npc', combateForzado: true },
+      });
+      expect(res.statusCode).toBe(200);
+      expect(JSON.parse(res.body).actionText).toContain('test-cr49-jefe');
+      const encuentro = await prisma.combatEncounter.findFirstOrThrow({ where: { saveId, estado: 'EN_CURSO' }, include: { participantes: true } });
+      expect(encuentro.participantes.filter((p) => p.bando === 'ENEMIGO').map((p) => p.npcId).sort()).toEqual([...ids].sort());
+    });
+
+    it('contra alguien ya muerto no se abre combate de grupo', async () => {
+      await prisma.combatEncounter.deleteMany({ where: { saveId } });
+      await prisma.npcState.create({ data: { saveId, npcId: ids[0]!, scope: '', condicionFisica: 'MUERTO', muerto: true } });
+      const app = await buildApp();
+      const res = await app.inject({
+        method: 'POST',
+        url: `/saves/${saveId}/modo-dinamico/interactuar`,
+        payload: { tipo: 'NPC', targetSlug: 'test-cr49-jefe', targetName: 'test-cr49-jefe', quienInicia: 'npc', combateForzado: true },
+      });
+      expect(res.statusCode).toBe(400);
+      expect(await prisma.combatEncounter.count({ where: { saveId, estado: 'EN_CURSO' } })).toBe(0);
+    });
+  });
+
   describe('AGRESIVO/ENEMIGO — combateForzado desde Interactuar (2026-09-20)', () => {
     let locationId: string;
     let npcId: string;

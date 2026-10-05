@@ -475,6 +475,8 @@ model Save {
   poblaciones       WorldPopulation[]
   expediciones      Expedicion[]
   misionesOfrecidas MisionOfrecida[]
+  ordenesComercio   OrdenComercio[]
+  caravanas         Caravana[]
 
   @@index([userId])
 }
@@ -525,6 +527,7 @@ model Location {
   zonePoints   ZonePoint[]
   droppedItems DroppedItem[]
   parcelas     Parcela[]
+  caravanas    Caravana[]
 
   @@unique([worldId, slug])
 }
@@ -1216,6 +1219,8 @@ model CombatEncounter {
   /// reclamar); se pone a false en cuanto su elección de esa ronda queda fija (reclamada por
   /// alguien, o elegida por ella).
   esperandoEleccionJugadora Boolean               @default(false)
+  /// CR-44 (44c): bandos que ya tiraron la moral por quedar a la mitad (solo la primera vez).
+  moralMitadBandos          String[]              @default([])
   createdAt                 DateTime              @default(now())
   resolvedAt                DateTime?
   participantes             CombatParticipant[]
@@ -1386,6 +1391,10 @@ model CombatParticipant {
   /// aturdido, sin importar quién sea (a diferencia de PROVOCACION/MARCAR, no fija un objetivo
   /// concreto de antemano). Null/0 = sin trampa activa.
   areaTrampaPorRondas       Int?
+  /// CR-44 (44c): perdió el valor y escapó; fuera del combate (sin datos vivos, sin botín).
+  huido                     Boolean               @default(false)
+  /// CR-44 (44c): ya tiró la moral por caer a GRAVE (solo la primera vez).
+  moralTirada               Boolean               @default(false)
   createdAt                 DateTime              @default(now())
 
   @@index([encounterId])
@@ -1788,6 +1797,9 @@ model KingdomStats {
   /// que economía y expediciones no se pisen el reclamo del día. Null = sin línea base (el primer
   /// tick la fija al día actual sin lanzar nada retroactivamente).
   ultimoDiaExpedicion Int?
+  /// CR-48: si no pudo lanzar una expedición (sin recolectores ni destino con recursos), no lo
+  /// vuelve a intentar hasta este día — antes lo reintentaba a diario con todo el coste.
+  expedicionReintentoDia Int?
   updatedAt           DateTime @updatedAt
 }
 
@@ -2685,7 +2697,8 @@ model Faction {
   origenSlug String?
   disueltaEn Int?
   fundadaEn  Int?
-  cohesion   Int     @default(70)
+  cohesion   Int        @default(70)
+  caravanas  Caravana[]
 
   @@index([worldId, slug])
   @@index([saveId])
@@ -3606,4 +3619,55 @@ model Consecuencia {
   createdAt      DateTime           @default(now())
 
   @@index([saveId, estado, tipoDisparo])
+}
+
+/// CR-47 (hito 0.2): orden permanente del Mercado del Reino («compra hierro si baja de 20», «vende
+/// madera si pasa de 80»). Sus caravanas la cumplen con facciones con tratado o alianza.
+model OrdenComercio {
+  id          String     @id @default(cuid())
+  saveId      String
+  save        Save       @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  catalogSlug String
+  /// COMPRA o VENTA.
+  tipo        String
+  umbral      Int
+  lote        Int
+  /// Facción preferida (slug); null = cualquiera con tratado o alianza.
+  factionSlug String?
+  activa      Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  caravanas   Caravana[]
+
+  @@index([saveId])
+}
+
+/// CR-47: caravana del Reino que va a comerciar a una facción (ida, trato, vuelta) y se puede
+/// asaltar por el camino. Se ve en el mapa como una expedición (`CR-46`).
+model Caravana {
+  id                String         @id @default(cuid())
+  saveId            String
+  save              Save           @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  ordenId           String?
+  orden             OrdenComercio? @relation(fields: [ordenId], references: [id], onDelete: SetNull)
+  factionId         String
+  faction           Faction        @relation(fields: [factionId], references: [id], onDelete: Cascade)
+  destinoLocationId String
+  destino           Location       @relation(fields: [destinoLocationId], references: [id], onDelete: Cascade)
+  tipo              String
+  catalogSlug       String
+  unidades          Int
+  /// Riqueza que lleva para comprar, o lo cobrado al vender.
+  riqueza           Int            @default(0)
+  /// Lo que trae de vuelta (compra) — unidades ya pagadas.
+  traidas           Int            @default(0)
+  /// EN_CAMINO → VOLVIENDO → TERMINADA, o ASALTADA.
+  status            String         @default("EN_CAMINO")
+  /// 47e: comercia con una caravana de fondo que pasa por la región del Mercado (sin viaje ni asalto).
+  local             Boolean        @default(false)
+  diaSalida         Int
+  diaLlegada        Int
+  diaRegreso        Int
+  createdAt         DateTime       @default(now())
+
+  @@index([saveId, status])
 }

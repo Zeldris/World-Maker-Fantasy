@@ -4,6 +4,7 @@ import { calendarioFor } from '../../services/worldClock.js';
 import { toFrontendLogEntry } from './shared.js';
 import { responderPropuesta } from '../../services/cronista/decisionesFaccion.js';
 import { esperarSegundoPlano } from '../../services/avanceDiario.js';
+import { expedicionesVisibles } from '../../services/expedicionesMapa.js';
 
 /// UX-29: lo más que espera «lo nuevo del mundo» a que acabe el avance de fondo de la partida.
 const ESPERA_FONDO_MS = 20_000;
@@ -13,6 +14,13 @@ const ESPERA_FONDO_MS = 20_000;
 /// GET /saves/:id (detail.ts, ventana de 24h con banners ya resueltos), este es el histórico
 /// entero, pedido bajo demanda al abrir la pestaña.
 export async function logRoutes(app: FastifyInstance) {
+  // CR-46 (hito 0.2): expediciones que el personaje puede ver en el mapa de Berig.
+  app.get<{ Params: { id: string } }>('/saves/:id/expediciones/mapa', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    return { expediciones: await expedicionesVisibles(prisma, save.id) };
+  });
+
   // Persiste qué entidad se mostró como banner bajo una narración (rework 2026-07-24) — el
   // frontend ya decidió cuál mostrar (mentionedEntityBanner.ts, con su propia deduplicación);
   // esto solo guarda esa decisión para que GET /saves/:id la devuelva igual tras una recarga

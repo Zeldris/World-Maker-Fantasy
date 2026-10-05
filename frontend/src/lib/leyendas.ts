@@ -120,3 +120,16 @@ export function rumoresConLugar(log: LogEntry[]): RumorConLugar[] {
   }
   return rumores
 }
+
+/// CR-46: dónde dibujar una expedición entre su origen y su destino (ida hasta la mitad del viaje,
+/// vuelta después). Null si alguno de los dos no está en el mapa.
+export function posicionDeExpedicion(
+  origen: { x: number; y: number } | undefined,
+  destino: { x: number; y: number } | undefined,
+  progreso: number,
+): { x: number; y: number; vuelve: boolean } | null {
+  if (!origen || !destino) return null
+  const vuelve = progreso > 0.5
+  const t = vuelve ? (1 - progreso) * 2 : progreso * 2
+  return { x: origen.x + (destino.x - origen.x) * t, y: origen.y + (destino.y - origen.y) * t, vuelve }
+}

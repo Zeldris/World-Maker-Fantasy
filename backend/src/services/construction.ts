@@ -1347,6 +1347,27 @@ export const TABLON_AVISOS_RECIPE: ConstructionRecipe = {
   maxPerRegion: 1,
 };
 
+// CR-47 (hito 0.2, Fase G): Mercado del Reino — donde se dejan las órdenes permanentes de compra y
+// venta que cumplen las caravanas (como el Mercado de Bellwright). Común a todos los pueblos, uno
+// por región, con Ayuntamiento.
+export const MERCADO_RECIPE_KEY = 'mercado';
+export const MERCADO_RECIPE: ConstructionRecipe = {
+  key: MERCADO_RECIPE_KEY,
+  name: 'un mercado',
+  description:
+    'Una explanada con puestos cubiertos, una báscula y un corral para las bestias de carga. Desde aquí salen las caravanas del reino a comerciar con quien tenga trato con él, y aquí se apunta qué comprar y qué vender cuando sobra o falta.',
+  nounRegex: /\bmercado\b/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 8, label: 'leña' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'fibras' }, cantidad: 6, label: 'fibra' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piel' }, cantidad: 4, label: 'piel' },
+  ],
+  tier: 1,
+  requisitos: { carisma: 10 },
+  requiresAyuntamiento: true,
+  maxPerRegion: 1,
+};
+
 // Orden deliberado (2026-08-04): grande y mediano ANTES que pequeño — `CONSTRUCTION_RECIPES.find`
 // se queda con la primera receta cuya `nounRegex` matchea, y el texto "ayuntamiento mediano"
 // también matchea el patrón (más simple) del pequeño si ese se comprobara antes. Mismo criterio
@@ -1363,6 +1384,7 @@ export const CONSTRUCTION_RECIPES: ConstructionRecipe[] = [
   PUESTO_COMERCIAL_RECIPE,
   CUARTEL_AVANZADO_RECIPE,
   TABLON_AVISOS_RECIPE,
+  MERCADO_RECIPE,
   JAULA_GRANDE_RECIPE,
   JAULA_MEDIANA_RECIPE,
   JAULA_PEQUENA_RECIPE,

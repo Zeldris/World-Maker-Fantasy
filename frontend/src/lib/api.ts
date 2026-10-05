@@ -339,7 +339,8 @@ export interface NarrateResponse {
   /// mayoría de turnos. El frontend lo usa solo como aviso de "hay algo nuevo que desollar" — los
   /// datos reales (qué objetos hay) se piden con `getRecolectarLocalizado(saveId, 'desollador')`,
   /// la misma ruta de siempre.
-  combatEncounterLootSummary: { npcId: string; slug: string; name: string; cantidad: number }[] | null
+  /// CR-49: `esPersona` = un caído que se saquea pero no se despelleja.
+  combatEncounterLootSummary: { npcId: string; slug: string; name: string; cantidad: number; esPersona?: boolean }[] | null
   /// Hallazgo 38 (revisar-partida-hallazgos.md 2026-09-07) — slug de la Location cuando ESTE turno
   /// es la primera visita real al destino de un viaje. `null` en la inmensa mayoría de turnos. El
   /// banner del log hoy lo decide el frontend por prioridad de mención en el TEXTO de la narración
@@ -482,6 +483,25 @@ export interface EntornoResponse {
 
 /// Fase D del hito 0.1 — entradas de "El mundo" posteriores a `desde` (id de la última WORLD que ya tiene
 /// el cliente): noticias que el tick de fondo escribe mientras la partida está abierta.
+/// CR-46: una expedición que el personaje puede ver en el mapa de Berig.
+export interface ExpedicionEnMapa {
+  id: string
+  faccion: string
+  oficio: string
+  motivo: string | null
+  origenSlug: string
+  destinoSlug: string
+  destinoNombre: string
+  diaRegreso: number
+  /// 0-1 del viaje: hasta 0,5 va, después vuelve.
+  progreso: number
+  delReino: boolean
+}
+
+export async function getExpedicionesMapa(saveId: string): Promise<{ expediciones: ExpedicionEnMapa[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/expediciones/mapa`)
+}
+
 export async function getNuevasDelMundo(saveId: string, desde: string): Promise<{ entradas: LogEntry[] }> {
   return fetchJson(`${API_URL}/saves/${saveId}/mundo/nuevas?desde=${encodeURIComponent(desde)}`)
 }
@@ -1699,6 +1719,55 @@ export async function postMercadoVender(saveId: string, targetFactionSlug: strin
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ targetFactionSlug, almacenItemId }),
   })
+}
+
+/// CR-47 (47d): el Mercado del Reino — órdenes permanentes y caravanas.
+export interface OrdenComercioInfo {
+  id: string
+  catalogSlug: string
+  nombre: string
+  tipo: 'COMPRA' | 'VENTA'
+  umbral: number
+  lote: number
+  factionSlug: string | null
+}
+export interface CaravanaInfo {
+  id: string
+  tipo: 'COMPRA' | 'VENTA'
+  nombre: string
+  faccion: string
+  unidades: number
+  traidas: number
+  riqueza: number
+  status: 'EN_CAMINO' | 'VOLVIENDO' | 'TERMINADA' | 'ASALTADA'
+  diaRegreso: number
+}
+export interface ComercioInfo {
+  reino: boolean
+  mercado: boolean
+  socios: { slug: string; name: string }[]
+  objetos: { slug: string; name: string }[]
+  ordenes: OrdenComercioInfo[]
+  caravanas: CaravanaInfo[]
+}
+
+export async function getComercio(saveId: string): Promise<ComercioInfo> {
+  return fetchJson(`${API_URL}/saves/${saveId}/reino/comercio`)
+}
+
+export async function postOrdenComercio(
+  saveId: string,
+  orden: { catalogSlug: string; tipo: 'COMPRA' | 'VENTA'; umbral: number; lote: number; factionSlug: string | null },
+): Promise<{ orden: OrdenComercioInfo }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/reino/comercio/ordenes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(orden),
+  })
+}
+
+export async function deleteOrdenComercio(saveId: string, ordenId: string): Promise<{ ok: boolean }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/reino/comercio/ordenes/${ordenId}`, { method: 'DELETE' })
 }
 
 /// Relaciones entre facciones NPC (Fase 4, 2026-09-21, docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.3) —
