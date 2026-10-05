@@ -310,7 +310,7 @@ sigue siendo completamente usable.
 1. Dónde vive el mapa: columna derecha por defecto, minimapa o modal mejorado. (ZON-1)
 2. Pasar de relleno de color a anillo de color manteniendo las formas por categoría. (ZON-10)
 3. Retratos de la Enciclopedia dentro de las fichas. (ZON-12)
-4. Velocidades de paso y si el backend devuelve varios pasos por llamada. (ZON-36, ZON-38)
+4. ~~Velocidades de paso y si el backend devuelve varios pasos por llamada. (ZON-36, ZON-38)~~ → decidido por la usuaria (2026-10-05, ronda de la Fase F): **solo en el frontend**, pidiendo el siguiente paso mientras se anima el actual (parar sigue siendo exacto); tres velocidades (normal 600 ms por defecto, rápida ~250 ms, inmediata sin animación pero paso a paso) en Ajustes › Animaciones, y doble clic = ir rápido ese trayecto. Clic en una ficha (ZON-40/41): tarjeta al pasar el ratón y **menú pegado a la ficha** con la información arriba y las acciones; el modal grande queda como «Ver ficha completa»; en táctil el menú hace de tarjeta.
 5. Mostrar la amenaza de los agresivos antes del encuentro (puede quitar sorpresa). (ZON-50)
 6. Niebla y círculo de visión: solo estético o con efecto en el juego. (ZON-52)
 7. Marcas propias del jugador. (ZON-44)

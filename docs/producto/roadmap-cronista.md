@@ -1445,6 +1445,11 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     fallar y reputación ✅ · 40f oferta pendiente única (ADR), «¿Tienes trabajo?» del NPC y el narrador
     deja de crear misiones (40f-1 ✅; 40f-2 ❌ no procede: Q21, `docs/adr/0001-ofertas-pendientes-sin-fusionar.md`)
     · 40g interfaz del tablón y del diario ✅.
+- **CR-43** Llevar al código el lore aprobado el 2026-10-05 (`docs/borradores-opencode/propuestas-aprobadas.md`,
+  PR #17): ciclo vital en `edades.ts` (Faerus 8/140, Goirntes 14/70, orcos 10/60, Nabieus 14/90),
+  `nombresFaccion.ts` (sin Vhurne, Nur ni Kegi; escisión goirnte «Los del…»), disposiciones de las
+  facciones (Helsig y Goshg mercantiles, Feg Tusha recelosa), el Bulco de Arena pasa a Rugoconcha y
+  alta de Dessa, Yerin y Riko como NPC (cada cosa según su entrada aprobada). **S**
 - **Hecho cuando:** `cronista:simular 60` produce caídas, escisiones, tormentas con daños, guerras
   y nacimientos coherentes; perdonar a un NPC lo hace volver en otra región.
 
