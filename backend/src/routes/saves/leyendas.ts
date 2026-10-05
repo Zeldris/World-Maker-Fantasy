@@ -1,0 +1,31 @@
+import type { FastifyInstance } from 'fastify';
+import type { FamiliaSuceso } from '@prisma/client';
+import { prisma } from '../../lib/prisma.js';
+import { FAMILIAS, leyendasDeEntidad, leyendasDePartida, TIPOS_ENTIDAD } from '../../services/cronista/leyendas.js';
+import type { EntidadTipo } from '../../services/cronista/sucesos.js';
+
+/// Leyendas de la partida (CR-19, hito 0.2 — roadmap-cronista.md § 14): solo lo que sabe el
+/// personaje. La vista de administración con todo el Libro es `GET /saves/:id/libro`.
+export async function leyendasRoutes(app: FastifyInstance) {
+  app.get<{ Params: { id: string }; Querystring: { familia?: string; desde?: string; hasta?: string; limite?: string; antesDe?: string } }>(
+    '/saves/:id/leyendas',
+    async (request, reply) => {
+      const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true } });
+      if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+      const { familia, desde, hasta, limite, antesDe } = request.query;
+      if (familia && !FAMILIAS.includes(familia as FamiliaSuceso)) return reply.status(400).send({ error: `Familia desconocida: ${familia}` });
+      const numero = (v?: string) => (v !== undefined && Number.isFinite(Number(v)) ? Number(v) : undefined);
+      return leyendasDePartida(prisma, save.id, {
+        familia: familia as FamiliaSuceso | undefined, desde: numero(desde), hasta: numero(hasta), limite: numero(limite), antesDe: numero(antesDe),
+      });
+    },
+  );
+
+  app.get<{ Params: { id: string; tipo: string; entidadId: string } }>('/saves/:id/leyendas/entidad/:tipo/:entidadId', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    const tipo = request.params.tipo.toUpperCase() as EntidadTipo;
+    if (!TIPOS_ENTIDAD.includes(tipo)) return reply.status(400).send({ error: `Tipo de entidad desconocido: ${request.params.tipo}` });
+    return { entradas: await leyendasDeEntidad(prisma, save.id, tipo, request.params.entidadId) };
+  });
+}
