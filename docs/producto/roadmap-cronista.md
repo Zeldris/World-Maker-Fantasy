@@ -1518,7 +1518,8 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     - **Q10 · Lo que llega solo**: sin hacer nada solo llega lo de importancia ≥ 7 (con su alcance
       de Q2) y lo de las facciones aliadas o con tratado. Lo de 4-6 se sabe viéndolo, preguntando o
       en el tablón; lo de 1-3, solo viéndolo.
-  - **Pasos**: 18a regla pura de alcance y modelo `Conocimiento`; 18b lo visto y lo que llega solo
+  - **Pasos**: ~~18a~~ ✅ 2026-10-05 (`cronista/conocimiento.ts`, puro; modelo `Conocimiento`, migración
+    `20261005060000_conocimiento`); 18a regla pura de alcance y modelo `Conocimiento`; 18b lo visto y lo que llega solo
     (todos los sucesos, no solo los emisores de `darNoticia`), con la noticia enlazada a su suceso;
     18c «¿Qué se cuenta?»; 18d bandos en el tablón; 18e confirmar rumores.
 - **CR-19** Endpoints de Leyendas (§ 14). **S** Las etiquetas (`GET /etiquetas`) van con `CR-14` y el
