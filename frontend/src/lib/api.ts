@@ -339,7 +339,8 @@ export interface NarrateResponse {
   /// mayoría de turnos. El frontend lo usa solo como aviso de "hay algo nuevo que desollar" — los
   /// datos reales (qué objetos hay) se piden con `getRecolectarLocalizado(saveId, 'desollador')`,
   /// la misma ruta de siempre.
-  combatEncounterLootSummary: { npcId: string; slug: string; name: string; cantidad: number }[] | null
+  /// CR-49: `esPersona` = un caído que se saquea pero no se despelleja.
+  combatEncounterLootSummary: { npcId: string; slug: string; name: string; cantidad: number; esPersona?: boolean }[] | null
   /// Hallazgo 38 (revisar-partida-hallazgos.md 2026-09-07) — slug de la Location cuando ESTE turno
   /// es la primera visita real al destino de un viaje. `null` en la inmensa mayoría de turnos. El
   /// banner del log hoy lo decide el frontend por prioridad de mención en el TEXTO de la narración

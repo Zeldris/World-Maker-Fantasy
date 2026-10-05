@@ -347,7 +347,8 @@ export function useCombatFlow(params: UseCombatFlowParams) {
       setFactionsStatus(updatedFactionsStatus)
       setProfessionProgress(updatedProfessionProgress)
       // Desollar pasiva (2026-08-25) — ver mismo comentario en GameView.tsx.
-      if (combatEncounterLootSummary && combatEncounterLootSummary.length > 0) markCarcassPending()
+      // CR-49: solo la fauna se despelleja; a las personas caídas se las saquea.
+      if (combatEncounterLootSummary?.some((c) => !c.esPersona)) markCarcassPending()
       handleCombatTurnResolved({
         narration: narration.narration,
         progression,

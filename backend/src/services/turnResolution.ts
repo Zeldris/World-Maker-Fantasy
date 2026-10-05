@@ -574,7 +574,7 @@ export interface NarrateAndPersistResult {
   /// mostrar el resumen de combate con el saqueo/desuello ya precargado — los datos reales (qué
   /// objetos hay de verdad) siguen viniendo del mismo `GET /saves/:id/recolectar/desollador` de
   /// siempre, este campo solo avisa de que hay algo nuevo que mirar y qué especie/cuántos.
-  combatEncounterLootSummary: { npcId: string; slug: string; name: string; cantidad: number }[] | null;
+  combatEncounterLootSummary: { npcId: string; slug: string; name: string; cantidad: number; esPersona?: boolean }[] | null;
   /// Hallazgo 38 (revisar-partida-hallazgos.md 2026-09-07) — el banner del log hoy lo decide
   /// siempre el FRONTEND por prioridad de mención en el TEXTO de la narración
   /// (`mentionedEntityBanner.ts`), así que un turno de llegada que también menciona a un NPC
@@ -4436,7 +4436,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // materializado real) — resumen de qué especies quedaron caídas al RESOLVERSE el encuentro, para
   // que `/turn/narrate` se lo pueda devolver al frontend (pantalla de resumen tras combate) y para
   // nombrar a cada una en un hecho de sesión nuevo, fuera de la transacción principal.
-  let combatEncounterLootSummary: { npcId: string; slug: string; name: string; cantidad: number }[] = [];
+  let combatEncounterLootSummary: { npcId: string; slug: string; name: string; cantidad: number; esPersona?: boolean }[] = [];
   // Condición/energía REALES de la jugadora tras la resolución (`escribirCondicionYEnergia`, ya
   // escritas en `Save` dentro de las transacciones del motor de combate múltiple, más abajo) — el
   // resto de esta función calcula `proposedCondicion`/`nuevaEnergia` a partir del intercambio 1v1
@@ -5303,11 +5303,11 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
             create: { saveId, npcId, scope, condicionFisica: 'ILESO', groupSize: participantesDeEsteNpc.length, groupDefeated: caidosCount, corpsesLooted: 0, saqueado: false, lootedItemNames: [] },
             update: { groupSize: participantesDeEsteNpc.length, groupDefeated: caidosCount, corpsesLooted: 0, saqueado: false, lootedItemNames: [] },
           });
-          combatEncounterLootSummary.push({ npcId, slug: npcRow.slug, name: npcRow.name, cantidad: caidosCount });
+          combatEncounterLootSummary.push({ npcId, slug: npcRow.slug, name: npcRow.name, cantidad: caidosCount, ...(npcRow.raza ? { esPersona: true } : {}) });
         } else {
           const state = await tx.npcState.findUnique({ where: { saveId_npcId_scope: { saveId, npcId, scope } } });
           if (state?.condicionFisica === 'CONVALECIENTE' || state?.condicionFisica === 'MUERTO') {
-            combatEncounterLootSummary.push({ npcId, slug: npcRow.slug, name: npcRow.name, cantidad: 1 });
+            combatEncounterLootSummary.push({ npcId, slug: npcRow.slug, name: npcRow.name, cantidad: 1, ...(npcRow.raza ? { esPersona: true } : {}) });
           }
         }
       }
