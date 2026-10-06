@@ -1389,16 +1389,25 @@ provisional o revisable en el historial de cada fichero.
 - **Edificios de oficio (2026-09-28)**: diseño en `rpgtarkor/sistemas-reino/edificios-de-oficio.md`.
   Todo el código pendiente está en su § 7.
 
-## Tanda OpenCode 2026-10-03 — revisada el 2026-10-06, pendiente de pasar a docs
+## Tanda OpenCode 2026-10-03 — revisada y pasada a docs el 2026-10-06, código pendiente
 
-Revisión delegada en Claude por la usuaria. Aprobadas con correcciones en
-`docs/borradores-opencode/propuestas-aprobadas.md`; descartes en `revision-lore.md`.
+Revisión delegada en Claude por la usuaria; fichas B-01…B-08 y C-01…C-11 en
+`docs/borradores-opencode/propuestas-aprobadas.md`, descartes en `revision-lore.md`. Decisión de la
+usuaria (2026-10-06): los Faerus **dejan a sus muertos en la selva**.
 
-Pendiente de docs (runbook `ampliar-lore`):
-- [ ] B-01…B-08 (historia Faerus y Nabieus): `cronologia.md`, `cronologia-mitica.md`, `razas.md`,
-  `clanes-orcos.md` (§ Senda del Sílice), `regiones/margen-silencioso.md`.
-- [ ] C-01…C-11 (costumbres Faerus): `razas.md` § Faerus, subsección nueva «Costumbres de la manada».
-- [ ] Pregunta para Álvaro antes de C-11: qué se hace con el cuerpo de un Faerus muerto.
+Escrito en MD (hecho, todo marcado «aprobado 2026-10-06 · no implementado en el código»):
+`razas.md` (§ Nabieus: cónclave y Pacto del Umbral; § Faerus: historia de la manada y costumbres),
+`cronologia-mitica.md` (el primer Keseg'Vhurne), `cronologia.md` (7 filas nuevas),
+`regiones/margen-silencioso.md`, `regiones/llanuras-del-viento-rojo.md` (La Tolda de Kegi),
+`clanes-orcos.md`. Capa de OpenCode sincronizada (`docs/canon-opencode/`: `02-razas.md`,
+`historia/cronologia.md`, `regiones/margen.md`, y en `01-lenguas.md` y `00-nucleo.md` la regla de no
+inventar sufijos Feg ni mezclar lenguas, ni meter la Concordia antes del ~4.008).
 
-Pendiente de código: nada obligatorio. Opcional para el Cronista: C-05 (entrar en una manada) y
-C-09 (cuidar al herido) como reglas de aprobación de compañeros Faerus.
+Pendiente de código:
+- [ ] RAG: `loreChunks.ts` con la historia y las costumbres Faerus y el Pacto del Umbral, y
+  `npm run reindex-lore`.
+- [ ] Opcional, Cronista: C-05 (entrar en una manada) y C-09 (cuidar al herido) como reglas de
+  aprobación de compañeros Faerus; el olfato del saludo ya existe como rastro (`CR-52`).
+- [ ] Opcional, zona: `ZonePoint` de La Tolda en el Vergel de Kegi y del Árbol de las marcas en Hashma.
+
+Pendiente de dataset: costumbres Faerus nuevas (el narrador entrenado no las conoce).

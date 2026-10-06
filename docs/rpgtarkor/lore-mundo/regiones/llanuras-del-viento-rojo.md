@@ -310,6 +310,11 @@ colmillo tallado por hierro, sal y Lana de Múrgol. **Yeru**, quien más a menud
 conoció a Gorhorn durante su año con la manada. **Tasko**, curtidor y tallador, lleva el comercio del
 Vergel (ver [npcs.md](../../personajes/npcs.md)).
 
+**La Tolda** *(aprobado 2026-10-06 · no implementado en el código)*: un toldo de pieles al borde del Vergel donde se cambia sin que el forastero
+entre en la zona de la manada. Nació con la Senda del Sílice (~3.000-3.500), cuando los Maktor
+empezaron a bajar a Kegi cuchillos Helsig y madera y resina Goshg. Antes de cambiar se comparte algo
+de comer: para un Faerus, eso hace parientes a los dos lados mientras dura el trato.
+
 ---
 
 ## Zonas del núcleo
@@ -1045,6 +1050,7 @@ investigadora que sus descendientes de hoy, los Nabieus, siguen llevando en la s
   `flora-fauna.md`). Se incorporan Kegi, el Vergel y el Jakut Ger, que estaban en el catálogo. Se
   añaden los metadatos de catálogo (slug, familia, nivel y temperamento) de cada especie.
 - 2026-09-27 (pasada de conexión): sección "Cómo se conecta con el resto de Berig" (Senda del Sílice, rutas del tributo, reino enterrado).
+- 2026-10-06: La Tolda de Kegi (tanda OpenCode del 2026-10-03, revisada por Claude). Sin código.
 
 ---
 

@@ -123,6 +123,17 @@ vibración del suelo. Apoyando la mano en una raíz o en el suelo, un Nabieus le
 bestias que se acercan; en el agua estancada, con la pierna metida, siente chapoteos a cien pasos. No
 sustituye a la gramática de los silencios, que sirve para leer a las personas: es lo mismo aplicado
 al terreno.
+
+**El cónclave y el Pacto del Umbral** *(aprobado 2026-10-06 · no implementado en el código)*. El **Keseg'Vhurne** nace de la escucha con la
+palma: tras la segunda huida, los supervivientes se sientan en un círculo de piedras sueltas, cada uno
+con la palma en el suelo, y deciden lo grave sin hablar (ver
+[cronologia-mitica.md](cronologia-mitica.md#sin-fechar-después-de-la-segunda-huida-el-primer-kesegvhurne)).
+No es un edificio: cualquier claro sirve, y lo que dura es la costumbre. Tras la Purga Silenciosa
+(~3.650), Keseg Sael y Keseg Prisilke sellan en el borde noreste del Margen el **Pacto del Umbral**,
+con las dos palmas sobre la misma piedra: nadie dice a un forastero dónde vive el otro clan, nadie
+deja señal que lleve a un asentamiento y nadie entra en el territorio del otro sin que lo sepa.
+Desde entonces el *Karo'sael* (llevar sin abrir) incluye callar dónde están los suyos; quien lo rompe
+queda fuera del silencio y nadie le vuelve a hablar. El pacto se repite en cada Keseg'Vhurne.
 - **La guerra, vista desde aquí**: integrados en la Concordia por presión, sirven como mensajeros, correos y ojos — el centro exacto de todos los secretos que no quieren tener. Cada Nabieus sabe que llevar cartas selladas sin hacer preguntas es sobrevivir; Yerin descubrió lo que cuesta cuando una de esas cartas resulta ser la guerra misma.
 
 ### Faerus — "Los furiosos"
@@ -147,6 +158,62 @@ la vez, se resuelve con el olfato y no a golpes: el que huele a miedo se aparta.
 una manada es negociar con quien esté en el Jakut **ese día**: un acuerdo no obliga a quien se siente
 mañana, salvo que se haya sellado compartiendo la primera pieza. Para un Faerus lo único que dura es
 el parentesco, no la palabra dada.
+
+**Historia de la manada** *(aprobado 2026-10-06 · no implementado en el código)* (fechas en [cronologia.md](cronologia.md)):
+- **El Jakut de Hashma (~0-600)**: en los primeros siglos tras asentarse, la manada toma la plataforma
+  del árbol más viejo como sitio para decidir. Es el modelo del Jakut de Kegi.
+- **El Árbol de las marcas (~600-900)**: al alejarse la caza, los cazadores marcan árboles con garra
+  (qué: presa, peligro, territorio) y con olor (de quién y cuándo). La misma marca delimita la zona de
+  caza de cada manada: quien huele la marca de otra no entra sin oler antes a quien la dejó. Cada
+  asentamiento tiene su árbol de referencia, que hoy hace de tablón de avisos.
+- **Los mil años salvajes en la selva (~1.000-2.000)**: con el Estallido, especies del borde de las
+  Llanuras mutan y algunas empiezan a cazar Faerus. La manada se parte durante generaciones (los
+  cazadores a los bordes, viejos y crías al corazón de la selva) y vuelve a juntarse con dos cosas: el
+  **olfato como mapa** (qué bestias se cazan, cuáles se evitan y cuáles se dejan en paz porque avisan
+  del peligro) y la **primera pieza para todos los que ayudaron a llevar la presa**, no solo para
+  quien la abatió. Es la versión de hoy.
+- **El cuidado de la Telda (~1.700)**: en los bordes castigados por la magia salvaje sobreviven sobre
+  todo los árboles de corteza densa, como la Telda. La manada empieza a plantarlos y a taparlos con
+  hoja muerta. Desde entonces los Faerus de Hashma no talan los árboles viejos.
+- **La primera tala del borde (~2.800-3.050)**: con la frontera norte Goirnte ya en el Margen, las
+  forjas de Vresk Tuh empiezan a sacar madera del borde sur. Los Feg Tusha se repliegan, pero cada
+  árbol talado acaba en un ataque: es el comienzo de la tala del borde.
+
+**Costumbres de la manada** *(aprobado 2026-10-06 · no implementado en el código)*. El Feg no tiene palabra para ninguna: se nombran en común.
+- **Enseñar cazando.** Sin escritura, se enseña en la caza por tres canales a la vez: el olfato (el
+  mayor deja oler la presa, el camino o el miedo), la postura (a dos o a cuatro patas, sin ruido) y la
+  práctica. Quien falla no se queda sin comer: repite la caza siguiente al lado del mismo mayor.
+- **La crianza en común.** Las crías se crían entre todos en una zona del asentamiento; cualquier
+  adulto da de comer a cualquier cría. A los 2 años juegan con huesos y pieles, a los 4 rastrean, a
+  los 6 cazan piezas pequeñas con un mayor. A los **8**, su primera pieza cazada solos se comparte como
+  *Vash'grath* y desde ese día son adultos.
+- **Las historias junto al fuego.** En Kegi, al anochecer, la manada se junta alrededor del *Sil* y
+  los mayores cuentan las cacerías de antes. Arde leña de Telda, que dura. En la estación fría se
+  cuentan las de pasar hambre; en la de caza, las de grandes presas.
+- **Las marcas de la daga.** Cada Faerus talla en el mango de su *Ashi'krul* una muesca por presa
+  grande o peligro que aprendió a leer; los jóvenes las repasan con un mayor antes de una caza
+  difícil.
+- **Entrar en la manada.** Un forastero se deja oler por todos; si lo aceptan, comparte el
+  *Vash'grath* de una caza en la que ayudó (comer es aceptar) y promete en voz alta el *Feg'nur*.
+  Es de la manada mientras lo cumpla; quien lo rompe sale y no vuelve.
+- **Lavar el error.** Quien falla una caza por descuido o hiere a un compañero se frota con ceniza
+  de Telda y agua durante tres días y caza aparte, porque el miedo y la culpa huelen. Alguien le lleva
+  de comer. Quien se niega a lavarse acaba solo.
+- **El saludo por el olor.** Dos Faerus se huelen el cuello y se rozan el hocico: saben de qué manada
+  y de qué familia es el otro (su **rastro**), si está herido y si tiene miedo. A un forastero se le
+  huele de lejos, sin roce.
+- **El camino de las piedras.** Una vez al año, los jóvenes recorren con un mayor el camino entre
+  Hashma, las ruinas de El Claro de la Manada y Kegi, oyendo lo que pasó en cada parada, y traen una
+  piedra de cada una para dejarla junto al Jakut.
+- **Cuidar al herido.** El herido que no puede cazar se lleva al asentamiento y se le da de la caza de
+  los demás hasta que vuelve; su primera pieza tras curarse es para la manada. Si nunca se recupera,
+  se queda: cuida crías y enseña. Es el rito del *Feg'nur*.
+- **El festín de la gran presa.** Tras abatir una presa grande (un Gargantúa, un Aullador Rojo), todos
+  comen juntos donde cayó mientras los mayores cuentan la caza.
+- **La despedida por el olor.** Cuando muere un Faerus, la manada entera lo huele una última vez para
+  guardar su olor. Después **lo dejan en la selva**, sin enterrar ni quemar: lo que la selva da, la
+  selva se lo come. Su *Ashi'krul* pasa a quien él quería y esa noche alguien cuenta su mejor caza
+  junto al fuego.
 - **La guerra, vista desde aquí**: no pertenecen a ninguna alianza — nadie los invitó y ellos no habrían ido. Para un Faerus, la guerra entre continentes son dos manadas enloquecidas peleándose mientras el bosque arde: la magia salvaje liberada tras la ruptura ya devastó territorios de manada (el del pregenerado Riko entre ellos), y esa es la única parte del conflicto que les concierne — la que les está matando la tierra.
 
 ### Ilvenar — "Memoria viva"

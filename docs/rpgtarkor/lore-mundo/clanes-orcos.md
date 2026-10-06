@@ -306,7 +306,7 @@ resto de razas de Berig, salvo los Faerus, ya rechazaban a los orcos en general;
 los Goirntes los aislaron incluso de esa poca relación que otros clanes sí lograron. Se nota en los
 números: entre la fundación del clan y hoy, los Serhu apenas crecieron un ~0,06%/año (400 → 800 en
 más de mil años) — una tasa 3 veces más lenta que la de los Goshg o los Helsig, que partieron de mucho
-menos (80 y 40) pero, lejos del control directo de los Goirntes, sí pudieron comerciar y crecer. Ese comercio tiene nombre: la **Senda del Sílice** (~3.000-3.500, provisional), por la que bajan los cuchillos Helsig y suben la madera y la resina Goshg, bordeando por el este las Llanuras. Los Maktor maltrechos llegaron a cambiar pieles por madera de ciénaga en ella; los Serhu, dentro del cerco, nunca.
+menos (80 y 40) pero, lejos del control directo de los Goirntes, sí pudieron comerciar y crecer. Ese comercio tiene nombre: la **Senda del Sílice** (~3.000-3.500, provisional), por la que bajan los cuchillos Helsig y suben la madera y la resina Goshg, bordeando por el este las Llanuras. Los Maktor maltrechos llegaron a cambiar pieles por madera de ciénaga en ella; los Serhu, dentro del cerco, nunca. Parte de lo que los Maktor sacaban de la Senda bajaba hasta Kegi, a **La Tolda** de los Feg Ger (ver [llanuras-del-viento-rojo.md § Kegi](regiones/llanuras-del-viento-rojo.md#kegi-y-el-vergel-de-la-arena)) *(aprobado 2026-10-06 · no implementado en el código)*.
 
 #### La casta de Ketg
 
@@ -412,6 +412,7 @@ siempre: gastar vidas Serhu antes que Goirntes.
 - 2026-09-13: Brenka y Solgra tienen ficha `Npc` real.
 - 2026-09-27: el bloque sale de `areas.md` a este fichero propio.
 - 2026-09-27 (pasada de conexión): la Senda del Sílice como explicación del crecimiento Helsig y Goshg.
+- 2026-10-06: La Tolda de Kegi como destino de parte del comercio de la Senda (tanda OpenCode del 2026-10-03). Sin código.
 
 ---
 

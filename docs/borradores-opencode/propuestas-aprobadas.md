@@ -656,6 +656,10 @@ quedan 11 fichas (C-01 a C-11; dos propuestas de muerte fusionadas en C-11), una
 el Árbol de las marcas ([B-05](#b-05--600-900--el-árbol-de-las-marcas-faerus-fusión-de-dos)) y una
 descartada ([revision-lore.md](revision-lore.md#tanda-opencode-2026-10-03--descartes-revisión-del-2026-10-06)).
 
+**Seguimiento:**
+- [x] **En docs** (2026-10-06): ver «Archivos destino» de cada ficha; resumen en `docs/canon-opencode/`.
+- [ ] **Código:** nada implementado (ni `loreChunks.ts` ni catálogo). Ver `ampliar-lore-checklist.md`.
+
 **Correcciones que se repiten en toda la tanda** (para el agente `lore` en la siguiente):
 - **Nombres:** el Feg no tiene sufijos como `-tar`, `-ghep`, `-ish`, `-tu`, `-mek` o `-dor`; los
   nombres de las costumbres van en lengua común. *Terud'beh*, *Terud'orik*, *Ur'gathek* y *Krenoth*
@@ -850,15 +854,16 @@ que una manada se acuerda de por qué caza junta.
 
 **Notas del aprobador:** fusiona «Drogh'feg (el lazo de sangre)» y «Krul'dor (el paso de la
 manada)». Quitado el corte en la frente que no cicatriza y la elección de un nuevo Jakut (el Jakut no
-se elige: quien se sienta, decide). **Pregunta para Álvaro:** qué se hace con el cuerpo (quemarlo
-como los orcos, enterrarlo o dejarlo en la selva).
+se elige: quien se sienta, decide). **El cuerpo se deja en la selva** (decisión de la usuaria,
+2026-10-06).
 
 **Propuesta:** cuando muere un Faerus, la manada entera pasa a olerlo una última vez, para guardar
-su olor. Su *Ashi'krul* pasa a quien él quería (C-04), y esa noche, junto al fuego, alguien cuenta
-su mejor caza (C-03).
+su olor. Después lo llevan a la selva y lo dejan allí, sin enterrar ni quemar: lo que la selva da,
+la selva se lo come. Su *Ashi'krul* pasa a quien él quería (C-04), y esa noche, junto al fuego,
+alguien cuenta su mejor caza (C-03).
 
 **Preguntas abiertas resueltas:**
-1. ¿Se entierra o se deja expuesto? → **Abierta, para Álvaro.**
+1. ¿Se entierra o se deja expuesto? → Se deja en la selva (la usuaria, 2026-10-06).
 2. ¿Y si no hay nadie para el Jakut? → No hace falta nadie: el Jakut es un sitio.
 
 ---
@@ -1466,6 +1471,10 @@ descartadas. Los descartes, con su motivo y el texto original, están en
 Los nombres nuevos van en lengua común: el Feg es una lengua de sustantivos y verbos de caza, y las
 propuestas inventaban sufijos sin base (`-tar`, `-tu`, `-mek`…) o mezclaban palabras orcas o nabieus.
 
+**Seguimiento:**
+- [x] **En docs** (2026-10-06): ver «Archivos destino» de cada ficha; resumen en `docs/canon-opencode/`.
+- [ ] **Código:** nada implementado (ni `loreChunks.ts` ni catálogo). Ver `ampliar-lore-checklist.md`.
+
 ### B-01 · Era mítica — El Cónclave del Primer Silencio (Nabieus)
 **Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-06)**
 
@@ -1508,13 +1517,15 @@ edificio: es una práctica, y cualquier claro sirve. Lo que dura es la costumbre
 
 **Notas del aprobador:** el *Karo'sael* ya existía (nace con El Borde, ~2.100-2.800); el pacto no lo
 crea, lo amplía. El sello con *Vash'grath* se cambia por un gesto nabieu (las dos palmas sobre la
-misma piedra). Quitado *Tannis'sael*, sin base.
+misma piedra). Quitado *Tannis'sael* (que es leer mentiras en las pausas, no un pacto). La propuesta
+decía «para que la Concordia nunca vuelva a usarlos»: en el ~3.650 la Concordia no existe; es el
+orden Goirnte. El sitio pasa al borde noreste del Margen, que es donde se tocan con la Ciénaga.
 
 ---
 
 **Propuesta:** tras la Purga Silenciosa (~3.650), Keseg Sael (Margen) y Keseg Prisilke (Ciénaga) se
-reúnen en el borde este del Margen, donde se tocan la Ciénaga y las Llanuras. Acuerdan tres normas
-para que la Concordia nunca vuelva a usarlos contra sí mismos: no decir a nadie de fuera dónde vive
+reúnen en el borde noreste del Margen, donde empieza la Ciénaga. Acuerdan tres normas para que el
+orden Goirnte nunca vuelva a usarlos a unos contra otros: no decir a nadie de fuera dónde vive
 el otro; no dejar señal que lleve a un asentamiento; no dejar entrar a nadie en el territorio del
 otro sin que el otro lo sepa. Lo sellan apoyando las palmas sobre la misma piedra. Desde entonces el
 *Karo'sael* (llevar sin abrir) se amplía a callar también dónde están los suyos. Quien lo rompe queda
@@ -1622,7 +1633,7 @@ viejos, y de ahí sale parte de su rabia contra la tala del borde.
 
 ---
 
-### B-07 · ~3.000-3.500 — Los guías de la Senda (Feg Ger)
+### B-07 · ~3.000-3.500 — La Tolda de Kegi (Feg Ger)
 **Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-06)**
 
 **Acción de implementación:** añadir (antes «El Juramento de la Tolda en Hashma»)
@@ -1630,20 +1641,23 @@ viejos, y de ahí sale parte de su rabia contra la tala del borde.
 **Dependencias:** ninguna
 **Archivos destino:**
 - `docs/rpgtarkor/lore-mundo/cronologia.md` (fila de la Senda del Sílice)
-- `docs/rpgtarkor/lore-mundo/clanes-orcos.md` (§ La Senda del Sílice)
+- `docs/rpgtarkor/lore-mundo/clanes-orcos.md` (§ El cerco social, la Senda del Sílice)
+- `docs/rpgtarkor/lore-mundo/regiones/llanuras-del-viento-rojo.md` (§ Kegi)
 
 **Notas del aprobador:** la propuesta lo ponía en el ~2.500, pero los Helsig y los Goshg no emigran
 hasta el ~2.900 y la Senda es del ~3.000-3.500; y eran los Feg Tusha, cuando quien comercia es Feg
-Ger. Corregido a Feg Ger y a la fecha de la Senda.
+Ger. Corregido a Feg Ger y a la fecha de la Senda. Segunda corrección (al pasarla a docs): la Senda
+va por el borde **este** de las Llanuras y Kegi está en la franja **sur**, así que los Feg Ger no
+guían caravanas: lo de la Senda les llega por los Maktor. Sin Goirnos (es trueque).
 
 ---
 
-**Propuesta:** cuando abre la Senda del Sílice, los Feg Ger de Kegi guían a las caravanas de hielo
-sílice y madera por el borde de las Llanuras, donde ellos huelen el peligro antes que nadie. No
-cobran en Goirnos: piden compartir la primera pieza de la caza del camino. Para un Faerus eso los
-hace parientes de la caravana mientras dura el viaje. Bajo un toldo de pieles junto a Kegi, **La
-Tolda**, se cambia la carga sin que entre ninguna columna Goirnte. Es una de las raíces del comercio
-de El Vergel de Kegi.
+**Propuesta:** cuando abre la Senda del Sílice, los Maktor que cambian pieles por madera de ciénaga
+bajan parte de lo que consiguen (cuchillos Helsig, madera y resina Goshg) hasta Kegi. Los Feg Ger
+levantan un toldo de pieles al borde del Vergel, **La Tolda**, donde se cambia sin que el forastero
+entre en la zona de la manada: pieles curtidas y colmillo tallado por lo que trae la Senda. Antes de
+cambiar se comparte algo de comer; para un Faerus, eso hace parientes a los dos lados mientras dura
+el trato. Es la raíz del comercio de El Vergel de Kegi.
 
 ---
 

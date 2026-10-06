@@ -1,6 +1,6 @@
 # NÚCLEO — reglas duras de Helek Sirik
 Qué es: lo que TODA propuesta debe respetar. Se lee siempre.
-Fuente: docs/rpgtarkor/ (todo). Sincronizado: 2026-09-27.
+Fuente: docs/rpgtarkor/ (todo). Sincronizado: 2026-10-06.
 
 ## Mundo
 - Fantasía con base científica. Todo fenómeno tiene causa física (bioacumulación, magnetismo,
@@ -89,4 +89,5 @@ Nada del catálogo pasa de 80 Goirnos. Un precio de cientos está MAL.
 5. ¿Resuelve algo reservado? 6. ¿Pone años en la era mítica, o fechas imposibles (orcos antes del
 2.000, algo después del 4.010)? 7. ¿Inventa atributos, oficios, clases, ranuras o precios fuera de
 escala, o incumple la regla de peso? 8. ¿Tono prohibido? 9. ¿Muletillas (`Silh`, "tela de hueso",
-"lo recogen con respeto", sufijos repetidos)?
+"lo recogen con respeto", sufijos repetidos)? 10. ¿Inventa palabras en una lengua o usa las de otro
+pueblo (ver `01-lenguas.md`)? 11. ¿Mete la Concordia antes del ~4.008?

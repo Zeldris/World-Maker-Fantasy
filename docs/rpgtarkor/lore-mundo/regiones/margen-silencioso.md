@@ -45,7 +45,8 @@ En lo alto del árbol más robusto de la jungla hay un gran salón de piel y hue
 grandes calaveras y huesos largos tallados en forma de garras. Aquí los guerreros y sabios se
 reúnen para planear sus siguientes movimientos. El *Jakut* propiamente dicho es una plataforma ancha
 en la horquilla del árbol: quien se sienta en ella decide mientras está sentado (ver
-[razas.md § Faerus](../razas.md#faerus--los-furiosos)).
+[razas.md § Faerus](../razas.md#faerus--los-furiosos)). Fue el primer Jakut (~0-600) y el modelo del
+de Kegi *(aprobado 2026-10-06 · no implementado en el código)*.
 **Quién vive aquí** *(fichas en [npcs.md](../../personajes/npcs.md), pendientes de código)*: **Hulki**,
 la vieja que más a menudo está en el Jakut; **Tira**, la cazadora que reparte la primera pieza;
 **Kiri**, vigía del dosel en forma de Hetris; **Lusa**, que cuida a los heridos que no se abandonan;
@@ -275,7 +276,9 @@ nombran. Los Ferikes viven en el borde con las Llanuras; ver
 - **La tala del borde**: los Goirntes de la frontera norte, los que trabajan la madera, la sacan del
   borde sur del Margen. Cada árbol talado en territorio Faerus es un motivo de ataque, y cada ataque,
   una excusa para que las patrullas traten a los Faerus como presa. Es la versión diaria, pequeña, de
-  la guerra entre ellos.
+  la guerra entre ellos. Empezó hacia el ~2.800-3.050, cuando las forjas de Vresk Tuh llegaron al
+  borde; desde el ~1.700 los Faerus de Hashma no talan los árboles viejos (el cuidado de la Telda)
+  *(aprobado 2026-10-06 · no implementado en el código)*.
 - **Tras El Detonante**: la magia salvaje liberada con la ruptura del sello arrasó El Claro de la
   Manada y dejó criaturas mutadas en los límites del Margen. Las patrullas culpan a los Faerus.
 
@@ -295,6 +298,7 @@ nombran. Los Ferikes viven en el borde con las Llanuras; ver
   aplica la primera tanda de propuestas aprobadas: los clanes Keseg Sael y Feg Tusha, el Archivo del
   Refugio, El Cruce de las Ausencias, Las Aguas Sordas, La Proa Gris, 5 especies de flora, 4 de fauna
   (entre ellas la Leshra, primera de la familia Umbrias) y los Faerus de Hashma.
+- 2026-10-06 (tanda OpenCode del 2026-10-03, revisada por Claude): origen del Jakut Tusha y de la tala del borde; el Pacto del Umbral y las costumbres Faerus van en `razas.md`. Sin código.
 - 2026-09-27 (pasada de conexión): familia, nivel y temperamento de Sombras de Kroj, Hetris, Mekiosi y Vistue; El Claro de la Manada arrasado tras El Detonante (canon de Riko que faltaba aquí); sección de conexiones (el Margen como muro del Imperio, la tala del borde).
 
 ---

@@ -1,6 +1,6 @@
 # REGIÓN: El Margen Silencioso
 Qué es: zonas, habitantes, especies y huecos del Margen.
-Fuente: docs/rpgtarkor/lore-mundo/regiones/margen-silencioso.md. Sincronizado: 2026-09-27.
+Fuente: docs/rpgtarkor/lore-mundo/regiones/margen-silencioso.md. Sincronizado: 2026-10-06.
 
 ## Datos fijos
 - Posición: cinturón bajo la Ciénaga Troncal y el extremo sur de las Llanuras (norte), sobre la Meseta del Orden (sur); ~215 × 103 km. La
@@ -17,7 +17,7 @@ Fuente: docs/rpgtarkor/lore-mundo/regiones/margen-silencioso.md. Sincronizado: 2
 - **Hashma / Selviterna** (oeste, cerca de la costa): poblado Faerus colgado de los árboles. Interior:
   Jakut Tusha, una plataforma en la horquilla del árbol más viejo. NPC: Hulki (suele estar en el
   Jakut), Tira (reparte la primera pieza), Kiri (vigía, Cambiaformas Hetris), Lusa (cuida heridos),
-  Gero (va y viene de Kegi).
+  Gero (va y viene de Kegi). Fue el primer Jakut (~0-600)\*. Cerca, el Árbol de las marcas\*.
 - **El Claro de la Manada** (oeste): donde se juntaban las manadas sin poblado. ARRASADO tras El Detonante.
 - **El Refugio sin Nombre** (este): enclave de Keseg Sael. Debajo está el Archivo, con tablillas de
   observación; quien alza la voz no vuelve a entrar. Sin NPC con nombre.
@@ -52,7 +52,7 @@ de los tocones, t2).
 
 ## Conexiones
 - Es el MURO natural del Imperio: ninguna columna Goirnte lo cruza (rodean por la costa, 2-3 jornadas). Un mensajero Nabieus lo cruza de norte a sur en 2-3 jornadas leyendo el suelo. Por eso la Concordia necesita a los Nabieus.
-- La tala del borde: los Goirntes de la frontera norte sacan madera del borde sur; los Faerus atacan; las patrullas los tratan como presa.
+- La tala del borde: los Goirntes de la frontera norte sacan madera del borde sur; los Faerus atacan; las patrullas los tratan como presa. Empezó ~2.800-3.050\*.
 - Noroeste: Kegi y Hashma (1-2 jornadas), el Cruce. Noreste: Jeyselt (Keseg Prisilke).
 - Tras El Detonante: El Claro de la Manada ARRASADO por magia salvaje; criaturas mutadas en los límites (sin definir); las patrullas culpan a los Faerus. Allí se rompió la manada de Riko.
 
