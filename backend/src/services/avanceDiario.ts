@@ -33,6 +33,7 @@ import { avanzarSubditos } from './cronista/subditos.js';
 import { revisarLlegadas } from './cronista/llegadas.js';
 import { revisarFamilias } from './cronista/familias.js';
 import { revisarSalidas } from './cronista/salidas.js';
+import { revisarSueldos } from './cronista/economiaReino.js';
 import { revisarInformantes } from './cronista/reclutamiento.js';
 
 export const MAX_DIAS_POR_LLAMADA = 30;
@@ -134,6 +135,8 @@ export async function avanzarMundoHasta(
         await prisma.$transaction((tx) => revisarFamilias(tx, saveId, ahora, random));
         // REI-121: muertes de viejo y de hambre; con el Reino triste, una salida por semana.
         await prisma.$transaction((tx) => revisarSalidas(tx, saveId, ahora, random));
+        // CR-53 53c: sueldos semanales del Reino (y deserción si no se pagan).
+        await prisma.$transaction((tx) => revisarSueldos(tx, saveId, ahora));
       });
     }
     // CR-14: etiquetas de relación (AMIGO_DE / ENEMIGO_DE) según la reputación del final del día.

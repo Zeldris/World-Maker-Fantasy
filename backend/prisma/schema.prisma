@@ -1795,6 +1795,9 @@ model KingdomStats {
   ultimaLlegada       Int?
   /// REI-120: última semana (minuto de ficción) en que se revisaron parejas y crías.
   ultimaRevisionFamilias Int?
+  /// CR-53 53c: último pago de sueldos (minuto de ficción) y días seguidos sin poder pagarlos.
+  ultimoPagoSueldos   Int?
+  diasSinCobrar       Int      @default(0)
   /// CR-34 (Q6): último día de ficción en que la facción revisó su situación para decidir (null =
   /// nunca). Solo facciones del mundo de la partida; el Reino de la jugadora no lo usa.
   ultimaRevision      Int?

@@ -1635,7 +1635,10 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   🚧 53a ✅ 2026-10-06 (`cronista/economiaReino.ts`): agua de Pozo (12 al día) y de fuente natural junto al
   Ayuntamiento (20); topes de comida y agua (base 60 + 120 por Granero o Cisterna) en el tick del Reino;
   recetas de Pozo, Granero, Cisterna y Leñera. 53b ✅ (tope de materiales: objetos de tipo RECURSO en el Almacén, base 60 + 120 por Leñera; depositar
-  rechaza si no cabe, y la producción y las caravanas solo meten lo que cabe). **Falta:** 53c, Goirnos y sueldos con deserción; 53d, sed y hambre definitivas; 53e, la
+  rechaza si no cabe, y la producción y las caravanas solo meten lo que cabe). 53c ✅ (tesoro = `KingdomStats.riqueza` en Goirnos con traspasos a la bolsa,
+  `POST /saves/:id/reino/tesoro`; sueldos semanales trabajador 2 y soldado o vigía 5 en vez del mantenimiento
+  diario; sin Goirnos, −3 de felicidad al día y desde el día 7 un desertor por semana que vuelve a su
+  pueblo; migración `20261006110000_sueldos`). **Falta:** 53d, sed y hambre definitivas; 53e, la
   interfaz (agua al día y topes en Visión general).
   - Agua: 1 por boca al día; Pozo 12 al día; fuente natural 20 al día.
   - Almacén con tope: Ayuntamiento 60 + 60; Granero, Cisterna y Leñera, 120 cada uno.

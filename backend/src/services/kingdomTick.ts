@@ -95,6 +95,8 @@ export interface SuministrosDia {
   agua: number;
   topeComida: number;
   topeBebida: number;
+  /// CR-53 53c: los soldados cobran por semana (`revisarSueldos`), no un mantenimiento diario.
+  sueldosSemanales?: boolean;
 }
 /// Sin datos del Reino (tests de antes del 0.3): ni agua de fuera ni topes.
 export const SIN_SUMINISTROS: SuministrosDia = { agua: 0, topeComida: Infinity, topeBebida: Infinity };
@@ -103,7 +105,7 @@ export function tickKingdomOneDay(stats: KingdomStatsBlock, s: SuministrosDia = 
   const bocas = stats.poblacion + stats.soldados + stats.visitantes;
   const comidaNeta = stats.comida + stats.trabajadores * COMIDA_POR_TRABAJADOR - bocas * CONSUMO_POR_BOCA;
   const bebidaNeta = stats.bebida + s.agua - bocas * CONSUMO_POR_BOCA;
-  const riquezaNeta = stats.riqueza + stats.trabajadores * RIQUEZA_POR_TRABAJADOR - stats.soldados * MANTENIMIENTO_POR_SOLDADO;
+  const riquezaNeta = stats.riqueza + stats.trabajadores * RIQUEZA_POR_TRABAJADOR - (s.sueldosSemanales ? 0 : stats.soldados * MANTENIMIENTO_POR_SOLDADO);
 
   const hayDeficit = comidaNeta < 0 || bebidaNeta < 0;
   const haySuperavit = !hayDeficit && bocas > 0 && comidaNeta > bocas && bebidaNeta > bocas;

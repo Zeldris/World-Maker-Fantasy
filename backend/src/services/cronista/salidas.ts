@@ -59,7 +59,7 @@ async function morir(tx: Tx, saveId: string, s: SubditoVital, causa: 'vejez' | '
 }
 
 /// Vuelve a la población de su pueblo (la de la que salió o, si nació en el Reino, la de su pueblo).
-async function volverASuPueblo(tx: Tx, saveId: string, s: SubditoVital) {
+export async function volverASuPueblo(tx: Tx, saveId: string, s: SubditoVital) {
   if (s.poblacionOrigenId) {
     await tx.worldPopulation.updateMany({ where: { id: s.poblacionOrigenId }, data: { poblacion: { increment: 1 } } });
     return;
@@ -120,5 +120,5 @@ export async function salidasRecientes(tx: Tx, saveId: string, ahora: number, di
     where: { saveId, estado: { in: ['SE_FUE', 'MUERTO'] }, hastaMinutes: { gte: ahora - dias * 1440 } },
     orderBy: { hastaMinutes: 'desc' }, select: { id: true, name: true, estado: true, notes: true, hastaMinutes: true },
   });
-  return filas.map((f) => ({ id: f.id, name: f.name, estado: f.estado as 'SE_FUE' | 'MUERTO', motivo: f.estado === 'MUERTO' ? f.notes : 'Se fue: el Reino no le da para vivir contento.', cuando: f.hastaMinutes }));
+  return filas.map((f) => ({ id: f.id, name: f.name, estado: f.estado as 'SE_FUE' | 'MUERTO', motivo: f.estado === 'MUERTO' || f.notes.startsWith('Desertó') ? f.notes : 'Se fue: el Reino no le da para vivir contento.', cuando: f.hastaMinutes }));
 }

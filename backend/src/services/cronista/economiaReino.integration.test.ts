@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
-import { esMaterial, huecoDeMateriales, suministrosDelReino } from './economiaReino.js';
+import { esMaterial, huecoDeMateriales, revisarSueldos, suministrosDelReino, traspasarGoirnos } from './economiaReino.js';
+import { crearSubdito } from './subditos.js';
 
 describe('economía del Reino (CR-53) — en una partida', () => {
   let saveId: string;
@@ -38,5 +39,32 @@ describe('economía del Reino (CR-53) — en una partida', () => {
     expect(await huecoDeMateriales(prisma, saveId)).toBe(0);
     await edificio('lenera');
     expect(await huecoDeMateriales(prisma, saveId)).toBe(120);
+  });
+
+  it('sueldos: se pagan por semana; sin Goirnos baja la felicidad y a los 7 días deserta un soldado; el traspaso salda la deuda', async () => {
+    const ownerKey = `save:${saveId}`;
+    await prisma.kingdomStats.create({ data: { saveId, ownerKey, felicidad: 60, riqueza: 20, comida: 50, bebida: 50 } });
+    const s = await prisma.$transaction((tx) => crearSubdito(tx, { saveId, worldId, pueblo: 'orcos', nacidoEn: -30 * 120 * 1440, origen: 'LLEGADA', ahora: 0, random: () => 0.4 }));
+    await prisma.subject.update({ where: { id: s.id }, data: { role: 'soldado' } });
+    const { recalcularPoblacion } = await import('./subditos.js');
+    await prisma.$transaction((tx) => recalcularPoblacion(tx, saveId, 0));
+    const DIA = 1440;
+    expect(await prisma.$transaction((tx) => revisarSueldos(tx, saveId, 0))).toEqual({ pagado: 5, desertor: null });
+    expect((await prisma.kingdomStats.findUniqueOrThrow({ where: { ownerKey } })).riqueza).toBe(15);
+    // A mitad de semana no se paga nada.
+    expect((await prisma.$transaction((tx) => revisarSueldos(tx, saveId, 3 * DIA))).pagado).toBe(0);
+    await prisma.kingdomStats.update({ where: { ownerKey }, data: { riqueza: 0 } });
+    let desertor: string | null = null;
+    for (let d = 7; d <= 13; d++) desertor = (await prisma.$transaction((tx) => revisarSueldos(tx, saveId, d * DIA))).desertor;
+    const k = await prisma.kingdomStats.findUniqueOrThrow({ where: { ownerKey } });
+    expect(k.diasSinCobrar).toBe(7);
+    expect(k.felicidad).toBe(60 - 7 * 3);
+    expect(desertor).toBe(s.id);
+    expect((await prisma.subject.findUniqueOrThrow({ where: { id: s.id } })).notes).toBe('Desertó: no le pagabas.');
+    // Traspaso de la bolsa al tesoro y vuelta.
+    await prisma.save.update({ where: { id: saveId }, data: { goirnos: 30 } });
+    expect(await prisma.$transaction((tx) => traspasarGoirnos(tx, saveId, 25))).toEqual({ ok: true, bolsa: 5, tesoro: 25 });
+    expect((await prisma.$transaction((tx) => traspasarGoirnos(tx, saveId, -40))).ok).toBe(false);
+    expect(await prisma.$transaction((tx) => traspasarGoirnos(tx, saveId, -5))).toEqual({ ok: true, bolsa: 10, tesoro: 20 });
   });
 });

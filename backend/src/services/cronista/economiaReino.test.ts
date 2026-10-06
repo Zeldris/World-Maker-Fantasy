@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { tickKingdomOneDay, DEFAULT_KINGDOM_STATS } from '../kingdomTick.js';
-import { AGUA_FUENTE_NATURAL_DIA, BASE_ALMACEN, suministrosDeEdificios, tieneFuenteNatural } from './economiaReino.js';
+import { AGUA_FUENTE_NATURAL_DIA, BASE_ALMACEN, suministrosDeEdificios, sueldosSemana, tieneFuenteNatural, tocaDesertar } from './economiaReino.js';
 
 describe('economía del Reino (CR-53) — agua y almacén', () => {
   it('el Ayuntamiento da la base; cada Pozo, Granero, Cisterna y Leñera suma lo suyo', () => {
@@ -25,5 +25,19 @@ describe('economía del Reino (CR-53) — agua y almacén', () => {
     const sinPozo = tickKingdomOneDay(base, { agua: 0, topeComida: 60, topeBebida: 60 });
     expect(sinPozo.bebida).toBe(0);
     expect(sinPozo.felicidad).toBeLessThan(base.felicidad);
+  });
+});
+
+describe('economía del Reino (CR-53) — sueldos', () => {
+  it('trabajador 2 y soldado 5 Goirnos por semana', () => {
+    expect(sueldosSemana({ trabajadores: 3, soldados: 2 })).toBe(16);
+  });
+  it('sin cobrar, deserta uno a los 7 días y luego uno por semana', () => {
+    expect([6, 7, 8, 13, 14, 21].map(tocaDesertar)).toEqual([false, true, false, false, true, true]);
+  });
+  it('con sueldos semanales, el soldado no cuesta a diario', () => {
+    const base = { ...DEFAULT_KINGDOM_STATS, soldados: 4, riqueza: 10, comida: 50, bebida: 50 };
+    expect(tickKingdomOneDay(base).riqueza).toBe(6);
+    expect(tickKingdomOneDay(base, { agua: 0, topeComida: 999, topeBebida: 999, sueldosSemanales: true }).riqueza).toBe(10);
   });
 });
