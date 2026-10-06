@@ -21,6 +21,7 @@ import { dispararPorSuceso } from './consecuencias.js';
 import type { TipoSuceso } from './catalogoSucesos.js';
 import { REACCIONES_ETIQUETAS } from './etiquetas.js';
 import { REACCIONES_APROBACION } from './aprobacion.js';
+import { REACCIONES_RECUERDOS } from './recuerdos.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -278,6 +279,8 @@ export const REACCIONES: Reaccion[] = [
   ...REACCIONES_ETIQUETAS,
   // CR-15: aprobación de los compañeros (aprobacion.ts).
   ...REACCIONES_APROBACION,
+  // CR-16: recuerdos de NPC y supervivientes (recuerdos.ts).
+  ...REACCIONES_RECUERDOS,
 ];
 
 /// Región (nombre de `Location.region`, el de `REGIONES_VECINAS`) a partir de su slug.

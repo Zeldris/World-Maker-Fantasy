@@ -467,6 +467,7 @@ model Save {
   sucesos            Suceso[]
   conocimientos      Conocimiento[]
   etiquetas          Etiqueta[]
+  recuerdos          Recuerdo[]
   consecuencias      Consecuencia[]
   sessionFacts       SessionFact[]
   foundedFactions    Faction[]
@@ -2858,6 +2859,11 @@ model NpcState {
   /// CR-13 13c (hito 0.2): años de vejez de un NPC del catálogo en ESTA partida (sus atributos son
   /// del mundo): se restan a fuerza, destreza y constitución al usarlos (`restarVejez`, edades.ts).
   vejez                       Int             @default(0)
+  /// CR-16 (hito 0.3): niveles ganados en ESTA partida por sobrevivir a la jugadora o vencerla
+  /// (estilo Némesis), con tope; se suman a `Npc.level`.
+  nivelesGanados              Int             @default(0)
+  /// CR-16: título que se ha ganado («Superviviente de Gorhorn»).
+  titulo                      String?
   condicionFisica             CondicionFisica @default(ILESO)
   /// Sistema de fatiga simétrico (2026-07-30, deuda técnica: "los NPC siguen eligiendo habilidad
   /// sin restricción de energía" — ver energy.ts) — null = tope completo, mismo criterio lazy que
@@ -3698,4 +3704,25 @@ model Etiqueta {
 
   @@unique([saveId, entidadTipo, entidadId, clave])
   @@index([saveId, activa])
+}
+
+/// CR-16 (hito 0.3): lo que un NPC guarda de alguien (por ahora, del personaje) a raíz de un suceso
+/// (roadmap-cronista.md § 8.3, estilo Némesis). Los leves se desvanecen con el tiempo; los de un suceso
+/// de importancia ≥ 6 quedan.
+model Recuerdo {
+  id           String @id @default(cuid())
+  saveId       String
+  save         Save   @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  npcId        String
+  /// PERSONAJE (id de la partida) | NPC | FACCION
+  sobreTipo    String
+  sobreId      String
+  sucesoId     String
+  /// −10..+10
+  sentimiento  Int
+  /// Importancia del suceso que lo causó (≥ 6: no se olvida).
+  importancia  Int
+  desdeMinutes Int
+
+  @@index([saveId, npcId])
 }

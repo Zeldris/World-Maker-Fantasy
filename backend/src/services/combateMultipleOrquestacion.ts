@@ -433,7 +433,7 @@ async function datosVivosDe({ tx, worldId, saveId, participant, weaponNames }: D
     return {
       nombre: npc.name,
       // CR-13 13c: con la vejez de esta partida (`NpcState.vejez`).
-      attributes: effectiveAttributesConDuracion(restarVejez(npcAttributesForLevel(npc.attributes as unknown as AttributeBlock, npc.level, npc.clase as Clase | null), state?.vejez ?? 0), npcActiveEffects),
+      attributes: effectiveAttributesConDuracion(restarVejez(npcAttributesForLevel(npc.attributes as unknown as AttributeBlock, npc.level + (state?.nivelesGanados ?? 0), npc.clase as Clase | null), state?.vejez ?? 0), npcActiveEffects),
       condicionFisica: state?.condicionFisica ?? 'ILESO',
       energia: state?.energia ?? 100,
       abilities: npcCombatAbilitiesFor(toNpcForCombatAbilities(npc), weaponNames),

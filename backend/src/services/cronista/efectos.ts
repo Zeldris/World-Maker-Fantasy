@@ -30,6 +30,7 @@ import { ownerKeyFor } from '../reinoOwner.js';
 import { registrarSuceso, type NuevoSuceso } from './sucesos.js';
 import type { TipoSuceso } from './catalogoSucesos.js';
 import { aplicarCambioAprobacion, type Valor } from './aprobacion.js';
+import { aplicarNivelGanado, aplicarRecuerdo } from './recuerdos.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -84,7 +85,9 @@ export type Efecto =
   | { tipo: 'crearNpc'; faccionSlug: string; como?: 'DESTACA' | 'NACE' }
   | { tipo: 'anadirEtiqueta'; clave: string; texto: string }
   | { tipo: 'quitarEtiqueta'; clave: string }
-  | { tipo: 'cambiarAprobacion'; companionId: string; delta: number; motivo: Valor };
+  | { tipo: 'cambiarAprobacion'; companionId: string; delta: number; motivo: Valor }
+  | { tipo: 'anadirRecuerdo'; npcId: string; sentimiento: number }
+  | { tipo: 'ganarNivelNpc'; npcId: string; titulo?: string };
 
 export interface ResultadoEfecto {
   aplicado: boolean;
@@ -122,6 +125,12 @@ export async function aplicarEfecto(ctx: CtxEfecto, e: Efecto): Promise<Resultad
       return anadirEtiqueta(ctx, e);
     case 'quitarEtiqueta':
       return quitarEtiqueta(ctx, e);
+    case 'anadirRecuerdo':
+      return (await aplicarRecuerdo(ctx.tx, { saveId: ctx.saveId, npcId: e.npcId, sentimiento: e.sentimiento, sucesoId: ctx.causas?.[0] ?? null, fictionalMinutes: ctx.fictionalMinutes }))
+        ? { aplicado: true, sucesoId: null }
+        : NO_APLICADO;
+    case 'ganarNivelNpc':
+      return (await aplicarNivelGanado(ctx.tx, { saveId: ctx.saveId, npcId: e.npcId, titulo: e.titulo })) ? { aplicado: true, sucesoId: null } : NO_APLICADO;
     case 'cambiarAprobacion':
       return (await aplicarCambioAprobacion(ctx.tx, { saveId: ctx.saveId, companionId: e.companionId, delta: e.delta, motivo: e.motivo, fictionalMinutes: ctx.fictionalMinutes })) === null
         ? NO_APLICADO

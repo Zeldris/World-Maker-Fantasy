@@ -6544,7 +6544,11 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         fictionalMinutes: nuevoFictionalMinutes,
         locationId: currentLocationId,
         origen: 'JUGADOR',
-        actores: [{ entidadTipo: 'PERSONAJE', entidadId: saveId, papel: 'VICTIMA' }],
+        actores: [
+          { entidadTipo: 'PERSONAJE', entidadId: saveId, papel: 'VICTIMA' },
+          // CR-16: quien te vence lo recuerda y sube (estilo Némesis).
+          ...(npcParaIntercambio ? [{ entidadTipo: 'NPC' as const, entidadId: npcParaIntercambio.id, papel: 'AUTOR' as const }] : []),
+        ],
         datos: { personaje: characterName, rival: npcAbilityUsed?.npcName ?? combatExchangeDisplayFinal?.rivalNombre ?? 'sus enemigos' },
       });
     }

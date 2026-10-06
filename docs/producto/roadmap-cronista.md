@@ -1557,8 +1557,16 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   15c ✅ (barra «Lo que piensa de ti» con su etiqueta en Compañeros, sin número; `aprobacion` en el
   detalle de la partida). **Cerrada.** La escena de confianza (> 80) va con «Charlar con NPC» (Fase F
   del `0.3`).
-- **CR-16** Recuerdos de NPC (§ 8.3). **S** Incluye las reacciones de CR-10: `recuerdo(testigos,
-  jugador, −6)` tras una muerte causada y `recuerdo(víctima, jugador, +5)` tras un perdón.
+- ~~**CR-16** Recuerdos de NPC (§ 8.3). **S** Incluye las reacciones de CR-10: `recuerdo(testigos,
+  jugador, −6)` tras una muerte causada y `recuerdo(víctima, jugador, +5)` tras un perdón.~~ ✅ 2026-10-06
+  (`cronista/recuerdos.ts`; modelo `Recuerdo` y `NpcState.nivelesGanados`/`titulo`, migración
+  `20261006040000_recuerdos`; efectos `anadirRecuerdo` y `ganarNivelNpc`. Recuerdan: testigos de una
+  muerte −6, perdonado +5, vencido −3, huido −4, capturado −5, ayudado +3, regalado +2, robado −4; los
+  leves se desvanecen a la mitad cada 30 días y los de importancia ≥ 6 quedan. Rencor (total < −8) →
+  te corta el paso como un agresivo en la zona (`conRencor`, colisión y marca de hostil). Superviviente
+  (huye o lo perdonas) o vencedor (`COMBATE_PERDIDO` lleva ahora al rival como autor) → +1 nivel en esta
+  partida, tope 3, y título «Superviviente de / Vencedor de <personaje>» en `NpcInScene.titulo`. Que el
+  narrador lo cuente al volver a verlo va con la Fase 6, `CR-21`/`CR-22`.)
 - **CR-17** Buscadores de historias e hilos (§ 7.4). **M**
 - **CR-42** Compañeros que cuentan lo de su tierra (`CR-18` Q9, va al `0.3` con `CR-15`): un compañero
   de una región cuenta lo que se sabe allí cuando se le pregunta. **S**
