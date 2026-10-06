@@ -413,6 +413,8 @@ describe('avanzarExpedicionesDePartida — expediciones dirigidas (CR-34 34b)', 
   });
 
   it('con hambre sale a por comida y lo comestible va a la reserva; sin hambre, sin motivo', async () => {
+    // CR-54: con el reparto de la Fase D los Serhu comen justo; aquí pierden trabajadores para pasar hambre.
+    await prisma.kingdomStats.update({ where: { factionId: serhuId }, data: { comida: 0, trabajadores: 100 } });
     await avanzarExpedicionesDePartida(prisma, worldId, saveId, DIA, () => 0.99);
     const exp = await prisma.expedicion.findFirstOrThrow({ where: { factionId: serhuId }, orderBy: { diaSalida: 'desc' } });
     expect(exp.motivo).toBe('COMIDA');
