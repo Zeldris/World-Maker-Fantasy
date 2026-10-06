@@ -2702,3 +2702,16 @@ export async function getLeyendasFicha(saveId: string, ficha: 'npc' | 'faction' 
 export async function getLeyendasEntidad(saveId: string, tipo: string, entidadId: string): Promise<{ entradas: EntradaLeyenda[] }> {
   return fetchJson(`${API_URL}/saves/${saveId}/leyendas/entidad/${encodeURIComponent(tipo)}/${encodeURIComponent(entidadId)}`)
 }
+
+/// CR-14 (hito 0.3): título ganado por el personaje, con el porqué.
+export interface EtiquetaInfo {
+  clave: string
+  texto: string
+  activa: boolean
+  desdeMinutes: number
+  porque: string | null
+}
+
+export async function getEtiquetas(saveId: string): Promise<{ etiquetas: EtiquetaInfo[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/etiquetas`)
+}

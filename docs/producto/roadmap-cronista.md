@@ -1540,13 +1540,13 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     suceso y baja la reputación con esa facción).
   - **Q9 Valores:** tabla a mano para los compañeros que ya hay (propuesta de lore para Álvaro) y
     regla por pueblo para los nuevos (orcos `lealtad_clan +2`, Nabieus `prudencia +2`…).
-- 🚧 **CR-14** Etiquetas (§ 8.1). **S** Incluye las reacciones de CR-10: etiqueta tras matar a un NPC
+- ~~**CR-14** Etiquetas (§ 8.1).~~ ✅ 2026-10-06 **S** Incluye las reacciones de CR-10: etiqueta tras matar a un NPC
   con nombre y evaluación de etiquetas por cualquier suceso del jugador como autor.
   14a ✅ 2026-10-06 (modelo `Etiqueta`, migración `20261006020000_etiquetas`; efectos
   `anadirEtiqueta`/`quitarEtiqueta` con sus sucesos `ETIQUETA_GANADA`/`ETIQUETA_PERDIDA`; reglas en
   `cronista/etiquetas.ts` como reacciones: Verdugo de, Carnicero, Cazador temido, Clemente,
   Rompejuramentos, Fundador, Salvador de; Amigo de / Enemigo de por reputación, revisadas cada día
-  en el avance diario). 14b ✅ (efectos de Q4: `bonoSocialDeEtiquetas`; Clemente +1 y Carnicero −2 al convencer a un capturado; ante un Carnicero nadie con Int ≥ 12 se deja atar; la fauna cautelosa que reconoce a un Cazador temido antes de que se acerque huye; Rompejuramentos: negociar exige un nivel de diplomático más, porque la diplomacia no tira dados). Queda: 14c ficha del Personaje.
+  en el avance diario). 14b ✅ (efectos de Q4: `bonoSocialDeEtiquetas`; Clemente +1 y Carnicero −2 al convencer a un capturado; ante un Carnicero nadie con Int ≥ 12 se deja atar; la fauna cautelosa que reconoce a un Cazador temido antes de que se acerque huye; Rompejuramentos: negociar exige un nivel de diplomático más, porque la diplomacia no tira dados). 14c ✅ (`GET /saves/:id/etiquetas` y sub-pestaña «Títulos» en Personaje, con el porqué y las perdidas tachadas). **Cerrada.**
 - **CR-15** Aprobación con valores (§ 8.2). **M**
 - **CR-16** Recuerdos de NPC (§ 8.3). **S** Incluye las reacciones de CR-10: `recuerdo(testigos,
   jugador, −6)` tras una muerte causada y `recuerdo(víctima, jugador, +5)` tras un perdón.
