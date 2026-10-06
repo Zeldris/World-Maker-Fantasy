@@ -78,8 +78,10 @@ export function muertesDelDia(c: CuentaFaccion, diasHambre: number, diasSed: num
 export function sueldosDelDia(
   s: { riqueza: number; felicidad: number; diasSinCobrar: number; trabajadores: number; soldados: number },
   dia: number,
+  /// CR-58: Goirnos del desgaste semanal del equipo que la facción no fabrica.
+  equipoSemana = 0,
 ): { riqueza: number; felicidad: number; diasSinCobrar: number; desertores: number } {
-  const total = s.trabajadores * 2 + s.soldados * 5;
+  const total = s.trabajadores * 2 + s.soldados * 5 + equipoSemana;
   const tocaPagar = dia % 7 === 0;
   if ((tocaPagar || s.diasSinCobrar > 0) && s.riqueza >= total) return { riqueza: s.riqueza - total, felicidad: s.felicidad, diasSinCobrar: 0, desertores: 0 };
   if (!tocaPagar && s.diasSinCobrar === 0) return { riqueza: s.riqueza, felicidad: s.felicidad, diasSinCobrar: 0, desertores: 0 };
@@ -182,4 +184,10 @@ export async function revisarExtinciones(tx: Tx, saveId: string, ahora: number, 
     refundadas.push(slug);
   }
   return { extintas, refundadas };
+}
+
+/// CR-58: familia de taller de un edificio de facción (su `kind` es el oficio: `herrero-orcos-llanuras`).
+const TALLER_DE_OFICIO: Record<string, string> = { herrero: 'herreria', peletero: 'peleteria', sastre: 'sastreria', curtidor: 'curtiduria', carpintero: 'carpinteria' };
+export function talleresDeFaccion(kinds: string[]): Set<string> {
+  return new Set(kinds.map((k) => TALLER_DE_OFICIO[k.split('-')[0]!]).filter((t): t is string => !!t));
 }

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
-import { esMaterial, huecoDeMateriales, resumenEconomia, revisarSueldos, suministrosDelReino, traspasarGoirnos } from './economiaReino.js';
+import { equiparAlta, esMaterial, huecoDeMateriales, resumenEconomia, revisarSueldos, suministrosDelReino, traspasarGoirnos } from './economiaReino.js';
 import { crearSubdito } from './subditos.js';
 
 describe('economía del Reino (CR-53) — en una partida', () => {
@@ -50,7 +50,8 @@ describe('economía del Reino (CR-53) — en una partida', () => {
     await prisma.$transaction((tx) => recalcularPoblacion(tx, saveId, 0));
     const DIA = 1440;
     expect(await prisma.$transaction((tx) => revisarSueldos(tx, saveId, 0))).toEqual({ pagado: 5, desertor: null });
-    expect((await prisma.kingdomStats.findUniqueOrThrow({ where: { ownerKey } })).riqueza).toBe(15);
+    // CR-58: con el sueldo, el desgaste de su arma y su armadura (3 + 2, sin taller: se compran).
+    expect((await prisma.kingdomStats.findUniqueOrThrow({ where: { ownerKey } })).riqueza).toBe(10);
     // A mitad de semana no se paga nada.
     expect((await prisma.$transaction((tx) => revisarSueldos(tx, saveId, 3 * DIA))).pagado).toBe(0);
     await prisma.kingdomStats.update({ where: { ownerKey }, data: { riqueza: 0 } });
@@ -67,5 +68,20 @@ describe('economía del Reino (CR-53) — en una partida', () => {
     expect((await prisma.$transaction((tx) => traspasarGoirnos(tx, saveId, -40))).ok).toBe(false);
     expect(await prisma.$transaction((tx) => traspasarGoirnos(tx, saveId, -5))).toEqual({ ok: true, bolsa: 10, tesoro: 20 });
     expect(await resumenEconomia(prisma, saveId)).toMatchObject({ topeMateriales: 180, materiales: 60, tesoro: 20, bolsa: 10, sueldosSemana: 0 });
+  });
+
+  it('factura de equipo (CR-58): con Herrería y trabajador, el arma se hace en casa con materiales; la armadura se compra', async () => {
+    const ownerKey = `save:${saveId}`;
+    const herreria = await edificio('herreria');
+    await prisma.companion.create({ data: { saveId, name: 'Herrera', role: 'x', notes: 'x', buildingId: herreria.id } });
+    await prisma.kingdomStats.update({ where: { ownerKey }, data: { riqueza: 100, sinArma: 0, sinHerramienta: 0 } });
+    const materialesAntes = 180 - (await huecoDeMateriales(prisma, saveId));
+    expect(await prisma.$transaction((tx) => equiparAlta(tx, saveId, 'soldado'))).toBe(true);
+    expect((await prisma.kingdomStats.findUniqueOrThrow({ where: { ownerKey } })).riqueza).toBe(100 - 16);
+    expect(180 - (await huecoDeMateriales(prisma, saveId))).toBe(materialesAntes - 2);
+    // Sin Goirnos para la armadura: entra sin equipo.
+    await prisma.kingdomStats.update({ where: { ownerKey }, data: { riqueza: 0 } });
+    expect(await prisma.$transaction((tx) => equiparAlta(tx, saveId, 'soldado'))).toBe(false);
+    expect((await prisma.kingdomStats.findUniqueOrThrow({ where: { ownerKey } })).sinArma).toBe(1);
   });
 });

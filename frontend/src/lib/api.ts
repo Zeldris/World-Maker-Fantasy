@@ -1585,6 +1585,11 @@ export interface EconomiaReino {
   topeMateriales: number
   materiales: number
   sueldosSemana: number
+  /// CR-58: desgaste semanal del equipo y lo que falta.
+  equipoGoirnos?: number
+  equipoMateriales?: number
+  sinHerramienta?: number
+  sinArma?: number
   tesoro: number
   bolsa: number
   diasSinCobrar: number

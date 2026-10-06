@@ -1802,6 +1802,9 @@ model KingdomStats {
   /// CR-53 53c: último pago de sueldos (minuto de ficción) y días seguidos sin poder pagarlos.
   ultimoPagoSueldos   Int?
   diasSinCobrar       Int      @default(0)
+  /// CR-58: trabajadores sin herramienta (producen la mitad) y soldados sin arma (medio en la defensa).
+  sinHerramienta      Int      @default(0)
+  sinArma             Int      @default(0)
   /// CR-34 (Q6): último día de ficción en que la facción revisó su situación para decidir (null =
   /// nunca). Solo facciones del mundo de la partida; el Reino de la jugadora no lo usa.
   ultimaRevision      Int?

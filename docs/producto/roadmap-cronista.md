@@ -1659,7 +1659,17 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   sus filas de población (antes la madre las recuperaba en la sincronización diaria).
   Extinción con población 0; refundación tras un año si su pueblo conserva más de 50 en la región.
   Enciende la hambruna de facción apagada en `CR-12`. **M**
-- **CR-58** Factura de equipo (Fase D, Q25-Q27).
+- ~~**CR-58** Factura de equipo (Fase D, Q25-Q27).~~ ✅ 2026-10-06 (`cronista/facturaEquipo.ts`).
+  - Reino: al acoger a alguien se paga su herramienta, y al pasarlo a soldado o vigía su arma y su armadura.
+    El desgaste semanal se paga con los sueldos y se repone lo roto si alcanza. Sin pagar, se rompe 1/4 de
+    las herramientas y 1/6 de las armas (`KingdomStats.sinHerramienta`/`sinArma`, migración
+    `20261006140000_factura_equipo`).
+  - Sin herramienta se produce la mitad; los soldados sin arma quedan contados para la defensa (Fase E).
+  - Con Herrería, Peletería, Sastrería, Curtiduría o Carpintería con trabajador, se fabrica en casa (1
+    material por cada 5 Goirnos de valor, a la mitad).
+  - Facciones: pagan en Goirnos el desgaste de lo que sus talleres no fabrican.
+  - Visión general muestra el equipo de la semana y los avisos de equipo roto.
+  - Cifras derivadas por Claude: la conversión a materiales y la rotura.
   - Alta y desgaste semanal de herramientas, armas y armaduras para el Reino y las facciones.
   - El equipo se fabrica en el taller propio (materiales a la mitad de su valor) o se compra a precio
     de mercado.

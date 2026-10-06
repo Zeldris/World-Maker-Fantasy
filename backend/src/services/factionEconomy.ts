@@ -3,7 +3,8 @@ import { CRAFTING_RECIPES, type CraftingRecipe } from './crafting.js';
 import { daysCrossed, hambrunaNueva, tickFactionProduction, tickKingdomOneDay, type KingdomStatsBlock } from './kingdomTick.js';
 import { decayPresion, stageForPresion, typeForPresion } from './factionRelations.js';
 import { registrarHambruna } from './cronista/hambruna.js';
-import { AGUA_FUENTE_FACCION, aplicarBajasDeFaccion, muertesDelDia, repartirMuertes, sueldosDelDia } from './cronista/economiaFacciones.js';
+import { AGUA_FUENTE_FACCION, aplicarBajasDeFaccion, muertesDelDia, repartirMuertes, sueldosDelDia, talleresDeFaccion } from './cronista/economiaFacciones.js';
+import { costeDePiezas, desgasteSemanal, piezasEnCasa } from './cronista/facturaEquipo.js';
 
 /// Economía de facción (Fase 4 del plan oct-2026: H-6, H-2, H-4). Corre sobre las facciones del mundo
 /// de cada partida, en su avance diario (`avanceDiario.ts`, CR-7), con el reloj de esa partida; el
@@ -116,12 +117,14 @@ export async function producirFacciones(
       };
       // CR-54 (54b): sueldos semanales, deserción y muertes de hambre y sed, día a día.
       let diasSinCobrar = fks.diasSinCobrar;
+      // CR-58: lo que sus talleres no fabrican lo compra (en agregado, los materiales propios no cuentan).
+      const enCasa = piezasEnCasa(talleresDeFaccion(edificios.map((b) => b.kind)));
       let desertores = 0;
       let muertos = 0;
       for (let i = 0; i < pendientes; i++) {
         const dia = diaActual - pendientes + 1 + i;
         stats = tickFactionOneDay(stats, porDia);
-        const pago = sueldosDelDia({ ...stats, diasSinCobrar }, dia);
+        const pago = sueldosDelDia({ ...stats, diasSinCobrar }, dia, costeDePiezas(desgasteSemanal(stats), enCasa).goirnos);
         stats = { ...stats, riqueza: pago.riqueza, felicidad: pago.felicidad };
         diasSinCobrar = pago.diasSinCobrar;
         if (!hambruna) continue;

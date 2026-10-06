@@ -34,11 +34,16 @@ export async function advanceKingdomStatsDay(
     const { poblacion, felicidad, comida, bebida, riqueza, soldados, trabajadores, visitantes, diasFelicidadAlta, diasFelicidadBaja, diasHambre, diasSed } = kingdomStats;
     // CR-53: agua de pozos y fuente natural, y topes del almacén.
     const suministros = await suministrosDelReino(tx, saveId);
-    const ticked = tickKingdom(
-      { poblacion, felicidad, comida, bebida, riqueza, soldados, trabajadores, visitantes, diasFelicidadAlta, diasFelicidadBaja, diasHambre, diasSed },
-      diasCruzados,
-      suministros,
-    );
+    // CR-58 (Q27): un trabajador sin herramienta produce la mitad.
+    const trabajadoresEfectivos = Math.max(0, trabajadores - Math.ceil((kingdomStats.sinHerramienta ?? 0) / 2));
+    const ticked = {
+      ...tickKingdom(
+        { poblacion, felicidad, comida, bebida, riqueza, soldados, trabajadores: trabajadoresEfectivos, visitantes, diasFelicidadAlta, diasFelicidadBaja, diasHambre, diasSed },
+        diasCruzados,
+        suministros,
+      ),
+      trabajadores,
+    };
     await tx.kingdomStats.update({ where: { ownerKey: ownerKeyFor({ saveId }) }, data: ticked });
     // CR-12 (12c): 3 días seguidos de hambre → HAMBRUNA en el Libro (la reacción baja la cohesión).
     if (hambrunaNueva(diasHambre, ticked.diasHambre ?? 0, diasCruzados)) await registrarHambruna(tx, saveId, 'REINO_JUGADORA');

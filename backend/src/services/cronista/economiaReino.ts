@@ -8,6 +8,7 @@ import { locationTerrainTags } from '../../scripts/worldCatalog.js';
 import { ownerKeyFor } from '../reinoOwner.js';
 import { volverASuPueblo } from './salidas.js';
 import { recalcularPoblacion, rolDeSubdito } from './subditos.js';
+import { costeDePiezas, desgasteSemanal, EQUIPO, equipoDeAlta, gastarMateriales, piezasEnCasa, roturaSinPagar, talleresDelReino } from './facturaEquipo.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -93,6 +94,8 @@ export async function revisarSueldos(tx: Tx, saveId: string, ahora: number): Pro
   const tocaPagar = k.ultimoPagoSueldos == null || ahora - k.ultimoPagoSueldos >= SEMANA;
   if ((tocaPagar || k.diasSinCobrar > 0) && total > 0 && k.riqueza >= total) {
     await tx.kingdomStats.update({ where: { ownerKey }, data: { riqueza: { decrement: total }, ultimoPagoSueldos: ahora, diasSinCobrar: 0 } });
+    // CR-58: con los sueldos, el desgaste del equipo (y reponer lo roto, si alcanza).
+    await liquidarEquipo(tx, saveId, k);
     return { pagado: total, desertor: null };
   }
   if (tocaPagar && total === 0) {
@@ -100,7 +103,8 @@ export async function revisarSueldos(tx: Tx, saveId: string, ahora: number): Pro
     return { pagado: 0, desertor: null };
   }
   if (!tocaPagar && k.diasSinCobrar === 0) return { pagado: 0, desertor: null };
-  // No alcanza: un día más sin cobrar.
+  // No alcanza: un día más sin cobrar, y el equipo de esta semana se gasta sin reponer (CR-58).
+  if (tocaPagar) await romperEquipo(tx, saveId, k);
   const dias = k.diasSinCobrar + 1;
   await tx.kingdomStats.update({
     where: { ownerKey },
@@ -138,7 +142,7 @@ export async function resumenEconomia(tx: Tx, saveId: string) {
   const [sum, hueco, k, save] = await Promise.all([
     suministrosDelReino(tx, saveId),
     huecoDeMateriales(tx, saveId),
-    tx.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId }) }, select: { trabajadores: true, soldados: true, poblacion: true, visitantes: true, riqueza: true, diasSinCobrar: true, diasSed: true, diasHambre: true } }),
+    tx.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId }) }, select: { trabajadores: true, soldados: true, poblacion: true, visitantes: true, riqueza: true, diasSinCobrar: true, diasSed: true, diasHambre: true, sinHerramienta: true, sinArma: true } }),
     tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { goirnos: true } }),
   ]);
   return {
@@ -149,10 +153,72 @@ export async function resumenEconomia(tx: Tx, saveId: string) {
     topeMateriales: sum.topeMateriales,
     materiales: sum.topeMateriales - hueco,
     sueldosSemana: k ? sueldosSemana(k) : 0,
+    // CR-58: el desgaste del equipo de la semana (Goirnos lo comprado, materiales lo hecho en casa).
+    ...(await (async () => {
+      const equipo = k ? costeDePiezas(desgasteSemanal(k), piezasEnCasa(await talleresDelReino(tx, saveId))) : { goirnos: 0, materiales: 0 };
+      return { equipoGoirnos: equipo.goirnos, equipoMateriales: equipo.materiales };
+    })()),
+    sinHerramienta: k?.sinHerramienta ?? 0,
+    sinArma: k?.sinArma ?? 0,
     tesoro: k?.riqueza ?? 0,
     bolsa: save.goirnos,
     diasSinCobrar: k?.diasSinCobrar ?? 0,
     diasSed: k?.diasSed ?? 0,
     diasHambre: k?.diasHambre ?? 0,
   };
+}
+
+// ─────────────────────────── CR-58: el equipo en la factura ───────────────────────────
+
+/// Paga el desgaste semanal del equipo (Goirnos lo comprado, materiales lo hecho en casa) y repone lo
+/// roto si alcanza. Si no se puede pagar el desgaste, se rompe la parte de esa semana.
+export async function liquidarEquipo(tx: Tx, saveId: string, c: { trabajadores: number; soldados: number }): Promise<{ goirnos: number; materiales: number; pagado: boolean }> {
+  const ownerKey = ownerKeyFor({ saveId });
+  const enCasa = piezasEnCasa(await talleresDelReino(tx, saveId));
+  const coste = costeDePiezas(desgasteSemanal(c), enCasa);
+  const k = await tx.kingdomStats.findUniqueOrThrow({ where: { ownerKey }, select: { riqueza: true, sinHerramienta: true, sinArma: true } });
+  if (k.riqueza < coste.goirnos || !(await gastarMateriales(tx, saveId, coste.materiales))) {
+    await romperEquipo(tx, saveId, c);
+    return { ...coste, pagado: false };
+  }
+  let riqueza = k.riqueza - coste.goirnos;
+  let { sinHerramienta, sinArma } = k;
+  // Reponer: primero las armas (la defensa), luego las herramientas.
+  for (const [pieza, falta] of [['arma', sinArma], ['herramienta', sinHerramienta]] as const) {
+    if (falta <= 0) continue;
+    const piezas = pieza === 'arma' ? { arma: falta * EQUIPO.arma.valor, armadura: falta * EQUIPO.armadura.valor } : { herramienta: falta * EQUIPO.herramienta.valor };
+    const r = costeDePiezas(piezas, enCasa);
+    if (riqueza < r.goirnos || !(await gastarMateriales(tx, saveId, r.materiales))) continue;
+    riqueza -= r.goirnos;
+    if (pieza === 'arma') sinArma = 0;
+    else sinHerramienta = 0;
+  }
+  await tx.kingdomStats.update({ where: { ownerKey }, data: { riqueza, sinHerramienta, sinArma } });
+  return { ...coste, pagado: true };
+}
+
+/// Una semana sin pagar el desgaste: se rompe 1/4 de las herramientas y 1/6 de las armas.
+async function romperEquipo(tx: Tx, saveId: string, c: { trabajadores: number; soldados: number }): Promise<void> {
+  const ownerKey = ownerKeyFor({ saveId });
+  const k = await tx.kingdomStats.findUniqueOrThrow({ where: { ownerKey }, select: { sinHerramienta: true, sinArma: true } });
+  const r = roturaSinPagar(c);
+  await tx.kingdomStats.update({
+    where: { ownerKey },
+    data: { sinHerramienta: Math.min(c.trabajadores, k.sinHerramienta + r.sinHerramienta), sinArma: Math.min(c.soldados, k.sinArma + r.sinArma) },
+  });
+}
+
+/// El equipo de alta de alguien que entra en un rol (acogido como trabajador, o pasado a soldado o
+/// vigía). Si no se puede pagar, entra sin él.
+export async function equiparAlta(tx: Tx, saveId: string, rol: 'trabajador' | 'soldado'): Promise<boolean> {
+  const ownerKey = ownerKeyFor({ saveId });
+  const k = await tx.kingdomStats.findUnique({ where: { ownerKey }, select: { riqueza: true } });
+  if (!k) return false;
+  const coste = costeDePiezas(equipoDeAlta(rol), piezasEnCasa(await talleresDelReino(tx, saveId)));
+  if (k.riqueza >= coste.goirnos && (await gastarMateriales(tx, saveId, coste.materiales))) {
+    await tx.kingdomStats.update({ where: { ownerKey }, data: { riqueza: { decrement: coste.goirnos } } });
+    return true;
+  }
+  await tx.kingdomStats.update({ where: { ownerKey }, data: rol === 'trabajador' ? { sinHerramienta: { increment: 1 } } : { sinArma: { increment: 1 } } });
+  return false;
 }

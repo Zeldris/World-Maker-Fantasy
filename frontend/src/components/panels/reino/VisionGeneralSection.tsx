@@ -324,6 +324,11 @@ function SuministrosReino({ saveId, version, onRefreshSave }: { saveId: string; 
       {fila('Agua al día', `+${eco.aguaDia} / −${eco.bocas}`, 'Lo que dan los Pozos y la fuente natural frente a lo que beben las bocas del Reino.')}
       {fila('Almacén', `comida ${eco.topeComida} · agua ${eco.topeBebida} · materiales ${eco.materiales}/${eco.topeMateriales}`, 'Topes del almacén: el Ayuntamiento da 60 de cada; Granero, Cisterna y Leñera suman 120. Lo que no cabe se pierde.')}
       {fila('Sueldos a la semana', `${eco.sueldosSemana} Goirnos`, '2 por trabajador y 5 por soldado o vigía. Se pagan del tesoro.')}
+      {fila(
+        'Equipo a la semana',
+        `${eco.equipoGoirnos ?? 0} Goirnos${eco.equipoMateriales ? ` + ${eco.equipoMateriales} materiales` : ''}`,
+        'Desgaste de herramientas (duran 4 semanas), armas (6) y armaduras (8). Con Herrería, Peletería o Sastrería con trabajador se fabrican en casa con materiales; si no, se compran. Si no se paga, se rompe parte del equipo.',
+      )}
       {fila('Tesoro / tu bolsa', `${eco.tesoro} / ${eco.bolsa} Goirnos`, 'El tesoro del Reino y lo que llevas tú encima.')}
       <div className="mt-1 flex items-center gap-2">
         <input

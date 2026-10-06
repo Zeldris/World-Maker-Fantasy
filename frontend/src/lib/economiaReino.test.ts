@@ -15,4 +15,10 @@ describe('avisos de la economía del Reino (CR-53)', () => {
       'Entra menos agua de la que se bebe: construye un Pozo.',
     ])
   })
+  it('equipo roto (CR-58)', () => {
+    expect(avisosDeEconomia({ ...base, sinHerramienta: 1, sinArma: 3 })).toEqual([
+      '1 trabajador sin herramienta: producen la mitad.',
+      '3 soldados sin arma: cuentan la mitad en la defensa.',
+    ])
+  })
 })
