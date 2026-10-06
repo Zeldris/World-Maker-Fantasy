@@ -144,10 +144,12 @@ async function rangoDe(tx: Tx, saveId: string, npcId: string): Promise<number> {
 /// funda uno (Q11). Un rastro faerus de más de 12 hace que la pareja funde uno nuevo (Q13).
 export async function linajeParaNacido(
   tx: Tx,
-  p: { saveId: string; pueblo: string; madreId: string; padreId: string; ahora: number; random: () => number },
+  p: { saveId: string; pueblo: string; madreId: string; padreId: string; ahora: number; random: () => number; entidadTipo?: 'NPC' | 'SUBDITO' },
 ): Promise<{ id: string; nombre: string; tipo: string }> {
-  const [lm, lp] = await Promise.all([linajeDe(tx, p.saveId, 'NPC', p.madreId), linajeDe(tx, p.saveId, 'NPC', p.padreId)]);
-  const [rm, rp] = await Promise.all([rangoDe(tx, p.saveId, p.madreId), rangoDe(tx, p.saveId, p.padreId)]);
+  // REI-120: también para las crías de súbditos (sin cargo: rango 0, a igualdad manda la madre).
+  const tipo = p.entidadTipo ?? 'NPC';
+  const [lm, lp] = await Promise.all([linajeDe(tx, p.saveId, tipo, p.madreId), linajeDe(tx, p.saveId, tipo, p.padreId)]);
+  const [rm, rp] = tipo === 'NPC' ? await Promise.all([rangoDe(tx, p.saveId, p.madreId), rangoDe(tx, p.saveId, p.padreId)]) : [0, 0];
   let id = linajeDeCria(p.pueblo, { linajeId: lm?.id ?? null, rango: rm }, { linajeId: lp?.id ?? null, rango: rp });
   if (id && p.pueblo === 'faerus' && (await tx.linajeMiembro.count({ where: { linajeId: id } })) >= TAMANO_PARA_ESCINDIR_RASTRO) id = null;
   if (id) {
@@ -156,7 +158,7 @@ export async function linajeParaNacido(
   }
   const nuevo = await fundarLinaje(tx, { saveId: p.saveId, pueblo: p.pueblo, desdeMinutes: p.ahora, random: p.random });
   for (const padre of [p.madreId, p.padreId]) {
-    if (!(await linajeDe(tx, p.saveId, 'NPC', padre))) await unirALinaje(tx, { saveId: p.saveId, linajeId: nuevo.id, entidadTipo: 'NPC', entidadId: padre, desdeMinutes: p.ahora });
+    if (!(await linajeDe(tx, p.saveId, tipo, padre))) await unirALinaje(tx, { saveId: p.saveId, linajeId: nuevo.id, entidadTipo: tipo, entidadId: padre, desdeMinutes: p.ahora });
   }
   return { id: nuevo.id, nombre: nuevo.nombre, tipo: nuevo.tipo };
 }

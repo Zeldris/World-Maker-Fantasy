@@ -167,10 +167,12 @@ export async function datosDeSubditos(tx: Tx, saveId: string, ahora: number, ids
   const subditos = await tx.subject.findMany({ where: ids ? { saveId, id: { in: ids } } : { saveId, estado: 'ACTIVO' }, orderBy: { createdAt: 'asc' } });
   const miembros = await tx.linajeMiembro.findMany({ where: { saveId, entidadTipo: 'SUBDITO', entidadId: { in: subditos.map((s) => s.id) } }, select: { entidadId: true, linaje: { select: { nombre: true, tipo: true } } } });
   const linajePor = new Map(miembros.map((m) => [m.entidadId, m.linaje]));
+  const nombrePor = new Map((await tx.subject.findMany({ where: { saveId, id: { in: subditos.map((s) => s.parejaId).filter((x): x is string => !!x) } }, select: { id: true, name: true } })).map((x) => [x.id, x.name]));
   return subditos.map((s) => ({
     id: s.id, name: s.name, role: s.role, rol: rolDeSubdito(s.role), pueblo: s.pueblo, genero: s.genero,
     edad: s.nacidoEn == null ? null : edadEnAnios(s.nacidoEn, ahora), adulto: esAdultoSubdito(s, ahora),
     felicidad: s.felicidad, origen: s.origen, territoryId: s.territoryId, linaje: linajePor.get(s.id) ?? null,
+    pareja: s.parejaId ? nombrePor.get(s.parejaId) ?? null : null, crias: s.crias,
   }));
 }
 

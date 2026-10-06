@@ -437,6 +437,12 @@ function SubditosLista({ saveId, subjects, plantillasEquipo, onRefreshSave }: { 
                 <div>
                   <p className="font-medium text-wood-100">{s.name}</p>
                   <p className="text-2xs text-wood-400">{lineaDeSubdito(s) || s.role}</p>
+                  {s.pareja && (
+                    <p className="text-2xs text-wood-400">
+                      Pareja de {s.pareja}
+                      {s.crias ? ` · ${s.crias} cría${s.crias === 1 ? '' : 's'}` : ''}
+                    </p>
+                  )}
                 </div>
                 {s.rol === 'visitante' ? (
                   <span className="text-2xs text-wood-500">de paso</span>

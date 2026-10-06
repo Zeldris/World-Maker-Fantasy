@@ -62,13 +62,14 @@ type FilaConocimiento = { via: ViaConocimiento; confirmado: boolean; desde: numb
 async function nombres(prisma: PrismaClient, saveId: string, sucesos: SucesoLeyenda[]): Promise<(tipo: string, id: string) => string> {
   const ids = (tipo: string) => [...new Set(sucesos.flatMap((s) => s.actores.filter((a) => a.entidadTipo === tipo).map((a) => a.entidadId)))];
   const lugares = [...new Set([...ids('LOCATION'), ...sucesos.map((s) => s.locationId).filter((l): l is string => !!l)])];
-  const [save, npcs, facciones, locs, companeros, linajes] = await Promise.all([
+  const [save, npcs, facciones, locs, companeros, linajes, subditos] = await Promise.all([
     prisma.save.findUnique({ where: { id: saveId }, select: { characterName: true } }),
     ids('NPC').length ? prisma.npc.findMany({ where: { id: { in: ids('NPC') } }, select: { id: true, name: true } }) : [],
     ids('FACCION').length ? prisma.faction.findMany({ where: { saveId, slug: { in: ids('FACCION') } }, select: { slug: true, name: true } }) : [],
     lugares.length ? prisma.location.findMany({ where: { id: { in: lugares } }, select: { id: true, name: true } }) : [],
     ids('COMPANERO').length ? prisma.companion.findMany({ where: { id: { in: ids('COMPANERO') } }, select: { id: true, name: true } }) : [],
     ids('LINAJE').length ? prisma.linaje.findMany({ where: { id: { in: ids('LINAJE') } }, select: { id: true, nombre: true, tipo: true } }) : [],
+    ids('SUBDITO').length ? prisma.subject.findMany({ where: { id: { in: ids('SUBDITO') } }, select: { id: true, name: true } }) : [],
   ]);
   const mapa = new Map<string, string>([
     ...npcs.map((n) => [`NPC|${n.id}`, n.name] as const),
@@ -76,6 +77,7 @@ async function nombres(prisma: PrismaClient, saveId: string, sucesos: SucesoLeye
     ...locs.map((l) => [`LOCATION|${l.id}`, l.name] as const),
     ...companeros.map((c) => [`COMPANERO|${c.id}`, c.name] as const),
     ...linajes.map((l) => [`LINAJE|${l.id}`, l.tipo === 'RASTRO' ? `rastro ${l.nombre}` : `los ${l.nombre}`] as const),
+    ...subditos.map((x) => [`SUBDITO|${x.id}`, x.name] as const),
   ]);
   return (tipo, id) => {
     if (tipo === 'PERSONAJE') return save?.characterName ?? 'Tú';

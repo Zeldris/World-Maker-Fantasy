@@ -1590,6 +1590,9 @@ export interface SubditoInfo {
   origen: string
   territoryId: string | null
   linaje: { nombre: string; tipo: string } | null
+  /// REI-120: nombre de su pareja (si tiene) y crías que han tenido.
+  pareja?: string | null
+  crias?: number
 }
 
 export interface CamasReino {

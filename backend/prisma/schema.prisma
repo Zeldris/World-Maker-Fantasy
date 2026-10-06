@@ -1793,6 +1793,8 @@ model KingdomStats {
   diasHambre          Int      @default(0)
   /// REI-119: minuto de ficción en que llegó el último candidato a súbdito (una llegada por semana).
   ultimaLlegada       Int?
+  /// REI-120: última semana (minuto de ficción) en que se revisaron parejas y crías.
+  ultimaRevisionFamilias Int?
   /// CR-34 (Q6): último día de ficción en que la facción revisó su situación para decidir (null =
   /// nunca). Solo facciones del mundo de la partida; el Reino de la jugadora no lo usa.
   ultimaRevision      Int?
@@ -2249,6 +2251,9 @@ model Subject {
   hastaMinutes Int?
   /// REI-119: fila de `WorldPopulation` de la que salió quien llegó (vuelve a ella si se va).
   poblacionOrigenId String?
+  /// REI-120: su pareja (otro súbdito) y cuántas crías han tenido juntos.
+  parejaId     String?
+  crias        Int        @default(0)
 
   /// Plantilla de equipo asignada (docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md § 7) — null = sin
   /// auto-equipo, este súbdito no recibe nada del Almacén de Reino automáticamente.

@@ -75,7 +75,7 @@ describe('SubditosSection — súbditos (REI-118)', () => {
 
   it('las camas compartidas, el rol de un adulto se cambia y una cría no tiene rol', async () => {
     vi.mocked(getSubditos).mockResolvedValue({
-      subditos: [sub({ id: 'a' }), sub({ id: 'b', name: 'Doru Ketg', edad: 1, adulto: false })],
+      subditos: [sub({ id: 'a', pareja: 'Grosh Ketg', crias: 1 }), sub({ id: 'b', name: 'Doru Ketg', edad: 1, adulto: false })],
       camas: { total: 4, companeros: 1, subditos: 2, libres: 1 },
     })
     const { findByText, getByRole, getByText } = render(
@@ -83,6 +83,7 @@ describe('SubditosSection — súbditos (REI-118)', () => {
     )
     expect(await findByText('Camas: 3/4 (2 súbditos, 1 compañero)')).toBeTruthy()
     expect(getByText('cría')).toBeTruthy()
+    expect(getByText('Pareja de Grosh Ketg · 1 cría')).toBeTruthy()
     fireEvent.click(getByRole('button', { name: 'Rol de Brakka Ketg' }))
     await act(async () => {
       fireEvent.click(getByRole('option', { name: /Soldado/ }))
