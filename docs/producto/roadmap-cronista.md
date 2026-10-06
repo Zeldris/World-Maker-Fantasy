@@ -1630,6 +1630,37 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     de supervivencia (pregunta 5 a Álvaro).
 - **CR-38** La disposición de una facción la da su líder (`CR-34` Q5): un rasgo del NPC que cambia con
   la sucesión de `CR-11`. **S**
+- **CR-53** Economía de supervivencia del Reino (Fase D del `0.3`; números decididos por la usuaria el
+  2026-10-06, Q1-Q6 en `plan-roadmap-0.3.md`). **L**
+  - Agua: 1 por boca al día; Pozo 12 al día; fuente natural 20 al día.
+  - Almacén con tope: Ayuntamiento 60 + 60; Granero, Cisterna y Leñera, 120 cada uno.
+  - Tesoro en Goirnos (la riqueza del Reino) con traspasos a la bolsa del personaje.
+  - Sueldos semanales (trabajador 2, soldado y vigía 5); sin Goirnos, −3 de felicidad al día y, tras 7
+    días, un desertor por semana.
+  - Hambre y sed: sustituye a los números provisionales de `REI-121`.
+- **CR-54** Economía de supervivencia de las facciones (Q7-Q8): las mismas cifras en agregado.
+  Extinción con población 0; refundación tras un año si su pueblo conserva más de 50 en la región.
+  Enciende la hambruna de facción apagada en `CR-12`. **M**
+- **CR-55** Ganadería (Q9, Q11, Q13).
+  - Oficio de ganadero por raza y región.
+  - Corral por especie: 6, 12 o 20 plazas.
+  - Una cría por semana con macho y hembra.
+  - Forraje para herbívoros, carne cada 2 días para carnívoros y agua para todos.
+  - Fibrería: estación sin oficio que da 10 de forraje al día.
+  - Producción de Múrgol, Corretolvas y Coracelo; sacrificio con la cadena del desollador.
+  - El Corredor de Cauce nunca. **L**
+- **CR-56** Usos de la fauna (Q10, Q12).
+  - Ficha de cada especie: producción, guardia, compañero de Domador y porte.
+  - Animales de guardia en el corral, contados como defensa del Reino (fuerza en la Fase E).
+  - Como compañeros de quien tenga especialidad de Domador. **M**
+- **CR-57** Monturas (Q14, hito `0.4`).
+  - Porte de cada especie y talla de cada pueblo (provisionales, en `propuestas-lore.md`).
+  - Montable si mide ≥ 60 % de la altura del jinete y pesa ≥ 3 veces lo que el jinete con su equipo,
+    con lomo.
+  - Velocidad de viaje y carga.
+  - Un Faerus del Margen viaja a pie tan rápido como montado (lore de la usuaria: montar es
+    costumbre de los Faerus de las Llanuras).
+  - Resuelve la duda del viaje largo del `0.4`. **L**
 - **Hecho cuando:** matar al hermano de un NPC abre un hilo de venganza y el vengador aparece;
   un compañero se queja y acaba yéndose si se le contraría repetidamente.
 
