@@ -89,4 +89,23 @@ describe('Ganado del Reino: al corral y forraje (CR-55 55c)', () => {
     // Sin Granero: tope 60, menos 20 de comida y 6 de forraje.
     expect((await app.inject({ method: 'GET', url: `/saves/${saveId}/corrales` })).json().huecoForraje).toBe(34);
   });
+
+  it('sacrificar un Múrgol adulto: la carne a la comida y, sin Desolladero, el hueso a la mitad', async () => {
+    const app = await buildApp();
+    const animal = await prisma.ganado.findFirstOrThrow({ where: { saveId, especie: 'murgol' } });
+    const antes = (await prisma.kingdomStats.findUniqueOrThrow({ where: { ownerKey: ownerKeyFor({ saveId }) } })).comida;
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/ganado/${animal.id}/sacrificar` });
+    expect(res.statusCode).toBe(200);
+    // 3 raciones de carne (10 de curaHambre cada una) = 3 de comida; 4 huesos → 2; la lana (1) → 0.
+    expect(res.json()).toMatchObject({ comida: 3, almacen: { 'hueso-ligero': 2 } });
+    expect((await prisma.kingdomStats.findUniqueOrThrow({ where: { ownerKey: ownerKeyFor({ saveId }) } })).comida).toBe(antes + 3);
+    expect(await prisma.ganado.findUnique({ where: { id: animal.id } })).toBeNull();
+  });
+
+  it('una cría no se puede sacrificar', async () => {
+    const cria = await prisma.ganado.create({ data: { saveId, buildingId: corralId, especie: 'murgol', sexo: 'F', nacidoEn: 10 * 1440 - 5 * 1440 } });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/ganado/${cria.id}/sacrificar` });
+    expect(res.statusCode).toBe(400);
+  });
 });

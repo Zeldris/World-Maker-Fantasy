@@ -1706,7 +1706,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   - ~~55b~~ ✅ 2026-10-06: oficio `domador-…` → `ganadero-…` (migración `20261006160000_oficio_ganadero`: progreso, maestros, expediciones y edificios), receta «Corrales del Ganadero». El edificio de catálogo Serhu conserva su nombre canónico («Corrales del Domador»), pregunta a Álvaro.
   - ~~55c~~ ✅ 2026-10-06: modelo `Ganado` y forraje en `KingdomStats` (migración `20261006170000_ganado`), «Al corral» al domesticar (`/tameo-pendientes/:npcSlug/al-corral`; la especie se puede volver a capturar), receta de la Fibrería, `GET /saves/:id/corrales` y entrega de pastos (`/forraje/entregar`). En el Reino, ganaderos y fibreros son compañeros asignados al edificio (nunca contaron en la comida pasiva, que sale de los súbditos).
   - ~~55d~~ ✅ 2026-10-06: `avanzarGanadoReino` en el avance diario (forraje de Fibrerías; comen y beben de las reservas; producción con ganadero; la leche a la comida por su valor y la lana y las plumas al Almacén; cría semanal; muertes por hambre, sed y vejez). La orden fija de leche desaparece (migración `20261006171000_sin_orden_leche`); Cuajada con `curaHambre` 12.
-  - 55e: «Sacrificar».
+  - ~~55e~~ ✅ 2026-10-06: «Sacrificar» (`POST /saves/:id/ganado/:ganadoId/sacrificar`): lo de desollar la especie por su etapa; la carne a la comida por su valor y lo demás al Almacén; sin Desolladero, piel y hueso a la mitad; una cría no se sacrifica.
   - 55f: ganado de las facciones (agregado) y rebaño inicial Serhu.
   - 55g: Reino › Corrales en el front.
   - El Corredor de Cauce nunca. **L**

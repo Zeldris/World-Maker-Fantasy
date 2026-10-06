@@ -2,7 +2,7 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { ownerKeyFor } from '../../services/reinoOwner.js';
-import { corralesDelReino, entregarPastos, etapaDelAnimal, forrajeDeFibrerias, huecoDeForraje } from '../../services/cronista/ganadoReino.js';
+import { corralesDelReino, entregarPastos, etapaDelAnimal, forrajeDeFibrerias, huecoDeForraje, sacrificar } from '../../services/cronista/ganadoReino.js';
 import { etapasDe } from '../../services/cronista/ganaderia.js';
 import { rejectIfEnded, rejectIfPendingDeath, lockRowForUpdate } from './shared.js';
 
@@ -49,6 +49,20 @@ export async function ganadoRoutes(app: FastifyInstance) {
     const r = await prisma.$transaction(async (tx) => {
       await lockRowForUpdate(tx, 'Save', save.id, ['id']);
       return entregarPastos(tx, save.id, request.body?.catalogSlug ?? '');
+    });
+    if (!r.ok) return reply.status(400).send({ error: r.motivo });
+    return r;
+  });
+
+  /// Sacrificar un animal del corral (Q8).
+  app.post<{ Params: { id: string; ganadoId: string } }>('/saves/:id/ganado/:ganadoId/sacrificar', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, endedAt: true, pendingDeathResolution: true, worldState: { select: { fictionalMinutes: true } } } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (rejectIfEnded(save, reply)) return;
+    if (rejectIfPendingDeath(save, reply)) return;
+    const r = await prisma.$transaction(async (tx) => {
+      await lockRowForUpdate(tx, 'Save', save.id, ['id']);
+      return sacrificar(tx, save.id, request.params.ganadoId, save.worldState?.fictionalMinutes ?? 0);
     });
     if (!r.ok) return reply.status(400).send({ error: r.motivo });
     return r;

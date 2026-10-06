@@ -14,6 +14,7 @@ import {
   esGanado,
   etapaDe,
   etapasDe,
+  factorSacrificio,
   fraccionQueMuere,
   muertesPorCarencia,
   plazasCorral,
@@ -249,4 +250,54 @@ export async function avanzarGanadoReino(tx: Tx, saveId: string, dia: number, ah
 
   await tx.kingdomStats.update({ where: { ownerKey: owner }, data: { forraje, comida, bebida, ganadoDiasSinComer: diasSinComer, ganadoDiasSinBeber: diasSinBeber } });
   return { comido, bebido, producido, comidaDeLeche, crias, muertos: muertos.size };
+}
+
+// ── 55e: sacrificar ──────────────────────────────────────────────────────────────────────────
+
+/// Sacrificar un animal del corral (Q8): da lo mismo que desollarlo, por su etapa (`factorSacrificio`).
+/// Lo comestible va a la comida del Reino por su valor (Q15); lo demás, al Almacén hasta su tope. Sin
+/// Desolladero en el Reino, la piel, el hueso y el resto salen a la mitad.
+export async function sacrificar(tx: Tx, saveId: string, ganadoId: string, ahora: number): Promise<
+  { ok: true; comida: number; almacen: Record<string, number>; perdido: number } | { ok: false; motivo: string }
+> {
+  const animal = await tx.ganado.findFirst({ where: { id: ganadoId, saveId } });
+  if (!animal) return { ok: false, motivo: 'Ese animal no está en tus corrales.' };
+  const { worldId } = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } });
+  const especie = await tx.npc.findFirst({ where: { worldId, saveId: null, slug: animal.especie }, select: { faunaCategoria: true } });
+  const { etapa } = etapaDelAnimal(animal, especie?.faunaCategoria ?? null, ahora);
+  const factor = factorSacrificio(etapa);
+  if (factor === 0) return { ok: false, motivo: 'Es una cría: todavía no da nada.' };
+
+  const conDesolladero = (await tx.building.count({ where: { saveId, recipeKey: 'desolladero', status: 'ACTIVO' } })) > 0;
+  const rendimientos = await tx.harvestYield.findMany({ where: { worldId, sourceSlug: animal.especie }, select: { cantidad: true, item: { select: { slug: true, name: true, description: true, category: true, curaHambre: true } } } });
+  let comida = 0;
+  const almacen: Record<string, number> = {};
+  let perdido = 0;
+  let hueco = await huecoDeMateriales(tx, saveId);
+  for (const r of rendimientos) {
+    const comestible = r.item.category === 'alimento' || (r.item.curaHambre ?? 0) > 0;
+    const n = Math.floor(r.cantidad * factor * (comestible || conDesolladero ? 1 : 0.5));
+    if (n <= 0) continue;
+    if (comestible) {
+      comida += comidaDe(valorCrudo(r.item.slug, r.item.curaHambre), n);
+      continue;
+    }
+    const cabe = Math.min(n, hueco);
+    hueco -= cabe;
+    perdido += n - cabe;
+    if (cabe > 0) {
+      await tx.almacenItem.createMany({ data: Array.from({ length: cabe }, () => ({ saveId, name: r.item.name, description: r.item.description, catalogSlug: r.item.slug })) });
+      almacen[r.item.slug] = (almacen[r.item.slug] ?? 0) + cabe;
+    }
+  }
+  await tx.ganado.delete({ where: { id: animal.id } });
+  if (comida > 0) {
+    const owner = ownerKeyFor({ saveId });
+    const stats = await tx.kingdomStats.findUnique({ where: { ownerKey: owner }, select: { comida: true } });
+    if (stats) {
+      const { topeComida } = await suministrosDelReino(tx, saveId);
+      await tx.kingdomStats.update({ where: { ownerKey: owner }, data: { comida: Math.min(topeComida, stats.comida + comida) } });
+    }
+  }
+  return { ok: true, comida, almacen, perdido };
 }
