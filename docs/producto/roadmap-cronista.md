@@ -1674,7 +1674,15 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   - El equipo se fabrica en el taller propio (materiales a la mitad de su valor) o se compra a precio
     de mercado.
   - Sin herramienta se produce la mitad; sin arma, se cuenta medio en la defensa. **M**
-- **CR-59** Vasallaje y deuda (Fase D, Q21-Q24 y Q28; Serhu bajo la Concordia).
+- ~~**CR-59** Vasallaje y deuda (Fase D, Q21-Q24 y Q28; Serhu bajo la Concordia).~~ ✅ 2026-10-06
+  (`cronista/vasallaje.ts`; modelo `Vasallaje`, migración `20261006150000_vasallaje`).
+  - Cada partida empieza con Serhu vasallo de la Concordia y una deuda de 500.
+  - Cada semana: el desgaste de sus armas al doble, al señor; lo que no pueden pagar va a deuda.
+  - Rearme: todo excedente de comida pasa trabajadores a guerreros, con sus armas al doble.
+  - Patrulla de 20 que rebaja 100 la deuda, con un 25 % de `ESCARAMUZA` (1d6 bajas) contra otra facción de su
+    región o contra renegados.
+  - Se rompe con la deuda saldada o si cae el señor.
+  - **Queda:** romperlo por alianza con el Reino o por guerra (`CR-37`).
   - Doctrina de rearme y armas al doble a crédito.
   - Deuda que se cobra en patrullas obligadas (20 guerreros por semana, 25 % de `ESCARAMUZA` con 1d6
     bajas).

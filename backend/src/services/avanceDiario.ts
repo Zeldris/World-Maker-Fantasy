@@ -35,6 +35,7 @@ import { revisarFamilias } from './cronista/familias.js';
 import { revisarSalidas } from './cronista/salidas.js';
 import { revisarSueldos } from './cronista/economiaReino.js';
 import { resembrarFacciones, revisarExtinciones } from './cronista/economiaFacciones.js';
+import { asegurarVasallajes, revisarVasallajes } from './cronista/vasallaje.js';
 import { revisarInformantes } from './cronista/reclutamiento.js';
 
 export const MAX_DIAS_POR_LLAMADA = 30;
@@ -85,6 +86,8 @@ export async function avanzarMundoHasta(
       await asegurarLinajes(tx, saveId, fictionalMinutes);
       // CR-54 (Q20): re-siembra única del reparto de las facciones.
       await resembrarFacciones(tx, saveId);
+      // CR-59: vasallajes del canon (Serhu bajo la Concordia).
+      await asegurarVasallajes(tx, saveId, fictionalMinutes);
       const estado = await tx.worldState.findUnique({ where: { saveId }, select: { ultimoDiaSimulado: true } });
       if (!estado) return { dias: 0, desde: 0 };
       const dias = diasPendientes(estado.ultimoDiaSimulado, diaDeFiccion(fictionalMinutes));
@@ -142,6 +145,8 @@ export async function avanzarMundoHasta(
         await prisma.$transaction((tx) => revisarSalidas(tx, saveId, ahora, random));
         // CR-53 53c: sueldos semanales del Reino (y deserción si no se pagan).
         await prisma.$transaction((tx) => revisarSueldos(tx, saveId, ahora));
+        // CR-59: cada semana, armas al señor, rearme y patrulla obligada de los vasallos.
+        await prisma.$transaction((tx) => revisarVasallajes(tx, saveId, d, ahora, random));
       });
     }
     // CR-14: etiquetas de relación (AMIGO_DE / ENEMIGO_DE) según la reputación del final del día.
