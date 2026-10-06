@@ -132,3 +132,27 @@ export async function traspasarGoirnos(tx: Tx, saveId: string, cantidad: number)
   const t = await tx.kingdomStats.update({ where: { ownerKey }, data: { riqueza: { increment: cantidad } }, select: { riqueza: true } });
   return { ok: true, bolsa: s.goirnos, tesoro: t.riqueza };
 }
+
+/// 53e: lo que enseña Visión general — agua al día, topes, tesoro, sueldos y avisos.
+export async function resumenEconomia(tx: Tx, saveId: string) {
+  const [sum, hueco, k, save] = await Promise.all([
+    suministrosDelReino(tx, saveId),
+    huecoDeMateriales(tx, saveId),
+    tx.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId }) }, select: { trabajadores: true, soldados: true, poblacion: true, visitantes: true, riqueza: true, diasSinCobrar: true, diasSed: true, diasHambre: true } }),
+    tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { goirnos: true } }),
+  ]);
+  return {
+    aguaDia: sum.agua,
+    bocas: k ? k.poblacion + k.soldados + k.visitantes : 0,
+    topeComida: sum.topeComida,
+    topeBebida: sum.topeBebida,
+    topeMateriales: sum.topeMateriales,
+    materiales: sum.topeMateriales - hueco,
+    sueldosSemana: k ? sueldosSemana(k) : 0,
+    tesoro: k?.riqueza ?? 0,
+    bolsa: save.goirnos,
+    diasSinCobrar: k?.diasSinCobrar ?? 0,
+    diasSed: k?.diasSed ?? 0,
+    diasHambre: k?.diasHambre ?? 0,
+  };
+}

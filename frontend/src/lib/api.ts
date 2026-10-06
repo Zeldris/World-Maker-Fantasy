@@ -1576,6 +1576,35 @@ export async function fijarRolReinoCompanion(saveId: string, companionId: string
     body: JSON.stringify({ rolReino }),
   })
 }
+/// CR-53 (hito 0.3): la economía de supervivencia del Reino (agua, topes, tesoro y sueldos).
+export interface EconomiaReino {
+  aguaDia: number
+  bocas: number
+  topeComida: number
+  topeBebida: number
+  topeMateriales: number
+  materiales: number
+  sueldosSemana: number
+  tesoro: number
+  bolsa: number
+  diasSinCobrar: number
+  diasSed: number
+  diasHambre: number
+}
+
+export async function getEconomiaReino(saveId: string): Promise<EconomiaReino> {
+  return fetchJson(`${API_URL}/saves/${saveId}/reino/economia`)
+}
+
+/// Positivo: de la bolsa al tesoro; negativo: del tesoro a la bolsa.
+export async function traspasarTesoro(saveId: string, cantidad: number): Promise<{ ok: boolean; bolsa: number; tesoro: number }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/reino/tesoro`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cantidad }),
+  })
+}
+
 /// REI-118 (hito 0.3): un súbdito como persona y las camas del Reino (compañeros y súbditos comparten cupo).
 export interface SubditoInfo {
   id: string

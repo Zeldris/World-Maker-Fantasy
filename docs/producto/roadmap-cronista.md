@@ -1630,23 +1630,18 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     de supervivencia (pregunta 5 a Álvaro).
 - **CR-38** La disposición de una facción la da su líder (`CR-34` Q5): un rasgo del NPC que cambia con
   la sucesión de `CR-11`. **S**
-- **CR-53** Economía de supervivencia del Reino (Fase D del `0.3`; números decididos por la usuaria el
-  2026-10-06, Q1-Q6 en `plan-roadmap-0.3.md`). **L**
-  🚧 53a ✅ 2026-10-06 (`cronista/economiaReino.ts`): agua de Pozo (12 al día) y de fuente natural junto al
+- ~~**CR-53** Economía de supervivencia del Reino (Fase D del `0.3`; números decididos por la usuaria el
+  2026-10-06, Q1-Q6 en `plan-roadmap-0.3.md`).~~ ✅ 2026-10-06 **L**
+  53a ✅ 2026-10-06 (`cronista/economiaReino.ts`): agua de Pozo (12 al día) y de fuente natural junto al
   Ayuntamiento (20); topes de comida y agua (base 60 + 120 por Granero o Cisterna) en el tick del Reino;
   recetas de Pozo, Granero, Cisterna y Leñera. 53b ✅ (tope de materiales: objetos de tipo RECURSO en el Almacén, base 60 + 120 por Leñera; depositar
   rechaza si no cabe, y la producción y las caravanas solo meten lo que cabe). 53c ✅ (tesoro = `KingdomStats.riqueza` en Goirnos con traspasos a la bolsa,
   `POST /saves/:id/reino/tesoro`; sueldos semanales trabajador 2 y soldado o vigía 5 en vez del mantenimiento
   diario; sin Goirnos, −3 de felicidad al día y desde el día 7 un desertor por semana que vuelve a su
   pueblo; migración `20261006110000_sueldos`). 53d ✅ (sed: `KingdomStats.diasSed`, a los 2 días un 20 % diario de que muera uno, primero las crías;
-  el hambre, 3 días y 10 %, pasa a definitiva; migración `20261006120000_sed`). **Falta:** 53e, la
-  interfaz (agua al día y topes en Visión general).
-  - Agua: 1 por boca al día; Pozo 12 al día; fuente natural 20 al día.
-  - Almacén con tope: Ayuntamiento 60 + 60; Granero, Cisterna y Leñera, 120 cada uno.
-  - Tesoro en Goirnos (la riqueza del Reino) con traspasos a la bolsa del personaje.
-  - Sueldos semanales (trabajador 2, soldado y vigía 5); sin Goirnos, −3 de felicidad al día y, tras 7
-    días, un desertor por semana.
-  - Hambre y sed: sustituye a los números provisionales de `REI-121`.
+  el hambre, 3 días y 10 %, pasa a definitiva; migración `20261006120000_sed`). 53e ✅ (Visión general del Reino: agua al día frente a bocas, topes del almacén, sueldos, tesoro y bolsa
+  con traspaso, y avisos de sed, hambre y sueldos sin pagar; `GET /saves/:id/reino/economia`; los textos
+  de ayuda de cada indicador, al día).
 - **CR-54** Economía de supervivencia de las facciones (Q7-Q8): las mismas cifras en agregado.
   Extinción con población 0; refundación tras un año si su pueblo conserva más de 50 en la región.
   Enciende la hambruna de facción apagada en `CR-12`. **M**

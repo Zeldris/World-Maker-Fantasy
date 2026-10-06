@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
-import { esMaterial, huecoDeMateriales, revisarSueldos, suministrosDelReino, traspasarGoirnos } from './economiaReino.js';
+import { esMaterial, huecoDeMateriales, resumenEconomia, revisarSueldos, suministrosDelReino, traspasarGoirnos } from './economiaReino.js';
 import { crearSubdito } from './subditos.js';
 
 describe('economía del Reino (CR-53) — en una partida', () => {
@@ -66,5 +66,6 @@ describe('economía del Reino (CR-53) — en una partida', () => {
     expect(await prisma.$transaction((tx) => traspasarGoirnos(tx, saveId, 25))).toEqual({ ok: true, bolsa: 5, tesoro: 25 });
     expect((await prisma.$transaction((tx) => traspasarGoirnos(tx, saveId, -40))).ok).toBe(false);
     expect(await prisma.$transaction((tx) => traspasarGoirnos(tx, saveId, -5))).toEqual({ ok: true, bolsa: 10, tesoro: 20 });
+    expect(await resumenEconomia(prisma, saveId)).toMatchObject({ topeMateriales: 180, materiales: 60, tesoro: 20, bolsa: 10, sueldosSemana: 0 });
   });
 });
