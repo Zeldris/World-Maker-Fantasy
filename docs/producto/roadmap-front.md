@@ -275,7 +275,7 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
   estructurales, `success` = `moss` en vez de `emerald`); sombras repetidas como utilidades con nombre
   (`shadow-plank`, `glow-accent`, `inset-well`); `Button` con variantes `alert`, `compact`, `icon`;
   borrar clases muertas (H8).
-- **BAS-5 · Partir `GameView.tsx`** **[H]** **L** — `GameHeader`, `GameFooter`, `GameModals`,
+- ~~**BAS-5 · Partir `GameView.tsx`**~~ ✅ 2026-10-06 **[H]** **L** — `GameHeader`, `GameFooter`, `GameModals`,
   `GameLayout`. Sin cambio visual; desbloquea HUD y Configuración. 🚧 en curso (2026-10-02): hecho
   `GameHeader` (`components/GameHeader.tsx`, con las animaciones de nivel y muertes) y `GameFooter`
   (`components/GameFooter.tsx`: fin, muerte, composer de combate como hueco, composer normal con
@@ -286,7 +286,9 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
   🚧 2026-10-06 (usuaria: hacerlo ahora, por pasos): paso 1 ✅ — el estado y los manejadores salen
   a `pages/useGameViewState.tsx` (`GameViewState` = su tipo de retorno); `GameView` solo pinta.
   Paso 2 ✅ — `GameViewContext` (`pages/GameViewContext.ts`, `useGameView()`) y `GameModals` (las 18
-  capas modales, `pages/GameModals.tsx`). Siguen: `GameLayout` y la parte de `BAS-7`.
+  capas modales, `pages/GameModals.tsx`). Paso 3 ✅ — `GameLayout` (raíles y los dos paneles) y
+  `GamePanelCajon` (el cajón de paneles). `GameView` pasa de 2422 a 305 líneas: proveedores,
+  cabecera, avisos de ocupado/combate, pie y las piezas. **Cerrada.**
 - **BAS-6 · Carga** **[H]** **S** — `React.lazy` para Enciclopedia, `MapZoomModal`, `InteractiveMap`,
   admin y secciones de Reino; `loading="lazy"`, `decoding="async"` y fundido en todas las `<img>`.
 - **BAS-7 · Animaciones de salida y de cambio de layout** **[P]** **M** 🧭
