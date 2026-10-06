@@ -1642,7 +1642,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   el hambre, 3 días y 10 %, pasa a definitiva; migración `20261006120000_sed`). 53e ✅ (Visión general del Reino: agua al día frente a bocas, topes del almacén, sueldos, tesoro y bolsa
   con traspaso, y avisos de sed, hambre y sueldos sin pagar; `GET /saves/:id/reino/economia`; los textos
   de ayuda de cada indicador, al día).
-- **CR-54** Economía de supervivencia de las facciones (Q7-Q8 y Q16-Q20): reparto de la tabla del plan
+- ~~**CR-54** Economía de supervivencia de las facciones (Q7-Q8 y Q16-Q20):~~ ✅ 2026-10-06 reparto de la tabla del plan
   (re-siembra única de las partidas), agua de su fuente canónica, Goirnos y sueldos, y hambre, sed y muerte
   con el Libro. Las mismas cifras en agregado.
   🚧 54a ✅ 2026-10-06: reparto en `scripts/repartoFacciones.ts`, la única fuente de la siembra; en las facciones
@@ -1653,7 +1653,10 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   al día sin cobrar y deserción del 5 % de los soldados por semana desde el día 7 (vuelven a su pueblo);
   hambre (desde el día 3, 1 % al día) y sed (desde el día 2, 2 %) matan, primero a los civiles; `HAMBRUNA`
   encendida en las facciones. Equivalencias en agregado de Q5-Q6, propuestas por Claude.
-  **Falta:** 54c, extinción y refundación.
+  54c ✅: con población 0 se extingue (`FACCION_CAE`); 120 días después, si su pueblo conserva más de 50 en la
+  región y no hay otra facción suya viva allí, se refunda con un nombre de escisión de su pueblo y hasta 120
+  personas en reparto estándar (`revisarExtinciones`). De paso, una escisión de `CR-11` ya se lleva también
+  sus filas de población (antes la madre las recuperaba en la sincronización diaria).
   Extinción con población 0; refundación tras un año si su pueblo conserva más de 50 en la región.
   Enciende la hambruna de facción apagada en `CR-12`. **M**
 - **CR-58** Factura de equipo (Fase D, Q25-Q27).

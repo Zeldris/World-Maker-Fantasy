@@ -3,7 +3,7 @@ import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { asegurarMundoDePartida } from '../mundoPartida.js';
 import { filasDeFaccion, REPARTO_FACCIONES } from '../../scripts/repartoFacciones.js';
-import { resembrarFacciones, VERSION_REPARTO_FACCIONES } from './economiaFacciones.js';
+import { DIAS_PARA_REFUNDAR, repartoEstandar, resembrarFacciones, revisarExtinciones, VERSION_REPARTO_FACCIONES } from './economiaFacciones.js';
 import { producirFacciones } from '../factionEconomy.js';
 
 describe('reparto de las facciones (CR-54, Q16)', () => {
@@ -65,5 +65,24 @@ describe('re-siembra única del reparto en una partida (CR-54, Q20)', () => {
     expect(civiles).toBeLessThan(civilesAntes);
     expect((await prisma.kingdomStats.findUniqueOrThrow({ where: { id: f.kingdomStats!.id } })).poblacion).toBeLessThan(200);
     expect(await prisma.suceso.count({ where: { saveId, tipo: 'HAMBRUNA' } })).toBeGreaterThan(0);
+  });
+
+  it('sin nadie, la facción se extingue; un año después su pueblo refunda otra en la región (CR-54 54c)', async () => {
+    expect(repartoEstandar(100)).toEqual({ trabajadores: 55, soldados: 15, civiles: 30 });
+    const f = await prisma.faction.findFirstOrThrow({ where: { saveId, slug: 'feg-ger' }, include: { kingdomStats: true } });
+    await prisma.kingdomStats.update({ where: { id: f.kingdomStats!.id }, data: { poblacion: 0, soldados: 0, visitantes: 0 } });
+    const AHORA = 1000 * 1440;
+    expect((await prisma.$transaction((tx) => revisarExtinciones(tx, saveId, AHORA, () => 0.3))).extintas).toEqual(['feg-ger']);
+    expect(await prisma.suceso.count({ where: { saveId, tipo: 'FACCION_CAE' } })).toBe(1);
+    // Antes del año no se refunda.
+    expect((await prisma.$transaction((tx) => revisarExtinciones(tx, saveId, AHORA + 10 * 1440, () => 0.3))).refundadas).toEqual([]);
+    const r = await prisma.$transaction((tx) => revisarExtinciones(tx, saveId, AHORA + DIAS_PARA_REFUNDAR * 1440, () => 0.3));
+    expect(r.refundadas).toHaveLength(1);
+    const nueva = await prisma.faction.findFirstOrThrow({ where: { saveId, slug: r.refundadas[0]! }, include: { kingdomStats: true } });
+    expect(nueva.name.startsWith('Feg ')).toBe(true);
+    expect(nueva.kingdomStats!.trabajadores).toBeGreaterThan(0);
+    expect(await prisma.worldPopulation.count({ where: { saveId, targetType: 'FACCION', targetSlug: { startsWith: `${nueva.slug}-` } } })).toBe(4);
+    // Ya hay una de su pueblo viva en la región: no se refunda otra.
+    expect((await prisma.$transaction((tx) => revisarExtinciones(tx, saveId, AHORA + 200 * 1440, () => 0.3))).refundadas).toEqual([]);
   });
 });

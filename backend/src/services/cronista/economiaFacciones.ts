@@ -109,3 +109,77 @@ export async function aplicarBajasDeFaccion(tx: Tx, saveId: string, factionSlug:
     if (slug) await tx.worldPopulation.updateMany({ where: { saveId, targetType: 'RAZA', targetSlug: slug }, data: { poblacion: { increment: desertores } } });
   }
 }
+
+// ─────────────────────────── 54c: extinción y refundación (Q7) ───────────────────────────
+
+/// Q7: un año de ficción (120 días) tras extinguirse, el pueblo puede refundar una facción en esa
+/// región si conserva más de 50 personas sin facción. Se lleva como mucho a 120 de ellas.
+export const DIAS_PARA_REFUNDAR = 120;
+export const POBLACION_MINIMA_PARA_REFUNDAR = 50;
+export const MAXIMO_REFUNDADORES = 120;
+
+/// Puro: el reparto estándar (55 % trabajadores, 15 % soldados, 30 % civiles) de una facción nueva.
+export function repartoEstandar(total: number): CuentaFaccion {
+  const trabajadores = Math.round(total * 0.55);
+  const soldados = Math.round(total * 0.15);
+  return { trabajadores, soldados, civiles: Math.max(0, total - trabajadores - soldados) };
+}
+
+/// La región de una facción: la de sus filas de población.
+async function regionDeFaccion(tx: Tx, saveId: string, slug: string): Promise<string | null> {
+  const fila = await tx.worldPopulation.findFirst({ where: { saveId, targetType: 'FACCION', targetSlug: `${slug}-poblacion` }, select: { distribucion: true } });
+  return Object.keys((fila?.distribucion ?? {}) as Record<string, number>)[0] ?? REPARTO_FACCIONES.find((r) => r.slug === slug)?.region ?? null;
+}
+
+/// Un día del mundo de la partida: se extinguen las facciones sin nadie y, pasado un año, su pueblo
+/// puede refundar otra en la región (como escisión nueva, con otro nombre).
+export async function revisarExtinciones(tx: Tx, saveId: string, ahora: number, random: () => number): Promise<{ extintas: string[]; refundadas: string[] }> {
+  const { aplicarEfecto } = await import('./efectos.js');
+  const { populationTargetSlugFor } = await import('../population.js');
+  const { nombreDeEscision } = await import('./nombresFaccion.js');
+  const { generarNombre } = await import('./nombres.js');
+  const save = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } });
+  const ctx = { tx, saveId, worldId: save.worldId, fictionalMinutes: ahora, origen: 'MUNDO' as const, random };
+  const extintas: string[] = [];
+  const vivas = await tx.faction.findMany({ where: { saveId, disueltaEn: null, origenSlug: { not: null } }, select: { slug: true, kingdomStats: { select: { poblacion: true, soldados: true, visitantes: true } } } });
+  for (const f of vivas) {
+    const k = f.kingdomStats;
+    if (!k || k.poblacion + k.soldados + k.visitantes > 0) continue;
+    if ((await aplicarEfecto(ctx, { tipo: 'disolverFaccion', faccionSlug: f.slug })).aplicado) extintas.push(f.slug);
+  }
+
+  const refundadas: string[] = [];
+  const muertas = await tx.faction.findMany({ where: { saveId, origenSlug: { not: null }, disueltaEn: { lte: ahora - DIAS_PARA_REFUNDAR * 1440 } }, select: { slug: true, raza: true } });
+  if (muertas.length === 0) return { extintas, refundadas };
+  const todas = await tx.faction.findMany({ where: { saveId }, select: { slug: true, name: true, raza: true, disueltaEn: true } });
+  const usados = new Set(todas.map((t) => t.name));
+  for (const m of muertas) {
+    const region = await regionDeFaccion(tx, saveId, m.slug);
+    if (!region || !m.raza) continue;
+    // Ya hay una facción viva de ese pueblo en la región: no hace falta refundar.
+    let ocupada = false;
+    for (const v of todas.filter((t) => t.disueltaEn === null && t.raza === m.raza)) {
+      if ((await regionDeFaccion(tx, saveId, v.slug)) === region) ocupada = true;
+    }
+    if (ocupada) continue;
+    const poolSlug = populationTargetSlugFor(m.raza, m.slug, region);
+    const pool = poolSlug ? await tx.worldPopulation.findFirst({ where: { saveId, targetType: 'RAZA', targetSlug: poolSlug } }) : null;
+    if (!pool || pool.poblacion <= POBLACION_MINIMA_PARA_REFUNDAR) continue;
+    const nombre = nombreDeEscision(m.raza, generarNombre(m.raza, random() < 0.5 ? 'F' : 'M', random), usados);
+    if (!nombre) continue;
+    const slug = nombre.nombre.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const r = await aplicarEfecto(ctx, { tipo: 'crearFaccion', slug, nombre: nombre.nombre, raza: m.raza, descripcion: `Nacida de los que quedaron tras la caída de la antigua facción de su pueblo en ${region}: ${nombre.traduccion}.` });
+    if (!r.aplicado) continue;
+    usados.add(nombre.nombre);
+    const total = Math.min(MAXIMO_REFUNDADORES, pool.poblacion - POBLACION_MINIMA_PARA_REFUNDAR);
+    await tx.worldPopulation.update({ where: { id: pool.id }, data: { poblacion: { decrement: total } } });
+    const c = repartoEstandar(total);
+    for (const f of filasDeFaccion({ slug, nombre: nombre.nombre, region, ...c, holgura: 0.5 })) {
+      await tx.worldPopulation.create({ data: { worldId: save.worldId, saveId, targetType: 'FACCION', targetSlug: f.targetSlug, label: f.label, poblacion: f.poblacion, poblacionMax: f.poblacionMax, distribucion: f.distribucion } });
+    }
+    const fac = await tx.faction.findFirstOrThrow({ where: { saveId, slug }, select: { id: true } });
+    await tx.kingdomStats.update({ where: { factionId: fac.id }, data: { poblacion: c.civiles + c.trabajadores, trabajadores: c.trabajadores, soldados: c.soldados } });
+    refundadas.push(slug);
+  }
+  return { extintas, refundadas };
+}

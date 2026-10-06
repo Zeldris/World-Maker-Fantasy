@@ -34,7 +34,7 @@ import { revisarLlegadas } from './cronista/llegadas.js';
 import { revisarFamilias } from './cronista/familias.js';
 import { revisarSalidas } from './cronista/salidas.js';
 import { revisarSueldos } from './cronista/economiaReino.js';
-import { resembrarFacciones } from './cronista/economiaFacciones.js';
+import { resembrarFacciones, revisarExtinciones } from './cronista/economiaFacciones.js';
 import { revisarInformantes } from './cronista/reclutamiento.js';
 
 export const MAX_DIAS_POR_LLAMADA = 30;
@@ -104,6 +104,8 @@ export async function avanzarMundoHasta(
     const { worldId } = await prisma.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } });
     const resultado = { diasProcesados: 0, semanasDecaidas: 0, depositados: 0 };
     await paso('producirFacciones', () => producirFacciones(prisma, worldId, { saveId, origenSlug: { not: null } }, dia, resultado));
+    // CR-54 (54c): facciones sin nadie se extinguen; pasado un año su pueblo puede refundar otra.
+    await paso('extinciones', () => prisma.$transaction((tx) => revisarExtinciones(tx, saveId, fictionalMinutes, random)));
     await paso('decaerRelaciones', () => decaerRelaciones(prisma, { saveId }, dia, resultado));
     await paso('expediciones', () => avanzarExpedicionesDePartida(prisma, worldId, saveId, dia, random));
     // La agenda lleva sus propias transacciones y avanza por umbrales de tiempo (no por día).
