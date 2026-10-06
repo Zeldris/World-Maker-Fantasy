@@ -66,7 +66,14 @@ export const REACCIONES_ETIQUETAS: Reaccion[] = [
     id: 'ETIQUETA_CARNICERO',
     escucha: ['MUERTE_CAUSADA'],
     prioridad: 50,
-    condicion: async (ctx) => !!autor(ctx.suceso) && muertesDeRendidos(await muertesDelPersonaje(ctx.tx, ctx.suceso.saveId)) >= UMBRAL_CARNICERO,
+    // Solo al rematar a otro rendido (así una redención no se deshace con cualquier muerte).
+    condicion: async (ctx) => {
+      if (!autor(ctx.suceso)) return false;
+      const muertes = await muertesDelPersonaje(ctx.tx, ctx.suceso.saveId);
+      const v = victima(ctx.suceso);
+      const estaEsDeRendido = muertesDeRendidos(muertes.filter((m) => m.victima === v && m.minuto <= ctx.suceso.fictionalMinutes)) > 0;
+      return estaEsDeRendido && muertesDeRendidos(muertes) >= UMBRAL_CARNICERO;
+    },
     efectos: async () => [etiqueta('CARNICERO', 'Carnicero')],
   },
   {

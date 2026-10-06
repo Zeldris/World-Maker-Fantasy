@@ -2715,3 +2715,18 @@ export interface EtiquetaInfo {
 export async function getEtiquetas(saveId: string): Promise<{ etiquetas: EtiquetaInfo[] }> {
   return fetchJson(`${API_URL}/saves/${saveId}/etiquetas`)
 }
+
+/// CR-17 (hito 0.3): una historia en marcha (o ya cerrada) que el personaje conoce.
+export interface HiloInfo {
+  id: string
+  patron: 'VENGANZA' | 'ASCENSO' | 'CAIDA' | 'DEUDA' | 'RIVALIDAD' | 'REDENCION'
+  abierto: boolean
+  tension: number
+  resumen: string
+  abiertoEn: number
+  cerradoEn: number | null
+}
+
+export async function getHilos(saveId: string): Promise<{ hilos: HiloInfo[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/leyendas/hilos`)
+}

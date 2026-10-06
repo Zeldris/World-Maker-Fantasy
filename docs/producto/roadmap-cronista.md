@@ -1567,7 +1567,15 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   (huye o lo perdonas) o vencedor (`COMBATE_PERDIDO` lleva ahora al rival como autor) → +1 nivel en esta
   partida, tope 3, y título «Superviviente de / Vencedor de <personaje>» en `NpcInScene.titulo`. Que el
   narrador lo cuente al volver a verlo va con la Fase 6, `CR-21`/`CR-22`.)
-- **CR-17** Buscadores de historias e hilos (§ 7.4). **M**
+- ~~**CR-17** Buscadores de historias e hilos (§ 7.4).~~ ✅ 2026-10-06 **M** (`cronista/hilos.ts`; modelo
+  `Hilo`, migración `20261006050000_hilos`; efectos `abrirHilo`/`cerrarHilo` con `HILO_ABIERTO`/
+  `HILO_CERRADO`. Patrones: venganza (testigo de la facción de la víctima; se cierra si muere el vengador
+  o al verse las caras), ascenso (cambio de líder), caída (2 pérdidas de territorio o líder en 10 días),
+  deuda (perdón, regalo o ayuda a un NPC con nombre; se salda cuando te devuelve el favor), rivalidad
+  (3 enfrentamientos con el mismo NPC; acaba con una muerte) y redención (2 buenos actos tras Carnicero o
+  Rompejuramentos: apaga la etiqueta; Carnicero solo se recupera al rematar a otro rendido). Leyendas ›
+  «Historias en marcha» con los que conoce el personaje (`GET /saves/:id/leyendas/hilos`). Que alimenten
+  al narrador va con la Fase 6.)
 - **CR-42** Compañeros que cuentan lo de su tierra (`CR-18` Q9, va al `0.3` con `CR-15`): un compañero
   de una región cuenta lo que se sabe allí cuando se le pregunta. **S**
 - **CR-32** Reclutamiento pacífico e informantes (usuaria, 2026-10-04, Q14 de `CR-12`): convencer a

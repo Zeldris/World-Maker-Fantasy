@@ -36,4 +36,19 @@ export async function leyendasRoutes(app: FastifyInstance) {
     if (!(request.params.ficha in FICHAS_CON_LEYENDAS)) return reply.status(400).send({ error: `Ficha sin leyendas: ${request.params.ficha}` });
     return { entradas: await leyendasDeFicha(prisma, save.id, request.params.ficha as FichaConLeyendas, request.params.slug) };
   });
+
+  // CR-17 (Q6): «Historias en marcha» — los hilos que conoce el personaje (conoce alguno de sus sucesos).
+  app.get<{ Params: { id: string } }>('/saves/:id/leyendas/hilos', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    const hilos = await prisma.hilo.findMany({ where: { saveId: save.id }, orderBy: [{ estado: 'asc' }, { abiertoEn: 'desc' }], take: 100 });
+    const sabidos = new Set(
+      (await prisma.conocimiento.findMany({ where: { saveId: save.id, sucesoId: { in: hilos.flatMap((h) => h.sucesoIds) } }, select: { sucesoId: true } })).map((c) => c.sucesoId),
+    );
+    return {
+      hilos: hilos
+        .filter((h) => h.sucesoIds.some((id) => sabidos.has(id)))
+        .map((h) => ({ id: h.id, patron: h.patron, abierto: h.estado === 'ABIERTO', tension: h.tension, resumen: h.resumen, abiertoEn: h.abiertoEn, cerradoEn: h.cerradoEn })),
+    };
+  });
 }

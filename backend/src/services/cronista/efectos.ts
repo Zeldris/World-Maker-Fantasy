@@ -31,6 +31,7 @@ import { registrarSuceso, type NuevoSuceso } from './sucesos.js';
 import type { TipoSuceso } from './catalogoSucesos.js';
 import { aplicarCambioAprobacion, type Valor } from './aprobacion.js';
 import { aplicarNivelGanado, aplicarRecuerdo } from './recuerdos.js';
+import { aplicarAbrirHilo, aplicarCerrarHilo, registradorDeHilo, type ActorHilo, type Patron } from './hilos.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -87,7 +88,9 @@ export type Efecto =
   | { tipo: 'quitarEtiqueta'; clave: string }
   | { tipo: 'cambiarAprobacion'; companionId: string; delta: number; motivo: Valor }
   | { tipo: 'anadirRecuerdo'; npcId: string; sentimiento: number }
-  | { tipo: 'ganarNivelNpc'; npcId: string; titulo?: string };
+  | { tipo: 'ganarNivelNpc'; npcId: string; titulo?: string }
+  | { tipo: 'abrirHilo'; patron: Patron; clave: string; actores: ActorHilo[]; tension: number; resumen: string; cerrado?: boolean }
+  | { tipo: 'cerrarHilo'; clave: string; desenlace: string };
 
 export interface ResultadoEfecto {
   aplicado: boolean;
@@ -131,6 +134,14 @@ export async function aplicarEfecto(ctx: CtxEfecto, e: Efecto): Promise<Resultad
         : NO_APLICADO;
     case 'ganarNivelNpc':
       return (await aplicarNivelGanado(ctx.tx, { saveId: ctx.saveId, npcId: e.npcId, titulo: e.titulo })) ? { aplicado: true, sucesoId: null } : NO_APLICADO;
+    case 'abrirHilo': {
+      const sucesoId = await aplicarAbrirHilo(ctx.tx, { saveId: ctx.saveId, fictionalMinutes: ctx.fictionalMinutes, causa: ctx.causas?.[0] ?? null, ...e }, registradorDeHilo(ctx.tx, ctx));
+      return sucesoId ? { aplicado: true, sucesoId } : NO_APLICADO;
+    }
+    case 'cerrarHilo': {
+      const sucesoId = await aplicarCerrarHilo(ctx.tx, { saveId: ctx.saveId, fictionalMinutes: ctx.fictionalMinutes, causa: ctx.causas?.[0] ?? null, clave: e.clave, desenlace: e.desenlace }, registradorDeHilo(ctx.tx, ctx));
+      return sucesoId ? { aplicado: true, sucesoId } : NO_APLICADO;
+    }
     case 'cambiarAprobacion':
       return (await aplicarCambioAprobacion(ctx.tx, { saveId: ctx.saveId, companionId: e.companionId, delta: e.delta, motivo: e.motivo, fictionalMinutes: ctx.fictionalMinutes })) === null
         ? NO_APLICADO

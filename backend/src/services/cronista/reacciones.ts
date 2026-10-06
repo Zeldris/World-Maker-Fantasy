@@ -22,6 +22,7 @@ import type { TipoSuceso } from './catalogoSucesos.js';
 import { REACCIONES_ETIQUETAS } from './etiquetas.js';
 import { REACCIONES_APROBACION } from './aprobacion.js';
 import { REACCIONES_RECUERDOS } from './recuerdos.js';
+import { REACCIONES_HILOS } from './hilos.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -281,6 +282,8 @@ export const REACCIONES: Reaccion[] = [
   ...REACCIONES_APROBACION,
   // CR-16: recuerdos de NPC y supervivientes (recuerdos.ts).
   ...REACCIONES_RECUERDOS,
+  // CR-17: buscadores de historias e hilos (hilos.ts).
+  ...REACCIONES_HILOS,
 ];
 
 /// Región (nombre de `Location.region`, el de `REGIONES_VECINAS`) a partir de su slug.
