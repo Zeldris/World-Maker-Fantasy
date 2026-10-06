@@ -160,7 +160,7 @@ export function CompanerosPanel({ saveId, companions, inventory, onRefreshSave, 
                   <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-wood-950/80" aria-hidden="true">
                     <div className={`h-full ${COLOR_APROBACION[etiquetaDeAprobacion(companion.aprobacion)]}`} style={{ width: `${companion.aprobacion}%` }} />
                   </div>
-                  {!consulta && (
+                  {!consulta && companion.condicionFisica !== 'MUERTO' && (
                     <button
                       type="button"
                       disabled={preguntando === companion.id}

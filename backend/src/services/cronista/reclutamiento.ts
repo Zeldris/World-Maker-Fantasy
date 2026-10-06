@@ -67,6 +67,7 @@ export async function proponer(
     if (faccion?.liderNpcId === npc.id) return { ok: false, motivo: `${npc.name} manda en ${faccion.name}: no va a dejar a los suyos.` };
     const estado = await tx.npcState.findUnique({ where: { saveId_npcId_scope: { saveId, npcId: npc.id, scope: '' } } });
     if (estado?.muerto) return { ok: false, motivo: 'Ya no está entre los vivos.' };
+    if ((await tx.companion.count({ where: { saveId, sourceSlug: npc.slug } })) > 0) return { ok: false, motivo: `${npc.name} ya va contigo.` };
     if (modo === 'INFORMANTE' && !faccion) return { ok: false, motivo: `${npc.name} no tiene facción de la que contarte nada.` };
     if (modo === 'INFORMANTE' && estado?.informanteDesde != null) return { ok: false, motivo: `${npc.name} ya te cuenta lo que sabe.` };
     const inicioDia = Math.floor(ahora / 1440) * 1440;
@@ -142,7 +143,8 @@ export async function revisarInformantes(tx: Tx, p: { saveId: string; worldId: s
   const informantes = await tx.npcState.findMany({ where: { saveId: p.saveId, informanteDesde: { not: null }, muerto: false }, select: { id: true, npcId: true } });
   if (informantes.length === 0) return;
   const ws = await tx.worldState.findUniqueOrThrow({ where: { saveId: p.saveId }, select: { fictionalMinutes: true, fictionalDateLabel: true, factionsStatus: true } });
-  const ahora = ws.fictionalMinutes;
+  // El final de ese día (en un salto de varios días, cada semana mira su propia semana).
+  const ahora = Math.min(ws.fictionalMinutes, (p.dia + 1) * 1440 - 1);
   const log = (text: string) => tx.logEntry.create({ data: { saveId: p.saveId, channel: 'CHARACTER', isSystemMessage: true, text, timeLabel: ws.fictionalDateLabel ?? '', fictionalMinutes: ahora } });
   for (const inf of informantes) {
     const npc = await tx.npc.findUnique({ where: { id: inf.npcId }, select: { slug: true, name: true, faction: true } });

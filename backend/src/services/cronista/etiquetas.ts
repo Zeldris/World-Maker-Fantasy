@@ -69,8 +69,11 @@ export const REACCIONES_ETIQUETAS: Reaccion[] = [
     // Solo al rematar a otro rendido (así una redención no se deshace con cualquier muerte).
     condicion: async (ctx) => {
       if (!autor(ctx.suceso)) return false;
-      const muertes = await muertesDelPersonaje(ctx.tx, ctx.suceso.saveId);
       const v = victima(ctx.suceso);
+      // Solo cuentan los rendidos con nombre (la fauna y los genéricos comparten ficha entre ejemplares).
+      if (!v || (await ctx.tx.npc.count({ where: { id: v, kind: 'PRINCIPAL' } })) === 0) return false;
+      const conNombre = new Set((await ctx.tx.npc.findMany({ where: { kind: 'PRINCIPAL', id: { in: (await muertesDelPersonaje(ctx.tx, ctx.suceso.saveId)).map((m) => m.victima).filter((x): x is string => !!x) } }, select: { id: true } })).map((n) => n.id));
+      const muertes = (await muertesDelPersonaje(ctx.tx, ctx.suceso.saveId)).filter((m) => m.victima && conNombre.has(m.victima));
       const estaEsDeRendido = muertesDeRendidos(muertes.filter((m) => m.victima === v && m.minuto <= ctx.suceso.fictionalMinutes)) > 0;
       return estaEsDeRendido && muertesDeRendidos(muertes) >= UMBRAL_CARNICERO;
     },

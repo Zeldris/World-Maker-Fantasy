@@ -117,6 +117,11 @@ async function tipoParaVector(tx: Tx, s: SucesoEnCola): Promise<string> {
   if (s.tipo !== 'MUERTE_CAUSADA') return s.tipo;
   const victima = s.actores.find((a) => a.entidadTipo === 'NPC' && a.papel === 'VICTIMA')?.entidadId;
   if (!victima) return s.tipo;
+  // Cazar no es crueldad; y la fauna y los NPC genéricos comparten ficha entre ejemplares, así que
+  // «rendido» solo se sabe de verdad de alguien con nombre.
+  const v = await tx.npc.findUnique({ where: { id: victima }, select: { raza: true, kind: true } });
+  if (!v?.raza) return 'CAZA';
+  if (v.kind !== 'PRINCIPAL') return s.tipo;
   const previos = await tx.suceso.findMany({
     where: { saveId: s.saveId, tipo: 'COMBATE_GANADO', fictionalMinutes: { lte: s.fictionalMinutes }, actores: { some: { entidadTipo: 'NPC', papel: 'VICTIMA', entidadId: victima } } },
     select: { fictionalMinutes: true },
@@ -199,7 +204,7 @@ export async function aplicarCambioAprobacion(
 /// cosas vuelven al personaje). Devuelve los nombres de los que se han ido.
 export async function revisarMarchas(tx: Tx, p: { saveId: string; fictionalMinutes: number }): Promise<string[]> {
   const companeros = await tx.companion.findMany({
-    where: { saveId: p.saveId, tipo: 'NPC', OR: [{ aprobacion: { lt: APROBACION_SE_VA } }, { aprobacionBajaDesde: { not: null } }] },
+    where: { saveId: p.saveId, tipo: 'NPC', rolReino: null, condicionFisica: { not: 'MUERTO' }, OR: [{ aprobacion: { lt: APROBACION_SE_VA } }, { aprobacionBajaDesde: { not: null } }] },
     select: { id: true, name: true, aprobacion: true, aprobacionBajaDesde: true },
   });
   const idos: string[] = [];
@@ -214,6 +219,8 @@ export async function revisarMarchas(tx: Tx, p: { saveId: string; fictionalMinut
       continue;
     }
     if (p.fictionalMinutes - c.aprobacionBajaDesde < DIAS_PARA_IRSE * 1440) continue;
+    // Sus cosas vuelven a la bolsa del personaje, sin equipar (el hueco de equipo era del compañero).
+    await tx.inventoryItem.updateMany({ where: { companionId: c.id }, data: { companionId: null, slot: null } });
     await tx.companion.delete({ where: { id: c.id } });
     await registrarSuceso(tx, {
       saveId: p.saveId, tipo: 'COMPANERO_SE_VA', fictionalMinutes: p.fictionalMinutes, origen: 'MOTOR',

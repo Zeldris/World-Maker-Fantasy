@@ -69,6 +69,13 @@ describe('aprobación (CR-15) — en una partida', () => {
     expect(await prisma.suceso.count({ where: { saveId, tipo: 'COMPANERO_SE_VA' } })).toBe(1);
   });
 
+  it('quien se va deja sus cosas en la bolsa del personaje, sin equipar', async () => {
+    const c = await prisma.companion.create({ data: { saveId, name: 'Armado', role: 'aliado', notes: '', tipo: 'NPC', aprobacion: 5, aprobacionBajaDesde: MIN } });
+    const espada = await prisma.inventoryItem.create({ data: { saveId, name: 'Espada', description: 'x', origin: 'x', companionId: c.id, slot: 'ARMA_PRINCIPAL' } as never });
+    await prisma.$transaction((tx) => revisarMarchas(tx, { saveId, fictionalMinutes: MIN + 3 * 1440 }));
+    expect(await prisma.inventoryItem.findUniqueOrThrow({ where: { id: espada.id } })).toMatchObject({ companionId: null, slot: null });
+  });
+
   it('si se recupera a tiempo, se queda', async () => {
     const dudoso = await prisma.companion.create({ data: { saveId, name: 'Dudoso', role: 'aliado', notes: '', tipo: 'NPC', aprobacion: 5 } });
     await prisma.$transaction((tx) => revisarMarchas(tx, { saveId, fictionalMinutes: MIN }));

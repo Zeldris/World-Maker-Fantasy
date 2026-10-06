@@ -103,10 +103,13 @@ export const REACCIONES_RECUERDOS: Reaccion[] = [
     escucha: [...new Set(RECUERDOS.map((r) => r.tipo))] as Reaccion['escucha'],
     prioridad: 40,
     condicion: async (ctx) => delPersonaje(ctx.suceso) && RECUERDOS.some((r) => r.tipo === ctx.suceso.tipo && npcsCon(ctx.suceso, r.papel).length > 0),
-    efectos: async (ctx) =>
-      RECUERDOS.filter((r) => r.tipo === ctx.suceso.tipo).flatMap((r) =>
-        npcsCon(ctx.suceso, r.papel).map((npcId): Efecto => ({ tipo: 'anadirRecuerdo', npcId, sentimiento: r.sentimiento })),
-      ),
+    // Solo recuerdan los NPC con nombre: la fauna y los genéricos comparten ficha entre ejemplares y el
+    // rencor de uno se contagiaría a todos los de su especie.
+    efectos: async (ctx) => {
+      const propuestos = RECUERDOS.filter((r) => r.tipo === ctx.suceso.tipo).flatMap((r) => npcsCon(ctx.suceso, r.papel).map((npcId) => ({ npcId, sentimiento: r.sentimiento })));
+      const conNombre = new Set((await ctx.tx.npc.findMany({ where: { id: { in: propuestos.map((p) => p.npcId) }, kind: 'PRINCIPAL' }, select: { id: true } })).map((n) => n.id));
+      return propuestos.filter((p) => conNombre.has(p.npcId)).map((p): Efecto => ({ tipo: 'anadirRecuerdo', npcId: p.npcId, sentimiento: p.sentimiento }));
+    },
   },
   {
     // Q5: sobrevivir a la jugadora (huir o ser perdonado) o vencerla hace subir al NPC con nombre.

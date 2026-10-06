@@ -12,9 +12,9 @@ export type RespuestaTierra = { frase: string; contadas: number } | { error: str
 
 export async function preguntarCompanero(prisma: PrismaClient, saveId: string, companionId: string): Promise<RespuestaTierra> {
   return prisma.$transaction(async (tx) => {
-    const c = await tx.companion.findFirst({ where: { id: companionId, saveId }, select: { name: true, tipo: true, aprobacion: true, sourceSlug: true, save: { select: { worldId: true } } } });
+    const c = await tx.companion.findFirst({ where: { id: companionId, saveId }, select: { name: true, tipo: true, aprobacion: true, sourceSlug: true, condicionFisica: true, save: { select: { worldId: true } } } });
     if (!c) return { error: 'Compañero no encontrado' };
-    if (c.tipo !== 'NPC') return { error: `${c.name} no tiene nada que contarte.` };
+    if (c.tipo !== 'NPC' || c.condicionFisica === 'MUERTO') return { error: `${c.name} no tiene nada que contarte.` };
     if (c.aprobacion < APROBACION_PARA_CONTAR) return { frase: `${c.name} se encoge de hombros: no tiene ganas de hablar contigo.`, contadas: 0 };
     const npc = c.sourceSlug ? await tx.npc.findFirst({ where: { worldId: c.save.worldId, slug: c.sourceSlug }, select: { faction: true } }) : null;
     const faccion = npc?.faction ?? null;

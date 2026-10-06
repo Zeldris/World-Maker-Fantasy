@@ -111,17 +111,18 @@ export async function avanzarMundoHasta(
       await paso('comercio', () => avanzarComercio(prisma, saveId, d, random));
       // CR-32: cada semana, los informantes pasan lo que saben (o los descubren).
       await paso('informantes', () => prisma.$transaction((tx) => revisarInformantes(tx, { saveId, worldId, dia: d, random })));
+      // CR-15: el compañero que lleva 3 días con la aprobación por los suelos se va (cada día simulado).
+      await paso('marchasCompaneros', async () => {
+        const ws = await prisma.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true } });
+        await prisma.$transaction((tx) => revisarMarchas(tx, { saveId, fictionalMinutes: Math.min(ws?.fictionalMinutes ?? 0, (d + 1) * 1440 - 1) }));
+      });
     }
     // CR-14: etiquetas de relación (AMIGO_DE / ENEMIGO_DE) según la reputación del final del día.
     await paso('etiquetasReputacion', async () => {
       const ws = await prisma.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true } });
       await prisma.$transaction((tx) => revisarEtiquetasDeReputacion(tx, { saveId, worldId, fictionalMinutes: ws?.fictionalMinutes ?? 0 }));
     });
-    // CR-15: el compañero que lleva 3 días con la aprobación por los suelos se va.
-    await paso('marchasCompaneros', async () => {
-      const ws = await prisma.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true } });
-      await prisma.$transaction((tx) => revisarMarchas(tx, { saveId, fictionalMinutes: ws?.fictionalMinutes ?? 0 }));
-    });
+
   }
   // CR-10: reacciones de lo que haya pasado en el turno o en estos días; CR-11: consecuencias que
   // toquen ahora (días, región), y otra vuelta de reacciones por lo que hayan registrado.

@@ -135,7 +135,7 @@ const APERTURAS: { patron: Patron; escucha: string[]; abre: Apertura }[] = [
       const perdidas = await tx.suceso.count({
         where: {
           saveId: suceso.saveId, tipo: { in: ['TERRITORIO_PERDIDO', 'MUERTE_LIDER'] }, fictionalMinutes: { gte: suceso.fictionalMinutes - VENTANA_CAIDA_MIN },
-          actores: { some: { entidadTipo: 'FACCION', entidadId: faccion } },
+          actores: { some: { entidadTipo: 'FACCION', entidadId: faccion, papel: { in: ['VICTIMA', 'AFECTADO'] } } },
         },
       });
       if (perdidas < PERDIDAS_PARA_CAIDA) return null;

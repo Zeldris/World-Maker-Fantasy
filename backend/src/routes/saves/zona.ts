@@ -930,7 +930,8 @@ export async function zonaRoutes(app: FastifyInstance) {
         if (colisionTipo === 'FAUNA' && colision.temperamento === 'CAUTELOSO' && quienInicia === 'npc' && (await etiquetasActivas(tx, saveId)).has('CAZADOR_TEMIDO')) {
           const textoHuida = `${colision.targetName} reconoce a ${characterName} de lejos y huye antes de que pueda acercarse.`;
           const creada = await tx.logEntry.create({ data: { saveId, channel: 'CHARACTER', text: textoHuida, timeLabel, fictionalMinutes, isPlayerAction: false, isSystemMessage: true } });
-          return { ultimoEncuentroSigueCerca, colision: null, dynamicModeOffer: null, logEntry: { id: creada.id, text: textoHuida, timeLabel, createdAt: creada.createdAt.toISOString() } };
+          // Queda como último encuentro: mientras sigas en su radio no vuelve a «huir» a cada paso.
+          return { ultimoEncuentroSigueCerca, colision: null, dynamicModeOffer: null, logEntry: { id: creada.id, text: textoHuida, timeLabel, createdAt: creada.createdAt.toISOString() }, avistadoSinOferta: { targetSlug: colision.targetSlug } };
         }
         dynamicModeOffer = {
           tipo: colisionTipo!,
