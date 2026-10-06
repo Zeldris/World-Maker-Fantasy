@@ -5,7 +5,9 @@ import { gradoOf, formatMultiplier, difficultyLabelFor } from './CombatExchangeB
 import { TooltipAnchor } from './TooltipAnchor'
 import { RollBreakdown } from './RollBreakdown'
 import { debeDesplazarseATirada, escucharScrollManual } from '../lib/scrollTirada'
-import { buildRollTickDelays, duracionTirada, retardosTirada, ROLL_DURATION_MS } from '../lib/duracionTirada'
+import { buildRollTickDelays, cancelarTirada, duracionTirada, retardosTirada, ROLL_DURATION_MS, saltarTiradas, temporizadorTirada } from '../lib/duracionTirada'
+
+const TITULO_SALTAR = 'Clic o Espacio: ver ya el resultado'
 
 /// Núcleo genérico de "tirada en vivo" (2026-09-04, centralización de todas las tiradas del juego
 /// — petición explícita: "como si jugaras una partida D&D... que el efecto de los dados suceda de
@@ -66,27 +68,29 @@ export function DiceFace({
 
   useEffect(() => {
     let cancelled = false
+    let aterrizado = false
     const timers: ReturnType<typeof setTimeout>[] = []
     let elapsed = startDelayMs
     for (const delay of retardosTirada()) {
       elapsed += delay
       timers.push(
         setTimeout(() => {
-          if (cancelled) return
+          if (cancelled || aterrizado) return
           setDisplay(1 + Math.floor(Math.random() * 20))
         }, elapsed),
       )
     }
-    timers.push(
-      setTimeout(() => {
-        if (cancelled) return
-        setDisplay(side.roll)
-        setLanded(true)
-      }, startDelayMs + duracionTirada()),
-    )
+    // CFG-20: el aterrizaje se puede adelantar con un clic o `Espacio` (`saltarTiradas`).
+    const aterrizaje = temporizadorTirada(() => {
+      if (cancelled) return
+      aterrizado = true
+      setDisplay(side.roll)
+      setLanded(true)
+    }, startDelayMs + duracionTirada())
     return () => {
       cancelled = true
       timers.forEach(clearTimeout)
+      cancelarTirada(aterrizaje)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe arrancar una vez por tirada, `side`/`startDelayMs` son estables durante la vida de este componente
   }, [])
@@ -206,7 +210,7 @@ function useScrollIntoViewOnMount<T extends HTMLElement>() {
 export function DiceRollSingle({ roll, label, showDifficulty = true }: { roll: RollInfo | CombatExchangeSideInfo; label?: string; showDifficulty?: boolean }) {
   const ref = useScrollIntoViewOnMount<HTMLDivElement>()
   return (
-    <div ref={ref} className="animate-entry-in mt-2 flex items-center justify-center rounded-lg border border-dashed border-iron-700 bg-wood-950/30 px-3 py-3">
+    <div ref={ref} onClick={saltarTiradas} title={TITULO_SALTAR} className="animate-entry-in mt-2 flex items-center justify-center rounded-lg border border-dashed border-iron-700 bg-wood-950/30 px-3 py-3">
       <DiceFace
         label={label ?? 'Tú'}
         side={roll}
@@ -273,11 +277,11 @@ export function DiceRollVs({
 
   useEffect(() => {
     const totalMs = Math.max(leftDelayMs, rightDelayMs) + duracionTirada()
-    const timer = setTimeout(() => {
+    const timer = temporizadorTirada(() => {
       setAmbosAterrizados(true)
       onAllLanded?.()
     }, totalMs)
-    return () => clearTimeout(timer)
+    return () => cancelarTirada(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- misma disciplina que DiceFace: arranca una sola vez por tirada, `leftDelayMs`/`rightDelayMs`/`onAllLanded` son estables durante su vida
   }, [])
 
@@ -287,7 +291,7 @@ export function DiceRollVs({
   const nombreDer = rightLabel ?? 'el enemigo'
 
   return (
-    <div ref={ref} className="animate-entry-in mt-2 flex flex-col items-center gap-2 rounded-lg border border-dashed border-iron-700 bg-wood-950/30 px-3 py-3">
+    <div ref={ref} onClick={saltarTiradas} title={TITULO_SALTAR} className="animate-entry-in mt-2 flex flex-col items-center gap-2 rounded-lg border border-dashed border-iron-700 bg-wood-950/30 px-3 py-3">
       {/* Fase G del 0.1 (hallazgo G4): en el panel de combate, estrecho, los dos lados no cabían en
           fila con `gap-14` y la fórmula del rival se cortaba con barra horizontal — ahora se
           acercan y, si aun así no caben, el rival baja debajo. */}

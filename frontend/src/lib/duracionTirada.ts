@@ -38,3 +38,78 @@ export function retardosTirada(): number[] {
   if (!cacheRetardos || cacheRetardos.ms !== ms) cacheRetardos = { ms, retardos: buildRollTickDelays(ms) }
   return cacheRetardos.retardos
 }
+
+// ─── Saltar las tiradas (CFG-20 / DAD-8) ───
+// Todo lo que espera a que los dados aterricen se programa con `temporizadorTirada` en vez de
+// `setTimeout`. Un clic en los dados o `Espacio` (fuera de un campo de texto) llama a
+// `saltarTiradas()`: lo pendiente se dispara ya, en el orden en que iba a ocurrir. Lo que se
+// programe mientras tanto (la tirada siguiente) no se salta: hace falta otro clic.
+
+type Pendiente = { fn: () => void; vence: number; orden: number }
+const pendientes = new Map<ReturnType<typeof setTimeout>, Pendiente>()
+let contador = 0
+
+function escuchaTeclado(activa: boolean) {
+  if (typeof document === 'undefined') return
+  if (activa) document.addEventListener('keydown', alPulsarTecla)
+  else document.removeEventListener('keydown', alPulsarTecla)
+}
+
+function alPulsarTecla(e: KeyboardEvent) {
+  if (e.key !== ' ' || e.repeat) return
+  const t = e.target as HTMLElement | null
+  if (t && (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(t.tagName))) return
+  e.preventDefault()
+  saltarTiradas()
+}
+
+/// Como `setTimeout`, pero `saltarTiradas()` lo adelanta. Se cancela con `cancelarTirada`.
+export function temporizadorTirada(fn: () => void, ms: number): ReturnType<typeof setTimeout> {
+  const handle = setTimeout(() => {
+    pendientes.delete(handle)
+    if (pendientes.size === 0) escuchaTeclado(false)
+    fn()
+  }, ms)
+  if (pendientes.size === 0) escuchaTeclado(true)
+  pendientes.set(handle, { fn, vence: Date.now() + ms, orden: contador++ })
+  return handle
+}
+
+export function cancelarTirada(handle: ReturnType<typeof setTimeout> | null | undefined): void {
+  if (handle == null) return
+  clearTimeout(handle)
+  pendientes.delete(handle)
+  if (pendientes.size === 0) escuchaTeclado(false)
+}
+
+/// Promesa que se resuelve al aterrizar los dados (o al saltarlos).
+export function esperarTirada(ms: number): Promise<void> {
+  return new Promise((resolve) => temporizadorTirada(resolve, ms))
+}
+
+export function hayTiradasEnCurso(): boolean {
+  return pendientes.size > 0
+}
+
+const oyentesSalto = new Set<() => void>()
+
+/// Avisa cuando se saltan las tiradas (lo que no espera con un temporizador, como un retraso CSS).
+export function alSaltarTiradas(cb: () => void): () => void {
+  oyentesSalto.add(cb)
+  return () => {
+    oyentesSalto.delete(cb)
+  }
+}
+
+export function saltarTiradas(): void {
+  oyentesSalto.forEach((cb) => cb())
+  const ahora = [...pendientes.entries()].sort(([, a], [, b]) => a.vence - b.vence || a.orden - b.orden)
+  for (const [handle, p] of ahora) {
+    // Uno anterior pudo cancelarlo al dispararse.
+    if (!pendientes.has(handle)) continue
+    clearTimeout(handle)
+    pendientes.delete(handle)
+    if (pendientes.size === 0) escuchaTeclado(false)
+    p.fn()
+  }
+}

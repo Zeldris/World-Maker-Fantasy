@@ -13,6 +13,7 @@ import { OfferCard } from './OfferCard'
 import { presentacionOferta } from '../lib/ofertaModoDinamico'
 import { combatKeyFor } from '../lib/gameViewHelpers'
 import { retrasoEnVivo } from '../lib/presentacionTurno'
+import { alSaltarTiradas } from '../lib/duracionTirada'
 import { professions } from '../data/professions'
 import { Chip } from './base/Chip'
 
@@ -280,6 +281,9 @@ export const LogPanel = memo(function LogPanel({
   // Campanada silenciosa: un barrido único del hairline al pasar isThinking true→false —
   // anuncia que la respuesta llegó, sin sonido ni bucle (roadmap de animaciones 2026-07-20).
   const [tollTick, setTollTick] = useState(0)
+  // CFG-20: tras saltar las tiradas, lo que esperaba a los dados entra ya.
+  const [ultimoSalto, setUltimoSalto] = useState(0)
+  useEffect(() => alSaltarTiradas(() => setUltimoSalto(Date.now())), [])
   const wasThinkingRef = useRef(isThinking)
   useEffect(() => {
     if (wasThinkingRef.current && !isThinking) setTollTick((t) => t + 1)
@@ -488,7 +492,7 @@ export const LogPanel = memo(function LogPanel({
               {/* UX-11 (hito 0.2) — en una entrada en vivo, las consecuencias (misión, ofertas, XP,
                   reputación) entran cuando ha aterrizado la tirada, no a la vez que el texto. */}
               {(() => {
-                const retraso = retrasoEnVivo(entry, !!liveEntryIds?.has(entry.id))
+                const retraso = retrasoEnVivo(entry, !!liveEntryIds?.has(entry.id) && ultimoSalto < new Date(entry.createdAt).getTime())
                 return (
               <div
                 className={retraso !== null ? 'animate-paso-turno' : undefined}

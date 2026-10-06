@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, cleanup, act } from '@testing-library/react'
+import { render, cleanup, act, fireEvent } from '@testing-library/react'
 import { forcedGradosFor, DiceRollSingle, DiceRollVs, ROLL_DURATION_MS } from './DiceRoll'
 
 // Bug real jugando en vivo (2026-09-07, "las dos tiradas de combate deberían ser mi tirada vs la
@@ -78,5 +78,41 @@ describe('DiceRollSingle / DiceRollVs — DAD-3, DAD-4', () => {
       vi.advanceTimersByTime(ROLL_DURATION_MS)
     })
     expect(getByTestId('tirada-comparacion').textContent).toBe('19 vs 8 → Gorhorn el de las Llanuras Altas')
+  })
+  it('CFG-20: un clic en los dados (o Espacio) salta a la tirada aterrizada, con el «vs» resuelto', () => {
+    vi.useFakeTimers()
+    const lado = (roll: number, result: number) => ({ attribute: 'carisma' as const, value: 8, roll, difficulty: 0, result, success: true })
+    const alAterrizar = vi.fn()
+    const { getByTestId, queryByTestId, getByText } = render(
+      <DiceRollVs left={lado(15, 19)} right={lado(4, 8)} leftLabel="Gorhorn" rightLabel="Corredor" leftFirst showDifficulty={false} onAllLanded={alAterrizar} />,
+    )
+    expect(queryByTestId('tirada-comparacion')).toBeNull()
+    act(() => {
+      fireEvent.click(getByText('Gorhorn'))
+    })
+    expect(getByTestId('tirada-comparacion').textContent).toBe('19 vs 8 → Gorhorn')
+    expect(alAterrizar).toHaveBeenCalledTimes(1)
+    act(() => {
+      vi.advanceTimersByTime(3 * ROLL_DURATION_MS)
+    })
+    expect(alAterrizar).toHaveBeenCalledTimes(1)
+  })
+
+  it('CFG-20: Espacio también salta, salvo escribiendo en un campo', () => {
+    vi.useFakeTimers()
+    const { getByTestId, queryByTestId } = render(
+      <DiceRollSingle roll={{ attribute: 'fuerza', value: 10, roll: 12, difficulty: 15, result: 17, success: true, gradoExito: 'claro' }} />,
+    )
+    const campo = document.createElement('textarea')
+    document.body.appendChild(campo)
+    act(() => {
+      fireEvent.keyDown(campo, { key: ' ' })
+    })
+    expect(queryByTestId('tirada-total')).toBeNull()
+    act(() => {
+      fireEvent.keyDown(document.body, { key: ' ' })
+    })
+    expect(getByTestId('tirada-total').textContent).toBe('12 + 5 = 17 vs 15 → Éxito')
+    campo.remove()
   })
 })

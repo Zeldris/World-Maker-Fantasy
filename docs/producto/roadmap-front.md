@@ -195,7 +195,11 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
   *Instantánea*; dónde se muestran (*en el registro* · *en primer plano* · *solo las importantes en
   primer plano*); saltar con clic/`Espacio`. **S** (resuelve H3) 🚧 2026-10-02: hecha la
   **velocidad** (`lib/duracionTirada.ts`: todo lo que espera a los dados usa `duracionTirada()`).
-  **Falta:** dónde se muestran (va con `DAD-*`, tirada en primer plano) y saltar con clic/Espacio.
+  2026-10-06: hecho **saltar** (clic en los dados o `Espacio` fuera de un campo de texto y de un
+  botón con el foco): `temporizadorTirada`/`saltarTiradas` en `lib/duracionTirada.ts` adelantan
+  todo lo que espera a los dados (aterrizaje, vida aplicada, iniciativa siguiente, consecuencias
+  del registro), en su orden. **Falta:** dónde se muestran (en primer plano), que va con `DAD-7` en
+  el `0.3` porque necesita el `DiceTray`.
 - **CFG-21 · Efectos ambientales** (§11): sí/no. **S**
 - **CFG-22 · Sacudidas de pantalla y destellos**: sí/no (también accesibilidad). **S**
 - **CFG-23 · Texturas**: Detalladas · Lisas (versión plana de `.plank-panel`/`.iron-band`). **S**
