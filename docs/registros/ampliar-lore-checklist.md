@@ -1388,3 +1388,17 @@ provisional o revisable en el historial de cada fichero.
 
 - **Edificios de oficio (2026-09-28)**: diseño en `rpgtarkor/sistemas-reino/edificios-de-oficio.md`.
   Todo el código pendiente está en su § 7.
+
+## Tanda OpenCode 2026-10-03 — revisada el 2026-10-06, pendiente de pasar a docs
+
+Revisión delegada en Claude por la usuaria. Aprobadas con correcciones en
+`docs/borradores-opencode/propuestas-aprobadas.md`; descartes en `revision-lore.md`.
+
+Pendiente de docs (runbook `ampliar-lore`):
+- [ ] B-01…B-08 (historia Faerus y Nabieus): `cronologia.md`, `cronologia-mitica.md`, `razas.md`,
+  `clanes-orcos.md` (§ Senda del Sílice), `regiones/margen-silencioso.md`.
+- [ ] C-01…C-11 (costumbres Faerus): `razas.md` § Faerus, subsección nueva «Costumbres de la manada».
+- [ ] Pregunta para Álvaro antes de C-11: qué se hace con el cuerpo de un Faerus muerto.
+
+Pendiente de código: nada obligatorio. Opcional para el Cronista: C-05 (entrar en una manada) y
+C-09 (cuidar al herido) como reglas de aprobación de compañeros Faerus.

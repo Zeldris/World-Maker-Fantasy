@@ -3349,3 +3349,166 @@ Hoy solo quedan fragmentos sueltos: esquinas de muros, cabezas de estatuas sin r
 ## Categoría: Otros
 
 *(Vacía — para propuestas que no encajen en las categorías anteriores)*
+
+## Tanda OpenCode 2026-10-03 — descartes (revisión del 2026-10-06)
+
+**Estado de las entradas de abajo: RECHAZADA (revisión delegada en Claude por la usuaria, 2026-10-06)**,
+aunque el texto original diga «SIN REVISAR». Lo que valía de esta tanda está en
+[propuestas-aprobadas.md](propuestas-aprobadas.md) (fichas B-01 a B-08 y C-01 a C-11).
+
+Por qué se descartan:
+- **La Murmuración de las Raíces**: copia la escucha con la palma de los Nabieus (*Tovh'vhurne*) para los Faerus, que leen con el olfato.
+- **El Jurado del Fuego**: usa *Grath'sil* («tierra que arde», la guerra) como si fuera un rito del fuego, y presenta el fuego como un descubrimiento tardío de Hashma, cuando los Faerus lo usan desde siempre.
+- **La Tolda del Ancestro**: choca con el Jakut de Kegi (una losa de piedra roja) y con el origen de Kegi en el Pacto de la Primera Pieza (~2.300).
+- **Feg'ghep (el debate en el Jakut)**: pone votos y mayorías en el Jakut; el canon dice lo contrario: decide quien está sentado, sin votos ni cargos.
+
+---
+
+### 2026-10-03 — La Murmuración de las Raíces en Hashma
+**Estado: SIN REVISAR**
+
+**Qué hueco cubre:** Del ~2.800 al ~3.600 — período previo al Yugo de Hierro y la Purga Silenciosa.
+
+**Ficha técnica:**
+- **Título:** La Murmuración de las Raíces en Hashma
+- **Era:** Común (~2.850–~2.950)
+- **Tipo:** descubrimiento (sistema de alerta) · **Participantes reales:** Faerus de Hashma (Feg Tusha)
+- **Causas:** Los Goirntes empezaron a patrullar con frecuencia, necesitando alertas anticipadas
+- **Qué pasó:** Los Faerus desarrollaron un sistema de comunicación basado en vibraciones del suelo y olores, no en gesticulación o sonidos, para anticipar invasores Goirntes
+- **Consecuencias en el presente (4.010):** El sistema se volvió obsoleto con el Yugo. Gorhorn no heredó este sistema
+- **Documento que lo recuerda:** sin documento
+
+**Descripción:** Alrededor del ~2.850, los scouts Goirntes empezaron a patrullar el sur de las Llanuras con frecuencia. Los Faerus de Hashma, usando su sentido del olfato y la capacidad de detectar vibraciones a través del suelo (no sonidos), notaron que la "tierra misma" les avisaba de la presencia de invasores. Crearon un sistema de "murmuración": algunos individuos (los más experimentados) se ponían en posición de escucha en puntos altos y transmitían la información mediante vibraciones de los pies y señales olfativas (no gesticulación). Si el suelo vibraba con el peso de soldados, los Faerus sabían que las tropas Goirnte se acercaban.
+
+**Base física:** La detección de vibraciones y olores es biológica.
+
+**Canon que reutiliza:** Faerus de Hashma (Feg Tusha), Estallido (~1.000), Feg'nur, Vash'grath, Goirntes, Yugo de Hierro (3.600), Purga Silenciosa (3.650).
+
+**Nombre:** En lengua Feg: Ashi'vibro; en lengua común: Murmuración de las Raíces.
+
+**Contradicciones detectadas:**
+- ⚠️ "Faenus" → "Faerus".
+- ⚠️ "Ashi'vibro" — verificar.
+
+**Preguntas abiertas para Álvaro:**
+1. ¿Qué vibración específica indicaba la presencia de tropas Goirntes?
+2. ¿Cómo se diferenciaba el sistema de murmuración de la comunicación Faerus habitual?
+3. ¿Qué pasó a los Faerus que no pudieron transmitir la alerta?
+
+**Archivos que tocaría si se aprueba:**
+- `docs/rpgtarkor/historia/cronologia.md`
+- `docs/rpgtarkor/lore-mundo/faerus.md`
+- `docs/rpgtarkor/diccionarios/feg.md`
+
+---
+
+### 2026-10-03 — El Jurado del Fuego en Hashma
+**Estado: SIN REVISAR**
+
+**Qué hueco cubre:** Del ~1.000 al 2.000 — "Los mil años salvajes: mutan especies de las Llanuras" (aplicado a Faerus de Hashma).
+
+**Ficha técnica:**
+- **Título:** El Jurado del Fuego en Hashma
+- **Era:** Común (~2.600)
+- **Tipo:** descubrimiento (tecnología de supervivencia) · **Participantes reales:** Faerus de Hashma (Feg Tusha)
+- **Causas:** El fuego salvaje amenazaba sus territorios; necesitaban controlarlo para sobrevivir
+- **Qué pasó:** Faerus experimentados aprendieron a controlar pequeñas llamaradas usando madera seca y viento para espantar criaturas mutadas
+- **Consecuencias en el presente (4.010):** Gorhorn aprendió a usar el fuego desde los Faerus de Kegi. La tradición de control del fuego es base de la tecnología Faerus actual
+- **Documento que lo recuerda:** sin documento
+
+**Descripción:** Tras el Estallido (~1.000), las llamaradas del fuego salvaje (Grath'sil, tierra que arde) eran descontrolables y amenazaban las selvas de Hashma. Alrededor de ~2.600, algunos Faerus experimentados descubrieron que podían controlar pequeñas llamaradas usando madera seca y viento, creando "fogatas controladas" que espantaban a las criaturas mutadas más agresivas (Kirelon, Salamandra). Aprendieron a usar el fuego como herramienta de caza: encendían fogatas cerca del territorio de las criaturas, las ahuyentaban, y luego las cazaban con mayor facilidad.
+
+**Base física:** El fuego es combustible (madera, carbón) + oxígeno del aire.
+
+**Canon que reutiliza:** Faerus de Hashma (Feg Tusha), Grath'sil (fuego salvaje), Vash'grath (compartir), Estallido (~1.000), Kirelon, Salamandra.
+
+**Nombre:** En lengua Feg: Grath'til; en lengua común: Jurado del Fuego.
+
+**Contradicciones detectadas:**
+- ⚠️ "Faenus" → "Faerus".
+- ⚠️ "Grath'til" — verificar.
+- ⚠️ **"Grath'sil"** — aparece como "fuego salvaje", pero en logs anteriores era "Tierra que arde" para los Faerus (guerra). Confusión semántica.
+
+**Preguntas abiertas para Álvaro:**
+1. ¿Qué criatura específica fue ahuyentada con estas fogatas?
+2. ¿Cómo se transmitió este conocimiento sin escritura entre ~2.600 y 4.010?
+3. ¿Qué diferencia hubo entre el fuego salvaje del Estallido y el fuego controlado?
+
+**Archivos que tocaría si se aprueba:**
+- `docs/rpgtarkor/historia/cronologia.md`
+- `docs/rpgtarkor/lore-mundo/faerus.md`
+- `docs/rpgtarkor/catalogo/flora-minerales.md`
+
+---
+
+### 2026-10-03 — La Tolda del Ancestro en Hashma
+**Estado: SIN REVISAR**
+
+**Qué hueco cubre:** Del ~3.000 al ~3.600 — período de adaptación post-migración y presión del Yugo de Hierro, antes de la Purga Silenciosa.
+
+**Ficha técnica:**
+- **Título:** La Tolda del Ancestro en Hashma
+- **Era:** Común (~3.000–~3.600)
+- **Tipo:** fundación (consolidación comunitaria) · **Participantes reales:** Faerus de Kegi (Feg Ger), Faerus de Hashma (Feg Tusha)
+- **Causas:** Tras la migración de Hashma hacia Kegi (~3.000) y la presión creciente de los Goirntes (Yugo de Hierro, ~3.600), los Faerus de Kegi necesitaban consolidar su nueva manada
+- **Qué pasó:** En una tolda abierta en el borde sur de las Llanuras, las manadas se reunieron para crear el primer Jakut permanente. El trono era un pedestal de madera de Telda tallado sin herramienta, solo con manos. Se reforzó el Feg'nur como ley fundamental
+- **Consecuencias en el presente (4.010):** El Jakut permanente de Kegi es el modelo de organización que Gorhorn encontró tras huir (4.000). El Feg'nur se mantiene como ley fundamental
+- **Documento que lo recuerda:** sin documento
+
+**Descripción:** Tras la migración de Hashma hacia Kegi (~3.000) y la presión creciente de los Goirntes (Yugo de Hierro, ~3.600), los Faerus de Kegi necesitaban consolidar su nueva manada en la llanura. En una tolda abierta en el borde sur de las Llanuras, donde el Margen se encuentra con la Llanura de Kegi, las manadas se reunieron para crear el primer Jakut permanente. El trono era un pedestal de madera de Telda tallado sin herramienta, solo con manos. Quien se sentaba no tenía título: era quien estaba presente y escuchaba a los demás. La ley fundamental era el Feg'nur: ningún Faerus debía ser abandonado, incluso si no podía cazar o defenderse. Se crearon ritos para los "heridos permanentes": aquellos que ya no podían cazar, pero que seguían siendo cuidados por la manada hasta su muerte natural. La tolda se convirtió en el centro de decisiones de Kegi, donde se reunían las manadas para discutir rutas de caza, alianzas con los Goshg, y la defensa contra los Goirntes. El Jakut permanente fue el primer símbolo de continuidad Faerus en la llanura: no un edificio, sino un lugar que se transmitía de generación en generación.
+
+**Base física:** La tolda es un lugar físico (bajo árboles o estructuras de madera) que se mantiene por la práctica. El Jakut no es magia: es consenso oral y reconocimiento colectivo.
+
+**Canon que reutiliza:** Faerus de Kegi (Feg Ger), Faerus de Hashma (Feg Tusha), Jakut (trono), Feg'nur, Vash'grath, Yugo de Hierro (~3.600), Telda (madera), Kegi.
+
+**Nombre:** En lengua Feg: Vash'jakut (trono de la manada); en lengua común: Tolda del Ancestro.
+
+**Contradicciones detectadas:**
+- ⚠️ "Faenus" → "Faerus".
+- ⚠️ "Vash'jakut" ya aparece en "Umbral del Rango en Hashma" con otro significado. Confusión.
+- ⚠️ "herido" → "heridos" (typo).
+- ⚠️ **Descripción cortada** — completada.
+
+**Preguntas abiertas para Álvaro:**
+1. ¿El Jakut de Kegi se diferencia del de Hashma en estructura o solo en ubicación?
+2. ¿Quién fue el primer Faerus en sentarse en el Jakut permanente?
+3. ¿Cómo se relaciona este evento con el Pacto de la Primera Pieza (~2.300) entre Maktor y Faerus?
+
+**Archivos que tocaría si se aprueba:**
+- `docs/rpgtarkor/historia/cronologia.md`
+- `docs/rpgtarkor/lore-mundo/faerus.md`
+- `docs/rpgtarkor/lore-mundo/kegi.md`
+
+---
+
+### 2026-10-03 — Feg'ghep (el debate en el Jakut)
+**Estado: SIN REVISAR**
+
+**Qué hueco cubre:** No hay descripción del procedimiento de decisión colectiva en la manada Faerus. Solo dice "decide quien está sentado en el Jakut".
+
+**Ficha técnica:**
+- **Raza o clan:** Faerus (Feg Tusha, Hashma) · Feg'ghep
+- **Qué se hace, cuándo y quién:** Debate colectivo en el Jakut sin cargo
+- **Por qué existe:** La manada es la única institución, sin escritura ni títulos
+- **Qué pasa si se rompe:** Decisión errónea, manada expuesta a riesgos
+- **Cómo lo notaría un forastero:** Círculo alrededor de trono, postura y olfato deciden
+
+**Descripción:**
+- Cada Faerus tiene derecho a opinar mientras está sentado en el Jakut.
+- **Orden:** Quien huela mejor el riesgo, habla primero.
+- **Votos:** Se marca con la cola o patas. Quien cambia de mente, cambia de posición.
+- **Aprobación:** Si la mayoría huele "bien", se decide. Si hay conflicto, se pospone al anochecer para revisar.
+
+**Base física:** El sistema democrático basado en posición y percepción olfativa. No hay títulos de mando, solo quién está en el Jakut.
+
+**Canon que reutiliza:** Jakut (trono), Jakut'tar (enseñanza), Feg (manada), Ashi (oler), Vash'grath (primera pieza).
+
+**Preguntas abiertas para Álvaro:**
+1. ¿Cuántos Faerus caben en el Jakut? ¿Todos o solo un consejo?
+2. ¿Un Faerus puede ser expulsado si cambia de opinión?
+3. ¿El Jakut se mueve con la manada o está fijo?
+
+**Archivos que tocaría si se aprueba:**
+- `docs/rpgtarkor/canonical/cultura.md` (añadir a Faerus)
+
+---
