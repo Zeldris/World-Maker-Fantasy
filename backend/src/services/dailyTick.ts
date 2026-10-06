@@ -1,4 +1,5 @@
 import { registrarSuceso } from './cronista/sucesos.js';
+import { suministrosDelReino } from './cronista/economiaReino.js';
 import { sucesosDeClima } from './cronista/clima.js';
 import type { Prisma } from '@prisma/client';
 import { tickKingdom, daysCrossed, hambrunaNueva, DIAS_PARA_CONSOLIDAR, DIAS_PARA_REBELION } from './kingdomTick.js';
@@ -31,9 +32,12 @@ export async function advanceKingdomStatsDay(
   const kingdomStats = await tx.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId }) } });
   if (kingdomStats) {
     const { poblacion, felicidad, comida, bebida, riqueza, soldados, trabajadores, visitantes, diasFelicidadAlta, diasFelicidadBaja, diasHambre } = kingdomStats;
+    // CR-53: agua de pozos y fuente natural, y topes del almacén.
+    const suministros = await suministrosDelReino(tx, saveId);
     const ticked = tickKingdom(
       { poblacion, felicidad, comida, bebida, riqueza, soldados, trabajadores, visitantes, diasFelicidadAlta, diasFelicidadBaja, diasHambre },
       diasCruzados,
+      suministros,
     );
     await tx.kingdomStats.update({ where: { ownerKey: ownerKeyFor({ saveId }) }, data: ticked });
     // CR-12 (12c): 3 días seguidos de hambre → HAMBRUNA en el Libro (la reacción baja la cohesión).
