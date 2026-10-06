@@ -9,13 +9,29 @@ usuaria, 2026-10-04: subir las skills junto con lo que vaya a `main`). Git sigue
 añadidos aunque la carpeta esté ignorada; una skill **nueva** se añade con
 `git add -f .claude/skills/<nombre>`. Si una skill no está cargada, se sigue su descripción de aquí.
 
-## Cómo se usa
+## Cómo se usa: el flujo de una tarea
 
-1. **Al empezar cada tarea**, Claude aplica el selector (la tabla de abajo): clasifica la tarea, dice en una
-   línea qué skill y qué modelo pide, y sigue.
-2. **La usuaria** puede invocar a mano las de la columna «Se invoca»: escribiendo `/nombre`.
-3. **Nada cambia** de las reglas de `CLAUDE.md`: commit + push, bitácora, roadmaps con hito, tests en
-   verde. Las skills se apoyan en ellas, no las sustituyen.
+Lo sigue cualquier sesión, de cualquiera de las dos cuentas. Cada skill se carga con la herramienta
+Skill (no basta con nombrarla); `/grill-with-docs` solo lo lanza la usuaria, con
+`/grill-with-docs`.
+
+1. **Empezar la tarea:** cargar `selector`, clasificar la tarea con su tabla y decir en una línea
+   qué skill y qué modelo pide.
+2. **Si hay diseño o una decisión abierta:** `grilling` + `domain-modeling` (o `/grill-with-docs` si
+   lo lanza la usuaria), con los juegos de referencia. Si una pregunta pide decidir números o reglas
+   que hay que probar para sentirlas, `prototype` y el enlace en la pregunta. Lo decidido, a su
+   roadmap; los términos, a `GLOSSARY.md`; lo difícil de revertir, a `docs/adr/`.
+3. **Implementar** por pasos pequeños, cada uno con sus tests, y commit + push en cada punto
+   estable (`CLAUDE.md`).
+4. **Si algo falla** (test rojo, intermitente, bug): `diagnosing-bugs` antes de tocar el código.
+5. **Cerrar la tarea:** tachada en su roadmap y en el mapa, bitácora al día, commit + push.
+6. **Antes de un PR a `main`** (solo cuando lo pide la usuaria): `/code-review` del diff contra
+   `main`, arreglar lo que encuentre y escribir la descripción con `pr`.
+7. **Al cerrar una fase o un hito:** `retro`, que lanza Claude sobre toda la fase; sus propuestas
+   se presentan a la usuaria, que las revisa y confirma (nada se aplica antes). Cada pocas fases,
+   `/improve-codebase-architecture`. Lo aceptado entra como tarea con hito.
+
+Nada cambia de las reglas de `CLAUDE.md`: las skills se apoyan en ellas, no las sustituyen.
 
 ## Skills que encajan
 
@@ -28,8 +44,10 @@ añadidos aunque la carpeta esté ignorada; una skill **nueva** se añade con
 | `diagnosing-bugs` | sola ante un bug o test rojo | Primero un test o comando que reproduzca el fallo; luego minimizar, hipótesis, arreglo y test de regresión | Bugs que encuentras jugando (como Matar/Clemente) y tests intermitentes (G16, P3.2) |
 | `/improve-codebase-architecture` | la usuaria o al cerrar fase | Busca módulos que simplificar y los presenta en un informe | Cada pocas fases. Candidatos claros: `turnResolution.ts` (más de 7.000 líneas), `turn.ts` |
 | `codebase-design` | por debajo de la anterior | Vocabulario para diseñar módulos con interfaz pequeña | — |
-| `/retro` | al cerrar fase o hito | Propone mejoras del entorno: comprobaciones automáticas, instrucciones, herramientas | Fin de cada fase. Lo aceptado entra como tarea con hito |
+| `retro` | Claude, al cerrar fase o hito (o la usuaria con `/retro`) | Propone mejoras del entorno: comprobaciones automáticas, instrucciones, herramientas | Fin de cada fase. Las propuestas las revisa y confirma la usuaria; solo lo confirmado entra como tarea con hito |
 | `writing-for-agents` | sola al escribir para agentes | Cómo escribir CLAUDE.md, skills y documentos para agentes | Al tocar `CLAUDE.md`, la bitácora o una skill |
+| `prototype` | Claude, dentro de una ronda de diseño | Prototipo para tirar: un HTML con botones que mueve la lógica (o variantes de una pantalla) para probar una decisión antes de tomarla | Cuando la usuaria decide números o reglas (economía, ganadería, combate, ritmo). El HTML se publica como Artifact o se le envía; se guarda en `docs/prototipos/` y el veredicto va al roadmap |
+| `pr` | Claude, al abrir un PR a `main` | Descripción del PR: resumen visual del cambio, evidencia antes/después y peligro del merge | Cada PR a `main`, tras `/code-review`. Evidencia: los números de `tsc`, `vitest` y `oxlint` |
 
 ## Descartadas, y por qué
 
@@ -38,8 +56,15 @@ añadidos aunque la carpeta esté ignorada; una skill **nueva** se añade con
 - **`to-spec`, `to-tickets`, `triage`, `wayfinder`, `implement`, `setup-matt-pocock-skills`**:
   suponen un gestor de issues. Aquí el trabajo vive en los roadmaps `.md` con hitos; serían dos
   sistemas a la vez.
-- **`tdd`**: ya se trabaja con tests en verde antes de cada subida.
+- **`tdd`**: ya se trabaja con tests en verde antes de cada subida; además pide acordar con la
+  usuaria qué se prueba, y aquí la implementación es continua (revisado otra vez el 2026-10-06).
 - **`code-review`**: Claude Code trae `/code-review` de serie.
+- **`to-questionnaire`** (revisada el 2026-10-06): las preguntas a Álvaro ya tienen su sitio en
+  `docs/borradores-opencode/propuestas-lore.md`.
+- **`wait-what`** (revisada el 2026-10-06): repite la explicación en inglés técnico simplificado;
+  a la usuaria le basta con pedirlo en español.
+- **`git-guardrails-claude-code`**, **`setup-pre-commit`**: bloquean `git push` o pasan la suite
+  (unos 7 min) en cada commit, contra el commit + push constante.
 - **`ask-matt`**: es un selector de las skills de su repositorio; se sustituye por `selector`, que
   además elige modelo.
 
