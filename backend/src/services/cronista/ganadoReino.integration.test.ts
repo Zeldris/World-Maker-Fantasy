@@ -44,15 +44,15 @@ describe('Avance diario del ganado del Reino (CR-55 55d)', () => {
     await prisma.save.delete({ where: { id: saveId } });
   });
 
-  it('comen forraje y beben agua; con ganadero, la leche alimenta (4 de curaHambre por litro, 10 = 1 de comida)', async () => {
+  it('comen forraje y beben agua; con ganadero, la leche alimenta (3 al día por Múrgol, 4 de curaHambre cada una, 10 = 1 de comida)', async () => {
     for (let i = 0; i < 5; i++) await animal(i % 2 ? 'M' : 'F');
     await ganadero();
     const r = await avanzarGanadoReino(prisma, saveId, DIA, AHORA, () => 0.99);
-    expect(r).toMatchObject({ comido: true, bebido: true, producido: { 'leche-murgol': 5 }, comidaDeLeche: 2 });
+    expect(r).toMatchObject({ comido: true, bebido: true, producido: { 'leche-murgol': 15 }, comidaDeLeche: 6 });
     const s = await stats();
     expect(s.forraje).toBe(15);
     expect(s.bebida).toBe(25);
-    expect(s.comida).toBe(12);
+    expect(s.comida).toBe(16);
   });
 
   it('sin ganadero no producen, pero crían (una cría por semana con pareja adulta)', async () => {
@@ -88,5 +88,12 @@ describe('Avance diario del ganado del Reino (CR-55 55d)', () => {
     await prisma.companion.create({ data: { saveId, name: 'Segadora', role: 'aliado', notes: '', tipo: 'NPC', rolReino: 'trabajador', buildingId: fibreria.id } });
     await avanzarGanadoReino(prisma, saveId, DIA, AHORA, () => 0.99);
     expect((await stats()).forraje).toBe(30);
+  });
+
+  it('en las Llanuras pastan: los herbívoros comen la mitad de forraje', async () => {
+    await prisma.territory.create({ data: { saveId, name: 'Tierra de prueba', region: 'Las Llanuras del Viento Rojo', description: 'x' } });
+    for (let i = 0; i < 4; i++) await animal(i % 2 ? 'M' : 'F');
+    await avanzarGanadoReino(prisma, saveId, 15, 15 * 1440 + 600, () => 0.99);
+    expect((await stats()).forraje).toBe(18);
   });
 });

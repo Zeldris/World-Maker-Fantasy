@@ -8343,6 +8343,21 @@ export const items: ItemCatalogInput[] = [
     tier: 3,
   },
 
+  // CR-55 (55f, libertad de la usuaria para ampliar el catálogo): huevo del Corretolvas criado en
+  // corral; propuesta a Álvaro en propuestas-lore.md («Ganadería»).
+  {
+    slug: 'huevo-corretolvas',
+    name: 'Huevo de Corretolvas',
+    aliases: ['huevo de corretolvas', 'huevos de corretolvas'],
+    category: 'alimento',
+    tipo: 'RECURSO',
+    valorGoirnos: 1,
+    description: 'Huevo pardo, pequeño y de cáscara dura, que las hembras de Corretolvas ponen a diario entre la paja del corral — en libertad los esconden en la hierba rojiza y casi nadie los encuentra.',
+    dimensiones: 'Huevo de unos 4 cm.',
+    lugarOrigen: 'Corrales de las Llanuras del Viento Rojo.',
+    tier: 1,
+  },
+
   {
     slug: 'carne-terkash',
     name: 'Carne de Terkash',

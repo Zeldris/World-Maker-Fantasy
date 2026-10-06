@@ -50,6 +50,11 @@ describe('consumo (Q13 de la Fase D)', () => {
     expect(c).toEqual({ forraje: 2, comida: 0, agua: 2 });
   });
 
+  it('con pasto natural (las Llanuras) los herbívoros comen la mitad', () => {
+    const c = consumoCorral([{ a: murgol('M', 200), etapa: 'ADULTO' }, { a: murgol('F', 200), etapa: 'ADULTO' }], 1, true);
+    expect(c.forraje).toBe(1);
+  });
+
   it('el carnívoro come 1 de comida cada 2 días', () => {
     const canizor = { a: { especie: 'canizor', sexo: 'M' as const, edadDias: 400 }, etapa: 'ADULTO' as Etapa };
     expect(consumoCorral([canizor], 2).comida).toBe(1);
@@ -63,18 +68,22 @@ describe('producción (Q4, Q12)', () => {
     expect(produccionDelDia('murgol', ['ADULTO'], 1, 3, false)).toEqual({});
   });
 
-  it('cada adulto da leche cada día y lana cada 3 días; las crías y los jóvenes nada', () => {
-    expect(produccionDelDia('murgol', ['ADULTO', 'ADULTO', 'CRIA', 'JOVEN'], 1, 3, true)).toEqual({ 'leche-murgol': 2, 'lana-murgol': 2 });
-    expect(produccionDelDia('murgol', ['ADULTO', 'ADULTO'], 1, 4, true)).toEqual({ 'leche-murgol': 2 });
+  it('cada adulto da 3 de leche al día y lana cada 3 días; las crías y los jóvenes nada', () => {
+    expect(produccionDelDia('murgol', ['ADULTO', 'ADULTO', 'CRIA', 'JOVEN'], 1, 3, true)).toEqual({ 'leche-murgol': 6, 'lana-murgol': 2 });
+    expect(produccionDelDia('murgol', ['ADULTO', 'ADULTO'], 1, 4, true)).toEqual({ 'leche-murgol': 6 });
   });
 
   it('un ganadero cuida a 5: el sexto adulto no produce', () => {
-    expect(produccionDelDia('murgol', Array<Etapa>(6).fill('ADULTO'), 1, 1, true)['leche-murgol']).toBe(5);
-    expect(produccionDelDia('murgol', Array<Etapa>(6).fill('ADULTO'), 2, 1, true)['leche-murgol']).toBe(6);
+    expect(produccionDelDia('murgol', Array<Etapa>(6).fill('ADULTO'), 1, 1, true)['leche-murgol']).toBe(15);
+    expect(produccionDelDia('murgol', Array<Etapa>(6).fill('ADULTO'), 2, 1, true)['leche-murgol']).toBe(18);
   });
 
   it('la vejez produce la mitad', () => {
-    expect(produccionDelDia('murgol', ['VEJEZ', 'VEJEZ'], 1, 1, true)['leche-murgol']).toBe(1);
+    expect(produccionDelDia('murgol', ['VEJEZ', 'VEJEZ'], 1, 1, true)['leche-murgol']).toBe(3);
+  });
+
+  it('el Corretolvas da un huevo al día y plumas cada 2', () => {
+    expect(produccionDelDia('corretolvas', ['ADULTO', 'ADULTO'], 1, 2, true)).toEqual({ 'huevo-corretolvas': 2, 'plumas-rojizas': 2 });
   });
 
   it('el Coracelo no produce hasta que Álvaro diga qué fibra da', () => {

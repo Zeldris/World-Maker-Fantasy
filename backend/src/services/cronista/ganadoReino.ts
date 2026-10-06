@@ -7,6 +7,7 @@ import type { Prisma } from '@prisma/client';
 import { CONSTRUCTION_RECIPES } from '../construction.js';
 import { ownerKeyFor } from '../reinoOwner.js';
 import { huecoDeMateriales, suministrosDelReino } from './economiaReino.js';
+import { regionDelReino } from './subditos.js';
 import {
   comidaDe,
   consumoCorral,
@@ -16,6 +17,7 @@ import {
   etapasDe,
   factorSacrificio,
   fraccionQueMuere,
+  hayPasto,
   muertesPorCarencia,
   plazasCorral,
   probMuerteDeViejoPorDia,
@@ -183,7 +185,9 @@ export async function avanzarGanadoReino(tx: Tx, saveId: string, dia: number, ah
 
   // 2. Comer y beber.
   const todos = animales.map(conEtapa);
-  const consumo = consumoCorral(todos.map((x) => ({ a: { especie: x.especie, sexo: x.sexo as Sexo, edadDias: x.edadDias }, etapa: x.etapa })), dia);
+  // Pastoreo (55f): en una región con pasto natural los herbívoros comen la mitad.
+  const pasto = hayPasto(await regionDelReino(tx, saveId));
+  const consumo = consumoCorral(todos.map((x) => ({ a: { especie: x.especie, sexo: x.sexo as Sexo, edadDias: x.edadDias }, etapa: x.etapa })), dia, pasto);
   let comida = stats.comida;
   let bebida = stats.bebida;
   const comido = forraje >= consumo.forraje && comida >= consumo.comida;

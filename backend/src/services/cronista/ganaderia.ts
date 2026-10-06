@@ -53,8 +53,10 @@ export function etapaDe(e: Etapas, edadDias: number): Etapa {
 
 export interface Produccion {
   itemSlug: string;
-  /// Cada cuántos días produce 1 (contando desde el día 0 de la partida).
+  /// Cada cuántos días produce (contando desde el día 0 de la partida).
   cadaDias: number;
+  /// Unidades por animal esos días (1 si no se dice).
+  cantidad?: number;
 }
 
 export interface EspecieGanado {
@@ -65,9 +67,11 @@ export interface EspecieGanado {
 }
 
 /// Q10 de la Fase D y Q4 de CR-55. El Corredor de Cauce nunca es ganado.
+/// Ajuste de 55f (libertad de la usuaria para que el ganado sustente): el Múrgol da 3 de leche al día
+/// y el Corretolvas un huevo al día, para que un ganadero alimente más que la comida pasiva.
 export const ESPECIES_GANADO: Record<string, EspecieGanado> = {
-  murgol: { dieta: 'HERBIVORO', produccion: [{ itemSlug: 'leche-murgol', cadaDias: 1 }, { itemSlug: 'lana-murgol', cadaDias: 3 }], escalonMinimo: 1 },
-  corretolvas: { dieta: 'HERBIVORO', produccion: [{ itemSlug: 'plumas-rojizas', cadaDias: 2 }], escalonMinimo: 1 },
+  murgol: { dieta: 'HERBIVORO', produccion: [{ itemSlug: 'leche-murgol', cadaDias: 1, cantidad: 3 }, { itemSlug: 'lana-murgol', cadaDias: 3 }], escalonMinimo: 1 },
+  corretolvas: { dieta: 'HERBIVORO', produccion: [{ itemSlug: 'huevo-corretolvas', cadaDias: 1 }, { itemSlug: 'plumas-rojizas', cadaDias: 2 }], escalonMinimo: 1 },
   // Su «fibra» espera a Álvaro: hasta entonces no produce.
   coracelo: { dieta: 'HERBIVORO', produccion: [], escalonMinimo: 1 },
   cuernahoja: { dieta: 'HERBIVORO', produccion: [], escalonMinimo: 1 },
@@ -101,20 +105,26 @@ export interface ConsumoDia {
   agua: number;
 }
 
+/// Pastoreo (55f): en una región con pasto natural los herbívoros pastan y comen la mitad de forraje.
+export const REGIONES_CON_PASTO = new Set(['Las Llanuras del Viento Rojo']);
+export function hayPasto(region: string | null | undefined): boolean {
+  return !!region && REGIONES_CON_PASTO.has(region);
+}
+
 /// Lo que come y bebe un animal en un día (`dia` = día de la partida, para «cada 2 días»). La cría
-/// come la mitad de forraje.
-export function consumoAnimal(a: Animal, etapa: Etapa, dia: number): ConsumoDia {
+/// come la mitad de forraje; con pasto, la mitad otra vez.
+export function consumoAnimal(a: Animal, etapa: Etapa, dia: number, pasto = false): ConsumoDia {
   const esp = ESPECIES_GANADO[a.especie];
   const factor = etapa === 'CRIA' ? 0.5 : 1;
   if (esp?.dieta === 'CARNIVORO') return { forraje: 0, comida: dia % 2 === 0 ? factor : 0, agua: 1 };
-  return { forraje: factor, comida: 0, agua: 1 };
+  return { forraje: factor * (pasto ? 0.5 : 1), comida: 0, agua: 1 };
 }
 
 /// Lo que comen todos en un día, redondeado hacia arriba.
-export function consumoCorral(animales: { a: Animal; etapa: Etapa }[], dia: number): ConsumoDia {
+export function consumoCorral(animales: { a: Animal; etapa: Etapa }[], dia: number, pasto = false): ConsumoDia {
   const t = { forraje: 0, comida: 0, agua: 0 };
   for (const { a, etapa } of animales) {
-    const c = consumoAnimal(a, etapa, dia);
+    const c = consumoAnimal(a, etapa, dia, pasto);
     t.forraje += c.forraje;
     t.comida += c.comida;
     t.agua += c.agua;
@@ -144,7 +154,7 @@ export function produccionDelDia(
   const r: Record<string, number> = {};
   for (const p of esp.produccion) {
     if (dia % p.cadaDias !== 0) continue;
-    const n = Math.floor(productores);
+    const n = Math.floor(productores * (p.cantidad ?? 1));
     if (n > 0) r[p.itemSlug] = (r[p.itemSlug] ?? 0) + n;
   }
   return r;
@@ -194,6 +204,7 @@ export const CURA_HAMBRE_POR_COMIDA = 10;
 const VALOR_CRUDO_POR_SLUG: Record<string, number> = {
   'leche-murgol': 4,
   'huevo-celubia': 4,
+  'huevo-corretolvas': 4,
   boungo: 4,
   'miel-lebude': 4,
   'trigo-escarlata': 3,
