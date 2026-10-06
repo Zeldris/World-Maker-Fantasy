@@ -11,6 +11,7 @@ import { PlantillaSelect } from './ReinoPanel'
 import { ResourceBar } from '../ResourceBar'
 import { HealthBar } from '../HealthBar'
 import { useModoConsulta } from '../../context/useModoConsulta'
+import { COLOR_APROBACION, etiquetaDeAprobacion } from '../../lib/aprobacion'
 
 // Grupo 3 § Compañeros y supervivencia (2026-08-25, docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md)
 // — `felicidad: null` = compañero de quest/narración libre (comportamiento de siempre, sin capa
@@ -133,6 +134,17 @@ export function CompanerosPanel({ saveId, companions, inventory, onRefreshSave, 
               {companion.condicionFisica && (
                 <div className="mt-2.5">
                   <HealthBar condicionFisica={companion.condicionFisica} />
+                </div>
+              )}
+              {companion.aprobacion != null && (
+                <div className="mt-2.5" data-testid="aprobacion">
+                  <p className="flex justify-between text-2xs text-wood-400">
+                    <span>🤝 Lo que piensa de ti</span>
+                    <span className="font-semibold text-wood-200">{etiquetaDeAprobacion(companion.aprobacion)}</span>
+                  </p>
+                  <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-wood-950/80" aria-hidden="true">
+                    <div className={`h-full ${COLOR_APROBACION[etiquetaDeAprobacion(companion.aprobacion)]}`} style={{ width: `${companion.aprobacion}%` }} />
+                  </div>
                 </div>
               )}
               {companion.felicidad !== null && (
