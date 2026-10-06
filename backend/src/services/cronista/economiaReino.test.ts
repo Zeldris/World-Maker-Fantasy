@@ -25,6 +25,8 @@ describe('economía del Reino (CR-53) — agua y almacén', () => {
     const sinPozo = tickKingdomOneDay(base, { agua: 0, topeComida: 60, topeBebida: 60 });
     expect(sinPozo.bebida).toBe(0);
     expect(sinPozo.felicidad).toBeLessThan(base.felicidad);
+    expect(sinPozo.diasSed).toBe(1);
+    expect(dia.diasSed).toBe(0);
   });
 });
 

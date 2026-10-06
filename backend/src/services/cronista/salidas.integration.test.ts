@@ -71,6 +71,15 @@ describe('salidas y muerte (REI-121) — en una partida', () => {
     await prisma.kingdomStats.update({ where: { ownerKey: ownerKey() }, data: { diasHambre: 0 } });
   });
 
+  it('a los 2 días sin agua puede morir uno de sed (CR-53)', async () => {
+    await crear(20);
+    await prisma.kingdomStats.update({ where: { ownerKey: ownerKey() }, data: { diasSed: 2 } });
+    const r = await prisma.$transaction((tx) => revisarSalidas(tx, saveId, AHORA + DIA, () => 0.15));
+    expect(r.muertos).toHaveLength(1);
+    expect((await prisma.subject.findUniqueOrThrow({ where: { id: r.muertos[0]! } })).notes).toBe('Murió de sed.');
+    await prisma.kingdomStats.update({ where: { ownerKey: ownerKey() }, data: { diasSed: 0 } });
+  });
+
   it('con el Reino triste 7 días se va el más descontento con sus crías y vuelve a su pueblo; una vez por semana', async () => {
     const madre = await crear(25, { genero: 'F' });
     const cria = await crear(1, { madreId: madre.id });

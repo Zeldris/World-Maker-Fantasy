@@ -31,11 +31,11 @@ export async function advanceKingdomStatsDay(
   let territoryConsolidatedThisTurn = false;
   const kingdomStats = await tx.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId }) } });
   if (kingdomStats) {
-    const { poblacion, felicidad, comida, bebida, riqueza, soldados, trabajadores, visitantes, diasFelicidadAlta, diasFelicidadBaja, diasHambre } = kingdomStats;
+    const { poblacion, felicidad, comida, bebida, riqueza, soldados, trabajadores, visitantes, diasFelicidadAlta, diasFelicidadBaja, diasHambre, diasSed } = kingdomStats;
     // CR-53: agua de pozos y fuente natural, y topes del almacén.
     const suministros = await suministrosDelReino(tx, saveId);
     const ticked = tickKingdom(
-      { poblacion, felicidad, comida, bebida, riqueza, soldados, trabajadores, visitantes, diasFelicidadAlta, diasFelicidadBaja, diasHambre },
+      { poblacion, felicidad, comida, bebida, riqueza, soldados, trabajadores, visitantes, diasFelicidadAlta, diasFelicidadBaja, diasHambre, diasSed },
       diasCruzados,
       suministros,
     );

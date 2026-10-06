@@ -1638,7 +1638,8 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   rechaza si no cabe, y la producción y las caravanas solo meten lo que cabe). 53c ✅ (tesoro = `KingdomStats.riqueza` en Goirnos con traspasos a la bolsa,
   `POST /saves/:id/reino/tesoro`; sueldos semanales trabajador 2 y soldado o vigía 5 en vez del mantenimiento
   diario; sin Goirnos, −3 de felicidad al día y desde el día 7 un desertor por semana que vuelve a su
-  pueblo; migración `20261006110000_sueldos`). **Falta:** 53d, sed y hambre definitivas; 53e, la
+  pueblo; migración `20261006110000_sueldos`). 53d ✅ (sed: `KingdomStats.diasSed`, a los 2 días un 20 % diario de que muera uno, primero las crías;
+  el hambre, 3 días y 10 %, pasa a definitiva; migración `20261006120000_sed`). **Falta:** 53e, la
   interfaz (agua al día y topes en Visión general).
   - Agua: 1 por boca al día; Pozo 12 al día; fuente natural 20 al día.
   - Almacén con tope: Ayuntamiento 60 + 60; Granero, Cisterna y Leñera, 120 cada uno.

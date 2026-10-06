@@ -1,7 +1,7 @@
 // Salidas y muerte de los súbditos (REI-121, hito 0.3 — Fase C, decisión Q6 de la usuaria del
 // 2026-10-06). Con la felicidad del Reino 7 días seguidos por los suelos, cada semana se va el
 // súbdito más descontento (con sus crías) y vuelve a la población de su pueblo. Los súbditos mueren de
-// viejos (la misma regla que los NPC, `CR-13`) y de hambre; la muerte en combate llegará con la
+// viejos (la misma regla que los NPC, `CR-13`), de hambre y de sed (`CR-53`); la muerte en combate llegará con la
 // defensa del Reino (`CR-37`).
 import type { Prisma } from '@prisma/client';
 import { ownerKeyFor } from '../reinoOwner.js';
@@ -17,10 +17,12 @@ type Tx = Prisma.TransactionClient;
 export const DIAS_ENTRE_SALIDAS = 7;
 /// Días seguidos de felicidad baja (≤ 20) para que empiecen a irse: los mismos que la rebelión.
 export const DIAS_TRISTES_PARA_IRSE = DIAS_PARA_REBELION;
-/// Provisional (se revisa en la ronda de economía de la Fase D): con hambruna (3 días seguidos sin
-/// comida), cada día puede morir de hambre un súbdito.
+/// CR-53 53d (Q6, decidido por la usuaria el 2026-10-06): con hambruna (3 días seguidos sin comida),
+/// cada día puede morir de hambre un súbdito (10 %); la sed es más rápida (2 días sin agua, 20 %).
 export const DIAS_HAMBRE_PARA_MORIR = 3;
 export const PROB_MUERTE_HAMBRE_DIA = 0.1;
+export const DIAS_SED_PARA_MORIR = 2;
+export const PROB_MUERTE_SED_DIA = 0.2;
 
 interface SubditoVital {
   id: string;
@@ -49,12 +51,14 @@ export function victimaDelHambre<T extends SubditoVital>(subditos: T[], ahora: n
   return conEdad.length ? conEdad.reduce((a, b) => (a.nacidoEn! < b.nacidoEn! ? a : b)) : subditos[0] ?? null;
 }
 
-async function morir(tx: Tx, saveId: string, s: SubditoVital, causa: 'vejez' | 'hambre', ahora: number) {
-  await tx.subject.update({ where: { id: s.id }, data: { estado: 'MUERTO', hastaMinutes: ahora, notes: causa === 'vejez' ? 'Murió de viejo.' : 'Murió de hambre.' } });
+const MOTIVO = { vejez: ['Murió de viejo.', 'de viejo'], hambre: ['Murió de hambre.', 'de hambre'], sed: ['Murió de sed.', 'de sed'] } as const;
+
+async function morir(tx: Tx, saveId: string, s: SubditoVital, causa: keyof typeof MOTIVO, ahora: number) {
+  await tx.subject.update({ where: { id: s.id }, data: { estado: 'MUERTO', hastaMinutes: ahora, notes: MOTIVO[causa][0] } });
   await registrarSuceso(tx, {
     saveId, tipo: 'MUERTE_NPC', fictionalMinutes: ahora, origen: 'MUNDO',
     actores: [{ entidadTipo: 'SUBDITO', entidadId: s.id, papel: 'VICTIMA' }],
-    datos: { npc: s.name, causa: causa === 'vejez' ? 'de viejo' : 'de hambre' },
+    datos: { npc: s.name, causa: MOTIVO[causa][1] },
   });
 }
 
@@ -75,7 +79,7 @@ export async function volverASuPueblo(tx: Tx, saveId: string, s: SubditoVital) {
 
 /// Un día de los súbditos: muertes de viejo y de hambre y, con el Reino triste, una salida por semana.
 export async function revisarSalidas(tx: Tx, saveId: string, ahora: number, random: () => number): Promise<{ muertos: string[]; idos: string[] }> {
-  const stats = await tx.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId }) }, select: { diasFelicidadBaja: true, diasHambre: true } });
+  const stats = await tx.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId }) }, select: { diasFelicidadBaja: true, diasHambre: true, diasSed: true } });
   const sel = { id: true, name: true, pueblo: true, nacidoEn: true, felicidad: true, madreId: true, padreId: true, poblacionOrigenId: true } as const;
   let vivos = await tx.subject.findMany({ where: { saveId, estado: 'ACTIVO' }, orderBy: { createdAt: 'asc' }, select: sel });
   const muertos: string[] = [];
@@ -87,9 +91,13 @@ export async function revisarSalidas(tx: Tx, saveId: string, ahora: number, rand
     }
   }
   vivos = vivos.filter((s) => !muertos.includes(s.id));
-  if (stats && stats.diasHambre >= DIAS_HAMBRE_PARA_MORIR && vivos.length && random() < PROB_MUERTE_HAMBRE_DIA) {
+  for (const [causa, dias, umbral, prob] of [
+    ['sed', stats?.diasSed ?? 0, DIAS_SED_PARA_MORIR, PROB_MUERTE_SED_DIA],
+    ['hambre', stats?.diasHambre ?? 0, DIAS_HAMBRE_PARA_MORIR, PROB_MUERTE_HAMBRE_DIA],
+  ] as const) {
+    if (dias < umbral || vivos.length === 0 || random() >= prob) continue;
     const v = victimaDelHambre(vivos, ahora)!;
-    await morir(tx, saveId, v, 'hambre', ahora);
+    await morir(tx, saveId, v, causa, ahora);
     muertos.push(v.id);
     vivos = vivos.filter((s) => s.id !== v.id);
   }

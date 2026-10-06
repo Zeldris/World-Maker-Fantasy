@@ -1791,6 +1791,8 @@ model KingdomStats {
   /// CR-12 (12c, hito 0.2): días seguidos con déficit de comida (hambre). Cada 3 seguidos se
   /// registra `HAMBRUNA` (cohesión −10 y posible `REBELION`, reacción `HAMBRUNA_DIVIDE`).
   diasHambre          Int      @default(0)
+  /// CR-53 53d: días seguidos sin agua (a los 2, la sed puede matar).
+  diasSed             Int      @default(0)
   /// REI-119: minuto de ficción en que llegó el último candidato a súbdito (una llegada por semana).
   ultimaLlegada       Int?
   /// REI-120: última semana (minuto de ficción) en que se revisaron parejas y crías.

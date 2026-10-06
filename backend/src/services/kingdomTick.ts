@@ -18,6 +18,8 @@ export interface KingdomStatsBlock {
   diasFelicidadBaja: number;
   /// CR-12 (12c): días seguidos con déficit de comida. Opcional (bloques antiguos sin él = 0).
   diasHambre?: number;
+  /// CR-53 53d: días seguidos sin agua (sed).
+  diasSed?: number;
 }
 
 /// CR-12 (12c): días seguidos de hambre que hacen una `HAMBRUNA` (y otra cada tantos más).
@@ -44,6 +46,7 @@ export const DEFAULT_KINGDOM_STATS: KingdomStatsBlock = {
   diasFelicidadAlta: 0,
   diasFelicidadBaja: 0,
   diasHambre: 0,
+  diasSed: 0,
 };
 
 const FELICIDAD_MIN = 0;
@@ -124,6 +127,7 @@ export function tickKingdomOneDay(stats: KingdomStatsBlock, s: SuministrosDia = 
     diasFelicidadAlta: nuevaFelicidad >= FELICIDAD_ALTA_UMBRAL ? stats.diasFelicidadAlta + 1 : 0,
     diasFelicidadBaja: nuevaFelicidad <= FELICIDAD_BAJA_UMBRAL ? stats.diasFelicidadBaja + 1 : 0,
     diasHambre: comidaNeta < 0 ? (stats.diasHambre ?? 0) + 1 : 0,
+    diasSed: bebidaNeta < 0 ? (stats.diasSed ?? 0) + 1 : 0,
   };
 }
 
