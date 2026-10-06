@@ -26,6 +26,7 @@ export interface DatosSuceso {
   HUIDA_DE_NPC: { personaje: string; huido: string };
   ETIQUETA_GANADA: { personaje: string; etiqueta: string };
   ETIQUETA_PERDIDA: { personaje: string; etiqueta: string };
+  COMPANERO_SE_VA: { personaje: string; companero: string };
   CAPTURA: { personaje: string; capturado: string };
   PROMESA: { personaje: string; a: string; promesa: string };
   PROMESA_CUMPLIDA: { personaje: string; a: string; promesa: string };
@@ -135,6 +136,7 @@ export const CATALOGO_SUCESOS: Catalogo = {
   HUIDA_DE_NPC: { familia: 'JUGADOR', importanciaBase: 3, plantilla: (d) => `${d.huido} huye de ${d.personaje}.` },
   ETIQUETA_GANADA: { familia: 'JUGADOR', importanciaBase: 4, plantilla: (d) => `${d.personaje} es ya «${d.etiqueta}».` },
   ETIQUETA_PERDIDA: { familia: 'JUGADOR', importanciaBase: 3, plantilla: (d) => `${d.personaje} deja de ser «${d.etiqueta}».` },
+  COMPANERO_SE_VA: { familia: 'JUGADOR', importanciaBase: 5, plantilla: (d) => `${d.companero} deja a ${d.personaje}: ya no cree en su camino.` },
   CAPTURA: { familia: 'JUGADOR', importanciaBase: 3, plantilla: (d) => `${d.personaje} captura a ${d.capturado}.` },
   PROMESA: { familia: 'JUGADOR', importanciaBase: 5, plantilla: (d) => `${d.personaje} promete a ${d.a}: ${d.promesa}.` },
   PROMESA_CUMPLIDA: { familia: 'JUGADOR', importanciaBase: 5, plantilla: (d) => `${d.personaje} cumple lo prometido a ${d.a}: ${d.promesa}.` },

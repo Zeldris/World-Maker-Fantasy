@@ -365,7 +365,7 @@ alcance de conocimiento inicial (§ 9). Lista inicial (ampliable como datos):
 
 | Familia | Tipos |
 |---|---|
-| **JUGADOR** | `ACCION_RELEVANTE`, `COMBATE_GANADO`, `COMBATE_PERDIDO`, `MUERTE_CAUSADA`, `PERDON_CONCEDIDO` (dejar vivir/clemente), `CAPTURA`, `PROMESA`, `PROMESA_CUMPLIDA`, `PROMESA_ROTA`, `REGALO` (entregar), `ROBO`, `MISION_COMPLETADA`, `MISION_FALLIDA`, `DESCUBRIMIENTO`, `OFICIO_APRENDIDO`, `MUERTE_JUGADOR`, `RENACER`, `FIN_PARTIDA`, `ETIQUETA_GANADA`, `ETIQUETA_PERDIDA` (CR-14) |
+| **JUGADOR** | `ACCION_RELEVANTE`, `COMBATE_GANADO`, `COMBATE_PERDIDO`, `MUERTE_CAUSADA`, `PERDON_CONCEDIDO` (dejar vivir/clemente), `CAPTURA`, `PROMESA`, `PROMESA_CUMPLIDA`, `PROMESA_ROTA`, `REGALO` (entregar), `ROBO`, `MISION_COMPLETADA`, `MISION_FALLIDA`, `DESCUBRIMIENTO`, `OFICIO_APRENDIDO`, `MUERTE_JUGADOR`, `RENACER`, `FIN_PARTIDA`, `ETIQUETA_GANADA`, `ETIQUETA_PERDIDA` (CR-14), `COMPANERO_SE_VA` (CR-15) |
 | **VIDA_MUERTE** | `NACIMIENTO_NOTABLE` (NPC con nombre), `MUERTE_NPC`, `MUERTE_LIDER`, `SUCESION`, `HEREDERO_DESIGNADO`, `RECUPERACION_NPC`, `CADAVER_DESAPARECE` |
 | **DIPLOMACIA** | `CAMBIO_RELACION` (de `recordFactionEvent`), `GUERRA_DECLARADA`, `TREGUA`, `ALIANZA`, `TRATADO_COMERCIAL`, `RUPTURA`, `SABOTAJE`, `ESPIONAJE`, `ESCARAMUZA` (CR-12) |
 | **FACCION** | `FACCION_CAE`, `FACCION_ESCINDIDA`, `FACCION_FUNDADA`, `FACCION_ABSORBIDA`, `CAMBIO_LIDER`, `TERRITORIO_CONQUISTADO`, `TERRITORIO_PERDIDO`, `EXPEDICION_SALE`, `EXPEDICION_INTERCEPTADA`, `EXPEDICION_VUELVE`, `MALESTAR_INTERNO` (CR-12) |
@@ -1547,7 +1547,15 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   `cronista/etiquetas.ts` como reacciones: Verdugo de, Carnicero, Cazador temido, Clemente,
   Rompejuramentos, Fundador, Salvador de; Amigo de / Enemigo de por reputación, revisadas cada día
   en el avance diario). 14b ✅ (efectos de Q4: `bonoSocialDeEtiquetas`; Clemente +1 y Carnicero −2 al convencer a un capturado; ante un Carnicero nadie con Int ≥ 12 se deja atar; la fauna cautelosa que reconoce a un Cazador temido antes de que se acerque huye; Rompejuramentos: negociar exige un nivel de diplomático más, porque la diplomacia no tira dados). 14c ✅ (`GET /saves/:id/etiquetas` y sub-pestaña «Títulos» en Personaje, con el porqué y las perdidas tachadas). **Cerrada.**
-- **CR-15** Aprobación con valores (§ 8.2). **M**
+- 🚧 **CR-15** Aprobación con valores (§ 8.2). **M** 15a ✅ 2026-10-06 (`cronista/aprobacion.ts`: valores
+  por pueblo y personalidad, sembrados al confirmar un compañero o la primera vez que hacen falta;
+  vectores por suceso — perdón, muerte de rendido, captura, promesas, robo, regalo, ayuda, misiones —;
+  efecto `cambiarAprobacion` y reacción `APROBACION_COMPANEROS` con su frase en el registro y los avisos
+  al cruzar 30, 20 y 15; valores por pueblo propuestos a Álvaro en `propuestas-lore.md`). 15b ✅ (por
+  debajo de 20 no entra a combate — caza y combate de personas —; 3 días por debajo de 10 → se va,
+  `COMPANERO_SE_VA`, columna `aprobacionBajaDesde`, migración `20261006030000_aprobacion_baja`).
+  Quedan: 15c barra en la ficha del compañero; la escena de confianza (> 80) va con «Charlar con NPC»
+  (Fase F del `0.3`).
 - **CR-16** Recuerdos de NPC (§ 8.3). **S** Incluye las reacciones de CR-10: `recuerdo(testigos,
   jugador, −6)` tras una muerte causada y `recuerdo(víctima, jugador, +5)` tras un perdón.
 - **CR-17** Buscadores de historias e hilos (§ 7.4). **M**

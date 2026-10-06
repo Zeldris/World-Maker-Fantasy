@@ -1162,6 +1162,8 @@ model Companion {
   /// CR-5 (hito 0.2) — valores del compañero (p. ej. { "piedad": 2, "honor": 1 }) y aprobación.
   valores    Json @default("{}")
   aprobacion Int  @default(50)
+  /// CR-15: minuto de ficción desde el que su aprobación está por debajo de 10 (se va a los 3 días).
+  aprobacionBajaDesde Int?
 
   @@index([saveId])
   @@index([plantillaEquipoId])

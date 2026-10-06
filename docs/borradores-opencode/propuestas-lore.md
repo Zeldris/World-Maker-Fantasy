@@ -35,6 +35,27 @@ población del Reino, renombrar el Bulco de Arena, y Dessa, Yerin y Riko como NP
 
 ## Categoría: Razas y cultura
 
+### 2026-10-06 — Lo que valora cada pueblo (aprobación de compañeros, CR-15)
+**Estado: PROPUESTA (Claude, por decisión Q9 de la usuaria del 2026-10-06; el motor ya la usa)**
+
+**Acción de implementación:** añadir a `docs/rpgtarkor/lore-mundo/razas.md` si se aprueba.
+
+Un compañero con mente juzga lo que hace la jugadora según sus valores (piedad, honor, codicia,
+lealtad al clan, crueldad, prudencia), con un peso de −2 a +2. Los de cada pueblo, de partida
+(después los matiza la personalidad de cada uno):
+
+| Pueblo | Valores | Por qué |
+|---|---|---|
+| Orcos | lealtad al clan +2, honor +1, piedad −1 | Clanes por encima de todo; la cacería ritual y la ley del más fuerte |
+| Goirntes | codicia +1, prudencia +1, honor +1 | El Edicto y el Tributo: cuentas claras, palabra dada y pocas aventuras |
+| Nabieus | prudencia +2, piedad +1 | Pueblo paciente que escucha antes de actuar |
+| Faerus | piedad +1, prudencia +1, crueldad −1 | Pocos y longevos: cada vida pesa |
+
+**Preguntas para Álvaro:** ¿encajan con cada pueblo? ¿Algún compañero con nombre debería tener
+valores propios (tabla a mano)?
+
+---
+
 ---
 
 ## Categoría: Idiomas

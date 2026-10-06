@@ -29,6 +29,7 @@ import { recordFactionEvent, type FactionEventType } from '../factionRelations.j
 import { ownerKeyFor } from '../reinoOwner.js';
 import { registrarSuceso, type NuevoSuceso } from './sucesos.js';
 import type { TipoSuceso } from './catalogoSucesos.js';
+import { aplicarCambioAprobacion, type Valor } from './aprobacion.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -82,7 +83,8 @@ export type Efecto =
   | { tipo: 'botinAlJugador'; goirnos: number; mensaje: string }
   | { tipo: 'crearNpc'; faccionSlug: string; como?: 'DESTACA' | 'NACE' }
   | { tipo: 'anadirEtiqueta'; clave: string; texto: string }
-  | { tipo: 'quitarEtiqueta'; clave: string };
+  | { tipo: 'quitarEtiqueta'; clave: string }
+  | { tipo: 'cambiarAprobacion'; companionId: string; delta: number; motivo: Valor };
 
 export interface ResultadoEfecto {
   aplicado: boolean;
@@ -120,6 +122,10 @@ export async function aplicarEfecto(ctx: CtxEfecto, e: Efecto): Promise<Resultad
       return anadirEtiqueta(ctx, e);
     case 'quitarEtiqueta':
       return quitarEtiqueta(ctx, e);
+    case 'cambiarAprobacion':
+      return (await aplicarCambioAprobacion(ctx.tx, { saveId: ctx.saveId, companionId: e.companionId, delta: e.delta, motivo: e.motivo, fictionalMinutes: ctx.fictionalMinutes })) === null
+        ? NO_APLICADO
+        : { aplicado: true, sucesoId: null };
     case 'cambiarLider':
       return cambiarLider(ctx, e);
     case 'crearFaccion':

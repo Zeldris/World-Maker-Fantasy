@@ -25,6 +25,7 @@ import {
 } from '../../services/companionSupervivencia.js';
 import { EquipSlot } from '@prisma/client';
 import { bonoSocialDeEtiquetas, etiquetasActivas, INT_NO_SE_RINDE_A_CARNICERO } from '../../services/cronista/etiquetas.js';
+import { valoresIniciales } from '../../services/cronista/aprobacion.js';
 
 /// Grupo 3 § Compañeros y supervivencia (2026-08-25, diseño completo en
 /// docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md) — captura+tameo/persuasión, equipo de
@@ -535,6 +536,8 @@ export async function companerosRoutes(app: FastifyInstance) {
             // nunca. Se guarda el bloque CRUDO (nivel 1) — el escalado por nivel del Npc origen se
             // aplica en el momento de combatir, no aquí.
             attributes: npc.attributes as object,
+            // CR-15: valores de su pueblo y su carácter (solo personas; los animales tienen felicidad).
+            ...(esFauna ? {} : { valores: valoresIniciales(npc.raza, npc.personality) }),
           },
         });
         // Libera la Jaula (si venía de fauna) — ya no está "en proceso", ahora es un Companion real.

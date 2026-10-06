@@ -7,6 +7,9 @@ import { slugify } from '../../lib/slugify.js';
 import { FACTION_REP_MAX, parseFactionsStatus } from '../reputation.js';
 import { aplicarEfectos, type Efecto } from './efectos.js';
 import type { CtxReaccion, Reaccion, SucesoEnCola } from './reacciones.js';
+import { muertesDeRendidos } from './rendidos.js';
+
+export { muertesDeRendidos };
 
 type Tx = Prisma.TransactionClient;
 
@@ -19,8 +22,6 @@ export const UMBRAL_SALVADOR = 3;
 /// Reputación de facción: banda alta (≥ 4/5 del máximo) → amigo; banda baja (< 1/5) → enemigo.
 export const REP_AMIGO = (FACTION_REP_MAX * 4) / 5;
 export const REP_ENEMIGO = FACTION_REP_MAX / 5;
-/// Un rendido es alguien que ya habías dejado convaleciente (COMBATE_GANADO) en el último día.
-const VENTANA_RENDIDO_MIN = 1440;
 
 /// Efectos mecánicos (Q4): lo que suman o restan a las tiradas sociales.
 export const BONO_CLEMENTE_RENDIDO = 1;
@@ -43,17 +44,6 @@ async function muertesDelPersonaje(tx: Tx, saveId: string) {
     orderBy: { fictionalMinutes: 'asc' },
   });
   return sucesos.map((s) => ({ tipo: s.tipo, minuto: s.fictionalMinutes, victima: s.actores[0]?.entidadId ?? null }));
-}
-
-/// Puro: cuántas de las muertes fueron de rendidos (el mismo NPC quedó convaleciente ante ti hace
-/// menos de un día).
-export function muertesDeRendidos(sucesos: { tipo: string; minuto: number; victima: string | null }[]): number {
-  let n = 0;
-  for (const m of sucesos) {
-    if (m.tipo !== 'MUERTE_CAUSADA' || !m.victima) continue;
-    if (sucesos.some((g) => g.tipo === 'COMBATE_GANADO' && g.victima === m.victima && g.minuto <= m.minuto && m.minuto - g.minuto <= VENTANA_RENDIDO_MIN)) n++;
-  }
-  return n;
 }
 
 const etiqueta = (clave: string, texto: string): Efecto => ({ tipo: 'anadirEtiqueta', clave, texto });
