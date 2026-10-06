@@ -33,6 +33,9 @@ export const ETAPAS_POR_CATEGORIA: Record<string, Etapas> = {
   ZANCUDOS: { cria: 15, adulto: 60, vejez: anios(5), esperanza: anios(6) },
   ACECHANTES: { cria: 30, adulto: anios(1), vejez: anios(8), esperanza: anios(10) },
   RONDINES: { cria: 20, adulto: 90, vejez: anios(6), esperanza: anios(8) },
+  // CR-56: categorías de las especies de guardia.
+  CORVENES: { cria: 20, adulto: 90, vejez: anios(6), esperanza: anios(8) },
+  MUDOS_SALVAJE: { cria: 30, adulto: anios(1), vejez: anios(10), esperanza: anios(12) },
 };
 /// Ajuste por porte: la Gargantúa es un Bestión, pero tarda años en crecer.
 export const ETAPAS_POR_ESPECIE: Record<string, Etapas> = {
@@ -77,6 +80,10 @@ export const ESPECIES_GANADO: Record<string, EspecieGanado> = {
   cuernahoja: { dieta: 'HERBIVORO', produccion: [], escalonMinimo: 1 },
   canizor: { dieta: 'CARNIVORO', produccion: [], escalonMinimo: 1 },
   'gargantua-de-ceniza': { dieta: 'HERBIVORO', produccion: [], escalonMinimo: 3 },
+  // CR-56 (Q2): especies de guardia, en su corral; no producen ni necesitan ganadero.
+  'rondador-de-brasas': { dieta: 'CARNIVORO', produccion: [], escalonMinimo: 1 },
+  cruzavientos: { dieta: 'CARNIVORO', produccion: [], escalonMinimo: 1 },
+  'salamandra-de-escoria': { dieta: 'CARNIVORO', produccion: [], escalonMinimo: 1 },
 };
 
 export function esGanado(especie: string): boolean {

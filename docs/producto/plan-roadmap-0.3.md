@@ -24,7 +24,7 @@ nuevo del motor y se intercala entre fases.
 | **B — Memoria del narrador** | `CR-21` verdad obligatoria, `CR-22` callbacks por entidad, `CR-23` puntuación de recuerdos ([Cronista Fase 6](roadmap-cronista.md#fase-6--memoria-del-narrador--m)) | A | ✅ 2026-10-06 (`CR-21`, `CR-22`, `CR-23` en `memoriaNarrador.ts`) |
 | **C — Población del Reino** | `REI-118` súbditos como personas, `REI-119` llegadas, `REI-120` parejas y crías, `REI-121` salidas y muerte, `CR-52` linajes y rastros ([propuesta aprobada](../borradores-opencode/propuestas-aprobadas.md), «Ciclo vital de los pueblos») · súbditos en el panel (`REI-53`, `REI-54`) | — (vivienda del `0.1`, `CR-13`) | ✅ 2026-10-06 (`CR-52`, `REI-118`…`REI-121`, `REI-54`; queda `REI-53` en parte —territorio de residencia y estado— y la muerte de súbditos en combate, que va con `CR-37` en la Fase E; los números del hambre son provisionales para la ronda de la Fase D) |
 | **D — Economía, ganadería y obras** | `CR-53` economía de supervivencia del Reino, `CR-54` de las facciones, `CR-58` factura de equipo, `CR-59` vasallaje y deuda · `CR-55` ganadería (oficio de ganadero y corrales por especie), `CR-56` usos de la fauna, `CR-61` comida por oficios · estaciones sin oficio (Leñera, Cantera, Fibrería) si hacen falta · edificios de defensa · `CR-36` las facciones construyen | C | 🚧 ronda 1 aceptada (2026-10-06, decisiones abajo, portes incluidos); ~~`CR-53`~~ ✅, ~~`CR-54`~~ ✅, ~~`CR-58`~~ ✅ y ~~`CR-59`~~ ✅ 2026-10-06; ronda de `CR-55` aceptada (2026-10-06, decisiones abajo; tarea nueva `CR-61`); ~~`CR-55`~~ ✅ 2026-10-06 |
-| **E — Conflicto** | `CR-39` territorios y expansión · `CR-37` guerra contra el Reino · `CR-50` campamentos de bandidos · postura de compañero en combate · `CMB-1`…`CMB-8` | C, D (defensa) | Pendiente |
+| **E — Conflicto** | `CR-62` combate de fondo para escaramuzas y patrullas · `CR-39` territorios y expansión · `CR-37` guerra contra el Reino · `CR-50` campamentos de bandidos · postura de compañero en combate · `CMB-1`…`CMB-8` | C, D (defensa) | Pendiente |
 | **F — Hablar y comerciar con NPC** | «Charlar con NPC» enriquecido (Franja 4: lore, reclutar, interrogar tras Clemente) · `CR-51` comercio en persona con NPC y caravanas | A | 🧭 falta la especificación (ronda de diseño) |
 | **G — Interfaz** (se intercala) | Reino R-B, R-C, R-D, R-E y `PAN-7` · `DiceTray` `DAD-7`…`DAD-12` (con el resto de `CFG-20`) · `HUD-1`…`HUD-5`, `HUD-7`…`HUD-11`, `HUD-13` · `NAR-1`…`NAR-8`, `NAR-10`, `NAR-11` · `PAN-1`…`PAN-6`, `PAN-11`…`PAN-14` · `UX-18` (epílogo con plantillas), `UX-19`, `UX-20` · `INT-5`…`INT-8`, `INT-10`, `INT-11` · `CFG-36` · UX-F `UX-32`…`UX-34`, `UX-39` | — | Pendiente |
 
@@ -206,14 +206,27 @@ trabajador produce) y Bellwright (corral con su comida y su tope).
     que transforman 10 de crudo al día cada uno en vez del +3 fijo por Cocina, cazador y recolector
     con rendimientos reales, y fin de la comida pasiva para todos).
 
-## Decisiones de `CR-56` usos de la fauna (ronda en curso, 2026-10-06)
+## Decisiones de `CR-56` usos de la fauna (ronda aceptada por la usuaria el 2026-10-06)
 
 - **Regla de combate** (usuaria, [ADR 0002](../adr/0002-dos-formas-de-combate.md)): con la jugadora
   presente con su grupo, combate en vivo (por turnos, narrado); cualquier otro, de fondo (mismas reglas,
   determinista, sin narración). Nada de cifras en agregado ni equivalencias «bestia = N soldados».
-- **Q5 (usuaria):** todos los pueblos pueden tener bestias de guardia, sobre todo orcos y Faerus.
-- Pendiente de confirmar: Q1 ficha de usos, Q2 guardias en corral, Q3 guardias como combatientes,
-  Q4 «Llevar contigo» del Domador, Q5 guardias iniciales (Serhu y Feg Ger), Q6 tarea `CR-62`.
+- **Q1 Ficha de usos** (FC = Fuerza + Constitución): Múrgol producción y montura; Corretolvas
+  producción; Coracelo y Guchapo, a Álvaro; Cuernahoja sacrificio y montura (Nabieus y Faerus);
+  Gargantúa sacrificio, guardia y montura; Canizor guardia, compañero y montura (Nabieus y Faerus);
+  Rondador de Brasas, Cruzavientos y Salamandra de Escoria guardia y compañero; Aullador Rojo
+  compañero (FC 13, no llega a guardia); Zense Ceniza compañero explorador; Corredor de Cauce solo
+  montura. Se ve en la Enciclopedia; el porte va con `CR-57`.
+- **Q2 Guardias en el corral:** ganado de una especie de guardia; comen, beben y crían; sin ganadero.
+- **Q3 Guardias como combatientes:** defienden su Reino o facción en vivo o de fondo según la regla de
+  combate; llega con `CR-37`. Aquí quedan marcados como defensores.
+- **Q4 «Llevar contigo»:** la jugadora Domadora con hueco de Domador libre saca del corral un adulto de
+  especie de compañero; «Devolver al corral» lo devuelve.
+- **Q5 Guardias de facción** (usuaria: todos los pueblos, sobre todo orcos y Faerus): Serhu 6 Canizores,
+  Feg Ger 3 Canizores; Helsig, Goshg y Feg Tusha cuando haya fauna de guardia de su región (petición
+  de lore con prioridad); el resto, pocas o ninguna.
+- **Q6 Tarea nueva `CR-62`:** la escaramuza del narrador y la patrulla de vasallaje pasan al combate de
+  fondo, antes de `CR-37`.
 
 ## Decisiones que bloquean algo
 

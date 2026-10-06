@@ -2387,6 +2387,8 @@ export interface EnciclopediaFaunaFloraInfo {
   /// cerrado en el frontend) porque el backend puede añadir géneros nuevos sin requerir un
   /// despliegue sincronizado de ambos lados.
   faunaCategoria: string | null
+  /// CR-56 (Q1): para qué sirve la especie domesticada (vacío si no se domestica).
+  usos?: string[]
   floraCategoria: string | null
   /// Roster de habilidades DE LA CATEGORÍA con su nivel de desbloqueo (2026-09-15, cierre de
   /// deuda técnica — `faunaCategoria` en sí ya llegaba desde 2026-09-04, pero el roster que

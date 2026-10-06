@@ -7,7 +7,7 @@
 // - una vez por semana: una cría por corral con pareja adulta y plaza, y la facción sacrifica lo viejo
 //   y lo que no cabe para dejar sitio a las crías (la carne va a su comida).
 // Puro, salvo el azar de la muerte de viejo (`random`).
-import { ANIMALES_POR_GANADERO, consumoCorral, etapaDe, etapasDe, fraccionQueMuere, muertesPorCarencia, probMuerteDeViejoPorDia, produccionDelDia, tocaCria, type Etapa, type Sexo } from './ganaderia.js';
+import { ANIMALES_POR_GANADERO, ESPECIES_GANADO, consumoCorral, etapaDe, etapasDe, fraccionQueMuere, muertesPorCarencia, probMuerteDeViejoPorDia, produccionDelDia, tocaCria, type Etapa, type Sexo } from './ganaderia.js';
 
 export interface Cohorte {
   especie: string;
@@ -96,6 +96,8 @@ export function diaGanadoFaccion(entrada: Cohorte[], d: DatosDiaFaccion, random:
   let libres = d.trabajadores;
   const ganaderosPorEspecie: Record<string, number> = {};
   for (const esp of especies) {
+    // Las especies que no producen (guardias, de sacrificio) no necesitan ganadero (CR-56, Q2).
+    if (!ESPECIES_GANADO[esp]?.produccion.length) continue;
     const g = Math.min(libres, Math.ceil(cuantos(esp) / ANIMALES_POR_GANADERO));
     ganaderosPorEspecie[esp] = g;
     libres -= g;

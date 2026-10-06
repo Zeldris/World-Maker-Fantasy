@@ -1695,6 +1695,11 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   - Cocineros de facción: cada uno transforma 10 de crudo al día con el multiplicador de su Cocina,
     en vez del +3 fijo por edificio.
   - Cazador y recolector con rendimientos reales; fin de los 2 de comida por trabajador. **L**
+- **CR-62** Combate de fondo para escaramuzas y patrullas ([ADR 0002](../adr/0002-dos-formas-de-combate.md),
+  Q6 de la ronda de `CR-56`, 2026-10-06): la escaramuza del narrador de fondo y la patrulla de vasallaje
+  dejan las cifras («1d6 bajas») y se pelean con el motor de combate de fondo, con combatientes reales
+  de cada bando sacados de sus soldados (y sus bestias de guardia). Hito `0.3`, Fase E, antes de
+  `CR-37`. **M**
 - **CR-60** Ingresos pasivos del Reino y de las facciones (usuaria, 2026-10-06): fuentes de
   Goirnos que no dependan de los trabajadores (hoy solo el comercio y las expediciones). Necesita
   una ronda de diseño. Hito `0.4`. **M**
@@ -1711,10 +1716,13 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   - ~~55g~~ ✅ 2026-10-06: Reino › Corrales (`CorralesSection.tsx`: forraje, entrega de pastos, aviso de hambre y sed, tarjeta por corral con especie, plazas, ♂/♀ y crías, ganaderos, producción media al día y «Sacrificar»); «Al corral» en el modal de domesticar.
   - **Queda** (fuera de `CR-55`): la fibra del Coracelo y las preguntas a Álvaro (`propuestas-lore.md`, «Ganadería»); súbditos como ganaderos (hoy lo son los compañeros asignados al corral); comprar animales (`CR-51`); la comida pasiva de todos (`CR-61`).
   - El Corredor de Cauce nunca. **L**
-- **CR-56** Usos de la fauna (Q10, Q12).
-  - Ficha de cada especie: producción, guardia, compañero de Domador y porte.
-  - Animales de guardia en el corral, contados como defensa del Reino (fuerza en la Fase E).
-  - Como compañeros de quien tenga especialidad de Domador. **M**
+- **CR-56** Usos de la fauna (Q10, Q12 de la Fase D; ronda propia aceptada el 2026-10-06, decisiones en
+  [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-cr-56-usos-de-la-fauna-ronda-aceptada-por-la-usuaria-el-2026-10-06)).
+  🚧 Pasos:
+  - ~~56a~~ ✅ 2026-10-06: ficha de usos (`cronista/usosFauna.ts`), Rondador, Cruzavientos y Salamandra como ganado de guardia (etapas de Corvenes y Mudos salvajes; sin ganadero), usos en la ficha de fauna de la Enciclopedia.
+  - 56b: «Llevar contigo» y «Devolver al corral» para la jugadora Domadora.
+  - 56c: guardias de facción (Serhu y Feg Ger con Canizores) y marca de guardia en Reino › Corrales.
+  **M**
 - **CR-57** Monturas (Q14, hito `0.4`).
   - Porte de cada especie y talla de cada pueblo (provisionales, en `propuestas-lore.md`).
   - Montable si mide ≥ 60 % de la altura del jinete y pesa ≥ 3 veces lo que el jinete con su equipo,

@@ -308,6 +308,8 @@ export function faunaFloraToDetailTarget(entry: EnciclopediaFaunaFloraInfo): Enc
     extra: [
       entry.description ? `Recursos: ${yieldsSummary(entry)}` : null,
       interaccionLine(entry.interaccion),
+      // CR-56 (Q1): usos de la especie domesticada.
+      entry.usos?.length ? `Domesticada sirve para: ${entry.usos.join(' · ')}.` : null,
       faunaCategoriaUnlocksLine(entry),
       companionOfNpcLine(entry),
       entry.aliases.length ? `También reconocido como: ${entry.aliases.join(', ')}.` : null,

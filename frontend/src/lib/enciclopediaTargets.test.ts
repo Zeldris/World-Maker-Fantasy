@@ -92,3 +92,11 @@ describe('faunaFloraToDetailTarget — vínculo Companion↔dueño (companionOfN
     expect(target.extra).toContain('Compañero vinculado de Ulkha Ketg.')
   })
 })
+
+// CR-56 (Q1): la ficha de una especie domesticable dice para qué sirve.
+describe('faunaFloraToDetailTarget — usos de la especie (CR-56)', () => {
+  it('con usos, añade una línea; sin ellos, nada', () => {
+    expect(faunaFloraToDetailTarget({ ...baseEntry, usos: ['guardia del Reino', 'compañero de combate'] }).extra).toContain('Domesticada sirve para: guardia del Reino · compañero de combate.')
+    expect(faunaFloraToDetailTarget(baseEntry).extra).not.toContain('Domesticada')
+  })
+})
