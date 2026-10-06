@@ -1292,27 +1292,13 @@ export const HIERBAS_EXTRACCION_RECIPE: CraftingRecipe = {
   narrationWant: 'Esta receta no se crafteé nunca a mano — solo se asigna como orden de producción de una Herboristería desde el panel de Reino.',
   narrationDo: 'Esta receta no se crafteé nunca a mano — solo se asigna como orden de producción de una Herboristería desde el panel de Reino.',
 };
-export const LECHE_MURGOL_EXTRACCION_RECIPE: CraftingRecipe = {
-  key: 'extraccionLecheMurgol',
-  verbRegex: NEVER_MATCH_REGEX,
-  nounRegex: NEVER_MATCH_REGEX,
-  location: null,
-  ingredients: [],
-  resultName: 'Leche de Múrgol',
-  resultCatalogSlug: 'leche-murgol',
-  resultDescription: 'Leche ordeñada de los Múrgoles aclimatados en los corrales del reino.',
-  tier: 1,
-  oficio: 'ganadero-orcos-llanuras',
-  requiresUnlock: true,
-  narrationWant: 'Esta receta no se crafteé nunca a mano — solo se asigna como orden de producción de unos Corrales desde el panel de Reino.',
-  narrationDo: 'Esta receta no se crafteé nunca a mano — solo se asigna como orden de producción de unos Corrales desde el panel de Reino.',
-};
+// CR-55 (Q12): la leche de Múrgol ya no es una orden fija de los Corrales: la da cada Múrgol adulto
+// con ganadero, en el avance diario del ganado (`cronista/ganadoReino.ts`).
 
 export const CRAFTING_RECIPES: CraftingRecipe[] = [
   MENA_HIERRO_EXTRACCION_RECIPE,
   PESCA_EXTRACCION_RECIPE,
   HIERBAS_EXTRACCION_RECIPE,
-  LECHE_MURGOL_EXTRACCION_RECIPE,
   AXE_REPAIR_RECIPE,
   SMOKE_MEAT_RECIPE,
   GARGANTUA_ARMOR_RECIPE,

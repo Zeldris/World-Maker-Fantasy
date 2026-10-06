@@ -34,6 +34,7 @@ import { revisarLlegadas } from './cronista/llegadas.js';
 import { revisarFamilias } from './cronista/familias.js';
 import { revisarSalidas } from './cronista/salidas.js';
 import { revisarSueldos } from './cronista/economiaReino.js';
+import { avanzarGanadoReino } from './cronista/ganadoReino.js';
 import { resembrarFacciones, revisarExtinciones } from './cronista/economiaFacciones.js';
 import { asegurarVasallajes, revisarVasallajes } from './cronista/vasallaje.js';
 import { revisarInformantes } from './cronista/reclutamiento.js';
@@ -147,6 +148,8 @@ export async function avanzarMundoHasta(
         await prisma.$transaction((tx) => revisarSueldos(tx, saveId, ahora));
         // CR-59: cada semana, armas al señor, rearme y patrulla obligada de los vasallos.
         await prisma.$transaction((tx) => revisarVasallajes(tx, saveId, d, ahora, random));
+        // CR-55 (55d): el ganado del Reino come, produce, cría y envejece.
+        await prisma.$transaction((tx) => avanzarGanadoReino(tx, saveId, d, ahora, random));
       });
     }
     // CR-14: etiquetas de relación (AMIGO_DE / ENEMIGO_DE) según la reputación del final del día.

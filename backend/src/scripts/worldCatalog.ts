@@ -6647,6 +6647,8 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Cuña de 150 g.',
     lugarOrigen: 'Karot Veku - Campamento del Clan Serhu, Llanuras del Viento Rojo.',
     curaEnergia: 10,
+    // CR-55 (Q15): plato de Taller, 2 de leche (4 cada una) × 1,5.
+    curaHambre: 12,
   },
   {
     slug: 'cataplasma-musgo',

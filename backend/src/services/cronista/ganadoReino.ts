@@ -6,8 +6,23 @@
 import type { Prisma } from '@prisma/client';
 import { CONSTRUCTION_RECIPES } from '../construction.js';
 import { ownerKeyFor } from '../reinoOwner.js';
-import { suministrosDelReino } from './economiaReino.js';
-import { ESPECIES_GANADO, esGanado, etapaDe, etapasDe, plazasCorral, type Sexo } from './ganaderia.js';
+import { huecoDeMateriales, suministrosDelReino } from './economiaReino.js';
+import {
+  comidaDe,
+  consumoCorral,
+  ESPECIES_GANADO,
+  esGanado,
+  etapaDe,
+  etapasDe,
+  fraccionQueMuere,
+  muertesPorCarencia,
+  plazasCorral,
+  probMuerteDeViejoPorDia,
+  produccionDelDia,
+  tocaCria,
+  valorCrudo,
+  type Sexo,
+} from './ganaderia.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -123,4 +138,115 @@ export async function forrajeDeFibrerias(tx: Tx, saveId: string): Promise<number
 export function etapaDelAnimal(a: { especie: string; nacidoEn: number }, faunaCategoria: string | null, ahora: number) {
   const edadDias = Math.max(0, Math.floor((ahora - a.nacidoEn) / 1440));
   return { edadDias, etapa: etapaDe(etapasDe(a.especie, faunaCategoria), edadDias) };
+}
+
+// ── 55d: avance diario ───────────────────────────────────────────────────────────────────────
+
+export interface ResumenGanadoDia {
+  comido: boolean;
+  bebido: boolean;
+  producido: Record<string, number>;
+  comidaDeLeche: number;
+  crias: number;
+  muertos: number;
+}
+
+/// Un día del ganado del Reino (el día `dia` de la partida, `ahora` dentro de él):
+/// 1. Las Fibrerías dan su forraje (hasta el tope compartido con la comida).
+/// 2. Comen y beben de las reservas del Reino; si falta, cuentan los días sin comer o beber (Q6).
+/// 3. Con todo comido y bebido, los adultos con ganadero producen (Q4, Q12): la comida cruda va a la
+///    reserva de comida (Q15) y lo demás al Almacén, hasta su tope.
+/// 4. Una vez por semana, cada corral con pareja adulta, plaza y comida tiene una cría.
+/// 5. Mueren los que toque por hambre o sed (primero las crías) y de viejos.
+export async function avanzarGanadoReino(tx: Tx, saveId: string, dia: number, ahora: number, random: () => number = Math.random): Promise<ResumenGanadoDia | null> {
+  const owner = ownerKeyFor({ saveId });
+  const stats = await tx.kingdomStats.findUnique({ where: { ownerKey: owner } });
+  if (!stats) return null;
+  const corrales = await corralesDelReino(tx, saveId);
+  const { worldId } = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } });
+  const sum = await suministrosDelReino(tx, saveId);
+
+  // 1. Forraje de las Fibrerías.
+  let forraje = Math.min(stats.forraje + (await forrajeDeFibrerias(tx, saveId)), Math.max(stats.forraje, sum.topeComida - stats.comida));
+  const vacio: ResumenGanadoDia = { comido: true, bebido: true, producido: {}, comidaDeLeche: 0, crias: 0, muertos: 0 };
+  const animales = corrales.flatMap((c) => c.animales);
+  if (animales.length === 0) {
+    if (forraje !== stats.forraje) await tx.kingdomStats.update({ where: { ownerKey: owner }, data: { forraje } });
+    return vacio;
+  }
+
+  const especies = [...new Set(animales.map((a) => a.especie))];
+  const fauna = await tx.npc.findMany({ where: { worldId, saveId: null, slug: { in: especies } }, select: { slug: true, faunaCategoria: true } });
+  const categoria = new Map(fauna.map((f) => [f.slug, f.faunaCategoria]));
+  const conEtapa = (a: CorralDelReino['animales'][number]) => ({ ...a, ...etapaDelAnimal(a, categoria.get(a.especie) ?? null, ahora) });
+
+  // 2. Comer y beber.
+  const todos = animales.map(conEtapa);
+  const consumo = consumoCorral(todos.map((x) => ({ a: { especie: x.especie, sexo: x.sexo as Sexo, edadDias: x.edadDias }, etapa: x.etapa })), dia);
+  let comida = stats.comida;
+  let bebida = stats.bebida;
+  const comido = forraje >= consumo.forraje && comida >= consumo.comida;
+  const bebido = bebida >= consumo.agua;
+  forraje = Math.max(0, forraje - consumo.forraje);
+  comida = Math.max(0, comida - consumo.comida);
+  bebida = Math.max(0, bebida - consumo.agua);
+  const diasSinComer = comido ? 0 : stats.ganadoDiasSinComer + 1;
+  const diasSinBeber = bebido ? 0 : stats.ganadoDiasSinBeber + 1;
+  const bienAtendido = comido && bebido;
+
+  // 3. Producción.
+  const producido: Record<string, number> = {};
+  if (bienAtendido) {
+    for (const c of corrales) {
+      if (!c.especie) continue;
+      const r = produccionDelDia(c.especie, c.animales.map((a) => conEtapa(a).etapa), c.ganaderos.length, dia, true);
+      for (const [slug, n] of Object.entries(r)) producido[slug] = (producido[slug] ?? 0) + n;
+    }
+  }
+  let comidaDeLeche = 0;
+  const slugs = Object.keys(producido);
+  if (slugs.length > 0) {
+    const catalogo = await tx.itemCatalog.findMany({ where: { worldId, slug: { in: slugs } }, select: { slug: true, name: true, description: true, category: true, curaHambre: true } });
+    let hueco = await huecoDeMateriales(tx, saveId);
+    for (const it of catalogo) {
+      const n = producido[it.slug] ?? 0;
+      if (it.category === 'alimento') {
+        // Q15: lo comestible crudo alimenta según su valor.
+        comidaDeLeche += comidaDe(valorCrudo(it.slug, it.curaHambre), n);
+        continue;
+      }
+      const cabe = Math.min(n, hueco);
+      hueco -= cabe;
+      if (cabe > 0) await tx.almacenItem.createMany({ data: Array.from({ length: cabe }, () => ({ saveId, name: it.name, description: it.description, catalogSlug: it.slug })) });
+    }
+    comida = Math.min(sum.topeComida, comida + comidaDeLeche);
+  }
+
+  // 4. Crías, una vez por semana.
+  let crias = 0;
+  if (dia % 7 === 0 && bienAtendido) {
+    for (const c of corrales) {
+      if (!c.especie) continue;
+      const lista = c.animales.map((a) => { const x = conEtapa(a); return { a: { especie: x.especie, sexo: x.sexo as Sexo, edadDias: x.edadDias }, etapa: x.etapa }; });
+      if (!tocaCria(lista, c.plazas, true)) continue;
+      await tx.ganado.create({ data: { saveId, buildingId: c.id, especie: c.especie, sexo: random() < 0.5 ? 'M' : 'F', nacidoEn: ahora } });
+      crias++;
+    }
+  }
+
+  // 5. Muertes: por carencia (primero las crías, luego los más viejos) y de viejos.
+  const muertos = new Set<string>();
+  const n = muertesPorCarencia(todos.length, fraccionQueMuere(diasSinComer, diasSinBeber));
+  if (n > 0) {
+    const orden = [...todos].sort((a, b) => (a.etapa === 'CRIA' ? 0 : 1) - (b.etapa === 'CRIA' ? 0 : 1) || b.edadDias - a.edadDias);
+    for (const x of orden.slice(0, n)) muertos.add(x.id);
+  }
+  for (const x of todos) {
+    if (muertos.has(x.id)) continue;
+    if (random() < probMuerteDeViejoPorDia(etapasDe(x.especie, categoria.get(x.especie) ?? null), x.edadDias)) muertos.add(x.id);
+  }
+  if (muertos.size > 0) await tx.ganado.deleteMany({ where: { id: { in: [...muertos] } } });
+
+  await tx.kingdomStats.update({ where: { ownerKey: owner }, data: { forraje, comida, bebida, ganadoDiasSinComer: diasSinComer, ganadoDiasSinBeber: diasSinBeber } });
+  return { comido, bebido, producido, comidaDeLeche, crias, muertos: muertos.size };
 }
