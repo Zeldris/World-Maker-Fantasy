@@ -4,6 +4,7 @@ import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { asegurarMundoDePartida } from '../mundoPartida.js';
 import { filasDeFaccion, REPARTO_FACCIONES } from '../../scripts/repartoFacciones.js';
 import { resembrarFacciones, VERSION_REPARTO_FACCIONES } from './economiaFacciones.js';
+import { producirFacciones } from '../factionEconomy.js';
 
 describe('reparto de las facciones (CR-54, Q16)', () => {
   const margen = (r: (typeof REPARTO_FACCIONES)[number]) => 2 * r.trabajadores - (r.trabajadores + r.soldados + r.civiles);
@@ -51,5 +52,18 @@ describe('re-siembra única del reparto en una partida (CR-54, Q20)', () => {
     await prisma.worldPopulation.updateMany({ where: { saveId, targetSlug: 'clan-serhu-soldados' }, data: { poblacion: 190 } });
     expect(await prisma.$transaction((tx) => resembrarFacciones(tx, saveId))).toBe(0);
     expect((await fila('clan-serhu-soldados')).poblacion).toBe(190);
+  });
+
+  it('una facción sin comida pierde gente de hambre (primero civiles) y queda en el Libro (CR-54 54b)', async () => {
+    const worldId = (await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } })).id;
+    const f = await prisma.faction.findFirstOrThrow({ where: { saveId, slug: 'clan-goshg' }, include: { kingdomStats: true } });
+    await prisma.building.updateMany({ where: { factionId: f.id }, data: { status: 'DANADO' } });
+    await prisma.kingdomStats.update({ where: { id: f.kingdomStats!.id }, data: { poblacion: 200, trabajadores: 0, soldados: 50, comida: 0, diasHambre: 0, ultimoDiaProducido: 10 } });
+    const civilesAntes = (await prisma.worldPopulation.findFirstOrThrow({ where: { saveId, targetSlug: 'clan-goshg-poblacion' } })).poblacion;
+    await producirFacciones(prisma, worldId, { id: f.id }, 15, { diasProcesados: 0, semanasDecaidas: 0, depositados: 0 });
+    const civiles = (await prisma.worldPopulation.findFirstOrThrow({ where: { saveId, targetSlug: 'clan-goshg-poblacion' } })).poblacion;
+    expect(civiles).toBeLessThan(civilesAntes);
+    expect((await prisma.kingdomStats.findUniqueOrThrow({ where: { id: f.kingdomStats!.id } })).poblacion).toBeLessThan(200);
+    expect(await prisma.suceso.count({ where: { saveId, tipo: 'HAMBRUNA' } })).toBeGreaterThan(0);
   });
 });

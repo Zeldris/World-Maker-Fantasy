@@ -1649,8 +1649,11 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   comen todos (`KingdomStats.poblacion` = civiles + trabajadores); re-siembra única de las partidas por
   `WorldState.repartoFacciones` (migración `20261006130000_reparto_facciones`); los Serhu, sin holgura para crecer.
   Hallazgo: los Goshg con hambre no mandan expediciones por comida (los Serhu sí); revisar con `CR-34`.
-  **Falta:** 54b, agua, Goirnos y factura semanal, deserción, hambre, sed y muerte con el Libro;
-  54c, extinción y refundación.
+  54b ✅: agua de su fuente (110 % del consumo, caben 30 días), sueldos semanales (2 y 5) con −3 de felicidad
+  al día sin cobrar y deserción del 5 % de los soldados por semana desde el día 7 (vuelven a su pueblo);
+  hambre (desde el día 3, 1 % al día) y sed (desde el día 2, 2 %) matan, primero a los civiles; `HAMBRUNA`
+  encendida en las facciones. Equivalencias en agregado de Q5-Q6, propuestas por Claude.
+  **Falta:** 54c, extinción y refundación.
   Extinción con población 0; refundación tras un año si su pueblo conserva más de 50 en la región.
   Enciende la hambruna de facción apagada en `CR-12`. **M**
 - **CR-58** Factura de equipo (Fase D, Q25-Q27).

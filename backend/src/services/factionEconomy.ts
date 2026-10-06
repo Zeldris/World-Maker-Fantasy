@@ -3,6 +3,7 @@ import { CRAFTING_RECIPES, type CraftingRecipe } from './crafting.js';
 import { daysCrossed, hambrunaNueva, tickFactionProduction, tickKingdomOneDay, type KingdomStatsBlock } from './kingdomTick.js';
 import { decayPresion, stageForPresion, typeForPresion } from './factionRelations.js';
 import { registrarHambruna } from './cronista/hambruna.js';
+import { AGUA_FUENTE_FACCION, aplicarBajasDeFaccion, muertesDelDia, repartirMuertes, sueldosDelDia } from './cronista/economiaFacciones.js';
 
 /// Economía de facción (Fase 4 del plan oct-2026: H-6, H-2, H-4). Corre sobre las facciones del mundo
 /// de cada partida, en su avance diario (`avanceDiario.ts`, CR-7), con el reloj de esa partida; el
@@ -37,10 +38,12 @@ export function pendingWeeks(ultimaSemana: number | null, diaActual: number): nu
 /// trabajadores producen, bocas consumen, soldados cuestan, déficit baja la felicidad). Las
 /// facciones NPC no modelan bebida (no hay producción de agua): se le da a `tickKingdomOneDay` una
 /// bebida holgada y se restaura la original, para que no haya "déficit de bebida" perpetuo.
+/// CR-54 (Q17): el agua sale de su fuente canónica, que cubre el consumo con un 10 % de margen; caben
+/// 30 días de agua. Los sueldos van por semana (`sueldosDelDia`), no como mantenimiento diario.
 export function tickFactionOneDay(stats: KingdomStatsBlock, produccion: { comida: number; riqueza: number }): KingdomStatsBlock {
   const bocas = stats.poblacion + stats.soldados + stats.visitantes;
-  const conProduccion = { ...stats, comida: stats.comida + produccion.comida, riqueza: stats.riqueza + produccion.riqueza, bebida: bocas * 2 + 1 };
-  return { ...tickKingdomOneDay(conProduccion), bebida: stats.bebida };
+  const conProduccion = { ...stats, comida: stats.comida + produccion.comida, riqueza: stats.riqueza + produccion.riqueza };
+  return tickKingdomOneDay(conProduccion, { agua: Math.ceil(bocas * AGUA_FUENTE_FACCION), topeComida: Infinity, topeBebida: Math.max(30, bocas * 30), sueldosSemanales: true });
 }
 
 /// Recetas de producto de un oficio: mismo oficio exacto; si no hay ninguna (p. ej. `herrero-orcos-cristal`
@@ -75,7 +78,8 @@ type ResultadoEconomia = { diasProcesados: number; semanasDecaidas: number; depo
 /// `HAMBRUNA`: con los números provisionales de su economía, 6 de las 9 sembradas pasan hambre siempre
 /// (sin trabajadores o con más bocas que comida) y se hundirían en semanas. Se enciende cuando estén
 /// los números de la economía de supervivencia (pregunta 5 a Álvaro).
-export const HAMBRUNA_EN_FACCIONES = false;
+/// CR-54 (Q19): encendida con los números de la economía de supervivencia (Fase D, 2026-10-06).
+export const HAMBRUNA_EN_FACCIONES = true;
 
 export async function producirFacciones(
   prisma: Db,
@@ -88,7 +92,7 @@ export async function producirFacciones(
   const hambruna = opciones.hambruna ?? HAMBRUNA_EN_FACCIONES;
   const statsRows = await prisma.kingdomStats.findMany({
     where: { faction: faccion },
-    include: { faction: { select: { id: true, saveId: true } } },
+    include: { faction: { select: { id: true, saveId: true, slug: true, raza: true } } },
   });
   const slugsValidos = new Map<string, boolean>(); // catalogSlug → tiene valor de mercado > 0
   for (const fks of statsRows) {
@@ -108,18 +112,45 @@ export async function producirFacciones(
       let stats: KingdomStatsBlock = {
         poblacion: fks.poblacion, felicidad: fks.felicidad, comida: fks.comida, bebida: fks.bebida, riqueza: fks.riqueza,
         soldados: fks.soldados, trabajadores: fks.trabajadores, visitantes: fks.visitantes,
-        diasFelicidadAlta: fks.diasFelicidadAlta, diasFelicidadBaja: fks.diasFelicidadBaja, diasHambre: fks.diasHambre,
+        diasFelicidadAlta: fks.diasFelicidadAlta, diasFelicidadBaja: fks.diasFelicidadBaja, diasHambre: fks.diasHambre, diasSed: fks.diasSed,
       };
-      for (let i = 0; i < pendientes; i++) stats = tickFactionOneDay(stats, porDia);
+      // CR-54 (54b): sueldos semanales, deserción y muertes de hambre y sed, día a día.
+      let diasSinCobrar = fks.diasSinCobrar;
+      let desertores = 0;
+      let muertos = 0;
+      for (let i = 0; i < pendientes; i++) {
+        const dia = diaActual - pendientes + 1 + i;
+        stats = tickFactionOneDay(stats, porDia);
+        const pago = sueldosDelDia({ ...stats, diasSinCobrar }, dia);
+        stats = { ...stats, riqueza: pago.riqueza, felicidad: pago.felicidad };
+        diasSinCobrar = pago.diasSinCobrar;
+        if (!hambruna) continue;
+        const cuenta = { civiles: Math.max(0, stats.poblacion - stats.trabajadores), trabajadores: stats.trabajadores, soldados: Math.max(0, stats.soldados - desertores) };
+        desertores += Math.min(cuenta.soldados, pago.desertores);
+        muertos += muertesDelDia(cuenta, stats.diasHambre ?? 0, stats.diasSed ?? 0);
+      }
       // CR-12 (12c): hambruna de una facción del mundo de una partida (las del catálogo no tienen Libro).
       if (hambruna && fks.faction?.saveId && hambrunaNueva(fks.diasHambre, stats.diasHambre ?? 0, pendientes)) {
         await registrarHambruna(tx, fks.faction.saveId, { factionId });
       }
+      // Los muertos y desertores salen de sus filas de población (la partida las sincroniza con
+      // `KingdomStats` cada día); aquí también se descuentan ya de sus cifras.
+      const bajas = repartirMuertes(
+        { civiles: Math.max(0, stats.poblacion - stats.trabajadores), trabajadores: stats.trabajadores, soldados: Math.max(0, stats.soldados - desertores) },
+        muertos,
+      );
+      if (fks.faction?.saveId && (muertos > 0 || desertores > 0)) {
+        await aplicarBajasDeFaccion(tx, fks.faction.saveId, fks.faction.slug, fks.faction.raza, bajas, desertores);
+      }
       await tx.kingdomStats.update({
         where: { id: fks.id },
         data: {
-          comida: stats.comida, riqueza: stats.riqueza, felicidad: stats.felicidad,
-          diasFelicidadAlta: stats.diasFelicidadAlta, diasFelicidadBaja: stats.diasFelicidadBaja, diasHambre: stats.diasHambre ?? 0,
+          comida: stats.comida, bebida: stats.bebida, riqueza: stats.riqueza, felicidad: stats.felicidad,
+          diasFelicidadAlta: stats.diasFelicidadAlta, diasFelicidadBaja: stats.diasFelicidadBaja, diasHambre: stats.diasHambre ?? 0, diasSed: stats.diasSed ?? 0,
+          diasSinCobrar,
+          poblacion: Math.max(0, stats.poblacion - bajas.civiles - bajas.trabajadores),
+          trabajadores: Math.max(0, stats.trabajadores - bajas.trabajadores),
+          soldados: Math.max(0, stats.soldados - bajas.soldados - desertores),
         },
       });
 
