@@ -10,7 +10,7 @@ Al empezar una tarea, clasifícala con la tabla y actúa según su fila. Flujo c
 
 | Caso | Skill | Modelo de la sesión | Subagentes |
 |---|---|---|---|
-| Diseño nuevo o decisión abierta (mecánica, arquitectura, UX, algo que pide a la usuaria o a Álvaro) | `/grill-with-docs`; `prototype` si hay números o reglas que la usuaria tiene que probar | grande (Opus) | búsquedas con `Explore` en ligero (Haiku) |
+| Diseño nuevo o decisión abierta (mecánica, arquitectura, UX, algo que pide a la usuaria o a Álvaro) | `grilling` + `domain-modeling` (o `/grill-with-docs` si lo lanza la usuaria); `prototype` si hay números o reglas que la usuaria tiene que probar | grande (Opus) | búsquedas con `Explore` en ligero (Haiku) |
 | Bug hallado jugando, test rojo o intermitente | `diagnosing-bugs` | grande si no es obvio; medio (Sonnet) si la causa se ve a la primera | — |
 | Cambio de varios sistemas, BD, migración, concurrencia (`CR-*`, `REI-*` de motor) | — (plan del hito) | grande | ligero para buscar usos |
 | Tarea de roadmap acotada (componente, ajuste, test, endpoint pequeño) | — | medio | — |
