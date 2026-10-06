@@ -1540,6 +1540,8 @@ export interface AnimalDeCorral {
   edadDias: number
   etapa: EtapaAnimal
   diasParaSiguiente: number | null
+  /// CR-56 (Q4): la jugadora Domadora puede llevárselo como compañero.
+  puedeLlevar?: boolean
 }
 export interface CorralInfo {
   id: string
@@ -1548,6 +1550,8 @@ export interface CorralInfo {
   plazas: number
   especie: string | null
   especieNombre: string | null
+  /// CR-56 (Q3): corral de guardia (sus animales defienden el Reino).
+  guardia?: boolean
   animales: AnimalDeCorral[]
   ganaderos: { id: string; name: string }[]
   /// Q10: producción media al día con sus ganaderos.
@@ -1559,6 +1563,8 @@ export interface CorralesInfo {
   forrajeDia: number
   diasSinComer: number
   diasSinBeber: number
+  /// CR-56 (Q4): compañeros animales que pueden volver al corral.
+  fueraDelCorral?: { id: string; name: string }[]
   corrales: CorralInfo[]
 }
 export async function getCorrales(saveId: string): Promise<CorralesInfo> {
@@ -1570,6 +1576,12 @@ export async function postEntregarForraje(saveId: string, catalogSlug: string): 
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ catalogSlug }),
   })
+}
+export async function postLlevarConsigo(saveId: string, ganadoId: string): Promise<{ companionId: string }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/ganado/${ganadoId}/llevar`, { method: 'POST' })
+}
+export async function postDevolverAlCorral(saveId: string, companionId: string): Promise<{ buildingId: string }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/companeros/${companionId}/al-corral`, { method: 'POST' })
 }
 export async function postSacrificar(saveId: string, ganadoId: string): Promise<{ comida: number; almacen: Record<string, number>; perdido: number }> {
   return fetchJson(`${API_URL}/saves/${saveId}/ganado/${ganadoId}/sacrificar`, { method: 'POST' })

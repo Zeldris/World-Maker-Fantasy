@@ -4,7 +4,7 @@ import { PanelSection } from '../../PanelSection'
 import { ErrorBanner } from '../../ErrorBanner'
 import { useErrorConReintento } from '../../../hooks/useErrorConReintento'
 import { useModoConsulta } from '../../../context/useModoConsulta'
-import { getCorrales, postEntregarForraje, postSacrificar, type CorralesInfo } from '../../../lib/api'
+import { getCorrales, postDevolverAlCorral, postEntregarForraje, postLlevarConsigo, postSacrificar, type CorralesInfo } from '../../../lib/api'
 import { avisoDeCarencia, ESCALON_LABEL, lineaDeAnimal, resumenDeCorral } from '../../../lib/corrales'
 
 const PASTOS: { slug: string; label: string }[] = [
@@ -90,6 +90,7 @@ export function CorralesSection({ saveId, inventory, onRefreshSave }: { saveId: 
                 </span>
               </div>
               {c.animales.length > 0 && <p className="mt-0.5 text-2xs text-wood-400">{resumenDeCorral(c.animales)}</p>}
+              {c.guardia && <p className="mt-0.5 text-2xs text-accent-300">🛡️ Guardia: defiende el Reino</p>}
               <p className="mt-0.5 text-2xs text-wood-500">
                 {c.ganaderos.length > 0 ? `Ganaderos: ${c.ganaderos.map((g) => g.name).join(', ')}` : 'Sin ganadero: no produce (asígnalo en Producción).'}
               </p>
@@ -101,6 +102,17 @@ export function CorralesSection({ saveId, inventory, onRefreshSave }: { saveId: 
                   {c.animales.map((a) => (
                     <li key={a.id} className="flex items-center justify-between gap-2 text-2xs text-wood-300">
                       <span>{lineaDeAnimal(a)}</span>
+                      {a.puedeLlevar && (
+                        <button
+                          type="button"
+                          disabled={busy || !!consulta}
+                          title={consulta ?? undefined}
+                          onClick={() => void accion(() => postLlevarConsigo(saveId, a.id), 'No se pudo llevar contigo.')}
+                          className="tactile shrink-0 text-2xs text-accent-300 hover:underline disabled:opacity-50"
+                        >
+                          Llevar contigo
+                        </button>
+                      )}
                       {a.etapa !== 'CRIA' && (
                         <button
                           type="button"
@@ -120,6 +132,27 @@ export function CorralesSection({ saveId, inventory, onRefreshSave }: { saveId: 
           ))}
         </div>
       </PanelSection>
+
+      {(datos.fueraDelCorral?.length ?? 0) > 0 && (
+        <PanelSection title="Contigo">
+          <ul className="flex flex-col gap-1">
+            {datos.fueraDelCorral!.map((c) => (
+              <li key={c.id} className="flex items-center justify-between gap-2 text-xs text-wood-300">
+                <span>🐾 {c.name}</span>
+                <button
+                  type="button"
+                  disabled={busy || !!consulta}
+                  title={consulta ?? undefined}
+                  onClick={() => void accion(() => postDevolverAlCorral(saveId, c.id), 'No se pudo devolver al corral.')}
+                  className="tactile shrink-0 text-2xs text-accent-300 hover:underline disabled:opacity-50"
+                >
+                  Devolver al corral
+                </button>
+              </li>
+            ))}
+          </ul>
+        </PanelSection>
+      )}
     </div>
   )
 }

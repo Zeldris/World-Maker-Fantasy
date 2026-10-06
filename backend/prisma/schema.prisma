@@ -1171,6 +1171,10 @@ model Companion {
   aprobacion Int  @default(50)
   /// CR-15: minuto de ficción desde el que su aprobación está por debajo de 10 (se va a los 3 días).
   aprobacionBajaDesde Int?
+  /// CR-56 (Q4): un animal sacado del corral por la Domadora conserva su sexo y su nacimiento, para
+  /// volver al corral tal cual.
+  sexo      String?
+  nacidoEn  Int?
 
   @@index([saveId])
   @@index([plantillaEquipoId])

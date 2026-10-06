@@ -8,6 +8,8 @@ import { CONSTRUCTION_RECIPES } from '../construction.js';
 import { ownerKeyFor } from '../reinoOwner.js';
 import { huecoDeMateriales, suministrosDelReino } from './economiaReino.js';
 import { regionDelReino } from './subditos.js';
+import { esCompanero } from './usosFauna.js';
+import { esDomador, FELICIDAD_UMBRAL_DOMADOR, maxSlotsDomadorFor } from '../companionSupervivencia.js';
 import {
   comidaDe,
   consumoCorral,
@@ -314,4 +316,46 @@ export async function sacrificar(tx: Tx, saveId: string, ganadoId: string, ahora
     }
   }
   return { ok: true, comida, almacen, perdido };
+}
+
+// ── CR-56 (56b): la Domadora saca animales del corral ────────────────────────────────────────
+
+/// «Llevar contigo» (Q4): la jugadora Domadora con su hueco de Domador libre saca del corral un adulto
+/// de una especie de compañero, que pasa a ser su compañero animal (conserva sexo y nacimiento).
+export async function llevarConsigo(tx: Tx, saveId: string, ganadoId: string, ahora: number): Promise<{ ok: true; companionId: string } | { ok: false; motivo: string }> {
+  const save = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true, clase: true, especializacion: true, level: true } });
+  if (!esDomador(save.clase, save.especializacion)) return { ok: false, motivo: 'Solo un Domador puede llevarse un animal del corral.' };
+  const animal = await tx.ganado.findFirst({ where: { id: ganadoId, saveId } });
+  if (!animal) return { ok: false, motivo: 'Ese animal no está en tus corrales.' };
+  if (!esCompanero(animal.especie)) return { ok: false, motivo: 'Este animal no sirve de compañero.' };
+  const npc = await tx.npc.findFirst({ where: { worldId: save.worldId, saveId: null, slug: animal.especie }, select: { name: true, faunaCategoria: true, attributes: true } });
+  if (!npc) return { ok: false, motivo: 'Especie desconocida.' };
+  if (etapaDelAnimal(animal, npc.faunaCategoria, ahora).etapa !== 'ADULTO') return { ok: false, motivo: 'Solo un adulto puede acompañarte.' };
+  const usados = await tx.companion.count({ where: { saveId, esSlotDomador: true } });
+  if (usados >= maxSlotsDomadorFor(save.clase, save.especializacion, save.level)) return { ok: false, motivo: 'Ya llevas contigo todos los animales que puede guiar un Domador.' };
+  const c = await tx.companion.create({
+    data: {
+      saveId, name: npc.name, role: 'mascota', notes: '', tipo: 'FAUNA', sourceSlug: animal.especie, felicidad: FELICIDAD_UMBRAL_DOMADOR,
+      esSlotDomador: true, attributes: npc.attributes as object, sexo: animal.sexo, nacidoEn: animal.nacidoEn,
+    },
+  });
+  await tx.ganado.delete({ where: { id: animal.id } });
+  return { ok: true, companionId: c.id };
+}
+
+/// «Devolver al corral» (Q4): un compañero animal de especie de ganado vuelve a un corral de su especie
+/// (o a uno vacío), con su sexo y su nacimiento.
+export async function devolverAlCorral(tx: Tx, saveId: string, companionId: string, ahora: number, random: () => number = Math.random): Promise<{ ok: true; buildingId: string } | { ok: false; motivo: string }> {
+  const c = await tx.companion.findFirst({ where: { id: companionId, saveId, tipo: 'FAUNA' } });
+  if (!c?.sourceSlug || !esGanado(c.sourceSlug)) return { ok: false, motivo: 'Este compañero no se cría en corral.' };
+  const corral = elegirCorral(await corralesDelReino(tx, saveId), c.sourceSlug);
+  if ('motivo' in corral) return { ok: false, motivo: corral.motivo };
+  const { worldId } = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } });
+  const npc = await tx.npc.findFirst({ where: { worldId, saveId: null, slug: c.sourceSlug }, select: { faunaCategoria: true } });
+  const e = etapasDe(c.sourceSlug, npc?.faunaCategoria ?? null);
+  await tx.ganado.create({
+    data: { saveId, buildingId: corral.id, especie: c.sourceSlug, sexo: c.sexo ?? (random() < 0.5 ? 'M' : 'F'), nacidoEn: c.nacidoEn ?? ahora - e.adulto * 1440 },
+  });
+  await tx.companion.delete({ where: { id: c.id } });
+  return { ok: true, buildingId: corral.id };
 }

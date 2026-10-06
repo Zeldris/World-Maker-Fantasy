@@ -1720,8 +1720,8 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-cr-56-usos-de-la-fauna-ronda-aceptada-por-la-usuaria-el-2026-10-06)).
   🚧 Pasos:
   - ~~56a~~ ✅ 2026-10-06: ficha de usos (`cronista/usosFauna.ts`), Rondador, Cruzavientos y Salamandra como ganado de guardia (etapas de Corvenes y Mudos salvajes; sin ganadero), usos en la ficha de fauna de la Enciclopedia.
-  - 56b: «Llevar contigo» y «Devolver al corral» para la jugadora Domadora.
-  - 56c: guardias de facción (Serhu y Feg Ger con Canizores) y marca de guardia en Reino › Corrales.
+  - ~~56b~~ ✅ 2026-10-06: «Llevar contigo» (`POST /ganado/:id/llevar`: la Domadora con su hueco de Domador libre saca un adulto de especie de compañero) y «Devolver al corral» (`POST /companeros/:id/al-corral`), conservando sexo y nacimiento (`Companion.sexo`/`nacidoEn`, migración `20261006190000_companero_de_corral`); marca «Guardia: defiende el Reino» y sección «Contigo» en Reino › Corrales.
+  - 56c: guardias de facción (Serhu y Feg Ger con Canizores).
   **M**
 - **CR-57** Monturas (Q14, hito `0.4`).
   - Porte de cada especie y talla de cada pueblo (provisionales, en `propuestas-lore.md`).
