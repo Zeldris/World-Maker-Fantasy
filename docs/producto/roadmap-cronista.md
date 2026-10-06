@@ -1701,7 +1701,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
 - **CR-55** Ganadería (Q9, Q11, Q13 de la Fase D; ronda propia aceptada el 2026-10-06, decisiones
   Q1-Q15 en [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-cr-55-ganadería-ronda-aceptada-por-la-usuaria-el-2026-10-06)).
   🚧 Pasos:
-  - 55a: reglas puras (`cronista/ganaderia.ts`): etapas por categoría, producción, crías, hambre y
+  - ~~55a~~ ✅ 2026-10-06: reglas puras (`cronista/ganaderia.ts`, 19 tests): etapas por categoría, producción, crías, hambre y
     valor de la comida cruda.
   - 55b: oficio `domador-…` → `ganadero-…` (migración del progreso), Corrales del Ganadero.
   - 55c: modelo de ganado del Reino, «Al corral» al domesticar, forraje y Fibrería.
