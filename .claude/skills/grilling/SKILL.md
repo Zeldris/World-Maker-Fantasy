@@ -10,6 +10,9 @@ description: Grill the user relentlessly about a plan, decision, or idea. Use wh
 > resuelven esa decisión los juegos que encajen de D&D 5e, Baldur's Gate 3, X4: Foundations,
 > Bellwright y Medieval Dynasty (con `WebSearch`). Cada recomendación dice qué juego la respalda o de
 > cuál se aparta y por qué, y la ronda acaba con las fuentes enlazadas.
+>
+> **Prototipo:** si una pregunta pide decidir números o reglas que sobre el papel no se sienten,
+> llama a la herramienta Skill con `prototype` y pon el enlace en esa pregunta.
 
 Interview the user relentlessly until you reach a shared understanding. Map this as a **design tree**: every decision branches into the decisions that hang off it.
 
