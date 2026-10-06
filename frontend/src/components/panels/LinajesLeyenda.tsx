@@ -1,21 +1,11 @@
 import { useEffect, useState } from 'react'
 import { getLinajes, type LinajeInfo, type MiembroLinaje } from '../../lib/api'
+import { arbolDeLinaje } from '../../lib/linajes'
 
 /// CR-52 (hito 0.3, Q8-Q14): «Linajes» de Leyendas — las familias (por apellido) y los rastros faerus
 /// de los que el personaje sabe algo, y el suyo arriba. Cada uno con su árbol (de padres a crías) y
 /// lo que se sabe de su historia.
 const PUEBLO: Record<string, string> = { orcos: 'Orcos', goirntes: 'Goirntes', nabieus: 'Nabieus', faerus: 'Faerus' }
-
-/// Puro: el árbol del linaje. Raíces = quien no tiene a ningún progenitor dentro del linaje.
-export function arbolDeLinaje(miembros: MiembroLinaje[]): { raices: MiembroLinaje[]; hijos: (id: string) => MiembroLinaje[] } {
-  const ids = new Set(miembros.map((m) => m.id))
-  const dentro = (id: string | null) => !!id && ids.has(id)
-  return {
-    raices: miembros.filter((m) => !dentro(m.padreId) && !dentro(m.madreId)),
-    // Una cría cuelga de su madre si está en el linaje; si no, de su padre (sin repetirse).
-    hijos: (id) => miembros.filter((m) => (dentro(m.madreId) ? m.madreId === id : m.padreId === id)),
-  }
-}
 
 function Rama({ m, hijos, nivel }: { m: MiembroLinaje; hijos: (id: string) => MiembroLinaje[]; nivel: number }) {
   const suyos = nivel < 8 ? hijos(m.id) : []

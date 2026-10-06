@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, cleanup, screen } from '@testing-library/react'
-import { arbolDeLinaje, LinajesLeyenda } from './LinajesLeyenda'
+import { LinajesLeyenda } from './LinajesLeyenda'
+import { arbolDeLinaje } from '../../lib/linajes'
 import * as api from '../../lib/api'
 import type { MiembroLinaje } from '../../lib/api'
 

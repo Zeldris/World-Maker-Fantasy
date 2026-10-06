@@ -1576,6 +1576,41 @@ export async function fijarRolReinoCompanion(saveId: string, companionId: string
     body: JSON.stringify({ rolReino }),
   })
 }
+/// REI-118 (hito 0.3): un súbdito como persona y las camas del Reino (compañeros y súbditos comparten cupo).
+export interface SubditoInfo {
+  id: string
+  name: string
+  role: string
+  rol: 'trabajador' | 'soldado' | 'vigia' | 'visitante'
+  pueblo: string | null
+  genero: string | null
+  edad: number | null
+  adulto: boolean
+  felicidad: number
+  origen: string
+  territoryId: string | null
+  linaje: { nombre: string; tipo: string } | null
+}
+
+export interface CamasReino {
+  total: number
+  companeros: number
+  subditos: number
+  libres: number
+}
+
+export async function getSubditos(saveId: string): Promise<{ subditos: SubditoInfo[]; camas: CamasReino }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/subditos`)
+}
+
+export async function cambiarRolSubdito(saveId: string, subjectId: string, rol: string): Promise<{ ok: boolean }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/subjects/${subjectId}/rol`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ rol }),
+  })
+}
+
 export async function asignarPlantillaSubject(saveId: string, subjectId: string, plantillaEquipoId: string | null): Promise<{ ok: boolean }> {
   return fetchJson(`${API_URL}/saves/${saveId}/subjects/${subjectId}/plantilla`, {
     method: 'POST',
