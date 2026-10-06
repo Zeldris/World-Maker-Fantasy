@@ -183,6 +183,30 @@ valores propios (tabla a mano)?
 
 ## Categoría: Fauna y flora
 
+### 2026-10-06 — Ganadería: etapas de los animales, quién cría qué y el oficio de ganadero (CR-55)
+**Estado: SIN REVISAR** (decisiones de la usuaria del 2026-10-06 en la ronda de `CR-55`; las cifras
+son de Claude y provisionales)
+
+- **Ganadero** (usuaria): oficio propio, distinto del Domador, que es una especialización de
+  combate del Cazador. Pueblos y regiones con ganadero: orcos de las Llanuras, la Ciénaga y Cristal
+  Helado; Faerus de las Llanuras y del Margen; Nabieus de la Ciénaga. **¿Crían animales los
+  Goirntes?** Hoy no tienen ganadero.
+- **¿Quién enseña el oficio?** Provisionalmente, el Maestro Domador Serhu (vive entre los corrales de
+  Karot Veku). ¿Es él, o hay un ganadero de oficio en el campamento?
+- **Etapas de vida de la fauna** (por categoría, con ajuste por porte; un año son 120 días):
+
+  | Categoría | Cría | Joven | Adulto desde | Vejez desde | Esperanza |
+  |---|---|---|---|---|---|
+  | Bestiones (Múrgol, Cuernahoja) | 0-30 d | 30-120 d | 1 año | 12 años | 15 años |
+  | Bestiones grandes (Gargantúa) | 0-120 d | 1-4 años | 4 años | 40 años | 50 años |
+  | Zancudos (Corretolvas) | 0-15 d | 15-60 d | 60 d | 5 años | 6 años |
+  | Acechantes (Canizor) | 0-30 d | 30-120 d | 1 año | 8 años | 10 años |
+  | Rondines (Coracelo) | 0-20 d | 20-90 d | 90 d | 6 años | 8 años |
+
+- **¿Qué «fibra» da el Coracelo?** Hoy no existe ningún objeto así; hasta saberlo no produce.
+- **Rebaños iniciales:** los Serhu con 60 Múrgol y 20 Corretolvas en el recinto de Karot Veku. ¿Qué
+  crían Helsig, Goshg, los Nabieus y los Faerus, y cuántos?
+
 ---
 
 ## Categoría: Personajes y NPCs
@@ -225,3 +249,10 @@ Archivos que tocaría si se aprueba: `docs/rpgtarkor/lore-mundo/regiones/llanura
 ## Categoría: Cultura
 
 ## Categoría Recetas
+
+### 2026-10-06 — Platos de Obrador y Gran obrador (CR-61)
+**Estado: SIN REVISAR** (la usuaria decidió el 2026-10-06 que la cocina multiplique la comida:
+Taller ×1,5, Obrador ×2, Gran obrador ×2,5). Hoy solo hay recetas de Taller (Cuajada de Múrgol,
+Boungo asado, Pan de trigo escarlata, Panal endulzado). Faltan dos o tres platos por escalón, que
+combinen ingredientes de cada región: p. ej. guiso de carne y raíz, queso curado de Múrgol. ¿Qué
+platos cocina cada pueblo?

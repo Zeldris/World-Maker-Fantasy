@@ -1687,16 +1687,29 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   - Deuda que se cobra en patrullas obligadas (20 guerreros por semana, 25 % de `ESCARAMUZA` con 1d6
     bajas).
   - Se rompe saldando la deuda, si cae el señor, con una alianza con el Reino o en guerra. **M**
+- **CR-61** Comida por oficios (Q15 de la ronda de `CR-55`, usuaria 2026-10-06: los mismos sistemas
+  para el Reino y las facciones, sin comida pasiva).
+  - Escala única `curaHambre` (10 = 1 de comida); valor de todos los comestibles crudos.
+  - Platos con multiplicador por escalón de la receta (Taller ×1,5, Obrador ×2, Gran obrador ×2,5);
+    dos o tres recetas de Obrador y de Gran obrador (nombres a Álvaro).
+  - Cocineros de facción: cada uno transforma 10 de crudo al día con el multiplicador de su Cocina,
+    en vez del +3 fijo por edificio.
+  - Cazador y recolector con rendimientos reales; fin de los 2 de comida por trabajador. **L**
 - **CR-60** Ingresos pasivos del Reino y de las facciones (usuaria, 2026-10-06): fuentes de
   Goirnos que no dependan de los trabajadores (hoy solo el comercio y las expediciones). Necesita
   una ronda de diseño. Hito `0.4`. **M**
-- **CR-55** Ganadería (Q9, Q11, Q13).
-  - Oficio de ganadero por raza y región.
-  - Corral por especie: 6, 12 o 20 plazas.
-  - Una cría por semana con macho y hembra.
-  - Forraje para herbívoros, carne cada 2 días para carnívoros y agua para todos.
-  - Fibrería: estación sin oficio que da 10 de forraje al día.
-  - Producción de Múrgol, Corretolvas y Coracelo; sacrificio con la cadena del desollador.
+- **CR-55** Ganadería (Q9, Q11, Q13 de la Fase D; ronda propia aceptada el 2026-10-06, decisiones
+  Q1-Q15 en [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-cr-55-ganadería-ronda-aceptada-por-la-usuaria-el-2026-10-06)).
+  🚧 Pasos:
+  - 55a: reglas puras (`cronista/ganaderia.ts`): etapas por categoría, producción, crías, hambre y
+    valor de la comida cruda.
+  - 55b: oficio `domador-…` → `ganadero-…` (migración del progreso), Corrales del Ganadero.
+  - 55c: modelo de ganado del Reino, «Al corral» al domesticar, forraje y Fibrería.
+  - 55d: avance diario del ganado del Reino (comen, producen, crían, envejecen, mueren); fin de los
+    2 pasivos del ganadero; la leche alimenta; Cuajada recalculada.
+  - 55e: «Sacrificar».
+  - 55f: ganado de las facciones (agregado) y rebaño inicial Serhu.
+  - 55g: Reino › Corrales en el front.
   - El Corredor de Cauce nunca. **L**
 - **CR-56** Usos de la fauna (Q10, Q12).
   - Ficha de cada especie: producción, guardia, compañero de Domador y porte.

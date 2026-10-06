@@ -209,3 +209,31 @@ Regla de compra o venta que la jugadora deja en el Mercado del Reino y que sus c
 **Caravana**:
 Grupo que lleva mercancía entre dos lugares por días, visible en el mapa según lo que sabe el personaje y expuesto a asaltos.
 
+
+## Ganadería y comida (Fase D del 0.3)
+
+**Ganado**:
+Animales domesticados que viven en un corral del Reino o de una facción para producir, criar o sacrificarse; no acompañan a nadie.
+_Evitar_: rebaño (como término del motor), compañero animal
+
+**Ganadero**:
+Oficio, propio de cada pueblo y región, de quien cuida el ganado; sin ganadero el ganado no produce.
+_Evitar_: domador (el Domador es una especialización de combate, no un oficio)
+
+**Corral**:
+Edificio del ganadero que guarda animales de una sola especie, con plazas según su escalón.
+
+**Etapa**:
+Momento de la vida de un animal (cría, joven, adulto, vejez) que decide qué come, si produce y si cría; depende de su categoría de fauna y de su porte.
+
+**Forraje**:
+Reserva de alimento de los herbívoros del ganado, aparte de la comida de la gente.
+
+**Comida cruda**:
+Lo comestible tal como sale del ganado, la caza o la recolección; alimenta según su valor, sin multiplicar.
+
+**Plato**:
+Lo que sale de una receta de cocina; alimenta más que la suma de sus ingredientes, tanto más cuanto más alto el escalón de la cocina.
+
+**Comida pasiva**:
+Comida que aparece sin que nadie la produzca (por trabajador o por edificio); se retira a favor de la comida por oficios.
