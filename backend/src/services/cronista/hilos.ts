@@ -6,6 +6,7 @@ import type { Prisma } from '@prisma/client';
 import type { Efecto } from './efectos.js';
 import type { CtxReaccion, Reaccion, SucesoEnCola } from './reacciones.js';
 import { registrarSuceso } from './sucesos.js';
+import { herederoDeVenganza } from './linajes.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -206,6 +207,8 @@ async function redencion(ctx: CtxReaccion): Promise<Efecto[]> {
 
 // ─────────────────────────── Cierres ───────────────────────────
 
+const VENGADOR_MUERTO = 'El vengador ha muerto.';
+
 /// Puro: si este suceso cierra el hilo, el desenlace; si no, null.
 export function desenlace(hilo: { patron: string; actores: ActorHilo[] }, s: Pick<SucesoEnCola, 'tipo' | 'actores'>): string | null {
   const npc = hilo.actores.find((a) => a.entidadTipo === 'NPC')?.entidadId;
@@ -215,7 +218,7 @@ export function desenlace(hilo: { patron: string; actores: ActorHilo[] }, s: Pic
   const muere = ['MUERTE_CAUSADA', 'MUERTE_NPC'].includes(s.tipo) && tiene('NPC', npc, ['VICTIMA']);
   switch (hilo.patron) {
     case 'VENGANZA':
-      if (muere) return 'El vengador ha muerto.';
+      if (muere) return VENGADOR_MUERTO;
       if (['COMBATE_GANADO', 'COMBATE_PERDIDO', 'HUIDA_DE_NPC'].includes(s.tipo) && tiene('NPC', npc)) return 'Por fin se han visto las caras.';
       return null;
     case 'ASCENSO':
@@ -239,12 +242,32 @@ export function desenlace(hilo: { patron: string; actores: ActorHilo[] }, s: Pic
 const TIPOS_DE_CIERRE = ['MUERTE_CAUSADA', 'MUERTE_NPC', 'COMBATE_GANADO', 'COMBATE_PERDIDO', 'HUIDA_DE_NPC', 'CAMBIO_LIDER', 'FACCION_CAE', 'FACCION_ABSORBIDA', 'REGALO', 'AYUDA_PRESTADA'];
 
 async function cierres(ctx: CtxReaccion): Promise<Efecto[]> {
-  const hilos = await ctx.tx.hilo.findMany({ where: { saveId: ctx.suceso.saveId, estado: 'ABIERTO' }, select: { clave: true, patron: true, actores: true, sucesoIds: true } });
-  return hilos
-    .filter((h) => !h.sucesoIds.includes(ctx.suceso.id))
-    .map((h) => ({ clave: h.clave, d: desenlace({ patron: h.patron, actores: h.actores as unknown as ActorHilo[] }, ctx.suceso) }))
-    .filter((x): x is { clave: string; d: string } => !!x.d)
-    .map((x): Efecto => ({ tipo: 'cerrarHilo', clave: x.clave, desenlace: x.d }));
+  const hilos = await ctx.tx.hilo.findMany({ where: { saveId: ctx.suceso.saveId, estado: 'ABIERTO' }, select: { clave: true, patron: true, actores: true, sucesoIds: true, tension: true } });
+  const out: Efecto[] = [];
+  for (const h of hilos) {
+    if (h.sucesoIds.includes(ctx.suceso.id)) continue;
+    const actores = h.actores as unknown as ActorHilo[];
+    const d = desenlace({ patron: h.patron, actores }, ctx.suceso);
+    if (!d) continue;
+    const heredada = d === VENGADOR_MUERTO ? await herenciaDeVenganza(ctx, actores, h.tension) : null;
+    out.push({ tipo: 'cerrarHilo', clave: h.clave, desenlace: heredada ? `${d} ${heredada.resumen}` : d });
+    if (heredada) out.push(heredada);
+  }
+  return out;
+}
+
+/// CR-52 (Q10): cuando cae quien llevaba una venganza, la toma el adulto vivo de su linaje (si lo hay).
+async function herenciaDeVenganza(ctx: CtxReaccion, actores: ActorHilo[], tension: number): Promise<Extract<Efecto, { tipo: 'abrirHilo' }> | null> {
+  const vengador = actores.find((a) => a.entidadTipo === 'NPC')?.entidadId;
+  if (!vengador) return null;
+  const heredero = await herederoDeVenganza(ctx.tx, ctx.suceso.saveId, vengador);
+  if (!heredero || (await abierto(ctx.tx, ctx.suceso.saveId, `VENGANZA:${heredero.id}`))) return null;
+  return {
+    tipo: 'abrirHilo', patron: 'VENGANZA', clave: `VENGANZA:${heredero.id}`,
+    actores: [{ entidadTipo: 'NPC', entidadId: heredero.id }, ...actores.filter((a) => a.entidadTipo !== 'NPC')],
+    tension: Math.min(10, tension + 1),
+    resumen: `${heredero.name} toma la venganza de ${await nombreNpc(ctx.tx, vengador)}: es cosa del linaje ${heredero.linaje}.`,
+  };
 }
 
 export const REACCIONES_HILOS: Reaccion[] = [

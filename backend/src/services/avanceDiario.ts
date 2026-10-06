@@ -28,6 +28,7 @@ import { envejecerDia } from './cronista/envejecer.js';
 import { agruparNoticias, marcaDeNoticias } from './cronista/noticias.js';
 import { revisarEtiquetasDeReputacion } from './cronista/etiquetas.js';
 import { revisarMarchas } from './cronista/aprobacion.js';
+import { asegurarLinajes } from './cronista/linajes.js';
 import { revisarInformantes } from './cronista/reclutamiento.js';
 
 export const MAX_DIAS_POR_LLAMADA = 30;
@@ -70,6 +71,11 @@ export async function avanzarMundoHasta(
   random: () => number = Math.random,
 ): Promise<{ diasSimulados: number }> {
   await paso('asegurarMundo', () => asegurarMundoDePartida(prisma, saveId));
+  // CR-52: linajes del canon y el del personaje (una vez por partida).
+  await paso('linajes', async () => {
+    const ahora = (await prisma.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true } }))?.fictionalMinutes ?? fictionalMinutes;
+    await prisma.$transaction((tx) => asegurarLinajes(tx, saveId, ahora));
+  });
   const marcaNoticias = await marcaDeNoticias(prisma, saveId);
   const { dias: diasSimulados, desde } = await paso('poblacion', () => prisma.$transaction(
     async (tx) => {

@@ -20,7 +20,7 @@
 // `abrirHilo`/`cerrarHilo` (buscadores de historias) y `ofrecerMision` (gancho, sin implementar).
 import type { CondicionFisica, OrigenSuceso, Prisma, TerritoryControl, ZonePointTipo } from '@prisma/client';
 import { scopeFor } from '../npcScene.js';
-import { generarNombre, type Genero } from './nombres.js';
+import { generarNombre, nombreLibre, type Genero } from './nombres.js';
 import { atributosSinPadres, heredarAtributos, type Atributos } from './herencia.js';
 import { atributosPorEdad, cicloVital, edadEnAnios, esAdulto, esFertil, MINUTOS_POR_ANIO, nacidoEnDe } from './edades.js';
 import { stripRegionArticle } from '../population.js';
@@ -31,6 +31,7 @@ import { registrarSuceso, type NuevoSuceso } from './sucesos.js';
 import type { TipoSuceso } from './catalogoSucesos.js';
 import { aplicarCambioAprobacion, type Valor } from './aprobacion.js';
 import { aplicarNivelGanado, aplicarRecuerdo } from './recuerdos.js';
+import { apellidoDe, fundarLinaje, linajeParaNacido, nombreConLinaje, unirALinaje } from './linajes.js';
 import { aplicarAbrirHilo, aplicarCerrarHilo, registradorDeHilo, type ActorHilo, type Patron } from './hilos.js';
 
 type Tx = Prisma.TransactionClient;
@@ -674,7 +675,14 @@ async function crearNpc(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'crearNpc' }>
   const usados = new Set(
     (await ctx.tx.npc.findMany({ where: { worldId: ctx.worldId, ...deLaPartida }, select: { name: true } })).map((n) => n.name.toLowerCase()),
   );
-  const nombre = generarNombre(faccion.raza, genero, random, usados);
+  const nombreGenerado = generarNombre(faccion.raza, genero, random, usados);
+  // CR-52: una cría lleva el apellido (o el rastro) que le toca por sus padres; quien destaca sin
+  // padres conocidos funda el linaje de su apellido, si lo tiene.
+  const linaje = nace && padre && madre && faccion.raza
+    ? await linajeParaNacido(ctx.tx, { saveId: ctx.saveId, pueblo: faccion.raza, madreId: madre.id, padreId: padre.id, ahora: ctx.fictionalMinutes, random })
+    : null;
+  const propio = nombreGenerado.split(' ')[0]!;
+  const nombre = linaje ? nombreLibre(linaje.tipo === 'RASTRO' ? propio : nombreConLinaje(propio, linaje), usados) : nombreGenerado;
   // CR-13 13b: quien destaca es un adulto joven (de la madurez de su raza a 5 años más); 13c: un
   // nacimiento, hoy.
   const edad = nace ? 0 : cicloVital(faccion.raza).madurez + Math.floor(random() * 6);
@@ -709,7 +717,19 @@ async function crearNpc(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'crearNpc' }>
       madreNpcId: padre && madre ? madre.id : null,
     },
   });
-  const actores = [actorNpc(npc.id, 'AUTOR'), actorFaccion(faccion.slug, 'BENEFICIARIO'), ...(padre && madre ? [actorNpc(padre.id, 'AFECTADO'), actorNpc(madre.id, 'AFECTADO')] : [])];
+  if (linaje) await unirALinaje(ctx.tx, { saveId: ctx.saveId, linajeId: linaje.id, entidadTipo: 'NPC', entidadId: npc.id, desdeMinutes: ctx.fictionalMinutes });
+  else if (faccion.raza) {
+    const apellido = apellidoDe(nombre, faccion.raza, faccion.name);
+    if (apellido) {
+      const l = await fundarLinaje(ctx.tx, { saveId: ctx.saveId, pueblo: faccion.raza, desdeMinutes: ctx.fictionalMinutes, random, nombre: apellido });
+      await unirALinaje(ctx.tx, { saveId: ctx.saveId, linajeId: l.id, entidadTipo: 'NPC', entidadId: npc.id, desdeMinutes: ctx.fictionalMinutes });
+    }
+  }
+  const actores = [
+    actorNpc(npc.id, 'AUTOR'), actorFaccion(faccion.slug, 'BENEFICIARIO'),
+    ...(padre && madre ? [actorNpc(padre.id, 'AFECTADO'), actorNpc(madre.id, 'AFECTADO')] : []),
+    ...(linaje ? [{ entidadTipo: 'LINAJE' as const, entidadId: linaje.id, papel: 'BENEFICIARIO' as const }] : []),
+  ];
   const sucesoId = nace
     ? await registrar(ctx, { tipo: 'NACIMIENTO_NOTABLE', actores, datos: { nacido: nombre, genero, ...(padres ? { padres } : {}) } })
     : await registrar(ctx, { tipo: 'NPC_DESTACA', actores, datos: { npc: nombre, faccion: faccion.name, genero, ...(padres ? { padres } : {}) } });

@@ -469,6 +469,7 @@ model Save {
   etiquetas          Etiqueta[]
   recuerdos          Recuerdo[]
   hilos              Hilo[]
+  linajes            Linaje[]
   consecuencias      Consecuencia[]
   sessionFacts       SessionFact[]
   foundedFactions    Faction[]
@@ -3753,4 +3754,38 @@ model Hilo {
 
   @@unique([saveId, clave])
   @@index([saveId, estado])
+}
+
+/// CR-52 (hito 0.3): una familia que el motor sigue a través de generaciones. En los Faerus es un
+/// rastro (una pequeña manada dentro de la gran manada; no es un apellido).
+model Linaje {
+  id           String          @id @default(cuid())
+  saveId       String
+  save         Save            @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  nombre       String
+  pueblo       String
+  /// APELLIDO | RASTRO
+  tipo         String
+  /// Casta de función (Goirntes), si se sabe.
+  casta        String?
+  /// CATALOGO (sale de un apellido del canon) | PARTIDA (fundado jugando)
+  origen       String
+  desdeMinutes Int
+  miembros     LinajeMiembro[]
+
+  @@unique([saveId, pueblo, nombre])
+}
+
+/// CR-52: quién pertenece a cada linaje (NPC con nombre, súbdito o el personaje).
+model LinajeMiembro {
+  saveId       String
+  linajeId     String
+  linaje       Linaje @relation(fields: [linajeId], references: [id], onDelete: Cascade)
+  /// NPC | SUBDITO | PERSONAJE
+  entidadTipo  String
+  entidadId    String
+  desdeMinutes Int
+
+  @@id([linajeId, entidadTipo, entidadId])
+  @@index([saveId, entidadTipo, entidadId])
 }

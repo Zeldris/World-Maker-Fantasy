@@ -23,6 +23,7 @@ import { REACCIONES_ETIQUETAS } from './etiquetas.js';
 import { REACCIONES_APROBACION } from './aprobacion.js';
 import { REACCIONES_RECUERDOS } from './recuerdos.js';
 import { REACCIONES_HILOS } from './hilos.js';
+import { REACCIONES_LINAJES } from './linajes.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -284,6 +285,8 @@ export const REACCIONES: Reaccion[] = [
   ...REACCIONES_RECUERDOS,
   // CR-17: buscadores de historias e hilos (hilos.ts).
   ...REACCIONES_HILOS,
+  // CR-52: el linaje como actor del Libro (linajes.ts).
+  ...REACCIONES_LINAJES,
 ];
 
 /// Región (nombre de `Location.region`, el de `REGIONES_VECINAS`) a partir de su slug.

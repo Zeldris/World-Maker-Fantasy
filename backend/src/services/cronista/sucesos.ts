@@ -8,7 +8,7 @@ import { randomUUID } from 'node:crypto';
 import type { OrigenSuceso, Prisma, PrismaClient } from '@prisma/client';
 import { CATALOGO_SUCESOS, importanciaDeSuceso, textoDeSuceso, type DatosSuceso, type TipoSuceso } from './catalogoSucesos.js';
 
-export type EntidadTipo = 'PERSONAJE' | 'NPC' | 'COMPANERO' | 'FACCION' | 'REGION' | 'LOCATION' | 'TERRITORIO' | 'EDIFICIO';
+export type EntidadTipo = 'PERSONAJE' | 'NPC' | 'COMPANERO' | 'FACCION' | 'REGION' | 'LOCATION' | 'TERRITORIO' | 'EDIFICIO' | 'LINAJE' | 'SUBDITO';
 export type PapelSuceso = 'AUTOR' | 'VICTIMA' | 'TESTIGO' | 'BENEFICIARIO' | 'AFECTADO' | 'LUGAR';
 
 export interface ActorSuceso {

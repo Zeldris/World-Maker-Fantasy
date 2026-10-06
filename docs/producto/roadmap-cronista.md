@@ -1473,7 +1473,13 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     caza en grupo; después, resumen y saqueo de cada caído como en la caza (sin despellejar); el
     que huye no deja nada. Campamentos de bandidos con cabecilla y refuerzos: tarea aparte en el
     `0.3` (`CR-50`). Pasos: 49a motor ✅ (`combatePersonas.ts`: banda por la `cantidad` de su punto, aliados de su facción a ≤ 3 casillas y la guardia de un interior; el turno que abre combate contra una persona con grupo abre el de varios) · 49b entradas ✅ (texto libre con objetivo citado, como lo envía el frontend; «Combatir» del encuentro y del modo dinámico; test del turno con Torgash en su campamento) · 49c bandas de verdad 🧭 (propuesta de lore escrita el 2026-10-05 en `propuestas-lore.md` § Personajes y NPCs; en cuanto se apruebe: puntos de patrulla de 2-3 en el mapa y los tres cabecillas; el motor ya las trata como banda por la `cantidad` de su punto) · 49d saqueo de personas ✅ (el resumen marca `esPersona` y el aviso de despellejar solo sale si cayó fauna; los caídos solitarios se resuelven con Matar/Capturar/Clemente como en el 1v1, por su `NpcState`; sin test propio: el cierre de un combate de varios con personas no tiene arnés todavía, queda para la fase de pruebas `0.8`).
-  - **CR-52** Linajes y rastros (Fase C del `0.3`; idea de la usuaria del 2026-10-06, Q8-Q14): cada
+  - ~~**CR-52** Linajes y rastros~~ ✅ 2026-10-06 (`cronista/linajes.ts`; modelos `Linaje` y `LinajeMiembro`,
+    migración `20261006070000_linajes`; linajes del canon y del personaje al avanzar el mundo, la cría
+    hereda o la pareja funda, rastro que se escinde a partir de 12, el linaje como actor del Libro
+    (reacción `LINAJE_EN_EL_LIBRO`), venganza heredada por un adulto vivo del linaje, rencor fuerte de
+    la familia en `npcsConRencor`, Leyendas › «Linajes» con árbol e historia. **Queda:** los súbditos
+    entran en su linaje con `REI-118`/`REI-120`; las deudas aún no pasan a la familia, solo venganzas y
+    recuerdos). (Fase C del `0.3`; idea de la usuaria del 2026-10-06, Q8-Q14): cada
     familia es un **linaje** (nombre, pueblo, fundador; casta en los Goirntes) y todo NPC con nombre y todo
     súbdito pertenece a uno; los del catálogo salen de su apellido (Ketg, Koh, Kiugh, Marn…). Herencia:
     orcos, el apellido del progenitor de más rango (a igualdad, la madre, como Maktor); Goirntes, apellido y

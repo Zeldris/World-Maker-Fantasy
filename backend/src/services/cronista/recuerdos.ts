@@ -6,6 +6,7 @@
 import type { Prisma, Temperamento } from '@prisma/client';
 import type { Efecto } from './efectos.js';
 import type { Reaccion, SucesoEnCola } from './reacciones.js';
+import { familiaDe } from './linajes.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -40,6 +41,19 @@ export async function npcsConRencor(tx: Tx | Prisma.TransactionClient, saveId: s
   });
   const porNpc = new Map<string, typeof recuerdos>();
   for (const r of recuerdos) porNpc.set(r.npcId, [...(porNpc.get(r.npcId) ?? []), r]);
+  // CR-52 (Q10): los recuerdos fuertes de la familia pesan como propios.
+  const familia = await familiaDe(tx, saveId, npcIds);
+  const parientes = [...new Set([...familia.values()].flat())];
+  if (parientes.length > 0) {
+    const fuertes = await tx.recuerdo.findMany({
+      where: { saveId, npcId: { in: parientes }, sobreTipo: 'PERSONAJE', importancia: { gte: IMPORTANCIA_PERMANENTE } },
+      select: { npcId: true, sentimiento: true, importancia: true, desdeMinutes: true },
+    });
+    for (const [npc, suyos] of familia) {
+      const heredados = fuertes.filter((r) => suyos.includes(r.npcId));
+      if (heredados.length) porNpc.set(npc, [...(porNpc.get(npc) ?? []), ...heredados]);
+    }
+  }
   return new Set([...porNpc.entries()].filter(([, rs]) => sentimientoTotal(rs, ahora) < UMBRAL_RENCOR).map(([id]) => id));
 }
 

@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { FamiliaSuceso } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
-import { FAMILIAS, FICHAS_CON_LEYENDAS, leyendasDeEntidad, leyendasDeFicha, leyendasDePartida, TIPOS_ENTIDAD, type FichaConLeyendas } from '../../services/cronista/leyendas.js';
+import { FAMILIAS, FICHAS_CON_LEYENDAS, leyendasDeEntidad, leyendasDeFicha, leyendasDePartida, linajesConocidos, TIPOS_ENTIDAD, type FichaConLeyendas } from '../../services/cronista/leyendas.js';
 import type { EntidadTipo } from '../../services/cronista/sucesos.js';
 
 /// Leyendas de la partida (CR-19, hito 0.2 — roadmap-cronista.md § 14): solo lo que sabe el
@@ -50,5 +50,12 @@ export async function leyendasRoutes(app: FastifyInstance) {
         .filter((h) => h.sucesoIds.some((id) => sabidos.has(id)))
         .map((h) => ({ id: h.id, patron: h.patron, abierto: h.estado === 'ABIERTO', tension: h.tension, resumen: h.resumen, abiertoEn: h.abiertoEn, cerradoEn: h.cerradoEn })),
     };
+  });
+
+  // CR-52: «Linajes» — las familias de las que sabe algo el personaje, con su árbol y su historia.
+  app.get<{ Params: { id: string } }>('/saves/:id/leyendas/linajes', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    return { linajes: await linajesConocidos(prisma, save.id) };
   });
 }

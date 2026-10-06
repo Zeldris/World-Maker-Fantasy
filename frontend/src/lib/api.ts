@@ -2733,6 +2733,30 @@ export async function getHilos(saveId: string): Promise<{ hilos: HiloInfo[] }> {
   return fetchJson(`${API_URL}/saves/${saveId}/leyendas/hilos`)
 }
 
+/// CR-52 (hito 0.3): una familia (apellido) o un rastro faerus que conoce el personaje.
+export interface MiembroLinaje {
+  id: string
+  tipo: 'NPC' | 'SUBDITO' | 'PERSONAJE'
+  nombre: string
+  vivo: boolean
+  padreId: string | null
+  madreId: string | null
+}
+
+export interface LinajeInfo {
+  id: string
+  nombre: string
+  tipo: 'APELLIDO' | 'RASTRO'
+  pueblo: string
+  propio: boolean
+  miembros: MiembroLinaje[]
+  historia: EntradaLeyenda[]
+}
+
+export async function getLinajes(saveId: string): Promise<{ linajes: LinajeInfo[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/leyendas/linajes`)
+}
+
 /// CR-42 (hito 0.3): «¿Qué se sabe en tu tierra?» a un compañero.
 export async function preguntarTierraCompanero(saveId: string, companionId: string): Promise<{ frase: string; contadas: number }> {
   return fetchJson(`${API_URL}/saves/${saveId}/companeros/${companionId}/tierra`, { method: 'POST' })
