@@ -34,6 +34,7 @@ import { revisarLlegadas } from './cronista/llegadas.js';
 import { revisarFamilias } from './cronista/familias.js';
 import { revisarSalidas } from './cronista/salidas.js';
 import { revisarSueldos } from './cronista/economiaReino.js';
+import { resembrarFacciones } from './cronista/economiaFacciones.js';
 import { revisarInformantes } from './cronista/reclutamiento.js';
 
 export const MAX_DIAS_POR_LLAMADA = 30;
@@ -82,6 +83,8 @@ export async function avanzarMundoHasta(
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`avance|${saveId}`}))`;
       // CR-52: linajes del canon y el del personaje (una vez por partida), bajo el mismo candado.
       await asegurarLinajes(tx, saveId, fictionalMinutes);
+      // CR-54 (Q20): re-siembra única del reparto de las facciones.
+      await resembrarFacciones(tx, saveId);
       const estado = await tx.worldState.findUnique({ where: { saveId }, select: { ultimoDiaSimulado: true } });
       if (!estado) return { dias: 0, desde: 0 };
       const dias = diasPendientes(estado.ultimoDiaSimulado, diaDeFiccion(fictionalMinutes));

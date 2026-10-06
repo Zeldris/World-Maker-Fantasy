@@ -804,6 +804,8 @@ model WorldState {
   save               Save      @relation(fields: [saveId], references: [id], onDelete: Cascade)
   /// CR-5 (hito 0.2) — avance diario por partida (CR-7) y Cronista.
   ultimoDiaSimulado  Int       @default(0)
+  /// CR-54 (Q20): versión del reparto de facciones aplicada a esta partida (re-siembra única).
+  repartoFacciones   Int       @default(0)
   presupuestoTension Int       @default(0)
   estiloNarrador     String    @default("EQUILIBRADO")
   mundoClonadoEn     DateTime?

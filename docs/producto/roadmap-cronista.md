@@ -1645,6 +1645,12 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
 - **CR-54** Economía de supervivencia de las facciones (Q7-Q8 y Q16-Q20): reparto de la tabla del plan
   (re-siembra única de las partidas), agua de su fuente canónica, Goirnos y sueldos, y hambre, sed y muerte
   con el Libro. Las mismas cifras en agregado.
+  🚧 54a ✅ 2026-10-06: reparto en `scripts/repartoFacciones.ts`, la única fuente de la siembra; en las facciones
+  comen todos (`KingdomStats.poblacion` = civiles + trabajadores); re-siembra única de las partidas por
+  `WorldState.repartoFacciones` (migración `20261006130000_reparto_facciones`); los Serhu, sin holgura para crecer.
+  Hallazgo: los Goshg con hambre no mandan expediciones por comida (los Serhu sí); revisar con `CR-34`.
+  **Falta:** 54b, agua, Goirnos y factura semanal, deserción, hambre, sed y muerte con el Libro;
+  54c, extinción y refundación.
   Extinción con población 0; refundación tras un año si su pueblo conserva más de 50 en la región.
   Enciende la hambruna de facción apagada en `CR-12`. **M**
 - **CR-58** Factura de equipo (Fase D, Q25-Q27).

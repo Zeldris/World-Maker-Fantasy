@@ -114,7 +114,8 @@ describe('syncFactionPopulationToKingdomStats', () => {
     expect(findFirstFaction).toHaveBeenCalledWith({ where: { slug: 'clan-serhu', saveId: null }, select: { id: true } });
     expect(update).toHaveBeenCalledWith({
       where: { id: 'ks1' },
-      data: { poblacion: 70, soldados: 500, trabajadores: 150, visitantes: 0 },
+      // CR-54 (Q16): comen todos — población = civiles (70) + trabajadores (150).
+      data: { poblacion: 220, soldados: 500, trabajadores: 150, visitantes: 0 },
     });
     expect(result.synced).toBe(1);
   });
