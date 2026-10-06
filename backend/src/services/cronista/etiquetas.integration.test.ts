@@ -4,7 +4,7 @@ import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { asegurarMundoDePartida } from '../mundoPartida.js';
 import { registrarSuceso, type ActorSuceso } from './sucesos.js';
 import { procesarReacciones } from './reacciones.js';
-import { etiquetasActivas, etiquetasDeReputacion, muertesDeRendidos, revisarEtiquetasDeReputacion, REP_AMIGO, REP_ENEMIGO, UMBRAL_CLEMENTE } from './etiquetas.js';
+import { bonoSocialDeEtiquetas, etiquetasActivas, etiquetasDeReputacion, muertesDeRendidos, revisarEtiquetasDeReputacion, REP_AMIGO, REP_ENEMIGO, UMBRAL_CLEMENTE } from './etiquetas.js';
 
 describe('etiquetas (CR-14) — reglas puras', () => {
   it('cuenta como rendido al que ya dejaste convaleciente en el último día', () => {
@@ -16,6 +16,14 @@ describe('etiquetas (CR-14) — reglas puras', () => {
       { tipo: 'MUERTE_CAUSADA', minuto: 200 + 2000, victima: 'c' },
     ];
     expect(muertesDeRendidos(s)).toBe(1);
+  });
+
+  it('bonos de las tiradas sociales: Clemente ayuda con un rendido, Carnicero resta, Rompejuramentos solo al pactar', () => {
+    expect(bonoSocialDeEtiquetas(new Set(['CLEMENTE']), 'RENDIDO')).toBe(1);
+    expect(bonoSocialDeEtiquetas(new Set(['CLEMENTE']), 'PERSUADIR')).toBe(0);
+    expect(bonoSocialDeEtiquetas(new Set(['CARNICERO', 'CLEMENTE']), 'RENDIDO')).toBe(-1);
+    expect(bonoSocialDeEtiquetas(new Set(['ROMPE_JURAMENTOS']), 'PERSUADIR')).toBe(0);
+    expect(bonoSocialDeEtiquetas(new Set(['ROMPE_JURAMENTOS']), 'PACTAR')).toBe(-2);
   });
 
   it('amigo con reputación alta, enemigo con reputación muy baja, nada en medio', () => {

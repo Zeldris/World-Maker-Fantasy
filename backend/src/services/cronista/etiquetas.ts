@@ -172,6 +172,19 @@ export async function revisarEtiquetasDeReputacion(tx: Tx, p: { saveId: string; 
   await aplicarEfectos({ tx, saveId: p.saveId, worldId: p.worldId, fictionalMinutes: p.fictionalMinutes, origen: 'MOTOR' }, efectos);
 }
 
+/// Inteligencia desde la que un NPC no se rinde ante un «Carnicero» (Q4).
+export const INT_NO_SE_RINDE_A_CARNICERO = 12;
+
+/// Puro: bono total de las etiquetas a una tirada social. `RENDIDO` = convencer a un capturado o
+/// rendido; `PERSUADIR` = cualquier otra persuasión; `PACTAR` = pactos y diplomacia.
+export function bonoSocialDeEtiquetas(activas: Set<string>, tipo: 'RENDIDO' | 'PERSUADIR' | 'PACTAR'): number {
+  let bono = 0;
+  if (activas.has('CARNICERO') && tipo !== 'PACTAR') bono += MALUS_CARNICERO_PERSUADIR;
+  if (activas.has('CLEMENTE') && tipo === 'RENDIDO') bono += BONO_CLEMENTE_RENDIDO;
+  if (activas.has('ROMPE_JURAMENTOS') && tipo === 'PACTAR') bono += MALUS_ROMPE_JURAMENTOS_PACTAR;
+  return bono;
+}
+
 /// Claves activas del personaje (para los efectos mecánicos y el narrador).
 export async function etiquetasActivas(tx: Tx | Prisma.TransactionClient, saveId: string): Promise<Set<string>> {
   const filas = await tx.etiqueta.findMany({ where: { saveId, entidadTipo: 'PERSONAJE', activa: true }, select: { clave: true } });

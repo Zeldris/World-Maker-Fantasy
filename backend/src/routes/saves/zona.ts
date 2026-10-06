@@ -36,6 +36,7 @@ import { iniciarCaza, type CazaTarget } from '../../services/caza.js';
 import { riesgoDeCaza, type RiesgoCazaInfo } from '../../services/cazaRiesgo.js';
 import type { AttributeBlock } from '../../services/dice.js';
 import { ambitoFacciones } from '../../services/mundoPartida.js';
+import { etiquetasActivas } from '../../services/cronista/etiquetas.js';
 
 /// Candado de "movimiento en curso" (hallazgo 45, revisar-partida-hallazgos.md, 2026-09-15) —
 /// mismo patrón que `turnLock.ts`/`chapterSummary.ts` (`createInFlightClaimSet`), pero con
@@ -919,6 +920,12 @@ export async function zonaRoutes(app: FastifyInstance) {
         // dynamicMode.ts, y la ruta `/modo-dinamico/interactuar`.
         const iniciativa = tirarQuienIniciaEncuentro(destrezaJugador, destrezaColision ?? 10);
         const quienInicia = iniciativa.quienInicia;
+        // CR-14 (Q4): la fauna cautelosa que reconoce a un «Cazador temido» antes de que se acerque, huye.
+        if (colisionTipo === 'FAUNA' && colision.temperamento === 'CAUTELOSO' && quienInicia === 'npc' && (await etiquetasActivas(tx, saveId)).has('CAZADOR_TEMIDO')) {
+          const textoHuida = `${colision.targetName} reconoce a ${characterName} de lejos y huye antes de que pueda acercarse.`;
+          const creada = await tx.logEntry.create({ data: { saveId, channel: 'CHARACTER', text: textoHuida, timeLabel, fictionalMinutes, isPlayerAction: false, isSystemMessage: true } });
+          return { ultimoEncuentroSigueCerca, colision: null, dynamicModeOffer: null, logEntry: { id: creada.id, text: textoHuida, timeLabel, createdAt: creada.createdAt.toISOString() } };
+        }
         dynamicModeOffer = {
           tipo: colisionTipo!,
           targetSlug: colision.targetSlug,

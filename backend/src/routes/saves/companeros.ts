@@ -24,6 +24,7 @@ import {
   type PlantillaSlots,
 } from '../../services/companionSupervivencia.js';
 import { EquipSlot } from '@prisma/client';
+import { bonoSocialDeEtiquetas, etiquetasActivas, INT_NO_SE_RINDE_A_CARNICERO } from '../../services/cronista/etiquetas.js';
 
 /// Grupo 3 § Compañeros y supervivencia (2026-08-25, diseño completo en
 /// docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md) — captura+tameo/persuasión, equipo de
@@ -166,6 +167,10 @@ export async function companerosRoutes(app: FastifyInstance) {
     }
 
     const esFauna = npc.ataqueNatural !== null;
+    // CR-14 (Q4): ante un «Carnicero», nadie con cabeza (Inteligencia ≥ 12) se deja atar con vida.
+    if (!esFauna && ((npc.attributes as AttributeBlock | null)?.inteligencia ?? 0) >= INT_NO_SE_RINDE_A_CARNICERO && (await etiquetasActivas(prisma, save.id)).has('CARNICERO')) {
+      return reply.status(400).send({ error: `${npc.name} sabe lo que haces con los rendidos: prefiere morir antes que dejarse atar.` });
+    }
     const slotsNecesarios = capturaSlotsFor(esFauna, npc.slug);
     // Sin hueco en el inventario → falla el intento (confirmado ronda 3): la cuerda no se gasta,
     // el objetivo sigue GRAVE/CONVALECIENTE para reintentar tras hacer hueco.
@@ -447,6 +452,9 @@ export async function companerosRoutes(app: FastifyInstance) {
         state.capturaFelicidad,
         domador,
         disposicionPct,
+        Math.random,
+        // CR-14 (Q4): las etiquetas pesan al convencer a un capturado (solo personas, no fauna).
+        esFauna ? 0 : bonoSocialDeEtiquetas(await etiquetasActivas(prisma, save.id), 'RENDIDO'),
       );
 
       await prisma.npcState.update({ where: { id: state.id }, data: { capturaFelicidad: intento.felicidadTras } });

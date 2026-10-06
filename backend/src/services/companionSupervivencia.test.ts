@@ -215,4 +215,11 @@ describe('condicionPorSupervivencia', () => {
   it('nunca mejora la condición, solo la empeora', () => {
     expect(condicionPorSupervivencia(0, 0, 'MUERTO')).toBeNull();
   });
+
+  it('CR-14: el bono de las etiquetas cambia el resultado de un intento justo', () => {
+    const iguales = { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 0 };
+    const sinBono = resolverIntento(iguales, 'carisma', iguales, 'carisma', 0, false, 100, () => 0.5);
+    const conMalus = resolverIntento(iguales, 'carisma', iguales, 'carisma', 0, false, 100, () => 0.5, -2);
+    expect(conMalus.roll.margen).toBe(sinBono.roll.margen - 2);
+  });
 });

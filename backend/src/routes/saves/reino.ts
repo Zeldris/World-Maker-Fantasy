@@ -9,6 +9,7 @@ import { recordFactionEvent, espiarFactionRelation, nivelDiplomaticoRequerido, x
 import { precioDinamico } from '../../services/economia.js';
 import { quantityOf } from '../../services/ingredients.js';
 import { asegurarMundoDePartida } from '../../services/mundoPartida.js';
+import { etiquetasActivas } from '../../services/cronista/etiquetas.js';
 
 /// Fundación de reino (2026-08-04, docs/mecanicas/17-reglas-construcciones-reino.md) — el popup que se abre
 /// al terminar de construir el Ayuntamiento (tier 1) manda aquí el formulario. Decisión manual de
@@ -257,7 +258,9 @@ export async function reinoRoutes(app: FastifyInstance) {
           // Gate de nivel — mismo criterio que trabajadorPuedeProducir (kingdomProduction.ts):
           // cuanto más lejos del neutro ya está la relación, más nivel exige moverla más.
           const relacionPrevia = await espiarFactionRelation(tx, sourceFaction.worldId, sourceFaction.id, targetFaction.id, save.id);
-          const nivelExigido = nivelDiplomaticoRequerido(relacionPrevia.presion);
+          // CR-14 (Q4): con un «Rompejuramentos» nadie se fía — negociar exige un nivel más.
+          const desconfianza = accion === 'negociar' && (await etiquetasActivas(tx, save.id)).has('ROMPE_JURAMENTOS') ? 1 : 0;
+          const nivelExigido = nivelDiplomaticoRequerido(relacionPrevia.presion) + desconfianza;
           if (nivelExigido > Math.max(1, alivioForLevel(nivel) + 1)) {
             throw new NivelDiplomaticoInsuficienteError(nivel, nivelExigido);
           }

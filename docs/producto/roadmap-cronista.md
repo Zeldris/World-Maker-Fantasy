@@ -1546,7 +1546,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   `anadirEtiqueta`/`quitarEtiqueta` con sus sucesos `ETIQUETA_GANADA`/`ETIQUETA_PERDIDA`; reglas en
   `cronista/etiquetas.ts` como reacciones: Verdugo de, Carnicero, Cazador temido, Clemente,
   Rompejuramentos, Fundador, Salvador de; Amigo de / Enemigo de por reputación, revisadas cada día
-  en el avance diario). Quedan: 14b efectos mecánicos (Q4) y 14c ficha del Personaje.
+  en el avance diario). 14b ✅ (efectos de Q4: `bonoSocialDeEtiquetas`; Clemente +1 y Carnicero −2 al convencer a un capturado; ante un Carnicero nadie con Int ≥ 12 se deja atar; la fauna cautelosa que reconoce a un Cazador temido antes de que se acerque huye; Rompejuramentos: negociar exige un nivel de diplomático más, porque la diplomacia no tira dados). Queda: 14c ficha del Personaje.
 - **CR-15** Aprobación con valores (§ 8.2). **M**
 - **CR-16** Recuerdos de NPC (§ 8.3). **S** Incluye las reacciones de CR-10: `recuerdo(testigos,
   jugador, −6)` tras una muerte causada y `recuerdo(víctima, jugador, +5)` tras un perdón.
