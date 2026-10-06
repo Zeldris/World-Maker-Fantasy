@@ -283,6 +283,9 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
   final de la Fase B del 0.2:** `GameModals` y `GameLayout`. Medido: las 19 capas usan 135 nombres
   de GameView y solo el cajón de paneles 70; sacarlos a props solo cambiaría de sitio la lista. Se
   hará con un contexto/almacén del estado de la partida que les dé acceso directo.
+  🚧 2026-10-06 (usuaria: hacerlo ahora, por pasos): paso 1 ✅ — el estado y los manejadores salen
+  a `pages/useGameViewState.tsx` (`GameViewState` = su tipo de retorno); `GameView` solo pinta.
+  Siguen: `GameViewContext` + `GameModals`, luego `GameLayout`, y la parte de `BAS-7`.
 - **BAS-6 · Carga** **[H]** **S** — `React.lazy` para Enciclopedia, `MapZoomModal`, `InteractiveMap`,
   admin y secciones de Reino; `loading="lazy"`, `decoding="async"` y fundido en todas las `<img>`.
 - **BAS-7 · Animaciones de salida y de cambio de layout** **[P]** **M** 🧭
