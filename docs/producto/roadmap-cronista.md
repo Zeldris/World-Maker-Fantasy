@@ -1630,6 +1630,86 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     de supervivencia (pregunta 5 a Álvaro).
 - **CR-38** La disposición de una facción la da su líder (`CR-34` Q5): un rasgo del NPC que cambia con
   la sucesión de `CR-11`. **S**
+- ~~**CR-53** Economía de supervivencia del Reino (Fase D del `0.3`; números decididos por la usuaria el
+  2026-10-06, Q1-Q6 en `plan-roadmap-0.3.md`).~~ ✅ 2026-10-06 **L**
+  53a ✅ 2026-10-06 (`cronista/economiaReino.ts`): agua de Pozo (12 al día) y de fuente natural junto al
+  Ayuntamiento (20); topes de comida y agua (base 60 + 120 por Granero o Cisterna) en el tick del Reino;
+  recetas de Pozo, Granero, Cisterna y Leñera. 53b ✅ (tope de materiales: objetos de tipo RECURSO en el Almacén, base 60 + 120 por Leñera; depositar
+  rechaza si no cabe, y la producción y las caravanas solo meten lo que cabe). 53c ✅ (tesoro = `KingdomStats.riqueza` en Goirnos con traspasos a la bolsa,
+  `POST /saves/:id/reino/tesoro`; sueldos semanales trabajador 2 y soldado o vigía 5 en vez del mantenimiento
+  diario; sin Goirnos, −3 de felicidad al día y desde el día 7 un desertor por semana que vuelve a su
+  pueblo; migración `20261006110000_sueldos`). 53d ✅ (sed: `KingdomStats.diasSed`, a los 2 días un 20 % diario de que muera uno, primero las crías;
+  el hambre, 3 días y 10 %, pasa a definitiva; migración `20261006120000_sed`). 53e ✅ (Visión general del Reino: agua al día frente a bocas, topes del almacén, sueldos, tesoro y bolsa
+  con traspaso, y avisos de sed, hambre y sueldos sin pagar; `GET /saves/:id/reino/economia`; los textos
+  de ayuda de cada indicador, al día).
+- ~~**CR-54** Economía de supervivencia de las facciones (Q7-Q8 y Q16-Q20):~~ ✅ 2026-10-06 reparto de la tabla del plan
+  (re-siembra única de las partidas), agua de su fuente canónica, Goirnos y sueldos, y hambre, sed y muerte
+  con el Libro. Las mismas cifras en agregado.
+  🚧 54a ✅ 2026-10-06: reparto en `scripts/repartoFacciones.ts`, la única fuente de la siembra; en las facciones
+  comen todos (`KingdomStats.poblacion` = civiles + trabajadores); re-siembra única de las partidas por
+  `WorldState.repartoFacciones` (migración `20261006130000_reparto_facciones`); los Serhu, sin holgura para crecer.
+  Hallazgo: los Goshg con hambre no mandan expediciones por comida (los Serhu sí); revisar con `CR-34`.
+  54b ✅: agua de su fuente (110 % del consumo, caben 30 días), sueldos semanales (2 y 5) con −3 de felicidad
+  al día sin cobrar y deserción del 5 % de los soldados por semana desde el día 7 (vuelven a su pueblo);
+  hambre (desde el día 3, 1 % al día) y sed (desde el día 2, 2 %) matan, primero a los civiles; `HAMBRUNA`
+  encendida en las facciones. Equivalencias en agregado de Q5-Q6, propuestas por Claude.
+  54c ✅: con población 0 se extingue (`FACCION_CAE`); 120 días después, si su pueblo conserva más de 50 en la
+  región y no hay otra facción suya viva allí, se refunda con un nombre de escisión de su pueblo y hasta 120
+  personas en reparto estándar (`revisarExtinciones`). De paso, una escisión de `CR-11` ya se lleva también
+  sus filas de población (antes la madre las recuperaba en la sincronización diaria).
+  Extinción con población 0; refundación tras un año si su pueblo conserva más de 50 en la región.
+  Enciende la hambruna de facción apagada en `CR-12`. **M**
+- ~~**CR-58** Factura de equipo (Fase D, Q25-Q27).~~ ✅ 2026-10-06 (`cronista/facturaEquipo.ts`).
+  - Reino: al acoger a alguien se paga su herramienta, y al pasarlo a soldado o vigía su arma y su armadura.
+    El desgaste semanal se paga con los sueldos y se repone lo roto si alcanza. Sin pagar, se rompe 1/4 de
+    las herramientas y 1/6 de las armas (`KingdomStats.sinHerramienta`/`sinArma`, migración
+    `20261006140000_factura_equipo`).
+  - Sin herramienta se produce la mitad; los soldados sin arma quedan contados para la defensa (Fase E).
+  - Con Herrería, Peletería, Sastrería, Curtiduría o Carpintería con trabajador, se fabrica en casa (1
+    material por cada 5 Goirnos de valor, a la mitad).
+  - Facciones: pagan en Goirnos el desgaste de lo que sus talleres no fabrican.
+  - Visión general muestra el equipo de la semana y los avisos de equipo roto.
+  - Cifras derivadas por Claude: la conversión a materiales y la rotura.
+  - Alta y desgaste semanal de herramientas, armas y armaduras para el Reino y las facciones.
+  - El equipo se fabrica en el taller propio (materiales a la mitad de su valor) o se compra a precio
+    de mercado.
+  - Sin herramienta se produce la mitad; sin arma, se cuenta medio en la defensa. **M**
+- ~~**CR-59** Vasallaje y deuda (Fase D, Q21-Q24 y Q28; Serhu bajo la Concordia).~~ ✅ 2026-10-06
+  (`cronista/vasallaje.ts`; modelo `Vasallaje`, migración `20261006150000_vasallaje`).
+  - Cada partida empieza con Serhu vasallo de la Concordia y una deuda de 500.
+  - Cada semana: el desgaste de sus armas al doble, al señor; lo que no pueden pagar va a deuda.
+  - Rearme: todo excedente de comida pasa trabajadores a guerreros, con sus armas al doble.
+  - Patrulla de 20 que rebaja 100 la deuda, con un 25 % de `ESCARAMUZA` (1d6 bajas) contra otra facción de su
+    región o contra renegados.
+  - Se rompe con la deuda saldada o si cae el señor.
+  - **Queda:** romperlo por alianza con el Reino o por guerra (`CR-37`).
+  - Doctrina de rearme y armas al doble a crédito.
+  - Deuda que se cobra en patrullas obligadas (20 guerreros por semana, 25 % de `ESCARAMUZA` con 1d6
+    bajas).
+  - Se rompe saldando la deuda, si cae el señor, con una alianza con el Reino o en guerra. **M**
+- **CR-60** Ingresos pasivos del Reino y de las facciones (usuaria, 2026-10-06): fuentes de
+  Goirnos que no dependan de los trabajadores (hoy solo el comercio y las expediciones). Necesita
+  una ronda de diseño. Hito `0.4`. **M**
+- **CR-55** Ganadería (Q9, Q11, Q13).
+  - Oficio de ganadero por raza y región.
+  - Corral por especie: 6, 12 o 20 plazas.
+  - Una cría por semana con macho y hembra.
+  - Forraje para herbívoros, carne cada 2 días para carnívoros y agua para todos.
+  - Fibrería: estación sin oficio que da 10 de forraje al día.
+  - Producción de Múrgol, Corretolvas y Coracelo; sacrificio con la cadena del desollador.
+  - El Corredor de Cauce nunca. **L**
+- **CR-56** Usos de la fauna (Q10, Q12).
+  - Ficha de cada especie: producción, guardia, compañero de Domador y porte.
+  - Animales de guardia en el corral, contados como defensa del Reino (fuerza en la Fase E).
+  - Como compañeros de quien tenga especialidad de Domador. **M**
+- **CR-57** Monturas (Q14, hito `0.4`).
+  - Porte de cada especie y talla de cada pueblo (provisionales, en `propuestas-lore.md`).
+  - Montable si mide ≥ 60 % de la altura del jinete y pesa ≥ 3 veces lo que el jinete con su equipo,
+    con lomo.
+  - Velocidad de viaje y carga.
+  - Un Faerus del Margen viaja a pie tan rápido como montado (lore de la usuaria: montar es
+    costumbre de los Faerus de las Llanuras).
+  - Resuelve la duda del viaje largo del `0.4`. **L**
 - **Hecho cuando:** matar al hermano de un NPC abre un hilo de venganza y el vengador aparece;
   un compañero se queja y acaba yéndose si se le contraría repetidamente.
 

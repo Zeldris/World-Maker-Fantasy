@@ -18,6 +18,8 @@ export interface KingdomStatsBlock {
   diasFelicidadBaja: number;
   /// CR-12 (12c): días seguidos con déficit de comida. Opcional (bloques antiguos sin él = 0).
   diasHambre?: number;
+  /// CR-53 53d: días seguidos sin agua (sed).
+  diasSed?: number;
 }
 
 /// CR-12 (12c): días seguidos de hambre que hacen una `HAMBRUNA` (y otra cada tantos más).
@@ -44,6 +46,7 @@ export const DEFAULT_KINGDOM_STATS: KingdomStatsBlock = {
   diasFelicidadAlta: 0,
   diasFelicidadBaja: 0,
   diasHambre: 0,
+  diasSed: 0,
 };
 
 const FELICIDAD_MIN = 0;
@@ -90,11 +93,22 @@ export function balanceDiario(stats: KingdomStatsBlock, extra: { comida: number;
 /// Puro: un solo día de reino. Superávit de comida Y bebida sube la felicidad; déficit de
 /// cualquiera de las dos la baja — el propio défict de recursos ya se clampa en 0 (no hay hambruna
 /// numérica negativa, la consecuencia real vive en la felicidad, no en un contador que se hunde).
-export function tickKingdomOneDay(stats: KingdomStatsBlock): KingdomStatsBlock {
+/// CR-53 (hito 0.3, Q1-Q2): agua que entra al día (pozos, fuente natural) y topes del almacén.
+export interface SuministrosDia {
+  agua: number;
+  topeComida: number;
+  topeBebida: number;
+  /// CR-53 53c: los soldados cobran por semana (`revisarSueldos`), no un mantenimiento diario.
+  sueldosSemanales?: boolean;
+}
+/// Sin datos del Reino (tests de antes del 0.3): ni agua de fuera ni topes.
+export const SIN_SUMINISTROS: SuministrosDia = { agua: 0, topeComida: Infinity, topeBebida: Infinity };
+
+export function tickKingdomOneDay(stats: KingdomStatsBlock, s: SuministrosDia = SIN_SUMINISTROS): KingdomStatsBlock {
   const bocas = stats.poblacion + stats.soldados + stats.visitantes;
   const comidaNeta = stats.comida + stats.trabajadores * COMIDA_POR_TRABAJADOR - bocas * CONSUMO_POR_BOCA;
-  const bebidaNeta = stats.bebida - bocas * CONSUMO_POR_BOCA;
-  const riquezaNeta = stats.riqueza + stats.trabajadores * RIQUEZA_POR_TRABAJADOR - stats.soldados * MANTENIMIENTO_POR_SOLDADO;
+  const bebidaNeta = stats.bebida + s.agua - bocas * CONSUMO_POR_BOCA;
+  const riquezaNeta = stats.riqueza + stats.trabajadores * RIQUEZA_POR_TRABAJADOR - (s.sueldosSemanales ? 0 : stats.soldados * MANTENIMIENTO_POR_SOLDADO);
 
   const hayDeficit = comidaNeta < 0 || bebidaNeta < 0;
   const haySuperavit = !hayDeficit && bocas > 0 && comidaNeta > bocas && bebidaNeta > bocas;
@@ -103,8 +117,9 @@ export function tickKingdomOneDay(stats: KingdomStatsBlock): KingdomStatsBlock {
 
   return {
     ...stats,
-    comida: Math.max(0, comidaNeta),
-    bebida: Math.max(0, bebidaNeta),
+    // Lo que no cabe en el almacén se pierde (Q2).
+    comida: Math.min(s.topeComida, Math.max(0, comidaNeta)),
+    bebida: Math.min(s.topeBebida, Math.max(0, bebidaNeta)),
     riqueza: Math.max(0, riquezaNeta),
     felicidad: nuevaFelicidad,
     // Racha rota en cuanto se sale de la banda — sin premio parcial por días sueltos no
@@ -112,15 +127,16 @@ export function tickKingdomOneDay(stats: KingdomStatsBlock): KingdomStatsBlock {
     diasFelicidadAlta: nuevaFelicidad >= FELICIDAD_ALTA_UMBRAL ? stats.diasFelicidadAlta + 1 : 0,
     diasFelicidadBaja: nuevaFelicidad <= FELICIDAD_BAJA_UMBRAL ? stats.diasFelicidadBaja + 1 : 0,
     diasHambre: comidaNeta < 0 ? (stats.diasHambre ?? 0) + 1 : 0,
+    diasSed: bebidaNeta < 0 ? (stats.diasSed ?? 0) + 1 : 0,
   };
 }
 
 /// Puro: aplica N días de golpe (un viaje largo o un descanso extendido puede cruzar más de un
 /// día de ficción en un solo turno) — nunca lo decide el modelo, ver el enganche en turnResolution.ts.
-export function tickKingdom(stats: KingdomStatsBlock, dias: number): KingdomStatsBlock {
+export function tickKingdom(stats: KingdomStatsBlock, dias: number, s: SuministrosDia = SIN_SUMINISTROS): KingdomStatsBlock {
   let result = stats;
   for (let i = 0; i < dias; i++) {
-    result = tickKingdomOneDay(result);
+    result = tickKingdomOneDay(result, s);
   }
   return result;
 }

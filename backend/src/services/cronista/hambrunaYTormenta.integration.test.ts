@@ -81,12 +81,12 @@ describe('fauna que huye y hambruna (CR-12)', () => {
     expect(await prisma.suceso.count({ where: { saveId, tipo: 'REBELION' } })).toBe(1);
   });
 
-  it('con la hambruna de facciones apagada (por defecto) se lleva la cuenta pero no se registra', async () => {
+  it('con la hambruna de facciones apagada se lleva la cuenta pero no se registra (CR-54 la enciende por defecto)', async () => {
     const saveId = await partida('Hambruna (CR-12) apagada');
     const f = await prisma.faction.findFirstOrThrow({ where: { saveId, origenSlug: { not: null } }, orderBy: { slug: 'asc' }, include: { kingdomStats: true } });
     await prisma.building.updateMany({ where: { factionId: f.id }, data: { status: 'DANADO' } });
     await prisma.kingdomStats.update({ where: { id: f.kingdomStats!.id }, data: { poblacion: 100, trabajadores: 0, comida: 0, diasHambre: 0, ultimoDiaProducido: 5 } });
-    await producirFacciones(prisma, worldId, { id: f.id }, 9, { diasProcesados: 0, semanasDecaidas: 0, depositados: 0 });
+    await producirFacciones(prisma, worldId, { id: f.id }, 9, { diasProcesados: 0, semanasDecaidas: 0, depositados: 0 }, { hambruna: false });
     expect((await prisma.kingdomStats.findUniqueOrThrow({ where: { id: f.kingdomStats!.id } })).diasHambre).toBe(4);
     expect(await prisma.suceso.count({ where: { saveId, tipo: 'HAMBRUNA' } })).toBe(0);
   });

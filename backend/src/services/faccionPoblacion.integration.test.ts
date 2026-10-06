@@ -49,7 +49,9 @@ describe('Reproducción poblacional de facción — flujo real de dos pasos (CR-
     expect(syncResult.synced).toBeGreaterThan(0);
 
     const kingdomStats = await prisma.kingdomStats.findFirstOrThrow({ where: { factionId: serhuFactionId } });
-    expect(kingdomStats.poblacion).toBe(tras.poblacion);
+    // CR-54 (Q16): comen todos — la población del KingdomStats son civiles y trabajadores.
+    const trabajadores = await prisma.worldPopulation.findFirstOrThrow({ where: { saveId, targetType: 'FACCION', targetSlug: 'clan-serhu-trabajadores' } });
+    expect(kingdomStats.poblacion).toBe(tras.poblacion + trabajadores.poblacion);
     // Los otros 3 campos (soldados/trabajadores/visitantes) también se re-escriben en cada sync,
     // reflejando su fila WorldPopulation de la partida — no solo poblacion.
     const filas = await prisma.worldPopulation.findMany({

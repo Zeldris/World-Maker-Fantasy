@@ -6,6 +6,7 @@
 // 3. La que vuelve deja en el Reino lo comprado o lo cobrado, y lo que no vendió.
 // 47c: al llegar, si la región del destino tiene otro dueño en guerra o en tensión con el Reino, la
 // caravana puede caer en un asalto (mismo riesgo que las expediciones de facción): pierde la carga.
+import { esMaterial, huecoDeMateriales } from './cronista/economiaReino.js';
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { cotizarCompra, cotizarVenta, diasDeCamino, unidadesDeOrden, type TipoOrden } from './comercioVolumen.js';
 import { buildAdjacency, shortestPath } from './travel.js';
@@ -43,6 +44,8 @@ const stockDe = (db: Tx, donde: { saveId: string } | { factionId: string }, cata
 
 /// Crea `n` unidades de un objeto del catálogo en un almacén (del Reino o de una facción).
 async function meterEnAlmacen(tx: Tx, worldId: string, donde: { saveId: string } | { factionId: string }, catalogSlug: string, n: number) {
+  // CR-53 (Q2): en el Reino, un material solo entra hasta el tope del Almacén.
+  if ('saveId' in donde && (await esMaterial(tx, donde.saveId, catalogSlug))) n = Math.min(n, await huecoDeMateriales(tx, donde.saveId));
   if (n <= 0) return;
   const item = await tx.itemCatalog.findFirst({ where: { worldId, slug: catalogSlug }, select: { name: true, description: true, statBonuses: true } });
   if (!item) return;

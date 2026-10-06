@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { BuildingInfo, KingdomStatsInfo, TerritoryInfo } from '../../../types'
 import { PanelSection } from '../../PanelSection'
-import { getDescansarCampamentoDisponible, postDescansarCampamento } from '../../../lib/api'
+import { getDescansarCampamentoDisponible, getEconomiaReino, postDescansarCampamento, traspasarTesoro, type EconomiaReino } from '../../../lib/api'
+import { avisosDeEconomia } from '../../../lib/economiaReino'
 import { ConfirmModal } from '../../ConfirmModal'
 import { TooltipAnchor } from '../../TooltipAnchor'
 import { useModoConsulta } from '../../../context/useModoConsulta'
@@ -25,13 +26,13 @@ const KINGDOM_STAT_LABEL: Record<KingdomStatKey, string> = {
 /// del tick diario (`backend/src/services/kingdomTick.ts`: "bocas" = población + soldados + visitantes).
 /// Si cambian esas constantes, hay que cambiar estos textos.
 const KINGDOM_STAT_HINT: Record<KingdomStatKey, string> = {
-  poblacion: 'Habitantes de tus territorios. Cada uno come y bebe 1 al día. Con felicidad 70 o más crece 2 al día por territorio; con 20 o menos baja 3.',
-  felicidad: 'De 0 a 100. Sube 2 al día si sobra comida y bebida, baja 5 si falta cualquiera de las dos. 7 días seguidos en 70 o más consolidan un territorio; 7 en 20 o menos lo pierden.',
-  comida: 'Cada trabajador produce 2 al día; cada boca (población, soldados y visitantes) gasta 1.',
-  bebida: 'Cada boca (población, soldados y visitantes) gasta 1 al día. Ahora mismo ningún trabajador la repone en el reparto diario.',
-  riqueza: 'Cada trabajador aporta 1 al día; cada soldado cuesta 1 de mantenimiento.',
-  soldados: 'Comen y beben como un habitante y cuestan 1 de riqueza al día.',
-  trabajadores: 'Producen 2 de comida y 1 de riqueza al día cada uno.',
+  poblacion: 'Súbditos civiles (trabajadores y crías). Cada uno come y bebe 1 al día. Llegan una vez por semana si hay cama, comida, agua y felicidad de 40 o más.',
+  felicidad: 'De 0 a 100. Sube 2 al día si sobra comida y bebida, baja 5 si falta cualquiera de las dos y 3 cada día que no se pagan los sueldos. 7 días seguidos en 70 o más consolidan un territorio; 7 en 20 o menos lo pierden.',
+  comida: 'Cada trabajador produce 2 al día; cada boca (población, soldados y visitantes) gasta 1. Cabe hasta el tope del almacén (Granero). 3 días sin comida: puede morir alguien de hambre.',
+  bebida: 'Cada boca gasta 1 al día. La reponen los Pozos (12 al día) y una fuente natural junto al Ayuntamiento (20). Cabe hasta el tope (Cisterna). 2 días sin agua: puede morir alguien de sed.',
+  riqueza: 'El tesoro del Reino, en Goirnos. Cada trabajador aporta 1 al día. Cada semana se pagan los sueldos: 2 por trabajador y 5 por soldado o vigía.',
+  soldados: 'Soldados y vigías. Comen y beben como un habitante y cobran 5 Goirnos a la semana; sin cobrar 7 días, empiezan a desertar.',
+  trabajadores: 'Producen 2 de comida y 1 Goirno al día cada uno y cobran 2 a la semana.',
   visitantes: 'Gente de paso: comen y beben como un habitante (1 al día).',
 }
 
@@ -177,6 +178,7 @@ export function VisionGeneralSection({
               )
             })}
           </div>
+          <SuministrosReino saveId={saveId} version={kingdomStats} onRefreshSave={onRefreshSave} />
         </PanelSection>
       )}
 
@@ -267,6 +269,84 @@ export function VisionGeneralSection({
           error={errorDescanso}
         />
       )}
+    </div>
+  )
+}
+
+/// CR-53 (hito 0.3, Fase D): agua al día, topes del almacén, tesoro y sueldos, con los avisos y el
+/// traspaso de Goirnos entre la bolsa y el tesoro.
+function SuministrosReino({ saveId, version, onRefreshSave }: { saveId: string; version: unknown; onRefreshSave: () => Promise<void> }) {
+  const consulta = useModoConsulta()
+  const [eco, setEco] = useState<EconomiaReino | null>(null)
+  const [cantidad, setCantidad] = useState(10)
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [recarga, setRecarga] = useState(0)
+  useEffect(() => {
+    let vivo = true
+    getEconomiaReino(saveId)
+      .then((r) => vivo && setEco(r))
+      .catch(() => vivo && setEco(null))
+    return () => {
+      vivo = false
+    }
+  }, [saveId, version, recarga])
+  if (!eco) return null
+
+  async function traspasar(n: number) {
+    setBusy(true)
+    setError(null)
+    try {
+      await traspasarTesoro(saveId, n)
+      setRecarga((r) => r + 1)
+      await onRefreshSave()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo mover el dinero.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const avisos = avisosDeEconomia(eco)
+  const fila = (label: string, valor: string, hint: string) => (
+    <TooltipAnchor text={label} subtext={hint} className="block">
+      <div className="flex items-center justify-between gap-2 text-xs">
+        <span className="text-wood-400">{label}</span>
+        <span className="font-mono tabular-nums text-wood-200">{valor}</span>
+      </div>
+    </TooltipAnchor>
+  )
+  return (
+    <div className="mt-3 flex flex-col gap-1.5 rounded-lg border border-iron-800 bg-wood-950/30 px-3 py-2">
+      {avisos.map((a) => (
+        <p key={a} role="alert" className="text-2xs text-danger-400">⚠️ {a}</p>
+      ))}
+      {fila('Agua al día', `+${eco.aguaDia} / −${eco.bocas}`, 'Lo que dan los Pozos y la fuente natural frente a lo que beben las bocas del Reino.')}
+      {fila('Almacén', `comida ${eco.topeComida} · agua ${eco.topeBebida} · materiales ${eco.materiales}/${eco.topeMateriales}`, 'Topes del almacén: el Ayuntamiento da 60 de cada; Granero, Cisterna y Leñera suman 120. Lo que no cabe se pierde.')}
+      {fila('Sueldos a la semana', `${eco.sueldosSemana} Goirnos`, '2 por trabajador y 5 por soldado o vigía. Se pagan del tesoro.')}
+      {fila(
+        'Equipo a la semana',
+        `${eco.equipoGoirnos ?? 0} Goirnos${eco.equipoMateriales ? ` + ${eco.equipoMateriales} materiales` : ''}`,
+        'Desgaste de herramientas (duran 4 semanas), armas (6) y armaduras (8). Con Herrería, Peletería o Sastrería con trabajador se fabrican en casa con materiales; si no, se compran. Si no se paga, se rompe parte del equipo.',
+      )}
+      {fila('Tesoro / tu bolsa', `${eco.tesoro} / ${eco.bolsa} Goirnos`, 'El tesoro del Reino y lo que llevas tú encima.')}
+      <div className="mt-1 flex items-center gap-2">
+        <input
+          type="number"
+          min={1}
+          value={cantidad}
+          aria-label="Goirnos a mover"
+          onChange={(e) => setCantidad(Math.max(1, Math.floor(Number(e.target.value) || 1)))}
+          className="w-20 rounded border border-iron-700 bg-wood-950/60 px-2 py-1 text-xs text-wood-200"
+        />
+        <button type="button" disabled={busy || !!consulta} title={consulta ?? undefined} onClick={() => void traspasar(cantidad)} className="tactile rounded border border-iron-700 px-2 py-1 text-2xs text-wood-300 disabled:opacity-50">
+          Al tesoro
+        </button>
+        <button type="button" disabled={busy || !!consulta} title={consulta ?? undefined} onClick={() => void traspasar(-cantidad)} className="tactile rounded border border-iron-700 px-2 py-1 text-2xs text-wood-300 disabled:opacity-50">
+          A tu bolsa
+        </button>
+      </div>
+      {error && <p className="text-2xs text-danger-400">{error}</p>}
     </div>
   )
 }

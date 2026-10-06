@@ -1,4 +1,5 @@
 import { registrarSuceso } from './cronista/sucesos.js';
+import { huecoDeMateriales, slugsDeMateriales, suministrosDelReino } from './cronista/economiaReino.js';
 import { sucesosDeClima } from './cronista/clima.js';
 import type { Prisma } from '@prisma/client';
 import { tickKingdom, daysCrossed, hambrunaNueva, DIAS_PARA_CONSOLIDAR, DIAS_PARA_REBELION } from './kingdomTick.js';
@@ -30,11 +31,19 @@ export async function advanceKingdomStatsDay(
   let territoryConsolidatedThisTurn = false;
   const kingdomStats = await tx.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId }) } });
   if (kingdomStats) {
-    const { poblacion, felicidad, comida, bebida, riqueza, soldados, trabajadores, visitantes, diasFelicidadAlta, diasFelicidadBaja, diasHambre } = kingdomStats;
-    const ticked = tickKingdom(
-      { poblacion, felicidad, comida, bebida, riqueza, soldados, trabajadores, visitantes, diasFelicidadAlta, diasFelicidadBaja, diasHambre },
-      diasCruzados,
-    );
+    const { poblacion, felicidad, comida, bebida, riqueza, soldados, trabajadores, visitantes, diasFelicidadAlta, diasFelicidadBaja, diasHambre, diasSed } = kingdomStats;
+    // CR-53: agua de pozos y fuente natural, y topes del almacén.
+    const suministros = await suministrosDelReino(tx, saveId);
+    // CR-58 (Q27): un trabajador sin herramienta produce la mitad.
+    const trabajadoresEfectivos = Math.max(0, trabajadores - Math.ceil((kingdomStats.sinHerramienta ?? 0) / 2));
+    const ticked = {
+      ...tickKingdom(
+        { poblacion, felicidad, comida, bebida, riqueza, soldados, trabajadores: trabajadoresEfectivos, visitantes, diasFelicidadAlta, diasFelicidadBaja, diasHambre, diasSed },
+        diasCruzados,
+        suministros,
+      ),
+      trabajadores,
+    };
     await tx.kingdomStats.update({ where: { ownerKey: ownerKeyFor({ saveId }) }, data: ticked });
     // CR-12 (12c): 3 días seguidos de hambre → HAMBRUNA en el Libro (la reacción baja la cohesión).
     if (hambrunaNueva(diasHambre, ticked.diasHambre ?? 0, diasCruzados)) await registrarHambruna(tx, saveId, 'REINO_JUGADORA');
@@ -84,6 +93,9 @@ export async function tickProduccionReino(tx: Prisma.TransactionClient, saveId: 
   });
   if (buildingsConOrdenes.length > 0) {
     const recipesByKey = new Map(CRAFTING_RECIPES.map((r) => [r.key, r]));
+    // CR-53 (Q2): materiales y su hueco, una vez por tick (se descuenta lo que se va metiendo).
+    const slugsMateriales = await slugsDeMateriales(tx, saveId);
+    let huecoMateriales = await huecoDeMateriales(tx, saveId);
     const [almacenRows, almacenLimites, professionRows] = await Promise.all([
       tx.almacenItem.findMany({ where: { saveId } }),
       tx.almacenLimite.findMany({ where: { saveId } }),
@@ -157,9 +169,13 @@ export async function tickProduccionReino(tx: Prisma.TransactionClient, saveId: 
         // Depositar el resultado — mismo shape que el depósito manual del jugador
         // (POST /saves/:id/almacen/depositar/:itemId, companeros.ts): 1 fila = 1 unidad, sin
         // campo de cantidad, `resultCantidad` filas repetidas.
-        if (resultado.resultCatalogSlug) {
+        // CR-53 (Q2): un material solo entra hasta el tope del Almacén; lo demás se pierde.
+        const esMat = !!resultado.resultCatalogSlug && slugsMateriales.has(resultado.resultCatalogSlug);
+        const cabe = esMat ? Math.min(resultado.resultCantidad, huecoMateriales) : resultado.resultCantidad;
+        if (esMat) huecoMateriales -= Math.max(0, cabe);
+        if (resultado.resultCatalogSlug && cabe > 0) {
           await tx.almacenItem.createMany({
-            data: Array.from({ length: resultado.resultCantidad }, () => ({
+            data: Array.from({ length: cabe }, () => ({
               saveId,
               name: recipe.resultName,
               description: recipe.resultDescription,

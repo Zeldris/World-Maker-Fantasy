@@ -33,6 +33,9 @@ import { avanzarSubditos } from './cronista/subditos.js';
 import { revisarLlegadas } from './cronista/llegadas.js';
 import { revisarFamilias } from './cronista/familias.js';
 import { revisarSalidas } from './cronista/salidas.js';
+import { revisarSueldos } from './cronista/economiaReino.js';
+import { resembrarFacciones, revisarExtinciones } from './cronista/economiaFacciones.js';
+import { asegurarVasallajes, revisarVasallajes } from './cronista/vasallaje.js';
 import { revisarInformantes } from './cronista/reclutamiento.js';
 
 export const MAX_DIAS_POR_LLAMADA = 30;
@@ -81,6 +84,10 @@ export async function avanzarMundoHasta(
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`avance|${saveId}`}))`;
       // CR-52: linajes del canon y el del personaje (una vez por partida), bajo el mismo candado.
       await asegurarLinajes(tx, saveId, fictionalMinutes);
+      // CR-54 (Q20): re-siembra única del reparto de las facciones.
+      await resembrarFacciones(tx, saveId);
+      // CR-59: vasallajes del canon (Serhu bajo la Concordia).
+      await asegurarVasallajes(tx, saveId, fictionalMinutes);
       const estado = await tx.worldState.findUnique({ where: { saveId }, select: { ultimoDiaSimulado: true } });
       if (!estado) return { dias: 0, desde: 0 };
       const dias = diasPendientes(estado.ultimoDiaSimulado, diaDeFiccion(fictionalMinutes));
@@ -100,6 +107,8 @@ export async function avanzarMundoHasta(
     const { worldId } = await prisma.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } });
     const resultado = { diasProcesados: 0, semanasDecaidas: 0, depositados: 0 };
     await paso('producirFacciones', () => producirFacciones(prisma, worldId, { saveId, origenSlug: { not: null } }, dia, resultado));
+    // CR-54 (54c): facciones sin nadie se extinguen; pasado un año su pueblo puede refundar otra.
+    await paso('extinciones', () => prisma.$transaction((tx) => revisarExtinciones(tx, saveId, fictionalMinutes, random)));
     await paso('decaerRelaciones', () => decaerRelaciones(prisma, { saveId }, dia, resultado));
     await paso('expediciones', () => avanzarExpedicionesDePartida(prisma, worldId, saveId, dia, random));
     // La agenda lleva sus propias transacciones y avanza por umbrales de tiempo (no por día).
@@ -134,6 +143,10 @@ export async function avanzarMundoHasta(
         await prisma.$transaction((tx) => revisarFamilias(tx, saveId, ahora, random));
         // REI-121: muertes de viejo y de hambre; con el Reino triste, una salida por semana.
         await prisma.$transaction((tx) => revisarSalidas(tx, saveId, ahora, random));
+        // CR-53 53c: sueldos semanales del Reino (y deserción si no se pagan).
+        await prisma.$transaction((tx) => revisarSueldos(tx, saveId, ahora));
+        // CR-59: cada semana, armas al señor, rearme y patrulla obligada de los vasallos.
+        await prisma.$transaction((tx) => revisarVasallajes(tx, saveId, d, ahora, random));
       });
     }
     // CR-14: etiquetas de relación (AMIGO_DE / ENEMIGO_DE) según la reputación del final del día.

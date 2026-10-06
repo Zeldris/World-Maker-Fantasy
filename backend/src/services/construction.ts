@@ -122,6 +122,9 @@ export interface ConstructionRecipe {
   /// atributo, no un umbral de nivel de oficio nuevo — no existe ese mecanismo en el proyecto y
   /// añadir uno solo para esto sería sobre-ingeniería).
   ayuntamientoNivelMinimo?: number;
+  /// CR-53 (hito 0.3, Fase D, Q1-Q2): lo que este edificio da a la economía de supervivencia del
+  /// Reino — agua al día y capacidad de almacén por categoría (`cronista/economiaReino.ts`).
+  suministro?: { aguaDia?: number; topeComida?: number; topeBebida?: number; topeMateriales?: number };
 }
 
 /// Nivel de edificio requerido por tier de receta de oficio (docs/rpgtarkor/sistemas-reino/
@@ -1368,6 +1371,58 @@ export const MERCADO_RECIPE: ConstructionRecipe = {
   maxPerRegion: 1,
 };
 
+// CR-53 (hito 0.3, Fase D, decisiones Q1-Q2 de la usuaria del 2026-10-06): edificios de la economía
+// de supervivencia, comunes a todos los pueblos y con Ayuntamiento. Pozo: agua; Granero, Cisterna y
+// Leñera: capacidad de almacén (comida, agua y materiales). Varios por Reino.
+const REQUISITOS_SUMINISTRO = (extra: IngredientRequirement[]): IngredientRequirement[] => [
+  { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 6, label: 'leña' },
+  ...extra,
+];
+export const POZO_RECIPE: ConstructionRecipe = {
+  key: 'pozo',
+  name: 'un pozo',
+  description: 'Un brocal de piedra sobre un agujero cavado hasta dar con agua, con un torno y un cubo. Saca agua para doce bocas al día.',
+  nounRegex: /\bpozo\b/,
+  requirements: REQUISITOS_SUMINISTRO([{ match: { kind: 'category', tipo: 'RECURSO', category: 'piedra' }, cantidad: 6, label: 'piedra' }]),
+  tier: 1,
+  requisitos: { fuerza: 8 },
+  requiresAyuntamiento: true,
+  suministro: { aguaDia: 12 },
+};
+export const GRANERO_RECIPE: ConstructionRecipe = {
+  key: 'granero',
+  name: 'un granero',
+  description: 'Un cobertizo alzado sobre postes, lejos de la humedad y de los roedores, donde se guarda la comida del Reino.',
+  nounRegex: /\bgranero\b/,
+  requirements: REQUISITOS_SUMINISTRO([{ match: { kind: 'category', tipo: 'RECURSO', category: 'fibras' }, cantidad: 4, label: 'fibra' }]),
+  tier: 1,
+  requisitos: { inteligencia: 8 },
+  requiresAyuntamiento: true,
+  suministro: { topeComida: 120 },
+};
+export const CISTERNA_RECIPE: ConstructionRecipe = {
+  key: 'cisterna',
+  name: 'una cisterna',
+  description: 'Un depósito de piedra enlucida que recoge y guarda el agua del Reino para los días secos.',
+  nounRegex: /\bcisterna\b|\baljibe\b/,
+  requirements: REQUISITOS_SUMINISTRO([{ match: { kind: 'category', tipo: 'RECURSO', category: 'piedra' }, cantidad: 8, label: 'piedra' }]),
+  tier: 1,
+  requisitos: { inteligencia: 8 },
+  requiresAyuntamiento: true,
+  suministro: { topeBebida: 120 },
+};
+export const LENERA_RECIPE: ConstructionRecipe = {
+  key: 'lenera',
+  name: 'una leñera',
+  description: 'Un tejadillo contra el viento donde se apilan la leña, la piedra y la fibra del Reino.',
+  nounRegex: /\ble[nñ]era\b/,
+  requirements: REQUISITOS_SUMINISTRO([{ match: { kind: 'category', tipo: 'RECURSO', category: 'fibras' }, cantidad: 2, label: 'fibra' }]),
+  tier: 1,
+  requisitos: { fuerza: 8 },
+  requiresAyuntamiento: true,
+  suministro: { topeMateriales: 120 },
+};
+
 // Orden deliberado (2026-08-04): grande y mediano ANTES que pequeño — `CONSTRUCTION_RECIPES.find`
 // se queda con la primera receta cuya `nounRegex` matchea, y el texto "ayuntamiento mediano"
 // también matchea el patrón (más simple) del pequeño si ese se comprobara antes. Mismo criterio
@@ -1385,6 +1440,10 @@ export const CONSTRUCTION_RECIPES: ConstructionRecipe[] = [
   CUARTEL_AVANZADO_RECIPE,
   TABLON_AVISOS_RECIPE,
   MERCADO_RECIPE,
+  POZO_RECIPE,
+  GRANERO_RECIPE,
+  CISTERNA_RECIPE,
+  LENERA_RECIPE,
   JAULA_GRANDE_RECIPE,
   JAULA_MEDIANA_RECIPE,
   JAULA_PEQUENA_RECIPE,

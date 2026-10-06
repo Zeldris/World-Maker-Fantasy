@@ -35,6 +35,75 @@ población del Reino, renombrar el Bulco de Arena, y Dessa, Yerin y Riko como NP
 
 ## Categoría: Razas y cultura
 
+### 2026-10-06 — Los Serhu no saben crecer: vasallaje de armas con la Concordia (Fase D del 0.3)
+**Estado: SIN REVISAR** (idea de la usuaria del 2026-10-06; mecánica en `CR-59`)
+
+**Idea de la usuaria:**
+- Los Serhu son un clan que no sabe crecer como civilización: muy guerrero (casi un tercio en armas)
+  y siempre comiendo justo.
+- Cuando pierden guerreros, lo que les sobra lo gastan en rearmarse.
+- Las armas solo se las vende la Concordia de Hierro, muy caras y a crédito. Los Goirntes los
+  controlan con esa deuda y obligándoles a mandar patrullas y escaramuzas por las Llanuras.
+- Encaja con el control estrecho de los Goirntes sobre los Serhu desde el golpe de Ketg
+  (`clanes-orcos.md`).
+
+**Preguntas para Álvaro:**
+1. ¿Vale como canon el comercio de armas a crédito y las patrullas obligadas?
+2. Nabieus: ¿bajamos sus soldados al 5 % (vigías y espías), por ser sigilosos y no agresivos?
+3. Faerus: ¿pelean todos los adultos de la manada ante una amenaza?
+
+Archivos que tocaría si se aprueba: `docs/rpgtarkor/lore-mundo/clanes-orcos.md` (Serhu) y
+`docs/rpgtarkor/lore-mundo/razas.md` (Nabieus y Faerus).
+
+---
+
+### 2026-10-06 — Monturas, tallas de los pueblos y porte de la fauna (Fase D del 0.3)
+**Estado: SIN REVISAR** (decisiones de la usuaria del 2026-10-06 en la ronda de la Fase D; las
+cifras son de Claude y provisionales)
+
+**Idea de la usuaria (para el canon):** los **Faerus no suelen usar monturas**, sobre todo los del
+Margen Silencioso: se mueven más rápido sin ellas. Montar es costumbre de los **Faerus de las
+Llanuras**, que se han civilizado más. Los del Margen pueden montar, pero es raro.
+
+**Regla de montura (usuaria):** un animal sirve de montura según su tamaño y su fuerza frente al
+jinete. Lo que no vale para un orco puede valer para un Nabieu, y al revés. Propuesta de Claude: es
+montable si mide al menos el 60 % de la altura del jinete y pesa al menos 3 veces lo que el jinete
+con su equipo, y si su forma tiene lomo.
+
+**Tallas provisionales de los pueblos** (solo la de los orcos es canon):
+
+| Pueblo | Talla | Peso + equipo |
+|---|---|---|
+| Orcos | 2,10 m (canon) | 140 + 25 kg |
+| Goirntes | 1,85 m | 115 + 35 kg (cuerpos densos, equipo de metal) |
+| Nabieus | 1,75 m | 60 + 10 kg (cuerpos delgados) |
+| Faerus | 1,60 m erguidos | 70 + 5 kg (fibrosos, de 2 a 4 patas) |
+
+**Porte provisional de la fauna montable:**
+
+| Especie | Altura a la cruz | Peso | La montan |
+|---|---|---|---|
+| Gargantúa de Ceniza | 2,2 m | 2.000 kg | Todos |
+| Múrgol | 1,5 m | 600 kg | Todos |
+| Corredor de Cauce | 1,4 m | 450 kg | Goirntes, Nabieus y Faerus (si se permite) |
+| Cuernahoja | 1,4 m | 250 kg | Nabieus y Faerus |
+| Canizor | 1,1 m | 280 kg | Nabieus y Faerus |
+
+El resto de la fauna capturable no se monta: es pequeña o ligera, es un ave o no tiene lomo (el
+Guchapo salta).
+
+**Preguntas para Álvaro:**
+1. Las tallas y pesos de Goirntes, Nabieus y Faerus.
+2. ¿El Clan Maktor monta Canizores? Con estas cifras un orco no cabe; ¿los suyos son más grandes?
+3. ¿El Corredor de Cauce (presa sagrada, con moratoria) puede ser montura, o nunca?
+4. ¿El Guchapo, que almacena mucha agua, puede dar agua a un Reino que lo críe?
+
+Archivos que tocaría si se aprueba: `docs/rpgtarkor/lore-mundo/razas.md` (tallas y la costumbre de
+los Faerus), la ficha de cada especie en el bestiario y
+`docs/rpgtarkor/sistemas-reino/construcciones-reino.md` (corrales).
+
+---
+
 ### 2026-10-06 — Linajes de cada pueblo y el rastro de los Faerus (CR-52)
 **Estado: PROPUESTA (idea de la usuaria, 2026-10-06; el motor la usará mientras Álvaro no diga otra cosa)**
 

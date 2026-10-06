@@ -369,7 +369,8 @@ async function main() {
     })
     await prisma.worldPopulation.upsert({
       where: { id: existentePoblacion?.id ?? '__nuevo__' },
-      update: { label: pop.label, poblacionMax: pop.poblacionMax, distribucion: pop.distribucion },
+      // CR-54: las cifras de las facciones (REPARTO_FACCIONES) también se corrigen en la plantilla.
+      update: { label: pop.label, poblacionMax: pop.poblacionMax, distribucion: pop.distribucion, ...(pop.targetType === 'FACCION' ? { poblacion: pop.poblacion } : {}) },
       create: {
         worldId,
         targetType: pop.targetType,
@@ -400,7 +401,8 @@ async function main() {
       create: {
         factionId,
         ownerKey: `faction:${factionId}`,
-        poblacion: campoFor('poblacion'),
+        // CR-54 (Q16): comen todos — civiles y trabajadores.
+        poblacion: campoFor('poblacion') + campoFor('trabajadores'),
         soldados: campoFor('soldados'),
         trabajadores: campoFor('trabajadores'),
         visitantes: campoFor('visitantes'),

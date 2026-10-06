@@ -188,7 +188,8 @@ export async function syncFactionPopulationToKingdomStats(
     await prisma.kingdomStats.update({
       where: { id: kingdomStats.id },
       data: {
-        poblacion: campos.poblacion,
+        // CR-54 (Q16): comen todos — la población que come son civiles y trabajadores.
+        poblacion: campos.poblacion === undefined ? undefined : campos.poblacion + (campos.trabajadores ?? 0),
         soldados: campos.soldados,
         trabajadores: campos.trabajadores,
         visitantes: campos.visitantes,

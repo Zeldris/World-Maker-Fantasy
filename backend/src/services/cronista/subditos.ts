@@ -79,8 +79,11 @@ export async function cupoDeCamas(tx: Tx, saveId: string): Promise<{ total: numb
 export async function recalcularPoblacion(tx: Tx, saveId: string, ahora: number): Promise<void> {
   const subditos = await tx.subject.findMany({ where: { saveId, estado: 'ACTIVO' }, select: { role: true, pueblo: true, nacidoEn: true, territoryId: true } });
   const ownerKey = ownerKeyFor({ saveId });
-  if (await tx.kingdomStats.findUnique({ where: { ownerKey }, select: { id: true } })) {
-    await tx.kingdomStats.update({ where: { ownerKey }, data: cifrasDePoblacion(subditos, ahora) });
+  const k = await tx.kingdomStats.findUnique({ where: { ownerKey }, select: { sinHerramienta: true, sinArma: true } });
+  if (k) {
+    const cifras = cifrasDePoblacion(subditos, ahora);
+    // CR-58: el equipo que falta nunca pasa de la gente que hay (quien se va, muere o cambia de rol).
+    await tx.kingdomStats.update({ where: { ownerKey }, data: { ...cifras, sinHerramienta: Math.min(k.sinHerramienta, cifras.trabajadores), sinArma: Math.min(k.sinArma, cifras.soldados) } });
   }
   const territorios = await tx.territory.findMany({ where: { saveId }, select: { id: true, control: true, population: true } });
   for (const t of territorios) {
@@ -164,11 +167,17 @@ export async function crearSubdito(
 /// Q7: cambia el rol de un súbdito adulto. Devuelve el motivo si no se puede.
 export async function cambiarRolSubdito(tx: Tx, saveId: string, subjectId: string, rol: string, ahora: number): Promise<{ ok: true } | { ok: false; motivo: string }> {
   if (!(ROLES_SUBDITO as readonly string[]).includes(rol)) return { ok: false, motivo: `Rol desconocido: ${rol}` };
-  const s = await tx.subject.findFirst({ where: { id: subjectId, saveId, estado: 'ACTIVO' }, select: { id: true, name: true, pueblo: true, nacidoEn: true } });
+  const s = await tx.subject.findFirst({ where: { id: subjectId, saveId, estado: 'ACTIVO' }, select: { id: true, name: true, role: true, pueblo: true, nacidoEn: true } });
   if (!s) return { ok: false, motivo: 'No hay ningún súbdito así en tu Reino.' };
   if (!esAdultoSubdito(s, ahora)) return { ok: false, motivo: `${s.name} aún es una cría: no trabaja ni combate hasta hacerse mayor.` };
+  const antes = rolDeSubdito(s.role);
   await tx.subject.update({ where: { id: s.id }, data: { role: rol } });
   await recalcularPoblacion(tx, saveId, ahora);
+  // CR-58: quien pasa a soldado o vigía necesita arma y armadura (quien vuelve a trabajar ya tiene su herramienta).
+  if (rol !== 'trabajador' && (antes === 'trabajador' || antes === 'visitante')) {
+    const { equiparAlta } = await import('./economiaReino.js');
+    await equiparAlta(tx, saveId, 'soldado');
+  }
   return { ok: true };
 }
 

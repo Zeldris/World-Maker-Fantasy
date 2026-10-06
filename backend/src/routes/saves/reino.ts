@@ -10,6 +10,7 @@ import { precioDinamico } from '../../services/economia.js';
 import { quantityOf } from '../../services/ingredients.js';
 import { asegurarMundoDePartida } from '../../services/mundoPartida.js';
 import { etiquetasActivas } from '../../services/cronista/etiquetas.js';
+import { resumenEconomia, traspasarGoirnos } from '../../services/cronista/economiaReino.js';
 
 /// Fundación de reino (2026-08-04, docs/mecanicas/17-reglas-construcciones-reino.md) — el popup que se abre
 /// al terminar de construir el Ayuntamiento (tier 1) manda aquí el formulario. Decisión manual de
@@ -490,4 +491,22 @@ export async function reinoRoutes(app: FastifyInstance) {
       return resultado;
     },
   );
+
+  // CR-53 53e: resumen de la economía de supervivencia para Visión general.
+  app.get<{ Params: { id: string } }>('/saves/:id/reino/economia', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    return resumenEconomia(prisma, save.id);
+  });
+
+  // CR-53 53c (Q3): pasar Goirnos entre la bolsa del personaje y el tesoro del Reino.
+  app.post<{ Params: { id: string }; Body: { cantidad: number } }>('/saves/:id/reino/tesoro', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, endedAt: true, pendingDeathResolution: true } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (rejectIfEnded(save, reply)) return;
+    if (rejectIfPendingDeath(save, reply)) return;
+    const r = await prisma.$transaction((tx) => traspasarGoirnos(tx, save.id, Number(request.body?.cantidad)));
+    if (!r.ok) return reply.status(400).send({ error: r.motivo });
+    return r;
+  });
 }

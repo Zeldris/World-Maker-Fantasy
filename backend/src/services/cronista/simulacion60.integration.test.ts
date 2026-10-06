@@ -51,6 +51,10 @@ describe('simulación de 60 días con decisiones de facción (CR-34 34f)', () =>
     });
     saves.push(save.id);
     const random = mulberry32(semilla);
+    // CR-54: con el reparto de la Fase D nadie pasa hambre de entrada; los Serhu pierden a casi
+    // todos sus trabajadores (como tras una plaga) para que sus carencias muevan expediciones.
+    await avanzarMundoHasta(prisma, save.id, 480, random);
+    await prisma.worldPopulation.updateMany({ where: { saveId: save.id, targetSlug: 'clan-serhu-trabajadores' }, data: { poblacion: 20 } });
     for (let d = 1; d <= DIAS; d++) {
       await prisma.worldState.update({ where: { saveId: save.id }, data: { fictionalMinutes: d * 1440 + 480 } });
       await avanzarMundoHasta(prisma, save.id, d * 1440 + 480, random);

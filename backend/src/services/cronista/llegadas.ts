@@ -10,6 +10,7 @@ import { cicloVital, MINUTOS_POR_ANIO } from './edades.js';
 import { regionesVecinas } from './regiones.js';
 import { stripRegionArticle } from '../population.js';
 import { crearSubdito, cupoDeCamas, recalcularPoblacion, regionDelReino } from './subditos.js';
+import { equiparAlta } from './economiaReino.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -123,6 +124,8 @@ export async function responderLlegada(tx: Tx, saveId: string, subjectId: string
   const fila = s.poblacionOrigenId ? await tx.worldPopulation.findUnique({ where: { id: s.poblacionOrigenId }, select: { label: true } }) : null;
   await tx.subject.update({ where: { id: s.id }, data: { estado: 'ACTIVO', desdeMinutes: ahora, hastaMinutes: null, notes: fila ? `Llegó de ${fila.label}.` : '' } });
   await recalcularPoblacion(tx, saveId, ahora);
+  // CR-58: su herramienta de trabajo.
+  await equiparAlta(tx, saveId, 'trabajador');
   const reino = await tx.faction.findFirst({ where: { saveId, origenSlug: null, disueltaEn: null }, select: { slug: true, name: true } });
   await registrarSuceso(tx, {
     saveId, tipo: 'LLEGADA_POBLADORES', fictionalMinutes: ahora, origen: 'JUGADOR',

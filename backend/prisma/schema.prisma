@@ -470,6 +470,7 @@ model Save {
   recuerdos          Recuerdo[]
   hilos              Hilo[]
   linajes            Linaje[]
+  vasallajes         Vasallaje[]
   consecuencias      Consecuencia[]
   sessionFacts       SessionFact[]
   foundedFactions    Faction[]
@@ -804,6 +805,8 @@ model WorldState {
   save               Save      @relation(fields: [saveId], references: [id], onDelete: Cascade)
   /// CR-5 (hito 0.2) — avance diario por partida (CR-7) y Cronista.
   ultimoDiaSimulado  Int       @default(0)
+  /// CR-54 (Q20): versión del reparto de facciones aplicada a esta partida (re-siembra única).
+  repartoFacciones   Int       @default(0)
   presupuestoTension Int       @default(0)
   estiloNarrador     String    @default("EQUILIBRADO")
   mundoClonadoEn     DateTime?
@@ -1791,10 +1794,18 @@ model KingdomStats {
   /// CR-12 (12c, hito 0.2): días seguidos con déficit de comida (hambre). Cada 3 seguidos se
   /// registra `HAMBRUNA` (cohesión −10 y posible `REBELION`, reacción `HAMBRUNA_DIVIDE`).
   diasHambre          Int      @default(0)
+  /// CR-53 53d: días seguidos sin agua (a los 2, la sed puede matar).
+  diasSed             Int      @default(0)
   /// REI-119: minuto de ficción en que llegó el último candidato a súbdito (una llegada por semana).
   ultimaLlegada       Int?
   /// REI-120: última semana (minuto de ficción) en que se revisaron parejas y crías.
   ultimaRevisionFamilias Int?
+  /// CR-53 53c: último pago de sueldos (minuto de ficción) y días seguidos sin poder pagarlos.
+  ultimoPagoSueldos   Int?
+  diasSinCobrar       Int      @default(0)
+  /// CR-58: trabajadores sin herramienta (producen la mitad) y soldados sin arma (medio en la defensa).
+  sinHerramienta      Int      @default(0)
+  sinArma             Int      @default(0)
   /// CR-34 (Q6): último día de ficción en que la facción revisó su situación para decidir (null =
   /// nunca). Solo facciones del mundo de la partida; el Reino de la jugadora no lo usa.
   ultimaRevision      Int?
@@ -3817,4 +3828,26 @@ model LinajeMiembro {
 
   @@id([linajeId, entidadTipo, entidadId])
   @@index([saveId, entidadTipo, entidadId])
+}
+
+/// CR-59 (hito 0.3, Fase D, Q21-Q24 y Q28): una facción vasalla de otra (Serhu bajo la Concordia de
+/// Hierro, canon de la usuaria). El vasallo compra las armas al señor al doble y a crédito, se rearma
+/// con todo excedente y paga la deuda con patrullas obligadas.
+model Vasallaje {
+  id             String @id @default(cuid())
+  saveId         String
+  save           Save   @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  vasalloSlug    String
+  senorSlug      String
+  /// Goirnos que el vasallo debe al señor.
+  deuda          Int    @default(0)
+  desdeMinutes   Int
+  /// Último día de ficción en que se revisó (una vez por semana).
+  ultimaSemana   Int?
+  /// Cuándo se rompió (deuda saldada, señor caído…), o null si sigue.
+  rotoEn         Int?
+  motivoRuptura  String?
+
+  @@unique([saveId, vasalloSlug])
+  @@index([saveId])
 }

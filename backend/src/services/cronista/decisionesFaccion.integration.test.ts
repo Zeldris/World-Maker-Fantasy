@@ -74,8 +74,9 @@ describe('decidirFacciones — guerra, paz y corte de la cadena (CR-34 34c)', ()
     // Mismo día: nadie vuelve a revisar.
     expect((await decidirFacciones(prisma, saveId, DIA, () => 0.5)).revisadas).toBe(0);
 
-    // Al día siguiente Helsig (60 soldados frente a 500: carencia grave) pide la paz; Serhu, con hambre, acepta.
-    await prisma.kingdomStats.update({ where: { factionId: serhu.id }, data: { comida: 0 } });
+    // Al día siguiente Helsig (54 soldados frente a 208: carencia grave) pide la paz; Serhu, con hambre, acepta.
+    // CR-54: con el reparto de la Fase D los Serhu comen justo; aquí pierden trabajadores para pasar hambre.
+    await prisma.kingdomStats.update({ where: { factionId: serhu.id }, data: { comida: 0, trabajadores: 100 } });
     await prisma.worldState.update({ where: { saveId }, data: { presupuestoTension: 10, fictionalMinutes: (DIA + 1) * 1440 + 900 } });
     await soloRevisan([helsig.id], DIA + 1);
     const r2 = await decidirFacciones(prisma, saveId, DIA + 1, () => 0.5);

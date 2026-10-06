@@ -18,13 +18,14 @@ describe('factionEconomy — funciones puras (Fase 4, H-6/H-2/H-4)', () => {
     expect(pendingWeeks(2, 35)).toBe(3);
   });
 
-  it('tickFactionOneDay: suma producción de edificios, consume por bocas y no hunde la felicidad por bebida', () => {
+  it('tickFactionOneDay: suma producción de edificios, consume por bocas y su fuente le da agua de sobra', () => {
     const base = { ...DEFAULT_KINGDOM_STATS, poblacion: 10, trabajadores: 2, soldados: 1, comida: 20, riqueza: 5 };
     const r = tickFactionOneDay(base, { comida: 3, riqueza: 2 });
-    // comida: 20 + 3 + 2*2 - 11 bocas = 16; riqueza: 5 + 2 + 2*1 - 1 soldado = 8; bebida intacta (0)
+    // comida: 20 + 3 + 2*2 - 11 bocas = 16; riqueza: 5 + 2 + 2*1 = 9 (CR-54: los soldados cobran por semana);
+    // bebida: la fuente da 11 * 1,1 = 13 y beben 11 (CR-54, Q17).
     expect(r.comida).toBe(16);
-    expect(r.riqueza).toBe(8);
-    expect(r.bebida).toBe(0);
+    expect(r.riqueza).toBe(9);
+    expect(r.bebida).toBe(2);
     expect(r.felicidad).toBeGreaterThanOrEqual(50);
   });
 

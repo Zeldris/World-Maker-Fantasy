@@ -338,6 +338,18 @@ async function crearFaccion(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'crearFac
       where: { id: statsMadre.id },
       data: { poblacion: { decrement: llevada.poblacion }, soldados: { decrement: llevada.soldados }, trabajadores: { decrement: llevada.trabajadores } },
     });
+    // CR-54: también sus filas de población (de las que se sincroniza cada día), para que la madre no
+    // recupere a quien se fue y la nueva tenga las suyas.
+    const filasMadre = await ctx.tx.worldPopulation.findMany({ where: { saveId: ctx.saveId, targetType: 'FACCION', targetSlug: { startsWith: `${madre!.slug}-` } } });
+    for (const fila of filasMadre) {
+      const campo = fila.targetSlug.slice(madre!.slug.length + 1);
+      if (!['poblacion', 'soldados', 'trabajadores', 'visitantes'].includes(campo)) continue;
+      const n = parte(fila.poblacion);
+      await ctx.tx.worldPopulation.update({ where: { id: fila.id }, data: { poblacion: { decrement: n } } });
+      await ctx.tx.worldPopulation.create({
+        data: { worldId: ctx.worldId, saveId: ctx.saveId, targetType: 'FACCION', targetSlug: `${faccion.slug}-${campo}`, label: `${faccion.name} — ${campo}`, poblacion: n, poblacionMax: Math.max(10, Math.ceil(n * 1.25)), distribucion: fila.distribucion ?? {} },
+      });
+    }
   }
   if (e.liderNpcId) await estadoNpc(ctx, e.liderNpcId, { cargo: 'lider', lealtadFaccionId: faccion.id });
   const sucesoId = madre

@@ -8,6 +8,7 @@ import type { AttributeBlock, Attribute } from '../../services/dice.js';
 import { plazasTrabajadorParaTier } from '../../services/construction.js';
 import { cambiarRolSubdito, cupoDeCamas, datosDeSubditos } from '../../services/cronista/subditos.js';
 import { candidatosDeLlegada, responderLlegada } from '../../services/cronista/llegadas.js';
+import { esMaterial, huecoDeMateriales } from '../../services/cronista/economiaReino.js';
 import { salidasRecientes } from '../../services/cronista/salidas.js';
 import { rejectIfEnded, rejectIfPendingDeath, lockRowForUpdate } from './shared.js';
 import { FACTION_REP_CAPTURE_DELTA } from '../../services/reputation.js';
@@ -670,6 +671,10 @@ export async function companerosRoutes(app: FastifyInstance) {
     const item = await prisma.inventoryItem.findFirst({ where: { id: request.params.itemId, saveId: request.params.id, slot: null, companionId: null, subjectId: null } });
     if (!item) return reply.status(404).send({ error: 'Objeto no encontrado (o ya equipado)' });
 
+    // CR-53 (Q2): los materiales caben hasta el tope del Almacén (base y Leñeras).
+    if ((await esMaterial(prisma, request.params.id, item.catalogSlug)) && (await huecoDeMateriales(prisma, request.params.id)) <= 0) {
+      return reply.status(400).send({ error: 'No caben más materiales en el Almacén: construye una Leñera.' });
+    }
     const result = await prisma.$transaction(async (tx) => {
       await tx.inventoryItem.delete({ where: { id: item.id } });
       await tx.almacenItem.create({
