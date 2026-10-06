@@ -18,24 +18,41 @@ export interface Cohorte {
 
 /// Plazas de corral de cada facción, por especie, sembradas por el canon hasta que las facciones
 /// construyan (`CR-36`). Serhu: el gran recinto de Múrgol de Karot Veku.
+/// CR-56 (Q5): bestias de guardia, sobre todo de orcos y Faerus; de momento solo hay fauna de guardia de
+/// las Llanuras (Serhu y Feg Ger).
 export const PLAZAS_GANADO_FACCION: Record<string, Record<string, number>> = {
-  'clan-serhu': { murgol: 80, corretolvas: 30 },
+  'clan-serhu': { murgol: 80, corretolvas: 30, canizor: 20 },
+  'feg-ger': { canizor: 20 },
 };
 
 const anio = 120;
-/// Rebaño inicial (Q14): Serhu, 60 Múrgol y 20 Corretolvas. Edades relativas al día de la siembra.
-export const REBANO_INICIAL: Record<string, { especie: string; sexo: Sexo; edadDias: number; cantidad: number }[]> = {
+/// Rebaño inicial, por versiones (`KingdomStats.ganadoVersion`): cada versión nueva se siembra una vez
+/// también en las partidas que ya tenían la anterior. Edades relativas al día de la siembra.
+/// - 1 (`CR-55`, Q14): Serhu, 60 Múrgol y 20 Corretolvas.
+/// - 2 (`CR-56`, Q5): Serhu, 6 Canizores; Feg Ger, 3 Canizores.
+export const VERSION_REBANO = 2;
+type Siembra = { especie: string; sexo: Sexo; edadDias: number; cantidad: number; version: number };
+const v1 = (s: Omit<Siembra, 'version'>): Siembra => ({ ...s, version: 1 });
+const v2 = (s: Omit<Siembra, 'version'>): Siembra => ({ ...s, version: 2 });
+export const REBANO_INICIAL: Record<string, Siembra[]> = {
+  'feg-ger': [
+    v2({ especie: 'canizor', sexo: 'F', edadDias: 2 * anio, cantidad: 2 }),
+    v2({ especie: 'canizor', sexo: 'M', edadDias: 2 * anio, cantidad: 1 }),
+  ],
   'clan-serhu': [
-    { especie: 'murgol', sexo: 'F', edadDias: 3 * anio, cantidad: 26 },
-    { especie: 'murgol', sexo: 'M', edadDias: 3 * anio, cantidad: 10 },
-    { especie: 'murgol', sexo: 'F', edadDias: 60, cantidad: 6 },
-    { especie: 'murgol', sexo: 'M', edadDias: 60, cantidad: 6 },
-    { especie: 'murgol', sexo: 'F', edadDias: 10, cantidad: 6 },
-    { especie: 'murgol', sexo: 'M', edadDias: 10, cantidad: 6 },
-    { especie: 'corretolvas', sexo: 'F', edadDias: 200, cantidad: 10 },
-    { especie: 'corretolvas', sexo: 'M', edadDias: 200, cantidad: 4 },
-    { especie: 'corretolvas', sexo: 'F', edadDias: 5, cantidad: 3 },
-    { especie: 'corretolvas', sexo: 'M', edadDias: 5, cantidad: 3 },
+    v2({ especie: 'canizor', sexo: 'F', edadDias: 2 * anio, cantidad: 3 }),
+    v2({ especie: 'canizor', sexo: 'M', edadDias: 2 * anio, cantidad: 2 }),
+    v2({ especie: 'canizor', sexo: 'F', edadDias: 60, cantidad: 1 }),
+    v1({ especie: 'murgol', sexo: 'F', edadDias: 3 * anio, cantidad: 26 }),
+    v1({ especie: 'murgol', sexo: 'M', edadDias: 3 * anio, cantidad: 10 }),
+    v1({ especie: 'murgol', sexo: 'F', edadDias: 60, cantidad: 6 }),
+    v1({ especie: 'murgol', sexo: 'M', edadDias: 60, cantidad: 6 }),
+    v1({ especie: 'murgol', sexo: 'F', edadDias: 10, cantidad: 6 }),
+    v1({ especie: 'murgol', sexo: 'M', edadDias: 10, cantidad: 6 }),
+    v1({ especie: 'corretolvas', sexo: 'F', edadDias: 200, cantidad: 10 }),
+    v1({ especie: 'corretolvas', sexo: 'M', edadDias: 200, cantidad: 4 }),
+    v1({ especie: 'corretolvas', sexo: 'F', edadDias: 5, cantidad: 3 }),
+    v1({ especie: 'corretolvas', sexo: 'M', edadDias: 5, cantidad: 3 }),
   ],
 };
 

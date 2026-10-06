@@ -2,7 +2,7 @@
 import type { Prisma } from '@prisma/client';
 import { REPARTO_FACCIONES } from '../../scripts/repartoFacciones.js';
 import { comidaDe, ESPECIES_GANADO, hayPasto, valorCrudo, type Sexo } from './ganaderia.js';
-import { PLAZAS_GANADO_FACCION, REBANO_INICIAL, type Cohorte, type DatosDiaFaccion } from './ganadoFacciones.js';
+import { PLAZAS_GANADO_FACCION, REBANO_INICIAL, VERSION_REBANO, type Cohorte, type DatosDiaFaccion } from './ganadoFacciones.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -16,23 +16,23 @@ export interface Rebano {
   otros: Record<string, number>;
 }
 
-/// El rebaño de la facción de `fks`; la primera vez siembra el inicial del canon (Q14) con las edades
+/// El rebaño de la facción de `fks`; siembra las versiones del rebaño inicial que le falten, con las edades
 /// contadas desde `diaSiembra`. Null si no tiene ganado ni le toca.
 export async function cargarRebano(
   tx: Tx,
   worldId: string,
-  fks: { id: string; factionId: string | null; ganadoSembrado: boolean; faction: { slug: string } | null },
+  fks: { id: string; factionId: string | null; ganadoVersion: number; faction: { slug: string } | null },
   diaSiembra: number,
 ): Promise<Rebano | null> {
   const factionId = fks.factionId;
   const slug = fks.faction?.slug;
   if (!factionId || !slug) return null;
-  if (!fks.ganadoSembrado) {
-    const inicial = REBANO_INICIAL[slug] ?? [];
-    if (inicial.length > 0) {
-      await tx.ganadoFaccion.createMany({ data: inicial.map((c) => ({ factionId, especie: c.especie, sexo: c.sexo, nacidoEnDia: diaSiembra - c.edadDias, cantidad: c.cantidad })) });
+  if (fks.ganadoVersion < VERSION_REBANO) {
+    const nuevas = (REBANO_INICIAL[slug] ?? []).filter((c) => c.version > fks.ganadoVersion);
+    if (nuevas.length > 0) {
+      await tx.ganadoFaccion.createMany({ data: nuevas.map((c) => ({ factionId, especie: c.especie, sexo: c.sexo, nacidoEnDia: diaSiembra - c.edadDias, cantidad: c.cantidad })) });
     }
-    await tx.kingdomStats.update({ where: { id: fks.id }, data: { ganadoSembrado: true } });
+    await tx.kingdomStats.update({ where: { id: fks.id }, data: { ganadoVersion: VERSION_REBANO } });
   }
   const filas = await tx.ganadoFaccion.findMany({ where: { factionId }, select: { especie: true, sexo: true, nacidoEnDia: true, cantidad: true } });
   if (filas.length === 0) return null;

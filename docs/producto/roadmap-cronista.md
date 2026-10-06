@@ -1716,12 +1716,13 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   - ~~55g~~ ✅ 2026-10-06: Reino › Corrales (`CorralesSection.tsx`: forraje, entrega de pastos, aviso de hambre y sed, tarjeta por corral con especie, plazas, ♂/♀ y crías, ganaderos, producción media al día y «Sacrificar»); «Al corral» en el modal de domesticar.
   - **Queda** (fuera de `CR-55`): la fibra del Coracelo y las preguntas a Álvaro (`propuestas-lore.md`, «Ganadería»); súbditos como ganaderos (hoy lo son los compañeros asignados al corral); comprar animales (`CR-51`); la comida pasiva de todos (`CR-61`).
   - El Corredor de Cauce nunca. **L**
-- **CR-56** Usos de la fauna (Q10, Q12 de la Fase D; ronda propia aceptada el 2026-10-06, decisiones en
+- ~~**CR-56** Usos de la fauna~~ ✅ 2026-10-06 (Q10, Q12 de la Fase D; ronda propia aceptada el 2026-10-06, decisiones en
   [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-cr-56-usos-de-la-fauna-ronda-aceptada-por-la-usuaria-el-2026-10-06)).
-  🚧 Pasos:
+  Pasos (todos hechos):
   - ~~56a~~ ✅ 2026-10-06: ficha de usos (`cronista/usosFauna.ts`), Rondador, Cruzavientos y Salamandra como ganado de guardia (etapas de Corvenes y Mudos salvajes; sin ganadero), usos en la ficha de fauna de la Enciclopedia.
   - ~~56b~~ ✅ 2026-10-06: «Llevar contigo» (`POST /ganado/:id/llevar`: la Domadora con su hueco de Domador libre saca un adulto de especie de compañero) y «Devolver al corral» (`POST /companeros/:id/al-corral`), conservando sexo y nacimiento (`Companion.sexo`/`nacidoEn`, migración `20261006190000_companero_de_corral`); marca «Guardia: defiende el Reino» y sección «Contigo» en Reino › Corrales.
-  - 56c: guardias de facción (Serhu y Feg Ger con Canizores).
+  - ~~56c~~ ✅ 2026-10-06: guardias de facción por versiones del rebaño inicial (`KingdomStats.ganadoVersion`, migración `20261006200000_ganado_version`): Serhu 6 Canizores, Feg Ger 3; sin ganadero.
+  - **Queda** (fuera de `CR-56`): los guardias pelean con `CR-37` (en vivo o de fondo, ADR 0002); fauna de guardia de Cristal Helado, la Ciénaga y el Margen (lore); compañeros NPC Domadores con la postura de compañero (Fase E); el porte y la montura con `CR-57`.
   **M**
 - **CR-57** Monturas (Q14, hito `0.4`).
   - Porte de cada especie y talla de cada pueblo (provisionales, en `propuestas-lore.md`).

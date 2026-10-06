@@ -1816,8 +1816,9 @@ model KingdomStats {
   /// CR-55 (Q6): días seguidos en que el ganado no ha comido / bebido entero.
   ganadoDiasSinComer  Int      @default(0)
   ganadoDiasSinBeber  Int      @default(0)
-  /// CR-55 (55f): solo facciones — su rebaño inicial ya está sembrado.
-  ganadoSembrado      Boolean  @default(false)
+  /// CR-55/CR-56: solo facciones — versión del rebaño inicial ya sembrada (1 = rebaño de `CR-55`, 2 =
+  /// guardias de `CR-56`); cada versión nueva siembra solo lo suyo.
+  ganadoVersion       Int      @default(0)
   /// CR-34 (Q6): último día de ficción en que la facción revisó su situación para decidir (null =
   /// nunca). Solo facciones del mundo de la partida; el Reino de la jugadora no lo usa.
   ultimaRevision      Int?

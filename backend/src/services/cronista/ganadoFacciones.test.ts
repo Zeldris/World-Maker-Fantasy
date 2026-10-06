@@ -8,8 +8,8 @@ const datos = (dia: number, diasSinComer = 0, trabajadores = 359): DatosDiaFacci
   trabajadores,
   pasto: true,
   plazas: PLAZAS_GANADO_FACCION['clan-serhu']!,
-  categoria: { murgol: 'BESTIONES', corretolvas: 'ZANCUDOS' },
-  carnePorAnimal: { murgol: 3, corretolvas: 1 },
+  categoria: { murgol: 'BESTIONES', corretolvas: 'ZANCUDOS', canizor: 'ACECHANTES' },
+  carnePorAnimal: { murgol: 3, corretolvas: 1, canizor: 2 },
   comidaDisponible: 100,
   diasSinComer,
   bebidaDisponible: 1000,
@@ -55,8 +55,8 @@ describe('ganado de las facciones (CR-55 55f)', () => {
 
   it('cada semana nacen crías (una por corral de 20 plazas) si hay sitio', () => {
     const r = diaGanadoFaccion(inicial(7), datos(7), () => 0.99);
-    // Múrgol: 80 plazas → 4 corrales; Corretolvas: 30 → 2.
-    expect(r.crias).toBe(6);
+    // Múrgol: 80 plazas → 4 corrales; Corretolvas: 30 → 2; Canizores de guardia (CR-56): 20 → 1.
+    expect(r.crias).toBe(7);
   });
 
   it('el rebaño bebe: sin agua no produce y desde el segundo día mueren', () => {
@@ -75,5 +75,12 @@ describe('ganado de las facciones (CR-55 55f)', () => {
     const r = diaGanadoFaccion(cs, datos(7), () => 0.99);
     expect(r.cohortes.some((c) => c.sexo === 'M' && c.nacidoEnDia < 7)).toBe(false);
     expect(r.crias).toBe(0);
+  });
+
+  it('los Canizores de guardia no ocupan ganaderos y comen carne cada 2 días (CR-56)', () => {
+    const r = diaGanadoFaccion(inicial(2), datos(2), () => 0.99);
+    expect(r.ganaderos).toBe(16);
+    // 5 adultos y 1 joven: 6 de comida, menos de lo que dan la leche y los huevos.
+    expect(r.comidaNeta).toBeCloseTo(48.8 - 6);
   });
 });
