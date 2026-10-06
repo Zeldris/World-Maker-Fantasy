@@ -1302,7 +1302,7 @@ export const LECHE_MURGOL_EXTRACCION_RECIPE: CraftingRecipe = {
   resultCatalogSlug: 'leche-murgol',
   resultDescription: 'Leche ordeñada de los Múrgoles aclimatados en los corrales del reino.',
   tier: 1,
-  oficio: 'domador-orcos-llanuras',
+  oficio: 'ganadero-orcos-llanuras',
   requiresUnlock: true,
   narrationWant: 'Esta receta no se crafteé nunca a mano — solo se asigna como orden de producción de unos Corrales desde el panel de Reino.',
   narrationDo: 'Esta receta no se crafteé nunca a mano — solo se asigna como orden de producción de unos Corrales desde el panel de Reino.',

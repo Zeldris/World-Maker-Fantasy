@@ -83,40 +83,40 @@ export const professions: Profession[] = [
     category: 'creacion',
   },
   {
-    id: 'domador-orcos-llanuras',
-    name: 'Domador de los Orcos de las Llanuras del Viento Rojo',
+    id: 'ganadero-orcos-llanuras',
+    name: 'Ganadero de los Orcos de las Llanuras del Viento Rojo',
     description:
-      'Domador de los Orcos de las Llanuras del Viento Rojo. Esta profesión se centra en la fauna que ofrece la zona de las Llanuras del Viento Rojo.',
+      'Ganadero de los Orcos de las Llanuras del Viento Rojo. Cría y cuida el ganado de los corrales: lo alimenta, ordeña y esquila, y saca adelante sus crías. Esta profesión se centra en la fauna que ofrece la zona de las Llanuras del Viento Rojo.',
   },
   {
-    id: 'domador-orcos-cienaga',
-    name: 'Domador de los Orcos de la Ciénaga Troncal',
+    id: 'ganadero-orcos-cienaga',
+    name: 'Ganadero de los Orcos de la Ciénaga Troncal',
     description:
-      'Domador de los Orcos de la Ciénaga Troncal. Esta profesión se centra en la fauna que ofrece la zona de la Ciénaga Troncal.',
+      'Ganadero de los Orcos de la Ciénaga Troncal. Cría y cuida el ganado de los corrales: lo alimenta, ordeña y esquila, y saca adelante sus crías. Esta profesión se centra en la fauna que ofrece la zona de la Ciénaga Troncal.',
   },
   {
-    id: 'domador-orcos-cristal',
-    name: 'Domador de los Orcos de Cristal Helado',
+    id: 'ganadero-orcos-cristal',
+    name: 'Ganadero de los Orcos de Cristal Helado',
     description:
-      'Domador de los Orcos de Cristal Helado. Esta profesión se centra en la fauna que ofrece la zona de Cristal Helado.',
+      'Ganadero de los Orcos de Cristal Helado. Cría y cuida el ganado de los corrales: lo alimenta, ordeña y esquila, y saca adelante sus crías. Esta profesión se centra en la fauna que ofrece la zona de Cristal Helado.',
   },
   {
-    id: 'domador-faerus-llanuras',
-    name: 'Domador de los Faerus de las Llanuras del Viento Rojo',
+    id: 'ganadero-faerus-llanuras',
+    name: 'Ganadero de los Faerus de las Llanuras del Viento Rojo',
     description:
-      'Domador de los Faerus de las Llanuras del Viento Rojo. Esta profesión se centra en la fauna que ofrece la zona de las Llanuras del Viento Rojo.',
+      'Ganadero de los Faerus de las Llanuras del Viento Rojo. Cría y cuida el ganado de los corrales: lo alimenta, ordeña y esquila, y saca adelante sus crías. Esta profesión se centra en la fauna que ofrece la zona de las Llanuras del Viento Rojo.',
   },
   {
-    id: 'domador-faerus-margen',
-    name: 'Domador de los Faerus del Margen Silencioso',
+    id: 'ganadero-faerus-margen',
+    name: 'Ganadero de los Faerus del Margen Silencioso',
     description:
-      'Domador de los Faerus del Margen Silencioso. Esta profesión se centra en la fauna que ofrece la zona del Margen Silencioso.',
+      'Ganadero de los Faerus del Margen Silencioso. Cría y cuida el ganado de los corrales: lo alimenta, ordeña y esquila, y saca adelante sus crías. Esta profesión se centra en la fauna que ofrece la zona del Margen Silencioso.',
   },
   {
-    id: 'domador-nabieus-cienaga',
-    name: 'Domador de los Nabierus de la Ciénaga Troncal',
+    id: 'ganadero-nabieus-cienaga',
+    name: 'Ganadero de los Nabierus de la Ciénaga Troncal',
     description:
-      'Domador de los Nabierus de la Ciénaga Troncal. Esta profesión se centra en la fauna que ofrece la zona de la Ciénaga Troncal.',
+      'Ganadero de los Nabierus de la Ciénaga Troncal. Cría y cuida el ganado de los corrales: lo alimenta, ordeña y esquila, y saca adelante sus crías. Esta profesión se centra en la fauna que ofrece la zona de la Ciénaga Troncal.',
   },
   // Recolectora (2026-08-09, aclaración explícita): recoge plantas/hierbas del área — mismo eje
   // que minero/desollador/talador, alimenta a la creadora 'alquimista' (pociones/ungüentos), no a

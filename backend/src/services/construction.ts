@@ -723,8 +723,8 @@ export const DESOLLADERO_GRAN_OBRADOR_RECIPE: ConstructionRecipe = {
 
 export const CORRALES_RECIPE: ConstructionRecipe = {
   key: 'corrales',
-  name: 'unos corrales del Domador',
-  description: 'Recinto de postes reforzados con un abrevadero de piedra, donde aclimatar a las bestias recién capturadas antes de que pasen a ser compañeros de verdad — la leche, lana y crías de los animales domados también salen de aquí.',
+  name: 'unos corrales del Ganadero',
+  description: 'Recinto de postes reforzados con un abrevadero de piedra para el ganado de una sola especie — la leche, la lana y las crías de los animales domados salen de aquí.',
   raza: 'orcos',
   nounRegex: /(?=.*corral)(?!.*(domador$|del domador$))|corrales del domador/,
   requirements: [
@@ -733,8 +733,8 @@ export const CORRALES_RECIPE: ConstructionRecipe = {
     { match: { kind: 'exact', catalogSlug: 'cuerda-tendon' }, cantidad: 4, label: 'cuerda de tendón' },
   ],
   requisitos: { voluntad: 8 },
-  oficio: 'domador-orcos-llanuras',
-  oficioProducido: 'domador-orcos-llanuras',
+  oficio: 'ganadero-orcos-llanuras',
+  oficioProducido: 'ganadero-orcos-llanuras',
   edificioOficioNivel: 1,
   companionSlots: 0,
   requiresAyuntamiento: true,
@@ -1738,7 +1738,7 @@ export async function computeBuildBlockedReason(params: {
       return `necesita un Ayuntamiento de nivel ${buildRecipe.ayuntamientoNivelMinimo} o superior`;
     }
   }
-  // Corrales del Domador (§ 3: "necesitan al menos una Jaula del reino, las capturas pasan de la
+  // Corrales del Ganadero (§ 3: "necesitan al menos una Jaula del reino, las capturas pasan de la
   // Jaula al Corral") — sin esto, construir Corrales sin haber capturado nunca nada no tendría
   // ninguna Jaula real de la que recibir animales.
   if (buildRecipe.key === 'corrales' && !buildRecipe.upgradesRecipeKey) {

@@ -191,6 +191,11 @@ son de Claude y provisionales)
   combate del Cazador. Pueblos y regiones con ganadero: orcos de las Llanuras, la Ciénaga y Cristal
   Helado; Faerus de las Llanuras y del Margen; Nabieus de la Ciénaga. **¿Crían animales los
   Goirntes?** Hoy no tienen ganadero.
+- **Corrales del Domador y recinto de Múrgol:** el canon de las Llanuras distingue los «Corrales
+  del Domador» (aclimatar bestias recién domadas) del gran recinto de Múrgol de fuera (el ganado).
+  En el código el edificio de catálogo conserva su nombre canónico, pero su oficio es ya el de
+  ganadero. ¿El recinto de Múrgol es un edificio aparte del ganadero, y los Corrales del Domador
+  quedan para los compañeros de `CR-56`?
 - **¿Quién enseña el oficio?** Provisionalmente, el Maestro Domador Serhu (vive entre los corrales de
   Karot Veku). ¿Es él, o hay un ganadero de oficio en el campamento?
 - **Etapas de vida de la fauna** (por categoría, con ajuste por porte; un año son 120 días):

@@ -1703,7 +1703,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   🚧 Pasos:
   - ~~55a~~ ✅ 2026-10-06: reglas puras (`cronista/ganaderia.ts`, 19 tests): etapas por categoría, producción, crías, hambre y
     valor de la comida cruda.
-  - 55b: oficio `domador-…` → `ganadero-…` (migración del progreso), Corrales del Ganadero.
+  - ~~55b~~ ✅ 2026-10-06: oficio `domador-…` → `ganadero-…` (migración `20261006160000_oficio_ganadero`: progreso, maestros, expediciones y edificios), receta «Corrales del Ganadero». El edificio de catálogo Serhu conserva su nombre canónico («Corrales del Domador»), pregunta a Álvaro.
   - 55c: modelo de ganado del Reino, «Al corral» al domesticar, forraje y Fibrería.
   - 55d: avance diario del ganado del Reino (comen, producen, crían, envejecen, mueren); fin de los
     2 pasivos del ganadero; la leche alimenta; Cuajada recalculada.
