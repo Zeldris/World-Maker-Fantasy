@@ -210,57 +210,65 @@ export const DIAS_MEMORIA_NPC = 30;
 /// el registro del personaje y escribe las noticias en «El mundo». null si el NPC no puede contar.
 export async function preguntarNoticias(prisma: PrismaClient, saveId: string, npcSlug: string): Promise<{ frase: string; contadas: number } | null> {
   return prisma.$transaction(async (tx) => {
-    const save = await tx.save.findUniqueOrThrow({
-      where: { id: saveId },
-      select: { worldId: true, currentLocation: { select: { region: true } }, worldState: { select: { fictionalMinutes: true } } },
-    });
+    const save = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true, currentLocation: { select: { region: true } } } });
     const npc = await tx.npc.findFirst({
       where: { worldId: save.worldId, slug: npcSlug, kind: { not: 'PLANTILLA' }, faction: { not: null }, ...npcSinMorirEnPartida(saveId) },
       select: { name: true, faction: true },
     });
     if (!npc) return null;
-    const ahora = save.worldState?.fictionalMinutes ?? 0;
-    const inicioDia = Math.floor(ahora / MINUTOS_DIA) * MINUTOS_DIA;
-    if ((await tx.conocimiento.count({ where: { saveId, fuente: npcSlug, OR: [{ desde: { gte: inicioDia } }, { confirmadoEn: { gte: inicioDia } }] } })) > 0) {
-      return { frase: `${npc.name}: «Ya te he contado todo lo que sé.»`, contadas: 0 };
-    }
-
-    const sucesos = await tx.suceso.findMany({
-      where: {
-        saveId,
-        importancia: { gte: 4 },
-        fictionalMinutes: { gte: ahora - DIAS_MEMORIA_NPC * MINUTOS_DIA, lte: ahora },
-        OR: [{ conocimientos: { none: {} } }, { conocimientos: { some: { confirmado: false } } }],
-      },
-      select: {
-        id: true, importancia: true, regionSlug: true, locationId: true, noticia: true, fictionalMinutes: true, texto: true,
-        actores: { select: { entidadTipo: true, entidadId: true } }, conocimientos: { select: { id: true } },
-      },
-    });
-    const alcance = await alcanceDeSucesos(tx, saveId, sucesos);
-    const quien = { region: save.currentLocation?.region ?? null, faccion: npc.faction };
-    const candidatos = sucesos
-      .filter((s) => {
-        const a = alcance.get(s.id)!;
-        if (!npcSabe(a, quien, (ahora - s.fictionalMinutes) / MINUTOS_DIA)) return false;
-        // Lo que ya sabe de oídas solo vale la pena si él puede confirmarlo.
-        return s.conocimientos.length === 0 || cuentaComoHecho(a, quien);
-      })
-      .sort((x, y) => y.importancia - x.importancia || y.fictionalMinutes - x.fictionalMinutes)
-      .slice(0, MAX_CONTADAS);
-
-    const frases: string[] = [];
-    for (const s of candidatos) {
-      const a = alcance.get(s.id)!;
-      const hecho = cuentaComoHecho(a, quien);
-      const r = await conocer(tx, { saveId, sucesoId: s.id, via: 'NPC', confirmado: hecho, minutos: ahora, escribirNoticia: true, region: a.origenes[0] ?? null, fuente: npcSlug });
-      if (!r) continue;
-      const texto = (s.noticia as NoticiaDeSuceso | null)?.texto ?? s.texto;
-      frases.push(hecho ? texto : comoRumor(texto));
-    }
-    if (frases.length === 0) return { frase: `${npc.name}: «Por aquí no se habla de otra cosa que del tiempo.»`, contadas: 0 };
-    return { frase: `${npc.name} te cuenta lo que se dice: ${frases.map((f) => `«${f}»`).join(' ')}`, contadas: frases.length };
+    return contarNoticias(tx, { saveId, nombre: npc.name, fuente: npcSlug, quien: { region: save.currentLocation?.region ?? null, faccion: npc.faction } });
   }, { maxWait: 10_000, timeout: 20_000 });
+}
+
+/// Lo que cuenta alguien que sabe lo de `quien` (su región y su facción): una vez al día por
+/// `fuente`, lo más importante que el personaje aún no sabe o solo sabe de oídas. Lo usan los NPC
+/// («¿Qué se cuenta?», CR-18) y los compañeros («¿Qué se sabe en tu tierra?», CR-42).
+export async function contarNoticias(
+  tx: Prisma.TransactionClient,
+  p: { saveId: string; nombre: string; fuente: string; quien: { region: string | null; faccion: string | null }; sinNada?: string },
+): Promise<{ frase: string; contadas: number }> {
+  const { saveId, nombre, fuente, quien } = p;
+  const ws = await tx.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true } });
+  const ahora = ws?.fictionalMinutes ?? 0;
+  const inicioDia = Math.floor(ahora / MINUTOS_DIA) * MINUTOS_DIA;
+  if ((await tx.conocimiento.count({ where: { saveId, fuente, OR: [{ desde: { gte: inicioDia } }, { confirmadoEn: { gte: inicioDia } }] } })) > 0) {
+    return { frase: `${nombre}: «Ya te he contado todo lo que sé.»`, contadas: 0 };
+  }
+
+  const sucesos = await tx.suceso.findMany({
+    where: {
+      saveId,
+      importancia: { gte: 4 },
+      fictionalMinutes: { gte: ahora - DIAS_MEMORIA_NPC * MINUTOS_DIA, lte: ahora },
+      OR: [{ conocimientos: { none: {} } }, { conocimientos: { some: { confirmado: false } } }],
+    },
+    select: {
+      id: true, importancia: true, regionSlug: true, locationId: true, noticia: true, fictionalMinutes: true, texto: true,
+      actores: { select: { entidadTipo: true, entidadId: true } }, conocimientos: { select: { id: true } },
+    },
+  });
+  const alcance = await alcanceDeSucesos(tx, saveId, sucesos);
+  const candidatos = sucesos
+    .filter((s) => {
+      const a = alcance.get(s.id)!;
+      if (!npcSabe(a, quien, (ahora - s.fictionalMinutes) / MINUTOS_DIA)) return false;
+      // Lo que ya sabe de oídas solo vale la pena si él puede confirmarlo.
+      return s.conocimientos.length === 0 || cuentaComoHecho(a, quien);
+    })
+    .sort((x, y) => y.importancia - x.importancia || y.fictionalMinutes - x.fictionalMinutes)
+    .slice(0, MAX_CONTADAS);
+
+  const frases: string[] = [];
+  for (const s of candidatos) {
+    const a = alcance.get(s.id)!;
+    const hecho = cuentaComoHecho(a, quien);
+    const r = await conocer(tx, { saveId, sucesoId: s.id, via: 'NPC', confirmado: hecho, minutos: ahora, escribirNoticia: true, region: a.origenes[0] ?? null, fuente });
+    if (!r) continue;
+    const texto = (s.noticia as NoticiaDeSuceso | null)?.texto ?? s.texto;
+    frases.push(hecho ? texto : comoRumor(texto));
+  }
+  if (frases.length === 0) return { frase: p.sinNada ?? `${nombre}: «Por aquí no se habla de otra cosa que del tiempo.»`, contadas: 0 };
+  return { frase: `${nombre} te cuenta lo que se dice: ${frases.map((f) => `«${f}»`).join(' ')}`, contadas: frases.length };
 }
 
 // ─────────────────────────── Bandos del tablón de avisos (18d, Q9) ───────────────────────────

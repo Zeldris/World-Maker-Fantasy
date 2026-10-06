@@ -2730,3 +2730,8 @@ export interface HiloInfo {
 export async function getHilos(saveId: string): Promise<{ hilos: HiloInfo[] }> {
   return fetchJson(`${API_URL}/saves/${saveId}/leyendas/hilos`)
 }
+
+/// CR-42 (hito 0.3): «¿Qué se sabe en tu tierra?» a un compañero.
+export async function preguntarTierraCompanero(saveId: string, companionId: string): Promise<{ frase: string; contadas: number }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/companeros/${companionId}/tierra`, { method: 'POST' })
+}

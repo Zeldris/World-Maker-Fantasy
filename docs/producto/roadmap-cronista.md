@@ -1576,8 +1576,11 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   Rompejuramentos: apaga la etiqueta; Carnicero solo se recupera al rematar a otro rendido). Leyendas ›
   «Historias en marcha» con los que conoce el personaje (`GET /saves/:id/leyendas/hilos`). Que alimenten
   al narrador va con la Fase 6.)
-- **CR-42** Compañeros que cuentan lo de su tierra (`CR-18` Q9, va al `0.3` con `CR-15`): un compañero
-  de una región cuenta lo que se sabe allí cuando se le pregunta. **S**
+- ~~**CR-42** Compañeros que cuentan lo de su tierra (`CR-18` Q9, va al `0.3` con `CR-15`): un compañero
+  de una región cuenta lo que se sabe allí cuando se le pregunta. **S**~~ ✅ 2026-10-06
+  (`cronista/companeroTierra.ts` sobre `contarNoticias`, el núcleo común sacado de «¿Qué se cuenta?»;
+  región y facción de origen del compañero, aprobación ≥ 40, una vez al día;
+  `POST /saves/:id/companeros/:companionId/tierra` y botón «¿Qué se sabe en tu tierra?» en Compañeros.)
 - **CR-32** Reclutamiento pacífico e informantes (usuaria, 2026-10-04, Q14 de `CR-12`): convencer a
   un NPC sin pelear (tirada de persuasión según si le gusta lo que dices; idea de la usuaria del
   2026-09-06) para que se una al Reino o te pase información de su facción. Abre la oportunidad

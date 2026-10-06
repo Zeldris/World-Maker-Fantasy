@@ -26,6 +26,7 @@ import {
 import { EquipSlot } from '@prisma/client';
 import { bonoSocialDeEtiquetas, etiquetasActivas, INT_NO_SE_RINDE_A_CARNICERO } from '../../services/cronista/etiquetas.js';
 import { valoresIniciales } from '../../services/cronista/aprobacion.js';
+import { preguntarCompanero } from '../../services/cronista/companeroTierra.js';
 
 /// Grupo 3 § Compañeros y supervivencia (2026-08-25, diseño completo en
 /// docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md) — captura+tameo/persuasión, equipo de
@@ -572,6 +573,19 @@ export async function companerosRoutes(app: FastifyInstance) {
   /// aquí desmarcando cualquier otro dentro de la misma transacción). Exige la habilidad
   /// desbloqueada (Domador + nivel 40, `maxSlotsDomadorFor`) y que el objetivo sea uno de los 2
   /// slots garantizados del Domador — nunca un compañero cualquiera del Reino.
+  // CR-42 (hito 0.3): «¿Qué se sabe en tu tierra?» — lo cuenta un compañero con mente que te aprecia.
+  app.post<{ Params: { id: string; companionId: string } }>('/saves/:id/companeros/:companionId/tierra', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, include: { worldState: true } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (rejectIfEnded(save, reply)) return;
+    const r = await preguntarCompanero(prisma, save.id, request.params.companionId);
+    if ('error' in r) return reply.status(400).send({ error: r.error });
+    const entrada = await prisma.logEntry.create({
+      data: { saveId: save.id, channel: 'CHARACTER', isSystemMessage: true, text: r.frase, timeLabel: save.worldState?.fictionalDateLabel ?? '', fictionalMinutes: save.worldState?.fictionalMinutes ?? 0 },
+    });
+    return { frase: r.frase, contadas: r.contadas, logEntryId: entrada.id };
+  });
+
   app.post<{ Params: { id: string; companionId: string } }>('/saves/:id/companeros/:companionId/alfa', async (request, reply) => {
     const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, worldId: true, clase: true, especializacion: true, level: true, endedAt: true, pendingDeathResolution: true } });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
