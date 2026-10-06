@@ -186,6 +186,10 @@ pausada visualmente detrás. 🧭 **M**
 | REI-52 | **Editor de plantillas visual** (R17): el muñeco de ranuras de `EquipoPanel` en pequeño; en cada ranura se elige una **categoría con nombre legible** (no el slug) de una lista; el rol en un selector; la prioridad explicada ("qué plantilla gana si se aplican dos"). Vista previa de qué objetos del almacén se le asignarían hoy. | ✅ | M |
 | REI-53 | **Súbditos con más gestión** (R16): rol editable, territorio de residencia, estado. 🧭 Depende de la versión mínima de súbditos del hito `0.1` (F9-7). | 🛠️ | M |
 | REI-54 | **Llegadas y salidas**: cuando la versión mínima de súbditos exista, tarjeta "Llegaron 2 pobladores orcos" con su origen y por qué vinieron (vivienda, comida, agua). | 🛠️ | S |
+| REI-118 | **Súbditos como personas** (Fase C del `0.3`, Q1-Q3 y Q7 de la usuaria, 2026-10-06): cada poblador es un súbdito con nombre, pueblo, edad, padres, linaje y felicidad; la población del Reino = su número; solo los crea el motor (el narrador deja de crearlos; los que ya hay se quedan); un único cupo de camas para compañeros y súbditos; los adultos cuentan como trabajadores y su rol (trabajador, soldado, vigía) se puede cambiar. | 🛠️ | M |
+| REI-119 | **Llegadas** (Q4): una vez por semana, con cama libre, comida > 0, agua > 0 y felicidad ≥ 40, llega un candidato de la población de su pueblo en la región (se descuenta de ella); tarjeta en el Reino para aceptarlo o rechazarlo; si no se responde, a los 2 días se va. | 🛠️ | M |
+| REI-120 | **Parejas y crías** (Q5, como Medieval Dynasty): dos adultos del mismo pueblo con felicidad ≥ 70 forman pareja (20 %/semana); con cama libre, cría por semana según el pueblo (orcos 15 %, Goirntes 10 %, Nabieus 8 %, Faerus 4 %), como mucho 2 por pareja y nunca pasada la vejez; las crías no trabajan ni combaten hasta la madurez. | 🛠️ | M |
+| REI-121 | **Salidas y muerte** (Q6): con la felicidad del Reino 7 días seguidos por debajo de 20, cada semana se va un súbdito (vuelve a la población de su pueblo); mueren de viejos, de hambre o en combate (envejecimiento de `CR-13`). | 🛠️ | S |
 
 ### 5.6 Territorios
 | Id | Propuesta | Back | Esf. |
