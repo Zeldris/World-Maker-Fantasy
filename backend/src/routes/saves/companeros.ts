@@ -8,6 +8,7 @@ import type { AttributeBlock, Attribute } from '../../services/dice.js';
 import { plazasTrabajadorParaTier } from '../../services/construction.js';
 import { cambiarRolSubdito, cupoDeCamas, datosDeSubditos } from '../../services/cronista/subditos.js';
 import { candidatosDeLlegada, responderLlegada } from '../../services/cronista/llegadas.js';
+import { salidasRecientes } from '../../services/cronista/salidas.js';
 import { rejectIfEnded, rejectIfPendingDeath, lockRowForUpdate } from './shared.js';
 import { FACTION_REP_CAPTURE_DELTA } from '../../services/reputation.js';
 import { applyFactionRepDeltaForResolution } from '../../services/turnResolution.js';
@@ -874,9 +875,11 @@ export async function companerosRoutes(app: FastifyInstance) {
     const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, worldState: { select: { fictionalMinutes: true } } } });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
     const ahora = save.worldState?.fictionalMinutes ?? 0;
-    const [subditos, camas, candidatos] = await Promise.all([datosDeSubditos(prisma, save.id, ahora), cupoDeCamas(prisma, save.id), candidatosDeLlegada(prisma, save.id)]);
+    const [subditos, camas, candidatos, salidas] = await Promise.all([
+      datosDeSubditos(prisma, save.id, ahora), cupoDeCamas(prisma, save.id), candidatosDeLlegada(prisma, save.id), salidasRecientes(prisma, save.id, ahora),
+    ]);
     const datosCandidatos = await datosDeSubditos(prisma, save.id, ahora, candidatos.map((c) => c.id));
-    return { ahora, subditos, camas, candidatos: candidatos.map((c) => ({ ...datosCandidatos.find((d) => d.id === c.id)!, deDonde: c.deDonde, hastaMinutes: c.hastaMinutes })) };
+    return { ahora, subditos, camas, salidas, candidatos: candidatos.map((c) => ({ ...datosCandidatos.find((d) => d.id === c.id)!, deDonde: c.deDonde, hastaMinutes: c.hastaMinutes })) };
   });
 
   /// REI-119: aceptar o rechazar a quien llega al Reino.

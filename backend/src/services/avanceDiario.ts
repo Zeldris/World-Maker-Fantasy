@@ -32,6 +32,7 @@ import { asegurarLinajes } from './cronista/linajes.js';
 import { avanzarSubditos } from './cronista/subditos.js';
 import { revisarLlegadas } from './cronista/llegadas.js';
 import { revisarFamilias } from './cronista/familias.js';
+import { revisarSalidas } from './cronista/salidas.js';
 import { revisarInformantes } from './cronista/reclutamiento.js';
 
 export const MAX_DIAS_POR_LLAMADA = 30;
@@ -128,12 +129,14 @@ export async function avanzarMundoHasta(
         await prisma.$transaction((tx) => revisarMarchas(tx, { saveId, fictionalMinutes: Math.min(ws?.fictionalMinutes ?? 0, (d + 1) * 1440 - 1) }));
       });
       // REI-119: los candidatos sin respuesta se van y, una vez por semana, llega uno nuevo.
-      await paso('llegadasYFamilias', async () => {
+      await paso('poblacionReino', async () => {
         const ws = await prisma.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true } });
         const ahora = Math.min(ws?.fictionalMinutes ?? 0, (d + 1) * 1440 - 1);
         await prisma.$transaction((tx) => revisarLlegadas(tx, saveId, ahora, random));
         // REI-120: una vez por semana, parejas nuevas y crías.
         await prisma.$transaction((tx) => revisarFamilias(tx, saveId, ahora, random));
+        // REI-121: muertes de viejo y de hambre; con el Reino triste, una salida por semana.
+        await prisma.$transaction((tx) => revisarSalidas(tx, saveId, ahora, random));
       });
     }
     // CR-14: etiquetas de relación (AMIGO_DE / ENEMIGO_DE) según la reputación del final del día.

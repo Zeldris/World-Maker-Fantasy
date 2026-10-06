@@ -3,7 +3,7 @@ import type { AlmacenItemInfo, CompanionInfo, EquipSlot, InventoryItemInfo, Plan
 import { PanelSection } from '../../PanelSection'
 import { SelectorJuego } from '../../SelectorJuego'
 import { AlmacenSection } from './AlmacenSection'
-import { crearPlantilla, borrarPlantilla, asignarPlantillaCompanion, asignarPlantillaSubject, fijarRolReinoCompanion, getSubditos, cambiarRolSubdito, responderLlegada, type SubditoInfo, type CamasReino, type CandidatoLlegada } from '../../../lib/api'
+import { crearPlantilla, borrarPlantilla, asignarPlantillaCompanion, asignarPlantillaSubject, fijarRolReinoCompanion, getSubditos, cambiarRolSubdito, responderLlegada, type SubditoInfo, type CamasReino, type CandidatoLlegada, type SalidaSubdito } from '../../../lib/api'
 import { lineaDeSubdito, plazoDeLlegada } from '../../../lib/subditos'
 import { SLOT_LABEL, SLOT_ORDER } from '../../../lib/equipSlots'
 import { ErrorBanner } from '../../../components/ErrorBanner'
@@ -353,7 +353,7 @@ const ROLES_SUBDITO: { value: SubditoInfo['rol']; label: string; descripcion: st
 /// editable (las crías no trabajan ni combaten) — y las camas que comparten con los compañeros.
 function SubditosLista({ saveId, subjects, plantillasEquipo, onRefreshSave }: { saveId: string; subjects: SubjectInfo[]; plantillasEquipo: PlantillaEquipoInfo[]; onRefreshSave: () => Promise<void> }) {
   const consulta = useModoConsulta()
-  const [datos, setDatos] = useState<{ ahora?: number; subditos: SubditoInfo[]; camas: CamasReino; candidatos?: CandidatoLlegada[] } | null>(null)
+  const [datos, setDatos] = useState<{ ahora?: number; subditos: SubditoInfo[]; camas: CamasReino; candidatos?: CandidatoLlegada[]; salidas?: SalidaSubdito[] } | null>(null)
   const [version, setVersion] = useState(0)
   const [busy, setBusy] = useState(false)
   const { fallo, informar, limpiar } = useErrorConReintento()
@@ -427,6 +427,17 @@ function SubditosLista({ saveId, subjects, plantillasEquipo, onRefreshSave }: { 
           </div>
         </div>
       ))}
+      {/* REI-121 / REI-54: quien se fue o murió esta semana. */}
+      {(datos?.salidas ?? []).length > 0 && (
+        <ul className="mb-2 flex flex-col gap-0.5 rounded-lg border border-iron-800 bg-wood-950/30 px-3 py-2" aria-label="Salidas de esta semana">
+          {datos!.salidas!.map((x) => (
+            <li key={x.id} className="text-2xs text-wood-400">
+              <span aria-hidden="true">{x.estado === 'MUERTO' ? '✝ ' : '↩ '}</span>
+              <span className="text-wood-200">{x.name}</span> — {x.motivo}
+            </li>
+          ))}
+        </ul>
+      )}
       {subditos.length === 0 && <p className="text-xs text-wood-500">Aún no vive nadie en tu Reino.</p>}
       <div className="flex flex-col gap-2">
         {subditos.map((s) => {

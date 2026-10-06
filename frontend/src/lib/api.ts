@@ -1608,7 +1608,16 @@ export interface CandidatoLlegada extends SubditoInfo {
   hastaMinutes: number | null
 }
 
-export async function getSubditos(saveId: string): Promise<{ ahora?: number; subditos: SubditoInfo[]; camas: CamasReino; candidatos?: CandidatoLlegada[] }> {
+/// REI-121 / REI-54: quien se fue o murió en la última semana.
+export interface SalidaSubdito {
+  id: string
+  name: string
+  estado: 'SE_FUE' | 'MUERTO'
+  motivo: string
+  cuando: number | null
+}
+
+export async function getSubditos(saveId: string): Promise<{ ahora?: number; subditos: SubditoInfo[]; camas: CamasReino; candidatos?: CandidatoLlegada[]; salidas?: SalidaSubdito[] }> {
   return fetchJson(`${API_URL}/saves/${saveId}/subditos`)
 }
 
