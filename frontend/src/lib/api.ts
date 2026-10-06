@@ -1490,6 +1490,8 @@ export interface TameoPendiente {
   umbral: number
   atributoResistencia: Attribute | null
   enJaula: boolean
+  /// CR-55 (Q3): es ganado y puede ir a un corral en vez de ser compañero.
+  alCorral?: boolean
 }
 export async function getTameoPendientes(saveId: string): Promise<{ pendientes: TameoPendiente[] }> {
   return fetchJson(`${API_URL}/saves/${saveId}/tameo-pendientes`)
@@ -1521,6 +1523,58 @@ export async function postIntentarTameo(
 export async function postConfirmarTameo(saveId: string, npcSlug: string): Promise<{ companion: CompanionInfo }> {
   return fetchJson(`${API_URL}/saves/${saveId}/tameo-pendientes/${npcSlug}/confirmar`, { method: 'POST' })
 }
+/// CR-55 (Q3): el animal domesticado va a un corral del Ganadero de su especie (o a uno vacío).
+export async function postAlCorral(saveId: string, npcSlug: string): Promise<{ ganadoId: string; buildingId: string; sexo: 'M' | 'F' }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/tameo-pendientes/${npcSlug}/al-corral`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  })
+}
+
+/// CR-55: Reino › Corrales.
+export type EtapaAnimal = 'CRIA' | 'JOVEN' | 'ADULTO' | 'VEJEZ'
+export interface AnimalDeCorral {
+  id: string
+  sexo: 'M' | 'F'
+  edadDias: number
+  etapa: EtapaAnimal
+  diasParaSiguiente: number | null
+}
+export interface CorralInfo {
+  id: string
+  name: string
+  escalon: number
+  plazas: number
+  especie: string | null
+  especieNombre: string | null
+  animales: AnimalDeCorral[]
+  ganaderos: { id: string; name: string }[]
+  /// Q10: producción media al día con sus ganaderos.
+  produccionDia: { slug: string; nombre: string; porDia: number }[]
+}
+export interface CorralesInfo {
+  forraje: number
+  huecoForraje: number
+  forrajeDia: number
+  diasSinComer: number
+  diasSinBeber: number
+  corrales: CorralInfo[]
+}
+export async function getCorrales(saveId: string): Promise<CorralesInfo> {
+  return fetchJson(`${API_URL}/saves/${saveId}/corrales`)
+}
+export async function postEntregarForraje(saveId: string, catalogSlug: string): Promise<{ entregados: number; forraje: number }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/forraje/entregar`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ catalogSlug }),
+  })
+}
+export async function postSacrificar(saveId: string, ganadoId: string): Promise<{ comida: number; almacen: Record<string, number>; perdido: number }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/ganado/${ganadoId}/sacrificar`, { method: 'POST' })
+}
+
 export async function postSoltarTameo(saveId: string, npcSlug: string): Promise<{ ok: boolean }> {
   return fetchJson(`${API_URL}/saves/${saveId}/tameo-pendientes/${npcSlug}/soltar`, { method: 'POST' })
 }

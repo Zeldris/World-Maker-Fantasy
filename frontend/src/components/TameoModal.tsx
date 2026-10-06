@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Attribute } from '../types'
-import { postIntentarTameo, postConfirmarTameo, postSoltarTameo, type TameoPendiente, type OpposedRollInfo } from '../lib/api'
+import { postIntentarTameo, postConfirmarTameo, postSoltarTameo, postAlCorral, type TameoPendiente, type OpposedRollInfo } from '../lib/api'
 import { attributeLabels, opposedRollToSides } from '../lib/dice'
 import { DiceRollVs } from './DiceRoll'
 import { SelectionModalShell, confirmButtonClasses } from './SelectionModalShell'
@@ -60,6 +60,17 @@ export function TameoModal({ saveId, pendiente: initial, onConfirmado, onSoltado
     onConfirmado()
   }
 
+  /// CR-55 (Q3): el ganado puede ir al corral en vez de ser compañero.
+  async function handleAlCorral() {
+    setBusy(true)
+    const ok = await runCatchingError(() => postAlCorral(saveId, pendiente.npcSlug), 'No se pudo llevar al corral.')
+    if (ok === undefined) {
+      setBusy(false)
+      return
+    }
+    onConfirmado()
+  }
+
   async function handleSoltar() {
     setBusy(true)
     const ok = await runCatchingError(() => postSoltarTameo(saveId, pendiente.npcSlug), 'No se pudo soltar.')
@@ -79,9 +90,16 @@ export function TameoModal({ saveId, pendiente: initial, onConfirmado, onSoltado
       cancelDisabled={busy}
       footer={
         umbralCompletado && (
-          <button type="button" onClick={handleConfirmar} disabled={busy} className={confirmButtonClasses('accent')}>
-            {busy ? 'Confirmando...' : 'Confirmar compañero'}
-          </button>
+          <>
+            <button type="button" onClick={handleConfirmar} disabled={busy} className={confirmButtonClasses('accent')}>
+              {busy ? 'Confirmando...' : 'Confirmar compañero'}
+            </button>
+            {pendiente.alCorral && (
+              <button type="button" onClick={handleAlCorral} disabled={busy} className={confirmButtonClasses('accent')}>
+                🐑 Al corral
+              </button>
+            )}
+          </>
         )
       }
     >

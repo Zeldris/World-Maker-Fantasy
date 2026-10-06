@@ -1698,9 +1698,9 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
 - **CR-60** Ingresos pasivos del Reino y de las facciones (usuaria, 2026-10-06): fuentes de
   Goirnos que no dependan de los trabajadores (hoy solo el comercio y las expediciones). Necesita
   una ronda de diseño. Hito `0.4`. **M**
-- **CR-55** Ganadería (Q9, Q11, Q13 de la Fase D; ronda propia aceptada el 2026-10-06, decisiones
+- ~~**CR-55** Ganadería~~ ✅ 2026-10-06 (Q9, Q11, Q13 de la Fase D; ronda propia aceptada el 2026-10-06, decisiones
   Q1-Q15 en [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-cr-55-ganadería-ronda-aceptada-por-la-usuaria-el-2026-10-06)).
-  🚧 Pasos:
+  Pasos (todos hechos):
   - ~~55a~~ ✅ 2026-10-06: reglas puras (`cronista/ganaderia.ts`, 19 tests): etapas por categoría, producción, crías, hambre y
     valor de la comida cruda.
   - ~~55b~~ ✅ 2026-10-06: oficio `domador-…` → `ganadero-…` (migración `20261006160000_oficio_ganadero`: progreso, maestros, expediciones y edificios), receta «Corrales del Ganadero». El edificio de catálogo Serhu conserva su nombre canónico («Corrales del Domador»), pregunta a Álvaro.
@@ -1708,7 +1708,8 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   - ~~55d~~ ✅ 2026-10-06: `avanzarGanadoReino` en el avance diario (forraje de Fibrerías; comen y beben de las reservas; producción con ganadero; la leche a la comida por su valor y la lana y las plumas al Almacén; cría semanal; muertes por hambre, sed y vejez). La orden fija de leche desaparece (migración `20261006171000_sin_orden_leche`); Cuajada con `curaHambre` 12.
   - ~~55e~~ ✅ 2026-10-06: «Sacrificar» (`POST /saves/:id/ganado/:ganadoId/sacrificar`): lo de desollar la especie por su etapa; la carne a la comida por su valor y lo demás al Almacén; sin Desolladero, piel y hueso a la mitad; una cría no se sacrifica.
   - ~~55f~~ ✅ 2026-10-06: ganado de las facciones por cohortes (`GanadoFaccion`, migración `20261006180000_ganado_faccion`; `cronista/ganadoFacciones.ts` puro y `ganadoFaccionesBd.ts`), dentro de `producirFacciones`: ganaderos (1 por 5) y fibreros salen de sus trabajadores y no dan la comida pasiva; leche, huevos y carne de lo sacrificado a su comida; lana y plumas a su almacén; crías semanales por corral; hambre y vejez. Rebaño Serhu sembrado (60 Múrgol, 20 Corretolvas, plazas 80/30). Ajustes Q16: leche ×3, Huevo de Corretolvas, pastoreo en las Llanuras.
-  - 55g: Reino › Corrales en el front.
+  - ~~55g~~ ✅ 2026-10-06: Reino › Corrales (`CorralesSection.tsx`: forraje, entrega de pastos, aviso de hambre y sed, tarjeta por corral con especie, plazas, ♂/♀ y crías, ganaderos, producción media al día y «Sacrificar»); «Al corral» en el modal de domesticar.
+  - **Queda** (fuera de `CR-55`): la fibra del Coracelo y las preguntas a Álvaro (`propuestas-lore.md`, «Ganadería»); súbditos como ganaderos (hoy lo son los compañeros asignados al corral); comprar animales (`CR-51`); la comida pasiva de todos (`CR-61`).
   - El Corredor de Cauce nunca. **L**
 - **CR-56** Usos de la fauna (Q10, Q12).
   - Ficha de cada especie: producción, guardia, compañero de Domador y porte.

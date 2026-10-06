@@ -3,7 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { ownerKeyFor } from '../../services/reinoOwner.js';
 import { corralesDelReino, entregarPastos, etapaDelAnimal, forrajeDeFibrerias, huecoDeForraje, sacrificar } from '../../services/cronista/ganadoReino.js';
-import { etapasDe } from '../../services/cronista/ganaderia.js';
+import { etapasDe, produccionDelDia } from '../../services/cronista/ganaderia.js';
 import { rejectIfEnded, rejectIfPendingDeath, lockRowForUpdate } from './shared.js';
 
 export async function ganadoRoutes(app: FastifyInstance) {
@@ -18,6 +18,8 @@ export async function ganadoRoutes(app: FastifyInstance) {
       const especies = [...new Set(corrales.flatMap((c) => c.animales.map((a) => a.especie)))];
       const fauna = await tx.npc.findMany({ where: { worldId: save.worldId, saveId: null, slug: { in: especies } }, select: { slug: true, name: true, faunaCategoria: true } });
       const porSlug = new Map(fauna.map((f) => [f.slug, f]));
+      const productos = await tx.itemCatalog.findMany({ where: { worldId: save.worldId, slug: { in: ['leche-murgol', 'lana-murgol', 'huevo-corretolvas', 'plumas-rojizas'] } }, select: { slug: true, name: true } });
+      const nombreProducto = new Map(productos.map((p) => [p.slug, p.name]));
       const stats = await tx.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId: save.id }) }, select: { forraje: true, ganadoDiasSinComer: true, ganadoDiasSinBeber: true } });
       return {
         forraje: stats?.forraje ?? 0,
@@ -28,6 +30,15 @@ export async function ganadoRoutes(app: FastifyInstance) {
         corrales: corrales.map((c) => ({
           ...c,
           especieNombre: c.especie ? (porSlug.get(c.especie)?.name ?? c.especie) : null,
+          // Q10: lo que produce de media al día con sus ganaderos (bien comido y bebido).
+          produccionDia: (() => {
+            if (!c.especie) return [];
+            const cat = porSlug.get(c.especie)?.faunaCategoria ?? null;
+            const etapas = c.animales.map((a) => etapaDelAnimal(a, cat, ahora).etapa);
+            const suma: Record<string, number> = {};
+            for (let d = 0; d < 6; d++) for (const [slug, n] of Object.entries(produccionDelDia(c.especie, etapas, c.ganaderos.length, d, true))) suma[slug] = (suma[slug] ?? 0) + n;
+            return Object.entries(suma).map(([slug, n]) => ({ slug, nombre: nombreProducto.get(slug) ?? slug, porDia: Math.round((n / 6) * 10) / 10 }));
+          })(),
           animales: c.animales.map((a) => {
             const cat = porSlug.get(a.especie)?.faunaCategoria ?? null;
             const { edadDias, etapa } = etapaDelAnimal(a, cat, ahora);
