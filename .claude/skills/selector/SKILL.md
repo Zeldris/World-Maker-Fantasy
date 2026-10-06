@@ -16,7 +16,7 @@ Al empezar una tarea, clasifícala con la tabla y actúa según su fila. Flujo c
 | Tarea de roadmap acotada (componente, ajuste, test, endpoint pequeño) | — | medio | — |
 | Cambio mecánico (docs, bitácora, renombrar, adaptar tests a una firma nueva) | — | medio o ligero | ligero |
 | Revisar el diff antes de un PR a `main` | `/code-review` (de serie) y, tras los arreglos, `pr` para la descripción | grande | — |
-| Cierre de fase o de hito | `/retro`; cada pocas fases, `/improve-codebase-architecture` | grande | — |
+| Cierre de fase o de hito | `retro` (la lanza Claude; las propuestas las confirma la usuaria); cada pocas fases, `/improve-codebase-architecture` | grande | — |
 | Escribir CLAUDE.md, skills o documentos para agentes | `writing-for-agents` | medio | — |
 
 Reglas:

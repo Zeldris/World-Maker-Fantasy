@@ -1,13 +1,15 @@
 ---
 name: retro
-description: "Conduct a retrospective on a coding session."
-disable-model-invocation: true
+description: "Conduct a retrospective on a coding session. Use when a phase or milestone closes."
 ---
 
-> **En este repositorio:** las propuestas, en español; las que se acepten entran como tarea con
-> hito en su roadmap (`CLAUDE.md`, «Ninguna tarea sin hito»).
+> **En este repositorio:** la lanza Claude al cerrar cada fase o hito (decisión de la usuaria,
+> 2026-10-06). La sesión a revisar es la fase entera, que suele cruzar sesiones de las dos cuentas:
+> sus commits, la bitácora y las entradas de sus tareas en los roadmaps. Las propuestas, en español,
+> se presentan a la usuaria y **ahí acaba el paso**: ella las revisa y decide. Solo las que confirme
+> entran como tarea con hito en su roadmap (`CLAUDE.md`, «Ninguna tarea sin hito»).
 
-The user has asked for a **retrospective**. You are suggesting improvements to the coding agent's **environment** to improve future runs.
+A phase has closed, so it is time for a **retrospective**. You are suggesting improvements to the coding agent's **environment** to improve future runs.
 
 ## Steps
 
