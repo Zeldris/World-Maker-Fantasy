@@ -19,6 +19,7 @@ import { aplicarEfectos, CUALQUIERA_SALVO_ORIGEN, type CtxEfecto, type Efecto } 
 import { registrarSuceso, type NuevoSuceso } from './sucesos.js';
 import { dispararPorSuceso } from './consecuencias.js';
 import type { TipoSuceso } from './catalogoSucesos.js';
+import { REACCIONES_ETIQUETAS } from './etiquetas.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -272,6 +273,8 @@ export const REACCIONES: Reaccion[] = [
       return [{ tipo: 'REBELION', actores: [{ entidadTipo: 'FACCION', entidadId: slug, papel: 'VICTIMA' }], datos: { reino: f.name } }];
     },
   },
+  // CR-14: etiquetas del personaje (etiquetas.ts).
+  ...REACCIONES_ETIQUETAS,
 ];
 
 /// Región (nombre de `Location.region`, el de `REGIONES_VECINAS`) a partir de su slug.

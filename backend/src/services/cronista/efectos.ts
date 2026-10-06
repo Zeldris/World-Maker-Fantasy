@@ -80,7 +80,9 @@ export type Efecto =
   | { tipo: 'ajustarReino'; faccionSlug?: string; riqueza?: number; felicidad?: number }
   | { tipo: 'situarNpc'; npcId: string; locationId: string; condicion: CondicionFisica }
   | { tipo: 'botinAlJugador'; goirnos: number; mensaje: string }
-  | { tipo: 'crearNpc'; faccionSlug: string; como?: 'DESTACA' | 'NACE' };
+  | { tipo: 'crearNpc'; faccionSlug: string; como?: 'DESTACA' | 'NACE' }
+  | { tipo: 'anadirEtiqueta'; clave: string; texto: string }
+  | { tipo: 'quitarEtiqueta'; clave: string };
 
 export interface ResultadoEfecto {
   aplicado: boolean;
@@ -114,6 +116,10 @@ export async function aplicarEfecto(ctx: CtxEfecto, e: Efecto): Promise<Resultad
       return asignarCargo(ctx, e);
     case 'cambiarCohesion':
       return cambiarCohesion(ctx, e);
+    case 'anadirEtiqueta':
+      return anadirEtiqueta(ctx, e);
+    case 'quitarEtiqueta':
+      return quitarEtiqueta(ctx, e);
     case 'cambiarLider':
       return cambiarLider(ctx, e);
     case 'crearFaccion':
@@ -215,6 +221,37 @@ async function asignarCargo(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'asignarC
     tipo: 'HEREDERO_DESIGNADO',
     actores: [actorNpc(npc.id, 'BENEFICIARIO'), actorFaccion(faccion.slug, 'AFECTADO')],
     datos: { heredero: npc.name, lider: lider?.name ?? 'sin líder', faccion: faccion.name },
+  });
+  return { aplicado: true, sucesoId };
+}
+
+/// CR-14: una etiqueta del personaje. Si ya la tenía activa no hace nada; si estaba apagada, vuelve.
+async function anadirEtiqueta(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'anadirEtiqueta' }>): Promise<ResultadoEfecto> {
+  const clave = { saveId_entidadTipo_entidadId_clave: { saveId: ctx.saveId, entidadTipo: 'PERSONAJE', entidadId: ctx.saveId, clave: e.clave } };
+  const ya = await ctx.tx.etiqueta.findUnique({ where: clave, select: { activa: true } });
+  if (ya?.activa) return NO_APLICADO;
+  const save = await ctx.tx.save.findUniqueOrThrow({ where: { id: ctx.saveId }, select: { characterName: true } });
+  const sucesoId = await registrar(ctx, {
+    tipo: 'ETIQUETA_GANADA',
+    actores: [{ entidadTipo: 'PERSONAJE', entidadId: ctx.saveId, papel: 'AFECTADO' }],
+    datos: { personaje: save.characterName, etiqueta: e.texto },
+  });
+  const datos = { texto: e.texto, sucesoId, desdeMinutes: ctx.fictionalMinutes, activa: true };
+  await ctx.tx.etiqueta.upsert({ where: clave, create: { saveId: ctx.saveId, entidadTipo: 'PERSONAJE', entidadId: ctx.saveId, clave: e.clave, ...datos }, update: datos });
+  return { aplicado: true, sucesoId };
+}
+
+async function quitarEtiqueta(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'quitarEtiqueta' }>): Promise<ResultadoEfecto> {
+  const etiqueta = await ctx.tx.etiqueta.findUnique({
+    where: { saveId_entidadTipo_entidadId_clave: { saveId: ctx.saveId, entidadTipo: 'PERSONAJE', entidadId: ctx.saveId, clave: e.clave } },
+  });
+  if (!etiqueta?.activa) return NO_APLICADO;
+  await ctx.tx.etiqueta.update({ where: { id: etiqueta.id }, data: { activa: false } });
+  const save = await ctx.tx.save.findUniqueOrThrow({ where: { id: ctx.saveId }, select: { characterName: true } });
+  const sucesoId = await registrar(ctx, {
+    tipo: 'ETIQUETA_PERDIDA',
+    actores: [{ entidadTipo: 'PERSONAJE', entidadId: ctx.saveId, papel: 'AFECTADO' }],
+    datos: { personaje: save.characterName, etiqueta: etiqueta.texto },
   });
   return { aplicado: true, sucesoId };
 }

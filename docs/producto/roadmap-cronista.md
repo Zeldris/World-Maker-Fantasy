@@ -365,7 +365,7 @@ alcance de conocimiento inicial (§ 9). Lista inicial (ampliable como datos):
 
 | Familia | Tipos |
 |---|---|
-| **JUGADOR** | `ACCION_RELEVANTE`, `COMBATE_GANADO`, `COMBATE_PERDIDO`, `MUERTE_CAUSADA`, `PERDON_CONCEDIDO` (dejar vivir/clemente), `CAPTURA`, `PROMESA`, `PROMESA_CUMPLIDA`, `PROMESA_ROTA`, `REGALO` (entregar), `ROBO`, `MISION_COMPLETADA`, `MISION_FALLIDA`, `DESCUBRIMIENTO`, `OFICIO_APRENDIDO`, `MUERTE_JUGADOR`, `RENACER`, `FIN_PARTIDA` |
+| **JUGADOR** | `ACCION_RELEVANTE`, `COMBATE_GANADO`, `COMBATE_PERDIDO`, `MUERTE_CAUSADA`, `PERDON_CONCEDIDO` (dejar vivir/clemente), `CAPTURA`, `PROMESA`, `PROMESA_CUMPLIDA`, `PROMESA_ROTA`, `REGALO` (entregar), `ROBO`, `MISION_COMPLETADA`, `MISION_FALLIDA`, `DESCUBRIMIENTO`, `OFICIO_APRENDIDO`, `MUERTE_JUGADOR`, `RENACER`, `FIN_PARTIDA`, `ETIQUETA_GANADA`, `ETIQUETA_PERDIDA` (CR-14) |
 | **VIDA_MUERTE** | `NACIMIENTO_NOTABLE` (NPC con nombre), `MUERTE_NPC`, `MUERTE_LIDER`, `SUCESION`, `HEREDERO_DESIGNADO`, `RECUPERACION_NPC`, `CADAVER_DESAPARECE` |
 | **DIPLOMACIA** | `CAMBIO_RELACION` (de `recordFactionEvent`), `GUERRA_DECLARADA`, `TREGUA`, `ALIANZA`, `TRATADO_COMERCIAL`, `RUPTURA`, `SABOTAJE`, `ESPIONAJE`, `ESCARAMUZA` (CR-12) |
 | **FACCION** | `FACCION_CAE`, `FACCION_ESCINDIDA`, `FACCION_FUNDADA`, `FACCION_ABSORBIDA`, `CAMBIO_LIDER`, `TERRITORIO_CONQUISTADO`, `TERRITORIO_PERDIDO`, `EXPEDICION_SALE`, `EXPEDICION_INTERCEPTADA`, `EXPEDICION_VUELVE`, `MALESTAR_INTERNO` (CR-12) |
@@ -1540,8 +1540,13 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     suceso y baja la reputación con esa facción).
   - **Q9 Valores:** tabla a mano para los compañeros que ya hay (propuesta de lore para Álvaro) y
     regla por pueblo para los nuevos (orcos `lealtad_clan +2`, Nabieus `prudencia +2`…).
-- **CR-14** Etiquetas (§ 8.1). **S** Incluye las reacciones de CR-10: etiqueta tras matar a un NPC
+- 🚧 **CR-14** Etiquetas (§ 8.1). **S** Incluye las reacciones de CR-10: etiqueta tras matar a un NPC
   con nombre y evaluación de etiquetas por cualquier suceso del jugador como autor.
+  14a ✅ 2026-10-06 (modelo `Etiqueta`, migración `20261006020000_etiquetas`; efectos
+  `anadirEtiqueta`/`quitarEtiqueta` con sus sucesos `ETIQUETA_GANADA`/`ETIQUETA_PERDIDA`; reglas en
+  `cronista/etiquetas.ts` como reacciones: Verdugo de, Carnicero, Cazador temido, Clemente,
+  Rompejuramentos, Fundador, Salvador de; Amigo de / Enemigo de por reputación, revisadas cada día
+  en el avance diario). Quedan: 14b efectos mecánicos (Q4) y 14c ficha del Personaje.
 - **CR-15** Aprobación con valores (§ 8.2). **M**
 - **CR-16** Recuerdos de NPC (§ 8.3). **S** Incluye las reacciones de CR-10: `recuerdo(testigos,
   jugador, −6)` tras una muerte causada y `recuerdo(víctima, jugador, +5)` tras un perdón.

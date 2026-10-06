@@ -466,6 +466,7 @@ model Save {
   /// Libro de Sucesos (Cronista, CR-1) — todo lo que pasa en la partida, del jugador o del mundo.
   sucesos            Suceso[]
   conocimientos      Conocimiento[]
+  etiquetas          Etiqueta[]
   consecuencias      Consecuencia[]
   sessionFacts       SessionFact[]
   foundedFactions    Faction[]
@@ -3673,4 +3674,26 @@ model Caravana {
   createdAt         DateTime       @default(now())
 
   @@index([saveId, status])
+}
+
+/// CR-14 (hito 0.3): títulos ganados por lo que se ha hecho (roadmap-cronista.md § 8.1). Por ahora
+/// solo del personaje (`entidadTipo` PERSONAJE, `entidadId` = id de la partida).
+model Etiqueta {
+  id           String  @id @default(cuid())
+  saveId       String
+  save         Save    @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  entidadTipo  String
+  entidadId    String
+  /// "VERDUGO_DE:<npc>", "AMIGO_DE:<facción>", "CLEMENTE"…
+  clave        String
+  /// Cómo se lee: «Verdugo de Torgash».
+  texto        String
+  /// Suceso `ETIQUETA_GANADA` que la dio (con sus causas).
+  sucesoId     String
+  desdeMinutes Int
+  /// false = apagada (redención, o una relación que volvió a la normalidad).
+  activa       Boolean @default(true)
+
+  @@unique([saveId, entidadTipo, entidadId, clave])
+  @@index([saveId, activa])
 }
