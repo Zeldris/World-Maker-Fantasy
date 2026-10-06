@@ -1,6 +1,6 @@
 # LENGUAS de Berig — diccionario compacto
 Qué es: todas las palabras que existen. Para nombres nuevos, combinar estas antes de inventar.
-Fuente: docs/rpgtarkor/lore-mundo/lenguas-helek.md. Sincronizado: 2026-09-27.
+Fuente: docs/rpgtarkor/lore-mundo/lenguas-helek.md. Sincronizado: 2026-10-06.
 
 ## Kektira (orcos, uso privado y ritual)
 Fonética: consonantes duras (-g, -k, -gh), vocales cortas, apóstrofe entre raíz y palabra
@@ -24,6 +24,9 @@ Vash'grath=primera pieza (compartirla define quién es de la manada) · Nur=heri
 Feg'nur=el que no se abandona (abandonarlo es el tabú máximo) · Ashi=oler · Krul=colmillo propio ·
 Ashi'krul=el colmillo que huele (daga) · Sil=fuego · Grath'sil=tierra que arde (la guerra) ·
 Leshra=ave de noche.
+**No hay sufijos en Feg** (`-tar`, `-ish`, `-mek`, `-tu`, `-dor`… no existen). Las costumbres Faerus
+se nombran en lengua común. No uses palabras orcas (Terud'beh, Ur'gathek) ni nabieus (Tovh, Karo) en
+boca Faerus.
 
 ## Naebius (Nabieus; ellos la llaman "el silencio")
 Los clanes se nombran "Keseg + [algo]" ("el fin de…"), nunca con una palabra de "clan".

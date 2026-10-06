@@ -1,6 +1,6 @@
 # RAZAS de Berig (y una línea por las de Vaelira)
 Qué es: cómo es y cómo vive cada raza, para describir NPC y culturas sin inventar rasgos.
-Fuente: razas.md, clanes-orcos.md, historia.md. Sincronizado: 2026-09-27.
+Fuente: razas.md, clanes-orcos.md, historia.md. Sincronizado: 2026-10-06.
 
 ## Goirntes (Semilla: Goirme) · Meseta del Orden
 - **Cuerpo:** piel gris, fría, casi mineral y quitinosa, que se tensa con un brillo metálico al
@@ -42,6 +42,10 @@ Fuente: razas.md, clanes-orcos.md, historia.md. Sincronizado: 2026-09-27.
   **Tabú: levantar la voz.** Nombran sus clanes "Keseg + [algo]". Sin gobierno central: se reúnen
   en cónclave (Keseg'Vhurne) solo ante algo grave. Leen el terreno apoyando la palma
   (Tovh'vhurne). Son investigadores por herencia del reino que Madre enterró.
+- **El cónclave\*:** círculo de piedras en cualquier claro; cada uno con la palma en el suelo, nadie
+  habla. **Pacto del Umbral\*** (~3.650, tras la Purga): Keseg Sael y Keseg Prisilke no dicen a nadie
+  dónde vive el otro clan; el Karo'sael incluye callar dónde están los suyos. Quien lo rompe: nadie
+  le vuelve a hablar.
 - **Clanes:** Keseg Sael (Margen, El Refugio sin Nombre) y Keseg Prisilke (Ciénaga, Jeyselt).
 - **Política:** integrados en la Concordia a la fuerza como mensajeros (código Karo'sael). No
   olvidan el Yugo ni la Purga.
@@ -56,6 +60,19 @@ Fuente: razas.md, clanes-orcos.md, historia.md. Sincronizado: 2026-09-27.
   (Vash'grath, que define quién es de la manada). **Tabú: abandonar a un herido (Feg'nur).** Sin
   escritura, sin títulos de mando: decide quien está sentado en el **Jakut** mientras está sentado.
   Los acuerdos solo duran si se sellan compartiendo la primera pieza.
+- **Costumbres\*** (nombres en común; el Feg no tiene palabra para ellas): enseñan cazando (olfato,
+  postura, práctica; nunca se niega la pieza al que falla); crianza en común, adultos a los **8** con
+  su primera pieza; historias junto al fuego (leña de Telda) en Kegi; muescas en el mango del
+  Ashi'krul por cada presa o peligro aprendido; un forastero entra dejándose oler, compartiendo el
+  Vash'grath y prometiendo el Feg'nur; quien falla se lava 3 días con ceniza de Telda; saludo
+  oliéndose el cuello y rozando el hocico (por el olor saben la familia: el **rastro**); el camino
+  de las piedras (Hashma, ruinas del Claro, Kegi) cada año; el herido que no se recupera se queda,
+  cuida crías y enseña; festín donde cae una gran presa; **a los muertos se les huele una última vez
+  y se les deja en la selva** (ni se entierran ni se queman); su Ashi'krul pasa a quien querían.
+- **Historia\*:** Jakut de Hashma (~0-600) · Árbol de las marcas (~600-900, garra = qué, olor = quién;
+  delimita la caza; hoy es su tablón) · mil años salvajes (~1.000-2.000: la manada se parte y se junta
+  con el olfato como mapa y la primera pieza para todos los que ayudan) · cuidado de la Telda (~1.700:
+  no talan árboles viejos) · primera tala del borde (~2.800-3.050) · La Tolda de Kegi (~3.000-3.500).
 - **Poblados:** Hashma (selva, costa oeste) y Kegi (franja sur de las Llanuras); El Claro de la
   Manada es punto de reunión. Solo confían de verdad en los Maktor (Pacto de la Primera Pieza).
 - **Política:** fuera de toda alianza. Hostiles con la Concordia y con los Serhu.

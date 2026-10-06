@@ -649,6 +649,225 @@ cargo.
 
 ---
 
+## Tanda OpenCode 2026-10-03 — revisión del 2026-10-06 (Cultura Faerus)
+
+**Revisión delegada en Claude por la usuaria (2026-10-06).** 14 propuestas de costumbres Faerus:
+quedan 11 fichas (C-01 a C-11; dos propuestas de muerte fusionadas en C-11), una más fusionada con
+el Árbol de las marcas ([B-05](#b-05--600-900--el-árbol-de-las-marcas-faerus-fusión-de-dos)) y una
+descartada ([revision-lore.md](revision-lore.md#tanda-opencode-2026-10-03--descartes-revisión-del-2026-10-06)).
+
+**Seguimiento:**
+- [x] **En docs** (2026-10-06): ver «Archivos destino» de cada ficha; resumen en `docs/canon-opencode/`.
+- [ ] **Código:** nada implementado (ni `loreChunks.ts` ni catálogo). Ver `ampliar-lore-checklist.md`.
+
+**Correcciones que se repiten en toda la tanda** (para el agente `lore` en la siguiente):
+- **Nombres:** el Feg no tiene sufijos como `-tar`, `-ghep`, `-ish`, `-tu`, `-mek` o `-dor`; los
+  nombres de las costumbres van en lengua común. *Terud'beh*, *Terud'orik*, *Ur'gathek* y *Krenoth*
+  son orcos; *Tovh'vhurne*, *Tovh* y *Karo* son nabieus. *Ghurna*, *Yashar*, *Drogh'feg* y
+  *Krul'ghep* no tienen base.
+- **El archivo destino** `docs/rpgtarkor/canonical/cultura.md` no existe: las costumbres Faerus van
+  a `razas.md` § Faerus.
+- **Lugares y especies:** la Jusha Esmeralda es un pez, no una hierba; los Feg Ger viven en Kegi, no
+  en La Hondonada; La Veta Helada está en Cristal Helado, lejos de cualquier ruta Faerus.
+- **El Jakut** es un sitio (la losa de Kegi, la plataforma de Hashma), no un trono con trofeos ni un
+  cargo que se elija.
+- **Edad adulta Faerus: 8 años** (ciclo vital aprobado el 2026-10-05), no 7.
+
+Todas comparten estos campos:
+
+**Acción de implementación:** añadir
+**Prioridad:** baja (media en C-05 y C-09, que el Cronista puede usar)
+**Dependencias:** ninguna
+**Archivos destino:**
+- `docs/rpgtarkor/lore-mundo/razas.md` (§ Faerus, nueva subsección «Costumbres de la manada»)
+
+---
+
+### C-01 · Enseñar cazando (antes «Jakut'tar»)
+**Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-06)**
+
+**Notas del aprobador:** quitado que la primera pieza se niegue al aprendiz que falla: el
+*Vash'grath* se comparte siempre, y negarlo sería romper el tabú. La enseñanza es en la caza, no
+«en el Jakut».
+
+**Propuesta:** los Faerus no tienen escritura y enseñan durante la caza, por tres canales a la
+vez: el **olfato** (el mayor deja oler la presa, el camino o el miedo; así se aprende el porqué), la
+**postura** (cómo ir a dos o a cuatro patas para no hacer ruido) y la **práctica** (el joven repite
+hasta que le sale). El que falla no se queda sin comer: repite la caza siguiente al lado del mismo
+mayor.
+
+**Preguntas abiertas resueltas:**
+1. ¿Influye el *Karo'sael*? → No; es nabieu.
+2. ¿Hay registro olfativo de lecciones pasadas? → No; la memoria está en quien caza.
+3. ¿Cómo se enseña lo de cambiar de forma? → Fuera de esta ficha; los Cambiaformas no son una
+   costumbre de la manada.
+
+---
+
+### C-02 · La crianza en común (antes «Feg'ghep, el nido»)
+**Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-06)**
+
+**Notas del aprobador:** edad adulta a los 8 (no 7); quitado el *Yashar*; la pieza no se deja «en
+el Jakut»: se comparte. Los nidos siguen a la manada, porque Hashma y Kegi son asentamientos fijos.
+
+**Propuesta:** las crías se crían entre todos en una zona común del asentamiento (en Kegi, junto al
+Yegr): cualquier adulto da de comer a cualquier cría. Con 2 años juegan con huesos y pieles, con 4
+rastrean y con 6 cazan piezas pequeñas al lado de un mayor. A los **8**, cuando cazan su primera
+pieza solos sin poner a nadie en peligro, la comparten con la manada como *Vash'grath*: desde ese
+día cazan como adultos.
+
+**Preguntas abiertas resueltas:**
+1. ¿Nidos fijos o móviles? → Fijos, en el asentamiento.
+2. ¿Nombre de los jóvenes? → En común, «crías»; sin palabra Feg por ahora.
+
+---
+
+### C-03 · Las historias junto al fuego (antes «Sil'tar»)
+**Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-06)**
+
+**Notas del aprobador:** quitados la *Ghurna*, *Ghurmek* y las estaciones con nombre orco. Lo de que
+la historia se pierda si la llama parpadea se cambia: es una costumbre, no una condición.
+
+**Propuesta:** en Kegi, al anochecer, la manada se junta alrededor del *Sil* (fuego) y los mayores
+cuentan las cacerías de antes: dónde, qué presa, quién cayó. El olor del humo y de la carne asada es
+lo que los jóvenes asocian a esas historias. En la estación fría se cuentan las de pasar hambre; en
+la de caza, las de grandes presas.
+
+**Preguntas abiertas resueltas:**
+1. ¿Combustible? → Leña de Telda, que arde despacio.
+2. ¿Títulos? → En común, por el nombre de la presa o del caído.
+
+---
+
+### C-04 · Las marcas de la daga (antes «Krul'tar»)
+**Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-06)**
+
+**Notas del aprobador:** las marcas no van en el colmillo vivo, sino en el **Ashi'krul** (la daga
+hecha del propio colmillo, canon).
+
+**Propuesta:** cada Faerus talla en el mango de su *Ashi'krul* una muesca por presa grande o
+peligro que aprendió a leer. Antes de una caza difícil, los jóvenes repasan las muescas con un
+mayor. La daga de un cazador viejo enseña más que muchas palabras; al morir pasa a quien él quería
+(ver C-11).
+
+**Preguntas abiertas resueltas:**
+1. ¿Se heredan? → La daga sí; las muescas nuevas son de quien la lleva.
+2. ¿Hay una daga sagrada? → No.
+
+---
+
+### C-05 · Entrar en la manada (antes «Vash'tu»)
+**Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-06)**
+
+**Notas del aprobador:** quitada la escucha con la palma (nabieu) y la marca de grasa en la frente.
+Útil para el Cronista: es cómo un forastero (o el jugador) gana la confianza de una manada.
+
+**Propuesta:** un forastero que quiere quedarse con una manada se deja oler por todos. Si lo
+aceptan, se le ofrece compartir el *Vash'grath* de una caza en la que ayudó; comer es aceptar.
+Después promete en voz alta el *Feg'nur*: no abandonar nunca a un herido. Desde ese día es de la
+manada mientras lo cumpla. Quien lo rompe sale y no vuelve.
+
+**Preguntas abiertas resueltas:**
+1. ¿Marca? → Ninguna; queda el olor de la manada.
+2. ¿Nombre para los no aceptados? → Ninguno: siguen siendo forasteros.
+3. ¿Influye el *Karo'sael*? → No.
+
+---
+
+### C-06 · Lavar el error (antes «Ashi'tar»)
+**Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-06)**
+
+**Notas del aprobador:** sin la Jusha Esmeralda (es un pez) y sin *Tovh'ash*; Feg Ger, no «La
+Hondonada». Queda una limpieza con ceniza de Telda.
+
+**Propuesta:** quien falla una caza por descuido o hiere a un compañero se frota con ceniza de
+Telda y agua durante tres días y caza aparte. El miedo y la culpa huelen, y la manada no quiere ese
+olor en una caza. Cuando ya no huele, vuelve. Quien se niega a lavarse acaba solo.
+
+**Preguntas abiertas resueltas:**
+1. ¿Lo hace solo? → Solo, pero alguien le lleva de comer (*Feg'nur*).
+
+---
+
+### C-07 · El saludo por el olor (antes «Feg'ish»)
+**Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-06)**
+
+**Notas del aprobador:** se enlaza con el **rastro** de los linajes (`CR-52`): por el olor, un
+Faerus sabe de qué familia es otro. Quitado el *Krul'feg* como nombre del gesto.
+
+**Propuesta:** dos Faerus que se encuentran se acercan, se huelen el cuello y se rozan el hocico.
+Por el olor saben de qué manada y de qué familia es el otro, si está herido y si tiene miedo. Con un
+forastero no hay roce: se le huele de lejos.
+
+**Preguntas abiertas resueltas:**
+1. ¿Igual en todas las manadas? → Sí; cambia el olor, no el gesto.
+
+---
+
+### C-08 · El camino de las piedras (antes «Karo'feg»)
+**Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-06)**
+
+**Notas del aprobador:** quitado *Karo* (nabieu) y La Veta Helada. La ruta une Hashma, El Claro de
+la Manada (arrasado ~4.006-4.008) y Kegi. Que no llegar te deje fuera de la manada choca con el
+*Feg'nur*: se quita.
+
+**Propuesta:** una vez al año, los jóvenes recorren con un mayor el camino entre Hashma, las ruinas
+de El Claro de la Manada y Kegi. En cada parada el mayor cuenta lo que pasó allí (el pacto con los
+Maktor, el Claro arrasado). De cada parada se trae una piedra que se deja junto al Jakut. Desde la
+caída de El Claro, la parada en sus ruinas es la más larga.
+
+**Preguntas abiertas resueltas:**
+1. ¿Nombre? → En común, «el camino de las piedras».
+2. ¿Versión de Kegi? → Es la misma ruta en sentido contrario.
+
+---
+
+### C-09 · Cuidar al herido (antes «Feg'nur'tar»)
+**Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-06)**
+
+**Notas del aprobador:** es el rito del tabú *Feg'nur*, canon. Útil para el Cronista (heridos que
+no pueden trabajar).
+
+**Propuesta:** un Faerus herido que no puede cazar no se queda atrás: los demás lo llevan al
+asentamiento y le dan de su caza hasta que pueda volver. Cuando caza de nuevo, su primera pieza es
+para la manada. Si nunca se recupera, se queda: cuida crías y enseña. Quien abandona a un herido es
+expulsado.
+
+**Preguntas abiertas resueltas:**
+1. ¿Y si nunca se recupera? → Se queda con la manada (ver arriba).
+
+---
+
+### C-10 · El festín de la gran presa (antes «Vash'mek»)
+**Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-06)**
+
+**Notas del aprobador:** quitado *Terud'orik* (orco) y lo de que quien no come no caza.
+
+**Propuesta:** cuando la manada abate una presa grande (un Gargantúa, un Aullador Rojo), todos
+comen juntos donde cayó, hasta hartarse, y los mayores cuentan la caza mientras se come. Es el día en
+que una manada se acuerda de por qué caza junta.
+
+---
+
+### C-11 · La despedida por el olor *(fusión de dos)*
+**Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-06)**
+
+**Notas del aprobador:** fusiona «Drogh'feg (el lazo de sangre)» y «Krul'dor (el paso de la
+manada)». Quitado el corte en la frente que no cicatriza y la elección de un nuevo Jakut (el Jakut no
+se elige: quien se sienta, decide). **El cuerpo se deja en la selva** (decisión de la usuaria,
+2026-10-06).
+
+**Propuesta:** cuando muere un Faerus, la manada entera pasa a olerlo una última vez, para guardar
+su olor. Después lo llevan a la selva y lo dejan allí, sin enterrar ni quemar: lo que la selva da,
+la selva se lo come. Su *Ashi'krul* pasa a quien él quería (C-04), y esa noche, junto al fuego,
+alguien cuenta su mejor caza (C-03).
+
+**Preguntas abiertas resueltas:**
+1. ¿Se entierra o se deja expuesto? → Se deja en la selva (la usuaria, 2026-10-06).
+2. ¿Y si no hay nadie para el Jakut? → No hace falta nadie: el Jakut es un sitio.
+
+---
+
 ## Categoría: Idiomas
 
 ### A-07 · 2026-09-27 — Vocabulario nuevo de la tanda
@@ -1240,6 +1459,229 @@ los Serhu).
 
 **Preguntas abiertas resueltas:**
 1. ¿El obelisco original será visitable o legible en juego? → Sí, cuando la Meseta sea jugable. Leerlo sería una pieza de la cadena de pruebas de Los del Obelisco. *(decidido por Claude, revisable)*
+
+---
+
+## Tanda OpenCode 2026-10-03 — revisión del 2026-10-06 (Historia y cronología)
+
+**Revisión delegada en Claude por la usuaria (2026-10-06).** 13 propuestas de historia: quedan 8
+fichas (B-01 a B-08; tres propuestas fusionadas en B-03 y una rescatada solo en parte en B-08) y 3
+descartadas. Los descartes, con su motivo y el texto original, están en
+[revision-lore.md § Tanda OpenCode 2026-10-03](revision-lore.md#tanda-opencode-2026-10-03--descartes-revisión-del-2026-10-06).
+Los nombres nuevos van en lengua común: el Feg es una lengua de sustantivos y verbos de caza, y las
+propuestas inventaban sufijos sin base (`-tar`, `-tu`, `-mek`…) o mezclaban palabras orcas o nabieus.
+
+**Seguimiento:**
+- [x] **En docs** (2026-10-06): ver «Archivos destino» de cada ficha; resumen en `docs/canon-opencode/`.
+- [ ] **Código:** nada implementado (ni `loreChunks.ts` ni catálogo). Ver `ampliar-lore-checklist.md`.
+
+### B-01 · Era mítica — El Cónclave del Primer Silencio (Nabieus)
+**Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-06)**
+
+**Acción de implementación:** añadir
+**Prioridad:** baja
+**Dependencias:** ninguna
+**Archivos destino:**
+- `docs/rpgtarkor/lore-mundo/cronologia-mitica.md` (tras «La segunda huida Nabieus»)
+- `docs/rpgtarkor/lore-mundo/razas.md` (§ Nabieus)
+
+**Notas del aprobador:** quitado el anacronismo «antes de ser integrados por la Concordia» (la
+Concordia nace hacia el 4.008) y el *Vash'grath*, que es Faerus. *Keseg'Vhurne* (el cónclave) y
+*Tovh'vhurne* (la escucha con la palma) ya son canon; esto les da origen.
+
+---
+
+**Propuesta:** tras la segunda huida, en el Margen oriental, los supervivientes descubren que la
+escucha con la palma (*Tovh'vhurne*) les deja «leer» el suelo juntos. Empiezan a reunirse en un
+círculo de piedras sueltas sobre la tierra roja: cada uno apoya la palma y nadie habla. Así deciden
+lo grave sin gobierno y sin escribir. Es el primer **Keseg'Vhurne**, el cónclave que todavía se
+convoca hoy ante algo grave y en el que Keseg Sael pone la mayoría de las voces. El círculo no es un
+edificio: es una práctica, y cualquier claro sirve. Lo que dura es la costumbre, no el sitio.
+
+**Preguntas abiertas resueltas:**
+1. ¿Qué «recordaba» el suelo? → Nada místico: la vibración enseña a escuchar juntos; la idea de que
+   el suelo guarda a Madre se queda como creencia, sin confirmar.
+2. ¿Cómo sobrevivió sin documentos? → Por la práctica: es como deciden lo grave desde entonces.
+
+---
+
+### B-02 · ~3.650-3.700 — El Pacto del Umbral (Nabieus)
+**Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-06)**
+
+**Acción de implementación:** añadir
+**Prioridad:** baja
+**Dependencias:** ninguna
+**Archivos destino:**
+- `docs/rpgtarkor/lore-mundo/cronologia.md` (tras la Purga Silenciosa)
+- `docs/rpgtarkor/lore-mundo/razas.md` (§ Nabieus)
+
+**Notas del aprobador:** el *Karo'sael* ya existía (nace con El Borde, ~2.100-2.800); el pacto no lo
+crea, lo amplía. El sello con *Vash'grath* se cambia por un gesto nabieu (las dos palmas sobre la
+misma piedra). Quitado *Tannis'sael* (que es leer mentiras en las pausas, no un pacto). La propuesta
+decía «para que la Concordia nunca vuelva a usarlos»: en el ~3.650 la Concordia no existe; es el
+orden Goirnte. El sitio pasa al borde noreste del Margen, que es donde se tocan con la Ciénaga.
+
+---
+
+**Propuesta:** tras la Purga Silenciosa (~3.650), Keseg Sael (Margen) y Keseg Prisilke (Ciénaga) se
+reúnen en el borde noreste del Margen, donde empieza la Ciénaga. Acuerdan tres normas para que el
+orden Goirnte nunca vuelva a usarlos a unos contra otros: no decir a nadie de fuera dónde vive
+el otro; no dejar señal que lleve a un asentamiento; no dejar entrar a nadie en el territorio del
+otro sin que el otro lo sepa. Lo sellan apoyando las palmas sobre la misma piedra. Desde entonces el
+*Karo'sael* (llevar sin abrir) se amplía a callar también dónde están los suyos. Quien lo rompe queda
+fuera del silencio: nadie le vuelve a hablar.
+
+**Preguntas abiertas resueltas:**
+1. ¿Cómo se transmitió 300 años sin escribirlo? → Se repite en cada Keseg'Vhurne.
+
+---
+
+### B-03 · ~1.000-2.000 — Los mil años salvajes en la selva (Faerus) *(fusión de tres)*
+**Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-06)**
+
+**Acción de implementación:** añadir (fusiona «El Rito de la Primera Manada Aterrada», «La Gran
+Separación del Feg Tusha» y «El Tratado del Olfato en Hashma», que contaban lo mismo)
+**Prioridad:** media
+**Dependencias:** ninguna
+**Archivos destino:**
+- `docs/rpgtarkor/lore-mundo/cronologia.md` (fila de los mil años salvajes)
+- `docs/rpgtarkor/lore-mundo/razas.md` (§ Faerus)
+
+**Notas del aprobador:** quitados los enganches inventados a Gorhorn (su año con los Faerus de las
+Llanuras ya está en el canon y no depende de esto). El *Vash'grath* no cambia (se comparte siempre,
+desde siempre); lo nuevo es a quién llega.
+
+---
+
+**Propuesta:** con el Estallido, especies del borde de las Llanuras mutan (Kirelon, Salamandra de
+Escoria, Imanio, Nuente) y algunas empiezan a cazar Faerus en vez de huir de ellos. Durante
+generaciones la manada de Hashma se parte en dos: los cazadores fuertes salen a los bordes y los
+viejos y las crías se retiran al corazón de la selva. Dos cosas la vuelven a juntar:
+- **El olfato como mapa:** la manada aprende a clasificar por el olor qué bestias se cazan, cuáles
+  se evitan y cuáles se dejan en paz porque avisan del peligro (si ellas huyen, algo viene).
+- **La primera pieza para todos:** el *Vash'grath* se comparte no solo con quien abate, sino con
+  todos los que ayudaron a llevar la presa hasta él. Es la versión de hoy.
+
+---
+
+### B-04 · ~0-600 — El Jakut de Hashma (Faerus)
+**Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-06)**
+
+**Acción de implementación:** añadir
+**Prioridad:** baja
+**Dependencias:** ninguna
+**Archivos destino:**
+- `docs/rpgtarkor/lore-mundo/cronologia.md`
+- `docs/rpgtarkor/lore-mundo/regiones/margen-silencioso.md` (§ Hashma)
+
+**Notas del aprobador:** era común, no mítica (tiene año). Quitado el nombre *Vash'jakut*
+(«sangre-trono») y la pregunta sobre Feg Ger, que no existe hasta el Pacto de la Primera Pieza
+(~2.300). El Jakut sigue el canon: es el sitio, no el cargo.
+
+---
+
+**Propuesta:** en los primeros siglos tras asentarse, la manada de Hashma se queda sin un sitio para
+decidir. Toma la plataforma ancha en la horquilla del árbol más viejo y la llama *Jakut*: quien está
+sentado decide, y solo mientras está sentado. Es el primer Jakut y el modelo del de Kegi siglos
+después.
+
+---
+
+### B-05 · ~600-900 — El Árbol de las marcas (Faerus) *(fusión de dos)*
+**Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-06)**
+
+**Acción de implementación:** añadir (fusiona «La Ruta de los Colmillos en Hashma», de Historia, y
+«Krul'feg (el límite del territorio)», de Cultura)
+**Prioridad:** media
+**Dependencias:** ninguna
+**Archivos destino:**
+- `docs/rpgtarkor/lore-mundo/razas.md` (§ Faerus)
+- `docs/rpgtarkor/lore-mundo/regiones/margen-silencioso.md`
+
+**Notas del aprobador:** la propuesta decía que el sistema «se perdió»; el canon ya tiene el **Árbol
+de las marcas** (el tablón de avisos Faerus, `CR-43`), así que es su origen y sigue vivo. No
+existía Kegi en el 600-900. Quitado *Tovh'ash* (la palma es nabieu).
+
+---
+
+**Propuesta:** al crecer la manada, la caza se aleja de Hashma y hace falta avisar sin estar. Los
+cazadores marcan árboles con garra y olor: la garra dice qué (presa, peligro, territorio), el olor
+dice de quién y cuándo. El mismo marcaje delimita la zona de caza de cada manada: quien huele la
+marca de otra no entra sin oler antes a quien la dejó. Con el tiempo, cada asentamiento tiene su
+árbol de referencia: el **Árbol de las marcas** que hoy hace de tablón.
+
+---
+
+### B-06 · ~1.700 — El cuidado de la Telda (Faerus)
+**Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-06)**
+
+**Acción de implementación:** añadir (antes «Rito de las Raíces en Hashma»)
+**Prioridad:** baja
+**Dependencias:** ninguna
+**Archivos destino:**
+- `docs/rpgtarkor/lore-mundo/razas.md` (§ Faerus)
+
+**Notas del aprobador:** el Estallido no arrasó la selva: castigó sus bordes. Quitado el nombre
+*Vash'feg* y la «tumba del anciano» (el rito funerario Faerus está por decidir, ver B-10).
+
+---
+
+**Propuesta:** en los bordes de la selva, castigados por la magia salvaje, sobreviven sobre todo los
+árboles de corteza densa, como la Telda. La manada empieza a plantarlos con la mano y a taparlos con
+hoja muerta en vez de solo sacar de ellos. Desde entonces los Faerus de Hashma no talan los árboles
+viejos, y de ahí sale parte de su rabia contra la tala del borde.
+
+---
+
+### B-07 · ~3.000-3.500 — La Tolda de Kegi (Feg Ger)
+**Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-06)**
+
+**Acción de implementación:** añadir (antes «El Juramento de la Tolda en Hashma»)
+**Prioridad:** media
+**Dependencias:** ninguna
+**Archivos destino:**
+- `docs/rpgtarkor/lore-mundo/cronologia.md` (fila de la Senda del Sílice)
+- `docs/rpgtarkor/lore-mundo/clanes-orcos.md` (§ El cerco social, la Senda del Sílice)
+- `docs/rpgtarkor/lore-mundo/regiones/llanuras-del-viento-rojo.md` (§ Kegi)
+
+**Notas del aprobador:** la propuesta lo ponía en el ~2.500, pero los Helsig y los Goshg no emigran
+hasta el ~2.900 y la Senda es del ~3.000-3.500; y eran los Feg Tusha, cuando quien comercia es Feg
+Ger. Corregido a Feg Ger y a la fecha de la Senda. Segunda corrección (al pasarla a docs): la Senda
+va por el borde **este** de las Llanuras y Kegi está en la franja **sur**, así que los Feg Ger no
+guían caravanas: lo de la Senda les llega por los Maktor. Sin Goirnos (es trueque).
+
+---
+
+**Propuesta:** cuando abre la Senda del Sílice, los Maktor que cambian pieles por madera de ciénaga
+bajan parte de lo que consiguen (cuchillos Helsig, madera y resina Goshg) hasta Kegi. Los Feg Ger
+levantan un toldo de pieles al borde del Vergel, **La Tolda**, donde se cambia sin que el forastero
+entre en la zona de la manada: pieles curtidas y colmillo tallado por lo que trae la Senda. Antes de
+cambiar se comparte algo de comer; para un Faerus, eso hace parientes a los dos lados mientras dura
+el trato. Es la raíz del comercio de El Vergel de Kegi.
+
+---
+
+### B-08 · ~2.800-3.050 — La primera tala del borde (Feg Tusha) *(rescatada en parte)*
+**Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-06)**
+
+**Acción de implementación:** añadir (rescata la parte compatible de «La Huida de la Tolda de
+Hashma»)
+**Prioridad:** media
+**Dependencias:** ninguna
+**Archivos destino:**
+- `docs/rpgtarkor/lore-mundo/cronologia.md`
+- `docs/rpgtarkor/lore-mundo/razas.md` (§ Faerus, la tala del borde)
+
+**Notas del aprobador:** se queda solo el origen de la **tala del borde** (canon en `razas.md`). Se
+quita la migración que fundaba Feg Ger en el ~3.100: Kegi nace del Pacto de la Primera Pieza
+(~2.300).
+
+---
+
+**Propuesta:** con la frontera norte Goirnte ya en el Margen (El Borde), las forjas de Vresk Tuh
+empiezan a sacar madera del borde sur del Margen. Los Feg Tusha se repliegan hacia el corazón de la
+selva, pero cada árbol talado en su territorio acaba en un ataque. Es el comienzo del roce que dura
+hasta hoy.
 
 ---
 

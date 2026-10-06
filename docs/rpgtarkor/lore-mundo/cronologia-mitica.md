@@ -93,6 +93,16 @@ mensaje a la caza y la madera. Es el origen de **Keseg Prisilke**. Todo ocurre a
 intervención de ninguna Semilla: es transmisión de vibraciones por sólidos y líquidos, más una
 adaptación física acelerada.
 
+## (sin fechar, después de la segunda huida) El primer Keseg'Vhurne
+
+*(aprobado 2026-10-06 · no implementado en el código)*
+
+En el Margen oriental, los supervivientes descubren que la escucha con la palma les deja «leer» el
+suelo juntos. Empiezan a reunirse en un círculo de piedras sueltas sobre la tierra: cada uno apoya la
+palma y nadie habla. Así deciden lo grave sin gobierno y sin escribir. Es el primer
+**Keseg'Vhurne**, el cónclave que todavía se convoca ante algo grave. La vibración no guarda nada:
+enseña a escuchar juntos. La creencia de que el suelo recuerda a Madre es solo eso, una creencia.
+
 ---
 
 **Ver también:** [Cronología (desde el año 0)](cronologia.md) · [Génesis y Formación](genesis.md) · [Áreas y geografía](areas.md) · [Historia y presente](historia.md) · [Razas](razas.md) · [Flora y fauna](flora-fauna.md) · [Items](../items-y-catalogo/items.md) · [Personajes](../personajes/personajes.md) · [NPCs](../personajes/npcs.md)

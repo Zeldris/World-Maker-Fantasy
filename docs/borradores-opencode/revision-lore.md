@@ -3349,3 +3349,15 @@ Hoy solo quedan fragmentos sueltos: esquinas de muros, cabezas de estatuas sin r
 ## Categoría: Otros
 
 *(Vacía — para propuestas que no encajen en las categorías anteriores)*
+
+## Tanda OpenCode 2026-10-03 — descartes (revisión del 2026-10-06)
+
+**RECHAZADAS (revisión delegada en Claude por la usuaria, 2026-10-06).** Por decisión de la usuaria
+no se guarda el texto original, solo el motivo. Lo que valía de esta tanda está en
+[propuestas-aprobadas.md](propuestas-aprobadas.md) (fichas B-01 a B-08 y C-01 a C-11).
+
+Por qué se descartan:
+- **La Murmuración de las Raíces**: copia la escucha con la palma de los Nabieus (*Tovh'vhurne*) para los Faerus, que leen con el olfato.
+- **El Jurado del Fuego**: usa *Grath'sil* («tierra que arde», la guerra) como si fuera un rito del fuego, y presenta el fuego como un descubrimiento tardío de Hashma, cuando los Faerus lo usan desde siempre.
+- **La Tolda del Ancestro**: choca con el Jakut de Kegi (una losa de piedra roja) y con el origen de Kegi en el Pacto de la Primera Pieza (~2.300).
+- **Feg'ghep (el debate en el Jakut)**: pone votos y mayorías en el Jakut; el canon dice lo contrario: decide quien está sentado, sin votos ni cargos.
