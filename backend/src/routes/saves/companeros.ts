@@ -570,20 +570,22 @@ export async function companerosRoutes(app: FastifyInstance) {
 
       const npc = await prisma.npc.findFirst({ where: { worldId: save.worldId, slug: request.params.npcSlug, saveId: null } });
       if (!npc || npc.ataqueNatural === null || !esGanado(npc.slug)) return reply.status(400).send({ error: 'Este animal no se cría en corral.' });
-      const state = await prisma.npcState.findFirst({ where: { saveId: save.id, npcId: npc.id, capturado: true } });
-      if (!state) return reply.status(400).send({ error: 'Este objetivo no está capturado todavía.' });
       const umbral = felicidadUmbralFor(esDomador(save.clase, save.especializacion));
-      if (state.capturaFelicidad < umbral) {
-        return reply.status(400).send({ error: `Todavía no ha ganado suficiente confianza (${state.capturaFelicidad}/${umbral}).` });
-      }
 
+      // Revisión del PR de CR-55: todo se comprueba con la fila de la partida bloqueada, para que un
+      // doble clic no meta dos animales de una sola captura, y un animal ya confirmado como compañero
+      // (que `/confirmar` deja `capturado`, oculto por `yaConfirmados`) no vaya también al corral.
       const r = await prisma.$transaction(async (tx) => {
         await lockRowForUpdate(tx, 'Save', save.id, ['id']);
+        const state = await tx.npcState.findFirst({ where: { saveId: save.id, npcId: npc.id, capturado: true } });
+        if (!state) return { ok: false as const, codigo: 400, motivo: 'Este objetivo no está capturado todavía.' };
+        if (await tx.companion.count({ where: { saveId: save.id, sourceSlug: npc.slug } })) return { ok: false as const, codigo: 400, motivo: 'Ese animal ya es tu compañero.' };
+        if (state.capturaFelicidad < umbral) return { ok: false as const, codigo: 400, motivo: `Todavía no ha ganado suficiente confianza (${state.capturaFelicidad}/${umbral}).` };
         const metido = await meterEnCorral(tx, save.id, { slug: npc.slug, faunaCategoria: npc.faunaCategoria }, save.worldState?.fictionalMinutes ?? 0, Math.random, request.body?.buildingId);
         if (metido.ok) await tx.npcState.update({ where: { id: state.id }, data: { capturado: false, capturaFelicidad: 0, capturaJaulaBuildingId: null } });
         return metido;
       });
-      if (!r.ok) return reply.status(409).send({ error: r.motivo });
+      if (!r.ok) return reply.status('codigo' in r ? r.codigo : 409).send({ error: r.motivo });
       return { ganadoId: r.ganadoId, buildingId: r.buildingId, sexo: r.sexo };
     },
   );

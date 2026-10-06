@@ -1,6 +1,6 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { CRAFTING_RECIPES, type CraftingRecipe } from './crafting.js';
-import { daysCrossed, hambrunaNueva, tickFactionProduction, tickKingdomOneDay, type KingdomStatsBlock } from './kingdomTick.js';
+import { daysCrossed, hambrunaNueva, RIQUEZA_POR_TRABAJADOR, tickFactionProduction, tickKingdomOneDay, type KingdomStatsBlock } from './kingdomTick.js';
 import { decayPresion, stageForPresion, typeForPresion } from './factionRelations.js';
 import { registrarHambruna } from './cronista/hambruna.js';
 import { AGUA_FUENTE_FACCION, aplicarBajasDeFaccion, muertesDelDia, repartirMuertes, sueldosDelDia, talleresDeFaccion } from './cronista/economiaFacciones.js';
@@ -130,6 +130,9 @@ export async function producirFacciones(
       // CR-55 (55f): su ganado, con las reglas del Reino (siembra el rebaño inicial la primera vez).
       const rebano: Rebano | null = fks.faction?.saveId ? await cargarRebano(tx, worldId, fks, diaActual - pendientes + 1) : null;
       let ganadoDiasSinComer = fks.ganadoDiasSinComer;
+      let ganadoDiasSinBeber = fks.ganadoDiasSinBeber;
+      // Lo que no llega a 1 de comida pasa al día siguiente (revisión del PR: sin perder decimales).
+      let restoComida = 0;
       // Las bajas de cada día cuentan para el siguiente (comen y mueren los que quedan).
       let desertores = 0;
       const bajas = { civiles: 0, trabajadores: 0, soldados: 0 };
@@ -139,15 +142,22 @@ export async function producirFacciones(
         // la leche, los huevos y la carne de lo sacrificado van a su comida.
         let fueraDelPasivo = 0;
         if (rebano && rebano.cohortes.length > 0) {
-          const r = diaGanadoFaccion(rebano.cohortes, { ...rebano.datos, dia, trabajadores: stats.trabajadores, comidaDisponible: stats.comida, diasSinComer: ganadoDiasSinComer }, Math.random);
+          // Su fuente de agua (Q17) también da de beber al rebaño, con el mismo margen.
+          const aguaRebano = Math.ceil(rebano.cohortes.reduce((s, c) => s + c.cantidad, 0) * AGUA_FUENTE_FACCION);
+          const r = diaGanadoFaccion(rebano.cohortes, { ...rebano.datos, dia, trabajadores: stats.trabajadores, comidaDisponible: stats.comida, diasSinComer: ganadoDiasSinComer, bebidaDisponible: stats.bebida + aguaRebano, diasSinBeber: ganadoDiasSinBeber }, Math.random);
           rebano.cohortes = r.cohortes;
           ganadoDiasSinComer = r.diasSinComer;
+          ganadoDiasSinBeber = r.diasSinBeber;
           fueraDelPasivo = r.ganaderos + r.fibreros;
-          stats = { ...stats, comida: Math.max(0, stats.comida + Math.floor(r.comidaNeta)) };
+          const neta = r.comidaNeta + restoComida;
+          restoComida = neta - Math.floor(neta);
+          stats = { ...stats, comida: Math.max(0, stats.comida + Math.floor(neta)), bebida: Math.max(0, stats.bebida + aguaRebano - r.bebidaConsumida) };
           for (const [slug, n] of Object.entries(r.otros)) rebano.otros[slug] = (rebano.otros[slug] ?? 0) + n;
         }
         const trabajadoresReales = stats.trabajadores;
-        stats = { ...tickFactionOneDay({ ...stats, trabajadores: Math.max(0, trabajadoresReales - fueraDelPasivo) }, porDia), trabajadores: trabajadoresReales };
+        // Solo dejan de dar la comida pasiva (Q15): su riqueza sigue contando.
+        const tras = tickFactionOneDay({ ...stats, trabajadores: Math.max(0, trabajadoresReales - fueraDelPasivo) }, porDia);
+        stats = { ...tras, trabajadores: trabajadoresReales, riqueza: tras.riqueza + Math.min(fueraDelPasivo, trabajadoresReales) * RIQUEZA_POR_TRABAJADOR };
         const pago = sueldosDelDia({ ...stats, diasSinCobrar }, dia, equipoDeLaSemana(stats));
         stats = { ...stats, riqueza: pago.riqueza, felicidad: pago.felicidad };
         diasSinCobrar = pago.diasSinCobrar;
@@ -182,6 +192,7 @@ export async function producirFacciones(
           diasFelicidadAlta: stats.diasFelicidadAlta, diasFelicidadBaja: stats.diasFelicidadBaja, diasHambre: stats.diasHambre ?? 0, diasSed: stats.diasSed ?? 0,
           diasSinCobrar,
           ganadoDiasSinComer,
+          ganadoDiasSinBeber,
           poblacion: stats.poblacion,
           trabajadores: stats.trabajadores,
           soldados: stats.soldados,

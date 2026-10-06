@@ -8,8 +8,10 @@ type Tx = Prisma.TransactionClient;
 
 export interface Rebano {
   cohortes: Cohorte[];
-  /// Lo fijo de cada día (sin `dia`, `trabajadores`, `comidaDisponible` ni `diasSinComer`).
-  datos: Omit<DatosDiaFaccion, 'dia' | 'trabajadores' | 'comidaDisponible' | 'diasSinComer'>;
+  /// Cohortes tal como se leyeron (para no reescribirlas si no cambian).
+  leidas: string;
+  /// Lo fijo de cada día (sin el día, los trabajadores ni las reservas de comida y agua).
+  datos: Omit<DatosDiaFaccion, 'dia' | 'trabajadores' | 'comidaDisponible' | 'diasSinComer' | 'bebidaDisponible' | 'diasSinBeber'>;
   /// Lana, plumas… acumuladas en estos días, para su almacén.
   otros: Record<string, number>;
 }
@@ -48,6 +50,7 @@ export async function cargarRebano(
   const region = REPARTO_FACCIONES.find((r) => r.slug === slug)?.region ?? null;
   return {
     cohortes: filas.map((f) => ({ ...f, sexo: f.sexo as Sexo })),
+    leidas: firma(filas),
     datos: {
       pasto: hayPasto(region),
       plazas: PLAZAS_GANADO_FACCION[slug] ?? {},
@@ -61,15 +64,24 @@ export async function cargarRebano(
 
 /// Guarda las cohortes y deja en el almacén de la facción lo que no se come, hasta `tope` por objeto.
 export async function guardarRebano(tx: Tx, factionId: string, rebano: Rebano, tope: number): Promise<void> {
-  await tx.ganadoFaccion.deleteMany({ where: { factionId } });
-  if (rebano.cohortes.length > 0) await tx.ganadoFaccion.createMany({ data: rebano.cohortes.map((c) => ({ factionId, ...c })) });
+  if (firma(rebano.cohortes) !== rebano.leidas) {
+    await tx.ganadoFaccion.deleteMany({ where: { factionId } });
+    if (rebano.cohortes.length > 0) await tx.ganadoFaccion.createMany({ data: rebano.cohortes.map((c) => ({ factionId, ...c })) });
+  }
   const slugs = Object.keys(rebano.otros);
   if (slugs.length === 0) return;
   const save = await tx.faction.findUniqueOrThrow({ where: { id: factionId }, select: { worldId: true } });
   const catalogo = await tx.itemCatalog.findMany({ where: { worldId: save.worldId, slug: { in: slugs } }, select: { slug: true, name: true, description: true } });
+  const cuentas = await tx.almacenItem.groupBy({ by: ['catalogSlug'], where: { factionId, catalogSlug: { in: slugs } }, _count: { _all: true } });
+  const hayDe = new Map(cuentas.map((c) => [c.catalogSlug, c._count._all]));
   for (const it of catalogo) {
-    const hay = await tx.almacenItem.count({ where: { factionId, catalogSlug: it.slug } });
+    const hay = hayDe.get(it.slug) ?? 0;
     const n = Math.min(rebano.otros[it.slug] ?? 0, Math.max(0, tope - hay));
     if (n > 0) await tx.almacenItem.createMany({ data: Array.from({ length: n }, () => ({ factionId, name: it.name, description: it.description, catalogSlug: it.slug })) });
   }
+}
+
+/// Firma de un rebaño, para saber si ha cambiado.
+function firma(cs: { especie: string; sexo: string; nacidoEnDia: number; cantidad: number }[]): string {
+  return cs.map((c) => `${c.especie}|${c.sexo}|${c.nacidoEnDia}|${c.cantidad}`).sort().join(';');
 }

@@ -57,6 +57,10 @@ export interface DatosDiaFaccion {
   comidaDisponible: number;
   /// Días seguidos sin comer del rebaño hasta ayer.
   diasSinComer: number;
+  /// Agua de la que puede beber el rebaño y días seguidos sin beber hasta ayer (revisión del PR: el
+  /// ganado de las facciones bebe, como el del Reino).
+  bebidaDisponible: number;
+  diasSinBeber: number;
   /// Valor en comida de cada producto comestible (por unidad, en curaHambre).
   valorComestible: Record<string, number>;
 }
@@ -67,6 +71,9 @@ export interface ResultadoDiaFaccion {
   fibreros: number;
   comido: boolean;
   diasSinComer: number;
+  bebido: boolean;
+  diasSinBeber: number;
+  bebidaConsumida: number;
   /// Comida que entra (leche, huevos, carne de lo sacrificado) menos la que comen los carnívoros.
   comidaNeta: number;
   /// Productos que no se comen (lana, plumas…), para el almacén de la facción.
@@ -102,11 +109,14 @@ export function diaGanadoFaccion(entrada: Cohorte[], d: DatosDiaFaccion, random:
   const fibreros = Math.min(libres, Math.ceil(consumo.forraje / 10));
   const comido = fibreros * 10 >= consumo.forraje && d.comidaDisponible >= consumo.comida;
   const diasSinComer = comido ? 0 : d.diasSinComer + 1;
+  const bebido = d.bebidaDisponible >= consumo.agua;
+  const diasSinBeber = bebido ? 0 : d.diasSinBeber + 1;
+  const bebidaConsumida = Math.min(consumo.agua, d.bebidaDisponible);
   let comidaNeta = -Math.min(consumo.comida, d.comidaDisponible);
 
   // Producción.
   const otros: Record<string, number> = {};
-  if (comido) {
+  if (comido && bebido) {
     for (const esp of especies) {
       const etapas = cohortes.filter((c) => c.especie === esp).flatMap((c) => Array<Etapa>(c.cantidad).fill(etapa(c)));
       for (const [slug, n] of Object.entries(produccionDelDia(esp, etapas, ganaderosPorEspecie[esp] ?? 0, d.dia, true))) {
@@ -119,12 +129,10 @@ export function diaGanadoFaccion(entrada: Cohorte[], d: DatosDiaFaccion, random:
   // Una vez por semana: crías y sacrificio.
   let crias = 0;
   let sacrificados = 0;
-  if (d.dia % 7 === 0 && comido) {
+  if (d.dia % 7 === 0 && comido && bebido) {
     for (const esp of especies) {
       const plazas = d.plazas[esp] ?? 0;
       const corrales = corralesDeFaccion(plazas);
-      const lista = cohortes.filter((c) => c.especie === esp).map((c) => ({ a: { especie: esp, sexo: c.sexo, edadDias: edad(c, d.dia) }, etapa: etapa(c) }));
-      const hayPareja = tocaCria(lista, Number.MAX_SAFE_INTEGER, true);
       // Sacrificio: toda la vejez y, si no queda sitio para las crías, los adultos más viejos (machos
       // primero, que hacen falta menos).
       let n = 0;
@@ -146,6 +154,9 @@ export function diaGanadoFaccion(entrada: Cohorte[], d: DatosDiaFaccion, random:
       }
       sacrificados += n;
       comidaNeta += n * (d.carnePorAnimal[esp] ?? 0);
+      // La pareja se mira tras el sacrificio (revisión del PR: sin macho vivo no hay cría).
+      const lista = cohortes.filter((c) => c.especie === esp && c.cantidad > 0).map((c) => ({ a: { especie: esp, sexo: c.sexo, edadDias: edad(c, d.dia) }, etapa: etapa(c) }));
+      const hayPareja = tocaCria(lista, Number.MAX_SAFE_INTEGER, true);
       const nuevas = hayPareja ? Math.min(corrales, Math.max(0, plazas - cuantos(esp))) : 0;
       if (nuevas > 0) {
         const hembras = Math.ceil(nuevas / 2);
@@ -159,7 +170,7 @@ export function diaGanadoFaccion(entrada: Cohorte[], d: DatosDiaFaccion, random:
   // Muertes por hambre (primero las crías) y de viejos.
   let muertos = 0;
   const total = cohortes.reduce((s, c) => s + c.cantidad, 0);
-  let porCarencia = muertesPorCarencia(total, fraccionQueMuere(diasSinComer, 0));
+  let porCarencia = muertesPorCarencia(total, fraccionQueMuere(diasSinComer, diasSinBeber));
   for (const c of [...cohortes].sort((a, b) => b.nacidoEnDia - a.nacidoEnDia)) {
     if (porCarencia <= 0) break;
     const q = Math.min(c.cantidad, porCarencia);
@@ -176,5 +187,5 @@ export function diaGanadoFaccion(entrada: Cohorte[], d: DatosDiaFaccion, random:
   }
 
   cohortes = cohortes.filter((c) => c.cantidad > 0);
-  return { cohortes, ganaderos, fibreros, comido, diasSinComer, comidaNeta, otros, crias, sacrificados, muertos };
+  return { cohortes, ganaderos, fibreros, comido, diasSinComer, bebido, diasSinBeber, bebidaConsumida, comidaNeta, otros, crias, sacrificados, muertos };
 }

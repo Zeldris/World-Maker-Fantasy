@@ -187,26 +187,33 @@ export async function avanzarGanadoReino(tx: Tx, saveId: string, dia: number, ah
   const todos = animales.map(conEtapa);
   // Pastoreo (55f): en una región con pasto natural los herbívoros comen la mitad.
   const pasto = hayPasto(await regionDelReino(tx, saveId));
-  const consumo = consumoCorral(todos.map((x) => ({ a: { especie: x.especie, sexo: x.sexo as Sexo, edadDias: x.edadDias }, etapa: x.etapa })), dia, pasto);
+  // Herbívoros (forraje) y carnívoros (comida) comen por separado: si falta carne, el Múrgol come igual
+  // (revisión del PR de CR-55).
+  const comoAnimal = (x: (typeof todos)[number]) => ({ a: { especie: x.especie, sexo: x.sexo as Sexo, edadDias: x.edadDias }, etapa: x.etapa });
+  const esCarnivoro = (especie: string) => ESPECIES_GANADO[especie]?.dieta === 'CARNIVORO';
+  const consumoHerb = consumoCorral(todos.filter((x) => !esCarnivoro(x.especie)).map(comoAnimal), dia, pasto);
+  const consumoCarn = consumoCorral(todos.filter((x) => esCarnivoro(x.especie)).map(comoAnimal), dia, pasto);
   let comida = stats.comida;
   let bebida = stats.bebida;
-  const comido = forraje >= consumo.forraje && comida >= consumo.comida;
-  const bebido = bebida >= consumo.agua;
-  forraje = Math.max(0, forraje - consumo.forraje);
-  comida = Math.max(0, comida - consumo.comida);
-  bebida = Math.max(0, bebida - consumo.agua);
+  const comidoHerb = forraje >= consumoHerb.forraje;
+  const comidoCarn = comida >= consumoCarn.comida;
+  const comido = comidoHerb && comidoCarn;
+  const agua = consumoHerb.agua + consumoCarn.agua;
+  const bebido = bebida >= agua;
+  forraje = Math.max(0, forraje - consumoHerb.forraje);
+  comida = Math.max(0, comida - consumoCarn.comida);
+  bebida = Math.max(0, bebida - agua);
   const diasSinComer = comido ? 0 : stats.ganadoDiasSinComer + 1;
   const diasSinBeber = bebido ? 0 : stats.ganadoDiasSinBeber + 1;
-  const bienAtendido = comido && bebido;
+  const haComido = (especie: string) => (esCarnivoro(especie) ? comidoCarn : comidoHerb);
+  const bienAtendido = (especie: string) => haComido(especie) && bebido;
 
-  // 3. Producción.
+  // 3. Producción de cada corral bien atendido.
   const producido: Record<string, number> = {};
-  if (bienAtendido) {
-    for (const c of corrales) {
-      if (!c.especie) continue;
-      const r = produccionDelDia(c.especie, c.animales.map((a) => conEtapa(a).etapa), c.ganaderos.length, dia, true);
-      for (const [slug, n] of Object.entries(r)) producido[slug] = (producido[slug] ?? 0) + n;
-    }
+  for (const c of corrales) {
+    if (!c.especie || !bienAtendido(c.especie)) continue;
+    const r = produccionDelDia(c.especie, c.animales.map((a) => conEtapa(a).etapa), c.ganaderos.length, dia, true);
+    for (const [slug, n] of Object.entries(r)) producido[slug] = (producido[slug] ?? 0) + n;
   }
   let comidaDeLeche = 0;
   const slugs = Object.keys(producido);
@@ -224,33 +231,35 @@ export async function avanzarGanadoReino(tx: Tx, saveId: string, dia: number, ah
       hueco -= cabe;
       if (cabe > 0) await tx.almacenItem.createMany({ data: Array.from({ length: cabe }, () => ({ saveId, name: it.name, description: it.description, catalogSlug: it.slug })) });
     }
-    comida = Math.min(sum.topeComida, comida + comidaDeLeche);
+    // El Granero se comparte con el forraje (Q7).
+    comida = Math.max(comida, Math.min(sum.topeComida - forraje, comida + comidaDeLeche));
   }
 
-  // 4. Crías, una vez por semana.
-  let crias = 0;
-  if (dia % 7 === 0 && bienAtendido) {
-    for (const c of corrales) {
-      if (!c.especie) continue;
-      const lista = c.animales.map((a) => { const x = conEtapa(a); return { a: { especie: x.especie, sexo: x.sexo as Sexo, edadDias: x.edadDias }, etapa: x.etapa }; });
-      if (!tocaCria(lista, c.plazas, true)) continue;
-      await tx.ganado.create({ data: { saveId, buildingId: c.id, especie: c.especie, sexo: random() < 0.5 ? 'M' : 'F', nacidoEn: ahora } });
-      crias++;
-    }
-  }
-
-  // 5. Muertes: por carencia (primero las crías, luego los más viejos) y de viejos.
+  // 4. Muertes: de hambre (solo los de la dieta que no ha comido, primero las crías), de sed (todos) y
+  //    de viejos.
   const muertos = new Set<string>();
-  const n = muertesPorCarencia(todos.length, fraccionQueMuere(diasSinComer, diasSinBeber));
-  if (n > 0) {
-    const orden = [...todos].sort((a, b) => (a.etapa === 'CRIA' ? 0 : 1) - (b.etapa === 'CRIA' ? 0 : 1) || b.edadDias - a.edadDias);
-    for (const x of orden.slice(0, n)) muertos.add(x.id);
-  }
+  const porEdad = (xs: typeof todos) => [...xs].sort((a, b) => (a.etapa === 'CRIA' ? 0 : 1) - (b.etapa === 'CRIA' ? 0 : 1) || b.edadDias - a.edadDias);
+  const hambrientos = todos.filter((x) => !haComido(x.especie));
+  for (const x of porEdad(hambrientos).slice(0, muertesPorCarencia(hambrientos.length, fraccionQueMuere(diasSinComer, 0)))) muertos.add(x.id);
+  const sedientos = porEdad(todos.filter((x) => !muertos.has(x.id)));
+  for (const x of sedientos.slice(0, muertesPorCarencia(sedientos.length, fraccionQueMuere(0, diasSinBeber)))) muertos.add(x.id);
   for (const x of todos) {
     if (muertos.has(x.id)) continue;
     if (random() < probMuerteDeViejoPorDia(etapasDe(x.especie, categoria.get(x.especie) ?? null), x.edadDias)) muertos.add(x.id);
   }
   if (muertos.size > 0) await tx.ganado.deleteMany({ where: { id: { in: [...muertos] } } });
+
+  // 5. Crías, una vez por semana, con los que siguen vivos.
+  let crias = 0;
+  if (dia % 7 === 0) {
+    for (const c of corrales) {
+      if (!c.especie || !bienAtendido(c.especie)) continue;
+      const vivos = c.animales.filter((a) => !muertos.has(a.id)).map((a) => comoAnimal(conEtapa(a)));
+      if (!tocaCria(vivos, c.plazas, true)) continue;
+      await tx.ganado.create({ data: { saveId, buildingId: c.id, especie: c.especie, sexo: random() < 0.5 ? 'M' : 'F', nacidoEn: ahora } });
+      crias++;
+    }
+  }
 
   await tx.kingdomStats.update({ where: { ownerKey: owner }, data: { forraje, comida, bebida, ganadoDiasSinComer: diasSinComer, ganadoDiasSinBeber: diasSinBeber } });
   return { comido, bebido, producido, comidaDeLeche, crias, muertos: muertos.size };
@@ -297,10 +306,11 @@ export async function sacrificar(tx: Tx, saveId: string, ganadoId: string, ahora
   await tx.ganado.delete({ where: { id: animal.id } });
   if (comida > 0) {
     const owner = ownerKeyFor({ saveId });
-    const stats = await tx.kingdomStats.findUnique({ where: { ownerKey: owner }, select: { comida: true } });
+    const stats = await tx.kingdomStats.findUnique({ where: { ownerKey: owner }, select: { comida: true, forraje: true } });
     if (stats) {
+      // El Granero se comparte con el forraje (Q7).
       const { topeComida } = await suministrosDelReino(tx, saveId);
-      await tx.kingdomStats.update({ where: { ownerKey: owner }, data: { comida: Math.min(topeComida, stats.comida + comida) } });
+      await tx.kingdomStats.update({ where: { ownerKey: owner }, data: { comida: Math.max(stats.comida, Math.min(topeComida - stats.forraje, stats.comida + comida)) } });
     }
   }
   return { ok: true, comida, almacen, perdido };

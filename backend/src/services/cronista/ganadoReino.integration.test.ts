@@ -96,4 +96,15 @@ describe('Avance diario del ganado del Reino (CR-55 55d)', () => {
     await avanzarGanadoReino(prisma, saveId, 15, 15 * 1440 + 600, () => 0.99);
     expect((await stats()).forraje).toBe(18);
   });
+
+  it('si falta carne para un Canizor, los Múrgol comen su forraje y producen igual (revisión del PR)', async () => {
+    await prisma.kingdomStats.update({ where: { ownerKey: ownerKeyFor({ saveId }) }, data: { comida: 0 } });
+    const otroCorral = await prisma.building.create({ data: { saveId, recipeKey: 'corrales', name: 'Corral del Canizor', kind: 'ganadero-orcos-llanuras', status: 'ACTIVO', description: 'x', tier: 1 } });
+    await prisma.ganado.create({ data: { saveId, buildingId: otroCorral.id, especie: 'canizor', sexo: 'M', nacidoEn: ADULTO } });
+    await animal('F');
+    await ganadero();
+    const r = await avanzarGanadoReino(prisma, saveId, DIA, AHORA, () => 0.99);
+    expect(r?.comido).toBe(false);
+    expect(r?.producido['leche-murgol']).toBe(3);
+  });
 });

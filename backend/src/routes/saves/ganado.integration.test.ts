@@ -71,6 +71,28 @@ describe('Ganado del Reino: al corral y forraje (CR-55 55c)', () => {
     expect(corrales.corrales[0].animales[0].etapa).toBe('ADULTO');
   });
 
+  it('dos «Al corral» a la vez de una sola captura meten un solo animal (revisión del PR)', async () => {
+    await prisma.npcState.updateMany({ where: { saveId, npcId: murgolId }, data: { capturado: true, capturaFelicidad: 90 } });
+    const app = await buildApp();
+    const antes = await prisma.ganado.count({ where: { saveId } });
+    const [a, b] = await Promise.all([
+      app.inject({ method: 'POST', url: `/saves/${saveId}/tameo-pendientes/murgol/al-corral`, payload: {} }),
+      app.inject({ method: 'POST', url: `/saves/${saveId}/tameo-pendientes/murgol/al-corral`, payload: {} }),
+    ]);
+    expect([a.statusCode, b.statusCode].sort()).toEqual([200, 400]);
+    expect(await prisma.ganado.count({ where: { saveId } })).toBe(antes + 1);
+  });
+
+  it('un animal ya confirmado como compañero no va además al corral', async () => {
+    await prisma.npcState.updateMany({ where: { saveId, npcId: murgolId }, data: { capturado: true, capturaFelicidad: 90 } });
+    const c = await prisma.companion.create({ data: { saveId, name: 'Múrgol', role: 'mascota', notes: '', tipo: 'FAUNA', sourceSlug: 'murgol' } });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/tameo-pendientes/murgol/al-corral`, payload: {} });
+    expect(res.statusCode).toBe(400);
+    await prisma.companion.delete({ where: { id: c.id } });
+    await prisma.npcState.updateMany({ where: { saveId, npcId: murgolId }, data: { capturado: false, capturaFelicidad: 0 } });
+  });
+
   it('un corral guarda una sola especie: el Corretolvas no cabe en el de Múrgol', async () => {
     await prisma.npcState.create({ data: { saveId, npcId: corretolvasId, scope: '', condicionFisica: 'ILESO', capturado: true, capturaFelicidad: 90 } });
     const app = await buildApp();

@@ -56,7 +56,7 @@ const FELICIDAD_MAX = 100;
 /// resto de tablas deterministas del proyecto (XP_BY_DIFFICULTY, etc.), no pretenden ser un
 /// balance final cerrado.
 const COMIDA_POR_TRABAJADOR = 2;
-const RIQUEZA_POR_TRABAJADOR = 1;
+export const RIQUEZA_POR_TRABAJADOR = 1;
 const CONSUMO_POR_BOCA = 1;
 const MANTENIMIENTO_POR_SOLDADO = 1;
 

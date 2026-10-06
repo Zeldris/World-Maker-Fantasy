@@ -12,6 +12,8 @@ const datos = (dia: number, diasSinComer = 0, trabajadores = 359): DatosDiaFacci
   carnePorAnimal: { murgol: 3, corretolvas: 1 },
   comidaDisponible: 100,
   diasSinComer,
+  bebidaDisponible: 1000,
+  diasSinBeber: 0,
   valorComestible: { 'leche-murgol': 4, 'huevo-corretolvas': 4 },
 });
 const total = (cs: Cohorte[]) => cs.reduce((s, c) => s + c.cantidad, 0);
@@ -55,5 +57,23 @@ describe('ganado de las facciones (CR-55 55f)', () => {
     const r = diaGanadoFaccion(inicial(7), datos(7), () => 0.99);
     // Múrgol: 80 plazas → 4 corrales; Corretolvas: 30 → 2.
     expect(r.crias).toBe(6);
+  });
+
+  it('el rebaño bebe: sin agua no produce y desde el segundo día mueren', () => {
+    const r = diaGanadoFaccion(inicial(1), { ...datos(1), bebidaDisponible: 0, diasSinBeber: 1 }, () => 0.99);
+    expect(r.bebido).toBe(false);
+    expect(r.comidaNeta).toBeCloseTo(0);
+    expect(r.muertos).toBeGreaterThan(0);
+  });
+
+  it('sin macho adulto tras el sacrificio no nacen crías', () => {
+    // Corral lleno de Corretolvas con un solo macho adulto: el sacrificio se lo lleva.
+    const cs: Cohorte[] = [
+      { especie: 'corretolvas', sexo: 'F', nacidoEnDia: -200, cantidad: 29 },
+      { especie: 'corretolvas', sexo: 'M', nacidoEnDia: -200, cantidad: 1 },
+    ]
+    const r = diaGanadoFaccion(cs, datos(7), () => 0.99);
+    expect(r.cohortes.some((c) => c.sexo === 'M' && c.nacidoEnDia < 7)).toBe(false);
+    expect(r.crias).toBe(0);
   });
 });
