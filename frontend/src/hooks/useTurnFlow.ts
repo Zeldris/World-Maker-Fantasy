@@ -3,7 +3,7 @@ import type { ChatComposerHandle } from '../components/ChatComposer'
 import { requestTurnClassify, requestTurnNarrate, getSave, type ClassifyResponse, type ConfirmarCazaResultado, type SaveDetail } from '../lib/api'
 import { isBusyError, isEndedGameError, isPendingDeathError, isTurnLockedError, applyInventoryDelta, questCompletedLogEntry } from '../lib/gameViewHelpers'
 import { playerActionEntry, nextId } from '../lib/simulateAI'
-import { duracionTirada } from '../lib/duracionTirada'
+import { duracionTirada, temporizadorTirada } from '../lib/duracionTirada'
 import type {
   ActiveEffect,
   BuildingInfo,
@@ -354,7 +354,7 @@ export function useTurnFlow(params: UseTurnFlowParams) {
         setSed(newSed)
       }
       if (combatExchangeDisplay && !finDePartida) {
-        setTimeout(applyExchangeResult, 2 * duracionTirada())
+        temporizadorTirada(applyExchangeResult, 2 * duracionTirada())
       } else {
         applyExchangeResult()
       }

@@ -3,7 +3,7 @@ import type { CombatNpcDisplay } from '../components/CombatComposer'
 import { requestTurnClassify, requestTurnNarrate, requestFlee, requestHuirEnCurso, requestCerrarCombate, requestMatar, postCapturar, dejarVivir, type EnciclopediaResponse } from '../lib/api'
 import { isTurnLockedError, npcInSceneToCombatDisplay, combatKeyFor, combatDisplayNameFor, applyInventoryDelta, questCompletedLogEntry } from '../lib/gameViewHelpers'
 import { combatDifficultyFor, type CombatDifficulty } from '../lib/combatDifficulty'
-import { duracionTirada } from '../lib/duracionTirada'
+import { cancelarTirada, duracionTirada, temporizadorTirada } from '../lib/duracionTirada'
 import type {
   ActiveEffect,
   CombatExchangeInfo,
@@ -837,6 +837,9 @@ export function useCombatFlow(params: UseCombatFlowParams) {
               // longitudes, aunque ninguna otra condición de arriba haya cambiado.
               bySlug.set(key, { ...local, activeEffects: real.activeEffects })
             }
+            // CR-45: la orden del capitán cambia cada ronda; manda siempre la del backend.
+            const actual = bySlug.get(key)!
+            if (actual.ordenaCaerSobre !== real.ordenaCaerSobre) bySlug.set(key, { ...actual, ordenaCaerSobre: real.ordenaCaerSobre })
           }
           return Array.from(bySlug.values())
         })
@@ -849,7 +852,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     // intercambios rápidos seguidos (o cerrar el combate en medio del retraso) dejaban vivo el
     // resuelve-luego viejo, que pisaba el estado ya actualizado por el turno nuevo cuando por fin
     // disparaba.
-    if (exchangeApplyTimerRef.current) clearTimeout(exchangeApplyTimerRef.current)
+    cancelarTirada(exchangeApplyTimerRef.current)
     applyExchangeResultRef.current = null
     // Estado visual "de quién es el turno" (2026-09-04, bug real jugando en vivo: "el panel según
     // es turno de ataque o defensa está cambiando antes de color de lo que la tirada tarda en
@@ -863,7 +866,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     }
     // Mismo motivo que `exchangeApplyTimerRef` — cancela el timer de un turno ANTERIOR todavía
     // pendiente antes de programar el de este turno.
-    if (awaitingDefenseTimerRef.current) clearTimeout(awaitingDefenseTimerRef.current)
+    cancelarTirada(awaitingDefenseTimerRef.current)
     // Bug real jugando en vivo (2026-09-29, tercera vez: "la vida no se actualiza cuando termina la
     // tirada de combate, lo hace al final de la tirada de iniciativa") — la causa de fondo era que
     // las DOS animaciones arrancaban a la vez al llegar la respuesta: los dados del intercambio
@@ -874,7 +877,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     const arrancarSiguienteIniciativa = () => {
       setLastInitiativeRoll(params.nextInitiativeRoll)
       if (params.nextInitiativeRoll && !params.finDePartida) {
-        awaitingDefenseTimerRef.current = setTimeout(applyTurnAwaitingDefense, 2 * duracionTirada())
+        awaitingDefenseTimerRef.current = temporizadorTirada(applyTurnAwaitingDefense, 2 * duracionTirada())
       } else {
         applyTurnAwaitingDefense()
       }
@@ -884,7 +887,14 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     if (params.nextInitiativeRoll && !params.finDePartida) setAwaitingNextInitiative(true)
     if (params.combatExchangeDisplay && !params.finDePartida) {
       setAwaitingExchangeApply(true)
+      // Se resuelve una sola vez: por `onAllLanded` (lo normal) o por la reserva de abajo. La que
+      // llega primero cancela la otra; sin esto la reserva volvía a aplicar el intercambio un
+      // segundo después (y, al saltar las tiradas con CFG-20, las dos a la vez).
+      let resuelto = false
       const resolverIntercambio = () => {
+        if (resuelto) return
+        resuelto = true
+        cancelarTirada(exchangeApplyTimerRef.current)
         exchangeApplyTimerRef.current = null
         applyExchangeResultRef.current = null
         applyExchangeResult()
@@ -901,7 +911,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
       // montarse/disparar (p.ej. la tarjeta de "pensando" se cierra por otra vía primero), el
       // intercambio no debe quedar aplicado para siempre: se resuelve solo, algo más tarde que la
       // animación real para no adelantarse a ella en el caso normal.
-      exchangeApplyTimerRef.current = setTimeout(resolverIntercambio, 2 * duracionTirada() + 1000)
+      exchangeApplyTimerRef.current = temporizadorTirada(resolverIntercambio, 2 * duracionTirada() + 1000)
     } else {
       applyExchangeResult()
       setDiceReveal(null)
@@ -954,8 +964,8 @@ export function useCombatFlow(params: UseCombatFlowParams) {
   function closeCombat() {
     // Cierre real de combate — cualquier timer/callback de intercambio/iniciativa que siga vivo de
     // un turno ya obsoleto no debe disparar después (ver comentario junto a los refs, arriba).
-    if (exchangeApplyTimerRef.current) clearTimeout(exchangeApplyTimerRef.current)
-    if (awaitingDefenseTimerRef.current) clearTimeout(awaitingDefenseTimerRef.current)
+    cancelarTirada(exchangeApplyTimerRef.current)
+    cancelarTirada(awaitingDefenseTimerRef.current)
     exchangeApplyTimerRef.current = null
     applyExchangeResultRef.current = null
     awaitingDefenseTimerRef.current = null

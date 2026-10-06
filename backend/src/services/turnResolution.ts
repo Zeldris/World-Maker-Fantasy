@@ -54,7 +54,7 @@ import { advanceFictionalMinutes, formatFictionalDate, entornoTemporalFor, momen
 import { faunaMomentoDelDia } from '../scripts/worldCatalog.js';
 import { recalcularZonePointsDeLocation, zonePointsSummaryFor } from './zonePoints.js';
 import { decideOfertaModoDinamico, dynamicModeCandidateNameFor, COOLDOWN_MODO_DINAMICO_MINUTOS } from './dynamicMode.js';
-import { resolverTurnoJugador, resolverTurnosAutonomosHastaJugadora, fijarEleccionRondaJugador, type AccionJugadorCombate } from './combateMultipleOrquestacion.js';
+import { resolverTurnoJugador, resolverTurnosAutonomosHastaJugadora, fijarEleccionRondaJugador, marcaDelCapitan, type AccionJugadorCombate } from './combateMultipleOrquestacion.js';
 import { invalidateCarcassRollCache } from '../routes/saves/recolectar.js';
 import { instanceNumbersByParticipantId, resolverObjetivoPorTexto, type HabilidadParaIntercambio } from './combateMultiple.js';
 import { prisma } from '../lib/prisma.js';
@@ -2033,6 +2033,8 @@ async function posicionDeSalidaHacia(locationId: string, coords: { x: number; y:
 /// combate de personas en grupo (CR-49).
 async function vistaCombateDeGrupo(saveId: string, encounterId: string, terminado: boolean) {
   const participantesFinal = await prisma.combatParticipant.findMany({ where: { encounterId } });
+  // CR-45: el capitán lleva la marca de a quién manda ir (tú o uno de tus compañeros).
+  const marcaCapitan = terminado ? null : await marcaDelCapitan(prisma, saveId, encounterId);
   const enemigoNpcIds = participantesFinal.filter((p) => p.tipo === 'NPC' && p.npcId).map((p) => p.npcId!);
   const enemigoNpcRows = enemigoNpcIds.length
     ? await prisma.npc.findMany({ where: { id: { in: enemigoNpcIds } }, select: { id: true, slug: true, name: true, kind: true, atributoResistencia: true } })
@@ -2083,6 +2085,7 @@ async function vistaCombateDeGrupo(saveId: string, encounterId: string, terminad
       instanceNumber: numeroInstancia,
       // CR-44 (44c): escapó; el panel lo da por resuelto.
       ...(p.huido ? { huido: true } : {}),
+      ...(marcaCapitan && p.id === marcaCapitan.capitanId ? { ordenaCaerSobre: marcaCapitan.ordenaCaerSobre } : {}),
     };
   });
   if (!terminado) {

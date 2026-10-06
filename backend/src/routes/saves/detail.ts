@@ -22,6 +22,7 @@ import { resolveActiveCombatAbilityNames } from '../../services/combatAbilities.
 import { sanitizeSkillBarAbilityNames, hasBaseSkillBar, defaultBaseSkillBarAbilities, SKILL_BAR_CATEGORIES, type SkillBarCategory } from '../../services/skillBars.js';
 import { especializacionesConHuecosPara, resumenMecanicoEspecializacion, clasesPermitidasParaRaza, CLASE_DESCRIPTION, especializacionAbilityUnlocksFor, savedActionDataFromAbility } from '../../services/classAbilities.js';
 import { NIVEL_MINIMO_ESPECIALIZACION } from './progression.js';
+import { marcaDelCapitan } from '../../services/combateMultipleOrquestacion.js';
 
 export async function detailRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>('/saves/:id', async (request, reply) => {
@@ -247,6 +248,8 @@ export async function detailRoutes(app: FastifyInstance) {
       combatEnemigosParaDisplay.map((p) => ({ participantId: p.id, npcId: p.npcId! })),
     );
 
+    // CR-45: la marca del capitán también tras recargar.
+    const marcaCapitan = activeCombatEncounter ? await marcaDelCapitan(prisma, save.id, activeCombatEncounter.id) : null;
     const combateIniciado = activeCombatEncounter
       ? {
           npcs: combatEnemigosParaDisplay.map((p) => {
@@ -266,6 +269,8 @@ export async function detailRoutes(app: FastifyInstance) {
               activeEffects: parseActiveEffects(state?.activeEffects),
               participantId: p.id,
               instanceNumber: combatInstanceNumberByParticipantId.get(p.id) ?? null,
+              ...(p.huido ? { huido: true } : {}),
+              ...(marcaCapitan && p.id === marcaCapitan.capitanId ? { ordenaCaerSobre: marcaCapitan.ordenaCaerSobre } : {}),
             };
           }),
         }

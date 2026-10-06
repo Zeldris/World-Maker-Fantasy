@@ -8,7 +8,7 @@ import type { CondicionFisica, Prisma } from '@prisma/client';
 import type { AttributeBlock } from './dice.js';
 import { EN_PIE, formaDeRetirada, quienTiraMoral, tieneMoral, tirarEscape, tirarMoral, vaClaramentePerdiendo } from './moralCombate.js';
 import { aplicarHuidaNpc } from './huidaNpc.js';
-import { INTELIGENCIA_CAPITAN } from './combateMultiple.js';
+import { elegirCapitan } from './combateMultiple.js';
 
 /// Marca de «ya tiraron por la caída del capitán» en `CombatEncounter.moralMitadBandos`.
 const MARCA_CAPITAN = 'CAPITAN:ENEMIGO';
@@ -49,7 +49,7 @@ export async function revisarMoralDelCombate(
   });
   const miembros = conMoral.filter((c) => !c.huido);
   // CR-45: el capitán (Inteligencia ≥ 20) — si cae o huye, los suyos tiran con desventaja.
-  const capitan = [...conMoral].filter((c) => (c.attributes?.inteligencia ?? 0) >= INTELIGENCIA_CAPITAN).sort((a, b) => (b.attributes?.inteligencia ?? 0) - (a.attributes?.inteligencia ?? 0))[0];
+  const capitan = elegirCapitan(conMoral, (c) => c.attributes?.inteligencia ?? 0);
   if (miembros.length === 0) return resultado;
   const enPie = miembros.filter((m) => EN_PIE(m.condicion));
   if (enPie.length === 0) return resultado;

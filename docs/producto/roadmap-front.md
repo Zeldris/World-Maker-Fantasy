@@ -195,7 +195,11 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
   *Instantánea*; dónde se muestran (*en el registro* · *en primer plano* · *solo las importantes en
   primer plano*); saltar con clic/`Espacio`. **S** (resuelve H3) 🚧 2026-10-02: hecha la
   **velocidad** (`lib/duracionTirada.ts`: todo lo que espera a los dados usa `duracionTirada()`).
-  **Falta:** dónde se muestran (va con `DAD-*`, tirada en primer plano) y saltar con clic/Espacio.
+  2026-10-06: hecho **saltar** (clic en los dados o `Espacio` fuera de un campo de texto y de un
+  botón con el foco): `temporizadorTirada`/`saltarTiradas` en `lib/duracionTirada.ts` adelantan
+  todo lo que espera a los dados (aterrizaje, vida aplicada, iniciativa siguiente, consecuencias
+  del registro), en su orden. **Falta:** dónde se muestran (en primer plano), que va con `DAD-7` en
+  el `0.3` porque necesita el `DiceTray`.
 - **CFG-21 · Efectos ambientales** (§11): sí/no. **S**
 - **CFG-22 · Sacudidas de pantalla y destellos**: sí/no (también accesibilidad). **S**
 - **CFG-23 · Texturas**: Detalladas · Lisas (versión plana de `.plank-panel`/`.iron-band`). **S**
@@ -271,7 +275,7 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
   estructurales, `success` = `moss` en vez de `emerald`); sombras repetidas como utilidades con nombre
   (`shadow-plank`, `glow-accent`, `inset-well`); `Button` con variantes `alert`, `compact`, `icon`;
   borrar clases muertas (H8).
-- **BAS-5 · Partir `GameView.tsx`** **[H]** **L** — `GameHeader`, `GameFooter`, `GameModals`,
+- ~~**BAS-5 · Partir `GameView.tsx`**~~ ✅ 2026-10-06 **[H]** **L** — `GameHeader`, `GameFooter`, `GameModals`,
   `GameLayout`. Sin cambio visual; desbloquea HUD y Configuración. 🚧 en curso (2026-10-02): hecho
   `GameHeader` (`components/GameHeader.tsx`, con las animaciones de nivel y muertes) y `GameFooter`
   (`components/GameFooter.tsx`: fin, muerte, composer de combate como hueco, composer normal con
@@ -279,9 +283,15 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
   final de la Fase B del 0.2:** `GameModals` y `GameLayout`. Medido: las 19 capas usan 135 nombres
   de GameView y solo el cajón de paneles 70; sacarlos a props solo cambiaría de sitio la lista. Se
   hará con un contexto/almacén del estado de la partida que les dé acceso directo.
+  🚧 2026-10-06 (usuaria: hacerlo ahora, por pasos): paso 1 ✅ — el estado y los manejadores salen
+  a `pages/useGameViewState.tsx` (`GameViewState` = su tipo de retorno); `GameView` solo pinta.
+  Paso 2 ✅ — `GameViewContext` (`pages/GameViewContext.ts`, `useGameView()`) y `GameModals` (las 18
+  capas modales, `pages/GameModals.tsx`). Paso 3 ✅ — `GameLayout` (raíles y los dos paneles) y
+  `GamePanelCajon` (el cajón de paneles). `GameView` pasa de 2422 a 305 líneas: proveedores,
+  cabecera, avisos de ocupado/combate, pie y las piezas. **Cerrada.**
 - **BAS-6 · Carga** **[H]** **S** — `React.lazy` para Enciclopedia, `MapZoomModal`, `InteractiveMap`,
   admin y secciones de Reino; `loading="lazy"`, `decoding="async"` y fundido en todas las `<img>`.
-- **BAS-7 · Animaciones de salida y de cambio de layout** **[P]** **M** 🧭
+- ~~**BAS-7 · Animaciones de salida y de cambio de layout**~~ ✅ 2026-10-06 **[P]** **M**
   - **A (recomendada):** hook propio `usePresence(open, ms)` + *View Transitions API* con degradado a
     corte seco donde el webview no la soporte. Cero dependencias.
   - **B:** `motion` (Framer Motion, ~30 KB gz) con `AnimatePresence`/`layout`.
@@ -293,6 +303,11 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
   (`saliendo`, 200 ms). **Falta:** salida de `ModalShell` (sus 19 usos se desmontan desde fuera:
   hay que pasar cada apertura por `usePresence`; mejor junto al resto de `BAS-5`) y View
   Transitions para los cambios de disposición (plegar un lado, cambiar de pestaña).
+  ✅ 2026-10-06: `components/Presencia.tsx` envuelve cada capa de `GameModals` y la mantiene
+  220 ms al cerrarse (`SaliendoContext`): `Capa` la desvanece y `ModalShell` encoge su panel
+  (`animate-modal-out`); solo con «Animaciones: completas». `lib/transicionVista.ts`
+  (`conTransicion`) usa la View Transitions API al plegar o desplegar un lado y al cambiar de
+  pestaña en `Tabs`; sin soporte o sin animaciones completas, cambio en seco.
 - ~~**BAS-8 · Librería de componentes base** **[P]** **M** — `QuantityStepper`, `EntityRow` (miniatura
   + nombre + subtítulo + acción), `Skeleton`, `ErrorBanner`, `SuccessState`, `Tabs` con indicador
   deslizante, `ProgressBar` (con barra fantasma), `Chip`. Hoy cada uno vive copiado en varios sitios.~~

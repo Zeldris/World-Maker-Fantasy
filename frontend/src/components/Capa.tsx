@@ -1,14 +1,30 @@
-import { useContext, type ReactNode } from 'react'
+import { useContext, useEffect, useRef, type ReactNode } from 'react'
 import { CapasContext } from '../context/capasContext'
+import { useSaliendo } from './Presencia'
 
 /// UX-9 (hito 0.2) — envoltorio de cada overlay de la partida. Si la capa espera detrás de otra más
 /// importante, se oculta con `hidden` pero sigue montada (no pierde lo que tenía a medias) y vuelve
 /// al cerrarse la de arriba. Una capa hija (la ficha de detalle) va siempre por encima.
 export function Capa({ id, hija = false, children }: { id: string; hija?: boolean; children: ReactNode }) {
   const estado = useContext(CapasContext)
-  const visible = !estado || estado.visibles.has(id)
+  // BAS-7: al cerrarse ya no está en el gestor de capas, pero se ve mientras sale (`Presencia`).
+  // Sale como estaba: si esperaba oculta detrás de otra, sigue oculta. Mientras sale es `inert`
+  // (ni foco ni teclado: un Enter repetido no vuelve a confirmar lo que ya se cerró).
+  const saliendo = useSaliendo()
+  const visibleEnGestor = !estado || estado.visibles.has(id)
+  const visibleAlCerrar = useRef(visibleEnGestor)
+  useEffect(() => {
+    if (!saliendo) visibleAlCerrar.current = visibleEnGestor
+  })
+  const visible = saliendo ? visibleAlCerrar.current : visibleEnGestor
+  const caja = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const activo = document.activeElement
+    if (saliendo && activo instanceof HTMLElement && caja.current?.contains(activo)) activo.blur()
+  }, [saliendo])
+  const clases = [hija ? 'relative z-[60]' : '', saliendo ? 'animate-overlay-out pointer-events-none' : ''].filter(Boolean).join(' ')
   return (
-    <div data-capa={id} hidden={!visible} className={hija ? 'relative z-[60]' : undefined}>
+    <div ref={caja} data-capa={id} hidden={!visible} inert={saliendo || undefined} aria-hidden={saliendo || undefined} className={clases || undefined}>
       {children}
     </div>
   )

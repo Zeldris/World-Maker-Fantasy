@@ -996,6 +996,8 @@ export interface NpcInSceneInfo {
   name: string
   /// CR-44: perdió el valor y huyó del combate este turno (sale del combate, sin botín).
   huido?: boolean
+  /// CR-45: es el capitán de su bando y manda caer sobre este (`'ti'` o el nombre de un compañero).
+  ordenaCaerSobre?: string
   // Estado real de NpcState al empezar este combate (2026-07-19) — evita que el popup asuma
   // siempre ILESO/sin saquear para un NPC que ya venía herido o saqueado de un encuentro anterior.
   condicionFisica: CondicionFisica

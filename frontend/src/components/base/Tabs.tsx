@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { conTransicion } from '../../lib/transicionVista'
 
 // BAS-8 (hito 0.2) — pestañas con indicador deslizante bajo la activa (patrón WAI-ARIA tablist:
 // flechas izquierda/derecha cambian de pestaña, Inicio/Fin a la primera/última).
@@ -24,7 +25,7 @@ export function Tabs<T extends string>({ pestanas, activa, onChange, etiqueta }:
       e.key === 'ArrowRight' ? Math.min(pestanas.length - 1, i + 1) : e.key === 'ArrowLeft' ? Math.max(0, i - 1) : e.key === 'Home' ? 0 : e.key === 'End' ? pestanas.length - 1 : -1
     if (destino === -1) return
     e.preventDefault()
-    onChange(pestanas[destino].id)
+    conTransicion(() => onChange(pestanas[destino].id))
     refs.current.get(pestanas[destino].id)?.focus()
   }
 
@@ -41,7 +42,7 @@ export function Tabs<T extends string>({ pestanas, activa, onChange, etiqueta }:
           role="tab"
           aria-selected={p.id === activa}
           tabIndex={p.id === activa ? 0 : -1}
-          onClick={() => onChange(p.id)}
+          onClick={() => conTransicion(() => onChange(p.id))}
           className={`tactile px-3 py-1.5 text-xs transition-colors ${p.id === activa ? 'text-accent-200' : 'text-wood-400 hover:text-wood-200'}`}
         >
           {p.icono && <span aria-hidden="true" className="mr-1.5">{p.icono}</span>}

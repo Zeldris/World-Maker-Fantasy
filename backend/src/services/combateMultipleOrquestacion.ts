@@ -1,5 +1,5 @@
 import { revisarMoralDelCombate } from './moralGrupo.js';
-import { INTELIGENCIA_CAPITAN, objetivoConcentrado } from './combateMultiple.js';
+import { elegirCapitan, objetivoConcentrado } from './combateMultiple.js';
 import { restarVejez } from './cronista/edades.js';
 import type { PrismaClient, CondicionFisica, Npc, Clase, AbilityEffect } from '@prisma/client';
 import { Prisma } from '@prisma/client';
@@ -74,6 +74,17 @@ export interface CombatienteInicial {
   esGrupo?: boolean;
   /// Nombre a mostrar en la tirada de iniciativa visible (Fase 10, 2026-09-29) — solo presentación.
   nombre?: string;
+  /// CR-45: para el objetivo del capitán en la ronda de apertura (a igualdad de condición, el de
+  /// menos Constitución). Sin ella cuenta 0 y decide el azar.
+  constitucion?: number;
+}
+
+/// CR-45: el capitán del bando enemigo y el objetivo que señala esta ronda.
+export interface OrdenCapitan {
+  capitanId: string;
+  objetivoId: string;
+  capitan: string;
+  objetivo: string;
 }
 
 /// Una tirada de iniciativa del combate múltiple, lista para mostrar (Fase 10, 2026-09-29): antes
@@ -100,7 +111,7 @@ export async function iniciarCombatEncounter(
   saveId: string,
   combatientes: (CombatienteInicial & { destreza: number; inteligencia: number })[],
   jugable: boolean = true,
-): Promise<{ encounterId: string; iniciativa: IniciativaParticipanteInfo[] }> {
+): Promise<{ encounterId: string; iniciativa: IniciativaParticipanteInfo[]; ordenCapitan: OrdenCapitan | null }> {
   const encounter = await tx.combatEncounter.create({ data: { saveId, jugable } });
   // `Promise.all` preserva el orden del array de entrada — `creados[i]` corresponde siempre a
   // `combatientes[i]`, así se puede emparejar destreza/inteligencia (datos crudos que el caller
@@ -137,11 +148,27 @@ export async function iniciarCombatEncounter(
   // posteriores), así que esto se calcula directo con los datos crudos que ya trae el caller.
   const jugadorParticipantId = participantes.find((_, i) => combatientes[i].tipo === 'JUGADOR')?.participantId ?? null;
   const combatientesParaEnganche = participantes.map((p) => ({ participantId: p.participantId, bando: p.bando }));
+
+  // CR-45: el capitán manda ya desde la ronda de apertura (todos ILESO: decide la Constitución).
+  const enemigosNpc = participantes.filter((_, i) => combatientes[i].bando === 'ENEMIGO' && combatientes[i].tipo === 'NPC');
+  const capitan = elegirCapitan(enemigosNpc, (p) => p.inteligencia);
+  const objetivoCapitan = capitan
+    ? objetivoConcentrado(
+        participantes
+          .map((p, i) => ({ p, c: combatientes[i] }))
+          .filter(({ p }) => p.bando !== capitan.bando)
+          .map(({ p, c }) => ({ participantId: p.participantId, condicionFisica: 'ILESO' as CondicionFisica, esJugadorReal: p.participantId === jugadorParticipantId, constitucion: c.constitucion ?? 0 })),
+        Math.random,
+      )
+    : null;
+  const sigueAlCapitan = new Set(capitan && objetivoCapitan ? enemigosNpc.map((p) => p.participantId) : []);
+
   const elegirObjetivoInicial = (id: string, candidatos: string[]): string | null => {
     // La jugadora decide en su primer turno real, nunca aquí (ver comentario de
     // `esperandoEleccionJugadora` en schema.prisma) — null la deja "sin objetivo propio" hasta
     // entonces, aunque otros SÍ puedan reclamarla a ella mientras tanto.
     if (id === jugadorParticipantId) return null;
+    if (sigueAlCapitan.has(id) && objetivoCapitan && candidatos.includes(objetivoCapitan)) return objetivoCapitan;
     const inteligencia = participantes.find((p) => p.participantId === id)?.inteligencia ?? 0;
     const candidatosObj: ObjetivoCandidato[] = candidatos.map((cid) => ({ participantId: cid, condicionFisica: 'ILESO' as CondicionFisica }));
     return elegirObjetivo(inteligencia, candidatosObj, Math.random);
@@ -154,7 +181,10 @@ export async function iniciarCombatEncounter(
     [...enganches.entries()].map(([id, objetivo]) => tx.combatParticipant.update({ where: { id }, data: { objetivoActualId: objetivo } })),
   );
 
-  await tx.combatEncounter.update({ where: { id: encounter.id }, data: { ordenIniciativa: ordenIds, esperandoEleccionJugadora: esperandoJugadora } });
+  await tx.combatEncounter.update({
+    where: { id: encounter.id },
+    data: { ordenIniciativa: ordenIds, esperandoEleccionJugadora: esperandoJugadora, capitanId: capitan && objetivoCapitan ? capitan.participantId : null, objetivoCapitanId: capitan ? objetivoCapitan : null },
+  });
 
   // Nombres visibles: los individuos repetidos de un mismo grupo se numeran ("Bestia 1", "Bestia 2").
   const nombresBase = creados.map((_, i) => combatientes[i].nombre ?? (combatientes[i].tipo === 'JUGADOR' ? 'Tú' : 'Enemigo'));
@@ -174,7 +204,11 @@ export async function iniciarCombatEncounter(
       rolls: e.rolls,
     };
   });
-  return { encounterId: encounter.id, iniciativa };
+  const nombreDe = (pid: string) => iniciativa.find((e) => e.participantId === pid)?.nombre ?? '';
+  const ordenCapitan = capitan && objetivoCapitan
+    ? { capitanId: capitan.participantId, objetivoId: objetivoCapitan, capitan: nombreDe(capitan.participantId), objetivo: nombreDe(objetivoCapitan) }
+    : null;
+  return { encounterId: encounter.id, iniciativa, ordenCapitan };
 }
 
 /// Shape mínima de `CombatParticipant` que necesitan `datosVivosDe`/`escribirCondicionYEnergia` —
@@ -492,6 +526,8 @@ interface CalcularEnganchesRondaParams {
   encounter: { ordenIniciativa: string[]; participantes: (ParticipantRef & { bando: Bando })[] };
   weaponNamesPorDefecto: string[];
   jugadoraTargetId: string | null;
+  /// CR-45: objetivo que el capitán ya anunció esta ronda (se mantiene si sigue en pie).
+  objetivoCapitanPrevio?: string | null;
 }
 
 async function calcularEnganchesRonda({
@@ -501,7 +537,8 @@ async function calcularEnganchesRonda({
   encounter,
   weaponNamesPorDefecto,
   jugadoraTargetId,
-}: CalcularEnganchesRondaParams): Promise<{ enganches: Map<string, string | null>; esperandoJugadora: boolean; ordenCapitan: { capitan: string; objetivo: string } | null }> {
+  objetivoCapitanPrevio = null,
+}: CalcularEnganchesRondaParams): Promise<{ enganches: Map<string, string | null>; esperandoJugadora: boolean; ordenCapitan: OrdenCapitan | null }> {
   const datosPorParticipante = new Map<string, DatosCombatiente | null>();
   await Promise.all(
     encounter.participantes.map(async (p) => {
@@ -529,8 +566,11 @@ async function calcularEnganchesRonda({
   // de menos Inteligencia lo siguen; los demás de Inteligencia ≥ 20 también concentran en él.
   const intDe = (pid: string) => datosPorParticipante.get(pid)?.attributes.inteligencia ?? 0;
   const enemigosNpc = vivos.filter((p) => p.bando === 'ENEMIGO' && p.tipo === 'NPC');
-  const capitan = [...enemigosNpc].filter((p) => intDe(p.id) >= INTELIGENCIA_CAPITAN).sort((a, b) => intDe(b.id) - intDe(a.id))[0] ?? null;
-  const objetivoCapitan = capitan
+  const capitan = elegirCapitan(enemigosNpc, (p) => intDe(p.id));
+  // Mientras la ronda espera la elección de la jugadora, la orden ya anunciada no cambia
+  // (`objetivoCapitanPrevio`), salvo que su objetivo ya no esté en pie.
+  const previoValido = capitan && objetivoCapitanPrevio && vivos.some((p) => p.id === objetivoCapitanPrevio && p.bando !== capitan.bando) ? objetivoCapitanPrevio : null;
+  const objetivoCapitan = previoValido ?? (capitan
     ? objetivoConcentrado(
         vivos
           .filter((p) => p.bando !== capitan.bando)
@@ -540,7 +580,7 @@ async function calcularEnganchesRonda({
           })),
         Math.random,
       )
-    : null;
+    : null);
   const sigueAlCapitan = new Set(capitan && objetivoCapitan ? enemigosNpc.map((p) => p.id) : []);
 
   const elegirObjetivoPara = (id: string, candidatos: string[]): string | null => {
@@ -584,7 +624,7 @@ async function calcularEnganchesRonda({
   const esperandoJugadora = jugadoraId !== null && enganches.get(jugadoraId) === null;
   const ordenCapitan =
     capitan && objetivoCapitan
-      ? { capitan: datosPorParticipante.get(capitan.id)?.nombre ?? '', objetivo: datosPorParticipante.get(objetivoCapitan)?.nombre ?? '' }
+      ? { capitanId: capitan.id, objetivoId: objetivoCapitan, capitan: datosPorParticipante.get(capitan.id)?.nombre ?? '', objetivo: datosPorParticipante.get(objetivoCapitan)?.nombre ?? '' }
       : null;
   return { enganches, esperandoJugadora, ordenCapitan };
 }
@@ -2272,7 +2312,8 @@ async function avanzarYComprobarFin({
   const participantesParaEnganche = participantesFrescos.map((p) => (moral.huidos.includes(p.id) ? { ...p, huido: true } : p));
   const encounterParaEnganche = { ordenIniciativa: encounter.ordenIniciativa, participantes: participantesParaEnganche as (ParticipantRef & { bando: Bando })[] };
   const { enganches, esperandoJugadora, ordenCapitan } = await calcularEnganchesRonda({ tx, worldId, saveId, encounter: encounterParaEnganche, weaponNamesPorDefecto, jugadoraTargetId: null });
-  // CR-45: que se vea quién manda y a por quién van (una vez por ronda).
+  // CR-45: que se vea quién manda y a por quién van (una vez por ronda), en el registro y en el panel.
+  await tx.combatEncounter.update({ where: { id: encounterId }, data: { capitanId: ordenCapitan?.capitanId ?? null, objetivoCapitanId: ordenCapitan?.objetivoId ?? null } });
   if (ordenCapitan) {
     const ws = await tx.worldState.findUnique({ where: { saveId }, select: { fictionalDateLabel: true, fictionalMinutes: true } });
     await tx.logEntry.create({
@@ -2384,15 +2425,46 @@ export async function fijarEleccionRondaJugador({
   await prisma.$transaction(async (tx) => {
     const encounter = await tx.combatEncounter.findUniqueOrThrow({ where: { id: encounterId }, include: { participantes: true } });
     if (!encounter.esperandoEleccionJugadora) return;
-    const { enganches } = await calcularEnganchesRonda({
+    const { enganches, ordenCapitan } = await calcularEnganchesRonda({
       tx,
       worldId,
       saveId,
       encounter: { ordenIniciativa: encounter.ordenIniciativa, participantes: encounter.participantes as (ParticipantRef & { bando: Bando })[] },
       weaponNamesPorDefecto,
       jugadoraTargetId,
+      objetivoCapitanPrevio: encounter.objetivoCapitanId,
     });
     await Promise.all([...enganches.entries()].map(([id, objetivo]) => tx.combatParticipant.update({ where: { id }, data: { objetivoActualId: objetivo } })));
-    await tx.combatEncounter.update({ where: { id: encounterId }, data: { esperandoEleccionJugadora: false } });
+    await tx.combatEncounter.update({
+      where: { id: encounterId },
+      data: { esperandoEleccionJugadora: false, capitanId: ordenCapitan?.capitanId ?? null, objetivoCapitanId: ordenCapitan?.objetivoId ?? null },
+    });
   });
+}
+
+/// CR-45: la marca del panel — el capitán y a quién manda caer encima esta ronda (`'ti'` o el nombre
+/// de un compañero). Null si no hay capitán, ya no está en pie o su objetivo tampoco lo está.
+export async function marcaDelCapitan(
+  db: PrismaClient | Prisma.TransactionClient,
+  saveId: string,
+  encounterId: string,
+): Promise<{ capitanId: string; ordenaCaerSobre: string } | null> {
+  const encuentro = await db.combatEncounter.findUnique({
+    where: { id: encounterId },
+    select: { estado: true, capitanId: true, objetivoCapitanId: true, participantes: true },
+  });
+  if (!encuentro || encuentro.estado !== 'EN_CURSO' || !encuentro.capitanId || !encuentro.objetivoCapitanId) return null;
+  const capitan = encuentro.participantes.find((p) => p.id === encuentro.capitanId);
+  const objetivo = encuentro.participantes.find((p) => p.id === encuentro.objetivoCapitanId);
+  if (!capitan || !objetivo || capitan.huido || objetivo.huido) return null;
+  const caido = (c: CondicionFisica | null | undefined) => c === 'CONVALECIENTE' || c === 'MUERTO';
+  const condicionCapitan =
+    capitan.condicionFisicaGrupo ??
+    (capitan.npcId ? (await db.npcState.findFirst({ where: { saveId, npcId: capitan.npcId, scope: capitan.npcScope }, select: { condicionFisica: true } }))?.condicionFisica : null);
+  if (caido(condicionCapitan)) return null;
+  if (objetivo.tipo === 'JUGADOR') return { capitanId: capitan.id, ordenaCaerSobre: 'ti' };
+  if (!objetivo.companionId) return null;
+  const companero = await db.companion.findUnique({ where: { id: objetivo.companionId }, select: { name: true, condicionFisica: true } });
+  if (!companero || caido(companero.condicionFisica)) return null;
+  return { capitanId: capitan.id, ordenaCaerSobre: companero.name };
 }
