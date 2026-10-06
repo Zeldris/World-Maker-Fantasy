@@ -1576,6 +1576,67 @@ export async function fijarRolReinoCompanion(saveId: string, companionId: string
     body: JSON.stringify({ rolReino }),
   })
 }
+/// REI-118 (hito 0.3): un súbdito como persona y las camas del Reino (compañeros y súbditos comparten cupo).
+export interface SubditoInfo {
+  id: string
+  name: string
+  role: string
+  rol: 'trabajador' | 'soldado' | 'vigia' | 'visitante'
+  pueblo: string | null
+  genero: string | null
+  edad: number | null
+  adulto: boolean
+  felicidad: number
+  origen: string
+  territoryId: string | null
+  linaje: { nombre: string; tipo: string } | null
+  /// REI-120: nombre de su pareja (si tiene) y crías que han tenido.
+  pareja?: string | null
+  crias?: number
+}
+
+export interface CamasReino {
+  total: number
+  companeros: number
+  subditos: number
+  libres: number
+}
+
+/// REI-119: quien espera en la puerta del Reino a que lo aceptes o lo rechaces.
+export interface CandidatoLlegada extends SubditoInfo {
+  deDonde: string | null
+  hastaMinutes: number | null
+}
+
+/// REI-121 / REI-54: quien se fue o murió en la última semana.
+export interface SalidaSubdito {
+  id: string
+  name: string
+  estado: 'SE_FUE' | 'MUERTO'
+  motivo: string
+  cuando: number | null
+}
+
+export async function getSubditos(saveId: string): Promise<{ ahora?: number; subditos: SubditoInfo[]; camas: CamasReino; candidatos?: CandidatoLlegada[]; salidas?: SalidaSubdito[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/subditos`)
+}
+
+export async function responderLlegada(saveId: string, subjectId: string, acepta: boolean): Promise<{ ok: boolean; name?: string }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/subditos/${subjectId}/llegada`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ acepta }),
+  })
+}
+
+export async function cambiarRolSubdito(saveId: string, subjectId: string, rol: string): Promise<{ ok: boolean }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/subjects/${subjectId}/rol`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ rol }),
+  })
+}
+
 export async function asignarPlantillaSubject(saveId: string, subjectId: string, plantillaEquipoId: string | null): Promise<{ ok: boolean }> {
   return fetchJson(`${API_URL}/saves/${saveId}/subjects/${subjectId}/plantilla`, {
     method: 'POST',
@@ -2731,6 +2792,30 @@ export interface HiloInfo {
 
 export async function getHilos(saveId: string): Promise<{ hilos: HiloInfo[] }> {
   return fetchJson(`${API_URL}/saves/${saveId}/leyendas/hilos`)
+}
+
+/// CR-52 (hito 0.3): una familia (apellido) o un rastro faerus que conoce el personaje.
+export interface MiembroLinaje {
+  id: string
+  tipo: 'NPC' | 'SUBDITO' | 'PERSONAJE'
+  nombre: string
+  vivo: boolean
+  padreId: string | null
+  madreId: string | null
+}
+
+export interface LinajeInfo {
+  id: string
+  nombre: string
+  tipo: 'APELLIDO' | 'RASTRO'
+  pueblo: string
+  propio: boolean
+  miembros: MiembroLinaje[]
+  historia: EntradaLeyenda[]
+}
+
+export async function getLinajes(saveId: string): Promise<{ linajes: LinajeInfo[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/leyendas/linajes`)
 }
 
 /// CR-42 (hito 0.3): «¿Qué se sabe en tu tierra?» a un compañero.

@@ -46,7 +46,7 @@ export interface EntradaLeyenda {
 }
 
 export const FAMILIAS: FamiliaSuceso[] = ['CLIMA', 'NATURAL', 'VIDA_MUERTE', 'DIPLOMACIA', 'FACCION', 'ECONOMIA', 'REINO', 'JUGADOR', 'LORE', 'SISTEMA'];
-export const TIPOS_ENTIDAD: EntidadTipo[] = ['PERSONAJE', 'NPC', 'COMPANERO', 'FACCION', 'REGION', 'LOCATION', 'TERRITORIO', 'EDIFICIO'];
+export const TIPOS_ENTIDAD: EntidadTipo[] = ['PERSONAJE', 'NPC', 'COMPANERO', 'FACCION', 'REGION', 'LOCATION', 'TERRITORIO', 'EDIFICIO', 'LINAJE'];
 export const LIMITE_LEYENDAS = 200;
 
 const SELECT_SUCESO = {
@@ -62,18 +62,22 @@ type FilaConocimiento = { via: ViaConocimiento; confirmado: boolean; desde: numb
 async function nombres(prisma: PrismaClient, saveId: string, sucesos: SucesoLeyenda[]): Promise<(tipo: string, id: string) => string> {
   const ids = (tipo: string) => [...new Set(sucesos.flatMap((s) => s.actores.filter((a) => a.entidadTipo === tipo).map((a) => a.entidadId)))];
   const lugares = [...new Set([...ids('LOCATION'), ...sucesos.map((s) => s.locationId).filter((l): l is string => !!l)])];
-  const [save, npcs, facciones, locs, companeros] = await Promise.all([
+  const [save, npcs, facciones, locs, companeros, linajes, subditos] = await Promise.all([
     prisma.save.findUnique({ where: { id: saveId }, select: { characterName: true } }),
     ids('NPC').length ? prisma.npc.findMany({ where: { id: { in: ids('NPC') } }, select: { id: true, name: true } }) : [],
     ids('FACCION').length ? prisma.faction.findMany({ where: { saveId, slug: { in: ids('FACCION') } }, select: { slug: true, name: true } }) : [],
     lugares.length ? prisma.location.findMany({ where: { id: { in: lugares } }, select: { id: true, name: true } }) : [],
     ids('COMPANERO').length ? prisma.companion.findMany({ where: { id: { in: ids('COMPANERO') } }, select: { id: true, name: true } }) : [],
+    ids('LINAJE').length ? prisma.linaje.findMany({ where: { id: { in: ids('LINAJE') } }, select: { id: true, nombre: true, tipo: true } }) : [],
+    ids('SUBDITO').length ? prisma.subject.findMany({ where: { id: { in: ids('SUBDITO') } }, select: { id: true, name: true } }) : [],
   ]);
   const mapa = new Map<string, string>([
     ...npcs.map((n) => [`NPC|${n.id}`, n.name] as const),
     ...facciones.map((f) => [`FACCION|${f.slug}`, f.name] as const),
     ...locs.map((l) => [`LOCATION|${l.id}`, l.name] as const),
     ...companeros.map((c) => [`COMPANERO|${c.id}`, c.name] as const),
+    ...linajes.map((l) => [`LINAJE|${l.id}`, l.tipo === 'RASTRO' ? `rastro ${l.nombre}` : `los ${l.nombre}`] as const),
+    ...subditos.map((x) => [`SUBDITO|${x.id}`, x.name] as const),
   ]);
   return (tipo, id) => {
     if (tipo === 'PERSONAJE') return save?.characterName ?? 'Tú';
@@ -184,3 +188,70 @@ export async function leyendasDeFicha(prisma: PrismaClient, saveId: string, fich
   return aEntradas(prisma, saveId, filas);
 }
 
+
+// ─────────────────────────── Linajes (CR-52) ───────────────────────────
+
+export interface MiembroLinaje {
+  id: string;
+  tipo: 'NPC' | 'SUBDITO' | 'PERSONAJE';
+  nombre: string;
+  vivo: boolean;
+  padreId: string | null;
+  madreId: string | null;
+}
+
+export interface LinajeLeyenda {
+  id: string;
+  nombre: string;
+  tipo: string;
+  pueblo: string;
+  /// El linaje del personaje.
+  propio: boolean;
+  miembros: MiembroLinaje[];
+  /// Lo que sabe el personaje de esta familia (lo más reciente primero).
+  historia: EntradaLeyenda[];
+}
+
+export const HISTORIA_POR_LINAJE = 8;
+
+/// «Linajes» de Leyendas: las familias de las que el personaje sabe algo (y la suya), con sus
+/// miembros (padres incluidos, para el árbol) y su historia conocida.
+export async function linajesConocidos(prisma: PrismaClient, saveId: string): Promise<LinajeLeyenda[]> {
+  const sabidos = await prisma.conocimiento.findMany({
+    where: { saveId, confirmado: true, suceso: { actores: { some: { entidadTipo: 'LINAJE' } } } },
+    select: { suceso: { select: { actores: { where: { entidadTipo: 'LINAJE' }, select: { entidadId: true } } } } },
+  });
+  const propio = await prisma.linajeMiembro.findFirst({ where: { saveId, entidadTipo: 'PERSONAJE', entidadId: saveId }, select: { linajeId: true } });
+  const ids = [...new Set([...(propio ? [propio.linajeId] : []), ...sabidos.flatMap((c) => c.suceso.actores.map((a) => a.entidadId))])];
+  if (ids.length === 0) return [];
+  const linajes = await prisma.linaje.findMany({ where: { saveId, id: { in: ids } }, include: { miembros: true }, orderBy: { nombre: 'asc' } });
+  const npcIds = linajes.flatMap((l) => l.miembros.filter((m) => m.entidadTipo === 'NPC').map((m) => m.entidadId));
+  const subditoIds = linajes.flatMap((l) => l.miembros.filter((m) => m.entidadTipo === 'SUBDITO').map((m) => m.entidadId));
+  const subditos = new Map(
+    (await prisma.subject.findMany({ where: { id: { in: subditoIds } }, select: { id: true, name: true, estado: true, padreId: true, madreId: true } })).map((s) => [s.id, s]),
+  );
+  const [npcs, muertos, save] = await Promise.all([
+    prisma.npc.findMany({ where: { id: { in: npcIds } }, select: { id: true, name: true, muertoEnMundo: true, padreNpcId: true, madreNpcId: true, nacidoEn: true } }),
+    prisma.npcState.findMany({ where: { saveId, npcId: { in: npcIds }, OR: [{ muerto: true }, { condicionFisica: 'MUERTO' }] }, select: { npcId: true } }),
+    prisma.save.findUnique({ where: { id: saveId }, select: { characterName: true } }),
+  ]);
+  const porId = new Map(npcs.map((n) => [n.id, n]));
+  const caidos = new Set(muertos.map((m) => m.npcId));
+  const historias = await Promise.all(linajes.map((l) => leyendasDeEntidad(prisma, saveId, 'LINAJE', l.id)));
+  const out: LinajeLeyenda[] = [];
+  for (const [i, l] of linajes.entries()) {
+    const miembros: MiembroLinaje[] = l.miembros.flatMap((m): MiembroLinaje[] => {
+      if (m.entidadTipo === 'PERSONAJE') return [{ id: m.entidadId, tipo: 'PERSONAJE', nombre: save?.characterName ?? 'Tú', vivo: true, padreId: null, madreId: null }];
+      if (m.entidadTipo === 'SUBDITO') {
+        const sb = subditos.get(m.entidadId);
+        return sb ? [{ id: sb.id, tipo: 'SUBDITO', nombre: sb.name, vivo: sb.estado !== 'MUERTO', padreId: sb.padreId, madreId: sb.madreId }] : [];
+      }
+      const n = porId.get(m.entidadId);
+      if (!n) return [];
+      return [{ id: n.id, tipo: 'NPC', nombre: n.name, vivo: !n.muertoEnMundo && !caidos.has(n.id), padreId: n.padreNpcId, madreId: n.madreNpcId }];
+    });
+    const historia = historias[i]!.slice(0, HISTORIA_POR_LINAJE);
+    out.push({ id: l.id, nombre: l.nombre, tipo: l.tipo, pueblo: l.pueblo, propio: l.id === propio?.linajeId, miembros, historia });
+  }
+  return out.sort((a, b) => Number(b.propio) - Number(a.propio));
+}

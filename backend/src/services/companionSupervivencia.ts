@@ -378,7 +378,7 @@ export async function autoEquiparDesdeAlmacen(tx: Prisma.TransactionClient, save
       where: { saveId },
       orderBy: { prioridad: 'asc' },
       include: {
-        subjects: { select: { id: true } },
+        subjects: { where: { estado: 'ACTIVO' }, select: { id: true } },
         companions: { select: { id: true } },
       },
     }),

@@ -56,7 +56,8 @@ export interface NarrationResult {
   /// a propósito — el backend valida y materializa (mismo patrón que newItem/newCompanion).
   newTerritory?: { name: string; region?: string; description: string } | null;
   newBuilding?: { name: string; kind: string; description: string; territoryName?: string } | null;
-  newSubject?: { name: string; role: string; notes: string; territoryName?: string } | null;
+  /// REI-118 (hito 0.3): ya no se pide; solo lo crea el motor (llegadas y nacimientos). Se ignora.
+  newSubject?: unknown;
   /// docs/mecanicas/09-panel-personaje.md (pestaña Misiones): solo cuando la escena establece de verdad un
   /// objetivo narrativo con entidad propia (no cualquier intención pasajera) — mismo patrón que
   /// newTerritory/newBuilding/newSubject, el backend valida y materializa.
@@ -1195,7 +1196,7 @@ ${
     // en el resto de turnos ni siquiera se menciona, ahorrando tokens de instrucción y de
     // schema sin quitarle la posibilidad al modelo cuando sí aplica.
     reinoActive
-      ? '\nReino: solo si la acción resulta de verdad en que el personaje reclama un territorio, termina de construir un edificio, o gana un súbdito con nombre que sirve a su dominio (no un compañero de viaje personal, eso es "newCompanion"), rellena el campo correspondiente ("newTerritory", "newBuilding" o "newSubject") — el resto de turnos, todos en null. Muy poco frecuente.\n'
+      ? '\nReino: solo si la acción resulta de verdad en que el personaje reclama un territorio o termina de construir un edificio, rellena el campo correspondiente ("newTerritory" o "newBuilding") — el resto de turnos, los dos en null. Muy poco frecuente. Los súbditos no los creas tú: llegan o nacen solos.\n'
       : ''
   }`;
 
@@ -1274,15 +1275,6 @@ Responde solo con el JSON pedido, nada más.`;
                 name: { type: 'string' },
                 kind: { type: 'string' },
                 description: { type: 'string' },
-                territoryName: { type: 'string' },
-              },
-            },
-            newSubject: {
-              type: ['object', 'null'],
-              properties: {
-                name: { type: 'string' },
-                role: { type: 'string' },
-                notes: { type: 'string' },
                 territoryName: { type: 'string' },
               },
             },

@@ -3,7 +3,8 @@ import type { AlmacenItemInfo, CompanionInfo, EquipSlot, InventoryItemInfo, Plan
 import { PanelSection } from '../../PanelSection'
 import { SelectorJuego } from '../../SelectorJuego'
 import { AlmacenSection } from './AlmacenSection'
-import { crearPlantilla, borrarPlantilla, asignarPlantillaCompanion, asignarPlantillaSubject, fijarRolReinoCompanion } from '../../../lib/api'
+import { crearPlantilla, borrarPlantilla, asignarPlantillaCompanion, asignarPlantillaSubject, fijarRolReinoCompanion, getSubditos, cambiarRolSubdito, responderLlegada, type SubditoInfo, type CamasReino, type CandidatoLlegada, type SalidaSubdito } from '../../../lib/api'
+import { lineaDeSubdito, plazoDeLlegada } from '../../../lib/subditos'
 import { SLOT_LABEL, SLOT_ORDER } from '../../../lib/equipSlots'
 import { ErrorBanner } from '../../../components/ErrorBanner'
 import { useErrorConReintento } from '../../../hooks/useErrorConReintento'
@@ -342,6 +343,162 @@ function RolesReinoSection({ saveId, companions, onRefreshSave }: { saveId: stri
   )
 }
 
+/// REI-118 (hito 0.3): los roles que el motor da a un súbdito adulto.
+const ROLES_SUBDITO: { value: SubditoInfo['rol']; label: string; descripcion: string }[] = [
+  { value: 'trabajador', label: 'Trabajador', descripcion: 'Trabaja: suma comida y riqueza al Reino.' },
+  { value: 'soldado', label: 'Soldado', descripcion: 'Defiende el Reino; cobra su mantenimiento.' },
+  { value: 'vigia', label: 'Vigía', descripcion: 'Vigila el Reino; cuenta como soldado.' },
+]
+/// REI-118 + REI-53 (parte): los súbditos como personas — pueblo, edad, linaje, felicidad y rol
+/// editable (las crías no trabajan ni combaten) — y las camas que comparten con los compañeros.
+function SubditosLista({ saveId, subjects, plantillasEquipo, onRefreshSave }: { saveId: string; subjects: SubjectInfo[]; plantillasEquipo: PlantillaEquipoInfo[]; onRefreshSave: () => Promise<void> }) {
+  const consulta = useModoConsulta()
+  const [datos, setDatos] = useState<{ ahora?: number; subditos: SubditoInfo[]; camas: CamasReino; candidatos?: CandidatoLlegada[]; salidas?: SalidaSubdito[] } | null>(null)
+  const [version, setVersion] = useState(0)
+  const [busy, setBusy] = useState(false)
+  const { fallo, informar, limpiar } = useErrorConReintento()
+  // Cada refresco de la partida trae un `subjects` nuevo: se vuelve a pedir la lista, porque los
+  // candidatos, muertes y salidas no cambian los súbditos activos que vienen en la partida.
+  useEffect(() => {
+    let vivo = true
+    getSubditos(saveId)
+      .then((r) => vivo && setDatos(r))
+      .catch(() => vivo && setDatos(null))
+    return () => {
+      vivo = false
+    }
+  }, [saveId, subjects, version])
+
+  async function handleRol(id: string, rol: string) {
+    setBusy(true)
+    try {
+      await cambiarRolSubdito(saveId, id, rol)
+      setVersion((v) => v + 1)
+      await onRefreshSave()
+    } catch (e) {
+      informar('No se pudo cambiar el rol.', e, () => void handleRol(id, rol))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleLlegada(id: string, acepta: boolean) {
+    setBusy(true)
+    try {
+      await responderLlegada(saveId, id, acepta)
+      setVersion((v) => v + 1)
+      await onRefreshSave()
+    } catch (e) {
+      informar(acepta ? 'No se pudo acoger a quien llega.' : 'No se pudo despedir a quien llega.', e, () => void handleLlegada(id, acepta))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const subditos = datos?.subditos ?? []
+  const candidatos = datos?.candidatos ?? []
+  if (!datos && subjects.length === 0) return null
+  const porId = new Map(subjects.map((s) => [s.id, s]))
+  return (
+    <PanelSection title="Súbditos">
+      <ErrorBanner fallo={fallo} onCerrar={limpiar} />
+      {datos && (
+        <p className="mb-2 text-2xs text-wood-400">
+          Camas: {datos.camas.companeros + datos.camas.subditos}/{datos.camas.total} ({datos.camas.subditos} súbdito{datos.camas.subditos === 1 ? '' : 's'}, {datos.camas.companeros} compañero{datos.camas.companeros === 1 ? '' : 's'})
+        </p>
+      )}
+      {/* REI-119 / REI-54: quien llega espera respuesta; si no se le contesta, se va. */}
+      {candidatos.map((c) => (
+        <div key={c.id} className="mb-2 rounded-lg border border-accent-600/60 bg-wood-950/50 px-3.5 py-2.5" role="group" aria-label={`Llega ${c.name}`}>
+          <p className="text-2xs uppercase tracking-[0.12em] text-accent-300">Llega a tu puerta</p>
+          <p className="mt-0.5 font-medium text-wood-100">{c.name}</p>
+          <p className="text-2xs text-wood-400">
+            {[lineaDeSubdito(c), c.deDonde ? `de ${c.deDonde}` : null].filter(Boolean).join(' · ')}
+          </p>
+          <p className="mt-1 text-xs text-wood-300">Viene porque en tu Reino hay cama, comida y agua. {plazoDeLlegada(c.hastaMinutes, datos?.ahora)}</p>
+          <div className="mt-2 flex gap-2">
+            <button type="button" disabled={busy || !!consulta} title={consulta ?? undefined} onClick={() => void handleLlegada(c.id, true)}
+              className="tactile flex-1 rounded-lg border border-accent-600 bg-gradient-to-b from-accent-400 to-accent-600 px-3 py-1.5 text-2xs font-bold uppercase tracking-wide text-wood-950 disabled:opacity-50">
+              Acoger
+            </button>
+            <button type="button" disabled={busy || !!consulta} title={consulta ?? undefined} onClick={() => void handleLlegada(c.id, false)}
+              className="tactile flex-1 rounded-lg border border-iron-700 px-3 py-1.5 text-2xs text-wood-300 disabled:opacity-50">
+              Despedir
+            </button>
+          </div>
+        </div>
+      ))}
+      {/* REI-121 / REI-54: quien se fue o murió esta semana. */}
+      {(datos?.salidas ?? []).length > 0 && (
+        <ul className="mb-2 flex flex-col gap-0.5 rounded-lg border border-iron-800 bg-wood-950/30 px-3 py-2" aria-label="Salidas de esta semana">
+          {datos!.salidas!.map((x) => (
+            <li key={x.id} className="text-2xs text-wood-400">
+              <span aria-hidden="true">{x.estado === 'MUERTO' ? '✝ ' : '↩ '}</span>
+              <span className="text-wood-200">{x.name}</span> — {x.motivo}
+            </li>
+          ))}
+        </ul>
+      )}
+      {subditos.length === 0 && <p className="text-xs text-wood-500">Aún no vive nadie en tu Reino.</p>}
+      <div className="flex flex-col gap-2">
+        {subditos.map((s) => {
+          const fila = porId.get(s.id)
+          return (
+            <div key={s.id} className="rounded-lg border border-iron-700 bg-wood-950/40 px-3.5 py-2.5">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="font-medium text-wood-100">{s.name}</p>
+                  <p className="text-2xs text-wood-400">{lineaDeSubdito(s) || s.role}</p>
+                  {s.pareja && (
+                    <p className="text-2xs text-wood-400">
+                      Pareja de {s.pareja}
+                      {s.crias ? ` · ${s.crias} cría${s.crias === 1 ? '' : 's'}` : ''}
+                    </p>
+                  )}
+                </div>
+                {s.rol === 'visitante' ? (
+                  <span className="text-2xs text-wood-500">de paso</span>
+                ) : s.adulto ? (
+                  <SelectorJuego
+                    ariaLabel={`Rol de ${s.name}`}
+                    value={s.rol}
+                    disabled={busy || !!consulta}
+                    title={consulta ?? undefined}
+                    opciones={ROLES_SUBDITO}
+                    onChange={(v) => void handleRol(s.id, v)}
+                    className="min-w-[7rem]"
+                  />
+                ) : (
+                  <span className="text-2xs text-wood-500" title="Las crías no trabajan ni combaten hasta hacerse mayores.">
+                    cría
+                  </span>
+                )}
+              </div>
+              <div className="mt-1.5 flex items-center gap-2" title={`Felicidad ${s.felicidad}/100`}>
+                <span className="text-2xs text-wood-500">Felicidad</span>
+                <div className="h-1.5 flex-1 overflow-hidden rounded bg-wood-900" role="meter" aria-label={`Felicidad de ${s.name}`} aria-valuenow={s.felicidad} aria-valuemin={0} aria-valuemax={100}>
+                  <div className={`h-full ${s.felicidad >= 70 ? 'bg-emerald-500' : s.felicidad < 30 ? 'bg-danger-500' : 'bg-accent-500'}`} style={{ width: `${s.felicidad}%` }} />
+                </div>
+              </div>
+              {fila?.notes && <p className="mt-1 text-xs leading-relaxed text-wood-400">{fila.notes}</p>}
+              {fila && plantillasEquipo.length > 0 && (
+                <PlantillaSelect
+                  value={fila.plantillaEquipoId}
+                  plantillas={plantillasEquipo}
+                  onChange={async (id) => {
+                    await asignarPlantillaSubject(saveId, s.id, id)
+                    await onRefreshSave()
+                  }}
+                />
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </PanelSection>
+  )
+}
+
 interface SubditosSectionProps {
   saveId: string
   subjects: SubjectInfo[]
@@ -359,30 +516,7 @@ interface SubditosSectionProps {
 export function SubditosSection({ saveId, subjects, companions, inventory, almacenItems, plantillasEquipo, onRefreshSave }: SubditosSectionProps) {
   return (
     <div className="flex flex-col gap-5">
-      {subjects.length > 0 && (
-        <PanelSection title="Súbditos">
-          <div className="flex flex-col gap-2">
-            {subjects.map((s) => (
-              <div key={s.id} className="rounded-lg border border-iron-700 bg-wood-950/40 px-3.5 py-2.5">
-                <p className="font-medium text-wood-100">
-                  {s.name} <span className="font-sans text-xs text-wood-500">— {s.role}</span>
-                </p>
-                <p className="mt-1 text-xs leading-relaxed text-wood-400">{s.notes}</p>
-                {plantillasEquipo.length > 0 && (
-                  <PlantillaSelect
-                    value={s.plantillaEquipoId}
-                    plantillas={plantillasEquipo}
-                    onChange={async (id) => {
-                      await asignarPlantillaSubject(saveId, s.id, id)
-                      await onRefreshSave()
-                    }}
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-        </PanelSection>
-      )}
+      <SubditosLista saveId={saveId} subjects={subjects} plantillasEquipo={plantillasEquipo} onRefreshSave={onRefreshSave} />
 
       <RolesReinoSection saveId={saveId} companions={companions} onRefreshSave={onRefreshSave} />
       <AlmacenSection saveId={saveId} inventory={inventory} almacenItems={almacenItems} onRefreshSave={onRefreshSave} />

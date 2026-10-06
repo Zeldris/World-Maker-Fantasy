@@ -35,6 +35,34 @@ población del Reino, renombrar el Bulco de Arena, y Dessa, Yerin y Riko como NP
 
 ## Categoría: Razas y cultura
 
+### 2026-10-06 — Linajes de cada pueblo y el rastro de los Faerus (CR-52)
+**Estado: PROPUESTA (idea de la usuaria, 2026-10-06; el motor la usará mientras Álvaro no diga otra cosa)**
+
+**Acción de implementación:** añadir a `docs/rpgtarkor/lore-mundo/razas.md` si se aprueba.
+
+Cada familia es un linaje que se hereda y que la historia de la partida sigue (venganzas y deudas
+pasan a la familia). Ya hay base en el canon: los Ketg (Torgash, Ulkha), la familia Koh (Uhuld y
+Gistera), el linaje Maktor que «continúa la hija mayor», las castas de función goirntes y las «casas y
+linajes» de Vaelira.
+
+| Pueblo | Cómo se hereda |
+|---|---|
+| Orcos | Apellido del progenitor de más rango; a igualdad, el de la madre (como Maktor) |
+| Goirntes | Apellido y casta de función del padre |
+| Nabieus | Apellido de la madre |
+| Faerus | **Rastro** (ver abajo) |
+
+**El rastro de los Faerus** (palabras de la usuaria): los Faerus no tienen apellido, pero sí una
+diferenciación: un *rastro* que les permite, a través de los sentidos, detectar a qué familia pertenece
+cada uno; pequeños grupos dentro de la manada. Se traduce en una palabra, como un apellido, pero es más
+bien una pequeña manada dentro de la gran manada. Se escribe «Tasko, del rastro Veyra». La cría nace en
+el rastro de la madre; si un rastro crece demasiado (más de 12), una pareja puede fundar uno nuevo.
+
+**Preguntas para Álvaro:** ¿encaja la herencia de cada pueblo? ¿Tienen nombre propio en su lengua los
+rastros y las castas?
+
+---
+
 ### 2026-10-06 — Lo que valora cada pueblo (aprobación de compañeros, CR-15)
 **Estado: PROPUESTA (Claude, por decisión Q9 de la usuaria del 2026-10-06; el motor ya la usa)**
 

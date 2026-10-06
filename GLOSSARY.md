@@ -139,6 +139,18 @@ Un NPC que salió vivo de un combate con la jugadora; vuelve más fuerte y lo re
 Una historia que el motor reconoce en el Libro (venganza, ascenso, caída, deuda, rivalidad, redención) y que sigue abierta hasta su desenlace.
 _Evitar_: trama, misión
 
+**Súbdito**:
+Una persona que vive en el Reino de la jugadora, con nombre, pueblo, edad, padres y linaje; la población del Reino es cuántos hay.
+_Evitar_: poblador (solo para el que aún está llegando), aldeano
+
+**Linaje**:
+Una familia que el motor sigue a través de generaciones (Ketg, Koh, Marn…): actor del Libro, hereda venganzas y deudas.
+_Evitar_: clan (es la facción), dinastía
+
+**Rastro**:
+El linaje de los Faerus: una pequeña manada dentro de la gran manada que los suyos reconocen por los sentidos; se escribe «Tasko, del rastro Veyra».
+_Evitar_: apellido (los Faerus no tienen)
+
 **Informante**:
 Un NPC convencido para seguir en su facción y pasar a la jugadora lo que sabe; si lo descubren, lo pierde.
 

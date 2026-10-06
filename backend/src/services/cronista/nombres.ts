@@ -99,7 +99,11 @@ export function generarNombre(raza: string | null, genero: Genero, random: () =>
     const conApellido = f.apellido && random() < f.probApellido ? `${nombre} ${f.apellido(random)}` : nombre;
     if (nombreValido(conApellido, usados)) return conApellido;
   }
-  const base = `${f.nombre(genero, random)} ${(f.apellido ?? FONETICA.orcos!.apellido!)(random)}`;
+  return nombreLibre(`${f.nombre(genero, random)} ${(f.apellido ?? FONETICA.orcos!.apellido!)(random)}`, usados);
+}
+
+/// El nombre tal cual si está libre; si no, con ordinal («Doru Ketg II»).
+export function nombreLibre(base: string, usados: ReadonlySet<string>): string {
   if (!usados.has(base.toLowerCase())) return base;
   for (let n = 2; ; n++) {
     const conOrdinal = `${base} ${ORDINALES[n] ?? n}`;
@@ -108,3 +112,18 @@ export function generarNombre(raza: string | null, genero: Genero, random: () =>
 }
 
 const ORDINALES: Record<number, string> = { 2: 'II', 3: 'III', 4: 'IV', 5: 'V', 6: 'VI', 7: 'VII', 8: 'VIII', 9: 'IX', 10: 'X' };
+
+/// CR-52: apellido nuevo para fundar un linaje (orcos, Goirntes, Nabieus).
+export function generarApellido(raza: string | null, random: () => number): string {
+  const f = FONETICA[raza ?? ''];
+  return (f?.apellido ?? FONETICA.orcos!.apellido!)(random);
+}
+
+/// CR-52: palabra de un rastro faerus (una pequeña manada dentro de la manada): suave y abierta,
+/// como sus nombres, pero de dos o tres sílabas (Veyra, Saelo, Ilmeri).
+export function generarRastro(random: () => number): string {
+  const s1 = `${elegir(['V', 'S', 'Y', 'L', 'N', 'H', 'Th', 'R', 'Il', 'Ae'], random)}${elegir(['e', 'a', 'i', 'ae', 'ey'], random)}`;
+  const s2 = `${elegir(['r', 'l', 'm', 'n', 'lv', 'rh'], random)}${elegir(['a', 'o', 'i', 'e'], random)}`;
+  const s3 = random() < 0.35 ? `${elegir(['r', 'n', 'l'], random)}${elegir(['i', 'a'], random)}` : '';
+  return capitalizar(`${s1}${s2}${s3}`);
+}

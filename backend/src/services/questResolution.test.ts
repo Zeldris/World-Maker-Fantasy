@@ -23,6 +23,8 @@ function mockTx(overrides: {
         count: vi.fn().mockResolvedValue(overrides.companionCount ?? 0),
         create: companionCreate,
       },
+      // REI-118: los súbditos activos comparten las camas (aquí, ninguno).
+      subject: { count: vi.fn().mockResolvedValue(0) },
       building: {
         findMany: vi.fn().mockResolvedValue((overrides.companionBuildingRecipeKeys ?? ['campamento']).map((recipeKey) => ({ recipeKey }))),
       },

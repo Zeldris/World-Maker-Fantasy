@@ -2928,7 +2928,7 @@ describe('Territory.control/population: felicidad sostenida consolida o rebela (
 
     const territory = await prisma.territory.findUniqueOrThrow({ where: { id: territoryId } });
     expect(territory.control).toBe('CONSOLIDADO');
-    expect(territory.population).toBeGreaterThan(15); // felicidad alta también hace crecer la población
+    expect(territory.population).toBe(15); // REI-118: la población ya no crece sola, son los súbditos
 
     const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(save.xp - xpAntes).toBe(300);

@@ -74,6 +74,7 @@ vi.mock('../../lib/prisma.js', () => ({
     discoveredEntity: { findMany: (...args: unknown[]) => findManyDiscoveredEntity(...args), upsert: (...args: unknown[]) => upsertDiscoveredEntity(...args) },
     // CR-16: sin recuerdos (nadie guarda rencor) salvo que un test diga otra cosa.
     recuerdo: { findMany: async () => [] },
+    linajeMiembro: { findMany: async () => [] },
     faction: { findFirst: (...args: unknown[]) => findFirstFaction(...args) },
     quest: { findMany: (...args: unknown[]) => findManyQuest(...args) },
     locationLink: { findMany: (...args: unknown[]) => findManyLocationLink(...args) },

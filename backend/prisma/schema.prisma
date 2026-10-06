@@ -469,6 +469,7 @@ model Save {
   etiquetas          Etiqueta[]
   recuerdos          Recuerdo[]
   hilos              Hilo[]
+  linajes            Linaje[]
   consecuencias      Consecuencia[]
   sessionFacts       SessionFact[]
   foundedFactions    Faction[]
@@ -1790,6 +1791,10 @@ model KingdomStats {
   /// CR-12 (12c, hito 0.2): días seguidos con déficit de comida (hambre). Cada 3 seguidos se
   /// registra `HAMBRUNA` (cohesión −10 y posible `REBELION`, reacción `HAMBRUNA_DIVIDE`).
   diasHambre          Int      @default(0)
+  /// REI-119: minuto de ficción en que llegó el último candidato a súbdito (una llegada por semana).
+  ultimaLlegada       Int?
+  /// REI-120: última semana (minuto de ficción) en que se revisaron parejas y crías.
+  ultimaRevisionFamilias Int?
   /// CR-34 (Q6): último día de ficción en que la facción revisó su situación para decidir (null =
   /// nunca). Solo facciones del mundo de la partida; el Reino de la jugadora no lo usa.
   ultimaRevision      Int?
@@ -2226,6 +2231,30 @@ model Subject {
   notes       String
   createdAt   DateTime   @default(now())
 
+  /// REI-118 (hito 0.3, Fase C): el súbdito como persona. `pueblo` null = súbdito narrado antes del
+  /// 0.3 (se queda como adulto sin más datos). Roles del motor: trabajador | soldado | vigia.
+  pueblo       String?
+  genero       String?
+  /// Minuto de ficción en que nació (null = adulto de edad desconocida).
+  nacidoEn     Int?
+  /// Padres: id de otro súbdito o de un NPC (los de fuera del Reino).
+  padreId      String?
+  madreId      String?
+  /// 0-100; se acerca cada día a la felicidad del Reino.
+  felicidad    Int        @default(60)
+  /// ACTIVO | SE_FUE | MUERTO. Solo los ACTIVOS cuentan como población y ocupan cama.
+  estado       String     @default("ACTIVO")
+  /// NARRADO (antes del 0.3) | LLEGADA | NACIDO
+  origen       String     @default("NARRADO")
+  desdeMinutes Int?
+  /// CANDIDATO: hasta cuándo espera respuesta (REI-119).
+  hastaMinutes Int?
+  /// REI-119: fila de `WorldPopulation` de la que salió quien llegó (vuelve a ella si se va).
+  poblacionOrigenId String?
+  /// REI-120: su pareja (otro súbdito) y cuántas crías han tenido juntos.
+  parejaId     String?
+  crias        Int        @default(0)
+
   /// Plantilla de equipo asignada (docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md § 7) — null = sin
   /// auto-equipo, este súbdito no recibe nada del Almacén de Reino automáticamente.
   plantillaEquipoId String?
@@ -2233,6 +2262,7 @@ model Subject {
   inventoryItems    InventoryItem[]
 
   @@index([saveId])
+  @@index([saveId, estado])
   @@index([plantillaEquipoId])
 }
 
@@ -3753,4 +3783,38 @@ model Hilo {
 
   @@unique([saveId, clave])
   @@index([saveId, estado])
+}
+
+/// CR-52 (hito 0.3): una familia que el motor sigue a través de generaciones. En los Faerus es un
+/// rastro (una pequeña manada dentro de la gran manada; no es un apellido).
+model Linaje {
+  id           String          @id @default(cuid())
+  saveId       String
+  save         Save            @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  nombre       String
+  pueblo       String
+  /// APELLIDO | RASTRO
+  tipo         String
+  /// Casta de función (Goirntes), si se sabe.
+  casta        String?
+  /// CATALOGO (sale de un apellido del canon) | PARTIDA (fundado jugando)
+  origen       String
+  desdeMinutes Int
+  miembros     LinajeMiembro[]
+
+  @@unique([saveId, pueblo, nombre])
+}
+
+/// CR-52: quién pertenece a cada linaje (NPC con nombre, súbdito o el personaje).
+model LinajeMiembro {
+  saveId       String
+  linajeId     String
+  linaje       Linaje @relation(fields: [linajeId], references: [id], onDelete: Cascade)
+  /// NPC | SUBDITO | PERSONAJE
+  entidadTipo  String
+  entidadId    String
+  desdeMinutes Int
+
+  @@id([linajeId, entidadTipo, entidadId])
+  @@index([saveId, entidadTipo, entidadId])
 }

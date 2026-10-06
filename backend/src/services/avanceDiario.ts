@@ -28,6 +28,11 @@ import { envejecerDia } from './cronista/envejecer.js';
 import { agruparNoticias, marcaDeNoticias } from './cronista/noticias.js';
 import { revisarEtiquetasDeReputacion } from './cronista/etiquetas.js';
 import { revisarMarchas } from './cronista/aprobacion.js';
+import { asegurarLinajes } from './cronista/linajes.js';
+import { avanzarSubditos } from './cronista/subditos.js';
+import { revisarLlegadas } from './cronista/llegadas.js';
+import { revisarFamilias } from './cronista/familias.js';
+import { revisarSalidas } from './cronista/salidas.js';
 import { revisarInformantes } from './cronista/reclutamiento.js';
 
 export const MAX_DIAS_POR_LLAMADA = 30;
@@ -74,6 +79,8 @@ export async function avanzarMundoHasta(
   const { dias: diasSimulados, desde } = await paso('poblacion', () => prisma.$transaction(
     async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`avance|${saveId}`}))`;
+      // CR-52: linajes del canon y el del personaje (una vez por partida), bajo el mismo candado.
+      await asegurarLinajes(tx, saveId, fictionalMinutes);
       const estado = await tx.worldState.findUnique({ where: { saveId }, select: { ultimoDiaSimulado: true } });
       if (!estado) return { dias: 0, desde: 0 };
       const dias = diasPendientes(estado.ultimoDiaSimulado, diaDeFiccion(fictionalMinutes));
@@ -97,6 +104,8 @@ export async function avanzarMundoHasta(
     await paso('expediciones', () => avanzarExpedicionesDePartida(prisma, worldId, saveId, dia, random));
     // La agenda lleva sus propias transacciones y avanza por umbrales de tiempo (no por día).
     await paso('agenda', () => avanzarAgendaDePartida(prisma, saveId));
+    // REI-118: la felicidad de cada súbdito sigue a la del Reino; la población son los súbditos.
+    await paso('subditos', () => prisma.$transaction((tx) => avanzarSubditos(tx, saveId, diasSimulados, fictionalMinutes)));
     // CR-12: el narrador de fondo, una vez por cada día simulado (cada día lo reclama una sola llamada,
     // la que lo simuló arriba).
     for (let d = desde; d < desde + diasSimulados; d++) {
@@ -115,6 +124,16 @@ export async function avanzarMundoHasta(
       await paso('marchasCompaneros', async () => {
         const ws = await prisma.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true } });
         await prisma.$transaction((tx) => revisarMarchas(tx, { saveId, fictionalMinutes: Math.min(ws?.fictionalMinutes ?? 0, (d + 1) * 1440 - 1) }));
+      });
+      // REI-119: los candidatos sin respuesta se van y, una vez por semana, llega uno nuevo.
+      await paso('poblacionReino', async () => {
+        const ws = await prisma.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true } });
+        const ahora = Math.min(ws?.fictionalMinutes ?? 0, (d + 1) * 1440 - 1);
+        await prisma.$transaction((tx) => revisarLlegadas(tx, saveId, ahora, random));
+        // REI-120: una vez por semana, parejas nuevas y crías.
+        await prisma.$transaction((tx) => revisarFamilias(tx, saveId, ahora, random));
+        // REI-121: muertes de viejo y de hambre; con el Reino triste, una salida por semana.
+        await prisma.$transaction((tx) => revisarSalidas(tx, saveId, ahora, random));
       });
     }
     // CR-14: etiquetas de relación (AMIGO_DE / ENEMIGO_DE) según la reputación del final del día.
