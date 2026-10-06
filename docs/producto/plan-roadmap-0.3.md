@@ -23,7 +23,7 @@ nuevo del motor y se intercala entre fases.
 | **A — Personas que recuerdan** | `CR-14` etiquetas, `CR-15` aprobación con valores, `CR-16` recuerdos de NPC, `CR-17` buscadores de historias e hilos, `CR-42` compañeros que cuentan lo de su tierra, `CR-32` reclutamiento pacífico e informantes ([Cronista Fase 4](roadmap-cronista.md#fase-4--personas-que-recuerdan--m)) | — | ✅ 2026-10-06 (`CR-14`, `CR-15`, `CR-16`, `CR-17`, `CR-42`, `CR-32`; la escena de confianza > 80 va con la Fase F y lo que el narrador cuenta de recuerdos e hilos, con la B) |
 | **B — Memoria del narrador** | `CR-21` verdad obligatoria, `CR-22` callbacks por entidad, `CR-23` puntuación de recuerdos ([Cronista Fase 6](roadmap-cronista.md#fase-6--memoria-del-narrador--m)) | A | ✅ 2026-10-06 (`CR-21`, `CR-22`, `CR-23` en `memoriaNarrador.ts`) |
 | **C — Población del Reino** | `REI-118` súbditos como personas, `REI-119` llegadas, `REI-120` parejas y crías, `REI-121` salidas y muerte, `CR-52` linajes y rastros ([propuesta aprobada](../borradores-opencode/propuestas-aprobadas.md), «Ciclo vital de los pueblos») · súbditos en el panel (`REI-53`, `REI-54`) | — (vivienda del `0.1`, `CR-13`) | ✅ 2026-10-06 (`CR-52`, `REI-118`…`REI-121`, `REI-54`; queda `REI-53` en parte —territorio de residencia y estado— y la muerte de súbditos en combate, que va con `CR-37` en la Fase E; los números del hambre son provisionales para la ronda de la Fase D) |
-| **D — Economía, ganadería y obras** | `CR-53` economía de supervivencia del Reino, `CR-54` de las facciones, `CR-58` factura de equipo, `CR-59` vasallaje y deuda · `CR-55` ganadería (oficio de ganadero y corrales por especie), `CR-56` usos de la fauna · estaciones sin oficio (Leñera, Cantera, Fibrería) si hacen falta · edificios de defensa · `CR-36` las facciones construyen | C | 🚧 ronda 1 aceptada (2026-10-06, decisiones abajo, portes incluidos); ~~`CR-53`~~ ✅, ~~`CR-54`~~ ✅, ~~`CR-58`~~ ✅ y ~~`CR-59`~~ ✅ 2026-10-06 |
+| **D — Economía, ganadería y obras** | `CR-53` economía de supervivencia del Reino, `CR-54` de las facciones, `CR-58` factura de equipo, `CR-59` vasallaje y deuda · `CR-55` ganadería (oficio de ganadero y corrales por especie), `CR-56` usos de la fauna, `CR-61` comida por oficios · estaciones sin oficio (Leñera, Cantera, Fibrería) si hacen falta · edificios de defensa · `CR-36` las facciones construyen | C | 🚧 ronda 1 aceptada (2026-10-06, decisiones abajo, portes incluidos); ~~`CR-53`~~ ✅, ~~`CR-54`~~ ✅, ~~`CR-58`~~ ✅ y ~~`CR-59`~~ ✅ 2026-10-06; ronda de `CR-55` aceptada (2026-10-06, decisiones abajo; tarea nueva `CR-61`); ~~`CR-55`~~ ✅ 2026-10-06 |
 | **E — Conflicto** | `CR-39` territorios y expansión · `CR-37` guerra contra el Reino · `CR-50` campamentos de bandidos · postura de compañero en combate · `CMB-1`…`CMB-8` | C, D (defensa) | Pendiente |
 | **F — Hablar y comerciar con NPC** | «Charlar con NPC» enriquecido (Franja 4: lore, reclutar, interrogar tras Clemente) · `CR-51` comercio en persona con NPC y caravanas | A | 🧭 falta la especificación (ronda de diseño) |
 | **G — Interfaz** (se intercala) | Reino R-B, R-C, R-D, R-E y `PAN-7` · `DiceTray` `DAD-7`…`DAD-12` (con el resto de `CFG-20`) · `HUD-1`…`HUD-5`, `HUD-7`…`HUD-11`, `HUD-13` · `NAR-1`…`NAR-8`, `NAR-10`, `NAR-11` · `PAN-1`…`PAN-6`, `PAN-11`…`PAN-14` · `UX-18` (epílogo con plantillas), `UX-19`, `UX-20` · `INT-5`…`INT-8`, `INT-10`, `INT-11` · `CFG-36` · UX-F `UX-32`…`UX-34`, `UX-39` | — | Pendiente |
@@ -140,6 +140,71 @@ tope de pienso).
   Nunca quiebran ni crecen.
 - **Ingresos pasivos** (usuaria): hoy solo existen el comercio y las expediciones y saqueos de las
   facciones. Se diseñarán más (`CR-60`) para no depender solo de los trabajadores.
+
+## Decisiones de `CR-55` ganadería (ronda aceptada por la usuaria el 2026-10-06)
+
+Contrastadas con Medieval Dynasty (un edificio por tipo de animal, la cría sin trabajador, el
+trabajador produce) y Bellwright (corral con su comida y su tope).
+
+- **Q1/Q11 Ganadero:** oficio nuevo por pueblo y región. El oficio de código `domador-…` era el de
+  ganadero con otro nombre: pasa a `ganadero-…` (orcos de Llanuras, Ciénaga y Cristal; Faerus de
+  Llanuras y Margen; Nabieus de la Ciénaga) y conserva el progreso. El **Domador** es solo la
+  especialización de combate (Cazador) y sus compañeros animales van en `CR-56`. Los «Corrales del
+  Domador» pasan a «Corrales del Ganadero»; el Maestro Domador Serhu enseña el oficio.
+- **Q2 Un corral, una especie** (la del primer animal); la Gargantúa solo en Gran obrador.
+- **Q3 Al corral:** al domesticar con éxito se elige «Compañero» o «Al corral». Coracelo y
+  Cuernahoja (captura 0 %) quedan fuera por ahora; comprar animales, con `CR-51`.
+- **Q4/Q12 Producción por animal adulto**, cada día con ganadero (1 ganadero por cada 5 animales;
+  plazas 1/2/4 por escalón): Múrgol, 1 Leche de Múrgol al día y 1 Lana cada 3 días; Corretolvas, 1
+  puñado de plumas rojizas cada 2 días; Coracelo, nada hasta que Álvaro diga qué fibra da. La leche
+  va a la comida y lo demás al Almacén. La orden fija de leche desaparece. Las crías nacen sin
+  ganadero.
+- **Q5/Q13 Etapas por categoría** (ajuste por porte; provisionales, a Álvaro):
+
+  | Categoría | Cría | Joven | Adulto desde | Vejez desde | Esperanza |
+  |---|---|---|---|---|---|
+  | Bestiones (Múrgol, Cuernahoja) | 0-30 d | 30-120 d | 1 año | 12 años | 15 años |
+  | Bestiones grandes (Gargantúa) | 0-120 d | 1-4 años | 4 años | 40 años | 50 años |
+  | Zancudos (Corretolvas) | 0-15 d | 15-60 d | 60 d | 5 años | 6 años |
+  | Acechantes (Canizor) | 0-30 d | 30-120 d | 1 año | 8 años | 10 años |
+  | Rondines (Coracelo) | 0-20 d | 20-90 d | 90 d | 6 años | 8 años |
+
+  Cría: come la mitad, la primera en morir de hambre. Joven: come entero, no produce ni cría, se
+  sacrifica a mitad de rendimiento. Adulto: produce y cría. Vejez: produce la mitad, no cría, muere
+  de viejo con la curva de `edades.ts`. Una cría por semana con macho y hembra adultos, plaza libre
+  y el corral comido esa semana.
+- **Q6 Hambre y sed** como la gente: al primer día sin comer no producen ni crían; tras 3 días un
+  10 % al día (primero las crías); sed tras 2 días, un 20 % al día.
+- **Q7 Forraje:** reserva del Reino. La Fibrería (estación sin oficio) da 10 al día por trabajador;
+  cada pasto (Pasto Solar, Pasto de Sangre) entregado da 2. Tope del Granero, compartido con la
+  comida. Herbívoros 1 al día; carnívoros 1 de comida cada 2 días; todos 1 de agua.
+- **Q8 Sacrificar:** un adulto (o joven, a la mitad) da lo mismo que desollarlo; la carne a la
+  comida y lo demás al Almacén; rendimiento completo con Desolladero.
+- **Q9/Q14 Mismo sistema para las facciones:** ganado por especie y etapa, ganaderos sacados de los
+  trabajadores (1 por 5 animales), forraje de su Fibrería, mismas crías, hambre y sacrificio. Plazas
+  sembradas por canon hasta `CR-36`. Rebaño inicial: Serhu 60 Múrgol y 20 Corretolvas (recinto de
+  Karot Veku); el resto sin ganado hasta Álvaro.
+- **Q10 Reino › Corrales:** tarjeta por corral (especie, plazas, adultos ♂/♀, crías y días que les
+  faltan, forraje y agua, producción de la semana, ganadero, «Sacrificar»).
+- **Q16 El ganado sustenta** (55f; la usuaria dio libertad para ampliar el catálogo y ajustar lo que
+  haga falta, 2026-10-06). Con las cifras de la ronda, un rebaño restaba comida a los Serhu (−28 al
+  día) porque un ganadero con 5 Múrgol solo igualaba sus 2 pasivos. Ajustes de Claude: el Múrgol da
+  **3 de leche** al día (antes 1); objeto nuevo **Huevo de Corretolvas** (1 al día por adulto, 4 de
+  `curaHambre`); **pastoreo**: en una región con pasto natural (las Llanuras) los herbívoros comen la
+  mitad de forraje, igual para el Reino y las facciones; las facciones **sacrifican cada semana** lo
+  viejo y lo que no cabe. Resultado: los Serhu ganan unos +8 de comida al día con su rebaño, que su
+  doctrina de rearme convierte en guerreros (siguen estancados). A Álvaro en `propuestas-lore.md`.
+- **Q15 Fin de la comida pasiva** (usuaria: los sistemas, los mismos para todos):
+  - La escala es `curaHambre`: 10 = 1 de comida (una boca al día). Todo comestible suma su valor al
+    entrar en la reserva, crudo o cocinado. Crudos: carne 8, marisco 6, leche, huevo, boungo y miel
+    4, trigo, bulbo y liquen 3.
+  - Un plato vale lo que suman sus ingredientes por el escalón de su receta: Taller ×1,5, Obrador
+    ×2, Gran obrador ×2,5 (Cuajada, Boungo asado y Panal 12; Pan 14). Ahumar no multiplica: conserva.
+  - En `CR-55`: el trabajador que pasa a ganadero (o a la Fibrería) deja de dar los 2 pasivos, en el
+    Reino y en las facciones; lo crudo empieza a alimentar (la leche) y la Cuajada se recalcula.
+  - En `CR-61`: el resto (escala completa, platos de Obrador y Gran obrador, cocineros de facción
+    que transforman 10 de crudo al día cada uno en vez del +3 fijo por Cocina, cazador y recolector
+    con rendimientos reales, y fin de la comida pasiva para todos).
 
 ## Decisiones que bloquean algo
 

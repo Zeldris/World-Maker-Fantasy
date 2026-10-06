@@ -471,6 +471,7 @@ model Save {
   hilos              Hilo[]
   linajes            Linaje[]
   vasallajes         Vasallaje[]
+  ganado             Ganado[]
   consecuencias      Consecuencia[]
   sessionFacts       SessionFact[]
   foundedFactions    Faction[]
@@ -1806,6 +1807,13 @@ model KingdomStats {
   /// CR-58: trabajadores sin herramienta (producen la mitad) y soldados sin arma (medio en la defensa).
   sinHerramienta      Int      @default(0)
   sinArma             Int      @default(0)
+  /// CR-55 (Q7): reserva de forraje de los herbívoros del ganado (tope compartido con la comida).
+  forraje             Int      @default(0)
+  /// CR-55 (Q6): días seguidos en que el ganado no ha comido / bebido entero.
+  ganadoDiasSinComer  Int      @default(0)
+  ganadoDiasSinBeber  Int      @default(0)
+  /// CR-55 (55f): solo facciones — su rebaño inicial ya está sembrado.
+  ganadoSembrado      Boolean  @default(false)
   /// CR-34 (Q6): último día de ficción en que la facción revisó su situación para decidir (null =
   /// nunca). Solo facciones del mundo de la partida; el Reino de la jugadora no lo usa.
   ultimaRevision      Int?
@@ -2161,6 +2169,8 @@ model Building {
   /// órdenes de producción activas de este edificio (ver `OrdenProduccion`).
   trabajadores      Companion[]
   ordenesProduccion OrdenProduccion[]
+  /// CR-55: animales de un corral (una sola especie por corral).
+  ganado            Ganado[]
 
   @@unique([factionId, recipeKey])
   @@index([saveId])
@@ -2751,6 +2761,8 @@ model Faction {
 
   @@index([worldId, slug])
   @@index([saveId])
+  /// CR-55 (55f): ganado de la facción, por cohortes.
+  ganado GanadoFaccion[]
 }
 
 enum FactionRelationType {
@@ -3850,4 +3862,40 @@ model Vasallaje {
 
   @@unique([saveId, vasalloSlug])
   @@index([saveId])
+}
+
+/// CR-55 (hito 0.3): un animal del ganado del Reino, en su corral. Reglas en `cronista/ganaderia.ts`.
+/// Las facciones llevan su ganado en agregado (55f), con las mismas reglas.
+model Ganado {
+  id         String   @id @default(cuid())
+  saveId     String
+  save       Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  buildingId String
+  building   Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  /// Slug de la especie (`Npc.slug` de la plantilla de fauna).
+  especie    String
+  /// 'M' | 'F'.
+  sexo       String
+  /// Minuto de ficción en que nació (negativo = antes del día 0).
+  nacidoEn   Int
+  createdAt  DateTime @default(now())
+
+  @@index([saveId])
+  @@index([buildingId])
+}
+
+/// CR-55 (55f): ganado de una facción en agregado, por cohortes (misma especie, sexo y día de
+/// nacimiento). Mismas reglas que el ganado del Reino (`cronista/ganaderia.ts`).
+model GanadoFaccion {
+  id          String  @id @default(cuid())
+  factionId   String
+  faction     Faction @relation(fields: [factionId], references: [id], onDelete: Cascade)
+  especie     String
+  /// 'M' | 'F'.
+  sexo        String
+  /// Día de ficción en que nació la cohorte (negativo = antes del día 0).
+  nacidoEnDia Int
+  cantidad    Int
+
+  @@index([factionId])
 }

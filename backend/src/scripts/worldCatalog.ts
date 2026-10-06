@@ -3650,7 +3650,7 @@ export const npcs: NpcInput[] = [
     bio: 'Orco de cicatrices finas en los antebrazos, ganadas enseñando a criaturas de la llanura a confiar en una mano humanoide. Pasa más tiempo entre los corrales de Karot Veku que dentro del propio campamento.',
     personality: 'Paciente hasta límites que exasperan al resto del clan, firme sin levantar nunca la voz.',
     homeLocationSlug: 'campamento-serhu-interior',
-    teachesProfession: 'domador-orcos-llanuras',
+    teachesProfession: 'ganadero-orcos-llanuras',
     interactionTypes: ['MAESTRO_OFICIO'],
     raza: 'orcos',
     clase: 'CAZADOR',
@@ -5206,7 +5206,7 @@ export const npcProfessionPotentials: Record<string, NpcProfessionPotentialInput
   'maestro-cocinero-serhu': [{ professionId: 'cocinero-orcos-llanuras', ...MAESTRO }],
   'maestra-herborista-serhu': [{ professionId: 'herborista-orcos-llanuras', ...MAESTRO }],
   'maestro-alquimista-serhu': [{ professionId: 'alquimista-orcos-llanuras', ...MAESTRO }],
-  'maestro-domador-serhu': [{ professionId: 'domador-orcos-llanuras', ...MAESTRO }],
+  'maestro-domador-serhu': [{ professionId: 'ganadero-orcos-llanuras', ...MAESTRO }],
   'maestro-desollador-serhu': [{ professionId: 'desollador-orcos-llanuras', ...MAESTRO }],
   'maestro-peletero-serhu': [{ professionId: 'peletero-orcos-llanuras', ...MAESTRO }],
   'maestra-primeros-auxilios-serhu': [{ professionId: 'primeros-auxilios-orcos-llanuras', ...MAESTRO }],
@@ -6647,6 +6647,8 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Cuña de 150 g.',
     lugarOrigen: 'Karot Veku - Campamento del Clan Serhu, Llanuras del Viento Rojo.',
     curaEnergia: 10,
+    // CR-55 (Q15): plato de Taller, 2 de leche (4 cada una) × 1,5.
+    curaHambre: 12,
   },
   {
     slug: 'cataplasma-musgo',
@@ -8339,6 +8341,21 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Huevo de unos 8 cm.',
     lugarOrigen: 'Los Acantilados Partidos.',
     tier: 3,
+  },
+
+  // CR-55 (55f, libertad de la usuaria para ampliar el catálogo): huevo del Corretolvas criado en
+  // corral; propuesta a Álvaro en propuestas-lore.md («Ganadería»).
+  {
+    slug: 'huevo-corretolvas',
+    name: 'Huevo de Corretolvas',
+    aliases: ['huevo de corretolvas', 'huevos de corretolvas'],
+    category: 'alimento',
+    tipo: 'RECURSO',
+    valorGoirnos: 1,
+    description: 'Huevo pardo, pequeño y de cáscara dura, que las hembras de Corretolvas ponen a diario entre la paja del corral — en libertad los esconden en la hierba rojiza y casi nadie los encuentra.',
+    dimensiones: 'Huevo de unos 4 cm.',
+    lugarOrigen: 'Corrales de las Llanuras del Viento Rojo.',
+    tier: 1,
   },
 
   {
@@ -12148,7 +12165,7 @@ export const factionBuildings: FactionBuildingInput[] = [
     name: 'Corrales del Domador',
     factionSlug: 'Clan Serhu',
     locationSlug: 'campamento-serhu-interior',
-    profession: 'domador-orcos-llanuras',
+    profession: 'ganadero-orcos-llanuras',
     tier: 1,
     description:
       'Recinto dentro de la empalizada con postes de Huesos de Gargantúa traídos del Osario de la Manada — donde el canon dice que "se toma hueso, no se profana", y el Domador es precisamente el oficio ligado a la Gargantúa. Un abrevadero de piedra se llena a mano desde el Pozo de Cauce Viejo. Aquí se aclimatan las bestias recién domadas antes de pasar al gran recinto de Múrgol de fuera; la Terk\'ikar Ulkha Ketg, que es Domadora, lo visita a diario.',

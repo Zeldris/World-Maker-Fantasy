@@ -1687,16 +1687,29 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   - Deuda que se cobra en patrullas obligadas (20 guerreros por semana, 25 % de `ESCARAMUZA` con 1d6
     bajas).
   - Se rompe saldando la deuda, si cae el señor, con una alianza con el Reino o en guerra. **M**
+- **CR-61** Comida por oficios (Q15 de la ronda de `CR-55`, usuaria 2026-10-06: los mismos sistemas
+  para el Reino y las facciones, sin comida pasiva).
+  - Escala única `curaHambre` (10 = 1 de comida); valor de todos los comestibles crudos.
+  - Platos con multiplicador por escalón de la receta (Taller ×1,5, Obrador ×2, Gran obrador ×2,5);
+    dos o tres recetas de Obrador y de Gran obrador (nombres a Álvaro).
+  - Cocineros de facción: cada uno transforma 10 de crudo al día con el multiplicador de su Cocina,
+    en vez del +3 fijo por edificio.
+  - Cazador y recolector con rendimientos reales; fin de los 2 de comida por trabajador. **L**
 - **CR-60** Ingresos pasivos del Reino y de las facciones (usuaria, 2026-10-06): fuentes de
   Goirnos que no dependan de los trabajadores (hoy solo el comercio y las expediciones). Necesita
   una ronda de diseño. Hito `0.4`. **M**
-- **CR-55** Ganadería (Q9, Q11, Q13).
-  - Oficio de ganadero por raza y región.
-  - Corral por especie: 6, 12 o 20 plazas.
-  - Una cría por semana con macho y hembra.
-  - Forraje para herbívoros, carne cada 2 días para carnívoros y agua para todos.
-  - Fibrería: estación sin oficio que da 10 de forraje al día.
-  - Producción de Múrgol, Corretolvas y Coracelo; sacrificio con la cadena del desollador.
+- ~~**CR-55** Ganadería~~ ✅ 2026-10-06 (Q9, Q11, Q13 de la Fase D; ronda propia aceptada el 2026-10-06, decisiones
+  Q1-Q15 en [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-cr-55-ganadería-ronda-aceptada-por-la-usuaria-el-2026-10-06)).
+  Pasos (todos hechos):
+  - ~~55a~~ ✅ 2026-10-06: reglas puras (`cronista/ganaderia.ts`, 19 tests): etapas por categoría, producción, crías, hambre y
+    valor de la comida cruda.
+  - ~~55b~~ ✅ 2026-10-06: oficio `domador-…` → `ganadero-…` (migración `20261006160000_oficio_ganadero`: progreso, maestros, expediciones y edificios), receta «Corrales del Ganadero». El edificio de catálogo Serhu conserva su nombre canónico («Corrales del Domador»), pregunta a Álvaro.
+  - ~~55c~~ ✅ 2026-10-06: modelo `Ganado` y forraje en `KingdomStats` (migración `20261006170000_ganado`), «Al corral» al domesticar (`/tameo-pendientes/:npcSlug/al-corral`; la especie se puede volver a capturar), receta de la Fibrería, `GET /saves/:id/corrales` y entrega de pastos (`/forraje/entregar`). En el Reino, ganaderos y fibreros son compañeros asignados al edificio (nunca contaron en la comida pasiva, que sale de los súbditos).
+  - ~~55d~~ ✅ 2026-10-06: `avanzarGanadoReino` en el avance diario (forraje de Fibrerías; comen y beben de las reservas; producción con ganadero; la leche a la comida por su valor y la lana y las plumas al Almacén; cría semanal; muertes por hambre, sed y vejez). La orden fija de leche desaparece (migración `20261006171000_sin_orden_leche`); Cuajada con `curaHambre` 12.
+  - ~~55e~~ ✅ 2026-10-06: «Sacrificar» (`POST /saves/:id/ganado/:ganadoId/sacrificar`): lo de desollar la especie por su etapa; la carne a la comida por su valor y lo demás al Almacén; sin Desolladero, piel y hueso a la mitad; una cría no se sacrifica.
+  - ~~55f~~ ✅ 2026-10-06: ganado de las facciones por cohortes (`GanadoFaccion`, migración `20261006180000_ganado_faccion`; `cronista/ganadoFacciones.ts` puro y `ganadoFaccionesBd.ts`), dentro de `producirFacciones`: ganaderos (1 por 5) y fibreros salen de sus trabajadores y no dan la comida pasiva; leche, huevos y carne de lo sacrificado a su comida; lana y plumas a su almacén; crías semanales por corral; hambre y vejez. Rebaño Serhu sembrado (60 Múrgol, 20 Corretolvas, plazas 80/30). Ajustes Q16: leche ×3, Huevo de Corretolvas, pastoreo en las Llanuras.
+  - ~~55g~~ ✅ 2026-10-06: Reino › Corrales (`CorralesSection.tsx`: forraje, entrega de pastos, aviso de hambre y sed, tarjeta por corral con especie, plazas, ♂/♀ y crías, ganaderos, producción media al día y «Sacrificar»); «Al corral» en el modal de domesticar.
+  - **Queda** (fuera de `CR-55`): la fibra del Coracelo y las preguntas a Álvaro (`propuestas-lore.md`, «Ganadería»); súbditos como ganaderos (hoy lo son los compañeros asignados al corral); comprar animales (`CR-51`); la comida pasiva de todos (`CR-61`).
   - El Corredor de Cauce nunca. **L**
 - **CR-56** Usos de la fauna (Q10, Q12).
   - Ficha de cada especie: producción, guardia, compañero de Domador y porte.

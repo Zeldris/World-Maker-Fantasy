@@ -44,7 +44,9 @@ describe('reacciones inmediatas (CR-10)', () => {
 
   it('matar a un NPC de una facción con Reino fundado sube la presión de esa facción contra el Reino', async () => {
     const reino = await prisma.faction.create({ data: { worldId, saveId, slug: `reino-${saveId}`, name: 'Reino de prueba', raza: 'orcos', description: 'x' } });
-    const npc = await prisma.npc.findFirstOrThrow({ where: { worldId, faction: 'Clan Helsig' } });
+    // Sin `orderBy` el primero puede ser la líder Helsig (Brenka, según el orden de la base): su muerte
+    // dispararía también un MUERTE_LIDER que confunde al test siguiente. Aquí, un NPC que no lidera.
+    const npc = await prisma.npc.findFirstOrThrow({ where: { worldId, saveId: null, faction: 'Clan Helsig', faccionesLideradas: { none: {} } } });
     const helsig = await faccion('clan-helsig');
     await registrar('MUERTE_CAUSADA', [{ entidadTipo: 'PERSONAJE', entidadId: saveId, papel: 'AUTOR' }, { entidadTipo: 'NPC', entidadId: npc.id, papel: 'VICTIMA' }], { personaje: 'x', victima: npc.name });
 
@@ -59,7 +61,7 @@ describe('reacciones inmediatas (CR-10)', () => {
 
   it('la muerte del líder registra MUERTE_LIDER (causada por la muerte) y eso baja la cohesión 25', async () => {
     const serhu = await faccion('clan-serhu');
-    const lider = await prisma.npc.findFirstOrThrow({ where: { worldId, faction: 'Clan Serhu' } });
+    const lider = await prisma.npc.findFirstOrThrow({ where: { worldId, saveId: null, faction: 'Clan Serhu' } });
     await prisma.faction.update({ where: { id: serhu.id }, data: { liderNpcId: lider.id, cohesion: 70 } });
     const muerte = await registrar('MUERTE_NPC', [{ entidadTipo: 'NPC', entidadId: lider.id, papel: 'VICTIMA' }], { npc: lider.name });
 

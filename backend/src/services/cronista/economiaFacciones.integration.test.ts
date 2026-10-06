@@ -67,6 +67,24 @@ describe('re-siembra única del reparto en una partida (CR-54, Q20)', () => {
     expect(await prisma.suceso.count({ where: { saveId, tipo: 'HAMBRUNA' } })).toBeGreaterThan(0);
   });
 
+  it('los Serhu siembran su rebaño (60 Múrgol y 20 Corretolvas) y su leche les da más comida que el pasivo de sus ganaderos (CR-55 55f)', async () => {
+    const worldId = (await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } })).id;
+    const f = await prisma.faction.findFirstOrThrow({ where: { saveId, slug: 'clan-serhu' }, include: { kingdomStats: true } });
+    const ks = f.kingdomStats!;
+    await prisma.kingdomStats.update({ where: { id: ks.id }, data: { comida: 500, diasHambre: 0, ultimoDiaProducido: 20 } });
+    const antes = await prisma.kingdomStats.findUniqueOrThrow({ where: { id: ks.id } });
+    await producirFacciones(prisma, worldId, { id: f.id }, 21, { diasProcesados: 0, semanasDecaidas: 0, depositados: 0 });
+    const cohortes = await prisma.ganadoFaccion.findMany({ where: { factionId: f.id } });
+    expect(cohortes.filter((c) => c.especie === 'murgol').reduce((s, c) => s + c.cantidad, 0)).toBeGreaterThanOrEqual(60);
+    expect(cohortes.filter((c) => c.especie === 'corretolvas').reduce((s, c) => s + c.cantidad, 0)).toBeGreaterThanOrEqual(20);
+    const despues = await prisma.kingdomStats.findUniqueOrThrow({ where: { id: ks.id } });
+    expect(despues.ganadoSembrado).toBe(true);
+    // Sin el rebaño el balance del día sería el pasivo (≈ +1); con él, unos +8 más.
+    const bocas = antes.poblacion + antes.soldados + antes.visitantes;
+    const sinRebano = antes.trabajadores * 2 + 3 - bocas;
+    expect(despues.comida - antes.comida).toBeGreaterThan(sinRebano);
+  });
+
   it('sin nadie, la facción se extingue; un año después su pueblo refunda otra en la región (CR-54 54c)', async () => {
     expect(repartoEstandar(100)).toEqual({ trabajadores: 55, soldados: 15, civiles: 30 });
     const f = await prisma.faction.findFirstOrThrow({ where: { saveId, slug: 'feg-ger' }, include: { kingdomStats: true } });

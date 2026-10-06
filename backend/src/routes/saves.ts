@@ -18,6 +18,7 @@ import { ordenesProduccionRoutes } from './saves/ordenesProduccion.js';
 import { suggestionsRoutes } from './saves/suggestions.js';
 import { panelsRoutes } from './saves/panels.js';
 import { companerosRoutes } from './saves/companeros.js';
+import { ganadoRoutes } from './saves/ganado.js';
 import { combatGroupsRoutes } from './saves/combatGroups.js';
 import { descansarCampamentoRoutes } from './saves/descansarCampamento.js';
 import { zonaRoutes } from './saves/zona.js';
@@ -66,6 +67,7 @@ export async function savesRoutes(app: FastifyInstance) {
   await app.register(suggestionsRoutes);
   await app.register(panelsRoutes);
   await app.register(companerosRoutes);
+  await app.register(ganadoRoutes);
   await app.register(combatGroupsRoutes);
   await app.register(descansarCampamentoRoutes);
   await app.register(zonaRoutes);

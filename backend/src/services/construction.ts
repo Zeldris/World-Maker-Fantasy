@@ -124,7 +124,7 @@ export interface ConstructionRecipe {
   ayuntamientoNivelMinimo?: number;
   /// CR-53 (hito 0.3, Fase D, Q1-Q2): lo que este edificio da a la economía de supervivencia del
   /// Reino — agua al día y capacidad de almacén por categoría (`cronista/economiaReino.ts`).
-  suministro?: { aguaDia?: number; topeComida?: number; topeBebida?: number; topeMateriales?: number };
+  suministro?: { aguaDia?: number; topeComida?: number; topeBebida?: number; topeMateriales?: number; forrajePorTrabajador?: number };
 }
 
 /// Nivel de edificio requerido por tier de receta de oficio (docs/rpgtarkor/sistemas-reino/
@@ -723,8 +723,8 @@ export const DESOLLADERO_GRAN_OBRADOR_RECIPE: ConstructionRecipe = {
 
 export const CORRALES_RECIPE: ConstructionRecipe = {
   key: 'corrales',
-  name: 'unos corrales del Domador',
-  description: 'Recinto de postes reforzados con un abrevadero de piedra, donde aclimatar a las bestias recién capturadas antes de que pasen a ser compañeros de verdad — la leche, lana y crías de los animales domados también salen de aquí.',
+  name: 'unos corrales del Ganadero',
+  description: 'Recinto de postes reforzados con un abrevadero de piedra para el ganado de una sola especie — la leche, la lana y las crías de los animales domados salen de aquí.',
   raza: 'orcos',
   nounRegex: /(?=.*corral)(?!.*(domador$|del domador$))|corrales del domador/,
   requirements: [
@@ -733,8 +733,8 @@ export const CORRALES_RECIPE: ConstructionRecipe = {
     { match: { kind: 'exact', catalogSlug: 'cuerda-tendon' }, cantidad: 4, label: 'cuerda de tendón' },
   ],
   requisitos: { voluntad: 8 },
-  oficio: 'domador-orcos-llanuras',
-  oficioProducido: 'domador-orcos-llanuras',
+  oficio: 'ganadero-orcos-llanuras',
+  oficioProducido: 'ganadero-orcos-llanuras',
   edificioOficioNivel: 1,
   companionSlots: 0,
   requiresAyuntamiento: true,
@@ -1423,6 +1423,20 @@ export const LENERA_RECIPE: ConstructionRecipe = {
   suministro: { topeMateriales: 120 },
 };
 
+// CR-55 (Q7): Fibrería, estación sin oficio que siega y seca hierba para el ganado: 10 de forraje al
+// día por cada trabajador asignado (compañeros con `buildingId`, como en cualquier edificio).
+export const FIBRERIA_RECIPE: ConstructionRecipe = {
+  key: 'fibreria',
+  name: 'una fibrería',
+  description: 'Un cobertizo abierto con hoces, rastrillos y tendederos donde se siega, se seca y se apila la hierba que come el ganado del Reino.',
+  nounRegex: /\bfibrer[ií]a\b/,
+  requirements: REQUISITOS_SUMINISTRO([{ match: { kind: 'category', tipo: 'RECURSO', category: 'fibras' }, cantidad: 2, label: 'fibra' }]),
+  tier: 1,
+  requisitos: { fuerza: 8 },
+  requiresAyuntamiento: true,
+  suministro: { forrajePorTrabajador: 10 },
+};
+
 // Orden deliberado (2026-08-04): grande y mediano ANTES que pequeño — `CONSTRUCTION_RECIPES.find`
 // se queda con la primera receta cuya `nounRegex` matchea, y el texto "ayuntamiento mediano"
 // también matchea el patrón (más simple) del pequeño si ese se comprobara antes. Mismo criterio
@@ -1444,6 +1458,7 @@ export const CONSTRUCTION_RECIPES: ConstructionRecipe[] = [
   GRANERO_RECIPE,
   CISTERNA_RECIPE,
   LENERA_RECIPE,
+  FIBRERIA_RECIPE,
   JAULA_GRANDE_RECIPE,
   JAULA_MEDIANA_RECIPE,
   JAULA_PEQUENA_RECIPE,
@@ -1738,7 +1753,7 @@ export async function computeBuildBlockedReason(params: {
       return `necesita un Ayuntamiento de nivel ${buildRecipe.ayuntamientoNivelMinimo} o superior`;
     }
   }
-  // Corrales del Domador (§ 3: "necesitan al menos una Jaula del reino, las capturas pasan de la
+  // Corrales del Ganadero (§ 3: "necesitan al menos una Jaula del reino, las capturas pasan de la
   // Jaula al Corral") — sin esto, construir Corrales sin haber capturado nunca nada no tendría
   // ninguna Jaula real de la que recibir animales.
   if (buildRecipe.key === 'corrales' && !buildRecipe.upgradesRecipeKey) {

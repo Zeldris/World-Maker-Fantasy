@@ -100,15 +100,14 @@ function row(id: string, catalogSlug: string, cantidad?: number): InventoryRowLi
 }
 
 describe('CRAFTING_RECIPES', () => {
-  it('tiene las 58 recetas esperadas, cada una con una clave única', () => {
+  it('tiene las 57 recetas esperadas, cada una con una clave única', () => {
     expect(CRAFTING_RECIPES.map((r) => r.key)).toEqual([
-      // Edificios de oficio (docs/rpgtarkor/sistemas-reino/edificios-de-oficio.md, 2026-09-28) — 4
-      // recetas de extracción sin ingredientes, solo asignables desde el panel de Reino
+      // Edificios de oficio (docs/rpgtarkor/sistemas-reino/edificios-de-oficio.md, 2026-09-28) — 3
+      // recetas de extracción sin ingredientes (la de leche se quitó con CR-55: la da el ganado), solo asignables desde el panel de Reino
       // (`requiresUnlock: true`, nunca desbloqueadas para crafteo a mano).
       'extraccionMenaHierroLlanuras',
       'extraccionPescaLlanuras',
       'extraccionHierbasLlanuras',
-      'extraccionLecheMurgol',
       'axeRepair',
       'smokeMeat',
       'gargantuaArmor',
