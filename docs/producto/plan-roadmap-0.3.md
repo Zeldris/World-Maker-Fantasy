@@ -206,6 +206,15 @@ trabajador produce) y Bellwright (corral con su comida y su tope).
     que transforman 10 de crudo al día cada uno en vez del +3 fijo por Cocina, cazador y recolector
     con rendimientos reales, y fin de la comida pasiva para todos).
 
+## Decisiones de `CR-56` usos de la fauna (ronda en curso, 2026-10-06)
+
+- **Regla de combate** (usuaria, [ADR 0002](../adr/0002-dos-formas-de-combate.md)): con la jugadora
+  presente con su grupo, combate en vivo (por turnos, narrado); cualquier otro, de fondo (mismas reglas,
+  determinista, sin narración). Nada de cifras en agregado ni equivalencias «bestia = N soldados».
+- **Q5 (usuaria):** todos los pueblos pueden tener bestias de guardia, sobre todo orcos y Faerus.
+- Pendiente de confirmar: Q1 ficha de usos, Q2 guardias en corral, Q3 guardias como combatientes,
+  Q4 «Llevar contigo» del Domador, Q5 guardias iniciales (Serhu y Feg Ger), Q6 tarea `CR-62`.
+
 ## Decisiones que bloquean algo
 
 | Bloquea | Pregunta |

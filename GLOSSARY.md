@@ -184,6 +184,13 @@ _Evitar_: tablón de misiones, tablón de encargos
 
 ## Combate y comercio (Fase G del 0.2)
 
+**Combate en vivo**:
+El combate en que está la jugadora con su grupo: por turnos y narrado.
+
+**Combate de fondo**:
+Cualquier combate sin la jugadora: las mismas reglas por turnos, resuelto al instante, determinista y sin narración.
+_Evitar_: combate en agregado, resolución por cifras
+
 **Moral**:
 Tirada de Voluntad con la que un NPC con mente decide si sigue peleando; la hace el líder por su grupo.
 _Evitar_: miedo, valor
@@ -222,6 +229,9 @@ _Evitar_: domador (el Domador es una especialización de combate, no un oficio)
 
 **Corral**:
 Edificio del ganadero que guarda animales de una sola especie, con plazas según su escalón.
+
+**Guardia (bestia)**:
+Animal de una especie de guardia que vive en un corral y defiende a su Reino o facción peleando como un combatiente más.
 
 **Etapa**:
 Momento de la vida de un animal (cría, joven, adulto, vejez) que decide qué come, si produce y si cría; depende de su categoría de fauna y de su porte.
