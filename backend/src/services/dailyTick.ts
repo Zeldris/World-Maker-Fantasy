@@ -1,5 +1,5 @@
 import { registrarSuceso } from './cronista/sucesos.js';
-import { suministrosDelReino } from './cronista/economiaReino.js';
+import { esMaterial, huecoDeMateriales, suministrosDelReino } from './cronista/economiaReino.js';
 import { sucesosDeClima } from './cronista/clima.js';
 import type { Prisma } from '@prisma/client';
 import { tickKingdom, daysCrossed, hambrunaNueva, DIAS_PARA_CONSOLIDAR, DIAS_PARA_REBELION } from './kingdomTick.js';
@@ -161,9 +161,13 @@ export async function tickProduccionReino(tx: Prisma.TransactionClient, saveId: 
         // Depositar el resultado — mismo shape que el depósito manual del jugador
         // (POST /saves/:id/almacen/depositar/:itemId, companeros.ts): 1 fila = 1 unidad, sin
         // campo de cantidad, `resultCantidad` filas repetidas.
-        if (resultado.resultCatalogSlug) {
+        // CR-53 (Q2): un material solo entra hasta el tope del Almacén; lo demás se pierde.
+        const cabe = resultado.resultCatalogSlug && (await esMaterial(tx, saveId, resultado.resultCatalogSlug))
+          ? Math.min(resultado.resultCantidad, await huecoDeMateriales(tx, saveId))
+          : resultado.resultCantidad;
+        if (resultado.resultCatalogSlug && cabe > 0) {
           await tx.almacenItem.createMany({
-            data: Array.from({ length: resultado.resultCantidad }, () => ({
+            data: Array.from({ length: cabe }, () => ({
               saveId,
               name: recipe.resultName,
               description: recipe.resultDescription,

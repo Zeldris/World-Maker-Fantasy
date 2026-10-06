@@ -40,3 +40,22 @@ export async function suministrosDelReino(tx: Tx, saveId: string) {
   const ayuntamiento = edificios.find((b) => b.recipeKey && AYUNTAMIENTOS.has(b.recipeKey));
   return suministrosDeEdificios(edificios.map((b) => b.recipeKey), !!ayuntamiento?.location && tieneFuenteNatural(ayuntamiento.location));
 }
+
+/// CR-53 53b (Q2): materiales del Almacén del Reino = objetos de tipo RECURSO (leña, piedra, fibra…).
+/// Cuántos caben aún (la base y lo que suman las Leñeras, menos lo que ya hay).
+export async function huecoDeMateriales(tx: Tx, saveId: string): Promise<number> {
+  const save = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } });
+  const recursos = (await tx.itemCatalog.findMany({ where: { worldId: save.worldId, tipo: 'RECURSO' }, select: { slug: true } })).map((r) => r.slug);
+  const [{ topeMateriales }, guardados] = await Promise.all([
+    suministrosDelReino(tx, saveId),
+    tx.almacenItem.count({ where: { saveId, catalogSlug: { in: recursos } } }),
+  ]);
+  return Math.max(0, topeMateriales - guardados);
+}
+
+/// Si un objeto del catálogo cuenta como material (para no mirar el hueco con lo que no lo es).
+export async function esMaterial(tx: Tx, saveId: string, catalogSlug: string | null): Promise<boolean> {
+  if (!catalogSlug) return false;
+  const save = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } });
+  return (await tx.itemCatalog.count({ where: { worldId: save.worldId, slug: catalogSlug, tipo: 'RECURSO' } })) > 0;
+}
