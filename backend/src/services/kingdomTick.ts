@@ -68,8 +68,6 @@ export const FELICIDAD_BAJA_UMBRAL = 20;
 /// `diasCruzados` en turnResolution.ts, que lee estos contadores tras cada `tickKingdom`.
 export const DIAS_PARA_CONSOLIDAR = 7;
 export const DIAS_PARA_REBELION = 7;
-const TERRITORIO_POBLACION_CRECE_POR_DIA = 2;
-const TERRITORIO_POBLACION_DECRECE_POR_DIA = 3;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -115,16 +113,6 @@ export function tickKingdomOneDay(stats: KingdomStatsBlock): KingdomStatsBlock {
     diasFelicidadBaja: nuevaFelicidad <= FELICIDAD_BAJA_UMBRAL ? stats.diasFelicidadBaja + 1 : 0,
     diasHambre: comidaNeta < 0 ? (stats.diasHambre ?? 0) + 1 : 0,
   };
-}
-
-/// Puro: cuánto crece/decrece la población anónima de CADA territorio del reino tras `dias` días,
-/// según la felicidad ya tickeada (2026-08-23) — mismo criterio de bandas que arriba, nunca un
-/// porcentaje (a diferencia de WorldPopulation.growAllPopulations): partiendo de una población
-/// inicial pequeña, un crecimiento porcentual se queda pegado a 0 durante demasiado tiempo.
-export function territoryPopulationDelta(felicidad: number, dias: number): number {
-  if (felicidad >= FELICIDAD_ALTA_UMBRAL) return TERRITORIO_POBLACION_CRECE_POR_DIA * dias;
-  if (felicidad <= FELICIDAD_BAJA_UMBRAL) return -TERRITORIO_POBLACION_DECRECE_POR_DIA * dias;
-  return 0;
 }
 
 /// Puro: aplica N días de golpe (un viaje largo o un descanso extendido puede cruzar más de un

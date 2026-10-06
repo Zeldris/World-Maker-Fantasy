@@ -1,7 +1,7 @@
 import { registrarSuceso } from './cronista/sucesos.js';
 import { sucesosDeClima } from './cronista/clima.js';
 import type { Prisma } from '@prisma/client';
-import { tickKingdom, daysCrossed, territoryPopulationDelta, hambrunaNueva, DIAS_PARA_CONSOLIDAR, DIAS_PARA_REBELION } from './kingdomTick.js';
+import { tickKingdom, daysCrossed, hambrunaNueva, DIAS_PARA_CONSOLIDAR, DIAS_PARA_REBELION } from './kingdomTick.js';
 import { registrarHambruna } from './cronista/hambruna.js';
 import { tickOrdenesProduccion, companionesQueCuraCasaDeCuras, type TrabajadorReino, type OrdenProduccionInput } from './kingdomProduction.js';
 import { ownerKeyFor } from './reinoOwner.js';
@@ -59,16 +59,8 @@ export async function advanceKingdomStatsDay(
         territoryConsolidatedThisTurn = count > 0;
       }
 
-      const popDelta = territoryPopulationDelta(ticked.felicidad, diasCruzados);
-      if (popDelta !== 0) {
-        for (const t of territories) {
-          if (perdiendoIds.includes(t.id)) continue; // ya en 0 por la rebelión de arriba
-          const nuevaPoblacion = Math.max(0, t.population + popDelta);
-          if (nuevaPoblacion !== t.population) {
-            await tx.territory.update({ where: { id: t.id }, data: { population: nuevaPoblacion } });
-          }
-        }
-      }
+      // REI-118 (hito 0.3): la población de cada territorio ya no crece sola; son sus súbditos
+      // (`recalcularPoblacion`, cronista/subditos.ts).
     }
   }
   return { territoryConsolidatedThisTurn };

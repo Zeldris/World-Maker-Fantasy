@@ -1,4 +1,5 @@
 import { registrarFinDeMision, registrarSucesoDeNpc } from './cronista/emisores.js';
+import { cupoDeCamas } from './cronista/subditos.js';
 import { env } from '../config/env.js';
 import { applyLootMode, applyCombatExchangeToNpcState, applyKillSideEffects, applyHarvest, applyFactionRepDeltaForResolution, goirnosDeBotin, pickFlavor, LOOT_FLAVOR_SUCCESS, LOOT_FLAVOR_EMPTY, HARVEST_FLAVOR_YA_DESPIEZADA } from './turnLootKill.js';
 
@@ -29,7 +30,7 @@ import { energiaMaxFor, energiaPasivaEntre, nextEnergia, restCooldownActivo } fr
 import { WEAPON_ABILITY_LEVEL_AVANZADA, dualWieldAdjustedDifficulty, weaponCategoryForRealAbilityName, type EquippedWeaponSlot } from './weaponAbilities.js';
 import { syncDynamicCombatAbilities } from './dynamicAbilities.js';
 import { CRAFTING_RECIPES, detectsCraftIntent, canCraft, craftRequisitoShortfalls, planCraftConsumption, hasToolForOficio, OFICIOS_CON_HERRAMIENTA_REQUERIDA } from './crafting.js';
-import { detectsBuildIntent, checkRecipe, planRecipeConsumption, baseNameOf, quantityOf, CONSTRUCTION_RECIPES, companionSlotsForRecipeKey, computeBuildBlockedReason, buildingTierFor, type ConstructionRecipe, type RecipeCheck } from './construction.js';
+import { detectsBuildIntent, checkRecipe, planRecipeConsumption, baseNameOf, quantityOf, CONSTRUCTION_RECIPES, computeBuildBlockedReason, buildingTierFor, type ConstructionRecipe, type RecipeCheck } from './construction.js';
 import { shortfallLabel } from './requisitos.js';
 import { inventorySummaryFor, type CatalogLookup, type InventoryRowLike } from './ingredients.js';
 import { abilityUnlocksAlSubirANivel, savedActionDataFromAbility } from './classAbilities.js';
@@ -74,7 +75,8 @@ const REINO_XP = { territory: 150, buildingActive: 100, firstSubject: 100, subje
 /// Población anónima con la que arranca todo Territory nuevo (2026-08-23, Grupo 3) — un puñado de
 /// gente ya vivía ahí o se instala al fundar, nunca 0 en seco. Misma cifra para RECLAMADO/DISPUTADO
 /// — primera pasada, ajustable jugando.
-const TERRITORIO_POBLACION_INICIAL = 15;
+/// REI-118 (hito 0.3): un territorio nace sin súbditos; su población son los que lleguen o nazcan.
+const TERRITORIO_POBLACION_INICIAL = 0;
 
 // Bug real (auditoría 2026-07-28): race entre worldTick.ts resolviendo un CharacterTransit vencido
 // y POST /saves/:id/transit/cancel — el worker "reclama" el tránsito moviendo busyUntil al futuro
@@ -3377,7 +3379,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         },
         select: { name: true, kind: true, status: true },
       }),
-      territorioIds.length > 0 ? prisma.subject.findMany({ where: { saveId, territoryId: { in: territorioIds } }, select: { name: true, role: true } }) : Promise.resolve([]),
+      territorioIds.length > 0 ? prisma.subject.findMany({ where: { saveId, estado: 'ACTIVO', territoryId: { in: territorioIds } }, select: { name: true, role: true } }) : Promise.resolve([]),
     ]);
     if (territoriosAqui.length > 0 || edificiosAqui.length > 0) {
       const territoriosTxt = territoriosAqui.map((t) => `${t.name} (${t.control}, población ${t.population})`).join('; ') || 'ninguno fundado aquí todavía';
@@ -4160,14 +4162,11 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // solo se pierde el aviso previo al LLM.
   const COMPANION_INTENT_REGEX = /reclut|acompan|companer|se una|unirs|unirt|aliad/;
   if (COMPANION_INTENT_REGEX.test(normalizeText(action))) {
-    const [companionCount, companionBuildings] = await Promise.all([
-      prisma.companion.count({ where: { saveId } }),
-      prisma.building.findMany({ where: { saveId, status: 'ACTIVO' }, select: { recipeKey: true } }),
-    ]);
-    const maxCompanions = companionBuildings.reduce((sum, b) => sum + companionSlotsForRecipeKey(b.recipeKey), 0);
-    if (companionCount >= maxCompanions) {
+    // REI-118 (Q2): compañeros y súbditos comparten las camas.
+    const camas = await cupoDeCamas(prisma, saveId);
+    if (camas.libres <= 0) {
       contextBlocks.push(
-        `El personaje no tiene ningún slot de compañero libre (${companionCount}/${maxCompanions}, hacen falta más construcciones propias para tener sitio) — no rellenes "newCompanion" este turno, aunque la acción sugiera ganar un aliado.`,
+        `El personaje no tiene ningún slot de compañero libre (${camas.companeros + camas.subditos}/${camas.total} camas ocupadas entre compañeros y súbditos, hacen falta más construcciones propias para tener sitio) — no rellenes "newCompanion" este turno, aunque la acción sugiera ganar un aliado.`,
       );
     }
   }
@@ -5762,14 +5761,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         // Tope real de slots (2026-08-04, ver el aviso de contextBlocks más arriba) — reconsultado
         // fresco dentro de la transacción, mismo criterio que `freshInventoryRows`: el modelo puede
         // ignorar el aviso, esto es lo que garantiza que nunca se cree un compañero sin hueco.
-        const [freshCompanionCount, freshCompanionBuildings] = await Promise.all([
-          // `esSlotDomador: false` (Grupo 3 § Compañeros y supervivencia, 2026-08-25) — el slot
-          // garantizado del Domador nunca compite con el cupo de edificio.
-          tx.companion.count({ where: { saveId, esSlotDomador: false } }),
-          tx.building.findMany({ where: { saveId, status: 'ACTIVO' }, select: { recipeKey: true } }),
-        ]);
-        const freshMaxCompanions = freshCompanionBuildings.reduce((sum, b) => sum + companionSlotsForRecipeKey(b.recipeKey), 0);
-        if (freshCompanionCount < freshMaxCompanions) {
+        // El slot garantizado del Domador nunca compite con el cupo; REI-118 (Q2): los súbditos sí.
+        if ((await cupoDeCamas(tx, saveId)).libres > 0) {
           const created = await tx.companion.create({
             data: {
               saveId,
@@ -6055,37 +6048,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       else if (/pozo|cisterna|aljibe/.test(kindNormalized)) await bumpKingdomStats({ bebida: 20 });
     }
 
-    if (narration.newSubject) {
-      // Guard real (Grupo 3 § Mundo determinista, 2026-08-25): antes se creaba el `Subject` igual
-      // aunque `territoryName` no matcheara ningún `Territory` real (o no viniera dado en
-      // absoluto) — un súbdito flotante, sin reino real al que pertenecer. Exige un territorio
-      // real ya resuelto (el recién fundado este mismo turno cuenta, ver `resolveTerritoryId`).
-      const resolvedTerritoryId = await resolveTerritoryId(narration.newSubject.territoryName);
-      if (resolvedTerritoryId) {
-        const existingSubjects = await tx.subject.count({ where: { saveId } });
-        await tx.subject.create({
-          data: {
-            saveId,
-            territoryId: resolvedTerritoryId,
-            name: narration.newSubject.name,
-            role: narration.newSubject.role,
-            notes: narration.newSubject.notes,
-          },
-        });
-        reinoXp = Math.max(reinoXp, existingSubjects === 0 ? REINO_XP.firstSubject : REINO_XP.subject);
-        // Nudge determinista por palabra clave (sesión de diseño 2026-07-23) — todo súbdito con
-        // nombre cuenta como población; su rol libre decide además si suma a soldados/visitantes/
-        // trabajadores (mano de obra por defecto si no matchea ninguna palabra clave concreta).
-        const roleNormalized = normalizeText(narration.newSubject.role);
-        if (/soldad|guerrer|guardia|centinela|vigia/.test(roleNormalized)) {
-          await bumpKingdomStats({ poblacion: 1, soldados: 1 });
-        } else if (/visitante|viajero|huesped|forastero/.test(roleNormalized)) {
-          await bumpKingdomStats({ poblacion: 1, visitantes: 1 });
-        } else {
-          await bumpKingdomStats({ poblacion: 1, trabajadores: 1 });
-        }
-      }
-    }
+    // REI-118 (hito 0.3, Q3): el narrador ya no crea súbditos; solo el motor (llegadas, nacimientos).
 
     // Misiones del narrador: RETIRADAS (CR-40, hito 0.2, Q1 — «solo el motor crea y cierra las
     // misiones; el narrador solo narra»). Antes, un `newQuest` del modelo con algún anclaje real
@@ -7018,7 +6981,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   const [territoryRows, buildingRows, subjectRows, kingdomStatsRow, freshWorldState, freshProfessionProgress] = await Promise.all([
     prisma.territory.findMany({ where: { saveId }, orderBy: { acquiredAt: 'asc' } }),
     prisma.building.findMany({ where: { saveId }, orderBy: { createdAt: 'asc' } }),
-    prisma.subject.findMany({ where: { saveId }, orderBy: { createdAt: 'asc' } }),
+    prisma.subject.findMany({ where: { saveId, estado: 'ACTIVO' }, orderBy: { createdAt: 'asc' } }),
     prisma.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId }) } }),
     // deathCount/factionsStatus/professionProgress (auditoría 2026-08-06, bug real): las tres se
     // mutan dentro de la transacción de este mismo turno (combate/decapitar/crafteo) pero nunca

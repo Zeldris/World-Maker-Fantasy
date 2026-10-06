@@ -3,7 +3,6 @@ import {
   tickKingdomOneDay,
   tickKingdom,
   daysCrossed,
-  territoryPopulationDelta,
   tickFactionProduction,
   hambrunaNueva,
   DEFAULT_KINGDOM_STATS,
@@ -77,21 +76,6 @@ describe('tickKingdomOneDay', () => {
       expect(result.diasFelicidadAlta).toBe(0);
       expect(result.diasFelicidadBaja).toBe(0);
     });
-  });
-});
-
-describe('territoryPopulationDelta', () => {
-  it('felicidad alta hace crecer la población, proporcional a los días', () => {
-    expect(territoryPopulationDelta(FELICIDAD_ALTA_UMBRAL, 3)).toBeGreaterThan(0);
-    expect(territoryPopulationDelta(FELICIDAD_ALTA_UMBRAL, 3)).toBe(territoryPopulationDelta(FELICIDAD_ALTA_UMBRAL, 1) * 3);
-  });
-
-  it('felicidad baja hace decrecer la población', () => {
-    expect(territoryPopulationDelta(FELICIDAD_BAJA_UMBRAL, 1)).toBeLessThan(0);
-  });
-
-  it('felicidad en la banda neutral no cambia la población', () => {
-    expect(territoryPopulationDelta(50, 5)).toBe(0);
   });
 });
 

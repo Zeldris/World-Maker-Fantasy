@@ -171,10 +171,13 @@ export const REACCIONES_LINAJES: Reaccion[] = [
     id: 'LINAJE_EN_EL_LIBRO',
     escucha: ['NACIMIENTO_NOTABLE', 'NPC_DESTACA', 'MUERTE_NPC', 'MUERTE_CAUSADA', 'MUERTE_LIDER', 'CAMBIO_LIDER', 'SUCESION', 'PERDON_CONCEDIDO', 'COMBATE_GANADO', 'COMBATE_PERDIDO', 'HUIDA_DE_NPC', 'CAPTURA', 'RECLUTAMIENTO', 'INFORMANTE_DESCUBIERTO', 'HILO_ABIERTO', 'HILO_CERRADO'],
     prioridad: 5,
-    condicion: async (ctx) => ctx.suceso.actores.some((a) => a.entidadTipo === 'NPC'),
+    condicion: async (ctx) => ctx.suceso.actores.some((a) => a.entidadTipo === 'NPC' || a.entidadTipo === 'SUBDITO'),
     efectos: async (ctx) => {
-      const npcs = ctx.suceso.actores.filter((a) => a.entidadTipo === 'NPC').map((a) => a.entidadId);
-      const miembros = await ctx.tx.linajeMiembro.findMany({ where: { saveId: ctx.suceso.saveId, entidadTipo: 'NPC', entidadId: { in: npcs } }, select: { linajeId: true } });
+      const personas = ctx.suceso.actores.filter((a) => a.entidadTipo === 'NPC' || a.entidadTipo === 'SUBDITO');
+      const miembros = await ctx.tx.linajeMiembro.findMany({
+        where: { saveId: ctx.suceso.saveId, OR: personas.map((a) => ({ entidadTipo: a.entidadTipo, entidadId: a.entidadId })) },
+        select: { linajeId: true },
+      });
       const ya = new Set(ctx.suceso.actores.filter((a) => a.entidadTipo === 'LINAJE').map((a) => a.entidadId));
       const nuevos = [...new Set(miembros.map((m) => m.linajeId))].filter((id) => !ya.has(id));
       if (nuevos.length) {

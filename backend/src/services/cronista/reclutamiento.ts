@@ -4,9 +4,9 @@
 // indiferente 15, hostil 20), que sale de sus recuerdos (CR-16) y de la reputación con su facción.
 // Reclutar pide vivienda libre en el Reino (Medieval Dynasty) y nunca vale con un líder. Un informante
 // sigue en su facción y pasa lo que sabe cada semana; cada semana puede ser descubierto (10 %).
+import { cupoDeCamas } from './subditos.js';
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { factionRepFor, parseFactionsStatus, applyFactionRepDelta, FACTION_REP_ATTACK_DELTA } from '../reputation.js';
-import { companionSlotsForRecipeKey } from '../construction.js';
 import { registrarSuceso } from './sucesos.js';
 import { sentimientoTotal } from './recuerdos.js';
 import { bonoSocialDeEtiquetas, etiquetasActivas } from './etiquetas.js';
@@ -76,11 +76,8 @@ export async function proponer(
     });
     if (yaHoy > 0) return { ok: false, motivo: `${npc.name} ya te ha dicho que no. Hoy no va a cambiar de idea.` };
     if (modo === 'RECLUTAR') {
-      const [n, edificios] = await Promise.all([
-        tx.companion.count({ where: { saveId, esSlotDomador: false } }),
-        tx.building.findMany({ where: { saveId, status: 'ACTIVO' }, select: { recipeKey: true } }),
-      ]);
-      if (n >= edificios.reduce((s, b) => s + companionSlotsForRecipeKey(b.recipeKey), 0)) {
+      // REI-118 (Q2): compañeros y súbditos comparten las camas.
+      if ((await cupoDeCamas(tx, saveId)).libres <= 0) {
         return { ok: false, motivo: 'No tienes dónde alojar a nadie más en tu Reino.' };
       }
     }

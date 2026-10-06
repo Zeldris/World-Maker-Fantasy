@@ -1,7 +1,7 @@
 import { registrarFinDeMision } from './cronista/emisores.js';
+import { cupoDeCamas } from './cronista/subditos.js';
 import { normalizeText } from './travel.js';
 import { Prisma } from '@prisma/client';
-import { companionSlotsForRecipeKey } from './construction.js';
 
 /// Movido desde turnResolution.ts (refactor de deuda técnica 2026-08-13) — cierre y recompensa de
 /// misiones es lógica de dominio propia, no de orquestación de turno.
@@ -125,12 +125,8 @@ export async function grantQuestRewardRecipesAndCompanion(
   if (rewardCompanion) {
     // `esSlotDomador: false` (Grupo 3 § Compañeros y supervivencia, 2026-08-25) — el compañero
     // tameado que ocupa el slot GARANTIZADO del Domador nunca cuenta contra el cupo de edificio.
-    const [companionCount, companionBuildings] = await Promise.all([
-      tx.companion.count({ where: { saveId, esSlotDomador: false } }),
-      tx.building.findMany({ where: { saveId, status: 'ACTIVO' }, select: { recipeKey: true } }),
-    ]);
-    const maxCompanions = companionBuildings.reduce((sum, b) => sum + companionSlotsForRecipeKey(b.recipeKey), 0);
-    if (companionCount < maxCompanions) {
+    // REI-118 (Q2): compañeros y súbditos comparten las camas.
+    if ((await cupoDeCamas(tx, saveId)).libres > 0) {
       await tx.companion.create({ data: { saveId, name: rewardCompanion.name, role: rewardCompanion.role, notes: rewardCompanion.notes } });
       grantedCompanionName = rewardCompanion.name;
     }

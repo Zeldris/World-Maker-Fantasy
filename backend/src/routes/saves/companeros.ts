@@ -5,7 +5,8 @@ import { scopeFor } from '../../services/npcScene.js';
 import { equipSlotFamily, effectiveAttributes, effectiveInventorySlotsBonus } from '../../services/equipment.js';
 import { inventoryCapacityFor, totalInventoryUnits } from '../../services/inventoryCapacity.js';
 import type { AttributeBlock, Attribute } from '../../services/dice.js';
-import { companionSlotsForRecipeKey, plazasTrabajadorParaTier } from '../../services/construction.js';
+import { plazasTrabajadorParaTier } from '../../services/construction.js';
+import { cambiarRolSubdito, cupoDeCamas, datosDeSubditos } from '../../services/cronista/subditos.js';
 import { rejectIfEnded, rejectIfPendingDeath, lockRowForUpdate } from './shared.js';
 import { FACTION_REP_CAPTURE_DELTA } from '../../services/reputation.js';
 import { applyFactionRepDeltaForResolution } from '../../services/turnResolution.js';
@@ -507,12 +508,8 @@ export async function companerosRoutes(app: FastifyInstance) {
           esSlotDomador = slotsDomadorUsados < maxSlotsDomadorFor(save.clase, save.especializacion, save.level);
         }
         if (!esSlotDomador) {
-          const [companionCount, buildings] = await Promise.all([
-            tx.companion.count({ where: { saveId: save.id, esSlotDomador: false } }),
-            tx.building.findMany({ where: { saveId: save.id, status: 'ACTIVO' }, select: { recipeKey: true } }),
-          ]);
-          const maxCompanions = buildings.reduce((sum, b) => sum + companionSlotsForRecipeKey(b.recipeKey), 0);
-          if (companionCount >= maxCompanions) {
+          // REI-118 (Q2): compañeros y súbditos comparten las camas.
+          if ((await cupoDeCamas(tx, save.id)).libres <= 0) {
             // Sin hueco — se suelta (§2/§3), no se queda esperando.
             await tx.npcState.update({ where: { id: state.id }, data: { capturaJaulaBuildingId: null } });
             return { kind: 'sin-hueco' as const };
@@ -870,4 +867,24 @@ export async function companerosRoutes(app: FastifyInstance) {
       return { ok: true };
     },
   );
+
+  /// REI-118: los súbditos del Reino como personas (pueblo, edad, linaje, felicidad) y las camas.
+  app.get<{ Params: { id: string } }>('/saves/:id/subditos', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, worldState: { select: { fictionalMinutes: true } } } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    const ahora = save.worldState?.fictionalMinutes ?? 0;
+    const [subditos, camas] = await Promise.all([datosDeSubditos(prisma, save.id, ahora), cupoDeCamas(prisma, save.id)]);
+    return { subditos, camas };
+  });
+
+  /// REI-118 (Q7): cambia el rol de un súbdito adulto (trabajador, soldado, vigía).
+  app.post<{ Params: { id: string; subjectId: string }; Body: { rol: string } }>('/saves/:id/subjects/:subjectId/rol', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, endedAt: true, pendingDeathResolution: true, worldState: { select: { fictionalMinutes: true } } } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (rejectIfEnded(save, reply)) return;
+    if (rejectIfPendingDeath(save, reply)) return;
+    const r = await prisma.$transaction((tx) => cambiarRolSubdito(tx, save.id, request.params.subjectId, request.body?.rol ?? '', save.worldState?.fictionalMinutes ?? 0));
+    if (!r.ok) return reply.status(400).send({ error: r.motivo });
+    return { ok: true };
+  });
 }

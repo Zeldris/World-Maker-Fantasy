@@ -29,6 +29,7 @@ import { agruparNoticias, marcaDeNoticias } from './cronista/noticias.js';
 import { revisarEtiquetasDeReputacion } from './cronista/etiquetas.js';
 import { revisarMarchas } from './cronista/aprobacion.js';
 import { asegurarLinajes } from './cronista/linajes.js';
+import { avanzarSubditos } from './cronista/subditos.js';
 import { revisarInformantes } from './cronista/reclutamiento.js';
 
 export const MAX_DIAS_POR_LLAMADA = 30;
@@ -103,6 +104,8 @@ export async function avanzarMundoHasta(
     await paso('expediciones', () => avanzarExpedicionesDePartida(prisma, worldId, saveId, dia, random));
     // La agenda lleva sus propias transacciones y avanza por umbrales de tiempo (no por día).
     await paso('agenda', () => avanzarAgendaDePartida(prisma, saveId));
+    // REI-118: la felicidad de cada súbdito sigue a la del Reino; la población son los súbditos.
+    await paso('subditos', () => prisma.$transaction((tx) => avanzarSubditos(tx, saveId, diasSimulados, fictionalMinutes)));
     // CR-12: el narrador de fondo, una vez por cada día simulado (cada día lo reclama una sola llamada,
     // la que lo simuló arriba).
     for (let d = desde; d < desde + diasSimulados; d++) {

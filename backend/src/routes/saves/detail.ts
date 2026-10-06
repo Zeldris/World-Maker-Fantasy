@@ -46,7 +46,7 @@ export async function detailRoutes(app: FastifyInstance) {
         companions: { orderBy: { createdAt: 'asc' } },
         territories: { orderBy: { acquiredAt: 'asc' } },
         buildings: { orderBy: { createdAt: 'asc' } },
-        subjects: { orderBy: { createdAt: 'asc' } },
+        subjects: { where: { estado: 'ACTIVO' }, orderBy: { createdAt: 'asc' } },
         almacenItems: { orderBy: { createdAt: 'asc' } },
         plantillasEquipo: { orderBy: { createdAt: 'asc' } },
         skillBars: { orderBy: [{ slotIndex: 'asc' }] },

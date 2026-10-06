@@ -224,6 +224,10 @@ export async function linajesConocidos(prisma: PrismaClient, saveId: string): Pr
   if (ids.length === 0) return [];
   const linajes = await prisma.linaje.findMany({ where: { saveId, id: { in: ids } }, include: { miembros: true }, orderBy: { nombre: 'asc' } });
   const npcIds = linajes.flatMap((l) => l.miembros.filter((m) => m.entidadTipo === 'NPC').map((m) => m.entidadId));
+  const subditoIds = linajes.flatMap((l) => l.miembros.filter((m) => m.entidadTipo === 'SUBDITO').map((m) => m.entidadId));
+  const subditos = new Map(
+    (await prisma.subject.findMany({ where: { id: { in: subditoIds } }, select: { id: true, name: true, estado: true, padreId: true, madreId: true } })).map((s) => [s.id, s]),
+  );
   const [npcs, muertos, save] = await Promise.all([
     prisma.npc.findMany({ where: { id: { in: npcIds } }, select: { id: true, name: true, muertoEnMundo: true, padreNpcId: true, madreNpcId: true, nacidoEn: true } }),
     prisma.npcState.findMany({ where: { saveId, npcId: { in: npcIds }, OR: [{ muerto: true }, { condicionFisica: 'MUERTO' }] }, select: { npcId: true } }),
@@ -235,6 +239,10 @@ export async function linajesConocidos(prisma: PrismaClient, saveId: string): Pr
   for (const l of linajes) {
     const miembros: MiembroLinaje[] = l.miembros.flatMap((m): MiembroLinaje[] => {
       if (m.entidadTipo === 'PERSONAJE') return [{ id: m.entidadId, tipo: 'PERSONAJE', nombre: save?.characterName ?? 'Tú', vivo: true, padreId: null, madreId: null }];
+      if (m.entidadTipo === 'SUBDITO') {
+        const sb = subditos.get(m.entidadId);
+        return sb ? [{ id: sb.id, tipo: 'SUBDITO', nombre: sb.name, vivo: sb.estado !== 'MUERTO', padreId: sb.padreId, madreId: sb.madreId }] : [];
+      }
       const n = porId.get(m.entidadId);
       if (!n) return [];
       return [{ id: n.id, tipo: 'NPC', nombre: n.name, vivo: !n.muertoEnMundo && !caidos.has(n.id), padreId: n.padreNpcId, madreId: n.madreNpcId }];

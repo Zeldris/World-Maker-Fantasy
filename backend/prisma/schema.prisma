@@ -2227,6 +2227,24 @@ model Subject {
   notes       String
   createdAt   DateTime   @default(now())
 
+  /// REI-118 (hito 0.3, Fase C): el súbdito como persona. `pueblo` null = súbdito narrado antes del
+  /// 0.3 (se queda como adulto sin más datos). Roles del motor: trabajador | soldado | vigia.
+  pueblo       String?
+  genero       String?
+  /// Minuto de ficción en que nació (null = adulto de edad desconocida).
+  nacidoEn     Int?
+  /// Padres: id de otro súbdito o de un NPC (los de fuera del Reino).
+  padreId      String?
+  madreId      String?
+  /// 0-100; se acerca cada día a la felicidad del Reino.
+  felicidad    Int        @default(60)
+  /// ACTIVO | SE_FUE | MUERTO. Solo los ACTIVOS cuentan como población y ocupan cama.
+  estado       String     @default("ACTIVO")
+  /// NARRADO (antes del 0.3) | LLEGADA | NACIDO
+  origen       String     @default("NARRADO")
+  desdeMinutes Int?
+  hastaMinutes Int?
+
   /// Plantilla de equipo asignada (docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md § 7) — null = sin
   /// auto-equipo, este súbdito no recibe nada del Almacén de Reino automáticamente.
   plantillaEquipoId String?
@@ -2234,6 +2252,7 @@ model Subject {
   inventoryItems    InventoryItem[]
 
   @@index([saveId])
+  @@index([saveId, estado])
   @@index([plantillaEquipoId])
 }
 
