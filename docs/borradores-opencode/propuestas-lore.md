@@ -35,6 +35,28 @@ población del Reino, renombrar el Bulco de Arena, y Dessa, Yerin y Riko como NP
 
 ## Categoría: Razas y cultura
 
+### 2026-10-06 — Los Serhu no saben crecer: vasallaje de armas con la Concordia (Fase D del 0.3)
+**Estado: SIN REVISAR** (idea de la usuaria del 2026-10-06; mecánica en `CR-59`)
+
+**Idea de la usuaria:**
+- Los Serhu son un clan que no sabe crecer como civilización: muy guerrero (casi un tercio en armas)
+  y siempre comiendo justo.
+- Cuando pierden guerreros, lo que les sobra lo gastan en rearmarse.
+- Las armas solo se las vende la Concordia de Hierro, muy caras y a crédito. Los Goirntes los
+  controlan con esa deuda y obligándoles a mandar patrullas y escaramuzas por las Llanuras.
+- Encaja con el control estrecho de los Goirntes sobre los Serhu desde el golpe de Ketg
+  (`clanes-orcos.md`).
+
+**Preguntas para Álvaro:**
+1. ¿Vale como canon el comercio de armas a crédito y las patrullas obligadas?
+2. Nabieus: ¿bajamos sus soldados al 5 % (vigías y espías), por ser sigilosos y no agresivos?
+3. Faerus: ¿pelean todos los adultos de la manada ante una amenaza?
+
+Archivos que tocaría si se aprueba: `docs/rpgtarkor/lore-mundo/clanes-orcos.md` (Serhu) y
+`docs/rpgtarkor/lore-mundo/razas.md` (Nabieus y Faerus).
+
+---
+
 ### 2026-10-06 — Monturas, tallas de los pueblos y porte de la fauna (Fase D del 0.3)
 **Estado: SIN REVISAR** (decisiones de la usuaria del 2026-10-06 en la ronda de la Fase D; las
 cifras son de Claude y provisionales)

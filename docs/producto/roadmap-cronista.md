@@ -1642,9 +1642,24 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   el hambre, 3 días y 10 %, pasa a definitiva; migración `20261006120000_sed`). 53e ✅ (Visión general del Reino: agua al día frente a bocas, topes del almacén, sueldos, tesoro y bolsa
   con traspaso, y avisos de sed, hambre y sueldos sin pagar; `GET /saves/:id/reino/economia`; los textos
   de ayuda de cada indicador, al día).
-- **CR-54** Economía de supervivencia de las facciones (Q7-Q8): las mismas cifras en agregado.
+- **CR-54** Economía de supervivencia de las facciones (Q7-Q8 y Q16-Q20): reparto de la tabla del plan
+  (re-siembra única de las partidas), agua de su fuente canónica, Goirnos y sueldos, y hambre, sed y muerte
+  con el Libro. Las mismas cifras en agregado.
   Extinción con población 0; refundación tras un año si su pueblo conserva más de 50 en la región.
   Enciende la hambruna de facción apagada en `CR-12`. **M**
+- **CR-58** Factura de equipo (Fase D, Q25-Q27).
+  - Alta y desgaste semanal de herramientas, armas y armaduras para el Reino y las facciones.
+  - El equipo se fabrica en el taller propio (materiales a la mitad de su valor) o se compra a precio
+    de mercado.
+  - Sin herramienta se produce la mitad; sin arma, se cuenta medio en la defensa. **M**
+- **CR-59** Vasallaje y deuda (Fase D, Q21-Q24 y Q28; Serhu bajo la Concordia).
+  - Doctrina de rearme y armas al doble a crédito.
+  - Deuda que se cobra en patrullas obligadas (20 guerreros por semana, 25 % de `ESCARAMUZA` con 1d6
+    bajas).
+  - Se rompe saldando la deuda, si cae el señor, con una alianza con el Reino o en guerra. **M**
+- **CR-60** Ingresos pasivos del Reino y de las facciones (usuaria, 2026-10-06): fuentes de
+  Goirnos que no dependan de los trabajadores (hoy solo el comercio y las expediciones). Necesita
+  una ronda de diseño. Hito `0.4`. **M**
 - **CR-55** Ganadería (Q9, Q11, Q13).
   - Oficio de ganadero por raza y región.
   - Corral por especie: 6, 12 o 20 plazas.
