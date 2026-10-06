@@ -36,6 +36,8 @@ import { iniciarCaza, type CazaTarget } from '../../services/caza.js';
 import { riesgoDeCaza, type RiesgoCazaInfo } from '../../services/cazaRiesgo.js';
 import type { AttributeBlock } from '../../services/dice.js';
 import { ambitoFacciones } from '../../services/mundoPartida.js';
+import { etiquetasActivas } from '../../services/cronista/etiquetas.js';
+import { conRencor, npcsConRencor } from '../../services/cronista/recuerdos.js';
 
 /// Candado de "movimiento en curso" (hallazgo 45, revisar-partida-hallazgos.md, 2026-09-15) —
 /// mismo patrón que `turnLock.ts`/`chapterSummary.ts` (`createInFlightClaimSet`), pero con
@@ -352,8 +354,10 @@ export async function zonaRoutes(app: FastifyInstance) {
     const npcNameBySlugZonePoint = new Map(npcFaunaZonePointIds.map((n) => [n.slug, n.name]));
     // ZON-50/ZON-33 (hito 0.2): quién te perseguiría (misma regla que la persecución de
     // `avanzarZonePointsUnPaso`: temperamento efectivo según tu reputación con su facción).
+    // CR-16: y quien te guarda rencor por lo que le hiciste.
+    const rencoresZona = await npcsConRencor(prisma, save.id, npcFaunaZonePointIds.map((n) => n.id), save.worldState?.fictionalMinutes ?? 0);
     const hostilBySlugZonePoint = new Map(
-      npcFaunaZonePointIds.map((n) => [n.slug, esTemperamentoHostil(effectiveTemperamento(n.temperamento, n.faction, factionsStatus))]),
+      npcFaunaZonePointIds.map((n) => [n.slug, esTemperamentoHostil(conRencor(effectiveTemperamento(n.temperamento, n.faction, factionsStatus), rencoresZona.has(n.id)))]),
     );
     for (const n of npcFaunaZonePointIds) npcKindBySlug.set(n.slug, n.kind);
     const companionsByOwnerSlug = new Map(
@@ -797,6 +801,7 @@ export async function zonaRoutes(app: FastifyInstance) {
         const state = dinamicosStateByIdColision.get(`${n.id}|${scopeFor(n.kind, locationId)}`);
         if (!state || state.zonaPosX == null || state.zonaPosY == null || state.zonaLocationId !== locationId) return null;
         return {
+          id: n.id,
           targetSlug: n.slug,
           targetName: n.name,
           kind: n.kind,
@@ -817,6 +822,8 @@ export async function zonaRoutes(app: FastifyInstance) {
     // aviso de texto sin abrir nada, causando la frustración real reportada. Ahora ADYACENTE o MISMA
     // celda disparan exactamente el mismo árbol de decisión — el "aviso" puro queda eliminado, no
     // tenía ningún caso real que lo siguiera necesitando).
+    // CR-16: quien te guarda rencor te corta el paso como un agresivo.
+    const rencoresColision = await npcsConRencor(tx, saveId, [...puntosVivos.map((p) => npcBySlug.get(p.targetSlug)?.id), ...dinamicosConPosicionColision.map((d) => d.id)].filter((x): x is string => !!x), fictionalMinutes);
     let colision: { targetSlug: string; targetName: string; temperamento: string } | null = null;
     // "¿Quién ve a quién primero?" (2026-09-17) — Destreza del NPC/fauna del encuentro, guardada
     // junto a `colision` para la tirada de `quienIniciaEncuentro` más abajo.
@@ -841,7 +848,7 @@ export async function zonaRoutes(app: FastifyInstance) {
       // regla igual que cualquier otro NPC de nombre propio no descubierto todavía.
       const nombre = nombreVisibleColision(punto.targetSlug, npc?.kind, nombreReal);
       if (celdaAdyacenteOMisma(celda, celdaPunto)) {
-        const temperamento = npc ? effectiveTemperamento(npc.temperamento, npc.faction, factionsStatus) : 'CAUTELOSO';
+        const temperamento = npc ? conRencor(effectiveTemperamento(npc.temperamento, npc.faction, factionsStatus), rencoresColision.has(npc.id)) : 'CAUTELOSO';
         // Un AGRESIVO/ENEMIGO nunca se silencia: si sigue encima del jugador, vuelve a cortarle el paso.
         if (punto.targetSlug === ultimoEncuentroSlug && !esTemperamentoHostil(temperamento)) {
           ultimoEncuentroSigueCerca = true;
@@ -861,7 +868,7 @@ export async function zonaRoutes(app: FastifyInstance) {
         const celdaDinamico = celdaDePixel({ x: dinamico.x, y: dinamico.y });
         const nombreDinamico = nombreVisibleColision(dinamico.targetSlug, dinamico.kind, dinamico.targetName);
         if (celdaAdyacenteOMisma(celda, celdaDinamico)) {
-          const temperamento = effectiveTemperamento(dinamico.temperamento, dinamico.faction, factionsStatus);
+          const temperamento = conRencor(effectiveTemperamento(dinamico.temperamento, dinamico.faction, factionsStatus), rencoresColision.has(dinamico.id));
           if (dinamico.targetSlug === ultimoEncuentroSlug && !esTemperamentoHostil(temperamento)) {
             ultimoEncuentroSigueCerca = true;
             continue;
@@ -919,6 +926,13 @@ export async function zonaRoutes(app: FastifyInstance) {
         // dynamicMode.ts, y la ruta `/modo-dinamico/interactuar`.
         const iniciativa = tirarQuienIniciaEncuentro(destrezaJugador, destrezaColision ?? 10);
         const quienInicia = iniciativa.quienInicia;
+        // CR-14 (Q4): la fauna cautelosa que reconoce a un «Cazador temido» antes de que se acerque, huye.
+        if (colisionTipo === 'FAUNA' && colision.temperamento === 'CAUTELOSO' && quienInicia === 'npc' && (await etiquetasActivas(tx, saveId)).has('CAZADOR_TEMIDO')) {
+          const textoHuida = `${colision.targetName} reconoce a ${characterName} de lejos y huye antes de que pueda acercarse.`;
+          const creada = await tx.logEntry.create({ data: { saveId, channel: 'CHARACTER', text: textoHuida, timeLabel, fictionalMinutes, isPlayerAction: false, isSystemMessage: true } });
+          // Queda como último encuentro: mientras sigas en su radio no vuelve a «huir» a cada paso.
+          return { ultimoEncuentroSigueCerca, colision: null, dynamicModeOffer: null, logEntry: { id: creada.id, text: textoHuida, timeLabel, createdAt: creada.createdAt.toISOString() }, avistadoSinOferta: { targetSlug: colision.targetSlug } };
+        }
         dynamicModeOffer = {
           tipo: colisionTipo!,
           targetSlug: colision.targetSlug,

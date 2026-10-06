@@ -19,6 +19,10 @@ import { aplicarEfectos, CUALQUIERA_SALVO_ORIGEN, type CtxEfecto, type Efecto } 
 import { registrarSuceso, type NuevoSuceso } from './sucesos.js';
 import { dispararPorSuceso } from './consecuencias.js';
 import type { TipoSuceso } from './catalogoSucesos.js';
+import { REACCIONES_ETIQUETAS } from './etiquetas.js';
+import { REACCIONES_APROBACION } from './aprobacion.js';
+import { REACCIONES_RECUERDOS } from './recuerdos.js';
+import { REACCIONES_HILOS } from './hilos.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -272,6 +276,14 @@ export const REACCIONES: Reaccion[] = [
       return [{ tipo: 'REBELION', actores: [{ entidadTipo: 'FACCION', entidadId: slug, papel: 'VICTIMA' }], datos: { reino: f.name } }];
     },
   },
+  // CR-14: etiquetas del personaje (etiquetas.ts).
+  ...REACCIONES_ETIQUETAS,
+  // CR-15: aprobación de los compañeros (aprobacion.ts).
+  ...REACCIONES_APROBACION,
+  // CR-16: recuerdos de NPC y supervivientes (recuerdos.ts).
+  ...REACCIONES_RECUERDOS,
+  // CR-17: buscadores de historias e hilos (hilos.ts).
+  ...REACCIONES_HILOS,
 ];
 
 /// Región (nombre de `Location.region`, el de `REGIONES_VECINAS`) a partir de su slug.

@@ -717,6 +717,8 @@ export interface CompanionInfo {
   /// Grupos de combate (2026-09-08) — 0 = Grupo 1 (el que entra a combate en directo, junto al
   /// jugador). Gestión real (mover/renombrar/crear) vive en CombatGroupsModal.tsx.
   combatGroupSlotIndex: number
+  /// CR-15 (hito 0.3): lo que piensa de ti, 0-100 (null para animales y trabajadores del Reino).
+  aprobacion?: number | null
   /// Producción de Reino estilo Bellwright (hueco D, 2026-09-21, docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md
   /// § 4.4-ter) — a qué Building está asignado como trabajador; null = no asignado.
   buildingId: string | null

@@ -3,7 +3,9 @@ import { prisma } from '../../lib/prisma.js';
 import { rejectIfEnded, clearPendingOffer, toFrontendLogEntry } from './shared.js';
 import { ayudarNpc } from '../../services/ayudarNpc.js';
 import { ofrecerTrabajoDeNpc } from '../../services/cronista/generarMisiones.js';
-import { OPCION_NOTICIAS, OPCION_TRABAJO } from '../../services/npcInteraction.js';
+import { OPCION_INFORMANTE, OPCION_NOTICIAS, OPCION_TRABAJO, OPCION_UNIRSE } from '../../services/npcInteraction.js';
+import { proponer } from '../../services/cronista/reclutamiento.js';
+import type { Prisma } from '@prisma/client';
 import { preguntarNoticias } from '../../services/cronista/difusion.js';
 
 /// Menú contextual de interacción con NPC (2026-09-06, "Aprender oficio" deja de depender de una
@@ -66,6 +68,19 @@ export async function npcInteractionRoutes(app: FastifyInstance) {
           data: { saveId: save.id, channel: 'CHARACTER', isSystemMessage: true, text: contado.frase, fictionalMinutes: ws?.fictionalMinutes ?? 0, timeLabel: ws?.fictionalDateLabel ?? '' },
         });
         return { accion: 'CONTADO' as const, logEntry: toFrontendLogEntry(entrada) };
+      }
+      // CR-32: reclutar sin pelear o captar un informante, con su tirada de Carisma en el registro.
+      if (opcion === OPCION_UNIRSE || opcion === OPCION_INFORMANTE) {
+        const r = await proponer(prisma, save.id, offer.npcSlug, opcion === OPCION_UNIRSE ? 'RECLUTAR' : 'INFORMANTE');
+        const ws = await prisma.worldState.findUnique({ where: { saveId: save.id }, select: { fictionalMinutes: true, fictionalDateLabel: true } });
+        const entrada = await prisma.logEntry.create({
+          data: {
+            saveId: save.id, channel: 'CHARACTER', isSystemMessage: true, text: r.ok ? r.texto : r.motivo,
+            fictionalMinutes: ws?.fictionalMinutes ?? 0, timeLabel: ws?.fictionalDateLabel ?? '',
+            ...(r.ok ? { roll: r.roll as unknown as Prisma.InputJsonValue } : {}),
+          },
+        });
+        return { accion: 'PROPUESTA' as const, logEntry: toFrontendLogEntry(entrada), unido: r.ok && r.exito && !!r.companionId };
       }
       // 'Charlar' y 'Salir' no necesitan ninguna acción más allá de cerrar la tarjeta.
       return { accion: 'CERRAR' as const };

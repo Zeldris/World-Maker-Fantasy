@@ -91,6 +91,8 @@ export interface NpcInScene {
   genero: string | null;
   kind: NpcKind;
   level: number;
+  /// CR-16: título ganado en esta partida («Superviviente de Gorhorn»), o null.
+  titulo?: string | null;
   role: string;
   faction: string | null;
   personality: string;
@@ -202,7 +204,9 @@ export function buildNpcInScene(npc: NpcWithItems, state: NpcState | undefined):
     articulo: npc.articulo,
     genero: npc.genero,
     kind: npc.kind,
-    level: npc.level,
+    // CR-16: con los niveles que haya ganado en esta partida (superviviente o vencedor).
+    level: npc.level + (state?.nivelesGanados ?? 0),
+    titulo: state?.titulo ?? null,
     role: npc.role,
     faction: npc.faction,
     personality: npc.personality,
@@ -229,7 +233,7 @@ export function buildNpcInScene(npc: NpcWithItems, state: NpcState | undefined):
     // `clase` solo existen en humanoides; la fauna (sin clase) reparte proporcional a su propio
     // perfil de nivel 1 en vez de por tabla de clase.
     // CR-13 13c: la vejez de un NPC del catálogo en esta partida (`NpcState.vejez`).
-    attributes: restarVejez(npcAttributesForLevel(npc.attributes as AttributeBlock, npc.level, npc.clase as Clase | null), state?.vejez ?? 0) as NpcInScene['attributes'],
+    attributes: restarVejez(npcAttributesForLevel(npc.attributes as AttributeBlock, npc.level + (state?.nivelesGanados ?? 0), npc.clase as Clase | null), state?.vejez ?? 0) as NpcInScene['attributes'],
     raza: npc.raza,
     clase: npc.clase,
     especializacion: npc.especializacion,

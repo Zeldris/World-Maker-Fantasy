@@ -29,6 +29,9 @@ import { recordFactionEvent, type FactionEventType } from '../factionRelations.j
 import { ownerKeyFor } from '../reinoOwner.js';
 import { registrarSuceso, type NuevoSuceso } from './sucesos.js';
 import type { TipoSuceso } from './catalogoSucesos.js';
+import { aplicarCambioAprobacion, type Valor } from './aprobacion.js';
+import { aplicarNivelGanado, aplicarRecuerdo } from './recuerdos.js';
+import { aplicarAbrirHilo, aplicarCerrarHilo, registradorDeHilo, type ActorHilo, type Patron } from './hilos.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -80,7 +83,14 @@ export type Efecto =
   | { tipo: 'ajustarReino'; faccionSlug?: string; riqueza?: number; felicidad?: number }
   | { tipo: 'situarNpc'; npcId: string; locationId: string; condicion: CondicionFisica }
   | { tipo: 'botinAlJugador'; goirnos: number; mensaje: string }
-  | { tipo: 'crearNpc'; faccionSlug: string; como?: 'DESTACA' | 'NACE' };
+  | { tipo: 'crearNpc'; faccionSlug: string; como?: 'DESTACA' | 'NACE' }
+  | { tipo: 'anadirEtiqueta'; clave: string; texto: string }
+  | { tipo: 'quitarEtiqueta'; clave: string }
+  | { tipo: 'cambiarAprobacion'; companionId: string; delta: number; motivo: Valor }
+  | { tipo: 'anadirRecuerdo'; npcId: string; sentimiento: number }
+  | { tipo: 'ganarNivelNpc'; npcId: string; titulo?: string }
+  | { tipo: 'abrirHilo'; patron: Patron; clave: string; actores: ActorHilo[]; tension: number; resumen: string; cerrado?: boolean }
+  | { tipo: 'cerrarHilo'; clave: string; desenlace: string };
 
 export interface ResultadoEfecto {
   aplicado: boolean;
@@ -114,6 +124,28 @@ export async function aplicarEfecto(ctx: CtxEfecto, e: Efecto): Promise<Resultad
       return asignarCargo(ctx, e);
     case 'cambiarCohesion':
       return cambiarCohesion(ctx, e);
+    case 'anadirEtiqueta':
+      return anadirEtiqueta(ctx, e);
+    case 'quitarEtiqueta':
+      return quitarEtiqueta(ctx, e);
+    case 'anadirRecuerdo':
+      return (await aplicarRecuerdo(ctx.tx, { saveId: ctx.saveId, npcId: e.npcId, sentimiento: e.sentimiento, sucesoId: ctx.causas?.[0] ?? null, fictionalMinutes: ctx.fictionalMinutes }))
+        ? { aplicado: true, sucesoId: null }
+        : NO_APLICADO;
+    case 'ganarNivelNpc':
+      return (await aplicarNivelGanado(ctx.tx, { saveId: ctx.saveId, npcId: e.npcId, titulo: e.titulo })) ? { aplicado: true, sucesoId: null } : NO_APLICADO;
+    case 'abrirHilo': {
+      const sucesoId = await aplicarAbrirHilo(ctx.tx, { saveId: ctx.saveId, fictionalMinutes: ctx.fictionalMinutes, causa: ctx.causas?.[0] ?? null, ...e }, registradorDeHilo(ctx.tx, ctx));
+      return sucesoId ? { aplicado: true, sucesoId } : NO_APLICADO;
+    }
+    case 'cerrarHilo': {
+      const sucesoId = await aplicarCerrarHilo(ctx.tx, { saveId: ctx.saveId, fictionalMinutes: ctx.fictionalMinutes, causa: ctx.causas?.[0] ?? null, clave: e.clave, desenlace: e.desenlace }, registradorDeHilo(ctx.tx, ctx));
+      return sucesoId ? { aplicado: true, sucesoId } : NO_APLICADO;
+    }
+    case 'cambiarAprobacion':
+      return (await aplicarCambioAprobacion(ctx.tx, { saveId: ctx.saveId, companionId: e.companionId, delta: e.delta, motivo: e.motivo, fictionalMinutes: ctx.fictionalMinutes })) === null
+        ? NO_APLICADO
+        : { aplicado: true, sucesoId: null };
     case 'cambiarLider':
       return cambiarLider(ctx, e);
     case 'crearFaccion':
@@ -215,6 +247,37 @@ async function asignarCargo(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'asignarC
     tipo: 'HEREDERO_DESIGNADO',
     actores: [actorNpc(npc.id, 'BENEFICIARIO'), actorFaccion(faccion.slug, 'AFECTADO')],
     datos: { heredero: npc.name, lider: lider?.name ?? 'sin líder', faccion: faccion.name },
+  });
+  return { aplicado: true, sucesoId };
+}
+
+/// CR-14: una etiqueta del personaje. Si ya la tenía activa no hace nada; si estaba apagada, vuelve.
+async function anadirEtiqueta(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'anadirEtiqueta' }>): Promise<ResultadoEfecto> {
+  const clave = { saveId_entidadTipo_entidadId_clave: { saveId: ctx.saveId, entidadTipo: 'PERSONAJE', entidadId: ctx.saveId, clave: e.clave } };
+  const ya = await ctx.tx.etiqueta.findUnique({ where: clave, select: { activa: true } });
+  if (ya?.activa) return NO_APLICADO;
+  const save = await ctx.tx.save.findUniqueOrThrow({ where: { id: ctx.saveId }, select: { characterName: true } });
+  const sucesoId = await registrar(ctx, {
+    tipo: 'ETIQUETA_GANADA',
+    actores: [{ entidadTipo: 'PERSONAJE', entidadId: ctx.saveId, papel: 'AFECTADO' }],
+    datos: { personaje: save.characterName, etiqueta: e.texto },
+  });
+  const datos = { texto: e.texto, sucesoId, desdeMinutes: ctx.fictionalMinutes, activa: true };
+  await ctx.tx.etiqueta.upsert({ where: clave, create: { saveId: ctx.saveId, entidadTipo: 'PERSONAJE', entidadId: ctx.saveId, clave: e.clave, ...datos }, update: datos });
+  return { aplicado: true, sucesoId };
+}
+
+async function quitarEtiqueta(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'quitarEtiqueta' }>): Promise<ResultadoEfecto> {
+  const etiqueta = await ctx.tx.etiqueta.findUnique({
+    where: { saveId_entidadTipo_entidadId_clave: { saveId: ctx.saveId, entidadTipo: 'PERSONAJE', entidadId: ctx.saveId, clave: e.clave } },
+  });
+  if (!etiqueta?.activa) return NO_APLICADO;
+  await ctx.tx.etiqueta.update({ where: { id: etiqueta.id }, data: { activa: false } });
+  const save = await ctx.tx.save.findUniqueOrThrow({ where: { id: ctx.saveId }, select: { characterName: true } });
+  const sucesoId = await registrar(ctx, {
+    tipo: 'ETIQUETA_PERDIDA',
+    actores: [{ entidadTipo: 'PERSONAJE', entidadId: ctx.saveId, papel: 'AFECTADO' }],
+    datos: { personaje: save.characterName, etiqueta: etiqueta.texto },
   });
   return { aplicado: true, sucesoId };
 }

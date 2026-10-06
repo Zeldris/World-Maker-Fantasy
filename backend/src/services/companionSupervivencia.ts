@@ -82,9 +82,11 @@ export function resolverIntento(
   domador: boolean,
   disposicionPct: number,
   random: () => number = Math.random,
+  /// CR-14: bono o malus de las etiquetas del personaje (Clemente, Carnicero…).
+  bonoSocial: number = 0,
 ): IntentoResult {
   const rollBase = rollOpposed(playerAttributes, playerAttribute, resistenciaAttributes, resistenciaAttribute, random);
-  const resistenciaExtra = Math.floor((100 - disposicionPct) / 10);
+  const resistenciaExtra = Math.floor((100 - disposicionPct) / 10) - bonoSocial;
   const margen = rollBase.margen - resistenciaExtra;
   const roll: OpposedRollResult = { ...rollBase, resistenciaResult: rollBase.resistenciaResult + resistenciaExtra, margen, gano: margen > 0 };
   const felicidadTras = Math.max(0, felicidadActual + (roll.gano ? FELICIDAD_GANANCIA : -FELICIDAD_PERDIDA));

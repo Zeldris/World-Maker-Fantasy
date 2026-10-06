@@ -1344,6 +1344,7 @@ export function useGameViewState() {
     setActivePanel,
     onOfertaTrabajo: misionesValue.mostrarOfertaNpc,
     onNoticiasNuevas: () => void noticiasMundo.traer(),
+    onReclutado: () => void refreshSave(),
     openCombat: combat.openCombat,
     handleSubmit,
     refetchEnciclopedia,

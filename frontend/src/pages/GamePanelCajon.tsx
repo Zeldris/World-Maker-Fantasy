@@ -145,6 +145,7 @@ export function GamePanelCajon() {
           <ModoConsultaContext.Provider value={modoConsulta}>
           {panelMostrado === 'personaje' && (
             <PersonajePanel
+              saveId={saveId}
               activeSubTab={personajeSubTab}
               onSubTabChange={setPersonajeSubTab}
               characterArchetype={characterArchetype}

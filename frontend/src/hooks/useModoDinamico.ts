@@ -37,6 +37,8 @@ interface UseModoDinamicoParams {
   onOfertaTrabajo?: (npcName: string, aviso: AvisoMisionInfo | null) => void
   /// CR-18 (18c): tras «¿Qué se cuenta?», traer ya las noticias que el NPC ha dejado en «El mundo».
   onNoticiasNuevas?: () => void
+  /// CR-32: alguien se ha unido sin pelear (hay que traer los compañeros).
+  onReclutado?: () => void
   setActivePanel: Dispatch<SetStateAction<PanelId | null>>
   openCombat: (npcs: { npcs: NpcInSceneInfo[] }) => void
   handleSubmit: (actionText: string) => void | Promise<void>
@@ -70,6 +72,7 @@ export function useModoDinamico({
   setActivePanel,
   onOfertaTrabajo,
   onNoticiasNuevas,
+  onReclutado,
   openCombat,
   handleSubmit,
   refetchEnciclopedia,
@@ -275,6 +278,9 @@ export function useModoDinamico({
       } else if (resultado.accion === 'AYUDADO' || resultado.accion === 'CONTADO') {
         setCharacterLog((prev) => [...prev, resultado.logEntry])
         if (resultado.accion === 'CONTADO') onNoticiasNuevas?.()
+      } else if (resultado.accion === 'PROPUESTA') {
+        setCharacterLog((prev) => [...prev, resultado.logEntry])
+        if (resultado.unido) onReclutado?.()
       } else if (resultado.accion === 'OFERTA_TRABAJO') {
         onOfertaTrabajo?.(resultado.npcName, resultado.aviso)
       } else if (resultado.accion === 'SIN_TRABAJO') {

@@ -365,10 +365,10 @@ alcance de conocimiento inicial (§ 9). Lista inicial (ampliable como datos):
 
 | Familia | Tipos |
 |---|---|
-| **JUGADOR** | `ACCION_RELEVANTE`, `COMBATE_GANADO`, `COMBATE_PERDIDO`, `MUERTE_CAUSADA`, `PERDON_CONCEDIDO` (dejar vivir/clemente), `CAPTURA`, `PROMESA`, `PROMESA_CUMPLIDA`, `PROMESA_ROTA`, `REGALO` (entregar), `ROBO`, `MISION_COMPLETADA`, `MISION_FALLIDA`, `DESCUBRIMIENTO`, `OFICIO_APRENDIDO`, `MUERTE_JUGADOR`, `RENACER`, `FIN_PARTIDA` |
+| **JUGADOR** | `ACCION_RELEVANTE`, `COMBATE_GANADO`, `COMBATE_PERDIDO`, `MUERTE_CAUSADA`, `PERDON_CONCEDIDO` (dejar vivir/clemente), `CAPTURA`, `PROMESA`, `PROMESA_CUMPLIDA`, `PROMESA_ROTA`, `REGALO` (entregar), `ROBO`, `MISION_COMPLETADA`, `MISION_FALLIDA`, `DESCUBRIMIENTO`, `OFICIO_APRENDIDO`, `MUERTE_JUGADOR`, `RENACER`, `FIN_PARTIDA`, `ETIQUETA_GANADA`, `ETIQUETA_PERDIDA` (CR-14), `COMPANERO_SE_VA` (CR-15), `RECLUTAMIENTO`, `RECLUTAMIENTO_FALLIDO`, `INFORMANTE_CAPTADO` (CR-32) |
 | **VIDA_MUERTE** | `NACIMIENTO_NOTABLE` (NPC con nombre), `MUERTE_NPC`, `MUERTE_LIDER`, `SUCESION`, `HEREDERO_DESIGNADO`, `RECUPERACION_NPC`, `CADAVER_DESAPARECE` |
 | **DIPLOMACIA** | `CAMBIO_RELACION` (de `recordFactionEvent`), `GUERRA_DECLARADA`, `TREGUA`, `ALIANZA`, `TRATADO_COMERCIAL`, `RUPTURA`, `SABOTAJE`, `ESPIONAJE`, `ESCARAMUZA` (CR-12) |
-| **FACCION** | `FACCION_CAE`, `FACCION_ESCINDIDA`, `FACCION_FUNDADA`, `FACCION_ABSORBIDA`, `CAMBIO_LIDER`, `TERRITORIO_CONQUISTADO`, `TERRITORIO_PERDIDO`, `EXPEDICION_SALE`, `EXPEDICION_INTERCEPTADA`, `EXPEDICION_VUELVE`, `MALESTAR_INTERNO` (CR-12) |
+| **FACCION** | `FACCION_CAE`, `FACCION_ESCINDIDA`, `FACCION_FUNDADA`, `FACCION_ABSORBIDA`, `CAMBIO_LIDER`, `TERRITORIO_CONQUISTADO`, `TERRITORIO_PERDIDO`, `EXPEDICION_SALE`, `EXPEDICION_INTERCEPTADA`, `EXPEDICION_VUELVE`, `MALESTAR_INTERNO` (CR-12), `INFORMANTE_DESCUBIERTO` (CR-32) |
 | **CLIMA** | `TORMENTA`, `TORMENTA_EXTREMA`, `CAMBIO_ESTACION`, `SEQUIA`, `OLA_FRIO` |
 | **NATURAL** | `MIGRACION_FAUNA`, `PLAGA`, `INCENDIO`, `CRECIDA`, `DESPRENDIMIENTO`, `AUGE_POBLACION`, `DECLIVE_POBLACION` |
 | **ECONOMIA** | `ESCASEZ`, `AUGE_COMERCIAL`, `CARAVANA`, `PRECIOS_DISPARADOS` |
@@ -1512,18 +1512,86 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   y nacimientos coherentes; perdonar a un NPC lo hace volver en otra región.
 
 ### Fase 4 — Personas que recuerdan · **M**
-- **CR-14** Etiquetas (§ 8.1). **S** Incluye las reacciones de CR-10: etiqueta tras matar a un NPC
+- **Diseño cerrado** (ronda 1 del 2026-10-06, aceptada entera por la usuaria; referencias BG3,
+  Shadow of Mordor, Bellwright, Medieval Dynasty y D&D 5e):
+  - **Q1 Aprobación:** 0-100, empieza en 50. < 30 aviso en el registro; < 20 se niega a lo que choca
+    con sus valores (p. ej. rematar a un rendido); < 10 durante 3 días seguidos se va (aviso al
+    cruzar 15); > 80 escena de confianza en el modo dinámico.
+  - **Q2:** solo compañeros con mente (con pueblo); los animales siguen con su felicidad.
+  - **Q3:** línea en el registro por valor tocado («Kaila frunce el ceño») y barra con etiqueta en la
+    ficha (Hostil · Distante · Neutral · Afín · Leal), sin número.
+  - **Q4 Etiquetas:** las del § 8.1. `CLEMENTE` (3 perdones): +1 a convencer a un rendido;
+    `CARNICERO` (5 muertes de rendidos): −2 a persuadir y nadie con Int ≥ 12 se te rinde;
+    `CAZADOR_TEMIDO` (10 cazas de fauna peligrosa): la fauna cautelosa huye antes;
+    `ROMPE_JURAMENTOS`: −2 a pactar y a la diplomacia; el resto, narrativas. En la ficha del
+    Personaje con su suceso; una negativa se apaga con `REDENCION`.
+  - **Q5 Recuerdos:** el implicado y los testigos de la zona; sentimiento −10..+10 que se desvanece
+    salvo los de importancia ≥ 6; total < −8 → hostil contigo. Quien sobrevive a un combate contigo
+    (huye o lo perdonas) gana +1 nivel (con tope) y el título «Superviviente de <personaje>»; si te
+    vence, también sube.
+  - **Q6 Hilos:** por dentro alimentan al narrador y al narrador de fondo; en Leyendas, «Historias
+    en marcha» solo con los que la jugadora conoce.
+  - **Q7 (`CR-42`):** «¿Qué se sabe en tu tierra?» en el menú del compañero, mismo alcance que
+    «¿Qué se cuenta?», con aprobación ≥ 40, una vez por día.
+  - **Q8 (`CR-32`):** reclutar con tirada de Carisma CD 10/15/20 según su actitud contigo (recuerdos
+    + reputación con su facción); hace falta vivienda libre en el Reino; nunca líderes; fallo =
+    recuerdo −1 y no se reintenta hasta el día siguiente. Informante: misma tirada +5; se queda en su
+    facción y pasa lo que sabe cada semana; 10 % semanal de que lo descubran (desaparece o muere,
+    suceso y baja la reputación con esa facción).
+  - **Q9 Valores:** tabla a mano para los compañeros que ya hay (propuesta de lore para Álvaro) y
+    regla por pueblo para los nuevos (orcos `lealtad_clan +2`, Nabieus `prudencia +2`…).
+- ~~**CR-14** Etiquetas (§ 8.1).~~ ✅ 2026-10-06 **S** Incluye las reacciones de CR-10: etiqueta tras matar a un NPC
   con nombre y evaluación de etiquetas por cualquier suceso del jugador como autor.
-- **CR-15** Aprobación con valores (§ 8.2). **M**
-- **CR-16** Recuerdos de NPC (§ 8.3). **S** Incluye las reacciones de CR-10: `recuerdo(testigos,
-  jugador, −6)` tras una muerte causada y `recuerdo(víctima, jugador, +5)` tras un perdón.
-- **CR-17** Buscadores de historias e hilos (§ 7.4). **M**
-- **CR-42** Compañeros que cuentan lo de su tierra (`CR-18` Q9, va al `0.3` con `CR-15`): un compañero
-  de una región cuenta lo que se sabe allí cuando se le pregunta. **S**
-- **CR-32** Reclutamiento pacífico e informantes (usuaria, 2026-10-04, Q14 de `CR-12`): convencer a
+  14a ✅ 2026-10-06 (modelo `Etiqueta`, migración `20261006020000_etiquetas`; efectos
+  `anadirEtiqueta`/`quitarEtiqueta` con sus sucesos `ETIQUETA_GANADA`/`ETIQUETA_PERDIDA`; reglas en
+  `cronista/etiquetas.ts` como reacciones: Verdugo de, Carnicero, Cazador temido, Clemente,
+  Rompejuramentos, Fundador, Salvador de; Amigo de / Enemigo de por reputación, revisadas cada día
+  en el avance diario). 14b ✅ (efectos de Q4: `bonoSocialDeEtiquetas`; Clemente +1 y Carnicero −2 al convencer a un capturado; ante un Carnicero nadie con Int ≥ 12 se deja atar; la fauna cautelosa que reconoce a un Cazador temido antes de que se acerque huye; Rompejuramentos: negociar exige un nivel de diplomático más, porque la diplomacia no tira dados). 14c ✅ (`GET /saves/:id/etiquetas` y sub-pestaña «Títulos» en Personaje, con el porqué y las perdidas tachadas). **Cerrada.**
+- ~~**CR-15** Aprobación con valores (§ 8.2).~~ ✅ 2026-10-06 **M** 15a ✅ 2026-10-06 (`cronista/aprobacion.ts`: valores
+  por pueblo y personalidad, sembrados al confirmar un compañero o la primera vez que hacen falta;
+  vectores por suceso — perdón, muerte de rendido, captura, promesas, robo, regalo, ayuda, misiones —;
+  efecto `cambiarAprobacion` y reacción `APROBACION_COMPANEROS` con su frase en el registro y los avisos
+  al cruzar 30, 20 y 15; valores por pueblo propuestos a Álvaro en `propuestas-lore.md`). 15b ✅ (por
+  debajo de 20 no entra a combate — caza y combate de personas —; 3 días por debajo de 10 → se va,
+  `COMPANERO_SE_VA`, columna `aprobacionBajaDesde`, migración `20261006030000_aprobacion_baja`).
+  15c ✅ (barra «Lo que piensa de ti» con su etiqueta en Compañeros, sin número; `aprobacion` en el
+  detalle de la partida). **Cerrada.** La escena de confianza (> 80) va con «Charlar con NPC» (Fase F
+  del `0.3`).
+- ~~**CR-16** Recuerdos de NPC (§ 8.3). **S** Incluye las reacciones de CR-10: `recuerdo(testigos,
+  jugador, −6)` tras una muerte causada y `recuerdo(víctima, jugador, +5)` tras un perdón.~~ ✅ 2026-10-06
+  (`cronista/recuerdos.ts`; modelo `Recuerdo` y `NpcState.nivelesGanados`/`titulo`, migración
+  `20261006040000_recuerdos`; efectos `anadirRecuerdo` y `ganarNivelNpc`. Recuerdan: testigos de una
+  muerte −6, perdonado +5, vencido −3, huido −4, capturado −5, ayudado +3, regalado +2, robado −4; los
+  leves se desvanecen a la mitad cada 30 días y los de importancia ≥ 6 quedan. Rencor (total < −8) →
+  te corta el paso como un agresivo en la zona (`conRencor`, colisión y marca de hostil). Superviviente
+  (huye o lo perdonas) o vencedor (`COMBATE_PERDIDO` lleva ahora al rival como autor) → +1 nivel en esta
+  partida, tope 3, y título «Superviviente de / Vencedor de <personaje>» en `NpcInScene.titulo`. Que el
+  narrador lo cuente al volver a verlo va con la Fase 6, `CR-21`/`CR-22`.)
+- ~~**CR-17** Buscadores de historias e hilos (§ 7.4).~~ ✅ 2026-10-06 **M** (`cronista/hilos.ts`; modelo
+  `Hilo`, migración `20261006050000_hilos`; efectos `abrirHilo`/`cerrarHilo` con `HILO_ABIERTO`/
+  `HILO_CERRADO`. Patrones: venganza (testigo de la facción de la víctima; se cierra si muere el vengador
+  o al verse las caras), ascenso (cambio de líder), caída (2 pérdidas de territorio o líder en 10 días),
+  deuda (perdón, regalo o ayuda a un NPC con nombre; se salda cuando te devuelve el favor), rivalidad
+  (3 enfrentamientos con el mismo NPC; acaba con una muerte) y redención (2 buenos actos tras Carnicero o
+  Rompejuramentos: apaga la etiqueta; Carnicero solo se recupera al rematar a otro rendido). Leyendas ›
+  «Historias en marcha» con los que conoce el personaje (`GET /saves/:id/leyendas/hilos`). Que alimenten
+  al narrador va con la Fase 6.)
+- ~~**CR-42** Compañeros que cuentan lo de su tierra (`CR-18` Q9, va al `0.3` con `CR-15`): un compañero
+  de una región cuenta lo que se sabe allí cuando se le pregunta. **S**~~ ✅ 2026-10-06
+  (`cronista/companeroTierra.ts` sobre `contarNoticias`, el núcleo común sacado de «¿Qué se cuenta?»;
+  región y facción de origen del compañero, aprobación ≥ 40, una vez al día;
+  `POST /saves/:id/companeros/:companionId/tierra` y botón «¿Qué se sabe en tu tierra?» en Compañeros.)
+- ~~**CR-32** Reclutamiento pacífico e informantes (usuaria, 2026-10-04, Q14 de `CR-12`): convencer a
   un NPC sin pelear (tirada de persuasión según si le gusta lo que dices; idea de la usuaria del
   2026-09-06) para que se una al Reino o te pase información de su facción. Abre la oportunidad
-  del malestar interno del narrador de fondo (un descontento se ofrece). **M**
+  del malestar interno del narrador de fondo (un descontento se ofrece). **M**~~ ✅ 2026-10-06 (`cronista/reclutamiento.ts`: opciones «Proponer que se una» y «Pedirle
+  que te informe» en el menú de los NPC que pueden dar trabajo; tirada de Carisma (con las etiquetas) contra
+  CD 10/15/20 por su actitud — recuerdos + reputación con su facción —, +5 para informante; reclutar pide
+  vivienda libre y nunca a un líder; fallo = `RECLUTAMIENTO_FALLIDO`, recuerdo −1 y no hasta mañana;
+  reclutado = compañero nuevo, fuera del mapa, lealtad al Reino; informante (`NpcState.informanteDesde`,
+  migración `20261006060000_informantes`) pasa cada semana lo de su facción, o lo descubren (10 %): muere o
+  desaparece, `INFORMANTE_DESCUBIERTO` y cae la reputación. El malestar interno del narrador de fondo como
+  oportunidad queda para cuando ese suceso tenga un NPC concreto.)
 - **CR-36** Las facciones del mundo construyen (`CR-34` Q3, va al `0.3` con el Reino profundo): obras
   con coste y plazo según sus carencias (pozo, granero…), con los números de la economía de
   supervivencia. **M**

@@ -1995,6 +1995,8 @@ export type NpcInteractionAccion =
   /// CR-40 (40f) — «¿Tienes trabajo?»: la misión personal que propone el NPC, o que no tiene nada.
   | { accion: 'OFERTA_TRABAJO'; npcName: string; aviso: AvisoMisionInfo }
   | { accion: 'SIN_TRABAJO'; texto: string }
+  /// CR-32: proponer que se una o que te informe; la entrada lleva la tirada de Carisma.
+  | { accion: 'PROPUESTA'; logEntry: LogEntry; unido: boolean }
 
 export async function chooseNpcInteraction(saveId: string, npcSlug: string, opcion: string): Promise<NpcInteractionAccion> {
   return fetchJson(`${API_URL}/saves/${saveId}/npc-interaction/${npcSlug}/elegir`, {
@@ -2701,4 +2703,37 @@ export async function getLeyendasFicha(saveId: string, ficha: 'npc' | 'faction' 
 /// Lo que el personaje sabe de una entidad (ficha «En tu partida»).
 export async function getLeyendasEntidad(saveId: string, tipo: string, entidadId: string): Promise<{ entradas: EntradaLeyenda[] }> {
   return fetchJson(`${API_URL}/saves/${saveId}/leyendas/entidad/${encodeURIComponent(tipo)}/${encodeURIComponent(entidadId)}`)
+}
+
+/// CR-14 (hito 0.3): título ganado por el personaje, con el porqué.
+export interface EtiquetaInfo {
+  clave: string
+  texto: string
+  activa: boolean
+  desdeMinutes: number
+  porque: string | null
+}
+
+export async function getEtiquetas(saveId: string): Promise<{ etiquetas: EtiquetaInfo[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/etiquetas`)
+}
+
+/// CR-17 (hito 0.3): una historia en marcha (o ya cerrada) que el personaje conoce.
+export interface HiloInfo {
+  id: string
+  patron: 'VENGANZA' | 'ASCENSO' | 'CAIDA' | 'DEUDA' | 'RIVALIDAD' | 'REDENCION'
+  abierto: boolean
+  tension: number
+  resumen: string
+  abiertoEn: number
+  cerradoEn: number | null
+}
+
+export async function getHilos(saveId: string): Promise<{ hilos: HiloInfo[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/leyendas/hilos`)
+}
+
+/// CR-42 (hito 0.3): «¿Qué se sabe en tu tierra?» a un compañero.
+export async function preguntarTierraCompanero(saveId: string, companionId: string): Promise<{ frase: string; contadas: number }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/companeros/${companionId}/tierra`, { method: 'POST' })
 }

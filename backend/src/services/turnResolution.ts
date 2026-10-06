@@ -6148,6 +6148,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         puedeOfrecerTrabajo,
         // CR-18 (18c): quien puede dar trabajo (con nombre, de facción viva, no hostil) cuenta lo que se dice.
         puedeContarNoticias: puedeOfrecerTrabajo,
+        // CR-32: a quien te escucha puedes proponerle que se una o que te informe.
+        puedeReclutar: puedeOfrecerTrabajo,
       });
       npcInteractionOffer = { npcSlug: npcInteractionCandidate.slug, npcName: npcInteractionCandidate.name, options: opciones };
       await tx.save.update({ where: { id: saveId }, data: { pendingNpcInteractionOffer: npcInteractionOffer } });
@@ -6544,7 +6546,11 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         fictionalMinutes: nuevoFictionalMinutes,
         locationId: currentLocationId,
         origen: 'JUGADOR',
-        actores: [{ entidadTipo: 'PERSONAJE', entidadId: saveId, papel: 'VICTIMA' }],
+        actores: [
+          { entidadTipo: 'PERSONAJE', entidadId: saveId, papel: 'VICTIMA' },
+          // CR-16: quien te vence lo recuerda y sube (estilo Némesis).
+          ...(npcParaIntercambio ? [{ entidadTipo: 'NPC' as const, entidadId: npcParaIntercambio.id, papel: 'AUTOR' as const }] : []),
+        ],
         datos: { personaje: characterName, rival: npcAbilityUsed?.npcName ?? combatExchangeDisplayFinal?.rivalNombre ?? 'sus enemigos' },
       });
     }

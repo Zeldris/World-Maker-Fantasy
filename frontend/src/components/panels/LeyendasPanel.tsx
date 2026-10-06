@@ -3,6 +3,7 @@ import { getLeyendas, type EntradaLeyenda, type FamiliaSuceso } from '../../lib/
 import { agruparCronica, colorDeEntrada, diaDeEntrada, FAMILIA_ESTILO, lineaTemporal, NIVEL_CLASES, porEntidad, type SeccionEntidad } from '../../lib/leyendas'
 import { PanelEmptyState } from '../PanelEmptyState'
 import { Esqueleto } from '../Esqueleto'
+import { HistoriasEnMarcha } from './HistoriasEnMarcha'
 
 // CR-20 / PAN-9b (hito 0.2, decisiones Q5-Q6 de la Fase E) — Leyendas de tu partida: la crónica tal
 // como la conoce el personaje (lo que no sabe no existe aquí, INT-4). Crónica por días o semanas,
@@ -10,7 +11,7 @@ import { Esqueleto } from '../Esqueleto'
 // icono y color (INT-1), la importancia como marca y nunca como número (INT-2), y «por qué pasó»
 // como cadena de causas que se pueden pulsar (INT-3). Un rumor se ve como rumor, sin detalles.
 
-type Seccion = 'cronica' | SeccionEntidad | 'linea'
+type Seccion = 'cronica' | SeccionEntidad | 'linea' | 'historias'
 
 const SECCIONES: { id: Seccion; label: string }[] = [
   { id: 'cronica', label: 'Crónica' },
@@ -18,6 +19,8 @@ const SECCIONES: { id: Seccion; label: string }[] = [
   { id: 'facciones', label: 'Facciones' },
   { id: 'lugares', label: 'Lugares' },
   { id: 'linea', label: 'Línea temporal' },
+  // CR-17 (hito 0.3): hilos que conoce el personaje.
+  { id: 'historias', label: 'Historias en marcha' },
 ]
 
 const VIA_LABEL: Record<EntradaLeyenda['via'], string> = {
@@ -222,7 +225,9 @@ export function LeyendasPanel({ saveId, irAlSuceso }: {
           )
         })()}
 
-      {siguiente && (
+      {seccion === 'historias' && <HistoriasEnMarcha saveId={saveId} />}
+
+      {siguiente && seccion !== 'historias' && (
         <button type="button" disabled={cargandoMas} onClick={verMas} className="self-center rounded border border-iron-700 px-3 py-1 text-xs text-wood-300 hover:bg-wood-900/60 disabled:opacity-50">
           {cargandoMas ? 'Leyendo…' : 'Ver más antiguas'}
         </button>

@@ -19,12 +19,17 @@ export interface NpcInteractionOptionsParams {
   puedeOfrecerTrabajo?: boolean;
   /// CR-18 (18c): el mismo NPC puede contar lo que se dice («¿Qué se cuenta?»).
   puedeContarNoticias?: boolean;
+  /// CR-32: NPC con nombre de una facción viva y no hostil (el líder lo rechaza al proponérselo).
+  puedeReclutar?: boolean;
 }
 
 /// CR-40 (40f): opción del menú para pedir una misión personal.
 export const OPCION_TRABAJO = '¿Tienes trabajo?';
 /// CR-18 (18c, Q9): opción del menú para preguntar por las novedades.
 export const OPCION_NOTICIAS = '¿Qué se cuenta?';
+/// CR-32: reclutar sin pelear y captar un informante.
+export const OPCION_UNIRSE = 'Proponer que se una';
+export const OPCION_INFORMANTE = 'Pedirle que te informe';
 
 const CONDICIONES_CAPTURABLES = new Set(['GRAVE', 'CONVALECIENTE']);
 
@@ -61,6 +66,7 @@ export function opcionesDisponiblesPara(npc: NpcInScene, params: NpcInteractionO
   else {
     if (params.puedeOfrecerTrabajo) opciones.push(OPCION_TRABAJO);
     if (params.puedeContarNoticias) opciones.push(OPCION_NOTICIAS);
+    if (params.puedeReclutar) opciones.push(OPCION_UNIRSE, OPCION_INFORMANTE);
   }
 
   if (CONDICIONES_CAPTURABLES.has(npc.condicionFisica) && npc.capturable) {

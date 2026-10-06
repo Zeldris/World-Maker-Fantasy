@@ -466,6 +466,9 @@ model Save {
   /// Libro de Sucesos (Cronista, CR-1) — todo lo que pasa en la partida, del jugador o del mundo.
   sucesos            Suceso[]
   conocimientos      Conocimiento[]
+  etiquetas          Etiqueta[]
+  recuerdos          Recuerdo[]
+  hilos              Hilo[]
   consecuencias      Consecuencia[]
   sessionFacts       SessionFact[]
   foundedFactions    Faction[]
@@ -1161,6 +1164,8 @@ model Companion {
   /// CR-5 (hito 0.2) — valores del compañero (p. ej. { "piedad": 2, "honor": 1 }) y aprobación.
   valores    Json @default("{}")
   aprobacion Int  @default(50)
+  /// CR-15: minuto de ficción desde el que su aprobación está por debajo de 10 (se va a los 3 días).
+  aprobacionBajaDesde Int?
 
   @@index([saveId])
   @@index([plantillaEquipoId])
@@ -2855,6 +2860,14 @@ model NpcState {
   /// CR-13 13c (hito 0.2): años de vejez de un NPC del catálogo en ESTA partida (sus atributos son
   /// del mundo): se restan a fuerza, destreza y constitución al usarlos (`restarVejez`, edades.ts).
   vejez                       Int             @default(0)
+  /// CR-16 (hito 0.3): niveles ganados en ESTA partida por sobrevivir a la jugadora o vencerla
+  /// (estilo Némesis), con tope; se suman a `Npc.level`.
+  nivelesGanados              Int             @default(0)
+  /// CR-16: título que se ha ganado («Superviviente de Gorhorn»).
+  titulo                      String?
+  /// CR-32 (hito 0.3): minuto desde el que es informante del personaje (sigue en su facción y le
+  /// pasa lo que sabe cada semana), o null.
+  informanteDesde             Int?
   condicionFisica             CondicionFisica @default(ILESO)
   /// Sistema de fatiga simétrico (2026-07-30, deuda técnica: "los NPC siguen eligiendo habilidad
   /// sin restricción de energía" — ver energy.ts) — null = tope completo, mismo criterio lazy que
@@ -3673,4 +3686,71 @@ model Caravana {
   createdAt         DateTime       @default(now())
 
   @@index([saveId, status])
+}
+
+/// CR-14 (hito 0.3): títulos ganados por lo que se ha hecho (roadmap-cronista.md § 8.1). Por ahora
+/// solo del personaje (`entidadTipo` PERSONAJE, `entidadId` = id de la partida).
+model Etiqueta {
+  id           String  @id @default(cuid())
+  saveId       String
+  save         Save    @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  entidadTipo  String
+  entidadId    String
+  /// "VERDUGO_DE:<npc>", "AMIGO_DE:<facción>", "CLEMENTE"…
+  clave        String
+  /// Cómo se lee: «Verdugo de Torgash».
+  texto        String
+  /// Suceso `ETIQUETA_GANADA` que la dio (con sus causas).
+  sucesoId     String
+  desdeMinutes Int
+  /// false = apagada (redención, o una relación que volvió a la normalidad).
+  activa       Boolean @default(true)
+
+  @@unique([saveId, entidadTipo, entidadId, clave])
+  @@index([saveId, activa])
+}
+
+/// CR-16 (hito 0.3): lo que un NPC guarda de alguien (por ahora, del personaje) a raíz de un suceso
+/// (roadmap-cronista.md § 8.3, estilo Némesis). Los leves se desvanecen con el tiempo; los de un suceso
+/// de importancia ≥ 6 quedan.
+model Recuerdo {
+  id           String @id @default(cuid())
+  saveId       String
+  save         Save   @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  npcId        String
+  /// PERSONAJE (id de la partida) | NPC | FACCION
+  sobreTipo    String
+  sobreId      String
+  sucesoId     String
+  /// −10..+10
+  sentimiento  Int
+  /// Importancia del suceso que lo causó (≥ 6: no se olvida).
+  importancia  Int
+  desdeMinutes Int
+
+  @@index([saveId, npcId])
+}
+
+/// CR-17 (hito 0.3): historias que el motor reconoce en el Libro (roadmap-cronista.md § 7.4):
+/// VENGANZA | ASCENSO | CAIDA | DEUDA | RIVALIDAD | REDENCION. Siguen abiertas hasta su desenlace.
+model Hilo {
+  id         String   @id @default(cuid())
+  saveId     String
+  save       Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  patron     String
+  /// ABIERTO | CERRADO
+  estado     String   @default("ABIERTO")
+  /// 0-10: cuánto pesa para el narrador.
+  tension    Int
+  /// Quiénes la protagonizan: [{ entidadTipo, entidadId }].
+  actores    Json
+  /// Clave para no abrir dos veces la misma historia (p. ej. "VENGANZA:<vengador>").
+  clave      String
+  sucesoIds  String[]
+  resumen    String
+  abiertoEn  Int
+  cerradoEn  Int?
+
+  @@unique([saveId, clave])
+  @@index([saveId, estado])
 }

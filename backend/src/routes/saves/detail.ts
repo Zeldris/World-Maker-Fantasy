@@ -428,6 +428,8 @@ export async function detailRoutes(app: FastifyInstance) {
         // está cada uno; la gestión real (mover/renombrar/crear grupos) vive en su propio endpoint
         // (/saves/:id/combat-groups).
         combatGroupSlotIndex: c.combatGroupSlotIndex,
+        // CR-15: solo los compañeros con mente que van contigo (los animales tienen felicidad).
+        aprobacion: c.tipo === 'NPC' && !c.rolReino ? c.aprobacion : null,
         // Producción de Reino estilo Bellwright (hueco D, 2026-09-21, docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md
         // § 4.4-ter) — a qué Building está asignado como trabajador; null = no asignado (aunque
         // tenga rolReino, puede seguir sin edificio hasta que el jugador lo asigne).

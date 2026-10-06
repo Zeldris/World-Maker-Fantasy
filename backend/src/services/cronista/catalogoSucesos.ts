@@ -24,6 +24,13 @@ export interface DatosSuceso {
   AYUDA_PRESTADA: { personaje: string; a: string };
   /// CR-44: un NPC pierde el valor y huye del combate.
   HUIDA_DE_NPC: { personaje: string; huido: string };
+  ETIQUETA_GANADA: { personaje: string; etiqueta: string };
+  ETIQUETA_PERDIDA: { personaje: string; etiqueta: string };
+  COMPANERO_SE_VA: { personaje: string; companero: string };
+  RECLUTAMIENTO: { personaje: string; reclutado: string };
+  RECLUTAMIENTO_FALLIDO: { personaje: string; npc: string };
+  INFORMANTE_CAPTADO: { personaje: string; informante: string; faccion: string };
+  INFORMANTE_DESCUBIERTO: { informante: string; faccion: string; destino: string };
   CAPTURA: { personaje: string; capturado: string };
   PROMESA: { personaje: string; a: string; promesa: string };
   PROMESA_CUMPLIDA: { personaje: string; a: string; promesa: string };
@@ -131,6 +138,13 @@ export const CATALOGO_SUCESOS: Catalogo = {
   PERDON_CONCEDIDO: { familia: 'JUGADOR', importanciaBase: 4, plantilla: (d) => `${d.personaje} perdona la vida a ${d.perdonado}.` },
   AYUDA_PRESTADA: { familia: 'JUGADOR', importanciaBase: 3, plantilla: (d) => `${d.personaje} atiende las heridas de ${d.a}.` },
   HUIDA_DE_NPC: { familia: 'JUGADOR', importanciaBase: 3, plantilla: (d) => `${d.huido} huye de ${d.personaje}.` },
+  ETIQUETA_GANADA: { familia: 'JUGADOR', importanciaBase: 4, plantilla: (d) => `${d.personaje} es ya «${d.etiqueta}».` },
+  ETIQUETA_PERDIDA: { familia: 'JUGADOR', importanciaBase: 3, plantilla: (d) => `${d.personaje} deja de ser «${d.etiqueta}».` },
+  COMPANERO_SE_VA: { familia: 'JUGADOR', importanciaBase: 5, plantilla: (d) => `${d.companero} deja a ${d.personaje}: ya no cree en su camino.` },
+  RECLUTAMIENTO: { familia: 'JUGADOR', importanciaBase: 4, plantilla: (d) => `${d.reclutado} se une a ${d.personaje} sin necesidad de pelear.` },
+  RECLUTAMIENTO_FALLIDO: { familia: 'JUGADOR', importanciaBase: 1, plantilla: (d) => `${d.npc} no se deja convencer por ${d.personaje}.` },
+  INFORMANTE_CAPTADO: { familia: 'JUGADOR', importanciaBase: 2, plantilla: (d) => `${d.informante} acepta contarle a ${d.personaje} lo que pasa en ${d.faccion}.` },
+  INFORMANTE_DESCUBIERTO: { familia: 'FACCION', importanciaBase: 5, plantilla: (d) => `En ${d.faccion} descubren que ${d.informante} pasaba noticias: ${d.destino}.` },
   CAPTURA: { familia: 'JUGADOR', importanciaBase: 3, plantilla: (d) => `${d.personaje} captura a ${d.capturado}.` },
   PROMESA: { familia: 'JUGADOR', importanciaBase: 5, plantilla: (d) => `${d.personaje} promete a ${d.a}: ${d.promesa}.` },
   PROMESA_CUMPLIDA: { familia: 'JUGADOR', importanciaBase: 5, plantilla: (d) => `${d.personaje} cumple lo prometido a ${d.a}: ${d.promesa}.` },

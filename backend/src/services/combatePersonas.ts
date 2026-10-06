@@ -12,6 +12,7 @@ import { MAX_COMBATIENTES_POR_BANDO } from './combateMultiple.js';
 import { scopeFor } from './npcScene.js';
 import { celdaDePixel } from './zonaPosicion.js';
 import { lockRowForUpdate } from '../routes/saves/shared.js';
+import { companeroDispuestoACombatir } from './cronista/aprobacion.js';
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -117,7 +118,7 @@ export async function abrirCombateDePersonas(
   miembros: MiembroDeGrupo[],
 ): Promise<{ encounterId: string } | null> {
   const companeros = await prisma.companion.findMany({
-    where: { saveId: save.id, combatGroupSlotIndex: 0, condicionFisica: { not: 'MUERTO' } },
+    where: { saveId: save.id, combatGroupSlotIndex: 0, condicionFisica: { not: 'MUERTO' }, ...companeroDispuestoACombatir },
     select: { id: true, name: true, attributes: true },
   });
   const combatientes: (CombatienteInicial & { destreza: number; inteligencia: number })[] = [

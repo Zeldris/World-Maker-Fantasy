@@ -11,6 +11,7 @@ import { iniciarCombatEncounter, resolverTurnosAutonomosHastaJugadora, type Comb
 import { MAX_COMBATIENTES_POR_BANDO } from './combateMultiple.js';
 import { lockRowForUpdate } from '../routes/saves/shared.js';
 import { ambitoPoblacion } from './mundoPartida.js';
+import { companeroDispuestoACombatir } from './cronista/aprobacion.js';
 
 /// Servicio de caza (Fase 2, 2026-09-28, `plan-mecanicas-por-zona-2026-09-28.md`) — extraído del
 /// núcleo de `POST /saves/:id/cazar/confirmar` (`cazar.ts`, todo lo que corre TRAS elegir
@@ -297,7 +298,7 @@ async function intentarCazaEnGrupo(save: SaveParaCaza, targets: CazaTarget[]): P
       { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: jugadorAttrs.destreza, inteligencia: jugadorAttrs.inteligencia, constitucion: jugadorAttrs.constitucion, nombre: save.characterName },
       ...(
         await prisma.companion.findMany({
-          where: { saveId: save.id, combatGroupSlotIndex: 0, condicionFisica: { not: 'MUERTO' } },
+          where: { saveId: save.id, combatGroupSlotIndex: 0, condicionFisica: { not: 'MUERTO' }, ...companeroDispuestoACombatir },
           select: { id: true, name: true, attributes: true },
         })
       )

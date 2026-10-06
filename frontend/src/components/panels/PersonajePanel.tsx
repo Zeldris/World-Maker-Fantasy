@@ -1,6 +1,7 @@
 import type { Attribute, AttributeBlock, CondicionFisica, EquipSlot, InventoryItemInfo, SecondaryAttributeBlock } from '../../types'
 import { EquipoPanel } from './EquipoPanel'
 import { EstadisticasPanel } from './EstadisticasPanel'
+import { EtiquetasSection } from './EtiquetasSection'
 
 // Consolidación de "Equipo" en "Personaje" (2026-07-29, petición explícita: "un tab en la
 // sección de Equipo que va a pasar a llamarse Personaje... equipo, estadísticas, reputación,
@@ -15,14 +16,17 @@ import { EstadisticasPanel } from './EstadisticasPanel'
 //
 // "Reputación" sale de aquí (checklist frontend 2026-08-27, B.13) — pasa a pestaña propia del riel
 // "El mundo" (NavTabs.ts): conceptualmente es del eje mundo/facciones, no del personaje.
-export type PersonajeSubTab = 'equipo' | 'estadisticas'
+export type PersonajeSubTab = 'equipo' | 'estadisticas' | 'titulos'
 
 const SUB_TABS: { id: PersonajeSubTab; label: string; icon: string }[] = [
   { id: 'equipo', label: 'Equipo', icon: '⚔️' },
   { id: 'estadisticas', label: 'Estadísticas', icon: '📊' },
+  // CR-14 (hito 0.3): etiquetas ganadas.
+  { id: 'titulos', label: 'Títulos', icon: '🏷️' },
 ]
 
 interface PersonajePanelProps {
+  saveId: string
   activeSubTab: PersonajeSubTab
   onSubTabChange: (tab: PersonajeSubTab) => void
 
@@ -47,6 +51,7 @@ interface PersonajePanelProps {
 }
 
 export function PersonajePanel({
+  saveId,
   activeSubTab,
   onSubTabChange,
   characterArchetype,
@@ -104,6 +109,7 @@ export function PersonajePanel({
           sed={sed}
         />
       )}
+      {activeSubTab === 'titulos' && <EtiquetasSection saveId={saveId} />}
     </div>
   )
 }

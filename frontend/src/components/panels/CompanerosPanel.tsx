@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { CompanionInfo, InventoryItemInfo, PlantillaEquipoInfo } from '../../types'
-import { getTameoPendientes, asignarPlantillaCompanion, type TameoPendiente } from '../../lib/api'
+import { getTameoPendientes, asignarPlantillaCompanion, preguntarTierraCompanero, type TameoPendiente } from '../../lib/api'
 import { PanelEmptyState } from '../PanelEmptyState'
 import { PanelSection } from '../PanelSection'
 import { CapturaModal } from '../CapturaModal'
@@ -11,6 +11,7 @@ import { PlantillaSelect } from './ReinoPanel'
 import { ResourceBar } from '../ResourceBar'
 import { HealthBar } from '../HealthBar'
 import { useModoConsulta } from '../../context/useModoConsulta'
+import { COLOR_APROBACION, etiquetaDeAprobacion } from '../../lib/aprobacion'
 
 // Grupo 3 § Compañeros y supervivencia (2026-08-25, docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md)
 // — `felicidad: null` = compañero de quest/narración libre (comportamiento de siempre, sin capa
@@ -43,6 +44,21 @@ export function CompanerosPanel({ saveId, companions, inventory, onRefreshSave, 
   const [tameoAbierto, setTameoAbierto] = useState<TameoPendiente | null>(null)
   const [equipoAbierto, setEquipoAbierto] = useState<CompanionInfo | null>(null)
   const [gruposAbierto, setGruposAbierto] = useState(false)
+  // CR-42: lo último que te ha contado cada compañero de su tierra.
+  const [contado, setContado] = useState<Record<string, string>>({})
+  const [preguntando, setPreguntando] = useState<string | null>(null)
+  const preguntarTierra = async (companionId: string) => {
+    setPreguntando(companionId)
+    try {
+      const r = await preguntarTierraCompanero(saveId, companionId)
+      setContado((prev) => ({ ...prev, [companionId]: r.frase }))
+      await onRefreshSave()
+    } catch {
+      setContado((prev) => ({ ...prev, [companionId]: 'No ha querido hablar ahora.' }))
+    } finally {
+      setPreguntando(null)
+    }
+  }
 
   async function refreshPendientes() {
     try {
@@ -133,6 +149,28 @@ export function CompanerosPanel({ saveId, companions, inventory, onRefreshSave, 
               {companion.condicionFisica && (
                 <div className="mt-2.5">
                   <HealthBar condicionFisica={companion.condicionFisica} />
+                </div>
+              )}
+              {companion.aprobacion != null && (
+                <div className="mt-2.5" data-testid="aprobacion">
+                  <p className="flex justify-between text-2xs text-wood-400">
+                    <span>🤝 Lo que piensa de ti</span>
+                    <span className="font-semibold text-wood-200">{etiquetaDeAprobacion(companion.aprobacion)}</span>
+                  </p>
+                  <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-wood-950/80" aria-hidden="true">
+                    <div className={`h-full ${COLOR_APROBACION[etiquetaDeAprobacion(companion.aprobacion)]}`} style={{ width: `${companion.aprobacion}%` }} />
+                  </div>
+                  {!consulta && companion.condicionFisica !== 'MUERTO' && (
+                    <button
+                      type="button"
+                      disabled={preguntando === companion.id}
+                      onClick={() => void preguntarTierra(companion.id)}
+                      className="tactile mt-2 rounded-md border border-iron-700 px-2 py-1 text-2xs text-wood-300 hover:border-accent-600/60 hover:text-accent-300 disabled:opacity-50"
+                    >
+                      🗣️ ¿Qué se sabe en tu tierra?
+                    </button>
+                  )}
+                  {contado[companion.id] && <p className="mt-1.5 text-2xs italic leading-relaxed text-wood-300">{contado[companion.id]}</p>}
                 </div>
               )}
               {companion.felicidad !== null && (
