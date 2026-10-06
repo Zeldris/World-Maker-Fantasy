@@ -117,6 +117,31 @@ _Evitar_: mayoría de edad
 **Vejez**:
 Los años que alguien vive más allá del 80 % de la esperanza de vida de su pueblo: pierde fuerza, destreza y constitución, y puede morir de viejo.
 
+**Etiqueta**:
+Un título que gana la jugadora por lo que ha hecho (Clemente, Carnicero…), con el suceso que lo dio; algunas dan un pequeño bono o malus.
+_Evitar_: logro, rasgo
+
+**Aprobación**:
+Lo que un compañero con mente piensa de la jugadora, de 0 a 100, según cuánto chocan sus actos con sus valores; los animales no tienen aprobación, tienen felicidad.
+_Evitar_: lealtad, afinidad
+
+**Valores**:
+Lo que le importa a un compañero (piedad, honor, codicia, lealtad al clan, crueldad, prudencia), cada uno con un peso de −2 a +2.
+
+**Recuerdo**:
+Lo que un NPC guarda de alguien a raíz de un suceso, con un sentimiento de −10 a +10; los leves se desvanecen y los graves quedan.
+_Evitar_: memoria (es la del narrador)
+
+**Superviviente**:
+Un NPC que salió vivo de un combate con la jugadora; vuelve más fuerte y lo recuerda.
+
+**Hilo**:
+Una historia que el motor reconoce en el Libro (venganza, ascenso, caída, deuda, rivalidad, redención) y que sigue abierta hasta su desenlace.
+_Evitar_: trama, misión
+
+**Informante**:
+Un NPC convencido para seguir en su facción y pasar a la jugadora lo que sabe; si lo descubren, lo pierde.
+
 ## Las facciones que deciden
 
 **Decisión de facción**:

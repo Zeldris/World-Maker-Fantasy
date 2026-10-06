@@ -1512,6 +1512,34 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   y nacimientos coherentes; perdonar a un NPC lo hace volver en otra región.
 
 ### Fase 4 — Personas que recuerdan · **M**
+- **Diseño cerrado** (ronda 1 del 2026-10-06, aceptada entera por la usuaria; referencias BG3,
+  Shadow of Mordor, Bellwright, Medieval Dynasty y D&D 5e):
+  - **Q1 Aprobación:** 0-100, empieza en 50. < 30 aviso en el registro; < 20 se niega a lo que choca
+    con sus valores (p. ej. rematar a un rendido); < 10 durante 3 días seguidos se va (aviso al
+    cruzar 15); > 80 escena de confianza en el modo dinámico.
+  - **Q2:** solo compañeros con mente (con pueblo); los animales siguen con su felicidad.
+  - **Q3:** línea en el registro por valor tocado («Kaila frunce el ceño») y barra con etiqueta en la
+    ficha (Hostil · Distante · Neutral · Afín · Leal), sin número.
+  - **Q4 Etiquetas:** las del § 8.1. `CLEMENTE` (3 perdones): +1 a convencer a un rendido;
+    `CARNICERO` (5 muertes de rendidos): −2 a persuadir y nadie con Int ≥ 12 se te rinde;
+    `CAZADOR_TEMIDO` (10 cazas de fauna peligrosa): la fauna cautelosa huye antes;
+    `ROMPE_JURAMENTOS`: −2 a pactar y a la diplomacia; el resto, narrativas. En la ficha del
+    Personaje con su suceso; una negativa se apaga con `REDENCION`.
+  - **Q5 Recuerdos:** el implicado y los testigos de la zona; sentimiento −10..+10 que se desvanece
+    salvo los de importancia ≥ 6; total < −8 → hostil contigo. Quien sobrevive a un combate contigo
+    (huye o lo perdonas) gana +1 nivel (con tope) y el título «Superviviente de <personaje>»; si te
+    vence, también sube.
+  - **Q6 Hilos:** por dentro alimentan al narrador y al narrador de fondo; en Leyendas, «Historias
+    en marcha» solo con los que la jugadora conoce.
+  - **Q7 (`CR-42`):** «¿Qué se sabe en tu tierra?» en el menú del compañero, mismo alcance que
+    «¿Qué se cuenta?», con aprobación ≥ 40, una vez por día.
+  - **Q8 (`CR-32`):** reclutar con tirada de Carisma CD 10/15/20 según su actitud contigo (recuerdos
+    + reputación con su facción); hace falta vivienda libre en el Reino; nunca líderes; fallo =
+    recuerdo −1 y no se reintenta hasta el día siguiente. Informante: misma tirada +5; se queda en su
+    facción y pasa lo que sabe cada semana; 10 % semanal de que lo descubran (desaparece o muere,
+    suceso y baja la reputación con esa facción).
+  - **Q9 Valores:** tabla a mano para los compañeros que ya hay (propuesta de lore para Álvaro) y
+    regla por pueblo para los nuevos (orcos `lealtad_clan +2`, Nabieus `prudencia +2`…).
 - **CR-14** Etiquetas (§ 8.1). **S** Incluye las reacciones de CR-10: etiqueta tras matar a un NPC
   con nombre y evaluación de etiquetas por cualquier suceso del jugador como autor.
 - **CR-15** Aprobación con valores (§ 8.2). **M**
