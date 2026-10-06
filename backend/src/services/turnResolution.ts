@@ -14,6 +14,7 @@ import { assertExactlyOneOwner, ownerKeyFor } from './reinoOwner.js';
 import { recordFactionEvent } from './factionRelations.js';
 import { slugify } from '../lib/slugify.js';
 import { appendSessionFacts, selectRelevantFacts } from './worldFacts.js';
+import { bloqueMemoria } from './cronista/memoriaNarrador.js';
 import { closeItemQuests, completeNpcTargetQuests, grantQuestRewardItems, questRewardNarrationFor, GISTERA_DESPEDIDA_NARRATION, type QuestCompletedInfo } from './questResolution.js';
 import { applyFactionRepDelta, effectiveTemperamento, resolveFoundingOutcome, parseFactionsStatus, FACTION_REP_PEACE_DELTA, REGION_OWNING_FACTIONS, type FoundingOutcome, type FactionRepChangeInfo } from './reputation.js';
 import { regionControlActual, parseAgenda } from './worldAgenda.js';
@@ -3473,6 +3474,16 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         );
       }
     }
+  }
+
+  // CR-21…CR-23 (hito 0.3): memoria del narrador — verdad obligatoria, lo que la jugadora ya sabe de
+  // quienes están aquí, historias en marcha y recuerdos por relevancia (≤ 1.800 caracteres, por código).
+  {
+    const memoria = await bloqueMemoria(prisma, {
+      saveId, accion: action, ahora: fictionalMinutesActuales ?? 0, locationId: currentLocationId ?? null, region: activeRegion,
+      npcs: npcsInScene.map((n) => ({ id: n.id, name: n.name, faction: n.faction, muerto: n.condicionFisica === 'MUERTO' })),
+    }).catch(() => '');
+    if (memoria) contextBlocks.push(memoria);
   }
 
   // Tope de bloque completo por NPC (2026-08-28, "cuelgue con modelo grande" — `contextBlocks` sin

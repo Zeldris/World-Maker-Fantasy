@@ -1683,9 +1683,27 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   el personaje no sepa es visible.
 
 ### Fase 6 — Memoria del narrador · **M**
-- **CR-21** Bloque de verdad obligatoria. **S**
-- **CR-22** Callbacks por entidad. **S**
-- **CR-23** Puntuación recencia + importancia + relevancia sobre Libro + crónica. **M**
+- **Diseño cerrado** (ronda 1 del 2026-10-06, aceptada entera; referencias BG3 y Generative Agents):
+  - **Q1 Relevancia** por actores y palabras (sin embeddings para los sucesos; funciona con Ollama
+    apagado): un suceso es relevante si implica a alguien o algo de la escena o comparte palabras clave
+    con la acción. Fórmula 0,3·recencia + 0,3·importancia + 0,4·relevancia, recencia por días de
+    ficción. Los hechos de sesión conservan sus embeddings.
+  - **Q2 Verdad obligatoria** (código, ≤ 600 caracteres): muertos de la escena («no pueden aparecer»),
+    líderes de las facciones presentes, guerras activas en la región, títulos de la jugadora, qué
+    piensa de ella cada compañero presente y, de cada NPC de la escena, rencor o aprecio y su título.
+  - **Q3 Presupuesto** ≤ 1.800 caracteres; se recorta por el final: verdad (nunca) > callbacks (3
+    sucesos conocidos por entidad) > hilos abiertos de la escena > memoria por relevancia.
+  - **Q4:** en esta fase, bloque de verdad + instrucción explícita y tests con escenas preparadas; la
+    validación del texto contra el canon (§ 12) llega con la Fase 7.
+- ~~**CR-21** Bloque de verdad obligatoria. **S**~~ ✅ 2026-10-06
+- ~~**CR-22** Callbacks por entidad. **S**~~ ✅ 2026-10-06
+- ~~**CR-23** Puntuación recencia + importancia + relevancia sobre Libro + crónica. **M**~~ ✅ 2026-10-06
+  (Los tres en `cronista/memoriaNarrador.ts` → `bloqueMemoria`, que el turno añade al contexto del
+  narrador antes de los bloques de NPC: verdad obligatoria (muertos, quién manda, guerras de las
+  facciones presentes o dueñas de la región, títulos, aprobación de compañeros, rencor/aprecio y título
+  de cada NPC), los 3 sucesos conocidos por NPC, facción y lugar, hilos abiertos conocidos de la escena
+  y memoria por relevancia; ≤ 1.800 caracteres recortando por el final. La crónica (`CronicaEntrada`)
+  entra en la puntuación cuando la escriba el Cronista, Fase 7. Tests con escenas preparadas.)
 - **Hecho cuando:** al volver a ver a un NPC perdonado, la narración lo menciona; nunca narra
   vivo a un muerto (test con escenas preparadas).
 
