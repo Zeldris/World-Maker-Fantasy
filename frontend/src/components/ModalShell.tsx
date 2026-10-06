@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, type KeyboardEvent, type ReactNode } from 'react'
+import { useSaliendo } from './Presencia'
 
 // MOD-1 (hito 0.2, roadmap-front.md § 5) — cáscara única de modal. Evolución de
 // SelectionModalShell: tamaños, cabecera con icono/subtítulo/✕, pie fijo (los botones no se van con
@@ -90,6 +91,8 @@ export function ModalShell({
 }: ModalShellProps) {
   const panelRef = useRef<HTMLDivElement>(null)
   const tituloId = useId()
+  // BAS-7: cerrándose (`Presencia`), el panel encoge mientras el fondo se desvanece (`Capa`).
+  const saliendo = useSaliendo()
 
   // Foco inicial en el panel y, al cerrar, de vuelta al elemento que lo abrió (si sigue en la página).
   useEffect(() => {
@@ -135,7 +138,7 @@ export function ModalShell({
         aria-labelledby={tituloId}
         aria-label={title}
         onKeyDown={handleKeyDown}
-        className={`plank-panel animate-combat-enter relative flex w-full flex-col rounded-xl outline-none ${ANCHO[tamano]}`}
+        className={`plank-panel ${saliendo ? 'animate-modal-out' : 'animate-combat-enter'} relative flex w-full flex-col rounded-xl outline-none ${ANCHO[tamano]}`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex shrink-0 items-start gap-3 px-5 pt-5">

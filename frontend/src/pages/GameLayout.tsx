@@ -10,6 +10,7 @@ import { CombatPanel } from '../components/CombatPanel'
 import { responderPropuesta } from '../lib/api'
 
 import { useGameView } from './GameViewContext'
+import { conTransicion } from '../lib/transicionVista'
 
 /// BAS-5 (hito 0.2): el cuerpo de la partida — raíles laterales y los dos paneles (personaje y mundo),
 /// entre la cabecera y el pie. Lee el estado de `GameViewContext`.
@@ -126,7 +127,7 @@ export function GameLayout() {
             </button>
           )}
           {collapsedSide === 'character' ? (
-            <CollapsedRail label="Tu personaje" icon="›" accentClass="text-accent-300" onExpand={() => setCollapsedSide(null)} />
+            <CollapsedRail label="Tu personaje" icon="›" accentClass="text-accent-300" onExpand={() => conTransicion(() => setCollapsedSide(null))} />
           ) : (
             <LogPanel
               title="Tu personaje"
@@ -144,7 +145,7 @@ export function GameLayout() {
               diceReveal={diceReveal}
               onDiceRevealAllLanded={combat.triggerExchangeApply}
               emptyHint="Aquí aparecerá lo que le ocurra a tu personaje."
-              onCollapse={() => setCollapsedSide('character')}
+              onCollapse={() => conTransicion(() => setCollapsedSide('character'))}
               collapseIcon="‹"
               onViewFullHistory={() => setActivePanel('diario')}
               characterName={characterName ?? undefined}
@@ -169,7 +170,7 @@ export function GameLayout() {
               label={combat.combatOpen && combateIniciado ? 'Combate' : 'El mundo'}
               icon="‹"
               accentClass={combat.combatOpen && combateIniciado ? 'text-danger-400' : 'text-accent2-300'}
-              onExpand={() => setCollapsedSide(null)}
+              onExpand={() => conTransicion(() => setCollapsedSide(null))}
             />
           ) : combat.combatOpen && combateIniciado ? (
             // Rediseño de la vista de combate (2026-07-28, petición explícita: "quiero que la
@@ -220,7 +221,7 @@ export function GameLayout() {
               onAbilityDetail={handleAbilityDetail}
               onItemDetail={handleItemDetail}
               enciclopedia={enciclopediaData}
-              onCollapse={() => setCollapsedSide('world')}
+              onCollapse={() => conTransicion(() => setCollapsedSide('world'))}
               collapseIcon="›"
             />
           ) : (
@@ -238,7 +239,7 @@ export function GameLayout() {
                 setLeyendaPedida(sucesoId)
                 setActivePanel('leyendas')
               }}
-              onCollapse={() => setCollapsedSide('world')}
+              onCollapse={() => conTransicion(() => setCollapsedSide('world'))}
               collapseIcon="›"
               // Alternar Mundo/Reino (2026-08-17) — solo tiene sentido ofrecerlo una vez hay reino
               // fundado, o si ya quedó alguna entrada de reino de cuando lo hubo.

@@ -291,7 +291,7 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
   cabecera, avisos de ocupado/combate, pie y las piezas. **Cerrada.**
 - **BAS-6 · Carga** **[H]** **S** — `React.lazy` para Enciclopedia, `MapZoomModal`, `InteractiveMap`,
   admin y secciones de Reino; `loading="lazy"`, `decoding="async"` y fundido en todas las `<img>`.
-- **BAS-7 · Animaciones de salida y de cambio de layout** **[P]** **M** 🧭
+- ~~**BAS-7 · Animaciones de salida y de cambio de layout**~~ ✅ 2026-10-06 **[P]** **M**
   - **A (recomendada):** hook propio `usePresence(open, ms)` + *View Transitions API* con degradado a
     corte seco donde el webview no la soporte. Cero dependencias.
   - **B:** `motion` (Framer Motion, ~30 KB gz) con `AnimatePresence`/`layout`.
@@ -303,6 +303,11 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
   (`saliendo`, 200 ms). **Falta:** salida de `ModalShell` (sus 19 usos se desmontan desde fuera:
   hay que pasar cada apertura por `usePresence`; mejor junto al resto de `BAS-5`) y View
   Transitions para los cambios de disposición (plegar un lado, cambiar de pestaña).
+  ✅ 2026-10-06: `components/Presencia.tsx` envuelve cada capa de `GameModals` y la mantiene
+  220 ms al cerrarse (`SaliendoContext`): `Capa` la desvanece y `ModalShell` encoge su panel
+  (`animate-modal-out`); solo con «Animaciones: completas». `lib/transicionVista.ts`
+  (`conTransicion`) usa la View Transitions API al plegar o desplegar un lado y al cambiar de
+  pestaña en `Tabs`; sin soporte o sin animaciones completas, cambio en seco.
 - ~~**BAS-8 · Librería de componentes base** **[P]** **M** — `QuantityStepper`, `EntityRow` (miniatura
   + nombre + subtítulo + acción), `Skeleton`, `ErrorBanner`, `SuccessState`, `Tabs` con indicador
   deslizante, `ProgressBar` (con barra fantasma), `Chip`. Hoy cada uno vive copiado en varios sitios.~~

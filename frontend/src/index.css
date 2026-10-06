@@ -635,6 +635,16 @@ body {
 .animate-overlay-out {
   animation: overlay-out 0.22s ease-in both;
 }
+/* BAS-7 (hito 0.2) — el panel de un modal encoge al cerrarse (Presencia + ModalShell, 220 ms). */
+@keyframes modal-out {
+  to {
+    opacity: 0;
+    transform: scale(0.97) translateY(6px);
+  }
+}
+.animate-modal-out {
+  animation: modal-out 0.22s ease-in both;
+}
 @keyframes toast-out {
   to {
     opacity: 0;
@@ -874,6 +884,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
   :root:not([data-motion='completas']) .animate-drawer-down,
   :root:not([data-motion='completas']) .animate-overlay-out,
+  :root:not([data-motion='completas']) .animate-modal-out,
   :root:not([data-motion='completas']) .animate-toast-out,
   /* CFG-14 (hito 0.2): si el jugador fuerza «Completas», el sistema no las quita. */
   :root:not([data-motion='completas']) .animate-entry-in,
