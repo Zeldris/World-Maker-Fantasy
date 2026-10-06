@@ -1704,7 +1704,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   - ~~55a~~ ✅ 2026-10-06: reglas puras (`cronista/ganaderia.ts`, 19 tests): etapas por categoría, producción, crías, hambre y
     valor de la comida cruda.
   - ~~55b~~ ✅ 2026-10-06: oficio `domador-…` → `ganadero-…` (migración `20261006160000_oficio_ganadero`: progreso, maestros, expediciones y edificios), receta «Corrales del Ganadero». El edificio de catálogo Serhu conserva su nombre canónico («Corrales del Domador»), pregunta a Álvaro.
-  - 55c: modelo de ganado del Reino, «Al corral» al domesticar, forraje y Fibrería.
+  - ~~55c~~ ✅ 2026-10-06: modelo `Ganado` y forraje en `KingdomStats` (migración `20261006170000_ganado`), «Al corral» al domesticar (`/tameo-pendientes/:npcSlug/al-corral`; la especie se puede volver a capturar), receta de la Fibrería, `GET /saves/:id/corrales` y entrega de pastos (`/forraje/entregar`). En el Reino, ganaderos y fibreros son compañeros asignados al edificio (nunca contaron en la comida pasiva, que sale de los súbditos).
   - 55d: avance diario del ganado del Reino (comen, producen, crían, envejecen, mueren); fin de los
     2 pasivos del ganadero; la leche alimenta; Cuajada recalculada.
   - 55e: «Sacrificar».

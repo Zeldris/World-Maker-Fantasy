@@ -124,7 +124,7 @@ export interface ConstructionRecipe {
   ayuntamientoNivelMinimo?: number;
   /// CR-53 (hito 0.3, Fase D, Q1-Q2): lo que este edificio da a la economía de supervivencia del
   /// Reino — agua al día y capacidad de almacén por categoría (`cronista/economiaReino.ts`).
-  suministro?: { aguaDia?: number; topeComida?: number; topeBebida?: number; topeMateriales?: number };
+  suministro?: { aguaDia?: number; topeComida?: number; topeBebida?: number; topeMateriales?: number; forrajePorTrabajador?: number };
 }
 
 /// Nivel de edificio requerido por tier de receta de oficio (docs/rpgtarkor/sistemas-reino/
@@ -1423,6 +1423,20 @@ export const LENERA_RECIPE: ConstructionRecipe = {
   suministro: { topeMateriales: 120 },
 };
 
+// CR-55 (Q7): Fibrería, estación sin oficio que siega y seca hierba para el ganado: 10 de forraje al
+// día por cada trabajador asignado (compañeros con `buildingId`, como en cualquier edificio).
+export const FIBRERIA_RECIPE: ConstructionRecipe = {
+  key: 'fibreria',
+  name: 'una fibrería',
+  description: 'Un cobertizo abierto con hoces, rastrillos y tendederos donde se siega, se seca y se apila la hierba que come el ganado del Reino.',
+  nounRegex: /\bfibrer[ií]a\b/,
+  requirements: REQUISITOS_SUMINISTRO([{ match: { kind: 'category', tipo: 'RECURSO', category: 'fibras' }, cantidad: 2, label: 'fibra' }]),
+  tier: 1,
+  requisitos: { fuerza: 8 },
+  requiresAyuntamiento: true,
+  suministro: { forrajePorTrabajador: 10 },
+};
+
 // Orden deliberado (2026-08-04): grande y mediano ANTES que pequeño — `CONSTRUCTION_RECIPES.find`
 // se queda con la primera receta cuya `nounRegex` matchea, y el texto "ayuntamiento mediano"
 // también matchea el patrón (más simple) del pequeño si ese se comprobara antes. Mismo criterio
@@ -1444,6 +1458,7 @@ export const CONSTRUCTION_RECIPES: ConstructionRecipe[] = [
   GRANERO_RECIPE,
   CISTERNA_RECIPE,
   LENERA_RECIPE,
+  FIBRERIA_RECIPE,
   JAULA_GRANDE_RECIPE,
   JAULA_MEDIANA_RECIPE,
   JAULA_PEQUENA_RECIPE,

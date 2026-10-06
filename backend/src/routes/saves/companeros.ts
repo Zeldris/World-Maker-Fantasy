@@ -10,6 +10,8 @@ import { cambiarRolSubdito, cupoDeCamas, datosDeSubditos } from '../../services/
 import { candidatosDeLlegada, responderLlegada } from '../../services/cronista/llegadas.js';
 import { esMaterial, huecoDeMateriales } from '../../services/cronista/economiaReino.js';
 import { salidasRecientes } from '../../services/cronista/salidas.js';
+import { esGanado } from '../../services/cronista/ganaderia.js';
+import { meterEnCorral } from '../../services/cronista/ganadoReino.js';
 import { rejectIfEnded, rejectIfPendingDeath, lockRowForUpdate } from './shared.js';
 import { FACTION_REP_CAPTURE_DELTA } from '../../services/reputation.js';
 import { applyFactionRepDeltaForResolution } from '../../services/turnResolution.js';
@@ -421,6 +423,8 @@ export async function companerosRoutes(app: FastifyInstance) {
           umbral: felicidadUmbralFor(esFauna && domador),
           atributoResistencia: mostrarResistencia ? npc.atributoResistencia : null,
           enJaula: state.capturaJaulaBuildingId !== null,
+          // CR-55 (Q3): el ganado puede ir al corral en vez de ser compañero.
+          alCorral: esFauna && esGanado(npc.slug),
         };
       })
       .filter((p): p is NonNullable<typeof p> => !!p);
@@ -550,6 +554,37 @@ export async function companerosRoutes(app: FastifyInstance) {
         return reply.status(409).send({ error: 'No tienes ningún slot de compañero libre — se suelta.' });
       }
       return { companion: outcome.companion };
+    },
+  );
+
+  /// CR-55 (Q3): en vez de compañero, el animal domesticado va a un corral del Ganadero de su especie
+  /// (o a uno vacío). Su estado de captura se limpia: la especie se puede volver a capturar para
+  /// juntar macho y hembra.
+  app.post<{ Params: { id: string; npcSlug: string }; Body: { buildingId?: string } }>(
+    '/saves/:id/tameo-pendientes/:npcSlug/al-corral',
+    async (request, reply) => {
+      const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, worldId: true, clase: true, especializacion: true, endedAt: true, pendingDeathResolution: true, worldState: { select: { fictionalMinutes: true } } } });
+      if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+      if (rejectIfEnded(save, reply)) return;
+      if (rejectIfPendingDeath(save, reply)) return;
+
+      const npc = await prisma.npc.findFirst({ where: { worldId: save.worldId, slug: request.params.npcSlug, saveId: null } });
+      if (!npc || npc.ataqueNatural === null || !esGanado(npc.slug)) return reply.status(400).send({ error: 'Este animal no se cría en corral.' });
+      const state = await prisma.npcState.findFirst({ where: { saveId: save.id, npcId: npc.id, capturado: true } });
+      if (!state) return reply.status(400).send({ error: 'Este objetivo no está capturado todavía.' });
+      const umbral = felicidadUmbralFor(esDomador(save.clase, save.especializacion));
+      if (state.capturaFelicidad < umbral) {
+        return reply.status(400).send({ error: `Todavía no ha ganado suficiente confianza (${state.capturaFelicidad}/${umbral}).` });
+      }
+
+      const r = await prisma.$transaction(async (tx) => {
+        await lockRowForUpdate(tx, 'Save', save.id, ['id']);
+        const metido = await meterEnCorral(tx, save.id, { slug: npc.slug, faunaCategoria: npc.faunaCategoria }, save.worldState?.fictionalMinutes ?? 0, Math.random, request.body?.buildingId);
+        if (metido.ok) await tx.npcState.update({ where: { id: state.id }, data: { capturado: false, capturaFelicidad: 0, capturaJaulaBuildingId: null } });
+        return metido;
+      });
+      if (!r.ok) return reply.status(409).send({ error: r.motivo });
+      return { ganadoId: r.ganadoId, buildingId: r.buildingId, sexo: r.sexo };
     },
   );
 
