@@ -48,13 +48,24 @@ export async function suministrosDelReino(tx: Tx, saveId: string) {
 /// CR-53 53b (Q2): materiales del Almacén del Reino = objetos de tipo RECURSO (leña, piedra, fibra…).
 /// Cuántos caben aún (la base y lo que suman las Leñeras, menos lo que ya hay).
 export async function huecoDeMateriales(tx: Tx, saveId: string): Promise<number> {
+  const { tope, guardados } = await materialesDelAlmacen(tx, saveId);
+  return Math.max(0, tope - guardados);
+}
+
+/// Slugs del catálogo que cuentan como materiales (tipo RECURSO) en el mundo de la partida.
+export async function slugsDeMateriales(tx: Tx, saveId: string): Promise<Set<string>> {
   const save = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } });
-  const recursos = (await tx.itemCatalog.findMany({ where: { worldId: save.worldId, tipo: 'RECURSO' }, select: { slug: true } })).map((r) => r.slug);
+  return new Set((await tx.itemCatalog.findMany({ where: { worldId: save.worldId, tipo: 'RECURSO' }, select: { slug: true } })).map((r) => r.slug));
+}
+
+/// Materiales guardados y tope del Almacén (los guardados pueden pasar del tope en partidas viejas).
+export async function materialesDelAlmacen(tx: Tx, saveId: string, sum?: { topeMateriales: number }): Promise<{ tope: number; guardados: number }> {
+  const recursos = [...(await slugsDeMateriales(tx, saveId))];
   const [{ topeMateriales }, guardados] = await Promise.all([
-    suministrosDelReino(tx, saveId),
+    sum ?? suministrosDelReino(tx, saveId),
     tx.almacenItem.count({ where: { saveId, catalogSlug: { in: recursos } } }),
   ]);
-  return Math.max(0, topeMateriales - guardados);
+  return { tope: topeMateriales, guardados };
 }
 
 /// Si un objeto del catálogo cuenta como material (para no mirar el hueco con lo que no lo es).
@@ -98,7 +109,7 @@ export async function revisarSueldos(tx: Tx, saveId: string, ahora: number): Pro
     await liquidarEquipo(tx, saveId, k);
     return { pagado: total, desertor: null };
   }
-  if (tocaPagar && total === 0) {
+  if ((tocaPagar || k.diasSinCobrar > 0) && total === 0) {
     await tx.kingdomStats.update({ where: { ownerKey }, data: { ultimoPagoSueldos: ahora, diasSinCobrar: 0 } });
     return { pagado: 0, desertor: null };
   }
@@ -132,16 +143,25 @@ export async function traspasarGoirnos(tx: Tx, saveId: string, cantidad: number)
   if (!k) return { ok: false, motivo: 'Aún no tienes un Reino con tesoro.' };
   if (cantidad > 0 && save.goirnos < cantidad) return { ok: false, motivo: `Solo llevas ${save.goirnos} Goirnos.` };
   if (cantidad < 0 && k.riqueza < -cantidad) return { ok: false, motivo: `El tesoro solo tiene ${k.riqueza} Goirnos.` };
-  const s = await tx.save.update({ where: { id: saveId }, data: { goirnos: { decrement: cantidad } }, select: { goirnos: true } });
-  const t = await tx.kingdomStats.update({ where: { ownerKey }, data: { riqueza: { increment: cantidad } }, select: { riqueza: true } });
+  // Condicionado al saldo en la misma sentencia: dos traspasos a la vez no dejan nada en negativo.
+  const sale = cantidad > 0
+    ? await tx.save.updateMany({ where: { id: saveId, goirnos: { gte: cantidad } }, data: { goirnos: { decrement: cantidad } } })
+    : await tx.kingdomStats.updateMany({ where: { ownerKey, riqueza: { gte: -cantidad } }, data: { riqueza: { increment: cantidad } } });
+  if (sale.count === 0) return { ok: false, motivo: 'Ya no hay tantos Goirnos.' };
+  const s = cantidad > 0
+    ? await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { goirnos: true } })
+    : await tx.save.update({ where: { id: saveId }, data: { goirnos: { decrement: cantidad } }, select: { goirnos: true } });
+  const t = cantidad > 0
+    ? await tx.kingdomStats.update({ where: { ownerKey }, data: { riqueza: { increment: cantidad } }, select: { riqueza: true } })
+    : await tx.kingdomStats.findUniqueOrThrow({ where: { ownerKey }, select: { riqueza: true } });
   return { ok: true, bolsa: s.goirnos, tesoro: t.riqueza };
 }
 
 /// 53e: lo que enseña Visión general — agua al día, topes, tesoro, sueldos y avisos.
 export async function resumenEconomia(tx: Tx, saveId: string) {
-  const [sum, hueco, k, save] = await Promise.all([
-    suministrosDelReino(tx, saveId),
-    huecoDeMateriales(tx, saveId),
+  const sum = await suministrosDelReino(tx, saveId);
+  const [almacen, k, save] = await Promise.all([
+    materialesDelAlmacen(tx, saveId, sum),
     tx.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId }) }, select: { trabajadores: true, soldados: true, poblacion: true, visitantes: true, riqueza: true, diasSinCobrar: true, diasSed: true, diasHambre: true, sinHerramienta: true, sinArma: true } }),
     tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { goirnos: true } }),
   ]);
@@ -151,7 +171,7 @@ export async function resumenEconomia(tx: Tx, saveId: string) {
     topeComida: sum.topeComida,
     topeBebida: sum.topeBebida,
     topeMateriales: sum.topeMateriales,
-    materiales: sum.topeMateriales - hueco,
+    materiales: almacen.guardados,
     sueldosSemana: k ? sueldosSemana(k) : 0,
     // CR-58: el desgaste del equipo de la semana (Goirnos lo comprado, materiales lo hecho en casa).
     ...(await (async () => {

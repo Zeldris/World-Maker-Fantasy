@@ -79,8 +79,11 @@ export async function cupoDeCamas(tx: Tx, saveId: string): Promise<{ total: numb
 export async function recalcularPoblacion(tx: Tx, saveId: string, ahora: number): Promise<void> {
   const subditos = await tx.subject.findMany({ where: { saveId, estado: 'ACTIVO' }, select: { role: true, pueblo: true, nacidoEn: true, territoryId: true } });
   const ownerKey = ownerKeyFor({ saveId });
-  if (await tx.kingdomStats.findUnique({ where: { ownerKey }, select: { id: true } })) {
-    await tx.kingdomStats.update({ where: { ownerKey }, data: cifrasDePoblacion(subditos, ahora) });
+  const k = await tx.kingdomStats.findUnique({ where: { ownerKey }, select: { sinHerramienta: true, sinArma: true } });
+  if (k) {
+    const cifras = cifrasDePoblacion(subditos, ahora);
+    // CR-58: el equipo que falta nunca pasa de la gente que hay (quien se va, muere o cambia de rol).
+    await tx.kingdomStats.update({ where: { ownerKey }, data: { ...cifras, sinHerramienta: Math.min(k.sinHerramienta, cifras.trabajadores), sinArma: Math.min(k.sinArma, cifras.soldados) } });
   }
   const territorios = await tx.territory.findMany({ where: { saveId }, select: { id: true, control: true, population: true } });
   for (const t of territorios) {

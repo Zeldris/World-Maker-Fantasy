@@ -104,7 +104,8 @@ export async function revisarSalidas(tx: Tx, saveId: string, ahora: number, rand
 
   const idos: string[] = [];
   if (stats && stats.diasFelicidadBaja >= DIAS_TRISTES_PARA_IRSE) {
-    const ultima = await tx.subject.findFirst({ where: { saveId, estado: 'SE_FUE' }, orderBy: { hastaMinutes: 'desc' }, select: { hastaMinutes: true } });
+    // Las deserciones por sueldos (CR-53) van aparte: no retrasan las salidas por tristeza.
+    const ultima = await tx.subject.findFirst({ where: { saveId, estado: 'SE_FUE', NOT: { notes: { startsWith: 'Desertó' } } }, orderBy: { hastaMinutes: 'desc' }, select: { hastaMinutes: true } });
     if (ultima?.hastaMinutes == null || ahora - ultima.hastaMinutes >= DIAS_ENTRE_SALIDAS * 1440) {
       const quien = quienSeVa(vivos, ahora);
       if (quien) {

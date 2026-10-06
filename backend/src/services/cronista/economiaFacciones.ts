@@ -173,6 +173,7 @@ export async function revisarExtinciones(tx: Tx, saveId: string, ahora: number, 
     const r = await aplicarEfecto(ctx, { tipo: 'crearFaccion', slug, nombre: nombre.nombre, raza: m.raza, descripcion: `Nacida de los que quedaron tras la caída de la antigua facción de su pueblo en ${region}: ${nombre.traduccion}.` });
     if (!r.aplicado) continue;
     usados.add(nombre.nombre);
+    todas.push({ slug, name: nombre.nombre, raza: m.raza, disueltaEn: null });
     const total = Math.min(MAXIMO_REFUNDADORES, pool.poblacion - POBLACION_MINIMA_PARA_REFUNDAR);
     await tx.worldPopulation.update({ where: { id: pool.id }, data: { poblacion: { decrement: total } } });
     const c = repartoEstandar(total);

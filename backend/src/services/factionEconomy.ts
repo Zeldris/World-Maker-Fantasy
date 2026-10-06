@@ -118,31 +118,44 @@ export async function producirFacciones(
       // CR-54 (54b): sueldos semanales, deserción y muertes de hambre y sed, día a día.
       let diasSinCobrar = fks.diasSinCobrar;
       // CR-58: lo que sus talleres no fabrican lo compra (en agregado, los materiales propios no cuentan).
+      // CR-59: un vasallo no paga aquí sus armas: las compra al señor (`revisarVasallajes`).
       const enCasa = piezasEnCasa(talleresDeFaccion(edificios.map((b) => b.kind)));
+      const esVasallo = !!fks.faction?.saveId && (await tx.vasallaje.count({ where: { saveId: fks.faction.saveId, vasalloSlug: fks.faction.slug, rotoEn: null } })) > 0;
+      const equipoDeLaSemana = (s: KingdomStatsBlock) => {
+        const desgaste = desgasteSemanal(s);
+        return costeDePiezas(esVasallo ? { herramienta: desgaste.herramienta, armadura: desgaste.armadura } : desgaste, enCasa).goirnos;
+      };
+      // Las bajas de cada día cuentan para el siguiente (comen y mueren los que quedan).
       let desertores = 0;
-      let muertos = 0;
+      const bajas = { civiles: 0, trabajadores: 0, soldados: 0 };
       for (let i = 0; i < pendientes; i++) {
         const dia = diaActual - pendientes + 1 + i;
         stats = tickFactionOneDay(stats, porDia);
-        const pago = sueldosDelDia({ ...stats, diasSinCobrar }, dia, costeDePiezas(desgasteSemanal(stats), enCasa).goirnos);
+        const pago = sueldosDelDia({ ...stats, diasSinCobrar }, dia, equipoDeLaSemana(stats));
         stats = { ...stats, riqueza: pago.riqueza, felicidad: pago.felicidad };
         diasSinCobrar = pago.diasSinCobrar;
         if (!hambruna) continue;
-        const cuenta = { civiles: Math.max(0, stats.poblacion - stats.trabajadores), trabajadores: stats.trabajadores, soldados: Math.max(0, stats.soldados - desertores) };
-        desertores += Math.min(cuenta.soldados, pago.desertores);
-        muertos += muertesDelDia(cuenta, stats.diasHambre ?? 0, stats.diasSed ?? 0);
+        const cuenta = { civiles: Math.max(0, stats.poblacion - stats.trabajadores), trabajadores: stats.trabajadores, soldados: stats.soldados };
+        const idos = Math.min(cuenta.soldados, pago.desertores);
+        const hoy = repartirMuertes({ ...cuenta, soldados: cuenta.soldados - idos }, muertesDelDia(cuenta, stats.diasHambre ?? 0, stats.diasSed ?? 0));
+        desertores += idos;
+        bajas.civiles += hoy.civiles;
+        bajas.trabajadores += hoy.trabajadores;
+        bajas.soldados += hoy.soldados;
+        stats = {
+          ...stats,
+          poblacion: Math.max(0, stats.poblacion - hoy.civiles - hoy.trabajadores),
+          trabajadores: Math.max(0, stats.trabajadores - hoy.trabajadores),
+          soldados: Math.max(0, stats.soldados - hoy.soldados - idos),
+        };
       }
       // CR-12 (12c): hambruna de una facción del mundo de una partida (las del catálogo no tienen Libro).
       if (hambruna && fks.faction?.saveId && hambrunaNueva(fks.diasHambre, stats.diasHambre ?? 0, pendientes)) {
         await registrarHambruna(tx, fks.faction.saveId, { factionId });
       }
       // Los muertos y desertores salen de sus filas de población (la partida las sincroniza con
-      // `KingdomStats` cada día); aquí también se descuentan ya de sus cifras.
-      const bajas = repartirMuertes(
-        { civiles: Math.max(0, stats.poblacion - stats.trabajadores), trabajadores: stats.trabajadores, soldados: Math.max(0, stats.soldados - desertores) },
-        muertos,
-      );
-      if (fks.faction?.saveId && (muertos > 0 || desertores > 0)) {
+      // `KingdomStats` cada día); en `stats` ya están descontados día a día.
+      if (fks.faction?.saveId && (bajas.civiles + bajas.trabajadores + bajas.soldados > 0 || desertores > 0)) {
         await aplicarBajasDeFaccion(tx, fks.faction.saveId, fks.faction.slug, fks.faction.raza, bajas, desertores);
       }
       await tx.kingdomStats.update({
@@ -151,9 +164,9 @@ export async function producirFacciones(
           comida: stats.comida, bebida: stats.bebida, riqueza: stats.riqueza, felicidad: stats.felicidad,
           diasFelicidadAlta: stats.diasFelicidadAlta, diasFelicidadBaja: stats.diasFelicidadBaja, diasHambre: stats.diasHambre ?? 0, diasSed: stats.diasSed ?? 0,
           diasSinCobrar,
-          poblacion: Math.max(0, stats.poblacion - bajas.civiles - bajas.trabajadores),
-          trabajadores: Math.max(0, stats.trabajadores - bajas.trabajadores),
-          soldados: Math.max(0, stats.soldados - bajas.soldados - desertores),
+          poblacion: stats.poblacion,
+          trabajadores: stats.trabajadores,
+          soldados: stats.soldados,
         },
       });
 

@@ -48,13 +48,13 @@ describe('vasallaje (CR-59) — Serhu bajo la Concordia', () => {
     const r = await prisma.$transaction((tx) => revisarVasallajes(tx, saveId, 7, 7 * 1440, () => 0.1));
     expect(r.escaramuzas).toBe(1);
     const v = await prisma.vasallaje.findFirstOrThrow({ where: { saveId } });
-    // 10 trabajadores más: producen 20 y comen 10 → excedente 8 → 4 pasan a guerreros (4 * 36 = 144).
-    // Armas (208 → 1248) y rearme: paga 300, el resto a deuda; la patrulla rebaja 100.
-    expect(v.deuda).toBe(DEUDA_INICIAL + 1248 + 144 - 300 - 100);
+    // 10 trabajadores más: producen 20 y comen 10, más los 3 de sus edificios → excedente 11 → 5 pasan
+    // a guerreros (5 * 36 = 180). Armas (208 → 1248) y rearme: paga 300, el resto a deuda; la patrulla rebaja 100.
+    expect(v.deuda).toBe(DEUDA_INICIAL + 1248 + 180 - 300 - 100);
     expect((await stats('concordia-de-hierro')).riqueza).toBe(concordiaAntes + 300);
     const despues = await stats('clan-serhu');
     expect(despues.riqueza).toBe(0);
-    expect(despues.soldados).toBe(serhu.soldados + 4 - 1);
+    expect(despues.soldados).toBe(serhu.soldados + 5 - 1);
     expect(await prisma.suceso.count({ where: { saveId, tipo: 'ESCARAMUZA' } })).toBe(1);
     // La misma semana no se repite.
     expect((await prisma.$transaction((tx) => revisarVasallajes(tx, saveId, 10, 10 * 1440, () => 0.1))).escaramuzas).toBe(0);

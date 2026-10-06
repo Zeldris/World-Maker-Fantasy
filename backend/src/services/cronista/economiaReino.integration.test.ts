@@ -83,5 +83,18 @@ describe('economía del Reino (CR-53) — en una partida', () => {
     await prisma.kingdomStats.update({ where: { ownerKey }, data: { riqueza: 0 } });
     expect(await prisma.$transaction((tx) => equiparAlta(tx, saveId, 'soldado'))).toBe(false);
     expect((await prisma.kingdomStats.findUniqueOrThrow({ where: { ownerKey } })).sinArma).toBe(1);
+    // El equipo que falta nunca pasa de la gente que hay (aquí ya no queda ningún soldado).
+    const { recalcularPoblacion } = await import('./subditos.js');
+    await prisma.$transaction((tx) => recalcularPoblacion(tx, saveId, 0));
+    expect((await prisma.kingdomStats.findUniqueOrThrow({ where: { ownerKey } })).sinArma).toBe(0);
+    // Con la deuda pendiente y nadie a quien pagar, la deuda se salda (sin perder felicidad).
+    await prisma.kingdomStats.update({ where: { ownerKey }, data: { diasSinCobrar: 3, felicidad: 50 } });
+    await prisma.$transaction((tx) => revisarSueldos(tx, saveId, 2 * 7 * 1440 + 1));
+    expect(await prisma.kingdomStats.findUniqueOrThrow({ where: { ownerKey } })).toMatchObject({ diasSinCobrar: 0, felicidad: 50 });
+    // Dos traspasos a la vez no dejan la bolsa en negativo.
+    await prisma.save.update({ where: { id: saveId }, data: { goirnos: 10 } });
+    const r = await Promise.all([1, 2].map(() => prisma.$transaction((tx) => traspasarGoirnos(tx, saveId, 10))));
+    expect(r.filter((x) => x.ok)).toHaveLength(1);
+    expect((await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).goirnos).toBe(0);
   });
 });

@@ -1,5 +1,5 @@
 import { registrarSuceso } from './cronista/sucesos.js';
-import { esMaterial, huecoDeMateriales, suministrosDelReino } from './cronista/economiaReino.js';
+import { huecoDeMateriales, slugsDeMateriales, suministrosDelReino } from './cronista/economiaReino.js';
 import { sucesosDeClima } from './cronista/clima.js';
 import type { Prisma } from '@prisma/client';
 import { tickKingdom, daysCrossed, hambrunaNueva, DIAS_PARA_CONSOLIDAR, DIAS_PARA_REBELION } from './kingdomTick.js';
@@ -93,6 +93,9 @@ export async function tickProduccionReino(tx: Prisma.TransactionClient, saveId: 
   });
   if (buildingsConOrdenes.length > 0) {
     const recipesByKey = new Map(CRAFTING_RECIPES.map((r) => [r.key, r]));
+    // CR-53 (Q2): materiales y su hueco, una vez por tick (se descuenta lo que se va metiendo).
+    const slugsMateriales = await slugsDeMateriales(tx, saveId);
+    let huecoMateriales = await huecoDeMateriales(tx, saveId);
     const [almacenRows, almacenLimites, professionRows] = await Promise.all([
       tx.almacenItem.findMany({ where: { saveId } }),
       tx.almacenLimite.findMany({ where: { saveId } }),
@@ -167,9 +170,9 @@ export async function tickProduccionReino(tx: Prisma.TransactionClient, saveId: 
         // (POST /saves/:id/almacen/depositar/:itemId, companeros.ts): 1 fila = 1 unidad, sin
         // campo de cantidad, `resultCantidad` filas repetidas.
         // CR-53 (Q2): un material solo entra hasta el tope del Almacén; lo demás se pierde.
-        const cabe = resultado.resultCatalogSlug && (await esMaterial(tx, saveId, resultado.resultCatalogSlug))
-          ? Math.min(resultado.resultCantidad, await huecoDeMateriales(tx, saveId))
-          : resultado.resultCantidad;
+        const esMat = !!resultado.resultCatalogSlug && slugsMateriales.has(resultado.resultCatalogSlug);
+        const cabe = esMat ? Math.min(resultado.resultCantidad, huecoMateriales) : resultado.resultCantidad;
+        if (esMat) huecoMateriales -= Math.max(0, cabe);
         if (resultado.resultCatalogSlug && cabe > 0) {
           await tx.almacenItem.createMany({
             data: Array.from({ length: cabe }, () => ({
