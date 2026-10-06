@@ -75,11 +75,14 @@ export async function linajeDe(tx: Tx, saveId: string, entidadTipo: 'NPC' | 'SUB
 /// Une a alguien a un linaje (si aún no es de ninguno).
 export async function unirALinaje(tx: Tx, p: { saveId: string; linajeId: string; entidadTipo: 'NPC' | 'SUBDITO' | 'PERSONAJE'; entidadId: string; desdeMinutes: number }) {
   if (await tx.linajeMiembro.findFirst({ where: { saveId: p.saveId, entidadTipo: p.entidadTipo, entidadId: p.entidadId } })) return;
-  await tx.linajeMiembro.create({ data: p });
+  await tx.linajeMiembro.createMany({ data: [p], skipDuplicates: true });
 }
 
 /// Funda un linaje nuevo para `pueblo` con un nombre que no exista ya en la partida.
-export async function fundarLinaje(tx: Tx, p: { saveId: string; pueblo: string; desdeMinutes: number; random: () => number; nombre?: string }) {
+/// Con `nombre` y `soloNuevo`, si ya hay una familia con ese nombre devuelve null: un apellido generado
+/// al azar no hace pariente de nadie (quien lo lleve no se mete en los Ketg por casualidad).
+export async function fundarLinaje(tx: Tx, p: { saveId: string; pueblo: string; desdeMinutes: number; random: () => number; nombre?: string; soloNuevo?: boolean }) {
+  if (p.nombre && p.soloNuevo && (await tx.linaje.findUnique({ where: { saveId_pueblo_nombre: { saveId: p.saveId, pueblo: p.pueblo, nombre: p.nombre } } }))) return null;
   const tipo = tipoDeLinaje(p.pueblo);
   let nombre = p.nombre;
   for (let i = 0; !nombre && i < 20; i++) {
@@ -156,7 +159,7 @@ export async function linajeParaNacido(
     const l = [lm, lp].find((x) => x?.id === id)!;
     return { id: l.id, nombre: l.nombre, tipo: l.tipo };
   }
-  const nuevo = await fundarLinaje(tx, { saveId: p.saveId, pueblo: p.pueblo, desdeMinutes: p.ahora, random: p.random });
+  const nuevo = (await fundarLinaje(tx, { saveId: p.saveId, pueblo: p.pueblo, desdeMinutes: p.ahora, random: p.random }))!;
   for (const padre of [p.madreId, p.padreId]) {
     if (!(await linajeDe(tx, p.saveId, tipo, padre))) await unirALinaje(tx, { saveId: p.saveId, linajeId: nuevo.id, entidadTipo: tipo, entidadId: padre, desdeMinutes: p.ahora });
   }

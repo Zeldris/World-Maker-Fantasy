@@ -153,7 +153,7 @@ export async function verdadObligatoria(db: Db, e: Escena): Promise<string[]> {
 /// Sucesos que conoce la jugadora (para callbacks y memoria).
 async function sucesosConocidos(db: Db, saveId: string, filtro: Prisma.SucesoWhereInput, take: number) {
   return db.suceso.findMany({
-    where: { saveId, conocimientos: { some: {} }, ...filtro },
+    where: { saveId, conocimientos: { some: { confirmado: true } }, ...filtro },
     select: { id: true, texto: true, importancia: true, fictionalMinutes: true, actores: { select: { entidadId: true } } },
     orderBy: [{ importancia: 'desc' }, { fictionalMinutes: 'desc' }],
     take,
@@ -177,8 +177,10 @@ export async function callbacks(db: Db, e: Escena): Promise<{ lineas: string[]; 
     const lugar = await db.location.findUnique({ where: { id: e.locationId }, select: { name: true } });
     if (lugar) entidades.push({ nombre: lugar.name, filtro: { locationId: e.locationId } });
   }
-  for (const ent of entidades) {
-    const ss = (await sucesosConocidos(db, e.saveId, ent.filtro, CALLBACKS_POR_ENTIDAD)).filter((s) => !ids.has(s.id));
+  // Las consultas van a la vez (es el camino de cada turno); el reparto sin repetir, en orden.
+  const porEntidad = await Promise.all(entidades.map((ent) => sucesosConocidos(db, e.saveId, ent.filtro, CALLBACKS_POR_ENTIDAD)));
+  for (const [i, ent] of entidades.entries()) {
+    const ss = porEntidad[i]!.filter((s) => !ids.has(s.id));
     if (ss.length === 0) continue;
     for (const s of ss) ids.add(s.id);
     lineas.push(`${ent.nombre}: ${ss.map((s) => s.texto).join(' ')}`);
@@ -188,9 +190,11 @@ export async function callbacks(db: Db, e: Escena): Promise<{ lineas: string[]; 
 
 /// Hilos abiertos que tocan a alguien de la escena y que la jugadora conoce.
 export async function hilosDeEscena(db: Db, e: Escena): Promise<string[]> {
-  const hilos = await db.hilo.findMany({ where: { saveId: e.saveId, estado: 'ABIERTO' }, select: { resumen: true, actores: true, sucesoIds: true }, orderBy: { tension: 'desc' }, take: 20 });
   const ids = new Set(e.npcs.map((n) => n.id));
-  const tocan = hilos.filter((h) => (h.actores as { entidadId: string }[]).some((a) => ids.has(a.entidadId)));
+  if (ids.size === 0) return [];
+  // Primero los que tocan a la escena y luego el tope (uno poco tenso pero presente también cuenta).
+  const hilos = await db.hilo.findMany({ where: { saveId: e.saveId, estado: 'ABIERTO' }, select: { resumen: true, actores: true, sucesoIds: true }, orderBy: { tension: 'desc' } });
+  const tocan = hilos.filter((h) => (h.actores as { entidadId: string }[]).some((a) => ids.has(a.entidadId))).slice(0, 20);
   if (tocan.length === 0) return [];
   const sabidos = new Set((await db.conocimiento.findMany({ where: { saveId: e.saveId, sucesoId: { in: tocan.flatMap((h) => h.sucesoIds) } }, select: { sucesoId: true } })).map((c) => c.sucesoId));
   return tocan.filter((h) => h.sucesoIds.some((id) => sabidos.has(id))).map((h) => h.resumen);
@@ -199,7 +203,7 @@ export async function hilosDeEscena(db: Db, e: Escena): Promise<string[]> {
 /// CR-23: lo que la jugadora conoce, ordenado por recencia, importancia y relevancia.
 export async function memoriaPorRelevancia(db: Db, e: Escena, excluir: Set<string>): Promise<string[]> {
   const candidatos = await db.suceso.findMany({
-    where: { saveId: e.saveId, conocimientos: { some: {} }, importancia: { gte: 3 }, fictionalMinutes: { lte: e.ahora } },
+    where: { saveId: e.saveId, conocimientos: { some: { confirmado: true } }, importancia: { gte: 3 }, fictionalMinutes: { lte: e.ahora } },
     select: { id: true, texto: true, importancia: true, fictionalMinutes: true, actores: { select: { entidadId: true } } },
     orderBy: { fictionalMinutes: 'desc' },
     take: 200,
@@ -215,9 +219,7 @@ export async function memoriaPorRelevancia(db: Db, e: Escena, excluir: Set<strin
 
 /// El bloque completo para el narrador (o '' si no hay nada que contar).
 export async function bloqueMemoria(db: Db, e: Escena): Promise<string> {
-  const verdad = await verdadObligatoria(db, e);
-  const cb = await callbacks(db, e);
-  const hilos = await hilosDeEscena(db, e);
+  const [verdad, cb, hilos] = await Promise.all([verdadObligatoria(db, e), callbacks(db, e), hilosDeEscena(db, e)]);
   const memoria = await memoriaPorRelevancia(db, e, cb.ids);
   return componer([
     { titulo: 'VERDAD DEL MUNDO (obligatoria: nunca la contradigas)', lineas: verdad },

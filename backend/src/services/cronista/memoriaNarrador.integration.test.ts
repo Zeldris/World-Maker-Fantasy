@@ -76,6 +76,20 @@ describe('memoria del narrador (CR-21…23) — escenas preparadas', () => {
     expect(bloque.length).toBeLessThanOrEqual(TOPE_TOTAL);
   });
 
+  it('un rumor sin confirmar no llega al narrador como algo sabido', async () => {
+    const [, , npc] = await prisma.npc.findMany({ where: { worldId, saveId: null, kind: 'PRINCIPAL' }, orderBy: { slug: 'asc' }, take: 3 });
+    const id = await prisma.$transaction((tx) => registrarSuceso(tx, {
+      saveId, tipo: 'MUERTE_NPC', fictionalMinutes: MIN - 5, origen: 'MUNDO',
+      actores: [{ entidadTipo: 'NPC', entidadId: npc!.id, papel: 'VICTIMA' }], datos: { npc: npc!.name },
+    }));
+    await prisma.conocimiento.deleteMany({ where: { saveId, sucesoId: id } });
+    await prisma.conocimiento.create({ data: { saveId, sucesoId: id, desde: MIN - 5, via: 'OIDAS', confirmado: false } });
+    const bloque = await bloqueMemoria(prisma, {
+      saveId, accion: `Busco a ${npc!.name}`, ahora: MIN, locationId: null, region: null, npcs: [{ id: npc!.id, name: npc!.name, faction: npc!.faction, muerto: false }],
+    });
+    expect(bloque).not.toContain(`Muere ${npc!.name}`);
+  });
+
   it('sin nada que contar, el bloque queda vacío', async () => {
     const otro = await prisma.save.create({
       data: {

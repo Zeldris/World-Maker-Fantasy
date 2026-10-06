@@ -40,6 +40,8 @@ export function esAdultoSubdito(s: Pick<SubditoParaCuenta, 'pueblo' | 'nacidoEn'
 }
 
 /// Puro: las cifras del Reino que salen de sus súbditos activos. Los niños comen pero no trabajan.
+/// `poblacion` son los civiles: el consumo diario (`tickKingdomOneDay`) suma aparte soldados y
+/// visitantes, así que cada súbdito come una vez. El total de súbditos es poblacion + soldados + visitantes.
 export function cifrasDePoblacion(subditos: SubditoParaCuenta[], ahora: number): { poblacion: number; trabajadores: number; soldados: number; visitantes: number } {
   let trabajadores = 0;
   let soldados = 0;
@@ -51,7 +53,7 @@ export function cifrasDePoblacion(subditos: SubditoParaCuenta[], ahora: number):
     else if (rol === 'trabajador') trabajadores++;
     else soldados++;
   }
-  return { poblacion: subditos.length, trabajadores, soldados, visitantes };
+  return { poblacion: subditos.length - soldados - visitantes, trabajadores, soldados, visitantes };
 }
 
 /// Puro: la felicidad de un súbdito se acerca a la del Reino `PASO_FELICIDAD_DIA` por día.
@@ -100,6 +102,11 @@ export async function avanzarSubditos(tx: Tx, saveId: string, dias: number, ahor
   await recalcularPoblacion(tx, saveId, ahora);
 }
 
+/// La región del Reino: la del primer territorio que siga en pie (llegadas y salidas).
+export async function regionDelReino(tx: Tx, saveId: string): Promise<string | null> {
+  return (await tx.territory.findFirst({ where: { saveId, control: { not: 'PERDIDO' } }, orderBy: { acquiredAt: 'asc' }, select: { region: true } }))?.region ?? null;
+}
+
 /// El territorio donde vive un súbdito nuevo: el de sus padres o el primero que siga en pie.
 async function territorioDeAcogida(tx: Tx, saveId: string, padres: (string | null)[]): Promise<string | null> {
   const ids = padres.filter((p): p is string => !!p);
@@ -133,7 +140,11 @@ export async function crearSubdito(
   let linaje = p.linajeId ? await tx.linaje.findUnique({ where: { id: p.linajeId } }) : null;
   if (!linaje) {
     const apellido = p.pueblo === 'faerus' ? generarRastro(p.random) : apellidoDe(generado, p.pueblo, null);
-    if (apellido) linaje = await fundarLinaje(tx, { saveId: p.saveId, pueblo: p.pueblo, desdeMinutes: p.ahora, random: p.random, nombre: apellido });
+    // Si su apellido ya es de una familia del Reino o del mundo, funda una con un nombre nuevo.
+    if (apellido) {
+      linaje = (await fundarLinaje(tx, { saveId: p.saveId, pueblo: p.pueblo, desdeMinutes: p.ahora, random: p.random, nombre: apellido, soloNuevo: true }))
+        ?? (await fundarLinaje(tx, { saveId: p.saveId, pueblo: p.pueblo, desdeMinutes: p.ahora, random: p.random }));
+    }
   }
   const name = nombreLibre(linaje ? (linaje.tipo === 'RASTRO' ? propio : nombreConLinaje(propio, linaje)) : generado, usados);
   const reino = await tx.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId: p.saveId }) }, select: { felicidad: true } });

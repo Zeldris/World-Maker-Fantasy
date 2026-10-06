@@ -75,15 +75,12 @@ export async function avanzarMundoHasta(
   random: () => number = Math.random,
 ): Promise<{ diasSimulados: number }> {
   await paso('asegurarMundo', () => asegurarMundoDePartida(prisma, saveId));
-  // CR-52: linajes del canon y el del personaje (una vez por partida).
-  await paso('linajes', async () => {
-    const ahora = (await prisma.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true } }))?.fictionalMinutes ?? fictionalMinutes;
-    await prisma.$transaction((tx) => asegurarLinajes(tx, saveId, ahora));
-  });
   const marcaNoticias = await marcaDeNoticias(prisma, saveId);
   const { dias: diasSimulados, desde } = await paso('poblacion', () => prisma.$transaction(
     async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`avance|${saveId}`}))`;
+      // CR-52: linajes del canon y el del personaje (una vez por partida), bajo el mismo candado.
+      await asegurarLinajes(tx, saveId, fictionalMinutes);
       const estado = await tx.worldState.findUnique({ where: { saveId }, select: { ultimoDiaSimulado: true } });
       if (!estado) return { dias: 0, desde: 0 };
       const dias = diasPendientes(estado.ultimoDiaSimulado, diaDeFiccion(fictionalMinutes));

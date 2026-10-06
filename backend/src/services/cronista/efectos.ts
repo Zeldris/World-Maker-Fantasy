@@ -721,8 +721,8 @@ async function crearNpc(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'crearNpc' }>
   else if (faccion.raza) {
     const apellido = apellidoDe(nombre, faccion.raza, faccion.name);
     if (apellido) {
-      const l = await fundarLinaje(ctx.tx, { saveId: ctx.saveId, pueblo: faccion.raza, desdeMinutes: ctx.fictionalMinutes, random, nombre: apellido });
-      await unirALinaje(ctx.tx, { saveId: ctx.saveId, linajeId: l.id, entidadTipo: 'NPC', entidadId: npc.id, desdeMinutes: ctx.fictionalMinutes });
+      const l = await fundarLinaje(ctx.tx, { saveId: ctx.saveId, pueblo: faccion.raza, desdeMinutes: ctx.fictionalMinutes, random, nombre: apellido, soloNuevo: true });
+      if (l) await unirALinaje(ctx.tx, { saveId: ctx.saveId, linajeId: l.id, entidadTipo: 'NPC', entidadId: npc.id, desdeMinutes: ctx.fictionalMinutes });
     }
   }
   const actores = [

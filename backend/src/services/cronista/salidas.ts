@@ -9,7 +9,8 @@ import { DIAS_PARA_REBELION } from '../kingdomTick.js';
 import { edadEnAnios, esAdulto, probMuerteDeViejoPorDia } from './edades.js';
 import { puebloDeFila } from './llegadas.js';
 import { registrarSuceso } from './sucesos.js';
-import { recalcularPoblacion } from './subditos.js';
+import { stripRegionArticle } from '../population.js';
+import { recalcularPoblacion, regionDelReino } from './subditos.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -65,11 +66,10 @@ async function volverASuPueblo(tx: Tx, saveId: string, s: SubditoVital) {
   }
   if (!s.pueblo) return;
   // Si su pueblo vive en varias regiones (los clanes orcos), a la de la región del Reino.
-  const region = (await tx.territory.findFirst({ where: { saveId, control: { not: 'PERDIDO' } }, orderBy: { acquiredAt: 'asc' }, select: { region: true } }))?.region;
+  const region = await regionDelReino(tx, saveId);
   const filas = (await tx.worldPopulation.findMany({ where: { saveId, targetType: 'RAZA' }, orderBy: { targetSlug: 'asc' }, select: { id: true, targetSlug: true, distribucion: true } }))
     .filter((f) => puebloDeFila(f.targetSlug) === s.pueblo);
-  const sinArticulo = (r: string) => r.replace(/^(Las|La|El|Los)\s+/, '');
-  const fila = filas.find((f) => !!region && Object.keys((f.distribucion ?? {}) as Record<string, number>).some((k) => sinArticulo(k) === sinArticulo(region))) ?? filas[0];
+  const fila = filas.find((f) => !!region && Object.keys((f.distribucion ?? {}) as Record<string, number>).some((k) => stripRegionArticle(k) === stripRegionArticle(region))) ?? filas[0];
   if (fila) await tx.worldPopulation.update({ where: { id: fila.id }, data: { poblacion: { increment: 1 } } });
 }
 

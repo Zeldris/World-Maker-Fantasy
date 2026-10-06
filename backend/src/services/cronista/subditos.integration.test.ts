@@ -14,7 +14,7 @@ describe('súbditos (REI-118) — reglas puras', () => {
     expect(rolDeSubdito('viajero')).toBe('visitante');
   });
 
-  it('la población son todos; las crías comen pero no trabajan ni combaten', () => {
+  it('la población son los civiles (soldados y visitantes comen aparte); las crías comen pero no trabajan ni combaten', () => {
     const ahora = 30 * MINUTOS_POR_ANIO;
     const cifras = cifrasDePoblacion(
       [
@@ -25,7 +25,7 @@ describe('súbditos (REI-118) — reglas puras', () => {
       ],
       ahora,
     );
-    expect(cifras).toEqual({ poblacion: 4, trabajadores: 1, soldados: 2, visitantes: 0 });
+    expect(cifras).toEqual({ poblacion: 2, trabajadores: 1, soldados: 2, visitantes: 0 });
   });
 
   it('la felicidad de cada súbdito se acerca a la del Reino 5 puntos por día', () => {
@@ -80,6 +80,13 @@ describe('súbditos (REI-118) — en una partida', () => {
     expect(s.name.split(' ')).toHaveLength(1);
   });
 
+  it('un apellido que ya es de una familia no hace pariente: quien llega funda la suya con otro nombre', async () => {
+    const ketg = await prisma.linaje.create({ data: { saveId, nombre: 'Ketg', pueblo: 'orcos', tipo: 'APELLIDO', origen: 'CATALOGO', desdeMinutes: 0 } });
+    const { fundarLinaje } = await import('./linajes.js');
+    expect(await prisma.$transaction((tx) => fundarLinaje(tx, { saveId, pueblo: 'orcos', desdeMinutes: AHORA, random: () => 0.3, nombre: 'Ketg', soloNuevo: true }))).toBeNull();
+    await prisma.linaje.delete({ where: { id: ketg.id } });
+  });
+
   it('compañeros y súbditos comparten las camas (la Choza da 2)', async () => {
     expect(await cupoDeCamas(prisma, saveId)).toMatchObject({ total: 2, subditos: 2, companeros: 0, libres: 0 });
   });
@@ -87,7 +94,7 @@ describe('súbditos (REI-118) — en una partida', () => {
   it('el rol de un adulto se cambia y cuenta como soldado; el de una cría no', async () => {
     const [adulto] = await prisma.subject.findMany({ where: { saveId }, orderBy: { createdAt: 'asc' } });
     expect(await prisma.$transaction((tx) => cambiarRolSubdito(tx, saveId, adulto!.id, 'soldado', AHORA))).toEqual({ ok: true });
-    expect(await prisma.kingdomStats.findUniqueOrThrow({ where: { ownerKey: `save:${saveId}` } })).toMatchObject({ trabajadores: 1, soldados: 1 });
+    expect(await prisma.kingdomStats.findUniqueOrThrow({ where: { ownerKey: `save:${saveId}` } })).toMatchObject({ poblacion: 1, trabajadores: 1, soldados: 1 });
     expect((await prisma.$transaction((tx) => cambiarRolSubdito(tx, saveId, adulto!.id, 'rey', AHORA))).ok).toBe(false);
     const cria = await crear('orcos', AHORA, 'NACIDO');
     const r = await prisma.$transaction((tx) => cambiarRolSubdito(tx, saveId, cria.id, 'soldado', AHORA));

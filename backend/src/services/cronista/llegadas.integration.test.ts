@@ -90,14 +90,20 @@ describe('llegadas (REI-119) — en una partida', () => {
 
   it('rechazar lo devuelve a su pueblo; sin cama, sin comida o con el Reino triste no llega nadie', async () => {
     const r = await revisar(AHORA + 14 * DIA);
-    expect((await prisma.$transaction((tx) => responderLlegada(tx, saveId, r.llegado!, false, AHORA + 14 * DIA))).ok).toBe(true);
+    // Pasado el plazo ya no se le puede acoger, aunque el día no se haya simulado.
+    const tarde = await prisma.$transaction((tx) => responderLlegada(tx, saveId, r.llegado!, true, AHORA + 16 * DIA));
+    expect(tarde).toMatchObject({ ok: false });
     expect(await prisma.subject.count({ where: { id: r.llegado! } })).toBe(0);
+    const r2 = await prisma.$transaction((tx) => revisarLlegadas(tx, saveId, AHORA + 21 * DIA, () => 0.3));
+    expect(r2.llegado).not.toBeNull();
+    expect((await prisma.$transaction((tx) => responderLlegada(tx, saveId, r2.llegado!, false, AHORA + 21 * DIA))).ok).toBe(true);
+    expect(await prisma.subject.count({ where: { id: r2.llegado! } })).toBe(0);
     await prisma.kingdomStats.update({ where: { ownerKey: ownerKey() }, data: { felicidad: 30 } });
-    expect((await revisar(AHORA + 21 * DIA)).llegado).toBeNull();
+    expect((await revisar(AHORA + 28 * DIA)).llegado).toBeNull();
     await prisma.kingdomStats.update({ where: { ownerKey: ownerKey() }, data: { felicidad: 60, comida: 0 } });
-    expect((await revisar(AHORA + 21 * DIA)).llegado).toBeNull();
+    expect((await revisar(AHORA + 28 * DIA)).llegado).toBeNull();
     await prisma.kingdomStats.update({ where: { ownerKey: ownerKey() }, data: { comida: 50 } });
     await prisma.companion.create({ data: { saveId, name: 'Ana', role: 'x', notes: 'x' } });
-    expect((await revisar(AHORA + 21 * DIA)).llegado).toBeNull();
+    expect((await revisar(AHORA + 28 * DIA)).llegado).toBeNull();
   });
 });

@@ -8,7 +8,8 @@ import { ownerKeyFor } from '../reinoOwner.js';
 import { registrarSuceso } from './sucesos.js';
 import { cicloVital, MINUTOS_POR_ANIO } from './edades.js';
 import { regionesVecinas } from './regiones.js';
-import { crearSubdito, cupoDeCamas, recalcularPoblacion } from './subditos.js';
+import { stripRegionArticle } from '../population.js';
+import { crearSubdito, cupoDeCamas, recalcularPoblacion, regionDelReino } from './subditos.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -40,12 +41,11 @@ export function elegirPorPeso<T extends { poblacion: number }>(filas: T[], rando
 
 /// Pueblo jugable de una fila de población (`orcos-llanuras` → orcos).
 export const puebloDeFila = (targetSlug: string) => (targetSlug.startsWith('orcos') ? 'orcos' : targetSlug);
-const sinArticulo = (r: string) => r.replace(/^(Las|La|El|Los)\s+/, '');
 
 /// Las filas de población de los pueblos que viven en una región (si no hay, en las vecinas).
 async function pueblosDeLaRegion(tx: Tx, saveId: string, region: string) {
   const filas = await tx.worldPopulation.findMany({ where: { saveId, targetType: 'RAZA', poblacion: { gt: 0 } }, select: { id: true, targetSlug: true, label: true, poblacion: true, distribucion: true } });
-  const en = (r: string) => filas.filter((f) => Object.keys((f.distribucion ?? {}) as Record<string, number>).some((k) => sinArticulo(k) === sinArticulo(r)));
+  const en = (r: string) => filas.filter((f) => Object.keys((f.distribucion ?? {}) as Record<string, number>).some((k) => stripRegionArticle(k) === stripRegionArticle(r)));
   const aqui = en(region);
   return aqui.length ? aqui : regionesVecinas(region).flatMap(en);
 }
@@ -54,10 +54,10 @@ async function pueblosDeLaRegion(tx: Tx, saveId: string, region: string) {
 async function reinoDe(tx: Tx, saveId: string) {
   const [faccion, territorio, stats] = await Promise.all([
     tx.faction.findFirst({ where: { saveId, origenSlug: null, disueltaEn: null }, select: { slug: true, name: true } }),
-    tx.territory.findFirst({ where: { saveId, control: { not: 'PERDIDO' } }, orderBy: { acquiredAt: 'asc' }, select: { region: true } }),
+    regionDelReino(tx, saveId),
     tx.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId }) }, select: { comida: true, bebida: true, felicidad: true, ultimaLlegada: true } }),
   ]);
-  return faccion && territorio?.region && stats ? { ...faccion, region: territorio.region, stats } : null;
+  return faccion && territorio && stats ? { ...faccion, region: territorio, stats } : null;
 }
 
 /// Devuelve a su pueblo a un candidato que no se queda y borra su rastro (el linaje que fundó al
@@ -108,8 +108,13 @@ export async function revisarLlegadas(tx: Tx, saveId: string, ahora: number, ran
 
 /// La jugadora acepta o rechaza a quien espera en la puerta.
 export async function responderLlegada(tx: Tx, saveId: string, subjectId: string, acepta: boolean, ahora: number): Promise<{ ok: true; name: string } | { ok: false; motivo: string }> {
-  const s = await tx.subject.findFirst({ where: { id: subjectId, saveId, estado: 'CANDIDATO' }, select: { id: true, name: true, poblacionOrigenId: true } });
+  const s = await tx.subject.findFirst({ where: { id: subjectId, saveId, estado: 'CANDIDATO' }, select: { id: true, name: true, poblacionOrigenId: true, hastaMinutes: true } });
   if (!s) return { ok: false, motivo: 'Ya no hay nadie esperando.' };
+  // Se cansó de esperar aunque el día aún no se haya simulado.
+  if (s.hastaMinutes != null && s.hastaMinutes <= ahora) {
+    await devolver(tx, saveId, s.id);
+    return { ok: false, motivo: `${s.name} se cansó de esperar y se ha ido.` };
+  }
   if (!acepta) {
     await devolver(tx, saveId, s.id);
     return { ok: true, name: s.name };

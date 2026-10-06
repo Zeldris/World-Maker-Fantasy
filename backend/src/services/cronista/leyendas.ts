@@ -237,8 +237,9 @@ export async function linajesConocidos(prisma: PrismaClient, saveId: string): Pr
   ]);
   const porId = new Map(npcs.map((n) => [n.id, n]));
   const caidos = new Set(muertos.map((m) => m.npcId));
+  const historias = await Promise.all(linajes.map((l) => leyendasDeEntidad(prisma, saveId, 'LINAJE', l.id)));
   const out: LinajeLeyenda[] = [];
-  for (const l of linajes) {
+  for (const [i, l] of linajes.entries()) {
     const miembros: MiembroLinaje[] = l.miembros.flatMap((m): MiembroLinaje[] => {
       if (m.entidadTipo === 'PERSONAJE') return [{ id: m.entidadId, tipo: 'PERSONAJE', nombre: save?.characterName ?? 'Tú', vivo: true, padreId: null, madreId: null }];
       if (m.entidadTipo === 'SUBDITO') {
@@ -249,7 +250,7 @@ export async function linajesConocidos(prisma: PrismaClient, saveId: string): Pr
       if (!n) return [];
       return [{ id: n.id, tipo: 'NPC', nombre: n.name, vivo: !n.muertoEnMundo && !caidos.has(n.id), padreId: n.padreNpcId, madreId: n.madreNpcId }];
     });
-    const historia = (await leyendasDeEntidad(prisma, saveId, 'LINAJE', l.id)).slice(0, HISTORIA_POR_LINAJE);
+    const historia = historias[i]!.slice(0, HISTORIA_POR_LINAJE);
     out.push({ id: l.id, nombre: l.nombre, tipo: l.tipo, pueblo: l.pueblo, propio: l.id === propio?.linajeId, miembros, historia });
   }
   return out.sort((a, b) => Number(b.propio) - Number(a.propio));

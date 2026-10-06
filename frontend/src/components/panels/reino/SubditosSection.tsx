@@ -357,7 +357,8 @@ function SubditosLista({ saveId, subjects, plantillasEquipo, onRefreshSave }: { 
   const [version, setVersion] = useState(0)
   const [busy, setBusy] = useState(false)
   const { fallo, informar, limpiar } = useErrorConReintento()
-  const clave = subjects.map((s) => s.id).join(',')
+  // Cada refresco de la partida trae un `subjects` nuevo: se vuelve a pedir la lista, porque los
+  // candidatos, muertes y salidas no cambian los súbditos activos que vienen en la partida.
   useEffect(() => {
     let vivo = true
     getSubditos(saveId)
@@ -366,7 +367,7 @@ function SubditosLista({ saveId, subjects, plantillasEquipo, onRefreshSave }: { 
     return () => {
       vivo = false
     }
-  }, [saveId, clave, version])
+  }, [saveId, subjects, version])
 
   async function handleRol(id: string, rol: string) {
     setBusy(true)
