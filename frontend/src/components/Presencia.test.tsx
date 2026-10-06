@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, cleanup, act } from '@testing-library/react'
 import { Presencia, useSaliendo, MS_SALIDA_CAPA } from './Presencia'
+import { Capa } from './Capa'
+import { CapasContext } from '../context/capasContext'
+import type { EstadoCapas } from '../lib/capas'
 
 function Contenido({ texto }: { texto: string }) {
   const saliendo = useSaliendo()
@@ -41,5 +44,20 @@ describe('Presencia (BAS-7)', () => {
     const { rerender, queryByTestId } = render(<Caso abierto />)
     rerender(<Caso abierto={false} />)
     expect(queryByTestId('c')).toBeNull()
+  })
+
+  it('una capa que esperaba oculta detrás de otra sale oculta, y mientras sale es inerte', () => {
+    document.documentElement.dataset.motion = 'completas'
+    const estado = (visibles: string[]) => ({ visibles: new Set(visibles) }) as unknown as EstadoCapas
+    const Arbol = ({ abierta, visibles }: { abierta: boolean; visibles: string[] }) => (
+      <CapasContext.Provider value={estado(visibles)}>
+        <Presencia>{abierta && <Capa id="curar"><p>curar</p></Capa>}</Presencia>
+      </CapasContext.Provider>
+    )
+    const { rerender, container } = render(<Arbol abierta visibles={[]} />)
+    rerender(<Arbol abierta={false} visibles={[]} />)
+    const capa = container.querySelector('[data-capa="curar"]') as HTMLElement
+    expect(capa.hidden).toBe(true)
+    expect(capa.hasAttribute('inert')).toBe(true)
   })
 })

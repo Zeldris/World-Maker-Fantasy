@@ -887,7 +887,14 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     if (params.nextInitiativeRoll && !params.finDePartida) setAwaitingNextInitiative(true)
     if (params.combatExchangeDisplay && !params.finDePartida) {
       setAwaitingExchangeApply(true)
+      // Se resuelve una sola vez: por `onAllLanded` (lo normal) o por la reserva de abajo. La que
+      // llega primero cancela la otra; sin esto la reserva volvía a aplicar el intercambio un
+      // segundo después (y, al saltar las tiradas con CFG-20, las dos a la vez).
+      let resuelto = false
       const resolverIntercambio = () => {
+        if (resuelto) return
+        resuelto = true
+        cancelarTirada(exchangeApplyTimerRef.current)
         exchangeApplyTimerRef.current = null
         applyExchangeResultRef.current = null
         applyExchangeResult()

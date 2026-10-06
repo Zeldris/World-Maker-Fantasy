@@ -86,7 +86,7 @@ export function DiceFace({
       aterrizado = true
       setDisplay(side.roll)
       setLanded(true)
-    }, startDelayMs + duracionTirada())
+    }, startDelayMs + duracionTirada(), { visible: true })
     return () => {
       cancelled = true
       timers.forEach(clearTimeout)

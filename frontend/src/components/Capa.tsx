@@ -1,4 +1,4 @@
-import { useContext, type ReactNode } from 'react'
+import { useContext, useEffect, useRef, type ReactNode } from 'react'
 import { CapasContext } from '../context/capasContext'
 import { useSaliendo } from './Presencia'
 
@@ -8,11 +8,23 @@ import { useSaliendo } from './Presencia'
 export function Capa({ id, hija = false, children }: { id: string; hija?: boolean; children: ReactNode }) {
   const estado = useContext(CapasContext)
   // BAS-7: al cerrarse ya no está en el gestor de capas, pero se ve mientras sale (`Presencia`).
+  // Sale como estaba: si esperaba oculta detrás de otra, sigue oculta. Mientras sale es `inert`
+  // (ni foco ni teclado: un Enter repetido no vuelve a confirmar lo que ya se cerró).
   const saliendo = useSaliendo()
-  const visible = saliendo || !estado || estado.visibles.has(id)
+  const visibleEnGestor = !estado || estado.visibles.has(id)
+  const visibleAlCerrar = useRef(visibleEnGestor)
+  useEffect(() => {
+    if (!saliendo) visibleAlCerrar.current = visibleEnGestor
+  })
+  const visible = saliendo ? visibleAlCerrar.current : visibleEnGestor
+  const caja = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const activo = document.activeElement
+    if (saliendo && activo instanceof HTMLElement && caja.current?.contains(activo)) activo.blur()
+  }, [saliendo])
   const clases = [hija ? 'relative z-[60]' : '', saliendo ? 'animate-overlay-out pointer-events-none' : ''].filter(Boolean).join(' ')
   return (
-    <div data-capa={id} hidden={!visible} aria-hidden={saliendo || undefined} className={clases || undefined}>
+    <div ref={caja} data-capa={id} hidden={!visible} inert={saliendo || undefined} aria-hidden={saliendo || undefined} className={clases || undefined}>
       {children}
     </div>
   )

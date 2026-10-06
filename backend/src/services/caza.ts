@@ -294,7 +294,7 @@ async function intentarCazaEnGrupo(save: SaveParaCaza, targets: CazaTarget[]): P
   if (hayGrupoReal) {
     const jugadorAttrs = save.attributes;
     const combatientes: (CombatienteInicial & { destreza: number; inteligencia: number })[] = [
-      { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: jugadorAttrs.destreza, inteligencia: jugadorAttrs.inteligencia, nombre: save.characterName },
+      { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: jugadorAttrs.destreza, inteligencia: jugadorAttrs.inteligencia, constitucion: jugadorAttrs.constitucion, nombre: save.characterName },
       ...(
         await prisma.companion.findMany({
           where: { saveId: save.id, combatGroupSlotIndex: 0, condicionFisica: { not: 'MUERTO' } },
@@ -304,7 +304,7 @@ async function intentarCazaEnGrupo(save: SaveParaCaza, targets: CazaTarget[]): P
         .filter((c) => c.attributes)
         .map((c) => {
           const attrs = c.attributes as AttributeBlock;
-          return { bando: 'JUGADOR' as const, tipo: 'COMPANION' as const, companionId: c.id, destreza: attrs.destreza, inteligencia: attrs.inteligencia, nombre: c.name };
+          return { bando: 'JUGADOR' as const, tipo: 'COMPANION' as const, companionId: c.id, destreza: attrs.destreza, inteligencia: attrs.inteligencia, constitucion: attrs.constitucion, nombre: c.name };
         }),
     ];
     // Grupos de fauna reales (Fase 2) — cuántos individuos ENFRENTADOS de verdad descuenta cada

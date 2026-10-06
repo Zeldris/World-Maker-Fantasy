@@ -151,6 +151,12 @@ export function elegirObjetivo(inteligenciaAtacante: number, candidatos: Objetiv
 /// Inteligencia y concentra con ellos los ataques en un mismo objetivo.
 export const INTELIGENCIA_CAPITAN = 20;
 
+/// CR-45: el capitán de un bando — el de más Inteligencia, si llega a `INTELIGENCIA_CAPITAN`. Una sola
+/// regla para la apertura, cada ronda y la moral (`moralGrupo.ts`).
+export function elegirCapitan<T>(candidatos: T[], inteligenciaDe: (c: T) => number): T | null {
+  return [...candidatos].filter((c) => inteligenciaDe(c) >= INTELIGENCIA_CAPITAN).sort((a, b) => inteligenciaDe(b) - inteligenciaDe(a))[0] ?? null;
+}
+
 /// CR-45: el objetivo que el capitán señala a los suyos — el más vulnerable (peor condición y, a
 /// igualdad, menos Constitución). Entre empatados elige al azar, para que no sea siempre el mismo
 /// (en Baldur's Gate 3, que la IA vaya siempre a por el más débil es de lo que más se quejan).

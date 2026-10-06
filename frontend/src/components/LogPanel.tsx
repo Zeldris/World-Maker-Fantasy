@@ -281,9 +281,14 @@ export const LogPanel = memo(function LogPanel({
   // Campanada silenciosa: un barrido único del hairline al pasar isThinking true→false —
   // anuncia que la respuesta llegó, sin sonido ni bucle (roadmap de animaciones 2026-07-20).
   const [tollTick, setTollTick] = useState(0)
-  // CFG-20: tras saltar las tiradas, lo que esperaba a los dados entra ya.
-  const [ultimoSalto, setUltimoSalto] = useState(0)
-  useEffect(() => alSaltarTiradas(() => setUltimoSalto(Date.now())), [])
+  // CFG-20: tras saltar las tiradas, lo que esperaba a los dados en las entradas en vivo entra ya
+  // (por id, sin comparar el reloj del navegador con el del servidor).
+  const [saltadas, setSaltadas] = useState<ReadonlySet<string>>(() => new Set())
+  const enVivoRef = useRef(liveEntryIds)
+  useEffect(() => {
+    enVivoRef.current = liveEntryIds
+  })
+  useEffect(() => alSaltarTiradas(() => setSaltadas((prev) => new Set([...prev, ...(enVivoRef.current ?? [])]))), [])
   const wasThinkingRef = useRef(isThinking)
   useEffect(() => {
     if (wasThinkingRef.current && !isThinking) setTollTick((t) => t + 1)
@@ -492,7 +497,7 @@ export const LogPanel = memo(function LogPanel({
               {/* UX-11 (hito 0.2) — en una entrada en vivo, las consecuencias (misión, ofertas, XP,
                   reputación) entran cuando ha aterrizado la tirada, no a la vez que el texto. */}
               {(() => {
-                const retraso = retrasoEnVivo(entry, !!liveEntryIds?.has(entry.id) && ultimoSalto < new Date(entry.createdAt).getTime())
+                const retraso = retrasoEnVivo(entry, !!liveEntryIds?.has(entry.id) && !saltadas.has(entry.id))
                 return (
               <div
                 className={retraso !== null ? 'animate-paso-turno' : undefined}

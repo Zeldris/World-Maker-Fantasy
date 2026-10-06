@@ -59,7 +59,7 @@ export function GatheringDiceReveal({ roll, oficioLabel, onLanded }: { roll: Gat
         // aviso el listado se pintaba entero desde el primer render, spoileando el resultado
         // mientras el dado todavía giraba).
         onLanded?.()
-      }, duracionTirada())
+      }, duracionTirada(), { visible: true })
     return () => {
       cancelled = true
       timers.forEach(clearTimeout)

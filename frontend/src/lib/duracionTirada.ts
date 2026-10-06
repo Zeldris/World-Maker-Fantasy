@@ -45,33 +45,40 @@ export function retardosTirada(): number[] {
 // `saltarTiradas()`: lo pendiente se dispara ya, en el orden en que iba a ocurrir. Lo que se
 // programe mientras tanto (la tirada siguiente) no se salta: hace falta otro clic.
 
-type Pendiente = { fn: () => void; vence: number; orden: number }
+type Pendiente = { fn: () => void; vence: number; orden: number; visible: boolean }
 const pendientes = new Map<ReturnType<typeof setTimeout>, Pendiente>()
 let contador = 0
+let escuchando = false
 
-function escuchaTeclado(activa: boolean) {
+/// `Espacio` solo salta mientras hay dados girando a la vista (no por las esperas internas).
+function actualizarTeclado() {
   if (typeof document === 'undefined') return
-  if (activa) document.addEventListener('keydown', alPulsarTecla)
+  const debe = [...pendientes.values()].some((p) => p.visible)
+  if (debe === escuchando) return
+  escuchando = debe
+  if (debe) document.addEventListener('keydown', alPulsarTecla)
   else document.removeEventListener('keydown', alPulsarTecla)
 }
 
 function alPulsarTecla(e: KeyboardEvent) {
   if (e.key !== ' ' || e.repeat) return
   const t = e.target as HTMLElement | null
-  if (t && (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(t.tagName))) return
+  // Escribiendo, sobre un control o dentro de un diálogo, Espacio hace lo suyo.
+  if (t && (t.isContentEditable || t.closest('input, textarea, select, button, a[href], [role="button"], [role="tab"], [role="dialog"]'))) return
   e.preventDefault()
   saltarTiradas()
 }
 
 /// Como `setTimeout`, pero `saltarTiradas()` lo adelanta. Se cancela con `cancelarTirada`.
-export function temporizadorTirada(fn: () => void, ms: number): ReturnType<typeof setTimeout> {
+/// `visible`: es el aterrizaje de unos dados en pantalla (activa `Espacio`).
+export function temporizadorTirada(fn: () => void, ms: number, { visible = false }: { visible?: boolean } = {}): ReturnType<typeof setTimeout> {
   const handle = setTimeout(() => {
     pendientes.delete(handle)
-    if (pendientes.size === 0) escuchaTeclado(false)
+    actualizarTeclado()
     fn()
   }, ms)
-  if (pendientes.size === 0) escuchaTeclado(true)
-  pendientes.set(handle, { fn, vence: Date.now() + ms, orden: contador++ })
+  pendientes.set(handle, { fn, vence: Date.now() + ms, orden: contador++, visible })
+  actualizarTeclado()
   return handle
 }
 
@@ -79,7 +86,7 @@ export function cancelarTirada(handle: ReturnType<typeof setTimeout> | null | un
   if (handle == null) return
   clearTimeout(handle)
   pendientes.delete(handle)
-  if (pendientes.size === 0) escuchaTeclado(false)
+  actualizarTeclado()
 }
 
 /// Promesa que se resuelve al aterrizar los dados (o al saltarlos).
@@ -109,7 +116,7 @@ export function saltarTiradas(): void {
     if (!pendientes.has(handle)) continue
     clearTimeout(handle)
     pendientes.delete(handle)
-    if (pendientes.size === 0) escuchaTeclado(false)
+    actualizarTeclado()
     p.fn()
   }
 }
