@@ -1477,8 +1477,8 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     migración `20261006070000_linajes`; linajes del canon y del personaje al avanzar el mundo, la cría
     hereda o la pareja funda, rastro que se escinde a partir de 12, el linaje como actor del Libro
     (reacción `LINAJE_EN_EL_LIBRO`), venganza heredada por un adulto vivo del linaje, rencor fuerte de
-    la familia en `npcsConRencor`, Leyendas › «Linajes» con árbol e historia. **Queda:** los súbditos
-    entran en su linaje con `REI-118`/`REI-120`; las deudas aún no pasan a la familia, solo venganzas y
+    la familia en `npcsConRencor`, Leyendas › «Linajes» con árbol e historia. **Queda:** las crías de
+    súbditos heredan linaje con `REI-120` (quien llega ya trae el suyo, `REI-118`); las deudas aún no pasan a la familia, solo venganzas y
     recuerdos). (Fase C del `0.3`; idea de la usuaria del 2026-10-06, Q8-Q14): cada
     familia es un **linaje** (nombre, pueblo, fundador; casta en los Goirntes) y todo NPC con nombre y todo
     súbdito pertenece a uno; los del catálogo salen de su apellido (Ketg, Koh, Kiugh, Marn…). Herencia:
