@@ -2865,6 +2865,9 @@ model NpcState {
   nivelesGanados              Int             @default(0)
   /// CR-16: título que se ha ganado («Superviviente de Gorhorn»).
   titulo                      String?
+  /// CR-32 (hito 0.3): minuto desde el que es informante del personaje (sigue en su facción y le
+  /// pasa lo que sabe cada semana), o null.
+  informanteDesde             Int?
   condicionFisica             CondicionFisica @default(ILESO)
   /// Sistema de fatiga simétrico (2026-07-30, deuda técnica: "los NPC siguen eligiendo habilidad
   /// sin restricción de energía" — ver energy.ts) — null = tope completo, mismo criterio lazy que

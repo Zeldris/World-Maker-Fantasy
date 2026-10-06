@@ -6148,6 +6148,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         puedeOfrecerTrabajo,
         // CR-18 (18c): quien puede dar trabajo (con nombre, de facción viva, no hostil) cuenta lo que se dice.
         puedeContarNoticias: puedeOfrecerTrabajo,
+        // CR-32: a quien te escucha puedes proponerle que se una o que te informe.
+        puedeReclutar: puedeOfrecerTrabajo,
       });
       npcInteractionOffer = { npcSlug: npcInteractionCandidate.slug, npcName: npcInteractionCandidate.name, options: opciones };
       await tx.save.update({ where: { id: saveId }, data: { pendingNpcInteractionOffer: npcInteractionOffer } });

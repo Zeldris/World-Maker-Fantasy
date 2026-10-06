@@ -365,10 +365,10 @@ alcance de conocimiento inicial (§ 9). Lista inicial (ampliable como datos):
 
 | Familia | Tipos |
 |---|---|
-| **JUGADOR** | `ACCION_RELEVANTE`, `COMBATE_GANADO`, `COMBATE_PERDIDO`, `MUERTE_CAUSADA`, `PERDON_CONCEDIDO` (dejar vivir/clemente), `CAPTURA`, `PROMESA`, `PROMESA_CUMPLIDA`, `PROMESA_ROTA`, `REGALO` (entregar), `ROBO`, `MISION_COMPLETADA`, `MISION_FALLIDA`, `DESCUBRIMIENTO`, `OFICIO_APRENDIDO`, `MUERTE_JUGADOR`, `RENACER`, `FIN_PARTIDA`, `ETIQUETA_GANADA`, `ETIQUETA_PERDIDA` (CR-14), `COMPANERO_SE_VA` (CR-15) |
+| **JUGADOR** | `ACCION_RELEVANTE`, `COMBATE_GANADO`, `COMBATE_PERDIDO`, `MUERTE_CAUSADA`, `PERDON_CONCEDIDO` (dejar vivir/clemente), `CAPTURA`, `PROMESA`, `PROMESA_CUMPLIDA`, `PROMESA_ROTA`, `REGALO` (entregar), `ROBO`, `MISION_COMPLETADA`, `MISION_FALLIDA`, `DESCUBRIMIENTO`, `OFICIO_APRENDIDO`, `MUERTE_JUGADOR`, `RENACER`, `FIN_PARTIDA`, `ETIQUETA_GANADA`, `ETIQUETA_PERDIDA` (CR-14), `COMPANERO_SE_VA` (CR-15), `RECLUTAMIENTO`, `RECLUTAMIENTO_FALLIDO`, `INFORMANTE_CAPTADO` (CR-32) |
 | **VIDA_MUERTE** | `NACIMIENTO_NOTABLE` (NPC con nombre), `MUERTE_NPC`, `MUERTE_LIDER`, `SUCESION`, `HEREDERO_DESIGNADO`, `RECUPERACION_NPC`, `CADAVER_DESAPARECE` |
 | **DIPLOMACIA** | `CAMBIO_RELACION` (de `recordFactionEvent`), `GUERRA_DECLARADA`, `TREGUA`, `ALIANZA`, `TRATADO_COMERCIAL`, `RUPTURA`, `SABOTAJE`, `ESPIONAJE`, `ESCARAMUZA` (CR-12) |
-| **FACCION** | `FACCION_CAE`, `FACCION_ESCINDIDA`, `FACCION_FUNDADA`, `FACCION_ABSORBIDA`, `CAMBIO_LIDER`, `TERRITORIO_CONQUISTADO`, `TERRITORIO_PERDIDO`, `EXPEDICION_SALE`, `EXPEDICION_INTERCEPTADA`, `EXPEDICION_VUELVE`, `MALESTAR_INTERNO` (CR-12) |
+| **FACCION** | `FACCION_CAE`, `FACCION_ESCINDIDA`, `FACCION_FUNDADA`, `FACCION_ABSORBIDA`, `CAMBIO_LIDER`, `TERRITORIO_CONQUISTADO`, `TERRITORIO_PERDIDO`, `EXPEDICION_SALE`, `EXPEDICION_INTERCEPTADA`, `EXPEDICION_VUELVE`, `MALESTAR_INTERNO` (CR-12), `INFORMANTE_DESCUBIERTO` (CR-32) |
 | **CLIMA** | `TORMENTA`, `TORMENTA_EXTREMA`, `CAMBIO_ESTACION`, `SEQUIA`, `OLA_FRIO` |
 | **NATURAL** | `MIGRACION_FAUNA`, `PLAGA`, `INCENDIO`, `CRECIDA`, `DESPRENDIMIENTO`, `AUGE_POBLACION`, `DECLIVE_POBLACION` |
 | **ECONOMIA** | `ESCASEZ`, `AUGE_COMERCIAL`, `CARAVANA`, `PRECIOS_DISPARADOS` |
@@ -1581,10 +1581,17 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   (`cronista/companeroTierra.ts` sobre `contarNoticias`, el núcleo común sacado de «¿Qué se cuenta?»;
   región y facción de origen del compañero, aprobación ≥ 40, una vez al día;
   `POST /saves/:id/companeros/:companionId/tierra` y botón «¿Qué se sabe en tu tierra?» en Compañeros.)
-- **CR-32** Reclutamiento pacífico e informantes (usuaria, 2026-10-04, Q14 de `CR-12`): convencer a
+- ~~**CR-32** Reclutamiento pacífico e informantes (usuaria, 2026-10-04, Q14 de `CR-12`): convencer a
   un NPC sin pelear (tirada de persuasión según si le gusta lo que dices; idea de la usuaria del
   2026-09-06) para que se una al Reino o te pase información de su facción. Abre la oportunidad
-  del malestar interno del narrador de fondo (un descontento se ofrece). **M**
+  del malestar interno del narrador de fondo (un descontento se ofrece). **M**~~ ✅ 2026-10-06 (`cronista/reclutamiento.ts`: opciones «Proponer que se una» y «Pedirle
+  que te informe» en el menú de los NPC que pueden dar trabajo; tirada de Carisma (con las etiquetas) contra
+  CD 10/15/20 por su actitud — recuerdos + reputación con su facción —, +5 para informante; reclutar pide
+  vivienda libre y nunca a un líder; fallo = `RECLUTAMIENTO_FALLIDO`, recuerdo −1 y no hasta mañana;
+  reclutado = compañero nuevo, fuera del mapa, lealtad al Reino; informante (`NpcState.informanteDesde`,
+  migración `20261006060000_informantes`) pasa cada semana lo de su facción, o lo descubren (10 %): muere o
+  desaparece, `INFORMANTE_DESCUBIERTO` y cae la reputación. El malestar interno del narrador de fondo como
+  oportunidad queda para cuando ese suceso tenga un NPC concreto.)
 - **CR-36** Las facciones del mundo construyen (`CR-34` Q3, va al `0.3` con el Reino profundo): obras
   con coste y plazo según sus carencias (pozo, granero…), con los números de la economía de
   supervivencia. **M**

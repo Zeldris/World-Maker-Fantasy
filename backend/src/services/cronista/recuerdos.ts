@@ -93,6 +93,8 @@ const RECUERDOS: { tipo: string; papel: string; sentimiento: number }[] = [
   { tipo: 'AYUDA_PRESTADA', papel: 'BENEFICIARIO', sentimiento: 3 },
   { tipo: 'REGALO', papel: 'BENEFICIARIO', sentimiento: 2 },
   { tipo: 'ROBO', papel: 'VICTIMA', sentimiento: -4 },
+  // CR-32: insistir en que se una o te informe y que no le convenza le sienta un poco mal.
+  { tipo: 'RECLUTAMIENTO_FALLIDO', papel: 'AFECTADO', sentimiento: -1 },
 ];
 
 export const REACCIONES_RECUERDOS: Reaccion[] = [

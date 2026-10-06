@@ -1995,6 +1995,8 @@ export type NpcInteractionAccion =
   /// CR-40 (40f) — «¿Tienes trabajo?»: la misión personal que propone el NPC, o que no tiene nada.
   | { accion: 'OFERTA_TRABAJO'; npcName: string; aviso: AvisoMisionInfo }
   | { accion: 'SIN_TRABAJO'; texto: string }
+  /// CR-32: proponer que se una o que te informe; la entrada lleva la tirada de Carisma.
+  | { accion: 'PROPUESTA'; logEntry: LogEntry; unido: boolean }
 
 export async function chooseNpcInteraction(saveId: string, npcSlug: string, opcion: string): Promise<NpcInteractionAccion> {
   return fetchJson(`${API_URL}/saves/${saveId}/npc-interaction/${npcSlug}/elegir`, {
