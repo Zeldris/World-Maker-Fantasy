@@ -12,3 +12,13 @@ export function lineaDeSubdito(s: Pick<SubditoInfo, 'pueblo' | 'genero' | 'edad'
   const linaje = s.linaje ? (s.linaje.tipo === 'RASTRO' ? `del rastro ${s.linaje.nombre}` : `de los ${s.linaje.nombre}`) : null
   return [[quien, edad].filter(Boolean).join(', '), linaje].filter(Boolean).join(' · ')
 }
+
+/// Puro: cuánto esperará quien llega (REI-119: 2 días).
+export function plazoDeLlegada(hasta: number | null, ahora: number | undefined): string {
+  if (hasta == null || ahora == null) return ''
+  const horas = Math.max(0, Math.ceil((hasta - ahora) / 60))
+  if (horas <= 1) return 'Se irá enseguida si no le respondes.'
+  if (horas < 24) return `Se irá en ${horas} horas si no le respondes.`
+  const dias = Math.ceil(horas / 24)
+  return `Esperará ${dias === 1 ? 'un día' : `${dias} días`} tu respuesta.`
+}

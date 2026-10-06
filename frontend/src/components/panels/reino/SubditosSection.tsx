@@ -3,8 +3,8 @@ import type { AlmacenItemInfo, CompanionInfo, EquipSlot, InventoryItemInfo, Plan
 import { PanelSection } from '../../PanelSection'
 import { SelectorJuego } from '../../SelectorJuego'
 import { AlmacenSection } from './AlmacenSection'
-import { crearPlantilla, borrarPlantilla, asignarPlantillaCompanion, asignarPlantillaSubject, fijarRolReinoCompanion, getSubditos, cambiarRolSubdito, type SubditoInfo, type CamasReino } from '../../../lib/api'
-import { lineaDeSubdito } from '../../../lib/subditos'
+import { crearPlantilla, borrarPlantilla, asignarPlantillaCompanion, asignarPlantillaSubject, fijarRolReinoCompanion, getSubditos, cambiarRolSubdito, responderLlegada, type SubditoInfo, type CamasReino, type CandidatoLlegada } from '../../../lib/api'
+import { lineaDeSubdito, plazoDeLlegada } from '../../../lib/subditos'
 import { SLOT_LABEL, SLOT_ORDER } from '../../../lib/equipSlots'
 import { ErrorBanner } from '../../../components/ErrorBanner'
 import { useErrorConReintento } from '../../../hooks/useErrorConReintento'
@@ -353,7 +353,7 @@ const ROLES_SUBDITO: { value: SubditoInfo['rol']; label: string; descripcion: st
 /// editable (las crías no trabajan ni combaten) — y las camas que comparten con los compañeros.
 function SubditosLista({ saveId, subjects, plantillasEquipo, onRefreshSave }: { saveId: string; subjects: SubjectInfo[]; plantillasEquipo: PlantillaEquipoInfo[]; onRefreshSave: () => Promise<void> }) {
   const consulta = useModoConsulta()
-  const [datos, setDatos] = useState<{ subditos: SubditoInfo[]; camas: CamasReino } | null>(null)
+  const [datos, setDatos] = useState<{ ahora?: number; subditos: SubditoInfo[]; camas: CamasReino; candidatos?: CandidatoLlegada[] } | null>(null)
   const [version, setVersion] = useState(0)
   const [busy, setBusy] = useState(false)
   const { fallo, informar, limpiar } = useErrorConReintento()
@@ -381,7 +381,21 @@ function SubditosLista({ saveId, subjects, plantillasEquipo, onRefreshSave }: { 
     }
   }
 
+  async function handleLlegada(id: string, acepta: boolean) {
+    setBusy(true)
+    try {
+      await responderLlegada(saveId, id, acepta)
+      setVersion((v) => v + 1)
+      await onRefreshSave()
+    } catch (e) {
+      informar(acepta ? 'No se pudo acoger a quien llega.' : 'No se pudo despedir a quien llega.', e, () => void handleLlegada(id, acepta))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const subditos = datos?.subditos ?? []
+  const candidatos = datos?.candidatos ?? []
   if (!datos && subjects.length === 0) return null
   const porId = new Map(subjects.map((s) => [s.id, s]))
   return (
@@ -392,6 +406,27 @@ function SubditosLista({ saveId, subjects, plantillasEquipo, onRefreshSave }: { 
           Camas: {datos.camas.companeros + datos.camas.subditos}/{datos.camas.total} ({datos.camas.subditos} súbdito{datos.camas.subditos === 1 ? '' : 's'}, {datos.camas.companeros} compañero{datos.camas.companeros === 1 ? '' : 's'})
         </p>
       )}
+      {/* REI-119 / REI-54: quien llega espera respuesta; si no se le contesta, se va. */}
+      {candidatos.map((c) => (
+        <div key={c.id} className="mb-2 rounded-lg border border-accent-600/60 bg-wood-950/50 px-3.5 py-2.5" role="group" aria-label={`Llega ${c.name}`}>
+          <p className="text-2xs uppercase tracking-[0.12em] text-accent-300">Llega a tu puerta</p>
+          <p className="mt-0.5 font-medium text-wood-100">{c.name}</p>
+          <p className="text-2xs text-wood-400">
+            {[lineaDeSubdito(c), c.deDonde ? `de ${c.deDonde}` : null].filter(Boolean).join(' · ')}
+          </p>
+          <p className="mt-1 text-xs text-wood-300">Viene porque en tu Reino hay cama, comida y agua. {plazoDeLlegada(c.hastaMinutes, datos?.ahora)}</p>
+          <div className="mt-2 flex gap-2">
+            <button type="button" disabled={busy || !!consulta} title={consulta ?? undefined} onClick={() => void handleLlegada(c.id, true)}
+              className="tactile flex-1 rounded-lg border border-accent-600 bg-gradient-to-b from-accent-400 to-accent-600 px-3 py-1.5 text-2xs font-bold uppercase tracking-wide text-wood-950 disabled:opacity-50">
+              Acoger
+            </button>
+            <button type="button" disabled={busy || !!consulta} title={consulta ?? undefined} onClick={() => void handleLlegada(c.id, false)}
+              className="tactile flex-1 rounded-lg border border-iron-700 px-3 py-1.5 text-2xs text-wood-300 disabled:opacity-50">
+              Despedir
+            </button>
+          </div>
+        </div>
+      ))}
       {subditos.length === 0 && <p className="text-xs text-wood-500">Aún no vive nadie en tu Reino.</p>}
       <div className="flex flex-col gap-2">
         {subditos.map((s) => {

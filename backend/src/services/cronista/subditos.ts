@@ -117,6 +117,8 @@ export async function crearSubdito(
   p: {
     saveId: string; worldId: string; pueblo: string; genero?: Genero; nacidoEn: number; origen: 'LLEGADA' | 'NACIDO';
     padreId?: string | null; madreId?: string | null; linajeId?: string | null; felicidad?: number; ahora: number; random: () => number;
+    /// REI-119: quien llega espera como CANDIDATO (no cuenta ni ocupa cama) hasta `hastaMinutes`.
+    estado?: 'ACTIVO' | 'CANDIDATO'; hastaMinutes?: number;
   },
 ): Promise<{ id: string; name: string; linajeId: string | null }> {
   const genero: Genero = p.genero ?? (p.random() < 0.5 ? 'F' : 'M');
@@ -140,7 +142,7 @@ export async function crearSubdito(
       saveId: p.saveId, territoryId: await territorioDeAcogida(tx, p.saveId, [p.padreId ?? null, p.madreId ?? null]),
       name, role: 'trabajador', notes: '', pueblo: p.pueblo, genero, nacidoEn: p.nacidoEn,
       padreId: p.padreId ?? null, madreId: p.madreId ?? null, felicidad: p.felicidad ?? reino?.felicidad ?? 60,
-      estado: 'ACTIVO', origen: p.origen, desdeMinutes: p.ahora,
+      estado: p.estado ?? 'ACTIVO', origen: p.origen, desdeMinutes: p.ahora, hastaMinutes: p.hastaMinutes ?? null,
     },
   });
   if (linaje) await unirALinaje(tx, { saveId: p.saveId, linajeId: linaje.id, entidadTipo: 'SUBDITO', entidadId: s.id, desdeMinutes: p.ahora });
@@ -160,8 +162,9 @@ export async function cambiarRolSubdito(tx: Tx, saveId: string, subjectId: strin
 }
 
 /// Para la vista: edad y linaje de cada súbdito activo.
-export async function datosDeSubditos(tx: Tx, saveId: string, ahora: number) {
-  const subditos = await tx.subject.findMany({ where: { saveId, estado: 'ACTIVO' }, orderBy: { createdAt: 'asc' } });
+/// `ids`: esos súbditos en vez de los activos (los candidatos que esperan, REI-119).
+export async function datosDeSubditos(tx: Tx, saveId: string, ahora: number, ids?: string[]) {
+  const subditos = await tx.subject.findMany({ where: ids ? { saveId, id: { in: ids } } : { saveId, estado: 'ACTIVO' }, orderBy: { createdAt: 'asc' } });
   const miembros = await tx.linajeMiembro.findMany({ where: { saveId, entidadTipo: 'SUBDITO', entidadId: { in: subditos.map((s) => s.id) } }, select: { entidadId: true, linaje: { select: { nombre: true, tipo: true } } } });
   const linajePor = new Map(miembros.map((m) => [m.entidadId, m.linaje]));
   return subditos.map((s) => ({

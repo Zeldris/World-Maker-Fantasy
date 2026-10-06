@@ -1791,6 +1791,8 @@ model KingdomStats {
   /// CR-12 (12c, hito 0.2): días seguidos con déficit de comida (hambre). Cada 3 seguidos se
   /// registra `HAMBRUNA` (cohesión −10 y posible `REBELION`, reacción `HAMBRUNA_DIVIDE`).
   diasHambre          Int      @default(0)
+  /// REI-119: minuto de ficción en que llegó el último candidato a súbdito (una llegada por semana).
+  ultimaLlegada       Int?
   /// CR-34 (Q6): último día de ficción en que la facción revisó su situación para decidir (null =
   /// nunca). Solo facciones del mundo de la partida; el Reino de la jugadora no lo usa.
   ultimaRevision      Int?
@@ -2243,7 +2245,10 @@ model Subject {
   /// NARRADO (antes del 0.3) | LLEGADA | NACIDO
   origen       String     @default("NARRADO")
   desdeMinutes Int?
+  /// CANDIDATO: hasta cuándo espera respuesta (REI-119).
   hastaMinutes Int?
+  /// REI-119: fila de `WorldPopulation` de la que salió quien llegó (vuelve a ella si se va).
+  poblacionOrigenId String?
 
   /// Plantilla de equipo asignada (docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md § 7) — null = sin
   /// auto-equipo, este súbdito no recibe nada del Almacén de Reino automáticamente.

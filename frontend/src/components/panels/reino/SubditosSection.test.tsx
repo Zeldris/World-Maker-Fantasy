@@ -13,11 +13,12 @@ vi.mock('../../../lib/api', () => ({
   setAlmacenLimite: vi.fn(),
   getSubditos: vi.fn(),
   cambiarRolSubdito: vi.fn(),
+  responderLlegada: vi.fn(),
 }))
 
-import { cambiarRolSubdito, fijarRolReinoCompanion, getAlmacenLimites, getSubditos, type SubditoInfo } from '../../../lib/api'
+import { cambiarRolSubdito, fijarRolReinoCompanion, getAlmacenLimites, getSubditos, responderLlegada, type SubditoInfo } from '../../../lib/api'
 import { SubditosSection } from './SubditosSection'
-import { lineaDeSubdito } from '../../../lib/subditos'
+import { lineaDeSubdito, plazoDeLlegada } from '../../../lib/subditos'
 import type { CompanionInfo } from '../../../types'
 
 /// REI-113/REI-115 (hito 0.1) — el rol de cada compañero se elige con el selector del juego, y cada
@@ -87,5 +88,38 @@ describe('SubditosSection — súbditos (REI-118)', () => {
       fireEvent.click(getByRole('option', { name: /Soldado/ }))
     })
     expect(cambiarRolSubdito).toHaveBeenCalledWith('s1', 'a', 'soldado')
+  })
+})
+
+describe('SubditosSection — llegadas (REI-119)', () => {
+  beforeEach(() => {
+    vi.mocked(getAlmacenLimites).mockResolvedValue({ limites: [] })
+    vi.mocked(responderLlegada).mockResolvedValue({ ok: true })
+  })
+  afterEach(() => {
+    cleanup()
+    vi.clearAllMocks()
+  })
+
+  it('el plazo de quien espera', () => {
+    expect(plazoDeLlegada(3000, 120)).toBe('Esperará 2 días tu respuesta.')
+    expect(plazoDeLlegada(600, 120)).toBe('Se irá en 8 horas si no le respondes.')
+    expect(plazoDeLlegada(null, 0)).toBe('')
+  })
+
+  it('la tarjeta de quien llega: de dónde viene, y acogerlo llama a la API', async () => {
+    vi.mocked(getSubditos).mockResolvedValue({
+      ahora: 0, subditos: [], camas: { total: 2, companeros: 0, subditos: 0, libres: 2 },
+      candidatos: [{ ...sub({ id: 'c', name: 'Grosh Koh', genero: 'M', linaje: { nombre: 'Koh', tipo: 'APELLIDO' } }), deDonde: 'Orcos del Clan Serhu', hastaMinutes: 2880 }],
+    })
+    const { findByText, getByRole, getByText } = render(
+      <SubditosSection saveId="s1" subjects={[]} companions={[]} inventory={[]} almacenItems={[]} plantillasEquipo={[]} onRefreshSave={async () => {}} />,
+    )
+    expect(await findByText('Grosh Koh')).toBeTruthy()
+    expect(getByText('orco, 24 años · de los Koh · de Orcos del Clan Serhu')).toBeTruthy()
+    await act(async () => {
+      fireEvent.click(getByRole('button', { name: 'Acoger' }))
+    })
+    expect(responderLlegada).toHaveBeenCalledWith('s1', 'c', true)
   })
 })

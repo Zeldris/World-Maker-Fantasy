@@ -1599,8 +1599,22 @@ export interface CamasReino {
   libres: number
 }
 
-export async function getSubditos(saveId: string): Promise<{ subditos: SubditoInfo[]; camas: CamasReino }> {
+/// REI-119: quien espera en la puerta del Reino a que lo aceptes o lo rechaces.
+export interface CandidatoLlegada extends SubditoInfo {
+  deDonde: string | null
+  hastaMinutes: number | null
+}
+
+export async function getSubditos(saveId: string): Promise<{ ahora?: number; subditos: SubditoInfo[]; camas: CamasReino; candidatos?: CandidatoLlegada[] }> {
   return fetchJson(`${API_URL}/saves/${saveId}/subditos`)
+}
+
+export async function responderLlegada(saveId: string, subjectId: string, acepta: boolean): Promise<{ ok: boolean; name?: string }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/subditos/${subjectId}/llegada`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ acepta }),
+  })
 }
 
 export async function cambiarRolSubdito(saveId: string, subjectId: string, rol: string): Promise<{ ok: boolean }> {

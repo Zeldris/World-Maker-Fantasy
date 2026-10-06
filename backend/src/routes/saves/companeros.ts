@@ -7,6 +7,7 @@ import { inventoryCapacityFor, totalInventoryUnits } from '../../services/invent
 import type { AttributeBlock, Attribute } from '../../services/dice.js';
 import { plazasTrabajadorParaTier } from '../../services/construction.js';
 import { cambiarRolSubdito, cupoDeCamas, datosDeSubditos } from '../../services/cronista/subditos.js';
+import { candidatosDeLlegada, responderLlegada } from '../../services/cronista/llegadas.js';
 import { rejectIfEnded, rejectIfPendingDeath, lockRowForUpdate } from './shared.js';
 import { FACTION_REP_CAPTURE_DELTA } from '../../services/reputation.js';
 import { applyFactionRepDeltaForResolution } from '../../services/turnResolution.js';
@@ -873,8 +874,20 @@ export async function companerosRoutes(app: FastifyInstance) {
     const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, worldState: { select: { fictionalMinutes: true } } } });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
     const ahora = save.worldState?.fictionalMinutes ?? 0;
-    const [subditos, camas] = await Promise.all([datosDeSubditos(prisma, save.id, ahora), cupoDeCamas(prisma, save.id)]);
-    return { subditos, camas };
+    const [subditos, camas, candidatos] = await Promise.all([datosDeSubditos(prisma, save.id, ahora), cupoDeCamas(prisma, save.id), candidatosDeLlegada(prisma, save.id)]);
+    const datosCandidatos = await datosDeSubditos(prisma, save.id, ahora, candidatos.map((c) => c.id));
+    return { ahora, subditos, camas, candidatos: candidatos.map((c) => ({ ...datosCandidatos.find((d) => d.id === c.id)!, deDonde: c.deDonde, hastaMinutes: c.hastaMinutes })) };
+  });
+
+  /// REI-119: aceptar o rechazar a quien llega al Reino.
+  app.post<{ Params: { id: string; subjectId: string }; Body: { acepta: boolean } }>('/saves/:id/subditos/:subjectId/llegada', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, endedAt: true, pendingDeathResolution: true, worldState: { select: { fictionalMinutes: true } } } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (rejectIfEnded(save, reply)) return;
+    if (rejectIfPendingDeath(save, reply)) return;
+    const r = await prisma.$transaction((tx) => responderLlegada(tx, save.id, request.params.subjectId, request.body?.acepta === true, save.worldState?.fictionalMinutes ?? 0));
+    if (!r.ok) return reply.status(400).send({ error: r.motivo });
+    return r;
   });
 
   /// REI-118 (Q7): cambia el rol de un súbdito adulto (trabajador, soldado, vigía).
