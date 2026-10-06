@@ -1812,6 +1812,8 @@ model KingdomStats {
   /// CR-55 (Q6): días seguidos en que el ganado no ha comido / bebido entero.
   ganadoDiasSinComer  Int      @default(0)
   ganadoDiasSinBeber  Int      @default(0)
+  /// CR-55 (55f): solo facciones — su rebaño inicial ya está sembrado.
+  ganadoSembrado      Boolean  @default(false)
   /// CR-34 (Q6): último día de ficción en que la facción revisó su situación para decidir (null =
   /// nunca). Solo facciones del mundo de la partida; el Reino de la jugadora no lo usa.
   ultimaRevision      Int?
@@ -2759,6 +2761,8 @@ model Faction {
 
   @@index([worldId, slug])
   @@index([saveId])
+  /// CR-55 (55f): ganado de la facción, por cohortes.
+  ganado GanadoFaccion[]
 }
 
 enum FactionRelationType {
@@ -3878,4 +3882,20 @@ model Ganado {
 
   @@index([saveId])
   @@index([buildingId])
+}
+
+/// CR-55 (55f): ganado de una facción en agregado, por cohortes (misma especie, sexo y día de
+/// nacimiento). Mismas reglas que el ganado del Reino (`cronista/ganaderia.ts`).
+model GanadoFaccion {
+  id          String  @id @default(cuid())
+  factionId   String
+  faction     Faction @relation(fields: [factionId], references: [id], onDelete: Cascade)
+  especie     String
+  /// 'M' | 'F'.
+  sexo        String
+  /// Día de ficción en que nació la cohorte (negativo = antes del día 0).
+  nacidoEnDia Int
+  cantidad    Int
+
+  @@index([factionId])
 }

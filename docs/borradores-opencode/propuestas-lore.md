@@ -208,6 +208,12 @@ son de Claude y provisionales)
   | Acechantes (Canizor) | 0-30 d | 30-120 d | 1 año | 8 años | 10 años |
   | Rondines (Coracelo) | 0-20 d | 20-90 d | 90 d | 6 años | 8 años |
 
+- **Ya en el código, para revisar** (la usuaria dio libertad para ampliar el catálogo):
+  - **Huevo de Corretolvas**: las hembras en corral ponen uno al día (en libertad los esconden en la
+    hierba). 4 de `curaHambre`, 1 Goirno.
+  - **Leche de Múrgol**: 3 al día por hembra adulta… y por macho (el motor no distingue aún).
+  - **Pastoreo de las Llanuras**: los herbívoros pastan y solo necesitan la mitad de forraje.
+    ¿Hay pasto natural en otras regiones (la Ciénaga, el Margen)?
 - **¿Qué «fibra» da el Coracelo?** Hoy no existe ningún objeto así; hasta saberlo no produce.
 - **Rebaños iniciales:** los Serhu con 60 Múrgol y 20 Corretolvas en el recinto de Karot Veku. ¿Qué
   crían Helsig, Goshg, los Nabieus y los Faerus, y cuántos?

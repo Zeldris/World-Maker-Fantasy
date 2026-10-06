@@ -186,6 +186,14 @@ trabajador produce) y Bellwright (corral con su comida y su tope).
   Karot Veku); el resto sin ganado hasta Álvaro.
 - **Q10 Reino › Corrales:** tarjeta por corral (especie, plazas, adultos ♂/♀, crías y días que les
   faltan, forraje y agua, producción de la semana, ganadero, «Sacrificar»).
+- **Q16 El ganado sustenta** (55f; la usuaria dio libertad para ampliar el catálogo y ajustar lo que
+  haga falta, 2026-10-06). Con las cifras de la ronda, un rebaño restaba comida a los Serhu (−28 al
+  día) porque un ganadero con 5 Múrgol solo igualaba sus 2 pasivos. Ajustes de Claude: el Múrgol da
+  **3 de leche** al día (antes 1); objeto nuevo **Huevo de Corretolvas** (1 al día por adulto, 4 de
+  `curaHambre`); **pastoreo**: en una región con pasto natural (las Llanuras) los herbívoros comen la
+  mitad de forraje, igual para el Reino y las facciones; las facciones **sacrifican cada semana** lo
+  viejo y lo que no cabe. Resultado: los Serhu ganan unos +8 de comida al día con su rebaño, que su
+  doctrina de rearme convierte en guerreros (siguen estancados). A Álvaro en `propuestas-lore.md`.
 - **Q15 Fin de la comida pasiva** (usuaria: los sistemas, los mismos para todos):
   - La escala es `curaHambre`: 10 = 1 de comida (una boca al día). Todo comestible suma su valor al
     entrar en la reserva, crudo o cocinado. Crudos: carne 8, marisco 6, leche, huevo, boungo y miel

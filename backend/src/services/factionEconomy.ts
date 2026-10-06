@@ -5,6 +5,8 @@ import { decayPresion, stageForPresion, typeForPresion } from './factionRelation
 import { registrarHambruna } from './cronista/hambruna.js';
 import { AGUA_FUENTE_FACCION, aplicarBajasDeFaccion, muertesDelDia, repartirMuertes, sueldosDelDia, talleresDeFaccion } from './cronista/economiaFacciones.js';
 import { costeDePiezas, desgasteSemanal, piezasEnCasa } from './cronista/facturaEquipo.js';
+import { cargarRebano, guardarRebano, type Rebano } from './cronista/ganadoFaccionesBd.js';
+import { diaGanadoFaccion } from './cronista/ganadoFacciones.js';
 
 /// Economía de facción (Fase 4 del plan oct-2026: H-6, H-2, H-4). Corre sobre las facciones del mundo
 /// de cada partida, en su avance diario (`avanceDiario.ts`, CR-7), con el reloj de esa partida; el
@@ -125,12 +127,27 @@ export async function producirFacciones(
         const desgaste = desgasteSemanal(s);
         return costeDePiezas(esVasallo ? { herramienta: desgaste.herramienta, armadura: desgaste.armadura } : desgaste, enCasa).goirnos;
       };
+      // CR-55 (55f): su ganado, con las reglas del Reino (siembra el rebaño inicial la primera vez).
+      const rebano: Rebano | null = fks.faction?.saveId ? await cargarRebano(tx, worldId, fks, diaActual - pendientes + 1) : null;
+      let ganadoDiasSinComer = fks.ganadoDiasSinComer;
       // Las bajas de cada día cuentan para el siguiente (comen y mueren los que quedan).
       let desertores = 0;
       const bajas = { civiles: 0, trabajadores: 0, soldados: 0 };
       for (let i = 0; i < pendientes; i++) {
         const dia = diaActual - pendientes + 1 + i;
-        stats = tickFactionOneDay(stats, porDia);
+        // CR-55 (55f, Q15): ganaderos y fibreros salen de sus trabajadores y no dan la comida pasiva;
+        // la leche, los huevos y la carne de lo sacrificado van a su comida.
+        let fueraDelPasivo = 0;
+        if (rebano && rebano.cohortes.length > 0) {
+          const r = diaGanadoFaccion(rebano.cohortes, { ...rebano.datos, dia, trabajadores: stats.trabajadores, comidaDisponible: stats.comida, diasSinComer: ganadoDiasSinComer }, Math.random);
+          rebano.cohortes = r.cohortes;
+          ganadoDiasSinComer = r.diasSinComer;
+          fueraDelPasivo = r.ganaderos + r.fibreros;
+          stats = { ...stats, comida: Math.max(0, stats.comida + Math.floor(r.comidaNeta)) };
+          for (const [slug, n] of Object.entries(r.otros)) rebano.otros[slug] = (rebano.otros[slug] ?? 0) + n;
+        }
+        const trabajadoresReales = stats.trabajadores;
+        stats = { ...tickFactionOneDay({ ...stats, trabajadores: Math.max(0, trabajadoresReales - fueraDelPasivo) }, porDia), trabajadores: trabajadoresReales };
         const pago = sueldosDelDia({ ...stats, diasSinCobrar }, dia, equipoDeLaSemana(stats));
         stats = { ...stats, riqueza: pago.riqueza, felicidad: pago.felicidad };
         diasSinCobrar = pago.diasSinCobrar;
@@ -164,11 +181,14 @@ export async function producirFacciones(
           comida: stats.comida, bebida: stats.bebida, riqueza: stats.riqueza, felicidad: stats.felicidad,
           diasFelicidadAlta: stats.diasFelicidadAlta, diasFelicidadBaja: stats.diasFelicidadBaja, diasHambre: stats.diasHambre ?? 0, diasSed: stats.diasSed ?? 0,
           diasSinCobrar,
+          ganadoDiasSinComer,
           poblacion: stats.poblacion,
           trabajadores: stats.trabajadores,
           soldados: stats.soldados,
         },
       });
+
+      if (rebano) await guardarRebano(tx, factionId, rebano, TOPE_STOCK_FACCION_POR_SLUG);
 
       // Stock real: 1 unidad por edificio de oficio y día, tope por catalogSlug.
       const oficios = edificios.filter((b) => b.kind !== SALON_KIND).map((b) => b.kind);
