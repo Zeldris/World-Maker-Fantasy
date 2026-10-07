@@ -54,8 +54,10 @@ describe('vasallaje (CR-59) — Serhu bajo la Concordia', () => {
     expect((await stats('concordia-de-hierro')).riqueza).toBe(concordiaAntes + 300);
     const despues = await stats('clan-serhu');
     expect(despues.riqueza).toBe(0);
-    expect(despues.soldados).toBe(serhu.soldados + 5 - 1);
-    expect(await prisma.suceso.count({ where: { saveId, tipo: 'ESCARAMUZA' } })).toBe(1);
+    // CR-62: la patrulla pelea de verdad; con el azar fijo en 0,1 nadie muere (la muerte es al 3 %).
+    expect(despues.soldados).toBe(serhu.soldados + 5);
+    const escaramuza = await prisma.suceso.findFirstOrThrow({ where: { saveId, tipo: 'ESCARAMUZA' } });
+    expect((escaramuza.datos as { resultado?: string }).resultado).toBeTruthy();
     // La misma semana no se repite.
     expect((await prisma.$transaction((tx) => revisarVasallajes(tx, saveId, 10, 10 * 1440, () => 0.1))).escaramuzas).toBe(0);
   });

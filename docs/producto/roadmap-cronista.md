@@ -1701,8 +1701,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   Hito `0.3`, Fase E, antes de `CR-37`. 🚧 Pasos:
   - ~~62a~~ ✅ 2026-10-07: motor puro `services/combateDeFondo.ts` (grupos de 8 o 4, emparejamiento con vuelta de los que sobran, sub-combates con iniciativa, objetivo por Inteligencia, capitán y ataques concentrados, `resolveExchange`, moral y retirada; muere el 3 % de los caídos, nunca un NPC con nombre).
   - ~~62b~~ ✅ 2026-10-07: `cronista/combatientesFaccion.ts` (guerreros con nombre por nivel, el primero lidera; soldados genéricos con los atributos medios de su pueblo a nivel 3, +1 con arma) e intercepción de expediciones en el motor común (`simularCombateInterceptacion` delega en `simularCombateDeFondo`; sus muertes siguen con `tirarMuertes`).
-  - 62c: la escaramuza del narrador y la patrulla de vasallaje pelean de verdad (suceso y noticia con
-    bajas).
+  - ~~62c~~ ✅ 2026-10-07: `cronista/escaramuzas.ts` (`pelearEscaramuza`: los combatientes de cada facción o renegados armados, combate de fondo, muertos restados de sus soldados; `resumenEscaramuza`). La escaramuza del narrador pelea 2d4 contra 2d4 antes de escribir el suceso (con muertos, más presión); la patrulla de vasallaje, 20 contra 1d6+2. El suceso `ESCARAMUZA` lleva `resultado` («Feg Ger se retira; caen 2 de Feg Ger») y su noticia lo cuenta.
   - 62d: los grupos 2, 3… de la jugadora luchan de fondo mientras su Grupo 1 juega en vivo, con su
     resumen.
   **M**
