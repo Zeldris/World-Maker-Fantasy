@@ -1705,6 +1705,31 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   - ~~62d~~ ✅ 2026-10-07: en la caza en grupo, los grupos 2, 3… de la jugadora (`combatGroupSlotIndex` > 0, hasta 4) entran en los sub-combates de fondo contra los grupos enemigos que no caben en el suyo, resueltos con el mismo motor del combate en vivo sin pausas (`resolverTurnosAutonomosHastaJugadora`); su resumen («Retaguardia se enfrenta a 4 más, lejos de la vista: caen 2; Ana queda herida») va a la narración. Antes esos grupos enemigos no tenían con quién pelear. De paso, un turno autónomo sin ataque ya no rompe.
   - **Queda** (fuera de `CR-62`): el resumen narrado por IA del reporte de § 4 (hoy con plantilla); las bandas de renegados (`CR-49`) caben siempre en 4 y no se parten; el ataque al Reino con `CR-37`.
   **M**
+- **CR-64** Todo viaja de verdad ([ADR 0003](../adr/0003-todo-viaja-de-verdad.md), usuaria 2026-10-07,
+  como en X4): lo que se mueve es un **viajero** con ruta real de zona en zona, visible y con quien
+  cruzarse e interactuar (preguntar por las regiones que ha atravesado, comerciar, escoltar, asaltar).
+  Auditoría de lo implementado que hoy es invisible o abstracto (días + tirada al llegar):
+  - **Expediciones de facción** (`factionExpeditions.ts`): días de ida y vuelta; la intercepción se
+    tira al llegar; en el mapa, solo una bandera entre nodos de las Llanuras (`CR-46`).
+  - **Caravanas del Reino** (`caravanas.ts`, `CR-47`): igual; la «caravana local» comercia sin viajar.
+  - **Caravanas entre facciones** del narrador de fondo (suceso `CARAVANA`): solo un suceso y riqueza.
+  - **Patrulla de vasallaje** (`vasallaje.ts`): «20 guerreros a una zona», sin moverse.
+  - **Escaramuzas** del narrador: sin lugar; ya pelean (`CR-62`), pero no se ve dónde ni quién va.
+  - **Migración de fauna** (suceso `MIGRACION_FAUNA`): la población cambia de región de golpe.
+  - **Visitante ilustre** y **llegadas de súbditos** (`llegadas.ts`, `REI-119`): aparecen a tu puerta.
+  - **Salidas y desertores** (`salidas.ts`, facciones): «vuelven a su pueblo» desapareciendo.
+  - **Refugiados** (consecuencia `REFUGIADOS`): la población pasa a las regiones vecinas sin viajar.
+  - **Vengadores** (`VENGANZA_PARIENTE`): esperan un encuentro en vez de buscarte por el camino.
+  - **Informantes** (`CR-32`): su información llega sola cada semana; podrían ser mensajeros.
+  - **Propuestas diplomáticas** de las facciones al Reino (`CR-34` 34e): sin enviado.
+  - **Rumores y noticias** (`noticias.ts`): llegan por distancia en días; podrían viajar con quien
+    los lleva (mercaderes, mensajeros, refugiados).
+  - **Bandas de renegados** (`CR-49`): patrullan dentro de su zona, pero no cambian de zona.
+  - **Partidas de caza y captura** (`CR-63`): nacen ya como viajeros.
+  Pasos: infraestructura de viajeros (modelo, rutas por enlaces y celdas, avance diario, en el mapa,
+  encuentro con la jugadora y acciones) con `CR-63`; luego, uno a uno, cada sistema de la lista.
+  Hito `0.4` (va con el viaje largo entre regiones), salvo la infraestructura, que entra con `CR-63`
+  en el `0.3`. **XL**
 - **CR-60** Ingresos pasivos del Reino y de las facciones (usuaria, 2026-10-06): fuentes de
   Goirnos que no dependan de los trabajadores (hoy solo el comercio y las expediciones). Necesita
   una ronda de diseño. Hito `0.4`. **M**

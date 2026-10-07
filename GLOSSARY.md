@@ -184,6 +184,17 @@ _Evitar_: tablón de misiones, tablón de encargos
 
 ## Combate y comercio (Fase G del 0.2)
 
+**Viajero**:
+Cualquiera que se desplaza por el mundo (expedición, caravana, partida, patrulla, refugiados, mensajero): sigue una ruta real de zona en zona y se le puede encontrar en el mapa.
+_Evitar_: expedición abstracta
+
+**Partida de caza**:
+Grupo que sale del Reino o de una facción como viajero a una zona con fauna, pelea contra ella y vuelve con piezas o con animales capturados.
+_Evitar_: oficio de cazador
+
+**Pieza**:
+Animal cazado que se trae entero al almacén para que lo trate el desollador; se estropea si no se trata.
+
 **Combate en vivo**:
 El combate en que está la jugadora con su grupo: por turnos y narrado.
 
