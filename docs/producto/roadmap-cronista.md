@@ -1838,7 +1838,15 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   Empalizada (cobertura +2/+5 a quien defiende), Torre de vigía (aviso 1 día antes, ventaja al tirar
   desde ella), Armería (equipo de la milicia) y Cuartel (tope y moral de soldados), con escalones;
   milicia de súbditos trabajadores que pelean y no producen ese día. También para las facciones
-  (`CR-36`). Pide ronda de detalle (números). **M**
+  (`CR-36`). Ronda de detalle aceptada el 2026-10-07 (Q1-Q10, X4 primero). 🚧 Pasos:
+  - 65a: recetas de los cuatro módulos × 3 escalones (`edificioTipo: 'defensa'`) y reglas puras
+    (`cronista/defensa.ts`: cobertura, aguante, radio, plazas, equipos, moral).
+  - 65b: modelo (aguante del módulo, equipos de milicia, asentamiento de cada soldado) y cupos.
+  - 65c: radar de la Torre (hostiles en el radio, alerta) y convocar la milicia.
+  - 65d: resolver un asalto de fondo (guarnición + milicia + cobertura con `CR-62`; saqueo y
+    aguante); en `CR-65` solo lo lanzan los tests, los asaltos de verdad llegan con `CR-50`/`CR-37`.
+  - 65e: facciones con Empalizada inicial y mejora al ser asaltadas.
+  - 65f: Reino › Defensa, alerta y radio en el mapa de Berig. **M**
 - **CR-66** Postura de compañero en combate (Fase E, Q6): agresiva, defensiva, capturadora (golpe no
   letal), clemente (acepta rendiciones) y «huir si cae grave»; en vivo y de fondo; las facciones, la
   de su raza. **M**

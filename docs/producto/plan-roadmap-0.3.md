@@ -348,6 +348,45 @@ Baldur's Gate 3 y D&D 5e (de memoria, sin consulta en línea).
   Configuración (Manor Lords tiene un ajuste parecido). Sin asaltos, los bandidos solo atacan
   caravanas y partidas.
 
+## Decisiones de detalle de `CR-65` defensa y milicia (ronda aceptada por la usuaria el 2026-10-07)
+
+Contrastada con los juegos de referencia; **X4 marca el camino** (regla de `CLAUDE.md`). De memoria,
+sin consulta en línea.
+
+- **Q1 Módulos (X4):** la Capital (Ayuntamiento) y cada Cuartel Avanzado son el núcleo; los
+  edificios de defensa son sus **módulos de defensa** (`edificioTipo: 'defensa'`): en la región del
+  Ayuntamiento cuentan contra su cupo de edificios; en un Cuartel, contra su cupo local (el
+  Cuartel de Guerra, +10). Cada asentamiento se defiende con lo suyo.
+- **Q2 Nombres:** Empalizada, Torre de vigía, Armería y **Barracón** (no «Cuartel», para no chocar
+  con el Cuartel Avanzado).
+- **Q3 Escalones (Manor Lords, Bellwright: madera → piedra):** tres, como los talleres, con
+  Ayuntamiento mediano para el 2.º y grande para el 3.º.
+  Empalizada 20 leña + 4 cuerdas / Muro 20 piedra + 10 leña / Muralla 10 bloques + 4 lingotes;
+  Torre 12 leña + 2 cuerdas / 10 piedra + 8 leña / 8 bloques + 2 lingotes; Armería 10 leña + 6
+  piedra / 12 piedra + 2 lingotes / 6 bloques + 4 lingotes; Barracón 15 leña + 5 piedra / 15 piedra +
+  10 leña / 8 bloques + 3 lingotes.
+- **Q4 Empalizada:** **cobertura de D&D**: +2 en los escalones 1 y 2 (media), +5 en el 3 (tres
+  cuartos) a la tirada de defensa de quien defiende, en vivo y de fondo. **Aguante de X4** (casco del
+  módulo): 1 / 2 / 3 asaltos perdidos antes de caer; caída no cubre hasta repararla (la mitad de su
+  coste). No baja de escalón.
+- **Q5 Torre = radar (X4: alcance de satélites y alertas de sector):** muestra en el mapa a los
+  viajeros hostiles a 1 / 2 / 3 tramos de camino y avisa al entrar en ese radio; sin vigía dentro, 1
+  tramo. Desde la Torre se tira con **+2** (terreno elevado de BG3).
+- **Q6 Milicia (ni X4 ni D&D la tienen: Manor Lords y Bellwright):** un equipo de la Armería por
+  miliciano, 5 / 10 / 20 equipos por escalón (se compran con la factura de `CR-58`, solo arma); se
+  convoca con el aviso de la Torre (botón, o sola si estás fuera); no producen mientras dura;
+  pelean como soldados genéricos con −2 de nivel; los que mueren son súbditos de verdad.
+- **Q7 Barracón = guarnición (X4: subordinados asignados a defender una estación; sitio por módulos
+  de vivienda):** 5 / 10 / 20 plazas de soldados y vigías asignados a ese asentamiento (3 sin
+  Barracón); solo defienden el suyo; +1 / +2 / +3 a la moral al defender (escudo moral de D&D).
+- **Q8 Facciones (`CR-36` mínimo, X4: la IA añade defensa donde la atacan):** cada una arranca con
+  Empalizada según su tamaño y sube un módulo al ser asaltada si tiene materiales y reserva.
+- **Q9 Interfaz:** sección «Defensa» por asentamiento (módulos, guarnición, milicia); alerta al
+  entrar un hostil en el radio de la Torre con «Llamar a la milicia»; el radio, dibujado en el mapa
+  de Berig como el alcance de un satélite (X4).
+- **Q10 Partidas guardadas:** sin defensa; columnas nuevas sin migrar datos; los soldados que ya hay,
+  asignados a la Capital. Puerta de dos sentidos.
+
 ## Decisiones que bloquean algo
 
 | Bloquea | Pregunta |
