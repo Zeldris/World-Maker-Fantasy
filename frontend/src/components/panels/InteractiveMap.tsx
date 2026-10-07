@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { AlcanceTorre, ExpedicionEnMapa } from '../../lib/api'
+import type { AlcanceTorre, CampamentoInfo, ExpedicionEnMapa } from '../../lib/api'
 import { posicionDeExpedicion } from '../../lib/leyendas'
 import { projectLlanurasNodes, type LlanurasEdge, type LlanurasNode, type CristalHeladoNode, type MapNodeOption, type MapRegion } from '../../data/map'
 import berigMapUrl from '../../assets/maps/helek-sirik-berig.png'
@@ -148,6 +148,8 @@ interface InteractiveMapProps {
   expediciones?: ExpedicionEnMapa[]
   /// CR-65 (Q9): lugares que vigila la Torre de cada asentamiento (como el alcance de un satélite de X4).
   alcances?: AlcanceTorre[]
+  /// CR-50 (Q7): campamentos de bandidos que conoce el personaje.
+  campamentos?: CampamentoInfo[]
 }
 
 export function InteractiveMap({
@@ -167,6 +169,7 @@ export function InteractiveMap({
   onLeerRumores,
   expediciones = [],
   alcances = [],
+  campamentos = [],
 }: InteractiveMapProps) {
   const [selectedName, setSelectedName] = useState(currentRegion)
   // Paleta de puntos (2026-08-04): qué nodo tiene su abanico de satélites desplegado ahora mismo,
@@ -555,6 +558,22 @@ export function InteractiveMap({
                 })}
               </g>
             ))}
+
+          {/* CR-50 (Q7): campamentos de bandidos que conoces, en su lugar. */}
+          {showLlanurasGraph &&
+            campamentos.map((c) => {
+              const pos = nodePositions.get(c.slug)
+              if (!pos) return null
+              return (
+                <g key={c.id} aria-label={`Campamento de ${c.grupo}`} pointerEvents="none">
+                  <title>{`${c.grupo}: unos ${c.gente} y su cabecilla`}</title>
+                  <circle cx={pos.x + 2.2} cy={pos.y - 2.2} r={1.9} fill="#7f1d1d" stroke="white" strokeWidth={0.35} />
+                  <text x={pos.x + 2.2} y={pos.y - 2.2} textAnchor="middle" dominantBaseline="central" style={{ fontSize: 2 }}>
+                    ⛺
+                  </text>
+                </g>
+              )
+            })}
 
           {/* CR-46: expediciones en camino, entre su asentamiento y su destino. */}
           {showLlanurasGraph &&

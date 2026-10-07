@@ -123,3 +123,39 @@ describe('asaltos de los campamentos (CR-50 50b)', () => {
     expect((await prisma.campamento.findUniqueOrThrow({ where: { id: campId } })).botinGoirnos).toBe(55);
   });
 });
+
+/// CR-50 (50d, Q7): se conoce un campamento si estuviste allí, si te llegó el rumor o si lo ve una Torre.
+describe('conocer los campamentos (CR-50 50d)', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    saveId = (await prisma.save.create({
+      data: { userId: await getDefaultUserId(), worldId: world.id, characterName: 'Exploradora (CR-50d)', characterArchetype: 'guerrero', characterOrigin: 'x', characterMotivation: 'x', attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 }, portraitInitial: 'E', worldState: { create: { fictionalMinutes: 10 * 1440 } } },
+    })).id;
+  });
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('al asentarse deja un rumor; se conoce por estar allí o porque te llega', async () => {
+    const { campamentosConocidos } = await import('./campamentos.js');
+    const { conocer } = await import('./cronista/difusion.js');
+    await revisarCampamentos(prisma, saveId, 10, semilla(9));
+    const sucesos = await prisma.suceso.findMany({ where: { saveId, tipo: 'CAMPAMENTO_NUEVO' } });
+    const activos = await prisma.campamento.findMany({ where: { saveId, estado: 'ACTIVO' } });
+    expect(sucesos).toHaveLength(activos.length);
+    expect(await prisma.$transaction((tx) => campamentosConocidos(tx, saveId))).toHaveLength(0);
+    // Estar allí.
+    await prisma.save.update({ where: { id: saveId }, data: { currentLocationId: activos[0]!.locationId } });
+    expect(await prisma.$transaction((tx) => campamentosConocidos(tx, saveId))).toHaveLength(1);
+    // Que te llegue el rumor.
+    if (activos[1]) {
+      const s = sucesos.find((x) => x.locationId === activos[1]!.locationId)!;
+      await prisma.$transaction((tx) => conocer(tx, { saveId, sucesoId: s.id, via: 'NPC', confirmado: false, minutos: 10 * 1440, escribirNoticia: false }));
+      const conocidos = await prisma.$transaction((tx) => campamentosConocidos(tx, saveId));
+      expect(conocidos).toHaveLength(2);
+      expect(conocidos[0]).toMatchObject({ grupo: expect.any(String), cabecilla: expect.any(String) });
+    }
+  });
+});

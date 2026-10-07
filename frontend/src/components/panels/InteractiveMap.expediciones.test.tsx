@@ -58,8 +58,10 @@ describe('CR-46 — expediciones en el mapa', () => {
           { id: 'a1', faccion: 'Bandidos', oficio: 'asalto', motivo: null, origenSlug: 'campamento-helsig', destinoSlug: 'hondonada-del-eco', destinoNombre: 'Hondonada del Eco', diaRegreso: 5, progreso: 0.25, delReino: false, hostil: true },
         ]}
         alcances={[{ asentamiento: 'Karot', slugs: ['hondonada-del-eco', 'campamento-helsig'] }]}
+        campamentos={[{ id: 'c1', lugar: 'Hondonada del Eco', slug: 'hondonada-del-eco', region: 'Llanuras', grupo: 'Renegados goirntes', cabecilla: 'Cabecilla', gente: 6 }]}
       />,
     )
+    expect(getByLabelText('Campamento de Renegados goirntes')).toBeTruthy()
     expect(getByRole('button', { name: 'Asalto de Bandidos' })).toBeTruthy()
     expect(getByLabelText('Alcance de la Torre de Karot').querySelectorAll('circle')).toHaveLength(2)
   })

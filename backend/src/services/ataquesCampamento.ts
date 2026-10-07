@@ -104,6 +104,16 @@ async function pelearContraCampamento(tx: Tx, c: CampamentoFila, atacantes: Comb
   return { cae: false, r, caenBandidos };
 }
 
+/// Q5: súbditos que pueden ir a por un campamento (soldados, vigías y cazadores adultos que no estén
+/// fuera).
+export async function guerrerosLibres(tx: Tx, saveId: string, ahora: number): Promise<{ id: string; name: string; rol: string }[]> {
+  const fuera = new Set((await tx.viajeroMiembro.findMany({ where: { viajero: { saveId, estado: { not: 'TERMINADO' } }, subjectId: { not: null } }, select: { subjectId: true } })).map((m) => m.subjectId!));
+  const subditos = await tx.subject.findMany({ where: { saveId, estado: 'ACTIVO' }, select: { id: true, name: true, role: true, pueblo: true, nacidoEn: true }, orderBy: { createdAt: 'asc' } });
+  return subditos
+    .filter((s) => ['soldado', 'cazador', 'vigia'].includes(rolDeSubdito(s.role)) && esAdultoSubdito(s, ahora) && !fuera.has(s.id))
+    .map((s) => ({ id: s.id, name: s.name, rol: rolDeSubdito(s.role) }));
+}
+
 export interface PeticionAtaque {
   campamentoId: string;
   companionIds?: string[];
@@ -118,9 +128,8 @@ export async function lanzarAtaqueACampamento(tx: Tx, saveId: string, p: Peticio
   const op = await opcionesDePartida(tx, saveId, ahora);
   if (!op.origen) return { ok: false, motivo: 'Tu Reino no tiene ningún edificio desde el que salir.' };
   const libresComp = new Set(op.grupos.flatMap((g) => g.companeros.map((x) => x.id)));
-  const soldados = await tx.subject.findMany({ where: { saveId, estado: 'ACTIVO', id: { in: p.subjectIds ?? [] } }, select: { id: true, role: true, pueblo: true, nacidoEn: true } });
-  const fuera = new Set((await tx.viajeroMiembro.findMany({ where: { viajero: { saveId, estado: { not: 'TERMINADO' } }, subjectId: { not: null } }, select: { subjectId: true } })).map((m) => m.subjectId!));
-  const subjectIds = soldados.filter((s) => ['soldado', 'cazador', 'vigia'].includes(rolDeSubdito(s.role)) && esAdultoSubdito(s, ahora) && !fuera.has(s.id)).map((s) => s.id);
+  const libresSub = new Set((await guerrerosLibres(tx, saveId, ahora)).map((g) => g.id));
+  const subjectIds = (p.subjectIds ?? []).filter((id) => libresSub.has(id));
   const companionIds = (p.companionIds ?? []).filter((id) => libresComp.has(id));
   if (companionIds.length + subjectIds.length === 0) return { ok: false, motivo: 'Elige quién va a por el campamento.' };
   return crearViajero(tx, {

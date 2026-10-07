@@ -5,6 +5,9 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { elegirOcupante, genteInicial, ocupanteDe, refuerzos, regionesConCampamentos, tocaCampamento, TOPE_MAX_CAMPAMENTO } from './cronista/campamentosBandidos.js';
 import { posicionEnZona } from './viajerosCruce.js';
+import { registrarSuceso } from './cronista/sucesos.js';
+import { slugify } from '../lib/slugify.js';
+import { asentamientosDelReino } from './defensaReino.js';
 import { topeTrasExito } from './cronista/campamentosBandidos.js';
 import { crearViajero, enlacesDelMundo, lugaresATramos, type Enlace, type ViajeroFila } from './viajeros.js';
 import { TIPO_ASALTO } from './defensaReino.js';
@@ -44,6 +47,13 @@ async function levantarCampamento(tx: Tx, saveId: string, worldId: string, regio
   const { x, y } = posicionEnZona(c.id);
   const punto = await tx.zonePoint.create({ data: { saveId, locationId, tipo: 'NPC', targetSlug: ocupante.npcSlug, label: ocupante.grupo, cantidad: gente + 1, x, y } });
   await tx.campamento.update({ where: { id: c.id }, data: { zonePointId: punto.id } });
+  // Q7: se sabe de oídas (el Libro y la difusión de rumores de `CR-18`).
+  const lugar = (await tx.location.findUnique({ where: { id: locationId }, select: { name: true } }))?.name ?? region;
+  await registrarSuceso(tx, {
+    saveId, tipo: 'CAMPAMENTO_NUEVO', fictionalMinutes: dia * 1440, regionSlug: slugify(region), locationId, origen: 'MUNDO',
+    actores: [{ entidadTipo: 'LOCATION', entidadId: locationId, papel: 'LUGAR' }],
+    datos: { campamento: ocupante.grupo.toLowerCase(), lugar },
+  });
   return c.id;
 }
 
@@ -75,6 +85,7 @@ export async function revisarCampamentos(prisma: PrismaClient, saveId: string, d
       if (await levantarCampamento(tx, saveId, save.worldId, region, dia, ultimo?.locationId ?? null, random)) nuevos++;
     });
   }
+  await prisma.$transaction((tx) => revisarConocidos(tx, saveId));
   return nuevos;
 }
 
@@ -187,4 +198,32 @@ export async function volverAlCampamento(tx: Tx, v: ViajeroFila): Promise<void> 
     data: { gente, botinComida: { increment: carga.botin?.comida ?? 0 }, botinGoirnos: { increment: carga.botin?.goirnos ?? 0 }, ...(carga.botin ? { tope: topeTrasExito(c.tope) } : {}) },
   });
   await sincronizarPunto(tx, { ...c, gente });
+}
+
+// ─────────────────────────── 50d: conocerlos ───────────────────────────
+
+/// Q7 (X4: solo ves lo descubierto): la jugadora sabe dónde está un campamento si estuvo allí, si le
+/// llegó el rumor de que se asentó o si cae en el alcance de una Torre de vigía. Devuelve cuántos
+/// descubre.
+export async function revisarConocidos(tx: Tx, saveId: string): Promise<number> {
+  const ocultos = await tx.campamento.findMany({ where: { saveId, estado: 'ACTIVO', conocido: false }, select: { id: true, locationId: true, creadoDia: true } });
+  if (ocultos.length === 0) return 0;
+  const save = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { currentLocationId: true, worldId: true } });
+  const conTorre = (await asentamientosDelReino(tx, saveId)).filter((a) => a.efecto.radioTramos > 0);
+  const enlaces = conTorre.length > 0 ? await enlacesDelMundo(tx, save.worldId) : [];
+  const vigilados = new Set(conTorre.flatMap((a) => [...lugaresATramos(enlaces, a.locationId, a.efecto.radioTramos).keys()]));
+  const descubiertos: string[] = [];
+  for (const c of ocultos) {
+    const rumor = await tx.conocimiento.findFirst({ where: { saveId, suceso: { tipo: 'CAMPAMENTO_NUEVO', locationId: c.locationId, fictionalMinutes: { gte: c.creadoDia * 1440 } } }, select: { id: true } });
+    if (save.currentLocationId === c.locationId || vigilados.has(c.locationId) || rumor) descubiertos.push(c.id);
+  }
+  if (descubiertos.length > 0) await tx.campamento.updateMany({ where: { id: { in: descubiertos } }, data: { conocido: true } });
+  return descubiertos.length;
+}
+
+/// Los campamentos que conoce la jugadora (mapa de Berig y Reino › Partidas).
+export async function campamentosConocidos(tx: Tx, saveId: string) {
+  await revisarConocidos(tx, saveId);
+  const filas = await tx.campamento.findMany({ where: { saveId, estado: 'ACTIVO', conocido: true }, include: { location: { select: { name: true, slug: true } } }, orderBy: { createdAt: 'asc' } });
+  return filas.map((c) => ({ id: c.id, lugar: c.location.name, slug: c.location.slug.replace(/-interior$/, ''), region: c.region, grupo: ocupanteDe(c.ocupante)?.grupo ?? 'Bandidos', cabecilla: c.cabecilla, gente: c.gente }));
 }

@@ -1490,10 +1490,13 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     otro). El linaje es actor del Libro; venganzas, deudas y recuerdos fuertes (importancia ≥ 6) pasan a la
     familia (si muere el vengador, la toma otro adulto del linaje); cada pareja de súbditos sin linaje funda
     uno; el personaje también tiene linaje. Leyendas › «Linajes» con su historia y su árbol. **L**
-  - **CR-50** Campamentos de bandidos con cabecilla y refuerzos (Bellwright, Medieval Dynasty). **M**
+  - ~~**CR-50** Campamentos de bandidos con cabecilla y refuerzos~~ ✅ 2026-10-07 (Bellwright, Medieval Dynasty). **M**
     Va con `CR-37` en el `0.3`. Ronda de detalle aceptada el 2026-10-07 (Q1-Q9 en
     [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-detalle-de-cr-50-campamentos-de-bandidos-ronda-aceptada-por-la-usuaria-el-2026-10-07));
-    quién los ocupa es dato de semilla (la usuaria añadirá razas «poco civilizadas»). 🚧 Pasos:
+    quién los ocupa es dato de semilla (la usuaria añadirá razas «poco civilizadas»). Queda: sus razas
+    de verdad (semillas de la usuaria y lore; hoy los renegados de 49c), las expediciones de facción
+    (su interceptación necesita una facción hostil), «sin asaltos» con `CR-67` y las cifras
+    provisionales para la fase de pruebas. Pasos:
     - ~~50a~~ ✅ 2026-10-07: migración `20261008000000_campamentos` (modelo `Campamento`); semillas
       `OCUPANTES_CAMPAMENTO` y reglas puras en `cronista/campamentosBandidos.ts` (aparición, sorteo,
       refuerzos, tope); `services/campamentos.ts`: `revisarCampamentos` en el avance diario (1 por
@@ -1516,7 +1519,11 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
       `patrullasContraCampamentos` (cada semana, 8 soldados de una facción dueña de la región).
       Los asaltos de bandidos ya no cuentan como del Reino (`esDelReino`, `TIPOS_SIN_DUENO`): fuera
       de Reino › Partidas, de «De paso por aquí» y de los avisos.
-    - 50d: visibilidad en el mapa y en Reino › Partidas.
+    - ~~50d~~ ✅ 2026-10-07: suceso `CAMPAMENTO_NUEVO` al asentarse (llega como rumor);
+      `revisarConocidos` (estuviste allí, te llegó el rumor o lo ve una Torre) y
+      `campamentosConocidos`; en el mapa de Berig (⛺ en su lugar) y en Reino › Partidas
+      («Campamentos de bandidos», `CampamentosBandidos.tsx`, con quién va: grupos 2+, soldados,
+      vigías y cazadores; `POST /saves/:id/campamentos/:campamentoId/atacar`).
   - **CR-51** Comercio en persona con NPC: mercaderes y caravanas de fondo (usuaria, 2026-10-06; sale
     del resto de `CR-47` 47e). **L** Hoy el personaje no comercia con ningún NPC (solo el Mercado del
     Reino). Sistema nuevo de compraventa con Goirnos, como el mercader ambulante de Bellwright y

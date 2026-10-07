@@ -4,6 +4,8 @@ import { prisma } from '../../lib/prisma.js';
 import { lanzarPartida, opcionesDePartida, ordenarPartida, partidasDelReino, type PeticionPartida } from '../../services/partidasReino.js';
 import { comidaVendible, comprarCarneAViajero, preguntarAViajero, venderAViajero, viajerosAqui } from '../../services/viajerosCruce.js';
 import { lockRowForUpdate, rejectIfEnded, rejectIfPendingDeath } from './shared.js';
+import { campamentosConocidos } from '../../services/campamentos.js';
+import { guerrerosLibres, lanzarAtaqueACampamento, type PeticionAtaque } from '../../services/ataquesCampamento.js';
 
 const selectSave = { id: true, endedAt: true, pendingDeathResolution: true, worldState: { select: { fictionalMinutes: true } } } as const;
 
@@ -15,6 +17,9 @@ export async function partidasRoutes(app: FastifyInstance) {
     return prisma.$transaction(async (tx) => ({
       partidas: await partidasDelReino(tx, save.id),
       opciones: await opcionesDePartida(tx, save.id, save.worldState?.fictionalMinutes ?? 0),
+      // CR-50 (50d): campamentos de bandidos que conoces y quién puede ir a por ellos.
+      campamentos: await campamentosConocidos(tx, save.id),
+      guerreros: await guerrerosLibres(tx, save.id, save.worldState?.fictionalMinutes ?? 0),
     }));
   });
 
@@ -81,5 +86,19 @@ export async function partidasRoutes(app: FastifyInstance) {
     const r = await prisma.$transaction((tx) => ordenarPartida(tx, save.id, request.params.viajeroId, request.body?.accion ?? '', request.body?.destinoLocationId));
     if (!r.ok) return reply.status(400).send({ error: r.motivo });
     return { ok: true };
+  });
+
+  /// CR-50 (50c-50d, Q5): manda una partida a por un campamento de bandidos que conoces.
+  app.post<{ Params: { id: string; campamentoId: string }; Body: Omit<PeticionAtaque, 'campamentoId'> }>('/saves/:id/campamentos/:campamentoId/atacar', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: selectSave });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (rejectIfEnded(save, reply)) return;
+    if (rejectIfPendingDeath(save, reply)) return;
+    const r = await prisma.$transaction(async (tx) => {
+      await lockRowForUpdate(tx, 'Save', save.id, ['id']);
+      return lanzarAtaqueACampamento(tx, save.id, { ...(request.body ?? {}), campamentoId: request.params.campamentoId }, save.worldState?.fictionalMinutes ?? 0);
+    });
+    if (!r.ok) return reply.status(400).send({ error: r.motivo });
+    return { ok: true, id: r.id };
   });
 }
