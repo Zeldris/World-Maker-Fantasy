@@ -1,5 +1,5 @@
 import { registrarSuceso } from './cronista/sucesos.js';
-import { comidaDelReino, huecoDeMateriales, slugsDeMateriales, suministrosDelReino } from './cronista/economiaReino.js';
+import { comidaDelReinoDia, datosComidaDelReino, huecoDeMateriales, slugsDeMateriales, suministrosDelReino } from './cronista/economiaReino.js';
 import { sucesosDeClima } from './cronista/clima.js';
 import type { Prisma } from '@prisma/client';
 import { tickKingdom, daysCrossed, hambrunaNueva, DIAS_PARA_CONSOLIDAR, DIAS_PARA_REBELION, type KingdomStatsBlock } from './kingdomTick.js';
@@ -28,6 +28,8 @@ export async function advanceKingdomStatsDay(
   tx: Prisma.TransactionClient,
   saveId: string,
   diasCruzados: number,
+  /// Minuto de ficción al final del salto (el `minutosDespues` del turno); sin él, el de `WorldState`.
+  ahora?: number,
 ): Promise<DailyTickResult> {
   let territoryConsolidatedThisTurn = false;
   const kingdomStats = await tx.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId }) } });
@@ -39,13 +41,14 @@ export async function advanceKingdomStatsDay(
     const trabajadoresEfectivos = Math.max(0, trabajadores - Math.ceil((kingdomStats.sinHerramienta ?? 0) / 2));
     // CR-61: ya no hay comida pasiva; la dan las tareas de los súbditos (recolector, pescador, cocinero).
     // QA-19: cada día cruzado con su estación y la reserva que queda, igual en un salto que día a día.
-    const ws = await tx.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true } });
-    const ultimoDia = Math.floor((ws?.fictionalMinutes ?? 0) / 1440);
+    const hasta = ahora ?? (await tx.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true } }))?.fictionalMinutes ?? 0;
+    const ultimoDia = Math.floor(hasta / 1440);
     const factor = trabajadores > 0 ? trabajadoresEfectivos / trabajadores : 1;
+    const datosComida = await datosComidaDelReino(tx, saveId, hasta);
     let dia: KingdomStatsBlock = { poblacion, felicidad, comida, bebida, riqueza, soldados, trabajadores: trabajadoresEfectivos, visitantes, diasFelicidadAlta, diasFelicidadBaja, diasHambre, diasSed };
     for (let d = ultimoDia - diasCruzados + 1; d <= ultimoDia; d++) {
-      const comidaDia = await comidaDelReino(tx, saveId, d * 1440 + 720, dia.comida, factor);
-      dia = tickKingdom(dia, 1, { ...suministros, comidaDia }, d);
+      const comidaDia = comidaDelReinoDia(datosComida, d * 1440 + 720, dia.comida, factor);
+      dia = tickKingdom(dia, 1, d, { ...suministros, comidaDia });
     }
     const ticked = { ...dia, trabajadores };
     await tx.kingdomStats.update({ where: { ownerKey: ownerKeyFor({ saveId }) }, data: ticked });
@@ -275,7 +278,7 @@ export async function runDailyTick(
   const { saveId, worldId, minutosAntes, minutosDespues } = args;
   const diasCruzados = daysCrossed(minutosAntes, minutosDespues);
   if (diasCruzados <= 0) return { territoryConsolidatedThisTurn: false };
-  const result = await advanceKingdomStatsDay(tx, saveId, diasCruzados);
+  const result = await advanceKingdomStatsDay(tx, saveId, diasCruzados, minutosDespues);
   // La producción/consumo de facción (H-6/H-2) y el decaimiento de presión (H-4) NO corren aquí:
   // viven en `producirFacciones`/`decaerRelaciones` (factionEconomy.ts), desde `avanceDiario.ts`.
   // Hermanos (no anidados en KingdomStats): un Building puede existir sin fila KingdomStats.

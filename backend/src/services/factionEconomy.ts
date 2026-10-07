@@ -136,7 +136,6 @@ export async function producirFacciones(
       let ganadoDiasSinComer = fks.ganadoDiasSinComer;
       let ganadoDiasSinBeber = fks.ganadoDiasSinBeber;
       // Lo que no llega a 1 de comida pasa al día siguiente (revisión del PR: sin perder decimales).
-      let restoComida = 0;
       // Las bajas de cada día cuentan para el siguiente (comen y mueren los que quedan).
       let desertores = 0;
       const bajas = { civiles: 0, trabajadores: 0, soldados: 0 };
@@ -153,9 +152,8 @@ export async function producirFacciones(
           ganadoDiasSinComer = r.diasSinComer;
           ganadoDiasSinBeber = r.diasSinBeber;
           fueraDelPasivo = r.ganaderos + r.fibreros;
-          const neta = r.comidaNeta + restoComida;
-          restoComida = neta - Math.floor(neta);
-          stats = { ...stats, comida: Math.max(0, stats.comida + Math.floor(neta)), bebida: Math.max(0, stats.bebida + aguaRebano - r.bebidaConsumida) };
+          // QA-19: las medias del rebaño, repartidas por número de día como el resto de la comida.
+          stats = { ...stats, comida: Math.max(0, stats.comida + porcionDelDia(r.comidaNeta, dia)), bebida: Math.max(0, stats.bebida + aguaRebano - r.bebidaConsumida) };
           for (const [slug, n] of Object.entries(r.otros)) rebano.otros[slug] = (rebano.otros[slug] ?? 0) + n;
         }
         // CR-61: la comida sale de las tareas de sus trabajadores (sin los ganaderos y fibreros, que

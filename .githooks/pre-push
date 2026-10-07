@@ -5,9 +5,9 @@
 # `git push --no-verify`.
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
-echo "pre-push: tsc backend, tsc frontend, oxlint, cobertura del roadmap…"
-(cd backend && npx tsc --noEmit -p .)
-(cd frontend && npx tsc -p tsconfig.app.json --noEmit)
-npx oxlint backend/src frontend/src > /tmp/pre-push-oxlint.log 2>&1 || { tail -20 /tmp/pre-push-oxlint.log; echo "pre-push: oxlint con errores"; exit 1; }
-python3 tools/roadmap/cobertura.py > /tmp/pre-push-cobertura.log || { grep -E "SIN HITO|NUEVAS|RETRO" /tmp/pre-push-cobertura.log; exit 1; }
+# Los mismos comandos que la CI (ci.yml), con el oxlint que fija cada paquete.
+echo "pre-push: tsc y lint de backend y frontend, cobertura del roadmap…"
+(cd backend && npx tsc --noEmit -p . && npm run --silent lint > /tmp/pre-push-lint-backend.log 2>&1) || { tail -20 /tmp/pre-push-lint-backend.log; echo "pre-push: backend en rojo"; exit 1; }
+(cd frontend && npx tsc -b && npm run --silent lint > /tmp/pre-push-lint-frontend.log 2>&1) || { tail -20 /tmp/pre-push-lint-frontend.log; echo "pre-push: frontend en rojo"; exit 1; }
+python3 tools/roadmap/cobertura.py > /tmp/pre-push-cobertura.log || { grep -v "^EN VARIOS HITOS\|^ASIGNADAS PERO" /tmp/pre-push-cobertura.log; exit 1; }
 echo "pre-push: todo en verde."

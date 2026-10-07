@@ -43,7 +43,7 @@ if [ "$(psql "$DB_URL" -tAc 'select count(*) from "World"')" = "0" ]; then
   npm run seed-catalog >/dev/null
 fi
 # QA-15: las variables para toda la sesión (si no, cada vitest necesita su export).
-if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
+if [ -n "${CLAUDE_ENV_FILE:-}" ] && ! grep -q "DATABASE_URL=$DB_URL" "$CLAUDE_ENV_FILE" 2>/dev/null; then
   {
     echo "export DATABASE_URL=$DB_URL"
     echo "export DIRECT_URL=$DB_URL"

@@ -950,7 +950,8 @@ export const QUITINA_ARMOR_RECIPE: CraftingRecipe = {
 export const JUSHA_SMOKED_MEAT_RECIPE: CraftingRecipe = {
   key: 'jushaSmokedMeat',
   verbRegex: /as|cocin|prepar|tuest|ahum/,
-  nounRegex: /carne.*jusha|jusha.*carne/,
+  // QA-16: sin pisar el Guiso de Múrgol ni el Asado de las Llanuras.
+  nounRegex: /^(?!.*(guiso|asado|llanura)).*(carne.*jusha|jusha.*carne)/,
   location: null,
   ingredients: [{ match: { kind: 'exact', catalogSlug: 'carne-jusha' }, cantidad: 2, label: 'carne de Jusha' }],
   resultName: 'Carne de Jusha ahumada',

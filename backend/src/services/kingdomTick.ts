@@ -138,7 +138,8 @@ export function tickKingdomOneDay(stats: KingdomStatsBlock, s: SuministrosDia = 
 
 /// Puro: aplica N días de golpe (un viaje largo o un descanso extendido puede cruzar más de un
 /// día de ficción en un solo turno) — nunca lo decide el modelo, ver el enganche en turnResolution.ts.
-export function tickKingdom(stats: KingdomStatsBlock, dias: number, s: SuministrosDia = SIN_SUMINISTROS, primerDia = 1): KingdomStatsBlock {
+/// `primerDia`: número del primer día del salto (reparte las medias de comida, `porcionDelDia`).
+export function tickKingdom(stats: KingdomStatsBlock, dias: number, primerDia: number, s: SuministrosDia = SIN_SUMINISTROS): KingdomStatsBlock {
   let result = stats;
   // CR-61 / QA-19: la comida de las tareas puede traer medias (2,5 por recolector en primavera); se
   // reparten por el número de día (`porcionDelDia`), igual en un salto que día a día.

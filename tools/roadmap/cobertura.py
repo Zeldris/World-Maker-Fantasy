@@ -8,7 +8,8 @@ fases R-x / Z-x / UX-x y «CR Fases N») y lista:
   - ASIGNADAS PERO NO DEFINIDAS: identificadores citados en el mapa que no existen.
   - EN VARIOS HITOS: repeticiones (algunas son intencionadas, p. ej. una parte en 0.1 y el resto
     después; revisar las nuevas).
-  - RETRO PENDIENTE (QA-20): fases ✅ de un plan-roadmap-*.md cuya celda de estado no dice «retro ✅»
+  - RETRO PENDIENTE (QA-20): fases ✅ (o «Fase X cerrada» aunque queden pendientes) de un
+    plan-roadmap-*.md cuya celda de estado no dice «retro ✅»
     (ni «sin retro», para las anteriores a las retros por fase).
 Uso: python3 tools/roadmap/cobertura.py   (sale con código 1 si hay tareas sin hito, identificadores
 sin definir nuevos o retros pendientes; lo ejecuta la CI, QA-14)
@@ -88,7 +89,8 @@ for f in sorted(os.listdir(D)):
         m=re.match(r'^\|\s*\*\*([A-Z]) —',l)
         if not m: continue
         estado=l.rstrip().rstrip('|').split('|')[-1].strip()
-        if estado.startswith('✅') and 'retro ✅' not in estado and 'sin retro' not in estado:
+        cerrada=estado.startswith('✅') or f'Fase {m.group(1)} cerrada' in estado
+        if cerrada and 'retro ✅' not in estado and 'sin retro' not in estado:
             retros.append(f'{f} Fase {m.group(1)}')
 print('RETRO PENDIENTE:',retros)
 sys.exit(1 if falta or nuevos or retros else 0)

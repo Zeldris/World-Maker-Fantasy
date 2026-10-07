@@ -78,7 +78,9 @@ export function repartoDeFaccion(raza: string | null, trabajadores: number, hayA
 /// el número de día, sin guardar restos: N días de golpe dan lo mismo que N veces un día (2,5 al día
 /// → 2, 3, 2, 3…).
 export function porcionDelDia(cantidad: number, dia: number): number {
-  return Math.floor(cantidad * dia) - Math.floor(cantidad * (dia - 1));
+  // El épsilon evita que 14,999999… (6/11 × 27,5) cuente como 14.
+  const hasta = (d: number) => Math.floor(cantidad * d + 1e-9);
+  return hasta(dia) - hasta(dia - 1);
 }
 
 /// Comida que produce una cuadrilla en un día. Los cocineros solo transforman la comida cruda que hay

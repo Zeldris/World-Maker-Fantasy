@@ -11,6 +11,10 @@ describe('QA-19: N días de golpe = N veces un día', () => {
   it('las medias de comida se reparten por número de día, sin restos guardados', () => {
     expect([1, 2, 3, 4].map((d) => porcionDelDia(2.5, d))).toEqual([2, 3, 2, 3]);
     expect([1, 2, 3].map((d) => porcionDelDia(3, d))).toEqual([3, 3, 3]);
+    // 6/11 × 27,5 = 14,999999… en coma flotante: tiene que contar 15.
+    expect(porcionDelDia((6 / 11) * 27.5, 1)).toBe(15);
+    // Un rebaño que pierde media al día: -1, 0, -1, 0…
+    expect([1, 2, 3, 4].map((d) => porcionDelDia(-0.5, d))).toEqual([-1, 0, -1, 0]);
   });
 
   it('tickKingdom: un salto de N días desde el día d = N ticks de un día', () => {
@@ -18,8 +22,8 @@ describe('QA-19: N días de golpe = N veces un día', () => {
     const s = { ...SIN_SUMINISTROS, agua: 7, comidaDia: 5.5 };
     for (const [d0, n] of [[1, 5], [37, 9], [118, 4]] as const) {
       let unoAUno = base;
-      for (let i = 0; i < n; i++) unoAUno = tickKingdom(unoAUno, 1, s, d0 + i);
-      expect(tickKingdom(base, n, s, d0)).toEqual(unoAUno);
+      for (let i = 0; i < n; i++) unoAUno = tickKingdom(unoAUno, 1, d0 + i, s);
+      expect(tickKingdom(base, n, d0, s)).toEqual(unoAUno);
     }
   });
 

@@ -871,5 +871,7 @@ describe('QA-16: ninguna receta pisa a otra', () => {
     expect(CRAFTING_RECIPES.filter((r) => detectsCraftIntent(r, 'Preparo un guiso de carne de múrgol')).map((r) => r.key)).toEqual(['murgolStew']);
     expect(CRAFTING_RECIPES.filter((r) => detectsCraftIntent(r, 'Horneo pan de trigo escarlata con leche y miel')).map((r) => r.key)).toEqual(['milkHoneyBread']);
     expect(CRAFTING_RECIPES.filter((r) => detectsCraftIntent(r, 'Preparo un asado de las Llanuras con carne y boungo')).map((r) => r.key)).toEqual(['plainsRoast']);
+    expect(CRAFTING_RECIPES.filter((r) => detectsCraftIntent(r, 'Preparo un guiso de jusha con carne')).map((r) => r.key)).toEqual(['murgolStew']);
+    expect(CRAFTING_RECIPES.filter((r) => detectsCraftIntent(r, 'Preparo un asado de las Llanuras con carne de jusha')).map((r) => r.key)).toEqual(['plainsRoast']);
   });
 });
