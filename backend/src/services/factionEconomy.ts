@@ -1,6 +1,8 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { CRAFTING_RECIPES, type CraftingRecipe } from './crafting.js';
-import { daysCrossed, hambrunaNueva, RIQUEZA_POR_TRABAJADOR, tickFactionProduction, tickKingdomOneDay, type KingdomStatsBlock } from './kingdomTick.js';
+import { daysCrossed, escalonCocinaDe, hambrunaNueva, tickFactionProduction, tickKingdomOneDay, type KingdomStatsBlock } from './kingdomTick.js';
+import { comidaDelDia, repartoDeFaccion } from './cronista/comidaOficios.js';
+import { estacionFor } from './worldClock.js';
 import { decayPresion, stageForPresion, typeForPresion } from './factionRelations.js';
 import { registrarHambruna } from './cronista/hambruna.js';
 import { AGUA_FUENTE_FACCION, aplicarBajasDeFaccion, muertesDelDia, repartirMuertes, sueldosDelDia, talleresDeFaccion } from './cronista/economiaFacciones.js';
@@ -110,7 +112,9 @@ export async function producirFacciones(
       });
       if (claim.count === 0 || pendientes === 0) return; // otro tick ya lo hizo, o solo se fija la línea base
 
-      const edificios = await tx.building.findMany({ where: { factionId, status: 'ACTIVO' }, select: { recipeKey: true, status: true, kind: true } });
+      const edificios = await tx.building.findMany({ where: { factionId, status: 'ACTIVO' }, select: { recipeKey: true, status: true, kind: true, tier: true } });
+      // CR-61: escalón de su mejor Cocina (multiplica lo que ganan sus cocineros).
+      const escalonCocina = escalonCocinaDe(edificios);
       const porDia = tickFactionProduction(edificios);
       let stats: KingdomStatsBlock = {
         poblacion: fks.poblacion, felicidad: fks.felicidad, comida: fks.comida, bebida: fks.bebida, riqueza: fks.riqueza,
@@ -154,10 +158,11 @@ export async function producirFacciones(
           stats = { ...stats, comida: Math.max(0, stats.comida + Math.floor(neta)), bebida: Math.max(0, stats.bebida + aguaRebano - r.bebidaConsumida) };
           for (const [slug, n] of Object.entries(r.otros)) rebano.otros[slug] = (rebano.otros[slug] ?? 0) + n;
         }
-        const trabajadoresReales = stats.trabajadores;
-        // Solo dejan de dar la comida pasiva (Q15): su riqueza sigue contando.
-        const tras = tickFactionOneDay({ ...stats, trabajadores: Math.max(0, trabajadoresReales - fueraDelPasivo) }, porDia);
-        stats = { ...tras, trabajadores: trabajadoresReales, riqueza: tras.riqueza + Math.min(fueraDelPasivo, trabajadoresReales) * RIQUEZA_POR_TRABAJADOR };
+        // CR-61: la comida sale de las tareas de sus trabajadores (sin los ganaderos y fibreros, que
+        // comen de lo que da el rebaño), con la costumbre de su pueblo; ya no hay comida pasiva.
+        const cuadrilla = repartoDeFaccion(fks.faction?.raza ?? null, Math.max(0, stats.trabajadores - fueraDelPasivo), true, escalonCocina > 0);
+        const comidaHoy = comidaDelDia(cuadrilla, { estacion: estacionFor(dia * 1440), hayAgua: true, escalonCocina: escalonCocina || null, comidaDisponible: stats.comida });
+        stats = tickFactionOneDay(stats, { ...porDia, comida: porDia.comida + Math.floor(comidaHoy) });
         const pago = sueldosDelDia({ ...stats, diasSinCobrar }, dia, equipoDeLaSemana(stats));
         stats = { ...stats, riqueza: pago.riqueza, felicidad: pago.felicidad };
         diasSinCobrar = pago.diasSinCobrar;

@@ -1692,8 +1692,11 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   🚧 Pasos:
   - ~~61a~~ ✅ 2026-10-07: reglas puras (`cronista/comidaOficios.ts`): tareas, rendimientos por estación,
     agua y Cocina, reparto por pueblo y caza en agregado hasta `CR-63`.
-  - 61b: el tick del Reino y el de las facciones reciben la comida producida (fin de los 2 por
-    trabajador y del +3 por Cocina).
+  - ~~61b~~ ✅ 2026-10-07: fin de los 2 por trabajador y del +3 por Cocina. Facciones: la comida
+    sale de `repartoDeFaccion` + `comidaDelDia` cada día (`producirFacciones`, sin ganaderos ni
+    fibreros, estación del día y escalón de su mejor Cocina); carencias, decisiones y rearme del
+    vasallo estiman con `produccionDeFaccion` (estación media). Reino: `SuministrosDia.comidaDia`;
+    hasta 61c todos sus trabajadores recolectan con el rendimiento de la estación.
   - 61c: tarea de cada súbdito (`Subject.tarea`, migración) y selector en Reino › Súbditos.
   - 61d: platos con su valor (escala `curaHambre`), recetas de Obrador y Gran obrador.
   **L**

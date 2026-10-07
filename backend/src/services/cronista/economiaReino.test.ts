@@ -19,9 +19,9 @@ describe('economía del Reino (CR-53) — agua y almacén', () => {
 
   it('el pozo da de beber y lo que no cabe en el almacén se pierde', () => {
     const base = { ...DEFAULT_KINGDOM_STATS, poblacion: 10, trabajadores: 10, comida: 55, bebida: 5 };
-    const dia = tickKingdomOneDay(base, { agua: 12, topeComida: 60, topeBebida: 60 });
+    const dia = tickKingdomOneDay(base, { agua: 12, topeComida: 60, topeBebida: 60, comidaDia: 20 });
     expect(dia.bebida).toBe(5 + 12 - 10);
-    expect(dia.comida).toBe(60); // 55 + 20 - 10 = 65, tope 60
+    expect(dia.comida).toBe(60); // 55 + 20 de sus tareas - 10 = 65, tope 60
     const sinPozo = tickKingdomOneDay(base, { agua: 0, topeComida: 60, topeBebida: 60 });
     expect(sinPozo.bebida).toBe(0);
     expect(sinPozo.felicidad).toBeLessThan(base.felicidad);

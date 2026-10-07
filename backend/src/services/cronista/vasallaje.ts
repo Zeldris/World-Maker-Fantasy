@@ -11,7 +11,7 @@
 import { pelearEscaramuza, resumenEscaramuza } from './escaramuzas.js';
 import type { Prisma } from '@prisma/client';
 import { EQUIPO } from './facturaEquipo.js';
-import { tickFactionProduction } from '../kingdomTick.js';
+import { produccionDeFaccion } from '../kingdomTick.js';
 import { registrarSuceso } from './sucesos.js';
 import { REPARTO_FACCIONES } from '../../scripts/repartoFacciones.js';
 
@@ -51,7 +51,7 @@ export async function revisarVasallajes(tx: Tx, saveId: string, dia: number, aho
     if (v.ultimaSemana != null && dia - v.ultimaSemana < 7) continue;
     await tx.vasallaje.update({ where: { id: v.id }, data: { ultimaSemana: dia } });
     const [vasallo, senor] = await Promise.all(
-      [v.vasalloSlug, v.senorSlug].map((slug) => tx.faction.findFirst({ where: { saveId, slug, disueltaEn: null }, select: { id: true, slug: true, name: true, worldId: true, kingdomStats: true } })),
+      [v.vasalloSlug, v.senorSlug].map((slug) => tx.faction.findFirst({ where: { saveId, slug, disueltaEn: null }, select: { id: true, slug: true, name: true, worldId: true, raza: true, kingdomStats: true } })),
     );
     if (!vasallo || !senor || !vasallo.kingdomStats || !senor.kingdomStats) {
       await tx.vasallaje.update({ where: { id: v.id }, data: { rotoEn: ahora, motivoRuptura: senor ? 'el vasallo ya no existe' : 'cayó el señor' } });
@@ -71,8 +71,8 @@ export async function revisarVasallajes(tx: Tx, saveId: string, dia: number, aho
     const [trab, sold] = await Promise.all([fila(tx, saveId, `${v.vasalloSlug}-trabajadores`), fila(tx, saveId, `${v.vasalloSlug}-soldados`)]);
     const k = vasallo.kingdomStats;
     // Lo que comen frente a lo que producen sus trabajadores y sus edificios (Serhu: +1, comen justo).
-    const edificios = await tx.building.findMany({ where: { factionId: vasallo.id, status: 'ACTIVO' }, select: { recipeKey: true, status: true, kind: true } });
-    const margen = 2 * k.trabajadores + tickFactionProduction(edificios).comida - (k.poblacion + k.soldados + k.visitantes);
+    const edificios = await tx.building.findMany({ where: { factionId: vasallo.id, status: 'ACTIVO' }, select: { recipeKey: true, status: true, kind: true, tier: true } });
+    const margen = produccionDeFaccion(edificios, vasallo.raza ?? null, k).comida - (k.poblacion + k.soldados + k.visitantes);
     const nuevos = trab && sold ? rearme(margen, trab.poblacion) : 0;
     if (nuevos > 0) {
       await tx.worldPopulation.update({ where: { id: trab!.id }, data: { poblacion: { decrement: nuevos } } });

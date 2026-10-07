@@ -9,7 +9,7 @@
 // - Ganadero y fibrero: los cuenta `CR-55` (su comida sale del ganado).
 // - La caza no es un oficio: son partidas (`CR-63`). Hasta entonces, las facciones de orcos y Faerus
 //   cazan en agregado (2,5 por cazador) para no pasar hambre.
-import type { Estacion } from '../worldClock.js';
+import type { Estacion } from '@prisma/client';
 
 export const TAREAS = ['recolector', 'pescador', 'cocinero', 'ganadero', 'fibrero'] as const;
 export type Tarea = (typeof TAREAS)[number];

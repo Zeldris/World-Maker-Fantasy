@@ -5,6 +5,9 @@ import {
   daysCrossed,
   tickFactionProduction,
   hambrunaNueva,
+  produccionDeFaccion,
+  escalonCocinaDe,
+  SIN_SUMINISTROS,
   DEFAULT_KINGDOM_STATS,
   FELICIDAD_ALTA_UMBRAL,
   FELICIDAD_BAJA_UMBRAL,
@@ -16,11 +19,11 @@ describe('tickKingdomOneDay', () => {
     expect(tickKingdomOneDay(DEFAULT_KINGDOM_STATS)).toEqual(DEFAULT_KINGDOM_STATS);
   });
 
-  it('los trabajadores producen comida y riqueza', () => {
+  it('los trabajadores producen riqueza; la comida sale de sus tareas (CR-61), no de su número', () => {
     const stats: KingdomStatsBlock = { ...DEFAULT_KINGDOM_STATS, trabajadores: 3 };
-    const result = tickKingdomOneDay(stats);
-    expect(result.comida).toBe(6);
-    expect(result.riqueza).toBe(3);
+    expect(tickKingdomOneDay(stats).comida).toBe(0);
+    expect(tickKingdomOneDay(stats).riqueza).toBe(3);
+    expect(tickKingdomOneDay(stats, { ...SIN_SUMINISTROS, comidaDia: 7 }).comida).toBe(7);
   });
 
   it('la población consume comida y bebida', () => {
@@ -82,7 +85,7 @@ describe('tickKingdomOneDay', () => {
 describe('tickKingdom', () => {
   it('aplica N días de golpe (viaje largo cruzando varios días)', () => {
     const stats: KingdomStatsBlock = { ...DEFAULT_KINGDOM_STATS, trabajadores: 2 };
-    const result = tickKingdom(stats, 3);
+    const result = tickKingdom(stats, 3, { ...SIN_SUMINISTROS, comidaDia: 4 });
     expect(result.comida).toBe(12);
     expect(result.riqueza).toBe(6);
   });
@@ -109,8 +112,8 @@ describe('tickFactionProduction (docs/rpgtarkor/sistemas-reino/edificios-de-ofic
     expect(tickFactionProduction([])).toEqual({ comida: 0, riqueza: 0 });
   });
 
-  it('una Cocina ACTIVA suma comida, el resto de oficios suman riqueza', () => {
-    expect(tickFactionProduction([{ recipeKey: 'cocina-serhu', status: 'ACTIVO' }])).toEqual({ comida: 3, riqueza: 0 });
+  it('una Cocina ya no da comida fija (la ganan sus cocineros, CR-61); el resto de oficios suman riqueza', () => {
+    expect(tickFactionProduction([{ recipeKey: 'cocina-serhu', status: 'ACTIVO' }])).toEqual({ comida: 0, riqueza: 0 });
     expect(tickFactionProduction([{ recipeKey: 'herreria-serhu', status: 'ACTIVO' }])).toEqual({ comida: 0, riqueza: 2 });
   });
 
@@ -131,7 +134,7 @@ describe('tickFactionProduction (docs/rpgtarkor/sistemas-reino/edificios-de-ofic
       { recipeKey: 'curtiduria-serhu', status: 'ACTIVO' },
       { recipeKey: 'herboristeria-serhu', status: 'EN_CONSTRUCCION' },
     ];
-    expect(tickFactionProduction(buildings)).toEqual({ comida: 3, riqueza: 4 });
+    expect(tickFactionProduction(buildings)).toEqual({ comida: 0, riqueza: 4 });
   });
 });
 
@@ -154,5 +157,19 @@ describe('hambre', () => {
     expect(hambrunaNueva(2, 2, 5)).toBe(false);
     // Se rompió y la nueva ya llega a 3: cuenta desde cero.
     expect(hambrunaNueva(2, 3, 5)).toBe(true);
+  });
+});
+
+describe('produccionDeFaccion (CR-61)', () => {
+  it('suma la comida de las tareas de sus trabajadores a la de sus edificios', () => {
+    // Orcos, 100 trabajadores, sin Cocina: 45 cazadores × 2,5 + 55 recolectores × 2 (otoño) = 222.
+    expect(produccionDeFaccion([{ recipeKey: 'herreria-serhu', status: 'ACTIVO' }], 'orcos', { trabajadores: 100, comida: 0 })).toEqual({ comida: 222, riqueza: 2 });
+  });
+  it('con Cocina, sus cocineros ganan según el escalón', () => {
+    const sin = produccionDeFaccion([], 'nabieus', { trabajadores: 50, comida: 500 }).comida;
+    const con = produccionDeFaccion([{ recipeKey: 'cocina-obrador', status: 'ACTIVO', tier: 2 }], 'nabieus', { trabajadores: 50, comida: 500 }).comida;
+    expect(con).toBeGreaterThan(sin);
+    expect(escalonCocinaDe([{ recipeKey: 'cocina-obrador', status: 'ACTIVO', tier: 2 }, { recipeKey: 'cocina', status: 'ACTIVO' }])).toBe(2);
+    expect(escalonCocinaDe([])).toBe(0);
   });
 });
