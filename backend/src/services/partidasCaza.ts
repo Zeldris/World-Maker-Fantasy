@@ -40,7 +40,13 @@ export interface CargaCaza {
   piezas: number;
   diaCaza: number;
   resumen: string;
+  /// CR-63 (63c), partidas de captura: cuerdas que lleva y animales atados.
+  cuerdas?: number;
+  capturados?: number;
 }
+
+/// Q6: probabilidad de atar a un animal abatido (la de la especie, con el tope de la caza limpia).
+export const CHANCE_CAPTURA_TOPE = 90;
 
 interface Cazador {
   c: CombatienteFondo;
@@ -77,7 +83,9 @@ async function cazadoresDe(tx: Tx, v: ViajeroFila, worldId: string): Promise<Caz
 }
 
 /// Q4: lo que hace la partida en su destino.
-export async function cazarEnDestino(tx: Tx, v: ViajeroFila, dia: number, random: () => number): Promise<CargaCaza> {
+/// `cuerdas`: en una partida de captura, cuántos puede atar (uno por cuerda); los abatidos que no ata
+/// son piezas.
+export async function cazarEnDestino(tx: Tx, v: ViajeroFila, dia: number, random: () => number, cuerdas = 0): Promise<CargaCaza> {
   const save = await tx.save.findUniqueOrThrow({ where: { id: v.saveId }, select: { worldId: true } });
   const especie = v.objetivo ?? '';
   const npc = await tx.npc.findFirst({ where: { worldId: save.worldId, saveId: null, slug: especie } });
@@ -87,12 +95,13 @@ export async function cazarEnDestino(tx: Tx, v: ViajeroFila, dia: number, random
   const condicion = new Map<string, CondicionFisica>(cazadores.map((h) => [h.c.id, 'ILESO']));
   const muertos = new Set<string>();
   let piezas = 0;
+  let capturados = 0;
   let encuentros = 0;
   const grupos = npc
     ? await tx.zonePoint.findMany({ where: { saveId: v.saveId, locationId: v.ubicacionLocationId, tipo: 'FAUNA', targetSlug: especie, activo: true, cantidad: { gt: 0 } }, orderBy: [{ cantidad: 'desc' }, { id: 'asc' }] })
     : [];
   for (const grupo of grupos) {
-    if (encuentros >= ENCUENTROS_POR_SALIDA || piezas >= tope) break;
+    if (encuentros >= ENCUENTROS_POR_SALIDA || piezas + capturados >= tope) break;
     const enCampo = cazadores.filter((h) => enPie(condicion.get(h.c.id)!)).slice(0, TAMANO_SUBCOMBATE_FONDO);
     if (enCampo.length === 0) break;
     const nFauna = Math.min(grupo.cantidad, TAMANO_SUBCOMBATE_FONDO);
@@ -100,7 +109,16 @@ export async function cazarEnDestino(tx: Tx, v: ViajeroFila, dia: number, random
     const fauna: CombatienteFondo[] = Array.from({ length: nFauna }, (_, i) => ({ id: `fauna-${grupo.id}-${i}`, nombre: npc!.name, bando: 'B', attributes: base.attributes, attribute: base.attribute, attributeBonus: base.attributeBonus, nivel: npc!.level, conMoral: false }));
     const r = simularCombateDeFondo([...enCampo.map((h) => h.c), ...fauna], random);
     encuentros++;
-    const abatidos = Math.min(tope - piezas, r.estados.filter((e) => e.id.startsWith('fauna-') && !enPie(e.condicion)).length);
+    let abatidos = Math.min(tope - piezas - capturados, r.estados.filter((e) => e.id.startsWith('fauna-') && !enPie(e.condicion)).length);
+    // Q6: los abatidos vivos se intentan atar mientras queden cuerdas (los muertos no).
+    const vivos = r.estados.filter((e) => e.id.startsWith('fauna-') && e.condicion === 'CONVALECIENTE').length;
+    for (let i = 0; i < Math.min(vivos, abatidos) && capturados < cuerdas; i++) {
+      if (random() * 100 < Math.min(CHANCE_CAPTURA_TOPE, npc!.capturablePct)) {
+        capturados++;
+        abatidos--;
+        await descontarZonePointCaza(tx, v.saveId, grupo.id, 1);
+      }
+    }
     for (const e of r.estados) {
       if (!condicion.has(e.id)) continue;
       condicion.set(e.id, peor(condicion.get(e.id)!, e.condicion));
@@ -128,13 +146,14 @@ export async function cazarEnDestino(tx: Tx, v: ViajeroFila, dia: number, random
   }
 
   const nombre = npc?.name ?? especie;
+  const quien = cuerdas > 0 ? 'La partida de captura' : 'La partida de caza';
   const resumen = encuentros === 0
-    ? `La partida de caza no encuentra ${nombre} en ${lugar.name} y vuelve de vacío.`
-    : `La partida de caza abate ${piezas} ${nombre} en ${lugar.name}${muertos.size > 0 ? `; caen ${muertos.size} de los suyos` : ''}.`;
-  return { especie, piezas, diaCaza: dia, resumen };
+    ? `${quien} no encuentra ${nombre} en ${lugar.name} y vuelve de vacío.`
+    : `${quien} ${capturados > 0 ? `ata ${capturados} y ` : ''}abate ${piezas} ${nombre} en ${lugar.name}${muertos.size > 0 ? `; caen ${muertos.size} de los suyos` : ''}.`;
+  return { especie, piezas, diaCaza: dia, resumen, ...(cuerdas > 0 ? { cuerdas: cuerdas - capturados, capturados } : {}) };
 }
 
-async function avisoDelReino(tx: Tx, saveId: string, text: string) {
+export async function avisoDelReino(tx: Tx, saveId: string, text: string) {
   const ws = await tx.worldState.findUnique({ where: { saveId }, select: { fictionalDateLabel: true, fictionalMinutes: true } });
   await tx.logEntry.create({ data: { saveId, channel: 'KINGDOM', isSystemMessage: true, text, timeLabel: ws?.fictionalDateLabel ?? '', fictionalMinutes: ws?.fictionalMinutes ?? undefined } });
 }

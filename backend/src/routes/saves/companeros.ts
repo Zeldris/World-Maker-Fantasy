@@ -22,12 +22,11 @@ import {
   felicidadUmbralFor,
   resolverIntento,
   jaulaTamanoRequeridoFor,
-  jaulaAlcanzaPara,
-  jaulaRecipeKeyFor,
   capturaSlotsFor,
   plazoCapturaHorasForTier,
   autoEquiparDesdeAlmacen,
   type PlantillaSlots,
+  jaulasLibresPara,
 } from '../../services/companionSupervivencia.js';
 import { EquipSlot } from '@prisma/client';
 import { bonoSocialDeEtiquetas, etiquetasActivas, INT_NO_SE_RINDE_A_CARNICERO } from '../../services/cronista/etiquetas.js';
@@ -335,21 +334,8 @@ export async function companerosRoutes(app: FastifyInstance) {
     // `lockRowForUpdate` sobre `Save` serializa, y la ocupación se relee DENTRO de la transacción.
     const jaulaResult = await prisma.$transaction(async (tx) => {
       await lockRowForUpdate(tx, 'Save', request.params.id, ['id']);
-      const jaulas = await tx.building.findMany({
-        where: { saveId: request.params.id, status: 'ACTIVO', recipeKey: { in: ['jaula-pequena', 'jaula-mediana', 'jaula-grande'] } },
-      });
-      // Deuda técnica cerrada (auditoría 2026-09-01): antes era un `findFirst` de NpcState por
-      // cada jaula dentro del bucle (patrón N+1) — una sola consulta con `IN` trae la ocupación de
-      // TODAS las jaulas de golpe, comprobada después en memoria contra un Set.
-      const jaulasOcupadas = new Set(
-        (await tx.npcState.findMany({ where: { capturaJaulaBuildingId: { in: jaulas.map((j) => j.id) } }, select: { capturaJaulaBuildingId: true } })).map(
-          (s) => s.capturaJaulaBuildingId,
-        ),
-      );
-      const jaulaConHueco = jaulas.find((jaula) => {
-        const jaulaTamano = jaula.recipeKey === jaulaRecipeKeyFor('GRANDE') ? 'GRANDE' : jaula.recipeKey === jaulaRecipeKeyFor('MEDIANA') ? 'MEDIANA' : 'PEQUENA';
-        return jaulaAlcanzaPara(jaulaTamano, tamanoRequerido) && !jaulasOcupadas.has(jaula.id);
-      });
+      // CR-63: la misma búsqueda que usan las partidas de captura (una consulta para la ocupación).
+      const [jaulaConHueco] = await jaulasLibresPara(tx, request.params.id, npc.slug);
       if (!jaulaConHueco) return null;
 
       // La captura pasa de InventoryItem (en tránsito) a NpcState.capturaJaulaBuildingId (en

@@ -1741,7 +1741,11 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     `caducaEnDia` (migración `20261007210000_piezas`), avisos en el Reino. Cambio sobre Q5: el
     Desolladero desuella solo, sin orden, 4 piezas al día por escalón (`revisarPiezas`); cada pieza da
     lo mismo que sacrificar ese animal (`aprovecharAnimal`, sacado de `sacrificar`).
-  - 63c: captura (cuerdas, Jaula libre, `capturablePct`).
+  - ~~63c~~ ✅ 2026-10-07: `services/partidasCaptura.ts` (`TRABAJOS.CAPTURA`): `prepararCaptura` (Jaula
+    libre de su tamaño y cuerdas del Almacén, una por Jaula libre), atar a los abatidos vivos con
+    `capturablePct` (tope 90), los no atados son piezas; al volver, a la Jaula como `NpcState` en
+    doma (si se llenó, se sueltan) y las cuerdas sin usar vuelven. `jaulasLibresPara` compartido con
+    el depósito de capturas de la jugadora.
   - 63d: órdenes de una vez y permanentes; panel «Partidas» en Reino; rol «cazador».
   - 63e: en los mapas de zona y de Berig; preguntar, comerciar y órdenes al cruzarte.
   - 63f: encuentros por el camino (de fondo, o aviso para unirte si estás).

@@ -12,6 +12,7 @@
 import { avanzarViajeros } from './viajeros.js';
 // CR-63: registra lo que hacen las partidas de caza al llegar y al volver (TRABAJOS.CAZA).
 import { revisarPiezas } from './partidasCaza.js';
+import './partidasCaptura.js';
 import { difundir } from './cronista/difusion.js';
 import type { PrismaClient } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
