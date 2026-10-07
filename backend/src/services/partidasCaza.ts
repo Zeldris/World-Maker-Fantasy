@@ -9,7 +9,7 @@
 //   estropean a los 3 días de cazadas.
 // - Cada día, el Desolladero desuella las piezas que le caben (4 por escalón) y cada una da lo que da
 //   esa especie (`aprovecharAnimal`, lo mismo que sacrificar un animal del corral).
-import { descargarCazaFaccion, faccionPuedeCazar } from './partidasFacciones.js';
+import { CAZADORES_POR_PARTIDA, descargarCazaFaccion, faccionPuedeCazar } from './partidasFacciones.js';
 import type { CondicionFisica, Prisma } from '@prisma/client';
 import type { AttributeBlock } from './dice.js';
 import { simularCombateDeFondo, TAMANO_SUBCOMBATE_FONDO, type CombatienteFondo } from './combateDeFondo.js';
@@ -84,16 +84,25 @@ export async function cazadoresDe(tx: Tx, v: ViajeroFila, worldId: string): Prom
 }
 
 /// Lo que le queda a la partida tras una pelea: compañeros heridos o muertos, súbditos y genéricos
-/// muertos (los genéricos se descuentan de su fila).
-export async function aplicarBajas(tx: Tx, saveId: string, cazadores: Cazador[], condicion: Map<string, CondicionFisica>, muertos: Set<string>, dia: number): Promise<void> {
+/// muertos (los genéricos se descuentan de su fila y, si son de una facción, de su gente).
+export async function aplicarBajas(tx: Tx, saveId: string, cazadores: Cazador[], condicion: Map<string, CondicionFisica>, muertos: Set<string>, dia: number, factionId: string | null = null): Promise<void> {
   for (const h of cazadores) {
     const cond = muertos.has(h.c.id) ? 'MUERTO' : condicion.get(h.c.id) ?? 'ILESO';
-    if (h.companionId && cond !== 'ILESO') await tx.companion.update({ where: { id: h.companionId }, data: { condicionFisica: cond } });
+    if (h.companionId && cond !== 'ILESO') {
+      // Una pelea no cura: se queda con la peor de su condición de antes y la de ahora.
+      const antes = (await tx.companion.findUnique({ where: { id: h.companionId }, select: { condicionFisica: true } }))?.condicionFisica as CondicionFisica | undefined;
+      await tx.companion.update({ where: { id: h.companionId }, data: { condicionFisica: antes ? peor(antes, cond) : cond } });
+    }
     if (h.subjectId && cond === 'MUERTO') await tx.subject.update({ where: { id: h.subjectId }, data: { estado: 'MUERTO' } });
   }
   const genericosMuertos = new Map<string, number>();
   for (const h of cazadores) if (h.generico && muertos.has(h.c.id)) genericosMuertos.set(h.miembroId, (genericosMuertos.get(h.miembroId) ?? 0) + 1);
   for (const [miembroId, n] of genericosMuertos) await tx.viajeroMiembro.update({ where: { id: miembroId }, data: { genericos: { decrement: n } } });
+  const caidos = [...genericosMuertos.values()].reduce((s, n) => s + n, 0);
+  if (factionId && caidos > 0) {
+    const k = await tx.kingdomStats.findFirst({ where: { factionId }, select: { id: true, poblacion: true, trabajadores: true } });
+    if (k) await tx.kingdomStats.update({ where: { id: k.id }, data: { poblacion: Math.max(0, k.poblacion - caidos), trabajadores: Math.max(0, k.trabajadores - caidos) } });
+  }
   if (cazadores.some((h) => h.subjectId && muertos.has(h.c.id))) {
     const ws = await tx.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true } });
     await recalcularPoblacion(tx, saveId, ws?.fictionalMinutes ?? dia * 1440);
@@ -130,7 +139,8 @@ export async function cazarEnDestino(tx: Tx, v: ViajeroFila, dia: number, random
     let abatidos = Math.min(tope - piezas - capturados, r.estados.filter((e) => e.id.startsWith('fauna-') && !enPie(e.condicion)).length);
     // Q6: los abatidos vivos se intentan atar mientras queden cuerdas (los muertos no).
     const vivos = r.estados.filter((e) => e.id.startsWith('fauna-') && e.condicion === 'CONVALECIENTE').length;
-    for (let i = 0; i < Math.min(vivos, abatidos) && capturados < cuerdas; i++) {
+    const atables = Math.min(vivos, abatidos);
+    for (let i = 0; i < atables && capturados < cuerdas; i++) {
       if (random() * 100 < Math.min(CHANCE_CAPTURA_TOPE, npc!.capturablePct)) {
         capturados++;
         abatidos--;
@@ -149,7 +159,7 @@ export async function cazarEnDestino(tx: Tx, v: ViajeroFila, dia: number, random
     }
   }
 
-  await aplicarBajas(tx, v.saveId, cazadores, condicion, muertos, dia);
+  await aplicarBajas(tx, v.saveId, cazadores, condicion, muertos, dia, v.factionId);
 
   const nombre = npc?.name ?? especie;
   const quien = cuerdas > 0 ? 'La partida de captura' : 'La partida de caza';
@@ -167,7 +177,7 @@ export async function avisoDelReino(tx: Tx, saveId: string, text: string) {
 /// Q5: al volver, las piezas del Reino entran en el Almacén con su caducidad.
 export async function descargarCaza(tx: Tx, v: ViajeroFila, dia: number): Promise<number> {
   const carga = v.carga as unknown as CargaCaza | null;
-  if (!carga || carga.piezas <= 0 || v.factionId) return 0;
+  if (!carga?.especie || !carga.piezas || carga.piezas <= 0 || v.factionId) return 0;
   const caduca = carga.diaCaza + DIAS_PIEZA;
   if (caduca <= dia) {
     await avisoDelReino(tx, v.saveId, `La partida de caza vuelve, pero sus ${carga.piezas} piezas ya se han echado a perder.`);
@@ -186,22 +196,25 @@ export async function descargarCaza(tx: Tx, v: ViajeroFila, dia: number): Promis
 export async function revisarPiezas(tx: Tx, saveId: string, dia: number): Promise<{ desolladas: number; perdidas: number }> {
   const piezas = await tx.almacenItem.findMany({ where: { saveId, catalogSlug: SLUG_PIEZA }, orderBy: [{ caducaEnDia: 'asc' }, { createdAt: 'asc' }] });
   if (piezas.length === 0) return { desolladas: 0, perdidas: 0 };
-  const desolladeros = await tx.building.findMany({ where: { saveId, recipeKey: 'desolladero', status: 'ACTIVO' }, select: { tier: true } });
-  let capacidad = desolladeros.reduce((s, b) => s + PIEZAS_DESOLLADERO_POR_ESCALON * Math.max(1, b.tier ?? 1), 0);
+  let capacidad = await capacidadDesolladero(tx, saveId);
   const { worldId } = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } });
-  let desolladas = 0;
+  const porEspecie = new Map<string, number>();
+  const borrar: string[] = [];
   let perdidas = 0;
   for (const p of piezas) {
     if (capacidad > 0 && (p.caducaEnDia ?? Infinity) > dia && p.especieSlug) {
-      await aprovecharAnimal(tx, saveId, worldId, p.especieSlug);
-      await tx.almacenItem.delete({ where: { id: p.id } });
+      porEspecie.set(p.especieSlug, (porEspecie.get(p.especieSlug) ?? 0) + 1);
+      borrar.push(p.id);
       capacidad--;
-      desolladas++;
     } else if ((p.caducaEnDia ?? Infinity) <= dia) {
-      await tx.almacenItem.delete({ where: { id: p.id } });
+      borrar.push(p.id);
       perdidas++;
     }
   }
+  // Las de la misma especie se desuellan de una vez (el rendimiento es por animal).
+  for (const [especie, n] of porEspecie) await aprovecharAnimal(tx, saveId, worldId, especie, n);
+  if (borrar.length > 0) await tx.almacenItem.deleteMany({ where: { id: { in: borrar } } });
+  const desolladas = borrar.length - perdidas;
   if (desolladas > 0) await avisoDelReino(tx, saveId, `El Desolladero desuella ${desolladas} pieza${desolladas === 1 ? '' : 's'}: su carne va a la comida y lo demás al Almacén.`);
   if (perdidas > 0) await avisoDelReino(tx, saveId, `Se echan a perder ${perdidas} pieza${perdidas === 1 ? '' : 's'} de caza sin desollar.`);
   return { desolladas, perdidas };
@@ -219,7 +232,10 @@ TRABAJOS.CAZA = {
   },
   // Q7/Q12: una facción solo repite con 7 días de reserva; el Reino, si el Desolladero da abasto.
   antesDeRepetir: async (tx, v) => {
-    if (v.factionId) return (await faccionPuedeCazar(tx, v.factionId)) ? { ok: true } : { ok: false, motivo: 'le falta comida de reserva' };
+    if (v.factionId) {
+      if (v.miembros.reduce((s, m) => s + m.genericos, 0) < CAZADORES_POR_PARTIDA) return { ok: false, motivo: 'le faltan cazadores' };
+      return (await faccionPuedeCazar(tx, v.factionId)) ? { ok: true } : { ok: false, motivo: 'le falta comida de reserva' };
+    }
     return (await desolladeroDaAbasto(tx, v.saveId)) ? { ok: true } : { ok: false, motivo: 'el Desolladero no da abasto con las piezas que hay' };
   },
 };
@@ -227,10 +243,12 @@ TRABAJOS.CAZA = {
 /// Q7: el Reino deja de mandar piezas si ya tiene más sin desollar de las que su Desolladero puede
 /// tratar antes de que se estropeen (sin Desolladero, con cualquier pieza pendiente).
 export async function desolladeroDaAbasto(tx: Tx, saveId: string): Promise<boolean> {
-  const [pendientes, desolladeros] = await Promise.all([
-    tx.almacenItem.count({ where: { saveId, catalogSlug: SLUG_PIEZA } }),
-    tx.building.findMany({ where: { saveId, recipeKey: 'desolladero', status: 'ACTIVO' }, select: { tier: true } }),
-  ]);
-  const porDia = desolladeros.reduce((s, b) => s + PIEZAS_DESOLLADERO_POR_ESCALON * Math.max(1, b.tier ?? 1), 0);
+  const [pendientes, porDia] = await Promise.all([tx.almacenItem.count({ where: { saveId, catalogSlug: SLUG_PIEZA } }), capacidadDesolladero(tx, saveId)]);
   return pendientes <= porDia * DIAS_PIEZA;
+}
+
+/// Piezas que desuellan al día los Desolladeros del Reino.
+export async function capacidadDesolladero(tx: Tx, saveId: string): Promise<number> {
+  const desolladeros = await tx.building.findMany({ where: { saveId, recipeKey: 'desolladero', status: 'ACTIVO' }, select: { tier: true } });
+  return desolladeros.reduce((s, b) => s + PIEZAS_DESOLLADERO_POR_ESCALON * Math.max(1, b.tier ?? 1), 0);
 }

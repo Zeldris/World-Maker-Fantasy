@@ -16,6 +16,7 @@ describe('factura de equipo (CR-58)', () => {
   it('alta: herramienta para el trabajador; arma y armadura para el soldado', () => {
     expect(equipoDeAlta('trabajador')).toEqual({ herramienta: 7 });
     expect(equipoDeAlta('soldado')).toEqual({ arma: 18, armadura: 16 });
+    expect(equipoDeAlta('cazador')).toEqual({ arma: 18 });
   });
 
   it('una semana sin pagar rompe 1/4 de las herramientas y 1/6 de las armas', () => {

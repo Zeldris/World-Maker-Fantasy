@@ -170,7 +170,7 @@ export function PartidasSection({ saveId, onRefreshSave }: { saveId: string; onR
             </label>
             <button
               type="button"
-              disabled={busy || !!consulta || !especieElegida || elegidos.size === 0}
+              disabled={busy || !!consulta || !especieElegida || companionIds.length + subjectIds.length === 0}
               title={consulta ?? undefined}
               onClick={() =>
                 void accion(async () => {
@@ -180,7 +180,7 @@ export function PartidasSection({ saveId, onRefreshSave }: { saveId: string; onR
               }
               className="tactile self-start rounded-lg border border-accent-600 bg-gradient-to-b from-accent-400 to-accent-600 px-3 py-1.5 text-2xs font-bold uppercase tracking-wide text-wood-950 disabled:opacity-50"
             >
-              Lanzar partida ({elegidos.size})
+              Lanzar partida ({companionIds.length + subjectIds.length})
             </button>
           </div>
         )}

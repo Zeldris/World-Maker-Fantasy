@@ -3,7 +3,7 @@ import { prisma } from '../lib/prisma.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
 import { ownerKeyFor } from './reinoOwner.js';
 import { avanzarViajeros, crearViajero } from './viajeros.js';
-import { desolladeroDaAbasto, DIAS_PIEZA, revisarPiezas, SLUG_PIEZA } from './partidasCaza.js';
+import { descargarCaza, desolladeroDaAbasto, DIAS_PIEZA, revisarPiezas, SLUG_PIEZA } from './partidasCaza.js';
 
 /// CR-63 (63b): la partida caza de fondo al llegar, trae piezas que se estropean y el Desolladero las
 /// convierte en comida y materiales.
@@ -91,5 +91,12 @@ describe('partidas de caza (CR-63 63b)', () => {
     const v = await prisma.viajero.findFirstOrThrow({ where: { saveId, objetivo: 'corretolvas' } });
     expect(v).toMatchObject({ estado: 'TERMINADO', carga: expect.objectContaining({ piezas: 0 }) });
     expect(await prisma.logEntry.count({ where: { saveId, text: { contains: 'no encuentra Corretolvas' } } })).toBe(1);
+  });
+
+  it('una partida que vuelve sin cazar (solo con sus cuerdas) no descarga nada', async () => {
+    const v = await viajero();
+    const n = await prisma.$transaction((tx) => descargarCaza(tx, { ...v, carga: { cuerdas: 2 }, miembros: [] }, 30));
+    expect(n).toBe(0);
+    expect(await prisma.logEntry.count({ where: { saveId, text: { contains: 'undefined' } } })).toBe(0);
   });
 });

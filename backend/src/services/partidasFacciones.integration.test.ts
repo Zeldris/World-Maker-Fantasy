@@ -3,7 +3,7 @@ import { prisma } from '../lib/prisma.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
 import { enlacesDelMundo, rutaMasCorta, TRABAJOS } from './viajeros.js';
 import { cazadoresFuera, comidaDePiezas, DIAS_RESERVA_PARA_CAZAR, diasDeReservaFaccion, lanzarPartidasDeFacciones, MAX_PARTIDAS_FACCION } from './partidasFacciones.js';
-import './partidasCaza.js';
+import { aplicarBajas, type Cazador } from './partidasCaza.js';
 
 /// CR-63 (63g, Q10 y Q12): las facciones cazan con partidas solo si les sobra comida.
 describe('partidas de las facciones (CR-63 63g)', () => {
@@ -71,5 +71,18 @@ describe('partidas de las facciones (CR-63 63g)', () => {
     // Y no sale ninguna nueva.
     await prisma.viajero.deleteMany({ where: { factionId: faccionId } });
     expect(await lanzarPartidasDeFacciones(prisma, saveId, 20)).toBe(0);
+  });
+
+  it('sus cazadores muertos dejan de contar en su gente y la partida mermada no repite', async () => {
+    await prisma.kingdomStats.updateMany({ where: { factionId: faccionId }, data: { comida: 1000, poblacion: 50, trabajadores: 100 } });
+    expect(await lanzarPartidasDeFacciones(prisma, saveId, 21)).toBe(1);
+    const v = await prisma.viajero.findFirstOrThrow({ where: { factionId: faccionId }, include: { miembros: true } });
+    const m = v.miembros[0]!;
+    const cazadores: Cazador[] = Array.from({ length: 8 }, (_, i) => ({ miembroId: m.id, generico: true, c: { id: `${m.id}-${i}` } as Cazador['c'] }));
+    await prisma.$transaction((tx) => aplicarBajas(tx, saveId, cazadores, new Map(), new Set([`${m.id}-0`, `${m.id}-1`, `${m.id}-2`]), 21, faccionId));
+    expect(await prisma.$transaction((tx) => cazadoresFuera(tx, faccionId))).toBe(5);
+    expect(await prisma.kingdomStats.findFirstOrThrow({ where: { factionId: faccionId } })).toMatchObject({ poblacion: 47, trabajadores: 97 });
+    const rep = await prisma.$transaction(async (tx) => TRABAJOS.CAZA!.antesDeRepetir!(tx, (await tx.viajero.findUniqueOrThrow({ where: { id: v.id }, include: { miembros: true } })), 21));
+    expect(rep).toEqual({ ok: false, motivo: 'le faltan cazadores' });
   });
 });

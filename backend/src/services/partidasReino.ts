@@ -125,6 +125,13 @@ export async function ordenarPartida(tx: Tx, saveId: string, id: string, accion:
   }
   if (accion === 'destino' && destinoLocationId) {
     if (v.estado !== 'IDA') return { ok: false, motivo: 'Solo se cambia el destino de una partida que aún va de camino.' };
+    // Las mismas reglas que al lanzarla: un lugar que conoces y donde has visto su presa.
+    const [visitado, presa] = await Promise.all([
+      tx.locationVisit.findFirst({ where: { saveId, locationId: destinoLocationId }, select: { id: true } }),
+      tx.zonePoint.findFirst({ where: { saveId, locationId: destinoLocationId, tipo: 'FAUNA', targetSlug: v.objetivo ?? '', activo: true, cantidad: { gt: 0 } }, select: { id: true } }),
+    ]);
+    if (!visitado) return { ok: false, motivo: 'No conoces ese lugar.' };
+    if (!presa) return { ok: false, motivo: 'No has visto su presa allí.' };
     const ruta = rutaMasCorta(enlaces, v.ubicacionLocationId, destinoLocationId);
     if (!ruta) return { ok: false, motivo: 'No hay camino hasta allí.' };
     await tx.viajero.update({ where: { id }, data: { destinoLocationId, ruta, minutosEnTramo: 0 } });

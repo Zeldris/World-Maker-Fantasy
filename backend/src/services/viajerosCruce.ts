@@ -147,7 +147,8 @@ export async function comprarCarneAViajero(tx: Tx, saveId: string, id: string): 
   // Cobro condicionado al saldo en la misma sentencia (dos clics no dejan la bolsa en negativo).
   const { count } = await tx.save.updateMany({ where: { id: saveId, goirnos: { gte: precio } }, data: { goirnos: { decrement: precio } } });
   if (count === 0) return { ok: false, motivo: `No te llega: piden ${precio} Goirnos.` };
-  const { count: hay } = await tx.viajero.updateMany({ where: { id, carga: { path: ['piezas'], gte: 1 } }, data: { carga: { ...carga, piezas: carga.piezas - 1 } as Prisma.InputJsonValue } });
+  // Condicionado a que nadie haya comprado entre medias (dos compras a la vez no pagan dos y quitan una).
+  const { count: hay } = await tx.viajero.updateMany({ where: { id, carga: { path: ['piezas'], equals: carga.piezas } }, data: { carga: { ...carga, piezas: carga.piezas - 1 } as Prisma.InputJsonValue } });
   if (hay === 0) throw new Error('La pieza ya se vendió');
   const items: string[] = [];
   for (const r of carne) {

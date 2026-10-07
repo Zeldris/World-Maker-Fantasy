@@ -191,7 +191,7 @@ export async function cambiarRolSubdito(tx: Tx, saveId: string, subjectId: strin
   // CR-58: quien pasa a soldado, vigía o cazador necesita arma (quien vuelve a trabajar ya tiene su herramienta).
   if (rol !== 'trabajador' && (antes === 'trabajador' || antes === 'visitante')) {
     const { equiparAlta } = await import('./economiaReino.js');
-    await equiparAlta(tx, saveId, 'soldado');
+    await equiparAlta(tx, saveId, rol === 'cazador' ? 'cazador' : 'soldado');
   }
   return { ok: true };
 }

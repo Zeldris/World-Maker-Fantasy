@@ -49,7 +49,7 @@ export async function pelearEncuentro(tx: Tx, v: ViajeroFila, hostil: NonNullabl
   const r = simularCombateDeFondo([...cazadores.map((h) => h.c), ...enemigos], random);
   const condicion = new Map<string, CondicionFisica>(r.estados.filter((e) => !e.id.startsWith('hostil-')).map((e) => [e.id, e.condicion]));
   const muertos = new Set(r.estados.filter((e) => e.muerto && !e.id.startsWith('hostil-')).map((e) => e.id));
-  await aplicarBajas(tx, v.saveId, cazadores, condicion, muertos, dia);
+  await aplicarBajas(tx, v.saveId, cazadores, condicion, muertos, dia, v.factionId);
   const caidos = r.estados.filter((e) => e.id.startsWith('hostil-') && !enPie(e.condicion)).length;
   if (caidos > 0) {
     await descontarZonePointCaza(tx, v.saveId, punto.id, caidos);

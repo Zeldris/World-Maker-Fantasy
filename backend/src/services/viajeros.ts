@@ -75,8 +75,11 @@ export function rutaMasCorta(enlaces: Enlace[], desde: string, hasta: string): s
 }
 
 /// Puro: minutos de camino entre dos lugares enlazados.
+const grafos = new WeakMap<Enlace[], ReturnType<typeof grafo>>();
 export function minutosTramo(enlaces: Enlace[], a: string, b: string): number {
-  return grafo(enlaces).get(a)?.get(b) ?? Infinity;
+  let g = grafos.get(enlaces);
+  if (!g) grafos.set(enlaces, (g = grafo(enlaces)));
+  return g.get(a)?.get(b) ?? Infinity;
 }
 
 export interface Posicion {
@@ -141,9 +144,13 @@ async function motivoParaParar(tx: Tx, v: ViajeroFila): Promise<string | null> {
   ]);
   const vivos = await tx.companion.count({ where: { id: { in: companionIds } } });
   if (caidos > 0 || fuera > 0 || vivos < companionIds.length) return 'ha caído alguien de los suyos';
+  if (companionIds.length + subjectIds.length === 0 && v.miembros.every((m) => m.genericos <= 0)) return 'no queda nadie';
   return null;
 }
 export const TRABAJOS: Record<string, TrabajoViajero> = {};
+
+/// Entradas del diario que guarda un viajero (lo que cuenta si le preguntan es lo de este viaje).
+export const MAX_DIARIO = 40;
 
 /// Q8: lo que pasa al llegar a cada lugar del camino (encuentros, `viajerosEncuentros.ts`). «sigue»,
 /// «para» (se queda en ese lugar hasta mañana) o «vuelve» (a casa desde ahí).
@@ -228,7 +235,9 @@ export async function diaDeViajero(tx: Tx, v: ViajeroFila, enlaces: Enlace[], di
       const l = r.cruzados[i]!;
       // Q9: lo que ve en cada lugar por el que pasa (lo cuenta si le preguntan).
       diario.push({ locationId: l, dia, vio: await loQueVe(tx, v.saveId, l) });
-      const tras = GANCHOS.alCruzar ? await GANCHOS.alCruzar(tx, v, l, i === 0 ? previo.ubicacion : r.cruzados[i - 1]!, dia, random) : 'sigue';
+      // Con la partida como quedó tras las peleas de antes de hoy (no pelean los que ya cayeron).
+      const ahora = i === 0 && !v.encuentro ? v : await tx.viajero.findUniqueOrThrow({ where: { id: v.id }, include: { miembros: true } });
+      const tras = GANCHOS.alCruzar ? await GANCHOS.alCruzar(tx, ahora, l, i === 0 ? previo.ubicacion : r.cruzados[i - 1]!, dia, random) : 'sigue';
       if (tras === 'para') {
         pos = { ubicacion: l, ruta: [...r.cruzados.slice(i + 1), ...r.pos.ruta], minutosEnTramo: 0 };
         break;
@@ -243,7 +252,11 @@ export async function diaDeViajero(tx: Tx, v: ViajeroFila, enlaces: Enlace[], di
   }
   const actualizado = await tx.viajero.update({
     where: { id: v.id },
-    data: { estado, ubicacionLocationId: pos.ubicacion, ruta: pos.ruta, minutosEnTramo: pos.minutosEnTramo, ultimoDia: dia, diario: diario as unknown as Prisma.InputJsonValue },
+    data: {
+      estado, ubicacionLocationId: pos.ubicacion, ruta: pos.ruta, minutosEnTramo: pos.minutosEnTramo, ultimoDia: dia, diario: diario.slice(-MAX_DIARIO) as unknown as Prisma.InputJsonValue,
+      // Un encuentro que quedó en el último lugar del camino no se arrastra al trabajo ni al viaje siguiente.
+      ...(estado === 'TRABAJANDO' || estado === 'TERMINADO' ? { encuentro: Prisma.DbNull } : {}),
+    },
     include: { miembros: true },
   });
   // Al volver a casa, con su posición ya en el origen (descarga, orden permanente…).
@@ -267,7 +280,7 @@ async function repetir(tx: Tx, v: ViajeroFila, enlaces: Enlace[], dia: number, t
   if (!ruta) return parar('ya no hay camino');
   await tx.viajero.update({
     where: { id: v.id },
-    data: { estado: 'IDA', ruta, minutosEnTramo: 0, diaSalida: dia, carga: prep.carga ?? Prisma.DbNull, ubicacionLocationId: v.origenLocationId },
+    data: { estado: 'IDA', ruta, minutosEnTramo: 0, diaSalida: dia, carga: prep.carga ?? Prisma.DbNull, ubicacionLocationId: v.origenLocationId, encuentro: Prisma.DbNull, diario: [{ locationId: v.origenLocationId, dia }] },
   });
 }
 

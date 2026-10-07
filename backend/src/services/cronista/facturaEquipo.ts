@@ -48,7 +48,8 @@ export function desgasteSemanal(c: { trabajadores: number; soldados: number }): 
 }
 
 /// Puro: el equipo de alta de alguien que pasa a un rol (un soldado que era trabajador ya tiene herramienta).
-export function equipoDeAlta(rol: 'trabajador' | 'soldado'): Partial<Record<PiezaEquipo, number>> {
+export function equipoDeAlta(rol: 'trabajador' | 'soldado' | 'cazador'): Partial<Record<PiezaEquipo, number>> {
+  if (rol === 'cazador') return { arma: EQUIPO.arma.valor };
   return rol === 'trabajador' ? { herramienta: EQUIPO.herramienta.valor } : { arma: EQUIPO.arma.valor, armadura: EQUIPO.armadura.valor };
 }
 

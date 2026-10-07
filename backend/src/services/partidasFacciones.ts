@@ -67,8 +67,11 @@ async function cotoDeFaccion(tx: Tx, saveId: string, worldId: string, casaId: st
   const puntos = await tx.zonePoint.findMany({ where: { saveId, tipo: 'FAUNA', activo: true, cantidad: { gt: 0 }, location: { region } }, select: { locationId: true, targetSlug: true, cantidad: true } });
   const enlaces = await enlacesDelMundo(tx, worldId);
   let mejor: { locationId: string; especie: string; cantidad: number } | null = null;
+  const conCamino = new Map<string, boolean>();
   for (const p of puntos) {
-    if (!cazables.has(p.targetSlug) || rutaMasCorta(enlaces, casaId, p.locationId) === null) continue;
+    if (!cazables.has(p.targetSlug)) continue;
+    if (!conCamino.has(p.locationId)) conCamino.set(p.locationId, rutaMasCorta(enlaces, casaId, p.locationId) !== null);
+    if (!conCamino.get(p.locationId)) continue;
     if (!mejor || p.cantidad > mejor.cantidad || (p.cantidad === mejor.cantidad && p.locationId < mejor.locationId)) mejor = { locationId: p.locationId, especie: p.targetSlug, cantidad: p.cantidad };
   }
   return mejor && { locationId: mejor.locationId, especie: mejor.especie };
@@ -81,7 +84,7 @@ export async function lanzarPartidasDeFacciones(prisma: PrismaClient, saveId: st
   if (!save) return 0;
   const facciones = await prisma.faction.findMany({
     where: { saveId, disueltaEn: null, origenSlug: { not: null }, raza: { in: Object.keys(CAZA_AGREGADA) } },
-    select: { id: true, raza: true, kingdomStats: true, buildings: { where: { locationId: { not: null } }, select: { location: { select: { id: true, region: true } } }, take: 1 } },
+    select: { id: true, raza: true, kingdomStats: true, buildings: { where: { locationId: { not: null } }, select: { location: { select: { id: true, region: true } } }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], take: 1 } },
     orderBy: { id: 'asc' },
   });
   let salen = 0;

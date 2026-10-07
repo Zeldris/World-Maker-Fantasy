@@ -706,7 +706,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
         )}
       </div>
       {/* CR-63 (63e): partidas y otros viajeros de paso por este lugar. */}
-      <ViajerosAqui saveId={saveId} lugar={data.locationName ?? ""} soloConsulta={soloConsulta} onRefreshSave={onRefreshSave} />
+      <ViajerosAqui saveId={saveId} lugar={data.locationName ?? ""} deZona={(data.viajeros ?? []).map((v) => v.id).join(",")} soloConsulta={soloConsulta} onRefreshSave={onRefreshSave} />
       {/* Pieza 2 (2026-09-09) — recuerda dónde vive el movimiento real cuando esta vista es solo
           informativa, para no dejar al jugador buscando un clic que ya no hace nada aquí. */}
       {soloConsulta && (

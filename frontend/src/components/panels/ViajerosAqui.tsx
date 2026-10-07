@@ -9,7 +9,8 @@ const ESTADO: Record<ViajeroAqui['estado'], string> = { IDA: 'de camino', TRABAJ
 /// CR-63 (63e, Q9 y ADR 0003): los viajeros que están ahora donde estás tú — partidas tuyas o de
 /// otras facciones. «Preguntar» (qué han visto por el camino), «Comprar carne» (a las de otras
 /// facciones que traen piezas) y, a las tuyas, «Volver a casa».
-export function ViajerosAqui({ saveId, lugar, soloConsulta, onRefreshSave }: { saveId: string; lugar: string; soloConsulta?: boolean; onRefreshSave?: () => Promise<void> }) {
+/// `deZona`: los ids que pinta el mapa de la zona; si cambian (llega o se va alguien), se recarga.
+export function ViajerosAqui({ saveId, lugar, deZona, soloConsulta, onRefreshSave }: { saveId: string; lugar: string; deZona?: string; soloConsulta?: boolean; onRefreshSave?: () => Promise<void> }) {
   const [viajeros, setViajeros] = useState<ViajeroAqui[]>([])
   const [vendibles, setVendibles] = useState<{ id: string; name: string; precio: number }[]>([])
   const [aVender, setAVender] = useState('')
@@ -29,7 +30,7 @@ export function ViajerosAqui({ saveId, lugar, soloConsulta, onRefreshSave }: { s
 
   useEffect(() => {
     void cargar()
-  }, [cargar, lugar])
+  }, [cargar, lugar, deZona])
 
   async function accion(fn: () => Promise<unknown>, mensaje: string) {
     setBusy(true)

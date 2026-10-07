@@ -27,7 +27,7 @@ export async function prepararCaptura(tx: Tx, saveId: string, especie: string, c
 export async function descargarCaptura(tx: Tx, v: ViajeroFila, dia: number): Promise<{ enJaula: number; sueltos: number }> {
   const carga = v.carga as unknown as CargaCaza | null;
   await descargarCaza(tx, v, dia);
-  if (!carga || v.factionId) return { enJaula: 0, sueltos: 0 };
+  if (!carga?.especie || v.factionId) return { enJaula: 0, sueltos: 0 };
   const { worldId } = await tx.save.findUniqueOrThrow({ where: { id: v.saveId }, select: { worldId: true } });
   const npc = await tx.npc.findFirst({ where: { worldId, saveId: null, slug: carga.especie }, select: { id: true, name: true } });
   let enJaula = 0;
@@ -38,7 +38,7 @@ export async function descargarCaptura(tx: Tx, v: ViajeroFila, dia: number): Pro
       sueltos++;
       continue;
     }
-    await tx.npcState.create({ data: { saveId: v.saveId, npcId: npc.id, scope: `partida-${v.id}-${i}`, condicionFisica: 'GRAVE', capturado: true, capturaFelicidad: 0, capturaJaulaBuildingId: jaula.id } });
+    await tx.npcState.create({ data: { saveId: v.saveId, npcId: npc.id, scope: `partida-${v.id}-${dia}-${i}`, condicionFisica: 'GRAVE', capturado: true, capturaFelicidad: 0, capturaJaulaBuildingId: jaula.id } });
     enJaula++;
   }
   const sobran = carga.cuerdas ?? 0;
