@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { prisma } from '../lib/prisma.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
 import { avanzarViajeros, crearViajero, enlacesDelMundo, rutaMasCorta } from './viajeros.js';
-import { comprarCarneAViajero, diasParaVolver, preguntarAViajero, viajerosAqui } from './viajerosCruce.js';
+import { comprarCarneAViajero, diasParaVolver, preguntarAViajero, venderAViajero, viajerosAqui } from './viajerosCruce.js';
 import { expedicionesVisibles } from './expedicionesMapa.js';
 
 /// CR-63 (63e, Q9): los viajeros en el mapa de Berig y al cruzarte con ellos.
@@ -72,6 +72,25 @@ describe('cruzarse con viajeros (CR-63 63e)', () => {
     expect(await prisma.inventoryItem.count({ where: { saveId } })).toBe(compra.items.length);
     expect(((await prisma.viajero.findUniqueOrThrow({ where: { id: v.id } })).carga as { piezas: number }).piezas).toBe(1);
     expect((await prisma.kingdomStats.findFirstOrThrow({ where: { factionId: faccionId } })).riqueza).toBe(compra.precio);
+  });
+
+  it('al preguntar te pasan, como rumor, lo que pasó por donde vinieron; y les vendes comida', async () => {
+    const v = await prisma.viajero.findFirstOrThrow({ where: { saveId } });
+    const pasado = (v.diario as { locationId: string }[])[0]!.locationId;
+    const suceso = await prisma.suceso.create({ data: { saveId, tipo: 'MUERTE_NPC', familia: 'VIDA_MUERTE', fictionalMinutes: 10 * 1440 + 60, locationId: pasado, importancia: 6, origen: 'MUNDO', semilla: 'cr63-rumor', datos: { npcSlug: 'x' }, texto: 'Alguien cae en el camino.' } });
+    const r = await prisma.$transaction((tx) => preguntarAViajero(tx, saveId, v.id));
+    expect(r.ok && r.lineas.at(-1)).toContain('algo que ha pasado');
+    expect(await prisma.conocimiento.findFirst({ where: { saveId, sucesoId: suceso.id } })).toMatchObject({ confirmado: false, via: 'NPC', fuente: 'partida de Cazadores del Llano' });
+    // Vender: solo comida y si la facción puede pagar.
+    const piedra = await prisma.inventoryItem.create({ data: { saveId, name: 'Piedra', description: 'x', catalogSlug: 'bloque-piedra-tallada' } });
+    expect(await prisma.$transaction((tx) => venderAViajero(tx, saveId, v.id, piedra.id))).toEqual({ ok: false, motivo: 'Solo compran comida.' });
+    const carne = await prisma.inventoryItem.create({ data: { saveId, name: 'Ración de carne fresca', description: 'x', catalogSlug: 'racion-carne' } });
+    const goirnos = (await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).goirnos;
+    const venta = await prisma.$transaction((tx) => venderAViajero(tx, saveId, v.id, carne.id));
+    expect(venta.ok).toBe(true);
+    if (!venta.ok) return;
+    expect((await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).goirnos).toBe(goirnos + venta.precio);
+    expect(await prisma.inventoryItem.findUnique({ where: { id: carne.id } })).toBeNull();
   });
 
   it('si ya no está aquí, no se le puede preguntar', async () => {

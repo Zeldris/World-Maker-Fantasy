@@ -6,9 +6,10 @@ vi.mock('../../lib/api', () => ({
   postPreguntarViajero: vi.fn(),
   postComprarAViajero: vi.fn(),
   postOrdenPartida: vi.fn(),
+  postVenderAViajero: vi.fn(),
 }))
 
-import { getViajerosAqui, postComprarAViajero, postOrdenPartida, postPreguntarViajero } from '../../lib/api'
+import { getViajerosAqui, postComprarAViajero, postOrdenPartida, postPreguntarViajero, postVenderAViajero } from '../../lib/api'
 import { ViajerosAqui } from './ViajerosAqui'
 
 /// CR-63 (63e): «De paso por aquí».
@@ -31,7 +32,9 @@ describe('ViajerosAqui (CR-63 63e)', () => {
         { id: 'a', propia: false, quien: 'Clan Serhu', tipo: 'CAZA', que: 'partida de caza de Múrgol', estado: 'VUELTA', gente: 8, piezas: 3 },
         { id: 'b', propia: true, quien: 'tu Reino', tipo: 'CAZA', que: 'partida de caza de Jusha', estado: 'IDA', gente: 4, piezas: 0 },
       ],
+      vendibles: [{ id: 'i1', name: 'Pan de trigo escarlata', precio: 4 }],
     })
+    vi.mocked(postVenderAViajero).mockResolvedValue({ ok: true, precio: 4 })
     vi.mocked(postPreguntarViajero).mockResolvedValue({ ok: true, lineas: ['Día 12, La Hondonada: 5 Múrgol.'] })
     vi.mocked(postComprarAViajero).mockResolvedValue({ ok: true, items: ['Ración de carne fresca'], precio: 6 })
     vi.mocked(postOrdenPartida).mockResolvedValue({ ok: true })
@@ -50,5 +53,9 @@ describe('ViajerosAqui (CR-63 63e)', () => {
       fireEvent.click(getByRole('button', { name: 'Volver a casa' }))
     })
     expect(postOrdenPartida).toHaveBeenCalledWith('s', 'b', 'volver')
+    await act(async () => {
+      fireEvent.click(getByRole('button', { name: 'Vender' }))
+    })
+    expect(postVenderAViajero).toHaveBeenCalledWith('s', 'a', 'i1')
   })
 })

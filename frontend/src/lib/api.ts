@@ -1247,6 +1247,8 @@ export interface ZonaResponse {
   /// vive en Enciclopedia > Localización (DetailModal.tsx), no aquí; este panel solo lo muestra.
   imageUrl?: string | null
   regionControl?: RegionControlInfo | null
+  /// CR-63 (63e): viajeros de paso por esta zona, en su celda.
+  viajeros?: { id: string; nombre: string; x: number; y: number }[]
   puntos: ZonePointInfo[]
   dinamicos: ZonaDinamicoInfo[]
   /// Punto del jugador en el mapa de Zona (2026-09-04) — se mueve solo por acciones deterministas
@@ -1610,11 +1612,14 @@ export interface ViajeroAqui {
   gente: number
   piezas: number
 }
-export async function getViajerosAqui(saveId: string): Promise<{ viajeros: ViajeroAqui[] }> {
+export async function getViajerosAqui(saveId: string): Promise<{ viajeros: ViajeroAqui[]; vendibles?: { id: string; name: string; precio: number }[] }> {
   return fetchJson(`${API_URL}/saves/${saveId}/viajeros/aqui`)
 }
 export async function postPreguntarViajero(saveId: string, viajeroId: string): Promise<{ ok: boolean; lineas: string[] }> {
   return fetchJson(`${API_URL}/saves/${saveId}/viajeros/${viajeroId}/preguntar`, { method: 'POST' })
+}
+export async function postVenderAViajero(saveId: string, viajeroId: string, itemId: string): Promise<{ ok: boolean; precio: number }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/viajeros/${viajeroId}/vender`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ itemId }) })
 }
 export async function postComprarAViajero(saveId: string, viajeroId: string): Promise<{ ok: boolean; items: string[]; precio: number }> {
   return fetchJson(`${API_URL}/saves/${saveId}/viajeros/${viajeroId}/comprar`, { method: 'POST' })

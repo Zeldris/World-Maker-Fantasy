@@ -37,6 +37,12 @@ describe('ZonaPanel — Z-A', () => {
     return utils
   }
 
+  it('CR-63 (63e): los viajeros de paso se pintan en su celda con su nombre', async () => {
+    vi.mocked(getZona).mockResolvedValue({ ...zona, viajeros: [{ id: 'v1', nombre: 'partida de caza de Múrgol (Clan Serhu)', x: 225, y: 175 }] } as never)
+    const { getByLabelText } = await renderizar()
+    expect(getByLabelText('De paso: partida de caza de Múrgol (Clan Serhu)')).toBeTruthy()
+  })
+
   it('ZON-62: la cuadrícula está oculta; se ve mientras se mantiene Alt o fijada con el botón', async () => {
     const { queryByTestId, getByRole } = await renderizar()
     expect(queryByTestId('cuadricula')).toBeNull()

@@ -2,7 +2,7 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { lanzarPartida, opcionesDePartida, ordenarPartida, partidasDelReino, type PeticionPartida } from '../../services/partidasReino.js';
-import { comprarCarneAViajero, preguntarAViajero, viajerosAqui } from '../../services/viajerosCruce.js';
+import { comidaVendible, comprarCarneAViajero, preguntarAViajero, venderAViajero, viajerosAqui } from '../../services/viajerosCruce.js';
 import { lockRowForUpdate, rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 
 const selectSave = { id: true, endedAt: true, pendingDeathResolution: true, worldState: { select: { fictionalMinutes: true } } } as const;
@@ -37,7 +37,7 @@ export async function partidasRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>('/saves/:id/viajeros/aqui', async (request, reply) => {
     const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: selectSave });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
-    return { viajeros: await prisma.$transaction((tx) => viajerosAqui(tx, save.id)) };
+    return prisma.$transaction(async (tx) => ({ viajeros: await viajerosAqui(tx, save.id), vendibles: await comidaVendible(tx, save.id) }));
   });
 
   /// «Preguntar» a un viajero: lo que ha visto por el camino.
@@ -57,6 +57,17 @@ export async function partidasRoutes(app: FastifyInstance) {
     if (rejectIfEnded(save, reply)) return;
     if (rejectIfPendingDeath(save, reply)) return;
     const r = await prisma.$transaction((tx) => comprarCarneAViajero(tx, save.id, request.params.viajeroId));
+    if (!r.ok) return reply.status(400).send({ error: r.motivo });
+    return r;
+  });
+
+  /// «Comerciar»: venderle algo de comer de tu bolsa a una partida de otra facción.
+  app.post<{ Params: { id: string; viajeroId: string }; Body: { itemId: string } }>('/saves/:id/viajeros/:viajeroId/vender', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: selectSave });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (rejectIfEnded(save, reply)) return;
+    if (rejectIfPendingDeath(save, reply)) return;
+    const r = await prisma.$transaction((tx) => venderAViajero(tx, save.id, request.params.viajeroId, request.body?.itemId ?? ''));
     if (!r.ok) return reply.status(400).send({ error: r.motivo });
     return r;
   });

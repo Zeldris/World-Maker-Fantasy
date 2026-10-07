@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ErrorBanner } from '../ErrorBanner'
 import { useErrorConReintento } from '../../hooks/useErrorConReintento'
-import { getViajerosAqui, postComprarAViajero, postOrdenPartida, postPreguntarViajero, type ViajeroAqui } from '../../lib/api'
+import { getViajerosAqui, postComprarAViajero, postOrdenPartida, postPreguntarViajero, postVenderAViajero, type ViajeroAqui } from '../../lib/api'
+import { SelectorJuego } from '../SelectorJuego'
 
 const ESTADO: Record<ViajeroAqui['estado'], string> = { IDA: 'de camino', TRABAJANDO: 'cazando aquí', VUELTA: 'de vuelta' }
 
@@ -10,13 +11,17 @@ const ESTADO: Record<ViajeroAqui['estado'], string> = { IDA: 'de camino', TRABAJ
 /// facciones que traen piezas) y, a las tuyas, «Volver a casa».
 export function ViajerosAqui({ saveId, lugar, soloConsulta, onRefreshSave }: { saveId: string; lugar: string; soloConsulta?: boolean; onRefreshSave?: () => Promise<void> }) {
   const [viajeros, setViajeros] = useState<ViajeroAqui[]>([])
+  const [vendibles, setVendibles] = useState<{ id: string; name: string; precio: number }[]>([])
+  const [aVender, setAVender] = useState('')
   const [relato, setRelato] = useState<{ id: string; lineas: string[] } | null>(null)
   const [busy, setBusy] = useState(false)
   const { fallo, informar, limpiar } = useErrorConReintento()
 
   const cargar = useCallback(async () => {
     try {
-      setViajeros((await getViajerosAqui(saveId)).viajeros)
+      const r = await getViajerosAqui(saveId)
+      setViajeros(r.viajeros)
+      setVendibles(r.vendibles ?? [])
     } catch (e) {
       informar('No se pudo ver quién pasa por aquí.', e, () => void cargar())
     }
@@ -69,6 +74,26 @@ export function ViajerosAqui({ saveId, lugar, soloConsulta, onRefreshSave }: { s
                 <button type="button" disabled={desactivado} onClick={() => void accion(() => postComprarAViajero(saveId, v.id), 'No se pudo comprar.')} className="tactile text-2xs text-accent-300 hover:underline disabled:opacity-50">
                   Comprar carne
                 </button>
+              )}
+              {!v.propia && vendibles.length > 0 && (
+                <span className="flex items-center gap-2">
+                  <SelectorJuego
+                    ariaLabel="Qué les vendes"
+                    value={vendibles.find((x) => x.id === aVender)?.id ?? vendibles[0]!.id}
+                    opciones={vendibles.map((x) => ({ value: x.id, label: `${x.name} (${x.precio} G)` }))}
+                    onChange={(id) => setAVender(id)}
+                    disabled={desactivado}
+                    className="min-w-[8rem] text-2xs"
+                  />
+                  <button
+                    type="button"
+                    disabled={desactivado}
+                    onClick={() => void accion(() => postVenderAViajero(saveId, v.id, vendibles.find((x) => x.id === aVender)?.id ?? vendibles[0]!.id), 'No te lo compraron.')}
+                    className="tactile text-2xs text-accent-300 hover:underline disabled:opacity-50"
+                  >
+                    Vender
+                  </button>
+                </span>
               )}
               {v.propia && v.estado !== 'VUELTA' && (
                 <button type="button" disabled={desactivado} onClick={() => void accion(() => postOrdenPartida(saveId, v.id, 'volver'), 'No se pudo hacer volver a la partida.')} className="tactile text-2xs text-wood-400 hover:text-wood-200 disabled:opacity-50">

@@ -9,6 +9,7 @@
 //   estropean a los 3 días de cazadas.
 // - Cada día, el Desolladero desuella las piezas que le caben (4 por escalón) y cada una da lo que da
 //   esa especie (`aprovecharAnimal`, lo mismo que sacrificar un animal del corral).
+import { descargarCazaFaccion, faccionPuedeCazar } from './partidasFacciones.js';
 import type { CondicionFisica, Prisma } from '@prisma/client';
 import type { AttributeBlock } from './dice.js';
 import { simularCombateDeFondo, TAMANO_SUBCOMBATE_FONDO, type CombatienteFondo } from './combateDeFondo.js';
@@ -213,6 +214,23 @@ TRABAJOS.CAZA = {
     if (!v.factionId) await avisoDelReino(tx, v.saveId, carga.resumen);
   },
   alVolver: async (tx, v, dia) => {
-    await descargarCaza(tx, v, dia);
+    if (v.factionId) await descargarCazaFaccion(tx, v);
+    else await descargarCaza(tx, v, dia);
+  },
+  // Q7/Q12: una facción solo repite con 7 días de reserva; el Reino, si el Desolladero da abasto.
+  antesDeRepetir: async (tx, v) => {
+    if (v.factionId) return (await faccionPuedeCazar(tx, v.factionId)) ? { ok: true } : { ok: false, motivo: 'le falta comida de reserva' };
+    return (await desolladeroDaAbasto(tx, v.saveId)) ? { ok: true } : { ok: false, motivo: 'el Desolladero no da abasto con las piezas que hay' };
   },
 };
+
+/// Q7: el Reino deja de mandar piezas si ya tiene más sin desollar de las que su Desolladero puede
+/// tratar antes de que se estropeen (sin Desolladero, con cualquier pieza pendiente).
+export async function desolladeroDaAbasto(tx: Tx, saveId: string): Promise<boolean> {
+  const [pendientes, desolladeros] = await Promise.all([
+    tx.almacenItem.count({ where: { saveId, catalogSlug: SLUG_PIEZA } }),
+    tx.building.findMany({ where: { saveId, recipeKey: 'desolladero', status: 'ACTIVO' }, select: { tier: true } }),
+  ]);
+  const porDia = desolladeros.reduce((s, b) => s + PIEZAS_DESOLLADERO_POR_ESCALON * Math.max(1, b.tier ?? 1), 0);
+  return pendientes <= porDia * DIAS_PIEZA;
+}

@@ -313,6 +313,8 @@ desuella) y X4 (todas las naves son la misma entidad; órdenes repetidas).
   sigue en agregado); orden permanente a la zona de su región con más fauna cazable; sus piezas se
   desuellan solas y la carne va a su comida. Antes, un prototipo para que orcos y Faerus no pasen
   hambre con la comida llegando a golpes.
+- **Q12 (tras el prototipo, usuaria):** opción (a): las facciones solo mandan partidas con 7 días o más
+  de reserva de comida; si no, sus cazadores siguen en agregado.
 - **Q11 Pasos:** 63a viajero, rutas y avance; 63b caza, piezas y Desolladero; 63c captura; 63d órdenes
   y panel «Partidas»; 63e en los mapas y al cruzarte; 63f encuentros por el camino; 63g facciones.
 

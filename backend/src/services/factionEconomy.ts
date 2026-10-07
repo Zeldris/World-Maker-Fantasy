@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
+import { cazadoresFuera } from './partidasFacciones.js';
 import { CRAFTING_RECIPES, type CraftingRecipe } from './crafting.js';
 import { daysCrossed, escalonCocinaDe, hambrunaNueva, tickFactionProduction, tickKingdomOneDay, type KingdomStatsBlock } from './kingdomTick.js';
 import { comidaDelDia, porcionDelDia, repartoDeFaccion } from './cronista/comidaOficios.js';
@@ -115,6 +116,7 @@ export async function producirFacciones(
       const edificios = await tx.building.findMany({ where: { factionId, status: 'ACTIVO' }, select: { recipeKey: true, status: true, kind: true } });
       // CR-61: escalón de su mejor Cocina (multiplica lo que ganan sus cocineros).
       const escalonCocina = escalonCocinaDe(edificios);
+      const fuera = await cazadoresFuera(tx, factionId);
       const porDia = tickFactionProduction(edificios);
       let stats: KingdomStatsBlock = {
         poblacion: fks.poblacion, felicidad: fks.felicidad, comida: fks.comida, bebida: fks.bebida, riqueza: fks.riqueza,
@@ -159,6 +161,8 @@ export async function producirFacciones(
         // CR-61: la comida sale de las tareas de sus trabajadores (sin los ganaderos y fibreros, que
         // comen de lo que da el rebaño), con la costumbre de su pueblo; ya no hay comida pasiva.
         const cuadrilla = repartoDeFaccion(fks.faction?.raza ?? null, Math.max(0, stats.trabajadores - fueraDelPasivo), true, escalonCocina > 0);
+        // CR-63 (63g): los cazadores que están fuera con sus partidas no cazan en agregado.
+        cuadrilla.cazadores = Math.max(0, cuadrilla.cazadores - fuera);
         const comidaHoy = comidaDelDia(cuadrilla, { estacion: estacionFor(dia * 1440), hayAgua: true, escalonCocina: escalonCocina || null, comidaDisponible: stats.comida });
         stats = tickFactionOneDay(stats, { ...porDia, comida: porcionDelDia(comidaHoy, dia) });
         const pago = sueldosDelDia({ ...stats, diasSinCobrar }, dia, equipoDeLaSemana(stats));

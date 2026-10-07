@@ -3,7 +3,7 @@ import { prisma } from '../lib/prisma.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
 import { ownerKeyFor } from './reinoOwner.js';
 import { avanzarViajeros, crearViajero } from './viajeros.js';
-import { DIAS_PIEZA, revisarPiezas, SLUG_PIEZA } from './partidasCaza.js';
+import { desolladeroDaAbasto, DIAS_PIEZA, revisarPiezas, SLUG_PIEZA } from './partidasCaza.js';
 
 /// CR-63 (63b): la partida caza de fondo al llegar, trae piezas que se estropean y el Desolladero las
 /// convierte en comida y materiales.
@@ -72,6 +72,17 @@ describe('partidas de caza (CR-63 63b)', () => {
     const quedan = piezas.length - r.desolladas;
     await prisma.building.deleteMany({ where: { saveId, recipeKey: 'desolladero' } });
     expect(await prisma.$transaction((tx) => revisarPiezas(tx, saveId, caduca))).toEqual({ desolladas: 0, perdidas: quedan });
+  });
+
+  it('el Desolladero no da abasto con más piezas pendientes de las que trata antes de que se estropeen', async () => {
+    await prisma.almacenItem.deleteMany({ where: { saveId, catalogSlug: SLUG_PIEZA } });
+    expect(await prisma.$transaction((tx) => desolladeroDaAbasto(tx, saveId))).toBe(true);
+    await prisma.almacenItem.create({ data: { saveId, name: 'Pieza de Múrgol', description: 'x', catalogSlug: SLUG_PIEZA, especieSlug: 'murgol', caducaEnDia: 99 } });
+    expect(await prisma.$transaction((tx) => desolladeroDaAbasto(tx, saveId))).toBe(false); // sin Desolladero
+    await prisma.building.create({ data: { saveId, recipeKey: 'desolladero', name: 'Desolladero', kind: 'desolladero', description: 'x', status: 'ACTIVO' } });
+    expect(await prisma.$transaction((tx) => desolladeroDaAbasto(tx, saveId))).toBe(true); // 4 al día × 3 días
+    await prisma.building.deleteMany({ where: { saveId, recipeKey: 'desolladero' } });
+    await prisma.almacenItem.deleteMany({ where: { saveId, catalogSlug: SLUG_PIEZA } });
   });
 
   it('sin la especie en su destino vuelve de vacío y avisa', async () => {

@@ -5,6 +5,7 @@ import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { ownerKeyFor } from '../../services/reinoOwner.js';
 import { avanzarViajeros, enlacesDelMundo, rutaMasCorta } from '../../services/viajeros.js';
 import { partidasRoutes } from './partidas.js';
+import { revisarPiezas } from '../../services/partidasCaza.js';
 
 /// CR-63 (63d): Reino › Partidas — quién puede salir y adónde, lanzar con orden permanente, que se
 /// repita y se pare, y las órdenes de volver y cambiar de destino.
@@ -37,6 +38,8 @@ describe('Reino › Partidas (CR-63 63d)', () => {
     // Otro lugar con camino desde casa (los enlaces no forman un solo mapa conexo).
     otro = [...new Set(enlaces.flatMap((e) => [e.fromId, e.toId]))].find((l) => l !== casa && l !== coto && rutaMasCorta(enlaces, casa, l) !== null)!;
     await prisma.building.create({ data: { saveId, locationId: casa, recipeKey: 'ayuntamiento', name: 'Ayuntamiento', kind: 'ayuntamiento', description: 'x', status: 'ACTIVO', tier: 1 } });
+    // Con Desolladero de sobra, la orden permanente no se para por las piezas que traen.
+    await prisma.building.create({ data: { saveId, locationId: casa, recipeKey: 'desolladero', name: 'Desolladero', kind: 'desolladero', description: 'x', status: 'ACTIVO', tier: 3 } });
     for (const l of [coto, otro]) {
       await prisma.locationVisit.create({ data: { saveId, locationId: l } });
       await prisma.zonePoint.create({ data: { saveId, locationId: l, tipo: 'FAUNA', targetSlug: 'murgol', x: 100, y: 100, cantidad: 40 } });
@@ -71,6 +74,8 @@ describe('Reino › Partidas (CR-63 63d)', () => {
     for (let d = 31; d <= 50; d++) {
       const antes = (await prisma.viajero.findUniqueOrThrow({ where: { id } })).diaSalida;
       await avanzarViajeros(prisma, saveId, d, () => 0.99);
+      // Como en el avance diario: el Desolladero trata las piezas cada día.
+      await prisma.$transaction((tx) => revisarPiezas(tx, saveId, d));
       const v = await prisma.viajero.findUniqueOrThrow({ where: { id } });
       if (v.diaSalida !== antes) salidas++;
       if (v.estado === 'TERMINADO') break;

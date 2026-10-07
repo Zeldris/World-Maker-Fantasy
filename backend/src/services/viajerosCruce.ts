@@ -8,10 +8,15 @@
 import type { Prisma } from '@prisma/client';
 import { enlacesDelMundo, JORNADA_MINUTOS, minutosTramo, rutaMasCorta, type EntradaDiario, type Enlace } from './viajeros.js';
 import type { ExpedicionEnMapa } from './expedicionesMapa.js';
+import { conocer } from './cronista/difusion.js';
+import { GRID_COLS, GRID_ROWS, pixelDeCelda } from './zonaPosicion.js';
+import { comidaDe, valorCrudo } from './cronista/ganaderia.js';
 
 type Tx = Prisma.TransactionClient;
 
 const exterior = (slug: string) => slug.replace(/-interior$/, '');
+/// Q9: rumores que te pasa un viajero al preguntarle, como mucho.
+export const MAX_RUMORES_DE_VIAJERO = 2;
 const NOMBRE_TIPO: Record<string, string> = { CAZA: 'partida de caza', CAPTURA: 'partida de captura' };
 
 /// Puro: días que le faltan para volver a casa (ida que quede + un día en el destino + vuelta).
@@ -105,6 +110,23 @@ export async function preguntarAViajero(tx: Tx, saveId: string, id: string): Pro
     return `Día ${e.dia + 1}, ${lugares.get(e.locationId) ?? 'un sitio'}: ${animales}${otros}.`;
   });
   if (lineas.length === 0) lineas.push('Acaban de salir: aún no han visto nada que contar.');
+  // Q9: lo que pasó en los lugares por los que han pasado, desde que salieron, llega como rumor
+  // (sistema de rumores de la Fase E del 0.2); como mucho dos que aún no sepas.
+  const ws0 = await tx.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true } });
+  const pasados = [...new Set(((aqui.v.diario as unknown as EntradaDiario[] | null) ?? []).map((e) => e.locationId))];
+  const sucesos = await tx.suceso.findMany({
+    where: { saveId, locationId: { in: pasados }, fictionalMinutes: { gte: aqui.v.diaSalida * 1440 }, conocimientos: { none: { saveId } } },
+    orderBy: [{ importancia: 'desc' }, { fictionalMinutes: 'desc' }],
+    take: MAX_RUMORES_DE_VIAJERO,
+    select: { id: true, locationId: true },
+  });
+  const regionDe = new Map((await tx.location.findMany({ where: { id: { in: pasados } }, select: { id: true, region: true } })).map((l) => [l.id, l.region]));
+  let rumores = 0;
+  for (const s of sucesos) {
+    const r = await conocer(tx, { saveId, sucesoId: s.id, via: 'NPC', confirmado: false, minutos: ws0?.fictionalMinutes ?? 0, escribirNoticia: true, region: regionDe.get(s.locationId ?? '') ?? null, fuente: aqui.v.faction ? `partida de ${aqui.v.faction.name}` : 'tu partida' });
+    if (r) rumores++;
+  }
+  if (rumores > 0) lineas.push(`Y te cuentan ${rumores === 1 ? 'algo que ha pasado' : `${rumores} cosas que han pasado`} por allí (en «El mundo»).`);
   const ws = await tx.worldState.findUnique({ where: { saveId }, select: { fictionalDateLabel: true, fictionalMinutes: true } });
   await tx.logEntry.create({ data: { saveId, channel: 'CHARACTER', isSystemMessage: true, text: `La ${aqui.v.faction ? `partida de ${aqui.v.faction.name}` : 'partida'} cuenta lo que ha visto:\n${lineas.join('\n')}`, timeLabel: ws?.fictionalDateLabel ?? '', fictionalMinutes: ws?.fictionalMinutes ?? undefined } });
   return { ok: true, lineas };
@@ -136,4 +158,39 @@ export async function comprarCarneAViajero(tx: Tx, saveId: string, id: string): 
   }
   await tx.kingdomStats.updateMany({ where: { factionId: aqui.v.factionId }, data: { riqueza: { increment: precio } } });
   return { ok: true, items, precio };
+}
+
+/// Q9 «Comerciar» (vender): le vendes a una partida de otra facción algo de comer de tu bolsa, al
+/// precio del catálogo; lo paga su facción (si le llega) y va a su comida.
+export async function venderAViajero(tx: Tx, saveId: string, id: string, itemId: string): Promise<{ ok: true; precio: number } | { ok: false; motivo: string }> {
+  const aqui = await viajeroAqui(tx, saveId, id);
+  if (!aqui) return { ok: false, motivo: 'Ya no están aquí.' };
+  if (!aqui.v.factionId) return { ok: false, motivo: 'Es tu partida: no se le vende.' };
+  const item = await tx.inventoryItem.findFirst({ where: { id: itemId, saveId, slot: null }, select: { id: true, name: true, catalogSlug: true } });
+  if (!item?.catalogSlug) return { ok: false, motivo: 'Eso no lo llevas en la bolsa.' };
+  const cat = await tx.itemCatalog.findFirst({ where: { worldId: aqui.save.worldId, slug: item.catalogSlug }, select: { category: true, curaHambre: true, valorGoirnos: true } });
+  if (!cat || !(cat.category === 'alimento' || (cat.curaHambre ?? 0) > 0)) return { ok: false, motivo: 'Solo compran comida.' };
+  const precio = Math.max(1, cat.valorGoirnos ?? 1);
+  const { count } = await tx.kingdomStats.updateMany({ where: { factionId: aqui.v.factionId, riqueza: { gte: precio } }, data: { riqueza: { decrement: precio }, comida: { increment: comidaDe(valorCrudo(item.catalogSlug, cat.curaHambre), 1) } } });
+  if (count === 0) return { ok: false, motivo: 'No tienen con qué pagarte.' };
+  await tx.inventoryItem.delete({ where: { id: item.id } });
+  await tx.save.update({ where: { id: saveId }, data: { goirnos: { increment: precio } } });
+  return { ok: true, precio };
+}
+
+/// Lo que puedes venderle a una partida: la comida de tu bolsa (sin equipar), con su precio.
+export async function comidaVendible(tx: Tx, saveId: string): Promise<{ id: string; name: string; precio: number }[]> {
+  const save = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } });
+  const items = await tx.inventoryItem.findMany({ where: { saveId, slot: null, catalogSlug: { not: null } }, select: { id: true, name: true, catalogSlug: true }, orderBy: { name: 'asc' } });
+  const cat = new Map((await tx.itemCatalog.findMany({ where: { worldId: save.worldId, slug: { in: items.map((i) => i.catalogSlug!) } }, select: { slug: true, category: true, curaHambre: true, valorGoirnos: true } })).map((c) => [c.slug, c]));
+  return items
+    .filter((i) => { const c = cat.get(i.catalogSlug!); return !!c && (c.category === 'alimento' || (c.curaHambre ?? 0) > 0); })
+    .map((i) => ({ id: i.id, name: i.name, precio: Math.max(1, cat.get(i.catalogSlug!)!.valorGoirnos ?? 1) }));
+}
+
+/// Puro (63e): celda fija de un viajero en el mapa de zona (sale de su id; lejos de los bordes).
+export function posicionEnZona(id: string): { x: number; y: number } {
+  let h = 0;
+  for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return pixelDeCelda({ col: 2 + (h % (GRID_COLS - 4)), row: 2 + ((h >>> 8) % (GRID_ROWS - 4)) });
 }
