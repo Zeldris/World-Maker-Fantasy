@@ -277,6 +277,47 @@ mecánica; reporte de combate autónomo).
   trabajador se quedan.
 - **Q5 Orden:** `CR-61` y luego `CR-63`; se sube todo junto a `main`.
 
+## Decisiones de detalle de `CR-63` (ronda aceptada por la usuaria el 2026-10-07)
+
+Referencias: Bellwright (aldeanos asignados a la caza), Medieval Dynasty (la presa pasa por quien la
+desuella) y X4 (todas las naves son la misma entidad; órdenes repetidas).
+
+- **Q1 Viajero genérico:** un modelo `Viajero` (de quién es, tipo, ruta, posición, estado, miembros,
+  carga y orden) que estrena `CR-63` y reutiliza `CR-64`; las `Expedicion` pasan a viajeros en `CR-64`.
+- **Q2 Avance:** cada día una **jornada** de 8 h de camino por la ruta más corta de enlaces
+  (`LocationLink.minutosBase`); avanza los lugares que le alcancen y, si un tramo es más largo, se
+  queda a medio camino. En el mapa de zona, en una celda entre su entrada y su objetivo.
+- **Q3 Partida del Reino:** 1-4 grupos de 4 con tus compañeros y súbditos con el rol «cazador»
+  (adulto, no da comida por tarea, necesita arma como un soldado, entra en la factura de `CR-58`). La
+  jugadora no va dentro; si quiere cazar con ellos, caza en persona.
+- **Q4 Caza al llegar:** busca la especie en los grupos de fauna de la zona y pelea de fondo (8 contra
+  8); cada animal abatido es una pieza y el grupo de fauna pierde los suyos. Como mucho dos encuentros
+  o hasta 4 piezas por miembro; sin la especie, vuelve de vacío y avisa; si pierde, vuelve con sus
+  heridos (muere el 3 % de los caídos).
+- **Q5 Piezas:** objeto del Almacén «Pieza de <especie>» con caducidad a los 3 días (sin un objeto de
+  catálogo por especie). El Desolladero (ya existe) las trata con la orden «Desollar piezas»: cada
+  una da lo que da hoy desollar esa especie a mano. Si se estropea, desaparece y avisa.
+- **Q6 Captura:** la orden «capturar X» lleva cuerdas del Almacén y necesita una Jaula libre de su
+  tamaño; probabilidad de la especie (`capturablePct`) con las reglas de atar; vuelve atado y entra en
+  la Jaula; si se ha llenado, se suelta y avisa.
+- **Q7 Órdenes permanentes** (órdenes repetidas de X4): «caza X en Y, vuelve, descarga y repite»;
+  se para si cae alguien, si el Almacén no tiene sitio o si faltan cuerdas o Jaula. Se para o cambia
+  de destino desde Reino.
+- **Q8 Encuentros por el camino:** cada día, en los lugares que cruza, fauna agresiva o una banda
+  (`CR-49`) según el riesgo del enlace. Sin la jugadora, de fondo con resumen; con ella en ese lugar,
+  aviso con «unirte» (en vivo con su grupo 1) o «dejarlos». Escoltar y asaltar, con `CR-64`.
+- **Q9 Al cruzarte:** marcador de viajero en el mapa de zona y en el de Berig; «Preguntar» (lo que ha
+  visto en cada lugar, con el día, por el sistema de rumores), «Comerciar» (piezas y carga, tabla de
+  precios de siempre) y, con las tuyas, órdenes (volver, cambiar de destino).
+- **Q10 Facciones:** sus cazadores en partidas de 8, como mucho 4 en marcha por facción (el resto
+  sigue en agregado); orden permanente a la zona de su región con más fauna cazable; sus piezas se
+  desuellan solas y la carne va a su comida. Antes, un prototipo para que orcos y Faerus no pasen
+  hambre con la comida llegando a golpes.
+- **Q12 (tras el prototipo, usuaria):** opción (a): las facciones solo mandan partidas con 7 días o más
+  de reserva de comida; si no, sus cazadores siguen en agregado.
+- **Q11 Pasos:** 63a viajero, rutas y avance; 63b caza, piezas y Desolladero; 63c captura; 63d órdenes
+  y panel «Partidas»; 63e en los mapas y al cruzarte; 63f encuentros por el camino; 63g facciones.
+
 ## Decisiones que bloquean algo
 
 | Bloquea | Pregunta |

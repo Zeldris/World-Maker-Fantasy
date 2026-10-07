@@ -132,6 +132,20 @@ export function jaulaRecipeKeyFor(tamano: JaulaTamano): string {
   return `jaula-${tamano.toLowerCase()}`;
 }
 
+const JAULA_KEYS = JAULA_ORDEN.map(jaulaRecipeKeyFor);
+
+/// Jaulas activas de la partida con hueco donde cabe un animal de `faunaSlug`, de la más pequeña que
+/// alcanza a la más grande (1 animal por Jaula). Llamar dentro de la transacción que la ocupa.
+export async function jaulasLibresPara(tx: Prisma.TransactionClient, saveId: string, faunaSlug: string): Promise<{ id: string; recipeKey: string | null }[]> {
+  const requerido = jaulaTamanoRequeridoFor(faunaSlug);
+  const jaulas = await tx.building.findMany({ where: { saveId, status: 'ACTIVO', recipeKey: { in: JAULA_KEYS } }, select: { id: true, recipeKey: true }, orderBy: { createdAt: 'asc' } });
+  const ocupadas = new Set((await tx.npcState.findMany({ where: { capturaJaulaBuildingId: { in: jaulas.map((j) => j.id) } }, select: { capturaJaulaBuildingId: true } })).map((s) => s.capturaJaulaBuildingId));
+  const tamano = (key: string | null) => JAULA_ORDEN[JAULA_KEYS.indexOf(key ?? '')] ?? 'PEQUENA';
+  return jaulas
+    .filter((j) => !ocupadas.has(j.id) && jaulaAlcanzaPara(tamano(j.recipeKey), requerido))
+    .sort((a, b) => JAULA_ORDEN.indexOf(tamano(a.recipeKey)) - JAULA_ORDEN.indexOf(tamano(b.recipeKey)));
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Rediseño de captura (2026-08-28, docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md) — la captura se
 // materializa como InventoryItem en tránsito (ver `InventoryItem.capturaNpcId`, schema.prisma) en

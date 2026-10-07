@@ -1247,6 +1247,8 @@ export interface ZonaResponse {
   /// vive en Enciclopedia > Localización (DetailModal.tsx), no aquí; este panel solo lo muestra.
   imageUrl?: string | null
   regionControl?: RegionControlInfo | null
+  /// CR-63 (63e): viajeros de paso por esta zona, en su celda.
+  viajeros?: { id: string; nombre: string; x: number; y: number }[]
   puntos: ZonePointInfo[]
   dinamicos: ZonaDinamicoInfo[]
   /// Punto del jugador en el mapa de Zona (2026-09-04) — se mueve solo por acciones deterministas
@@ -1567,6 +1569,62 @@ export interface CorralesInfo {
   fueraDelCorral?: { id: string; name: string }[]
   corrales: CorralInfo[]
 }
+// CR-63 (63d): Reino › Partidas — partidas de caza y captura.
+export interface PartidaInfo {
+  id: string
+  tipo: 'CAZA' | 'CAPTURA'
+  estado: 'IDA' | 'TRABAJANDO' | 'VUELTA' | 'TERMINADO'
+  especie: string | null
+  especieNombre: string | null
+  ubicacion: string
+  destino: string
+  permanente: boolean
+  miembros: string[]
+  carga: { piezas?: number; capturados?: number } | null
+}
+export interface OpcionesPartida {
+  origen: { id: string; name: string } | null
+  cazadores: { id: string; name: string }[]
+  grupos: { slotIndex: number; nombre: string; companeros: { id: string; name: string }[] }[]
+  destinos: { id: string; name: string; region: string; especies: { slug: string; name: string; cantidad: number; capturable: boolean }[] }[]
+}
+export async function getPartidas(saveId: string): Promise<{ partidas: PartidaInfo[]; opciones: OpcionesPartida }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/partidas`)
+}
+export async function postLanzarPartida(
+  saveId: string,
+  p: { tipo: 'CAZA' | 'CAPTURA'; especie: string; destinoLocationId: string; companionIds: string[]; subjectIds: string[]; permanente: boolean },
+): Promise<{ ok: boolean; id: string }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/partidas`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) })
+}
+export async function postOrdenPartida(saveId: string, viajeroId: string, accion: 'parar' | 'volver' | 'destino', destinoLocationId?: string): Promise<{ ok: boolean }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/partidas/${viajeroId}/orden`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accion, destinoLocationId }) })
+}
+
+// CR-63 (63e, Q9): viajeros de paso donde está el personaje.
+export interface ViajeroAqui {
+  id: string
+  propia: boolean
+  quien: string
+  tipo: string
+  que: string
+  estado: 'IDA' | 'TRABAJANDO' | 'VUELTA'
+  gente: number
+  piezas: number
+}
+export async function getViajerosAqui(saveId: string): Promise<{ viajeros: ViajeroAqui[]; vendibles?: { id: string; name: string; precio: number }[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/viajeros/aqui`)
+}
+export async function postPreguntarViajero(saveId: string, viajeroId: string): Promise<{ ok: boolean; lineas: string[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/viajeros/${viajeroId}/preguntar`, { method: 'POST' })
+}
+export async function postVenderAViajero(saveId: string, viajeroId: string, itemId: string): Promise<{ ok: boolean; precio: number }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/viajeros/${viajeroId}/vender`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ itemId }) })
+}
+export async function postComprarAViajero(saveId: string, viajeroId: string): Promise<{ ok: boolean; items: string[]; precio: number }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/viajeros/${viajeroId}/comprar`, { method: 'POST' })
+}
+
 export async function getCorrales(saveId: string): Promise<CorralesInfo> {
   return fetchJson(`${API_URL}/saves/${saveId}/corrales`)
 }
@@ -1681,7 +1739,7 @@ export interface SubditoInfo {
   id: string
   name: string
   role: string
-  rol: 'trabajador' | 'soldado' | 'vigia' | 'visitante'
+  rol: 'trabajador' | 'soldado' | 'vigia' | 'cazador' | 'visitante'
   pueblo: string | null
   genero: string | null
   edad: number | null

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { ViajerosAqui } from './ViajerosAqui'
 import { getZona, resolveImageUrl, recogerDroppedItem, type ZonaResponse, type ZonePointInfo, type ZonaDinamicoInfo, type ZonaSalidaInfo } from '../../lib/api'
 import { ZonePointDetailModal, zonaDinamicoToDetailSource } from '../ZonePointDetailModal'
 import { rumboSalida } from '../../lib/rumboSalida'
@@ -566,6 +567,16 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                   <title>{`${d.nombre} (${TIPO_LABEL[d.tipo]})`}</title>
                 </g>
               ))}
+              {/* CR-63 (63e): partidas y otros viajeros de paso; se habla con ellos en «De paso por aquí». */}
+              {(data.viajeros ?? []).map((v) => (
+                <g key={v.id} aria-label={`De paso: ${v.nombre}`}>
+                  <circle cx={v.x} cy={v.y} r={11 * escala} fill="var(--color-wood-900)" stroke="var(--color-quest-300)" strokeWidth={2 * escala} />
+                  <text x={v.x} y={v.y} textAnchor="middle" dominantBaseline="central" style={{ fontSize: 13 * escala }}>
+                    ⚑
+                  </text>
+                  <title>{v.nombre}</title>
+                </g>
+              ))}
               {data.jugador && <JugadorMarker x={data.jugador.x} y={data.jugador.y} escala={escala} angulo={anguloJugador} quieto={!movimientoEnCurso} />}
               {/* ZON-19 (hito 0.1) — nombres en una capa por encima de todo (ni salidas ni otras fichas los
                   tapan), con la misma animación de desplazamiento que su ficha. */}
@@ -694,6 +705,8 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
           </button>
         )}
       </div>
+      {/* CR-63 (63e): partidas y otros viajeros de paso por este lugar. */}
+      <ViajerosAqui saveId={saveId} lugar={data.locationName ?? ""} deZona={(data.viajeros ?? []).map((v) => v.id).join(",")} soloConsulta={soloConsulta} onRefreshSave={onRefreshSave} />
       {/* Pieza 2 (2026-09-09) — recuerda dónde vive el movimiento real cuando esta vista es solo
           informativa, para no dejar al jugador buscando un clic que ya no hace nada aquí. */}
       {soloConsulta && (

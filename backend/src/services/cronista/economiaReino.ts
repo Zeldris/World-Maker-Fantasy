@@ -269,7 +269,7 @@ async function romperEquipo(tx: Tx, saveId: string, c: { trabajadores: number; s
 
 /// El equipo de alta de alguien que entra en un rol (acogido como trabajador, o pasado a soldado o
 /// vigía). Si no se puede pagar, entra sin él.
-export async function equiparAlta(tx: Tx, saveId: string, rol: 'trabajador' | 'soldado'): Promise<boolean> {
+export async function equiparAlta(tx: Tx, saveId: string, rol: 'trabajador' | 'soldado' | 'cazador'): Promise<boolean> {
   const ownerKey = ownerKeyFor({ saveId });
   const k = await tx.kingdomStats.findUnique({ where: { ownerKey }, select: { riqueza: true } });
   if (!k) return false;

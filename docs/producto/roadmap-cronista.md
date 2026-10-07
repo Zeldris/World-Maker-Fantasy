@@ -1723,12 +1723,59 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     nuevas: Guiso de Múrgol (64) y Pan de leche y miel (28), de Obrador (tier 4); Queso curado de
     Múrgol (40) y Asado de las Llanuras (98), de Gran obrador (tier 7).
   **L**
-- **CR-63** Partidas de caza y captura (ronda aceptada el 2026-10-07, decisiones en
+- ~~**CR-63** Partidas de caza y captura~~ ✅ 2026-10-07 (ronda aceptada el 2026-10-07, decisiones en
   [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-cr-61-y-cr-63-ronda-aceptada-por-la-usuaria-el-2026-10-07);
   ADR 0003). Viajeros (base de `CR-64`), piezas y desollador, rol «cazador», captura, órdenes
   permanentes, encuentros por el camino, preguntar y comerciar; las facciones cazan igual, con el
   mismo motor (ADR 0003, «los mismos sistemas para todos»). Hito `0.3`,
-  justo después de `CR-61`. **L**
+  justo después de `CR-61`. Decisiones de detalle (Q1-Q12) en
+  [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-detalle-de-cr-63-ronda-aceptada-por-la-usuaria-el-2026-10-07). **L**
+  Queda para `CR-64`: pelear en vivo codo con codo con una partida (escoltar). Pasos:
+  - ~~63a~~ ✅ 2026-10-07: `Viajero` y `ViajeroMiembro` (migración `20261007200000_viajeros`),
+    `services/viajeros.ts` (ruta más corta por minutos, enlaces en los dos sentidos, jornada de 8 h,
+    IDA → TRABAJANDO un día → VUELTA → TERMINADO, diario de lugares con el día) y su paso en el
+    avance diario; cada tipo registra lo suyo en `TRABAJOS` (`alLlegar`, `alVolver`).
+  - ~~63b~~ ✅ 2026-10-07: `services/partidasCaza.ts` (`TRABAJOS.CAZA`): caza de fondo en el destino
+    (grupos de fauna de la especie, 8 contra 8, dos encuentros o 4 piezas por miembro; descuenta el
+    grupo y la población; heridos y muertos de la partida), piezas en el Almacén con `especieSlug` y
+    `caducaEnDia` (migración `20261007210000_piezas`), avisos en el Reino. Cambio sobre Q5: el
+    Desolladero desuella solo, sin orden, 4 piezas al día por escalón (`revisarPiezas`); cada pieza da
+    lo mismo que sacrificar ese animal (`aprovecharAnimal`, sacado de `sacrificar`).
+  - ~~63c~~ ✅ 2026-10-07: `services/partidasCaptura.ts` (`TRABAJOS.CAPTURA`): `prepararCaptura` (Jaula
+    libre de su tamaño y cuerdas del Almacén, una por Jaula libre), atar a los abatidos vivos con
+    `capturablePct` (tope 90), los no atados son piezas; al volver, a la Jaula como `NpcState` en
+    doma (si se llenó, se sueltan) y las cuerdas sin usar vuelven. `jaulasLibresPara` compartido con
+    el depósito de capturas de la jugadora.
+  - ~~63d~~ ✅ 2026-10-07: rol «cazador» de los súbditos (no trabaja ni defiende, pide arma);
+    `services/partidasReino.ts` (salen del Ayuntamiento; destinos que conoces con fauna a la vista y
+    camino; 1-16 entre tus grupos 2+ y cazadores libres; captura con `prepararCaptura`), rutas
+    `GET/POST /saves/:id/partidas` y `POST …/partidas/:id/orden` (no repetir, volver, cambiar de
+    destino), orden permanente en `viajeros.ts` (se para si cae alguien o falta Jaula o cuerdas, con
+    aviso), quien está fuera no pelea a tu lado; pestaña Reino › Partidas (`PartidasSection.tsx`).
+    La parada por «Almacén sin sitio» es «el Desolladero no da abasto» (`desolladeroDaAbasto`: más
+    piezas pendientes de las que trata antes de que se estropeen).
+  - ~~63e~~ ✅ 2026-10-07: `services/viajerosCruce.ts`. En el mapa de Berig van con las expediciones
+    (mismo dibujo, por el tramo en que están, con el día de vuelta; los tuyos, los aliados y los de
+    tu región). En la zona, «De paso por aquí» (`ViajerosAqui.tsx`): «Preguntar» (lo que vio en cada
+    lugar, guardado en su diario al pasar, y queda en tu registro), «Comprar carne» (a las de otra
+    facción: la carne de una pieza al precio del catálogo, a tu bolsa; cobra la facción) y «Volver a
+    casa» con las tuyas. Cerrado después: marcador ⚑ en la cuadrícula de la zona (celda fija por su
+    id, `posicionEnZona`), «Vender» comida de tu bolsa a las de otra facción (`venderAViajero`) y, al
+    preguntar, hasta 2 sucesos de los lugares por los que pasaron llegan como rumor (`conocer`, vía
+    NPC).
+  - ~~63f~~ ✅ 2026-10-07: `services/viajerosEncuentros.ts` (ganchos `alCruzar` y `pendiente` de
+    `viajeros.ts`; migración `20261007220000_viajero_encuentro`). Al llegar a cada lugar, 10 % (25 %
+    si el tramo tiene riesgo) de toparse con el grupo hostil más grande (fauna AGRESIVO/ENEMIGO o gente
+    enemiga que no sea de los suyos). Sin la jugadora, pelea de fondo con aviso; si pierden, vuelven
+    a casa desde allí. Con ella en ese lugar, se detienen y se lo cuentan; si no los vence ella, pelean
+    al día siguiente. Cambio sobre Q8: «unirte en vivo con la partida» queda para escoltar (`CR-64`),
+    porque el combate en vivo aún no admite súbditos ni gente genérica; mientras, la jugadora ayuda
+    atacando ella al enemigo en vivo.
+  - ~~63g~~ ✅ 2026-10-07: prototipo `docs/prototipos/cr-63-comida-facciones.html` (una partida rinde
+    el 40-50 % del agregado) y decisión Q12 (a) de la usuaria: `services/partidasFacciones.ts`. Orcos
+    y Faerus mandan partidas de 8 genéricos (máx. 4) solo con 7 días de reserva de comida, al coto de
+    su región con más fauna cazable, con orden permanente que se para si la reserva baja; al volver,
+    lo comestible de sus piezas va a su comida; los que están fuera no cazan en agregado.
 - **CR-64** Todo viaja de verdad ([ADR 0003](../adr/0003-todo-viaja-de-verdad.md), usuaria 2026-10-07,
   como en X4): lo que se mueve es un **viajero** con ruta real de zona en zona, visible y con quien
   cruzarse e interactuar (preguntar por las regiones que ha atravesado, comerciar, escoltar, asaltar).

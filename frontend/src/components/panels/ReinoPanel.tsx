@@ -8,19 +8,21 @@ import { SubditosSection } from './reino/SubditosSection'
 import { DiplomaciaMercadoSection } from './reino/DiplomaciaMercadoSection'
 import { ComercioSection } from './reino/ComercioSection'
 import { CorralesSection } from './reino/CorralesSection'
+import { PartidasSection } from './reino/PartidasSection'
 
 // Re-exportado tal cual (2026-09-21, rediseño en sub-tabs) — CompanerosPanel.tsx lo importa desde
 // aquí (`import { PlantillaSelect } from './ReinoPanel'`); el componente real ahora vive en
 // `reino/SubditosSection.tsx`, este re-export evita tocar ese import existente sin necesidad.
 export { PlantillaSelect } from './reino/SubditosSection'
 
-export type ReinoSubTab = 'vision-general' | 'edificios' | 'produccion' | 'corrales' | 'subditos' | 'diplomacia-mercado'
+export type ReinoSubTab = 'vision-general' | 'edificios' | 'produccion' | 'corrales' | 'partidas' | 'subditos' | 'diplomacia-mercado'
 
 const SUB_TABS: { id: ReinoSubTab; label: string; icon: string }[] = [
   { id: 'vision-general', label: 'Visión general', icon: '🏰' },
   { id: 'edificios', label: 'Edificios', icon: '🧱' },
   { id: 'produccion', label: 'Producción', icon: '⚙️' },
   { id: 'corrales', label: 'Corrales', icon: '🐑' },
+  { id: 'partidas', label: 'Partidas', icon: '🏹' },
   { id: 'subditos', label: 'Súbditos', icon: '👥' },
   { id: 'diplomacia-mercado', label: 'Diplomacia', icon: '🤝' },
 ]
@@ -156,6 +158,7 @@ export function ReinoPanel({
       )}
       {/* CR-55: ganado del Reino. */}
       {activeSubTab === 'corrales' && <CorralesSection saveId={saveId} inventory={inventory} onRefreshSave={onRefreshSave} />}
+      {activeSubTab === 'partidas' && <PartidasSection saveId={saveId} onRefreshSave={onRefreshSave} />}
       {activeSubTab === 'subditos' && (
         <SubditosSection
           saveId={saveId}

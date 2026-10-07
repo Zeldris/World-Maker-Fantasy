@@ -1,0 +1,229 @@
+<title>Caza de las facciones</title>
+<style>
+/* Layout: una columna de trabajo — parámetros a la izquierda, resultado a la derecha; en móvil, apilado. */
+:root {
+  --bg: #f3f1ec;
+  --panel: #fbfaf7;
+  --ink: #23261f;
+  --muted: #626a5c;
+  --line: #d6d3c9;
+  --accent: #8a4b2a;
+  --good: #3f7a3a;
+  --bad: #a3322a;
+  --bar-agg: #b9a98c;
+  --bar-par: #8a4b2a;
+  --font-display: "Fraunces", Georgia, serif;
+  --font-body: "IBM Plex Sans", system-ui, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #181a16; --panel: #20231e; --ink: #e8e6df; --muted: #a3a99b; --line: #363a32;
+    --accent: #d08a5f; --good: #7fbf72; --bad: #e07a6f; --bar-agg: #6b6250; --bar-par: #d08a5f; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #181a16; --panel: #20231e; --ink: #e8e6df; --muted: #a3a99b; --line: #363a32;
+  --accent: #d08a5f; --good: #7fbf72; --bad: #e07a6f; --bar-agg: #6b6250; --bar-par: #d08a5f; color-scheme: dark;
+}
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1060px; margin: 0 auto; padding-inline: 18px; padding-block: 24px 40px; display: flex; flex-direction: column; gap: 18px; }
+h1 { font-family: var(--font-display); font-weight: 600; font-size: 1.9rem; margin: 0; text-wrap: balance; }
+.lead { color: var(--muted); max-width: 68ch; margin: 0; }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.tab { border: 1px solid var(--line); background: var(--panel); color: var(--ink); padding: 8px 12px; border-radius: 6px; cursor: pointer; font: inherit; }
+.tab[aria-selected="true"] { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.tab:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.escenario { color: var(--muted); margin: 0; max-width: 72ch; }
+.grid { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; min-width: 0; }
+.panel h2 { font-family: var(--font-display); font-size: 1.05rem; font-weight: 600; margin: 0 0 10px; }
+.campo { display: grid; grid-template-columns: 1fr 76px; align-items: center; gap: 8px; margin-bottom: 7px; }
+.campo label { font-size: 0.86rem; }
+.campo small { display: block; color: var(--muted); font-size: 0.74rem; }
+.campo input { width: 100%; box-sizing: border-box; font-family: var(--font-data); font-size: 0.9rem; padding: 4px 6px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--ink); text-align: right; }
+.acciones { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+button.primario { background: var(--accent); color: var(--panel); border: 0; border-radius: 6px; padding: 8px 14px; font: inherit; font-weight: 600; cursor: pointer; }
+button.sec { background: transparent; color: var(--accent); border: 1px solid var(--accent); border-radius: 6px; padding: 7px 12px; font: inherit; cursor: pointer; }
+.cifras { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.cifra { border-top: 2px solid var(--line); padding-top: 6px; }
+.cifra b { display: block; font-family: var(--font-data); font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+.cifra span { color: var(--muted); font-size: 0.8rem; }
+.cifra.bien { border-color: var(--good); } .cifra.mal { border-color: var(--bad); }
+.veredicto { margin: 0 0 12px; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--line); }
+.veredicto.bien { border-color: var(--good); } .veredicto.mal { border-color: var(--bad); }
+.grafico { overflow-x: auto; }
+svg text { fill: var(--muted); font-family: var(--font-data); font-size: 10px; }
+.tabla { overflow-x: auto; margin-top: 10px; }
+table { border-collapse: collapse; font-family: var(--font-data); font-size: 0.78rem; font-variant-numeric: tabular-nums; width: 100%; }
+th, td { padding: 3px 6px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+th { color: var(--muted); font-weight: 500; }
+td.hambre { color: var(--bad); font-weight: 600; }
+.nota { color: var(--muted); font-size: 0.8rem; margin: 6px 0 0; }
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;600&display=swap">
+
+<div class="wrap">
+  <header style="display:flex;flex-direction:column;gap:6px">
+    <h1>¿Pasan hambre las facciones si cazan con partidas?</h1>
+    <p class="lead">Prototipo de CR-63 (63g). Hoy los cazadores de orcos y Faerus dan 2,5 de comida al día cada uno, en agregado. Con partidas, hasta 4 grupos de 8 salen al coto y la comida llega de golpe cuando vuelven. El resto de cazadores sigue en agregado. Toca los números y mira 30 días de la reserva de comida.</p>
+  </header>
+
+  <div class="tabs" role="tablist" aria-label="Escenarios">
+    <button class="tab" role="tab" id="t0" aria-selected="true" data-esc="0">Clan orco grande</button>
+    <button class="tab" role="tab" id="t1" aria-selected="false" data-esc="1">Faerus con poca caza</button>
+    <button class="tab" role="tab" id="t2" aria-selected="false" data-esc="2">Coto lejano</button>
+    <button class="tab" role="tab" id="t3" aria-selected="false" data-esc="3">Facción justa de comida</button>
+  </div>
+  <p class="escenario" id="desc"></p>
+
+  <div class="grid">
+    <section class="panel" aria-label="Parámetros">
+      <h2>Parámetros</h2>
+      <div id="campos"></div>
+      <div class="acciones">
+        <button class="primario" id="simular">Simular 30 días</button>
+        <button class="sec" id="sinPartidas">Comparar sin partidas</button>
+      </div>
+      <p class="nota">Valores del juego: un Múrgol da 3 de comida, un Corredor de Cauce 4, un Cornante 7. Una partida vuelve con 4 piezas por miembro como mucho.</p>
+    </section>
+
+    <section class="panel" aria-label="Resultado">
+      <h2>Resultado</h2>
+      <p class="veredicto" id="veredicto"></p>
+      <div class="cifras" id="cifras"></div>
+      <div class="grafico"><svg id="graf" viewBox="0 0 640 200" width="100%" role="img" aria-label="Reserva de comida día a día"></svg></div>
+      <div class="tabla"><table id="tabla"></table></div>
+    </section>
+  </div>
+</div>
+
+<script>
+// ── Lógica (pura, liftable): un mes de comida de una facción ─────────────────────────────
+const Caza = {
+  RENDIMIENTO_AGREGADO: 2.5,
+  PIEZAS_POR_MIEMBRO: 4,
+  simular(p) {
+    const cazadores = Math.round(p.trabajadores * p.pctCaza / 100);
+    const enPartidas = Math.min(p.partidas * p.tamano, cazadores);
+    const partidas = Math.floor(enPartidas / p.tamano);
+    const agregados = cazadores - partidas * p.tamano;
+    const otros = p.trabajadores - cazadores;
+    const ciclo = p.diasIda + 1 + p.diasVuelta;
+    const abatidos = Math.round(p.encuentros * p.animales * p.pctAbatidos / 100);
+    const piezas = Math.min(p.tamano * this.PIEZAS_POR_MIEMBRO, abatidos);
+    const porViaje = piezas * p.comidaPieza;
+    let reserva = p.reserva;
+    let diasHambre = 0, minimo = reserva, totalPartidas = 0;
+    const filas = [];
+    for (let d = 1; d <= p.dias; d++) {
+      let llegadas = 0;
+      for (let k = 0; k < partidas; k++) {
+        const salida = k * Math.max(1, Math.floor(ciclo / Math.max(1, partidas))); // salen escalonadas
+        if (d > salida && (d - salida) % ciclo === 0) llegadas++;
+      }
+      const deTareas = Math.round(otros * p.rindenOtros);
+      const deAgregado = Math.round(agregados * this.RENDIMIENTO_AGREGADO);
+      const dePartidas = llegadas * porViaje;
+      totalPartidas += dePartidas;
+      const neta = reserva + deTareas + deAgregado + dePartidas - p.bocas;
+      const hambre = neta < 0;
+      if (hambre) diasHambre++;
+      reserva = Math.max(0, neta);
+      minimo = Math.min(minimo, reserva);
+      filas.push({ d, deTareas, deAgregado, dePartidas, llegadas, reserva, hambre });
+    }
+    return {
+      cazadores, partidas, agregados, otros, ciclo, piezas, porViaje,
+      mediaPartidas: totalPartidas / p.dias,
+      equivalenteAgregado: partidas * p.tamano * this.RENDIMIENTO_AGREGADO,
+      diasHambre, minimo, final: reserva, filas,
+    };
+  },
+};
+
+// ── Página ────────────────────────────────────────────────────────────────────────────────
+const CAMPOS = [
+  ['trabajadores', 'Trabajadores', 'de la facción'],
+  ['pctCaza', '% que caza', 'orcos 45, Faerus 50'],
+  ['partidas', 'Partidas en marcha', 'como mucho 4'],
+  ['tamano', 'Miembros por partida', '8 (un sub-combate)'],
+  ['diasIda', 'Días de ida', 'jornadas de 8 h'],
+  ['diasVuelta', 'Días de vuelta', ''],
+  ['encuentros', 'Encuentros por salida', 'como mucho 2'],
+  ['animales', 'Animales por encuentro', 'hasta 8'],
+  ['pctAbatidos', '% que abaten', 'de los que pelean'],
+  ['comidaPieza', 'Comida por pieza', 'Múrgol 3 · Cornante 7'],
+  ['rindenOtros', 'Comida por otro trabajador', 'recolección y cocina, ~2,2'],
+  ['bocas', 'Bocas al día', 'civiles + soldados + visitantes'],
+  ['reserva', 'Reserva al empezar', ''],
+];
+const ESCENARIOS = [
+  { desc: 'Un clan como Goshg: unos 350 trabajadores y mucha comida de sobra. Las 4 partidas son solo 32 de sus 158 cazadores.',
+    p: { trabajadores: 351, pctCaza: 45, partidas: 4, tamano: 8, diasIda: 1, diasVuelta: 1, encuentros: 2, animales: 6, pctAbatidos: 70, comidaPieza: 4, rindenOtros: 2.2, bocas: 541, reserva: 200, dias: 30 } },
+  { desc: 'Una facción Faerus pequeña cuyo coto tiene pocos animales: cada encuentro solo da para 3 y la pieza es pequeña (Corretolvas, 1).',
+    p: { trabajadores: 120, pctCaza: 50, partidas: 4, tamano: 8, diasIda: 1, diasVuelta: 1, encuentros: 2, animales: 3, pctAbatidos: 70, comidaPieza: 1, rindenOtros: 2.2, bocas: 230, reserva: 60, dias: 30 } },
+  { desc: 'El coto con fauna está a tres jornadas: cada salida dura 7 días y la comida llega muy espaciada.',
+    p: { trabajadores: 200, pctCaza: 45, partidas: 4, tamano: 8, diasIda: 3, diasVuelta: 3, encuentros: 2, animales: 6, pctAbatidos: 70, comidaPieza: 4, rindenOtros: 2.2, bocas: 420, reserva: 80, dias: 30 } },
+  { desc: 'Una facción que en agregado come justo lo que produce: aquí se ve si el cambio la empuja a la hambruna.',
+    p: { trabajadores: 200, pctCaza: 45, partidas: 4, tamano: 8, diasIda: 1, diasVuelta: 1, encuentros: 2, animales: 6, pctAbatidos: 70, comidaPieza: 4, rindenOtros: 2.2, bocas: 465, reserva: 20, dias: 30 } },
+];
+let params = { ...ESCENARIOS[0].p };
+
+function pintarCampos() {
+  document.getElementById('campos').innerHTML = CAMPOS.map(([k, label, ayuda]) =>
+    `<div class="campo"><label for="f-${k}">${label}${ayuda ? `<small>${ayuda}</small>` : ''}</label><input id="f-${k}" type="number" step="${k === 'rindenOtros' ? '0.1' : '1'}" value="${params[k]}"></div>`).join('');
+  for (const [k] of CAMPOS) document.getElementById(`f-${k}`).addEventListener('change', (e) => { params[k] = Number(e.target.value); mostrar(); });
+}
+
+function mostrar(comparar = false) {
+  const r = Caza.simular(params);
+  const sin = Caza.simular({ ...params, partidas: 0 });
+  const diff = r.mediaPartidas - r.equivalenteAgregado;
+  const ver = document.getElementById('veredicto');
+  ver.className = 'veredicto ' + (r.diasHambre === 0 ? 'bien' : 'mal');
+  ver.textContent = r.diasHambre === 0
+    ? `Sin hambre en ${params.dias} días. Las partidas dan ${r.mediaPartidas.toFixed(1)} al día de media frente a ${r.equivalenteAgregado.toFixed(0)} si esos cazadores siguieran en agregado (${diff >= 0 ? '+' : ''}${diff.toFixed(1)}).`
+    : `${r.diasHambre} días de hambre en ${params.dias}. Sin partidas habría ${sin.diasHambre}. Las partidas dan ${r.mediaPartidas.toFixed(1)} al día frente a ${r.equivalenteAgregado.toFixed(0)} en agregado.`;
+  const cifras = [
+    ['Cazadores', `${r.cazadores}`, `${r.partidas * params.tamano} en partidas · ${r.agregados} en agregado`, ''],
+    ['Una salida', `${r.ciclo} días`, `vuelve con ${r.piezas} piezas = ${r.porViaje} de comida`, ''],
+    ['Días de hambre', `${r.diasHambre}`, comparar ? `sin partidas: ${sin.diasHambre}` : 'en el mes', r.diasHambre ? 'mal' : 'bien'],
+    ['Reserva mínima', `${r.minimo}`, `al final: ${r.final}`, r.minimo === 0 ? 'mal' : 'bien'],
+  ];
+  document.getElementById('cifras').innerHTML = cifras.map(([t, v, s, c]) => `<div class="cifra ${c}"><span>${t}</span><b>${v}</b><span>${s}</span></div>`).join('');
+  pintarGrafico(r, comparar ? sin : null);
+  const t = document.getElementById('tabla');
+  t.innerHTML = '<tr><th>Día</th><th>Tareas</th><th>Agregado</th><th>Partidas</th><th>Reserva</th></tr>' +
+    r.filas.map((f) => `<tr><td>${f.d}</td><td>${f.deTareas}</td><td>${f.deAgregado}</td><td>${f.dePartidas ? `${f.dePartidas} (${f.llegadas} vuelve${f.llegadas > 1 ? 'n' : ''})` : '–'}</td><td class="${f.hambre ? 'hambre' : ''}">${f.hambre ? 'hambre' : f.reserva}</td></tr>`).join('');
+}
+
+function pintarGrafico(r, sin) {
+  const W = 640, H = 200, L = 40, B = 20, T = 10;
+  const max = Math.max(1, ...r.filas.map((f) => f.reserva), ...(sin ? sin.filas.map((f) => f.reserva) : []));
+  const x = (d) => L + (d - 1) * (W - L - 10) / (r.filas.length - 1);
+  const y = (v) => T + (H - T - B) * (1 - v / max);
+  const linea = (filas) => filas.map((f, i) => `${i ? 'L' : 'M'}${x(f.d).toFixed(1)},${y(f.reserva).toFixed(1)}`).join(' ');
+  let s = '';
+  for (const v of [0, Math.round(max / 2), max]) s += `<line x1="${L}" x2="${W - 10}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L - 6}" y="${y(v) + 3}" text-anchor="end">${v}</text>`;
+  for (const d of [1, 10, 20, 30].filter((d) => d <= r.filas.length)) s += `<text x="${x(d)}" y="${H - 4}" text-anchor="middle">día ${d}</text>`;
+  if (sin) s += `<path d="${linea(sin.filas)}" fill="none" stroke="var(--bar-agg)" stroke-width="2" stroke-dasharray="4 3"/>`;
+  s += `<path d="${linea(r.filas)}" fill="none" stroke="var(--bar-par)" stroke-width="2.2"/>`;
+  for (const f of r.filas) if (f.hambre) s += `<circle cx="${x(f.d)}" cy="${y(0)}" r="3" fill="var(--bad)"/>`;
+  if (sin) s += `<text x="${W - 12}" y="${T + 10}" text-anchor="end">— con partidas · - - sin partidas</text>`;
+  document.getElementById('graf').innerHTML = s;
+}
+
+function elegir(i) {
+  params = { ...ESCENARIOS[i].p };
+  document.querySelectorAll('.tab').forEach((b) => b.setAttribute('aria-selected', b.dataset.esc === String(i) ? 'true' : 'false'));
+  document.getElementById('desc').textContent = ESCENARIOS[i].desc;
+  pintarCampos();
+  mostrar(true);
+}
+document.querySelectorAll('.tab').forEach((b) => b.addEventListener('click', () => elegir(Number(b.dataset.esc))));
+document.getElementById('simular').addEventListener('click', () => mostrar(false));
+document.getElementById('sinPartidas').addEventListener('click', () => mostrar(true));
+elegir(0);
+</script>

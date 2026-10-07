@@ -348,6 +348,7 @@ const ROLES_SUBDITO: { value: SubditoInfo['rol']; label: string; descripcion: st
   { value: 'trabajador', label: 'Trabajador', descripcion: 'Trabaja en su tarea y suma riqueza al Reino.' },
   { value: 'soldado', label: 'Soldado', descripcion: 'Defiende el Reino; cobra su mantenimiento.' },
   { value: 'vigia', label: 'Vigía', descripcion: 'Vigila el Reino; cuenta como soldado.' },
+  { value: 'cazador', label: 'Cazador', descripcion: 'Sale con las partidas de caza y captura (Reino › Partidas); no trabaja en casa y lleva arma.' },
 ]
 /// CR-61 (61c): la tarea de cada trabajador; de ella sale la comida del Reino.
 const TAREAS_SUBDITO: { value: TareaSubdito; label: string; descripcion: string }[] = [

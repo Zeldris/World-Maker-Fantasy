@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { posicionEnZona, viajerosAqui } from '../../services/viajerosCruce.js';
 import { tablonEnLugar } from '../../services/cronista/tablones.js';
 import { Prisma, type MetodoObtencion } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
@@ -616,6 +617,8 @@ export async function zonaRoutes(app: FastifyInstance) {
       locationName,
       imageUrl: zoneMapImageUrl(locationSlug, momento, estacion),
       regionControl,
+      // CR-63 (63e): los viajeros de paso por aquí, en su celda.
+      viajeros: (await viajerosAqui(prisma, save.id)).map((v) => ({ id: v.id, nombre: `${v.propia ? 'Tu ' : ''}${v.que}${v.propia ? '' : ` (${v.quien})`}`, ...posicionEnZona(v.id) })),
       puntos: zonePoints.map((p) => {
         const yaDescubierto = descubierto(p.tipo, p.targetSlug);
         const nombreReal =
