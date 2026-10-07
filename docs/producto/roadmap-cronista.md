@@ -1699,8 +1699,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   Q6 de la ronda de `CR-56`; ronda propia aceptada el 2026-10-07, decisiones en
   [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-cr-62-combate-de-fondo-ronda-aceptada-por-la-usuaria-el-2026-10-07)).
   Hito `0.3`, Fase E, antes de `CR-37`. 🚧 Pasos:
-  - 62a: motor de combate de fondo puro (`combateDeFondo.ts`): grupos, emparejamiento, sub-combates
-    con las piezas del combate en vivo, moral y retirada, bajas.
+  - ~~62a~~ ✅ 2026-10-07: motor puro `services/combateDeFondo.ts` (grupos de 8 o 4, emparejamiento con vuelta de los que sobran, sub-combates con iniciativa, objetivo por Inteligencia, capitán y ataques concentrados, `resolveExchange`, moral y retirada; muere el 3 % de los caídos, nunca un NPC con nombre).
   - 62b: combatientes de una facción (NPC con nombre y soldados genéricos) y la intercepción de
     expediciones en el motor nuevo.
   - 62c: la escaramuza del narrador y la patrulla de vasallaje pelean de verdad (suceso y noticia con
