@@ -2,7 +2,7 @@ import { registrarSuceso } from './cronista/sucesos.js';
 import { comidaDelReino, huecoDeMateriales, slugsDeMateriales, suministrosDelReino } from './cronista/economiaReino.js';
 import { sucesosDeClima } from './cronista/clima.js';
 import type { Prisma } from '@prisma/client';
-import { tickKingdom, daysCrossed, hambrunaNueva, DIAS_PARA_CONSOLIDAR, DIAS_PARA_REBELION } from './kingdomTick.js';
+import { tickKingdom, daysCrossed, hambrunaNueva, DIAS_PARA_CONSOLIDAR, DIAS_PARA_REBELION, type KingdomStatsBlock } from './kingdomTick.js';
 import { registrarHambruna } from './cronista/hambruna.js';
 import { comidaDe } from './cronista/ganaderia.js';
 import { tickOrdenesProduccion, companionesQueCuraCasaDeCuras, type TrabajadorReino, type OrdenProduccionInput } from './kingdomProduction.js';
@@ -38,16 +38,16 @@ export async function advanceKingdomStatsDay(
     // CR-58 (Q27): un trabajador sin herramienta produce la mitad.
     const trabajadoresEfectivos = Math.max(0, trabajadores - Math.ceil((kingdomStats.sinHerramienta ?? 0) / 2));
     // CR-61: ya no hay comida pasiva; la dan las tareas de los súbditos (recolector, pescador, cocinero).
+    // QA-19: cada día cruzado con su estación y la reserva que queda, igual en un salto que día a día.
     const ws = await tx.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true } });
-    const comidaDia = await comidaDelReino(tx, saveId, ws?.fictionalMinutes ?? 0, comida, trabajadores > 0 ? trabajadoresEfectivos / trabajadores : 1);
-    const ticked = {
-      ...tickKingdom(
-        { poblacion, felicidad, comida, bebida, riqueza, soldados, trabajadores: trabajadoresEfectivos, visitantes, diasFelicidadAlta, diasFelicidadBaja, diasHambre, diasSed },
-        diasCruzados,
-        { ...suministros, comidaDia },
-      ),
-      trabajadores,
-    };
+    const ultimoDia = Math.floor((ws?.fictionalMinutes ?? 0) / 1440);
+    const factor = trabajadores > 0 ? trabajadoresEfectivos / trabajadores : 1;
+    let dia: KingdomStatsBlock = { poblacion, felicidad, comida, bebida, riqueza, soldados, trabajadores: trabajadoresEfectivos, visitantes, diasFelicidadAlta, diasFelicidadBaja, diasHambre, diasSed };
+    for (let d = ultimoDia - diasCruzados + 1; d <= ultimoDia; d++) {
+      const comidaDia = await comidaDelReino(tx, saveId, d * 1440 + 720, dia.comida, factor);
+      dia = tickKingdom(dia, 1, { ...suministros, comidaDia }, d);
+    }
+    const ticked = { ...dia, trabajadores };
     await tx.kingdomStats.update({ where: { ownerKey: ownerKeyFor({ saveId }) }, data: ticked });
     // CR-12 (12c): 3 días seguidos de hambre → HAMBRUNA en el Libro (la reacción baja la cohesión).
     if (hambrunaNueva(diasHambre, ticked.diasHambre ?? 0, diasCruzados)) await registrarHambruna(tx, saveId, 'REINO_JUGADORA');

@@ -1,7 +1,7 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { CRAFTING_RECIPES, type CraftingRecipe } from './crafting.js';
 import { daysCrossed, escalonCocinaDe, hambrunaNueva, tickFactionProduction, tickKingdomOneDay, type KingdomStatsBlock } from './kingdomTick.js';
-import { comidaDelDia, repartoDeFaccion } from './cronista/comidaOficios.js';
+import { comidaDelDia, porcionDelDia, repartoDeFaccion } from './cronista/comidaOficios.js';
 import { estacionFor } from './worldClock.js';
 import { decayPresion, stageForPresion, typeForPresion } from './factionRelations.js';
 import { registrarHambruna } from './cronista/hambruna.js';
@@ -162,9 +162,7 @@ export async function producirFacciones(
         // comen de lo que da el rebaño), con la costumbre de su pueblo; ya no hay comida pasiva.
         const cuadrilla = repartoDeFaccion(fks.faction?.raza ?? null, Math.max(0, stats.trabajadores - fueraDelPasivo), true, escalonCocina > 0);
         const comidaHoy = comidaDelDia(cuadrilla, { estacion: estacionFor(dia * 1440), hayAgua: true, escalonCocina: escalonCocina || null, comidaDisponible: stats.comida });
-        const comidaConResto = comidaHoy + restoComida;
-        restoComida = comidaConResto - Math.floor(comidaConResto);
-        stats = tickFactionOneDay(stats, { ...porDia, comida: Math.floor(comidaConResto) });
+        stats = tickFactionOneDay(stats, { ...porDia, comida: porcionDelDia(comidaHoy, dia) });
         const pago = sueldosDelDia({ ...stats, diasSinCobrar }, dia, equipoDeLaSemana(stats));
         stats = { ...stats, riqueza: pago.riqueza, felicidad: pago.felicidad };
         diasSinCobrar = pago.diasSinCobrar;

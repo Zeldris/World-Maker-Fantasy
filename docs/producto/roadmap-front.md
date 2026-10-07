@@ -861,7 +861,7 @@ genéricos. Y además:
 - ~~**QA-18 · Revisión sin tope de hallazgos**~~ ✅ 2026-10-07: en `docs/runbooks/skills-y-modelos.md`, el
   `/code-review` de cada PR a `main` va con `--max-findings all`. Motivo: cinco revisiones seguidas
   dieron justo 10 arreglos (la de la Fase E, 9); probablemente el tope por defecto.
-- **QA-19 · N días de golpe = N veces un día:** un test por cada proceso del avance diario que compare
+- ~~**QA-19 · N días de golpe = N veces un día**~~ ✅ 2026-10-07 (`saltoDeDias.integration.test.ts`: `tickKingdom` y el tick del Reino en la base cruzando un cambio de estación; las medias de comida se reparten con `porcionDelDia`, sin restos, y el Reino calcula la comida de cada día con su estación y su reserva. Queda: el mismo test para `producirFacciones` cuando su azar se pueda fijar —hoy usa `Math.random` en el rebaño—): un test por cada proceso del avance diario que compare
   avanzar N días de una vez con avanzar N veces 1 día (misma semilla). Motivo: el salto de varios días
   falló en la Fase E (difundir tras el resumen), en la A del `0.3` (informantes), en la D (bajas) y en
   el PR #29 (estación y reserva del primer día).

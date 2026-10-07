@@ -9,8 +9,9 @@ mecánico ya lo comprueban los tests, el hook `pre-push` y la CI; aquí está lo
 - **Salto de varios días.** Todo lo diario (`avanceDiario.ts` y lo que cuelga de él) da lo mismo en
   un salto de N días que en N veces un día: cada día usa su estación, su reserva y las bajas del
   anterior, y lo que cuenta «por semana» mira su propia semana.
-- **Decimales.** La comida, el agua o el forraje con medias (2,5 por recolector) arrastran el resto
-  al día siguiente en vez de redondear cada día hacia abajo.
+- **Decimales.** La comida, el agua o el forraje con medias (2,5 por recolector) se reparten por el
+  número de día (`porcionDelDia`) en vez de redondear cada día hacia abajo o guardar un resto que
+  solo vive dentro de un salto.
 - **Procesos de fondo enteros.** Un combate o proceso sin la jugadora se resuelve hasta el final o
   se cierra (tablas); nada queda abierto bloqueando la siguiente acción.
 - **Escrituras a la vez.** Lo que puede pasar a la vez (dos pasadas del avance, una acción mientras
