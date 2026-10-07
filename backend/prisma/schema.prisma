@@ -3952,6 +3952,8 @@ model Viajero {
   carga               Json?
   /// Orden permanente (Q7): null = de una vez.
   orden               Json?
+  /// CR-63 (63f, Q8): encuentro que la jugadora vio y dejó para el día siguiente: { zonePointId }.
+  encuentro           Json?
   diaSalida           Int
   /// Último día ya simulado (idempotencia del avance).
   ultimoDia           Int

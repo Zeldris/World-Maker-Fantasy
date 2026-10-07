@@ -145,6 +145,15 @@ async function motivoParaParar(tx: Tx, v: ViajeroFila): Promise<string | null> {
 }
 export const TRABAJOS: Record<string, TrabajoViajero> = {};
 
+/// Q8: lo que pasa al llegar a cada lugar del camino (encuentros, `viajerosEncuentros.ts`). «sigue»,
+/// «para» (se queda en ese lugar hasta mañana) o «vuelve» (a casa desde ahí).
+export type TrasCruzar = 'sigue' | 'para' | 'vuelve';
+export const GANCHOS: {
+  alCruzar?: (tx: Tx, v: ViajeroFila, locationId: string, desde: string, dia: number, random: () => number) => Promise<TrasCruzar>;
+  /// Al empezar el día, el encuentro que quedó pendiente (si sigue allí).
+  pendiente?: (tx: Tx, v: ViajeroFila, dia: number, random: () => number) => Promise<TrasCruzar>;
+} = {};
+
 export async function enlacesDelMundo(tx: Tx, worldId: string): Promise<Enlace[]> {
   return tx.locationLink.findMany({ where: { from: { worldId } }, select: { fromId: true, toId: true, minutosBase: true }, orderBy: { id: 'asc' } });
 }
@@ -206,10 +215,30 @@ export async function diaDeViajero(tx: Tx, v: ViajeroFila, enlaces: Enlace[], di
     estado = 'VUELTA';
     pos = { ubicacion: pos.ubicacion, ruta: rutaMasCorta(enlaces, pos.ubicacion, v.origenLocationId) ?? [], minutosEnTramo: 0 };
   } else if (estado === 'IDA' || estado === 'VUELTA') {
+    // Q8: el encuentro que se quedó para hoy.
+    const pendiente = v.encuentro && GANCHOS.pendiente ? await GANCHOS.pendiente(tx, v, dia, random) : 'sigue';
+    if (pendiente === 'vuelve' && estado === 'IDA') {
+      estado = 'VUELTA';
+      pos = { ubicacion: pos.ubicacion, ruta: rutaMasCorta(enlaces, pos.ubicacion, v.origenLocationId) ?? [], minutosEnTramo: 0 };
+    }
     const r = avanzarJornada(pos, enlaces);
+    const previo = pos;
     pos = r.pos;
-    // Q9: lo que ve en cada lugar por el que pasa (lo cuenta si le preguntan).
-    for (const l of r.cruzados) diario.push({ locationId: l, dia, vio: await loQueVe(tx, v.saveId, l) });
+    for (let i = 0; i < r.cruzados.length; i++) {
+      const l = r.cruzados[i]!;
+      // Q9: lo que ve en cada lugar por el que pasa (lo cuenta si le preguntan).
+      diario.push({ locationId: l, dia, vio: await loQueVe(tx, v.saveId, l) });
+      const tras = GANCHOS.alCruzar ? await GANCHOS.alCruzar(tx, v, l, i === 0 ? previo.ubicacion : r.cruzados[i - 1]!, dia, random) : 'sigue';
+      if (tras === 'para') {
+        pos = { ubicacion: l, ruta: [...r.cruzados.slice(i + 1), ...r.pos.ruta], minutosEnTramo: 0 };
+        break;
+      }
+      if (tras === 'vuelve') {
+        estado = 'VUELTA';
+        pos = { ubicacion: l, ruta: rutaMasCorta(enlaces, l, v.origenLocationId) ?? [], minutosEnTramo: 0 };
+        break;
+      }
+    }
     if (pos.ruta.length === 0) estado = estado === 'IDA' ? 'TRABAJANDO' : 'TERMINADO';
   }
   const actualizado = await tx.viajero.update({

@@ -48,7 +48,7 @@ export interface CargaCaza {
 /// Q6: probabilidad de atar a un animal abatido (la de la especie, con el tope de la caza limpia).
 export const CHANCE_CAPTURA_TOPE = 90;
 
-interface Cazador {
+export interface Cazador {
   c: CombatienteFondo;
   miembroId: string;
   companionId?: string;
@@ -58,7 +58,7 @@ interface Cazador {
 
 /// Los combatientes de una partida: compañeros con sus atributos, súbditos y genéricos como soldados
 /// de su pueblo (con su arma, Q3).
-async function cazadoresDe(tx: Tx, v: ViajeroFila, worldId: string): Promise<Cazador[]> {
+export async function cazadoresDe(tx: Tx, v: ViajeroFila, worldId: string): Promise<Cazador[]> {
   const out: Cazador[] = [];
   const companeros = await tx.companion.findMany({ where: { id: { in: v.miembros.map((m) => m.companionId).filter((x): x is string => !!x) }, condicionFisica: { notIn: ['MUERTO', 'CONVALECIENTE'] } } });
   for (const comp of companeros) {
@@ -80,6 +80,23 @@ async function cazadoresDe(tx: Tx, v: ViajeroFila, worldId: string): Promise<Caz
     for (let i = 0; i < m.genericos; i++) out.push({ miembroId: m.id, generico: true, c: soldadoGenerico(`${m.id}-${i}`, 'Cazador', 'A', base, true) });
   }
   return out;
+}
+
+/// Lo que le queda a la partida tras una pelea: compañeros heridos o muertos, súbditos y genéricos
+/// muertos (los genéricos se descuentan de su fila).
+export async function aplicarBajas(tx: Tx, saveId: string, cazadores: Cazador[], condicion: Map<string, CondicionFisica>, muertos: Set<string>, dia: number): Promise<void> {
+  for (const h of cazadores) {
+    const cond = muertos.has(h.c.id) ? 'MUERTO' : condicion.get(h.c.id) ?? 'ILESO';
+    if (h.companionId && cond !== 'ILESO') await tx.companion.update({ where: { id: h.companionId }, data: { condicionFisica: cond } });
+    if (h.subjectId && cond === 'MUERTO') await tx.subject.update({ where: { id: h.subjectId }, data: { estado: 'MUERTO' } });
+  }
+  const genericosMuertos = new Map<string, number>();
+  for (const h of cazadores) if (h.generico && muertos.has(h.c.id)) genericosMuertos.set(h.miembroId, (genericosMuertos.get(h.miembroId) ?? 0) + 1);
+  for (const [miembroId, n] of genericosMuertos) await tx.viajeroMiembro.update({ where: { id: miembroId }, data: { genericos: { decrement: n } } });
+  if (cazadores.some((h) => h.subjectId && muertos.has(h.c.id))) {
+    const ws = await tx.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true } });
+    await recalcularPoblacion(tx, saveId, ws?.fictionalMinutes ?? dia * 1440);
+  }
 }
 
 /// Q4: lo que hace la partida en su destino.
@@ -131,19 +148,7 @@ export async function cazarEnDestino(tx: Tx, v: ViajeroFila, dia: number, random
     }
   }
 
-  // Los suyos: compañeros heridos o muertos, súbditos y genéricos muertos.
-  for (const h of cazadores) {
-    const cond = muertos.has(h.c.id) ? 'MUERTO' : condicion.get(h.c.id)!;
-    if (h.companionId && cond !== 'ILESO') await tx.companion.update({ where: { id: h.companionId }, data: { condicionFisica: cond } });
-    if (h.subjectId && cond === 'MUERTO') await tx.subject.update({ where: { id: h.subjectId }, data: { estado: 'MUERTO' } });
-  }
-  const genericosMuertos = new Map<string, number>();
-  for (const h of cazadores) if (h.generico && muertos.has(h.c.id)) genericosMuertos.set(h.miembroId, (genericosMuertos.get(h.miembroId) ?? 0) + 1);
-  for (const [miembroId, n] of genericosMuertos) await tx.viajeroMiembro.update({ where: { id: miembroId }, data: { genericos: { decrement: n } } });
-  if (cazadores.some((h) => h.subjectId && muertos.has(h.c.id))) {
-    const ws = await tx.worldState.findUnique({ where: { saveId: v.saveId }, select: { fictionalMinutes: true } });
-    await recalcularPoblacion(tx, v.saveId, ws?.fictionalMinutes ?? dia * 1440);
-  }
+  await aplicarBajas(tx, v.saveId, cazadores, condicion, muertos, dia);
 
   const nombre = npc?.name ?? especie;
   const quien = cuerdas > 0 ? 'La partida de captura' : 'La partida de caza';

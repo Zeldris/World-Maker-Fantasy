@@ -1760,7 +1760,14 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     facción: la carne de una pieza al precio del catálogo, a tu bolsa; cobra la facción) y «Volver a
     casa» con las tuyas. Quedan: el marcador dentro de la cuadrícula de la zona, vender a una partida
     y enlazar lo que cuentan con el sistema de rumores.
-  - 63f: encuentros por el camino (de fondo, o aviso para unirte si estás).
+  - ~~63f~~ ✅ 2026-10-07: `services/viajerosEncuentros.ts` (ganchos `alCruzar` y `pendiente` de
+    `viajeros.ts`; migración `20261007220000_viajero_encuentro`). Al llegar a cada lugar, 10 % (25 %
+    si el tramo tiene riesgo) de toparse con el grupo hostil más grande (fauna AGRESIVO/ENEMIGO o gente
+    enemiga que no sea de los suyos). Sin la jugadora, pelea de fondo con aviso; si pierden, vuelven
+    a casa desde allí. Con ella en ese lugar, se detienen y se lo cuentan; si no los vence ella, pelean
+    al día siguiente. Cambio sobre Q8: «unirte en vivo con la partida» queda para escoltar (`CR-64`),
+    porque el combate en vivo aún no admite súbditos ni gente genérica; mientras, la jugadora ayuda
+    atacando ella al enemigo en vivo.
   - 63g: facciones (prototipo antes; sustituye la caza en agregado).
 - **CR-64** Todo viaja de verdad ([ADR 0003](../adr/0003-todo-viaja-de-verdad.md), usuaria 2026-10-07,
   como en X4): lo que se mueve es un **viajero** con ruta real de zona en zona, visible y con quien
