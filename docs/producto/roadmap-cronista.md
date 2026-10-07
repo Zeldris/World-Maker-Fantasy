@@ -1839,8 +1839,11 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   desde ella), Armería (equipo de la milicia) y Cuartel (tope y moral de soldados), con escalones;
   milicia de súbditos trabajadores que pelean y no producen ese día. También para las facciones
   (`CR-36`). Ronda de detalle aceptada el 2026-10-07 (Q1-Q10, X4 primero). 🚧 Pasos:
-  - 65a: recetas de los cuatro módulos × 3 escalones (`edificioTipo: 'defensa'`) y reglas puras
-    (`cronista/defensa.ts`: cobertura, aguante, radio, plazas, equipos, moral).
+  - ~~65a~~ ✅ 2026-10-07: 12 recetas (Empalizada/Muro/Muralla, Torre de vigía ×3, Armería ×3,
+    Barracón ×3; `edificioTipo: 'defensa'`, escalón en `edificioOficioNivel`, uno de cada por
+    región); en la región del Ayuntamiento o en la de un Cuartel Avanzado contra su cupo local
+    (`cupoDefensaDeCuartel`: 2, 12 el de Guerra; el 2 es provisional); se mejoran en su
+    asentamiento. Reglas puras en `cronista/defensa.ts` (`efectoDefensa`, `golpeAEmpalizada`).
   - 65b: modelo (aguante del módulo, equipos de milicia, asentamiento de cada soldado) y cupos.
   - 65c: radar de la Torre (hostiles en el radio, alerta) y convocar la milicia.
   - 65d: resolver un asalto de fondo (guarnición + milicia + cobertura con `CR-62`; saqueo y

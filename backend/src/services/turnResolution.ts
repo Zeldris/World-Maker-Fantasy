@@ -5868,7 +5868,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         // nuevo — "no se acumulan, mejoras el actual" (docs/mecanicas/17-reglas-construcciones-reino.md).
         // El objetivo ya se verificó arriba (`buildBlockedReason`), pero se re-busca fresco dentro
         // de la transacción por si acaso, mismo criterio que `freshInventoryRows`.
-        const target = await tx.building.findFirst({ where: { saveId, recipeKey: buildRecipe.upgradesRecipeKey } });
+        // CR-65: un módulo de defensa se mejora en su asentamiento.
+        const target = await tx.building.findFirst({ where: { saveId, recipeKey: buildRecipe.upgradesRecipeKey, ...(buildRecipe.edificioTipo === 'defensa' ? { status: 'ACTIVO', location: { region: activeRegion ?? undefined } } : {}) } });
         if (target) {
           await tx.building.update({
             where: { id: target.id },

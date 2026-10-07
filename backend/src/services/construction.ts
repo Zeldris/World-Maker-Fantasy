@@ -1,4 +1,5 @@
 import { normalizeText, buildAdjacency, shortestPath } from './travel.js';
+import { CUPO_DEFENSA_CUARTEL_BASE } from './cronista/defensa.js';
 import type { AttributeBlock } from './dice.js';
 import type { SecondaryAttributeBlock } from './secondaryAttributes.js';
 import { checkRequisitos, type Requisitos } from './requisitos.js';
@@ -1442,6 +1443,223 @@ export const FIBRERIA_RECIPE: ConstructionRecipe = {
 // también matchea el patrón (más simple) del pequeño si ese se comprobara antes. Mismo criterio
 // aplicado a las 3 Jaulas nuevas, y a Cuartel de Guerra/Puesto Comercial antes que Cuartel
 // Avanzado (mismo motivo: "cuartel de guerra" también contiene "cuartel").
+
+// CR-65 (hito 0.3, Fase E, Q1-Q3 de su ronda de detalle): módulos de defensa de un asentamiento
+// (X4: el núcleo de una estación y sus módulos). Van en la región del Ayuntamiento o en la de un
+// Cuartel Avanzado (contra su cupo local, `computeBuildBlockedReason`); uno de cada por
+// asentamiento (`maxPerRegion: 1`). Tres escalones de madera a piedra (Manor Lords, Bellwright);
+// `edificioOficioNivel` es el escalón (mismo mecanismo de mejora que los edificios de oficio). Lo
+// que da cada escalón está en `cronista/defensa.ts`.
+
+export const EMPALIZADA_RECIPE: ConstructionRecipe = {
+  key: 'empalizada',
+  name: 'una empalizada',
+  description: 'Troncos aguzados clavados en tierra y atados con tendón: no para a un ejército, pero quien defiende detrás de ella pelea a cubierto.',
+  raza: 'orcos',
+  nounRegex: /\bempalizada\b/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 20, label: 'leña' },
+    { match: { kind: 'exact', catalogSlug: 'cuerda-tendon' }, cantidad: 4, label: 'cuerda de tendón' },
+  ],
+  requisitos: { fuerza: 10 },
+  oficio: 'carpintero-orcos-llanuras',
+  edificioTipo: 'defensa',
+  edificioOficioNivel: 1,
+  companionSlots: 0,
+  requiresAyuntamiento: true,
+  maxPerRegion: 1,
+};
+export const EMPALIZADA_MURO_RECIPE: ConstructionRecipe = {
+  key: 'empalizada-2',
+  name: 'un muro de piedra',
+  description: 'Piedra seca sobre la vieja empalizada, a la altura del pecho: media cobertura que aguanta más de un asalto.',
+  raza: 'orcos',
+  nounRegex: /\bmuro de piedra\b/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piedra' }, cantidad: 20, label: 'piedra' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 10, label: 'leña' },
+  ],
+  requisitos: { fuerza: 16 },
+  oficio: 'constructor-orcos-llanuras',
+  edificioTipo: 'defensa',
+  upgradesRecipeKey: 'empalizada',
+  edificioOficioNivel: 2,
+  ayuntamientoNivelMinimo: 2,
+};
+export const EMPALIZADA_MURALLA_RECIPE: ConstructionRecipe = {
+  key: 'empalizada-3',
+  name: 'una muralla',
+  description: 'Bloques tallados con adarve y puerta herrada: desde arriba solo asoma la cabeza de quien defiende.',
+  raza: 'orcos',
+  nounRegex: /\bmuralla\b/,
+  requirements: [
+    { match: { kind: 'exact', catalogSlug: 'bloque-piedra-tallada' }, cantidad: 10, label: 'bloque de piedra tallada' },
+    { match: { kind: 'exact', catalogSlug: 'lingote-de-hierro' }, cantidad: 4, label: 'lingote de hierro' },
+  ],
+  requisitos: { fuerza: 20 },
+  oficio: 'constructor-orcos-llanuras',
+  edificioTipo: 'defensa',
+  upgradesRecipeKey: 'empalizada',
+  edificioOficioNivel: 3,
+  ayuntamientoNivelMinimo: 3,
+};
+export const TORRE_VIGIA_RECIPE: ConstructionRecipe = {
+  key: 'torre-vigia',
+  name: 'una torre de vigía',
+  description: 'Una torre de troncos con plataforma: desde arriba se ve venir a quien se acerca por los caminos, y se tira con ventaja.',
+  raza: 'orcos',
+  nounRegex: /(?=.*torre)(?=.*vigia)(?!.*piedra)(?!.*\bgran\b)/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 12, label: 'leña' },
+    { match: { kind: 'exact', catalogSlug: 'cuerda-tendon' }, cantidad: 2, label: 'cuerda de tendón' },
+  ],
+  requisitos: { fuerza: 10 },
+  oficio: 'carpintero-orcos-llanuras',
+  edificioTipo: 'defensa',
+  edificioOficioNivel: 1,
+  companionSlots: 0,
+  requiresAyuntamiento: true,
+  maxPerRegion: 1,
+};
+export const TORRE_VIGIA_PIEDRA_RECIPE: ConstructionRecipe = {
+  key: 'torre-vigia-2',
+  name: 'una torre de vigía de piedra',
+  description: 'Base de piedra y un fuego de señales: la vista llega dos caminos más allá.',
+  raza: 'orcos',
+  nounRegex: /(?=.*torre)(?=.*vigia)(?=.*piedra)/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piedra' }, cantidad: 10, label: 'piedra' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 8, label: 'leña' },
+  ],
+  requisitos: { fuerza: 16 },
+  oficio: 'constructor-orcos-llanuras',
+  edificioTipo: 'defensa',
+  upgradesRecipeKey: 'torre-vigia',
+  edificioOficioNivel: 2,
+  ayuntamientoNivelMinimo: 2,
+};
+export const TORRE_VIGIA_GRAN_RECIPE: ConstructionRecipe = {
+  key: 'torre-vigia-3',
+  name: 'una gran torre de vigía',
+  description: 'La torre más alta de la región: quien vigila desde ella ve llegar a cualquiera con días de antelación.',
+  raza: 'orcos',
+  nounRegex: /(?=.*\bgran\b)(?=.*torre)(?=.*vigia)/,
+  requirements: [
+    { match: { kind: 'exact', catalogSlug: 'bloque-piedra-tallada' }, cantidad: 8, label: 'bloque de piedra tallada' },
+    { match: { kind: 'exact', catalogSlug: 'lingote-de-hierro' }, cantidad: 2, label: 'lingote de hierro' },
+  ],
+  requisitos: { fuerza: 20 },
+  oficio: 'constructor-orcos-llanuras',
+  edificioTipo: 'defensa',
+  upgradesRecipeKey: 'torre-vigia',
+  edificioOficioNivel: 3,
+  ayuntamientoNivelMinimo: 3,
+};
+export const ARMERIA_RECIPE: ConstructionRecipe = {
+  key: 'armeria',
+  name: 'una armería',
+  description: 'Estantes y un candado: armas para que los trabajadores del Reino se defiendan si llega un asalto.',
+  raza: 'orcos',
+  nounRegex: /\barmeria\b(?!.*piedra)(?!.*\bgran\b)/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 10, label: 'leña' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piedra' }, cantidad: 6, label: 'piedra' },
+  ],
+  requisitos: { fuerza: 10 },
+  oficio: 'carpintero-orcos-llanuras',
+  edificioTipo: 'defensa',
+  edificioOficioNivel: 1,
+  companionSlots: 0,
+  requiresAyuntamiento: true,
+  maxPerRegion: 1,
+};
+export const ARMERIA_PIEDRA_RECIPE: ConstructionRecipe = {
+  key: 'armeria-2',
+  name: 'una armería de piedra',
+  description: 'Muros gruesos y más estantes: arma a diez milicianos.',
+  raza: 'orcos',
+  nounRegex: /(?=.*armeria)(?=.*piedra)/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piedra' }, cantidad: 12, label: 'piedra' },
+    { match: { kind: 'exact', catalogSlug: 'lingote-de-hierro' }, cantidad: 2, label: 'lingote de hierro' },
+  ],
+  requisitos: { fuerza: 16 },
+  oficio: 'constructor-orcos-llanuras',
+  edificioTipo: 'defensa',
+  upgradesRecipeKey: 'armeria',
+  edificioOficioNivel: 2,
+  ayuntamientoNivelMinimo: 2,
+};
+export const ARMERIA_GRAN_RECIPE: ConstructionRecipe = {
+  key: 'armeria-3',
+  name: 'una gran armería',
+  description: 'Un arsenal bajo llave: arma a veinte milicianos.',
+  raza: 'orcos',
+  nounRegex: /(?=.*\bgran\b)(?=.*armeria)/,
+  requirements: [
+    { match: { kind: 'exact', catalogSlug: 'bloque-piedra-tallada' }, cantidad: 6, label: 'bloque de piedra tallada' },
+    { match: { kind: 'exact', catalogSlug: 'lingote-de-hierro' }, cantidad: 4, label: 'lingote de hierro' },
+  ],
+  requisitos: { fuerza: 20 },
+  oficio: 'constructor-orcos-llanuras',
+  edificioTipo: 'defensa',
+  upgradesRecipeKey: 'armeria',
+  edificioOficioNivel: 3,
+  ayuntamientoNivelMinimo: 3,
+};
+export const BARRACON_RECIPE: ConstructionRecipe = {
+  key: 'barracon',
+  name: 'un barracón',
+  description: 'Literas y un fogón para los soldados de guardia: más guarnición en este asentamiento y mejor moral al defenderlo.',
+  raza: 'orcos',
+  nounRegex: /\bbarracon\b(?!.*piedra)(?!.*\bgran\b)/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 15, label: 'leña' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piedra' }, cantidad: 5, label: 'piedra' },
+  ],
+  requisitos: { fuerza: 10 },
+  oficio: 'carpintero-orcos-llanuras',
+  edificioTipo: 'defensa',
+  edificioOficioNivel: 1,
+  companionSlots: 0,
+  requiresAyuntamiento: true,
+  maxPerRegion: 1,
+};
+export const BARRACON_PIEDRA_RECIPE: ConstructionRecipe = {
+  key: 'barracon-2',
+  name: 'un barracón de piedra',
+  description: 'Un barracón de piedra con patio de armas: diez soldados de guarnición.',
+  raza: 'orcos',
+  nounRegex: /(?=.*barracon)(?=.*piedra)/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piedra' }, cantidad: 15, label: 'piedra' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 10, label: 'leña' },
+  ],
+  requisitos: { fuerza: 16 },
+  oficio: 'constructor-orcos-llanuras',
+  edificioTipo: 'defensa',
+  upgradesRecipeKey: 'barracon',
+  edificioOficioNivel: 2,
+  ayuntamientoNivelMinimo: 2,
+};
+export const BARRACON_GRAN_RECIPE: ConstructionRecipe = {
+  key: 'barracon-3',
+  name: 'un gran barracón',
+  description: 'Cuarteles para veinte soldados, con sala de armas y estandarte.',
+  raza: 'orcos',
+  nounRegex: /(?=.*\bgran\b)(?=.*barracon)/,
+  requirements: [
+    { match: { kind: 'exact', catalogSlug: 'bloque-piedra-tallada' }, cantidad: 8, label: 'bloque de piedra tallada' },
+    { match: { kind: 'exact', catalogSlug: 'lingote-de-hierro' }, cantidad: 3, label: 'lingote de hierro' },
+  ],
+  requisitos: { fuerza: 20 },
+  oficio: 'constructor-orcos-llanuras',
+  edificioTipo: 'defensa',
+  upgradesRecipeKey: 'barracon',
+  edificioOficioNivel: 3,
+  ayuntamientoNivelMinimo: 3,
+};
+
 export const CONSTRUCTION_RECIPES: ConstructionRecipe[] = [
   CAMPAMENTO_RECIPE,
   CHOZA_RECIPE,
@@ -1508,6 +1726,19 @@ export const CONSTRUCTION_RECIPES: ConstructionRecipe[] = [
   BOCA_MINA_GRAN_OBRADOR_RECIPE,
   BOCA_MINA_OBRADOR_RECIPE,
   BOCA_MINA_RECIPE,
+  // CR-65: las mejoras antes que la base (sus `nounRegex` son más específicos).
+  EMPALIZADA_MURALLA_RECIPE,
+  TORRE_VIGIA_GRAN_RECIPE,
+  ARMERIA_GRAN_RECIPE,
+  BARRACON_GRAN_RECIPE,
+  EMPALIZADA_MURO_RECIPE,
+  TORRE_VIGIA_PIEDRA_RECIPE,
+  ARMERIA_PIEDRA_RECIPE,
+  BARRACON_PIEDRA_RECIPE,
+  EMPALIZADA_RECIPE,
+  TORRE_VIGIA_RECIPE,
+  ARMERIA_RECIPE,
+  BARRACON_RECIPE,
 ];
 
 /// `key` de las recetas que cuentan contra `reinoBuildingCapacity` (edificios normales de reino,
@@ -1520,6 +1751,17 @@ const REINO_BUILDING_RECIPE_KEYS: string[] = CONSTRUCTION_RECIPES.filter((r) => 
 /// Avanzados — solo la receta base cuenta (las 2 mejoras actualizan la MISMA fila, nunca crean
 /// una nueva, igual que las mejoras de Ayuntamiento).
 const CUARTEL_AVANZADO_RECIPE_KEYS: string[] = CONSTRUCTION_RECIPES.filter((r) => r.isCuartelAvanzado).map((r) => r.key);
+
+/// CR-65: claves de los módulos de defensa (solo la base; las mejoras actualizan la misma fila).
+export const DEFENSA_RECIPE_KEYS: string[] = CONSTRUCTION_RECIPES.filter((r) => r.edificioTipo === 'defensa' && !r.upgradesRecipeKey).map((r) => r.key);
+
+/// CR-65 (Q1): módulos de defensa que caben en un Cuartel Avanzado; el Cuartel de Guerra suma su
+/// bono. La mejora actualiza la misma fila (cambia su nombre); se reconoce por el nombre o por la
+/// clave, según cómo se haya creado.
+export function cupoDefensaDeCuartel(cuartel: { recipeKey: string | null; name: string }): number {
+  const deGuerra = cuartel.recipeKey === CUARTEL_DE_GUERRA_RECIPE.key || cuartel.name === CUARTEL_DE_GUERRA_RECIPE.name;
+  return CUPO_DEFENSA_CUARTEL_BASE + (deGuerra ? CUARTEL_DE_GUERRA_RECIPE.cuartelUpgradeBonus?.defensa ?? 0 : 0);
+}
 
 /// Slots de compañero que da una construcción, por su `recipeKey` guardada en `Building` — 0 para
 /// construcciones libres del modelo (`recipeKey: null`) o cualquier clave que no matchee ninguna
@@ -1660,7 +1902,18 @@ export async function computeBuildBlockedReason(params: {
     // región, nunca dentro de la misma. Las 2 restricciones de abajo (misma región, distancia
     // máxima) solo tienen sentido para edificios normales de reino, que sí dependen de estar cerca
     // del Ayuntamiento para funcionar.
-    if (!buildRecipe.isCuartelAvanzado) {
+    // CR-65 (Q1): un módulo de defensa fuera de la región del Ayuntamiento va en la de un Cuartel
+    // Avanzado, contra el cupo local de defensa de ese Cuartel (X4: los módulos de cada estación).
+    const moduloEnCuartel = buildRecipe.edificioTipo === 'defensa' && !buildRecipe.upgradesRecipeKey && ayuntamiento.location.region !== activeRegion;
+    if (moduloEnCuartel) {
+      const cuartel = await db.building.findFirst({ where: { saveId, recipeKey: { in: CUARTEL_AVANZADO_RECIPE_KEYS }, status: 'ACTIVO', location: { region: activeRegion ?? undefined } } });
+      if (!cuartel) return 'un módulo de defensa va en la región del Ayuntamiento o donde tengas un Cuartel Avanzado';
+      const modulos = await db.building.count({
+        where: { saveId, recipeKey: { in: DEFENSA_RECIPE_KEYS }, status: { in: ['ACTIVO', 'EN_CONSTRUCCION'] }, location: { region: activeRegion ?? undefined }, ...(excludeBuildingId ? { id: { not: excludeBuildingId } } : {}) },
+      });
+      const cupo = cupoDefensaDeCuartel(cuartel);
+      if (modulos >= cupo) return `ese Cuartel Avanzado ya tiene todos sus módulos de defensa (${cupo})`;
+    } else if (!buildRecipe.isCuartelAvanzado) {
       if (ayuntamiento.location.region !== activeRegion) {
         return 'debe construirse en la misma región donde está el Ayuntamiento';
       }
@@ -1720,7 +1973,8 @@ export async function computeBuildBlockedReason(params: {
     // 1 (p.ej. 'herreria'), no una key compartida como Ayuntamiento/Cuartel — cada Building de
     // oficio tiene su propia `recipeKey` estable, la mejora hace `UPDATE` de esa misma fila
     // (turnResolution.ts, mismo mecanismo que ya usa Ayuntamiento).
-    const target = await db.building.findFirst({ where: { saveId, recipeKey: buildRecipe.upgradesRecipeKey, status: 'ACTIVO' } });
+    // CR-65: un módulo de defensa se mejora en su asentamiento (puede haber uno en cada región).
+    const target = await db.building.findFirst({ where: { saveId, recipeKey: buildRecipe.upgradesRecipeKey, status: 'ACTIVO', ...(buildRecipe.edificioTipo === 'defensa' ? { location: { region: activeRegion ?? undefined } } : {}) } });
     if (!target) {
       return buildRecipe.cuartelUpgradeBonus
         ? 'no tiene ningún Cuartel Avanzado que mejorar todavía'
