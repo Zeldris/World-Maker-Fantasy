@@ -12,6 +12,7 @@ import { cotizarCompra, cotizarVenta, diasDeCamino, unidadesDeOrden, type TipoOr
 import { buildAdjacency, shortestPath } from './travel.js';
 import { MERCADO_RECIPE_KEY } from './construction.js';
 import { riesgoIntercepcion, seIntercepta } from './factionExpeditions.js';
+import { asaltoACaravana } from './campamentos.js';
 import type { FactionRelationType } from '@prisma/client';
 
 type Tx = Prisma.TransactionClient;
@@ -131,6 +132,23 @@ export async function avanzarComercio(prisma: PrismaClient, saveId: string, dia:
   // 2. Llegan y comercian (o caen en un asalto).
   const relaciones = await relacionesDelReino(prisma, reino.id);
   for (const c of await prisma.caravana.findMany({ where: { saveId, status: 'EN_CAMINO', diaLlegada: { lte: dia } }, include: { destino: { select: { region: true, name: true } }, faction: { select: { name: true } } } })) {
+    // CR-50 (Q4): cerca de un campamento de bandidos, pueden asaltarla.
+    const bandidos = c.local ? null : await prisma.$transaction(async (tx) => {
+      // Primero se marca (si otra pasada ya la resolvió, no se toca el campamento).
+      const fresca = await tx.caravana.updateMany({ where: { id: c.id, status: 'EN_CAMINO' }, data: { status: 'ASALTADA', riqueza: 0, traidas: 0 } });
+      if (fresca.count === 0) return null;
+      const grupo = await asaltoACaravana(tx, saveId, c.destinoLocationId, c.riqueza, random);
+      if (!grupo) {
+        await tx.caravana.update({ where: { id: c.id }, data: { status: 'EN_CAMINO', riqueza: c.riqueza, traidas: c.traidas } });
+        return null;
+      }
+      await registrarEnReino(tx, saveId, `${grupo} asaltan la caravana que iba a ${c.faction.name} cerca de ${c.destino.name}: se pierde todo lo que llevaba.`);
+      return grupo;
+    });
+    if (bandidos) {
+      resultado.asaltadas++;
+      continue;
+    }
     if (!c.local && seIntercepta(riesgoIntercepcion(c.destino.region, reino.name, relaciones), random())) {
       await prisma.$transaction(async (tx) => {
         const fresca = await tx.caravana.updateMany({ where: { id: c.id, status: 'EN_CAMINO' }, data: { status: 'ASALTADA', riqueza: 0, traidas: 0 } });

@@ -25,13 +25,13 @@ export function atributosMedios(bloques: AttributeBlock[]): AttributeBlock {
 }
 
 /// Puro: un soldado genérico de un pueblo.
-export function soldadoGenerico(id: string, nombre: string, bando: BandoFondo, base: AttributeBlock, armado: boolean): CombatienteFondo {
-  const attributes = npcAttributesForLevel(base, NIVEL_SOLDADO_GENERICO, null);
+export function soldadoGenerico(id: string, nombre: string, bando: BandoFondo, base: AttributeBlock, armado: boolean, nivel = NIVEL_SOLDADO_GENERICO): CombatienteFondo {
+  const attributes = npcAttributesForLevel(base, nivel, null);
   return {
     id, nombre, bando, attributes,
     attribute: attributes.destreza > attributes.fuerza ? 'destreza' : 'fuerza',
     attributeBonus: armado ? 1 : 0,
-    nivel: NIVEL_SOLDADO_GENERICO,
+    nivel,
     conMoral: true,
   };
 }

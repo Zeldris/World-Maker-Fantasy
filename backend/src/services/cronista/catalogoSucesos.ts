@@ -106,6 +106,10 @@ export interface DatosSuceso {
   HAMBRUNA: { reino: string };
   LLEGADA_POBLADORES: { reino: string; cuantos: number };
   VISITANTE_ILUSTRE: { reino: string; visitante: string };
+  /// CR-50: cae un campamento de bandidos.
+  CAMPAMENTO_DESTRUIDO: { campamento: string; lugar: string; por: string };
+  /// CR-50 (Q7): se asienta un campamento de bandidos (llega como rumor).
+  CAMPAMENTO_NUEVO: { campamento: string; lugar: string };
   // LORE
   HALLAZGO_RUINA: { personaje: string; ruina: string };
   HALLAZGO_DOCUMENTO: { personaje: string; documento: string; historiaSlug?: string };
@@ -219,6 +223,8 @@ export const CATALOGO_SUCESOS: Catalogo = {
   HAMBRUNA: { familia: 'REINO', importanciaBase: 6, plantilla: (d) => `El hambre llega a ${d.reino}.` },
   LLEGADA_POBLADORES: { familia: 'REINO', importanciaBase: 4, plantilla: (d) => `${d.cuantos === 1 ? 'Llega un poblador' : `Llegan ${d.cuantos} pobladores`} a ${d.reino}.` },
   VISITANTE_ILUSTRE: { familia: 'REINO', importanciaBase: 5, plantilla: (d) => `${d.visitante} visita ${d.reino}.` },
+  CAMPAMENTO_NUEVO: { familia: 'FACCION', importanciaBase: 5, plantilla: (d) => `Se asientan ${d.campamento} en ${d.lugar}.` },
+  CAMPAMENTO_DESTRUIDO: { familia: 'FACCION', importanciaBase: 5, plantilla: (d) => `${d.por} acaba con el campamento de ${d.campamento} en ${d.lugar}.` },
   // LORE
   HALLAZGO_RUINA: { familia: 'LORE', importanciaBase: 4, plantilla: (d) => `${d.personaje} encuentra ${d.ruina}.` },
   HALLAZGO_DOCUMENTO: { familia: 'LORE', importanciaBase: 4, plantilla: (d) => `${d.personaje} encuentra «${d.documento}».` },

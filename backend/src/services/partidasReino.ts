@@ -6,7 +6,7 @@ import type { Prisma } from '@prisma/client';
 import { MAX_COMBATIENTES_POR_BANDO } from './combateMultiple.js';
 import { esAdultoSubdito, rolDeSubdito } from './cronista/subditos.js';
 import { prepararCaptura } from './partidasCaptura.js';
-import { crearViajero, enlacesDelMundo, rutaMasCorta, type OrdenViajero } from './viajeros.js';
+import { crearViajero, enlacesDelMundo, rutaMasCorta, TIPOS_SIN_DUENO, type OrdenViajero } from './viajeros.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -24,7 +24,8 @@ export async function origenDelReino(tx: Tx, saveId: string): Promise<{ id: stri
   return edificio?.location ?? null;
 }
 
-async function ocupados(tx: Tx, saveId: string) {
+/// Quién está fuera ahora con alguna partida (CR-50 lo reusa para los ataques a campamentos).
+export async function ocupados(tx: Tx, saveId: string) {
   const m = await tx.viajeroMiembro.findMany({ where: { viajero: { saveId, ...enMarcha } }, select: { companionId: true, subjectId: true } });
   return { companions: new Set(m.map((x) => x.companionId).filter(Boolean)), subjects: new Set(m.map((x) => x.subjectId).filter(Boolean)) };
 }
@@ -110,7 +111,7 @@ export async function lanzarPartida(tx: Tx, saveId: string, p: PeticionPartida, 
 
 /// Q7/Q9: órdenes a una partida tuya en marcha.
 export async function ordenarPartida(tx: Tx, saveId: string, id: string, accion: string, destinoLocationId?: string): Promise<{ ok: true } | { ok: false; motivo: string }> {
-  const v = await tx.viajero.findFirst({ where: { id, saveId, factionId: null, ...enMarcha } });
+  const v = await tx.viajero.findFirst({ where: { id, saveId, factionId: null, tipo: { notIn: TIPOS_SIN_DUENO }, ...enMarcha } });
   if (!v) return { ok: false, motivo: 'Esa partida no está en marcha.' };
   const { worldId } = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } });
   const enlaces = await enlacesDelMundo(tx, worldId);
@@ -143,8 +144,8 @@ export async function ordenarPartida(tx: Tx, saveId: string, id: string, accion:
 /// Para el panel: las partidas del Reino en marcha y las 5 últimas que volvieron.
 export async function partidasDelReino(tx: Tx, saveId: string) {
   const filas = [
-    ...(await tx.viajero.findMany({ where: { saveId, factionId: null, ...enMarcha }, orderBy: { createdAt: 'asc' }, include: { miembros: { include: { companion: { select: { name: true } }, subject: { select: { name: true } } } }, ubicacion: { select: { name: true } }, destino: { select: { name: true } } } })),
-    ...(await tx.viajero.findMany({ where: { saveId, factionId: null, estado: 'TERMINADO' }, orderBy: { updatedAt: 'desc' }, take: 5, include: { miembros: { include: { companion: { select: { name: true } }, subject: { select: { name: true } } } }, ubicacion: { select: { name: true } }, destino: { select: { name: true } } } })),
+    ...(await tx.viajero.findMany({ where: { saveId, factionId: null, tipo: { notIn: TIPOS_SIN_DUENO }, ...enMarcha }, orderBy: { createdAt: 'asc' }, include: { miembros: { include: { companion: { select: { name: true } }, subject: { select: { name: true } } } }, ubicacion: { select: { name: true } }, destino: { select: { name: true } } } })),
+    ...(await tx.viajero.findMany({ where: { saveId, factionId: null, tipo: { notIn: TIPOS_SIN_DUENO }, estado: 'TERMINADO' }, orderBy: { updatedAt: 'desc' }, take: 5, include: { miembros: { include: { companion: { select: { name: true } }, subject: { select: { name: true } } } }, ubicacion: { select: { name: true } }, destino: { select: { name: true } } } })),
   ];
   const { worldId } = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } });
   const fauna = new Map((await tx.npc.findMany({ where: { worldId, saveId: null, slug: { in: filas.map((f) => f.objetivo ?? '') } }, select: { slug: true, name: true } })).map((f) => [f.slug, f.name]));

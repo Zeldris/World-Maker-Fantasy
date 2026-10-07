@@ -35,6 +35,8 @@ export interface SubditoParaCuenta {
   role: string;
   pueblo: string | null;
   nacidoEn: number | null;
+  /// CR-65 (Q6): en la milicia, un trabajador no produce.
+  enMilicia?: boolean;
 }
 
 /// Puro: un súbdito es adulto si su edad pasa la madurez de su pueblo (los de antes del 0.3, sí).
@@ -53,7 +55,7 @@ export function cifrasDePoblacion(subditos: SubditoParaCuenta[], ahora: number):
     const rol = rolDeSubdito(s.role);
     if (rol === 'visitante') visitantes++;
     else if (!esAdultoSubdito(s, ahora)) continue;
-    else if (rol === 'trabajador') trabajadores++;
+    else if (rol === 'trabajador') trabajadores += s.enMilicia ? 0 : 1;
     // CR-63: el cazador no trabaja en casa ni defiende; come como un civil.
     else if (rol === 'cazador') continue;
     else soldados++;
@@ -65,7 +67,7 @@ export function cifrasDePoblacion(subditos: SubditoParaCuenta[], ahora: number):
 export function tareasDelReino(subditos: (SubditoParaCuenta & { tarea: string | null })[], ahora: number): Record<Tarea, number> {
   const r = Object.fromEntries(TAREAS.map((t) => [t, 0])) as Record<Tarea, number>;
   for (const s of subditos) {
-    if (rolDeSubdito(s.role) !== 'trabajador' || !esAdultoSubdito(s, ahora)) continue;
+    if (rolDeSubdito(s.role) !== 'trabajador' || !esAdultoSubdito(s, ahora) || s.enMilicia) continue;
     r[esTarea(s.tarea) ? s.tarea : TAREA_POR_DEFECTO]++;
   }
   return r;
@@ -92,7 +94,7 @@ export async function cupoDeCamas(tx: Tx, saveId: string): Promise<{ total: numb
 
 /// La población del Reino (y de cada territorio) = sus súbditos activos. Idempotente.
 export async function recalcularPoblacion(tx: Tx, saveId: string, ahora: number): Promise<void> {
-  const subditos = await tx.subject.findMany({ where: { saveId, estado: 'ACTIVO' }, select: { role: true, pueblo: true, nacidoEn: true, territoryId: true } });
+  const subditos = await tx.subject.findMany({ where: { saveId, estado: 'ACTIVO' }, select: { role: true, pueblo: true, nacidoEn: true, territoryId: true, enMilicia: true } });
   const ownerKey = ownerKeyFor({ saveId });
   const k = await tx.kingdomStats.findUnique({ where: { ownerKey }, select: { sinHerramienta: true, sinArma: true } });
   if (k) {

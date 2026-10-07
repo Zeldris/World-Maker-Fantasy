@@ -1490,8 +1490,42 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     otro). El linaje es actor del Libro; venganzas, deudas y recuerdos fuertes (importancia ≥ 6) pasan a la
     familia (si muere el vengador, la toma otro adulto del linaje); cada pareja de súbditos sin linaje funda
     uno; el personaje también tiene linaje. Leyendas › «Linajes» con su historia y su árbol. **L**
-  - **CR-50** Campamentos de bandidos con cabecilla y refuerzos (Bellwright, Medieval Dynasty). **M**
-    Va con `CR-37` en el `0.3`.
+  - ~~**CR-50** Campamentos de bandidos con cabecilla y refuerzos~~ ✅ 2026-10-07 (Bellwright, Medieval Dynasty). **M**
+    Va con `CR-37` en el `0.3`. Ronda de detalle aceptada el 2026-10-07 (Q1-Q9 en
+    [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-detalle-de-cr-50-campamentos-de-bandidos-ronda-aceptada-por-la-usuaria-el-2026-10-07));
+    quién los ocupa es dato de semilla (la usuaria añadirá razas «poco civilizadas»). Queda: sus razas
+    de verdad (semillas de la usuaria y lore; hoy los renegados de 49c), las expediciones de facción
+    (su interceptación necesita una facción hostil), «sin asaltos» con `CR-67` y las cifras
+    provisionales para la fase de pruebas. Pasos:
+    - ~~50a~~ ✅ 2026-10-07: migración `20261008000000_campamentos` (modelo `Campamento`); semillas
+      `OCUPANTES_CAMPAMENTO` y reglas puras en `cronista/campamentosBandidos.ts` (aparición, sorteo,
+      refuerzos, tope); `services/campamentos.ts`: `revisarCampamentos` en el avance diario (1 por
+      región con ocupantes, en un lugar con camino sin asentamiento; a los 20 días de caer, en otro
+      sitio), con su punto NPC de banda en el mapa de zona (cantidad = gente + cabecilla). Hoy hay
+      campamentos en Llanuras, Meseta y Margen; Cristal Helado y la Ciénaga esperan a sus razas.
+    - ~~50b~~ ✅ 2026-10-07: `campamentos.ts`: `asaltoAlViajero` (en `GANCHOS.alCruzar`: a 2 tramos de
+      un campamento, 30 % por lugar; si ganan, se llevan las piezas y el campamento crece),
+      `asaltoACaravana` (en `avanzarComercio`), `lanzarAsaltosAlReino` (avance diario: los de la
+      región de la Capital, con 200 Goirnos o más en el Reino, cada 7 días, la mitad de su gente como
+      viajero `ASALTO`) y `volverAlCampamento` (`TRABAJOS.ASALTO.alVolver`). Los bandidos pelean con
+      el nivel de su semilla (`nivel`, 3 provisional) y su pueblo; el radar los llama por su grupo.
+      Cifras provisionales. Quedan: las expediciones de facción (su interceptación necesita una
+      facción hostil; va con 50c) y respetar «sin asaltos» cuando exista `CR-67`.
+    - ~~50c~~ ✅ 2026-10-07: `services/ataquesCampamento.ts`: `disolverCampamento` (cofre de 50 +
+      lo saqueado al Reino, +60 de reputación con las dueñas de la región, suceso nuevo
+      `CAMPAMENTO_DESTRUIDO`; cifras provisionales), `bajasDeCampamentoEnVivo` (en el cierre del combate
+      de varios de `turnResolution`), partida `ATAQUE` del Reino (`lanzarAtaqueACampamento`, solo a
+      campamentos conocidos; pelea de fondo contra la banda y su cabecilla al llegar) y
+      `patrullasContraCampamentos` (cada semana, 8 soldados de una facción dueña de la región).
+      Los asaltos de bandidos ya no cuentan como del Reino (`esDelReino`, `TIPOS_SIN_DUENO`): fuera
+      de Reino › Partidas, de «De paso por aquí» y de los avisos.
+    - ~~50d~~ ✅ 2026-10-07: suceso `CAMPAMENTO_NUEVO` al asentarse (llega como rumor);
+      `revisarConocidos` (estuviste allí, te llegó el rumor o lo ve una Torre) y
+      `campamentosConocidos`; en el mapa de Berig (⛺ en su lugar) y en Reino › Partidas
+      («Campamentos de bandidos», `CampamentosBandidos.tsx`, con quién va: grupos 2+, soldados,
+      vigías y cazadores; `POST /saves/:id/campamentos/:campamentoId/atacar`).
+      Tras la revisión de código: pasar por su lugar al viajar lo descubre (`turnResolution`); los GET
+      solo leen; hoy solo Las Llanuras tiene lugares con camino, así que solo hay campamento allí.
   - **CR-51** Comercio en persona con NPC: mercaderes y caravanas de fondo (usuaria, 2026-10-06; sale
     del resto de `CR-47` 47e). **L** Hoy el personaje no comercia con ningún NPC (solo el Mercado del
     Reino). Sistema nuevo de compraventa con Goirnos, como el mercader ambulante de Bellwright y
@@ -1833,6 +1867,52 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   - Un Faerus del Margen viaja a pie tan rápido como montado (lore de la usuaria: montar es
     costumbre de los Faerus de las Llanuras).
   - Resuelve la duda del viaje largo del `0.4`. **L**
+- ~~**CR-65** Defensa del Reino y milicia~~ ✅ 2026-10-07 (Fase E del `0.3`, Q2-Q3 de su ronda, aceptada el 2026-10-07,
+  decisiones en [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-la-fase-e-conflicto-ronda-1-aceptada-por-la-usuaria-el-2026-10-07)).
+  Empalizada (cobertura +2/+5 a quien defiende), Torre de vigía (aviso 1 día antes, ventaja al tirar
+  desde ella), Armería (equipo de la milicia) y Cuartel (tope y moral de soldados), con escalones;
+  milicia de súbditos trabajadores que pelean y no producen ese día. También para las facciones
+  (`CR-36`). Ronda de detalle aceptada el 2026-10-07 (Q1-Q10, X4 primero). Queda para `CR-50`/`CR-37`:
+  lanzar los asaltos, defenderlos en vivo y que peleen los guardias de fauna; las cifras del botín y de
+  las facciones son provisionales (fase de pruebas). Pasos:
+  - ~~65a~~ ✅ 2026-10-07: 12 recetas (Empalizada/Muro/Muralla, Torre de vigía ×3, Armería ×3,
+    Barracón ×3; `edificioTipo: 'defensa'`, escalón en `edificioOficioNivel`, uno de cada por
+    región); en la región del Ayuntamiento o en la de un Cuartel Avanzado contra su cupo local
+    (`cupoDefensaDeCuartel`: 2, 12 el de Guerra; el 2 es provisional); se mejoran en su
+    asentamiento. Reglas puras en `cronista/defensa.ts` (`efectoDefensa`, `golpeAEmpalizada`).
+  - ~~65b~~ ✅ 2026-10-07: migración `20261007230000_defensa` (`Building.golpesDefensa`, `caida`,
+    `equiposMilicia`; `Subject.asentamientoId`, null = la Capital); `services/defensaReino.ts`
+    (`asentamientosDelReino`, `asignarGuarnicion` con tope de plazas, `comprarEquiposMilicia` con la
+    factura de `CR-58`) y rutas `GET /saves/:id/defensa`, `POST …/defensa/guarnicion`,
+    `POST …/defensa/armeria/:armeriaId/equipos`.
+  - ~~65c~~ ✅ 2026-10-07: migración `20261007233000_milicia_radar` (`Subject.enMilicia`,
+    `Viajero.avistado`); `radarDelReino` (viajeros `ASALTO` a los tramos de la Torre,
+    `lugaresATramos`), `vigilarDelReino` en el avance diario (avisa una vez; si estás fuera, la
+    milicia se arma sola; sin asaltos a la vista, vuelve al trabajo), `convocarMilicia` (tantos
+    trabajadores adultos como equipos de la Armería; no producen: fuera de `trabajadores` y de las
+    tareas) y `POST /saves/:id/defensa/:asentamientoId/milicia`; el GET de defensa trae `avistados`.
+  - ~~65d~~ ✅ 2026-10-07: `services/asaltos.ts`: `resolverAsaltoDeFondo` (guarnición, vigías con +2,
+    milicia a −2 de nivel, cobertura y moral del Barracón: `bonoDefensa`/`bonoAtaque`/`bonoMoral` en
+    el combate de fondo y bono en `tirarMoral`); si se pierde, saqueo (`botinDe`: 10 de comida, 5
+    Goirnos y 2 objetos por asaltante en pie, nunca más del 25 %; **cifras provisionales** para la
+    fase de pruebas) y golpe a la Empalizada; los súbditos muertos, de verdad (`morir`, causa
+    «asalto»). `TRABAJOS.ASALTO` lo resuelve al llegar el viajero; `repararEmpalizada` (mitad del
+    coste en materiales) y su ruta. Queda para `CR-50`/`CR-37`: lanzar los asaltos, defender en vivo
+    si el personaje está allí y que peleen los guardias de fauna (`CR-56`).
+  - ~~65e~~ ✅ 2026-10-07: `services/defensaFacciones.ts`: `asegurarDefensasDeFacciones` (en el avance
+    diario, bajo el candado: Empalizada en su casa según su gente, 2 desde 60 y 3 desde 200),
+    `reforzarDefensaFaccion` (tras un asalto: repara y sube un escalón si tiene 7 días de reserva y
+    120/300 Goirnos; cifras provisionales) y `coberturaDeFaccion`. Quien llama a
+    `reforzarDefensaFaccion` y usa la cobertura al asaltar una facción: `CR-37`.
+  - ~~65f~~ ✅ 2026-10-07: Reino › Defensa (`DefensaSection.tsx`: módulos con lo que dan, reparar,
+    comprar equipos, guarnición y traer soldados de otro asentamiento; alerta «Asaltos a la vista»
+    con «Llamar a la milicia»); en el mapa de Berig, los asaltos vistos desde una Torre (rojo,
+    «Asalto de…») y el alcance de cada Torre (`alcancesDeTorres`, círculos discontinuos). **M**
+- **CR-66** Postura de compañero en combate (Fase E, Q6): agresiva, defensiva, capturadora (golpe no
+  letal), clemente (acepta rendiciones) y «huir si cae grave»; en vivo y de fondo; las facciones, la
+  de su raza. **M**
+- **CR-67** Dificultad de asaltos en Configuración (Fase E, Q7): sin asaltos, normal o duros; sin
+  asaltos, los bandidos solo atacan caravanas y partidas. **S**
 - **Hecho cuando:** matar al hermano de un NPC abre un hilo de venganza y el vengador aparece;
   un compañero se queja y acaba yéndose si se le contraría repetidamente.
 

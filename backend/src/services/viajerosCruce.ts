@@ -6,7 +6,7 @@
 // - Comerciar: una partida de caza vende la carne de sus piezas, ya desollada, al precio del catálogo.
 // - Órdenes: con las tuyas, las de siempre (`partidasReino.ordenarPartida`).
 import type { Prisma } from '@prisma/client';
-import { enlacesDelMundo, JORNADA_MINUTOS, minutosTramo, rutaMasCorta, type EntradaDiario, type Enlace } from './viajeros.js';
+import { enlacesDelMundo, esDelReino, JORNADA_MINUTOS, TIPOS_SIN_DUENO, minutosTramo, rutaMasCorta, type EntradaDiario, type Enlace } from './viajeros.js';
 import type { ExpedicionEnMapa } from './expedicionesMapa.js';
 import { conocer } from './cronista/difusion.js';
 import { GRID_COLS, GRID_ROWS, pixelDeCelda } from './zonaPosicion.js';
@@ -31,7 +31,7 @@ export function diasParaVolver(enlaces: Enlace[], v: { estado: string; ubicacion
 /// En el mapa de Berig: los viajeros de la partida que el personaje puede ver (los del Reino, los de
 /// facciones aliadas y los de su región), con la forma de una expedición: del lugar en que están al
 /// siguiente de su ruta, con lo andado del tramo.
-export async function viajerosEnMapa(tx: Tx, saveId: string, ctx: { dia: number; regionActual: string | null; aliadas: Set<string> }): Promise<ExpedicionEnMapa[]> {
+export async function viajerosEnMapa(tx: Tx, saveId: string, ctx: { dia: number; regionActual: string | null; aliadas: Set<string>; vistos?: Set<string> }): Promise<ExpedicionEnMapa[]> {
   const viajeros = await tx.viajero.findMany({
     where: { saveId, estado: { not: 'TERMINADO' } },
     include: { faction: { select: { name: true } }, ubicacion: { select: { slug: true, name: true, region: true } }, destino: { select: { name: true } }, origen: { select: { name: true } } },
@@ -43,8 +43,9 @@ export async function viajerosEnMapa(tx: Tx, saveId: string, ctx: { dia: number;
   const siguientes = await tx.location.findMany({ where: { id: { in: viajeros.map((v) => v.ruta[0]).filter((x): x is string => !!x) } }, select: { id: true, slug: true } });
   const out: ExpedicionEnMapa[] = [];
   for (const v of viajeros) {
-    const delReino = !v.factionId;
-    if (!delReino && !(v.factionId && ctx.aliadas.has(v.factionId)) && v.ubicacion.region !== ctx.regionActual) continue;
+    const delReino = esDelReino(v);
+    const hostil = !!ctx.vistos?.has(v.id);
+    if (!delReino && !hostil && !(v.factionId && ctx.aliadas.has(v.factionId)) && v.ubicacion.region !== ctx.regionActual) continue;
     const siguiente = siguientes.find((s) => s.id === v.ruta[0]);
     const tramo = siguiente ? minutosTramo(enlaces, v.ubicacionLocationId, siguiente.id) : 0;
     const fraccion = siguiente && tramo > 0 ? Math.min(1, v.minutosEnTramo / tramo) : 0;
@@ -59,6 +60,7 @@ export async function viajerosEnMapa(tx: Tx, saveId: string, ctx: { dia: number;
       diaRegreso: ctx.dia + diasParaVolver(enlaces, v),
       progreso: fraccion / 2,
       delReino,
+      ...(hostil ? { hostil: true } : {}),
     });
   }
   return out;
@@ -69,7 +71,8 @@ export async function viajerosAqui(tx: Tx, saveId: string) {
   const save = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { currentLocationId: true, worldId: true } });
   if (!save.currentLocationId) return [];
   const filas = await tx.viajero.findMany({
-    where: { saveId, estado: { not: 'TERMINADO' }, ubicacionLocationId: save.currentLocationId },
+    // Los asaltos de bandidos no se paran a hablar: se ven en el mapa y en el radar.
+    where: { saveId, estado: { not: 'TERMINADO' }, tipo: { notIn: TIPOS_SIN_DUENO }, ubicacionLocationId: save.currentLocationId },
     include: { faction: { select: { name: true } }, miembros: true },
     orderBy: { createdAt: 'asc' },
   });
@@ -91,7 +94,7 @@ export async function viajerosAqui(tx: Tx, saveId: string) {
 
 async function viajeroAqui(tx: Tx, saveId: string, id: string) {
   const save = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { currentLocationId: true, worldId: true, goirnos: true } });
-  const v = await tx.viajero.findFirst({ where: { id, saveId, estado: { not: 'TERMINADO' }, ubicacionLocationId: save.currentLocationId ?? '' }, include: { faction: { select: { name: true } } } });
+  const v = await tx.viajero.findFirst({ where: { id, saveId, estado: { not: 'TERMINADO' }, tipo: { notIn: TIPOS_SIN_DUENO }, ubicacionLocationId: save.currentLocationId ?? '' }, include: { faction: { select: { name: true } } } });
   return v ? { v, save } : null;
 }
 

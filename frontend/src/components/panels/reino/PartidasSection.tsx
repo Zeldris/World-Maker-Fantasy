@@ -4,7 +4,8 @@ import { ErrorBanner } from '../../ErrorBanner'
 import { SelectorJuego } from '../../SelectorJuego'
 import { useErrorConReintento } from '../../../hooks/useErrorConReintento'
 import { useModoConsulta } from '../../../context/useModoConsulta'
-import { getPartidas, postLanzarPartida, postOrdenPartida, type OpcionesPartida, type PartidaInfo } from '../../../lib/api'
+import { getPartidas, postAtacarCampamento, postLanzarPartida, postOrdenPartida, type CampamentoInfo, type OpcionesPartida, type PartidaInfo } from '../../../lib/api'
+import { CampamentosBandidos } from './CampamentosBandidos'
 
 const ESTADO: Record<PartidaInfo['estado'], string> = {
   IDA: 'de camino',
@@ -15,7 +16,7 @@ const ESTADO: Record<PartidaInfo['estado'], string> = {
 
 /// Puro: «Caza de Múrgol · de camino, en Los Pilares → La Hondonada».
 export function lineaDePartida(p: PartidaInfo): string {
-  const que = `${p.tipo === 'CAPTURA' ? 'Captura' : 'Caza'} de ${p.especieNombre ?? 'presas'}`
+  const que = p.tipo === 'ATAQUE' ? 'Ataque al campamento' : `${p.tipo === 'CAPTURA' ? 'Captura' : 'Caza'} de ${p.especieNombre ?? 'presas'}`
   const donde = p.estado === 'TERMINADO' ? ESTADO.TERMINADO : `${ESTADO[p.estado]}, en ${p.ubicacion} → ${p.destino}`
   return `${que} · ${donde}`
 }
@@ -32,6 +33,8 @@ export function cargaDePartida(p: PartidaInfo): string | null {
 export function PartidasSection({ saveId, onRefreshSave }: { saveId: string; onRefreshSave: () => Promise<void> }) {
   const [partidas, setPartidas] = useState<PartidaInfo[]>([])
   const [opciones, setOpciones] = useState<OpcionesPartida | null>(null)
+  const [campamentos, setCampamentos] = useState<CampamentoInfo[]>([])
+  const [guerreros, setGuerreros] = useState<{ id: string; name: string; rol: string }[]>([])
   const [busy, setBusy] = useState(false)
   const [tipo, setTipo] = useState<'CAZA' | 'CAPTURA'>('CAZA')
   const [destinoId, setDestinoId] = useState('')
@@ -46,6 +49,8 @@ export function PartidasSection({ saveId, onRefreshSave }: { saveId: string; onR
       const r = await getPartidas(saveId)
       setPartidas(r.partidas)
       setOpciones(r.opciones)
+      setCampamentos(r.campamentos ?? [])
+      setGuerreros(r.guerreros ?? [])
     } catch (e) {
       informar('No se pudieron cargar las partidas.', e, () => void cargar())
     }
@@ -185,6 +190,21 @@ export function PartidasSection({ saveId, onRefreshSave }: { saveId: string; onR
           </div>
         )}
       </PanelSection>
+      <CampamentosBandidos
+        campamentos={campamentos}
+        grupos={opciones.grupos}
+        guerreros={guerreros}
+        desactivado={busy || !!consulta}
+        title={consulta ?? undefined}
+        onAtacar={async (id, p) => {
+          let ok = false
+          await accion(async () => {
+            await postAtacarCampamento(saveId, id, p)
+            ok = true
+          }, 'No se pudo mandar la partida.')
+          return ok
+        }}
+      />
     </div>
   )
 }

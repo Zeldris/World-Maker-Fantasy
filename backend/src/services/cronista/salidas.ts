@@ -51,9 +51,9 @@ export function victimaDelHambre<T extends SubditoVital>(subditos: T[], ahora: n
   return conEdad.length ? conEdad.reduce((a, b) => (a.nacidoEn! < b.nacidoEn! ? a : b)) : subditos[0] ?? null;
 }
 
-const MOTIVO = { vejez: ['Murió de viejo.', 'de viejo'], hambre: ['Murió de hambre.', 'de hambre'], sed: ['Murió de sed.', 'de sed'] } as const;
+const MOTIVO = { vejez: ['Murió de viejo.', 'de viejo'], hambre: ['Murió de hambre.', 'de hambre'], sed: ['Murió de sed.', 'de sed'], asalto: ['Murió defendiendo el Reino.', 'defendiendo el Reino'] } as const;
 
-async function morir(tx: Tx, saveId: string, s: SubditoVital, causa: keyof typeof MOTIVO, ahora: number) {
+export async function morir(tx: Tx, saveId: string, s: Pick<SubditoVital, 'id' | 'name'>, causa: keyof typeof MOTIVO, ahora: number) {
   await tx.subject.update({ where: { id: s.id }, data: { estado: 'MUERTO', hastaMinutes: ahora, notes: MOTIVO[causa][0] } });
   await registrarSuceso(tx, {
     saveId, tipo: 'MUERTE_NPC', fictionalMinutes: ahora, origen: 'MUNDO',

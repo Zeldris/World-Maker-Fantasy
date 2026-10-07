@@ -82,6 +82,22 @@ export function minutosTramo(enlaces: Enlace[], a: string, b: string): number {
   return g.get(a)?.get(b) ?? Infinity;
 }
 
+/// Puro (CR-65, radar de la Torre): los lugares a `max` tramos o menos de `desde`, con sus tramos.
+export function lugaresATramos(enlaces: Enlace[], desde: string, max: number): Map<string, number> {
+  const g = grafos.get(enlaces) ?? grafo(enlaces);
+  const dist = new Map<string, number>([[desde, 0]]);
+  let frente = [desde];
+  for (let t = 1; t <= max && frente.length > 0; t++) {
+    const siguiente: string[] = [];
+    for (const n of frente) for (const v of g.get(n)?.keys() ?? []) if (!dist.has(v)) {
+      dist.set(v, t);
+      siguiente.push(v);
+    }
+    frente = siguiente;
+  }
+  return dist;
+}
+
 export interface Posicion {
   ubicacion: string;
   ruta: string[];
@@ -128,8 +144,14 @@ export interface OrdenViajero {
 }
 
 /// Aviso en el Reino (solo para los viajeros de la jugadora).
-export async function avisoDeViajero(tx: Tx, v: { saveId: string; factionId: string | null }, text: string): Promise<void> {
-  if (v.factionId) return;
+/// CR-50: viajeros sin dueño (los asaltos de bandidos): no son del Reino aunque no tengan facción.
+export const TIPOS_SIN_DUENO = ['ASALTO'];
+export function esDelReino(v: { factionId: string | null; tipo?: string }): boolean {
+  return !v.factionId && !TIPOS_SIN_DUENO.includes(v.tipo ?? '');
+}
+
+export async function avisoDeViajero(tx: Tx, v: { saveId: string; factionId: string | null; tipo?: string }, text: string): Promise<void> {
+  if (!esDelReino(v)) return;
   const ws = await tx.worldState.findUnique({ where: { saveId: v.saveId }, select: { fictionalDateLabel: true, fictionalMinutes: true } });
   await tx.logEntry.create({ data: { saveId: v.saveId, channel: 'KINGDOM', isSystemMessage: true, text, timeLabel: ws?.fictionalDateLabel ?? '', fictionalMinutes: ws?.fictionalMinutes ?? undefined } });
 }

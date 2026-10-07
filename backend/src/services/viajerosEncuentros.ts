@@ -13,7 +13,8 @@ import { combatienteDeNpc } from './factionExpeditions.js';
 import { descontarZonePointCaza } from './caza.js';
 import { decrementPopulationOnDeath } from './population.js';
 import { aplicarBajas, cazadoresDe } from './partidasCaza.js';
-import { avisoDeViajero, GANCHOS, type TrasCruzar, type ViajeroFila } from './viajeros.js';
+import { avisoDeViajero, esDelReino, GANCHOS, type TrasCruzar, type ViajeroFila } from './viajeros.js';
+import { asaltoAlViajero } from './campamentos.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -63,6 +64,11 @@ export async function pelearEncuentro(tx: Tx, v: ViajeroFila, hostil: NonNullabl
 }
 
 GANCHOS.alCruzar = async (tx, v, locationId, desde, dia, random): Promise<TrasCruzar> => {
+  // CR-50: los asaltos de bandidos van a lo suyo (no tienen encuentros por el camino).
+  if (!esDelReino(v) && !v.factionId) return 'sigue';
+  // CR-50 (Q4): cerca de un campamento de bandidos, pueden salirles al paso.
+  const bandidos = await asaltoAlViajero(tx, v, locationId, dia, random);
+  if (bandidos) return bandidos;
   const riesgo = await tx.locationLink.findFirst({ where: { OR: [{ fromId: desde, toId: locationId }, { fromId: locationId, toId: desde }], riesgo: { not: null } }, select: { id: true } });
   if (random() >= (riesgo ? PROB_ENCUENTRO_RIESGO : PROB_ENCUENTRO)) return 'sigue';
   const hostil = await hostilEn(tx, v, locationId);

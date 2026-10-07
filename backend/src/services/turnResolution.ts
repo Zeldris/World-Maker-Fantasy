@@ -1,4 +1,5 @@
 import { registrarFinDeMision, registrarSucesoDeNpc } from './cronista/emisores.js';
+import { bajasDeCampamentoEnVivo } from './ataquesCampamento.js';
 import { cupoDeCamas } from './cronista/subditos.js';
 import { env } from '../config/env.js';
 import { applyLootMode, applyCombatExchangeToNpcState, applyKillSideEffects, applyHarvest, applyFactionRepDeltaForResolution, goirnosDeBotin, pickFlavor, LOOT_FLAVOR_SUCCESS, LOOT_FLAVOR_EMPTY, HARVEST_FLAVOR_YA_DESPIEZADA } from './turnLootKill.js';
@@ -5319,6 +5320,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
             update: { groupSize: participantesDeEsteNpc.length, groupDefeated: caidosCount, corpsesLooted: 0, saqueado: false, lootedItemNames: [] },
           });
           combatEncounterLootSummary.push({ npcId, slug: npcRow.slug, name: npcRow.name, cantidad: caidosCount, ...(npcRow.raza ? { esPersona: true } : {}) });
+          // CR-50 (Q5): si era la banda de un campamento de bandidos, pierde a los caídos (y cae si
+          // cae el cabecilla, el último).
+          if (npcRow.raza && currentLocationId) await bajasDeCampamentoEnVivo(tx, saveId, currentLocationId, npcRow.slug, caidosCount, Math.floor(nuevoFictionalMinutes / 1440), characterName);
         } else {
           const state = await tx.npcState.findUnique({ where: { saveId_npcId_scope: { saveId, npcId, scope } } });
           if (state?.condicionFisica === 'CONVALECIENTE' || state?.condicionFisica === 'MUERTO') {
@@ -5868,7 +5872,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         // nuevo — "no se acumulan, mejoras el actual" (docs/mecanicas/17-reglas-construcciones-reino.md).
         // El objetivo ya se verificó arriba (`buildBlockedReason`), pero se re-busca fresco dentro
         // de la transacción por si acaso, mismo criterio que `freshInventoryRows`.
-        const target = await tx.building.findFirst({ where: { saveId, recipeKey: buildRecipe.upgradesRecipeKey } });
+        // CR-65: un módulo de defensa se mejora en su asentamiento.
+        const target = await tx.building.findFirst({ where: { saveId, recipeKey: buildRecipe.upgradesRecipeKey, ...(buildRecipe.edificioTipo === 'defensa' ? { status: 'ACTIVO', location: { region: activeRegion ?? undefined } } : {}) } });
         if (target) {
           await tx.building.update({
             where: { id: target.id },
@@ -6242,6 +6247,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       });
       const alreadyVisited = new Set(existingVisits.map((v) => v.locationId));
       const newLocationIds = travel.pathIds.filter((locId) => !alreadyVisited.has(locId));
+      // CR-50 (Q7): pasar por el lugar de un campamento de bandidos lo descubre.
+      await tx.campamento.updateMany({ where: { saveId, estado: 'ACTIVO', conocido: false, locationId: { in: travel.pathIds } }, data: { conocido: true } });
       if (newLocationIds.length > 0) {
         await tx.locationVisit.createMany({ data: newLocationIds.map((locationId) => ({ saveId, locationId })) });
         isFirstVisitToDestination = newLocationIds.includes(travel.toLocationId);

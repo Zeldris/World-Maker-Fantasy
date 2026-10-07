@@ -91,6 +91,7 @@ model World {
 /// Una partida: mundo elegido + personaje (copia editable, no referencia viva a la plantilla) + su WorldState.
 model Save {
   viajeros  Viajero[]
+  campamentos Campamento[]
   id                      String  @id @default(cuid())
   userId                  String
   user                    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -496,6 +497,7 @@ model Location {
   viajerosOrigen    Viajero[] @relation("viajeroOrigen")
   viajerosDestino   Viajero[] @relation("viajeroDestino")
   viajerosUbicacion Viajero[] @relation("viajeroUbicacion")
+  campamentos       Campamento[]
   id           String       @id @default(cuid())
   worldId      String
   world        World        @relation(fields: [worldId], references: [id], onDelete: Cascade)
@@ -2156,6 +2158,13 @@ model Building {
   /// misma razón que Companion.role: no sabemos aún qué construirán los jugadores
   kind        String
   status      BuildingStatus @default(EN_CONSTRUCCION)
+  /// CR-65 (Q4): asaltos perdidos que lleva un módulo de Empalizada y si ha caído (no cubre hasta repararla).
+  golpesDefensa Int @default(0)
+  caida         Boolean @default(false)
+  /// CR-65 (Q6): equipos de milicia guardados en una Armería.
+  equiposMilicia Int @default(0)
+  /// CR-65 (Q7): soldados y vigías asignados a este asentamiento (Ayuntamiento o Cuartel Avanzado).
+  guarnicion Subject[] @relation("Guarnicion")
   description String
   /// Posición en el lienzo de Zona (2026-09-08, hallazgo real jugando en vivo: un campamento
   /// construido por el jugador nunca aparecía en el mapa de Zona, solo en el panel de Reino) —
@@ -2281,6 +2290,11 @@ model Subject {
   /// NARRADO (antes del 0.3) | LLEGADA | NACIDO
   origen       String     @default("NARRADO")
   desdeMinutes Int?
+  /// CR-65 (Q7): asentamiento al que está asignado un soldado o vigía (null = la Capital).
+  asentamientoId String?
+  asentamiento   Building? @relation("Guarnicion", fields: [asentamientoId], references: [id], onDelete: SetNull)
+  /// CR-65 (Q6): trabajador armado en la milicia (no produce mientras dura).
+  enMilicia      Boolean   @default(false)
   /// CANDIDATO: hasta cuándo espera respuesta (REI-119).
   hastaMinutes Int?
   /// REI-119: fila de `WorldPopulation` de la que salió quien llegó (vuelve a ella si se va).
@@ -3954,6 +3968,8 @@ model Viajero {
   orden               Json?
   /// CR-63 (63f, Q8): encuentro que la jugadora vio y dejó para el día siguiente: { zonePointId }.
   encuentro           Json?
+  /// CR-65 (Q5): un viajero hostil ya avistado por la Torre de vigía de algún asentamiento.
+  avistado            Boolean  @default(false)
   diaSalida           Int
   /// Último día ya simulado (idempotencia del avance).
   ultimoDia           Int
@@ -3984,4 +4000,38 @@ model ViajeroMiembro {
   @@index([viajeroId])
   @@index([companionId])
   @@index([subjectId])
+}
+
+/// CR-50 (hito 0.3, Fase E): campamento de bandidos de una partida (X4: base pirata que se rehace;
+/// Bellwright: cabecilla con nombre y refuerzos). Quién lo ocupa sale de las semillas de
+/// `cronista/campamentosBandidos.ts` (`OCUPANTES_CAMPAMENTO`).
+model Campamento {
+  id                   String   @id @default(cuid())
+  saveId               String
+  save                 Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  locationId           String
+  location             Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  region               String
+  /// Slug de la semilla de ocupantes.
+  ocupante             String
+  cabecilla            String
+  /// Bandidos genéricos que hay ahora (sin el cabecilla) y su tope.
+  gente                Int
+  tope                 Int
+  /// ACTIVO o DESTRUIDO.
+  estado               String   @default("ACTIVO")
+  creadoDia            Int
+  caidoDia             Int?
+  ultimoRefuerzoDia    Int
+  ultimoAsaltoReinoDia Int?
+  /// Lo saqueado que guarda (botín si cae, Manor Lords).
+  botinComida          Int      @default(0)
+  botinGoirnos         Int      @default(0)
+  /// Q7: la jugadora sabe dónde está (lo visitó, le llegó un rumor o lo vio una Torre).
+  conocido             Boolean  @default(false)
+  /// Su punto en el mapa de zona (banda de `CR-49`).
+  zonePointId          String?
+  createdAt            DateTime @default(now())
+
+  @@index([saveId, estado])
 }

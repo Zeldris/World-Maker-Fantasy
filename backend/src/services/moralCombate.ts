@@ -65,10 +65,11 @@ export interface TiradaMoral {
 }
 
 /// Tirada de moral: d20 (o 2d20 con desventaja) + Voluntad / 2 contra CD 10.
-export function tirarMoral(atributos: AttributeBlock, desventaja: boolean, random: () => number = Math.random): TiradaMoral {
+/// `bono` (CR-65): +1/+2/+3 del Barracón a la guarnición que defiende su asentamiento.
+export function tirarMoral(atributos: AttributeBlock, desventaja: boolean, random: () => number = Math.random, bono = 0): TiradaMoral {
   const modo: RollMode = desventaja ? 'desventaja' : 'normal';
   const { rolls, usedRoll } = rollD20(modo, random);
-  const total = usedRoll + Math.floor((atributos.voluntad ?? 0) / 2);
+  const total = usedRoll + Math.floor((atributos.voluntad ?? 0) / 2) + bono;
   return { rolls, usedRoll, total, dificultad: MORAL_DIFICULTAD, modo, aguanta: total >= MORAL_DIFICULTAD };
 }
 

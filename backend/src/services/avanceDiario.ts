@@ -15,6 +15,11 @@ import { revisarPiezas } from './partidasCaza.js';
 import './partidasCaptura.js';
 import './viajerosEncuentros.js';
 import { lanzarPartidasDeFacciones } from './partidasFacciones.js';
+import { vigilarDelReino } from './defensaReino.js';
+import { lanzarAsaltosAlReino, revisarCampamentos } from './campamentos.js';
+import { patrullasContraCampamentos } from './ataquesCampamento.js';
+import './asaltos.js';
+import { asegurarDefensasDeFacciones } from './defensaFacciones.js';
 import { difundir } from './cronista/difusion.js';
 import type { PrismaClient } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
@@ -95,6 +100,8 @@ export async function avanzarMundoHasta(
       await resembrarFacciones(tx, saveId);
       // CR-59: vasallajes del canon (Serhu bajo la Concordia).
       await asegurarVasallajes(tx, saveId, fictionalMinutes);
+      // CR-65 (65e): las facciones sin Empalizada la levantan (idempotente, bajo el mismo candado).
+      await asegurarDefensasDeFacciones(tx, saveId);
       const estado = await tx.worldState.findUnique({ where: { saveId }, select: { ultimoDiaSimulado: true } });
       if (!estado) return { dias: 0, desde: 0 };
       const dias = diasPendientes(estado.ultimoDiaSimulado, diaDeFiccion(fictionalMinutes));
@@ -136,8 +143,16 @@ export async function avanzarMundoHasta(
       await paso('comercio', () => avanzarComercio(prisma, saveId, d, random));
       // CR-63 (63g): las facciones con comida de sobra mandan sus partidas de caza.
       await paso('partidasFacciones', () => lanzarPartidasDeFacciones(prisma, saveId, d));
+      // CR-50 (50a): campamentos de bandidos que aparecen y reciben refuerzos.
+      await paso('campamentos', () => revisarCampamentos(prisma, saveId, d, random));
+      // CR-50 (50b): los de la región de la Capital la asaltan si el Reino tiene riqueza.
+      await paso('asaltosReino', () => lanzarAsaltosAlReino(prisma, saveId, d));
+      // CR-50 (50c, Q8): cada semana, las facciones dueñas de la región patrullan contra ellos.
+      await paso('patrullasCampamentos', () => patrullasContraCampamentos(prisma, saveId, d, random));
       // CR-63 (63a, ADR 0003): una jornada de cada viajero (partidas de caza y captura…).
       await paso('viajeros', () => avanzarViajeros(prisma, saveId, d, random));
+      // CR-65 (65c): la Torre de vigía avisa de los asaltos que entran en su radio.
+      await paso('vigilancia', () => vigilarDelReino(prisma, saveId, d));
       // CR-63 (63b): el Desolladero desuella las piezas y las que pasan de su día se pierden.
       await paso('piezas', () => prisma.$transaction((tx) => revisarPiezas(tx, saveId, d)));
       // CR-32: cada semana, los informantes pasan lo que saben (o los descubren).

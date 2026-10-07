@@ -496,9 +496,16 @@ export interface ExpedicionEnMapa {
   /// 0-1 del viaje: hasta 0,5 va, después vuelve.
   progreso: number
   delReino: boolean
+  /// CR-65 (Q5): un asalto que se ve desde una Torre de vigía.
+  hostil?: boolean
 }
 
-export async function getExpedicionesMapa(saveId: string): Promise<{ expediciones: ExpedicionEnMapa[] }> {
+/// CR-65 (Q9): lugares que vigila la Torre de cada asentamiento.
+export interface AlcanceTorre {
+  asentamiento: string
+  slugs: string[]
+}
+export async function getExpedicionesMapa(saveId: string): Promise<{ expediciones: ExpedicionEnMapa[]; alcances?: AlcanceTorre[]; campamentos?: CampamentoInfo[] }> {
   return fetchJson(`${API_URL}/saves/${saveId}/expediciones/mapa`)
 }
 
@@ -1572,7 +1579,7 @@ export interface CorralesInfo {
 // CR-63 (63d): Reino › Partidas — partidas de caza y captura.
 export interface PartidaInfo {
   id: string
-  tipo: 'CAZA' | 'CAPTURA'
+  tipo: 'CAZA' | 'CAPTURA' | 'ATAQUE'
   estado: 'IDA' | 'TRABAJANDO' | 'VUELTA' | 'TERMINADO'
   especie: string | null
   especieNombre: string | null
@@ -1588,7 +1595,17 @@ export interface OpcionesPartida {
   grupos: { slotIndex: number; nombre: string; companeros: { id: string; name: string }[] }[]
   destinos: { id: string; name: string; region: string; especies: { slug: string; name: string; cantidad: number; capturable: boolean }[] }[]
 }
-export async function getPartidas(saveId: string): Promise<{ partidas: PartidaInfo[]; opciones: OpcionesPartida }> {
+/// CR-50 (Q7): un campamento de bandidos que conoces.
+export interface CampamentoInfo {
+  id: string
+  lugar: string
+  slug: string
+  region: string
+  grupo: string
+  cabecilla: string
+  gente: number
+}
+export async function getPartidas(saveId: string): Promise<{ partidas: PartidaInfo[]; opciones: OpcionesPartida; campamentos?: CampamentoInfo[]; guerreros?: { id: string; name: string; rol: string }[] }> {
   return fetchJson(`${API_URL}/saves/${saveId}/partidas`)
 }
 export async function postLanzarPartida(
@@ -2993,4 +3010,53 @@ export async function getLinajes(saveId: string): Promise<{ linajes: LinajeInfo[
 /// CR-42 (hito 0.3): «¿Qué se sabe en tu tierra?» a un compañero.
 export async function preguntarTierraCompanero(saveId: string, companionId: string): Promise<{ frase: string; contadas: number }> {
   return fetchJson(`${API_URL}/saves/${saveId}/companeros/${companionId}/tierra`, { method: 'POST' })
+}
+
+// CR-65 (65f): Reino › Defensa.
+export interface ModuloDefensaInfo {
+  id: string
+  modulo: 'empalizada' | 'torre-vigia' | 'armeria' | 'barracon'
+  nombre: string
+  escalon: number
+  golpes: number
+  caida: boolean
+  equiposMilicia: number
+}
+export interface AsentamientoDefensa {
+  id: string
+  nombre: string
+  capital: boolean
+  region: string
+  locationId: string
+  modulos: ModuloDefensaInfo[]
+  guarnicion: { id: string; nombre: string; rol: 'soldado' | 'vigia' }[]
+  efecto: { cobertura: number; radioTramos: number; bonoAltura: number; equiposMilicia: number; plazasGuarnicion: number; bonoMoral: number; aguante: number }
+}
+export interface AvistamientoInfo {
+  asentamientoId: string
+  asentamiento: string
+  viajeroId: string
+  quien: string
+  gente: number
+  tramos: number
+}
+export async function getDefensa(saveId: string): Promise<{ asentamientos: AsentamientoDefensa[]; avistados: AvistamientoInfo[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/defensa`)
+}
+export async function postGuarnicion(saveId: string, subjectId: string, asentamientoId: string): Promise<{ ok: boolean }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/defensa/guarnicion`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subjectId, asentamientoId }) })
+}
+export async function postEquiposMilicia(saveId: string, armeriaId: string, cantidad: number): Promise<{ ok: boolean; comprados: number }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/defensa/armeria/${armeriaId}/equipos`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cantidad }) })
+}
+export async function postLlamarMilicia(saveId: string, asentamientoId: string): Promise<{ ok: boolean; armados: number }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/defensa/${asentamientoId}/milicia`, { method: 'POST' })
+}
+export async function postRepararEmpalizada(saveId: string, buildingId: string): Promise<{ ok: boolean }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/defensa/empalizada/${buildingId}/reparar`, { method: 'POST' })
+}
+
+// CR-50 (50d): manda una partida a por un campamento de bandidos.
+export async function postAtacarCampamento(saveId: string, campamentoId: string, p: { companionIds: string[]; subjectIds: string[] }): Promise<{ ok: boolean; id: string }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/campamentos/${campamentoId}/atacar`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) })
 }

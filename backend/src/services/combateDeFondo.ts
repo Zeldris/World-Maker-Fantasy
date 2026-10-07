@@ -50,6 +50,11 @@ export interface CombatienteFondo {
   conNombre?: boolean;
   /// Líder del grupo (tira la moral por todos); si no, el de más Voluntad.
   lider?: boolean;
+  /// CR-65: cobertura al defenderse (Empalizada, D&D), bono al atacar (desde la Torre, BG3) y a la
+  /// moral (Barracón).
+  bonoDefensa?: number;
+  bonoAtaque?: number;
+  bonoMoral?: number;
 }
 
 export interface EstadoFondo {
@@ -87,7 +92,7 @@ interface Vivo {
 const activo = (v: Vivo) => enPie(v.condicion) && !v.huido;
 
 function participante(v: Vivo, rol: 'ataque' | 'defensa'): ExchangeParticipant {
-  return { attributes: v.c.attributes, attribute: v.c.attribute, attributeBonus: v.c.attributeBonus, difficulty: DIFICULTAD_FONDO, condicionFisica: v.condicion, rol };
+  return { attributes: v.c.attributes, attribute: v.c.attribute, attributeBonus: v.c.attributeBonus, difficulty: DIFICULTAD_FONDO, condicionFisica: v.condicion, rol, bonoTirada: (rol === 'defensa' ? v.c.bonoDefensa : v.c.bonoAtaque) ?? 0 };
 }
 
 /// Un sub-combate entre dos grupos (modifica sus estados). Devuelve las rondas y los bandos que se
@@ -143,7 +148,7 @@ export function simularSubCombate(a: Vivo[], b: Vivo[], random: () => number): {
         const quien = tira ? suyos.find((v) => v.c.id === tira.id) : undefined;
         if (quien) {
           const desventaja = vaClaramentePerdiendo(suyos.map((v) => v.condicion), contrarios.map((v) => v.condicion));
-          if (!tirarMoral(quien.c.attributes, desventaja, random).aguanta) retirandose.add(herido.c.bando);
+          if (!tirarMoral(quien.c.attributes, desventaja, random, quien.c.bonoMoral ?? 0).aguanta) retirandose.add(herido.c.bando);
         }
       }
       if (!a.some(activo) || !b.some(activo)) return { rondas: ronda, retiradas: [...retirandose] };
