@@ -95,7 +95,8 @@ export const AXE_REPAIR_RECIPE: CraftingRecipe = {
 const SMOKE_MEAT_RECIPE: CraftingRecipe = {
   key: 'smokeMeat',
   verbRegex: /ahum|crear|creo/,
-  nounRegex: /carne/,
+  // CR-61 (61d): sin pisar el Guiso de Múrgol ni el Asado de las Llanuras.
+  nounRegex: /^(?!.*(guiso|asado)).*carne/,
   location: null,
   ingredients: [{ match: { kind: 'exact', catalogSlug: 'racion-carne' }, cantidad: 1, label: 'ración de carne fresca' }],
   resultName: 'Ración de carne ahumada',
@@ -174,7 +175,7 @@ export const ANTIDOTE_RECIPE: CraftingRecipe = {
 export const BOUNGO_ROAST_RECIPE: CraftingRecipe = {
   key: 'boungoRoast',
   verbRegex: /as|cocin|prepar|tuest/,
-  nounRegex: /boungo/,
+  nounRegex: /^(?!.*llanura).*boungo/,
   location: null,
   ingredients: [{ match: { kind: 'exact', catalogSlug: 'boungo' }, cantidad: 2, label: 'Boungo' }],
   resultName: 'Boungo asado',
@@ -967,7 +968,7 @@ export const JUSHA_SMOKED_MEAT_RECIPE: CraftingRecipe = {
 export const SCARLET_WHEAT_BREAD_RECIPE: CraftingRecipe = {
   key: 'scarletWheatBread',
   verbRegex: /horne|cocin|prepar|amas/,
-  nounRegex: /pan.*trigo|trigo.*pan/,
+  nounRegex: /^(?!.*(leche|miel)).*(pan.*trigo|trigo.*pan)/,
   location: null,
   ingredients: [{ match: { kind: 'exact', catalogSlug: 'trigo-escarlata' }, cantidad: 3, label: 'trigo escarlata' }],
   resultName: 'Pan de trigo escarlata',
@@ -1038,7 +1039,7 @@ export const MURGOL_STEW_RECIPE: CraftingRecipe = {
 export const MILK_HONEY_BREAD_RECIPE: CraftingRecipe = {
   key: 'milkHoneyBread',
   verbRegex: /horne|cocin|prepar|amas/,
-  nounRegex: /pan.*(leche|miel)/,
+  nounRegex: /\bpan\b.*(leche|miel)/,
   location: null,
   ingredients: [
     { match: { kind: 'exact', catalogSlug: 'trigo-escarlata' }, cantidad: 2, label: 'trigo escarlata' },

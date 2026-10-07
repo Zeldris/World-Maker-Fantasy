@@ -89,6 +89,9 @@ describe('tickKingdom', () => {
     expect(result.comida).toBe(12);
     expect(result.riqueza).toBe(6);
   });
+  it('la comida con decimales se arrastra de un día al siguiente (CR-61)', () => {
+    expect(tickKingdom({ ...DEFAULT_KINGDOM_STATS }, 4, { ...SIN_SUMINISTROS, comidaDia: 2.5 }).comida).toBe(10);
+  });
   it('0 días no cambia nada', () => {
     const stats: KingdomStatsBlock = { ...DEFAULT_KINGDOM_STATS, trabajadores: 5 };
     expect(tickKingdom(stats, 0)).toEqual(stats);

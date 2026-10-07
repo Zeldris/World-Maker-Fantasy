@@ -306,6 +306,8 @@ export interface CombatienteInterceptacion {
   attributes: AttributeBlock;
   attribute: Attribute;
   attributeBonus: number;
+  /// Su nivel (para la dificultad de escapar al retirarse); 1 si no se sabe.
+  nivel?: number;
 }
 
 /// `Npc` → combatiente, con las mismas piezas que el combate múltiple (`datosVivosDe`):
@@ -317,6 +319,7 @@ export function combatienteDeNpc(npc: Npc): CombatienteInterceptacion {
     attributes: npcAttributesForLevel(npc.attributes as unknown as AttributeBlock, npc.level, npc.clase as Clase | null),
     attribute: ataque.attribute,
     attributeBonus: ataque.attributeBonus ?? 0,
+    nivel: npc.level,
   };
 }
 
@@ -326,7 +329,8 @@ function fueraDeCombate(c: CondicionFisica): boolean {
 }
 
 export interface ResultadoCombateInterceptacion {
-  /// 'atacante' si deja fuera a todos los guardias; 'defensores' si el atacante cae o se agota el tope.
+  /// 'atacante' si deja fuera o hace huir a todos los guardias (CR-62: con moral, los guardias pueden
+  /// retirarse y dejar la carga); 'defensores' si el atacante cae, huye o se agota el tope.
   ganador: 'atacante' | 'defensores';
   rondas: number;
   /// true si se agotó el tope de rondas del combate de fondo sin que cayera nadie del todo (los
@@ -344,7 +348,7 @@ export function simularCombateInterceptacion(atacante: CombatienteInterceptacion
   // CR-62 (62b): la intercepción es un combate de fondo más (ADR 0002), con el motor común. Las
   // muertes las sigue tirando `tirarMuertes` (aquí todos pueden morir, también los NPC con nombre).
   const comoFondo = (c: CombatienteInterceptacion, bando: 'A' | 'B') => ({
-    id: c.id, nombre: c.nombre, bando, attributes: c.attributes, attribute: c.attribute, attributeBonus: c.attributeBonus, nivel: 1, conMoral: true,
+    id: c.id, nombre: c.nombre, bando, attributes: c.attributes, attribute: c.attribute, attributeBonus: c.attributeBonus, nivel: c.nivel ?? 1, conMoral: true,
   });
   const r = simularCombateDeFondo([comoFondo(atacante, 'A'), ...guardias.map((g) => comoFondo(g, 'B'))], random, { probMuerte: 0 });
   const condicion = (id: string) => r.estados.find((e) => e.id === id)!.condicion;

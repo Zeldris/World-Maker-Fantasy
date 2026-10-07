@@ -4,7 +4,7 @@
 // soldados, y el resultado va al suceso `ESCARAMUZA` y a su noticia.
 import type { Prisma } from '@prisma/client';
 import { simularCombateDeFondo } from '../combateDeFondo.js';
-import { combatientesDeFaccion, soldadoGenerico, atributosMedios } from './combatientesFaccion.js';
+import { baseDePueblo, combatientesDeFaccion, soldadoGenerico } from './combatientesFaccion.js';
 import { aplicarBajasDeFaccion } from './economiaFacciones.js';
 
 type Tx = Prisma.TransactionClient;
@@ -52,7 +52,7 @@ export async function pelearEscaramuza(
     ladoB = await combatientesDeFaccion(tx, ctx, { slug: b.slug, name: b.name, raza: b.raza, soldados: b.kingdomStats.soldados, sinArma: b.kingdomStats.sinArma }, Math.min(nB, b.kingdomStats.soldados), 'B');
   } else {
     // Renegados: gente de su mismo pueblo, armada.
-    const base = atributosMedios((await tx.npc.findMany({ where: { worldId: ctx.worldId, saveId: null, raza: a.raza ?? 'orcos', faunaCategoria: null }, select: { attributes: true } })).map((p) => p.attributes as never));
+    const base = await baseDePueblo(tx, ctx.worldId, a.raza ?? 'orcos');
     ladoB = Array.from({ length: nB }, (_, i) => soldadoGenerico(`renegado-${i + 1}`, 'Renegado', 'B', base, true));
   }
   if (ladoA.length === 0 || ladoB.length === 0) return null;

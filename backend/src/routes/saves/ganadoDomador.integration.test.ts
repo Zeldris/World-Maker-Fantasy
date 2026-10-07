@@ -49,6 +49,11 @@ describe('Domadora: llevar contigo y devolver al corral (CR-56 56b)', () => {
     expect((await app.inject({ method: 'POST', url: `/saves/${saveId}/ganado/${otro.id}/llevar` })).statusCode).toBe(400);
 
     expect((await app.inject({ method: 'GET', url: `/saves/${saveId}/corrales` })).json().fueraDelCorral).toEqual([{ id: c.id, name: c.name }]);
+    // Revisión del PR: muerto no vuelve (ni sale en la lista).
+    await prisma.companion.update({ where: { id: c.id }, data: { condicionFisica: 'MUERTO' } });
+    expect((await app.inject({ method: 'GET', url: `/saves/${saveId}/corrales` })).json().fueraDelCorral).toEqual([]);
+    expect((await app.inject({ method: 'POST', url: `/saves/${saveId}/companeros/${c.id}/al-corral` })).statusCode).toBe(400);
+    await prisma.companion.update({ where: { id: c.id }, data: { condicionFisica: 'ILESO' } });
     const vuelta = await app.inject({ method: 'POST', url: `/saves/${saveId}/companeros/${c.id}/al-corral` });
     expect(vuelta.statusCode).toBe(200);
     const devuelto = await prisma.ganado.findFirstOrThrow({ where: { saveId, sexo: 'F' } });

@@ -405,8 +405,9 @@ export async function narrarDia(
         const r = await pelearEscaramuza(tx, { saveId, worldId: save.worldId }, pelea.slugA, pelea.slugB, tamanoEscaramuza(random), tamanoEscaramuza(random), random);
         if (r) {
           suceso = { ...suceso, datos: { ...suceso.datos, resultado: resumenEscaramuza(r) } as typeof suceso.datos };
-          // Q6: con muertos, la presión sube más.
-          if (r.muertosA + r.muertosB > 0) efectos = [...efectos, { tipo: 'cambiarPresion', origenSlug: pelea.slugB, destinoSlug: pelea.slugA, evento: 'BAJA_DE_GUERRA' }];
+          // Q6: con muertos, la presión sube más: la de quien los pone hacia el otro bando.
+          if (r.muertosB > 0) efectos = [...efectos, { tipo: 'cambiarPresion', origenSlug: pelea.slugB, destinoSlug: pelea.slugA, evento: 'BAJA_DE_GUERRA' }];
+          if (r.muertosA > 0 && pelea.slugB) efectos = [...efectos, { tipo: 'cambiarPresion', origenSlug: pelea.slugA, destinoSlug: pelea.slugB, evento: 'BAJA_DE_GUERRA' }];
         }
       }
       const sucesoPropio = suceso

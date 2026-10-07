@@ -795,3 +795,19 @@ describe('craftDurationSecondsFor (espera real, 2026-08-20)', () => {
     expect(craftDurationSecondsFor(antidote)).toBe(20); // tier 2
   });
 });
+
+describe('CR-61 (61d): las recetas de cocina no se pisan', () => {
+  const casos: [string, string][] = [
+    ['Preparo un guiso de carne de múrgol', 'murgolStew'],
+    ['Ahumo la carne', 'smokeMeat'],
+    ['Horneo pan de trigo escarlata con leche y miel', 'milkHoneyBread'],
+    ['Horneo pan de trigo escarlata', 'scarletWheatBread'],
+    ['Preparo un panal de miel', 'sweetHoneycomb'],
+    ['Preparo un asado de las Llanuras con carne y boungo', 'plainsRoast'],
+    ['Aso unos boungo', 'boungoRoast'],
+    ['Curo un queso de múrgol', 'agedMurgolCheese'],
+  ];
+  it.each(casos)('«%s» solo hace %s', (accion, receta) => {
+    expect(CRAFTING_RECIPES.filter((r) => detectsCraftIntent(r, accion)).map((r) => r.key)).toEqual([receta]);
+  });
+});

@@ -31,7 +31,7 @@ export async function ganadoRoutes(app: FastifyInstance) {
         diasSinComer: stats?.ganadoDiasSinComer ?? 0,
         diasSinBeber: stats?.ganadoDiasSinBeber ?? 0,
         // CR-56 (Q4): compañeros animales que pueden volver al corral.
-        fueraDelCorral: (await tx.companion.findMany({ where: { saveId: save.id, tipo: 'FAUNA', sourceSlug: { not: null } }, select: { id: true, name: true, sourceSlug: true } }))
+        fueraDelCorral: (await tx.companion.findMany({ where: { saveId: save.id, tipo: 'FAUNA', sourceSlug: { not: null }, condicionFisica: { not: 'MUERTO' } }, select: { id: true, name: true, sourceSlug: true } }))
           .filter((c) => esGanado(c.sourceSlug!))
           .map((c) => ({ id: c.id, name: c.name })),
         corrales: corrales.map((c) => ({

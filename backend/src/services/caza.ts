@@ -9,6 +9,7 @@ import { loadSessionFacts, appendSessionFacts } from './worldFacts.js';
 import { recordEntityDiscoveries } from './entityDiscovery.js';
 import { iniciarCombatEncounter, resolverTurnosAutonomosHastaJugadora, type CombatienteInicial, type IniciativaParticipanteInfo } from './combateMultipleOrquestacion.js';
 import { MAX_COMBATIENTES_POR_BANDO } from './combateMultiple.js';
+import { MAX_RONDAS_SUBCOMBATE } from './combateDeFondo.js';
 import { lockRowForUpdate } from '../routes/saves/shared.js';
 import { ambitoPoblacion } from './mundoPartida.js';
 import { companeroDispuestoACombatir } from './cronista/aprobacion.js';
@@ -409,7 +410,11 @@ async function intentarCazaEnGrupo(save: SaveParaCaza, targets: CazaTarget[]): P
     // completo original en `cazar.ts` (2026-09-01).
     let caidosAutonomos = 0;
     for (const encounterId of resultado.autonomosIds) {
-      const { caidos } = await resolverTurnosAutonomosHastaJugadora({ prisma, worldId: save.worldId, saveId: save.id, encounterId, weaponNamesPorDefecto: [], narrarFn: async () => '' });
+      // Un sub-combate de fondo se resuelve entero (con tus grupos 2+ dentro ya no basta el tope de
+      // seguridad de 30 turnos); si aun así llega al tope de rondas, acaba en tablas y se cierra.
+      const participantes = await prisma.combatParticipant.count({ where: { encounterId } });
+      const { caidos, encounterTerminado } = await resolverTurnosAutonomosHastaJugadora({ prisma, worldId: save.worldId, saveId: save.id, encounterId, weaponNamesPorDefecto: [], narrarFn: async () => '', maxIteraciones: participantes * MAX_RONDAS_SUBCOMBATE });
+      if (!encounterTerminado) await prisma.combatEncounter.update({ where: { id: encounterId }, data: { estado: 'RESUELTO', resolvedAt: new Date() } });
       const conGrupo = resultado.deFondo.find((d) => d.encounterId === encounterId);
       if (conGrupo) {
         // CR-62 (62d): resumen del sub-combate de fondo de tu grupo (reporte de § 4, con plantilla).

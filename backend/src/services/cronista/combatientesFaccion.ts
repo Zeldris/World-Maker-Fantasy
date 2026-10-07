@@ -36,6 +36,13 @@ export function soldadoGenerico(id: string, nombre: string, bando: BandoFondo, b
   };
 }
 
+/// Atributos de base de un pueblo: los medios de su gente del catálogo, en crudo (el nivel lo pone
+/// `npcAttributesForLevel`). 10 en todo si no hay nadie de ese pueblo.
+export async function baseDePueblo(tx: Tx, worldId: string, raza: string | null): Promise<AttributeBlock> {
+  const gente = raza ? await tx.npc.findMany({ where: { worldId, saveId: null, raza, faunaCategoria: null }, select: { attributes: true } }) : [];
+  return atributosMedios(gente.map((p) => p.attributes as unknown as AttributeBlock));
+}
+
 /// Los `n` combatientes de una facción de la partida en el bando `bando`.
 export async function combatientesDeFaccion(
   tx: Tx,
@@ -55,11 +62,7 @@ export async function combatientesDeFaccion(
   });
   const faltan = n - elegidos.length;
   if (faltan > 0) {
-    const deSuPueblo = faccion.raza
-      ? await tx.npc.findMany({ where: { worldId: ctx.worldId, saveId: null, raza: faccion.raza, faunaCategoria: null }, select: { attributes: true } })
-      : [];
-    // Atributos de base de su pueblo (los del catálogo, en crudo; el nivel lo pone `npcAttributesForLevel`).
-    const base = atributosMedios(deSuPueblo.map((p) => p.attributes as unknown as AttributeBlock));
+    const base = await baseDePueblo(tx, ctx.worldId, faccion.raza);
     const armados = Math.max(0, faccion.soldados - faccion.sinArma);
     for (let i = 0; i < faltan; i++) {
       elegidos.push(soldadoGenerico(`${faccion.slug}-soldado-${bando}-${i + 1}`, `Soldado de ${faccion.name}`, bando, base, i < armados));

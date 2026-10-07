@@ -98,7 +98,7 @@ export function balanceDiario(stats: KingdomStatsBlock, extra: { comida: number;
 /// numérica negativa, la consecuencia real vive en la felicidad, no en un contador que se hunde).
 /// CR-53 (hito 0.3, Q1-Q2): agua que entra al día (pozos, fuente natural) y topes del almacén.
 export interface SuministrosDia {
-  /// CR-61: comida que producen hoy las tareas de sus trabajadores.
+  /// CR-61: comida que producen cada día las tareas de sus trabajadores (puede llevar decimales).
   comidaDia?: number;
   agua: number;
   topeComida: number;
@@ -140,8 +140,13 @@ export function tickKingdomOneDay(stats: KingdomStatsBlock, s: SuministrosDia = 
 /// día de ficción en un solo turno) — nunca lo decide el modelo, ver el enganche en turnResolution.ts.
 export function tickKingdom(stats: KingdomStatsBlock, dias: number, s: SuministrosDia = SIN_SUMINISTROS): KingdomStatsBlock {
   let result = stats;
+  // CR-61: la comida de las tareas puede traer medias (2,5 por recolector en primavera); lo que no
+  // llega a una unidad se arrastra al día siguiente.
+  let resto = 0;
   for (let i = 0; i < dias; i++) {
-    result = tickKingdomOneDay(result, s);
+    const comida = (s.comidaDia ?? 0) + resto;
+    resto = comida - Math.floor(comida);
+    result = tickKingdomOneDay(result, { ...s, comidaDia: Math.floor(comida) });
   }
   return result;
 }
@@ -176,8 +181,9 @@ export interface FactionBuildingForTick {
 }
 
 /// Puro: cuánto suma UN día de producción agregada de facción, a partir de sus `Building` reales.
+/// CR-61: los edificios ya no dan comida (`comida` es siempre 0; la comida sale de las tareas,
+/// `produccionDeFaccion`); se deja el campo porque es la forma de `tickFactionOneDay`.
 export function tickFactionProduction(buildings: FactionBuildingForTick[]): { comida: number; riqueza: number } {
-  const comida = 0;
   let riqueza = 0;
   for (const b of buildings) {
     if (b.status !== 'ACTIVO' || !b.recipeKey || SALON_RECIPE_KEYS.has(b.recipeKey)) continue;
@@ -185,7 +191,7 @@ export function tickFactionProduction(buildings: FactionBuildingForTick[]): { co
     if (COCINA_RECIPE_KEYS.has(b.recipeKey)) continue;
     riqueza += PRODUCCION_FACCION_POR_EDIFICIO_OFICIO;
   }
-  return { comida, riqueza };
+  return { comida: 0, riqueza };
 }
 
 /// Escalón de una Cocina por su receta (las de facción del catálogo, Taller).
@@ -204,9 +210,8 @@ export function produccionDeFaccion(
   raza: string | null,
   stats: { trabajadores: number; comida: number },
 ): { comida: number; riqueza: number } {
-  const base = tickFactionProduction(buildings);
   const escalon = escalonCocinaDe(buildings);
   const cuadrilla = repartoDeFaccion(raza, stats.trabajadores, true, escalon > 0);
   const comida = comidaDelDia(cuadrilla, { estacion: 'OTONO', hayAgua: true, escalonCocina: escalon || null, comidaDisponible: stats.comida });
-  return { comida: base.comida + Math.floor(comida), riqueza: base.riqueza };
+  return { comida: Math.floor(comida), riqueza: tickFactionProduction(buildings).riqueza };
 }

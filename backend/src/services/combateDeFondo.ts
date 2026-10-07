@@ -9,7 +9,7 @@
 //    (`elegirObjetivo`) o el del capitán (`elegirCapitan` + `objetivoConcentrado`, CR-45), intercambio
 //    (`resolveExchange`: un golpe empeora un escalón al defensor, un contragolpe al atacante), y moral
 //    (CR-44): al quedar un bando a la mitad o caer alguien a GRAVE, su líder tira moral; si falla, el
-//    bando se retira y cada uno intenta escapar.
+//    grupo se retira y cada uno intenta escapar; los demás grupos de su bando siguen peleando.
 // 4. Al final, de quien ha caído muere el 3 % (regla de Álvaro, `PROBABILIDAD_MUERTE_EN_INTERCEPCION`);
 //    los NPC con nombre no mueren en una pelea de fondo.
 //
@@ -162,7 +162,7 @@ export function simularCombateDeFondo(
   const vivos: Vivo[] = combatientes.map((c) => ({ c, condicion: 'ILESO', huido: false }));
   const gruposA = agrupar(vivos.filter((v) => v.c.bando === 'A'), tamano);
   const gruposB = agrupar(vivos.filter((v) => v.c.bando === 'B'), tamano);
-  const retiradas = new Set<BandoFondo>();
+  const seRetiro = new Set<BandoFondo>();
   let rondas = 0;
   let subcombates = 0;
   // Siguiente grupo de un bando que aún puede pelear, empezando por el de turno.
@@ -173,23 +173,27 @@ export function simularCombateDeFondo(
     }
     return null;
   };
-  // Se pelea hasta que un bando se retira o se queda sin nadie; con tope por si los sub-combates
-  // acaban en tablas una y otra vez.
+  // Se pelea hasta que un bando se queda sin nadie en pie; con tope por si los sub-combates acaban
+  // en tablas una y otra vez. Un grupo que falla la moral deja el campo (es su encuentro), pero los
+  // demás grupos de su bando siguen peleando.
   const tope = Math.max(gruposA.length, gruposB.length) * 4;
-  for (let k = 0; k < tope && retiradas.size === 0; k++) {
+  for (let k = 0; k < tope; k++) {
     const ga = grupoListo(gruposA, k);
     const gb = grupoListo(gruposB, k);
     if (!ga || !gb) break;
     const r = simularSubCombate(ga, gb, random);
     rondas += r.rondas;
     subcombates++;
-    for (const x of r.retiradas) retiradas.add(x);
+    for (const x of r.retiradas) {
+      seRetiro.add(x);
+      for (const v of x === 'A' ? ga : gb) if (enPie(v.condicion)) v.huido = true;
+    }
   }
-  // Un bando que se retira deja el campo: sus combatientes en pie se van con él.
-  for (const v of vivos) if (retiradas.has(v.c.bando) && enPie(v.condicion)) v.huido = true;
   const quedaA = vivos.some((v) => v.c.bando === 'A' && activo(v));
   const quedaB = vivos.some((v) => v.c.bando === 'B' && activo(v));
   const ganador: BandoFondo | null = quedaA && !quedaB ? 'A' : quedaB && !quedaA ? 'B' : null;
+  // Se cuenta como retirada el bando que pierde el campo habiéndose retirado alguno de sus grupos.
+  const retiradas = [...seRetiro].filter((b) => (b === 'A' ? !quedaA : !quedaB));
 
   // Muertes: de quien ha caído, el 3 %; los NPC con nombre, nunca.
   const prob = opciones.probMuerte ?? PROBABILIDAD_MUERTE_FONDO;
@@ -198,5 +202,5 @@ export function simularCombateDeFondo(
     const muerto = cayo && !v.c.conNombre && random() < prob;
     return { id: v.c.id, condicion: muerto ? 'MUERTO' : v.condicion, huido: v.huido, muerto };
   });
-  return { ganador, retiradas: [...retiradas], subcombates, rondas, estados };
+  return { ganador, retiradas, subcombates, rondas, estados };
 }

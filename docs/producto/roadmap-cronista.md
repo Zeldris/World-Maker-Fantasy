@@ -1687,6 +1687,20 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   - Deuda que se cobra en patrullas obligadas (20 guerreros por semana, 25 % de `ESCARAMUZA` con 1d6
     bajas).
   - Se rompe saldando la deuda, si cae el señor, con una alianza con el Reino o en guerra. **M**
+- ~~**CR-62** Combate de fondo (Q6 de la ronda de `CR-56`; ronda propia aceptada el 2026-10-07,
+  decisiones en [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-cr-62-combate-de-fondo-ronda-aceptada-por-la-usuaria-el-2026-10-07);
+  ADR 0002).~~ ✅ 2026-10-07. Pasos:
+  - ~~62a~~: motor puro `combateDeFondo.ts` (grupos de 8 sin la jugadora y de 4 con ella, sub-combates
+    con iniciativa, objetivo, capitán, intercambio y moral; muere el 3 % de los caídos, nunca los NPC
+    con nombre). Revisión del PR: si un grupo falla la moral se retira él solo, los demás grupos de su
+    bando siguen.
+  - ~~62b~~: `combatientesFaccion.ts` (sus guerreros con nombre y soldados genéricos de su pueblo) y la
+    intercepción de expediciones con el motor común (con el nivel real de cada NPC).
+  - ~~62c~~: escaramuzas del narrador (2d4 por bando) y patrulla de vasallaje Serhu pelean de verdad
+    (`escaramuzas.ts`); más presión si hay muertos, de quien los pone hacia el otro bando.
+  - ~~62d~~: en la caza, los grupos 2+ de la jugadora pelean de fondo contra el resto, con resumen;
+    esos sub-combates se resuelven enteros (si llegan al tope de rondas, en tablas).
+  Queda: `CMB-9` (`0.8`) sube el tope de 4 con la jugadora; el lugar de las escaramuzas, con `CR-64`.
 - ~~**CR-61** Comida por oficios~~ ✅ 2026-10-07 (Q15 de la ronda de `CR-55`; ronda propia aceptada el 2026-10-07,
   decisiones en [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-cr-61-y-cr-63-ronda-aceptada-por-la-usuaria-el-2026-10-07)).
   Queda para `CR-63`: la caza de orcos y Faerus sigue en agregado (2,5 por cazador) hasta que salgan

@@ -362,6 +362,8 @@ export async function llevarConsigo(tx: Tx, saveId: string, ganadoId: string, ah
 export async function devolverAlCorral(tx: Tx, saveId: string, companionId: string, ahora: number, random: () => number = Math.random): Promise<{ ok: true; buildingId: string } | { ok: false; motivo: string }> {
   const c = await tx.companion.findFirst({ where: { id: companionId, saveId, tipo: 'FAUNA' } });
   if (!c?.sourceSlug || !esGanado(c.sourceSlug)) return { ok: false, motivo: 'Este compañero no se cría en corral.' };
+  if (c.condicionFisica === 'MUERTO') return { ok: false, motivo: `${c.name} está muerto.` };
+  if (await tx.combatParticipant.count({ where: { companionId: c.id, encounter: { estado: 'EN_CURSO' } } })) return { ok: false, motivo: `${c.name} está en un combate.` };
   const corral = elegirCorral(await corralesDelReino(tx, saveId), c.sourceSlug);
   if ('motivo' in corral) return { ok: false, motivo: corral.motivo };
   const { worldId } = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } });

@@ -128,7 +128,7 @@ describe('súbditos (REI-118) — en una partida', () => {
     expect(await prisma.$transaction((tx) => cambiarTareaSubdito(tx, saveId, adulto.id, 'cocinero', AHORA))).toEqual({ ok: true });
     expect((await prisma.$transaction((tx) => cambiarTareaSubdito(tx, saveId, adulto.id, 'cazador', AHORA))).ok).toBe(false);
     expect((await datosDeSubditos(prisma, saveId, AHORA)).find((d) => d.id === adulto.id)?.tarea).toBe('cocinero');
-    expect(await comidaDelReino(prisma, saveId, AHORA, 100)).toBe(Math.floor(rendimientoRecolector(estacionFor(AHORA))));
+    expect(await comidaDelReino(prisma, saveId, AHORA, 100)).toBe(rendimientoRecolector(estacionFor(AHORA)));
     const location = await prisma.location.findFirstOrThrow({ where: { worldId } });
     const cocina = await prisma.building.create({ data: { saveId, locationId: location.id, recipeKey: 'cocina', name: 'Cocina', kind: 'cocina', description: 'x', status: 'ACTIVO' } });
     expect(await comidaDelReino(prisma, saveId, AHORA, 100)).toBe(5);

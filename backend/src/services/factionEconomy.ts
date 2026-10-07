@@ -162,7 +162,9 @@ export async function producirFacciones(
         // comen de lo que da el rebaño), con la costumbre de su pueblo; ya no hay comida pasiva.
         const cuadrilla = repartoDeFaccion(fks.faction?.raza ?? null, Math.max(0, stats.trabajadores - fueraDelPasivo), true, escalonCocina > 0);
         const comidaHoy = comidaDelDia(cuadrilla, { estacion: estacionFor(dia * 1440), hayAgua: true, escalonCocina: escalonCocina || null, comidaDisponible: stats.comida });
-        stats = tickFactionOneDay(stats, { ...porDia, comida: porDia.comida + Math.floor(comidaHoy) });
+        const comidaConResto = comidaHoy + restoComida;
+        restoComida = comidaConResto - Math.floor(comidaConResto);
+        stats = tickFactionOneDay(stats, { ...porDia, comida: Math.floor(comidaConResto) });
         const pago = sueldosDelDia({ ...stats, diasSinCobrar }, dia, equipoDeLaSemana(stats));
         stats = { ...stats, riqueza: pago.riqueza, felicidad: pago.felicidad };
         diasSinCobrar = pago.diasSinCobrar;

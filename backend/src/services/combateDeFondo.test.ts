@@ -52,6 +52,18 @@ describe('combate de fondo (CR-62)', () => {
     for (let s = 1; s <= 10; s++) expect(simularCombateDeFondo([...bando('A', 6, 16), ...fauna], semilla(s)).retiradas).not.toContain('B');
   });
 
+  it('si un grupo falla la moral se va él solo: los demás grupos de su bando siguen peleando (revisión del PR)', () => {
+    let sigueTrasRetirada = 0;
+    for (let s = 1; s <= 40; s++) {
+      // A: 3 grupos de 4 iguales a los 4 de B; si el primero huye, los otros dos siguen.
+      const r = simularCombateDeFondo([...bando('A', 12, 10), ...bando('B', 4, 10)], semilla(s), { tamano: 4 });
+      const huidosA = r.estados.filter((e) => e.id.startsWith('A') && e.huido).length;
+      if (huidosA > 0 && huidosA < 12 && r.subcombates > 1) sigueTrasRetirada++;
+      if (r.retiradas.includes('A')) expect(r.ganador).not.toBe('A');
+    }
+    expect(sigueTrasRetirada).toBeGreaterThan(0);
+  });
+
   it('de los caídos muere el 3 %; los NPC con nombre nunca', () => {
     const r = simularCombateDeFondo([...bando('A', 4, 18), soldado('jefe', 'B', 4, { conNombre: true }), ...bando('B', 3, 4)], semilla(5), { probMuerte: 1 });
     const jefe = r.estados.find((e) => e.id === 'jefe')!;
