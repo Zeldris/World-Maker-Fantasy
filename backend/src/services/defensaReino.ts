@@ -7,8 +7,11 @@ import type { Prisma } from '@prisma/client';
 import { DEFENSA_RECIPE_KEYS } from './construction.js';
 import { efectoDefensa, EQUIPOS_ARMERIA, moduloDeRecipeKey, type EfectoDefensa, type ModulosAsentamiento } from './cronista/defensa.js';
 import { costeDePiezas, equipoDeAlta, gastarMateriales, piezasEnCasa, talleresDelReino } from './cronista/facturaEquipo.js';
-import { rolDeSubdito } from './cronista/subditos.js';
+import { esAdultoSubdito, rolDeSubdito } from './cronista/subditos.js';
+import type { PrismaClient } from '@prisma/client';
 import { ownerKeyFor } from './reinoOwner.js';
+import { recalcularPoblacion } from './cronista/subditos.js';
+import { avisoDeViajero, enlacesDelMundo, lugaresATramos } from './viajeros.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -105,4 +108,90 @@ export async function comprarEquiposMilicia(tx: Tx, saveId: string, armeriaId: s
   if (!(await gastarMateriales(tx, saveId, coste.materiales))) throw new Error(`Faltan ${coste.materiales} materiales en el Almacén.`);
   await tx.building.update({ where: { id: armeriaId }, data: { equiposMilicia: { increment: cuantos } } });
   return { ok: true, comprados: cuantos };
+}
+
+/// Q3/Q5: un viajero hostil es una partida de asalto (las lanzan los bandidos de `CR-50` y la guerra
+/// de `CR-37`).
+export const TIPO_ASALTO = 'ASALTO';
+
+export interface Avistamiento {
+  asentamientoId: string;
+  asentamiento: string;
+  viajeroId: string;
+  quien: string;
+  gente: number;
+  tramos: number;
+}
+
+/// Q5 (X4: lo que entra en el alcance de tus satélites): los asaltos que se ven desde la Torre de
+/// cada asentamiento, a cuántos tramos están.
+export async function radarDelReino(tx: Tx, saveId: string): Promise<Avistamiento[]> {
+  const asentamientos = (await asentamientosDelReino(tx, saveId)).filter((a) => a.efecto.radioTramos > 0);
+  if (asentamientos.length === 0) return [];
+  const hostiles = await tx.viajero.findMany({
+    where: { saveId, tipo: TIPO_ASALTO, estado: { not: 'TERMINADO' } },
+    select: { id: true, ubicacionLocationId: true, faction: { select: { name: true } }, miembros: { select: { genericos: true, companionId: true, subjectId: true } } },
+    orderBy: { createdAt: 'asc' },
+  });
+  if (hostiles.length === 0) return [];
+  const { worldId } = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } });
+  const enlaces = await enlacesDelMundo(tx, worldId);
+  const out: Avistamiento[] = [];
+  for (const a of asentamientos) {
+    const alcance = lugaresATramos(enlaces, a.locationId, a.efecto.radioTramos);
+    for (const h of hostiles) {
+      const tramos = alcance.get(h.ubicacionLocationId);
+      if (tramos === undefined) continue;
+      const gente = h.miembros.reduce((s, m) => s + m.genericos + (m.companionId || m.subjectId ? 1 : 0), 0);
+      out.push({ asentamientoId: a.id, asentamiento: a.nombre, viajeroId: h.id, quien: h.faction?.name ?? 'Bandidos', gente, tramos });
+    }
+  }
+  return out;
+}
+
+/// Q6: arma a la milicia de un asentamiento: tantos trabajadores adultos como equipos haya en su
+/// Armería. Mientras dura, no producen.
+export async function convocarMilicia(tx: Tx, saveId: string, asentamientoId: string, ahora: number): Promise<number> {
+  const a = (await asentamientosDelReino(tx, saveId)).find((x) => x.id === asentamientoId);
+  if (!a) return 0;
+  const equipos = a.modulos.find((m) => m.modulo === 'armeria')?.equiposMilicia ?? 0;
+  const yaArmados = await tx.subject.count({ where: { saveId, estado: 'ACTIVO', enMilicia: true } });
+  const libres = await tx.subject.findMany({ where: { saveId, estado: 'ACTIVO', enMilicia: false }, select: { id: true, role: true, pueblo: true, nacidoEn: true }, orderBy: { createdAt: 'asc' } });
+  const llamados = libres.filter((s) => rolDeSubdito(s.role) === 'trabajador' && esAdultoSubdito(s, ahora)).slice(0, Math.max(0, equipos - yaArmados));
+  if (llamados.length === 0) return 0;
+  await tx.subject.updateMany({ where: { id: { in: llamados.map((s) => s.id) } }, data: { enMilicia: true } });
+  await recalcularPoblacion(tx, saveId, ahora);
+  return llamados.length;
+}
+
+/// Fin de la alarma: los milicianos vuelven al trabajo.
+export async function licenciarMilicia(tx: Tx, saveId: string, ahora: number): Promise<number> {
+  const { count } = await tx.subject.updateMany({ where: { saveId, enMilicia: true }, data: { enMilicia: false } });
+  if (count > 0) await recalcularPoblacion(tx, saveId, ahora);
+  return count;
+}
+
+/// Un día de vigilancia (avance diario): avisa de cada asalto que entra en el radio de una Torre;
+/// si el personaje no está en ese asentamiento, la milicia se arma sola (Q6). Sin asaltos a la
+/// vista, la milicia vuelve al trabajo.
+export async function vigilarDelReino(prisma: PrismaClient, saveId: string, dia: number): Promise<number> {
+  return prisma.$transaction(async (tx) => {
+    const ahora = dia * 1440;
+    const vistos = await radarDelReino(tx, saveId);
+    const nuevos = await tx.viajero.findMany({ where: { id: { in: [...new Set(vistos.map((v) => v.viajeroId))] }, avistado: false }, select: { id: true } });
+    const nuevosIds = new Set(nuevos.map((n) => n.id));
+    const save = await tx.save.findUnique({ where: { id: saveId }, select: { currentLocationId: true } });
+    const avisados = new Set<string>();
+    for (const v of vistos) {
+      if (!nuevosIds.has(v.viajeroId) || avisados.has(v.viajeroId)) continue;
+      avisados.add(v.viajeroId);
+      const asentamiento = (await asentamientosDelReino(tx, saveId)).find((a) => a.id === v.asentamientoId)!;
+      const fuera = save?.currentLocationId !== asentamiento.locationId;
+      const armados = fuera ? await convocarMilicia(tx, saveId, v.asentamientoId, ahora) : 0;
+      await avisoDeViajero(tx, { saveId, factionId: null }, `Desde la Torre de vigía de ${v.asentamiento} se ve venir a ${v.quien}: ${v.gente} a ${v.tramos} tramo${v.tramos === 1 ? '' : 's'} de camino.${armados > 0 ? ` Estás fuera: ${armados} trabajadores toman las armas de la Armería.` : fuera ? '' : ' Puedes llamar a la milicia.'}`);
+    }
+    if (avisados.size > 0) await tx.viajero.updateMany({ where: { id: { in: [...avisados] } }, data: { avistado: true } });
+    if (vistos.length === 0) await licenciarMilicia(tx, saveId, ahora);
+    return avisados.size;
+  });
 }

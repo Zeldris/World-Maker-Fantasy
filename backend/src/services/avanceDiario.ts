@@ -15,6 +15,7 @@ import { revisarPiezas } from './partidasCaza.js';
 import './partidasCaptura.js';
 import './viajerosEncuentros.js';
 import { lanzarPartidasDeFacciones } from './partidasFacciones.js';
+import { vigilarDelReino } from './defensaReino.js';
 import { difundir } from './cronista/difusion.js';
 import type { PrismaClient } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
@@ -138,6 +139,8 @@ export async function avanzarMundoHasta(
       await paso('partidasFacciones', () => lanzarPartidasDeFacciones(prisma, saveId, d));
       // CR-63 (63a, ADR 0003): una jornada de cada viajero (partidas de caza y captura…).
       await paso('viajeros', () => avanzarViajeros(prisma, saveId, d, random));
+      // CR-65 (65c): la Torre de vigía avisa de los asaltos que entran en su radio.
+      await paso('vigilancia', () => vigilarDelReino(prisma, saveId, d));
       // CR-63 (63b): el Desolladero desuella las piezas y las que pasan de su día se pierden.
       await paso('piezas', () => prisma.$transaction((tx) => revisarPiezas(tx, saveId, d)));
       // CR-32: cada semana, los informantes pasan lo que saben (o los descubren).

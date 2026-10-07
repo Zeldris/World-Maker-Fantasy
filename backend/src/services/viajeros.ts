@@ -82,6 +82,22 @@ export function minutosTramo(enlaces: Enlace[], a: string, b: string): number {
   return g.get(a)?.get(b) ?? Infinity;
 }
 
+/// Puro (CR-65, radar de la Torre): los lugares a `max` tramos o menos de `desde`, con sus tramos.
+export function lugaresATramos(enlaces: Enlace[], desde: string, max: number): Map<string, number> {
+  const g = grafos.get(enlaces) ?? grafo(enlaces);
+  const dist = new Map<string, number>([[desde, 0]]);
+  let frente = [desde];
+  for (let t = 1; t <= max && frente.length > 0; t++) {
+    const siguiente: string[] = [];
+    for (const n of frente) for (const v of g.get(n)?.keys() ?? []) if (!dist.has(v)) {
+      dist.set(v, t);
+      siguiente.push(v);
+    }
+    frente = siguiente;
+  }
+  return dist;
+}
+
 export interface Posicion {
   ubicacion: string;
   ruta: string[];

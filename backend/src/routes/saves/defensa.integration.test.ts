@@ -43,5 +43,9 @@ describe('Reino › Defensa (CR-65 65b)', () => {
     expect((await app.inject({ method: 'POST', url: `/saves/${saveId}/defensa/guarnicion`, payload: { subjectId: soldadoId, asentamientoId: 'otro' } })).statusCode).toBe(400);
     const c = await app.inject({ method: 'POST', url: `/saves/${saveId}/defensa/armeria/${armeriaId}/equipos`, payload: { cantidad: 2 } });
     expect(c.json()).toEqual({ ok: true, comprados: 2 });
+    // Sin trabajadores no hay milicia; con uno, se arma.
+    expect((await app.inject({ method: 'POST', url: `/saves/${saveId}/defensa/${capitalId}/milicia` })).statusCode).toBe(400);
+    await prisma.subject.create({ data: { saveId, name: 'Urk', role: 'trabajador', notes: '' } });
+    expect((await app.inject({ method: 'POST', url: `/saves/${saveId}/defensa/${capitalId}/milicia` })).json()).toEqual({ ok: true, armados: 1 });
   });
 });

@@ -1,17 +1,17 @@
 // CR-65 (65b, hito 0.3): Reino › Defensa — módulos, guarnición y milicia de cada asentamiento.
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
-import { asentamientosDelReino, asignarGuarnicion, comprarEquiposMilicia } from '../../services/defensaReino.js';
+import { asentamientosDelReino, asignarGuarnicion, comprarEquiposMilicia, convocarMilicia, radarDelReino } from '../../services/defensaReino.js';
 import { lockRowForUpdate, rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 
-const selectSave = { id: true, endedAt: true, pendingDeathResolution: true } as const;
+const selectSave = { id: true, endedAt: true, pendingDeathResolution: true, worldState: { select: { fictionalMinutes: true } } } as const;
 
 export async function defensaRoutes(app: FastifyInstance) {
   /// Los asentamientos del Reino con sus módulos de defensa, su guarnición y lo que suman.
   app.get<{ Params: { id: string } }>('/saves/:id/defensa', async (request, reply) => {
     const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: selectSave });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
-    return { asentamientos: await prisma.$transaction((tx) => asentamientosDelReino(tx, save.id)) };
+    return prisma.$transaction(async (tx) => ({ asentamientos: await asentamientosDelReino(tx, save.id), avistados: await radarDelReino(tx, save.id) }));
   });
 
   /// Q7: asigna un soldado o vigía a la guarnición de un asentamiento.
@@ -47,5 +47,19 @@ export async function defensaRoutes(app: FastifyInstance) {
     } catch (e) {
       return reply.status(400).send({ error: e instanceof Error ? e.message : 'No se pudo comprar.' });
     }
+  });
+
+  /// Q6: «Llamar a la milicia» de un asentamiento.
+  app.post<{ Params: { id: string; asentamientoId: string } }>('/saves/:id/defensa/:asentamientoId/milicia', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: selectSave });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (rejectIfEnded(save, reply)) return;
+    if (rejectIfPendingDeath(save, reply)) return;
+    const armados = await prisma.$transaction(async (tx) => {
+      await lockRowForUpdate(tx, 'Save', save.id, ['id']);
+      return convocarMilicia(tx, save.id, request.params.asentamientoId, save.worldState?.fictionalMinutes ?? 0);
+    });
+    if (armados === 0) return reply.status(400).send({ error: 'No hay equipos libres en la Armería o trabajadores que armar.' });
+    return { ok: true, armados };
   });
 }

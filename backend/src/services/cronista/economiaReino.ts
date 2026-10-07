@@ -52,7 +52,7 @@ export async function suministrosDelReino(tx: Tx, saveId: string) {
 /// mejor Cocina. Se carga una vez por tick (QA-19).
 export async function datosComidaDelReino(tx: Tx, saveId: string, ahora: number) {
   const [subditos, edificios] = await Promise.all([
-    tx.subject.findMany({ where: { saveId, estado: 'ACTIVO' }, select: { role: true, pueblo: true, nacidoEn: true, tarea: true } }),
+    tx.subject.findMany({ where: { saveId, estado: 'ACTIVO' }, select: { role: true, pueblo: true, nacidoEn: true, tarea: true, enMilicia: true } }),
     tx.building.findMany({ where: { saveId, status: 'ACTIVO' }, select: { recipeKey: true, status: true, tier: true, location: { select: { slug: true, name: true } } } }),
   ]);
   const ayuntamiento = edificios.find((b) => b.recipeKey && AYUNTAMIENTOS.has(b.recipeKey));

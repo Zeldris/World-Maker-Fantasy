@@ -1849,7 +1849,12 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     (`asentamientosDelReino`, `asignarGuarnicion` con tope de plazas, `comprarEquiposMilicia` con la
     factura de `CR-58`) y rutas `GET /saves/:id/defensa`, `POST …/defensa/guarnicion`,
     `POST …/defensa/armeria/:armeriaId/equipos`.
-  - 65c: radar de la Torre (hostiles en el radio, alerta) y convocar la milicia.
+  - ~~65c~~ ✅ 2026-10-07: migración `20261007233000_milicia_radar` (`Subject.enMilicia`,
+    `Viajero.avistado`); `radarDelReino` (viajeros `ASALTO` a los tramos de la Torre,
+    `lugaresATramos`), `vigilarDelReino` en el avance diario (avisa una vez; si estás fuera, la
+    milicia se arma sola; sin asaltos a la vista, vuelve al trabajo), `convocarMilicia` (tantos
+    trabajadores adultos como equipos de la Armería; no producen: fuera de `trabajadores` y de las
+    tareas) y `POST /saves/:id/defensa/:asentamientoId/milicia`; el GET de defensa trae `avistados`.
   - 65d: resolver un asalto de fondo (guarnición + milicia + cobertura con `CR-62`; saqueo y
     aguante); en `CR-65` solo lo lanzan los tests, los asaltos de verdad llegan con `CR-50`/`CR-37`.
   - 65e: facciones con Empalizada inicial y mejora al ser asaltadas.

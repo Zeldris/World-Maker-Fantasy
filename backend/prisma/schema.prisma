@@ -2291,6 +2291,8 @@ model Subject {
   /// CR-65 (Q7): asentamiento al que está asignado un soldado o vigía (null = la Capital).
   asentamientoId String?
   asentamiento   Building? @relation("Guarnicion", fields: [asentamientoId], references: [id], onDelete: SetNull)
+  /// CR-65 (Q6): trabajador armado en la milicia (no produce mientras dura).
+  enMilicia      Boolean   @default(false)
   /// CANDIDATO: hasta cuándo espera respuesta (REI-119).
   hastaMinutes Int?
   /// REI-119: fila de `WorldPopulation` de la que salió quien llegó (vuelve a ella si se va).
@@ -3964,6 +3966,8 @@ model Viajero {
   orden               Json?
   /// CR-63 (63f, Q8): encuentro que la jugadora vio y dejó para el día siguiente: { zonePointId }.
   encuentro           Json?
+  /// CR-65 (Q5): un viajero hostil ya avistado por la Torre de vigía de algún asentamiento.
+  avistado            Boolean  @default(false)
   diaSalida           Int
   /// Último día ya simulado (idempotencia del avance).
   ultimoDia           Int
