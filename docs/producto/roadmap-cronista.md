@@ -1731,7 +1731,10 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   justo después de `CR-61`. Decisiones de detalle (Q1-Q11) en
   [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-detalle-de-cr-63-ronda-aceptada-por-la-usuaria-el-2026-10-07). **L**
   🚧 Pasos:
-  - 63a: modelo `Viajero`, rutas por enlaces (jornada de 8 h) y avance diario.
+  - ~~63a~~ ✅ 2026-10-07: `Viajero` y `ViajeroMiembro` (migración `20261007200000_viajeros`),
+    `services/viajeros.ts` (ruta más corta por minutos, enlaces en los dos sentidos, jornada de 8 h,
+    IDA → TRABAJANDO un día → VUELTA → TERMINADO, diario de lugares con el día) y su paso en el
+    avance diario; cada tipo registra lo suyo en `TRABAJOS` (`alLlegar`, `alVolver`).
   - 63b: caza de fondo al llegar, piezas con caducidad y orden «Desollar piezas» del Desolladero.
   - 63c: captura (cuerdas, Jaula libre, `capturablePct`).
   - 63d: órdenes de una vez y permanentes; panel «Partidas» en Reino; rol «cazador».

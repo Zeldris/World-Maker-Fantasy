@@ -9,6 +9,7 @@
 // en `NpcState.muerto` de la partida), la agenda del conflicto, el narrador de fondo y las
 // decisiones de facción (CR-34). El Reino del jugador ya avanza por
 // días en `dailyTick.ts`.
+import { avanzarViajeros } from './viajeros.js';
 import { difundir } from './cronista/difusion.js';
 import type { PrismaClient } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
@@ -128,6 +129,8 @@ export async function avanzarMundoHasta(
       await paso('envejecerDia', () => envejecerDia(prisma, saveId, d, random));
       // CR-47: caravanas del Reino (salen las órdenes que toque, comercian al llegar, vuelven).
       await paso('comercio', () => avanzarComercio(prisma, saveId, d, random));
+      // CR-63 (63a, ADR 0003): una jornada de cada viajero (partidas de caza y captura…).
+      await paso('viajeros', () => avanzarViajeros(prisma, saveId, d, random));
       // CR-32: cada semana, los informantes pasan lo que saben (o los descubren).
       await paso('informantes', () => prisma.$transaction((tx) => revisarInformantes(tx, { saveId, worldId, dia: d, random })));
       // CR-15: el compañero que lleva 3 días con la aprobación por los suelos se va (cada día simulado).

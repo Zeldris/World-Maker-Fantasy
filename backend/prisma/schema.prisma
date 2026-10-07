@@ -90,6 +90,7 @@ model World {
 
 /// Una partida: mundo elegido + personaje (copia editable, no referencia viva a la plantilla) + su WorldState.
 model Save {
+  viajeros  Viajero[]
   id                      String  @id @default(cuid())
   userId                  String
   user                    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -492,6 +493,9 @@ model Save {
 /// la fuente de verdad editorial sigue siendo docs/rpgtarkor/lore-mundo/areas.md.
 model Location {
   expediciones Expedicion[]
+  viajerosOrigen    Viajero[] @relation("viajeroOrigen")
+  viajerosDestino   Viajero[] @relation("viajeroDestino")
+  viajerosUbicacion Viajero[] @relation("viajeroUbicacion")
   id           String       @id @default(cuid())
   worldId      String
   world        World        @relation(fields: [worldId], references: [id], onDelete: Cascade)
@@ -1080,6 +1084,7 @@ model InventoryItem {
 /// defecto — siguen siendo válidos, simplemente sin Felicidad/Comida/Agua que trackear (no
 /// decaen, mismo comportamiento de siempre).
 model Companion {
+  viajeroMiembros ViajeroMiembro[]
   id        String   @id @default(cuid())
   saveId    String
   save      Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
@@ -2246,6 +2251,7 @@ model AlmacenLimite {
 /// Súbdito CON NOMBRE — alguien que sigue/sirve al personaje ligado a su reino, no a su persona
 /// (eso es Companion). Ver docs/mecanicas/10-niveles-xp-reino.md § 5.2/§ 5.3.
 model Subject {
+  viajeroMiembros ViajeroMiembro[]
   id          String     @id @default(cuid())
   saveId      String
   save        Save       @relation(fields: [saveId], references: [id], onDelete: Cascade)
@@ -2722,6 +2728,7 @@ model Npc {
 /// `save.id`, así que nunca choca ni con el catálogo ni con la de otra partida.
 model Faction {
   expediciones Expedicion[]
+  viajeros     Viajero[]
   id           String       @id @default(cuid())
   worldId      String
   world        World        @relation(fields: [worldId], references: [id], onDelete: Cascade)
@@ -3908,4 +3915,67 @@ model GanadoFaccion {
   cantidad    Int
 
   @@index([factionId])
+}
+
+/// CR-63 (63a, ADR 0003): todo lo que se mueve por el mapa es un viajero con ruta real por los enlaces
+/// entre lugares, de la jugadora o de una facción, con el mismo motor (`services/viajeros.ts`). Lo
+/// estrenan las partidas de caza y captura; `CR-64` pasa a viajeros el resto (caravanas, mensajeros…).
+model Viajero {
+  id                  String           @id @default(cuid())
+  saveId              String
+  save                Save             @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  /// Facción a la que pertenece; null = el Reino de la jugadora.
+  factionId           String?
+  faction             Faction?         @relation(fields: [factionId], references: [id], onDelete: Cascade)
+  /// CAZA | CAPTURA (y lo que añada `CR-64`).
+  tipo                String
+  /// IDA | TRABAJANDO | VUELTA | TERMINADO
+  estado              String           @default("IDA")
+  origenLocationId    String
+  origen              Location         @relation("viajeroOrigen", fields: [origenLocationId], references: [id], onDelete: Cascade)
+  destinoLocationId   String
+  destino             Location         @relation("viajeroDestino", fields: [destinoLocationId], references: [id], onDelete: Cascade)
+  /// Último lugar al que llegó (o del que salió el tramo en curso).
+  ubicacionLocationId String
+  ubicacion           Location         @relation("viajeroUbicacion", fields: [ubicacionLocationId], references: [id], onDelete: Cascade)
+  /// Ids de los lugares que le quedan por delante, en orden (el primero es el del tramo en curso).
+  ruta                String[]
+  /// Minutos ya andados del tramo en curso (hacia `ruta[0]`).
+  minutosEnTramo      Int              @default(0)
+  /// Qué va a buscar: slug de la especie para CAZA y CAPTURA.
+  objetivo            String?
+  /// Lo que lleva: { piezas: [{ especie, cantidad }], … }.
+  carga               Json?
+  /// Orden permanente (Q7): null = de una vez.
+  orden               Json?
+  diaSalida           Int
+  /// Último día ya simulado (idempotencia del avance).
+  ultimoDia           Int
+  /// Lugares por los que pasó, con el día: [{ locationId, dia }] (lo que cuenta al preguntarle, Q9).
+  diario              Json             @default("[]")
+  miembros            ViajeroMiembro[]
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  @@index([saveId, estado])
+  @@index([factionId])
+}
+
+/// Quién va en un viajero: un compañero, un súbdito o gente genérica de una facción (sin fila).
+model ViajeroMiembro {
+  id          String     @id @default(cuid())
+  viajeroId   String
+  viajero     Viajero    @relation(fields: [viajeroId], references: [id], onDelete: Cascade)
+  companionId String?
+  companion   Companion? @relation(fields: [companionId], references: [id], onDelete: Cascade)
+  subjectId   String?
+  subject     Subject?   @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  /// Gente genérica de una facción (sus cazadores sin nombre): cuántos representa esta fila.
+  genericos   Int        @default(0)
+  /// cazador | guardia | …
+  rol         String
+
+  @@index([viajeroId])
+  @@index([companionId])
+  @@index([subjectId])
 }
