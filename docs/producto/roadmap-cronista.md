@@ -1753,7 +1753,13 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     destino), orden permanente en `viajeros.ts` (se para si cae alguien o falta Jaula o cuerdas, con
     aviso), quien está fuera no pelea a tu lado; pestaña Reino › Partidas (`PartidasSection.tsx`).
     Queda: la parada por «Almacén sin sitio» (las piezas no ocupan materiales).
-  - 63e: en los mapas de zona y de Berig; preguntar, comerciar y órdenes al cruzarte.
+  - ~~63e~~ ✅ 2026-10-07: `services/viajerosCruce.ts`. En el mapa de Berig van con las expediciones
+    (mismo dibujo, por el tramo en que están, con el día de vuelta; los tuyos, los aliados y los de
+    tu región). En la zona, «De paso por aquí» (`ViajerosAqui.tsx`): «Preguntar» (lo que vio en cada
+    lugar, guardado en su diario al pasar, y queda en tu registro), «Comprar carne» (a las de otra
+    facción: la carne de una pieza al precio del catálogo, a tu bolsa; cobra la facción) y «Volver a
+    casa» con las tuyas. Quedan: el marcador dentro de la cuadrícula de la zona, vender a una partida
+    y enlazar lo que cuentan con el sistema de rumores.
   - 63f: encuentros por el camino (de fondo, o aviso para unirte si estás).
   - 63g: facciones (prototipo antes; sustituye la caza en agregado).
 - **CR-64** Todo viaja de verdad ([ADR 0003](../adr/0003-todo-viaja-de-verdad.md), usuaria 2026-10-07,

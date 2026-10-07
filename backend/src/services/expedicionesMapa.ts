@@ -4,6 +4,7 @@
 // asentamiento de la facción), su destino y por dónde va (ida hasta la mitad del viaje, vuelta
 // después). Las caravanas del Reino (`CR-47`) entrarán por el mismo camino.
 import type { PrismaClient } from '@prisma/client';
+import { viajerosEnMapa } from './viajerosCruce.js';
 
 export interface ExpedicionEnMapa {
   id: string;
@@ -86,5 +87,7 @@ export async function expedicionesVisibles(prisma: PrismaClient, saveId: string)
       }
     }
   }
+  // CR-63 (63e): los viajeros (partidas de caza y captura…), por el tramo por el que van.
+  visibles.push(...(await prisma.$transaction((tx) => viajerosEnMapa(tx, saveId, { dia, regionActual, aliadas }))));
   return visibles;
 }

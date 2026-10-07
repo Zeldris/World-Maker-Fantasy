@@ -24,6 +24,13 @@ export interface Enlace {
 
 export type EstadoViajero = 'IDA' | 'TRABAJANDO' | 'VUELTA' | 'TERMINADO';
 
+/// Una entrada del diario de un viajero: dónde estuvo, qué día y lo que vio (Q9).
+export interface EntradaDiario {
+  locationId: string;
+  dia: number;
+  vio?: { fauna: { slug: string; cantidad: number }[]; viajeros: number };
+}
+
 /// Puro: vecinos de cada lugar con sus minutos (los enlaces valen en los dos sentidos).
 function grafo(enlaces: Enlace[]): Map<string, Map<string, number>> {
   const g = new Map<string, Map<string, number>>();
@@ -172,12 +179,27 @@ export async function crearViajero(tx: Tx, n: NuevoViajero): Promise<{ ok: true;
   return { ok: true, id: v.id };
 }
 
+/// Q9: lo que ve un viajero al pasar por un lugar: la fauna a la vista (las 3 más numerosas) y si hay
+/// otros viajeros por allí.
+export interface LoQueVe {
+  fauna: { slug: string; cantidad: number }[];
+  viajeros: number;
+}
+async function loQueVe(tx: Tx, saveId: string, locationId: string): Promise<LoQueVe> {
+  const puntos = await tx.zonePoint.findMany({ where: { saveId, locationId, tipo: 'FAUNA', activo: true, cantidad: { gt: 0 } }, select: { targetSlug: true, cantidad: true } });
+  const porEspecie = new Map<string, number>();
+  for (const p of puntos) porEspecie.set(p.targetSlug, (porEspecie.get(p.targetSlug) ?? 0) + p.cantidad);
+  const fauna = [...porEspecie].map(([slug, cantidad]) => ({ slug, cantidad })).sort((a, b) => b.cantidad - a.cantidad || a.slug.localeCompare(b.slug)).slice(0, 3);
+  const viajeros = await tx.viajero.count({ where: { saveId, ubicacionLocationId: locationId, estado: { not: 'TERMINADO' } } });
+  return { fauna, viajeros };
+}
+
 /// Un día de un viajero (el `dia` siguiente a su `ultimoDia`).
 export async function diaDeViajero(tx: Tx, v: ViajeroFila, enlaces: Enlace[], dia: number, random: () => number): Promise<void> {
   const trabajo = TRABAJOS[v.tipo] ?? {};
   let estado = v.estado as EstadoViajero;
   let pos: Posicion = { ubicacion: v.ubicacionLocationId, ruta: v.ruta, minutosEnTramo: v.minutosEnTramo };
-  const diario = [...((v.diario as { locationId: string; dia: number }[] | null) ?? [])];
+  const diario: EntradaDiario[] = [...((v.diario as unknown as EntradaDiario[] | null) ?? [])];
   if (estado === 'TRABAJANDO') {
     // Un día en el destino; luego, de vuelta por la ruta más corta.
     await trabajo.alLlegar?.(tx, v, dia, random);
@@ -186,12 +208,13 @@ export async function diaDeViajero(tx: Tx, v: ViajeroFila, enlaces: Enlace[], di
   } else if (estado === 'IDA' || estado === 'VUELTA') {
     const r = avanzarJornada(pos, enlaces);
     pos = r.pos;
-    for (const l of r.cruzados) diario.push({ locationId: l, dia });
+    // Q9: lo que ve en cada lugar por el que pasa (lo cuenta si le preguntan).
+    for (const l of r.cruzados) diario.push({ locationId: l, dia, vio: await loQueVe(tx, v.saveId, l) });
     if (pos.ruta.length === 0) estado = estado === 'IDA' ? 'TRABAJANDO' : 'TERMINADO';
   }
   const actualizado = await tx.viajero.update({
     where: { id: v.id },
-    data: { estado, ubicacionLocationId: pos.ubicacion, ruta: pos.ruta, minutosEnTramo: pos.minutosEnTramo, ultimoDia: dia, diario },
+    data: { estado, ubicacionLocationId: pos.ubicacion, ruta: pos.ruta, minutosEnTramo: pos.minutosEnTramo, ultimoDia: dia, diario: diario as unknown as Prisma.InputJsonValue },
     include: { miembros: true },
   });
   // Al volver a casa, con su posición ya en el origen (descarga, orden permanente…).

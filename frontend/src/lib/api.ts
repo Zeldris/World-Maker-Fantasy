@@ -1599,6 +1599,27 @@ export async function postOrdenPartida(saveId: string, viajeroId: string, accion
   return fetchJson(`${API_URL}/saves/${saveId}/partidas/${viajeroId}/orden`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accion, destinoLocationId }) })
 }
 
+// CR-63 (63e, Q9): viajeros de paso donde está el personaje.
+export interface ViajeroAqui {
+  id: string
+  propia: boolean
+  quien: string
+  tipo: string
+  que: string
+  estado: 'IDA' | 'TRABAJANDO' | 'VUELTA'
+  gente: number
+  piezas: number
+}
+export async function getViajerosAqui(saveId: string): Promise<{ viajeros: ViajeroAqui[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/viajeros/aqui`)
+}
+export async function postPreguntarViajero(saveId: string, viajeroId: string): Promise<{ ok: boolean; lineas: string[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/viajeros/${viajeroId}/preguntar`, { method: 'POST' })
+}
+export async function postComprarAViajero(saveId: string, viajeroId: string): Promise<{ ok: boolean; items: string[]; precio: number }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/viajeros/${viajeroId}/comprar`, { method: 'POST' })
+}
+
 export async function getCorrales(saveId: string): Promise<CorralesInfo> {
   return fetchJson(`${API_URL}/saves/${saveId}/corrales`)
 }
