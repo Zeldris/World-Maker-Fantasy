@@ -1491,7 +1491,15 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     familia (si muere el vengador, la toma otro adulto del linaje); cada pareja de súbditos sin linaje funda
     uno; el personaje también tiene linaje. Leyendas › «Linajes» con su historia y su árbol. **L**
   - **CR-50** Campamentos de bandidos con cabecilla y refuerzos (Bellwright, Medieval Dynasty). **M**
-    Va con `CR-37` en el `0.3`.
+    Va con `CR-37` en el `0.3`. Ronda de detalle aceptada el 2026-10-07 (Q1-Q9 en
+    [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-detalle-de-cr-50-campamentos-de-bandidos-ronda-aceptada-por-la-usuaria-el-2026-10-07));
+    quién los ocupa es dato de semilla (la usuaria añadirá razas «poco civilizadas»). 🚧 Pasos:
+    - 50a: modelo `Campamento` y semillas de ocupantes; aparición (1 por región, día 10, 20 días
+      tras caer), refuerzos y crecimiento.
+    - 50b: asaltos a viajeros cercanos y al Reino (viajero `ASALTO`).
+    - 50c: atacarlos: en vivo (cabecilla y banda en su lugar) y partida «Asalto»; disolución, botín
+      y recompensa; patrullas de facción contra ellos.
+    - 50d: visibilidad en el mapa y en Reino › Partidas.
   - **CR-51** Comercio en persona con NPC: mercaderes y caravanas de fondo (usuaria, 2026-10-06; sale
     del resto de `CR-47` 47e). **L** Hoy el personaje no comercia con ningún NPC (solo el Mercado del
     Reino). Sistema nuevo de compraventa con Goirnos, como el mercader ambulante de Bellwright y

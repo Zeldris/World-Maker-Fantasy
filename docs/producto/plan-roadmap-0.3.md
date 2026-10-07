@@ -387,6 +387,39 @@ sin consulta en línea.
 - **Q10 Partidas guardadas:** sin defensa; columnas nuevas sin migrar datos; los soldados que ya hay,
   asignados a la Capital. Puerta de dos sentidos.
 
+## Decisiones de detalle de `CR-50` campamentos de bandidos (ronda aceptada por la usuaria el 2026-10-07)
+
+Contrastada con los juegos de referencia; **X4 marca el camino**. De memoria, sin consulta en línea.
+
+- **Q1 Quién los ocupa: dato de semilla, no código.** La usuaria creará razas «poco civilizadas»
+  que encajen (el ejemplo eran los Murlocks de WoW) y añadirá propuestas de lore mientras se
+  implementa o al acabar. Hasta entonces, los ocupantes provisionales son los renegados de 49c
+  (goirnte renegado, faerus errático, nabieus enloquecido; propuesta sin revisar de
+  `propuestas-lore.md`). **Lo que trae una raza para ocupar campamentos** (una fila de
+  `OCUPANTES_CAMPAMENTO` en `services/cronista/campamentosBandidos.ts`): slug del NPC plantilla del
+  catálogo (atributos y nivel de sus bandidos), pueblo para su base de atributos, regiones donde
+  puede asentarse, nombre del grupo («Renegados goirntes»), plantilla del nombre del cabecilla y
+  peso para el sorteo.
+- **Q2 Dónde y cuántos (X4: bases piratas que se rehacen; Manor Lords):** como mucho 1 por región,
+  en un lugar sin asentamiento; el primero el día 10; destruido, otro a los 20 días en otro sitio de
+  la región.
+- **Q3 Composición (Bellwright, D&D):** cabecilla con nombre (+2 de nivel y más Inteligencia, tira
+  la moral por todos, `CR-49`) y 6-12 genéricos; refuerzos: 1 cada 3 días hasta su tope; el tope
+  sube 1 por asalto con éxito, hasta 12 (X4: las estaciones crecen con lo que ganan).
+- **Q4 Qué hacen (X4: piratas que acosan a los comerciantes):** asaltan caravanas, partidas y
+  expediciones a 2 tramos o menos (enganche de encuentros de `CR-63`, combate de fondo); al Reino,
+  como mucho 1 vez cada 7 días y solo con 200 Goirnos o más, con la mitad de su gente como viajero
+  `ASALTO` (entra en el radar y la defensa de `CR-65`); en «sin asaltos» (`CR-67`), solo viajeros.
+- **Q5 Atacarlos:** en vivo (combate de varios de `CR-49`) o con una partida «Asalto» de Reino ›
+  Partidas; si cae el cabecilla, el campamento se disuelve (BG3, D&D); botín de lo saqueado más un
+  cofre de Goirnos (Manor Lords).
+- **Q6 Recompensa (Bellwright):** reputación con las facciones de la región, suceso y noticia.
+- **Q7 Visibilidad (X4):** en el mapa si lo visitaste, si te llega un rumor o si cae en el alcance
+  de una Torre.
+- **Q8 Las facciones también (X4: policía contra piratas):** sus patrullas atacan, de fondo, los
+  campamentos de su región.
+- **Q9:** Medieval Dynasty no tiene bandidos; su contrapeso es «sin asaltos» (`CR-67`).
+
 ## Decisiones que bloquean algo
 
 | Bloquea | Pregunta |
