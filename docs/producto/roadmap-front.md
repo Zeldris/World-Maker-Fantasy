@@ -852,6 +852,23 @@ Del `/retro` de la Fase D del `0.3` (2026-10-07, PR #28 y #29; aceptadas todas p
   (también es el escalón de los edificios de oficio); en la receta de migraciones del runbook, que
   `prisma format` reformatea todo el esquema.
 
+Del `/retro` de las fases pendientes (2026-10-07: `0.2` Fases E y G, `0.3` Fases A, B y C; aceptadas
+todas por la usuaria; van al `0.3`). `QA-16` suma tres puntos: una escritura que puede ocurrir a la vez
+va bajo el candado del avance o con un update condicionado; quien come o cobra se cuenta una sola vez;
+lo que es por persona (recuerdos, aprobación, rencor) solo vale para NPC con nombre, nunca fauna ni
+genéricos. Y además:
+
+- **QA-18 · Revisión sin tope de hallazgos:** en `docs/runbooks/skills-y-modelos.md`, el
+  `/code-review` de cada PR a `main` va con `--max-findings all`. Motivo: cinco revisiones seguidas
+  dieron justo 10 arreglos (la de la Fase E, 9); probablemente el tope por defecto.
+- **QA-19 · N días de golpe = N veces un día:** un test por cada proceso del avance diario que compare
+  avanzar N días de una vez con avanzar N veces 1 día (misma semilla). Motivo: el salto de varios días
+  falló en la Fase E (difundir tras el resumen), en la A del `0.3` (informantes), en la D (bajas) y en
+  el PR #29 (estación y reserva del primer día).
+- **QA-20 · Retros que no se quedan atrás:** `cobertura.py` avisa de una fase ✅ de un
+  `plan-roadmap-*.md` sin «retro ✅» en su celda, y la bitácora lleva una línea fija «Retros
+  pendientes». Motivo: se acumularon cinco fases sin retro.
+
 ---
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
