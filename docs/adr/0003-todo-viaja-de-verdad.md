@@ -11,3 +11,9 @@ fauna) pasa en el sitio donde estén, en vivo si ella está y de fondo si no ([A
 Decisión (usuaria, 2026-10-07, ronda de `CR-61`/`CR-63`). Se descarta lo que existía: viajes abstractos
 con día de salida y de vuelta y un riesgo tirado al llegar, visibles solo como una banderita entre dos
 nodos del mapa de Berig. La auditoría de lo que hoy es invisible y su paso a viajeros está en `CR-64`.
+
+**Los mismos sistemas para todos** (usuaria, 2026-10-07): todo lo que mande el Reino (partidas de caza
+y captura, expediciones, caravanas, patrullas…) lo pueden mandar también todas las facciones, con el
+mismo motor y las mismas reglas, como las IA de X4 usan las mismas naves y órdenes que el jugador.
+Ninguna mecánica de viajeros es solo de la jugadora: al diseñar cada una se dice cómo la usan las
+facciones (quién decide salir, con quién y adónde) y se prueba también para ellas.

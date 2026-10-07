@@ -1726,7 +1726,8 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
 - **CR-63** Partidas de caza y captura (ronda aceptada el 2026-10-07, decisiones en
   [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-cr-61-y-cr-63-ronda-aceptada-por-la-usuaria-el-2026-10-07);
   ADR 0003). Viajeros (base de `CR-64`), piezas y desollador, rol «cazador», captura, órdenes
-  permanentes, encuentros por el camino, preguntar y comerciar; las facciones cazan igual. Hito `0.3`,
+  permanentes, encuentros por el camino, preguntar y comerciar; las facciones cazan igual, con el
+  mismo motor (ADR 0003, «los mismos sistemas para todos»). Hito `0.3`,
   justo después de `CR-61`. **L**
 - **CR-64** Todo viaja de verdad ([ADR 0003](../adr/0003-todo-viaja-de-verdad.md), usuaria 2026-10-07,
   como en X4): lo que se mueve es un **viajero** con ruta real de zona en zona, visible y con quien
