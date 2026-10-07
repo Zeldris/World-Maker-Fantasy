@@ -85,16 +85,16 @@ describe('tickKingdomOneDay', () => {
 describe('tickKingdom', () => {
   it('aplica N días de golpe (viaje largo cruzando varios días)', () => {
     const stats: KingdomStatsBlock = { ...DEFAULT_KINGDOM_STATS, trabajadores: 2 };
-    const result = tickKingdom(stats, 3, { ...SIN_SUMINISTROS, comidaDia: 4 });
+    const result = tickKingdom(stats, 3, 1, { ...SIN_SUMINISTROS, comidaDia: 4 });
     expect(result.comida).toBe(12);
     expect(result.riqueza).toBe(6);
   });
   it('la comida con decimales se arrastra de un día al siguiente (CR-61)', () => {
-    expect(tickKingdom({ ...DEFAULT_KINGDOM_STATS }, 4, { ...SIN_SUMINISTROS, comidaDia: 2.5 }).comida).toBe(10);
+    expect(tickKingdom({ ...DEFAULT_KINGDOM_STATS }, 4, 1, { ...SIN_SUMINISTROS, comidaDia: 2.5 }).comida).toBe(10);
   });
   it('0 días no cambia nada', () => {
     const stats: KingdomStatsBlock = { ...DEFAULT_KINGDOM_STATS, trabajadores: 5 };
-    expect(tickKingdom(stats, 0)).toEqual(stats);
+    expect(tickKingdom(stats, 0, 1)).toEqual(stats);
   });
 });
 

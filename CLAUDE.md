@@ -73,4 +73,5 @@ sus arreglos se hacen en una **fase única antes de la beta** (fila `0.8` de
 Tiene siempre al día: rama de trabajo, hito y fase, tarea en curso con lo hecho y lo pendiente,
 último commit y estado de los tests, siguientes pasos en orden, decisiones de Álvaro que bloquean
 algo, y los comandos para comprobar el estado. Al cerrar una tarea, se mueve a "Hecho
-recientemente" (las 10 últimas; lo más antiguo se borra, el historial ya está en git).
+recientemente" (las 10 últimas; lo más antiguo se borra, el historial ya está en git). La celda «Tarea
+en curso» lleva solo la tarea actual, lo que falta y el siguiente paso: como mucho 5 líneas.

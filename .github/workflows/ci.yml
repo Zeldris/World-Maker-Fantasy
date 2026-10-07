@@ -14,6 +14,14 @@ on:
   pull_request:
 
 jobs:
+  # QA-14 / QA-20 (retros del 2026-10-07): ninguna tarea sin hito, ningún identificador nuevo sin
+  # definir y ninguna fase cerrada sin su retro.
+  roadmap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 tools/roadmap/cobertura.py
+
   backend:
     runs-on: ubuntu-latest
     defaults:

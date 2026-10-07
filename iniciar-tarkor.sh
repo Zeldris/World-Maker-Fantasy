@@ -13,6 +13,8 @@
 set -e
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# QA-13: el hook de antes de subir (tsc, lint y cobertura del roadmap), también en local.
+git -C "$DIR" config core.hooksPath .githooks 2>/dev/null || true
 LOGS="$DIR/logs"
 mkdir -p "$LOGS"
 

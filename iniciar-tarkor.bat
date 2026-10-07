@@ -8,6 +8,8 @@ call npm run seed-catalog
 popd
 echo.
 
+REM QA-13: el hook de antes de subir (tsc, lint y cobertura del roadmap), tambien en local.
+git -C C:\RPG_Tarkor config core.hooksPath .githooks 2>nul
 start "Tarkor - Backend" cmd /k "cd /d C:\RPG_Tarkor\backend && npm run dev:nowatch"
 start "Tarkor - Frontend" cmd /k "cd /d C:\RPG_Tarkor\frontend && npm run dev"
 

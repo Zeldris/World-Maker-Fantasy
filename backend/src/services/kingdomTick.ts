@@ -3,7 +3,7 @@
 /// donde ya se actualiza `WorldState.fictionalMinutes`). Solo se aplica si ya existe una fila
 /// `KingdomStats` para la partida (se crea al fundar el primer Territory) — "el vacío es un estado
 /// válido" (docs/mecanicas/10-niveles-xp-reino.md § 5.1): sin reino todavía, no hay nada que tiquear.
-import { comidaDelDia, repartoDeFaccion } from './cronista/comidaOficios.js';
+import { comidaDelDia, porcionDelDia, repartoDeFaccion } from './cronista/comidaOficios.js';
 
 export interface KingdomStatsBlock {
   poblacion: number;
@@ -138,15 +138,13 @@ export function tickKingdomOneDay(stats: KingdomStatsBlock, s: SuministrosDia = 
 
 /// Puro: aplica N días de golpe (un viaje largo o un descanso extendido puede cruzar más de un
 /// día de ficción en un solo turno) — nunca lo decide el modelo, ver el enganche en turnResolution.ts.
-export function tickKingdom(stats: KingdomStatsBlock, dias: number, s: SuministrosDia = SIN_SUMINISTROS): KingdomStatsBlock {
+/// `primerDia`: número del primer día del salto (reparte las medias de comida, `porcionDelDia`).
+export function tickKingdom(stats: KingdomStatsBlock, dias: number, primerDia: number, s: SuministrosDia = SIN_SUMINISTROS): KingdomStatsBlock {
   let result = stats;
-  // CR-61: la comida de las tareas puede traer medias (2,5 por recolector en primavera); lo que no
-  // llega a una unidad se arrastra al día siguiente.
-  let resto = 0;
+  // CR-61 / QA-19: la comida de las tareas puede traer medias (2,5 por recolector en primavera); se
+  // reparten por el número de día (`porcionDelDia`), igual en un salto que día a día.
   for (let i = 0; i < dias; i++) {
-    const comida = (s.comidaDia ?? 0) + resto;
-    resto = comida - Math.floor(comida);
-    result = tickKingdomOneDay(result, { ...s, comidaDia: Math.floor(comida) });
+    result = tickKingdomOneDay(result, { ...s, comidaDia: porcionDelDia(s.comidaDia ?? 0, primerDia + i) });
   }
   return result;
 }

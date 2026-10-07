@@ -47,26 +47,41 @@ export async function suministrosDelReino(tx: Tx, saveId: string) {
   return { ...suministrosDeEdificios(edificios.map((b) => b.recipeKey), !!ayuntamiento?.location && tieneFuenteNatural(ayuntamiento.location)), sueldosSemanales: true };
 }
 
-/// CR-61 (61c): comida que producen al día las tareas de los súbditos del Reino (con decimales: el
-/// tick arrastra el resto). Sin agua junto al Ayuntamiento los pescadores recolectan; sin Cocina,
-/// los cocineros también. `factor`: la parte que rinde (CR-58: quien no tiene herramienta produce la
-/// mitad). Si el turno cruza varios días, vale la estación y la reserva de `ahora` para todos.
-export async function comidaDelReino(tx: Tx, saveId: string, ahora: number, comidaDisponible: number, factor = 1): Promise<number> {
+/// CR-61 (61c): lo que decide la comida del Reino y no cambia de un día a otro de un salto: cuántos
+/// trabajadores hay en cada tarea, si hay agua junto al Ayuntamiento para pescar y el escalón de su
+/// mejor Cocina. Se carga una vez por tick (QA-19).
+export async function datosComidaDelReino(tx: Tx, saveId: string, ahora: number) {
   const [subditos, edificios] = await Promise.all([
     tx.subject.findMany({ where: { saveId, estado: 'ACTIVO' }, select: { role: true, pueblo: true, nacidoEn: true, tarea: true } }),
     tx.building.findMany({ where: { saveId, status: 'ACTIVO' }, select: { recipeKey: true, status: true, tier: true, location: { select: { slug: true, name: true } } } }),
   ]);
-  const tareas = tareasDelReino(subditos, ahora);
   const ayuntamiento = edificios.find((b) => b.recipeKey && AYUNTAMIENTOS.has(b.recipeKey));
-  const hayAgua = !!ayuntamiento?.location && tieneFuenteNatural(ayuntamiento.location);
-  const escalonCocina = escalonCocinaDe(edificios);
+  return { tareas: tareasDelReino(subditos, ahora), hayAgua: !!ayuntamiento?.location && tieneFuenteNatural(ayuntamiento.location), escalonCocina: escalonCocinaDe(edificios) };
+}
+
+/// Puro: comida (con decimales) que dan en un día las tareas de los súbditos, con la estación de ese
+/// día y la reserva que queda. Sin agua los pescadores recolectan; sin Cocina, los cocineros también.
+/// `factor`: la parte que rinde (CR-58: quien no tiene herramienta produce la mitad). El tick reparte
+/// las medias por número de día (`porcionDelDia`).
+export function comidaDelReinoDia(
+  datos: Awaited<ReturnType<typeof datosComidaDelReino>>,
+  minutosDelDia: number,
+  comidaDisponible: number,
+  factor = 1,
+): number {
+  const { tareas, hayAgua, escalonCocina } = datos;
   const cuadrilla = {
     recolectores: tareas.recolector + (hayAgua ? 0 : tareas.pescador) + (escalonCocina ? 0 : tareas.cocinero),
     pescadores: hayAgua ? tareas.pescador : 0,
     cocineros: escalonCocina ? tareas.cocinero : 0,
     cazadores: 0,
   };
-  return comidaDelDia(cuadrilla, { estacion: estacionFor(ahora), hayAgua, escalonCocina: escalonCocina || null, comidaDisponible }) * factor;
+  return comidaDelDia(cuadrilla, { estacion: estacionFor(minutosDelDia), hayAgua, escalonCocina: escalonCocina || null, comidaDisponible }) * factor;
+}
+
+/// Las dos de arriba juntas, para un solo día.
+export async function comidaDelReino(tx: Tx, saveId: string, ahora: number, comidaDisponible: number, factor = 1): Promise<number> {
+  return comidaDelReinoDia(await datosComidaDelReino(tx, saveId, ahora), ahora, comidaDisponible, factor);
 }
 
 /// CR-53 53b (Q2): materiales del Almacén del Reino = objetos de tipo RECURSO (leña, piedra, fibra…).

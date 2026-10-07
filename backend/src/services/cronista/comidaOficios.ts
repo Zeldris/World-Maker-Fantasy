@@ -74,6 +74,15 @@ export function repartoDeFaccion(raza: string | null, trabajadores: number, hayA
   return { cazadores, pescadores, cocineros, recolectores: resto - pescadores - cocineros };
 }
 
+/// QA-19: la parte entera de `cantidad` (con decimales) que toca el día `dia`. Reparte las medias por
+/// el número de día, sin guardar restos: N días de golpe dan lo mismo que N veces un día (2,5 al día
+/// → 2, 3, 2, 3…).
+export function porcionDelDia(cantidad: number, dia: number): number {
+  // El épsilon evita que 14,999999… (6/11 × 27,5) cuente como 14.
+  const hasta = (d: number) => Math.floor(cantidad * d + 1e-9);
+  return hasta(dia) - hasta(dia - 1);
+}
+
 /// Comida que produce una cuadrilla en un día. Los cocineros solo transforman la comida cruda que hay
 /// (la de la reserva más la que entra hoy): cada uno necesita 10.
 export function comidaDelDia(c: Cuadrilla, ctx: { estacion: Estacion; hayAgua: boolean; escalonCocina: number | null; comidaDisponible: number }): number {

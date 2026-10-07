@@ -1,0 +1,13 @@
+#!/bin/bash
+# QA-13 (retro de la Fase D del 0.3): no se sube nada que no tipa o no pasa el lint. La CI solo corre
+# en el PR, al final de un tramo de varias tareas; esto lo para en el push. Lo activa
+# `.claude/hooks/session-start.sh` (core.hooksPath). Saltarlo solo para un `WIP:` con tests en rojo:
+# `git push --no-verify`.
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+# Los mismos comandos que la CI (ci.yml), con el oxlint que fija cada paquete.
+echo "pre-push: tsc y lint de backend y frontend, cobertura del roadmap…"
+(cd backend && npx tsc --noEmit -p . && npm run --silent lint > /tmp/pre-push-lint-backend.log 2>&1) || { tail -20 /tmp/pre-push-lint-backend.log; echo "pre-push: backend en rojo"; exit 1; }
+(cd frontend && npx tsc -b && npm run --silent lint > /tmp/pre-push-lint-frontend.log 2>&1) || { tail -20 /tmp/pre-push-lint-frontend.log; echo "pre-push: frontend en rojo"; exit 1; }
+python3 tools/roadmap/cobertura.py > /tmp/pre-push-cobertura.log || { grep -v "^EN VARIOS HITOS\|^ASIGNADAS PERO" /tmp/pre-push-cobertura.log; exit 1; }
+echo "pre-push: todo en verde."

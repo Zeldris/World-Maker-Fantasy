@@ -2138,11 +2138,13 @@ model Building {
   /// catálogo de `worldCatalog.ts` (p.ej. `'ketg-sedsar'`) — `@@unique([factionId, recipeKey])`
   /// abajo es lo que hace el seed idempotente (`seed-catalog.ts`), mismo criterio de siempre.
   recipeKey   String?
-  /// Nivel del Ayuntamiento (1=pequeño/2=mediano/3=grande) — null para el resto de construcciones,
-  /// que no tienen niveles. Decide cuántos edificios de reino (choza...) puedes tener a la vez.
+  /// Nivel del edificio: el del Ayuntamiento (1=pequeño/2=mediano/3=grande; decide cuántos edificios
+  /// de reino puedes tener a la vez) y el escalón de los edificios de oficio (1 Taller, 2 Obrador,
+  /// 3 Gran obrador: la mejora actualiza esta fila, `recipeKey` no cambia) y de los Corrales. null para
+  /// las construcciones sin niveles (QA-17).
   /// OJO: NO es lo mismo que `ConstructionRecipe.tier` (construction.ts, dificultad "Craftable"
-  /// 1-5 de la receta) — ese nunca se copia aquí, este campo solo lo rellena
-  /// `ConstructionRecipe.ayuntamientoNivel` (docs/mecanicas/17-reglas-construcciones-reino.md).
+  /// 1-5 de la receta) — ese nunca se copia aquí; este lo rellenan `ayuntamientoNivel` y
+  /// `edificioOficioNivel` (`buildingTierFor`, construction.ts).
   tier        Int?
   name        String
   /// Tipo libre ("refugio", "granja", "taller", "muralla", "monumento"...) — no enum cerrado,

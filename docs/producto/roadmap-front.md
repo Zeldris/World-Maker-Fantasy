@@ -828,6 +828,47 @@ Del `/retro` de la Fase D del `0.2` (2026-10-05, aceptadas todas por la usuaria;
 - ~~**QA-12 · Intermitente de `ProduccionSection.test.tsx`**~~ ✅ 2026-10-05 (era un fallo real de `NumeroGuardable`: el efecto que copiaba `valor` al borrador corría también al montar y pisaba lo escrito antes de los efectos; ahora se ajusta en el render solo si `valor` cambia. Test de regresión determinista en `NumeroGuardable.test.tsx`; bucle de estrés 0/80 tras el arreglo, ~1/20 antes): diagnosticarlo con `diagnosing-bugs`
   (1 fallo en ~12 pasadas, 2026-10-05).
 
+Del `/retro` de la Fase D del `0.3` (2026-10-07, PR #28 y #29; aceptadas todas por la usuaria; van al
+`0.3`):
+
+- ~~**QA-13 · Comprobación antes de subir**~~ ✅ 2026-10-07 (`.githooks/pre-push`, ~45 s; también corre la cobertura del roadmap): hook `pre-push` en `.githooks/` con `tsc` de backend y
+  frontend y `oxlint`; el hook de inicio de sesión lo activa (`git config core.hooksPath .githooks`).
+  Motivo: el paso 61a de `CR-61` se subió con un error de `tsc` y la CI solo corre en el PR.
+- ~~**QA-14 · Cobertura del roadmap en la CI**~~ ✅ 2026-10-07 (job `roadmap` en `ci.yml`; `FANTASMAS_CONOCIDOS` en `cobertura.py`): un paso de la CI ejecuta `tools/roadmap/cobertura.py` y
+  falla con «SIN HITO» distinto de 0 o con un identificador sin definir que no esté en la lista de los
+  que ya había (hoy unos 20 `ZON-*`). Motivo: `CR-62` llegó tachada al mapa sin entrada en su roadmap.
+- ~~**QA-15 · Variables de entorno en toda la sesión**~~ ✅ 2026-10-07 (se nota desde la próxima sesión): el hook de inicio escribe `DATABASE_URL`,
+  `DIRECT_URL` y `OLLAMA_BASE_URL` en `$CLAUDE_ENV_FILE`. Motivo: cada `vitest` necesitaba un `export`
+  a mano; sin él fallan 29 archivos.
+- ~~**QA-16 · Guía de revisión**~~ ✅ 2026-10-07 (`REVIEW.md` con los puntos de las dos retros; test general en `crafting.test.ts`: frase de ejemplo por receta, y destapó que «Ahumo carne de jusha» también hacía `smokeMeat`, arreglado): `REVIEW.md` con lo que se repitió en las dos revisiones (10 hallazgos
+  cada una): procesos de fondo que pueden quedarse a medias, decimales de recursos que se pierden al
+  redondear y ticks de varios días con los datos del primero, entidades muertas o en combate que se
+  pueden mover, reglas del roadmap, y la regla del ADR 0003 (cada mecánica de viajeros dice cómo la
+  usan las facciones). Además, un test general de recetas: cada una con frases de ejemplo y cada frase
+  dispara solo la suya (hoy solo las de cocina).
+- ~~**QA-17 · Bitácora corta y avisos que faltan**~~ ✅ 2026-10-07 (bitácora de 37 000 a 16 000 caracteres; los avisos de Prisma, en sus comandos): la celda «Tarea en curso» de `traspaso.md` solo con
+  la tarea actual y el siguiente paso (hoy ~5 500 caracteres con restos del `0.2`) y una línea en
+  `CLAUDE.md` que la limite a 5 líneas; corregir el comentario de `Building.tier` en `schema.prisma`
+  (también es el escalón de los edificios de oficio); en la receta de migraciones del runbook, que
+  `prisma format` reformatea todo el esquema.
+
+Del `/retro` de las fases pendientes (2026-10-07: `0.2` Fases E y G, `0.3` Fases A, B y C; aceptadas
+todas por la usuaria; van al `0.3`). `QA-16` suma tres puntos: una escritura que puede ocurrir a la vez
+va bajo el candado del avance o con un update condicionado; quien come o cobra se cuenta una sola vez;
+lo que es por persona (recuerdos, aprobación, rencor) solo vale para NPC con nombre, nunca fauna ni
+genéricos. Y además:
+
+- ~~**QA-18 · Revisión sin tope de hallazgos**~~ ✅ 2026-10-07: en `docs/runbooks/skills-y-modelos.md`, el
+  `/code-review` de cada PR a `main` va con `--max-findings all`. Motivo: cinco revisiones seguidas
+  dieron justo 10 arreglos (la de la Fase E, 9); probablemente el tope por defecto.
+- ~~**QA-19 · N días de golpe = N veces un día**~~ ✅ 2026-10-07 (`saltoDeDias.integration.test.ts`: `tickKingdom` y el tick del Reino en la base cruzando un cambio de estación; las medias de comida se reparten con `porcionDelDia`, sin restos, y el Reino calcula la comida de cada día con su estación y su reserva. Queda: el mismo test para `producirFacciones` cuando su azar se pueda fijar —hoy usa `Math.random` en el rebaño—): un test por cada proceso del avance diario que compare
+  avanzar N días de una vez con avanzar N veces 1 día (misma semilla). Motivo: el salto de varios días
+  falló en la Fase E (difundir tras el resumen), en la A del `0.3` (informantes), en la D (bajas) y en
+  el PR #29 (estación y reserva del primer día).
+- ~~**QA-20 · Retros que no se quedan atrás**~~ ✅ 2026-10-07 (las fases ya cerradas, marcadas «retro ✅» o «sin retro»): `cobertura.py` avisa de una fase ✅ de un
+  `plan-roadmap-*.md` sin «retro ✅» en su celda, y la bitácora lleva una línea fija «Retros
+  pendientes». Motivo: se acumularon cinco fases sin retro.
+
 ---
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
