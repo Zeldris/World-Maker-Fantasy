@@ -31,6 +31,24 @@ La vida Kelife transcurre dentro del cristal: hogares tallados en los prismas de
 En la Meseta del Orden cada Goirnte nace hacia una casta de función y cada objeto tiene un lugar asignado — no por opresión sentida, sino porque el desorden les produce una incomodidad física real, herencia directa de Goirme, son seres serios que apenan sonrien. Su piel, gris y fría al tacto, casi mineral y quitinosa sobre huesos angulosos, se tensa y endurece de forma visible cuando se concentran, dejando ver un tenue brillo metálico: se dice que a un Goirnte se le nota pensar. Sus ojos son de un negro obsidiana frío, mentón ancho en los machos y algo más leve en las hembras. Trabajan el Hierro y presumen, con razón, de la mejor metalurgia de Helek Sirik. Su gran tabú cotidiano no es el crimen — para eso hay ley y castigo tasado — sino **lo inacabado**: dejar una tarea a medias, un juramento sin cumplir o una pregunta oficial sin respuesta es casi obsceno, algo que se oculta a los vecinos...un delito que se castiga cruelmente, llevandolos a ser una raza desconfiaza y ajena a los "conocimientos o reglas" de otras razas. A los orcos los ven, desde el Yugo de Hierro, como piezas necesarias que nunca han encajado del todo en el diseño, llegando a considerarlos seres inferiores a todas las razas.
 
 **Dos oficios según la cercanía a la frontera (añadido 2026-07-23, auditoría de lore — ya vivía en la Enciclopedia sin haber llegado nunca a esta doc)**: la gran mayoría, en el corazón de la Meseta, se dedica casi en exclusiva a la forja y transformación de minerales — la mejor metalurgia de Helek Sirik. Los que viven en la frontera norte, ya lindando con el Margen Silencioso, son distintos en cuerpo y oficio: piel de un tono bastante más claro que el resto de los suyos, complexión menos corpulenta y mucho más ágil, adaptados a moverse entre la espesura — su cercanía al Margen les da acceso real a maderas que en el resto de la Meseta apenas se ven, así que trabajan la madera para aportar mejoras a sus creaciones de hierro.
+
+**Costumbres del orden** *(aprobado 2026-10-07 · no implementado en el código)*. Todas salen del tabú de lo inacabado:
+- **El cierre de la jornada.** Ningún Goirnte se va a descansar sin dejar cada herramienta en su sitio
+  marcado, anotar en el registro del taller lo que queda a medias (con quién y cuándo lo termina) y
+  repasar si ha dado una palabra que aún no ha cumplido. Lo anotado no cuenta como inacabado; lo
+  olvidado, sí. Al caer la tarde, en una ciudad Goirnte todo se para a la vez.
+- **El nombre en el obelisco.** A los 14 años (su madurez), el nombre y la casta de nacimiento de cada
+  Goirnte se graban al pie del *Vresk'ord* de su ciudad; el joven toca la base con la palma y dice
+  «Goirme» en voz baja. Cada año, en *Teandu Tuh* (otoño), se paran las forjas y la casta de ley graba
+  junto al nombre de cada muerto del año la marca de **cumplido**. La peor vergüenza de una familia es
+  un nombre sin esa marca (un desertor, un juramento sin cumplir).
+- **Las marcas del taller.** El aprendiz acaba cuando el maestro da por buena una pieza hecha entera
+  por él: entonces le graba nombre y casta en el mango de su primera herramienta, con la fórmula «Esta
+  herramienta es tuya, pero no te pertenece» (es del orden). Una pieza que salió mal se repara y lleva
+  una marca de reparado, que se enseña con orgullo; lo vergonzoso es dejarla a medias.
+- **Una ley no se borra.** Borrar una ley grabada sería dejarla a medias. Si hace daño, la casta de
+  ley graba debajo una adenda que la completa o la limita; por eso los obeliscos viejos tienen la base
+  llena de líneas pequeñas, y una ley se lee siempre hasta el final.
 - **La guerra, vista desde aquí**: para la mayoría, la guerra es un procedimiento más — órdenes que bajan, se cumplen y se archivan. La facción radical la dirige; la moderada intenta frenarla desde dentro (ver la Archimagistrada Yovenne Tal en [npcs.md](../personajes/npcs.md)); y el Goirnte común obedece, porque desobedecer es desorden. Ese es exactamente el engranaje que se rompió por dentro en la pregenerada Dessa Kaltrenn.
 
 ### Kalisar — "Oscuridad latente"
@@ -75,6 +93,8 @@ para el detalle completo de runas, tótems y los Hyanios).
 **El Signeran — el duelo de honor (añadido/corregido 2026-08-05)**: no cualquier orco puede retar a un duelo de honor en el sentido formal que protege el tabú de arriba. Solo tres vías dan ese derecho: quien la propia tribu elige y autoriza para ello (por decisión de la asamblea), quien desciende directamente de sangre de un jefe de tribu o de guerra, y —al revés de lo que pueda parecer— el propio líder de la tribu, que puede retar a otro cuando su honor exige defensa; a quien reta le queda aceptar o no. Las reglas son sencillas y siempre las mismas: sin armadura, solo un hacha orca simple, y a muerte — dejar con vida al perdedor se considera una deshonra y una debilidad, tanto de quien gana como de quien pierde, así que en la práctica casi ningún Signeran termina de otra forma. El nombre no tiene traducción limpia a la lengua común; lo más parecido es "la oportunidad de un orco". Es, ante todo, el mecanismo real por el que se reta la legitimidad de un liderazgo — no un cauce para cualquier disputa personal.
 
 **Tótems y rito funerario (añadido/corregido 2026-08-05)**: un tótem orco es, ante todo, una insignia — una construcción tallada que representa las costumbres y el honor de quien lo levanta, más bandera que ídolo (el gran tótem que presidía la plaza del Clan Maktor, o la versión reducida que Gorhorn talló de él, son de este tipo — ver [personajes.md](../personajes/personajes.md)). Su uso más solemne, sin embargo, es funerario: al morir un orco, su cuerpo se quema y se deja un tótem marcando el lugar donde cayó. Su tamaño no lo decide CÓMO murió (un Signeran no da, por sí solo, derecho a un tótem mayor) sino la impresión que esa vida dejó en los demás: es la propia tribu quien juzga, después, si vivió con honor — nunca por posición social, solo por el reconocimiento genuino de los suyos (ver Los Túmulos del Honor en [areas.md](regiones/llanuras-del-viento-rojo.md), donde generaciones de esos tótems de honor se acumulan sobre montículos de piedra en terreno neutral).
+
+**Cerrar la cuenta tras un Signeran** *(aprobado 2026-10-07 · no implementado en el código)*: tras un Signeran a muerte, el caído se quema donde cayó, se dice su nombre en voz baja y se deja su tótem. Después, quien ganó comparte carne ahumada con la familia del muerto. Si la familia come, no queda *Tugh'ithek* (deuda de honor) entre ellos; si no come, la deuda sigue abierta, y todos lo saben.
 
 **Pintura de clan (añadido 2026-08-05)**: la marca corporal de clan es puramente cromática — la forma no importa, solo el color. Rojo para los Maktor, naranja casi marrón para los Serhu, verde oscuro para los Goshg (a juego con su propia piel), y un azul muy claro con tonos blancos, casi de hielo, para los Helsig.
 
@@ -134,6 +154,20 @@ con las dos palmas sobre la misma piedra: nadie dice a un forastero dónde vive 
 deja señal que lleve a un asentamiento y nadie entra en el territorio del otro sin que lo sepa.
 Desde entonces el *Karo'sael* (llevar sin abrir) incluye callar dónde están los suyos; quien lo rompe
 queda fuera del silencio y nadie le vuelve a hablar. El pacto se repite en cada Keseg'Vhurne.
+**Cómo decide el cónclave** *(aprobado 2026-10-07 · no implementado en el código)*: no se vota. Alguien plantea el asunto y todos dejan la palma en
+el suelo; si nadie la retira, está decidido. Quien la retira lo bloquea y el asunto vuelve otro día.
+Por eso cuesta tanto decidir, y lo decidido no se discute después.
+
+**Costumbres del silencio** *(aprobado 2026-10-07 · no implementado en el código)*:
+- **Romper el ritmo.** Cada uno espera su pausa. Hablar encima de la pausa de otro, o callar donde no
+  toca, es desprecio o arrogancia, como levantar la voz en pequeño. A un forastero se le perdona solo
+  porque es forastero.
+- **Cómo se graba una tablilla.** Cada tablilla del Archivo del Refugio guarda una sola observación,
+  con símbolos siempre en el mismo orden: dónde, qué, hacia dónde se movía, cómo estaban el tiempo y el
+  agua. Solo lo visto con los propios ojos; nunca lo que alguien dijo, que sería una carta.
+- **La primera tablilla.** A los 14 años, un Nabieus sale solo a observar algo fuera del clan y vuelve
+  con su primera tablilla. El cónclave la recibe en silencio; si nadie retira la palma, entra en el
+  Archivo y desde ese día su palma cuenta en el Keseg'Vhurne.
 - **La guerra, vista desde aquí**: integrados en la Concordia por presión, sirven como mensajeros, correos y ojos — el centro exacto de todos los secretos que no quieren tener. Cada Nabieus sabe que llevar cartas selladas sin hacer preguntas es sobrevivir; Yerin descubrió lo que cuesta cuando una de esas cartas resulta ser la guerra misma.
 
 ### Faerus — "Los furiosos"
@@ -188,7 +222,8 @@ el parentesco, no la palabra dada.
   los 6 cazan piezas pequeñas con un mayor. A los **8**, su primera pieza cazada solos se comparte como
   *Vash'grath* y desde ese día son adultos.
 - **Las historias junto al fuego.** En Kegi, al anochecer, la manada se junta alrededor del *Sil* y
-  los mayores cuentan las cacerías de antes. Arde leña de Telda, que dura. En la estación fría se
+  los mayores cuentan las cacerías de antes. Empieza quien más muescas tiene en su *Ashi'krul*;
+  después cada uno añade lo que aprendió en la última caza. Arde leña de Telda, que dura. En la estación fría se
   cuentan las de pasar hambre; en la de caza, las de grandes presas.
 - **Las marcas de la daga.** Cada Faerus talla en el mango de su *Ashi'krul* una muesca por presa
   grande o peligro que aprendió a leer; los jóvenes las repasan con un mayor antes de una caza

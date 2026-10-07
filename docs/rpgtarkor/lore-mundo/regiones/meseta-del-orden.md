@@ -61,7 +61,10 @@ nunca se abandona: si su talladora muere, otra lo termina con la misma herramien
 ### Las ciudades-fortaleza de la Meseta
 *Región genérica · Catálogo: `meseta-del-orden` · nombres de la pasada 2026-09-27, pendientes de código.*
 
-Cada una tiene su obelisco de leyes (*Vresk'ord*) en la plaza central. Fieles a su obsesión por el
+Cada una tiene su obelisco de leyes (*Vresk'ord*) en la plaza central. Al pie se graban el nombre y
+la casta de cada Goirnte al llegar a la madurez, con la marca de **cumplido** cuando muere, y las
+adendas: una ley no se borra, se completa debajo (ver [razas.md § Goirntes](../razas.md#goirntes--los-del-orden))
+*(aprobado 2026-10-07 · no implementado en el código)*. Fieles a su obsesión por el
 orden, los Goirntes **numeran** sus ciudades por orden de fundación: tras El Baluarte, que lleva el
 nombre de Goirme, vienen *Vresk Hes*, *Vresk Tuh* y *Vresk Kei* ("ciudad-fortaleza dos, tres y
 cuatro"). De la quinta en adelante son ciudades menores y se nombran por su función.
@@ -129,6 +132,7 @@ simetría lo es en la piedra.
 - 2026-09-27: la región pasa a tener fichero propio. Primera tanda de propuestas aprobadas: origen del
   obelisco de El Baluarte, el Primer Edicto del Tributo, Los del Obelisco, Tarsen Vold, El Puesto del
   Corredor y Las Canteras del Eje.
+- 2026-10-07 (tanda OpenCode del 2026-10-06/07, revisada por Claude): nombres y adendas al pie de los obeliscos; las costumbres Goirntes van en `razas.md`. Sin código.
 - 2026-09-27 (pasada de conexión): sección de conexiones (mensajeros Nabieus, tala del borde, rutas del tributo).
 - 2026-09-27 (segunda pasada): las ciudades-fortaleza numeradas (Vresk Hes, Vresk Tuh y Vresk Kei) y el Vreskal, primera especie de la familia Ordenados.
 
