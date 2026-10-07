@@ -170,6 +170,7 @@ describe('produccionDeFaccion (CR-61)', () => {
     const con = produccionDeFaccion([{ recipeKey: 'cocina-obrador', status: 'ACTIVO' }], 'nabieus', { trabajadores: 50, comida: 500 }).comida;
     expect(con).toBeGreaterThan(sin);
     expect(escalonCocinaDe([{ recipeKey: 'cocina-obrador', status: 'ACTIVO' }, { recipeKey: 'cocina', status: 'ACTIVO' }])).toBe(2);
+    expect(escalonCocinaDe([{ recipeKey: 'cocina', status: 'ACTIVO', tier: 3 }])).toBe(3); // la del Reino, mejorada en su fila
     expect(escalonCocinaDe([])).toBe(0);
   });
 });

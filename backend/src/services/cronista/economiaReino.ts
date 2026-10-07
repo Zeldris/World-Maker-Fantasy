@@ -53,7 +53,7 @@ export async function suministrosDelReino(tx: Tx, saveId: string) {
 export async function comidaDelReino(tx: Tx, saveId: string, ahora: number, comidaDisponible: number, factor = 1): Promise<number> {
   const [subditos, edificios] = await Promise.all([
     tx.subject.findMany({ where: { saveId, estado: 'ACTIVO' }, select: { role: true, pueblo: true, nacidoEn: true, tarea: true } }),
-    tx.building.findMany({ where: { saveId, status: 'ACTIVO' }, select: { recipeKey: true, status: true, location: { select: { slug: true, name: true } } } }),
+    tx.building.findMany({ where: { saveId, status: 'ACTIVO' }, select: { recipeKey: true, status: true, tier: true, location: { select: { slug: true, name: true } } } }),
   ]);
   const tareas = tareasDelReino(subditos, ahora);
   const ayuntamiento = edificios.find((b) => b.recipeKey && AYUNTAMIENTOS.has(b.recipeKey));

@@ -6620,7 +6620,8 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Hogaza de 300 g.',
     lugarOrigen: 'La Sabana Alta, Llanuras del Viento Rojo.',
     curaEnergia: 10,
-    curaHambre: 12,
+    // CR-61 (61d): plato de Taller, 3 de trigo (3 cada uno) × 1,5.
+    curaHambre: 14,
   },
   {
     slug: 'panal-endulzado',
@@ -6634,6 +6635,8 @@ export const items: ItemCatalogInput[] = [
     dimensiones: 'Trozo de 100 g.',
     lugarOrigen: 'El Pozo de Cauce Viejo, Llanuras del Viento Rojo.',
     curaEnergia: 8,
+    // CR-61 (61d): plato de Taller, 2 de miel (4 cada una) × 1,5.
+    curaHambre: 12,
   },
   {
     slug: 'cuajada-murgol',
@@ -6649,6 +6652,67 @@ export const items: ItemCatalogInput[] = [
     curaEnergia: 10,
     // CR-55 (Q15): plato de Taller, 2 de leche (4 cada una) × 1,5.
     curaHambre: 12,
+  },
+  // CR-61 (61d): platos de Obrador (×2) y Gran obrador (×2,5) — `crafting.ts`.
+  {
+    slug: 'guiso-murgol',
+    name: 'Guiso de Múrgol',
+    aliases: ['guiso de murgol', 'guiso'],
+    category: 'consumible',
+    tipo: 'CONSUMIBLE',
+    valorGoirnos: 10,
+    equipSlot: 'CONSUMIBLE_1',
+    description: 'Carne de múrgol guisada a fuego lento en su propia leche — un plato de obrador que da de comer a una casa entera.',
+    dimensiones: 'Olla de 1 kg.',
+    lugarOrigen: 'Cocinas de obrador de las Llanuras del Viento Rojo.',
+    curaEnergia: 20,
+    // 2 raciones de carne (14) y 1 de leche (4) × 2.
+    curaHambre: 64,
+  },
+  {
+    slug: 'pan-leche-miel',
+    name: 'Pan de leche y miel',
+    aliases: ['pan de leche', 'pan de miel'],
+    category: 'consumible',
+    tipo: 'CONSUMIBLE',
+    valorGoirnos: 6,
+    equipSlot: 'CONSUMIBLE_1',
+    description: 'Masa de trigo escarlata amasada con leche de múrgol y endulzada con miel de Lebude — pan tierno de obrador.',
+    dimensiones: 'Hogaza de 400 g.',
+    lugarOrigen: 'Cocinas de obrador de las Llanuras del Viento Rojo.',
+    curaEnergia: 14,
+    // 2 de trigo (3), 1 de leche (4) y 1 de miel (4) × 2.
+    curaHambre: 28,
+  },
+  {
+    slug: 'queso-curado-murgol',
+    name: 'Queso curado de Múrgol',
+    aliases: ['queso de murgol', 'queso curado'],
+    category: 'consumible',
+    tipo: 'CONSUMIBLE',
+    valorGoirnos: 12,
+    equipSlot: 'CONSUMIBLE_1',
+    description: 'Leche de múrgol cuajada, prensada y curada en la bodega de un gran obrador — aguanta semanas y alimenta mucho.',
+    dimensiones: 'Rueda de 800 g.',
+    lugarOrigen: 'Cocinas de gran obrador de las Llanuras del Viento Rojo.',
+    curaEnergia: 16,
+    // 4 de leche (4) × 2,5.
+    curaHambre: 40,
+  },
+  {
+    slug: 'asado-llanuras',
+    name: 'Asado de las Llanuras',
+    aliases: ['asado de las llanuras', 'asado'],
+    category: 'consumible',
+    tipo: 'CONSUMIBLE',
+    valorGoirnos: 16,
+    equipSlot: 'CONSUMIBLE_1',
+    description: 'Carne asada a la brasa con Boungo y torta de trigo escarlata — el banquete de un gran obrador de las Llanuras.',
+    dimensiones: 'Bandeja de 2 kg.',
+    lugarOrigen: 'Cocinas de gran obrador de las Llanuras del Viento Rojo.',
+    curaEnergia: 24,
+    // 2 raciones de carne (14), 2 Boungo (4) y 1 de trigo (3) × 2,5.
+    curaHambre: 98,
   },
   {
     slug: 'cataplasma-musgo',
@@ -7436,6 +7500,8 @@ export const items: ItemCatalogInput[] = [
     description: 'Boungo asado sobre brasas por un cocinero orco — la primera receta real del oficio de cocinero-orcos-llanuras, más allá de las raciones reasignadas.',
     dimensiones: 'Ración de 150 g.',
     curaEnergia: 12,
+    // CR-61 (61d): plato de Taller, 2 Boungo (4 cada uno) × 1,5.
+    curaHambre: 12,
   },
 
   {

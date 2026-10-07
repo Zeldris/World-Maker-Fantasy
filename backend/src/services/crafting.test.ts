@@ -100,7 +100,7 @@ function row(id: string, catalogSlug: string, cantidad?: number): InventoryRowLi
 }
 
 describe('CRAFTING_RECIPES', () => {
-  it('tiene las 57 recetas esperadas, cada una con una clave única', () => {
+  it('tiene las 60 recetas esperadas, cada una con una clave única', () => {
     expect(CRAFTING_RECIPES.map((r) => r.key)).toEqual([
       // Edificios de oficio (docs/rpgtarkor/sistemas-reino/edificios-de-oficio.md, 2026-09-28) — 3
       // recetas de extracción sin ingredientes (la de leche se quitó con CR-55: la da el ganado), solo asignables desde el panel de Reino
@@ -142,6 +142,11 @@ describe('CRAFTING_RECIPES', () => {
       'scarletWheatBread',
       'sweetHoneycomb',
       'murgolCurd',
+      // CR-61 (61d): platos de Obrador y Gran obrador.
+      'murgolStew',
+      'milkHoneyBread',
+      'agedMurgolCheese',
+      'plainsRoast',
       'mossPoultice',
       'salvaturaFilter',
       'quioClarityFilter',

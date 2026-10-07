@@ -1687,9 +1687,10 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   - Deuda que se cobra en patrullas obligadas (20 guerreros por semana, 25 % de `ESCARAMUZA` con 1d6
     bajas).
   - Se rompe saldando la deuda, si cae el señor, con una alianza con el Reino o en guerra. **M**
-- **CR-61** Comida por oficios (Q15 de la ronda de `CR-55`; ronda propia aceptada el 2026-10-07,
+- ~~**CR-61** Comida por oficios~~ ✅ 2026-10-07 (Q15 de la ronda de `CR-55`; ronda propia aceptada el 2026-10-07,
   decisiones en [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-cr-61-y-cr-63-ronda-aceptada-por-la-usuaria-el-2026-10-07)).
-  🚧 Pasos:
+  Queda para `CR-63`: la caza de orcos y Faerus sigue en agregado (2,5 por cazador) hasta que salgan
+  sus partidas. Pasos:
   - ~~61a~~ ✅ 2026-10-07: reglas puras (`cronista/comidaOficios.ts`): tareas, rendimientos por estación,
     agua y Cocina, reparto por pueblo y caza en agregado hasta `CR-63`.
   - ~~61b~~ ✅ 2026-10-07: fin de los 2 por trabajador y del +3 por Cocina. Facciones: la comida
@@ -1700,10 +1701,13 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   - ~~61c~~ ✅ 2026-10-07: `Subject.tarea` (migración `20261007120000_subdito_tarea`; null =
     recolector), `POST /saves/:id/subjects/:subjectId/tarea` y selector «Tarea» en Reino › Súbditos
     (solo trabajadores adultos). La comida del Reino sale de `comidaDelReino` (`economiaReino.ts`):
-    estación, agua junto al Ayuntamiento para pescar, escalón de la mejor Cocina (por receta) y la
+    estación, agua junto al Ayuntamiento para pescar, escalón de la mejor Cocina (su `tier`, o la receta en las de facción) y la
     mitad sin herramienta. Los súbditos ganaderos se reparten por turno entre los Corrales y los
     fibreros suman en la Fibrería (si hay).
-  - 61d: platos con su valor (escala `curaHambre`), recetas de Obrador y Gran obrador.
+  - ~~61d~~ ✅ 2026-10-07: cada plato de una orden de Cocina suma al Reino `comidaDe(curaHambre)`
+    (antes 1). Valores: Boungo asado 12, Panal endulzado 12, Pan de trigo escarlata 14. Recetas
+    nuevas: Guiso de Múrgol (64) y Pan de leche y miel (28), de Obrador (tier 4); Queso curado de
+    Múrgol (40) y Asado de las Llanuras (98), de Gran obrador (tier 7).
   **L**
 - **CR-63** Partidas de caza y captura (ronda aceptada el 2026-10-07, decisiones en
   [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-cr-61-y-cr-63-ronda-aceptada-por-la-usuaria-el-2026-10-07);

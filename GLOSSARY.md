@@ -260,4 +260,8 @@ Lo comestible tal como sale del ganado, la caza o la recolección; alimenta seg�
 Lo que sale de una receta de cocina; alimenta más que la suma de sus ingredientes, tanto más cuanto más alto el escalón de la cocina.
 
 **Comida pasiva**:
-Comida que aparece sin que nadie la produzca (por trabajador o por edificio); se retira a favor de la comida por oficios.
+Comida que aparece sin que nadie la produzca (por trabajador o por edificio); retirada en `CR-61` a favor de la comida por tareas.
+
+**Tarea**:
+Lo que hace cada día un súbdito trabajador: recolector, pescador, cocinero, ganadero o fibrero. De ella sale la comida del Reino; las facciones reparten a sus trabajadores en tareas según la costumbre de su pueblo.
+_Evitar_: oficio (es la profesión con nivel de un trabajador o compañero, no lo que hace hoy)

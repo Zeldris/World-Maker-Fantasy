@@ -4,6 +4,7 @@ import { sucesosDeClima } from './cronista/clima.js';
 import type { Prisma } from '@prisma/client';
 import { tickKingdom, daysCrossed, hambrunaNueva, DIAS_PARA_CONSOLIDAR, DIAS_PARA_REBELION } from './kingdomTick.js';
 import { registrarHambruna } from './cronista/hambruna.js';
+import { comidaDe } from './cronista/ganaderia.js';
 import { tickOrdenesProduccion, companionesQueCuraCasaDeCuras, type TrabajadorReino, type OrdenProduccionInput } from './kingdomProduction.js';
 import { ownerKeyFor } from './reinoOwner.js';
 import { xpForCraftSuccess, professionLevelForXp } from './professionProgress.js';
@@ -198,7 +199,10 @@ export async function tickProduccionReino(tx: Prisma.TransactionClient, saveId: 
         if (recipe.oficio === 'cocinero-orcos-llanuras') {
           const kingdomStatsRow = await tx.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId }) }, select: { ownerKey: true } });
           if (kingdomStatsRow) {
-            await tx.kingdomStats.update({ where: { ownerKey: ownerKeyFor({ saveId }) }, data: { comida: { increment: resultado.resultCantidad } } });
+            // CR-61 (61d): cada plato suma lo que vale (`curaHambre`, 10 = 1 de comida); sin valor, 1.
+            const plato = recipe.resultCatalogSlug ? await tx.itemCatalog.findFirst({ where: { worldId, slug: recipe.resultCatalogSlug }, select: { curaHambre: true } }) : null;
+            const comidaPlato = plato?.curaHambre ? comidaDe(plato.curaHambre, resultado.resultCantidad) : resultado.resultCantidad;
+            await tx.kingdomStats.update({ where: { ownerKey: ownerKeyFor({ saveId }) }, data: { comida: { increment: comidaPlato } } });
           }
         }
         const ordenOriginal = ordenesInput.find((o) => o.id === resultado.ordenId)!;
