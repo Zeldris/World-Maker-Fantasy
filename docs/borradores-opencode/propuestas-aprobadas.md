@@ -868,6 +868,179 @@ alguien cuenta su mejor caza (C-03).
 
 ---
 
+## Tanda OpenCode 2026-10-06/07 — revisión del 2026-10-07 (costumbres de Nabieus, Faerus, Goirntes y orcos)
+
+**Revisión delegada en Claude por la usuaria (2026-10-07).** Son 36 propuestas. Quedan 9 fichas
+(D-01…D-03 Nabieus, G-01…G-04 Goirntes y O-01 orcos) y 2 añadidos a fichas que ya existían (B-01 y
+C-03). Hay 22 descartes, con su motivo en
+[revision-lore.md](revision-lore.md#tanda-opencode-2026-10-06-y-10-07--descartes-revisión-del-2026-10-07).
+Estos son los fallos que más se repiten, para la próxima tanda de OpenCode:
+- **Repetir lo que ya es canon.** Muchas propuestas copian, con otras palabras, fichas que se aprobaron un
+  día antes (C-02, C-07, C-08, C-09, C-11, B-01) o el tabú Goirnte de `02-razas.md`.
+- **Inventar palabras.** Pasa con «-krul» (en Feg, *Krul* es «colmillo propio»), «-veer», «-krug»,
+  «nirgoth», «Juli» y otras. **El Kerost no tiene esas palabras**: los ritos Goirntes se nombran en
+  lengua común.
+- **Medidas de reloj.** Frases como «exactamente 3 segundos», «5 minutos», «cada sábado» o «12 horas
+  de silencio» no encajan en el mundo. Las estaciones Goirntes son *Teandu Nu…Kei*.
+- **Contradecir lo recién aprobado.** Varias propuestas entierran a los muertos Faerus, abandonan al
+  herido o hacen que la manada «admita» a un joven. Otras ponen votos y jerarquías en un cónclave
+  que no las tiene.
+- **Confundir pueblos.** La Mesa del Lazo es orca (Maktor) y el Jakut es Faerus.
+
+**Seguimiento:**
+- [ ] **En docs:** pendiente (la usuaria decide si se pasan a `docs/rpgtarkor/`).
+- [ ] **Código:** nada.
+
+Todas comparten estos campos:
+
+**Acción de implementación:** añadir
+**Prioridad:** baja (media en G-01 y G-02, que el Narrador puede usar en cualquier escena de la Meseta)
+**Dependencias:** ninguna
+**Archivos destino:**
+- `docs/rpgtarkor/lore-mundo/razas.md` (§ de cada pueblo)
+- `docs/rpgtarkor/lore-mundo/regiones/meseta-del-orden.md` (G-02, G-04)
+- `docs/canon-opencode/02-razas.md`
+
+---
+
+### Añadido a B-01 · Cómo decide el cónclave (antes «Pausa de Decisión Silenciosa»)
+**Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-07)**
+
+**Notas del aprobador:** se quitan los «5 minutos» y el nombre *Keseg'doma*.
+
+**Propuesta:** en el Keseg'Vhurne no se vota. Alguien plantea el asunto y todos dejan la palma en el
+suelo. Si nadie la retira, está decidido. Quien la retira bloquea la decisión, y el asunto vuelve al
+círculo otro día. Por eso al cónclave le cuesta tanto decidir, y lo que decide no se discute después.
+
+---
+
+### Añadido a C-03 · Quién empieza a contar junto al fuego (antes «Crónicas del Fuego»)
+**Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-07)**
+
+**Notas del aprobador:** de la propuesta se queda solo la conexión con las muescas (C-04). Se quitan
+el nombre *Teldath-vel*, el castigo de dejar fuera al joven y el tope de 5 o 6 por grupo.
+
+**Propuesta:** junto al fuego empieza a contar quien más muescas tiene en el mango de su
+*Ashi'krul*. Después, cada uno añade lo que aprendió en la última caza.
+
+---
+
+### D-01 · Romper el ritmo (Nabieus; antes «Gramática de los Silencios»)
+**Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-07)**
+
+**Notas del aprobador:** el canon ya dice que hay pausas que afirman, niegan y advierten. La
+propuesta inventaba otro código («dot», dos pausas = duda), que se quita. Lo nuevo y útil para el
+Narrador es lo de romper el ritmo.
+
+**Propuesta:** en una conversación nabieu, cada uno espera su pausa. Hablar encima de la pausa de
+otro, o dejar un silencio donde no toca, es **romper el ritmo**: para un Nabieus es desprecio o
+arrogancia, como levantar la voz pero en pequeño. Un forastero lo hace sin querer a cada frase, y los
+Nabieus se lo perdonan solo porque es forastero.
+
+---
+
+### D-02 · Cómo se graba una tablilla (Keseg Sael; antes «Registro de la Investigación con Símbolos»)
+**Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-07)**
+
+**Notas del aprobador:** es el formato de las **tablillas de observación** del Archivo del Refugio
+(canon), que solo son de Keseg Sael. Se quita *Krojoth*. Nunca se graba lo que alguien dijo, porque
+eso sería una carta y rompe el *Karo'sael*.
+
+**Propuesta:** cada tablilla guarda una sola observación, con símbolos tallados siempre en el mismo
+orden: dónde, qué, hacia dónde se movía, y cómo estaban el tiempo y el agua. Lo que no se ha visto
+con los propios ojos no se graba. Al volver de un viaje, las tablillas se cruzan con las del Archivo.
+
+---
+
+### D-03 · La primera tablilla (Nabieus; antes «Inicio del Lazo Silencioso»)
+**Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-07)**
+
+**Notas del aprobador:** la propuesta decía 15 años; la madurez Nabieus es **14** (ciclo vital
+aprobado). «Lazo» es un concepto orco (*Drogh*), así que se quita. También se quitan los «dos
+minutos» y la marca en la muñeca.
+
+**Propuesta:** a los 14 años, un Nabieus sale solo a observar algo fuera del clan y vuelve con su
+primera tablilla. El Keseg'Vhurne la recibe en silencio. Si nadie retira la palma (ver el añadido a
+B-01), la tablilla entra en el Archivo, y desde ese día su palma cuenta en el cónclave.
+
+---
+
+### G-01 · El cierre de la jornada (Goirntes; antes «Vesh-krug»)
+**Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-07)**
+
+**Notas del aprobador:** sale directamente del tabú de lo inacabado. Se quita el nombre inventado.
+
+**Propuesta:** al acabar la jornada, ningún Goirnte se va a descansar sin hacer tres cosas: dejar
+cada herramienta en su sitio marcado; anotar en el registro del taller cualquier tarea que quede a
+medias, con quién y cuándo la termina; y repasar si ha dado hoy alguna palabra que aún no ha
+cumplido. Lo que queda anotado no cuenta como inacabado; lo que se olvida, sí. Un forastero lo nota
+porque en una ciudad Goirnte, al caer la tarde, todo se para a la vez.
+
+---
+
+### G-02 · El nombre en el obelisco *(fusión de tres)*
+**Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-07)**
+
+**Notas del aprobador:** fusiona «Vorn-tel'goirme», «Oth-krul» y «Gosh-krul». La casta es **de
+nacimiento** (canon), así que a los 14 (madurez Goirnte) no se asigna, se graba. Cada ciudad tiene su
+*Vresk'ord* (obelisco de leyes), no solo El Baluarte. Se quitan los «12 horas de silencio», los
+bloques de metal y la «piedra del destino».
+
+**Propuesta:**
+- **Al llegar a la madurez (14 años)**, el nombre y la casta de cada Goirnte se graban al pie del
+  *Vresk'ord* de su ciudad. El joven toca la base con la palma y dice «Goirme» en voz baja. Desde ese
+  día su función ya no es una promesa: está escrita.
+- **Una vez al año**, en *Teandu Tuh* (otoño), se paran las forjas y, junto al nombre de cada
+  Goirnte muerto ese año, la casta de ley graba una marca: **cumplido**. Una vida acabada es una vida
+  terminada, no a medias. La peor vergüenza para una familia es que, junto a un nombre, no puedan
+  grabar esa marca (un desertor, un juramento que se quedó sin cumplir).
+
+---
+
+### G-03 · Las marcas del taller *(fusión de tres)*
+**Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-07)**
+
+**Notas del aprobador:** fusiona «Fesh-kruv», «Tarn-veer» y «Nesh-veer». Se quitan los «100 días»,
+los «3 días sin errores» y las «2 semanas».
+
+**Propuesta:**
+- **El aprendiz** termina su formación cuando el maestro da por buena una pieza hecha entera por él.
+  Entonces el maestro graba en el mango de la primera herramienta propia del aprendiz su nombre y su
+  casta, y le dice: «Esta herramienta es tuya, pero no te pertenece». La herramienta es del orden.
+- **Una pieza que salió mal** no se tira: se repara, y se le graba una pequeña marca de reparado. Una
+  pieza reparada no es una vergüenza; una pieza abandonada a medias, sí. Por eso las armas Goirntes
+  viejas están llenas de marcas, y un Goirnte las enseña con orgullo.
+
+---
+
+### G-04 · Una ley no se borra (Goirntes; antes «Ghor-krul»)
+**Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-07)**
+
+**Notas del aprobador:** se quitan la «cámara del obelisco» y la reunión de castas. Lo que se queda
+es la regla, que encaja con lo inacabado.
+
+**Propuesta:** una ley grabada en un *Vresk'ord* no se borra nunca, porque borrarla sería dejarla a
+medias. Si una ley hace daño, la casta de ley graba **debajo** una adenda que la completa o la
+limita. Por eso los obeliscos más viejos tienen la base llena de líneas pequeñas, y quien quiere saber
+qué dice de verdad una ley tiene que leerla de arriba abajo, hasta el final. El Primer Edicto del
+Tributo (*Ord'teandu*) de El Baluarte es el que más adendas tiene.
+
+---
+
+### O-01 · Cerrar la cuenta tras un Signeran (orcos; antes «Signe-krul»)
+**Estado: APROBADA (la usuaria, revisión delegada en Claude, 2026-10-07)**
+
+**Notas del aprobador:** quemar al muerto y dejar el tótem ya es canon. Lo nuevo es compartir la
+comida con la familia, que conecta con la deuda de honor (*Tugh'ithek*). Se quita el nombre «-krul»,
+que es Feg.
+
+**Propuesta:** tras un Signeran a muerte, el clan quema al caído donde cayó, dice su nombre en voz
+baja y deja su tótem. Después, quien ganó el duelo comparte carne ahumada con la familia del muerto.
+Si la familia come, no queda *Tugh'ithek* entre ellos: la cuenta se ha cerrado. Si no come, la deuda
+sigue abierta, y todos lo saben.
+
+---
+
 ## Categoría: Idiomas
 
 ### A-07 · 2026-09-27 — Vocabulario nuevo de la tanda

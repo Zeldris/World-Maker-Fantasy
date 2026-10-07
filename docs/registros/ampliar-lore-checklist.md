@@ -1411,3 +1411,12 @@ Pendiente de código:
 - [ ] Opcional, zona: `ZonePoint` de La Tolda en el Vergel de Kegi y del Árbol de las marcas en Hashma.
 
 Pendiente de dataset: costumbres Faerus nuevas (el narrador entrenado no las conoce).
+
+## Tanda OpenCode 2026-10-06/07 — revisada el 2026-10-07, pendiente de pasar a docs
+
+Revisión delegada en Claude por la usuaria: 36 propuestas de Cultura. Aprobadas D-01…D-03 (Nabieus),
+G-01…G-04 (Goirntes), O-01 (orcos) y añadidos a B-01 y C-03, en `propuestas-aprobadas.md`; 22
+descartes con su motivo en `revision-lore.md`.
+
+- [ ] Pasarlas a `docs/rpgtarkor/` (`razas.md`, `regiones/meseta-del-orden.md`) y a
+  `docs/canon-opencode/02-razas.md`, marcadas como no implementadas en el código, si la usuaria lo pide.
