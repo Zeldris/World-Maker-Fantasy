@@ -135,7 +135,11 @@ async function tipoParaVector(tx: Tx, s: SucesoEnCola): Promise<string> {
 
 /// Q1: filtro de Prisma de los compañeros que entran a combate — los animales siempre; una persona
 /// con la aprobación por debajo de `APROBACION_NO_COMBATE` se niega a pelear a tu lado.
-export const companeroDispuestoACombatir = { OR: [{ tipo: 'FAUNA' as const }, { aprobacion: { gte: APROBACION_NO_COMBATE } }] };
+export const companeroDispuestoACombatir = {
+  OR: [{ tipo: 'FAUNA' as const }, { aprobacion: { gte: APROBACION_NO_COMBATE } }],
+  // CR-63: quien está fuera con una partida no pelea a tu lado.
+  viajeroMiembros: { none: { viajero: { estado: { not: 'TERMINADO' } } } },
+};
 
 /// Compañeros con mente que van con el personaje (no los trabajadores del Reino), vivos.
 export async function companerosConMente(tx: Tx, saveId: string) {

@@ -9,7 +9,7 @@
 //
 // Lo que hace cada tipo al llegar y al volver lo registra su módulo en `TRABAJOS` (63b caza, 63c
 // captura). El avance es idempotente por `ultimoDia` y va día a día (QA-19).
-import type { Prisma, PrismaClient } from '@prisma/client';
+import { Prisma, type PrismaClient } from '@prisma/client';
 
 type Tx = Prisma.TransactionClient;
 
@@ -107,11 +107,39 @@ export type ViajeroFila = Prisma.ViajeroGetPayload<{ include: { miembros: true }
 export interface TrabajoViajero {
   alLlegar?: (tx: Tx, v: ViajeroFila, dia: number, random: () => number) => Promise<void>;
   alVolver?: (tx: Tx, v: ViajeroFila, dia: number, random: () => number) => Promise<void>;
+  /// Orden permanente (Q7): antes de volver a salir. Devuelve la carga con la que sale (p. ej. las
+  /// cuerdas de una captura) o el motivo para pararse.
+  antesDeRepetir?: (tx: Tx, v: ViajeroFila, dia: number) => Promise<{ ok: true; carga?: Prisma.InputJsonValue } | { ok: false; motivo: string }>;
+}
+
+/// Orden de un viajero (Q7). `repetir`: al volver y descargar, sale otra vez al mismo destino.
+export interface OrdenViajero {
+  repetir?: boolean;
+}
+
+/// Aviso en el Reino (solo para los viajeros de la jugadora).
+export async function avisoDeViajero(tx: Tx, v: { saveId: string; factionId: string | null }, text: string): Promise<void> {
+  if (v.factionId) return;
+  const ws = await tx.worldState.findUnique({ where: { saveId: v.saveId }, select: { fictionalDateLabel: true, fictionalMinutes: true } });
+  await tx.logEntry.create({ data: { saveId: v.saveId, channel: 'KINGDOM', isSystemMessage: true, text, timeLabel: ws?.fictionalDateLabel ?? '', fictionalMinutes: ws?.fictionalMinutes ?? undefined } });
+}
+
+/// Q7: una orden permanente se para si cae alguien de los suyos.
+async function motivoParaParar(tx: Tx, v: ViajeroFila): Promise<string | null> {
+  const companionIds = v.miembros.map((m) => m.companionId).filter((x): x is string => !!x);
+  const subjectIds = v.miembros.map((m) => m.subjectId).filter((x): x is string => !!x);
+  const [caidos, fuera] = await Promise.all([
+    tx.companion.count({ where: { id: { in: companionIds }, condicionFisica: { in: ['CONVALECIENTE', 'MUERTO'] } } }),
+    tx.subject.count({ where: { id: { in: subjectIds }, estado: { not: 'ACTIVO' } } }),
+  ]);
+  const vivos = await tx.companion.count({ where: { id: { in: companionIds } } });
+  if (caidos > 0 || fuera > 0 || vivos < companionIds.length) return 'ha caído alguien de los suyos';
+  return null;
 }
 export const TRABAJOS: Record<string, TrabajoViajero> = {};
 
 export async function enlacesDelMundo(tx: Tx, worldId: string): Promise<Enlace[]> {
-  return tx.locationLink.findMany({ where: { from: { worldId } }, select: { fromId: true, toId: true, minutosBase: true } });
+  return tx.locationLink.findMany({ where: { from: { worldId } }, select: { fromId: true, toId: true, minutosBase: true }, orderBy: { id: 'asc' } });
 }
 
 export interface NuevoViajero {
@@ -122,6 +150,7 @@ export interface NuevoViajero {
   destinoLocationId: string;
   objetivo?: string | null;
   orden?: Prisma.InputJsonValue | null;
+  carga?: Prisma.InputJsonValue | null;
   dia: number;
   miembros: { companionId?: string; subjectId?: string; genericos?: number; rol: string }[];
 }
@@ -135,7 +164,7 @@ export async function crearViajero(tx: Tx, n: NuevoViajero): Promise<{ ok: true;
     data: {
       saveId: n.saveId, factionId: n.factionId ?? null, tipo: n.tipo, objetivo: n.objetivo ?? null,
       origenLocationId: n.origenLocationId, destinoLocationId: n.destinoLocationId, ubicacionLocationId: n.origenLocationId,
-      ruta, diaSalida: n.dia, ultimoDia: n.dia, orden: n.orden ?? undefined,
+      ruta, diaSalida: n.dia, ultimoDia: n.dia, orden: n.orden ?? undefined, carga: n.carga ?? undefined,
       diario: [{ locationId: n.origenLocationId, dia: n.dia }],
       miembros: { create: n.miembros.map((m) => ({ companionId: m.companionId ?? null, subjectId: m.subjectId ?? null, genericos: m.genericos ?? 0, rol: m.rol })) },
     },
@@ -166,7 +195,28 @@ export async function diaDeViajero(tx: Tx, v: ViajeroFila, enlaces: Enlace[], di
     include: { miembros: true },
   });
   // Al volver a casa, con su posición ya en el origen (descarga, orden permanente…).
-  if (estado === 'TERMINADO' && v.estado !== 'TERMINADO') await trabajo.alVolver?.(tx, actualizado, dia, random);
+  if (estado === 'TERMINADO' && v.estado !== 'TERMINADO') {
+    await trabajo.alVolver?.(tx, actualizado, dia, random);
+    if ((v.orden as OrdenViajero | null)?.repetir) await repetir(tx, actualizado, enlaces, dia, trabajo);
+  }
+}
+
+/// Q7: vuelve a salir al mismo destino, salvo que algo lo pare (entonces la orden queda en «de una vez»).
+async function repetir(tx: Tx, v: ViajeroFila, enlaces: Enlace[], dia: number, trabajo: TrabajoViajero): Promise<void> {
+  const parar = async (motivo: string) => {
+    await tx.viajero.update({ where: { id: v.id }, data: { orden: Prisma.DbNull } });
+    await avisoDeViajero(tx, v, `La partida deja de repetir su orden: ${motivo}.`);
+  };
+  const motivo = await motivoParaParar(tx, v);
+  if (motivo) return parar(motivo);
+  const prep: { ok: true; carga?: Prisma.InputJsonValue } | { ok: false; motivo: string } = trabajo.antesDeRepetir ? await trabajo.antesDeRepetir(tx, v, dia) : { ok: true };
+  if (!prep.ok) return parar(prep.motivo);
+  const ruta = rutaMasCorta(enlaces, v.origenLocationId, v.destinoLocationId);
+  if (!ruta) return parar('ya no hay camino');
+  await tx.viajero.update({
+    where: { id: v.id },
+    data: { estado: 'IDA', ruta, minutosEnTramo: 0, diaSalida: dia, carga: prep.carga ?? Prisma.DbNull, ubicacionLocationId: v.origenLocationId },
+  });
 }
 
 /// El día `dia` de todos los viajeros de la partida que aún no lo han vivido (idempotente por

@@ -14,7 +14,8 @@ import { esTarea, TAREA_POR_DEFECTO, TAREAS, type Tarea } from './comidaOficios.
 
 type Tx = Prisma.TransactionClient;
 
-export const ROLES_SUBDITO = ['trabajador', 'soldado', 'vigia'] as const;
+/// CR-63 (Q3): «cazador» sale con las partidas de caza y captura; no trabaja en casa y lleva arma.
+export const ROLES_SUBDITO = ['trabajador', 'soldado', 'vigia', 'cazador'] as const;
 export type RolSubdito = (typeof ROLES_SUBDITO)[number];
 export const PUEBLOS = ['orcos', 'goirntes', 'nabieus', 'faerus'] as const;
 /// Cuánto se acerca cada día la felicidad de un súbdito a la del Reino.
@@ -24,6 +25,7 @@ export const PASO_FELICIDAD_DIA = 5;
 export function rolDeSubdito(role: string): RolSubdito | 'visitante' {
   const r = role.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   if (/vigia|centinela|atalaya/.test(r)) return 'vigia';
+  if (/cazador|trampero/.test(r)) return 'cazador';
   if (/soldad|guerrer|guardia/.test(r)) return 'soldado';
   if (/visitante|viajero|huesped|forastero/.test(r)) return 'visitante';
   return 'trabajador';
@@ -52,6 +54,8 @@ export function cifrasDePoblacion(subditos: SubditoParaCuenta[], ahora: number):
     if (rol === 'visitante') visitantes++;
     else if (!esAdultoSubdito(s, ahora)) continue;
     else if (rol === 'trabajador') trabajadores++;
+    // CR-63: el cazador no trabaja en casa ni defiende; come como un civil.
+    else if (rol === 'cazador') continue;
     else soldados++;
   }
   return { poblacion: subditos.length - soldados - visitantes, trabajadores, soldados, visitantes };
@@ -184,7 +188,7 @@ export async function cambiarRolSubdito(tx: Tx, saveId: string, subjectId: strin
   const antes = rolDeSubdito(s.role);
   await tx.subject.update({ where: { id: s.id }, data: { role: rol } });
   await recalcularPoblacion(tx, saveId, ahora);
-  // CR-58: quien pasa a soldado o vigía necesita arma y armadura (quien vuelve a trabajar ya tiene su herramienta).
+  // CR-58: quien pasa a soldado, vigía o cazador necesita arma (quien vuelve a trabajar ya tiene su herramienta).
   if (rol !== 'trabajador' && (antes === 'trabajador' || antes === 'visitante')) {
     const { equiparAlta } = await import('./economiaReino.js');
     await equiparAlta(tx, saveId, 'soldado');

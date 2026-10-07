@@ -62,4 +62,9 @@ TRABAJOS.CAPTURA = {
   alVolver: async (tx, v, dia) => {
     await descargarCaptura(tx, v, dia);
   },
+  // Q7: cada salida se lleva sus cuerdas y necesita Jaula libre.
+  antesDeRepetir: async (tx, v) => {
+    const prep = await prepararCaptura(tx, v.saveId, v.objetivo ?? '');
+    return prep.ok ? { ok: true, carga: { cuerdas: prep.cuerdas } } : { ok: false, motivo: prep.motivo.replace(/\.$/, '').toLowerCase() };
+  },
 };

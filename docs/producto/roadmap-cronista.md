@@ -1746,7 +1746,13 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     `capturablePct` (tope 90), los no atados son piezas; al volver, a la Jaula como `NpcState` en
     doma (si se llenó, se sueltan) y las cuerdas sin usar vuelven. `jaulasLibresPara` compartido con
     el depósito de capturas de la jugadora.
-  - 63d: órdenes de una vez y permanentes; panel «Partidas» en Reino; rol «cazador».
+  - ~~63d~~ ✅ 2026-10-07: rol «cazador» de los súbditos (no trabaja ni defiende, pide arma);
+    `services/partidasReino.ts` (salen del Ayuntamiento; destinos que conoces con fauna a la vista y
+    camino; 1-16 entre tus grupos 2+ y cazadores libres; captura con `prepararCaptura`), rutas
+    `GET/POST /saves/:id/partidas` y `POST …/partidas/:id/orden` (no repetir, volver, cambiar de
+    destino), orden permanente en `viajeros.ts` (se para si cae alguien o falta Jaula o cuerdas, con
+    aviso), quien está fuera no pelea a tu lado; pestaña Reino › Partidas (`PartidasSection.tsx`).
+    Queda: la parada por «Almacén sin sitio» (las piezas no ocupan materiales).
   - 63e: en los mapas de zona y de Berig; preguntar, comerciar y órdenes al cruzarte.
   - 63f: encuentros por el camino (de fondo, o aviso para unirte si estás).
   - 63g: facciones (prototipo antes; sustituye la caza en agregado).

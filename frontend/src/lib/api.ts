@@ -1567,6 +1567,38 @@ export interface CorralesInfo {
   fueraDelCorral?: { id: string; name: string }[]
   corrales: CorralInfo[]
 }
+// CR-63 (63d): Reino › Partidas — partidas de caza y captura.
+export interface PartidaInfo {
+  id: string
+  tipo: 'CAZA' | 'CAPTURA'
+  estado: 'IDA' | 'TRABAJANDO' | 'VUELTA' | 'TERMINADO'
+  especie: string | null
+  especieNombre: string | null
+  ubicacion: string
+  destino: string
+  permanente: boolean
+  miembros: string[]
+  carga: { piezas?: number; capturados?: number } | null
+}
+export interface OpcionesPartida {
+  origen: { id: string; name: string } | null
+  cazadores: { id: string; name: string }[]
+  grupos: { slotIndex: number; nombre: string; companeros: { id: string; name: string }[] }[]
+  destinos: { id: string; name: string; region: string; especies: { slug: string; name: string; cantidad: number; capturable: boolean }[] }[]
+}
+export async function getPartidas(saveId: string): Promise<{ partidas: PartidaInfo[]; opciones: OpcionesPartida }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/partidas`)
+}
+export async function postLanzarPartida(
+  saveId: string,
+  p: { tipo: 'CAZA' | 'CAPTURA'; especie: string; destinoLocationId: string; companionIds: string[]; subjectIds: string[]; permanente: boolean },
+): Promise<{ ok: boolean; id: string }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/partidas`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) })
+}
+export async function postOrdenPartida(saveId: string, viajeroId: string, accion: 'parar' | 'volver' | 'destino', destinoLocationId?: string): Promise<{ ok: boolean }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/partidas/${viajeroId}/orden`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accion, destinoLocationId }) })
+}
+
 export async function getCorrales(saveId: string): Promise<CorralesInfo> {
   return fetchJson(`${API_URL}/saves/${saveId}/corrales`)
 }
@@ -1681,7 +1713,7 @@ export interface SubditoInfo {
   id: string
   name: string
   role: string
-  rol: 'trabajador' | 'soldado' | 'vigia' | 'visitante'
+  rol: 'trabajador' | 'soldado' | 'vigia' | 'cazador' | 'visitante'
   pueblo: string | null
   genero: string | null
   edad: number | null

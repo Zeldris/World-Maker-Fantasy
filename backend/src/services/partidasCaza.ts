@@ -18,7 +18,7 @@ import { descontarZonePointCaza } from './caza.js';
 import { decrementPopulationOnDeath } from './population.js';
 import { aprovecharAnimal } from './cronista/ganadoReino.js';
 import { recalcularPoblacion } from './cronista/subditos.js';
-import { TRABAJOS, type ViajeroFila } from './viajeros.js';
+import { avisoDeViajero, TRABAJOS, type ViajeroFila } from './viajeros.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -153,9 +153,9 @@ export async function cazarEnDestino(tx: Tx, v: ViajeroFila, dia: number, random
   return { especie, piezas, diaCaza: dia, resumen, ...(cuerdas > 0 ? { cuerdas: cuerdas - capturados, capturados } : {}) };
 }
 
+/// Aviso en el Reino (los de una facción no se avisan).
 export async function avisoDelReino(tx: Tx, saveId: string, text: string) {
-  const ws = await tx.worldState.findUnique({ where: { saveId }, select: { fictionalDateLabel: true, fictionalMinutes: true } });
-  await tx.logEntry.create({ data: { saveId, channel: 'KINGDOM', isSystemMessage: true, text, timeLabel: ws?.fictionalDateLabel ?? '', fictionalMinutes: ws?.fictionalMinutes ?? undefined } });
+  await avisoDeViajero(tx, { saveId, factionId: null }, text);
 }
 
 /// Q5: al volver, las piezas del Reino entran en el Almacén con su caducidad.
