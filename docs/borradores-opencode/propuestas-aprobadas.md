@@ -888,8 +888,9 @@ Estos son los fallos que más se repiten, para la próxima tanda de OpenCode:
 - **Confundir pueblos.** La Mesa del Lazo es orca (Maktor) y el Jakut es Faerus.
 
 **Seguimiento:**
-- [ ] **En docs:** pendiente (la usuaria decide si se pasan a `docs/rpgtarkor/`).
-- [ ] **Código:** nada.
+- [x] **En docs** (2026-10-07, la usuaria lo pidió): `razas.md` (§ Goirntes, Orcos, Nabieus y Faerus) y
+  `regiones/meseta-del-orden.md`; resumen en `docs/canon-opencode/` (`02-razas.md`, `regiones/meseta.md`).
+- [ ] **Código:** nada implementado.
 
 Todas comparten estos campos:
 

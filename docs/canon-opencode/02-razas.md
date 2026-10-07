@@ -1,6 +1,6 @@
 # RAZAS de Berig (y una línea por las de Vaelira)
 Qué es: cómo es y cómo vive cada raza, para describir NPC y culturas sin inventar rasgos.
-Fuente: razas.md, clanes-orcos.md, historia.md. Sincronizado: 2026-10-06.
+Fuente: razas.md, clanes-orcos.md, historia.md. Sincronizado: 2026-10-07.
 
 ## Goirntes (Semilla: Goirme) · Meseta del Orden
 - **Cuerpo:** piel gris, fría, casi mineral y quitinosa, que se tensa con un brillo metálico al
@@ -9,6 +9,12 @@ Fuente: razas.md, clanes-orcos.md, historia.md. Sincronizado: 2026-10-06.
 - **Cultura:** castas de función desde el nacimiento; cada objeto en su sitio. El desorden les causa
   malestar físico. **Tabú: lo inacabado** (una tarea a medias, un juramento sin cumplir). Tienen la
   mejor metalurgia de Helek Sirik. Leyes grabadas en obeliscos. Ven a los orcos como inferiores.
+- **Costumbres\*** (nombres en común; el Kerost no tiene palabra para ellas): cierre de la jornada
+  (herramientas a su sitio, lo pendiente anotado con quién y cuándo, palabra dada repasada); a los
+  **14** años nombre y casta grabados al pie del Vresk'ord de su ciudad, y cada otoño (Teandu Tuh) la
+  marca de "cumplido" junto a los muertos del año; el aprendiz acaba cuando el maestro graba su nombre
+  en su primera herramienta ("es tuya, pero no te pertenece"); lo reparado lleva marca y se enseña con
+  orgullo; una ley no se borra: se le graban adendas debajo.
 - **Política:** la facción radical (Primer Censor Tarsen Vold) dirige la Concordia de Hierro; la
   moderada, Los del Obelisco (Archimagistrada Yovenne Tal), la frena desde dentro. El Goirnte común
   obedece.
@@ -25,7 +31,8 @@ Fuente: razas.md, clanes-orcos.md, historia.md. Sincronizado: 2026-10-06.
   excepción: los gobierna por miedo la casta de Ketg.
 - **Valores:** honor y fuerza; directos e impacientes; no mienten, pero callan. Tabúes: interrumpir
   un duelo aceptado (Signeran: sin armadura, hacha simple, a muerte) y tocar el tótem de otro.
-  A los muertos se les quema y se deja un tótem donde cayeron.
+  A los muertos se les quema y se deja un tótem donde cayeron. Tras un Signeran a muerte, el vencedor
+  comparte carne ahumada con la familia del caído: si comen, no queda deuda de honor (Tugh'ithek)\*.
 - **Vida:** pastoreo, caza, ahumado. Sin agricultura propia. A los 10 años, madurez y cacería ritual
   de Corredores de Cauce.
 - **Magia:** no lanzan magia en crudo: Tarkor les selló el canalizador. La canalizan a través de
@@ -45,7 +52,12 @@ Fuente: razas.md, clanes-orcos.md, historia.md. Sincronizado: 2026-10-06.
 - **El cónclave\*:** círculo de piedras en cualquier claro; cada uno con la palma en el suelo, nadie
   habla. **Pacto del Umbral\*** (~3.650, tras la Purga): Keseg Sael y Keseg Prisilke no dicen a nadie
   dónde vive el otro clan; el Karo'sael incluye callar dónde están los suyos. Quien lo rompe: nadie
-  le vuelve a hablar.
+  le vuelve a hablar. **Se decide sin votar\***: si nadie retira la palma, está decidido; quien la
+  retira, bloquea.
+- **Costumbres\*:** romper el ritmo (hablar encima de la pausa de otro, o callar donde no toca) es
+  desprecio; cada tablilla del Archivo guarda una sola observación vista con los propios ojos (dónde,
+  qué, hacia dónde, tiempo y agua), nunca lo que alguien dijo; a los **14**, la primera tablilla
+  aceptada por el cónclave da voz (palma) en él.
 - **Clanes:** Keseg Sael (Margen, El Refugio sin Nombre) y Keseg Prisilke (Ciénaga, Jeyselt).
 - **Política:** integrados en la Concordia a la fuerza como mensajeros (código Karo'sael). No
   olvidan el Yugo ni la Purga.
@@ -62,7 +74,7 @@ Fuente: razas.md, clanes-orcos.md, historia.md. Sincronizado: 2026-10-06.
   Los acuerdos solo duran si se sellan compartiendo la primera pieza.
 - **Costumbres\*** (nombres en común; el Feg no tiene palabra para ellas): enseñan cazando (olfato,
   postura, práctica; nunca se niega la pieza al que falla); crianza en común, adultos a los **8** con
-  su primera pieza; historias junto al fuego (leña de Telda) en Kegi; muescas en el mango del
+  su primera pieza; historias junto al fuego (leña de Telda) en Kegi, empieza quien más muescas tiene; muescas en el mango del
   Ashi'krul por cada presa o peligro aprendido; un forastero entra dejándose oler, compartiendo el
   Vash'grath y prometiendo el Feg'nur; quien falla se lava 3 días con ceniza de Telda; saludo
   oliéndose el cuello y rozando el hocico (por el olor saben la familia: el **rastro**); el camino
