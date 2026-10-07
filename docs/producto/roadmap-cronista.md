@@ -1494,8 +1494,12 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     Va con `CR-37` en el `0.3`. Ronda de detalle aceptada el 2026-10-07 (Q1-Q9 en
     [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-detalle-de-cr-50-campamentos-de-bandidos-ronda-aceptada-por-la-usuaria-el-2026-10-07));
     quién los ocupa es dato de semilla (la usuaria añadirá razas «poco civilizadas»). 🚧 Pasos:
-    - 50a: modelo `Campamento` y semillas de ocupantes; aparición (1 por región, día 10, 20 días
-      tras caer), refuerzos y crecimiento.
+    - ~~50a~~ ✅ 2026-10-07: migración `20261008000000_campamentos` (modelo `Campamento`); semillas
+      `OCUPANTES_CAMPAMENTO` y reglas puras en `cronista/campamentosBandidos.ts` (aparición, sorteo,
+      refuerzos, tope); `services/campamentos.ts`: `revisarCampamentos` en el avance diario (1 por
+      región con ocupantes, en un lugar con camino sin asentamiento; a los 20 días de caer, en otro
+      sitio), con su punto NPC de banda en el mapa de zona (cantidad = gente + cabecilla). Hoy hay
+      campamentos en Llanuras, Meseta y Margen; Cristal Helado y la Ciénaga esperan a sus razas.
     - 50b: asaltos a viajeros cercanos y al Reino (viajero `ASALTO`).
     - 50c: atacarlos: en vivo (cabecilla y banda en su lugar) y partida «Asalto»; disolución, botín
       y recompensa; patrullas de facción contra ellos.

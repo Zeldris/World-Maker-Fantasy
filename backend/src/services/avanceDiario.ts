@@ -16,6 +16,7 @@ import './partidasCaptura.js';
 import './viajerosEncuentros.js';
 import { lanzarPartidasDeFacciones } from './partidasFacciones.js';
 import { vigilarDelReino } from './defensaReino.js';
+import { revisarCampamentos } from './campamentos.js';
 import './asaltos.js';
 import { asegurarDefensasDeFacciones } from './defensaFacciones.js';
 import { difundir } from './cronista/difusion.js';
@@ -141,6 +142,8 @@ export async function avanzarMundoHasta(
       await paso('comercio', () => avanzarComercio(prisma, saveId, d, random));
       // CR-63 (63g): las facciones con comida de sobra mandan sus partidas de caza.
       await paso('partidasFacciones', () => lanzarPartidasDeFacciones(prisma, saveId, d));
+      // CR-50 (50a): campamentos de bandidos que aparecen y reciben refuerzos.
+      await paso('campamentos', () => revisarCampamentos(prisma, saveId, d, random));
       // CR-63 (63a, ADR 0003): una jornada de cada viajero (partidas de caza y captura…).
       await paso('viajeros', () => avanzarViajeros(prisma, saveId, d, random));
       // CR-65 (65c): la Torre de vigía avisa de los asaltos que entran en su radio.
