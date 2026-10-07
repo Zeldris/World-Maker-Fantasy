@@ -1833,6 +1833,17 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   - Un Faerus del Margen viaja a pie tan rápido como montado (lore de la usuaria: montar es
     costumbre de los Faerus de las Llanuras).
   - Resuelve la duda del viaje largo del `0.4`. **L**
+- **CR-65** Defensa del Reino y milicia (Fase E del `0.3`, Q2-Q3 de su ronda, aceptada el 2026-10-07,
+  decisiones en [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-la-fase-e-conflicto-ronda-1-aceptada-por-la-usuaria-el-2026-10-07)).
+  Empalizada (cobertura +2/+5 a quien defiende), Torre de vigía (aviso 1 día antes, ventaja al tirar
+  desde ella), Armería (equipo de la milicia) y Cuartel (tope y moral de soldados), con escalones;
+  milicia de súbditos trabajadores que pelean y no producen ese día. También para las facciones
+  (`CR-36`). Pide ronda de detalle (números). **M**
+- **CR-66** Postura de compañero en combate (Fase E, Q6): agresiva, defensiva, capturadora (golpe no
+  letal), clemente (acepta rendiciones) y «huir si cae grave»; en vivo y de fondo; las facciones, la
+  de su raza. **M**
+- **CR-67** Dificultad de asaltos en Configuración (Fase E, Q7): sin asaltos, normal o duros; sin
+  asaltos, los bandidos solo atacan caravanas y partidas. **S**
 - **Hecho cuando:** matar al hermano de un NPC abre un hilo de venganza y el vengador aparece;
   un compañero se queja y acaba yéndose si se le contraría repetidamente.
 

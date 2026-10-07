@@ -24,7 +24,7 @@ nuevo del motor y se intercala entre fases.
 | **B — Memoria del narrador** | `CR-21` verdad obligatoria, `CR-22` callbacks por entidad, `CR-23` puntuación de recuerdos ([Cronista Fase 6](roadmap-cronista.md#fase-6--memoria-del-narrador--m)) | A | ✅ 2026-10-06, retro ✅ 2026-10-07 (`CR-21`, `CR-22`, `CR-23` en `memoriaNarrador.ts`) |
 | **C — Población del Reino** | `REI-118` súbditos como personas, `REI-119` llegadas, `REI-120` parejas y crías, `REI-121` salidas y muerte, `CR-52` linajes y rastros ([propuesta aprobada](../borradores-opencode/propuestas-aprobadas.md), «Ciclo vital de los pueblos») · súbditos en el panel (`REI-53`, `REI-54`) | — (vivienda del `0.1`, `CR-13`) | ✅ 2026-10-06, retro ✅ 2026-10-07 (`CR-52`, `REI-118`…`REI-121`, `REI-54`; queda `REI-53` en parte —territorio de residencia y estado— y la muerte de súbditos en combate, que va con `CR-37` en la Fase E; los números del hambre son provisionales para la ronda de la Fase D) |
 | **D — Economía, ganadería y obras** | `CR-53` economía de supervivencia del Reino, `CR-54` de las facciones, `CR-58` factura de equipo, `CR-59` vasallaje y deuda · `CR-55` ganadería (oficio de ganadero y corrales por especie), `CR-56` usos de la fauna, `CR-61` comida por oficios · estaciones sin oficio (Leñera, Cantera, Fibrería) si hacen falta · edificios de defensa · `CR-36` las facciones construyen | C | 🚧 ronda 1 aceptada (2026-10-06, decisiones abajo, portes incluidos); ~~`CR-53`~~ ✅, ~~`CR-54`~~ ✅, ~~`CR-58`~~ ✅ y ~~`CR-59`~~ ✅ 2026-10-06; ronda de `CR-55` aceptada (2026-10-06, decisiones abajo; tarea nueva `CR-61`); ~~`CR-55`~~ ✅ y ~~`CR-56`~~ ✅ 2026-10-06 |
-| **E — Conflicto** | ~~`CR-62`~~ ✅ 2026-10-07 combate de fondo para escaramuzas y patrullas · `CR-39` territorios y expansión · `CR-37` guerra contra el Reino · `CR-50` campamentos de bandidos · postura de compañero en combate · `CMB-1`…`CMB-8` | C, D (defensa) | Pendiente |
+| **E — Conflicto** | ~~`CR-62`~~ ✅ 2026-10-07 combate de fondo para escaramuzas y patrullas · `CR-65` defensa y milicia (los edificios de defensa de la Fase D) · `CR-50` campamentos de bandidos · `CR-37` guerra contra el Reino · `CR-39` territorios y expansión · `CR-66` postura de compañero · `CR-67` dificultad de asaltos · `CMB-1`…`CMB-8` | C, D | 🚧 ronda 1 aceptada (2026-10-07, decisiones abajo) |
 | **F — Hablar y comerciar con NPC** | «Charlar con NPC» enriquecido (Franja 4: lore, reclutar, interrogar tras Clemente) · `CR-51` comercio en persona con NPC y caravanas | A | 🧭 falta la especificación (ronda de diseño) |
 | **G — Interfaz** (se intercala) | Reino R-B, R-C, R-D, R-E y `PAN-7` · `DiceTray` `DAD-7`…`DAD-12` (con el resto de `CFG-20`) · `HUD-1`…`HUD-5`, `HUD-7`…`HUD-11`, `HUD-13` · `NAR-1`…`NAR-8`, `NAR-10`, `NAR-11` · `PAN-1`…`PAN-6`, `PAN-11`…`PAN-14` · `UX-18` (epílogo con plantillas), `UX-19`, `UX-20` · `INT-5`…`INT-8`, `INT-10`, `INT-11` · `CFG-36` · UX-F `UX-32`…`UX-34`, `UX-39` | — | Pendiente |
 
@@ -317,6 +317,36 @@ desuella) y X4 (todas las naves son la misma entidad; órdenes repetidas).
   de reserva de comida; si no, sus cazadores siguen en agregado.
 - **Q11 Pasos:** 63a viajero, rutas y avance; 63b caza, piezas y Desolladero; 63c captura; 63d órdenes
   y panel «Partidas»; 63e en los mapas y al cruzarte; 63f encuentros por el camino; 63g facciones.
+
+## Decisiones de la Fase E: Conflicto (ronda 1, aceptada por la usuaria el 2026-10-07)
+
+Referencias revisadas a petición de la usuaria: Manor Lords, Bellwright, Medieval Dynasty, X4,
+Baldur's Gate 3 y D&D 5e (de memoria, sin consulta en línea).
+
+- **Q1 Orden:** `CR-65` defensa → `CR-50` bandidos → `CR-37` guerra → `CR-39` territorios (su lista
+  de lugares se propone a Álvaro en `propuestas-lore.md` mientras tanto). `CR-66` postura y
+  `CMB-1`…`CMB-8` se intercalan cuando haya que esperar una decisión.
+- **Q2 Edificios de defensa (`CR-65`), con escalones:** Empalizada = **cobertura** a quien defiende
+  (+2 a la defensa, +5 en el escalón alto; D&D); Torre de vigía = aviso 1 día antes y **ventaja** al
+  tirar desde ella (BG3); Armería = equipo de la milicia; Cuartel = tope y moral de soldados. Las
+  facciones también los levantan, donde las atacan (X4, con `CR-36`).
+- **Q3 Asaltos al Reino:** el atacante es un viajero visible (motor de `CR-63`); con Torre se ve con un
+  día de antelación. **Milicia** (Manor Lords): ese día se arman súbditos trabajadores con lo que haya
+  en la Armería; pelean con los soldados y no producen mientras dura. En vivo si estás en el Reino, de
+  fondo con `CR-62` si no (ADR 0002). Si pierdes: saquean Almacén, comida y Goirnos (y algún edificio
+  dañado) y se van.
+- **Q4 Guerra de una facción (`CR-37`):** la misma presión de relación que entre facciones; en GUERRA,
+  como mucho un asalto por semana, de tamaño según sus soldados y su reserva de comida. El dueño de un
+  territorio en disputa cambia al ganar o perder (X4, Manor Lords; con `CR-39`).
+- **Q5 Bandidos (`CR-50`):** campamentos en zonas sin dueño con **cabecilla con nombre** y refuerzos
+  (Bellwright); sus asaltos **escalan con la riqueza del Reino** (Bellwright, Manor Lords); se atacan
+  en vivo o con una partida de tipo `ASALTO`; echarlos libera la zona y da reputación con los vecinos.
+- **Q6 Postura de compañero (`CR-66`):** agresiva, defensiva, capturadora (golpe no letal, BG3),
+  clemente (acepta rendiciones al romperse la moral, D&D) y el añadido «huir si cae grave» (X4). Por
+  compañero, en vivo y de fondo; las facciones, la de su raza.
+- **Q7 Dificultad de asaltos (`CR-67`):** sin asaltos (Medieval Dynasty), normal o duros, en
+  Configuración (Manor Lords tiene un ajuste parecido). Sin asaltos, los bandidos solo atacan
+  caravanas y partidas.
 
 ## Decisiones que bloquean algo
 
