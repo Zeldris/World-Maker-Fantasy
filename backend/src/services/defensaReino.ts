@@ -195,3 +195,19 @@ export async function vigilarDelReino(prisma: PrismaClient, saveId: string, dia:
     return avisados.size;
   });
 }
+
+/// Q9 (X4: el alcance de un satélite): los lugares que vigila la Torre de cada asentamiento, para
+/// dibujarlos en el mapa de Berig.
+export async function alcancesDeTorres(tx: Tx, saveId: string): Promise<{ asentamiento: string; slugs: string[] }[]> {
+  const conTorre = (await asentamientosDelReino(tx, saveId)).filter((a) => a.efecto.radioTramos > 0);
+  if (conTorre.length === 0) return [];
+  const { worldId } = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } });
+  const enlaces = await enlacesDelMundo(tx, worldId);
+  const out: { asentamiento: string; slugs: string[] }[] = [];
+  for (const a of conTorre) {
+    const ids = [...lugaresATramos(enlaces, a.locationId, a.efecto.radioTramos).keys()];
+    const lugares = await tx.location.findMany({ where: { id: { in: ids } }, select: { slug: true }, orderBy: { slug: 'asc' } });
+    out.push({ asentamiento: a.nombre, slugs: lugares.map((l) => l.slug.replace(/-interior$/, '')) });
+  }
+  return out;
+}

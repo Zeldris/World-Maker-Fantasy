@@ -9,13 +9,14 @@ import { DiplomaciaMercadoSection } from './reino/DiplomaciaMercadoSection'
 import { ComercioSection } from './reino/ComercioSection'
 import { CorralesSection } from './reino/CorralesSection'
 import { PartidasSection } from './reino/PartidasSection'
+import { DefensaSection } from './reino/DefensaSection'
 
 // Re-exportado tal cual (2026-09-21, rediseño en sub-tabs) — CompanerosPanel.tsx lo importa desde
 // aquí (`import { PlantillaSelect } from './ReinoPanel'`); el componente real ahora vive en
 // `reino/SubditosSection.tsx`, este re-export evita tocar ese import existente sin necesidad.
 export { PlantillaSelect } from './reino/SubditosSection'
 
-export type ReinoSubTab = 'vision-general' | 'edificios' | 'produccion' | 'corrales' | 'partidas' | 'subditos' | 'diplomacia-mercado'
+export type ReinoSubTab = 'vision-general' | 'edificios' | 'produccion' | 'corrales' | 'partidas' | 'defensa' | 'subditos' | 'diplomacia-mercado'
 
 const SUB_TABS: { id: ReinoSubTab; label: string; icon: string }[] = [
   { id: 'vision-general', label: 'Visión general', icon: '🏰' },
@@ -23,6 +24,7 @@ const SUB_TABS: { id: ReinoSubTab; label: string; icon: string }[] = [
   { id: 'produccion', label: 'Producción', icon: '⚙️' },
   { id: 'corrales', label: 'Corrales', icon: '🐑' },
   { id: 'partidas', label: 'Partidas', icon: '🏹' },
+  { id: 'defensa', label: 'Defensa', icon: '🛡️' },
   { id: 'subditos', label: 'Súbditos', icon: '👥' },
   { id: 'diplomacia-mercado', label: 'Diplomacia', icon: '🤝' },
 ]
@@ -159,6 +161,7 @@ export function ReinoPanel({
       {/* CR-55: ganado del Reino. */}
       {activeSubTab === 'corrales' && <CorralesSection saveId={saveId} inventory={inventory} onRefreshSave={onRefreshSave} />}
       {activeSubTab === 'partidas' && <PartidasSection saveId={saveId} onRefreshSave={onRefreshSave} />}
+      {activeSubTab === 'defensa' && <DefensaSection saveId={saveId} onRefreshSave={onRefreshSave} />}
       {activeSubTab === 'subditos' && (
         <SubditosSection
           saveId={saveId}

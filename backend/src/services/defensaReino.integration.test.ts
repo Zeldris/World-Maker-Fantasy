@@ -102,6 +102,12 @@ describe('radar de la Torre y milicia (CR-65 65c)', () => {
     await prisma.viajero.update({ where: { id: asalto.id }, data: { ubicacionLocationId: cerca } });
     const [visto] = await prisma.$transaction((tx) => radarDelReino(tx, saveId));
     expect(visto).toMatchObject({ asentamientoId: capitalId, viajeroId: asalto.id, gente: 6, tramos: 1, quien: 'Bandidos' });
+    // En el mapa: el asalto se ve aunque no sea de la región (hostil) y la Torre dibuja su alcance.
+    const { expedicionesVisibles } = await import('./expedicionesMapa.js');
+    const { alcancesDeTorres } = await import('./defensaReino.js');
+    expect((await expedicionesVisibles(prisma, saveId)).find((e) => e.id === asalto.id)).toMatchObject({ hostil: true });
+    const [alcance] = await prisma.$transaction((tx) => alcancesDeTorres(tx, saveId));
+    expect(alcance!.slugs.length).toBeGreaterThan(1);
     expect(await vigilarDelReino(prisma, saveId, 2)).toBe(1);
     expect(await vigilarDelReino(prisma, saveId, 3)).toBe(0);
     expect(await prisma.logEntry.count({ where: { saveId, text: { contains: 'se ve venir a Bandidos' } } })).toBe(1);

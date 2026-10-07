@@ -31,7 +31,7 @@ export function diasParaVolver(enlaces: Enlace[], v: { estado: string; ubicacion
 /// En el mapa de Berig: los viajeros de la partida que el personaje puede ver (los del Reino, los de
 /// facciones aliadas y los de su región), con la forma de una expedición: del lugar en que están al
 /// siguiente de su ruta, con lo andado del tramo.
-export async function viajerosEnMapa(tx: Tx, saveId: string, ctx: { dia: number; regionActual: string | null; aliadas: Set<string> }): Promise<ExpedicionEnMapa[]> {
+export async function viajerosEnMapa(tx: Tx, saveId: string, ctx: { dia: number; regionActual: string | null; aliadas: Set<string>; vistos?: Set<string> }): Promise<ExpedicionEnMapa[]> {
   const viajeros = await tx.viajero.findMany({
     where: { saveId, estado: { not: 'TERMINADO' } },
     include: { faction: { select: { name: true } }, ubicacion: { select: { slug: true, name: true, region: true } }, destino: { select: { name: true } }, origen: { select: { name: true } } },
@@ -44,7 +44,8 @@ export async function viajerosEnMapa(tx: Tx, saveId: string, ctx: { dia: number;
   const out: ExpedicionEnMapa[] = [];
   for (const v of viajeros) {
     const delReino = !v.factionId;
-    if (!delReino && !(v.factionId && ctx.aliadas.has(v.factionId)) && v.ubicacion.region !== ctx.regionActual) continue;
+    const hostil = !!ctx.vistos?.has(v.id);
+    if (!delReino && !hostil && !(v.factionId && ctx.aliadas.has(v.factionId)) && v.ubicacion.region !== ctx.regionActual) continue;
     const siguiente = siguientes.find((s) => s.id === v.ruta[0]);
     const tramo = siguiente ? minutosTramo(enlaces, v.ubicacionLocationId, siguiente.id) : 0;
     const fraccion = siguiente && tramo > 0 ? Math.min(1, v.minutosEnTramo / tramo) : 0;
@@ -59,6 +60,7 @@ export async function viajerosEnMapa(tx: Tx, saveId: string, ctx: { dia: number;
       diaRegreso: ctx.dia + diasParaVolver(enlaces, v),
       progreso: fraccion / 2,
       delReino,
+      ...(hostil ? { hostil: true } : {}),
     });
   }
   return out;

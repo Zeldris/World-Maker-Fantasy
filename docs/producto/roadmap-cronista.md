@@ -1833,12 +1833,14 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   - Un Faerus del Margen viaja a pie tan rápido como montado (lore de la usuaria: montar es
     costumbre de los Faerus de las Llanuras).
   - Resuelve la duda del viaje largo del `0.4`. **L**
-- **CR-65** Defensa del Reino y milicia (Fase E del `0.3`, Q2-Q3 de su ronda, aceptada el 2026-10-07,
+- ~~**CR-65** Defensa del Reino y milicia~~ ✅ 2026-10-07 (Fase E del `0.3`, Q2-Q3 de su ronda, aceptada el 2026-10-07,
   decisiones en [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-la-fase-e-conflicto-ronda-1-aceptada-por-la-usuaria-el-2026-10-07)).
   Empalizada (cobertura +2/+5 a quien defiende), Torre de vigía (aviso 1 día antes, ventaja al tirar
   desde ella), Armería (equipo de la milicia) y Cuartel (tope y moral de soldados), con escalones;
   milicia de súbditos trabajadores que pelean y no producen ese día. También para las facciones
-  (`CR-36`). Ronda de detalle aceptada el 2026-10-07 (Q1-Q10, X4 primero). 🚧 Pasos:
+  (`CR-36`). Ronda de detalle aceptada el 2026-10-07 (Q1-Q10, X4 primero). Queda para `CR-50`/`CR-37`:
+  lanzar los asaltos, defenderlos en vivo y que peleen los guardias de fauna; las cifras del botín y de
+  las facciones son provisionales (fase de pruebas). Pasos:
   - ~~65a~~ ✅ 2026-10-07: 12 recetas (Empalizada/Muro/Muralla, Torre de vigía ×3, Armería ×3,
     Barracón ×3; `edificioTipo: 'defensa'`, escalón en `edificioOficioNivel`, uno de cada por
     región); en la región del Ayuntamiento o en la de un Cuartel Avanzado contra su cupo local
@@ -1868,7 +1870,10 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     `reforzarDefensaFaccion` (tras un asalto: repara y sube un escalón si tiene 7 días de reserva y
     120/300 Goirnos; cifras provisionales) y `coberturaDeFaccion`. Quien llama a
     `reforzarDefensaFaccion` y usa la cobertura al asaltar una facción: `CR-37`.
-  - 65f: Reino › Defensa, alerta y radio en el mapa de Berig. **M**
+  - ~~65f~~ ✅ 2026-10-07: Reino › Defensa (`DefensaSection.tsx`: módulos con lo que dan, reparar,
+    comprar equipos, guarnición y traer soldados de otro asentamiento; alerta «Asaltos a la vista»
+    con «Llamar a la milicia»); en el mapa de Berig, los asaltos vistos desde una Torre (rojo,
+    «Asalto de…») y el alcance de cada Torre (`alcancesDeTorres`, círculos discontinuos). **M**
 - **CR-66** Postura de compañero en combate (Fase E, Q6): agresiva, defensiva, capturadora (golpe no
   letal), clemente (acepta rendiciones) y «huir si cae grave»; en vivo y de fondo; las facciones, la
   de su raza. **M**

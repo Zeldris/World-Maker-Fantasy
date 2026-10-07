@@ -5,6 +5,7 @@ import { toFrontendLogEntry } from './shared.js';
 import { responderPropuesta } from '../../services/cronista/decisionesFaccion.js';
 import { esperarSegundoPlano } from '../../services/avanceDiario.js';
 import { expedicionesVisibles } from '../../services/expedicionesMapa.js';
+import { alcancesDeTorres } from '../../services/defensaReino.js';
 
 /// UX-29: lo más que espera «lo nuevo del mundo» a que acabe el avance de fondo de la partida.
 const ESPERA_FONDO_MS = 20_000;
@@ -18,7 +19,7 @@ export async function logRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>('/saves/:id/expediciones/mapa', async (request, reply) => {
     const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true } });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
-    return { expediciones: await expedicionesVisibles(prisma, save.id) };
+    return { expediciones: await expedicionesVisibles(prisma, save.id), alcances: await prisma.$transaction((tx) => alcancesDeTorres(tx, save.id)) };
   });
 
   // Persiste qué entidad se mostró como banner bajo una narración (rework 2026-07-24) — el

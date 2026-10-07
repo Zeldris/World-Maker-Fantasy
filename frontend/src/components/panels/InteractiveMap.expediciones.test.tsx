@@ -40,4 +40,27 @@ describe('CR-46 — expediciones en el mapa', () => {
     expect(tarjeta.textContent).toContain('Va a Hondonada del Eco')
     expect(tarjeta.textContent).toContain('día 6')
   })
+
+  it('CR-65: un asalto visto desde la Torre se marca como asalto y el alcance de la Torre se dibuja', () => {
+    const nodos = [
+      { slug: 'campamento-helsig', name: 'Campamento Helsig', description: 'x', x: 100, y: 100 },
+      { slug: 'hondonada-del-eco', name: 'Hondonada del Eco', description: 'x', x: 300, y: 300 },
+    ]
+    const { getByRole, getByLabelText } = render(
+      <InteractiveMap
+        regions={beriRegions}
+        currentRegion="Las Llanuras del Viento Rojo"
+        llanurasNodes={nodos}
+        llanurasEdges={[]}
+        hasLlanurasMap
+        hasCristalHeladoMap={false}
+        expediciones={[
+          { id: 'a1', faccion: 'Bandidos', oficio: 'asalto', motivo: null, origenSlug: 'campamento-helsig', destinoSlug: 'hondonada-del-eco', destinoNombre: 'Hondonada del Eco', diaRegreso: 5, progreso: 0.25, delReino: false, hostil: true },
+        ]}
+        alcances={[{ asentamiento: 'Karot', slugs: ['hondonada-del-eco', 'campamento-helsig'] }]}
+      />,
+    )
+    expect(getByRole('button', { name: 'Asalto de Bandidos' })).toBeTruthy()
+    expect(getByLabelText('Alcance de la Torre de Karot').querySelectorAll('circle')).toHaveLength(2)
+  })
 })

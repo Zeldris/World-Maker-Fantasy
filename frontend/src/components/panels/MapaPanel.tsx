@@ -9,7 +9,7 @@ import {
   type CristalHeladoNode,
   type MapNodeOption,
 } from '../../data/map'
-import { getEnciclopedia, getExpedicionesMapa, getWorldLocations, type EnciclopediaConstructionRecipe, type ExpedicionEnMapa, type WorldLocationInfo } from '../../lib/api'
+import { getEnciclopedia, getExpedicionesMapa, getWorldLocations, type EnciclopediaConstructionRecipe, type ExpedicionEnMapa, type AlcanceTorre, type WorldLocationInfo } from '../../lib/api'
 import { formatMinutos } from '../../lib/gameViewHelpers'
 import { ESTACION_ICON, CLIMA_ICON } from '../../lib/entorno'
 import { ZonaPanel } from './ZonaPanel'
@@ -180,12 +180,16 @@ export function MapaPanel({ worldSlug, saveId, currentLocation, destinations, in
   const [mapaTab, setMapaTab] = useState<'zona' | 'mapa'>('zona')
   // CR-46: expediciones visibles, al abrir el mapa de Berig (best-effort: sin ellas el mapa sigue igual).
   const [expediciones, setExpediciones] = useState<ExpedicionEnMapa[]>([])
+  const [alcances, setAlcances] = useState<AlcanceTorre[]>([])
   useEffect(() => {
     if (mapaTab !== 'mapa' || !saveId) return
     let cancelado = false
     getExpedicionesMapa(saveId)
       .then((r) => {
-        if (!cancelado) setExpediciones(r.expediciones)
+        if (!cancelado) {
+          setExpediciones(r.expediciones)
+          setAlcances(r.alcances ?? [])
+        }
       })
       .catch(() => {})
     return () => {
@@ -329,6 +333,7 @@ export function MapaPanel({ worldSlug, saveId, currentLocation, destinations, in
               regionesConRumor={regionesConRumor}
               onLeerRumores={onLeerRumores}
               expediciones={expediciones}
+              alcances={alcances}
             />
             {!hasLlanurasMap && !hasCristalHeladoMap && (
               <p className="mt-2 text-xs italic text-wood-500">

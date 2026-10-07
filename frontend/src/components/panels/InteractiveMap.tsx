@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { ExpedicionEnMapa } from '../../lib/api'
+import type { AlcanceTorre, ExpedicionEnMapa } from '../../lib/api'
 import { posicionDeExpedicion } from '../../lib/leyendas'
 import { projectLlanurasNodes, type LlanurasEdge, type LlanurasNode, type CristalHeladoNode, type MapNodeOption, type MapRegion } from '../../data/map'
 import berigMapUrl from '../../assets/maps/helek-sirik-berig.png'
@@ -146,6 +146,8 @@ interface InteractiveMapProps {
   onLeerRumores?: (region: string) => void
   /// CR-46: expediciones que el personaje puede ver (las suyas, las aliadas y las de su región).
   expediciones?: ExpedicionEnMapa[]
+  /// CR-65 (Q9): lugares que vigila la Torre de cada asentamiento (como el alcance de un satélite de X4).
+  alcances?: AlcanceTorre[]
 }
 
 export function InteractiveMap({
@@ -164,6 +166,7 @@ export function InteractiveMap({
   regionesConRumor,
   onLeerRumores,
   expediciones = [],
+  alcances = [],
 }: InteractiveMapProps) {
   const [selectedName, setSelectedName] = useState(currentRegion)
   // Paleta de puntos (2026-08-04): qué nodo tiene su abanico de satélites desplegado ahora mismo,
@@ -542,6 +545,17 @@ export function InteractiveMap({
               )
             })}
 
+          {/* CR-65 (Q9): el alcance de las Torres de vigía, en cada lugar que vigilan. */}
+          {showLlanurasGraph &&
+            alcances.map((a) => (
+              <g key={a.asentamiento} aria-label={`Alcance de la Torre de ${a.asentamiento}`} pointerEvents="none">
+                {a.slugs.map((slug) => {
+                  const pos = nodePositions.get(slug)
+                  return pos ? <circle key={slug} cx={pos.x} cy={pos.y} r={4.6} fill="none" stroke="var(--color-quest-300)" strokeWidth={0.35} strokeDasharray="1 0.8" opacity={0.7} /> : null
+                })}
+              </g>
+            ))}
+
           {/* CR-46: expediciones en camino, entre su asentamiento y su destino. */}
           {showLlanurasGraph &&
             expediciones.map((e) => {
@@ -552,7 +566,7 @@ export function InteractiveMap({
                   key={e.id}
                   role="button"
                   tabIndex={0}
-                  aria-label={`Expedición de ${e.faccion}`}
+                  aria-label={e.hostil ? `Asalto de ${e.faccion}` : `Expedición de ${e.faccion}`}
                   className="cursor-pointer outline-none"
                   onClick={(ev) => {
                     ev.stopPropagation()
@@ -563,7 +577,7 @@ export function InteractiveMap({
                   }}
                 >
                   <title>{`${e.faccion}: ${pos.vuelve ? `vuelve de ${e.destinoNombre}` : `va a ${e.destinoNombre}`}`}</title>
-                  <circle cx={pos.x} cy={pos.y} r={2.2} fill={e.delReino ? 'var(--color-accent-600)' : 'var(--color-wood-900)'} stroke="var(--color-quest-300)" strokeWidth={0.45} />
+                  <circle cx={pos.x} cy={pos.y} r={2.2} fill={e.hostil ? '#7f1d1d' : e.delReino ? 'var(--color-accent-600)' : 'var(--color-wood-900)'} stroke="var(--color-quest-300)" strokeWidth={0.45} />
                   <text x={pos.x} y={pos.y} textAnchor="middle" dominantBaseline="central" style={{ fontSize: 2.4 }}>
                     ⚑
                   </text>
