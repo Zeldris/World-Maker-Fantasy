@@ -254,6 +254,29 @@ mecánica; reporte de combate autónomo).
 - **Q6 Qué queda:** suceso `ESCARAMUZA` con ganador, retirada y bajas de cada bando; la noticia; más
   presión si hay muertos; el campo de batalla como ahora.
 
+## Decisiones de `CR-61` y `CR-63` (ronda aceptada por la usuaria el 2026-10-07)
+
+- **La caza no es un oficio** (usuaria, como en Bellwright): son **partidas** que salen, pelean contra la
+  fauna y vuelven con **piezas** que trata el desollador; la misma partida puede salir a **capturar**.
+- **Todo viaja de verdad** ([ADR 0003](../adr/0003-todo-viaja-de-verdad.md)): las partidas son
+  **viajeros** con ruta real por los enlaces entre lugares (un lugar al día; la zona, celda a celda),
+  visibles en el mapa; si pasan por fauna agresiva o una banda, pelean allí (ADR 0002). La auditoría de
+  lo demás que hoy es invisible está en `CR-64`.
+- **Q2 Al cruzarte:** preguntar qué han visto (conocimiento de las zonas que atravesaron), comerciar;
+  a las tuyas, darles órdenes (volver, cambiar de destino). Atacar y escoltar, con `CR-64`.
+- **Q3 `CR-63`:** tus grupos de combate y súbditos con el rol nuevo «cazador» (soldados genéricos de su
+  pueblo con su arma), en grupos de 4; piezas por especie que se estropean a los 3 días; captura con
+  cuerdas y Jaula libre según `capturablePct`; órdenes de una vez o permanentes; las facciones cazan
+  igual.
+- **Q4 `CR-61`:** tareas de los súbditos trabajadores: recolector (2; primavera y verano 2,5; invierno 1),
+  pescador (3, solo con agua), cocinero (+5/+10/+15 netos según su Cocina), ganadero y fibrero.
+  Facciones, sin la caza: orcos 70 % recolección y 30 % cocina; Faerus 80/20; Nabieus 40 % pesca, 40 %
+  recolección, 20 % cocina; Goirntes 60/20/20. Hasta `CR-63`, la caza de orcos (45 %) y Faerus (50 %)
+  va en agregado a 2,5. Platos nuevos: Guiso de Múrgol y Pan de leche y miel (Obrador), Queso curado de
+  Múrgol y Asado de las Llanuras (Gran obrador). Fin de la comida pasiva para todos; los Goirnos por
+  trabajador se quedan.
+- **Q5 Orden:** `CR-61` y luego `CR-63`; se sube todo junto a `main`.
+
 ## Decisiones que bloquean algo
 
 | Bloquea | Pregunta |

@@ -1687,24 +1687,21 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   - Deuda que se cobra en patrullas obligadas (20 guerreros por semana, 25 % de `ESCARAMUZA` con 1d6
     bajas).
   - Se rompe saldando la deuda, si cae el señor, con una alianza con el Reino o en guerra. **M**
-- **CR-61** Comida por oficios (Q15 de la ronda de `CR-55`, usuaria 2026-10-06: los mismos sistemas
-  para el Reino y las facciones, sin comida pasiva).
-  - Escala única `curaHambre` (10 = 1 de comida); valor de todos los comestibles crudos.
-  - Platos con multiplicador por escalón de la receta (Taller ×1,5, Obrador ×2, Gran obrador ×2,5);
-    dos o tres recetas de Obrador y de Gran obrador (nombres a Álvaro).
-  - Cocineros de facción: cada uno transforma 10 de crudo al día con el multiplicador de su Cocina,
-    en vez del +3 fijo por edificio.
-  - Cazador y recolector con rendimientos reales; fin de los 2 de comida por trabajador. **L**
-- ~~**CR-62** Combate de fondo para escaramuzas y patrullas~~ ✅ 2026-10-07 ([ADR 0002](../adr/0002-dos-formas-de-combate.md),
-  Q6 de la ronda de `CR-56`; ronda propia aceptada el 2026-10-07, decisiones en
-  [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-cr-62-combate-de-fondo-ronda-aceptada-por-la-usuaria-el-2026-10-07)).
-  Hito `0.3`, Fase E, antes de `CR-37`. Pasos (todos hechos):
-  - ~~62a~~ ✅ 2026-10-07: motor puro `services/combateDeFondo.ts` (grupos de 8 o 4, emparejamiento con vuelta de los que sobran, sub-combates con iniciativa, objetivo por Inteligencia, capitán y ataques concentrados, `resolveExchange`, moral y retirada; muere el 3 % de los caídos, nunca un NPC con nombre).
-  - ~~62b~~ ✅ 2026-10-07: `cronista/combatientesFaccion.ts` (guerreros con nombre por nivel, el primero lidera; soldados genéricos con los atributos medios de su pueblo a nivel 3, +1 con arma) e intercepción de expediciones en el motor común (`simularCombateInterceptacion` delega en `simularCombateDeFondo`; sus muertes siguen con `tirarMuertes`).
-  - ~~62c~~ ✅ 2026-10-07: `cronista/escaramuzas.ts` (`pelearEscaramuza`: los combatientes de cada facción o renegados armados, combate de fondo, muertos restados de sus soldados; `resumenEscaramuza`). La escaramuza del narrador pelea 2d4 contra 2d4 antes de escribir el suceso (con muertos, más presión); la patrulla de vasallaje, 20 contra 1d6+2. El suceso `ESCARAMUZA` lleva `resultado` («Feg Ger se retira; caen 2 de Feg Ger») y su noticia lo cuenta.
-  - ~~62d~~ ✅ 2026-10-07: en la caza en grupo, los grupos 2, 3… de la jugadora (`combatGroupSlotIndex` > 0, hasta 4) entran en los sub-combates de fondo contra los grupos enemigos que no caben en el suyo, resueltos con el mismo motor del combate en vivo sin pausas (`resolverTurnosAutonomosHastaJugadora`); su resumen («Retaguardia se enfrenta a 4 más, lejos de la vista: caen 2; Ana queda herida») va a la narración. Antes esos grupos enemigos no tenían con quién pelear. De paso, un turno autónomo sin ataque ya no rompe.
-  - **Queda** (fuera de `CR-62`): el resumen narrado por IA del reporte de § 4 (hoy con plantilla); las bandas de renegados (`CR-49`) caben siempre en 4 y no se parten; el ataque al Reino con `CR-37`.
-  **M**
+- **CR-61** Comida por oficios (Q15 de la ronda de `CR-55`; ronda propia aceptada el 2026-10-07,
+  decisiones en [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-cr-61-y-cr-63-ronda-aceptada-por-la-usuaria-el-2026-10-07)).
+  🚧 Pasos:
+  - ~~61a~~ ✅ 2026-10-07: reglas puras (`cronista/comidaOficios.ts`): tareas, rendimientos por estación,
+    agua y Cocina, reparto por pueblo y caza en agregado hasta `CR-63`.
+  - 61b: el tick del Reino y el de las facciones reciben la comida producida (fin de los 2 por
+    trabajador y del +3 por Cocina).
+  - 61c: tarea de cada súbdito (`Subject.tarea`, migración) y selector en Reino › Súbditos.
+  - 61d: platos con su valor (escala `curaHambre`), recetas de Obrador y Gran obrador.
+  **L**
+- **CR-63** Partidas de caza y captura (ronda aceptada el 2026-10-07, decisiones en
+  [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-cr-61-y-cr-63-ronda-aceptada-por-la-usuaria-el-2026-10-07);
+  ADR 0003). Viajeros (base de `CR-64`), piezas y desollador, rol «cazador», captura, órdenes
+  permanentes, encuentros por el camino, preguntar y comerciar; las facciones cazan igual. Hito `0.3`,
+  justo después de `CR-61`. **L**
 - **CR-64** Todo viaja de verdad ([ADR 0003](../adr/0003-todo-viaja-de-verdad.md), usuaria 2026-10-07,
   como en X4): lo que se mueve es un **viajero** con ruta real de zona en zona, visible y con quien
   cruzarse e interactuar (preguntar por las regiones que ha atravesado, comerciar, escoltar, asaltar).
