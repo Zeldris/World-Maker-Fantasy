@@ -828,6 +828,30 @@ Del `/retro` de la Fase D del `0.2` (2026-10-05, aceptadas todas por la usuaria;
 - ~~**QA-12 · Intermitente de `ProduccionSection.test.tsx`**~~ ✅ 2026-10-05 (era un fallo real de `NumeroGuardable`: el efecto que copiaba `valor` al borrador corría también al montar y pisaba lo escrito antes de los efectos; ahora se ajusta en el render solo si `valor` cambia. Test de regresión determinista en `NumeroGuardable.test.tsx`; bucle de estrés 0/80 tras el arreglo, ~1/20 antes): diagnosticarlo con `diagnosing-bugs`
   (1 fallo en ~12 pasadas, 2026-10-05).
 
+Del `/retro` de la Fase D del `0.3` (2026-10-07, PR #28 y #29; aceptadas todas por la usuaria; van al
+`0.3`):
+
+- **QA-13 · Comprobación antes de subir:** hook `pre-push` en `.githooks/` con `tsc` de backend y
+  frontend y `oxlint`; el hook de inicio de sesión lo activa (`git config core.hooksPath .githooks`).
+  Motivo: el paso 61a de `CR-61` se subió con un error de `tsc` y la CI solo corre en el PR.
+- **QA-14 · Cobertura del roadmap en la CI:** un paso de la CI ejecuta `tools/roadmap/cobertura.py` y
+  falla con «SIN HITO» distinto de 0 o con un identificador sin definir que no esté en la lista de los
+  que ya había (hoy unos 20 `ZON-*`). Motivo: `CR-62` llegó tachada al mapa sin entrada en su roadmap.
+- **QA-15 · Variables de entorno en toda la sesión:** el hook de inicio escribe `DATABASE_URL`,
+  `DIRECT_URL` y `OLLAMA_BASE_URL` en `$CLAUDE_ENV_FILE`. Motivo: cada `vitest` necesitaba un `export`
+  a mano; sin él fallan 29 archivos.
+- **QA-16 · Guía de revisión:** `REVIEW.md` con lo que se repitió en las dos revisiones (10 hallazgos
+  cada una): procesos de fondo que pueden quedarse a medias, decimales de recursos que se pierden al
+  redondear y ticks de varios días con los datos del primero, entidades muertas o en combate que se
+  pueden mover, reglas del roadmap, y la regla del ADR 0003 (cada mecánica de viajeros dice cómo la
+  usan las facciones). Además, un test general de recetas: cada una con frases de ejemplo y cada frase
+  dispara solo la suya (hoy solo las de cocina).
+- **QA-17 · Bitácora corta y avisos que faltan:** la celda «Tarea en curso» de `traspaso.md` solo con
+  la tarea actual y el siguiente paso (hoy ~5 500 caracteres con restos del `0.2`) y una línea en
+  `CLAUDE.md` que la limite a 5 líneas; corregir el comentario de `Building.tier` en `schema.prisma`
+  (también es el escalón de los edificios de oficio); en la receta de migraciones del runbook, que
+  `prisma format` reformatea todo el esquema.
+
 ---
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
