@@ -95,8 +95,8 @@ export const AXE_REPAIR_RECIPE: CraftingRecipe = {
 const SMOKE_MEAT_RECIPE: CraftingRecipe = {
   key: 'smokeMeat',
   verbRegex: /ahum|crear|creo/,
-  // CR-61 (61d): sin pisar el Guiso de Múrgol ni el Asado de las Llanuras.
-  nounRegex: /^(?!.*(guiso|asado)).*carne/,
+  // Sin pisar el Guiso de Múrgol, el Asado de las Llanuras ni la carne de Jusha (QA-16).
+  nounRegex: /^(?!.*(guiso|asado|jusha)).*carne/,
   location: null,
   ingredients: [{ match: { kind: 'exact', catalogSlug: 'racion-carne' }, cantidad: 1, label: 'ración de carne fresca' }],
   resultName: 'Ración de carne ahumada',

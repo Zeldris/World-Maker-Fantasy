@@ -840,7 +840,7 @@ Del `/retro` de la Fase D del `0.3` (2026-10-07, PR #28 y #29; aceptadas todas p
 - ~~**QA-15 · Variables de entorno en toda la sesión**~~ ✅ 2026-10-07 (se nota desde la próxima sesión): el hook de inicio escribe `DATABASE_URL`,
   `DIRECT_URL` y `OLLAMA_BASE_URL` en `$CLAUDE_ENV_FILE`. Motivo: cada `vitest` necesitaba un `export`
   a mano; sin él fallan 29 archivos.
-- **QA-16 · Guía de revisión:** `REVIEW.md` con lo que se repitió en las dos revisiones (10 hallazgos
+- ~~**QA-16 · Guía de revisión**~~ ✅ 2026-10-07 (`REVIEW.md` con los puntos de las dos retros; test general en `crafting.test.ts`: frase de ejemplo por receta, y destapó que «Ahumo carne de jusha» también hacía `smokeMeat`, arreglado): `REVIEW.md` con lo que se repitió en las dos revisiones (10 hallazgos
   cada una): procesos de fondo que pueden quedarse a medias, decimales de recursos que se pierden al
   redondear y ticks de varios días con los datos del primero, entidades muertas o en combate que se
   pueden mover, reglas del roadmap, y la regla del ADR 0003 (cada mecánica de viajeros dice cómo la

@@ -796,18 +796,80 @@ describe('craftDurationSecondsFor (espera real, 2026-08-20)', () => {
   });
 });
 
-describe('CR-61 (61d): las recetas de cocina no se pisan', () => {
-  const casos: [string, string][] = [
-    ['Preparo un guiso de carne de múrgol', 'murgolStew'],
-    ['Ahumo la carne', 'smokeMeat'],
-    ['Horneo pan de trigo escarlata con leche y miel', 'milkHoneyBread'],
-    ['Horneo pan de trigo escarlata', 'scarletWheatBread'],
-    ['Preparo un panal de miel', 'sweetHoneycomb'],
-    ['Preparo un asado de las Llanuras con carne y boungo', 'plainsRoast'],
-    ['Aso unos boungo', 'boungoRoast'],
-    ['Curo un queso de múrgol', 'agedMurgolCheese'],
-  ];
-  it.each(casos)('«%s» solo hace %s', (accion, receta) => {
-    expect(CRAFTING_RECIPES.filter((r) => detectsCraftIntent(r, accion)).map((r) => r.key)).toEqual([receta]);
+// QA-16 (retros del 2026-10-07): cada receta tiene una frase de ejemplo y esa frase dispara solo su
+// receta (todas las que encajan se craftean en la misma acción y gastan sus ingredientes). Una receta
+// nueva tiene que añadir aquí la suya.
+const FRASES: Record<string, string> = {
+  axeRepair: 'Reforjo el hacha de guerra rota',
+  smokeMeat: 'Ahumo la carne',
+  gargantuaArmor: 'Voy a montar un peto con las placas de gargantúa',
+  antidote: 'Mezclo un contraveneno',
+  fieldTorch: 'Fabrico una antorcha',
+  ironIngot: 'Fundo un lingote de hierro',
+  magnetizedIronIngot: 'Fundo un lingote de hierro imantado',
+  compassNeedle: 'Tallo una aguja de cardo brújula',
+  sandPouch: 'Coso un saquito de arena imán',
+  odreAgua: 'Coso un odre',
+  recogerAgua: 'Lleno el odre de agua en el arroyo',
+  stoneBlock: 'Labro un bloque de piedra',
+  woodBeam: 'Escuadro una viga de madera',
+  boneColumn: 'Labro una columna de hueso',
+  braidedCordage: 'Trenzo un cordaje',
+  cuerdas: 'Voy a hacer unas cuerdas',
+  yerreoIngot: 'Fundo un lingote de yerreo',
+  kirelonClawsToIngot: 'Fundo las garras de kirelon',
+  hiyerroAlloy: 'Fundo un lingote de hiyerro',
+  quitinaPlates: 'Labro una pieza de quitina',
+  quitinaArmor: 'Voy a montar una armadura de quitina',
+  jushaSmokedMeat: 'Ahumo carne de jusha',
+  scarletWheatBread: 'Horneo pan de trigo escarlata',
+  sweetHoneycomb: 'Prenso un panal',
+  murgolCurd: 'Cuajo una cuajada',
+  murgolStew: 'Preparo un guiso de múrgol',
+  milkHoneyBread: 'Horneo pan de leche y miel',
+  agedMurgolCheese: 'Curo un queso',
+  plainsRoast: 'Preparo un asado de las Llanuras',
+  mossPoultice: 'Machaco una cataplasma de musgo',
+  salvaturaFilter: 'Preparo un filtro de salvatura',
+  quioClarityFilter: 'Destilo un filtro de claridad',
+  reedMat: 'Tejo una estera',
+  featherHeaddress: 'Voy a montar un tocado de plumas',
+  towrguClaws: 'Voy a montar unas zarpas',
+  jushaScalePlates: 'Coso unas placas de escama',
+  lebudeCandle: 'Moldeo una vela',
+  ferikeCape: 'Coso una capa de ferike',
+  firstAidBandage: 'Preparo un vendaje',
+  redSpikeInfusion: 'Hiervo una infusión de espiga',
+  basicPoultice: 'Machaco una cataplasma básica',
+  completePoultice: 'Machaco una cataplasma completa',
+  club: 'Tallo un garrote',
+  gargantuaLegArmor: 'Curto un faldar',
+  boungoRoast: 'Tuesto unos boungo',
+  boiledLichenWater: 'Hiervo el liquen',
+  coraceloMace: 'Forjo una maza',
+  corredorVertebraRing: 'Tallo un anillo de vértebra',
+  gargantuaCape: 'Curto una capa de gargantúa',
+  corredorHood: 'Curto una capucha',
+  trophyBelt: 'Confecciono un cinturón de trofeos',
+  handAxe: 'Forjo un hacha de mano',
+  tannedBackpack: 'Curto una mochila',
+  canaPesca: 'Tallo una caña de pescar',
+  ceboPesca: 'Preparo cebo',
+  spinePoultice: 'Diluyo un ungüento de espina',
+  cornisaCloak: 'Coso un manto de cornisa',
+};
+
+describe('QA-16: ninguna receta pisa a otra', () => {
+  const conTexto = CRAFTING_RECIPES.filter((r) => r.verbRegex.source !== '(?!)');
+  it('cada receta que se pide con texto tiene su frase de ejemplo', () => {
+    expect(conTexto.map((r) => r.key).filter((k) => !FRASES[k])).toEqual([]);
+  });
+  it.each(conTexto.map((r) => [r.key, FRASES[r.key] ?? ''] as const))('%s: «%s» solo hace esa receta', (receta, frase) => {
+    expect(CRAFTING_RECIPES.filter((r) => detectsCraftIntent(r, frase)).map((r) => r.key)).toEqual([receta]);
+  });
+  it('los platos nuevos no disparan los de siempre (CR-61)', () => {
+    expect(CRAFTING_RECIPES.filter((r) => detectsCraftIntent(r, 'Preparo un guiso de carne de múrgol')).map((r) => r.key)).toEqual(['murgolStew']);
+    expect(CRAFTING_RECIPES.filter((r) => detectsCraftIntent(r, 'Horneo pan de trigo escarlata con leche y miel')).map((r) => r.key)).toEqual(['milkHoneyBread']);
+    expect(CRAFTING_RECIPES.filter((r) => detectsCraftIntent(r, 'Preparo un asado de las Llanuras con carne y boungo')).map((r) => r.key)).toEqual(['plainsRoast']);
   });
 });

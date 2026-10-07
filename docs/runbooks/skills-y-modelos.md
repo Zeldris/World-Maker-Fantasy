@@ -26,7 +26,7 @@ Skill (no basta con nombrarla); `/grill-with-docs` solo lo lanza la usuaria, con
 4. **Si algo falla** (test rojo, intermitente, bug): `diagnosing-bugs` antes de tocar el código.
 5. **Cerrar la tarea:** tachada en su roadmap y en el mapa, bitácora al día, commit + push.
 6. **Antes de un PR a `main`** (solo cuando lo pide la usuaria): `/code-review --max-findings all`
-   del diff contra `main` (sin el tope de 10 hallazgos, `QA-18`), arreglar lo que encuentre y escribir
+   del diff contra `main` (sin el tope de 10 hallazgos, `QA-18`; criterio en [`REVIEW.md`](../../REVIEW.md)), arreglar lo que encuentre y escribir
    la descripción con `pr`.
 7. **Al cerrar una fase o un hito:** `retro`, que lanza Claude sobre toda la fase; sus propuestas
    se presentan a la usuaria, que las revisa y confirma (nada se aplica antes). Cada pocas fases,
