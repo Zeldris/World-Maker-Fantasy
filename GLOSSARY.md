@@ -189,6 +189,9 @@ El combate en que está la jugadora con su grupo: por turnos y narrado.
 
 **Combate de fondo**:
 Cualquier combate sin la jugadora: las mismas reglas por turnos, resuelto al instante, determinista y sin narración.
+
+**Sub-combate**:
+Cada enfrentamiento de grupo contra grupo en que se parte un combate grande; con la jugadora, el suyo es en vivo y los demás de fondo.
 _Evitar_: combate en agregado, resolución por cifras
 
 **Moral**:

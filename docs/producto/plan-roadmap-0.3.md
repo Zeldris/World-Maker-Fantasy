@@ -228,6 +228,32 @@ trabajador produce) y Bellwright (corral con su comida y su tope).
 - **Q6 Tarea nueva `CR-62`:** la escaramuza del narrador y la patrulla de vasallaje pasan al combate de
   fondo, antes de `CR-37`.
 
+## Decisiones de `CR-62` combate de fondo (ronda aceptada por la usuaria el 2026-10-07)
+
+Base: [ADR 0002](../adr/0002-dos-formas-de-combate.md) y el canon de
+`docs/rpgtarkor/sistemas-combate/combate-multiple.md` § 3-4 (sub-combates deterministas con la misma
+mecánica; reporte de combate autónomo).
+
+- **Q1 Motor de fondo:** cada bando en grupos; grupo 1 contra grupo 1, grupo 2 contra grupo 2…; si un
+  bando tiene menos grupos, los suyos vuelven a pelear (con sus heridas) contra los siguientes. Cada
+  sub-combate con las piezas del combate en vivo: iniciativa, objetivo por Inteligencia, capitán y
+  ataques concentrados, intercambio, moral y retirada. Puro y determinista con su semilla; la
+  intercepción de expediciones pasa a este motor.
+- **Tamaño de los sub-combates** (criterio de Claude, delegado por la usuaria): sin la jugadora, **8
+  contra 8** (sin narración no hay espera y la melé es más realista); con ella, **4 contra 4** (sus
+  grupos de combate y la narración). Dos constantes; `CMB-9` (`0.8`) subirá el 4 a 6-8 cuando se
+  pulan los tiempos de narración (la usuaria: el 4 nace de esos tiempos).
+- **Q2 Los otros grupos de la jugadora:** si pelea contra más de los que caben, su Grupo 1 juega en
+  vivo y sus grupos 2, 3… luchan de fondo contra el resto; al acabar, un resumen de cada sub-combate
+  de fondo (reporte de § 4, con plantilla). Último paso de `CR-62`.
+- **Q3 Quién pelea por una facción:** sus NPC guerreros con nombre (no mueren en una pelea de fondo) y,
+  hasta completar, soldados genéricos de su pueblo (atributos base de la raza, nivel 3, con su arma).
+- **Q4 Tamaño:** escaramuza del narrador, 2d4 por bando; patrulla Serhu, 20 guerreros contra 1d6+2
+  rivales (otra facción de su región o renegados).
+- **Q5 Bajas:** muere el 3 % de los que caen (regla de Álvaro); los heridos se recuperan.
+- **Q6 Qué queda:** suceso `ESCARAMUZA` con ganador, retirada y bajas de cada bando; la noticia; más
+  presión si hay muertos; el campo de batalla como ahora.
+
 ## Decisiones que bloquean algo
 
 | Bloquea | Pregunta |

@@ -1696,10 +1696,18 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     en vez del +3 fijo por edificio.
   - Cazador y recolector con rendimientos reales; fin de los 2 de comida por trabajador. **L**
 - **CR-62** Combate de fondo para escaramuzas y patrullas ([ADR 0002](../adr/0002-dos-formas-de-combate.md),
-  Q6 de la ronda de `CR-56`, 2026-10-06): la escaramuza del narrador de fondo y la patrulla de vasallaje
-  dejan las cifras («1d6 bajas») y se pelean con el motor de combate de fondo, con combatientes reales
-  de cada bando sacados de sus soldados (y sus bestias de guardia). Hito `0.3`, Fase E, antes de
-  `CR-37`. **M**
+  Q6 de la ronda de `CR-56`; ronda propia aceptada el 2026-10-07, decisiones en
+  [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-cr-62-combate-de-fondo-ronda-aceptada-por-la-usuaria-el-2026-10-07)).
+  Hito `0.3`, Fase E, antes de `CR-37`. 🚧 Pasos:
+  - 62a: motor de combate de fondo puro (`combateDeFondo.ts`): grupos, emparejamiento, sub-combates
+    con las piezas del combate en vivo, moral y retirada, bajas.
+  - 62b: combatientes de una facción (NPC con nombre y soldados genéricos) y la intercepción de
+    expediciones en el motor nuevo.
+  - 62c: la escaramuza del narrador y la patrulla de vasallaje pelean de verdad (suceso y noticia con
+    bajas).
+  - 62d: los grupos 2, 3… de la jugadora luchan de fondo mientras su Grupo 1 juega en vivo, con su
+    resumen.
+  **M**
 - **CR-60** Ingresos pasivos del Reino y de las facciones (usuaria, 2026-10-06): fuentes de
   Goirnos que no dependan de los trabajadores (hoy solo el comercio y las expediciones). Necesita
   una ronda de diseño. Hito `0.4`. **M**
