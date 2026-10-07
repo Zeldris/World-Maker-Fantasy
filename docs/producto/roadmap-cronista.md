@@ -1508,8 +1508,14 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
       el nivel de su semilla (`nivel`, 3 provisional) y su pueblo; el radar los llama por su grupo.
       Cifras provisionales. Quedan: las expediciones de facción (su interceptación necesita una
       facción hostil; va con 50c) y respetar «sin asaltos» cuando exista `CR-67`.
-    - 50c: atacarlos: en vivo (cabecilla y banda en su lugar) y partida «Asalto»; disolución, botín
-      y recompensa; patrullas de facción contra ellos.
+    - ~~50c~~ ✅ 2026-10-07: `services/ataquesCampamento.ts`: `disolverCampamento` (cofre de 50 +
+      lo saqueado al Reino, +60 de reputación con las dueñas de la región, suceso nuevo
+      `CAMPAMENTO_DESTRUIDO`; cifras provisionales), `bajasDeCampamentoEnVivo` (en el cierre del combate
+      de varios de `turnResolution`), partida `ATAQUE` del Reino (`lanzarAtaqueACampamento`, solo a
+      campamentos conocidos; pelea de fondo contra la banda y su cabecilla al llegar) y
+      `patrullasContraCampamentos` (cada semana, 8 soldados de una facción dueña de la región).
+      Los asaltos de bandidos ya no cuentan como del Reino (`esDelReino`, `TIPOS_SIN_DUENO`): fuera
+      de Reino › Partidas, de «De paso por aquí» y de los avisos.
     - 50d: visibilidad en el mapa y en Reino › Partidas.
   - **CR-51** Comercio en persona con NPC: mercaderes y caravanas de fondo (usuaria, 2026-10-06; sale
     del resto de `CR-47` 47e). **L** Hoy el personaje no comercia con ningún NPC (solo el Mercado del

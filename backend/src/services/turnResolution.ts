@@ -1,4 +1,5 @@
 import { registrarFinDeMision, registrarSucesoDeNpc } from './cronista/emisores.js';
+import { bajasDeCampamentoEnVivo } from './ataquesCampamento.js';
 import { cupoDeCamas } from './cronista/subditos.js';
 import { env } from '../config/env.js';
 import { applyLootMode, applyCombatExchangeToNpcState, applyKillSideEffects, applyHarvest, applyFactionRepDeltaForResolution, goirnosDeBotin, pickFlavor, LOOT_FLAVOR_SUCCESS, LOOT_FLAVOR_EMPTY, HARVEST_FLAVOR_YA_DESPIEZADA } from './turnLootKill.js';
@@ -5319,6 +5320,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
             update: { groupSize: participantesDeEsteNpc.length, groupDefeated: caidosCount, corpsesLooted: 0, saqueado: false, lootedItemNames: [] },
           });
           combatEncounterLootSummary.push({ npcId, slug: npcRow.slug, name: npcRow.name, cantidad: caidosCount, ...(npcRow.raza ? { esPersona: true } : {}) });
+          // CR-50 (Q5): si era la banda de un campamento de bandidos, pierde a los caídos (y cae si
+          // cae el cabecilla, el último).
+          if (npcRow.raza && currentLocationId) await bajasDeCampamentoEnVivo(tx, saveId, currentLocationId, npcRow.slug, caidosCount, Math.floor(nuevoFictionalMinutes / 1440), characterName);
         } else {
           const state = await tx.npcState.findUnique({ where: { saveId_npcId_scope: { saveId, npcId, scope } } });
           if (state?.condicionFisica === 'CONVALECIENTE' || state?.condicionFisica === 'MUERTO') {

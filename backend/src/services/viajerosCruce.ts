@@ -6,7 +6,7 @@
 // - Comerciar: una partida de caza vende la carne de sus piezas, ya desollada, al precio del catálogo.
 // - Órdenes: con las tuyas, las de siempre (`partidasReino.ordenarPartida`).
 import type { Prisma } from '@prisma/client';
-import { enlacesDelMundo, JORNADA_MINUTOS, minutosTramo, rutaMasCorta, type EntradaDiario, type Enlace } from './viajeros.js';
+import { enlacesDelMundo, esDelReino, JORNADA_MINUTOS, TIPOS_SIN_DUENO, minutosTramo, rutaMasCorta, type EntradaDiario, type Enlace } from './viajeros.js';
 import type { ExpedicionEnMapa } from './expedicionesMapa.js';
 import { conocer } from './cronista/difusion.js';
 import { GRID_COLS, GRID_ROWS, pixelDeCelda } from './zonaPosicion.js';
@@ -43,7 +43,7 @@ export async function viajerosEnMapa(tx: Tx, saveId: string, ctx: { dia: number;
   const siguientes = await tx.location.findMany({ where: { id: { in: viajeros.map((v) => v.ruta[0]).filter((x): x is string => !!x) } }, select: { id: true, slug: true } });
   const out: ExpedicionEnMapa[] = [];
   for (const v of viajeros) {
-    const delReino = !v.factionId;
+    const delReino = esDelReino(v);
     const hostil = !!ctx.vistos?.has(v.id);
     if (!delReino && !hostil && !(v.factionId && ctx.aliadas.has(v.factionId)) && v.ubicacion.region !== ctx.regionActual) continue;
     const siguiente = siguientes.find((s) => s.id === v.ruta[0]);
@@ -71,7 +71,8 @@ export async function viajerosAqui(tx: Tx, saveId: string) {
   const save = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { currentLocationId: true, worldId: true } });
   if (!save.currentLocationId) return [];
   const filas = await tx.viajero.findMany({
-    where: { saveId, estado: { not: 'TERMINADO' }, ubicacionLocationId: save.currentLocationId },
+    // Los asaltos de bandidos no se paran a hablar: se ven en el mapa y en el radar.
+    where: { saveId, estado: { not: 'TERMINADO' }, tipo: { notIn: TIPOS_SIN_DUENO }, ubicacionLocationId: save.currentLocationId },
     include: { faction: { select: { name: true } }, miembros: true },
     orderBy: { createdAt: 'asc' },
   });
@@ -93,7 +94,7 @@ export async function viajerosAqui(tx: Tx, saveId: string) {
 
 async function viajeroAqui(tx: Tx, saveId: string, id: string) {
   const save = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { currentLocationId: true, worldId: true, goirnos: true } });
-  const v = await tx.viajero.findFirst({ where: { id, saveId, estado: { not: 'TERMINADO' }, ubicacionLocationId: save.currentLocationId ?? '' }, include: { faction: { select: { name: true } } } });
+  const v = await tx.viajero.findFirst({ where: { id, saveId, estado: { not: 'TERMINADO' }, tipo: { notIn: TIPOS_SIN_DUENO }, ubicacionLocationId: save.currentLocationId ?? '' }, include: { faction: { select: { name: true } } } });
   return v ? { v, save } : null;
 }
 

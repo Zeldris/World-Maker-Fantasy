@@ -144,8 +144,14 @@ export interface OrdenViajero {
 }
 
 /// Aviso en el Reino (solo para los viajeros de la jugadora).
-export async function avisoDeViajero(tx: Tx, v: { saveId: string; factionId: string | null }, text: string): Promise<void> {
-  if (v.factionId) return;
+/// CR-50: viajeros sin dueño (los asaltos de bandidos): no son del Reino aunque no tengan facción.
+export const TIPOS_SIN_DUENO = ['ASALTO'];
+export function esDelReino(v: { factionId: string | null; tipo?: string }): boolean {
+  return !v.factionId && !TIPOS_SIN_DUENO.includes(v.tipo ?? '');
+}
+
+export async function avisoDeViajero(tx: Tx, v: { saveId: string; factionId: string | null; tipo?: string }, text: string): Promise<void> {
+  if (!esDelReino(v)) return;
   const ws = await tx.worldState.findUnique({ where: { saveId: v.saveId }, select: { fictionalDateLabel: true, fictionalMinutes: true } });
   await tx.logEntry.create({ data: { saveId: v.saveId, channel: 'KINGDOM', isSystemMessage: true, text, timeLabel: ws?.fictionalDateLabel ?? '', fictionalMinutes: ws?.fictionalMinutes ?? undefined } });
 }
