@@ -42,4 +42,14 @@ if [ "$(psql "$DB_URL" -tAc 'select count(*) from "World"')" = "0" ]; then
   npm run reindex-lore >/dev/null
   npm run seed-catalog >/dev/null
 fi
+# QA-15: las variables para toda la sesión (si no, cada vitest necesita su export).
+if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
+  {
+    echo "export DATABASE_URL=$DB_URL"
+    echo "export DIRECT_URL=$DB_URL"
+    echo "export OLLAMA_BASE_URL=http://localhost:11434"
+  } >> "$CLAUDE_ENV_FILE"
+fi
+# QA-13: el hook de antes de subir (tsc, oxlint y cobertura del roadmap).
+git -C "${CLAUDE_PROJECT_DIR:-$(cd .. && pwd)}" config core.hooksPath .githooks
 echo "Entorno listo: Postgres $(pg_isready -h localhost | cut -d' ' -f3-), Ollama simulado en 11434."
