@@ -2,6 +2,7 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { asentamientosDelReino, asignarGuarnicion, comprarEquiposMilicia, convocarMilicia, radarDelReino } from '../../services/defensaReino.js';
+import { repararEmpalizada } from '../../services/asaltos.js';
 import { lockRowForUpdate, rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 
 const selectSave = { id: true, endedAt: true, pendingDeathResolution: true, worldState: { select: { fictionalMinutes: true } } } as const;
@@ -61,5 +62,19 @@ export async function defensaRoutes(app: FastifyInstance) {
     });
     if (armados === 0) return reply.status(400).send({ error: 'No hay equipos libres en la Armería o trabajadores que armar.' });
     return { ok: true, armados };
+  });
+
+  /// Q4: repara una Empalizada caída.
+  app.post<{ Params: { id: string; buildingId: string } }>('/saves/:id/defensa/empalizada/:buildingId/reparar', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: selectSave });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (rejectIfEnded(save, reply)) return;
+    if (rejectIfPendingDeath(save, reply)) return;
+    const r = await prisma.$transaction(async (tx) => {
+      await lockRowForUpdate(tx, 'Save', save.id, ['id']);
+      return repararEmpalizada(tx, save.id, request.params.buildingId);
+    });
+    if (!r.ok) return reply.status(400).send({ error: r.motivo });
+    return { ok: true };
   });
 }

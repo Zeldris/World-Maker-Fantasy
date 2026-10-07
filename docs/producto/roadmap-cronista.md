@@ -1855,8 +1855,14 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     milicia se arma sola; sin asaltos a la vista, vuelve al trabajo), `convocarMilicia` (tantos
     trabajadores adultos como equipos de la Armería; no producen: fuera de `trabajadores` y de las
     tareas) y `POST /saves/:id/defensa/:asentamientoId/milicia`; el GET de defensa trae `avistados`.
-  - 65d: resolver un asalto de fondo (guarnición + milicia + cobertura con `CR-62`; saqueo y
-    aguante); en `CR-65` solo lo lanzan los tests, los asaltos de verdad llegan con `CR-50`/`CR-37`.
+  - ~~65d~~ ✅ 2026-10-07: `services/asaltos.ts`: `resolverAsaltoDeFondo` (guarnición, vigías con +2,
+    milicia a −2 de nivel, cobertura y moral del Barracón: `bonoDefensa`/`bonoAtaque`/`bonoMoral` en
+    el combate de fondo y bono en `tirarMoral`); si se pierde, saqueo (`botinDe`: 10 de comida, 5
+    Goirnos y 2 objetos por asaltante en pie, nunca más del 25 %; **cifras provisionales** para la
+    fase de pruebas) y golpe a la Empalizada; los súbditos muertos, de verdad (`morir`, causa
+    «asalto»). `TRABAJOS.ASALTO` lo resuelve al llegar el viajero; `repararEmpalizada` (mitad del
+    coste en materiales) y su ruta. Queda para `CR-50`/`CR-37`: lanzar los asaltos, defender en vivo
+    si el personaje está allí y que peleen los guardias de fauna (`CR-56`).
   - 65e: facciones con Empalizada inicial y mejora al ser asaltadas.
   - 65f: Reino › Defensa, alerta y radio en el mapa de Berig. **M**
 - **CR-66** Postura de compañero en combate (Fase E, Q6): agresiva, defensiva, capturadora (golpe no

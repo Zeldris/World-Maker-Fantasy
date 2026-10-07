@@ -16,6 +16,7 @@ import './partidasCaptura.js';
 import './viajerosEncuentros.js';
 import { lanzarPartidasDeFacciones } from './partidasFacciones.js';
 import { vigilarDelReino } from './defensaReino.js';
+import './asaltos.js';
 import { difundir } from './cronista/difusion.js';
 import type { PrismaClient } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
