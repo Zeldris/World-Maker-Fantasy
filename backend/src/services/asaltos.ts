@@ -20,6 +20,8 @@ import { morir } from './cronista/salidas.js';
 import { esAdultoSubdito, recalcularPoblacion, rolDeSubdito } from './cronista/subditos.js';
 import { NIVEL_SOLDADO_GENERICO } from './cronista/combatientesFaccion.js';
 import { asentamientosDelReino, licenciarMilicia } from './defensaReino.js';
+import { volverAlCampamento } from './campamentos.js';
+import { ocupanteDe } from './cronista/campamentosBandidos.js';
 import { ownerKeyFor } from './reinoOwner.js';
 import { avisoDeViajero, TRABAJOS, type ViajeroFila } from './viajeros.js';
 import { CONSTRUCTION_RECIPES } from './construction.js';
@@ -84,10 +86,14 @@ export async function resolverAsaltoDeFondo(tx: Tx, saveId: string, v: ViajeroFi
   }
 
   // Quien asalta: los genéricos de la partida, del pueblo de su facción.
-  const raza = v.factionId ? (await tx.faction.findUnique({ where: { id: v.factionId }, select: { raza: true } }))?.raza ?? null : null;
+  // CR-50: los de un campamento, del pueblo y nivel de sus ocupantes.
+  const campamentoId = (v.carga as { campamentoId?: string } | null)?.campamentoId;
+  const campamento = campamentoId ? await tx.campamento.findUnique({ where: { id: campamentoId }, select: { ocupante: true } }) : null;
+  const ocupante = campamento ? ocupanteDe(campamento.ocupante) : undefined;
+  const raza = v.factionId ? (await tx.faction.findUnique({ where: { id: v.factionId }, select: { raza: true } }))?.raza ?? null : ocupante?.pueblo ?? null;
   const baseAsalto = await baseDePueblo(tx, worldId, raza);
   const asaltantes: { miembroId: string; c: CombatienteFondo }[] = [];
-  for (const m of v.miembros) for (let i = 0; i < m.genericos; i++) asaltantes.push({ miembroId: m.id, c: soldadoGenerico(`${m.id}-${i}`, 'Asaltante', 'B', baseAsalto, true) });
+  for (const m of v.miembros) for (let i = 0; i < m.genericos; i++) asaltantes.push({ miembroId: m.id, c: soldadoGenerico(`${m.id}-${i}`, 'Asaltante', 'B', baseAsalto, true, ocupante?.nivel ?? NIVEL_SOLDADO_GENERICO) });
 
   const r = simularCombateDeFondo([...defensores, ...asaltantes.map((a) => a.c)], random);
   const estado = new Map(r.estados.map((e) => [e.id, e]));
@@ -131,7 +137,7 @@ export async function resolverAsaltoDeFondo(tx: Tx, saveId: string, v: ViajeroFi
   if (caidosReino.length > 0) await recalcularPoblacion(tx, saveId, ahora);
   await licenciarMilicia(tx, saveId, ahora);
 
-  const quien = v.factionId ? `La partida de ${(await tx.faction.findUnique({ where: { id: v.factionId }, select: { name: true } }))?.name ?? 'otra facción'}` : 'Los bandidos';
+  const quien = v.factionId ? `La partida de ${(await tx.faction.findUnique({ where: { id: v.factionId }, select: { name: true } }))?.name ?? 'otra facción'}` : `Los ${(ocupante?.grupo ?? 'bandidos').toLowerCase()}`;
   const bajas = caidosReino.length > 0 ? ` Caen ${caidosReino.join(', ')}.` : '';
   const texto = defendido
     ? `${asentamiento.nombre} aguanta el asalto: ${quien.toLowerCase()} se retira${caidosAsaltantes > 0 ? ` dejando ${caidosAsaltantes} muertos` : ''}.${bajas}`
@@ -147,6 +153,8 @@ TRABAJOS.ASALTO = {
     const asentamiento = (await asentamientosDelReino(tx, v.saveId)).find((a) => a.locationId === v.destinoLocationId);
     if (asentamiento) await resolverAsaltoDeFondo(tx, v.saveId, v, asentamiento.id, dia, random);
   },
+  // CR-50: los que quedan vuelven a su campamento con lo que traen.
+  alVolver: async (tx, v) => volverAlCampamento(tx, v),
 };
 
 /// Q4: repara una Empalizada caída por la mitad de su coste (en materiales del Almacén).

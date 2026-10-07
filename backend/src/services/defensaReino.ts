@@ -11,6 +11,7 @@ import { esAdultoSubdito, rolDeSubdito } from './cronista/subditos.js';
 import type { PrismaClient } from '@prisma/client';
 import { ownerKeyFor } from './reinoOwner.js';
 import { recalcularPoblacion } from './cronista/subditos.js';
+import { ocupanteDe } from './cronista/campamentosBandidos.js';
 import { avisoDeViajero, enlacesDelMundo, lugaresATramos } from './viajeros.js';
 
 type Tx = Prisma.TransactionClient;
@@ -130,7 +131,7 @@ export async function radarDelReino(tx: Tx, saveId: string): Promise<Avistamient
   if (asentamientos.length === 0) return [];
   const hostiles = await tx.viajero.findMany({
     where: { saveId, tipo: TIPO_ASALTO, estado: { not: 'TERMINADO' } },
-    select: { id: true, ubicacionLocationId: true, faction: { select: { name: true } }, miembros: { select: { genericos: true, companionId: true, subjectId: true } } },
+    select: { id: true, ubicacionLocationId: true, carga: true, faction: { select: { name: true } }, miembros: { select: { genericos: true, companionId: true, subjectId: true } } },
     orderBy: { createdAt: 'asc' },
   });
   if (hostiles.length === 0) return [];
@@ -143,7 +144,7 @@ export async function radarDelReino(tx: Tx, saveId: string): Promise<Avistamient
       const tramos = alcance.get(h.ubicacionLocationId);
       if (tramos === undefined) continue;
       const gente = h.miembros.reduce((s, m) => s + m.genericos + (m.companionId || m.subjectId ? 1 : 0), 0);
-      out.push({ asentamientoId: a.id, asentamiento: a.nombre, viajeroId: h.id, quien: h.faction?.name ?? 'Bandidos', gente, tramos });
+      out.push({ asentamientoId: a.id, asentamiento: a.nombre, viajeroId: h.id, quien: h.faction?.name ?? (await grupoDeAsalto(tx, h.carga)), gente, tramos });
     }
   }
   return out;
@@ -210,4 +211,11 @@ export async function alcancesDeTorres(tx: Tx, saveId: string): Promise<{ asenta
     out.push({ asentamiento: a.nombre, slugs: lugares.map((l) => l.slug.replace(/-interior$/, '')) });
   }
   return out;
+}
+
+/// CR-50: el nombre del grupo de un asalto de bandidos (el de los ocupantes de su campamento).
+async function grupoDeAsalto(tx: Tx, carga: Prisma.JsonValue): Promise<string> {
+  const id = (carga as { campamentoId?: string } | null)?.campamentoId;
+  const c = id ? await tx.campamento.findUnique({ where: { id }, select: { ocupante: true } }) : null;
+  return (c && ocupanteDe(c.ocupante)?.grupo) || 'Bandidos';
 }

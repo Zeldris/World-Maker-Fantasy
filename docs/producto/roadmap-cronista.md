@@ -1500,7 +1500,14 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
       región con ocupantes, en un lugar con camino sin asentamiento; a los 20 días de caer, en otro
       sitio), con su punto NPC de banda en el mapa de zona (cantidad = gente + cabecilla). Hoy hay
       campamentos en Llanuras, Meseta y Margen; Cristal Helado y la Ciénaga esperan a sus razas.
-    - 50b: asaltos a viajeros cercanos y al Reino (viajero `ASALTO`).
+    - ~~50b~~ ✅ 2026-10-07: `campamentos.ts`: `asaltoAlViajero` (en `GANCHOS.alCruzar`: a 2 tramos de
+      un campamento, 30 % por lugar; si ganan, se llevan las piezas y el campamento crece),
+      `asaltoACaravana` (en `avanzarComercio`), `lanzarAsaltosAlReino` (avance diario: los de la
+      región de la Capital, con 200 Goirnos o más en el Reino, cada 7 días, la mitad de su gente como
+      viajero `ASALTO`) y `volverAlCampamento` (`TRABAJOS.ASALTO.alVolver`). Los bandidos pelean con
+      el nivel de su semilla (`nivel`, 3 provisional) y su pueblo; el radar los llama por su grupo.
+      Cifras provisionales. Quedan: las expediciones de facción (su interceptación necesita una
+      facción hostil; va con 50c) y respetar «sin asaltos» cuando exista `CR-67`.
     - 50c: atacarlos: en vivo (cabecilla y banda en su lugar) y partida «Asalto»; disolución, botín
       y recompensa; patrullas de facción contra ellos.
     - 50d: visibilidad en el mapa y en Reino › Partidas.

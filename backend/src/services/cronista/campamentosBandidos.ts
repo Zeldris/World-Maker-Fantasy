@@ -22,12 +22,15 @@ export interface OcupanteCampamento {
   cabecilla: string;
   /// Peso en el sorteo entre los ocupantes de una región.
   peso: number;
+  /// Nivel de sus bandidos (el cabecilla, +2). Las plantillas de 49c son de nivel 1 (eran de prueba);
+  /// 3, como un soldado genérico, provisional.
+  nivel: number;
 }
 
 export const OCUPANTES_CAMPAMENTO: OcupanteCampamento[] = [
-  { slug: 'renegados-goirntes', npcSlug: 'goirnte-renegado', pueblo: 'goirntes', regiones: ['Las Llanuras del Viento Rojo', 'La Meseta del Orden'], grupo: 'Renegados goirntes', cabecilla: 'Cabecilla de los renegados', peso: 1 },
-  { slug: 'faerus-erraticos', npcSlug: 'faerus-erratico', pueblo: 'faerus', regiones: ['Las Llanuras del Viento Rojo'], grupo: 'Faerus erráticos', cabecilla: 'Cabecilla errático', peso: 1 },
-  { slug: 'nabieus-enloquecidos', npcSlug: 'nabieus-enloquecido', pueblo: 'nabieus', regiones: ['El Margen Silencioso', 'Las Llanuras del Viento Rojo'], grupo: 'Nabieus enloquecidos', cabecilla: 'Cabecilla enloquecido', peso: 1 },
+  { slug: 'renegados-goirntes', npcSlug: 'goirnte-renegado', pueblo: 'goirntes', regiones: ['Las Llanuras del Viento Rojo', 'La Meseta del Orden'], grupo: 'Renegados goirntes', cabecilla: 'Cabecilla de los renegados', peso: 1, nivel: 3 },
+  { slug: 'faerus-erraticos', npcSlug: 'faerus-erratico', pueblo: 'faerus', regiones: ['Las Llanuras del Viento Rojo'], grupo: 'Faerus erráticos', cabecilla: 'Cabecilla errático', peso: 1, nivel: 3 },
+  { slug: 'nabieus-enloquecidos', npcSlug: 'nabieus-enloquecido', pueblo: 'nabieus', regiones: ['El Margen Silencioso', 'Las Llanuras del Viento Rojo'], grupo: 'Nabieus enloquecidos', cabecilla: 'Cabecilla enloquecido', peso: 1, nivel: 3 },
 ];
 
 /// Q2: el primer campamento de cada región aparece este día; uno destruido se rehace a los 20.
