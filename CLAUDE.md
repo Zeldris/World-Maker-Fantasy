@@ -16,6 +16,11 @@ perder nada y sin preguntar por dónde iba**. Todo lo de este archivo existe par
    de skills de una tarea (diseño, prototipo, bugs, PR, retro) de
    [`docs/runbooks/skills-y-modelos.md`](docs/runbooks/skills-y-modelos.md#cómo-se-usa-el-flujo-de-una-tarea).
 
+**Diseño (usuaria, 2026-10-07):** toda ronda de diseño, también las de detalle, se contrasta con
+X4: Foundations, D&D 5e, Baldur's Gate 3, Medieval Dynasty, Bellwright y Manor Lords, citando de cuál
+sale cada propuesta; **X4 marca el camino** siempre que se pueda
+([runbook](docs/runbooks/skills-y-modelos.md#cómo-se-usa-el-flujo-de-una-tarea)).
+
 Otras reglas que siguen vigentes: [`AGENTS.md`](AGENTS.md) (lore: nunca editar `docs/rpgtarkor/`
 directamente) y la forma de trabajo de cada plan de hito (p. ej.
 [`docs/producto/plan-roadmap-0.1.md`](docs/producto/plan-roadmap-0.1.md)). Orden y fases de todo

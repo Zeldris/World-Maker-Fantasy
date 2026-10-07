@@ -18,7 +18,11 @@ Skill (no basta con nombrarla); `/grill-with-docs` solo lo lanza la usuaria, con
 1. **Empezar la tarea:** cargar `selector`, clasificar la tarea con su tabla y decir en una línea
    qué skill y qué modelo pide.
 2. **Si hay diseño o una decisión abierta:** `grilling` + `domain-modeling` (o `/grill-with-docs` si
-   lo lanza la usuaria), con los juegos de referencia. Si una pregunta pide decidir números o reglas
+   lo lanza la usuaria), con los juegos de referencia. **Toda ronda de diseño, también las de
+   detalle (números), se contrasta siempre** con X4: Foundations, D&D 5e, Baldur's Gate 3, Medieval
+   Dynasty, Bellwright y Manor Lords, y cada pregunta dice de cuál sale (o que ninguno lo cubre).
+   **X4 marca el camino** siempre que se pueda: si los juegos se contradicen, gana lo que hace X4
+   (usuaria, 2026-10-07). Si una pregunta pide decidir números o reglas
    que hay que probar para sentirlas, `prototype` y el enlace en la pregunta. Lo decidido, a su
    roadmap; los términos, a `GLOSSARY.md`; lo difícil de revertir, a `docs/adr/`.
 3. **Implementar** por pasos pequeños, cada uno con sus tests, y commit + push en cada punto
