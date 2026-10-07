@@ -1693,7 +1693,11 @@ export interface SubditoInfo {
   /// REI-120: nombre de su pareja (si tiene) y crías que han tenido.
   pareja?: string | null
   crias?: number
+  /// CR-61 (61c): su tarea si es trabajador (sin tarea, recolector).
+  tarea?: TareaSubdito
 }
+
+export type TareaSubdito = 'recolector' | 'pescador' | 'cocinero' | 'ganadero' | 'fibrero'
 
 export interface CamasReino {
   total: number
@@ -1734,6 +1738,14 @@ export async function cambiarRolSubdito(saveId: string, subjectId: string, rol: 
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ rol }),
+  })
+}
+
+export async function cambiarTareaSubdito(saveId: string, subjectId: string, tarea: TareaSubdito): Promise<{ ok: boolean }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/subjects/${subjectId}/tarea`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tarea }),
   })
 }
 

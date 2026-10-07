@@ -188,16 +188,18 @@ export function tickFactionProduction(buildings: FactionBuildingForTick[]): { co
   return { comida, riqueza };
 }
 
-/// Escalón de la mejor Cocina activa de una facción (0 si no tiene).
-export function escalonCocinaDe(buildings: (FactionBuildingForTick & { tier?: number | null })[]): number {
-  return Math.max(0, ...buildings.filter((b) => b.status === 'ACTIVO' && b.recipeKey && COCINA_RECIPE_KEYS.has(b.recipeKey)).map((b) => b.tier ?? 1));
+/// Escalón de cada Cocina por su receta (Taller 1, Obrador 2, Gran obrador 3; las de facción, Taller).
+const ESCALON_COCINA: Record<string, number> = { 'cocina-obrador': 2, 'cocina-gran-obrador': 3 };
+/// Escalón de la mejor Cocina activa (0 si no hay ninguna).
+export function escalonCocinaDe(buildings: FactionBuildingForTick[]): number {
+  return Math.max(0, ...buildings.filter((b) => b.status === 'ACTIVO' && b.recipeKey && COCINA_RECIPE_KEYS.has(b.recipeKey)).map((b) => ESCALON_COCINA[b.recipeKey!] ?? 1));
 }
 
 /// Puro (CR-61): producción de un día corriente de una facción para estimar su balance (carencias,
 /// rearme del vasallo): la de sus edificios más la comida de las tareas de sus trabajadores, en una
 /// estación media y con agua.
 export function produccionDeFaccion(
-  buildings: (FactionBuildingForTick & { tier?: number | null })[],
+  buildings: FactionBuildingForTick[],
   raza: string | null,
   stats: { trabajadores: number; comida: number },
 ): { comida: number; riqueza: number } {

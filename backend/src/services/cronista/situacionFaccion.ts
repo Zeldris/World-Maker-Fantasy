@@ -22,7 +22,7 @@ export async function situacionDeFaccion(tx: Tx, factionId: string): Promise<Sit
       kingdomStats: true,
       liderNpc: { select: { attributes: true } },
       raza: true,
-      buildings: { where: { status: 'ACTIVO' }, select: { recipeKey: true, status: true, tier: true } },
+      buildings: { where: { status: 'ACTIVO' }, select: { recipeKey: true, status: true } },
     },
   });
   if (!faccion?.kingdomStats) return null;

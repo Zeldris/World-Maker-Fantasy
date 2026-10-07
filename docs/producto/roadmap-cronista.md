@@ -1697,7 +1697,12 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     fibreros, estación del día y escalón de su mejor Cocina); carencias, decisiones y rearme del
     vasallo estiman con `produccionDeFaccion` (estación media). Reino: `SuministrosDia.comidaDia`;
     hasta 61c todos sus trabajadores recolectan con el rendimiento de la estación.
-  - 61c: tarea de cada súbdito (`Subject.tarea`, migración) y selector en Reino › Súbditos.
+  - ~~61c~~ ✅ 2026-10-07: `Subject.tarea` (migración `20261007120000_subdito_tarea`; null =
+    recolector), `POST /saves/:id/subjects/:subjectId/tarea` y selector «Tarea» en Reino › Súbditos
+    (solo trabajadores adultos). La comida del Reino sale de `comidaDelReino` (`economiaReino.ts`):
+    estación, agua junto al Ayuntamiento para pescar, escalón de la mejor Cocina (por receta) y la
+    mitad sin herramienta. Los súbditos ganaderos se reparten por turno entre los Corrales y los
+    fibreros suman en la Fibrería (si hay).
   - 61d: platos con su valor (escala `curaHambre`), recetas de Obrador y Gran obrador.
   **L**
 - **CR-63** Partidas de caza y captura (ronda aceptada el 2026-10-07, decisiones en

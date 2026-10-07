@@ -167,9 +167,9 @@ describe('produccionDeFaccion (CR-61)', () => {
   });
   it('con Cocina, sus cocineros ganan según el escalón', () => {
     const sin = produccionDeFaccion([], 'nabieus', { trabajadores: 50, comida: 500 }).comida;
-    const con = produccionDeFaccion([{ recipeKey: 'cocina-obrador', status: 'ACTIVO', tier: 2 }], 'nabieus', { trabajadores: 50, comida: 500 }).comida;
+    const con = produccionDeFaccion([{ recipeKey: 'cocina-obrador', status: 'ACTIVO' }], 'nabieus', { trabajadores: 50, comida: 500 }).comida;
     expect(con).toBeGreaterThan(sin);
-    expect(escalonCocinaDe([{ recipeKey: 'cocina-obrador', status: 'ACTIVO', tier: 2 }, { recipeKey: 'cocina', status: 'ACTIVO' }])).toBe(2);
+    expect(escalonCocinaDe([{ recipeKey: 'cocina-obrador', status: 'ACTIVO' }, { recipeKey: 'cocina', status: 'ACTIVO' }])).toBe(2);
     expect(escalonCocinaDe([])).toBe(0);
   });
 });

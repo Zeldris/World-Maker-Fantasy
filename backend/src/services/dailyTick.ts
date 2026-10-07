@@ -1,11 +1,9 @@
 import { registrarSuceso } from './cronista/sucesos.js';
-import { huecoDeMateriales, slugsDeMateriales, suministrosDelReino } from './cronista/economiaReino.js';
+import { comidaDelReino, huecoDeMateriales, slugsDeMateriales, suministrosDelReino } from './cronista/economiaReino.js';
 import { sucesosDeClima } from './cronista/clima.js';
 import type { Prisma } from '@prisma/client';
 import { tickKingdom, daysCrossed, hambrunaNueva, DIAS_PARA_CONSOLIDAR, DIAS_PARA_REBELION } from './kingdomTick.js';
 import { registrarHambruna } from './cronista/hambruna.js';
-import { rendimientoRecolector } from './cronista/comidaOficios.js';
-import { estacionFor } from './worldClock.js';
 import { tickOrdenesProduccion, companionesQueCuraCasaDeCuras, type TrabajadorReino, type OrdenProduccionInput } from './kingdomProduction.js';
 import { ownerKeyFor } from './reinoOwner.js';
 import { xpForCraftSuccess, professionLevelForXp } from './professionProgress.js';
@@ -38,10 +36,9 @@ export async function advanceKingdomStatsDay(
     const suministros = await suministrosDelReino(tx, saveId);
     // CR-58 (Q27): un trabajador sin herramienta produce la mitad.
     const trabajadoresEfectivos = Math.max(0, trabajadores - Math.ceil((kingdomStats.sinHerramienta ?? 0) / 2));
-    // CR-61: ya no hay comida pasiva; hasta que cada súbdito tenga su tarea (61c), todos recolectan
-    // con el rendimiento de la estación.
+    // CR-61: ya no hay comida pasiva; la dan las tareas de los súbditos (recolector, pescador, cocinero).
     const ws = await tx.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true } });
-    const comidaDia = Math.floor(trabajadoresEfectivos * rendimientoRecolector(estacionFor(ws?.fictionalMinutes ?? 0)));
+    const comidaDia = await comidaDelReino(tx, saveId, ws?.fictionalMinutes ?? 0, comida, trabajadores > 0 ? trabajadoresEfectivos / trabajadores : 1);
     const ticked = {
       ...tickKingdom(
         { poblacion, felicidad, comida, bebida, riqueza, soldados, trabajadores: trabajadoresEfectivos, visitantes, diasFelicidadAlta, diasFelicidadBaja, diasHambre, diasSed },

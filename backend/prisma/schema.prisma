@@ -2280,6 +2280,9 @@ model Subject {
   /// REI-120: su pareja (otro súbdito) y cuántas crías han tenido juntos.
   parejaId     String?
   crias        Int        @default(0)
+  /// CR-61 (61c): tarea de un trabajador: recolector | pescador | cocinero | ganadero | fibrero
+  /// (null = recolector).
+  tarea        String?
 
   /// Plantilla de equipo asignada (docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md § 7) — null = sin
   /// auto-equipo, este súbdito no recibe nada del Almacén de Reino automáticamente.

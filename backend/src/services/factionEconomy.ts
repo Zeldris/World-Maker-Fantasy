@@ -112,7 +112,7 @@ export async function producirFacciones(
       });
       if (claim.count === 0 || pendientes === 0) return; // otro tick ya lo hizo, o solo se fija la línea base
 
-      const edificios = await tx.building.findMany({ where: { factionId, status: 'ACTIVO' }, select: { recipeKey: true, status: true, kind: true, tier: true } });
+      const edificios = await tx.building.findMany({ where: { factionId, status: 'ACTIVO' }, select: { recipeKey: true, status: true, kind: true } });
       // CR-61: escalón de su mejor Cocina (multiplica lo que ganan sus cocineros).
       const escalonCocina = escalonCocinaDe(edificios);
       const porDia = tickFactionProduction(edificios);

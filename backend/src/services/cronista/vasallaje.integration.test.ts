@@ -50,7 +50,7 @@ describe('vasallaje (CR-59) — Serhu bajo la Concordia', () => {
     // CR-61: el excedente sale de las tareas de sus trabajadores (caza en agregado, recolección, cocina).
     const k = await stats('clan-serhu');
     const faccion = await prisma.faction.findFirstOrThrow({ where: { saveId, slug: 'clan-serhu' }, select: { id: true, raza: true } });
-    const edificios = await prisma.building.findMany({ where: { factionId: faccion.id, status: 'ACTIVO' }, select: { recipeKey: true, status: true, tier: true } });
+    const edificios = await prisma.building.findMany({ where: { factionId: faccion.id, status: 'ACTIVO' }, select: { recipeKey: true, status: true } });
     const margen = produccionDeFaccion(edificios, faccion.raza, k).comida - (k.poblacion + k.soldados + k.visitantes);
     const trab = await prisma.worldPopulation.findFirstOrThrow({ where: { saveId, targetType: 'FACCION', targetSlug: 'clan-serhu-trabajadores' } });
     const nuevos = rearme(margen, trab.poblacion);

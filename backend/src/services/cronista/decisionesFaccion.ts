@@ -256,7 +256,7 @@ export async function decidirFacciones(prisma: PrismaClient, saveId: string, dia
           id: true, slug: true, name: true, disposicion: true, kingdomStats: true,
           liderNpc: { select: { attributes: true } },
           raza: true,
-          buildings: { where: { status: 'ACTIVO' }, select: { recipeKey: true, status: true, tier: true } },
+          buildings: { where: { status: 'ACTIVO' }, select: { recipeKey: true, status: true } },
         },
         orderBy: { id: 'asc' },
       });

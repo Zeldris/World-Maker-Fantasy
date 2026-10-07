@@ -92,7 +92,7 @@ export function CorralesSection({ saveId, inventory, onRefreshSave }: { saveId: 
               {c.animales.length > 0 && <p className="mt-0.5 text-2xs text-wood-400">{resumenDeCorral(c.animales)}</p>}
               {c.guardia && <p className="mt-0.5 text-2xs text-accent-300">🛡️ Guardia: defiende el Reino</p>}
               <p className="mt-0.5 text-2xs text-wood-500">
-                {c.ganaderos.length > 0 ? `Ganaderos: ${c.ganaderos.map((g) => g.name).join(', ')}` : 'Sin ganadero: no produce (asígnalo en Producción).'}
+                {c.ganaderos.length > 0 ? `Ganaderos: ${c.ganaderos.map((g) => g.name).join(', ')}` : 'Sin ganadero: no produce (asígnalo en Producción o da a un súbdito la tarea de ganadero).'}
               </p>
               {c.produccionDia.length > 0 && (
                 <p className="mt-0.5 text-2xs text-emerald-300">Al día: {c.produccionDia.map((p) => `${p.porDia} ${p.nombre}`).join(' · ')}</p>

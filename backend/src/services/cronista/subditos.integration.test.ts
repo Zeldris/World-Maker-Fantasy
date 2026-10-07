@@ -4,7 +4,10 @@ import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { asegurarMundoDePartida } from '../mundoPartida.js';
 import { MINUTOS_POR_ANIO } from './edades.js';
 import { linajeDe } from './linajes.js';
-import { avanzarSubditos, cambiarRolSubdito, cifrasDePoblacion, crearSubdito, cupoDeCamas, datosDeSubditos, felicidadHacia, rolDeSubdito } from './subditos.js';
+import { avanzarSubditos, cambiarRolSubdito, cambiarTareaSubdito, cifrasDePoblacion, crearSubdito, cupoDeCamas, datosDeSubditos, felicidadHacia, rolDeSubdito, tareasDelReino } from './subditos.js';
+import { comidaDelReino } from './economiaReino.js';
+import { rendimientoRecolector } from './comidaOficios.js';
+import { estacionFor } from '../worldClock.js';
 
 describe('súbditos (REI-118) — reglas puras', () => {
   it('los roles narrados antes del 0.3 se leen como los del motor', () => {
@@ -26,6 +29,21 @@ describe('súbditos (REI-118) — reglas puras', () => {
       ahora,
     );
     expect(cifras).toEqual({ poblacion: 2, trabajadores: 1, soldados: 2, visitantes: 0 });
+  });
+
+  it('tareas (CR-61): los trabajadores adultos, por su tarea; sin tarea, recolectores', () => {
+    const ahora = 30 * MINUTOS_POR_ANIO;
+    const t = tareasDelReino(
+      [
+        { role: 'trabajador', pueblo: 'orcos', nacidoEn: 0, tarea: null },
+        { role: 'trabajador', pueblo: 'orcos', nacidoEn: 0, tarea: 'pescador' },
+        { role: 'trabajador', pueblo: 'orcos', nacidoEn: 0, tarea: 'cocinero' },
+        { role: 'soldado', pueblo: 'orcos', nacidoEn: 0, tarea: 'cocinero' },
+        { role: 'trabajador', pueblo: 'orcos', nacidoEn: ahora - MINUTOS_POR_ANIO, tarea: null },
+      ],
+      ahora,
+    );
+    expect(t).toEqual({ recolector: 1, pescador: 1, cocinero: 1, ganadero: 0, fibrero: 0 });
   });
 
   it('la felicidad de cada súbdito se acerca a la del Reino 5 puntos por día', () => {
@@ -101,6 +119,25 @@ describe('súbditos (REI-118) — en una partida', () => {
     expect(r.ok).toBe(false);
     const datos = await datosDeSubditos(prisma, saveId, AHORA);
     expect(datos.find((d) => d.id === cria.id)).toMatchObject({ edad: 0, adulto: false });
+  });
+
+  it('la tarea de un trabajador adulto da su comida (CR-61): sin Cocina el cocinero recolecta', async () => {
+    const adulto = await crear('orcos', 0);
+    await prisma.$transaction((tx) => avanzarSubditos(tx, saveId, 0, AHORA));
+    await prisma.subject.updateMany({ where: { saveId, id: { not: adulto.id } }, data: { tarea: 'ganadero' } });
+    expect(await prisma.$transaction((tx) => cambiarTareaSubdito(tx, saveId, adulto.id, 'cocinero', AHORA))).toEqual({ ok: true });
+    expect((await prisma.$transaction((tx) => cambiarTareaSubdito(tx, saveId, adulto.id, 'cazador', AHORA))).ok).toBe(false);
+    expect((await datosDeSubditos(prisma, saveId, AHORA)).find((d) => d.id === adulto.id)?.tarea).toBe('cocinero');
+    expect(await comidaDelReino(prisma, saveId, AHORA, 100)).toBe(Math.floor(rendimientoRecolector(estacionFor(AHORA))));
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId } });
+    const cocina = await prisma.building.create({ data: { saveId, locationId: location.id, recipeKey: 'cocina', name: 'Cocina', kind: 'cocina', description: 'x', status: 'ACTIVO' } });
+    expect(await comidaDelReino(prisma, saveId, AHORA, 100)).toBe(5);
+    expect(await comidaDelReino(prisma, saveId, AHORA, 0)).toBe(0); // sin comida cruda no cocina
+    await prisma.building.delete({ where: { id: cocina.id } });
+    await prisma.subject.updateMany({ where: { saveId }, data: { tarea: null } });
+    // Fuera, para no cambiar las cuentas de los tests de después.
+    await prisma.subject.delete({ where: { id: adulto.id } });
+    await prisma.$transaction((tx) => avanzarSubditos(tx, saveId, 0, AHORA));
   });
 
   it('cada día su felicidad sigue a la del Reino', async () => {

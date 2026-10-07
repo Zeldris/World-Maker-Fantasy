@@ -71,7 +71,7 @@ export async function revisarVasallajes(tx: Tx, saveId: string, dia: number, aho
     const [trab, sold] = await Promise.all([fila(tx, saveId, `${v.vasalloSlug}-trabajadores`), fila(tx, saveId, `${v.vasalloSlug}-soldados`)]);
     const k = vasallo.kingdomStats;
     // Lo que comen frente a lo que producen sus trabajadores y sus edificios (Serhu: +1, comen justo).
-    const edificios = await tx.building.findMany({ where: { factionId: vasallo.id, status: 'ACTIVO' }, select: { recipeKey: true, status: true, kind: true, tier: true } });
+    const edificios = await tx.building.findMany({ where: { factionId: vasallo.id, status: 'ACTIVO' }, select: { recipeKey: true, status: true, kind: true } });
     const margen = produccionDeFaccion(edificios, vasallo.raza ?? null, k).comida - (k.poblacion + k.soldados + k.visitantes);
     const nuevos = trab && sold ? rearme(margen, trab.poblacion) : 0;
     if (nuevos > 0) {

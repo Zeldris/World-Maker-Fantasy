@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { ownerKeyFor } from '../reinoOwner.js';
-import { avanzarGanadoReino } from './ganadoReino.js';
+import { avanzarGanadoReino, corralesDelReino } from './ganadoReino.js';
 
 /// CR-55 (55d): un día del ganado del Reino con las reglas de la ronda (Q4, Q6, Q7, Q12, Q15).
 const DIA = 14; // múltiplo de 7 (día de crías) y de 1, no de 3 (sin lana).
@@ -86,6 +86,16 @@ describe('Avance diario del ganado del Reino (CR-55 55d)', () => {
   it('las Fibrerías dan 10 de forraje por trabajador', async () => {
     const fibreria = await prisma.building.create({ data: { saveId, recipeKey: 'fibreria', name: 'Fibrería', kind: 'fibreria', status: 'ACTIVO', description: 'x' } });
     await prisma.companion.create({ data: { saveId, name: 'Segadora', role: 'aliado', notes: '', tipo: 'NPC', rolReino: 'trabajador', buildingId: fibreria.id } });
+    await avanzarGanadoReino(prisma, saveId, DIA, AHORA, () => 0.99);
+    expect((await stats()).forraje).toBe(30);
+  });
+
+  it('los súbditos con tarea de fibrero o ganadero también trabajan (CR-61 61c)', async () => {
+    await prisma.building.create({ data: { saveId, recipeKey: 'fibreria', name: 'Fibrería', kind: 'fibreria', status: 'ACTIVO', description: 'x' } });
+    await prisma.subject.create({ data: { saveId, name: 'Urgha', role: 'trabajador', notes: '', tarea: 'fibrero' } });
+    await prisma.subject.create({ data: { saveId, name: 'Doran', role: 'trabajador', notes: '', tarea: 'ganadero' } });
+    await prisma.subject.create({ data: { saveId, name: 'Kesh', role: 'soldado', notes: '', tarea: 'ganadero' } });
+    expect((await corralesDelReino(prisma, saveId))[0]!.ganaderos.map((g) => g.name)).toEqual(['Doran']);
     await avanzarGanadoReino(prisma, saveId, DIA, AHORA, () => 0.99);
     expect((await stats()).forraje).toBe(30);
   });

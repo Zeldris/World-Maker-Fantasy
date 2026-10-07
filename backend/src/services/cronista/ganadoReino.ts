@@ -7,7 +7,7 @@ import type { Prisma } from '@prisma/client';
 import { CONSTRUCTION_RECIPES } from '../construction.js';
 import { ownerKeyFor } from '../reinoOwner.js';
 import { huecoDeMateriales, suministrosDelReino } from './economiaReino.js';
-import { regionDelReino } from './subditos.js';
+import { esAdultoSubdito, regionDelReino, rolDeSubdito } from './subditos.js';
 import { esCompanero } from './usosFauna.js';
 import { esDomador, FELICIDAD_UMBRAL_DOMADOR, maxSlotsDomadorFor } from '../companionSupervivencia.js';
 import {
@@ -59,15 +59,26 @@ export async function corralesDelReino(tx: Tx, saveId: string): Promise<CorralDe
       trabajadores: { where: { rolReino: { not: null } }, select: { id: true, name: true } },
     },
   });
-  return corrales.map((c) => ({
+  // CR-61 (61c): los súbditos con la tarea de ganadero se reparten por turno entre los corrales.
+  const subditos = corrales.length === 0 ? [] : await subditosConTarea(tx, saveId, 'ganadero');
+  return corrales.map((c, i) => ({
     id: c.id,
     name: c.name,
     escalon: c.tier ?? 1,
     plazas: plazasCorral(c.tier),
     especie: c.ganado[0]?.especie ?? null,
     animales: c.ganado,
-    ganaderos: c.trabajadores,
+    ganaderos: [...c.trabajadores, ...subditos.filter((_, k) => k % corrales.length === i)],
   }));
+}
+
+/// Súbditos trabajadores adultos con esa tarea (los ganaderos y fibreros del Reino, además de los
+/// compañeros asignados al edificio).
+async function subditosConTarea(tx: Tx, saveId: string, tarea: 'ganadero' | 'fibrero'): Promise<{ id: string; name: string }[]> {
+  const ws = await tx.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true } });
+  const ahora = ws?.fictionalMinutes ?? 0;
+  const filas = await tx.subject.findMany({ where: { saveId, estado: 'ACTIVO', tarea }, orderBy: { createdAt: 'asc' }, select: { id: true, name: true, role: true, pueblo: true, nacidoEn: true } });
+  return filas.filter((s) => rolDeSubdito(s.role) === 'trabajador' && esAdultoSubdito(s, ahora)).map((s) => ({ id: s.id, name: s.name }));
 }
 
 /// Corral donde cabe un animal de `especie`: el que ya guarda esa especie con plaza libre o, si no,
@@ -136,7 +147,10 @@ export async function entregarPastos(tx: Tx, saveId: string, catalogSlug: string
 export async function forrajeDeFibrerias(tx: Tx, saveId: string): Promise<number> {
   const porTrabajador = CONSTRUCTION_RECIPES.find((r) => r.key === RECETA_FIBRERIA)?.suministro?.forrajePorTrabajador ?? 0;
   const trabajadores = await tx.companion.count({ where: { saveId, rolReino: { not: null }, building: { recipeKey: RECETA_FIBRERIA, status: 'ACTIVO' } } });
-  return trabajadores * porTrabajador;
+  // CR-61 (61c): y los súbditos fibreros, si hay alguna Fibrería en pie.
+  const hayFibreria = await tx.building.count({ where: { saveId, recipeKey: RECETA_FIBRERIA, status: 'ACTIVO' } });
+  const fibreros = hayFibreria ? (await subditosConTarea(tx, saveId, 'fibrero')).length : 0;
+  return (trabajadores + fibreros) * porTrabajador;
 }
 
 /// Etapa de un animal del Reino en el minuto `ahora`.
