@@ -2156,6 +2156,13 @@ model Building {
   /// misma razón que Companion.role: no sabemos aún qué construirán los jugadores
   kind        String
   status      BuildingStatus @default(EN_CONSTRUCCION)
+  /// CR-65 (Q4): asaltos perdidos que lleva un módulo de Empalizada y si ha caído (no cubre hasta repararla).
+  golpesDefensa Int @default(0)
+  caida         Boolean @default(false)
+  /// CR-65 (Q6): equipos de milicia guardados en una Armería.
+  equiposMilicia Int @default(0)
+  /// CR-65 (Q7): soldados y vigías asignados a este asentamiento (Ayuntamiento o Cuartel Avanzado).
+  guarnicion Subject[] @relation("Guarnicion")
   description String
   /// Posición en el lienzo de Zona (2026-09-08, hallazgo real jugando en vivo: un campamento
   /// construido por el jugador nunca aparecía en el mapa de Zona, solo en el panel de Reino) —
@@ -2281,6 +2288,9 @@ model Subject {
   /// NARRADO (antes del 0.3) | LLEGADA | NACIDO
   origen       String     @default("NARRADO")
   desdeMinutes Int?
+  /// CR-65 (Q7): asentamiento al que está asignado un soldado o vigía (null = la Capital).
+  asentamientoId String?
+  asentamiento   Building? @relation("Guarnicion", fields: [asentamientoId], references: [id], onDelete: SetNull)
   /// CANDIDATO: hasta cuándo espera respuesta (REI-119).
   hastaMinutes Int?
   /// REI-119: fila de `WorldPopulation` de la que salió quien llegó (vuelve a ella si se va).
