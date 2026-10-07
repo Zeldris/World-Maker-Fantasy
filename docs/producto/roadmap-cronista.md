@@ -1700,8 +1700,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-cr-62-combate-de-fondo-ronda-aceptada-por-la-usuaria-el-2026-10-07)).
   Hito `0.3`, Fase E, antes de `CR-37`. 🚧 Pasos:
   - ~~62a~~ ✅ 2026-10-07: motor puro `services/combateDeFondo.ts` (grupos de 8 o 4, emparejamiento con vuelta de los que sobran, sub-combates con iniciativa, objetivo por Inteligencia, capitán y ataques concentrados, `resolveExchange`, moral y retirada; muere el 3 % de los caídos, nunca un NPC con nombre).
-  - 62b: combatientes de una facción (NPC con nombre y soldados genéricos) y la intercepción de
-    expediciones en el motor nuevo.
+  - ~~62b~~ ✅ 2026-10-07: `cronista/combatientesFaccion.ts` (guerreros con nombre por nivel, el primero lidera; soldados genéricos con los atributos medios de su pueblo a nivel 3, +1 con arma) e intercepción de expediciones en el motor común (`simularCombateInterceptacion` delega en `simularCombateDeFondo`; sus muertes siguen con `tirarMuertes`).
   - 62c: la escaramuza del narrador y la patrulla de vasallaje pelean de verdad (suceso y noticia con
     bajas).
   - 62d: los grupos 2, 3… de la jugadora luchan de fondo mientras su Grupo 1 juega en vivo, con su
