@@ -359,6 +359,10 @@ async function intentarCazaEnGrupo(save: SaveParaCaza, targets: CazaTarget[]): P
     }
     const fragmentosParaCrear = fragmentosEnemigos.length > 0 ? fragmentosEnemigos : [[]];
 
+    // CR-62 (62d, ADR 0002): tus grupos 2, 3… (`combatGroupSlotIndex` > 0) pelean de fondo contra los
+    // grupos enemigos que no caben en el combate en vivo de tu Grupo 1: el grupo k contra el fragmento
+    // enemigo k. Un fragmento sin grupo tuyo se queda como antes (no tiene con quién pelear).
+    const otrosGrupos = await gruposDeFondo(save.id);
     // Condición de carrera real (auditoría 2026-08-25) — ver comentario completo original.
     const resultado = await prisma.$transaction(async (tx) => {
       await lockRowForUpdate(tx, 'Save', save.id, ['id']);
@@ -375,9 +379,12 @@ async function intentarCazaEnGrupo(save: SaveParaCaza, targets: CazaTarget[]): P
       });
       logEntryGrupo = { id: createdGrupo.id, text: textoGrupo, timeLabel: timeLabelGrupo, createdAt: createdGrupo.createdAt.toISOString(), roll: logRoll };
       const autonomosIds: string[] = [];
-      for (const fragmento of fragmentosParaCrear.slice(1)) {
-        const { encounterId } = await iniciarCombatEncounter(tx, save.id, fragmento, false);
+      const deFondo: { encounterId: string; grupo: GrupoDeFondo; enemigos: number }[] = [];
+      for (const [i, fragmento] of fragmentosParaCrear.slice(1).entries()) {
+        const grupo = otrosGrupos[i];
+        const { encounterId } = await iniciarCombatEncounter(tx, save.id, grupo ? [...grupo.combatientes, ...fragmento] : fragmento, false);
         autonomosIds.push(encounterId);
+        if (grupo) deFondo.push({ encounterId, grupo, enemigos: fragmento.length });
       }
       if (currentLocationId) {
         for (const slug of especiesDispersadas) {
@@ -392,7 +399,7 @@ async function intentarCazaEnGrupo(save: SaveParaCaza, targets: CazaTarget[]): P
       for (const [zonePointId, enfrentados] of enfrentadosPorZonePoint) {
         await descontarZonePointCaza(tx, save.id, zonePointId, enfrentados);
       }
-      return { autonomosIds };
+      return { autonomosIds, deFondo };
     });
     if (!resultado) {
       return { error: 'Ya hay un combate en curso — resuélvelo antes de salir a cazar.', status: 400 };
@@ -403,7 +410,15 @@ async function intentarCazaEnGrupo(save: SaveParaCaza, targets: CazaTarget[]): P
     let caidosAutonomos = 0;
     for (const encounterId of resultado.autonomosIds) {
       const { caidos } = await resolverTurnosAutonomosHastaJugadora({ prisma, worldId: save.worldId, saveId: save.id, encounterId, weaponNamesPorDefecto: [], narrarFn: async () => '' });
-      caidosAutonomos += caidos.length;
+      const conGrupo = resultado.deFondo.find((d) => d.encounterId === encounterId);
+      if (conGrupo) {
+        // CR-62 (62d): resumen del sub-combate de fondo de tu grupo (reporte de § 4, con plantilla).
+        const enemigosCaidos = caidos.filter((c) => c.tipo === 'NPC').length;
+        const estado = await prisma.companion.findMany({ where: { id: { in: conGrupo.grupo.companionIds } }, select: { name: true, condicionFisica: true } });
+        varianceClauses.push(resumenGrupoDeFondo(conGrupo.grupo.nombre, conGrupo.enemigos, enemigosCaidos, estado));
+      } else {
+        caidosAutonomos += caidos.length;
+      }
     }
     if (caidosAutonomos > 0) {
       varianceClauses.push(`El resto de la manada, fuera del alcance directo de ${save.characterName}, se enfrenta entre sí y con el terreno — ${caidosAutonomos} caen sin que ${save.characterName} llegue a verlo.`);
@@ -478,3 +493,47 @@ export async function faunaCercanaNombrada(params: {
   }
   return null;
 }
+
+// ─────────────────────────── CR-62 (62d): tus otros grupos, de fondo ───────────────────────────
+
+export interface GrupoDeFondo {
+  slotIndex: number;
+  nombre: string;
+  companionIds: string[];
+  combatientes: (CombatienteInicial & { destreza: number; inteligencia: number })[];
+}
+
+/// Tus grupos de combate 2, 3… con compañeros dispuestos a pelear (hasta 4 cada uno), por orden.
+async function gruposDeFondo(saveId: string): Promise<GrupoDeFondo[]> {
+  const [companeros, nombres] = await Promise.all([
+    prisma.companion.findMany({
+      where: { saveId, combatGroupSlotIndex: { gt: 0 }, condicionFisica: { not: 'MUERTO' }, ...companeroDispuestoACombatir },
+      select: { id: true, name: true, attributes: true, combatGroupSlotIndex: true },
+      orderBy: [{ combatGroupSlotIndex: 'asc' }, { createdAt: 'asc' }],
+    }),
+    prisma.combatGroup.findMany({ where: { saveId }, select: { slotIndex: true, name: true } }),
+  ]);
+  const porSlot = new Map<number, GrupoDeFondo>();
+  for (const c of companeros.filter((x) => x.attributes)) {
+    const g = porSlot.get(c.combatGroupSlotIndex) ?? {
+      slotIndex: c.combatGroupSlotIndex,
+      nombre: nombres.find((n) => n.slotIndex === c.combatGroupSlotIndex)?.name ?? `Grupo ${c.combatGroupSlotIndex + 1}`,
+      companionIds: [],
+      combatientes: [],
+    };
+    if (g.combatientes.length >= MAX_COMBATIENTES_POR_BANDO) continue;
+    const attrs = c.attributes as AttributeBlock;
+    g.companionIds.push(c.id);
+    g.combatientes.push({ bando: 'JUGADOR', tipo: 'COMPANION', companionId: c.id, destreza: attrs.destreza, inteligencia: attrs.inteligencia, constitucion: attrs.constitucion, nombre: c.name });
+    porSlot.set(c.combatGroupSlotIndex, g);
+  }
+  return [...porSlot.values()].sort((a, b) => a.slotIndex - b.slotIndex);
+}
+
+/// Puro: «Grupo 2 se enfrenta a 4 más: caen 3; Ana queda malherida.»
+export function resumenGrupoDeFondo(nombre: string, enemigos: number, enemigosCaidos: number, companeros: { name: string; condicionFisica: string }[]): string {
+  const estado: Record<string, string> = { HERIDO: 'herido', GRAVE: 'malherido', CONVALECIENTE: 'fuera de combate', MUERTO: 'muerto' };
+  const tocados = companeros.filter((c) => estado[c.condicionFisica]).map((c) => `${c.name} queda ${estado[c.condicionFisica]}`);
+  return `${nombre} se enfrenta a ${enemigos} más, lejos de la vista: ${enemigosCaidos > 0 ? `caen ${enemigosCaidos}` : 'ninguno cae'}${tocados.length > 0 ? `; ${tocados.join(', ')}` : ''}.`;
+}
+
