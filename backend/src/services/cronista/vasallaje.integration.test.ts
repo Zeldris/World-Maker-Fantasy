@@ -2,7 +2,9 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { asegurarMundoDePartida } from '../mundoPartida.js';
-import { armasDeLaSemana, asegurarVasallajes, DEUDA_INICIAL, rearme, revisarVasallajes } from './vasallaje.js';
+import { armasDeLaSemana, asegurarVasallajes, DEUDA_INICIAL, rearme, revisarVasallajes, SOBREPRECIO_ARMAS } from './vasallaje.js';
+import { EQUIPO } from './facturaEquipo.js';
+import { produccionDeFaccion } from '../kingdomTick.js';
 
 describe('vasallaje (CR-59) — reglas puras', () => {
   it('armas al doble y rearme con el excedente (cada guerrero nuevo deja de producir 2)', () => {
@@ -45,17 +47,26 @@ describe('vasallaje (CR-59) — Serhu bajo la Concordia', () => {
     const serhu = await stats('clan-serhu');
     await prisma.kingdomStats.update({ where: { id: serhu.id }, data: { riqueza: 300, trabajadores: serhu.trabajadores + 10, poblacion: serhu.poblacion + 10 } });
     const concordiaAntes = (await stats('concordia-de-hierro')).riqueza;
+    // CR-61: el excedente sale de las tareas de sus trabajadores (caza en agregado, recolección, cocina).
+    const k = await stats('clan-serhu');
+    const faccion = await prisma.faction.findFirstOrThrow({ where: { saveId, slug: 'clan-serhu' }, select: { id: true, raza: true } });
+    const edificios = await prisma.building.findMany({ where: { factionId: faccion.id, status: 'ACTIVO' }, select: { recipeKey: true, status: true } });
+    const margen = produccionDeFaccion(edificios, faccion.raza, k).comida - (k.poblacion + k.soldados + k.visitantes);
+    const trab = await prisma.worldPopulation.findFirstOrThrow({ where: { saveId, targetType: 'FACCION', targetSlug: 'clan-serhu-trabajadores' } });
+    const nuevos = rearme(margen, trab.poblacion);
+    expect(nuevos).toBeGreaterThan(0);
     const r = await prisma.$transaction((tx) => revisarVasallajes(tx, saveId, 7, 7 * 1440, () => 0.1));
     expect(r.escaramuzas).toBe(1);
     const v = await prisma.vasallaje.findFirstOrThrow({ where: { saveId } });
-    // 10 trabajadores más: producen 20 y comen 10, más los 3 de sus edificios → excedente 11 → 5 pasan
-    // a guerreros (5 * 36 = 180). Armas (208 → 1248) y rearme: paga 300, el resto a deuda; la patrulla rebaja 100.
-    expect(v.deuda).toBe(DEUDA_INICIAL + 1248 + 180 - 300 - 100);
+    // Armas (208 → 1248) y rearme a crédito: paga 300, el resto a deuda; la patrulla rebaja 100.
+    expect(v.deuda).toBe(DEUDA_INICIAL + 1248 + nuevos * EQUIPO.arma.valor * SOBREPRECIO_ARMAS - 300 - 100);
     expect((await stats('concordia-de-hierro')).riqueza).toBe(concordiaAntes + 300);
     const despues = await stats('clan-serhu');
     expect(despues.riqueza).toBe(0);
-    expect(despues.soldados).toBe(serhu.soldados + 5 - 1);
-    expect(await prisma.suceso.count({ where: { saveId, tipo: 'ESCARAMUZA' } })).toBe(1);
+    // CR-62: la patrulla pelea de verdad; con el azar fijo en 0,1 nadie muere (la muerte es al 3 %).
+    expect(despues.soldados).toBe(serhu.soldados + nuevos);
+    const escaramuza = await prisma.suceso.findFirstOrThrow({ where: { saveId, tipo: 'ESCARAMUZA' } });
+    expect((escaramuza.datos as { resultado?: string }).resultado).toBeTruthy();
     // La misma semana no se repite.
     expect((await prisma.$transaction((tx) => revisarVasallajes(tx, saveId, 10, 10 * 1440, () => 0.1))).escaramuzas).toBe(0);
   });

@@ -3,6 +3,8 @@
 /// donde ya se actualiza `WorldState.fictionalMinutes`). Solo se aplica si ya existe una fila
 /// `KingdomStats` para la partida (se crea al fundar el primer Territory) — "el vacío es un estado
 /// válido" (docs/mecanicas/10-niveles-xp-reino.md § 5.1): sin reino todavía, no hay nada que tiquear.
+import { comidaDelDia, repartoDeFaccion } from './cronista/comidaOficios.js';
+
 export interface KingdomStatsBlock {
   poblacion: number;
   felicidad: number;
@@ -55,7 +57,8 @@ const FELICIDAD_MAX = 100;
 /// esto al día. Cifras deliberadamente pequeñas y redondas — se ajustan jugando, igual que el
 /// resto de tablas deterministas del proyecto (XP_BY_DIFFICULTY, etc.), no pretenden ser un
 /// balance final cerrado.
-const COMIDA_POR_TRABAJADOR = 2;
+/// CR-61: ya no hay comida pasiva por trabajador; la comida sale de sus tareas
+/// (`cronista/comidaOficios.ts`) y llega aquí como `SuministrosDia.comidaDia` o `extra.comida`.
 export const RIQUEZA_POR_TRABAJADOR = 1;
 const CONSUMO_POR_BOCA = 1;
 const MANTENIMIENTO_POR_SOLDADO = 1;
@@ -82,7 +85,7 @@ function clamp(value: number, min: number, max: number): number {
 export function balanceDiario(stats: KingdomStatsBlock, extra: { comida: number; riqueza: number } = { comida: 0, riqueza: 0 }): { comida: number; bebida: number; riqueza: number; consumoComida: number; sueldos: number } {
   const bocas = stats.poblacion + stats.soldados + stats.visitantes;
   return {
-    comida: stats.trabajadores * COMIDA_POR_TRABAJADOR + extra.comida - bocas * CONSUMO_POR_BOCA,
+    comida: extra.comida - bocas * CONSUMO_POR_BOCA,
     bebida: -bocas * CONSUMO_POR_BOCA,
     riqueza: stats.trabajadores * RIQUEZA_POR_TRABAJADOR + extra.riqueza - stats.soldados * MANTENIMIENTO_POR_SOLDADO,
     consumoComida: bocas * CONSUMO_POR_BOCA,
@@ -95,6 +98,8 @@ export function balanceDiario(stats: KingdomStatsBlock, extra: { comida: number;
 /// numérica negativa, la consecuencia real vive en la felicidad, no en un contador que se hunde).
 /// CR-53 (hito 0.3, Q1-Q2): agua que entra al día (pozos, fuente natural) y topes del almacén.
 export interface SuministrosDia {
+  /// CR-61: comida que producen cada día las tareas de sus trabajadores (puede llevar decimales).
+  comidaDia?: number;
   agua: number;
   topeComida: number;
   topeBebida: number;
@@ -106,7 +111,7 @@ export const SIN_SUMINISTROS: SuministrosDia = { agua: 0, topeComida: Infinity, 
 
 export function tickKingdomOneDay(stats: KingdomStatsBlock, s: SuministrosDia = SIN_SUMINISTROS): KingdomStatsBlock {
   const bocas = stats.poblacion + stats.soldados + stats.visitantes;
-  const comidaNeta = stats.comida + stats.trabajadores * COMIDA_POR_TRABAJADOR - bocas * CONSUMO_POR_BOCA;
+  const comidaNeta = stats.comida + (s.comidaDia ?? 0) - bocas * CONSUMO_POR_BOCA;
   const bebidaNeta = stats.bebida + s.agua - bocas * CONSUMO_POR_BOCA;
   const riquezaNeta = stats.riqueza + stats.trabajadores * RIQUEZA_POR_TRABAJADOR - (s.sueldosSemanales ? 0 : stats.soldados * MANTENIMIENTO_POR_SOLDADO);
 
@@ -135,8 +140,13 @@ export function tickKingdomOneDay(stats: KingdomStatsBlock, s: SuministrosDia = 
 /// día de ficción en un solo turno) — nunca lo decide el modelo, ver el enganche en turnResolution.ts.
 export function tickKingdom(stats: KingdomStatsBlock, dias: number, s: SuministrosDia = SIN_SUMINISTROS): KingdomStatsBlock {
   let result = stats;
+  // CR-61: la comida de las tareas puede traer medias (2,5 por recolector en primavera); lo que no
+  // llega a una unidad se arrastra al día siguiente.
+  let resto = 0;
   for (let i = 0; i < dias; i++) {
-    result = tickKingdomOneDay(result, s);
+    const comida = (s.comidaDia ?? 0) + resto;
+    resto = comida - Math.floor(comida);
+    result = tickKingdomOneDay(result, { ...s, comidaDia: Math.floor(comida) });
   }
   return result;
 }
@@ -156,9 +166,8 @@ export function daysCrossed(minutosAntes: number, minutosDespues: number): numbe
 /// suman comida, el resto de edificios de oficio suman riqueza — un edificio quemado deja de sumar
 /// de inmediato (consecuencia económica real de la guerra por estructuras, § 7.4 de
 /// mundo-vivo-x4.md), sin necesidad de montar un almacén de objetos por facción.
-const PRODUCCION_FACCION_POR_EDIFICIO_COCINA = 3;
 const PRODUCCION_FACCION_POR_EDIFICIO_OFICIO = 2;
-const COCINA_RECIPE_KEYS = new Set(['cocina', 'cocina-obrador', 'cocina-gran-obrador', 'cocina-serhu', 'cocina-helsig']);
+export const COCINA_RECIPE_KEYS = new Set(['cocina', 'cocina-obrador', 'cocina-gran-obrador', 'cocina-serhu', 'cocina-helsig']);
 /// Resto de `Building.recipeKey` de facción que SÍ cuentan como "edificio de oficio" para este
 /// agregado — el salón (`*-sedsar`) y la boca de mina/embarcadero cuentan igual que cualquier otro
 /// taller (dan riqueza, no comida), pero el propio salón (`Ketg'sedsar`...) NO es un edificio de
@@ -172,13 +181,37 @@ export interface FactionBuildingForTick {
 }
 
 /// Puro: cuánto suma UN día de producción agregada de facción, a partir de sus `Building` reales.
+/// CR-61: los edificios ya no dan comida (`comida` es siempre 0; la comida sale de las tareas,
+/// `produccionDeFaccion`); se deja el campo porque es la forma de `tickFactionOneDay`.
 export function tickFactionProduction(buildings: FactionBuildingForTick[]): { comida: number; riqueza: number } {
-  let comida = 0;
   let riqueza = 0;
   for (const b of buildings) {
     if (b.status !== 'ACTIVO' || !b.recipeKey || SALON_RECIPE_KEYS.has(b.recipeKey)) continue;
-    if (COCINA_RECIPE_KEYS.has(b.recipeKey)) comida += PRODUCCION_FACCION_POR_EDIFICIO_COCINA;
-    else riqueza += PRODUCCION_FACCION_POR_EDIFICIO_OFICIO;
+    // CR-61: la Cocina ya no da comida fija; la ganan sus cocineros (`comidaOficios.ts`).
+    if (COCINA_RECIPE_KEYS.has(b.recipeKey)) continue;
+    riqueza += PRODUCCION_FACCION_POR_EDIFICIO_OFICIO;
   }
-  return { comida, riqueza };
+  return { comida: 0, riqueza };
+}
+
+/// Escalón de una Cocina por su receta (las de facción del catálogo, Taller).
+const ESCALON_COCINA: Record<string, number> = { 'cocina-obrador': 2, 'cocina-gran-obrador': 3 };
+/// Escalón de la mejor Cocina activa (0 si no hay ninguna). La del Reino se mejora en la misma fila
+/// (`recipeKey` 'cocina', `tier` 2 o 3).
+export function escalonCocinaDe(buildings: (FactionBuildingForTick & { tier?: number | null })[]): number {
+  return Math.max(0, ...buildings.filter((b) => b.status === 'ACTIVO' && b.recipeKey && COCINA_RECIPE_KEYS.has(b.recipeKey)).map((b) => Math.max(b.tier ?? 1, ESCALON_COCINA[b.recipeKey!] ?? 1)));
+}
+
+/// Puro (CR-61): producción de un día corriente de una facción para estimar su balance (carencias,
+/// rearme del vasallo): la de sus edificios más la comida de las tareas de sus trabajadores, en una
+/// estación media y con agua.
+export function produccionDeFaccion(
+  buildings: (FactionBuildingForTick & { tier?: number | null })[],
+  raza: string | null,
+  stats: { trabajadores: number; comida: number },
+): { comida: number; riqueza: number } {
+  const escalon = escalonCocinaDe(buildings);
+  const cuadrilla = repartoDeFaccion(raza, stats.trabajadores, true, escalon > 0);
+  const comida = comidaDelDia(cuadrilla, { estacion: 'OTONO', hayAgua: true, escalonCocina: escalon || null, comidaDisponible: stats.comida });
+  return { comida: Math.floor(comida), riqueza: tickFactionProduction(buildings).riqueza };
 }

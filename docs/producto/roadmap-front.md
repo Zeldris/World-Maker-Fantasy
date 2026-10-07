@@ -731,6 +731,9 @@ Contenedor común: `PanelDrawer` (cajón inferior, `max-w-4xl`, 85 vh).
   volver, y animación de "envainar" al cerrar el panel. **M**
 - **CMB-8 · Aviso de combate pendiente** ("⚔️ Combatir / 🏃 Huir"): hoy dos botones en la franja
   inferior; darle presencia de encuentro (retrato del rival, dificultad como calavera 1-5). **S**
+- **CMB-9 · Subir el tope de 4 combatientes por grupo** a 6 u 8 (usuaria, 2026-10-07): el límite de 4
+  nace de los tiempos de narración; en la fase de pulido, al mejorar esos tiempos, se sube
+  (`MAX_COMBATIENTES_POR_BANDO` y el tamaño de los grupos de combate). Hito `0.8`. **M**
 
 ---
 

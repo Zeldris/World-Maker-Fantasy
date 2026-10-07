@@ -1171,6 +1171,10 @@ model Companion {
   aprobacion Int  @default(50)
   /// CR-15: minuto de ficción desde el que su aprobación está por debajo de 10 (se va a los 3 días).
   aprobacionBajaDesde Int?
+  /// CR-56 (Q4): un animal sacado del corral por la Domadora conserva su sexo y su nacimiento, para
+  /// volver al corral tal cual.
+  sexo      String?
+  nacidoEn  Int?
 
   @@index([saveId])
   @@index([plantillaEquipoId])
@@ -1812,8 +1816,9 @@ model KingdomStats {
   /// CR-55 (Q6): días seguidos en que el ganado no ha comido / bebido entero.
   ganadoDiasSinComer  Int      @default(0)
   ganadoDiasSinBeber  Int      @default(0)
-  /// CR-55 (55f): solo facciones — su rebaño inicial ya está sembrado.
-  ganadoSembrado      Boolean  @default(false)
+  /// CR-55/CR-56: solo facciones — versión del rebaño inicial ya sembrada (1 = rebaño de `CR-55`, 2 =
+  /// guardias de `CR-56`); cada versión nueva siembra solo lo suyo.
+  ganadoVersion       Int      @default(0)
   /// CR-34 (Q6): último día de ficción en que la facción revisó su situación para decidir (null =
   /// nunca). Solo facciones del mundo de la partida; el Reino de la jugadora no lo usa.
   ultimaRevision      Int?
@@ -2275,6 +2280,9 @@ model Subject {
   /// REI-120: su pareja (otro súbdito) y cuántas crías han tenido juntos.
   parejaId     String?
   crias        Int        @default(0)
+  /// CR-61 (61c): tarea de un trabajador: recolector | pescador | cocinero | ganadero | fibrero
+  /// (null = recolector).
+  tarea        String?
 
   /// Plantilla de equipo asignada (docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md § 7) — null = sin
   /// auto-equipo, este súbdito no recibe nada del Almacén de Reino automáticamente.

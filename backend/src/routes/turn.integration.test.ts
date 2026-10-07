@@ -3110,6 +3110,27 @@ describe('OrdenProduccion: tick real de producción de Reino (§ 4.4-ter, 2026-0
     expect(orden.cantidadProducidaAcumulada).toBe(0);
   }, 20_000);
 
+  it('CR-61 (61d): un plato de cocina suma al Reino lo que vale (Guiso de Múrgol: 64 de curaHambre → 6 de comida)', async () => {
+    await setUp();
+    await prisma.kingdomStats.create({ data: { saveId, ownerKey: `save:${saveId}`, comida: 0, poblacion: 0, trabajadores: 0 } });
+    await prisma.almacenItem.createMany({
+      data: [
+        { saveId, name: 'Ración de carne fresca', description: 'x', catalogSlug: 'racion-carne' },
+        { saveId, name: 'Ración de carne fresca', description: 'x', catalogSlug: 'racion-carne' },
+        { saveId, name: 'Leche de múrgol', description: 'x', catalogSlug: 'leche-murgol' },
+      ],
+    });
+    await prisma.ordenProduccion.create({ data: { buildingId, recipeKey: 'murgolStew', modo: 'unico', limite: 1, prioridad: 5 } });
+    // Nivel 4 de cocinero (el nivel sale de la XP): alcanza una receta de tier 4.
+    await prisma.professionProgress.create({ data: { companionId, professionId: 'cocinero-orcos-llanuras', nivel: 4, xp: 350 } });
+    narrateAction.mockClear();
+
+    await doPassiveTurn('Espero aquí varios días, dejando pasar el tiempo tranquilamente.');
+
+    expect(await prisma.almacenItem.count({ where: { saveId, catalogSlug: 'guiso-murgol' } })).toBe(1);
+    expect((await prisma.kingdomStats.findUniqueOrThrow({ where: { ownerKey: `save:${saveId}` } })).comida).toBe(6);
+  }, 20_000);
+
   it('el trabajador que produce sube de nivel de oficio propio (ProfessionProgress.companionId), nunca el del jugador', async () => {
     await setUp();
     await prisma.almacenItem.create({ data: { saveId, name: 'Liquen húmedo del cauce', description: 'x', catalogSlug: 'liquen-humedo' } });

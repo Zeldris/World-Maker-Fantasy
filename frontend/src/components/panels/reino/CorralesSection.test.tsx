@@ -5,9 +5,11 @@ vi.mock('../../../lib/api', () => ({
   getCorrales: vi.fn(),
   postEntregarForraje: vi.fn(),
   postSacrificar: vi.fn(),
+  postLlevarConsigo: vi.fn(),
+  postDevolverAlCorral: vi.fn(),
 }))
 
-import { getCorrales, postEntregarForraje, postSacrificar, type CorralesInfo } from '../../../lib/api'
+import { getCorrales, postDevolverAlCorral, postEntregarForraje, postLlevarConsigo, postSacrificar, type CorralesInfo } from '../../../lib/api'
 import { CorralesSection } from './CorralesSection'
 import { avisoDeCarencia, lineaDeAnimal, resumenDeCorral } from '../../../lib/corrales'
 import type { InventoryItemInfo } from '../../../types'
@@ -80,5 +82,28 @@ describe('textos de los corrales', () => {
   it('aviso de hambre y sed', () => {
     expect(avisoDeCarencia(0, 0)).toBeNull()
     expect(avisoDeCarencia(3, 0)).toBe('El ganado lleva 3 días sin forraje: no produce ni cría, y ya mueren animales.')
+  })
+})
+
+describe('CorralesSection — guardias y Domadora (CR-56)', () => {
+  afterEach(() => {
+    cleanup()
+    vi.clearAllMocks()
+  })
+
+  it('marca el corral de guardia, deja llevarse un adulto y devolver al que va contigo', async () => {
+    vi.mocked(getCorrales).mockResolvedValue({
+      ...datos,
+      fueraDelCorral: [{ id: 'c9', name: 'Aullador Rojo' }],
+      corrales: [{ ...datos.corrales[0]!, especie: 'canizor', especieNombre: 'Canizor', guardia: true, produccionDia: [], animales: [{ id: 'g1', sexo: 'F', edadDias: 300, etapa: 'ADULTO', diasParaSiguiente: 600, puedeLlevar: true }] }],
+    })
+    vi.mocked(postLlevarConsigo).mockResolvedValue({ companionId: 'c1' })
+    vi.mocked(postDevolverAlCorral).mockResolvedValue({ buildingId: 'b1' })
+    const { findByText, getByRole } = render(<CorralesSection saveId="s1" inventory={[]} onRefreshSave={vi.fn().mockResolvedValue(undefined)} />)
+    await findByText(/Guardia: defiende el Reino/)
+    await act(async () => fireEvent.click(getByRole('button', { name: 'Llevar contigo' })))
+    expect(postLlevarConsigo).toHaveBeenCalledWith('s1', 'g1')
+    await act(async () => fireEvent.click(getByRole('button', { name: 'Devolver al corral' })))
+    expect(postDevolverAlCorral).toHaveBeenCalledWith('s1', 'c9')
   })
 })

@@ -95,7 +95,8 @@ export const AXE_REPAIR_RECIPE: CraftingRecipe = {
 const SMOKE_MEAT_RECIPE: CraftingRecipe = {
   key: 'smokeMeat',
   verbRegex: /ahum|crear|creo/,
-  nounRegex: /carne/,
+  // CR-61 (61d): sin pisar el Guiso de Múrgol ni el Asado de las Llanuras.
+  nounRegex: /^(?!.*(guiso|asado)).*carne/,
   location: null,
   ingredients: [{ match: { kind: 'exact', catalogSlug: 'racion-carne' }, cantidad: 1, label: 'ración de carne fresca' }],
   resultName: 'Ración de carne ahumada',
@@ -174,7 +175,7 @@ export const ANTIDOTE_RECIPE: CraftingRecipe = {
 export const BOUNGO_ROAST_RECIPE: CraftingRecipe = {
   key: 'boungoRoast',
   verbRegex: /as|cocin|prepar|tuest/,
-  nounRegex: /boungo/,
+  nounRegex: /^(?!.*llanura).*boungo/,
   location: null,
   ingredients: [{ match: { kind: 'exact', catalogSlug: 'boungo' }, cantidad: 2, label: 'Boungo' }],
   resultName: 'Boungo asado',
@@ -967,7 +968,7 @@ export const JUSHA_SMOKED_MEAT_RECIPE: CraftingRecipe = {
 export const SCARLET_WHEAT_BREAD_RECIPE: CraftingRecipe = {
   key: 'scarletWheatBread',
   verbRegex: /horne|cocin|prepar|amas/,
-  nounRegex: /pan.*trigo|trigo.*pan/,
+  nounRegex: /^(?!.*(leche|miel)).*(pan.*trigo|trigo.*pan)/,
   location: null,
   ingredients: [{ match: { kind: 'exact', catalogSlug: 'trigo-escarlata' }, cantidad: 3, label: 'trigo escarlata' }],
   resultName: 'Pan de trigo escarlata',
@@ -1011,6 +1012,84 @@ export const MURGOL_CURD_RECIPE: CraftingRecipe = {
     'El personaje quiere cuajar leche de múrgol, pero no lleva encima suficiente leche de múrgol (hacen falta al menos 2) — narra que lo intenta o lo considera, pero no que la cuajada queda terminada.',
   narrationDo:
     'El personaje cuaja y prensa su leche de múrgol aquí mismo, en el Campamento del Clan Serhu — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+// CR-61 (61d, hito 0.3 — Q4 de la ronda de CR-61 y Q15 de CR-55): platos de Obrador (tier 4-6) y de
+// Gran obrador (tier 7-9). Su `curaHambre` es lo crudo que llevan × el multiplicador del escalón
+// (×2 Obrador, ×2,5 Gran obrador): rinden más comida para el Reino que sus ingredientes.
+export const MURGOL_STEW_RECIPE: CraftingRecipe = {
+  key: 'murgolStew',
+  verbRegex: /guis|cocin|prepar|herv/,
+  nounRegex: /guiso/,
+  location: null,
+  ingredients: [
+    { match: { kind: 'exact', catalogSlug: 'racion-carne' }, cantidad: 2, label: 'ración de carne fresca' },
+    { match: { kind: 'exact', catalogSlug: 'leche-murgol' }, cantidad: 1, label: 'leche de múrgol' },
+  ],
+  resultName: 'Guiso de Múrgol',
+  resultCatalogSlug: 'guiso-murgol',
+  resultDescription: 'Carne de múrgol guisada a fuego lento en su propia leche — un plato de obrador que da de comer a una casa entera.',
+  tier: 4,
+  oficio: 'cocinero-orcos-llanuras',
+  narrationWant:
+    'El personaje quiere guisar múrgol, pero no lleva encima 2 raciones de carne fresca y 1 leche de múrgol — narra que lo intenta o lo considera, pero no que el guiso queda hecho.',
+  narrationDo: 'El personaje guisa la carne de múrgol a fuego lento en su leche — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+export const MILK_HONEY_BREAD_RECIPE: CraftingRecipe = {
+  key: 'milkHoneyBread',
+  verbRegex: /horne|cocin|prepar|amas/,
+  nounRegex: /\bpan\b.*(leche|miel)/,
+  location: null,
+  ingredients: [
+    { match: { kind: 'exact', catalogSlug: 'trigo-escarlata' }, cantidad: 2, label: 'trigo escarlata' },
+    { match: { kind: 'exact', catalogSlug: 'leche-murgol' }, cantidad: 1, label: 'leche de múrgol' },
+    { match: { kind: 'exact', catalogSlug: 'miel-lebude' }, cantidad: 1, label: 'miel de Lebude' },
+  ],
+  resultName: 'Pan de leche y miel',
+  resultCatalogSlug: 'pan-leche-miel',
+  resultDescription: 'Masa de trigo escarlata amasada con leche de múrgol y endulzada con miel de Lebude — pan tierno de obrador.',
+  tier: 4,
+  oficio: 'cocinero-orcos-llanuras',
+  narrationWant:
+    'El personaje quiere hornear pan de leche y miel, pero no lleva encima 2 de trigo escarlata, 1 leche de múrgol y 1 miel de Lebude — narra que lo intenta o lo considera, pero no que el pan queda hecho.',
+  narrationDo: 'El personaje amasa el trigo con leche y miel y lo hornea — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+export const AGED_MURGOL_CHEESE_RECIPE: CraftingRecipe = {
+  key: 'agedMurgolCheese',
+  verbRegex: /cur|cuaj|prens|prepar/,
+  nounRegex: /queso/,
+  location: null,
+  ingredients: [{ match: { kind: 'exact', catalogSlug: 'leche-murgol' }, cantidad: 4, label: 'leche de múrgol' }],
+  resultName: 'Queso curado de Múrgol',
+  resultCatalogSlug: 'queso-curado-murgol',
+  resultDescription: 'Leche de múrgol cuajada, prensada y curada en la bodega de un gran obrador — aguanta semanas y alimenta mucho.',
+  tier: 7,
+  oficio: 'cocinero-orcos-llanuras',
+  narrationWant:
+    'El personaje quiere curar un queso de múrgol, pero no lleva encima 4 de leche de múrgol — narra que lo intenta o lo considera, pero no que el queso queda hecho.',
+  narrationDo: 'El personaje cuaja, prensa y deja curar la leche de múrgol — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
+};
+
+export const PLAINS_ROAST_RECIPE: CraftingRecipe = {
+  key: 'plainsRoast',
+  verbRegex: /as|cocin|prepar/,
+  nounRegex: /asado.*llanura|llanura.*asado/,
+  location: null,
+  ingredients: [
+    { match: { kind: 'exact', catalogSlug: 'racion-carne' }, cantidad: 2, label: 'ración de carne fresca' },
+    { match: { kind: 'exact', catalogSlug: 'boungo' }, cantidad: 2, label: 'Boungo' },
+    { match: { kind: 'exact', catalogSlug: 'trigo-escarlata' }, cantidad: 1, label: 'trigo escarlata' },
+  ],
+  resultName: 'Asado de las Llanuras',
+  resultCatalogSlug: 'asado-llanuras',
+  resultDescription: 'Carne asada a la brasa con Boungo y torta de trigo escarlata — el banquete de un gran obrador de las Llanuras.',
+  tier: 7,
+  oficio: 'cocinero-orcos-llanuras',
+  narrationWant:
+    'El personaje quiere preparar un Asado de las Llanuras, pero no lleva encima 2 raciones de carne fresca, 2 Boungo y 1 de trigo escarlata — narra que lo intenta o lo considera, pero no que el asado queda hecho.',
+  narrationDo: 'El personaje asa la carne con Boungo y su torta de trigo — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
 };
 
 export const MOSS_POULTICE_RECIPE: CraftingRecipe = {
@@ -1324,6 +1403,10 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
   SCARLET_WHEAT_BREAD_RECIPE,
   SWEET_HONEYCOMB_RECIPE,
   MURGOL_CURD_RECIPE,
+  MURGOL_STEW_RECIPE,
+  MILK_HONEY_BREAD_RECIPE,
+  AGED_MURGOL_CHEESE_RECIPE,
+  PLAINS_ROAST_RECIPE,
   MOSS_POULTICE_RECIPE,
   SALVATURA_FILTER_RECIPE,
   QUIO_CLARITY_FILTER_RECIPE,

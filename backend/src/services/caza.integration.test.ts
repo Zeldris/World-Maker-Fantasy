@@ -239,6 +239,36 @@ describe('iniciarCaza — integración real (Postgres, sobre el catálogo de hel
     }, 20_000);
   });
 
+  /// CR-62 (62d, ADR 0002): con más enemigos de los que caben, tu Grupo 2 pelea de fondo contra el
+  /// grupo enemigo que sobra (antes ese grupo no tenía con quién pelear).
+  describe('tus otros grupos pelean de fondo (CR-62)', () => {
+    let saveId: string;
+    beforeAll(async () => {
+      saveId = await crearSave(1, 'Gorhorn de prueba (caza.ts, grupo 2 de fondo)');
+    });
+    afterAll(() => limpiarSave(saveId));
+
+    it('el Grupo 2 entra en el sub-combate de fondo y su resumen sale en la narración', async () => {
+      const atributos = { fuerza: 16, destreza: 16, constitucion: 16, inteligencia: 10, voluntad: 12, carisma: 8, magia: 0 };
+      const ana = await prisma.companion.create({ data: { saveId, name: 'Ana', role: 'mascota', notes: '', tipo: 'FAUNA', sourceSlug: 'aullador-rojo', attributes: atributos, combatGroupSlotIndex: 1 } });
+      await prisma.combatGroup.create({ data: { saveId, slotIndex: 1, name: 'Retaguardia' } });
+      const save = await saveParaCaza(saveId, 1);
+      const targets: CazaTarget[] = [{ npc: zenseCeniza, cantidadObjetivo: 5, cantidadElegida: 5 }];
+      const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      let resultado;
+      try {
+        resultado = await iniciarCaza({ save, targets });
+      } finally {
+        randomSpy.mockRestore();
+      }
+      expect('error' in resultado!).toBe(false);
+      const autonomo = await prisma.combatEncounter.findFirstOrThrow({ where: { saveId, jugable: false }, include: { participantes: true } });
+      expect(autonomo.participantes.some((p) => p.companionId === ana.id)).toBe(true);
+      expect(autonomo.estado).toBe('RESUELTO');
+      expect(JSON.stringify(resultado)).toContain('Retaguardia se enfrenta a');
+    }, 20_000);
+  });
+
   /// Cobertura trasladada (2026-09-02) — fallo total del grupo (`cantidadReal=0`) escribe el
   /// cooldown de dispersión en `WorldPopulation` para ese `targetSlug`/Location.
   describe('cooldown de dispersión tras fallo total', () => {

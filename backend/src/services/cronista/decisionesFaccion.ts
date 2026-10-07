@@ -22,7 +22,7 @@
 // Aceptar y Rechazar y 3 días de plazo; dejarla pasar es rechazarla) y presión de las belicosas;
 // nunca una guerra (`CR-37`). Él no decide aquí: responde la jugadora.
 import type { Disposicion, FactionRelationType, Prisma, PrismaClient } from '@prisma/client';
-import { tickFactionProduction } from '../kingdomTick.js';
+import { produccionDeFaccion } from '../kingdomTick.js';
 import { ETIQUETA_BANDA, stageForPresion, typeForPresion, PRESION_MAX, PRESION_MIN, PRESION_NEUTRAL } from '../factionRelations.js';
 import { carenciasDe, inteligenciaDelLider, tocaRevisar, tramoDeInteligencia, UMBRALES_CARENCIA, type Carencia, type Tramo } from './carencias.js';
 import { CATALOGO_SUCESOS, type TipoSuceso } from './catalogoSucesos.js';
@@ -255,6 +255,7 @@ export async function decidirFacciones(prisma: PrismaClient, saveId: string, dia
         select: {
           id: true, slug: true, name: true, disposicion: true, kingdomStats: true,
           liderNpc: { select: { attributes: true } },
+          raza: true,
           buildings: { where: { status: 'ACTIVO' }, select: { recipeKey: true, status: true } },
         },
         orderBy: { id: 'asc' },
@@ -264,7 +265,7 @@ export async function decidirFacciones(prisma: PrismaClient, saveId: string, dia
         return {
           esReino: false,
           id: f.id, slug: f.slug, name: f.name, disposicion: f.disposicion, statsId: f.kingdomStats!.id, ultimaRevision: f.kingdomStats!.ultimaRevision,
-          soldados: f.kingdomStats!.soldados, stats: f.kingdomStats!, produccion: tickFactionProduction(f.buildings),
+          soldados: f.kingdomStats!.soldados, stats: f.kingdomStats!, produccion: produccionDeFaccion(f.buildings, f.raza, f.kingdomStats!),
           tramo: inteligencia === null ? null : tramoDeInteligencia(inteligencia),
         };
       });

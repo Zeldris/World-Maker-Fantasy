@@ -184,6 +184,27 @@ _Evitar_: tablón de misiones, tablón de encargos
 
 ## Combate y comercio (Fase G del 0.2)
 
+**Viajero**:
+Cualquiera que se desplaza por el mundo (expedición, caravana, partida, patrulla, refugiados, mensajero): sigue una ruta real de zona en zona y se le puede encontrar en el mapa.
+_Evitar_: expedición abstracta
+
+**Partida de caza**:
+Grupo que sale del Reino o de una facción como viajero a una zona con fauna, pelea contra ella y vuelve con piezas o con animales capturados.
+_Evitar_: oficio de cazador
+
+**Pieza**:
+Animal cazado que se trae entero al almacén para que lo trate el desollador; se estropea si no se trata.
+
+**Combate en vivo**:
+El combate en que está la jugadora con su grupo: por turnos y narrado.
+
+**Combate de fondo**:
+Cualquier combate sin la jugadora: las mismas reglas por turnos, resuelto al instante, determinista y sin narración.
+
+**Sub-combate**:
+Cada enfrentamiento de grupo contra grupo en que se parte un combate grande; con la jugadora, el suyo es en vivo y los demás de fondo.
+_Evitar_: combate en agregado, resolución por cifras
+
 **Moral**:
 Tirada de Voluntad con la que un NPC con mente decide si sigue peleando; la hace el líder por su grupo.
 _Evitar_: miedo, valor
@@ -223,6 +244,9 @@ _Evitar_: domador (el Domador es una especialización de combate, no un oficio)
 **Corral**:
 Edificio del ganadero que guarda animales de una sola especie, con plazas según su escalón.
 
+**Guardia (bestia)**:
+Animal de una especie de guardia que vive en un corral y defiende a su Reino o facción peleando como un combatiente más.
+
 **Etapa**:
 Momento de la vida de un animal (cría, joven, adulto, vejez) que decide qué come, si produce y si cría; depende de su categoría de fauna y de su porte.
 
@@ -236,4 +260,8 @@ Lo comestible tal como sale del ganado, la caza o la recolección; alimenta seg�
 Lo que sale de una receta de cocina; alimenta más que la suma de sus ingredientes, tanto más cuanto más alto el escalón de la cocina.
 
 **Comida pasiva**:
-Comida que aparece sin que nadie la produzca (por trabajador o por edificio); se retira a favor de la comida por oficios.
+Comida que aparece sin que nadie la produzca (por trabajador o por edificio); retirada en `CR-61` a favor de la comida por tareas.
+
+**Tarea**:
+Lo que hace cada día un súbdito trabajador: recolector, pescador, cocinero, ganadero o fibrero. De ella sale la comida del Reino; las facciones reparten a sus trabajadores en tareas según la costumbre de su pueblo.
+_Evitar_: oficio (es la profesión con nivel de un trabajador o compañero, no lo que hace hoy)

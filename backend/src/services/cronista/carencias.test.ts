@@ -26,8 +26,8 @@ describe('carencias (CR-34 34a)', () => {
   });
 
   it('comida: cuenta lo neto; sin déficit no hay carencia aunque la reserva esté a 0', () => {
-    // 100 bocas, 60 trabajadores → +20 al día.
-    expect(carenciasDe({ stats: stats({ poblacion: 100, trabajadores: 60 }) })).toEqual([]);
+    // 100 bocas y sus tareas dan 120 → +20 al día (CR-61: la comida sale de las tareas).
+    expect(carenciasDe({ stats: stats({ poblacion: 100, trabajadores: 60 }), produccion: { comida: 120, riqueza: 0 } })).toEqual([]);
     // 100 bocas, nada producido: 500 de reserva = 5 días → leve; 200 = 2 días → grave.
     expect(carenciasDe({ stats: stats({ poblacion: 100, comida: 500 }) })).toEqual([{ tipo: 'COMIDA', gravedad: 'LEVE' }]);
     expect(carenciasDe({ stats: stats({ poblacion: 100, comida: 200 }) })).toEqual([{ tipo: 'COMIDA', gravedad: 'GRAVE' }]);
@@ -42,17 +42,19 @@ describe('carencias (CR-34 34a)', () => {
   });
 
   it('Goirnos: cuando lo que entra no paga los sueldos de los soldados', () => {
-    // 500 soldados que comen de 300 trabajadores (+100 comida); riqueza 300 - 500 = -200 al día.
+    // 500 soldados que comen de las tareas de 300 trabajadores (+100 comida); riqueza 300 - 500 = -200 al día.
     const s = stats({ soldados: 500, trabajadores: 300, riqueza: 2000 });
-    expect(carenciasDe({ stats: s })).toEqual([{ tipo: 'GOIRNOS', gravedad: 'LEVE' }]);
-    expect(carenciasDe({ stats: { ...s, riqueza: 0 } })).toEqual([{ tipo: 'GOIRNOS', gravedad: 'GRAVE' }]);
+    const produccion = { comida: 600, riqueza: 0 };
+    expect(carenciasDe({ stats: s, produccion })).toEqual([{ tipo: 'GOIRNOS', gravedad: 'LEVE' }]);
+    expect(carenciasDe({ stats: { ...s, riqueza: 0 }, produccion })).toEqual([{ tipo: 'GOIRNOS', gravedad: 'GRAVE' }]);
   });
 
   it('soldados: frente al enemigo más fuerte; grave por debajo de la mitad del umbral', () => {
     const s = stats({ soldados: 100, trabajadores: 100 });
-    expect(carenciasDe({ stats: s, enemigos: [{ factionId: 'a', soldados: 150 }] })).toEqual([]);
-    expect(carenciasDe({ stats: s, enemigos: [{ factionId: 'a', soldados: 150 }, { factionId: 'b', soldados: 200 }] })).toEqual([{ tipo: 'SOLDADOS', gravedad: 'LEVE', enemigoId: 'b' }]);
-    expect(carenciasDe({ stats: s, enemigos: [{ factionId: 'b', soldados: 400 }] })).toEqual([{ tipo: 'SOLDADOS', gravedad: 'GRAVE', enemigoId: 'b' }]);
+    const produccion = { comida: 200, riqueza: 0 };
+    expect(carenciasDe({ stats: s, produccion, enemigos: [{ factionId: 'a', soldados: 150 }] })).toEqual([]);
+    expect(carenciasDe({ stats: s, produccion, enemigos: [{ factionId: 'a', soldados: 150 }, { factionId: 'b', soldados: 200 }] })).toEqual([{ tipo: 'SOLDADOS', gravedad: 'LEVE', enemigoId: 'b' }]);
+    expect(carenciasDe({ stats: s, produccion, enemigos: [{ factionId: 'b', soldados: 400 }] })).toEqual([{ tipo: 'SOLDADOS', gravedad: 'GRAVE', enemigoId: 'b' }]);
   });
 
   it('el impulsivo solo ve lo grave; el estratega ve lo leve antes', () => {

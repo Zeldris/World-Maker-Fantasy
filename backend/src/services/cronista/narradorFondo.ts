@@ -27,6 +27,7 @@ import { aplicarEfectos, type CtxEfecto, type Efecto } from './efectos.js';
 import { REGIONES_VECINAS } from './regiones.js';
 import { registrarSuceso, type ActorSuceso } from './sucesos.js';
 import { categoriaDeFamilia } from './noticias.js';
+import { pelearEscaramuza, resumenEscaramuza, tamanoEscaramuza } from './escaramuzas.js';
 import { darNoticiaDeSuceso } from './difusion.js';
 import { abrirCampoDeBatalla, abrirCaravana, abrirEncargo, type CtxOportunidad, type OportunidadAbierta } from './oportunidades.js';
 import { ownerKeyFor } from '../reinoOwner.js';
@@ -61,6 +62,8 @@ export interface Instancia {
   oportunidad?: (ctx: CtxOportunidad) => Promise<OportunidadAbierta | null>;
   /// Para decidir a quién llega la noticia (nombres de facción y `Location.region`).
   noticia: { facciones: string[]; region: string | null };
+  /// CR-62: las dos facciones pelean de verdad (combate de fondo) antes de escribir el suceso.
+  escaramuza?: { slugA: string; slugB: string };
 }
 
 export interface CtxNarrador {
@@ -147,6 +150,7 @@ export const SUCESOS_DE_FONDO: SucesoDeFondo[] = [
           actores: [actorFaccion(r.sourceFaction.slug, 'AUTOR'), actorFaccion(r.targetFaction.slug, 'VICTIMA')],
         },
         efectos: [{ tipo: 'cambiarPresion', origenSlug: r.sourceFaction.slug, destinoSlug: r.targetFaction.slug, evento: 'BAJA_DE_GUERRA' }],
+        escaramuza: { slugA: r.sourceFaction.slug, slugB: r.targetFaction.slug },
         oportunidad: (o: CtxOportunidad) => abrirCampoDeBatalla(o, r.sourceFaction.name, r.targetFaction.name),
         noticia: { facciones: [r.sourceFaction.name, r.targetFaction.name], region: null },
       })),
@@ -393,12 +397,24 @@ export async function narrarDia(
 
       // Al mediodía de ese día, pero nunca por delante del reloj de la partida.
       const minutos = Math.min(inicioDia + 720, ws.fictionalMinutes);
-      const { suceso } = elegida.instancia;
+      let { suceso } = elegida.instancia;
+      let efectos = elegida.instancia.efectos;
+      // CR-62 (62c): la escaramuza se pelea de verdad (ADR 0002) y el suceso cuenta cómo acabó.
+      const pelea = elegida.instancia.escaramuza;
+      if (pelea && suceso) {
+        const r = await pelearEscaramuza(tx, { saveId, worldId: save.worldId }, pelea.slugA, pelea.slugB, tamanoEscaramuza(random), tamanoEscaramuza(random), random);
+        if (r) {
+          suceso = { ...suceso, datos: { ...suceso.datos, resultado: resumenEscaramuza(r) } as typeof suceso.datos };
+          // Q6: con muertos, la presión sube más: la de quien los pone hacia el otro bando.
+          if (r.muertosB > 0) efectos = [...efectos, { tipo: 'cambiarPresion', origenSlug: pelea.slugB, destinoSlug: pelea.slugA, evento: 'BAJA_DE_GUERRA' }];
+          if (r.muertosA > 0 && pelea.slugB) efectos = [...efectos, { tipo: 'cambiarPresion', origenSlug: pelea.slugA, destinoSlug: pelea.slugB, evento: 'BAJA_DE_GUERRA' }];
+        }
+      }
       const sucesoPropio = suceso
         ? await registrarSuceso(tx, { saveId, tipo: elegida.tipo, fictionalMinutes: minutos, origen: 'MUNDO', ...suceso } as Parameters<typeof registrarSuceso>[1])
         : null;
       const ctxEfecto: CtxEfecto = { tx, saveId, worldId: save.worldId, fictionalMinutes: minutos, origen: 'MUNDO', causas: sucesoPropio ? [sucesoPropio] : [], random };
-      const resultados = await aplicarEfectos(ctxEfecto, elegida.instancia.efectos);
+      const resultados = await aplicarEfectos(ctxEfecto, efectos);
       const sucesoId = sucesoPropio ?? resultados.find((r) => r.sucesoId)?.sucesoId ?? null;
       if (!sucesoId) {
         await guardar();

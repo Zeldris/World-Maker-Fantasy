@@ -1,9 +1,10 @@
 import { registrarSuceso } from './cronista/sucesos.js';
-import { huecoDeMateriales, slugsDeMateriales, suministrosDelReino } from './cronista/economiaReino.js';
+import { comidaDelReino, huecoDeMateriales, slugsDeMateriales, suministrosDelReino } from './cronista/economiaReino.js';
 import { sucesosDeClima } from './cronista/clima.js';
 import type { Prisma } from '@prisma/client';
 import { tickKingdom, daysCrossed, hambrunaNueva, DIAS_PARA_CONSOLIDAR, DIAS_PARA_REBELION } from './kingdomTick.js';
 import { registrarHambruna } from './cronista/hambruna.js';
+import { comidaDe } from './cronista/ganaderia.js';
 import { tickOrdenesProduccion, companionesQueCuraCasaDeCuras, type TrabajadorReino, type OrdenProduccionInput } from './kingdomProduction.js';
 import { ownerKeyFor } from './reinoOwner.js';
 import { xpForCraftSuccess, professionLevelForXp } from './professionProgress.js';
@@ -36,11 +37,14 @@ export async function advanceKingdomStatsDay(
     const suministros = await suministrosDelReino(tx, saveId);
     // CR-58 (Q27): un trabajador sin herramienta produce la mitad.
     const trabajadoresEfectivos = Math.max(0, trabajadores - Math.ceil((kingdomStats.sinHerramienta ?? 0) / 2));
+    // CR-61: ya no hay comida pasiva; la dan las tareas de los súbditos (recolector, pescador, cocinero).
+    const ws = await tx.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true } });
+    const comidaDia = await comidaDelReino(tx, saveId, ws?.fictionalMinutes ?? 0, comida, trabajadores > 0 ? trabajadoresEfectivos / trabajadores : 1);
     const ticked = {
       ...tickKingdom(
         { poblacion, felicidad, comida, bebida, riqueza, soldados, trabajadores: trabajadoresEfectivos, visitantes, diasFelicidadAlta, diasFelicidadBaja, diasHambre, diasSed },
         diasCruzados,
-        suministros,
+        { ...suministros, comidaDia },
       ),
       trabajadores,
     };
@@ -195,7 +199,10 @@ export async function tickProduccionReino(tx: Prisma.TransactionClient, saveId: 
         if (recipe.oficio === 'cocinero-orcos-llanuras') {
           const kingdomStatsRow = await tx.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId }) }, select: { ownerKey: true } });
           if (kingdomStatsRow) {
-            await tx.kingdomStats.update({ where: { ownerKey: ownerKeyFor({ saveId }) }, data: { comida: { increment: resultado.resultCantidad } } });
+            // CR-61 (61d): cada plato suma lo que vale (`curaHambre`, 10 = 1 de comida); sin valor, 1.
+            const plato = recipe.resultCatalogSlug ? await tx.itemCatalog.findFirst({ where: { worldId, slug: recipe.resultCatalogSlug }, select: { curaHambre: true } }) : null;
+            const comidaPlato = plato?.curaHambre ? comidaDe(plato.curaHambre, resultado.resultCantidad) : resultado.resultCantidad;
+            await tx.kingdomStats.update({ where: { ownerKey: ownerKeyFor({ saveId }) }, data: { comida: { increment: comidaPlato } } });
           }
         }
         const ordenOriginal = ordenesInput.find((o) => o.id === resultado.ordenId)!;

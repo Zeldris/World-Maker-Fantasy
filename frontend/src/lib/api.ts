@@ -1540,6 +1540,8 @@ export interface AnimalDeCorral {
   edadDias: number
   etapa: EtapaAnimal
   diasParaSiguiente: number | null
+  /// CR-56 (Q4): la jugadora Domadora puede llevárselo como compañero.
+  puedeLlevar?: boolean
 }
 export interface CorralInfo {
   id: string
@@ -1548,6 +1550,8 @@ export interface CorralInfo {
   plazas: number
   especie: string | null
   especieNombre: string | null
+  /// CR-56 (Q3): corral de guardia (sus animales defienden el Reino).
+  guardia?: boolean
   animales: AnimalDeCorral[]
   ganaderos: { id: string; name: string }[]
   /// Q10: producción media al día con sus ganaderos.
@@ -1559,6 +1563,8 @@ export interface CorralesInfo {
   forrajeDia: number
   diasSinComer: number
   diasSinBeber: number
+  /// CR-56 (Q4): compañeros animales que pueden volver al corral.
+  fueraDelCorral?: { id: string; name: string }[]
   corrales: CorralInfo[]
 }
 export async function getCorrales(saveId: string): Promise<CorralesInfo> {
@@ -1570,6 +1576,12 @@ export async function postEntregarForraje(saveId: string, catalogSlug: string): 
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ catalogSlug }),
   })
+}
+export async function postLlevarConsigo(saveId: string, ganadoId: string): Promise<{ companionId: string }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/ganado/${ganadoId}/llevar`, { method: 'POST' })
+}
+export async function postDevolverAlCorral(saveId: string, companionId: string): Promise<{ buildingId: string }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/companeros/${companionId}/al-corral`, { method: 'POST' })
 }
 export async function postSacrificar(saveId: string, ganadoId: string): Promise<{ comida: number; almacen: Record<string, number>; perdido: number }> {
   return fetchJson(`${API_URL}/saves/${saveId}/ganado/${ganadoId}/sacrificar`, { method: 'POST' })
@@ -1681,7 +1693,11 @@ export interface SubditoInfo {
   /// REI-120: nombre de su pareja (si tiene) y crías que han tenido.
   pareja?: string | null
   crias?: number
+  /// CR-61 (61c): su tarea si es trabajador (sin tarea, recolector).
+  tarea?: TareaSubdito
 }
+
+export type TareaSubdito = 'recolector' | 'pescador' | 'cocinero' | 'ganadero' | 'fibrero'
 
 export interface CamasReino {
   total: number
@@ -1722,6 +1738,14 @@ export async function cambiarRolSubdito(saveId: string, subjectId: string, rol: 
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ rol }),
+  })
+}
+
+export async function cambiarTareaSubdito(saveId: string, subjectId: string, tarea: TareaSubdito): Promise<{ ok: boolean }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/subjects/${subjectId}/tarea`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tarea }),
   })
 }
 
@@ -2387,6 +2411,8 @@ export interface EnciclopediaFaunaFloraInfo {
   /// cerrado en el frontend) porque el backend puede añadir géneros nuevos sin requerir un
   /// despliegue sincronizado de ambos lados.
   faunaCategoria: string | null
+  /// CR-56 (Q1): para qué sirve la especie domesticada (vacío si no se domestica).
+  usos?: string[]
   floraCategoria: string | null
   /// Roster de habilidades DE LA CATEGORÍA con su nivel de desbloqueo (2026-09-15, cierre de
   /// deuda técnica — `faunaCategoria` en sí ya llegaba desde 2026-09-04, pero el roster que

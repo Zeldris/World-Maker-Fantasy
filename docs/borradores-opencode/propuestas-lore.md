@@ -214,6 +214,14 @@ son de Claude y provisionales)
   - **Leche de Múrgol**: 3 al día por hembra adulta… y por macho (el motor no distingue aún).
   - **Pastoreo de las Llanuras**: los herbívoros pastan y solo necesitan la mitad de forraje.
     ¿Hay pasto natural en otras regiones (la Ciénaga, el Margen)?
+- **Usos de la fauna** (`CR-56`, ficha en `cronista/usosFauna.ts`): guardias (Gargantúa, Canizor,
+  Rondador de Brasas, Cruzavientos, Salamandra de Escoria), compañeros (además Aullador Rojo y Zense
+  Ceniza) y monturas. Etapas provisionales de Corvenes (cría 20 d, adulto 90 d, vejez 6 años,
+  esperanza 8) y Mudos salvajes (cría 30 d, adulto 1 año, vejez 10, esperanza 12). Rondador,
+  Cruzavientos y Salamandra comen carne.
+- **Petición (usuaria, con prioridad para orcos y Faerus):** fauna domesticable de guardia de Cristal
+  Helado (Helsig), la Ciénaga (Goshg) y el Margen (Feg Tusha). Hoy solo las Llanuras tienen; los
+  Serhu crían 6 Canizores y Feg Ger 3.
 - **¿Qué «fibra» da el Coracelo?** Hoy no existe ningún objeto así; hasta saberlo no produce.
 - **Rebaños iniciales:** los Serhu con 60 Múrgol y 20 Corretolvas en el recinto de Karot Veku. ¿Qué
   crían Helsig, Goshg, los Nabieus y los Faerus, y cuántos?

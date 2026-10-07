@@ -100,7 +100,7 @@ function row(id: string, catalogSlug: string, cantidad?: number): InventoryRowLi
 }
 
 describe('CRAFTING_RECIPES', () => {
-  it('tiene las 57 recetas esperadas, cada una con una clave única', () => {
+  it('tiene las 60 recetas esperadas, cada una con una clave única', () => {
     expect(CRAFTING_RECIPES.map((r) => r.key)).toEqual([
       // Edificios de oficio (docs/rpgtarkor/sistemas-reino/edificios-de-oficio.md, 2026-09-28) — 3
       // recetas de extracción sin ingredientes (la de leche se quitó con CR-55: la da el ganado), solo asignables desde el panel de Reino
@@ -142,6 +142,11 @@ describe('CRAFTING_RECIPES', () => {
       'scarletWheatBread',
       'sweetHoneycomb',
       'murgolCurd',
+      // CR-61 (61d): platos de Obrador y Gran obrador.
+      'murgolStew',
+      'milkHoneyBread',
+      'agedMurgolCheese',
+      'plainsRoast',
       'mossPoultice',
       'salvaturaFilter',
       'quioClarityFilter',
@@ -788,5 +793,21 @@ describe('craftDurationSecondsFor (espera real, 2026-08-20)', () => {
   it('coincide con el tier real ya tabulado en las recetas base', () => {
     expect(craftDurationSecondsFor(axeRepair)).toBe(35); // tier 3
     expect(craftDurationSecondsFor(antidote)).toBe(20); // tier 2
+  });
+});
+
+describe('CR-61 (61d): las recetas de cocina no se pisan', () => {
+  const casos: [string, string][] = [
+    ['Preparo un guiso de carne de múrgol', 'murgolStew'],
+    ['Ahumo la carne', 'smokeMeat'],
+    ['Horneo pan de trigo escarlata con leche y miel', 'milkHoneyBread'],
+    ['Horneo pan de trigo escarlata', 'scarletWheatBread'],
+    ['Preparo un panal de miel', 'sweetHoneycomb'],
+    ['Preparo un asado de las Llanuras con carne y boungo', 'plainsRoast'],
+    ['Aso unos boungo', 'boungoRoast'],
+    ['Curo un queso de múrgol', 'agedMurgolCheese'],
+  ];
+  it.each(casos)('«%s» solo hace %s', (accion, receta) => {
+    expect(CRAFTING_RECIPES.filter((r) => detectsCraftIntent(r, accion)).map((r) => r.key)).toEqual([receta]);
   });
 });

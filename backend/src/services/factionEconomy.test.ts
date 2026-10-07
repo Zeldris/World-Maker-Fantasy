@@ -20,8 +20,8 @@ describe('factionEconomy — funciones puras (Fase 4, H-6/H-2/H-4)', () => {
 
   it('tickFactionOneDay: suma producción de edificios, consume por bocas y su fuente le da agua de sobra', () => {
     const base = { ...DEFAULT_KINGDOM_STATS, poblacion: 10, trabajadores: 2, soldados: 1, comida: 20, riqueza: 5 };
-    const r = tickFactionOneDay(base, { comida: 3, riqueza: 2 });
-    // comida: 20 + 3 + 2*2 - 11 bocas = 16; riqueza: 5 + 2 + 2*1 = 9 (CR-54: los soldados cobran por semana);
+    const r = tickFactionOneDay(base, { comida: 7, riqueza: 2 });
+    // comida: 20 + 7 de sus tareas (CR-61: ya no hay comida pasiva por trabajador) - 11 bocas = 16; riqueza: 5 + 2 + 2*1 = 9 (CR-54: los soldados cobran por semana);
     // bebida: la fuente da 11 * 1,1 = 13 y beben 11 (CR-54, Q17).
     expect(r.comida).toBe(16);
     expect(r.riqueza).toBe(9);

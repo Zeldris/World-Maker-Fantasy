@@ -2,16 +2,19 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { ownerKeyFor } from '../../services/reinoOwner.js';
-import { corralesDelReino, entregarPastos, etapaDelAnimal, forrajeDeFibrerias, huecoDeForraje, sacrificar } from '../../services/cronista/ganadoReino.js';
-import { etapasDe, produccionDelDia } from '../../services/cronista/ganaderia.js';
+import { corralesDelReino, entregarPastos, etapaDelAnimal, forrajeDeFibrerias, huecoDeForraje, sacrificar, llevarConsigo, devolverAlCorral } from '../../services/cronista/ganadoReino.js';
+import { esGanado, etapasDe, produccionDelDia } from '../../services/cronista/ganaderia.js';
+import { esCompanero, esGuardia } from '../../services/cronista/usosFauna.js';
+import { esDomador } from '../../services/companionSupervivencia.js';
 import { rejectIfEnded, rejectIfPendingDeath, lockRowForUpdate } from './shared.js';
 
 export async function ganadoRoutes(app: FastifyInstance) {
   /// Reino › Corrales: cada corral con sus animales (etapa y días que le faltan para la siguiente),
   /// sus ganaderos, y la reserva de forraje del Reino.
   app.get<{ Params: { id: string } }>('/saves/:id/corrales', async (request, reply) => {
-    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, worldId: true, worldState: { select: { fictionalMinutes: true } } } });
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, worldId: true, clase: true, especializacion: true, worldState: { select: { fictionalMinutes: true } } } });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    const domadora = esDomador(save.clase, save.especializacion);
     const ahora = save.worldState?.fictionalMinutes ?? 0;
     return prisma.$transaction(async (tx) => {
       const corrales = await corralesDelReino(tx, save.id);
@@ -27,9 +30,15 @@ export async function ganadoRoutes(app: FastifyInstance) {
         forrajeDia: await forrajeDeFibrerias(tx, save.id),
         diasSinComer: stats?.ganadoDiasSinComer ?? 0,
         diasSinBeber: stats?.ganadoDiasSinBeber ?? 0,
+        // CR-56 (Q4): compañeros animales que pueden volver al corral.
+        fueraDelCorral: (await tx.companion.findMany({ where: { saveId: save.id, tipo: 'FAUNA', sourceSlug: { not: null }, condicionFisica: { not: 'MUERTO' } }, select: { id: true, name: true, sourceSlug: true } }))
+          .filter((c) => esGanado(c.sourceSlug!))
+          .map((c) => ({ id: c.id, name: c.name })),
         corrales: corrales.map((c) => ({
           ...c,
           especieNombre: c.especie ? (porSlug.get(c.especie)?.name ?? c.especie) : null,
+          // CR-56 (Q3): sus animales defienden el Reino.
+          guardia: !!c.especie && esGuardia(c.especie),
           // Q10: lo que produce de media al día con sus ganaderos (bien comido y bebido).
           produccionDia: (() => {
             if (!c.especie) return [];
@@ -44,7 +53,7 @@ export async function ganadoRoutes(app: FastifyInstance) {
             const { edadDias, etapa } = etapaDelAnimal(a, cat, ahora);
             const e = etapasDe(a.especie, cat);
             const siguiente = etapa === 'CRIA' ? e.cria : etapa === 'JOVEN' ? e.adulto : etapa === 'ADULTO' ? e.vejez : null;
-            return { id: a.id, sexo: a.sexo, edadDias, etapa, diasParaSiguiente: siguiente === null ? null : siguiente - edadDias };
+            return { id: a.id, sexo: a.sexo, edadDias, etapa, diasParaSiguiente: siguiente === null ? null : siguiente - edadDias, puedeLlevar: domadora && etapa === 'ADULTO' && esCompanero(a.especie) };
           }),
         })),
       };
@@ -74,6 +83,34 @@ export async function ganadoRoutes(app: FastifyInstance) {
     const r = await prisma.$transaction(async (tx) => {
       await lockRowForUpdate(tx, 'Save', save.id, ['id']);
       return sacrificar(tx, save.id, request.params.ganadoId, save.worldState?.fictionalMinutes ?? 0);
+    });
+    if (!r.ok) return reply.status(400).send({ error: r.motivo });
+    return r;
+  });
+
+  /// CR-56 (Q4): la jugadora Domadora se lleva un adulto del corral como compañero.
+  app.post<{ Params: { id: string; ganadoId: string } }>('/saves/:id/ganado/:ganadoId/llevar', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, endedAt: true, pendingDeathResolution: true, worldState: { select: { fictionalMinutes: true } } } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (rejectIfEnded(save, reply)) return;
+    if (rejectIfPendingDeath(save, reply)) return;
+    const r = await prisma.$transaction(async (tx) => {
+      await lockRowForUpdate(tx, 'Save', save.id, ['id']);
+      return llevarConsigo(tx, save.id, request.params.ganadoId, save.worldState?.fictionalMinutes ?? 0);
+    });
+    if (!r.ok) return reply.status(400).send({ error: r.motivo });
+    return r;
+  });
+
+  /// CR-56 (Q4): un compañero animal vuelve al corral.
+  app.post<{ Params: { id: string; companionId: string } }>('/saves/:id/companeros/:companionId/al-corral', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, endedAt: true, pendingDeathResolution: true, worldState: { select: { fictionalMinutes: true } } } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (rejectIfEnded(save, reply)) return;
+    if (rejectIfPendingDeath(save, reply)) return;
+    const r = await prisma.$transaction(async (tx) => {
+      await lockRowForUpdate(tx, 'Save', save.id, ['id']);
+      return devolverAlCorral(tx, save.id, request.params.companionId, save.worldState?.fictionalMinutes ?? 0);
     });
     if (!r.ok) return reply.status(400).send({ error: r.motivo });
     return r;

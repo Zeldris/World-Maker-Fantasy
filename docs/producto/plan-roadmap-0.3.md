@@ -23,8 +23,8 @@ nuevo del motor y se intercala entre fases.
 | **A — Personas que recuerdan** | `CR-14` etiquetas, `CR-15` aprobación con valores, `CR-16` recuerdos de NPC, `CR-17` buscadores de historias e hilos, `CR-42` compañeros que cuentan lo de su tierra, `CR-32` reclutamiento pacífico e informantes ([Cronista Fase 4](roadmap-cronista.md#fase-4--personas-que-recuerdan--m)) | — | ✅ 2026-10-06 (`CR-14`, `CR-15`, `CR-16`, `CR-17`, `CR-42`, `CR-32`; la escena de confianza > 80 va con la Fase F y lo que el narrador cuenta de recuerdos e hilos, con la B) |
 | **B — Memoria del narrador** | `CR-21` verdad obligatoria, `CR-22` callbacks por entidad, `CR-23` puntuación de recuerdos ([Cronista Fase 6](roadmap-cronista.md#fase-6--memoria-del-narrador--m)) | A | ✅ 2026-10-06 (`CR-21`, `CR-22`, `CR-23` en `memoriaNarrador.ts`) |
 | **C — Población del Reino** | `REI-118` súbditos como personas, `REI-119` llegadas, `REI-120` parejas y crías, `REI-121` salidas y muerte, `CR-52` linajes y rastros ([propuesta aprobada](../borradores-opencode/propuestas-aprobadas.md), «Ciclo vital de los pueblos») · súbditos en el panel (`REI-53`, `REI-54`) | — (vivienda del `0.1`, `CR-13`) | ✅ 2026-10-06 (`CR-52`, `REI-118`…`REI-121`, `REI-54`; queda `REI-53` en parte —territorio de residencia y estado— y la muerte de súbditos en combate, que va con `CR-37` en la Fase E; los números del hambre son provisionales para la ronda de la Fase D) |
-| **D — Economía, ganadería y obras** | `CR-53` economía de supervivencia del Reino, `CR-54` de las facciones, `CR-58` factura de equipo, `CR-59` vasallaje y deuda · `CR-55` ganadería (oficio de ganadero y corrales por especie), `CR-56` usos de la fauna, `CR-61` comida por oficios · estaciones sin oficio (Leñera, Cantera, Fibrería) si hacen falta · edificios de defensa · `CR-36` las facciones construyen | C | 🚧 ronda 1 aceptada (2026-10-06, decisiones abajo, portes incluidos); ~~`CR-53`~~ ✅, ~~`CR-54`~~ ✅, ~~`CR-58`~~ ✅ y ~~`CR-59`~~ ✅ 2026-10-06; ronda de `CR-55` aceptada (2026-10-06, decisiones abajo; tarea nueva `CR-61`); ~~`CR-55`~~ ✅ 2026-10-06 |
-| **E — Conflicto** | `CR-39` territorios y expansión · `CR-37` guerra contra el Reino · `CR-50` campamentos de bandidos · postura de compañero en combate · `CMB-1`…`CMB-8` | C, D (defensa) | Pendiente |
+| **D — Economía, ganadería y obras** | `CR-53` economía de supervivencia del Reino, `CR-54` de las facciones, `CR-58` factura de equipo, `CR-59` vasallaje y deuda · `CR-55` ganadería (oficio de ganadero y corrales por especie), `CR-56` usos de la fauna, `CR-61` comida por oficios · estaciones sin oficio (Leñera, Cantera, Fibrería) si hacen falta · edificios de defensa · `CR-36` las facciones construyen | C | 🚧 ronda 1 aceptada (2026-10-06, decisiones abajo, portes incluidos); ~~`CR-53`~~ ✅, ~~`CR-54`~~ ✅, ~~`CR-58`~~ ✅ y ~~`CR-59`~~ ✅ 2026-10-06; ronda de `CR-55` aceptada (2026-10-06, decisiones abajo; tarea nueva `CR-61`); ~~`CR-55`~~ ✅ y ~~`CR-56`~~ ✅ 2026-10-06 |
+| **E — Conflicto** | ~~`CR-62`~~ ✅ 2026-10-07 combate de fondo para escaramuzas y patrullas · `CR-39` territorios y expansión · `CR-37` guerra contra el Reino · `CR-50` campamentos de bandidos · postura de compañero en combate · `CMB-1`…`CMB-8` | C, D (defensa) | Pendiente |
 | **F — Hablar y comerciar con NPC** | «Charlar con NPC» enriquecido (Franja 4: lore, reclutar, interrogar tras Clemente) · `CR-51` comercio en persona con NPC y caravanas | A | 🧭 falta la especificación (ronda de diseño) |
 | **G — Interfaz** (se intercala) | Reino R-B, R-C, R-D, R-E y `PAN-7` · `DiceTray` `DAD-7`…`DAD-12` (con el resto de `CFG-20`) · `HUD-1`…`HUD-5`, `HUD-7`…`HUD-11`, `HUD-13` · `NAR-1`…`NAR-8`, `NAR-10`, `NAR-11` · `PAN-1`…`PAN-6`, `PAN-11`…`PAN-14` · `UX-18` (epílogo con plantillas), `UX-19`, `UX-20` · `INT-5`…`INT-8`, `INT-10`, `INT-11` · `CFG-36` · UX-F `UX-32`…`UX-34`, `UX-39` | — | Pendiente |
 
@@ -205,6 +205,77 @@ trabajador produce) y Bellwright (corral con su comida y su tope).
   - En `CR-61`: el resto (escala completa, platos de Obrador y Gran obrador, cocineros de facción
     que transforman 10 de crudo al día cada uno en vez del +3 fijo por Cocina, cazador y recolector
     con rendimientos reales, y fin de la comida pasiva para todos).
+
+## Decisiones de `CR-56` usos de la fauna (ronda aceptada por la usuaria el 2026-10-06)
+
+- **Regla de combate** (usuaria, [ADR 0002](../adr/0002-dos-formas-de-combate.md)): con la jugadora
+  presente con su grupo, combate en vivo (por turnos, narrado); cualquier otro, de fondo (mismas reglas,
+  determinista, sin narración). Nada de cifras en agregado ni equivalencias «bestia = N soldados».
+- **Q1 Ficha de usos** (FC = Fuerza + Constitución): Múrgol producción y montura; Corretolvas
+  producción; Coracelo y Guchapo, a Álvaro; Cuernahoja sacrificio y montura (Nabieus y Faerus);
+  Gargantúa sacrificio, guardia y montura; Canizor guardia, compañero y montura (Nabieus y Faerus);
+  Rondador de Brasas, Cruzavientos y Salamandra de Escoria guardia y compañero; Aullador Rojo
+  compañero (FC 13, no llega a guardia); Zense Ceniza compañero explorador; Corredor de Cauce solo
+  montura. Se ve en la Enciclopedia; el porte va con `CR-57`.
+- **Q2 Guardias en el corral:** ganado de una especie de guardia; comen, beben y crían; sin ganadero.
+- **Q3 Guardias como combatientes:** defienden su Reino o facción en vivo o de fondo según la regla de
+  combate; llega con `CR-37`. Aquí quedan marcados como defensores.
+- **Q4 «Llevar contigo»:** la jugadora Domadora con hueco de Domador libre saca del corral un adulto de
+  especie de compañero; «Devolver al corral» lo devuelve.
+- **Q5 Guardias de facción** (usuaria: todos los pueblos, sobre todo orcos y Faerus): Serhu 6 Canizores,
+  Feg Ger 3 Canizores; Helsig, Goshg y Feg Tusha cuando haya fauna de guardia de su región (petición
+  de lore con prioridad); el resto, pocas o ninguna.
+- **Q6 Tarea nueva `CR-62`:** la escaramuza del narrador y la patrulla de vasallaje pasan al combate de
+  fondo, antes de `CR-37`.
+
+## Decisiones de `CR-62` combate de fondo (ronda aceptada por la usuaria el 2026-10-07)
+
+Base: [ADR 0002](../adr/0002-dos-formas-de-combate.md) y el canon de
+`docs/rpgtarkor/sistemas-combate/combate-multiple.md` § 3-4 (sub-combates deterministas con la misma
+mecánica; reporte de combate autónomo).
+
+- **Q1 Motor de fondo:** cada bando en grupos; grupo 1 contra grupo 1, grupo 2 contra grupo 2…; si un
+  bando tiene menos grupos, los suyos vuelven a pelear (con sus heridas) contra los siguientes. Cada
+  sub-combate con las piezas del combate en vivo: iniciativa, objetivo por Inteligencia, capitán y
+  ataques concentrados, intercambio, moral y retirada. Puro y determinista con su semilla; la
+  intercepción de expediciones pasa a este motor.
+- **Tamaño de los sub-combates** (criterio de Claude, delegado por la usuaria): sin la jugadora, **8
+  contra 8** (sin narración no hay espera y la melé es más realista); con ella, **4 contra 4** (sus
+  grupos de combate y la narración). Dos constantes; `CMB-9` (`0.8`) subirá el 4 a 6-8 cuando se
+  pulan los tiempos de narración (la usuaria: el 4 nace de esos tiempos).
+- **Q2 Los otros grupos de la jugadora:** si pelea contra más de los que caben, su Grupo 1 juega en
+  vivo y sus grupos 2, 3… luchan de fondo contra el resto; al acabar, un resumen de cada sub-combate
+  de fondo (reporte de § 4, con plantilla). Último paso de `CR-62`.
+- **Q3 Quién pelea por una facción:** sus NPC guerreros con nombre (no mueren en una pelea de fondo) y,
+  hasta completar, soldados genéricos de su pueblo (atributos base de la raza, nivel 3, con su arma).
+- **Q4 Tamaño:** escaramuza del narrador, 2d4 por bando; patrulla Serhu, 20 guerreros contra 1d6+2
+  rivales (otra facción de su región o renegados).
+- **Q5 Bajas:** muere el 3 % de los que caen (regla de Álvaro); los heridos se recuperan.
+- **Q6 Qué queda:** suceso `ESCARAMUZA` con ganador, retirada y bajas de cada bando; la noticia; más
+  presión si hay muertos; el campo de batalla como ahora.
+
+## Decisiones de `CR-61` y `CR-63` (ronda aceptada por la usuaria el 2026-10-07)
+
+- **La caza no es un oficio** (usuaria, como en Bellwright): son **partidas** que salen, pelean contra la
+  fauna y vuelven con **piezas** que trata el desollador; la misma partida puede salir a **capturar**.
+- **Todo viaja de verdad** ([ADR 0003](../adr/0003-todo-viaja-de-verdad.md)): las partidas son
+  **viajeros** con ruta real por los enlaces entre lugares (un lugar al día; la zona, celda a celda),
+  visibles en el mapa; si pasan por fauna agresiva o una banda, pelean allí (ADR 0002). La auditoría de
+  lo demás que hoy es invisible está en `CR-64`.
+- **Q2 Al cruzarte:** preguntar qué han visto (conocimiento de las zonas que atravesaron), comerciar;
+  a las tuyas, darles órdenes (volver, cambiar de destino). Atacar y escoltar, con `CR-64`.
+- **Q3 `CR-63`:** tus grupos de combate y súbditos con el rol nuevo «cazador» (soldados genéricos de su
+  pueblo con su arma), en grupos de 4; piezas por especie que se estropean a los 3 días; captura con
+  cuerdas y Jaula libre según `capturablePct`; órdenes de una vez o permanentes; las facciones cazan
+  igual.
+- **Q4 `CR-61`:** tareas de los súbditos trabajadores: recolector (2; primavera y verano 2,5; invierno 1),
+  pescador (3, solo con agua), cocinero (+5/+10/+15 netos según su Cocina), ganadero y fibrero.
+  Facciones, sin la caza: orcos 70 % recolección y 30 % cocina; Faerus 80/20; Nabieus 40 % pesca, 40 %
+  recolección, 20 % cocina; Goirntes 60/20/20. Hasta `CR-63`, la caza de orcos (45 %) y Faerus (50 %)
+  va en agregado a 2,5. Platos nuevos: Guiso de Múrgol y Pan de leche y miel (Obrador), Queso curado de
+  Múrgol y Asado de las Llanuras (Gran obrador). Fin de la comida pasiva para todos; los Goirnos por
+  trabajador se quedan.
+- **Q5 Orden:** `CR-61` y luego `CR-63`; se sube todo junto a `main`.
 
 ## Decisiones que bloquean algo
 

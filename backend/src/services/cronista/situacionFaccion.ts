@@ -1,7 +1,7 @@
 // Situación de una facción del mundo de la partida (CR-34): sus carencias tal como las ve quien la
 // lidera. Lee de la base de datos y delega el cálculo en `carencias.ts` (puro).
 import type { Prisma } from '@prisma/client';
-import { tickFactionProduction } from '../kingdomTick.js';
+import { produccionDeFaccion } from '../kingdomTick.js';
 import { carenciasDe, inteligenciaDelLider, tramoDeInteligencia, type Carencia, type Tramo } from './carencias.js';
 
 type Tx = Prisma.TransactionClient;
@@ -21,6 +21,7 @@ export async function situacionDeFaccion(tx: Tx, factionId: string): Promise<Sit
     select: {
       kingdomStats: true,
       liderNpc: { select: { attributes: true } },
+      raza: true,
       buildings: { where: { status: 'ACTIVO' }, select: { recipeKey: true, status: true } },
     },
   });
@@ -35,6 +36,6 @@ export async function situacionDeFaccion(tx: Tx, factionId: string): Promise<Sit
 
   const inteligencia = inteligenciaDelLider(faccion.liderNpc);
   const tramo = inteligencia === null ? null : tramoDeInteligencia(inteligencia);
-  const carencias = carenciasDe({ stats: faccion.kingdomStats, produccion: tickFactionProduction(faccion.buildings), enemigos }, tramo ?? 'SENSATO');
+  const carencias = carenciasDe({ stats: faccion.kingdomStats, produccion: produccionDeFaccion(faccion.buildings, faccion.raza, faccion.kingdomStats), enemigos }, tramo ?? 'SENSATO');
   return { carencias, tramo, inteligencia };
 }

@@ -13,6 +13,7 @@ import {
 import { coreRegionOf } from '../services/discovery.js';
 import { allClassAbilityUnlocks, CLASE_DESCRIPTION } from '../services/classAbilities.js';
 import { faunaCategoriaAbilityUnlocksFor, type FaunaCategoria } from '../services/faunaAbilities.js';
+import { usosLegibles } from '../services/cronista/usosFauna.js';
 import { CONSTRUCTION_RECIPES } from '../services/construction.js';
 import { CRAFTING_RECIPES } from '../services/crafting.js';
 import { allProfessionAbilityUnlocks } from '../services/professionAbilities.js';
@@ -226,6 +227,8 @@ function buildFaunaFloraSection(ctx: EnciclopediaBuildContext) {
     // ambos a la vez, junto con `floraCategoria` (worldCatalog.ts, sin tabla propia). Mutuamente
     // excluyentes según `esFauna` — nunca los dos a la vez para el mismo sourceSlug.
     faunaCategoria: ctx.npcBySlug.get(sourceSlug)?.faunaCategoria ?? null,
+    // CR-56 (Q1): para qué sirve la especie domesticada.
+    usos: usosLegibles(sourceSlug),
     floraCategoria: harvestSourceFloraCategoria[sourceSlug] ?? null,
     // Roster de habilidades DE LA CATEGORÍA con su nivel de desbloqueo (2026-09-15, cierre de
     // deuda técnica: `faunaCategoria` en sí ya se exponía desde 2026-09-04, pero el roster que

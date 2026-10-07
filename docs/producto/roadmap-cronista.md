@@ -1687,14 +1687,73 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   - Deuda que se cobra en patrullas obligadas (20 guerreros por semana, 25 % de `ESCARAMUZA` con 1d6
     bajas).
   - Se rompe saldando la deuda, si cae el señor, con una alianza con el Reino o en guerra. **M**
-- **CR-61** Comida por oficios (Q15 de la ronda de `CR-55`, usuaria 2026-10-06: los mismos sistemas
-  para el Reino y las facciones, sin comida pasiva).
-  - Escala única `curaHambre` (10 = 1 de comida); valor de todos los comestibles crudos.
-  - Platos con multiplicador por escalón de la receta (Taller ×1,5, Obrador ×2, Gran obrador ×2,5);
-    dos o tres recetas de Obrador y de Gran obrador (nombres a Álvaro).
-  - Cocineros de facción: cada uno transforma 10 de crudo al día con el multiplicador de su Cocina,
-    en vez del +3 fijo por edificio.
-  - Cazador y recolector con rendimientos reales; fin de los 2 de comida por trabajador. **L**
+- ~~**CR-62** Combate de fondo (Q6 de la ronda de `CR-56`; ronda propia aceptada el 2026-10-07,
+  decisiones en [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-cr-62-combate-de-fondo-ronda-aceptada-por-la-usuaria-el-2026-10-07);
+  ADR 0002).~~ ✅ 2026-10-07. Pasos:
+  - ~~62a~~: motor puro `combateDeFondo.ts` (grupos de 8 sin la jugadora y de 4 con ella, sub-combates
+    con iniciativa, objetivo, capitán, intercambio y moral; muere el 3 % de los caídos, nunca los NPC
+    con nombre). Revisión del PR: si un grupo falla la moral se retira él solo, los demás grupos de su
+    bando siguen.
+  - ~~62b~~: `combatientesFaccion.ts` (sus guerreros con nombre y soldados genéricos de su pueblo) y la
+    intercepción de expediciones con el motor común (con el nivel real de cada NPC).
+  - ~~62c~~: escaramuzas del narrador (2d4 por bando) y patrulla de vasallaje Serhu pelean de verdad
+    (`escaramuzas.ts`); más presión si hay muertos, de quien los pone hacia el otro bando.
+  - ~~62d~~: en la caza, los grupos 2+ de la jugadora pelean de fondo contra el resto, con resumen;
+    esos sub-combates se resuelven enteros (si llegan al tope de rondas, en tablas).
+  Queda: `CMB-9` (`0.8`) sube el tope de 4 con la jugadora; el lugar de las escaramuzas, con `CR-64`.
+- ~~**CR-61** Comida por oficios~~ ✅ 2026-10-07 (Q15 de la ronda de `CR-55`; ronda propia aceptada el 2026-10-07,
+  decisiones en [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-cr-61-y-cr-63-ronda-aceptada-por-la-usuaria-el-2026-10-07)).
+  Queda para `CR-63`: la caza de orcos y Faerus sigue en agregado (2,5 por cazador) hasta que salgan
+  sus partidas. Pasos:
+  - ~~61a~~ ✅ 2026-10-07: reglas puras (`cronista/comidaOficios.ts`): tareas, rendimientos por estación,
+    agua y Cocina, reparto por pueblo y caza en agregado hasta `CR-63`.
+  - ~~61b~~ ✅ 2026-10-07: fin de los 2 por trabajador y del +3 por Cocina. Facciones: la comida
+    sale de `repartoDeFaccion` + `comidaDelDia` cada día (`producirFacciones`, sin ganaderos ni
+    fibreros, estación del día y escalón de su mejor Cocina); carencias, decisiones y rearme del
+    vasallo estiman con `produccionDeFaccion` (estación media). Reino: `SuministrosDia.comidaDia`;
+    hasta 61c todos sus trabajadores recolectan con el rendimiento de la estación.
+  - ~~61c~~ ✅ 2026-10-07: `Subject.tarea` (migración `20261007120000_subdito_tarea`; null =
+    recolector), `POST /saves/:id/subjects/:subjectId/tarea` y selector «Tarea» en Reino › Súbditos
+    (solo trabajadores adultos). La comida del Reino sale de `comidaDelReino` (`economiaReino.ts`):
+    estación, agua junto al Ayuntamiento para pescar, escalón de la mejor Cocina (su `tier`, o la receta en las de facción) y la
+    mitad sin herramienta. Los súbditos ganaderos se reparten por turno entre los Corrales y los
+    fibreros suman en la Fibrería (si hay).
+  - ~~61d~~ ✅ 2026-10-07: cada plato de una orden de Cocina suma al Reino `comidaDe(curaHambre)`
+    (antes 1). Valores: Boungo asado 12, Panal endulzado 12, Pan de trigo escarlata 14. Recetas
+    nuevas: Guiso de Múrgol (64) y Pan de leche y miel (28), de Obrador (tier 4); Queso curado de
+    Múrgol (40) y Asado de las Llanuras (98), de Gran obrador (tier 7).
+  **L**
+- **CR-63** Partidas de caza y captura (ronda aceptada el 2026-10-07, decisiones en
+  [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-cr-61-y-cr-63-ronda-aceptada-por-la-usuaria-el-2026-10-07);
+  ADR 0003). Viajeros (base de `CR-64`), piezas y desollador, rol «cazador», captura, órdenes
+  permanentes, encuentros por el camino, preguntar y comerciar; las facciones cazan igual, con el
+  mismo motor (ADR 0003, «los mismos sistemas para todos»). Hito `0.3`,
+  justo después de `CR-61`. **L**
+- **CR-64** Todo viaja de verdad ([ADR 0003](../adr/0003-todo-viaja-de-verdad.md), usuaria 2026-10-07,
+  como en X4): lo que se mueve es un **viajero** con ruta real de zona en zona, visible y con quien
+  cruzarse e interactuar (preguntar por las regiones que ha atravesado, comerciar, escoltar, asaltar).
+  Auditoría de lo implementado que hoy es invisible o abstracto (días + tirada al llegar):
+  - **Expediciones de facción** (`factionExpeditions.ts`): días de ida y vuelta; la intercepción se
+    tira al llegar; en el mapa, solo una bandera entre nodos de las Llanuras (`CR-46`).
+  - **Caravanas del Reino** (`caravanas.ts`, `CR-47`): igual; la «caravana local» comercia sin viajar.
+  - **Caravanas entre facciones** del narrador de fondo (suceso `CARAVANA`): solo un suceso y riqueza.
+  - **Patrulla de vasallaje** (`vasallaje.ts`): «20 guerreros a una zona», sin moverse.
+  - **Escaramuzas** del narrador: sin lugar; ya pelean (`CR-62`), pero no se ve dónde ni quién va.
+  - **Migración de fauna** (suceso `MIGRACION_FAUNA`): la población cambia de región de golpe.
+  - **Visitante ilustre** y **llegadas de súbditos** (`llegadas.ts`, `REI-119`): aparecen a tu puerta.
+  - **Salidas y desertores** (`salidas.ts`, facciones): «vuelven a su pueblo» desapareciendo.
+  - **Refugiados** (consecuencia `REFUGIADOS`): la población pasa a las regiones vecinas sin viajar.
+  - **Vengadores** (`VENGANZA_PARIENTE`): esperan un encuentro en vez de buscarte por el camino.
+  - **Informantes** (`CR-32`): su información llega sola cada semana; podrían ser mensajeros.
+  - **Propuestas diplomáticas** de las facciones al Reino (`CR-34` 34e): sin enviado.
+  - **Rumores y noticias** (`noticias.ts`): llegan por distancia en días; podrían viajar con quien
+    los lleva (mercaderes, mensajeros, refugiados).
+  - **Bandas de renegados** (`CR-49`): patrullan dentro de su zona, pero no cambian de zona.
+  - **Partidas de caza y captura** (`CR-63`): nacen ya como viajeros.
+  Pasos: infraestructura de viajeros (modelo, rutas por enlaces y celdas, avance diario, en el mapa,
+  encuentro con la jugadora y acciones) con `CR-63`; luego, uno a uno, cada sistema de la lista.
+  Hito `0.4` (va con el viaje largo entre regiones), salvo la infraestructura, que entra con `CR-63`
+  en el `0.3`. **XL**
 - **CR-60** Ingresos pasivos del Reino y de las facciones (usuaria, 2026-10-06): fuentes de
   Goirnos que no dependan de los trabajadores (hoy solo el comercio y las expediciones). Necesita
   una ronda de diseño. Hito `0.4`. **M**
@@ -1711,10 +1770,14 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   - ~~55g~~ ✅ 2026-10-06: Reino › Corrales (`CorralesSection.tsx`: forraje, entrega de pastos, aviso de hambre y sed, tarjeta por corral con especie, plazas, ♂/♀ y crías, ganaderos, producción media al día y «Sacrificar»); «Al corral» en el modal de domesticar.
   - **Queda** (fuera de `CR-55`): la fibra del Coracelo y las preguntas a Álvaro (`propuestas-lore.md`, «Ganadería»); súbditos como ganaderos (hoy lo son los compañeros asignados al corral); comprar animales (`CR-51`); la comida pasiva de todos (`CR-61`).
   - El Corredor de Cauce nunca. **L**
-- **CR-56** Usos de la fauna (Q10, Q12).
-  - Ficha de cada especie: producción, guardia, compañero de Domador y porte.
-  - Animales de guardia en el corral, contados como defensa del Reino (fuerza en la Fase E).
-  - Como compañeros de quien tenga especialidad de Domador. **M**
+- ~~**CR-56** Usos de la fauna~~ ✅ 2026-10-06 (Q10, Q12 de la Fase D; ronda propia aceptada el 2026-10-06, decisiones en
+  [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-cr-56-usos-de-la-fauna-ronda-aceptada-por-la-usuaria-el-2026-10-06)).
+  Pasos (todos hechos):
+  - ~~56a~~ ✅ 2026-10-06: ficha de usos (`cronista/usosFauna.ts`), Rondador, Cruzavientos y Salamandra como ganado de guardia (etapas de Corvenes y Mudos salvajes; sin ganadero), usos en la ficha de fauna de la Enciclopedia.
+  - ~~56b~~ ✅ 2026-10-06: «Llevar contigo» (`POST /ganado/:id/llevar`: la Domadora con su hueco de Domador libre saca un adulto de especie de compañero) y «Devolver al corral» (`POST /companeros/:id/al-corral`), conservando sexo y nacimiento (`Companion.sexo`/`nacidoEn`, migración `20261006190000_companero_de_corral`); marca «Guardia: defiende el Reino» y sección «Contigo» en Reino › Corrales.
+  - ~~56c~~ ✅ 2026-10-06: guardias de facción por versiones del rebaño inicial (`KingdomStats.ganadoVersion`, migración `20261006200000_ganado_version`): Serhu 6 Canizores, Feg Ger 3; sin ganadero.
+  - **Queda** (fuera de `CR-56`): los guardias pelean con `CR-37` (en vivo o de fondo, ADR 0002); fauna de guardia de Cristal Helado, la Ciénaga y el Margen (lore); compañeros NPC Domadores con la postura de compañero (Fase E); el porte y la montura con `CR-57`.
+  **M**
 - **CR-57** Monturas (Q14, hito `0.4`).
   - Porte de cada especie y talla de cada pueblo (provisionales, en `propuestas-lore.md`).
   - Montable si mide ≥ 60 % de la altura del jinete y pesa ≥ 3 veces lo que el jinete con su equipo,

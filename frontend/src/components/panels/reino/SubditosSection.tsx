@@ -3,7 +3,7 @@ import type { AlmacenItemInfo, CompanionInfo, EquipSlot, InventoryItemInfo, Plan
 import { PanelSection } from '../../PanelSection'
 import { SelectorJuego } from '../../SelectorJuego'
 import { AlmacenSection } from './AlmacenSection'
-import { crearPlantilla, borrarPlantilla, asignarPlantillaCompanion, asignarPlantillaSubject, fijarRolReinoCompanion, getSubditos, cambiarRolSubdito, responderLlegada, type SubditoInfo, type CamasReino, type CandidatoLlegada, type SalidaSubdito } from '../../../lib/api'
+import { crearPlantilla, borrarPlantilla, asignarPlantillaCompanion, asignarPlantillaSubject, fijarRolReinoCompanion, getSubditos, cambiarRolSubdito, cambiarTareaSubdito, responderLlegada, type SubditoInfo, type TareaSubdito, type CamasReino, type CandidatoLlegada, type SalidaSubdito } from '../../../lib/api'
 import { lineaDeSubdito, plazoDeLlegada } from '../../../lib/subditos'
 import { SLOT_LABEL, SLOT_ORDER } from '../../../lib/equipSlots'
 import { ErrorBanner } from '../../../components/ErrorBanner'
@@ -345,9 +345,17 @@ function RolesReinoSection({ saveId, companions, onRefreshSave }: { saveId: stri
 
 /// REI-118 (hito 0.3): los roles que el motor da a un súbdito adulto.
 const ROLES_SUBDITO: { value: SubditoInfo['rol']; label: string; descripcion: string }[] = [
-  { value: 'trabajador', label: 'Trabajador', descripcion: 'Trabaja: suma comida y riqueza al Reino.' },
+  { value: 'trabajador', label: 'Trabajador', descripcion: 'Trabaja en su tarea y suma riqueza al Reino.' },
   { value: 'soldado', label: 'Soldado', descripcion: 'Defiende el Reino; cobra su mantenimiento.' },
   { value: 'vigia', label: 'Vigía', descripcion: 'Vigila el Reino; cuenta como soldado.' },
+]
+/// CR-61 (61c): la tarea de cada trabajador; de ella sale la comida del Reino.
+const TAREAS_SUBDITO: { value: TareaSubdito; label: string; descripcion: string }[] = [
+  { value: 'recolector', label: 'Recolector', descripcion: 'Recoge 2 de comida al día (2,5 en primavera y verano; 1 en invierno).' },
+  { value: 'pescador', label: 'Pescador', descripcion: 'Pesca 3 al día si hay agua junto al Ayuntamiento; si no, recolecta.' },
+  { value: 'cocinero', label: 'Cocinero', descripcion: 'Con Cocina, transforma 10 de comida cruda: +5, +10 o +15 según su escalón. Sin Cocina, recolecta.' },
+  { value: 'ganadero', label: 'Ganadero', descripcion: 'Cuida el ganado de los Corrales (sin ganadero no producen).' },
+  { value: 'fibrero', label: 'Fibrero', descripcion: 'Siega en la Fibrería: 10 de forraje al día.' },
 ]
 /// REI-118 + REI-53 (parte): los súbditos como personas — pueblo, edad, linaje, felicidad y rol
 /// editable (las crías no trabajan ni combaten) — y las camas que comparten con los compañeros.
@@ -377,6 +385,19 @@ function SubditosLista({ saveId, subjects, plantillasEquipo, onRefreshSave }: { 
       await onRefreshSave()
     } catch (e) {
       informar('No se pudo cambiar el rol.', e, () => void handleRol(id, rol))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleTarea(id: string, tarea: TareaSubdito) {
+    setBusy(true)
+    try {
+      await cambiarTareaSubdito(saveId, id, tarea)
+      setVersion((v) => v + 1)
+      await onRefreshSave()
+    } catch (e) {
+      informar('No se pudo cambiar la tarea.', e, () => void handleTarea(id, tarea))
     } finally {
       setBusy(false)
     }
@@ -474,6 +495,20 @@ function SubditosLista({ saveId, subjects, plantillasEquipo, onRefreshSave }: { 
                   </span>
                 )}
               </div>
+              {s.rol === 'trabajador' && s.adulto && (
+                <div className="mt-1.5 flex items-center justify-between gap-2">
+                  <span className="text-2xs text-wood-500">Tarea</span>
+                  <SelectorJuego
+                    ariaLabel={`Tarea de ${s.name}`}
+                    value={s.tarea ?? 'recolector'}
+                    disabled={busy || !!consulta}
+                    title={consulta ?? undefined}
+                    opciones={TAREAS_SUBDITO}
+                    onChange={(v) => void handleTarea(s.id, v)}
+                    className="min-w-[7rem]"
+                  />
+                </div>
+              )}
               <div className="mt-1.5 flex items-center gap-2" title={`Felicidad ${s.felicidad}/100`}>
                 <span className="text-2xs text-wood-500">Felicidad</span>
                 <div className="h-1.5 flex-1 overflow-hidden rounded bg-wood-900" role="meter" aria-label={`Felicidad de ${s.name}`} aria-valuenow={s.felicidad} aria-valuemin={0} aria-valuemax={100}>

@@ -13,10 +13,11 @@ vi.mock('../../../lib/api', () => ({
   setAlmacenLimite: vi.fn(),
   getSubditos: vi.fn(),
   cambiarRolSubdito: vi.fn(),
+  cambiarTareaSubdito: vi.fn(),
   responderLlegada: vi.fn(),
 }))
 
-import { cambiarRolSubdito, fijarRolReinoCompanion, getAlmacenLimites, getSubditos, responderLlegada, type SubditoInfo } from '../../../lib/api'
+import { cambiarRolSubdito, cambiarTareaSubdito, fijarRolReinoCompanion, getAlmacenLimites, getSubditos, responderLlegada, type SubditoInfo } from '../../../lib/api'
 import { SubditosSection } from './SubditosSection'
 import { lineaDeSubdito, plazoDeLlegada } from '../../../lib/subditos'
 import type { CompanionInfo } from '../../../types'
@@ -92,6 +93,24 @@ describe('SubditosSection — súbditos (REI-118)', () => {
       fireEvent.click(getByRole('option', { name: /Soldado/ }))
     })
     expect(cambiarRolSubdito).toHaveBeenCalledWith('s1', 'a', 'soldado')
+  })
+
+  it('un trabajador adulto elige su tarea (CR-61); una cría no tiene tarea', async () => {
+    vi.mocked(cambiarTareaSubdito).mockResolvedValue({ ok: true })
+    vi.mocked(getSubditos).mockResolvedValue({
+      subditos: [sub({ id: 'a', tarea: 'recolector' }), sub({ id: 'b', name: 'Doru Ketg', edad: 1, adulto: false }), sub({ id: 'c', name: 'Grosh Ketg', role: 'soldado', rol: 'soldado' })],
+      camas: { total: 4, companeros: 0, subditos: 3, libres: 1 },
+    })
+    const { findByRole, queryByRole, getByRole } = render(
+      <SubditosSection saveId="s1" subjects={[]} companions={[]} inventory={[]} almacenItems={[]} plantillasEquipo={[]} onRefreshSave={async () => {}} />,
+    )
+    fireEvent.click(await findByRole('button', { name: 'Tarea de Brakka Ketg' }))
+    expect(queryByRole('button', { name: 'Tarea de Doru Ketg' })).toBeNull()
+    expect(queryByRole('button', { name: 'Tarea de Grosh Ketg' })).toBeNull()
+    await act(async () => {
+      fireEvent.click(getByRole('option', { name: /Cocinero/ }))
+    })
+    expect(cambiarTareaSubdito).toHaveBeenCalledWith('s1', 'a', 'cocinero')
   })
 })
 

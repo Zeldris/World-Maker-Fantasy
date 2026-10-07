@@ -1812,6 +1812,8 @@ export async function resolverTurnoAutonomo({
   }
 
   const habilidadAtaque = chooseNpcAbility(datosAtacante.abilities, 'ataque', datosAtacante.energia, Math.random, datosAtacante.usageCounts);
+  // Sin ningún ataque (un compañero sin origen en el catálogo), pasa el turno en vez de romper.
+  if (!habilidadAtaque) return avanzarSinAtacar({ prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn });
 
   // INVOCACION real (Fase 3 § 3d, 2026-08-27) — antes de mirar el enganche normal (invocar no
   // necesita objetivo, consume el turno entero, ver comentario largo de `invocarTotemYAvanzar`).

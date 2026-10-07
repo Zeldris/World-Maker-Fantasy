@@ -6,7 +6,7 @@ import { equipSlotFamily, effectiveAttributes, effectiveInventorySlotsBonus } fr
 import { inventoryCapacityFor, totalInventoryUnits } from '../../services/inventoryCapacity.js';
 import type { AttributeBlock, Attribute } from '../../services/dice.js';
 import { plazasTrabajadorParaTier } from '../../services/construction.js';
-import { cambiarRolSubdito, cupoDeCamas, datosDeSubditos } from '../../services/cronista/subditos.js';
+import { cambiarRolSubdito, cambiarTareaSubdito, cupoDeCamas, datosDeSubditos } from '../../services/cronista/subditos.js';
 import { candidatosDeLlegada, responderLlegada } from '../../services/cronista/llegadas.js';
 import { esMaterial, huecoDeMateriales } from '../../services/cronista/economiaReino.js';
 import { salidasRecientes } from '../../services/cronista/salidas.js';
@@ -942,6 +942,17 @@ export async function companerosRoutes(app: FastifyInstance) {
     if (rejectIfEnded(save, reply)) return;
     if (rejectIfPendingDeath(save, reply)) return;
     const r = await prisma.$transaction((tx) => cambiarRolSubdito(tx, save.id, request.params.subjectId, request.body?.rol ?? '', save.worldState?.fictionalMinutes ?? 0));
+    if (!r.ok) return reply.status(400).send({ error: r.motivo });
+    return { ok: true };
+  });
+
+  /// CR-61 (61c): cambia la tarea de un súbdito trabajador (recolector, pescador, cocinero, ganadero, fibrero).
+  app.post<{ Params: { id: string; subjectId: string }; Body: { tarea: string } }>('/saves/:id/subjects/:subjectId/tarea', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, endedAt: true, pendingDeathResolution: true, worldState: { select: { fictionalMinutes: true } } } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (rejectIfEnded(save, reply)) return;
+    if (rejectIfPendingDeath(save, reply)) return;
+    const r = await prisma.$transaction((tx) => cambiarTareaSubdito(tx, save.id, request.params.subjectId, request.body?.tarea ?? '', save.worldState?.fictionalMinutes ?? 0));
     if (!r.ok) return reply.status(400).send({ error: r.motivo });
     return { ok: true };
   });

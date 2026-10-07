@@ -64,7 +64,8 @@ export interface DatosSuceso {
   RUPTURA: { faccionA: string; faccionB: string };
   SABOTAJE: { autor: string; victima: string };
   ESPIONAJE: { autor: string; espiada: string };
-  ESCARAMUZA: { faccionA: string; faccionB: string; region?: string };
+  /// CR-62: `resultado`, cómo acabó la pelea (combate de fondo).
+  ESCARAMUZA: { faccionA: string; faccionB: string; region?: string; resultado?: string };
   // FACCION
   FACCION_CAE: { faccion: string };
   FACCION_ESCINDIDA: { faccion: string; nueva: string };
@@ -176,7 +177,7 @@ export const CATALOGO_SUCESOS: Catalogo = {
   TRATADO_COMERCIAL: { familia: 'DIPLOMACIA', importanciaBase: 5, plantilla: (d) => `${d.faccionA} y ${d.faccionB} firman un tratado comercial.` },
   RUPTURA: { familia: 'DIPLOMACIA', importanciaBase: 6, plantilla: (d) => `${d.faccionA} y ${d.faccionB} rompen relaciones.` },
   SABOTAJE: { familia: 'DIPLOMACIA', importanciaBase: 5, plantilla: (d) => `${d.autor} sabotea a ${d.victima}.` },
-  ESCARAMUZA: { familia: 'DIPLOMACIA', importanciaBase: 4, plantilla: (d) => `Gente de ${d.faccionA} y de ${d.faccionB} llega a las manos${d.region ? ` en ${d.region}` : ''}.` },
+  ESCARAMUZA: { familia: 'DIPLOMACIA', importanciaBase: 4, plantilla: (d) => `Gente de ${d.faccionA} y de ${d.faccionB} llega a las manos${d.region ? ` en ${d.region}` : ''}.${d.resultado ? ` ${d.resultado.charAt(0).toUpperCase()}${d.resultado.slice(1)}.` : ''}` },
   ESPIONAJE: { familia: 'DIPLOMACIA', importanciaBase: 3, plantilla: (d) => `${d.autor} espía a ${d.espiada}.` },
   // FACCION
   FACCION_CAE: { familia: 'FACCION', importanciaBase: 10, plantilla: (d) => `${d.faccion} cae.` },

@@ -2,6 +2,7 @@ import { slugify } from '../lib/slugify.js';
 import { registrarEnPartidasDelMundo } from './cronista/emisores.js';
 import { minutosDeFiccion, registrarSuceso, type NuevoSuceso } from './cronista/sucesos.js';
 import { edadEnAnios, esAdulto, nacidoEnDe } from './cronista/edades.js';
+import { simularCombateDeFondo } from './combateDeFondo.js';
 import { npcVivoEnPartida, poblacionDeCatalogo, type FiltroPoblacion } from './mundoPartida.js';
 import { difundirNoticias, textoAsalto, textoExpedicionDeVuelta, type NoticiaMundo } from './noticiasMundo.js';
 import type { Prisma, PrismaClient, FactionRelationType, CondicionFisica, Npc } from '@prisma/client';
@@ -14,11 +15,9 @@ import { attributeForOficio, metodoForOficio, professionIdForOficio } from './ha
 import { estacionFor, climaFor } from './worldClock.js';
 import { applyGatheringRoll, candidateSourcesFor, gatheringRollFor, type SourceCandidate } from '../routes/saves/recolectar.js';
 import type { Attribute, AttributeBlock } from './dice.js';
-import { resolveExchange, type ExchangeParticipant } from './combatExchange.js';
 import { toNpcForCombatAbilities } from './combateMultipleOrquestacion.js';
 import { npcCombatAbilitiesFor } from './npcCombatAbilities.js';
 import { npcAttributesForLevel } from './progression.js';
-import { oneStepWorseThan } from './death.js';
 import { recordFactionEvent } from './factionRelations.js';
 import type { Clase } from './classAbilities.js';
 import type { Carencia, Tramo } from './cronista/carencias.js';
@@ -34,7 +33,7 @@ import { situacionDeFaccion } from './cronista/situacionFaccion.js';
 /// D+1, tirada de riesgo y recolección (RECOLECTANDO → RETORNANDO en el mismo paso: la recolección es
 /// instantánea) → el día D+2 (`diaRegreso`) COMPLETADA y el botín entra en el Almacén de la facción.
 /// Si salta la intercepción la expedición pasa a INTERCEPTADA y pierde la carga. Fase 13-C: al saltar la intercepción, `resolverInterceptacion`
-/// enfrenta a un `Npc` real de la facción hostil con los guardias (`resolveExchange`, por rondas); si
+/// enfrenta a un `Npc` real de la facción hostil con los guardias (combate de fondo, `combateDeFondo.ts`); si
 /// los guardias aguantan la expedición sigue su curso, si caen se pierde la carga y sube la presión.
 /// Muertes (decisión de Álvaro, 2026-09-29): cada participante que cae fuera de combate tira una
 /// probabilidad muy baja de morir (`PROBABILIDAD_MUERTE_EN_INTERCEPCION`); la muerte es de MUNDO
@@ -294,13 +293,6 @@ export function xpRecolector(items: { tier: number }[]): number {
 
 // ─────────────────────────── Intercepción con combate (Fase 13-C) ───────────────────────────
 
-/// Tope de rondas del combate de intercepción. Un atacante contra 2 guardias necesita como mucho 6
-/// golpes (3 escalones de condición cada uno) para dejarlos fuera; 12 da margen a los fallos. Si se
-/// agota, los guardias cuentan como que resisten (la caravana sigue).
-export const MAX_RONDAS_INTERCEPTACION = 12;
-/// Relleno de `ExchangeParticipant.difficulty`: el intercambio es un check opuesto y este valor no
-/// decide nada (mismo criterio y mismo valor que `CHECK_OPUESTO_DIFICULTAD_RELLENO` del combate múltiple).
-const DIFICULTAD_RELLENO = 15;
 /// Evento de `FactionRelation` que suma presión cuando los atacantes ganan: el mismo que dispara el
 /// jugador al matar a un NPC de otra facción (`turnLootKill.ts`), peso +8 en `factionRelations.ts`.
 export const EVENTO_PRESION_INTERCEPTACION = 'BAJA_DE_GUERRA' as const;
@@ -314,6 +306,8 @@ export interface CombatienteInterceptacion {
   attributes: AttributeBlock;
   attribute: Attribute;
   attributeBonus: number;
+  /// Su nivel (para la dificultad de escapar al retirarse); 1 si no se sabe.
+  nivel?: number;
 }
 
 /// `Npc` → combatiente, con las mismas piezas que el combate múltiple (`datosVivosDe`):
@@ -325,11 +319,8 @@ export function combatienteDeNpc(npc: Npc): CombatienteInterceptacion {
     attributes: npcAttributesForLevel(npc.attributes as unknown as AttributeBlock, npc.level, npc.clase as Clase | null),
     attribute: ataque.attribute,
     attributeBonus: ataque.attributeBonus ?? 0,
+    nivel: npc.level,
   };
-}
-
-function participanteDe(c: CombatienteInterceptacion, condicionFisica: CondicionFisica): ExchangeParticipant {
-  return { attributes: c.attributes, attribute: c.attribute, attributeBonus: c.attributeBonus, difficulty: DIFICULTAD_RELLENO, condicionFisica, rol: 'ataque' };
 }
 
 /// Fuera de combate = CONVALECIENTE o MUERTO (mismo criterio que `objetivosValidos`).
@@ -338,46 +329,36 @@ function fueraDeCombate(c: CondicionFisica): boolean {
 }
 
 export interface ResultadoCombateInterceptacion {
-  /// 'atacante' si deja fuera a todos los guardias; 'defensores' si el atacante cae o se agota el tope.
+  /// 'atacante' si deja fuera o hace huir a todos los guardias (CR-62: con moral, los guardias pueden
+  /// retirarse y dejar la carga); 'defensores' si el atacante cae, huye o se agota el tope.
   ganador: 'atacante' | 'defensores';
   rondas: number;
-  /// true si se agotó `MAX_RONDAS_INTERCEPTACION` sin que cayera nadie del todo (los defensores resisten).
+  /// true si se agotó el tope de rondas del combate de fondo sin que cayera nadie del todo (los
+  /// defensores resisten).
   tope: boolean;
   /// Condición final de cada bando (los que llegan a CONVALECIENTE tiran la probabilidad de muerte).
   condicionAtacante: CondicionFisica;
   condicionGuardias: CondicionFisica[];
 }
 
-/// Puro y determinista dado `random`: el combate de intercepción. Cada ronda: (1) el atacante ataca al
-/// primer guardia en pie; (2) cada guardia en pie contraataca al atacante. En cada intercambio
-/// (`resolveExchange`) un golpe que llega (`golpe_normal`/`golpe_pleno`) empeora un escalón la condición
-/// del defensor y un contragolpe (`defensor_contragolpea`) empeora la del atacante — la misma "vida" por
-/// escalones (`oneStepWorseThan`) que el resto del combate. Solo vive en memoria: no toca BD.
+/// Puro y determinista dado `random`: el combate de intercepción, un combate de fondo (CR-62, motor
+/// común `combateDeFondo.ts`) del atacante contra los guardias.
 export function simularCombateInterceptacion(atacante: CombatienteInterceptacion, guardias: CombatienteInterceptacion[], random: () => number): ResultadoCombateInterceptacion {
   if (guardias.length === 0) return { ganador: 'atacante', rondas: 0, tope: false, condicionAtacante: 'ILESO', condicionGuardias: [] };
-  let condAtacante: CondicionFisica = 'ILESO';
-  const condGuardias: CondicionFisica[] = guardias.map(() => 'ILESO');
-
-  for (let ronda = 1; ronda <= MAX_RONDAS_INTERCEPTACION; ronda++) {
-    // 1) El atacante golpea al primer guardia en pie.
-    const objetivo = condGuardias.findIndex((c) => !fueraDeCombate(c));
-    const ataque = resolveExchange(participanteDe(atacante, condAtacante), participanteDe(guardias[objetivo]!, condGuardias[objetivo]!), random);
-    if (ataque.resultado === 'golpe_normal' || ataque.resultado === 'golpe_pleno') condGuardias[objetivo] = oneStepWorseThan(condGuardias[objetivo]!);
-    else if (ataque.resultado === 'defensor_contragolpea') condAtacante = oneStepWorseThan(condAtacante);
-    if (fueraDeCombate(condAtacante)) return { ganador: 'defensores', rondas: ronda, tope: false, condicionAtacante: condAtacante, condicionGuardias: condGuardias };
-    if (condGuardias.every(fueraDeCombate)) return { ganador: 'atacante', rondas: ronda, tope: false, condicionAtacante: condAtacante, condicionGuardias: condGuardias };
-
-    // 2) Cada guardia en pie contraataca al atacante.
-    for (let g = 0; g < guardias.length; g++) {
-      if (fueraDeCombate(condGuardias[g]!)) continue;
-      const res = resolveExchange(participanteDe(guardias[g]!, condGuardias[g]!), participanteDe(atacante, condAtacante), random);
-      if (res.resultado === 'golpe_normal' || res.resultado === 'golpe_pleno') condAtacante = oneStepWorseThan(condAtacante);
-      else if (res.resultado === 'defensor_contragolpea') condGuardias[g] = oneStepWorseThan(condGuardias[g]!);
-      if (fueraDeCombate(condAtacante)) return { ganador: 'defensores', rondas: ronda, tope: false, condicionAtacante: condAtacante, condicionGuardias: condGuardias };
-    }
-    if (condGuardias.every(fueraDeCombate)) return { ganador: 'atacante', rondas: ronda, tope: false, condicionAtacante: condAtacante, condicionGuardias: condGuardias };
-  }
-  return { ganador: 'defensores', rondas: MAX_RONDAS_INTERCEPTACION, tope: true, condicionAtacante: condAtacante, condicionGuardias: condGuardias };
+  // CR-62 (62b): la intercepción es un combate de fondo más (ADR 0002), con el motor común. Las
+  // muertes las sigue tirando `tirarMuertes` (aquí todos pueden morir, también los NPC con nombre).
+  const comoFondo = (c: CombatienteInterceptacion, bando: 'A' | 'B') => ({
+    id: c.id, nombre: c.nombre, bando, attributes: c.attributes, attribute: c.attribute, attributeBonus: c.attributeBonus, nivel: c.nivel ?? 1, conMoral: true,
+  });
+  const r = simularCombateDeFondo([comoFondo(atacante, 'A'), ...guardias.map((g) => comoFondo(g, 'B'))], random, { probMuerte: 0 });
+  const condicion = (id: string) => r.estados.find((e) => e.id === id)!.condicion;
+  return {
+    ganador: r.ganador === 'A' ? 'atacante' : 'defensores',
+    rondas: r.rondas,
+    tope: r.ganador === null,
+    condicionAtacante: condicion(atacante.id),
+    condicionGuardias: guardias.map((g) => condicion(g.id)),
+  };
 }
 
 /// Facción hostil que dispara el riesgo: entre los OTROS dueños de la región, la de mayor riesgo según

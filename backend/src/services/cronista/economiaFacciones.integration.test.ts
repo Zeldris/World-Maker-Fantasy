@@ -78,7 +78,9 @@ describe('re-siembra única del reparto en una partida (CR-54, Q20)', () => {
     expect(cohortes.filter((c) => c.especie === 'murgol').reduce((s, c) => s + c.cantidad, 0)).toBeGreaterThanOrEqual(60);
     expect(cohortes.filter((c) => c.especie === 'corretolvas').reduce((s, c) => s + c.cantidad, 0)).toBeGreaterThanOrEqual(20);
     const despues = await prisma.kingdomStats.findUniqueOrThrow({ where: { id: ks.id } });
-    expect(despues.ganadoSembrado).toBe(true);
+    expect(despues.ganadoVersion).toBe(2);
+    // CR-56 (Q5): y sus Canizores de guardia.
+    expect(cohortes.filter((c) => c.especie === 'canizor').reduce((s, c) => s + c.cantidad, 0)).toBeGreaterThanOrEqual(6);
     // Sin el rebaño el balance del día sería el pasivo (≈ +1); con él, unos +8 más.
     const bocas = antes.poblacion + antes.soldados + antes.visitantes;
     const sinRebano = antes.trabajadores * 2 + 3 - bocas;

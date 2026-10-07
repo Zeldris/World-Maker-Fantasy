@@ -1,9 +1,10 @@
+import { MAX_RONDAS_SUBCOMBATE } from './combateDeFondo.js';
 import { describe, it, expect } from 'vitest';
 import {
   DURACION_EXPEDICION_DIAS, MAX_GUARDIAS, MAX_RECOLECTORES, MAX_UNIDADES_POR_RECOLECTOR,
   elegirBotinDeRecolector, elegirGuardias, elegirRecolectores, esRolGuardia, metodoExpedicionFor,
   oficioRutaFor, oficiosDeRecoleccionOrdenados, ordenarDestinos, regionesElegibles, resolverInterceptacion,
-  MAX_RONDAS_INTERCEPTACION, elegirAtacante, faccionHostilDeRegion, simularCombateInterceptacion, type CombatienteInterceptacion,
+  elegirAtacante, faccionHostilDeRegion, simularCombateInterceptacion, type CombatienteInterceptacion,
   riesgoIntercepcion, riesgoPorRelacion, seIntercepta, xpRecolector,
   priorizarOficios, priorizarDestinos, motivoDeExpedicion, esComestible,
   PROBABILIDAD_MUERTE_EN_INTERCEPCION, muereTrasCaer, tirarMuertes, npcElegibleParaExpedicion, SLUGS_NPC_DE_TRAMA, type NpcParaElegibilidad, type NpcsProtegidos,
@@ -107,7 +108,7 @@ describe('intercepción con combate (Fase 13-C)', () => {
   it('guardias fuertes contra un atacante débil resisten', () => {
     const r = simularCombateInterceptacion(comb('atacante', 4), [comb('g1', 18), comb('g2', 18)], fijo);
     expect(r).toMatchObject({ ganador: 'defensores', tope: false });
-    expect(r.rondas).toBeLessThanOrEqual(MAX_RONDAS_INTERCEPTACION);
+    expect(r.rondas).toBeLessThanOrEqual(MAX_RONDAS_SUBCOMBATE);
   });
   it('un guardia débil contra un atacante fuerte pierde', () => {
     const r = simularCombateInterceptacion(comb('atacante', 18), [comb('g1', 4)], fijo);
@@ -116,8 +117,10 @@ describe('intercepción con combate (Fase 13-C)', () => {
   });
   it('tope de rondas: si nadie cae los defensores resisten', () => {
     // Atributos iguales y d20 iguales: empate exacto = el golpe no conecta, para los dos lados.
+    // CR-62: con el motor de fondo común el tope es el de sus sub-combates.
     const r = simularCombateInterceptacion(comb('atacante', 10), [comb('g1', 10)], fijo);
-    expect(r).toEqual({ ganador: 'defensores', rondas: MAX_RONDAS_INTERCEPTACION, tope: true, condicionAtacante: 'ILESO', condicionGuardias: ['ILESO'] });
+    expect(r).toMatchObject({ ganador: 'defensores', tope: true, condicionAtacante: 'ILESO', condicionGuardias: ['ILESO'] });
+    expect(r.rondas).toBeGreaterThanOrEqual(MAX_RONDAS_SUBCOMBATE);
   });
   it('el combate expone la condición final de cada bando', () => {
     const r = simularCombateInterceptacion(comb('atacante', 18), [comb('g1', 4)], fijo);

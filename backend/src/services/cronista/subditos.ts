@@ -10,6 +10,7 @@ import { ownerKeyFor } from '../reinoOwner.js';
 import { edadEnAnios, esAdulto } from './edades.js';
 import { apellidoDe, fundarLinaje, nombreConLinaje, unirALinaje } from './linajes.js';
 import { generarNombre, generarRastro, nombreLibre, type Genero } from './nombres.js';
+import { esTarea, TAREA_POR_DEFECTO, TAREAS, type Tarea } from './comidaOficios.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -54,6 +55,16 @@ export function cifrasDePoblacion(subditos: SubditoParaCuenta[], ahora: number):
     else soldados++;
   }
   return { poblacion: subditos.length - soldados - visitantes, trabajadores, soldados, visitantes };
+}
+
+/// Puro (CR-61, 61c): cuántos trabajadores adultos hay en cada tarea (sin tarea, recolector).
+export function tareasDelReino(subditos: (SubditoParaCuenta & { tarea: string | null })[], ahora: number): Record<Tarea, number> {
+  const r = Object.fromEntries(TAREAS.map((t) => [t, 0])) as Record<Tarea, number>;
+  for (const s of subditos) {
+    if (rolDeSubdito(s.role) !== 'trabajador' || !esAdultoSubdito(s, ahora)) continue;
+    r[esTarea(s.tarea) ? s.tarea : TAREA_POR_DEFECTO]++;
+  }
+  return r;
 }
 
 /// Puro: la felicidad de un súbdito se acerca a la del Reino `PASO_FELICIDAD_DIA` por día.
@@ -181,6 +192,17 @@ export async function cambiarRolSubdito(tx: Tx, saveId: string, subjectId: strin
   return { ok: true };
 }
 
+/// CR-61 (61c): cambia la tarea de un súbdito trabajador adulto.
+export async function cambiarTareaSubdito(tx: Tx, saveId: string, subjectId: string, tarea: string, ahora: number): Promise<{ ok: true } | { ok: false; motivo: string }> {
+  if (!esTarea(tarea)) return { ok: false, motivo: `Tarea desconocida: ${tarea}` };
+  const s = await tx.subject.findFirst({ where: { id: subjectId, saveId, estado: 'ACTIVO' }, select: { id: true, name: true, role: true, pueblo: true, nacidoEn: true } });
+  if (!s) return { ok: false, motivo: 'No hay ningún súbdito así en tu Reino.' };
+  if (!esAdultoSubdito(s, ahora)) return { ok: false, motivo: `${s.name} aún es una cría: no trabaja hasta hacerse mayor.` };
+  if (rolDeSubdito(s.role) !== 'trabajador') return { ok: false, motivo: `${s.name} no es trabajador: cámbiale antes el rol.` };
+  await tx.subject.update({ where: { id: s.id }, data: { tarea } });
+  return { ok: true };
+}
+
 /// Para la vista: edad y linaje de cada súbdito activo.
 /// `ids`: esos súbditos en vez de los activos (los candidatos que esperan, REI-119).
 export async function datosDeSubditos(tx: Tx, saveId: string, ahora: number, ids?: string[]) {
@@ -193,6 +215,7 @@ export async function datosDeSubditos(tx: Tx, saveId: string, ahora: number, ids
     edad: s.nacidoEn == null ? null : edadEnAnios(s.nacidoEn, ahora), adulto: esAdultoSubdito(s, ahora),
     felicidad: s.felicidad, origen: s.origen, territoryId: s.territoryId, linaje: linajePor.get(s.id) ?? null,
     pareja: s.parejaId ? nombrePor.get(s.parejaId) ?? null : null, crias: s.crias,
+    tarea: esTarea(s.tarea) ? s.tarea : TAREA_POR_DEFECTO,
   }));
 }
 
