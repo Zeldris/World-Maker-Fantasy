@@ -1728,7 +1728,16 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   ADR 0003). Viajeros (base de `CR-64`), piezas y desollador, rol «cazador», captura, órdenes
   permanentes, encuentros por el camino, preguntar y comerciar; las facciones cazan igual, con el
   mismo motor (ADR 0003, «los mismos sistemas para todos»). Hito `0.3`,
-  justo después de `CR-61`. **L**
+  justo después de `CR-61`. Decisiones de detalle (Q1-Q11) en
+  [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-detalle-de-cr-63-ronda-aceptada-por-la-usuaria-el-2026-10-07). **L**
+  🚧 Pasos:
+  - 63a: modelo `Viajero`, rutas por enlaces (jornada de 8 h) y avance diario.
+  - 63b: caza de fondo al llegar, piezas con caducidad y orden «Desollar piezas» del Desolladero.
+  - 63c: captura (cuerdas, Jaula libre, `capturablePct`).
+  - 63d: órdenes de una vez y permanentes; panel «Partidas» en Reino; rol «cazador».
+  - 63e: en los mapas de zona y de Berig; preguntar, comerciar y órdenes al cruzarte.
+  - 63f: encuentros por el camino (de fondo, o aviso para unirte si estás).
+  - 63g: facciones (prototipo antes; sustituye la caza en agregado).
 - **CR-64** Todo viaja de verdad ([ADR 0003](../adr/0003-todo-viaja-de-verdad.md), usuaria 2026-10-07,
   como en X4): lo que se mueve es un **viajero** con ruta real de zona en zona, visible y con quien
   cruzarse e interactuar (preguntar por las regiones que ha atravesado, comerciar, escoltar, asaltar).
