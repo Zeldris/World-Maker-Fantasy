@@ -17,6 +17,7 @@ import './viajerosEncuentros.js';
 import { lanzarPartidasDeFacciones } from './partidasFacciones.js';
 import { vigilarDelReino } from './defensaReino.js';
 import './asaltos.js';
+import { asegurarDefensasDeFacciones } from './defensaFacciones.js';
 import { difundir } from './cronista/difusion.js';
 import type { PrismaClient } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
@@ -97,6 +98,8 @@ export async function avanzarMundoHasta(
       await resembrarFacciones(tx, saveId);
       // CR-59: vasallajes del canon (Serhu bajo la Concordia).
       await asegurarVasallajes(tx, saveId, fictionalMinutes);
+      // CR-65 (65e): las facciones sin Empalizada la levantan (idempotente, bajo el mismo candado).
+      await asegurarDefensasDeFacciones(tx, saveId);
       const estado = await tx.worldState.findUnique({ where: { saveId }, select: { ultimoDiaSimulado: true } });
       if (!estado) return { dias: 0, desde: 0 };
       const dias = diasPendientes(estado.ultimoDiaSimulado, diaDeFiccion(fictionalMinutes));

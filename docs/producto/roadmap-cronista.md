@@ -1863,7 +1863,11 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     «asalto»). `TRABAJOS.ASALTO` lo resuelve al llegar el viajero; `repararEmpalizada` (mitad del
     coste en materiales) y su ruta. Queda para `CR-50`/`CR-37`: lanzar los asaltos, defender en vivo
     si el personaje está allí y que peleen los guardias de fauna (`CR-56`).
-  - 65e: facciones con Empalizada inicial y mejora al ser asaltadas.
+  - ~~65e~~ ✅ 2026-10-07: `services/defensaFacciones.ts`: `asegurarDefensasDeFacciones` (en el avance
+    diario, bajo el candado: Empalizada en su casa según su gente, 2 desde 60 y 3 desde 200),
+    `reforzarDefensaFaccion` (tras un asalto: repara y sube un escalón si tiene 7 días de reserva y
+    120/300 Goirnos; cifras provisionales) y `coberturaDeFaccion`. Quien llama a
+    `reforzarDefensaFaccion` y usa la cobertura al asaltar una facción: `CR-37`.
   - 65f: Reino › Defensa, alerta y radio en el mapa de Berig. **M**
 - **CR-66** Postura de compañero en combate (Fase E, Q6): agresiva, defensiva, capturadora (golpe no
   letal), clemente (acepta rendiciones) y «huir si cae grave»; en vivo y de fondo; las facciones, la
