@@ -2326,6 +2326,10 @@ model AlmacenItem {
   /// auto-equiparse en un Subject/Companion (nunca se pierde el bonus real al pasar por el Almacén).
   statBonuses Json?
   catalogSlug String?
+  /// CR-63 (63b): una pieza de caza («Pieza de <especie>», `catalogSlug` 'pieza') lleva su especie y
+  /// el día en que se estropea (Q5: a los 3 días); el Desolladero la convierte en lo que da esa especie.
+  especieSlug String?
+  caducaEnDia Int?
   createdAt   DateTime @default(now())
 
   @@index([saveId])

@@ -297,8 +297,16 @@ export async function sacrificar(tx: Tx, saveId: string, ganadoId: string, ahora
   const factor = factorSacrificio(etapa);
   if (factor === 0) return { ok: false, motivo: 'Es una cría: todavía no da nada.' };
 
+  await tx.ganado.delete({ where: { id: animal.id } });
+  return { ok: true, ...(await aprovecharAnimal(tx, saveId, worldId, animal.especie, factor)) };
+}
+
+/// Lo que da un animal muerto (sacrificado o una pieza de caza desollada, CR-63): lo comestible va a
+/// la comida del Reino (hasta el Granero); lo demás al Almacén hasta su tope. Sin Desolladero, lo no
+/// comestible sale a la mitad.
+export async function aprovecharAnimal(tx: Tx, saveId: string, worldId: string, especie: string, factor = 1): Promise<{ comida: number; almacen: Record<string, number>; perdido: number }> {
   const conDesolladero = (await tx.building.count({ where: { saveId, recipeKey: 'desolladero', status: 'ACTIVO' } })) > 0;
-  const rendimientos = await tx.harvestYield.findMany({ where: { worldId, sourceSlug: animal.especie }, select: { cantidad: true, item: { select: { slug: true, name: true, description: true, category: true, curaHambre: true } } } });
+  const rendimientos = await tx.harvestYield.findMany({ where: { worldId, sourceSlug: especie }, select: { cantidad: true, item: { select: { slug: true, name: true, description: true, category: true, curaHambre: true } } } });
   let comida = 0;
   const almacen: Record<string, number> = {};
   let perdido = 0;
@@ -319,7 +327,6 @@ export async function sacrificar(tx: Tx, saveId: string, ganadoId: string, ahora
       almacen[r.item.slug] = (almacen[r.item.slug] ?? 0) + cabe;
     }
   }
-  await tx.ganado.delete({ where: { id: animal.id } });
   if (comida > 0) {
     const owner = ownerKeyFor({ saveId });
     const stats = await tx.kingdomStats.findUnique({ where: { ownerKey: owner }, select: { comida: true, forraje: true } });
@@ -329,7 +336,7 @@ export async function sacrificar(tx: Tx, saveId: string, ganadoId: string, ahora
       await tx.kingdomStats.update({ where: { ownerKey: owner }, data: { comida: Math.max(stats.comida, Math.min(topeComida - stats.forraje, stats.comida + comida)) } });
     }
   }
-  return { ok: true, comida, almacen, perdido };
+  return { comida, almacen, perdido };
 }
 
 // ── CR-56 (56b): la Domadora saca animales del corral ────────────────────────────────────────

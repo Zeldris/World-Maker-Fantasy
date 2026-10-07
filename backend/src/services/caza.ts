@@ -165,7 +165,7 @@ export function groupVarianceClause(cantidadElegida: number, cantidadReal: numbe
 /// sin comprometerse, `enfrentados` puede ser 0 y el punto no pierde nada). Si llega a 0: la fila
 /// ancla (`label` no nulo, la curada de catálogo) nunca se borra, se deja `activo:false`; cualquier
 /// otra fila de grupo se borra del todo (mismo criterio que `reconciliarGrupos`, zonePoints.ts).
-async function descontarZonePointCaza(tx: Prisma.TransactionClient, saveId: string, zonePointId: string, enfrentados: number): Promise<void> {
+export async function descontarZonePointCaza(tx: Prisma.TransactionClient, saveId: string, zonePointId: string, enfrentados: number): Promise<void> {
   if (enfrentados <= 0) return;
   const punto = await tx.zonePoint.findUnique({ where: { id: zonePointId } });
   if (!punto || punto.saveId !== saveId) return; // ya no existe (o es de otra partida) (carrera rara) — nada que descontar.
