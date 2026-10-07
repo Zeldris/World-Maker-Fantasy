@@ -24,7 +24,8 @@ export async function origenDelReino(tx: Tx, saveId: string): Promise<{ id: stri
   return edificio?.location ?? null;
 }
 
-async function ocupados(tx: Tx, saveId: string) {
+/// Quién está fuera ahora con alguna partida (CR-50 lo reusa para los ataques a campamentos).
+export async function ocupados(tx: Tx, saveId: string) {
   const m = await tx.viajeroMiembro.findMany({ where: { viajero: { saveId, ...enMarcha } }, select: { companionId: true, subjectId: true } });
   return { companions: new Set(m.map((x) => x.companionId).filter(Boolean)), subjects: new Set(m.map((x) => x.subjectId).filter(Boolean)) };
 }

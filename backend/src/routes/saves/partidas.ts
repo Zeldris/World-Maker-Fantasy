@@ -96,7 +96,8 @@ export async function partidasRoutes(app: FastifyInstance) {
     if (rejectIfPendingDeath(save, reply)) return;
     const r = await prisma.$transaction(async (tx) => {
       await lockRowForUpdate(tx, 'Save', save.id, ['id']);
-      return lanzarAtaqueACampamento(tx, save.id, { ...(request.body ?? {}), campamentoId: request.params.campamentoId }, save.worldState?.fictionalMinutes ?? 0);
+      const ids = (x: unknown) => (Array.isArray(x) ? x.filter((v): v is string => typeof v === 'string') : []);
+      return lanzarAtaqueACampamento(tx, save.id, { companionIds: ids(request.body?.companionIds), subjectIds: ids(request.body?.subjectIds), campamentoId: request.params.campamentoId }, save.worldState?.fictionalMinutes ?? 0);
     });
     if (!r.ok) return reply.status(400).send({ error: r.motivo });
     return { ok: true, id: r.id };

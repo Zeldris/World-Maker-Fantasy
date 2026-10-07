@@ -7,12 +7,12 @@ describe('CampamentosBandidos (CR-50 50d)', () => {
   afterEach(cleanup)
 
   it('sin campamentos conocidos, cómo se descubren', () => {
-    const { getByText } = render(<CampamentosBandidos campamentos={[]} grupos={[]} guerreros={[]} desactivado={false} onAtacar={async () => {}} />)
+    const { getByText } = render(<CampamentosBandidos campamentos={[]} grupos={[]} guerreros={[]} desactivado={false} onAtacar={async () => true} />)
     expect(getByText(/se descubren estando allí/)).toBeTruthy()
   })
 
   it('elige quién va y ataca un campamento', async () => {
-    const onAtacar = vi.fn().mockResolvedValue(undefined)
+    const onAtacar = vi.fn().mockResolvedValue(true)
     const { getByRole, getByLabelText, getByText } = render(
       <CampamentosBandidos
         campamentos={[{ id: 'c1', lugar: 'Las Agujas Imán', slug: 'agujas', region: 'Llanuras', grupo: 'Renegados goirntes', cabecilla: 'Cabecilla', gente: 6 }]}

@@ -196,7 +196,14 @@ export function PartidasSection({ saveId, onRefreshSave }: { saveId: string; onR
         guerreros={guerreros}
         desactivado={busy || !!consulta}
         title={consulta ?? undefined}
-        onAtacar={(id, p) => accion(() => postAtacarCampamento(saveId, id, p), 'No se pudo mandar la partida.')}
+        onAtacar={async (id, p) => {
+          let ok = false
+          await accion(async () => {
+            await postAtacarCampamento(saveId, id, p)
+            ok = true
+          }, 'No se pudo mandar la partida.')
+          return ok
+        }}
       />
     </div>
   )

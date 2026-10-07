@@ -22,9 +22,8 @@ export async function logRoutes(app: FastifyInstance) {
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
     return {
       expediciones: await expedicionesVisibles(prisma, save.id),
-      alcances: await prisma.$transaction((tx) => alcancesDeTorres(tx, save.id)),
-      // CR-50 (Q7): los campamentos de bandidos que conoce.
-      campamentos: await prisma.$transaction((tx) => campamentosConocidos(tx, save.id)),
+      // CR-65 (Q9) y CR-50 (Q7): el alcance de las Torres y los campamentos que conoce, en una lectura.
+      ...(await prisma.$transaction(async (tx) => ({ alcances: await alcancesDeTorres(tx, save.id), campamentos: await campamentosConocidos(tx, save.id) }))),
     };
   });
 

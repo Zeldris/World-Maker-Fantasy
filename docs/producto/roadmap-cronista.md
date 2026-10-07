@@ -1524,6 +1524,8 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
       `campamentosConocidos`; en el mapa de Berig (⛺ en su lugar) y en Reino › Partidas
       («Campamentos de bandidos», `CampamentosBandidos.tsx`, con quién va: grupos 2+, soldados,
       vigías y cazadores; `POST /saves/:id/campamentos/:campamentoId/atacar`).
+      Tras la revisión de código: pasar por su lugar al viajar lo descubre (`turnResolution`); los GET
+      solo leen; hoy solo Las Llanuras tiene lugares con camino, así que solo hay campamento allí.
   - **CR-51** Comercio en persona con NPC: mercaderes y caravanas de fondo (usuaria, 2026-10-06; sale
     del resto de `CR-47` 47e). **L** Hoy el personaje no comercia con ningún NPC (solo el Mercado del
     Reino). Sistema nuevo de compraventa con Goirnos, como el mercader ambulante de Bellwright y

@@ -212,9 +212,12 @@ export async function revisarConocidos(tx: Tx, saveId: string): Promise<number> 
   const conTorre = (await asentamientosDelReino(tx, saveId)).filter((a) => a.efecto.radioTramos > 0);
   const enlaces = conTorre.length > 0 ? await enlacesDelMundo(tx, save.worldId) : [];
   const vigilados = new Set(conTorre.flatMap((a) => [...lugaresATramos(enlaces, a.locationId, a.efecto.radioTramos).keys()]));
+  const lugares = ocultos.map((c) => c.locationId);
+  // Pasar por su lugar lo descubre al viajar (`turnResolution`); aquí, estar allí ahora o el rumor.
+  const rumores = await tx.conocimiento.findMany({ where: { saveId, suceso: { tipo: 'CAMPAMENTO_NUEVO', locationId: { in: lugares } } }, select: { suceso: { select: { locationId: true, fictionalMinutes: true } } } });
   const descubiertos: string[] = [];
   for (const c of ocultos) {
-    const rumor = await tx.conocimiento.findFirst({ where: { saveId, suceso: { tipo: 'CAMPAMENTO_NUEVO', locationId: c.locationId, fictionalMinutes: { gte: c.creadoDia * 1440 } } }, select: { id: true } });
+    const rumor = rumores.some((r) => r.suceso.locationId === c.locationId && r.suceso.fictionalMinutes >= c.creadoDia * 1440);
     if (save.currentLocationId === c.locationId || vigilados.has(c.locationId) || rumor) descubiertos.push(c.id);
   }
   if (descubiertos.length > 0) await tx.campamento.updateMany({ where: { id: { in: descubiertos } }, data: { conocido: true } });
@@ -222,8 +225,8 @@ export async function revisarConocidos(tx: Tx, saveId: string): Promise<number> 
 }
 
 /// Los campamentos que conoce la jugadora (mapa de Berig y Reino › Partidas).
+/// Solo lee: el descubrimiento se apunta en el avance diario (`revisarConocidos`).
 export async function campamentosConocidos(tx: Tx, saveId: string) {
-  await revisarConocidos(tx, saveId);
   const filas = await tx.campamento.findMany({ where: { saveId, estado: 'ACTIVO', conocido: true }, include: { location: { select: { name: true, slug: true } } }, orderBy: { createdAt: 'asc' } });
   return filas.map((c) => ({ id: c.id, lugar: c.location.name, slug: c.location.slug.replace(/-interior$/, ''), region: c.region, grupo: ocupanteDe(c.ocupante)?.grupo ?? 'Bandidos', cabecilla: c.cabecilla, gente: c.gente }));
 }

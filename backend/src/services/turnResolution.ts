@@ -6247,6 +6247,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       });
       const alreadyVisited = new Set(existingVisits.map((v) => v.locationId));
       const newLocationIds = travel.pathIds.filter((locId) => !alreadyVisited.has(locId));
+      // CR-50 (Q7): pasar por el lugar de un campamento de bandidos lo descubre.
+      await tx.campamento.updateMany({ where: { saveId, estado: 'ACTIVO', conocido: false, locationId: { in: travel.pathIds } }, data: { conocido: true } });
       if (newLocationIds.length > 0) {
         await tx.locationVisit.createMany({ data: newLocationIds.map((locationId) => ({ saveId, locationId })) });
         isFirstVisitToDestination = newLocationIds.includes(travel.toLocationId);

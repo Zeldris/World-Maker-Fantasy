@@ -18,7 +18,8 @@ export function CampamentosBandidos({
   guerreros: { id: string; name: string; rol: string }[]
   desactivado: boolean
   title?: string
-  onAtacar: (campamentoId: string, p: { companionIds: string[]; subjectIds: string[] }) => Promise<void>
+  /// Devuelve si salió (si falla, se queda la gente elegida para volver a intentarlo).
+  onAtacar: (campamentoId: string, p: { companionIds: string[]; subjectIds: string[] }) => Promise<boolean>
 }) {
   const [elegidos, setElegidos] = useState<Set<string>>(new Set())
   const companeros = new Set(grupos.flatMap((g) => g.companeros.map((c) => c.id)))
@@ -63,7 +64,9 @@ export function CampamentosBandidos({
                   disabled={desactivado || companionIds.length + subjectIds.length === 0}
                   title={title}
                   onClick={() =>
-                    void onAtacar(c.id, { companionIds, subjectIds }).then(() => setElegidos(new Set()))
+                    void onAtacar(c.id, { companionIds, subjectIds }).then((ok) => {
+                      if (ok) setElegidos(new Set())
+                    })
                   }
                   className="tactile text-2xs font-semibold text-accent-300 hover:underline disabled:opacity-50"
                 >

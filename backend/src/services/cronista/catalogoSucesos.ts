@@ -223,7 +223,7 @@ export const CATALOGO_SUCESOS: Catalogo = {
   HAMBRUNA: { familia: 'REINO', importanciaBase: 6, plantilla: (d) => `El hambre llega a ${d.reino}.` },
   LLEGADA_POBLADORES: { familia: 'REINO', importanciaBase: 4, plantilla: (d) => `${d.cuantos === 1 ? 'Llega un poblador' : `Llegan ${d.cuantos} pobladores`} a ${d.reino}.` },
   VISITANTE_ILUSTRE: { familia: 'REINO', importanciaBase: 5, plantilla: (d) => `${d.visitante} visita ${d.reino}.` },
-  CAMPAMENTO_NUEVO: { familia: 'FACCION', importanciaBase: 4, plantilla: (d) => `Se asientan ${d.campamento} en ${d.lugar}.` },
+  CAMPAMENTO_NUEVO: { familia: 'FACCION', importanciaBase: 5, plantilla: (d) => `Se asientan ${d.campamento} en ${d.lugar}.` },
   CAMPAMENTO_DESTRUIDO: { familia: 'FACCION', importanciaBase: 5, plantilla: (d) => `${d.por} acaba con el campamento de ${d.campamento} en ${d.lugar}.` },
   // LORE
   HALLAZGO_RUINA: { familia: 'LORE', importanciaBase: 4, plantilla: (d) => `${d.personaje} encuentra ${d.ruina}.` },

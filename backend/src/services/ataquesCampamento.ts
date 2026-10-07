@@ -17,7 +17,7 @@ import { NIVEL_MAS_CABECILLA, ocupanteDe } from './cronista/campamentosBandidos.
 import { registrarSuceso } from './cronista/sucesos.js';
 import { sincronizarPunto } from './campamentos.js';
 import { aplicarBajas, cazadoresDe } from './partidasCaza.js';
-import { opcionesDePartida } from './partidasReino.js';
+import { MAX_MIEMBROS_PARTIDA, ocupados, opcionesDePartida } from './partidasReino.js';
 import { applyFactionRepDelta, parseFactionsStatus, REGION_OWNING_FACTIONS } from './reputation.js';
 import { ownerKeyFor } from './reinoOwner.js';
 import { esAdultoSubdito, rolDeSubdito } from './cronista/subditos.js';
@@ -107,7 +107,7 @@ async function pelearContraCampamento(tx: Tx, c: CampamentoFila, atacantes: Comb
 /// Q5: súbditos que pueden ir a por un campamento (soldados, vigías y cazadores adultos que no estén
 /// fuera).
 export async function guerrerosLibres(tx: Tx, saveId: string, ahora: number): Promise<{ id: string; name: string; rol: string }[]> {
-  const fuera = new Set((await tx.viajeroMiembro.findMany({ where: { viajero: { saveId, estado: { not: 'TERMINADO' } }, subjectId: { not: null } }, select: { subjectId: true } })).map((m) => m.subjectId!));
+  const fuera = (await ocupados(tx, saveId)).subjects;
   const subditos = await tx.subject.findMany({ where: { saveId, estado: 'ACTIVO' }, select: { id: true, name: true, role: true, pueblo: true, nacidoEn: true }, orderBy: { createdAt: 'asc' } });
   return subditos
     .filter((s) => ['soldado', 'cazador', 'vigia'].includes(rolDeSubdito(s.role)) && esAdultoSubdito(s, ahora) && !fuera.has(s.id))
@@ -129,9 +129,12 @@ export async function lanzarAtaqueACampamento(tx: Tx, saveId: string, p: Peticio
   if (!op.origen) return { ok: false, motivo: 'Tu Reino no tiene ningún edificio desde el que salir.' };
   const libresComp = new Set(op.grupos.flatMap((g) => g.companeros.map((x) => x.id)));
   const libresSub = new Set((await guerrerosLibres(tx, saveId, ahora)).map((g) => g.id));
-  const subjectIds = (p.subjectIds ?? []).filter((id) => libresSub.has(id));
-  const companionIds = (p.companionIds ?? []).filter((id) => libresComp.has(id));
+  const subjectIds = [...new Set(p.subjectIds ?? [])];
+  const companionIds = [...new Set(p.companionIds ?? [])];
   if (companionIds.length + subjectIds.length === 0) return { ok: false, motivo: 'Elige quién va a por el campamento.' };
+  // Las mismas reglas que una partida de caza: nadie que no pueda salir y el mismo tope.
+  if (companionIds.some((id) => !libresComp.has(id)) || subjectIds.some((id) => !libresSub.has(id))) return { ok: false, motivo: 'Alguno de los que eliges no puede salir ahora.' };
+  if (companionIds.length + subjectIds.length > MAX_MIEMBROS_PARTIDA) return { ok: false, motivo: `Una partida lleva como mucho ${MAX_MIEMBROS_PARTIDA}.` };
   return crearViajero(tx, {
     saveId, tipo: TIPO_ATAQUE, objetivo: c.id, origenLocationId: op.origen.id, destinoLocationId: c.locationId, dia: Math.floor(ahora / 1440),
     miembros: [...companionIds.map((id) => ({ companionId: id, rol: 'guerrero' })), ...subjectIds.map((id) => ({ subjectId: id, rol: 'guerrero' }))],

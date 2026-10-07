@@ -560,20 +560,20 @@ export function InteractiveMap({
             ))}
 
           {/* CR-50 (Q7): campamentos de bandidos que conoces, en su lugar. */}
-          {showLlanurasGraph &&
-            campamentos.map((c) => {
-              const pos = nodePositions.get(c.slug)
-              if (!pos) return null
-              return (
-                <g key={c.id} aria-label={`Campamento de ${c.grupo}`} pointerEvents="none">
-                  <title>{`${c.grupo}: unos ${c.gente} y su cabecilla`}</title>
-                  <circle cx={pos.x + 2.2} cy={pos.y - 2.2} r={1.9} fill="#7f1d1d" stroke="white" strokeWidth={0.35} />
-                  <text x={pos.x + 2.2} y={pos.y - 2.2} textAnchor="middle" dominantBaseline="central" style={{ fontSize: 2 }}>
-                    ⛺
-                  </text>
-                </g>
-              )
-            })}
+          {campamentos.map((c) => {
+            // En el mapa de la región que se esté viendo (Llanuras proyectadas o Cristal Helado).
+            const pos = showLlanurasGraph ? nodePositions.get(c.slug) : showCristalHeladoGraph ? cristalHeladoNodes?.find((n) => n.slug === c.slug) : undefined
+            if (!pos) return null
+            return (
+              <g key={c.id} aria-label={`Campamento de ${c.grupo}`}>
+                <title>{`${c.grupo}: unos ${c.gente} y su cabecilla`}</title>
+                <circle cx={pos.x + 2.2} cy={pos.y - 2.2} r={1.9} fill="#7f1d1d" stroke="white" strokeWidth={0.35} />
+                <text x={pos.x + 2.2} y={pos.y - 2.2} textAnchor="middle" dominantBaseline="central" style={{ fontSize: 2 }} pointerEvents="none">
+                  ⛺
+                </text>
+              </g>
+            )
+          })}
 
           {/* CR-46: expediciones en camino, entre su asentamiento y su destino. */}
           {showLlanurasGraph &&

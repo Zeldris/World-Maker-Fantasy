@@ -139,23 +139,26 @@ describe('conocer los campamentos (CR-50 50d)', () => {
   });
 
   it('al asentarse deja un rumor; se conoce por estar allí o porque te llega', async () => {
-    const { campamentosConocidos } = await import('./campamentos.js');
+    const { campamentosConocidos, revisarConocidos } = await import('./campamentos.js');
     const { conocer } = await import('./cronista/difusion.js');
     await revisarCampamentos(prisma, saveId, 10, semilla(9));
     const sucesos = await prisma.suceso.findMany({ where: { saveId, tipo: 'CAMPAMENTO_NUEVO' } });
     const activos = await prisma.campamento.findMany({ where: { saveId, estado: 'ACTIVO' } });
     expect(sucesos).toHaveLength(activos.length);
     expect(await prisma.$transaction((tx) => campamentosConocidos(tx, saveId))).toHaveLength(0);
+    const c = activos[0]!;
+    // Que te llegue el rumor (leer no descubre: los GET no escriben; el avance diario sí).
+    const s = sucesos.find((x) => x.locationId === c.locationId)!;
+    await prisma.$transaction((tx) => conocer(tx, { saveId, sucesoId: s.id, via: 'NPC', confirmado: false, minutos: 10 * 1440, escribirNoticia: false }));
+    expect(await prisma.$transaction((tx) => campamentosConocidos(tx, saveId))).toHaveLength(0);
+    await prisma.$transaction((tx) => revisarConocidos(tx, saveId));
+    const [conocido] = await prisma.$transaction((tx) => campamentosConocidos(tx, saveId));
+    expect(conocido).toMatchObject({ id: c.id, grupo: expect.any(String), cabecilla: expect.any(String) });
     // Estar allí.
-    await prisma.save.update({ where: { id: saveId }, data: { currentLocationId: activos[0]!.locationId } });
+    await prisma.conocimiento.deleteMany({ where: { saveId } });
+    await prisma.campamento.update({ where: { id: c.id }, data: { conocido: false } });
+    await prisma.save.update({ where: { id: saveId }, data: { currentLocationId: c.locationId } });
+    await prisma.$transaction((tx) => revisarConocidos(tx, saveId));
     expect(await prisma.$transaction((tx) => campamentosConocidos(tx, saveId))).toHaveLength(1);
-    // Que te llegue el rumor.
-    if (activos[1]) {
-      const s = sucesos.find((x) => x.locationId === activos[1]!.locationId)!;
-      await prisma.$transaction((tx) => conocer(tx, { saveId, sucesoId: s.id, via: 'NPC', confirmado: false, minutos: 10 * 1440, escribirNoticia: false }));
-      const conocidos = await prisma.$transaction((tx) => campamentosConocidos(tx, saveId));
-      expect(conocidos).toHaveLength(2);
-      expect(conocidos[0]).toMatchObject({ grupo: expect.any(String), cabecilla: expect.any(String) });
-    }
   });
 });

@@ -77,9 +77,12 @@ describe('atacar campamentos (CR-50 50c)', () => {
     const ids = soldados.map((s) => s.id);
     expect(await prisma.$transaction((tx) => lanzarAtaqueACampamento(tx, saveId, { campamentoId: c.id, subjectIds: ids }, 20 * 1440))).toMatchObject({ ok: false });
     await prisma.campamento.update({ where: { id: c.id }, data: { conocido: true } });
-    const r = await prisma.$transaction((tx) => lanzarAtaqueACampamento(tx, saveId, { campamentoId: c.id, subjectIds: ids }, 20 * 1440));
+    // Nadie que no pueda salir; los repetidos cuentan una vez.
+    expect(await prisma.$transaction((tx) => lanzarAtaqueACampamento(tx, saveId, { campamentoId: c.id, subjectIds: [...ids, 'nadie'] }, 20 * 1440))).toMatchObject({ ok: false, motivo: /no puede salir/ });
+    const r = await prisma.$transaction((tx) => lanzarAtaqueACampamento(tx, saveId, { campamentoId: c.id, subjectIds: [...ids, ids[0]!] }, 20 * 1440));
     expect(r.ok).toBe(true);
     const v = await prisma.viajero.findUniqueOrThrow({ where: { id: (r as { id: string }).id }, include: { miembros: true } });
+    expect(v.miembros).toHaveLength(6);
     expect(v).toMatchObject({ tipo: TIPO_ATAQUE, objetivo: c.id, destinoLocationId: campLoc });
     await prisma.$transaction((tx) => TRABAJOS[TIPO_ATAQUE]!.alLlegar!(tx, v, 21, semilla(3)));
     expect((await prisma.campamento.findUniqueOrThrow({ where: { id: c.id } })).estado).toBe('DESTRUIDO');
