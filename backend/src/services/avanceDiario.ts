@@ -18,6 +18,7 @@ import { lanzarPartidasDeFacciones } from './partidasFacciones.js';
 import { vigilarDelReino } from './defensaReino.js';
 import { lanzarAsaltosAlReino, revisarCampamentos } from './campamentos.js';
 import { patrullasContraCampamentos } from './ataquesCampamento.js';
+import { lanzarEjercitosContraElReino } from './guerraReino.js';
 import './asaltos.js';
 import { asegurarDefensasDeFacciones } from './defensaFacciones.js';
 import { difundir } from './cronista/difusion.js';
@@ -147,6 +148,8 @@ export async function avanzarMundoHasta(
       await paso('campamentos', () => revisarCampamentos(prisma, saveId, d, random));
       // CR-50 (50b): los de la región de la Capital la asaltan si el Reino tiene riqueza.
       await paso('asaltosReino', () => lanzarAsaltosAlReino(prisma, saveId, d));
+      // CR-37 (37a): las facciones en guerra con el Reino mandan su ejército (como mucho uno por semana).
+      await paso('ejercitos', () => lanzarEjercitosContraElReino(prisma, saveId, d));
       // CR-50 (50c, Q8): cada semana, las facciones dueñas de la región patrullan contra ellos.
       await paso('patrullasCampamentos', () => patrullasContraCampamentos(prisma, saveId, d, random));
       // CR-63 (63a, ADR 0003): una jornada de cada viajero (partidas de caza y captura…).

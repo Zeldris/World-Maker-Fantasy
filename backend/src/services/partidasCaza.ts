@@ -33,7 +33,7 @@ export const PIEZAS_DESOLLADERO_POR_ESCALON = 4;
 export const SLUG_PIEZA = 'pieza';
 
 const ORDEN_CONDICION: CondicionFisica[] = ['ILESO', 'HERIDO', 'GRAVE', 'CONVALECIENTE', 'MUERTO'];
-const peor = (a: CondicionFisica, b: CondicionFisica) => (ORDEN_CONDICION.indexOf(a) >= ORDEN_CONDICION.indexOf(b) ? a : b);
+export const peor = (a: CondicionFisica, b: CondicionFisica) => (ORDEN_CONDICION.indexOf(a) >= ORDEN_CONDICION.indexOf(b) ? a : b);
 const enPie = (c: CondicionFisica) => c !== 'CONVALECIENTE' && c !== 'MUERTO';
 
 export interface CargaCaza {

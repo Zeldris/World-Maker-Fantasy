@@ -1649,8 +1649,12 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
 - **CR-37** Guerra de una facción contra el Reino de la jugadora (`CR-34` Q7, `0.3`): solo cuando
   existan los edificios de defensa (ya están, `CR-65`). Ronda de detalle aceptada el 2026-10-08 (Q1-Q7
   en [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-detalle-de-cr-37-guerra-contra-el-reino-ronda-aceptada-por-la-usuaria-el-2026-10-08)). 🚧 Pasos:
-  - 37a: ejércitos de las facciones en guerra con el Reino (viajero `ASALTO` con facción) y bajas en
-    sus soldados; guardias de fauna y el personaje (si está allí) en la defensa.
+  - ~~37a~~ ✅ 2026-10-08: `services/guerraReino.ts` (`lanzarEjercitosContraElReino` en el avance
+    diario: relación en GUERRA, 7 días de reserva, la mitad de sus soldados hasta 16, al asentamiento
+    más cercano, uno por semana); en `resolverAsaltoDeFondo`, guardias de fauna crecidos de los corrales
+    de la región (los que mueren se pierden), el personaje y su grupo 1 si están allí (no mueren de
+    fondo, quedan como acaben) y los muertos del ejército salen de sus soldados; al volver, su botín va
+    a su comida y riqueza.
   - 37b: «Ofrecer tributo» y contraataque «Atacar asentamiento».
   - 37c: interfaz (estado de guerra en el Reino, tributo, contraataque). **M**
 - **CR-39** Territorios de facción y expansión (`CR-34` Q14 y Q20, va al `0.3` con `CR-36`; la usuaria

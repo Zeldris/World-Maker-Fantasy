@@ -1,0 +1,77 @@
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { prisma } from '../lib/prisma.js';
+import { getDefaultUserId } from '../lib/defaultUser.js';
+import { ownerKeyFor } from './reinoOwner.js';
+import { lanzarEjercitosContraElReino, tamanoDeEjercito } from './guerraReino.js';
+import { resolverAsaltoDeFondo } from './asaltos.js';
+import { enlacesDelMundo, rutaMasCorta } from './viajeros.js';
+
+function semilla(s: number) {
+  let x = s;
+  return () => {
+    x = (x * 1664525 + 1013904223) % 4294967296;
+    return x / 4294967296;
+  };
+}
+
+/// CR-37 (37a): las facciones en guerra con el Reino mandan ejércitos; en la defensa pelean también
+/// los guardias de fauna y el personaje si está allí.
+describe('guerra contra el Reino (CR-37 37a)', () => {
+  let saveId: string;
+  let worldId: string;
+  let casa: string;
+  let suya: string;
+  let enemigaId: string;
+  let capitalId: string;
+
+  beforeAll(async () => {
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    worldId = world.id;
+    const enlaces = await enlacesDelMundo(prisma, worldId);
+    const llanuras = await prisma.location.findMany({ where: { worldId, region: 'Las Llanuras del Viento Rojo' }, select: { id: true } });
+    let par: [string, string] | null = null;
+    for (const a of llanuras) for (const b of llanuras) if (!par && a.id !== b.id && rutaMasCorta(enlaces, a.id, b.id)) par = [a.id, b.id];
+    [casa, suya] = par!;
+    saveId = (await prisma.save.create({
+      data: { userId: await getDefaultUserId(), worldId, characterName: 'Gorhorn (CR-37)', characterArchetype: 'guerrero', characterOrigin: 'x', characterMotivation: 'x', attributes: { fuerza: 14, destreza: 12, constitucion: 12, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 }, portraitInitial: 'G', currentLocationId: casa, worldState: { create: { fictionalMinutes: 800 * 1440 } } },
+    })).id;
+    await prisma.kingdomStats.create({ data: { saveId, ownerKey: ownerKeyFor({ saveId }), comida: 300, riqueza: 100 } });
+    const reino = await prisma.faction.create({ data: { worldId, saveId, slug: 'reino-37', name: 'Reino de Gorhorn', raza: 'orcos', description: 'x', origenSlug: null } });
+    enemigaId = (await prisma.faction.create({
+      data: {
+        worldId, saveId, slug: 'enemiga-37', name: 'Clan Enemigo', raza: 'orcos', description: 'x', origenSlug: 'enemiga',
+        kingdomStats: { create: { ownerKey: `enemiga-37-${saveId}`, poblacion: 40, soldados: 20, comida: 2000 } },
+        buildings: { create: { saveId: null, locationId: suya, recipeKey: 'cocina-serhu', name: 'Cocina', kind: 'cocina', description: 'x', status: 'ACTIVO' } },
+      },
+    })).id;
+    await prisma.factionRelation.create({ data: { worldId, sourceFactionId: enemigaId, targetFactionId: reino.id, type: 'GUERRA', presion: 95 } });
+    capitalId = (await prisma.building.create({ data: { saveId, locationId: casa, recipeKey: 'ayuntamiento', name: 'Karot', kind: 'ayuntamiento', description: 'x', status: 'ACTIVO', tier: 1 } })).id;
+  });
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('tamaño del ejército: la mitad de sus soldados, hasta 16', () => {
+    expect([3, 4, 20, 50].map(tamanoDeEjercito)).toEqual([0, 2, 10, 16]);
+  });
+
+  it('manda un ejército a la Capital, como mucho uno por semana', async () => {
+    expect(await lanzarEjercitosContraElReino(prisma, saveId, 800)).toBe(1);
+    expect(await lanzarEjercitosContraElReino(prisma, saveId, 801)).toBe(0);
+    const v = await prisma.viajero.findFirstOrThrow({ where: { saveId, factionId: enemigaId }, include: { miembros: true } });
+    expect(v).toMatchObject({ tipo: 'ASALTO', origenLocationId: suya, destinoLocationId: casa });
+    expect(v.miembros[0]!.genericos).toBe(10);
+    expect(await prisma.logEntry.count({ where: { saveId, text: { contains: 'estamos en guerra' } } })).toBe(1);
+  });
+
+  it('defienden también los guardias de fauna y el personaje con su grupo; sus muertos salen de sus soldados', async () => {
+    const corral = await prisma.building.create({ data: { saveId, locationId: casa, recipeKey: 'corrales', name: 'Corrales', kind: 'corrales', description: 'x', status: 'ACTIVO', tier: 1 } });
+    await prisma.ganado.create({ data: { saveId, buildingId: corral.id, especie: 'canizor', sexo: 'M', nacidoEn: 800 * 1440 - 240 * 1440 } });
+    const v = await prisma.viajero.findFirstOrThrow({ where: { saveId, factionId: enemigaId }, include: { miembros: true } });
+    const r = await prisma.$transaction((tx) => resolverAsaltoDeFondo(tx, saveId, v, capitalId, 805, semilla(7)));
+    // Personaje y guardia (sin guarnición ni milicia).
+    expect(r!.defensores).toBe(2);
+    expect((await prisma.kingdomStats.findFirstOrThrow({ where: { factionId: enemigaId } })).soldados).toBe(20 - r!.caidosAsaltantes);
+    expect(await prisma.logEntry.count({ where: { saveId, text: { contains: 'Clan Enemigo' } } })).toBeGreaterThan(1);
+  });
+});
