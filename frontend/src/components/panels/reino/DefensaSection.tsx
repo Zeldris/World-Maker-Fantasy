@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { PanelSection } from '../../PanelSection'
 import { ErrorBanner } from '../../ErrorBanner'
 import { SelectorJuego } from '../../SelectorJuego'
+import { GuerraSection } from './GuerraSection'
 import { useErrorConReintento } from '../../../hooks/useErrorConReintento'
 import { useModoConsulta } from '../../../context/useModoConsulta'
 import { getDefensa, postEquiposMilicia, postGuarnicion, postLlamarMilicia, postRepararEmpalizada, type AsentamientoDefensa, type AvistamientoInfo, type ModuloDefensaInfo } from '../../../lib/api'
@@ -124,6 +125,7 @@ export function DefensaSection({ saveId, onRefreshSave }: { saveId: string; onRe
           </PanelSection>
         )
       })}
+      <GuerraSection saveId={saveId} onRefreshSave={onRefreshSave} />
     </div>
   )
 }

@@ -1579,7 +1579,7 @@ export interface CorralesInfo {
 // CR-63 (63d): Reino › Partidas — partidas de caza y captura.
 export interface PartidaInfo {
   id: string
-  tipo: 'CAZA' | 'CAPTURA' | 'ATAQUE'
+  tipo: 'CAZA' | 'CAPTURA' | 'ATAQUE' | 'ATAQUE_ASENTAMIENTO'
   estado: 'IDA' | 'TRABAJANDO' | 'VUELTA' | 'TERMINADO'
   especie: string | null
   especieNombre: string | null
@@ -3059,4 +3059,21 @@ export async function postRepararEmpalizada(saveId: string, buildingId: string):
 // CR-50 (50d): manda una partida a por un campamento de bandidos.
 export async function postAtacarCampamento(saveId: string, campamentoId: string, p: { companionIds: string[]; subjectIds: string[] }): Promise<{ ok: boolean; id: string }> {
   return fetchJson(`${API_URL}/saves/${saveId}/campamentos/${campamentoId}/atacar`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) })
+}
+
+// CR-37 (37c): guerra con el Reino.
+export interface EnemigaInfo {
+  id: string
+  nombre: string
+  relacion: 'GUERRA' | 'TENSION'
+  presion: number
+}
+export async function getGuerra(saveId: string): Promise<{ enemigas: EnemigaInfo[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/guerra`)
+}
+export async function postTributo(saveId: string, factionId: string, goirnos: number): Promise<{ ok: boolean; pagado: number; relacion: string }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/guerra/${factionId}/tributo`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ goirnos }) })
+}
+export async function postAtacarAsentamiento(saveId: string, factionId: string, p: { companionIds: string[]; subjectIds: string[] }): Promise<{ ok: boolean; id: string }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/guerra/${factionId}/atacar`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) })
 }

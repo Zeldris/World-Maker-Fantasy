@@ -1646,9 +1646,11 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
 - **CR-36** Las facciones del mundo construyen (`CR-34` Q3, va al `0.3` con el Reino profundo): obras
   con coste y plazo según sus carencias (pozo, granero…), con los números de la economía de
   supervivencia. **M**
-- **CR-37** Guerra de una facción contra el Reino de la jugadora (`CR-34` Q7, `0.3`): solo cuando
+- ~~**CR-37** Guerra de una facción contra el Reino de la jugadora~~ ✅ 2026-10-08 (`CR-34` Q7, `0.3`): solo cuando
   existan los edificios de defensa (ya están, `CR-65`). Ronda de detalle aceptada el 2026-10-08 (Q1-Q7
-  en [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-detalle-de-cr-37-guerra-contra-el-reino-ronda-aceptada-por-la-usuaria-el-2026-10-08)). 🚧 Pasos:
+  en [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-detalle-de-cr-37-guerra-contra-el-reino-ronda-aceptada-por-la-usuaria-el-2026-10-08)).
+  Queda: la conquista de territorios (`CR-39`), el combate en vivo con súbditos (`CR-64`) y las cifras
+  para la fase de pruebas. Pasos:
   - ~~37a~~ ✅ 2026-10-08: `services/guerraReino.ts` (`lanzarEjercitosContraElReino` en el avance
     diario: relación en GUERRA, 7 días de reserva, la mitad de sus soldados hasta 16, al asentamiento
     más cercano, uno por semana); en `resolverAsaltoDeFondo`, guardias de fauna crecidos de los corrales
@@ -1661,7 +1663,9 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
       sus soldados con su cobertura; si gana, saqueo que vuelve al Reino, la facción refuerza su
       Empalizada; siempre `BAJA_DE_GUERRA`). Rutas `GET /saves/:id/guerra`, `POST …/guerra/:factionId/tributo`
       y `…/atacar`; `elegirGenteDeAtaque` compartido con los campamentos.
-  - 37c: interfaz (estado de guerra en el Reino, tributo, contraataque). **M**
+  - ~~37c~~ ✅ 2026-10-08: «Guerra» en Reino › Defensa (`GuerraSection.tsx`: facciones en guerra o
+    tensión, «Tributo de 100/300», «Atacar su casa» con quién va); la partida sale en Reino ›
+    Partidas como «Ataque a su casa». **M**
 - **CR-39** Territorios de facción y expansión (`CR-34` Q14 y Q20, va al `0.3` con `CR-36`; la usuaria
   eligió la versión completa, 2026-10-05). **L**
   - Territorios reales de facción en el mundo de cada partida: uno por asentamiento de cada facción y
