@@ -420,6 +420,28 @@ Contrastada con los juegos de referencia; **X4 marca el camino**. De memoria, si
   campamentos de su región.
 - **Q9:** Medieval Dynasty no tiene bandidos; su contrapeso es «sin asaltos» (`CR-67`).
 
+## Decisiones de detalle de `CR-37` guerra contra el Reino (ronda aceptada por la usuaria el 2026-10-08)
+
+Contrastada con los juegos de referencia; **X4 marca el camino**. De memoria, sin consulta en línea.
+
+- **Q1 Cuándo (X4: la reputación pasa un umbral y la facción es enemiga):** cuando su relación con
+  el Reino llega a la banda GUERRA con la presión que ya existe; noticia y aviso en el Reino.
+- **Q2 Cómo atacan (X4: flotas contra la estación enemiga más cercana):** como mucho una vez por
+  semana, un ejército (viajero `ASALTO` con su facción) de la mitad de sus soldados (hasta 16) al
+  asentamiento del Reino más cercano con camino; solo con 7 días de reserva de comida (la prudencia
+  de `CR-63`). Se ve en el radar y en el mapa.
+- **Q3 Al llegar:** la resolución de `CR-65` (guarnición, milicia, cobertura, moral) y además los
+  **guardias de fauna** (`CR-56`). Si ganan, saquean y la Empalizada encaja el golpe (el territorio,
+  con `CR-39`); si pierden, sus muertos salen de sus soldados.
+- **Q4 Tregua:** la presión baja sola con el tiempo, y «**Ofrecer tributo**» (Goirnos que bajan la
+  presión; ninguno de los seis juegos lo tiene así, la referencia es Bannerlord).
+- **Q5 Contraatacar (X4: tomar sus estaciones):** partida «Atacar asentamiento» contra su casa, de
+  fondo contra sus soldados y su cobertura (`coberturaDeFaccion`); si ganas, saqueo, más presión y
+  la facción refuerza su Empalizada; la conquista, con `CR-39`.
+- **Q6 Si estás allí:** peleas dentro del combate de fondo con tus atributos y tu grupo 1 (el combate
+  en vivo con súbditos y genéricos es `CR-64`).
+- **Q7 Partidas guardadas:** sin migración (el ejército es un viajero y la guerra, la relación).
+
 ## Decisiones que bloquean algo
 
 | Bloquea | Pregunta |

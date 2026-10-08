@@ -1647,7 +1647,12 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   con coste y plazo según sus carencias (pozo, granero…), con los números de la economía de
   supervivencia. **M**
 - **CR-37** Guerra de una facción contra el Reino de la jugadora (`CR-34` Q7, `0.3`): solo cuando
-  existan los edificios de defensa. **M**
+  existan los edificios de defensa (ya están, `CR-65`). Ronda de detalle aceptada el 2026-10-08 (Q1-Q7
+  en [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-detalle-de-cr-37-guerra-contra-el-reino-ronda-aceptada-por-la-usuaria-el-2026-10-08)). 🚧 Pasos:
+  - 37a: ejércitos de las facciones en guerra con el Reino (viajero `ASALTO` con facción) y bajas en
+    sus soldados; guardias de fauna y el personaje (si está allí) en la defensa.
+  - 37b: «Ofrecer tributo» y contraataque «Atacar asentamiento».
+  - 37c: interfaz (estado de guerra en el Reino, tributo, contraataque). **M**
 - **CR-39** Territorios de facción y expansión (`CR-34` Q14 y Q20, va al `0.3` con `CR-36`; la usuaria
   eligió la versión completa, 2026-10-05). **L**
   - Territorios reales de facción en el mundo de cada partida: uno por asentamiento de cada facción y
