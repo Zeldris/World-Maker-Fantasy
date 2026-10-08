@@ -59,11 +59,17 @@ export interface Decision {
   margen: number;
 }
 
+/// Sin un mínimo de motivo no se mueve nadie (no se asalta a quien no tiene nada que llevarse).
+export const MOTIVO_MINIMO = 0.1;
+
 /// Puro (Q1-Q3): decide si ataca y con cuántos. `fuerza` = gente que tiene; `enCasa` = los que nunca
-/// salen (para no dejar su casa vacía). Fácil: la mitad de lo que mandaría (mínimo 2).
-export function decidirAtaque(p: { fuerza: number; enCasa: number; defensa: number; motivo: number; intensidad: Intensidad; tamano: TamanoAsaltos }): Decision {
+/// salen (para no dejar su casa vacía); `maximo` = los que caben en un ataque (el tope cuenta al
+/// decidir: nunca sale sabiendo que va corto). Fácil: la mitad de lo que mandaría (mínimo 2); es a
+/// propósito más débil que el margen (decisión de la usuaria: «Fácil» es eso).
+export function decidirAtaque(p: { fuerza: number; enCasa: number; defensa: number; motivo: number; intensidad: Intensidad; tamano: TamanoAsaltos; maximo?: number }): Decision {
   const margen = margenNecesario(p.motivo, p.intensidad);
-  const disponibles = Math.max(0, p.fuerza - p.enCasa);
+  if (p.motivo < MOTIVO_MINIMO) return { ataca: false, manda: 0, defensa: p.defensa, margen };
+  const disponibles = Math.min(p.maximo ?? Infinity, Math.max(0, p.fuerza - p.enCasa));
   const necesita = Math.max(2, Math.ceil(p.defensa * margen));
   if (disponibles < necesita) return { ataca: false, manda: 0, defensa: p.defensa, margen };
   const normal = Math.min(disponibles, Math.max(2, Math.ceil(p.defensa * margen * COLCHON)));
@@ -80,7 +86,17 @@ export function motivoBandidos(p: { riqueza: number; comida: number; botinGuarda
   return Math.min(1, valor + necesidad);
 }
 
-/// Puro (Q1): motivo de una facción en guerra: la presión dentro de la banda de guerra (80-100).
+/// Puro (Q1): motivo de una facción en guerra: 0,2 al entrar en la banda de guerra (80) y hasta 1 con
+/// la presión al máximo; fuera de la guerra, 0.
 export function motivoGuerra(presion: number): number {
-  return Math.max(0, Math.min(1, (presion - 80) / 20));
+  if (presion < 80) return 0;
+  return Math.min(1, 0.2 + 0.8 * ((presion - 80) / 20));
+}
+
+/// Puro (Q5): por qué vienen unos bandidos, en una frase.
+export function porQueVienenBandidos(p: { grupo: string; gente: number; riqueza: number; comida: number; botinGuardado: number; lleno: boolean }): string {
+  if (p.riqueza >= 100) return `${p.grupo} han reunido ${p.gente} y saben que guardas ${p.riqueza} Goirnos.`;
+  if (p.comida >= 100) return `${p.grupo} han reunido ${p.gente} y vienen a por tu comida.`;
+  if (p.lleno) return `${p.grupo} ya no caben en su campamento y salen a buscar botín.`;
+  return `${p.grupo} se han quedado sin nada y salen a buscar botín.`;
 }

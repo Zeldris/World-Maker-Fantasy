@@ -4027,6 +4027,7 @@ model Campamento {
   creadoDia            Int
   caidoDia             Int?
   ultimoRefuerzoDia    Int
+  /// Solo informativo (CR-67): el último día que salió contra el Reino; no hay temporizador.
   ultimoAsaltoReinoDia Int?
   /// Lo saqueado que guarda (botín si cae, Manor Lords).
   botinComida          Int      @default(0)

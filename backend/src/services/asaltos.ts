@@ -135,11 +135,7 @@ export async function resolverAsaltoDeFondo(tx: Tx, saveId: string, v: ViajeroFi
   for (const a of asaltantes) if (estado.get(a.c.id)?.muerto) caidosPorMiembro.set(a.miembroId, (caidosPorMiembro.get(a.miembroId) ?? 0) + 1);
   for (const [id, n] of caidosPorMiembro) await tx.viajeroMiembro.update({ where: { id }, data: { genericos: { decrement: n } } });
   const caidosAsaltantes = [...caidosPorMiembro.values()].reduce((s, n) => s + n, 0);
-  // CR-37: los muertos de un ejército de facción salen de sus soldados.
-  if (v.factionId && caidosAsaltantes > 0) {
-    const k = await tx.kingdomStats.findFirst({ where: { factionId: v.factionId }, select: { id: true, soldados: true } });
-    if (k) await tx.kingdomStats.update({ where: { id: k.id }, data: { soldados: Math.max(0, k.soldados - caidosAsaltantes) } });
-  }
+  // CR-37: un ejército de facción ya salió de sus soldados; sus muertos no vuelven (`alVolver`).
   // Los guardias de fauna que mueren; el personaje y su grupo quedan como acaben (una pelea no cura).
   for (const g of guardias) if (estado.get(`guardia-${g.ganadoId}`)?.muerto) await tx.ganado.delete({ where: { id: g.ganadoId } });
   if (presente) {
@@ -195,8 +191,10 @@ TRABAJOS.ASALTO = {
   // su casa, y el botín va a su comida y su riqueza.
   alVolver: async (tx, v) => {
     if (!v.factionId) return volverAlCampamento(tx, v);
+    // Vuelven a casa los que quedan, con lo que traen.
     const botin = (v.carga as { botin?: Botin } | null)?.botin;
-    if (botin) await tx.kingdomStats.updateMany({ where: { factionId: v.factionId }, data: { comida: { increment: botin.comida }, riqueza: { increment: botin.goirnos } } });
+    const vuelven = v.miembros.reduce((s, m) => s + m.genericos, 0);
+    await tx.kingdomStats.updateMany({ where: { factionId: v.factionId }, data: { soldados: { increment: vuelven }, ...(botin ? { comida: { increment: botin.comida }, riqueza: { increment: botin.goirnos } } : {}) } });
   },
 };
 

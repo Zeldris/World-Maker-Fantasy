@@ -7,9 +7,10 @@
 //   `CR-63`) y no tiene ya un ejército en marcha, sopesa sus soldados, la presión de la guerra y la
 //   defensa que estima en cada asentamiento del Reino al que llega; si le salen las cuentas, manda lo
 //   que cree necesitar (con colchón, hasta 16, dejando un tercio en casa; Fácil: la mitad) como viajero
-//   `ASALTO` contra el más débil. Se resuelve con la defensa de `CR-65` al llegar (`asaltos.ts`).
+//   `ASALTO` contra el más débil. Los que salen dejan de contar en sus soldados hasta que vuelven (los
+//   que mueren no vuelven). Se resuelve con la defensa de `CR-65` al llegar (`asaltos.ts`).
 import type { Prisma, PrismaClient } from '@prisma/client';
-import { ajustesAsaltos, asentamientosDelReino, defensaVista, TIPO_ASALTO } from './defensaReino.js';
+import { ajustesAsaltos, asentamientosDelReino, contextoDefensa, defensaVista, TIPO_ASALTO } from './defensaReino.js';
 import { decidirAtaque, motivoGuerra } from './cronista/decisionAsalto.js';
 import { DIAS_RESERVA_PARA_CAZAR, diasDeReservaFaccion } from './partidasFacciones.js';
 import { avisoDeViajero, crearViajero, enlacesDelMundo, rutaMasCorta, TRABAJOS } from './viajeros.js';
@@ -65,11 +66,12 @@ export async function lanzarEjercitosContraElReino(prisma: PrismaClient, saveId:
       if (await tx.viajero.findFirst({ where: { saveId, factionId: f.id, tipo: TIPO_ASALTO, estado: { not: 'TERMINADO' } }, select: { id: true } })) return;
       // El asentamiento del Reino al que llega que menos defensa parece tener (a igualdad, el más cercano).
       const ahora = dia * 1440;
+      const ctx = await contextoDefensa(tx, saveId, ahora);
       let objetivo: { locationId: string; nombre: string; pasos: number; defensa: number } | null = null;
       for (const a of await asentamientosDelReino(tx, saveId)) {
         const ruta = rutaMasCorta(enlaces, casa, a.locationId);
         if (!ruta) continue;
-        const defensa = await defensaVista(tx, saveId, a, ahora);
+        const defensa = await defensaVista(tx, saveId, a, ahora, ctx);
         if (!objetivo || defensa < objetivo.defensa || (defensa === objetivo.defensa && ruta.length < objetivo.pasos)) objetivo = { locationId: a.locationId, nombre: a.nombre, pasos: ruta.length, defensa };
       }
       if (!objetivo) return;
@@ -77,12 +79,14 @@ export async function lanzarEjercitosContraElReino(prisma: PrismaClient, saveId:
       const presion = reino ? Math.max(0, ...(await tx.factionRelation.findMany({ where: { OR: [{ sourceFactionId: f.id, targetFactionId: reino.id }, { sourceFactionId: reino.id, targetFactionId: f.id }] }, select: { presion: true } })).map((r) => r.presion)) : 0;
       const { intensidad, tamano } = await ajustesAsaltos(tx, saveId);
       const soldados = f.kingdomStats.soldados;
-      const d = decidirAtaque({ fuerza: soldados, enCasa: soldadosEnCasa(soldados), defensa: objetivo.defensa, motivo: motivoGuerra(presion), intensidad, tamano });
+      const d = decidirAtaque({ fuerza: soldados, enCasa: soldadosEnCasa(soldados), defensa: objetivo.defensa, motivo: motivoGuerra(presion), intensidad, tamano, maximo: MAX_EJERCITO });
       if (!d.ataca) return;
-      const van = Math.min(MAX_EJERCITO, d.manda);
+      const van = d.manda;
       const motivo = `${f.name} ha reunido ${soldados} soldados y la guerra está ${presion >= 95 ? 'en su peor momento' : 'encendida'}.`;
       const r = await crearViajero(tx, { saveId, factionId: f.id, tipo: TIPO_ASALTO, origenLocationId: casa, destinoLocationId: objetivo.locationId, dia, carga: { motivo }, miembros: [{ genericos: van, rol: 'soldado' }] });
       if (!r.ok) return;
+      // Los que salen no están en casa (si atacas su asentamiento mientras, defienden menos).
+      await tx.kingdomStats.update({ where: { id: f.kingdomStats.id }, data: { soldados: { decrement: van } } });
       await avisoDeViajero(tx, { saveId, factionId: null }, `${f.name} manda ${van} soldados contra ${objetivo.nombre}: estamos en guerra.`);
       salen++;
     });

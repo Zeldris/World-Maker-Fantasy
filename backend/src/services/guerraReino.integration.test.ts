@@ -74,7 +74,10 @@ describe('guerra contra el Reino (CR-37 37a)', () => {
     const r = await prisma.$transaction((tx) => resolverAsaltoDeFondo(tx, saveId, v, capitalId, 805, semilla(7)));
     // Personaje y guardia (sin guarnición ni milicia).
     expect(r!.defensores).toBe(2);
-    expect((await prisma.kingdomStats.findFirstOrThrow({ where: { factionId: enemigaId } })).soldados).toBe(20 - r!.caidosAsaltantes);
+    // Los 2 que salieron ya no cuentan en casa; los muertos no vuelven.
+    expect((await prisma.kingdomStats.findFirstOrThrow({ where: { factionId: enemigaId } })).soldados).toBe(18);
+    await prisma.$transaction(async (tx) => (await import('./viajeros.js')).TRABAJOS.ASALTO!.alVolver!(tx, await tx.viajero.findUniqueOrThrow({ where: { id: v.id }, include: { miembros: true } }), 806, () => 0.5));
+    expect((await prisma.kingdomStats.findFirstOrThrow({ where: { factionId: enemigaId } })).soldados).toBe(18 + 2 - r!.caidosAsaltantes);
     expect(await prisma.logEntry.count({ where: { saveId, text: { contains: 'clan enemigo', mode: 'insensitive' } } })).toBeGreaterThan(1);
   });
 

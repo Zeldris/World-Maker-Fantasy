@@ -244,13 +244,26 @@ export async function guardiasDeRegion(tx: Tx, saveId: string, worldId: string, 
   });
 }
 
-/// Q1: la defensa que estima un atacante en un asentamiento: guarnición, milicia que podría armarse
-/// (equipos de la Armería y trabajadores adultos que haya), guardias de fauna, cobertura y moral.
-export async function defensaVista(tx: Tx, saveId: string, a: Asentamiento, ahora: number): Promise<number> {
+/// Lo que no cambia entre asentamientos al estimar defensas en un mismo día (se carga una vez).
+export interface ContextoDefensa {
+  worldId: string;
+  /// Trabajadores adultos del Reino (la gente vive en la Capital: su milicia sale de ahí).
+  trabajadores: number;
+  guardiasPorRegion: Map<string, number>;
+}
+
+export async function contextoDefensa(tx: Tx, saveId: string, ahora: number): Promise<ContextoDefensa> {
   const { worldId } = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } });
-  const equipos = a.modulos.find((m) => m.modulo === 'armeria')?.equiposMilicia ?? 0;
   const trabajadores = (await tx.subject.findMany({ where: { saveId, estado: 'ACTIVO' }, select: { role: true, pueblo: true, nacidoEn: true } }))
     .filter((s) => rolDeSubdito(s.role) === 'trabajador' && esAdultoSubdito(s, ahora)).length;
-  const guardias = (await guardiasDeRegion(tx, saveId, worldId, a.region, ahora)).length;
-  return defensaEstimada({ guarnicion: a.guarnicion.length, milicia: Math.min(equipos, trabajadores), guardias, cobertura: a.efecto.cobertura, bonoMoral: a.efecto.bonoMoral });
+  return { worldId, trabajadores, guardiasPorRegion: new Map() };
+}
+
+/// Q1: la defensa que estima un atacante en un asentamiento: guarnición, milicia que podría armarse
+/// (en la Capital, equipos de su Armería y trabajadores; en un Cuartel Avanzado no vive nadie que
+/// armar), guardias de fauna de la región, cobertura y moral.
+export async function defensaVista(tx: Tx, saveId: string, a: Asentamiento, ahora: number, ctx: ContextoDefensa): Promise<number> {
+  const equipos = a.modulos.find((m) => m.modulo === 'armeria')?.equiposMilicia ?? 0;
+  if (!ctx.guardiasPorRegion.has(a.region)) ctx.guardiasPorRegion.set(a.region, (await guardiasDeRegion(tx, saveId, ctx.worldId, a.region, ahora)).length);
+  return defensaEstimada({ guarnicion: a.guarnicion.length, milicia: a.capital ? Math.min(equipos, ctx.trabajadores) : 0, guardias: ctx.guardiasPorRegion.get(a.region)!, cobertura: a.efecto.cobertura, bonoMoral: a.efecto.bonoMoral });
 }
