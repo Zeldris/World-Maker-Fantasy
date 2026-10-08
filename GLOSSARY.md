@@ -16,6 +16,17 @@ _Evitar_: mundo global
 **Reino**:
 La facción que funda la jugadora; la única de su partida que no procede del catálogo.
 
+**Tiempo de Berig**:
+Un año son 120 días (`DIAS_POR_ANIO`, `cronista/edades.ts`); un día, 1440 minutos de ficción, y la
+jornada de viaje, 480. Cada modelo guarda sus fechas en su unidad: en minutos `Ganado.nacidoEn`,
+`Subject.nacidoEn` y `WorldState.fictionalMinutes`; en días los de los viajeros (`diaSalida`,
+`ultimoDia`), campamentos (`creadoDia`, `caidoDia`) y piezas (`caducaEnDia`).
+_Evitar_: contar años de 365 días
+
+**Región jugable**:
+Una región con lugares unidos por caminos (`LocationLink`). Hasta el `0.4` solo lo es Las Llanuras del
+Viento Rojo: lo que necesita ruta (viajeros, campamentos, asaltos) solo pasa allí.
+
 ## Libro de Sucesos
 
 **Suceso**:

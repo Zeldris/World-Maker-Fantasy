@@ -22,11 +22,16 @@ Skill (no basta con nombrarla); `/grill-with-docs` solo lo lanza la usuaria, con
    detalle (números), se contrasta siempre** con X4: Foundations, D&D 5e, Baldur's Gate 3, Medieval
    Dynasty, Bellwright y Manor Lords, y cada pregunta dice de cuál sale (o que ninguno lo cubre).
    **X4 marca el camino** siempre que se pueda: si los juegos se contradicen, gana lo que hace X4
-   (usuaria, 2026-10-07). Si una pregunta pide decidir números o reglas
+   (usuaria, 2026-10-07). Antes de presentar la ronda, cada pregunta pasa tres preguntas (QA-21):
+   ¿de qué juego sale?, ¿sale del estado del mundo o es un temporizador «cada N días»?, ¿apaga una
+   contingencia o solo la regula? (principios 9 y 10 del
+   [Cronista](../producto/roadmap-cronista.md#2-principios-y-límites)). Si una pregunta pide decidir números o reglas
    que hay que probar para sentirlas, `prototype` y el enlace en la pregunta. Lo decidido, a su
    roadmap; los términos, a `GLOSSARY.md`; lo difícil de revertir, a `docs/adr/`.
 3. **Implementar** por pasos pequeños, cada uno con sus tests, y commit + push en cada punto
-   estable (`CLAUDE.md`).
+   estable (`CLAUDE.md`). En cada paso, los tests de lo tocado (`npx vitest run <archivos>`); la
+   suite entera del backend (5-6 min) en segundo plano y aparte del push (el pre-push ya pasa tsc,
+   lint y cobertura) (QA-24).
 4. **Si algo falla** (test rojo, intermitente, bug): `diagnosing-bugs` antes de tocar el código.
 5. **Cerrar la tarea:** tachada en su roadmap y en el mapa, bitácora al día, commit + push.
 6. **Antes de un PR a `main`** (solo cuando lo pide la usuaria): `/code-review --max-findings all`

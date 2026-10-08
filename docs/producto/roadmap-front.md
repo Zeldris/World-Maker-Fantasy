@@ -869,6 +869,28 @@ genéricos. Y además:
   `plan-roadmap-*.md` sin «retro ✅» en su celda, y la bitácora lleva una línea fija «Retros
   pendientes». Motivo: se acumularon cinco fases sin retro.
 
+Retro del 2026-10-08 (`CR-63`, `CR-65`, `CR-50`, `CR-37`, `CR-67`; propuestas aprobadas por la usuaria):
+
+- ~~**QA-21 · Los principios, donde se diseña**~~ ✅ 2026-10-08: en el paso 2 del runbook de skills,
+  cada pregunta de una ronda pasa tres comprobaciones (de qué juego sale, ¿estado o temporizador?,
+  ¿apaga o regula?) con el enlace a los principios 9 y 10 del Cronista. Motivo: tres correcciones de
+  rumbo de la usuaria en una tanda (ronda sin juegos, «sin asaltos», «cada 7 días»).
+- ~~**QA-22 · Reglas de revisión de lo que se escapó**~~ ✅ 2026-10-08: `REVIEW.md` con «Del Reino es
+  `esDelReino`», «El tope cuenta al decidir», «Un GET solo lee» y «Listas del cuerpo»; helper
+  `idsDelCuerpo` (`routes/saves/cuerpo.ts`) en lugar de las dos copias de `ids()`. Motivo: las tres
+  revisiones (18, 13 y 11 hallazgos) repitieron esos cuatro tipos de error.
+- ~~**QA-23 · Tiempo de Berig y regiones jugables**~~ ✅ 2026-10-08: entradas en `GLOSSARY.md` (año de
+  120 días, unidad de cada fecha; solo Las Llanuras tiene caminos hasta el `0.4`) y línea fija en la
+  bitácora. Motivo: un test falló por años de 365 días y otro esperaba campamentos fuera de Las Llanuras.
+- ~~**QA-24 · Suite completa en segundo plano**~~ ✅ 2026-10-08: en el paso 3 del runbook, los tests de
+  lo tocado en cada paso y la suite del backend (5-6 min) en segundo plano y aparte del push.
+  Motivo: una suite encadenada al push pasó del límite de 10 minutos.
+- ~~**QA-25 · Cifras provisionales en un sitio**~~ ✅ 2026-10-08:
+  [`cifras-provisionales.md`](cifras-provisionales.md) con cada cifra, su valor y su constante; se
+  apunta en el mismo commit que la cifra. Motivo: decenas de cifras provisionales repartidas.
+- **QA-26 · Revisar las cifras provisionales jugando** (fase de pruebas del `0.8`): pasar por cada
+  fila de [`cifras-provisionales.md`](cifras-provisionales.md), ajustar la cifra y borrar la fila.
+
 ---
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)

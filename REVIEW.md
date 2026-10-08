@@ -26,12 +26,24 @@ mecánico ya lo comprueban los tests, el hook `pre-push` y la CI; aquí está lo
   para NPC con nombre; la fauna y los genéricos comparten ficha entre ejemplares.
 - **Muertos y caídos.** Un muerto, convaleciente o alguien en un combate en curso no actúa: no da
   noticias, no es objetivo de un grupo, no se mueve al corral ni se recluta.
+- **Del Reino es `esDelReino`.** Un viajero sin facción puede ser un asalto de bandidos: lo del Reino
+  (sus partidas, sus avisos, «De paso por aquí») se filtra con `esDelReino` / `TIPOS_SIN_DUENO`,
+  nunca con `factionId: null` a secas.
+- **El tope cuenta al decidir.** Un tope o límite (tamaño de un ejército, plazas, equipos) entra en
+  la decisión, no se recorta después: nadie sale sabiendo que va corto.
 
 ## Las facciones también
 
 - **Mismos sistemas** ([ADR 0003](docs/adr/0003-todo-viaja-de-verdad.md)). Cada mecánica que manda
   algo por el mapa (partidas, expediciones, caravanas, patrullas) dice cómo la usan las facciones y
   tiene un test para ellas. Ninguna es solo de la jugadora.
+
+## Rutas
+
+- **Un GET solo lee.** Descubrir, revisar o apuntar algo va en el avance diario o en la acción que lo
+  causa, nunca al abrir un panel.
+- **Listas del cuerpo.** Los ids que llegan en una petición se leen con `idsDelCuerpo` (solo cadenas,
+  sin repetidos) y quien no puede ir se rechaza con su motivo, no se descarta en silencio.
 
 ## Roadmap y documentos
 
