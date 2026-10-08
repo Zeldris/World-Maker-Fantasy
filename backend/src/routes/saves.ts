@@ -21,6 +21,7 @@ import { companerosRoutes } from './saves/companeros.js';
 import { ganadoRoutes } from './saves/ganado.js';
 import { partidasRoutes } from './saves/partidas.js';
 import { defensaRoutes } from './saves/defensa.js';
+import { guerraRoutes } from './saves/guerra.js';
 import { combatGroupsRoutes } from './saves/combatGroups.js';
 import { descansarCampamentoRoutes } from './saves/descansarCampamento.js';
 import { zonaRoutes } from './saves/zona.js';
@@ -72,6 +73,7 @@ export async function savesRoutes(app: FastifyInstance) {
   await app.register(ganadoRoutes);
   await app.register(partidasRoutes);
   await app.register(defensaRoutes);
+  await app.register(guerraRoutes);
   await app.register(combatGroupsRoutes);
   await app.register(descansarCampamentoRoutes);
   await app.register(zonaRoutes);

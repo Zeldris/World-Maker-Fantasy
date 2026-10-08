@@ -1655,7 +1655,12 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     de la región (los que mueren se pierden), el personaje y su grupo 1 si están allí (no mueren de
     fondo, quedan como acaben) y los muertos del ejército salen de sus soldados; al volver, su botín va
     a su comida y riqueza.
-  - 37b: «Ofrecer tributo» y contraataque «Atacar asentamiento».
+  - ~~37b~~ ✅ 2026-10-08: `ofrecerTributo` (100 Goirnos = un evento `TRIBUTO` de −10 de presión en
+      las dos direcciones, hasta 5 de golpe; los Goirnos van a la facción) y partida
+      `ATAQUE_ASENTAMIENTO` (`lanzarAtaqueAAsentamiento`, solo en guerra; de fondo contra hasta 16 de
+      sus soldados con su cobertura; si gana, saqueo que vuelve al Reino, la facción refuerza su
+      Empalizada; siempre `BAJA_DE_GUERRA`). Rutas `GET /saves/:id/guerra`, `POST …/guerra/:factionId/tributo`
+      y `…/atacar`; `elegirGenteDeAtaque` compartido con los campamentos.
   - 37c: interfaz (estado de guerra en el Reino, tributo, contraataque). **M**
 - **CR-39** Territorios de facción y expansión (`CR-34` Q14 y Q20, va al `0.3` con `CR-36`; la usuaria
   eligió la versión completa, 2026-10-05). **L**

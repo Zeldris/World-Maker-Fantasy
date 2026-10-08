@@ -63,7 +63,9 @@ export type FactionEventType =
   /// discusión completa del punto 6). 'diplomatico' es siempre `source`, la facción objetivo
   /// siempre `target` — nunca al revés, la facción destino no "actúa" en este evento.
   | 'NEGOCIACION_TREGUA'
-  | 'SABOTAJE_DIPLOMATICO';
+  | 'SABOTAJE_DIPLOMATICO'
+  /// CR-37 (Q4): el Reino paga tributo (cada 100 Goirnos, una vez; referencia: Bannerlord).
+  | 'TRIBUTO';
 
 const FACTION_EVENT_WEIGHTS: Record<FactionEventType, number> = {
   EXPANSION_TERRITORIAL_AGRESIVA: 15,
@@ -73,6 +75,7 @@ const FACTION_EVENT_WEIGHTS: Record<FactionEventType, number> = {
   // trabajador no debería mover tanto como una expansión territorial real o una baja de guerra.
   NEGOCIACION_TREGUA: -12,
   SABOTAJE_DIPLOMATICO: 10,
+  TRIBUTO: -10,
 };
 
 /// Puro — aplica un evento a la `presion` actual, acotado a [PRESION_MIN, PRESION_MAX].

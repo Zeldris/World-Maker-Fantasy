@@ -122,19 +122,28 @@ export interface PeticionAtaque {
 
 /// Q5: el Reino manda una partida a por un campamento que conoce: tus grupos 2+, tus cazadores y
 /// tus soldados.
-export async function lanzarAtaqueACampamento(tx: Tx, saveId: string, p: PeticionAtaque, ahora: number): Promise<{ ok: true; id: string } | { ok: false; motivo: string }> {
-  const c = await tx.campamento.findFirst({ where: { id: p.campamentoId, saveId, estado: 'ACTIVO', conocido: true } });
-  if (!c) return { ok: false, motivo: 'No conoces ningún campamento así.' };
+/// Quién va en una partida de ataque (campamento o asentamiento enemigo): grupos 2+ y soldados,
+/// vigías y cazadores libres; nadie que no pueda salir, sin repetidos y con el tope de una partida.
+export async function elegirGenteDeAtaque(tx: Tx, saveId: string, p: { companionIds?: string[]; subjectIds?: string[] }, ahora: number): Promise<{ ok: true; origenId: string; companionIds: string[]; subjectIds: string[] } | { ok: false; motivo: string }> {
   const op = await opcionesDePartida(tx, saveId, ahora);
   if (!op.origen) return { ok: false, motivo: 'Tu Reino no tiene ningún edificio desde el que salir.' };
   const libresComp = new Set(op.grupos.flatMap((g) => g.companeros.map((x) => x.id)));
   const libresSub = new Set((await guerrerosLibres(tx, saveId, ahora)).map((g) => g.id));
   const subjectIds = [...new Set(p.subjectIds ?? [])];
   const companionIds = [...new Set(p.companionIds ?? [])];
-  if (companionIds.length + subjectIds.length === 0) return { ok: false, motivo: 'Elige quién va a por el campamento.' };
-  // Las mismas reglas que una partida de caza: nadie que no pueda salir y el mismo tope.
+  if (companionIds.length + subjectIds.length === 0) return { ok: false, motivo: 'Elige quién va.' };
   if (companionIds.some((id) => !libresComp.has(id)) || subjectIds.some((id) => !libresSub.has(id))) return { ok: false, motivo: 'Alguno de los que eliges no puede salir ahora.' };
   if (companionIds.length + subjectIds.length > MAX_MIEMBROS_PARTIDA) return { ok: false, motivo: `Una partida lleva como mucho ${MAX_MIEMBROS_PARTIDA}.` };
+  return { ok: true, origenId: op.origen.id, companionIds, subjectIds };
+}
+
+export async function lanzarAtaqueACampamento(tx: Tx, saveId: string, p: PeticionAtaque, ahora: number): Promise<{ ok: true; id: string } | { ok: false; motivo: string }> {
+  const c = await tx.campamento.findFirst({ where: { id: p.campamentoId, saveId, estado: 'ACTIVO', conocido: true } });
+  if (!c) return { ok: false, motivo: 'No conoces ningún campamento así.' };
+  const g = await elegirGenteDeAtaque(tx, saveId, p, ahora);
+  if (!g.ok) return g;
+  const { companionIds, subjectIds } = g;
+  const op = { origen: { id: g.origenId } };
   return crearViajero(tx, {
     saveId, tipo: TIPO_ATAQUE, objetivo: c.id, origenLocationId: op.origen.id, destinoLocationId: c.locationId, dia: Math.floor(ahora / 1440),
     miembros: [...companionIds.map((id) => ({ companionId: id, rol: 'guerrero' })), ...subjectIds.map((id) => ({ subjectId: id, rol: 'guerrero' }))],
