@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { lanzarPartida, opcionesDePartida, ordenarPartida, partidasDelReino, type PeticionPartida } from '../../services/partidasReino.js';
 import { comidaVendible, comprarCarneAViajero, preguntarAViajero, venderAViajero, viajerosAqui } from '../../services/viajerosCruce.js';
+import { idsDelCuerpo } from './cuerpo.js';
 import { lockRowForUpdate, rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 import { campamentosConocidos } from '../../services/campamentos.js';
 import { guerrerosLibres, lanzarAtaqueACampamento, type PeticionAtaque } from '../../services/ataquesCampamento.js';
@@ -96,8 +97,7 @@ export async function partidasRoutes(app: FastifyInstance) {
     if (rejectIfPendingDeath(save, reply)) return;
     const r = await prisma.$transaction(async (tx) => {
       await lockRowForUpdate(tx, 'Save', save.id, ['id']);
-      const ids = (x: unknown) => (Array.isArray(x) ? x.filter((v): v is string => typeof v === 'string') : []);
-      return lanzarAtaqueACampamento(tx, save.id, { companionIds: ids(request.body?.companionIds), subjectIds: ids(request.body?.subjectIds), campamentoId: request.params.campamentoId }, save.worldState?.fictionalMinutes ?? 0);
+      return lanzarAtaqueACampamento(tx, save.id, { companionIds: idsDelCuerpo(request.body?.companionIds), subjectIds: idsDelCuerpo(request.body?.subjectIds), campamentoId: request.params.campamentoId }, save.worldState?.fictionalMinutes ?? 0);
     });
     if (!r.ok) return reply.status(400).send({ error: r.motivo });
     return { ok: true, id: r.id };

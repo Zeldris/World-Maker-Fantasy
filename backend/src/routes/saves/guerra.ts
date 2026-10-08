@@ -3,10 +3,10 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { faccionDelReino, lanzarAtaqueAAsentamiento, ofrecerTributo } from '../../services/guerraReino.js';
+import { idsDelCuerpo } from './cuerpo.js';
 import { lockRowForUpdate, rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 
 const selectSave = { id: true, endedAt: true, pendingDeathResolution: true, worldState: { select: { fictionalMinutes: true } } } as const;
-const ids = (x: unknown) => (Array.isArray(x) ? x.filter((v): v is string => typeof v === 'string') : []);
 
 export async function guerraRoutes(app: FastifyInstance) {
   /// Las facciones en guerra o en tensión con el Reino, con su presión.
@@ -50,7 +50,7 @@ export async function guerraRoutes(app: FastifyInstance) {
     if (rejectIfPendingDeath(save, reply)) return;
     const r = await prisma.$transaction(async (tx) => {
       await lockRowForUpdate(tx, 'Save', save.id, ['id']);
-      return lanzarAtaqueAAsentamiento(tx, save.id, { factionId: request.params.factionId, companionIds: ids(request.body?.companionIds), subjectIds: ids(request.body?.subjectIds) }, save.worldState?.fictionalMinutes ?? 0);
+      return lanzarAtaqueAAsentamiento(tx, save.id, { factionId: request.params.factionId, companionIds: idsDelCuerpo(request.body?.companionIds), subjectIds: idsDelCuerpo(request.body?.subjectIds) }, save.worldState?.fictionalMinutes ?? 0);
     });
     if (!r.ok) return reply.status(400).send({ error: r.motivo });
     return { ok: true, id: r.id };
