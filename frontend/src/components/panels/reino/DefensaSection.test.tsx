@@ -7,6 +7,10 @@ vi.mock('../../../lib/api', () => ({
   postGuarnicion: vi.fn(),
   postLlamarMilicia: vi.fn(),
   postRepararEmpalizada: vi.fn(),
+  getGuerra: vi.fn().mockResolvedValue({ enemigas: [] }),
+  getPartidas: vi.fn().mockResolvedValue({ partidas: [], opciones: { origen: null, cazadores: [], grupos: [], destinos: [] } }),
+  postTributo: vi.fn(),
+  postAtacarAsentamiento: vi.fn(),
 }))
 
 import { getDefensa, postEquiposMilicia, postLlamarMilicia, postRepararEmpalizada, type AsentamientoDefensa } from '../../../lib/api'

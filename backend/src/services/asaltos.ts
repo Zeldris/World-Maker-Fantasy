@@ -19,9 +19,12 @@ import { golpeAEmpalizada, NIVEL_MENOS_MILICIA } from './cronista/defensa.js';
 import { morir } from './cronista/salidas.js';
 import { esAdultoSubdito, recalcularPoblacion, rolDeSubdito } from './cronista/subditos.js';
 import { NIVEL_SOLDADO_GENERICO } from './cronista/combatientesFaccion.js';
-import { asentamientosDelReino, licenciarMilicia } from './defensaReino.js';
+import { asentamientosDelReino, guardiasDeRegion, licenciarMilicia } from './defensaReino.js';
 import { volverAlCampamento } from './campamentos.js';
 import { ocupanteDe } from './cronista/campamentosBandidos.js';
+import { combatienteDeNpc } from './factionExpeditions.js';
+import { peor } from './partidasCaza.js';
+import type { AttributeBlock } from './dice.js';
 import { ownerKeyFor } from './reinoOwner.js';
 import { avisoDeViajero, TRABAJOS, type ViajeroFila } from './viajeros.js';
 import { CONSTRUCTION_RECIPES } from './construction.js';
@@ -85,6 +88,26 @@ export async function resolverAsaltoDeFondo(tx: Tx, saveId: string, v: ViajeroFi
     defensores.push({ ...c, conNombre: false, bonoDefensa: cobertura, bonoAtaque: enGuarnicion && rolDeSubdito(s.role) === 'vigia' ? bonoAltura : 0, bonoMoral });
   }
 
+  // CR-37 (Q3): los guardias de fauna crecidos de los corrales de su región (`CR-56`).
+  const guardias = await guardiasDeRegion(tx, saveId, worldId, asentamiento.region, ahora);
+  for (const { ganadoId, npc } of guardias) {
+    const c = combatienteDeNpc(npc);
+    defensores.push({ id: `guardia-${ganadoId}`, nombre: npc.name, bando: 'A', attributes: c.attributes, attribute: c.attribute, attributeBonus: c.attributeBonus ?? 0, nivel: c.nivel ?? NIVEL_SOLDADO_GENERICO, conMoral: false, bonoDefensa: cobertura });
+  }
+  // CR-37 (Q6): si el personaje está allí, pelea dentro del combate de fondo con su grupo 1 (no
+  // muere de fondo; queda como acabe).
+  const save = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { currentLocationId: true, characterName: true, attributes: true, level: true, condicionFisica: true } });
+  const presente = save.currentLocationId === asentamiento.locationId && save.condicionFisica !== 'CONVALECIENTE' && save.condicionFisica !== 'MUERTO';
+  const grupo1 = presente ? await tx.companion.findMany({ where: { saveId, combatGroupSlotIndex: 0, condicionFisica: { notIn: ['MUERTO', 'CONVALECIENTE'] } } }) : [];
+  if (presente) {
+    const a = save.attributes as unknown as AttributeBlock;
+    defensores.push({ id: `personaje-${saveId}`, nombre: save.characterName, bando: 'A', attributes: a, attribute: (a.destreza ?? 0) > (a.fuerza ?? 0) ? 'destreza' : 'fuerza', attributeBonus: 1, nivel: save.level, conMoral: true, conNombre: true, lider: true, bonoDefensa: cobertura });
+    for (const comp of grupo1) {
+      const ca = (comp.attributes ?? {}) as unknown as AttributeBlock;
+      defensores.push({ id: comp.id, nombre: comp.name, bando: 'A', attributes: ca, attribute: (ca.destreza ?? 0) > (ca.fuerza ?? 0) ? 'destreza' : 'fuerza', attributeBonus: 1, nivel: NIVEL_SOLDADO_GENERICO, conMoral: true, conNombre: true, bonoDefensa: cobertura });
+    }
+  }
+
   // Quien asalta: los genéricos de la partida, del pueblo de su facción.
   // CR-50: los de un campamento, del pueblo y nivel de sus ocupantes.
   const campamentoId = (v.carga as { campamentoId?: string } | null)?.campamentoId;
@@ -112,6 +135,17 @@ export async function resolverAsaltoDeFondo(tx: Tx, saveId: string, v: ViajeroFi
   for (const a of asaltantes) if (estado.get(a.c.id)?.muerto) caidosPorMiembro.set(a.miembroId, (caidosPorMiembro.get(a.miembroId) ?? 0) + 1);
   for (const [id, n] of caidosPorMiembro) await tx.viajeroMiembro.update({ where: { id }, data: { genericos: { decrement: n } } });
   const caidosAsaltantes = [...caidosPorMiembro.values()].reduce((s, n) => s + n, 0);
+  // CR-37: un ejército de facción ya salió de sus soldados; sus muertos no vuelven (`alVolver`).
+  // Los guardias de fauna que mueren; el personaje y su grupo quedan como acaben (una pelea no cura).
+  for (const g of guardias) if (estado.get(`guardia-${g.ganadoId}`)?.muerto) await tx.ganado.delete({ where: { id: g.ganadoId } });
+  if (presente) {
+    const suya = estado.get(`personaje-${saveId}`)?.condicion;
+    if (suya) await tx.save.update({ where: { id: saveId }, data: { condicionFisica: peor(save.condicionFisica, suya) } });
+    for (const comp of grupo1) {
+      const e = estado.get(comp.id);
+      if (e) await tx.companion.update({ where: { id: comp.id }, data: { condicionFisica: peor(comp.condicionFisica, e.condicion) } });
+    }
+  }
 
   let botin: Botin | null = null;
   let empalizadaCaida = false;
@@ -153,8 +187,15 @@ TRABAJOS.ASALTO = {
     const asentamiento = (await asentamientosDelReino(tx, v.saveId)).find((a) => a.locationId === v.destinoLocationId);
     if (asentamiento) await resolverAsaltoDeFondo(tx, v.saveId, v, asentamiento.id, dia, random);
   },
-  // CR-50: los que quedan vuelven a su campamento con lo que traen.
-  alVolver: async (tx, v) => volverAlCampamento(tx, v),
+  // CR-50: los que quedan vuelven a su campamento con lo que traen; CR-37: un ejército de facción, a
+  // su casa, y el botín va a su comida y su riqueza.
+  alVolver: async (tx, v) => {
+    if (!v.factionId) return volverAlCampamento(tx, v);
+    // Vuelven a casa los que quedan, con lo que traen.
+    const botin = (v.carga as { botin?: Botin } | null)?.botin;
+    const vuelven = v.miembros.reduce((s, m) => s + m.genericos, 0);
+    await tx.kingdomStats.updateMany({ where: { factionId: v.factionId }, data: { soldados: { increment: vuelven }, ...(botin ? { comida: { increment: botin.comida }, riqueza: { increment: botin.goirnos } } : {}) } });
+  },
 };
 
 /// Q4: repara una Empalizada caída por la mitad de su coste (en materiales del Almacén).

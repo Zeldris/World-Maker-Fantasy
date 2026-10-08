@@ -78,12 +78,13 @@ export function genteInicial(random: () => number): number {
 }
 
 /// Puro (Q3): refuerzos de un campamento hasta el día `dia`: uno cada 3 días mientras le falte gente.
-export function refuerzos(c: { gente: number; tope: number; ultimoRefuerzoDia: number }, dia: number): { gente: number; ultimoRefuerzoDia: number } {
+/// `cada`: días por refuerzo (CR-67: depende de la intensidad de los asaltos).
+export function refuerzos(c: { gente: number; tope: number; ultimoRefuerzoDia: number }, dia: number, cada = DIAS_POR_REFUERZO): { gente: number; ultimoRefuerzoDia: number } {
   if (c.gente >= c.tope) return { gente: c.gente, ultimoRefuerzoDia: dia };
-  const llegan = Math.floor((dia - c.ultimoRefuerzoDia) / DIAS_POR_REFUERZO);
+  const llegan = Math.floor((dia - c.ultimoRefuerzoDia) / cada);
   if (llegan <= 0) return { gente: c.gente, ultimoRefuerzoDia: c.ultimoRefuerzoDia };
   const gente = Math.min(c.tope, c.gente + llegan);
-  return { gente, ultimoRefuerzoDia: gente >= c.tope ? dia : c.ultimoRefuerzoDia + llegan * DIAS_POR_REFUERZO };
+  return { gente, ultimoRefuerzoDia: gente >= c.tope ? dia : c.ultimoRefuerzoDia + llegan * cada };
 }
 
 /// Puro (Q3): el tope sube uno con cada asalto con éxito, hasta 12.

@@ -107,6 +107,13 @@ que esto exige a la interfaz está en `roadmap-front.md` § 15 (`INT`) y en
    `docs/borradores-opencode/propuestas-lore.md` para el runbook habitual (`AGENTS.md`).
 8. **El turno del jugador nunca espera** al Cronista: todo lo que no sea el turno corre en segundo
    plano con menos prioridad.
+9. **Mundo de bolsillo: nada se apaga, todo se regula** (usuaria, 2026-10-08). Las contingencias
+   (asaltos, guerras, bandidos, hambre…) son parte del lore; la configuración puede subir o bajar su
+   intensidad, nunca quitarlas.
+10. **Nada en bucle fijo: cada suceso sale del estado del mundo** (usuaria, 2026-10-08; X4: piratas y
+   Kha'ak atacan cuando han reunido fuerza y hay un objetivo que lo merece). Nada ocurre «cada N
+   días»: un ataque, una expedición o una guerra se deciden por fuerza acumulada, necesidad y
+   tensión, y tras una derrota hay que rehacerse.
 
 **Fuera de alcance:** misiones secundarias generadas (se deja el gancho, § 7.5, pero no se
 implementan aquí); razas, regiones, magia o especies nuevas; cambios en el combate.
@@ -1495,7 +1502,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-detalle-de-cr-50-campamentos-de-bandidos-ronda-aceptada-por-la-usuaria-el-2026-10-07));
     quién los ocupa es dato de semilla (la usuaria añadirá razas «poco civilizadas»). Queda: sus razas
     de verdad (semillas de la usuaria y lore; hoy los renegados de 49c), las expediciones de facción
-    (su interceptación necesita una facción hostil), «sin asaltos» con `CR-67` y las cifras
+    (su interceptación necesita una facción hostil), la intensidad de `CR-67` y las cifras
     provisionales para la fase de pruebas. Pasos:
     - ~~50a~~ ✅ 2026-10-07: migración `20261008000000_campamentos` (modelo `Campamento`); semillas
       `OCUPANTES_CAMPAMENTO` y reglas puras en `cronista/campamentosBandidos.ts` (aparición, sorteo,
@@ -1510,7 +1517,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
       viajero `ASALTO`) y `volverAlCampamento` (`TRABAJOS.ASALTO.alVolver`). Los bandidos pelean con
       el nivel de su semilla (`nivel`, 3 provisional) y su pueblo; el radar los llama por su grupo.
       Cifras provisionales. Quedan: las expediciones de facción (su interceptación necesita una
-      facción hostil; va con 50c) y respetar «sin asaltos» cuando exista `CR-67`.
+      facción hostil; va con 50c) y la intensidad de `CR-67`.
     - ~~50c~~ ✅ 2026-10-07: `services/ataquesCampamento.ts`: `disolverCampamento` (cofre de 50 +
       lo saqueado al Reino, +60 de reputación con las dueñas de la región, suceso nuevo
       `CAMPAMENTO_DESTRUIDO`; cifras provisionales), `bajasDeCampamentoEnVivo` (en el cierre del combate
@@ -1646,8 +1653,26 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
 - **CR-36** Las facciones del mundo construyen (`CR-34` Q3, va al `0.3` con el Reino profundo): obras
   con coste y plazo según sus carencias (pozo, granero…), con los números de la economía de
   supervivencia. **M**
-- **CR-37** Guerra de una facción contra el Reino de la jugadora (`CR-34` Q7, `0.3`): solo cuando
-  existan los edificios de defensa. **M**
+- ~~**CR-37** Guerra de una facción contra el Reino de la jugadora~~ ✅ 2026-10-08 (`CR-34` Q7, `0.3`): solo cuando
+  existan los edificios de defensa (ya están, `CR-65`). Ronda de detalle aceptada el 2026-10-08 (Q1-Q7
+  en [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-detalle-de-cr-37-guerra-contra-el-reino-ronda-aceptada-por-la-usuaria-el-2026-10-08)).
+  Queda: la conquista de territorios (`CR-39`), el combate en vivo con súbditos (`CR-64`) y las cifras
+  para la fase de pruebas. Pasos:
+  - ~~37a~~ ✅ 2026-10-08: `services/guerraReino.ts` (`lanzarEjercitosContraElReino` en el avance
+    diario: relación en GUERRA, 7 días de reserva, la mitad de sus soldados hasta 16, al asentamiento
+    más cercano, uno por semana); en `resolverAsaltoDeFondo`, guardias de fauna crecidos de los corrales
+    de la región (los que mueren se pierden), el personaje y su grupo 1 si están allí (no mueren de
+    fondo, quedan como acaben) y los muertos del ejército salen de sus soldados; al volver, su botín va
+    a su comida y riqueza.
+  - ~~37b~~ ✅ 2026-10-08: `ofrecerTributo` (100 Goirnos = un evento `TRIBUTO` de −10 de presión en
+      las dos direcciones, hasta 5 de golpe; los Goirnos van a la facción) y partida
+      `ATAQUE_ASENTAMIENTO` (`lanzarAtaqueAAsentamiento`, solo en guerra; de fondo contra hasta 16 de
+      sus soldados con su cobertura; si gana, saqueo que vuelve al Reino, la facción refuerza su
+      Empalizada; siempre `BAJA_DE_GUERRA`). Rutas `GET /saves/:id/guerra`, `POST …/guerra/:factionId/tributo`
+      y `…/atacar`; `elegirGenteDeAtaque` compartido con los campamentos.
+  - ~~37c~~ ✅ 2026-10-08: «Guerra» en Reino › Defensa (`GuerraSection.tsx`: facciones en guerra o
+    tensión, «Tributo de 100/300», «Atacar su casa» con quién va); la partida sale en Reino ›
+    Partidas como «Ataque a su casa». **M**
 - **CR-39** Territorios de facción y expansión (`CR-34` Q14 y Q20, va al `0.3` con `CR-36`; la usuaria
   eligió la versión completa, 2026-10-05). **L**
   - Territorios reales de facción en el mundo de cada partida: uno por asentamiento de cada facción y
@@ -1911,8 +1936,24 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
 - **CR-66** Postura de compañero en combate (Fase E, Q6): agresiva, defensiva, capturadora (golpe no
   letal), clemente (acepta rendiciones) y «huir si cae grave»; en vivo y de fondo; las facciones, la
   de su raza. **M**
-- **CR-67** Dificultad de asaltos en Configuración (Fase E, Q7): sin asaltos, normal o duros; sin
-  asaltos, los bandidos solo atacan caravanas y partidas. **S**
+- ~~**CR-67** Intensidad de los asaltos en Configuración~~ ✅ 2026-10-08 (Fase E, Q7, corregida el 2026-10-08): regula
+  cuánto y con qué agresividad atacan bandidos y facciones; **nunca los apaga** (principio 9). Ronda
+  «asaltos por estado» aceptada el 2026-10-08 (principio 10; Q1-Q7 en el plan del `0.3`). Queda: usar
+  la misma decisión en expediciones y guerras entre facciones (Q7) y ajustar las cifras en la fase de
+  pruebas. Pasos:
+  - ~~67a~~ ✅ 2026-10-08: `cronista/decisionAsalto.ts` (`defensaEstimada`, `margenNecesario`,
+    `decidirAtaque` con Fácil = la mitad, `motivoBandidos`, `motivoGuerra`; cifras provisionales) y
+    migración `20261008100000_intensidad_asaltos` (`WorldState.intensidadAsaltos` y
+    `tamanoAsaltos`), en `GET/PATCH /saves/:id/ritmo`.
+  - ~~67b~~ ✅ 2026-10-08: `lanzarAsaltosAlReino` (campamentos: al asentamiento más débil de su región
+    si les salen las cuentas, dejando 2 en casa), `lanzarEjercitosContraElReino` (facciones: motivo
+    por la presión, un tercio en casa, hasta 16, al más débil al que llegan) y `asaltoAlViajero`
+    (solo a grupos con los que pueden) deciden con `decidirAtaque`; un asalto en marcha a la vez y
+    ningún «cada 7 días»; refuerzos según la intensidad; `defensaVista`, `guardiasDeRegion` y
+    `ajustesAsaltos` en `defensaReino.ts`; el aviso de la Torre dice por qué vienen.
+  - ~~67c~~ ✅ 2026-10-08: Configuración › Partida con «Intensidad de los asaltos» (contenida,
+    normal, dura) y «Tamaño de los asaltos» (fácil, normal), sin opción de quitarlos;
+    `setRitmoMundo` manda solo lo que cambia. **M**
 - **Hecho cuando:** matar al hermano de un NPC abre un hilo de venganza y el vengador aparece;
   un compañero se queja y acaba yéndose si se le contraría repetidamente.
 

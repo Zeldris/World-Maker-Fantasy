@@ -16,7 +16,7 @@ const ESTADO: Record<PartidaInfo['estado'], string> = {
 
 /// Puro: «Caza de Múrgol · de camino, en Los Pilares → La Hondonada».
 export function lineaDePartida(p: PartidaInfo): string {
-  const que = p.tipo === 'ATAQUE' ? 'Ataque al campamento' : `${p.tipo === 'CAPTURA' ? 'Captura' : 'Caza'} de ${p.especieNombre ?? 'presas'}`
+  const que = p.tipo === 'ATAQUE' ? 'Ataque al campamento' : p.tipo === 'ATAQUE_ASENTAMIENTO' ? 'Ataque a su casa' : `${p.tipo === 'CAPTURA' ? 'Captura' : 'Caza'} de ${p.especieNombre ?? 'presas'}`
   const donde = p.estado === 'TERMINADO' ? ESTADO.TERMINADO : `${ESTADO[p.estado]}, en ${p.ubicacion} → ${p.destino}`
   return `${que} · ${donde}`
 }

@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { esIntensidad, esTamano } from '../../services/cronista/decisionAsalto.js';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
@@ -65,16 +66,25 @@ export async function listRoutes(app: FastifyInstance) {
   // CR-12 (hito 0.2, decisión D-7) — «Ritmo del mundo» de la partida (Configuración › Partida): cuánta
   // tensión gana cada día el narrador de fondo. Cambiable en cualquier momento.
   app.get<{ Params: { id: string } }>('/saves/:id/ritmo', async (request, reply) => {
-    const ws = await prisma.worldState.findUnique({ where: { saveId: request.params.id }, select: { estiloNarrador: true } });
+    const ws = await prisma.worldState.findUnique({ where: { saveId: request.params.id }, select: { estiloNarrador: true, intensidadAsaltos: true, tamanoAsaltos: true } });
     if (!ws) return reply.status(404).send();
-    return { estiloNarrador: esEstiloNarrador(ws.estiloNarrador) ? ws.estiloNarrador : 'EQUILIBRADO' };
+    return {
+      estiloNarrador: esEstiloNarrador(ws.estiloNarrador) ? ws.estiloNarrador : 'EQUILIBRADO',
+      // CR-67: intensidad y tamaño de los asaltos.
+      intensidadAsaltos: esIntensidad(ws.intensidadAsaltos) ? ws.intensidadAsaltos : 'NORMAL',
+      tamanoAsaltos: esTamano(ws.tamanoAsaltos) ? ws.tamanoAsaltos : 'NORMAL',
+    };
   });
 
-  app.patch<{ Params: { id: string }; Body: { estiloNarrador?: unknown } }>('/saves/:id/ritmo', async (request, reply) => {
-    const { estiloNarrador } = request.body ?? {};
-    if (!esEstiloNarrador(estiloNarrador)) return reply.status(400).send({ error: 'estiloNarrador debe ser TRANQUILO, EQUILIBRADO o CAOTICO' });
-    const r = await prisma.worldState.updateMany({ where: { saveId: request.params.id }, data: { estiloNarrador } });
+  app.patch<{ Params: { id: string }; Body: { estiloNarrador?: unknown; intensidadAsaltos?: unknown; tamanoAsaltos?: unknown } }>('/saves/:id/ritmo', async (request, reply) => {
+    const { estiloNarrador, intensidadAsaltos, tamanoAsaltos } = request.body ?? {};
+    if (estiloNarrador === undefined && intensidadAsaltos === undefined && tamanoAsaltos === undefined) return reply.status(400).send({ error: 'Nada que cambiar' });
+    if (estiloNarrador !== undefined && !esEstiloNarrador(estiloNarrador)) return reply.status(400).send({ error: 'estiloNarrador debe ser TRANQUILO, EQUILIBRADO o CAOTICO' });
+    if (intensidadAsaltos !== undefined && !esIntensidad(intensidadAsaltos)) return reply.status(400).send({ error: 'intensidadAsaltos debe ser CONTENIDA, NORMAL o DURA' });
+    if (tamanoAsaltos !== undefined && !esTamano(tamanoAsaltos)) return reply.status(400).send({ error: 'tamanoAsaltos debe ser FACIL o NORMAL' });
+    const data = { ...(estiloNarrador !== undefined ? { estiloNarrador } : {}), ...(intensidadAsaltos !== undefined ? { intensidadAsaltos } : {}), ...(tamanoAsaltos !== undefined ? { tamanoAsaltos } : {}) };
+    const r = await prisma.worldState.updateMany({ where: { saveId: request.params.id }, data });
     if (r.count === 0) return reply.status(404).send();
-    return { estiloNarrador };
+    return data;
   });
 }

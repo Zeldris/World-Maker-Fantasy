@@ -24,7 +24,7 @@ nuevo del motor y se intercala entre fases.
 | **B — Memoria del narrador** | `CR-21` verdad obligatoria, `CR-22` callbacks por entidad, `CR-23` puntuación de recuerdos ([Cronista Fase 6](roadmap-cronista.md#fase-6--memoria-del-narrador--m)) | A | ✅ 2026-10-06, retro ✅ 2026-10-07 (`CR-21`, `CR-22`, `CR-23` en `memoriaNarrador.ts`) |
 | **C — Población del Reino** | `REI-118` súbditos como personas, `REI-119` llegadas, `REI-120` parejas y crías, `REI-121` salidas y muerte, `CR-52` linajes y rastros ([propuesta aprobada](../borradores-opencode/propuestas-aprobadas.md), «Ciclo vital de los pueblos») · súbditos en el panel (`REI-53`, `REI-54`) | — (vivienda del `0.1`, `CR-13`) | ✅ 2026-10-06, retro ✅ 2026-10-07 (`CR-52`, `REI-118`…`REI-121`, `REI-54`; queda `REI-53` en parte —territorio de residencia y estado— y la muerte de súbditos en combate, que va con `CR-37` en la Fase E; los números del hambre son provisionales para la ronda de la Fase D) |
 | **D — Economía, ganadería y obras** | `CR-53` economía de supervivencia del Reino, `CR-54` de las facciones, `CR-58` factura de equipo, `CR-59` vasallaje y deuda · `CR-55` ganadería (oficio de ganadero y corrales por especie), `CR-56` usos de la fauna, `CR-61` comida por oficios · estaciones sin oficio (Leñera, Cantera, Fibrería) si hacen falta · edificios de defensa · `CR-36` las facciones construyen | C | 🚧 ronda 1 aceptada (2026-10-06, decisiones abajo, portes incluidos); ~~`CR-53`~~ ✅, ~~`CR-54`~~ ✅, ~~`CR-58`~~ ✅ y ~~`CR-59`~~ ✅ 2026-10-06; ronda de `CR-55` aceptada (2026-10-06, decisiones abajo; tarea nueva `CR-61`); ~~`CR-55`~~ ✅ y ~~`CR-56`~~ ✅ 2026-10-06 |
-| **E — Conflicto** | ~~`CR-62`~~ ✅ 2026-10-07 combate de fondo para escaramuzas y patrullas · ~~`CR-65`~~ ✅ 2026-10-07 defensa y milicia (los edificios de defensa de la Fase D) · ~~`CR-50`~~ ✅ 2026-10-07 campamentos de bandidos · `CR-37` guerra contra el Reino · `CR-39` territorios y expansión · `CR-66` postura de compañero · `CR-67` dificultad de asaltos · `CMB-1`…`CMB-8` | C, D | 🚧 ronda 1 aceptada (2026-10-07, decisiones abajo) |
+| **E — Conflicto** | ~~`CR-62`~~ ✅ 2026-10-07 combate de fondo para escaramuzas y patrullas · ~~`CR-65`~~ ✅ 2026-10-07 defensa y milicia (los edificios de defensa de la Fase D) · ~~`CR-50`~~ ✅ 2026-10-07 campamentos de bandidos · ~~`CR-37`~~ ✅ 2026-10-08 guerra contra el Reino · `CR-39` territorios y expansión · `CR-66` postura de compañero · ~~`CR-67`~~ ✅ 2026-10-08 intensidad de asaltos · `CMB-1`…`CMB-8` | C, D | 🚧 ronda 1 aceptada (2026-10-07, decisiones abajo) |
 | **F — Hablar y comerciar con NPC** | «Charlar con NPC» enriquecido (Franja 4: lore, reclutar, interrogar tras Clemente) · `CR-51` comercio en persona con NPC y caravanas | A | 🧭 falta la especificación (ronda de diseño) |
 | **G — Interfaz** (se intercala) | Reino R-B, R-C, R-D, R-E y `PAN-7` · `DiceTray` `DAD-7`…`DAD-12` (con el resto de `CFG-20`) · `HUD-1`…`HUD-5`, `HUD-7`…`HUD-11`, `HUD-13` · `NAR-1`…`NAR-8`, `NAR-10`, `NAR-11` · `PAN-1`…`PAN-6`, `PAN-11`…`PAN-14` · `UX-18` (epílogo con plantillas), `UX-19`, `UX-20` · `INT-5`…`INT-8`, `INT-10`, `INT-11` · `CFG-36` · UX-F `UX-32`…`UX-34`, `UX-39` | — | Pendiente |
 
@@ -344,9 +344,9 @@ Baldur's Gate 3 y D&D 5e (de memoria, sin consulta en línea).
 - **Q6 Postura de compañero (`CR-66`):** agresiva, defensiva, capturadora (golpe no letal, BG3),
   clemente (acepta rendiciones al romperse la moral, D&D) y el añadido «huir si cae grave» (X4). Por
   compañero, en vivo y de fondo; las facciones, la de su raza.
-- **Q7 Dificultad de asaltos (`CR-67`):** sin asaltos (Medieval Dynasty), normal o duros, en
-  Configuración (Manor Lords tiene un ajuste parecido). Sin asaltos, los bandidos solo atacan
-  caravanas y partidas.
+- **Q7 Intensidad de asaltos (`CR-67`), corregida por la usuaria el 2026-10-08:** no existe «sin
+  asaltos» (mundo de bolsillo: las contingencias no se apagan, solo se regulan); la configuración
+  ajusta cuánto atacan (Manor Lords tiene un ajuste parecido).
 
 ## Decisiones de detalle de `CR-65` defensa y milicia (ronda aceptada por la usuaria el 2026-10-07)
 
@@ -409,7 +409,9 @@ Contrastada con los juegos de referencia; **X4 marca el camino**. De memoria, si
 - **Q4 Qué hacen (X4: piratas que acosan a los comerciantes):** asaltan caravanas, partidas y
   expediciones a 2 tramos o menos (enganche de encuentros de `CR-63`, combate de fondo); al Reino,
   como mucho 1 vez cada 7 días y solo con 200 Goirnos o más, con la mitad de su gente como viajero
-  `ASALTO` (entra en el radar y la defensa de `CR-65`); en «sin asaltos» (`CR-67`), solo viajeros.
+  `ASALTO` (entra en el radar y la defensa de `CR-65`); la intensidad, con `CR-67`. **Revisado el
+  2026-10-08:** el «cada 7 días» se sustituye por asaltos que dependen del estado (principio 10 del
+  Cronista).
 - **Q5 Atacarlos:** en vivo (combate de varios de `CR-49`) o con una partida «Asalto» de Reino ›
   Partidas; si cae el cabecilla, el campamento se disuelve (BG3, D&D); botín de lo saqueado más un
   cofre de Goirnos (Manor Lords).
@@ -418,7 +420,51 @@ Contrastada con los juegos de referencia; **X4 marca el camino**. De memoria, si
   de una Torre.
 - **Q8 Las facciones también (X4: policía contra piratas):** sus patrullas atacan, de fondo, los
   campamentos de su región.
-- **Q9:** Medieval Dynasty no tiene bandidos; su contrapeso es «sin asaltos» (`CR-67`).
+- **Q9:** Medieval Dynasty no tiene bandidos; aquí no se quitan, se regula su intensidad (`CR-67`).
+
+## Decisiones de detalle de `CR-37` guerra contra el Reino (ronda aceptada por la usuaria el 2026-10-08)
+
+Contrastada con los juegos de referencia; **X4 marca el camino**. De memoria, sin consulta en línea.
+
+- **Q1 Cuándo (X4: la reputación pasa un umbral y la facción es enemiga):** cuando su relación con
+  el Reino llega a la banda GUERRA con la presión que ya existe; noticia y aviso en el Reino.
+- **Q2 Cómo atacan (X4: flotas contra la estación enemiga más cercana):** como mucho una vez por
+  semana, un ejército (viajero `ASALTO` con su facción) de la mitad de sus soldados (hasta 16) al
+  asentamiento del Reino más cercano con camino; solo con 7 días de reserva de comida (la prudencia
+  de `CR-63`). Se ve en el radar y en el mapa.
+- **Q3 Al llegar:** la resolución de `CR-65` (guarnición, milicia, cobertura, moral) y además los
+  **guardias de fauna** (`CR-56`). Si ganan, saquean y la Empalizada encaja el golpe (el territorio,
+  con `CR-39`); si pierden, sus muertos salen de sus soldados.
+- **Q4 Tregua:** la presión baja sola con el tiempo, y «**Ofrecer tributo**» (Goirnos que bajan la
+  presión; ninguno de los seis juegos lo tiene así, la referencia es Bannerlord).
+- **Q5 Contraatacar (X4: tomar sus estaciones):** partida «Atacar asentamiento» contra su casa, de
+  fondo contra sus soldados y su cobertura (`coberturaDeFaccion`); si ganas, saqueo, más presión y
+  la facción refuerza su Empalizada; la conquista, con `CR-39`.
+- **Q6 Si estás allí:** peleas dentro del combate de fondo con tus atributos y tu grupo 1 (el combate
+  en vivo con súbditos y genéricos es `CR-64`).
+- **Q7 Partidas guardadas:** sin migración (el ejército es un viajero y la guerra, la relación).
+
+## Decisiones de «asaltos por estado» y `CR-67` (ronda aceptada por la usuaria el 2026-10-08)
+
+Principios 9 y 10 del Cronista (nada se apaga; nada en bucle fijo). **X4 marca el camino**: piratas y
+Kha'ak atacan cuando han reunido fuerza y hay un objetivo que lo merece.
+
+- **Q1 Qué decide un ataque:** cada día el atacante sopesa su **fuerza** (gente que tiene), su
+  **motivo** (bandidos: lo que vale el objetivo y su necesidad; facción en guerra: la presión), la
+  **defensa estimada** del objetivo (guarnición, milicia posible, cobertura, guardias) y su
+  **logística** (facciones: reserva de comida).
+- **Q2 Cuándo:** si su fuerza supera la defensa estimada por un margen, menor con más motivo; si no
+  le alcanza, los bandidos van a por viajeros y la facción acumula.
+- **Q3 Cuántos manda:** lo que cree necesitar para ganar más un colchón, sin dejar su casa vacía.
+  **Regulable (usuaria):** «Normal» sigue la regla; «Fácil» manda el 50 % (mínimo 2; los demás se
+  quedan en casa).
+- **Q4 Tras una derrota:** sin temporizador; tiene que reponerse antes de que le vuelvan a salir las
+  cuentas. Un atacante solo tiene un asalto en marcha a la vez.
+- **Q5 Lo que ves:** el aviso dice por qué viene («han reunido 11 y saben que guardas 600 Goirnos»).
+- **Q6 `CR-67` intensidad:** contenida, normal o dura; mueve el margen, cuánto pesa el botín y la
+  velocidad de refuerzo; nunca llega a cero.
+- **Q7 Mismo sistema para todos:** también decide cuándo un campamento sale a por viajeros; más
+  adelante, expediciones y guerras entre facciones.
 
 ## Decisiones que bloquean algo
 
