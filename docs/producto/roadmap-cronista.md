@@ -107,6 +107,13 @@ que esto exige a la interfaz está en `roadmap-front.md` § 15 (`INT`) y en
    `docs/borradores-opencode/propuestas-lore.md` para el runbook habitual (`AGENTS.md`).
 8. **El turno del jugador nunca espera** al Cronista: todo lo que no sea el turno corre en segundo
    plano con menos prioridad.
+9. **Mundo de bolsillo: nada se apaga, todo se regula** (usuaria, 2026-10-08). Las contingencias
+   (asaltos, guerras, bandidos, hambre…) son parte del lore; la configuración puede subir o bajar su
+   intensidad, nunca quitarlas.
+10. **Nada en bucle fijo: cada suceso sale del estado del mundo** (usuaria, 2026-10-08; X4: piratas y
+   Kha'ak atacan cuando han reunido fuerza y hay un objetivo que lo merece). Nada ocurre «cada N
+   días»: un ataque, una expedición o una guerra se deciden por fuerza acumulada, necesidad y
+   tensión, y tras una derrota hay que rehacerse.
 
 **Fuera de alcance:** misiones secundarias generadas (se deja el gancho, § 7.5, pero no se
 implementan aquí); razas, regiones, magia o especies nuevas; cambios en el combate.
@@ -1495,7 +1502,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-detalle-de-cr-50-campamentos-de-bandidos-ronda-aceptada-por-la-usuaria-el-2026-10-07));
     quién los ocupa es dato de semilla (la usuaria añadirá razas «poco civilizadas»). Queda: sus razas
     de verdad (semillas de la usuaria y lore; hoy los renegados de 49c), las expediciones de facción
-    (su interceptación necesita una facción hostil), «sin asaltos» con `CR-67` y las cifras
+    (su interceptación necesita una facción hostil), la intensidad de `CR-67` y las cifras
     provisionales para la fase de pruebas. Pasos:
     - ~~50a~~ ✅ 2026-10-07: migración `20261008000000_campamentos` (modelo `Campamento`); semillas
       `OCUPANTES_CAMPAMENTO` y reglas puras en `cronista/campamentosBandidos.ts` (aparición, sorteo,
@@ -1510,7 +1517,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
       viajero `ASALTO`) y `volverAlCampamento` (`TRABAJOS.ASALTO.alVolver`). Los bandidos pelean con
       el nivel de su semilla (`nivel`, 3 provisional) y su pueblo; el radar los llama por su grupo.
       Cifras provisionales. Quedan: las expediciones de facción (su interceptación necesita una
-      facción hostil; va con 50c) y respetar «sin asaltos» cuando exista `CR-67`.
+      facción hostil; va con 50c) y la intensidad de `CR-67`.
     - ~~50c~~ ✅ 2026-10-07: `services/ataquesCampamento.ts`: `disolverCampamento` (cofre de 50 +
       lo saqueado al Reino, +60 de reputación con las dueñas de la región, suceso nuevo
       `CAMPAMENTO_DESTRUIDO`; cifras provisionales), `bajasDeCampamentoEnVivo` (en el cierre del combate
@@ -1929,8 +1936,9 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
 - **CR-66** Postura de compañero en combate (Fase E, Q6): agresiva, defensiva, capturadora (golpe no
   letal), clemente (acepta rendiciones) y «huir si cae grave»; en vivo y de fondo; las facciones, la
   de su raza. **M**
-- **CR-67** Dificultad de asaltos en Configuración (Fase E, Q7): sin asaltos, normal o duros; sin
-  asaltos, los bandidos solo atacan caravanas y partidas. **S**
+- **CR-67** Intensidad de los asaltos en Configuración (Fase E, Q7, corregida el 2026-10-08): regula
+  cuánto y con qué agresividad atacan bandidos y facciones; **nunca los apaga** (principio 9). Los
+  niveles y su efecto se deciden con la ronda de «asaltos por estado» (principio 10). **S**
 - **Hecho cuando:** matar al hermano de un NPC abre un hilo de venganza y el vengador aparece;
   un compañero se queja y acaba yéndose si se le contraría repetidamente.
 

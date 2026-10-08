@@ -344,9 +344,9 @@ Baldur's Gate 3 y D&D 5e (de memoria, sin consulta en línea).
 - **Q6 Postura de compañero (`CR-66`):** agresiva, defensiva, capturadora (golpe no letal, BG3),
   clemente (acepta rendiciones al romperse la moral, D&D) y el añadido «huir si cae grave» (X4). Por
   compañero, en vivo y de fondo; las facciones, la de su raza.
-- **Q7 Dificultad de asaltos (`CR-67`):** sin asaltos (Medieval Dynasty), normal o duros, en
-  Configuración (Manor Lords tiene un ajuste parecido). Sin asaltos, los bandidos solo atacan
-  caravanas y partidas.
+- **Q7 Intensidad de asaltos (`CR-67`), corregida por la usuaria el 2026-10-08:** no existe «sin
+  asaltos» (mundo de bolsillo: las contingencias no se apagan, solo se regulan); la configuración
+  ajusta cuánto atacan (Manor Lords tiene un ajuste parecido).
 
 ## Decisiones de detalle de `CR-65` defensa y milicia (ronda aceptada por la usuaria el 2026-10-07)
 
@@ -409,7 +409,9 @@ Contrastada con los juegos de referencia; **X4 marca el camino**. De memoria, si
 - **Q4 Qué hacen (X4: piratas que acosan a los comerciantes):** asaltan caravanas, partidas y
   expediciones a 2 tramos o menos (enganche de encuentros de `CR-63`, combate de fondo); al Reino,
   como mucho 1 vez cada 7 días y solo con 200 Goirnos o más, con la mitad de su gente como viajero
-  `ASALTO` (entra en el radar y la defensa de `CR-65`); en «sin asaltos» (`CR-67`), solo viajeros.
+  `ASALTO` (entra en el radar y la defensa de `CR-65`); la intensidad, con `CR-67`. **Revisado el
+  2026-10-08:** el «cada 7 días» se sustituye por asaltos que dependen del estado (principio 10 del
+  Cronista).
 - **Q5 Atacarlos:** en vivo (combate de varios de `CR-49`) o con una partida «Asalto» de Reino ›
   Partidas; si cae el cabecilla, el campamento se disuelve (BG3, D&D); botín de lo saqueado más un
   cofre de Goirnos (Manor Lords).
@@ -418,7 +420,7 @@ Contrastada con los juegos de referencia; **X4 marca el camino**. De memoria, si
   de una Torre.
 - **Q8 Las facciones también (X4: policía contra piratas):** sus patrullas atacan, de fondo, los
   campamentos de su región.
-- **Q9:** Medieval Dynasty no tiene bandidos; su contrapeso es «sin asaltos» (`CR-67`).
+- **Q9:** Medieval Dynasty no tiene bandidos; aquí no se quitan, se regula su intensidad (`CR-67`).
 
 ## Decisiones de detalle de `CR-37` guerra contra el Reino (ronda aceptada por la usuaria el 2026-10-08)
 
