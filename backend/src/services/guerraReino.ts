@@ -3,12 +3,14 @@
 //
 // - Hay guerra cuando la relación de la facción con el Reino está en la banda GUERRA (la misma presión
 //   que entre facciones, X4: la reputación cruza un umbral).
-// - Cada semana como mucho, si le sobra comida (7 días, la prudencia de `CR-63`), manda un ejército
-//   (viajero `ASALTO` con su facción) de la mitad de sus soldados, hasta 16, al asentamiento del Reino
-//   más cercano con camino (X4: flotas contra la estación enemiga más cercana). Se resuelve con la
-//   defensa de `CR-65` al llegar (`asaltos.ts`).
+// - CR-67 (principio 10, X4): sin temporizador. Cada día, si le sobra comida (7 días, la prudencia de
+//   `CR-63`) y no tiene ya un ejército en marcha, sopesa sus soldados, la presión de la guerra y la
+//   defensa que estima en cada asentamiento del Reino al que llega; si le salen las cuentas, manda lo
+//   que cree necesitar (con colchón, hasta 16, dejando un tercio en casa; Fácil: la mitad) como viajero
+//   `ASALTO` contra el más débil. Se resuelve con la defensa de `CR-65` al llegar (`asaltos.ts`).
 import type { Prisma, PrismaClient } from '@prisma/client';
-import { asentamientosDelReino, TIPO_ASALTO } from './defensaReino.js';
+import { ajustesAsaltos, asentamientosDelReino, defensaVista, TIPO_ASALTO } from './defensaReino.js';
+import { decidirAtaque, motivoGuerra } from './cronista/decisionAsalto.js';
 import { DIAS_RESERVA_PARA_CAZAR, diasDeReservaFaccion } from './partidasFacciones.js';
 import { avisoDeViajero, crearViajero, enlacesDelMundo, rutaMasCorta, TRABAJOS } from './viajeros.js';
 import { recordFactionEvent } from './factionRelations.js';
@@ -22,13 +24,12 @@ import { botinDe, type Botin } from './asaltos.js';
 
 type Tx = Prisma.TransactionClient;
 
+/// Tope de un ejército (lo que cabe en un combate de fondo de dos grupos).
 export const MAX_EJERCITO = 16;
-export const DIAS_ENTRE_EJERCITOS = 7;
 
-/// Puro: soldados que manda una facción (la mitad, hasta 16; ninguno si no llega a 2).
-export function tamanoDeEjercito(soldados: number): number {
-  const n = Math.min(MAX_EJERCITO, Math.floor(soldados / 2));
-  return n >= 2 ? n : 0;
+/// Puro: soldados que nunca salen de casa (un tercio).
+export function soldadosEnCasa(soldados: number): number {
+  return Math.ceil(soldados / 3);
 }
 
 /// La facción del Reino de la partida (la que no tiene origen en el catálogo).
@@ -60,19 +61,27 @@ export async function lanzarEjercitosContraElReino(prisma: PrismaClient, saveId:
       });
       const casa = f?.buildings[0]?.locationId;
       if (!f || !casa || !f.kingdomStats || diasDeReservaFaccion(f.kingdomStats) < DIAS_RESERVA_PARA_CAZAR) return;
-      // Como mucho uno por semana (y nunca dos en marcha).
-      const reciente = await tx.viajero.findFirst({ where: { saveId, factionId: f.id, tipo: TIPO_ASALTO, OR: [{ estado: { not: 'TERMINADO' } }, { diaSalida: { gt: dia - DIAS_ENTRE_EJERCITOS } }] }, select: { id: true } });
-      if (reciente) return;
-      const van = tamanoDeEjercito(f.kingdomStats.soldados);
-      if (van === 0) return;
-      // El asentamiento del Reino más cercano con camino.
-      let objetivo: { locationId: string; nombre: string; pasos: number } | null = null;
+      // Un ejército en marcha a la vez (sin temporizador: tras una derrota, le faltan soldados).
+      if (await tx.viajero.findFirst({ where: { saveId, factionId: f.id, tipo: TIPO_ASALTO, estado: { not: 'TERMINADO' } }, select: { id: true } })) return;
+      // El asentamiento del Reino al que llega que menos defensa parece tener (a igualdad, el más cercano).
+      const ahora = dia * 1440;
+      let objetivo: { locationId: string; nombre: string; pasos: number; defensa: number } | null = null;
       for (const a of await asentamientosDelReino(tx, saveId)) {
         const ruta = rutaMasCorta(enlaces, casa, a.locationId);
-        if (ruta && (!objetivo || ruta.length < objetivo.pasos)) objetivo = { locationId: a.locationId, nombre: a.nombre, pasos: ruta.length };
+        if (!ruta) continue;
+        const defensa = await defensaVista(tx, saveId, a, ahora);
+        if (!objetivo || defensa < objetivo.defensa || (defensa === objetivo.defensa && ruta.length < objetivo.pasos)) objetivo = { locationId: a.locationId, nombre: a.nombre, pasos: ruta.length, defensa };
       }
       if (!objetivo) return;
-      const r = await crearViajero(tx, { saveId, factionId: f.id, tipo: TIPO_ASALTO, origenLocationId: casa, destinoLocationId: objetivo.locationId, dia, miembros: [{ genericos: van, rol: 'soldado' }] });
+      const reino = await faccionDelReino(tx, saveId);
+      const presion = reino ? Math.max(0, ...(await tx.factionRelation.findMany({ where: { OR: [{ sourceFactionId: f.id, targetFactionId: reino.id }, { sourceFactionId: reino.id, targetFactionId: f.id }] }, select: { presion: true } })).map((r) => r.presion)) : 0;
+      const { intensidad, tamano } = await ajustesAsaltos(tx, saveId);
+      const soldados = f.kingdomStats.soldados;
+      const d = decidirAtaque({ fuerza: soldados, enCasa: soldadosEnCasa(soldados), defensa: objetivo.defensa, motivo: motivoGuerra(presion), intensidad, tamano });
+      if (!d.ataca) return;
+      const van = Math.min(MAX_EJERCITO, d.manda);
+      const motivo = `${f.name} ha reunido ${soldados} soldados y la guerra está ${presion >= 95 ? 'en su peor momento' : 'encendida'}.`;
+      const r = await crearViajero(tx, { saveId, factionId: f.id, tipo: TIPO_ASALTO, origenLocationId: casa, destinoLocationId: objetivo.locationId, dia, carga: { motivo }, miembros: [{ genericos: van, rol: 'soldado' }] });
       if (!r.ok) return;
       await avisoDeViajero(tx, { saveId, factionId: null }, `${f.name} manda ${van} soldados contra ${objetivo.nombre}: estamos en guerra.`);
       salen++;

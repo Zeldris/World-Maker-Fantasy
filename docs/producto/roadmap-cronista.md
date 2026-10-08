@@ -1943,8 +1943,12 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     `decidirAtaque` con Fácil = la mitad, `motivoBandidos`, `motivoGuerra`; cifras provisionales) y
     migración `20261008100000_intensidad_asaltos` (`WorldState.intensidadAsaltos` y
     `tamanoAsaltos`), en `GET/PATCH /saves/:id/ritmo`.
-  - 67b: los campamentos (`CR-50`) y los ejércitos de facción (`CR-37`) deciden por estado; fuera
-    los «cada 7 días»; el aviso dice por qué vienen.
+  - ~~67b~~ ✅ 2026-10-08: `lanzarAsaltosAlReino` (campamentos: al asentamiento más débil de su región
+    si les salen las cuentas, dejando 2 en casa), `lanzarEjercitosContraElReino` (facciones: motivo
+    por la presión, un tercio en casa, hasta 16, al más débil al que llegan) y `asaltoAlViajero`
+    (solo a grupos con los que pueden) deciden con `decidirAtaque`; un asalto en marcha a la vez y
+    ningún «cada 7 días»; refuerzos según la intensidad; `defensaVista`, `guardiasDeRegion` y
+    `ajustesAsaltos` en `defensaReino.ts`; el aviso de la Torre dice por qué vienen.
   - 67c: los dos ajustes en Configuración › Partida. **M**
 - **Hecho cuando:** matar al hermano de un NPC abre un hilo de venganza y el vengador aparece;
   un compañero se queja y acaba yéndose si se le contraría repetidamente.

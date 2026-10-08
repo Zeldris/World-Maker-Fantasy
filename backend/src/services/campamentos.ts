@@ -7,7 +7,8 @@ import { elegirOcupante, genteInicial, ocupanteDe, refuerzos, regionesConCampame
 import { posicionEnZona } from './viajerosCruce.js';
 import { registrarSuceso } from './cronista/sucesos.js';
 import { slugify } from '../lib/slugify.js';
-import { asentamientosDelReino } from './defensaReino.js';
+import { ajustesAsaltos, asentamientosDelReino, defensaVista } from './defensaReino.js';
+import { decidirAtaque, DIAS_POR_REFUERZO_INTENSIDAD, motivoBandidos } from './cronista/decisionAsalto.js';
 import { topeTrasExito } from './cronista/campamentosBandidos.js';
 import { crearViajero, enlacesDelMundo, lugaresATramos, type Enlace, type ViajeroFila } from './viajeros.js';
 import { TIPO_ASALTO } from './defensaReino.js';
@@ -73,7 +74,7 @@ export async function revisarCampamentos(prisma: PrismaClient, saveId: string, d
     await prisma.$transaction(async (tx) => {
       const activo = await tx.campamento.findFirst({ where: { saveId, region, estado: 'ACTIVO' } });
       if (activo) {
-        const r = refuerzos(activo, dia);
+        const r = refuerzos(activo, dia, DIAS_POR_REFUERZO_INTENSIDAD[(await ajustesAsaltos(tx, saveId)).intensidad]);
         if (r.gente !== activo.gente || r.ultimoRefuerzoDia !== activo.ultimoRefuerzoDia) {
           await tx.campamento.update({ where: { id: activo.id }, data: r });
           await sincronizarPunto(tx, { ...activo, ...r });
@@ -103,9 +104,8 @@ export const RADIO_CAMPAMENTO = 2;
 export const PROB_ASALTO_BANDIDOS = 0.3;
 /// Lo que vale en comida cada pieza de caza que roban (provisional).
 export const COMIDA_POR_PIEZA_ROBADA = 10;
-/// Q4: asaltan el Reino solo si tiene esta riqueza, como mucho cada 7 días, con la mitad de su gente.
-export const RIQUEZA_PARA_ASALTO = 200;
-export const DIAS_ENTRE_ASALTOS = 7;
+/// CR-67 (Q3): bandidos que nunca dejan el campamento (el cabecilla aparte).
+export const BANDIDOS_EN_CASA = 2;
 
 /// El campamento activo más cercano a `locationId` (a 2 tramos o menos), si hay.
 export async function campamentoCerca(tx: Tx, saveId: string, locationId: string, enlaces: Enlace[]) {
@@ -130,7 +130,14 @@ export async function asaltoAlViajero(tx: Tx, v: ViajeroFila, locationId: string
   if (v.tipo === TIPO_ASALTO) return null;
   const { worldId } = await tx.save.findUniqueOrThrow({ where: { id: v.saveId }, select: { worldId: true } });
   const c = await campamentoCerca(tx, v.saveId, locationId, await enlacesDelMundo(tx, worldId));
+  // Que los vean pasar (detección); después, que les salgan las cuentas (CR-67, Q7): solo van a por
+  // grupos que creen poder con ellos.
   if (!c || !c.zonePointId || random() >= PROB_ASALTO_BANDIDOS) return null;
+  const { intensidad } = await ajustesAsaltos(tx, v.saveId);
+  const viajeros = v.miembros.reduce((s, m) => s + m.genericos + (m.companionId || m.subjectId ? 1 : 0), 0);
+  const piezas = (v.carga as { piezas?: number } | null)?.piezas ?? 0;
+  const motivo = motivoBandidos({ riqueza: 0, comida: piezas * COMIDA_POR_PIEZA_ROBADA, botinGuardado: c.botinGoirnos + c.botinComida, gente: c.gente, tope: c.tope, intensidad });
+  if (!decidirAtaque({ fuerza: c.gente, enCasa: 0, defensa: viajeros, motivo, intensidad, tamano: 'NORMAL' }).ataca) return null;
   const punto = await tx.zonePoint.findUnique({ where: { id: c.zonePointId } });
   const ocupante = ocupanteDe(c.ocupante);
   const npc = ocupante ? await tx.npc.findFirst({ where: { worldId, saveId: null, slug: ocupante.npcSlug } }) : null;
@@ -157,25 +164,39 @@ export async function asaltoACaravana(tx: Tx, saveId: string, destinoLocationId:
   return ocupanteDe(c.ocupante)?.grupo ?? 'Bandidos';
 }
 
-/// Q4: los campamentos de la región de la Capital la asaltan si el Reino tiene riqueza, como mucho
-/// cada 7 días, con la mitad de su gente como viajero `ASALTO` (entra en el radar y la defensa de
-/// `CR-65`). Devuelve cuántos salen.
+/// CR-67 (principio 10, X4): cada campamento decide cada día, por su estado, si asalta el
+/// asentamiento del Reino más débil de su región: su gente, lo que vale el botín y su necesidad,
+/// frente a la defensa que estima (`decidirAtaque`). Sin temporizador: tras perder gente tiene que
+/// reponerse. Sale como viajero `ASALTO` (radar y defensa de `CR-65`). Devuelve cuántos salen.
 export async function lanzarAsaltosAlReino(prisma: PrismaClient, saveId: string, dia: number): Promise<number> {
-  const capital = await prisma.building.findFirst({ where: { saveId, recipeKey: 'ayuntamiento', status: 'ACTIVO', location: { isNot: null } }, select: { location: { select: { id: true, region: true } } } });
-  const k = await prisma.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId }) }, select: { riqueza: true } });
-  if (!capital?.location || !k || k.riqueza < RIQUEZA_PARA_ASALTO) return 0;
-  const campamentos = await prisma.campamento.findMany({ where: { saveId, estado: 'ACTIVO', region: capital.location.region, OR: [{ ultimoAsaltoReinoDia: null }, { ultimoAsaltoReinoDia: { lte: dia - DIAS_ENTRE_ASALTOS } }] } });
+  const campamentos = await prisma.campamento.findMany({ where: { saveId, estado: 'ACTIVO', gente: { gt: 0 } }, orderBy: { createdAt: 'asc' } });
   let salen = 0;
-  for (const c of campamentos) {
-    const van = Math.floor(c.gente / 2);
-    if (van < 2) continue;
+  for (const c0 of campamentos) {
     await prisma.$transaction(async (tx) => {
+      const c = await tx.campamento.findFirst({ where: { id: c0.id, estado: 'ACTIVO' } });
+      if (!c) return;
+      // Un solo asalto en marcha a la vez (Q4): no hay temporizador, pero tampoco se desdoblan.
+      const enMarcha = await tx.viajero.findFirst({ where: { saveId, tipo: TIPO_ASALTO, estado: { not: 'TERMINADO' }, carga: { path: ['campamentoId'], equals: c.id } }, select: { id: true } });
+      if (enMarcha) return;
+      // Los asentamientos del Reino de su región; va a por el que menos defensa parece tener (X4).
+      const ahora = dia * 1440;
+      const objetivos = (await asentamientosDelReino(tx, saveId)).filter((a) => a.region === c.region);
+      if (objetivos.length === 0) return;
+      const vistas = await Promise.all(objetivos.map(async (a) => ({ a, defensa: await defensaVista(tx, saveId, a, ahora) })));
+      const blanco = vistas.sort((x, y) => x.defensa - y.defensa)[0]!;
+      const k = await tx.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId }) }, select: { riqueza: true, comida: true } });
+      const { intensidad, tamano } = await ajustesAsaltos(tx, saveId);
+      const motivo = motivoBandidos({ riqueza: k?.riqueza ?? 0, comida: k?.comida ?? 0, botinGuardado: c.botinGoirnos + c.botinComida, gente: c.gente, tope: c.tope, intensidad });
+      const d = decidirAtaque({ fuerza: c.gente, enCasa: BANDIDOS_EN_CASA, defensa: blanco.defensa, motivo, intensidad, tamano });
+      if (!d.ataca) return;
+      const grupo = ocupanteDe(c.ocupante)?.grupo ?? 'Los bandidos';
       const r = await crearViajero(tx, {
-        saveId, tipo: TIPO_ASALTO, origenLocationId: c.locationId, destinoLocationId: capital.location!.id, dia,
-        carga: { campamentoId: c.id }, miembros: [{ genericos: van, rol: 'bandido' }],
+        saveId, tipo: TIPO_ASALTO, origenLocationId: c.locationId, destinoLocationId: blanco.a.locationId, dia,
+        carga: { campamentoId: c.id, motivo: `${grupo} han reunido ${c.gente} y saben que guardas ${k?.riqueza ?? 0} Goirnos.` },
+        miembros: [{ genericos: d.manda, rol: 'bandido' }],
       });
       if (!r.ok) return;
-      const gente = c.gente - van;
+      const gente = c.gente - d.manda;
       await tx.campamento.update({ where: { id: c.id }, data: { gente, ultimoAsaltoReinoDia: dia } });
       await sincronizarPunto(tx, { ...c, gente });
       salen++;

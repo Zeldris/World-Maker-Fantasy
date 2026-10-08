@@ -12,6 +12,9 @@ import type { PrismaClient } from '@prisma/client';
 import { ownerKeyFor } from './reinoOwner.js';
 import { recalcularPoblacion } from './cronista/subditos.js';
 import { ocupanteDe } from './cronista/campamentosBandidos.js';
+import { defensaEstimada, esIntensidad, esTamano, type Intensidad, type TamanoAsaltos } from './cronista/decisionAsalto.js';
+import { esGuardia } from './cronista/usosFauna.js';
+import { etapaDe, etapasDe } from './cronista/ganaderia.js';
 import { avisoDeViajero, enlacesDelMundo, lugaresATramos } from './viajeros.js';
 
 type Tx = Prisma.TransactionClient;
@@ -122,6 +125,8 @@ export interface Avistamiento {
   quien: string;
   gente: number;
   tramos: number;
+  /// CR-67 (Q5): por qué viene.
+  motivo?: string;
 }
 
 /// Q5 (X4: lo que entra en el alcance de tus satélites): los asaltos que se ven desde la Torre de
@@ -144,7 +149,7 @@ export async function radarDelReino(tx: Tx, saveId: string): Promise<Avistamient
       const tramos = alcance.get(h.ubicacionLocationId);
       if (tramos === undefined) continue;
       const gente = h.miembros.reduce((s, m) => s + m.genericos + (m.companionId || m.subjectId ? 1 : 0), 0);
-      out.push({ asentamientoId: a.id, asentamiento: a.nombre, viajeroId: h.id, quien: h.faction?.name ?? (await grupoDeAsalto(tx, h.carga)), gente, tramos });
+      out.push({ asentamientoId: a.id, asentamiento: a.nombre, viajeroId: h.id, quien: h.faction?.name ?? (await grupoDeAsalto(tx, h.carga)), gente, tramos, ...((h.carga as { motivo?: string } | null)?.motivo ? { motivo: (h.carga as { motivo: string }).motivo } : {}) });
     }
   }
   return out;
@@ -189,7 +194,7 @@ export async function vigilarDelReino(prisma: PrismaClient, saveId: string, dia:
       const asentamiento = (await asentamientosDelReino(tx, saveId)).find((a) => a.id === v.asentamientoId)!;
       const fuera = save?.currentLocationId !== asentamiento.locationId;
       const armados = fuera ? await convocarMilicia(tx, saveId, v.asentamientoId, ahora) : 0;
-      await avisoDeViajero(tx, { saveId, factionId: null }, `Desde la Torre de vigía de ${v.asentamiento} se ve venir a ${v.quien}: ${v.gente} a ${v.tramos} tramo${v.tramos === 1 ? '' : 's'} de camino.${armados > 0 ? ` Estás fuera: ${armados} trabajadores toman las armas de la Armería.` : fuera ? '' : ' Puedes llamar a la milicia.'}`);
+      await avisoDeViajero(tx, { saveId, factionId: null }, `Desde la Torre de vigía de ${v.asentamiento} se ve venir a ${v.quien}: ${v.gente} a ${v.tramos} tramo${v.tramos === 1 ? '' : 's'} de camino.${v.motivo ? ` ${v.motivo}` : ''}${armados > 0 ? ` Estás fuera: ${armados} trabajadores toman las armas de la Armería.` : fuera ? '' : ' Puedes llamar a la milicia.'}`);
     }
     if (avisados.size > 0) await tx.viajero.updateMany({ where: { id: { in: [...avisados] } }, data: { avistado: true } });
     if (vistos.length === 0) await licenciarMilicia(tx, saveId, ahora);
@@ -218,4 +223,34 @@ async function grupoDeAsalto(tx: Tx, carga: Prisma.JsonValue): Promise<string> {
   const id = (carga as { campamentoId?: string } | null)?.campamentoId;
   const c = id ? await tx.campamento.findUnique({ where: { id }, select: { ocupante: true } }) : null;
   return (c && ocupanteDe(c.ocupante)?.grupo) || 'Bandidos';
+}
+
+// ─────────────────────────── CR-67: lo que ve un atacante ───────────────────────────
+
+/// Ajustes de partida de los asaltos (Configuración › Partida).
+export async function ajustesAsaltos(tx: Tx, saveId: string): Promise<{ intensidad: Intensidad; tamano: TamanoAsaltos }> {
+  const ws = await tx.worldState.findUnique({ where: { saveId }, select: { intensidadAsaltos: true, tamanoAsaltos: true } });
+  return { intensidad: esIntensidad(ws?.intensidadAsaltos) ? ws.intensidadAsaltos : 'NORMAL', tamano: esTamano(ws?.tamanoAsaltos) ? ws.tamanoAsaltos : 'NORMAL' };
+}
+
+/// Los guardias de fauna crecidos (adultos o viejos) de los corrales de una región (`CR-56`).
+export async function guardiasDeRegion(tx: Tx, saveId: string, worldId: string, region: string, ahora: number) {
+  const ganado = (await tx.ganado.findMany({ where: { saveId, building: { location: { region } } }, select: { id: true, especie: true, nacidoEn: true } })).filter((g) => esGuardia(g.especie));
+  const npcs = await tx.npc.findMany({ where: { worldId, saveId: null, slug: { in: [...new Set(ganado.map((g) => g.especie))] } } });
+  return ganado.flatMap((g) => {
+    const npc = npcs.find((n) => n.slug === g.especie);
+    if (!npc || /CRIA|JOVEN/.test(etapaDe(etapasDe(g.especie, npc.faunaCategoria), Math.floor((ahora - g.nacidoEn) / 1440)))) return [];
+    return [{ ganadoId: g.id, npc }];
+  });
+}
+
+/// Q1: la defensa que estima un atacante en un asentamiento: guarnición, milicia que podría armarse
+/// (equipos de la Armería y trabajadores adultos que haya), guardias de fauna, cobertura y moral.
+export async function defensaVista(tx: Tx, saveId: string, a: Asentamiento, ahora: number): Promise<number> {
+  const { worldId } = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } });
+  const equipos = a.modulos.find((m) => m.modulo === 'armeria')?.equiposMilicia ?? 0;
+  const trabajadores = (await tx.subject.findMany({ where: { saveId, estado: 'ACTIVO' }, select: { role: true, pueblo: true, nacidoEn: true } }))
+    .filter((s) => rolDeSubdito(s.role) === 'trabajador' && esAdultoSubdito(s, ahora)).length;
+  const guardias = (await guardiasDeRegion(tx, saveId, worldId, a.region, ahora)).length;
+  return defensaEstimada({ guarnicion: a.guarnicion.length, milicia: Math.min(equipos, trabajadores), guardias, cobertura: a.efecto.cobertura, bonoMoral: a.efecto.bonoMoral });
 }

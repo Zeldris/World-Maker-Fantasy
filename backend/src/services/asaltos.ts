@@ -19,11 +19,9 @@ import { golpeAEmpalizada, NIVEL_MENOS_MILICIA } from './cronista/defensa.js';
 import { morir } from './cronista/salidas.js';
 import { esAdultoSubdito, recalcularPoblacion, rolDeSubdito } from './cronista/subditos.js';
 import { NIVEL_SOLDADO_GENERICO } from './cronista/combatientesFaccion.js';
-import { asentamientosDelReino, licenciarMilicia } from './defensaReino.js';
+import { asentamientosDelReino, guardiasDeRegion, licenciarMilicia } from './defensaReino.js';
 import { volverAlCampamento } from './campamentos.js';
 import { ocupanteDe } from './cronista/campamentosBandidos.js';
-import { esGuardia } from './cronista/usosFauna.js';
-import { etapaDe, etapasDe } from './cronista/ganaderia.js';
 import { combatienteDeNpc } from './factionExpeditions.js';
 import { peor } from './partidasCaza.js';
 import type { AttributeBlock } from './dice.js';
@@ -90,15 +88,11 @@ export async function resolverAsaltoDeFondo(tx: Tx, saveId: string, v: ViajeroFi
     defensores.push({ ...c, conNombre: false, bonoDefensa: cobertura, bonoAtaque: enGuarnicion && rolDeSubdito(s.role) === 'vigia' ? bonoAltura : 0, bonoMoral });
   }
 
-  // CR-37 (Q3): los guardias de fauna crecidos (adultos o viejos) de los corrales de su región (`CR-56`).
-  const guardias = (await tx.ganado.findMany({ where: { saveId, building: { location: { region: asentamiento.region } } }, select: { id: true, especie: true, nacidoEn: true } }))
-    .filter((g) => esGuardia(g.especie));
-  const npcsGuardia = await tx.npc.findMany({ where: { worldId, saveId: null, slug: { in: [...new Set(guardias.map((g) => g.especie))] } } });
-  for (const g of guardias) {
-    const npc = npcsGuardia.find((n) => n.slug === g.especie);
-    if (!npc || etapaDe(etapasDe(g.especie, npc.faunaCategoria), Math.floor((ahora - g.nacidoEn) / 1440)).match(/CRIA|JOVEN/)) continue;
+  // CR-37 (Q3): los guardias de fauna crecidos de los corrales de su región (`CR-56`).
+  const guardias = await guardiasDeRegion(tx, saveId, worldId, asentamiento.region, ahora);
+  for (const { ganadoId, npc } of guardias) {
     const c = combatienteDeNpc(npc);
-    defensores.push({ id: `guardia-${g.id}`, nombre: npc.name, bando: 'A', attributes: c.attributes, attribute: c.attribute, attributeBonus: c.attributeBonus ?? 0, nivel: c.nivel ?? NIVEL_SOLDADO_GENERICO, conMoral: false, bonoDefensa: cobertura });
+    defensores.push({ id: `guardia-${ganadoId}`, nombre: npc.name, bando: 'A', attributes: c.attributes, attribute: c.attribute, attributeBonus: c.attributeBonus ?? 0, nivel: c.nivel ?? NIVEL_SOLDADO_GENERICO, conMoral: false, bonoDefensa: cobertura });
   }
   // CR-37 (Q6): si el personaje está allí, pelea dentro del combate de fondo con su grupo 1 (no
   // muere de fondo; queda como acabe).
@@ -147,7 +141,7 @@ export async function resolverAsaltoDeFondo(tx: Tx, saveId: string, v: ViajeroFi
     if (k) await tx.kingdomStats.update({ where: { id: k.id }, data: { soldados: Math.max(0, k.soldados - caidosAsaltantes) } });
   }
   // Los guardias de fauna que mueren; el personaje y su grupo quedan como acaben (una pelea no cura).
-  for (const g of guardias) if (estado.get(`guardia-${g.id}`)?.muerto) await tx.ganado.delete({ where: { id: g.id } });
+  for (const g of guardias) if (estado.get(`guardia-${g.ganadoId}`)?.muerto) await tx.ganado.delete({ where: { id: g.ganadoId } });
   if (presente) {
     const suya = estado.get(`personaje-${saveId}`)?.condicion;
     if (suya) await tx.save.update({ where: { id: saveId }, data: { condicionFisica: peor(save.condicionFisica, suya) } });

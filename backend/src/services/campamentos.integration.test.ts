@@ -89,14 +89,16 @@ describe('asaltos de los campamentos (CR-50 50b)', () => {
     await prisma.save.delete({ where: { id: saveId } });
   });
 
-  it('salen a por la Capital de su región con la mitad de su gente, como mucho cada 7 días', async () => {
+  it('salen a por la Capital de su región con lo que creen necesitar; uno en marcha a la vez', async () => {
     const { lanzarAsaltosAlReino } = await import('./campamentos.js');
     expect(await lanzarAsaltosAlReino(prisma, saveId, 12)).toBe(1);
     expect(await lanzarAsaltosAlReino(prisma, saveId, 13)).toBe(0);
     const v = await prisma.viajero.findFirstOrThrow({ where: { saveId, tipo: 'ASALTO' }, include: { miembros: true } });
-    expect(v).toMatchObject({ origenLocationId: campLoc, destinoLocationId: capitalLoc, carga: { campamentoId: campId } });
-    expect(v.miembros[0]!.genericos).toBe(4);
-    expect(await prisma.campamento.findUniqueOrThrow({ where: { id: campId } })).toMatchObject({ gente: 4, ultimoAsaltoReinoDia: 12 });
+    expect(v).toMatchObject({ origenLocationId: campLoc, destinoLocationId: capitalLoc, carga: { campamentoId: campId, motivo: expect.stringContaining('han reunido 8') } });
+    // Sin defensa en la Capital, con 2 les basta.
+    expect(v.miembros[0]!.genericos).toBe(2);
+    expect(await prisma.campamento.findUniqueOrThrow({ where: { id: campId } })).toMatchObject({ gente: 6, ultimoAsaltoReinoDia: 12 });
+    await prisma.viajero.update({ where: { id: v.id }, data: { estado: 'TERMINADO' } });
     // Vuelven con botín: el campamento recupera a los suyos, guarda lo saqueado y crece.
     const { volverAlCampamento } = await import('./campamentos.js');
     await prisma.$transaction(async (tx) => volverAlCampamento(tx, { ...v, carga: { campamentoId: campId, botin: { comida: 30, goirnos: 15 } } }));

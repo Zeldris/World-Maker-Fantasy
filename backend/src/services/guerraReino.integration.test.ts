@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { prisma } from '../lib/prisma.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
 import { ownerKeyFor } from './reinoOwner.js';
-import { lanzarEjercitosContraElReino, tamanoDeEjercito } from './guerraReino.js';
+import { lanzarEjercitosContraElReino, soldadosEnCasa } from './guerraReino.js';
 import { resolverAsaltoDeFondo } from './asaltos.js';
 import { enlacesDelMundo, rutaMasCorta, TRABAJOS } from './viajeros.js';
 import Fastify from 'fastify';
@@ -54,16 +54,16 @@ describe('guerra contra el Reino (CR-37 37a)', () => {
     await prisma.save.delete({ where: { id: saveId } });
   });
 
-  it('tamaño del ejército: la mitad de sus soldados, hasta 16', () => {
-    expect([3, 4, 20, 50].map(tamanoDeEjercito)).toEqual([0, 2, 10, 16]);
+  it('deja un tercio de sus soldados en casa', () => {
+    expect([3, 20, 50].map(soldadosEnCasa)).toEqual([1, 7, 17]);
   });
 
-  it('manda un ejército a la Capital, como mucho uno por semana', async () => {
+  it('manda a la Capital lo que cree necesitar (sin defensa, 2) y no otro mientras ese siga en marcha', async () => {
     expect(await lanzarEjercitosContraElReino(prisma, saveId, 800)).toBe(1);
     expect(await lanzarEjercitosContraElReino(prisma, saveId, 801)).toBe(0);
     const v = await prisma.viajero.findFirstOrThrow({ where: { saveId, factionId: enemigaId }, include: { miembros: true } });
-    expect(v).toMatchObject({ tipo: 'ASALTO', origenLocationId: suya, destinoLocationId: casa });
-    expect(v.miembros[0]!.genericos).toBe(10);
+    expect(v).toMatchObject({ tipo: 'ASALTO', origenLocationId: suya, destinoLocationId: casa, carga: { motivo: expect.stringContaining('ha reunido 20 soldados') } });
+    expect(v.miembros[0]!.genericos).toBe(2);
     expect(await prisma.logEntry.count({ where: { saveId, text: { contains: 'estamos en guerra' } } })).toBe(1);
   });
 
@@ -75,7 +75,17 @@ describe('guerra contra el Reino (CR-37 37a)', () => {
     // Personaje y guardia (sin guarnición ni milicia).
     expect(r!.defensores).toBe(2);
     expect((await prisma.kingdomStats.findFirstOrThrow({ where: { factionId: enemigaId } })).soldados).toBe(20 - r!.caidosAsaltantes);
-    expect(await prisma.logEntry.count({ where: { saveId, text: { contains: 'Clan Enemigo' } } })).toBeGreaterThan(1);
+    expect(await prisma.logEntry.count({ where: { saveId, text: { contains: 'clan enemigo', mode: 'insensitive' } } })).toBeGreaterThan(1);
+  });
+
+  it('ante una defensa fuerte no le salen las cuentas y espera (sin temporizador)', async () => {
+    await prisma.viajero.updateMany({ where: { saveId, factionId: enemigaId }, data: { estado: 'TERMINADO' } });
+    for (let i = 0; i < 6; i++) await prisma.subject.create({ data: { saveId, name: `Guardia ${i}`, role: 'soldado', notes: '', pueblo: 'orcos' } });
+    await prisma.kingdomStats.updateMany({ where: { factionId: enemigaId }, data: { soldados: 9 } });
+    expect(await lanzarEjercitosContraElReino(prisma, saveId, 806)).toBe(0);
+    // Con muchos más soldados, sí.
+    await prisma.kingdomStats.updateMany({ where: { factionId: enemigaId }, data: { soldados: 40 } });
+    expect(await lanzarEjercitosContraElReino(prisma, saveId, 807)).toBe(1);
   });
 });
 
