@@ -1936,9 +1936,11 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
 - **CR-66** Postura de compañero en combate (Fase E, Q6): agresiva, defensiva, capturadora (golpe no
   letal), clemente (acepta rendiciones) y «huir si cae grave»; en vivo y de fondo; las facciones, la
   de su raza. **M**
-- **CR-67** Intensidad de los asaltos en Configuración (Fase E, Q7, corregida el 2026-10-08): regula
+- ~~**CR-67** Intensidad de los asaltos en Configuración~~ ✅ 2026-10-08 (Fase E, Q7, corregida el 2026-10-08): regula
   cuánto y con qué agresividad atacan bandidos y facciones; **nunca los apaga** (principio 9). Ronda
-  «asaltos por estado» aceptada el 2026-10-08 (principio 10; Q1-Q7 en el plan del `0.3`). 🚧 Pasos:
+  «asaltos por estado» aceptada el 2026-10-08 (principio 10; Q1-Q7 en el plan del `0.3`). Queda: usar
+  la misma decisión en expediciones y guerras entre facciones (Q7) y ajustar las cifras en la fase de
+  pruebas. Pasos:
   - ~~67a~~ ✅ 2026-10-08: `cronista/decisionAsalto.ts` (`defensaEstimada`, `margenNecesario`,
     `decidirAtaque` con Fácil = la mitad, `motivoBandidos`, `motivoGuerra`; cifras provisionales) y
     migración `20261008100000_intensidad_asaltos` (`WorldState.intensidadAsaltos` y
@@ -1949,7 +1951,9 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     (solo a grupos con los que pueden) deciden con `decidirAtaque`; un asalto en marcha a la vez y
     ningún «cada 7 días»; refuerzos según la intensidad; `defensaVista`, `guardiasDeRegion` y
     `ajustesAsaltos` en `defensaReino.ts`; el aviso de la Torre dice por qué vienen.
-  - 67c: los dos ajustes en Configuración › Partida. **M**
+  - ~~67c~~ ✅ 2026-10-08: Configuración › Partida con «Intensidad de los asaltos» (contenida,
+    normal, dura) y «Tamaño de los asaltos» (fácil, normal), sin opción de quitarlos;
+    `setRitmoMundo` manda solo lo que cambia. **M**
 - **Hecho cuando:** matar al hermano de un NPC abre un hilo de venganza y el vengador aparece;
   un compañero se queja y acaba yéndose si se le contraría repetidamente.
 

@@ -3,7 +3,7 @@ import { ModalShell } from './ModalShell'
 import { useAjustes } from '../context/useAjustes'
 import { AJUSTES_POR_DEFECTO, type Ajustes } from '../lib/ajustes'
 import { ACCIONES_ATAJO, asignarAtajo, teclaValida, type AccionAtajo } from '../lib/atajos'
-import { getRitmoMundo, setRitmoMundo, type EstiloNarrador } from '../lib/api'
+import { getRitmoMundo, setRitmoMundo, type RitmoMundo } from '../lib/api'
 
 // CFG-4 (hito 0.2, roadmap-front.md § 2.1) — panel de configuración: pestañas laterales, vista
 // previa en vivo (los cambios se ven al momento pero no se guardan hasta «Aplicar»), pie
@@ -72,24 +72,27 @@ export function PanelAjustes({ guardados, partidaId = null, onCerrar }: { guarda
   const [confirmandoSalida, setConfirmandoSalida] = useState(false)
   // CFG-26 — acción cuyo atajo se está cambiando (espera la siguiente tecla).
   const [capturando, setCapturando] = useState<AccionAtajo | null>(null)
-  // CR-12 — «Ritmo del mundo» de la partida abierta (null hasta cargarlo).
-  const [ritmoGuardado, setRitmoGuardado] = useState<EstiloNarrador | null>(null)
-  const [ritmo, setRitmo] = useState<EstiloNarrador | null>(null)
+  // CR-12 — «Ritmo del mundo» de la partida abierta (null hasta cargarlo); CR-67, los asaltos.
+  const [ritmoGuardado, setRitmoGuardado] = useState<RitmoMundo | null>(null)
+  const [ritmo, setRitmoCompleto] = useState<RitmoMundo | null>(null)
+  const setRitmo = <K extends keyof RitmoMundo>(clave: K, valor: RitmoMundo[K]) => setRitmoCompleto((r) => (r ? { ...r, [clave]: valor } : r))
   useEffect(() => {
     if (!partidaId) return
     let vivo = true
     getRitmoMundo(partidaId)
-      .then(({ estiloNarrador }) => {
+      .then((r) => {
         if (!vivo) return
-        setRitmoGuardado(estiloNarrador)
-        setRitmo(estiloNarrador)
+        const leido: RitmoMundo = { estiloNarrador: r.estiloNarrador, intensidadAsaltos: r.intensidadAsaltos ?? 'NORMAL', tamanoAsaltos: r.tamanoAsaltos ?? 'NORMAL' }
+        setRitmoGuardado(leido)
+        setRitmoCompleto(leido)
       })
       .catch(() => {})
     return () => {
       vivo = false
     }
   }, [partidaId])
-  const ritmoCambiado = partidaId !== null && ritmo !== null && ritmo !== ritmoGuardado
+  const cambiosRitmo: Partial<RitmoMundo> = ritmo && ritmoGuardado ? Object.fromEntries((Object.keys(ritmo) as (keyof RitmoMundo)[]).filter((k) => ritmo[k] !== ritmoGuardado[k]).map((k) => [k, ritmo[k]])) : {}
+  const ritmoCambiado = partidaId !== null && Object.keys(cambiosRitmo).length > 0
   const hayCambios = JSON.stringify(borrador) !== JSON.stringify(guardados) || ritmoCambiado
   const pestanas = partidaId ? [...PESTANAS, PESTANA_PARTIDA] : PESTANAS
 
@@ -105,13 +108,13 @@ export function PanelAjustes({ guardados, partidaId = null, onCerrar }: { guarda
   const intentarCerrar = () => (hayCambios ? setConfirmandoSalida(true) : cancelar())
   const aplicar = () => {
     setAjustes(borrador)
-    if (ritmoCambiado && partidaId && ritmo) setRitmoMundo(partidaId, ritmo).catch(() => {})
+    if (ritmoCambiado && partidaId) setRitmoMundo(partidaId, cambiosRitmo).catch(() => {})
     onCerrar()
   }
   const restablecer = () => {
     setBorrador(AJUSTES_POR_DEFECTO)
     setAjustes(AJUSTES_POR_DEFECTO, { vistaPrevia: true })
-    if (ritmo !== null) setRitmo('EQUILIBRADO')
+    if (ritmo !== null) setRitmoCompleto({ estiloNarrador: 'EQUILIBRADO', intensidadAsaltos: 'NORMAL', tamanoAsaltos: 'NORMAL' })
   }
 
   const boton =
@@ -301,17 +304,41 @@ export function PanelAjustes({ guardados, partidaId = null, onCerrar }: { guarda
             </div>
           )}
           {pestana === 'partida' && ritmo !== null && (
-            <Opciones
-              etiqueta="Ritmo del mundo"
-              valor={ritmo}
-              onChange={setRitmo}
-              ayuda="Cuánto pasa en el mundo por sí solo: escaramuzas, caravanas, plagas, incendios… Se puede cambiar en cualquier momento."
-              opciones={[
-                { valor: 'TRANQUILO', label: 'Tranquilo' },
-                { valor: 'EQUILIBRADO', label: 'Equilibrado' },
-                { valor: 'CAOTICO', label: 'Caótico' },
-              ]}
-            />
+            <div className="flex flex-col gap-4">
+              <Opciones
+                etiqueta="Ritmo del mundo"
+                valor={ritmo.estiloNarrador}
+                onChange={(v) => setRitmo('estiloNarrador', v)}
+                ayuda="Cuánto pasa en el mundo por sí solo: escaramuzas, caravanas, plagas, incendios… Se puede cambiar en cualquier momento."
+                opciones={[
+                  { valor: 'TRANQUILO', label: 'Tranquilo' },
+                  { valor: 'EQUILIBRADO', label: 'Equilibrado' },
+                  { valor: 'CAOTICO', label: 'Caótico' },
+                ]}
+              />
+              {/* CR-67: los asaltos se regulan, nunca se quitan (mundo de bolsillo). */}
+              <Opciones
+                etiqueta="Intensidad de los asaltos"
+                valor={ritmo.intensidadAsaltos}
+                onChange={(v) => setRitmo('intensidadAsaltos', v)}
+                ayuda="Con cuánta decisión atacan bandidos y enemigos cuando ven tu Reino débil o rico. Nunca dejan de hacerlo."
+                opciones={[
+                  { valor: 'CONTENIDA', label: 'Contenida' },
+                  { valor: 'NORMAL', label: 'Normal' },
+                  { valor: 'DURA', label: 'Dura' },
+                ]}
+              />
+              <Opciones
+                etiqueta="Tamaño de los asaltos"
+                valor={ritmo.tamanoAsaltos}
+                onChange={(v) => setRitmo('tamanoAsaltos', v)}
+                ayuda="Fácil: vienen la mitad de los que vendrían en Normal."
+                opciones={[
+                  { valor: 'FACIL', label: 'Fácil' },
+                  { valor: 'NORMAL', label: 'Normal' },
+                ]}
+              />
+            </div>
           )}
           {pestana === 'accesibilidad' && (
             <Interruptor

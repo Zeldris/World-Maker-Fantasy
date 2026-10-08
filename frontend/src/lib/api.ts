@@ -727,15 +727,24 @@ export interface SaveSummary {
 /// CR-12 (hito 0.2) — «Ritmo del mundo» de la partida: cuánto pasa en el mundo por sí solo.
 export type EstiloNarrador = 'TRANQUILO' | 'EQUILIBRADO' | 'CAOTICO'
 
-export async function getRitmoMundo(id: string): Promise<{ estiloNarrador: EstiloNarrador }> {
+/// CR-67: intensidad de los asaltos (nunca los quita) y cuántos manda un atacante (Fácil = la mitad).
+export type IntensidadAsaltos = 'CONTENIDA' | 'NORMAL' | 'DURA'
+export type TamanoAsaltos = 'FACIL' | 'NORMAL'
+export interface RitmoMundo {
+  estiloNarrador: EstiloNarrador
+  intensidadAsaltos: IntensidadAsaltos
+  tamanoAsaltos: TamanoAsaltos
+}
+
+export async function getRitmoMundo(id: string): Promise<RitmoMundo> {
   return fetchJson(`${API_URL}/saves/${id}/ritmo`)
 }
 
-export async function setRitmoMundo(id: string, estiloNarrador: EstiloNarrador): Promise<{ estiloNarrador: EstiloNarrador }> {
+export async function setRitmoMundo(id: string, cambios: Partial<RitmoMundo>): Promise<Partial<RitmoMundo>> {
   return fetchJson(`${API_URL}/saves/${id}/ritmo`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ estiloNarrador }),
+    body: JSON.stringify(cambios),
   })
 }
 
