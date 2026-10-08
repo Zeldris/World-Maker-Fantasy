@@ -107,8 +107,8 @@ describe('GET/PATCH /saves/:id/ritmo', () => {
   it('devuelve el ritmo guardado (y Equilibrado si es un valor antiguo desconocido)', async () => {
     const app = await buildApp();
     findUniqueWs.mockResolvedValueOnce({ estiloNarrador: 'CAOTICO' }).mockResolvedValueOnce({ estiloNarrador: 'RARO' }).mockResolvedValueOnce(null);
-    expect((await app.inject({ method: 'GET', url: '/saves/s1/ritmo' })).json()).toEqual({ estiloNarrador: 'CAOTICO' });
-    expect((await app.inject({ method: 'GET', url: '/saves/s1/ritmo' })).json()).toEqual({ estiloNarrador: 'EQUILIBRADO' });
+    expect((await app.inject({ method: 'GET', url: '/saves/s1/ritmo' })).json()).toEqual({ estiloNarrador: 'CAOTICO', intensidadAsaltos: 'NORMAL', tamanoAsaltos: 'NORMAL' });
+    expect((await app.inject({ method: 'GET', url: '/saves/s1/ritmo' })).json()).toEqual({ estiloNarrador: 'EQUILIBRADO', intensidadAsaltos: 'NORMAL', tamanoAsaltos: 'NORMAL' });
     expect((await app.inject({ method: 'GET', url: '/saves/s1/ritmo' })).statusCode).toBe(404);
   });
 
@@ -123,5 +123,15 @@ describe('GET/PATCH /saves/:id/ritmo', () => {
     expect(mal.statusCode).toBe(400);
     updateManyWs.mockResolvedValue({ count: 0 });
     expect((await app.inject({ method: 'PATCH', url: '/saves/nope/ritmo', payload: { estiloNarrador: 'CAOTICO' } })).statusCode).toBe(404);
+  });
+
+  it('CR-67: intensidad y tamaño de los asaltos (sin opción de quitarlos)', async () => {
+    const app = await buildApp();
+    updateManyWs.mockResolvedValue({ count: 1 });
+    const ok = await app.inject({ method: 'PATCH', url: '/saves/s1/ritmo', payload: { intensidadAsaltos: 'DURA', tamanoAsaltos: 'FACIL' } });
+    expect(ok.json()).toEqual({ intensidadAsaltos: 'DURA', tamanoAsaltos: 'FACIL' });
+    expect(updateManyWs).toHaveBeenCalledWith({ where: { saveId: 's1' }, data: { intensidadAsaltos: 'DURA', tamanoAsaltos: 'FACIL' } });
+    expect((await app.inject({ method: 'PATCH', url: '/saves/s1/ritmo', payload: { intensidadAsaltos: 'NINGUNA' } })).statusCode).toBe(400);
+    expect((await app.inject({ method: 'PATCH', url: '/saves/s1/ritmo', payload: {} })).statusCode).toBe(400);
   });
 });

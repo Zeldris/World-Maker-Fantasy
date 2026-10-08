@@ -816,6 +816,10 @@ model WorldState {
   repartoFacciones   Int       @default(0)
   presupuestoTension Int       @default(0)
   estiloNarrador     String    @default("EQUILIBRADO")
+  /// CR-67 (Configuración › Partida): intensidad de los asaltos (CONTENIDA, NORMAL, DURA; nunca los
+  /// quita) y cuántos manda un atacante (NORMAL, o FACIL = la mitad).
+  intensidadAsaltos  String    @default("NORMAL")
+  tamanoAsaltos      String    @default("NORMAL")
   mundoClonadoEn     DateTime?
 
   fictionalDateLabel String @default("Día 1, mañana")
