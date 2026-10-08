@@ -444,6 +444,28 @@ Contrastada con los juegos de referencia; **X4 marca el camino**. De memoria, si
   en vivo con súbditos y genéricos es `CR-64`).
 - **Q7 Partidas guardadas:** sin migración (el ejército es un viajero y la guerra, la relación).
 
+## Decisiones de «asaltos por estado» y `CR-67` (ronda aceptada por la usuaria el 2026-10-08)
+
+Principios 9 y 10 del Cronista (nada se apaga; nada en bucle fijo). **X4 marca el camino**: piratas y
+Kha'ak atacan cuando han reunido fuerza y hay un objetivo que lo merece.
+
+- **Q1 Qué decide un ataque:** cada día el atacante sopesa su **fuerza** (gente que tiene), su
+  **motivo** (bandidos: lo que vale el objetivo y su necesidad; facción en guerra: la presión), la
+  **defensa estimada** del objetivo (guarnición, milicia posible, cobertura, guardias) y su
+  **logística** (facciones: reserva de comida).
+- **Q2 Cuándo:** si su fuerza supera la defensa estimada por un margen, menor con más motivo; si no
+  le alcanza, los bandidos van a por viajeros y la facción acumula.
+- **Q3 Cuántos manda:** lo que cree necesitar para ganar más un colchón, sin dejar su casa vacía.
+  **Regulable (usuaria):** «Normal» sigue la regla; «Fácil» manda el 50 % (mínimo 2; los demás se
+  quedan en casa).
+- **Q4 Tras una derrota:** sin temporizador; tiene que reponerse antes de que le vuelvan a salir las
+  cuentas. Un atacante solo tiene un asalto en marcha a la vez.
+- **Q5 Lo que ves:** el aviso dice por qué viene («han reunido 11 y saben que guardas 600 Goirnos»).
+- **Q6 `CR-67` intensidad:** contenida, normal o dura; mueve el margen, cuánto pesa el botín y la
+  velocidad de refuerzo; nunca llega a cero.
+- **Q7 Mismo sistema para todos:** también decide cuándo un campamento sale a por viajeros; más
+  adelante, expediciones y guerras entre facciones.
+
 ## Decisiones que bloquean algo
 
 | Bloquea | Pregunta |

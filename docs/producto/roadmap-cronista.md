@@ -1937,8 +1937,14 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   letal), clemente (acepta rendiciones) y «huir si cae grave»; en vivo y de fondo; las facciones, la
   de su raza. **M**
 - **CR-67** Intensidad de los asaltos en Configuración (Fase E, Q7, corregida el 2026-10-08): regula
-  cuánto y con qué agresividad atacan bandidos y facciones; **nunca los apaga** (principio 9). Los
-  niveles y su efecto se deciden con la ronda de «asaltos por estado» (principio 10). **S**
+  cuánto y con qué agresividad atacan bandidos y facciones; **nunca los apaga** (principio 9). Ronda
+  «asaltos por estado» aceptada el 2026-10-08 (principio 10; Q1-Q7 en el plan del `0.3`). 🚧 Pasos:
+  - 67a: reglas puras (`cronista/decisionAsalto.ts`: defensa estimada, motivo, margen, cuántos
+    manda, modo Fácil) y ajustes de partida (intensidad contenida/normal/dura y tamaño
+    fácil/normal en `WorldState`).
+  - 67b: los campamentos (`CR-50`) y los ejércitos de facción (`CR-37`) deciden por estado; fuera
+    los «cada 7 días»; el aviso dice por qué vienen.
+  - 67c: los dos ajustes en Configuración › Partida. **M**
 - **Hecho cuando:** matar al hermano de un NPC abre un hilo de venganza y el vengador aparece;
   un compañero se queja y acaba yéndose si se le contraría repetidamente.
 
