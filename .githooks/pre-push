@@ -7,7 +7,9 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 # Los mismos comandos que la CI (ci.yml), con el oxlint que fija cada paquete.
 echo "pre-push: tsc y lint de backend y frontend, cobertura del roadmap…"
-(cd backend && npx tsc --noEmit -p . && npm run --silent lint > /tmp/pre-push-lint-backend.log 2>&1) || { tail -20 /tmp/pre-push-lint-backend.log; echo "pre-push: backend en rojo"; exit 1; }
+# El cliente de Prisma se regenera antes de tipar: tras traer un cambio de esquema (p. ej. una columna
+# nueva) el cliente viejo da errores de tipos que no son del código (pasó el 2026-10-09).
+(cd backend && npx prisma generate > /tmp/pre-push-prisma.log 2>&1 && npx tsc --noEmit -p . && npm run --silent lint > /tmp/pre-push-lint-backend.log 2>&1) || { tail -20 /tmp/pre-push-lint-backend.log; echo "pre-push: backend en rojo"; exit 1; }
 (cd frontend && npx tsc -b && npm run --silent lint > /tmp/pre-push-lint-frontend.log 2>&1) || { tail -20 /tmp/pre-push-lint-frontend.log; echo "pre-push: frontend en rojo"; exit 1; }
 python3 tools/roadmap/cobertura.py > /tmp/pre-push-cobertura.log || { grep -v "^EN VARIOS HITOS\|^ASIGNADAS PERO" /tmp/pre-push-cobertura.log; exit 1; }
 echo "pre-push: todo en verde."
