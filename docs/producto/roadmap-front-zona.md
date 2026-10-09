@@ -230,6 +230,16 @@ son de relleno.*
 | ZON-57 | **Rastro de la misión seguida** (Ghost of Tsushima): si el objetivo está en otra zona, un rastro sutil de viento o hojas hacia la salida correcta; si está en esta, un brillo en la ficha. | 🔌 (objetivo → ubicación) | M |
 | ~~ZON-58~~ ✅ 2026-10-05 (`GET /zona` da `agotado` —enfriamiento de 30 min en ese lugar o sin población— y `nivelRequerido` —el tier más bajo de lo que da, si tu nivel del oficio no llega—, con las reglas de Recolectar; ⏳ y 🔒N en la ficha) | **Recursos con estado**: un recurso recién recolectado o en enfriamiento se ve agotado; uno que requiere más nivel de oficio lleva un candado con el nivel. | 🔌 | S |
 
+- **ZON-87 · Puntos fijos donde los pinta la ilustración** (pedido por la usuaria el 2026-10-09,
+  ronda de pruebas `QA-27`): las posiciones de los elementos estáticos (edificios, recursos,
+  salidas, puertas de interior, parcelas) no coinciden con lo que dibuja la ilustración de cada
+  zona. Ejemplos vistos jugando: en Colmillo Ceniza - Karot Veku el Salón y la puerta del interior
+  no caen sobre la entrada real de la empalizada (abajo a la derecha); en Ketg'lukar la salida se
+  pinta abajo, pero el hueco de la empalizada está arriba. Falta: revisar zona por zona cada
+  ilustración y fijar en el catálogo dónde va cada cosa (`zonePoints` de `worldCatalog.ts`, la
+  puerta de `puertasInterior.ts` y la posición de las salidas), con una captura por zona para
+  comprobarlo. Pendiente, no empezado.
+
 ## 11. Cámara (`ZON-C`)
 
 | Id | Propuesta | Back | Esf. |
