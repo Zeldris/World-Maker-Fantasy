@@ -57,8 +57,11 @@ export async function panelsRoutes(app: FastifyInstance) {
     );
 
     if (hasLlanurasMap) {
+      // QA-27 (P43, 2026-10-09): sin interiores — a uno se entra por su puerta, no con el mapa, y
+      // los de las Capitales y Cuarteles que crea cada partida son `Location` del mundo sin dueño:
+      // sin este filtro se colaban los de otras partidas («Hogar de Maktor») como destino.
       const llanuras = await prisma.location.findMany({
-        where: { worldId: save.worldId, region: 'Las Llanuras del Viento Rojo' },
+        where: { worldId: save.worldId, region: 'Las Llanuras del Viento Rojo', kind: { not: 'interior' } },
         select: { id: true, slug: true, name: true, region: true },
       });
       for (const loc of llanuras) {
