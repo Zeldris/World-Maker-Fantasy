@@ -29,3 +29,10 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P14 | La narración pone el nombre entre comillas sueltas alrededor del chip: «contra '🐾 Guchapo'», «Salgo a cazar y ataco a 'Guchapo'» (mismo caso que G27). | pendiente (menor) |
 | P15 | Desollar: las cantidades empiezan en 0 y hay que pulsar «+» en cada fila antes de poder aceptar; lo natural es que salgan al máximo. | pendiente (menor) |
 | P16 | Tras la victoria, la columna izquierda deja un recuadro rojo grande y vacío encima del último intercambio mientras se actualiza. | pendiente (menor, visto en capturas) |
+| P17 | «Me siento a la sombra junto al pozo y descanso un par de horas»: pasan 5 minutos (17:06 → 17:11) y aun así recupera 31 de energía. El reloj no respeta la duración que pide la jugadora. | pendiente (coherencia) |
+| P18 | Inventario: el Tótem Maktor sale con un pintalabios (💄); los pantalones con el mismo icono de camiseta que el arnés; la cataplasma con una pastilla (💊); hacha y cuchillo con las mismas espadas cruzadas. Las casillas no dicen cuántas unidades hay. La «Ración de carne fresca» sale como recurso, no como consumible. | pendiente (front) |
+| P19 | Reino sin fundar: el panel dice «Construye un Ayuntamiento para fundar tu reino» sin botón ni pista de dónde (está en Habilidades → Reino). En esa pestaña ya se ofrecen «Ampliar ayuntamiento a mediano/grande» sin tener ninguno. | pendiente (front) |
+| P20 | Tras talar la Telda Común (con su nombre ya en el diario y en la ficha), en el mapa y en la lista sigue como «??? ×20». | pendiente (descubrimiento que no se refresca en el mapa) |
+| P21 | La ficha de la Telda Común dice «Recursos: 2 Madera de Telda» y al talar sale 1. Si 2 es el máximo, hay que decirlo así. | pendiente (menor) |
+| P22 | «Volver al campamento» en Habilidades → Generales sin tener campamento propio. | pendiente — comprobar qué hace |
+| P23 | El panel «El mundo» solo tuvo dos entradas en un día entero de juego (amanecer y una a las 17:11). | pendiente — ver si es lo esperado del ritmo de noticias |
