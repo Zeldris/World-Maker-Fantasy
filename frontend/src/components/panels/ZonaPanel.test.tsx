@@ -7,7 +7,7 @@ vi.mock('../../lib/api', async (importOriginal) => {
 })
 
 import { getZona, moverEnZona } from '../../lib/api'
-import { ZonaPanel } from './ZonaPanel'
+import { ZonaPanel, salidaEnCasillaDelJugador } from './ZonaPanel'
 
 /// Z-A (hito 0.1, roadmap-front-zona.md) — ZON-20 (leyenda en el mapa) y ZON-62 (cuadrícula bajo demanda).
 const zona = {
@@ -306,5 +306,18 @@ describe('ZonaPanel — Z-D, estados de las fichas', () => {
     const roca = [...container.querySelectorAll('g.cursor-pointer')].find((g) => g.querySelector('title')?.textContent?.startsWith('Roca dura'))!
     fireEvent.mouseEnter(roca)
     expect(getByTestId('tarjeta-ficha').textContent).toContain('pide nivel 4 de oficio')
+  })
+})
+
+// QA-27 (P6, 2026-10-09, jugando): tras cancelar un viaje el jugador queda encima de la salida y su
+// ficha tapa el icono; pulsar su propia casilla tiene que abrir esa salida.
+describe('salidaEnCasillaDelJugador', () => {
+  const salida = { locationId: 'l2', slug: 'pozo', nombre: 'El Pozo', x: 725, y: 575, visitada: true, teaser: null, alcanzable: true } as never
+  it('devuelve la salida si el jugador y el clic están en su casilla', () => {
+    expect(salidaEnCasillaDelJugador({ jugador: { x: 725, y: 575 }, salidas: [salida] } as never, { col: 14, row: 11 })).toBe(salida)
+  })
+  it('nada si el clic es en otra casilla o no hay salida en la del jugador', () => {
+    expect(salidaEnCasillaDelJugador({ jugador: { x: 725, y: 575 }, salidas: [salida] } as never, { col: 3, row: 3 })).toBeNull()
+    expect(salidaEnCasillaDelJugador({ jugador: { x: 75, y: 75 }, salidas: [salida] } as never, { col: 1, row: 1 })).toBeNull()
   })
 })

@@ -1,4 +1,5 @@
 import { prisma } from '../lib/prisma.js';
+import { lugaresVisibles } from './mundoPartida.js';
 import type { AttributeBlock } from './dice.js';
 import type { Banda } from './narrador.js';
 
@@ -355,12 +356,14 @@ export async function resolveTravel(params: {
   worldId: string;
   currentLocationId: string | null;
   attributes: AttributeBlock;
+  /// QA-27 (P44): partida que viaja — no puede ir a los interiores de otras.
+  saveId?: string;
 }): Promise<TravelResolution | null> {
-  const { action, worldId, currentLocationId, attributes } = params;
+  const { action, worldId, currentLocationId, attributes, saveId } = params;
   if (!currentLocationId) return null;
 
   if (detectsTravelIntent(action)) {
-    const locations = await prisma.location.findMany({ where: { worldId } });
+    const locations = await prisma.location.findMany({ where: { worldId, ...(saveId ? lugaresVisibles(saveId) : {}) } });
     const destination = matchDestination(action, locations, currentLocationId);
     if (destination) {
       const resolved = await resolveTravelPath(worldId, currentLocationId, destination, attributes);

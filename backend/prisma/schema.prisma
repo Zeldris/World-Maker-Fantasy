@@ -90,13 +90,15 @@ model World {
 
 /// Una partida: mundo elegido + personaje (copia editable, no referencia viva a la plantilla) + su WorldState.
 model Save {
-  viajeros  Viajero[]
-  campamentos Campamento[]
-  id                      String  @id @default(cuid())
+  viajeros                Viajero[]
+  /// QA-27 (P44): zonas interiores propias de la partida (Capital, Cuartel Avanzado).
+  lugaresPropios          Location[]   @relation("LugaresDePartida")
+  campamentos             Campamento[]
+  id                      String       @id @default(cuid())
   userId                  String
-  user                    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   worldId                 String
-  world                   World   @relation(fields: [worldId], references: [id])
+  world                   World        @relation(fields: [worldId], references: [id])
   /// Id suelto (String, sin FK real) del personaje pregenerado que el FRONTEND ofreció al crear —
   /// referencia su propia lista hardcodeada (`frontend/src/data/mock.ts`), nunca la tabla
   /// `PregeneratedCharacter` que existió en este schema (quitada en la auditoría de elementos
@@ -493,42 +495,47 @@ model Save {
 /// backend/src/scripts/worldCatalog.ts (mismo patrón que loreChunks.ts + reindex-lore):
 /// la fuente de verdad editorial sigue siendo docs/rpgtarkor/lore-mundo/areas.md.
 model Location {
-  expediciones Expedicion[]
-  viajerosOrigen    Viajero[] @relation("viajeroOrigen")
-  viajerosDestino   Viajero[] @relation("viajeroDestino")
-  viajerosUbicacion Viajero[] @relation("viajeroUbicacion")
+  expediciones      Expedicion[]
+  viajerosOrigen    Viajero[]    @relation("viajeroOrigen")
+  viajerosDestino   Viajero[]    @relation("viajeroDestino")
+  viajerosUbicacion Viajero[]    @relation("viajeroUbicacion")
   campamentos       Campamento[]
-  id           String       @id @default(cuid())
-  worldId      String
-  world        World        @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  id                String       @id @default(cuid())
+  worldId           String
+  world             World        @relation(fields: [worldId], references: [id], onDelete: Cascade)
   /// Clave estable para seeds, aliases y referencias cruzadas ("hondonada-del-eco")
-  slug         String
-  name         String
+  slug              String
+  name              String
   /// Nombre de región del lore — string libre, no FK (misma razón que Territory.region:
   /// el lore vive en .md)
-  region       String
+  region            String
   /// Tipo libre ("refugio", "hito", "punto de agua", "cruce", "ruinas", "asentamiento") —
   /// no enum cerrado, misma razón que Companion.role
-  kind         String
+  kind              String
   /// Descripción de LLEGADA: lo que se inyecta al Narrador cuando el personaje llega aquí
   /// o está aquí — redactada con vocabulario de jugador (lección RAG 2026-07-18)
-  description  String
+  description       String
   /// Frase corta para el icono de salida de región en Zona (2026-09-17, petición explícita de
   /// Álvaro: modal con "una breve si no lo conoces y la larga si ya lo descubierto") — se muestra
   /// SOLO mientras la Location no tiene ninguna fila en `LocationVisit` para la partida (nunca
   /// revela `description`, que sigue siendo la única fuente para una Location ya visitada). Null
   /// para el resto del catálogo (no toda Location es destino real de un LocationLink hoy) — el
   /// caller cae a un texto genérico si falta, nunca revienta.
-  teaser       String?
+  teaser            String?
   /// Nombres con los que un jugador se refiere de verdad al sitio ("los pilares", "el pozo") —
   /// para que el matcher DETERMINISTA de destinos resuelva sin pasar por el modelo
-  aliases      String[]
+  aliases           String[]
   /// Coordenadas cartográficas reales en km, origen Los Pilares Rotos, +x=este/+y=norte (2026-08-15,
   /// necesarias para que la Aguja de Cardo Brújula calcule dirección cardinal). Opcionales: no toda
   /// Location las tiene todavía — ver comentario de LocationInput en worldCatalog.ts.
-  x            Float?
-  y            Float?
-  createdAt    DateTime     @default(now())
+  x                 Float?
+  y                 Float?
+  createdAt         DateTime     @default(now())
+  /// QA-27 (P44, 2026-10-09): dueña de una zona interior creada en partida (Capital, Cuartel
+  /// Avanzado); null = lugar del catálogo, común a todas. Sin esto, los interiores de una partida se
+  /// veían en las demás (destinos de viaje, campamentos de bandidos…). Filtro: `lugaresVisibles`.
+  saveId            String?
+  save              Save?        @relation("LugaresDePartida", fields: [saveId], references: [id], onDelete: Cascade)
 
   linksFrom    LocationLink[]  @relation("linkFrom")
   linksTo      LocationLink[]  @relation("linkTo")
@@ -542,6 +549,7 @@ model Location {
   caravanas    Caravana[]
 
   @@unique([worldId, slug])
+  @@index([saveId])
 }
 
 /// Grupo 3 § Mundo determinista (docs/rpgtarkor/lore-mundo/mundo-determinista.md, 2026-08-25) — Capa 1: zonas
@@ -1091,14 +1099,14 @@ model InventoryItem {
 /// decaen, mismo comportamiento de siempre).
 model Companion {
   viajeroMiembros ViajeroMiembro[]
-  id        String   @id @default(cuid())
-  saveId    String
-  save      Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
-  name      String
+  id              String           @id @default(cuid())
+  saveId          String
+  save            Save             @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  name            String
   /// p. ej. "aliado", "súbdito", "compañero de viaje" — libre, no un enum cerrado todavía.
-  role      String
-  notes     String
-  createdAt DateTime @default(now())
+  role            String
+  notes           String
+  createdAt       DateTime         @default(now())
 
   /// FAUNA = tameado (jaula + tirada opuesta de atributo). NPC = persuadido (atar + tirada
   /// opuesta) O de quest/narración libre (`newCompanion`, comportamiento de siempre).
@@ -1178,14 +1186,14 @@ model Companion {
   professionProgress ProfessionProgress[]
 
   /// CR-5 (hito 0.2) — valores del compañero (p. ej. { "piedad": 2, "honor": 1 }) y aprobación.
-  valores    Json @default("{}")
-  aprobacion Int  @default(50)
+  valores             Json    @default("{}")
+  aprobacion          Int     @default(50)
   /// CR-15: minuto de ficción desde el que su aprobación está por debajo de 10 (se va a los 3 días).
   aprobacionBajaDesde Int?
   /// CR-56 (Q4): un animal sacado del corral por la Domadora conserva su sexo y su nacimiento, para
   /// volver al corral tal cual.
-  sexo      String?
-  nacidoEn  Int?
+  sexo                String?
+  nacidoEn            Int?
 
   @@index([saveId])
   @@index([plantillaEquipoId])
@@ -1787,68 +1795,68 @@ model ProfessionProgress {
 /// conviven sin problema) solo para que Prisma pueda expresar la relación 1:1 hacia `Save`/
 /// `Faction`; `ownerKey` sigue siendo la clave operativa real.
 model KingdomStats {
-  id                  String   @id @default(cuid())
-  ownerKey            String   @unique
-  saveId              String?  @unique
-  save                Save?    @relation(fields: [saveId], references: [id], onDelete: Cascade)
-  factionId           String?  @unique
-  faction             Faction? @relation(fields: [factionId], references: [id], onDelete: Cascade)
-  poblacion           Int      @default(0)
-  felicidad           Int      @default(50)
-  comida              Int      @default(0)
-  bebida              Int      @default(0)
-  riqueza             Int      @default(0)
-  soldados            Int      @default(0)
-  trabajadores        Int      @default(0)
-  visitantes          Int      @default(0)
+  id                     String   @id @default(cuid())
+  ownerKey               String   @unique
+  saveId                 String?  @unique
+  save                   Save?    @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  factionId              String?  @unique
+  faction                Faction? @relation(fields: [factionId], references: [id], onDelete: Cascade)
+  poblacion              Int      @default(0)
+  felicidad              Int      @default(50)
+  comida                 Int      @default(0)
+  bebida                 Int      @default(0)
+  riqueza                Int      @default(0)
+  soldados               Int      @default(0)
+  trabajadores           Int      @default(0)
+  visitantes             Int      @default(0)
   /// Rachas de días consecutivos de felicidad alta/baja (2026-08-23, Grupo 3 § Territory.control) —
   /// puro estado interno del tick, nunca se serializa al frontend. Se resetea a 0 en cuanto la
   /// felicidad sale de su banda (ver `tickKingdomOneDay`, kingdomTick.ts). Cruzar el umbral de días
   /// dispara consolidar/perder territorios — ver el bloque de `diasCruzados` en turnResolution.ts.
-  diasFelicidadAlta   Int      @default(0)
-  diasFelicidadBaja   Int      @default(0)
+  diasFelicidadAlta      Int      @default(0)
+  diasFelicidadBaja      Int      @default(0)
   /// CR-12 (12c, hito 0.2): días seguidos con déficit de comida (hambre). Cada 3 seguidos se
   /// registra `HAMBRUNA` (cohesión −10 y posible `REBELION`, reacción `HAMBRUNA_DIVIDE`).
-  diasHambre          Int      @default(0)
+  diasHambre             Int      @default(0)
   /// CR-53 53d: días seguidos sin agua (a los 2, la sed puede matar).
-  diasSed             Int      @default(0)
+  diasSed                Int      @default(0)
   /// REI-119: minuto de ficción en que llegó el último candidato a súbdito (una llegada por semana).
-  ultimaLlegada       Int?
+  ultimaLlegada          Int?
   /// REI-120: última semana (minuto de ficción) en que se revisaron parejas y crías.
   ultimaRevisionFamilias Int?
   /// CR-53 53c: último pago de sueldos (minuto de ficción) y días seguidos sin poder pagarlos.
-  ultimoPagoSueldos   Int?
-  diasSinCobrar       Int      @default(0)
+  ultimoPagoSueldos      Int?
+  diasSinCobrar          Int      @default(0)
   /// CR-58: trabajadores sin herramienta (producen la mitad) y soldados sin arma (medio en la defensa).
-  sinHerramienta      Int      @default(0)
-  sinArma             Int      @default(0)
+  sinHerramienta         Int      @default(0)
+  sinArma                Int      @default(0)
   /// CR-55 (Q7): reserva de forraje de los herbívoros del ganado (tope compartido con la comida).
-  forraje             Int      @default(0)
+  forraje                Int      @default(0)
   /// CR-55 (Q6): días seguidos en que el ganado no ha comido / bebido entero.
-  ganadoDiasSinComer  Int      @default(0)
-  ganadoDiasSinBeber  Int      @default(0)
+  ganadoDiasSinComer     Int      @default(0)
+  ganadoDiasSinBeber     Int      @default(0)
   /// CR-55/CR-56: solo facciones — versión del rebaño inicial ya sembrada (1 = rebaño de `CR-55`, 2 =
   /// guardias de `CR-56`); cada versión nueva siembra solo lo suyo.
-  ganadoVersion       Int      @default(0)
+  ganadoVersion          Int      @default(0)
   /// CR-34 (Q6): último día de ficción en que la facción revisó su situación para decidir (null =
   /// nunca). Solo facciones del mundo de la partida; el Reino de la jugadora no lo usa.
-  ultimaRevision      Int?
+  ultimaRevision         Int?
   /// Solo filas de facción (Fase 4 del plan oct-2026, H-6): último día de ficción del MUNDO (floor de
   /// minutos/1440, máximo de sus partidas) para el que `advanceFactionEconomy` (factionEconomy.ts,
   /// llamado desde worldTick) ya produjo/consumió. Marcador de idempotencia: cada día se procesa una
   /// sola vez aunque haya varias partidas o varios ticks. Null = aún sin línea base (el primer tick
   /// la fija al día actual sin producir retroactivamente).
-  ultimoDiaProducido  Int?
+  ultimoDiaProducido     Int?
   /// Solo filas de facción (Fase 13-B del plan oct-2026): último día de ficción del MUNDO para el que
   /// `advanceFactionExpeditions` (factionExpeditions.ts) ya avanzó/lanzó expediciones de esta facción.
   /// Mismo patrón que `ultimoDiaProducido` (reclamo atómico, catch-up acotado); marcador propio para
   /// que economía y expediciones no se pisen el reclamo del día. Null = sin línea base (el primer
   /// tick la fija al día actual sin lanzar nada retroactivamente).
-  ultimoDiaExpedicion Int?
+  ultimoDiaExpedicion    Int?
   /// CR-48: si no pudo lanzar una expedición (sin recolectores ni destino con recursos), no lo
   /// vuelve a intentar hasta este día — antes lo reintentaba a diario con todo el coste.
   expedicionReintentoDia Int?
-  updatedAt           DateTime @updatedAt
+  updatedAt              DateTime @updatedAt
 }
 
 /// El cupo lo da el nivel (docs/mecanicas/10-niveles-xp-reino.md § 4.3): 3 + floor(nivel/2).
@@ -2124,20 +2132,20 @@ enum BuildingStatus {
 /// `src/scripts/seedFactionBuildings.ts` o equivalente — cada partida recibe su propia copia,
 /// coherente con que este modelo vive en `Save`, no en `World`).
 model Building {
-  id          String         @id @default(cuid())
-  saveId      String?
-  save        Save?          @relation(fields: [saveId], references: [id], onDelete: Cascade)
-  factionId   String?
-  faction     Faction?       @relation(fields: [factionId], references: [id], onDelete: Cascade)
+  id             String         @id @default(cuid())
+  saveId         String?
+  save           Save?          @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  factionId      String?
+  faction        Faction?       @relation(fields: [factionId], references: [id], onDelete: Cascade)
   /// Opcional: un refugio levantado en mitad del viaje no pertenece a ningún territorio
-  territoryId String?
-  territory   Territory?     @relation(fields: [territoryId], references: [id], onDelete: SetNull)
+  territoryId    String?
+  territory      Territory?     @relation(fields: [territoryId], references: [id], onDelete: SetNull)
   /// Dónde se plantó de verdad (2026-08-04, primera construcción anclada al mapa: "el campamento")
   /// — opcional porque las construcciones libres del modelo (newBuilding, sin receta fija) no
   /// siempre tienen una Location real donde anclarse. Reutiliza el mismo nodo/Location que ya
   /// dibuja el mapa en vez de inventar coordenadas propias (el backend nunca las ha guardado).
-  locationId  String?
-  location    Location?      @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  locationId     String?
+  location       Location?      @relation(fields: [locationId], references: [id], onDelete: SetNull)
   /// Clave de ConstructionRecipe (construction.ts: 'campamento'/'choza'/'ayuntamiento'...) si esta
   /// fila vino de una receta fija — null para construcciones libres que el modelo propuso vía
   /// `newBuilding` sin pasar por ninguna receta. Sirve para elegir el icono en el mapa y para
@@ -2148,7 +2156,7 @@ model Building {
   /// Para filas de facción (`factionId` relleno, ex-`FactionBuilding`): guarda el `slug` del
   /// catálogo de `worldCatalog.ts` (p.ej. `'ketg-sedsar'`) — `@@unique([factionId, recipeKey])`
   /// abajo es lo que hace el seed idempotente (`seed-catalog.ts`), mismo criterio de siempre.
-  recipeKey   String?
+  recipeKey      String?
   /// Nivel del edificio: el del Ayuntamiento (1=pequeño/2=mediano/3=grande; decide cuántos edificios
   /// de reino puedes tener a la vez) y el escalón de los edificios de oficio (1 Taller, 2 Obrador,
   /// 3 Gran obrador: la mejora actualiza esta fila, `recipeKey` no cambia) y de los Corrales. null para
@@ -2156,20 +2164,20 @@ model Building {
   /// OJO: NO es lo mismo que `ConstructionRecipe.tier` (construction.ts, dificultad "Craftable"
   /// 1-5 de la receta) — ese nunca se copia aquí; este lo rellenan `ayuntamientoNivel` y
   /// `edificioOficioNivel` (`buildingTierFor`, construction.ts).
-  tier        Int?
-  name        String
+  tier           Int?
+  name           String
   /// Tipo libre ("refugio", "granja", "taller", "muralla", "monumento"...) — no enum cerrado,
   /// misma razón que Companion.role: no sabemos aún qué construirán los jugadores
-  kind        String
-  status      BuildingStatus @default(EN_CONSTRUCCION)
+  kind           String
+  status         BuildingStatus @default(EN_CONSTRUCCION)
   /// CR-65 (Q4): asaltos perdidos que lleva un módulo de Empalizada y si ha caído (no cubre hasta repararla).
-  golpesDefensa Int @default(0)
-  caida         Boolean @default(false)
+  golpesDefensa  Int            @default(0)
+  caida          Boolean        @default(false)
   /// CR-65 (Q6): equipos de milicia guardados en una Armería.
-  equiposMilicia Int @default(0)
+  equiposMilicia Int            @default(0)
   /// CR-65 (Q7): soldados y vigías asignados a este asentamiento (Ayuntamiento o Cuartel Avanzado).
-  guarnicion Subject[] @relation("Guarnicion")
-  description String
+  guarnicion     Subject[]      @relation("Guarnicion")
+  description    String
   /// Posición en el lienzo de Zona (2026-09-08, hallazgo real jugando en vivo: un campamento
   /// construido por el jugador nunca aparecía en el mapa de Zona, solo en el panel de Reino) —
   /// mismo lienzo 800×600 y mismo criterio que `DroppedItem.x/y` (POR PARTIDA, fija desde que se
@@ -2179,10 +2187,10 @@ model Building {
   /// correcto. Null = construcción libre sin posición conocida (p.ej. `newBuilding` del modelo, sin
   /// receta fija) o partida sembrada antes de esta pieza — el frontend simplemente no la pinta en
   /// el lienzo, sin romper nada (mismo criterio nullable que el resto del proyecto).
-  x           Float?
-  y           Float?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  x              Float?
+  y              Float?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
   /// Conquista territorial estilo X4 (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4) — la Parcela (hueco
   /// de construcción marcado a priori) que este Building ocupa, si nació de una. Null = edificio
@@ -2265,50 +2273,50 @@ model AlmacenLimite {
 /// (eso es Companion). Ver docs/mecanicas/10-niveles-xp-reino.md § 5.2/§ 5.3.
 model Subject {
   viajeroMiembros ViajeroMiembro[]
-  id          String     @id @default(cuid())
-  saveId      String
-  save        Save       @relation(fields: [saveId], references: [id], onDelete: Cascade)
-  territoryId String?
-  territory   Territory? @relation(fields: [territoryId], references: [id], onDelete: SetNull)
-  name        String
+  id              String           @id @default(cuid())
+  saveId          String
+  save            Save             @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  territoryId     String?
+  territory       Territory?       @relation(fields: [territoryId], references: [id], onDelete: SetNull)
+  name            String
   /// "capataz", "guerrera", "consejera", "granjero"... — libre. Grupo 3 § Compañeros y
   /// supervivencia (2026-08-25) añade la convención 'guardia'/'trabajador'/'productor' para
   /// súbditos con `plantillaEquipoId` — sigue siendo texto libre, sin enum cerrado.
-  role        String
-  notes       String
-  createdAt   DateTime   @default(now())
+  role            String
+  notes           String
+  createdAt       DateTime         @default(now())
 
   /// REI-118 (hito 0.3, Fase C): el súbdito como persona. `pueblo` null = súbdito narrado antes del
   /// 0.3 (se queda como adulto sin más datos). Roles del motor: trabajador | soldado | vigia.
-  pueblo       String?
-  genero       String?
+  pueblo            String?
+  genero            String?
   /// Minuto de ficción en que nació (null = adulto de edad desconocida).
-  nacidoEn     Int?
+  nacidoEn          Int?
   /// Padres: id de otro súbdito o de un NPC (los de fuera del Reino).
-  padreId      String?
-  madreId      String?
+  padreId           String?
+  madreId           String?
   /// 0-100; se acerca cada día a la felicidad del Reino.
-  felicidad    Int        @default(60)
+  felicidad         Int       @default(60)
   /// ACTIVO | SE_FUE | MUERTO. Solo los ACTIVOS cuentan como población y ocupan cama.
-  estado       String     @default("ACTIVO")
+  estado            String    @default("ACTIVO")
   /// NARRADO (antes del 0.3) | LLEGADA | NACIDO
-  origen       String     @default("NARRADO")
-  desdeMinutes Int?
+  origen            String    @default("NARRADO")
+  desdeMinutes      Int?
   /// CR-65 (Q7): asentamiento al que está asignado un soldado o vigía (null = la Capital).
-  asentamientoId String?
-  asentamiento   Building? @relation("Guarnicion", fields: [asentamientoId], references: [id], onDelete: SetNull)
+  asentamientoId    String?
+  asentamiento      Building? @relation("Guarnicion", fields: [asentamientoId], references: [id], onDelete: SetNull)
   /// CR-65 (Q6): trabajador armado en la milicia (no produce mientras dura).
-  enMilicia      Boolean   @default(false)
+  enMilicia         Boolean   @default(false)
   /// CANDIDATO: hasta cuándo espera respuesta (REI-119).
-  hastaMinutes Int?
+  hastaMinutes      Int?
   /// REI-119: fila de `WorldPopulation` de la que salió quien llegó (vuelve a ella si se va).
   poblacionOrigenId String?
   /// REI-120: su pareja (otro súbdito) y cuántas crías han tenido juntos.
-  parejaId     String?
-  crias        Int        @default(0)
+  parejaId          String?
+  crias             Int       @default(0)
   /// CR-61 (61c): tarea de un trabajador: recolector | pescador | cocinero | ganadero | fibrero
   /// (null = recolector).
-  tarea        String?
+  tarea             String?
 
   /// Plantilla de equipo asignada (docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md § 7) — null = sin
   /// auto-equipo, este súbdito no recibe nada del Almacén de Reino automáticamente.
@@ -2795,13 +2803,13 @@ model Faction {
   origenSlug String?
   disueltaEn Int?
   fundadaEn  Int?
-  cohesion   Int        @default(70)
+  cohesion   Int             @default(70)
   caravanas  Caravana[]
+  /// CR-55 (55f): ganado de la facción, por cohortes.
+  ganado     GanadoFaccion[]
 
   @@index([worldId, slug])
   @@index([saveId])
-  /// CR-55 (55f): ganado de la facción, por cohortes.
-  ganado GanadoFaccion[]
 }
 
 enum FactionRelationType {
@@ -3826,22 +3834,22 @@ model Recuerdo {
 /// CR-17 (hito 0.3): historias que el motor reconoce en el Libro (roadmap-cronista.md § 7.4):
 /// VENGANZA | ASCENSO | CAIDA | DEUDA | RIVALIDAD | REDENCION. Siguen abiertas hasta su desenlace.
 model Hilo {
-  id         String   @id @default(cuid())
-  saveId     String
-  save       Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
-  patron     String
+  id        String   @id @default(cuid())
+  saveId    String
+  save      Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  patron    String
   /// ABIERTO | CERRADO
-  estado     String   @default("ABIERTO")
+  estado    String   @default("ABIERTO")
   /// 0-10: cuánto pesa para el narrador.
-  tension    Int
+  tension   Int
   /// Quiénes la protagonizan: [{ entidadTipo, entidadId }].
-  actores    Json
+  actores   Json
   /// Clave para no abrir dos veces la misma historia (p. ej. "VENGANZA:<vengador>").
-  clave      String
-  sucesoIds  String[]
-  resumen    String
-  abiertoEn  Int
-  cerradoEn  Int?
+  clave     String
+  sucesoIds String[]
+  resumen   String
+  abiertoEn Int
+  cerradoEn Int?
 
   @@unique([saveId, clave])
   @@index([saveId, estado])
@@ -3885,19 +3893,19 @@ model LinajeMiembro {
 /// Hierro, canon de la usuaria). El vasallo compra las armas al señor al doble y a crédito, se rearma
 /// con todo excedente y paga la deuda con patrullas obligadas.
 model Vasallaje {
-  id             String @id @default(cuid())
-  saveId         String
-  save           Save   @relation(fields: [saveId], references: [id], onDelete: Cascade)
-  vasalloSlug    String
-  senorSlug      String
+  id            String  @id @default(cuid())
+  saveId        String
+  save          Save    @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  vasalloSlug   String
+  senorSlug     String
   /// Goirnos que el vasallo debe al señor.
-  deuda          Int    @default(0)
-  desdeMinutes   Int
+  deuda         Int     @default(0)
+  desdeMinutes  Int
   /// Último día de ficción en que se revisó (una vez por semana).
-  ultimaSemana   Int?
+  ultimaSemana  Int?
   /// Cuándo se rompió (deuda saldada, señor caído…), o null si sigue.
-  rotoEn         Int?
-  motivoRuptura  String?
+  rotoEn        Int?
+  motivoRuptura String?
 
   @@unique([saveId, vasalloSlug])
   @@index([saveId])
@@ -3973,7 +3981,7 @@ model Viajero {
   /// CR-63 (63f, Q8): encuentro que la jugadora vio y dejó para el día siguiente: { zonePointId }.
   encuentro           Json?
   /// CR-65 (Q5): un viajero hostil ya avistado por la Torre de vigía de algún asentamiento.
-  avistado            Boolean  @default(false)
+  avistado            Boolean          @default(false)
   diaSalida           Int
   /// Último día ya simulado (idempotencia del avance).
   ultimoDia           Int

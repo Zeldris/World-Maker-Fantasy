@@ -159,6 +159,8 @@ describe('useTransitPolling', () => {
     })
     expect(result.current.cancelingTransit).toBe(false)
     expect(syncFromSave).not.toHaveBeenCalled()
+    // QA-27: el motivo queda visible (antes se tragaba y el botón parecía no hacer nada).
+    expect(result.current.errorCancelar).toBe('ya resuelto')
   })
 
   it('handleCancelTransit: sin saveId, o si ya está cancelingTransit, no hace nada', async () => {

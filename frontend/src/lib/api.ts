@@ -1253,6 +1253,8 @@ export interface ZonaSalidaInfo {
   /// NPC/fauna/recursos: misma celda o cualquiera de las 8 vecinas de la posición real del jugador
   /// (`zonaPosX/Y`). `true` sin posición de jugador conocida (fallback permisivo).
   alcanzable: boolean
+  /// QA-27 (P7): puerta de una zona interior — `ENTRAR` desde fuera, `SALIR` desde dentro.
+  puerta?: 'ENTRAR' | 'SALIR'
 }
 
 export interface ZonaResponse {

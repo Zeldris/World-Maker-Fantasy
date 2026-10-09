@@ -84,12 +84,12 @@ describe('recalcularZonePointsDeLocation + zonePointsSummaryFor (Postgres real)'
   const filasDeLaEspecie = () => prisma.zonePoint.findMany({ where: { locationId, targetSlug: 'fauna-prueba-zonepoint-19' } });
   const totalDeLaEspecie = async () => (await filasDeLaEspecie()).reduce((suma, f) => suma + f.cantidad, 0);
 
-  it('primera vez adopta el objetivo (población regional real recortada a CANTIDAD_MAX_POR_PUNTO=20), repartido en grupos de ≤4', async () => {
+  it('primera vez adopta el objetivo (población regional real recortada a CANTIDAD_MAX_POR_PUNTO=20), repartido en grupos de ≤6 (QA-27)', async () => {
     await recalcularZonePointsDeLocation(prisma, worldId, saveId, locationId, 'Las Llanuras del Viento Rojo', 480);
     const filas = await filasDeLaEspecie();
     expect(await totalDeLaEspecie()).toBe(20);
     expect(filas.length).toBeGreaterThan(1);
-    for (const f of filas) expect(f.cantidad).toBeLessThanOrEqual(4);
+    for (const f of filas) expect(f.cantidad).toBeLessThanOrEqual(6);
     const ancla = await prisma.zonePoint.findUniqueOrThrow({ where: { id: zonePointId } });
     expect(ancla.activo).toBe(true);
     expect(ancla.lastUpdatedAtMinutes).toBe(480);

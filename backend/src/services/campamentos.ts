@@ -2,6 +2,7 @@
 // refuerzos (Q3). Reglas y semillas en `cronista/campamentosBandidos.ts`. Cada campamento tiene su
 // punto en el mapa de zona (tipo NPC, con la `cantidad` de su banda), así que atacarlo en vivo usa el
 // combate de varios de `CR-49` sin nada más.
+import { lugaresVisibles } from './mundoPartida.js';
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { elegirOcupante, genteInicial, ocupanteDe, refuerzos, regionesConCampamentos, tocaCampamento, TOPE_MAX_CAMPAMENTO } from './cronista/campamentosBandidos.js';
 import { posicionEnZona } from './viajerosCruce.js';
@@ -22,7 +23,8 @@ async function lugaresLibres(tx: Tx, saveId: string, worldId: string, region: st
   const lugares = await tx.location.findMany({
     where: {
       worldId, region,
-      OR: [{ linksFrom: { some: {} } }, { linksTo: { some: {} } }],
+      // QA-27 (P44): nunca en el interior de otra partida.
+      AND: [lugaresVisibles(saveId), { OR: [{ linksFrom: { some: {} } }, { linksTo: { some: {} } }] }],
       zonePoints: { none: { tipo: 'EDIFICIO', OR: [{ saveId: null }, { saveId }] } },
       buildings: { none: { OR: [{ saveId }, { faction: { saveId } }] } },
       campamentos: { none: { saveId, estado: 'ACTIVO' } },

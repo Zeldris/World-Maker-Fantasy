@@ -97,5 +97,21 @@ describe('useMovimientoZona', () => {
     expect(result.current.mensajeMovimiento).toBe('Te topas con Aullador rojo.')
     expect(result.current.destinoPendiente).toBeNull()
   })
+
+  // QA-27 (P8): un aviso sin encuentro (recurso que aún no sabes aprovechar) se ve en el mapa.
+  it('un aviso del backend sin encuentro se enseña en el mapa y entra en el diario', async () => {
+    vi.mocked(moverEnZona).mockResolvedValue({
+      jugador: { x: 50, y: 0 }, caminoRestante: [], zonePointsMovidos: [],
+      logEntry: { id: 'l2', text: 'Gorhorn ve Colmena de Lebude cerca, pero todavía no sabe aprovecharlo.', timeLabel: '', createdAt: '' },
+    } as never)
+    vi.mocked(getZona).mockResolvedValue({ disponible: true } as never)
+    const onEncuentroZona = vi.fn()
+    const { result } = renderHook(() => useMovimientoZona({ saveId: 's1', setData: vi.fn(), msPorPaso: 0, onEncuentroZona }))
+    await act(async () => {
+      await result.current.moverA({ x: 50, y: 0 })
+    })
+    expect(onEncuentroZona).toHaveBeenCalledWith(expect.objectContaining({ id: 'l2', channel: 'character' }))
+    expect(result.current.mensajeMovimiento).toContain('todavía no sabe aprovecharlo')
+  })
 })
 

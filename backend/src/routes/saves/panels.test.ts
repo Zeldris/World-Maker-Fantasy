@@ -134,6 +134,17 @@ describe('GET /saves/:id/destinos-viaje', () => {
     expect(body.destinations.map((d: { locationSlug: string }) => d.locationSlug)).toEqual(['c']);
   });
 
+  // QA-27 (P43/P44, 2026-10-09, jugando): el mapa ofrecía «Hogar de Maktor», el interior de la
+  // Capital de otra partida.
+  it('con el mapa, solo pide los lugares de esta partida (los interiores de otras se colaban)', async () => {
+    findUniqueSave.mockResolvedValue({ id: 'save1', worldId: 'world1', currentLocationId: 'loc-actual', attributes: { destreza: 10 }, inventoryItems: [{ catalogSlug: 'mapa-llanuras' }] });
+    findManyItemCatalog.mockResolvedValue([{ effectKey: 'reveal-map-llanuras' }]);
+    findManyLocationVisit.mockResolvedValue([]);
+    const app = await buildApp();
+    await app.inject({ method: 'GET', url: '/saves/save1/destinos-viaje' });
+    expect(findManyLocation).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ OR: [{ saveId: null }, { saveId: 'save1' }] }) }));
+  });
+
   it('calcula el tiempo real por el grafo (mismo criterio que resolveTravel) para un destino conectado, y null si no hay camino', async () => {
     findUniqueSave.mockResolvedValue({
       id: 'save1',

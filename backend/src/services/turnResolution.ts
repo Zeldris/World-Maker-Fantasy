@@ -54,7 +54,8 @@ import { capturaEnInventarioExpiro, lastAtMinutesForGanancia, comidaPct, aguaPct
 import { ownRacialAdvantageFor, rivalRacialDisadvantageAgainst } from './racialPassives.js';
 import { continentForRegion, oppositeContinent } from '../lib/continent.js';
 import { advanceFictionalMinutes, formatFictionalDate, entornoTemporalFor, momentoDelDiaFor, type EntornoTemporal } from './worldClock.js';
-import { faunaMomentoDelDia } from '../scripts/worldCatalog.js';
+import { PUERTA_INTERIOR, posicionPuertaAInterior } from './puertasInterior.js';
+import { faunaMomentoDelDia, FAUNA_AMBIENTAL } from '../scripts/worldCatalog.js';
 import { recalcularZonePointsDeLocation, zonePointsSummaryFor } from './zonePoints.js';
 import { decideOfertaModoDinamico, dynamicModeCandidateNameFor, COOLDOWN_MODO_DINAMICO_MINUTOS } from './dynamicMode.js';
 import { resolverTurnoJugador, resolverTurnosAutonomosHastaJugadora, fijarEleccionRondaJugador, marcaDelCapitan, type AccionJugadorCombate } from './combateMultipleOrquestacion.js';
@@ -3269,8 +3270,12 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       // `GET /zona` (`posicionesDeSalidas`), así que llegas justo sobre la salida por la que vuelves.
       const previoId = travel.pathIds.length >= 2 ? travel.pathIds[travel.pathIds.length - 2] : null;
       const entradaPorSalida = previoId ? await posicionDeSalidaHacia(destination.id, { x: destination.x, y: destination.y }, previoId) : null;
+      // QA-27 (P7): saliendo de una zona interior (sin coordenadas), se llega a su puerta de fuera.
+      const previo = !entradaPorSalida && previoId ? await prisma.location.findUnique({ where: { id: previoId }, select: { kind: true, x: true } }) : null;
       if (entradaPorSalida) {
         zonaEntradaCoords = entradaPorSalida;
+      } else if (previo?.kind === 'interior' && previo.x == null) {
+        zonaEntradaCoords = await posicionPuertaAInterior(prisma, saveId, destination.id);
       } else if (origenX != null && origenY != null) {
         const direccionDeViaje = cardinalDirectionBetween({ x: origenX, y: origenY }, { x: destination.x, y: destination.y });
         zonaEntradaCoords = puntoDeEntradaParaDireccion(direccionDeEntrada(direccionDeViaje));
@@ -3279,6 +3284,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         // dirección real que calcular, pero el jugador SÍ necesita un punto: centro del lienzo.
         zonaEntradaCoords = { x: 400, y: 300 };
       }
+    } else if (destination?.kind === 'interior') {
+      // QA-27 (P7): entrando a una zona interior, se aparece en su puerta (abajo, en el centro).
+      zonaEntradaCoords = { ...PUERTA_INTERIOR };
     }
     const ruta = travel.segments
       .map((s) => `${s.fromName} → ${s.toName} (${s.terreno}${s.riesgo ? `, riesgo conocido: ${s.riesgo}` : ''})`)
@@ -3427,7 +3435,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // siendo lo único que importa en producción con `Math.random()` real — esto solo fija el orden
     // de iteración para que sea reproducible en pruebas.
     const itinerantCandidates = await prisma.npc.findMany({
-      where: { worldId, kind: 'PLANTILLA', homeLocationSlug: null, ...npcVivoEnPartida(saveId) },
+      // QA-27: la fauna ambiental (`FAUNA_AMBIENTAL`) no sale como encuentro.
+      where: { worldId, kind: 'PLANTILLA', homeLocationSlug: null, slug: { notIn: [...FAUNA_AMBIENTAL] }, ...npcVivoEnPartida(saveId) },
       select: { slug: true, name: true, role: true, temperamento: true, faction: true },
       orderBy: { slug: 'asc' },
     });
@@ -5010,8 +5019,15 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // cómputo (narración incluida) ya terminó en este punto; si venía adelantado a propósito, aquí
   // es donde se retiene ANTES de comprometer nada en BD, nunca antes de narrar.
   if (notBefore) {
-    const waitMs = notBefore.getTime() - Date.now();
-    if (waitMs > 0) await new Promise((resolve) => setTimeout(resolve, waitMs));
+    // QA-27 (2026-10-09): la espera mira cada segundo si la jugadora canceló el viaje (la fila ya no
+    // está); si es así, aborta ya y suelta el candado de turno, en vez de bloquear su siguiente
+    // acción hasta la hora de llegada de un viaje que no va a ocurrir.
+    while (Date.now() < notBefore.getTime()) {
+      await new Promise((resolve) => setTimeout(resolve, Math.min(1000, notBefore.getTime() - Date.now())));
+      if (transitIdToFinalize && !(await prisma.characterTransit.findUnique({ where: { id: transitIdToFinalize }, select: { id: true } }))) {
+        throw new TransitCancelledError();
+      }
+    }
   }
   try {
     transactionResult = await prisma.$transaction(async (tx) => {
@@ -5980,6 +5996,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
             data: {
               worldId,
               slug: cuartelLocationSlug,
+              saveId,
               name: `Puesto de ${playerFaction?.name ?? characterName}`,
               region: activeRegion ?? '',
               kind: 'interior',

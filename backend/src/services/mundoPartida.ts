@@ -191,3 +191,7 @@ export async function npcsMuertosEnPartida(db: Db, saveId: string): Promise<Set<
   const filas = await db.npcState.findMany({ where: { saveId, muerto: true }, select: { npcId: true } });
   return new Set(filas.map((f) => f.npcId));
 }
+
+/// QA-27 (P44): lugares que ve una partida — los del catálogo y sus propios interiores (Capital,
+/// Cuartel Avanzado), nunca los de otras partidas. Para toda consulta de `Location` por mundo o región.
+export const lugaresVisibles = (saveId: string) => ({ OR: [{ saveId: null }, { saveId }] });

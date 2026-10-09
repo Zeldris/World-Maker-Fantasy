@@ -62,7 +62,7 @@ export async function sessionRoutes(app: FastifyInstance) {
   app.post<{ Params: { id: string } }>('/saves/:id/transit/cancel', async (request, reply) => {
     const save = await prisma.save.findUnique({
       where: { id: request.params.id },
-      include: { characterTransit: true, worldState: true },
+      include: { characterTransit: true, worldState: true, currentLocation: { select: { name: true } } },
     });
     if (!save) {
       return reply.status(404).send({ error: 'Partida no encontrada' });
@@ -77,7 +77,11 @@ export async function sessionRoutes(app: FastifyInstance) {
     // borrado dentro de `narrateAndPersistTurn` aborta limpio si la fila desaparece antes—, pero
     // tirando a la basura una narración ya generada y dejando un LogEntry falso de "cambia de idea
     // antes de empezar"). `claimedAt` (zoneContext, ver worldTick.ts) es la marca real.
-    if ((save.characterTransit.zoneContext as { claimedAt?: string } | null)?.claimedAt) {
+    // QA-27 (2026-10-09): salvo que el reclamo sea de la vía anticipada (`adelantada`, worldTick.ts),
+    // que no guarda nada hasta `busyUntil`: ahí cancelar desecha la narración precalculada y su
+    // commit aborta limpio. Antes esto bloqueaba cancelar cualquier viaje desde el primer segundo.
+    const contexto = save.characterTransit.zoneContext as { claimedAt?: string; adelantada?: boolean; travel?: unknown } | null;
+    if (contexto?.claimedAt && !contexto.adelantada) {
       return reply.status(409).send({ error: 'La acción ya se estaba resolviendo, no se pudo cancelar' });
     }
 
@@ -110,7 +114,9 @@ export async function sessionRoutes(app: FastifyInstance) {
       data: {
         saveId: save.id,
         channel: 'CHARACTER',
-        text: `${save.characterName} decide no seguir adelante con eso — cambia de idea antes de empezar.`,
+        text: contexto?.travel
+          ? `${save.characterName} da media vuelta y se queda en ${save.currentLocation?.name ?? 'donde estaba'}.`
+          : `${save.characterName} decide no seguir adelante con eso — cambia de idea antes de empezar.`,
         timeLabel: save.worldState?.fictionalDateLabel ?? 'Día 1, mañana',
         // Ver comentario completo en schema.prisma § isSystemMessage — texto fijo determinista,
         // nunca generado por el LLM.

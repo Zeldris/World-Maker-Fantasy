@@ -1,3 +1,4 @@
+import { lugaresVisibles } from '../../services/mundoPartida.js';
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { buildNpcInScene, scopeFor, hasPendingLoot, type NpcInScene } from '../../services/npcScene.js';
@@ -57,8 +58,10 @@ export async function panelsRoutes(app: FastifyInstance) {
     );
 
     if (hasLlanurasMap) {
+      // QA-27 (P43/P44, 2026-10-09): solo los lugares de esta partida — los interiores de las
+      // Capitales y Cuarteles de otras partidas se colaban como destino («Hogar de Maktor»).
       const llanuras = await prisma.location.findMany({
-        where: { worldId: save.worldId, region: 'Las Llanuras del Viento Rojo' },
+        where: { worldId: save.worldId, region: 'Las Llanuras del Viento Rojo', ...lugaresVisibles(save.id) },
         select: { id: true, slug: true, name: true, region: true },
       });
       for (const loc of llanuras) {

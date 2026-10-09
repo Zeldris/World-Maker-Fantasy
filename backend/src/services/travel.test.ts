@@ -276,6 +276,15 @@ describe('resolveTravel — fallback de movimiento vago (sin destino nombrado)',
     const result = await resolveTravel({ action: 'Voy hacia la zona b', worldId: 'w1', currentLocationId: 'loc-a', attributes: ATTRS });
     expect(result?.toLocationId).toBe('loc-b');
   });
+
+  // QA-27 (P44, 2026-10-09): escribir el nombre del interior de otra partida («Hogar de Maktor»)
+  // llevaba hasta él. Con la partida, el destino se busca solo entre sus lugares.
+  it('con saveId, busca el destino solo entre los lugares de esa partida', async () => {
+    locationFindMany.mockResolvedValue([LOC_A, LOC_B]);
+    linkFindMany.mockResolvedValue([linkAB]);
+    await resolveTravel({ action: 'Voy hacia la zona b', worldId: 'w1', currentLocationId: 'loc-a', attributes: ATTRS, saveId: 's1' });
+    expect(locationFindMany).toHaveBeenCalledWith({ where: { worldId: 'w1', OR: [{ saveId: null }, { saveId: 's1' }] } });
+  });
 });
 
 describe('cardinalDirectionBetween', () => {

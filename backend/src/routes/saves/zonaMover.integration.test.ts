@@ -407,6 +407,25 @@ describe('POST /saves/:id/zona/mover', () => {
     expect(saveAfter.pendingDynamicModeOffer).toMatchObject({ tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', targetName: 'Fauna Pacífica de Prueba' });
   });
 
+  // QA-27 (P3, 2026-10-09, jugando): la tirada de «quién ve a quién primero» usaba la Destreza sin
+  // el equipo, mientras la huida y el combate sí la sumaban (Gorhorn: +3 en una y +5 en la otra).
+  it('«¿quién ve a quién primero?» cuenta la Destreza del equipo puesto', async () => {
+    await prisma.zonePoint.create({
+      data: { locationId, saveId, x: 75, y: 25, tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] },
+    });
+    const item = await prisma.inventoryItem.create({
+      data: { saveId, name: 'Pantalones de prueba', description: 'Prueba', slot: 'ARMADURA_INFERIOR', statBonuses: { destreza: 4 } },
+    });
+    try {
+      const app = await buildApp();
+      const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 375, y: 25 } } });
+      expect(res.statusCode).toBe(200);
+      expect(JSON.parse(res.body).logEntry.roll).toMatchObject({ kind: 'iniciativa-encuentro', jugador: { attribute: 'destreza', value: 14 } });
+    } finally {
+      await prisma.inventoryItem.delete({ where: { id: item.id } });
+    }
+  });
+
   // Regresión (2026-09-08, reproducido jugando en vivo: "llego a la celda adyacente de Gistera,
   // clico su misma celda de nuevo, y no pasa nada") — `calcularCamino(origen, destino)` devuelve
   // `[]` en cuanto origen y destino YA son la misma celda (su `while` nunca se ejecuta). El bloque

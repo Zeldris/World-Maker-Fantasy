@@ -21,6 +21,7 @@ import {
   siguienteCeldaPaseoAleatorio,
   siguienteCeldaEnRuta,
   repartirEnGrupos,
+  TAMANO_MAXIMO_GRUPO,
   quienIniciaEncuentro,
   tirarQuienIniciaEncuentro,
   posicionesDeSalidas,
@@ -342,41 +343,35 @@ describe('Sistema de movimiento por cuadrícula (2026-09-08, diseño "estilo Mou
     });
   });
 
-  describe('repartirEnGrupos — validado contra los números reales acordados con la usuaria (2026-09-08)', () => {
+  describe('repartirEnGrupos — QA-27: 2-3 sueltos y pocos grupos grandes (usuaria, 2026-10-09)', () => {
     it('población 0 no da ningún grupo', () => {
       expect(repartirEnGrupos(0)).toEqual([]);
     });
 
-    it('cada reparto suma exactamente la población total, para un rango realista de valores', () => {
-      for (let total = 1; total <= 20; total++) {
-        const grupos = repartirEnGrupos(total);
-        expect(grupos.reduce((a, b) => a + b, 0)).toBe(total);
+    it('para 1..20, suma exacta, ningún grupo pasa de 6 y quedan 2-3 sueltos en cuanto hay al menos 2', () => {
+      for (const r of [0.1, 0.9]) {
+        for (let total = 1; total <= 20; total++) {
+          const grupos = repartirEnGrupos(total, () => r);
+          expect(grupos.reduce((a, b) => a + b, 0)).toBe(total);
+          for (const g of grupos) expect(g).toBeLessThanOrEqual(TAMANO_MAXIMO_GRUPO);
+          const sueltos = grupos.filter((g) => g === 1).length;
+          if (total >= 2) expect(sueltos === 2 || sueltos === 3).toBe(true);
+        }
       }
     });
 
-    it('ningún grupo individual supera TAMANO_MAXIMO_GRUPO (4)', () => {
-      for (let total = 1; total <= 20; total++) {
-        const grupos = repartirEnGrupos(total);
-        for (const g of grupos) expect(g).toBeLessThanOrEqual(4);
-      }
+    it('con 20: 5-6 puntos en vez de 8-14', () => {
+      expect(repartirEnGrupos(20, () => 0.1)).toEqual([6, 6, 6, 1, 1]);
+      expect(repartirEnGrupos(20, () => 0.9)).toEqual([6, 6, 5, 1, 1, 1]);
     });
 
-    it('población pequeña (1-3) da un único grupo suelto, sin fragmentar de más', () => {
-      expect(repartirEnGrupos(1)).toEqual([1]);
-      expect(repartirEnGrupos(2)).toEqual([2]);
-      expect(repartirEnGrupos(3)).toEqual([3]);
+    it('un resto de 1 no queda como grupo de 1 extra: o es otro suelto o se junta con uno', () => {
+      expect(repartirEnGrupos(3, () => 0.1)).toEqual([1, 1, 1]);
+      expect(repartirEnGrupos(4, () => 0.9)).toEqual([2, 1, 1]);
     });
 
-    it('con random() que siempre elige 2 grupos por capa, total=20 da la variedad completa de tamaños citada por la usuaria', () => {
-      // random() < 0.5 → 1 grupo; en caso contrario → 2 grupos por capa (ver repartirEnGrupos).
-      const grupos = repartirEnGrupos(20, () => 0.9);
-      expect(grupos).toEqual([4, 4, 3, 3, 2, 2, 1, 1]);
-    });
-
-    it('con random() que siempre elige 1 grupo por capa, el resto tras agotar tamaños se reparte en unidades sueltas (nunca se pierde población)', () => {
-      const grupos = repartirEnGrupos(20, () => 0.1);
-      expect(grupos).toEqual([4, 3, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
-      expect(grupos.reduce((a, b) => a + b, 0)).toBe(20);
+    it('respeta el número de sueltos pedido', () => {
+      expect(repartirEnGrupos(10, () => 0.9, 2)).toEqual([4, 4, 1, 1]);
     });
   });
 });

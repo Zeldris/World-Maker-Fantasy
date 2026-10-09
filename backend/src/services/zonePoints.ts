@@ -1,6 +1,6 @@
 import { Prisma, type PrismaClient, type ZonePointTipo } from '@prisma/client';
 import { stripRegionArticle } from './population.js';
-import { sourceDisplayNameFor, faunaMomentoDelDia } from '../scripts/worldCatalog.js';
+import { sourceDisplayNameFor, faunaMomentoDelDia, FAUNA_AMBIENTAL } from '../scripts/worldCatalog.js';
 import { factionRepFor } from './reputation.js';
 import {
   celdaDePixel,
@@ -18,7 +18,7 @@ import { siguienteCeldaDeZonePoint, enRangoDePersecucion } from './movementTempl
 import type { FaunaCategoria } from './faunaAbilities.js';
 import { effectiveTemperamento } from './reputation.js';
 import type { MomentoDelDia } from './worldClock.js';
-import { ambitoPoblacion } from './mundoPartida.js';
+import { ambitoPoblacion, copiaDeFila } from './mundoPartida.js';
 
 export type ZonePointColor = 'ALIADO' | 'NEUTRO' | 'ENEMIGO' | 'SIN_FACCION' | 'INERTE';
 
@@ -216,33 +216,40 @@ export function reconciliarGrupos(
     return { actualizar: [{ index: 0, cantidad: cantidadAncla }], borrar: [], crear: resto };
   }
 
-  const totalActual = cantidadesActuales.reduce((suma, c) => suma + c, 0);
-  const diferencia = objetivo - totalActual;
-  if (diferencia > 0) return { actualizar: [], borrar: [], crear: repartirEnGrupos(diferencia, random) };
-  if (diferencia === 0) return { actualizar: [], borrar: [], crear: [] };
-
-  // Población a la baja — se resta primero de los grupos MÁS PEQUEÑOS (decisión explícita del plan:
-  // un grupo grande de 4 sobrevive más tiempo que varios sueltos de 1, más realista que recortar
-  // proporcionalmente todos a la vez). Empate por índice para que el resultado sea determinista.
-  let restante = -diferencia;
-  const orden = cantidadesActuales
-    .map((cantidad, index) => ({ cantidad, index }))
-    .sort((a, b) => a.cantidad - b.cantidad || a.index - b.index);
-  const actualizar: { index: number; cantidad: number }[] = [];
-  const borrar: number[] = [];
-  for (const { cantidad, index } of orden) {
-    if (restante <= 0) break;
-    const resta = Math.min(cantidad, restante);
-    if (resta === 0) continue;
-    restante -= resta;
-    const cantidadNueva = cantidad - resta;
-    // Un grupo que se queda a 0 se BORRA, nunca se actualiza además (2026-09-28: las dos
-    // operaciones corren en paralelo y el update fallaba con "No record was found"); el ancla
-    // (índice 0) nunca se borra, se queda a 0 e inactiva.
-    if (cantidadNueva === 0 && index !== 0) borrar.push(index);
-    else actualizar.push({ index, cantidad: cantidadNueva });
+  // QA-27 (2026-10-09): el reparto deseado sale siempre del total (`repartirEnGrupos`, 2-3 sueltos
+  // y pocos grupos grandes) y se encaja sobre las filas que ya hay, tocando lo mínimo: así una
+  // partida con el reparto viejo (muchos grupos pequeños) se consolida sola, y subir o bajar unos
+  // pocos individuos no crea ni borra puntos sueltos sin parar. Se respetan los sueltos que ya hay
+  // si están entre 2 y 3.
+  const sueltosActuales = cantidadesActuales.filter((c) => c === 1).length;
+  const sueltos = sueltosActuales >= 2 && sueltosActuales <= 3 ? sueltosActuales : undefined;
+  const deseado = objetivo > 0 ? repartirEnGrupos(objetivo, random, sueltos) : [];
+  if (deseado.length === 0) {
+    return {
+      actualizar: cantidadesActuales[0] === 0 ? [] : [{ index: 0, cantidad: 0 }],
+      borrar: cantidadesActuales.map((_, i) => i).filter((i) => i !== 0),
+      crear: [],
+    };
   }
-  return { actualizar, borrar, crear: [] };
+  const igual = (a: number[], b: number[]) => a.length === b.length && [...a].sort((x, y) => x - y).every((v, i) => v === [...b].sort((x, y) => x - y)[i]);
+  if (igual(cantidadesActuales, deseado)) return { actualizar: [], borrar: [], crear: [] };
+
+  // Emparejar de mayor a menor (desempate por índice); el ancla (índice 0) siempre se queda: si no
+  // le toca pareja, ocupa la última plaza que sí la tiene.
+  const deseadoOrdenado = [...deseado].sort((a, b) => b - a);
+  const actuales = cantidadesActuales.map((cantidad, index) => ({ cantidad, index })).sort((a, b) => b.cantidad - a.cantidad || a.index - b.index);
+  let conservadas = actuales.slice(0, deseadoOrdenado.length);
+  if (!conservadas.some((f) => f.index === 0)) {
+    conservadas = [...conservadas.slice(0, -1), actuales.find((f) => f.index === 0)!];
+  }
+  const actualizar: { index: number; cantidad: number }[] = [];
+  conservadas.forEach((f, i) => {
+    if (f.cantidad !== deseadoOrdenado[i]) actualizar.push({ index: f.index, cantidad: deseadoOrdenado[i] });
+  });
+  const indicesConservados = new Set(conservadas.map((f) => f.index));
+  const borrar = actuales.filter((f) => !indicesConservados.has(f.index)).map((f) => f.index);
+  const crear = deseadoOrdenado.slice(conservadas.length);
+  return { actualizar, borrar, crear };
 }
 
 /// Fase 5 (plan oct-2026, B1) — `ZonePoint` por partida. Las filas con `saveId = null` son la
@@ -259,10 +266,16 @@ export async function asegurarZonePointsDePartida(
   saveId: string,
   locationId: string,
 ) {
-  const [existentes, plantillas] = await Promise.all([
+  const [todasExistentes, todasPlantillas] = await Promise.all([
     tx.zonePoint.findMany({ where: { saveId, locationId } }),
     tx.zonePoint.findMany({ where: { saveId: null, locationId, activo: true } }),
   ]);
+  // QA-27: la fauna ambiental no tiene puntos. Una partida de antes los pierde aquí (una sola vez)
+  // y una plantilla vieja de catálogo (sin re-seed todavía) no se vuelve a clonar.
+  const ambientales = todasExistentes.filter((p) => !esPuntoVigente(p));
+  if (ambientales.length > 0) await tx.zonePoint.deleteMany({ where: { id: { in: ambientales.map((p) => p.id) } } });
+  const existentes = todasExistentes.filter(esPuntoVigente);
+  const plantillas = todasPlantillas.filter(esPuntoVigente);
   if (plantillasQueFaltan(existentes, plantillas).length === 0) return existentes;
   // Dos peticiones casi simultáneas (abrir el mapa + un turno) podían clonar dos veces. Candado de
   // Postgres por (partida, Location), liberado al acabar la transacción; si el caller no está ya en
@@ -272,6 +285,11 @@ export async function asegurarZonePointsDePartida(
 }
 
 type PuntoComparable = { tipo: string; targetSlug: string | null; x: number; y: number };
+
+/// QA-27: un punto de FAUNA ambiental (ver `FAUNA_AMBIENTAL`, worldCatalog.ts) no va en el mapa.
+export function esPuntoVigente(p: { tipo: string; targetSlug: string | null }): boolean {
+  return !(p.tipo === 'FAUNA' && p.targetSlug != null && FAUNA_AMBIENTAL.has(p.targetSlug));
+}
 
 /// Plantillas de catálogo que la partida todavía no tiene. FAUNA y NPC se mueven (y los grupos de
 /// FAUNA se parten y se borran, pero el ancla de cada especie nunca se borra — ver
@@ -291,7 +309,7 @@ async function clonarPlantillasConCandado(tx: Prisma.TransactionClient, saveId: 
     tx.zonePoint.findMany({ where: { saveId, locationId } }),
     tx.zonePoint.findMany({ where: { saveId: null, locationId, activo: true } }),
   ]);
-  const faltan = plantillasQueFaltan(yaClonadas, plantillas);
+  const faltan = plantillasQueFaltan(yaClonadas, plantillas.filter(esPuntoVigente));
   if (faltan.length === 0) return yaClonadas;
   await tx.zonePoint.createMany({
     data: faltan.map((p) => ({
@@ -339,9 +357,34 @@ export async function recalcularZonePointsDeLocation(
   if (puntos.length === 0) return;
 
   const targetSlugs = [...new Set(puntos.map((p) => p.targetSlug))];
-  const poblaciones = await tx.worldPopulation.findMany({
-    where: { ...(await ambitoPoblacion(tx, saveId)), targetSlug: { in: targetSlugs } },
+  const ambito = await ambitoPoblacion(tx, saveId);
+  let poblaciones = await tx.worldPopulation.findMany({
+    where: { ...ambito, targetSlug: { in: targetSlugs } },
   });
+  // QA-27: una fuente nueva del catálogo (p. ej. la Colmena de Lebude) no está en la población que
+  // una partida de antes clonó al empezar; se copia aquí la primera vez que hace falta.
+  if ('saveId' in ambito && ambito.saveId) {
+    const faltan = targetSlugs.filter((slug) => !poblaciones.some((f) => f.targetSlug === slug));
+    const enCatalogo = faltan.length > 0 ? await tx.worldPopulation.count({ where: { worldId, saveId: null, targetSlug: { in: faltan } } }) : 0;
+    if (enCatalogo > 0) {
+      const copiar = async (t: Prisma.TransactionClient) => {
+        // Candado por partida: dos peticiones a la vez (abrir el mapa + un turno) no copian dos veces.
+        await t.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`poblacion|${saveId}`}))`;
+        const yaEstan = await t.worldPopulation.findMany({ where: { saveId, targetSlug: { in: faltan } }, select: { targetSlug: true } });
+        const deCatalogo = (await t.worldPopulation.findMany({ where: { worldId, saveId: null, targetSlug: { in: faltan } } })).filter(
+          (f) => !yaEstan.some((y) => y.targetSlug === f.targetSlug),
+        );
+        if (deCatalogo.length > 0) {
+          await t.worldPopulation.createMany({
+            data: deCatalogo.map((f) => copiaDeFila('WorldPopulation', f, { saveId }) as Prisma.WorldPopulationCreateManyInput),
+          });
+        }
+      };
+      if ('$transaction' in tx) await tx.$transaction(copiar);
+      else await copiar(tx);
+      poblaciones = await tx.worldPopulation.findMany({ where: { ...ambito, targetSlug: { in: targetSlugs } } });
+    }
+  }
   const regionSinArticulo = region ? stripRegionArticle(region) : null;
   // Población REAL disponible para esta especie en ESTA región concreta — el peso relativo de
   // `distribucion` (mismo criterio que el resto del motor, `travelInterruption.ts`/`recolectar.ts`)

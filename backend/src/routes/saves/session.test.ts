@@ -102,4 +102,27 @@ describe('POST /saves/:id/transit/cancel', () => {
     expect(createLogEntry).not.toHaveBeenCalled();
     expect(deleteManyBuilding).not.toHaveBeenCalled();
   });
+
+  // QA-27 (2026-10-09, jugando: «cancelar un viaje no va»): un viaje se reclama nada más salir por
+  // la vía anticipada (`adelantada`), que no guarda nada hasta `busyUntil` — se puede cancelar.
+  it('cancela un viaje reclamado por la vía anticipada (adelantada) y lo cuenta como media vuelta', async () => {
+    findUniqueSave.mockResolvedValue({
+      id: 'save1',
+      characterName: 'Gorhorn',
+      currentLocation: { name: 'El Pozo de Cauce Viejo' },
+      characterTransit: {
+        busyUntil: new Date(Date.now() + 60_000),
+        zoneContext: { action: 'Viajo hacia La Hondonada del Eco.', travel: { minutos: 100 }, claimedAt: new Date().toISOString(), adelantada: true },
+      },
+    });
+    deleteManyTransit.mockResolvedValue({ count: 1 });
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'POST', url: '/saves/save1/transit/cancel' });
+
+    expect(res.statusCode).toBe(204);
+    expect(createLogEntry).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ text: 'Gorhorn da media vuelta y se queda en El Pozo de Cauce Viejo.' }) }),
+    );
+  });
 });

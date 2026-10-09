@@ -310,6 +310,11 @@ export const worldPopulations: WorldPopulationInput[] = [
   // Múrgoles domados del Campamento del Clan Serhu (2026-08-24, Grupo 3 § 27 recursos/materiales
   // sin receta) — cifra pequeña a propósito: es un recinto real dentro de la empalizada, no una
   // población salvaje (mismo eje separado del `murgol` FAUNA de arriba, 2800/4000).
+  // QA-27 (2026-10-09): fuentes de recurso de la fauna ambiental (colmena, pared y fango), aparte
+  // de la población de cada especie (que sigue en su fila FAUNA y no baja al recolectar).
+  { targetType: 'RECURSO', targetSlug: 'colmena-lebude', label: 'Colmena de Lebude', poblacion: 30, poblacionMax: 60, distribucion: { 'Llanuras del Viento Rojo': 1 } },
+  { targetType: 'RECURSO', targetSlug: 'pared-arcilla-gesgurio', label: 'Pared de arcilla de los Gesgurios', poblacion: 30, poblacionMax: 60, distribucion: { 'Llanuras del Viento Rojo': 1 } },
+  { targetType: 'RECURSO', targetSlug: 'fango-quio', label: 'Fango de los Quios', poblacion: 30, poblacionMax: 60, distribucion: { 'Llanuras del Viento Rojo': 1 } },
   {
     targetType: 'RECURSO',
     targetSlug: 'murgoles-domados-campamento',

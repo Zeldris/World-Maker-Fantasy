@@ -890,6 +890,18 @@ Retro del 2026-10-08 (`CR-63`, `CR-65`, `CR-50`, `CR-37`, `CR-67`; propuestas ap
   apunta en el mismo commit que la cifra. Motivo: decenas de cifras provisionales repartidas.
 - **QA-26 · Revisar las cifras provisionales jugando** (fase de pruebas del `0.8`): pasar por cada
   fila de [`cifras-provisionales.md`](cifras-provisionales.md), ajustar la cifra y borrar la fila.
+- **QA-27 · Ronda de pruebas jugando** (`0.3`, pedida por la usuaria el 2026-10-09; pausa el roadmap):
+  🚧 en curso. Jugar una partida como una jugadora normal en el navegador (Chromium con Playwright,
+  Ollama simulado, viajes acortados), apuntar cada bug o incoherencia en
+  [`pruebas-0.3-hallazgos.md`](../registros/pruebas-0.3-hallazgos.md) y arreglarlo con su test.
+  Hecho (2026-10-09): P1 (zonas saturadas: 2-3 sueltos y grupos de hasta 6), P2 (fauna ambiental
+  fuera del mapa, con Colmena de Lebude, Pared de arcilla y Fango de los Quios como recursos), P3
+  (la tirada del encuentro cuenta el equipo), P4 (cancelar un viaje), P6 (salir por la salida en la
+  que estás), P7 (entrar y salir de las zonas interiores) y P8 (avisos del mapa visibles); P5 no
+  aplica (era el Ollama simulado).
+  P43 y P44 (interiores de otras partidas: `Location.saveId`) arreglados; el resto de P9-P51,
+  apuntados en el registro sin arreglar (la usuaria: solo lo que bloquee). Falta: seguir jugando y
+  repasar los apuntados con ella.
 
 ---
 

@@ -216,7 +216,7 @@ async function resolveClassificationForTurn(params: {
     travel =
       enCombate || (detectsDialogueIntent(action) && npcsInScene.length > 0)
         ? null
-        : await resolveTravel({ action, worldId, currentLocationId, attributes });
+        : await resolveTravel({ action, worldId, currentLocationId, attributes, saveId });
 
     if (travel) {
       classification = {

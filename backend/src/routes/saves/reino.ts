@@ -122,6 +122,7 @@ export async function reinoRoutes(app: FastifyInstance) {
             data: {
               worldId: save.worldId,
               slug: kingdomLocationSlug,
+              saveId: save.id,
               name: `Hogar de ${finalKingdomName}`,
               region: ayuntamiento.location?.region ?? '',
               kind: 'interior',

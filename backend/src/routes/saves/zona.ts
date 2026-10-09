@@ -36,6 +36,8 @@ import { createInFlightClaimSet } from '../../lib/inFlightClaimSet.js';
 import { iniciarCaza, type CazaTarget } from '../../services/caza.js';
 import { riesgoDeCaza, type RiesgoCazaInfo } from '../../services/cazaRiesgo.js';
 import type { AttributeBlock } from '../../services/dice.js';
+import { PUERTA_INTERIOR, enFila, posicionPuertaAInterior } from '../../services/puertasInterior.js';
+import { effectiveAttributes } from '../../services/equipment.js';
 import { ambitoFacciones } from '../../services/mundoPartida.js';
 import { etiquetasActivas } from '../../services/cronista/etiquetas.js';
 import { conRencor, npcsConRencor } from '../../services/cronista/recuerdos.js';
@@ -78,6 +80,8 @@ const SAVE_SELECT_PARA_MOVER = {
   characterName: true,
   // "¿Quién ve a quién primero?" (2026-09-17) — Destreza del jugador para `quienIniciaEncuentro`.
   attributes: true,
+  // QA-27 (P3): con el equipo puesto, igual que la huida y el combate (`effectiveAttributes`).
+  inventoryItems: { where: { slot: { not: null } }, select: { statBonuses: true } },
   // F9-1 (decisión de Álvaro, 2026-09-29): nivel del jugador para el aviso de riesgo de la tarjeta Cazar.
   level: true,
 } satisfies Prisma.SaveSelect;
@@ -127,6 +131,9 @@ export interface ZonaSalidaInfo {
   /// no hay posición de jugador conocida todavía (fallback permisivo aquí, a diferencia del resto
   /// del motor: una partida sin `zonaPosX/Y` no debería quedar sin poder viajar nunca).
   alcanzable: boolean;
+  /// QA-27 (P7): `ENTRAR` si lleva a una zona interior (dentro de esta), `SALIR` si es la puerta de
+  /// un interior hacia fuera; sin el campo, una salida normal de región.
+  puerta?: 'ENTRAR' | 'SALIR';
 }
 
 /// Iconos de salida de región (2026-09-17, petición explícita de Álvaro: "cada salida debe estar
@@ -158,13 +165,16 @@ async function salidasDeRegionPara(
   const links = await prisma.locationLink.findMany({
     where: { OR: [{ fromId: location.id }, { toId: location.id }] },
     select: {
-      from: { select: { id: true, slug: true, name: true, x: true, y: true, teaser: true, description: true } },
-      to: { select: { id: true, slug: true, name: true, x: true, y: true, teaser: true, description: true } },
+      from: { select: { id: true, slug: true, name: true, x: true, y: true, teaser: true, description: true, kind: true } },
+      to: { select: { id: true, slug: true, name: true, x: true, y: true, teaser: true, description: true, kind: true } },
     },
   });
-  if (links.length === 0 || location.x == null || location.y == null) return [];
-
+  if (links.length === 0) return [];
   const conectadas = links.map((l) => (l.from.id === location.id ? l.to : l.from));
+  // QA-27 (P7): un interior no tiene coordenadas de mundo — sus salidas son puertas (ver
+  // `puertasInterior.ts`): desde dentro, todas a la puerta de abajo; desde fuera, junto al edificio.
+  const esInterior = location.x == null || location.y == null;
+  const interiores = esInterior ? conectadas : conectadas.filter((c) => c.kind === 'interior' && (c.x == null || c.y == null));
   const visitas = await prisma.locationVisit.findMany({
     where: { saveId, locationId: { in: conectadas.map((c) => c.id) } },
     select: { locationId: true },
@@ -174,9 +184,27 @@ async function salidasDeRegionPara(
   const celdaJugador = jugador ? celdaDePixel(jugador) : null;
   // Rumbo real, no sector cardinal (2026-09-28, ver `posicionesDeSalidas`, zonaPosicion.ts): antes
   // varios destinos del mismo octante quedaban apilados en el mismo píxel.
-  const conCoordenadas = conectadas.filter((d): d is typeof d & { x: number; y: number } => d.x != null && d.y != null);
-  const posiciones = posicionesDeSalidas({ x: location.x, y: location.y }, conCoordenadas);
+  const conCoordenadas = esInterior ? [] : conectadas.filter((d): d is typeof d & { x: number; y: number } => d.x != null && d.y != null);
+  const posiciones = esInterior ? new Map<string, { x: number; y: number }>() : posicionesDeSalidas({ x: location.x!, y: location.y! }, conCoordenadas);
   const salidas: ZonaSalidaInfo[] = [];
+  const basePuerta = esInterior ? PUERTA_INTERIOR : interiores.length > 0 ? await posicionPuertaAInterior(prisma, saveId, location.id) : null;
+  interiores.forEach((destino, indice) => {
+    const punto = enFila(basePuerta!, interiores.length, indice);
+    const visitada = visitadasIds.has(destino.id);
+    salidas.push({
+      locationId: destino.id,
+      slug: destino.slug,
+      nombre: destino.name,
+      x: punto.x,
+      y: punto.y,
+      visitada,
+      teaser: destino.teaser,
+      description: visitada ? destino.description : null,
+      imageUrl: visitada ? zoneMapImageUrl(destino.slug) : null,
+      alcanzable: celdaJugador ? celdaAdyacenteOMisma(celdaJugador, celdaDePixel(punto)) : true,
+      puerta: esInterior ? 'SALIR' : 'ENTRAR',
+    });
+  });
   for (const destino of conCoordenadas) {
     const punto = posiciones.get(destino.id)!;
     const visitada = visitadasIds.has(destino.id);
@@ -1107,7 +1135,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     // `zonePointActivoAhora`, zonePoints.ts).
     const momentoActual = momentoDelDiaFor(save.worldState?.fictionalMinutes ?? 480);
     // "¿Quién ve a quién primero?" (2026-09-17) — Destreza real del jugador para `quienIniciaEncuentro`.
-    const destrezaJugador = (save.attributes as { destreza?: number } | null)?.destreza ?? 10;
+    const destrezaJugador = effectiveAttributes(save.attributes as AttributeBlock, save.inventoryItems).destreza ?? 10;
     // Último encuentro ya ofrecido (2026-09-28) — solo cuenta si fue en ESTA Location (un slug de
     // otra zona no debe silenciar nada aquí).
     const ultimoEncuentro = save.zonaUltimoEncuentro as { targetSlug: string; locationId: string } | null;
