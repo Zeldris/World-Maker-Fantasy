@@ -454,10 +454,12 @@ async function moverPoblacion(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'moverP
   const fila = await ctx.tx.worldPopulation.findFirst({ where: { saveId: ctx.saveId, targetSlug: e.targetSlug } });
   if (!fila) return NO_APLICADO;
   const distribucion = { ...((fila.distribucion as Record<string, number> | null) ?? {}) };
-  const origen = distribucion[desde] ?? 0;
+  // Algunas filas guardan la región con artículo («Las Llanuras…»): se busca la clave tal cual esté.
+  const claveDesde = Object.keys(distribucion).find((k) => stripRegionArticle(k) === desde) ?? desde;
+  const origen = distribucion[claveDesde] ?? 0;
   if (origen <= 0) return NO_APLICADO;
   const movido = origen * Math.min(1, e.fraccion);
-  distribucion[desde] = origen - movido;
+  distribucion[claveDesde] = origen - movido;
   distribucion[hacia] = (distribucion[hacia] ?? 0) + movido;
   await ctx.tx.worldPopulation.update({ where: { id: fila.id }, data: { distribucion } });
   if (e.sinSuceso) return { aplicado: true, sucesoId: null };
