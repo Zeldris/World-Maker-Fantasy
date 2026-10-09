@@ -1,5 +1,5 @@
 import type { ZonaSalidaInfo } from '../lib/api'
-import { rumboSalida } from '../lib/rumboSalida'
+import { etiquetaSalida } from '../lib/rumboSalida'
 import { resolveImageUrl } from '../lib/api'
 import { SelectionModalShell, confirmButtonClasses } from './SelectionModalShell'
 
@@ -27,7 +27,7 @@ export function ZonaSalidaModal({ salida, onViajar, onCancel, bloqueoTurno }: Zo
   return (
     <SelectionModalShell
       // B5 (pruebas 2026-09-28): un destino sin visitar titulaba "???" — ahora dice hacia dónde va.
-      title={salida.visitada ? salida.nombre : `Camino hacia el ${rumboSalida(salida)}`}
+      title={etiquetaSalida(salida)}
       onCancel={onCancel}
       footer={
         <button

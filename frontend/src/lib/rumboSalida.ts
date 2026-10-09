@@ -15,3 +15,11 @@ export function rumboSalida(pos: { x: number; y: number }): string {
   const octante = Math.round(anguloSalida(pos) / 45)
   return RUMBOS[((octante % 8) + 8) % 8]
 }
+
+/// Texto de una salida en el mapa de zona. QA-27 (P7): las puertas de una zona interior (dentro de
+/// un asentamiento) no son un camino con rumbo: «Entrar en …» desde fuera, «Salir a …» desde dentro.
+export function etiquetaSalida(s: { x: number; y: number; nombre: string; visitada: boolean; puerta?: 'ENTRAR' | 'SALIR' }): string {
+  if (s.puerta === 'ENTRAR') return `Entrar en ${s.nombre}`
+  if (s.puerta === 'SALIR') return `Salir a ${s.nombre}`
+  return s.visitada ? s.nombre : `Camino hacia el ${rumboSalida(s)}`
+}

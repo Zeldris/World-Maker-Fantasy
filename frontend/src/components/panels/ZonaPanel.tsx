@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ViajerosAqui } from './ViajerosAqui'
 import { getZona, resolveImageUrl, recogerDroppedItem, type ZonaResponse, type ZonePointInfo, type ZonaDinamicoInfo, type ZonaSalidaInfo } from '../../lib/api'
 import { ZonePointDetailModal, zonaDinamicoToDetailSource } from '../ZonePointDetailModal'
-import { rumboSalida } from '../../lib/rumboSalida'
+import { etiquetaSalida } from '../../lib/rumboSalida'
 import { ZoneGroupDetailModal } from '../ZoneGroupDetailModal'
 import { ZonaSalidaModal } from '../ZonaSalidaModal'
 import { ParcelaDetailModal } from '../ParcelaDetailModal'
@@ -123,6 +123,15 @@ function puntoDelLienzo(e: { currentTarget: SVGSVGElement; clientX: number; clie
   if (!ctm) return null
   const local = punto.matrixTransform(ctm.inverse())
   return { x: local.x, y: local.y }
+}
+
+/// QA-27 (P6): la salida que está en la misma casilla que el jugador, si la hay y si `celda` es esa
+/// casilla. Sin esto, quien queda encima de una salida no puede pulsarla (su ficha la tapa).
+export function salidaEnCasillaDelJugador(data: Pick<ZonaResponse, 'jugador' | 'salidas'> | null, celda: Celda): ZonaSalidaInfo | null {
+  if (!data?.jugador) return null
+  const delJugador = celdaDePixel(data.jugador)
+  if (delJugador.col !== celda.col || delJugador.row !== celda.row) return null
+  return data.salidas.find((s) => { const c = celdaDePixel(s); return c.col === celda.col && c.row === celda.row }) ?? null
 }
 
 export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, columnasAncho = false, onClose, onViajarA, professionRecipes, onRefreshSave, onOfertaDescartada, onHoraActualizada, onSaquearCadaver, onDesollarCadaver, bloqueoTurno, bloqueoMovimiento = null, ofertaEnMapa }: ZonaPanelProps) {
@@ -428,7 +437,15 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                       }
                       if (movimientoEnCurso) return
                       const local = puntoDelLienzo(e)
-                      if (local) handleMoverA(local)
+                      if (!local) return
+                      // QA-27 (P6): encima de una salida (p. ej. tras cancelar un viaje), la ficha
+                      // del jugador tapa el icono; pulsar la propia casilla abre esa salida.
+                      const salidaAqui = salidaEnCasillaDelJugador(data, celdaDePixel(local))
+                      if (salidaAqui) {
+                        void handleClickSalida(salidaAqui)
+                        return
+                      }
+                      handleMoverA(local)
                     }
               }
               // ZON-36: doble clic = ir rápido (corta el trayecto que haya y sale de nuevo, rápido).
@@ -518,8 +535,8 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                   }}
                   className={`${s.alcanzable ? '' : 'opacity-60'} ${s.alcanzable || !soloConsulta ? 'cursor-pointer' : 'cursor-not-allowed'}`}
                 >
-                  <SalidaMarker x={s.x} y={s.y} escala={escala} texto={s.visitada ? s.nombre : `Camino hacia el ${rumboSalida(s)}`} />
-                  <title>{s.visitada ? s.nombre : `Camino hacia el ${rumboSalida(s)}`}</title>
+                  <SalidaMarker x={s.x} y={s.y} escala={escala} texto={etiquetaSalida(s)} />
+                  <title>{etiquetaSalida(s)}</title>
                 </g>
               ))}
               {/* Iconos de parcela (§ 7.4, 2026-09-21) — siempre visibles (mismo criterio que

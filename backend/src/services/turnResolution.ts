@@ -54,6 +54,7 @@ import { capturaEnInventarioExpiro, lastAtMinutesForGanancia, comidaPct, aguaPct
 import { ownRacialAdvantageFor, rivalRacialDisadvantageAgainst } from './racialPassives.js';
 import { continentForRegion, oppositeContinent } from '../lib/continent.js';
 import { advanceFictionalMinutes, formatFictionalDate, entornoTemporalFor, momentoDelDiaFor, type EntornoTemporal } from './worldClock.js';
+import { PUERTA_INTERIOR, posicionPuertaAInterior } from './puertasInterior.js';
 import { faunaMomentoDelDia, FAUNA_AMBIENTAL } from '../scripts/worldCatalog.js';
 import { recalcularZonePointsDeLocation, zonePointsSummaryFor } from './zonePoints.js';
 import { decideOfertaModoDinamico, dynamicModeCandidateNameFor, COOLDOWN_MODO_DINAMICO_MINUTOS } from './dynamicMode.js';
@@ -3269,8 +3270,12 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       // `GET /zona` (`posicionesDeSalidas`), así que llegas justo sobre la salida por la que vuelves.
       const previoId = travel.pathIds.length >= 2 ? travel.pathIds[travel.pathIds.length - 2] : null;
       const entradaPorSalida = previoId ? await posicionDeSalidaHacia(destination.id, { x: destination.x, y: destination.y }, previoId) : null;
+      // QA-27 (P7): saliendo de una zona interior (sin coordenadas), se llega a su puerta de fuera.
+      const previo = !entradaPorSalida && previoId ? await prisma.location.findUnique({ where: { id: previoId }, select: { kind: true, x: true } }) : null;
       if (entradaPorSalida) {
         zonaEntradaCoords = entradaPorSalida;
+      } else if (previo?.kind === 'interior' && previo.x == null) {
+        zonaEntradaCoords = await posicionPuertaAInterior(prisma, saveId, destination.id);
       } else if (origenX != null && origenY != null) {
         const direccionDeViaje = cardinalDirectionBetween({ x: origenX, y: origenY }, { x: destination.x, y: destination.y });
         zonaEntradaCoords = puntoDeEntradaParaDireccion(direccionDeEntrada(direccionDeViaje));
@@ -3279,6 +3284,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         // dirección real que calcular, pero el jugador SÍ necesita un punto: centro del lienzo.
         zonaEntradaCoords = { x: 400, y: 300 };
       }
+    } else if (destination?.kind === 'interior') {
+      // QA-27 (P7): entrando a una zona interior, se aparece en su puerta (abajo, en el centro).
+      zonaEntradaCoords = { ...PUERTA_INTERIOR };
     }
     const ruta = travel.segments
       .map((s) => `${s.fromName} → ${s.toName} (${s.terreno}${s.riesgo ? `, riesgo conocido: ${s.riesgo}` : ''})`)

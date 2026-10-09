@@ -896,8 +896,9 @@ Retro del 2026-10-08 (`CR-63`, `CR-65`, `CR-50`, `CR-37`, `CR-67`; propuestas ap
   [`pruebas-0.3-hallazgos.md`](../registros/pruebas-0.3-hallazgos.md) y arreglarlo con su test.
   Hecho (2026-10-09): P1 (zonas saturadas: 2-3 sueltos y grupos de hasta 6), P2 (fauna ambiental
   fuera del mapa, con Colmena de Lebude, Pared de arcilla y Fango de los Quios como recursos), P3
-  (la tirada del encuentro cuenta el equipo) y P4 (cancelar un viaje). Falta: P5 (texto de respaldo
-  del narrador) y seguir jugando (zonas interiores, Reino, combate).
+  (la tirada del encuentro cuenta el equipo), P4 (cancelar un viaje), P6 (salir por la salida en la
+  que estás) y P7 (entrar y salir de las zonas interiores); P5 no aplica (era el Ollama simulado).
+  Falta: seguir jugando (Reino, combate, recolección, compañeros).
 
 ---
 
