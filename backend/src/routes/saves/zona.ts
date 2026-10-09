@@ -36,6 +36,7 @@ import { createInFlightClaimSet } from '../../lib/inFlightClaimSet.js';
 import { iniciarCaza, type CazaTarget } from '../../services/caza.js';
 import { riesgoDeCaza, type RiesgoCazaInfo } from '../../services/cazaRiesgo.js';
 import type { AttributeBlock } from '../../services/dice.js';
+import { effectiveAttributes } from '../../services/equipment.js';
 import { ambitoFacciones } from '../../services/mundoPartida.js';
 import { etiquetasActivas } from '../../services/cronista/etiquetas.js';
 import { conRencor, npcsConRencor } from '../../services/cronista/recuerdos.js';
@@ -78,6 +79,8 @@ const SAVE_SELECT_PARA_MOVER = {
   characterName: true,
   // "¿Quién ve a quién primero?" (2026-09-17) — Destreza del jugador para `quienIniciaEncuentro`.
   attributes: true,
+  // QA-27 (P3): con el equipo puesto, igual que la huida y el combate (`effectiveAttributes`).
+  inventoryItems: { where: { slot: { not: null } }, select: { statBonuses: true } },
   // F9-1 (decisión de Álvaro, 2026-09-29): nivel del jugador para el aviso de riesgo de la tarjeta Cazar.
   level: true,
 } satisfies Prisma.SaveSelect;
@@ -1107,7 +1110,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     // `zonePointActivoAhora`, zonePoints.ts).
     const momentoActual = momentoDelDiaFor(save.worldState?.fictionalMinutes ?? 480);
     // "¿Quién ve a quién primero?" (2026-09-17) — Destreza real del jugador para `quienIniciaEncuentro`.
-    const destrezaJugador = (save.attributes as { destreza?: number } | null)?.destreza ?? 10;
+    const destrezaJugador = effectiveAttributes(save.attributes as AttributeBlock, save.inventoryItems).destreza ?? 10;
     // Último encuentro ya ofrecido (2026-09-28) — solo cuenta si fue en ESTA Location (un slug de
     // otra zona no debe silenciar nada aquí).
     const ultimoEncuentro = save.zonaUltimoEncuentro as { targetSlug: string; locationId: string } | null;

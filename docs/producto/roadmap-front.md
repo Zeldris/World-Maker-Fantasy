@@ -894,9 +894,10 @@ Retro del 2026-10-08 (`CR-63`, `CR-65`, `CR-50`, `CR-37`, `CR-67`; propuestas ap
   🚧 en curso. Jugar una partida como una jugadora normal en el navegador (Chromium con Playwright,
   Ollama simulado, viajes acortados), apuntar cada bug o incoherencia en
   [`pruebas-0.3-hallazgos.md`](../registros/pruebas-0.3-hallazgos.md) y arreglarlo con su test.
-  Hecho (2026-10-09): P1 (zonas saturadas: 2-3 sueltos y grupos de hasta 6) y P2 (fauna ambiental
-  fuera del mapa, con Colmena de Lebude, Pared de arcilla y Fango de los Quios como recursos). Falta:
-  P3 (atributo de la huida) y seguir jugando (viaje cancelado, zonas interiores, Reino, combate).
+  Hecho (2026-10-09): P1 (zonas saturadas: 2-3 sueltos y grupos de hasta 6), P2 (fauna ambiental
+  fuera del mapa, con Colmena de Lebude, Pared de arcilla y Fango de los Quios como recursos) y P3
+  (la tirada del encuentro cuenta el equipo). Falta: seguir jugando (viaje cancelado, zonas
+  interiores, Reino, combate).
 
 ---
 
