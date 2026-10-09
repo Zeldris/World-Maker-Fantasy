@@ -7,6 +7,7 @@ import {
   harvestSourceTerrainTag,
   harvestSourceHomeLocationSlug,
   harvestYields,
+  FAUNA_AMBIENTAL,
 } from './worldCatalog.js';
 import { worldPopulations } from './worldPopulation.js';
 import { pasaFiltroTerreno } from '../services/terrain.js';
@@ -127,6 +128,8 @@ describe('cobertura de mapa — Las Llanuras del Viento Rojo (Fase 3)', () => {
       if (FAUNA_SIN_NPC_PROPIO_EXCEPCION.has(slug)) continue;
       if (FAUNA_MODELADA_COMO_RECURSO_PESCA_EXCEPCION.has(slug)) continue;
       if (CONFLICTO_TERRENO_VS_HOME_EXCEPCION[slug]) continue;
+      // QA-27: la fauna ambiental no va en el mapa (sus recursos tienen su propio punto RECURSO).
+      if (FAUNA_AMBIENTAL.has(slug)) continue;
       const puntos = zonePoints.filter(
         (p) => p.tipo === 'FAUNA' && p.targetSlug === slug && llanurasLocationSlugs.has(p.locationSlug),
       );
@@ -171,13 +174,18 @@ describe('cobertura de mapa — Las Llanuras del Viento Rojo (Fase 3)', () => {
   /// queda a la espera de una propuesta aprobada por Álvaro. Los demás interiores
   /// (`campamento-serhu-interior`) ya tienen puntos y no necesitan excepción.
   const LOCATION_SIN_PUNTOS_EXCEPCION = new Set(['jakut-ger-interior']);
+  /// QA-27 (2026-10-09): lugares que solo tenían Ruptidar (fauna ambiental, ya sin puntos en el
+  /// mapa). Un campo sagrado de túmulos y una llanura de huesos sin nada que recoger encajan con su
+  /// descripción; si el lore les da fuentes propias, se quitan de aquí.
+  const LUGAR_SOLO_AMBIENTAL_EXCEPCION = new Set(['tumulos-del-honor', 'campo-yermo']);
 
   it('toda Location de Las Llanuras tiene >=1 ZonePoint (salvo excepciones justificadas)', () => {
     const conPuntos = new Set(zonePoints.map((p) => p.locationSlug));
     const sinPuntos = [...llanurasLocationSlugs].filter(
-      (slug) => !conPuntos.has(slug) && !LOCATION_SIN_PUNTOS_EXCEPCION.has(slug),
+      (slug) => !conPuntos.has(slug) && !LOCATION_SIN_PUNTOS_EXCEPCION.has(slug) && !LUGAR_SOLO_AMBIENTAL_EXCEPCION.has(slug),
     );
     expect(sinPuntos).toEqual([]);
+    for (const slug of LUGAR_SOLO_AMBIENTAL_EXCEPCION) expect(conPuntos.has(slug)).toBe(false);
     // La excepción solo puede ser un interior real; si alguien la puebla, hay que quitarla de la lista.
     for (const slug of LOCATION_SIN_PUNTOS_EXCEPCION) {
       expect(locations.find((l) => l.slug === slug)?.kind).toBe('interior');

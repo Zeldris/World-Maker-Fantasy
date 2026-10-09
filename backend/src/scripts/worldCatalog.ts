@@ -9637,9 +9637,11 @@ export const harvestYields: HarvestYieldInput[] = [
   // --- Gesgurio ---
 
   {
-    sourceSlug: 'gesgurio',
+    // QA-27 (2026-10-09): el Gesgurio (5-20 cm) es fauna ambiental; su quitina se recoge de los
+    // caparazones que quedan en la pared de arcilla donde se camufla (`pared-arcilla-gesgurio`).
+    sourceSlug: 'pared-arcilla-gesgurio',
     sourceCategory: 'fauna',
-    metodoObtencion: 'CAZA',
+    metodoObtencion: 'EXTRACCION',
     itemSlug: 'trozo-quitina-roja',
     cantidad: 3,
   },
@@ -9788,21 +9790,23 @@ export const harvestYields: HarvestYieldInput[] = [
   },
 
   {
-    sourceSlug: 'lebude',
+    // QA-27 (2026-10-09): el Lebude (5-15 cm) es fauna ambiental; la Cera y la Miel salen de su
+    // colmena, un punto de recurso propio (`colmena-lebude`), nunca de cazar avispas.
+    sourceSlug: 'colmena-lebude',
     sourceCategory: 'fauna',
-    metodoObtencion: 'CAZA',
+    metodoObtencion: 'EXTRACCION',
     itemSlug: 'cera-lebude',
     cantidad: 1,
-    condicion: 'de la colmena, no del individuo cazado',
+    condicion: 'de la colmena, con cuidado de no alborotar a los Lebudes',
   },
 
   {
-    sourceSlug: 'lebude',
+    sourceSlug: 'colmena-lebude',
     sourceCategory: 'fauna',
-    metodoObtencion: 'CAZA',
+    metodoObtencion: 'EXTRACCION',
     itemSlug: 'miel-lebude',
     cantidad: 1,
-    condicion: 'de la colmena, no del individuo cazado',
+    condicion: 'de la colmena, con cuidado de no alborotar a los Lebudes',
   },
 
   {
@@ -9917,9 +9921,11 @@ export const harvestYields: HarvestYieldInput[] = [
     // Añadido 2026-08-23 (auditoría lore↔código): `filtro-quio` existía como item desde antes
     // pero sin ninguna fila de HarvestYield que lo conectara a `quio` — recurso huérfano,
     // inalcanzable en juego pese a estar descrito en flora-fauna.md.
-    sourceSlug: 'quio',
+    // QA-27 (2026-10-09): el Quio (10-20 cm, sin combate) es fauna ambiental; se saca a mano del
+    // fango de la orilla (`fango-quio`).
+    sourceSlug: 'fango-quio',
     sourceCategory: 'fauna',
-    metodoObtencion: 'CAZA',
+    metodoObtencion: 'EXTRACCION',
     itemSlug: 'filtro-quio',
     cantidad: 1,
   },
@@ -10855,6 +10861,9 @@ export const harvestYields: HarvestYieldInput[] = [
 /// ya existente, la que se quiera priorizar va ANTES.
 export const harvestSourceAliases: Record<string, string[]> = {
   'murgoles-domados-campamento': ['múrgoles domados', 'murgoles domados', 'recinto de múrgol'],
+  'colmena-lebude': ['colmena de lebude', 'colmenas de lebude', 'colmena'],
+  'pared-arcilla-gesgurio': ['pared de arcilla', 'caparazones de gesgurio'],
+  'fango-quio': ['fango de los quios', 'quios del fango'],
   'corredor-de-cauce': ['corredor de cauce', 'corredor', 'corredores de cauce'],
   'gargantua-de-ceniza': ['gargantúa', 'gargantua', 'gargantúa de ceniza', 'gargantua de ceniza'],
   // 'espina' (sola) quitada como alias (2026-09-06, bug real: "la espina dorsal" se enlazaba como
@@ -11039,7 +11048,30 @@ export const harvestSourceAliases: Record<string, string[]> = {
 /// ficha de HarvestYield arriba) pero `sourceSlug` DISTINTO de 'murgol' (el Npc real) a propósito,
 /// por la invariante de metodoObtencion compartido — sin Npc con ese slug exacto, salía mal
 /// categorizado como flora en icono/carpeta de imágenes, igual que las 3 fuentes originales.
-export const harvestSourcesThatAreFaunaWithoutNpc = new Set(['cornante', 'espina-del-viento', 'sombra-de-kroj', 'murgoles-domados-campamento']);
+export const harvestSourcesThatAreFaunaWithoutNpc = new Set([
+  'cornante',
+  'espina-del-viento',
+  'sombra-de-kroj',
+  'murgoles-domados-campamento',
+  // QA-27: fuentes de la fauna ambiental (ver `FAUNA_AMBIENTAL`).
+  'colmena-lebude',
+  'pared-arcilla-gesgurio',
+  'fango-quio',
+]);
+
+/// Fauna ambiental (QA-27, 2026-10-09, la usuaria jugando: «la fauna muy pequeña, narrativa,
+/// está ocupando el mapa cuando no aporta nada que aparezca como punto»). No sale como punto en el
+/// mapa de zona, no provoca encuentros ni corta el paso: vive en la narración y en la Enciclopedia.
+/// Criterio (lógico, sin lista a mano salvo las diminutas): la fauna sin habilidades de combate
+/// (regla ya escrita en `docs/runbooks/ampliar-lore.md`: «puramente narrativa/ambiental», con el
+/// Ruptidar de referencia) y la diminuta, de 20 cm o menos (`FAUNA_DIMINUTA`). Lo que daban al
+/// cazarla sale de un punto de recurso propio (Colmena de Lebude, Pared de arcilla, Fango de los
+/// Quios). Contraste: X4 (el «tráfico de masas» se ve pero no está en el mapa), D&D 5e / BG3 (las
+/// criaturas diminutas de CR 0 son decorado), Medieval Dynasty (la colmena es un sitio de recogida).
+export const FAUNA_DIMINUTA = new Set(['lebude', 'gesgurio']);
+export const FAUNA_AMBIENTAL: ReadonlySet<string> = new Set(
+  fauna.filter((f) => (f.habilidadesRaciales ?? []).length === 0 || FAUNA_DIMINUTA.has(f.slug)).map((f) => f.slug),
+);
 
 /// Zona de origen explícita por fuente (2026-07-29, colapsables de fauna/flora por zona en la
 /// Enciclopedia) — confirmado por la usuaria: la inmensa mayoría de estas pertenecen a Llanuras
@@ -11147,6 +11179,9 @@ export const harvestSourceHomeLocationSlug: Record<string, string | string[]> = 
   // receta) — a diferencia de la fauna salvaje de arriba, esta fuente vive dentro de la
   // empalizada, no en el mapa exterior.
   'murgoles-domados-campamento': 'campamento-serhu',
+  'colmena-lebude': 'pozo-cauce-viejo',
+  'pared-arcilla-gesgurio': 'hondonada-del-eco',
+  'fango-quio': 'manaderos',
 
   // Hallazgo 29b (revisar-partida-hallazgos.md 2026-09-07, "ya me sale lo mismo en esas
   // habilidades que me salía en la Hondonada" al llegar a Los Pilares Rotos) — auditoría completa
@@ -11201,6 +11236,9 @@ export const harvestSourceHomeLocationSlug: Record<string, string | string[]> = 
 export const harvestSourceRegion: Record<string, string> = {
   'arena-iman': 'Llanuras del Viento Rojo',
   'murgoles-domados-campamento': 'Llanuras del Viento Rojo',
+  'colmena-lebude': 'Llanuras del Viento Rojo',
+  'pared-arcilla-gesgurio': 'Llanuras del Viento Rojo',
+  'fango-quio': 'Llanuras del Viento Rojo',
   'aullador-rojo': 'Llanuras del Viento Rojo',
   'zense-ceniza': 'Llanuras del Viento Rojo',
   'bulbo-del-cauce': 'Llanuras del Viento Rojo',
@@ -11331,6 +11369,9 @@ export function sourceCategoryNameFor(category: string): string {
 /// antes de este cambio, solo movidos aquí.
 export const harvestSourceDisplayName: Record<string, string> = {
   'murgoles-domados-campamento': 'Múrgoles domados',
+  'colmena-lebude': 'Colmena de Lebude',
+  'pared-arcilla-gesgurio': 'Pared de arcilla de los Gesgurios',
+  'fango-quio': 'Fango de los Quios',
   'arena-iman': 'Arena Imán',
   'bulbo-del-cauce': 'Bulbo del Cauce',
   'cardo-brujula': 'Cardo Brújula',
@@ -11399,6 +11440,13 @@ export function sourceDisplayNameFor(sourceSlug: string, npcName?: string | null
 }
 
 export const harvestSourceDescriptions: Record<string, string> = {
+  // QA-27 (2026-10-09): fuentes de la fauna ambiental, con lo que ya dice el lore de cada especie.
+  'colmena-lebude':
+    'Colmenas de Lebude en forma de pequeñas montañas unidas entre sí, junto a los Telda Común. De ellas salen la Cera y la Miel Lebude; los Lebudes, negros con rayas gris ceniza, zumban alrededor y su picadura deja mermado a quien se descuida.',
+  'pared-arcilla-gesgurio':
+    'Las paredes de arcilla roja de la Hondonada, donde los Gesgurios se camuflan con su caparazón del mismo color. Entre las grietas quedan trozos de caparazón con púas oscuras.',
+  'fango-quio':
+    'El fango de las orillas de Los Manaderos, donde los Quios, gusanos blancos con manchas marrones, filtran restos orgánicos. Se sacan a mano del barro.',
   'murgoles-domados-campamento':
     'El pequeño recinto de múrgoles domados dentro de la empalizada del Campamento del Clan Serhu — de las pocas cosas que el clan produce sin cazar ni recolectar.',
   'arena-iman':
@@ -11733,7 +11781,7 @@ export interface ZonePointInput {
 
 export const zonePoints: ZonePointInput[] = [
   { locationSlug: 'hondonada-del-eco', x: 620, y: 180, tipo: 'FAUNA', targetSlug: 'kirelon-arenoso', label: 'Boca de cueva (Kirelon Arenoso)' },
-  { locationSlug: 'hondonada-del-eco', x: 260, y: 340, tipo: 'FAUNA', targetSlug: 'gesgurio', label: 'Pared de arcilla (Gesgurio)' },
+  { locationSlug: 'hondonada-del-eco', x: 260, y: 340, tipo: 'RECURSO', targetSlug: 'pared-arcilla-gesgurio', label: 'Pared de arcilla (Gesgurio)' },
   { locationSlug: 'hondonada-del-eco', x: 400, y: 470, tipo: 'RECURSO', targetSlug: 'yerreo', label: 'Veta de Yerreo' },
   // Franja 3 de "Interactuar" (2026-09-08) — el "perseguidor sin nombrar" de Gistera Koh
   // (`orco-enfurecido-hondonada`, mecanismo de inyección determinista en escena, turnResolution.ts
@@ -11880,7 +11928,7 @@ export const zonePoints: ZonePointInput[] = [
   // directo también.
   { locationSlug: 'manaderos', x: 220, y: 180, tipo: 'FAUNA', targetSlug: 'jusha-esmeralda', label: 'Jusha Esmeralda en charca profunda' },
   { locationSlug: 'manaderos', x: 540, y: 220, tipo: 'FAUNA', targetSlug: 'miruina', label: 'Madriguera de Miruina' },
-  { locationSlug: 'manaderos', x: 320, y: 420, tipo: 'FAUNA', targetSlug: 'quio', label: 'Quio filtrando el fango de la orilla' },
+  { locationSlug: 'manaderos', x: 320, y: 420, tipo: 'RECURSO', targetSlug: 'fango-quio', label: 'Quio filtrando el fango de la orilla' },
   { locationSlug: 'manaderos', x: 600, y: 460, tipo: 'RECURSO', targetSlug: 'chudos-rojizos', label: 'Chudos Rojizos' },
 
   // El Osario de la Manada — hito pequeño, sin fauna viva anclada propia (la Gargantúa que le da
@@ -11909,7 +11957,7 @@ export const zonePoints: ZonePointInput[] = [
   // charca, cadena trófica descrita en sus propias bios: Lebude caza Guchapo/Escorante). Musgo
   // Arcilla completa el cupo de 4 (también homeLocationSlug directo, material de construcción).
   { locationSlug: 'pozo-cauce-viejo', x: 220, y: 200, tipo: 'FAUNA', targetSlug: 'guchapo', label: 'Charca de Guchapos' },
-  { locationSlug: 'pozo-cauce-viejo', x: 540, y: 220, tipo: 'FAUNA', targetSlug: 'lebude', label: 'Colmena de Lebude' },
+  { locationSlug: 'pozo-cauce-viejo', x: 540, y: 220, tipo: 'RECURSO', targetSlug: 'colmena-lebude', label: 'Colmena de Lebude' },
   { locationSlug: 'pozo-cauce-viejo', x: 300, y: 440, tipo: 'FAUNA', targetSlug: 'escorante', label: 'Escorante enterrado' },
   { locationSlug: 'pozo-cauce-viejo', x: 580, y: 460, tipo: 'RECURSO', targetSlug: 'musgo-arcilla', label: 'Musgo Arcilla' },
 
@@ -11917,11 +11965,9 @@ export const zonePoints: ZonePointInput[] = [
   // de arena "presente en cualquier zona arenosa", sin homeLocationSlug fijo) completa el terreno
   // árido sin forzar ninguna especie con ancla propia en otro sitio.
   { locationSlug: 'restos-de-maktor', x: 380, y: 260, tipo: 'RECURSO', targetSlug: 'restos-personales-maktor', label: 'Restos personales entre los cimientos' },
-  { locationSlug: 'restos-de-maktor', x: 560, y: 420, tipo: 'FAUNA', targetSlug: 'ruptidar', label: 'Ruptidar bajo la arena' },
 
   // Los Túmulos del Honor — Ofrendas tiene homeLocationSlug directo. Mismo criterio de Ruptidar
   // que Restos de Maktor (terreno árido, sin ancla propia en otra Location).
-  { locationSlug: 'tumulos-del-honor', x: 240, y: 440, tipo: 'FAUNA', targetSlug: 'ruptidar', label: 'Ruptidar bajo la arena' },
 
   // El Oasis de Chudos Rojos — sin fauna/recurso propio con homeLocationSlug fijo aquí; match por
   // terreno (humedo/vegetacion) con especies/plantas sin ancla en otra Location. Bulbo del Cauce y
@@ -11983,18 +12029,15 @@ export const zonePoints: ZonePointInput[] = [
   // Las Dunas Ahogadas — ruinas del Reino Nabierus bajo la arena; Arena Imán (arido, sin ancla
   // previa) y Ruptidar (arido, "cualquier zona arenosa") son los matches de terreno disponibles.
   { locationSlug: 'dunas-ahogadas', x: 340, y: 260, tipo: 'RECURSO', targetSlug: 'arena-iman', label: 'Arena Imán entre las dunas' },
-  { locationSlug: 'dunas-ahogadas', x: 540, y: 420, tipo: 'FAUNA', targetSlug: 'ruptidar', label: 'Ruptidar bajo la arena' },
 
   // El Vientre del Engaño — hondonada seca y estéril "donde nada crece"; se deja deliberadamente
   // con solo 2 puntos de terreno árido genérico (Ruptidar, Salvia del Polvo), sin forzar más
   // variedad que contradiga la propia description ("nada crece").
-  { locationSlug: 'vientre-del-engano', x: 380, y: 280, tipo: 'FAUNA', targetSlug: 'ruptidar', label: 'Ruptidar bajo la arena' },
   { locationSlug: 'vientre-del-engano', x: 560, y: 440, tipo: 'RECURSO', targetSlug: 'salvia-del-polvo', label: 'Salvia del Polvo en la sombra' },
 
   // El Laberinto de Cañones — badlands de arcilla árida/rocosa sin fauna/recurso propio anclado;
   // Flor de Ceniza (rocoso) y Ruptidar (arido) son los matches de terreno disponibles.
   { locationSlug: 'laberinto-de-canones', x: 320, y: 260, tipo: 'RECURSO', targetSlug: 'flor-de-ceniza', label: 'Flor de Ceniza en la sombra del cañón' },
-  { locationSlug: 'laberinto-de-canones', x: 540, y: 420, tipo: 'FAUNA', targetSlug: 'ruptidar', label: 'Ruptidar bajo la arena' },
 
   // Las Fumarolas Negras — más hostil que El Filo de las Brasas; Fercaneo tiene match textual
   // directo en su propia description ("más probable en Las Fumarolas Negras"). Raíz de Fuego
@@ -12033,7 +12076,6 @@ export const zonePoints: ZonePointInput[] = [
 
   // El Campo Yermo — llanura de huesos viejos y metal oxidado sin fauna/recurso propio anclado; un
   // único match de terreno árido (Ruptidar), coherente con "nadie ha reclamado nunca del todo".
-  { locationSlug: 'campo-yermo', x: 400, y: 300, tipo: 'FAUNA', targetSlug: 'ruptidar', label: 'Ruptidar entre los restos oxidados' },
 
   // ══════════════════════════════════════════════════════════════════════════
   // Ampliación 2026-09-28 — Fase 3 del plan "lo que funciona por zona se hace desde la zona"

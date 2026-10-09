@@ -4,6 +4,7 @@ import { minutosConDestreza, bandaForMinutos, type TravelResolution } from './tr
 import { pickAmbientEncounterCandidate, type AmbientEncounterCandidate } from './npcScene.js';
 import { stripRegionArticle } from './population.js';
 import { npcVivoEnPartida, poblacionDeCatalogo, type FiltroPoblacion } from './mundoPartida.js';
+import { FAUNA_AMBIENTAL } from '../scripts/worldCatalog.js';
 
 /// Eventos de viaje interactivos (2026-08-05, petición explícita: "que las esperas entre los
 /// movimientos de zonas sean más dinámicas"). Un viaje "extendida"/"larga" se resolvía siempre de
@@ -67,8 +68,9 @@ export async function pickTravelInterruption(
   if (travel.pathIds.length < 3) return null;
 
   const itinerantNpcs = await prisma.npc.findMany({
-    // CR-7: con la población de una partida, también fuera los muertos en ella.
-    where: { worldId, kind: 'PLANTILLA', homeLocationSlug: null, ...('saveId' in poblacion && poblacion.saveId ? npcVivoEnPartida(poblacion.saveId) : { muertoEnMundo: false }) },
+    // CR-7: con la población de una partida, también fuera los muertos en ella. QA-27: la fauna
+    // ambiental (ver `FAUNA_AMBIENTAL`) nunca interrumpe un viaje.
+    where: { worldId, kind: 'PLANTILLA', homeLocationSlug: null, slug: { notIn: [...FAUNA_AMBIENTAL] }, ...('saveId' in poblacion && poblacion.saveId ? npcVivoEnPartida(poblacion.saveId) : { muertoEnMundo: false }) },
     select: { id: true, slug: true, name: true, role: true },
   });
   if (itinerantNpcs.length === 0) return null;

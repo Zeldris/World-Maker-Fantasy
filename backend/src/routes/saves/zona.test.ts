@@ -25,7 +25,7 @@ const findManyDroppedItem = vi.fn();
 const findManyDiscoveredEntity = vi.fn();
 const DISCOVERED_BY_DEFAULT = [
   { entityType: 'fauna', entitySlug: 'kirelon-arenoso' },
-  { entityType: 'fauna', entitySlug: 'gesgurio' },
+  { entityType: 'fauna', entitySlug: 'escorante' },
   { entityType: 'flora', entitySlug: 'yerreo' },
   { entityType: 'npc', entitySlug: 'gistera-koh' },
 ];
@@ -205,7 +205,7 @@ describe('GET /saves/:id/zona', () => {
         zonePoints: [
           { id: 'zp1', x: 620, y: 180, tipo: 'FAUNA', targetSlug: 'kirelon-arenoso', label: null, activo: true, cantidad: 1, factionSlug: null, lastUpdatedAtMinutes: 480 },
           { id: 'zp2', x: 400, y: 470, tipo: 'RECURSO', targetSlug: 'yerreo', label: null, activo: true, cantidad: 1, factionSlug: null },
-          { id: 'zp3', x: 100, y: 100, tipo: 'FAUNA', targetSlug: 'gesgurio', label: 'Etiqueta a mano', activo: true, cantidad: 3, factionSlug: null, lastUpdatedAtMinutes: 480 },
+          { id: 'zp3', x: 100, y: 100, tipo: 'FAUNA', targetSlug: 'escorante', label: 'Etiqueta a mano', activo: true, cantidad: 3, factionSlug: null, lastUpdatedAtMinutes: 480 },
         ],
       },
       // Kirelon Arenoso es fauna nocturna (`faunaMomentoDelDia`, worldCatalog.ts) — 1320 = 22h,
@@ -215,7 +215,7 @@ describe('GET /saves/:id/zona', () => {
     });
     findManyNpc.mockResolvedValueOnce([
       { slug: 'kirelon-arenoso', name: 'Kirelon Arenoso' },
-      { slug: 'gesgurio', name: 'Gesgurio' },
+      { slug: 'escorante', name: 'Escorante' },
     ]);
     loadSessionFactsMock.mockResolvedValueOnce([]);
     detectNpcsInSceneMock.mockResolvedValueOnce([]);
@@ -234,7 +234,7 @@ describe('GET /saves/:id/zona', () => {
       // RECURSO nunca tiene facción por diseño (2026-09-09) — INERTE (gris), no SIN_FACCION
       // (naranja, reservado a NPC/FAUNA/EDIFICIO independientes) — ver zonePointColorFor.
       { id: 'zp2', x: 400, y: 470, tipo: 'RECURSO', targetSlug: 'yerreo', nombre: expect.any(String), cantidad: 1, color: 'INERTE', descubierto: true, hostil: false, agotado: false },
-      { id: 'zp3', x: 100, y: 100, tipo: 'FAUNA', targetSlug: 'gesgurio', nombre: 'Etiqueta a mano', cantidad: 3, color: 'SIN_FACCION', descubierto: true, hostil: false }, // label manda sobre el nombre real
+      { id: 'zp3', x: 100, y: 100, tipo: 'FAUNA', targetSlug: 'escorante', nombre: 'Etiqueta a mano', cantidad: 3, color: 'SIN_FACCION', descubierto: true, hostil: false }, // label manda sobre el nombre real
     ]);
     expect(body.dinamicos).toEqual([]);
   });

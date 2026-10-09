@@ -110,7 +110,7 @@ describe('Grupos de fauna reales (GET /zona, POST /zona/mover)', () => {
     });
   });
 
-  it('GET /zona sobre un único ZonePoint FAUNA ancla + población regional real reparte en varios puntos cuya suma es el objetivo, cada uno ≤4', async () => {
+  it('GET /zona sobre un único ZonePoint FAUNA ancla + población regional real reparte en varios puntos cuya suma es el objetivo, cada uno ≤6 con 2-3 sueltos (QA-27)', async () => {
     // Único punto de catálogo, sin repartir todavía (`lastUpdatedAtMinutes: null` — el mismo estado
     // que sembraba el catálogo antes de esta pieza, ×1 en vez de ×20 porque el valor exacto no
     // importa: el primer reparto ignora `cantidad` y usa la población regional real).
@@ -128,7 +128,9 @@ describe('Grupos de fauna reales (GET /zona, POST /zona/mover)', () => {
     expect(puntosFauna.length).toBeGreaterThan(1);
     const total = puntosFauna.reduce((suma: number, p: { cantidad: number }) => suma + p.cantidad, 0);
     expect(total).toBe(12);
-    for (const p of puntosFauna) expect(p.cantidad).toBeLessThanOrEqual(4);
+    for (const p of puntosFauna) expect(p.cantidad).toBeLessThanOrEqual(6);
+    const sueltos = puntosFauna.filter((p: { cantidad: number }) => p.cantidad === 1).length;
+    expect(sueltos === 2 || sueltos === 3).toBe(true);
 
     // Persistido de verdad — una segunda lectura no vuelve a repartir desde cero (todas las filas
     // ya tienen `lastUpdatedAtMinutes`, `primerReparto` ya no aplica).
@@ -167,7 +169,7 @@ describe('Grupos de fauna reales (GET /zona, POST /zona/mover)', () => {
     const puntoColisionado = await prisma.zonePoint.findUniqueOrThrow({ where: { id: body.dynamicModeOffer.zonePointId } });
     expect(body.dynamicModeOffer.cantidad).toBe(puntoColisionado.cantidad);
     expect(puntoColisionado.cantidad).toBeGreaterThanOrEqual(1);
-    expect(puntoColisionado.cantidad).toBeLessThanOrEqual(4);
+    expect(puntoColisionado.cantidad).toBeLessThanOrEqual(6);
 
     const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(saveAfter.pendingDynamicModeOffer).toMatchObject({ zonePointId: body.dynamicModeOffer.zonePointId, cantidad: puntoColisionado.cantidad });

@@ -49,3 +49,12 @@ Al añadir una cifra provisional nueva, se apunta aquí en el mismo commit (QA-2
 | Goirnos para subir a Muro / Muralla | 120 / 300 | `COSTE_REFUERZO_FACCION`, `defensaFacciones.ts` |
 | Tributo: Goirnos por vez y presión que baja | 100 · −10 | `GOIRNOS_POR_TRIBUTO`, `guerraReino.ts`; `TRIBUTO`, `factionRelations.ts` |
 | Tributos de golpe | 5 | `MAX_TRIBUTOS`, `guerraReino.ts` |
+
+## Fauna en el mapa (`QA-27`, 2026-10-09)
+
+| Qué | Valor | Dónde |
+|---|---|---|
+| Tamaño máximo de un grupo de fauna | 6 | `TAMANO_MAXIMO_GRUPO`, `zonaPosicion.ts` |
+| Individuos sueltos por especie y zona | 2 o 3 | `repartirEnGrupos`, `zonaPosicion.ts` |
+| Diminuta (fauna ambiental sin más) | ≤ 20 cm: Lebude y Gesgurio | `FAUNA_DIMINUTA`, `worldCatalog.ts` |
+| Población de Colmena de Lebude, Pared de arcilla y Fango de los Quios | 30 (máx. 60) | `worldPopulation.ts` |

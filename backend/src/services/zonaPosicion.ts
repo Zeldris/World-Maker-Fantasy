@@ -429,37 +429,33 @@ export function siguienteCeldaEnRuta(ruta: Celda[], pasoRuta: number): { celda: 
 }
 
 /// Reparto de una población regional (YA topada a `CANTIDAD_MAX_POR_PUNTO`, zonePoints.ts) en
-/// grupos de tamaño variado — decisión explícita de la usuaria: "20 corredores... varios grupos de
-/// 4, varios de 2, algunos individuales... ofreciendo todos los rangos siempre dentro de lo
-/// posible", no un único tamaño típico con ruido alrededor. Capas descendentes desde
-/// `TAMANO_MAXIMO_GRUPO` (4) hasta 1, con 1-2 grupos por capa mientras quede población que
-/// repartir — da variedad real (parejas/tríos/sueltos/grupo grande, todos presentes a la vez) sin
-/// necesitar una tabla de umbrales a mano. Validado contra números reales (2026-09-08):
-/// total=20→[4,4,3,3,2,1,1,1,1]; total=12→[4,4,3,1]; total=8→[4,4]; total=5→[4,1];
-/// total=1-3→un solo grupo suelto. `random` inyectable para tests.
-const TAMANO_MAXIMO_GRUPO = 4;
+/// grupos — QA-27 (2026-10-09, la usuaria tras jugar: «las zonas están súper pobladas y cuesta
+/// moverse… menos grupos, más grandes… priorizar sobre todo dejar siempre 2 o 3 individuales»).
+/// Sustituye al reparto en capas de 4 a 1 (2026-09-08), que con 20 individuos daba 8-14 puntos
+/// por especie. Ahora: 2-3 individuos sueltos (el cazador en solitario siempre tiene presa a su
+/// medida) y el resto en los menos grupos posibles de hasta `TAMANO_MAXIMO_GRUPO`, de tamaño
+/// parecido entre sí. Con 20: 5-6 puntos. X4 marca el camino: el mapa enseña flotas, no naves
+/// sueltas. `sueltos` fija cuántos individuos quedan sueltos (para respetar los que ya hay al
+/// reconciliar); si no, se elige 2 o 3 con `random`.
+export const TAMANO_MAXIMO_GRUPO = 6;
 
-export function repartirEnGrupos(poblacionTotal: number, random: () => number = Math.random): number[] {
+export function repartirEnGrupos(poblacionTotal: number, random: () => number = Math.random, sueltos?: number): number[] {
   if (poblacionTotal <= 0) return [];
+  let solos = Math.min(poblacionTotal, sueltos ?? (random() < 0.5 ? 2 : 3));
+  let resto = poblacionTotal - solos;
+  // Un resto de 1 no hace grupo: o se queda suelto (si caben 3 sueltos) o se junta con uno suelto.
+  if (resto === 1) {
+    if (solos < 3) { solos += 1; resto = 0; }
+    else { solos -= 1; resto = 2; }
+  }
   const grupos: number[] = [];
-  let restante = poblacionTotal;
-  let tamano = Math.min(TAMANO_MAXIMO_GRUPO, restante);
-  while (restante > 0 && tamano >= 1) {
-    const gruposEnEstaCapa = random() < 0.5 ? 1 : 2;
-    for (let i = 0; i < gruposEnEstaCapa && restante > 0; i++) {
-      const tamanoGrupo = Math.min(tamano, restante);
-      grupos.push(tamanoGrupo);
-      restante -= tamanoGrupo;
-    }
-    tamano -= 1;
+  if (resto > 0) {
+    const cuantos = Math.ceil(resto / TAMANO_MAXIMO_GRUPO);
+    const base = Math.floor(resto / cuantos);
+    const conUnoMas = resto % cuantos;
+    for (let i = 0; i < cuantos; i++) grupos.push(base + (i < conUnoMas ? 1 : 0));
   }
-  // Agotadas las capas de TAMANO_MAXIMO_GRUPO..1, cualquier resto (posible si `random` eligió 1
-  // grupo por capa en vez de 2) se reparte en unidades sueltas — nunca se pierde población sin
-  // asignar a ningún grupo.
-  while (restante > 0) {
-    grupos.push(1);
-    restante -= 1;
-  }
+  for (let i = 0; i < solos; i++) grupos.push(1);
   return grupos;
 }
 

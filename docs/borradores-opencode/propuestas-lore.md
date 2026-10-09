@@ -183,6 +183,25 @@ valores propios (tabla a mano)?
 
 ## Categoría: Fauna y flora
 
+### 2026-10-09 — Fauna ambiental y sus fuentes de recurso (QA-27)
+**Estado: SIN REVISAR** (la usuaria, jugando: la fauna muy pequeña no combate ni aparece como punto
+en el mapa). Lebude, Gesgurio, Quio y la fauna sin habilidades (Ruptidar…) pasan a ser ambientales.
+Lo que daban al cazarlos sale ahora de tres fuentes nuevas, descritas con lo que ya dice el lore:
+- **Colmena de Lebude** (El Pozo de Cauce Viejo): Cera y Miel Lebude.
+- **Pared de arcilla de los Gesgurios** (La Hondonada del Eco): trozos de caparazón (quitina roja)
+  que quedan en las grietas.
+- **Fango de los Quios** (Los Manaderos): los Quios se sacan a mano del barro (filtro de Quio).
+
+**Preguntas para Álvaro:**
+1. ¿Valen estas tres fuentes y sus descripciones (`harvestSourceDescriptions` en `worldCatalog.ts`)?
+2. ¿La colmena debería picar al recolectar mal (merma del veneno del Lebude)?
+
+Archivos que tocaría si se aprueba: `docs/rpgtarkor/lore-mundo/regiones/llanuras-del-viento-rojo.md`
+(Lebudes, Gesgurios, Quios).
+
+---
+
+
 ### 2026-10-06 — Ganadería: etapas de los animales, quién cría qué y el oficio de ganadero (CR-55)
 **Estado: SIN REVISAR** (decisiones de la usuaria del 2026-10-06 en la ronda de `CR-55`; las cifras
 son de Claude y provisionales)

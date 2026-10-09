@@ -54,7 +54,7 @@ import { capturaEnInventarioExpiro, lastAtMinutesForGanancia, comidaPct, aguaPct
 import { ownRacialAdvantageFor, rivalRacialDisadvantageAgainst } from './racialPassives.js';
 import { continentForRegion, oppositeContinent } from '../lib/continent.js';
 import { advanceFictionalMinutes, formatFictionalDate, entornoTemporalFor, momentoDelDiaFor, type EntornoTemporal } from './worldClock.js';
-import { faunaMomentoDelDia } from '../scripts/worldCatalog.js';
+import { faunaMomentoDelDia, FAUNA_AMBIENTAL } from '../scripts/worldCatalog.js';
 import { recalcularZonePointsDeLocation, zonePointsSummaryFor } from './zonePoints.js';
 import { decideOfertaModoDinamico, dynamicModeCandidateNameFor, COOLDOWN_MODO_DINAMICO_MINUTOS } from './dynamicMode.js';
 import { resolverTurnoJugador, resolverTurnosAutonomosHastaJugadora, fijarEleccionRondaJugador, marcaDelCapitan, type AccionJugadorCombate } from './combateMultipleOrquestacion.js';
@@ -3427,7 +3427,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // siendo lo único que importa en producción con `Math.random()` real — esto solo fija el orden
     // de iteración para que sea reproducible en pruebas.
     const itinerantCandidates = await prisma.npc.findMany({
-      where: { worldId, kind: 'PLANTILLA', homeLocationSlug: null, ...npcVivoEnPartida(saveId) },
+      // QA-27: la fauna ambiental (`FAUNA_AMBIENTAL`) no sale como encuentro.
+      where: { worldId, kind: 'PLANTILLA', homeLocationSlug: null, slug: { notIn: [...FAUNA_AMBIENTAL] }, ...npcVivoEnPartida(saveId) },
       select: { slug: true, name: true, role: true, temperamento: true, faction: true },
       orderBy: { slug: 'asc' },
     });
