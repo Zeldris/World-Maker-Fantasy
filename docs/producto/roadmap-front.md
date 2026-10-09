@@ -890,6 +890,10 @@ Retro del 2026-10-08 (`CR-63`, `CR-65`, `CR-50`, `CR-37`, `CR-67`; propuestas ap
   apunta en el mismo commit que la cifra. Motivo: decenas de cifras provisionales repartidas.
 - **QA-26 · Revisar las cifras provisionales jugando** (fase de pruebas del `0.8`): pasar por cada
   fila de [`cifras-provisionales.md`](cifras-provisionales.md), ajustar la cifra y borrar la fila.
+- **QA-27 · Ronda de pruebas jugando** (`0.3`, pedida por la usuaria el 2026-10-09; pausa el roadmap):
+  🚧 en curso. Jugar una partida como una jugadora normal en el navegador (Chromium con Playwright,
+  Ollama simulado, viajes acortados), apuntar cada bug o incoherencia en
+  [`pruebas-0.3-hallazgos.md`](../registros/pruebas-0.3-hallazgos.md) y arreglarlo con su test.
 
 ---
 
