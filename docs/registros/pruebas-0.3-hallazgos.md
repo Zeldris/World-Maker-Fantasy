@@ -32,7 +32,10 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P17 | «Me siento a la sombra junto al pozo y descanso un par de horas»: pasan 5 minutos (17:06 → 17:11) y aun así recupera 31 de energía. El reloj no respeta la duración que pide la jugadora. | pendiente (coherencia) |
 | P18 | Inventario: el Tótem Maktor sale con un pintalabios (💄); los pantalones con el mismo icono de camiseta que el arnés; la cataplasma con una pastilla (💊); hacha y cuchillo con las mismas espadas cruzadas. Las casillas no dicen cuántas unidades hay. La «Ración de carne fresca» sale como recurso, no como consumible. | pendiente (front) |
 | P19 | Reino sin fundar: el panel dice «Construye un Ayuntamiento para fundar tu reino» sin botón ni pista de dónde (está en Habilidades → Reino). En esa pestaña ya se ofrecen «Ampliar ayuntamiento a mediano/grande» sin tener ninguno. | pendiente (front) |
-| P20 | Tras talar la Telda Común (con su nombre ya en el diario y en la ficha), en el mapa y en la lista sigue como «??? ×20». | pendiente (descubrimiento que no se refresca en el mapa) |
+| P20 | Tras talar la Telda Común (con su nombre ya en el diario y en la ficha), en el mapa y en la lista sigue como «??? ×20» hasta cerrar y reabrir el mapa. | pendiente (el mapa no se refresca tras recolectar) |
 | P21 | La ficha de la Telda Común dice «Recursos: 2 Madera de Telda» y al talar sale 1. Si 2 es el máximo, hay que decirlo así. | pendiente (menor) |
-| P22 | «Volver al campamento» en Habilidades → Generales sin tener campamento propio. | pendiente — comprobar qué hace |
+| P22 | «Volver al campamento» en Habilidades → Generales sin tener campamento propio. | no aplica: avisa «Todavía no has construido ningún campamento». |
 | P23 | El panel «El mundo» solo tuvo dos entradas en un día entero de juego (amanecer y una a las 17:11). | pendiente — ver si es lo esperado del ritmo de noticias |
+| P24 | En La Hondonada del Eco (cráter árido) aparece un Guchapo «presente ahora» en el centro: un sapo de charca fuera de su sitio. | pendiente (coherencia: ¿de dónde sale?) |
+| P25 | Gistera a Gorhorn: «hazlo antes de que sea tarde para las dos» — Gorhorn es varón; debería ser «los dos» (o según el género del personaje). | pendiente (texto de la escena guionizada) |
+| P26 | Tras la escena de Gistera (que acaba «se aleja a toda velocidad»), el mapa de zona sigue mostrándola en su sitio como «???», con «Te topas con Alguien» y la ruta vieja; al cerrar y reabrir ya no está y aparece el siguiente NPC. | pendiente (el mapa no se refresca tras una escena) |
