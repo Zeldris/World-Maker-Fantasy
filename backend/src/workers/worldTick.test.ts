@@ -242,7 +242,7 @@ describe('startEagerTransitResolution', () => {
     // POST /saves/:id/transit/cancel vea que esto ya se está resolviendo de verdad.
     expect(updateMany).toHaveBeenCalledWith({
       where: { id: 't1', narrationClaimedAt: null },
-      data: { narrationClaimedAt: expect.any(Date), zoneContext: expect.objectContaining({ action: 'seguir caminando', claimedAt: expect.any(String) }) },
+      data: { narrationClaimedAt: expect.any(Date), zoneContext: expect.objectContaining({ action: 'seguir caminando', claimedAt: expect.any(String), adelantada: true }) },
     });
     expect(narrateAndPersistTurn).toHaveBeenCalledWith(expect.objectContaining({ transitIdToFinalize: 't1', notBefore }));
   });

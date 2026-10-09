@@ -20,6 +20,8 @@ interface UseTransitPollingParams {
 /// "Cancelar acción") y `nowTick` (reloj de cuenta atrás local, sin request).
 export function useTransitPolling({ saveId, busyUntil, syncFromSave }: UseTransitPollingParams) {
   const [cancelingTransit, setCancelingTransit] = useState(false)
+  // QA-27: motivo de un cancelar fallido (p. ej. ya estaba llegando), visible junto al botón.
+  const [errorCancelar, setErrorCancelar] = useState<string | null>(null)
   const [nowTick, setNowTick] = useState(() => Date.now())
 
   // Mientras el personaje está en una acción por tiempo (extendida/larga), sondea la partida
@@ -59,6 +61,9 @@ export function useTransitPolling({ saveId, busyUntil, syncFromSave }: UseTransi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saveId, busyUntil])
 
+  // Un aviso de cancelar fallido es de la acción de entonces; con otra acción (o ninguna), fuera.
+  useEffect(() => setErrorCancelar(null), [busyUntil])
+
   // Reloj de la cuenta atrás (roadmap 2026-07-20): solo aritmética local, ningún request — el
   // sondeo real que confirma la resolución sigue siendo el de 30s de arriba.
   useEffect(() => {
@@ -70,16 +75,19 @@ export function useTransitPolling({ saveId, busyUntil, syncFromSave }: UseTransi
   async function handleCancelTransit() {
     if (!saveId || cancelingTransit) return
     setCancelingTransit(true)
+    setErrorCancelar(null)
     try {
       await cancelTransit(saveId)
       const save = await getSave(saveId)
       syncFromSave(save)
-    } catch {
-      // Si falla (p. ej. ya se resolvió justo antes), el sondeo de 30s ya en marcha lo reflejará.
+    } catch (err) {
+      // Si falla (p. ej. ya se resolvió justo antes), el sondeo de 30s ya en marcha lo reflejará;
+      // el motivo se enseña para que el botón no parezca no hacer nada.
+      setErrorCancelar(err instanceof Error ? err.message : 'No se pudo cancelar.')
     } finally {
       setCancelingTransit(false)
     }
   }
 
-  return { cancelingTransit, nowTick, handleCancelTransit }
+  return { cancelingTransit, errorCancelar, nowTick, handleCancelTransit }
 }

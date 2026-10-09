@@ -1398,7 +1398,7 @@ export function useGameViewState() {
   // Bloque de transit/busy (deuda técnica 2026-08-21) — ver src/hooks/useTransitPolling.ts.
   // `busyUntil`/`busyActivity`/`busyDuracionMinutos` los siguen escribiendo `syncFromSave`
   // (arriba) y `handleSubmit` (abajo, en el catch de `isBusyError`), fuera del hook.
-  const { cancelingTransit, nowTick, handleCancelTransit } = useTransitPolling({ saveId, busyUntil, syncFromSave })
+  const { cancelingTransit, errorCancelar, nowTick, handleCancelTransit } = useTransitPolling({ saveId, busyUntil, syncFromSave })
 
   // Salir a tus partidas (menú de pausa, CFG-3). Bug real (2026-09-04): cerrar el menú antes de
   // navegar, si no quedaba montado por encima de la vista nueva. Bug real (2026-07-24): volver a
@@ -1816,6 +1816,7 @@ export function useGameViewState() {
     handleOpenEnciclopediaClasses,
     handleSpendAttributePoint,
     cancelingTransit,
+    errorCancelar,
     nowTick,
     handleCancelTransit,
     salirAPartidas,

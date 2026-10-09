@@ -895,9 +895,9 @@ Retro del 2026-10-08 (`CR-63`, `CR-65`, `CR-50`, `CR-37`, `CR-67`; propuestas ap
   Ollama simulado, viajes acortados), apuntar cada bug o incoherencia en
   [`pruebas-0.3-hallazgos.md`](../registros/pruebas-0.3-hallazgos.md) y arreglarlo con su test.
   Hecho (2026-10-09): P1 (zonas saturadas: 2-3 sueltos y grupos de hasta 6), P2 (fauna ambiental
-  fuera del mapa, con Colmena de Lebude, Pared de arcilla y Fango de los Quios como recursos) y P3
-  (la tirada del encuentro cuenta el equipo). Falta: seguir jugando (viaje cancelado, zonas
-  interiores, Reino, combate).
+  fuera del mapa, con Colmena de Lebude, Pared de arcilla y Fango de los Quios como recursos), P3
+  (la tirada del encuentro cuenta el equipo) y P4 (cancelar un viaje). Falta: P5 (texto de respaldo
+  del narrador) y seguir jugando (zonas interiores, Reino, combate).
 
 ---
 

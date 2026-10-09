@@ -92,6 +92,7 @@ export function GameView() {
     handleSubmit,
     handleResolveDeath,
     cancelingTransit,
+    errorCancelar,
     nowTick,
     handleCancelTransit,
     composerDisabled,
@@ -207,6 +208,7 @@ export function GameView() {
           >
             {cancelingTransit ? 'Cancelando...' : 'Cancelar acción'}
           </button>
+          {errorCancelar && <span role="status" className="text-red-400">{errorCancelar}</span>}
         </div>
       )}
 

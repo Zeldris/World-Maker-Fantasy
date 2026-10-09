@@ -5011,8 +5011,15 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // cómputo (narración incluida) ya terminó en este punto; si venía adelantado a propósito, aquí
   // es donde se retiene ANTES de comprometer nada en BD, nunca antes de narrar.
   if (notBefore) {
-    const waitMs = notBefore.getTime() - Date.now();
-    if (waitMs > 0) await new Promise((resolve) => setTimeout(resolve, waitMs));
+    // QA-27 (2026-10-09): la espera mira cada segundo si la jugadora canceló el viaje (la fila ya no
+    // está); si es así, aborta ya y suelta el candado de turno, en vez de bloquear su siguiente
+    // acción hasta la hora de llegada de un viaje que no va a ocurrir.
+    while (Date.now() < notBefore.getTime()) {
+      await new Promise((resolve) => setTimeout(resolve, Math.min(1000, notBefore.getTime() - Date.now())));
+      if (transitIdToFinalize && !(await prisma.characterTransit.findUnique({ where: { id: transitIdToFinalize }, select: { id: true } }))) {
+        throw new TransitCancelledError();
+      }
+    }
   }
   try {
     transactionResult = await prisma.$transaction(async (tx) => {

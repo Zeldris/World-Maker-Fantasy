@@ -39,6 +39,11 @@ interface TransitZoneContext {
   /// `TransitCancelledError`), pero sí con una narración ya generada tirada a la basura y un
   /// LogEntry falso de "cambia de idea antes de empezar" para una acción que ya había arrancado.
   claimedAt?: string;
+  /// QA-27 (2026-10-09, jugando: «cancelar un viaje no va»): el reclamo es de la vía anticipada
+  /// (`startEagerTransitResolution`), que no guarda nada hasta `busyUntil`. Cancelar sigue
+  /// permitido mientras no llegue esa hora: la narración precalculada se desecha y el commit aborta
+  /// limpio (`TransitCancelledError`). Sin esto, un viaje nunca se podía cancelar.
+  adelantada?: boolean;
 }
 
 /// Worker local del reloj de mundo (decisiones técnicas 3 y 4 en docs/arquitectura/04-decisiones-tecnicas.md).
@@ -261,7 +266,7 @@ export async function startEagerTransitResolution(transitId: string, notBefore: 
   // propio POST que la creó) — nada que resolver.
   if (!found) return;
 
-  const claimedZoneContext = { ...(found.zoneContext as object), claimedAt: new Date().toISOString() };
+  const claimedZoneContext = { ...(found.zoneContext as object), claimedAt: new Date().toISOString(), adelantada: true };
   const claim = await prisma.characterTransit.updateMany({
     where: { id: transitId, narrationClaimedAt: null },
     data: { narrationClaimedAt: new Date(), zoneContext: claimedZoneContext },
