@@ -5996,6 +5996,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
             data: {
               worldId,
               slug: cuartelLocationSlug,
+              saveId,
               name: `Puesto de ${playerFaction?.name ?? characterName}`,
               region: activeRegion ?? '',
               kind: 'interior',

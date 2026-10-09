@@ -15,6 +15,7 @@
 // Los puntos de zona se retiran al cumplirse el plazo (`OPORTUNIDAD_CIERRA`); si nadie va, la
 // oportunidad se pierde sin más. Quien hace de caído, herido, guardia o encargado es un NPC PLANTILLA
 // de esa facción (hoy solo Serhu, Helsig y la Concordia tienen): sin plantilla no hay oportunidad.
+import { lugaresVisibles } from '../mundoPartida.js';
 import type { Prisma } from '@prisma/client';
 import { applyFactionRepDelta, parseFactionsStatus, REGION_OWNING_FACTIONS } from '../reputation.js';
 import { LIENZO_ALTO, LIENZO_ANCHO } from '../zonaPosicion.js';
@@ -60,10 +61,10 @@ async function plantillasDe(tx: Tx, worldId: string, faccion: string) {
 }
 
 /// Un lugar de una región donde la facción tiene tierras (`REGION_OWNING_FACTIONS`).
-async function lugarDe(tx: Tx, worldId: string, faccion: string, random: () => number) {
+async function lugarDe(tx: Tx, worldId: string, saveId: string, faccion: string, random: () => number) {
   const regiones = Object.entries(REGION_OWNING_FACTIONS).filter(([, duenas]) => duenas.includes(faccion)).map(([r]) => r);
   if (regiones.length === 0) return null;
-  const lugares = await tx.location.findMany({ where: { worldId, region: { in: regiones } }, select: { id: true, name: true, region: true }, orderBy: { slug: 'asc' } });
+  const lugares = await tx.location.findMany({ where: { worldId, region: { in: regiones }, ...lugaresVisibles(saveId) }, select: { id: true, name: true, region: true }, orderBy: { slug: 'asc' } });
   return elegir(lugares, random);
 }
 
@@ -104,7 +105,7 @@ export async function abrirCampoDeBatalla(ctx: CtxOportunidad, atacante: string,
   const [deA, deB] = await Promise.all([plantillasDe(ctx.tx, ctx.worldId, atacante), plantillasDe(ctx.tx, ctx.worldId, atacada)]);
   const caido = elegir(deB, ctx.random) ?? elegir(deA, ctx.random);
   const herido = elegir(deA.filter((n) => n.id !== caido?.id), ctx.random) ?? elegir(deB.filter((n) => n.id !== caido?.id), ctx.random);
-  const lugar = (await lugarDe(ctx.tx, ctx.worldId, atacada, ctx.random)) ?? (await lugarDe(ctx.tx, ctx.worldId, atacante, ctx.random));
+  const lugar = (await lugarDe(ctx.tx, ctx.worldId, ctx.saveId, atacada, ctx.random)) ?? (await lugarDe(ctx.tx, ctx.worldId, ctx.saveId, atacante, ctx.random));
   if (!caido || !herido || !lugar) return null;
   const puntos = [await ponerNpc(ctx, caido, lugar.id, 'MUERTO'), await ponerNpc(ctx, herido, lugar.id, 'GRAVE')];
   await cerrarEn(ctx, PLAZO_CAMPO_BATALLA, puntos);
@@ -115,7 +116,7 @@ export async function abrirCampoDeBatalla(ctx: CtxOportunidad, atacante: string,
 export async function abrirCaravana(ctx: CtxOportunidad, desde: string, hacia: string): Promise<OportunidadAbierta | null> {
   for (const faccion of [desde, hacia]) {
     const guardia = elegir(await plantillasDe(ctx.tx, ctx.worldId, faccion), ctx.random);
-    const lugar = await lugarDe(ctx.tx, ctx.worldId, faccion, ctx.random);
+    const lugar = await lugarDe(ctx.tx, ctx.worldId, ctx.saveId, faccion, ctx.random);
     if (!guardia || !lugar) continue;
     const punto = await ponerNpc(ctx, guardia, lugar.id, 'ILESO', `Caravana de ${faccion}`);
     await aplicarEfecto(ctxEfecto(ctx), {

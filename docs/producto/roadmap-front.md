@@ -899,8 +899,9 @@ Retro del 2026-10-08 (`CR-63`, `CR-65`, `CR-50`, `CR-37`, `CR-67`; propuestas ap
   (la tirada del encuentro cuenta el equipo), P4 (cancelar un viaje), P6 (salir por la salida en la
   que estás), P7 (entrar y salir de las zonas interiores) y P8 (avisos del mapa visibles); P5 no
   aplica (era el Ollama simulado).
-  P43 (interiores de otras partidas en Viajar) arreglado; P9-P45 apuntados en el registro sin
-  arreglar (la usuaria: solo lo que bloquee). Falta: seguir jugando y repasar los apuntados con ella.
+  P43 y P44 (interiores de otras partidas: `Location.saveId`) arreglados; el resto de P9-P51,
+  apuntados en el registro sin arreglar (la usuaria: solo lo que bloquee). Falta: seguir jugando y
+  repasar los apuntados con ella.
 
 ---
 
