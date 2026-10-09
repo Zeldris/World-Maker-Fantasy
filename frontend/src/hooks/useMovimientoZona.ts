@@ -105,6 +105,19 @@ export function useMovimientoZona({ saveId, setData, bloqueoMovimiento = null, o
           // ZON-32: la hora avanza con cada paso (para la hora de llegada de la ruta prevista).
           return { ...prev, jugador: resultado.jugador, puntos, ...(resultado.fictionalMinutes != null ? { fictionalMinutes: resultado.fictionalMinutes } : {}) }
         })
+        // QA-27 (P8, 2026-10-09, jugando): un aviso del backend sin encuentro (p. ej. «ve Colmena
+        // de Lebude cerca, pero todavía no sabe aprovecharlo…») solo iba al diario, detrás del mapa
+        // abierto: «Acercarte» parecía no hacer nada. Se enseña en el mapa y entra en el diario.
+        if (resultado.logEntry && !resultado.colision && !resultado.dynamicModeOffer) {
+          setMensajeMovimiento(resultado.logEntry.text)
+          onEncuentroZona?.({
+            id: resultado.logEntry.id,
+            channel: 'character',
+            text: resultado.logEntry.text,
+            timeLabel: resultado.logEntry.timeLabel,
+            createdAt: resultado.logEntry.createdAt,
+          })
+        }
         if (resultado.colision) {
           setMensajeMovimiento(`Te topas con ${resultado.colision.targetName}.`)
           // Conexión real con Interactuar (2026-09-09) — la colisión con un NPC/fauna no agresivo
