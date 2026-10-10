@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "playwright": {
-      "command": "npx",
-      "args": ["-y", "@playwright/mcp@latest"]
+      "command": "bash",
+      "args": ["tools/pruebas/playwright-mcp.sh"]
     }
   }
 }

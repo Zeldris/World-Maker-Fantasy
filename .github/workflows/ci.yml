@@ -5,7 +5,7 @@ name: CI
 #
 # Hito 0.1, fase A (2026-09-29): el backend tiene además tests de integración con Postgres REAL
 # (proyecto `bd-real` de Vitest, `*.integration.test.ts`), y la CI llevaba en rojo desde entonces
-# ("Can't reach database server at localhost:5432"). Ahora el job levanta Postgres 16 con pgvector,
+# ("Can't reach database server at localhost:5432"). Ahora el job levanta Postgres 16 con pgvector (el del runner, QA-28),
 # aplica las migraciones, siembra el catálogo del mundo y arranca el Ollama simulado del repo
 # (`tools/ci/mock-ollama.mjs`), igual que el entorno de pruebas local.
 on:
@@ -23,30 +23,29 @@ jobs:
       - run: python3 tools/roadmap/cobertura.py
 
   backend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # QA-28: trae Postgres 16
     defaults:
       run:
         working-directory: backend
-    services:
-      postgres:
-        image: pgvector/pgvector:pg16
-        env:
-          POSTGRES_USER: tarkor
-          POSTGRES_PASSWORD: tarkor
-          POSTGRES_DB: tarkor
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U tarkor"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 20
     env:
       DATABASE_URL: 'postgresql://tarkor:tarkor@localhost:5432/tarkor'
       DIRECT_URL: 'postgresql://tarkor:tarkor@localhost:5432/tarkor'
       OLLAMA_BASE_URL: 'http://localhost:11434'
     steps:
       - uses: actions/checkout@v4
+      # QA-28 (retro del 2026-10-09): Postgres del propio runner (ubuntu trae el 16) con pgvector por
+      # apt, en vez de la imagen de Docker Hub, que sin cuenta topaba con el límite de descargas y
+      # dejaba el job en rojo sin llegar a ejecutar un test (PR #36).
+      - name: Postgres 16 con pgvector
+        working-directory: .
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q postgresql-16-pgvector
+          sudo systemctl start postgresql.service
+          sudo -u postgres psql -c "CREATE USER tarkor WITH PASSWORD 'tarkor' SUPERUSER;"
+          sudo -u postgres createdb -O tarkor tarkor
+          for i in $(seq 1 20); do pg_isready -h localhost -U tarkor && exit 0; sleep 1; done
+          echo "Postgres no arrancó" && exit 1
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
