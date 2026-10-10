@@ -1,0 +1,12 @@
+import { chromium } from 'playwright';
+const SAVE_ID = 'cmtegz0b4001qrieti2l0z1iu';
+const browser = await chromium.launch();
+const context = await browser.newContext();
+const page = await context.newPage();
+await page.goto(`http://localhost:5173/solitario/partida/${SAVE_ID}`);
+await page.waitForTimeout(2500);
+await page.screenshot({ path: 'screenshots/verif11_check_fresco.png', fullPage: true });
+const bodyText = await page.locator('body').innerText();
+console.log(bodyText.slice(-2500));
+await browser.close();
+console.log('OK');

@@ -1,0 +1,11 @@
+import { chromium } from 'playwright';
+const SAVE_ID = 'cmtegylxo0001rietdx8zyloy';
+const browser = await chromium.launch();
+const context = await browser.newContext();
+const page = await context.newPage();
+await page.goto(`http://localhost:5173/solitario/partida/${SAVE_ID}`);
+await page.waitForTimeout(3000);
+const bodyText = await page.locator('body').innerText();
+const idx = bodyText.indexOf('golpe directo a matar');
+console.log(bodyText.slice(idx, idx + 2000));
+await browser.close();

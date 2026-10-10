@@ -1,0 +1,29 @@
+import { chromium } from 'playwright';
+
+const SAVE_ID = 'cmthqlk1g0003rizq9adq0py2';
+
+const browser = await chromium.launch();
+const page = await browser.newPage();
+
+page.on('response', async (res) => {
+  if (res.url().includes('/turn/')) {
+    console.log(res.request().method(), res.url(), '->', res.status());
+    try { console.log((await res.text()).slice(0, 500)); } catch (e) {}
+  }
+});
+
+await page.goto(`http://localhost:5173/solitario/partida/${SAVE_ID}`);
+await page.waitForTimeout(3000);
+
+const composer = page.locator('[contenteditable="true"]').first();
+await composer.click();
+await composer.fill('Observo el entorno con calma.');
+await page.waitForTimeout(500);
+
+const actuarBtn = page.getByRole('button', { name: /^actuar$/i }).last();
+console.log('Actuar disabled:', await actuarBtn.isDisabled());
+await actuarBtn.click();
+console.log('Turno enviado tras el reinicio con el fix real.');
+await page.waitForTimeout(3000);
+
+await browser.close();

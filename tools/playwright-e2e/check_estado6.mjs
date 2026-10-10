@@ -1,0 +1,12 @@
+import { chromium } from 'playwright';
+const SAVE_URL = 'http://localhost:5173/solitario/partida/cmtrge1j60001ri8x9ryt045s';
+const browser = await chromium.launch({ headless: true });
+const page = await browser.newPage();
+await page.goto(SAVE_URL);
+await page.waitForTimeout(3000);
+await page.screenshot({ path: 'screenshots/check_estado6.png' });
+const composerCount = await page.locator('input[placeholder="¿Qué hace tu personaje?"]').count();
+console.log('Composer normal encontrado:', composerCount);
+const bodyText = await page.locator('body').innerText();
+console.log('Primeros 300 caracteres del body:', bodyText.slice(0, 300));
+await browser.close();
