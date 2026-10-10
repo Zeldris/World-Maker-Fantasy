@@ -34,10 +34,14 @@ if [ "$nueva" = 1 ]; then
 fi
 
 mkdir -p logs
-pkill -f "tsx src/server.ts" 2>/dev/null || true
-(cd backend && nohup npx tsx src/server.ts > ../logs/backend.log 2>&1 &)
+# QA-34: se para el backend anterior por su PID (o por el puerto 3001), nunca con `pkill -f`: ese
+# patrón también casa con la orden de quien lanza este script si lleva el texto, y se mata a sí mismo.
+if [ -s logs/backend.pid ]; then kill "$(cat logs/backend.pid)" 2>/dev/null || true; fi
+fuser -k 3001/tcp > /dev/null 2>&1 || true  # npx deja hijos: el que escucha en el puerto es el que cuenta
+sleep 1
+(cd backend && { setsid nohup npx tsx src/server.ts > ../logs/backend.log 2>&1 < /dev/null & echo $! > ../logs/backend.pid; }) > /dev/null 2>&1
 if ! curl -s -o /dev/null localhost:5173; then
-  (cd frontend && nohup npx vite --port 5173 --host 127.0.0.1 > ../logs/frontend.log 2>&1 &)
+  (cd frontend && setsid nohup npx vite --port 5173 --host 127.0.0.1 > ../logs/frontend.log 2>&1 < /dev/null &) > /dev/null 2>&1
 fi
 for i in $(seq 1 60); do curl -s -o /dev/null localhost:3001/ && curl -s -o /dev/null localhost:5173 && break; sleep 1; done
 echo "Juego listo: http://127.0.0.1:5173 (base $BASE, viajes $TRAVEL_SEGUNDOS_PRIMER_TRAMO/$TRAVEL_SEGUNDOS_POR_TRAMO_EXTRA/$TRAVEL_SEGUNDOS_MAXIMOS s)"
