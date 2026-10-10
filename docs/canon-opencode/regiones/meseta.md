@@ -1,11 +1,12 @@
 # REGIÓN: La Meseta del Orden
 Qué es: zonas, habitantes y huecos de la Meseta (fuera del núcleo jugable).
-Fuente: docs/rpgtarkor/lore-mundo/regiones/meseta-del-orden.md. Sincronizado: 2026-09-29.
+Fuente: docs/rpgtarkor/lore-mundo/regiones/meseta-del-orden.md. Sincronizado: 2026-10-07.
 
 ## Datos fijos
 - Posición: la región más al SUR de Berig. ~221 × 167 km.
 - Paisaje: desierto de piedra gris con una simetría antinatural (obra de Goirme); ciudades-fortaleza
-  de piedra pulida y hierro negro; acueductos perfectos; obeliscos de leyes (Vresk'ord). Sin
+  de piedra pulida y hierro negro; acueductos perfectos; obeliscos de leyes (Vresk'ord); al pie, nombres y castas de cada Goirnte, la marca de "cumplido" de
+  los muertos y las adendas de las leyes (una ley no se borra)\*. Sin
   vegetación salvo la Hierba del Hierro.
 - Habitantes: Goirntes. Dos facciones: la Concordia de Hierro (radicales) y Los del Obelisco
   (moderados).

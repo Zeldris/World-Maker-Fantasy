@@ -34,7 +34,9 @@ Orden de lectura para decidir el siguiente trabajo, de lo general a lo concreto:
    - [roadmap-front-reino.md](../producto/roadmap-front-reino.md) — `REI` (fases R-A…R-F)
    - [roadmap-cronista.md](../producto/roadmap-cronista.md) — `CR` (fases 1-8)
 5. **Lore:** propuestas pendientes de Álvaro en `docs/borradores-opencode/propuestas-lore.md` (nunca
-   editar `docs/rpgtarkor/` directamente, ver `AGENTS.md`).
+   editar `docs/rpgtarkor/` directamente, ver `AGENTS.md`). Las propuestas de OpenCode las revisa la otra
+   cuenta de Claude (rama `claude/wonderful-volta-662qt8`); la última revisión, la del 2026-10-07 (36 de
+   Cultura: fichas D-01…D-03, G-01…G-04 y O-01 en `propuestas-aprobadas.md`), ya está en `docs/rpgtarkor/` y `docs/canon-opencode/`, sin código.
 
 ## Siguientes pasos (en orden)
 

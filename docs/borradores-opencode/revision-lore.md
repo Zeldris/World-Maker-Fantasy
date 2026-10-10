@@ -3361,3 +3361,34 @@ Por qué se descartan:
 - **El Jurado del Fuego**: usa *Grath'sil* («tierra que arde», la guerra) como si fuera un rito del fuego, y presenta el fuego como un descubrimiento tardío de Hashma, cuando los Faerus lo usan desde siempre.
 - **La Tolda del Ancestro**: choca con el Jakut de Kegi (una losa de piedra roja) y con el origen de Kegi en el Pacto de la Primera Pieza (~2.300).
 - **Feg'ghep (el debate en el Jakut)**: pone votos y mayorías en el Jakut; el canon dice lo contrario: decide quien está sentado, sin votos ni cargos.
+
+## Tanda OpenCode 2026-10-06 y 10-07 — descartes (revisión del 2026-10-07)
+
+**RECHAZADAS (revisión delegada en Claude por la usuaria, 2026-10-07).** Solo se guarda el motivo,
+no el texto original. Lo que valía de la tanda está en [propuestas-aprobadas.md](propuestas-aprobadas.md)
+(D-01…D-03, G-01…G-04, O-01 y los añadidos a B-01 y C-03).
+
+- **Tabú del Inacabado**: ya es canon, palabra por palabra (`razas.md` § Goirntes); *nirgoth* es inventado.
+- **Lectura del Terreno con la Palma**: repite la escucha con la palma y el cónclave (B-01). La piel que «atrapa la luz para ver huellas» no tiene sentido.
+- **Ritual del Mensajero**: la tablilla con «códigos» rompe el *Karo'sael* (los Nabieus nunca guardan cartas), y «Concordia segundo» es anacrónico, porque llevan el correo desde El Borde (~2.100).
+- **Transmisión del Ashi'krul**: contradice C-04 y C-11: la daga pasa a quien el muerto quería, no se negocia en grupo.
+- **Primer Pieza Ritual**: repite C-02. La Tolda es para comerciar, no para ritos.
+- **Saludo del Lazo**: «exactamente 3 segundos» y *Keseg'laa* son inventados. Solo hay dos clanes, y el gesto de las palmas ya es del Pacto del Umbral.
+- **Camino de las Piedras Anual**: repite C-08 y le añade ofrendas sin base (un hacha vieja).
+- **Tabú de las Profundidades Prohibidas**: choca con los Nabieus investigadores y con el Archivo; lo de callar dónde vive el otro clan ya es el Pacto del Umbral.
+- **Sello del Rastro**: repite C-07 y el rastro de los linajes (`CR-52`).
+- **Jerarquía del Cónclave**: pone voces con más peso y a los Segadores (una clase, no un rango) por encima. El canon dice: sin gobierno, el portavoz no es líder.
+- **Nomenclatura del Clan**: da significados falsos (*Sael* es «callar», no «protector») y un cambio de nombre cada 10 años que no existe.
+- **Ceremonia de la Última Pieza**: contradice C-11 (los muertos se dejan en la selva) y el *Feg'nur*.
+- **Vork-veer**: un control semanal de simetría ante un espejo, «cada sábado». No hay semanas con nombre, y el rito no aporta nada.
+- **Kral-der**: se inventa una fisiología (enfriarse la piel por voluntad).
+- **Vesh-bril**: convierte en rito el brillo metálico, que es una señal involuntaria («se les nota pensar»).
+- **Vash'krul**: se inventa al «Juli», que decide si admitir a un joven; contradice C-02 y el Jakut.
+- **Feg'nur-veer**: deja al herido en la selva a los 3 meses: rompe el *Feg'nur* y C-09.
+- **Yugh-tel**: radicales y moderados revisando leyes cada 5 años no encaja con la Concordia, que es una cadena de mando.
+- **Oth-veil**: un espejo para comprobar que los ojos son negros; no aporta nada.
+- **Mosh'gath**: da acceso a las forjas por una prueba de agilidad, con título incluido; las castas son de nacimiento.
+- **Mharr-kul**: se inventa una «oxigenación lenta» y un grito; los Goirntes no hacen ritos de grupo de ese tipo.
+- **Vold-krul**: la Mesa del Lazo es orca (Maktor). Censor y Archimagistrada no negocian como iguales.
+- **Gramática de los Silencios, Crónicas del Fuego, Registro con Símbolos, Inicio del Lazo, Pausa de Decisión**: *(no son descartes: aprobadas con correcciones como D-01, añadido a C-03, D-02, D-03 y añadido a B-01)*
+- **Vorn-tel'goirme, Oth-krul, Gosh-krul, Fesh-kruv, Tarn-veer, Nesh-veer, Ghor-krul, Vesh-krug, Signe-krul**: *(no son descartes: fusionadas o aprobadas como G-01…G-04 y O-01)*

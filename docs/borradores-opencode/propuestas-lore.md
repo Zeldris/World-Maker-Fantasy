@@ -37,6 +37,14 @@ C-01 a C-11 (costumbres Faerus), con correcciones y cinco fusiones; 4 se descart
 sin base o tomar palabras orcas y nabieus. Las propuestas de Claude de abajo (2026-10-05 y 06)
 siguen SIN REVISAR: son para Álvaro.
 
+**Revisión del 2026-10-07** (encargada por la usuaria a Claude): las 36 propuestas de Cultura de
+OpenCode del 2026-10-06 y del 2026-10-07 se revisaron contra el canon. Quedan 9 fichas en
+[propuestas-aprobadas.md](propuestas-aprobadas.md) (D-01…D-03, G-01…G-04, O-01) y dos añadidos (a
+B-01 y C-03), con fusiones. Las 22 descartadas figuran en [revision-lore.md](revision-lore.md) solo
+con su motivo. Fallos que más se repiten: repetir el canon recién aprobado e inventar palabras
+(«-krul», «-veer»). Las propuestas de Claude (ganadería, platos de obrador…) siguen SIN REVISAR: son
+para Álvaro.
+
 ## Categoría: Facciones y diplomacia
 
 ---
