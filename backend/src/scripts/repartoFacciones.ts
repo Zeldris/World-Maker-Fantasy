@@ -1,3 +1,4 @@
+import { stripRegionArticle } from '../services/population.js';
 // Reparto de cada facción del mundo (CR-54, hito 0.3 — Fase D, decisión Q16 de la usuaria del
 // 2026-10-06, tabla en docs/producto/plan-roadmap-0.3.md). Única fuente de las cifras: de aquí
 // salen las filas `WorldPopulation` FACCION de la siembra y la re-siembra de las partidas.
@@ -37,7 +38,7 @@ export type CampoFaccion = 'poblacion' | 'soldados' | 'trabajadores' | 'visitant
 export function filasDeFaccion(r: RepartoFaccion): { campo: CampoFaccion; targetSlug: string; label: string; poblacion: number; poblacionMax: number; distribucion: Record<string, number> }[] {
   const max = (v: number) => Math.max(10, Math.ceil(v * (1 + r.holgura)));
   const fila = (campo: CampoFaccion, label: string, poblacion: number) => ({
-    campo, targetSlug: `${r.slug}-${campo}`, label: `${r.nombre} — ${label}`, poblacion, poblacionMax: max(poblacion), distribucion: { [r.region]: 1 },
+    campo, targetSlug: `${r.slug}-${campo}`, label: `${r.nombre} — ${label}`, poblacion, poblacionMax: max(poblacion), distribucion: { [stripRegionArticle(r.region)]: 1 }, // QA-33: como el resto de la población, sin artículo
   });
   return [
     fila('poblacion', 'civiles', r.civiles),

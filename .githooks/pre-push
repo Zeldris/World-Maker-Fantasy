@@ -9,7 +9,24 @@ cd "$(git rev-parse --show-toplevel)"
 echo "pre-push: tsc y lint de backend y frontend, cobertura del roadmap…"
 # El cliente de Prisma se regenera antes de tipar: tras traer un cambio de esquema (p. ej. una columna
 # nueva) el cliente viejo da errores de tipos que no son del código (pasó el 2026-10-09).
-(cd backend && npx prisma generate > /tmp/pre-push-prisma.log 2>&1 && npx tsc --noEmit -p . && npm run --silent lint > /tmp/pre-push-lint-backend.log 2>&1) || { tail -20 /tmp/pre-push-lint-backend.log; echo "pre-push: backend en rojo"; exit 1; }
-(cd frontend && npx tsc -b && npm run --silent lint > /tmp/pre-push-lint-frontend.log 2>&1) || { tail -20 /tmp/pre-push-lint-frontend.log; echo "pre-push: frontend en rojo"; exit 1; }
+(cd backend && npx prisma generate > /tmp/pre-push-prisma.log 2>&1 && npx tsc --noEmit -p . && npm run --silent lint > /tmp/pre-push-lint-backend.log 2>&1) || { tail -20 /tmp/pre-push-lint-backend.log 2>/dev/null; echo "pre-push: backend en rojo"; exit 1; }
+(cd frontend && npx tsc -b && npm run --silent lint > /tmp/pre-push-lint-frontend.log 2>&1) || { tail -20 /tmp/pre-push-lint-frontend.log 2>/dev/null; echo "pre-push: frontend en rojo"; exit 1; }
 python3 tools/roadmap/cobertura.py > /tmp/pre-push-cobertura.log || { grep -v "^EN VARIOS HITOS\|^ASIGNADAS PERO" /tmp/pre-push-cobertura.log; exit 1; }
+# QA-35 (retro del 2026-10-10): si el push trae imágenes, que cada una lleve el slug de su lugar
+# (`imagenesZona.test.ts`, menos de un segundo). Git pasa por la entrada «ref local, sha local, ref
+# remota, sha remota» de cada rama que se sube.
+cambiados=""
+while read -r _ sha_local _ sha_remoto; do
+  [ "$sha_local" = "0000000000000000000000000000000000000000" ] && continue
+  if [ "$sha_remoto" = "0000000000000000000000000000000000000000" ]; then
+    base=$(git merge-base "$sha_local" origin/main 2>/dev/null || echo "")
+  else
+    base="$sha_remoto"
+  fi
+  [ -n "$base" ] && cambiados+="$(git diff --name-only "$base" "$sha_local" 2>/dev/null)"$'\n'
+done
+if grep -q "^backend/uploads/images/" <<< "$cambiados"; then
+  (cd backend && npx vitest run src/scripts/imagenesZona.test.ts > /tmp/pre-push-imagenes.log 2>&1) \
+    || { grep -E "Expected|\+ |archivo|mapa" /tmp/pre-push-imagenes.log | head -20; echo "pre-push: hay imágenes con un nombre que no es el de ningún lugar"; exit 1; }
+fi
 echo "pre-push: todo en verde."

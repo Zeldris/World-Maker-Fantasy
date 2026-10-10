@@ -1,39 +1,46 @@
-# Playwright para jugar el frontend real (herramienta de Claude)
+# Jugar el frontend real con Playwright
 
-No es dependencia del juego — instalación persistente para que Claude pruebe el frontend jugando de
-verdad, sin reinstalar cada sesión. Ignorada por git (ver `.gitignore` de la raíz).
+Herramienta para las rondas de pruebas jugando (`QA-27`, `QA-30`): no es dependencia del juego. Sirve
+en la nube y en la Steam Deck. Los scripts se versionan; las dependencias, los navegadores, las
+capturas y los registros, no (`.gitignore` de la raíz).
 
-## Uso
+## Arrancar
 
 ```sh
-export PATH="$HOME/.var/app/com.visualstudio.code/config/nvm/versions/node/v22.23.1/bin:$PATH"
-cd tools/playwright-e2e
-node smoke.mjs   # o cualquier script .mjs suelto que se escriba para una sesión de pruebas
+bash tools/playwright-e2e/arrancar-juego.sh        # base propia `tarkor_juego`, backend :3001, frontend :5173
+cd tools/playwright-e2e && npm ci                  # la primera vez (en la nube, con PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1)
+node smoke.mjs                                     # el navegador arranca y el frontend responde
 ```
 
-Backend y frontend los arranca la usuaria — nunca arrancar/parar servidores desde aquí.
+`arrancar-juego.sh` juega en una base aparte de la de los tests (que dejan partidas, Capitales y lugares
+sueltos), con viajes acortados. `--rehacer` la borra y la siembra de cero. En la Deck, si los
+servidores ya los arrancó la usuaria, basta con `smoke.mjs`.
 
-## Gotchas conocidos
+La Deck necesita su Node en el `PATH`: `export PATH="$HOME/.var/app/com.visualstudio.code/config/nvm/versions/node/v22.23.1/bin:$PATH"`.
 
-- `npx playwright install chromium --with-deps` falla (`spawn su ENOENT`, sin `su` en este sandbox).
-  Usar sin `--with-deps`: `npx playwright install chromium` a secas funciona bien headless.
-- El botón "Actuar" existe DOS veces en el DOM (panel de acción libre + panel de combate) — usar
-  `getByRole('button', { name: /^actuar$/i }).nth(0)` para el de texto libre.
-- 409 "Todavía se está resolviendo tu turno anterior" es el guard `turnLock` funcionando bien — dar
-  2-3s de margen tras cada acción antes de la siguiente.
-- Resolución de turno vía Ollama puede tardar 20-30s reales — no es un cuelgue.
-- `POST /saves/:id/resume` como `net::ERR_ABORTED` en consola de red al cargar es falso positivo de
-  React StrictMode, no un bug.
-- El composer normal (fuera de combate) NO es un `<input>`/`<textarea>` con `placeholder` real — es
-  un `<div contentEditable>` con `data-placeholder`, `role="textbox"` y
-  `aria-label="Acción de tu personaje"`. Usar `page.getByRole('textbox', { name: 'Acción de tu
-  personaje' })` (nunca `input[placeholder=...]`, que da 0 resultados siempre) y comprobar
-  `aria-disabled` en vez de `.isDisabled()`. El composer DENTRO de combate (`CombatComposer.tsx`) sí
-  es un `<input>` normal con `placeholder="O describe tu acción..."`, distinto de este.
+## Escribir un script
 
-Después de un `page.goto()` nuevo, el directorio de trabajo del shell puede haberse reseteado a la
-raíz del repo entre llamadas de Bash — usar siempre `cd` explícito a esta carpeta antes de `node
-algo.mjs`, no asumir que el `cd` de una llamada anterior sigue vigente.
+Importa `lib.mjs` y pasa la partida por entorno: `SAVE_ID=<id> node mi_script.mjs`.
 
-Detalle completo de estos gotchas y el historial de por qué se eligió Playwright sobre el MCP
-oficial: memoria persistente de Claude, `tarkor_herramienta_playwright_2026-08-27.md`.
+- `abrirNavegador()` y `abrirPartida()`: en la nube usan el Chromium de `/opt/pw-browsers`; en la Deck,
+  el de Playwright. `FRONT` y `BACK` cambian las URL (por defecto `localhost:5173` y `:3001`).
+- `actuar`, `atacarEnCombate`, `defenderseEnCombate`, `elegirOpcionDialogo`, `turnoDirecto`…:
+  esperan a la condición real (el turno con LLM tarda de 30 s a varios minutos), no a un tiempo fijo.
+- Las capturas van a `screenshots/` (ignorada por git).
+- `historico/`: los scripts de sesiones pasadas, con ids de partida y rutas de la Deck fijos. Sirven de
+  ejemplo, no para volver a ejecutarlos tal cual.
+
+## Lo que se aprendió jugando
+
+- El botón «Actuar» está dos veces en el DOM (acción libre y panel de combate): el de texto libre es
+  `getByRole('button', { name: /^actuar$/i }).nth(0)`.
+- El cuadro de acción fuera de combate es un `<div contentEditable>` con `role="textbox"` y
+  `aria-label="Acción de tu personaje"` (`getByRole('textbox', { name: 'Acción de tu personaje' })`,
+  y `aria-disabled` en vez de `.isDisabled()`). Dentro de combate es un `<input>` con
+  `placeholder="O describe tu acción..."`.
+- Un 409 «Todavía se está resolviendo tu turno anterior» es el candado de turno: dar 2-3 s de margen.
+- `POST /saves/:id/resume` como `net::ERR_ABORTED` al cargar es React StrictMode, no un fallo.
+- Con el Ollama simulado (`tools/ci/mock-ollama.mjs`) las narraciones meten trozos del prompt: no es
+  un fallo del juego. La calidad narrativa se prueba con Ollama real.
+- La forma de jugar, apuntar y arreglar en una ronda de pruebas está en el runbook
+  [`docs/runbooks/rondas-de-pruebas.md`](../../docs/runbooks/rondas-de-pruebas.md).

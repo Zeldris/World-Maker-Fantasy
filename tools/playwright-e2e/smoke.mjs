@@ -1,10 +1,9 @@
-import { chromium } from 'playwright';
+// Comprueba que el navegador arranca y que el frontend responde (FRONT, por defecto :5173).
+import { abrirNavegador, FRONT } from './lib.mjs';
 
-const browser = await chromium.launch();
-const page = await browser.newPage();
-await page.goto('http://localhost:5173');
+const { browser, page } = await abrirNavegador();
+await page.goto(FRONT);
 await page.waitForTimeout(1000);
 console.log('title:', await page.title());
-await page.screenshot({ path: 'screenshots/smoke.png' });
 await browser.close();
 console.log('OK');

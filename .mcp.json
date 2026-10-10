@@ -2,7 +2,7 @@
   "mcpServers": {
     "playwright": {
       "command": "bash",
-      "args": ["tools/pruebas/playwright-mcp.sh"]
+      "args": ["tools/playwright-e2e/playwright-mcp.sh"]
     }
   }
 }
