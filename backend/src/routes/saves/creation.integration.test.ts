@@ -311,8 +311,13 @@ describe('Mundo por partida al crear y al reiniciar (CR-6)', () => {
     expect(await prisma.faction.count({ where: { saveId, origenSlug: { not: null } } })).toBe(faccionesCatalogo);
     expect(await prisma.worldPopulation.count({ where: { saveId } })).toBe(poblacionCatalogo);
 
+    // QA-37: el rencor de un NPC de la partida anterior no sobrevive al reinicio.
+    const gistera = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'gistera-koh' } });
+    await prisma.recuerdo.create({ data: { saveId, npcId: gistera.id, sobreTipo: 'PERSONAJE', sobreId: saveId, sucesoId: 'suceso-de-la-partida-anterior', sentimiento: -6, importancia: 7, desdeMinutes: 480 } });
+
     const reinicio = await app.inject({ method: 'POST', url: `/saves/${saveId}/restart`, payload: {} });
     expect(reinicio.statusCode).toBe(200);
+    expect(await prisma.recuerdo.count({ where: { saveId } })).toBe(0);
     const estadoTras = await prisma.worldState.findUniqueOrThrow({ where: { saveId } });
     expect(estadoTras.mundoClonadoEn).not.toBeNull();
     expect(await prisma.faction.count({ where: { saveId, origenSlug: { not: null } } })).toBe(faccionesCatalogo);

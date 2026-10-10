@@ -253,6 +253,28 @@ export async function restartSaveTransactionBody(
   await tx.worldPopulation.deleteMany({ where: { saveId: save.id } });
   await tx.discoveredEntity.deleteMany({ where: { saveId: save.id } });
   await tx.sessionFact.deleteMany({ where: { saveId: save.id } });
+  // QA-37 (2026-10-10, bug real: Gistera cortaba el paso como hostil en una partida recién
+  // reiniciada) — el estado del Cronista que llegó después de este reinicio seguía vivo: los
+  // recuerdos de los NPC (rencor), hilos, linajes, viajeros… Lo que cuelga de facciones, sucesos o
+  // edificios (relaciones, caravanas, expediciones, conocimiento, ganado) ya se va en cascada; esto
+  // borra el resto, y lo que no tenga facción.
+  const dePartida = { where: { saveId: save.id } };
+  await tx.recuerdo.deleteMany(dePartida);
+  await tx.consecuencia.deleteMany(dePartida);
+  await tx.etiqueta.deleteMany(dePartida);
+  await tx.hilo.deleteMany(dePartida);
+  await tx.linaje.deleteMany(dePartida);
+  await tx.vasallaje.deleteMany(dePartida);
+  await tx.viajero.deleteMany(dePartida);
+  await tx.caravana.deleteMany(dePartida);
+  await tx.ordenComercio.deleteMany(dePartida);
+  await tx.expedicion.deleteMany(dePartida);
+  await tx.campamento.deleteMany(dePartida);
+  await tx.combatGroup.deleteMany(dePartida);
+  await tx.misionOfrecida.deleteMany(dePartida);
+  await tx.droppedItem.deleteMany(dePartida);
+  await tx.liveTeacherCapture.deleteMany(dePartida);
+  await tx.almacenLimite.deleteMany(dePartida);
   await tx.worldState.update({
     where: { saveId: save.id },
     data: { fictionalDateLabel, fictionalMinutes: 480, agenda: [], factionsStatus: {}, mundoClonadoEn: null },
