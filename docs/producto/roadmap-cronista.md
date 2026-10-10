@@ -1933,6 +1933,13 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     comprar equipos, guarnición y traer soldados de otro asentamiento; alerta «Asaltos a la vista»
     con «Llamar a la milicia»); en el mapa de Berig, los asaltos vistos desde una Torre (rojo,
     «Asalto de…») y el alcance de cada Torre (`alcancesDeTorres`, círculos discontinuos). **M**
+- **CR-68** Testigos que juzgan quién muere (bug real, 2026-10-10, `QA-27`): hoy todo NPC con nombre
+  de la zona entera es testigo y apunta −6 por cada muerte, sea de quien sea; Gistera te guardaba
+  rencor por matar al orco que la perseguía. Propuesta inicial, **pendiente de una ronda de diseño**
+  (X4, D&D 5e, BG3, Medieval Dynasty, Bellwright, Manor Lords): víctima hostil al testigo → +3
+  (gratitud, X4); fiera o agresivo que atacó primero → 0 (defensa propia, BG3); de su facción, familia
+  o afín → −6 (BG3/D&D); pacífico o rendido → −6 (BG3); y solo testigos cercanos (Bellwright,
+  Medieval Dynasty). Toca `cronista/testigos.ts` y `RECUERDOS` en `cronista/recuerdos.ts`. **M**
 - **CR-66** Postura de compañero en combate (Fase E, Q6): agresiva, defensiva, capturadora (golpe no
   letal), clemente (acepta rendiciones) y «huir si cae grave»; en vivo y de fondo; las facciones, la
   de su raza. **M**
