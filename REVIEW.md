@@ -32,6 +32,14 @@ mecánico ya lo comprueban los tests, el hook `pre-push` y la CI; aquí está lo
 - **El tope cuenta al decidir.** Un tope o límite (tamaño de un ejército, plazas, equipos) entra en
   la decisión, no se recorta después: nadie sale sabiendo que va corto.
 
+## Cada partida, lo suyo
+
+- **Lo que nace en una partida lleva su `saveId`** (`QA-31`, retro del 2026-10-09). Una fila creada
+  jugando (un lugar, un edificio, una población) es de esa partida; sin dueña, la ven todas (pasó con
+  los interiores de Capital y Cuartel: se podía viajar al de otra partida). Las consultas de `Location`
+  por mundo o región pasan por `lugaresVisibles` (`mundoPartida.ts`). Lo vigila
+  `backend/src/scripts/locationConDuena.test.ts` para `location.create`.
+
 ## Las facciones también
 
 - **Mismos sistemas** ([ADR 0003](docs/adr/0003-todo-viaja-de-verdad.md)). Cada mecánica que manda

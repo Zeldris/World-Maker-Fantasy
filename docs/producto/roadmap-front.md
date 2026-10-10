@@ -903,6 +903,29 @@ Retro del 2026-10-08 (`CR-63`, `CR-65`, `CR-50`, `CR-37`, `CR-67`; propuestas ap
   apuntados en el registro sin arreglar (la usuaria: solo lo que bloquee). Falta: seguir jugando y
   repasar los apuntados con ella.
 
+
+Retro del 2026-10-09 (ronda de pruebas `QA-27`; propuestas aprobadas por la usuaria):
+
+- ~~**QA-28 · CI sin Docker Hub**~~ ✅ 2026-10-10 (`ci.yml`: Postgres 16 del runner `ubuntu-24.04` con
+  pgvector por apt): la imagen `pgvector/pgvector:pg16` de Docker Hub, sin cuenta, topaba con el límite
+  de descargas y dejó el job en rojo sin ejecutar un test (PR #36). Queda: verlo en verde en el próximo PR.
+- ~~**QA-29 · Base aparte para jugar**~~ ✅ 2026-10-10 (`tools/playwright-e2e/arrancar-juego.sh`, base
+  `tarkor_juego`): los tests dejan partidas, Capitales y lugares en la base `tarkor`, y jugando se
+  colaban (P43). Queda: estrenarlo en la próxima ronda.
+- ~~**QA-30 · Herramientas de pruebas compartidas**~~ ✅ 2026-10-10: los scripts de Playwright de la
+  usuaria versionados (`tools/playwright-e2e/`, los de sesiones pasadas en `historico/`), `lib.mjs`
+  común (`SAVE_ID` por entorno, Chromium de `/opt/pw-browsers` en la nube; `smoke.mjs` comprobado en
+  la nube), `.mcp.json` con `playwright-mcp.sh` y el runbook
+  [`rondas-de-pruebas.md`](../runbooks/rondas-de-pruebas.md) (jugar como una jugadora, apuntar todo,
+  arreglar solo lo que bloquee). Queda: comprobar el MCP de Playwright en la próxima sesión.
+- ~~**QA-31 · Lo de una partida lleva su `saveId`**~~ ✅ 2026-10-10: regla en `REVIEW.md` y test
+  `locationConDuena.test.ts` (cada `location.create` del juego pasa `saveId`).
+- ~~**QA-32 · Imágenes de zona con el slug de su lugar**~~ ✅ 2026-10-10 (`imagenesZona.test.ts`: falla
+  con el archivo que no corresponde a ningún lugar y sugiere el parecido). Motivo: 11 de 21 imágenes
+  subidas con otro nombre.
+- ~~**QA-33 · Regiones sin artículo en la población**~~ ✅ 2026-10-10 (`repartoFacciones.ts` y
+  `regionesSinArticulo.test.ts`). Motivo: P52. Las filas ya copiadas a partidas siguen con artículo;
+  `moverPoblacion` las lee igual.
 ---
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)

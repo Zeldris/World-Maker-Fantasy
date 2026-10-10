@@ -3,8 +3,8 @@
 # PROPIA base (`tarkor_juego`), aparte de la que usan los tests (`tarkor`): así lo que se ve jugando
 # no se mezcla con las partidas, Capitales y lugares que dejan los tests. Viajes acortados.
 #
-#   bash tools/pruebas/arrancar-juego.sh              # base, backend :3001 y frontend :5173
-#   bash tools/pruebas/arrancar-juego.sh --rehacer    # además, borra la base y la siembra de cero
+#   bash tools/playwright-e2e/arrancar-juego.sh              # base, backend :3001 y frontend :5173
+#   bash tools/playwright-e2e/arrancar-juego.sh --rehacer    # además, borra la base y la siembra de cero
 #
 # Viajes: TRAVEL_SEGUNDOS_PRIMER_TRAMO / _POR_TRAMO_EXTRA / _MAXIMOS (por defecto 5 / 3 / 20).
 # Registros: logs/backend.log y logs/frontend.log. Narraciones: las del Ollama simulado, que meten
