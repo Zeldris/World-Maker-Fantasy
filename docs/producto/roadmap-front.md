@@ -938,6 +938,13 @@ Retro del 2026-10-10 (aplicación de la anterior; propuestas aprobadas por la us
 - ~~**QA-36 · Decir adónde se ha subido**~~ ✅ 2026-10-10 (paso 5 de
   [`skills-y-modelos.md`](../runbooks/skills-y-modelos.md)): «en la rama de trabajo, no en `main`» o
   «en `main` (PR #N)».
+- ~~**QA-37 · Reiniciar borra todo lo de la partida**~~ ✅ 2026-10-10 (bug real: Gistera cortaba el
+  paso como hostil en una partida recién reiniciada, por el rencor de la anterior). El reinicio ya
+  borra recuerdos, consecuencias, etiquetas, hilos, linajes, vasallajes, viajeros, caravanas,
+  órdenes de comercio, expediciones, campamentos, grupos de combate, misiones ofrecidas, objetos
+  tirados, capturas de maestro y límites de almacén. Test `reinicioCompleto.test.ts`: toda tabla con
+  `saveId` se borra o tiene su motivo para quedarse. Pendiente: los `Npc` y `Location` propios de la
+  partida (siguen tras reiniciar; hay que borrarlos sin romper referencias).
 ---
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
