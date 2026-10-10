@@ -14,10 +14,16 @@ logs/
 # no del proyecto.
 .claude/
 
-# Playwright que usa Claude para jugar el frontend real y hacer pruebas en vivo — herramienta de
-# Claude, no dependencia del juego. node_modules/browsers propios, scripts .mjs sueltos y capturas
-# se quedan fuera de control de versiones; persiste entre sesiones para no reinstalar cada vez.
-tools/playwright-e2e/
+# Playwright que usa Claude para jugar el frontend real y hacer pruebas en vivo (QA-30, retro del
+# 2026-10-09): los scripts se versionan para que las dos cuentas los compartan; se quedan fuera lo
+# pesado y lo que se regenera (dependencias, navegadores, capturas y registros).
+tools/playwright-e2e/node_modules/
+tools/playwright-e2e/browsers/
+tools/playwright-e2e/**/*.png
+tools/playwright-e2e/**/*.jpg
+tools/playwright-e2e/**/*.jpeg
+tools/playwright-e2e/**/*.webm
+tools/playwright-e2e/**/*.log
 
 # Comprobador de enlaces de lore — herramienta de Claude, no del juego.
 tools/lore-links/
