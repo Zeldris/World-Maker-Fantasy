@@ -33,6 +33,12 @@ if command -v podman >/dev/null 2>&1 && podman container exists tarkor-postgres 
     echo "Arrancando Postgres (tarkor-postgres)..."
     podman start tarkor-postgres >/dev/null
   fi
+  # Recién arrancado, Postgres tarda unos segundos en aceptar conexiones («the database system is
+  # starting up», 2026-10-10): se espera hasta 30 s antes de migrar.
+  for _ in $(seq 1 30); do
+    podman exec tarkor-postgres pg_isready -q >/dev/null 2>&1 && break
+    sleep 1
+  done
 else
   echo "AVISO: no existe el contenedor 'tarkor-postgres' — ver docs/arquitectura/15-instalacion.md § 3bis para crearlo."
 fi
