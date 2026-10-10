@@ -131,6 +131,22 @@ export type RespuestaGistera = 'acercarse' | 'observar' | 'retirarse' | 'aceptar
 /// 'PRINCIPAL'`) nunca usa esta constante, su "nombre" ya es de especie/rol, no un spoiler.
 export const NOMBRE_OCULTO_GENERICO = 'Alguien';
 
+/// P28 (QA-27): cara a cara, «Alguien» se leía como un nombre propio («Alguien no parece dispuesto
+/// a dejarte pasar») cuando la imagen ya enseña quién es. Con raza conocida se nombra por ella, en
+/// singular y con su género («Orco desconocido», «Orca desconocida»), sin revelar el nombre real.
+const RAZA_SINGULAR: Record<string, [string, string]> = {
+  orcos: ['Orco', 'Orca'],
+  goirntes: ['Goirnte', 'Goirnte'],
+  nabieus: ['Nabieus', 'Nabieus'],
+  faerus: ['Faerus', 'Faerus'],
+};
+
+export function nombreOcultoPorRaza(raza: string | null | undefined, genero: string | null | undefined): string {
+  const par = raza ? RAZA_SINGULAR[raza] : undefined;
+  if (!par) return NOMBRE_OCULTO_GENERICO;
+  return genero === 'F' ? `${par[1]} desconocida` : `${par[0]} desconocido`;
+}
+
 /// Mismo shape que `DynamicModeTurnoOutput` (dynamicModeNarracion.ts) — definido aquí en vez de
 /// importado de allí para no crear un ciclo (ese archivo ya importa `DynamicModeTipo` de este).
 export interface GisteraTurnoOutput {
@@ -168,14 +184,14 @@ export const COMBATE_FORZADO_OPCION_HUIR = 'Huir';
 
 export function narrarAperturaCombateForzado(targetName: string): GisteraTurnoOutput {
   return {
-    narration: `Os encontráis y os miráis — ${targetName} no parece dispuesto a dejarte pasar. Toca decidir ya: combatir o huir.`,
+    narration: `Os encontráis y os miráis — ${targetName} no tiene intención de dejarte pasar. Toca decidir ya: combatir o huir.`,
     opciones: [COMBATE_FORZADO_OPCION_COMBATIR, COMBATE_FORZADO_OPCION_HUIR],
     cierra: false,
   };
 }
 
 const GISTERA_TEXTO_PRESENTACION =
-  'Con la respiración entrecortada, sin dejar de mirar hacia atrás, se presenta a toda prisa: «Soy Gistera Koh... del Clan Serhu, aunque ya no. No tengo tiempo para explicarte más — uno de los suyos me pisa los talones y quiere verme muerta. Llevas la marca de los Maktor, ¿verdad? Entonces sabes lo que es que un clan entero se vuelva contra los tuyos. ¿No quieres acabar con los Serhu? Empieza por el que me persigue — hazlo antes de que sea tarde para las dos.»';
+  'Con la respiración entrecortada, sin dejar de mirar hacia atrás, se presenta a toda prisa: «Soy Gistera Koh... del Clan Serhu, aunque ya no. No tengo tiempo para explicarte más — uno de los suyos me pisa los talones y quiere verme muerta. Llevas la marca de los Maktor, ¿verdad? Entonces sabes lo que es que un clan entero se vuelva contra los tuyos. ¿No quieres acabar con los Serhu? Empieza por el que me persigue — hazlo antes de que sea demasiado tarde.»';
 const GISTERA_OPCIONES_PRESENTACION = ['Aceptar ayudarla', 'Preguntar más antes de decidir', 'Rechazar y seguir tu camino'];
 
 /// Ramifica por `respuesta` (la opción que el jugador ya eligió), NUNCA solo por el número de

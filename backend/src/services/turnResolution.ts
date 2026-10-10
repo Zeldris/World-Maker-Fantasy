@@ -4767,7 +4767,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // se revela su nombre real, que a partir de ahora la hace reconocible por el resto del motor
   // (detectNpcsInScene, entityDiscovery.ts) sin necesitar más trato especial.
   if (gisteraSePresentaEsteTurno) {
-    narration.narration = `${narration.narration} Con la respiración entrecortada, sin dejar de mirar hacia atrás, se presenta a toda prisa: "Soy Gistera Koh... del Clan Serhu, aunque ya no. No tengo tiempo para explicarte más — uno de los suyos me pisa los talones y quiere verme muerta. Llevas la marca de los Maktor, ¿verdad? Entonces sabes lo que es que un clan entero se vuelva contra los tuyos. ¿No quieres acabar con los Serhu? Empieza por el que me persigue — hazlo antes de que sea tarde para las dos."`;
+    narration.narration = `${narration.narration} Con la respiración entrecortada, sin dejar de mirar hacia atrás, se presenta a toda prisa: "Soy Gistera Koh... del Clan Serhu, aunque ya no. No tengo tiempo para explicarte más — uno de los suyos me pisa los talones y quiere verme muerta. Llevas la marca de los Maktor, ¿verdad? Entonces sabes lo que es que un clan entero se vuelva contra los tuyos. ¿No quieres acabar con los Serhu? Empieza por el que me persigue — hazlo antes de que sea demasiado tarde."`;
     // Bug real jugando en vivo (2026-08-20): este hecho se guarda como SessionFact y llega tal
     // cual al bloque AMBIENTE de `generateSuggestions` (suggestions.ts, `sessionFacts.slice(-6)`)
     // — un canal que el filtro de NPCs "stale" (`dropSuggestionsNamingStaleNpc`, narrador.ts) NUNCA

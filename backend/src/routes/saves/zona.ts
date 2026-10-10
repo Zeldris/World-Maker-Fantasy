@@ -27,7 +27,7 @@ import {
   recalcularZonePointsDeLocation,
   type ZonePointColor,
 } from '../../services/zonePoints.js';
-import { NOMBRE_OCULTO_GENERICO } from '../../services/dynamicMode.js';
+import { nombreOcultoPorRaza } from '../../services/dynamicMode.js';
 import { parseAgenda, regionControlActual, type RegionControlState } from '../../services/worldAgenda.js';
 import { REGION_OWNING_FACTIONS, effectiveTemperamento } from '../../services/reputation.js';
 import { LIENZO_ANCHO, LIENZO_ALTO, posicionAleatoriaEnLienzo, celdaLibreEnEspiral, claveCelda, celdaDePixel, pixelDeCelda, calcularCamino, celdaAdyacenteOMisma, mismaCelda, posicionesDeSalidas, tirarQuienIniciaEncuentro, type IniciativaEncuentroLogRoll } from '../../services/zonaPosicion.js';
@@ -765,7 +765,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     const npcs = puntos.length
       ? await tx.npc.findMany({
           where: { worldId, slug: { in: puntos.map((p) => p.targetSlug) } },
-          select: { id: true, slug: true, name: true, temperamento: true, faction: true, kind: true, attributes: true, level: true, muertoEnMundo: true, npcStates: { where: { saveId, muerto: true }, select: { id: true } } },
+          select: { id: true, slug: true, name: true, temperamento: true, faction: true, kind: true, attributes: true, level: true, raza: true, genero: true, muertoEnMundo: true, npcStates: { where: { saveId, muerto: true }, select: { id: true } } },
         })
       : [];
     const npcBySlug = new Map(npcs.map((n) => [n.slug, n]));
@@ -793,8 +793,8 @@ export async function zonaRoutes(app: FastifyInstance) {
     // "nombre" ya es un nombre de especie/rol, nunca un spoiler).
     const discoveredNpcs = await tx.discoveredEntity.findMany({ where: { saveId, entityType: 'npc' } });
     const isNpcDiscovered = (targetSlug: string): boolean => discoveredNpcs.some((d) => d.entitySlug === targetSlug);
-    const nombreVisibleColision = (targetSlug: string, kind: string | undefined, nombreReal: string): string =>
-      kind === 'PRINCIPAL' && !isNpcDiscovered(targetSlug) ? NOMBRE_OCULTO_GENERICO : nombreReal;
+    const nombreVisibleColision = (targetSlug: string, kind: string | undefined, nombreReal: string, raza?: string | null, genero?: string | null): string =>
+      kind === 'PRINCIPAL' && !isNpcDiscovered(targetSlug) ? nombreOcultoPorRaza(raza, genero) : nombreReal;
 
     // NPC "dinámicos" (2026-09-09, bug real jugando en vivo — Álvaro: "me he movido hasta la
     // casilla anterior a un NPC... pero no pasa nada... me puedo seguir moviendo libremente")
@@ -836,6 +836,8 @@ export async function zonaRoutes(app: FastifyInstance) {
           targetSlug: n.slug,
           targetName: n.name,
           kind: n.kind,
+          raza: n.raza,
+          genero: n.genero,
           temperamento: n.temperamento,
           faction: n.faction,
           tipo: (n.kind === 'PRINCIPAL' ? 'NPC' : 'FAUNA') as 'NPC' | 'FAUNA',
@@ -877,7 +879,7 @@ export async function zonaRoutes(app: FastifyInstance) {
       // Nombre oculto genérico (ver `nombreVisibleColision` arriba) — Gistera (su `ZonePoint` ya
       // se oculta del todo tras aceptar, `ZONE_POINTS_OCULTOS_POR_QUEST`) queda cubierta por esta
       // regla igual que cualquier otro NPC de nombre propio no descubierto todavía.
-      const nombre = nombreVisibleColision(punto.targetSlug, npc?.kind, nombreReal);
+      const nombre = nombreVisibleColision(punto.targetSlug, npc?.kind, nombreReal, npc?.raza, npc?.genero);
       if (celdaAdyacenteOMisma(celda, celdaPunto)) {
         const temperamento = npc ? conRencor(effectiveTemperamento(npc.temperamento, npc.faction, factionsStatus), rencoresColision.has(npc.id)) : 'CAUTELOSO';
         // Un AGRESIVO/ENEMIGO nunca se silencia: si sigue encima del jugador, vuelve a cortarle el paso.
@@ -897,7 +899,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     if (!colision) {
       for (const dinamico of dinamicosConPosicionColision) {
         const celdaDinamico = celdaDePixel({ x: dinamico.x, y: dinamico.y });
-        const nombreDinamico = nombreVisibleColision(dinamico.targetSlug, dinamico.kind, dinamico.targetName);
+        const nombreDinamico = nombreVisibleColision(dinamico.targetSlug, dinamico.kind, dinamico.targetName, dinamico.raza, dinamico.genero);
         if (celdaAdyacenteOMisma(celda, celdaDinamico)) {
           const temperamento = conRencor(effectiveTemperamento(dinamico.temperamento, dinamico.faction, factionsStatus), rencoresColision.has(dinamico.id));
           if (dinamico.targetSlug === ultimoEncuentroSlug && !esTemperamentoHostil(temperamento)) {
@@ -1003,7 +1005,8 @@ export async function zonaRoutes(app: FastifyInstance) {
         // este encuentro (o ya estar ocupada por otra oferta, bloqueando el enganche del todo).
         const text = combateForzado
           ? quienInicia === 'jugador'
-            ? `${characterName} se topa de frente con ${nombreEncuentro} — no hay escapatoria posible, toca reaccionar ya.`
+            ? // P29 (QA-27): ganó la iniciativa y puede huir — nada de «no hay escapatoria».
+              `${characterName} se topa de frente con ${nombreEncuentro}, que le corta el paso — reacciona antes que su rival: toca decidir si pelear o huir.`
             : `${nombreEncuentro} se abalanza sobre ${characterName} sin darle tiempo a reaccionar.`
           : quienInicia === 'jugador'
             ? colisionTipo === 'NPC'

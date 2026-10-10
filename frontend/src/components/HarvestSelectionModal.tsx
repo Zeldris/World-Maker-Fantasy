@@ -25,6 +25,21 @@ interface HarvestSelectionModalProps {
 
 type SelectionKey = string // `${sourceSlug}:${itemSlug}`
 
+/// P15 (QA-27): las cantidades salen ya al máximo (lo que queda y lo que cabe en el inventario,
+/// repartido en el orden de la lista); antes empezaban en 0 y había que pulsar «+» en cada fila.
+export function seleccionInicialAlMaximo(sources: HarvestSourceCandidate[], espacioLibre: number): Record<SelectionKey, number> {
+  const seleccion: Record<SelectionKey, number> = {}
+  let hueco = Math.max(0, espacioLibre)
+  for (const source of sources) {
+    for (const y of source.yields) {
+      const cantidad = Math.min(y.cantidadMaxima, y.disponible, hueco)
+      if (cantidad > 0) seleccion[`${y.sourceSlug}:${y.itemSlug}`] = cantidad
+      hueco -= Math.max(0, cantidad)
+    }
+  }
+  return seleccion
+}
+
 /// Cadencia del listado apareciendo de uno en uno TRAS aterrizar el dado (bug real jugando en
 /// vivo, 2026-08-22: "antes de incluso acabar el roll ya me está mostrando todo" — petición
 /// explícita: "los items tienen que ir apareciendo como una transacción una vez acabe la
@@ -80,6 +95,7 @@ export function HarvestSelectionModal({
     () => getRecolectarLocalizado(saveId, oficio),
     (res) => {
       setSources(res.sources)
+      setSelections(seleccionInicialAlMaximo(res.sources, inventoryCapacity - inventoryUsed))
       setEnCooldown(!!res.enCooldown)
       setRoll(res.roll)
       setRevealed(!res.roll)

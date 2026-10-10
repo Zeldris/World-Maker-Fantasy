@@ -900,8 +900,10 @@ Retro del 2026-10-08 (`CR-63`, `CR-65`, `CR-50`, `CR-37`, `CR-67`; propuestas ap
   que estás), P7 (entrar y salir de las zonas interiores) y P8 (avisos del mapa visibles); P5 no
   aplica (era el Ollama simulado).
   P43 y P44 (interiores de otras partidas: `Location.saveId`) arreglados; el resto de P9-P51,
-  apuntados en el registro sin arreglar (la usuaria: solo lo que bloquee). Falta: seguir jugando y
-  repasar los apuntados con ella.
+  apuntados en el registro sin arreglar (la usuaria: solo lo que bloquee). 2026-10-10, los 11 más
+  rápidos que eligió la usuaria: P13, P15, P21, P25, P28, P29, P31, P32 (el mapa no entraba en el
+  inventario hasta recargar), P35 (y 41 notas internas más en el catálogo), P38 y P42. Falta: el resto
+  de apuntados (lista por esfuerzo, del 12 en adelante) y seguir jugando.
 
 
 Retro del 2026-10-09 (ronda de pruebas `QA-27`; propuestas aprobadas por la usuaria):

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { decideOfertaModoDinamico } from './dynamicMode.js';
+import { decideOfertaModoDinamico, nombreOcultoPorRaza, narrarAperturaCombateForzado } from './dynamicMode.js';
 
 describe('decideOfertaModoDinamico', () => {
   it('sin candidatos (NPC/FAUNA/RECURSO con cantidad > 0), nunca ofrece nada', () => {
@@ -101,5 +101,23 @@ describe('decideOfertaModoDinamico', () => {
       const zonePoints = [{ tipo: 'FAUNA' as const, targetSlug: 'algo', cantidad: 1, temperamento: null }];
       expect(decideOfertaModoDinamico(zonePoints, () => 0)).toEqual({ tipo: 'FAUNA', targetSlug: 'algo' });
     });
+  });
+});
+
+/// P28 (QA-27): cara a cara, un NPC con nombre propio aún sin descubrir se nombra por su raza.
+describe('nombreOcultoPorRaza', () => {
+  it('con raza, singular y con su género', () => {
+    expect(nombreOcultoPorRaza('orcos', 'M')).toBe('Orco desconocido');
+    expect(nombreOcultoPorRaza('orcos', 'F')).toBe('Orca desconocida');
+    expect(nombreOcultoPorRaza('goirntes', null)).toBe('Goirnte desconocido');
+  });
+
+  it('sin raza conocida, el genérico de siempre', () => {
+    expect(nombreOcultoPorRaza(null, 'F')).toBe('Alguien');
+    expect(nombreOcultoPorRaza('dragones', 'M')).toBe('Alguien');
+  });
+
+  it('la apertura del combate forzado no concuerda en género con el nombre', () => {
+    expect(narrarAperturaCombateForzado('Orca desconocida').narration).not.toMatch(/dispuesto/);
   });
 });

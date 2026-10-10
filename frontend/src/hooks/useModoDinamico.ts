@@ -355,8 +355,12 @@ export function useModoDinamico({
           setCharacterLog((prev) => [...prev, questCompletedLogEntry(questCompletedInfo, logEntry.timeLabel)])
           setXp((prev) => prev + questCompletedInfo.rewardXp)
         }
+        // P32 (QA-27): la recompensa ya concedida entra también en el inventario visible.
         getSave(saveId!)
-          .then((save) => setQuests(save.quests))
+          .then((save) => {
+            setQuests(save.quests)
+            if (questCompletedInfo?.grantedItems.length) setInventory(save.inventory)
+          })
           .catch(() => {})
       }
     } catch {
