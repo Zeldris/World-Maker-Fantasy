@@ -283,7 +283,8 @@ export function CharacterSaves() {
                 )}
               </div>
               <div className="flex shrink-0 items-center gap-3">
-                <span className="text-xs text-wood-500">{relativeTime(save.lastPlayedAt)}</span>
+                {/* P38 (QA-27): es la última vez que se jugó, no la creación — sin etiqueta se leía pegado a «creada en». */}
+                <span className="text-xs text-wood-500">jugada {relativeTime(save.lastPlayedAt)}</span>
                 <button type="button"
                   onClick={(e) => startEditingName(e, save)}
                   title="Renombrar partida"

@@ -59,7 +59,8 @@ export function RecursoDetalleModal({
               <ul className="flex flex-col gap-0.5 text-xs text-wood-300">
                 {detalle.yields.map((y) => (
                   <li key={`${y.itemName}-${y.condicion ?? ''}`}>
-                    {y.cantidad} {y.itemName}
+                    {/* P21 (QA-27): es el máximo; lo que sale depende de la tirada (`cantidadForGrado`). */}
+                    hasta {y.cantidad} {y.itemName}
                     {y.condicion ? <span className="text-wood-500"> ({y.condicion})</span> : null}
                   </li>
                 ))}

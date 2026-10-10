@@ -1,7 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react'
 import { aceptarMision, cancelarMision, getSave } from '../lib/api'
 import { questCompletedLogEntry } from '../lib/gameViewHelpers'
-import type { LogEntry, QuestInfo } from '../types'
+import type { InventoryItemInfo, LogEntry, QuestInfo } from '../types'
 
 // Bloque aceptar/descartar oferta de misión extraído de GameView.tsx (Fase 12 del plan, refactor
 // puro, mismo patrón que useInventarioAcciones.ts): GameView sigue siendo dueño del log, del XP y
@@ -12,9 +12,10 @@ interface UseMisionesAccionesParams {
   setCharacterThinking: Dispatch<SetStateAction<boolean>>
   setXp: Dispatch<SetStateAction<number>>
   setQuests: Dispatch<SetStateAction<QuestInfo[]>>
+  setInventory: Dispatch<SetStateAction<InventoryItemInfo[]>>
 }
 
-export function useMisionesAcciones({ saveId, setCharacterLog, setCharacterThinking, setXp, setQuests }: UseMisionesAccionesParams) {
+export function useMisionesAcciones({ saveId, setCharacterLog, setCharacterThinking, setXp, setQuests, setInventory }: UseMisionesAccionesParams) {
   // Botones Aceptar/Cancelar en una oferta de misión (2026-08-26) — `entryId` identifica la
   // LogEntry concreta cuya tarjeta hay que limpiar (evita que quede pegada tras responder, y
   // evita que un doble clic la reenvíe: la propia limpieza de `questOffer` deshabilita los
@@ -60,8 +61,13 @@ export function useMisionesAcciones({ saveId, setCharacterLog, setCharacterThink
         setCharacterLog((prev) => [...prev, questCompletedLogEntry(questCompletedInfo, logEntry?.timeLabel ?? '')])
         setXp((prev) => prev + questCompletedInfo.rewardXp)
       }
+      // P32 (QA-27): la recompensa (el Mapa de las Llanuras) ya está en el inventario del backend;
+      // sin recargarlo, el mapa del mundo seguía pidiendo conseguirlo hasta recargar la página.
       getSave(saveId!)
-        .then((save) => setQuests(save.quests))
+        .then((save) => {
+          setQuests(save.quests)
+          if (questCompletedInfo?.grantedItems.length) setInventory(save.inventory)
+        })
         .catch(() => {})
     } catch {
       // Best-effort (mismo criterio que el resto de acciones deterministas de este archivo): si

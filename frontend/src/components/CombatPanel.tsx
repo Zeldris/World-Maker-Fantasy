@@ -440,7 +440,8 @@ export function CombatPanel({
       .map((item) => ({
         id: `${npc.slug}:${item.name}`,
         label: item.cantidad > 1 ? `${item.name} ×${item.cantidad}` : item.name,
-        sublabel: item.notas ?? `De ${npc.name}`,
+        // P31 (QA-27): «De Orco enfurecido» se leía como si la carne fuera del orco.
+        sublabel: item.notas ?? `Lo llevaba: ${npc.name}`,
         itemName: item.name,
         // Saqueo parcial (2026-07-31) — para saber, al confirmar, de qué NPC era cada opción y así
         // calcular qué NPCs tuvieron el 100% de sus objetos marcados.

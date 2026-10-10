@@ -927,7 +927,7 @@ export function useGameViewState() {
   })
 
   // Aceptar/descartar oferta de misión (Fase 12) — ver hooks/useMisionesAcciones.ts.
-  const { handleAcceptQuestOffer, handleDismissQuestOffer } = useMisionesAcciones({ saveId, setCharacterLog, setCharacterThinking, setXp, setQuests })
+  const { handleAcceptQuestOffer, handleDismissQuestOffer } = useMisionesAcciones({ saveId, setCharacterLog, setCharacterThinking, setXp, setQuests, setInventory })
 
   // Puente entre la tarjeta Matar/Capturar/Clemente del log (LogPanel.tsx § convalecienteOffers,
   // 2026-08-26) y los handlers ya construidos en useCombatFlow.ts — la tarjeta pasa `combatKeyFor`
@@ -1429,9 +1429,11 @@ export function useGameViewState() {
       ? 'Ocupado con algo que lleva tiempo — vuelve cuando termine.'
       : combateIniciado && !combat.combatOpen
         ? 'En combate — usa el panel de combate para actuar.'
-        : capaEncimaAbierta
-          ? 'Resuelve lo que tienes abierto antes de escribir una nueva acción.'
-          : (permisoTurno.motivo ?? undefined)
+        : confirmingExit
+          ? 'Partida en pausa — cierra el menú para seguir jugando.'
+          : capaEncimaAbierta
+            ? 'Resuelve lo que tienes abierto antes de escribir una nueva acción.'
+            : (permisoTurno.motivo ?? undefined)
 
   // UX-9 (hito 0.2) — gestor de capas: cada overlay abierto con su nivel (§ 4.3), en orden de
   // prioridad dentro del nivel. Solo se ve el de nivel más alto; el resto espera oculto y montado

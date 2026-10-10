@@ -4413,8 +4413,8 @@ export const npcs: NpcInput[] = [
     slug: 'hagar-kiugh',
     name: 'Hagar Kiugh',
     kind: 'PRINCIPAL',
-    // "Vive fuera del grafo v1 (Cristal Helado)... si la partida lo trae, no debe improvisársele
-    // números" — ya documentado como fuera de núcleo en su propia bio, ahora también como dato.
+    // Vive fuera del grafo v1 (Cristal Helado); si la partida lo trae, no debe improvisársele
+    // números. P35 (QA-27): la nota se quitó de su bio, que la Enciclopedia enseña tal cual.
     nucleoJugable: false,
     aliases: ['hagar kiugh'],
     faction: 'Clan Helsig',
@@ -4422,7 +4422,7 @@ export const npcs: NpcInput[] = [
     role: 'Minero de hielo sílice, amigo de infancia de Gorhorn',
     level: 2,
     attributes: { fuerza: 15, destreza: 8, constitucion: 13, inteligencia: 8, voluntad: 12, carisma: 11, magia: 9 },
-    bio: 'Orco del Clan Helsig, de las tribus orcas de Cristal Helado — piel de un pálido azulado propio de los orcos de zonas nevadas, curtida por el viento de la montaña más que por el sol. Manos gruesas y llenas de callos de picar hielo sílice, cara ancha y siempre a punto de reírse, el contrapunto exacto del Gorhorn callado que conoció en las minas. Amigo de Gorhorn del Clan Helsig, de las minas de hielo sílice en Cristal Helado. Vive fuera del grafo v1 (Cristal Helado), pero es el vínculo personal vivo de Gorhorn — si la partida lo trae, no debe improvisársele números.',
+    bio: 'Orco del Clan Helsig, de las tribus orcas de Cristal Helado — piel de un pálido azulado propio de los orcos de zonas nevadas, curtida por el viento de la montaña más que por el sol. Manos gruesas y llenas de callos de picar hielo sílice, cara ancha y siempre a punto de reírse, el contrapunto exacto del Gorhorn callado que conoció en las minas. Amigo de Gorhorn del Clan Helsig, de las minas de hielo sílice en Cristal Helado.',
     personality: 'Leal, ruidoso, de risa fácil — el opuesto exacto del Gorhorn callado de las minas, por eso encajaron.',
     raza: 'orcos',
     // Guerrero / Especialista (2026-08-24, Grupo 3 § Sistema de clases) — minero, no un
@@ -9434,7 +9434,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'CAZA',
     itemSlug: 'racion-carne',
     cantidad: 3,
-    condicion: 'Solo en Ciénaga Troncal, cacería de grupo — fuera del núcleo jugable actual',
+    condicion: 'Solo en Ciénaga Troncal, cacería de grupo',
   },
 
   // --- Corredor de Cauce ---
@@ -10021,7 +10021,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'MINERIA',
     itemSlug: 'fercaneo',
     cantidad: 1,
-    condicion: 'casi imposible de encontrar, protegido por Salamandras de Escoria — más probable en Las Fumarolas Negras que en el resto de El Filo de las Brasas (pendiente: el motor no distingue hoy probabilidad por Location dentro del mismo sourceSlug)',
+    condicion: 'casi imposible de encontrar, protegido por Salamandras de Escoria — más probable en Las Fumarolas Negras que en el resto de El Filo de las Brasas',
   },
 
   // --- La Sabana Alta (Pasto de Sangre, Telda Atardecer, Trigo Escarlata, Roca Luclara, Towrgu,
@@ -10126,7 +10126,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'MINERIA',
     itemSlug: 'cuna-hielo-silice-sin-tallar',
     cantidad: 1,
-    condicion: 'Solo en Cristal Helado — fuera del núcleo jugable actual',
+    condicion: 'Solo en Cristal Helado',
   },
 
   // --- Hierba del Hierro ---
@@ -10137,7 +10137,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'EXTRACCION',
     itemSlug: 'hierba-del-hierro',
     cantidad: 1,
-    condicion: 'Solo en la Meseta del Orden — fuera del núcleo jugable actual',
+    condicion: 'Solo en la Meseta del Orden',
   },
 
   // --- Liquen del Cauce ---
@@ -10349,7 +10349,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'CAZA',
     itemSlug: 'pluma-sombra-kroj',
     cantidad: 1,
-    condicion: 'Solo en El Margen Silencioso — fuera del núcleo jugable actual',
+    condicion: 'Solo en El Margen Silencioso',
   },
 
   // --- Trepador Ocaso ---
@@ -10360,7 +10360,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'EXTRACCION',
     itemSlug: 'resina-trepador-ocaso',
     cantidad: 1,
-    condicion: 'Solo en Ciénaga Troncal — fuera del núcleo jugable actual',
+    condicion: 'Solo en Ciénaga Troncal',
   },
 
   // --- Veta de Hierro de las Llanuras Rojas (slug sin tocar: veta-hierro-pilares-rotos) ---
@@ -10504,7 +10504,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'EXTRACCION',
     itemSlug: 'musgo-callado',
     cantidad: 3,
-    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual, sin herramienta',
+    condicion: 'El Margen Silencioso — sin herramienta',
     sinTirada: true,
   },
 
@@ -10515,7 +10515,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'TALA',
     itemSlug: 'madera-veldria-hueca',
     cantidad: 2,
-    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual; los Nabieus solo toman ramas caídas',
+    condicion: 'El Margen Silencioso — los Nabieus solo toman ramas caídas',
   },
   {
     sourceSlug: 'resina-veldria-fuente',
@@ -10523,7 +10523,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'EXTRACCION',
     itemSlug: 'resina-veldria',
     cantidad: 1,
-    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual',
+    condicion: 'El Margen Silencioso',
   },
 
   // --- A-22: Flor de Víspera ---
@@ -10533,7 +10533,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'EXTRACCION',
     itemSlug: 'petalos-vispera',
     cantidad: 2,
-    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual; sus flores solo se abren al atardecer',
+    condicion: 'El Margen Silencioso — sus flores solo se abren al atardecer',
   },
 
   // --- A-23: Cántaro de Hoja ---
@@ -10543,7 +10543,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'EXTRACCION',
     itemSlug: 'agua-cantaro',
     cantidad: 1,
-    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual; se regenera con la siguiente lluvia',
+    condicion: 'El Margen Silencioso — se regenera con la siguiente lluvia',
     sinTirada: true,
   },
   {
@@ -10552,7 +10552,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'EXTRACCION',
     itemSlug: 'tallo-cantaro',
     cantidad: 1,
-    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual, una vez drenada el agua',
+    condicion: 'El Margen Silencioso — una vez drenada el agua',
   },
 
   // --- A-24: Carnosa de Tocón ---
@@ -10562,7 +10562,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'EXTRACCION',
     itemSlug: 'carnosa-de-tocon',
     cantidad: 1,
-    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual, sobre tocones caídos',
+    condicion: 'El Margen Silencioso — sobre tocones caídos',
   },
 
   // --- A-25: Bulbo de Turbera (Ciénaga Troncal) ---
@@ -10572,7 +10572,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'EXTRACCION',
     itemSlug: 'bulbo-de-turbera',
     cantidad: 2,
-    condicion: 'Ciénaga Troncal — fuera del núcleo jugable actual',
+    condicion: 'Ciénaga Troncal',
     sinTirada: true,
   },
 
@@ -10583,7 +10583,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'EXTRACCION',
     itemSlug: 'velo-de-charca',
     cantidad: 2,
-    condicion: 'Ciénaga Troncal — fuera del núcleo jugable actual, sobre charcas quietas',
+    condicion: 'Ciénaga Troncal — sobre charcas quietas',
   },
 
   // --- A-27: Herrumbrera (Ciénaga Troncal) ---
@@ -10593,7 +10593,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'EXTRACCION',
     itemSlug: 'corteza-herrumbre',
     cantidad: 2,
-    condicion: 'Ciénaga Troncal — fuera del núcleo jugable actual, orillas de agua estancada',
+    condicion: 'Ciénaga Troncal — orillas de agua estancada',
   },
 
   // --- P-03: Liquen Escarcha (Cristal Helado) y Holdo (Ciénaga Troncal) ---
@@ -10603,7 +10603,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'EXTRACCION',
     itemSlug: 'liquen-escarcha',
     cantidad: 1,
-    condicion: 'Cristal Helado — fuera del núcleo jugable actual; se raspa solo la mitad, nunca la costra entera',
+    condicion: 'Cristal Helado — se raspa solo la mitad, nunca la costra entera',
   },
   {
     sourceSlug: 'holdo',
@@ -10611,7 +10611,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'EXTRACCION',
     itemSlug: 'resina-holdo',
     cantidad: 1,
-    condicion: 'Ciénaga Troncal — fuera del núcleo jugable actual, Marismas de Lodo Negro',
+    condicion: 'Ciénaga Troncal — Marismas de Lodo Negro',
   },
 
   // --- A-28: Leshra ---
@@ -10621,7 +10621,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'CAZA',
     itemSlug: 'plumas-leshra',
     cantidad: 1,
-    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual',
+    condicion: 'El Margen Silencioso',
   },
 
   // --- A-29: Morvasa ---
@@ -10631,7 +10631,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'CAZA',
     itemSlug: 'veneno-morvasa',
     cantidad: 1,
-    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual, extracción cuidadosa',
+    condicion: 'El Margen Silencioso — extracción cuidadosa',
   },
   {
     sourceSlug: 'morvasa',
@@ -10639,7 +10639,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'CAZA',
     itemSlug: 'piel-morvasa',
     cantidad: 1,
-    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual',
+    condicion: 'El Margen Silencioso',
   },
 
   // --- A-30: Brozán ---
@@ -10649,7 +10649,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'CAZA',
     itemSlug: 'racion-carne',
     cantidad: 1,
-    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual',
+    condicion: 'El Margen Silencioso',
   },
   {
     sourceSlug: 'brozan',
@@ -10657,7 +10657,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'CAZA',
     itemSlug: 'piel-brozan',
     cantidad: 1,
-    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual',
+    condicion: 'El Margen Silencioso',
   },
 
   // --- A-31: Hoscón ---
@@ -10667,7 +10667,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'CAZA',
     itemSlug: 'plumon-hoscon',
     cantidad: 1,
-    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual',
+    condicion: 'El Margen Silencioso',
   },
 
   // --- P-01: Hielaga, Nievón, Escarchín (Cristal Helado); Tragalodo, Borbol, Zancapilote
@@ -10678,7 +10678,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'CAZA',
     itemSlug: 'racion-carne',
     cantidad: 2,
-    condicion: 'Cristal Helado — fuera del núcleo jugable actual; caza racionada, no se caza de más',
+    condicion: 'Cristal Helado — caza racionada, no se caza de más',
   },
   {
     sourceSlug: 'hielaga',
@@ -10686,7 +10686,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'CAZA',
     itemSlug: 'piel-hielaga',
     cantidad: 1,
-    condicion: 'Cristal Helado — fuera del núcleo jugable actual',
+    condicion: 'Cristal Helado',
   },
   {
     sourceSlug: 'nievon',
@@ -10694,7 +10694,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'CAZA',
     itemSlug: 'piel-nievon',
     cantidad: 1,
-    condicion: 'Cristal Helado — fuera del núcleo jugable actual',
+    condicion: 'Cristal Helado',
   },
   {
     sourceSlug: 'nievon',
@@ -10702,7 +10702,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'CAZA',
     itemSlug: 'colmillos-nievon',
     cantidad: 1,
-    condicion: 'Cristal Helado — fuera del núcleo jugable actual',
+    condicion: 'Cristal Helado',
   },
   {
     sourceSlug: 'escarchin',
@@ -10710,7 +10710,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'PESCA',
     itemSlug: 'carne-escarchin',
     cantidad: 1,
-    condicion: 'Cristal Helado — fuera del núcleo jugable actual, pesca de invierno en El Lago Cristalice',
+    condicion: 'Cristal Helado — pesca de invierno en El Lago Cristalice',
   },
   {
     sourceSlug: 'tragalodo',
@@ -10718,7 +10718,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'CAZA',
     itemSlug: 'placas-tragalodo',
     cantidad: 1,
-    condicion: 'Ciénaga Troncal — fuera del núcleo jugable actual',
+    condicion: 'Ciénaga Troncal',
   },
   {
     sourceSlug: 'tragalodo',
@@ -10726,7 +10726,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'CAZA',
     itemSlug: 'dientes-tragalodo',
     cantidad: 1,
-    condicion: 'Ciénaga Troncal — fuera del núcleo jugable actual',
+    condicion: 'Ciénaga Troncal',
   },
   {
     sourceSlug: 'borbol',
@@ -10734,7 +10734,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'CAZA',
     itemSlug: 'carne-borbol',
     cantidad: 1,
-    condicion: 'Ciénaga Troncal — fuera del núcleo jugable actual',
+    condicion: 'Ciénaga Troncal',
   },
   {
     sourceSlug: 'zancapilote',
@@ -10742,7 +10742,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'CAZA',
     itemSlug: 'plumas-zancapilote',
     cantidad: 1,
-    condicion: 'Ciénaga Troncal — fuera del núcleo jugable actual',
+    condicion: 'Ciénaga Troncal',
   },
   {
     sourceSlug: 'vreskal',
@@ -10750,7 +10750,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'CAZA',
     itemSlug: 'placas-vreskal',
     cantidad: 1,
-    condicion: 'La Meseta del Orden — fuera del núcleo jugable actual; matar uno en una muralla está mal visto',
+    condicion: 'La Meseta del Orden — matar uno en una muralla está mal visto',
   },
 
   // --- P-02: Sombra de Kroj, Hetris, Mekiosi, Vistue (El Margen Silencioso) ---
@@ -10760,7 +10760,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'CAZA',
     itemSlug: 'pluma-sombra-kroj',
     cantidad: 1,
-    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual',
+    condicion: 'El Margen Silencioso',
   },
   {
     sourceSlug: 'hetris',
@@ -10768,7 +10768,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'CAZA',
     itemSlug: 'piel-hetris',
     cantidad: 1,
-    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual',
+    condicion: 'El Margen Silencioso',
   },
   {
     sourceSlug: 'hetris',
@@ -10776,7 +10776,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'CAZA',
     itemSlug: 'garras-hetris',
     cantidad: 1,
-    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual',
+    condicion: 'El Margen Silencioso',
   },
   {
     sourceSlug: 'mekiosi',
@@ -10784,7 +10784,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'CAZA',
     itemSlug: 'piel-mekiosi',
     cantidad: 1,
-    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual',
+    condicion: 'El Margen Silencioso',
   },
   {
     sourceSlug: 'mekiosi',
@@ -10792,7 +10792,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'CAZA',
     itemSlug: 'colmillos-mekiosi',
     cantidad: 1,
-    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual',
+    condicion: 'El Margen Silencioso',
   },
   {
     sourceSlug: 'vistue',
@@ -10800,7 +10800,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'CAZA',
     itemSlug: 'piel-vistue',
     cantidad: 1,
-    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual',
+    condicion: 'El Margen Silencioso',
   },
   {
     sourceSlug: 'vistue',
@@ -10808,7 +10808,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'CAZA',
     itemSlug: 'racion-carne',
     cantidad: 1,
-    condicion: 'El Margen Silencioso — fuera del núcleo jugable actual',
+    condicion: 'El Margen Silencioso',
   },
   {
     sourceSlug: 'cornante',
@@ -10816,7 +10816,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'CAZA',
     itemSlug: 'racion-carne',
     cantidad: 4,
-    condicion: 'Ciénaga Troncal — fuera del núcleo jugable actual; cazado en grupo, acorralado hacia el agua baja',
+    condicion: 'Ciénaga Troncal — cazado en grupo, acorralado hacia el agua baja',
   },
 
   // --- A-32: Colmillo de Ferike, despiece ampliado del Ferike (ya existente) ---

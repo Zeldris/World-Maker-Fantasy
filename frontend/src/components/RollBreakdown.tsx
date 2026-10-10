@@ -25,7 +25,7 @@ export function RollBreakdown({ side, valorCrudo, valorEfectivo }: { side: Parti
       <span className="whitespace-nowrap">
         (
         {side.value}
-        {!!side.malus && <span className="text-danger-400"> −{side.malus}sal</span>}
+        {!!side.malus && <span className="text-danger-400" title="Penalización por heridas"> −{side.malus} heridas</span>}
         {!!side.attributeBonus && <span className="text-moss-400"> +{side.attributeBonus}hab</span>}
         {side.malus || side.attributeBonus ? ` = ${valorCrudo}` : ''}
         {!hasMultiplicador && '/2)'}
