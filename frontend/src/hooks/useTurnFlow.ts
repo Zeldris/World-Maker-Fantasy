@@ -355,7 +355,12 @@ export function useTurnFlow(params: UseTurnFlowParams) {
         setSed(newSed)
       }
       if (combatExchangeDisplay && !finDePartida) {
-        temporizadorTirada(applyExchangeResult, 2 * duracionTirada())
+        temporizadorTirada(() => {
+          applyExchangeResult()
+          // P56: aterrizados los dados, la tarjeta de la animación sobra (el intercambio ya está en
+          // el diario). Antes se quedaba montada hasta el turno siguiente (causa de P11).
+          setDiceReveal(null)
+        }, 2 * duracionTirada())
       } else {
         applyExchangeResult()
       }
@@ -434,7 +439,11 @@ export function useTurnFlow(params: UseTurnFlowParams) {
             channel: 'character' as const,
             text: narration.narration,
             timeLabel: newTimeLabel,
-            roll,
+            // P56 (QA-27): si el turno abrió un combate con intercambio real, la tirada que cuenta es
+            // ese intercambio; la tirada simple de la acción («TÚ … → Fallo») contradecía al lado.
+            // Igual que se ve tras recargar (el diario pinta el intercambio en lugar de la tirada).
+            roll: combatExchangeDisplay ? undefined : roll,
+            combatExchange: combatExchangeDisplay ?? undefined,
             createdAt: new Date().toISOString(),
             xpDelta: progression.xpDelta > 0 ? progression.xpDelta : undefined,
             // UX 2026-09-01 (ver comentario del mismo campo en types.ts § LogEntry) — separa el
