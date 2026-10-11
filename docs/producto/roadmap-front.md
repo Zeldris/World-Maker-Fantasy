@@ -734,6 +734,14 @@ Contenedor común: `PanelDrawer` (cajón inferior, `max-w-4xl`, 85 vh).
 - **CMB-9 · Subir el tope de 4 combatientes por grupo** a 6 u 8 (usuaria, 2026-10-07): el límite de 4
   nace de los tiempos de narración; en la fase de pulido, al mejorar esos tiempos, se sube
   (`MAX_COMBATIENTES_POR_BANDO` y el tamaño de los grupos de combate). Hito `0.8`. **M**
+- **CMB-10 · Castigo por estado en porcentaje** (usuaria, 2026-10-11, sale de P10 de `QA-27`): hoy el
+  estado resta una cantidad fija al atributo de la tirada (−2 herido, −5 grave, −10 convaleciente,
+  `CONDICION_MALUS`, death.ts), que pesa mucho más a un personaje débil que a uno fuerte. Pasa a un
+  porcentaje del atributo; propuesta: −20 % herido, −40 % grave, −60 % convaleciente (como X4, donde el
+  daño del casco baja la velocidad en proporción, y Bellwright, donde las heridas recortan aguante y vida
+  en proporción). Un rival convaleciente sigue pudiendo actuar y defenderse al rematarlo (decisión de la
+  usuaria). Incluye el desglose de la tirada en pantalla («−2 heridas»), los tests de combate y las
+  cifras en `cifras-provisionales.md`.
 
 ---
 
