@@ -5,6 +5,18 @@ import { ExtendedRollBadge } from './ExtendedRollBadge'
 import { DiceRollSingle } from './DiceRoll'
 import { CombatExchangeBadge } from './CombatExchangeBadge'
 import { DiceRollReveal } from './DiceRollReveal'
+
+// P11 (QA-27): identidad de cada intercambio recibido (cada uno llega como objeto nuevo).
+const idsDeTirada = new WeakMap<object, number>()
+let siguienteIdDeTirada = 0
+function idDeTirada(exchange: object): number {
+  let id = idsDeTirada.get(exchange)
+  if (id === undefined) {
+    id = siguienteIdDeTirada++
+    idsDeTirada.set(exchange, id)
+  }
+  return id
+}
 import { PanelRivets } from './Rivet'
 import { EnciclopediaLinkedText } from './EnciclopediaLinkedText'
 import { NoticiaMundo, type ResponderPropuesta } from './NoticiaMundo'
@@ -773,6 +785,10 @@ export const LogPanel = memo(function LogPanel({
             )}
             {diceReveal && (
               <DiceRollReveal
+                // P11 (QA-27): un intercambio nuevo es una tirada nueva. Sin `key`, si la tarjeta
+                // seguía montada (tras un turno normal no se limpia), los dados se quedaban con los
+                // números del intercambio anterior: sus efectos solo arrancan al montarse.
+                key={idDeTirada(diceReveal.exchange)}
                 exchange={diceReveal.exchange}
                 playerName={characterName}
                 enemyName={diceReveal.npcName ?? undefined}
