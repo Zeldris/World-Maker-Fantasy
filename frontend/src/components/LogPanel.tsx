@@ -5,6 +5,7 @@ import { ExtendedRollBadge } from './ExtendedRollBadge'
 import { DiceRollSingle } from './DiceRoll'
 import { CombatExchangeBadge } from './CombatExchangeBadge'
 import { DiceRollReveal } from './DiceRollReveal'
+import { sinComillasSueltas } from '../lib/sinComillasSueltas'
 
 // P11 (QA-27): identidad de cada intercambio recibido (cada uno llega como objeto nuevo).
 const idsDeTirada = new WeakMap<object, number>()
@@ -473,7 +474,7 @@ export const LogPanel = memo(function LogPanel({
               ) : (
                 <p className="texto-narracion whitespace-pre-line">
                   <EnciclopediaLinkedText
-                    text={entry.text}
+                    text={entry.isPlayerAction ? sinComillasSueltas(entry.text) : entry.text}
                     index={enciclopediaIndex}
                     onDetail={(t) => onEntityDetail?.(t)}
                     onQuickInsert={(t) => onEntityQuickInsert?.(t)}
