@@ -11,7 +11,7 @@ describe('P12 — nombres de las habilidades de Escamados', () => {
   });
 
   it('ninguna que solo aguanta el golpe promete una huida', () => {
-    for (const h of habilidades.filter((x) => x.effects.length === 1 && x.effects[0] === 'AGUANTE')) {
+    for (const h of habilidades.filter((x) => x.effects?.length === 1 && x.effects[0] === 'AGUANTE')) {
       expect(h.name).not.toMatch(/huida|huye|escapa/i);
     }
   });
