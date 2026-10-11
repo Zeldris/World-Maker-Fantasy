@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useContext, useEffect, useRef, useState } from 'react'
+import { CapasContext } from '../../context/capasContext'
 import { ViajerosAqui } from './ViajerosAqui'
 import { getZona, resolveImageUrl, recogerDroppedItem, type ZonaResponse, type ZonePointInfo, type ZonaDinamicoInfo, type ZonaSalidaInfo } from '../../lib/api'
 import { ZonePointDetailModal, zonaDinamicoToDetailSource } from '../ZonePointDetailModal'
@@ -240,6 +241,21 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
       .catch(() => setError('No se pudo cargar la zona.'))
       .finally(() => setLoading(false))
   }, [saveId])
+
+  // P20 y P26 (QA-27): recolectar, hablar o una escena se abren encima del mapa (ZON-5) y lo que
+  // cambian (un recurso ya identificado, alguien que se ha ido) no se veía hasta cerrar y reabrir.
+  // Cuando el mapa vuelve a ser la capa de arriba, se recarga sin parpadeo.
+  const capas = useContext(CapasContext)
+  const zonaArriba = !soloConsulta && capas?.superior === 'zona'
+  const zonaArribaAntes = useRef(zonaArriba)
+  useEffect(() => {
+    if (zonaArriba && !zonaArribaAntes.current) {
+      getZona(saveId).then(setData).catch(() => {})
+      // El aviso de antes («Te topas con Alguien») ya no vale tras lo que pasó encima.
+      if (!movimientoEnCurso) setMensajeMovimiento(null)
+    }
+    zonaArribaAntes.current = zonaArriba
+  }, [zonaArriba, saveId, movimientoEnCurso, setMensajeMovimiento])
 
   // "Tirar" objetos al suelo de la Zona (2026-09-06, hallazgo 8) — tras recoger uno, el pin debe
   // desaparecer del mapa sin esperar a que el jugador cambie de pestaña y vuelva.
