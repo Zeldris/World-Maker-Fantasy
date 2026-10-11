@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AlcanceTorre, CampamentoInfo, ExpedicionEnMapa } from '../../lib/api'
 import { posicionDeExpedicion } from '../../lib/leyendas'
 import { projectLlanurasNodes, type LlanurasEdge, type LlanurasNode, type CristalHeladoNode, type MapNodeOption, type MapRegion } from '../../data/map'
@@ -184,6 +184,15 @@ export function InteractiveMap({
   useEffect(() => {
     setSelectedName(currentRegion)
   }, [currentRegion])
+  // P33 (QA-27): el lienzo de Berig es más alto que ancho y el panel abre arriba, en Cristal
+  // Helado, aunque la jugadora esté en las Llanuras. Al abrir el mapa o cambiar de sitio, se lleva
+  // el scroll a su punto (o, sin mapa de la región, a su región).
+  const svgRef = useRef<SVGSVGElement>(null)
+  useEffect(() => {
+    const svg = svgRef.current
+    const aqui = svg?.querySelector('[data-aqui="nodo"]') ?? svg?.querySelector('[data-aqui="region"]')
+    aqui?.scrollIntoView?.({ block: 'center', inline: 'nearest' })
+  }, [currentRegion, currentLocationSlug])
   const selected = regions.find((r) => r.name === selectedName) ?? null
   const [selectedNodeSlug, setSelectedNodeSlug] = useState<string | null>(null)
   const [expedicionVista, setExpedicionVista] = useState<string | null>(null)
@@ -207,6 +216,7 @@ export function InteractiveMap({
           🔍 Ampliar mapa
         </button>
         <svg
+          ref={svgRef}
           viewBox={`${BERIG_VIEWBOX.x} ${BERIG_VIEWBOX.y} ${BERIG_VIEWBOX.width} ${BERIG_VIEWBOX.height}`}
           className="w-full"
           role="img"
@@ -255,6 +265,7 @@ export function InteractiveMap({
             return (
               <g
                 key={shape.name}
+                data-aqui={isCurrent ? 'region' : undefined}
                 role="button"
                 tabIndex={0}
                 onClick={() => {
@@ -431,6 +442,7 @@ export function InteractiveMap({
                   // existente en index.css, sin bucle) para que el marcador "aquí ahora" anuncie
                   // la llegada en vez de aparecer en silencio.
                   key={`${node.slug}-${isCurrentNode}`}
+                  data-aqui={isCurrentNode ? 'nodo' : undefined}
                   role="button"
                   tabIndex={0}
                   className={`tactile cursor-pointer outline-none${isCurrentNode ? ' animate-pop-once' : ''}`}
@@ -626,6 +638,7 @@ export function InteractiveMap({
               return (
                 <g
                   key={`${node.slug}-${isCurrentNode}`}
+                  data-aqui={isCurrentNode ? 'nodo' : undefined}
                   role="button"
                   tabIndex={0}
                   className={`tactile cursor-pointer outline-none${isCurrentNode ? ' animate-pop-once' : ''}`}
