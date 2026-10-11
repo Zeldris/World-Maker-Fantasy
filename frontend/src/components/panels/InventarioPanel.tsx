@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { InventoryItemInfo, ItemTipo } from '../../types'
 import { statBonusLabels } from '../../lib/dice'
-import { ITEM_TIPO_LABEL, ITEM_TIPO_ORDER, itemIcon } from '../../lib/enciclopediaTargets'
+import { ITEM_TIPO_LABEL, ITEM_TIPO_ORDER, apilarObjetos, itemIcon } from '../../lib/enciclopediaTargets'
 import { totalInventoryUnits } from '../../lib/inventoryCapacity'
 import { postDepositarCaptura, postSoltarCaptura } from '../../lib/api'
 import { useSubmitError } from '../../hooks/useSubmitError'
@@ -91,20 +91,29 @@ function ItemGrid({ items, onUse, onDetail }: Pick<InventarioPanelProps, 'items'
   const navegar = useNavegacionRejilla()
   return (
     <div className="grid grid-cols-3 gap-2 sm:grid-cols-4" onKeyDown={navegar}>
-      {items.map((item) => (
+      {apilarObjetos(items).map(({ item, cantidad }) => (
         <IconCard
           key={item.id}
           // Bug real jugando en vivo (2026-08-07): un objeto equipado mostraba SIEMPRE el mismo
           // icono de espadas cruzadas, sin importar qué fuera de verdad — "Raciones de viaje" o
           // "Tótem Maktor" equipados salían con icono de arma. El badge "E" de abajo ya distingue
           // "equipado" visualmente; el icono debe reflejar el objeto real siempre, tipo o no.
-          icon={item.tipo === 'ESPECIAL' ? '✨' : itemIcon(item.category ?? '')}
+          icon={item.tipo === 'ESPECIAL' ? '✨' : itemIcon(item.category ?? '', item.name)}
           name={item.name}
           tooltip={item.effectDescription ?? item.description}
           onUse={() => onUse(item)}
           onDetail={() => onDetail(item)}
           badge={
             <>
+              {/* P18 (QA-27): cuántas unidades hay en la pila. */}
+              {cantidad > 1 && (
+                <span
+                  aria-label={`${cantidad} unidades`}
+                  className="pointer-events-none absolute -bottom-1 -right-1 rounded-full border border-iron-600 bg-wood-950 px-1 text-2xs font-bold leading-4 text-wood-100"
+                >
+                  ×{cantidad}
+                </span>
+              )}
               {item.slot && (
                 <span
                   aria-hidden="true"

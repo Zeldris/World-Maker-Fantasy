@@ -170,8 +170,52 @@ export const ITEM_TIPO_LABEL: Record<ItemTipo, string> = {
   NARRATIVO: 'Narrativos',
 }
 
-export function itemIcon(category: string): string {
+// P18 (QA-27): la categoría sola daba iconos raros (el Tótem Maktor, «cosmético», con un
+// pintalabios; hacha y cuchillo con las mismas espadas). Cuando el nombre dice claro qué es, manda.
+const ICONO_POR_NOMBRE: [RegExp, string][] = [
+  [/t[oó]tem/i, '🗿'],
+  [/pantal[oó]n|calzas|braga/i, '👖'],
+  [/bota|sandalia|calzado/i, '👢'],
+  [/cataplasma|venda|vendaje|ung[uü]ento|emplasto/i, '🩹'],
+  [/hacha/i, '🪓'],
+  [/cuchillo|daga|pu[nñ]al|desollador/i, '🔪'],
+  [/arco\b|ballesta/i, '🏹'],
+  [/lanza|pica|tridente/i, '🔱'],
+  [/escudo/i, '🛡️'],
+  [/maza|garrote|martillo/i, '🔨'],
+  [/odre|cantimplora/i, '💧'],
+  [/mapa/i, '🗺️'],
+  [/cuerda/i, '🪢'],
+]
+
+export function itemIcon(category: string, name?: string): string {
+  if (name) {
+    for (const [patron, icono] of ICONO_POR_NOMBRE) if (patron.test(name)) return icono
+  }
   return ITEM_CATEGORY_ICON[category] ?? '📦'
+}
+
+/// P18 (QA-27): cada unidad es una fila propia, y tres raciones salían como tres casillas iguales
+/// sin número. Se apilan las iguales (mismo nombre, categoría y tipo) que no están equipadas; las
+/// equipadas van siempre aparte. Mantiene el orden de la primera aparición.
+export function apilarObjetos<T extends { name: string; category?: string; tipo?: string; slot: unknown }>(items: T[]): { item: T; cantidad: number }[] {
+  const pilas: { item: T; cantidad: number }[] = []
+  const porClave = new Map<string, { item: T; cantidad: number }>()
+  for (const item of items) {
+    if (item.slot) {
+      pilas.push({ item, cantidad: 1 })
+      continue
+    }
+    const clave = `${item.name}|${item.category ?? ''}|${item.tipo ?? ''}`
+    const pila = porClave.get(clave)
+    if (pila) pila.cantidad++
+    else {
+      const nueva = { item, cantidad: 1 }
+      porClave.set(clave, nueva)
+      pilas.push(nueva)
+    }
+  }
+  return pilas
 }
 
 export function npcIcon(): string {
