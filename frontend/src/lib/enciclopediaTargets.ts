@@ -244,12 +244,18 @@ export function yieldsSummary(entry: EnciclopediaFaunaFloraInfo): string {
   return generoPrefix + entry.yields.map((y) => `${y.cantidad} ${y.itemName}${y.condicion ? ` (${y.condicion})` : ''}`).join(', ')
 }
 
+// P36 (QA-27): «Reclutable 20%, Cortejable 20% (resistencia: Carisma)» se leía como jerga de
+// reglas en una ficha de lore. Mismos datos, dichos como se diría en el mundo.
 const INTERACCION_LABELS: Record<keyof Omit<EnciclopediaInteraccion, 'atributoResistencia'>, string> = {
-  comerciablePct: 'Comerciable',
-  reclutablePct: 'Reclutable',
-  domesticablePct: 'Domesticable',
-  capturablePct: 'Capturable',
-  cortejablePct: 'Cortejable',
+  comerciablePct: 'comerciar',
+  reclutablePct: 'reclutar',
+  domesticablePct: 'domesticar',
+  capturablePct: 'capturar',
+  cortejablePct: 'cortejar',
+}
+
+function enumerar(partes: string[]): string {
+  return partes.length <= 1 ? (partes[0] ?? '') : `${partes.slice(0, -1).join(', ')} o ${partes[partes.length - 1]}`
 }
 
 // Corrección 2026-08-27: nivel/atributos/ataque base/loadout son mecánica de combate, no lore —
@@ -260,10 +266,10 @@ function interaccionLine(interaccion?: EnciclopediaInteraccion): string | null {
   if (!interaccion) return null
   const entries = (Object.entries(INTERACCION_LABELS) as [keyof typeof INTERACCION_LABELS, string][])
     .filter(([key]) => interaccion[key] > 0)
-    .map(([key, label]) => `${label} ${interaccion[key]}%`)
+    .map(([key, label]) => `${label} (${interaccion[key]} %)`)
   if (entries.length === 0) return null
   const resistencia = interaccion.atributoResistencia ? ALL_ATTRIBUTE_LABELS[interaccion.atributoResistencia] ?? interaccion.atributoResistencia : null
-  return `Interacción: ${entries.join(', ')}${resistencia ? ` (resistencia: ${resistencia})` : ''}.`
+  return `Se puede ${enumerar(entries)}${resistencia ? `; se resiste con su ${resistencia}` : ''}.`
 }
 
 export function npcToDetailTarget(npc: EnciclopediaNpcInfo): EnciclopediaLinkTarget {
