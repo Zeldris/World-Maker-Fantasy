@@ -190,7 +190,8 @@ export function InteractiveMap({
   const svgRef = useRef<SVGSVGElement>(null)
   useEffect(() => {
     const svg = svgRef.current
-    const aqui = svg?.querySelector('[data-aqui="nodo"]') ?? svg?.querySelector('[data-aqui="region"]')
+    // El punto de la jugadora; sin mapa de la región, su insignia; si no, la forma de su región.
+    const aqui = svg?.querySelector('[data-aqui="nodo"]') ?? svg?.querySelector('[data-aqui="region"]') ?? svg?.querySelector('[data-aqui="forma"]')
     aqui?.scrollIntoView?.({ block: 'center', inline: 'nearest' })
   }, [currentRegion, currentLocationSlug])
   const selected = regions.find((r) => r.name === selectedName) ?? null
@@ -265,7 +266,7 @@ export function InteractiveMap({
             return (
               <g
                 key={shape.name}
-                data-aqui={isCurrent ? 'region' : undefined}
+                data-aqui={isCurrent ? 'forma' : undefined}
                 role="button"
                 tabIndex={0}
                 onClick={() => {
@@ -306,7 +307,7 @@ export function InteractiveMap({
                   // Insignia de "aquí ahora" (petición explícita, 2026-07-23: quitar el texto,
                   // usar un icono tipo contacto de móvil — persona en blanco sobre fondo dorado,
                   // borde blanco) en vez del texto "◆ aquí ahora", que se perdía contra el fondo.
-                  <g className="pointer-events-none" transform={`translate(${shape.labelX} ${shape.labelY + 20})`}>
+                  <g data-aqui="region" className="pointer-events-none" transform={`translate(${shape.labelX} ${shape.labelY + 20})`}>
                     <clipPath id={`current-badge-clip-${shape.name.replace(/\s+/g, '-')}`}>
                       <circle r={5} />
                     </clipPath>
