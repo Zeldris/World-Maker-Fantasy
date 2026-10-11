@@ -352,7 +352,12 @@ export async function zonaRoutes(app: FastifyInstance) {
       fictionalMinutes,
     });
     const zonePointSlugs = new Set(zonePointsActivos.map((p) => p.targetSlug));
-    const dinamicosCandidatos = npcsInScene.filter((n) => n.condicionFisica !== 'MUERTO' && !zonePointSlugs.has(n.slug));
+    // P24 y P51 (QA-27): una fauna ya vista en la partida se salta el filtro de lugar de
+    // `detectNpcsInScene` (bien para el turno), y si los hechos de sesión la nombran salía «presente
+    // ahora» en cualquier zona: un Guchapo cazado en el Pozo aparecía en la Hondonada o en las Agujas.
+    // En el mapa, quien no es un personaje único solo está en su lugar de origen (o si no tiene).
+    const fueraDeSuSitio = (n: { kind: string; homeLocationSlug: string | null }) => n.kind !== 'PRINCIPAL' && !!n.homeLocationSlug && n.homeLocationSlug !== locationSlug;
+    const dinamicosCandidatos = npcsInScene.filter((n) => n.condicionFisica !== 'MUERTO' && !zonePointSlugs.has(n.slug) && !fueraDeSuSitio(n));
 
     // Punto del jugador en el mapa de Zona (2026-09-04) — `NpcState` de TODOS los NPC/fauna
     // implicados hoy en el mapa (dinámicos + los `ZonePoint` reales de tipo NPC/FAUNA), una sola
