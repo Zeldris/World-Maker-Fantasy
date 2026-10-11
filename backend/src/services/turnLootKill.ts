@@ -351,7 +351,7 @@ export async function applyFactionRepDeltaForResolution(
 /// schema.prisma), pero SÍ necesita este mismo cierre de misión/reputación/población al caer.
 export async function applyKillSideEffects(params: {
   tx: Prisma.TransactionClient;
-  npc: { id: string; name: string; raza: string | null; slug: string; faction: string | null };
+  npc: { id: string; name: string; raza: string | null; slug: string; faction: string | null; articulo?: string | null };
   nuevaCondicion: CondicionFisica;
   saveId: string;
   worldId: string;
@@ -439,9 +439,9 @@ export async function applyKillSideEffects(params: {
     ];
     const comun = { saveId, fictionalMinutes: nuevoFictionalMinutes, regionSlug: activeRegion ? slugify(activeRegion) : null, locationId: save.currentLocationId, origen: 'JUGADOR' as const, actores };
     if (nuevaCondicion === 'MUERTO') {
-      await registrarSuceso(tx, { ...comun, tipo: 'MUERTE_CAUSADA', datos: { personaje: save.characterName, victima: npc.name } });
+      await registrarSuceso(tx, { ...comun, tipo: 'MUERTE_CAUSADA', datos: { personaje: save.characterName, victima: npc.name, articuloVictima: npc.articulo ?? null } });
     } else {
-      await registrarSuceso(tx, { ...comun, tipo: 'COMBATE_GANADO', datos: { personaje: save.characterName, rival: npc.name } });
+      await registrarSuceso(tx, { ...comun, tipo: 'COMBATE_GANADO', datos: { personaje: save.characterName, rival: npc.name, articuloRival: npc.articulo ?? null } });
     }
   }
   return { questCompletedInfo, factionRepChange };

@@ -17,9 +17,9 @@ interface Cosa {
 export interface DatosSuceso {
   // JUGADOR
   ACCION_RELEVANTE: { personaje: string; accion: string };
-  COMBATE_GANADO: { personaje: string; rival: string };
+  COMBATE_GANADO: { personaje: string; rival: string; articuloRival?: string | null };
   COMBATE_PERDIDO: { personaje: string; rival: string };
-  MUERTE_CAUSADA: { personaje: string; victima: string };
+  MUERTE_CAUSADA: { personaje: string; victima: string; articuloVictima?: string | null };
   PERDON_CONCEDIDO: { personaje: string; perdonado: string };
   AYUDA_PRESTADA: { personaje: string; a: string };
   /// CR-44: un NPC pierde el valor y huye del combate.
@@ -133,13 +133,16 @@ interface DefinicionSuceso<T extends TipoSuceso> {
 type Catalogo = { [T in TipoSuceso]: DefinicionSuceso<T> };
 
 const con = (causa?: string) => (causa ? ` (${causa})` : '');
+// P37 (QA-27): «da muerte a Orco enfurecido» → «da muerte al Orco enfurecido». Con el artículo del
+// catálogo (`Npc.articulo`), si lo tiene; un nombre propio va sin él.
+const aCon = (nombre: string, articulo?: string | null) => (articulo === 'el' ? `al ${nombre}` : articulo ? `a ${articulo} ${nombre}` : `a ${nombre}`);
 
 export const CATALOGO_SUCESOS: Catalogo = {
   // JUGADOR — la importancia sube +1 sola por ser el jugador AUTOR (§ 6.3).
   ACCION_RELEVANTE: { familia: 'JUGADOR', importanciaBase: 2, plantilla: (d) => `${d.personaje}: ${d.accion}` },
-  COMBATE_GANADO: { familia: 'JUGADOR', importanciaBase: 3, plantilla: (d) => `${d.personaje} vence a ${d.rival}.` },
+  COMBATE_GANADO: { familia: 'JUGADOR', importanciaBase: 3, plantilla: (d) => `${d.personaje} vence ${aCon(d.rival, d.articuloRival)}.` },
   COMBATE_PERDIDO: { familia: 'JUGADOR', importanciaBase: 3, plantilla: (d) => `${d.personaje} cae ante ${d.rival}.` },
-  MUERTE_CAUSADA: { familia: 'JUGADOR', importanciaBase: 5, plantilla: (d) => `${d.personaje} da muerte a ${d.victima}.` },
+  MUERTE_CAUSADA: { familia: 'JUGADOR', importanciaBase: 5, plantilla: (d) => `${d.personaje} da muerte ${aCon(d.victima, d.articuloVictima)}.` },
   PERDON_CONCEDIDO: { familia: 'JUGADOR', importanciaBase: 4, plantilla: (d) => `${d.personaje} perdona la vida a ${d.perdonado}.` },
   AYUDA_PRESTADA: { familia: 'JUGADOR', importanciaBase: 3, plantilla: (d) => `${d.personaje} atiende las heridas de ${d.a}.` },
   HUIDA_DE_NPC: { familia: 'JUGADOR', importanciaBase: 3, plantilla: (d) => `${d.huido} huye de ${d.personaje}.` },

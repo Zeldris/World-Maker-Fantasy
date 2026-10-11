@@ -118,6 +118,19 @@ async function aEntradas(prisma: PrismaClient, saveId: string, filas: FilaConoci
   });
 }
 
+/// P37 (QA-27): ganar un combate (dejarlo convaleciente) y rematarlo son dos sucesos (CR-3), pero en
+/// la Crónica salían dos líneas seguidas para la misma pelea («vence a» y «da muerte a»). Si la misma
+/// víctima muere a manos del personaje en la hora siguiente, la línea de la victoria sobra.
+export function sinVictoriaAntesDeLaMuerte(entradas: EntradaLeyenda[]): EntradaLeyenda[] {
+  const victima = (e: EntradaLeyenda) => e.actores.find((a) => a.papel === 'VICTIMA')?.id ?? null;
+  const muertes = entradas.filter((e) => e.tipo === 'MUERTE_CAUSADA' && e.cuando != null && victima(e));
+  return entradas.filter((e) => {
+    if (e.tipo !== 'COMBATE_GANADO' || e.cuando == null) return true;
+    const v = victima(e);
+    return !muertes.some((m) => victima(m) === v && m.cuando! >= e.cuando! && m.cuando! - e.cuando! <= 60);
+  });
+}
+
 /// La crónica que conoce el personaje, lo más reciente primero. `cursor` (el `siguiente` de la página
 /// anterior) pagina sin saltarse los sucesos que comparten minuto.
 export async function leyendasDePartida(
@@ -139,7 +152,7 @@ export async function leyendasDePartida(
   });
   const pagina = filas.slice(0, take);
   const hayMas = filas.length > take;
-  return { entradas: await aEntradas(prisma, saveId, pagina), hayMas, siguiente: hayMas ? pagina[pagina.length - 1]!.id : null };
+  return { entradas: sinVictoriaAntesDeLaMuerte(await aEntradas(prisma, saveId, pagina)), hayMas, siguiente: hayMas ? pagina[pagina.length - 1]!.id : null };
 }
 
 /// Lo que el personaje sabe de una entidad (ficha «En tu partida»): sucesos donde es actor y, para
