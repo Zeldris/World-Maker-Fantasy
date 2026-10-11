@@ -37,8 +37,11 @@ export const statBonusLabels: Record<string, string> = { ...attributeLabels, def
 /// duplicar el mismo formateo en dos sitios) — `Clase`/`Especializacion` (schema.prisma) son
 /// valores SNAKE_CASE (BERSERKER, MAESTRO_ARQUERO...); en vez de mantener un mapa a mano
 /// sincronizado con el enum del backend, se formatea genéricamente a Title Case con espacios.
+// P54 (QA-27): el enum va sin tildes («CHAMAN»); el nombre visible, con ellas.
+const CLASE_CON_TILDE: Record<string, string> = { CHAMAN: 'Chamán' }
+
 export function claseLabel(clase: string): string {
-  return clase.charAt(0) + clase.slice(1).toLowerCase()
+  return CLASE_CON_TILDE[clase] ?? clase.charAt(0) + clase.slice(1).toLowerCase()
 }
 
 export function especializacionLabel(especializacion: string): string {
