@@ -314,6 +314,9 @@ export interface NarrateResponse {
   /// valor sacaste tú y el del enemigo, y por qué perdiste o ganaste"). null si no hubo
   /// intercambio mecánico real este turno.
   combatExchangeDisplay: CombatExchangeInfo | null
+  /// P55 (QA-27): el resto de ataques que recibió la jugadora este turno en un combate de grupo,
+  /// cada uno con su entrada del diario. Opcional: un backend viejo no lo manda.
+  intercambiosExtra?: { logEntryId: string; text: string; combatExchange: CombatExchangeInfo }[]
   /// Rediseño del turno de combate (2026-07-29, "quiero que sea más claro cuando es turno de
   /// ataque... indicándome qué salió en los dados"): tirada real de iniciativa que decidió quién
   /// actúa en el PRÓXIMO intercambio. null si se forzó sin dados (aturdimiento/intimidación) o si

@@ -1,4 +1,5 @@
 import { registrarFinDeMision, registrarSucesoDeNpc } from './cronista/emisores.js';
+import { repartirIntercambios, type IntercambioContraJugadora } from './intercambiosContraJugadora.js';
 import { bajasDeCampamentoEnVivo } from './ataquesCampamento.js';
 import { cupoDeCamas } from './cronista/subditos.js';
 import { env } from '../config/env.js';
@@ -528,6 +529,9 @@ export interface NarrateAndPersistResult {
   /// las dos tiradas reales del intercambio de ESTE turno (ver `CombatExchangeDisplay`,
   /// combatExchange.ts), null si no hubo intercambio.
   combatExchangeDisplay: CombatExchangeDisplay | null;
+  /// P55 (QA-27): en un combate de grupo, el resto de ataques que recibió la jugadora este turno
+  /// (el primero ya va en `combatExchangeDisplay`). Cada uno es su propia entrada del diario.
+  intercambiosExtra: { logEntryId: string; text: string; combatExchange: CombatExchangeDisplay }[];
   /// Mismo hueco exacto que `npcAbilityUsed` pero para el lado del jugador (petición explícita,
   /// misma revisión: "cuando seleccione una habilidad esta se refleje en la narración con su
   /// descripción") — null en texto libre sin botón o sin intercambio.
@@ -3104,6 +3108,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // posteriores (animación en vivo, persistencia en LogEntry, `return` final) sigan funcionando
   // igual cuando NO hay combate múltiple de por medio.
   let combatExchangeDisplayFinal: CombatExchangeDisplay | null = combatExchangeDisplay;
+  // P55 (QA-27): ataques contra la jugadora que no caben en `combatExchangeDisplayFinal`.
+  let intercambiosContraJugadoraExtra: IntercambioContraJugadora[] = [];
+  const intercambiosExtra: { logEntryId: string; text: string; combatExchange: CombatExchangeDisplay }[] = [];
 
   // CR-44 (44b): moral del NPC golpeado en el 1v1. Si huye, el combate con él termina; si la moral
   // falla y no escapa, pierde su próximo golpe (la iniciativa pasa a la jugadora, como un aturdimiento).
@@ -4608,9 +4615,10 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // Fase G del 0.1 (hallazgo G11): si la jugadora no tuvo intercambio propio este turno (un
     // enemigo con más iniciativa ya resolvió el duelo de la ronda), se enseña el primer intercambio
     // real en el que la atacaron — antes no salía ninguna tirada y su acción parecía no hacer nada.
-    if (!combatExchangeDisplayFinal && intercambiosContraJugadora.length > 0) {
-      combatExchangeDisplayFinal = { ...intercambiosContraJugadora[0].display, rivalNombre: intercambiosContraJugadora[0].atacanteNombre };
-    }
+    // P55 (QA-27): los ataques que recibió y no caben en la narración, aparte en el diario.
+    const reparto = repartirIntercambios(combatExchangeDisplayFinal, intercambiosContraJugadora);
+    combatExchangeDisplayFinal = reparto.principal;
+    intercambiosContraJugadoraExtra = reparto.aparte;
 
     combatEncounterNarration = narraciones.filter(Boolean).join(' ') || `${characterName} se mantiene en guardia, pero el intercambio no llega a resolverse este turno.`;
 
@@ -6418,6 +6426,26 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       },
     });
 
+    // P55 (QA-27): cada ataque de más que recibió la jugadora en un combate de grupo, con sus dados.
+    // Sin esto, se podía caer tras ganar el único intercambio que se veía.
+    for (const extra of intercambiosContraJugadoraExtra) {
+      const combatExchange = { ...extra.display, rivalNombre: extra.atacanteNombre };
+      const text = `${extra.atacanteNombre} te ataca.`;
+      const entrada = await tx.logEntry.create({
+        data: {
+          saveId,
+          channel: 'CHARACTER',
+          text,
+          combatExchange: combatExchange as unknown as Prisma.InputJsonValue,
+          timeLabel,
+          fictionalMinutes: nuevoFictionalMinutes,
+          createdAt: nextAfterMainLogCreatedAt(),
+          combate: true,
+        },
+      });
+      intercambiosExtra.push({ logEntryId: entrada.id, text, combatExchange });
+    }
+
     if (compassNarrationLine) {
       // Brújula (2026-08-15) — LogEntry aparte, construido a mano, NUNCA pasado por el Narrador:
       // todo el contenido (dirección/destino/terreno) ya se sabe con certeza mecánica. Mismo
@@ -7249,6 +7277,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     esperandoDefensaJugador: !!nuevoPendingNpcAttack,
     npcAbilityUsed,
     combatExchangeDisplay: combatExchangeDisplayFinal,
+    intercambiosExtra,
     playerAbilityUsed,
     nextInitiativeRoll,
     territories,

@@ -319,6 +319,7 @@ export function useTurnFlow(params: UseTurnFlowParams) {
         combatEncounterLootSummary,
         discoveredLocationSlug,
         combatExchangeDisplay,
+        intercambiosExtra,
       } = await requestTurnNarrate(
         {
           saveId,
@@ -451,6 +452,18 @@ export function useTurnFlow(params: UseTurnFlowParams) {
             professionXpGain: professionXpGains[0] ?? undefined,
           },
         ]
+        // P55 (QA-27): los demás ataques que recibió en el combate de grupo que abre este turno.
+        for (const extra of intercambiosExtra ?? []) {
+          next.push({
+            id: extra.logEntryId,
+            channel: 'character' as const,
+            text: extra.text,
+            timeLabel: newTimeLabel,
+            createdAt: new Date().toISOString(),
+            combate: true,
+            combatExchange: extra.combatExchange,
+          })
+        }
         // Misión completada (2026-08-13) — ver el mismo bloque en handleCombatTurnResolved: fila
         // real aparte, nunca fusionada con la narración principal.
         if (questCompletedInfo) next.push(questCompletedLogEntry(questCompletedInfo, newTimeLabel))
