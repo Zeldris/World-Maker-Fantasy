@@ -83,17 +83,20 @@ export function useZonaAcciones({ saveId, setCharacterLog, setCombateIniciado, o
     handleSubmit(result.actionText)
   }
 
-  async function handleCazarEnZona(entryId: string, zonePointId: string) {
+  /// Devuelve si la caza salió (para que el mapa de zona se cierre y deje ver Combatir/Huir, P9).
+  async function handleCazarEnZona(entryId: string, zonePointId: string): Promise<boolean> {
     setCharacterLog((prev) => prev.map((e) => (e.id === entryId && e.dynamicModeOffer ? { ...e, dynamicModeOffer: { ...e.dynamicModeOffer, busy: true } } : e)))
     try {
       const result = await cazarEnZona(saveId!, zonePointId)
       setCharacterLog((prev) => prev.map((e) => (e.id === entryId ? { ...e, dynamicModeOffer: undefined } : e)))
       handleHuntResolved(result)
+      return true
     } catch (err) {
       const motivo = err instanceof Error && err.message ? err.message : 'No se pudo cazar — inténtalo de nuevo.'
       setCharacterLog((prev) =>
         prev.map((e) => (e.id === entryId && e.dynamicModeOffer ? { ...e, dynamicModeOffer: { ...e.dynamicModeOffer, busy: false, error: motivo } } : e)),
       )
+      return false
     }
   }
 
