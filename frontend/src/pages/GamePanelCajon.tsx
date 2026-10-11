@@ -254,6 +254,7 @@ export function GamePanelCajon() {
               professionProgress={professionProgress}
               professionRecipes={professionRecipes}
               recipesStatus={recipesStatus}
+              edificiosConstruidos={buildings.flatMap((b) => (b.recipeKey ? [b.recipeKey] : []))}
               onUse={handleAttachAbility}
               onCreate={handleCreateHabilidad}
               onDetail={handleAbilityDetail}
