@@ -902,8 +902,13 @@ Retro del 2026-10-08 (`CR-63`, `CR-65`, `CR-50`, `CR-37`, `CR-67`; propuestas ap
   P43 y P44 (interiores de otras partidas: `Location.saveId`) arreglados; el resto de P9-P51,
   apuntados en el registro sin arreglar (la usuaria: solo lo que bloquee). 2026-10-10, los 11 más
   rápidos que eligió la usuaria: P13, P15, P21, P25, P28, P29, P31, P32 (el mapa no entraba en el
-  inventario hasta recargar), P35 (y 41 notas internas más en el catálogo), P38 y P42. Falta: el resto
-  de apuntados (lista por esfuerzo, del 12 en adelante) y seguir jugando.
+  inventario hasta recargar), P35 (y 41 notas internas más en el catálogo), P38 y P42. 2026-10-11
+  (la otra cuenta, rama `claude/wonderful-volta-662qt8`, reparto de la usuaria): P9, P11, P12, P14,
+  P17, P18, P19, P20, P24, P26, P33 y P51, y los nuevos que salieron jugando: P53 (intro con las
+  Llanuras al este), P54 («Chaman»), P55 (en combate de grupo los demás ataques y los golpes gratis
+  no salían en el diario) y P56 (dos tiradas para la misma acción). Falta: el resto de apuntados
+  (P10, P16, P23, P27, P30, P36, P37, P39-P41, P45-P50) y seguir jugando; 🧭 P10, P30, P39 y la
+  huida con efecto AGUANTE (P12) esperan a la usuaria.
 
 
 Retro del 2026-10-09 (ronda de pruebas `QA-27`; propuestas aprobadas por la usuaria):
