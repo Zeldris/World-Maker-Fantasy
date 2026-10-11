@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeDuration, mentionsExplicitDuration } from './timedActions.js';
+import { duracionExplicitaMinutos, computeDuration, mentionsExplicitDuration } from './timedActions.js';
 
 const attrs = { fuerza: 8, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 };
 
@@ -37,5 +37,43 @@ describe('computeDuration', () => {
 
   it('banda instantánea tiene un suelo de 1 minuto, no 0 (bug real jugando: 14 turnos de combate seguidos sin avanzar el reloj)', () => {
     expect(computeDuration('Ataco con mi hacha', 'instantanea', attrs, 0)).toEqual({ minutos: 1 });
+  });
+});
+
+/// P17 (QA-27): «descanso un par de horas» duraba 5 minutos si el clasificador no leía la duración.
+describe('P17 — la duración explícita del texto manda', () => {
+  const attrs = { fuerza: 10, destreza: 6, constitucion: 7, inteligencia: 7, voluntad: 8, carisma: 6, magia: 2 };
+
+  it('lee las duraciones habituales', () => {
+    expect(duracionExplicitaMinutos('Me siento a la sombra junto al pozo y descanso un par de horas')).toBe(120);
+    expect(duracionExplicitaMinutos('Duermo toda la noche')).toBe(480);
+    expect(duracionExplicitaMinutos('Descanso media hora')).toBe(30);
+    expect(duracionExplicitaMinutos('Trabajo tres horas en la empalizada')).toBe(180);
+    expect(duracionExplicitaMinutos('Me quedo 2 días construyendo')).toBe(2880);
+    expect(duracionExplicitaMinutos('Paso una semana aquí')).toBe(10080);
+    expect(duracionExplicitaMinutos('Espero diez minutos')).toBe(10);
+  });
+
+  it('sin duración explícita devuelve null', () => {
+    expect(duracionExplicitaMinutos('Descanso un rato')).toBeNull();
+    expect(duracionExplicitaMinutos('Examino mis alrededores')).toBeNull();
+    expect(duracionExplicitaMinutos('Ataco a dos Guchapos')).toBeNull();
+    expect(duracionExplicitaMinutos('Descanso varios días')).toBeNull();
+    expect(duracionExplicitaMinutos('Espero unas horas')).toBeNull();
+  });
+
+  it('computeDuration usa la del texto aunque el clasificador diga otra cosa', () => {
+    expect(computeDuration('Descanso un par de horas junto al pozo', 'corta', attrs, 5).minutos).toBe(120);
+    expect(computeDuration('Descanso un par de horas', 'instantanea', attrs, 0).minutos).toBe(120);
+    expect(computeDuration('Descanso un rato', 'corta', attrs, 20).minutos).toBe(20);
+  });
+});
+
+describe('P17 — lo que se dice no ocupa tiempo', () => {
+  const attrs = { fuerza: 10, destreza: 6, constitucion: 7, inteligencia: 7, voluntad: 8, carisma: 6, magia: 2 };
+  it('hablar de una duración no la hace durar', () => {
+    expect(computeDuration('Le digo que vuelvo en una hora', 'instantanea', attrs, 0).minutos).toBe(1);
+    expect(computeDuration('Examino la veta durante una hora', 'instantanea', attrs, 0).minutos).toBe(1);
+    expect(computeDuration('Espero dos horas a que pase la tormenta', 'instantanea', attrs, 0).minutos).toBe(120);
   });
 });
