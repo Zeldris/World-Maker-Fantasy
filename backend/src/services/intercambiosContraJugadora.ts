@@ -1,3 +1,4 @@
+import type { CondicionFisica } from '@prisma/client';
 import type { CombatExchangeDisplay } from './combatExchange.js';
 
 export interface IntercambioContraJugadora {
@@ -18,3 +19,13 @@ export function repartirIntercambios(
   if (!primero) return { principal: null, aparte: [] };
   return { principal: { ...primero.display, rivalNombre: primero.atacanteNombre }, aparte: resto };
 }
+
+/// Etiqueta de cada condición en una línea del diario (P55: golpe gratis contra la jugadora). Es
+/// la de la barra de estado, sin género (P25: el personaje puede ser de cualquiera).
+export const CONDICION_EN_TEXTO: Record<CondicionFisica, string> = {
+  ILESO: 'Ileso',
+  HERIDO: 'Herido',
+  GRAVE: 'Grave',
+  CONVALECIENTE: 'Convaleciente',
+  MUERTO: 'Muerto',
+};

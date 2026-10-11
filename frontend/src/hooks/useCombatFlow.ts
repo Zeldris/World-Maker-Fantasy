@@ -721,7 +721,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     npcAbilityUsed: { npcName: string; abilityName: string; rol: 'ataque' | 'defensa' } | null
     playerAbilityUsed: { name: string; icon: string; description: string; rol: 'ataque' | 'defensa' } | null
     combatExchangeDisplay: CombatExchangeInfo | null
-    intercambiosExtra?: { logEntryId: string; text: string; combatExchange: CombatExchangeInfo }[]
+    intercambiosExtra?: { logEntryId: string; text: string; combatExchange?: CombatExchangeInfo }[]
     nextInitiativeRoll: InitiativeRollInfo | null
     newQuestInfo?: { title: string; objetivo: string } | null
     newQuestOfferInfo?: { title: string; description: string } | null

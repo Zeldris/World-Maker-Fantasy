@@ -1,5 +1,5 @@
 import { registrarFinDeMision, registrarSucesoDeNpc } from './cronista/emisores.js';
-import { repartirIntercambios, type IntercambioContraJugadora } from './intercambiosContraJugadora.js';
+import { repartirIntercambios, CONDICION_EN_TEXTO, type IntercambioContraJugadora } from './intercambiosContraJugadora.js';
 import { bajasDeCampamentoEnVivo } from './ataquesCampamento.js';
 import { cupoDeCamas } from './cronista/subditos.js';
 import { env } from '../config/env.js';
@@ -531,7 +531,7 @@ export interface NarrateAndPersistResult {
   combatExchangeDisplay: CombatExchangeDisplay | null;
   /// P55 (QA-27): en un combate de grupo, el resto de ataques que recibió la jugadora este turno
   /// (el primero ya va en `combatExchangeDisplay`). Cada uno es su propia entrada del diario.
-  intercambiosExtra: { logEntryId: string; text: string; combatExchange: CombatExchangeDisplay }[];
+  intercambiosExtra: { logEntryId: string; text: string; combatExchange?: CombatExchangeDisplay }[];
   /// Mismo hueco exacto que `npcAbilityUsed` pero para el lado del jugador (petición explícita,
   /// misma revisión: "cuando seleccione una habilidad esta se refleje en la narración con su
   /// descripción") — null en texto libre sin botón o sin intercambio.
@@ -3110,7 +3110,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   let combatExchangeDisplayFinal: CombatExchangeDisplay | null = combatExchangeDisplay;
   // P55 (QA-27): ataques contra la jugadora que no caben en `combatExchangeDisplayFinal`.
   let intercambiosContraJugadoraExtra: IntercambioContraJugadora[] = [];
-  const intercambiosExtra: { logEntryId: string; text: string; combatExchange: CombatExchangeDisplay }[] = [];
+  const golpesSinTiradaContraJugadora: { atacanteNombre: string; nuevaCondicion: CondicionFisica }[] = [];
+  const intercambiosExtra: { logEntryId: string; text: string; combatExchange?: CombatExchangeDisplay }[] = [];
 
   // CR-44 (44b): moral del NPC golpeado en el 1v1. Si huye, el combate con él termina; si la moral
   // falla y no escapa, pierde su próximo golpe (la iniciativa pasa a la jugadora, como un aturdimiento).
@@ -4536,6 +4537,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     const antes = await resolverTurnosAutonomosHastaJugadora({ prisma, worldId, saveId, encounterId });
     narraciones.push(...antes.narraciones);
     const intercambiosContraJugadora = [...antes.intercambiosContraJugadora];
+    golpesSinTiradaContraJugadora.push(...antes.golpesSinTiradaContraJugadora);
     combatEncounterCaidos.push(...antes.caidos);
     combatEncounterTerminado = antes.encounterTerminado;
 
@@ -4607,6 +4609,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         const despues = await resolverTurnosAutonomosHastaJugadora({ prisma, worldId, saveId, encounterId });
         narraciones.push(...despues.narraciones);
         intercambiosContraJugadora.push(...despues.intercambiosContraJugadora);
+        golpesSinTiradaContraJugadora.push(...despues.golpesSinTiradaContraJugadora);
         combatEncounterCaidos.push(...despues.caidos);
         combatEncounterTerminado = despues.encounterTerminado;
       }
@@ -6444,6 +6447,14 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         },
       });
       intercambiosExtra.push({ logEntryId: entrada.id, text, combatExchange });
+    }
+    // P55 (QA-27): los golpes gratis no tienen tirada, pero también dejan su línea en el diario.
+    for (const golpe of golpesSinTiradaContraJugadora) {
+      const text = `${golpe.atacanteNombre} te golpea sin que puedas defenderte (estás ocupado con otro rival). Estado: ${CONDICION_EN_TEXTO[golpe.nuevaCondicion]}.`;
+      const entrada = await tx.logEntry.create({
+        data: { saveId, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: nuevoFictionalMinutes, createdAt: nextAfterMainLogCreatedAt(), combate: true },
+      });
+      intercambiosExtra.push({ logEntryId: entrada.id, text });
     }
 
     if (compassNarrationLine) {
