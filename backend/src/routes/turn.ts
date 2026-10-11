@@ -1157,6 +1157,15 @@ export async function turnRoutes(app: FastifyInstance) {
         void startEagerTransitResolution(transitRow.id, busyUntil).catch((err) =>
           console.error(`[turn] error en la resolución anticipada del tránsito ${transitRow.id}:`, err),
         );
+      } else {
+        // P46 (QA-27): con evento, sin adelantar nada (la prudencia de arriba), pero en cuanto vence
+        // la espera, como el crafteo: antes quedaba «Ocupado · resolviendo...» hasta el barrido del
+        // mundo (cada 2 min). Si el proceso se reinicia antes, el barrido la recoge igual.
+        setTimeout(() => {
+          void startEagerTransitResolution(transitRow.id, busyUntil).catch((err) =>
+            console.error(`[turn] error en la resolución del viaje interrumpido ${transitRow.id}:`, err),
+          );
+        }, Math.max(0, busyUntil.getTime() - Date.now()));
       }
 
       // Petición explícita de la usuaria (2026-07-30): "cuando salgan esas esperas que ponga
