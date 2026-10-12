@@ -3,7 +3,7 @@ import { prisma } from '../lib/prisma.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
 import { asegurarMundoDePartida } from './mundoPartida.js';
 import { buildNpcInScene, type NpcInScene } from './npcScene.js';
-import { aplicarHuidaNpc, decidirMoralTrasIntercambio } from './huidaNpc.js';
+import { aplicarHuidaNpc, decidirHuidaPorHabilidad, decidirMoralTrasIntercambio, textoTiradaHuida } from './huidaNpc.js';
 
 /// `random` que da exactamente esos d20, en orden.
 const d20 = (...valores: number[]) => {
@@ -46,7 +46,7 @@ describe('CR-44 (44b) — moral del NPC en el combate 1v1', () => {
   it('al caer a GRAVE tira moral: si falla y escapa, huye', async () => {
     const r = await decidirMoralTrasIntercambio(prisma, { ...base(), npc: guerrero, random: d20(1, 1, 20) });
     expect(r).toMatchObject({ huye: true, pierdeTurno: false });
-    expect(r!.moral.modo).toBe('desventaja'); // grave contra una jugadora ilesa: va claramente perdiendo
+    expect(r!.moral!.modo).toBe('desventaja'); // grave contra una jugadora ilesa: va claramente perdiendo
   });
 
   it('si falla la moral y no escapa, pierde su próximo golpe; si aguanta, sigue', async () => {
@@ -69,5 +69,23 @@ describe('CR-44 (44b) — moral del NPC en el combate 1v1', () => {
     expect(estado.zonaLocationId).toBe(lugarId);
     const suceso = await prisma.suceso.findFirstOrThrow({ where: { saveId, tipo: 'HUIDA_DE_NPC' } });
     expect(suceso.texto).toBe('Guerrero serhu huye de Gorhorn.');
+  });
+
+  // QA-27 P12: una defensa que promete huir («Huida a la madriguera»…) huye de verdad si escapa.
+  describe('huida por habilidad (QA-27 P12)', () => {
+    const habilidad = (habilidadDefensa: string | null, npcAttackHits = false) => ({ saveId, worldId, npc: fauna, habilidadDefensa, npcAttackHits, nivelJugador: 1 });
+
+    it('si se defiende con ella, no le alcanzan y escapa, huye sin tirada de moral', async () => {
+      const r = await decidirHuidaPorHabilidad(prisma, { ...habilidad('Huida a la madriguera'), random: d20(20) });
+      expect(r).toMatchObject({ huye: true, pierdeTurno: false, moral: null });
+      expect(textoTiradaHuida(r!)).toMatch(/usa «Huida a la madriguera» y escapa del combate\. \(Huida: 20 → \d+ contra \d+\.\)$/);
+    });
+
+    it('no huye si falla el escape, si le alcanzan o si la defensa no promete huida', async () => {
+      expect(await decidirHuidaPorHabilidad(prisma, { ...habilidad('Instinto Solitario'), random: d20(1) })).toBeNull();
+      expect(await decidirHuidaPorHabilidad(prisma, { ...habilidad('Estampida instintiva', true), random: d20(20) })).toBeNull();
+      expect(await decidirHuidaPorHabilidad(prisma, { ...habilidad('Piel endurecida'), random: d20(20) })).toBeNull();
+      expect(await decidirHuidaPorHabilidad(prisma, { ...habilidad(null), random: d20(20) })).toBeNull();
+    });
   });
 });

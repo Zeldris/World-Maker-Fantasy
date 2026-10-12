@@ -64,7 +64,7 @@ import { invalidateCarcassRollCache } from '../routes/saves/recolectar.js';
 import { instanceNumbersByParticipantId, resolverObjetivoPorTexto, type HabilidadParaIntercambio } from './combateMultiple.js';
 import { prisma } from '../lib/prisma.js';
 import { registrarSuceso } from './cronista/sucesos.js';
-import { aplicarHuidaNpc, decidirMoralTrasIntercambio } from './huidaNpc.js';
+import { aplicarHuidaNpc, decidirHuidaPorHabilidad, decidirMoralTrasIntercambio, textoTiradaHuida } from './huidaNpc.js';
 import { abrirCombateDePersonas, grupoDePersona } from './combatePersonas.js';
 import { effectiveAttributesConDuracion, pushActiveEffect, decrementActiveEffects, type ActiveEffect } from './activeEffects.js';
 import type { RollResult, AttributeBlock, Attribute, GradoExito } from './dice.js';
@@ -3115,13 +3115,21 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
 
   // CR-44 (44b): moral del NPC golpeado en el 1v1. Si huye, el combate con él termina; si la moral
   // falla y no escapa, pierde su próximo golpe (la iniciativa pasa a la jugadora, como un aturdimiento).
-  const moralNpc = combateActivo
+  const moralNpcTirada = combateActivo
     ? await decidirMoralTrasIntercambio(prisma, {
         saveId, worldId, npc: npcAttackTarget, npcAttackHits, npcTargetNewCondicion,
         condicionJugadorTras: jugadorRecibeGolpe ? nextCondicionForAttack(jugadorGolpeEfectos, params.condicionFisica) : params.condicionFisica,
         nivelJugador: params.currentLevel,
       })
     : null;
+  // QA-27 P12: o huye con una defensa que lo promete («Huida a la madriguera»…).
+  const huidaPorHabilidad =
+    combateActivo && !moralNpcTirada && npcAbilityUsed?.rol === 'defensa'
+      ? await decidirHuidaPorHabilidad(prisma, {
+          saveId, worldId, npc: npcAttackTarget, habilidadDefensa: npcAbilityUsed.abilityName, npcAttackHits, nivelJugador: params.currentLevel,
+        })
+      : null;
+  const moralNpc = moralNpcTirada ?? huidaPorHabilidad;
   const npcPierdeIniciativa = !!moralNpc && (moralNpc.huye || moralNpc.pierdeTurno);
   const nuevoPendingNpcAttack = npcPierdeIniciativa ? null : nuevoPendingNpcAttackFase;
   const nextInitiativeRoll = npcPierdeIniciativa ? null : nextInitiativeRollFase;
@@ -5246,7 +5254,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         data: {
           saveId, channel: 'CHARACTER', isSystemMessage: true, timeLabel: nuevaFictionalDateLabel, fictionalMinutes: nuevoFictionalMinutes,
           createdAt: nextAfterMainLogCreatedAt(),
-          text: `${moralNpc.texto} (Moral: ${moralNpc.moral.usedRoll}${moralNpc.moral.modo === 'desventaja' ? ' con desventaja' : ''} → ${moralNpc.moral.total} contra ${moralNpc.moral.dificultad}${moralNpc.escape ? `; huida: ${moralNpc.escape.roll} → ${moralNpc.escape.total} contra ${moralNpc.escape.dificultad}` : ''}.)`,
+          text: textoTiradaHuida(moralNpc),
         },
       });
       if (moralNpc.huye && npcAttackTarget) {
