@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { textoEnergiaHabilidad } from '../lib/energiaHabilidad'
 import type { EquipSlot, IngredientStatusInfo, InventoryItemInfo, SavedActionInfo } from '../types'
 import { statBonusLabels } from '../lib/dice'
 import { itemIcon } from '../lib/enciclopediaTargets'
@@ -299,6 +300,10 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onTirar, onSa
                 bono en sí SIEMPRE se aplicó en combate; solo faltaba aquí, el sitio que de verdad
                 se ve al jugar. */}
             <p className="text-sm leading-relaxed text-wood-300">{(target.ability.description || 'Sin descripción.') + abilityBonusSuffix(target.ability)}</p>
+            {/* P101 (QA-27): la ficha decía qué hace una habilidad de combate, pero no lo que cuesta. */}
+            {target.ability.category === 'combate' && (
+              <p className="text-xs text-wood-300">{textoEnergiaHabilidad(target.ability.energyCost, target.ability.energyRegen)}</p>
+            )}
             <p className="rounded-lg border border-iron-700 bg-wood-950/40 px-3 py-2 text-xs italic text-wood-400">«{target.ability.promptText}»</p>
             {target.ability.recipeKey &&
               (() => {

@@ -223,6 +223,27 @@ describe('GET /saves/:id/zona', () => {
     expect(slugs).toEqual(['gistera-koh']);
   });
 
+  it('P107 (QA-27): un NPC fijo del mapa toma la facción del propio NPC, no «Sin facción»', async () => {
+    findUniqueSave.mockResolvedValueOnce({
+      id: 's1',
+      worldId: 'w1',
+      currentLocation: {
+        id: 'loc1',
+        slug: 'restos-de-maktor',
+        name: 'Los Restos de Maktor',
+        zonePoints: [{ id: 'zpo', x: 400, y: 130, tipo: 'NPC', targetSlug: 'orco-guardia', label: null, activo: true, cantidad: 1, factionSlug: null }],
+      },
+      worldState: { fictionalMinutes: 600, factionsStatus: { 'Clan Serhu': 500 }, agenda: null },
+    });
+    findManyNpc.mockResolvedValueOnce([{ slug: 'orco-guardia', name: 'Orco de guardia', faction: 'Clan Serhu', temperamento: 'CAUTELOSO' }]);
+    loadSessionFactsMock.mockResolvedValueOnce([]);
+    detectNpcsInSceneMock.mockResolvedValueOnce([]);
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
+    const punto = (res.json().puntos as { targetSlug: string; color: string }[]).find((p) => p.targetSlug === 'orco-guardia');
+    expect(punto?.color).toBe('ENEMIGO');
+  });
+
   it('con ZonePoints reales: resuelve nombres de FAUNA/RECURSO y devuelve posiciones', async () => {
     findUniqueSave.mockResolvedValueOnce({
       id: 's1',
