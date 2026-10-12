@@ -257,6 +257,8 @@ export function GameView() {
         characterName={characterName}
         onResolverMuerte={handleResolveDeath}
         resolviendoMuerte={resolvingDeath}
+        deathCount={deathCount}
+        dificultad={dificultad}
         combatComposer={
             // Rework 2026-07-24, recortado en el rediseño de la vista de combate (2026-07-28): sigue
             // sustituyendo al ChatComposer normal en el mismo sitio, pero ahora solo es el input de

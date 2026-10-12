@@ -6513,6 +6513,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       });
       intercambiosExtra.push({ logEntryId: entrada.id, text, combatExchange });
     }
+    // P117 (QA-27): la subida de nivel la gana el golpe de la jugadora; va antes que los golpes
+    // gratis que recibe después (antes salía tras «Estado: Muerto»). Se reserva aquí su turno.
+    const createdAtSubidaDeNivel = result.leveledUp ? nextAfterMainLogCreatedAt() : null;
     // P55 (QA-27): los golpes gratis no tienen tirada, pero también dejan su línea en el diario.
     for (const golpe of golpesSinTiradaContraJugadora) {
       const text = `${golpe.atacanteNombre} te golpea sin que puedas defenderte (estás ocupado con otro rival). Estado: ${CONDICION_EN_TEXTO[golpe.nuevaCondicion]}.`;
@@ -6550,7 +6553,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           text: `${characterName} sube a nivel ${result.newLevel}.${attributeNote}`,
           timeLabel: nuevaFictionalDateLabel,
           fictionalMinutes: nuevoFictionalMinutes,
-          createdAt: nextAfterMainLogCreatedAt(),
+          createdAt: createdAtSubidaDeNivel ?? nextAfterMainLogCreatedAt(),
         },
       });
 
