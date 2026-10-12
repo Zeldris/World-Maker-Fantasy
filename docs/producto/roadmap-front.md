@@ -996,6 +996,23 @@ por la usuaria):
   cambia el estado de una fila del registro y falla si no hay exactamente una.
 - ~~**QA-43 · Índice de `turnResolution.ts`**~~ ✅ 2026-10-12: al principio del archivo, cada bloque de
   `narrateAndPersistTurn` con la clave para buscarlo.
+
+Retro del 2026-10-12, segunda tanda de `QA-27` (jugando con Gorhorn; las 6 aprobadas por la usuaria):
+
+- ~~**QA-44 · Qué se prueba, en qué orden**~~ ✅ 2026-10-12 ([runbook de rondas](../runbooks/rondas-de-pruebas.md)):
+  primero lo arreglado que solo tiene tests, luego lo del hito en curso; lo que el roadmap no tiene, no.
+  Motivo: la tanda empezó por «Crear desde cero» y por cazar escribiendo, y la usuaria tuvo que reconducirla.
+- ~~**QA-45 · La ronda no escribe código**~~ ✅ 2026-10-12 (mismo runbook, paso 4): solo un fallo
+  bloqueante; lo demás al registro, las mejoras al roadmap con hito, las retros fuera de la ronda.
+- ~~**QA-46 · Ayudas para el MCP de Playwright**~~ ✅ 2026-10-12 (`tools/playwright-e2e/mcp/`: `estado.js`,
+  `turno.js`, `mover.js`, `captura.js`): caben en los 60 s del MCP y devuelven el estado en texto; los
+  parámetros van en `window.tk` (el MCP no guarda nada entre órdenes).
+- ~~**QA-47 · Añadir hallazgos**~~ ✅ 2026-10-12 (`marca-hallazgo.py --nuevo "<hallazgo>" "<estado>"`):
+  añade la fila con el siguiente número.
+- ~~**QA-48 · Revisar tras una llamada interrumpida**~~ ✅ 2026-10-12 (`CLAUDE.md`): `git status` y
+  `git diff` antes de repetirla. Motivo: `NAR-12` entró dos veces.
+- ~~**QA-49 · Avisar si el juego no está levantado**~~ ✅ 2026-10-12 (`.claude/hooks/session-start.sh`):
+  si existe `tarkor_juego` y el frontend no responde, el inicio de sesión lo dice y da la orden.
 ---
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)

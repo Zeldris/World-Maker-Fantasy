@@ -53,3 +53,8 @@ fi
 # QA-13: el hook de antes de subir (tsc, oxlint y cobertura del roadmap).
 git -C "${CLAUDE_PROJECT_DIR:-$(cd .. && pwd)}" config core.hooksPath .githooks
 echo "Entorno listo: Postgres $(pg_isready -h localhost | cut -d' ' -f3-), Ollama simulado en 11434."
+# QA-49: si había una ronda de pruebas (base del juego) y el juego no está levantado, avisar.
+if [ "$(psql "$DB_URL" -tAc "select 1 from pg_database where datname='tarkor_juego'" 2>/dev/null)" = "1" ] \
+  && ! curl -s -o /dev/null localhost:5173; then
+  echo "Ronda de pruebas: la base tarkor_juego existe pero el juego no está levantado. Relanza: bash tools/playwright-e2e/arrancar-juego.sh"
+fi

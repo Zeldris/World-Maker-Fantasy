@@ -53,6 +53,8 @@ siguiente sesión.
   por red, reintentar con espera 2 s, 4 s, 8 s, 16 s).
 - **La bitácora se actualiza en el mismo commit** que el trabajo que describe, no al final de la
   sesión.
+- **Tras una llamada interrumpida o rechazada, `git status` y `git diff` antes de repetirla** (`QA-48`):
+  el cambio puede haberse guardado, o incluso subido, y repetirlo lo duplica.
 
 ## Pruebas de juego
 

@@ -3,22 +3,39 @@
 Para cuando la usuaria pide «probar», «jugar como una jugadora» o una ronda de pruebas (`QA-27`,
 retro del 2026-10-09). Herramientas: [`tools/playwright-e2e/`](../../tools/playwright-e2e/README.md).
 
+## Qué se prueba, en este orden
+
+`QA-44` (retro de `QA-27`, 2026-10-12):
+
+1. **Lo arreglado en la ronda que solo tiene tests**: verlo funcionar jugando y apuntarlo como
+   comprobado en el registro.
+2. **Lo del hito en curso** (en `0.3`: Reino, población y ganadería, defensa, compañeros, «Charlar con
+   NPC», campamentos, comercio). La fila del hito en
+   [«Qué entra en cada hito»](../producto/21-roadmap.md#qué-entra-en-cada-hito) dice qué es.
+3. Lo que el roadmap no tiene (p. ej. «Crear desde cero» en la creación de personaje) no se prueba.
+
+Cómo provocar cada cosa (los encuentros salen al moverse por el mapa de zona, no escribiendo
+«salgo a cazar») y qué está ya probado en vivo:
+[`checklist-pruebas-juego.md`](../registros/checklist-pruebas-juego.md).
+
 ## Cómo se juega
 
 1. Arranca con `bash tools/playwright-e2e/arrancar-juego.sh` (base `tarkor_juego`, aparte de la de
-   los tests). Partida nueva desde el menú, como una jugadora.
+   los tests). Partida nueva desde el menú, como una jugadora. Para manejar el navegador con el MCP
+   de Playwright, carga antes las ayudas de `tools/playwright-e2e/mcp/` (`QA-46`, su README).
 2. Juega paso a paso y **mira la pantalla** en cada paso (captura): botones, textos, mapa, avisos.
    Un bucle automático (combate, caminar) solo para repetir algo ya visto; lo nuevo se juega a mano.
 3. Apunta cada hallazgo en el registro de la ronda (`docs/registros/pruebas-<hito>-hallazgos.md`,
    tabla `| P<n> | Hallazgo | Estado |`): fallos, incoherencias de texto o de lore, y detalles de
-   interfaz. Con la causa si se ve, y si no bloquea, «pendiente». Para cambiar el estado de una fila:
-   `python3 tools/qa/marca-hallazgo.py P<n> "<texto viejo>" "<texto nuevo>"` (`QA-42`).
-3b. Para decidir qué probar y cómo (p. ej. los encuentros salen al moverse por el mapa de zona, no
-   escribiendo «salgo a cazar»), mira [`checklist-pruebas-juego.md`](../registros/checklist-pruebas-juego.md):
-   qué está probado en vivo, qué solo con tests y qué falta.
-4. **Arregla solo lo que bloquea** (no se puede seguir jugando, o el juego hace algo imposible): con
-   su test y comprobado en vivo (si el MCP de Playwright no conecta, `driver.mjs` de
-   `tools/playwright-e2e/`, `QA-41`). Lo demás se queda apuntado para repasarlo con la usuaria.
+   interfaz, con la causa si se ve. Con `tools/qa/marca-hallazgo.py` (`QA-42`, `QA-47`):
+   `--nuevo "<hallazgo>" "<estado>"` añade la fila con el siguiente número, y
+   `P<n> "<texto viejo>" "<texto nuevo>"` cambia su estado.
+4. **La ronda no escribe código** (`QA-45`, petición de la usuaria del 2026-10-12): la prioridad es
+   probar. Solo se arregla un fallo **bloqueante** (no se puede seguir jugando, o el juego hace algo
+   imposible), con su test y comprobado en vivo. Lo demás va al registro como «pendiente»; las
+   mejoras y el diseño, al roadmap como tarea con hito. Las retros y los arreglos de lo apuntado se
+   hacen antes o después de la ronda, no en medio. Si el MCP de Playwright no conecta,
+   `driver.mjs` de `tools/playwright-e2e/` (`QA-41`).
 5. Commit y push tras cada tanda de hallazgos; la tarea de la ronda en su roadmap lleva qué está
    hecho y qué falta.
 6. **`/code-review` cada 5-6 hallazgos arreglados** (`QA-40`, retro de `QA-27`), no solo al final: la
