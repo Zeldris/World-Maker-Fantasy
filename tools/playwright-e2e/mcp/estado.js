@@ -1,7 +1,12 @@
 // QA-46: estado de la partida en texto, sin captura: HUD, últimas líneas del diario y, si hay combate,
 // el panel de combate. Uso: browser_run_code_unsafe con filename "tools/playwright-e2e/mcp/estado.js".
 async (page) => {
-  const texto = await page.locator('body').innerText();
+  // QA-60: lo que escribe el Ollama simulado (`narrationFor` de tools/ci/mock-ollama.mjs, sus dos frases
+  // fijas) sale como «[simulado]», para no confundirlo con un fallo del juego.
+  const texto = (await page.locator('body').innerText()).replace(
+    /El personaje (lleva a cabo lo que se propone|observa con atención a su alrededor)[^\n]*?nada fuera de lo común ocurre\./g,
+    '[simulado]',
+  );
   const hud = ((await page.locator('banner, header').first().innerText().catch(() => '')) || '').replace(/\s+/g, ' ').trim();
   const iDiario = texto.indexOf('Lo que haces, dices y percibes');
   const iMundo = texto.indexOf('\nEl mundo\n');

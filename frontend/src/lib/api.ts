@@ -2117,6 +2117,8 @@ export async function aceptarMision(
   // endpoint ni siquiera lo declaraba — se descartaba en silencio, sin chip ni actualización del
   // XP visible hasta recargar la partida.
   questCompletedInfo: { logEntryId: string; text: string; title: string; grantedItems: string[]; rewardXp: number } | null
+  /// QA-54: la recompensa de `questCompletedInfo`, lista para el inventario (P32).
+  newInventoryItems?: InventoryItemInfo[]
 }> {
   return fetchJson(`${API_URL}/saves/${saveId}/quests/aceptar`, {
     method: 'POST',
@@ -2159,6 +2161,8 @@ export interface DynamicModeTurno {
     alreadyExisted: boolean
     logEntry: { id: string; text: string; timeLabel: string; createdAt: string } | null
     questCompletedInfo: { logEntryId: string; text: string; title: string; grantedItems: string[]; rewardXp: number } | null
+    /// QA-54: la recompensa de `questCompletedInfo`, lista para el inventario (P32).
+    newInventoryItems?: InventoryItemInfo[]
   } | null
   /// AGRESIVO/ENEMIGO desde Interactuar (2026-09-20) — llega cuando el encuentro se resuelve en
   /// combate directo (el NPC vio primero al jugador, o el jugador eligió "Combatir" tras verlo él

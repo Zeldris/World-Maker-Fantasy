@@ -339,7 +339,7 @@ export function useModoDinamico({
       // propio botón "Aceptar" de la tarjeta amarilla) — un LogEntry nuevo con `newQuest` (fondo
       // amarillo, sin botones), nunca `questOffer` (que sí los pinta).
       if (turno.questAceptada?.logEntry) {
-        const { quest, logEntry, questCompletedInfo } = turno.questAceptada
+        const { quest, logEntry, questCompletedInfo, newInventoryItems } = turno.questAceptada
         setCharacterLog((prev) => [
           ...prev,
           {
@@ -355,11 +355,13 @@ export function useModoDinamico({
           setCharacterLog((prev) => [...prev, questCompletedLogEntry(questCompletedInfo, logEntry.timeLabel)])
           setXp((prev) => prev + questCompletedInfo.rewardXp)
         }
-        // P32 (QA-27): la recompensa ya concedida entra también en el inventario visible.
+        // P32 / QA-54: la recompensa llega con la respuesta y entra en el inventario visible.
+        if (newInventoryItems?.length) setInventory((prev) => applyInventoryDelta(prev, newInventoryItems, [], []))
         getSave(saveId!)
           .then((save) => {
             setQuests(save.quests)
-            if (questCompletedInfo?.grantedItems.length) setInventory(save.inventory)
+            // Sin la recompensa en la respuesta (un backend anterior), la recarga la trae.
+            if (questCompletedInfo?.grantedItems.length && !newInventoryItems?.length) setInventory(save.inventory)
           })
           .catch(() => {})
       }

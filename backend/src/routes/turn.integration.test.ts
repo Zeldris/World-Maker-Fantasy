@@ -4097,6 +4097,8 @@ describe('Decapitar cierra una misión "derrotar a X" con rewardItems y entrega 
       grantedItems: ['Mapa de las Llanuras (prueba)'],
       rewardXp: 100,
     });
+    // P32 (QA-27, 2026-10-12): la recompensa llega también como objeto nuevo, sin recargar.
+    expect((done.newInventoryItems as { id: string }[]).map((i) => i.id)).toContain(item!.id);
 
     // Auditoría "revisar partida" 2026-08-13, bug real jugando en vivo: "Misión completada" se
     // leía ANTES que la narración del propio turno que la resolvió (mismo `createdAt` de
@@ -6060,6 +6062,10 @@ describe('Misión de Gistera Koh: NPC objetivo ya resuelto no deja la misión at
     // concederlo, así que es la única cobertura real de que no se pierda en este camino concreto.
     const mapa = await prisma.inventoryItem.findFirst({ where: { saveId, name: 'Mapa de las Llanuras' } });
     expect(mapa).not.toBeNull();
+    // QA-54: la respuesta trae el mapa entre los objetos nuevos, con su efecto, para que el mapa
+    // del mundo lo vea sin recargar (P32).
+    const nuevos = (acceptRes.json() as { newInventoryItems: { id: string; effectKey: string | null }[] }).newInventoryItems;
+    expect(nuevos.find((i) => i.id === mapa!.id)?.effectKey).toBe('reveal-map-llanuras');
   }, 30_000);
 });
 

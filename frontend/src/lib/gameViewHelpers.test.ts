@@ -23,6 +23,11 @@ describe('applyInventoryDelta', () => {
     expect(applyInventoryDelta(prev, added, [], []).map((i) => i.id)).toEqual(['1', '2'])
   })
 
+  it('no duplica lo que ya está (QA-54: una recompensa que también trajo una recarga)', () => {
+    const prev = [makeItem({ id: '1', name: 'Mapa de las Llanuras' })]
+    expect(applyInventoryDelta(prev, [makeItem({ id: '1', name: 'Mapa de las Llanuras' })], [], []).map((i) => i.id)).toEqual(['1'])
+  })
+
   it('quita lo borrado', () => {
     const prev = [makeItem({ id: '1', name: 'Piedra' }), makeItem({ id: '2', name: 'Leña' })]
     expect(applyInventoryDelta(prev, [], ['1'], []).map((i) => i.id)).toEqual(['2'])

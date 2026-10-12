@@ -6,12 +6,17 @@ Uso: python3 tools/qa/marca-hallazgo.py P<n> "<texto viejo>" "<texto nuevo>" [--
 
 La primera forma busca la fila `| P<n> | ...` cuyo estado (la última columna) contenga el texto viejo y
 lo sustituye solo ahí; falla si no hay exactamente una, para no tocar otra fila por error. La segunda (`QA-47`) añade una fila nueva
-detrás de la última, con el siguiente número. Registro por defecto: el del hito más alto
+detrás de la última, con el siguiente número; `QA-55`: el número sale por encima del más alto de la copia
+local, de `origin/main` y de todas las ramas `origin/claude/*` (hace `git fetch` antes), para que dos
+cuentas que anotan a la vez no repitan número. Registro por defecto: el del hito más alto
 (`docs/registros/pruebas-<hito>-hallazgos.md`, p. ej. `pruebas-0.3-hallazgos.md`).
 """
 import glob
+import os
 import re
+import subprocess
 import sys
+
 
 
 def registro_por_defecto() -> str:
@@ -23,6 +28,24 @@ def registro_por_defecto() -> str:
     if not por_hito:
         sys.exit('No hay ningún docs/registros/pruebas-<hito>-hallazgos.md (¿estás en la raíz del repo?)')
     return por_hito[max(por_hito)]
+
+
+def numeros_en_ramas(ruta: str) -> list[int]:
+    """QA-55: los P<n> del registro en `origin/main` y en cada rama `origin/claude/*`, tras un `git fetch`.
+
+    Sin red, se queda con lo que ya hubiera traído el último fetch (y lo avisa)."""
+    if subprocess.run(['git', 'fetch', '--quiet', 'origin'], capture_output=True).returncode != 0:
+        print('marca-hallazgo: sin git fetch (¿sin red?); numero con las ramas que ya había', file=sys.stderr)
+    raiz = subprocess.run(['git', 'rev-parse', '--show-toplevel'], capture_output=True, text=True).stdout.strip()
+    rel = os.path.relpath(os.path.abspath(ruta), raiz) if raiz else ruta
+    ramas = subprocess.run(['git', 'for-each-ref', '--format=%(refname:short)', 'refs/remotes/origin/claude/'],
+                           capture_output=True, text=True).stdout.split()
+    numeros = []
+    for rama in ['origin/main', *ramas]:
+        r = subprocess.run(['git', 'show', f'{rama}:{rel}'], capture_output=True, text=True)
+        if r.returncode == 0:
+            numeros += [int(n) for n in re.findall(r'^\| P(\d+) \|', r.stdout, re.M)]
+    return numeros
 
 
 def main(args: list[str]) -> None:
@@ -39,7 +62,8 @@ def main(args: list[str]) -> None:
         filas = [i for i, l in enumerate(lineas) if re.match(r'^\| P\d+ \|', l)]
         if not filas:
             sys.exit(f'{ruta}: no hay ninguna fila `| P<n> |` detrás de la que añadir')
-        numero = max(int(re.match(r'^\| P(\d+) ', lineas[i]).group(1)) for i in filas) + 1
+        locales = [int(re.match(r'^\| P(\d+) ', lineas[i]).group(1)) for i in filas]
+        numero = max(locales + numeros_en_ramas(ruta)) + 1
         hallazgo, estado = (t.replace('|', '\\|') for t in args[1:])
         lineas.insert(filas[-1] + 1, f'| P{numero} | {hallazgo} | {estado} |')
         open(ruta, 'w', encoding='utf-8').write('\n'.join(lineas))

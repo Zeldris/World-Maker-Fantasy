@@ -4,7 +4,8 @@ import { prisma } from '../../lib/prisma.js';
 import { normalizeText, matchDestination } from '../../services/travel.js';
 import { loadSessionFacts, appendSessionFacts } from '../../services/worldFacts.js';
 import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
-import { grantQuestRewardItems, questRewardNarrationFor, GISTERA_DESPEDIDA_NARRATION } from '../../services/questResolution.js';
+import { grantQuestRewardItems, idsDeRecompensas, questRewardNarrationFor, recompensasComoObjetosNuevos, GISTERA_DESPEDIDA_NARRATION } from '../../services/questResolution.js';
+import type { NewInventoryItemInfo } from '../../services/turnResolution.js';
 import { generateQuestResponseNarration } from '../../services/narrador.js';
 import { rejectIfEnded, rejectIfPendingDeath, clearPendingOffer } from './shared.js';
 import { npcVivoEnPartida } from '../../services/mundoPartida.js';
@@ -59,6 +60,8 @@ export async function aceptarQuest(
   // reportar porque no se creó nada, la Quest ya existía de una llamada anterior.
   logEntry: { id: string; text: string; timeLabel: string; createdAt: string } | null;
   questCompletedInfo: { logEntryId: string; text: string; title: string; grantedItems: string[]; rewardXp: number } | null;
+  /// QA-54: la recompensa de `questCompletedInfo`, como objetos nuevos del inventario.
+  newInventoryItems: NewInventoryItemInfo[];
 }> {
   // Idempotente (doble clic, o "Aceptar" pulsado dos veces tras recargar): una misión con el
   // mismo título ya activa/resuelta para esta partida no se duplica, se devuelve tal cual.
@@ -70,7 +73,7 @@ export async function aceptarQuest(
     where: isOrcoEnfurecidoTitle ? { saveId: save.id, questSlug: ORCO_ENFURECIDO_QUEST_SLUG } : { saveId: save.id, title },
   });
   if (existing) {
-    return { quest: existing, alreadyExisted: true, logEntry: null, questCompletedInfo: null };
+    return { quest: existing, alreadyExisted: true, logEntry: null, questCompletedInfo: null, newInventoryItems: [] };
   }
 
   const questText = normalizeText(`${title} ${description}`);
@@ -116,7 +119,9 @@ export async function aceptarQuest(
   // juego usa para separar turnos de habla distintos dentro de la misma narración.
   const text = isOrcoEnfurecidoTitle ? `${acceptanceText}\n\n${GISTERA_DESPEDIDA_NARRATION}` : acceptanceText;
 
-  const { quest, logEntry, questCompletedInfo } = await prisma.$transaction(async (tx) => {
+  const { quest, logEntry, questCompletedInfo, newInventoryItems } = await prisma.$transaction(async (tx) => {
+    // QA-54: las recompensas que ya había, para mandar solo las que dé esta aceptación.
+    const idsRecompensasPrevias = await idsDeRecompensas(tx, save.id);
     // Caso especial (ver comentario de ORCO_ENFURECIDO_QUEST_SLUG arriba): objetivo/recompensa
     // fija + posible cierre inmediato si el jugador ya había resuelto al Orco Enfurecido por su
     // cuenta antes de pulsar Aceptar.
@@ -188,8 +193,9 @@ export async function aceptarQuest(
         questCompletedInfo = { logEntryId: rewardEntry.id, text: rewardText, title: ORCO_ENFURECIDO_QUEST_TITLE, grantedItems, rewardXp: 100 };
       }
     }
+    const newInventoryItems = await recompensasComoObjetosNuevos(tx, save.id, save.worldId, idsRecompensasPrevias);
 
-    return { quest, logEntry, questCompletedInfo };
+    return { quest, logEntry, questCompletedInfo, newInventoryItems };
   });
 
   await appendSessionFacts(save.id, sessionFactsForNarration, [text]);
@@ -200,6 +206,7 @@ export async function aceptarQuest(
     alreadyExisted: false,
     logEntry: { id: logEntry.id, text, timeLabel, createdAt: logEntry.createdAt.toISOString() },
     questCompletedInfo,
+    newInventoryItems,
   };
 }
 

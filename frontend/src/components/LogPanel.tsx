@@ -323,7 +323,7 @@ export const LogPanel = memo(function LogPanel({
         {onToggleView && (
           <button type="button"
             onClick={onToggleView}
-            title={`Ver "${toggleViewLabel}"`}
+            title={`Ver «${toggleViewLabel}»`}
             className={`tactile relative shrink-0 rounded-full border px-2.5 py-1 text-2xs font-bold uppercase tracking-wide transition-colors ${classes.controlButton}`}
           >
             {toggleViewLabel}
@@ -332,7 +332,7 @@ export const LogPanel = memo(function LogPanel({
         {onCollapse && (
           <button type="button"
             onClick={onCollapse}
-            title={`Colapsar "${title}"`}
+            title={`Colapsar «${title}»`}
             className={`tactile relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-base transition-colors ${classes.controlButton}`}
           >
             {collapseIcon}
@@ -434,8 +434,8 @@ export const LogPanel = memo(function LogPanel({
                     <span>{entry.npcAbilityUsed.npcName} se revuelve, sin atacar</span>
                   ) : (
                     <span>
-                      {entry.npcAbilityUsed.npcName} {entry.npcAbilityUsed.rol === 'ataque' ? 'ataca con' : 'se defiende con'} "
-                      {entry.npcAbilityUsed.abilityName}"
+                      {entry.npcAbilityUsed.npcName} {entry.npcAbilityUsed.rol === 'ataque' ? 'ataca con' : 'se defiende con'} «
+                      {entry.npcAbilityUsed.abilityName}»
                     </span>
                   )}
                 </p>
@@ -451,7 +451,7 @@ export const LogPanel = memo(function LogPanel({
                   </span>
                   <span className="normal-case tracking-normal">
                     <span className="font-semibold uppercase tracking-[0.1em]">
-                      {entry.playerAbilityUsed.rol === 'ataque' ? 'Usas' : 'Te defiendes con'} "{entry.playerAbilityUsed.name}"
+                      {entry.playerAbilityUsed.rol === 'ataque' ? 'Usas' : 'Te defiendes con'} «{entry.playerAbilityUsed.name}»
                     </span>
                     {entry.playerAbilityUsed.description && <span className="ml-1.5 font-normal text-wood-400">— {entry.playerAbilityUsed.description}</span>}
                   </span>

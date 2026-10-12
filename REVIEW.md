@@ -53,6 +53,17 @@ Retro de `QA-27` (2026-10-12, `QA-40`): tres de los diez fallos de la revisión 
   porque otra la repite) se decide contra la base: en una lista paginada, la vecina puede caer en
   otra página.
 
+## Textos que se leen
+
+- **Un nombre de encuentro dentro de una frase** (`QA-59`, retro del 2026-10-12) pasa por
+  `nombreEnFrase` (`services/dynamicMode.ts`), que pone el artículo, y un grupo se nombra como grupo
+  («un grupo de 5 Cruzavientos»). El frontend enseña la frase que manda el backend, no la rehace.
+  Pasó con P63, P90 y P102: cada sitio que componía su propia frase dejaba el nombre sin artículo o
+  en singular.
+- **Las comillas que se leen son « »** (P57, P94, P111). Las rectas quedan para lo que no se lee: la
+  acción que el backend analiza (`contra 'X'`), los prompts y las trazas. `comillasEnPantalla.test.tsx`
+  vigila componentes y páginas.
+
 ## Lo hostil y la jugadora
 
 - **Colocar o mover algo hostil** (fauna AGRESIVA, enemigos, grupos) dice qué pasa junto a la

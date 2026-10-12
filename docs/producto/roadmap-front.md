@@ -939,6 +939,12 @@ Retro del 2026-10-08 (`CR-63`, `CR-65`, `CR-50`, `CR-37`, `CR-67`; propuestas ap
   usuaria el 2026-10-12.** Falta: P16 (sin reproducir), P49 (ilustración), los pendientes de
   P57-P81 y probar lo propio del `0.3` que no se llegó a jugar (Reino fundado, ganadería, defensa,
   compañeros, «Charlar con NPC», comercio).
+  2026-10-12, tercera tanda (P83-P122, de las dos cuentas): P88 arreglado con la opción 2 de la
+  usuaria en la zona de inicio; P32 arreglado otra vez (la recompensa de una misión cerrada en
+  combate no llegaba a la pantalla). Partida nueva con Gorhorn Cazador: Gistera, el Orco Enfurecido
+  y el viaje al Paso de los Pilares Rotos, donde Gorhorn muere atrapado por los Cruzavientos (🧭 P116,
+  va con P88 y P89: decide la usuaria; también P109 y P121). Falta: los pendientes de P83-P121 y lo
+  propio del `0.3` sin jugar.
 
 
 Retro del 2026-10-09 (ronda de pruebas `QA-27`; propuestas aprobadas por la usuaria):
@@ -1032,10 +1038,34 @@ Retro del 2026-10-12, último tramo (P82, PR #44; las 4 aprobadas por la usuaria
   qué pasa junto a la jugadora y donde reaparece, con su test. Motivo: P50 causó P82.
 - **QA-52 · Diagnosticar el intermitente de `avanceDiario`** (pendiente): «la economía avanza las copias
   de la partida con su reloj y deja quietas las del catálogo» falló una vez en la suite completa del
-  backend (2026-10-12) y pasa suelto. Con `diagnosing-bugs`, como `QA-8` y `QA-12`.
+  backend (2026-10-12) y pasa suelto. Con `diagnosing-bugs`, como `QA-8` y `QA-12`. Mismo tipo, visto
+  el 2026-10-12 (también sobre `main`): en `turn.integration.test.ts`, un hook de «OrdenProduccion» o de
+  «Territory.control» supera a veces sus 10 s; cambia de test en cada pasada y pasan sueltos.
 - ~~**QA-53 · El juego listo de verdad**~~ ✅ 2026-10-12 (`arrancar-juego.sh`): espera a que `/health` dé la
   base conectada y el frontend sirva, y si no, falla con dónde mirar. Motivo: tras reiniciar el
   contenedor, la partida salió «No se encuentra».
+
+Retro del 2026-10-12, tercera tanda (P100-P122, rama `claude/frontend-improvements-roadmap-0mpckt`;
+las 8 aprobadas por la usuaria):
+
+- ~~**QA-54 · La recompensa de misión, por un solo camino**~~ ✅ 2026-10-12: `recompensasComoObjetosNuevos`
+  (`questResolution.ts`); el turno y `aceptarQuest` (aceptar la misión y el guion de Gistera) mandan la
+  recompensa en `newInventoryItems`, y el frontend la aplica sin recargar. Tests en
+  `turn.integration.test.ts` (combate y misión que nace completada). Motivo: P32 volvió.
+- ~~**QA-55 · Números de hallazgo sin choques**~~ ✅ 2026-10-12: `marca-hallazgo.py --nuevo` numera por
+  encima de la copia local, `origin/main` y las ramas de las dos cuentas (`RAMAS`; `git fetch` antes).
+- ~~**QA-56 · Con qué se juega**~~ ✅ 2026-10-12: «Con qué se juega» en `rondas-de-pruebas.md` (Gorhorn,
+  Cazador, sin crear desde cero) y «Al jugar» en `CLAUDE.md`, que manda releer el runbook.
+- ~~**QA-57 · El driver, con las ayudas del MCP**~~ ✅ 2026-10-12: `orden.sh --ayuda <archivo> '<tk>'`,
+  navegador a 1280×720 (`lib.mjs`) y `mcp/interactuar.js`, `opcion.js` y `combate.js`, probadas en vivo.
+  `mover.js` corregido: con el mapa ya abierto pulsaba la brújula tapada, y tomaba avisos viejos del diario.
+- ~~**QA-58 · El test nuevo, en rojo sin el arreglo**~~ ✅ 2026-10-12: `tools/qa/rojo-sin-arreglo.sh`
+  (aparta el arreglo, corre el test por su nombre exacto, exige rojo y luego verde).
+- ~~**QA-59 · Textos que vuelven**~~ ✅ 2026-10-12: `comillasEnPantalla.test.tsx` (componentes y páginas)
+  y «Textos que se leen» en `REVIEW.md`. De paso, P111 (etiquetas del combate con « ») y P102/P103 (el
+  aviso del mapa enseña la frase del backend).
+- ~~**QA-60 · Lo que escribe el Ollama simulado**~~ ✅ 2026-10-12: `estado.js` lo marca «[simulado]».
+- ~~**QA-61 · «Actualiza con main»**~~ ✅ 2026-10-12: paso 5 de `skills-y-modelos.md`.
 ---
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)

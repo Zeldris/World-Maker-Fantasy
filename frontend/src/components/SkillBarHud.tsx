@@ -68,7 +68,7 @@ export function SkillBarHud({
         )}
       </div>
 
-      <TooltipAnchor text={`Editar "${bar.name}"`}>
+      <TooltipAnchor text={`Editar «${bar.name}»`}>
         <button type="button" onClick={onEdit} disabled={disabled} aria-label="Editar barra" className="skill-slot tactile">
           <span aria-hidden="true">✎</span>
         </button>

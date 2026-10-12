@@ -63,6 +63,10 @@ vitest + oxlint en verde antes de subir). Nada de pasadas de juego por tarea; la
 sus arreglos se hacen en una **fase única antes de la beta** (fila `0.8` de
 [«Qué entra en cada hito»](docs/producto/21-roadmap.md#qué-entra-en-cada-hito)).
 
+**Al jugar** (ronda de pruebas, «sigue probando», «juega»): antes de la primera acción, relee
+[`docs/runbooks/rondas-de-pruebas.md`](docs/runbooks/rondas-de-pruebas.md): con qué se juega, qué se
+prueba y cómo se apunta (`QA-56`).
+
 ## Mensajes de commit
 
 - Primera línea en español, qué cambia, con los identificadores de las tareas tocadas.
