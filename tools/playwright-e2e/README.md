@@ -42,7 +42,9 @@ bash tools/playwright-e2e/orden.sh "await page.goto(FRONT); return await shot('m
 bash tools/playwright-e2e/orden.sh < mi-orden.js        # una orden larga, desde un archivo
 ```
 
-Solo escucha en `127.0.0.1:9333` (`DRIVER_PORT` lo cambia). Para pararlo, por su PID
+Solo escucha en `127.0.0.1:9333` (`DRIVER_PORT` lo cambia) y pide la clave que deja al arrancar en
+`driver.token` (`orden.sh` la manda sola); rechaza cualquier petición con `Origin`, que vendría de una
+página web. Para pararlo, por su PID
 (`lsof -ti tcp:9333`), nunca con `pkill -f driver`: casa con la propia orden que lo lanza.
 
 ## Lo que se aprendió jugando

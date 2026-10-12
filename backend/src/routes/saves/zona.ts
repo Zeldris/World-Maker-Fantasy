@@ -41,6 +41,7 @@ import { effectiveAttributes } from '../../services/equipment.js';
 import { ambitoFacciones } from '../../services/mundoPartida.js';
 import { etiquetasActivas } from '../../services/cronista/etiquetas.js';
 import { conRencor, npcsConRencor } from '../../services/cronista/recuerdos.js';
+import { enGraciaTrasRenacer } from '../../services/death.js';
 
 /// Candado de "movimiento en curso" (hallazgo 45, revisar-partida-hallazgos.md, 2026-09-15) —
 /// mismo patrón que `turnLock.ts`/`chapterSummary.ts` (`createInFlightClaimSet`), pero con
@@ -230,9 +231,6 @@ async function salidasDeRegionPara(
 /// expone DÓNDE vive algo dentro de la zona actual, de forma estructurada, en vez de que el
 /// jugador solo pueda saberlo si la prosa se lo cuenta bien — no cambia todavía cómo se resuelve
 /// cazar/recolectar/combate (eso es trabajo de las Capas 2-3 del documento, sobre esta base).
-/// QA-27 P82: minutos de ficción tras reaparecer en los que nada hostil corta el paso.
-export const GRACIA_TRAS_RENACER_MINUTOS = 60;
-
 export async function zonaRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>('/saves/:id/zona', async (request, reply) => {
     const save = await prisma.save.findUnique({
@@ -870,15 +868,11 @@ export async function zonaRoutes(app: FastifyInstance) {
     // CR-16: quien te guarda rencor te corta el paso como un agresivo.
     const rencoresColision = await npcsConRencor(tx, saveId, [...puntosVivos.map((p) => npcBySlug.get(p.targetSlug)?.id), ...dinamicosConPosicionColision.map((d) => d.id)].filter((x): x is string => !!x), fictionalMinutes);
     let colision: { targetSlug: string; targetName: string; temperamento: string } | null = null;
-    // QA-27 P82: gracia tras reaparecer. Durante `GRACIA_TRAS_RENACER_MINUTOS` desde el último
-    // RENACER, nada hostil corta el paso (se podía reaparecer junto a un grupo agresivo y morir sin
-    // opción, y la siguiente muerte era la permanente). Se consulta solo si hace falta.
+    // QA-27 P82: gracia tras reaparecer (`enGraciaTrasRenacer`, death.ts): nada hostil corta el paso.
+    // Se consulta solo si hace falta.
     let enGraciaCache: boolean | null = null;
     const enGracia = async (): Promise<boolean> => {
-      if (enGraciaCache === null) {
-        const renacer = await tx.suceso.findFirst({ where: { saveId, tipo: 'RENACER' }, orderBy: { fictionalMinutes: 'desc' }, select: { fictionalMinutes: true } });
-        enGraciaCache = !!renacer && fictionalMinutes - renacer.fictionalMinutes < GRACIA_TRAS_RENACER_MINUTOS;
-      }
+      if (enGraciaCache === null) enGraciaCache = await enGraciaTrasRenacer(tx, saveId, fictionalMinutes);
       return enGraciaCache;
     };
     // "¿Quién ve a quién primero?" (2026-09-17) — Destreza del NPC/fauna del encuentro, guardada

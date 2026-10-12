@@ -4,8 +4,8 @@
 Uso: python3 tools/qa/marca-hallazgo.py P<n> "<texto viejo>" "<texto nuevo>" [--registro <ruta>]
      python3 tools/qa/marca-hallazgo.py --nuevo "<hallazgo>" "<estado>" [--registro <ruta>]
 
-La primera forma busca la fila `| P<n> | ...` que contenga el texto viejo y lo sustituye; falla si no
-hay exactamente una, para no tocar otra fila por error. La segunda (`QA-47`) añade una fila nueva
+La primera forma busca la fila `| P<n> | ...` cuyo estado (la última columna) contenga el texto viejo y
+lo sustituye solo ahí; falla si no hay exactamente una, para no tocar otra fila por error. La segunda (`QA-47`) añade una fila nueva
 detrás de la última, con el siguiente número. Registro por defecto: el del hito más alto
 (`docs/registros/pruebas-<hito>-hallazgos.md`, p. ej. `pruebas-0.3-hallazgos.md`).
 """
@@ -48,10 +48,19 @@ def main(args: list[str]) -> None:
     if len(args) != 3:
         sys.exit(__doc__)
     pid, viejo, nuevo = args
-    filas = [i for i, l in enumerate(lineas) if l.startswith(f'| {pid} |') and viejo in l]
+    viejo, nuevo = viejo.replace('|', '\\|'), nuevo.replace('|', '\\|')
+
+    def estado(linea: str) -> tuple[str, str]:
+        # La última columna (Estado): lo que va detrás del último ` | ` sin escapar.
+        cuerpo = linea.rstrip()[:-1].rstrip()  # sin la `|` final
+        corte = max(i for i in range(len(cuerpo) - 2) if cuerpo[i:i + 3] == ' | ' and cuerpo[i - 1] != '\\')
+        return cuerpo[:corte + 3], cuerpo[corte + 3:]
+
+    filas = [i for i, l in enumerate(lineas) if l.startswith(f'| {pid} |') and viejo in estado(l)[1]]
     if len(filas) != 1:
-        sys.exit(f'{ruta}: {len(filas)} filas de {pid} con ese texto (hace falta exactamente una)')
-    lineas[filas[0]] = lineas[filas[0]].replace(viejo, nuevo, 1)
+        sys.exit(f'{ruta}: {len(filas)} filas de {pid} con ese texto en el estado (hace falta exactamente una)')
+    antes, texto = estado(lineas[filas[0]])
+    lineas[filas[0]] = f'{antes}{texto.replace(viejo, nuevo, 1)} |'
     open(ruta, 'w', encoding='utf-8').write('\n'.join(lineas))
     print(f'{ruta}: {pid} actualizado')
 

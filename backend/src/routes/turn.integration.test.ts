@@ -3597,6 +3597,8 @@ describe('Respawn tras morir: vuelve al último campamento, no se queda donde mu
     expect(savedAfterResolve.condicionFisica).toBe('ILESO');
     expect(savedAfterResolve.pendingDeathResolution).toBe(false);
     expect(savedAfterResolve.pendingDynamicModeOffer).toBeNull();
+    expect([savedAfterResolve.zonaPosX, savedAfterResolve.zonaPosY]).toEqual([75, 75]);
+    expect(savedAfterResolve.zonaCaminoPendiente).toBeNull();
     expect(savedAfterResolve.currentLocationId).toBe(hondonadaId); // vuelve al campamento…
     expect(savedAfterResolve.currentLocationId).not.toBe(pilaresId); // …no se queda donde murió
     // Libro de Sucesos (CR-3): el despertar queda registrado.

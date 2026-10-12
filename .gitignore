@@ -30,3 +30,4 @@ tools/lore-links/
 
 # Salida del MCP de Playwright (capturas y registros de las rondas de pruebas).
 .playwright-mcp/
+tools/playwright-e2e/driver.token

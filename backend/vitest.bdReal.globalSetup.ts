@@ -11,12 +11,20 @@
 // QA-38 (retro de QA-27, 2026-10-12): al traer `main`, la base `tarkor` se quedaba vieja (sin la columna
 // nueva de una migración, con el catálogo de antes) y los tests fallaban con errores que no decían eso.
 // Antes de empezar se aplican las migraciones pendientes y, si cambiaron las fuentes del catálogo
-// (`src/scripts/`), se vuelve a sembrar. En la CI no: el workflow ya lo hace en sus propios pasos.
+// (`src/scripts/` y los servicios que usa la siembra) o la base no tiene catálogo, se vuelve a sembrar.
+// En la CI no: el workflow ya lo hace en sus propios pasos.
 import { execSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { config as cargarEnv } from 'dotenv';
 import { PrismaClient } from '@prisma/client';
+
+/// La carpeta `backend/`, se lance vitest desde donde se lance.
+const RAIZ = fileURLToPath(new URL('.', import.meta.url));
+// La misma base que usan Prisma y seed-catalog (leen `.env`); sin esto, la huella podía apuntar a otra.
+cargarEnv({ path: join(RAIZ, '.env') });
 
 type Progreso = { id: string; nivel: number; xp: number };
 
@@ -26,35 +34,49 @@ let interioresPrevios = new Set<string>();
 
 const INTERIOR_DE_PRUEBA = 'cuartel-avanzado-interior-';
 
-/// Huella de las fuentes del catálogo: cualquier `.ts` de `src/scripts/` que no sea un test.
+/// Huella de las fuentes del catálogo: los `.ts` de `src/scripts/` que no son tests y los servicios
+/// que usa `seed-catalog.ts`.
+const SERVICIOS_DE_LA_SIEMBRA = ['professionProgress.ts', 'factionRelations.ts', 'itemTaxonomy.ts'];
 function huellaDelCatalogo(): string {
   const hash = createHash('sha256');
+  const anadir = (ruta: string): void => void hash.update(ruta).update(readFileSync(ruta));
   const recorrer = (dir: string): void => {
     for (const e of readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
       const ruta = join(dir, e.name);
       if (e.isDirectory()) recorrer(ruta);
-      else if (e.name.endsWith('.ts') && !e.name.endsWith('.test.ts')) hash.update(ruta).update(readFileSync(ruta));
+      else if (e.name.endsWith('.ts') && !e.name.endsWith('.test.ts')) anadir(ruta);
     }
   };
-  recorrer('src/scripts');
+  recorrer(join(RAIZ, 'src', 'scripts'));
+  for (const f of SERVICIOS_DE_LA_SIEMBRA) anadir(join(RAIZ, 'src', 'services', f));
   return hash.digest('hex');
 }
 
-function baseAlDia(): void {
+async function baseAlDia(db: PrismaClient): Promise<void> {
   if (process.env.CI) return;
-  execSync('npx prisma migrate deploy', { stdio: 'pipe' });
+  // Por nombre, no por número: una base con migraciones de otra rama puede tener tantas o más.
+  const enDisco = readdirSync(join(RAIZ, 'prisma', 'migrations'), { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name);
+  const aplicadas = new Set(
+    await db.$queryRaw<{ migration_name: string }[]>`SELECT migration_name FROM "_prisma_migrations" WHERE finished_at IS NOT NULL`
+      .then((r) => r.map((f) => f.migration_name))
+      .catch(() => [] as string[]),
+  );
+  if (enDisco.some((m) => !aplicadas.has(m))) execSync('npx prisma migrate deploy', { stdio: 'pipe', cwd: RAIZ });
+
   const base = new URL(process.env.DATABASE_URL ?? 'postgresql://localhost/tarkor').pathname.slice(1) || 'tarkor';
-  const archivo = join('node_modules', '.cache', `catalogo-${base}.sha256`);
+  const cache = join(RAIZ, 'node_modules', '.cache');
+  const archivo = join(cache, `catalogo-${base}.sha256`);
   const huella = huellaDelCatalogo();
-  if (existsSync(archivo) && readFileSync(archivo, 'utf8') === huella) return;
-  execSync('npm run -s seed-catalog', { stdio: 'pipe' });
-  mkdirSync(join('node_modules', '.cache'), { recursive: true });
+  const hayCatalogo = (await db.location.count({ where: { saveId: null } })) > 0;
+  if (hayCatalogo && existsSync(archivo) && readFileSync(archivo, 'utf8') === huella) return;
+  execSync('npm run -s seed-catalog', { stdio: 'pipe', cwd: RAIZ });
+  mkdirSync(cache, { recursive: true });
   writeFileSync(archivo, huella);
 }
 
 export async function setup(): Promise<void> {
-  baseAlDia();
   prisma = new PrismaClient();
+  await baseAlDia(prisma);
   progreso = await prisma.npcProfessionProgress.findMany({ select: { id: true, nivel: true, xp: true } });
   interioresPrevios = new Set((await prisma.location.findMany({ where: { slug: { startsWith: INTERIOR_DE_PRUEBA } }, select: { id: true } })).map((l) => l.id));
 }

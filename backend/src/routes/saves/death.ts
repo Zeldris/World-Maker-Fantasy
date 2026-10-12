@@ -90,10 +90,21 @@ export async function deathRoutes(app: FastifyInstance) {
             salud: 100,
             currentLocationId: respawnLocationId,
             pendingDeathResolution: false,
-            // QA-27 P82: el encuentro que mató no sigue pendiente al reaparecer (era la muerte
-            // siguiente, sin opción). La gracia tras reaparecer está en `zona.ts`.
+            // QA-27 P82: al reaparecer no sigue nada de donde murió — ni el encuentro que lo mató
+            // (era la muerte siguiente, sin opción), ni la posición en la zona, ni un camino a medias.
+            // Mismos valores que el reinicio completo (`restartSaveTransactionBody`, shared.ts): la
+            // esquina 75,75 queda fuera del radio de persecución de la fauna agresiva conocida. La
+            // gracia de después está en `enGraciaTrasRenacer` (services/death.ts).
             pendingDynamicModeOffer: Prisma.JsonNull,
+            pendingDynamicMode: Prisma.JsonNull,
+            pendingCombatNpcSlugs: [],
+            pendingNpcAttack: Prisma.JsonNull,
             zonaUltimoEncuentro: Prisma.JsonNull,
+            zonaCaminoPendiente: Prisma.JsonNull,
+            zonaPosX: 75,
+            zonaPosY: 75,
+            zonaPosEntradaX: 75,
+            zonaPosEntradaY: 75,
           },
         });
       });
