@@ -7,7 +7,7 @@ import { etiquetaSalida } from '../../lib/rumboSalida'
 import { ZoneGroupDetailModal } from '../ZoneGroupDetailModal'
 import { ZonaSalidaModal } from '../ZonaSalidaModal'
 import { ParcelaDetailModal } from '../ParcelaDetailModal'
-import { DefsFichas, EtiquetaNombre } from '../zona/FichaZona'
+import { DefsFichas, EtiquetaNombre, anclaEtiqueta } from '../zona/FichaZona'
 import { COLOR_HEX, DISPOSICION_LABEL, distanciaEnCeldas, regionControlDisplay, TIPO_LABEL, useEscalaPantalla } from '../../lib/zonaFichas'
 import { AnilloInteraccion, GridOverlay, JugadorMarker, ParcelaMarker, SalidaMarker, ZonePointMarker } from '../zona/MarcadoresZona'
 import { MS_POR_VELOCIDAD, PasoZonaContext } from '../../lib/zonaMovimiento'
@@ -518,7 +518,9 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                   <BanderaDestino {...pixelDeCelda(celdaDePixel(destinoPendiente))} escala={escala} />
                 </>
               )}
-              {data.jugador && !soloConsulta && !movimientoEnCurso && !bloqueoMovimiento && celdaCursor &&
+              {/* P62 (QA-27): sin ruta prevista mientras hay un menú de ficha o una tarjeta de encuentro
+                  abiertos: su texto quedaba tapado debajo. */}
+              {data.jugador && !soloConsulta && !movimientoEnCurso && !bloqueoMovimiento && celdaCursor && !menuFicha && !encuentroMapa &&
                 (() => {
                   const destino = pixelDeCelda(celdaCursor)
                   const ruta = rutaPrevista(data.jugador, destino, data.fictionalMinutes)
@@ -622,7 +624,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                   .map((e) => (
                     <g key={e.clave} style={{ transform: `translate(${e.x}px, ${e.y}px)`, transition: `transform ${msPasoActual}ms linear` }}>
                       <g transform={`scale(${escala})`}>
-                        <EtiquetaNombre texto={e.nombre} />
+                        <EtiquetaNombre texto={e.nombre} anchor={anclaEtiqueta(e.x, e.nombre, escala)} />
                       </g>
                     </g>
                   ))}

@@ -10337,7 +10337,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'EXTRACCION',
     itemSlug: 'manojo-salvia-polvo',
     cantidad: 1,
-    condicion: 'reconocerla (los orcos de las Llanuras la conocen de niños — para Gorhorn no requiere tirada)',
+    condicion: 'reconocerla; los orcos de las Llanuras la conocen de niños, así que Gorhorn no necesita tirada',
     sinTirada: true,
   },
 

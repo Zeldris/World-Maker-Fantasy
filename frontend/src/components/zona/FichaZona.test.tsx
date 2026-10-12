@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { render, cleanup } from '@testing-library/react'
-import { EstandarteSalida, EtiquetaNombre, FichaJugador, FichaZona } from './FichaZona'
+import { EstandarteSalida, EtiquetaNombre, FichaJugador, FichaZona, anclaEtiqueta } from './FichaZona'
 import { COLOR_DISPOSICION } from '../../lib/zonaFichas'
 
 /// ZON-10/11/13 (hito 0.1, roadmap-front-zona.md) — ficha legible y a tamaño fijo de pantalla.
@@ -69,5 +69,13 @@ describe('FichaZona', () => {
     const ancho = Number(rect.getAttribute('width'))
     expect(Number(rect.getAttribute('x'))).toBeCloseTo(-ancho / 2)
     expect(container.textContent).toBe('Gistera Koh')
+  })
+
+  // P61 (QA-27): la etiqueta junto al borde crece hacia dentro en vez de cortarse.
+  it('ancla la etiqueta hacia dentro junto a los bordes', () => {
+    const nombre = 'Salvia del Polvo en la sombra de la hondonada'
+    expect(anclaEtiqueta(780, nombre, 1)).toBe('end')
+    expect(anclaEtiqueta(20, nombre, 1)).toBe('start')
+    expect(anclaEtiqueta(400, nombre, 1)).toBe('middle')
   })
 })
