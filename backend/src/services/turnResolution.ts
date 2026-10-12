@@ -6350,12 +6350,18 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // más allá de leer con atención la narración de llegada. `nextBeforeMainLogCreatedAt` (ver
     // comentario al principio de la transacción) — offset fijo respecto a `mainLogEntry`, no reloj
     // real, para que el orden sea correcto sin importar cuánto trabajo real pase entre ambas filas.
+    // QA-27 P47: el aviso nombra a quien sale al paso; si no, cuando no hay tarjeta (ya hay una
+    // conversación abierta) ni el narrador lo menciona, la interrupción se queda vacía.
+    const interruptor = travelInterruptionNpcId ? npcsInSceneWithInterruption.find((n) => n.id === travelInterruptionNpcId) : undefined;
+    const quienSaleAlPaso = interruptor
+      ? `${interruptor.articulo ? `${interruptor.genero === 'F' || interruptor.articulo === 'la' ? 'una' : 'un'} ` : ''}${interruptor.name}`
+      : null;
     if (travelInterruptionOriginalDestinationName) {
       await tx.logEntry.create({
         data: {
           saveId,
           channel: 'CHARACTER',
-          text: `El camino hacia ${travelInterruptionOriginalDestinationName} se corta antes de tiempo — algo te sale al paso.`,
+          text: `El camino hacia ${travelInterruptionOriginalDestinationName} se corta antes de tiempo — ${quienSaleAlPaso ? `te sale al paso ${quienSaleAlPaso}` : 'algo te sale al paso'}.`,
           timeLabel,
           fictionalMinutes: nuevoFictionalMinutes,
           createdAt: nextBeforeMainLogCreatedAt(),
@@ -6373,7 +6379,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         data: {
           saveId,
           channel: 'CHARACTER',
-          text: 'Algo te sale al paso mientras estás ocupado con esto.',
+          text: quienSaleAlPaso ? `Te sale al paso ${quienSaleAlPaso} mientras estás ocupado con esto.` : 'Algo te sale al paso mientras estás ocupado con esto.',
           timeLabel,
           fictionalMinutes: nuevoFictionalMinutes,
           createdAt: nextBeforeMainLogCreatedAt(),

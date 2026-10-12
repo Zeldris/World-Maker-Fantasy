@@ -146,7 +146,7 @@ describe('Grupos de fauna reales (GET /zona, POST /zona/mover)', () => {
 
     const app = await buildApp();
     // GET /zona dispara el primer reparto (regla 2 del plan) — el ancla y las filas nuevas quedan
-    // repartidas dentro de radio 2 de su celda (celdaLibreEnEspiral, zonaPosicion.ts), así que MÁS
+    // repartidas cerca de su celda (celdaParaGrupoNuevo, zonaPosicion.ts), así que MÁS
     // de una puede caer adyacente al primer paso del jugador — no se puede predecir con CUÁL de
     // ellas colisiona primero (mismo orden no determinista que el resto del motor, sin `orderBy`).
     const getRes = await app.inject({ method: 'GET', url: `/saves/${saveId}/zona` });

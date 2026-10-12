@@ -6645,6 +6645,10 @@ describe('Viaje largo interrumpido con candidato PACÍFICO: ofrece Interactuar e
       targetSlug: interruptionNpcSlug,
       targetName: 'Viajero de prueba',
     });
+    // QA-27 P47: el aviso de la interrupción dice quién sale al paso.
+    const aviso = await prisma.logEntry.findFirst({ where: { saveId, travelInterrupted: true } });
+    expect(aviso?.text).toContain('te sale al paso');
+    expect(aviso?.text).toContain('Viajero de prueba');
   }, 20_000);
 });
 

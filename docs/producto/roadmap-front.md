@@ -916,8 +916,10 @@ Retro del 2026-10-08 (`CR-63`, `CR-65`, `CR-50`, `CR-37`, `CR-67`; propuestas ap
   Llanuras al este), P54 («Chaman»), P55 (en combate de grupo los demás ataques y los golpes gratis
   no salían en el diario) y P56 (dos tiradas para la misma acción). 2026-10-12: P36, P37, P39
   (beber de una fuente sin odre), P41, P45 y P46 (sin comprobar en vivo); P10 pasa a `CMB-10`, P30
-  y P40 no aplican; P27 (aviso de riesgo también cuando te cortan el paso) y la huida real de P12 (1v1). Falta: revisar
-  P16, P23 y P47-P50, y seguir jugando.
+  y P40 no aplican; P27 (aviso de riesgo también cuando te cortan el paso), la huida real de P12 (1v1), P47 (el aviso
+  de interrupción nombra a quien sale al paso) y P50 (grupos de fauna repartidos); P23 y P48 no
+  aplican (por diseño). Falta: P16 (sin reproducir), P49 (falta la ilustración de Las Agujas Imán)
+  y seguir jugando.
 
 
 Retro del 2026-10-09 (ronda de pruebas `QA-27`; propuestas aprobadas por la usuaria):
