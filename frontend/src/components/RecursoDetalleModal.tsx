@@ -60,7 +60,8 @@ export function RecursoDetalleModal({
                 {detalle.yields.map((y) => (
                   <li key={`${y.itemName}-${y.condicion ?? ''}`}>
                     {/* P21 (QA-27): es el máximo; lo que sale depende de la tirada (`cantidadForGrado`). */}
-                    hasta {y.cantidad} {y.itemName}
+                    {/* P108 (QA-27): «hasta 3 Trozo de quitina roja» no concordaba; el nombre va primero. */}
+                    {y.itemName} · hasta {y.cantidad}
                     {y.condicion ? <span className="text-wood-500"> ({y.condicion})</span> : null}
                   </li>
                 ))}

@@ -4959,7 +4959,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // Marca de cooldown (2026-09-06, hallazgo 11) — solo se actualiza cuando el descanso SE APLICÓ
   // de verdad (`restAttempted`), no en cada intento; un intento bloqueado por el propio cooldown
   // no reinicia el contador (mismo criterio que `dispersadoDesdeMinutes`, cazar.ts).
-  const nuevoLastRestAtMinutes = restAttempted ? fictionalMinutesActuales : params.lastRestAtMinutes;
+  // P84 (QA-27): el enfriamiento cuenta desde que ACABA el descanso; antes, desde que empezaba, y
+  // tras uno de 8 h ya no había enfriamiento y se podían encadenar.
+  const nuevoLastRestAtMinutes = restAttempted ? advanceFictionalMinutes(fictionalMinutesActuales, minutosDeEsteTurno) : params.lastRestAtMinutes;
   // Reglas de curación (2026-07-29, ajustado 2026-09-06): sin objeto médico, el techo es la propia
   // condición actual — ninguna mejora "porque sí" pasa (ver healCeilingFor/death.ts). Descansar ya
   // no forma parte de esta fórmula en absoluto.
@@ -6406,7 +6408,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           saveId,
           channel: 'CHARACTER',
           text: `El camino hacia ${travelInterruptionOriginalDestinationName} se corta antes de tiempo — ${quienSaleAlPaso ? `te sale al paso ${quienSaleAlPaso}` : 'algo te sale al paso'}.`,
-          timeLabel,
+          timeLabel: nuevaFictionalDateLabel,
           fictionalMinutes: nuevoFictionalMinutes,
           createdAt: nextBeforeMainLogCreatedAt(),
           travelInterrupted: true,
@@ -6424,7 +6426,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           saveId,
           channel: 'CHARACTER',
           text: quienSaleAlPaso ? `Te sale al paso ${quienSaleAlPaso} mientras estás ocupado con esto.` : 'Algo te sale al paso mientras estás ocupado con esto.',
-          timeLabel,
+          timeLabel: nuevaFictionalDateLabel,
           fictionalMinutes: nuevoFictionalMinutes,
           createdAt: nextBeforeMainLogCreatedAt(),
           travelInterrupted: true,
@@ -6477,7 +6479,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         // persistir esto, recargar durante un combate abierto perdía el banner de quién tiene la
         // iniciativa para el próximo intercambio.
         initiativeRoll: nextInitiativeRoll ? (nextInitiativeRoll as unknown as Prisma.InputJsonValue) : undefined,
-        timeLabel,
+        timeLabel: nuevaFictionalDateLabel,
         xpDelta: xpTurno > 0 ? xpTurno : undefined,
         // UX 2026-09-01 (ver comentario de la columna en schema.prisma) — desglose de `xpDelta`
         // para que el frontend separe el chip de hito/capítulo del de XP normal tras recargar.
@@ -6503,21 +6505,13 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           channel: 'CHARACTER',
           text,
           combatExchange: combatExchange as unknown as Prisma.InputJsonValue,
-          timeLabel,
+          timeLabel: nuevaFictionalDateLabel,
           fictionalMinutes: nuevoFictionalMinutes,
           createdAt: nextAfterMainLogCreatedAt(),
           combate: true,
         },
       });
       intercambiosExtra.push({ logEntryId: entrada.id, text, combatExchange });
-    }
-    // P55 (QA-27): los golpes gratis no tienen tirada, pero también dejan su línea en el diario.
-    for (const golpe of golpesSinTiradaContraJugadora) {
-      const text = `${golpe.atacanteNombre} te golpea sin que puedas defenderte (estás ocupado con otro rival). Estado: ${CONDICION_EN_TEXTO[golpe.nuevaCondicion]}.`;
-      const entrada = await tx.logEntry.create({
-        data: { saveId, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: nuevoFictionalMinutes, createdAt: nextAfterMainLogCreatedAt(), combate: true },
-      });
-      intercambiosExtra.push({ logEntryId: entrada.id, text });
     }
 
     if (compassNarrationLine) {
@@ -6531,7 +6525,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           channel: 'CHARACTER',
           text: compassNarrationLine,
           isPlayerAction: false,
-          timeLabel,
+          timeLabel: nuevaFictionalDateLabel,
           fictionalMinutes: nuevoFictionalMinutes,
           createdAt: nextAfterMainLogCreatedAt(),
         },
@@ -6546,7 +6540,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           saveId,
           channel: 'CHARACTER',
           text: `${characterName} sube a nivel ${result.newLevel}.${attributeNote}`,
-          timeLabel,
+          timeLabel: nuevaFictionalDateLabel,
           fictionalMinutes: nuevoFictionalMinutes,
           createdAt: nextAfterMainLogCreatedAt(),
         },
@@ -6565,7 +6559,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
               saveId,
               channel: 'CHARACTER',
               text: `${characterName} desbloquea la habilidad de clase «${ability.name}».`,
-              timeLabel,
+              timeLabel: nuevaFictionalDateLabel,
               fictionalMinutes: nuevoFictionalMinutes,
               createdAt: nextAfterMainLogCreatedAt(),
             },
@@ -6603,11 +6597,22 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           saveId,
           channel: 'CHARACTER',
           text: `${characterName} desbloquea la habilidad de oficio «${ability.name}» (nivel ${nivel} de ${oficio}).`,
-          timeLabel,
+          timeLabel: nuevaFictionalDateLabel,
           fictionalMinutes: nuevoFictionalMinutes,
           createdAt: nextAfterMainLogCreatedAt(),
         },
       });
+    }
+
+    // P55 (QA-27): los golpes gratis no tienen tirada, pero también dejan su línea en el diario.
+    // P117: van después de la subida de nivel y de sus desbloqueos, que los gana el golpe de la
+    // jugadora (antes salían tras «Estado: Muerto»).
+    for (const golpe of golpesSinTiradaContraJugadora) {
+      const text = `${golpe.atacanteNombre} te golpea sin que puedas defenderte (estás ocupado con otro rival). Estado: ${CONDICION_EN_TEXTO[golpe.nuevaCondicion]}.`;
+      const entrada = await tx.logEntry.create({
+        data: { saveId, channel: 'CHARACTER', text, timeLabel: nuevaFictionalDateLabel, fictionalMinutes: nuevoFictionalMinutes, createdAt: nextAfterMainLogCreatedAt(), combate: true },
+      });
+      intercambiosExtra.push({ logEntryId: entrada.id, text });
     }
 
     // Condición física, descanso y muerte (docs/14 § 1, § 4) — en este orden: primero se fija
@@ -6678,7 +6683,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
             saveId,
             channel: 'CHARACTER',
             text: whisperText(characterName, outcome.avisoUltimaVez),
-            timeLabel,
+            timeLabel: nuevaFictionalDateLabel,
             fictionalMinutes: nuevoFictionalMinutes,
             createdAt: nextAfterMainLogCreatedAt(),
           },
@@ -7203,7 +7208,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         } as object;
         const resumedTransitId = await prisma.$transaction(async (tx) => {
           await tx.logEntry.create({
-            data: { saveId, channel: 'CHARACTER', text: resumeText, timeLabel: freshWorldState?.fictionalDateLabel ?? timeLabel },
+            data: { saveId, channel: 'CHARACTER', text: resumeText, timeLabel: freshWorldState?.fictionalDateLabel ?? timeLabel, fictionalMinutes: freshWorldState?.fictionalMinutes ?? nuevoFictionalMinutes },
           });
           const resumedTransit = await tx.characterTransit.upsert({
             where: { saveId },

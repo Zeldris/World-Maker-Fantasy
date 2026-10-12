@@ -779,7 +779,7 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
     level: 1,
     clase: 'CAZADOR',
     ability: {
-      name: 'Analisis Salvaje',
+      name: 'Análisis Salvaje',
       icon: '🔍',
       description: 'Estudia al rival un instante, leyendo su punto débil — revela qué atributo conviene usar contra él, nunca inflige daño por sí sola.',
       promptText: 'Estudio a mi enemigo un instante, leyendo su punto débil antes de moverme.',

@@ -340,13 +340,11 @@ export async function candidateSourcesFor(
 /// grupo por enfrentar), nunca a los ya caídos — un cadáver real y sin despiezar de un grupo se
 /// quedaba invisible para Desollar aunque `hasPendingLoot` ya lo diera por pendiente. Mismo
 /// criterio que `derrotada` en `harvest.ts` (`yaDespiezada`), que ya lo hacía bien — aquí faltaba.
-async function carcassCandidatesFor(
+async function cadaveresDeFaunaPendientes(
   worldId: string,
   saveId: string,
   currentLocationId: string | null,
-  estacionActual: Estacion,
-  climaActual: EstadoClima | null,
-): Promise<SourceCandidate[]> {
+): Promise<{ carcasses: { slug: string }[]; firma: string }> {
   // Fase 9 (verificación en vivo 2026-09-29): antes se partía de `detectNpcsInScene`, que solo ve
   // a un NPC si su nombre sale en la acción o en los hechos de sesión — el cadáver recién abatido
   // podía no estar "en escena" según lo que hubiera narrado el LLM, y Desollar decía "no hay nada"
@@ -361,10 +359,20 @@ async function carcassCandidatesFor(
     ? await prisma.npc.findMany({ where: { worldId, id: { in: pendientes.map((st) => st.npcId) } }, select: { id: true, slug: true, kind: true, ataqueNatural: true } })
     : [];
   const npcById = new Map(npcsMuertos.map((n) => [n.id, n]));
-  const carcasses = pendientes
+  const deFauna = pendientes
     .map((st) => ({ st, npc: npcById.get(st.npcId) }))
-    .filter((c): c is { st: (typeof pendientes)[number]; npc: (typeof npcsMuertos)[number] } => !!c.npc && c.npc.ataqueNatural !== null && scopeFor(c.npc.kind, currentLocationId) === c.st.scope)
-    .map((c) => c.npc);
+    .filter((c): c is { st: (typeof pendientes)[number]; npc: (typeof npcsMuertos)[number] } => !!c.npc && c.npc.ataqueNatural !== null && scopeFor(c.npc.kind, currentLocationId) === c.st.scope);
+  // P98 (QA-27): qué cadáveres de fauna había al tirar. Si aparece uno nuevo, la tirada congelada ya no
+  // vale y se vuelve a tirar; saquear un cuerpo humanoide no la toca (despiezar ya la invalida al confirmar).
+  const firma = deFauna
+    .map(({ st }) => `${st.id}:${st.condicionFisica}:${st.groupDefeated}`)
+    .sort()
+    .join('|');
+  return { carcasses: deFauna.map((c) => c.npc), firma };
+}
+
+/// Lo que da cada cadáver de fauna pendiente (solo si no hay tirada congelada que valga).
+async function carcassCandidatesFor(worldId: string, carcasses: { slug: string }[], estacionActual: Estacion, climaActual: EstadoClima | null): Promise<SourceCandidate[]> {
   if (carcasses.length === 0) return [];
 
   const rows = await prisma.harvestYield.findMany({
@@ -377,7 +385,7 @@ async function carcassCandidatesFor(
     bySlug.get(row.sourceSlug)!.push(row);
   }
 
-  return carcasses
+  const candidatos = carcasses
     .map((c) => ({
       c,
       yieldRows: (bySlug.get(c.slug) ?? []).filter(
@@ -400,6 +408,7 @@ async function carcassCandidatesFor(
         yields: yieldRows.map((r) => ({ itemSlug: r.item.slug, itemName: r.item.name, cantidadMaxima: r.cantidad, tier: r.item.tier, sinTirada: r.sinTirada })),
       };
     });
+  return candidatos;
 }
 
 /// "Recoger" (2026-08-25, retira el descubrimiento de texto libre — ver discovery.ts, ya
@@ -498,20 +507,23 @@ export function applyGatheringRoll(candidates: SourceCandidate[], roll: Gatherin
 interface HarvestRollCacheEntry {
   locationId: string | null;
   sources: SourceCandidate[];
+  /// P98: cadáveres que había al tirar (solo Desollar). Sin ella (caché vieja), no se reutiliza.
+  firma?: string;
 }
 type HarvestRollCache = Record<string, HarvestRollCacheEntry>;
 
-function cachedRollFor(save: { harvestRollCache: unknown }, oficio: string, locationId: string | null): SourceCandidate[] | null {
+function cachedRollFor(save: { harvestRollCache: unknown }, oficio: string, locationId: string | null, firma?: string): SourceCandidate[] | null {
   const cache = (save.harvestRollCache as HarvestRollCache | null)?.[oficio];
   if (!cache || cache.locationId !== locationId) return null;
+  if (firma !== undefined && cache.firma !== firma) return null;
   return cache.sources;
 }
 
 // `currentCache` viene del `save` YA cargado por el caller (`include` sin `select` ya trae
 // `harvestRollCache`) — evita una segunda ida a la base de datos solo para leer lo que el caller
 // ya tiene en la mano.
-function saveRollCache(saveId: string, currentCache: unknown, oficio: string, locationId: string | null, sources: SourceCandidate[]) {
-  const cache: HarvestRollCache = { ...(currentCache as HarvestRollCache | null), [oficio]: { locationId, sources } };
+function saveRollCache(saveId: string, currentCache: unknown, oficio: string, locationId: string | null, sources: SourceCandidate[], firma?: string) {
+  const cache: HarvestRollCache = { ...(currentCache as HarvestRollCache | null), [oficio]: { locationId, sources, ...(firma !== undefined ? { firma } : {}) } };
   return prisma.save.update({ where: { id: saveId }, data: { harvestRollCache: cache as unknown as Prisma.InputJsonValue } });
 }
 
@@ -595,17 +607,21 @@ export async function recolectarRoutes(app: FastifyInstance) {
     // apertura del panel (simplificación consciente original, ya descartada): dejaba "pescar" un
     // resultado mejor cerrando y reabriendo. Ahora, si ya se tiró para este oficio en esta misma
     // ubicación, se devuelve tal cual, sin tirar otra vez.
-    const cachedSources = cachedRollFor(save, request.params.oficio, save.currentLocationId);
+    // P98 (QA-27): la tirada congelada solo vale para los mismos cadáveres; uno nuevo (p. ej. tras
+    // rematar a un convaleciente) obliga a tirar otra vez, aunque ese turno no la invalidara.
+    const { carcasses, firma } = await cadaveresDeFaunaPendientes(save.worldId, save.id, save.currentLocationId);
+    const cachedSources = cachedRollFor(save, request.params.oficio, save.currentLocationId, firma);
     if (cachedSources) return { sources: groupByCategory(cachedSources), puedeExplorar: false, enCooldown: false };
 
-    const rawCandidates = await carcassCandidatesFor(save.worldId, save.id, save.currentLocationId, estacionActual, climaActual);
+    const rawCandidates = await carcassCandidatesFor(save.worldId, carcasses, estacionActual, climaActual);
+
     if (rawCandidates.length === 0) return { sources: [], puedeExplorar: false, enCooldown: false };
     const roll = gatheringRollFor(
       { attributes: save.attributes as AttributeBlock, secondaryAttributesJson: save.secondaryAttributes, inventoryItems: save.inventoryItems, professionProgress: save.professionProgress },
       request.params.oficio,
     );
     const filtered = applyGatheringRoll(rawCandidates, roll);
-    await saveRollCache(save.id, save.harvestRollCache, request.params.oficio, save.currentLocationId, filtered);
+    await saveRollCache(save.id, save.harvestRollCache, request.params.oficio, save.currentLocationId, filtered, firma);
     return { sources: groupByCategory(filtered), roll, puedeExplorar: false, enCooldown: false };
   });
 

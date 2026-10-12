@@ -1189,6 +1189,8 @@ export interface ZonePointInfo {
   /// pinta un icono de grupo distinto y abre un modal de desglose en vez del modal normal de un
   /// solo NPC cuando este campo está presente.
   companion?: { slug: string; nombre: string }
+  /// P106 (QA-27): objetivo de una misión activa (aunque siga sin descubrir).
+  objetivoMision?: boolean
 }
 /// NPCs presentados de forma determinista (2026-08-26, "no aparecen en la zona y sí tienen que
 /// salir") — a diferencia de `ZonePointInfo` (catálogo fijo, con posición real curada), estos
@@ -1258,6 +1260,10 @@ export interface ZonaSalidaInfo {
   alcanzable: boolean
   /// QA-27 (P7): puerta de una zona interior — `ENTRAR` desde fuera, `SALIR` desde dentro.
   puerta?: 'ENTRAR' | 'SALIR'
+  /// P115 (QA-27): minutos de camino hasta el destino.
+  minutos?: number
+  /// P115: el destino tiene nombre para la jugadora (ya estuvo o lleva el mapa de la región).
+  conocida?: boolean
 }
 
 export interface ZonaResponse {

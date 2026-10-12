@@ -118,6 +118,8 @@ export async function sessionRoutes(app: FastifyInstance) {
           ? `${save.characterName} da media vuelta y se queda en ${save.currentLocation?.name ?? 'donde estaba'}.`
           : `${save.characterName} decide no seguir adelante con eso — cambia de idea antes de empezar.`,
         timeLabel: save.worldState?.fictionalDateLabel ?? 'Día 1, mañana',
+        // P87 (QA-27): sin la hora del juego (0 por defecto), el diario (últimas 24 h) no la enseñaba.
+        fictionalMinutes: save.worldState?.fictionalMinutes ?? 480,
         // Ver comentario completo en schema.prisma § isSystemMessage — texto fijo determinista,
         // nunca generado por el LLM.
         isSystemMessage: true,
@@ -240,7 +242,7 @@ export async function sessionRoutes(app: FastifyInstance) {
 
       // isSystemMessage (ver comentario completo en schema.prisma) — `text` viene de una lista
       // fija por índice de dado, nunca generado por el LLM.
-      await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, roll: roll as unknown as Prisma.InputJsonValue, isSystemMessage: true } });
+      await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: save.worldState?.fictionalMinutes ?? 480, roll: roll as unknown as Prisma.InputJsonValue, isSystemMessage: true } });
       if (roll.success) {
         // Punto del jugador en el mapa de Zona (2026-09-04) — huir con éxito antes de entrar en
         // combate vuelve al punto de ENTRADA de la zona, no al centro ni junto al enemigo.
@@ -332,7 +334,7 @@ export async function sessionRoutes(app: FastifyInstance) {
 
       // isSystemMessage (ver comentario completo en schema.prisma) — `text` viene de una lista
       // fija por índice de dado, nunca generado por el LLM.
-      await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, roll: roll as unknown as Prisma.InputJsonValue, isSystemMessage: true } });
+      await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: save.worldState?.fictionalMinutes ?? 480, roll: roll as unknown as Prisma.InputJsonValue, isSystemMessage: true } });
       await tx.save.update({
         where: { id: save.id },
         data: {
@@ -456,7 +458,7 @@ export async function sessionRoutes(app: FastifyInstance) {
           if (locked.dismissedGrupo) return null;
           await tx.combatParticipant.update({ where: { id: participantId }, data: { dismissedGrupo: true } });
           // isSystemMessage (ver comentario completo en schema.prisma) — texto fijo determinista.
-          const created = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, isSystemMessage: true } });
+          const created = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: save.worldState?.fictionalMinutes ?? 480, isSystemMessage: true } });
           await registrarPerdon(tx, created.id);
           // Reputación de facción (2026-09-04) — mismo criterio que el camino 1v1 clásico de más
           // abajo, ver su comentario completo.
@@ -502,7 +504,7 @@ export async function sessionRoutes(app: FastifyInstance) {
         const freshSlugs = freshBefore.filter((s) => s !== npc.slug);
         await tx.save.update({ where: { id: save.id }, data: { pendingCombatNpcSlugs: freshSlugs } });
         // isSystemMessage (ver comentario completo en schema.prisma) — texto fijo determinista.
-        const created = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, isSystemMessage: true } });
+        const created = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: save.worldState?.fictionalMinutes ?? 480, isSystemMessage: true } });
         await registrarPerdon(tx, created.id);
         // Reputación de facción (2026-09-04, bug real jugando en vivo: "me resta la reputación
         // antes de matarlo... si elijo matar tiene que esperar a que resuelva el combate antes de

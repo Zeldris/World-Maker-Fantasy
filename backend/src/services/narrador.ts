@@ -1,4 +1,5 @@
 import { ollamaGenerate, ollamaGenerateStream } from '../lib/ollama.js';
+import { sinComillasSueltas } from './accionCitada.js';
 import { extractStreamingNarration } from './narrationStream.js';
 import { env } from '../config/env.js';
 import { normalizeText, fuzzyMatchCandidates, findFuzzyStemMatch } from './travel.js';
@@ -1674,7 +1675,8 @@ export function deterministicFallbackNarration(ctx: {
           ? 'La acción sale exactamente como se esperaba.'
           : 'La acción no sale como se esperaba.';
   return {
-    narration: `${action} ${resultado}`,
+    // P94 (QA-27): la acción se repite tal cual; sin las comillas con que el juego cita al rival.
+    narration: `${sinComillasSueltas(action)} ${resultado}`,
     newFacts: [],
     newItem: null,
     newCompanion: null,

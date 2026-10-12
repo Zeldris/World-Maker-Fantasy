@@ -11,7 +11,7 @@ import { abilityUnlocksAlSubirANivel, especializacionAbilityUnlocksFor, classAbi
 
 describe('classAbilityUnlocksFor', () => {
   it('Gorhorn (Cazador, sin especialización) aprende el tronco común por nivel', () => {
-    expect(classAbilityUnlocksFor('Gorhorn', 1).map((a) => a.name)).toEqual(['Analisis Salvaje']);
+    expect(classAbilityUnlocksFor('Gorhorn', 1).map((a) => a.name)).toEqual(['Análisis Salvaje']);
     expect(classAbilityUnlocksFor('Gorhorn', 4).map((a) => a.name)).toEqual(['Barrido Salvaje']);
     expect(classAbilityUnlocksFor('Gorhorn', 6).map((a) => a.name)).toEqual(['Instinto de Supervivencia']);
     expect(classAbilityUnlocksFor('Gorhorn', 8).map((a) => a.name)).toEqual(['Golpe Certero']);

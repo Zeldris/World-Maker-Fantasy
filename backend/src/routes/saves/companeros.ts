@@ -279,7 +279,7 @@ export async function companerosRoutes(app: FastifyInstance) {
       // silenciosa) — se añade uno breve para que el chip de reputación tenga dónde colgarse,
       // mismo patrón que Clemente (session.ts).
       // isSystemMessage (ver comentario completo en schema.prisma) — texto fijo determinista.
-      const createdLog = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, isSystemMessage: true } });
+      const createdLog = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: nowMinutes, isSystemMessage: true } });
       const rep = await applyFactionRepDeltaForResolution(tx, save.id, npc.faction, FACTION_REP_CAPTURE_DELTA);
       // Aviso de misión pendiente (2026-09-15, hallazgo real jugando en vivo) — solo lectura, no
       // cierra nada (Capturar deja al NPC vivo, "derrotar a X" solo se cierra con MUERTE real,

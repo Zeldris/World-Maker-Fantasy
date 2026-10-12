@@ -1867,7 +1867,7 @@ describe('newQuestOfferInfo + POST /saves/:id/quests/aceptar: oferta de misión 
     // evita el guion entero sin arriesgarse a que un turno de relleno real dispare OTRO
     // determinismo inesperado (ocurrió probando esto: "Examino el terreno" activó recolección).
     await prisma.logEntry.create({
-      data: { saveId, channel: 'CHARACTER', text: 'relleno', timeLabel: 'Día 1, mañana', isPlayerAction: true },
+      data: { saveId, channel: 'CHARACTER', text: 'relleno', timeLabel: 'Día 1, mañana', fictionalMinutes: 480, isPlayerAction: true },
     });
     classifyAction.mockResolvedValue({
       requiereTirada: false, atributo: 'carisma', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
@@ -2012,7 +2012,7 @@ describe('npcInteractionOffer: menú contextual al hablar con un NPC con interac
     saveId = save.id;
     await prisma.worldState.create({ data: { saveId } });
     await prisma.logEntry.create({
-      data: { saveId, channel: 'CHARACTER', text: 'relleno', timeLabel: 'Día 1, mañana', isPlayerAction: true },
+      data: { saveId, channel: 'CHARACTER', text: 'relleno', timeLabel: 'Día 1, mañana', fictionalMinutes: 480, isPlayerAction: true },
     });
     classifyAction.mockResolvedValue({
       requiereTirada: false, atributo: 'carisma', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
@@ -2082,7 +2082,7 @@ describe('pendingQuestOfferInfo: la oferta de misión sobrevive a un F5 (auditor
     // Mismo motivo que el describe hermano de arriba: empezar en playerActionCount=2 evita
     // disparar el guion completo de Gistera Koh, que también propone una misión determinista.
     await prisma.logEntry.create({
-      data: { saveId, channel: 'CHARACTER', text: 'relleno', timeLabel: 'Día 1, mañana', isPlayerAction: true },
+      data: { saveId, channel: 'CHARACTER', text: 'relleno', timeLabel: 'Día 1, mañana', fictionalMinutes: 480, isPlayerAction: true },
     });
     classifyAction.mockResolvedValue({
       requiereTirada: false, atributo: 'carisma', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
@@ -3473,6 +3473,12 @@ describe('Descansar: +30 de energía fijo, NO cura condición física, cooldown 
     expect(save.energia).toBe(40); // 10 + ENERGY_REST_RESTORE (30)
     expect(save.currentLocationId).toBe(pilaresId); // sigue en el mismo sitio, esto no es respawn
     expect(save.lastRestAtMinutes).not.toBeNull(); // marca de cooldown fijada
+    // P84 (QA-27): la marca es la hora en que ACABA el descanso (la del reloj tras el turno).
+    const ws = await prisma.worldState.findUniqueOrThrow({ where: { saveId } });
+    expect(save.lastRestAtMinutes).toBe(ws.fictionalMinutes);
+    // P85 (QA-27): la narración del resultado lleva la hora en que acaba, no la de inicio.
+    const resultado = await prisma.logEntry.findFirstOrThrow({ where: { saveId, channel: 'CHARACTER', isPlayerAction: false, isSystemMessage: false }, orderBy: { createdAt: 'desc' } });
+    expect(resultado.timeLabel).toBe(ws.fictionalDateLabel);
   }, 15_000);
 
   it('un segundo descanso dentro de las 3h de ficción se rechaza — narración determinista, sin tocar energía', async () => {
@@ -6879,7 +6885,7 @@ describe('Curar: varios objetos a la vez con healItemUses (2026-08-18)', () => {
     // tuvieron) — así que este test necesita que el turno de Curar NO sea el primero de la partida
     // para poder comprobar solo su propia narración, sin acoplarla a un hook no relacionado.
     await prisma.logEntry.create({
-      data: { saveId, channel: 'CHARACTER', text: 'Gorhorn de prueba (curar) llega a la hondonada.', isPlayerAction: true, timeLabel: 'Día 1, mañana' },
+      data: { saveId, channel: 'CHARACTER', text: 'Gorhorn de prueba (curar) llega a la hondonada.', isPlayerAction: true, timeLabel: 'Día 1, mañana', fictionalMinutes: 480 },
     });
   });
 
@@ -6989,7 +6995,7 @@ describe('Comer/Beber: consumo real de comida y bebida por ítem (hallazgo 13, 2
     // Mismo turno de relleno que el describe de Curar (evita acoplar este test al encuentro
     // guionizado de Gistera Koh, que se dispara siempre en el primer turno de cualquier partida).
     await prisma.logEntry.create({
-      data: { saveId, channel: 'CHARACTER', text: 'Gorhorn de prueba (comer) llega a la hondonada.', isPlayerAction: true, timeLabel: 'Día 1, mañana' },
+      data: { saveId, channel: 'CHARACTER', text: 'Gorhorn de prueba (comer) llega a la hondonada.', isPlayerAction: true, timeLabel: 'Día 1, mañana', fictionalMinutes: 480 },
     });
   });
 
@@ -7085,7 +7091,7 @@ describe('Beber de la fuente sin odre (QA-27 P39)', () => {
     saveId = save.id;
     await prisma.worldState.create({ data: { saveId, fictionalMinutes: 1000 } });
     await prisma.logEntry.create({
-      data: { saveId, channel: 'CHARACTER', text: 'Gorhorn de prueba (fuente) llega a los manaderos.', isPlayerAction: true, timeLabel: 'Día 1, mañana' },
+      data: { saveId, channel: 'CHARACTER', text: 'Gorhorn de prueba (fuente) llega a los manaderos.', isPlayerAction: true, timeLabel: 'Día 1, mañana', fictionalMinutes: 480 },
     });
   });
 

@@ -135,6 +135,11 @@ export interface ZonaSalidaInfo {
   /// QA-27 (P7): `ENTRAR` si lleva a una zona interior (dentro de esta), `SALIR` si es la puerta de
   /// un interior hacia fuera; sin el campo, una salida normal de región.
   puerta?: 'ENTRAR' | 'SALIR';
+  /// P115 (QA-27): minutos de camino hasta el destino (`LocationLink.minutosBase`).
+  minutos: number;
+  /// P115: el destino tiene nombre para la jugadora (ya estuvo, o lleva el mapa de la región — mismo
+  /// criterio que la brújula, `compassNarrationText`).
+  conocida: boolean;
 }
 
 /// Iconos de salida de región (2026-09-17, petición explícita de Álvaro: "cada salida debe estar
@@ -166,6 +171,7 @@ async function salidasDeRegionPara(
   const links = await prisma.locationLink.findMany({
     where: { OR: [{ fromId: location.id }, { toId: location.id }] },
     select: {
+      minutosBase: true,
       from: { select: { id: true, slug: true, name: true, x: true, y: true, teaser: true, description: true, kind: true } },
       to: { select: { id: true, slug: true, name: true, x: true, y: true, teaser: true, description: true, kind: true } },
     },
@@ -181,6 +187,8 @@ async function salidasDeRegionPara(
     select: { locationId: true },
   });
   const visitadasIds = new Set(visitas.map((v) => v.locationId));
+  const minutosPorDestino = new Map(links.map((l) => [l.from.id === location.id ? l.to.id : l.from.id, l.minutosBase]));
+  const llevaMapa = !!(await prisma.inventoryItem.findFirst({ where: { saveId, catalogSlug: 'mapa-de-las-llanuras' }, select: { id: true } }));
 
   const celdaJugador = jugador ? celdaDePixel(jugador) : null;
   // Rumbo real, no sector cardinal (2026-09-28, ver `posicionesDeSalidas`, zonaPosicion.ts): antes
@@ -204,6 +212,8 @@ async function salidasDeRegionPara(
       imageUrl: visitada ? zoneMapImageUrl(destino.slug) : null,
       alcanzable: celdaJugador ? celdaAdyacenteOMisma(celdaJugador, celdaDePixel(punto)) : true,
       puerta: esInterior ? 'SALIR' : 'ENTRAR',
+      minutos: minutosPorDestino.get(destino.id) ?? 0,
+      conocida: true,
     });
   });
   for (const destino of conCoordenadas) {
@@ -221,6 +231,8 @@ async function salidasDeRegionPara(
       description: visitada ? destino.description : null,
       imageUrl: visitada ? zoneMapImageUrl(destino.slug) : null,
       alcanzable,
+      minutos: minutosPorDestino.get(destino.id) ?? 0,
+      conocida: visitada || llevaMapa,
     });
   }
   return salidas;
@@ -389,6 +401,13 @@ export async function zonaRoutes(app: FastifyInstance) {
     const npcFaunaZonePointIds = npcFaunaZonePointRows.filter((n) => npcFaunaZonePointSlugs.includes(n.slug));
     const npcIdBySlugZonePoint = new Map(npcFaunaZonePointIds.map((n) => [n.slug, n.id]));
     const npcNameBySlugZonePoint = new Map(npcFaunaZonePointIds.map((n) => [n.slug, n.name]));
+    // P106 (QA-27): los NPC objetivo de una misión activa llevan su marca en el mapa (aunque sigan sin
+    // descubrir: «???» y sin marca, nada decía que era el objetivo).
+    const objetivosDeMision = new Set(
+      (await prisma.quest.findMany({ where: { saveId: save.id, status: 'ACTIVA', targetNpcId: { not: null } }, select: { targetNpcId: true } })).map((q) => q.targetNpcId!),
+    );
+    // P107 (QA-27): `ZonePoint.factionSlug` casi nunca está relleno; la facción es la del propio NPC.
+    const npcFactionBySlugZonePoint = new Map(npcFaunaZonePointIds.map((n) => [n.slug, n.faction]));
     // ZON-50/ZON-33 (hito 0.2): quién te perseguiría (misma regla que la persecución de
     // `avanzarZonePointsUnPaso`: temperamento efectivo según tu reputación con su facción).
     // CR-16: y quien te guarda rencor por lo que le hiciste.
@@ -675,8 +694,11 @@ export async function zonaRoutes(app: FastifyInstance) {
           // `label` puesto a mano (un alias custom seguiría filtrando información real).
           nombre: yaDescubierto ? nombreReal : '???',
           cantidad: p.cantidad,
-          color: zonePointColorFor(p.factionSlug, factionsStatus, p.tipo),
+          // P107: la facción se ve aunque no se sepa quién es (como los dinámicos de arriba y en X4,
+          // donde el color de la facción se ve antes de escanear); el nombre sigue oculto.
+          color: zonePointColorFor(p.factionSlug ?? npcFactionBySlugZonePoint.get(p.targetSlug) ?? null, factionsStatus, p.tipo),
           descubierto: yaDescubierto,
+          ...(objetivosDeMision.has(npcIdBySlugZonePoint.get(p.targetSlug) ?? '') ? { objetivoMision: true } : {}),
           // Compañero de fauna con nombre propio (C10, 2026-09-13) — presente solo si este NPC es
           // dueño de un companion; mismo criterio de `yaDescubierto` que el resto del punto (el
           // dueño no descubierto no debe filtrar el nombre real del companion).

@@ -159,6 +159,18 @@ export function nombreEnFrase(nombre: string, alInicio = false): string {
   return alInicio ? texto.charAt(0).toUpperCase() + texto.slice(1) : texto;
 }
 
+/// P90 (QA-27): un grupo de fauna se nombra como grupo («el grupo de 5 Kirelon Arenoso»), no como
+/// un individuo sin artículo.
+export function nombreDeEncuentro(nombre: string, cantidad?: number | null, alInicio = false): string {
+  if (!cantidad || cantidad <= 1) return nombreEnFrase(nombre, alInicio);
+  return `${alInicio ? 'El' : 'el'} grupo de ${cantidad} ${nombre}`;
+}
+
+/// «de el grupo…» → «del grupo…» (contracción obligatoria).
+export function deNombre(nombreEnLaFrase: string): string {
+  return nombreEnLaFrase.startsWith('el ') ? `del ${nombreEnLaFrase.slice(3)}` : `de ${nombreEnLaFrase}`;
+}
+
 /// Mismo shape que `DynamicModeTurnoOutput` (dynamicModeNarracion.ts) — definido aquí en vez de
 /// importado de allí para no crear un ciclo (ese archivo ya importa `DynamicModeTipo` de este).
 export interface GisteraTurnoOutput {
@@ -194,9 +206,9 @@ export function respuestaGisteraDesdeOpcion(opcion: string): RespuestaGistera | 
 export const COMBATE_FORZADO_OPCION_COMBATIR = 'Combatir';
 export const COMBATE_FORZADO_OPCION_HUIR = 'Huir';
 
-export function narrarAperturaCombateForzado(targetName: string): GisteraTurnoOutput {
+export function narrarAperturaCombateForzado(targetName: string, cantidad?: number | null): GisteraTurnoOutput {
   return {
-    narration: `Os encontráis y os miráis — ${nombreEnFrase(targetName)} no tiene intención de dejarte pasar. Toca decidir ya: combatir o huir.`,
+    narration: `Os encontráis y os miráis — ${nombreDeEncuentro(targetName, cantidad)} no tiene intención de dejarte pasar. Toca decidir ya: combatir o huir.`,
     opciones: [COMBATE_FORZADO_OPCION_COMBATIR, COMBATE_FORZADO_OPCION_HUIR],
     cierra: false,
   };
@@ -205,6 +217,11 @@ export function narrarAperturaCombateForzado(targetName: string): GisteraTurnoOu
 const GISTERA_TEXTO_PRESENTACION =
   'Con la respiración entrecortada, sin dejar de mirar hacia atrás, se presenta a toda prisa: «Soy Gistera Koh... del Clan Serhu, aunque ya no. No tengo tiempo para explicarte más — uno de los suyos me pisa los talones y quiere verme muerta. Llevas la marca de los Maktor, ¿verdad? Entonces sabes lo que es que un clan entero se vuelva contra los tuyos. ¿No quieres acabar con los Serhu? Empieza por el que me persigue — hazlo antes de que sea demasiado tarde.»';
 const GISTERA_OPCIONES_PRESENTACION = ['Aceptar ayudarla', 'Preguntar más antes de decidir', 'Rechazar y seguir tu camino'];
+
+/// P105 (QA-27): la despedida de Gistera al aceptar en la conversación. Si ya se dijo, aceptar la
+/// misión en su tarjeta no añade otra (`quests.ts`).
+export const GISTERA_DESPEDIDA_EN_CONVERSACION =
+  'Gistera esboza un gesto de alivio que apenas dura un instante. «Gracias, Gorhorn. No puedo quedarme aquí más tiempo, pero si nos volvemos a ver, ¡te lo agradeceré como corresponde!» Se aleja a toda velocidad entre las rocas de la hondonada sin mirar atrás.';
 
 /// Ramifica por `respuesta` (la opción que el jugador ya eligió), NUNCA solo por el número de
 /// vuelta — "preguntar" recicla la presentación (misma vuelta lógica, no avanza a la 3), y
@@ -230,8 +247,7 @@ export function narrarVueltaGistera(vuelta: number, respuesta: RespuestaGistera 
   }
   if (respuesta === 'aceptar') {
     return {
-      narration:
-        'Gistera esboza un gesto de alivio que apenas dura un instante. «Gracias, Gorhorn. No puedo quedarme aquí más tiempo, pero si nos volvemos a ver, ¡te lo agradeceré como corresponde!» Se aleja a toda velocidad entre las rocas de la hondonada sin mirar atrás.',
+      narration: GISTERA_DESPEDIDA_EN_CONVERSACION,
       opciones: [],
       cierra: true,
     };

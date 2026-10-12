@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { GISTERA_DESPEDIDA_EN_CONVERSACION } from '../../services/dynamicMode.js';
 import { Prisma, type Save, type WorldState } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { normalizeText, matchDestination } from '../../services/travel.js';
@@ -117,7 +118,12 @@ export async function aceptarQuest(
   // mismo bloque de texto corrido, sin ninguna pausa entre "habla Gorhorn" y "reacciona
   // Gistera". Salto de párrafo (línea en blanco) entre ambas, mismo criterio que el resto del
   // juego usa para separar turnos de habla distintos dentro de la misma narración.
-  const text = isOrcoEnfurecidoTitle ? `${acceptanceText}\n\n${GISTERA_DESPEDIDA_NARRATION}` : acceptanceText;
+  // P105 (QA-27): si Gistera ya se despidió en la conversación (Interactuar → «Aceptar ayudarla»),
+  // no se repite otra despedida distinta al aceptar la tarjeta de la misión.
+  const yaSeDespidio =
+    isOrcoEnfurecidoTitle &&
+    !!(await prisma.logEntry.findFirst({ where: { saveId: save.id, text: { contains: GISTERA_DESPEDIDA_EN_CONVERSACION } }, select: { id: true } }));
+  const text = isOrcoEnfurecidoTitle && !yaSeDespidio ? `${acceptanceText}\n\n${GISTERA_DESPEDIDA_NARRATION}` : acceptanceText;
 
   const { quest, logEntry, questCompletedInfo, newInventoryItems } = await prisma.$transaction(async (tx) => {
     // QA-54: las recompensas que ya había, para mandar solo las que dé esta aceptación.

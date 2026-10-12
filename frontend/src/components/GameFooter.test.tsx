@@ -9,7 +9,7 @@ describe('BAS-5 — GameFooter', () => {
   })
 
   const base = {
-    characterName: 'Ilse', onResolverMuerte: vi.fn(), resolviendoMuerte: false, combatComposer: <p>composer de combate</p>,
+    characterName: 'Ilse', onResolverMuerte: vi.fn(), resolviendoMuerte: false, deathCount: 3, dificultad: 'MEDIO' as const, combatComposer: <p>composer de combate</p>,
     desollar: null, conHabilidades: true, skillHudView: { screen: 'composer' as const }, setSkillHudView: vi.fn(), skillBars: [], savedActions: [],
     onSelectBar: vi.fn(), onCreateBar: vi.fn(), onEditBar: vi.fn(), onDeleteBar: vi.fn(), onUseAbility: vi.fn(), onBackToComposer: vi.fn(),
     composerRef: null, onChange: vi.fn(), onSubmit: vi.fn(), composerDisabled: false, disabledReason: undefined,
@@ -24,6 +24,11 @@ describe('BAS-5 — GameFooter', () => {
     const { getByRole } = render(<GameFooter {...base} modo="muerte" />)
     fireEvent.click(getByRole('button', { name: 'Aceptar' }))
     expect(base.onResolverMuerte).toHaveBeenCalled()
+  })
+
+  it('muerte: dice qué ha pasado y qué viene (P119)', () => {
+    const { getByText } = render(<GameFooter {...base} modo="muerte" />)
+    expect(getByText('Ilse ha caído (muerte 3 de 4). Al aceptar, despierta donde descansó por última vez o, si nunca descansó, en su punto de partida. Si además nunca superó su primera prueba, todo habrá sido una pesadilla y empezará de nuevo.')).toBeTruthy()
   })
 
   it('combate: el composer de combate que le pasan', () => {

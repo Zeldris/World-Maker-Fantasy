@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { LIMITE_MUERTES } from '../lib/muertes'
 import { HealthBar } from './HealthBar'
 import { BotonAjustes } from './BotonAjustes'
 import { EnergyBar } from './EnergyBar'
@@ -8,7 +9,6 @@ import { ESTACION_ICON, CLIMA_ICON } from '../lib/entorno'
 import { formatCountdown } from '../lib/gameViewHelpers'
 import type { CondicionFisica, Dificultad, EntornoTemporalInfo } from '../types'
 
-const LIMITE_MUERTES: Record<Exclude<Dificultad, 'NOVATO'>, number> = { MEDIO: 4, AVANZADO: 2 }
 
 interface GameHeaderProps {
   characterName: string | null

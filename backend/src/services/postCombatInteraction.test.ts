@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { detectsPostCombatInteraction } from './postCombatInteraction.js';
+import { detectsPostCombatInteraction, PREFIJO_SAQUEO_DESDE_FICHA } from './postCombatInteraction.js';
 
 const npcsInScene = [
   { slug: 'orco-enfurecido-hondonada', name: 'Orco enfurecido', condicionFisica: 'CONVALECIENTE', saqueado: false },
@@ -24,12 +24,23 @@ describe('detectsPostCombatInteraction', () => {
   });
 
   it('detecta también un cadáver (MUERTO)', () => {
-    const muerto = [{ slug: 'orco-enfurecido-hondonada', name: 'Orco enfurecido', condicionFisica: 'MUERTO', saqueado: true }];
+    const muerto = [{ slug: 'orco-enfurecido-hondonada', name: 'Orco enfurecido', condicionFisica: 'MUERTO', saqueado: true, raza: 'orcos' }];
     expect(detectsPostCombatInteraction('Examino el cuerpo del Orco enfurecido.', muerto)).toEqual({
       slug: 'orco-enfurecido-hondonada',
       name: 'Orco enfurecido',
       condicionFisica: 'MUERTO',
       saqueado: true,
+      esFauna: false,
     });
+  });
+
+  it('P97: un cadáver de fauna (sin raza) se marca como fauna, para desollarlo', () => {
+    const guchapo = [{ slug: 'guchapo', name: 'Guchapo', condicionFisica: 'MUERTO', saqueado: false, raza: null }];
+    expect(detectsPostCombatInteraction('Despiezo el cadáver del Guchapo', guchapo)?.esFauna).toBe(true);
+  });
+
+  it('P97: el texto del propio botón «Saquear» no vuelve a abrir la ficha (antes, en bucle)', () => {
+    const muerto = [{ slug: 'orco-enfurecido-hondonada', name: 'Orco enfurecido', condicionFisica: 'MUERTO', saqueado: false, raza: 'orcos' }];
+    expect(detectsPostCombatInteraction(`${PREFIJO_SAQUEO_DESDE_FICHA}'Orco enfurecido'.`, muerto)).toBeNull();
   });
 });

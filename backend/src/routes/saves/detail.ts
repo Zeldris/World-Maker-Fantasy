@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { HABILIDADES_RENOMBRADAS, nombreActualDeHabilidad } from '../../services/habilidadesRenombradas.js';
 import { prisma } from '../../lib/prisma.js';
 import { startingAbilitiesFor } from '../../services/startingAbilities.js';
 import { maxCombatAbilitiesFor } from '../../services/progression.js';
@@ -103,6 +104,25 @@ export async function detailRoutes(app: FastifyInstance) {
       const desfasadas = save.savedActions.filter((a) => a.isStarting && catalogo.has(a.name) && catalogo.get(a.name) !== a.description);
       if (desfasadas.length > 0) {
         await prisma.$transaction(desfasadas.map((a) => prisma.savedAction.update({ where: { id: a.id }, data: { description: catalogo.get(a.name)! } })));
+        save.savedActions = await prisma.savedAction.findMany({ where: { saveId: save.id }, orderBy: { createdAt: 'asc' } });
+      }
+    }
+
+    // P100 (QA-27): habilidades renombradas en el catálogo. Las partidas las identifican por nombre
+    // (SavedAction y la lista de activas en combate), así que se renombran las dos al leer.
+    {
+      const renombrar = save.savedActions.filter((a) => HABILIDADES_RENOMBRADAS[a.name]);
+      const activas = (save.activeCombatAbilityNames ?? []).some((n) => HABILIDADES_RENOMBRADAS[n]);
+      // Las barras de habilidades también guardan nombres (`SkillBar.abilityNames`).
+      const barras = save.skillBars.filter((b) => b.abilityNames.some((n) => HABILIDADES_RENOMBRADAS[n]));
+      if (renombrar.length > 0 || activas || barras.length > 0) {
+        await prisma.$transaction([
+          ...renombrar.map((a) => prisma.savedAction.update({ where: { id: a.id }, data: { name: HABILIDADES_RENOMBRADAS[a.name] } })),
+          ...barras.map((b) => prisma.skillBar.update({ where: { id: b.id }, data: { abilityNames: b.abilityNames.map(nombreActualDeHabilidad) } })),
+          prisma.save.update({ where: { id: save.id }, data: { activeCombatAbilityNames: save.activeCombatAbilityNames.map(nombreActualDeHabilidad) } }),
+        ]);
+        save.activeCombatAbilityNames = save.activeCombatAbilityNames.map(nombreActualDeHabilidad);
+        save.skillBars = save.skillBars.map((b) => ({ ...b, abilityNames: b.abilityNames.map(nombreActualDeHabilidad) }));
         save.savedActions = await prisma.savedAction.findMany({ where: { saveId: save.id }, orderBy: { createdAt: 'asc' } });
       }
     }
