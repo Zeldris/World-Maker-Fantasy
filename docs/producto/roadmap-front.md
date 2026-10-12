@@ -1038,7 +1038,9 @@ Retro del 2026-10-12, último tramo (P82, PR #44; las 4 aprobadas por la usuaria
   qué pasa junto a la jugadora y donde reaparece, con su test. Motivo: P50 causó P82.
 - **QA-52 · Diagnosticar el intermitente de `avanceDiario`** (pendiente): «la economía avanza las copias
   de la partida con su reloj y deja quietas las del catálogo» falló una vez en la suite completa del
-  backend (2026-10-12) y pasa suelto. Con `diagnosing-bugs`, como `QA-8` y `QA-12`.
+  backend (2026-10-12) y pasa suelto. Con `diagnosing-bugs`, como `QA-8` y `QA-12`. Mismo tipo, visto
+  el 2026-10-12 (también sobre `main`): en `turn.integration.test.ts`, un hook de «OrdenProduccion» o de
+  «Territory.control» supera a veces sus 10 s; cambia de test en cada pasada y pasan sueltos.
 - ~~**QA-53 · El juego listo de verdad**~~ ✅ 2026-10-12 (`arrancar-juego.sh`): espera a que `/health` dé la
   base conectada y el frontend sirva, y si no, falla con dónde mirar. Motivo: tras reiniciar el
   contenedor, la partida salió «No se encuentra».
