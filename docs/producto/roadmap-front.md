@@ -961,6 +961,27 @@ Retro del 2026-10-10 (aplicación de la anterior; propuestas aprobadas por la us
   tirados, capturas de maestro y límites de almacén. Test `reinicioCompleto.test.ts`: toda tabla con
   `saveId` se borra o tiene su motivo para quedarse. Pendiente: los `Npc` y `Location` propios de la
   partida (siguen tras reiniciar; hay que borrarlos sin romper referencias).
+
+Retro del 2026-10-12 (hallazgos de `QA-27` en la rama `claude/wonderful-volta-662qt8`; las 6 aprobadas
+por la usuaria):
+
+- ~~**QA-38 · La base de los tests, al día sola**~~ ✅ 2026-10-12 (`backend/vitest.bdReal.globalSetup.ts`):
+  antes de los tests con Postgres aplica las migraciones pendientes y, si cambiaron las fuentes del
+  catálogo (`src/scripts/`, huella en `node_modules/.cache/`), vuelve a sembrarlo. En la CI no (ya lo
+  hace el workflow). Motivo: al traer `main`, la base `tarkor` se quedaba sin una columna nueva y con
+  el catálogo viejo, y los tests fallaban sin decir por qué.
+- ~~**QA-39 · Todos los tests del frontend se ejecutan**~~ ✅ 2026-10-12 (`frontend/vitest.config.ts`:
+  `src/**/*.test.{ts,tsx}`). Motivo: un test en `src/data/` no se ejecutaba y pasaba «en verde».
+- ~~**QA-40 · Un dato, un sitio**~~ ✅ 2026-10-12: regla en `REVIEW.md` (mismo filtro en los dos
+  caminos, sin copias entre backend y frontend, el filtro mira la consulta y no la página) y
+  `/code-review` cada 5-6 hallazgos en el runbook de rondas. Motivo: 3 de los 10 fallos de la revisión.
+- ~~**QA-41 · Jugar sin el MCP de Playwright**~~ ✅ 2026-10-12 (`tools/playwright-e2e/driver.mjs` y
+  `orden.sh`, en su README): navegador abierto que recibe órdenes de JS, solo en `127.0.0.1`, y se para
+  por su PID.
+- ~~**QA-42 · Marcar hallazgos**~~ ✅ 2026-10-12 (`tools/qa/marca-hallazgo.py`, citado en el runbook):
+  cambia el estado de una fila del registro y falla si no hay exactamente una.
+- ~~**QA-43 · Índice de `turnResolution.ts`**~~ ✅ 2026-10-12: al principio del archivo, cada bloque de
+  `narrateAndPersistTurn` con la clave para buscarlo.
 ---
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)

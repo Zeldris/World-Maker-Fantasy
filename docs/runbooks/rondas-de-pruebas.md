@@ -11,11 +11,15 @@ retro del 2026-10-09). Herramientas: [`tools/playwright-e2e/`](../../tools/playw
    Un bucle automático (combate, caminar) solo para repetir algo ya visto; lo nuevo se juega a mano.
 3. Apunta cada hallazgo en el registro de la ronda (`docs/registros/pruebas-<hito>-hallazgos.md`,
    tabla `| P<n> | Hallazgo | Estado |`): fallos, incoherencias de texto o de lore, y detalles de
-   interfaz. Con la causa si se ve, y si no bloquea, «pendiente».
+   interfaz. Con la causa si se ve, y si no bloquea, «pendiente». Para cambiar el estado de una fila:
+   `python3 tools/qa/marca-hallazgo.py P<n> "<texto viejo>" "<texto nuevo>"` (`QA-42`).
 4. **Arregla solo lo que bloquea** (no se puede seguir jugando, o el juego hace algo imposible): con
-   su test y comprobado en vivo. Lo demás se queda apuntado para repasarlo con la usuaria.
+   su test y comprobado en vivo (si el MCP de Playwright no conecta, `driver.mjs` de
+   `tools/playwright-e2e/`, `QA-41`). Lo demás se queda apuntado para repasarlo con la usuaria.
 5. Commit y push tras cada tanda de hallazgos; la tarea de la ronda en su roadmap lleva qué está
    hecho y qué falta.
+6. **`/code-review` cada 5-6 hallazgos arreglados** (`QA-40`, retro de `QA-27`), no solo al final: la
+   de `QA-27` revisó 30 commits de golpe y sacó 10 fallos.
 
 ## Lo que engaña
 
