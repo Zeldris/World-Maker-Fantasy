@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { classifyAction, type ClassificationResult } from '../services/narrador.js';
 import { rollCheck } from '../services/dice.js';
 import type { AttributeBlock, RollResult } from '../services/dice.js';
-import { computeDuration, detectsRestIntent, mentionsExplicitDuration } from '../services/timedActions.js';
+import { computeDuration, detectsRestIntent, duracionExplicitaDeLaAccion, mentionsExplicitDuration } from '../services/timedActions.js';
 import { narrateAndPersistTurn } from '../services/turnResolution.js';
 import { avanzarSiCruzaDia, enSegundoPlano, esperarSegundoPlano } from '../services/avanceDiario.js';
 import { recordEntityDiscoveries } from '../services/entityDiscovery.js';
@@ -68,6 +68,7 @@ import { startEagerTransitResolution } from '../workers/worldTick.js';
 import { detectDeterministicCraft, detectsCraftIntent, CRAFTING_RECIPES } from '../services/crafting.js';
 import { planDeterministicBuild, detectsBuildIntent, CONSTRUCTION_RECIPES, buildingTierFor } from '../services/construction.js';
 import { ambitoPoblacion } from '../services/mundoPartida.js';
+import { enGraciaTrasRenacer } from '../services/death.js';
 
 interface ClassifyBody {
   saveId: string;
@@ -509,7 +510,13 @@ async function resolveClassificationForTurn(params: {
         // banda↔duracionEstimadaMinutos coherentes, se deriva de forma determinista con la MISMA
         // función que ya usa el viaje por grafo (bandaForMinutos). "instantanea" se respeta tal
         // cual (es la única banda sin minutos reales que reconciliar).
-        if (classification.banda !== 'instantanea') {
+        // P17 (QA-27): la duración que la jugadora escribe manda, también sobre la banda (que es
+        // la que decide más abajo si la acción ocupa tiempo de verdad).
+        const duracionExplicita = duracionExplicitaDeLaAccion(action, classification.banda);
+        if (duracionExplicita) {
+          classification.duracionEstimadaMinutos = duracionExplicita;
+          classification.banda = bandaForMinutos(duracionExplicita);
+        } else if (classification.banda !== 'instantanea') {
           classification.banda = bandaForMinutos(classification.duracionEstimadaMinutos);
         }
       }
@@ -1008,7 +1015,9 @@ export async function turnRoutes(app: FastifyInstance) {
       // resolverlo — si algún nodo intermedio de la ruta dispara, el viaje se trunca a ese punto
       // (llegada real, no la del destino pedido) y el candidato elegido entra en escena de verdad
       // en cuanto se resuelva el tránsito (ver turnResolution.ts).
-      const interruption = travel
+      // QA-27 P82: durante la gracia tras reaparecer, nada sale al paso.
+      const enGracia = await enGraciaTrasRenacer(prisma, saveId, save.worldState?.fictionalMinutes ?? 0);
+      const interruption = travel && !enGracia
         ? await pickTravelInterruption(save.worldId, travel, env.travelInterruptionProbabilityPerSegment, attributes, Math.random, await ambitoPoblacion(prisma, save.id))
         : null;
       // Grupo 3 § Mundo determinista, Capa 2 (2026-08-25) — generaliza lo de arriba a acciones
@@ -1017,7 +1026,7 @@ export async function turnRoutes(app: FastifyInstance) {
       // disparar en zonas con `ZonePoint` real (Capa 1, hoy solo La Hondonada del Eco) — en
       // cualquier otra zona `pickStationaryInterruption` siempre devuelve null, cero efecto.
       const stationaryInterruption =
-        !travel && currentLocationForSummary
+        !travel && !enGracia && currentLocationForSummary
           ? await pickStationaryInterruption(save.worldId, save.id, currentLocationForSummary.id, minutos, env.stationaryInterruptionProbabilityPerChunk)
           : null;
       const effectiveTravel = interruption ? interruption.travel : travel;
@@ -1157,6 +1166,15 @@ export async function turnRoutes(app: FastifyInstance) {
         void startEagerTransitResolution(transitRow.id, busyUntil).catch((err) =>
           console.error(`[turn] error en la resolución anticipada del tránsito ${transitRow.id}:`, err),
         );
+      } else {
+        // P46 (QA-27): con evento, sin adelantar nada (la prudencia de arriba), pero en cuanto vence
+        // la espera, como el crafteo: antes quedaba «Ocupado · resolviendo...» hasta el barrido del
+        // mundo (cada 2 min). Si el proceso se reinicia antes, el barrido la recoge igual.
+        setTimeout(() => {
+          void startEagerTransitResolution(transitRow.id, busyUntil).catch((err) =>
+            console.error(`[turn] error en la resolución del viaje interrumpido ${transitRow.id}:`, err),
+          );
+        }, Math.max(0, busyUntil.getTime() - Date.now()));
       }
 
       // Petición explícita de la usuaria (2026-07-30): "cuando salgan esas esperas que ponga
@@ -1326,6 +1344,7 @@ export async function turnRoutes(app: FastifyInstance) {
         esperandoDefensaJugador,
         npcAbilityUsed,
         combatExchangeDisplay,
+        intercambiosExtra,
         playerAbilityUsed,
         nextInitiativeRoll,
         territories,
@@ -1438,6 +1457,7 @@ export async function turnRoutes(app: FastifyInstance) {
         esperandoDefensaJugador,
         npcAbilityUsed,
         combatExchangeDisplay,
+        intercambiosExtra,
         playerAbilityUsed,
         nextInitiativeRoll,
         territories,

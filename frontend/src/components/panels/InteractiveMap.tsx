@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AlcanceTorre, CampamentoInfo, ExpedicionEnMapa } from '../../lib/api'
 import { posicionDeExpedicion } from '../../lib/leyendas'
 import { projectLlanurasNodes, type LlanurasEdge, type LlanurasNode, type CristalHeladoNode, type MapNodeOption, type MapRegion } from '../../data/map'
 import berigMapUrl from '../../assets/maps/helek-sirik-berig.png'
 import { MapZoomModal } from './MapZoomModal'
 import type { RumorConLugar } from '../../lib/leyendas'
+import { centrarEnSuContenedor } from '../../lib/centrarEnContenedor'
 
 // "Paleta de puntos" (2026-08-04, ver MapNodeOption en data/map.ts): abanico de satélites por
 // encima del punto, en vez de un menú/modal aparte — el propio nodo "se abre". Radio y ángulos en
@@ -184,6 +185,16 @@ export function InteractiveMap({
   useEffect(() => {
     setSelectedName(currentRegion)
   }, [currentRegion])
+  // P33 (QA-27): el lienzo de Berig es más alto que ancho y el panel abre arriba, en Cristal
+  // Helado, aunque la jugadora esté en las Llanuras. Al abrir el mapa o cambiar de sitio, se lleva
+  // el scroll a su punto (o, sin mapa de la región, a su región).
+  const svgRef = useRef<SVGSVGElement>(null)
+  useEffect(() => {
+    const svg = svgRef.current
+    // El punto de la jugadora; sin mapa de la región, su insignia; si no, la forma de su región.
+    const aqui = svg?.querySelector('[data-aqui="nodo"]') ?? svg?.querySelector('[data-aqui="region"]') ?? svg?.querySelector('[data-aqui="forma"]')
+    centrarEnSuContenedor(aqui)
+  }, [currentRegion, currentLocationSlug])
   const selected = regions.find((r) => r.name === selectedName) ?? null
   const [selectedNodeSlug, setSelectedNodeSlug] = useState<string | null>(null)
   const [expedicionVista, setExpedicionVista] = useState<string | null>(null)
@@ -207,6 +218,7 @@ export function InteractiveMap({
           🔍 Ampliar mapa
         </button>
         <svg
+          ref={svgRef}
           viewBox={`${BERIG_VIEWBOX.x} ${BERIG_VIEWBOX.y} ${BERIG_VIEWBOX.width} ${BERIG_VIEWBOX.height}`}
           className="w-full"
           role="img"
@@ -255,6 +267,7 @@ export function InteractiveMap({
             return (
               <g
                 key={shape.name}
+                data-aqui={isCurrent ? 'forma' : undefined}
                 role="button"
                 tabIndex={0}
                 onClick={() => {
@@ -295,7 +308,7 @@ export function InteractiveMap({
                   // Insignia de "aquí ahora" (petición explícita, 2026-07-23: quitar el texto,
                   // usar un icono tipo contacto de móvil — persona en blanco sobre fondo dorado,
                   // borde blanco) en vez del texto "◆ aquí ahora", que se perdía contra el fondo.
-                  <g className="pointer-events-none" transform={`translate(${shape.labelX} ${shape.labelY + 20})`}>
+                  <g data-aqui="region" className="pointer-events-none" transform={`translate(${shape.labelX} ${shape.labelY + 20})`}>
                     <clipPath id={`current-badge-clip-${shape.name.replace(/\s+/g, '-')}`}>
                       <circle r={5} />
                     </clipPath>
@@ -431,6 +444,7 @@ export function InteractiveMap({
                   // existente en index.css, sin bucle) para que el marcador "aquí ahora" anuncie
                   // la llegada en vez de aparecer en silencio.
                   key={`${node.slug}-${isCurrentNode}`}
+                  data-aqui={isCurrentNode ? 'nodo' : undefined}
                   role="button"
                   tabIndex={0}
                   className={`tactile cursor-pointer outline-none${isCurrentNode ? ' animate-pop-once' : ''}`}
@@ -626,6 +640,7 @@ export function InteractiveMap({
               return (
                 <g
                   key={`${node.slug}-${isCurrentNode}`}
+                  data-aqui={isCurrentNode ? 'nodo' : undefined}
                   role="button"
                   tabIndex={0}
                   className={`tactile cursor-pointer outline-none${isCurrentNode ? ' animate-pop-once' : ''}`}

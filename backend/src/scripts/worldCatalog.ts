@@ -1978,7 +1978,7 @@ export const fauna: NpcInput[] = [
     habilidadesRaciales: [
       { icon: '👅', name: 'Lengua trifurcada', description: 'Lanza la lengua dividida en tres puntas para atrapar a un insecto o distraer a un agresor.', categoria: 'ataque', preferredAttribute: 'destreza', level: 4, effects: ['ATAQUE'] },
       { icon: '💧', name: 'Piel tersa', description: 'La piel, tensa por el agua acumulada, amortigua golpes menores como un colchón.', categoria: 'defensa', preferredAttribute: 'constitucion', level: 12, effects: ['AGUANTE'] },
-      { icon: '😨', name: 'Huida al agua', description: 'Se sumerge en la charca más profunda al primer sobresalto, casi imposible de seguir.', categoria: 'utilidad', preferredAttribute: 'destreza', level: 20, effects: ['AGUANTE'] },
+      { icon: '💦', name: 'Zambullida', description: 'Se sumerge de golpe en la charca más cercana: el golpe le llega amortiguado por el agua.', categoria: 'utilidad', preferredAttribute: 'destreza', level: 20, effects: ['AGUANTE'] },
     ],
   },
 

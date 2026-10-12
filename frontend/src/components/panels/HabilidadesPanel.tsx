@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ProfessionProgressInfo, ProfessionRecipeInfo, RecipeStatusInfo, SavedActionCategory, SavedActionInfo } from '../../types'
 import { professions } from '../../data/professions'
-import { REINO_ABILITY_RECIPE_KEY } from '../../data/reinoRecipes'
+import { REINO_ABILITY_RECIPE_KEY, reinoAbilityDisponible } from '../../data/reinoRecipes'
 import { professionSpan, MAX_PROFESSION_LEVEL } from '../../lib/professionLevels'
 import { PanelEmptyState } from '../PanelEmptyState'
 import { PanelSection } from '../PanelSection'
@@ -26,6 +26,8 @@ interface HabilidadesPanelProps {
   /// petición explícita: "que salgan deshabilitadas si no cumples las condiciones... el hover
   /// con... 5/10") — ver GET /saves/:id/recipes-status.
   recipesStatus: RecipeStatusInfo[]
+  /// P19 (QA-27): `recipeKey` de los edificios ya construidos, para no ofrecer ampliaciones sin base.
+  edificiosConstruidos?: readonly string[]
   onUse: (ability: SavedActionInfo) => void
   onCreate: (params: { name: string; promptText: string; icon: string; description: string; category: SavedActionCategory }) => Promise<void>
   onDetail: (ability: SavedActionInfo) => void
@@ -137,6 +139,7 @@ export function HabilidadesPanel({
   onUse,
   onCreate,
   onDetail,
+  edificiosConstruidos = [],
 }: HabilidadesPanelProps) {
   // Generales primero (2026-08-07, reordenado junto con la pestaña nueva de Profesiones) — el
   // tab por defecto sigue la misma pestaña, para no abrir en una que no sea la resaltada visualmente.
@@ -212,7 +215,7 @@ export function HabilidadesPanel({
   // la Choza (una vez desbloqueada por nivel de oficio) ya son `savedActions` reales de categoría
   // 'reino' en cuanto existen — mismo criterio de "solo lo usable" que en Profesiones, arriba.
   const reinoConOficio = inTab.filter((a) => recipeByAbilityName.has(a.name))
-  const reinoLibreAcceso = inTab.filter((a) => !recipeByAbilityName.has(a.name))
+  const reinoLibreAcceso = inTab.filter((a) => !recipeByAbilityName.has(a.name) && reinoAbilityDisponible(a.name, edificiosConstruidos))
 
   return (
     <div className="flex flex-col gap-5">

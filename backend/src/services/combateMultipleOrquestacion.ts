@@ -758,6 +758,9 @@ export interface TurnoAutonomoResultado {
   /// intercambio real que la ha tocado; `resolverTurnosAutonomosHastaJugadora` lo recoge para que
   /// el frontend lo pinte.
   defensorEsJugador?: boolean;
+  /// P55 (QA-27): condición en la que deja a la jugadora un golpe gratis (sin tirada). Sin esto, el
+  /// diario no lo enseñaba: caía de Ileso a Convaleciente tras ganar su único intercambio visible.
+  condicionTrasGolpeGratis?: CondicionFisica;
 }
 
 /// Campos compartidos por `ejecutarIntercambioYAvanzar`/`ejecutarGolpeGratisYAvanzar`/
@@ -1473,6 +1476,8 @@ async function ejecutarGolpeGratisYAvanzar(params: TurnoAutonomoBaseParams & { d
     // Golpe gratis, sin oposición real — nunca pasa por `resolverIntercambioCompleto` (ver
     // comentario de cabecera de esta función), no hay tirada que mostrar.
     combatExchangeDisplay: null,
+    defensorEsJugador: defensor.tipo === 'JUGADOR',
+    condicionTrasGolpeGratis: nuevaCondicionDefensor,
   };
 }
 
@@ -1980,6 +1985,8 @@ export interface ResolucionRondaCombate {
   /// defensora, en orden. Si un enemigo con más iniciativa resolvió el duelo de la ronda, el turno
   /// de la jugadora se salta y sin esto no veía ninguna tirada.
   intercambiosContraJugadora: { display: CombatExchangeDisplay; atacanteNombre: string }[];
+  /// P55 (QA-27): golpes gratis (sin tirada) que recibió la jugadora en esta tanda, en orden.
+  golpesSinTiradaContraJugadora: { atacanteNombre: string; nuevaCondicion: CondicionFisica }[];
 }
 
 export interface ResolverTurnosAutonomosHastaJugadoraParams {
@@ -2004,6 +2011,7 @@ export async function resolverTurnosAutonomosHastaJugadora({
   const narraciones: string[] = [];
   const caidos: ParticipanteCaidoInfo[] = [];
   const intercambiosContraJugadora: { display: CombatExchangeDisplay; atacanteNombre: string }[] = [];
+  const golpesSinTiradaContraJugadora: { atacanteNombre: string; nuevaCondicion: CondicionFisica }[] = [];
   for (let i = 0; i < maxIteraciones; i++) {
     const resultado = await resolverTurnoAutonomo({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto, narrarFn });
     if (resultado === null) {
@@ -2015,17 +2023,21 @@ export async function resolverTurnosAutonomosHastaJugadora({
         esperandoAccionJugadora: encounter.estado !== 'RESUELTO',
         esperandoEleccionRonda: encounter.estado !== 'RESUELTO' && encounter.esperandoEleccionJugadora,
         intercambiosContraJugadora,
+        golpesSinTiradaContraJugadora,
       };
     }
     if (resultado.narracion) narraciones.push(resultado.narracion);
     narraciones.push(...resultado.narracionesExtra);
     caidos.push(...resultado.caidos);
     if (resultado.combatExchangeDisplay && resultado.defensorEsJugador) intercambiosContraJugadora.push({ display: resultado.combatExchangeDisplay, atacanteNombre: resultado.atacanteNombre });
-    if (resultado.encounterTerminado) return { narraciones, encounterTerminado: true, caidos, esperandoAccionJugadora: false, esperandoEleccionRonda: false, intercambiosContraJugadora };
+    if (!resultado.combatExchangeDisplay && resultado.defensorEsJugador && resultado.condicionTrasGolpeGratis) {
+      golpesSinTiradaContraJugadora.push({ atacanteNombre: resultado.atacanteNombre, nuevaCondicion: resultado.condicionTrasGolpeGratis });
+    }
+    if (resultado.encounterTerminado) return { narraciones, encounterTerminado: true, caidos, esperandoAccionJugadora: false, esperandoEleccionRonda: false, intercambiosContraJugadora, golpesSinTiradaContraJugadora };
   }
   // Tope de seguridad alcanzado (2026-08-25) — no debería pasar nunca con el límite de 4v4, pero
   // devuelve el control a la jugadora en vez de colgar la petición HTTP indefinidamente.
-  return { narraciones, encounterTerminado: false, caidos, esperandoAccionJugadora: true, esperandoEleccionRonda: false, intercambiosContraJugadora };
+  return { narraciones, encounterTerminado: false, caidos, esperandoAccionJugadora: true, esperandoEleccionRonda: false, intercambiosContraJugadora, golpesSinTiradaContraJugadora };
 }
 
 /// Bug real cazado en integración contra Postgres real (2026-08-26, objetivo individual): esto

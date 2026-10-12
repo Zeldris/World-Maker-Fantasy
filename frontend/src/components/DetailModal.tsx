@@ -230,7 +230,7 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onTirar, onSa
                 objeto equipado mostraba siempre el icono de espadas cruzadas, sin importar qué
                 fuera de verdad ("Raciones de viaje" equipada salía con icono de arma). */}
             <MediaSlot
-              icon={target.item.tipo === 'ESPECIAL' ? '✨' : itemIcon(target.item.category ?? '')}
+              icon={target.item.tipo === 'ESPECIAL' ? '✨' : itemIcon(target.item.category ?? '', target.item.name)}
               variant="placeholder"
               imageUrl={resolveImageUrl(target.item.imageUrls?.banner ?? null)}
             />

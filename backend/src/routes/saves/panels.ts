@@ -51,18 +51,20 @@ export async function panelsRoutes(app: FastifyInstance) {
 
     const visited = await prisma.locationVisit.findMany({
       where: { saveId: save.id },
-      select: { location: { select: { id: true, slug: true, name: true, region: true } } },
+      select: { location: { select: { id: true, slug: true, name: true, region: true, kind: true } } },
     });
+    // P45 (QA-27): un interior (Ketg'lukar dentro de Karot Veku) no es un destino de viaje propio:
+    // se llega a su exterior y se entra desde el mapa de zona.
     const destinationsById = new Map(
-      visited.filter((v) => v.location.id !== save.currentLocationId).map((v) => [v.location.id, v.location]),
+      visited.filter((v) => v.location.id !== save.currentLocationId && v.location.kind !== 'interior').map((v) => [v.location.id, v.location]),
     );
 
     if (hasLlanurasMap) {
       // QA-27 (P43/P44, 2026-10-09): solo los lugares de esta partida — los interiores de las
       // Capitales y Cuarteles de otras partidas se colaban como destino («Hogar de Maktor»).
       const llanuras = await prisma.location.findMany({
-        where: { worldId: save.worldId, region: 'Las Llanuras del Viento Rojo', ...lugaresVisibles(save.id) },
-        select: { id: true, slug: true, name: true, region: true },
+        where: { worldId: save.worldId, region: 'Las Llanuras del Viento Rojo', kind: { not: 'interior' }, ...lugaresVisibles(save.id) },
+        select: { id: true, slug: true, name: true, region: true, kind: true },
       });
       for (const loc of llanuras) {
         if (loc.id !== save.currentLocationId) destinationsById.set(loc.id, loc);

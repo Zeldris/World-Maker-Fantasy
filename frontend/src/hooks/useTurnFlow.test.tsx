@@ -409,3 +409,38 @@ describe('handleSubmit — errores especiales', () => {
     expect(result.current.characterLog.some((e) => e.text.includes('todavía se está resolviendo') || e.text.includes('espera un momento'))).toBe(true)
   })
 })
+
+/// P56 y P55 (QA-27): el turno que abre un combate de grupo con intercambio real.
+describe('handleSubmit — turno que abre un combate con intercambio', () => {
+  const intercambio = { atacanteEsJugador: true, resultado: 'golpe_normal', rivalNombre: 'Guchapo' } as never
+
+  it('P56: la entrada lleva el intercambio y no la tirada simple de la acción', async () => {
+    mockClassify.mockResolvedValueOnce(
+      baseClassifyResponse({ roll: { attribute: 'fuerza', value: 11, roll: 6, difficulty: 15, result: 11, success: false } as never }),
+    )
+    mockNarrate.mockResolvedValueOnce(baseNarrateResponse({ combatExchangeDisplay: intercambio }) as never)
+    const { result } = renderHook(() => useHarness())
+    await act(() => result.current.turn.handleSubmit('Salgo a cazar y ataco al Guchapo'))
+    const entrada = result.current.characterLog.find((e) => e.id === 'log-1')!
+    expect(entrada.combatExchange).toBe(intercambio)
+    expect(entrada.roll).toBeUndefined()
+  })
+
+  it('P55: los demás ataques que recibió van al diario tras la narración', async () => {
+    mockClassify.mockResolvedValueOnce(baseClassifyResponse())
+    mockNarrate.mockResolvedValueOnce(
+      baseNarrateResponse({
+        combatExchangeDisplay: intercambio,
+        intercambiosExtra: [
+          { logEntryId: 'extra-1', text: 'Guchapo te ataca.', combatExchange: intercambio },
+          { logEntryId: 'extra-2', text: 'Guchapo te golpea sin que puedas defenderte (estás ocupado con otro rival). Estado: Herido.' },
+        ],
+      }) as never,
+    )
+    const { result } = renderHook(() => useHarness())
+    await act(() => result.current.turn.handleSubmit('Salgo a cazar y ataco al Guchapo'))
+    const ids = result.current.characterLog.map((e) => e.id)
+    expect(ids.indexOf('extra-1')).toBe(ids.indexOf('log-1') + 1)
+    expect(ids.indexOf('extra-2')).toBe(ids.indexOf('log-1') + 2)
+  })
+})

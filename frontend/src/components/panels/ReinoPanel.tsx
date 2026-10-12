@@ -106,7 +106,8 @@ export function ReinoPanel({
     // existía — evocador, pero sin ninguna pista práctica de cómo llegar a tener un Reino. Se
     // añade la pista real (construir un Ayuntamiento, docs/mecanicas/17-reglas-construcciones-reino.md)
     // detrás de la motivación en vez de sustituirla, para no perder el sabor narrativo.
-    const practicalHint = 'Construye un Ayuntamiento para fundar tu reino.'
+    // P19 (QA-27): decir dónde se hace, que no había botón ni pista.
+    const practicalHint = 'Construye un Ayuntamiento para fundar tu reino: en Habilidades → Reino, «Fundar ayuntamiento».'
     return (
       <PanelEmptyState
         icon="🏰"

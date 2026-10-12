@@ -110,6 +110,21 @@ describe('GET /saves/:id/destinos-viaje', () => {
     expect(body.destinations.map((d: { locationSlug: string }) => d.locationSlug)).toEqual(['b']);
   });
 
+  // P45 (QA-27): un interior se alcanza por su exterior, no como destino de viaje propio.
+  it('no lista interiores (ni visitados ni del mapa)', async () => {
+    findUniqueSave.mockResolvedValue({ id: 'save1', worldId: 'world1', currentLocationId: 'loc-actual', attributes: { destreza: 10 }, inventoryItems: [{ catalogSlug: 'mapa-llanuras' }] });
+    findManyItemCatalog.mockResolvedValue([{ effectKey: 'reveal-map-llanuras' }]);
+    findManyLocationVisit.mockResolvedValue([
+      { location: { id: 'loc-ketg', slug: 'ketg-lukar', name: "Hogar Ketg - Ketg'lukar", region: 'Las Llanuras del Viento Rojo', kind: 'interior' } },
+      { location: { id: 'loc-b', slug: 'b', name: 'B', region: 'Las Llanuras del Viento Rojo', kind: 'hito' } },
+    ]);
+    findManyLocation.mockResolvedValue([]);
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/save1/destinos-viaje' });
+    expect(JSON.parse(res.body).destinations.map((d: { locationSlug: string }) => d.locationSlug)).toEqual(['b']);
+    expect(findManyLocation).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ kind: { not: 'interior' } }) }));
+  });
+
   it('con el mapa de las Llanuras (effectKey reveal-map-llanuras), añade TODAS las ubicaciones de esa región', async () => {
     findUniqueSave.mockResolvedValue({
       id: 'save1',

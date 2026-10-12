@@ -395,11 +395,32 @@ export const ODRE_AGUA_RECIPE: CraftingRecipe = {
 // simple de recoger algo que ya está ahí — cae al fallback de duración `CRAFT_TIER_DURATION_SECONDS[1]`
 // = 5 segundos reales, la espera mínima ya existente del sistema (ver craftDurationSecondsFor más
 // abajo), suficiente para sustituir al viejo botón fijo "Beber agua" sin inventar un camino nuevo.
+// Puntos de agua real del mundo: donde se llena el odre (RECOGER_AGUA_RECIPE) y donde se puede
+// beber directamente sin llevar nada (QA-27 P39, `bebeDeLaFuente`).
+export const PUNTOS_DE_AGUA: readonly string[] = ['manaderos', 'pozo-cauce-viejo', 'oasis-de-chudos-rojos'];
+
+// QA-27 P39: beber de la fuente sin odre. Solo cuenta si la acción pide beber agua del sitio (no
+// de un recipiente) y el personaje está en un punto de agua real.
+export function bebeDeLaFuente(action: string, locationSlug: string | null | undefined): boolean {
+  if (!locationSlug || !PUNTOS_DE_AGUA.includes(locationSlug)) return false;
+  const t = action.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (!/\bbeb/.test(t)) return false;
+  if (/\b(odre|cantimplora|botella|frasco|vino|cerveza|pocion)/.test(t)) return false;
+  return /\b(agua|fuente|manantial|manadero|pozo|oasis|charca|arroyo|cauce)/.test(t);
+}
+
+/// La acción es solo beber (una frase sin «y», «luego»…): se narra sin el modelo. Si hace algo
+/// más, bebe igual, pero el narrador cuenta el turno entero.
+export function soloBebeDeLaFuente(action: string): boolean {
+  const t = action.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return !/[,;]|\b(y|e|luego|despues|mientras|tras|antes)\b/.test(t.replace(/[.!]+\s*$/, ''));
+}
+
 export const RECOGER_AGUA_RECIPE: CraftingRecipe = {
   key: 'recogerAgua',
   verbRegex: /recoj|recog|llen|lleve/,
   nounRegex: /agua/,
-  location: ['manaderos', 'pozo-cauce-viejo', 'oasis-de-chudos-rojos'],
+  location: [...PUNTOS_DE_AGUA],
   ingredients: [{ match: { kind: 'exact', catalogSlug: 'odre-agua' }, cantidad: 1, label: 'odre de agua vacío' }],
   resultName: 'Odre de agua lleno',
   resultCatalogSlug: 'odre-agua-lleno',

@@ -61,10 +61,19 @@ export function presentacionOferta(entryId: string, offer: OfertaModoDinamico, h
           ? 'Hay algo cerca que podrías recolectar.'
           : 'Hay algo cerca con lo que puedes interactuar.',
     warning:
-      offer.riesgoCaza && offer.riesgoCaza.riesgo !== 'bajo' && offer.tipo === 'FAUNA' && !offer.combateForzado
+      offer.riesgoCaza && offer.riesgoCaza.riesgo !== 'bajo' && (offer.combateForzado || offer.tipo === 'FAUNA')
         ? {
             nivel: offer.riesgoCaza.riesgo,
-            text: `${offer.riesgoCaza.riesgo === 'mortal' ? 'Cazar esto puede matarte en un solo turno.' : 'Cazar esto es peligroso.'} ${offer.riesgoCaza.motivo}`.trim(),
+            // QA-27 P27: si te cortan el paso, el riesgo es de pelear, no de cazar.
+            text: `${
+              offer.combateForzado
+                ? offer.riesgoCaza.riesgo === 'mortal'
+                  ? 'Pelear puede matarte en un solo turno.'
+                  : 'Pelear es peligroso.'
+                : offer.riesgoCaza.riesgo === 'mortal'
+                  ? 'Cazar esto puede matarte en un solo turno.'
+                  : 'Cazar esto es peligroso.'
+            } ${offer.riesgoCaza.motivo}`.trim(),
           }
         : undefined,
     error: offer.error,

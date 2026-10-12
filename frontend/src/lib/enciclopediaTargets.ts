@@ -170,8 +170,52 @@ export const ITEM_TIPO_LABEL: Record<ItemTipo, string> = {
   NARRATIVO: 'Narrativos',
 }
 
-export function itemIcon(category: string): string {
+// P18 (QA-27): la categoría sola daba iconos raros (el Tótem Maktor, «cosmético», con un
+// pintalabios; hacha y cuchillo con las mismas espadas). Cuando el nombre dice claro qué es, manda.
+const ICONO_POR_NOMBRE: [RegExp, string][] = [
+  [/t[oó]tem/i, '🗿'],
+  [/pantal[oó]n|calzas|braga/i, '👖'],
+  [/bota|sandalia|calzado/i, '👢'],
+  [/cataplasma|venda|vendaje|ung[uü]ento|emplasto/i, '🩹'],
+  [/hacha/i, '🪓'],
+  [/cuchillo|daga|pu[nñ]al|desollador/i, '🔪'],
+  [/arco\b|ballesta/i, '🏹'],
+  [/lanza|pica|tridente/i, '🔱'],
+  [/escudo/i, '🛡️'],
+  [/maza|garrote|martillo/i, '🔨'],
+  [/odre|cantimplora/i, '💧'],
+  [/mapa/i, '🗺️'],
+  [/cuerda/i, '🪢'],
+]
+
+export function itemIcon(category: string, name?: string): string {
+  if (name) {
+    for (const [patron, icono] of ICONO_POR_NOMBRE) if (patron.test(name)) return icono
+  }
   return ITEM_CATEGORY_ICON[category] ?? '📦'
+}
+
+/// P18 (QA-27): cada unidad es una fila propia, y tres raciones salían como tres casillas iguales
+/// sin número. Se apilan las iguales (mismo nombre, categoría y tipo) que no están equipadas; las
+/// equipadas van siempre aparte. Mantiene el orden de la primera aparición.
+export function apilarObjetos<T extends { name: string; category?: string; tipo?: string; slot: unknown }>(items: T[]): { item: T; cantidad: number }[] {
+  const pilas: { item: T; cantidad: number }[] = []
+  const porClave = new Map<string, { item: T; cantidad: number }>()
+  for (const item of items) {
+    if (item.slot) {
+      pilas.push({ item, cantidad: 1 })
+      continue
+    }
+    const clave = `${item.name}|${item.category ?? ''}|${item.tipo ?? ''}`
+    const pila = porClave.get(clave)
+    if (pila) pila.cantidad++
+    else {
+      const nueva = { item, cantidad: 1 }
+      porClave.set(clave, nueva)
+      pilas.push(nueva)
+    }
+  }
+  return pilas
 }
 
 export function npcIcon(): string {
@@ -200,12 +244,18 @@ export function yieldsSummary(entry: EnciclopediaFaunaFloraInfo): string {
   return generoPrefix + entry.yields.map((y) => `${y.cantidad} ${y.itemName}${y.condicion ? ` (${y.condicion})` : ''}`).join(', ')
 }
 
+// P36 (QA-27): «Reclutable 20%, Cortejable 20% (resistencia: Carisma)» se leía como jerga de
+// reglas en una ficha de lore. Mismos datos, dichos como se diría en el mundo.
 const INTERACCION_LABELS: Record<keyof Omit<EnciclopediaInteraccion, 'atributoResistencia'>, string> = {
-  comerciablePct: 'Comerciable',
-  reclutablePct: 'Reclutable',
-  domesticablePct: 'Domesticable',
-  capturablePct: 'Capturable',
-  cortejablePct: 'Cortejable',
+  comerciablePct: 'comerciar',
+  reclutablePct: 'reclutar',
+  domesticablePct: 'domesticar',
+  capturablePct: 'capturar',
+  cortejablePct: 'cortejar',
+}
+
+function enumerar(partes: string[]): string {
+  return partes.length <= 1 ? (partes[0] ?? '') : `${partes.slice(0, -1).join(', ')} o ${partes[partes.length - 1]}`
 }
 
 // Corrección 2026-08-27: nivel/atributos/ataque base/loadout son mecánica de combate, no lore —
@@ -216,10 +266,10 @@ function interaccionLine(interaccion?: EnciclopediaInteraccion): string | null {
   if (!interaccion) return null
   const entries = (Object.entries(INTERACCION_LABELS) as [keyof typeof INTERACCION_LABELS, string][])
     .filter(([key]) => interaccion[key] > 0)
-    .map(([key, label]) => `${label} ${interaccion[key]}%`)
+    .map(([key, label]) => `${label} (${interaccion[key]} %)`)
   if (entries.length === 0) return null
   const resistencia = interaccion.atributoResistencia ? ALL_ATTRIBUTE_LABELS[interaccion.atributoResistencia] ?? interaccion.atributoResistencia : null
-  return `Interacción: ${entries.join(', ')}${resistencia ? ` (resistencia: ${resistencia})` : ''}.`
+  return `Se puede ${enumerar(entries)}${resistencia ? `; se resiste con su ${resistencia}` : ''}.`
 }
 
 export function npcToDetailTarget(npc: EnciclopediaNpcInfo): EnciclopediaLinkTarget {

@@ -196,6 +196,24 @@ describe('GET /saves/:id/zona', () => {
     expect(upsertNpcState).toHaveBeenCalledWith(expect.objectContaining({ where: { saveId_npcId_scope: { saveId: 's1', npcId: 'npc-gistera', scope: '' } } }));
   });
 
+  // P24 y P51 (QA-27): un Guchapo cazado en el Pozo salía «presente ahora» en zonas áridas porque
+  // los hechos de sesión lo nombran y, ya visto, se salta el filtro de lugar de `detectNpcsInScene`.
+  it('quien no es un personaje único y vive en otro sitio no sale como presente en esta zona', async () => {
+    findUniqueSave.mockResolvedValueOnce({
+      id: 's1', worldId: 'w1', zonaPosX: null, zonaPosY: null,
+      currentLocation: { id: 'loc1', slug: 'restos-de-maktor', name: 'Los Restos de Maktor', zonePoints: [] },
+    });
+    loadSessionFactsMock.mockResolvedValueOnce(['Gorhorn caza un Guchapo junto al pozo.', 'Gistera Koh anda cerca, perseguida.']);
+    detectNpcsInSceneMock.mockResolvedValueOnce([
+      { id: 'npc-guchapo', slug: 'guchapo', name: 'Guchapo', kind: 'PLANTILLA', condicionFisica: 'ILESO', faction: null, homeLocationSlug: 'pozo-de-cauce-viejo' },
+      { id: 'npc-gistera', slug: 'gistera-koh', name: 'Gistera Koh', kind: 'PRINCIPAL', condicionFisica: 'ILESO', faction: null, homeLocationSlug: 'pozo-de-cauce-viejo' },
+    ]);
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
+    const slugs = (res.json().dinamicos as { slug: string }[]).map((d) => d.slug);
+    expect(slugs).toEqual(['gistera-koh']);
+  });
+
   it('con ZonePoints reales: resuelve nombres de FAUNA/RECURSO y devuelve posiciones', async () => {
     findUniqueSave.mockResolvedValueOnce({
       id: 's1',

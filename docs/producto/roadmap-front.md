@@ -712,6 +712,20 @@ Contenedor común: `PanelDrawer` (cajón inferior, `max-w-4xl`, 85 vh).
   el retrato y el valor afectado, como el aviso de aprobación de Baldur's Gate 3. **S**
 - **NAR-11 · Informe del amanecer**: al cambiar de día, una sola tarjeta plegable que junta la
   crónica del día del Cronista y el informe del Reino (`REI-100`), en vez de dos piezas separadas. **M**
+- **NAR-12 · El texto libre, para lo que tiene sentido** (usuaria, 2026-10-12, sale de P71 de `QA-27`): 🧭
+  ronda de diseño pendiente. Equipar, curarse, comer y beber, viajar, recolectar o construir ya tienen
+  su camino determinista, pero el cuadro de acción acepta cualquier cosa: «Me equipo la Maza orca» se
+  narra y no cambia nada, y la jugadora cree que la lleva. El texto libre se centra en lo que solo él
+  puede hacer, y lo que tiene botón o panel se lleva allí. Para la ronda de diseño:
+  - **Para qué sí** (D&D 5e y Baldur's Gate 3: el máster interpreta lo que no cabe en un menú): hablar
+    con quien está en escena, investigar o mirar, acciones creativas o de rol sin mecánica propia, y
+    las intenciones que el motor ya traduce sin dudas (atacar en combate).
+  - **Para qué no** (X4: todo lo que tiene sistema va por su menú; igual en Medieval Dynasty, Bellwright
+    y Manor Lords): si el texto pide algo que tiene camino propio, no se narra como hecho; se responde
+    con un aviso determinista y un botón que abre ese camino («Para equipar la Maza orca: Personaje →
+    Equipo», con el botón).
+  - Falta decidir: qué acciones se desvían, cómo se detectan (las reglas de intención que ya existen,
+    sin modelo) y si el cuadro sugiere qué escribir. **M**
 
 ---
 
@@ -734,6 +748,14 @@ Contenedor común: `PanelDrawer` (cajón inferior, `max-w-4xl`, 85 vh).
 - **CMB-9 · Subir el tope de 4 combatientes por grupo** a 6 u 8 (usuaria, 2026-10-07): el límite de 4
   nace de los tiempos de narración; en la fase de pulido, al mejorar esos tiempos, se sube
   (`MAX_COMBATIENTES_POR_BANDO` y el tamaño de los grupos de combate). Hito `0.8`. **M**
+- **CMB-10 · Castigo por estado en porcentaje** (usuaria, 2026-10-11, sale de P10 de `QA-27`): hoy el
+  estado resta una cantidad fija al atributo de la tirada (−2 herido, −5 grave, −10 convaleciente,
+  `CONDICION_MALUS`, death.ts), que pesa mucho más a un personaje débil que a uno fuerte. Pasa a un
+  porcentaje del atributo; propuesta: −20 % herido, −40 % grave, −60 % convaleciente (como X4, donde el
+  daño del casco baja la velocidad en proporción, y Bellwright, donde las heridas recortan aguante y vida
+  en proporción). Un rival convaleciente sigue pudiendo actuar y defenderse al rematarlo (decisión de la
+  usuaria). Incluye el desglose de la tirada en pantalla («−2 heridas»), los tests de combate y las
+  cifras en `cifras-provisionales.md`.
 
 ---
 
@@ -902,8 +924,21 @@ Retro del 2026-10-08 (`CR-63`, `CR-65`, `CR-50`, `CR-37`, `CR-67`; propuestas ap
   P43 y P44 (interiores de otras partidas: `Location.saveId`) arreglados; el resto de P9-P51,
   apuntados en el registro sin arreglar (la usuaria: solo lo que bloquee). 2026-10-10, los 11 más
   rápidos que eligió la usuaria: P13, P15, P21, P25, P28, P29, P31, P32 (el mapa no entraba en el
-  inventario hasta recargar), P35 (y 41 notas internas más en el catálogo), P38 y P42. Falta: el resto
-  de apuntados (lista por esfuerzo, del 12 en adelante) y seguir jugando.
+  inventario hasta recargar), P35 (y 41 notas internas más en el catálogo), P38 y P42. 2026-10-11
+  (la otra cuenta, rama `claude/wonderful-volta-662qt8`, reparto de la usuaria): P9, P11, P12, P14,
+  P17, P18, P19, P20, P24, P26, P33 y P51, y los nuevos que salieron jugando: P53 (intro con las
+  Llanuras al este), P54 («Chaman»), P55 (en combate de grupo los demás ataques y los golpes gratis
+  no salían en el diario) y P56 (dos tiradas para la misma acción). 2026-10-12: P36, P37, P39
+  (beber de una fuente sin odre), P41, P45 y P46 (sin comprobar en vivo); P10 pasa a `CMB-10`, P30
+  y P40 no aplican; P27 (aviso de riesgo también cuando te cortan el paso), la huida real de P12 (1v1), P47 (el aviso
+  de interrupción nombra a quien sale al paso) y P50 (grupos de fauna repartidos); P23 y P48 no
+  aplican (por diseño). 2026-10-12, segunda tanda jugando con Gorhorn, sin código salvo bloqueantes:
+  P57-P82 apuntados. Comprobados en vivo P12, P17, P27, P33, P39, P50, P53 y P55. P71 pasa a `NAR-12`.
+  Arreglado el único bloqueante, P82 (al reaparecer se podía morir en bucle hasta la muerte
+  permanente). 🧭 P80 (Carisma 10 para fundar el Reino) espera a la usuaria. **Pausada por la
+  usuaria el 2026-10-12.** Falta: P16 (sin reproducir), P49 (ilustración), los pendientes de
+  P57-P81 y probar lo propio del `0.3` que no se llegó a jugar (Reino fundado, ganadería, defensa,
+  compañeros, «Charlar con NPC», comercio).
 
 
 Retro del 2026-10-09 (ronda de pruebas `QA-27`; propuestas aprobadas por la usuaria):
@@ -945,6 +980,44 @@ Retro del 2026-10-10 (aplicación de la anterior; propuestas aprobadas por la us
   tirados, capturas de maestro y límites de almacén. Test `reinicioCompleto.test.ts`: toda tabla con
   `saveId` se borra o tiene su motivo para quedarse. Pendiente: los `Npc` y `Location` propios de la
   partida (siguen tras reiniciar; hay que borrarlos sin romper referencias).
+
+Retro del 2026-10-12 (hallazgos de `QA-27` en la rama `claude/wonderful-volta-662qt8`; las 6 aprobadas
+por la usuaria):
+
+- ~~**QA-38 · La base de los tests, al día sola**~~ ✅ 2026-10-12 (`backend/vitest.bdReal.globalSetup.ts`):
+  antes de los tests con Postgres aplica las migraciones pendientes y, si cambiaron las fuentes del
+  catálogo (`src/scripts/`, huella en `node_modules/.cache/`), vuelve a sembrarlo. En la CI no (ya lo
+  hace el workflow). Motivo: al traer `main`, la base `tarkor` se quedaba sin una columna nueva y con
+  el catálogo viejo, y los tests fallaban sin decir por qué.
+- ~~**QA-39 · Todos los tests del frontend se ejecutan**~~ ✅ 2026-10-12 (`frontend/vitest.config.ts`:
+  `src/**/*.test.{ts,tsx}`). Motivo: un test en `src/data/` no se ejecutaba y pasaba «en verde».
+- ~~**QA-40 · Un dato, un sitio**~~ ✅ 2026-10-12: regla en `REVIEW.md` (mismo filtro en los dos
+  caminos, sin copias entre backend y frontend, el filtro mira la consulta y no la página) y
+  `/code-review` cada 5-6 hallazgos en el runbook de rondas. Motivo: 3 de los 10 fallos de la revisión.
+- ~~**QA-41 · Jugar sin el MCP de Playwright**~~ ✅ 2026-10-12 (`tools/playwright-e2e/driver.mjs` y
+  `orden.sh`, en su README): navegador abierto que recibe órdenes de JS, solo en `127.0.0.1`, y se para
+  por su PID.
+- ~~**QA-42 · Marcar hallazgos**~~ ✅ 2026-10-12 (`tools/qa/marca-hallazgo.py`, citado en el runbook):
+  cambia el estado de una fila del registro y falla si no hay exactamente una.
+- ~~**QA-43 · Índice de `turnResolution.ts`**~~ ✅ 2026-10-12: al principio del archivo, cada bloque de
+  `narrateAndPersistTurn` con la clave para buscarlo.
+
+Retro del 2026-10-12, segunda tanda de `QA-27` (jugando con Gorhorn; las 6 aprobadas por la usuaria):
+
+- ~~**QA-44 · Qué se prueba, en qué orden**~~ ✅ 2026-10-12 ([runbook de rondas](../runbooks/rondas-de-pruebas.md)):
+  primero lo arreglado que solo tiene tests, luego lo del hito en curso; lo que el roadmap no tiene, no.
+  Motivo: la tanda empezó por «Crear desde cero» y por cazar escribiendo, y la usuaria tuvo que reconducirla.
+- ~~**QA-45 · La ronda no escribe código**~~ ✅ 2026-10-12 (mismo runbook, paso 4): solo un fallo
+  bloqueante; lo demás al registro, las mejoras al roadmap con hito, las retros fuera de la ronda.
+- ~~**QA-46 · Ayudas para el MCP de Playwright**~~ ✅ 2026-10-12 (`tools/playwright-e2e/mcp/`: `estado.js`,
+  `turno.js`, `mover.js`, `captura.js`): caben en los 60 s del MCP y devuelven el estado en texto; los
+  parámetros van en `window.tk` (el MCP no guarda nada entre órdenes).
+- ~~**QA-47 · Añadir hallazgos**~~ ✅ 2026-10-12 (`marca-hallazgo.py --nuevo "<hallazgo>" "<estado>"`):
+  añade la fila con el siguiente número.
+- ~~**QA-48 · Revisar tras una llamada interrumpida**~~ ✅ 2026-10-12 (`CLAUDE.md`): `git status` y
+  `git diff` antes de repetirla. Motivo: `NAR-12` entró dos veces.
+- ~~**QA-49 · Avisar si el juego no está levantado**~~ ✅ 2026-10-12 (`.claude/hooks/session-start.sh`):
+  si existe `tarkor_juego` y el frontend no responde, el inicio de sesión lo dice y da la orden.
 ---
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)

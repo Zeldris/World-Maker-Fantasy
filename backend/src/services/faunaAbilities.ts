@@ -989,10 +989,11 @@ const FAUNA_CATEGORIA_ABILITIES: FaunaCategoriaAbilityUnlock[] = [
     level: 1,
     categoria: 'ESCAMADOS',
     ability: {
-      name: 'Escama endurecida',
+      // P12 (QA-27): los Escamados son reptiles Y anfibios; «escama» no le sirve a un sapo.
+      name: 'Piel endurecida',
       icon: '🛡️',
-      description: 'Tensa las escamas del lomo, superficie dura que amortigua buena parte de cualquier golpe directo.',
-      promptText: 'Tenso las escamas del lomo, superficie dura que amortigua buena parte de cualquier golpe directo.',
+      description: 'Tensa la piel o las escamas del lomo, una superficie dura que amortigua buena parte de un golpe directo.',
+      promptText: 'Tenso la piel del lomo, una superficie dura que amortigua buena parte de un golpe directo.',
       category: 'combate',
       effects: ['AGUANTE'],
       rol: 'defensa',
@@ -1004,10 +1005,12 @@ const FAUNA_CATEGORIA_ABILITIES: FaunaCategoriaAbilityUnlock[] = [
     level: 1,
     categoria: 'ESCAMADOS',
     ability: {
-      name: 'Huida al agua o la madriguera',
+      // P12 (QA-27): el efecto es AGUANTE (encaja el golpe y sigue en combate); el nombre
+      // anterior, «Huida al agua o la madriguera», prometía una huida que nunca pasaba.
+      name: 'Pegarse al suelo',
       icon: '💦',
-      description: 'Se desliza hacia el agua o la tierra suelta más cercana, casi imposible de seguir una vez dentro.',
-      promptText: 'Me deslizo hacia el agua o la tierra suelta más cercana, casi imposible de seguir una vez dentro.',
+      description: 'Se aplasta contra el suelo o el barro y encoge el cuerpo: el golpe le llega de refilón.',
+      promptText: 'Me aplasto contra el suelo y encojo el cuerpo para que el golpe me llegue de refilón.',
       category: 'combate',
       effects: ['AGUANTE'],
       rol: 'utilidad',
