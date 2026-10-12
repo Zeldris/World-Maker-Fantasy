@@ -1,6 +1,6 @@
 import type { SavedActionInfo, SkillBarInfo } from '../types'
 import { TooltipAnchor } from './TooltipAnchor'
-import { ABILITIES_REQUIEREN_MONTURA, MONTURA_TOOLTIP_SUFFIX } from '../lib/abilitiesRequierenMontura'
+import { ABILITIES_REQUIEREN_MONTURA } from '../lib/abilitiesRequierenMontura'
 import { useNavegacionRejilla } from '../hooks/useNavegacionRejilla'
 
 /// Vista "barra activa" del HUD (2026-09-04, v2 de la SkillBar única de 2026-08-29; rediseñado
@@ -58,7 +58,7 @@ export function SkillBarHud({
           abilities.map((a) => {
             const requiereMontura = ABILITIES_REQUIEREN_MONTURA.has(a.name)
             return (
-              <TooltipAnchor key={a.id} text={a.name} subtext={requiereMontura ? `${a.description}${MONTURA_TOOLTIP_SUFFIX}` : a.description}>
+              <TooltipAnchor key={a.id} text={a.name} subtext={a.description}>
                 <button type="button" data-celda onClick={() => onUse(a)} disabled={disabled || requiereMontura} aria-label={a.name} className="skill-slot tactile">
                   <span aria-hidden="true">{a.icon}</span>
                 </button>

@@ -5,5 +5,3 @@
 /// `PASSIVE_ABILITY_NAMES` (passiveAbilities.ts) — sin campo nuevo en el catálogo por una única
 /// habilidad afectada.
 export const ABILITIES_REQUIEREN_MONTURA = new Set(['Viajar'])
-
-export const MONTURA_TOOLTIP_SUFFIX = ' Requiere montura (todavía sin implementar) — usa el icono de salida en el mapa de la zona para viajar.'
