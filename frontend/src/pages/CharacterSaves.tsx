@@ -203,7 +203,7 @@ export function CharacterSaves() {
             Paso 3 de 3 — {world.name} · {character.name}
           </p>
         </div>
-        <h1 className="mt-1.5 font-serif text-3xl text-wood-100">Sus partidas</h1>
+        <h1 className="mt-1.5 font-serif text-3xl text-wood-100">Tus partidas</h1>
       </div>
 
       <div className="flex flex-col gap-3">

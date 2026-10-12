@@ -9,6 +9,10 @@ export const REINO_ABILITY_RECIPE_KEY: Record<string, string> = {
   'Fundar ayuntamiento': 'ayuntamiento',
   'Ampliar ayuntamiento a mediano': 'ayuntamiento-mediano',
   'Ampliar ayuntamiento a grande': 'ayuntamiento-grande',
+  // P81 (QA-27): sin esto, las jaulas salían activas y su aviso no decía qué necesitan.
+  'Construir jaula pequeña': 'jaula-pequena',
+  'Construir jaula mediana': 'jaula-mediana',
+  'Construir jaula grande': 'jaula-grande',
 }
 
 /// P19 (QA-27): una ampliación solo tiene sentido si ya existe el nivel anterior. Antes se ofrecía

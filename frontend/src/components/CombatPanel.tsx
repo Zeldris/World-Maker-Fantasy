@@ -410,6 +410,14 @@ export function CombatPanel({
     contentScrollRef.current?.scrollTo({ top: 0 })
   }, [])
 
+  // P65 (QA-27): tras «Matar», la lista de ataques quedaba por debajo de lo visible y el aviso
+  // «elige un ataque» parecía no tener dónde elegirlo. Al marcar un remate, se lleva a la vista.
+  const usablesRef = useRef<HTMLDivElement>(null)
+  const hayRemate = npcs.some((n) => n.condicion === 'CONVALECIENTE' && n.targetedForKill && !n.dismissed)
+  useEffect(() => {
+    if (hayRemate) usablesRef.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' })
+  }, [hayRemate])
+
   // Resumen de combate (2026-07-30) — solo se ofrece "Saquear todo" si de verdad queda algo sin
   // saquear; si ya se registró todo uno a uno durante la pelea, el resumen solo ofrece salir.
   // Solo MUERTO es saqueable (2026-08-26, CONVALECIENTE deja de serlo) — mismo criterio que el
@@ -680,6 +688,7 @@ export function CombatPanel({
               // Un solo rival: su nombre; varios: la iniciativa es del grupo enemigo.
               rightLabel={npcs.length === 1 ? npcs[0].name : 'Los enemigos'}
               leftFirst={lastInitiativeRoll.ganador === 'jugador'}
+              ganador={lastInitiativeRoll.ganador === 'jugador' ? 'izquierda' : 'derecha'}
               showDifficulty={false}
               onAllLanded={() => setInitiativeRevealed(true)}
             />
@@ -772,7 +781,7 @@ export function CombatPanel({
           // vez, en chips diminutos envueltos en una cuadrícula apretada) — un solo punto de color
           // por fila basta para seguir viendo el tipo de un vistazo, sin el efecto "confeti". Filas
           // en vez de chips envueltos: más fácil de leer de arriba abajo en un panel estrecho.
-          <div className="space-y-3 rounded-lg border border-accent-600/50 bg-accent-500/5 p-2.5">
+          <div ref={usablesRef} data-testid="combate-usables" className="space-y-3 rounded-lg border border-accent-600/50 bg-accent-500/5 p-2.5">
             {combatAbilities.length > 0 &&
               // Rediseño de combate (2026-08-09, petición explícita: "podamos crear tabs en el
               // combate con las habilidades de daño, las defensivas y las de utilidad más

@@ -223,6 +223,9 @@ describe('iniciarCaza — integración real (Postgres, sobre el catálogo de hel
       try {
         const resultado = await iniciarCaza({ save, targets });
         expect('error' in resultado).toBe(false);
+        // P77 (QA-27): el diario dice cuántos se quedan fuera del combate en vivo.
+        expect(JSON.stringify(resultado)).toContain('Solo 4 alcanzan a');
+        expect(JSON.stringify(resultado)).toContain('el otro queda fuera de su alcance');
       } finally {
         randomSpy.mockRestore();
       }
@@ -266,6 +269,7 @@ describe('iniciarCaza — integración real (Postgres, sobre el catálogo de hel
       expect(autonomo.participantes.some((p) => p.companionId === ana.id)).toBe(true);
       expect(autonomo.estado).toBe('RESUELTO');
       expect(JSON.stringify(resultado)).toContain('Retaguardia se enfrenta a');
+      expect(JSON.stringify(resultado)).not.toContain('Solo 4 alcanzan');
     }, 20_000);
   });
 

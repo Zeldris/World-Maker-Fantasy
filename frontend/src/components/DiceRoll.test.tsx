@@ -10,6 +10,11 @@ import { forcedGradosFor, DiceRollSingle, DiceRollVs, ROLL_DURATION_MS } from '.
 // CADA lado por separado salía siempre "claro"/verde, ganara o no la comparación real contra el
 // rival. `forcedGradosFor` decide el color por comparación directa entre ambos resultados.
 describe('forcedGradosFor', () => {
+  it('P69: con ganador del backend, un empate de iniciativa es de la jugadora', () => {
+    expect(forcedGradosFor(16, 16, false, 'izquierda')).toEqual({ leftGrado: 'claro', rightGrado: 'fallo' })
+    expect(forcedGradosFor(16, 16, false, 'derecha')).toEqual({ leftGrado: 'fallo', rightGrado: 'claro' })
+  })
+
   it('con showDifficulty=true (tirada normal contra dificultad real): no fuerza nada', () => {
     expect(forcedGradosFor(18, 5, true)).toEqual({ leftGrado: undefined, rightGrado: undefined })
   })

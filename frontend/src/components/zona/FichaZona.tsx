@@ -183,10 +183,29 @@ export function FichaJugador({ escala, angulo, quieto, sombra = true }: { escala
   )
 }
 
+/// Ancho de la placa de `EtiquetaNombre` (sin escalar), en píxeles del lienzo.
+/// Ancho del lienzo del mapa de zona (viewBox 800×600, `ZonaPanel`).
+export const ANCHO_LIENZO_ZONA = 800
+
+export function anchoEtiqueta(texto: string): number {
+  return Math.round(texto.length * 6.1 + 12)
+}
+
+/// P61 (QA-27): una etiqueta centrada en (x) que se saldría del lienzo crece hacia dentro (start en el
+/// borde izquierdo, end en el derecho). `escala` es la de la ficha (la etiqueta se pinta escalada).
+export function anclaEtiqueta(x: number, texto: string, escala: number, anchoLienzo = ANCHO_LIENZO_ZONA): 'start' | 'middle' | 'end' {
+  const ancho = anchoEtiqueta(texto) * escala
+  if (x - ancho / 2 >= 0 && x + ancho / 2 <= anchoLienzo) return 'middle'
+  if (x + ancho <= anchoLienzo) return 'start'
+  if (x - ancho >= 0) return 'end'
+  // No cabe hacia ningún lado: crece hacia donde hay más sitio.
+  return x < anchoLienzo / 2 ? 'start' : 'end'
+}
+
 /// ZON-19 (hito 0.1) — etiqueta de nombre: placa oscura semitransparente con texto claro, en píxeles de
 /// pantalla. `anchor` decide hacia dónde crece desde (x, y).
 export function EtiquetaNombre({ texto, x = 0, y = 24, anchor = 'middle' }: { texto: string; x?: number; y?: number; anchor?: 'start' | 'middle' | 'end' }) {
-  const ancho = Math.round(texto.length * 6.1 + 12)
+  const ancho = anchoEtiqueta(texto)
   const rectX = anchor === 'middle' ? x - ancho / 2 : anchor === 'start' ? x : x - ancho
   return (
     <g pointerEvents="none" data-testid="etiqueta-nombre">

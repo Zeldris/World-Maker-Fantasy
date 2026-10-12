@@ -163,6 +163,7 @@ export function GameLayout() {
               onCapturarConvaleciente={handleCapturarConvaleciente}
               onClementeConvaleciente={handleClementeConvaleciente}
               liveEntryIds={liveRevealedIdsRef.current}
+              motivoNoCapturar={inventory.some((i) => i.catalogSlug === 'cuerdas') ? null : 'Necesitas cuerdas en el inventario para atarlo.'}
             />
           )}
           {collapsedSide === 'world' ? (

@@ -150,6 +150,8 @@ interface LogPanelProps {
   /// Mismo patrón opcional que `onCollapse`/`onToggleView`: sin este callback, no sale el enlace.
   onViewFullHistory?: () => void
   onCapturarConvaleciente?: (npcKey: string) => void
+  /// P78 (QA-27): motivo por el que «Capturar» no se puede (sin cuerdas); null si se puede.
+  motivoNoCapturar?: string | null
   onClementeConvaleciente?: (npcKey: string) => void
   /// Tirada en vivo vs histórica (2026-09-04, centralización de todas las tiradas del juego) —
   /// ids de `LogEntry` recién añadidas en ESTA sesión (turno normal/Huir resuelto en vivo, nunca
@@ -244,6 +246,7 @@ export const LogPanel = memo(function LogPanel({
   combatNpcsDisplay,
   onMatarConvaleciente,
   onCapturarConvaleciente,
+  motivoNoCapturar,
   onClementeConvaleciente,
   onViewFullHistory,
   liveEntryIds,
@@ -632,7 +635,7 @@ export const LogPanel = memo(function LogPanel({
                     resolvedText="Resuelto."
                     actions={[
                       { label: 'Matar', tone: 'danger', onClick: () => onMatarConvaleciente?.(offer.combatKey) },
-                      ...(offer.capturable ? [{ label: 'Capturar', tone: 'accent' as const, onClick: () => onCapturarConvaleciente?.(offer.combatKey) }] : []),
+                      ...(offer.capturable ? [{ label: 'Capturar', tone: 'accent' as const, disabled: !!motivoNoCapturar, motivo: motivoNoCapturar ?? undefined, onClick: () => onCapturarConvaleciente?.(offer.combatKey) }] : []),
                       { label: 'Clemente', tone: 'neutral', onClick: () => onClementeConvaleciente?.(offer.combatKey) },
                     ]}
                   />
@@ -745,7 +748,7 @@ export const LogPanel = memo(function LogPanel({
               title={`${npc.name} está convaleciente`}
               actions={[
                 { label: 'Matar', tone: 'danger', onClick: () => onMatarConvaleciente?.(combatKeyFor(npc)) },
-                ...(npc.capturable ? [{ label: 'Capturar', tone: 'accent' as const, onClick: () => onCapturarConvaleciente?.(combatKeyFor(npc)) }] : []),
+                ...(npc.capturable ? [{ label: 'Capturar', tone: 'accent' as const, disabled: !!motivoNoCapturar, motivo: motivoNoCapturar ?? undefined, onClick: () => onCapturarConvaleciente?.(combatKeyFor(npc)) }] : []),
                 { label: 'Clemente', tone: 'neutral', onClick: () => onClementeConvaleciente?.(combatKeyFor(npc)) },
               ]}
             />

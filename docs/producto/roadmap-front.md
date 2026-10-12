@@ -1018,6 +1018,24 @@ Retro del 2026-10-12, segunda tanda de `QA-27` (jugando con Gorhorn; las 6 aprob
   `git diff` antes de repetirla. Motivo: `NAR-12` entró dos veces.
 - ~~**QA-49 · Avisar si el juego no está levantado**~~ ✅ 2026-10-12 (`.claude/hooks/session-start.sh`):
   si existe `tarkor_juego` y el frontend no responde, el inicio de sesión lo dice y da la orden.
+
+Retro del 2026-10-12, último tramo (P82, PR #44; las 4 aprobadas por la usuaria):
+
+- ~~**QA-50 · Sin revisión no hay PR a `main`**~~ ✅ 2026-10-12: gancho de Claude Code
+  (`.claude/hooks/revision-antes-de-main.sh`, en `.claude/settings.json`) que bloquea crear o fusionar
+  un PR a `main` si la marca de `tools/qa/revisado.sh` no es del mismo commit, y la regla en `CLAUDE.md`.
+  Motivo: el PR #43 entró sin `/code-review` y el #44 casi.
+  Corregido 2026-10-12 tras el `/code-review` (con permiso de la usuaria): el gancho no estaba versionado
+  (`.claude/` va en `.gitignore`; ahora con `git add -f`) y, al fusionar, mira la base y la cabeza del propio
+  PR (`gh api`), no el HEAD local; si no puede consultarlo, bloquea.
+- ~~**QA-51 · Lo hostil y la jugadora**~~ ✅ 2026-10-12 (`REVIEW.md`): colocar o mover algo hostil dice
+  qué pasa junto a la jugadora y donde reaparece, con su test. Motivo: P50 causó P82.
+- **QA-52 · Diagnosticar el intermitente de `avanceDiario`** (pendiente): «la economía avanza las copias
+  de la partida con su reloj y deja quietas las del catálogo» falló una vez en la suite completa del
+  backend (2026-10-12) y pasa suelto. Con `diagnosing-bugs`, como `QA-8` y `QA-12`.
+- ~~**QA-53 · El juego listo de verdad**~~ ✅ 2026-10-12 (`arrancar-juego.sh`): espera a que `/health` dé la
+  base conectada y el frontend sirva, y si no, falla con dónde mirar. Motivo: tras reiniciar el
+  contenedor, la partida salió «No se encuentra».
 ---
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)

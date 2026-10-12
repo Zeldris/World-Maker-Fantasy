@@ -53,6 +53,14 @@ Retro de `QA-27` (2026-10-12, `QA-40`): tres de los diez fallos de la revisión 
   porque otra la repite) se decide contra la base: en una lista paginada, la vecina puede caer en
   otra página.
 
+## Lo hostil y la jugadora
+
+- **Colocar o mover algo hostil** (fauna AGRESIVA, enemigos, grupos) dice qué pasa junto a la
+  jugadora, en la entrada de la zona y donde se reaparece tras morir, y lleva un test con un agresivo
+  cerca de ella (`QA-51`, retro del 2026-10-12). Pasó con P82: repartir los grupos por la zona
+  (P50) los dejó junto al punto de reaparición y se moría en bucle hasta la muerte permanente. Lo que
+  empieza un combate respeta la gracia tras reaparecer (`enGraciaTrasRenacer`, `services/death.ts`).
+
 ## Las facciones también
 
 - **Mismos sistemas** ([ADR 0003](docs/adr/0003-todo-viaja-de-verdad.md)). Cada mecánica que manda

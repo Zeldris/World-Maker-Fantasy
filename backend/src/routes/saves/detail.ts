@@ -96,6 +96,17 @@ export async function detailRoutes(app: FastifyInstance) {
       }
     }
 
+    // P67 (QA-27): la descripción de una habilidad inicial la manda el catálogo; si cambia (p. ej.
+    // «Viajar» ya no dice «todavía sin implementar»), las partidas existentes la recogen al leer.
+    {
+      const catalogo = new Map(startingAbilitiesFor(save.characterName).map((a) => [a.name, a.description]));
+      const desfasadas = save.savedActions.filter((a) => a.isStarting && catalogo.has(a.name) && catalogo.get(a.name) !== a.description);
+      if (desfasadas.length > 0) {
+        await prisma.$transaction(desfasadas.map((a) => prisma.savedAction.update({ where: { id: a.id }, data: { description: catalogo.get(a.name)! } })));
+        save.savedActions = await prisma.savedAction.findMany({ where: { saveId: save.id }, orderBy: { createdAt: 'asc' } });
+      }
+    }
+
     // B19 (pruebas 2026-09-28): partidas que subieron de nivel con especialización elegida antes de
     // que la subida concediera sus habilidades — reconciliación en lectura (mismo criterio que la
     // barra base de arriba): se crean las que correspondan a su nivel y falten.

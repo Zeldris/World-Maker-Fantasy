@@ -88,7 +88,16 @@ vi.mock('../../lib/prisma.js', () => ({
     worldPopulation: { findMany: (...args: unknown[]) => findManyWorldPopulation(...args) },
     // Fase D (hito 0.1): control de región desde FactionRelation; sin filas, cae a la agenda (como antes).
     factionRelation: { findMany: async () => [] },
+    // P88 (QA-27): ¿zona de inicio? Sin fila, no lo es (el movimiento se comporta como antes).
+    location: { findUnique: async () => null },
   },
+}));
+
+// P88 (QA-27): abrir el mapa de una zona de inicio recalcula sus puntos; aquí no se prueba eso (lo
+// cubre zonaDeInicio.integration.test.ts con Postgres real).
+vi.mock('../../services/zonePoints.js', async (original) => ({
+  ...(await original<typeof import('../../services/zonePoints.js')>()),
+  recalcularZonePointsDeLocation: vi.fn(async () => undefined),
 }));
 
 // NPCs presentados de forma determinista (2026-08-26, "no aparecen en la zona y sí tienen que

@@ -1,4 +1,5 @@
 import type { LogEntry, MetodoObtencion } from '../types'
+import { iconoRecurso } from './recursoAccion'
 
 // Tarjeta de un encuentro («modo dinámico», 2026-08-27): sus textos y sus acciones, en un solo sitio
 // para el registro (`LogPanel`) y para el mapa de zona (ZON-5, hito 0.2: la tarjeta sale también
@@ -51,7 +52,7 @@ export function presentacionOferta(entryId: string, offer: OfertaModoDinamico, h
   const nombre = offer.tipo === 'FAUNA' && (offer.cantidad ?? 1) > 1 ? `Un grupo de ${offer.cantidad} ${offer.targetName}` : offer.targetName
   return {
     tone: offer.combateForzado ? 'danger' : 'accent2',
-    icon: offer.combateForzado ? '⚔️' : offer.tipo === 'RECURSO' ? '🪨' : '💬',
+    icon: offer.combateForzado ? '⚔️' : offer.tipo === 'RECURSO' ? iconoRecurso(offer.metodo) : '💬',
     title: offer.combateForzado ? `${nombre} te corta el paso` : offer.tipo === 'RECURSO' ? `${nombre} a la vista` : `${nombre} busca tu atención`,
     subtitle: offer.combateForzado
       ? 'No parece dispuesto a dejarte pasar.'
