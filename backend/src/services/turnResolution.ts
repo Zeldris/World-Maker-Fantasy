@@ -5437,7 +5437,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         data: {
           saveId,
           name: `${produccion.itemName} (${produccion.cantidad})`,
-          description: `Conseguido en la acción: "${action}".`,
+          description: `Conseguido en la acción: «${action}».`,
           origin: 'producción',
         },
       });
@@ -6556,7 +6556,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
             data: {
               saveId,
               channel: 'CHARACTER',
-              text: `${characterName} desbloquea la habilidad de clase "${ability.name}".`,
+              text: `${characterName} desbloquea la habilidad de clase «${ability.name}».`,
               timeLabel,
               fictionalMinutes: nuevoFictionalMinutes,
               createdAt: nextAfterMainLogCreatedAt(),
@@ -6594,7 +6594,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         data: {
           saveId,
           channel: 'CHARACTER',
-          text: `${characterName} desbloquea la habilidad de oficio "${ability.name}" (nivel ${nivel} de ${oficio}).`,
+          text: `${characterName} desbloquea la habilidad de oficio «${ability.name}» (nivel ${nivel} de ${oficio}).`,
           timeLabel,
           fictionalMinutes: nuevoFictionalMinutes,
           createdAt: nextAfterMainLogCreatedAt(),

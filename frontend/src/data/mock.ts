@@ -4,7 +4,7 @@ export const worlds: World[] = [
   {
     id: 'helek-sirik',
     name: 'Helek Sirik',
-    tagline: '"Origen Azul" — pueblos que se creen en lo correcto, en guerra por una verdad que nadie tiene completa.',
+    tagline: '«Origen Azul» — pueblos que se creen en lo correcto, en guerra por una verdad que nadie tiene completa.',
     synopsis:
       'Dos continentes, Vaelira y Berig, separados por un estrecho envuelto en niebla. Tras generaciones de paz vigilada, la Isla Cambiante que ambos sellaron ha desaparecido, y en su lugar ha surgido algo que ninguno de los dos bandos comprende. La guerra entre la Alianza de la Rama Blanca y la Concordia de Hierro ya ha empezado — y nadie sabe todavía que lo peor no viene del otro continente, sino de lo que ha despertado en el norte.',
     tone: 'Épico y trágico: pueblos que se creen en lo correcto libran una guerra sobre una verdad que nadie tiene completa, en un mundo tan pequeño que cada muerte deja cicatriz.',

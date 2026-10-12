@@ -1060,7 +1060,7 @@ export async function turnRoutes(app: FastifyInstance) {
         : Math.min(Math.max(1, effectiveMinutos / env.fictionMinutesPerRealMinute), env.transitMaxRealMinutes);
       const busyUntil = new Date(Date.now() + minutosReales * 60_000);
       const produccionLabel = produccionFiltrada ? `${produccionFiltrada.cantidad} de ${produccionFiltrada.itemName}` : undefined;
-      const startText = `${save.characterName} se pone a ello: "${action}". Estará ocupado un buen rato${
+      const startText = `${save.characterName} se pone a ello: «${action}». Estará ocupado un buen rato${
         produccionLabel ? ` (debería conseguir ${produccionLabel})` : ''
       }.`;
 

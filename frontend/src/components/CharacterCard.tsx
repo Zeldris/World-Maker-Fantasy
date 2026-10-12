@@ -50,7 +50,7 @@ export function CharacterCard({
         </div>
       </div>
       <p className="text-sm leading-relaxed text-wood-300">{character.origin}</p>
-      <p className="text-xs italic text-wood-400">"{character.motivation}"</p>
+      <p className="text-xs italic text-wood-400">«{character.motivation}»</p>
       <AttributeBars attributes={character.attributes} labels={attributeLabels} />
     </button>
   )

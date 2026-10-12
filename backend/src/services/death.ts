@@ -295,7 +295,7 @@ export function resolveDeathOutcome(dificultad: Dificultad, deathCountBefore: nu
 /// con el estado REAL en ese momento) — el susurro solo narra el instante de la muerte en sí y
 /// deja pendiente la resolución, nunca inventa un destino que aún no es seguro.
 export function whisperText(characterName: string, avisoUltimaVez: boolean): string {
-  const base = `Todo se apaga en un frío total, y entre la nada una voz que no es de este mundo susurra a ${characterName}: "Aún no ha llegado tu momento...".`;
+  const base = `Todo se apaga en un frío total, y entre la nada una voz que no es de este mundo susurra a ${characterName}: «Aún no ha llegado tu momento…».`;
   return avisoUltimaVez
     ? `${base} La voz se demora un instante más de lo normal, como una advertencia — no habrá una próxima vez.`
     : base;

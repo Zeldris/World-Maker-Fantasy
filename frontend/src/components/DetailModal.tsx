@@ -299,7 +299,7 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onTirar, onSa
                 bono en sí SIEMPRE se aplicó en combate; solo faltaba aquí, el sitio que de verdad
                 se ve al jugar. */}
             <p className="text-sm leading-relaxed text-wood-300">{(target.ability.description || 'Sin descripción.') + abilityBonusSuffix(target.ability)}</p>
-            <p className="rounded-lg border border-iron-700 bg-wood-950/40 px-3 py-2 text-xs italic text-wood-400">"{target.ability.promptText}"</p>
+            <p className="rounded-lg border border-iron-700 bg-wood-950/40 px-3 py-2 text-xs italic text-wood-400">«{target.ability.promptText}»</p>
             {target.ability.recipeKey &&
               (() => {
                 const recipeTarget = enciclopediaIndex.bySlugKey.get(`${target.ability.recipeCategory ?? 'crafteo'}:${target.ability.recipeKey}`)

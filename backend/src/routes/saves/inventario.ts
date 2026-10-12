@@ -73,8 +73,8 @@ export async function inventarioRoutes(app: FastifyInstance) {
         if (catalogItem && (!catalogItem.equipSlot || !equipSlotFamily(catalogItem.equipSlot).includes(slot))) {
           return reply.status(400).send({
             error: catalogItem.equipSlot
-              ? `"${item.name}" no se puede equipar ahí — va en ${catalogItem.equipSlot}, no en ${slot}.`
-              : `"${item.name}" no es un objeto equipable.`,
+              ? `«${item.name}» no se puede equipar ahí — va en ${catalogItem.equipSlot}, no en ${slot}.`
+              : `«${item.name}» no es un objeto equipable.`,
           });
         }
 

@@ -114,7 +114,7 @@ export async function aceptarMision(prisma: PrismaClient, saveId: string, mision
       },
     });
     await tx.misionOfrecida.update({ where: { id: oferta.id }, data: { questId: quest.id } });
-    await escribir(tx, saveId, `Misión aceptada: "${quest.title}". Plazo: ${huecos.plazoDias} días.`, ahora);
+    await escribir(tx, saveId, `Misión aceptada: «${quest.title}». Plazo: ${huecos.plazoDias} días.`, ahora);
     return quest;
   });
 }
@@ -146,7 +146,7 @@ export async function cumplirMision(tx: Tx, quest: Quest): Promise<boolean> {
     ...(h.enemiga ? [{ faccion: h.enemiga.nombre, delta: r.reputacionConEnemiga }] : []),
   ]);
   await registrarFinDeMision(tx, { saveId: quest.saveId, titulo: quest.title, estado: 'COMPLETADA', fictionalMinutes: ahora });
-  await escribir(tx, quest.saveId, `Misión completada: "${quest.title}" — +${r.xp} XP, ${r.goirnos} Goirnos; ${h.faccion.nombre} lo recordará.`, ahora);
+  await escribir(tx, quest.saveId, `Misión completada: «${quest.title}» — +${r.xp} XP, ${r.goirnos} Goirnos; ${h.faccion.nombre} lo recordará.`, ahora);
   return true;
 }
 
@@ -159,7 +159,7 @@ export async function cerrarSinCumplir(tx: Tx, quest: Quest, estado: 'FALLIDA' |
   await aplicarReputacion(tx, quest.saveId, [{ faccion: h.faccion.nombre, delta: recompensaDe(quest).reputacionAlFallar }]);
   await registrarFinDeMision(tx, { saveId: quest.saveId, titulo: quest.title, estado, fictionalMinutes: ahora });
   const motivo = estado === 'FALLIDA' ? 'se acabó el plazo' : 'la has dejado';
-  await escribir(tx, quest.saveId, `Misión ${estado === 'FALLIDA' ? 'fallida' : 'abandonada'}: "${quest.title}" (${motivo}). ${h.faccion.nombre} no lo olvidará.`, ahora);
+  await escribir(tx, quest.saveId, `Misión ${estado === 'FALLIDA' ? 'fallida' : 'abandonada'}: «${quest.title}» (${motivo}). ${h.faccion.nombre} no lo olvidará.`, ahora);
   return true;
 }
 

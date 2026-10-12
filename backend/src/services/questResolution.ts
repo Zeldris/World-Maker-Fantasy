@@ -152,7 +152,7 @@ export function questRewardNarrationFor(
   if (grantedRecipeKeys.length > 0) parts.push(`aprende ${grantedRecipeKeys.length} receta(s) nueva(s)`);
   if (grantedCompanionName) parts.push(`se une ${grantedCompanionName}`);
   if (rewardXp) parts.push(`+${rewardXp} XP`);
-  return `Misión completada: "${questTitle}"${parts.length > 0 ? ` — ${parts.join(', ')}` : ''}.`;
+  return `Misión completada: «${questTitle}»${parts.length > 0 ? ` — ${parts.join(', ')}` : ''}.`;
 }
 
 /// Cierre determinista de misión "conseguir Z" (`Quest.targetItemName`) — cualquier objeto
