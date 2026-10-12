@@ -43,5 +43,15 @@ sleep 1
 if ! curl -s -o /dev/null localhost:5173; then
   (cd frontend && setsid nohup npx vite --port 5173 --host 127.0.0.1 > ../logs/frontend.log 2>&1 < /dev/null &) > /dev/null 2>&1
 fi
-for i in $(seq 1 60); do curl -s -o /dev/null localhost:3001/ && curl -s -o /dev/null localhost:5173 && break; sleep 1; done
+# QA-53: listo es que el backend responda con la base conectada (/health) y el frontend sirva; antes
+# valía cualquier respuesta, y tras reiniciar el contenedor la partida salía «No se encuentra».
+listo=0
+for i in $(seq 1 90); do
+  if curl -sf localhost:3001/health | grep -q '"database":"ok"' && curl -sf -o /dev/null localhost:5173; then listo=1; break; fi
+  sleep 1
+done
+if [ "$listo" != 1 ]; then
+  echo "El juego no ha arrancado en 90 s: mira logs/backend.log y logs/frontend.log" >&2
+  exit 1
+fi
 echo "Juego listo: http://127.0.0.1:5173 (base $BASE, viajes $TRAVEL_SEGUNDOS_PRIMER_TRAMO/$TRAVEL_SEGUNDOS_POR_TRAMO_EXTRA/$TRAVEL_SEGUNDOS_MAXIMOS s)"

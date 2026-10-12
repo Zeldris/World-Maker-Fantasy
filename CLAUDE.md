@@ -74,6 +74,10 @@ sus arreglos se hacen en una **fase única antes de la beta** (fila `0.8` de
 - Se trabaja siempre en la rama que indique la bitácora (o la que asigne la sesión, que se apunta
   en la bitácora nada más empezar).
 - **A `main` solo se sube cuando el usuario lo confirma.** Al hacerlo, se apunta en la bitácora.
+- **Antes de un PR a `main`, `/code-review --max-findings all`** del diff contra `main`, los arreglos
+  subidos, `bash tools/qa/revisado.sh` y la descripción con la skill `pr`
+  ([paso 6](docs/runbooks/skills-y-modelos.md#cómo-se-usa-el-flujo-de-una-tarea)). Sin la marca de
+  revisión del mismo commit, un gancho bloquea crear o fusionar el PR (`QA-50`).
 
 ## La bitácora (`docs/registros/traspaso.md`)
 
