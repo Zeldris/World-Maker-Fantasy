@@ -3,6 +3,7 @@ import Fastify from 'fastify';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
+import { registrarSuceso } from '../../services/cronista/sucesos.js';
 
 /// Sistema de movimiento por cuadrícula (2026-09-08, "estilo Mount & Blade") — harness de
 /// integración real (Postgres real, sin mocks) sobre una Location propia de este test, para no
@@ -294,6 +295,31 @@ describe('POST /saves/:id/zona/mover', () => {
     expect(body.logEntry.text).toContain('Agresor de Prueba');
     const logEntryCreado = await prisma.logEntry.findUnique({ where: { id: body.logEntry.id } });
     expect(logEntryCreado).not.toBeNull();
+  });
+
+  // QA-27 P82: tras reaparecer (suceso RENACER reciente), un AGRESIVO en la casilla no corta el paso.
+  it('gracia tras reaparecer: un AGRESIVO en la casilla no corta el paso durante la gracia', async () => {
+    await prisma.zonePoint.create({
+      data: { locationId, saveId, x: 75, y: 25, tipo: 'FAUNA', targetSlug: 'test-mover-agresivo', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] },
+    });
+    const ahora = (await prisma.worldState.findUniqueOrThrow({ where: { saveId } })).fictionalMinutes;
+    await prisma.$transaction((tx) =>
+      registrarSuceso(tx, {
+        saveId, tipo: 'RENACER', fictionalMinutes: ahora, locationId, origen: 'JUGADOR',
+        actores: [{ entidadTipo: 'PERSONAJE', entidadId: saveId, papel: 'AFECTADO' }],
+        datos: { personaje: 'Prueba', lugar: 'Prueba' },
+      }),
+    );
+    try {
+      const app = await buildApp();
+      const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 375, y: 25 } } });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.colision).toBeNull();
+      expect(body.dynamicModeOffer ?? null).toBeNull();
+    } finally {
+      await prisma.suceso.deleteMany({ where: { saveId, tipo: 'RENACER' } });
+    }
   });
 
   // Bug real jugando en vivo (2026-09-20, Álvaro: "al vencer al orco... no desaparecía

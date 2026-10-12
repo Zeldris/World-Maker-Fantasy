@@ -932,8 +932,13 @@ Retro del 2026-10-08 (`CR-63`, `CR-65`, `CR-50`, `CR-37`, `CR-67`; propuestas ap
   (beber de una fuente sin odre), P41, P45 y P46 (sin comprobar en vivo); P10 pasa a `CMB-10`, P30
   y P40 no aplican; P27 (aviso de riesgo también cuando te cortan el paso), la huida real de P12 (1v1), P47 (el aviso
   de interrupción nombra a quien sale al paso) y P50 (grupos de fauna repartidos); P23 y P48 no
-  aplican (por diseño). Falta: P16 (sin reproducir), P49 (falta la ilustración de Las Agujas Imán)
-  y seguir jugando.
+  aplican (por diseño). 2026-10-12, segunda tanda jugando con Gorhorn, sin código salvo bloqueantes:
+  P57-P82 apuntados. Comprobados en vivo P12, P17, P27, P33, P39, P50, P53 y P55. P71 pasa a `NAR-12`.
+  Arreglado el único bloqueante, P82 (al reaparecer se podía morir en bucle hasta la muerte
+  permanente). 🧭 P80 (Carisma 10 para fundar el Reino) espera a la usuaria. **Pausada por la
+  usuaria el 2026-10-12.** Falta: P16 (sin reproducir), P49 (ilustración), los pendientes de
+  P57-P81 y probar lo propio del `0.3` que no se llegó a jugar (Reino fundado, ganadería, defensa,
+  compañeros, «Charlar con NPC», comercio).
 
 
 Retro del 2026-10-09 (ronda de pruebas `QA-27`; propuestas aprobadas por la usuaria):

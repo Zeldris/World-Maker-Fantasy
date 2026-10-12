@@ -416,6 +416,22 @@ export async function recalcularZonePointsDeLocation(
     faunaPorSlug.set(punto.targetSlug, filas);
   }
 
+  // QA-27 P82: un grupo nuevo de una especie hostil no se coloca a menos de 3 casillas de la
+  // jugadora (con `celdaParaGrupoNuevo` repartiendo por toda la zona, aparecían junto a ella, también
+  // donde reaparece tras morir).
+  const faunaSlugs = [...new Set(puntos.filter((p) => p.tipo === 'FAUNA').map((p) => p.targetSlug))];
+  const [hostiles, jugadora] = await Promise.all([
+    faunaSlugs.length
+      ? tx.npc.findMany({ where: { worldId, slug: { in: faunaSlugs }, temperamento: { in: ['AGRESIVO', 'ENEMIGO'] } }, select: { slug: true } })
+      : Promise.resolve([] as { slug: string }[]),
+    tx.save.findUnique({ where: { id: saveId }, select: { currentLocationId: true, zonaPosX: true, zonaPosY: true } }),
+  ]);
+  const slugsHostiles = new Set(hostiles.map((n) => n.slug));
+  const celdaJugadora =
+    jugadora?.currentLocationId === locationId && jugadora.zonaPosX != null && jugadora.zonaPosY != null
+      ? celdaDePixel({ x: jugadora.zonaPosX, y: jugadora.zonaPosY })
+      : null;
+
   // Ocupación real del lienzo (todos los puntos existentes, cualquier tipo/estado) — nunca se pisa
   // al colocar una fila de grupo nueva; se va ampliando con cada fila que este mismo recalculo crea.
   const ocupadas = new Set(todosPuntos.map((p) => claveCelda(celdaDePixel({ x: p.x, y: p.y }))));
@@ -472,6 +488,7 @@ export async function recalcularZonePointsDeLocation(
     const origenAncla = celdaDePixel({ x: ancla.origenX ?? ancla.x, y: ancla.origenY ?? ancla.y });
     const borradas = new Set(resultado.borrar);
     const celdasEspecie = ordenadas.filter((_, i) => !borradas.has(i)).map((f) => celdaDePixel({ x: f.x, y: f.y }));
+    if (celdaJugadora && slugsHostiles.has(targetSlug)) celdasEspecie.push(celdaJugadora);
     for (const cantidadNueva of resultado.crear) {
       const celda = celdaParaGrupoNuevo(origenAncla, ocupadas, celdasEspecie, random);
       ocupadas.add(claveCelda(celda));

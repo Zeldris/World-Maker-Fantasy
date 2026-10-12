@@ -3585,6 +3585,8 @@ describe('Respawn tras morir: vuelve al último campamento, no se queda donde mu
     // con el resto del progreso intacto, mismo comportamiento que el respawn "blando" de siempre.
     // `buildApp()` (arriba en este archivo) solo registra `turnRoutes` — death/resolve vive en
     // `deathRoutes`, mismo patrón que `buildAppWithDetail` más abajo en este archivo.
+    // QA-27 P82: el encuentro forzado que quedó pendiente no sobrevive a la muerte.
+    await prisma.save.update({ where: { id: saveId }, data: { pendingDynamicModeOffer: { tipo: 'FAUNA', targetSlug: 'x', targetName: 'X', quienInicia: 'npc', combateForzado: true } } });
     const deathApp = Fastify();
     await deathApp.register(deathRoutes);
     const resolveRes = await deathApp.inject({ method: 'POST', url: `/saves/${saveId}/death/resolve` });
@@ -3594,6 +3596,7 @@ describe('Respawn tras morir: vuelve al último campamento, no se queda donde mu
     const savedAfterResolve = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(savedAfterResolve.condicionFisica).toBe('ILESO');
     expect(savedAfterResolve.pendingDeathResolution).toBe(false);
+    expect(savedAfterResolve.pendingDynamicModeOffer).toBeNull();
     expect(savedAfterResolve.currentLocationId).toBe(hondonadaId); // vuelve al campamento…
     expect(savedAfterResolve.currentLocationId).not.toBe(pilaresId); // …no se queda donde murió
     // Libro de Sucesos (CR-3): el despertar queda registrado.

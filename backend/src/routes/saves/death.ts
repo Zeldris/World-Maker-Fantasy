@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { registrarSuceso, minutosDeFiccion } from '../../services/cronista/sucesos.js';
@@ -89,6 +90,10 @@ export async function deathRoutes(app: FastifyInstance) {
             salud: 100,
             currentLocationId: respawnLocationId,
             pendingDeathResolution: false,
+            // QA-27 P82: el encuentro que mató no sigue pendiente al reaparecer (era la muerte
+            // siguiente, sin opción). La gracia tras reaparecer está en `zona.ts`.
+            pendingDynamicModeOffer: Prisma.JsonNull,
+            zonaUltimoEncuentro: Prisma.JsonNull,
           },
         });
       });
