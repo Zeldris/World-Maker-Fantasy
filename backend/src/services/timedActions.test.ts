@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { duracionExplicitaMinutos, computeDuration, mentionsExplicitDuration } from './timedActions.js';
+import { duracionExplicitaMinutos, duracionExplicitaDeLaAccion, computeDuration, mentionsExplicitDuration } from './timedActions.js';
 
 const attrs = { fuerza: 8, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 };
 
@@ -60,6 +60,17 @@ describe('P17 — la duración explícita del texto manda', () => {
     expect(duracionExplicitaMinutos('Ataco a dos Guchapos')).toBeNull();
     expect(duracionExplicitaMinutos('Descanso varios días')).toBeNull();
     expect(duracionExplicitaMinutos('Espero unas horas')).toBeNull();
+  });
+
+  it('una referencia al pasado no es la duración de la acción', () => {
+    expect(duracionExplicitaMinutos('Como la carne que cacé hace dos días')).toBeNull();
+    expect(duracionExplicitaMinutos('Busco las huellas de hace tres horas')).toBeNull();
+  });
+
+  it('la que se aplica a la clasificación respeta lo dicho y lo instantáneo', () => {
+    expect(duracionExplicitaDeLaAccion('Descanso un par de horas', 'corta')).toBe(120);
+    expect(duracionExplicitaDeLaAccion('Le digo que vuelvo en una hora', 'corta')).toBeNull();
+    expect(duracionExplicitaDeLaAccion('Examino la veta durante una hora', 'instantanea')).toBeNull();
   });
 
   it('computeDuration usa la del texto aunque el clasificador diga otra cosa', () => {

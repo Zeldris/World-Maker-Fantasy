@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { classifyAction, type ClassificationResult } from '../services/narrador.js';
 import { rollCheck } from '../services/dice.js';
 import type { AttributeBlock, RollResult } from '../services/dice.js';
-import { computeDuration, detectsRestIntent, mentionsExplicitDuration } from '../services/timedActions.js';
+import { computeDuration, detectsRestIntent, duracionExplicitaDeLaAccion, mentionsExplicitDuration } from '../services/timedActions.js';
 import { narrateAndPersistTurn } from '../services/turnResolution.js';
 import { avanzarSiCruzaDia, enSegundoPlano, esperarSegundoPlano } from '../services/avanceDiario.js';
 import { recordEntityDiscoveries } from '../services/entityDiscovery.js';
@@ -509,7 +509,13 @@ async function resolveClassificationForTurn(params: {
         // banda↔duracionEstimadaMinutos coherentes, se deriva de forma determinista con la MISMA
         // función que ya usa el viaje por grafo (bandaForMinutos). "instantanea" se respeta tal
         // cual (es la única banda sin minutos reales que reconciliar).
-        if (classification.banda !== 'instantanea') {
+        // P17 (QA-27): la duración que la jugadora escribe manda, también sobre la banda (que es
+        // la que decide más abajo si la acción ocupa tiempo de verdad).
+        const duracionExplicita = duracionExplicitaDeLaAccion(action, classification.banda);
+        if (duracionExplicita) {
+          classification.duracionEstimadaMinutos = duracionExplicita;
+          classification.banda = bandaForMinutos(duracionExplicita);
+        } else if (classification.banda !== 'instantanea') {
           classification.banda = bandaForMinutos(classification.duracionEstimadaMinutos);
         }
       }

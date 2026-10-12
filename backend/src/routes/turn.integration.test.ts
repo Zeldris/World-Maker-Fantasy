@@ -7078,7 +7078,7 @@ describe('Beber de la fuente sin odre (QA-27 P39)', () => {
     narrateAction.mockClear();
 
     const app = await buildApp();
-    const action = 'Me agacho y bebo agua del manantial.';
+    const action = 'Bebo agua del manantial hasta saciarme.';
     const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
     const { classification, roll } = classifyRes.json();
     const narrateRes = await app.inject({

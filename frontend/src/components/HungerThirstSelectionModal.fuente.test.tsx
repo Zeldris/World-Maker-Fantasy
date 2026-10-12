@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, cleanup, fireEvent } from '@testing-library/react'
 import { HungerThirstSelectionModal } from './HungerThirstSelectionModal'
-import { ACCION_BEBER_DE_LA_FUENTE, esPuntoDeAgua } from '../lib/puntosDeAgua'
+import { ACCION_BEBER_DE_LA_FUENTE } from '../lib/puntosDeAgua'
 
 /// QA-27 P39: en un punto de agua real se puede beber sin odre desde el pop-up de Comer/Beber.
 describe('HungerThirstSelectionModal: beber de la fuente (QA-27 P39)', () => {
@@ -23,11 +23,5 @@ describe('HungerThirstSelectionModal: beber de la fuente (QA-27 P39)', () => {
     )
     expect(queryByRole('button', { name: /Beber de la fuente/ })).toBeNull()
     expect(getByText(/necesitas un odre lleno/)).toBeTruthy()
-  })
-
-  it('reconoce los puntos de agua reales', () => {
-    expect(esPuntoDeAgua('manaderos')).toBe(true)
-    expect(esPuntoDeAgua('hondonada-del-eco')).toBe(false)
-    expect(esPuntoDeAgua(undefined)).toBe(false)
   })
 })

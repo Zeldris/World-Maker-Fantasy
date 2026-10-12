@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bebeDeLaFuente, RECOGER_AGUA_RECIPE, PUNTOS_DE_AGUA } from './crafting.js';
+import { bebeDeLaFuente, soloBebeDeLaFuente, RECOGER_AGUA_RECIPE, PUNTOS_DE_AGUA } from './crafting.js';
 
 describe('bebeDeLaFuente (QA-27 P39)', () => {
   it('bebe del agua del sitio en un punto de agua real', () => {
@@ -22,5 +22,12 @@ describe('bebeDeLaFuente (QA-27 P39)', () => {
 
   it('los puntos de agua son los mismos donde se llena el odre', () => {
     expect(RECOGER_AGUA_RECIPE.location).toEqual([...PUNTOS_DE_AGUA]);
+  });
+
+  it('solo beber se narra sin el modelo; si hace algo más, no', () => {
+    expect(soloBebeDeLaFuente('Bebo agua de la fuente hasta saciarme.')).toBe(true);
+    expect(soloBebeDeLaFuente('Bebo agua del manantial.')).toBe(true);
+    expect(soloBebeDeLaFuente('Bebo agua del pozo y hablo con el pastor')).toBe(false);
+    expect(soloBebeDeLaFuente('Bebo agua, luego sigo')).toBe(false);
   });
 });

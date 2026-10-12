@@ -351,7 +351,7 @@ export async function applyFactionRepDeltaForResolution(
 /// schema.prisma), pero SÍ necesita este mismo cierre de misión/reputación/población al caer.
 export async function applyKillSideEffects(params: {
   tx: Prisma.TransactionClient;
-  npc: { id: string; name: string; raza: string | null; slug: string; faction: string | null; articulo?: string | null };
+  npc: { id: string; name: string; raza: string | null; slug: string; faction: string | null; articulo: string | null };
   nuevaCondicion: CondicionFisica;
   saveId: string;
   worldId: string;

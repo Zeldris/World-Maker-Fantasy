@@ -822,7 +822,10 @@ export async function zonaRoutes(app: FastifyInstance) {
       currentLocationId: locationId,
       fictionalMinutes,
     });
-    const dinamicosCandidatosColision = npcsInSceneColision.filter((n) => n.condicionFisica !== 'MUERTO' && !zonePointSlugsColision.has(n.slug));
+    // Mismo filtro de lugar que el mapa (P24/P51): quien no se pinta tampoco te corta el paso.
+    const locationSlugColision = (await tx.location.findUnique({ where: { id: locationId }, select: { slug: true } }))?.slug ?? null;
+    const fueraDeSuSitioColision = (n: { kind: string; homeLocationSlug: string | null }) => n.kind !== 'PRINCIPAL' && !!n.homeLocationSlug && n.homeLocationSlug !== locationSlugColision;
+    const dinamicosCandidatosColision = npcsInSceneColision.filter((n) => n.condicionFisica !== 'MUERTO' && !zonePointSlugsColision.has(n.slug) && !fueraDeSuSitioColision(n));
     const dinamicosStatesColision = dinamicosCandidatosColision.length
       ? await tx.npcState.findMany({
           where: {
@@ -851,6 +854,7 @@ export async function zonaRoutes(app: FastifyInstance) {
           // "¿Quién ve a quién primero?" (2026-09-17) — Destreza real, ya proyectada a su nivel
           // real por `detectNpcsInScene` (npcAttributesForLevel).
           attributes: n.attributes,
+          level: n.level,
         };
       })
       .filter((d): d is NonNullable<typeof d> => d !== null);
@@ -914,6 +918,7 @@ export async function zonaRoutes(app: FastifyInstance) {
           colision = { targetSlug: dinamico.targetSlug, targetName: nombreDinamico, temperamento };
           colisionTipo = dinamico.tipo;
           destrezaColision = dinamico.attributes.destreza;
+          nivelNpcColision = dinamico.level;
           break;
         }
       }

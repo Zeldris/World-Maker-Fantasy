@@ -23,6 +23,7 @@ import { sanitizeSkillBarAbilityNames, hasBaseSkillBar, defaultBaseSkillBarAbili
 import { especializacionesConHuecosPara, resumenMecanicoEspecializacion, clasesPermitidasParaRaza, CLASE_DESCRIPTION, especializacionAbilityUnlocksFor, savedActionDataFromAbility } from '../../services/classAbilities.js';
 import { NIVEL_MINIMO_ESPECIALIZACION } from './progression.js';
 import { marcaDelCapitan } from '../../services/combateMultipleOrquestacion.js';
+import { PUNTOS_DE_AGUA } from '../../services/crafting.js';
 
 export async function detailRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>('/saves/:id', async (request, reply) => {
@@ -578,6 +579,8 @@ export async function detailRoutes(app: FastifyInstance) {
             name: save.currentLocation.name,
             region: save.currentLocation.region,
             description: save.currentLocation.description,
+            // QA-27 P39: aquí se puede beber sin odre (el pop-up de Comer/Beber lo ofrece).
+            puntoDeAgua: PUNTOS_DE_AGUA.includes(save.currentLocation.slug),
           }
         : null,
       destinations: destinations.map((d) => ({ locationId: d.locationId, slug: d.slug, name: d.name, minutos: d.minutos })),

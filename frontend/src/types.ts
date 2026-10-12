@@ -1055,6 +1055,8 @@ export interface CurrentLocationInfo {
   name: string
   region: string
   description: string
+  /// QA-27 P39: punto de agua real, se puede beber sin odre.
+  puntoDeAgua?: boolean
 }
 
 export interface DestinationInfo {

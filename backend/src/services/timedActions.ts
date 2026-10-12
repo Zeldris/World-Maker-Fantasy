@@ -32,7 +32,8 @@ export function detectsRestIntent(action: string): boolean {
 const EXPLICIT_DURATION_REGEX = /\d+\s*(dia|dias|semana|semanas|hora|horas)|varios? dias?|unos? dias?|toda la noche|una semana/;
 
 export function mentionsExplicitDuration(action: string): boolean {
-  return EXPLICIT_DURATION_REGEX.test(normalizeText(action));
+  // P17: también las cifras en letra («tres horas», «un par de horas»).
+  return EXPLICIT_DURATION_REGEX.test(normalizeText(action)) || duracionExplicitaMinutos(action) !== null;
 }
 
 const NUMEROS: Record<string, number> = {
@@ -51,6 +52,8 @@ export function duracionExplicitaMinutos(action: string): number | null {
   if (/\b(unos|unas|varios|varias)\s+(minuto|hora|dia|semana)s\b/.test(t)) return null;
   const m = t.match(/\b(un par de|\d+|una|uno|un|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|doce)\s+(minuto|hora|dia|semana)s?\b/);
   if (!m) return null;
+  // «la carne que cacé hace dos días» habla del pasado, no de cuánto dura la acción.
+  if (/\bhace\s+$/.test(t.slice(0, m.index))) return null;
   const [, cuanto, unidad] = m;
   const n = cuanto === 'un par de' ? 2 : /^\d+$/.test(cuanto) ? Number(cuanto) : NUMEROS[cuanto];
   if (!n) return null;
@@ -61,13 +64,18 @@ export function duracionExplicitaMinutos(action: string): number | null {
 /// backend calcula esto con una fórmula sobre atributos, nunca la IA (misma disciplina que el
 /// motor de dados). Empieza con las 3 acciones típicas que sugiere el propio diseño; el resto
 /// de acciones por tiempo usan la estimación del clasificador tal cual.
-export function computeDuration(action: string, banda: Banda, attributes: AttributeBlock, duracionEstimadaMinutosClasificador: number): DurationResult {
-  // P17 (QA-27): la duración explícita del texto manda sobre la del clasificador (y sobre su banda).
-  // No en lo que se dice («le digo que vuelvo en una hora»), y en una acción que el clasificador ve
-  // instantánea, solo si es descansar o esperar.
+/// P17 (QA-27): la duración explícita del texto que manda sobre la del clasificador (y sobre su
+/// banda). No en lo que se dice («le digo que vuelvo en una hora»), y en una acción que el
+/// clasificador ve instantánea, solo si es descansar o esperar. La ruta de clasificar la aplica a la
+/// clasificación para que la banda que decide si la acción es por tiempo sea coherente.
+export function duracionExplicitaDeLaAccion(action: string, banda: Banda): number | null {
   const esHabla = /["«»]|\b(digo|dice|pregunto|respondo|contesto|grito|susurro)\b/.test(normalizeText(action));
   const esEspera = REST_REGEX.test(action.toLowerCase()) || /\b(espero|aguardo)\b/.test(normalizeText(action));
-  const explicita = esHabla || (banda === 'instantanea' && !esEspera) ? null : duracionExplicitaMinutos(action);
+  return esHabla || (banda === 'instantanea' && !esEspera) ? null : duracionExplicitaMinutos(action);
+}
+
+export function computeDuration(action: string, banda: Banda, attributes: AttributeBlock, duracionEstimadaMinutosClasificador: number): DurationResult {
+  const explicita = duracionExplicitaDeLaAccion(action, banda);
   const duracionEstimadaMinutos = explicita ?? duracionEstimadaMinutosClasificador;
   if (explicita) banda = explicita <= 30 ? 'corta' : explicita < 1440 ? 'extendida' : 'larga';
 

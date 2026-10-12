@@ -8,13 +8,18 @@ const entrada = (tipo: string, cuando: number, victima: string) =>
 /// P37 (QA-27): una pelea, una línea en la Crónica; y los nombres de especie con su artículo.
 describe('P37 — Crónica', () => {
   it('la victoria seguida de la muerte de la misma víctima deja solo la muerte', () => {
-    const r = sinVictoriaAntesDeLaMuerte([entrada('MUERTE_CAUSADA', 600, 'g1'), entrada('COMBATE_GANADO', 599, 'g1'), entrada('COMBATE_GANADO', 300, 'g2')]);
+    const r = sinVictoriaAntesDeLaMuerte([entrada('MUERTE_CAUSADA', 600, 'g1'), entrada('COMBATE_GANADO', 599, 'g1'), entrada('COMBATE_GANADO', 300, 'g2')], [{ cuando: 600, victima: 'g1' }]);
     expect(r.map((e: { sucesoId: string }) => e.sucesoId)).toEqual(['MUERTE_CAUSADA-600', 'COMBATE_GANADO-300']);
   });
 
   it('una victoria sin muerte después se queda', () => {
-    const r = sinVictoriaAntesDeLaMuerte([entrada('MUERTE_CAUSADA', 900, 'g1'), entrada('COMBATE_GANADO', 599, 'g1')]);
+    const r = sinVictoriaAntesDeLaMuerte([entrada('MUERTE_CAUSADA', 900, 'g1'), entrada('COMBATE_GANADO', 599, 'g1')], [{ cuando: 900, victima: 'g1' }]);
     expect(r).toHaveLength(2);
+  });
+
+  it('la muerte que cae en la página anterior también oculta la victoria', () => {
+    const r = sinVictoriaAntesDeLaMuerte([entrada('COMBATE_GANADO', 599, 'g1')], [{ cuando: 620, victima: 'g1' }]);
+    expect(r).toHaveLength(0);
   });
 
   it('con el artículo del catálogo', () => {

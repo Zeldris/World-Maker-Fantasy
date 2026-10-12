@@ -409,6 +409,13 @@ export function bebeDeLaFuente(action: string, locationSlug: string | null | und
   return /\b(agua|fuente|manantial|manadero|pozo|oasis|charca|arroyo|cauce)/.test(t);
 }
 
+/// La acción es solo beber (una frase sin «y», «luego»…): se narra sin el modelo. Si hace algo
+/// más, bebe igual, pero el narrador cuenta el turno entero.
+export function soloBebeDeLaFuente(action: string): boolean {
+  const t = action.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return !/[,;]|\b(y|e|luego|despues|mientras|tras|antes)\b/.test(t.replace(/[.!]+\s*$/, ''));
+}
+
 export const RECOGER_AGUA_RECIPE: CraftingRecipe = {
   key: 'recogerAgua',
   verbRegex: /recoj|recog|llen|lleve/,

@@ -31,7 +31,7 @@ import { compassNarrationText, type CompassLinkInfo } from './compassNarration.j
 import { energiaMaxFor, energiaPasivaEntre, nextEnergia, restCooldownActivo } from './energy.js';
 import { WEAPON_ABILITY_LEVEL_AVANZADA, dualWieldAdjustedDifficulty, weaponCategoryForRealAbilityName, type EquippedWeaponSlot } from './weaponAbilities.js';
 import { syncDynamicCombatAbilities } from './dynamicAbilities.js';
-import { CRAFTING_RECIPES, detectsCraftIntent, canCraft, craftRequisitoShortfalls, bebeDeLaFuente, planCraftConsumption, hasToolForOficio, OFICIOS_CON_HERRAMIENTA_REQUERIDA } from './crafting.js';
+import { CRAFTING_RECIPES, detectsCraftIntent, canCraft, craftRequisitoShortfalls, bebeDeLaFuente, soloBebeDeLaFuente, planCraftConsumption, hasToolForOficio, OFICIOS_CON_HERRAMIENTA_REQUERIDA } from './crafting.js';
 import { detectsBuildIntent, checkRecipe, planRecipeConsumption, baseNameOf, quantityOf, CONSTRUCTION_RECIPES, computeBuildBlockedReason, buildingTierFor, type ConstructionRecipe, type RecipeCheck } from './construction.js';
 import { shortfallLabel } from './requisitos.js';
 import { inventorySummaryFor, type CatalogLookup, type InventoryRowLike } from './ingredients.js';
@@ -4305,7 +4305,12 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       ? lastAtMinutesForGanancia(params.lastAteAtMinutes, fictionalMinutesParaComerBeber, COMIDA_MINUTOS_POR_TRAMO, hungerGanancia)
       : params.lastAteAtMinutes;
   // QA-27 P39: en un punto de agua real se puede beber sin odre, hasta saciarse.
-  const bebeFuente = !usingExplicitHungerThirstList && !travel && bebeDeLaFuente(action, currentLocationRecord?.slug);
+  // En combate no se para a beber.
+  const bebeFuente = !usingExplicitHungerThirstList && !travel && !enCombate && bebeDeLaFuente(action, currentLocationRecord?.slug);
+  const bebeFuenteSinNarrador = bebeFuente && soloBebeDeLaFuente(action);
+  if (bebeFuente && !bebeFuenteSinNarrador) {
+    contextBlocks.push(`BEBER — YA RESUELTO: ${characterName} bebe del agua del lugar hasta saciar la sed. Narra que bebe junto al resto de lo que hace.`);
+  }
   const aguaGanancia = bebeFuente ? 100 : hambreSedItemUsesValidated.reduce((sum, u) => sum + u.curaAgua * u.quantity, 0);
   const nuevoLastDrankAtMinutes =
     aguaGanancia > 0
@@ -4316,7 +4321,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         const itemsTexto = hambreSedItemUsesValidated.map((u) => (u.quantity > 1 ? `${baseNameOf(u.name)} ×${u.quantity}` : baseNameOf(u.name))).join(', ');
         return { narration: `${characterName} usa ${itemsTexto}. ${pickFlavor(EAT_DRINK_FLAVOR)}` };
       })()
-    : bebeFuente
+    : bebeFuenteSinNarrador
       ? { narration: `${characterName} se agacha junto al agua y bebe hasta saciarse. ${pickFlavor(EAT_DRINK_FLAVOR)}` }
       : null;
 
@@ -4655,7 +4660,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     craftMode ||
     usingExplicitHealList ||
     usingExplicitHungerThirstList ||
-    bebeFuente ||
+    bebeFuenteSinNarrador ||
     restBlockedByCooldown
   );
 
@@ -4683,7 +4688,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
             ? { narration: craftNarration!, newFacts: [] }
             : usingExplicitHealList
               ? { narration: healPreview!.narration, newFacts: [] }
-              : usingExplicitHungerThirstList || bebeFuente
+              : usingExplicitHungerThirstList || bebeFuenteSinNarrador
                 ? { narration: hungerThirstPreview!.narration, newFacts: [] }
                 : restBlockedByCooldown
                   ? {
@@ -5294,7 +5299,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     if (combatEncounterCaidos.length > 0) {
       const npcCaidosIds = combatEncounterCaidos.filter((c) => c.tipo === 'NPC' && c.npcId).map((c) => c.npcId!);
       const npcCaidosRows = npcCaidosIds.length
-        ? await tx.npc.findMany({ where: { id: { in: npcCaidosIds } }, select: { id: true, name: true, raza: true, slug: true, faction: true } })
+        ? await tx.npc.findMany({ where: { id: { in: npcCaidosIds } }, select: { id: true, name: true, raza: true, slug: true, faction: true, articulo: true } })
         : [];
       const npcCaidoById = new Map(npcCaidosRows.map((n) => [n.id, n]));
       for (const caido of combatEncounterCaidos) {
@@ -6351,8 +6356,11 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // comentario al principio de la transacción) — offset fijo respecto a `mainLogEntry`, no reloj
     // real, para que el orden sea correcto sin importar cuánto trabajo real pase entre ambas filas.
     // QA-27 P47: el aviso nombra a quien sale al paso; si no, cuando no hay tarjeta (ya hay una
-    // conversación abierta) ni el narrador lo menciona, la interrupción se queda vacía.
-    const interruptor = travelInterruptionNpcId ? npcsInSceneWithInterruption.find((n) => n.id === travelInterruptionNpcId) : undefined;
+    // conversación abierta) ni el narrador lo menciona, la interrupción se queda vacía. Un personaje
+    // único no se nombra aquí: puede no estar descubierto todavía (hallazgo 34).
+    const interruptor = travelInterruptionNpcId
+      ? npcsInSceneWithInterruption.find((n) => n.id === travelInterruptionNpcId && n.kind !== 'PRINCIPAL')
+      : undefined;
     const quienSaleAlPaso = interruptor
       ? `${interruptor.articulo ? `${interruptor.genero === 'F' || interruptor.articulo === 'la' ? 'una' : 'un'} ` : ''}${interruptor.name}`
       : null;

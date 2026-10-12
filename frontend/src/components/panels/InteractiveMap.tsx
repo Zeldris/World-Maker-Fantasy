@@ -5,6 +5,7 @@ import { projectLlanurasNodes, type LlanurasEdge, type LlanurasNode, type Crista
 import berigMapUrl from '../../assets/maps/helek-sirik-berig.png'
 import { MapZoomModal } from './MapZoomModal'
 import type { RumorConLugar } from '../../lib/leyendas'
+import { centrarEnSuContenedor } from '../../lib/centrarEnContenedor'
 
 // "Paleta de puntos" (2026-08-04, ver MapNodeOption en data/map.ts): abanico de satélites por
 // encima del punto, en vez de un menú/modal aparte — el propio nodo "se abre". Radio y ángulos en
@@ -192,7 +193,7 @@ export function InteractiveMap({
     const svg = svgRef.current
     // El punto de la jugadora; sin mapa de la región, su insignia; si no, la forma de su región.
     const aqui = svg?.querySelector('[data-aqui="nodo"]') ?? svg?.querySelector('[data-aqui="region"]') ?? svg?.querySelector('[data-aqui="forma"]')
-    aqui?.scrollIntoView?.({ block: 'center', inline: 'nearest' })
+    centrarEnSuContenedor(aqui)
   }, [currentRegion, currentLocationSlug])
   const selected = regions.find((r) => r.name === selectedName) ?? null
   const [selectedNodeSlug, setSelectedNodeSlug] = useState<string | null>(null)
