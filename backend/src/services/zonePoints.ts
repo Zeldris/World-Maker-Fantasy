@@ -188,6 +188,25 @@ export function proximaCantidadPara(punto: ZonePointRow, poblacionRegional: numb
 /// TOTAL del grupo como si fuera un único "punto virtual"). Puro, sin Prisma — el caller (§
 /// `recalcularZonePointsDeLocation`, más abajo) traduce el resultado a updates/creates/deletes
 /// reales, mismo criterio de separación que el resto de este archivo (`proximaCantidadPara`).
+/// P88 (QA-27, decisión de la usuaria 2026-10-12): la zona donde empieza y reaparece la jugadora
+/// es de seguridad alta, como los sectores centrales de X4 o el valle de inicio de Medieval Dynasty
+/// y Bellwright. Su fauna hostil se queda en su guarida (D&D 5e/BG3): un solo grupo, el ancla de
+/// catálogo («Boca de cueva»), con pocos individuos, y sin perseguir. El lore no cambia: los Kirelon
+/// siguen viviendo en la Hondonada.
+export const ZONAS_DE_INICIO: ReadonlySet<string> = new Set(['hondonada-del-eco']);
+export const TOPE_HOSTIL_ZONA_DE_INICIO = 3;
+
+/// Reconciliación de una especie hostil en una zona de inicio: todo en el ancla (índice 0), topado a
+/// `TOPE_HOSTIL_ZONA_DE_INICIO`; el resto de filas se borra y no se crean grupos nuevos.
+export function reconciliarEnGuarida(cantidadesActuales: number[], objetivo: number): ReconciliacionGruposResultado {
+  const cantidadAncla = Math.min(objetivo, TOPE_HOSTIL_ZONA_DE_INICIO);
+  return {
+    actualizar: cantidadesActuales[0] === cantidadAncla ? [] : [{ index: 0, cantidad: cantidadAncla }],
+    borrar: cantidadesActuales.map((_, i) => i).filter((i) => i !== 0),
+    crear: [],
+  };
+}
+
 export interface ReconciliacionGruposResultado {
   /// Filas EXISTENTES cuya `cantidad` cambia — `index` referencia `cantidadesActuales`. El índice 0
   /// (ancla) puede aparecer con `cantidad: 0`: eso NO es un borrado, el caller debe marcarla
@@ -409,6 +428,7 @@ export async function recalcularZonePointsDeLocation(
   }
 
   // FAUNA — reconciliación por grupos (Fase 1).
+  const esZonaDeInicio = ZONAS_DE_INICIO.has((await tx.location.findUnique({ where: { id: locationId }, select: { slug: true } }))?.slug ?? '');
   const faunaPorSlug = new Map<string, (typeof puntos)[number][]>();
   for (const punto of puntos.filter((p) => p.tipo === 'FAUNA')) {
     const filas = faunaPorSlug.get(punto.targetSlug) ?? [];
@@ -460,14 +480,17 @@ export async function recalcularZonePointsDeLocation(
     const puntoVirtual: ZonePointRow = { ...ancla, cantidad: totalActual };
     const { cantidad: objetivo } = proximaCantidadPara(puntoVirtual, poblacionRegional, fictionalMinutesActuales);
 
-    if (!primerReparto && objetivo === totalActual && ancla.lastUpdatedAtMinutes === fictionalMinutesActuales) continue;
+    if (!primerReparto && objetivo === totalActual && ancla.lastUpdatedAtMinutes === fictionalMinutesActuales && !(esZonaDeInicio && ordenadas.length > 1)) continue;
 
-    const resultado = reconciliarGrupos(
-      ordenadas.map((f) => f.cantidad),
-      objetivo,
-      primerReparto,
-      random,
-    );
+    const enGuarida = esZonaDeInicio && (await evitarAlColocar()).slugsHostiles.has(targetSlug);
+    const resultado = enGuarida
+      ? reconciliarEnGuarida(ordenadas.map((f) => f.cantidad), objetivo)
+      : reconciliarGrupos(
+          ordenadas.map((f) => f.cantidad),
+          objetivo,
+          primerReparto,
+          random,
+        );
 
     const cantidadPorIndex = new Map(resultado.actualizar.map((a) => [a.index, a.cantidad]));
     // El ancla SIEMPRE se toca — aunque su cantidad no cambie, es la única fila cuyo
@@ -601,6 +624,7 @@ export async function avanzarZonePointsUnPaso(
     ).map((n) => [n.slug, n]),
   );
   const celdaJugador = jugador ? celdaDePixel(jugador) : null;
+  const esZonaDeInicioMov = ZONAS_DE_INICIO.has((await tx.location.findUnique({ where: { id: locationId }, select: { slug: true } }))?.slug ?? '');
   // B30 (pruebas 2026-09-28): dos grupos de la misma especie deambulando acababan en la MISMA celda
   // (un pin tapaba al otro). Celdas ocupadas en este paso — el tramo de cada callback hasta su
   // primer `await` es síncrono y en orden, así que reservar aquí no tiene carreras.
@@ -617,7 +641,9 @@ export async function avanzarZonePointsUnPaso(
       // aplica. Rompe INCLUSO una `ruta`/`plantillaEspecifica` curada a mano — coherente con "que
       // se dirija hacia ti", no tiene sentido seguir patrullando con el enemigo real a 3 casillas.
       const esAgresivoEfectivo = npc ? ['AGRESIVO', 'ENEMIGO'].includes(effectiveTemperamento(npc.temperamento, npc.faction, factionsStatus ?? {})) : false;
-      const objetivoPersecucion = esAgresivoEfectivo && celdaJugador && enRangoDePersecucion(actual, celdaJugador) ? celdaJugador : null;
+      // P88: en la zona de inicio la fauna hostil defiende su guarida, no persigue.
+      const persigue = esAgresivoEfectivo && !(esZonaDeInicioMov && punto.tipo === 'FAUNA');
+      const objetivoPersecucion = persigue && celdaJugador && enRangoDePersecucion(actual, celdaJugador) ? celdaJugador : null;
 
       if (objetivoPersecucion) {
         const { celda: siguiente, nuevoPasoRuta } = siguienteCeldaDeZonePoint({
