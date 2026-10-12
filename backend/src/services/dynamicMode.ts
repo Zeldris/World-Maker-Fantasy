@@ -218,6 +218,11 @@ const GISTERA_TEXTO_PRESENTACION =
   'Con la respiración entrecortada, sin dejar de mirar hacia atrás, se presenta a toda prisa: «Soy Gistera Koh... del Clan Serhu, aunque ya no. No tengo tiempo para explicarte más — uno de los suyos me pisa los talones y quiere verme muerta. Llevas la marca de los Maktor, ¿verdad? Entonces sabes lo que es que un clan entero se vuelva contra los tuyos. ¿No quieres acabar con los Serhu? Empieza por el que me persigue — hazlo antes de que sea demasiado tarde.»';
 const GISTERA_OPCIONES_PRESENTACION = ['Aceptar ayudarla', 'Preguntar más antes de decidir', 'Rechazar y seguir tu camino'];
 
+/// P105 (QA-27): la despedida de Gistera al aceptar en la conversación. Si ya se dijo, aceptar la
+/// misión en su tarjeta no añade otra (`quests.ts`).
+export const GISTERA_DESPEDIDA_EN_CONVERSACION =
+  'Gistera esboza un gesto de alivio que apenas dura un instante. «Gracias, Gorhorn. No puedo quedarme aquí más tiempo, pero si nos volvemos a ver, ¡te lo agradeceré como corresponde!» Se aleja a toda velocidad entre las rocas de la hondonada sin mirar atrás.';
+
 /// Ramifica por `respuesta` (la opción que el jugador ya eligió), NUNCA solo por el número de
 /// vuelta — "preguntar" recicla la presentación (misma vuelta lógica, no avanza a la 3), y
 /// "aceptar"/"rechazar" ambos SALEN de la vuelta 2, pero a desenlaces distintos.
@@ -242,8 +247,7 @@ export function narrarVueltaGistera(vuelta: number, respuesta: RespuestaGistera 
   }
   if (respuesta === 'aceptar') {
     return {
-      narration:
-        'Gistera esboza un gesto de alivio que apenas dura un instante. «Gracias, Gorhorn. No puedo quedarme aquí más tiempo, pero si nos volvemos a ver, ¡te lo agradeceré como corresponde!» Se aleja a toda velocidad entre las rocas de la hondonada sin mirar atrás.',
+      narration: GISTERA_DESPEDIDA_EN_CONVERSACION,
       opciones: [],
       cierra: true,
     };
