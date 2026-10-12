@@ -68,6 +68,7 @@ export async function deathRoutes(app: FastifyInstance) {
             channel: 'CHARACTER',
             text: awakensText(save.characterName, respawnLocation?.name ?? 'un lugar que reconoce', false),
             timeLabel: save.worldState?.fictionalDateLabel ?? 'Día 1, mañana',
+            fictionalMinutes: save.worldState?.fictionalMinutes ?? 480,
             isSystemMessage: true,
           },
         });

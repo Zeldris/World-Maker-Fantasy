@@ -3473,6 +3473,12 @@ describe('Descansar: +30 de energía fijo, NO cura condición física, cooldown 
     expect(save.energia).toBe(40); // 10 + ENERGY_REST_RESTORE (30)
     expect(save.currentLocationId).toBe(pilaresId); // sigue en el mismo sitio, esto no es respawn
     expect(save.lastRestAtMinutes).not.toBeNull(); // marca de cooldown fijada
+    // P84 (QA-27): la marca es la hora en que ACABA el descanso (la del reloj tras el turno).
+    const ws = await prisma.worldState.findUniqueOrThrow({ where: { saveId } });
+    expect(save.lastRestAtMinutes).toBe(ws.fictionalMinutes);
+    // P85 (QA-27): la narración del resultado lleva la hora en que acaba, no la de inicio.
+    const resultado = await prisma.logEntry.findFirstOrThrow({ where: { saveId, channel: 'CHARACTER', isPlayerAction: false, isSystemMessage: false }, orderBy: { createdAt: 'desc' } });
+    expect(resultado.timeLabel).toBe(ws.fictionalDateLabel);
   }, 15_000);
 
   it('un segundo descanso dentro de las 3h de ficción se rechaza — narración determinista, sin tocar energía', async () => {

@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { HABILIDADES_RENOMBRADAS } from '../../services/habilidadesRenombradas.js';
 import { prisma } from '../../lib/prisma.js';
 import { startingAbilitiesFor } from '../../services/startingAbilities.js';
 import { maxCombatAbilitiesFor } from '../../services/progression.js';
@@ -24,9 +25,6 @@ import { especializacionesConHuecosPara, resumenMecanicoEspecializacion, clasesP
 import { NIVEL_MINIMO_ESPECIALIZACION } from './progression.js';
 import { marcaDelCapitan } from '../../services/combateMultipleOrquestacion.js';
 import { PUNTOS_DE_AGUA } from '../../services/crafting.js';
-
-/// P100 (QA-27): nombre viejo → nombre nuevo de las habilidades renombradas en el catálogo.
-const HABILIDADES_RENOMBRADAS: Record<string, string> = { 'Analisis Salvaje': 'Análisis Salvaje' };
 
 export async function detailRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>('/saves/:id', async (request, reply) => {

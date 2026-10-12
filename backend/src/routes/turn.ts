@@ -1201,7 +1201,7 @@ export async function turnRoutes(app: FastifyInstance) {
     // `combate` también en la acción del jugador (B12, pruebas 2026-09-28): el contador de capítulo
     // (chapterSummary.ts) no debe contar cada botón de un combate como una acción de historia.
     await prisma.logEntry.create({
-      data: { saveId, channel: 'CHARACTER', text: action, isPlayerAction: true, timeLabel, combate: !!enCombate },
+      data: { saveId, channel: 'CHARACTER', text: action, isPlayerAction: true, timeLabel, fictionalMinutes: save.worldState?.fictionalMinutes ?? 480, combate: !!enCombate },
     });
 
     const produccionLabel = produccionFiltrada ? `${produccionFiltrada.cantidad} de ${produccionFiltrada.itemName}` : undefined;
