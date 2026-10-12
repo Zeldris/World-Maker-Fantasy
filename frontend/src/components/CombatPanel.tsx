@@ -753,20 +753,8 @@ export function CombatPanel({
           </div>
         )}
 
-        {/* Ficha del rival (2026-08-12, petición explícita: "en el turno de defensa hay que añadir
-            también la información del enemigo... en la de ataque sí") — antes se ocultaba entera
-            en `awaitingDefense`, igual que el selector de objetivo (que sí tiene sentido ocultar:
-            no eliges a quién defenderte). `selectedNpcSlug` no se resetea al entrar en defensa —
-            sigue siendo el rival ya elegido, así que la ficha no necesita ningún dato nuevo. */}
-        {selectedNpcSlug && (() => {
-          // Identificador de combatientes duplicados (2026-08-27) — `selectedNpcSlug` puede ser un
-          // `participantId` (no un slug de catálogo real) cuando hay más de un combatiente del
-          // mismo Npc — `EnemyFicha` necesita el `slug` de catálogo de verdad para consultarlo.
-          const selected = npcs.find((n) => combatKeyFor(n) === selectedNpcSlug)
-          if (!selected) return null
-          return <EnemyFicha slug={selected.slug} analizado={selected.analizado} playerAttributes={playerAttributes} enciclopedia={enciclopedia} />
-        })()}
-
+        {/* P93 (QA-27): los ataques van antes que la ficha del rival; con su imagen grande, la ficha los
+            empujaba por debajo de lo visible en cada turno (como la barra de acciones de BG3, a mano). */}
         {(combatAbilities.length > 0 || (!awaitingDefense && combatItems.length > 0)) && (
           // Bloque "usable" (petición explícita, 2026-07-28: "que destaque más... más claro que
           // son los elementos usables") — mismo tono accent que ya marca selección/foco en el
@@ -1011,6 +999,20 @@ export function CombatPanel({
             )}
           </div>
         )}
+
+        {/* Ficha del rival (2026-08-12, petición explícita: "en el turno de defensa hay que añadir
+            también la información del enemigo... en la de ataque sí") — antes se ocultaba entera
+            en `awaitingDefense`, igual que el selector de objetivo (que sí tiene sentido ocultar:
+            no eliges a quién defenderte). `selectedNpcSlug` no se resetea al entrar en defensa —
+            sigue siendo el rival ya elegido, así que la ficha no necesita ningún dato nuevo. */}
+        {selectedNpcSlug && (() => {
+          // Identificador de combatientes duplicados (2026-08-27) — `selectedNpcSlug` puede ser un
+          // `participantId` (no un slug de catálogo real) cuando hay más de un combatiente del
+          // mismo Npc — `EnemyFicha` necesita el `slug` de catálogo de verdad para consultarlo.
+          const selected = npcs.find((n) => combatKeyFor(n) === selectedNpcSlug)
+          if (!selected) return null
+          return <EnemyFicha slug={selected.slug} analizado={selected.analizado} playerAttributes={playerAttributes} enciclopedia={enciclopedia} />
+        })()}
           </>
         )}
       </div>

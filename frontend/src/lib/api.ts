@@ -1189,6 +1189,8 @@ export interface ZonePointInfo {
   /// pinta un icono de grupo distinto y abre un modal de desglose en vez del modal normal de un
   /// solo NPC cuando este campo está presente.
   companion?: { slug: string; nombre: string }
+  /// P106 (QA-27): objetivo de una misión activa (aunque siga sin descubrir).
+  objetivoMision?: boolean
 }
 /// NPCs presentados de forma determinista (2026-08-26, "no aparecen en la zona y sí tienen que
 /// salir") — a diferencia de `ZonePointInfo` (catálogo fijo, con posición real curada), estos

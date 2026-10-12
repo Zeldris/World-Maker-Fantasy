@@ -290,6 +290,14 @@ describe('ZonaPanel — Z-D, sin sorpresas', () => {
     vi.clearAllMocks()
   })
 
+  it('P106 (QA-27): el objetivo de una misión activa lleva su marca aunque siga sin descubrir', async () => {
+    const objetivo = { ...zona.puntos[0]!, id: 'orco', tipo: 'NPC', nombre: '???', descubierto: false, objetivoMision: true }
+    vi.mocked(getZona).mockResolvedValue({ ...zona, puntos: [objetivo] } as never)
+    const { getByTestId } = render(<ZonaPanel saveId="s1" />)
+    await act(async () => {})
+    expect(getByTestId('marca-objetivo-mision').textContent).toBe('🎯 misión')
+  })
+
   it('un hostil conocido lleva su radio y su estado; la ruta hacia él sale en riesgo; su patrulla, al pasar el ratón', async () => {
     const hostil = { ...zona.puntos[0]!, x: 475, y: 325, hostil: true, ruta: [{ x: 475, y: 325 }, { x: 575, y: 325 }] }
     vi.mocked(getZona).mockResolvedValue({ ...zona, puntos: [hostil] } as never)

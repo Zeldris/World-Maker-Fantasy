@@ -389,6 +389,11 @@ export async function zonaRoutes(app: FastifyInstance) {
     const npcFaunaZonePointIds = npcFaunaZonePointRows.filter((n) => npcFaunaZonePointSlugs.includes(n.slug));
     const npcIdBySlugZonePoint = new Map(npcFaunaZonePointIds.map((n) => [n.slug, n.id]));
     const npcNameBySlugZonePoint = new Map(npcFaunaZonePointIds.map((n) => [n.slug, n.name]));
+    // P106 (QA-27): los NPC objetivo de una misión activa llevan su marca en el mapa (aunque sigan sin
+    // descubrir: «???» y sin marca, nada decía que era el objetivo).
+    const objetivosDeMision = new Set(
+      (await prisma.quest.findMany({ where: { saveId: save.id, status: 'ACTIVA', targetNpcId: { not: null } }, select: { targetNpcId: true } })).map((q) => q.targetNpcId!),
+    );
     // P107 (QA-27): `ZonePoint.factionSlug` casi nunca está relleno; la facción es la del propio NPC.
     const npcFactionBySlugZonePoint = new Map(npcFaunaZonePointIds.map((n) => [n.slug, n.faction]));
     // ZON-50/ZON-33 (hito 0.2): quién te perseguiría (misma regla que la persecución de
@@ -679,6 +684,7 @@ export async function zonaRoutes(app: FastifyInstance) {
           cantidad: p.cantidad,
           color: zonePointColorFor(p.factionSlug ?? npcFactionBySlugZonePoint.get(p.targetSlug) ?? null, factionsStatus, p.tipo),
           descubierto: yaDescubierto,
+          ...(objetivosDeMision.has(npcIdBySlugZonePoint.get(p.targetSlug) ?? '') ? { objetivoMision: true } : {}),
           // Compañero de fauna con nombre propio (C10, 2026-09-13) — presente solo si este NPC es
           // dueño de un companion; mismo criterio de `yaDescubierto` que el resto del punto (el
           // dueño no descubierto no debe filtrar el nombre real del companion).

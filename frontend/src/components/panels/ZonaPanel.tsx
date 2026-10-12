@@ -13,7 +13,7 @@ import { AnilloInteraccion, GridOverlay, JugadorMarker, ParcelaMarker, SalidaMar
 import { MS_POR_VELOCIDAD, PasoZonaContext } from '../../lib/zonaMovimiento'
 import { useAjustes } from '../../context/useAjustes'
 import { celdaDePixel, pixelDeCelda, riesgoDeRuta, rutaPrevista, tePersigue, textoCoste, type Celda } from '../../lib/zonaRuta'
-import { BanderaDestino, CeldaResaltada, CeldasEnRiesgo, EtiquetaCoste, LineaRuta, RadioAmenaza, RutaPatrulla } from '../zona/RutaZona'
+import { MarcaObjetivoMision, BanderaDestino, CeldaResaltada, CeldasEnRiesgo, EtiquetaCoste, LineaRuta, RadioAmenaza, RutaPatrulla } from '../zona/RutaZona'
 import { MenuFicha, TarjetaEncuentro, TarjetaFicha, type AccionFicha, type InfoFicha } from '../zona/MenuFicha'
 import type { PresentacionOferta } from '../../lib/ofertaModoDinamico'
 import { useEnciclopediaLink } from '../../context/useEnciclopediaLink'
@@ -503,6 +503,10 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
               {/* ZON-50: radio de persecución de los hostiles ya descubiertos, con «vigila» o «¡te persigue!». */}
               {hostiles.map((h) => (
                 <RadioAmenaza key={h.id} x={h.x} y={h.y} escala={escala} persigue={!!data.jugador && tePersigue(data.jugador, h)} />
+              ))}
+              {/* P106 (QA-27): el objetivo de una misión activa, marcado aunque siga sin descubrir. */}
+              {data.puntos.filter((p) => p.objetivoMision).map((p) => (
+                <MarcaObjetivoMision key={`mision-${p.id}`} x={p.x} y={p.y} escala={escala} />
               ))}
               {/* ZON-53: la patrulla de la ficha bajo el ratón (si ya está descubierta). */}
               {(() => {

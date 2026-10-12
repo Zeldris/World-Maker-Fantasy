@@ -106,6 +106,20 @@ export function RadioAmenaza({ x, y, escala, persigue }: { x: number; y: number;
   )
 }
 
+/// P106 (QA-27): marca de «objetivo de misión» sobre la ficha (aunque siga sin descubrir: «???»).
+export function MarcaObjetivoMision({ x, y, escala }: { x: number; y: number; escala: number }) {
+  return (
+    <g pointerEvents="none" data-testid="marca-objetivo-mision" style={{ transform: `translate(${x}px, ${y}px)` }}>
+      <g transform={`translate(0, ${-24 * escala}) scale(${escala})`}>
+        <rect x={-30} y={-11} width={60} height={14} rx={7} fill="rgba(20,16,12,0.85)" stroke="var(--color-quest-400)" strokeWidth={1} />
+        <text textAnchor="middle" y={0} fontSize={9.5} fill="var(--color-quest-400)">
+          🎯 misión
+        </text>
+      </g>
+    </g>
+  )
+}
+
 /// ZON-53: la patrulla de una ficha (en bucle), al pasar el ratón.
 export function RutaPatrulla({ ruta, escala }: { ruta: { x: number; y: number }[]; escala: number }) {
   const puntos = [...ruta, ruta[0]!].map((p) => `${p.x},${p.y}`).join(' ')
