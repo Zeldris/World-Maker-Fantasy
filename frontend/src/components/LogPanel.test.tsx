@@ -114,6 +114,14 @@ describe('LogPanel — aviso de riesgo en la tarjeta Cazar', () => {
     expect(getByRole('alert').getAttribute('data-riesgo')).toBe('alto')
   })
 
+  it('QA-27 P27: un NPC hostil que corta el paso también avisa del riesgo, hablando de pelear', () => {
+    const e = entryConOferta({ tipo: 'NPC', targetSlug: 'orco', targetName: 'Orco Enfurecido', zonePointId: undefined, cantidad: 1, combateForzado: true, quienInicia: 'jugador', riesgoCaza: { riesgo: 'mortal', motivo: 'Orco Enfurecido (nivel 4) frente a tu nivel 1.' } })
+    const aviso = render(<LogPanel {...baseProps} entries={[e]} isThinking={false} />).getByRole('alert')
+    expect(aviso.getAttribute('data-riesgo')).toBe('mortal')
+    expect(aviso.textContent).toContain('Pelear puede matarte')
+    expect(aviso.textContent).toContain('Orco Enfurecido (nivel 4)')
+  })
+
   it('riesgo bajo o sin dato: sin aviso', () => {
     const bajo = entryConOferta({ riesgoCaza: { riesgo: 'bajo', motivo: '' } })
     expect(render(<LogPanel {...baseProps} entries={[bajo]} isThinking={false} />).queryByRole('alert')).toBeNull()

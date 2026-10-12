@@ -285,6 +285,8 @@ describe('POST /saves/:id/zona/mover', () => {
       combateForzado: true,
     });
     expect(['jugador', 'npc']).toContain(body.dynamicModeOffer.quienInicia);
+    // QA-27 P27: quien te corta el paso también lleva el aviso de riesgo de la tarjeta.
+    expect(['bajo', 'alto', 'mortal']).toContain(body.dynamicModeOffer.riesgoCaza?.riesgo);
     expect(saveAfter.pendingDynamicModeOffer).toMatchObject({ combateForzado: true });
     // Un LogEntry real avisando del encuentro inevitable sigue existiendo (mismo criterio de
     // siempre: nunca desaparece sin dejar rastro).

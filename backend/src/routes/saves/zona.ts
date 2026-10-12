@@ -979,9 +979,11 @@ export async function zonaRoutes(app: FastifyInstance) {
           ...(combateForzado ? { combateForzado: true as const } : {}),
           ...(colisionZonePointId ? { zonePointId: colisionZonePointId } : {}),
           cantidad: colisionCantidad,
-          // Aviso de riesgo (F9-1, decisión de Álvaro, 2026-09-29): solo donde la tarjeta ofrece
-          // "Cazar" (FAUNA, no forzada, con ZonePoint) y solo como dato — no cambia ninguna regla.
-          ...(colisionTipo === 'FAUNA' && !combateForzado && colisionZonePointId
+          // Aviso de riesgo (F9-1, decisión de Álvaro, 2026-09-29): donde la tarjeta ofrece "Cazar"
+          // (FAUNA, no forzada, con ZonePoint) y, desde QA-27 P27 (usuaria, 2026-10-12, como el
+          // nivel de amenaza de X4 o el «Peligroso» de BG3), también cuando alguien hostil te corta
+          // el paso. Solo como dato: no cambia ninguna regla.
+          ...((colisionTipo === 'FAUNA' && !combateForzado && colisionZonePointId) || combateForzado
             ? {
                 riesgoCaza: riesgoDeCaza({
                   nivelJugador,
