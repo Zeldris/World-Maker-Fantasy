@@ -5,6 +5,7 @@
 #
 #   bash tools/playwright-e2e/arrancar-juego.sh              # base, backend :3001 y frontend :5173
 #   bash tools/playwright-e2e/arrancar-juego.sh --rehacer    # además, borra la base y la siembra de cero
+#   bash tools/playwright-e2e/arrancar-juego.sh --parar      # para backend, frontend y driver (QA-65)
 #
 # Viajes: TRAVEL_SEGUNDOS_PRIMER_TRAMO / _POR_TRAMO_EXTRA / _MAXIMOS (por defecto 5 / 3 / 20).
 # Registros: logs/backend.log y logs/frontend.log. Narraciones: las del Ollama simulado, que meten
@@ -19,6 +20,15 @@ export TRAVEL_SEGUNDOS_PRIMER_TRAMO="${TRAVEL_SEGUNDOS_PRIMER_TRAMO:-5}"
 export TRAVEL_SEGUNDOS_POR_TRAMO_EXTRA="${TRAVEL_SEGUNDOS_POR_TRAMO_EXTRA:-3}"
 export TRAVEL_SEGUNDOS_MAXIMOS="${TRAVEL_SEGUNDOS_MAXIMOS:-20}"
 PSQL="psql postgresql://tarkor:tarkor@localhost:5432/tarkor -Atq"
+
+# QA-65 (retro del 2026-10-12): la suite con base real, con el juego y el driver en marcha, sumaba
+# fallos por tiempo límite. `--parar` lo libera todo antes de pasarla.
+if [ "${1:-}" = "--parar" ]; then
+  if [ -s logs/backend.pid ]; then kill "$(cat logs/backend.pid)" 2>/dev/null || true; rm -f logs/backend.pid; fi
+  fuser -k 3001/tcp 5173/tcp "${DRIVER_PORT:-9333}/tcp" > /dev/null 2>&1 || true
+  echo "Juego parado (backend :3001, frontend :5173, driver :${DRIVER_PORT:-9333})."
+  exit 0
+fi
 
 if [ "${1:-}" = "--rehacer" ]; then $PSQL -c "DROP DATABASE IF EXISTS $BASE WITH (FORCE)"; fi
 nueva=0

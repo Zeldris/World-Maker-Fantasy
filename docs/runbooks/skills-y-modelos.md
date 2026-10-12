@@ -40,7 +40,8 @@ Skill (no basta con nombrarla); `/grill-with-docs` solo lo lanza la usuaria, con
    al día; sin commit de bitácora y sin subir, salvo que lo pida (QA-61).
 6. **Antes de un PR a `main`** (solo cuando lo pide la usuaria): `/code-review --max-findings all`
    del diff contra `main` (sin el tope de 10 hallazgos, `QA-18`; criterio en [`REVIEW.md`](../../REVIEW.md)), arreglar lo que encuentre y escribir
-   la descripción con `pr`.
+   la descripción con `pr`. Tras crear el PR, `subscribe_pr_activity` y se fusiona al llegar el CI en
+   verde, nunca antes (`QA-62`: el gancho de `QA-50` lo bloquea).
 7. **Al cerrar una fase o un hito:** `retro`, que lanza Claude sobre toda la fase; sus propuestas
    se presentan a la usuaria, que las revisa y confirma (nada se aplica antes). Cada pocas fases,
    `/improve-codebase-architecture`. Lo aceptado entra como tarea con hito.

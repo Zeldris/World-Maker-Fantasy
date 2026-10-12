@@ -1066,6 +1066,28 @@ las 8 aprobadas por la usuaria):
   aviso del mapa enseña la frase del backend).
 - ~~**QA-60 · Lo que escribe el Ollama simulado**~~ ✅ 2026-10-12: `estado.js` lo marca «[simulado]».
 - ~~**QA-61 · «Actualiza con main»**~~ ✅ 2026-10-12: paso 5 de `skills-y-modelos.md`.
+
+Retro del 2026-10-12, último tramo (implementación de `QA-54`…`QA-61` y PR #47; aprobadas por la
+usuaria `QA-62`…`QA-65`; la quinta propuesta, regresiones en la ronda, no entra):
+
+- ~~**QA-62 · Sin CI en verde no se fusiona**~~ ✅ 2026-10-12: el gancho de `QA-50` lee las comprobaciones
+  del commit de cabeza del PR (`gh api …/check-runs`) y bloquea si alguna no ha terminado en verde;
+  paso 6 de `skills-y-modelos.md` (suscribirse y fusionar con el verde) y regla en `CLAUDE.md`. Probado
+  sobre el #47 con el backend aún corriendo. Motivo: el #47 se fusionó con el CI corriendo.
+- **QA-63 · Los tiempos límite de `turn.integration`** (🚧 diagnosticado, falta el arreglo): los hooks
+  de «OrdenProduccion» y «Territory.control» pasan de 10 s (también en `main`). Diagnóstico del
+  2026-10-12 con `diagnosing-bugs`: el `afterEach` hace `prisma.save.delete`, que
+  `vitest.bdReal.setup.ts` envuelve para esperar a `esperarTodoElFondo()`; esos tests saltan 7 días,
+  así que el borrado espera al avance diario en segundo plano (`avanzarSiCruzaDia`, lanzado tras
+  responder el turno), que tarda 6-21 s. Medido: `prisma.save.delete` 6-21 s; el mismo borrado en SQL,
+  10-30 ms (sin esperar al fondo, y con interbloqueo 40P01 si se borra mientras avanza). Borrar una
+  partida vacía tarda 15 ms: no hay problema de índices. Falta decidir el arreglo: subir el tiempo
+  límite de esos hooks (o de `bd-real`) con el motivo, o acortar el avance de 7 días en esos tests;
+  luego, comprobar con el bloque entero en bucle (`-t "OrdenProduccion|Territory.control"`, 3 pasadas).
+- ~~**QA-64 · Un fallo que vuelve: todos los caminos**~~ ✅ 2026-10-12: «Un fallo que vuelve» en
+  `REVIEW.md`. Motivo: P32 volvió dos veces y la revisión del arreglo encontró cuatro caminos más.
+- ~~**QA-65 · Parar el juego antes de la suite**~~ ✅ 2026-10-12: `arrancar-juego.sh --parar` (backend,
+  frontend y driver) y paso 5 de `rondas-de-pruebas.md`.
 ---
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)

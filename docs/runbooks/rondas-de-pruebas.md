@@ -42,9 +42,11 @@ Cómo provocar cada cosa (los encuentros salen al moverse por el mapa de zona, n
    hacen antes o después de la ronda, no en medio. Si el MCP de Playwright no conecta,
    `driver.mjs` de `tools/playwright-e2e/` (`QA-41`), con las mismas ayudas: `orden.sh --ayuda
    <archivo> '<tk>'` (`QA-57`).
-5. Commit y push tras cada tanda de hallazgos; la tarea de la ronda en su roadmap lleva qué está
+5. Antes de pasar la suite con base real, `bash tools/playwright-e2e/arrancar-juego.sh --parar`: con el
+   juego y el driver en marcha, la carga suma fallos por tiempo límite (`QA-65`).
+6. Commit y push tras cada tanda de hallazgos; la tarea de la ronda en su roadmap lleva qué está
    hecho y qué falta.
-6. **`/code-review` cada 5-6 hallazgos arreglados** (`QA-40`, retro de `QA-27`), no solo al final: la
+7. **`/code-review` cada 5-6 hallazgos arreglados** (`QA-40`, retro de `QA-27`), no solo al final: la
    de `QA-27` revisó 30 commits de golpe y sacó 10 fallos.
 
 ## Lo que engaña
