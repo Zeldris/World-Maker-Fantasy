@@ -5,11 +5,14 @@ import { quantityOf, baseNameOf } from '../lib/gameViewHelpers'
 import { SelectionModalShell, confirmButtonClasses } from './SelectionModalShell'
 import { QuantityStepper } from './QuantityStepper'
 import { Miniatura } from './Miniatura'
+import { ACCION_BEBER_DE_LA_FUENTE } from '../lib/puntosDeAgua'
 
 interface HungerThirstSelectionModalProps {
   inventory: InventoryItemInfo[]
   hambre: number
   sed: number
+  /// QA-27 P39: el personaje está en un punto de agua real y puede beber sin odre.
+  enFuente?: boolean
   onConfirm: (actionText: string, hambreSedItemUses: { itemId: string; quantity: number }[]) => void
   onCancel: () => void
 }
@@ -30,7 +33,7 @@ function pctTextColor(pct: number): string {
 /// odre") — el Odre de agua (curtidor-orcos-llanuras, T1) se craftea vacío y se llena con
 /// "recoger agua" solo en una zona con agua real; el odre LLENO (`curaAgua: 100`) es el que
 /// aparece aquí como cualquier otra bebida.
-export function HungerThirstSelectionModal({ inventory, hambre, sed, onConfirm, onCancel }: HungerThirstSelectionModalProps) {
+export function HungerThirstSelectionModal({ inventory, hambre, sed, enFuente = false, onConfirm, onCancel }: HungerThirstSelectionModalProps) {
   const [quantities, setQuantities] = useState<Record<string, number>>({})
   const [selectionOrder, setSelectionOrder] = useState<string[]>([])
   const [confirmado, setConfirmado] = useState(false)
@@ -73,6 +76,12 @@ export function HungerThirstSelectionModal({ inventory, hambre, sed, onConfirm, 
     if (hambreSedItemUses.length === 0) return
     setConfirmado(true)
     onConfirm('Como y bebo algo antes de seguir.', hambreSedItemUses)
+  }
+
+  function handleBeberDeLaFuente() {
+    if (confirmado) return
+    setConfirmado(true)
+    onConfirm(ACCION_BEBER_DE_LA_FUENTE, [])
   }
 
   const nadaQueHacer = comestibles.length === 0 && bebibles.length === 0
@@ -156,9 +165,21 @@ export function HungerThirstSelectionModal({ inventory, hambre, sed, onConfirm, 
 
       <div className="space-y-1.5">
         <h4 className="text-2xs font-bold uppercase tracking-wide text-wood-500">Bebida</h4>
+        {!sedYaLlena && enFuente && (
+          <button
+            type="button"
+            onClick={handleBeberDeLaFuente}
+            disabled={confirmado}
+            className="flex w-full items-center gap-2 rounded-lg border border-iron-700 p-2.5 text-left text-xs text-wood-300 transition-colors hover:border-accent-600/60 hover:bg-accent-500/10 disabled:opacity-50"
+          >
+            <span aria-hidden="true">💧</span>
+            <span className="mr-auto font-semibold text-wood-100">Beber de la fuente</span>
+            <span className="text-2xs text-wood-500">hasta saciarte, sin odre</span>
+          </button>
+        )}
         {sedYaLlena ? (
           <p className="text-xs text-wood-500">Ya no tienes sed — no hace falta beber más.</p>
-        ) : bebibles.length === 0 ? (
+        ) : bebibles.length === 0 && enFuente ? null : bebibles.length === 0 ? (
           <p className="text-xs text-wood-500">No llevas nada que sacie la sed — necesitas un odre lleno u otra bebida.</p>
         ) : (
           bebibles.map((item) => {

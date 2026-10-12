@@ -439,6 +439,24 @@ describe('GET /world/:slug/enciclopedia', () => {
     }
   });
 
+  // P41 (QA-27): la Capital de la jugadora («Hogar de Maktor», alias «maktor») enlazaba cada
+  // «Maktor» del texto como lugar; y se pedían también los lugares de otras partidas.
+  describe('P41 — lugares de la partida en la Enciclopedia', () => {
+    it('pide solo los del catálogo y los de esta partida, y los de la partida van sin alias', async () => {
+      findUniqueWorld.mockResolvedValue({ id: 'world1', slug: 'helek-sirik' });
+      findManyLocation.mockResolvedValue([
+        { id: 'l1', slug: 'restos-de-maktor', name: 'Los Restos de Maktor', aliases: ['ruinas de maktor'], region: 'Llanuras', kind: 'hito', description: 'x', saveId: null },
+        { id: 'l2', slug: 'hogar-de-maktor-save1', name: 'Hogar de Maktor', aliases: ['maktor'], region: 'Llanuras', kind: 'interior', description: 'x', saveId: 'save1' },
+      ]);
+      const app = await buildApp();
+      const res = await app.inject({ method: 'GET', url: '/world/helek-sirik/enciclopedia?saveId=save1' });
+      expect(findManyLocation).toHaveBeenCalledWith({ where: { worldId: 'world1', OR: [{ saveId: null }, { saveId: 'save1' }] } });
+      const porSlug = Object.fromEntries((res.json().locations as { slug: string; aliases: string[] }[]).map((l) => [l.slug, l.aliases]));
+      expect(porSlug['restos-de-maktor']).toEqual(['ruinas de maktor']);
+      expect(porSlug['hogar-de-maktor-save1']).toEqual([]);
+    });
+  });
+
   describe('sección "Historia" — candado de traducción (2026-08-06)', () => {
     it('sin requiresTranslation, descubierto = desbloqueado, con el texto real', async () => {
       findUniqueWorld.mockResolvedValue({ id: 'world1', slug: 'helek-sirik' });

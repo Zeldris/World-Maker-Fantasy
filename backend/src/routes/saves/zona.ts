@@ -352,7 +352,12 @@ export async function zonaRoutes(app: FastifyInstance) {
       fictionalMinutes,
     });
     const zonePointSlugs = new Set(zonePointsActivos.map((p) => p.targetSlug));
-    const dinamicosCandidatos = npcsInScene.filter((n) => n.condicionFisica !== 'MUERTO' && !zonePointSlugs.has(n.slug));
+    // P24 y P51 (QA-27): una fauna ya vista en la partida se salta el filtro de lugar de
+    // `detectNpcsInScene` (bien para el turno), y si los hechos de sesión la nombran salía «presente
+    // ahora» en cualquier zona: un Guchapo cazado en el Pozo aparecía en la Hondonada o en las Agujas.
+    // En el mapa, quien no es un personaje único solo está en su lugar de origen (o si no tiene).
+    const fueraDeSuSitio = (n: { kind: string; homeLocationSlug: string | null }) => n.kind !== 'PRINCIPAL' && !!n.homeLocationSlug && n.homeLocationSlug !== locationSlug;
+    const dinamicosCandidatos = npcsInScene.filter((n) => n.condicionFisica !== 'MUERTO' && !zonePointSlugs.has(n.slug) && !fueraDeSuSitio(n));
 
     // Punto del jugador en el mapa de Zona (2026-09-04) — `NpcState` de TODOS los NPC/fauna
     // implicados hoy en el mapa (dinámicos + los `ZonePoint` reales de tipo NPC/FAUNA), una sola
@@ -817,7 +822,10 @@ export async function zonaRoutes(app: FastifyInstance) {
       currentLocationId: locationId,
       fictionalMinutes,
     });
-    const dinamicosCandidatosColision = npcsInSceneColision.filter((n) => n.condicionFisica !== 'MUERTO' && !zonePointSlugsColision.has(n.slug));
+    // Mismo filtro de lugar que el mapa (P24/P51): quien no se pinta tampoco te corta el paso.
+    const locationSlugColision = (await tx.location.findUnique({ where: { id: locationId }, select: { slug: true } }))?.slug ?? null;
+    const fueraDeSuSitioColision = (n: { kind: string; homeLocationSlug: string | null }) => n.kind !== 'PRINCIPAL' && !!n.homeLocationSlug && n.homeLocationSlug !== locationSlugColision;
+    const dinamicosCandidatosColision = npcsInSceneColision.filter((n) => n.condicionFisica !== 'MUERTO' && !zonePointSlugsColision.has(n.slug) && !fueraDeSuSitioColision(n));
     const dinamicosStatesColision = dinamicosCandidatosColision.length
       ? await tx.npcState.findMany({
           where: {
@@ -846,6 +854,7 @@ export async function zonaRoutes(app: FastifyInstance) {
           // "¿Quién ve a quién primero?" (2026-09-17) — Destreza real, ya proyectada a su nivel
           // real por `detectNpcsInScene` (npcAttributesForLevel).
           attributes: n.attributes,
+          level: n.level,
         };
       })
       .filter((d): d is NonNullable<typeof d> => d !== null);
@@ -909,6 +918,7 @@ export async function zonaRoutes(app: FastifyInstance) {
           colision = { targetSlug: dinamico.targetSlug, targetName: nombreDinamico, temperamento };
           colisionTipo = dinamico.tipo;
           destrezaColision = dinamico.attributes.destreza;
+          nivelNpcColision = dinamico.level;
           break;
         }
       }
@@ -974,9 +984,11 @@ export async function zonaRoutes(app: FastifyInstance) {
           ...(combateForzado ? { combateForzado: true as const } : {}),
           ...(colisionZonePointId ? { zonePointId: colisionZonePointId } : {}),
           cantidad: colisionCantidad,
-          // Aviso de riesgo (F9-1, decisión de Álvaro, 2026-09-29): solo donde la tarjeta ofrece
-          // "Cazar" (FAUNA, no forzada, con ZonePoint) y solo como dato — no cambia ninguna regla.
-          ...(colisionTipo === 'FAUNA' && !combateForzado && colisionZonePointId
+          // Aviso de riesgo (F9-1, decisión de Álvaro, 2026-09-29): donde la tarjeta ofrece "Cazar"
+          // (FAUNA, no forzada, con ZonePoint) y, desde QA-27 P27 (usuaria, 2026-10-12, como el
+          // nivel de amenaza de X4 o el «Peligroso» de BG3), también cuando alguien hostil te corta
+          // el paso. Solo como dato: no cambia ninguna regla.
+          ...((colisionTipo === 'FAUNA' && !combateForzado && colisionZonePointId) || combateForzado
             ? {
                 riesgoCaza: riesgoDeCaza({
                   nivelJugador,

@@ -78,6 +78,7 @@ export function GameModals() {
     enciclopediaData,
     condicionFisica,
     hambre,
+    currentLocation,
     sed,
     pendingClaseChoice,
     clasesDisponibles,
@@ -295,6 +296,7 @@ export function GameModals() {
             inventory={inventory}
             hambre={hambre}
             sed={sed}
+            enFuente={!!currentLocation?.puntoDeAgua}
             onConfirm={(actionText, hambreSedItemUses) => {
               setHungerThirstModalOpen(false)
               handleSubmit(actionText, { hambreSedItemUses })
@@ -456,7 +458,12 @@ export function GameModals() {
                   handleResponderEscribiendo(nombre)
                 },
                 onVerRecursoDetalle: handleVerRecursoDetalle,
-                onCazarEnZona: handleCazarEnZona,
+                // P9 (QA-27): cazar acaba en combate o en Combatir/Huir en el diario; el mapa se cierra
+                // en cuanto la caza sale, para no dejar esas opciones debajo. Si falla, sigue abierto
+                // con el error en la tarjeta.
+                onCazarEnZona: async (id, zonePointId) => {
+                  if (await handleCazarEnZona(id, zonePointId)) cerrarMapa()
+                },
                 onDismissDynamicModeOffer: handleDismissDynamicModeOffer,
               })
             }}

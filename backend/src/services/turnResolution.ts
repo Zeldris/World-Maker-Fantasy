@@ -1,4 +1,5 @@
 import { registrarFinDeMision, registrarSucesoDeNpc } from './cronista/emisores.js';
+import { repartirIntercambios, CONDICION_EN_TEXTO, type IntercambioContraJugadora } from './intercambiosContraJugadora.js';
 import { bajasDeCampamentoEnVivo } from './ataquesCampamento.js';
 import { cupoDeCamas } from './cronista/subditos.js';
 import { env } from '../config/env.js';
@@ -30,7 +31,7 @@ import { compassNarrationText, type CompassLinkInfo } from './compassNarration.j
 import { energiaMaxFor, energiaPasivaEntre, nextEnergia, restCooldownActivo } from './energy.js';
 import { WEAPON_ABILITY_LEVEL_AVANZADA, dualWieldAdjustedDifficulty, weaponCategoryForRealAbilityName, type EquippedWeaponSlot } from './weaponAbilities.js';
 import { syncDynamicCombatAbilities } from './dynamicAbilities.js';
-import { CRAFTING_RECIPES, detectsCraftIntent, canCraft, craftRequisitoShortfalls, planCraftConsumption, hasToolForOficio, OFICIOS_CON_HERRAMIENTA_REQUERIDA } from './crafting.js';
+import { CRAFTING_RECIPES, detectsCraftIntent, canCraft, craftRequisitoShortfalls, bebeDeLaFuente, soloBebeDeLaFuente, planCraftConsumption, hasToolForOficio, OFICIOS_CON_HERRAMIENTA_REQUERIDA } from './crafting.js';
 import { detectsBuildIntent, checkRecipe, planRecipeConsumption, baseNameOf, quantityOf, CONSTRUCTION_RECIPES, computeBuildBlockedReason, buildingTierFor, type ConstructionRecipe, type RecipeCheck } from './construction.js';
 import { shortfallLabel } from './requisitos.js';
 import { inventorySummaryFor, type CatalogLookup, type InventoryRowLike } from './ingredients.js';
@@ -63,7 +64,7 @@ import { invalidateCarcassRollCache } from '../routes/saves/recolectar.js';
 import { instanceNumbersByParticipantId, resolverObjetivoPorTexto, type HabilidadParaIntercambio } from './combateMultiple.js';
 import { prisma } from '../lib/prisma.js';
 import { registrarSuceso } from './cronista/sucesos.js';
-import { aplicarHuidaNpc, decidirMoralTrasIntercambio } from './huidaNpc.js';
+import { aplicarHuidaNpc, decidirHuidaPorHabilidad, decidirMoralTrasIntercambio, textoTiradaHuida } from './huidaNpc.js';
 import { abrirCombateDePersonas, grupoDePersona } from './combatePersonas.js';
 import { effectiveAttributesConDuracion, pushActiveEffect, decrementActiveEffects, type ActiveEffect } from './activeEffects.js';
 import type { RollResult, AttributeBlock, Attribute, GradoExito } from './dice.js';
@@ -528,6 +529,9 @@ export interface NarrateAndPersistResult {
   /// las dos tiradas reales del intercambio de ESTE turno (ver `CombatExchangeDisplay`,
   /// combatExchange.ts), null si no hubo intercambio.
   combatExchangeDisplay: CombatExchangeDisplay | null;
+  /// P55 (QA-27): en un combate de grupo, el resto de ataques que recibió la jugadora este turno
+  /// (el primero ya va en `combatExchangeDisplay`). Cada uno es su propia entrada del diario.
+  intercambiosExtra: { logEntryId: string; text: string; combatExchange?: CombatExchangeDisplay }[];
   /// Mismo hueco exacto que `npcAbilityUsed` pero para el lado del jugador (petición explícita,
   /// misma revisión: "cuando seleccione una habilidad esta se refleje en la narración con su
   /// descripción") — null en texto libre sin botón o sin intercambio.
@@ -3104,16 +3108,28 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // posteriores (animación en vivo, persistencia en LogEntry, `return` final) sigan funcionando
   // igual cuando NO hay combate múltiple de por medio.
   let combatExchangeDisplayFinal: CombatExchangeDisplay | null = combatExchangeDisplay;
+  // P55 (QA-27): ataques contra la jugadora que no caben en `combatExchangeDisplayFinal`.
+  let intercambiosContraJugadoraExtra: IntercambioContraJugadora[] = [];
+  const golpesSinTiradaContraJugadora: { atacanteNombre: string; nuevaCondicion: CondicionFisica }[] = [];
+  const intercambiosExtra: { logEntryId: string; text: string; combatExchange?: CombatExchangeDisplay }[] = [];
 
   // CR-44 (44b): moral del NPC golpeado en el 1v1. Si huye, el combate con él termina; si la moral
   // falla y no escapa, pierde su próximo golpe (la iniciativa pasa a la jugadora, como un aturdimiento).
-  const moralNpc = combateActivo
+  const moralNpcTirada = combateActivo
     ? await decidirMoralTrasIntercambio(prisma, {
         saveId, worldId, npc: npcAttackTarget, npcAttackHits, npcTargetNewCondicion,
         condicionJugadorTras: jugadorRecibeGolpe ? nextCondicionForAttack(jugadorGolpeEfectos, params.condicionFisica) : params.condicionFisica,
         nivelJugador: params.currentLevel,
       })
     : null;
+  // QA-27 P12: o huye con una defensa que lo promete («Huida a la madriguera»…).
+  const huidaPorHabilidad =
+    combateActivo && !moralNpcTirada && npcAbilityUsed?.rol === 'defensa'
+      ? await decidirHuidaPorHabilidad(prisma, {
+          saveId, worldId, npc: npcAttackTarget, habilidadDefensa: npcAbilityUsed.abilityName, npcAttackHits, nivelJugador: params.currentLevel,
+        })
+      : null;
+  const moralNpc = moralNpcTirada ?? huidaPorHabilidad;
   const npcPierdeIniciativa = !!moralNpc && (moralNpc.huye || moralNpc.pierdeTurno);
   const nuevoPendingNpcAttack = npcPierdeIniciativa ? null : nuevoPendingNpcAttackFase;
   const nextInitiativeRoll = npcPierdeIniciativa ? null : nextInitiativeRollFase;
@@ -4288,7 +4304,14 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     hungerGanancia > 0
       ? lastAtMinutesForGanancia(params.lastAteAtMinutes, fictionalMinutesParaComerBeber, COMIDA_MINUTOS_POR_TRAMO, hungerGanancia)
       : params.lastAteAtMinutes;
-  const aguaGanancia = hambreSedItemUsesValidated.reduce((sum, u) => sum + u.curaAgua * u.quantity, 0);
+  // QA-27 P39: en un punto de agua real se puede beber sin odre, hasta saciarse.
+  // En combate no se para a beber.
+  const bebeFuente = !usingExplicitHungerThirstList && !travel && !enCombate && bebeDeLaFuente(action, currentLocationRecord?.slug);
+  const bebeFuenteSinNarrador = bebeFuente && soloBebeDeLaFuente(action);
+  if (bebeFuente && !bebeFuenteSinNarrador) {
+    contextBlocks.push(`BEBER — YA RESUELTO: ${characterName} bebe del agua del lugar hasta saciar la sed. Narra que bebe junto al resto de lo que hace.`);
+  }
+  const aguaGanancia = bebeFuente ? 100 : hambreSedItemUsesValidated.reduce((sum, u) => sum + u.curaAgua * u.quantity, 0);
   const nuevoLastDrankAtMinutes =
     aguaGanancia > 0
       ? lastAtMinutesForGanancia(params.lastDrankAtMinutes, fictionalMinutesParaComerBeber, AGUA_MINUTOS_POR_TRAMO, aguaGanancia)
@@ -4298,7 +4321,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         const itemsTexto = hambreSedItemUsesValidated.map((u) => (u.quantity > 1 ? `${baseNameOf(u.name)} ×${u.quantity}` : baseNameOf(u.name))).join(', ');
         return { narration: `${characterName} usa ${itemsTexto}. ${pickFlavor(EAT_DRINK_FLAVOR)}` };
       })()
-    : null;
+    : bebeFuenteSinNarrador
+      ? { narration: `${characterName} se agacha junto al agua y bebe hasta saciarse. ${pickFlavor(EAT_DRINK_FLAVOR)}` }
+      : null;
 
   // Escena de Gistera Koh, fase 2 — solución limpia (auditoría 2026-07-30, "revisar partida",
   // tras encontrarlo fallando EN VIVO por segunda vez: la primera vez inventó "Múrgol" como
@@ -4529,6 +4554,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     const antes = await resolverTurnosAutonomosHastaJugadora({ prisma, worldId, saveId, encounterId });
     narraciones.push(...antes.narraciones);
     const intercambiosContraJugadora = [...antes.intercambiosContraJugadora];
+    golpesSinTiradaContraJugadora.push(...antes.golpesSinTiradaContraJugadora);
     combatEncounterCaidos.push(...antes.caidos);
     combatEncounterTerminado = antes.encounterTerminado;
 
@@ -4600,6 +4626,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         const despues = await resolverTurnosAutonomosHastaJugadora({ prisma, worldId, saveId, encounterId });
         narraciones.push(...despues.narraciones);
         intercambiosContraJugadora.push(...despues.intercambiosContraJugadora);
+        golpesSinTiradaContraJugadora.push(...despues.golpesSinTiradaContraJugadora);
         combatEncounterCaidos.push(...despues.caidos);
         combatEncounterTerminado = despues.encounterTerminado;
       }
@@ -4608,9 +4635,10 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // Fase G del 0.1 (hallazgo G11): si la jugadora no tuvo intercambio propio este turno (un
     // enemigo con más iniciativa ya resolvió el duelo de la ronda), se enseña el primer intercambio
     // real en el que la atacaron — antes no salía ninguna tirada y su acción parecía no hacer nada.
-    if (!combatExchangeDisplayFinal && intercambiosContraJugadora.length > 0) {
-      combatExchangeDisplayFinal = { ...intercambiosContraJugadora[0].display, rivalNombre: intercambiosContraJugadora[0].atacanteNombre };
-    }
+    // P55 (QA-27): los ataques que recibió y no caben en la narración, aparte en el diario.
+    const reparto = repartirIntercambios(combatExchangeDisplayFinal, intercambiosContraJugadora);
+    combatExchangeDisplayFinal = reparto.principal;
+    intercambiosContraJugadoraExtra = reparto.aparte;
 
     combatEncounterNarration = narraciones.filter(Boolean).join(' ') || `${characterName} se mantiene en guardia, pero el intercambio no llega a resolverse este turno.`;
 
@@ -4632,6 +4660,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     craftMode ||
     usingExplicitHealList ||
     usingExplicitHungerThirstList ||
+    bebeFuenteSinNarrador ||
     restBlockedByCooldown
   );
 
@@ -4659,7 +4688,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
             ? { narration: craftNarration!, newFacts: [] }
             : usingExplicitHealList
               ? { narration: healPreview!.narration, newFacts: [] }
-              : usingExplicitHungerThirstList
+              : usingExplicitHungerThirstList || bebeFuenteSinNarrador
                 ? { narration: hungerThirstPreview!.narration, newFacts: [] }
                 : restBlockedByCooldown
                   ? {
@@ -5230,7 +5259,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         data: {
           saveId, channel: 'CHARACTER', isSystemMessage: true, timeLabel: nuevaFictionalDateLabel, fictionalMinutes: nuevoFictionalMinutes,
           createdAt: nextAfterMainLogCreatedAt(),
-          text: `${moralNpc.texto} (Moral: ${moralNpc.moral.usedRoll}${moralNpc.moral.modo === 'desventaja' ? ' con desventaja' : ''} → ${moralNpc.moral.total} contra ${moralNpc.moral.dificultad}${moralNpc.escape ? `; huida: ${moralNpc.escape.roll} → ${moralNpc.escape.total} contra ${moralNpc.escape.dificultad}` : ''}.)`,
+          text: textoTiradaHuida(moralNpc),
         },
       });
       if (moralNpc.huye && npcAttackTarget) {
@@ -5270,7 +5299,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     if (combatEncounterCaidos.length > 0) {
       const npcCaidosIds = combatEncounterCaidos.filter((c) => c.tipo === 'NPC' && c.npcId).map((c) => c.npcId!);
       const npcCaidosRows = npcCaidosIds.length
-        ? await tx.npc.findMany({ where: { id: { in: npcCaidosIds } }, select: { id: true, name: true, raza: true, slug: true, faction: true } })
+        ? await tx.npc.findMany({ where: { id: { in: npcCaidosIds } }, select: { id: true, name: true, raza: true, slug: true, faction: true, articulo: true } })
         : [];
       const npcCaidoById = new Map(npcCaidosRows.map((n) => [n.id, n]));
       for (const caido of combatEncounterCaidos) {
@@ -6326,12 +6355,21 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // más allá de leer con atención la narración de llegada. `nextBeforeMainLogCreatedAt` (ver
     // comentario al principio de la transacción) — offset fijo respecto a `mainLogEntry`, no reloj
     // real, para que el orden sea correcto sin importar cuánto trabajo real pase entre ambas filas.
+    // QA-27 P47: el aviso nombra a quien sale al paso; si no, cuando no hay tarjeta (ya hay una
+    // conversación abierta) ni el narrador lo menciona, la interrupción se queda vacía. Un personaje
+    // único no se nombra aquí: puede no estar descubierto todavía (hallazgo 34).
+    const interruptor = travelInterruptionNpcId
+      ? npcsInSceneWithInterruption.find((n) => n.id === travelInterruptionNpcId && n.kind !== 'PRINCIPAL')
+      : undefined;
+    const quienSaleAlPaso = interruptor
+      ? `${interruptor.articulo ? `${interruptor.genero === 'F' || interruptor.articulo === 'la' ? 'una' : 'un'} ` : ''}${interruptor.name}`
+      : null;
     if (travelInterruptionOriginalDestinationName) {
       await tx.logEntry.create({
         data: {
           saveId,
           channel: 'CHARACTER',
-          text: `El camino hacia ${travelInterruptionOriginalDestinationName} se corta antes de tiempo — algo te sale al paso.`,
+          text: `El camino hacia ${travelInterruptionOriginalDestinationName} se corta antes de tiempo — ${quienSaleAlPaso ? `te sale al paso ${quienSaleAlPaso}` : 'algo te sale al paso'}.`,
           timeLabel,
           fictionalMinutes: nuevoFictionalMinutes,
           createdAt: nextBeforeMainLogCreatedAt(),
@@ -6349,7 +6387,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         data: {
           saveId,
           channel: 'CHARACTER',
-          text: 'Algo te sale al paso mientras estás ocupado con esto.',
+          text: quienSaleAlPaso ? `Te sale al paso ${quienSaleAlPaso} mientras estás ocupado con esto.` : 'Algo te sale al paso mientras estás ocupado con esto.',
           timeLabel,
           fictionalMinutes: nuevoFictionalMinutes,
           createdAt: nextBeforeMainLogCreatedAt(),
@@ -6417,6 +6455,34 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         combate: !!enCombate,
       },
     });
+
+    // P55 (QA-27): cada ataque de más que recibió la jugadora en un combate de grupo, con sus dados.
+    // Sin esto, se podía caer tras ganar el único intercambio que se veía.
+    for (const extra of intercambiosContraJugadoraExtra) {
+      const combatExchange = { ...extra.display, rivalNombre: extra.atacanteNombre };
+      const text = `${extra.atacanteNombre} te ataca.`;
+      const entrada = await tx.logEntry.create({
+        data: {
+          saveId,
+          channel: 'CHARACTER',
+          text,
+          combatExchange: combatExchange as unknown as Prisma.InputJsonValue,
+          timeLabel,
+          fictionalMinutes: nuevoFictionalMinutes,
+          createdAt: nextAfterMainLogCreatedAt(),
+          combate: true,
+        },
+      });
+      intercambiosExtra.push({ logEntryId: entrada.id, text, combatExchange });
+    }
+    // P55 (QA-27): los golpes gratis no tienen tirada, pero también dejan su línea en el diario.
+    for (const golpe of golpesSinTiradaContraJugadora) {
+      const text = `${golpe.atacanteNombre} te golpea sin que puedas defenderte (estás ocupado con otro rival). Estado: ${CONDICION_EN_TEXTO[golpe.nuevaCondicion]}.`;
+      const entrada = await tx.logEntry.create({
+        data: { saveId, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: nuevoFictionalMinutes, createdAt: nextAfterMainLogCreatedAt(), combate: true },
+      });
+      intercambiosExtra.push({ logEntryId: entrada.id, text });
+    }
 
     if (compassNarrationLine) {
       // Brújula (2026-08-15) — LogEntry aparte, construido a mano, NUNCA pasado por el Narrador:
@@ -7249,6 +7315,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     esperandoDefensaJugador: !!nuevoPendingNpcAttack,
     npcAbilityUsed,
     combatExchangeDisplay: combatExchangeDisplayFinal,
+    intercambiosExtra,
     playerAbilityUsed,
     nextInitiativeRoll,
     territories,

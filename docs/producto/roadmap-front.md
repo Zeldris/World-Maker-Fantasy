@@ -734,6 +734,14 @@ Contenedor común: `PanelDrawer` (cajón inferior, `max-w-4xl`, 85 vh).
 - **CMB-9 · Subir el tope de 4 combatientes por grupo** a 6 u 8 (usuaria, 2026-10-07): el límite de 4
   nace de los tiempos de narración; en la fase de pulido, al mejorar esos tiempos, se sube
   (`MAX_COMBATIENTES_POR_BANDO` y el tamaño de los grupos de combate). Hito `0.8`. **M**
+- **CMB-10 · Castigo por estado en porcentaje** (usuaria, 2026-10-11, sale de P10 de `QA-27`): hoy el
+  estado resta una cantidad fija al atributo de la tirada (−2 herido, −5 grave, −10 convaleciente,
+  `CONDICION_MALUS`, death.ts), que pesa mucho más a un personaje débil que a uno fuerte. Pasa a un
+  porcentaje del atributo; propuesta: −20 % herido, −40 % grave, −60 % convaleciente (como X4, donde el
+  daño del casco baja la velocidad en proporción, y Bellwright, donde las heridas recortan aguante y vida
+  en proporción). Un rival convaleciente sigue pudiendo actuar y defenderse al rematarlo (decisión de la
+  usuaria). Incluye el desglose de la tirada en pantalla («−2 heridas»), los tests de combate y las
+  cifras en `cifras-provisionales.md`.
 
 ---
 
@@ -902,8 +910,16 @@ Retro del 2026-10-08 (`CR-63`, `CR-65`, `CR-50`, `CR-37`, `CR-67`; propuestas ap
   P43 y P44 (interiores de otras partidas: `Location.saveId`) arreglados; el resto de P9-P51,
   apuntados en el registro sin arreglar (la usuaria: solo lo que bloquee). 2026-10-10, los 11 más
   rápidos que eligió la usuaria: P13, P15, P21, P25, P28, P29, P31, P32 (el mapa no entraba en el
-  inventario hasta recargar), P35 (y 41 notas internas más en el catálogo), P38 y P42. Falta: el resto
-  de apuntados (lista por esfuerzo, del 12 en adelante) y seguir jugando.
+  inventario hasta recargar), P35 (y 41 notas internas más en el catálogo), P38 y P42. 2026-10-11
+  (la otra cuenta, rama `claude/wonderful-volta-662qt8`, reparto de la usuaria): P9, P11, P12, P14,
+  P17, P18, P19, P20, P24, P26, P33 y P51, y los nuevos que salieron jugando: P53 (intro con las
+  Llanuras al este), P54 («Chaman»), P55 (en combate de grupo los demás ataques y los golpes gratis
+  no salían en el diario) y P56 (dos tiradas para la misma acción). 2026-10-12: P36, P37, P39
+  (beber de una fuente sin odre), P41, P45 y P46 (sin comprobar en vivo); P10 pasa a `CMB-10`, P30
+  y P40 no aplican; P27 (aviso de riesgo también cuando te cortan el paso), la huida real de P12 (1v1), P47 (el aviso
+  de interrupción nombra a quien sale al paso) y P50 (grupos de fauna repartidos); P23 y P48 no
+  aplican (por diseño). Falta: P16 (sin reproducir), P49 (falta la ilustración de Las Agujas Imán)
+  y seguir jugando.
 
 
 Retro del 2026-10-09 (ronda de pruebas `QA-27`; propuestas aprobadas por la usuaria):

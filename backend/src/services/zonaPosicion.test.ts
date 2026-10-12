@@ -27,6 +27,9 @@ import {
   posicionesDeSalidas,
   SEPARACION_MINIMA_SALIDAS,
   celdaLibreEnEspiral,
+  celdaParaGrupoNuevo,
+  RADIO_GRUPO_NUEVO,
+  SEPARACION_ENTRE_GRUPOS,
   claveCelda,
 } from './zonaPosicion.js';
 
@@ -525,5 +528,32 @@ describe('celdaLibreEnEspiral', () => {
     expect(libre.row).toBeGreaterThanOrEqual(0);
     expect(libre.col).toBeLessThan(GRID_COLS);
     expect(libre.row).toBeLessThan(GRID_ROWS);
+  });
+});
+
+describe('celdaParaGrupoNuevo (QA-27 P50)', () => {
+  const distancia = (a: { col: number; row: number }, b: { col: number; row: number }) => Math.max(Math.abs(a.col - b.col), Math.abs(a.row - b.row));
+
+  it('reparte los grupos de una especie separados entre sí y cerca del ancla', () => {
+    const ancla = { col: 8, row: 6 };
+    const ocupadas = new Set([claveCelda(ancla)]);
+    const especie = [ancla];
+    let semilla = 0.13;
+    const random = () => (semilla = (semilla * 9301 + 0.4927) % 1);
+    for (let i = 0; i < 4; i++) {
+      const c = celdaParaGrupoNuevo(ancla, ocupadas, especie, random);
+      expect(distancia(c, ancla)).toBeLessThanOrEqual(RADIO_GRUPO_NUEVO);
+      for (const otra of especie) expect(distancia(c, otra)).toBeGreaterThanOrEqual(SEPARACION_ENTRE_GRUPOS);
+      ocupadas.add(claveCelda(c));
+      especie.push(c);
+    }
+  });
+
+  it('sin hueco separado, vuelve a la espiral junto al ancla', () => {
+    const ancla = { col: 0, row: 0 };
+    const especie: { col: number; row: number }[] = [];
+    for (let row = 0; row < 12; row += 2) for (let col = 0; col < 16; col += 2) especie.push({ col, row });
+    const c = celdaParaGrupoNuevo(ancla, new Set([claveCelda(ancla)]), especie, () => 0);
+    expect(distancia(c, ancla)).toBe(1);
   });
 });

@@ -320,6 +320,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
         npcAbilityUsed,
         playerAbilityUsed,
         combatExchangeDisplay,
+        intercambiosExtra,
         nextInitiativeRoll,
         deathCount: updatedDeathCount,
         factionsStatus: updatedFactionsStatus,
@@ -370,6 +371,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
         npcAbilityUsed,
         playerAbilityUsed,
         combatExchangeDisplay,
+        intercambiosExtra,
         nextInitiativeRoll,
         newQuestInfo,
         newQuestOfferInfo,
@@ -719,6 +721,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     npcAbilityUsed: { npcName: string; abilityName: string; rol: 'ataque' | 'defensa' } | null
     playerAbilityUsed: { name: string; icon: string; description: string; rol: 'ataque' | 'defensa' } | null
     combatExchangeDisplay: CombatExchangeInfo | null
+    intercambiosExtra?: { logEntryId: string; text: string; combatExchange?: CombatExchangeInfo }[]
     nextInitiativeRoll: InitiativeRollInfo | null
     newQuestInfo?: { title: string; objetivo: string } | null
     newQuestOfferInfo?: { title: string; description: string } | null
@@ -759,6 +762,19 @@ export function useCombatFlow(params: UseCombatFlowParams) {
           professionXpGain: params.professionXpGains?.[0] ?? undefined,
         },
       ]
+      // P55 (QA-27): los demás ataques que recibió en un combate de grupo, cada uno con sus dados
+      // (mismas filas que guarda el backend, así se ven igual tras recargar).
+      for (const extra of params.intercambiosExtra ?? []) {
+        next.push({
+          id: extra.logEntryId,
+          channel: 'character' as const,
+          text: extra.text,
+          timeLabel: params.timeLabel,
+          createdAt: new Date().toISOString(),
+          combate: true,
+          combatExchange: extra.combatExchange,
+        })
+      }
       // Misión completada (2026-08-13) — LogEntry REAL aparte, nunca fusionada con la narración
       // principal de arriba: el combate puede cerrar una misión en el mismo golpe que la mata,
       // pero son dos filas distintas en la DB.

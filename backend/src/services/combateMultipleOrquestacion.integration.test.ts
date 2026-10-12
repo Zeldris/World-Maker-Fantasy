@@ -203,6 +203,28 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     await prisma.save.update({ where: { id: saveId }, data: { activeEffects: [], condicionFisica: 'ILESO', energia: 100 } });
   }, 30_000);
 
+  // P55 (QA-27): con dos enemigos sobre la jugadora, el segundo le da un golpe gratis (sin tirada).
+  // Ese golpe también tiene que llegar al caller para dejar su línea en el diario.
+  it('un golpe gratis contra la jugadora queda en golpesSinTiradaContraJugadora', async () => {
+    const enemigo = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } });
+    const { encounterId } = await prisma.$transaction((tx) =>
+      iniciarCombatEncounter(tx, saveId, [
+        { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 1, inteligencia: 10 },
+        { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-p55-a', destreza: 1000, inteligencia: 6 },
+        { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-p55-b', destreza: 999, inteligencia: 6 },
+      ]),
+    );
+
+    const ronda = await resolverTurnosAutonomosHastaJugadora({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
+
+    expect(ronda.golpesSinTiradaContraJugadora.length).toBeGreaterThanOrEqual(1);
+    expect(ronda.golpesSinTiradaContraJugadora[0].atacanteNombre).toBe(enemigo.name);
+    expect(['HERIDO', 'GRAVE', 'CONVALECIENTE', 'MUERTO']).toContain(ronda.golpesSinTiradaContraJugadora[0].nuevaCondicion);
+
+    await prisma.combatEncounter.delete({ where: { id: encounterId } });
+    await prisma.save.update({ where: { id: saveId }, data: { activeEffects: [], condicionFisica: 'ILESO', energia: 100 } });
+  }, 30_000);
+
   it('con la jugadora en persona en un bando — resolverTurnoJugador ataca, resolverTurnoAutonomo cubre el resto', async () => {
     const enemigo = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } });
     // Destreza 1000 (mismo patrón que el test de `activeEffects` más abajo) — garantiza que la

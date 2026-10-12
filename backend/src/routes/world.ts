@@ -267,7 +267,9 @@ function buildLocationsSection(locations: Awaited<ReturnType<typeof prisma.locat
   return locations.map((l) => ({
     slug: l.slug,
     name: l.name,
-    aliases: l.aliases,
+    // P41 (QA-27): la Capital de la jugadora lleva como alias el nombre del reino (para viajar:
+    // «Viajo a Maktor»); en la Enciclopedia ese alias convertía cada «Maktor» del texto en un lugar.
+    aliases: l.saveId ? [] : l.aliases,
     region: l.region,
     kind: l.kind,
     description: l.description,
@@ -540,7 +542,8 @@ export async function worldRoutes(app: FastifyInstance) {
       prisma.npc.findMany({ where: { worldId: world.id, ...(saveId ? npcDeLaPartida(saveId) : { saveId: null }) } }),
       prisma.itemCatalog.findMany({ where: { worldId: world.id } }),
       prisma.harvestYield.findMany({ where: { worldId: world.id }, include: { item: true } }),
-      prisma.location.findMany({ where: { worldId: world.id } }),
+      // P41 (QA-27, como P44): los lugares que crea una partida (Capital, Cuartel) no son de las demás.
+      prisma.location.findMany({ where: { worldId: world.id, OR: [{ saveId: null }, ...(saveId ? [{ saveId }] : [])] } }),
       prisma.imagePrompt.findMany({ where: { worldId: world.id } }),
       // Enciclopedia progresiva (sesión de diseño 2026-07-23) — sin `saveId` (p.ej. si algún día
       // se consulta el catálogo fuera del contexto de una partida concreta), no se filtra nada:

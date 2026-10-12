@@ -16,7 +16,8 @@ export interface MoralNpcResultado {
   npcId: string;
   npcSlug: string;
   npcNombre: string;
-  moral: TiradaMoral;
+  /// Null si la huida viene de una habilidad (QA-27 P12), no de una tirada de moral.
+  moral: TiradaMoral | null;
   escape: TiradaEscape | null;
   /// Escapó: sale del combate.
   huye: boolean;
@@ -34,6 +35,48 @@ async function esLiderSinSucesor(db: Db, saveId: string, worldId: string, npcId:
   const faccion = await db.faction.findFirst({ where: { saveId, liderNpcId: npcId, disueltaEn: null } });
   if (!faccion) return false;
   return (await candidatosALider(db as Prisma.TransactionClient, saveId, worldId, faccion)).length === 0;
+}
+
+/// QA-27 P12 (usuaria, 2026-10-12): defensas cuyo nombre promete escapar. Si el NPC se defiende con
+/// una de ellas y no le alcanzan, intenta huir de verdad con la tirada de escape de CR-44 (como
+/// retirarse en Bellwright o Medieval Dynasty, o el «se retira» de X4); si no escapa, sigue en el
+/// combate. Por nombre porque son tres fichas de catálogo con efecto AGUANTE.
+export const HABILIDADES_DE_HUIDA: readonly string[] = ['Huida a la madriguera', 'Instinto Solitario', 'Estampida instintiva'];
+
+/// Huida con una habilidad de `HABILIDADES_DE_HUIDA`. Null si no toca o no escapa.
+export async function decidirHuidaPorHabilidad(
+  db: Db,
+  p: {
+    saveId: string;
+    worldId: string;
+    npc: NpcInScene | null;
+    habilidadDefensa: string | null;
+    npcAttackHits: boolean;
+    nivelJugador: number;
+    random?: () => number;
+  },
+): Promise<MoralNpcResultado | null> {
+  const { npc } = p;
+  if (!npc || p.npcAttackHits || !p.habilidadDefensa || !HABILIDADES_DE_HUIDA.includes(p.habilidadDefensa)) return null;
+  if (await esLiderSinSucesor(db, p.saveId, p.worldId, npc.id)) return null;
+  if ((await db.quest.count({ where: { saveId: p.saveId, targetNpcId: npc.id, status: 'ACTIVA' } })) > 0) return null;
+  const escape = tirarEscape(npc.attributes as AttributeBlock, npc.level, p.nivelJugador, p.random ?? Math.random);
+  if (!escape.escapa) return null;
+  const nombre = npc.name;
+  return {
+    npcId: npc.id, npcSlug: npc.slug, npcNombre: nombre, moral: null, escape, huye: true, pierdeTurno: false,
+    pista: `HUIDA — YA RESUELTO: ${nombre} aprovecha «${p.habilidadDefensa}» para escapar del combate. Narra la huida; el combate con ${nombre} ha terminado y no deja nada atrás.`,
+    texto: `${nombre} usa «${p.habilidadDefensa}» y escapa del combate.`,
+  };
+}
+
+/// Texto de la tirada para el registro: moral (si la hubo) y huida.
+export function textoTiradaHuida(r: MoralNpcResultado): string {
+  const partes: string[] = [];
+  if (r.moral) partes.push(`Moral: ${r.moral.usedRoll}${r.moral.modo === 'desventaja' ? ' con desventaja' : ''} → ${r.moral.total} contra ${r.moral.dificultad}`);
+  if (r.escape) partes.push(`huida: ${r.escape.roll} → ${r.escape.total} contra ${r.escape.dificultad}`);
+  const t = partes.join('; ');
+  return `${r.texto} (${t.charAt(0).toUpperCase()}${t.slice(1)}.)`;
 }
 
 /// Decide la moral del NPC golpeado este turno. Null si no toca tirar.

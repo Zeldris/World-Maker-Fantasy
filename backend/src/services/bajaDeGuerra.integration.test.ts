@@ -60,7 +60,7 @@ describe('BAJA_DE_GUERRA al matar NPC de la facción dueña de la región', () =
     await prisma.$transaction((tx) =>
       applyKillSideEffects({
         tx,
-        npc,
+        npc: { ...npc, articulo: null },
         nuevaCondicion,
         saveId,
         worldId,

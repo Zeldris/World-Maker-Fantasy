@@ -10,3 +10,15 @@ export const REINO_ABILITY_RECIPE_KEY: Record<string, string> = {
   'Ampliar ayuntamiento a mediano': 'ayuntamiento-mediano',
   'Ampliar ayuntamiento a grande': 'ayuntamiento-grande',
 }
+
+/// P19 (QA-27): una ampliación solo tiene sentido si ya existe el nivel anterior. Antes se ofrecía
+/// «Ampliar ayuntamiento a mediano/grande» sin tener ninguno.
+const REINO_REQUIERE_EDIFICIO: Record<string, string> = {
+  'Ampliar ayuntamiento a mediano': 'ayuntamiento',
+  'Ampliar ayuntamiento a grande': 'ayuntamiento-mediano',
+}
+
+export function reinoAbilityDisponible(abilityName: string, edificiosConstruidos: readonly string[]): boolean {
+  const requiere = REINO_REQUIERE_EDIFICIO[abilityName]
+  return !requiere || edificiosConstruidos.includes(requiere)
+}

@@ -6645,6 +6645,10 @@ describe('Viaje largo interrumpido con candidato PACÍFICO: ofrece Interactuar e
       targetSlug: interruptionNpcSlug,
       targetName: 'Viajero de prueba',
     });
+    // QA-27 P47: el aviso de la interrupción dice quién sale al paso.
+    const aviso = await prisma.logEntry.findFirst({ where: { saveId, travelInterrupted: true } });
+    expect(aviso?.text).toContain('te sale al paso');
+    expect(aviso?.text).toContain('Viajero de prueba');
   }, 20_000);
 });
 
@@ -7027,6 +7031,70 @@ describe('Comer/Beber: consumo real de comida y bebida por ítem (hallazgo 13, 2
 
     const logEntry = await prisma.logEntry.findFirst({ where: { saveId, channel: 'CHARACTER', isPlayerAction: false }, orderBy: { createdAt: 'desc' } });
     expect(logEntry?.text).toMatch(/^Gorhorn de prueba \(comer\) usa Ración de viaje, Odre de agua lleno\. /);
+  });
+});
+
+// QA-27 P39 (2026-10-12): en un punto de agua real (los manaderos) se bebe sin odre, hasta saciarse,
+// con narración determinista y sin tocar el inventario.
+describe('Beber de la fuente sin odre (QA-27 P39)', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const manaderos = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'manaderos', saveId: null } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (fuente)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: manaderos.id,
+        lastAteAtMinutes: 0,
+        lastDrankAtMinutes: 0,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId, fictionalMinutes: 1000 } });
+    await prisma.logEntry.create({
+      data: { saveId, channel: 'CHARACTER', text: 'Gorhorn de prueba (fuente) llega a los manaderos.', isPlayerAction: true, timeLabel: 'Día 1, mañana' },
+    });
+  });
+
+  afterAll(async () => {
+    vi.restoreAllMocks();
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('bebe del manantial sin llevar nada: Sed al 100 % y narración determinista', async () => {
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'voluntad', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    narrateAction.mockClear();
+
+    const app = await buildApp();
+    const action = 'Bebo agua del manantial hasta saciarme.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, enCombate: false },
+    });
+    expect(narrateRes.statusCode).toBe(200);
+    const body = lastNdjsonLine(narrateRes.payload) as { sed: number };
+    expect(narrateAction).not.toHaveBeenCalled();
+    expect(body.sed).toBe(100);
+    const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    const worldStateAfter = await prisma.worldState.findUniqueOrThrow({ where: { saveId } });
+    expect(saveAfter.lastDrankAtMinutes).toBe(worldStateAfter.fictionalMinutes);
+    const logEntry = await prisma.logEntry.findFirst({ where: { saveId, channel: 'CHARACTER', isPlayerAction: false }, orderBy: { createdAt: 'desc' } });
+    expect(logEntry?.text).toMatch(/^Gorhorn de prueba \(fuente\) se agacha junto al agua y bebe hasta saciarse\. /);
   });
 });
 

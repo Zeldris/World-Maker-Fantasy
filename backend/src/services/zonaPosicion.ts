@@ -353,6 +353,28 @@ export function celdaLibreEnEspiral(origen: Celda, ocupadas: ReadonlySet<string>
   return origen;
 }
 
+/// QA-27 P50: los grupos nuevos de una especie se reparten por la zona en vez de pegarse al ancla —
+/// una celda libre a como mucho `RADIO_GRUPO_NUEVO` del ancla y a `SEPARACION_ENTRE_GRUPOS` o más
+/// (distancia de Chebyshev) de cualquier otro grupo de la misma especie, elegida al azar. Si no hay
+/// ninguna, la espiral de siempre.
+export const RADIO_GRUPO_NUEVO = 5;
+export const SEPARACION_ENTRE_GRUPOS = 3;
+
+export function celdaParaGrupoNuevo(origen: Celda, ocupadas: ReadonlySet<string>, mismaEspecie: readonly Celda[], random: () => number = Math.random): Celda {
+  const candidatas: Celda[] = [];
+  for (let row = origen.row - RADIO_GRUPO_NUEVO; row <= origen.row + RADIO_GRUPO_NUEVO; row++) {
+    for (let col = origen.col - RADIO_GRUPO_NUEVO; col <= origen.col + RADIO_GRUPO_NUEVO; col++) {
+      if (col < 0 || col >= GRID_COLS || row < 0 || row >= GRID_ROWS) continue;
+      const c = { col, row };
+      if (ocupadas.has(claveCelda(c))) continue;
+      if (mismaEspecie.some((o) => Math.max(Math.abs(o.col - col), Math.abs(o.row - row)) < SEPARACION_ENTRE_GRUPOS)) continue;
+      candidatas.push(c);
+    }
+  }
+  if (candidatas.length === 0) return celdaLibreEnEspiral(origen, ocupadas);
+  return candidatas[Math.min(candidatas.length - 1, Math.floor(random() * candidatas.length))];
+}
+
 /// Puro — ¿`b` es la misma celda que `a`, o una de sus 8 vecinas? Base del doble umbral de
 /// colisión: misma celda = encuentro inevitable, adyacente = aviso previo de Interactuar.
 export function celdaAdyacenteOMisma(a: Celda, b: Celda): boolean {

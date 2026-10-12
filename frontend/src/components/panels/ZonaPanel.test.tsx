@@ -8,6 +8,7 @@ vi.mock('../../lib/api', async (importOriginal) => {
 
 import { getZona, moverEnZona } from '../../lib/api'
 import { ZonaPanel, salidaEnCasillaDelJugador } from './ZonaPanel'
+import { CapasContext } from '../../context/capasContext'
 
 /// Z-A (hito 0.1, roadmap-front-zona.md) — ZON-20 (leyenda en el mapa) y ZON-62 (cuadrícula bajo demanda).
 const zona = {
@@ -36,6 +37,31 @@ describe('ZonaPanel — Z-A', () => {
     await act(async () => {})
     return utils
   }
+
+  it('P20/P26 (QA-27): cuando el mapa vuelve a ser la capa de arriba, recarga la zona', async () => {
+    const capas = (superior: string) => ({ visibles: new Set([superior]), enEspera: new Set<string>(), superior })
+    const { rerender } = render(
+      <CapasContext.Provider value={capas('zona') as never}>
+        <ZonaPanel saveId="s1" />
+      </CapasContext.Provider>,
+    )
+    await act(async () => {})
+    expect(getZona).toHaveBeenCalledTimes(1)
+    rerender(
+      <CapasContext.Provider value={capas('recolectar') as never}>
+        <ZonaPanel saveId="s1" />
+      </CapasContext.Provider>,
+    )
+    await act(async () => {})
+    expect(getZona).toHaveBeenCalledTimes(1)
+    rerender(
+      <CapasContext.Provider value={capas('zona') as never}>
+        <ZonaPanel saveId="s1" />
+      </CapasContext.Provider>,
+    )
+    await act(async () => {})
+    expect(getZona).toHaveBeenCalledTimes(2)
+  })
 
   it('CR-63 (63e): los viajeros de paso se pintan en su celda con su nombre', async () => {
     vi.mocked(getZona).mockResolvedValue({ ...zona, viajeros: [{ id: 'v1', nombre: 'partida de caza de Múrgol (Clan Serhu)', x: 225, y: 175 }] } as never)

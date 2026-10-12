@@ -6,7 +6,7 @@ import {
   celdaDePixel,
   pixelDeCelda,
   siguienteCeldaEnRuta,
-  celdaLibreEnEspiral,
+  celdaParaGrupoNuevo,
   claveCelda,
   repartirEnGrupos,
   GRID_COLS,
@@ -470,9 +470,12 @@ export async function recalcularZonePointsDeLocation(
     }
 
     const origenAncla = celdaDePixel({ x: ancla.origenX ?? ancla.x, y: ancla.origenY ?? ancla.y });
+    const borradas = new Set(resultado.borrar);
+    const celdasEspecie = ordenadas.filter((_, i) => !borradas.has(i)).map((f) => celdaDePixel({ x: f.x, y: f.y }));
     for (const cantidadNueva of resultado.crear) {
-      const celda = celdaLibreEnEspiral(origenAncla, ocupadas);
+      const celda = celdaParaGrupoNuevo(origenAncla, ocupadas, celdasEspecie, random);
       ocupadas.add(claveCelda(celda));
+      celdasEspecie.push(celda);
       const pixel = pixelDeCelda(celda);
       operaciones.push(
         tx.zonePoint.create({
