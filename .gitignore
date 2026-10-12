@@ -27,3 +27,6 @@ tools/playwright-e2e/**/*.log
 
 # Comprobador de enlaces de lore — herramienta de Claude, no del juego.
 tools/lore-links/
+
+# Salida del MCP de Playwright (capturas y registros de las rondas de pruebas).
+.playwright-mcp/
