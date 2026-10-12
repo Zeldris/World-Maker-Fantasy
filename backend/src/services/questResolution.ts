@@ -1,4 +1,5 @@
 import { registrarFinDeMision } from './cronista/emisores.js';
+import type { NewInventoryItemInfo } from './turnResolution.js';
 import { cupoDeCamas } from './cronista/subditos.js';
 import { normalizeText } from './travel.js';
 import { Prisma } from '@prisma/client';
@@ -77,6 +78,39 @@ export async function grantQuestRewardItems(tx: Prisma.TransactionClient, saveId
     }),
   });
   return toGrant;
+}
+
+/// QA-54 (retro de la tercera tanda de QA-27): la recompensa de una misión recién cerrada, con la
+/// misma forma que los objetos nuevos de un turno. Toda respuesta que anuncia «misión completada»
+/// la manda entre sus objetos nuevos; sin esto, el Mapa de las Llanuras no llegaba a la pantalla
+/// hasta recargar (P32, salió por tres caminos distintos).
+export async function recompensasComoObjetosNuevos(
+  tx: Prisma.TransactionClient,
+  saveId: string,
+  worldId: string,
+  nombres: string[],
+): Promise<NewInventoryItemInfo[]> {
+  if (nombres.length === 0) return [];
+  const recompensas = await tx.inventoryItem.findMany({ where: { saveId, name: { in: nombres } } });
+  const slugs = recompensas.map((r) => r.catalogSlug).filter((s): s is string => !!s);
+  const catalogo = slugs.length
+    ? await tx.itemCatalog.findMany({ where: { worldId, slug: { in: slugs } }, select: { slug: true, equipSlot: true, effectKey: true, tipo: true } })
+    : [];
+  const porSlug = new Map(catalogo.map((c) => [c.slug, c]));
+  return recompensas.map((r) => {
+    const c = r.catalogSlug ? porSlug.get(r.catalogSlug) : undefined;
+    return {
+      id: r.id,
+      name: r.name,
+      description: r.description,
+      origin: r.origin,
+      slot: null,
+      statBonuses: r.statBonuses,
+      equipSlot: c?.equipSlot ?? null,
+      effectKey: c?.effectKey ?? null,
+      tipo: c?.tipo ?? null,
+    };
+  });
 }
 
 /// Forma real de `Quest.rewardCompanion` (`Json?` en schema.prisma) — único punto de verdad

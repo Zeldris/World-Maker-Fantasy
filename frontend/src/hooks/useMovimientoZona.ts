@@ -119,7 +119,9 @@ export function useMovimientoZona({ saveId, setData, bloqueoMovimiento = null, o
           })
         }
         if (resultado.colision) {
-          setMensajeMovimiento(`Te topas con ${resultado.colision.targetName}.`)
+          // QA-59 (P102, P103): la frase del backend, que lleva artículo, número y quién vio a quién;
+          // la de aquí decía «Te topas con Orca desconocida» aunque la orca se hubiera acercado antes.
+          setMensajeMovimiento(resultado.logEntry?.text ?? `Te topas con ${resultado.colision.targetName}.`)
           // Conexión real con Interactuar (2026-09-09) — la colisión con un NPC/fauna no agresivo
           // ya dejó `pendingDynamicModeOffer` real en el backend, con su propio LogEntry
           // determinista (`resultado.logEntry`, shape mínimo) — se combina con `dynamicModeOffer`
@@ -165,7 +167,7 @@ export function useMovimientoZona({ saveId, setData, bloqueoMovimiento = null, o
           // oferta y su LogEntry sin `colision` (un recurso nunca es un encuentro de combate), y
           // esta rama no existía: el trayecto seguía y la tarjeta "X a la vista" solo aparecía
           // tras recargar la página. Mismo tratamiento que la oferta de una colisión de arriba.
-          setMensajeMovimiento(`Encuentras ${resultado.dynamicModeOffer.targetName}.`)
+          setMensajeMovimiento(resultado.logEntry.text)
           onEncuentroZona?.({
             id: resultado.logEntry.id,
             channel: 'character',

@@ -85,7 +85,7 @@ describe('useMovimientoZona', () => {
       jugador: { x: 50, y: 0 }, caminoRestante: [{ x: 100, y: 0 }], zonePointsMovidos: [],
       colision: { targetName: 'Aullador rojo', temperamento: 'CAUTELOSO' },
       dynamicModeOffer: { targetName: 'Aullador rojo' },
-      logEntry: { id: 'l1', text: 'Te topas con un aullador.', timeLabel: '', createdAt: '' },
+      logEntry: { id: 'l1', text: 'Gorhorn se topa con un aullador rojo, que le observa con cautela.', timeLabel: '', createdAt: '' },
     } as never)
     const onEncuentroZona = vi.fn()
     const { result } = renderHook(() => useMovimientoZona({ saveId: 's1', setData: vi.fn(), msPorPaso: 0, onEncuentroZona }))
@@ -94,7 +94,8 @@ describe('useMovimientoZona', () => {
     })
     expect(moverEnZona).toHaveBeenCalledTimes(1)
     expect(onEncuentroZona).toHaveBeenCalledWith(expect.objectContaining({ id: 'l1', dynamicModeOffer: expect.objectContaining({ busy: false }) }))
-    expect(result.current.mensajeMovimiento).toBe('Te topas con Aullador rojo.')
+    // QA-59 (P102, P103): el aviso del mapa es la frase del backend, con su artículo y quién vio a quién.
+    expect(result.current.mensajeMovimiento).toBe('Gorhorn se topa con un aullador rojo, que le observa con cautela.')
     expect(result.current.destinoPendiente).toBeNull()
   })
 

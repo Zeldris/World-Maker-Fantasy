@@ -14,6 +14,10 @@ retro del 2026-10-09). Herramientas: [`tools/playwright-e2e/`](../../tools/playw
    [«Qué entra en cada hito»](../producto/21-roadmap.md#qué-entra-en-cada-hito) dice qué es.
 3. Lo que el roadmap no tiene (p. ej. «Crear desde cero» en la creación de personaje) no se prueba.
 
+**Con qué se juega** (`QA-56`, usuaria, 2026-10-12): Gorhorn, el personaje preseleccionado, con la
+clase **Cazador** (la especialización, Domador, se elige a nivel 10). «Crear desde cero» es del final del
+roadmap: no se abre.
+
 Cómo provocar cada cosa (los encuentros salen al moverse por el mapa de zona, no escribiendo
 «salgo a cazar») y qué está ya probado en vivo:
 [`checklist-pruebas-juego.md`](../registros/checklist-pruebas-juego.md).
@@ -32,10 +36,12 @@ Cómo provocar cada cosa (los encuentros salen al moverse por el mapa de zona, n
    `P<n> "<texto viejo>" "<texto nuevo>"` cambia su estado.
 4. **La ronda no escribe código** (`QA-45`, petición de la usuaria del 2026-10-12): la prioridad es
    probar. Solo se arregla un fallo **bloqueante** (no se puede seguir jugando, o el juego hace algo
-   imposible), con su test y comprobado en vivo. Lo demás va al registro como «pendiente»; las
+   imposible), con su test y comprobado en vivo; que el test falle sin el arreglo se comprueba con
+   `tools/qa/rojo-sin-arreglo.sh` (`QA-58`). Lo demás va al registro como «pendiente»; las
    mejoras y el diseño, al roadmap como tarea con hito. Las retros y los arreglos de lo apuntado se
    hacen antes o después de la ronda, no en medio. Si el MCP de Playwright no conecta,
-   `driver.mjs` de `tools/playwright-e2e/` (`QA-41`).
+   `driver.mjs` de `tools/playwright-e2e/` (`QA-41`), con las mismas ayudas: `orden.sh --ayuda
+   <archivo> '<tk>'` (`QA-57`).
 5. Commit y push tras cada tanda de hallazgos; la tarea de la ronda en su roadmap lleva qué está
    hecho y qué falta.
 6. **`/code-review` cada 5-6 hallazgos arreglados** (`QA-40`, retro de `QA-27`), no solo al final: la
@@ -43,7 +49,9 @@ Cómo provocar cada cosa (los encuentros salen al moverse por el mapa de zona, n
 
 ## Lo que engaña
 
-- Las narraciones del Ollama simulado meten trozos del prompt («se narró como si…»): no es un fallo.
+- Las narraciones del Ollama simulado meten trozos del prompt («se narró como si…») o frases fijas
+  («El personaje observa con atención a su alrededor…»): no es un fallo. `estado.js` las marca
+  «[simulado]» (`QA-60`).
 - `GET /saves` y «la última partida» de la base de los tests pueden ser de un test en marcha: juega
   en `tarkor_juego` y saca el id de la partida de la URL (`/solitario/partida/<id>`).
 - Tras reiniciar el backend, el frontend conserva datos viejos hasta recargar la página.

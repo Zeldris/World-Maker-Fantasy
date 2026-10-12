@@ -191,7 +191,7 @@ export function GameView() {
       {busyUntil && (
         <div className="flex flex-wrap items-center justify-center gap-2 border-t border-iron-800 bg-wood-950/90 px-4 py-2 text-center text-xs text-wood-400">
           <span>
-            <span className="gem mr-1.5 align-middle" /> Ocupado{busyActivity ? ` con "${busyActivity}"` : ''} — vuelve en{' '}
+            <span className="gem mr-1.5 align-middle" /> Ocupado{busyActivity ? ` con «${busyActivity}»` : ''} — vuelve en{' '}
             <span className="font-mono font-semibold text-accent-300">{formatCountdown(busyUntil, nowTick)}</span>
             {busyDuracionMinutos ? (
               <>

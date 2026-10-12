@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from 'react'
 import { aceptarMision, cancelarMision, getSave } from '../lib/api'
-import { questCompletedLogEntry } from '../lib/gameViewHelpers'
+import { applyInventoryDelta, questCompletedLogEntry } from '../lib/gameViewHelpers'
 import type { InventoryItemInfo, LogEntry, QuestInfo } from '../types'
 
 // Bloque aceptar/descartar oferta de misión extraído de GameView.tsx (Fase 12 del plan, refactor
@@ -34,7 +34,7 @@ export function useMisionesAcciones({ saveId, setCharacterLog, setCharacterThink
     // jugadora mandara un turno nuevo por encima de la respuesta todavía pendiente.
     setCharacterThinking(true)
     try {
-      const { quest, logEntry, questCompletedInfo } = await aceptarMision(saveId!, title, description)
+      const { quest, logEntry, questCompletedInfo, newInventoryItems } = await aceptarMision(saveId!, title, description)
       if (logEntry) {
         setCharacterLog((prev) => [
           ...prev,
@@ -61,13 +61,11 @@ export function useMisionesAcciones({ saveId, setCharacterLog, setCharacterThink
         setCharacterLog((prev) => [...prev, questCompletedLogEntry(questCompletedInfo, logEntry?.timeLabel ?? '')])
         setXp((prev) => prev + questCompletedInfo.rewardXp)
       }
-      // P32 (QA-27): la recompensa (el Mapa de las Llanuras) ya está en el inventario del backend;
-      // sin recargarlo, el mapa del mundo seguía pidiendo conseguirlo hasta recargar la página.
+      // P32 / QA-54: la recompensa (el Mapa de las Llanuras) llega con la respuesta; sin esto, el mapa
+      // del mundo seguía pidiendo conseguirla hasta recargar la página.
+      if (newInventoryItems?.length) setInventory((prev) => applyInventoryDelta(prev, newInventoryItems, [], []))
       getSave(saveId!)
-        .then((save) => {
-          setQuests(save.quests)
-          if (questCompletedInfo?.grantedItems.length) setInventory(save.inventory)
-        })
+        .then((save) => setQuests(save.quests))
         .catch(() => {})
     } catch {
       // Best-effort (mismo criterio que el resto de acciones deterministas de este archivo): si

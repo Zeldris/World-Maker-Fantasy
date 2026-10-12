@@ -20,7 +20,7 @@ export function chromiumDeLaMaquina() {
 
 export async function abrirNavegador() {
   const browser = await chromium.launch({ executablePath: chromiumDeLaMaquina() });
-  const page = await browser.newPage({ viewport: { width: 1366, height: 768 } });
+  const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   page.setDefaultTimeout(15000);
   return { browser, page };
 }
