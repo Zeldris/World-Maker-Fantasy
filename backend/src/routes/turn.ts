@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { classifyAction, type ClassificationResult } from '../services/narrador.js';
 import { rollCheck } from '../services/dice.js';
 import type { AttributeBlock, RollResult } from '../services/dice.js';
+import { restCooldownActivo } from '../services/energy.js';
 import { computeDuration, detectsRestIntent, duracionExplicitaDeLaAccion, mentionsExplicitDuration } from '../services/timedActions.js';
 import { narrateAndPersistTurn } from '../services/turnResolution.js';
 import { avanzarSiCruzaDia, enSegundoPlano, esperarSegundoPlano } from '../services/avanceDiario.js';
@@ -167,6 +168,8 @@ async function resolveClassificationForTurn(params: {
   /// Fauna diurna/nocturna real (2026-09-02) — ver el mismo campo en `detectNpcsInScene`
   /// (npcScene.ts).
   fictionalMinutes: number;
+  /// P74 (QA-27): último descanso, para no cobrar horas a un descanso que el enfriamiento rechaza.
+  lastRestAtMinutes?: number | null;
 }): Promise<ClassificationResolution> {
   const { saveId, action, enCombate, savedActionId, preview, worldId, currentLocationId, level, attributes, sessionFacts, characterSummary, pendingCombatNpcSlugs, pendingNpcAttack, pendingCanalizacion, fictionalMinutes } = params;
 
@@ -523,6 +526,14 @@ async function resolveClassificationForTurn(params: {
       roll = classification.requiereTirada ? rollCheck(attributes, classification.atributo, classification.dificultad) : undefined;
     }
 
+    // P74 (QA-27): un descanso que el enfriamiento va a rechazar (turnResolution § restBlockedByCooldown)
+    // no ocupa el tiempo que pedía: «Descanso ocho horas» con el descanso aún reciente dejaba a la
+    // jugadora ocupada 8 h mientras el narrador decía que no descansaba.
+    if (!travel && detectsRestIntent(action) && restCooldownActivo(params.lastRestAtMinutes ?? null, fictionalMinutes)) {
+      classification.banda = 'instantanea';
+      classification.duracionEstimadaMinutos = 0;
+    }
+
     if (preview) setCachedClassify(saveId, enCombate, action, { classification, roll, travel, npcsInScene });
   }
 
@@ -855,6 +866,7 @@ export async function turnRoutes(app: FastifyInstance) {
         pendingNpcAttack: save.pendingNpcAttack as unknown as PendingNpcAttack | null,
         pendingCanalizacion: save.pendingCanalizacion as unknown as PendingCanalizacion | null,
         fictionalMinutes: save.worldState?.fictionalMinutes ?? 480,
+        lastRestAtMinutes: save.lastRestAtMinutes,
       }));
     } catch (err) {
       request.log.error(err);

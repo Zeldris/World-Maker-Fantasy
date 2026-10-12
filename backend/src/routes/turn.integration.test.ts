@@ -3484,6 +3484,15 @@ describe('Descansar: +30 de energía fijo, NO cura condición física, cooldown 
     expect(after.energia).toBe(before.energia); // sin cambio, el intento no cuenta
     expect(after.lastRestAtMinutes).toBe(before.lastRestAtMinutes); // el cooldown no se reinicia
   }, 15_000);
+
+  it('P74 (QA-27): un descanso de ocho horas que el enfriamiento rechaza no ocupa tiempo', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: 'Descanso ocho horas' } });
+    expect(res.statusCode).toBe(200);
+    const { classification } = res.json() as { classification: { banda: string; duracionEstimadaMinutos: number } };
+    expect(classification.banda).toBe('instantanea');
+    expect(classification.duracionEstimadaMinutos).toBe(0);
+  }, 15_000);
 });
 
 // Cobertura nueva (auditoría 2026-08-11, "pruebas por API" + duda directa de la usuaria: "ahora
