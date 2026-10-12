@@ -712,6 +712,20 @@ Contenedor común: `PanelDrawer` (cajón inferior, `max-w-4xl`, 85 vh).
   el retrato y el valor afectado, como el aviso de aprobación de Baldur's Gate 3. **S**
 - **NAR-11 · Informe del amanecer**: al cambiar de día, una sola tarjeta plegable que junta la
   crónica del día del Cronista y el informe del Reino (`REI-100`), en vez de dos piezas separadas. **M**
+- **NAR-12 · El texto libre, para lo que tiene sentido** (usuaria, 2026-10-12, sale de P71 de `QA-27`): 🧭
+  ronda de diseño pendiente. Equipar, curarse, comer y beber, viajar, recolectar o construir ya tienen
+  su camino determinista, pero el cuadro de acción acepta cualquier cosa: «Me equipo la Maza orca» se
+  narra y no cambia nada, y la jugadora cree que la lleva. El texto libre se centra en lo que solo él
+  puede hacer, y lo que tiene botón o panel se lleva allí. Para la ronda de diseño:
+  - **Para qué sí** (D&D 5e y Baldur's Gate 3: el máster interpreta lo que no cabe en un menú): hablar
+    con quien está en escena, investigar o mirar, acciones creativas o de rol sin mecánica propia, y
+    las intenciones que el motor ya traduce sin dudas (atacar en combate).
+  - **Para qué no** (X4: todo lo que tiene sistema va por su menú; igual en Medieval Dynasty, Bellwright
+    y Manor Lords): si el texto pide algo que tiene camino propio, no se narra como hecho; se responde
+    con un aviso determinista y un botón que abre ese camino («Para equipar la Maza orca: Personaje →
+    Equipo», con el botón).
+  - Falta decidir: qué acciones se desvían, cómo se detectan (las reglas de intención que ya existen,
+    sin modelo) y si el cuadro sugiere qué escribir. **M**
 
 ---
 
