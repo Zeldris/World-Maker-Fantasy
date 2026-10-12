@@ -31,7 +31,7 @@ import { compassNarrationText, type CompassLinkInfo } from './compassNarration.j
 import { energiaMaxFor, energiaPasivaEntre, nextEnergia, restCooldownActivo } from './energy.js';
 import { WEAPON_ABILITY_LEVEL_AVANZADA, dualWieldAdjustedDifficulty, weaponCategoryForRealAbilityName, type EquippedWeaponSlot } from './weaponAbilities.js';
 import { syncDynamicCombatAbilities } from './dynamicAbilities.js';
-import { CRAFTING_RECIPES, detectsCraftIntent, canCraft, craftRequisitoShortfalls, planCraftConsumption, hasToolForOficio, OFICIOS_CON_HERRAMIENTA_REQUERIDA } from './crafting.js';
+import { CRAFTING_RECIPES, detectsCraftIntent, canCraft, craftRequisitoShortfalls, bebeDeLaFuente, planCraftConsumption, hasToolForOficio, OFICIOS_CON_HERRAMIENTA_REQUERIDA } from './crafting.js';
 import { detectsBuildIntent, checkRecipe, planRecipeConsumption, baseNameOf, quantityOf, CONSTRUCTION_RECIPES, computeBuildBlockedReason, buildingTierFor, type ConstructionRecipe, type RecipeCheck } from './construction.js';
 import { shortfallLabel } from './requisitos.js';
 import { inventorySummaryFor, type CatalogLookup, type InventoryRowLike } from './ingredients.js';
@@ -4296,7 +4296,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     hungerGanancia > 0
       ? lastAtMinutesForGanancia(params.lastAteAtMinutes, fictionalMinutesParaComerBeber, COMIDA_MINUTOS_POR_TRAMO, hungerGanancia)
       : params.lastAteAtMinutes;
-  const aguaGanancia = hambreSedItemUsesValidated.reduce((sum, u) => sum + u.curaAgua * u.quantity, 0);
+  // QA-27 P39: en un punto de agua real se puede beber sin odre, hasta saciarse.
+  const bebeFuente = !usingExplicitHungerThirstList && !travel && bebeDeLaFuente(action, currentLocationRecord?.slug);
+  const aguaGanancia = bebeFuente ? 100 : hambreSedItemUsesValidated.reduce((sum, u) => sum + u.curaAgua * u.quantity, 0);
   const nuevoLastDrankAtMinutes =
     aguaGanancia > 0
       ? lastAtMinutesForGanancia(params.lastDrankAtMinutes, fictionalMinutesParaComerBeber, AGUA_MINUTOS_POR_TRAMO, aguaGanancia)
@@ -4306,7 +4308,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         const itemsTexto = hambreSedItemUsesValidated.map((u) => (u.quantity > 1 ? `${baseNameOf(u.name)} ×${u.quantity}` : baseNameOf(u.name))).join(', ');
         return { narration: `${characterName} usa ${itemsTexto}. ${pickFlavor(EAT_DRINK_FLAVOR)}` };
       })()
-    : null;
+    : bebeFuente
+      ? { narration: `${characterName} se agacha junto al agua y bebe hasta saciarse. ${pickFlavor(EAT_DRINK_FLAVOR)}` }
+      : null;
 
   // Escena de Gistera Koh, fase 2 — solución limpia (auditoría 2026-07-30, "revisar partida",
   // tras encontrarlo fallando EN VIVO por segunda vez: la primera vez inventó "Múrgol" como
@@ -4643,6 +4647,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     craftMode ||
     usingExplicitHealList ||
     usingExplicitHungerThirstList ||
+    bebeFuente ||
     restBlockedByCooldown
   );
 
@@ -4670,7 +4675,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
             ? { narration: craftNarration!, newFacts: [] }
             : usingExplicitHealList
               ? { narration: healPreview!.narration, newFacts: [] }
-              : usingExplicitHungerThirstList
+              : usingExplicitHungerThirstList || bebeFuente
                 ? { narration: hungerThirstPreview!.narration, newFacts: [] }
                 : restBlockedByCooldown
                   ? {

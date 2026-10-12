@@ -18,6 +18,7 @@ import { TravelDestinationModal } from '../components/TravelDestinationModal'
 import { SaquearZonaModal } from '../components/SaquearZonaModal'
 import { HealSelectionModal } from '../components/HealSelectionModal'
 import { HungerThirstSelectionModal } from '../components/HungerThirstSelectionModal'
+import { esPuntoDeAgua } from '../lib/puntosDeAgua'
 import { EntregaModal } from '../components/EntregaModal'
 import { AprenderOficioModal } from '../components/AprenderOficioModal'
 import { EspecializacionModal } from '../components/EspecializacionModal'
@@ -78,6 +79,7 @@ export function GameModals() {
     enciclopediaData,
     condicionFisica,
     hambre,
+    currentLocation,
     sed,
     pendingClaseChoice,
     clasesDisponibles,
@@ -295,6 +297,7 @@ export function GameModals() {
             inventory={inventory}
             hambre={hambre}
             sed={sed}
+            enFuente={esPuntoDeAgua(currentLocation?.slug)}
             onConfirm={(actionText, hambreSedItemUses) => {
               setHungerThirstModalOpen(false)
               handleSubmit(actionText, { hambreSedItemUses })
