@@ -230,12 +230,18 @@ export function DiceRollSingle({ roll, label, showDifficulty = true }: { roll: R
 /// explícito, solo left/right, así que el empate se resuelve a favor de `right` (el lado que la
 /// convención de este componente ya trata como "el otro", ver `rightLabel ?? 'el enemigo'`).
 /// Extraída como función pura (testeable sin montar el componente).
+export type LadoGanador = 'izquierda' | 'derecha'
+
 export function forcedGradosFor(
   leftResult: number,
   rightResult: number,
   showDifficulty: boolean,
+  ganador?: LadoGanador,
 ): { leftGrado: 'claro' | 'fallo' | undefined; rightGrado: 'claro' | 'fallo' | undefined } {
   if (showDifficulty) return { leftGrado: undefined, rightGrado: undefined }
+  // P69 (QA-27): cuando quien gana ya lo decidió el backend (iniciativa: el empate es de la
+  // jugadora), manda ese dato, no la regla del intercambio.
+  if (ganador) return { leftGrado: ganador === 'izquierda' ? 'claro' : 'fallo', rightGrado: ganador === 'derecha' ? 'claro' : 'fallo' }
   return {
     leftGrado: leftResult > rightResult ? 'claro' : 'fallo',
     rightGrado: rightResult >= leftResult ? 'claro' : 'fallo',
@@ -253,6 +259,7 @@ export function DiceRollVs({
   leftFirst,
   showDifficulty,
   onAllLanded,
+  ganador,
 }: {
   left: RollInfo | CombatExchangeSideInfo
   right: RollInfo | CombatExchangeSideInfo
@@ -269,6 +276,8 @@ export function DiceRollVs({
   /// `ROLL_DURATION_MS`) termina de aterrizar — el padre lo usa para diferir cualquier conclusión
   /// textual hasta que ambos números sean visibles de verdad.
   onAllLanded?: () => void
+  /// Quién gana según el backend, si no se decide comparando resultados (P69: empates de iniciativa).
+  ganador?: LadoGanador
 }) {
   const leftDelayMs = leftFirst ? 0 : duracionTirada()
   const rightDelayMs = leftFirst ? duracionTirada() : 0
@@ -285,7 +294,7 @@ export function DiceRollVs({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- misma disciplina que DiceFace: arranca una sola vez por tirada, `leftDelayMs`/`rightDelayMs`/`onAllLanded` son estables durante su vida
   }, [])
 
-  const { leftGrado, rightGrado } = forcedGradosFor(left.result, right.result, showDifficulty)
+  const { leftGrado, rightGrado } = forcedGradosFor(left.result, right.result, showDifficulty, ganador)
 
   const nombreIzq = leftLabel ?? 'Tú'
   const nombreDer = rightLabel ?? 'el enemigo'

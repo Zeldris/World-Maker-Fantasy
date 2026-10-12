@@ -76,7 +76,7 @@ export function CombatComposer({ freeText, onFreeTextChange, onSubmit, busy, end
       )}
       {!pendingDecisions && rematar && rematar.length > 0 && (
         <p className="mb-2 text-2xs text-accent-300">
-          Remata a {rematar.join(', ')}: elige un ataque en el panel de combate y pulsa Actuar.
+          Remata a {rematar.join(', ')}: elige un ataque de «⚔️ Daño» en el panel de combate y pulsa Actuar.
         </p>
       )}
       <div className="flex gap-2">

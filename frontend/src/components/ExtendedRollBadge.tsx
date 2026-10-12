@@ -60,7 +60,7 @@ export function IniciativaEncuentroBadge({ roll, characterName, live }: { roll: 
     return (
       <>
         <p className="mt-1.5 text-2xs font-semibold uppercase tracking-[0.14em] text-accent-400">¿Quién ve a quién primero?</p>
-        <DiceRollVs left={ladoToRollInfo(roll.jugador, jugadorGana)} right={ladoToRollInfo(roll.npc, !jugadorGana)} leftLabel={tuNombre} rightLabel={roll.npcName} leftFirst showDifficulty={false} />
+        <DiceRollVs left={ladoToRollInfo(roll.jugador, jugadorGana)} right={ladoToRollInfo(roll.npc, !jugadorGana)} leftLabel={tuNombre} rightLabel={roll.npcName} leftFirst showDifficulty={false} ganador={jugadorGana ? 'izquierda' : 'derecha'} />
       </>
     )
   }

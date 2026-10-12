@@ -171,7 +171,7 @@ describe('Misión de apertura: combate contra el Orco Enfurecido (integración r
     // Feedback de UX (2026-08-30, "falta que la suma de repu... se refleje en la UX") — se captura
     // el body del turno que de verdad deja al NPC CONVALECIENTE (el Orco Enfurecido es Clan Serhu),
     // para comprobar que la respuesta HTTP trae `factionRepChange` en ese turno exacto.
-    type NarrateBodyOnKill = { factionRepChange: { faction: string; delta: number; newValue: number } | null };
+    type NarrateBodyOnKill = { factionRepChange: { faction: string; delta: number; newValue: number } | null; nextInitiativeRoll?: unknown };
     let narrateBodyOnKill: NarrateBodyOnKill | null = null;
 
     for (let turno = 0; turno < 4; turno++) {
@@ -210,6 +210,8 @@ describe('Misión de apertura: combate contra el Orco Enfurecido (integración r
     // el turno final") — `applyKillSideEffects` solo aplica el delta cuando `nuevaCondicion ===
     // 'MUERTO'`. La decisión real (Matar/Capturar/Clemente) todavía no se ha tomado en este punto.
     expect(narrateBodyOnKill?.factionRepChange).toBeNull();
+    // P64 (QA-27): con el rival ya CONVALECIENTE no se tira iniciativa para otro intercambio.
+    expect(narrateBodyOnKill?.nextInitiativeRoll ?? null).toBeNull();
     // Sin ningún delta aplicado, la clave de esa facción ni siquiera llega a crearse en el JSON
     // (`factionRepFor` solo devuelve 2500 como default cuando la clave falta, no lo persiste) —
     // `undefined` es la prueba real de que nunca se tocó `factionsStatus`.

@@ -1731,11 +1731,14 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
           ? nextCondicionForAttack(jugadorGolpeEfectos, input.condicionFisicaJugador)
           : input.condicionFisicaJugador;
         const condicionNpcParaIniciativa = npcTargetNewCondicion ?? npcParaIntercambio.condicionFisica;
-        nextInitiativeRoll = rollInitiative(
+        // P64 (QA-27): un rival CONVALECIENTE o MUERTO ya no pelea; no hay iniciativa que tirar y
+        // el siguiente movimiento (rematar, perdonar, capturar) es de la jugadora.
+        const rivalFueraDeCombate = condicionNpcParaIniciativa === 'CONVALECIENTE' || condicionNpcParaIniciativa === 'MUERTO';
+        nextInitiativeRoll = rivalFueraDeCombate ? null : rollInitiative(
           { attributes: attributesEfectivos, attribute: 'destreza', difficulty: 0, condicionFisica: condicionJugadorParaIniciativa, rol: 'utilidad' },
           { attributes: npcAttributesEfectivos, attribute: 'destreza', difficulty: 0, condicionFisica: condicionNpcParaIniciativa, rol: 'utilidad' },
         );
-        iniciativaSiguiente = nextInitiativeRoll.ganador;
+        iniciativaSiguiente = nextInitiativeRoll?.ganador ?? 'jugador';
       }
 
       if (iniciativaSiguiente === 'npc') {
