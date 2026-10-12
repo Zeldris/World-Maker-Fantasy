@@ -416,6 +416,29 @@ export async function recalcularZonePointsDeLocation(
     faunaPorSlug.set(punto.targetSlug, filas);
   }
 
+  // QA-27 P82: un grupo nuevo de una especie hostil no se coloca a menos de 3 casillas de la
+  // jugadora (con `celdaParaGrupoNuevo` repartiendo por toda la zona, aparecían junto a ella, también
+  // donde reaparece tras morir).
+  // Se consulta solo si algún grupo se va a colocar (perezoso: este recalculo corre al abrir la zona).
+  // Temperamento de catálogo: la fauna casi nunca tiene facción que lo cambie.
+  let evitar: { slugsHostiles: Set<string>; celdaJugadora: Celda | null } | null = null;
+  const evitarAlColocar = async () => {
+    if (evitar) return evitar;
+    const faunaSlugs = [...new Set(puntos.filter((p) => p.tipo === 'FAUNA').map((p) => p.targetSlug))];
+    const [hostiles, jugadora] = await Promise.all([
+      tx.npc.findMany({ where: { worldId, slug: { in: faunaSlugs }, temperamento: { in: ['AGRESIVO', 'ENEMIGO'] } }, select: { slug: true } }),
+      tx.save.findUnique({ where: { id: saveId }, select: { currentLocationId: true, zonaPosX: true, zonaPosY: true } }),
+    ]);
+    evitar = {
+      slugsHostiles: new Set(hostiles.map((n) => n.slug)),
+      celdaJugadora:
+        jugadora?.currentLocationId === locationId && jugadora.zonaPosX != null && jugadora.zonaPosY != null
+          ? celdaDePixel({ x: jugadora.zonaPosX, y: jugadora.zonaPosY })
+          : null,
+    };
+    return evitar;
+  };
+
   // Ocupación real del lienzo (todos los puntos existentes, cualquier tipo/estado) — nunca se pisa
   // al colocar una fila de grupo nueva; se va ampliando con cada fila que este mismo recalculo crea.
   const ocupadas = new Set(todosPuntos.map((p) => claveCelda(celdaDePixel({ x: p.x, y: p.y }))));
@@ -472,6 +495,10 @@ export async function recalcularZonePointsDeLocation(
     const origenAncla = celdaDePixel({ x: ancla.origenX ?? ancla.x, y: ancla.origenY ?? ancla.y });
     const borradas = new Set(resultado.borrar);
     const celdasEspecie = ordenadas.filter((_, i) => !borradas.has(i)).map((f) => celdaDePixel({ x: f.x, y: f.y }));
+    if (resultado.crear.length > 0) {
+      const { slugsHostiles, celdaJugadora } = await evitarAlColocar();
+      if (celdaJugadora && slugsHostiles.has(targetSlug)) celdasEspecie.push(celdaJugadora);
+    }
     for (const cantidadNueva of resultado.crear) {
       const celda = celdaParaGrupoNuevo(origenAncla, ocupadas, celdasEspecie, random);
       ocupadas.add(claveCelda(celda));

@@ -87,6 +87,7 @@ import { instanceNumbersByParticipantId, resolverObjetivoPorTexto, type Habilida
 import { prisma } from '../lib/prisma.js';
 import { registrarSuceso } from './cronista/sucesos.js';
 import { aplicarHuidaNpc, decidirHuidaPorHabilidad, decidirMoralTrasIntercambio, textoTiradaHuida } from './huidaNpc.js';
+import { enGraciaTrasRenacer } from './death.js';
 import { abrirCombateDePersonas, grupoDePersona } from './combatePersonas.js';
 import { effectiveAttributesConDuracion, pushActiveEffect, decrementActiveEffects, type ActiveEffect } from './activeEffects.js';
 import type { RollResult, AttributeBlock, Attribute, GradoExito } from './dice.js';
@@ -2130,6 +2131,8 @@ async function vistaCombateDeGrupo(saveId: string, encounterId: string, terminad
 async function resolveCombatSlugsAndPersist(params: {
   saveId: string;
   action: string;
+  /// QA-27 P82: gracia tras reaparecer (`enGraciaTrasRenacer`): un agresivo en escena no fuerza combate.
+  enGraciaRenacer: boolean;
   enCombate: boolean | undefined;
   narration: NarrationResult;
   npcsInScene: NpcInScene[];
@@ -2283,7 +2286,10 @@ async function resolveCombatSlugsAndPersist(params: {
   // AGRESIVO/ENEMIGO no nos fiamos solo del Narrador — cualquier NPC agresivo u hostil detectado
   // en escena fuerza combate él solo, sin depender del verbo del jugador (mismo criterio de "no
   // barrer a inocentes" que el bug del Múrgol de abajo: solo estos slugs, no todo `npcsInScene`).
+  // QA-27 P82: durante la gracia tras reaparecer, un agresivo en escena no fuerza combate (atacar
+  // por iniciativa propia sigue siendo posible).
   const agresivoSlugsInScene = npcsInSceneVivos
+    .filter(() => !params.enGraciaRenacer)
     .filter((n) => {
       const t = effectiveTemperamento(n.temperamento, n.faction, factionsStatus);
       return (t === 'AGRESIVO' || t === 'ENEMIGO') && npcCanForceCombat(n);
@@ -6957,6 +6963,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     : (await resolveCombatSlugsAndPersist({
         saveId,
         action,
+        enGraciaRenacer: await enGraciaTrasRenacer(prisma, saveId, fictionalMinutesActuales),
         enCombate,
         narration,
         npcsInScene,

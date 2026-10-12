@@ -1,4 +1,4 @@
-import type { CondicionFisica, Dificultad, AbilityEffect } from '@prisma/client';
+import type { CondicionFisica, Dificultad, AbilityEffect, Prisma, PrismaClient } from '@prisma/client';
 
 /// Muerte, respawn y condición física (docs/mecanicas/14-combate-y-muerte.md § 1, § 4) — todo determinista,
 /// sin IA: el modelo nunca decide si el fin de partida se dispara ni qué susurra la Entidad,
@@ -318,4 +318,15 @@ export function awakensText(characterName: string, respawnLocationName: string, 
 /// nunca un hito o cruce de paso.
 export function isValidRestLocationKind(kind: string): boolean {
   return kind === 'refugio' || kind === 'asentamiento';
+}
+
+/// QA-27 P82: minutos de ficción tras reaparecer en los que nada hostil empieza un combate (se podía
+/// reaparecer junto a un grupo agresivo, morir sin opción, y la siguiente muerte era la permanente).
+export const GRACIA_TRAS_RENACER_MINUTOS = 60;
+
+/// ¿Sigue la gracia del último RENACER? Una sola regla para toda vía que empiece un combate hostil
+/// (chocar en el mapa de zona, interrupciones de viaje o de acción larga, agresivos en escena).
+export async function enGraciaTrasRenacer(db: Prisma.TransactionClient | PrismaClient, saveId: string, minutosActuales: number): Promise<boolean> {
+  const renacer = await db.suceso.findFirst({ where: { saveId, tipo: 'RENACER' }, orderBy: { fictionalMinutes: 'desc' }, select: { fictionalMinutes: true } });
+  return !!renacer && minutosActuales - renacer.fictionalMinutes < GRACIA_TRAS_RENACER_MINUTOS;
 }

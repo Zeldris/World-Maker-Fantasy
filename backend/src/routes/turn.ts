@@ -68,6 +68,7 @@ import { startEagerTransitResolution } from '../workers/worldTick.js';
 import { detectDeterministicCraft, detectsCraftIntent, CRAFTING_RECIPES } from '../services/crafting.js';
 import { planDeterministicBuild, detectsBuildIntent, CONSTRUCTION_RECIPES, buildingTierFor } from '../services/construction.js';
 import { ambitoPoblacion } from '../services/mundoPartida.js';
+import { enGraciaTrasRenacer } from '../services/death.js';
 
 interface ClassifyBody {
   saveId: string;
@@ -1014,7 +1015,9 @@ export async function turnRoutes(app: FastifyInstance) {
       // resolverlo — si algún nodo intermedio de la ruta dispara, el viaje se trunca a ese punto
       // (llegada real, no la del destino pedido) y el candidato elegido entra en escena de verdad
       // en cuanto se resuelva el tránsito (ver turnResolution.ts).
-      const interruption = travel
+      // QA-27 P82: durante la gracia tras reaparecer, nada sale al paso.
+      const enGracia = await enGraciaTrasRenacer(prisma, saveId, save.worldState?.fictionalMinutes ?? 0);
+      const interruption = travel && !enGracia
         ? await pickTravelInterruption(save.worldId, travel, env.travelInterruptionProbabilityPerSegment, attributes, Math.random, await ambitoPoblacion(prisma, save.id))
         : null;
       // Grupo 3 § Mundo determinista, Capa 2 (2026-08-25) — generaliza lo de arriba a acciones
@@ -1023,7 +1026,7 @@ export async function turnRoutes(app: FastifyInstance) {
       // disparar en zonas con `ZonePoint` real (Capa 1, hoy solo La Hondonada del Eco) — en
       // cualquier otra zona `pickStationaryInterruption` siempre devuelve null, cero efecto.
       const stationaryInterruption =
-        !travel && currentLocationForSummary
+        !travel && !enGracia && currentLocationForSummary
           ? await pickStationaryInterruption(save.worldId, save.id, currentLocationForSummary.id, minutos, env.stationaryInterruptionProbabilityPerChunk)
           : null;
       const effectiveTravel = interruption ? interruption.travel : travel;

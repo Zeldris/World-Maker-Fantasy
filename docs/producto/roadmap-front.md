@@ -712,6 +712,20 @@ Contenedor común: `PanelDrawer` (cajón inferior, `max-w-4xl`, 85 vh).
   el retrato y el valor afectado, como el aviso de aprobación de Baldur's Gate 3. **S**
 - **NAR-11 · Informe del amanecer**: al cambiar de día, una sola tarjeta plegable que junta la
   crónica del día del Cronista y el informe del Reino (`REI-100`), en vez de dos piezas separadas. **M**
+- **NAR-12 · El texto libre, para lo que tiene sentido** (usuaria, 2026-10-12, sale de P71 de `QA-27`): 🧭
+  ronda de diseño pendiente. Equipar, curarse, comer y beber, viajar, recolectar o construir ya tienen
+  su camino determinista, pero el cuadro de acción acepta cualquier cosa: «Me equipo la Maza orca» se
+  narra y no cambia nada, y la jugadora cree que la lleva. El texto libre se centra en lo que solo él
+  puede hacer, y lo que tiene botón o panel se lleva allí. Para la ronda de diseño:
+  - **Para qué sí** (D&D 5e y Baldur's Gate 3: el máster interpreta lo que no cabe en un menú): hablar
+    con quien está en escena, investigar o mirar, acciones creativas o de rol sin mecánica propia, y
+    las intenciones que el motor ya traduce sin dudas (atacar en combate).
+  - **Para qué no** (X4: todo lo que tiene sistema va por su menú; igual en Medieval Dynasty, Bellwright
+    y Manor Lords): si el texto pide algo que tiene camino propio, no se narra como hecho; se responde
+    con un aviso determinista y un botón que abre ese camino («Para equipar la Maza orca: Personaje →
+    Equipo», con el botón).
+  - Falta decidir: qué acciones se desvían, cómo se detectan (las reglas de intención que ya existen,
+    sin modelo) y si el cuadro sugiere qué escribir. **M**
 
 ---
 
@@ -918,8 +932,13 @@ Retro del 2026-10-08 (`CR-63`, `CR-65`, `CR-50`, `CR-37`, `CR-67`; propuestas ap
   (beber de una fuente sin odre), P41, P45 y P46 (sin comprobar en vivo); P10 pasa a `CMB-10`, P30
   y P40 no aplican; P27 (aviso de riesgo también cuando te cortan el paso), la huida real de P12 (1v1), P47 (el aviso
   de interrupción nombra a quien sale al paso) y P50 (grupos de fauna repartidos); P23 y P48 no
-  aplican (por diseño). Falta: P16 (sin reproducir), P49 (falta la ilustración de Las Agujas Imán)
-  y seguir jugando.
+  aplican (por diseño). 2026-10-12, segunda tanda jugando con Gorhorn, sin código salvo bloqueantes:
+  P57-P82 apuntados. Comprobados en vivo P12, P17, P27, P33, P39, P50, P53 y P55. P71 pasa a `NAR-12`.
+  Arreglado el único bloqueante, P82 (al reaparecer se podía morir en bucle hasta la muerte
+  permanente). 🧭 P80 (Carisma 10 para fundar el Reino) espera a la usuaria. **Pausada por la
+  usuaria el 2026-10-12.** Falta: P16 (sin reproducir), P49 (ilustración), los pendientes de
+  P57-P81 y probar lo propio del `0.3` que no se llegó a jugar (Reino fundado, ganadería, defensa,
+  compañeros, «Charlar con NPC», comercio).
 
 
 Retro del 2026-10-09 (ronda de pruebas `QA-27`; propuestas aprobadas por la usuaria):
@@ -982,6 +1001,23 @@ por la usuaria):
   cambia el estado de una fila del registro y falla si no hay exactamente una.
 - ~~**QA-43 · Índice de `turnResolution.ts`**~~ ✅ 2026-10-12: al principio del archivo, cada bloque de
   `narrateAndPersistTurn` con la clave para buscarlo.
+
+Retro del 2026-10-12, segunda tanda de `QA-27` (jugando con Gorhorn; las 6 aprobadas por la usuaria):
+
+- ~~**QA-44 · Qué se prueba, en qué orden**~~ ✅ 2026-10-12 ([runbook de rondas](../runbooks/rondas-de-pruebas.md)):
+  primero lo arreglado que solo tiene tests, luego lo del hito en curso; lo que el roadmap no tiene, no.
+  Motivo: la tanda empezó por «Crear desde cero» y por cazar escribiendo, y la usuaria tuvo que reconducirla.
+- ~~**QA-45 · La ronda no escribe código**~~ ✅ 2026-10-12 (mismo runbook, paso 4): solo un fallo
+  bloqueante; lo demás al registro, las mejoras al roadmap con hito, las retros fuera de la ronda.
+- ~~**QA-46 · Ayudas para el MCP de Playwright**~~ ✅ 2026-10-12 (`tools/playwright-e2e/mcp/`: `estado.js`,
+  `turno.js`, `mover.js`, `captura.js`): caben en los 60 s del MCP y devuelven el estado en texto; los
+  parámetros van en `window.tk` (el MCP no guarda nada entre órdenes).
+- ~~**QA-47 · Añadir hallazgos**~~ ✅ 2026-10-12 (`marca-hallazgo.py --nuevo "<hallazgo>" "<estado>"`):
+  añade la fila con el siguiente número.
+- ~~**QA-48 · Revisar tras una llamada interrumpida**~~ ✅ 2026-10-12 (`CLAUDE.md`): `git status` y
+  `git diff` antes de repetirla. Motivo: `NAR-12` entró dos veces.
+- ~~**QA-49 · Avisar si el juego no está levantado**~~ ✅ 2026-10-12 (`.claude/hooks/session-start.sh`):
+  si existe `tarkor_juego` y el frontend no responde, el inicio de sesión lo dice y da la orden.
 ---
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)

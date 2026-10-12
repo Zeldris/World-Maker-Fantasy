@@ -41,6 +41,7 @@ import { effectiveAttributes } from '../../services/equipment.js';
 import { ambitoFacciones } from '../../services/mundoPartida.js';
 import { etiquetasActivas } from '../../services/cronista/etiquetas.js';
 import { conRencor, npcsConRencor } from '../../services/cronista/recuerdos.js';
+import { enGraciaTrasRenacer } from '../../services/death.js';
 
 /// Candado de "movimiento en curso" (hallazgo 45, revisar-partida-hallazgos.md, 2026-09-15) —
 /// mismo patrón que `turnLock.ts`/`chapterSummary.ts` (`createInFlightClaimSet`), pero con
@@ -867,6 +868,13 @@ export async function zonaRoutes(app: FastifyInstance) {
     // CR-16: quien te guarda rencor te corta el paso como un agresivo.
     const rencoresColision = await npcsConRencor(tx, saveId, [...puntosVivos.map((p) => npcBySlug.get(p.targetSlug)?.id), ...dinamicosConPosicionColision.map((d) => d.id)].filter((x): x is string => !!x), fictionalMinutes);
     let colision: { targetSlug: string; targetName: string; temperamento: string } | null = null;
+    // QA-27 P82: gracia tras reaparecer (`enGraciaTrasRenacer`, death.ts): nada hostil corta el paso.
+    // Se consulta solo si hace falta.
+    let enGraciaCache: boolean | null = null;
+    const enGracia = async (): Promise<boolean> => {
+      if (enGraciaCache === null) enGraciaCache = await enGraciaTrasRenacer(tx, saveId, fictionalMinutes);
+      return enGraciaCache;
+    };
     // "¿Quién ve a quién primero?" (2026-09-17) — Destreza del NPC/fauna del encuentro, guardada
     // junto a `colision` para la tirada de `quienIniciaEncuentro` más abajo.
     let destrezaColision: number | null = null;
@@ -891,6 +899,7 @@ export async function zonaRoutes(app: FastifyInstance) {
       const nombre = nombreVisibleColision(punto.targetSlug, npc?.kind, nombreReal, npc?.raza, npc?.genero);
       if (celdaAdyacenteOMisma(celda, celdaPunto)) {
         const temperamento = npc ? conRencor(effectiveTemperamento(npc.temperamento, npc.faction, factionsStatus), rencoresColision.has(npc.id)) : 'CAUTELOSO';
+        if (esTemperamentoHostil(temperamento) && (await enGracia())) continue;
         // Un AGRESIVO/ENEMIGO nunca se silencia: si sigue encima del jugador, vuelve a cortarle el paso.
         if (punto.targetSlug === ultimoEncuentroSlug && !esTemperamentoHostil(temperamento)) {
           ultimoEncuentroSigueCerca = true;
@@ -911,6 +920,7 @@ export async function zonaRoutes(app: FastifyInstance) {
         const nombreDinamico = nombreVisibleColision(dinamico.targetSlug, dinamico.kind, dinamico.targetName, dinamico.raza, dinamico.genero);
         if (celdaAdyacenteOMisma(celda, celdaDinamico)) {
           const temperamento = conRencor(effectiveTemperamento(dinamico.temperamento, dinamico.faction, factionsStatus), rencoresColision.has(dinamico.id));
+          if (esTemperamentoHostil(temperamento) && (await enGracia())) continue;
           if (dinamico.targetSlug === ultimoEncuentroSlug && !esTemperamentoHostil(temperamento)) {
             ultimoEncuentroSigueCerca = true;
             continue;
