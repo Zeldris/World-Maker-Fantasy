@@ -939,6 +939,12 @@ Retro del 2026-10-08 (`CR-63`, `CR-65`, `CR-50`, `CR-37`, `CR-67`; propuestas ap
   usuaria el 2026-10-12.** Falta: P16 (sin reproducir), P49 (ilustración), los pendientes de
   P57-P81 y probar lo propio del `0.3` que no se llegó a jugar (Reino fundado, ganadería, defensa,
   compañeros, «Charlar con NPC», comercio).
+  2026-10-12, tercera tanda (P83-P122, de las dos cuentas): P88 arreglado con la opción 2 de la
+  usuaria en la zona de inicio; P32 arreglado otra vez (la recompensa de una misión cerrada en
+  combate no llegaba a la pantalla). Partida nueva con Gorhorn Cazador: Gistera, el Orco Enfurecido
+  y el viaje al Paso de los Pilares Rotos, donde Gorhorn muere atrapado por los Cruzavientos (🧭 P116,
+  va con P88 y P89: decide la usuaria; también P109 y P121). Falta: los pendientes de P83-P121 y lo
+  propio del `0.3` sin jugar.
 
 
 Retro del 2026-10-09 (ronda de pruebas `QA-27`; propuestas aprobadas por la usuaria):
