@@ -150,6 +150,8 @@ export function nombreOcultoPorRaza(raza: string | null | undefined, genero: str
 /// P63 (QA-27): dentro de una frase, el nombre oculto por raza lleva artículo («el orco desconocido
 /// no tiene intención…»), no se lee como nombre propio. Cualquier otro nombre pasa tal cual.
 export function nombreEnFrase(nombre: string, alInicio = false): string {
+  // «Alguien» (sin raza conocida) tampoco es un nombre propio: en minúscula a mitad de frase.
+  if (nombre === NOMBRE_OCULTO_GENERICO) return alInicio ? nombre : nombre.toLowerCase();
   const m = /^(\S+) (desconocid([oa]))$/.exec(nombre);
   if (!m) return nombre;
   const articulo = m[3] === 'a' ? 'la' : 'el';

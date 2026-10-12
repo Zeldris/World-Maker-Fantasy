@@ -7,7 +7,7 @@ import { etiquetaSalida } from '../../lib/rumboSalida'
 import { ZoneGroupDetailModal } from '../ZoneGroupDetailModal'
 import { ZonaSalidaModal } from '../ZonaSalidaModal'
 import { ParcelaDetailModal } from '../ParcelaDetailModal'
-import { DefsFichas, EtiquetaNombre, anclaEtiqueta } from '../zona/FichaZona'
+import { DefsFichas, EtiquetaNombre, anclaEtiqueta, ANCHO_LIENZO_ZONA } from '../zona/FichaZona'
 import { COLOR_HEX, DISPOSICION_LABEL, distanciaEnCeldas, regionControlDisplay, TIPO_LABEL, useEscalaPantalla } from '../../lib/zonaFichas'
 import { AnilloInteraccion, GridOverlay, JugadorMarker, ParcelaMarker, SalidaMarker, ZonePointMarker } from '../zona/MarcadoresZona'
 import { MS_POR_VELOCIDAD, PasoZonaContext } from '../../lib/zonaMovimiento'
@@ -139,7 +139,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<ZonaResponse | null>(null)
   // ZON-11 (hito 0.1) — unidades del lienzo por píxel de pantalla: las fichas miden siempre lo mismo.
-  const { ref: svgRef, escala } = useEscalaPantalla()
+  const { ref: svgRef, escala } = useEscalaPantalla(ANCHO_LIENZO_ZONA)
   // ZON-14 (hito 0.1) — hacia dónde mira la ficha del personaje: el ángulo del último paso real.
   const [anguloJugador, setAnguloJugador] = useState<number | null>(null)
   // ZON-19 (hito 0.1) — nombre visible: lo cercano al personaje (≤ 2,5 celdas), lo seleccionado y lo
@@ -440,7 +440,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
             <PasoZonaContext.Provider value={msPasoActual}>
             <svg
               ref={svgRef}
-              viewBox="0 0 800 600"
+              viewBox={`0 0 ${ANCHO_LIENZO_ZONA} 600`}
               className={`${columnasAncho ? 'max-h-full max-w-full' : 'h-auto w-full'} ${soloConsulta ? '' : bloqueoMovimiento ? 'cursor-not-allowed' : movimientoEnCurso ? 'cursor-wait' : 'cursor-crosshair'}`}
               onClick={
                 soloConsulta

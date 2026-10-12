@@ -50,7 +50,7 @@ import { npcCombatAbilitiesFor, chooseNpcAbility } from './npcCombatAbilities.js
 import { detectHarvest } from './harvest.js';
 import { detectItemReference, detectMedicalItemUse, detectEnergyItemUse, detectsCompassUse, missingItemBlockFor } from './itemReference.js';
 import { compassNarrationText, type CompassLinkInfo } from './compassNarration.js';
-import { energiaMaxFor, energiaPasivaEntre, nextEnergia, restCooldownActivo } from './energy.js';
+import { energiaMaxFor, energiaPasivaEntre, nextEnergia } from './energy.js';
 import { WEAPON_ABILITY_LEVEL_AVANZADA, dualWieldAdjustedDifficulty, weaponCategoryForRealAbilityName, type EquippedWeaponSlot } from './weaponAbilities.js';
 import { syncDynamicCombatAbilities } from './dynamicAbilities.js';
 import { CRAFTING_RECIPES, detectsCraftIntent, canCraft, craftRequisitoShortfalls, bebeDeLaFuente, soloBebeDeLaFuente, planCraftConsumption, hasToolForOficio, OFICIOS_CON_HERRAMIENTA_REQUERIDA } from './crafting.js';
@@ -65,7 +65,7 @@ import { lintRegionMismatch } from './narrationLint.js';
 import { stripRegionArticle } from './population.js';
 import { startEagerTransitResolution } from '../workers/worldTick.js';
 import { destinationsFrom, normalizeText, detectsTravelIntent, detectsVagueMovementIntent, cardinalDirectionBetween, resolveTravelToLocationId, segundosRealesPorTramos, type TravelResolution } from './travel.js';
-import { detectsRestIntent, type Produccion } from './timedActions.js';
+import { descansoRechazadoPorEnfriamiento, intentaDescansar, type Produccion } from './timedActions.js';
 import { puntoDeEntradaParaDireccion, posicionesDeSalidas, direccionDeEntrada, posicionDeObjetivo, minutoDeReaparicion, moverJugadorA, volverAEntrada, celdaDePixel, mismaCelda, celdaAdyacenteOMisma } from './zonaPosicion.js';
 import { claimChapterIfDue, scheduleChapterSummaryGeneration, releaseChapterClaim } from './chapterSummary.js';
 import { captureLiveTeacherExample } from './liveTeacherCapture.js';
@@ -1732,8 +1732,10 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
           : input.condicionFisicaJugador;
         const condicionNpcParaIniciativa = npcTargetNewCondicion ?? npcParaIntercambio.condicionFisica;
         // P64 (QA-27): un rival CONVALECIENTE o MUERTO ya no pelea; no hay iniciativa que tirar y
-        // el siguiente movimiento (rematar, perdonar, capturar) es de la jugadora.
-        const rivalFueraDeCombate = condicionNpcParaIniciativa === 'CONVALECIENTE' || condicionNpcParaIniciativa === 'MUERTO';
+        // el siguiente movimiento (rematar, perdonar, capturar) es de la jugadora. En caza en grupo,
+        // si quedan miembros, la fila vuelve a ILESO para el siguiente: ese sí tira iniciativa.
+        const quedanDelGrupo = !!npcParaIntercambio.groupSize && npcParaIntercambio.groupDefeated + 1 < npcParaIntercambio.groupSize;
+        const rivalFueraDeCombate = !quedanDelGrupo && (condicionNpcParaIniciativa === 'CONVALECIENTE' || condicionNpcParaIniciativa === 'MUERTO');
         nextInitiativeRoll = rivalFueraDeCombate ? null : rollInitiative(
           { attributes: attributesEfectivos, attribute: 'destreza', difficulty: 0, condicionFisica: condicionJugadorParaIniciativa, rol: 'utilidad' },
           { attributes: npcAttributesEfectivos, attribute: 'destreza', difficulty: 0, condicionFisica: condicionNpcParaIniciativa, rol: 'utilidad' },
@@ -4392,8 +4394,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // (`hasFalseHealingClaim`) como en la rama determinista nueva "cooldown activo" del propio
   // switch y en el bloque real de energía/condición más abajo — una sola fuente de verdad, sin
   // triplicar la fórmula de `detectsRestIntent`.
-  const restIntentDetected = !!(!travel && currentLocationRecord && detectsRestIntent(action) && (!roll || roll.success));
-  const restBlockedByCooldown = restIntentDetected && restCooldownActivo(params.lastRestAtMinutes, params.fictionalMinutesActuales);
+  const restIntentDetected = intentaDescansar({ action, hayViaje: !!travel, hayLugar: !!currentLocationRecord, roll });
+  const restBlockedByCooldown = descansoRechazadoPorEnfriamiento({ action, hayViaje: !!travel, hayLugar: !!currentLocationRecord, roll, lastRestAtMinutes: params.lastRestAtMinutes, ahoraMinutos: params.fictionalMinutesActuales });
   // Ver `hasFalseHealingClaim` (narrador.ts) — Descansar ya NO cura condicionFisica (2026-09-06,
   // hallazgo 11: decisión explícita de la usuaria) — sin objeto médico, el techo real es siempre
   // `params.condicionFisica` (sin mejora), así que este guard se simplifica a "¿el jugador

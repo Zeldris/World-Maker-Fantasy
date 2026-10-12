@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { CombatPanel } from './CombatPanel'
 import type { CombatNpcDisplay } from './CombatComposer'
@@ -28,9 +28,14 @@ function panel(npcs: CombatNpcDisplay[]) {
 
 describe('CombatPanel: rematar (P65, QA-27)', () => {
   it('al marcar «Matar», lleva a la vista la lista de ataques', () => {
+    // jsdom no tiene estos métodos: se ponen solo durante este test y se quitan al acabar.
     const scroll = vi.fn()
     Element.prototype.scrollIntoView = scroll
     Element.prototype.scrollTo = vi.fn()
+    onTestFinished(() => {
+      delete (Element.prototype as Partial<Element>).scrollIntoView
+      delete (Element.prototype as Partial<Element>).scrollTo
+    })
     const { rerender } = render(panel([orco(false)]))
     expect(scroll).not.toHaveBeenCalled()
     rerender(panel([orco(true)]))

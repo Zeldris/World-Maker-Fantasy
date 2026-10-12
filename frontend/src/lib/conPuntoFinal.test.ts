@@ -8,9 +8,13 @@ describe('conPuntoFinal (P68, QA-27)', () => {
     )
   })
 
+  it('tras unas comillas de cierre, el punto va fuera', () => {
+    expect(conPuntoFinal('Los pastores lo llaman «el pozo que canta»')).toBe('Los pastores lo llaman «el pozo que canta».')
+  })
+
   it('deja como está una frase ya cerrada', () => {
     expect(conPuntoFinal('Ya has estado aquí.')).toBe('Ya has estado aquí.')
     expect(conPuntoFinal('¿Quién sabe?')).toBe('¿Quién sabe?')
-    expect(conPuntoFinal('dicen «nunca»')).toBe('dicen «nunca»')
+    expect(conPuntoFinal('dicen «¿nunca?»')).toBe('dicen «¿nunca?»')
   })
 })

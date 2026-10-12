@@ -1,6 +1,7 @@
 import type { AttributeBlock } from './dice.js';
 import type { Banda } from './narrador.js';
 import { normalizeText } from './travel.js';
+import { restCooldownActivo } from './energy.js';
 
 export interface Produccion {
   itemName: string;
@@ -125,4 +126,16 @@ export function computeDuration(action: string, banda: Banda, attributes: Attrib
 
   const fallback: Record<Banda, number> = { instantanea: 0, corta: 15, extendida: 180, larga: 1440 };
   return { minutos: duracionEstimadaMinutos > 0 ? duracionEstimadaMinutos : fallback[banda] };
+}
+
+/// Intención real de descansar (2026-09-06, hallazgo 11): sin viaje, en un lugar conocido y con la
+/// tirada superada si la hubo. Una sola fuente de verdad para el turno (`turnResolution`) y para la
+/// clasificación (P74, `/turn/classify`), que no deben discrepar.
+export function intentaDescansar(p: { action: string; hayViaje: boolean; hayLugar: boolean; roll?: { success: boolean } | null }): boolean {
+  return !p.hayViaje && p.hayLugar && detectsRestIntent(p.action) && (!p.roll || p.roll.success);
+}
+
+/// P74 (QA-27): el descanso se rechaza porque el último fue hace menos de 3 h de ficción.
+export function descansoRechazadoPorEnfriamiento(p: Parameters<typeof intentaDescansar>[0] & { lastRestAtMinutes: number | null; ahoraMinutos: number }): boolean {
+  return intentaDescansar(p) && restCooldownActivo(p.lastRestAtMinutes, p.ahoraMinutos);
 }

@@ -427,12 +427,13 @@ async function intentarCazaEnGrupo(save: SaveParaCaza, targets: CazaTarget[]): P
     }
     // P77 (QA-27): «6 de 6 entran» y solo 4 en la iniciativa — el diario no decía que el resto se
     // queda fuera del combate en vivo (como mucho `MAX_COMBATIENTES_POR_BANDO` por bando).
+    // Esos rezagados pelean de fondo entre sí y con el terreno (frase de `caidosAutonomos`, abajo).
     const fueraDelAlcance = fragmentosParaCrear.slice(1).reduce((n, f, i) => n + (otrosGrupos[i] ? 0 : f.length), 0);
     if (fueraDelAlcance > 0) {
-      varianceClauses.push(`Solo ${MAX_COMBATIENTES_POR_BANDO} alcanzan a ${save.characterName} a la vez; ${fueraDelAlcance === 1 ? 'el otro se queda rezagado' : `los otros ${fueraDelAlcance} se quedan rezagados`}.`);
+      varianceClauses.push(`Solo ${MAX_COMBATIENTES_POR_BANDO} alcanzan a ${save.characterName} a la vez; ${fueraDelAlcance === 1 ? 'el otro queda' : `los otros ${fueraDelAlcance} quedan`} fuera de su alcance.`);
     }
     if (caidosAutonomos > 0) {
-      varianceClauses.push(`El resto de la manada, fuera del alcance directo de ${save.characterName}, se enfrenta entre sí y con el terreno — ${caidosAutonomos} caen sin que ${save.characterName} llegue a verlo.`);
+      varianceClauses.push(`Los que quedan fuera de su alcance se revuelven entre sí y contra el terreno; ${caidosAutonomos} caen sin que ${save.characterName} llegue a verlo.`);
     }
   } else {
     // 1v1 clásico: el combate lo abre el turno de texto libre, pero el individuo enfrentado ya no

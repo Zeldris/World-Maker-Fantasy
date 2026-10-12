@@ -78,4 +78,10 @@ describe('FichaZona', () => {
     expect(anclaEtiqueta(20, nombre, 1)).toBe('start')
     expect(anclaEtiqueta(400, nombre, 1)).toBe('middle')
   })
+
+  it('una etiqueta que no cabe hacia ningún lado crece hacia donde hay más sitio', () => {
+    const nombre = 'Salvia del Polvo en la sombra de la hondonada'
+    expect(anclaEtiqueta(100, nombre, 4)).toBe('start')
+    expect(anclaEtiqueta(700, nombre, 4)).toBe('end')
+  })
 })

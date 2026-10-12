@@ -2,5 +2,6 @@
 /// suelta); en una tarjeta se leen como frase.
 export function conPuntoFinal(texto: string): string {
   const t = texto.trimEnd()
-  return /[.!?…»]$/.test(t) ? t : `${t}.`
+  // En español el punto va tras las comillas de cierre («…»), salvo que la cita ya cierre la frase.
+  return /[.!?…]»?$/.test(t) ? t : `${t}.`
 }

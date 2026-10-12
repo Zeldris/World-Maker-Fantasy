@@ -2,8 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { classifyAction, type ClassificationResult } from '../services/narrador.js';
 import { rollCheck } from '../services/dice.js';
 import type { AttributeBlock, RollResult } from '../services/dice.js';
-import { restCooldownActivo } from '../services/energy.js';
-import { computeDuration, detectsRestIntent, duracionExplicitaDeLaAccion, mentionsExplicitDuration } from '../services/timedActions.js';
+import { computeDuration, descansoRechazadoPorEnfriamiento, detectsRestIntent, duracionExplicitaDeLaAccion, mentionsExplicitDuration } from '../services/timedActions.js';
 import { narrateAndPersistTurn } from '../services/turnResolution.js';
 import { avanzarSiCruzaDia, enSegundoPlano, esperarSegundoPlano } from '../services/avanceDiario.js';
 import { recordEntityDiscoveries } from '../services/entityDiscovery.js';
@@ -529,7 +528,7 @@ async function resolveClassificationForTurn(params: {
     // P74 (QA-27): un descanso que el enfriamiento va a rechazar (turnResolution § restBlockedByCooldown)
     // no ocupa el tiempo que pedía: «Descanso ocho horas» con el descanso aún reciente dejaba a la
     // jugadora ocupada 8 h mientras el narrador decía que no descansaba.
-    if (!travel && detectsRestIntent(action) && restCooldownActivo(params.lastRestAtMinutes ?? null, fictionalMinutes)) {
+    if (descansoRechazadoPorEnfriamiento({ action, hayViaje: !!travel, hayLugar: !!currentLocationId, roll, lastRestAtMinutes: params.lastRestAtMinutes ?? null, ahoraMinutos: fictionalMinutes })) {
       classification.banda = 'instantanea';
       classification.duracionEstimadaMinutos = 0;
     }

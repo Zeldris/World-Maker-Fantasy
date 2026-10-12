@@ -5306,6 +5306,8 @@ describe('Caza en grupo: el individuo actual "resucita" a ILESO mientras queden 
     // El combate sigue de verdad — el NPC sigue en pendingCombatNpcSlugs para el siguiente turno.
     const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(save.pendingCombatNpcSlugs).toContain('corretolvas');
+    // P64 (code-review): el siguiente del grupo sí tira iniciativa (no se le da el turno gratis).
+    expect((lastNdjsonLine(res.payload) as { nextInitiativeRoll?: unknown }).nextInitiativeRoll).toBeTruthy();
   }, 20_000);
 
   it('con un cadáver real ya caído (groupDefeated=1), el despiece SÍ da algo aunque el individuo actual siga ILESO', async () => {

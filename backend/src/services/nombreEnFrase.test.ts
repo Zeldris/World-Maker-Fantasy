@@ -10,7 +10,11 @@ describe('nombreEnFrase (P63, QA-27)', () => {
 
   it('cualquier otro nombre pasa tal cual', () => {
     expect(nombreEnFrase('Gistera Koh')).toBe('Gistera Koh');
-    expect(nombreEnFrase('Alguien')).toBe('Alguien');
+  });
+
+  it('«Alguien» va en minúscula a mitad de frase y en mayúscula al inicio', () => {
+    expect(nombreEnFrase('Alguien')).toBe('alguien');
+    expect(nombreEnFrase('Alguien', true)).toBe('Alguien');
   });
 
   it('la apertura del combate forzado ya no lo lee como nombre propio', () => {

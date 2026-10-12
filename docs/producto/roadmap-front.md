@@ -1025,6 +1025,10 @@ Retro del 2026-10-12, último tramo (P82, PR #44; las 4 aprobadas por la usuaria
   (`.claude/hooks/revision-antes-de-main.sh`, en `.claude/settings.json`) que bloquea crear o fusionar
   un PR a `main` si la marca de `tools/qa/revisado.sh` no es del mismo commit, y la regla en `CLAUDE.md`.
   Motivo: el PR #43 entró sin `/code-review` y el #44 casi.
+  🚧 2026-10-12 (`/code-review`): el gancho **no está versionado** (`.gitignore` ignora `.claude/` y no se
+  subió con `git add -f`), así que en otra sesión no bloquea nada; además, al fusionar mira el HEAD local en
+  vez de la base y la cabeza del PR. Falta: arreglarlo y subirlo (el modo automático no deja a Claude tocar
+  sus propios ganchos; lo aprueba la usuaria).
 - ~~**QA-51 · Lo hostil y la jugadora**~~ ✅ 2026-10-12 (`REVIEW.md`): colocar o mover algo hostil dice
   qué pasa junto a la jugadora y donde reaparece, con su test. Motivo: P50 causó P82.
 - **QA-52 · Diagnosticar el intermitente de `avanceDiario`** (pendiente): «la economía avanza las copias

@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
 interface TooltipAnchorProps {
@@ -27,11 +27,16 @@ interface TooltipAnchorProps {
 const TOOLTIP_MAX_WIDTH = 240
 const VIEWPORT_MARGIN = 8
 
-/// El `hide` del aviso abierto ahora mismo (P72): nunca hay dos a la vez.
-let ocultarAbierto: (() => void) | null = null
+/// El aviso abierto ahora mismo (P72): nunca hay dos a la vez. `id` es estable por instancia.
+let abierto: { id: object; ocultar: () => void } | null = null
 
 export function TooltipAnchor({ text, subtext, children, className = '' }: TooltipAnchorProps) {
   const anchorRef = useRef<HTMLSpanElement>(null)
+  const idRef = useRef({})
+  // Al desmontarse, no deja su cierre colgado en `abierto`.
+  useEffect(() => () => {
+    if (abierto?.id === idRef.current) abierto = null
+  }, [])
   // Bug real jugando en vivo (2026-08-29, feedback sobre la barra de habilidades — icono muy
   // pegado al borde izquierdo de la ventana): centrar SIEMPRE el tooltip sobre el ancla
   // (`left: 50%` + `translateX(-50%)`) lo cortaba contra el borde de la ventana en cuanto el
@@ -46,8 +51,8 @@ export function TooltipAnchor({ text, subtext, children, className = '' }: Toolt
     if (!el) return
     // P72 (QA-27): un hueco pulsado conserva el foco y su aviso seguía abierto mientras el ratón
     // pasaba por otro. Solo hay un aviso abierto a la vez: abrir uno cierra el anterior.
-    if (ocultarAbierto && ocultarAbierto !== hide) ocultarAbierto()
-    ocultarAbierto = hide
+    if (abierto && abierto.id !== idRef.current) abierto.ocultar()
+    abierto = { id: idRef.current, ocultar: () => setPos(null) }
     const rect = el.getBoundingClientRect()
     const center = rect.left + rect.width / 2
     const halfTooltip = TOOLTIP_MAX_WIDTH / 2
@@ -57,7 +62,7 @@ export function TooltipAnchor({ text, subtext, children, className = '' }: Toolt
   }
   function hide() {
     setPos(null)
-    if (ocultarAbierto === hide) ocultarAbierto = null
+    if (abierto?.id === idRef.current) abierto = null
   }
 
   return (
