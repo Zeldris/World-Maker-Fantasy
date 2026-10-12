@@ -3,6 +3,8 @@ interface OfferCardAction {
   onClick: () => void
   tone: 'primary' | 'danger' | 'accent' | 'neutral'
   disabled?: boolean
+  /// Por qué está desactivada (P78): sale al pasar el ratón.
+  motivo?: string
 }
 
 interface OfferCardProps {
@@ -74,7 +76,7 @@ export function OfferCard({ tone, icon, title, subtitle, warning, error, actions
               key={action.label}
               type="button"
               disabled={action.disabled || !!bloqueo}
-              title={bloqueo ?? undefined}
+              title={bloqueo ?? action.motivo}
               onClick={action.onClick}
               className={`tactile rounded-lg border px-2.5 py-1 text-2xs font-semibold uppercase tracking-[0.08em] disabled:cursor-not-allowed disabled:opacity-50 ${ACTION_TONE[action.tone]}`}
             >
