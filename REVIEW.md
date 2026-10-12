@@ -53,6 +53,13 @@ Retro de `QA-27` (2026-10-12, `QA-40`): tres de los diez fallos de la revisión 
   porque otra la repite) se decide contra la base: en una lista paginada, la vecina puede caer en
   otra página.
 
+## Un fallo que vuelve
+
+- **Un hallazgo ya arreglado que vuelve** (`QA-64`, retro del 2026-10-12) se arregla en la raíz: el diff
+  dice qué función crea el dato, enumera a quién la llama y cubre cada camino con un test (o explica por
+  qué un camino no lo necesita). Pasó con P32: se arregló camino a camino dos veces, y la revisión del
+  segundo arreglo aún encontró cuatro caminos sin cubrir.
+
 ## Textos que se leen
 
 - **Un nombre de encuentro dentro de una frase** (`QA-59`, retro del 2026-10-12) pasa por
