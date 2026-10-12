@@ -18,8 +18,9 @@ export function rumboSalida(pos: { x: number; y: number }): string {
 
 /// Texto de una salida en el mapa de zona. QA-27 (P7): las puertas de una zona interior (dentro de
 /// un asentamiento) no son un camino con rumbo: «Entrar en …» desde fuera, «Salir a …» desde dentro.
-export function etiquetaSalida(s: { x: number; y: number; nombre: string; visitada: boolean; puerta?: 'ENTRAR' | 'SALIR' }): string {
+export function etiquetaSalida(s: { x: number; y: number; nombre: string; visitada: boolean; conocida?: boolean; puerta?: 'ENTRAR' | 'SALIR' }): string {
   if (s.puerta === 'ENTRAR') return `Entrar en ${s.nombre}`
   if (s.puerta === 'SALIR') return `Salir a ${s.nombre}`
-  return s.visitada ? s.nombre : `Camino hacia el ${rumboSalida(s)}`
+  // P115 (QA-27): con el mapa de la región, el destino tiene nombre aunque no se haya visitado.
+  return s.visitada || s.conocida ? s.nombre : `Camino hacia el ${rumboSalida(s)}`
 }

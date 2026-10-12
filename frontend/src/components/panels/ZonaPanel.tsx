@@ -3,11 +3,12 @@ import { CapasContext } from '../../context/capasContext'
 import { ViajerosAqui } from './ViajerosAqui'
 import { getZona, resolveImageUrl, recogerDroppedItem, type ZonaResponse, type ZonePointInfo, type ZonaDinamicoInfo, type ZonaSalidaInfo } from '../../lib/api'
 import { ZonePointDetailModal, zonaDinamicoToDetailSource } from '../ZonePointDetailModal'
-import { etiquetaSalida } from '../../lib/rumboSalida'
+import { anguloSalida, etiquetaSalida } from '../../lib/rumboSalida'
+import { separarEtiquetas } from '../../lib/separarEtiquetas'
 import { ZoneGroupDetailModal } from '../ZoneGroupDetailModal'
 import { ZonaSalidaModal } from '../ZonaSalidaModal'
 import { ParcelaDetailModal } from '../ParcelaDetailModal'
-import { DefsFichas, EtiquetaNombre, anclaEtiqueta, ANCHO_LIENZO_ZONA } from '../zona/FichaZona'
+import { DefsFichas, EtiquetaNombre, anclaEtiqueta, cajaEtiqueta, etiquetaDeEstandarte, ANCHO_LIENZO_ZONA, ALTO_LIENZO_ZONA } from '../zona/FichaZona'
 import { COLOR_HEX, DISPOSICION_LABEL, distanciaEnCeldas, regionControlDisplay, TIPO_LABEL, useEscalaPantalla } from '../../lib/zonaFichas'
 import { AnilloInteraccion, GridOverlay, JugadorMarker, ParcelaMarker, SalidaMarker, ZonePointMarker } from '../zona/MarcadoresZona'
 import { MS_POR_VELOCIDAD, PasoZonaContext } from '../../lib/zonaMovimiento'
@@ -368,6 +369,21 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
   // ZON-50/ZON-33: hostiles conocidos (el backend solo los marca si ya están descubiertos).
   const hostiles = data.puntos.filter((p) => p.hostil)
   const dinamicos = data.dinamicos ?? []
+  // ZON-19: nombres visibles de las fichas. P92 (QA-27): los de las salidas mandan y los de las fichas
+  // se apartan en vertical si los pisan.
+  const etiquetasFichas = [
+    ...data.puntos.map((p) => ({ clave: `p:${p.id}`, x: p.x, y: p.y, nombre: p.nombre, sel: selectedPoint === p || selectedGroup === p })),
+    ...dinamicos.map((d) => ({ clave: `d:${d.slug}`, x: d.x, y: d.y, nombre: d.nombre, sel: selectedPoint === d })),
+  ].filter((e) => nombreVisible(e.clave, e, e.sel))
+  const dyEtiquetas = separarEtiquetas(
+    [
+      ...data.salidas.map((s) => cajaEtiqueta(`s:${s.locationId}`, s.x, s.y, escala, etiquetaDeEstandarte(anguloSalida(s)), etiquetaSalida(s))),
+      ...etiquetasFichas
+        .map((e) => cajaEtiqueta(e.clave, e.x, e.y, escala, { x: 0, y: 24, anchor: anclaEtiqueta(e.x, e.nombre, escala) }, e.nombre))
+        .sort((a, b) => a.y - b.y),
+    ],
+    ALTO_LIENZO_ZONA,
+  )
 
   // Layout de 2 columnas (2026-09-09) — solo cuando `columnasAncho` (ZonaMovimientoModal): mapa a
   // la izquierda, todo el contenido (control regional/mensaje/leyenda/listas) a la derecha con su
@@ -557,7 +573,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                   }}
                   className={`${s.alcanzable ? '' : 'opacity-60'} ${s.alcanzable || !soloConsulta ? 'cursor-pointer' : 'cursor-not-allowed'}`}
                 >
-                  <SalidaMarker x={s.x} y={s.y} escala={escala} texto={etiquetaSalida(s)} />
+                  <SalidaMarker x={s.x} y={s.y} escala={escala} texto={etiquetaSalida(s)} dyEtiqueta={(dyEtiquetas.get(`s:${s.locationId}`) ?? 0) / escala} />
                   <title>{etiquetaSalida(s)}</title>
                 </g>
               ))}
@@ -620,15 +636,10 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
               {/* ZON-19 (hito 0.1) — nombres en una capa por encima de todo (ni salidas ni otras fichas los
                   tapan), con la misma animación de desplazamiento que su ficha. */}
               <g pointerEvents="none">
-                {[
-                  ...data.puntos.map((p) => ({ clave: `p:${p.id}`, x: p.x, y: p.y, nombre: p.nombre, sel: selectedPoint === p || selectedGroup === p })),
-                  ...dinamicos.map((d) => ({ clave: `d:${d.slug}`, x: d.x, y: d.y, nombre: d.nombre, sel: selectedPoint === d })),
-                ]
-                  .filter((e) => nombreVisible(e.clave, e, e.sel))
-                  .map((e) => (
+                {etiquetasFichas.map((e) => (
                     <g key={e.clave} style={{ transform: `translate(${e.x}px, ${e.y}px)`, transition: `transform ${msPasoActual}ms linear` }}>
                       <g transform={`scale(${escala})`}>
-                        <EtiquetaNombre texto={e.nombre} anchor={anclaEtiqueta(e.x, e.nombre, escala)} />
+                        <EtiquetaNombre texto={e.nombre} y={24 + (dyEtiquetas.get(e.clave) ?? 0) / escala} anchor={anclaEtiqueta(e.x, e.nombre, escala)} />
                       </g>
                     </g>
                   ))}

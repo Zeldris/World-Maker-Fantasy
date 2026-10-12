@@ -37,6 +37,7 @@ const findManyQuest = vi.fn();
 // no tocan Locations conectadas por LocationLink.
 const findManyLocationLink = vi.fn();
 const findManyLocationVisit = vi.fn();
+const findFirstInventoryItem = vi.fn(async (): Promise<unknown> => null);
 const findFirstZonePoint = vi.fn().mockResolvedValue(null);
 // Iconos de parcela (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) — vacío por defecto: la
 // mayoría de tests de este archivo no prueban zonas-interior con Parcela sembrada.
@@ -90,6 +91,8 @@ vi.mock('../../lib/prisma.js', () => ({
     factionRelation: { findMany: async () => [] },
     // P88 (QA-27): ¿zona de inicio? Sin fila, no lo es (el movimiento se comporta como antes).
     location: { findUnique: async () => null },
+    // P115 (QA-27): ¿lleva el mapa de la región? Por defecto, no.
+    inventoryItem: { findFirst: (...args: unknown[]) => findFirstInventoryItem(...(args as [])) },
   },
 }));
 
@@ -946,6 +949,28 @@ describe('GET /saves/:id/zona', () => {
       expect(salidas[0].visitada).toBe(true);
       expect(salidas[0].description).toBe('Descripción completa real.');
       expect(salidas[0].teaser).toBe('breve'); // se devuelve igual, el frontend decide cuál mostrar
+    });
+
+    it('P115 (QA-27): con el mapa de la región, una salida sin visitar dice su destino; siempre, cuánto se tarda', async () => {
+      findUniqueSave.mockResolvedValueOnce({
+        id: 's1', worldId: 'w1', zonaPosX: null, zonaPosY: null,
+        currentLocation: { id: 'loc1', slug: 'hondonada-del-eco', name: 'La Hondonada del Eco', x: 0, y: 0, zonePoints: [] },
+      });
+      loadSessionFactsMock.mockResolvedValueOnce([]);
+      detectNpcsInSceneMock.mockResolvedValueOnce([]);
+      findManyLocationLink.mockResolvedValueOnce([
+        {
+          minutosBase: 90,
+          from: { id: 'loc1', slug: 'hondonada-del-eco', name: 'La Hondonada del Eco', x: 0, y: 0, teaser: null, description: 'x' },
+          to: { id: 'loc2', slug: 'pilares-rotos', name: 'Paso de los Pilares Rotos', x: 0, y: 10, teaser: 'breve', description: 'y' },
+        },
+      ]);
+      findManyLocationVisit.mockResolvedValueOnce([]);
+      findFirstInventoryItem.mockResolvedValueOnce({ id: 'mapa' });
+      const app = await buildApp();
+      const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
+      const [salida] = res.json().salidas;
+      expect(salida).toMatchObject({ visitada: false, conocida: true, minutos: 90 });
     });
 
     // Umbral de proximidad (2026-09-20, petición explícita de Álvaro: "la salida de una zona debe

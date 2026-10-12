@@ -186,6 +186,7 @@ export function FichaJugador({ escala, angulo, quieto, sombra = true }: { escala
 /// Ancho de la placa de `EtiquetaNombre` (sin escalar), en píxeles del lienzo.
 /// Ancho del lienzo del mapa de zona (viewBox 800×600, `ZonaPanel`).
 export const ANCHO_LIENZO_ZONA = 800
+export const ALTO_LIENZO_ZONA = 600
 
 export function anchoEtiqueta(texto: string): number {
   return Math.round(texto.length * 6.1 + 12)
@@ -225,17 +226,27 @@ export function EtiquetaNombre({ texto, x = 0, y = 24, anchor = 'middle' }: { te
   )
 }
 
-/// ZON-17 (hito 0.1) — salida de región como estandarte de camino: placa con una flecha grande hacia el
-/// borde (`angulo` en grados, 0 = este) y una etiqueta hacia el interior del mapa con el destino, para
-/// que no se salga del lienzo.
-export function EstandarteSalida({ escala, angulo, texto }: { escala: number; angulo: number; texto: string }) {
+/// Dónde va la etiqueta de un estandarte de salida (unidades de la ficha, antes de `escala`): hacia el
+/// interior del mapa, al lado de la flecha si sale por un lado y encima o debajo si sale por arriba o abajo.
+export function etiquetaDeEstandarte(angulo: number): { x: number; y: number; anchor: 'start' | 'middle' | 'end' } {
   const rad = (angulo * Math.PI) / 180
   const dx = Math.cos(rad)
   const dy = Math.sin(rad)
-  const horizontal = Math.abs(dx) >= Math.abs(dy)
-  const etiqueta = horizontal
-    ? { x: dx > 0 ? -20 : 20, y: 0, anchor: (dx > 0 ? 'end' : 'start') as 'start' | 'end' }
-    : { x: 0, y: dy > 0 ? -26 : 26, anchor: 'middle' as const }
+  return Math.abs(dx) >= Math.abs(dy) ? { x: dx > 0 ? -20 : 20, y: 0, anchor: dx > 0 ? 'end' : 'start' } : { x: 0, y: dy > 0 ? -26 : 26, anchor: 'middle' }
+}
+
+/// Caja (unidades del lienzo) de una etiqueta de nombre en (x, y) de la ficha, para separarlas (P92).
+export function cajaEtiqueta(clave: string, fx: number, fy: number, escala: number, e: { x: number; y: number; anchor: 'start' | 'middle' | 'end' }, texto: string) {
+  const ancho = anchoEtiqueta(texto)
+  const izq = e.anchor === 'middle' ? e.x - ancho / 2 : e.anchor === 'start' ? e.x : e.x - ancho
+  return { clave, x: fx + izq * escala, y: fy + (e.y - 9) * escala, ancho: ancho * escala, alto: 18 * escala }
+}
+
+/// ZON-17 (hito 0.1) — salida de región como estandarte de camino: placa con una flecha grande hacia el
+/// borde (`angulo` en grados, 0 = este) y una etiqueta hacia el interior del mapa con el destino, para
+/// que no se salga del lienzo.
+export function EstandarteSalida({ escala, angulo, texto, dyEtiqueta = 0 }: { escala: number; angulo: number; texto: string; dyEtiqueta?: number }) {
+  const etiqueta = etiquetaDeEstandarte(angulo)
   return (
     <g transform={`scale(${escala})`}>
       <circle cx={0} cy={0} r={FICHA_AREA_CLIC_PX / 2} fill="transparent" />
@@ -246,7 +257,7 @@ export function EstandarteSalida({ escala, angulo, texto }: { escala: number; an
       <g transform={`rotate(${angulo})`}>
         <path d="M -7 -7 L 4 0 L -7 7 L -4 0 Z M 1 -7 L 12 0 L 1 7 L 4 0 Z" fill="var(--color-wood-100)" />
       </g>
-      {texto && <EtiquetaNombre texto={texto} x={etiqueta.x} y={etiqueta.y} anchor={etiqueta.anchor} />}
+      {texto && <EtiquetaNombre texto={texto} x={etiqueta.x} y={etiqueta.y + dyEtiqueta} anchor={etiqueta.anchor} />}
     </g>
   )
 }
