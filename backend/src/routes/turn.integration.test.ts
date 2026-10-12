@@ -4097,6 +4097,8 @@ describe('Decapitar cierra una misión "derrotar a X" con rewardItems y entrega 
       grantedItems: ['Mapa de las Llanuras (prueba)'],
       rewardXp: 100,
     });
+    // P32 (QA-27, 2026-10-12): la recompensa llega también como objeto nuevo, sin recargar.
+    expect((done.newInventoryItems as { id: string }[]).map((i) => i.id)).toContain(item!.id);
 
     // Auditoría "revisar partida" 2026-08-13, bug real jugando en vivo: "Misión completada" se
     // leía ANTES que la narración del propio turno que la resolvió (mismo `createdAt` de

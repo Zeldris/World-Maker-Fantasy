@@ -6312,6 +6312,34 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       createdAt: nextAfterMainLogCreatedAt,
     });
 
+    // P32 (QA-27, 2026-10-12): la recompensa de una misión cerrada este turno (el Mapa de las
+    // Llanuras al matar al Orco Enfurecido) ya está en el inventario, pero no llegaba a la pantalla
+    // hasta recargar: el mapa del mundo seguía pidiendo conseguirla. Va con los objetos nuevos.
+    if (questCompletedInfo?.grantedItems.length) {
+      const yaListados = new Set(newInventoryItems.map((i) => i.id));
+      const recompensas = await tx.inventoryItem.findMany({ where: { saveId, name: { in: questCompletedInfo.grantedItems } } });
+      const slugs = recompensas.map((r) => r.catalogSlug).filter((s): s is string => !!s);
+      const catalogo = slugs.length
+        ? await tx.itemCatalog.findMany({ where: { worldId, slug: { in: slugs } }, select: { slug: true, equipSlot: true, effectKey: true, tipo: true } })
+        : [];
+      const porSlug = new Map(catalogo.map((c) => [c.slug, c]));
+      for (const r of recompensas) {
+        if (yaListados.has(r.id)) continue;
+        const c = r.catalogSlug ? porSlug.get(r.catalogSlug) : undefined;
+        newInventoryItems.push({
+          id: r.id,
+          name: r.name,
+          description: r.description,
+          origin: r.origin,
+          slot: null,
+          statBonuses: r.statBonuses,
+          equipSlot: c?.equipSlot ?? null,
+          effectKey: c?.effectKey ?? null,
+          tipo: c?.tipo ?? null,
+        });
+      }
+    }
+
     // Posición (docs/12 § 1.4 paso 7): al llegar, currentLocationId cambia al destino y se
     // registran visitas (destino + nodos intermedios), sin XP salvo la primera vez en el destino.
     let isFirstVisitToDestination = false;
