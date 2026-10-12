@@ -80,7 +80,7 @@ GANCHOS.alCruzar = async (tx, v, locationId, desde, dia, random): Promise<TrasCr
     const quien = v.factionId ? `Una partida de ${(await tx.faction.findUnique({ where: { id: v.factionId }, select: { name: true } }))?.name ?? 'otra facción'}` : 'Tu partida';
     await tx.logEntry.create({
       data: {
-        saveId: v.saveId, channel: 'CHARACTER', isSystemMessage: true, timeLabel: save.worldState?.fictionalDateLabel ?? '', fictionalMinutes: save.worldState?.fictionalMinutes ?? undefined,
+        saveId: v.saveId, channel: 'CHARACTER', isSystemMessage: true, timeLabel: save.worldState?.fictionalDateLabel ?? '', fictionalMinutes: save.worldState?.fictionalMinutes ?? 480,
         text: `${quien} se topa aquí con ${hostil.punto.cantidad} ${hostil.npc.name} y se detiene. Si quieres ayudarles, atácalos tú; si no, pelearán mañana.`,
       },
     });

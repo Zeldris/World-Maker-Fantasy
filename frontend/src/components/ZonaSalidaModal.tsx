@@ -1,6 +1,5 @@
 import type { ZonaSalidaInfo } from '../lib/api'
-import { formatFictionalDuration } from '../lib/gameViewHelpers'
-import { etiquetaSalida } from '../lib/rumboSalida'
+import { duracionDeCamino, etiquetaSalida } from '../lib/rumboSalida'
 import { resolveImageUrl } from '../lib/api'
 import { SelectionModalShell, confirmButtonClasses } from './SelectionModalShell'
 import { conPuntoFinal } from '../lib/conPuntoFinal'
@@ -49,7 +48,7 @@ export function ZonaSalidaModal({ salida, onViajar, onCancel, bloqueoTurno }: Zo
       {/* P115 (QA-27): adónde lleva (si se conoce) y cuánto se tarda. */}
       {salida.minutos ? (
         <p className="text-xs font-semibold text-wood-200">
-          {salida.conocida && !salida.visitada ? `Lleva a ${salida.nombre} · ` : ''}unas {formatFictionalDuration(salida.minutos)} de camino
+          {salida.conocida && !salida.visitada ? `Lleva a ${salida.nombre} · ` : ''}{duracionDeCamino(salida.minutos)}
         </p>
       ) : null}
       <p className="text-xs text-wood-300">

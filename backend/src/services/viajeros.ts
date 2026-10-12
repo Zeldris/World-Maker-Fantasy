@@ -153,7 +153,7 @@ export function esDelReino(v: { factionId: string | null; tipo?: string }): bool
 export async function avisoDeViajero(tx: Tx, v: { saveId: string; factionId: string | null; tipo?: string }, text: string): Promise<void> {
   if (!esDelReino(v)) return;
   const ws = await tx.worldState.findUnique({ where: { saveId: v.saveId }, select: { fictionalDateLabel: true, fictionalMinutes: true } });
-  await tx.logEntry.create({ data: { saveId: v.saveId, channel: 'KINGDOM', isSystemMessage: true, text, timeLabel: ws?.fictionalDateLabel ?? '', fictionalMinutes: ws?.fictionalMinutes ?? undefined } });
+  await tx.logEntry.create({ data: { saveId: v.saveId, channel: 'KINGDOM', isSystemMessage: true, text, timeLabel: ws?.fictionalDateLabel ?? '', fictionalMinutes: ws?.fictionalMinutes ?? 480 } });
 }
 
 /// Q7: una orden permanente se para si cae alguien de los suyos.

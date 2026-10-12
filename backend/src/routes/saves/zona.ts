@@ -694,6 +694,8 @@ export async function zonaRoutes(app: FastifyInstance) {
           // `label` puesto a mano (un alias custom seguiría filtrando información real).
           nombre: yaDescubierto ? nombreReal : '???',
           cantidad: p.cantidad,
+          // P107: la facción se ve aunque no se sepa quién es (como los dinámicos de arriba y en X4,
+          // donde el color de la facción se ve antes de escanear); el nombre sigue oculto.
           color: zonePointColorFor(p.factionSlug ?? npcFactionBySlugZonePoint.get(p.targetSlug) ?? null, factionsStatus, p.tipo),
           descubierto: yaDescubierto,
           ...(objetivosDeMision.has(npcIdBySlugZonePoint.get(p.targetSlug) ?? '') ? { objetivoMision: true } : {}),

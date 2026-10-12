@@ -34,6 +34,7 @@ describe('GET /saves/:id resincroniza la descripción de las habilidades inicial
     });
     await prisma.savedAction.create({ data: { saveId, name: 'Analisis Salvaje', promptText: 'x', category: 'combate', icon: '🔎', description: 'x' } });
     await prisma.save.update({ where: { id: saveId }, data: { activeCombatAbilityNames: ['Analisis Salvaje'], activeCombatAbilityNamesConfigured: true } });
+    await prisma.skillBar.create({ data: { saveId, slotIndex: 0, name: 'Barra 1', abilityNames: ['Viajar', 'Analisis Salvaje'] } });
   });
 
   afterAll(async () => {
@@ -54,7 +55,7 @@ describe('GET /saves/:id resincroniza la descripción de las habilidades inicial
     expect(viajar?.description).not.toMatch(/sin implementar/);
   });
 
-  it('P100: «Analisis Salvaje» pasa a «Análisis Salvaje», también en las activas de combate', async () => {
+  it('P100: «Analisis Salvaje» pasa a «Análisis Salvaje», también en las activas de combate y en las barras', async () => {
     const app = Fastify();
     await app.register(detailRoutes);
     await app.inject({ method: 'GET', url: `/saves/${saveId}` });
@@ -62,5 +63,6 @@ describe('GET /saves/:id resincroniza la descripción de las habilidades inicial
     expect(nombres).toContain('Análisis Salvaje');
     expect(nombres).not.toContain('Analisis Salvaje');
     expect((await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).activeCombatAbilityNames).toEqual(['Análisis Salvaje']);
+    expect((await prisma.skillBar.findFirstOrThrow({ where: { saveId, slotIndex: 0 } })).abilityNames).toEqual(['Viajar', 'Análisis Salvaje']);
   });
 });

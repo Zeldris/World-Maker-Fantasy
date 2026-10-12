@@ -12,14 +12,14 @@ const salida = {
 describe('Salida de zona (P115, QA-27)', () => {
   it('con el mapa de la región, dice adónde lleva y cuánto se tarda', () => {
     render(<ZonaSalidaModal salida={salida} onViajar={vi.fn()} onCancel={vi.fn()} />)
-    expect(screen.getByText('Lleva a Paso de los Pilares Rotos · unas 1.5 h de camino')).toBeTruthy()
+    expect(screen.getByText('Lleva a Paso de los Pilares Rotos · una hora y media de camino')).toBeTruthy()
   })
 
   it('sin conocer el destino, el camino solo dice su rumbo, pero sí cuánto se tarda', () => {
     const desconocida = { ...salida, conocida: false }
     expect(etiquetaSalida(desconocida)).toBe('Camino hacia el sureste')
     render(<ZonaSalidaModal salida={desconocida} onViajar={vi.fn()} onCancel={vi.fn()} />)
-    expect(screen.getByText('unas 1.5 h de camino')).toBeTruthy()
+    expect(screen.getByText('una hora y media de camino')).toBeTruthy()
   })
 
   it('con el destino conocido, la etiqueta del mapa es su nombre', () => {

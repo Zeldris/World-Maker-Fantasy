@@ -1867,7 +1867,7 @@ describe('newQuestOfferInfo + POST /saves/:id/quests/aceptar: oferta de misión 
     // evita el guion entero sin arriesgarse a que un turno de relleno real dispare OTRO
     // determinismo inesperado (ocurrió probando esto: "Examino el terreno" activó recolección).
     await prisma.logEntry.create({
-      data: { saveId, channel: 'CHARACTER', text: 'relleno', timeLabel: 'Día 1, mañana', isPlayerAction: true },
+      data: { saveId, channel: 'CHARACTER', text: 'relleno', timeLabel: 'Día 1, mañana', fictionalMinutes: 480, isPlayerAction: true },
     });
     classifyAction.mockResolvedValue({
       requiereTirada: false, atributo: 'carisma', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
@@ -2012,7 +2012,7 @@ describe('npcInteractionOffer: menú contextual al hablar con un NPC con interac
     saveId = save.id;
     await prisma.worldState.create({ data: { saveId } });
     await prisma.logEntry.create({
-      data: { saveId, channel: 'CHARACTER', text: 'relleno', timeLabel: 'Día 1, mañana', isPlayerAction: true },
+      data: { saveId, channel: 'CHARACTER', text: 'relleno', timeLabel: 'Día 1, mañana', fictionalMinutes: 480, isPlayerAction: true },
     });
     classifyAction.mockResolvedValue({
       requiereTirada: false, atributo: 'carisma', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
@@ -2082,7 +2082,7 @@ describe('pendingQuestOfferInfo: la oferta de misión sobrevive a un F5 (auditor
     // Mismo motivo que el describe hermano de arriba: empezar en playerActionCount=2 evita
     // disparar el guion completo de Gistera Koh, que también propone una misión determinista.
     await prisma.logEntry.create({
-      data: { saveId, channel: 'CHARACTER', text: 'relleno', timeLabel: 'Día 1, mañana', isPlayerAction: true },
+      data: { saveId, channel: 'CHARACTER', text: 'relleno', timeLabel: 'Día 1, mañana', fictionalMinutes: 480, isPlayerAction: true },
     });
     classifyAction.mockResolvedValue({
       requiereTirada: false, atributo: 'carisma', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
@@ -6885,7 +6885,7 @@ describe('Curar: varios objetos a la vez con healItemUses (2026-08-18)', () => {
     // tuvieron) — así que este test necesita que el turno de Curar NO sea el primero de la partida
     // para poder comprobar solo su propia narración, sin acoplarla a un hook no relacionado.
     await prisma.logEntry.create({
-      data: { saveId, channel: 'CHARACTER', text: 'Gorhorn de prueba (curar) llega a la hondonada.', isPlayerAction: true, timeLabel: 'Día 1, mañana' },
+      data: { saveId, channel: 'CHARACTER', text: 'Gorhorn de prueba (curar) llega a la hondonada.', isPlayerAction: true, timeLabel: 'Día 1, mañana', fictionalMinutes: 480 },
     });
   });
 
@@ -6995,7 +6995,7 @@ describe('Comer/Beber: consumo real de comida y bebida por ítem (hallazgo 13, 2
     // Mismo turno de relleno que el describe de Curar (evita acoplar este test al encuentro
     // guionizado de Gistera Koh, que se dispara siempre en el primer turno de cualquier partida).
     await prisma.logEntry.create({
-      data: { saveId, channel: 'CHARACTER', text: 'Gorhorn de prueba (comer) llega a la hondonada.', isPlayerAction: true, timeLabel: 'Día 1, mañana' },
+      data: { saveId, channel: 'CHARACTER', text: 'Gorhorn de prueba (comer) llega a la hondonada.', isPlayerAction: true, timeLabel: 'Día 1, mañana', fictionalMinutes: 480 },
     });
   });
 
@@ -7091,7 +7091,7 @@ describe('Beber de la fuente sin odre (QA-27 P39)', () => {
     saveId = save.id;
     await prisma.worldState.create({ data: { saveId, fictionalMinutes: 1000 } });
     await prisma.logEntry.create({
-      data: { saveId, channel: 'CHARACTER', text: 'Gorhorn de prueba (fuente) llega a los manaderos.', isPlayerAction: true, timeLabel: 'Día 1, mañana' },
+      data: { saveId, channel: 'CHARACTER', text: 'Gorhorn de prueba (fuente) llega a los manaderos.', isPlayerAction: true, timeLabel: 'Día 1, mañana', fictionalMinutes: 480 },
     });
   });
 

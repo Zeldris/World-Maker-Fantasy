@@ -131,7 +131,7 @@ export async function preguntarAViajero(tx: Tx, saveId: string, id: string): Pro
   }
   if (rumores > 0) lineas.push(`Y te cuentan ${rumores === 1 ? 'algo que ha pasado' : `${rumores} cosas que han pasado`} por allí (en «El mundo»).`);
   const ws = await tx.worldState.findUnique({ where: { saveId }, select: { fictionalDateLabel: true, fictionalMinutes: true } });
-  await tx.logEntry.create({ data: { saveId, channel: 'CHARACTER', isSystemMessage: true, text: `La ${aqui.v.faction ? `partida de ${aqui.v.faction.name}` : 'partida'} cuenta lo que ha visto:\n${lineas.join('\n')}`, timeLabel: ws?.fictionalDateLabel ?? '', fictionalMinutes: ws?.fictionalMinutes ?? undefined } });
+  await tx.logEntry.create({ data: { saveId, channel: 'CHARACTER', isSystemMessage: true, text: `La ${aqui.v.faction ? `partida de ${aqui.v.faction.name}` : 'partida'} cuenta lo que ha visto:\n${lineas.join('\n')}`, timeLabel: ws?.fictionalDateLabel ?? '', fictionalMinutes: ws?.fictionalMinutes ?? 480 } });
   return { ok: true, lineas };
 }
 

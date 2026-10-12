@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { ProfessionProgressInfo, ProfessionRecipeInfo, RecipeStatusInfo, SavedActionCategory, SavedActionInfo } from '../../types'
 import { professions } from '../../data/professions'
 import { REINO_ABILITY_RECIPE_KEY, reinoAbilityDisponible } from '../../data/reinoRecipes'
-import { descripcionSinNombre, nombreCortoOficio } from '../../lib/oficioTexto'
+import { descripcionSinNombre, nombresVisiblesDeOficios } from '../../lib/oficioTexto'
 import { professionSpan, MAX_PROFESSION_LEVEL } from '../../lib/professionLevels'
 import { PanelEmptyState } from '../PanelEmptyState'
 import { PanelSection } from '../PanelSection'
@@ -296,14 +296,14 @@ export function HabilidadesPanel({
           />
         ) : (
           <div className="space-y-5">
-            {creacionProfessions.map((profession) => {
+            {creacionProfessions.map((profession, _i, todas) => {
               const progress = progressByOficio.get(profession.id)!
               const { current, span } = professionSpan(progress.nivel, progress.xp)
               const percent = span > 0 ? Math.min(100, (current / span) * 100) : 100
               return (
                 <div key={profession.id}>
                   <div className="mb-1 flex items-center justify-between text-xs">
-                    <span className="font-medium text-wood-100" title={profession.name}>{nombreCortoOficio(profession.name)}</span>
+                    <span className="font-medium text-wood-100" title={profession.name}>{nombresVisiblesDeOficios(todas.map((p) => p.name)).get(profession.name)}</span>
                     <ProfessionLevelLabel
                       nivel={progress.nivel}
                       label={progress.nivel >= MAX_PROFESSION_LEVEL ? `Nivel ${progress.nivel} (máximo)` : `Nivel ${progress.nivel} — ${current}/${span} XP`}

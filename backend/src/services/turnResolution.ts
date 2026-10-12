@@ -6513,17 +6513,6 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       });
       intercambiosExtra.push({ logEntryId: entrada.id, text, combatExchange });
     }
-    // P117 (QA-27): la subida de nivel la gana el golpe de la jugadora; va antes que los golpes
-    // gratis que recibe después (antes salía tras «Estado: Muerto»). Se reserva aquí su turno.
-    const createdAtSubidaDeNivel = result.leveledUp ? nextAfterMainLogCreatedAt() : null;
-    // P55 (QA-27): los golpes gratis no tienen tirada, pero también dejan su línea en el diario.
-    for (const golpe of golpesSinTiradaContraJugadora) {
-      const text = `${golpe.atacanteNombre} te golpea sin que puedas defenderte (estás ocupado con otro rival). Estado: ${CONDICION_EN_TEXTO[golpe.nuevaCondicion]}.`;
-      const entrada = await tx.logEntry.create({
-        data: { saveId, channel: 'CHARACTER', text, timeLabel: nuevaFictionalDateLabel, fictionalMinutes: nuevoFictionalMinutes, createdAt: nextAfterMainLogCreatedAt(), combate: true },
-      });
-      intercambiosExtra.push({ logEntryId: entrada.id, text });
-    }
 
     if (compassNarrationLine) {
       // Brújula (2026-08-15) — LogEntry aparte, construido a mano, NUNCA pasado por el Narrador:
@@ -6553,7 +6542,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           text: `${characterName} sube a nivel ${result.newLevel}.${attributeNote}`,
           timeLabel: nuevaFictionalDateLabel,
           fictionalMinutes: nuevoFictionalMinutes,
-          createdAt: createdAtSubidaDeNivel ?? nextAfterMainLogCreatedAt(),
+          createdAt: nextAfterMainLogCreatedAt(),
         },
       });
 
@@ -6613,6 +6602,17 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           createdAt: nextAfterMainLogCreatedAt(),
         },
       });
+    }
+
+    // P55 (QA-27): los golpes gratis no tienen tirada, pero también dejan su línea en el diario.
+    // P117: van después de la subida de nivel y de sus desbloqueos, que los gana el golpe de la
+    // jugadora (antes salían tras «Estado: Muerto»).
+    for (const golpe of golpesSinTiradaContraJugadora) {
+      const text = `${golpe.atacanteNombre} te golpea sin que puedas defenderte (estás ocupado con otro rival). Estado: ${CONDICION_EN_TEXTO[golpe.nuevaCondicion]}.`;
+      const entrada = await tx.logEntry.create({
+        data: { saveId, channel: 'CHARACTER', text, timeLabel: nuevaFictionalDateLabel, fictionalMinutes: nuevoFictionalMinutes, createdAt: nextAfterMainLogCreatedAt(), combate: true },
+      });
+      intercambiosExtra.push({ logEntryId: entrada.id, text });
     }
 
     // Condición física, descanso y muerte (docs/14 § 1, § 4) — en este orden: primero se fija
@@ -7208,7 +7208,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         } as object;
         const resumedTransitId = await prisma.$transaction(async (tx) => {
           await tx.logEntry.create({
-            data: { saveId, channel: 'CHARACTER', text: resumeText, timeLabel: freshWorldState?.fictionalDateLabel ?? timeLabel, fictionalMinutes: freshWorldState?.fictionalMinutes ?? 480 },
+            data: { saveId, channel: 'CHARACTER', text: resumeText, timeLabel: freshWorldState?.fictionalDateLabel ?? timeLabel, fictionalMinutes: freshWorldState?.fictionalMinutes ?? nuevoFictionalMinutes },
           });
           const resumedTransit = await tx.characterTransit.upsert({
             where: { saveId },

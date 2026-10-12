@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { anguloSalida, rumboSalida, etiquetaSalida } from './rumboSalida'
+import { anguloSalida, rumboSalida, etiquetaSalida, duracionDeCamino } from './rumboSalida'
 
 describe('rumboSalida', () => {
   it('deduce el rumbo por octante desde el centro del lienzo', () => {
@@ -20,5 +20,16 @@ describe('etiquetaSalida (QA-27, P7)', () => {
     expect(etiquetaSalida({ x: 400, y: 550, nombre: 'Colmillo Ceniza', visitada: true, puerta: 'SALIR' })).toBe('Salir a Colmillo Ceniza')
     expect(etiquetaSalida({ x: 760, y: 300, nombre: 'El Pozo', visitada: true })).toBe('El Pozo')
     expect(etiquetaSalida({ x: 760, y: 300, nombre: 'El Pozo', visitada: false })).toBe('Camino hacia el este')
+  })
+})
+
+describe('duracionDeCamino (P115)', () => {
+  it('dice el tiempo en palabras', () => {
+    expect(duracionDeCamino(40)).toBe('unos 40 minutos de camino')
+    expect(duracionDeCamino(60)).toBe('una hora de camino')
+    expect(duracionDeCamino(90)).toBe('una hora y media de camino')
+    expect(duracionDeCamino(150)).toBe('unas 2 horas y media de camino')
+    expect(duracionDeCamino(1440)).toBe('un día de camino')
+    expect(duracionDeCamino(4320)).toBe('unos 3 días de camino')
   })
 })

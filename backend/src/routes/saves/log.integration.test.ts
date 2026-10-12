@@ -117,7 +117,7 @@ describe('GET /saves/:id/mundo/nuevas — entradas de "El mundo" posteriores a l
   it('devuelve solo las WORLD posteriores a `desde`, en orden; sin `desde` o con un id ajeno, nada', async () => {
     const base = Date.now();
     const crear = (channel: 'WORLD' | 'CHARACTER', text: string, ms: number) =>
-      prisma.logEntry.create({ data: { saveId, channel, text, timeLabel: 'Día 1, mañana', createdAt: new Date(base + ms) } });
+      prisma.logEntry.create({ data: { saveId, channel, text, timeLabel: 'Día 1, mañana', fictionalMinutes: 480, createdAt: new Date(base + ms) } });
     const vieja = await crear('WORLD', 'Ambiente de antes', 0);
     await crear('CHARACTER', 'Una acción del personaje', 1000);
     await crear('WORLD', 'Los recolectores de Clan Serhu regresan de Hondonada del Eco con 2 de Liquen.', 2000);

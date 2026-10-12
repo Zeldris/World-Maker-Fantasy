@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { HABILIDADES_RENOMBRADAS } from '../../services/habilidadesRenombradas.js';
+import { HABILIDADES_RENOMBRADAS, nombreActualDeHabilidad } from '../../services/habilidadesRenombradas.js';
 import { prisma } from '../../lib/prisma.js';
 import { startingAbilitiesFor } from '../../services/startingAbilities.js';
 import { maxCombatAbilitiesFor } from '../../services/progression.js';
@@ -113,12 +113,16 @@ export async function detailRoutes(app: FastifyInstance) {
     {
       const renombrar = save.savedActions.filter((a) => HABILIDADES_RENOMBRADAS[a.name]);
       const activas = (save.activeCombatAbilityNames ?? []).some((n) => HABILIDADES_RENOMBRADAS[n]);
-      if (renombrar.length > 0 || activas) {
+      // Las barras de habilidades también guardan nombres (`SkillBar.abilityNames`).
+      const barras = save.skillBars.filter((b) => b.abilityNames.some((n) => HABILIDADES_RENOMBRADAS[n]));
+      if (renombrar.length > 0 || activas || barras.length > 0) {
         await prisma.$transaction([
           ...renombrar.map((a) => prisma.savedAction.update({ where: { id: a.id }, data: { name: HABILIDADES_RENOMBRADAS[a.name] } })),
-          prisma.save.update({ where: { id: save.id }, data: { activeCombatAbilityNames: save.activeCombatAbilityNames.map((n) => HABILIDADES_RENOMBRADAS[n] ?? n) } }),
+          ...barras.map((b) => prisma.skillBar.update({ where: { id: b.id }, data: { abilityNames: b.abilityNames.map(nombreActualDeHabilidad) } })),
+          prisma.save.update({ where: { id: save.id }, data: { activeCombatAbilityNames: save.activeCombatAbilityNames.map(nombreActualDeHabilidad) } }),
         ]);
-        save.activeCombatAbilityNames = save.activeCombatAbilityNames.map((n) => HABILIDADES_RENOMBRADAS[n] ?? n);
+        save.activeCombatAbilityNames = save.activeCombatAbilityNames.map(nombreActualDeHabilidad);
+        save.skillBars = save.skillBars.map((b) => ({ ...b, abilityNames: b.abilityNames.map(nombreActualDeHabilidad) }));
         save.savedActions = await prisma.savedAction.findMany({ where: { saveId: save.id }, orderBy: { createdAt: 'asc' } });
       }
     }

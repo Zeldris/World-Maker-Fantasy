@@ -1,4 +1,5 @@
 import { CELDA_PX, RADIO_PERSECUCION_CELDAS, type Celda } from '../../lib/zonaRuta'
+import { useMsPaso } from '../../lib/zonaMovimiento'
 
 // ZON-30/31/32/34 (hito 0.2) — capa de ruta del mapa de zona: celda bajo el cursor, ruta prevista
 // (o la que queda por andar), coste junto al destino y bandera de destino. Los tamaños de trazo y
@@ -108,8 +109,10 @@ export function RadioAmenaza({ x, y, escala, persigue }: { x: number; y: number;
 
 /// P106 (QA-27): marca de «objetivo de misión» sobre la ficha (aunque siga sin descubrir: «???»).
 export function MarcaObjetivoMision({ x, y, escala }: { x: number; y: number; escala: number }) {
+  // Se desliza con su ficha, al mismo paso (`ZonePointMarker`).
+  const msPaso = useMsPaso()
   return (
-    <g pointerEvents="none" data-testid="marca-objetivo-mision" style={{ transform: `translate(${x}px, ${y}px)` }}>
+    <g pointerEvents="none" data-testid="marca-objetivo-mision" style={{ transform: `translate(${x}px, ${y}px)`, transition: `transform ${msPaso}ms linear` }}>
       <g transform={`translate(0, ${-24 * escala}) scale(${escala})`}>
         <rect x={-30} y={-11} width={60} height={14} rx={7} fill="rgba(20,16,12,0.85)" stroke="var(--color-quest-400)" strokeWidth={1} />
         <text textAnchor="middle" y={0} fontSize={9.5} fill="var(--color-quest-400)">

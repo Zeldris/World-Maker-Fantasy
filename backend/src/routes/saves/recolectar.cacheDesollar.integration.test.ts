@@ -52,4 +52,17 @@ describe('Desollar no sirve una tirada vieja vacía si hay un cadáver nuevo (P9
     await app.inject({ method: 'GET', url: `/saves/${saveId}/recolectar/desollador` });
     expect((await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).harvestRollCache).toEqual(antes);
   });
+
+  it('saquear un cuerpo humanoide no deja volver a tirar (la firma solo cuenta la fauna)', async () => {
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const humanoide = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, ataqueNatural: null } });
+    const estado = await prisma.npcState.create({ data: { saveId, npcId: humanoide.id, scope: pozoId, condicionFisica: 'MUERTO' } });
+    const app = Fastify();
+    await app.register(recolectarRoutes);
+    await app.inject({ method: 'GET', url: `/saves/${saveId}/recolectar/desollador` });
+    const antes = (await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).harvestRollCache;
+    await prisma.npcState.update({ where: { id: estado.id }, data: { saqueado: true } });
+    await app.inject({ method: 'GET', url: `/saves/${saveId}/recolectar/desollador` });
+    expect((await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).harvestRollCache).toEqual(antes);
+  });
 });

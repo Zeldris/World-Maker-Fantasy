@@ -28,7 +28,7 @@ describe('BAS-5 — GameFooter', () => {
 
   it('muerte: dice qué ha pasado y qué viene (P119)', () => {
     const { getByText } = render(<GameFooter {...base} modo="muerte" />)
-    expect(getByText('Ilse ha caído (muerte 3 de 4). Al aceptar, despierta donde descansó por última vez.')).toBeTruthy()
+    expect(getByText('Ilse ha caído (muerte 3 de 4). Al aceptar, despierta donde descansó por última vez o, si nunca descansó, en su punto de partida. Si además nunca superó su primera prueba, todo habrá sido una pesadilla y empezará de nuevo.')).toBeTruthy()
   })
 
   it('combate: el composer de combate que le pasan', () => {

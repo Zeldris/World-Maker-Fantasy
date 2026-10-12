@@ -2300,7 +2300,7 @@ async function avanzarYComprobarFin({
   if (moral.textos.length) {
     const ws = await tx.worldState.findUnique({ where: { saveId }, select: { fictionalDateLabel: true, fictionalMinutes: true } });
     for (const text of moral.textos) {
-      await tx.logEntry.create({ data: { saveId, channel: 'CHARACTER', isSystemMessage: true, text, timeLabel: ws?.fictionalDateLabel ?? '', fictionalMinutes: ws?.fictionalMinutes ?? undefined } });
+      await tx.logEntry.create({ data: { saveId, channel: 'CHARACTER', isSystemMessage: true, text, timeLabel: ws?.fictionalDateLabel ?? '', fictionalMinutes: ws?.fictionalMinutes ?? 480 } });
     }
   }
   const candidatosPorBando = (bando: Bando): ObjetivoCandidato[] =>
@@ -2331,7 +2331,7 @@ async function avanzarYComprobarFin({
   if (ordenCapitan) {
     const ws = await tx.worldState.findUnique({ where: { saveId }, select: { fictionalDateLabel: true, fictionalMinutes: true } });
     await tx.logEntry.create({
-      data: { saveId, channel: 'CHARACTER', isSystemMessage: true, text: `${ordenCapitan.capitan} ordena caer sobre ${ordenCapitan.objetivo}.`, timeLabel: ws?.fictionalDateLabel ?? '', fictionalMinutes: ws?.fictionalMinutes ?? undefined },
+      data: { saveId, channel: 'CHARACTER', isSystemMessage: true, text: `${ordenCapitan.capitan} ordena caer sobre ${ordenCapitan.objetivo}.`, timeLabel: ws?.fictionalDateLabel ?? '', fictionalMinutes: ws?.fictionalMinutes ?? 480 },
     });
   }
   await Promise.all([...enganches.entries()].map(([id, objetivo]) => tx.combatParticipant.update({ where: { id }, data: { objetivoActualId: objetivo } })));
