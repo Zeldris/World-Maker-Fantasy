@@ -199,7 +199,7 @@ export function GameView() {
                 (<span className="font-semibold text-wood-200">{formatFictionalDuration(busyDuracionMinutos)}</span> en {worldName})
               </>
             ) : null}{' '}
-            (sobre las {new Date(busyUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}), se resolverá solo.
+            (sobre las {new Date(busyUntil).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}), se resolverá solo.
           </span>
           <button type="button"
             onClick={handleCancelTransit}

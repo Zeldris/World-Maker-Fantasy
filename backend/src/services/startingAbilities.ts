@@ -97,7 +97,7 @@ const GORHORN_GENERAL_ABILITIES: StartingAbility[] = [
   {
     name: 'Viajar',
     icon: '🧭',
-    description: 'Requiere montura (todavía sin implementar) — por ahora, usa el icono de salida en el mapa de la zona para viajar a otra región.',
+    description: 'Necesita una montura. Para ir a otra región, usa el icono de salida en el mapa de la zona.',
     promptText: 'Me pongo en marcha hacia ',
     category: 'general',
   },

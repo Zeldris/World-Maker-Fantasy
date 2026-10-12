@@ -171,7 +171,7 @@ describe('Misión de apertura: combate contra el Orco Enfurecido (integración r
     // Feedback de UX (2026-08-30, "falta que la suma de repu... se refleje en la UX") — se captura
     // el body del turno que de verdad deja al NPC CONVALECIENTE (el Orco Enfurecido es Clan Serhu),
     // para comprobar que la respuesta HTTP trae `factionRepChange` en ese turno exacto.
-    type NarrateBodyOnKill = { factionRepChange: { faction: string; delta: number; newValue: number } | null };
+    type NarrateBodyOnKill = { factionRepChange: { faction: string; delta: number; newValue: number } | null; nextInitiativeRoll?: unknown };
     let narrateBodyOnKill: NarrateBodyOnKill | null = null;
 
     for (let turno = 0; turno < 4; turno++) {
@@ -210,6 +210,8 @@ describe('Misión de apertura: combate contra el Orco Enfurecido (integración r
     // el turno final") — `applyKillSideEffects` solo aplica el delta cuando `nuevaCondicion ===
     // 'MUERTO'`. La decisión real (Matar/Capturar/Clemente) todavía no se ha tomado en este punto.
     expect(narrateBodyOnKill?.factionRepChange).toBeNull();
+    // P64 (QA-27): con el rival ya CONVALECIENTE no se tira iniciativa para otro intercambio.
+    expect(narrateBodyOnKill?.nextInitiativeRoll ?? null).toBeNull();
     // Sin ningún delta aplicado, la clave de esa facción ni siquiera llega a crearse en el JSON
     // (`factionRepFor` solo devuelve 2500 como default cuando la clave falta, no lo persiste) —
     // `undefined` es la prueba real de que nunca se tocó `factionsStatus`.
@@ -3482,6 +3484,15 @@ describe('Descansar: +30 de energía fijo, NO cura condición física, cooldown 
     expect(after.energia).toBe(before.energia); // sin cambio, el intento no cuenta
     expect(after.lastRestAtMinutes).toBe(before.lastRestAtMinutes); // el cooldown no se reinicia
   }, 15_000);
+
+  it('P74 (QA-27): un descanso de ocho horas que el enfriamiento rechaza no ocupa tiempo', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: 'Descanso ocho horas' } });
+    expect(res.statusCode).toBe(200);
+    const { classification } = res.json() as { classification: { banda: string; duracionEstimadaMinutos: number } };
+    expect(classification.banda).toBe('instantanea');
+    expect(classification.duracionEstimadaMinutos).toBe(0);
+  }, 15_000);
 });
 
 // Cobertura nueva (auditoría 2026-08-11, "pruebas por API" + duda directa de la usuaria: "ahora
@@ -5295,6 +5306,8 @@ describe('Caza en grupo: el individuo actual "resucita" a ILESO mientras queden 
     // El combate sigue de verdad — el NPC sigue en pendingCombatNpcSlugs para el siguiente turno.
     const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(save.pendingCombatNpcSlugs).toContain('corretolvas');
+    // P64 (code-review): el siguiente del grupo sí tira iniciativa (no se le da el turno gratis).
+    expect((lastNdjsonLine(res.payload) as { nextInitiativeRoll?: unknown }).nextInitiativeRoll).toBeTruthy();
   }, 20_000);
 
   it('con un cadáver real ya caído (groupDefeated=1), el despiece SÍ da algo aunque el individuo actual siga ILESO', async () => {

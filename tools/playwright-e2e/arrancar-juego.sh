@@ -40,8 +40,18 @@ if [ -s logs/backend.pid ]; then kill "$(cat logs/backend.pid)" 2>/dev/null || t
 fuser -k 3001/tcp > /dev/null 2>&1 || true  # npx deja hijos: el que escucha en el puerto es el que cuenta
 sleep 1
 (cd backend && { setsid nohup npx tsx src/server.ts > ../logs/backend.log 2>&1 < /dev/null & echo $! > ../logs/backend.pid; }) > /dev/null 2>&1
-if ! curl -s -o /dev/null localhost:5173; then
+if ! curl -s --max-time 3 -o /dev/null localhost:5173; then
   (cd frontend && setsid nohup npx vite --port 5173 --host 127.0.0.1 > ../logs/frontend.log 2>&1 < /dev/null &) > /dev/null 2>&1
 fi
-for i in $(seq 1 60); do curl -s -o /dev/null localhost:3001/ && curl -s -o /dev/null localhost:5173 && break; sleep 1; done
+# QA-53: listo es que el backend responda con la base conectada (/health) y el frontend sirva; antes
+# valía cualquier respuesta, y tras reiniciar el contenedor la partida salía «No se encuentra».
+listo=0
+for i in $(seq 1 90); do
+  if curl -sf --max-time 3 localhost:3001/health | grep -q '"database":"ok"' && curl -sf --max-time 3 -o /dev/null localhost:5173; then listo=1; break; fi
+  sleep 1
+done
+if [ "$listo" != 1 ]; then
+  echo "El juego no ha arrancado en 90 s: mira logs/backend.log y logs/frontend.log" >&2
+  exit 1
+fi
 echo "Juego listo: http://127.0.0.1:5173 (base $BASE, viajes $TRAVEL_SEGUNDOS_PRIMER_TRAMO/$TRAVEL_SEGUNDOS_POR_TRAMO_EXTRA/$TRAVEL_SEGUNDOS_MAXIMOS s)"

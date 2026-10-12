@@ -147,6 +147,18 @@ export function nombreOcultoPorRaza(raza: string | null | undefined, genero: str
   return genero === 'F' ? `${par[1]} desconocida` : `${par[0]} desconocido`;
 }
 
+/// P63 (QA-27): dentro de una frase, el nombre oculto por raza lleva artículo («el orco desconocido
+/// no tiene intención…»), no se lee como nombre propio. Cualquier otro nombre pasa tal cual.
+export function nombreEnFrase(nombre: string, alInicio = false): string {
+  // «Alguien» (sin raza conocida) tampoco es un nombre propio: en minúscula a mitad de frase.
+  if (nombre === NOMBRE_OCULTO_GENERICO) return alInicio ? nombre : nombre.toLowerCase();
+  const m = /^(\S+) (desconocid([oa]))$/.exec(nombre);
+  if (!m) return nombre;
+  const articulo = m[3] === 'a' ? 'la' : 'el';
+  const texto = `${articulo} ${m[1].toLowerCase()} ${m[2]}`;
+  return alInicio ? texto.charAt(0).toUpperCase() + texto.slice(1) : texto;
+}
+
 /// Mismo shape que `DynamicModeTurnoOutput` (dynamicModeNarracion.ts) — definido aquí en vez de
 /// importado de allí para no crear un ciclo (ese archivo ya importa `DynamicModeTipo` de este).
 export interface GisteraTurnoOutput {
@@ -184,7 +196,7 @@ export const COMBATE_FORZADO_OPCION_HUIR = 'Huir';
 
 export function narrarAperturaCombateForzado(targetName: string): GisteraTurnoOutput {
   return {
-    narration: `Os encontráis y os miráis — ${targetName} no tiene intención de dejarte pasar. Toca decidir ya: combatir o huir.`,
+    narration: `Os encontráis y os miráis — ${nombreEnFrase(targetName)} no tiene intención de dejarte pasar. Toca decidir ya: combatir o huir.`,
     opciones: [COMBATE_FORZADO_OPCION_COMBATIR, COMBATE_FORZADO_OPCION_HUIR],
     cierra: false,
   };

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { etiquetaAccionRecurso } from './recursoAccion'
+import { etiquetaAccionRecurso, iconoRecurso } from './recursoAccion'
 import type { MetodoObtencion } from '../types'
 
 describe('etiquetaAccionRecurso', () => {
@@ -19,5 +19,14 @@ describe('etiquetaAccionRecurso', () => {
     expect(etiquetaAccionRecurso(null)).toBe('Recolectar')
     expect(etiquetaAccionRecurso(undefined)).toBe('Recolectar')
     expect(etiquetaAccionRecurso('NUEVO_METODO' as MetodoObtencion)).toBe('Recolectar')
+  })
+})
+
+describe('iconoRecurso (P60)', () => {
+  it('una planta no lleva roca', () => {
+    expect(iconoRecurso('EXTRACCION')).toBe('🌿')
+    expect(iconoRecurso('MINERIA')).toBe('🪨')
+    expect(iconoRecurso('TALA')).toBe('🌳')
+    expect(iconoRecurso(undefined)).toBe('🧺')
   })
 })

@@ -10,7 +10,7 @@ import { AbilityForm } from '../AbilityForm'
 import { CombatAbilityBelt, CombatAbilityToggleGrid } from '../CombatAbilityBelt'
 import { abilityBonusSuffix } from '../../lib/abilityBonusSuffix'
 import { PASSIVE_ABILITY_NAMES } from '../../lib/passiveAbilities'
-import { ABILITIES_REQUIEREN_MONTURA, MONTURA_TOOLTIP_SUFFIX } from '../../lib/abilitiesRequierenMontura'
+import { ABILITIES_REQUIEREN_MONTURA } from '../../lib/abilitiesRequierenMontura'
 import { useNavegacionRejilla } from '../../hooks/useNavegacionRejilla'
 
 interface HabilidadesPanelProps {
@@ -94,7 +94,7 @@ function AbilityGrid({
             key={a.id}
             icon={a.icon}
             name={a.name}
-            tooltip={passive ? `${baseTooltip}${PASSIVE_TOOLTIP_SUFFIX}` : requiereMontura ? `${baseTooltip}${MONTURA_TOOLTIP_SUFFIX}` : baseTooltip}
+            tooltip={passive ? `${baseTooltip}${PASSIVE_TOOLTIP_SUFFIX}` : baseTooltip}
             onUse={() => onUse(a)}
             onDetail={() => onDetail(a)}
             disabled={requiereMontura || (!passive && !!(status && !status.met))}

@@ -27,7 +27,7 @@ import {
   recalcularZonePointsDeLocation,
   type ZonePointColor,
 } from '../../services/zonePoints.js';
-import { nombreOcultoPorRaza } from '../../services/dynamicMode.js';
+import { nombreEnFrase, nombreOcultoPorRaza } from '../../services/dynamicMode.js';
 import { parseAgenda, regionControlActual, type RegionControlState } from '../../services/worldAgenda.js';
 import { REGION_OWNING_FACTIONS, effectiveTemperamento } from '../../services/reputation.js';
 import { LIENZO_ANCHO, LIENZO_ALTO, posicionAleatoriaEnLienzo, celdaLibreEnEspiral, claveCelda, celdaDePixel, pixelDeCelda, calcularCamino, celdaAdyacenteOMisma, mismaCelda, posicionesDeSalidas, tirarQuienIniciaEncuentro, type IniciativaEncuentroLogRoll } from '../../services/zonaPosicion.js';
@@ -981,7 +981,7 @@ export async function zonaRoutes(app: FastifyInstance) {
         const quienInicia = iniciativa.quienInicia;
         // CR-14 (Q4): la fauna cautelosa que reconoce a un «Cazador temido» antes de que se acerque, huye.
         if (colisionTipo === 'FAUNA' && colision.temperamento === 'CAUTELOSO' && quienInicia === 'npc' && (await etiquetasActivas(tx, saveId)).has('CAZADOR_TEMIDO')) {
-          const textoHuida = `${colision.targetName} reconoce a ${characterName} de lejos y huye antes de que pueda acercarse.`;
+          const textoHuida = `${nombreEnFrase(colision.targetName, true)} reconoce a ${characterName} de lejos y huye antes de que pueda acercarse.`;
           const creada = await tx.logEntry.create({ data: { saveId, channel: 'CHARACTER', text: textoHuida, timeLabel, fictionalMinutes, isPlayerAction: false, isSystemMessage: true } });
           // Queda como último encuentro: mientras sigas en su radio no vuelve a «huir» a cada paso.
           return { ultimoEncuentroSigueCerca, colision: null, dynamicModeOffer: null, logEntry: { id: creada.id, text: textoHuida, timeLabel, createdAt: creada.createdAt.toISOString() }, avistadoSinOferta: { targetSlug: colision.targetSlug } };
@@ -1016,7 +1016,8 @@ export async function zonaRoutes(app: FastifyInstance) {
         // (el nombre de especie ya viene en singular de catálogo, "un grupo de N" no necesita
         // pluralizarlo). Solo aplica a FAUNA — un NPC (identidad única) nunca se agrupa.
         const nombreEncuentro =
-          colisionTipo === 'FAUNA' && colisionCantidad > 1 ? `un grupo de ${colisionCantidad} ${colision.targetName}` : colision.targetName;
+          colisionTipo === 'FAUNA' && colisionCantidad > 1 ? `un grupo de ${colisionCantidad} ${colision.targetName}` : nombreEnFrase(colision.targetName);
+        const nombreEncuentroInicio = nombreEncuentro.charAt(0).toUpperCase() + nombreEncuentro.slice(1);
         // LogEntry real determinista (2026-09-09, hallazgo real jugando en vivo: la tarjeta de
         // oferta SIEMPRE se renderiza colgada de una LogEntry concreta — LogPanel.tsx solo lee
         // `entry.dynamicModeOffer`, nunca `Save.pendingDynamicModeOffer` directamente). El
@@ -1029,12 +1030,12 @@ export async function zonaRoutes(app: FastifyInstance) {
           ? quienInicia === 'jugador'
             ? // P29 (QA-27): ganó la iniciativa y puede huir — nada de «no hay escapatoria».
               `${characterName} se topa de frente con ${nombreEncuentro}, que le corta el paso — reacciona antes que su rival: toca decidir si pelear o huir.`
-            : `${nombreEncuentro} se abalanza sobre ${characterName} sin darle tiempo a reaccionar.`
+            : `${nombreEncuentroInicio} se abalanza sobre ${characterName} sin darle tiempo a reaccionar.`
           : quienInicia === 'jugador'
             ? colisionTipo === 'NPC'
               ? `${characterName} se topa con ${nombreEncuentro}.`
               : `${characterName} se topa con ${nombreEncuentro}, que le observa con cautela.`
-            : `${nombreEncuentro} se acerca a ${characterName} antes de que este reaccione.`;
+            : `${nombreEncuentroInicio} se acerca a ${characterName} antes de que este reaccione.`;
         // Fase 10 (2026-09-29) — la tirada opuesta Destreza vs Destreza se guarda en `LogEntry.roll`
         // (discriminada por `kind`) para que la tarjeta la muestre también tras una recarga.
         const logRoll: IniciativaEncuentroLogRoll = { kind: 'iniciativa-encuentro', quienInicia, jugador: iniciativa.jugador, npc: iniciativa.npc, npcName: colision.targetName };
@@ -1135,7 +1136,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     // huir) antes de volver a moverse, igual que promete el propio texto del encuentro.
     const ofertaPendiente = save.pendingDynamicModeOffer as { combateForzado?: boolean; targetName?: string } | null;
     if (ofertaPendiente?.combateForzado) {
-      return reply.status(409).send({ error: `${ofertaPendiente.targetName ?? 'Algo'} no te deja marcharte — tienes que reaccionar primero.` });
+      return reply.status(409).send({ error: `${ofertaPendiente.targetName ? nombreEnFrase(ofertaPendiente.targetName, true) : 'Algo'} no te deja marcharte — tienes que reaccionar primero.` });
     }
 
     if (!zonaMoverClaims.claim(save.id)) {

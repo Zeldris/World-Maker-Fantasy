@@ -2,6 +2,7 @@ import type { ZonaSalidaInfo } from '../lib/api'
 import { etiquetaSalida } from '../lib/rumboSalida'
 import { resolveImageUrl } from '../lib/api'
 import { SelectionModalShell, confirmButtonClasses } from './SelectionModalShell'
+import { conPuntoFinal } from '../lib/conPuntoFinal'
 
 interface ZonaSalidaModalProps {
   salida: ZonaSalidaInfo
@@ -45,7 +46,7 @@ export function ZonaSalidaModal({ salida, onViajar, onCancel, bloqueoTurno }: Zo
         <img src={imageUrl} alt={salida.nombre} className="max-h-48 w-full rounded-lg border border-iron-700 object-cover" />
       )}
       <p className="text-xs text-wood-300">
-        {salida.visitada ? (salida.description ?? 'Ya has estado aquí.') : (salida.teaser ?? 'Todavía no has explorado este lugar.')}
+        {salida.visitada ? (salida.description ?? 'Ya has estado aquí.') : (salida.teaser ? conPuntoFinal(salida.teaser) : 'Todavía no has explorado este lugar.')}
       </p>
     </SelectionModalShell>
   )

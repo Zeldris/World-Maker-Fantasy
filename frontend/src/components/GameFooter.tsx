@@ -71,7 +71,7 @@ export function GameFooter({
       <div className="animate-entry-in-slow border-t border-iron-800 bg-wood-950/90 px-4 py-5 text-center">
         <div className="animate-line-extend mx-auto mb-3 h-px w-24 origin-center bg-red-800" />
         <p className="text-sm text-danger-400">
-          {characterName} ya no puede seguir — esta partida ha terminado. Volviendo a "Sus partidas"...
+          {characterName} ya no puede seguir — esta partida ha terminado. Volviendo a «Tus partidas»…
         </p>
       </div>
     )
