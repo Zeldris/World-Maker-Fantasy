@@ -16,7 +16,7 @@ import { momentoDelDiaFor, estacionFor, advanceFictionalMinutes, formatFictional
 /// B2 (2026-09-28) — minutos ficticios que cuesta cada paso real por la cuadrícula de la zona.
 const MINUTOS_POR_PASO_ZONA = 1;
 import type { EstacionSlug } from '../../services/imagePromptContext.js';
-import {
+import { ZONAS_DE_INICIO,
   zonePointColorFor,
   avanzarZonePointsUnPaso,
   asegurarZonePointsDePartida,
@@ -263,7 +263,9 @@ export async function zonaRoutes(app: FastifyInstance) {
     // vería el ×20 sin repartir hasta su primer turno. `lastUpdatedAtMinutes` null en cualquier
     // FAUNA de esta Location es la señal de "nunca recalculado todavía" (mismo criterio que
     // `proximaCantidadPara`).
-    if (zonePointsRaw.some((p) => p.tipo === 'FAUNA' && p.lastUpdatedAtMinutes == null)) {
+    // P88 (QA-27): en una zona de inicio, la fauna hostil vuelve a su guarida también al abrir el mapa
+    // (una partida con el reparto viejo lo ve sin tener que escribir un turno).
+    if (zonePointsRaw.some((p) => p.tipo === 'FAUNA' && p.lastUpdatedAtMinutes == null) || ZONAS_DE_INICIO.has(locationSlug)) {
       await recalcularZonePointsDeLocation(prisma, save.worldId, save.id, locationId, region, fictionalMinutes);
       zonePointsRaw = await prisma.zonePoint.findMany({ where: { saveId: save.id, locationId } });
     }

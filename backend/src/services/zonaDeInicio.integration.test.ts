@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import Fastify from 'fastify';
 import { prisma } from '../lib/prisma.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
 import { asegurarZonePointsDePartida, avanzarZonePointsUnPaso, recalcularZonePointsDeLocation, TOPE_HOSTIL_ZONA_DE_INICIO } from './zonePoints.js';
@@ -31,6 +32,7 @@ describe('Zona de inicio: la fauna hostil se queda en su guarida (P88)', () => {
       },
     });
     saveId = save.id;
+    await prisma.worldState.create({ data: { saveId, fictionalMinutes: 2000 } });
     await asegurarZonePointsDePartida(prisma, saveId, hondonadaId);
     // El reparto viejo: varios grupos de Kirelon sueltos por la zona, como en la partida de prueba.
     for (const [x, y, cantidad] of [[300, 300, 5], [500, 450, 5], [150, 450, 1]] as const) {
@@ -41,6 +43,7 @@ describe('Zona de inicio: la fauna hostil se queda en su guarida (P88)', () => {
   afterAll(async () => {
     await prisma.zonePoint.deleteMany({ where: { saveId } });
     await prisma.worldPopulation.deleteMany({ where: { saveId } });
+    await prisma.worldState.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 
@@ -63,5 +66,17 @@ describe('Zona de inicio: la fauna hostil se queda en su guarida (P88)', () => {
     const despues = await prisma.zonePoint.findUniqueOrThrow({ where: { id: guarida.id } });
     const d = celdaDePixel({ x: despues.x, y: despues.y });
     expect(d.col === celda.col + 2 && d.row === celda.row).toBe(false);
+  });
+
+  it('al abrir el mapa, una partida con el reparto viejo ya recalculado también ve solo la guarida', async () => {
+    // Grupos sueltos ya «al día» (con reloj): antes, abrir el mapa no los volvía a mirar.
+    await prisma.zonePoint.create({ data: { saveId, locationId: hondonadaId, tipo: 'FAUNA', targetSlug: 'kirelon-arenoso', x: 300, y: 450, origenX: 300, origenY: 450, cantidad: 5, activo: true, lastUpdatedAtMinutes: 2000 } });
+    const { zonaRoutes } = await import('../routes/saves/zona.js');
+    const app = Fastify();
+    await app.register(zonaRoutes);
+    const res = await app.inject({ method: 'GET', url: `/saves/${saveId}/zona` });
+    expect(res.statusCode).toBe(200);
+    const kirelon = await prisma.zonePoint.findMany({ where: { saveId, locationId: hondonadaId, targetSlug: 'kirelon-arenoso' } });
+    expect(kirelon).toHaveLength(1);
   });
 });
