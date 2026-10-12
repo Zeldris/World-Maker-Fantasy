@@ -30,6 +30,21 @@ Importa `lib.mjs` y pasa la partida por entorno: `SAVE_ID=<id> node mi_script.mj
 - `historico/`: los scripts de sesiones pasadas, con ids de partida y rutas de la Deck fijos. Sirven de
   ejemplo, no para volver a ejecutarlos tal cual.
 
+## Jugar paso a paso sin el MCP (`driver.mjs`)
+
+Si el MCP de Playwright no conecta (`QA-41`, retro de `QA-27`), `driver.mjs` deja un navegador abierto
+y recibe órdenes de JS por `orden.sh`. Cada orden tiene a mano `page`, `shot(nombre)` (captura en
+`shots/`), `log(...)`, `FRONT` y `BACK`, y devuelve lo registrado y los errores de la página.
+
+```sh
+nohup node tools/playwright-e2e/driver.mjs > tools/playwright-e2e/driver.log 2>&1 &
+bash tools/playwright-e2e/orden.sh "await page.goto(FRONT); return await shot('menu')"
+bash tools/playwright-e2e/orden.sh < mi-orden.js        # una orden larga, desde un archivo
+```
+
+Solo escucha en `127.0.0.1:9333` (`DRIVER_PORT` lo cambia). Para pararlo, por su PID
+(`lsof -ti tcp:9333`), nunca con `pkill -f driver`: casa con la propia orden que lo lanza.
+
 ## Lo que se aprendió jugando
 
 - El botón «Actuar» está dos veces en el DOM (acción libre y panel de combate): el de texto libre es

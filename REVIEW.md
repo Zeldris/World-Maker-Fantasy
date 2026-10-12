@@ -40,6 +40,19 @@ mecánico ya lo comprueban los tests, el hook `pre-push` y la CI; aquí está lo
   por mundo o región pasan por `lugaresVisibles` (`mundoPartida.ts`). Lo vigila
   `backend/src/scripts/locationConDuena.test.ts` para `location.create`.
 
+## Un dato, un sitio
+
+Retro de `QA-27` (2026-10-12, `QA-40`): tres de los diez fallos de la revisión de la ronda eran esto.
+
+- **Mismo filtro en los dos caminos.** Si dos caminos muestran o usan lo mismo (lo que se pinta en el
+  mapa y lo que te corta el paso; la lista y su detalle), filtran igual, mejor con la misma función.
+  Pasó en `zona.ts`: la fauna fuera de su sitio no se pintaba, pero seguía colisionando.
+- **Sin copias entre backend y frontend.** Lo que decide el backend viaja en su respuesta (un campo,
+  como `currentLocation.puntoDeAgua`); una lista copiada a mano en el frontend se desfasa.
+- **El filtro mira la consulta, no la página.** Lo que depende de filas vecinas (quitar una línea
+  porque otra la repite) se decide contra la base: en una lista paginada, la vecina puede caer en
+  otra página.
+
 ## Las facciones también
 
 - **Mismos sistemas** ([ADR 0003](docs/adr/0003-todo-viaja-de-verdad.md)). Cada mecánica que manda

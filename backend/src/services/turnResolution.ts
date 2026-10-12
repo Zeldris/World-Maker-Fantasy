@@ -1,3 +1,25 @@
+// ÍNDICE (QA-43, retro de QA-27): casi todo vive en `narrateAndPersistTurn`, en este orden. Busca la
+// clave de la derecha (con grep) en vez de leer el archivo de arriba abajo.
+//
+//   Intercambio de combate 1v1 (tiradas, habilidades) ......... function resolveCombatExchangePhase
+//   Crafteo del texto libre ................................... function resolveCraftIntentContext
+//   Construcción del texto libre .............................. function resolveBuildIntentContext
+//   Quién está en escena; quien interrumpe un viaje ........... let interruptionCandidateForOffer
+//   Saqueo / despiece ......................................... lootMode =
+//   ¿Hay combate 1v1 este turno? .............................. const combateActivo
+//   Moral y huida del NPC (CR-44, P12) ........................ const moralNpcTirada
+//   Bloques de contexto para el narrador ...................... const contextBlocks
+//   Comer/Beber con objetos (hallazgo 13) ..................... const hambreSedItemUsesValidated
+//   Brújula ................................................... const compassMatch
+//   Recolección ............................................... const harvestOutcome
+//   Sed/hambre ganadas; beber de una fuente (P39) ............. const bebeFuente =
+//   Descanso con enfriamiento ................................. restBlockedByCooldown =
+//   Combate de grupo (CombatEncounter) ........................ if (activeCombatEncounter) {
+//   Narración: rama determinista o narrateAction .............. const narration: NarrationResult
+//   Persistencia (una transacción) ............................ transactionResult = await prisma.$transaction
+//   XP del turno .............................................. const xpTurno
+//   Oferta de Interactuar ambiental ........................... let dynamicModeOffer
+
 import { registrarFinDeMision, registrarSucesoDeNpc } from './cronista/emisores.js';
 import { repartirIntercambios, CONDICION_EN_TEXTO, type IntercambioContraJugadora } from './intercambiosContraJugadora.js';
 import { bajasDeCampamentoEnVivo } from './ataquesCampamento.js';
