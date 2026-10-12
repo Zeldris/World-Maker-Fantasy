@@ -27,6 +27,9 @@ interface TooltipAnchorProps {
 const TOOLTIP_MAX_WIDTH = 240
 const VIEWPORT_MARGIN = 8
 
+/// El `hide` del aviso abierto ahora mismo (P72): nunca hay dos a la vez.
+let ocultarAbierto: (() => void) | null = null
+
 export function TooltipAnchor({ text, subtext, children, className = '' }: TooltipAnchorProps) {
   const anchorRef = useRef<HTMLSpanElement>(null)
   // Bug real jugando en vivo (2026-08-29, feedback sobre la barra de habilidades — icono muy
@@ -41,6 +44,10 @@ export function TooltipAnchor({ text, subtext, children, className = '' }: Toolt
   function show() {
     const el = anchorRef.current
     if (!el) return
+    // P72 (QA-27): un hueco pulsado conserva el foco y su aviso seguía abierto mientras el ratón
+    // pasaba por otro. Solo hay un aviso abierto a la vez: abrir uno cierra el anterior.
+    if (ocultarAbierto && ocultarAbierto !== hide) ocultarAbierto()
+    ocultarAbierto = hide
     const rect = el.getBoundingClientRect()
     const center = rect.left + rect.width / 2
     const halfTooltip = TOOLTIP_MAX_WIDTH / 2
@@ -50,6 +57,7 @@ export function TooltipAnchor({ text, subtext, children, className = '' }: Toolt
   }
   function hide() {
     setPos(null)
+    if (ocultarAbierto === hide) ocultarAbierto = null
   }
 
   return (
