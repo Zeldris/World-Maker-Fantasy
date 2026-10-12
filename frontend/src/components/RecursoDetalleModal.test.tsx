@@ -30,7 +30,7 @@ describe('RecursoDetalleModal', () => {
     expect(getByRole('dialog').getAttribute('aria-label')).toBe('Lucre Blanco')
     expect(container.textContent).toContain('Llanuras de Ceniza')
     expect(container.textContent).toContain('Un árbol de corteza pálida y madera densa.')
-    expect(container.textContent).toContain('hasta 2 Tronco de lucre')
+    expect(container.textContent).toContain('Tronco de lucre · hasta 2')
   })
 
   it.each([

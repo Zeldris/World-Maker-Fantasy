@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { ProfessionProgressInfo, ProfessionRecipeInfo, RecipeStatusInfo, SavedActionCategory, SavedActionInfo } from '../../types'
 import { professions } from '../../data/professions'
 import { REINO_ABILITY_RECIPE_KEY, reinoAbilityDisponible } from '../../data/reinoRecipes'
+import { descripcionSinNombre, nombreCortoOficio } from '../../lib/oficioTexto'
 import { professionSpan, MAX_PROFESSION_LEVEL } from '../../lib/professionLevels'
 import { PanelEmptyState } from '../PanelEmptyState'
 import { PanelSection } from '../PanelSection'
@@ -302,7 +303,7 @@ export function HabilidadesPanel({
               return (
                 <div key={profession.id}>
                   <div className="mb-1 flex items-center justify-between text-xs">
-                    <span className="font-medium text-wood-100">{profession.name}</span>
+                    <span className="font-medium text-wood-100" title={profession.name}>{nombreCortoOficio(profession.name)}</span>
                     <ProfessionLevelLabel
                       nivel={progress.nivel}
                       label={progress.nivel >= MAX_PROFESSION_LEVEL ? `Nivel ${progress.nivel} (máximo)` : `Nivel ${progress.nivel} — ${current}/${span} XP`}
@@ -314,7 +315,7 @@ export function HabilidadesPanel({
                       style={{ width: `${percent}%` }}
                     />
                   </div>
-                  <p className="mb-2 text-2xs leading-relaxed text-wood-400">{profession.description}</p>
+                  <p className="mb-2 text-2xs leading-relaxed text-wood-400">{descripcionSinNombre(profession.description, profession.name)}</p>
                   {(() => {
                     const unlockedRecipes = inTab.filter((a) => recipeByAbilityName.get(a.name)?.oficio === profession.id)
                     return unlockedRecipes.length === 0 ? (
@@ -442,7 +443,7 @@ export function HabilidadesPanel({
                   </span>
                   <span>
                     Ataque Básico, Defenderse y Esquivar — cualquier personaje las tiene. Ataque Básico cuesta poca energía y se adapta al arma
-                    equipada; Defenderse y Esquivar no cuestan nada y encima recuperan energía.
+                    equipada; Defenderse no cuesta nada y recupera energía, y Esquivar cuesta un poco.
                   </span>
                 </li>
                 <li className="flex items-start gap-2">

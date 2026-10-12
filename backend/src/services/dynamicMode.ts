@@ -159,6 +159,18 @@ export function nombreEnFrase(nombre: string, alInicio = false): string {
   return alInicio ? texto.charAt(0).toUpperCase() + texto.slice(1) : texto;
 }
 
+/// P90 (QA-27): un grupo de fauna se nombra como grupo («el grupo de 5 Kirelon Arenoso»), no como
+/// un individuo sin artículo.
+export function nombreDeEncuentro(nombre: string, cantidad?: number | null, alInicio = false): string {
+  if (!cantidad || cantidad <= 1) return nombreEnFrase(nombre, alInicio);
+  return `${alInicio ? 'El' : 'el'} grupo de ${cantidad} ${nombre}`;
+}
+
+/// «de el grupo…» → «del grupo…» (contracción obligatoria).
+export function deNombre(nombreEnLaFrase: string): string {
+  return nombreEnLaFrase.startsWith('el ') ? `del ${nombreEnLaFrase.slice(3)}` : `de ${nombreEnLaFrase}`;
+}
+
 /// Mismo shape que `DynamicModeTurnoOutput` (dynamicModeNarracion.ts) — definido aquí en vez de
 /// importado de allí para no crear un ciclo (ese archivo ya importa `DynamicModeTipo` de este).
 export interface GisteraTurnoOutput {
@@ -194,9 +206,9 @@ export function respuestaGisteraDesdeOpcion(opcion: string): RespuestaGistera | 
 export const COMBATE_FORZADO_OPCION_COMBATIR = 'Combatir';
 export const COMBATE_FORZADO_OPCION_HUIR = 'Huir';
 
-export function narrarAperturaCombateForzado(targetName: string): GisteraTurnoOutput {
+export function narrarAperturaCombateForzado(targetName: string, cantidad?: number | null): GisteraTurnoOutput {
   return {
-    narration: `Os encontráis y os miráis — ${nombreEnFrase(targetName)} no tiene intención de dejarte pasar. Toca decidir ya: combatir o huir.`,
+    narration: `Os encontráis y os miráis — ${nombreDeEncuentro(targetName, cantidad)} no tiene intención de dejarte pasar. Toca decidir ya: combatir o huir.`,
     opciones: [COMBATE_FORZADO_OPCION_COMBATIR, COMBATE_FORZADO_OPCION_HUIR],
     cierra: false,
   };

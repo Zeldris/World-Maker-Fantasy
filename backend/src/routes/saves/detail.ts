@@ -25,6 +25,9 @@ import { NIVEL_MINIMO_ESPECIALIZACION } from './progression.js';
 import { marcaDelCapitan } from '../../services/combateMultipleOrquestacion.js';
 import { PUNTOS_DE_AGUA } from '../../services/crafting.js';
 
+/// P100 (QA-27): nombre viejo → nombre nuevo de las habilidades renombradas en el catálogo.
+const HABILIDADES_RENOMBRADAS: Record<string, string> = { 'Analisis Salvaje': 'Análisis Salvaje' };
+
 export async function detailRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>('/saves/:id', async (request, reply) => {
     // Ventana de 24h de juego (rework 2026-07-24, petición explícita: "el log de personaje solo
@@ -103,6 +106,21 @@ export async function detailRoutes(app: FastifyInstance) {
       const desfasadas = save.savedActions.filter((a) => a.isStarting && catalogo.has(a.name) && catalogo.get(a.name) !== a.description);
       if (desfasadas.length > 0) {
         await prisma.$transaction(desfasadas.map((a) => prisma.savedAction.update({ where: { id: a.id }, data: { description: catalogo.get(a.name)! } })));
+        save.savedActions = await prisma.savedAction.findMany({ where: { saveId: save.id }, orderBy: { createdAt: 'asc' } });
+      }
+    }
+
+    // P100 (QA-27): habilidades renombradas en el catálogo. Las partidas las identifican por nombre
+    // (SavedAction y la lista de activas en combate), así que se renombran las dos al leer.
+    {
+      const renombrar = save.savedActions.filter((a) => HABILIDADES_RENOMBRADAS[a.name]);
+      const activas = (save.activeCombatAbilityNames ?? []).some((n) => HABILIDADES_RENOMBRADAS[n]);
+      if (renombrar.length > 0 || activas) {
+        await prisma.$transaction([
+          ...renombrar.map((a) => prisma.savedAction.update({ where: { id: a.id }, data: { name: HABILIDADES_RENOMBRADAS[a.name] } })),
+          prisma.save.update({ where: { id: save.id }, data: { activeCombatAbilityNames: save.activeCombatAbilityNames.map((n) => HABILIDADES_RENOMBRADAS[n] ?? n) } }),
+        ]);
+        save.activeCombatAbilityNames = save.activeCombatAbilityNames.map((n) => HABILIDADES_RENOMBRADAS[n] ?? n);
         save.savedActions = await prisma.savedAction.findMany({ where: { saveId: save.id }, orderBy: { createdAt: 'asc' } });
       }
     }
