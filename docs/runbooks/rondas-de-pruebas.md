@@ -13,6 +13,9 @@ retro del 2026-10-09). Herramientas: [`tools/playwright-e2e/`](../../tools/playw
    tabla `| P<n> | Hallazgo | Estado |`): fallos, incoherencias de texto o de lore, y detalles de
    interfaz. Con la causa si se ve, y si no bloquea, «pendiente». Para cambiar el estado de una fila:
    `python3 tools/qa/marca-hallazgo.py P<n> "<texto viejo>" "<texto nuevo>"` (`QA-42`).
+3b. Para decidir qué probar y cómo (p. ej. los encuentros salen al moverse por el mapa de zona, no
+   escribiendo «salgo a cazar»), mira [`checklist-pruebas-juego.md`](../registros/checklist-pruebas-juego.md):
+   qué está probado en vivo, qué solo con tests y qué falta.
 4. **Arregla solo lo que bloquea** (no se puede seguir jugando, o el juego hace algo imposible): con
    su test y comprobado en vivo (si el MCP de Playwright no conecta, `driver.mjs` de
    `tools/playwright-e2e/`, `QA-41`). Lo demás se queda apuntado para repasarlo con la usuaria.
