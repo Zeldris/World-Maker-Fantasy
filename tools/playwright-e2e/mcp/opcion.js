@@ -3,9 +3,12 @@
 async (page) => {
   const { opcion } = await page.evaluate(() => window.tk || {});
   if (opcion == null) return 'Falta window.tk.opcion (número o texto)';
-  const patron = typeof opcion === 'number' ? new RegExp(`^\\s*${opcion}\\s*\\S`) : new RegExp(String(opcion), 'i');
+  // Las opciones son botones «<n><texto>»: por número, el dígito sin otro detrás (1 no casa con 10); por
+  // texto, el trozo tal cual (escapado). Solo botones: un «1 hora después» del diario no cuenta.
+  const escapar = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const patron = typeof opcion === 'number' ? new RegExp(`^\\s*${opcion}(?!\\d)\\s*\\S`) : new RegExp(escapar(String(opcion)), 'i');
   const antes = await page.locator('body').innerText();
-  await page.getByText(patron).first().click();
+  await page.getByRole('button', { name: patron }).first().click();
   for (let i = 0; i < 40; i++) {
     await page.waitForTimeout(1500);
     const t = await page.locator('body').innerText();

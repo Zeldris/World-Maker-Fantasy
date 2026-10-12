@@ -65,7 +65,11 @@ export function useMisionesAcciones({ saveId, setCharacterLog, setCharacterThink
       // del mundo seguía pidiendo conseguirla hasta recargar la página.
       if (newInventoryItems?.length) setInventory((prev) => applyInventoryDelta(prev, newInventoryItems, [], []))
       getSave(saveId!)
-        .then((save) => setQuests(save.quests))
+        .then((save) => {
+          setQuests(save.quests)
+          // Sin la recompensa en la respuesta (un backend anterior), la recarga la trae.
+          if (questCompletedInfo?.grantedItems.length && !newInventoryItems?.length) setInventory(save.inventory)
+        })
         .catch(() => {})
     } catch {
       // Best-effort (mismo criterio que el resto de acciones deterministas de este archivo): si

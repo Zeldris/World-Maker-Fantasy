@@ -121,7 +121,8 @@ export function useMovimientoZona({ saveId, setData, bloqueoMovimiento = null, o
         if (resultado.colision) {
           // QA-59 (P102, P103): la frase del backend, que lleva artículo, número y quién vio a quién;
           // la de aquí decía «Te topas con Orca desconocida» aunque la orca se hubiera acercado antes.
-          setMensajeMovimiento(resultado.logEntry?.text ?? `Te topas con ${resultado.colision.targetName}.`)
+          // Sin entrada (ya había otra oferta abierta), el aviso de antes sigue valiendo.
+          if (resultado.logEntry) setMensajeMovimiento(resultado.logEntry.text)
           // Conexión real con Interactuar (2026-09-09) — la colisión con un NPC/fauna no agresivo
           // ya dejó `pendingDynamicModeOffer` real en el backend, con su propio LogEntry
           // determinista (`resultado.logEntry`, shape mínimo) — se combina con `dynamicModeOffer`

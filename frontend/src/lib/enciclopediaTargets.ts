@@ -540,7 +540,7 @@ export function abilityToDetailTarget(ability: EnciclopediaAbilityInfo, meta?: s
     name: ability.name,
     meta,
     description: ability.description,
-    extra: `"${ability.promptText}"`,
+    extra: `«${ability.promptText}»`,
     imagePrompts: ability.imagePrompts,
     imageUrls: ability.imageUrls,
     entityType: 'ability',

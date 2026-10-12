@@ -16,13 +16,17 @@ paquete="$1"; test="$2"; nombre="$3"; shift 3
 raiz="$(git rev-parse --show-toplevel)"
 cd "$raiz" || exit 2
 for f in "$@"; do
-  git diff --quiet -- "$f" && { echo "rojo-sin-arreglo: $f no tiene cambios sin commit (¿es el archivo del arreglo?)"; exit 2; }
+  # Cambios sin commit, o un archivo nuevo que aún no está en git (también cuenta como arreglo).
+  [ -n "$(git status --porcelain -- "$f")" ] || { echo "rojo-sin-arreglo: $f no tiene cambios sin commit (¿es el archivo del arreglo?)"; exit 2; }
 done
-correr() { (cd "$raiz/$paquete" && npx vitest run "$test" -t "$nombre" 2>&1); }
+# -t es una expresión regular sobre «describe > test»: el nombre, escapado y anclado al final, casa solo
+# con ese test (sin escapar, «(prueba)» no casaría consigo mismo).
+patron="$(printf '%s' "$nombre" | sed -e 's/[][\\.^$*+?(){}|/]/\\&/g')\$"
+correr() { (cd "$raiz/$paquete" && npx vitest run "$test" -t "$patron" 2>&1); }
 # La línea «Tests»; si el archivo ni carga (p. ej. sin el arreglo falta una exportación), la de «Test Files».
 cuenta() { local t; t="$(cat)"; echo "$t" | grep -E "^ *Tests +" | tail -1 | grep . || echo "$t" | grep -E "^ *Test Files +" | tail -1; }
 
-git stash push --quiet -- "$@" || exit 2
+git stash push --quiet --include-untracked -- "$@" || exit 2
 trap 'git stash pop --quiet' EXIT
 sin="$(correr)"
 resumen_sin="$(echo "$sin" | cuenta)"
@@ -32,6 +36,11 @@ resumen_con="$(echo "$con" | cuenta)"
 
 echo "Sin el arreglo: $resumen_sin"
 echo "Con el arreglo: $resumen_con"
+# Exactamente un test ejecutado en cada pasada: si el nombre casa con otros, su resultado se colaría.
+ejecutados() { echo "$1" | grep -oE "[0-9]+ (passed|failed)" | awk '{n += $1} END {print n + 0}'; }
+for r in "$resumen_sin" "$resumen_con"; do
+  [ "$(ejecutados "$r")" = 1 ] || { echo "rojo-sin-arreglo: se ejecutaron $(ejecutados "$r") tests, no 1: revisa el nombre exacto"; exit 1; }
+done
 if ! echo "$resumen_con" | grep -qE "[1-9][0-9]* passed" || echo "$resumen_con" | grep -q "failed"; then
   echo "rojo-sin-arreglo: con el arreglo no pasa (o no se ejecutó ningún test: revisa el nombre)"; exit 1
 fi

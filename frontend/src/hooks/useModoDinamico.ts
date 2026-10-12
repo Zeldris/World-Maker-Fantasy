@@ -358,7 +358,11 @@ export function useModoDinamico({
         // P32 / QA-54: la recompensa llega con la respuesta y entra en el inventario visible.
         if (newInventoryItems?.length) setInventory((prev) => applyInventoryDelta(prev, newInventoryItems, [], []))
         getSave(saveId!)
-          .then((save) => setQuests(save.quests))
+          .then((save) => {
+            setQuests(save.quests)
+            // Sin la recompensa en la respuesta (un backend anterior), la recarga la trae.
+            if (questCompletedInfo?.grantedItems.length && !newInventoryItems?.length) setInventory(save.inventory)
+          })
           .catch(() => {})
       }
     } catch {

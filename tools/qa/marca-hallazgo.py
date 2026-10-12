@@ -7,17 +7,16 @@ Uso: python3 tools/qa/marca-hallazgo.py P<n> "<texto viejo>" "<texto nuevo>" [--
 La primera forma busca la fila `| P<n> | ...` cuyo estado (la última columna) contenga el texto viejo y
 lo sustituye solo ahí; falla si no hay exactamente una, para no tocar otra fila por error. La segunda (`QA-47`) añade una fila nueva
 detrás de la última, con el siguiente número; `QA-55`: el número sale por encima del más alto de la copia
-local, de `origin/main` y de las ramas de trabajo de las dos cuentas (`git fetch` antes), para que dos
+local, de `origin/main` y de todas las ramas `origin/claude/*` (hace `git fetch` antes), para que dos
 cuentas que anotan a la vez no repitan número. Registro por defecto: el del hito más alto
 (`docs/registros/pruebas-<hito>-hallazgos.md`, p. ej. `pruebas-0.3-hallazgos.md`).
 """
 import glob
+import os
 import re
 import subprocess
 import sys
 
-# QA-55: las ramas donde anotan las dos cuentas (bitácora, «Rama de trabajo»), más `main`.
-RAMAS = ['origin/main', 'origin/claude/frontend-improvements-roadmap-0mpckt', 'origin/claude/wonderful-volta-662qt8']
 
 
 def registro_por_defecto() -> str:
@@ -32,10 +31,18 @@ def registro_por_defecto() -> str:
 
 
 def numeros_en_ramas(ruta: str) -> list[int]:
-    """Los P<n> del registro en cada rama de `RAMAS` que lo tenga (las que no existan se saltan)."""
+    """QA-55: los P<n> del registro en `origin/main` y en cada rama `origin/claude/*`, tras un `git fetch`.
+
+    Sin red, se queda con lo que ya hubiera traído el último fetch (y lo avisa)."""
+    if subprocess.run(['git', 'fetch', '--quiet', 'origin'], capture_output=True).returncode != 0:
+        print('marca-hallazgo: sin git fetch (¿sin red?); numero con las ramas que ya había', file=sys.stderr)
+    raiz = subprocess.run(['git', 'rev-parse', '--show-toplevel'], capture_output=True, text=True).stdout.strip()
+    rel = os.path.relpath(os.path.abspath(ruta), raiz) if raiz else ruta
+    ramas = subprocess.run(['git', 'for-each-ref', '--format=%(refname:short)', 'refs/remotes/origin/claude/'],
+                           capture_output=True, text=True).stdout.split()
     numeros = []
-    for rama in RAMAS:
-        r = subprocess.run(['git', 'show', f'{rama}:{ruta}'], capture_output=True, text=True)
+    for rama in ['origin/main', *ramas]:
+        r = subprocess.run(['git', 'show', f'{rama}:{rel}'], capture_output=True, text=True)
         if r.returncode == 0:
             numeros += [int(n) for n in re.findall(r'^\| P(\d+) \|', r.stdout, re.M)]
     return numeros

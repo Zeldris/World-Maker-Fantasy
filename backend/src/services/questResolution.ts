@@ -71,7 +71,7 @@ export async function grantQuestRewardItems(tx: Prisma.TransactionClient, saveId
         saveId,
         name,
         description: catalog?.description ?? 'Recompensa de misión.',
-        origin: 'recompensa de misión',
+        origin: ORIGEN_RECOMPENSA,
         catalogSlug: catalog?.slug,
         statBonuses: catalog?.statBonuses ?? Prisma.JsonNull,
       };
@@ -80,18 +80,28 @@ export async function grantQuestRewardItems(tx: Prisma.TransactionClient, saveId
   return toGrant;
 }
 
-/// QA-54 (retro de la tercera tanda de QA-27): la recompensa de una misión recién cerrada, con la
-/// misma forma que los objetos nuevos de un turno. Toda respuesta que anuncia «misión completada»
-/// la manda entre sus objetos nuevos; sin esto, el Mapa de las Llanuras no llegaba a la pantalla
-/// hasta recargar (P32, salió por tres caminos distintos).
+/// Origen de los objetos que da una misión (`grantQuestRewardItems`): con él se reconocen después.
+export const ORIGEN_RECOMPENSA = 'recompensa de misión';
+
+/// QA-54 (retro de la tercera tanda de QA-27): las recompensas que ya tenía la partida al empezar una
+/// petición, para saber al final cuáles son nuevas (`recompensasComoObjetosNuevos`).
+export async function idsDeRecompensas(tx: Prisma.TransactionClient, saveId: string): Promise<Set<string>> {
+  const filas = await tx.inventoryItem.findMany({ where: { saveId, origin: ORIGEN_RECOMPENSA }, select: { id: true } });
+  return new Set(filas.map((f) => f.id));
+}
+
+/// QA-54: las recompensas de misión que entraron en el inventario durante esta petición, con la forma de
+/// los objetos nuevos de un turno. Toda respuesta que puede cerrar una misión las manda; sin esto, el
+/// Mapa de las Llanuras no llegaba a la pantalla hasta recargar (P32, salió por tres caminos). Cubre
+/// cualquier camino y varias misiones a la vez porque compara con `idsDeRecompensas` del principio.
 export async function recompensasComoObjetosNuevos(
   tx: Prisma.TransactionClient,
   saveId: string,
   worldId: string,
-  nombres: string[],
+  idsPrevios: Set<string>,
 ): Promise<NewInventoryItemInfo[]> {
-  if (nombres.length === 0) return [];
-  const recompensas = await tx.inventoryItem.findMany({ where: { saveId, name: { in: nombres } } });
+  const recompensas = await tx.inventoryItem.findMany({ where: { saveId, origin: ORIGEN_RECOMPENSA, id: { notIn: [...idsPrevios] } } });
+  if (recompensas.length === 0) return [];
   const slugs = recompensas.map((r) => r.catalogSlug).filter((s): s is string => !!s);
   const catalogo = slugs.length
     ? await tx.itemCatalog.findMany({ where: { worldId, slug: { in: slugs } }, select: { slug: true, equipSlot: true, effectKey: true, tipo: true } })
@@ -208,9 +218,11 @@ export async function closeItemQuests(params: {
   fictionalMinutes: number;
   /// Ver comentario de `completeNpcTargetQuests` más abajo — mismo criterio de orden de lectura.
   createdAt?: () => Date;
-}): Promise<void> {
+}): Promise<string[]> {
   const { tx, saveId, worldId, createdItemNames, timeLabel, fictionalMinutes, createdAt } = params;
-  if (createdItemNames.length === 0) return;
+  // QA-54: devuelve los objetos que dio, para que quien llama los mande en su respuesta.
+  const otorgados: string[] = [];
+  if (createdItemNames.length === 0) return otorgados;
   const activeQuestsWithItem = await tx.quest.findMany({
     where: { saveId, status: 'ACTIVA', targetItemName: { not: null } },
   });
@@ -221,6 +233,7 @@ export async function closeItemQuests(params: {
       await tx.quest.update({ where: { id: quest.id }, data: { status: 'COMPLETADA' } });
       await registrarFinDeMision(tx, { saveId, titulo: quest.title, estado: 'COMPLETADA', fictionalMinutes });
       const grantedItems = await grantQuestRewardItems(tx, saveId, worldId, quest.rewardItems);
+      otorgados.push(...grantedItems);
       const { grantedRecipeKeys, grantedCompanionName } = await grantQuestRewardRecipesAndCompanion(
         tx,
         saveId,
@@ -245,6 +258,7 @@ export async function closeItemQuests(params: {
       }
     }
   }
+  return otorgados;
 }
 
 /// Aviso (sin cerrar nada) de que un NPC tiene misión(es) activas de "derrotar a X" pendientes de

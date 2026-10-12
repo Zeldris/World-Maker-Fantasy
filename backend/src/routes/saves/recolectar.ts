@@ -11,7 +11,7 @@ import { locationTerrainTags, harvestSourceTerrainTag, faunaTerrainTag, sourceCa
 import { matchesHarvestSourceHome } from '../../services/harvest.js';
 import { quantityOf, baseNameOf, totalQuantity, planConsumption, type IngredientRequirement } from '../../services/ingredients.js';
 import { hasToolForOficio, OFICIOS_CON_HERRAMIENTA_REQUERIDA } from '../../services/crafting.js';
-import { closeItemQuests } from '../../services/questResolution.js';
+import { closeItemQuests, idsDeRecompensas, recompensasComoObjetosNuevos } from '../../services/questResolution.js';
 import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
 import { advanceFictionalMinutes, formatFictionalDate, estacionFor, climaFor, climaSeveridadAlMenos } from '../../services/worldClock.js';
 import { alivioForLevel } from '../../services/professionProgress.js';
@@ -1008,7 +1008,8 @@ export async function resolverRecoleccion(
         // endpoint determinista nunca pasaba por `narrateAndPersistTurn`, así que ninguna misión
         // `targetItemName` se cerraba nunca si el objeto venía de Minar/Talar/Desollar — mismo
         // criterio que turnResolution.ts, extraído a `closeItemQuests` para no duplicar la lógica.
-        await closeItemQuests({
+        const idsRecompensasPrevias = await idsDeRecompensas(tx, save.id);
+        const otorgados = await closeItemQuests({
           tx,
           saveId: save.id,
           worldId: save.worldId,
@@ -1016,6 +1017,8 @@ export async function resolverRecoleccion(
           timeLabel: nuevaFictionalDateLabel,
           fictionalMinutes: nuevoFictionalMinutes,
         });
+        // QA-54: lo que dé una misión de «consigue Z» cerrada por esta recolección llega con la respuesta.
+        const recompensas = otorgados.length ? await recompensasComoObjetosNuevos(tx, save.id, save.worldId, idsRecompensasPrevias) : [];
 
         // Punto del jugador en el mapa de Zona (2026-09-04) — mueve al jugador al ÚLTIMO
         // `sourceSlug` de la lista (orden = orden de clic del jugador, razonable que el marcador
@@ -1033,7 +1036,7 @@ export async function resolverRecoleccion(
           await tx.save.update({ where: { id: save.id }, data: { pendingDynamicModeOffer: Prisma.JsonNull } });
         }
 
-        return { touched, logEntry, segundasTiradas };
+        return { touched, logEntry, segundasTiradas, recompensas };
       });
 
       // Hecho de sesión (fuera de la transacción, igual que `appendSessionFacts` en /explorar —
@@ -1086,5 +1089,5 @@ export async function resolverRecoleccion(
         }
       }
 
-  return { items, updatedItems, logEntry: touched.logEntry, segundasTiradas: touched.segundasTiradas };
+  return { items: [...items, ...touched.recompensas], updatedItems, logEntry: touched.logEntry, segundasTiradas: touched.segundasTiradas };
 }

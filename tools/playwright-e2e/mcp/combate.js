@@ -23,7 +23,10 @@ async (page) => {
     if (!fase) { salida.push(`R${r}: no hay combate en marcha`); break; }
     if (/ESTÁ CONVALECIENTE/i.test(t) && /Matar/.test(t)) { salida.push(`R${r}: rival CONVALECIENTE: elige Matar o Clemente`); break; }
     const nombre = fase[1] === 'Defensa' ? defensa : ataque;
-    const tarjeta = page.getByRole('button', { name: new RegExp(nombre) }).first();
+    // El nombre de la tarjeta empieza por el de la habilidad (tras su icono): anclado y escapado, no casa
+    // a mitad de otro nombre ni rompe con un «(». Pásalo completo («Ataque Básico», no «Ataque»).
+    const escapado = nombre.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const tarjeta = page.getByRole('button', { name: new RegExp(`^\\s*\\S*\\s*${escapado}(\\s|$)`) }).first();
     // Tras la tirada, los dados del intercambio aún giran unos segundos y las habilidades siguen apagadas.
     let apagada = true;
     for (let i = 0; i < 20 && apagada; i++) {

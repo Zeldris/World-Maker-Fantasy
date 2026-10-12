@@ -40,7 +40,7 @@ import { recordFactionEvent } from './factionRelations.js';
 import { slugify } from '../lib/slugify.js';
 import { appendSessionFacts, selectRelevantFacts } from './worldFacts.js';
 import { bloqueMemoria } from './cronista/memoriaNarrador.js';
-import { closeItemQuests, completeNpcTargetQuests, grantQuestRewardItems, recompensasComoObjetosNuevos, questRewardNarrationFor, GISTERA_DESPEDIDA_NARRATION, type QuestCompletedInfo } from './questResolution.js';
+import { closeItemQuests, completeNpcTargetQuests, grantQuestRewardItems, idsDeRecompensas, recompensasComoObjetosNuevos, questRewardNarrationFor, GISTERA_DESPEDIDA_NARRATION, type QuestCompletedInfo } from './questResolution.js';
 import { applyFactionRepDelta, effectiveTemperamento, resolveFoundingOutcome, parseFactionsStatus, FACTION_REP_PEACE_DELTA, REGION_OWNING_FACTIONS, type FoundingOutcome, type FactionRepChangeInfo } from './reputation.js';
 import { regionControlActual, parseAgenda } from './worldAgenda.js';
 import { estaMalherido, opcionesDisponiblesPara } from './npcInteraction.js';
@@ -5112,6 +5112,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // (recompensas de misión resueltas durante el intercambio de combate/decapitar) — sin
     // importar en qué punto real del código se cree cada fila.
     const turnStartTime = Date.now();
+    // QA-54: las recompensas de misión que ya había, para mandar al final solo las nuevas.
+    const idsRecompensasPrevias = await idsDeRecompensas(tx, saveId);
     let beforeMainLogSeq = 0;
     const nextBeforeMainLogCreatedAt = () => new Date(turnStartTime - 1000 + beforeMainLogSeq++);
     const mainLogEntryCreatedAt = new Date(turnStartTime);
@@ -6312,13 +6314,6 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       createdAt: nextAfterMainLogCreatedAt,
     });
 
-    // P32 / QA-54: la recompensa de una misión cerrada este turno (el Mapa de las Llanuras al matar
-    // al Orco Enfurecido) va con los objetos nuevos, o no llega a la pantalla hasta recargar.
-    if (questCompletedInfo?.grantedItems.length) {
-      const yaListados = new Set(newInventoryItems.map((i) => i.id));
-      const recompensas = await recompensasComoObjetosNuevos(tx, saveId, worldId, questCompletedInfo.grantedItems);
-      newInventoryItems.push(...recompensas.filter((r) => !yaListados.has(r.id)));
-    }
 
     // Posición (docs/12 § 1.4 paso 7): al llegar, currentLocationId cambia al destino y se
     // registran visitas (destino + nodos intermedios), sin XP salvo la primera vez en el destino.
@@ -6791,6 +6786,13 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         ...(gisteraAceptaEsteTurno ? { npcsRetiredForever: { push: 'gistera-koh' } } : {}),
       },
     });
+
+    // P32 / QA-54: las recompensas de las misiones cerradas este turno (por combate, por «conseguir Z»,
+    // por progreso; una o varias) van con los objetos nuevos, o no llegan a la pantalla hasta recargar.
+    const yaListados = new Set(newInventoryItems.map((i) => i.id));
+    for (const r of await recompensasComoObjetosNuevos(tx, saveId, worldId, idsRecompensasPrevias)) {
+      if (!yaListados.has(r.id)) newInventoryItems.push(r);
+    }
 
     return {
       progression: result,

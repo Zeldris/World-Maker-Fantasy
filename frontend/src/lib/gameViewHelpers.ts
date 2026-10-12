@@ -18,7 +18,9 @@ export function applyInventoryDelta(
   const reconciled = prev
     .filter((item) => !removedIds.includes(item.id))
     .map((item) => (updatedById.has(item.id) ? { ...item, name: updatedById.get(item.id)! } : item))
-  return [...reconciled, ...added]
+  // QA-54: lo que ya está (p. ej. una recompensa que también trajo una recarga) no se añade dos veces.
+  const yaEstan = new Set(reconciled.map((item) => item.id))
+  return [...reconciled, ...added.filter((item) => !yaEstan.has(item.id))]
 }
 
 // Bug real cazado por useTurnFlow.test.tsx (checklist frontend 2026-08-27, A.1) — `!('ended' in
