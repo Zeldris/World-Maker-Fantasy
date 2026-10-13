@@ -126,7 +126,7 @@ export function MisionesPanel({ quests, onEntregar, onAbandonar }: MisionesPanel
         {(quest.rewardXp || quest.rewardItems.length > 0) && (
           <p className="mt-1 text-xs leading-relaxed text-accent-300">
             <span className="text-2xs font-semibold uppercase tracking-wide text-wood-500">Recompensa: </span>
-            {[...quest.rewardItems, quest.rewardXp ? `+${quest.rewardXp} XP` : null, quest.recompensa?.goirnos ? `${quest.recompensa.goirnos} Goirnos` : null].filter(Boolean).join(', ')}
+            {[...quest.rewardItems, quest.rewardXp ? `+${quest.rewardXp} XP` : null, quest.recompensa?.goirnos ? `${quest.recompensa.goirnos} Goirnos` : null, quest.recompensa?.reputacion ? `reputación +${quest.recompensa.reputacion}` : null].filter(Boolean).join(', ')}
           </p>
         )}
       </div>

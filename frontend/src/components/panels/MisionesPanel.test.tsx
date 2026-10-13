@@ -15,7 +15,7 @@ describe('MisionesPanel — misiones del motor', () => {
     expect(getByText('Clan Serhu')).toBeTruthy()
     expect(getByText('2/6')).toBeTruthy()
     expect(getByText('12')).toBeTruthy()
-    expect(getByText(/\+80 XP, 35 Goirnos/)).toBeTruthy()
+    expect(getByText(/\+80 XP, 35 Goirnos, reputación \+70/)).toBeTruthy() // P140: la reputación también
   })
 
   it('Entregar llama al backend; Abandonar pide confirmación antes', async () => {
