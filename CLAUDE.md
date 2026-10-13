@@ -58,12 +58,15 @@ siguiente sesión.
 
 ## Pruebas de juego
 
-**Ahora toca asentar** (usuaria, 2026-10-13): no se empieza ninguna tarea nueva del roadmap ni se
-añaden más. Las dos cuentas juegan rondas de pruebas, arreglan lo que sale y cierran lo que está a medias
-(p. ej. `QA-63`), hasta que la usuaria diga que se sigue implementando. Mientras tanto queda en pausa la
-decisión del 2026-10-02: implementación continua comprobando solo con tests (tsc + vitest + oxlint en
-verde antes de subir) y las pruebas de juego en una fase única antes de la beta (fila `0.8` de
-[«Qué entra en cada hito»](docs/producto/21-roadmap.md#qué-entra-en-cada-hito)).
+**Hasta cerrar las pruebas, no hay roadmap** (usuaria, 2026-10-13). Ninguna tarea nueva del roadmap,
+ni se añaden más, hasta que se haya probado jugando todo lo implementado (del `0.1` al hito en curso),
+lleve lo que lleve. Las dos cuentas juegan rondas de pruebas, arreglan lo que sale y cierran lo que está
+a medias (p. ej. `QA-63`).
+
+**Al volver al roadmap, cada tarea se prueba al momento**: se implementa, se pasan los tests y se juega
+lo que cambia antes de darla por cerrada, sin dejar arreglos para una fase posterior. Sustituye a la
+decisión del 2026-10-02: implementación continua solo con tests y pruebas de juego en una fase única
+antes de la beta.
 
 **Al jugar** (ronda de pruebas, «sigue probando», «juega»): antes de la primera acción, relee
 [`docs/runbooks/rondas-de-pruebas.md`](docs/runbooks/rondas-de-pruebas.md): con qué se juega, qué se
