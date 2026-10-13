@@ -248,6 +248,31 @@ describe('GET /saves/:id/zona', () => {
     expect(punto?.objetivoMision).toBe(true);
   });
 
+  it('P134 (QA-27): una persona sin nombre propio ya descubierta como npc sale con su nombre', async () => {
+    findManyDiscoveredEntity.mockReset().mockResolvedValue([{ entityType: 'npc', entitySlug: 'cazadora-serhu' }]);
+    findUniqueSave.mockResolvedValueOnce({
+      id: 's1',
+      worldId: 'w1',
+      currentLocation: {
+        id: 'loc1',
+        slug: 'campamento-serhu',
+        name: 'Colmillo Ceniza',
+        zonePoints: [{ id: 'zpc', x: 400, y: 130, tipo: 'NPC', targetSlug: 'cazadora-serhu', label: null, activo: true, cantidad: 1, factionSlug: null }],
+      },
+      worldState: { fictionalMinutes: 600, factionsStatus: {}, agenda: null },
+    });
+    findManyNpc.mockResolvedValueOnce([{ id: 'npc-caz', slug: 'cazadora-serhu', name: 'Cazadora Serhu', kind: 'PLANTILLA', faction: 'Clan Serhu', temperamento: 'CAUTELOSO' }]);
+    loadSessionFactsMock.mockResolvedValueOnce([]);
+    detectNpcsInSceneMock.mockResolvedValueOnce([]);
+    try {
+      const app = await buildApp();
+      const punto = ((await app.inject({ method: 'GET', url: '/saves/s1/zona' })).json().puntos as { targetSlug: string; nombre: string }[]).find((p) => p.targetSlug === 'cazadora-serhu');
+      expect(punto?.nombre).toBe('Cazadora Serhu');
+    } finally {
+      findManyDiscoveredEntity.mockReset().mockResolvedValue([]);
+    }
+  });
+
   it('P107 (QA-27): un NPC fijo del mapa toma la facción del propio NPC, no «Sin facción»', async () => {
     findUniqueSave.mockResolvedValueOnce({
       id: 's1',

@@ -291,3 +291,38 @@ describe('POST /saves/:id/modo-dinamico/recurso/:targetSlug — PESCA y BUSQUEDA
     });
   }
 });
+
+/// P136 (QA-27): la leche de los múrgoles domados se recoge sin tirada (antes «Recoger» tiraba Destreza).
+describe('POST /saves/:id/modo-dinamico/recurso/:targetSlug — recoger sin tirada', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'campamento-serhu', saveId: null } });
+    const save = await prisma.save.create({
+      data: {
+        userId, worldId: world.id, characterName: 'Gorhorn de prueba (múrgoles)', characterArchetype: 'guerrero', characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x', attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        portraitInitial: 'G', currentLocationId: location.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId, fictionalMinutes: 480 } });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('múrgoles domados: sin dado y con la leche en el inventario', async () => {
+    await prisma.save.update({ where: { id: saveId }, data: { pendingDynamicModeOffer: { tipo: 'RECURSO', targetSlug: 'murgoles-domados-campamento', targetName: 'Múrgoles domados' } } });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/recurso/murgoles-domados-campamento` });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.roll).toBeUndefined();
+    expect(body.exito).toBe(true);
+    expect([...(body.items ?? []), ...(body.updatedItems ?? [])].some((i: { name: string }) => /leche/i.test(i.name))).toBe(true);
+  });
+});

@@ -1,13 +1,15 @@
 ---
 name: retro
-description: "Conduct a retrospective on a coding session. Use after each PR is merged, or when a phase or milestone closes."
+description: "Conduct a retrospective on a coding session. Use before creating each PR to main (after /code-review), or when a phase or milestone closes."
 ---
 
-> **En este repositorio:** la lanza Claude tras fusionar cada PR a `main` (usuaria, 2026-10-13) y al
-> cerrar cada fase o hito (2026-10-06). Lo que se revisa es lo que entró con el PR, o la fase entera,
+> **En este repositorio:** la lanza Claude antes de crear cada PR a `main`, tras el `/code-review` y sus
+> arreglos (usuaria, 2026-10-13), y al cerrar cada fase o hito (2026-10-06). Lo que se revisa es lo que va
+> a entrar con el PR, o la fase entera,
 > que suele cruzar sesiones de las dos cuentas:
 > sus commits, la bitácora y las entradas de sus tareas en los roadmaps. Las propuestas, en español,
-> se presentan a la usuaria y **ahí acaba el paso**: ella las revisa y decide. Solo las que confirme
+> se presentan a la usuaria: ella las revisa y decide, y lo aprobado se aplica en la rama antes de
+> crear el PR. Solo las que confirme
 > entran como tarea con hito en su roadmap (`CLAUDE.md`, «Ninguna tarea sin hito»).
 
 A phase has closed, so it is time for a **retrospective**. You are suggesting improvements to the coding agent's **environment** to improve future runs.

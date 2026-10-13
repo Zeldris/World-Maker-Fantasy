@@ -30,14 +30,15 @@ Skill (no basta con nombrarla); `/grill-with-docs` solo lo lanza la usuaria, con
    roadmap; los términos, a `GLOSSARY.md`; lo difícil de revertir, a `docs/adr/`.
 3. **Implementar** por pasos pequeños, cada uno con sus tests, y commit + push en cada punto
    estable (`CLAUDE.md`). En cada paso, los tests de lo tocado (`npx vitest run <archivos>`); la
-   suite entera del backend (5-6 min) en segundo plano y aparte del push (el pre-push ya pasa tsc,
+   suite entera del backend (5-10 min) en segundo plano, con 30 minutos de tope (`timeout: 1800000`;
+   con el de 10 se corta a medias y deja el catálogo sucio, retro del PR #56), y aparte del push (el pre-push ya pasa tsc,
    lint y cobertura) (QA-24). Antes del commit de un arreglo, «Un dato, un sitio» de
    [`REVIEW.md`](../../REVIEW.md#un-dato-un-sitio): `grep` de los otros sitios que hacen lo mismo (la
    regla llega a todos) y nada que el frontend recalcule de lo que ya decide el backend (QA-81).
 4. **Si algo falla** (test rojo, intermitente, bug): `diagnosing-bugs` antes de tocar el código.
 5. **Cerrar la tarea:** tachada en su roadmap y en el mapa, bitácora al día, commit + push. El
-   `/code-review` y la `/retro` van al final, no por tanda: el `/code-review`, **antes de crear** el PR
-   a `main` (paso 6), y la `/retro`, **después de fusionarlo** (paso 7) (usuaria, 2026-10-13; sustituye
+   `/code-review` y la `/retro` van al final, no por tanda: el `/code-review`, después la `/retro` y lo que la usuaria
+   apruebe de ella, todo **antes de crear** el PR a `main` (pasos 6 y 7) (usuaria, 2026-10-13; sustituye
    a `QA-75` y al `/code-review` cada 5-6 hallazgos de `QA-40`). El PR #53 se revisó ya fusionado y
    sus 12 fallos llegaron a `main` (`QA-77`). Al
    contárselo a la usuaria, el destino con su nombre: «en la rama de trabajo, no en `main`» o «en
@@ -49,8 +50,9 @@ Skill (no basta con nombrarla); `/grill-with-docs` solo lo lanza la usuaria, con
    del diff contra `main` (sin el tope de 10 hallazgos, `QA-18`; criterio en [`REVIEW.md`](../../REVIEW.md)), arreglar lo que encuentre y escribir
    la descripción con `pr`. Tras crear el PR, `subscribe_pr_activity` y se fusiona al llegar el CI en
    verde, nunca antes (`QA-62`: el gancho de `QA-50` lo bloquea).
-7. **Tras fusionar cada PR a `main`, y al cerrar una fase o un hito:** `retro` (usuaria, 2026-10-13:
-   siempre después de cada PR), que lanza Claude sobre lo que entró con el PR o sobre toda la fase.
+7. **Antes de crear cada PR a `main` (tras el `/code-review` y sus arreglos), y al cerrar una fase o un
+   hito:** `retro` (usuaria, 2026-10-13), que lanza Claude sobre lo que va a entrar con el PR o sobre toda
+   la fase.
    Sus propuestas se presentan a la usuaria, que las revisa y confirma (nada se aplica antes). Cada pocas fases,
    `/improve-codebase-architecture`. Lo aceptado entra como tarea con hito.
 
@@ -67,7 +69,7 @@ Nada cambia de las reglas de `CLAUDE.md`: las skills se apoyan en ellas, no las 
 | `diagnosing-bugs` | sola ante un bug o test rojo | Primero un test o comando que reproduzca el fallo; luego minimizar, hipótesis, arreglo y test de regresión | Bugs que encuentras jugando (como Matar/Clemente) y tests intermitentes (G16, P3.2) |
 | `/improve-codebase-architecture` | la usuaria o al cerrar fase | Busca módulos que simplificar y los presenta en un informe | Cada pocas fases. Candidatos claros: `turnResolution.ts` (más de 7.000 líneas), `turn.ts` |
 | `codebase-design` | por debajo de la anterior | Vocabulario para diseñar módulos con interfaz pequeña | — |
-| `retro` | Claude, tras fusionar cada PR a `main` y al cerrar fase o hito (o la usuaria con `/retro`) | Propone mejoras del entorno: comprobaciones automáticas, instrucciones, herramientas | Tras cada PR y al final de cada fase. Las propuestas las revisa y confirma la usuaria; solo lo confirmado entra como tarea con hito |
+| `retro` | Claude, antes de crear cada PR a `main` (tras el `/code-review`) y al cerrar fase o hito (o la usuaria con `/retro`) | Propone mejoras del entorno: comprobaciones automáticas, instrucciones, herramientas | Antes de cada PR y al final de cada fase. Las propuestas las revisa y confirma la usuaria; solo lo confirmado entra como tarea con hito |
 | `writing-for-agents` | sola al escribir para agentes | Cómo escribir CLAUDE.md, skills y documentos para agentes | Al tocar `CLAUDE.md`, la bitácora o una skill |
 | `prototype` | Claude, dentro de una ronda de diseño | Prototipo para tirar: un HTML con botones que mueve la lógica (o variantes de una pantalla) para probar una decisión antes de tomarla | Cuando la usuaria decide números o reglas (economía, ganadería, combate, ritmo). El HTML se publica como Artifact o se le envía; se guarda en `docs/prototipos/` y el veredicto va al roadmap |
 | `pr` | Claude, al abrir un PR a `main` | Descripción del PR: resumen visual del cambio, evidencia antes/después y peligro del merge | Cada PR a `main`, tras `/code-review`. Evidencia: los números de `tsc`, `vitest` y `oxlint` |

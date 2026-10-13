@@ -10210,6 +10210,8 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'PASIVO',
     itemSlug: 'leche-murgol',
     cantidad: 3,
+    // P136 (QA-27): ordeñar los múrgoles del propio campamento es «Recoger», sin tirada.
+    sinTirada: true,
   },
 
   // --- Ofrendas de los Túmulos del Honor ---

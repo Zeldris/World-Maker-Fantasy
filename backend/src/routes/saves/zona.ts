@@ -1,3 +1,4 @@
+import { entityTypeDeSerVivo, FUENTES_DE_CATALOGO } from '../../services/entityDiscovery.js';
 import type { FastifyInstance } from 'fastify';
 import { posicionEnZona, viajerosAqui } from '../../services/viajerosCruce.js';
 import { tablonEnLugar } from '../../services/cronista/tablones.js';
@@ -16,7 +17,7 @@ import { momentoDelDiaFor, estacionFor, advanceFictionalMinutes, formatFictional
 /// B2 (2026-09-28) — minutos ficticios que cuesta cada paso real por la cuadrícula de la zona.
 const MINUTOS_POR_PASO_ZONA = 1;
 import type { EstacionSlug } from '../../services/imagePromptContext.js';
-import { ZONAS_DE_INICIO,
+import { faccionMasComun, ZONAS_DE_INICIO,
   zonePointColorFor,
   avanzarZonePointsUnPaso,
   asegurarZonePointsDePartida,
@@ -27,7 +28,7 @@ import { ZONAS_DE_INICIO,
   recalcularZonePointsDeLocation,
   type ZonePointColor,
 } from '../../services/zonePoints.js';
-import { aNombre, nombreEnFrase, nombreOcultoPorRaza } from '../../services/dynamicMode.js';
+import { aNombre, pluralDeEspecie, nombreEnFrase, nombreOcultoPorRaza } from '../../services/dynamicMode.js';
 import { parseAgenda, regionControlActual, type RegionControlState } from '../../services/worldAgenda.js';
 import { REGION_OWNING_FACTIONS, effectiveTemperamento } from '../../services/reputation.js';
 import { LIENZO_ANCHO, LIENZO_ALTO, posicionAleatoriaEnLienzo, celdaLibreEnEspiral, claveCelda, celdaDePixel, pixelDeCelda, calcularCamino, celdaAdyacenteOMisma, mismaCelda, tirarQuienIniciaEncuentro, type Celda, type IniciativaEncuentroLogRoll } from '../../services/zonaPosicion.js';
@@ -354,8 +355,8 @@ export async function zonaRoutes(app: FastifyInstance) {
       if (tipo === 'RECURSO') return isDiscoveredEntity(harvestSourcesThatAreFaunaWithoutNpc.has(targetSlug) ? 'fauna' : 'flora', targetSlug);
       // FAUNA/NPC: 'PRINCIPAL' → npc, el resto → fauna — mismo criterio que la línea de `dinamicos`
       // más abajo (`n.kind === 'PRINCIPAL' ? 'NPC' : 'FAUNA'`).
-      const kind = npcKindBySlug.get(targetSlug);
-      return isDiscoveredEntity(kind === 'PRINCIPAL' ? 'npc' : 'fauna', targetSlug);
+      // P134 (QA-27): la misma regla que al guardar el descubrimiento (`entityTypeDeSerVivo`).
+      return isDiscoveredEntity(entityTypeDeSerVivo(targetSlug, FUENTES_DE_CATALOGO), targetSlug);
     };
 
     // NPCs presentados en escena de forma determinista (2026-08-26, bug/hueco real señalado
@@ -416,6 +417,10 @@ export async function zonaRoutes(app: FastifyInstance) {
     );
     // P107 (QA-27): `ZonePoint.factionSlug` casi nunca está relleno; la facción es la del propio NPC.
     const npcFactionBySlugZonePoint = new Map(npcFaunaZonePointIds.map((n) => [n.slug, n.faction]));
+    // P139 (QA-27): un edificio sin facción propia es de la facción de la gente que vive aquí (la más
+    // común entre los NPC de la zona): la Herrería del Clan Serhu salía «sin facción».
+    const faccionesDeLaZona = zonePointsActivos.filter((p) => p.tipo === 'NPC').map((p) => npcFactionBySlugZonePoint.get(p.targetSlug)).filter((f): f is string => !!f);
+    const faccionDeLosEdificios = faccionMasComun(faccionesDeLaZona);
     // ZON-50/ZON-33 (hito 0.2): quién te perseguiría (misma regla que la persecución de
     // `avanzarZonePointsUnPaso`: temperamento efectivo según tu reputación con su facción).
     // CR-16: y quien te guarda rencor por lo que le hiciste.
@@ -704,7 +709,7 @@ export async function zonaRoutes(app: FastifyInstance) {
           cantidad: p.cantidad,
           // P107: la facción se ve aunque no se sepa quién es (como los dinámicos de arriba y en X4,
           // donde el color de la facción se ve antes de escanear); el nombre sigue oculto.
-          color: zonePointColorFor(p.factionSlug ?? npcFactionBySlugZonePoint.get(p.targetSlug) ?? null, factionsStatus, p.tipo),
+          color: zonePointColorFor(p.factionSlug ?? npcFactionBySlugZonePoint.get(p.targetSlug) ?? (p.tipo === 'EDIFICIO' ? faccionDeLosEdificios : null), factionsStatus, p.tipo),
           descubierto: yaDescubierto,
           ...(objetivosDeMision.has(npcIdBySlugZonePoint.get(p.targetSlug) ?? '') ? { objetivoMision: true } : {}),
           // Compañero de fauna con nombre propio (C10, 2026-09-13) — presente solo si este NPC es
@@ -779,6 +784,8 @@ export async function zonaRoutes(app: FastifyInstance) {
           /// Aviso de riesgo de la tarjeta "Cazar" (F9-1, decisión de Álvaro, 2026-09-29) — solo FAUNA
           /// no forzada con `ZonePoint`; ver `riesgoDeCaza` (cazaRiesgo.ts). Solo avisa, no cambia reglas.
           riesgoCaza?: RiesgoCazaInfo;
+          /// P124: plural del nombre para un grupo de FAUNA (`pluralDeEspecie`).
+          nombrePlural?: string;
           /// Método de obtención de la fuente (RECURSO, 2026-09-29) — el frontend lo usa para el verbo del
           /// botón del modal de detalle ("Talar"/"Minar"/…). Ausente en ofertas antiguas persistidas y en
           /// NPC/FAUNA; `null` si la fuente no tiene ningún yield (ver `metodoPrincipalDeFuente`).
@@ -1009,6 +1016,8 @@ export async function zonaRoutes(app: FastifyInstance) {
           zonePointId?: string;
           cantidad?: number;
           riesgoCaza?: RiesgoCazaInfo;
+          /// P124: plural del nombre para un grupo de FAUNA (`pluralDeEspecie`).
+          nombrePlural?: string;
           /// Método de obtención de la fuente (RECURSO, 2026-09-29) — el frontend lo usa para el verbo del
           /// botón del modal de detalle ("Talar"/"Minar"/…). Ausente en ofertas antiguas persistidas y en
           /// NPC/FAUNA; `null` si la fuente no tiene ningún yield (ver `metodoPrincipalDeFuente`).
@@ -1041,6 +1050,8 @@ export async function zonaRoutes(app: FastifyInstance) {
           targetSlug: colision.targetSlug,
           targetName: colision.targetName,
           ...(colisionTipo === 'NPC' ? { aQuien: aNombre(colision.targetName) } : {}),
+          // P124: el plural para la tarjeta de un grupo («Un grupo de 6 Guchapos»).
+          ...(colisionTipo === 'FAUNA' && colisionCantidad > 1 ? { nombrePlural: pluralDeEspecie(colision.targetName) } : {}),
           quienInicia,
           ...(combateForzado ? { combateForzado: true as const } : {}),
           ...(colisionZonePointId ? { zonePointId: colisionZonePointId } : {}),
@@ -1067,7 +1078,7 @@ export async function zonaRoutes(app: FastifyInstance) {
         // (el nombre de especie ya viene en singular de catálogo, "un grupo de N" no necesita
         // pluralizarlo). Solo aplica a FAUNA — un NPC (identidad única) nunca se agrupa.
         const nombreEncuentro =
-          colisionTipo === 'FAUNA' && colisionCantidad > 1 ? `un grupo de ${colisionCantidad} ${colision.targetName}` : nombreEnFrase(colision.targetName);
+          colisionTipo === 'FAUNA' && colisionCantidad > 1 ? `un grupo de ${colisionCantidad} ${pluralDeEspecie(colision.targetName)}` : nombreEnFrase(colision.targetName);
         const nombreEncuentroInicio = nombreEncuentro.charAt(0).toUpperCase() + nombreEncuentro.slice(1);
         // LogEntry real determinista (2026-09-09, hallazgo real jugando en vivo: la tarjeta de
         // oferta SIEMPRE se renderiza colgada de una LogEntry concreta — LogPanel.tsx solo lee
@@ -1123,7 +1134,8 @@ export async function zonaRoutes(app: FastifyInstance) {
         }
         const freshSave = await tx.save.findUnique({ where: { id: saveId }, select: { pendingDynamicMode: true, pendingDynamicModeOffer: true } });
         if (freshSave?.pendingDynamicMode || freshSave?.pendingDynamicModeOffer) break;
-        const nombre = sourceDisplayNameFor(punto.targetSlug);
+        // P136 (QA-27): el mismo nombre que la ficha del mapa (su `label`, si lo tiene), no el de catálogo.
+        const nombre = punto.label ?? sourceDisplayNameFor(punto.targetSlug);
         // B7 (pruebas 2026-09-28): un recurso por encima del nivel de oficio del jugador (p.ej. el
         // Yerreo tier 4 para un minero de nivel 1) ya no se ofrece como Interactuar imposible de
         // completar — se registra como descubrimiento con el motivo real y se sigue andando.
@@ -1142,7 +1154,7 @@ export async function zonaRoutes(app: FastifyInstance) {
               data: { saveId, channel: 'CHARACTER', text, timeLabel, fictionalMinutes, isPlayerAction: false, isSystemMessage: true },
             });
             logEntry = { id: created.id, text, timeLabel, createdAt: created.createdAt.toISOString() };
-            await recordEntityDiscoveries({ saveId, worldId, mentionedText: nombre }, tx);
+            await recordEntityDiscoveries({ saveId, worldId, mentionedText: sourceDisplayNameFor(punto.targetSlug) }, tx);
             return { ultimoEncuentroSigueCerca, colision, dynamicModeOffer: null, logEntry, avistadoSinOferta: { targetSlug: punto.targetSlug } };
           }
         }
@@ -1155,7 +1167,7 @@ export async function zonaRoutes(app: FastifyInstance) {
           data: { saveId, channel: 'CHARACTER', text, timeLabel, fictionalMinutes, isPlayerAction: false, isSystemMessage: true },
         });
         logEntry = { id: created.id, text, timeLabel, createdAt: created.createdAt.toISOString() };
-        await recordEntityDiscoveries({ saveId, worldId, mentionedText: nombre }, tx);
+        await recordEntityDiscoveries({ saveId, worldId, mentionedText: sourceDisplayNameFor(punto.targetSlug) }, tx);
         break; // Solo el primer recurso — no acumula varios a la vez.
       }
     }

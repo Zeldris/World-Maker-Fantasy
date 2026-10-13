@@ -664,6 +664,18 @@ describe('POST /saves/:id/zona/mover', () => {
 
   // Modal de detalle de RECURSO (2026-09-29, petición de Álvaro: "un botón con texto según la
   // profesión: Recolectar, Talar, Minar...") — la oferta trae el `metodoObtencion` real de la fuente.
+  // P136 (QA-27): la tarjeta nombra el recurso igual que su ficha del mapa (su label).
+  it('la oferta RECURSO usa el label del punto del mapa', async () => {
+    await prisma.zonePoint.create({
+      data: { locationId, saveId, x: 75, y: 25, tipo: 'RECURSO', targetSlug: 'telda-comun', label: 'Bosquecillo de Telda', cantidad: 1, activo: true },
+    });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 375, y: 25 } } });
+    const body = JSON.parse(res.body);
+    expect(body.dynamicModeOffer).toMatchObject({ tipo: 'RECURSO', targetName: 'Bosquecillo de Telda' });
+    expect(body.logEntry.text).toContain('Bosquecillo de Telda');
+  });
+
   it('la oferta RECURSO incluye el metodo de obtención real de la fuente (HarvestYield)', async () => {
     const recurso = await prisma.zonePoint.create({
       data: { locationId, saveId, x: 75, y: 25, tipo: 'RECURSO', targetSlug: 'telda-comun', cantidad: 1, activo: true },

@@ -2,7 +2,7 @@ import { npcDeLaPartida } from './mundoPartida.js';
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { normalizeText, matchesAliasBoundary } from './travel.js';
-import { harvestSourceAliases, sourceDisplayNameFor, harvestSourcesThatAreFaunaWithoutNpc } from '../scripts/worldCatalog.js';
+import { harvestSourceAliases, sourceDisplayNameFor, harvestSourcesThatAreFaunaWithoutNpc, harvestYields } from '../scripts/worldCatalog.js';
 
 /// Enciclopedia progresiva (sesión de diseño 2026-07-23, petición explícita de la usuaria: "en vez
 /// de tener todo descubierto desde el inicio... los npcs, fauna, flora, etc... solo se verá una
@@ -27,6 +27,17 @@ import { harvestSourceAliases, sourceDisplayNameFor, harvestSourcesThatAreFaunaW
 /// (nombre+región). Llegar a DESCUBIERTO (ficha completa, con imagen) exige una señal de
 /// presencia REAL, no solo textual — `presentInScene` (slugs realmente en `npcsInScene`/objeto ya
 /// en inventario, que SIEMPRE implica posesión real, nunca solo mención) decide cuál de las dos.
+/// Qué ficha de la Enciclopedia (`DiscoveredEntity.entityType`) tiene un ser vivo con fila `Npc`: la
+/// fauna cazable (con `HarvestYield` propio) es 'fauna'; el resto, personas con o sin nombre propio,
+/// 'npc'. Es la única regla, al guardar un descubrimiento y al leerlo (P134, retro del PR #56: el mapa
+/// decidía por `kind` y la Cazadora Serhu seguía «???»). `REVIEW.md` § «Un dato, un sitio».
+export function entityTypeDeSerVivo(slug: string, faunaSlugs: ReadonlySet<string>): 'npc' | 'fauna' {
+  return faunaSlugs.has(slug) ? 'fauna' : 'npc';
+}
+
+/// Slugs de las fuentes con `HarvestYield` del catálogo (la fauna cazable), para `entityTypeDeSerVivo`.
+export const FUENTES_DE_CATALOGO: ReadonlySet<string> = new Set(harvestYields.map((y) => y.sourceSlug));
+
 export async function recordEntityDiscoveries(
   params: {
     saveId: string;
@@ -71,7 +82,7 @@ export async function recordEntityDiscoveries(
     const faunaSlugs = new Set(yields.map((y) => y.sourceSlug));
 
     for (const npc of npcs) {
-      if (faunaSlugs.has(npc.slug)) continue;
+      if (entityTypeDeSerVivo(npc.slug, faunaSlugs) === 'fauna') continue;
       // Mismo hallazgo que npcScene.ts (auditoría 2026-08-14, Sella Marn) — un NPC de una región
       // fuera del núcleo jugable no debería poder desbloquearse en la Enciclopedia por un match
       // de alias corto ("sella") en texto que no tiene nada que ver con él.

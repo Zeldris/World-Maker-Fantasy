@@ -38,7 +38,9 @@ export function ZonaSalidaModal({ salida, onViajar, onCancel, bloqueoTurno }: Zo
           onClick={() => onViajar(`Viajo hacia ${salida.nombre}.`)}
           className={`${confirmButtonClasses('accent')} disabled:cursor-not-allowed disabled:opacity-50`}
         >
-          {bloqueoTurno ? '🔒 ' : ''}Viajar
+          {bloqueoTurno ? '🔒 ' : ''}
+          {/* P136 (QA-27): una puerta se cruza, no se viaja. */}
+          {salida.puerta === 'ENTRAR' ? 'Entrar' : salida.puerta === 'SALIR' ? 'Salir' : 'Viajar'}
         </button>
       }
     >

@@ -49,6 +49,11 @@ mecánico ya lo comprueban los tests, el hook `pre-push` y la CI; aquí está lo
 
 Retro de `QA-27` (2026-10-12, `QA-40`): tres de los diez fallos de la revisión de la ronda eran esto.
 
+- **La ficha de un ser vivo, con `entityTypeDeSerVivo`** (retro del PR #56). Si es `npc` o `fauna` en la
+  Enciclopedia (`DiscoveredEntity.entityType`) se decide solo con `entityTypeDeSerVivo`
+  (`entityDiscovery.ts`), al guardar y al leer. Elegirlo a mano (por `kind`, por `tipo` del punto) es un
+  hallazgo: P134 dejó a la Cazadora Serhu en «???» porque el mapa lo decidía por `kind`.
+
 - **Mismo filtro en los dos caminos.** Si dos caminos muestran o usan lo mismo (lo que se pinta en el
   mapa y lo que te corta el paso; la lista y su detalle), filtran igual, mejor con la misma función.
   Pasó en `zona.ts`: la fauna fuera de su sitio no se pintaba, pero seguía colisionando.

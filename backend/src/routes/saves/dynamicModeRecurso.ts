@@ -88,15 +88,31 @@ export async function dynamicModeRecursoRoutes(app: FastifyInstance) {
     // falladas) antes no dejaba LogEntry y su dado solo se veía en vivo. Ahora queda como entrada de
     // sistema con la(s) tirada(s) en `roll` (mismo `kind: 'recoleccion'`). No avanza el reloj.
     // `limpiarOferta`: solo cuando `resolverRecoleccion` no llegó a limpiarla ya.
-    async function registrarFallo(text: string, logRoll: RecoleccionLogRoll, limpiarOferta: boolean) {
+    async function registrarFallo(text: string, logRoll: RecoleccionLogRoll | null, limpiarOferta: boolean) {
       const timeLabel = formatFictionalDate(fictionalMinutes);
       const creada = await prisma.$transaction(async (tx) => {
         if (limpiarOferta) await tx.save.update({ where: { id: save!.id }, data: { pendingDynamicModeOffer: Prisma.JsonNull } });
         return tx.logEntry.create({
-          data: { saveId: save!.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes, isPlayerAction: false, isSystemMessage: true, roll: logRoll as unknown as Prisma.InputJsonValue },
+          data: { saveId: save!.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes, isPlayerAction: false, isSystemMessage: true, ...(logRoll ? { roll: logRoll as unknown as Prisma.InputJsonValue } : {}) },
         });
       });
-      return { id: creada.id, text, timeLabel, createdAt: creada.createdAt.toISOString(), fictionalMinutes, roll: logRoll };
+      return { id: creada.id, text, timeLabel, createdAt: creada.createdAt.toISOString(), fictionalMinutes, ...(logRoll ? { roll: logRoll } : {}) };
+    }
+
+    // El punto del mapa que se pulsó, para descontar de él; y su nombre (el de la ficha, P136), para
+    // que el diario lo llame igual que la tarjeta.
+    const oferta = save.pendingDynamicModeOffer as { tipo?: string; targetSlug?: string; zonePointId?: string; targetName?: string } | null;
+    const ofertaDeEste = oferta?.tipo === 'RECURSO' && oferta.targetSlug === targetSlug ? oferta : null;
+    const zonePointId = ofertaDeEste?.zonePointId;
+    const nombreVisible = ofertaDeEste?.targetName ?? sourceDisplayNameFor(targetSlug);
+
+    // P136 (QA-27): lo que se recoge sin tirada (`sinTirada` en todos sus objetos, p. ej. la leche de
+    // los múrgoles domados) no muestra dado: «Recoger» era en realidad una tirada de Destreza.
+    if (candidato.yields.every((y) => y.sinTirada)) {
+      const selections = candidato.yields.map((y) => ({ sourceSlug: targetSlug, itemSlug: y.itemSlug, cantidad: y.cantidadMaxima }));
+      const resultado = await resolverRecoleccion(save, selections, true, undefined, zonePointId);
+      const logEntryFinal = resultado.logEntry ?? (await registrarFallo(`${save.characterName} no consigue nada aprovechable de ${nombreVisible} esta vez.`, null, false));
+      return { exito: resultado.logEntry !== null, narration: logEntryFinal.text, abilityName: ability.ability.name, segundasTiradas: resultado.segundasTiradas, items: resultado.items, updatedItems: resultado.updatedItems, logEntry: logEntryFinal };
     }
 
     const roll = gatheringRollFor(
@@ -110,7 +126,7 @@ export async function dynamicModeRecursoRoutes(app: FastifyInstance) {
       // Tirada fallida — narración determinista de intento sin éxito, sin tocar Prisma más allá de
       // limpiar la oferta (mismo criterio que "caza limpia fallida" en cazar.ts: un intento real
       // puede no dar nada, no es un error).
-      const narracionFallo = `${save.characterName} lo intenta con ${sourceDisplayNameFor(targetSlug)}, pero no consigue nada aprovechable esta vez.`;
+      const narracionFallo = `${save.characterName} lo intenta con ${nombreVisible}, pero no consigue nada aprovechable esta vez.`;
       const logEntryFallo = await registrarFallo(narracionFallo, { kind: 'recoleccion', tirada: roll }, true);
       return {
         exito: false,
@@ -127,11 +143,9 @@ export async function dynamicModeRecursoRoutes(app: FastifyInstance) {
     // (hallazgo 44, revisar-partida-hallazgos.md 2026-09-15) — antes era una segunda escritura
     // suelta después de cerrar la transacción, vulnerable a dejar la oferta colgada sobre un
     // recurso ya recolectado si el proceso moría entre medias.
-    const oferta = save.pendingDynamicModeOffer as { tipo?: string; targetSlug?: string; zonePointId?: string } | null;
-    const zonePointId = oferta?.tipo === 'RECURSO' && oferta.targetSlug === targetSlug ? oferta.zonePointId : undefined;
     const resultado = await resolverRecoleccion(save, selections, true, roll, zonePointId);
 
-    const narracionSinLog = `${save.characterName} no consigue nada aprovechable de ${sourceDisplayNameFor(targetSlug)} esta vez.`;
+    const narracionSinLog = `${save.characterName} no consigue nada aprovechable de ${nombreVisible} esta vez.`;
     const logEntryFinal =
       resultado.logEntry ??
       (await registrarFallo(narracionSinLog, { kind: 'recoleccion', tirada: roll, ...(resultado.segundasTiradas.length > 0 ? { segundas: resultado.segundasTiradas } : {}) }, false));
