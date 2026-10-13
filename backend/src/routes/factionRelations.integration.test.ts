@@ -29,9 +29,9 @@ describe('GET /world/:slug/faction-relations (2026-09-21)', () => {
     const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
     worldId = world.id;
     worldSlug = world.slug;
-    const serhu = await prisma.faction.findFirstOrThrow({ where: { worldId, slug: 'clan-serhu' } });
+    const serhu = await prisma.faction.findFirstOrThrow({ where: { worldId, slug: 'clan-serhu', saveId: null } });
     serhuId = serhu.id;
-    const helsig = await prisma.faction.findFirstOrThrow({ where: { worldId, slug: 'clan-helsig' } });
+    const helsig = await prisma.faction.findFirstOrThrow({ where: { worldId, slug: 'clan-helsig', saveId: null } });
     helsigId = helsig.id;
 
     relacionPrevia = (await prisma.factionRelation.findUnique({

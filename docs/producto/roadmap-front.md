@@ -1177,9 +1177,10 @@ Retro del PR #53 y de los 12 arreglos de su `/code-review` (2026-10-13), aprobad
   pendiente, salvo 8 excepciones con motivo. Arregla las 12 que no lo hacían (misiones, bandos,
   propuestas, grupos de combate, comercio, dejar a un compañero, menú del NPC, viajeros, huir) con
   `rechazarSiNoAdmiteAcciones` (`shared.ts`) o la comprobación que faltaba. Motivo: `/npc-interaction/abrir`.
-- **QA-80 · El test de `factionRelations` con la base local**: fija Serhu→Helsig a 65 y lee 70 (el valor
-  del catálogo); falla también en `main`, el CI con base limpia pasa. Averiguar qué repone el catálogo y
-  que el test no dependa del estado de la base.
+- ~~**QA-80 · El test de `factionRelations` con la base local**~~ ✅ 2026-10-13: buscaba Serhu y Helsig
+  con `findFirst` sin `saveId: null` y, con partidas en la base, cogía la copia de una partida: fijaba 65
+  en esa copia y la ruta leía la del catálogo (70). Ahora pide las del catálogo. El código de
+  producción ya busca por `id` o por `saveId`.
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
