@@ -63,22 +63,9 @@ export function useZonaAcciones({ saveId, setCharacterLog, setCombateIniciado, o
     // normal se muestran las tiradas que ya ocurrieron: cuántos del grupo entran + iniciativa
     // (LogEntry de sistema persistida por el backend) o el d100 de la caza sigilosa fallida (no deja
     // LogEntry propia; desde F9-4 el backend sí la persiste y viaja en `logEntry`, la local es solo respaldo).
+    // QA-71: con caza sigilosa fallida el backend guarda y devuelve siempre su entrada (`caza.ts`).
     if (result.logEntry) {
       setCharacterLog((prev) => [...prev, { ...result.logEntry!, channel: 'character' }])
-    } else if (result.cazaLimpia) {
-      const { cazaLimpia } = result
-      setCharacterLog((prev) => [
-        ...prev,
-        {
-          id: `caza-sigilo-${Date.now()}`,
-          channel: 'character',
-          text: `${cazaLimpia.npcName} detecta el intento de caza sigilosa.`,
-          timeLabel: prev[prev.length - 1]?.timeLabel ?? '',
-          isSystemMessage: true,
-          createdAt: new Date().toISOString(),
-          roll: cazaLimpia,
-        },
-      ])
     }
     handleSubmit(result.actionText)
   }

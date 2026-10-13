@@ -218,29 +218,12 @@ export function useModoDinamico({
       if (resultado.items || resultado.updatedItems) {
         setInventory((prev) => applyInventoryDelta(prev, resultado.items ?? [], [], resultado.updatedItems ?? []))
       }
-      if (resultado.logEntry) {
-        const { roll: persistida, ...resto } = resultado.logEntry
-        const rollVivo: RecoleccionLogRoll | undefined =
-          persistida && resultado.roll ? (persistida.segundas?.length ? { kind: 'recoleccion', segundas: persistida.segundas } : undefined) : persistida
-        setCharacterLog((prev) => [...prev, { ...resto, channel: 'character', ...(rollVivo ? { roll: rollVivo } : {}) }])
-        setFictionalDate(resultado.logEntry.timeLabel)
-      } else {
-        // Tirada fallida — sin LogEntry real que guardar (mismo criterio que "caza limpia
-        // fallida"), pero la narración determinista del intento sigue siendo útil en pantalla.
-        // Con `segundasTiradas` (todas fallaron) se muestran igualmente sus dados.
-        setCharacterLog((prev) => [
-          ...prev,
-          {
-            id: `recurso-fallido-${Date.now()}`,
-            channel: 'character',
-            text: resultado.narration,
-            timeLabel: fictionalDate,
-            isSystemMessage: true,
-            createdAt: new Date().toISOString(),
-            ...(resultado.segundasTiradas?.length ? { roll: { kind: 'recoleccion' as const, segundas: resultado.segundasTiradas } } : {}),
-          },
-        ])
-      }
+      // QA-71: el backend guarda siempre el intento, también el fallido (`registrarFallo`).
+      const { roll: persistida, ...resto } = resultado.logEntry
+      const rollVivo: RecoleccionLogRoll | undefined =
+        persistida && resultado.roll ? (persistida.segundas?.length ? { kind: 'recoleccion', segundas: persistida.segundas } : undefined) : persistida
+      setCharacterLog((prev) => [...prev, { ...resto, channel: 'character', ...(rollVivo ? { roll: rollVivo } : {}) }])
+      setFictionalDate(resultado.logEntry.timeLabel)
     } catch (err) {
       // El backend explica el motivo real del rechazo (nivel de oficio insuficiente, recurso
       // agotado...) — mostrarlo tal cual (2026-09-28: antes un genérico "inténtalo de nuevo" que

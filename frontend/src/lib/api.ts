@@ -824,8 +824,20 @@ export async function requestCerrarCombate(id: string): Promise<void> {
 // IA: `escaped` decide si el frontend limpia el aviso de "Combatir" o abre el popup igualmente.
 // `roll` (2026-08-30, bug real: 3 intentos seguidos narraban la misma frase fija sin ningún
 // desglose) — se pinta con RollBadge, igual que cualquier otra tirada del juego.
-export async function requestFlee(id: string): Promise<{ escaped: boolean; text: string; roll: RollInfo }> {
+/// QA-71: `logEntry` es la entrada que guardó el backend (la misma que se ve tras recargar).
+export async function requestFlee(id: string): Promise<{ escaped: boolean; text: string; roll: RollInfo; logEntry: EntradaGuardadaDeHuida }> {
   return fetchJson(`${API_URL}/saves/${id}/combat/flee`, { method: 'POST' })
+}
+
+/// La entrada del diario que guarda una huida (`toFrontendLogEntry` del backend).
+export interface EntradaGuardadaDeHuida {
+  id: string
+  text: string
+  timeLabel: string
+  createdAt: string
+  isSystemMessage?: boolean
+  combate?: boolean
+  roll?: RollInfo
 }
 
 // Huir DENTRO de un combate ya iniciado (ronda de correcciones 2026-08-28, P3.2) — misma tirada
@@ -833,7 +845,7 @@ export async function requestFlee(id: string): Promise<{ escaped: boolean; text:
 // defensa): `condicionFisica` viene ya actualizada en la respuesta.
 export async function requestHuirEnCurso(
   id: string,
-): Promise<{ escaped: boolean; text: string; condicionFisica: string; roll: RollInfo }> {
+): Promise<{ escaped: boolean; text: string; condicionFisica: string; roll: RollInfo; logEntry: EntradaGuardadaDeHuida }> {
   return fetchJson(`${API_URL}/saves/${id}/combat/huir-en-curso`, { method: 'POST' })
 }
 
@@ -2255,7 +2267,7 @@ export interface DynamicModeRecursoResultado {
   segundasTiradas?: SegundaTiradaInfo[]
   items?: InventoryItemInfo[]
   updatedItems?: { id: string; name: string }[]
-  logEntry?: { id: string; text: string; timeLabel: string; createdAt: string; fictionalMinutes: number; roll?: RecoleccionLogRoll } | null
+  logEntry: { id: string; text: string; timeLabel: string; createdAt: string; fictionalMinutes: number; roll?: RecoleccionLogRoll }
 }
 
 export async function interactuarModoDinamicoRecurso(saveId: string, targetSlug: string): Promise<DynamicModeRecursoResultado> {

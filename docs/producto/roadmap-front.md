@@ -1121,9 +1121,15 @@ Retro de la tercera tanda de `QA-27` (2026-10-12, PR #49;
 Retro del PR #50 (2026-10-13; [propuestas](../registros/retro-2026-10-13-pr50.md), aprobadas todas por la
 usuaria el 2026-10-13):
 
-- **QA-71 · Diario que el frontend escribe por su cuenta**: las líneas que cuentan algo del juego llegan
-  del backend con su `logEntryId`; en el frontend solo quedan avisos de error, y un test lista los
-  prefijos de `id` permitidos. Motivo: P117 se veía mal en vivo por la línea «sube a nivel» del frontend.
+- ~~**QA-71 · Diario que el frontend escribe por su cuenta**~~ ✅ 2026-10-13:
+  - huir antes y durante el combate devuelve la entrada guardada (`logEntry`) y el frontend la pinta
+    tal cual; la de durante el combate se guarda ya como combate;
+  - fuera los respaldos muertos de `recurso-fallido` y `caza-sigilo`, porque el backend ya devuelve
+    siempre su entrada;
+  - `lineasLocalesDelDiario.test.ts` lista los prefijos de `id` que puede inventar el frontend
+    (errores, la animación del dado de Explorar) y falla con uno nuevo;
+  - regla en «Sin copias entre backend y frontend» de `REVIEW.md`.
+  Motivo: P117 se veía mal en vivo por la línea «sube a nivel» del frontend.
 - ~~**QA-72 · Tests de las herramientas de `tools/qa/` y del gancho**~~ ✅ 2026-10-13: `tools/qa/tests/`
   (`unittest`, 12 tests, sin dependencias) para `bitacora.py`, `marca-hallazgo.py` y
   `prepush-ramas.sh`, la parte del gancho que mira cada rama (sacada de `.githooks/pre-push` para poder

@@ -129,6 +129,9 @@ describe('/combat/flee: condición de carrera con una escritura paralela de pend
 
     expect(res.statusCode).toBe(200);
     expect(res.json()).toMatchObject({ escaped: true });
+    // QA-71: devuelve la entrada guardada, la misma que tras recargar.
+    const guardada = await prisma.logEntry.findFirstOrThrow({ where: { saveId }, orderBy: { createdAt: 'desc' } });
+    expect(res.json().logEntry).toMatchObject({ id: guardada.id, text: guardada.text });
     const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(saveAfter.pendingCombatNpcSlugs).toEqual([]);
     // Tras huir reaparece en la entrada de la zona.

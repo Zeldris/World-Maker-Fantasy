@@ -7,7 +7,7 @@ import { effectiveAttributes, effectiveDefense } from '../../services/equipment.
 import { rollCheck } from '../../services/dice.js';
 import type { AttributeBlock } from '../../services/dice.js';
 import { oneStepWorseThan } from '../../services/death.js';
-import { rejectIfEnded, rejectIfPendingDeath, lockRowForUpdate } from './shared.js';
+import { rejectIfEnded, rejectIfPendingDeath, lockRowForUpdate, toFrontendLogEntry } from './shared.js';
 import { FACTION_REP_MERCY_DELTA } from '../../services/reputation.js';
 import { applyFactionRepDeltaForResolution } from '../../services/turnResolution.js';
 import { activeQuestTitlesTargeting } from '../../services/questResolution.js';
@@ -242,7 +242,7 @@ export async function sessionRoutes(app: FastifyInstance) {
 
       // isSystemMessage (ver comentario completo en schema.prisma) — `text` viene de una lista
       // fija por índice de dado, nunca generado por el LLM.
-      await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: save.worldState?.fictionalMinutes ?? 480, roll: roll as unknown as Prisma.InputJsonValue, isSystemMessage: true } });
+      const entrada = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: save.worldState?.fictionalMinutes ?? 480, roll: roll as unknown as Prisma.InputJsonValue, isSystemMessage: true } });
       if (roll.success) {
         // Punto del jugador en el mapa de Zona (2026-09-04) — huir con éxito antes de entrar en
         // combate vuelve al punto de ENTRADA de la zona, no al centro ni junto al enemigo.
@@ -251,13 +251,14 @@ export async function sessionRoutes(app: FastifyInstance) {
           data: { pendingCombatNpcSlugs: [], zonaPosX: locked.zonaPosEntradaX ?? undefined, zonaPosY: locked.zonaPosEntradaY ?? undefined },
         });
       }
-      return { kind: 'ok' as const };
+      return { kind: 'ok' as const, entrada };
     });
 
     if (outcome.kind === 'cambiado') {
       return reply.status(409).send({ error: 'El combate cambió mientras intentabas huir — vuelve a intentarlo.' });
     }
-    return { escaped: roll.success, text, roll };
+    // QA-71: la entrada guardada, para que el diario en vivo sea la misma que tras recargar.
+    return { escaped: roll.success, text, roll, logEntry: toFrontendLogEntry(outcome.entrada) };
   });
 
   // Huir DENTRO de un combate ya iniciado (bug real 2026-08-28, ronda de correcciones — petición
@@ -334,7 +335,8 @@ export async function sessionRoutes(app: FastifyInstance) {
 
       // isSystemMessage (ver comentario completo en schema.prisma) — `text` viene de una lista
       // fija por índice de dado, nunca generado por el LLM.
-      await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: save.worldState?.fictionalMinutes ?? 480, roll: roll as unknown as Prisma.InputJsonValue, isSystemMessage: true } });
+      // QA-71: huir de un combate en curso es parte del combate (fondo rojo), en vivo y tras recargar.
+      const entrada = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: save.worldState?.fictionalMinutes ?? 480, roll: roll as unknown as Prisma.InputJsonValue, isSystemMessage: true, combate: true } });
       await tx.save.update({
         where: { id: save.id },
         data: {
@@ -345,13 +347,13 @@ export async function sessionRoutes(app: FastifyInstance) {
           ...(roll.success ? { pendingCombatNpcSlugs: [], zonaPosX: locked.zonaPosEntradaX ?? undefined, zonaPosY: locked.zonaPosEntradaY ?? undefined } : {}),
         },
       });
-      return { kind: 'ok' as const };
+      return { kind: 'ok' as const, entrada };
     });
 
     if (outcomeEnCurso.kind === 'cambiado') {
       return reply.status(409).send({ error: 'El combate cambió mientras intentabas huir — vuelve a intentarlo.' });
     }
-    return { escaped: roll.success, text, condicionFisica: nuevaCondicion, roll };
+    return { escaped: roll.success, text, condicionFisica: nuevaCondicion, roll, logEntry: toFrontendLogEntry(outcomeEnCurso.entrada) };
   });
 
   // "Matar" un CONVALECIENTE — solo marca la DECISIÓN, no resuelve nada por sí mismo (rediseño
