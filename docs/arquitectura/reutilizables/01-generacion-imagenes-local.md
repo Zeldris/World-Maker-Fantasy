@@ -43,7 +43,7 @@ que harían perder horas:
 # distrobox viene en SteamOS 3.5+; si no: curl -s https://raw.githubusercontent.com/89luca89/distrobox/main/install | sh -s -- --prefix ~/.local
 distrobox create --name sdcpp --image ubuntu:24.04
 distrobox enter sdcpp
-sudo apt update && sudo apt install -y build-essential cmake git libvulkan-dev glslc mesa-vulkan-drivers vulkan-tools
+sudo apt update && sudo apt install -y build-essential cmake git libvulkan-dev glslc mesa-vulkan-drivers vulkan-tools pipx
 vulkaninfo --summary | grep -i deviceName   # tiene que salir la GPU de la Deck (AMD Custom GPU 0405 / RADV VANGOGH)
 ```
 
@@ -64,19 +64,23 @@ para Linux)**.
 
 | Pieza | De dónde | Archivo |
 |---|---|---|
-| Modelo (destilado, 4 pasos) | `huggingface.co/leejet/FLUX.2-klein-4B-GGUF` | el `Q8_0` (o `Q4_K` si falta memoria) |
+| Modelo (destilado, 4 pasos) | `huggingface.co/leejet/FLUX.2-klein-4B-GGUF` | `flux-2-klein-4b-Q8_0.gguf` (o `flux-2-klein-4b-Q4_0.gguf` si falta memoria) |
 | Modelo base (para LoRAs entrenadas en el base) | `huggingface.co/leejet/FLUX.2-klein-base-4B-GGUF` | ídem |
 | Codificador de texto (Qwen3 4B) | `huggingface.co/unsloth/Qwen3-4B-GGUF` | `Qwen3-4B-Q4_K_M.gguf` |
-| VAE | `huggingface.co/black-forest-labs/FLUX.2-dev` | `ae.safetensors` (renombrado `flux2_ae.safetensors`) |
+| VAE | `huggingface.co/black-forest-labs/FLUX.2-dev` | `ae.safetensors` |
 
 ```sh
-pip install -U "huggingface_hub[cli]"          # dentro del contenedor
+pipx install huggingface_hub    # dentro del contenedor; pip a secas falla en Ubuntu 24.04 (PEP 668)
+pipx ensurepath && exec bash    # deja `hf` en el PATH
 mkdir -p ~/modelos/{diffusion,text,vae,lora}
-huggingface-cli download leejet/FLUX.2-klein-4B-GGUF --include "*Q8_0*" --local-dir ~/modelos/diffusion
-huggingface-cli download unsloth/Qwen3-4B-GGUF Qwen3-4B-Q4_K_M.gguf --local-dir ~/modelos/text
-huggingface-cli login                           # el repo de FLUX.2-dev pide aceptar sus condiciones
-huggingface-cli download black-forest-labs/FLUX.2-dev ae.safetensors --local-dir ~/modelos/vae
+hf download leejet/FLUX.2-klein-4B-GGUF flux-2-klein-4b-Q8_0.gguf --local-dir ~/modelos/diffusion
+hf download unsloth/Qwen3-4B-GGUF Qwen3-4B-Q4_K_M.gguf --local-dir ~/modelos/text
+hf auth login                   # el repo de FLUX.2-dev pide aceptar sus condiciones
+hf download black-forest-labs/FLUX.2-dev ae.safetensors --local-dir ~/modelos/vae
 ```
+
+Si la versión de `huggingface_hub` es antigua y no trae `hf`, el comando equivalente es
+`huggingface-cli` (`download` igual; `login` en vez de `auth login`).
 
 **Licencia del VAE:** viene del repositorio de FLUX.2-dev, cuya licencia es no comercial. Antes de
 publicar el juego hay que confirmar que el VAE tiene su propia licencia abierta **(sin verificar)**. Si
@@ -90,7 +94,7 @@ cd ~/sdcpp/build
 ./bin/sd-cli \
   --diffusion-model ~/modelos/diffusion/flux-2-klein-4b-Q8_0.gguf \
   --llm ~/modelos/text/Qwen3-4B-Q4_K_M.gguf \
-  --vae ~/modelos/vae/flux2_ae.safetensors \
+  --vae ~/modelos/vae/ae.safetensors \
   -p "painterly fantasy illustration, an orc hunter with a bone-handled axe, red dust plains at dawn" \
   --cfg-scale 1.0 --steps 4 -W 512 -H 512 --seed 42 \
   --diffusion-fa --vae-tiling --offload-to-cpu -o prueba.png -v
@@ -166,7 +170,7 @@ Orden: **estilo → sujeto → acción/pose → entorno → luz → detalles de 
 | Problema | Qué hacer |
 |---|---|
 | `vulkaninfo` no ve la GPU | Fuera del contenedor, comprobar con `vulkaninfo` en SteamOS; recrear el contenedor con `distrobox create --additional-flags "--device /dev/dri"`. |
-| Sin memoria (OOM) | `--offload-to-cpu --vae-tiling`, bajar a `Q4_K`, generar a 512 y escalar después, cerrar todo lo demás. |
+| Sin memoria (OOM) | `--offload-to-cpu --vae-tiling`, bajar a `Q4_0`, generar a 512 y escalar después, cerrar todo lo demás. |
 | Imágenes raras con Vulkan en APU | Hay un aviso abierto de resultados distintos en GPUs integradas AMD (issue #563 del proyecto) **(sin verificar si afecta a la Deck)**. Probar la misma semilla en CPU (`-DSD_VULKAN=OFF`) para comparar. |
 | Demasiado lento | Respaldo en la nube, abajo. |
 
@@ -203,7 +207,7 @@ Por fases; cada una acaba en algo comprobable.
    reconocen como del mismo juego.
 3. **Generador por lotes** (ver «Acoplamiento a Tarkor»): un script que, sin supervisión, recorre lo
    que falta y deja las imágenes con su nombre correcto. *Hecho cuando* una noche de lote deja N
-   imágenes válidas y el test de nombres pasa.
+   imágenes válidas y `npm run audit-images` no da como faltante ninguna entidad del lote.
 4. **Referencias de personaje**: carpeta de referencias y uso de `-r` en los personajes recurrentes.
 5. **Respaldo en Colab**: un cuaderno con el mismo modelo, LoRA y preámbulo, que lee la misma lista de
    prompts. *Hecho cuando* la misma semilla y el mismo prompt dan una imagen equivalente en los dos
@@ -216,8 +220,14 @@ Lo que ya existe:
   cada entidad con el LLM y lo guarda en `ImagePrompt` (por mundo, tipo, entidad y perfil de tamaño).
 - Perfiles (`imagePromptGenerator.ts`): `thumbnail` 1024×1024, `banner` 1920×768, `mapa` 800×600,
   `icono` 512×512.
-- Las imágenes se suben a mano a `backend/uploads/images/<tipo>/` con la nomenclatura
-  `<slug>[-dia|-noche][-estacion]-mapa.<ext>` de las zonas, que vigila `imagenesZona.test.ts`.
+- Las imágenes se suben a mano a `backend/uploads/images/<tipo>/` como `<slug>-<perfil>.<ext>`
+  (`imageAssets.ts` compara el nombre exacto). Excepciones con variantes:
+  - las zonas, `<slug>[-dia|-noche][-estacion]-mapa.<ext>`, que vigila `imagenesZona.test.ts`;
+  - la fauna, con sufijo de sexo (`-macho`/`-hembra`).
+- `npm run audit-images` (`auditImages.ts`, en `backend/`) lista las imágenes huérfanas y las
+  entidades sin imagen de fauna, flora, npc, item, location y faction. Solo orienta: no falla.
+- La API de prompts no recibe momento del día ni estación: las variantes de zona se piden
+  añadiéndolas al prompt desde `generar.mjs`.
 
 Lo que falta es el **renderizador**: hoy se copia el prompt a ChatGPT. La pieza nueva, fuera del
 juego (no es dependencia del backend):
@@ -238,7 +248,7 @@ generar.mjs --tipo npc --perfil thumbnail [--solo-faltantes]
     sd-cli  estilo.preambulo + prompt [+ <lora>] -W/-H del perfil [-r referencias/<slug>.png] --seed fija
     reescalar al tamaño final del perfil (banner 1920×768 se genera a 1280×512 y se escala)
     guardar con el nombre que espera el juego; anotar semilla y modelo en un .json al lado
-  al final: npx vitest run src/scripts/imagenesZona.test.ts
+  al final: npm run audit-images (faltan / sobran) y, si se tocaron zonas, npx vitest run src/scripts/imagenesZona.test.ts
 ```
 
 Decisiones de diseño:
@@ -258,7 +268,9 @@ El patrón se lleva tal cual; solo cambian las dos primeras piezas:
 1. **Inventario de entidades** (qué necesita imagen y con qué nombre de archivo).
 2. **Generador de prompts** con el contexto del mundo (en Tarkor, el LLM y el catálogo).
 3. **Renderizador** intercambiable (`sd-cli` local, Colab, manual), con perfiles de tamaño.
-4. **Validador de nombres** que falla si falta o sobra algo (en Tarkor, `imagenesZona.test.ts`).
+4. **Validador de nombres** que dice qué falta y qué sobra (en Tarkor, `auditImages.ts` para todo y
+   `imagenesZona.test.ts`, que sí falla, para las zonas). Mejor aún si falla en un test: en Tarkor
+   sería convertir `auditImages.ts` en test cuando el lote esté completo.
 
 `estilo.json`, `perfiles.json` y `generar.mjs` se copian y se adaptan; los modelos y la compilación de la
 Deck se reutilizan sin cambios.
@@ -266,6 +278,7 @@ Deck se reutilizan sin cambios.
 ## Fuentes
 
 - [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp): modelos soportados, Vulkan, `docs/flux2.md` (comandos de klein 4B/9B) y `docs/lora.md`.
+- [leejet/FLUX.2-klein-4B-GGUF](https://huggingface.co/leejet/FLUX.2-klein-4B-GGUF): archivos `flux-2-klein-4b-Q8_0.gguf` y `flux-2-klein-4b-Q4_0.gguf` (comprobado el 2026-10-13).
 - [FLUX.2 klein base 4B](https://huggingface.co/black-forest-labs/FLUX.2-klein-base-4B) y GGUF de la comunidad ([w3ss](https://huggingface.co/w3ss/FLUX.2-klein-4B-GGUF), [MXKA](https://huggingface.co/MXKA/FLUX.2-klein-4B-GGUF)): licencias (4B Apache 2.0; 9B no comercial).
 - [Hugging Face Forum: FLUX.1-schnell en 8 GB AMD sin CUDA](https://discuss.huggingface.co/t/flux-1-schnell-on-8gb-vram-amd-no-cuda-the-gguf-format-mismatch-that-wastes-hours/177010): tiempos en RX 580 con Vulkan y GGUF de city96 incompatibles con `sd-cli`.
 - [Issue #563 de stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp/issues/563): Vulkan en iGPU AMD.

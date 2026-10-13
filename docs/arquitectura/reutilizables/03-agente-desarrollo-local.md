@@ -39,8 +39,10 @@ Sobre las opciones del prompt:
 
 ## Límites reales del hardware
 
-- **Memoria:** 16 GB compartidos entre CPU y GPU. SteamOS con el escritorio usa unos 3-4 GB. Si además
-  corren el backend de Tarkor, Postgres, Vite y los tests, quedan **9-10 GB útiles** para pesos y caché.
+- **Memoria:** 16 GB compartidos entre CPU y GPU. SteamOS con el escritorio usa unos 3-4 GB: quedan
+  **12-13 GB útiles** para pesos y caché con todo lo demás cerrado, y **9-10 GB** si además corren el
+  backend de Tarkor, Postgres, Vite y los tests. Por eso el 14B solo cabe **con el stack de Tarkor
+  parado**; con el stack en marcha, el 8B.
   La GPU integrada no suma memoria: descargar capas en ella solo cambia **quién calcula**, no cuánto cabe.
 - **Velocidad de generación:** la marca el ancho de banda de memoria (LPDDR5, unos 88 GB/s). Por cada
   token se leen todos los pesos activos: un 14B en Q4 (~9 GB) da como máximo teórico unos 9 tokens/s;
@@ -59,10 +61,10 @@ Sobre las opciones del prompt:
 
 | Modelo (etiqueta de Ollama) | Q4 en disco | Memoria con 16k de contexto | Licencia | Para agente |
 |---|---|---|---|---|
-| **Qwen3 14B** (`qwen3:14b`) | ~9 GB | ~10-11 GB | Apache 2.0 | **El mejor razonamiento que cabe.** Modo pensar (`/think`). Edita bien con Aider. Justo de memoria. |
-| Qwen3 8B (`qwen3:8b`) | ~5 GB | ~6-7 GB | Apache 2.0 | Más rápido y con margen; razona peor. El de trabajo diario si 14B va demasiado lento. |
+| **Qwen3 14B** (`qwen3:14b`) | ~9 GB | ~10-11 GB | Apache 2.0 | **El mejor razonamiento que cabe.** Modo pensar (`/think`). Edita bien con Aider. Solo con el stack de Tarkor parado. |
+| Qwen3 8B (`qwen3:8b`) | ~5 GB | ~6-7 GB | Apache 2.0 | Más rápido y con margen; razona peor. El que se usa con el stack de Tarkor en marcha o si el 14B va demasiado lento. |
 | Qwen2.5-Coder 14B (`qwen2.5-coder:14b`) | ~9 GB | ~10-11 GB | Apache 2.0 | Mejor siguiendo formatos de edición; no razona en modo pensar. |
-| Qwen3 4B Thinking 2507 (`qwen3:4b`) | ~2,5-3 GB | ~4 GB | Apache 2.0 | Para preguntas y planes cortos con contexto largo; flojo editando. |
+| Qwen3 4B Thinking 2507 (`qwen3:4b-thinking`) | ~2,5-3 GB | ~4 GB | Apache 2.0 | Para preguntas y planes cortos con contexto largo; flojo editando. |
 
 Los porcentajes de SWE-bench de estos modelos pequeños no se publican de forma comparable con los de
 Devstral o los modelos grandes. El tablero de Aider (polyglot) es la referencia más útil para
@@ -74,7 +76,7 @@ Las etiquetas y tamaños exactos hay que mirarlos en `ollama.com/library` antes 
 
 | Agente | Instalación | Memoria de sesión | Conoce el repo | Edita con aprobación | Para modelos pequeños |
 |---|---|---|---|---|---|
-| **Aider** | `python -m pip install aider-install && aider-install` | Historial en `.aider.chat.history.md`; se retoma con `--restore-chat-history` | Sí (mapa del repositorio) | Aplica el diff y hace commit; `/undo` deshace; `--no-auto-commits` para revisar antes | **Sí**: formatos de edición sin llamadas a herramientas |
+| **Aider** | `curl -LsSf https://aider.chat/install.sh \| sh` (instala en `~/.local` con uv; `pip` a secas falla en SteamOS) | Historial en `.aider.chat.history.md`; se retoma con `--restore-chat-history` | Sí (mapa del repositorio) | Aplica el diff y hace commit; `/undo` deshace el último | **Sí**: formatos de edición sin llamadas a herramientas |
 | OpenCode | ya usado en el proyecto para el lore (`AGENTS.md`) | Sí | Sí | Sí | Regular: necesita llamadas a herramientas fiables |
 | Mistral Vibe CLI | pensado para Devstral | Sí | Sí | Sí | Para Devstral en un PC con GPU, no para la Deck |
 
@@ -82,20 +84,29 @@ Las etiquetas y tamaños exactos hay que mirarlos en `ollama.com/library` antes 
 
 ### 1. Ollama con Vulkan y memoria contenida
 
-Ollama ya está instalado. Configuración con un *override* de su servicio (si corre como servicio de
-usuario, `systemctl --user edit ollama`; si se arranca a mano, exportar las variables antes de
-`ollama serve`):
+Ollama ya está instalado. Configuración con un *override* de su servicio. El instalador oficial lo deja
+como servicio del sistema: `sudo systemctl edit ollama` y después `sudo systemctl restart ollama`. Si
+se arranca a mano, exportar las mismas variables antes de `ollama serve`.
 
 ```ini
 [Service]
-Environment="OLLAMA_VULKAN=1"              # GPU de la Deck por Vulkan (experimental; ROCm no soporta su gfx1033)
-Environment="OLLAMA_FLASH_ATTENTION=1"     # necesario para cuantizar la caché
-Environment="OLLAMA_KV_CACHE_TYPE=q8_0"    # caché de contexto a la mitad de memoria
-Environment="OLLAMA_CONTEXT_LENGTH=16384"  # contexto por defecto: subirlo solo si sobra memoria
-Environment="OLLAMA_NUM_PARALLEL=1"        # una sola petición: no duplica la caché
-Environment="OLLAMA_MAX_LOADED_MODELS=1"   # un modelo cargado a la vez
-Environment="OLLAMA_KEEP_ALIVE=30m"        # no recargar el modelo entre pasos del agente
+# GPU de la Deck por Vulkan (experimental; ROCm no soporta su gfx1033)
+Environment="OLLAMA_VULKAN=1"
+# necesario para cuantizar la caché
+Environment="OLLAMA_FLASH_ATTENTION=1"
+# caché de contexto a la mitad de memoria
+Environment="OLLAMA_KV_CACHE_TYPE=q8_0"
+# contexto por defecto: subirlo solo si sobra memoria
+Environment="OLLAMA_CONTEXT_LENGTH=16384"
+# una sola petición (no duplica la caché) y un modelo cargado a la vez
+Environment="OLLAMA_NUM_PARALLEL=1"
+Environment="OLLAMA_MAX_LOADED_MODELS=1"
+# no recargar el modelo entre pasos del agente
+Environment="OLLAMA_KEEP_ALIVE=30m"
 ```
+
+En los archivos de systemd los comentarios van siempre en su propia línea: al final de un
+`Environment=` se leerían como asignaciones.
 
 - Comprobar que usa la GPU: `ollama ps` (columna PROCESSOR) y `ollama run qwen3:14b --verbose`
   (velocidades de prompt y de generación).
@@ -115,10 +126,12 @@ ollama pull qwen3:8b        # el de respaldo rápido
 ### 3. Aider con el modelo local
 
 ```sh
-python -m pip install aider-install && aider-install
+curl -LsSf https://aider.chat/install.sh | sh   # instalador oficial: uv en ~/.local, sin tocar el sistema
 export OLLAMA_API_BASE=http://127.0.0.1:11434
 cd ~/proyecto
-aider --model ollama_chat/qwen3:14b --no-auto-commits --map-tokens 1024 \
+git config core.hooksPath .githooks            # en un clon nuevo los ganchos del proyecto no están activos
+git switch -c local/<tarea>                     # rama propia: los commits automáticos no tocan la de trabajo
+aider --model ollama_chat/qwen3:14b --map-tokens 1024 \
       --read CONVENCIONES-agente-local.md
 ```
 
@@ -136,7 +149,9 @@ Ajustes de contexto para Aider en `.aider.model.settings.yml`, en la raíz del p
 - **Modo de trabajo:**
   1. `/ask` para entender y planear, con el modo pensar del modelo;
   2. `/add` solo de los archivos que hay que cambiar;
-  3. pedir el cambio y revisar el diff antes de `/commit`.
+  3. pedir el cambio: Aider lo aplica y hace un commit; revisar el diff (`/diff`) y, si no vale, `/undo`.
+- Para `qwen3:8b` (con el stack de Tarkor en marcha), otra entrada igual en
+  `.aider.model.settings.yml` y `--model ollama_chat/qwen3:8b`.
 
 ## Expectativas
 
@@ -164,7 +179,10 @@ Ajustes de contexto para Aider en `.aider.model.settings.yml`, en la raíz del p
 - **No a la vez que el juego:** para jugar o pasar la ronda de pruebas, parar el agente
   (`ollama stop qwen3:14b`).
 - **Comprobaciones iguales para todos:** el gancho de pre-push (`tsc`, `oxlint`, cobertura) también
-  frena al agente local.
+  frena al agente local, siempre que el clon tenga `git config core.hooksPath .githooks` (paso 3 de la
+  instalación). Sin eso, un clon nuevo sube sin comprobar nada.
+- **El 14B, con el stack parado:** el agente edita con el backend, Postgres y Vite apagados; para pasar
+  los tests, `ollama stop qwen3:14b` primero. Si la tarea necesita el stack en marcha a la vez, `qwen3:8b`.
 
 ## Para otro proyecto
 
@@ -179,7 +197,7 @@ Ajustes de contexto para Aider en `.aider.model.settings.yml`, en la raíz del p
 1. **Medir** (½ hora): `ollama run qwen3:8b --verbose` y `qwen3:14b --verbose` con y sin
    `OLLAMA_VULKAN`, con un prompt de unos 4.000 tokens. *Hecho cuando* hay cifras reales de lectura y de
    generación, y la tabla de «Expectativas» se corrige con ellas.
-2. **Configurar** Ollama y Aider como arriba, más `CONVENCIONES-agente-local.md`.
+2. **Configurar** Ollama y Aider como arriba, más `CONVENCIONES-agente-local.md` y los ganchos activos (`core.hooksPath`).
 3. **Prueba con tres tareas reales y acotadas** de Tarkor (un test, un borrador de lore, un arreglo
    de texto), revisadas como cualquier otra. *Hecho cuando* se sabe qué porcentaje sale bien a la
    primera y cuánto tarda.
@@ -189,8 +207,9 @@ Ajustes de contexto para Aider en `.aider.model.settings.yml`, en la raíz del p
 ## Resumen ejecutivo
 
 **Recomendación definitiva: Aider + `qwen3:14b`, en modo pensar, con 16k de contexto, caché `q8_0` y
-Vulkan.** Es el mejor razonamiento que cabe en la Deck, sin nube. Aider no depende de las llamadas a
-herramientas y deja cada cambio en un commit que se puede deshacer.
+Vulkan, con el stack de Tarkor parado;** `qwen3:8b` cuando el stack tenga que estar en marcha. Es el
+mejor razonamiento que cabe en la Deck, sin nube. Aider no depende de las llamadas a herramientas y
+deja cada cambio en un commit, en una rama propia, que se puede deshacer.
 
 Úsalo para tareas pequeñas y acotadas, nunca para el roadmap de Tarkor. Si se busca calidad de
 agente de verdad sin pagar nube, el siguiente paso no es otro modelo en la Deck, sino Ollama con

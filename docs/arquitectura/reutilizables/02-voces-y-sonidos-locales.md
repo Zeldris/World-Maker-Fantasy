@@ -65,7 +65,7 @@ binario se usa desde el sistema normal (es un ejecutable autónomo).
 ```sh
 distrobox create --name tts --image ubuntu:24.04
 distrobox enter tts
-sudo apt update && sudo apt install -y build-essential cmake git libvulkan-dev glslc libopenblas-dev
+sudo apt update && sudo apt install -y build-essential cmake git jq libvulkan-dev glslc libopenblas-dev
 git clone --recurse-submodules https://github.com/ServeurpersoCom/qwentts.cpp ~/qwentts
 cd ~/qwentts
 ./buildvulkan.sh        # GPU de la Deck; si da problemas: ./buildcpu.sh (CPU con OpenBLAS)
@@ -117,10 +117,15 @@ niños. Reglas:
 
 ```sh
 cd ~/qwentts
+voz=~/proyecto/voces/orcos/guerrero-1                        # carpeta de la voz
+# instruct = las 12 claves en una frase (lo mismo hará tools/voces/disenar.sh)
+jq -r '"\(.gender), \(.age), \(.pitch) pitch, \(.speed) speed, \(.volume) volume, \(.clarity), \(.fluency), \(.accent) accent, \(.texture) texture, \(.emotion), \(.tone) tone, \(.personality) personality"' \
+  "$voz/diseno.json" > /tmp/instruct.txt
+jq -r .texto_prueba "$voz/diseno.json" > /tmp/texto_prueba.txt
 for s in 11 22 33 44 55; do
   ./build/qwen-tts --model models/qwen-talker-1.7b-voicedesign-Q8_0.gguf \
     --codec models/qwen-tokenizer-12hz-Q8_0.gguf \
-    --instruct "$(cat instruct.txt)" --lang Spanish --seed $s -o toma-$s.wav < texto_prueba.txt
+    --instruct "$(cat /tmp/instruct.txt)" --lang Spanish --seed $s -o "$voz/toma-$s.wav" < /tmp/texto_prueba.txt
 done
 # eliges la mejor → referencia.wav, su texto → referencia.txt, y la fijas:
 ./build/qwen-codec --model models/qwen-tokenizer-12hz-Q8_0.gguf \
@@ -162,7 +167,7 @@ Las cifras de los efectos son puntos de partida, a ajustar de oído.
 
 | Nivel | Detecta | Motor | Modelo de producción | Uso |
 |---|---|---|---|---|
-| Mínimo (Steam Deck) | sin GPU dedicada | `qwentts.cpp` Vulkan, o CPU si falla | Base 0,6B Q8_0 | frases cortas con cola; narraciones largas troceadas por frases |
+| Mínimo (Steam Deck) | sin GPU dedicada, o con menos de 6 GB | `qwentts.cpp` Vulkan, o CPU si falla | Base 0,6B Q8_0 | frases cortas con cola; narraciones largas troceadas por frases |
 | Medio | GPU dedicada de 6 GB o más | `qwentts.cpp` Vulkan/CUDA | Base 1,7B Q8_0 | todo en tiempo real |
 | Emergencia | ni el 0,6B rinde | Piper o Kokoro con voces fijas | — | solo narración, sin voces por raza |
 
@@ -215,7 +220,8 @@ voces/                                   # datos, versionados
 ├── orcos/
 │   ├── efectos.json                     # cadena de la raza (para Web Audio)
 │   └── guerrero-1/{diseno.json, referencia.wav, referencia.txt}
-└── narrador/{diseno.json, referencia.wav, referencia.txt}
+└── narrador/                           # «raza» especial: sin efectos.json
+    └── principal/{diseno.json, referencia.wav, referencia.txt}
 tools/voces/
 ├── disenar.sh                           # tomas con VoiceDesign a partir de diseno.json
 ├── fijar.sh                             # .spk/.rvq para el modelo Base del nivel
@@ -240,8 +246,11 @@ Decisiones:
   audio.
 - **El narrador por frases:** la narración se trocea por puntos y cada frase va a la cola en cuanto el LLM
   la termina. Así suena antes de que acabe el turno.
-- **Asignar la voz**: `Npc.raza` + `Npc.genero` eligen la voz base de la raza; un NPC con nombre puede
-  tener la suya propia en `voces/`.
+- **Asignar la voz**: la raza no está en el modelo `Npc` de la base de datos, sino en el catálogo
+  (`raza` de cada NPC en `worldCatalog.ts`, slug de `BERIG_RAZAS`). Al sembrar se lleva a una tabla
+  `slug de NPC → raza` (o a un campo nuevo `Npc.raza`, con su migración), y con `Npc.genero` elige la voz
+  base de la raza. Un NPC con nombre puede tener la suya propia en `voces/<raza>/<slug-del-npc>/`. Sin
+  raza en el catálogo (fauna, NPC de apoyo), habla el narrador.
 
 ## Para otro juego o aplicación
 
