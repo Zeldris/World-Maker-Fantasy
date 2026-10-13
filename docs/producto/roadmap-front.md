@@ -1182,6 +1182,13 @@ Retro del PR #53 y de los 12 arreglos de su `/code-review` (2026-10-13), aprobad
   en esa copia y la ruta leía la del catálogo (70). Ahora pide las del catálogo. El código de
   producción ya busca por `id` o por `saveId`.
 
+Retro del PR #54 (2026-10-13), aprobada por la usuaria (1 de 2):
+
+- ~~**QA-81 · «Un dato, un sitio» antes del commit**~~ ✅ 2026-10-13: el paso 3 del runbook
+  (`skills-y-modelos.md`) pide repasarla antes del commit de un arreglo. Motivo: 4 de los 12 hallazgos
+  del `/code-review` del #54 eran reglas de `REVIEW.md` que solo se leen al revisar (una regla aplicada a
+  medias en P137, P90 y P132, y una copia en el frontend de lo que decide el backend).
+
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
 Revisión cruzada (2026-10-01) con [roadmap-cronista.md](roadmap-cronista.md),

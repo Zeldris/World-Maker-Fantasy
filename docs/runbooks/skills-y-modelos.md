@@ -31,7 +31,9 @@ Skill (no basta con nombrarla); `/grill-with-docs` solo lo lanza la usuaria, con
 3. **Implementar** por pasos pequeños, cada uno con sus tests, y commit + push en cada punto
    estable (`CLAUDE.md`). En cada paso, los tests de lo tocado (`npx vitest run <archivos>`); la
    suite entera del backend (5-6 min) en segundo plano y aparte del push (el pre-push ya pasa tsc,
-   lint y cobertura) (QA-24).
+   lint y cobertura) (QA-24). Antes del commit de un arreglo, «Un dato, un sitio» de
+   [`REVIEW.md`](../../REVIEW.md#un-dato-un-sitio): `grep` de los otros sitios que hacen lo mismo (la
+   regla llega a todos) y nada que el frontend recalcule de lo que ya decide el backend (QA-81).
 4. **Si algo falla** (test rojo, intermitente, bug): `diagnosing-bugs` antes de tocar el código.
 5. **Cerrar la tarea:** tachada en su roadmap y en el mapa, bitácora al día, commit + push. El
    `/code-review` y la `/retro` van al final, no por tanda: el `/code-review`, **antes de crear** el PR
