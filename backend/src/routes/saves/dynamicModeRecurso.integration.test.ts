@@ -323,5 +323,6 @@ describe('POST /saves/:id/modo-dinamico/recurso/:targetSlug — recoger sin tira
     const body = JSON.parse(res.body);
     expect(body.roll).toBeUndefined();
     expect(body.exito).toBe(true);
+    expect([...(body.items ?? []), ...(body.updatedItems ?? [])].some((i: { name: string }) => /leche/i.test(i.name))).toBe(true);
   });
 });

@@ -144,6 +144,19 @@ describe('pluralDeEspecie', () => {
     expect(pluralDeEspecie('Negueo Turquesa')).toBe('Negueos Turquesa');
     expect(pluralDeEspecie('Aullador Rojo')).toBe('Aulladores Rojos');
     expect(pluralDeEspecie('Manesti Azul')).toBe('Manestis Azules');
+    expect(pluralDeEspecie('Cazadora Serhu')).toBe('Cazadoras Serhu');
+    expect(pluralDeEspecie('Guardiana helsig')).toBe('Guardianas helsig');
+    expect(pluralDeEspecie('Tura Jusha')).toBe('Turas Jusha');
+    expect(pluralDeEspecie('Jabalí')).toBe('Jabalíes');
+    expect(pluralDeEspecie('Benusa Pesquera')).toBe('Benusas Pesqueras');
+  });
+});
+
+// P124 (QA-27, /code-review): una lista de especies no se pluraliza («Guchapo,es»).
+describe('nombreDeEncuentro con varias especies', () => {
+  it('deja la lista tal cual', async () => {
+    const { nombreDeEncuentro } = await import('./dynamicMode.js');
+    expect(nombreDeEncuentro('Guchapo, Kirelon Arenoso', 7, true)).toBe('El grupo de 7 Guchapo, Kirelon Arenoso');
   });
 });
 

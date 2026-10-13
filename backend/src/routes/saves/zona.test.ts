@@ -264,10 +264,13 @@ describe('GET /saves/:id/zona', () => {
     findManyNpc.mockResolvedValueOnce([{ id: 'npc-caz', slug: 'cazadora-serhu', name: 'Cazadora Serhu', kind: 'PLANTILLA', faction: 'Clan Serhu', temperamento: 'CAUTELOSO' }]);
     loadSessionFactsMock.mockResolvedValueOnce([]);
     detectNpcsInSceneMock.mockResolvedValueOnce([]);
-    const app = await buildApp();
-    const punto = ((await app.inject({ method: 'GET', url: '/saves/s1/zona' })).json().puntos as { targetSlug: string; nombre: string }[]).find((p) => p.targetSlug === 'cazadora-serhu');
-    expect(punto?.nombre).toBe('Cazadora Serhu');
-    findManyDiscoveredEntity.mockReset().mockResolvedValue([]);
+    try {
+      const app = await buildApp();
+      const punto = ((await app.inject({ method: 'GET', url: '/saves/s1/zona' })).json().puntos as { targetSlug: string; nombre: string }[]).find((p) => p.targetSlug === 'cazadora-serhu');
+      expect(punto?.nombre).toBe('Cazadora Serhu');
+    } finally {
+      findManyDiscoveredEntity.mockReset().mockResolvedValue([]);
+    }
   });
 
   it('P107 (QA-27): un NPC fijo del mapa toma la facción del propio NPC, no «Sin facción»', async () => {

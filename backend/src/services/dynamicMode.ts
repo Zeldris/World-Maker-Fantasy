@@ -168,12 +168,14 @@ export function aNombre(nombre: string): string {
 
 /// P124 (QA-27): plural del nombre de una especie para «un grupo de 6 Guchapos». Cambia la primera
 /// palabra (Guchapo → Guchapos, Hoscón → Hoscones) y los adjetivos que la siguen (Kirelon Arenoso →
-/// Kirelones Arenosos); a partir de «de» nada cambia (Sombras de Kroj) y los colores que son nombres
-/// no varían (Negueos Turquesa, Zenses Ceniza).
-const PALABRAS_INVARIABLES = new Set(['turquesa', 'esmeralda', 'ceniza']);
+/// Kirelones Arenosos, Aullador Rojo → Aulladores Rojos). El resto (nombres propios y de pueblos:
+/// Cazadora Serhu → Cazadoras Serhu; colores-nombre: Negueos Turquesa) y lo que va tras «de» no cambia.
+const ADJETIVOS = new Set(['azul', 'verde', 'solar', 'gris', 'pálido', 'pálida', 'rojo', 'roja', 'negro', 'negra', 'blanco', 'blanca']);
+const TERMINACIONES_ADJETIVO = /(oso|osa|ado|ada|ido|ida|ero|era)$/i;
 function pluralDePalabra(palabra: string): string {
   if (/[sx]$/i.test(palabra)) return palabra;
   if (/[aeiouáéó]$/i.test(palabra)) return `${palabra}s`;
+  if (/[íú]$/i.test(palabra)) return `${palabra}es`;
   const sinTilde = palabra.replace(/[áéíóú](?=[^aeiouáéíóú]*$)/i, (v) => ({ á: 'a', é: 'e', í: 'i', ó: 'o', ú: 'u' })[v.toLowerCase()] ?? v);
   if (/z$/i.test(sinTilde)) return `${sinTilde.slice(0, -1)}ces`;
   return `${sinTilde}es`;
@@ -182,7 +184,11 @@ export function pluralDeEspecie(nombre: string): string {
   const palabras = nombre.split(' ');
   const iDe = palabras.findIndex((p, i) => i > 0 && p.toLowerCase() === 'de');
   return palabras
-    .map((p, i) => ((iDe === -1 || i < iDe) && !PALABRAS_INVARIABLES.has(p.toLowerCase()) ? pluralDePalabra(p) : p))
+    .map((p, i) => {
+      if (i === 0) return pluralDePalabra(p);
+      const esAdjetivo = (iDe === -1 || i < iDe) && (ADJETIVOS.has(p.toLowerCase()) || TERMINACIONES_ADJETIVO.test(p));
+      return esAdjetivo ? pluralDePalabra(p) : p;
+    })
     .join(' ');
 }
 
@@ -190,7 +196,8 @@ export function pluralDeEspecie(nombre: string): string {
 /// un individuo sin artículo.
 export function nombreDeEncuentro(nombre: string, cantidad?: number | null, alInicio = false): string {
   if (!cantidad || cantidad <= 1) return nombreEnFrase(nombre, alInicio);
-  return `${alInicio ? 'El' : 'el'} grupo de ${cantidad} ${pluralDeEspecie(nombre)}`;
+  // Una lista de especies («Guchapo, Kirelon Arenoso») se deja tal cual: el plural es de un nombre.
+  return `${alInicio ? 'El' : 'el'} grupo de ${cantidad} ${nombre.includes(',') ? nombre : pluralDeEspecie(nombre)}`;
 }
 
 /// «de el grupo…» → «del grupo…» (contracción obligatoria).

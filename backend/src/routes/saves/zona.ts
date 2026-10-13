@@ -358,7 +358,7 @@ export async function zonaRoutes(app: FastifyInstance) {
       // descubre como `npc` al toparse con ella; solo se miraba `fauna` y seguía «???».
       const kind = npcKindBySlug.get(targetSlug);
       if (kind === 'PRINCIPAL') return isDiscoveredEntity('npc', targetSlug);
-      return isDiscoveredEntity('fauna', targetSlug) || (tipo === 'NPC' && isDiscoveredEntity('npc', targetSlug));
+      return isDiscoveredEntity('fauna', targetSlug) || isDiscoveredEntity('npc', targetSlug);
     };
 
     // NPCs presentados en escena de forma determinista (2026-08-26, bug/hueco real señalado
@@ -421,7 +421,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     const npcFactionBySlugZonePoint = new Map(npcFaunaZonePointIds.map((n) => [n.slug, n.faction]));
     // P139 (QA-27): un edificio sin facción propia es de la facción de la gente que vive aquí (la más
     // común entre los NPC de la zona): la Herrería del Clan Serhu salía «sin facción».
-    const faccionesDeLaZona = zonePointsRaw.filter((p) => p.tipo === 'NPC').map((p) => npcFactionBySlugZonePoint.get(p.targetSlug)).filter((f): f is string => !!f);
+    const faccionesDeLaZona = zonePointsActivos.filter((p) => p.tipo === 'NPC').map((p) => npcFactionBySlugZonePoint.get(p.targetSlug)).filter((f): f is string => !!f);
     const faccionDeLosEdificios = faccionMasComun(faccionesDeLaZona);
     // ZON-50/ZON-33 (hito 0.2): quién te perseguiría (misma regla que la persecución de
     // `avanzarZonePointsUnPaso`: temperamento efectivo según tu reputación con su facción).
@@ -1098,7 +1098,7 @@ export async function zonaRoutes(app: FastifyInstance) {
           : quienInicia === 'jugador'
             ? colisionTipo === 'NPC'
               ? `${characterName} se topa con ${nombreEncuentro}.`
-              : `${characterName} se topa con ${nombreEncuentro}, que lo observa con cautela.`
+              : `${characterName} se topa con ${nombreEncuentro}, que le observa con cautela.`
             : `${nombreEncuentroInicio} se acerca a ${characterName} antes de que este reaccione.`;
         // Fase 10 (2026-09-29) — la tirada opuesta Destreza vs Destreza se guarda en `LogEntry.roll`
         // (discriminada por `kind`) para que la tarjeta la muestre también tras una recarga.
@@ -1156,7 +1156,7 @@ export async function zonaRoutes(app: FastifyInstance) {
               data: { saveId, channel: 'CHARACTER', text, timeLabel, fictionalMinutes, isPlayerAction: false, isSystemMessage: true },
             });
             logEntry = { id: created.id, text, timeLabel, createdAt: created.createdAt.toISOString() };
-            await recordEntityDiscoveries({ saveId, worldId, mentionedText: nombre }, tx);
+            await recordEntityDiscoveries({ saveId, worldId, mentionedText: sourceDisplayNameFor(punto.targetSlug) }, tx);
             return { ultimoEncuentroSigueCerca, colision, dynamicModeOffer: null, logEntry, avistadoSinOferta: { targetSlug: punto.targetSlug } };
           }
         }
@@ -1169,7 +1169,7 @@ export async function zonaRoutes(app: FastifyInstance) {
           data: { saveId, channel: 'CHARACTER', text, timeLabel, fictionalMinutes, isPlayerAction: false, isSystemMessage: true },
         });
         logEntry = { id: created.id, text, timeLabel, createdAt: created.createdAt.toISOString() };
-        await recordEntityDiscoveries({ saveId, worldId, mentionedText: nombre }, tx);
+        await recordEntityDiscoveries({ saveId, worldId, mentionedText: sourceDisplayNameFor(punto.targetSlug) }, tx);
         break; // Solo el primer recurso — no acumula varios a la vez.
       }
     }
