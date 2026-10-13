@@ -1873,7 +1873,8 @@ export async function resolverTurnoAutonomo({
     }
     return ejecutarIntercambioYAvanzar({
       prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque,
-      atacanteRol: habilidadAtaque.rol, dualWieldBonus: false, defensor, weaponNamesPorDefecto, narrarFn, ventajaAtacante: true,
+      // Sin ventaja si lo encaja por proteger: no la flanquean, se interpone ella (`/code-review`).
+      atacanteRol: habilidadAtaque.rol, dualWieldBonus: false, defensor, weaponNamesPorDefecto, narrarFn, ventajaAtacante: !loEncajaPorProteger,
     });
   }
   return ejecutarGolpeGratisYAvanzar({ prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque, defensor, weaponNamesPorDefecto, narrarFn });

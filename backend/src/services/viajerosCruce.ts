@@ -8,7 +8,7 @@
 import type { Prisma } from '@prisma/client';
 import { enlacesDelMundo, esDelReino, JORNADA_MINUTOS, TIPOS_SIN_DUENO, minutosTramo, rutaMasCorta, type EntradaDiario, type Enlace } from './viajeros.js';
 import type { ExpedicionEnMapa } from './expedicionesMapa.js';
-import { conocer } from './cronista/difusion.js';
+import { conocer, difundible } from './cronista/difusion.js';
 import { GRID_COLS, GRID_ROWS, pixelDeCelda } from './zonaPosicion.js';
 import { comidaDe, valorCrudo } from './cronista/ganaderia.js';
 
@@ -118,7 +118,7 @@ export async function preguntarAViajero(tx: Tx, saveId: string, id: string): Pro
   const ws0 = await tx.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true } });
   const pasados = [...new Set(((aqui.v.diario as unknown as EntradaDiario[] | null) ?? []).map((e) => e.locationId))];
   const sucesos = await tx.suceso.findMany({
-    where: { saveId, locationId: { in: pasados }, fictionalMinutes: { gte: aqui.v.diaSalida * 1440 }, conocimientos: { none: { saveId } } },
+    where: { saveId, ...difundible, locationId: { in: pasados }, fictionalMinutes: { gte: aqui.v.diaSalida * 1440 }, conocimientos: { none: { saveId } } },
     orderBy: [{ importancia: 'desc' }, { fictionalMinutes: 'desc' }],
     take: MAX_RUMORES_DE_VIAJERO,
     select: { id: true, locationId: true },

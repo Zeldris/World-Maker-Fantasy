@@ -173,6 +173,8 @@ describe('difusión de sucesos al personaje (CR-18 18b)', () => {
     expect(bandos).not.toContain(despertar);
     await difundir(prisma, saveId);
     expect(await prisma.conocimiento.count({ where: { saveId, sucesoId: { in: [muerte, despertar] } } })).toBe(0);
+    // Cualquier otro camino (el rumor de los viajeros, uno nuevo) choca con `conocer`.
+    expect(await prisma.$transaction((tx) => conocer(tx, { saveId, sucesoId: muerte, via: 'NPC', confirmado: false, minutos: 0, escribirNoticia: true }))).toBeNull();
   });
 
   // 18e (Q4): ir donde pasó confirma el rumor.

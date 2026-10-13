@@ -639,6 +639,8 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
       });
       expect(res.statusCode).toBe(200);
       expect(JSON.parse(res.body).actionText).toContain('test-cr49-jefe');
+      // P90: la vieron antes ellos (`quienInicia: 'npc'`): emboscada, sin acción suya en el diario.
+      expect(JSON.parse(res.body).accionEnDiario).toBeNull();
       const encuentro = await prisma.combatEncounter.findFirstOrThrow({ where: { saveId, estado: 'EN_CURSO' }, include: { participantes: true } });
       expect(encuentro.participantes.filter((p) => p.bando === 'ENEMIGO').map((p) => p.npcId).sort()).toEqual([...ids].sort());
     });

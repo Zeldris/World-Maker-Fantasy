@@ -157,7 +157,10 @@ async function abrirCombateForzadoDesdeInteractuar(
       if (!abierto) return null;
       await prisma.save.update({ where: { id: save.id }, data: { pendingDynamicModeOffer: Prisma.JsonNull, pendingDynamicMode: Prisma.JsonNull } });
       await recordEntityDiscoveries({ saveId: save.id, worldId: save.worldId, mentionedText: persona.name, npcSlugsInScene: [persona.slug] });
-      return { actionText: `Me enfrento a ${persona.name} y a los suyos.` };
+      // P90: si la vieron antes ellos, es una emboscada, no una acción suya (sin línea en el diario; lo
+      // cuenta la narración). Mismo formato que la caza (`accionEnDiarioDeCaza`).
+      const actionText = emboscada ? `Me defiendo de '${persona.name}' y de los suyos, que me tienden una emboscada.` : `Me enfrento a ${persona.name} y a los suyos.`;
+      return { actionText, accionEnDiario: accionEnDiarioDeCaza(actionText) };
     }
   }
 

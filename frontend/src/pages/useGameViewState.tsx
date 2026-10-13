@@ -1,5 +1,4 @@
 import { useNoticiasMundo } from '../hooks/useNoticiasMundo'
-import { aQuienSeDirige } from '../lib/destinatario'
 import { useGamePhase } from '../hooks/useGamePhase'
 import { usePresence } from '../hooks/usePresence'
 import { accionDeTecla } from '../lib/atajos'
@@ -1002,10 +1001,10 @@ export function useGameViewState() {
   // Responder escribiendo (petición de la usuaria, 2026-10-02) — desde la tarjeta de quien te habla:
   // vuelve al composer (aunque estuviera la barra de habilidades o un panel abierto) con «Le digo a
   // <nombre>: » ya escrito, el nombre como chip y el cursor al final.
-  function handleResponderEscribiendo(nombre: string) {
+  function handleResponderEscribiendo(aQuien: string) {
     if (skillHudView.screen !== 'composer') handleBackToComposer()
     setActivePanel(null)
-    requestAnimationFrame(() => composerRef.current?.setTextWithChips(`Le digo ${aQuienSeDirige(nombre)}: `, enciclopediaIndex))
+    requestAnimationFrame(() => composerRef.current?.setTextWithChips(`Le digo ${aQuien}: `, enciclopediaIndex))
   }
 
   function handleEnciclopediaInsert(chip: { icon: string; label: string; description?: string }) {

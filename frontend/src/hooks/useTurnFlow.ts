@@ -527,7 +527,8 @@ export function useTurnFlow(params: UseTurnFlowParams) {
         // Sondeo de reconexión (2026-07-23) — ver src/hooks/useReconnectionPolling.ts para la
         // lógica completa (intervalos, tope de intentos, mensajes de fallback).
         setTimedThinkingText('Esperando confirmación del narrador...')
-        await pollForResolution({ saveId, logLengthBeforeThisTurn, fictionalDate, syncFromSave, setCharacterLog })
+        // El sondeo espera acción + narración (+2); sin acción en el diario (emboscada, P90), solo la narración.
+        await pollForResolution({ saveId, logLengthBeforeThisTurn: logLengthBeforeThisTurn - (accionEnDiario === null ? 1 : 0), fictionalDate, syncFromSave, setCharacterLog })
       }
       setDiceReveal(null)
     } finally {

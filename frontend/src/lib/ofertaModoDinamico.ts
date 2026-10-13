@@ -30,7 +30,8 @@ export interface ManejadoresOferta {
     zonePointId?: string,
     cantidad?: number,
   ) => void
-  onResponderEscribiendo?: (targetName: string) => void
+  /// P141: «a quién» ya en frase, de la oferta (`aQuien`, backend).
+  onResponderEscribiendo?: (aQuien: string) => void
   onVerRecursoDetalle?: (entryId: string, targetSlug: string, targetName: string, metodo?: MetodoObtencion | null) => void
   onCazarEnZona?: (entryId: string, zonePointId: string) => void
   onDismissDynamicModeOffer?: (entryId: string) => void
@@ -110,7 +111,7 @@ export function presentacionOferta(entryId: string, offer: OfertaModoDinamico, h
       },
       // Responder escribiendo (2026-10-02) — solo personas (NPC), también si te cortan el paso.
       ...(offer.tipo === 'NPC' && h.onResponderEscribiendo
-        ? [{ label: '✍️ Responder', tone: 'accent' as const, disabled: offer.busy, onClick: () => h.onResponderEscribiendo!(offer.targetName) }]
+        ? [{ label: '✍️ Responder', tone: 'accent' as const, disabled: offer.busy, onClick: () => h.onResponderEscribiendo!(offer.aQuien ?? `a ${offer.targetName}`) }]
         : []),
       // Cazar desde la tarjeta (Fase 2, 2026-09-28) — solo FAUNA no forzada con el `zonePointId` real
       // del grupo con el que se ha chocado.

@@ -27,7 +27,7 @@ import { ZONAS_DE_INICIO,
   recalcularZonePointsDeLocation,
   type ZonePointColor,
 } from '../../services/zonePoints.js';
-import { nombreEnFrase, nombreOcultoPorRaza } from '../../services/dynamicMode.js';
+import { aNombre, nombreEnFrase, nombreOcultoPorRaza } from '../../services/dynamicMode.js';
 import { parseAgenda, regionControlActual, type RegionControlState } from '../../services/worldAgenda.js';
 import { REGION_OWNING_FACTIONS, effectiveTemperamento } from '../../services/reputation.js';
 import { LIENZO_ANCHO, LIENZO_ALTO, posicionAleatoriaEnLienzo, celdaLibreEnEspiral, claveCelda, celdaDePixel, pixelDeCelda, calcularCamino, celdaAdyacenteOMisma, mismaCelda, tirarQuienIniciaEncuentro, type Celda, type IniciativaEncuentroLogRoll } from '../../services/zonaPosicion.js';
@@ -765,6 +765,7 @@ export async function zonaRoutes(app: FastifyInstance) {
           tipo: 'FAUNA' | 'NPC' | 'RECURSO';
           targetSlug: string;
           targetName: string;
+          aQuien?: string;
           quienInicia: 'jugador' | 'npc';
           combateForzado?: true;
           /// Grupos de fauna reales (Fase 1, 2026-09-28) — id del `ZonePoint` colisionado, ausente
@@ -1002,6 +1003,7 @@ export async function zonaRoutes(app: FastifyInstance) {
           tipo: 'FAUNA' | 'NPC' | 'RECURSO';
           targetSlug: string;
           targetName: string;
+          aQuien?: string;
           quienInicia: 'jugador' | 'npc';
           combateForzado?: true;
           zonePointId?: string;
@@ -1038,6 +1040,7 @@ export async function zonaRoutes(app: FastifyInstance) {
           tipo: colisionTipo!,
           targetSlug: colision.targetSlug,
           targetName: colision.targetName,
+          ...(colisionTipo === 'NPC' ? { aQuien: aNombre(colision.targetName) } : {}),
           quienInicia,
           ...(combateForzado ? { combateForzado: true as const } : {}),
           ...(colisionZonePointId ? { zonePointId: colisionZonePointId } : {}),

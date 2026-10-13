@@ -22,10 +22,11 @@ export const VENTANA_DIAS_LLEGA_SOLA = 5;
 
 /// P137 (QA-27, decisión de la usuaria 2026-10-13): lo que el mundo no sabe de la jugadora. Sus
 /// muertes y despertares quedan en sus Leyendas; nunca llegan solos, ni como rumor, ni de boca de un
-/// NPC, ni en un bando (que el mundo supiera que reaparece chocaría con el lore). Los cuatro caminos
-/// de difusión de este archivo filtran con esto.
+/// NPC, ni en un bando (que el mundo supiera que reaparece chocaría con el lore). Los caminos de
+/// difusión filtran con esto en su consulta (`difundible`, y `viajerosCruce.ts`) y `conocer` lo comprueba
+/// también, para cualquier camino nuevo.
 export const SUCESOS_SOLO_EN_LEYENDAS = ['MUERTE_JUGADOR', 'RENACER', 'FIN_PARTIDA'];
-const difundible = { tipo: { notIn: SUCESOS_SOLO_EN_LEYENDAS } };
+export const difundible = { tipo: { notIn: SUCESOS_SOLO_EN_LEYENDAS } };
 const MINUTOS_DIA = 1440;
 
 /// Lo que guarda el emisor de una noticia con su suceso.
@@ -94,6 +95,12 @@ export async function conocer(
   tx: Tx,
   args: { saveId: string; sucesoId: string; via: Via; confirmado: boolean; minutos: number; escribirNoticia: boolean; region?: string | null; fuente?: string | null },
 ): Promise<'NUEVO' | 'CONFIRMADO' | null> {
+  // P137: red de seguridad para cualquier camino (también los de fuera de este archivo, como el rumor
+  // de los viajeros): lo que solo va a las Leyendas nunca se hace noticia.
+  if (args.escribirNoticia) {
+    const suceso = await tx.suceso.findUnique({ where: { id: args.sucesoId }, select: { tipo: true } });
+    if (suceso && SUCESOS_SOLO_EN_LEYENDAS.includes(suceso.tipo)) return null;
+  }
   // Dos pasadas a la vez (cada POST lanza `difundir`; «¿Qué se cuenta?» y los bandos, la suya) no
   // deben chocar en la clave única: primero se reclama la fila sin error (ON CONFLICT DO NOTHING o
   // un update condicionado) y solo quien la gana escribe la noticia.

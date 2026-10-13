@@ -1,4 +1,5 @@
 import { lugaresVisibles } from '../../services/mundoPartida.js';
+import { effectiveAttributes } from '../../services/equipment.js';
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { buildNpcInScene, scopeFor, hasPendingLoot, type NpcInScene } from '../../services/npcScene.js';
@@ -39,7 +40,7 @@ export async function panelsRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>('/saves/:id/destinos-viaje', async (request, reply) => {
     const save = await prisma.save.findUnique({
       where: { id: request.params.id },
-      select: { id: true, worldId: true, currentLocationId: true, attributes: true, inventoryItems: { select: { catalogSlug: true } } },
+      select: { id: true, worldId: true, currentLocationId: true, attributes: true, inventoryItems: { select: { catalogSlug: true, slot: true, statBonuses: true } } },
     });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
 
@@ -84,7 +85,8 @@ export async function panelsRoutes(app: FastifyInstance) {
     if (save.currentLocationId && destinationsById.size > 0) {
       const links = await prisma.locationLink.findMany({ where: { from: { worldId: save.worldId } } });
       const adjacency = buildAdjacency(links);
-      const attributes = save.attributes as AttributeBlock;
+      // Con el equipo puesto, como `turn.ts` al resolver el viaje y el aviso de salida (P132).
+      const attributes = effectiveAttributes(save.attributes as AttributeBlock, save.inventoryItems.filter((i) => i.slot !== null));
       for (const destId of destinationsById.keys()) {
         const path = shortestPath(adjacency, save.currentLocationId, destId);
         if (path) minutosById.set(destId, minutosConDestreza(path.totalMinutos, attributes));

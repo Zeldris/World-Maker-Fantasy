@@ -2963,7 +2963,8 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     const turno = await resolverTurnoAutonomo({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
 
     expect(turno?.combatExchangeDisplay).not.toBeNull();
-    expect(turno?.combatExchangeDisplay?.atacante.rollMode).toBe('ventaja');
+    // Se interpone ella: no es un flanqueo, sin ventaja para el atacante.
+    expect(turno?.combatExchangeDisplay?.atacante.rollMode).not.toBe('ventaja');
 
     await prisma.companion.deleteMany({ where: { id: companion.id } });
     await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
