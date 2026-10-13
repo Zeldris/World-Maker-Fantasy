@@ -52,6 +52,26 @@ function huellaDelCatalogo(): string {
   return hash.digest('hex');
 }
 
+/// Retro del PR #56: una suite cortada a medias (el tope de 10 minutos) deja sin devolver lo que un test
+/// cambió en un NPC del catálogo (`faunaAbilities` sube el `aullador-rojo` a nivel 20), y al día siguiente
+/// falla otro test sin relación. Si algún NPC del catálogo no coincide con `worldCatalog.ts` en nivel,
+/// tope, clase o atributos, se vuelve a sembrar (la siembra los sobrescribe).
+/// Postgres (jsonb) guarda las claves en otro orden: se comparan ordenadas.
+function mismosAtributos(a: unknown, b: unknown): boolean {
+  const ordenar = (o: unknown) => JSON.stringify(Object.entries((o ?? {}) as Record<string, unknown>).sort(([x], [y]) => x.localeCompare(y)));
+  return ordenar(a) === ordenar(b);
+}
+
+async function npcsDelCatalogoIntactos(db: PrismaClient): Promise<boolean> {
+  const { fauna, npcs } = await import('./src/scripts/worldCatalog.js');
+  const esperado = new Map([...fauna, ...npcs].map((n) => [n.slug, n]));
+  const filas = await db.npc.findMany({ where: { slug: { in: [...esperado.keys()] } }, select: { slug: true, level: true, levelMax: true, clase: true, attributes: true } });
+  return filas.every((f) => {
+    const n = esperado.get(f.slug)!;
+    return f.level === n.level && (n.levelMax == null || f.levelMax === n.levelMax) && (n.clase == null || f.clase === n.clase) && mismosAtributos(f.attributes, n.attributes);
+  });
+}
+
 async function baseAlDia(db: PrismaClient): Promise<void> {
   if (process.env.CI) return;
   // Por nombre, no por número: una base con migraciones de otra rama puede tener tantas o más.
@@ -68,7 +88,7 @@ async function baseAlDia(db: PrismaClient): Promise<void> {
   const archivo = join(cache, `catalogo-${base}.sha256`);
   const huella = huellaDelCatalogo();
   const hayCatalogo = (await db.location.count({ where: { saveId: null } })) > 0;
-  if (hayCatalogo && existsSync(archivo) && readFileSync(archivo, 'utf8') === huella) return;
+  if (hayCatalogo && existsSync(archivo) && readFileSync(archivo, 'utf8') === huella && (await npcsDelCatalogoIntactos(db))) return;
   execSync('npm run -s seed-catalog', { stdio: 'pipe', cwd: RAIZ });
   mkdirSync(cache, { recursive: true });
   writeFileSync(archivo, huella);

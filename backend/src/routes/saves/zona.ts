@@ -1,3 +1,4 @@
+import { entityTypeDeSerVivo, FUENTES_DE_CATALOGO } from '../../services/entityDiscovery.js';
 import type { FastifyInstance } from 'fastify';
 import { posicionEnZona, viajerosAqui } from '../../services/viajerosCruce.js';
 import { tablonEnLugar } from '../../services/cronista/tablones.js';
@@ -354,11 +355,8 @@ export async function zonaRoutes(app: FastifyInstance) {
       if (tipo === 'RECURSO') return isDiscoveredEntity(harvestSourcesThatAreFaunaWithoutNpc.has(targetSlug) ? 'fauna' : 'flora', targetSlug);
       // FAUNA/NPC: 'PRINCIPAL' → npc, el resto → fauna — mismo criterio que la línea de `dinamicos`
       // más abajo (`n.kind === 'PRINCIPAL' ? 'NPC' : 'FAUNA'`).
-      // P134 (QA-27): una persona sin nombre propio (`PLANTILLA`, p. ej. la Cazadora Serhu) se
-      // descubre como `npc` al toparse con ella; solo se miraba `fauna` y seguía «???».
-      const kind = npcKindBySlug.get(targetSlug);
-      if (kind === 'PRINCIPAL') return isDiscoveredEntity('npc', targetSlug);
-      return isDiscoveredEntity('fauna', targetSlug) || isDiscoveredEntity('npc', targetSlug);
+      // P134 (QA-27): la misma regla que al guardar el descubrimiento (`entityTypeDeSerVivo`).
+      return isDiscoveredEntity(entityTypeDeSerVivo(targetSlug, FUENTES_DE_CATALOGO), targetSlug);
     };
 
     // NPCs presentados en escena de forma determinista (2026-08-26, bug/hueco real señalado

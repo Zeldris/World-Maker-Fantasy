@@ -10,6 +10,7 @@ import { describe, it, expect, vi } from 'vitest';
 /// fila ya DESCUBIERTO nunca puede "bajar" a CITADO). `fakeClient` simula una tabla en memoria en
 /// vez de un simple spy, para poder verificar tanto la CREACIÓN inicial como la subida de fase.
 vi.mock('../scripts/worldCatalog.js', () => ({
+  harvestYields: [],
   harvestSourceAliases: { 'jabali-de-espinas': ['jabalí espinoso'] },
   // Stub fiel al real (worldCatalog.ts): nombre del Npc si lo hay, si no el slug tal cual — ninguno
   // de estos tests depende de `harvestSourceDisplayName` (el diccionario de fallback real).

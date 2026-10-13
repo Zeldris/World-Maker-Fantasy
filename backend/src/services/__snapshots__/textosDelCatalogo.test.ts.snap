@@ -1,0 +1,132 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`textos generados para cada nombre del catálogo > plural, nombre en frase y «a quién» 1`] = `
+"Archimagistrada Yovenne Tal → Archimagistradas Yovenne Tal | Archimagistrada Yovenne Tal | a Archimagistrada Yovenne Tal
+Aullador Rojo → Aulladores Rojos | Aullador Rojo | a Aullador Rojo
+Aven Tessk → Avenes Tessk | Aven Tessk | a Aven Tessk
+Benusa Pesquera → Benusas Pesqueras | Benusa Pesquera | a Benusa Pesquera
+Borbol → Borboles | Borbol | a Borbol
+Brenka → Brenkas | Brenka | a Brenka
+Brozán → Brozanes | Brozán | a Brozán
+Canizor → Canizores | Canizor | a Canizor
+Cazadora Serhu → Cazadoras Serhu | Cazadora Serhu | a Cazadora Serhu
+Celubia Pálida → Celubias Pálidas | Celubia Pálida | a Celubia Pálida
+Cocinero Serhu → Cocineros Serhu | Cocinero Serhu | a Cocinero Serhu
+Coracelo → Coracelos | Coracelo | a Coracelo
+Cornante → Cornantes | Cornante | a Cornante
+Corredor de Cauce → Corredores de Cauce | Corredor de Cauce | a Corredor de Cauce
+Corretolvas → Corretolvas | Corretolvas | a Corretolvas
+Cruzavientos → Cruzavientos | Cruzavientos | a Cruzavientos
+Cuernahoja → Cuernahojas | Cuernahoja | a Cuernahoja
+Curtidor Serhu → Curtidores Serhu | Curtidor Serhu | a Curtidor Serhu
+Curtidora Serhu → Curtidoras Serhu | Curtidora Serhu | a Curtidora Serhu
+Desolladora Serhu → Desolladoras Serhu | Desolladora Serhu | a Desolladora Serhu
+Dessa Kaltrenn → Dessas Kaltrenn | Dessa Kaltrenn | a Dessa Kaltrenn
+Doshka → Doshkas | Doshka | a Doshka
+Dulgren → Dulgrenes | Dulgren | a Dulgren
+Escarchín → Escarchines | Escarchín | a Escarchín
+Escorante → Escorantes | Escorante | a Escorante
+Faerus Errático → Faerus Errático | Faerus Errático | a Faerus Errático
+Ferike → Ferikes | Ferike | a Ferike
+Ganadero Serhu → Ganaderos Serhu | Ganadero Serhu | a Ganadero Serhu
+Gargantúa de Ceniza → Gargantúas de Ceniza | Gargantúa de Ceniza | a Gargantúa de Ceniza
+General Vrask Ombra → Generales Vrask Ombra | General Vrask Ombra | a General Vrask Ombra
+Gero → Geros | Gero | a Gero
+Gesgurio → Gesgurios | Gesgurio | a Gesgurio
+Gisoki → Gisokis | Gisoki | a Gisoki
+Gisot Ketg → Gisotes Ketg | Gisot Ketg | a Gisot Ketg
+Gistera Koh → Gisteras Koh | Gistera Koh | a Gistera Koh
+Gogorath → Gogorathes | Gogorath | a Gogorath
+Goirnte Renegado → Goirntes Renegados | Goirnte Renegado | a Goirnte Renegado
+Guardia serhu → Guardias serhu | Guardia serhu | a Guardia serhu
+Guardiana helsig → Guardianas helsig | Guardiana helsig | a Guardiana helsig
+Guchapo → Guchapos | Guchapo | a Guchapo
+Guerrera serhu → Guerreras serhu | Guerrera serhu | a Guerrera serhu
+Guerrero orco expulsado → Guerreros orco expulsados | Guerrero orco expulsado | a Guerrero orco expulsado
+Guerrero serhu → Guerreros serhu | Guerrero serhu | a Guerrero serhu
+Hagar Kiugh → Hagares Kiugh | Hagar Kiugh | a Hagar Kiugh
+Herrera Serhu → Herreras Serhu | Herrera Serhu | a Herrera Serhu
+Herrero Serhu → Herreros Serhu | Herrero Serhu | a Herrero Serhu
+Hetris → Hetris | Hetris | a Hetris
+Hielaga → Hielagas | Hielaga | a Hielaga
+Hoscón → Hoscones | Hoscón | a Hoscón
+Hulki → Hulkis | Hulki | a Hulki
+Ilka Dren → Ilkas Dren | Ilka Dren | a Ilka Dren
+Imanio → Imanios | Imanio | a Imanio
+Jashil Rojo → Jashiles Rojos | Jashil Rojo | a Jashil Rojo
+Jashil Verde → Jashiles Verdes | Jashil Verde | a Jashil Verde
+Jorer Susig → Joreres Susig | Jorer Susig | a Jorer Susig
+Jusha Esmeralda → Jushas Esmeralda | Jusha Esmeralda | a Jusha Esmeralda
+Kael Dorn → Kaeles Dorn | Kael Dorn | a Kael Dorn
+Kirelon Arenoso → Kirelones Arenosos | Kirelon Arenoso | a Kirelon Arenoso
+Kiri → Kiris | Kiri | a Kiri
+Lebude → Lebudes | Lebude | a Lebude
+Leshra → Leshras | Leshra | a Leshra
+Lusa → Lusas | Lusa | a Lusa
+Maestra Alquimista Helsig → Maestras Alquimista Helsig | Maestra Alquimista Helsig | a Maestra Alquimista Helsig
+Maestra Curtidora Serhu → Maestras Curtidora Serhu | Maestra Curtidora Serhu | a Maestra Curtidora Serhu
+Maestra de Primeros Auxilios Serhu → Maestras de Primeros Auxilios Serhu | Maestra de Primeros Auxilios Serhu | a Maestra de Primeros Auxilios Serhu
+Maestra Herborista Serhu → Maestras Herborista Serhu | Maestra Herborista Serhu | a Maestra Herborista Serhu
+Maestra Herrera Helsig → Maestras Herreras Helsig | Maestra Herrera Helsig | a Maestra Herrera Helsig
+Maestra Peletera Helsig → Maestras Peleteras Helsig | Maestra Peletera Helsig | a Maestra Peletera Helsig
+Maestra Sastre Serhu → Maestras Sastre Serhu | Maestra Sastre Serhu | a Maestra Sastre Serhu
+Maestro Alquimista Serhu → Maestros Alquimista Serhu | Maestro Alquimista Serhu | a Maestro Alquimista Serhu
+Maestro Carpintero Serhu → Maestros Carpinteros Serhu | Maestro Carpintero Serhu | a Maestro Carpintero Serhu
+Maestro Cocinero Helsig → Maestros Cocineros Helsig | Maestro Cocinero Helsig | a Maestro Cocinero Helsig
+Maestro Cocinero Serhu → Maestros Cocineros Serhu | Maestro Cocinero Serhu | a Maestro Cocinero Serhu
+Maestro Desollador Serhu → Maestros Desollador Serhu | Maestro Desollador Serhu | a Maestro Desollador Serhu
+Maestro Domador Serhu → Maestros Domador Serhu | Maestro Domador Serhu | a Maestro Domador Serhu
+Maestro Herborista Helsig → Maestros Herborista Helsig | Maestro Herborista Helsig | a Maestro Herborista Helsig
+Maestro Herrero Serhu → Maestros Herreros Serhu | Maestro Herrero Serhu | a Maestro Herrero Serhu
+Maestro Minero Helsig → Maestros Mineros Helsig | Maestro Minero Helsig | a Maestro Minero Helsig
+Maestro Peletero Serhu → Maestros Peleteros Serhu | Maestro Peletero Serhu | a Maestro Peletero Serhu
+Maestro Pescador Serhu → Maestros Pescador Serhu | Maestro Pescador Serhu | a Maestro Pescador Serhu
+Manesti Azul → Manestis Azules | Manesti Azul | a Manesti Azul
+Mekiosi → Mekiosis | Mekiosi | a Mekiosi
+Mercader de paso → Mercaderes de paso | Mercader de paso | a Mercader de paso
+Miruina → Miruinas | Miruina | a Miruina
+Morvasa → Morvasas | Morvasa | a Morvasa
+Múrgol → Múrgoles | Múrgol | a Múrgol
+Nabieus Enloquecido → Nabieus Enloquecidos | Nabieus Enloquecido | a Nabieus Enloquecido
+Negueo Solar → Negueos Solares | Negueo Solar | a Negueo Solar
+Negueo Turquesa → Negueos Turquesa | Negueo Turquesa | a Negueo Turquesa
+Nievón → Nievones | Nievón | a Nievón
+Nuente → Nuentes | Nuente | a Nuente
+Oficial de patrulla de la Concordia → Oficiales de patrulla de la Concordia | Oficial de patrulla de la Concordia | a Oficial de patrulla de la Concordia
+Orco enfurecido → Orcos enfurecidos | Orco enfurecido | a Orco enfurecido
+Peletera Helsig → Peleteras Helsig | Peletera Helsig | a Peletera Helsig
+Peletero Serhu → Peleteros Serhu | Peletero Serhu | a Peletero Serhu
+Peregrino de los Túmulos → Peregrinos de los Túmulos | Peregrino de los Túmulos | a Peregrino de los Túmulos
+Pescador Serhu → Pescadores Serhu | Pescador Serhu | a Pescador Serhu
+Pescadora Serhu → Pescadoras Serhu | Pescadora Serhu | a Pescadora Serhu
+Quio → Quios | Quio | a Quio
+Riko → Rikos | Riko | a Riko
+Rondador de Brasas → Rondadores de Brasas | Rondador de Brasas | a Rondador de Brasas
+Rugoconcha → Rugoconchas | Rugoconcha | a Rugoconcha
+Ruptidar → Ruptidares | Ruptidar | a Ruptidar
+Salamandra de Escoria → Salamandras de Escoria | Salamandra de Escoria | a Salamandra de Escoria
+Sella Marn → Sellas Marn | Sella Marn | a Sella Marn
+Soldado de patrulla de la Concordia → Soldados de patrulla de la Concordia | Soldado de patrulla de la Concordia | a Soldado de patrulla de la Concordia
+Solgra → Solgras | Solgra | a Solgra
+Sombra de Kroj → Sombras de Kroj | Sombra de Kroj | a Sombra de Kroj
+Tarsen Vold → Tarsenes Vold | Tarsen Vold | a Tarsen Vold
+Tasko → Taskos | Tasko | a Tasko
+Terinte → Terintes | Terinte | a Terinte
+Terkash → Terkashes | Terkash | a Terkash
+Tira → Tiras | Tira | a Tira
+Tirag Susig → Tirages Susig | Tirag Susig | a Tirag Susig
+Toluh → Toluhes | Toluh | a Toluh
+Torgash Ketg → Torgashes Ketg | Torgash Ketg | a Torgash Ketg
+Tótem de Guerra → Tótemes de Guerra | Tótem de Guerra | a Tótem de Guerra
+Towrgu → Towrgus | Towrgu | a Towrgu
+Tragalodo → Tragalodos | Tragalodo | a Tragalodo
+Tura Jusha → Turas Jusha | Tura Jusha | a Tura Jusha
+Ufag Ketg → Ufages Ketg | Ufag Ketg | a Ufag Ketg
+Ulkha Ketg → Ulkhas Ketg | Ulkha Ketg | a Ulkha Ketg
+Vistue → Vistues | Vistue | a Vistue
+Vreskal → Vreskales | Vreskal | a Vreskal
+Yerin Slaad → Yerines Slaad | Yerin Slaad | a Yerin Slaad
+Yeru → Yerus | Yeru | a Yeru
+Zancapilote → Zancapilotes | Zancapilote | a Zancapilote
+Zense Ceniza → Zenses Ceniza | Zense Ceniza | a Zense Ceniza"
+`;

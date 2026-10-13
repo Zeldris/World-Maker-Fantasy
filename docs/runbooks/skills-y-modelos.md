@@ -30,7 +30,8 @@ Skill (no basta con nombrarla); `/grill-with-docs` solo lo lanza la usuaria, con
    roadmap; los términos, a `GLOSSARY.md`; lo difícil de revertir, a `docs/adr/`.
 3. **Implementar** por pasos pequeños, cada uno con sus tests, y commit + push en cada punto
    estable (`CLAUDE.md`). En cada paso, los tests de lo tocado (`npx vitest run <archivos>`); la
-   suite entera del backend (5-6 min) en segundo plano y aparte del push (el pre-push ya pasa tsc,
+   suite entera del backend (5-10 min) en segundo plano, con 30 minutos de tope (`timeout: 1800000`;
+   con el de 10 se corta a medias y deja el catálogo sucio, retro del PR #56), y aparte del push (el pre-push ya pasa tsc,
    lint y cobertura) (QA-24). Antes del commit de un arreglo, «Un dato, un sitio» de
    [`REVIEW.md`](../../REVIEW.md#un-dato-un-sitio): `grep` de los otros sitios que hacen lo mismo (la
    regla llega a todos) y nada que el frontend recalcule de lo que ya decide el backend (QA-81).
