@@ -1,6 +1,7 @@
 import { useState, type Dispatch, type SetStateAction } from 'react'
 import { duracionTirada, esperarTirada } from '../lib/duracionTirada'
 import {
+  abrirMenuNpc,
   chooseNpcInteraction,
   getSave,
   ignorarModoDinamico,
@@ -108,11 +109,24 @@ export function useModoDinamico({
     combateForzado?: boolean,
     zonePointId?: string,
     cantidad?: number,
+    /// P142: ya se pasó por el menú fijo del NPC («Charlar» o «Combatir»); no se vuelve a abrir.
+    trasMenu?: boolean,
   ) {
     setCharacterLog((prev) =>
       prev.map((e) => (e.id === entryId ? { ...e, dynamicModeOffer: { tipo, targetSlug, targetName, quienInicia, combateForzado, zonePointId, cantidad, riesgoCaza: e.dynamicModeOffer?.riesgoCaza, busy: true } } : e)),
     )
     try {
+      // P142: un NPC con menú propio (oficio, trabajo, noticias…) lo enseña primero, en el sitio
+      // de la tarjeta; «Charlar» vuelve aquí con `trasMenu` para abrir la escena libre.
+      if (tipo === 'NPC' && !combateForzado && !trasMenu) {
+        const { menu } = await abrirMenuNpc(saveId!, targetSlug)
+        if (menu) {
+          setCharacterLog((prev) =>
+            prev.map((e) => (e.id === entryId ? { ...e, dynamicModeOffer: e.dynamicModeOffer && { ...e.dynamicModeOffer, busy: false }, npcInteractionOffer: { ...menu, busy: false } } : e)),
+          )
+          return
+        }
+      }
       const turno = await interactuarModoDinamico(saveId!, tipo, targetSlug, targetName, quienInicia, combateForzado, zonePointId, cantidad)
       setCharacterLog((prev) => prev.map((e) => (e.id === entryId ? { ...e, dynamicModeOffer: undefined } : e)))
       setFictionalDate(turno.timeLabel)
@@ -246,8 +260,20 @@ export function useModoDinamico({
     )
     try {
       const resultado = await chooseNpcInteraction(saveId!, npcSlug, opcion)
-      setCharacterLog((prev) => prev.map((e) => (e.id === entryId ? { ...e, npcInteractionOffer: undefined } : e)))
-      if (resultado.accion === 'ABRIR_APRENDER_OFICIO') {
+      const entrada = characterLog.find((e) => e.id === entryId)
+      const encuentro = entrada?.npcInteractionOffer?.desdeEncuentro ? entrada.dynamicModeOffer : undefined
+      // P142: desde el mapa, el encuentro sigue vivo solo para «Charlar»/«Combatir»; el resto lo resuelve.
+      const sigueElEncuentro = resultado.accion === 'CHARLAR' || (resultado.accion === 'FORZAR_COMBATE' && resultado.desdeEncuentro)
+      setCharacterLog((prev) =>
+        prev.map((e) => (e.id === entryId ? { ...e, npcInteractionOffer: undefined, ...(encuentro && !sigueElEncuentro ? { dynamicModeOffer: undefined } : {}) } : e)),
+      )
+      if (resultado.accion === 'CHARLAR') {
+        if (encuentro && encuentro.tipo === 'NPC') {
+          void handleInteractuarModoDinamico(entryId, 'NPC', encuentro.targetSlug, encuentro.targetName, encuentro.quienInicia, false, encuentro.zonePointId, encuentro.cantidad, true)
+        }
+      } else if (resultado.accion === 'FORZAR_COMBATE' && resultado.desdeEncuentro && encuentro && encuentro.tipo === 'NPC') {
+        void handleInteractuarModoDinamico(entryId, 'NPC', encuentro.targetSlug, encuentro.targetName, 'npc', true, encuentro.zonePointId, encuentro.cantidad, true)
+      } else if (resultado.accion === 'ABRIR_APRENDER_OFICIO') {
         setAprenderOficioModalOpen(true)
       } else if (resultado.accion === 'ABRIR_RECLUTAR') {
         setActivePanel('companeros')

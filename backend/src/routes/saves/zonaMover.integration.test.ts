@@ -512,6 +512,59 @@ describe('POST /saves/:id/zona/mover', () => {
     expect(body.caminoRestante).toEqual([]);
   });
 
+  // P143 (decisión de la usuaria, 2026-10-13): en un asentamiento, un NPC no hostil no corta el paso
+  // al caminar; se le habla yendo hasta él o pulsando la propia casilla.
+  describe('P143 — NPC no hostiles en un asentamiento', () => {
+    const conAsentamiento = async (prueba: () => Promise<void>) => {
+      await prisma.location.update({ where: { id: locationId }, data: { kind: 'asentamiento' } });
+      await prisma.zonePoint.create({
+        data: { locationId, saveId, x: 125, y: 25, tipo: 'NPC', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta: [{ x: 125, y: 25 }] },
+      });
+      try {
+        await prueba();
+      } finally {
+        await prisma.location.update({ where: { id: locationId }, data: { kind: 'hito' } });
+      }
+    };
+
+    it('pasar a su lado camino de otro sitio: no corta el paso', async () => {
+      await conAsentamiento(async () => {
+        const app = await buildApp();
+        const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 375, y: 25 } } });
+        const body = JSON.parse(res.body);
+        expect(body.colision).toBeNull();
+        expect(body.dynamicModeOffer).toBeNull();
+        expect(body.caminoRestante.length).toBeGreaterThan(0);
+      });
+    });
+
+    it('ir hasta él: sí se ofrece el encuentro', async () => {
+      await conAsentamiento(async () => {
+        const app = await buildApp();
+        const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 125, y: 25 } } });
+        expect(JSON.parse(res.body).dynamicModeOffer).toMatchObject({ tipo: 'NPC', targetSlug: 'test-mover-pacifico' });
+      });
+    });
+
+    it('pulsar la propia casilla a su lado: sí se ofrece el encuentro', async () => {
+      await conAsentamiento(async () => {
+        await prisma.save.update({ where: { id: saveId }, data: { zonaPosX: 75, zonaPosY: 25 } });
+        const app = await buildApp();
+        const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 75, y: 25 } } });
+        expect(JSON.parse(res.body).dynamicModeOffer).toMatchObject({ tipo: 'NPC', targetSlug: 'test-mover-pacifico' });
+      });
+    });
+
+    it('fuera de un asentamiento sigue cortando el paso', async () => {
+      await prisma.zonePoint.create({
+        data: { locationId, saveId, x: 125, y: 25, tipo: 'NPC', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta: [{ x: 125, y: 25 }] },
+      });
+      const app = await buildApp();
+      const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 375, y: 25 } } });
+      expect(JSON.parse(res.body).dynamicModeOffer).toMatchObject({ tipo: 'NPC', targetSlug: 'test-mover-pacifico' });
+    });
+  });
+
   // RECURSO (2026-09-20, hallazgo real jugando en vivo — Álvaro: "mira también si funciona lo de
   // descubrir al acercarnos a una flora" — confirmado que NO funcionaba: `detectarEncuentroEnCelda`
   // solo miraba FAUNA/NPC, caminar hasta un recurso nunca disparaba nada). RECURSO nunca tiene

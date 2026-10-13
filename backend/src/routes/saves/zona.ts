@@ -743,6 +743,8 @@ export async function zonaRoutes(app: FastifyInstance) {
     ultimoEncuentroSlug: string | null,
     // Nivel del jugador (`Save.level`) — solo para `riesgoCaza` de la oferta FAUNA (F9-1).
     nivelJugador: number,
+    // P143: celda a la que se camina; `null` = pulsar la propia casilla (petición explícita).
+    celdaDestino: { col: number; row: number } | null = null,
   ): Promise<{
     /// `true` si el objetivo de `ultimoEncuentroSlug` sigue en el radio de `celda` — el caller solo
     /// limpia `Save.zonaUltimoEncuentro` cuando esto es `false` (el jugador ya salió de su radio).
@@ -848,7 +850,14 @@ export async function zonaRoutes(app: FastifyInstance) {
       fictionalMinutes,
     });
     // Mismo filtro de lugar que el mapa (P24/P51): quien no se pinta tampoco te corta el paso.
-    const locationSlugColision = (await tx.location.findUnique({ where: { id: locationId }, select: { slug: true } }))?.slug ?? null;
+    const locationColision = await tx.location.findUnique({ where: { id: locationId }, select: { slug: true, kind: true } });
+    const locationSlugColision = locationColision?.slug ?? null;
+    // P143 (decisión de la usuaria, 2026-10-13): en un asentamiento, quien no te es hostil no te
+    // corta el paso al caminar; se le habla pulsándolo (ir hasta él o pulsar tu casilla a su lado).
+    // Como en los pueblos de Medieval Dynasty o Bellwright: la gente está, pero no te para.
+    const enAsentamiento = ['asentamiento', 'interior'].includes(locationColision?.kind ?? '');
+    const noCortaElPaso = (tipo: string, temperamento: string, celdaNpc: { col: number; row: number }) =>
+      enAsentamiento && !!celdaDestino && tipo === 'NPC' && !esTemperamentoHostil(temperamento) && !celdaAdyacenteOMisma(celdaDestino, celdaNpc);
     const fueraDeSuSitioColision = (n: { kind: string; homeLocationSlug: string | null }) => n.kind !== 'PRINCIPAL' && !!n.homeLocationSlug && n.homeLocationSlug !== locationSlugColision;
     const dinamicosCandidatosColision = npcsInSceneColision.filter((n) => n.condicionFisica !== 'MUERTO' && !zonePointSlugsColision.has(n.slug) && !fueraDeSuSitioColision(n));
     const dinamicosStatesColision = dinamicosCandidatosColision.length
@@ -924,6 +933,7 @@ export async function zonaRoutes(app: FastifyInstance) {
       if (celdaAdyacenteOMisma(celda, celdaPunto)) {
         const temperamento = npc ? conRencor(effectiveTemperamento(npc.temperamento, npc.faction, factionsStatus), rencoresColision.has(npc.id)) : 'CAUTELOSO';
         if (esTemperamentoHostil(temperamento) && (await enGracia())) continue;
+        if (noCortaElPaso(punto.tipo, temperamento, celdaPunto)) continue;
         // Un AGRESIVO/ENEMIGO nunca se silencia: si sigue encima del jugador, vuelve a cortarle el paso.
         if (punto.targetSlug === ultimoEncuentroSlug && !esTemperamentoHostil(temperamento)) {
           ultimoEncuentroSigueCerca = true;
@@ -945,6 +955,7 @@ export async function zonaRoutes(app: FastifyInstance) {
         if (celdaAdyacenteOMisma(celda, celdaDinamico)) {
           const temperamento = conRencor(effectiveTemperamento(dinamico.temperamento, dinamico.faction, factionsStatus), rencoresColision.has(dinamico.id));
           if (esTemperamentoHostil(temperamento) && (await enGracia())) continue;
+          if (noCortaElPaso(dinamico.tipo, temperamento, celdaDinamico)) continue;
           if (dinamico.targetSlug === ultimoEncuentroSlug && !esTemperamentoHostil(temperamento)) {
             ultimoEncuentroSigueCerca = true;
             continue;
@@ -1292,6 +1303,7 @@ export async function zonaRoutes(app: FastifyInstance) {
         destrezaJugador,
         ultimoEncuentroSlug,
         save.level,
+        celdaDestino,
       );
       // Un encuentro nuevo pasa a ser el "último"; si no, se olvida el anterior en cuanto este paso
       // deja al jugador fuera de su radio (volver a acercarse lo vuelve a ofrecer).

@@ -143,3 +143,86 @@ describe('POST /saves/:id/npc-interaction/:npcSlug/elegir', () => {
     expect(JSON.parse(res.body)).toEqual({ accion: 'MOSTRAR_OFERTA_MISION' });
   });
 });
+
+// P142: el menú fijo se abre desde la tarjeta del encuentro del mapa; «Charlar» lleva a la escena libre.
+describe('POST /saves/:id/npc-interaction/:npcSlug/abrir', () => {
+  let saveId: string;
+  const encuentro = (slug: string, extra: Record<string, unknown> = {}) => ({ tipo: 'NPC', targetSlug: slug, targetName: 'Alguien', ...extra });
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const save = await prisma.save.create({
+      data: {
+        userId, worldId: world.id, characterName: 'Gorhorn de prueba menú desde el mapa', characterArchetype: 'guerrero', characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x', attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 }, portraitInitial: 'G',
+      },
+    });
+    saveId = save.id;
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  beforeEach(async () => {
+    await prisma.save.update({ where: { id: saveId }, data: { pendingNpcInteractionOffer: Prisma.JsonNull, pendingDynamicModeOffer: encuentro('maestro-cocinero-serhu') } });
+  });
+
+  async function abrir(slug: string) {
+    const app = await buildApp();
+    return app.inject({ method: 'POST', url: `/saves/${saveId}/npc-interaction/${slug}/abrir` });
+  }
+
+  it('maestro de oficio: abre su menú con el nombre de la tarjeta y lo deja pendiente', async () => {
+    const res = await abrir('maestro-cocinero-serhu');
+    expect(res.statusCode).toBe(200);
+    const { menu } = JSON.parse(res.body) as { menu: { npcName: string; options: string[] } };
+    expect(menu.npcName).toBe('Alguien');
+    expect(menu.options).toEqual(expect.arrayContaining(['Charlar', 'Aprender profesión', 'Combatir', 'Salir']));
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(save.pendingNpcInteractionOffer).toMatchObject({ npcSlug: 'maestro-cocinero-serhu', desdeEncuentro: true });
+  });
+
+  it('NPC sin menú propio: menu null (la tarjeta abre la escena libre)', async () => {
+    await prisma.save.update({ where: { id: saveId }, data: { pendingDynamicModeOffer: encuentro('herrero-serhu') } });
+    const res = await abrir('herrero-serhu');
+    expect(JSON.parse(res.body)).toEqual({ menu: null });
+  });
+
+  it('sin encuentro pendiente de ese NPC: 409', async () => {
+    const res = await abrir('herrero-serhu');
+    expect(res.statusCode).toBe(409);
+  });
+
+  it('te corta el paso: sin menú', async () => {
+    await prisma.save.update({ where: { id: saveId }, data: { pendingDynamicModeOffer: encuentro('maestro-cocinero-serhu', { combateForzado: true }) } });
+    const res = await abrir('maestro-cocinero-serhu');
+    expect(JSON.parse(res.body)).toEqual({ menu: null });
+  });
+
+  it('Charlar desde el mapa: CHARLAR y el encuentro sigue pendiente para la escena', async () => {
+    await abrir('maestro-cocinero-serhu');
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/npc-interaction/maestro-cocinero-serhu/elegir`, payload: { opcion: 'Charlar' } });
+    expect(JSON.parse(res.body)).toEqual({ accion: 'CHARLAR' });
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(save.pendingDynamicModeOffer).toMatchObject({ targetSlug: 'maestro-cocinero-serhu' });
+  });
+
+  it('Salir desde el mapa: descarta también el encuentro', async () => {
+    await abrir('maestro-cocinero-serhu');
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/npc-interaction/maestro-cocinero-serhu/elegir`, payload: { opcion: 'Salir' } });
+    expect(JSON.parse(res.body)).toEqual({ accion: 'CERRAR' });
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(save.pendingDynamicModeOffer).toBeNull();
+  });
+
+  it('Combatir desde el mapa: combate desde el encuentro', async () => {
+    await abrir('maestro-cocinero-serhu');
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/npc-interaction/maestro-cocinero-serhu/elegir`, payload: { opcion: 'Combatir' } });
+    expect(JSON.parse(res.body)).toEqual({ accion: 'FORZAR_COMBATE', npcSlug: 'maestro-cocinero-serhu', desdeEncuentro: true });
+  });
+});

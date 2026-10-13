@@ -578,7 +578,9 @@ export interface LogEntry {
   /// Menú contextual de interacción con NPC (2026-09-06) — mismo criterio exacto que
   /// `dynamicModeOffer`: tarjeta con un botón por opción, `busy`/`error` para no perder la tarjeta
   /// si la petición falla.
-  npcInteractionOffer?: { npcSlug: string; npcName: string; options: string[]; busy?: boolean; error?: string }
+  /// `desdeEncuentro` (P142): abierto desde la tarjeta de un encuentro del mapa; sustituye a esa
+  /// tarjeta mientras está abierto, y «Charlar» abre la escena libre del encuentro.
+  npcInteractionOffer?: { npcSlug: string; npcName: string; options: string[]; busy?: boolean; error?: string; desdeEncuentro?: boolean }
   /// CONVALECIENTE deja de ser "victoria automática" (2026-08-26) — presente en el turno de
   /// combate en que uno o más NPC pasan a CONVALECIENTE por primera vez; LogPanel pinta, por cada
   /// uno, una tarjeta con Matar/Capturar/Clemente (mismo fondo amarillo que `questOffer`). Efímero
