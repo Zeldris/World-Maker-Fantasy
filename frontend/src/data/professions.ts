@@ -31,7 +31,7 @@ export const professions: Profession[] = [
     id: 'herrero-orcos-llanuras',
     name: 'Herrería de los Orcos de las Llanuras del Viento Rojo',
     description:
-      'Herrería de Orcos de las Llanuras del Viento Rojo. Esta profesión se centra en los recursos que ofrece la zona de Llanuras del Viento Rojo.',
+      'Herrería de Orcos de las Llanuras del Viento Rojo. Esta profesión se centra en los recursos que ofrece la zona de las Llanuras del Viento Rojo.',
     category: 'creacion',
   },
   {

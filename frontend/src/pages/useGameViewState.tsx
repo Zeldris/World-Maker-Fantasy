@@ -1,4 +1,5 @@
 import { useNoticiasMundo } from '../hooks/useNoticiasMundo'
+import { aQuienSeDirige } from '../lib/destinatario'
 import { useGamePhase } from '../hooks/useGamePhase'
 import { usePresence } from '../hooks/usePresence'
 import { accionDeTecla } from '../lib/atajos'
@@ -1004,7 +1005,7 @@ export function useGameViewState() {
   function handleResponderEscribiendo(nombre: string) {
     if (skillHudView.screen !== 'composer') handleBackToComposer()
     setActivePanel(null)
-    requestAnimationFrame(() => composerRef.current?.setTextWithChips(`Le digo a ${nombre}: `, enciclopediaIndex))
+    requestAnimationFrame(() => composerRef.current?.setTextWithChips(`Le digo ${aQuienSeDirige(nombre)}: `, enciclopediaIndex))
   }
 
   function handleEnciclopediaInsert(chip: { icon: string; label: string; description?: string }) {
