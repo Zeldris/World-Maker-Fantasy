@@ -46,7 +46,7 @@ import { regionControlActual, parseAgenda } from './worldAgenda.js';
 import { opcionesDisponiblesPara } from './npcInteraction.js';
 import { escuchaPropuestas, tieneMenu } from './menuDeNpc.js';
 import { detectNpcsInScene, npcSceneBlockFor, npcSceneLineFor, difficultyHintFor, utilityDifficultyFor, detectsAttackIntent, detectsHostileSearchIntent, detectsDialogueIntent, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, scopeFor, pickAmbientEncounterCandidate, buildNpcInScene, candidateNpcNamesNotInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
-import { resolveExchange, resolveIndependentExchange, rollInitiative, exchangeContextBlock, effectiveExchangeOutcome, independentExchangeContextBlock, hitSeverityHint, utilityTriggered, isReactiveUtility, type PendingNpcAttack, type PendingCanalizacion, type InitiativeResult, type CombatExchangeDisplay } from './combatExchange.js';
+import { conGolpeDeGracia, resolveExchange, resolveIndependentExchange, rollInitiative, exchangeContextBlock, effectiveExchangeOutcome, independentExchangeContextBlock, hitSeverityHint, utilityTriggered, isReactiveUtility, type PendingNpcAttack, type PendingCanalizacion, type InitiativeResult, type CombatExchangeDisplay } from './combatExchange.js';
 import { npcCombatAbilitiesFor, chooseNpcAbility } from './npcCombatAbilities.js';
 import { detectHarvest } from './harvest.js';
 import { detectItemReference, detectMedicalItemUse, detectEnergyItemUse, detectsCompassUse, missingItemBlockFor } from './itemReference.js';
@@ -1357,25 +1357,28 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
         // DEBILIDAD/CONTRA/etc.), ignorando la acción que mandó el frontend este turno.
         const canalizacion = input.pendingCanalizacion;
         const npcRacialCanalizacion = racialAdvantageFor(npcParaIntercambio.raza, npcDefensa.rol, [], canalizacion.attribute, jugadorRaza, isFirstExchangeOfCombat);
-        const exchange = resolveExchange(
-          {
-            attributes: attributesEfectivos,
-            attribute: canalizacion.attribute,
-            attributeBonus: canalizacion.attributeBonus ?? undefined,
-            difficulty: dificultadAtacante,
-            condicionFisica: input.condicionFisicaJugador,
-            rol: 'ataque',
-          },
-          {
-            attributes: npcAttributesEfectivos,
-            attribute: npcDefensa.attribute,
-            attributeBonus: npcDefensa.attributeBonus ?? 0,
-            difficulty: difficultyHintFor(input.currentLevel, npcParaIntercambio.level).dificultad,
-            condicionFisica: npcParaIntercambio.condicionFisica,
-            rol: npcDefensa.rol,
-            rollMode: npcRacialCanalizacion.rollMode,
-            racialAdvantageReason: npcRacialCanalizacion.racialAdvantageReason,
-          },
+        const exchange = conGolpeDeGracia(
+          resolveExchange(
+            {
+              attributes: attributesEfectivos,
+              attribute: canalizacion.attribute,
+              attributeBonus: canalizacion.attributeBonus ?? undefined,
+              difficulty: dificultadAtacante,
+              condicionFisica: input.condicionFisicaJugador,
+              rol: 'ataque',
+            },
+            {
+              attributes: npcAttributesEfectivos,
+              attribute: npcDefensa.attribute,
+              attributeBonus: npcDefensa.attributeBonus ?? 0,
+              difficulty: difficultyHintFor(input.currentLevel, npcParaIntercambio.level).dificultad,
+              condicionFisica: npcParaIntercambio.condicionFisica,
+              rol: npcDefensa.rol,
+              rollMode: npcRacialCanalizacion.rollMode,
+              racialAdvantageReason: npcRacialCanalizacion.racialAdvantageReason,
+            },
+          ),
+          npcParaIntercambio.condicionFisica,
         );
         const npcPuedeContragolpearCanalizacion =
           npcDefensa.effects.includes('ATAQUE') ||
@@ -1399,6 +1402,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
           defensor: exchange.defensor,
           resultado: exchange.resultado,
           margen: exchange.margen,
+          ...(exchange.golpeDeGracia ? { golpeDeGracia: true as const } : {}),
         };
         playerAbilityUsed = { name: canalizacion.abilityName, icon: '🌀', description: 'Habilidad canalizada.', rol: 'ataque' };
         nuevoPendingCanalizacion = null;
@@ -1568,25 +1572,28 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
         // hallazgo 12, desviada aquí desde arriba) con ATAQUE/ATURDIMIENTO/INTIMIDACION/CONTROL de
         // por medio — el resto de este camino (una defensa normal sin efecto) sigue igual.
         const npcRacialAtaqueCruzado = racialAdvantageFor(npcParaIntercambio.raza, npcDefensa.rol, [], input.classificationAtributo, jugadorRaza, isFirstExchangeOfCombat);
-        const exchange = resolveExchange(
-          {
-            attributes: attributesEfectivos,
-            attribute: input.classificationAtributo,
-            attributeBonus: input.abilityAttributeBonus,
-            difficulty: dificultadAtacante,
-            condicionFisica: input.condicionFisicaJugador,
-            rol: jugadorRol,
-          },
-          {
-            attributes: npcAttributesEfectivos,
-            attribute: npcDefensa.attribute,
-            attributeBonus: npcDefensa.attributeBonus ?? 0,
-            difficulty: difficultyHintFor(input.currentLevel, npcParaIntercambio.level).dificultad,
-            condicionFisica: npcParaIntercambio.condicionFisica,
-            rol: npcDefensa.rol,
-            rollMode: npcRacialAtaqueCruzado.rollMode,
-            racialAdvantageReason: npcRacialAtaqueCruzado.racialAdvantageReason,
-          },
+        const exchange = conGolpeDeGracia(
+          resolveExchange(
+            {
+              attributes: attributesEfectivos,
+              attribute: input.classificationAtributo,
+              attributeBonus: input.abilityAttributeBonus,
+              difficulty: dificultadAtacante,
+              condicionFisica: input.condicionFisicaJugador,
+              rol: jugadorRol,
+            },
+            {
+              attributes: npcAttributesEfectivos,
+              attribute: npcDefensa.attribute,
+              attributeBonus: npcDefensa.attributeBonus ?? 0,
+              difficulty: difficultyHintFor(input.currentLevel, npcParaIntercambio.level).dificultad,
+              condicionFisica: npcParaIntercambio.condicionFisica,
+              rol: npcDefensa.rol,
+              rollMode: npcRacialAtaqueCruzado.rollMode,
+              racialAdvantageReason: npcRacialAtaqueCruzado.racialAdvantageReason,
+            },
+          ),
+          npcParaIntercambio.condicionFisica,
         );
         // `defensor_contragolpea` (mismo fix que el CASO DEFENSA de arriba, 2026-08-13, bug real
         // jugando en vivo, "Lana Espesa" [defensiva, sin effect:'ATAQUE'] seguía haciendo daño de
@@ -1647,6 +1654,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
           defensor: exchange.defensor,
           resultado: effectiveExchangeOutcome(exchange.resultado, npcPuedeContragolpear),
           margen: exchange.margen,
+          ...(exchange.golpeDeGracia ? { golpeDeGracia: true as const } : {}),
         };
         if (input.selectedAbility) playerAbilityUsed = { ...input.selectedAbility, rol: 'ataque' };
         exchangeHappened = true;

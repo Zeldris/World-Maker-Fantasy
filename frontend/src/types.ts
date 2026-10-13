@@ -399,6 +399,8 @@ export interface CombatExchangeInfo {
   margen?: number
   /// B23 (2026-09-28) — el atacante es un NPC que no ataca: su "golpe" nunca hace daño.
   atacanteInofensivo?: true
+  /// P96 (QA-27): golpe de gracia a un convaleciente — acierta sin tirada de defensa.
+  golpeDeGracia?: true
   /// Combate de grupo: nombre del rival en este intercambio (Fase G del 0.1, hallazgo G15).
   rivalNombre?: string
 }

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
+  conGolpeDeGracia,
   resolveExchange,
   resolveIndependentExchange,
   rollInitiative,
@@ -352,3 +353,24 @@ describe('isReactiveUtility', () => {
     expect(isReactiveUtility('utilidad', ['CONTROL'], 'utilidad')).toBe(false);
   });
 });
+
+// P96 (QA-27): rematar a un convaleciente acierta sin defensa (D&D 5e / BG3: crítico automático).
+describe('conGolpeDeGracia', () => {
+  const atacante: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'fuerza', difficulty: 15, condicionFisica: 'ILESO', rol: 'ataque' };
+  const defensor: ExchangeParticipant = { attributes: BASE_ATTRIBUTES, attribute: 'destreza', difficulty: 15, condicionFisica: 'CONVALECIENTE', rol: 'defensa' };
+
+  it('contra un convaleciente, aunque el dado del defensor gane, es un golpe pleno', () => {
+    mockRolls(R_FOR_ROLL_5, R_FOR_ROLL_20);
+    const r = conGolpeDeGracia(resolveExchange(atacante, defensor), 'CONVALECIENTE');
+    expect(r.resultado).toBe('golpe_pleno');
+    expect(r.golpeDeGracia).toBe(true);
+    expect(r.atacante.success).toBe(true);
+  });
+
+  it('contra cualquier otro estado no cambia nada', () => {
+    mockRolls(R_FOR_ROLL_5, R_FOR_ROLL_20);
+    const crudo = resolveExchange(atacante, { ...defensor, condicionFisica: 'GRAVE' });
+    expect(conGolpeDeGracia(crudo, 'GRAVE')).toBe(crudo);
+  });
+});
+
