@@ -4,7 +4,7 @@ import { Capa } from '../components/Capa'
 // `SuggestionBar` deja de importarse mientras la entrada visible está oculta.
 // import { SuggestionBar } from '../components/SuggestionBar'
 import { SkillBarEditor } from '../components/SkillBarEditor'
-import { presentacionOferta } from '../lib/ofertaModoDinamico'
+import { presentacionMenuNpc, presentacionOferta } from '../lib/ofertaModoDinamico'
 import { DetailModal } from '../components/DetailModal'
 import { AvisosModal } from '../components/AvisosModal'
 import { KingdomFoundingModal } from '../components/KingdomFoundingModal'
@@ -115,6 +115,7 @@ export function GameModals() {
     setSaquearSoloNpcSlug,
     handleCazarEnZona,
     handleInteractuarModoDinamico,
+    handleChooseNpcInteraction,
     handleDismissDynamicModeOffer,
     recursoDetalle,
     handleVerRecursoDetalle,
@@ -452,7 +453,10 @@ export function GameModals() {
             // mapa no se cierra. Hablar o recolectar se abren encima (el mapa espera debajo y vuelve);
             // solo se cierra para escribir una respuesta o cuando empieza un combate (efecto de abajo).
             ofertaEnMapa={(entryId) => {
-              const offer = characterLog.find((e) => e.id === entryId)?.dynamicModeOffer
+              const entrada = characterLog.find((e) => e.id === entryId)
+              // P142: abierto el menú del NPC desde esta tarjeta, se enseña en su lugar.
+              if (entrada?.npcInteractionOffer?.desdeEncuentro) return presentacionMenuNpc(entryId, entrada.npcInteractionOffer, handleChooseNpcInteraction)
+              const offer = entrada?.dynamicModeOffer
               if (!offer) return null
               const cerrarMapa = () => setZonaModalOpen(false)
               return presentacionOferta(entryId, offer, {

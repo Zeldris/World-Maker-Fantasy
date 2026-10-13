@@ -33,7 +33,9 @@ Skill (no basta con nombrarla); `/grill-with-docs` solo lo lanza la usuaria, con
    suite entera del backend (5-6 min) en segundo plano y aparte del push (el pre-push ya pasa tsc,
    lint y cobertura) (QA-24).
 4. **Si algo falla** (test rojo, intermitente, bug): `diagnosing-bugs` antes de tocar el código.
-5. **Cerrar la tarea:** tachada en su roadmap y en el mapa, bitácora al día, commit + push. Al
+5. **Cerrar la tarea:** tachada en su roadmap y en el mapa, bitácora al día, commit + push. El
+   `/code-review` y la `/retro` van siempre al final, con el PR a `main` (pasos 6 y 7), no por tanda
+   (usuaria, 2026-10-13; sustituye a `QA-75` y al `/code-review` cada 5-6 hallazgos de `QA-40`). Al
    contárselo a la usuaria, el destino con su nombre: «en la rama de trabajo, no en `main`» o «en
    `main` (PR #N)» (QA-36).
    «Actualiza con main» (o «trae main») es traer `main` a la rama de trabajo en local y decir si está

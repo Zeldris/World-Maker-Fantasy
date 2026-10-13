@@ -209,6 +209,20 @@ Archivos que tocaría si se aprueba: `docs/rpgtarkor/lore-mundo/regiones/llanura
 
 ---
 
+### 2026-10-13 — Combate de grupo: sin golpes gratis contra la jugadora (P129 y P96 de QA-27)
+**Estado: SIN REVISAR** (reglas ya decididas por la usuaria el 2026-10-13 e implementadas; falta
+reflejarlas en el canon). Contra la jugadora, quien la ataca sin ser su duelo ya no da un golpe gratis:
+tira contra su defensa con ventaja (el flanqueo de D&D 5e y BG3). Como mucho 2 de esos atacantes de más
+por ronda (los primeros por iniciativa); el resto la rodea sin golpear. En una ronda que empezó Ilesa,
+nada la deja peor que Convaleciente. Y su golpe a un convaleciente acierta siempre, sin defensa (golpe
+de gracia, como el crítico automático contra un inconsciente de D&D 5e y BG3). Los golpes gratis entre
+NPC y aliados siguen como estaban.
+
+Archivos que tocaría si se aprueba: `docs/rpgtarkor/sistemas-combate/combate-multiple.md` (apartado
+«Golpe gratis» del enganche por ronda) y la regla de rematar de `combatLore.ts` («Rematar y saquear»).
+
+---
+
 
 ### 2026-10-06 — Ganadería: etapas de los animales, quién cría qué y el oficio de ganadero (CR-55)
 **Estado: SIN REVISAR** (decisiones de la usuaria del 2026-10-06 en la ronda de `CR-55`; las cifras

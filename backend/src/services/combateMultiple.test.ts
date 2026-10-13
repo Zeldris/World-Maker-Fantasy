@@ -507,6 +507,24 @@ describe('resolverIntercambioCompleto', () => {
     ...overrides,
   });
 
+  // P96 (QA-27): la jugadora remata a un convaleciente aunque el dado del defensor gane.
+  it('la jugadora contra un convaleciente: golpe de gracia, aunque pierda las tiradas', () => {
+    mockRolls(rFor(1), rFor(20));
+    const resultado = resolverIntercambioCompleto(
+      combatiente({ nombre: 'Gorhorn' }),
+      habilidad({ rol: 'ataque' }),
+      'ataque',
+      13,
+      combatiente({ nombre: 'Guchapo', condicionFisica: 'CONVALECIENTE' }),
+      habilidad({ rol: 'defensa' }),
+      13,
+      false,
+      true,
+    );
+    expect(resultado.defensorRecibeGolpe).toBe(true);
+    expect(resultado.display).toMatchObject({ resultado: 'golpe_pleno', golpeDeGracia: true });
+  });
+
   it('golpe normal básico: margen decisivo empeora la condición del defensor un escalón', () => {
     mockRolls(rFor(15), rFor(1)); // atacante 20 vs defensor 6, margen 14 -> golpe_pleno
     const resultado = resolverIntercambioCompleto(

@@ -23,7 +23,7 @@ import { EnciclopediaLinkedText } from './EnciclopediaLinkedText'
 import { NoticiaMundo, type ResponderPropuesta } from './NoticiaMundo'
 import { useEnciclopediaLink } from '../context/useEnciclopediaLink'
 import { OfferCard } from './OfferCard'
-import { presentacionOferta } from '../lib/ofertaModoDinamico'
+import { presentacionMenuNpc, presentacionOferta } from '../lib/ofertaModoDinamico'
 import { combatKeyFor } from '../lib/gameViewHelpers'
 import { retrasoEnVivo } from '../lib/presentacionTurno'
 import { alSaltarTiradas } from '../lib/duracionTirada'
@@ -564,7 +564,7 @@ export const LogPanel = memo(function LogPanel({
                   conversación, "Interactuar" resuelve la recolección real de una sola llamada
                   (`onVerRecursoDetalle` abre RecursoDetalleModal, no DynamicModeModal) — mismo botón/
                   tarjeta, callback distinto. */}
-              {entry.dynamicModeOffer && (
+              {entry.dynamicModeOffer && !entry.npcInteractionOffer?.desdeEncuentro && (
                 <OfferCard
                   bloqueo={bloqueoAcciones}
                   {...presentacionOferta(entry.id, entry.dynamicModeOffer, {
@@ -581,20 +581,7 @@ export const LogPanel = memo(function LogPanel({
                   por cada opción real de `npcInteractionOffer.options` (varía según el NPC), en
                   vez de los 2 fijos de las otras tarjetas. */}
               {entry.npcInteractionOffer && (
-                <OfferCard
-                  bloqueo={bloqueoAcciones}
-                  tone="accent2"
-                  icon="🗣️"
-                  title={entry.npcInteractionOffer.npcName}
-                  subtitle="¿Qué quieres hacer?"
-                  error={entry.npcInteractionOffer.error}
-                  actions={entry.npcInteractionOffer.options.map((opcion) => ({
-                    label: opcion,
-                    tone: opcion === 'Salir' ? 'neutral' : opcion === 'Combatir' ? 'danger' : 'primary',
-                    disabled: entry.npcInteractionOffer!.busy,
-                    onClick: () => onChooseNpcInteraction?.(entry.id, entry.npcInteractionOffer!.npcSlug, opcion),
-                  }))}
-                />
+                <OfferCard bloqueo={bloqueoAcciones} {...presentacionMenuNpc(entry.id, entry.npcInteractionOffer, onChooseNpcInteraction)} />
               )}
               {/* Recolección por texto libre redirigida al mapa (Pieza 6d 2026-09-03; Fase 4
                   2026-09-28) — un único botón que abre el modal de movimiento de zona. */}

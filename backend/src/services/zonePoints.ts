@@ -19,6 +19,7 @@ import type { FaunaCategoria } from './faunaAbilities.js';
 import { effectiveTemperamento } from './reputation.js';
 import type { MomentoDelDia } from './worldClock.js';
 import { ambitoPoblacion, copiaDeFila } from './mundoPartida.js';
+import { celdasDeEntrada, enRadioSeguro } from './entradasZona.js';
 
 export type ZonePointColor = 'ALIADO' | 'NEUTRO' | 'ENEMIGO' | 'SIN_FACCION' | 'INERTE';
 
@@ -164,15 +165,29 @@ export interface ZonePointRow {
 /// toca `x`/`y` (reposicionar puntos dentro del lienzo queda fuera de esta pasada, documentado) ni
 /// decide DE DÓNDE sale un punto nuevo (eso lo resuelve el caller, que sí conoce cuántos puntos
 /// existen ya para esa especie en la Location).
+/// Cantidad a la que tiende un punto con esta población regional (topada a `CANTIDAD_MAX_POR_PUNTO`).
+export function objetivoDePunto(poblacionRegional: number): number {
+  return Math.max(0, Math.min(CANTIDAD_MAX_POR_PUNTO, poblacionRegional));
+}
+
+/// P109 (QA-27): si el punto no cambió pero aún no llegó a su objetivo, su reloj no se toca, para que
+/// el tiempo se acumule hasta sumar un ajuste entero. Antes se tocaba en cada recálculo (el mapa
+/// recalcula a cada paso) con un ajuste mínimo de 1: lo cazado o recolectado volvía en pocos pasos.
+export function relojPorRefrescar(punto: ZonePointRow, cantidadNueva: number, activoNuevo: boolean, poblacionRegional: number, fictionalMinutesActuales: number): boolean {
+  if (cantidadNueva !== punto.cantidad || activoNuevo !== punto.activo) return true;
+  return cantidadNueva === objetivoDePunto(poblacionRegional) && punto.lastUpdatedAtMinutes !== fictionalMinutesActuales;
+}
+
 export function proximaCantidadPara(punto: ZonePointRow, poblacionRegional: number, fictionalMinutesActuales: number): { cantidad: number; activo: boolean } {
-  const objetivo = Math.max(0, Math.min(CANTIDAD_MAX_POR_PUNTO, poblacionRegional));
+  const objetivo = objetivoDePunto(poblacionRegional);
   if (punto.lastUpdatedAtMinutes == null) return { cantidad: objetivo, activo: objetivo > 0 };
 
   const minutosTranscurridos = Math.max(0, fictionalMinutesActuales - punto.lastUpdatedAtMinutes);
   if (minutosTranscurridos === 0) return { cantidad: punto.cantidad, activo: punto.activo };
 
   const diasTranscurridos = minutosTranscurridos / MINUTOS_POR_DIA;
-  const ajusteMaximo = Math.max(1, Math.round(AJUSTE_MAXIMO_POR_DIA * diasTranscurridos));
+  const ajusteMaximo = Math.round(AJUSTE_MAXIMO_POR_DIA * diasTranscurridos);
+  if (ajusteMaximo === 0) return { cantidad: punto.cantidad, activo: punto.activo };
   const delta = objetivo - punto.cantidad;
   const ajusteReal = Math.max(-ajusteMaximo, Math.min(ajusteMaximo, delta));
   const cantidad = punto.cantidad + ajusteReal;
@@ -421,7 +436,7 @@ export async function recalcularZonePointsDeLocation(
   for (const punto of puntos.filter((p) => p.tipo === 'RECURSO')) {
     const poblacionRegional = poblacionRegionalPorSlug.get(punto.targetSlug) ?? 0;
     const { cantidad, activo } = proximaCantidadPara(punto, poblacionRegional, fictionalMinutesActuales);
-    if (cantidad === punto.cantidad && activo === punto.activo && punto.lastUpdatedAtMinutes === fictionalMinutesActuales) continue;
+    if (!relojPorRefrescar(punto, cantidad, activo, poblacionRegional, fictionalMinutesActuales)) continue;
     operaciones.push(
       tx.zonePoint.update({ where: { id: punto.id }, data: { cantidad, activo, lastUpdatedAtMinutes: fictionalMinutesActuales } }),
     );
@@ -441,16 +456,23 @@ export async function recalcularZonePointsDeLocation(
   // donde reaparece tras morir).
   // Se consulta solo si algún grupo se va a colocar (perezoso: este recalculo corre al abrir la zona).
   // Temperamento de catálogo: la fauna casi nunca tiene facción que lo cambie.
-  let evitar: { slugsHostiles: Set<string>; celdaJugadora: Celda | null } | null = null;
+  let evitar: { slugsHostiles: Set<string>; celdaJugadora: Celda | null; celdasSeguras: Set<string> } | null = null;
   const evitarAlColocar = async () => {
     if (evitar) return evitar;
     const faunaSlugs = [...new Set(puntos.filter((p) => p.tipo === 'FAUNA').map((p) => p.targetSlug))];
-    const [hostiles, jugadora] = await Promise.all([
+    const [hostiles, jugadora, entradas] = await Promise.all([
       tx.npc.findMany({ where: { worldId, slug: { in: faunaSlugs }, temperamento: { in: ['AGRESIVO', 'ENEMIGO'] } }, select: { slug: true } }),
       tx.save.findUnique({ where: { id: saveId }, select: { currentLocationId: true, zonaPosX: true, zonaPosY: true } }),
+      celdasDeEntrada(tx, saveId, locationId),
     ]);
     evitar = {
       slugsHostiles: new Set(hostiles.map((n) => n.slug)),
+      // P116: un grupo hostil nuevo no se coloca en el radio seguro de una entrada.
+      celdasSeguras: new Set(
+        Array.from({ length: GRID_COLS * GRID_ROWS }, (_, i) => ({ col: i % GRID_COLS, row: Math.floor(i / GRID_COLS) }))
+          .filter((c) => enRadioSeguro(c, entradas))
+          .map(claveCelda),
+      ),
       celdaJugadora:
         jugadora?.currentLocationId === locationId && jugadora.zonaPosX != null && jugadora.zonaPosY != null
           ? celdaDePixel({ x: jugadora.zonaPosX, y: jugadora.zonaPosY })
@@ -480,7 +502,7 @@ export async function recalcularZonePointsDeLocation(
     const puntoVirtual: ZonePointRow = { ...ancla, cantidad: totalActual };
     const { cantidad: objetivo } = proximaCantidadPara(puntoVirtual, poblacionRegional, fictionalMinutesActuales);
 
-    if (!primerReparto && objetivo === totalActual && ancla.lastUpdatedAtMinutes === fictionalMinutesActuales && !(esZonaDeInicio && ordenadas.length > 1)) continue;
+    if (!primerReparto && !relojPorRefrescar(puntoVirtual, objetivo, puntoVirtual.activo, poblacionRegional, fictionalMinutesActuales) && !(esZonaDeInicio && ordenadas.length > 1)) continue;
 
     const enGuarida = esZonaDeInicio && (await evitarAlColocar()).slugsHostiles.has(targetSlug);
     const resultado = enGuarida
@@ -518,12 +540,15 @@ export async function recalcularZonePointsDeLocation(
     const origenAncla = celdaDePixel({ x: ancla.origenX ?? ancla.x, y: ancla.origenY ?? ancla.y });
     const borradas = new Set(resultado.borrar);
     const celdasEspecie = ordenadas.filter((_, i) => !borradas.has(i)).map((f) => celdaDePixel({ x: f.x, y: f.y }));
+    let ocupadasParaNuevos = ocupadas;
     if (resultado.crear.length > 0) {
-      const { slugsHostiles, celdaJugadora } = await evitarAlColocar();
+      const { slugsHostiles, celdaJugadora, celdasSeguras } = await evitarAlColocar();
       if (celdaJugadora && slugsHostiles.has(targetSlug)) celdasEspecie.push(celdaJugadora);
+      if (slugsHostiles.has(targetSlug)) ocupadasParaNuevos = new Set([...ocupadas, ...celdasSeguras]);
     }
     for (const cantidadNueva of resultado.crear) {
-      const celda = celdaParaGrupoNuevo(origenAncla, ocupadas, celdasEspecie, random);
+      const celda = celdaParaGrupoNuevo(origenAncla, ocupadasParaNuevos, celdasEspecie, random);
+      if (ocupadasParaNuevos !== ocupadas) ocupadasParaNuevos.add(claveCelda(celda));
       ocupadas.add(claveCelda(celda));
       celdasEspecie.push(celda);
       const pixel = pixelDeCelda(celda);
@@ -624,6 +649,8 @@ export async function avanzarZonePointsUnPaso(
     ).map((n) => [n.slug, n]),
   );
   const celdaJugador = jugador ? celdaDePixel(jugador) : null;
+  // P116 (QA-27): la fauna hostil no persigue ni entra en el radio seguro de las entradas.
+  const entradas = await celdasDeEntrada(tx, saveId, locationId);
   const esZonaDeInicioMov = ZONAS_DE_INICIO.has((await tx.location.findUnique({ where: { id: locationId }, select: { slug: true } }))?.slug ?? '');
   // B30 (pruebas 2026-09-28): dos grupos de la misma especie deambulando acababan en la MISMA celda
   // (un pin tapaba al otro). Celdas ocupadas en este paso — el tramo de cada callback hasta su
@@ -642,7 +669,10 @@ export async function avanzarZonePointsUnPaso(
       // se dirija hacia ti", no tiene sentido seguir patrullando con el enemigo real a 3 casillas.
       const esAgresivoEfectivo = npc ? ['AGRESIVO', 'ENEMIGO'].includes(effectiveTemperamento(npc.temperamento, npc.faction, factionsStatus ?? {})) : false;
       // P88: en la zona de inicio la fauna hostil defiende su guarida, no persigue.
-      const persigue = esAgresivoEfectivo && !(esZonaDeInicioMov && punto.tipo === 'FAUNA');
+      const faunaHostil = esAgresivoEfectivo && punto.tipo === 'FAUNA';
+      const persigue = esAgresivoEfectivo && !(esZonaDeInicioMov && punto.tipo === 'FAUNA') && !(faunaHostil && celdaJugador && enRadioSeguro(celdaJugador, entradas));
+      // P116: desde fuera, la fauna hostil no pisa el radio seguro de una entrada (espera este paso).
+      const noPuedeEntrar = (celda: Celda) => faunaHostil && enRadioSeguro(celda, entradas) && !enRadioSeguro(actual, entradas);
       const objetivoPersecucion = persigue && celdaJugador && enRangoDePersecucion(actual, celdaJugador) ? celdaJugador : null;
 
       if (objetivoPersecucion) {
@@ -657,6 +687,7 @@ export async function avanzarZonePointsUnPaso(
           objetivoPersecucion,
           random,
         });
+        if (noPuedeEntrar(siguiente)) return null;
         const pixel = pixelDeCelda(siguiente);
         if (pixel.x === punto.x && pixel.y === punto.y) return null;
         await tx.zonePoint.update({ where: { id: punto.id }, data: { x: pixel.x, y: pixel.y, pasoRuta: nuevoPasoRuta } });
@@ -672,6 +703,7 @@ export async function avanzarZonePointsUnPaso(
       if (ruta && ruta.length > 0) {
         const rutaCeldas = ruta.map((p) => celdaDePixel(p));
         const { celda, nuevoPasoRuta } = siguienteCeldaEnRuta(rutaCeldas, punto.pasoRuta % rutaCeldas.length);
+        if (noPuedeEntrar(celda)) return null;
         const pixel = pixelDeCelda(celda);
         await tx.zonePoint.update({ where: { id: punto.id }, data: { x: pixel.x, y: pixel.y, pasoRuta: nuevoPasoRuta } });
         return { id: punto.id, x: pixel.x, y: pixel.y };
@@ -691,6 +723,7 @@ export async function avanzarZonePointsUnPaso(
         gridRows: GRID_ROWS,
         random,
       });
+      if (noPuedeEntrar(siguiente)) return null;
       const pixel = pixelDeCelda(siguiente);
       if (pixel.x === punto.x && pixel.y === punto.y && nuevoPasoRuta === punto.pasoRuta) return null;
       const claveSiguiente = claveCelda(siguiente);

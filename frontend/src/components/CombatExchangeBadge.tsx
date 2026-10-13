@@ -378,6 +378,15 @@ export function CombatExchangeBadge({ exchange, playerName, enemyName }: { excha
   const nombreAtacante = exchange.atacanteEsJugador ? nombreJugador : nombreEnemigo
   const nombreDefensor = exchange.atacanteEsJugador ? nombreEnemigo : nombreJugador
   const esOpuesto = esCheckOpuesto(exchange)
+  // P96 (QA-27): rematar a un convaleciente no se tira; la tarjeta solo lo cuenta.
+  if (exchange.golpeDeGracia) {
+    return (
+      <div className="animate-stamp-in mt-2 rounded-lg border border-iron-700 bg-wood-950/40 px-2.5 py-1.5 text-center font-sans text-2xs text-wood-500">
+        <span className="font-semibold text-wood-300">Golpe de gracia · </span>
+        {`${nombreDefensor} está convaleciente y no puede defenderse: el golpe de ${nombreAtacante} acierta sin tirada.`}
+      </div>
+    )
+  }
   return (
     <div className="animate-stamp-in mt-2 overflow-hidden rounded-lg border border-iron-700 bg-wood-950/40 text-2xs">
       <div className="flex flex-wrap items-baseline justify-center gap-x-1.5 gap-y-0.5 border-b border-iron-800 px-2.5 py-1.5 font-sans font-semibold text-wood-500">

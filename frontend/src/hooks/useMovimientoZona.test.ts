@@ -114,5 +114,59 @@ describe('useMovimientoZona', () => {
     expect(onEncuentroZona).toHaveBeenCalledWith(expect.objectContaining({ id: 'l2', channel: 'character' }))
     expect(result.current.mensajeMovimiento).toContain('todavía no sabe aprovecharlo')
   })
+
+  // P125/P133/P135 (QA-27): «Seguir mi camino» tras un encuentro.
+  describe('«Seguir mi camino» tras un encuentro', () => {
+    const recurso = (x: number, quedan: number) => ({
+      jugador: { x, y: 0 }, caminoRestante: Array.from({ length: quedan }, () => ({ x: 0, y: 0 })), zonePointsMovidos: [],
+      dynamicModeOffer: { tipo: 'RECURSO', targetSlug: 'murgoles', targetName: 'Múrgoles', quienInicia: 'jugador' },
+      logEntry: { id: `l${x}`, text: 'Gorhorn encuentra Múrgoles domados cerca.', timeLabel: '', createdAt: '' },
+    })
+    const paso = (x: number, quedan: number) => ({ jugador: { x, y: 0 }, caminoRestante: Array.from({ length: quedan }, () => ({ x: 0, y: 0 })), zonePointsMovidos: [] })
+    const usarEnMapa = () => renderHook(() => useMovimientoZona({ saveId: 's1', setData: vi.fn(), msPorPaso: 0, onEncuentroZona: vi.fn(), onEncuentroEnMapa: vi.fn() }))
+
+    it('a medio camino: sigue andando y al llegar hace lo que esperaba (P125/P133)', async () => {
+      vi.mocked(moverEnZona).mockResolvedValueOnce(recurso(50, 0) as never).mockResolvedValueOnce(paso(100, 1) as never).mockResolvedValueOnce(paso(150, 0) as never)
+      vi.mocked(getZona).mockResolvedValue({ disponible: true } as never)
+      const alLlegar = vi.fn()
+      const { result } = usarEnMapa()
+      await act(async () => {
+        await result.current.moverA({ x: 175, y: 0 }, { alLlegar })
+      })
+      expect(alLlegar).not.toHaveBeenCalled()
+      expect(result.current.destinoPendiente).toEqual({ x: 175, y: 0 })
+      act(() => result.current.reanudar())
+      await waitFor(() => expect(alLlegar).toHaveBeenCalledWith({ disponible: true }))
+      expect(moverEnZona).toHaveBeenCalledTimes(3)
+    })
+
+    it('ya en el destino: no vuelve a pedir la casilla (que ofrecería lo mismo otra vez) y termina el viaje (P135)', async () => {
+      vi.mocked(moverEnZona).mockResolvedValueOnce(recurso(150, 0) as never)
+      vi.mocked(getZona).mockResolvedValue({ disponible: true } as never)
+      const alLlegar = vi.fn()
+      const { result } = usarEnMapa()
+      await act(async () => {
+        await result.current.moverA({ x: 175, y: 0 }, { alLlegar })
+      })
+      act(() => result.current.reanudar())
+      await waitFor(() => expect(alLlegar).toHaveBeenCalledWith({ disponible: true }))
+      expect(moverEnZona).toHaveBeenCalledTimes(1)
+      expect(result.current.destinoPendiente).toBeNull()
+    })
+
+    it('un clic nuevo olvida la acción del trayecto anterior', async () => {
+      vi.mocked(moverEnZona).mockResolvedValueOnce(recurso(50, 0) as never).mockResolvedValueOnce(paso(100, 0) as never)
+      vi.mocked(getZona).mockResolvedValue({ disponible: true } as never)
+      const alLlegar = vi.fn()
+      const { result } = usarEnMapa()
+      await act(async () => {
+        await result.current.moverA({ x: 175, y: 0 }, { alLlegar })
+      })
+      await act(async () => {
+        await result.current.moverA({ x: 100, y: 0 })
+      })
+      expect(alLlegar).not.toHaveBeenCalled()
+    })
+  })
 })
 

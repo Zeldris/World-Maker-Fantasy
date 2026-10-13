@@ -13,6 +13,12 @@ async (page) => {
   const diario = iDiario >= 0 ? texto.slice(iDiario, iMundo > iDiario ? iMundo : undefined).trim().slice(-900) : '';
   const iCombate = texto.search(/Combate —|COMBATE —/);
   const combate = iCombate >= 0 ? texto.slice(iCombate, iCombate + 700).replace(/\n{2,}/g, '\n') : '';
-  const avisos = (texto.match(/[^\n]*(busca tu atención|te corta el paso|Te topas con|Has caído|Victoria|Derrota|CONVALECIENTE)[^\n]*/gi) || []).slice(-4);
+  // QA-76: los avisos se buscan elemento a elemento (párrafos y encabezados: «¡Victoria!» va en un h3).
+  // En `innerText` los nombres van en fichas (chips) en otra línea y la frase quedaba sin quién («  te
+  // golpea…»); aquí cada trozo del elemento se une con un espacio, así tampoco se pegan las palabras.
+  const parrafos = await page
+    .locator('p, h1, h2, h3, h4, li')
+    .evaluateAll((els) => els.map((el) => Array.from(el.childNodes).map((n) => n.textContent || '').join(' ').replace(/\s+/g, ' ').trim()));
+  const avisos = parrafos.filter((t) => /busca tu atención|te corta el paso|Te topas con|te golpea|Has caído|Victoria|Derrota|CONVALECIENTE/i.test(t)).slice(-4);
   return ['HUD: ' + hud, 'AVISOS: ' + avisos.join(' | '), 'DIARIO (final):\n' + diario, combate ? 'COMBATE:\n' + combate : ''].filter(Boolean).join('\n\n');
 }

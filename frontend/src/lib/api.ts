@@ -116,7 +116,8 @@ export interface ClassifyResponse {
   // `harvestSuggestion` (Pieza 6d, 2026-09-03, "mundo determinista"): presente solo cuando el
   // bloqueo fue por citar una fuente real de recolección de terreno por texto libre en vez de usar
   // la habilidad — botón real que abre HarvestSelectionModal con la fuente ya priorizada.
-  blocked?: { narration: string; harvestSuggestion?: { sourceName: string } }
+  /// QA-73: `logEntry` es la respuesta bloqueada tal como la guardó el backend.
+  blocked?: { narration: string; harvestSuggestion?: { sourceName: string }; logEntry: LogEntry }
   // Interacción con un NPC/fauna ya convaleciente o muerto, fuera de combate (docs/19-post-combate-
   // y-recompensas-mision.md pieza 2) — el turno tampoco llega a /turn/narrate aquí, pero a
   // diferencia de `blocked` no es una violación: el frontend abre el panel mecánico (Saquear/
@@ -688,7 +689,7 @@ export interface SaveDetail {
   /// Menú contextual de interacción con NPC SIN resolver todavía (2026-09-06, "Aprender oficio"
   /// deja de depender de una habilidad suelta) — mismo criterio exacto que `pendingQuestOfferInfo`:
   /// tarjeta reconstruida tras F5 en vez de vivir solo en `characterLog`.
-  pendingNpcInteractionOffer: { npcSlug: string; npcName: string; options: string[] } | null
+  pendingNpcInteractionOffer: { npcSlug: string; npcName: string; options: string[]; desdeEncuentro?: boolean } | null
   /// Ataque enemigo pendiente de defensa en el combate 1v1 clásico (bug real 2026-08-28/29,
   /// "recargar mientras el enemigo tiene la iniciativa rompe el turno"): `Save.pendingNpcAttack`
   /// ya persistía bien en el backend, pero nunca viajaba en `GET /saves/:id` — tras F5,
@@ -824,7 +825,8 @@ export async function requestCerrarCombate(id: string): Promise<void> {
 // IA: `escaped` decide si el frontend limpia el aviso de "Combatir" o abre el popup igualmente.
 // `roll` (2026-08-30, bug real: 3 intentos seguidos narraban la misma frase fija sin ningún
 // desglose) — se pinta con RollBadge, igual que cualquier otra tirada del juego.
-export async function requestFlee(id: string): Promise<{ escaped: boolean; text: string; roll: RollInfo }> {
+/// QA-73: `logEntry` es la entrada que guardó el backend (la misma que se ve tras recargar).
+export async function requestFlee(id: string): Promise<{ escaped: boolean; logEntry: LogEntry }> {
   return fetchJson(`${API_URL}/saves/${id}/combat/flee`, { method: 'POST' })
 }
 
@@ -833,7 +835,7 @@ export async function requestFlee(id: string): Promise<{ escaped: boolean; text:
 // defensa): `condicionFisica` viene ya actualizada en la respuesta.
 export async function requestHuirEnCurso(
   id: string,
-): Promise<{ escaped: boolean; text: string; condicionFisica: string; roll: RollInfo }> {
+): Promise<{ escaped: boolean; condicionFisica: string; logEntry: LogEntry }> {
   return fetchJson(`${API_URL}/saves/${id}/combat/huir-en-curso`, { method: 'POST' })
 }
 
@@ -2079,18 +2081,22 @@ export async function getFactionRelations(worldSlug: string, saveId?: string): P
 /// eliges objetivos y esa narración inicia el combate".
 export type ConfirmarCazaResultado =
   | { resuelveSinCombate: true; exito: true; combate: { npcs: NpcInSceneInfo[] }; logEntry: { id: string; text: string; timeLabel: string; createdAt: string; roll?: CazaSigiloRoll }; cazaLimpia?: CazaSigiloRoll }
-  | {
+  | ({
       resuelveSinCombate: false
       exito: false | null
       actionText: string
-      /// Fase 10 (2026-09-29) — caza sigilosa fallida (d100 contra la probabilidad real).
-      cazaLimpia?: CazaSigiloRoll
       /// Cuántos del grupo entran al combate (d6 por especie) + LogEntry de sistema con esas tiradas
       /// y la iniciativa de cada combatiente (combate múltiple).
       tiradasGrupo?: TiradaGrupoInfo[]
-      /// (F9-4: también la caza sigilosa fallida, con `roll.kind` = 'caza-sigilo'.)
-      logEntry?: { id: string; text: string; timeLabel: string; createdAt: string; roll: CombateGrupoLogRoll | CazaSigiloRoll }
-    }
+    } & (
+      | {
+          /// Fase 10 (2026-09-29) — caza sigilosa fallida (d100 contra la probabilidad real). QA-73: el
+          /// backend la guarda siempre y viaja en `logEntry`, con `roll.kind` = 'caza-sigilo'.
+          cazaLimpia: CazaSigiloRoll
+          logEntry: { id: string; text: string; timeLabel: string; createdAt: string; roll: CazaSigiloRoll }
+        }
+      | { cazaLimpia?: undefined; logEntry?: { id: string; text: string; timeLabel: string; createdAt: string; roll: CombateGrupoLogRoll } }
+    ))
 
 /// Cazar desde la tarjeta de encuentro de zona (Fase 2, 2026-09-28,
 /// `plan-mecanicas-por-zona-2026-09-28.md`) — caza EXACTAMENTE el grupo con el que se ha
@@ -2255,7 +2261,7 @@ export interface DynamicModeRecursoResultado {
   segundasTiradas?: SegundaTiradaInfo[]
   items?: InventoryItemInfo[]
   updatedItems?: { id: string; name: string }[]
-  logEntry?: { id: string; text: string; timeLabel: string; createdAt: string; fictionalMinutes: number; roll?: RecoleccionLogRoll } | null
+  logEntry: { id: string; text: string; timeLabel: string; createdAt: string; fictionalMinutes: number; roll?: RecoleccionLogRoll }
 }
 
 export async function interactuarModoDinamicoRecurso(saveId: string, targetSlug: string): Promise<DynamicModeRecursoResultado> {
@@ -2268,7 +2274,10 @@ export async function interactuarModoDinamicoRecurso(saveId: string, targetSlug:
 export type NpcInteractionAccion =
   | { accion: 'ABRIR_APRENDER_OFICIO' }
   | { accion: 'ABRIR_RECLUTAR' }
-  | { accion: 'FORZAR_COMBATE'; npcSlug: string }
+  /// `desdeEncuentro` (P142): el menú salió de la tarjeta del mapa; el combate sale de ese encuentro.
+  | { accion: 'FORZAR_COMBATE'; npcSlug: string; desdeEncuentro?: boolean }
+  /// P142: «Charlar» en el menú abierto desde el mapa abre la escena libre de ese encuentro.
+  | { accion: 'CHARLAR' }
   | { accion: 'MOSTRAR_OFERTA_MISION' }
   | { accion: 'CERRAR' }
   /// CR-12 — «Ayudar» a un malherido: la entrada del registro que lo cuenta.
@@ -2280,6 +2289,11 @@ export type NpcInteractionAccion =
   | { accion: 'SIN_TRABAJO'; texto: string }
   /// CR-32: proponer que se una o que te informe; la entrada lleva la tirada de Carisma.
   | { accion: 'PROPUESTA'; logEntry: LogEntry; unido: boolean }
+
+/// P142: menú fijo del NPC del encuentro del mapa; `null` si no tiene (se abre la escena libre).
+export async function abrirMenuNpc(saveId: string, npcSlug: string): Promise<{ menu: { npcSlug: string; npcName: string; options: string[]; desdeEncuentro: true } | null }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/npc-interaction/${npcSlug}/abrir`, { method: 'POST' })
+}
 
 export async function chooseNpcInteraction(saveId: string, npcSlug: string, opcion: string): Promise<NpcInteractionAccion> {
   return fetchJson(`${API_URL}/saves/${saveId}/npc-interaction/${npcSlug}/elegir`, {

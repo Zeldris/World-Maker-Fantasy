@@ -46,6 +46,26 @@ export interface PresentacionOferta {
   actions: AccionOferta[]
 }
 
+export type MenuNpc = NonNullable<LogEntry['npcInteractionOffer']>
+
+/// Menú fijo de un NPC (2026-09-06): un botón por cada opción real del NPC. P142: también sale en
+/// la tarjeta del mapa, en lugar del encuentro, cuando se abre desde ahí.
+export function presentacionMenuNpc(entryId: string, menu: MenuNpc, onChoose?: (entryId: string, npcSlug: string, opcion: string) => void): PresentacionOferta {
+  return {
+    tone: 'accent2',
+    icon: '🗣️',
+    title: menu.npcName,
+    subtitle: '¿Qué quieres hacer?',
+    error: menu.error,
+    actions: menu.options.map((opcion) => ({
+      label: opcion,
+      tone: opcion === 'Salir' ? 'neutral' : opcion === 'Combatir' ? 'danger' : 'primary',
+      disabled: menu.busy,
+      onClick: () => onChoose?.(entryId, menu.npcSlug, opcion),
+    })),
+  }
+}
+
 export function presentacionOferta(entryId: string, offer: OfertaModoDinamico, h: ManejadoresOferta): PresentacionOferta {
   // Grupos de fauna reales (Fase 1, 2026-09-28) — «Un grupo de N {nombre}» cuando el punto
   // colisionado representa más de un individuo (nunca NPC/RECURSO, que no se agrupan).

@@ -1,6 +1,7 @@
 import { useState, type Dispatch, type SetStateAction } from 'react'
 import { duracionTirada, esperarTirada } from '../lib/duracionTirada'
 import {
+  abrirMenuNpc,
   chooseNpcInteraction,
   getSave,
   ignorarModoDinamico,
@@ -13,7 +14,7 @@ import type { AvisoMisionInfo } from '../lib/api'
 import { applyInventoryDelta, questCompletedLogEntry } from '../lib/gameViewHelpers'
 import type { PanelId } from '../components/NavTabs'
 import type { EnciclopediaIndex } from '../lib/enciclopediaIndex'
-import type { InventoryItemInfo, LogEntry, MetodoObtencion, NpcInSceneInfo, QuestInfo, RecoleccionLogRoll } from '../types'
+import type { InventoryItemInfo, LogEntry, MetodoObtencion, NpcInSceneInfo, QuestInfo } from '../types'
 import type { useActionModalsState } from './useActionModalsState'
 
 // Bloque "modo dinámico"/Interactuar/menú de NPC extraído de GameView.tsx (Fase 12 del plan,
@@ -108,11 +109,24 @@ export function useModoDinamico({
     combateForzado?: boolean,
     zonePointId?: string,
     cantidad?: number,
+    /// P142: ya se pasó por el menú fijo del NPC («Charlar» o «Combatir»); no se vuelve a abrir.
+    trasMenu?: boolean,
   ) {
     setCharacterLog((prev) =>
       prev.map((e) => (e.id === entryId ? { ...e, dynamicModeOffer: { tipo, targetSlug, targetName, quienInicia, combateForzado, zonePointId, cantidad, riesgoCaza: e.dynamicModeOffer?.riesgoCaza, busy: true } } : e)),
     )
     try {
+      // P142: un NPC con menú propio (oficio, trabajo, noticias…) lo enseña primero, en el sitio
+      // de la tarjeta; «Charlar» vuelve aquí con `trasMenu` para abrir la escena libre.
+      if (tipo === 'NPC' && !combateForzado && !trasMenu) {
+        const { menu } = await abrirMenuNpc(saveId!, targetSlug)
+        if (menu) {
+          setCharacterLog((prev) =>
+            prev.map((e) => (e.id === entryId ? { ...e, dynamicModeOffer: e.dynamicModeOffer && { ...e.dynamicModeOffer, busy: false }, npcInteractionOffer: { ...menu, busy: false } } : e)),
+          )
+          return
+        }
+      }
       const turno = await interactuarModoDinamico(saveId!, tipo, targetSlug, targetName, quienInicia, combateForzado, zonePointId, cantidad)
       setCharacterLog((prev) => prev.map((e) => (e.id === entryId ? { ...e, dynamicModeOffer: undefined } : e)))
       setFictionalDate(turno.timeLabel)
@@ -196,20 +210,19 @@ export function useModoDinamico({
       setCharacterLog((prev) => prev.map((e) => (e.id === entryId ? { ...e, dynamicModeOffer: undefined } : e)))
       // Fase 10 (2026-09-29, "todas las tiradas visibles") — el dado de Explorar se anima ANTES de
       // mostrar lo obtenido (misma regla que `HarvestSelectionModal`: sin esto el resultado
-      // spoilearía el dado). Entrada local con `GatheringDiceReveal` (vía `ExtendedRollBadge` en vivo);
-      // el resultado real se aplica cuando el dado aterriza. Al recargar, la tirada vive en
-      // `logEntry.roll` (persistida) — en vivo se quita `tirada` del resultado para no pintar el
-      // mismo dado dos veces.
+      // spoilearía el dado). QA-73: la línea del dado ya lleva el id de la entrada guardada y, cuando el
+      // dado aterriza, se sustituye en su sitio por esa entrada con su tirada completa: queda igual que
+      // tras recargar y el dado no se vuelve a animar (mismo id, ya visto en vivo).
+      const guardada = { ...resultado.logEntry, channel: 'character' as const }
       if (resultado.roll) {
         setCharacterLog((prev) => [
           ...prev,
           {
-            id: `recurso-tirada-${Date.now()}`,
+            id: guardada.id,
             channel: 'character',
             text: `${characterName ?? 'Tu personaje'} lo intenta con ${targetName}…`,
             timeLabel: fictionalDate,
-            isSystemMessage: true,
-            createdAt: new Date().toISOString(),
+            createdAt: guardada.createdAt,
             roll: { kind: 'recoleccion', tirada: resultado.roll },
           },
         ])
@@ -218,29 +231,9 @@ export function useModoDinamico({
       if (resultado.items || resultado.updatedItems) {
         setInventory((prev) => applyInventoryDelta(prev, resultado.items ?? [], [], resultado.updatedItems ?? []))
       }
-      if (resultado.logEntry) {
-        const { roll: persistida, ...resto } = resultado.logEntry
-        const rollVivo: RecoleccionLogRoll | undefined =
-          persistida && resultado.roll ? (persistida.segundas?.length ? { kind: 'recoleccion', segundas: persistida.segundas } : undefined) : persistida
-        setCharacterLog((prev) => [...prev, { ...resto, channel: 'character', ...(rollVivo ? { roll: rollVivo } : {}) }])
-        setFictionalDate(resultado.logEntry.timeLabel)
-      } else {
-        // Tirada fallida — sin LogEntry real que guardar (mismo criterio que "caza limpia
-        // fallida"), pero la narración determinista del intento sigue siendo útil en pantalla.
-        // Con `segundasTiradas` (todas fallaron) se muestran igualmente sus dados.
-        setCharacterLog((prev) => [
-          ...prev,
-          {
-            id: `recurso-fallido-${Date.now()}`,
-            channel: 'character',
-            text: resultado.narration,
-            timeLabel: fictionalDate,
-            isSystemMessage: true,
-            createdAt: new Date().toISOString(),
-            ...(resultado.segundasTiradas?.length ? { roll: { kind: 'recoleccion' as const, segundas: resultado.segundasTiradas } } : {}),
-          },
-        ])
-      }
+      // El backend guarda siempre el intento, también el fallido (`registrarFallo`).
+      setCharacterLog((prev) => (prev.some((e) => e.id === guardada.id) ? prev.map((e) => (e.id === guardada.id ? guardada : e)) : [...prev, guardada]))
+      setFictionalDate(resultado.logEntry.timeLabel)
     } catch (err) {
       // El backend explica el motivo real del rechazo (nivel de oficio insuficiente, recurso
       // agotado...) — mostrarlo tal cual (2026-09-28: antes un genérico "inténtalo de nuevo" que
@@ -267,8 +260,20 @@ export function useModoDinamico({
     )
     try {
       const resultado = await chooseNpcInteraction(saveId!, npcSlug, opcion)
-      setCharacterLog((prev) => prev.map((e) => (e.id === entryId ? { ...e, npcInteractionOffer: undefined } : e)))
-      if (resultado.accion === 'ABRIR_APRENDER_OFICIO') {
+      const entrada = characterLog.find((e) => e.id === entryId)
+      const encuentro = entrada?.npcInteractionOffer?.desdeEncuentro ? entrada.dynamicModeOffer : undefined
+      // P142: desde el mapa, el encuentro sigue vivo solo para «Charlar»/«Combatir»; el resto lo resuelve.
+      const sigueElEncuentro = resultado.accion === 'CHARLAR' || (resultado.accion === 'FORZAR_COMBATE' && resultado.desdeEncuentro)
+      setCharacterLog((prev) =>
+        prev.map((e) => (e.id === entryId ? { ...e, npcInteractionOffer: undefined, ...(encuentro && !sigueElEncuentro ? { dynamicModeOffer: undefined } : {}) } : e)),
+      )
+      if (resultado.accion === 'CHARLAR') {
+        if (encuentro && encuentro.tipo === 'NPC') {
+          void handleInteractuarModoDinamico(entryId, 'NPC', encuentro.targetSlug, encuentro.targetName, encuentro.quienInicia, false, encuentro.zonePointId, encuentro.cantidad, true)
+        }
+      } else if (resultado.accion === 'FORZAR_COMBATE' && resultado.desdeEncuentro && encuentro && encuentro.tipo === 'NPC') {
+        void handleInteractuarModoDinamico(entryId, 'NPC', encuentro.targetSlug, encuentro.targetName, 'npc', true, encuentro.zonePointId, encuentro.cantidad, true)
+      } else if (resultado.accion === 'ABRIR_APRENDER_OFICIO') {
         setAprenderOficioModalOpen(true)
       } else if (resultado.accion === 'ABRIR_RECLUTAR') {
         setActivePanel('companeros')

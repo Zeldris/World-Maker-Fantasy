@@ -297,6 +297,49 @@ describe('POST /saves/:id/zona/mover', () => {
     expect(logEntryCreado).not.toBeNull();
   });
 
+  // P116 (QA-27, decisión de la usuaria 2026-10-13): junto a una entrada, la fauna hostil no corta el
+  // paso ni persigue. La zona de prueba no tiene coordenadas: su salida es la puerta de abajo (400,550).
+  describe('P116 — radio seguro de las entradas', () => {
+    let otraId: string;
+    let linkId: string;
+    beforeAll(async () => {
+      const otra = await prisma.location.create({ data: { worldId, slug: 'test-zona-mover-vecina', name: 'Vecina de prueba', region: 'Zona de Pruebas', kind: 'hito', description: 'x', aliases: [] } });
+      otraId = otra.id;
+      linkId = (await prisma.locationLink.create({ data: { fromId: locationId, toId: otraId, minutosBase: 10, terreno: 'llano' } })).id;
+    });
+    afterAll(async () => {
+      await prisma.locationLink.delete({ where: { id: linkId } });
+      await prisma.location.delete({ where: { id: otraId } });
+    });
+
+    it('un agresivo junto a la entrada no corta el paso', async () => {
+      await prisma.save.update({ where: { id: saveId }, data: { zonaPosX: 325, zonaPosY: 525 } });
+      await prisma.zonePoint.create({
+        data: { locationId, saveId, x: 425, y: 525, tipo: 'FAUNA', targetSlug: 'test-mover-agresivo', cantidad: 1, activo: true, ruta: [{ x: 425, y: 525 }] },
+      });
+      const app = await buildApp();
+      const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 375, y: 525 } } });
+      const body = JSON.parse(res.body);
+      expect(body.colision).toBeNull();
+      expect(body.dynamicModeOffer).toBeNull();
+    });
+
+    it('con la jugadora junto a la entrada un agresivo cercano no la persigue', async () => {
+      // La jugadora pasa a la celda (10,10), a 2 de la entrada (8,11); el agresivo, en (12,10), queda a
+      // 2 de ella (rango de persecución) y a 4 de la entrada: perseguirla lo metería en el radio.
+      await prisma.save.update({ where: { id: saveId }, data: { zonaPosX: 575, zonaPosY: 525 } });
+      const punto = await prisma.zonePoint.create({
+        data: { locationId, saveId, x: 625, y: 525, tipo: 'FAUNA', targetSlug: 'test-mover-agresivo', cantidad: 1, activo: true },
+      });
+      const app = await buildApp();
+      await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 525, y: 525 } } });
+      const despues = await prisma.zonePoint.findUniqueOrThrow({ where: { id: punto.id } });
+      const col = Math.floor(despues.x / 50);
+      const row = Math.floor(despues.y / 50);
+      expect(Math.max(Math.abs(col - 8), Math.abs(row - 11))).toBeGreaterThan(3);
+    });
+  });
+
   // QA-27 P82: tras reaparecer (suceso RENACER reciente), un AGRESIVO en la casilla no corta el paso.
   it('gracia tras reaparecer: un AGRESIVO en la casilla no corta el paso durante la gracia', async () => {
     await prisma.zonePoint.create({
@@ -510,6 +553,59 @@ describe('POST /saves/:id/zona/mover', () => {
     // Una colisión (ahora también la adyacente) detiene el avance — sin camino pendiente.
     expect(body.jugador).toEqual({ x: 75, y: 25 });
     expect(body.caminoRestante).toEqual([]);
+  });
+
+  // P143 (decisión de la usuaria, 2026-10-13): en un asentamiento, un NPC no hostil no corta el paso
+  // al caminar; se le habla yendo hasta él o pulsando la propia casilla.
+  describe('P143 — NPC no hostiles en un asentamiento', () => {
+    const conAsentamiento = async (prueba: () => Promise<void>) => {
+      await prisma.location.update({ where: { id: locationId }, data: { kind: 'asentamiento' } });
+      await prisma.zonePoint.create({
+        data: { locationId, saveId, x: 125, y: 25, tipo: 'NPC', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta: [{ x: 125, y: 25 }] },
+      });
+      try {
+        await prueba();
+      } finally {
+        await prisma.location.update({ where: { id: locationId }, data: { kind: 'hito' } });
+      }
+    };
+
+    it('pasar a su lado camino de otro sitio: no corta el paso', async () => {
+      await conAsentamiento(async () => {
+        const app = await buildApp();
+        const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 375, y: 25 } } });
+        const body = JSON.parse(res.body);
+        expect(body.colision).toBeNull();
+        expect(body.dynamicModeOffer).toBeNull();
+        expect(body.caminoRestante.length).toBeGreaterThan(0);
+      });
+    });
+
+    it('ir hasta él: sí se ofrece el encuentro', async () => {
+      await conAsentamiento(async () => {
+        const app = await buildApp();
+        const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 125, y: 25 } } });
+        expect(JSON.parse(res.body).dynamicModeOffer).toMatchObject({ tipo: 'NPC', targetSlug: 'test-mover-pacifico' });
+      });
+    });
+
+    it('pulsar la propia casilla a su lado: sí se ofrece el encuentro', async () => {
+      await conAsentamiento(async () => {
+        await prisma.save.update({ where: { id: saveId }, data: { zonaPosX: 75, zonaPosY: 25 } });
+        const app = await buildApp();
+        const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 75, y: 25 } } });
+        expect(JSON.parse(res.body).dynamicModeOffer).toMatchObject({ tipo: 'NPC', targetSlug: 'test-mover-pacifico' });
+      });
+    });
+
+    it('fuera de un asentamiento sigue cortando el paso', async () => {
+      await prisma.zonePoint.create({
+        data: { locationId, saveId, x: 125, y: 25, tipo: 'NPC', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta: [{ x: 125, y: 25 }] },
+      });
+      const app = await buildApp();
+      const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 375, y: 25 } } });
+      expect(JSON.parse(res.body).dynamicModeOffer).toMatchObject({ tipo: 'NPC', targetSlug: 'test-mover-pacifico' });
+    });
   });
 
   // RECURSO (2026-09-20, hallazgo real jugando en vivo — Álvaro: "mira también si funciona lo de

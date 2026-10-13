@@ -239,6 +239,13 @@ son de relleno.*
   ilustración y fijar en el catálogo dónde va cada cosa (`zonePoints` de `worldCatalog.ts`, la
   puerta de `puertasInterior.ts` y la posición de las salidas), con una captura por zona para
   comprobarlo. Pendiente, no empezado.
+- **ZON-88 · El aviso de una salida dice cuánto peligro hay al otro lado** (usuaria, 2026-10-13, P116
+  de `QA-27`): como X4 enseña la seguridad de un sector antes de saltar, el aviso de la salida dice el
+  peligro del destino (p. ej. «Peligrosa · fauna de nivel 5»), con lo que la jugadora sabe de esa
+  zona. El radio seguro alrededor de las entradas va en la tanda de arreglos. Pendiente, no empezado.
+- **ZON-89 · Fauna y flora repartidas en fichas pequeñas** (usuaria, 2026-10-13, P109 de `QA-27`):
+  en vez de montones de ×20 en un punto, la población de cada especie o recurso se reparte en varias
+  fichas por la zona, para que se distribuya mejor por el mapa. Pendiente, no empezado.
 
 ## 11. Cámara (`ZON-C`)
 

@@ -28,6 +28,7 @@ import { detectsSearchIntent } from '../services/discovery.js';
 import { normalizeText } from '../services/travel.js';
 import { detectsOwnedItemQuote } from '../services/itemReference.js';
 import { prisma } from '../lib/prisma.js';
+import { toFrontendLogEntry } from './saves/shared.js';
 import { env } from '../config/env.js';
 import { peekCachedClassify, setCachedClassify, consumeCachedClassify } from '../lib/classifyCache.js';
 import { normalizeSecondaryAttributes } from '../services/secondaryAttributes.js';
@@ -617,7 +618,7 @@ export async function turnRoutes(app: FastifyInstance) {
       });
       // isSystemMessage (ver comentario completo en schema.prisma) — `narrationText` viene de un
       // guard determinista (frase fija o de un pool pequeño), nunca generado por el LLM.
-      await prisma.logEntry.create({
+      const respuesta = await prisma.logEntry.create({
         data: { saveId, channel: 'CHARACTER', text: narrationText, isPlayerAction: false, timeLabel: blockedTimeLabel, fictionalMinutes: blockedFictionalMinutes, isSystemMessage: true },
       });
       // `discoverName` (bug real jugando en vivo, 2026-09-03, "fauna interactuada no se
@@ -633,7 +634,8 @@ export async function turnRoutes(app: FastifyInstance) {
       // que abre el modal de movimiento de zona (la recolección se hace desde el mapa) — efímero a propósito, igual
       // que `questOffer`/`dynamicModeOffer` (nunca se persiste en `LogEntry`, solo viaja en la
       // respuesta HTTP de este turno).
-      return { blocked: { narration: narrationText, harvestSuggestion } };
+      // QA-73: la entrada guardada, para que el diario en vivo sea la misma que tras recargar.
+      return { blocked: { narration: narrationText, harvestSuggestion, logEntry: toFrontendLogEntry(respuesta) } };
     }
 
     // Anacronismo en el propio texto del jugador ("me monto en mi nave espacial") — el chequeo

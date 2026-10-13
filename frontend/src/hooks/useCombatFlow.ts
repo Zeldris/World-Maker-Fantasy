@@ -423,11 +423,9 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     if (!saveId || combatBusy) return
     setCombatBusy(true)
     try {
-      const { escaped, text, condicionFisica: newCondicion, roll } = await requestHuirEnCurso(saveId)
-      setCharacterLog((prev) => [
-        ...prev,
-        { id: `huir-${Date.now()}`, channel: 'character', text, timeLabel: fictionalDate, createdAt: new Date().toISOString(), combate: true, roll },
-      ])
+      const { escaped, condicionFisica: newCondicion, logEntry } = await requestHuirEnCurso(saveId)
+      // QA-73: la entrada que guardó el backend, la misma que se ve tras recargar.
+      setCharacterLog((prev) => [...prev, { ...logEntry, channel: 'character' }])
       setCondicionFisica(newCondicion as CondicionFisica)
       if (escaped) {
         setCombatOpen(false)
@@ -950,11 +948,9 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     if (!saveId || fleeingPreCombat) return
     setFleeingPreCombat(true)
     try {
-      const { escaped, text, roll } = await requestFlee(saveId)
-      setCharacterLog((prev) => [
-        ...prev,
-        { id: `flee-${Date.now()}`, channel: 'character', text, timeLabel: fictionalDate, createdAt: new Date().toISOString(), roll },
-      ])
+      const { escaped, logEntry } = await requestFlee(saveId)
+      // QA-73: la entrada que guardó el backend, la misma que se ve tras recargar.
+      setCharacterLog((prev) => [...prev, { ...logEntry, channel: 'character' }])
       if (escaped) {
         setCombateIniciado(null)
       } else {

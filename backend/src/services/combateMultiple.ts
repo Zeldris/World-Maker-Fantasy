@@ -1,6 +1,7 @@
 import type { AbilityEffect, CondicionFisica } from '@prisma/client';
 import type { Attribute, AttributeBlock } from './dice.js';
 import {
+  conGolpeDeGracia,
   resolveExchange,
   resolveIndependentExchange,
   exchangeContextBlock,
@@ -703,6 +704,8 @@ export function resolverIntercambioCompleto(
   /// ESE turno concreto lleve `ATURDIMIENTO` explícito (mismo criterio de simplificación ya usado
   /// para EXPULSAR/PROVOCACION: la trampa YA fue activada en otro turno, aquí solo se consume).
   defensorTieneTrampaActiva: boolean = false,
+  /// P129 (QA-27): el atacante golpea a quien ya pelea con otro rival — tira con ventaja.
+  ventajaAtacante: boolean = false,
 ): ResultadoIntercambioCompleto {
   const dificultadAtacanteAjustada = dualWieldAdjustedDifficulty(dificultadAtacante, dualWieldBonus);
   const atacanteExch: ExchangeParticipant = {
@@ -712,6 +715,7 @@ export function resolverIntercambioCompleto(
     difficulty: dificultadAtacanteAjustada,
     condicionFisica: atacante.condicionFisica,
     rol: atacanteRol,
+    ...(ventajaAtacante ? { rollMode: 'ventaja' as const, racialAdvantageReason: 'Ataca mientras peleas con otro rival: ventaja' } : {}),
   };
   const defensorExch: ExchangeParticipant = {
     attributes: defensor.attributes,
@@ -873,7 +877,8 @@ export function resolverIntercambioCompleto(
     exchangeBlock = independentExchangeContextBlock(independent, atacante.nombre, defensor.nombre);
     display = { atacanteEsJugador, atacante: independent.atacante, defensor: independent.defensor, resultado: 'independiente', margen: 0 };
   } else {
-    const exchange = resolveExchange(atacanteExch, defensorExch);
+    // P96: la jugadora remata a un convaleciente sin que pueda defenderse.
+    const exchange = atacanteEsJugador ? conGolpeDeGracia(resolveExchange(atacanteExch, defensorExch), defensor.condicionFisica) : resolveExchange(atacanteExch, defensorExch);
     const defensorPuedeContragolpear = defensorHabilidad.effects.includes('ATAQUE');
     // `defensorGanaPorMargen` (2026-09-15) — margen decisivo A FAVOR del defensor, puro, SIN exigir
     // `ATAQUE` (bug real cazado sembrando Sacrificio del Valiente: ninguna de las 4 fichas reales
@@ -902,7 +907,7 @@ export function resolverIntercambioCompleto(
     // desenlace) se redirige a un tercero en vez de simplemente fallar — el caller (que sí conoce
     // al resto de combatientes) resuelve el golpe redirigido con las propias `atacanteHabilidad`.
     desviarTriggered = exchange.resultado === 'defensor_contragolpea' && defensorHabilidad.effects.includes('DESVIAR');
-    display = { atacanteEsJugador, atacante: exchange.atacante, defensor: exchange.defensor, resultado: exchange.resultado, margen: exchange.margen };
+    display = { atacanteEsJugador, atacante: exchange.atacante, defensor: exchange.defensor, resultado: exchange.resultado, margen: exchange.margen, ...(exchange.golpeDeGracia ? { golpeDeGracia: true as const } : {}) };
   }
 
   // AUMENTO/DEBILIDAD real (Fase 3 § 3a, 2026-08-27) — mismo gate que Fase 2 (margen decisivo,

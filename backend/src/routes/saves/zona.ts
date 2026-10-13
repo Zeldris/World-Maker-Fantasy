@@ -30,13 +30,13 @@ import { ZONAS_DE_INICIO,
 import { nombreEnFrase, nombreOcultoPorRaza } from '../../services/dynamicMode.js';
 import { parseAgenda, regionControlActual, type RegionControlState } from '../../services/worldAgenda.js';
 import { REGION_OWNING_FACTIONS, effectiveTemperamento } from '../../services/reputation.js';
-import { LIENZO_ANCHO, LIENZO_ALTO, posicionAleatoriaEnLienzo, celdaLibreEnEspiral, claveCelda, celdaDePixel, pixelDeCelda, calcularCamino, celdaAdyacenteOMisma, mismaCelda, posicionesDeSalidas, tirarQuienIniciaEncuentro, type IniciativaEncuentroLogRoll } from '../../services/zonaPosicion.js';
+import { LIENZO_ANCHO, LIENZO_ALTO, posicionAleatoriaEnLienzo, celdaLibreEnEspiral, claveCelda, celdaDePixel, pixelDeCelda, calcularCamino, celdaAdyacenteOMisma, mismaCelda, tirarQuienIniciaEncuentro, type IniciativaEncuentroLogRoll } from '../../services/zonaPosicion.js';
 import { rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 import { createInFlightClaimSet } from '../../lib/inFlightClaimSet.js';
 import { iniciarCaza, type CazaTarget } from '../../services/caza.js';
 import { riesgoDeCaza, type RiesgoCazaInfo } from '../../services/cazaRiesgo.js';
 import type { AttributeBlock } from '../../services/dice.js';
-import { PUERTA_INTERIOR, enFila, posicionPuertaAInterior } from '../../services/puertasInterior.js';
+import { posicionesDeSalidasDeZona, celdasDeEntrada, enRadioSeguro } from '../../services/entradasZona.js';
 import { effectiveAttributes } from '../../services/equipment.js';
 import { ambitoFacciones } from '../../services/mundoPartida.js';
 import { etiquetasActivas } from '../../services/cronista/etiquetas.js';
@@ -192,13 +192,13 @@ async function salidasDeRegionPara(
 
   const celdaJugador = jugador ? celdaDePixel(jugador) : null;
   // Rumbo real, no sector cardinal (2026-09-28, ver `posicionesDeSalidas`, zonaPosicion.ts): antes
-  // varios destinos del mismo octante quedaban apilados en el mismo píxel.
+  // varios destinos del mismo octante quedaban apilados en el mismo píxel. Puertas y rumbos, en
+  // `posicionesDeSalidasDeZona` (lo comparte el radio seguro de las entradas, P116).
   const conCoordenadas = esInterior ? [] : conectadas.filter((d): d is typeof d & { x: number; y: number } => d.x != null && d.y != null);
-  const posiciones = esInterior ? new Map<string, { x: number; y: number }>() : posicionesDeSalidas({ x: location.x!, y: location.y! }, conCoordenadas);
+  const posiciones = await posicionesDeSalidasDeZona(prisma, saveId, location, conectadas);
   const salidas: ZonaSalidaInfo[] = [];
-  const basePuerta = esInterior ? PUERTA_INTERIOR : interiores.length > 0 ? await posicionPuertaAInterior(prisma, saveId, location.id) : null;
-  interiores.forEach((destino, indice) => {
-    const punto = enFila(basePuerta!, interiores.length, indice);
+  interiores.forEach((destino) => {
+    const punto = posiciones.get(destino.id)!;
     const visitada = visitadasIds.has(destino.id);
     salidas.push({
       locationId: destino.id,
@@ -743,6 +743,8 @@ export async function zonaRoutes(app: FastifyInstance) {
     ultimoEncuentroSlug: string | null,
     // Nivel del jugador (`Save.level`) — solo para `riesgoCaza` de la oferta FAUNA (F9-1).
     nivelJugador: number,
+    // P143: celda a la que se camina; `null` = pulsar la propia casilla (petición explícita).
+    celdaDestino: { col: number; row: number } | null = null,
   ): Promise<{
     /// `true` si el objetivo de `ultimoEncuentroSlug` sigue en el radio de `celda` — el caller solo
     /// limpia `Save.zonaUltimoEncuentro` cuando esto es `false` (el jugador ya salió de su radio).
@@ -848,7 +850,17 @@ export async function zonaRoutes(app: FastifyInstance) {
       fictionalMinutes,
     });
     // Mismo filtro de lugar que el mapa (P24/P51): quien no se pinta tampoco te corta el paso.
-    const locationSlugColision = (await tx.location.findUnique({ where: { id: locationId }, select: { slug: true } }))?.slug ?? null;
+    const locationColision = await tx.location.findUnique({ where: { id: locationId }, select: { slug: true, kind: true } });
+    const locationSlugColision = locationColision?.slug ?? null;
+    // P143 (decisión de la usuaria, 2026-10-13): en un asentamiento, quien no te es hostil no te
+    // corta el paso al caminar; se le habla pulsándolo (ir hasta él o pulsar tu casilla a su lado).
+    // Como en los pueblos de Medieval Dynasty o Bellwright: la gente está, pero no te para.
+    const enAsentamiento = ['asentamiento', 'interior'].includes(locationColision?.kind ?? '');
+    const noCortaElPaso = (tipo: string, temperamento: string, celdaNpc: { col: number; row: number }) =>
+      enAsentamiento && !!celdaDestino && tipo === 'NPC' && !esTemperamentoHostil(temperamento) && !celdaAdyacenteOMisma(celdaDestino, celdaNpc);
+    // P116 (QA-27): junto a una entrada de la zona (`RADIO_SEGURO_ENTRADA`), la fauna hostil no corta el paso.
+    const enEntradaSegura = enRadioSeguro(celda, await celdasDeEntrada(tx, saveId, locationId));
+    const faunaHostilEnEntrada = (tipo: string, temperamento: string) => enEntradaSegura && tipo === 'FAUNA' && esTemperamentoHostil(temperamento);
     const fueraDeSuSitioColision = (n: { kind: string; homeLocationSlug: string | null }) => n.kind !== 'PRINCIPAL' && !!n.homeLocationSlug && n.homeLocationSlug !== locationSlugColision;
     const dinamicosCandidatosColision = npcsInSceneColision.filter((n) => n.condicionFisica !== 'MUERTO' && !zonePointSlugsColision.has(n.slug) && !fueraDeSuSitioColision(n));
     const dinamicosStatesColision = dinamicosCandidatosColision.length
@@ -924,6 +936,7 @@ export async function zonaRoutes(app: FastifyInstance) {
       if (celdaAdyacenteOMisma(celda, celdaPunto)) {
         const temperamento = npc ? conRencor(effectiveTemperamento(npc.temperamento, npc.faction, factionsStatus), rencoresColision.has(npc.id)) : 'CAUTELOSO';
         if (esTemperamentoHostil(temperamento) && (await enGracia())) continue;
+        if (noCortaElPaso(punto.tipo, temperamento, celdaPunto) || faunaHostilEnEntrada(punto.tipo, temperamento)) continue;
         // Un AGRESIVO/ENEMIGO nunca se silencia: si sigue encima del jugador, vuelve a cortarle el paso.
         if (punto.targetSlug === ultimoEncuentroSlug && !esTemperamentoHostil(temperamento)) {
           ultimoEncuentroSigueCerca = true;
@@ -945,6 +958,7 @@ export async function zonaRoutes(app: FastifyInstance) {
         if (celdaAdyacenteOMisma(celda, celdaDinamico)) {
           const temperamento = conRencor(effectiveTemperamento(dinamico.temperamento, dinamico.faction, factionsStatus), rencoresColision.has(dinamico.id));
           if (esTemperamentoHostil(temperamento) && (await enGracia())) continue;
+          if (noCortaElPaso(dinamico.tipo, temperamento, celdaDinamico) || faunaHostilEnEntrada(dinamico.tipo, temperamento)) continue;
           if (dinamico.targetSlug === ultimoEncuentroSlug && !esTemperamentoHostil(temperamento)) {
             ultimoEncuentroSigueCerca = true;
             continue;
@@ -1292,6 +1306,7 @@ export async function zonaRoutes(app: FastifyInstance) {
         destrezaJugador,
         ultimoEncuentroSlug,
         save.level,
+        celdaDestino,
       );
       // Un encuentro nuevo pasa a ser el "último"; si no, se olvida el anterior en cuanto este paso
       // deja al jugador fuera de su radio (volver a acercarse lo vuelve a ofrecer).

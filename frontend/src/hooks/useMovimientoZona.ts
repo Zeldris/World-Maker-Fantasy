@@ -24,6 +24,9 @@ export interface OpcionesMovimientoZona {
 }
 
 const dormir = (ms: number) => new Promise((r) => setTimeout(r, ms))
+/// Celdas de 50 px (`celdaDePixel`, backend `zonaPosicion.ts`).
+const mismaCelda = (a: { x: number; y: number }, b: { x: number; y: number }) =>
+  Math.floor(a.x / 50) === Math.floor(b.x / 50) && Math.floor(a.y / 50) === Math.floor(b.y / 50)
 
 export function useMovimientoZona({ saveId, setData, bloqueoMovimiento = null, onEncuentroZona, onClose, onOfertaDescartada, onHoraActualizada, msPorPaso = MS_POR_VELOCIDAD.normal, onEncuentroEnMapa }: OpcionesMovimientoZona) {
   // Sistema de movimiento por cuadrícula (2026-09-08) — mensaje simple de colisión/aviso ("por
@@ -40,6 +43,12 @@ export function useMovimientoZona({ saveId, setData, bloqueoMovimiento = null, o
   // donde está); el destino se guarda para reanudar. ZON-36: duración del paso del trayecto en curso.
   const pararRef = useRef(false)
   const [destinoPendiente, setDestinoPendiente] = useState<{ x: number; y: number } | null>(null)
+  // P125/P133: lo que se hace al llegar (abrir Desollar, el aviso de una salida…) sigue con el
+  // destino: un encuentro por el camino y «Seguir mi camino» ya no lo pierden.
+  const alLlegarRef = useRef<((fresca: ZonaResponse) => void) | null>(null)
+  // P135: el encuentro salió ya en la casilla de destino; «Seguir mi camino» no vuelve a pedirla
+  // (sería pulsar la propia casilla, que ofrece otra vez lo que hay al lado), solo termina el viaje.
+  const llegoConEncuentroRef = useRef(false)
   const [msPasoActual, setMsPasoActual] = useState(msPorPaso)
   // ZON-34: lo que queda de la ruta en curso (se va consumiendo a cada paso).
   const [caminoRestante, setCaminoRestante] = useState<{ x: number; y: number }[]>([])
@@ -53,11 +62,13 @@ export function useMovimientoZona({ saveId, setData, bloqueoMovimiento = null, o
   // real jugando en vivo con Playwright): `salidas[].alcanzable` solo se calculaba al abrir el
   // panel — tras caminar hasta una salida, pulsarla seguía diciendo "Tienes que acercarte más"
   // hasta cerrar y reabrir el modal.
-  async function moverA(destino: { x: number; y: number }, opciones: { rapido?: boolean } = {}): Promise<ZonaResponse | null> {
+  async function moverA(destino: { x: number; y: number }, opciones: { rapido?: boolean; alLlegar?: (fresca: ZonaResponse) => void } = {}): Promise<ZonaResponse | null> {
     if (bloqueoMovimiento) {
       setMensajeMovimiento(bloqueoMovimiento)
       return null
     }
+    alLlegarRef.current = opciones.alLlegar ?? null
+    llegoConEncuentroRef.current = false
     const miToken = ++movimientoTokenRef.current
     // ZON-36: doble clic = este trayecto, rápido (nunca más lento que lo elegido).
     const ms = opciones.rapido ? Math.min(msPorPaso, MS_POR_VELOCIDAD.rapida) : msPorPaso
@@ -146,6 +157,7 @@ export function useMovimientoZona({ saveId, setData, bloqueoMovimiento = null, o
             if (onEncuentroEnMapa) {
               onEncuentroEnMapa({ entryId: resultado.logEntry.id, zonePointId: resultado.dynamicModeOffer.zonePointId })
               interrumpido = true
+              llegoConEncuentroRef.current = mismaCelda(resultado.jugador, destino)
             } else onClose?.()
           } else if (resultado.colision.temperamento === 'AGRESIVO' && resultado.logEntry) {
             // Bug real jugando en vivo (2026-09-15): un AGRESIVO en la misma celda cerraba el modal
@@ -181,6 +193,7 @@ export function useMovimientoZona({ saveId, setData, bloqueoMovimiento = null, o
           if (onEncuentroEnMapa) {
             onEncuentroEnMapa({ entryId: resultado.logEntry.id, zonePointId: resultado.dynamicModeOffer.zonePointId })
             interrumpido = true
+            llegoConEncuentroRef.current = mismaCelda(resultado.jugador, destino)
           } else onClose?.()
           sigue = false
         } else if (resultado.caminoRestante.length === 0) {
@@ -210,12 +223,22 @@ export function useMovimientoZona({ saveId, setData, bloqueoMovimiento = null, o
         else if (!interrumpido) {
           setDestinoPendiente(null)
           setCaminoRestante([])
+          if (!llegado) alLlegarRef.current = null
         }
       }
     }
     if (!llegado || movimientoTokenRef.current !== miToken) return null
+    return terminarViaje(miToken)
+  }
+
+  /// Llegada: zona recién recargada y, si la hay, la acción que esperaba al destino.
+  async function terminarViaje(miToken: number): Promise<ZonaResponse | null> {
+    const alLlegar = alLlegarRef.current
+    alLlegarRef.current = null
     const fresca = await getZona(saveId).catch(() => null)
-    if (fresca && movimientoTokenRef.current === miToken) setData(fresca)
+    if (!fresca || movimientoTokenRef.current !== miToken) return null
+    setData(fresca)
+    alLlegar?.(fresca)
     return fresca
   }
 
@@ -224,11 +247,20 @@ export function useMovimientoZona({ saveId, setData, bloqueoMovimiento = null, o
     if (movimientoEnCurso) pararRef.current = true
   }
   function reanudar() {
-    if (!movimientoEnCurso && destinoPendiente) void moverA(destinoPendiente)
+    if (movimientoEnCurso || !destinoPendiente) return
+    if (llegoConEncuentroRef.current) {
+      llegoConEncuentroRef.current = false
+      setDestinoPendiente(null)
+      setCaminoRestante([])
+      void terminarViaje(movimientoTokenRef.current)
+      return
+    }
+    void moverA(destinoPendiente, { alLlegar: alLlegarRef.current ?? undefined })
   }
   /// Clic derecho: para y olvida el destino.
   function cancelar() {
     pararRef.current = true
+    alLlegarRef.current = null
     setDestinoPendiente(null)
     setCaminoRestante([])
   }

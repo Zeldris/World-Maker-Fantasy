@@ -113,6 +113,7 @@ export async function iniciarCombatEncounter(
   jugable: boolean = true,
 ): Promise<{ encounterId: string; iniciativa: IniciativaParticipanteInfo[]; ordenCapitan: OrdenCapitan | null }> {
   const encounter = await tx.combatEncounter.create({ data: { saveId, jugable } });
+  const condicionJugadora = (await tx.save.findUnique({ where: { id: saveId }, select: { condicionFisica: true } }))?.condicionFisica ?? 'ILESO';
   // `Promise.all` preserva el orden del array de entrada — `creados[i]` corresponde siempre a
   // `combatientes[i]`, así se puede emparejar destreza/inteligencia (datos crudos que el caller
   // ya trae) con el `CombatParticipant.id` real recién creado sin buscar nada por índice suelto.
@@ -127,6 +128,7 @@ export async function iniciarCombatEncounter(
           npcScope: c.npcScope ?? '',
           companionId: c.companionId,
           condicionFisicaGrupo: c.esGrupo ? 'ILESO' : undefined,
+          ...(c.tipo === 'JUGADOR' ? { condicionInicioRonda: condicionJugadora } : {}),
         },
       }),
     ),
@@ -221,6 +223,8 @@ interface ParticipantRef {
   npcScope: string;
   companionId: string | null;
   condicionFisicaGrupo: CondicionFisica | null;
+  /// P129 (QA-27): condición de la jugadora al empezar la ronda (ver schema.prisma).
+  condicionInicioRonda?: CondicionFisica | null;
   /// Objetivo individual real (2026-08-26) — ver `dueloYaResueltoPorElOtro`/`calcularEnganchesRonda`.
   objetivoActualId: string | null;
   /// CONTROL real (Fase 3 § 3a, 2026-08-27) — ver comentario de la columna en schema.prisma.
@@ -792,6 +796,8 @@ interface EjecutarIntercambioParams extends TurnoAutonomoBaseParams {
   /// completa..." al bloque que ve el Narrador, mismo texto que ya usa el 1v1 clásico
   /// (turnResolution.ts). `undefined`/`false` en cualquier intercambio normal.
   canalizacionCompletada?: boolean;
+  /// P129 (QA-27): ataque de más contra la jugadora (no es su duelo) — tira con ventaja.
+  ventajaAtacante?: boolean;
 }
 
 /// Núcleo compartido por `resolverTurnoAutonomo` (atacante NPC/COMPANION) y `resolverTurnoJugador`
@@ -809,7 +815,7 @@ interface EjecutarIntercambioParams extends TurnoAutonomoBaseParams {
 /// `narrarFn`, que corre fuera de cualquier transacción — mismo criterio que ya usa
 /// `narrateAndPersistTurn` para `appendSessionFacts`/`captureLiveTeacherExample`.
 async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): Promise<TurnoAutonomoResultado> {
-  const { prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque, atacanteRol, dualWieldBonus, defensor, weaponNamesPorDefecto, narrarFn, canalizacionCompletada } = params;
+  const { prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque, atacanteRol, dualWieldBonus, defensor, weaponNamesPorDefecto, narrarFn, canalizacionCompletada, ventajaAtacante = false } = params;
 
   const actualCanalizando = parsePendingCanalizacionMultiple(actual.canalizando);
   // CANALIZAR real en combate múltiple (2026-09-14) — CASO EMPEZAR: el atacante usa una habilidad
@@ -862,7 +868,11 @@ async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): P
     dualWieldBonus,
     actual.tipo === 'JUGADOR',
     defensor.areaTrampaPorRondas != null && defensor.areaTrampaPorRondas > 0,
+    ventajaAtacante,
   );
+  // P129: en una ronda que la jugadora empezó Ilesa, nada la deja peor que Convaleciente.
+  if (defensor.tipo === 'JUGADOR') resultado.nuevaCondicionDefensor = topeDeRondaJugadora(defensor.condicionInicioRonda ?? null, resultado.nuevaCondicionDefensor);
+  if (actual.tipo === 'JUGADOR') resultado.nuevaCondicionAtacante = topeDeRondaJugadora(actual.condicionInicioRonda ?? null, resultado.nuevaCondicionAtacante);
 
   const nuevaEnergiaAtacante = nextEnergia({
     current: datosAtacante.energia,
@@ -1416,7 +1426,8 @@ async function ejecutarGolpeGratisYAvanzar(params: TurnoAutonomoBaseParams & { d
     });
   }
 
-  const nuevaCondicionDefensor = nextCondicionForAttack(habilidadAtaque.effects, datosDefensor.condicionFisica);
+  const nuevaCondicionDefensorCruda = nextCondicionForAttack(habilidadAtaque.effects, datosDefensor.condicionFisica);
+  const nuevaCondicionDefensor = defensor.tipo === 'JUGADOR' ? topeDeRondaJugadora(defensor.condicionInicioRonda ?? null, nuevaCondicionDefensorCruda) : nuevaCondicionDefensorCruda;
   const nuevaEnergiaAtacante = nextEnergia({
     current: datosAtacante.energia,
     max: energiaMaxFor(datosAtacante.attributes.constitucion),
@@ -1850,7 +1861,45 @@ export async function resolverTurnoAutonomo({
       atacanteRol: habilidadAtaque.rol, dualWieldBonus: false, defensor, weaponNamesPorDefecto, narrarFn,
     });
   }
+  // P129 (QA-27, decisión de la usuaria 2026-10-13): contra la jugadora no hay golpes gratis. Quien
+  // la ataca sin ser su duelo tira contra su defensa con ventaja (el flanqueo de D&D 5e / BG3), y
+  // solo los 2 primeros por iniciativa llegan a atacarla en la ronda; el resto la rodea sin golpear.
+  // Antes, en un grupo de 6 Guchapo, tres golpes gratis seguidos la mataban en un turno.
+  if (defensor.tipo === 'JUGADOR') {
+    if (!esAtacanteDeMasPermitido(encounter.ordenIniciativa, encounter.participantes, actual.id, defensor)) {
+      return avanzarSinAtacar({ prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn });
+    }
+    return ejecutarIntercambioYAvanzar({
+      prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque,
+      atacanteRol: habilidadAtaque.rol, dualWieldBonus: false, defensor, weaponNamesPorDefecto, narrarFn, ventajaAtacante: true,
+    });
+  }
   return ejecutarGolpeGratisYAvanzar({ prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque, defensor, weaponNamesPorDefecto, narrarFn });
+}
+
+/// P129: cuántos pueden atacar de más a la jugadora en una ronda (además de su duelo).
+export const MAX_ATACANTES_DE_MAS_JUGADORA = 2;
+
+/// P129: `actualId` está entre los `MAX_ATACANTES_DE_MAS_JUGADORA` primeros, por iniciativa, de quienes
+/// tienen a la jugadora de objetivo esta ronda sin ser su duelo.
+export function esAtacanteDeMasPermitido(
+  ordenIniciativa: string[],
+  participantes: { id: string; objetivoActualId: string | null }[],
+  actualId: string,
+  jugadora: { id: string; objetivoActualId: string | null },
+): boolean {
+  const deMas = ordenIniciativa.filter((id) => {
+    if (id === jugadora.objetivoActualId) return false;
+    return participantes.find((p) => p.id === id)?.objetivoActualId === jugadora.id;
+  });
+  const puesto = deMas.indexOf(actualId);
+  return puesto >= 0 && puesto < MAX_ATACANTES_DE_MAS_JUGADORA;
+}
+
+/// P129 (QA-27, decisión de la usuaria 2026-10-13): en una ronda que la jugadora empezó Ilesa, ningún
+/// golpe la deja peor que Convaleciente (Ileso→Muerto en una ronda era una muerte sin opción).
+export function topeDeRondaJugadora(condicionInicioRonda: CondicionFisica | null, nueva: CondicionFisica): CondicionFisica {
+  return condicionInicioRonda === 'ILESO' && nueva === 'MUERTO' ? 'CONVALECIENTE' : nueva;
 }
 
 export interface AccionJugadorCombate {
@@ -2409,6 +2458,9 @@ async function avanzarYComprobarFin({
     where: { id: encounterId },
     data: { turnoActual: nuevoTurnoActual, ronda: { increment: 1 }, esperandoEleccionJugadora: esperandoJugadora },
   });
+  // P129: la ronda nueva empieza con la condición de la jugadora de este momento.
+  const condicionJugadoraRonda = (await tx.save.findUnique({ where: { id: saveId }, select: { condicionFisica: true } }))?.condicionFisica ?? null;
+  await tx.combatParticipant.updateMany({ where: { encounterId, tipo: 'JUGADOR' }, data: { condicionInicioRonda: condicionJugadoraRonda } });
   return { terminado: false, totemsQueAtacan };
 }
 

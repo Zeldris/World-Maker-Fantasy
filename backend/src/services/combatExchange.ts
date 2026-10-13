@@ -215,6 +215,24 @@ export interface ExchangeResult {
   /// que el frontend nunca tenga que recalcularlo por su cuenta (mismo criterio que
   /// `valorEfectivo`/`multiplicador`/`malus`: los números reales viajan explícitos, no implícitos).
   margen: number;
+  /// P96 (QA-27): golpe a un convaleciente, que ya no puede defenderse (ver `conGolpeDeGracia`).
+  golpeDeGracia?: true;
+}
+
+/// P96 (QA-27, decisión de la usuaria 2026-10-13): rematar a un convaleciente acierta sin que pueda
+/// defenderse, como el golpe a un enemigo inconsciente de D&D 5e y BG3 (crítico automático). Antes
+/// el Guchapo convaleciente seguía parando con su tirada completa y rematarlo costaba tres turnos.
+/// Solo cuando ataca la jugadora (el caller lo decide): las tiradas se conservan en la tarjeta, pero
+/// el desenlace es siempre un golpe pleno.
+export function conGolpeDeGracia(exchange: ExchangeResult, condicionDefensor: CondicionFisica | null | undefined): ExchangeResult {
+  if (condicionDefensor !== 'CONVALECIENTE') return exchange;
+  return {
+    atacante: { ...exchange.atacante, success: true, gradoExito: 'claro' },
+    defensor: { ...exchange.defensor, success: false, gradoExito: 'fallo' },
+    resultado: 'golpe_pleno',
+    margen: Math.max(exchange.margen, DECISIVE_MARGIN),
+    golpeDeGracia: true,
+  };
 }
 
 /// Cara visible del intercambio para el frontend (revisión de partida 2026-08-08, petición
@@ -237,6 +255,8 @@ export interface CombatExchangeDisplay {
   /// Nombre del rival de la jugadora en este intercambio — solo combate de grupo (Fase G del 0.1,
   /// hallazgo G15): ahí no hay `npcAbilityUsed` del que sacarlo y la tarjeta decía «el enemigo».
   rivalNombre?: string;
+  /// P96: golpe de gracia a un convaleciente; la tarjeta lo dice en vez de comparar tiradas.
+  golpeDeGracia?: true;
 }
 
 /// Una sola tirada de un atributo — extraído (2026-09-04, centralización de todas las tiradas del

@@ -682,7 +682,7 @@ export async function detailRoutes(app: FastifyInstance) {
           : null,
       // Menú contextual de interacción con NPC SIN resolver todavía (2026-09-06) — mismo criterio
       // exacto que `pendingDynamicModeOffer`/`pendingQuestOfferInfo`: reconstruido tras recargar.
-      pendingNpcInteractionOffer: save.pendingNpcInteractionOffer as { npcSlug: string; npcName: string; options: string[] } | null,
+      pendingNpcInteractionOffer: save.pendingNpcInteractionOffer as { npcSlug: string; npcName: string; options: string[]; desdeEncuentro?: boolean } | null,
       // Ataque enemigo pendiente de defensa en combate 1v1 clásico (bug real 2026-08-28/29,
       // "recargar mientras el enemigo tiene la iniciativa rompe el turno") — mismo criterio que
       // `combateIniciado` arriba: `Save.pendingNpcAttack` ya persistía bien, pero nunca viajaba en

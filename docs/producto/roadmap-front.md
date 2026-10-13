@@ -687,6 +687,9 @@ Contenedor común: `PanelDrawer` (cajón inferior, `max-w-4xl`, 85 vh).
   **Queda:** engancharla al Cronista en segundo plano cuando exista (`CR-12`).
 - **HUD-13 · Etiqueta principal** del personaje bajo su nombre en la cabecera (la de más peso, p. ej.
   "Verdugo de Torgash"), con las demás en el tooltip. **S**
+- **HUD-14 · Aviso al desbloquear algo en la Enciclopedia** (usuaria, 2026-10-13, P146 de `QA-27`):
+  como el aviso de un objeto nuevo en el inventario, uno cuando se desbloquea una ficha nueva de la
+  Enciclopedia, que lleve a ella. **S**
 
 ---
 
@@ -1131,6 +1134,36 @@ Retro del PR #51 (documentos reutilizables, 2026-10-13), aprobada por la usuaria
   no se vio hasta preparar el PR #51. Sustituye a las propuestas de avisar en el pre-push y en el
   inicio de sesión.
 ---
+
+Retro del PR #50 (2026-10-13; [propuestas](../registros/retro-2026-10-13-pr50.md), aprobadas todas por la
+usuaria el 2026-10-13):
+
+- **QA-73 · Diario que el frontend escribe por su cuenta** (🚧 2026-10-13: hecho y con tests; jugado en
+  una acción bloqueada, huir antes del combate (P131) y Explorar fallido (P138). Falta jugarlo en huir
+  durante un combate y caza sigilosa fallida, que salen al azar):
+  - huir antes y durante el combate y la respuesta a una acción bloqueada devuelven la entrada guardada
+    (`logEntry`) y el frontend la pinta tal cual; la huida de durante el combate se guarda ya como combate;
+  - Explorar: la línea del dado lleva el id de la entrada guardada y, al caer el dado, se sustituye por
+    ella con su tirada completa (igual que tras recargar);
+  - fuera los respaldos muertos de Explorar fallido y caza sigilosa, porque el backend ya devuelve
+    siempre su entrada (los tipos lo exigen);
+  - `lineasLocalesDelDiario.test.ts` lista los prefijos de `id` que puede inventar el frontend
+    (`<prefijo>-${Date.now()}` y `nextId(...)`: errores y la acción de la jugadora) y falla con uno nuevo;
+  - regla en «Sin copias entre backend y frontend» de `REVIEW.md`.
+  Motivo: P117 se veía mal en vivo por la línea «sube a nivel» del frontend.
+- ~~**QA-74 · Tests de las herramientas de `tools/qa/` y del gancho**~~ ✅ 2026-10-13: `tools/qa/tests/`
+  (`unittest`, 13 tests, sin dependencias) para `bitacora.py`, `marca-hallazgo.py` y
+  `prepush-ramas.sh`, la parte del gancho que mira cada rama (sacada de `.githooks/pre-push` para poder
+  probarla con repos de git de prueba; comprueba la bitácora de cada commit nuevo, no solo del último).
+  Los corre el job `roadmap` de la CI. Motivo: 4 de los 11
+  hallazgos del `/code-review` del #50 eran de esas herramientas.
+- ~~**QA-75 · `/code-review` al cerrar cada tanda de 3 o más tareas**~~ ✅ 2026-10-13: paso 5 de
+  `skills-y-modelos.md`. Motivo: las dos últimas tandas salieron con 11 y 12 fallos que solo vio la
+  revisión final.
+- ~~**QA-76 · `estado.js` con el nombre en los avisos**~~ ✅ 2026-10-13: los avisos se buscan elemento a
+  elemento (párrafos, encabezados, listas) uniendo sus trozos con un espacio, así los chips de nombre
+  quedan en su frase y «¡Victoria!» (en un `h3`) también sale. Motivo: «  te golpea…» sin quién,
+  parecía un fallo del juego.
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 

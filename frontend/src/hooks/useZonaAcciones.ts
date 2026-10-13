@@ -60,25 +60,11 @@ export function useZonaAcciones({ saveId, setCharacterLog, setCombateIniciado, o
       return
     }
     // Fase 10 (2026-09-29, "todas las tiradas visibles") — antes de mandar el texto por el turno
-    // normal se muestran las tiradas que ya ocurrieron: cuántos del grupo entran + iniciativa
-    // (LogEntry de sistema persistida por el backend) o el d100 de la caza sigilosa fallida (no deja
-    // LogEntry propia; desde F9-4 el backend sí la persiste y viaja en `logEntry`, la local es solo respaldo).
+    // normal se muestran las tiradas que ya ocurrieron: cuántos del grupo entran + iniciativa, o el d100
+    // de la caza sigilosa fallida. Las dos son entradas guardadas por el backend (`logEntry`; QA-73).
     if (result.logEntry) {
-      setCharacterLog((prev) => [...prev, { ...result.logEntry!, channel: 'character' }])
-    } else if (result.cazaLimpia) {
-      const { cazaLimpia } = result
-      setCharacterLog((prev) => [
-        ...prev,
-        {
-          id: `caza-sigilo-${Date.now()}`,
-          channel: 'character',
-          text: `${cazaLimpia.npcName} detecta el intento de caza sigilosa.`,
-          timeLabel: prev[prev.length - 1]?.timeLabel ?? '',
-          isSystemMessage: true,
-          createdAt: new Date().toISOString(),
-          roll: cazaLimpia,
-        },
-      ])
+      const entrada = result.logEntry
+      setCharacterLog((prev) => [...prev, { ...entrada, channel: 'character' }])
     }
     handleSubmit(result.actionText)
   }
