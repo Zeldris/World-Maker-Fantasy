@@ -1,3 +1,4 @@
+import { pluralDeEspecie } from './dynamicMode.js';
 /// Aviso de riesgo de la tarjeta "Cazar" (F9-1, decisión de Álvaro, 2026-09-29) — cazar un grupo a
 /// nivel bajo puede matar al jugador en un solo turno (p. ej. tres Gesgurio, más rápidos que el
 /// jugador, atacan ~6 veces antes de que este actúe). La decisión es SOLO avisar: no cambia ninguna
@@ -42,7 +43,7 @@ export function riesgoDeCaza(entrada: EntradaRiesgoCaza): RiesgoCazaInfo {
   const alto = ratio >= RATIO_ALTO || rapidos >= RAPIDOS_PARA_ALTO;
   if (!mortal && !alto) return { riesgo: 'bajo', motivo: '' };
 
-  const grupo = cantidad > 1 ? `Un grupo de ${cantidad} ${entrada.nombreGrupo} (nivel ${entrada.nivelNpc})` : `${entrada.nombreGrupo} (nivel ${entrada.nivelNpc})`;
+  const grupo = cantidad > 1 ? `Un grupo de ${cantidad} ${pluralDeEspecie(entrada.nombreGrupo)} (nivel ${entrada.nivelNpc})` : `${entrada.nombreGrupo} (nivel ${entrada.nivelNpc})`;
   const partes = [`${grupo} frente a tu nivel ${nivelJugador}`];
   if (rapidos > 0) {
     partes.push(rapidos > 1 ? `${rapidos} son más rápidos que tú y actuarán varias veces antes que tú` : 'es más rápido que tú y actuará antes');

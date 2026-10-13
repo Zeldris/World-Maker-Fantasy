@@ -27,7 +27,7 @@ import { faccionMasComun, ZONAS_DE_INICIO,
   recalcularZonePointsDeLocation,
   type ZonePointColor,
 } from '../../services/zonePoints.js';
-import { aNombre, nombreEnFrase, nombreOcultoPorRaza } from '../../services/dynamicMode.js';
+import { aNombre, pluralDeEspecie, nombreEnFrase, nombreOcultoPorRaza } from '../../services/dynamicMode.js';
 import { parseAgenda, regionControlActual, type RegionControlState } from '../../services/worldAgenda.js';
 import { REGION_OWNING_FACTIONS, effectiveTemperamento } from '../../services/reputation.js';
 import { LIENZO_ANCHO, LIENZO_ALTO, posicionAleatoriaEnLienzo, celdaLibreEnEspiral, claveCelda, celdaDePixel, pixelDeCelda, calcularCamino, celdaAdyacenteOMisma, mismaCelda, tirarQuienIniciaEncuentro, type Celda, type IniciativaEncuentroLogRoll } from '../../services/zonaPosicion.js';
@@ -786,6 +786,8 @@ export async function zonaRoutes(app: FastifyInstance) {
           /// Aviso de riesgo de la tarjeta "Cazar" (F9-1, decisión de Álvaro, 2026-09-29) — solo FAUNA
           /// no forzada con `ZonePoint`; ver `riesgoDeCaza` (cazaRiesgo.ts). Solo avisa, no cambia reglas.
           riesgoCaza?: RiesgoCazaInfo;
+          /// P124: plural del nombre para un grupo de FAUNA (`pluralDeEspecie`).
+          nombrePlural?: string;
           /// Método de obtención de la fuente (RECURSO, 2026-09-29) — el frontend lo usa para el verbo del
           /// botón del modal de detalle ("Talar"/"Minar"/…). Ausente en ofertas antiguas persistidas y en
           /// NPC/FAUNA; `null` si la fuente no tiene ningún yield (ver `metodoPrincipalDeFuente`).
@@ -1016,6 +1018,8 @@ export async function zonaRoutes(app: FastifyInstance) {
           zonePointId?: string;
           cantidad?: number;
           riesgoCaza?: RiesgoCazaInfo;
+          /// P124: plural del nombre para un grupo de FAUNA (`pluralDeEspecie`).
+          nombrePlural?: string;
           /// Método de obtención de la fuente (RECURSO, 2026-09-29) — el frontend lo usa para el verbo del
           /// botón del modal de detalle ("Talar"/"Minar"/…). Ausente en ofertas antiguas persistidas y en
           /// NPC/FAUNA; `null` si la fuente no tiene ningún yield (ver `metodoPrincipalDeFuente`).
@@ -1048,6 +1052,8 @@ export async function zonaRoutes(app: FastifyInstance) {
           targetSlug: colision.targetSlug,
           targetName: colision.targetName,
           ...(colisionTipo === 'NPC' ? { aQuien: aNombre(colision.targetName) } : {}),
+          // P124: el plural para la tarjeta de un grupo («Un grupo de 6 Guchapos»).
+          ...(colisionTipo === 'FAUNA' && colisionCantidad > 1 ? { nombrePlural: pluralDeEspecie(colision.targetName) } : {}),
           quienInicia,
           ...(combateForzado ? { combateForzado: true as const } : {}),
           ...(colisionZonePointId ? { zonePointId: colisionZonePointId } : {}),
@@ -1074,7 +1080,7 @@ export async function zonaRoutes(app: FastifyInstance) {
         // (el nombre de especie ya viene en singular de catálogo, "un grupo de N" no necesita
         // pluralizarlo). Solo aplica a FAUNA — un NPC (identidad única) nunca se agrupa.
         const nombreEncuentro =
-          colisionTipo === 'FAUNA' && colisionCantidad > 1 ? `un grupo de ${colisionCantidad} ${colision.targetName}` : nombreEnFrase(colision.targetName);
+          colisionTipo === 'FAUNA' && colisionCantidad > 1 ? `un grupo de ${colisionCantidad} ${pluralDeEspecie(colision.targetName)}` : nombreEnFrase(colision.targetName);
         const nombreEncuentroInicio = nombreEncuentro.charAt(0).toUpperCase() + nombreEncuentro.slice(1);
         // LogEntry real determinista (2026-09-09, hallazgo real jugando en vivo: la tarjeta de
         // oferta SIEMPRE se renderiza colgada de una LogEntry concreta — LogPanel.tsx solo lee
@@ -1092,7 +1098,7 @@ export async function zonaRoutes(app: FastifyInstance) {
           : quienInicia === 'jugador'
             ? colisionTipo === 'NPC'
               ? `${characterName} se topa con ${nombreEncuentro}.`
-              : `${characterName} se topa con ${nombreEncuentro}, que le observa con cautela.`
+              : `${characterName} se topa con ${nombreEncuentro}, que lo observa con cautela.`
             : `${nombreEncuentroInicio} se acerca a ${characterName} antes de que este reaccione.`;
         // Fase 10 (2026-09-29) — la tirada opuesta Destreza vs Destreza se guarda en `LogEntry.roll`
         // (discriminada por `kind`) para que la tarjeta la muestre también tras una recarga.

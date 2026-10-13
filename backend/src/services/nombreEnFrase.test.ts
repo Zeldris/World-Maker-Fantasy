@@ -22,8 +22,8 @@ describe('nombreEnFrase (P63, QA-27)', () => {
   });
 
   it('P90: un grupo de fauna se nombra como grupo, y «de el» se contrae', () => {
-    expect(narrarAperturaCombateForzado('Kirelon Arenoso', 5).narration).toContain('— el grupo de 5 Kirelon Arenoso no tiene intención');
-    expect(deNombre(nombreDeEncuentro('Kirelon Arenoso', 5))).toBe('del grupo de 5 Kirelon Arenoso');
+    expect(narrarAperturaCombateForzado('Kirelon Arenoso', 5).narration).toContain('— el grupo de 5 Kirelones Arenosos no tiene intención');
+    expect(deNombre(nombreDeEncuentro('Kirelon Arenoso', 5))).toBe('del grupo de 5 Kirelones Arenosos');
     expect(deNombre(nombreDeEncuentro('Orco desconocido', 1))).toBe('del orco desconocido');
     expect(deNombre(nombreDeEncuentro('Gistera Koh'))).toBe('de Gistera Koh');
   });

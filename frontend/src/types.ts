@@ -576,6 +576,8 @@ export interface LogEntry {
     /// Aviso de riesgo de la tarjeta "Cazar" (F9-1, decisión de Álvaro, 2026-09-29) — solo FAUNA no
     /// forzada con `zonePointId`. Solo avisa, no cambia ninguna regla de caza.
     riesgoCaza?: RiesgoCazaInfo
+    /// P124 (QA-27): plural del nombre para un grupo de fauna, del backend («Guchapos»).
+    nombrePlural?: string
     /// Método de obtención de la fuente (solo RECURSO, 2026-09-29) — decide el verbo del botón del
     /// modal de detalle (`etiquetaAccionRecurso`). Ausente en ofertas antiguas persistidas.
     metodo?: MetodoObtencion | null

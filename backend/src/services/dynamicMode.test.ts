@@ -131,3 +131,19 @@ describe('aNombre', () => {
     expect(aNombre('Gistera Koh')).toBe('a Gistera Koh');
   });
 });
+
+// P124 (QA-27): plural de las especies para los grupos de fauna.
+describe('pluralDeEspecie', () => {
+  it('pluraliza el nombre y sus adjetivos, no lo que va tras «de» ni los colores-nombre', async () => {
+    const { pluralDeEspecie } = await import('./dynamicMode.js');
+    expect(pluralDeEspecie('Guchapo')).toBe('Guchapos');
+    expect(pluralDeEspecie('Kirelon Arenoso')).toBe('Kirelones Arenosos');
+    expect(pluralDeEspecie('Hoscón')).toBe('Hoscones');
+    expect(pluralDeEspecie('Cruzavientos')).toBe('Cruzavientos');
+    expect(pluralDeEspecie('Sombra de Kroj')).toBe('Sombras de Kroj');
+    expect(pluralDeEspecie('Negueo Turquesa')).toBe('Negueos Turquesa');
+    expect(pluralDeEspecie('Aullador Rojo')).toBe('Aulladores Rojos');
+    expect(pluralDeEspecie('Manesti Azul')).toBe('Manestis Azules');
+  });
+});
+

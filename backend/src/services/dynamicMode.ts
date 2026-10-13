@@ -166,11 +166,31 @@ export function aNombre(nombre: string): string {
   return enFrase.startsWith('el ') ? `al ${enFrase.slice(3)}` : `a ${enFrase}`;
 }
 
+/// P124 (QA-27): plural del nombre de una especie para «un grupo de 6 Guchapos». Cambia la primera
+/// palabra (Guchapo → Guchapos, Hoscón → Hoscones) y los adjetivos que la siguen (Kirelon Arenoso →
+/// Kirelones Arenosos); a partir de «de» nada cambia (Sombras de Kroj) y los colores que son nombres
+/// no varían (Negueos Turquesa, Zenses Ceniza).
+const PALABRAS_INVARIABLES = new Set(['turquesa', 'esmeralda', 'ceniza']);
+function pluralDePalabra(palabra: string): string {
+  if (/[sx]$/i.test(palabra)) return palabra;
+  if (/[aeiouáéó]$/i.test(palabra)) return `${palabra}s`;
+  const sinTilde = palabra.replace(/[áéíóú](?=[^aeiouáéíóú]*$)/i, (v) => ({ á: 'a', é: 'e', í: 'i', ó: 'o', ú: 'u' })[v.toLowerCase()] ?? v);
+  if (/z$/i.test(sinTilde)) return `${sinTilde.slice(0, -1)}ces`;
+  return `${sinTilde}es`;
+}
+export function pluralDeEspecie(nombre: string): string {
+  const palabras = nombre.split(' ');
+  const iDe = palabras.findIndex((p, i) => i > 0 && p.toLowerCase() === 'de');
+  return palabras
+    .map((p, i) => ((iDe === -1 || i < iDe) && !PALABRAS_INVARIABLES.has(p.toLowerCase()) ? pluralDePalabra(p) : p))
+    .join(' ');
+}
+
 /// P90 (QA-27): un grupo de fauna se nombra como grupo («el grupo de 5 Kirelon Arenoso»), no como
 /// un individuo sin artículo.
 export function nombreDeEncuentro(nombre: string, cantidad?: number | null, alInicio = false): string {
   if (!cantidad || cantidad <= 1) return nombreEnFrase(nombre, alInicio);
-  return `${alInicio ? 'El' : 'el'} grupo de ${cantidad} ${nombre}`;
+  return `${alInicio ? 'El' : 'el'} grupo de ${cantidad} ${pluralDeEspecie(nombre)}`;
 }
 
 /// «de el grupo…» → «del grupo…» (contracción obligatoria).
