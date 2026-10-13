@@ -48,10 +48,11 @@ export async function npcInteractionRoutes(app: FastifyInstance) {
 
       const save = await prisma.save.findUnique({
         where: { id: request.params.id },
-        select: { id: true, endedAt: true, pendingNpcInteractionOffer: true, pendingDynamicModeOffer: true },
+        select: { id: true, endedAt: true, pendingDeathResolution: true, pendingNpcInteractionOffer: true, pendingDynamicModeOffer: true },
       });
       if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
       if (rejectIfEnded(save, reply)) return;
+      if (rejectIfPendingDeath(save, reply)) return;
 
       const offer = save.pendingNpcInteractionOffer as OfertaDeMenu | null;
       // Guard de "oferta ya no vigente" (mismo patrón que dynamicMode.ts) — evita resolver una

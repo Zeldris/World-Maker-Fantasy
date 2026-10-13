@@ -51,6 +51,7 @@ export async function partidasRoutes(app: FastifyInstance) {
     const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: selectSave });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
     if (rejectIfEnded(save, reply)) return;
+    if (rejectIfPendingDeath(save, reply)) return;
     const r = await prisma.$transaction((tx) => preguntarAViajero(tx, save.id, request.params.viajeroId));
     if (!r.ok) return reply.status(400).send({ error: r.motivo });
     return r;

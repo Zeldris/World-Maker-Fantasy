@@ -34,8 +34,10 @@ Skill (no basta con nombrarla); `/grill-with-docs` solo lo lanza la usuaria, con
    lint y cobertura) (QA-24).
 4. **Si algo falla** (test rojo, intermitente, bug): `diagnosing-bugs` antes de tocar el código.
 5. **Cerrar la tarea:** tachada en su roadmap y en el mapa, bitácora al día, commit + push. El
-   `/code-review` y la `/retro` van siempre al final, con el PR a `main` (pasos 6 y 7), no por tanda
-   (usuaria, 2026-10-13; sustituye a `QA-75` y al `/code-review` cada 5-6 hallazgos de `QA-40`). Al
+   `/code-review` y la `/retro` van al final, no por tanda: el `/code-review`, **antes de crear** el PR
+   a `main` (paso 6), y la `/retro`, **después de fusionarlo** (paso 7) (usuaria, 2026-10-13; sustituye
+   a `QA-75` y al `/code-review` cada 5-6 hallazgos de `QA-40`). El PR #53 se revisó ya fusionado y
+   sus 12 fallos llegaron a `main` (`QA-77`). Al
    contárselo a la usuaria, el destino con su nombre: «en la rama de trabajo, no en `main`» o «en
    `main` (PR #N)» (QA-36).
    «Actualiza con main» (o «trae main») es traer `main` a la rama de trabajo en local y decir si está

@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
-import { rejectIfEnded, lockRowForUpdate } from './shared.js';
+import { rejectIfEnded, rejectIfPendingDeath, lockRowForUpdate } from './shared.js';
 import { COMBAT_GROUP_BASE_SLOT, nextFreeCombatGroupSlot } from '../../services/combatGroups.js';
 import { MAX_COMBATIENTES_POR_BANDO } from '../../services/combateMultiple.js';
 
@@ -44,6 +44,7 @@ export async function combatGroupsRoutes(app: FastifyInstance) {
     const save = await prisma.save.findUnique({ where: { id: request.params.id } });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
     if (rejectIfEnded(save, reply)) return;
+    if (rejectIfPendingDeath(save, reply)) return;
 
     const existing = await prisma.combatGroup.findMany({ where: { saveId: save.id }, select: { slotIndex: true } });
     const slotIndex = nextFreeCombatGroupSlot(existing.map((g) => g.slotIndex));
