@@ -38,6 +38,7 @@ import { riesgoDeCaza, type RiesgoCazaInfo } from '../../services/cazaRiesgo.js'
 import type { AttributeBlock } from '../../services/dice.js';
 import { posicionesDeSalidasDeZona, celdasDeEntrada, enRadioSeguro } from '../../services/entradasZona.js';
 import { effectiveAttributes } from '../../services/equipment.js';
+import { minutosConDestreza } from '../../services/travel.js';
 import { ambitoFacciones } from '../../services/mundoPartida.js';
 import { etiquetasActivas } from '../../services/cronista/etiquetas.js';
 import { conRencor, npcsConRencor } from '../../services/cronista/recuerdos.js';
@@ -136,7 +137,7 @@ export interface ZonaSalidaInfo {
   /// QA-27 (P7): `ENTRAR` si lleva a una zona interior (dentro de esta), `SALIR` si es la puerta de
   /// un interior hacia fuera; sin el campo, una salida normal de región.
   puerta?: 'ENTRAR' | 'SALIR';
-  /// P115 (QA-27): minutos de camino hasta el destino (`LocationLink.minutosBase`).
+  /// P115 (QA-27): minutos de camino hasta el destino; P132: con la Destreza, como el viaje real.
   minutos: number;
   /// P115: el destino tiene nombre para la jugadora (ya estuvo, o lleva el mapa de la región — mismo
   /// criterio que la brújula, `compassNarrationText`).
@@ -168,6 +169,8 @@ async function salidasDeRegionPara(
   worldId: string,
   location: { id: string; x: number | null; y: number | null },
   jugador: { x: number; y: number } | null,
+  /// P132 (QA-27): atributos con el equipo puesto, los mismos con que `turn.ts` resuelve el viaje.
+  attributes: AttributeBlock | null,
 ): Promise<ZonaSalidaInfo[]> {
   const links = await prisma.locationLink.findMany({
     where: { OR: [{ fromId: location.id }, { toId: location.id }] },
@@ -188,7 +191,8 @@ async function salidasDeRegionPara(
     select: { locationId: true },
   });
   const visitadasIds = new Set(visitas.map((v) => v.locationId));
-  const minutosPorDestino = new Map(links.map((l) => [l.from.id === location.id ? l.to.id : l.from.id, l.minutosBase]));
+  // P132: la duración del viaje de verdad (`minutosConDestreza`), no la base del enlace.
+  const minutosPorDestino = new Map(links.map((l) => [l.from.id === location.id ? l.to.id : l.from.id, (attributes ? minutosConDestreza(l.minutosBase, attributes) : l.minutosBase)]));
   const llevaMapa = !!(await prisma.inventoryItem.findFirst({ where: { saveId, catalogSlug: 'mapa-de-las-llanuras' }, select: { id: true } }));
 
   const celdaJugador = jugador ? celdaDePixel(jugador) : null;
@@ -257,6 +261,9 @@ export async function zonaRoutes(app: FastifyInstance) {
         worldState: { select: { fictionalMinutes: true, factionsStatus: true, agenda: true } },
         // ZON-58: nivel de oficio para el candado de los recursos.
         professionProgress: { select: { professionId: true, nivel: true } },
+        // P132: los minutos de cada salida, con la Destreza (y el equipo) como el viaje real.
+        attributes: true,
+        inventoryItems: { where: { slot: { not: null } }, select: { statBonuses: true } },
       },
     });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
@@ -589,7 +596,7 @@ export async function zonaRoutes(app: FastifyInstance) {
 
     // Iconos de salida de región (2026-09-17) — calculado una vez, lo necesitan ambos `return` de
     // aquí en adelante (con o sin ZonePoint sembrado, una zona SIEMPRE puede tener salidas reales).
-    const salidas = await salidasDeRegionPara(save.id, save.worldId, save.currentLocation, jugador);
+    const salidas = await salidasDeRegionPara(save.id, save.worldId, save.currentLocation, jugador, save.attributes ? effectiveAttributes(save.attributes as AttributeBlock, save.inventoryItems ?? []) : null);
 
     // Iconos de parcela (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) — calculado una vez,
     // igual que `salidas`. Solo las zonas-interior de Capital/Cuartel Avanzado tienen filas reales

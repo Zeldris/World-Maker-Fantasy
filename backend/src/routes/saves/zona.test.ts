@@ -955,6 +955,8 @@ describe('GET /saves/:id/zona', () => {
       findUniqueSave.mockResolvedValueOnce({
         id: 's1', worldId: 'w1', zonaPosX: null, zonaPosY: null,
         currentLocation: { id: 'loc1', slug: 'hondonada-del-eco', name: 'La Hondonada del Eco', x: 0, y: 0, zonePoints: [] },
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        inventoryItems: [],
       });
       loadSessionFactsMock.mockResolvedValueOnce([]);
       detectNpcsInSceneMock.mockResolvedValueOnce([]);
@@ -970,7 +972,8 @@ describe('GET /saves/:id/zona', () => {
       const app = await buildApp();
       const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
       const [salida] = res.json().salidas;
-      expect(salida).toMatchObject({ visitada: false, conocida: true, minutos: 90 });
+      // P132 (QA-27): 90 de base con Destreza 10 son 60, lo que dura el viaje de verdad.
+      expect(salida).toMatchObject({ visitada: false, conocida: true, minutos: 60 });
     });
 
     // Umbral de proximidad (2026-09-20, petición explícita de Álvaro: "la salida de una zona debe
