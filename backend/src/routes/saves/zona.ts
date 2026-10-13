@@ -1136,7 +1136,8 @@ export async function zonaRoutes(app: FastifyInstance) {
         }
         const freshSave = await tx.save.findUnique({ where: { id: saveId }, select: { pendingDynamicMode: true, pendingDynamicModeOffer: true } });
         if (freshSave?.pendingDynamicMode || freshSave?.pendingDynamicModeOffer) break;
-        const nombre = sourceDisplayNameFor(punto.targetSlug);
+        // P136 (QA-27): el mismo nombre que la ficha del mapa (su `label`, si lo tiene), no el de catálogo.
+        const nombre = punto.label ?? sourceDisplayNameFor(punto.targetSlug);
         // B7 (pruebas 2026-09-28): un recurso por encima del nivel de oficio del jugador (p.ej. el
         // Yerreo tier 4 para un minero de nivel 1) ya no se ofrece como Interactuar imposible de
         // completar — se registra como descubrimiento con el motivo real y se sigue andando.
