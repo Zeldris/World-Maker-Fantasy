@@ -21,6 +21,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: python3 tools/roadmap/cobertura.py
+      # QA-72: tests de las herramientas de tools/qa y de la parte del gancho de push que mira las ramas.
+      - run: python3 -m unittest discover -s tools/qa/tests
 
   backend:
     runs-on: ubuntu-24.04  # QA-28: trae Postgres 16

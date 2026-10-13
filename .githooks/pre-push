@@ -12,31 +12,12 @@ echo "pre-push: tsc y lint de backend y frontend, cobertura del roadmap…"
 (cd backend && npx prisma generate > /tmp/pre-push-prisma.log 2>&1 && npx tsc --noEmit -p . && npm run --silent lint > /tmp/pre-push-lint-backend.log 2>&1) || { tail -20 /tmp/pre-push-lint-backend.log 2>/dev/null; echo "pre-push: backend en rojo"; exit 1; }
 (cd frontend && npx tsc -b && npm run --silent lint > /tmp/pre-push-lint-frontend.log 2>&1) || { tail -20 /tmp/pre-push-lint-frontend.log 2>/dev/null; echo "pre-push: frontend en rojo"; exit 1; }
 python3 tools/roadmap/cobertura.py > /tmp/pre-push-cobertura.log || { grep -v "^EN VARIOS HITOS\|^ASIGNADAS PERO" /tmp/pre-push-cobertura.log; exit 1; }
-# QA-35 (retro del 2026-10-10): si el push trae imágenes, que cada una lleve el slug de su lugar
-# (`imagenesZona.test.ts`, menos de un segundo). Git pasa por la entrada «ref local, sha local, ref
-# remota, sha remota» de cada rama que se sube.
-cambiados=""
-# QA-66 (retro del 2026-10-13): qué commits sube el push. Un commit que no se hizo (una cadena `&&`
-# cortada) dejaba un push vacío que también decía «todo en verde».
-subidos=""
-while read -r _ sha_local _ sha_remoto; do
-  [ "$sha_local" = "0000000000000000000000000000000000000000" ] && continue
-  # Desde dónde mirar los cambios: lo que ya tiene la rama remota si ese commit está aquí; si no (rama
-  # nueva, o la otra cuenta subió y no se ha traído), desde donde se separó de main.
-  if [ "$sha_remoto" != "0000000000000000000000000000000000000000" ] && git cat-file -e "$sha_remoto^{commit}" 2>/dev/null; then
-    base="$sha_remoto"
-  else
-    base=$(git merge-base "$sha_local" origin/main 2>/dev/null || echo "")
-  fi
-  [ -n "$base" ] && cambiados+="$(git diff --name-only "$base" "$sha_local" 2>/dev/null)"$'\n'
-  # Commits nuevos de verdad: los que no están en ninguna rama remota conocida.
-  subidos+="$(git log --format='  %h %s' "$sha_local" --not --remotes 2>/dev/null)"$'\n'
-  # QA-69: la bitácora tal como va en el commit que se sube, no la del directorio de trabajo.
-  if git cat-file -e "$sha_local:docs/registros/traspaso.md" 2>/dev/null; then
-    git show "$sha_local:docs/registros/traspaso.md" > /tmp/pre-push-bitacora.md
-    python3 tools/qa/bitacora.py /tmp/pre-push-bitacora.md || exit 1
-  fi
-done
+# QA-35 (imágenes), QA-66 (qué commits sube: un push vacío también decía «todo en verde») y QA-69
+# (bitácora de cada commit), en `tools/qa/prepush-ramas.sh` para poder probarlo (QA-72). Git pasa por la
+# entrada «ref local, sha local, ref remota, sha remota» de cada rama que se sube.
+bash tools/qa/prepush-ramas.sh /tmp/pre-push-cambiados.txt /tmp/pre-push-subidos.txt || exit 1
+cambiados=$(cat /tmp/pre-push-cambiados.txt)
+subidos=$(cat /tmp/pre-push-subidos.txt)
 if grep -q "^backend/uploads/images/" <<< "$cambiados"; then
   (cd backend && npx vitest run src/scripts/imagenesZona.test.ts > /tmp/pre-push-imagenes.log 2>&1) \
     || { grep -E "Expected|\+ |archivo|mapa" /tmp/pre-push-imagenes.log | head -20; echo "pre-push: hay imágenes con un nombre que no es el de ningún lugar"; exit 1; }

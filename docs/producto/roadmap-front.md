@@ -1124,7 +1124,10 @@ usuaria el 2026-10-13):
 - **QA-71 · Diario que el frontend escribe por su cuenta**: las líneas que cuentan algo del juego llegan
   del backend con su `logEntryId`; en el frontend solo quedan avisos de error, y un test lista los
   prefijos de `id` permitidos. Motivo: P117 se veía mal en vivo por la línea «sube a nivel» del frontend.
-- **QA-72 · Tests de las herramientas de `tools/qa/` y del gancho**, en la CI. Motivo: 4 de los 11
+- ~~**QA-72 · Tests de las herramientas de `tools/qa/` y del gancho**~~ ✅ 2026-10-13: `tools/qa/tests/`
+  (`unittest`, 12 tests, sin dependencias) para `bitacora.py`, `marca-hallazgo.py` y
+  `prepush-ramas.sh`, la parte del gancho que mira cada rama (sacada de `.githooks/pre-push` para poder
+  probarla con repos de git de prueba). Los corre el job `roadmap` de la CI. Motivo: 4 de los 11
   hallazgos del `/code-review` del #50 eran de esas herramientas.
 - ~~**QA-73 · `/code-review` al cerrar cada tanda de 3 o más tareas**~~ ✅ 2026-10-13: paso 5 de
   `skills-y-modelos.md`. Motivo: las dos últimas tandas salieron con 11 y 12 fallos que solo vio la
