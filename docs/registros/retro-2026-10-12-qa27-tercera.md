@@ -4,8 +4,8 @@ Tramo revisado: rama `claude/wonderful-volta-662qt8`, P84-P119 de
 [`pruebas-0.3-hallazgos.md`](pruebas-0.3-hallazgos.md), el `/code-review` previo a `main` (12 hallazgos)
 y el [PR #49](https://github.com/Zeldris/World-Maker-Fantasy/pull/49), fusionado con el CI en verde.
 
-**Estado: propuestas para la usuaria.** Ninguna es tarea todavía. Las que confirme entran en
-`roadmap-front.md` con el siguiente número libre de `QA` (`QA-66` en adelante) y con su hito.
+**Estado (2026-10-13): aprobadas todas por la usuaria** como `QA-66`…`QA-70` en
+`roadmap-front.md` (1 → `QA-66`, 2 → `QA-67`, 3 → `QA-68`, 4 → `QA-69`, 5 → `QA-70`).
 
 Ordenadas de más a menos grave.
 

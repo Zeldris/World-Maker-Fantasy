@@ -16,6 +16,9 @@ python3 tools/roadmap/cobertura.py > /tmp/pre-push-cobertura.log || { grep -v "^
 # (`imagenesZona.test.ts`, menos de un segundo). Git pasa por la entrada «ref local, sha local, ref
 # remota, sha remota» de cada rama que se sube.
 cambiados=""
+# QA-66 (retro del 2026-10-13): qué commits sube el push. Un commit que no se hizo (una cadena `&&`
+# cortada) dejaba un push vacío que también decía «todo en verde».
+subidos=""
 while read -r _ sha_local _ sha_remoto; do
   [ "$sha_local" = "0000000000000000000000000000000000000000" ] && continue
   if [ "$sha_remoto" = "0000000000000000000000000000000000000000" ]; then
@@ -24,9 +27,16 @@ while read -r _ sha_local _ sha_remoto; do
     base="$sha_remoto"
   fi
   [ -n "$base" ] && cambiados+="$(git diff --name-only "$base" "$sha_local" 2>/dev/null)"$'\n'
+  [ -n "$base" ] && subidos+="$(git log --format='  %h %s' "$base..$sha_local" 2>/dev/null)"$'\n'
 done
 if grep -q "^backend/uploads/images/" <<< "$cambiados"; then
   (cd backend && npx vitest run src/scripts/imagenesZona.test.ts > /tmp/pre-push-imagenes.log 2>&1) \
     || { grep -E "Expected|\+ |archivo|mapa" /tmp/pre-push-imagenes.log | head -20; echo "pre-push: hay imágenes con un nombre que no es el de ningún lugar"; exit 1; }
 fi
-echo "pre-push: todo en verde."
+subidos=$(grep -v '^$' <<< "$subidos" || true)
+if [ -z "$subidos" ]; then
+  echo "pre-push: todo en verde, pero este push no sube ningún commit nuevo (¿se hizo el commit?)."
+else
+  echo "pre-push: todo en verde. Sube $(wc -l <<< "$subidos") commit(s):"
+  echo "$subidos"
+fi

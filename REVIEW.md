@@ -39,6 +39,10 @@ mecánico ya lo comprueban los tests, el hook `pre-push` y la CI; aquí está lo
   los interiores de Capital y Cuartel: se podía viajar al de otra partida). Las consultas de `Location`
   por mundo o región pasan por `lugaresVisibles` (`mundoPartida.ts`). Lo vigila
   `backend/src/scripts/locationConDuena.test.ts` para `location.create`.
+- **Renombrar algo que las partidas guardan por nombre** (`QA-68`, retro del 2026-10-13) cambia todos
+  los campos que lo guardan, no solo el principal. Habilidades: los que lista
+  `CAMPOS_CON_NOMBRE_DE_HABILIDAD` (`habilidadesRenombradas.ts`), marcados en el esquema con «por NOMBRE
+  de `SavedAction`». Pasó con P100: las barras (`SkillBar.abilityNames`) se quedaban con el nombre viejo.
 
 ## Un dato, un sitio
 
@@ -59,6 +63,11 @@ Retro de `QA-27` (2026-10-12, `QA-40`): tres de los diez fallos de la revisión 
   dice qué función crea el dato, enumera a quién la llama y cubre cada camino con un test (o explica por
   qué un camino no lo necesita). Pasó con P32: se arregló camino a camino dos veces, y la revisión del
   segundo arreglo aún encontró cuatro caminos sin cubrir.
+- **Un campo que siempre hay que dar no lleva `@default`** (`QA-67`, retro del 2026-10-13). Sin valor por
+  defecto, el compilador marca cada creación que lo olvida; un `?? undefined` sobre ese campo vuelve a
+  caer al valor por defecto y es un hallazgo. Pasó con P87: `LogEntry.fictionalMinutes` valía 0 si no se
+  daba, y las entradas desaparecían del diario. Un test que leía el código buscando el campo no vio 7
+  creaciones; quitar el `@default` las sacó todas en `tsc`.
 
 ## Textos que se leen
 

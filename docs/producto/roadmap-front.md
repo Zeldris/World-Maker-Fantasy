@@ -1088,6 +1088,23 @@ usuaria `QA-62`…`QA-65`; la quinta propuesta, regresiones en la ronda, no entr
   `REVIEW.md`. Motivo: P32 volvió dos veces y la revisión del arreglo encontró cuatro caminos más.
 - ~~**QA-65 · Parar el juego antes de la suite**~~ ✅ 2026-10-12: `arrancar-juego.sh --parar` (backend,
   frontend y driver) y paso 5 de `rondas-de-pruebas.md`.
+
+Retro de la tercera tanda de `QA-27` (2026-10-12, PR #49;
+[propuestas](../registros/retro-2026-10-12-qa27-tercera.md), aprobadas todas por la usuaria el 2026-10-13):
+
+- ~~**QA-66 · El push dice qué sube**~~ ✅ 2026-10-13: `.githooks/pre-push` lista los commits de cada rama
+  que sube y avisa si no sube ninguno. Motivo: una cadena `&&` cortada por `grep -c` (sale con 1 al contar
+  0) dejó P115 sin commit, y el push vacío dijo «todo en verde».
+- ~~**QA-67 · Sin `@default` en un campo obligatorio**~~ ✅ 2026-10-13: regla en «Un fallo que vuelve» de
+  `REVIEW.md`; fuera `logEntryConHora.test.ts`, que ya cubre el compilador. Motivo: P87, el test que leía
+  el código no vio 7 creaciones que `tsc` sacó al quitar el `@default(0)`.
+- ~~**QA-68 · Renombres en todos los campos**~~ ✅ 2026-10-13: `CAMPOS_CON_NOMBRE_DE_HABILIDAD`
+  (`habilidadesRenombradas.ts`), su test contra las marcas «por NOMBRE» del esquema y regla en «Cada
+  partida, lo suyo» de `REVIEW.md`. Motivo: P100 no renombraba las barras de habilidades.
+- **QA-69 · Una fila «Tarea en curso» por rama**: la bitácora con una fila por cuenta y un tope de tamaño
+  comprobado en el push. Motivo: las dos cuentas escribían en la misma celda y se contradecían.
+- **QA-70 · Test del orden del diario en un turno**: subida de nivel, desbloqueos y golpes gratis en su
+  orden (`createdAt`). Motivo: P117 se arregló dos veces y no tiene test.
 ---
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
