@@ -2087,6 +2087,8 @@ export type ConfirmarCazaResultado =
       resuelveSinCombate: false
       exito: false | null
       actionText: string
+      /// P90/P130: lo que sale en el diario como acción de la jugadora; `null` en una emboscada.
+      accionEnDiario?: string | null
       /// Cuántos del grupo entran al combate (d6 por especie) + LogEntry de sistema con esas tiradas
       /// y la iniciativa de cada combatiente (combate múltiple).
       tiradasGrupo?: TiradaGrupoInfo[]
@@ -2200,6 +2202,8 @@ export interface DynamicModeTurno {
   /// (`handleSubmit`, GameView.tsx) para que la narración real lo abra — mismo criterio EXACTO que
   /// `ConfirmarCazaResultado.actionText` (caza en grupo desde el viejo botón suelto).
   actionText?: string
+  /// P90/P130: lo que sale en el diario como acción de la jugadora; `null` en una emboscada.
+  accionEnDiario?: string | null
   /// Fase 10 (2026-09-29) — con `actionText` de grupo: tiradas de cuántos entran + LogEntry de
   /// sistema (`combateGrupoLogEntry`) con esas tiradas y la iniciativa del combate múltiple.
   tiradasGrupo?: TiradaGrupoInfo[]

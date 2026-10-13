@@ -42,7 +42,7 @@ interface UseModoDinamicoParams {
   onReclutado?: () => void
   setActivePanel: Dispatch<SetStateAction<PanelId | null>>
   openCombat: (npcs: { npcs: NpcInSceneInfo[] }) => void
-  handleSubmit: (actionText: string) => void | Promise<void>
+  handleSubmit: (actionText: string, extras?: { accionEnDiario?: string | null }) => void | Promise<void>
   /// Refresca la Enciclopedia al abrir el detalle de un RECURSO (el descubrimiento ya lo registró el
   /// backend al encontrarlo, pero la copia local puede ir por detrás).
   refetchEnciclopedia?: () => void
@@ -145,7 +145,7 @@ export function useModoDinamico({
       if (turno.actionText) {
         // Fase 10 (2026-09-29) — tiradas de cuántos entran + iniciativa del combate múltiple.
         if (turno.combateGrupoLogEntry) setCharacterLog((prev) => [...prev, { ...turno.combateGrupoLogEntry!, channel: 'character' }])
-        handleSubmit(turno.actionText)
+        handleSubmit(turno.actionText, { accionEnDiario: turno.accionEnDiario })
         return
       }
       // B.6 (checklist frontend 2026-08-27) — retrato real si ya está subido en la Enciclopedia,
@@ -324,7 +324,7 @@ export function useModoDinamico({
       if (turno.actionText) {
         setActiveDynamicMode(null)
         if (turno.combateGrupoLogEntry) setCharacterLog((prev) => [...prev, { ...turno.combateGrupoLogEntry!, channel: 'character' }])
-        handleSubmit(turno.actionText)
+        handleSubmit(turno.actionText, { accionEnDiario: turno.accionEnDiario })
         return
       }
       // `imageUrl` se conserva de la vuelta anterior — el retrato no cambia dentro de la misma

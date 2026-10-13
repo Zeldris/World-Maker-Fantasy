@@ -27,7 +27,7 @@ describe('P9 — handleCazarEnZona dice si la caza salió', () => {
       salio = await result.current.handleCazarEnZona('e1', 'zp1')
     })
     expect(salio).toBe(true)
-    expect(p.handleSubmit).toHaveBeenCalledWith('Cazo al Guchapo')
+    expect(p.handleSubmit).toHaveBeenCalledWith('Cazo al Guchapo', { accionEnDiario: undefined })
   })
 
   it('false si falla (el mapa sigue abierto con el error en la tarjeta)', async () => {

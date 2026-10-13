@@ -187,7 +187,9 @@ export function useTurnFlow(params: UseTurnFlowParams) {
     // Panel "Curar" con varios objetos/usos a la vez (petición explícita, 2026-08-18) — reenviado
     // tal cual a requestTurnNarrate, mismo criterio que `lootItemNames` en submitCombatAction.
     // "Comer/Beber" (2026-09-04) — mismo patrón que healItemUses.
-    extras?: { healItemUses?: { itemId: string; quantity: number }[]; hambreSedItemUses?: { itemId: string; quantity: number }[] },
+    // P90/P130: de una caza, lo que el backend guarda en el diario como acción de la jugadora (`null`
+    // en una emboscada: no hay acción suya). Sin él, la acción tal cual.
+    extras?: { healItemUses?: { itemId: string; quantity: number }[]; hambreSedItemUses?: { itemId: string; quantity: number }[]; accionEnDiario?: string | null },
   ) {
     if (!action || !saveId || busyUntil || endedAt || pendingDeathResolution) return
     if (turnoEnCursoRef.current || characterThinkingRef.current) return
@@ -203,7 +205,8 @@ export function useTurnFlow(params: UseTurnFlowParams) {
     // poder distinguir "se cortó pero terminó bien" de "de verdad no llegó a nada".
     const logLengthBeforeThisTurn = characterLog.length
 
-    setCharacterLog((prev) => [...prev, playerActionEntry(action, fictionalDateRef.current)])
+    const accionEnDiario = extras?.accionEnDiario === undefined ? action : extras.accionEnDiario
+    if (accionEnDiario !== null) setCharacterLog((prev) => [...prev, playerActionEntry(accionEnDiario, fictionalDateRef.current)])
     setCharacterThinking(true)
     setTimedThinkingText(null)
     setStreamingNarration(null)
