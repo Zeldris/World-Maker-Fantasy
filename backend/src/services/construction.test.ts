@@ -211,6 +211,19 @@ describe('checkRecipe — recetas nuevas', () => {
     expect(checkRecipe(AYUNTAMIENTO_PEQUENO_RECIPE, rows, catalogBySlug, attrs, secondary)).toEqual({ met: true, missing: [] });
   });
 
+  // P80 (QA-27, decisión de la usuaria 2026-10-13): fundar solo pide materiales; Gorhorn tiene Carisma 6.
+  it('ayuntamiento pequeño: sin requisito de Carisma (P80)', () => {
+    const rows = [
+      row('1', 'piedra', 14),
+      row('2', 'lena-matorral-cuerno', 6),
+      row('3', 'hueso-largo-gargantua', 6),
+      row('4', 'resina-trepador-ocaso', 8),
+      row('5', 'mena-de-hierro', 2),
+      row('6', 'fibra-enredaderas-llanuras', 8),
+    ];
+    expect(checkRecipe(AYUNTAMIENTO_PEQUENO_RECIPE, rows, catalogBySlug, { ...attrs, carisma: 6 }, secondary)).toEqual({ met: true, missing: [] });
+  });
+
   // Materiales procesados (2026-08-24, Grupo 3 § materiales procesados de construcción) — mediano
   // ~75% procesado/25% crudo, grande 100% procesado (salvo resina, siempre cruda). `tieneOficio`
   // por defecto `true` (checkRecipe) — estos tests solo prueban materiales, no el gate de oficio

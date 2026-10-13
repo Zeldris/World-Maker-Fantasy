@@ -164,15 +164,29 @@ export interface ZonePointRow {
 /// toca `x`/`y` (reposicionar puntos dentro del lienzo queda fuera de esta pasada, documentado) ni
 /// decide DE DÓNDE sale un punto nuevo (eso lo resuelve el caller, que sí conoce cuántos puntos
 /// existen ya para esa especie en la Location).
+/// Cantidad a la que tiende un punto con esta población regional (topada a `CANTIDAD_MAX_POR_PUNTO`).
+export function objetivoDePunto(poblacionRegional: number): number {
+  return Math.max(0, Math.min(CANTIDAD_MAX_POR_PUNTO, poblacionRegional));
+}
+
+/// P109 (QA-27): si el punto no cambió pero aún no llegó a su objetivo, su reloj no se toca, para que
+/// el tiempo se acumule hasta sumar un ajuste entero. Antes se tocaba en cada recálculo (el mapa
+/// recalcula a cada paso) con un ajuste mínimo de 1: lo cazado o recolectado volvía en pocos pasos.
+export function relojPorRefrescar(punto: ZonePointRow, cantidadNueva: number, activoNuevo: boolean, poblacionRegional: number, fictionalMinutesActuales: number): boolean {
+  if (cantidadNueva !== punto.cantidad || activoNuevo !== punto.activo) return true;
+  return cantidadNueva === objetivoDePunto(poblacionRegional) && punto.lastUpdatedAtMinutes !== fictionalMinutesActuales;
+}
+
 export function proximaCantidadPara(punto: ZonePointRow, poblacionRegional: number, fictionalMinutesActuales: number): { cantidad: number; activo: boolean } {
-  const objetivo = Math.max(0, Math.min(CANTIDAD_MAX_POR_PUNTO, poblacionRegional));
+  const objetivo = objetivoDePunto(poblacionRegional);
   if (punto.lastUpdatedAtMinutes == null) return { cantidad: objetivo, activo: objetivo > 0 };
 
   const minutosTranscurridos = Math.max(0, fictionalMinutesActuales - punto.lastUpdatedAtMinutes);
   if (minutosTranscurridos === 0) return { cantidad: punto.cantidad, activo: punto.activo };
 
   const diasTranscurridos = minutosTranscurridos / MINUTOS_POR_DIA;
-  const ajusteMaximo = Math.max(1, Math.round(AJUSTE_MAXIMO_POR_DIA * diasTranscurridos));
+  const ajusteMaximo = Math.round(AJUSTE_MAXIMO_POR_DIA * diasTranscurridos);
+  if (ajusteMaximo === 0) return { cantidad: punto.cantidad, activo: punto.activo };
   const delta = objetivo - punto.cantidad;
   const ajusteReal = Math.max(-ajusteMaximo, Math.min(ajusteMaximo, delta));
   const cantidad = punto.cantidad + ajusteReal;
@@ -421,7 +435,7 @@ export async function recalcularZonePointsDeLocation(
   for (const punto of puntos.filter((p) => p.tipo === 'RECURSO')) {
     const poblacionRegional = poblacionRegionalPorSlug.get(punto.targetSlug) ?? 0;
     const { cantidad, activo } = proximaCantidadPara(punto, poblacionRegional, fictionalMinutesActuales);
-    if (cantidad === punto.cantidad && activo === punto.activo && punto.lastUpdatedAtMinutes === fictionalMinutesActuales) continue;
+    if (!relojPorRefrescar(punto, cantidad, activo, poblacionRegional, fictionalMinutesActuales)) continue;
     operaciones.push(
       tx.zonePoint.update({ where: { id: punto.id }, data: { cantidad, activo, lastUpdatedAtMinutes: fictionalMinutesActuales } }),
     );
@@ -480,7 +494,7 @@ export async function recalcularZonePointsDeLocation(
     const puntoVirtual: ZonePointRow = { ...ancla, cantidad: totalActual };
     const { cantidad: objetivo } = proximaCantidadPara(puntoVirtual, poblacionRegional, fictionalMinutesActuales);
 
-    if (!primerReparto && objetivo === totalActual && ancla.lastUpdatedAtMinutes === fictionalMinutesActuales && !(esZonaDeInicio && ordenadas.length > 1)) continue;
+    if (!primerReparto && !relojPorRefrescar(puntoVirtual, objetivo, puntoVirtual.activo, poblacionRegional, fictionalMinutesActuales) && !(esZonaDeInicio && ordenadas.length > 1)) continue;
 
     const enGuarida = esZonaDeInicio && (await evitarAlColocar()).slugsHostiles.has(targetSlug);
     const resultado = enGuarida

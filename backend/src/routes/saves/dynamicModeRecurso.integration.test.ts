@@ -188,6 +188,28 @@ describe('POST /saves/:id/modo-dinamico/recurso/:targetSlug', () => {
       await prisma.worldPopulation.update({ where: { id: poblacionReal.id }, data: { poblacion: poblacionReal.poblacion } });
     }
   });
+
+  // P109 (QA-27): raspar quitina tira por Destreza y el «×N» del punto baja con lo que se lleva.
+  it('Pared de arcilla: tirada de Destreza y el punto del mapa pierde lo recolectado', async () => {
+    const punto = await prisma.zonePoint.create({
+      data: { locationId, saveId, x: 260, y: 340, tipo: 'RECURSO', targetSlug: 'pared-arcilla-gesgurio', cantidad: 20, activo: true, lastUpdatedAtMinutes: 480 },
+    });
+    await prisma.save.update({ where: { id: saveId }, data: { pendingDynamicModeOffer: { tipo: 'RECURSO', targetSlug: 'pared-arcilla-gesgurio', targetName: 'Pared de arcilla' } } });
+    const azar = vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    try {
+      const app = await buildApp();
+      const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/recurso/pared-arcilla-gesgurio` });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.roll.attribute).toBe('destreza');
+      expect(body.exito).toBe(true);
+      const despues = await prisma.zonePoint.findUniqueOrThrow({ where: { id: punto.id } });
+      expect(despues.cantidad).toBeLessThan(20);
+    } finally {
+      azar.mockRestore();
+      await prisma.zonePoint.delete({ where: { id: punto.id } });
+    }
+  });
 });
 
 /// Fase 6 (plan Oct 2026): las fuentes de PESCA y BUSQUEDA (fauna acuática, `sourceCategory: 'fauna'`)

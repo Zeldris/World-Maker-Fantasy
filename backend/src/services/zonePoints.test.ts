@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { proximaCantidadPara, zonePointColorFor, zonePointActivoAhora, reconciliarGrupos, plantillasQueFaltan, type ZonePointRow } from './zonePoints.js';
+import { proximaCantidadPara, relojPorRefrescar, zonePointColorFor, zonePointActivoAhora, reconciliarGrupos, plantillasQueFaltan, type ZonePointRow } from './zonePoints.js';
 
 function puntoBase(overrides: Partial<ZonePointRow> = {}): ZonePointRow {
   return {
@@ -59,6 +59,12 @@ describe('proximaCantidadPara', () => {
   it('ya en el objetivo, no cambia aunque pase tiempo', () => {
     const punto = puntoBase({ lastUpdatedAtMinutes: 0, cantidad: 20 });
     expect(proximaCantidadPara(punto, 20, 24 * 60)).toEqual({ cantidad: 20, activo: true });
+  });
+
+  // P109 (QA-27): el mapa recalcula a cada paso (1 minuto); antes cada recálculo devolvía al menos 1.
+  it('un paso de 1 minuto no repone nada', () => {
+    const punto = puntoBase({ lastUpdatedAtMinutes: 0, cantidad: 17 });
+    expect(proximaCantidadPara(punto, 20, 1)).toEqual({ cantidad: 17, activo: true });
   });
 });
 
@@ -174,5 +180,18 @@ describe('plantillasQueFaltan (resincronización aditiva de ZonePoint por partid
     const existentes = [p('RECURSO', 'flor', 10, 10), p('EDIFICIO', 'forja', 5, 5)];
     const nueva = p('RECURSO', 'flor', 20, 20);
     expect(plantillasQueFaltan(existentes, [p('RECURSO', 'flor', 10, 10), nueva, p('EDIFICIO', 'forja', 5, 5)])).toEqual([nueva]);
+  });
+});
+
+// P109 (QA-27): sin cambio y lejos del objetivo, el reloj del punto no se toca (el tiempo se acumula).
+describe('relojPorRefrescar', () => {
+  it('sin cambio y por debajo del objetivo: no se refresca', () => {
+    expect(relojPorRefrescar(puntoBase({ lastUpdatedAtMinutes: 0, cantidad: 17, activo: true }), 17, true, 30, 5)).toBe(false);
+  });
+  it('sin cambio y en el objetivo: se refresca para que no acumule tiempo de más', () => {
+    expect(relojPorRefrescar(puntoBase({ lastUpdatedAtMinutes: 0, cantidad: 20, activo: true }), 20, true, 30, 5)).toBe(true);
+  });
+  it('con cambio: se refresca', () => {
+    expect(relojPorRefrescar(puntoBase({ lastUpdatedAtMinutes: 0, cantidad: 17, activo: true }), 18, true, 30, 600)).toBe(true);
   });
 });

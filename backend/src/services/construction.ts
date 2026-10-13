@@ -374,10 +374,9 @@ export const AYUNTAMIENTO_PEQUENO_RECIPE: ConstructionRecipe = {
     { match: { kind: 'category', tipo: 'RECURSO', category: 'mena' }, cantidad: 2, label: 'mena' },
     { match: { kind: 'category', tipo: 'RECURSO', category: 'fibras' }, cantidad: 8, label: 'fibra' },
   ],
-  // Carisma, no fuerza ni voluntad (2026-08-04): fundar un liderazgo real es una cuestión de
-  // autoridad, no de músculo ni de aguante — sin oficio a propósito, cualquiera con suficiente
-  // presencia puede intentarlo, no hace falta un gremio.
-  requisitos: { carisma: 10 },
+  // Sin requisito de atributo ni oficio (P80, decisión de la usuaria 2026-10-13): fundar solo pide
+  // los materiales. Antes pedía Carisma 10 y Gorhorn (Carisma 6), cuya motivación es fundarlo, no
+  // podía. El permiso del dueño de la tierra por reputación va al roadmap (`REI-122`).
   companionSlots: 0,
   ayuntamientoNivel: 1,
   reinoBuildingCapacity: 10,

@@ -446,6 +446,16 @@ async function pasivoCandidatesFor(worldId: string, currentLocationSlug: string 
   }));
 }
 
+/// P109 (QA-27): descuenta del punto RECURSO de la zona lo recolectado. A 0 queda inactivo (nunca se
+/// borra: es el punto de catálogo); el recálculo diario (`proximaCantidadPara`) lo repone poco a poco.
+export async function descontarZonePointRecurso(tx: Prisma.TransactionClient, saveId: string, locationId: string, sourceSlug: string, unidades: number): Promise<void> {
+  if (unidades <= 0) return;
+  const punto = await tx.zonePoint.findFirst({ where: { saveId, locationId, tipo: 'RECURSO', targetSlug: sourceSlug, activo: true }, orderBy: { cantidad: 'desc' } });
+  if (!punto) return;
+  const cantidad = Math.max(0, punto.cantidad - unidades);
+  await tx.zonePoint.update({ where: { id: punto.id }, data: { cantidad, ...(cantidad === 0 ? { activo: false } : {}) } });
+}
+
 /// Save con los datos mínimos para calcular `rollGathering` (equipo puesto para bonus de
 /// atributos/secundarios + nivel del oficio concreto que se está usando) — un único shape
 /// compartido por `/explorar` y el GET de desollador en vez de repetir el cálculo dos veces.
@@ -463,13 +473,20 @@ export interface GatheringRollInputs {
 /// tira. `oficio` es el `professionId` exacto pulsado (ej. "minero-llanuras"), no un prefijo — con
 /// la única excepción de pescador (2026-09-02, ver `professionIdForOficio`), donde la clave de
 /// ruta ('pescador-pescar'/'pescador-buscar') y el `professionId` real ('pescador') divergen.
-export function gatheringRollFor(save: GatheringRollInputs, oficio: string, random: () => number = Math.random): GatheringRollResult {
+/// P109 (QA-27, decisión de la usuaria 2026-10-13): lo que se saca a mano de una fuente de fauna
+/// (raspar quitina de la pared de arcilla, la miel de la colmena, los Quios del fango) es maña, no
+/// paciencia: Destreza en vez de la Voluntad del herborista. `null` = el atributo del oficio.
+export function atributoDeFuente(sourceCategory: string, metodo: MetodoObtencion): Attribute | null {
+  return sourceCategory === 'fauna' && metodo === 'EXTRACCION' ? 'destreza' : null;
+}
+
+export function gatheringRollFor(save: GatheringRollInputs, oficio: string, random: () => number = Math.random, atributo?: Attribute): GatheringRollResult {
   const attributes = effectiveAttributes(save.attributes, save.inventoryItems);
   const secondaryAttributes = effectiveSecondaryAttributes(normalizeSecondaryAttributes(save.secondaryAttributesJson), save.inventoryItems);
   const nivelOficio = save.professionProgress.find((p) => p.professionId === professionIdForOficio(oficio))?.nivel ?? 1;
   // Ya validado más arriba (metodoForOficio no fue null): attributeForOficio busca el mismo
   // prefijo y siempre encuentra pareja.
-  const attribute = attributeForOficio(oficio)!;
+  const attribute = atributo ?? attributeForOficio(oficio)!;
   return rollGathering(attributes, attribute, alivioForLevel(nivelOficio), secondaryAttributes.suerte, random);
 }
 
@@ -729,6 +746,8 @@ export async function resolverRecoleccion(
         // más abajo — nunca un rechazo duro de toda la petición: si solo caben 3 de las 9 pedidas,
         // se añaden esas 3 (mismo criterio de "coger lo que se pueda" que el resto de este motor).
         let unitsRemaining = Math.max(0, capacity - totalInventoryUnits(currentItems));
+        // P109 (QA-27): lo que se lleva de cada fuente RECURSO, para descontarlo de su punto del mapa.
+        const unidadesPorFuente = new Map<string, number>();
 
         // Herramienta requerida (2026-08-17, "usar la recolección de desuello" depende de tener
         // la herramienta encima; ampliado 2026-08-23 a minero, ver OFICIOS_CON_HERRAMIENTA_REQUERIDA
@@ -927,6 +946,7 @@ export async function resolverRecoleccion(
             });
             if (result.count === 0) continue;
             sourcesTouchedThisRequest.add(sel.sourceSlug);
+            unidadesPorFuente.set(sel.sourceSlug, (unidadesPorFuente.get(sel.sourceSlug) ?? 0) + cantidad);
             anyNonCaza = true;
           }
           unitsRemaining -= cantidad;
@@ -1050,6 +1070,15 @@ export async function resolverRecoleccion(
 
         if (clearPendingDynamicModeOffer) {
           await tx.save.update({ where: { id: save.id }, data: { pendingDynamicModeOffer: Prisma.JsonNull } });
+        }
+
+        // P109 (QA-27): el «×20» del mapa no bajaba al recolectar (solo bajaba la población regional,
+        // y el punto sigue su tope de 20 hasta que esta cae por debajo). Igual que la caza
+        // (`descontarZonePointCaza`), el punto pierde lo recolectado; el recálculo diario lo repone.
+        if (currentLocationIdParaZona) {
+          for (const [sourceSlug, unidades] of unidadesPorFuente) {
+            await descontarZonePointRecurso(tx, save.id, currentLocationIdParaZona, sourceSlug, unidades);
+          }
         }
 
         return { touched, logEntry, segundasTiradas, recompensas };

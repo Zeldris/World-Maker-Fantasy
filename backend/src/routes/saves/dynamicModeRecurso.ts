@@ -4,7 +4,7 @@ import { prisma } from '../../lib/prisma.js';
 import { rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 import { harvestAbilityForMetodo, matchesOficioPrefix } from '../../services/harvestAbilities.js';
 import { estacionFor, climaFor, formatFictionalDate } from '../../services/worldClock.js';
-import { candidateSourcesFor, gatheringRollFor, applyGatheringRoll, resolverRecoleccion, type RecoleccionLogRoll } from './recolectar.js';
+import { atributoDeFuente, candidateSourcesFor, gatheringRollFor, applyGatheringRoll, resolverRecoleccion, type RecoleccionLogRoll } from './recolectar.js';
 import { sourceDisplayNameFor } from '../../scripts/worldCatalog.js';
 import type { AttributeBlock } from '../../services/dice.js';
 import { ambitoPoblacion } from '../../services/mundoPartida.js';
@@ -102,6 +102,8 @@ export async function dynamicModeRecursoRoutes(app: FastifyInstance) {
     const roll = gatheringRollFor(
       { attributes: save.attributes as AttributeBlock, secondaryAttributesJson: save.secondaryAttributes, inventoryItems: save.inventoryItems, professionProgress: save.professionProgress },
       professionIdReal,
+      Math.random,
+      atributoDeFuente(candidato.sourceCategory, metodo) ?? undefined,
     );
     const [filtrado] = applyGatheringRoll([candidato], roll);
     if (!filtrado) {
