@@ -1116,6 +1116,20 @@ Retro de la tercera tanda de `QA-27` (2026-10-12, PR #49;
   ataques con tirada también pasan tras la subida de nivel y la brújula va al final. El frontend las
   pinta al momento en ese orden (`intercambiosExtra` de la respuesta, también la subida de nivel), así
   que se ve igual que tras recargar. Motivo: P117 se arregló dos veces y no tenía test.
+
+Retro del PR #51 (documentos reutilizables, 2026-10-13), aprobada por la usuaria:
+
+- ~~**QA-71 · Documentos con comandos comprobados**~~ ✅ 2026-10-13: criterios en el `README.md` de
+  `docs/arquitectura/reutilizables/`: cada comando, comprobado o marcado «(sin verificar)»; cada
+  afirmación sobre el proyecto, con su archivo y comprobada con `grep`; cómo comprobar archivos de
+  modelos y etiquetas de Ollama. Motivo: 10 de los 15 hallazgos del `/code-review` del PR #51 eran
+  comandos sin probar o datos de Tarkor sin mirar.
+- ~~**QA-72 · Traer `main` al empezar y al fusionar**~~ ✅ 2026-10-13: paso 5 de «Al empezar cualquier
+  sesión» en `CLAUDE.md` y nota en el paso 5 del runbook. Al empezar cada tarea y al fusionar cada PR, `git fetch` y
+  `git merge origin/main` (merge, no rebase: las ramas están subidas). Si el conflicto toca la misma lógica
+  por los dos lados o dos migraciones, se consulta a la usuaria. Motivo: el PR #50 de la otra cuenta
+  no se vio hasta preparar el PR #51. Sustituye a las propuestas de avisar en el pre-push y en el
+  inicio de sesión.
 ---
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
