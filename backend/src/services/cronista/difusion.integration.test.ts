@@ -157,6 +157,24 @@ describe('difusión de sucesos al personaje (CR-18 18b)', () => {
     expect(await leerBandos(prisma, saveId, 'no-existe')).toBeNull();
   });
 
+  // P137 (QA-27): las muertes y despertares de la jugadora no salen en los bandos ni llegan como noticia.
+  it('la muerte y el despertar de la jugadora quedan en sus Leyendas: ni bando ni noticia', async () => {
+    await prisma.$transaction((tx) => asegurarTablonesDePartida(tx, saveId));
+    const tablon = await prisma.building.findFirstOrThrow({
+      where: { recipeKey: TABLON_RECIPE_KEY, faction: { saveId }, location: { region: 'Las Llanuras del Viento Rojo' } },
+      select: { id: true },
+    });
+    await pasarDias(1);
+    const comun = { saveId, fictionalMinutes: await ahora(), regionSlug: 'las-llanuras-del-viento-rojo', origen: 'JUGADOR' as const, actores: [] };
+    const muerte = await registrarSuceso(prisma, { ...comun, tipo: 'MUERTE_JUGADOR', datos: { personaje: 'Gorhorn', causa: 'un Guchapo' } });
+    const despertar = await registrarSuceso(prisma, { ...comun, tipo: 'RENACER', datos: { personaje: 'Gorhorn', lugar: 'La Hondonada del Eco' } });
+    const bandos = (await leerBandos(prisma, saveId, tablon.id))!.map((b) => b.sucesoId);
+    expect(bandos).not.toContain(muerte);
+    expect(bandos).not.toContain(despertar);
+    await difundir(prisma, saveId);
+    expect(await prisma.conocimiento.count({ where: { saveId, sucesoId: { in: [muerte, despertar] } } })).toBe(0);
+  });
+
   // 18e (Q4): ir donde pasó confirma el rumor.
   it('un rumor se confirma al llegar a la región donde pasó', async () => {
     await pasarDias(1);
