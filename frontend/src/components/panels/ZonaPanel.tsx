@@ -290,12 +290,13 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
   // un encuentro corte el trayecto, cierra el mapa y abre el modal real de Saquear/Desollar.
   async function accionSobreCadaver(pin: { x: number; y: number }, abrir: () => void) {
     const cerca = !!data?.jugador && Math.abs(data.jugador.x - pin.x) <= 50 && Math.abs(data.jugador.y - pin.y) <= 50
-    if (!cerca && !soloConsulta) {
-      const fresca = await handleMoverA({ x: pin.x, y: pin.y })
-      if (!fresca) return
+    const alLlegar = () => {
+      onClose?.()
+      abrir()
     }
-    onClose?.()
-    abrir()
+    // P125: un encuentro por el camino no pierde la acción; «Seguir mi camino» la hace al llegar.
+    if (!cerca && !soloConsulta) await handleMoverA({ x: pin.x, y: pin.y }, { alLlegar })
+    else alLlegar()
   }
 
 
@@ -313,9 +314,16 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
       return
     }
     if (movimientoEnCurso) return
-    const fresca = await handleMoverA({ x: salida.x, y: salida.y })
-    const salidaFresca = fresca?.salidas.find((s) => s.locationId === salida.locationId)
-    if (salidaFresca?.alcanzable) setSelectedSalida(salidaFresca)
+    // P133: igual con una salida: el aviso de viaje se abre al llegar, también tras «Seguir mi camino».
+    await handleMoverA(
+      { x: salida.x, y: salida.y },
+      {
+        alLlegar: (fresca) => {
+          const salidaFresca = fresca.salidas.find((s) => s.locationId === salida.locationId)
+          if (salidaFresca?.alcanzable) setSelectedSalida(salidaFresca)
+        },
+      },
+    )
   }
 
   // ZON-40/41: lo que dicen la tarjeta y el menú de una ficha, y qué se puede hacer con ella (las
