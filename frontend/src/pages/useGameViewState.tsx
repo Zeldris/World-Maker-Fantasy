@@ -1001,10 +1001,10 @@ export function useGameViewState() {
   // Responder escribiendo (petición de la usuaria, 2026-10-02) — desde la tarjeta de quien te habla:
   // vuelve al composer (aunque estuviera la barra de habilidades o un panel abierto) con «Le digo a
   // <nombre>: » ya escrito, el nombre como chip y el cursor al final.
-  function handleResponderEscribiendo(nombre: string) {
+  function handleResponderEscribiendo(aQuien: string) {
     if (skillHudView.screen !== 'composer') handleBackToComposer()
     setActivePanel(null)
-    requestAnimationFrame(() => composerRef.current?.setTextWithChips(`Le digo a ${nombre}: `, enciclopediaIndex))
+    requestAnimationFrame(() => composerRef.current?.setTextWithChips(`Le digo ${aQuien}: `, enciclopediaIndex))
   }
 
   function handleEnciclopediaInsert(chip: { icon: string; label: string; description?: string }) {
@@ -1230,16 +1230,9 @@ export function useGameViewState() {
     }
   }, [saveId])
 
-  // Fin de partida real (sin vidas restantes, 2026-08-31, petición explícita: "Te sacamos de la
-  // partida al selector, permitiendote reiniciarla o crear una nueva, pero no seguir jugando ya
-  // que es game over") — antes se quedaba en esta misma vista con un mensaje en línea, sin sacar
-  // al jugador; ahora navega sola en cuanto `endedAt` se marca, con un breve momento para que se
-  // alcance a leer el susurro/aviso de última vez ya narrado en el log.
-  useEffect(() => {
-    if (!endedAt) return
-    const timer = setTimeout(() => navigate('/solitario'), 3500)
-    return () => clearTimeout(timer)
-  }, [endedAt, navigate])
+  // Fin de partida real (sin vidas restantes, 2026-08-31): P128 (2026-10-13) lo enseña en
+  // `FinDePartidaModal` (GameModals) con el paso a «Tus partidas», donde se reinicia o se empieza otra.
+  // Antes saltaba sola a «Elige un mundo» a los 3,5 s, sin decir que la partida había acabado.
 
   // A.1 (checklist frontend 2026-08-27) — handleSubmit (flujo del turno normal) extraído a
   // useTurnFlow.ts, mismo criterio que useCombatFlow.ts (2026-08-21): GameView sigue siendo dueño

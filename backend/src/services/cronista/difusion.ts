@@ -19,6 +19,14 @@ type Tx = Prisma.TransactionClient;
 
 /// Días tras los que una noticia deja de llegar sola (ya no es novedad).
 export const VENTANA_DIAS_LLEGA_SOLA = 5;
+
+/// P137 (QA-27, decisión de la usuaria 2026-10-13): lo que el mundo no sabe de la jugadora. Sus
+/// muertes y despertares quedan en sus Leyendas; nunca llegan solos, ni como rumor, ni de boca de un
+/// NPC, ni en un bando (que el mundo supiera que reaparece chocaría con el lore). Los caminos de
+/// difusión filtran con esto en su consulta (`difundible`, y `viajerosCruce.ts`) y `conocer` lo comprueba
+/// también, para cualquier camino nuevo.
+export const SUCESOS_SOLO_EN_LEYENDAS = ['MUERTE_JUGADOR', 'RENACER', 'FIN_PARTIDA'];
+export const difundible = { tipo: { notIn: SUCESOS_SOLO_EN_LEYENDAS } };
 const MINUTOS_DIA = 1440;
 
 /// Lo que guarda el emisor de una noticia con su suceso.
@@ -87,6 +95,12 @@ export async function conocer(
   tx: Tx,
   args: { saveId: string; sucesoId: string; via: Via; confirmado: boolean; minutos: number; escribirNoticia: boolean; region?: string | null; fuente?: string | null },
 ): Promise<'NUEVO' | 'CONFIRMADO' | null> {
+  // P137: red de seguridad para cualquier camino (también los de fuera de este archivo, como el rumor
+  // de los viajeros): lo que solo va a las Leyendas nunca se hace noticia.
+  if (args.escribirNoticia) {
+    const suceso = await tx.suceso.findUnique({ where: { id: args.sucesoId }, select: { tipo: true } });
+    if (suceso && SUCESOS_SOLO_EN_LEYENDAS.includes(suceso.tipo)) return null;
+  }
   // Dos pasadas a la vez (cada POST lanza `difundir`; «¿Qué se cuenta?» y los bandos, la suya) no
   // deben chocar en la clave única: primero se reclama la fila sin error (ON CONFLICT DO NOTHING o
   // un update condicionado) y solo quien la gana escribe la noticia.
@@ -140,6 +154,7 @@ export async function difundirEn(tx: Tx, saveId: string, opciones: { sucesoIds?:
   const sucesos = await tx.suceso.findMany({
     where: {
       saveId,
+      ...difundible,
       importancia: { gte: 4 },
       fictionalMinutes: { gte: ahora - VENTANA_DIAS_LLEGA_SOLA * MINUTOS_DIA, lte: ahora },
       conocimientos: { none: {} },
@@ -170,7 +185,7 @@ export async function difundirEn(tx: Tx, saveId: string, opciones: { sucesoIds?:
 /// habla de ello.
 async function confirmarRumores(tx: Tx, saveId: string, ahora: number, personaje: { region: string | null; aliadas: Set<string> }): Promise<number> {
   const rumores = await tx.suceso.findMany({
-    where: { saveId, fictionalMinutes: { gte: ahora - DIAS_MEMORIA_NPC * MINUTOS_DIA }, conocimientos: { some: { confirmado: false } } },
+    where: { saveId, ...difundible, fictionalMinutes: { gte: ahora - DIAS_MEMORIA_NPC * MINUTOS_DIA }, conocimientos: { some: { confirmado: false } } },
     select: { id: true, importancia: true, regionSlug: true, locationId: true, noticia: true, actores: { select: { entidadTipo: true, entidadId: true } } },
   });
   if (rumores.length === 0) return 0;
@@ -238,6 +253,7 @@ export async function contarNoticias(
   const sucesos = await tx.suceso.findMany({
     where: {
       saveId,
+      ...difundible,
       importancia: { gte: 4 },
       fictionalMinutes: { gte: ahora - DIAS_MEMORIA_NPC * MINUTOS_DIA, lte: ahora },
       OR: [{ conocimientos: { none: {} } }, { conocimientos: { some: { confirmado: false } } }],
@@ -298,7 +314,7 @@ export async function leerBandos(prisma: PrismaClient, saveId: string, buildingI
     const faccion = b.faction?.name ?? null;
     const ahora = (await tx.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true } }))?.fictionalMinutes ?? 0;
     const sucesos = await tx.suceso.findMany({
-      where: { saveId, importancia: { gte: IMPORTANCIA_BANDO }, fictionalMinutes: { gte: ahora - DIAS_BANDO * MINUTOS_DIA, lte: ahora } },
+      where: { saveId, ...difundible, importancia: { gte: IMPORTANCIA_BANDO }, fictionalMinutes: { gte: ahora - DIAS_BANDO * MINUTOS_DIA, lte: ahora } },
       select: { id: true, importancia: true, regionSlug: true, locationId: true, noticia: true, fictionalMinutes: true, texto: true, actores: { select: { entidadTipo: true, entidadId: true } } },
       orderBy: { fictionalMinutes: 'desc' },
     });

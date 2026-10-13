@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { decideOfertaModoDinamico, nombreOcultoPorRaza, narrarAperturaCombateForzado } from './dynamicMode.js';
+import { aNombre, decideOfertaModoDinamico, nombreOcultoPorRaza, narrarAperturaCombateForzado } from './dynamicMode.js';
 
 describe('decideOfertaModoDinamico', () => {
   it('sin candidatos (NPC/FAUNA/RECURSO con cantidad > 0), nunca ofrece nada', () => {
@@ -119,5 +119,15 @@ describe('nombreOcultoPorRaza', () => {
 
   it('la apertura del combate forzado no concuerda en género con el nombre', () => {
     expect(narrarAperturaCombateForzado('Orca desconocida').narration).not.toMatch(/dispuesto/);
+  });
+});
+
+/// P141 (QA-27): «Responder» a un NPC sin descubrir: «Le digo al orco desconocido:».
+describe('aNombre', () => {
+  it('con artículo y contracción si no es un nombre propio; si lo es, tal cual', () => {
+    expect(aNombre('Orco desconocido')).toBe('al orco desconocido');
+    expect(aNombre('Orca desconocida')).toBe('a la orca desconocida');
+    expect(aNombre('Alguien')).toBe('a alguien');
+    expect(aNombre('Gistera Koh')).toBe('a Gistera Koh');
   });
 });

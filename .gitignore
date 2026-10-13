@@ -32,3 +32,7 @@ tools/lore-links/
 .playwright-mcp/
 tools/playwright-e2e/driver.token
 .claude/revision-main.sha
+
+# Bytecode de Python (los tests de tools/qa los regeneran)
+__pycache__/
+*.pyc

@@ -2932,6 +2932,45 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
   }, 30_000);
 
+  // `/code-review` del PR #53: con la jugadora protegiendo con AREA defensiva, el golpe dirigido al
+  // compañero le llega a ella y se resuelve con tirada (antes P129 lo descartaba: nadie recibía nada).
+  it('AREA (defensivo) en la jugadora: el golpe dirigido al compañero lo encaja ella, con tirada', async () => {
+    await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'ILESO', energia: 100, activeEffects: [] } });
+    const [enemigo, companionOrigen] = await Promise.all([
+      prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } }),
+      prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'corredor-de-cauce' } }),
+    ]);
+    const companion = await prisma.companion.create({
+      data: { saveId, sourceSlug: companionOrigen.slug, name: 'Compañero protegido (AREA)', role: 'aliado', notes: '', attributes: companionOrigen.attributes as object, condicionFisica: 'ILESO' },
+    });
+    const { encounterId } = await prisma.$transaction((tx) =>
+      iniciarCombatEncounter(tx, saveId, [
+        { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 1000, inteligencia: 10 },
+        { bando: 'JUGADOR', tipo: 'COMPANION', companionId: companion.id, destreza: 500, inteligencia: 6 },
+        { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-area-jugadora', destreza: 1, inteligencia: 6 },
+      ]),
+    );
+    const companionP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'COMPANION' } });
+    const jugadoraP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'JUGADOR' } });
+    const enemigoP = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'NPC' } });
+    await prisma.combatParticipant.update({ where: { id: jugadoraP.id }, data: { areaDefensaPorRondas: 2 } });
+    await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: enemigoP.id });
+    // El enemigo va a por el compañero; el compañero no le devuelve la mirada (no es duelo).
+    await prisma.combatParticipant.update({ where: { id: enemigoP.id }, data: { objetivoActualId: companionP.id } });
+    await prisma.combatParticipant.update({ where: { id: companionP.id }, data: { objetivoActualId: null } });
+    await prisma.combatEncounter.update({ where: { id: encounterId }, data: { turnoActual: 2 } });
+
+    const turno = await resolverTurnoAutonomo({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
+
+    expect(turno?.combatExchangeDisplay).not.toBeNull();
+    // Se interpone ella: no es un flanqueo, sin ventaja para el atacante.
+    expect(turno?.combatExchangeDisplay?.atacante.rollMode).not.toBe('ventaja');
+
+    await prisma.companion.deleteMany({ where: { id: companion.id } });
+    await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
+    await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'ILESO', energia: 100, activeEffects: [] } });
+  }, 30_000);
+
   // AREA real (2026-09-14, docs/rpgtarkor/sistemas-combate/clases.md — Supervivencia 32, Trampa Improvisada) —
   // variante persistente: coloca la trampa (activa `areaTrampaPorRondas` sobre sí misma, camino
   // independiente/utilidad) y, mientras esté viva, cualquier intercambio donde defienda refuerza el

@@ -159,6 +159,13 @@ export function nombreEnFrase(nombre: string, alInicio = false): string {
   return alInicio ? texto.charAt(0).toUpperCase() + texto.slice(1) : texto;
 }
 
+/// P141 (QA-27): a quién se dirige la jugadora al «Responder» («al orco desconocido», «a alguien»,
+/// «a Gistera Koh»). Viaja en la oferta (`aQuien`): el frontend no lo vuelve a calcular.
+export function aNombre(nombre: string): string {
+  const enFrase = nombreEnFrase(nombre);
+  return enFrase.startsWith('el ') ? `al ${enFrase.slice(3)}` : `a ${enFrase}`;
+}
+
 /// P90 (QA-27): un grupo de fauna se nombra como grupo («el grupo de 5 Kirelon Arenoso»), no como
 /// un individuo sin artículo.
 export function nombreDeEncuentro(nombre: string, cantidad?: number | null, alInicio = false): string {

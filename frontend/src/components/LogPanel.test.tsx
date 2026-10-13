@@ -201,7 +201,16 @@ describe('LogPanel — Responder escribiendo', () => {
       <LogPanel {...baseProps} entries={[conOferta({ tipo: 'NPC', targetSlug: 'brenn', targetName: 'Brenn', combateForzado: true })]} onResponderEscribiendo={onResponder} />,
     )
     fireEvent.click(getByRole('button', { name: '✍️ Responder' }))
-    expect(onResponder).toHaveBeenCalledWith('Brenn')
+    expect(onResponder).toHaveBeenCalledWith('a Brenn')
+  })
+
+  it('usa el «a quién» del backend: «al orco desconocido» (P141)', () => {
+    const onResponder = vi.fn()
+    const { getByRole } = render(
+      <LogPanel {...baseProps} entries={[conOferta({ tipo: 'NPC', targetSlug: 'x', targetName: 'Orco desconocido', aQuien: 'al orco desconocido' })]} onResponderEscribiendo={onResponder} />,
+    )
+    fireEvent.click(getByRole('button', { name: '✍️ Responder' }))
+    expect(onResponder).toHaveBeenCalledWith('al orco desconocido')
   })
 
   it('en fauna no aparece', () => {

@@ -210,6 +210,34 @@ describe('POST /saves/:id/modo-dinamico/recurso/:targetSlug', () => {
       await prisma.zonePoint.delete({ where: { id: punto.id } });
     }
   });
+
+  // `/code-review` del PR #53: con dos puntos de la misma fuente, baja el que se está recolectando
+  // (el de la oferta), no el que más tiene.
+  it('dos puntos de la misma fuente: baja el de la oferta, no el más grande', async () => {
+    // La prueba anterior acaba de recolectar esta fuente: sin esto, el enfriamiento la deja sin nada.
+    await prisma.worldPopulation.updateMany({ where: { targetSlug: 'pared-arcilla-gesgurio', OR: [{ saveId }, { saveId: null }] }, data: { lastHarvestedAt: null } });
+    const grande = await prisma.zonePoint.create({
+      data: { locationId, saveId, x: 100, y: 100, tipo: 'RECURSO', targetSlug: 'pared-arcilla-gesgurio', cantidad: 20, activo: true, lastUpdatedAtMinutes: 480 },
+    });
+    const elegido = await prisma.zonePoint.create({
+      data: { locationId, saveId, x: 260, y: 340, tipo: 'RECURSO', targetSlug: 'pared-arcilla-gesgurio', cantidad: 12, activo: true, lastUpdatedAtMinutes: 480 },
+    });
+    await prisma.save.update({
+      where: { id: saveId },
+      data: { pendingDynamicModeOffer: { tipo: 'RECURSO', targetSlug: 'pared-arcilla-gesgurio', targetName: 'Pared de arcilla', zonePointId: elegido.id } },
+    });
+    const azar = vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    try {
+      const app = await buildApp();
+      const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/recurso/pared-arcilla-gesgurio` });
+      expect(JSON.parse(res.body).exito).toBe(true);
+      expect((await prisma.zonePoint.findUniqueOrThrow({ where: { id: elegido.id } })).cantidad).toBeLessThan(12);
+      expect((await prisma.zonePoint.findUniqueOrThrow({ where: { id: grande.id } })).cantidad).toBe(20);
+    } finally {
+      azar.mockRestore();
+      await prisma.zonePoint.deleteMany({ where: { id: { in: [grande.id, elegido.id] } } });
+    }
+  });
 });
 
 /// Fase 6 (plan Oct 2026): las fuentes de PESCA y BUSQUEDA (fauna acuática, `sourceCategory: 'fauna'`)

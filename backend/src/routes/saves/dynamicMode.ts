@@ -21,7 +21,7 @@ import { narrarVueltaModoDinamico } from '../../services/dynamicModeNarracion.js
 import { aceptarQuest } from './quests.js';
 import { detectNpcsInScene } from '../../services/npcScene.js';
 import { abrirCombateDePersonas, grupoDePersona } from '../../services/combatePersonas.js';
-import { iniciarCaza, type CazaTarget, type TiradaGrupoInfo, type CombateGrupoLogRoll, type TiradaCazaLimpia } from '../../services/caza.js';
+import { iniciarCaza, accionEnDiarioDeCaza, type CazaTarget, type TiradaGrupoInfo, type CombateGrupoLogRoll, type TiradaCazaLimpia } from '../../services/caza.js';
 import type { AttributeBlock } from '../../services/dice.js';
 
 /// "Modo dinámico" (2026-08-27, Pieza 4 de "Dinamismo del mundo") — mini-flujo acotado ofrecido
@@ -134,7 +134,9 @@ async function abrirCombateForzadoDesdeInteractuar(
   // caso debe evitar siempre).
   zonePointId?: string,
   cantidad?: number,
-): Promise<{ combate: ReturnType<typeof combateNpcShape> } | { actionText: string; tiradasGrupo?: TiradaGrupoInfo[]; combateGrupoLogEntry?: { id: string; text: string; timeLabel: string; createdAt: string; roll: CombateGrupoLogRoll | TiradaCazaLimpia } } | null> {
+  /// P90: el grupo vio antes a la jugadora (`quienInicia: 'npc'`); ella no eligió atacar.
+  emboscada = false,
+): Promise<{ combate: ReturnType<typeof combateNpcShape> } | { actionText: string; accionEnDiario?: string | null; tiradasGrupo?: TiradaGrupoInfo[]; combateGrupoLogEntry?: { id: string; text: string; timeLabel: string; createdAt: string; roll: CombateGrupoLogRoll | TiradaCazaLimpia } } | null> {
   // CR-49: una persona con banda o con los suyos cerca no pelea sola — combate de varios con todos,
   // y el turno siguiente (con `actionText`) lo lleva el motor de grupo, como la caza en grupo.
   const persona = await prisma.npc.findFirst({
@@ -155,7 +157,10 @@ async function abrirCombateForzadoDesdeInteractuar(
       if (!abierto) return null;
       await prisma.save.update({ where: { id: save.id }, data: { pendingDynamicModeOffer: Prisma.JsonNull, pendingDynamicMode: Prisma.JsonNull } });
       await recordEntityDiscoveries({ saveId: save.id, worldId: save.worldId, mentionedText: persona.name, npcSlugsInScene: [persona.slug] });
-      return { actionText: `Me enfrento a ${persona.name} y a los suyos.` };
+      // P90: si la vieron antes ellos, es una emboscada, no una acción suya (sin línea en el diario; lo
+      // cuenta la narración). Mismo formato que la caza (`accionEnDiarioDeCaza`).
+      const actionText = emboscada ? `Me defiendo de '${persona.name}' y de los suyos, que me tienden una emboscada.` : `Me enfrento a ${persona.name} y a los suyos.`;
+      return { actionText, accionEnDiario: accionEnDiarioDeCaza(actionText) };
     }
   }
 
@@ -178,13 +183,14 @@ async function abrirCombateForzadoDesdeInteractuar(
       },
       targets,
       permitirCazaLimpia: false,
+      emboscada,
     });
     if ('error' in resultado) return null;
     // `permitirCazaLimpia: false` descarta la rama de caza limpia — `resultado.resuelveSinCombate`
     // nunca debería ser `true` aquí (shape distinto, sin `analizado`/`capturable`/...), pero el
     // tipo de `iniciarCaza` lo contempla; se cubre por seguridad con un cast explícito, nunca
     // alcanzable en la práctica.
-    return resultado.resuelveSinCombate ? { combate: resultado.combate as unknown as ReturnType<typeof combateNpcShape> } : { actionText: resultado.actionText, ...(resultado.tiradasGrupo ? { tiradasGrupo: resultado.tiradasGrupo } : {}), ...(resultado.logEntry ? { combateGrupoLogEntry: resultado.logEntry } : {}) };
+    return resultado.resuelveSinCombate ? { combate: resultado.combate as unknown as ReturnType<typeof combateNpcShape> } : { actionText: resultado.actionText, accionEnDiario: accionEnDiarioDeCaza(resultado.actionText), ...(resultado.tiradasGrupo ? { tiradasGrupo: resultado.tiradasGrupo } : {}), ...(resultado.logEntry ? { combateGrupoLogEntry: resultado.logEntry } : {}) };
   }
 
   const npcCatalogo = await prisma.npc.findFirst({ where: { worldId: save.worldId, slug: targetSlug }, select: { name: true } });
@@ -273,7 +279,7 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
       // narrar la apertura con `narrarAperturaCombateForzado`) — la rama de "npc" se resuelve aquí
       // mismo porque no necesita ninguna narración previa, el combate ya empieza.
       if (combateForzado && quienInicia === 'npc') {
-        const resultadoCombate = await abrirCombateForzadoDesdeInteractuar(save, targetSlug, targetName, fictionalMinutesActuales0, zonePointId, cantidad);
+        const resultadoCombate = await abrirCombateForzadoDesdeInteractuar(save, targetSlug, targetName, fictionalMinutesActuales0, zonePointId, cantidad, true);
         if (!resultadoCombate) {
           // El agresor ya no está (muerto, retirado...) — la oferta se descarta: sin esto el jugador
           // quedaba atascado (no se puede ignorar ni moverse con un combate forzado pendiente).

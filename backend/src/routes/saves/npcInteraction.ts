@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
-import { rejectIfEnded, clearPendingOffer, toFrontendLogEntry } from './shared.js';
+import { rejectIfEnded, rejectIfPendingDeath, clearPendingOffer, toFrontendLogEntry } from './shared.js';
 import { ayudarNpc } from '../../services/ayudarNpc.js';
 import { ofrecerTrabajoDeNpc } from '../../services/cronista/generarMisiones.js';
 import { OPCION_INFORMANTE, OPCION_NOTICIAS, OPCION_TRABAJO, OPCION_UNIRSE } from '../../services/npcInteraction.js';
@@ -24,10 +24,13 @@ export async function npcInteractionRoutes(app: FastifyInstance) {
   app.post<{ Params: { id: string; npcSlug: string } }>('/saves/:id/npc-interaction/:npcSlug/abrir', async (request, reply) => {
     const save = await prisma.save.findUnique({
       where: { id: request.params.id },
-      select: { id: true, endedAt: true, pendingDynamicModeOffer: true },
+      select: { id: true, endedAt: true, pendingDeathResolution: true, pendingDynamicMode: true, pendingDynamicModeOffer: true },
     });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
     if (rejectIfEnded(save, reply)) return;
+    // Mismas comprobaciones que `/modo-dinamico/interactuar`, que es lo que sustituye.
+    if (rejectIfPendingDeath(save, reply)) return;
+    if (save.pendingDynamicMode) return reply.status(409).send({ error: 'Ya hay un modo dinámico en curso' });
     const encuentro = save.pendingDynamicModeOffer as { tipo?: string; targetSlug?: string; targetName?: string; combateForzado?: boolean } | null;
     if (!encuentro || encuentro.tipo !== 'NPC' || encuentro.targetSlug !== request.params.npcSlug) {
       return reply.status(409).send({ error: 'Esa interacción ya no está disponible' });
@@ -45,10 +48,11 @@ export async function npcInteractionRoutes(app: FastifyInstance) {
 
       const save = await prisma.save.findUnique({
         where: { id: request.params.id },
-        select: { id: true, endedAt: true, pendingNpcInteractionOffer: true },
+        select: { id: true, endedAt: true, pendingDeathResolution: true, pendingNpcInteractionOffer: true, pendingDynamicModeOffer: true },
       });
       if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
       if (rejectIfEnded(save, reply)) return;
+      if (rejectIfPendingDeath(save, reply)) return;
 
       const offer = save.pendingNpcInteractionOffer as OfertaDeMenu | null;
       // Guard de "oferta ya no vigente" (mismo patrón que dynamicMode.ts) — evita resolver una
@@ -65,8 +69,14 @@ export async function npcInteractionRoutes(app: FastifyInstance) {
 
       // P142: el menú abierto desde un encuentro del mapa. «Charlar» abre la escena libre de ese
       // encuentro y «Combatir» lo convierte en combate (el frontend reutiliza el Interactuar del
-      // encuentro, que sigue pendiente); cualquier otra opción lo da por resuelto.
+      // encuentro, que sigue pendiente); cualquier otra opción lo da por resuelto. Solo si el
+      // encuentro pendiente sigue siendo el de este NPC: si ya no, el menú está caducado y no se toca
+      // el encuentro de otro (`/code-review` del PR #53).
       if (offer.desdeEncuentro) {
+        const encuentro = save.pendingDynamicModeOffer as { tipo?: string; targetSlug?: string } | null;
+        if (encuentro?.tipo !== 'NPC' || encuentro.targetSlug !== offer.npcSlug) {
+          return reply.status(409).send({ error: 'Ese encuentro ya no está disponible' });
+        }
         if (opcion === 'Charlar') return { accion: 'CHARLAR' as const };
         if (opcion === 'Combatir') return { accion: 'FORZAR_COMBATE' as const, npcSlug: offer.npcSlug, desdeEncuentro: true };
         await prisma.save.update({ where: { id: save.id }, data: { pendingDynamicModeOffer: Prisma.JsonNull } });

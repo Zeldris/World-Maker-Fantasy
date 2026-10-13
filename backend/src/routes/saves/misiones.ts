@@ -3,6 +3,7 @@ import { prisma } from '../../lib/prisma.js';
 import { aceptarMision, abandonarMision, entregarMision, ErrorMision } from '../../services/cronista/misionesJugadora.js';
 import { avisosDeTablon } from '../../services/cronista/tablones.js';
 import { leerBandos } from '../../services/cronista/difusion.js';
+import { rechazarSiNoAdmiteAcciones } from './shared.js';
 
 // CR-40 (40e, hito 0.2): misiones secundarias del motor. Aceptar un aviso (de un tablón o de un NPC),
 // entregar lo que pide una misión de Entregar y abandonar. El progreso del resto lo lleva el motor.
@@ -21,12 +22,14 @@ export async function misionesRoutes(app: FastifyInstance) {
 
   // CR-18 (18d): bandos del tablón; leerlos da el conocimiento de lo que anuncian (es oficial).
   app.post<{ Params: { id: string; buildingId: string } }>('/saves/:id/tablones/:buildingId/bandos/leer', async (request, reply) => {
+    if (await rechazarSiNoAdmiteAcciones(request.params.id, reply)) return;
     const bandos = await leerBandos(prisma, request.params.id, request.params.buildingId);
     if (!bandos) return reply.status(404).send({ error: 'Ese tablón no existe' });
     return { bandos };
   });
 
   app.post<{ Params: { id: string; avisoId: string } }>('/saves/:id/misiones/avisos/:avisoId/aceptar', async (request, reply) => {
+    if (await rechazarSiNoAdmiteAcciones(request.params.id, reply)) return;
     try {
       const quest = await aceptarMision(prisma, request.params.id, request.params.avisoId);
       return { questId: quest.id, title: quest.title };
@@ -36,6 +39,7 @@ export async function misionesRoutes(app: FastifyInstance) {
   });
 
   app.post<{ Params: { id: string; questId: string } }>('/saves/:id/misiones/:questId/entregar', async (request, reply) => {
+    if (await rechazarSiNoAdmiteAcciones(request.params.id, reply)) return;
     try {
       await entregarMision(prisma, request.params.id, request.params.questId);
       const quest = await prisma.quest.findUniqueOrThrow({ where: { id: request.params.questId }, select: { status: true, progreso: true, cantidad: true } });
@@ -46,6 +50,7 @@ export async function misionesRoutes(app: FastifyInstance) {
   });
 
   app.post<{ Params: { id: string; questId: string } }>('/saves/:id/misiones/:questId/abandonar', async (request, reply) => {
+    if (await rechazarSiNoAdmiteAcciones(request.params.id, reply)) return;
     try {
       await abandonarMision(prisma, request.params.id, request.params.questId);
       return { status: 'ABANDONADA' };

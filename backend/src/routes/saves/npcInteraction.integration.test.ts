@@ -166,7 +166,10 @@ describe('POST /saves/:id/npc-interaction/:npcSlug/abrir', () => {
   });
 
   beforeEach(async () => {
-    await prisma.save.update({ where: { id: saveId }, data: { pendingNpcInteractionOffer: Prisma.JsonNull, pendingDynamicModeOffer: encuentro('maestro-cocinero-serhu') } });
+    await prisma.save.update({
+      where: { id: saveId },
+      data: { pendingNpcInteractionOffer: Prisma.JsonNull, pendingDynamicModeOffer: encuentro('maestro-cocinero-serhu'), pendingDeathResolution: false, pendingDynamicMode: Prisma.JsonNull },
+    });
   });
 
   async function abrir(slug: string) {
@@ -217,6 +220,26 @@ describe('POST /saves/:id/npc-interaction/:npcSlug/abrir', () => {
     expect(JSON.parse(res.body)).toEqual({ accion: 'CERRAR' });
     const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(save.pendingDynamicModeOffer).toBeNull();
+  });
+
+  it('con una muerte pendiente o una escena abierta no abre el menú: 409 y no deja menú pendiente', async () => {
+    await prisma.save.update({ where: { id: saveId }, data: { pendingDeathResolution: true } });
+    expect((await abrir('maestro-cocinero-serhu')).statusCode).toBe(409);
+    await prisma.save.update({ where: { id: saveId }, data: { pendingDeathResolution: false, pendingDynamicMode: { tipo: 'NPC', targetSlug: 'herrero-serhu' } } });
+    expect((await abrir('maestro-cocinero-serhu')).statusCode).toBe(409);
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(save.pendingNpcInteractionOffer).toBeNull();
+  });
+
+  it('menú caducado (el encuentro ya es de otro NPC): 409 y el encuentro nuevo no se toca', async () => {
+    await abrir('maestro-cocinero-serhu');
+    await prisma.save.update({ where: { id: saveId }, data: { pendingDynamicModeOffer: encuentro('herrero-serhu') } });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/npc-interaction/maestro-cocinero-serhu/elegir`, payload: { opcion: 'Salir' } });
+    expect(res.statusCode).toBe(409);
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(save.pendingDynamicModeOffer).toMatchObject({ targetSlug: 'herrero-serhu' });
+    expect(save.pendingNpcInteractionOffer).toBeNull();
   });
 
   it('Combatir desde el mapa: combate desde el encuentro', async () => {

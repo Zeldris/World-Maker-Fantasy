@@ -13,6 +13,8 @@ import { MAX_RONDAS_SUBCOMBATE } from './combateDeFondo.js';
 import { lockRowForUpdate } from '../routes/saves/shared.js';
 import { ambitoPoblacion } from './mundoPartida.js';
 import { companeroDispuestoACombatir } from './cronista/aprobacion.js';
+import { nombreDeEncuentro } from './dynamicMode.js';
+import { sinComillasSueltas } from './accionCitada.js';
 
 /// Servicio de caza (Fase 2, 2026-09-28, `plan-mecanicas-por-zona-2026-09-28.md`) — extraído del
 /// núcleo de `POST /saves/:id/cazar/confirmar` (`cazar.ts`, todo lo que corre TRAS elegir
@@ -104,6 +106,9 @@ export type IniciarCazaResultado =
       resuelveSinCombate: false;
       exito: false | null;
       actionText: string;
+      /// P90/P130: lo que sale en el diario como acción de la jugadora (`accionEnDiarioDeCaza`);
+      /// `null` en una emboscada. Ausente = `actionText` tal cual.
+      accionEnDiario?: string | null;
       /// Solo cuando la caza sigilosa se intentó y falló.
       cazaLimpia?: TiradaCazaLimpia;
       /// Solo en combate múltiple: una tirada por especie con grupo real.
@@ -285,7 +290,7 @@ async function intentarCazaLimpia(save: SaveParaCaza, target: CazaTarget): Promi
 /// AL MENOS una especie objetivo tiene más de un individuo real (`hayGrupoReal`); si no, el combate
 /// lo abre el turno normal de texto libre como siempre (1v1 clásico, `pendingCombatNpcSlugs`), sin
 /// tocar la base de datos aquí — mismas reglas EXACTAS que el bloque original de `cazar.ts`.
-async function intentarCazaEnGrupo(save: SaveParaCaza, targets: CazaTarget[]): Promise<IniciarCazaResultado> {
+async function intentarCazaEnGrupo(save: SaveParaCaza, targets: CazaTarget[], emboscada = false): Promise<IniciarCazaResultado> {
   const currentLocationId = save.currentLocationId;
   const varianceClauses: string[] = [];
   const hayGrupoReal = targets.some((t) => t.cantidadObjetivo > 1);
@@ -448,22 +453,46 @@ async function intentarCazaEnGrupo(save: SaveParaCaza, targets: CazaTarget[]): P
   }
 
   const names = targets.map((t) => t.npc.name);
-  const actionText = [`Salgo a cazar y ataco a ${names.map((n) => `'${n}'`).join(', ')}.`, ...varianceClauses].join(' ');
-  return { resuelveSinCombate: false, exito: null, actionText, ...(tiradasGrupo.length > 0 ? { tiradasGrupo } : {}), ...(logEntryGrupo ? { logEntry: logEntryGrupo } : {}) };
+  const citados = names.map((n) => `'${n}'`).join(', ');
+  // P90 (QA-27): emboscada = el grupo vio antes a la jugadora; ella no eligió salir a cazar.
+  const actionText = [emboscada ? `${PREFIJO_EMBOSCADA}${citados}, ${SUFIJO_EMBOSCADA}` : `${PREFIJO_CAZA}${citados}.`, ...varianceClauses].join(' ');
+  // P90/P130 (QA-27): en el diario, lo que cuenta el sistema (la emboscada, cuántos alcanzan a la
+  // jugadora, quién cae de fondo) va en la entrada de sistema del combate, no pegado a su acción.
+  if (logEntryGrupo) {
+    const aviso = emboscada ? `${nombreDeEncuentro(names.join(', '), targets.reduce((n, t) => n + t.cantidadObjetivo, 0), true)} te embosca.` : null;
+    const texto = [aviso, logEntryGrupo.text, ...varianceClauses.map(sinComillasSueltas)].filter(Boolean).join(' ');
+    await prisma.logEntry.update({ where: { id: logEntryGrupo.id }, data: { text: texto } });
+    logEntryGrupo = { ...logEntryGrupo, text: texto };
+  }
+  return { resuelveSinCombate: false, exito: null, actionText, accionEnDiario: accionEnDiarioDeCaza(actionText), ...(tiradasGrupo.length > 0 ? { tiradasGrupo } : {}), ...(logEntryGrupo ? { logEntry: logEntryGrupo } : {}) };
+}
+
+const PREFIJO_CAZA = 'Salgo a cazar y ataco a ';
+const PREFIJO_EMBOSCADA = 'Me defiendo de ';
+const SUFIJO_EMBOSCADA = 'que me tienden una emboscada.';
+
+/// P90/P130 (QA-27): lo que de un `actionText` de caza sale en el diario como acción de la jugadora.
+/// La frase entera sigue yendo al narrador; en el diario, solo lo que ella hizo («Salgo a cazar y
+/// ataco a …»), y nada si la emboscaron (lo cuenta la entrada de sistema del combate). Cualquier
+/// otra acción sale tal cual.
+export function accionEnDiarioDeCaza(action: string): string | null {
+  if (action.startsWith(PREFIJO_EMBOSCADA) && action.includes(SUFIJO_EMBOSCADA)) return null;
+  if (!action.startsWith(PREFIJO_CAZA)) return action;
+  return /^Salgo a cazar y ataco a (?:'[^']*'(?:, )?)+\./.exec(action)?.[0] ?? action;
 }
 
 /// Punto de entrada único del servicio — decide entre caza limpia y caza en grupo/combate, mismas
 /// reglas EXACTAS que tenía `cazar/confirmar` antes de este traslado (ver comentario de cabecera
 /// del módulo). `permitirCazaLimpia: false` (agresivo en grupo, `dynamicMode.ts`) fuerza siempre el
 /// camino de combate — "un agresivo que te corta el paso nunca se resuelve sigiloso".
-export async function iniciarCaza(params: { save: SaveParaCaza; targets: CazaTarget[]; permitirCazaLimpia?: boolean }): Promise<IniciarCazaResultado> {
+export async function iniciarCaza(params: { save: SaveParaCaza; targets: CazaTarget[]; permitirCazaLimpia?: boolean; emboscada?: boolean }): Promise<IniciarCazaResultado> {
   const { save, targets } = params;
   const permitirCazaLimpia = params.permitirCazaLimpia ?? true;
 
   if (permitirCazaLimpia && targets.length === 1 && esDebil(targets[0].npc, save.level)) {
     return intentarCazaLimpia(save, targets[0]);
   }
-  return intentarCazaEnGrupo(save, targets);
+  return intentarCazaEnGrupo(save, targets, params.emboscada ?? false);
 }
 
 /// B29 (2026-09-29, pruebas 2026-09-28): "Ataco al Gesgurio" con el Gesgurio adyacente daba una
@@ -471,7 +500,7 @@ export async function iniciarCaza(params: { save: SaveParaCaza; targets: CazaTar
 /// el turno normal — `/turn/classify` no debe volver a interceptarlos como "atacar por texto"
 /// (bucle infinito: el texto cita a la fauna con verbo de ataque).
 export function esActionTextDeCaza(action: string): boolean {
-  return action.startsWith('Salgo a cazar y ataco a ') || (action.startsWith("Me acerco a '") && action.includes('con sigilo, pero me detecta antes de tiempo'));
+  return action.startsWith(PREFIJO_CAZA) || (action.startsWith(PREFIJO_EMBOSCADA) && action.includes(SUFIJO_EMBOSCADA)) || (action.startsWith("Me acerco a '") && action.includes('con sigilo, pero me detecta antes de tiempo'));
 }
 
 /// B29 — de las fauna NOMBRADAS en el texto libre (`slugsNombrados`), la primera con un `ZonePoint`

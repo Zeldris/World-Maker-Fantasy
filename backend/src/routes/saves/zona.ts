@@ -27,10 +27,10 @@ import { ZONAS_DE_INICIO,
   recalcularZonePointsDeLocation,
   type ZonePointColor,
 } from '../../services/zonePoints.js';
-import { nombreEnFrase, nombreOcultoPorRaza } from '../../services/dynamicMode.js';
+import { aNombre, nombreEnFrase, nombreOcultoPorRaza } from '../../services/dynamicMode.js';
 import { parseAgenda, regionControlActual, type RegionControlState } from '../../services/worldAgenda.js';
 import { REGION_OWNING_FACTIONS, effectiveTemperamento } from '../../services/reputation.js';
-import { LIENZO_ANCHO, LIENZO_ALTO, posicionAleatoriaEnLienzo, celdaLibreEnEspiral, claveCelda, celdaDePixel, pixelDeCelda, calcularCamino, celdaAdyacenteOMisma, mismaCelda, tirarQuienIniciaEncuentro, type IniciativaEncuentroLogRoll } from '../../services/zonaPosicion.js';
+import { LIENZO_ANCHO, LIENZO_ALTO, posicionAleatoriaEnLienzo, celdaLibreEnEspiral, claveCelda, celdaDePixel, pixelDeCelda, calcularCamino, celdaAdyacenteOMisma, mismaCelda, tirarQuienIniciaEncuentro, type Celda, type IniciativaEncuentroLogRoll } from '../../services/zonaPosicion.js';
 import { rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 import { createInFlightClaimSet } from '../../lib/inFlightClaimSet.js';
 import { iniciarCaza, type CazaTarget } from '../../services/caza.js';
@@ -38,6 +38,7 @@ import { riesgoDeCaza, type RiesgoCazaInfo } from '../../services/cazaRiesgo.js'
 import type { AttributeBlock } from '../../services/dice.js';
 import { posicionesDeSalidasDeZona, celdasDeEntrada, enRadioSeguro } from '../../services/entradasZona.js';
 import { effectiveAttributes } from '../../services/equipment.js';
+import { minutosConDestreza } from '../../services/travel.js';
 import { ambitoFacciones } from '../../services/mundoPartida.js';
 import { etiquetasActivas } from '../../services/cronista/etiquetas.js';
 import { conRencor, npcsConRencor } from '../../services/cronista/recuerdos.js';
@@ -75,6 +76,7 @@ const SAVE_SELECT_PARA_MOVER = {
   zonaCaminoPendiente: true,
   zonaUltimoEncuentro: true,
   pendingDynamicModeOffer: true,
+  pendingNpcInteractionOffer: true,
   currentLocationId: true,
   currentLocation: { select: { id: true } },
   worldState: { select: { factionsStatus: true, fictionalMinutes: true, fictionalDateLabel: true } },
@@ -135,7 +137,7 @@ export interface ZonaSalidaInfo {
   /// QA-27 (P7): `ENTRAR` si lleva a una zona interior (dentro de esta), `SALIR` si es la puerta de
   /// un interior hacia fuera; sin el campo, una salida normal de región.
   puerta?: 'ENTRAR' | 'SALIR';
-  /// P115 (QA-27): minutos de camino hasta el destino (`LocationLink.minutosBase`).
+  /// P115 (QA-27): minutos de camino hasta el destino; P132: con la Destreza, como el viaje real.
   minutos: number;
   /// P115: el destino tiene nombre para la jugadora (ya estuvo, o lleva el mapa de la región — mismo
   /// criterio que la brújula, `compassNarrationText`).
@@ -167,6 +169,8 @@ async function salidasDeRegionPara(
   worldId: string,
   location: { id: string; x: number | null; y: number | null },
   jugador: { x: number; y: number } | null,
+  /// P132 (QA-27): atributos con el equipo puesto, los mismos con que `turn.ts` resuelve el viaje.
+  attributes: AttributeBlock | null,
 ): Promise<ZonaSalidaInfo[]> {
   const links = await prisma.locationLink.findMany({
     where: { OR: [{ fromId: location.id }, { toId: location.id }] },
@@ -187,7 +191,8 @@ async function salidasDeRegionPara(
     select: { locationId: true },
   });
   const visitadasIds = new Set(visitas.map((v) => v.locationId));
-  const minutosPorDestino = new Map(links.map((l) => [l.from.id === location.id ? l.to.id : l.from.id, l.minutosBase]));
+  // P132: la duración del viaje de verdad (`minutosConDestreza`), no la base del enlace.
+  const minutosPorDestino = new Map(links.map((l) => [l.from.id === location.id ? l.to.id : l.from.id, (attributes ? minutosConDestreza(l.minutosBase, attributes) : l.minutosBase)]));
   const llevaMapa = !!(await prisma.inventoryItem.findFirst({ where: { saveId, catalogSlug: 'mapa-de-las-llanuras' }, select: { id: true } }));
 
   const celdaJugador = jugador ? celdaDePixel(jugador) : null;
@@ -256,6 +261,9 @@ export async function zonaRoutes(app: FastifyInstance) {
         worldState: { select: { fictionalMinutes: true, factionsStatus: true, agenda: true } },
         // ZON-58: nivel de oficio para el candado de los recursos.
         professionProgress: { select: { professionId: true, nivel: true } },
+        // P132: los minutos de cada salida, con la Destreza (y el equipo) como el viaje real.
+        attributes: true,
+        inventoryItems: { where: { slot: { not: null } }, select: { statBonuses: true } },
       },
     });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
@@ -588,7 +596,7 @@ export async function zonaRoutes(app: FastifyInstance) {
 
     // Iconos de salida de región (2026-09-17) — calculado una vez, lo necesitan ambos `return` de
     // aquí en adelante (con o sin ZonePoint sembrado, una zona SIEMPRE puede tener salidas reales).
-    const salidas = await salidasDeRegionPara(save.id, save.worldId, save.currentLocation, jugador);
+    const salidas = await salidasDeRegionPara(save.id, save.worldId, save.currentLocation, jugador, save.attributes ? effectiveAttributes(save.attributes as AttributeBlock, save.inventoryItems ?? []) : null);
 
     // Iconos de parcela (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) — calculado una vez,
     // igual que `salidas`. Solo las zonas-interior de Capital/Cuartel Avanzado tienen filas reales
@@ -745,6 +753,8 @@ export async function zonaRoutes(app: FastifyInstance) {
     nivelJugador: number,
     // P143: celda a la que se camina; `null` = pulsar la propia casilla (petición explícita).
     celdaDestino: { col: number; row: number } | null = null,
+    // Celdas de las entradas ya calculadas en este paso (P116); si no, se calculan aquí.
+    entradasConocidas?: Celda[],
   ): Promise<{
     /// `true` si el objetivo de `ultimoEncuentroSlug` sigue en el radio de `celda` — el caller solo
     /// limpia `Save.zonaUltimoEncuentro` cuando esto es `false` (el jugador ya salió de su radio).
@@ -755,6 +765,7 @@ export async function zonaRoutes(app: FastifyInstance) {
           tipo: 'FAUNA' | 'NPC' | 'RECURSO';
           targetSlug: string;
           targetName: string;
+          aQuien?: string;
           quienInicia: 'jugador' | 'npc';
           combateForzado?: true;
           /// Grupos de fauna reales (Fase 1, 2026-09-28) — id del `ZonePoint` colisionado, ausente
@@ -859,7 +870,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     const noCortaElPaso = (tipo: string, temperamento: string, celdaNpc: { col: number; row: number }) =>
       enAsentamiento && !!celdaDestino && tipo === 'NPC' && !esTemperamentoHostil(temperamento) && !celdaAdyacenteOMisma(celdaDestino, celdaNpc);
     // P116 (QA-27): junto a una entrada de la zona (`RADIO_SEGURO_ENTRADA`), la fauna hostil no corta el paso.
-    const enEntradaSegura = enRadioSeguro(celda, await celdasDeEntrada(tx, saveId, locationId));
+    const enEntradaSegura = enRadioSeguro(celda, entradasConocidas ?? (await celdasDeEntrada(tx, saveId, locationId)));
     const faunaHostilEnEntrada = (tipo: string, temperamento: string) => enEntradaSegura && tipo === 'FAUNA' && esTemperamentoHostil(temperamento);
     const fueraDeSuSitioColision = (n: { kind: string; homeLocationSlug: string | null }) => n.kind !== 'PRINCIPAL' && !!n.homeLocationSlug && n.homeLocationSlug !== locationSlugColision;
     const dinamicosCandidatosColision = npcsInSceneColision.filter((n) => n.condicionFisica !== 'MUERTO' && !zonePointSlugsColision.has(n.slug) && !fueraDeSuSitioColision(n));
@@ -992,6 +1003,7 @@ export async function zonaRoutes(app: FastifyInstance) {
           tipo: 'FAUNA' | 'NPC' | 'RECURSO';
           targetSlug: string;
           targetName: string;
+          aQuien?: string;
           quienInicia: 'jugador' | 'npc';
           combateForzado?: true;
           zonePointId?: string;
@@ -1028,6 +1040,7 @@ export async function zonaRoutes(app: FastifyInstance) {
           tipo: colisionTipo!,
           targetSlug: colision.targetSlug,
           targetName: colision.targetName,
+          ...(colisionTipo === 'NPC' ? { aQuien: aNombre(colision.targetName) } : {}),
           quienInicia,
           ...(combateForzado ? { combateForzado: true as const } : {}),
           ...(colisionZonePointId ? { zonePointId: colisionZonePointId } : {}),
@@ -1250,7 +1263,7 @@ export async function zonaRoutes(app: FastifyInstance) {
         }
         // El mundo no da un paso si el jugador tampoco lo da (mismo criterio "un paso tuyo = un
         // paso del mundo" — camino vacío significa que el destino ya es la celda actual).
-        return { jugador: posicionActual, caminoRestante: [], colision, dynamicModeOffer, logEntry, zonePointsMovidos: [] as { id: string; x: number; y: number }[], ofertaDescartada: false };
+        return { jugador: posicionActual, caminoRestante: [], llegado: true, colision, dynamicModeOffer, logEntry, zonePointsMovidos: [] as { id: string; x: number; y: number }[], ofertaDescartada: false };
       });
     }
 
@@ -1265,7 +1278,13 @@ export async function zonaRoutes(app: FastifyInstance) {
       // mismo paso ya pueda toparse con algo nuevo. Las de combate forzado ya se rechazaron arriba.
       const ofertaDescartada = !!save.pendingDynamicModeOffer;
       if (ofertaDescartada) {
-        await tx.save.update({ where: { id: save.id }, data: { pendingDynamicModeOffer: Prisma.JsonNull } });
+        // El menú del NPC abierto desde ese encuentro (P142) se va con él: elegir en él ya no tiene
+        // encuentro sobre el que actuar (`/code-review` del PR #53).
+        const menuDelEncuentro = !!(save.pendingNpcInteractionOffer as { desdeEncuentro?: boolean } | null)?.desdeEncuentro;
+        await tx.save.update({
+          where: { id: save.id },
+          data: { pendingDynamicModeOffer: Prisma.JsonNull, ...(menuDelEncuentro ? { pendingNpcInteractionOffer: Prisma.JsonNull } : {}) },
+        });
       }
 
       // El mundo también se mueve — un paso por cada paso del jugador, ANTES de comprobar colisión
@@ -1278,7 +1297,9 @@ export async function zonaRoutes(app: FastifyInstance) {
       // Persecución (2026-09-17) — `nuevaPosicion` (no `posicionActual`) porque el jugador ya dio
       // este paso antes de que el mundo se mueva (mismo criterio "Mount & Blade" del comentario de
       // arriba: ambos avanzan a la vez, evaluados sobre el estado ya actualizado).
-      const zonePointsMovidos = await avanzarZonePointsUnPaso(tx, save.currentLocationId!, save.id, Math.random, nuevaPosicion, factionsStatus, momentoActual);
+      // Las entradas de la zona no cambian dentro del paso: una sola vez para el mundo y el encuentro.
+      const entradas = await celdasDeEntrada(tx, save.id, save.currentLocationId!);
+      const zonePointsMovidos = await avanzarZonePointsUnPaso(tx, save.currentLocationId!, save.id, Math.random, nuevaPosicion, factionsStatus, momentoActual, entradas);
 
       // B2 (pruebas 2026-09-28): moverse por la zona no avanzaba el reloj — decenas de pasos y
       // encuentros seguían en "Día 1, 08:00". Cada paso real (una celda, ~50 m) cuesta 1 minuto.
@@ -1307,6 +1328,7 @@ export async function zonaRoutes(app: FastifyInstance) {
         ultimoEncuentroSlug,
         save.level,
         celdaDestino,
+        entradas,
       );
       // Un encuentro nuevo pasa a ser el "último"; si no, se olvida el anterior en cuanto este paso
       // deja al jugador fuera de su radio (volver a acercarse lo vuelve a ofrecer).
@@ -1337,7 +1359,9 @@ export async function zonaRoutes(app: FastifyInstance) {
         },
       });
 
-      return { jugador: nuevaPosicion, caminoRestante: caminoRestantePixel, colision, dynamicModeOffer, logEntry, zonePointsMovidos, ofertaDescartada, fictionalMinutes: minutosTrasPaso, fictionalDateLabel: etiquetaTrasPaso };
+      // `llegado`: este paso es el último del trayecto, haya o no encuentro (P135: un encuentro deja
+      // `caminoRestante` vacío aunque falte camino, y el frontend no puede deducirlo del píxel pulsado).
+      return { jugador: nuevaPosicion, caminoRestante: caminoRestantePixel, llegado: restoCamino.length === 0, colision, dynamicModeOffer, logEntry, zonePointsMovidos, ofertaDescartada, fictionalMinutes: minutosTrasPaso, fictionalDateLabel: etiquetaTrasPaso };
     });
 
     return resultado;

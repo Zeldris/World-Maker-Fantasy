@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import { prisma } from '../lib/prisma.js';
 import { asegurarMundoDePartida } from './mundoPartida.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
-import { iniciarCaza, dispersionCooldownActivo, rollGroupEngagement, rollGroupEngagementDetail, groupVarianceClause, type CazaTarget } from './caza.js';
+import { iniciarCaza, accionEnDiarioDeCaza, esActionTextDeCaza, dispersionCooldownActivo, rollGroupEngagement, rollGroupEngagementDetail, groupVarianceClause, type CazaTarget } from './caza.js';
 import type { AttributeBlock } from './dice.js';
 
 /// Fase 4 (2026-09-28, `plan-mecanicas-por-zona-2026-09-28.md`) — `cazar.ts` (rutas
@@ -72,6 +72,21 @@ describe('groupVarianceClause', () => {
     expect(groupVarianceClause(3, 0)).toBe('aunque al final el grupo entero se dispersa antes de que pueda acorralar a ninguno');
   });
 });
+
+describe('P90/P130 — accionEnDiarioDeCaza', () => {
+  it('de una caza, solo lo que hizo la jugadora', () => {
+    expect(accionEnDiarioDeCaza("Salgo a cazar y ataco a 'Guchapo'. Solo 4 alcanzan a Gorhorn a la vez; los otros 2 quedan fuera de su alcance.")).toBe("Salgo a cazar y ataco a 'Guchapo'.")
+    expect(accionEnDiarioDeCaza("Salgo a cazar y ataco a 'Guchapo', 'Zense Ceniza'. Con 'Guchapo', algo.")).toBe("Salgo a cazar y ataco a 'Guchapo', 'Zense Ceniza'.")
+  })
+  it('en una emboscada, nada: no la eligió ella; y sigue siendo texto de caza', () => {
+    const emboscada = "Me defiendo de 'Kirelon Arenoso', que me tienden una emboscada. Solo 4 alcanzan a Gorhorn a la vez."
+    expect(accionEnDiarioDeCaza(emboscada)).toBeNull()
+    expect(esActionTextDeCaza(emboscada)).toBe(true)
+  })
+  it('cualquier otra acción, tal cual', () => {
+    expect(accionEnDiarioDeCaza('Me siento a descansar.')).toBe('Me siento a descansar.')
+  })
+})
 
 describe('dispersionCooldownActivo', () => {
   it('sin dispersión previa (null), nunca bloquea', () => {
@@ -226,6 +241,10 @@ describe('iniciarCaza — integración real (Postgres, sobre el catálogo de hel
         // P77 (QA-27): el diario dice cuántos se quedan fuera del combate en vivo.
         expect(JSON.stringify(resultado)).toContain('Solo 4 alcanzan a');
         expect(JSON.stringify(resultado)).toContain('el otro queda fuera de su alcance');
+        // P130 (QA-27): en la entrada de sistema del combate, no pegado a la acción de la jugadora.
+        if ('error' in resultado || resultado.resuelveSinCombate) throw new Error('esperaba combate');
+        expect(resultado.accionEnDiario).toBe("Salgo a cazar y ataco a 'Zense Ceniza'.");
+        expect(resultado.logEntry?.text).toContain('Solo 4 alcanzan a');
       } finally {
         randomSpy.mockRestore();
       }

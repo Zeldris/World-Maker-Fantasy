@@ -188,6 +188,7 @@ export async function sessionRoutes(app: FastifyInstance) {
       return reply.status(404).send({ error: 'Partida no encontrada' });
     }
     if (rejectIfEnded(save, reply)) return;
+    if (rejectIfPendingDeath(save, reply)) return;
 
     const pendingSlugs = (save.pendingCombatNpcSlugs as string[] | null) ?? [];
     if (pendingSlugs.length === 0) {
@@ -280,6 +281,7 @@ export async function sessionRoutes(app: FastifyInstance) {
       return reply.status(404).send({ error: 'Partida no encontrada' });
     }
     if (rejectIfEnded(save, reply)) return;
+    if (rejectIfPendingDeath(save, reply)) return;
 
     const pendingSlugs = (save.pendingCombatNpcSlugs as string[] | null) ?? [];
     if (pendingSlugs.length === 0) {

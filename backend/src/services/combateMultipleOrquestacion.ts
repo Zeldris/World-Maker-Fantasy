@@ -1054,7 +1054,7 @@ async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): P
     if (extraParticipant && extraDatos) {
       objetivoExtraParticipant = extraParticipant;
       datosObjetivoExtra = extraDatos;
-      nuevaCondicionExtra = nextCondicionForAttack(habilidadAtaque.effects, extraDatos.condicionFisica);
+      nuevaCondicionExtra = condicionTrasGolpe(extraParticipant, habilidadAtaque.effects, extraDatos.condicionFisica);
       // Mismo efecto (si lo hay) que el defensor principal — la ficha real (Zancada Perforante)
       // describe la debilidad propagándose "a todos los enemigos", no una copia distinta por cada uno.
       objetivoExtraActiveEffectsNext = resultado.nuevoEfectoDefensor
@@ -1087,7 +1087,7 @@ async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): P
       if (!extraParticipant || !extraDatos) continue;
       objetivosAreaParticipants.push(extraParticipant);
       datosPorObjetivoArea.set(extraId, extraDatos);
-      nuevaCondicionPorObjetivoArea.set(extraId, nextCondicionForAttack(habilidadAtaque.effects, extraDatos.condicionFisica));
+      nuevaCondicionPorObjetivoArea.set(extraId, condicionTrasGolpe(extraParticipant, habilidadAtaque.effects, extraDatos.condicionFisica));
       activeEffectsNextPorObjetivoArea.set(
         extraId,
         resultado.nuevoEfectoDefensor
@@ -1120,7 +1120,7 @@ async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): P
     if (desviadoParticipant && desviadoDatos) {
       objetivoDesviadoParticipant = desviadoParticipant;
       datosObjetivoDesviado = desviadoDatos;
-      nuevaCondicionDesviado = nextCondicionForAttack(habilidadAtaque.effects, desviadoDatos.condicionFisica);
+      nuevaCondicionDesviado = condicionTrasGolpe(desviadoParticipant, habilidadAtaque.effects, desviadoDatos.condicionFisica);
     }
   }
 
@@ -1426,8 +1426,7 @@ async function ejecutarGolpeGratisYAvanzar(params: TurnoAutonomoBaseParams & { d
     });
   }
 
-  const nuevaCondicionDefensorCruda = nextCondicionForAttack(habilidadAtaque.effects, datosDefensor.condicionFisica);
-  const nuevaCondicionDefensor = defensor.tipo === 'JUGADOR' ? topeDeRondaJugadora(defensor.condicionInicioRonda ?? null, nuevaCondicionDefensorCruda) : nuevaCondicionDefensorCruda;
+  const nuevaCondicionDefensor = condicionTrasGolpe(defensor, habilidadAtaque.effects, datosDefensor.condicionFisica);
   const nuevaEnergiaAtacante = nextEnergia({
     current: datosAtacante.energia,
     max: energiaMaxFor(datosAtacante.attributes.constitucion),
@@ -1538,7 +1537,7 @@ async function ejecutarAtaqueTotemYAvanzar({
   const datosObjetivo = objetivoId ? datosPorCandidato.get(objetivoId) : null;
   if (!objetivo || !datosObjetivo) return null;
 
-  const nuevaCondicionObjetivo = nextCondicionForAttack(habilidadTotem.effects, datosObjetivo.condicionFisica);
+  const nuevaCondicionObjetivo = condicionTrasGolpe(objetivo, habilidadTotem.effects, datosObjetivo.condicionFisica);
 
   await prisma.$transaction(async (tx) => {
     await escribirCondicionYEnergia({ tx, saveId, participant: objetivo, condicionFisica: nuevaCondicionObjetivo, energia: null, abilityNameUsada: null, usageCounts: datosObjetivo.usageCounts, activeEffectsNext: decrementActiveEffects(datosObjetivo.activeEffects) });
@@ -1865,13 +1864,17 @@ export async function resolverTurnoAutonomo({
   // la ataca sin ser su duelo tira contra su defensa con ventaja (el flanqueo de D&D 5e / BG3), y
   // solo los 2 primeros por iniciativa llegan a atacarla en la ronda; el resto la rodea sin golpear.
   // Antes, en un grupo de 6 Guchapo, tres golpes gratis seguidos la mataban en un turno.
+  // Si el golpe le llega porque ella protege a otro con AREA defensiva, lo encaja siempre: lo eligió
+  // ella y no cuenta entre los atacantes de más (`/code-review` del PR #53).
   if (defensor.tipo === 'JUGADOR') {
-    if (!esAtacanteDeMasPermitido(encounter.ordenIniciativa, encounter.participantes, actual.id, defensor)) {
+    const loEncajaPorProteger = defensor.id !== defensorOriginal.id;
+    if (!loEncajaPorProteger && !esAtacanteDeMasPermitido(encounter.ordenIniciativa, encounter.participantes, actual.id, defensor)) {
       return avanzarSinAtacar({ prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn });
     }
     return ejecutarIntercambioYAvanzar({
       prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque,
-      atacanteRol: habilidadAtaque.rol, dualWieldBonus: false, defensor, weaponNamesPorDefecto, narrarFn, ventajaAtacante: true,
+      // Sin ventaja si lo encaja por proteger: no la flanquean, se interpone ella (`/code-review`).
+      atacanteRol: habilidadAtaque.rol, dualWieldBonus: false, defensor, weaponNamesPorDefecto, narrarFn, ventajaAtacante: !loEncajaPorProteger,
     });
   }
   return ejecutarGolpeGratisYAvanzar({ prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque, defensor, weaponNamesPorDefecto, narrarFn });
@@ -1894,6 +1897,18 @@ export function esAtacanteDeMasPermitido(
   });
   const puesto = deMas.indexOf(actualId);
   return puesto >= 0 && puesto < MAX_ATACANTES_DE_MAS_JUGADORA;
+}
+
+/// Condición tras un golpe sin tirada propia (objetivo extra de MULTIPLE/AREA, DESVIAR, tótem, golpe
+/// gratis): la de siempre y, si el golpe cae en la jugadora, con el tope de su ronda (P129). Todo
+/// golpe que no pasa por `ejecutarIntercambioYAvanzar` calcula su condición aquí.
+export function condicionTrasGolpe(
+  participant: { tipo: string; condicionInicioRonda?: CondicionFisica | null },
+  effects: Parameters<typeof nextCondicionForAttack>[0],
+  actual: CondicionFisica,
+): CondicionFisica {
+  const nueva = nextCondicionForAttack(effects, actual);
+  return participant.tipo === 'JUGADOR' ? topeDeRondaJugadora(participant.condicionInicioRonda ?? null, nueva) : nueva;
 }
 
 /// P129 (QA-27, decisión de la usuaria 2026-10-13): en una ronda que la jugadora empezó Ilesa, ningún

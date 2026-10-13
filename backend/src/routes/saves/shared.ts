@@ -55,6 +55,17 @@ export function rejectIfPendingDeath(save: { pendingDeathResolution: boolean }, 
   return false;
 }
 
+/// Las dos comprobaciones de arriba para una ruta que no carga la partida por su cuenta (`QA-79`):
+/// 404 si no existe, 409 si terminó o tiene una muerte pendiente. `true` si ya respondió.
+export async function rechazarSiNoAdmiteAcciones(saveId: string, reply: FastifyReply): Promise<boolean> {
+  const save = await prisma.save.findUnique({ where: { id: saveId }, select: { endedAt: true, pendingDeathResolution: true } });
+  if (!save) {
+    reply.status(404).send({ error: 'Partida no encontrada' });
+    return true;
+  }
+  return rejectIfEnded(save, reply) || rejectIfPendingDeath(save, reply);
+}
+
 /// Limpia un campo `pending*Offer` de `Save` (deuda técnica, "Interactuar" motor unificado de
 /// eventos de escena, 2026-09-08, Franja 2) — la misma línea `prisma.save.update({..., data: {
 /// [campo]: Prisma.JsonNull } })` estaba copiada 5 veces entre `dynamicMode.ts` (×3),

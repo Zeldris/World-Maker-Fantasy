@@ -601,6 +601,7 @@ export async function companerosRoutes(app: FastifyInstance) {
     const save = await prisma.save.findUnique({ where: { id: request.params.id }, include: { worldState: true } });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
     if (rejectIfEnded(save, reply)) return;
+    if (rejectIfPendingDeath(save, reply)) return;
     const r = await preguntarCompanero(prisma, save.id, request.params.companionId);
     if ('error' in r) return reply.status(400).send({ error: r.error });
     const entrada = await prisma.logEntry.create({

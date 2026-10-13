@@ -127,7 +127,9 @@ export async function dynamicModeRecursoRoutes(app: FastifyInstance) {
     // (hallazgo 44, revisar-partida-hallazgos.md 2026-09-15) — antes era una segunda escritura
     // suelta después de cerrar la transacción, vulnerable a dejar la oferta colgada sobre un
     // recurso ya recolectado si el proceso moría entre medias.
-    const resultado = await resolverRecoleccion(save, selections, true, roll);
+    const oferta = save.pendingDynamicModeOffer as { tipo?: string; targetSlug?: string; zonePointId?: string } | null;
+    const zonePointId = oferta?.tipo === 'RECURSO' && oferta.targetSlug === targetSlug ? oferta.zonePointId : undefined;
+    const resultado = await resolverRecoleccion(save, selections, true, roll, zonePointId);
 
     const narracionSinLog = `${save.characterName} no consigue nada aprovechable de ${sourceDisplayNameFor(targetSlug)} esta vez.`;
     const logEntryFinal =

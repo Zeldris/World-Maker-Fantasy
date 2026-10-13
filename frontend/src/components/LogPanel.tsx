@@ -94,7 +94,7 @@ interface LogPanelProps {
   /// Responder escribiendo (petición de la usuaria, 2026-10-02) — cuando una persona te habla o te
   /// corta el paso, «✍️ Responder» lleva al composer con «Le digo a <nombre>: » ya puesto, para
   /// contestar con texto libre sin pasar por el modo dinámico.
-  onResponderEscribiendo?: (targetName: string) => void
+  onResponderEscribiendo?: (aQuien: string) => void
   /// "Modo dinámico" (2026-08-27, `entry.dynamicModeOffer`) — mismo criterio opcional que
   /// `onAcceptQuestOffer`/`onDismissQuestOffer`. Solo NPC/FAUNA (conversación de vueltas, abre
   /// DynamicModeModal) — RECURSO usa `onVerRecursoDetalle` abajo (modal de detalle propio).

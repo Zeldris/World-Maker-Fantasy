@@ -52,6 +52,13 @@ Retro de `QA-27` (2026-10-12, `QA-40`): tres de los diez fallos de la revisión 
 - **Mismo filtro en los dos caminos.** Si dos caminos muestran o usan lo mismo (lo que se pinta en el
   mapa y lo que te corta el paso; la lista y su detalle), filtran igual, mejor con la misma función.
   Pasó en `zona.ts`: la fauna fuera de su sitio no se pintaba, pero seguía colisionando.
+- **Una regla nueva, en todos sus caminos** (`QA-78`, retro del PR #53). Cuando un arreglo añade una
+  regla (un tope, un atributo, una comprobación) a una función o a una ruta, se buscan con `grep` los
+  sitios que hacen lo mismo y la regla llega a todos, o el diff dice por qué no. Mejor aún, un solo
+  sitio por donde pasan todos y un test que lo exija (`condicionTrasGolpe` en el combate de grupo).
+  Siete de los doce fallos del PR #53 eran esto: el tope de ronda de P129 en 2 de 6 golpes, la Destreza
+  de P109 en una de dos tiradas, la energía de P121 sin tope y `/abrir` sin las comprobaciones de la
+  ruta que sustituye.
 - **Sin copias entre backend y frontend.** Lo que decide el backend viaja en su respuesta (un campo,
   como `currentLocation.puntoDeAgua`); una lista copiada a mano en el frontend se desfasa. Lo mismo con
   el diario: una línea que cuenta algo del juego llega del backend con su `logEntryId`, y el frontend

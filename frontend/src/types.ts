@@ -552,6 +552,9 @@ export interface LogEntry {
     tipo: 'NPC' | 'FAUNA' | 'RECURSO'
     targetSlug: string
     targetName: string
+    /// P141: a quién se dirige «Responder», ya en frase («al orco desconocido»). Solo NPC; ausente
+    /// en ofertas guardadas antes (se usa «a <targetName>»).
+    aQuien?: string
     busy?: boolean
     error?: string
     /// "¿Quién ve a quién primero?" (2026-09-17) — solo presente cuando la oferta viene de una

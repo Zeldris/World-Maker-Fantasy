@@ -239,6 +239,7 @@ describe('POST /saves/:id/zona/mover', () => {
     // Un solo paso: de celda (0,0) a (1,0) → píxel (75, 25) centro de esa celda.
     expect(body.jugador).toEqual({ x: 75, y: 25 });
     expect(body.caminoRestante.length).toBe(6); // quedan 6 celdas más hasta destino
+    expect(body.llegado).toBe(false); // P135: aún no es el último paso
 
     const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(saveAfter.zonaPosX).toBe(75);
@@ -764,6 +765,30 @@ describe('POST /saves/:id/zona/mover', () => {
     expect(body.ofertaDescartada).toBe(true);
     // El mismo paso ya puede toparse con algo nuevo (antes: bloqueado por la oferta vieja).
     expect(body.dynamicModeOffer).toMatchObject({ tipo: 'RECURSO', targetSlug: 'test-mover-recurso' });
+  });
+
+  it('el último paso del trayecto llega con llegado: true (P135)', async () => {
+    await prisma.save.update({ where: { id: saveId }, data: { zonaPosX: 25, zonaPosY: 25 } });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 75, y: 25 } } });
+    const body = JSON.parse(res.body);
+    expect(body.jugador).toEqual({ x: 75, y: 25 });
+    expect(body.llegado).toBe(true);
+  });
+
+  it('al descartar el encuentro, se va también el menú del NPC abierto desde él (P142)', async () => {
+    await prisma.save.update({
+      where: { id: saveId },
+      data: {
+        pendingDynamicModeOffer: { tipo: 'NPC', targetSlug: 'test-mover-maestro', targetName: 'Maestro', quienInicia: 'jugador' },
+        pendingNpcInteractionOffer: { npcSlug: 'test-mover-maestro', npcName: 'Maestro', options: ['Charlar', 'Salir'], desdeEncuentro: true },
+      },
+    });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 375, y: 25 } } });
+    expect(JSON.parse(res.body).ofertaDescartada).toBe(true);
+    const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveAfter.pendingNpcInteractionOffer).toBeNull();
   });
 
   it('un AGRESIVO nunca se silencia por ser el último encuentro: sigue cortando el paso', async () => {

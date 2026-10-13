@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
-import { rejectIfEnded } from './shared.js';
+import { rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 import { MERCADO_RECIPE_KEY } from '../../services/construction.js';
 
 /// CR-47 (47d, hito 0.2): el Mercado del Reino — órdenes permanentes de compra y venta y las
@@ -45,6 +45,7 @@ export async function comercioRoutes(app: FastifyInstance) {
       const save = await prisma.save.findUnique({ where: { id: request.params.id } });
       if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
       if (rejectIfEnded(save, reply)) return;
+      if (rejectIfPendingDeath(save, reply)) return;
       const { catalogSlug, tipo, umbral, lote, factionSlug } = request.body ?? {};
       if (!catalogSlug || (tipo !== 'COMPRA' && tipo !== 'VENTA')) return reply.status(400).send({ error: 'Falta el objeto o si es compra o venta.' });
       if (!Number.isInteger(umbral) || umbral! < 0 || !Number.isInteger(lote) || lote! < 1 || lote! > 50) {

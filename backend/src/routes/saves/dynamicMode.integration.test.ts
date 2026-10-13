@@ -562,6 +562,43 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
   // verdad, a diferencia del resto de tests de este archivo que usan slugs sin fila de catálogo).
   // CR-49: una persona agresiva con los suyos cerca no pelea sola: el combate forzado abre el de
   // varios con todos (como la caza en grupo: `actionText` para el turno siguiente).
+  // P90 (QA-27): un grupo de fauna que embosca a la jugadora no deja «Salgo a cazar…» como acción
+  // suya: el diario lo cuenta la entrada de sistema del combate («El grupo de 3 … te embosca.»).
+  describe('P90 — emboscada de un grupo de fauna', () => {
+    let locationId: string;
+
+    beforeAll(async () => {
+      const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+      locationId = (await prisma.location.create({
+        data: { worldId: world.id, slug: 'test-p90-emboscada', name: 'Zona de Prueba P90', region: 'Zona de Pruebas', kind: 'hito', description: 'x', aliases: ['zona de prueba p90'] },
+      })).id;
+      await prisma.save.update({ where: { id: saveId }, data: { currentLocationId: locationId } });
+    });
+
+    afterAll(async () => {
+      await prisma.combatEncounter.deleteMany({ where: { saveId } });
+      await prisma.save.update({ where: { id: saveId }, data: { currentLocationId: null, pendingCombatNpcSlugs: [] } });
+      await prisma.zonePoint.deleteMany({ where: { locationId } });
+      await prisma.location.delete({ where: { id: locationId } });
+    });
+
+    it('sin acción de la jugadora en el diario y con la emboscada en la entrada de sistema', async () => {
+      await prisma.combatEncounter.deleteMany({ where: { saveId } });
+      const punto = await prisma.zonePoint.create({ data: { saveId, locationId, x: 400, y: 300, tipo: 'FAUNA', targetSlug: 'aullador-rojo', cantidad: 3, activo: true } });
+      const app = await buildApp();
+      const res = await app.inject({
+        method: 'POST',
+        url: `/saves/${saveId}/modo-dinamico/interactuar`,
+        payload: { tipo: 'FAUNA', targetSlug: 'aullador-rojo', targetName: 'Aullador Rojo', quienInicia: 'npc', combateForzado: true, zonePointId: punto.id, cantidad: 3 },
+      });
+      expect(res.statusCode, res.body).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.actionText).toMatch(/^Me defiendo de /);
+      expect(body.accionEnDiario).toBeNull();
+      expect(body.combateGrupoLogEntry.text).toMatch(/te embosca\./);
+    });
+  });
+
   describe('CR-49 — combate forzado contra una persona con los suyos cerca', () => {
     let locationId: string;
     const ids: string[] = [];
@@ -602,6 +639,8 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
       });
       expect(res.statusCode).toBe(200);
       expect(JSON.parse(res.body).actionText).toContain('test-cr49-jefe');
+      // P90: la vieron antes ellos (`quienInicia: 'npc'`): emboscada, sin acción suya en el diario.
+      expect(JSON.parse(res.body).accionEnDiario).toBeNull();
       const encuentro = await prisma.combatEncounter.findFirstOrThrow({ where: { saveId, estado: 'EN_CURSO' }, include: { participantes: true } });
       expect(encuentro.participantes.filter((p) => p.bando === 'ENEMIGO').map((p) => p.npcId).sort()).toEqual([...ids].sort());
     });

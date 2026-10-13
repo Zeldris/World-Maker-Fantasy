@@ -28,6 +28,7 @@ import { applyInventoryDelta } from '../lib/gameViewHelpers'
 
 import { useGameView } from './GameViewContext'
 import { Presencia } from '../components/Presencia'
+import { FinDePartidaModal } from '../components/FinDePartidaModal'
 
 /// BAS-5 (hito 0.2): las capas modales de la partida (detalle, Reino, clase, recolectar, viajar,
 /// zona, modo dinámico…), sacadas de `GameView`. Leen el estado de `GameViewContext`.
@@ -78,6 +79,8 @@ export function GameModals() {
     enciclopediaData,
     condicionFisica,
     hambre,
+    energia,
+    energiaMax,
     currentLocation,
     sed,
     pendingClaseChoice,
@@ -129,11 +132,22 @@ export function GameModals() {
     worldName,
     characterName,
     secondaryAttributes,
+    endedAt,
+    deathCount,
+    fictionalDate,
   } = useGameView()
   if (!saveId || !worldName || !characterName || !characterAttributes || !secondaryAttributes) return null
 
   return (
     <>
+      <Presencia>
+        {endedAt && (
+          <Capa id="fin-de-partida">
+          <FinDePartidaModal characterName={characterName} deathCount={deathCount} fictionalDate={fictionalDate} onIrAPartidas={salirAPartidas} />
+          </Capa>
+        )}
+      </Presencia>
+
       <Presencia>
         {detailTarget && (
           <Capa id="detalle" hija>
@@ -297,6 +311,8 @@ export function GameModals() {
             inventory={inventory}
             hambre={hambre}
             sed={sed}
+            energia={energia}
+            energiaMax={energiaMax}
             enFuente={!!currentLocation?.puntoDeAgua}
             onConfirm={(actionText, hambreSedItemUses) => {
               setHungerThirstModalOpen(false)
@@ -447,7 +463,14 @@ export function GameModals() {
             onDesollarCadaver={() => setHarvestModal({ oficio: 'desollador', label: 'Desollar' })}
             onHoraActualizada={setFictionalDate}
             onOfertaDescartada={() =>
-              setCharacterLog((prev) => prev.map((e) => (e.dynamicModeOffer && !e.dynamicModeOffer.combateForzado ? { ...e, dynamicModeOffer: undefined } : e)))
+              // El menú del NPC abierto desde ese encuentro (P142) se va con él, igual que en el backend.
+              setCharacterLog((prev) =>
+                prev.map((e) =>
+                  e.dynamicModeOffer && !e.dynamicModeOffer.combateForzado
+                    ? { ...e, dynamicModeOffer: undefined, ...(e.npcInteractionOffer?.desdeEncuentro ? { npcInteractionOffer: undefined } : {}) }
+                    : e,
+                ),
+              )
             }
             // ZON-5 (hito 0.2, petición de la usuaria): el encuentro sale también junto a su ficha y el
             // mapa no se cierra. Hablar o recolectar se abren encima (el mapa espera debajo y vuelve);

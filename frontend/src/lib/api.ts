@@ -1377,6 +1377,8 @@ export interface MoverZonaResultado {
   /// `true` si este paso descartó una oferta pacífica que seguía sin responder (2026-09-28 —
   /// alejarse andando equivale a ignorarla); el frontend retira su tarjeta del log.
   ofertaDescartada?: boolean
+  /// P135: este paso es el último del trayecto (también cuando un encuentro lo para en él).
+  llegado?: boolean
   /// F9-2 (2026-09-29) — reloj tras el paso (1 min/paso); ausente si el camino estaba vacío.
   fictionalMinutes?: number
   fictionalDateLabel?: string
@@ -2085,6 +2087,8 @@ export type ConfirmarCazaResultado =
       resuelveSinCombate: false
       exito: false | null
       actionText: string
+      /// P90/P130: lo que sale en el diario como acción de la jugadora; `null` en una emboscada.
+      accionEnDiario?: string | null
       /// Cuántos del grupo entran al combate (d6 por especie) + LogEntry de sistema con esas tiradas
       /// y la iniciativa de cada combatiente (combate múltiple).
       tiradasGrupo?: TiradaGrupoInfo[]
@@ -2198,6 +2202,8 @@ export interface DynamicModeTurno {
   /// (`handleSubmit`, GameView.tsx) para que la narración real lo abra — mismo criterio EXACTO que
   /// `ConfirmarCazaResultado.actionText` (caza en grupo desde el viejo botón suelto).
   actionText?: string
+  /// P90/P130: lo que sale en el diario como acción de la jugadora; `null` en una emboscada.
+  accionEnDiario?: string | null
   /// Fase 10 (2026-09-29) — con `actionText` de grupo: tiradas de cuántos entran + LogEntry de
   /// sistema (`combateGrupoLogEntry`) con esas tiradas y la iniciativa del combate múltiple.
   tiradasGrupo?: TiradaGrupoInfo[]

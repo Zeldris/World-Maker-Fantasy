@@ -65,7 +65,7 @@ import {
 import { harvestSourceAliases } from '../scripts/worldCatalog.js';
 import { detectsPostCombatInteraction } from '../services/postCombatInteraction.js';
 import { accionParaCitar } from '../services/accionCitada.js';
-import { iniciarCaza, faunaCercanaNombrada, esActionTextDeCaza } from '../services/caza.js';
+import { iniciarCaza, faunaCercanaNombrada, esActionTextDeCaza, accionEnDiarioDeCaza } from '../services/caza.js';
 import { startEagerTransitResolution } from '../workers/worldTick.js';
 import { detectDeterministicCraft, detectsCraftIntent, CRAFTING_RECIPES } from '../services/crafting.js';
 import { planDeterministicBuild, detectsBuildIntent, CONSTRUCTION_RECIPES, buildingTierFor } from '../services/construction.js';
@@ -613,9 +613,12 @@ export async function turnRoutes(app: FastifyInstance) {
       discoverName?: string,
       harvestSuggestion?: { sourceName: string },
     ) {
-      await prisma.logEntry.create({
-        data: { saveId, channel: 'CHARACTER', text: action, isPlayerAction: true, timeLabel: blockedTimeLabel, fictionalMinutes: blockedFictionalMinutes },
-      });
+      const accionEnDiario = accionEnDiarioDeCaza(action);
+      if (accionEnDiario !== null) {
+        await prisma.logEntry.create({
+          data: { saveId, channel: 'CHARACTER', text: accionEnDiario, isPlayerAction: true, timeLabel: blockedTimeLabel, fictionalMinutes: blockedFictionalMinutes },
+        });
+      }
       // isSystemMessage (ver comentario completo en schema.prisma) — `narrationText` viene de un
       // guard determinista (frase fija o de un pool pequeño), nunca generado por el LLM.
       const respuesta = await prisma.logEntry.create({
@@ -1202,9 +1205,13 @@ export async function turnRoutes(app: FastifyInstance) {
     // acción del jugador en el log para que aparezca de inmediato, antes de esperar a narrar.
     // `combate` también en la acción del jugador (B12, pruebas 2026-09-28): el contador de capítulo
     // (chapterSummary.ts) no debe contar cada botón de un combate como una acción de historia.
-    await prisma.logEntry.create({
-      data: { saveId, channel: 'CHARACTER', text: action, isPlayerAction: true, timeLabel, fictionalMinutes: save.worldState?.fictionalMinutes ?? 480, combate: !!enCombate },
-    });
+    // P90/P130 (QA-27): de una caza, solo lo que hizo la jugadora; nada si la emboscaron.
+    const accionEnDiario = accionEnDiarioDeCaza(action);
+    if (accionEnDiario !== null) {
+      await prisma.logEntry.create({
+        data: { saveId, channel: 'CHARACTER', text: accionEnDiario, isPlayerAction: true, timeLabel, fictionalMinutes: save.worldState?.fictionalMinutes ?? 480, combate: !!enCombate },
+      });
+    }
 
     const produccionLabel = produccionFiltrada ? `${produccionFiltrada.cantidad} de ${produccionFiltrada.itemName}` : undefined;
     // Auditoría de rendimiento 2026-07-28 ("rascar segundos"): `npcsInScene` viaja tal cual hasta

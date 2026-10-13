@@ -10,7 +10,7 @@ interface UseZonaAccionesParams {
   setCharacterLog: Dispatch<SetStateAction<LogEntry[]>>
   setCombateIniciado: Dispatch<SetStateAction<{ npcs: NpcInSceneInfo[] } | null>>
   openCombat: (npcs: { npcs: NpcInSceneInfo[] }) => void
-  handleSubmit: (actionText: string) => void | Promise<void>
+  handleSubmit: (actionText: string, extras?: { accionEnDiario?: string | null }) => void | Promise<void>
 }
 
 export function useZonaAcciones({ saveId, setCharacterLog, setCombateIniciado, openCombat, handleSubmit }: UseZonaAccionesParams) {
@@ -46,6 +46,7 @@ export function useZonaAcciones({ saveId, setCharacterLog, setCombateIniciado, o
       | {
           resuelveSinCombate: false
           actionText: string
+          accionEnDiario?: string | null
           cazaLimpia?: CazaSigiloRoll
           logEntry?: { id: string; text: string; timeLabel: string; createdAt: string; roll: CombateGrupoLogRoll | CazaSigiloRoll }
         },
@@ -66,7 +67,7 @@ export function useZonaAcciones({ saveId, setCharacterLog, setCombateIniciado, o
       const entrada = result.logEntry
       setCharacterLog((prev) => [...prev, { ...entrada, channel: 'character' }])
     }
-    handleSubmit(result.actionText)
+    handleSubmit(result.actionText, { accionEnDiario: result.accionEnDiario })
   }
 
   /// Devuelve si la caza salió (para que el mapa de zona se cierre y deje ver Combatir/Huir, P9).

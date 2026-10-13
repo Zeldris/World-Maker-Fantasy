@@ -154,6 +154,20 @@ describe('useMovimientoZona', () => {
       expect(result.current.destinoPendiente).toBeNull()
     })
 
+    it('la ruta acaba junto al punto pulsado (otra casilla): el backend dice que llegó y no se vuelve a pedir (P135)', async () => {
+      // Clic en un pin a x=275, pero la ruta termina al lado (x=225): el encuentro sale en el último paso.
+      vi.mocked(moverEnZona).mockResolvedValueOnce({ ...recurso(225, 0), llegado: true } as never)
+      vi.mocked(getZona).mockResolvedValue({ disponible: true } as never)
+      const alLlegar = vi.fn()
+      const { result } = usarEnMapa()
+      await act(async () => {
+        await result.current.moverA({ x: 275, y: 0 }, { alLlegar })
+      })
+      act(() => result.current.reanudar())
+      await waitFor(() => expect(alLlegar).toHaveBeenCalledWith({ disponible: true }))
+      expect(moverEnZona).toHaveBeenCalledTimes(1)
+    })
+
     it('un clic nuevo olvida la acción del trayecto anterior', async () => {
       vi.mocked(moverEnZona).mockResolvedValueOnce(recurso(50, 0) as never).mockResolvedValueOnce(paso(100, 0) as never)
       vi.mocked(getZona).mockResolvedValue({ disponible: true } as never)

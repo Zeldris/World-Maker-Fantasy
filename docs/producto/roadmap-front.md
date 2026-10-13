@@ -1165,6 +1165,23 @@ usuaria el 2026-10-13):
   quedan en su frase y «¡Victoria!» (en un `h3`) también sale. Motivo: «  te golpea…» sin quién,
   parecía un fallo del juego.
 
+Retro del PR #53 y de los 12 arreglos de su `/code-review` (2026-10-13), aprobada por la usuaria (1-4 de 5):
+
+- ~~**QA-77 · `/code-review` antes de crear el PR**~~ ✅ 2026-10-13: `CLAUDE.md` y los dos runbooks dicen
+  «`/code-review` antes de crear el PR a `main`; `/retro` después de fusionarlo». Motivo: «al final, con
+  el PR» se leyó como después de fusionar y los 12 fallos del #53 llegaron a `main`.
+- ~~**QA-78 · Una regla nueva, en todos sus caminos**~~ ✅ 2026-10-13: regla en «Un dato, un sitio» de
+  `REVIEW.md`. Motivo: 7 de los 12 fallos del #53 eran una regla aplicada solo en el camino que se jugó.
+- ~~**QA-79 · Comprobaciones en las rutas de partida**~~ ✅ 2026-10-13: `comprobacionesDeRutas.test.ts`
+  recorre las rutas `POST /saves/:id/...` y falla si alguna no rechaza la partida terminada y la muerte
+  pendiente, salvo 8 excepciones con motivo. Arregla las 12 que no lo hacían (misiones, bandos,
+  propuestas, grupos de combate, comercio, dejar a un compañero, menú del NPC, viajeros, huir) con
+  `rechazarSiNoAdmiteAcciones` (`shared.ts`) o la comprobación que faltaba. Motivo: `/npc-interaction/abrir`.
+- ~~**QA-80 · El test de `factionRelations` con la base local**~~ ✅ 2026-10-13: buscaba Serhu y Helsig
+  con `findFirst` sin `saveId: null` y, con partidas en la base, cogía la copia de una partida: fijaba 65
+  en esa copia y la ruta leía la del catálogo (70). Ahora pide las del catálogo. El código de
+  producción ya busca por `id` o por `saveId`.
+
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
 Revisión cruzada (2026-10-01) con [roadmap-cronista.md](roadmap-cronista.md),
