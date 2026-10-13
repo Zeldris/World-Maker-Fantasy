@@ -88,15 +88,24 @@ export async function dynamicModeRecursoRoutes(app: FastifyInstance) {
     // falladas) antes no dejaba LogEntry y su dado solo se veía en vivo. Ahora queda como entrada de
     // sistema con la(s) tirada(s) en `roll` (mismo `kind: 'recoleccion'`). No avanza el reloj.
     // `limpiarOferta`: solo cuando `resolverRecoleccion` no llegó a limpiarla ya.
-    async function registrarFallo(text: string, logRoll: RecoleccionLogRoll, limpiarOferta: boolean) {
+    async function registrarFallo(text: string, logRoll: RecoleccionLogRoll | null, limpiarOferta: boolean) {
       const timeLabel = formatFictionalDate(fictionalMinutes);
       const creada = await prisma.$transaction(async (tx) => {
         if (limpiarOferta) await tx.save.update({ where: { id: save!.id }, data: { pendingDynamicModeOffer: Prisma.JsonNull } });
         return tx.logEntry.create({
-          data: { saveId: save!.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes, isPlayerAction: false, isSystemMessage: true, roll: logRoll as unknown as Prisma.InputJsonValue },
+          data: { saveId: save!.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes, isPlayerAction: false, isSystemMessage: true, ...(logRoll ? { roll: logRoll as unknown as Prisma.InputJsonValue } : {}) },
         });
       });
-      return { id: creada.id, text, timeLabel, createdAt: creada.createdAt.toISOString(), fictionalMinutes, roll: logRoll };
+      return { id: creada.id, text, timeLabel, createdAt: creada.createdAt.toISOString(), fictionalMinutes, ...(logRoll ? { roll: logRoll } : {}) };
+    }
+
+    // P136 (QA-27): lo que se recoge sin tirada (`sinTirada` en todos sus objetos, p. ej. la leche de
+    // los múrgoles domados) no muestra dado: «Recoger» era en realidad una tirada de Destreza.
+    if (candidato.yields.every((y) => y.sinTirada)) {
+      const selections = candidato.yields.map((y) => ({ sourceSlug: targetSlug, itemSlug: y.itemSlug, cantidad: y.cantidadMaxima }));
+      const resultado = await resolverRecoleccion(save, selections, true);
+      const logEntryFinal = resultado.logEntry ?? (await registrarFallo(`${save.characterName} no consigue nada aprovechable de ${sourceDisplayNameFor(targetSlug)} esta vez.`, null, false));
+      return { exito: resultado.logEntry !== null, narration: logEntryFinal.text, abilityName: ability.ability.name, segundasTiradas: resultado.segundasTiradas, items: resultado.items, updatedItems: resultado.updatedItems, logEntry: logEntryFinal };
     }
 
     const roll = gatheringRollFor(
