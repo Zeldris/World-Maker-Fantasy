@@ -4,7 +4,7 @@
 # gancho («ref local, sha local, ref remota, sha remota» por rama) y:
 #   - escribe en $1 los archivos que cambian (QA-35: imágenes);
 #   - escribe en $2 los commits nuevos, uno por línea (QA-66);
-#   - comprueba la bitácora de cada commit que se sube (QA-69) y sale con 1 si no cumple.
+#   - comprueba la bitácora de cada commit nuevo que se sube (QA-69) y sale con 1 si no cumple.
 # La bitácora se lee con BITACORA_PY (por defecto, la de este repo), para poder probarlo en otro.
 set -uo pipefail
 cambiados="$1"
@@ -25,12 +25,14 @@ while read -r _ sha_local _ sha_remoto; do
   [ -n "$base" ] && git diff --name-only "$base" "$sha_local" >> "$cambiados" 2>/dev/null
   # Commits nuevos de verdad: los que no están en ninguna rama remota conocida.
   git log --format='  %h %s' "$sha_local" --not --remotes >> "$subidos" 2>/dev/null
-  # QA-69: la bitácora tal como va en el commit que se sube, no la del directorio de trabajo.
-  if git cat-file -e "$sha_local:docs/registros/traspaso.md" 2>/dev/null; then
+  # QA-69: la bitácora tal como va en cada commit nuevo que se sube (no la del directorio de trabajo,
+  # ni solo la del último commit: uno intermedio con la bitácora mal también llegaría al remoto).
+  for commit in $(git rev-list "$sha_local" --not --remotes 2>/dev/null); do
+    git cat-file -e "$commit:docs/registros/traspaso.md" 2>/dev/null || continue
     tmp=$(mktemp)
-    git show "$sha_local:docs/registros/traspaso.md" > "$tmp"
-    python3 "$bitacora_py" "$tmp" || { rm -f "$tmp"; exit 1; }
+    git show "$commit:docs/registros/traspaso.md" > "$tmp"
+    python3 "$bitacora_py" "$tmp" || { echo "bitácora: en el commit $(git log -1 --format='%h %s' "$commit")"; rm -f "$tmp"; exit 1; }
     rm -f "$tmp"
-  fi
+  done
 done
 exit 0

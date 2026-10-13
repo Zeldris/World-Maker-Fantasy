@@ -18,16 +18,18 @@ const PREFIJOS_LOCALES: Record<string, string> = {
   'turn-locked': 'aviso de turno ocupado',
   // `avisarErrorEnLog(prefijo, …)`: sus prefijos acaban en «-err» (lo comprueba el segundo test).
   '${prefijo}': 'errores de avisarErrorEnLog',
-  // Solo la animación del dado de Explorar; el resultado llega después con la entrada guardada.
-  'recurso-tirada': 'animación de la tirada de un recurso',
+  // `nextId('p')` (`playerActionEntry`): la acción de la jugadora se pinta al pulsar Actuar, antes de
+  // que el backend responda; el backend la guarda con el mismo texto («TU ACCIÓN»).
+  p: 'acción de la jugadora, antes de la respuesta',
   // No es del diario: la ficha de un personaje creado a mano en la pantalla de selección.
   custom: 'personaje nuevo en CharacterSelect',
 }
 
 describe('líneas del diario que inventa el frontend (QA-71)', () => {
   it('solo los prefijos de id de lo que nunca se guarda', () => {
+    // Las dos formas de inventar un id en el frontend: `<prefijo>-${Date.now()}` y `nextId('<prefijo>')`.
     const usados = Object.entries(FUENTES).flatMap(([ruta, texto]) =>
-      [...texto.matchAll(/id: `([\w${}-]+)-\$\{Date\.now\(\)\}`/g)].map((m) => ({ ruta, prefijo: m[1]! })),
+      [...texto.matchAll(/id:\s*`([\w${}-]+)-\$\{Date\.now\(\)\}`|nextId\('([^']+)'\)/g)].map((m) => ({ ruta, prefijo: (m[1] ?? m[2])! })),
     )
     expect(usados.length).toBeGreaterThan(0)
     const nuevos = usados.filter((u) => !(u.prefijo in PREFIJOS_LOCALES)).map((u) => `${u.ruta}: ${u.prefijo}`)

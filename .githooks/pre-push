@@ -15,9 +15,11 @@ python3 tools/roadmap/cobertura.py > /tmp/pre-push-cobertura.log || { grep -v "^
 # QA-35 (imágenes), QA-66 (qué commits sube: un push vacío también decía «todo en verde») y QA-69
 # (bitácora de cada commit), en `tools/qa/prepush-ramas.sh` para poder probarlo (QA-72). Git pasa por la
 # entrada «ref local, sha local, ref remota, sha remota» de cada rama que se sube.
-bash tools/qa/prepush-ramas.sh /tmp/pre-push-cambiados.txt /tmp/pre-push-subidos.txt || exit 1
-cambiados=$(cat /tmp/pre-push-cambiados.txt)
-subidos=$(cat /tmp/pre-push-subidos.txt)
+ramas_dir=$(mktemp -d)
+trap 'rm -rf "$ramas_dir"' EXIT
+bash tools/qa/prepush-ramas.sh "$ramas_dir/cambiados" "$ramas_dir/subidos" || exit 1
+cambiados=$(cat "$ramas_dir/cambiados")
+subidos=$(cat "$ramas_dir/subidos")
 if grep -q "^backend/uploads/images/" <<< "$cambiados"; then
   (cd backend && npx vitest run src/scripts/imagenesZona.test.ts > /tmp/pre-push-imagenes.log 2>&1) \
     || { grep -E "Expected|\+ |archivo|mapa" /tmp/pre-push-imagenes.log | head -20; echo "pre-push: hay imágenes con un nombre que no es el de ningún lugar"; exit 1; }

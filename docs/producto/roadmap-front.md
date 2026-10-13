@@ -1121,25 +1121,31 @@ Retro de la tercera tanda de `QA-27` (2026-10-12, PR #49;
 Retro del PR #50 (2026-10-13; [propuestas](../registros/retro-2026-10-13-pr50.md), aprobadas todas por la
 usuaria el 2026-10-13):
 
-- ~~**QA-71 · Diario que el frontend escribe por su cuenta**~~ ✅ 2026-10-13:
-  - huir antes y durante el combate devuelve la entrada guardada (`logEntry`) y el frontend la pinta
-    tal cual; la de durante el combate se guarda ya como combate;
-  - fuera los respaldos muertos de `recurso-fallido` y `caza-sigilo`, porque el backend ya devuelve
-    siempre su entrada;
+- **QA-71 · Diario que el frontend escribe por su cuenta** (🚧 2026-10-13: hecho y con tests; falta
+  jugarlo, `CLAUDE.md`: huir antes y durante un combate, Explorar fallido, caza sigilosa fallida y una
+  acción bloqueada):
+  - huir antes y durante el combate y la respuesta a una acción bloqueada devuelven la entrada guardada
+    (`logEntry`) y el frontend la pinta tal cual; la huida de durante el combate se guarda ya como combate;
+  - Explorar: la línea del dado lleva el id de la entrada guardada y, al caer el dado, se sustituye por
+    ella con su tirada completa (igual que tras recargar);
+  - fuera los respaldos muertos de Explorar fallido y caza sigilosa, porque el backend ya devuelve
+    siempre su entrada (los tipos lo exigen);
   - `lineasLocalesDelDiario.test.ts` lista los prefijos de `id` que puede inventar el frontend
-    (errores, la animación del dado de Explorar) y falla con uno nuevo;
+    (`<prefijo>-${Date.now()}` y `nextId(...)`: errores y la acción de la jugadora) y falla con uno nuevo;
   - regla en «Sin copias entre backend y frontend» de `REVIEW.md`.
   Motivo: P117 se veía mal en vivo por la línea «sube a nivel» del frontend.
 - ~~**QA-72 · Tests de las herramientas de `tools/qa/` y del gancho**~~ ✅ 2026-10-13: `tools/qa/tests/`
-  (`unittest`, 12 tests, sin dependencias) para `bitacora.py`, `marca-hallazgo.py` y
+  (`unittest`, 13 tests, sin dependencias) para `bitacora.py`, `marca-hallazgo.py` y
   `prepush-ramas.sh`, la parte del gancho que mira cada rama (sacada de `.githooks/pre-push` para poder
-  probarla con repos de git de prueba). Los corre el job `roadmap` de la CI. Motivo: 4 de los 11
+  probarla con repos de git de prueba; comprueba la bitácora de cada commit nuevo, no solo del último).
+  Los corre el job `roadmap` de la CI. Motivo: 4 de los 11
   hallazgos del `/code-review` del #50 eran de esas herramientas.
 - ~~**QA-73 · `/code-review` al cerrar cada tanda de 3 o más tareas**~~ ✅ 2026-10-13: paso 5 de
   `skills-y-modelos.md`. Motivo: las dos últimas tandas salieron con 11 y 12 fallos que solo vio la
   revisión final.
-- ~~**QA-74 · `estado.js` con el nombre en los avisos**~~ ✅ 2026-10-13: los avisos se buscan párrafo a
-  párrafo con `textContent`, que deja los chips de nombre en su frase. Motivo: «  te golpea…» sin quién,
+- ~~**QA-74 · `estado.js` con el nombre en los avisos**~~ ✅ 2026-10-13: los avisos se buscan elemento a
+  elemento (párrafos, encabezados, listas) uniendo sus trozos con un espacio, así los chips de nombre
+  quedan en su frase y «¡Victoria!» (en un `h3`) también sale. Motivo: «  te golpea…» sin quién,
   parecía un fallo del juego.
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)

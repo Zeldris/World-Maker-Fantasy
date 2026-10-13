@@ -60,6 +60,12 @@ class PrepushRamas(unittest.TestCase):
         codigo, _, _ = self.correr(sha, CERO)
         self.assertEqual(codigo, 1)
 
+    def test_bitacora_mala_en_un_commit_intermedio_falla(self):
+        self.commit('docs/registros/traspaso.md', '| **Tarea en curso · `r`** | a |\n| **Tarea en curso · `r`** | b |\n', 'dos filas')
+        sha = self.commit('docs/registros/traspaso.md', BITACORA_OK, 'arreglada')
+        codigo, _, _ = self.correr(sha, CERO)
+        self.assertEqual(codigo, 1)
+
 
 if __name__ == '__main__':
     unittest.main()

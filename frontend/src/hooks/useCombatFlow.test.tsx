@@ -683,7 +683,7 @@ describe('handleSaquearSeleccion', () => {
 
 describe('handleFleeAttempt', () => {
   it('huida con éxito: limpia combateIniciado sin abrir el popup', async () => {
-    mockFlee.mockResolvedValue({ escaped: true, text: 'Logras escapar.', roll: { attribute: 'destreza', value: 10, roll: 15, difficulty: 12, result: 20, success: true } , logEntry: { id: 'entrada-guardada', text: 'Logras escapar.', timeLabel: 'Día 1, 08:00', createdAt: '2026-01-01T00:00:00Z', isSystemMessage: true } })
+    mockFlee.mockResolvedValue({ escaped: true, logEntry: { id: 'entrada-guardada', channel: 'character', text: 'Logras escapar.', timeLabel: 'Día 1, 08:00', createdAt: '2026-01-01T00:00:00Z', roll: { attribute: 'destreza', value: 10, roll: 15, difficulty: 12, result: 20, success: true } } })
     const { result } = renderHook(() => useHarness())
     act(() => result.current.setCombateIniciado({ npcs: [npc({ slug: 'orco', name: 'Orco' })] }))
     await act(() => result.current.combat.handleFleeAttempt())
@@ -697,7 +697,7 @@ describe('handleFleeAttempt', () => {
   })
 
   it('huida fallida: abre el popup de combate normal', async () => {
-    mockFlee.mockResolvedValue({ escaped: false, text: 'No consigues escapar.', roll: { attribute: 'destreza', value: 10, roll: 3, difficulty: 12, result: 8, success: false } , logEntry: { id: 'entrada-guardada', text: 'No consigues escapar.', timeLabel: 'Día 1, 08:00', createdAt: '2026-01-01T00:00:00Z', isSystemMessage: true } })
+    mockFlee.mockResolvedValue({ escaped: false, logEntry: { id: 'entrada-guardada', channel: 'character', text: 'No consigues escapar.', timeLabel: 'Día 1, 08:00', createdAt: '2026-01-01T00:00:00Z', roll: { attribute: 'destreza', value: 10, roll: 3, difficulty: 12, result: 8, success: false } } })
     const { result } = renderHook(() => useHarness())
     act(() => result.current.setCombateIniciado({ npcs: [npc({ slug: 'orco', name: 'Orco' })] }))
     await act(() => result.current.combat.handleFleeAttempt())
@@ -734,7 +734,7 @@ describe('closeCombat / handleCombatHuir', () => {
   // intercambio normal, fire-and-forget). Ahora usa el endpoint dedicado combat/huir-en-curso, con
   // la misma tirada determinista que handleFleeAttempt, y un fallo aplica un golpe directo real.
   it('handleCombatHuir con éxito: cierra el popup, limpia combateIniciado, no toca condicionFisica', async () => {
-    mockHuirEnCurso.mockResolvedValue({ escaped: true, text: 'Escapas del combate.', condicionFisica: 'ILESO', roll: { attribute: 'destreza', value: 10, roll: 15, difficulty: 12, result: 20, success: true } , logEntry: { id: 'entrada-guardada', text: 'Escapas del combate.', timeLabel: 'Día 1, 08:00', createdAt: '2026-01-01T00:00:00Z', isSystemMessage: true } })
+    mockHuirEnCurso.mockResolvedValue({ escaped: true, condicionFisica: 'ILESO', logEntry: { id: 'entrada-guardada', channel: 'character', text: 'Escapas del combate.', timeLabel: 'Día 1, 08:00', createdAt: '2026-01-01T00:00:00Z', roll: { attribute: 'destreza', value: 10, roll: 15, difficulty: 12, result: 20, success: true } } })
     const { result } = renderHook(() => useHarness())
     act(() => result.current.setCombateIniciado({ npcs: [npc({ slug: 'orco', name: 'Orco' })] }))
     act(() => result.current.combat.openCombat())
@@ -748,7 +748,7 @@ describe('closeCombat / handleCombatHuir', () => {
   })
 
   it('handleCombatHuir con fallo: el popup se queda abierto, condicionFisica refleja el golpe directo', async () => {
-    mockHuirEnCurso.mockResolvedValue({ escaped: false, text: 'No consigues huir y recibes un golpe.', condicionFisica: 'HERIDO', roll: { attribute: 'destreza', value: 10, roll: 3, difficulty: 12, result: 8, success: false } , logEntry: { id: 'entrada-guardada', text: 'No consigues huir y recibes un golpe.', timeLabel: 'Día 1, 08:00', createdAt: '2026-01-01T00:00:00Z', isSystemMessage: true } })
+    mockHuirEnCurso.mockResolvedValue({ escaped: false, condicionFisica: 'HERIDO', logEntry: { id: 'entrada-guardada', channel: 'character', text: 'No consigues huir y recibes un golpe.', timeLabel: 'Día 1, 08:00', createdAt: '2026-01-01T00:00:00Z', roll: { attribute: 'destreza', value: 10, roll: 3, difficulty: 12, result: 8, success: false } } })
     const { result } = renderHook(() => useHarness())
     act(() => result.current.setCombateIniciado({ npcs: [npc({ slug: 'orco', name: 'Orco' })] }))
     act(() => result.current.combat.openCombat())

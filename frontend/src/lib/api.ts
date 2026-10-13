@@ -116,7 +116,8 @@ export interface ClassifyResponse {
   // `harvestSuggestion` (Pieza 6d, 2026-09-03, "mundo determinista"): presente solo cuando el
   // bloqueo fue por citar una fuente real de recolección de terreno por texto libre en vez de usar
   // la habilidad — botón real que abre HarvestSelectionModal con la fuente ya priorizada.
-  blocked?: { narration: string; harvestSuggestion?: { sourceName: string } }
+  /// QA-71: `logEntry` es la respuesta bloqueada tal como la guardó el backend.
+  blocked?: { narration: string; harvestSuggestion?: { sourceName: string }; logEntry: LogEntry }
   // Interacción con un NPC/fauna ya convaleciente o muerto, fuera de combate (docs/19-post-combate-
   // y-recompensas-mision.md pieza 2) — el turno tampoco llega a /turn/narrate aquí, pero a
   // diferencia de `blocked` no es una violación: el frontend abre el panel mecánico (Saquear/
@@ -825,19 +826,8 @@ export async function requestCerrarCombate(id: string): Promise<void> {
 // `roll` (2026-08-30, bug real: 3 intentos seguidos narraban la misma frase fija sin ningún
 // desglose) — se pinta con RollBadge, igual que cualquier otra tirada del juego.
 /// QA-71: `logEntry` es la entrada que guardó el backend (la misma que se ve tras recargar).
-export async function requestFlee(id: string): Promise<{ escaped: boolean; text: string; roll: RollInfo; logEntry: EntradaGuardadaDeHuida }> {
+export async function requestFlee(id: string): Promise<{ escaped: boolean; logEntry: LogEntry }> {
   return fetchJson(`${API_URL}/saves/${id}/combat/flee`, { method: 'POST' })
-}
-
-/// La entrada del diario que guarda una huida (`toFrontendLogEntry` del backend).
-export interface EntradaGuardadaDeHuida {
-  id: string
-  text: string
-  timeLabel: string
-  createdAt: string
-  isSystemMessage?: boolean
-  combate?: boolean
-  roll?: RollInfo
 }
 
 // Huir DENTRO de un combate ya iniciado (ronda de correcciones 2026-08-28, P3.2) — misma tirada
@@ -845,7 +835,7 @@ export interface EntradaGuardadaDeHuida {
 // defensa): `condicionFisica` viene ya actualizada en la respuesta.
 export async function requestHuirEnCurso(
   id: string,
-): Promise<{ escaped: boolean; text: string; condicionFisica: string; roll: RollInfo; logEntry: EntradaGuardadaDeHuida }> {
+): Promise<{ escaped: boolean; condicionFisica: string; logEntry: LogEntry }> {
   return fetchJson(`${API_URL}/saves/${id}/combat/huir-en-curso`, { method: 'POST' })
 }
 
@@ -2091,18 +2081,22 @@ export async function getFactionRelations(worldSlug: string, saveId?: string): P
 /// eliges objetivos y esa narración inicia el combate".
 export type ConfirmarCazaResultado =
   | { resuelveSinCombate: true; exito: true; combate: { npcs: NpcInSceneInfo[] }; logEntry: { id: string; text: string; timeLabel: string; createdAt: string; roll?: CazaSigiloRoll }; cazaLimpia?: CazaSigiloRoll }
-  | {
+  | ({
       resuelveSinCombate: false
       exito: false | null
       actionText: string
-      /// Fase 10 (2026-09-29) — caza sigilosa fallida (d100 contra la probabilidad real).
-      cazaLimpia?: CazaSigiloRoll
       /// Cuántos del grupo entran al combate (d6 por especie) + LogEntry de sistema con esas tiradas
       /// y la iniciativa de cada combatiente (combate múltiple).
       tiradasGrupo?: TiradaGrupoInfo[]
-      /// (F9-4: también la caza sigilosa fallida, con `roll.kind` = 'caza-sigilo'.)
-      logEntry?: { id: string; text: string; timeLabel: string; createdAt: string; roll: CombateGrupoLogRoll | CazaSigiloRoll }
-    }
+    } & (
+      | {
+          /// Fase 10 (2026-09-29) — caza sigilosa fallida (d100 contra la probabilidad real). QA-71: el
+          /// backend la guarda siempre y viaja en `logEntry`, con `roll.kind` = 'caza-sigilo'.
+          cazaLimpia: CazaSigiloRoll
+          logEntry: { id: string; text: string; timeLabel: string; createdAt: string; roll: CazaSigiloRoll }
+        }
+      | { cazaLimpia?: undefined; logEntry?: { id: string; text: string; timeLabel: string; createdAt: string; roll: CombateGrupoLogRoll } }
+    ))
 
 /// Cazar desde la tarjeta de encuentro de zona (Fase 2, 2026-09-28,
 /// `plan-mecanicas-por-zona-2026-09-28.md`) — caza EXACTAMENTE el grupo con el que se ha

@@ -257,8 +257,8 @@ export async function sessionRoutes(app: FastifyInstance) {
     if (outcome.kind === 'cambiado') {
       return reply.status(409).send({ error: 'El combate cambió mientras intentabas huir — vuelve a intentarlo.' });
     }
-    // QA-71: la entrada guardada, para que el diario en vivo sea la misma que tras recargar.
-    return { escaped: roll.success, text, roll, logEntry: toFrontendLogEntry(outcome.entrada) };
+    // QA-71: la entrada guardada (texto y tirada van en ella), la misma que se ve tras recargar.
+    return { escaped: roll.success, logEntry: toFrontendLogEntry(outcome.entrada) };
   });
 
   // Huir DENTRO de un combate ya iniciado (bug real 2026-08-28, ronda de correcciones — petición
@@ -353,7 +353,7 @@ export async function sessionRoutes(app: FastifyInstance) {
     if (outcomeEnCurso.kind === 'cambiado') {
       return reply.status(409).send({ error: 'El combate cambió mientras intentabas huir — vuelve a intentarlo.' });
     }
-    return { escaped: roll.success, text, condicionFisica: nuevaCondicion, roll, logEntry: toFrontendLogEntry(outcomeEnCurso.entrada) };
+    return { escaped: roll.success, condicionFisica: nuevaCondicion, logEntry: toFrontendLogEntry(outcomeEnCurso.entrada) };
   });
 
   // "Matar" un CONVALECIENTE — solo marca la DECISIÓN, no resuelve nada por sí mismo (rediseño

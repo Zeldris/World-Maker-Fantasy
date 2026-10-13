@@ -328,7 +328,7 @@ describe('handleSubmit — caminos que no llegan a narrar', () => {
   // bloqueo en memoria directamente (resolveBlockedTurn, backend, no toca nada más del Save
   // aparte de los 2 LogEntry ya persistidos), mismo criterio que el bloque narrate normal.
   it('blocked: añade la narración bloqueada al log en memoria, sin recargar la partida ni llamar a requestTurnNarrate', async () => {
-    mockClassify.mockResolvedValueOnce(baseClassifyResponse({ blocked: { narration: 'No hay nada así por aquí.' } }))
+    mockClassify.mockResolvedValueOnce(baseClassifyResponse({ blocked: { narration: 'No hay nada así por aquí.', logEntry: { id: 'respuesta-guardada', channel: 'character', text: 'No hay nada así por aquí.', timeLabel: 'Día 1, 08:00', createdAt: '2026-01-01T00:00:00Z' } } }))
     const { result } = renderHook(() => useHarness())
 
     await act(() => result.current.turn.handleSubmit('Vuelo por el cielo.'))
@@ -338,6 +338,8 @@ describe('handleSubmit — caminos que no llegan a narrar', () => {
     const last = result.current.characterLog.at(-1)
     expect(last?.text).toBe('No hay nada así por aquí.')
     expect(last?.channel).toBe('character')
+    // QA-71: la entrada guardada por el backend, con su id real.
+    expect(last?.id).toBe('respuesta-guardada')
   })
 
   it('blocked con harvestSuggestion (Pieza 6d): la LogEntry en memoria lleva el dato del botón', async () => {
@@ -346,6 +348,7 @@ describe('handleSubmit — caminos que no llegan a narrar', () => {
         blocked: {
           narration: 'Busca el matorral de cuerno en el mapa de la zona.',
           harvestSuggestion: { sourceName: 'matorral de cuerno' },
+          logEntry: { id: 'respuesta-guardada', channel: 'character', text: 'Busca el matorral de cuerno en el mapa de la zona.', timeLabel: 'Día 1, 08:00', createdAt: '2026-01-01T00:00:00Z' },
         },
       }),
     )

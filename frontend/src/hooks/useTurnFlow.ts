@@ -2,7 +2,7 @@ import { useRef, type Dispatch, type RefObject, type SetStateAction } from 'reac
 import type { ChatComposerHandle } from '../components/ChatComposer'
 import { requestTurnClassify, requestTurnNarrate, getSave, type ClassifyResponse, type ConfirmarCazaResultado, type SaveDetail } from '../lib/api'
 import { isBusyError, isEndedGameError, isPendingDeathError, isTurnLockedError, applyInventoryDelta, questCompletedLogEntry } from '../lib/gameViewHelpers'
-import { playerActionEntry, nextId } from '../lib/simulateAI'
+import { playerActionEntry } from '../lib/simulateAI'
 import { duracionTirada, temporizadorTirada } from '../lib/duracionTirada'
 import type {
   ActiveEffect,
@@ -229,17 +229,8 @@ export function useTurnFlow(params: UseTurnFlowParams) {
         // a una recarga, coherente con el resto de ofertas de este mismo tipo.
         setCharacterThinking(false)
         const blocked = classifyResult.blocked
-        setCharacterLog((prev) => [
-          ...prev,
-          {
-            id: nextId('b'),
-            channel: 'character',
-            text: blocked.narration,
-            timeLabel: fictionalDate,
-            createdAt: new Date().toISOString(),
-            harvestSuggestion: blocked.harvestSuggestion,
-          },
-        ])
+        // QA-71: la respuesta tal como la guardó el backend (mismo id y estilo que tras recargar).
+        setCharacterLog((prev) => [...prev, { ...blocked.logEntry, harvestSuggestion: blocked.harvestSuggestion }])
         return
       }
 

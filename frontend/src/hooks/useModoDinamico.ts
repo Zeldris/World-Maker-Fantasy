@@ -13,7 +13,7 @@ import type { AvisoMisionInfo } from '../lib/api'
 import { applyInventoryDelta, questCompletedLogEntry } from '../lib/gameViewHelpers'
 import type { PanelId } from '../components/NavTabs'
 import type { EnciclopediaIndex } from '../lib/enciclopediaIndex'
-import type { InventoryItemInfo, LogEntry, MetodoObtencion, NpcInSceneInfo, QuestInfo, RecoleccionLogRoll } from '../types'
+import type { InventoryItemInfo, LogEntry, MetodoObtencion, NpcInSceneInfo, QuestInfo } from '../types'
 import type { useActionModalsState } from './useActionModalsState'
 
 // Bloque "modo dinámico"/Interactuar/menú de NPC extraído de GameView.tsx (Fase 12 del plan,
@@ -196,20 +196,19 @@ export function useModoDinamico({
       setCharacterLog((prev) => prev.map((e) => (e.id === entryId ? { ...e, dynamicModeOffer: undefined } : e)))
       // Fase 10 (2026-09-29, "todas las tiradas visibles") — el dado de Explorar se anima ANTES de
       // mostrar lo obtenido (misma regla que `HarvestSelectionModal`: sin esto el resultado
-      // spoilearía el dado). Entrada local con `GatheringDiceReveal` (vía `ExtendedRollBadge` en vivo);
-      // el resultado real se aplica cuando el dado aterriza. Al recargar, la tirada vive en
-      // `logEntry.roll` (persistida) — en vivo se quita `tirada` del resultado para no pintar el
-      // mismo dado dos veces.
+      // spoilearía el dado). QA-71: la línea del dado ya lleva el id de la entrada guardada y, cuando el
+      // dado aterriza, se sustituye en su sitio por esa entrada con su tirada completa: queda igual que
+      // tras recargar y el dado no se vuelve a animar (mismo id, ya visto en vivo).
+      const guardada = { ...resultado.logEntry, channel: 'character' as const }
       if (resultado.roll) {
         setCharacterLog((prev) => [
           ...prev,
           {
-            id: `recurso-tirada-${Date.now()}`,
+            id: guardada.id,
             channel: 'character',
             text: `${characterName ?? 'Tu personaje'} lo intenta con ${targetName}…`,
             timeLabel: fictionalDate,
-            isSystemMessage: true,
-            createdAt: new Date().toISOString(),
+            createdAt: guardada.createdAt,
             roll: { kind: 'recoleccion', tirada: resultado.roll },
           },
         ])
@@ -218,11 +217,8 @@ export function useModoDinamico({
       if (resultado.items || resultado.updatedItems) {
         setInventory((prev) => applyInventoryDelta(prev, resultado.items ?? [], [], resultado.updatedItems ?? []))
       }
-      // QA-71: el backend guarda siempre el intento, también el fallido (`registrarFallo`).
-      const { roll: persistida, ...resto } = resultado.logEntry
-      const rollVivo: RecoleccionLogRoll | undefined =
-        persistida && resultado.roll ? (persistida.segundas?.length ? { kind: 'recoleccion', segundas: persistida.segundas } : undefined) : persistida
-      setCharacterLog((prev) => [...prev, { ...resto, channel: 'character', ...(rollVivo ? { roll: rollVivo } : {}) }])
+      // El backend guarda siempre el intento, también el fallido (`registrarFallo`).
+      setCharacterLog((prev) => (prev.some((e) => e.id === guardada.id) ? prev.map((e) => (e.id === guardada.id ? guardada : e)) : [...prev, guardada]))
       setFictionalDate(resultado.logEntry.timeLabel)
     } catch (err) {
       // El backend explica el motivo real del rechazo (nivel de oficio insuficiente, recurso
