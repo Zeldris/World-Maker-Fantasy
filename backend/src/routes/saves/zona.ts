@@ -1251,7 +1251,7 @@ export async function zonaRoutes(app: FastifyInstance) {
         }
         // El mundo no da un paso si el jugador tampoco lo da (mismo criterio "un paso tuyo = un
         // paso del mundo" — camino vacío significa que el destino ya es la celda actual).
-        return { jugador: posicionActual, caminoRestante: [], colision, dynamicModeOffer, logEntry, zonePointsMovidos: [] as { id: string; x: number; y: number }[], ofertaDescartada: false };
+        return { jugador: posicionActual, caminoRestante: [], llegado: true, colision, dynamicModeOffer, logEntry, zonePointsMovidos: [] as { id: string; x: number; y: number }[], ofertaDescartada: false };
       });
     }
 
@@ -1344,7 +1344,9 @@ export async function zonaRoutes(app: FastifyInstance) {
         },
       });
 
-      return { jugador: nuevaPosicion, caminoRestante: caminoRestantePixel, colision, dynamicModeOffer, logEntry, zonePointsMovidos, ofertaDescartada, fictionalMinutes: minutosTrasPaso, fictionalDateLabel: etiquetaTrasPaso };
+      // `llegado`: este paso es el último del trayecto, haya o no encuentro (P135: un encuentro deja
+      // `caminoRestante` vacío aunque falte camino, y el frontend no puede deducirlo del píxel pulsado).
+      return { jugador: nuevaPosicion, caminoRestante: caminoRestantePixel, llegado: restoCamino.length === 0, colision, dynamicModeOffer, logEntry, zonePointsMovidos, ofertaDescartada, fictionalMinutes: minutosTrasPaso, fictionalDateLabel: etiquetaTrasPaso };
     });
 
     return resultado;

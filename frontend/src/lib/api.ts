@@ -1377,6 +1377,8 @@ export interface MoverZonaResultado {
   /// `true` si este paso descartó una oferta pacífica que seguía sin responder (2026-09-28 —
   /// alejarse andando equivale a ignorarla); el frontend retira su tarjeta del log.
   ofertaDescartada?: boolean
+  /// P135: este paso es el último del trayecto (también cuando un encuentro lo para en él).
+  llegado?: boolean
   /// F9-2 (2026-09-29) — reloj tras el paso (1 min/paso); ausente si el camino estaba vacío.
   fictionalMinutes?: number
   fictionalDateLabel?: string

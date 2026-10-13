@@ -157,7 +157,7 @@ export function useMovimientoZona({ saveId, setData, bloqueoMovimiento = null, o
             if (onEncuentroEnMapa) {
               onEncuentroEnMapa({ entryId: resultado.logEntry.id, zonePointId: resultado.dynamicModeOffer.zonePointId })
               interrumpido = true
-              llegoConEncuentroRef.current = mismaCelda(resultado.jugador, destino)
+              llegoConEncuentroRef.current = resultado.llegado ?? mismaCelda(resultado.jugador, destino)
             } else onClose?.()
           } else if (resultado.colision.temperamento === 'AGRESIVO' && resultado.logEntry) {
             // Bug real jugando en vivo (2026-09-15): un AGRESIVO en la misma celda cerraba el modal
@@ -193,7 +193,7 @@ export function useMovimientoZona({ saveId, setData, bloqueoMovimiento = null, o
           if (onEncuentroEnMapa) {
             onEncuentroEnMapa({ entryId: resultado.logEntry.id, zonePointId: resultado.dynamicModeOffer.zonePointId })
             interrumpido = true
-            llegoConEncuentroRef.current = mismaCelda(resultado.jugador, destino)
+            llegoConEncuentroRef.current = resultado.llegado ?? mismaCelda(resultado.jugador, destino)
           } else onClose?.()
           sigue = false
         } else if (resultado.caminoRestante.length === 0) {
