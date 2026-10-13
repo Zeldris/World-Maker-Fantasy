@@ -66,7 +66,7 @@ describe('/combat/huir-en-curso', () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.json()).toMatchObject({ escaped: true, condicionFisica: 'ILESO' });
-    // QA-71: devuelve la entrada guardada (la misma que tras recargar), marcada como combate.
+    // QA-73: devuelve la entrada guardada (la misma que tras recargar), marcada como combate.
     const guardada = await prisma.logEntry.findFirstOrThrow({ where: { saveId }, orderBy: { createdAt: 'desc' } });
     expect(res.json().logEntry).toMatchObject({ id: guardada.id, text: guardada.text, combate: true });
     expect(guardada.combate).toBe(true);

@@ -1,4 +1,4 @@
-"""QA-72: tools/qa/prepush-ramas.sh, la parte de .githooks/pre-push que mira cada rama (QA-35, QA-66, QA-69)."""
+"""QA-74: tools/qa/prepush-ramas.sh, la parte de .githooks/pre-push que mira cada rama (QA-35, QA-66, QA-69)."""
 import os
 import subprocess
 import unittest

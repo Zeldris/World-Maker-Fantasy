@@ -55,7 +55,7 @@ Retro de `QA-27` (2026-10-12, `QA-40`): tres de los diez fallos de la revisión 
 - **Sin copias entre backend y frontend.** Lo que decide el backend viaja en su respuesta (un campo,
   como `currentLocation.puntoDeAgua`); una lista copiada a mano en el frontend se desfasa. Lo mismo con
   el diario: una línea que cuenta algo del juego llega del backend con su `logEntryId`, y el frontend
-  solo inventa las de error (`lineasLocalesDelDiario.test.ts`, `QA-71`).
+  solo inventa las de error (`lineasLocalesDelDiario.test.ts`, `QA-73`).
 - **El filtro mira la consulta, no la página.** Lo que depende de filas vecinas (quitar una línea
   porque otra la repite) se decide contra la base: en una lista paginada, la vecina puede caer en
   otra página.

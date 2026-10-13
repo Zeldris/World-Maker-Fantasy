@@ -1,5 +1,5 @@
 #!/bin/bash
-# QA-72 (retro del PR #50, 2026-10-13): lo que `.githooks/pre-push` mira de cada rama que se sube, aparte
+# QA-74 (retro del PR #50, 2026-10-13): lo que `.githooks/pre-push` mira de cada rama que se sube, aparte
 # para poder probarlo (`tools/qa/tests/test_prepush_ramas.py`). Lee de la entrada lo que git le pasa al
 # gancho («ref local, sha local, ref remota, sha remota» por rama) y:
 #   - escribe en $1 los archivos que cambian (QA-35: imágenes);

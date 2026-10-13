@@ -424,7 +424,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     setCombatBusy(true)
     try {
       const { escaped, condicionFisica: newCondicion, logEntry } = await requestHuirEnCurso(saveId)
-      // QA-71: la entrada que guardó el backend, la misma que se ve tras recargar.
+      // QA-73: la entrada que guardó el backend, la misma que se ve tras recargar.
       setCharacterLog((prev) => [...prev, { ...logEntry, channel: 'character' }])
       setCondicionFisica(newCondicion as CondicionFisica)
       if (escaped) {
@@ -949,7 +949,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     setFleeingPreCombat(true)
     try {
       const { escaped, logEntry } = await requestFlee(saveId)
-      // QA-71: la entrada que guardó el backend, la misma que se ve tras recargar.
+      // QA-73: la entrada que guardó el backend, la misma que se ve tras recargar.
       setCharacterLog((prev) => [...prev, { ...logEntry, channel: 'character' }])
       if (escaped) {
         setCombateIniciado(null)

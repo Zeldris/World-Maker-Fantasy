@@ -196,7 +196,7 @@ export function useModoDinamico({
       setCharacterLog((prev) => prev.map((e) => (e.id === entryId ? { ...e, dynamicModeOffer: undefined } : e)))
       // Fase 10 (2026-09-29, "todas las tiradas visibles") — el dado de Explorar se anima ANTES de
       // mostrar lo obtenido (misma regla que `HarvestSelectionModal`: sin esto el resultado
-      // spoilearía el dado). QA-71: la línea del dado ya lleva el id de la entrada guardada y, cuando el
+      // spoilearía el dado). QA-73: la línea del dado ya lleva el id de la entrada guardada y, cuando el
       // dado aterriza, se sustituye en su sitio por esa entrada con su tirada completa: queda igual que
       // tras recargar y el dado no se vuelve a animar (mismo id, ya visto en vivo).
       const guardada = { ...resultado.logEntry, channel: 'character' as const }

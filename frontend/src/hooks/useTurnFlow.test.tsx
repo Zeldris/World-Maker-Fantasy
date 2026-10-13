@@ -338,7 +338,7 @@ describe('handleSubmit — caminos que no llegan a narrar', () => {
     const last = result.current.characterLog.at(-1)
     expect(last?.text).toBe('No hay nada así por aquí.')
     expect(last?.channel).toBe('character')
-    // QA-71: la entrada guardada por el backend, con su id real.
+    // QA-73: la entrada guardada por el backend, con su id real.
     expect(last?.id).toBe('respuesta-guardada')
   })
 

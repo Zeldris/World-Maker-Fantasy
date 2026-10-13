@@ -12,7 +12,11 @@ perder nada y sin preguntar por dónde iba**. Todo lo de este archivo existe par
    coincide con lo que dice la bitácora.
 3. Comprueba que los tests están como dice la bitácora antes de tocar nada.
 4. Sigue por el **siguiente paso** de la bitácora, salvo que el usuario pida otra cosa.
-5. Al empezar cada tarea, aplica el selector (qué skill y qué modelo pide el caso) y sigue el flujo
+5. **Al empezar cada tarea y al fusionar cada PR, trae `main`** (`QA-72`), aunque parezca al día:
+   `git fetch origin main` y, si trae commits, `git merge origin/main` (merge, nunca rebase: las ramas
+   están subidas). Se sube con el siguiente commit. Si el conflicto toca la misma lógica por los dos
+   lados o dos migraciones, se para y se consulta a la usuaria.
+6. Al empezar cada tarea, aplica el selector (qué skill y qué modelo pide el caso) y sigue el flujo
    de skills de una tarea (diseño, prototipo, bugs, PR, retro) de
    [`docs/runbooks/skills-y-modelos.md`](docs/runbooks/skills-y-modelos.md#cómo-se-usa-el-flujo-de-una-tarea).
 

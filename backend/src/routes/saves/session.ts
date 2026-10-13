@@ -257,7 +257,7 @@ export async function sessionRoutes(app: FastifyInstance) {
     if (outcome.kind === 'cambiado') {
       return reply.status(409).send({ error: 'El combate cambió mientras intentabas huir — vuelve a intentarlo.' });
     }
-    // QA-71: la entrada guardada (texto y tirada van en ella), la misma que se ve tras recargar.
+    // QA-73: la entrada guardada (texto y tirada van en ella), la misma que se ve tras recargar.
     return { escaped: roll.success, logEntry: toFrontendLogEntry(outcome.entrada) };
   });
 
@@ -335,7 +335,7 @@ export async function sessionRoutes(app: FastifyInstance) {
 
       // isSystemMessage (ver comentario completo en schema.prisma) — `text` viene de una lista
       // fija por índice de dado, nunca generado por el LLM.
-      // QA-71: huir de un combate en curso es parte del combate (fondo rojo), en vivo y tras recargar.
+      // QA-73: huir de un combate en curso es parte del combate (fondo rojo), en vivo y tras recargar.
       const entrada = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: save.worldState?.fictionalMinutes ?? 480, roll: roll as unknown as Prisma.InputJsonValue, isSystemMessage: true, combate: true } });
       await tx.save.update({
         where: { id: save.id },

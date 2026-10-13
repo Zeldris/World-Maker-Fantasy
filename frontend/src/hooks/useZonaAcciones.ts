@@ -61,7 +61,7 @@ export function useZonaAcciones({ saveId, setCharacterLog, setCombateIniciado, o
     }
     // Fase 10 (2026-09-29, "todas las tiradas visibles") — antes de mandar el texto por el turno
     // normal se muestran las tiradas que ya ocurrieron: cuántos del grupo entran + iniciativa, o el d100
-    // de la caza sigilosa fallida. Las dos son entradas guardadas por el backend (`logEntry`; QA-71).
+    // de la caza sigilosa fallida. Las dos son entradas guardadas por el backend (`logEntry`; QA-73).
     if (result.logEntry) {
       const entrada = result.logEntry
       setCharacterLog((prev) => [...prev, { ...entrada, channel: 'character' }])

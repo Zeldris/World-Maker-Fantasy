@@ -13,7 +13,7 @@ async (page) => {
   const diario = iDiario >= 0 ? texto.slice(iDiario, iMundo > iDiario ? iMundo : undefined).trim().slice(-900) : '';
   const iCombate = texto.search(/Combate —|COMBATE —/);
   const combate = iCombate >= 0 ? texto.slice(iCombate, iCombate + 700).replace(/\n{2,}/g, '\n') : '';
-  // QA-74: los avisos se buscan elemento a elemento (párrafos y encabezados: «¡Victoria!» va en un h3).
+  // QA-76: los avisos se buscan elemento a elemento (párrafos y encabezados: «¡Victoria!» va en un h3).
   // En `innerText` los nombres van en fichas (chips) en otra línea y la frase quedaba sin quién («  te
   // golpea…»); aquí cada trozo del elemento se une con un espacio, así tampoco se pegan las palabras.
   const parrafos = await page

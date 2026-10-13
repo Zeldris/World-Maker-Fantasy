@@ -1116,12 +1116,26 @@ Retro de la tercera tanda de `QA-27` (2026-10-12, PR #49;
   ataques con tirada también pasan tras la subida de nivel y la brújula va al final. El frontend las
   pinta al momento en ese orden (`intercambiosExtra` de la respuesta, también la subida de nivel), así
   que se ve igual que tras recargar. Motivo: P117 se arregló dos veces y no tenía test.
+
+Retro del PR #51 (documentos reutilizables, 2026-10-13), aprobada por la usuaria:
+
+- ~~**QA-71 · Documentos con comandos comprobados**~~ ✅ 2026-10-13: criterios en el `README.md` de
+  `docs/arquitectura/reutilizables/`: cada comando, comprobado o marcado «(sin verificar)»; cada
+  afirmación sobre el proyecto, con su archivo y comprobada con `grep`; cómo comprobar archivos de
+  modelos y etiquetas de Ollama. Motivo: 10 de los 15 hallazgos del `/code-review` del PR #51 eran
+  comandos sin probar o datos de Tarkor sin mirar.
+- ~~**QA-72 · Traer `main` al empezar y al fusionar**~~ ✅ 2026-10-13: paso 5 de «Al empezar cualquier
+  sesión» en `CLAUDE.md` y nota en el paso 5 del runbook. Al empezar cada tarea y al fusionar cada PR, `git fetch` y
+  `git merge origin/main` (merge, no rebase: las ramas están subidas). Si el conflicto toca la misma lógica
+  por los dos lados o dos migraciones, se consulta a la usuaria. Motivo: el PR #50 de la otra cuenta
+  no se vio hasta preparar el PR #51. Sustituye a las propuestas de avisar en el pre-push y en el
+  inicio de sesión.
 ---
 
 Retro del PR #50 (2026-10-13; [propuestas](../registros/retro-2026-10-13-pr50.md), aprobadas todas por la
 usuaria el 2026-10-13):
 
-- **QA-71 · Diario que el frontend escribe por su cuenta** (🚧 2026-10-13: hecho y con tests; jugado en
+- **QA-73 · Diario que el frontend escribe por su cuenta** (🚧 2026-10-13: hecho y con tests; jugado en
   una acción bloqueada, huir antes del combate (P131) y Explorar fallido (P138). Falta jugarlo en huir
   durante un combate y caza sigilosa fallida, que salen al azar):
   - huir antes y durante el combate y la respuesta a una acción bloqueada devuelven la entrada guardada
@@ -1134,16 +1148,16 @@ usuaria el 2026-10-13):
     (`<prefijo>-${Date.now()}` y `nextId(...)`: errores y la acción de la jugadora) y falla con uno nuevo;
   - regla en «Sin copias entre backend y frontend» de `REVIEW.md`.
   Motivo: P117 se veía mal en vivo por la línea «sube a nivel» del frontend.
-- ~~**QA-72 · Tests de las herramientas de `tools/qa/` y del gancho**~~ ✅ 2026-10-13: `tools/qa/tests/`
+- ~~**QA-74 · Tests de las herramientas de `tools/qa/` y del gancho**~~ ✅ 2026-10-13: `tools/qa/tests/`
   (`unittest`, 13 tests, sin dependencias) para `bitacora.py`, `marca-hallazgo.py` y
   `prepush-ramas.sh`, la parte del gancho que mira cada rama (sacada de `.githooks/pre-push` para poder
   probarla con repos de git de prueba; comprueba la bitácora de cada commit nuevo, no solo del último).
   Los corre el job `roadmap` de la CI. Motivo: 4 de los 11
   hallazgos del `/code-review` del #50 eran de esas herramientas.
-- ~~**QA-73 · `/code-review` al cerrar cada tanda de 3 o más tareas**~~ ✅ 2026-10-13: paso 5 de
+- ~~**QA-75 · `/code-review` al cerrar cada tanda de 3 o más tareas**~~ ✅ 2026-10-13: paso 5 de
   `skills-y-modelos.md`. Motivo: las dos últimas tandas salieron con 11 y 12 fallos que solo vio la
   revisión final.
-- ~~**QA-74 · `estado.js` con el nombre en los avisos**~~ ✅ 2026-10-13: los avisos se buscan elemento a
+- ~~**QA-76 · `estado.js` con el nombre en los avisos**~~ ✅ 2026-10-13: los avisos se buscan elemento a
   elemento (párrafos, encabezados, listas) uniendo sus trozos con un espacio, así los chips de nombre
   quedan en su frase y «¡Victoria!» (en un `h3`) también sale. Motivo: «  te golpea…» sin quién,
   parecía un fallo del juego.

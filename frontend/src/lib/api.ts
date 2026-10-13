@@ -116,7 +116,7 @@ export interface ClassifyResponse {
   // `harvestSuggestion` (Pieza 6d, 2026-09-03, "mundo determinista"): presente solo cuando el
   // bloqueo fue por citar una fuente real de recolección de terreno por texto libre en vez de usar
   // la habilidad — botón real que abre HarvestSelectionModal con la fuente ya priorizada.
-  /// QA-71: `logEntry` es la respuesta bloqueada tal como la guardó el backend.
+  /// QA-73: `logEntry` es la respuesta bloqueada tal como la guardó el backend.
   blocked?: { narration: string; harvestSuggestion?: { sourceName: string }; logEntry: LogEntry }
   // Interacción con un NPC/fauna ya convaleciente o muerto, fuera de combate (docs/19-post-combate-
   // y-recompensas-mision.md pieza 2) — el turno tampoco llega a /turn/narrate aquí, pero a
@@ -825,7 +825,7 @@ export async function requestCerrarCombate(id: string): Promise<void> {
 // IA: `escaped` decide si el frontend limpia el aviso de "Combatir" o abre el popup igualmente.
 // `roll` (2026-08-30, bug real: 3 intentos seguidos narraban la misma frase fija sin ningún
 // desglose) — se pinta con RollBadge, igual que cualquier otra tirada del juego.
-/// QA-71: `logEntry` es la entrada que guardó el backend (la misma que se ve tras recargar).
+/// QA-73: `logEntry` es la entrada que guardó el backend (la misma que se ve tras recargar).
 export async function requestFlee(id: string): Promise<{ escaped: boolean; logEntry: LogEntry }> {
   return fetchJson(`${API_URL}/saves/${id}/combat/flee`, { method: 'POST' })
 }
@@ -2090,7 +2090,7 @@ export type ConfirmarCazaResultado =
       tiradasGrupo?: TiradaGrupoInfo[]
     } & (
       | {
-          /// Fase 10 (2026-09-29) — caza sigilosa fallida (d100 contra la probabilidad real). QA-71: el
+          /// Fase 10 (2026-09-29) — caza sigilosa fallida (d100 contra la probabilidad real). QA-73: el
           /// backend la guarda siempre y viaja en `logEntry`, con `roll.kind` = 'caza-sigilo'.
           cazaLimpia: CazaSigiloRoll
           logEntry: { id: string; text: string; timeLabel: string; createdAt: string; roll: CazaSigiloRoll }

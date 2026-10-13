@@ -23,7 +23,7 @@ const findManyQuest = vi.fn();
 // ya fallaba antes de cualquier cambio de esta sesión (worktree del commit limpio anterior).
 const findFirstQuest = vi.fn();
 const logEntryCreate = vi.fn();
-// La fila creada, como la devuelve Prisma (QA-71: la respuesta bloqueada devuelve su entrada guardada).
+// La fila creada, como la devuelve Prisma (QA-73: la respuesta bloqueada devuelve su entrada guardada).
 const logEntryCreada = async ({ data }: { data: Record<string, unknown> }) => ({ id: 'log-1', createdAt: new Date(), ...data });
 const classifyAction = vi.fn();
 const findFirstCombatEncounter = vi.fn();

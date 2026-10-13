@@ -7,7 +7,7 @@ const FUENTES = import.meta.glob(['../**/*.{ts,tsx}', '!**/*.test.*'], {
   eager: true,
 }) as Record<string, string>
 
-/// QA-71 (retro del PR #50): una línea del diario que cuenta algo del juego llega del backend con su
+/// QA-73 (retro del PR #50): una línea del diario que cuenta algo del juego llega del backend con su
 /// `logEntryId`, la misma que se ve tras recargar. El frontend solo inventa un id (`<prefijo>-${Date.now()}`)
 /// para lo que nunca se guarda. Pasó con P117: el frontend añadía su propia «sube a nivel» y en vivo salía
 /// en otro orden que tras recargar.
@@ -25,7 +25,7 @@ const PREFIJOS_LOCALES: Record<string, string> = {
   custom: 'personaje nuevo en CharacterSelect',
 }
 
-describe('líneas del diario que inventa el frontend (QA-71)', () => {
+describe('líneas del diario que inventa el frontend (QA-73)', () => {
   it('solo los prefijos de id de lo que nunca se guarda', () => {
     // Las dos formas de inventar un id en el frontend: `<prefijo>-${Date.now()}` y `nextId('<prefijo>')`.
     const usados = Object.entries(FUENTES).flatMap(([ruta, texto]) =>

@@ -691,7 +691,7 @@ describe('handleFleeAttempt', () => {
       expect(result.current.combateIniciado).toBeNull()
       expect(result.current.combat.combatOpen).toBe(false)
       expect(result.current.characterLog).toHaveLength(1)
-      // QA-71: la entrada que guardó el backend, con su id real.
+      // QA-73: la entrada que guardó el backend, con su id real.
       expect(result.current.characterLog[0]?.id).toBe('entrada-guardada')
     })
   })

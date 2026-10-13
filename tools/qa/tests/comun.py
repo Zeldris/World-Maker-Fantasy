@@ -1,4 +1,4 @@
-"""QA-72: utilidades de los tests de tools/qa (repos de git de prueba en carpetas temporales)."""
+"""QA-74: utilidades de los tests de tools/qa (repos de git de prueba en carpetas temporales)."""
 import atexit
 import os
 import shutil

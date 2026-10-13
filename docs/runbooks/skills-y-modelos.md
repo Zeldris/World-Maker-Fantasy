@@ -35,12 +35,13 @@ Skill (no basta con nombrarla); `/grill-with-docs` solo lo lanza la usuaria, con
 4. **Si algo falla** (test rojo, intermitente, bug): `diagnosing-bugs` antes de tocar el código.
 5. **Cerrar la tarea:** tachada en su roadmap y en el mapa, bitácora al día, commit + push. Al cerrar
    una tanda de 3 o más tareas (las de una retro, un grupo del roadmap), `/code-review` del diff de la
-   tanda y sus arreglos antes de seguir, no solo antes del PR (`QA-73`; en las rondas de pruebas, cada
+   tanda y sus arreglos antes de seguir, no solo antes del PR (`QA-75`; en las rondas de pruebas, cada
    5-6 hallazgos, `QA-40`). Al
    contárselo a la usuaria, el destino con su nombre: «en la rama de trabajo, no en `main`» o «en
    `main` (PR #N)» (QA-36).
    «Actualiza con main» (o «trae main») es traer `main` a la rama de trabajo en local y decir si está
-   al día; sin commit de bitácora y sin subir, salvo que lo pida (QA-61).
+   al día; sin commit de bitácora y sin subir, salvo que lo pida (QA-61). Aparte, `main` se trae
+   siempre al empezar una tarea y al fusionar un PR (QA-72, `CLAUDE.md`).
 6. **Antes de un PR a `main`** (solo cuando lo pide la usuaria): `/code-review --max-findings all`
    del diff contra `main` (sin el tope de 10 hallazgos, `QA-18`; criterio en [`REVIEW.md`](../../REVIEW.md)), arreglar lo que encuentre y escribir
    la descripción con `pr`. Tras crear el PR, `subscribe_pr_activity` y se fusiona al llegar el CI en

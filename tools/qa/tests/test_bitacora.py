@@ -1,4 +1,4 @@
-"""QA-72: tools/qa/bitacora.py (QA-69)."""
+"""QA-74: tools/qa/bitacora.py (QA-69)."""
 import os
 import subprocess
 import unittest

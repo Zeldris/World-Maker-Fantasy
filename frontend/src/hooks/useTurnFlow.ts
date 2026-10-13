@@ -229,7 +229,7 @@ export function useTurnFlow(params: UseTurnFlowParams) {
         // a una recarga, coherente con el resto de ofertas de este mismo tipo.
         setCharacterThinking(false)
         const blocked = classifyResult.blocked
-        // QA-71: la respuesta tal como la guardó el backend (mismo id y estilo que tras recargar).
+        // QA-73: la respuesta tal como la guardó el backend (mismo id y estilo que tras recargar).
         setCharacterLog((prev) => [...prev, { ...blocked.logEntry, harvestSuggestion: blocked.harvestSuggestion }])
         return
       }

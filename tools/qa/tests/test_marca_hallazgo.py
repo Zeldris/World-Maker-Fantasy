@@ -1,4 +1,4 @@
-"""QA-72: tools/qa/marca-hallazgo.py (QA-42, QA-47, QA-55)."""
+"""QA-74: tools/qa/marca-hallazgo.py (QA-42, QA-47, QA-55)."""
 import os
 import subprocess
 import unittest

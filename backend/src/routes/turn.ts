@@ -634,7 +634,7 @@ export async function turnRoutes(app: FastifyInstance) {
       // que abre el modal de movimiento de zona (la recolección se hace desde el mapa) — efímero a propósito, igual
       // que `questOffer`/`dynamicModeOffer` (nunca se persiste en `LogEntry`, solo viaja en la
       // respuesta HTTP de este turno).
-      // QA-71: la entrada guardada, para que el diario en vivo sea la misma que tras recargar.
+      // QA-73: la entrada guardada, para que el diario en vivo sea la misma que tras recargar.
       return { blocked: { narration: narrationText, harvestSuggestion, logEntry: toFrontendLogEntry(respuesta) } };
     }
 
