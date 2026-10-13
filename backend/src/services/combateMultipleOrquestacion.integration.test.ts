@@ -203,9 +203,9 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     await prisma.save.update({ where: { id: saveId }, data: { activeEffects: [], condicionFisica: 'ILESO', energia: 100 } });
   }, 30_000);
 
-  // P55 (QA-27): con dos enemigos sobre la jugadora, el segundo le da un golpe gratis (sin tirada).
-  // Ese golpe también tiene que llegar al caller para dejar su línea en el diario.
-  it('un golpe gratis contra la jugadora queda en golpesSinTiradaContraJugadora', async () => {
+  // P55 (QA-27): con dos enemigos sobre la jugadora, el ataque del segundo también llega al caller.
+  // P129 (QA-27): ya no es un golpe gratis: tira contra su defensa, con ventaja.
+  it('el ataque de más contra la jugadora tira con ventaja y queda en intercambiosContraJugadora', async () => {
     const enemigo = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } });
     const { encounterId } = await prisma.$transaction((tx) =>
       iniciarCombatEncounter(tx, saveId, [
@@ -217,9 +217,34 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
 
     const ronda = await resolverTurnosAutonomosHastaJugadora({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
 
-    expect(ronda.golpesSinTiradaContraJugadora.length).toBeGreaterThanOrEqual(1);
-    expect(ronda.golpesSinTiradaContraJugadora[0].atacanteNombre).toBe(enemigo.name);
-    expect(['HERIDO', 'GRAVE', 'CONVALECIENTE', 'MUERTO']).toContain(ronda.golpesSinTiradaContraJugadora[0].nuevaCondicion);
+    expect(ronda.golpesSinTiradaContraJugadora).toEqual([]);
+    const conVentaja = ronda.intercambiosContraJugadora.filter((i) => i.display.atacante.rollMode === 'ventaja');
+    expect(conVentaja.length).toBeGreaterThanOrEqual(1);
+    expect(conVentaja[0].atacanteNombre).toBe(enemigo.name);
+
+    await prisma.combatEncounter.delete({ where: { id: encounterId } });
+    await prisma.save.update({ where: { id: saveId }, data: { activeEffects: [], condicionFisica: 'ILESO', energia: 100 } });
+  }, 30_000);
+
+  // P129 (QA-27): cuatro enemigos sobre la jugadora Ilesa: como mucho 2 ataques de más, y la ronda
+  // no la mata (antes, 3 golpes gratis seguidos: Ileso → Muerto en un turno).
+  it('con cuatro enemigos encima: como mucho 2 ataques de más y la ronda no la mata', async () => {
+    const enemigo = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } });
+    const efectoFuerza: ActiveEffect = { attribute: 'fuerza', magnitude: -9, turnsRemaining: 99, sourceAbility: 'Efecto de prueba' };
+    await prisma.save.update({ where: { id: saveId }, data: { activeEffects: [efectoFuerza] as unknown as object, condicionFisica: 'ILESO' } });
+    const { encounterId } = await prisma.$transaction((tx) =>
+      iniciarCombatEncounter(tx, saveId, [
+        { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 1, inteligencia: 10 },
+        ...['a', 'b', 'c', 'd'].map((x, i) => ({ bando: 'ENEMIGO' as const, tipo: 'NPC' as const, npcId: enemigo.id, npcScope: `itinerante-p129-${x}`, destreza: 1000 - i, inteligencia: 6 })),
+      ]),
+    );
+
+    const ronda = await resolverTurnosAutonomosHastaJugadora({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
+
+    expect(ronda.golpesSinTiradaContraJugadora).toEqual([]);
+    expect(ronda.intercambiosContraJugadora.filter((i) => i.display.atacante.rollMode === 'ventaja').length).toBeLessThanOrEqual(2);
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(save.condicionFisica).not.toBe('MUERTO');
 
     await prisma.combatEncounter.delete({ where: { id: encounterId } });
     await prisma.save.update({ where: { id: saveId }, data: { activeEffects: [], condicionFisica: 'ILESO', energia: 100 } });

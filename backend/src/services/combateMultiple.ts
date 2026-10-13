@@ -704,6 +704,8 @@ export function resolverIntercambioCompleto(
   /// ESE turno concreto lleve `ATURDIMIENTO` explícito (mismo criterio de simplificación ya usado
   /// para EXPULSAR/PROVOCACION: la trampa YA fue activada en otro turno, aquí solo se consume).
   defensorTieneTrampaActiva: boolean = false,
+  /// P129 (QA-27): el atacante golpea a quien ya pelea con otro rival — tira con ventaja.
+  ventajaAtacante: boolean = false,
 ): ResultadoIntercambioCompleto {
   const dificultadAtacanteAjustada = dualWieldAdjustedDifficulty(dificultadAtacante, dualWieldBonus);
   const atacanteExch: ExchangeParticipant = {
@@ -713,6 +715,7 @@ export function resolverIntercambioCompleto(
     difficulty: dificultadAtacanteAjustada,
     condicionFisica: atacante.condicionFisica,
     rol: atacanteRol,
+    ...(ventajaAtacante ? { rollMode: 'ventaja' as const, racialAdvantageReason: 'Ataca mientras peleas con otro rival: ventaja' } : {}),
   };
   const defensorExch: ExchangeParticipant = {
     attributes: defensor.attributes,
