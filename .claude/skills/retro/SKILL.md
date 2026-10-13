@@ -8,7 +8,8 @@ description: "Conduct a retrospective on a coding session. Use before creating e
 > a entrar con el PR, o la fase entera,
 > que suele cruzar sesiones de las dos cuentas:
 > sus commits, la bitácora y las entradas de sus tareas en los roadmaps. Las propuestas, en español,
-> se presentan a la usuaria y **ahí acaba el paso**: ella las revisa y decide. Solo las que confirme
+> se presentan a la usuaria: ella las revisa y decide, y lo aprobado se aplica en la rama antes de
+> crear el PR. Solo las que confirme
 > entran como tarea con hito en su roadmap (`CLAUDE.md`, «Ninguna tarea sin hito»).
 
 A phase has closed, so it is time for a **retrospective**. You are suggesting improvements to the coding agent's **environment** to improve future runs.

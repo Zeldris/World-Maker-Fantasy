@@ -95,7 +95,8 @@ prueba y cómo se apunta (`QA-56`).
   ([paso 6](docs/runbooks/skills-y-modelos.md#cómo-se-usa-el-flujo-de-una-tarea)). Sin la marca de
   revisión del mismo commit, un gancho bloquea crear o fusionar el PR (`QA-50`).
 - **Antes de crear cada PR a `main`, tras el `/code-review`, `/retro`** (usuaria, 2026-10-13) sobre lo
-  que va a entrar con él. Sus propuestas se presentan a la usuaria y solo lo que confirme entra como tarea.
+  que va a entrar con él. Sus propuestas se presentan a la usuaria; lo que confirme **se aplica en la rama
+  antes de crear el PR**, y solo entonces se crea.
 
 ## La bitácora (`docs/registros/traspaso.md`)
 
