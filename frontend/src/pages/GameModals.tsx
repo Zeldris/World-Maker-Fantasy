@@ -78,6 +78,8 @@ export function GameModals() {
     enciclopediaData,
     condicionFisica,
     hambre,
+    energia,
+    energiaMax,
     currentLocation,
     sed,
     pendingClaseChoice,
@@ -297,6 +299,8 @@ export function GameModals() {
             inventory={inventory}
             hambre={hambre}
             sed={sed}
+            energia={energia}
+            energiaMax={energiaMax}
             enFuente={!!currentLocation?.puntoDeAgua}
             onConfirm={(actionText, hambreSedItemUses) => {
               setHungerThirstModalOpen(false)

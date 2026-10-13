@@ -11,6 +11,10 @@ interface HungerThirstSelectionModalProps {
   inventory: InventoryItemInfo[]
   hambre: number
   sed: number
+  /// Energía actual y máxima: con el hambre llena, lo que da energía solo se ofrece mientras falte
+  /// energía (P121, `/code-review` del PR #53). Sin ellas, la energía no pone tope.
+  energia?: number
+  energiaMax?: number
   /// QA-27 P39: el personaje está en un punto de agua real y puede beber sin odre.
   enFuente?: boolean
   onConfirm: (actionText: string, hambreSedItemUses: { itemId: string; quantity: number }[]) => void
@@ -33,7 +37,7 @@ function pctTextColor(pct: number): string {
 /// odre") — el Odre de agua (curtidor-orcos-llanuras, T1) se craftea vacío y se llena con
 /// "recoger agua" solo en una zona con agua real; el odre LLENO (`curaAgua: 100`) es el que
 /// aparece aquí como cualquier otra bebida.
-export function HungerThirstSelectionModal({ inventory, hambre, sed, enFuente = false, onConfirm, onCancel }: HungerThirstSelectionModalProps) {
+export function HungerThirstSelectionModal({ inventory, hambre, sed, energia, energiaMax, enFuente = false, onConfirm, onCancel }: HungerThirstSelectionModalProps) {
   const [quantities, setQuantities] = useState<Record<string, number>>({})
   const [selectionOrder, setSelectionOrder] = useState<string[]>([])
   const [confirmado, setConfirmado] = useState(false)
@@ -41,9 +45,12 @@ export function HungerThirstSelectionModal({ inventory, hambre, sed, enFuente = 
   const comestibles = inventory.filter((i) => i.curaHambre)
   const bebibles = inventory.filter((i) => i.curaAgua)
   const yaLleno = hambre >= 100
+  const energiaLlena = energia !== undefined && energiaMax !== undefined && energia >= energiaMax
   // P121 (QA-27, decisión de la usuaria 2026-10-13): lo que da energía se puede comer aunque estés
-  // saciado (antes la energía de una ración solo se sacaba desde Curar).
-  const comestiblesVisibles = yaLleno ? comestibles.filter((i) => (i.curaEnergia ?? 0) > 0) : comestibles
+  // saciado (antes la energía de una ración solo se sacaba desde Curar), mientras falte energía.
+  const comestiblesVisibles = yaLleno
+    ? energiaLlena ? [] : comestibles.filter((i) => (i.curaEnergia ?? 0) > 0)
+    : comestibles
   const sedYaLlena = sed >= 100
 
   const gananciaHambre = selectionOrder.reduce((sum, id) => {
@@ -53,6 +60,11 @@ export function HungerThirstSelectionModal({ inventory, hambre, sed, enFuente = 
   }, 0)
   const previewHambre = applySequentialHunger(hambre, gananciaHambre)
   const previewHambreLlena = previewHambre >= 100
+  const gananciaEnergia = selectionOrder.reduce((sum, id) => {
+    const item = comestibles.find((i) => i.id === id)
+    return sum + (item?.curaEnergia ?? 0) * (quantities[id] ?? 0)
+  }, 0)
+  const previewEnergiaLlena = energia !== undefined && energiaMax !== undefined && energia + gananciaEnergia >= energiaMax
   const gananciaSed = selectionOrder.reduce((sum, id) => {
     const item = bebibles.find((i) => i.id === id)
     const qty = quantities[id] ?? 0
@@ -139,7 +151,9 @@ export function HungerThirstSelectionModal({ inventory, hambre, sed, enFuente = 
           comestiblesVisibles.map((item) => {
             const max = quantityOf(item.name)
             const value = quantities[item.id] ?? 0
-            const blockedByLleno = previewHambreLlena && !item.curaEnergia
+            // Lleno con lo marcado: no se añade más (lo ya marcado se puede bajar). Lo que da energía
+            // sigue mientras falte energía.
+            const blockedByLleno = previewHambreLlena && (!item.curaEnergia || previewEnergiaLlena)
             return (
               <div
                 key={item.id}
@@ -159,7 +173,7 @@ export function HungerThirstSelectionModal({ inventory, hambre, sed, enFuente = 
                 <QuantityStepper
                   value={value}
                   max={max}
-                  tope={blockedByLleno && value === 0 ? 0 : max}
+                  tope={blockedByLleno ? value : max}
                   onChange={(n) => setQuantity(item.id, n, max)}
                   etiqueta={item.name}
                   motivoTope="Ya estarías saciado con lo marcado — no hace falta más"
