@@ -41,6 +41,9 @@ export function HungerThirstSelectionModal({ inventory, hambre, sed, enFuente = 
   const comestibles = inventory.filter((i) => i.curaHambre)
   const bebibles = inventory.filter((i) => i.curaAgua)
   const yaLleno = hambre >= 100
+  // P121 (QA-27, decisión de la usuaria 2026-10-13): lo que da energía se puede comer aunque estés
+  // saciado (antes la energía de una ración solo se sacaba desde Curar).
+  const comestiblesVisibles = yaLleno ? comestibles.filter((i) => (i.curaEnergia ?? 0) > 0) : comestibles
   const sedYaLlena = sed >= 100
 
   const gananciaHambre = selectionOrder.reduce((sum, id) => {
@@ -125,15 +128,18 @@ export function HungerThirstSelectionModal({ inventory, hambre, sed, enFuente = 
 
       <div className="space-y-1.5">
         <h4 className="text-2xs font-bold uppercase tracking-wide text-wood-500">Comida</h4>
-        {yaLleno ? (
+        {yaLleno && comestiblesVisibles.length > 0 && (
+          <p className="text-xs text-wood-500">Ya estás saciado: solo comerías por la energía.</p>
+        )}
+        {yaLleno && comestiblesVisibles.length === 0 ? (
           <p className="text-xs text-wood-500">Ya estás saciado — no hace falta comer más.</p>
         ) : comestibles.length === 0 ? (
           <p className="text-xs text-wood-500">No llevas ningún alimento encima.</p>
         ) : (
-          comestibles.map((item) => {
+          comestiblesVisibles.map((item) => {
             const max = quantityOf(item.name)
             const value = quantities[item.id] ?? 0
-            const blockedByLleno = previewHambreLlena
+            const blockedByLleno = previewHambreLlena && !item.curaEnergia
             return (
               <div
                 key={item.id}
@@ -146,6 +152,7 @@ export function HungerThirstSelectionModal({ inventory, hambre, sed, enFuente = 
                   <span className="font-semibold text-wood-100">{baseNameOf(item.name)}</span>
                   <span className="ml-1.5 text-2xs text-wood-500">
                     {`+${item.curaHambre} hambre`}
+                    {item.curaEnergia ? ` · +${item.curaEnergia} energía` : ''}
                     {max > 1 ? ` · llevas ${max}` : ''}
                   </span>
                 </span>
