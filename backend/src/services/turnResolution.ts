@@ -21,7 +21,7 @@
 //   Oferta de Interactuar ambiental ........................... let dynamicModeOffer
 
 import { registrarFinDeMision, registrarSucesoDeNpc } from './cronista/emisores.js';
-import { repartirIntercambios, CONDICION_EN_TEXTO, type IntercambioContraJugadora } from './intercambiosContraJugadora.js';
+import { repartirIntercambios, lineasTrasElGolpe, type IntercambioContraJugadora } from './intercambiosContraJugadora.js';
 import { bajasDeCampamentoEnVivo } from './ataquesCampamento.js';
 import { cupoDeCamas } from './cronista/subditos.js';
 import { env } from '../config/env.js';
@@ -6494,58 +6494,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       },
     });
 
-    // P55 (QA-27): cada ataque de más que recibió la jugadora en un combate de grupo, con sus dados.
-    // Sin esto, se podía caer tras ganar el único intercambio que se veía.
-    for (const extra of intercambiosContraJugadoraExtra) {
-      const combatExchange = { ...extra.display, rivalNombre: extra.atacanteNombre };
-      const text = `${extra.atacanteNombre} te ataca.`;
-      const entrada = await tx.logEntry.create({
-        data: {
-          saveId,
-          channel: 'CHARACTER',
-          text,
-          combatExchange: combatExchange as unknown as Prisma.InputJsonValue,
-          timeLabel: nuevaFictionalDateLabel,
-          fictionalMinutes: nuevoFictionalMinutes,
-          createdAt: nextAfterMainLogCreatedAt(),
-          combate: true,
-        },
-      });
-      intercambiosExtra.push({ logEntryId: entrada.id, text, combatExchange });
-    }
-
-    if (compassNarrationLine) {
-      // Brújula (2026-08-15) — LogEntry aparte, construido a mano, NUNCA pasado por el Narrador:
-      // todo el contenido (dirección/destino/terreno) ya se sabe con certeza mecánica. Mismo
-      // patrón que la recompensa de misión de arriba, orden garantizado tras `mainLogEntry` vía
-      // `nextAfterMainLogCreatedAt`.
-      await tx.logEntry.create({
-        data: {
-          saveId,
-          channel: 'CHARACTER',
-          text: compassNarrationLine,
-          isPlayerAction: false,
-          timeLabel: nuevaFictionalDateLabel,
-          fictionalMinutes: nuevoFictionalMinutes,
-          createdAt: nextAfterMainLogCreatedAt(),
-        },
-      });
-    }
-
+    // Primero lo que cambia la partida (habilidades nuevas); luego, las líneas del diario en su orden.
+    const desbloqueos: string[] = [];
     if (result.leveledUp) {
-      const attributeNote =
-        result.attributePointsGained > 0 ? ` Gana ${result.attributePointsGained} puntos de atributo para repartir.` : '';
-      await tx.logEntry.create({
-        data: {
-          saveId,
-          channel: 'CHARACTER',
-          text: `${characterName} sube a nivel ${result.newLevel}.${attributeNote}`,
-          timeLabel: nuevaFictionalDateLabel,
-          fictionalMinutes: nuevoFictionalMinutes,
-          createdAt: nextAfterMainLogCreatedAt(),
-        },
-      });
-
       // Habilidades de clase por nivel (roadmap de Fable, 2026-07-21) — se itera cada nivel
       // cruzado en este turno (no solo el final) para no saltarse un desbloqueo si una subida
       // de XP grande adelanta varios niveles de golpe. `isStarting: true`: son de diseño, no
@@ -6554,16 +6505,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       for (let lvl = params.currentLevel + 1; lvl <= result.newLevel; lvl++) {
         for (const ability of abilityUnlocksAlSubirANivel(characterName, lvl, params.clase, params.especializacion)) {
           await tx.savedAction.create({ data: savedActionDataFromAbility(saveId, ability) });
-          await tx.logEntry.create({
-            data: {
-              saveId,
-              channel: 'CHARACTER',
-              text: `${characterName} desbloquea la habilidad de clase «${ability.name}».`,
-              timeLabel: nuevaFictionalDateLabel,
-              fictionalMinutes: nuevoFictionalMinutes,
-              createdAt: nextAfterMainLogCreatedAt(),
-            },
-          });
+          desbloqueos.push(`${characterName} desbloquea la habilidad de clase «${ability.name}».`);
         }
       }
 
@@ -6592,27 +6534,37 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           isStarting: true,
         },
       });
-      await tx.logEntry.create({
+      desbloqueos.push(`${characterName} desbloquea la habilidad de oficio «${ability.name}» (nivel ${nivel} de ${oficio}).`);
+    }
+
+    // Brújula (2026-08-15): construida a mano, nunca pasa por el Narrador. P55 (QA-27): cada ataque
+    // de más que recibió la jugadora en un combate de grupo (con sus dados) y los golpes gratis (sin
+    // tirada). P117/QA-70: el orden lo decide `lineasTrasElGolpe`, todas tras `mainLogEntry` vía
+    // `nextAfterMainLogCreatedAt`.
+    const lineas = lineasTrasElGolpe({
+      brujula: compassNarrationLine ?? null,
+      subidaDeNivel: result.leveledUp
+        ? `${characterName} sube a nivel ${result.newLevel}.${result.attributePointsGained > 0 ? ` Gana ${result.attributePointsGained} puntos de atributo para repartir.` : ''}`
+        : null,
+      desbloqueos,
+      intercambiosAparte: intercambiosContraJugadoraExtra,
+      golpesGratis: golpesSinTiradaContraJugadora,
+    });
+    for (const linea of lineas) {
+      const entrada = await tx.logEntry.create({
         data: {
           saveId,
           channel: 'CHARACTER',
-          text: `${characterName} desbloquea la habilidad de oficio «${ability.name}» (nivel ${nivel} de ${oficio}).`,
+          text: linea.texto,
           timeLabel: nuevaFictionalDateLabel,
           fictionalMinutes: nuevoFictionalMinutes,
           createdAt: nextAfterMainLogCreatedAt(),
+          ...(linea.tipo === 'aviso' ? { isPlayerAction: false } : { combate: true }),
+          ...(linea.tipo === 'intercambio' ? { combatExchange: linea.combatExchange as unknown as Prisma.InputJsonValue } : {}),
         },
       });
-    }
-
-    // P55 (QA-27): los golpes gratis no tienen tirada, pero también dejan su línea en el diario.
-    // P117: van después de la subida de nivel y de sus desbloqueos, que los gana el golpe de la
-    // jugadora (antes salían tras «Estado: Muerto»).
-    for (const golpe of golpesSinTiradaContraJugadora) {
-      const text = `${golpe.atacanteNombre} te golpea sin que puedas defenderte (estás ocupado con otro rival). Estado: ${CONDICION_EN_TEXTO[golpe.nuevaCondicion]}.`;
-      const entrada = await tx.logEntry.create({
-        data: { saveId, channel: 'CHARACTER', text, timeLabel: nuevaFictionalDateLabel, fictionalMinutes: nuevoFictionalMinutes, createdAt: nextAfterMainLogCreatedAt(), combate: true },
-      });
-      intercambiosExtra.push({ logEntryId: entrada.id, text });
+      if (linea.tipo === 'intercambio') intercambiosExtra.push({ logEntryId: entrada.id, text: linea.texto, combatExchange: linea.combatExchange });
+      if (linea.tipo === 'golpeGratis') intercambiosExtra.push({ logEntryId: entrada.id, text: linea.texto });
     }
 
     // Condición física, descanso y muerte (docs/14 § 1, § 4) — en este orden: primero se fija

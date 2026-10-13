@@ -1105,8 +1105,12 @@ Retro de la tercera tanda de `QA-27` (2026-10-12, PR #49;
   curso · `<rama>`» por cuenta; `tools/qa/bitacora.py` (en `pre-push`) exige la rama en el nombre y 600
   caracteres como mucho; `CLAUDE.md` lo dice. Motivo: las dos cuentas escribían en la misma celda y se
   contradecían.
-- **QA-70 · Test del orden del diario en un turno**: subida de nivel, desbloqueos y golpes gratis en su
-  orden (`createdAt`). Motivo: P117 se arregló dos veces y no tiene test.
+- ~~**QA-70 · Test del orden del diario en un turno**~~ ✅ 2026-10-13: el orden de las líneas tras la
+  narración del turno lo decide `lineasTrasElGolpe` (`intercambiosContraJugadora.ts`) y lo prueba su test:
+  brújula, subida de nivel, desbloqueos de clase y de oficio, ataques recibidos con tirada y golpes gratis.
+  `turnResolution` crea primero las habilidades nuevas y luego escribe las líneas en ese orden. Los
+  ataques con tirada también pasan tras la subida de nivel. Motivo: P117 se arregló dos veces y no
+  tenía test.
 ---
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)

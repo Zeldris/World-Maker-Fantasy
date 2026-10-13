@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { repartirIntercambios } from './intercambiosContraJugadora.js';
+import { lineasTrasElGolpe, repartirIntercambios } from './intercambiosContraJugadora.js';
 import type { CombatExchangeDisplay } from './combatExchange.js';
 
 const intercambio = (resultado: string) => ({ atacanteEsJugador: false, resultado } as unknown as CombatExchangeDisplay);
@@ -25,5 +25,32 @@ describe('P55 — repartirIntercambios', () => {
 
   it('sin nada que repartir', () => {
     expect(repartirIntercambios(null, [])).toEqual({ principal: null, aparte: [] });
+  });
+});
+
+/// P117 (QA-70): la subida de nivel y sus desbloqueos los gana el golpe de la jugadora; van antes que
+/// los ataques que recibe después, aunque uno la deje muerta.
+describe('P117 — lineasTrasElGolpe', () => {
+  it('subida de nivel y desbloqueos antes que los ataques recibidos y los golpes gratis', () => {
+    const lineas = lineasTrasElGolpe({
+      brujula: 'La brújula señala al norte.',
+      subidaDeNivel: 'Gorhorn sube a nivel 3.',
+      desbloqueos: ['Gorhorn desbloquea la habilidad de clase «Rugido».', 'Gorhorn desbloquea la habilidad de oficio «Desollar» (nivel 2 de Desollador).'],
+      intercambiosAparte: [{ display: intercambio('golpe_pleno'), atacanteNombre: 'Guchapo 2' }],
+      golpesGratis: [{ atacanteNombre: 'Guchapo 3', nuevaCondicion: 'MUERTO' }],
+    });
+    expect(lineas.map((l) => l.texto)).toEqual([
+      'La brújula señala al norte.',
+      'Gorhorn sube a nivel 3.',
+      'Gorhorn desbloquea la habilidad de clase «Rugido».',
+      'Gorhorn desbloquea la habilidad de oficio «Desollar» (nivel 2 de Desollador).',
+      'Guchapo 2 te ataca.',
+      'Guchapo 3 te golpea sin que puedas defenderte (estás ocupado con otro rival). Estado: Muerto.',
+    ]);
+    expect(lineas.map((l) => l.tipo)).toEqual(['aviso', 'aviso', 'aviso', 'aviso', 'intercambio', 'golpeGratis']);
+  });
+
+  it('sin subida ni golpes, nada de más', () => {
+    expect(lineasTrasElGolpe({ brujula: null, subidaDeNivel: null, desbloqueos: [], intercambiosAparte: [], golpesGratis: [] })).toEqual([]);
   });
 });
