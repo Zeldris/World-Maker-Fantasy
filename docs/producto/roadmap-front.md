@@ -1122,8 +1122,8 @@ Retro del PR #50 (2026-10-13; [propuestas](../registros/retro-2026-10-13-pr50.md
 usuaria el 2026-10-13):
 
 - **QA-71 · Diario que el frontend escribe por su cuenta** (🚧 2026-10-13: hecho y con tests; jugado en
-  una acción bloqueada y en huir antes del combate (P131). Falta jugarlo en huir durante un combate,
-  Explorar fallido y caza sigilosa fallida, que salen al azar o con nivel de oficio):
+  una acción bloqueada, huir antes del combate (P131) y Explorar fallido (P138). Falta jugarlo en huir
+  durante un combate y caza sigilosa fallida, que salen al azar):
   - huir antes y durante el combate y la respuesta a una acción bloqueada devuelven la entrada guardada
     (`logEntry`) y el frontend la pinta tal cual; la huida de durante el combate se guarda ya como combate;
   - Explorar: la línea del dado lleva el id de la entrada guardada y, al caer el dado, se sustituye por
