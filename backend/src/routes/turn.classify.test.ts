@@ -23,6 +23,8 @@ const findManyQuest = vi.fn();
 // ya fallaba antes de cualquier cambio de esta sesión (worktree del commit limpio anterior).
 const findFirstQuest = vi.fn();
 const logEntryCreate = vi.fn();
+// La fila creada, como la devuelve Prisma (QA-71: la respuesta bloqueada devuelve su entrada guardada).
+const logEntryCreada = async ({ data }: { data: Record<string, unknown> }) => ({ id: 'log-1', createdAt: new Date(), ...data });
 const classifyAction = vi.fn();
 const findFirstCombatEncounter = vi.fn();
 
@@ -82,7 +84,7 @@ describe('POST /turn/classify — camino tabulado de combate (sin Ollama)', () =
     findManyLocation.mockReset().mockResolvedValue([]);
     findManyQuest.mockReset().mockResolvedValue([]);
     findFirstQuest.mockReset().mockResolvedValue(null);
-    logEntryCreate.mockReset().mockResolvedValue({});
+    logEntryCreate.mockReset().mockImplementation(logEntryCreada);
     classifyAction.mockReset();
   });
 
@@ -328,7 +330,7 @@ describe('POST /turn/classify — interacción con un NPC ya convaleciente, fuer
     findManyLocation.mockReset().mockResolvedValue([]);
     findManyQuest.mockReset().mockResolvedValue([]);
     findFirstQuest.mockReset().mockResolvedValue(null);
-    logEntryCreate.mockReset().mockResolvedValue({});
+    logEntryCreate.mockReset().mockImplementation(logEntryCreada);
     classifyAction.mockReset();
   });
 
@@ -406,7 +408,7 @@ describe('POST /turn/classify — anacronismo en la acción del jugador (validad
     findManyLocation.mockReset().mockResolvedValue([]);
     findManyQuest.mockReset().mockResolvedValue([]);
     findFirstQuest.mockReset().mockResolvedValue(null);
-    logEntryCreate.mockReset().mockResolvedValue({});
+    logEntryCreate.mockReset().mockImplementation(logEntryCreada);
     classifyAction.mockReset();
   });
 
@@ -450,7 +452,7 @@ describe('POST /turn/classify — tipo de construcción inventado (validador de 
     findManyLocation.mockReset().mockResolvedValue([]);
     findManyQuest.mockReset().mockResolvedValue([]);
     findFirstQuest.mockReset().mockResolvedValue(null);
-    logEntryCreate.mockReset().mockResolvedValue({});
+    logEntryCreate.mockReset().mockImplementation(logEntryCreada);
     classifyAction.mockReset();
   });
 
@@ -494,7 +496,7 @@ describe('POST /turn/classify — flora/fauna de otra región (validador de grou
     findManyLocation.mockReset().mockResolvedValue([]);
     findManyQuest.mockReset().mockResolvedValue([]);
     findFirstQuest.mockReset().mockResolvedValue(null);
-    logEntryCreate.mockReset().mockResolvedValue({});
+    logEntryCreate.mockReset().mockImplementation(logEntryCreada);
     classifyAction.mockReset();
   });
 
@@ -539,7 +541,7 @@ describe('POST /turn/classify — arma que no lleva equipada (validador de groun
     findManyLocation.mockReset().mockResolvedValue([]);
     findManyQuest.mockReset().mockResolvedValue([]);
     findFirstQuest.mockReset().mockResolvedValue(null);
-    logEntryCreate.mockReset().mockResolvedValue({});
+    logEntryCreate.mockReset().mockImplementation(logEntryCreada);
     classifyAction.mockReset();
   });
 
@@ -676,7 +678,7 @@ describe('POST /turn/classify — NPC/fauna inventado citado entre comillas (val
     findManyLocation.mockReset().mockResolvedValue([]);
     findManyQuest.mockReset().mockResolvedValue([]);
     findFirstQuest.mockReset().mockResolvedValue(null);
-    logEntryCreate.mockReset().mockResolvedValue({});
+    logEntryCreate.mockReset().mockImplementation(logEntryCreada);
     classifyAction.mockReset();
   });
 
@@ -754,7 +756,7 @@ describe('POST /turn/classify — flora/mineral inventado citado entre comillas 
     findManyLocation.mockReset().mockResolvedValue([]);
     findManyQuest.mockReset().mockResolvedValue([]);
     findFirstQuest.mockReset().mockResolvedValue(null);
-    logEntryCreate.mockReset().mockResolvedValue({});
+    logEntryCreate.mockReset().mockImplementation(logEntryCreada);
     classifyAction.mockReset();
   });
 
@@ -808,7 +810,7 @@ describe('POST /turn/classify — ficha del muerto frente a una caza nueva de la
     findManyLocation.mockReset().mockResolvedValue([]);
     findManyQuest.mockReset().mockResolvedValue([]);
     findFirstQuest.mockReset().mockResolvedValue(null);
-    logEntryCreate.mockReset().mockResolvedValue({});
+    logEntryCreate.mockReset().mockImplementation(logEntryCreada);
     findFirstCombatEncounter.mockReset().mockResolvedValue(null);
     classifyAction.mockReset().mockResolvedValue({
       requiereTirada: false, atributo: 'fuerza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
