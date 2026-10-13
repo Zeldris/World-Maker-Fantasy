@@ -16,7 +16,7 @@ import { momentoDelDiaFor, estacionFor, advanceFictionalMinutes, formatFictional
 /// B2 (2026-09-28) — minutos ficticios que cuesta cada paso real por la cuadrícula de la zona.
 const MINUTOS_POR_PASO_ZONA = 1;
 import type { EstacionSlug } from '../../services/imagePromptContext.js';
-import { ZONAS_DE_INICIO,
+import { faccionMasComun, ZONAS_DE_INICIO,
   zonePointColorFor,
   avanzarZonePointsUnPaso,
   asegurarZonePointsDePartida,
@@ -416,6 +416,10 @@ export async function zonaRoutes(app: FastifyInstance) {
     );
     // P107 (QA-27): `ZonePoint.factionSlug` casi nunca está relleno; la facción es la del propio NPC.
     const npcFactionBySlugZonePoint = new Map(npcFaunaZonePointIds.map((n) => [n.slug, n.faction]));
+    // P139 (QA-27): un edificio sin facción propia es de la facción de la gente que vive aquí (la más
+    // común entre los NPC de la zona): la Herrería del Clan Serhu salía «sin facción».
+    const faccionesDeLaZona = zonePointsRaw.filter((p) => p.tipo === 'NPC').map((p) => npcFactionBySlugZonePoint.get(p.targetSlug)).filter((f): f is string => !!f);
+    const faccionDeLosEdificios = faccionMasComun(faccionesDeLaZona);
     // ZON-50/ZON-33 (hito 0.2): quién te perseguiría (misma regla que la persecución de
     // `avanzarZonePointsUnPaso`: temperamento efectivo según tu reputación con su facción).
     // CR-16: y quien te guarda rencor por lo que le hiciste.
@@ -704,7 +708,7 @@ export async function zonaRoutes(app: FastifyInstance) {
           cantidad: p.cantidad,
           // P107: la facción se ve aunque no se sepa quién es (como los dinámicos de arriba y en X4,
           // donde el color de la facción se ve antes de escanear); el nombre sigue oculto.
-          color: zonePointColorFor(p.factionSlug ?? npcFactionBySlugZonePoint.get(p.targetSlug) ?? null, factionsStatus, p.tipo),
+          color: zonePointColorFor(p.factionSlug ?? npcFactionBySlugZonePoint.get(p.targetSlug) ?? (p.tipo === 'EDIFICIO' ? faccionDeLosEdificios : null), factionsStatus, p.tipo),
           descubierto: yaDescubierto,
           ...(objetivosDeMision.has(npcIdBySlugZonePoint.get(p.targetSlug) ?? '') ? { objetivoMision: true } : {}),
           // Compañero de fauna con nombre propio (C10, 2026-09-13) — presente solo si este NPC es

@@ -807,3 +807,13 @@ export async function zonePointsSummaryFor(prisma: PrismaClient, locationId: str
     edificio: listaDe('EDIFICIO'),
   };
 }
+
+/// P139 (QA-27): la facción más común de una lista (la de los edificios de una zona sin facción
+/// propia, por la gente que vive en ella); `null` si no hay ninguna. En empate, la primera que aparece.
+export function faccionMasComun(facciones: string[]): string | null {
+  const cuenta = new Map<string, number>();
+  for (const f of facciones) cuenta.set(f, (cuenta.get(f) ?? 0) + 1);
+  let mejor: string | null = null;
+  for (const [f, n] of cuenta) if (mejor === null || n > cuenta.get(mejor)!) mejor = f;
+  return mejor;
+}

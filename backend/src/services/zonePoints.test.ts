@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { proximaCantidadPara, relojPorRefrescar, zonePointColorFor, zonePointActivoAhora, reconciliarGrupos, plantillasQueFaltan, type ZonePointRow } from './zonePoints.js';
+import { faccionMasComun, proximaCantidadPara, relojPorRefrescar, zonePointColorFor, zonePointActivoAhora, reconciliarGrupos, plantillasQueFaltan, type ZonePointRow } from './zonePoints.js';
 
 function puntoBase(overrides: Partial<ZonePointRow> = {}): ZonePointRow {
   return {
@@ -195,3 +195,12 @@ describe('relojPorRefrescar', () => {
     expect(relojPorRefrescar(puntoBase({ lastUpdatedAtMinutes: 0, cantidad: 17, activo: true }), 18, true, 30, 600)).toBe(true);
   });
 });
+
+// P139 (QA-27): los edificios sin facción toman la de la gente de la zona.
+describe('faccionMasComun', () => {
+  it('la más repetida; null sin ninguna', () => {
+    expect(faccionMasComun(['Clan Serhu', 'Clan Helsig', 'Clan Serhu'])).toBe('Clan Serhu');
+    expect(faccionMasComun([])).toBeNull();
+  });
+});
+
